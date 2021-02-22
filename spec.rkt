@@ -61,16 +61,22 @@
      real
      ;; Tensor types and dimensions
      (tensor τ_type [τ_dim ...])
-     number
+     natural
      ;; Arithmetic (numbers only)
      (+ τ_1 τ_2)
      (- τ_1 τ_2)
      (* τ_1 τ_2)
      (/ τ_1 τ_2) ;; total, (/ τ 0) is equal to 0
      ;; Conditionals
-     (if τ_1 τ_2 τ_3)
+     (if τ_cond τ_true τ_false)
      (= τ_1 τ_2)
      (< τ_1 τ_2)
+     )
+
+  ;; Type environments
+  (Γ ::=
+     (Γ x τ)
+     ∙
      )
 
   ;; Kinds
@@ -78,6 +84,12 @@
      ⋆
      nat
      bool
+     )
+
+  ;; Kind environments
+  (Δ ::=
+     (Δ α κ)
+     ∙
      )
 
   ;; Variables
@@ -88,4 +100,146 @@
   (λ [x τ] e #:refers-to x)
   (Λ [α κ] e #:refers-to α)
   (∀ [α κ] τ #:refers-to α)
+  )
+
+;; Kind lookup
+(define-metafunction
+  vehicle
+  kind-lookup : Δ α -> κ or #f
+  [(kind-lookup (Δ α_1 κ) α_1) κ]
+  [(kind-lookup (Δ α_1 κ) α_2) (kind-lookup Δ α_2)]
+  [(kind-lookup ∙ α) #f]
+  )
+
+;; Kind checking
+(define-judgment-form
+  vehicle
+  #:mode (kindof I I O)
+  #:contract (kindof Δ τ κ)
+
+  [(kindof Δ τ_arg ⋆)
+   (kindof Δ τ_ret ⋆)
+   ---------------------------- "arrow"
+   (kindof Δ (τ_arg → τ_ret) ⋆)
+   ]
+
+  [(where κ (kind-lookup Δ α))
+   --------------------------- "var"
+   (kindof Δ α κ)
+   ]
+
+  [(kindof (Δ α κ) τ ⋆)
+   ------------------------ "forall"
+   (kindof Δ (∀ [α κ] τ) ⋆)
+   ]
+
+  [----------------- "bool"
+   (kindof Δ bool ⋆)
+   ]
+
+  [----------------- "int8"
+   (kindof Δ int8 ⋆)
+   ]
+
+  [------------------ "int16"
+   (kindof Δ int16 ⋆)
+   ]
+
+  [------------------ "int32"
+   (kindof Δ int32 ⋆)
+   ]
+
+  [------------------ "int64"
+   (kindof Δ int64 ⋆)
+   ]
+
+  [------------------ "uint8"
+   (kindof Δ uint8 ⋆)
+   ]
+
+  [------------------- "uint16"
+   (kindof Δ uint16 ⋆)
+   ]
+
+  [------------------- "uint32"
+   (kindof Δ uint32 ⋆)
+   ]
+
+  [------------------- "uint64"
+   (kindof Δ uint64 ⋆)
+   ]
+
+  [-------------------- "float32"
+   (kindof Δ float32 ⋆)
+   ]
+
+  [-------------------- "float64"
+   (kindof Δ float64 ⋆)
+   ]
+
+  [----------------- "real"
+   (kindof Δ real ⋆)
+   ]
+
+  [---------------------- "natural"
+   (kindof Δ natural nat)
+   ]
+
+  [(kindof Δ τ_type ⋆)
+   (kindof Δ τ_dim nat) ...
+   ---------------------------------------- "tensor"
+   (kindof Δ (tensor τ_type [τ_dim ...]) ⋆)
+   ]
+
+  [(kindof Δ τ_1 nat)
+   (kindof Δ τ_2 nat)
+   -------------------------- "+"
+   (kindof Δ (+ τ_1 τ_2) nat)
+   ]
+
+  [(kindof Δ τ_1 nat)
+   (kindof Δ τ_2 nat)
+   -------------------------- "-"
+   (kindof Δ (- τ_1 τ_2) nat)
+   ]
+
+  [(kindof Δ τ_1 nat)
+   (kindof Δ τ_2 nat)
+   -------------------------- "*"
+   (kindof Δ (* τ_1 τ_2) nat)
+   ]
+
+  [(kindof Δ τ_1 nat)
+   (kindof Δ τ_2 nat)
+   -------------------------- "/"
+   (kindof Δ (/ τ_1 τ_2) nat)
+   ]
+
+  [(kindof Δ τ_cond bool)
+   (kindof Δ τ_true κ)
+   (kindof Δ τ_false κ)
+   --------------------------------------- "if"
+   (kindof Δ (if τ_cond τ_true τ_false) κ)
+   ]
+
+  [(kindof Δ τ_1 nat)
+   (kindof Δ τ_2 nat)
+   --------------------------- "="
+   (kindof Δ (= τ_1 τ_2) bool)
+   ]
+
+  [(kindof Δ τ_1 nat)
+   (kindof Δ τ_2 nat)
+   --------------------------- "<"
+   (kindof Δ (< τ_1 τ_2) bool)
+   ]
+  )
+
+;; Type lookup
+(define-metafunction
+  vehicle
+  type-lookup : Δ α -> κ or #f
+  [(type-lookup (Δ α_1 κ) α_1) κ]
+  [(type-lookup (Δ α_1 κ) α_2) (type-lookup Δ α_2)]
+  [(type-lookup ∙ α) #f]
   )
