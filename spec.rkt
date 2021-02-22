@@ -13,9 +13,11 @@
      (e_1 e_2)
      (Λ [α κ] e)
      (e [ τ ])
-     ;; Numbers
+     ;; Numbers and tensors
      number
      (tensor e ...)
+     (map e_1 e_2)
+     (reduce e_1 e_2 e_3)
      ;; Arithmetic (numbers and tensors)
      (- e)
      (+ e_1 e_2)
