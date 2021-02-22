@@ -77,7 +77,8 @@
   ;; Kinds
   (κ ::=
      ⋆
-     ℕ
+     Nat
+     Bool
      )
 
   ;; Variables
