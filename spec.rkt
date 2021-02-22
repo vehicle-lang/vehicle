@@ -30,7 +30,7 @@
      (+ e_1 e_2)
      (- e_1 e_2)
      (* e_1 e_2)
-     (/ e_1 e_2) ;; total, (/ n 0) is equal to 0
+     (/ e_1 e_2) ;; total, (/ e 0) is equal to 0
      ;; Conditionals
      (if e_cond e_true e_false)
      (= e_1 e_2)
@@ -63,7 +63,7 @@
      (+ τ_1 τ_2)
      (- τ_1 τ_2)
      (* τ_1 τ_2)
-     (/ τ_1 τ_2) ;; total, (/ n 0) is equal to 0
+     (/ τ_1 τ_2) ;; total, (/ τ 0) is equal to 0
      ;; Conditionals
      (if τ_1 τ_2 τ_3)
      (= τ_1 τ_2)
