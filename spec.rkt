@@ -19,17 +19,20 @@
      (e_fun e_arg)
      (Λ [α κ] e)
      (e [τ])
+
      ;; Numbers and tensors
      number
      (tensor τ_type T)
      (at e_tensor [e_index ...])
      (map e_fun e_tensor)
      (reduce e_cons e_nil e_tensor)
-     ;; Arithmetic (numbers and tensors)
-     (+ e_1 e_2)
-     (- e_1 e_2)
-     (* e_1 e_2)
-     (/ e_1 e_2) ;; total, (/ e 0) is equal to 0
+
+     ;; Arithmetic over numbers and tensors
+     (+ e_1 e_2) ;; scalar, pointwise
+     (- e_1 e_2) ;; scalar, pointwise
+     (* e_1 e_2) ;; scalar, pointwise, tensor multiplication
+     (/ e_1 e_2) ;; scalar, pointwise ;; total, (/ e 0) is equal to 0
+
      ;; Conditionals
      (if e_cond e_true e_false)
      (= e_1 e_2)
@@ -54,6 +57,8 @@
      uint64
      float32
      float64
+     ;; Faux real number type
+     real
      ;; Tensor types and dimensions
      (tensor τ_type [τ_dim ...])
      number
@@ -71,8 +76,8 @@
   ;; Kinds
   (κ ::=
      ⋆
-     Nat
-     Bool
+     nat
+     bool
      )
 
   ;; Variables
