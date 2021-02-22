@@ -22,7 +22,7 @@
      ;; Numbers and tensors
      number
      (tensor τ_type T)
-     (at e_tensor [e ...])
+     (at e_tensor [e_index ...])
      (map e_fun e_tensor)
      (reduce e_1 e_2 e_3)
      ;; Arithmetic (numbers and tensors)
