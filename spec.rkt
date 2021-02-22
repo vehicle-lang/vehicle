@@ -26,7 +26,6 @@
      (map e_fun e_tensor)
      (reduce e_1 e_2 e_3)
      ;; Arithmetic (numbers and tensors)
-     (- e)
      (+ e_1 e_2)
      (- e_1 e_2)
      (* e_1 e_2)
@@ -59,7 +58,6 @@
      (tensor τ_type [τ_dim ...])
      number
      ;; Arithmetic (numbers only)
-     (- τ)
      (+ τ_1 τ_2)
      (- τ_1 τ_2)
      (* τ_1 τ_2)
