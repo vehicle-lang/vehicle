@@ -79,5 +79,3 @@
   (x ::= variable-not-otherwise-mentioned)
   (α ::= variable-not-otherwise-mentioned)
   )
-
-;; reduce :: tensor a dims -> b -> (a -> b -> b) -> b
