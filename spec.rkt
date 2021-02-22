@@ -83,4 +83,9 @@
   ;; Variables
   (x ::= variable-not-otherwise-mentioned)
   (α ::= variable-not-otherwise-mentioned)
+
+  ;; Binding forms
+  (λ [x τ] e #:refers-to x)
+  (Λ [α κ] e #:refers-to α)
+  (∀ [α κ] τ #:refers-to α)
   )
