@@ -5,6 +5,12 @@
 (define-language
   vehicle
 
+  ;; Tensors
+  (T ::=
+     number
+     #[T ...]
+     )
+
   ;; Terms
   (e ::=
      ;; Core calculus
@@ -15,7 +21,7 @@
      (e [ τ ])
      ;; Numbers and tensors
      number
-     (tensor e ...)
+     (tensor τ T)
      (map e_1 e_2)
      (reduce e_1 e_2 e_3)
      ;; Arithmetic (numbers and tensors)
@@ -56,7 +62,7 @@
      (+ τ_1 τ_2)
      (- τ_1 τ_2)
      (* τ_1 τ_2)
-     (/ τ_1 τ_2)
+     (/ τ_1 τ_2) ;; total, (/ n 0) is equal to 0
      ;; Conditionals
      (if τ_1 τ_2 τ_3)
      (= τ_1 τ_2)
