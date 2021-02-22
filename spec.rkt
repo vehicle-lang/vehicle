@@ -7,7 +7,7 @@
 
   ;; Tensors
   (T ::=
-     number
+     e
      #[T ...]
      )
 
