@@ -16,13 +16,14 @@
      ;; Core calculus
      x
      (λ [x τ] e)
-     (e_1 e_2)
+     (e_fun e_arg)
      (Λ [α κ] e)
-     (e [ τ ])
+     (e [τ])
      ;; Numbers and tensors
      number
-     (tensor τ T)
-     (map e_1 e_2)
+     (tensor τ_type T)
+     (at e_tensor [e ...])
+     (map e_fun e_tensor)
      (reduce e_1 e_2 e_3)
      ;; Arithmetic (numbers and tensors)
      (- e)
@@ -31,7 +32,7 @@
      (* e_1 e_2)
      (/ e_1 e_2) ;; total, (/ n 0) is equal to 0
      ;; Conditionals
-     (if e_1 e_2 e_3)
+     (if e_cond e_true e_false)
      (= e_1 e_2)
      (< e_1 e_2)
      )
@@ -39,7 +40,7 @@
   ; Types
   (τ ::=
      ;; Core calculus
-     (τ_1 → τ_2)
+     (τ_arg → τ_ret)
      α
      (∀ [α κ] τ)
      ;; Primitive numeric types
@@ -55,7 +56,7 @@
      float32
      float64
      ;; Tensor types and dimensions
-     (tensor τ [τ ...])
+     (tensor τ_type [τ_dim ...])
      number
      ;; Arithmetic (numbers only)
      (- τ)
