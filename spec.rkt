@@ -1,5 +1,6 @@
 #lang racket
 (require redex)
+(require (prefix-in z3: z3/smt))
 
 ;; Syntax
 (define-language
