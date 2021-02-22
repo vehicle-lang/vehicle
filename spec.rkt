@@ -24,7 +24,7 @@
      (tensor τ_type T)
      (at e_tensor [e_index ...])
      (map e_fun e_tensor)
-     (reduce e_1 e_2 e_3)
+     (reduce e_cons e_nil e_tensor)
      ;; Arithmetic (numbers and tensors)
      (+ e_1 e_2)
      (- e_1 e_2)
@@ -79,3 +79,5 @@
   (x ::= variable-not-otherwise-mentioned)
   (α ::= variable-not-otherwise-mentioned)
   )
+
+;; reduce :: tensor a dims -> b -> (a -> b -> b) -> b
