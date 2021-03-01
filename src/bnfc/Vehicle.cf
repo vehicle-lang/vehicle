@@ -1,0 +1,82 @@
+-- Grammar of Vehicle
+
+comment "--";
+comment "{-" "-}";
+
+-- * Tokens
+
+position token UIdent (upper (letter | digit | '_')*) ;
+position token LIdent (lower (letter | digit | '_')*) ;
+
+-- * Kinds
+
+KApp.  Kind  ::= Kind Kind1;
+KStar. Kind1 ::= "*";
+KNat.  Kind1 ::= "Nat";
+KBool. Kind1 ::= "Bool";
+KList. Kind1 ::= "List";
+
+coercions Kind 1;
+
+-- * Types
+
+TIf.     Type  ::= "if" Type1 "then" Type1 "else" Type1;
+TFun.    Type1 ::= Type "->" Type2;
+TForall. Type1 ::= "forall" LIdent "." Type2;
+TEq.     Type2 ::= Type3 "==" Type3;
+TLt.     Type2 ::= Type3 "<=" Type3;
+TMul.    Type3 ::= Type3 "*" Type4;
+TDiv.    Type3 ::= Type3 "/" Type4;
+TAdd.    Type4 ::= Type4 "+" Type5;
+TSub.    Type4 ::= Type4 "-" Type5;
+TApp.    Type5 ::= Type5 Type6;
+TVar.    Type6 ::= LIdent;
+TTensor. Type6 ::= "Tensor";
+TBool.   Type6 ::= "Bool";
+TReal.   Type6 ::= "Real";
+TNat.    Type6 ::= "Nat";
+
+coercions Type 6;
+
+-- * Expressions
+
+-- NOTE:
+--
+--   The syntax for expressions used by the parser is more general than that
+--   permitted by our bidirectional typing, which allows us to emit an more
+--   specific error message when we're missing a type annotation, rather than
+--   emitting a parse error.
+--
+
+EAnn.    Expr ::= Expr1 "::" Type;
+EIf.     Expr1 ::= "if" Expr2 "then" Expr2 "else" Expr2;
+ELam.    Expr2 :: "\\" LIdent "->" Expr2;
+EEq.     Expr3 ::= Expr3 "==" Expr3;
+ELt.     Expr3 ::= Expr3 "<=" Expr3;
+EMul.    Expr4 ::= Expr4 "*" Expr5;
+EDiv.    Expr4 ::= Expr4 "/" Expr5;
+EAdd.    Expr5 ::= Expr5 "+" Expr6;
+ESub.    Expr5 ::= Expr5 "-" Expr6;
+EApp.    Expr6 ::= Expr6 Expr7;
+EVar.    Expr7 ::= LIdent;
+EDouble. Expr7 ::= Double;
+ETrue.   Expr7 ::= "True";
+EFalse.  Expr7 ::= "False";
+
+-- NOTE:
+--
+--   Type application and abstraction aren't part of the surface syntax, so
+--   they're marked as 'internal'.
+--
+
+internal ETyApp. Expr ::= Expr Type;
+internal ETyLam. Expr ::= "\\" LIdent "->" Expr;
+
+coercions Expr 7;
+
+-- * Tensor literals
+
+ADouble. Tensor ::= Double;
+AList.   Tensor ::= "[" [Tensor] "]";
+
+separator Tensor ",";
