@@ -59,7 +59,7 @@ EAdd.    Expr5 ::= Expr5 "+" Expr6;
 ESub.    Expr5 ::= Expr5 "-" Expr6;
 EApp.    Expr6 ::= Expr6 Expr7;
 EVar.    Expr7 ::= LIdent;
-EDouble. Expr7 ::= Double;
+ETensor. Expr7 ::= Tensor1;
 ETrue.   Expr7 ::= "True";
 EFalse.  Expr7 ::= "False";
 
@@ -76,7 +76,10 @@ coercions Expr 7;
 
 -- * Tensor literals
 
-ADouble. Tensor ::= Double;
-AList.   Tensor ::= "[" [Tensor] "]";
+ADouble. Tensor  ::= Double;
+AList.   Tensor  ::= "[" [Tensor1] "]";
+AExpr.   Tensor1 ::= Expr;
+
+coercions Tensor 1;
 
 separator Tensor ",";
