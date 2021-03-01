@@ -8,6 +8,10 @@ comment "{-" "-}";
 position token UIdent (upper (letter | digit | '_')*) ;
 position token LIdent (lower (letter | digit | '_')*) ;
 
+separator UIdent "";
+separator LIdent "";
+
+
 -- * Kinds
 
 KApp.  Kind  ::= Kind Kind1;
@@ -18,11 +22,12 @@ KList. Kind1 ::= "List";
 
 coercions Kind 1;
 
+
 -- * Types
 
 TIf.     Type  ::= "if" Type1 "then" Type1 "else" Type1;
 TFun.    Type1 ::= Type "->" Type2;
-TForall. Type1 ::= "forall" LIdent "." Type2;
+TForall. Type1 ::= "forall" [LIdent] "." Type2;
 TEq.     Type2 ::= Type3 "==" Type3;
 TLt.     Type2 ::= Type3 "<=" Type3;
 TMul.    Type3 ::= Type3 "*" Type4;
@@ -38,6 +43,7 @@ TNat.    Type6 ::= "Nat";
 
 coercions Type 6;
 
+
 -- * Expressions
 
 -- NOTE:
@@ -48,9 +54,13 @@ coercions Type 6;
 --   emitting a parse error.
 --
 
-EAnn.    Expr ::= Expr1 "::" Type;
+layout "let";
+layout stop "in";
+
+EAnn.    Expr  ::= Expr1 "::" Type;
+ELet.    Expr1 ::= "let" "{" [Decl] "}" "in" Expr1;
 EIf.     Expr1 ::= "if" Expr2 "then" Expr2 "else" Expr2;
-ELam.    Expr2 :: "\\" LIdent "->" Expr2;
+ELam.    Expr2 ::= "\\" [LIdent] "->" Expr2;
 EEq.     Expr3 ::= Expr3 "==" Expr3;
 ELt.     Expr3 ::= Expr3 "<=" Expr3;
 EMul.    Expr4 ::= Expr4 "*" Expr5;
@@ -70,11 +80,12 @@ EFalse.  Expr7 ::= "False";
 --
 
 internal ETyApp. Expr ::= Expr Type;
-internal ETyLam. Expr ::= "\\" LIdent "->" Expr;
+internal ETyLam. Expr ::= "\\" [LIdent] "->" Expr;
 
 coercions Expr 7;
 
--- * Tensor literals
+
+-- * Tensors
 
 ADouble. Tensor  ::= Double;
 AList.   Tensor  ::= "[" [Tensor1] "]";
@@ -82,4 +93,14 @@ AExpr.   Tensor1 ::= Expr;
 
 coercions Tensor 1;
 
-separator Tensor ",";
+separator Tensor1 ",";
+
+
+-- * Declarations
+
+layout toplevel;
+
+TDecl. Decl ::= LIdent ":" Type;
+EDecl. Decl ::= LIdent [LIdent] "=" Expr;
+
+separator nonempty Decl ";";
