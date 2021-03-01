@@ -98,8 +98,6 @@ separator Tensor1 ",";
 
 -- * Declarations
 
-layout toplevel;
-
 TDecl. Decl ::= LIdent ":" Type;
 EDecl. Decl ::= LIdent [LIdent] "=" Expr;
 
