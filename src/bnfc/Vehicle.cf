@@ -55,24 +55,28 @@ separator Type ",";
 layout "let";
 layout stop "in";
 
-EAnn.    Expr  ::= Expr1 "::" Type;
-ELet.    Expr1 ::= "let" "{" [Decl] "}" "in" Expr1;
-EIf.     Expr1 ::= "if" Expr2 "then" Expr2 "else" Expr2;
-ELam.    Expr2 ::= "\\" [LIdent] "->" Expr2;
-EEq.     Expr3 ::= Expr3 "==" Expr3;
-ELe.     Expr3 ::= Expr3 "<=" Expr3;
-ELt.     Expr3 ::= Expr3 "<" Expr3;
-EGe.     Expr3 ::= Expr3 ">=" Expr3;
-EGt.     Expr3 ::= Expr3 ">" Expr3;
-EMul.    Expr4 ::= Expr4 "*" Expr5;
-EDiv.    Expr4 ::= Expr4 "/" Expr5;
-EAdd.    Expr5 ::= Expr5 "+" Expr6;
-ESub.    Expr5 ::= Expr5 "-" Expr6;
-EApp.    Expr6 ::= Expr6 Expr7;
-EVar.    Expr7 ::= LIdent;
-ETensor. Expr7 ::= Tensor1;
-ETrue.   Expr7 ::= "True";
-EFalse.  Expr7 ::= "False";
+EAnn.    Expr		::= Expr1 "::" Type;
+ELet.    Expr1	::= "let" "{" [Decl] "}" "in" Expr1;
+EIf.     Expr1	::= "if" Expr2 "then" Expr2 "else" Expr2;
+ELam.    Expr2	::= "\\" [LIdent] "->" Expr2;
+EImpl.   Expr3	::= Expr4 "=>" Expr3;
+EAnd.    Expr4	::= Expr5 "&&" Expr4;
+EOr.     Expr5	::= Expr6 "||" Expr5;
+EEq.     Expr6	::= Expr7 "==" Expr6;
+ELe.     Expr6	::= Expr7 "<=" Expr6;
+ELt.     Expr6	::= Expr7 "<"  Expr6;
+EGe.     Expr6	::= Expr7 ">=" Expr6;
+EGt.     Expr6	::= Expr7 ">"  Expr6;
+EMul.    Expr7	::= Expr7 "*"  Expr8;
+EDiv.    Expr7	::= Expr7 "/"  Expr8;
+EAdd.    Expr8	::= Expr8 "+"  Expr9;
+ESub.    Expr8	::= Expr8 "-"  Expr9;
+ENeg.    Expr9	::= "~" Expr9;
+EApp.    Expr10 ::= Expr10 Expr11;
+EVar.    Expr11 ::= LIdent;
+ETensor. Expr11 ::= Tensor5;
+ETrue.   Expr11 ::= "True";
+EFalse.  Expr11 ::= "False";
 
 -- NOTE:
 --
@@ -83,7 +87,7 @@ EFalse.  Expr7 ::= "False";
 internal ETyApp. Expr ::= Expr Type;
 internal ETyLam. Expr ::= "\\" [LIdent] "->" Expr;
 
-coercions Expr 7;
+coercions Expr 11;
 
 
 -- * Tensors
