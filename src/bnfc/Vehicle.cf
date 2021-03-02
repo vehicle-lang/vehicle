@@ -25,7 +25,7 @@ coercions Kind 1;
 
 -- * Types
 
-TIf.     Type  ::= "if" Type1 "then" Type1 "else" Type1;
+TIf.     Type  ::= "if" Type1 "then" Type1 "else" Type;
 TFun.    Type1 ::= Type "->" Type2;
 TForall. Type1 ::= "forall" [LIdent] "." Type2;
 TEq.     Type2 ::= Type3 "==" Type3;
@@ -36,12 +36,17 @@ TAdd.    Type4 ::= Type4 "+" Type5;
 TSub.    Type4 ::= Type4 "-" Type5;
 TApp.    Type5 ::= Type5 Type6;
 TVar.    Type6 ::= LIdent;
+TListOf. Type6 ::= "[" [Type] "]";
+TNil.    Type6 ::= "Nil";
+TCons.   Type6 ::= "Cons";
 TTensor. Type6 ::= "Tensor";
 TBool.   Type6 ::= "Bool";
 TReal.   Type6 ::= "Real";
 TNat.    Type6 ::= "Nat";
 
 coercions Type 6;
+
+separator Type ",";
 
 
 -- * Expressions
