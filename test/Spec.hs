@@ -27,9 +27,9 @@ parserTests = TestList
 
 pKindTests :: [(Text, Maybe Kind)]
 pKindTests =
-  [ "*" |-> KStar
-  , "Nat" |-> KNat
-  , "List *" |-> KApp KList KStar
+  [ "*"               |-> KStar
+  , "Nat"             |-> KNat
+  , "List *"          |-> KApp KList KStar
   , "List (List Nat)" |-> KApp KList (KApp KList KNat)
   ]
 
