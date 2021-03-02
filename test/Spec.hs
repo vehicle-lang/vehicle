@@ -29,8 +29,7 @@ pKindTests :: [(Text, Maybe Kind)]
 pKindTests =
   [ "*" |-> KStar
   , "Nat" |-> KNat
-  , "Bool" |-> KBool
-  , "List Bool" |-> KApp KList KBool
+  , "List *" |-> KApp KList KStar
   , "List (List Nat)" |-> KApp KList (KApp KList KNat)
   ]
 
