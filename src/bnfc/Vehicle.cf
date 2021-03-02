@@ -17,7 +17,6 @@ separator LIdent "";
 KApp.  Kind  ::= Kind Kind1;
 KStar. Kind1 ::= "*";
 KNat.  Kind1 ::= "Nat";
-KBool. Kind1 ::= "Bool";
 KList. Kind1 ::= "List";
 
 coercions Kind 1;
@@ -25,26 +24,20 @@ coercions Kind 1;
 
 -- * Types
 
-TIf.     Type  ::= "if" Type1 "then" Type1 "else" Type;
 TFun.    Type1 ::= Type "->" Type2;
 TForall. Type1 ::= "forall" [LIdent] "." Type2;
-TEq.     Type2 ::= Type3 "==" Type3;
-TLt.     Type2 ::= Type3 "<=" Type3;
-TMul.    Type3 ::= Type3 "*" Type4;
-TDiv.    Type3 ::= Type3 "/" Type4;
-TAdd.    Type4 ::= Type4 "+" Type5;
-TSub.    Type4 ::= Type4 "-" Type5;
-TApp.    Type5 ::= Type5 Type6;
-TVar.    Type6 ::= LIdent;
-TListOf. Type6 ::= "[" [Type] "]";
-TNil.    Type6 ::= "Nil";
-TCons.   Type6 ::= "Cons";
-TTensor. Type6 ::= "Tensor";
-TBool.   Type6 ::= "Bool";
-TReal.   Type6 ::= "Real";
-TNat.    Type6 ::= "Nat";
+TAdd.    Type2 ::= Type2 "+" Type3;
+TApp.    Type3 ::= Type3 Type4;
+TVar.    Type4 ::= LIdent;
+TNil.    Type4 ::= "Nil";
+TCons.   Type4 ::= "Cons";
+TTensor. Type4 ::= "Tensor";
+TBool.   Type4 ::= "Bool";
+TReal.   Type4 ::= "Real";
+TNat.    Type4 ::= "Nat";
+TListOf. Type4 ::= "[" [Type] "]";
 
-coercions Type 6;
+coercions Type 4;
 
 separator Type ",";
 
@@ -67,7 +60,10 @@ ELet.    Expr1 ::= "let" "{" [Decl] "}" "in" Expr1;
 EIf.     Expr1 ::= "if" Expr2 "then" Expr2 "else" Expr2;
 ELam.    Expr2 ::= "\\" [LIdent] "->" Expr2;
 EEq.     Expr3 ::= Expr3 "==" Expr3;
-ELt.     Expr3 ::= Expr3 "<=" Expr3;
+ELe.     Expr3 ::= Expr3 "<=" Expr3;
+ELt.     Expr3 ::= Expr3 "<" Expr3;
+EGe.     Expr3 ::= Expr3 ">=" Expr3;
+EGt.     Expr3 ::= Expr3 ">" Expr3;
 EMul.    Expr4 ::= Expr4 "*" Expr5;
 EDiv.    Expr4 ::= Expr4 "/" Expr5;
 EAdd.    Expr5 ::= Expr5 "+" Expr6;
