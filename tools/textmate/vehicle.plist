@@ -1,0 +1,32 @@
+{  scopeName = 'source.vehicle';
+   fileTypes = (.vcl);
+	 patterns =  (
+     { name = 'keyword';
+       match = '\b(forall|exists)\b';
+     },
+     { name = 'keyword';
+       match = '\b(let|in)\b';
+     },
+     { name = 'keyword.control';
+       match = '\b(if|then|else)\b';
+     },
+     { name = 'keyword.operator';
+       match = '\b([\.:-^\*\+=<>&%$!#%\|/\\]+)\b';
+     },
+     { name = 'constant.numeric';
+       match = '\b([0-9]+)\b';
+     },
+     { name = 'constant.numeric';
+       match = '\b([0-9]+\.[0-9]+?(e-?[0-9]+)?)\b';
+     },
+     { name = 'entity.name.type';
+       match = '\b(Bool|Real|Nat|Tensor|List|Nil|Cons)\b';
+     },
+     { name = 'constant.language';
+       match = '\b(True|False)\b';
+     },
+     { name = 'variable';
+       match = '\b([a-z][a-zA-Z_0-9]*)\b';
+     }
+	 );
+}
