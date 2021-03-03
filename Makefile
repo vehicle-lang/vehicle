@@ -15,7 +15,7 @@ PROJECT_NAME := Vehicle
 #   rule. To keep things readable, we first compute a list of the targets, and
 #   then prepend the appropriate path.
 #
-BNFC_TARGETS := Makefile Abs.hs Print.hs Lex.x Layout.hs Par.y Test.hs ErrM.hs Skel.hs Doc.txt
+BNFC_TARGETS := Abs.hs Print.hs Lex.x Layout.hs Par.y Test.hs ErrM.hs Skel.hs Doc.txt
 BNFC_TARGETS := $(addprefix $(GEN_DIR_HS)/$(PROJECT_NAME)/,$(BNFC_TARGETS))
 
 $(BNFC_TARGETS): $(SRC_DIR_BNFC)/$(PROJECT_NAME).cf
@@ -25,3 +25,11 @@ $(BNFC_TARGETS): $(SRC_DIR_BNFC)/$(PROJECT_NAME).cf
 
 .PHONY: bnfc
 bnfc: $(BNFC_TARGETS)
+
+.PHONY: build
+build: $(BNFC_TARGETS)
+	stack build
+
+.PHONY: test
+test: $(BNFC_TARGETS)
+	stack test

@@ -7,6 +7,7 @@ comment "{-" "-}";
 
 position token UIdent (upper (letter | digit | '_')*) ;
 position token LIdent (lower (letter | digit | '_')*) ;
+position token Infix ([".:-^*+=<>&%$!#%|/\\"]+) ;
 
 separator UIdent "";
 separator LIdent "";
@@ -24,18 +25,19 @@ coercions Kind 1;
 
 -- * Types
 
-TFun.    Type1 ::= Type "->" Type2;
-TForall. Type1 ::= "forall" [LIdent] "." Type2;
-TAdd.    Type2 ::= Type2 "+" Type3;
-TApp.    Type3 ::= Type3 Type4;
-TVar.    Type4 ::= LIdent;
-TNil.    Type4 ::= "Nil";
-TCons.   Type4 ::= "Cons";
-TTensor. Type4 ::= "Tensor";
-TBool.   Type4 ::= "Bool";
-TReal.   Type4 ::= "Real";
-TNat.    Type4 ::= "Nat";
-TListOf. Type4 ::= "[" [Type] "]";
+TFun.    Type ::= Type1 "->" Type;
+TForall. Type ::= "forall" [LIdent] "." Type;
+TAdd.    Type1 ::= Type1 "+" Type2;
+TApp.    Type2 ::= Type2 Type3;
+TVar.    Type3 ::= LIdent;
+TLitNat. Type3 ::= Integer; -- confusingly, this means Natural
+TNil.    Type3 ::= "Nil";
+TCons.   Type3 ::= "Cons";
+TTensor. Type3 ::= "Tensor";
+TBool.   Type3 ::= "Bool";
+TReal.   Type3 ::= "Real";
+TNat.    Type3 ::= "Nat";
+TListOf. Type3 ::= "[" [Type] "]";
 
 coercions Type 4;
 
@@ -55,28 +57,35 @@ separator Type ",";
 layout "let";
 layout stop "in";
 
-EAnn.    Expr		::= Expr1 "::" Type;
-ELet.    Expr1	::= "let" "{" [Decl] "}" "in" Expr1;
-EIf.     Expr1	::= "if" Expr2 "then" Expr2 "else" Expr2;
-ELam.    Expr2	::= "\\" [LIdent] "->" Expr2;
-EImpl.   Expr3	::= Expr4 "=>" Expr3;
-EAnd.    Expr4	::= Expr5 "&&" Expr4;
-EOr.     Expr5	::= Expr6 "||" Expr5;
-EEq.     Expr6	::= Expr7 "==" Expr6;
-ELe.     Expr6	::= Expr7 "<=" Expr6;
-ELt.     Expr6	::= Expr7 "<"  Expr6;
-EGe.     Expr6	::= Expr7 ">=" Expr6;
-EGt.     Expr6	::= Expr7 ">"  Expr6;
-EMul.    Expr7	::= Expr7 "*"  Expr8;
-EDiv.    Expr7	::= Expr7 "/"  Expr8;
-EAdd.    Expr8	::= Expr8 "+"  Expr9;
-ESub.    Expr8	::= Expr8 "-"  Expr9;
-ENeg.    Expr9	::= "~" Expr9;
-EApp.    Expr10 ::= Expr10 Expr11;
-EVar.    Expr11 ::= LIdent;
-ETensor. Expr11 ::= Tensor;
-ETrue.   Expr11 ::= "True";
-EFalse.  Expr11 ::= "False";
+EAnn.      Expr   ::= Expr1 ":" Type;
+EForall.   Expr   ::= "forall" LIdent ":" Bound "." Expr;
+EExists.   Expr   ::= "exists" LIdent ":" Bound "." Expr;
+ELet.      Expr1	::= "let" "{" [Decl] "}" "in" Expr1;
+EIf.       Expr1	::= "if" Expr2 "then" Expr2 "else" Expr2;
+ELam.      Expr2	::= "\\" [LIdent] "->" Expr2;
+EImpl.     Expr3	::= Expr4 "=>" Expr3;
+EAnd.      Expr4	::= Expr5 "&&" Expr4;
+EOr.       Expr5	::= Expr6 "||" Expr5;
+EEq.       Expr6	::= Expr7 "==" Expr7;
+EEq.       Expr6	::= Expr7 "!=" Expr7;
+ELe.       Expr6	::= Expr7 "<=" Expr7;
+ELt.       Expr6	::= Expr7 "<"  Expr7;
+EGe.       Expr6	::= Expr7 ">=" Expr7;
+EGt.       Expr6	::= Expr7 ">"  Expr7;
+EMul.      Expr7	::= Expr7 "*"  Expr8;
+EDiv.      Expr7	::= Expr7 "/"  Expr8;
+EAdd.      Expr8	::= Expr8 "+"  Expr9;
+ESub.      Expr8	::= Expr8 "-"  Expr9;
+ENeg.      Expr9  ::= "-" Expr9;
+ENot.      Expr9	::= "~" Expr9;
+EAt.       Expr10 ::= Expr10 "!" Expr11;
+EApp.      Expr11 ::= Expr11 Expr12;
+EVar.      Expr12 ::= LIdent;
+ELitNat.   Expr12 ::= Integer;
+ELitReal.  Expr12 ::= Double;
+ETensor.   Expr12 ::= "[" [Expr] "]";
+ETrue.     Expr12 ::= "True";
+EFalse.    Expr12 ::= "False";
 
 -- NOTE:
 --
@@ -87,26 +96,26 @@ EFalse.  Expr11 ::= "False";
 internal ETyApp. Expr ::= Expr Type;
 internal ETyLam. Expr ::= "\\" [LIdent] "->" Expr;
 
-coercions Expr 11;
+coercions Expr 12;
 
+separator Expr ",";
 
--- * Tensors
+-- * Bounds for quantifiers
 
-ADouble. Tensor  ::= Double;
-AList.   Tensor  ::= "[" [Tensor1] "]";
-AExpr.   Tensor1 ::= Expr;
-
-coercions Tensor 1;
-
-separator Tensor1 ",";
+BType. Bound ::= Type;
+BExpr. Bound ::= Expr;
 
 
 -- * Declarations
-
-layout toplevel;
 
 DeclNetw. Decl ::= "network" LIdent ":" Type;
 DeclType. Decl ::= LIdent ":" Type;
 DeclExpr. Decl ::= LIdent [LIdent] "=" Expr;
 
-separator nonempty Decl ";";
+separator Decl ";";
+
+-- * Program
+
+layout toplevel;
+
+Main. Prog ::= [Decl]
