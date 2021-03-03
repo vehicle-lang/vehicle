@@ -5,11 +5,11 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.Environment
-import Vehicle.Abs (LIdent(..), Kind(..), Type(..), Expr(..))
-import Vehicle.Lex (Token)
-import Vehicle.Par (pKind, pType, pExpr, pListDecl, myLexer)
-import Vehicle.Print (Print, printTree)
-import Vehicle.Layout (resolveLayout)
+import Vehicle.Frontend.Abs (LIdent(..), Kind(..), Type(..), Expr(..))
+import Vehicle.Frontend.Lex (Token)
+import Vehicle.Frontend.Par (pKind, pType, pExpr, pListDecl, myLexer)
+import Vehicle.Frontend.Print (Print, printTree)
+import Vehicle.Frontend.Layout (resolveLayout)
 
 type Parser a = [Token] -> Either String a
 

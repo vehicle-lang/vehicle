@@ -8,7 +8,7 @@ GEN_DIR_HS := gen/hs
 BNFC_TARGETS := Abs.hs Print.hs Lex.x Layout.hs Par.y Test.hs ErrM.hs Skel.hs Doc.txt
 
 .PHONY: bnfc
-bnfc: bnfc-frontend bnfc-core
+bnfc: bnfc-core bnfc-frontend
 
 
 # NOTE:
@@ -18,17 +18,6 @@ bnfc: bnfc-frontend bnfc-core
 #   the Core languages, and then define a task for each. The phony bnfc task
 #   builds all parsers.
 #
-
-BNFC_TARGETS_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_TARGETS))
-
-.PHONY: bnfc-frontend
-bnfc-frontend: $(BNFC_TARGETS_FRONTEND)
-
-$(BNFC_TARGETS_FRONTEND): $(SRC_DIR_BNFC)/Frontend.cf
-	bnfc -m -d --haskell --generic --text-token \
-	     --name-space Vehicle \
-	     --outputdir=$(GEN_DIR_HS) \
-	     $(SRC_DIR_BNFC)/Frontend.cf
 
 BNFC_TARGETS_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_TARGETS))
 
@@ -41,13 +30,24 @@ $(BNFC_TARGETS_CORE): $(SRC_DIR_BNFC)/Core.cf
 	     --outputdir=$(GEN_DIR_HS) \
 	     $(SRC_DIR_BNFC)/Core.cf
 
+BNFC_TARGETS_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_TARGETS))
+
+.PHONY: bnfc-frontend
+bnfc-frontend: $(BNFC_TARGETS_FRONTEND)
+
+$(BNFC_TARGETS_FRONTEND): $(SRC_DIR_BNFC)/Frontend.cf
+	bnfc -m -d --haskell --generic --text-token \
+	     --name-space Vehicle \
+	     --outputdir=$(GEN_DIR_HS) \
+	     $(SRC_DIR_BNFC)/Frontend.cf
+
 
 #################################################################################
 # Build type-checker and compiler for Vehicle
 #################################################################################
 
 .PHONY: build
-build: $(BNFC_TARGETS)
+build: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
 	stack build
 
 
@@ -56,7 +56,7 @@ build: $(BNFC_TARGETS)
 #################################################################################
 
 .PHONY: test
-test: $(BNFC_TARGETS)
+test: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
 	stack test
 
 

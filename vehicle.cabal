@@ -21,14 +21,20 @@ source-repository head
   location: https://github.com/wenkokke/vehicle
 
 library
-  exposed-modules:    Lib
-                    , Vehicle.Abs
-                    , Vehicle.ErrM
-                    , Vehicle.Layout
-                    , Vehicle.Lex
-                    , Vehicle.Par
-                    , Vehicle.Print
-                    , Vehicle.Skel
+  exposed-modules:    Vehicle.Core.Abs
+                    , Vehicle.Core.ErrM
+                    , Vehicle.Core.Layout
+                    , Vehicle.Core.Lex
+                    , Vehicle.Core.Par
+                    , Vehicle.Core.Print
+                    , Vehicle.Core.Skel
+                    , Vehicle.Frontend.Abs
+                    , Vehicle.Frontend.ErrM
+                    , Vehicle.Frontend.Layout
+                    , Vehicle.Frontend.Lex
+                    , Vehicle.Frontend.Par
+                    , Vehicle.Frontend.Print
+                    , Vehicle.Frontend.Skel
   other-modules:      Paths_vehicle
   hs-source-dirs:     src/hs
                     , gen/hs

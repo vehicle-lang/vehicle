@@ -7,25 +7,24 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.FilePath
-import Vehicle.Abs (LIdent(..), Kind(..), Type(..), Expr(..), Bound(..), Decl(..))
-import Vehicle.Lex (Token)
-import Vehicle.Par (pKind, pType, pExpr, pDecl, pProg, myLexer)
-import Vehicle.Print (Print, printTree)
-import Vehicle.Layout (resolveLayout)
+import Vehicle.Frontend.Abs (LIdent(..), Kind(..), Type(..), Expr(..), Bound(..), Decl(..))
+import Vehicle.Frontend.Lex (Token)
+import Vehicle.Frontend.Par (pKind, pType, pExpr, pProg, myLexer)
+import Vehicle.Frontend.Print (Print, printTree)
+import Vehicle.Frontend.Layout (resolveLayout)
 
 main :: IO Counts
 main = runTestTT . TestList $
   [ TestLabel "parser" parserTests
   ]
 
--- * Test Parser
+-- * Test parser for Vehicle Frontend
 
 parserTests :: Test
 parserTests = TestList
   [ TestLabel "pKind" (runParserTests False pKind pKindTests)
   , TestLabel "pType" (runParserTests False pType pTypeTests)
   , TestLabel "pExpr" (runParserTests False pExpr pExprTests)
-  , TestLabel "pDecl" (runParserTests False pDecl pDeclTests)
   , TestLabel "examples" (runFileTests pFileTests)
   ]
 
@@ -61,82 +60,6 @@ pExprTests =
     (EAt (EVar (LIdent ((1,1),"x"))) (ELitNat 0))
   , "f x ! 0" |->
     (EAt (EApp (EVar (LIdent ((1,1),"f"))) (EVar (LIdent ((1,3),"x")))) (ELitNat 0))
-  ]
-
-pDeclTests :: [(Text, Maybe Decl)]
-pDeclTests =
-  [ "network f : Tensor Real [2] -> Tensor Real [1]" |->
-    DeclNetw (LIdent ((1,9),"f"))
-    (TFun
-     (TApp (TApp TTensor TReal) (TListOf [TLitNat 2]))
-     (TApp (TApp TTensor TReal) (TListOf [TLitNat 1])))
-  , "truthy : Real -> Bool" |->
-    DeclType (LIdent ((1,1),"truthy"))
-    (TFun TReal TBool)
-  , "truthy x = x >= 0.5" |->
-    DeclExpr (LIdent ((1,1),"truthy")) [LIdent ((1,8),"x")]
-    (EGe (EVar (LIdent ((1,12),"x"))) (ELitReal  0.5))
-  , "falsey : Real -> Bool" |->
-    DeclType (LIdent ((1,1),"falsey"))
-    (TFun TReal TBool)
-  , "falsey x = x <= 0.5" |->
-    DeclExpr (LIdent ((1,1),"falsey")) [LIdent ((1,8),"x")]
-    (ELe (EVar (LIdent ((1,12),"x"))) (ELitReal 0.5))
-  , "validInput : Tensor Real [2]" |->
-    DeclType (LIdent ((1,1),"validInput"))
-    (TApp (TApp TTensor TReal) (TListOf [TLitNat 2]))
-  , "validInput x = forall xi : x. 0 <= xi && xi <= 1" |->
-    DeclExpr (LIdent ((1,1),"validInput")) [LIdent ((1,12),"x")]
-    (EForall (LIdent ((1,23),"xi")) (BExpr (EVar (LIdent ((1,28),"x"))))
-     (EAnd
-      (ELe (ELitNat 0) (EVar (LIdent ((1,36),"xi"))))
-      (ELe (EVar (LIdent ((1,42),"xi"))) (ELitNat 1))))
-  , "correctOutput : Tensor Real [2] -> Bool" |->
-    DeclType (LIdent ((1,1),"correctOutput"))
-    (TFun (TApp (TApp TTensor TReal) (TListOf [TLitNat 2])) TBool)
-  , T.unlines
-    [ "correctOutput x ="
-    , "  let y  = f x ! 0 in"
-    , "  (truthy x!0 && falsey x!1 => truthy y) &&"
-    , "  (truthy x!0 && truthy x!1 => truthy y) &&"
-    , "  (falsey x!0 && falsey x!1 => truthy y) &&"
-    , "  (falsey x!0 && truthy x!1 => truthy y)"
-    ] |->
-    DeclExpr (LIdent ((1,1),"correctOutput")) [LIdent ((1,15),"x")]
-    (ELet
-     [DeclExpr (LIdent ((2,8),"y")) []
-      (EAt (EApp (EVar (LIdent ((2,13),"f"))) (EVar (LIdent ((2,15),"x")))) (ELitNat 0))]
-     (EAnd
-      (EImpl
-       (EAnd
-        (EAt (EApp (EVar (LIdent ((3,4),"truthy"))) (EVar (LIdent ((3,11),"x")))) (ELitNat 0))
-        (EAt (EApp (EVar (LIdent ((3,18),"falsey"))) (EVar (LIdent ((3,25),"x")))) (ELitNat 1)))
-       (EApp (EVar (LIdent ((3,32),"truthy"))) (EVar (LIdent ((3,39),"y")))))
-      (EAnd
-       (EImpl
-        (EAnd
-         (EAt (EApp (EVar (LIdent ((4,4),"truthy"))) (EVar (LIdent ((4,11),"x")))) (ELitNat 0))
-         (EAt (EApp (EVar (LIdent ((4,18),"truthy"))) (EVar (LIdent ((4,25),"x")))) (ELitNat 1)))
-        (EApp (EVar (LIdent ((4,32),"truthy"))) (EVar (LIdent ((4,39),"y")))))
-       (EAnd
-        (EImpl
-         (EAnd
-          (EAt (EApp (EVar (LIdent ((5,4),"falsey"))) (EVar (LIdent ((5,11),"x")))) (ELitNat 0))
-          (EAt (EApp (EVar (LIdent ((5,18),"falsey"))) (EVar (LIdent ((5,25),"x")))) (ELitNat 1)))
-         (EApp (EVar (LIdent ((5,32),"truthy"))) (EVar (LIdent ((5,39),"y")))))
-        (EImpl
-         (EAnd
-          (EAt (EApp (EVar (LIdent ((6,4),"falsey"))) (EVar (LIdent ((6,11),"x")))) (ELitNat 0))
-          (EAt (EApp (EVar (LIdent ((6,18),"truthy"))) (EVar (LIdent ((6,25),"x")))) (ELitNat 1)))
-         (EApp (EVar (LIdent ((6,32),"truthy"))) (EVar (LIdent ((6,39),"y")))))
-     ))))
-  , "correct : Bool" |->
-    DeclType (LIdent ((1,1), "correct"))
-    TBool
-  , "correct = forall x : validInput. correctOutput x" |->
-    DeclExpr (LIdent ((1,1),"correct")) []
-    (EForall (LIdent ((1,18),"x")) (BExpr (EVar (LIdent ((1,22),"validInput"))))
-     (EApp (EVar (LIdent ((1,34),"correctOutput"))) (EVar (LIdent ((1,48),"x")))))
   ]
 
 pFileTests :: [FilePath]
