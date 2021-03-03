@@ -103,6 +103,8 @@ separator Tensor1 ",";
 
 -- * Declarations
 
+layout toplevel;
+
 DeclNetw. Decl ::= "network" LIdent ":" Type;
 DeclType. Decl ::= LIdent ":" Type;
 DeclExpr. Decl ::= LIdent [LIdent] "=" Expr;

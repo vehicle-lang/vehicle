@@ -20,9 +20,9 @@ main = runTestTT . TestList $
 
 parserTests :: Test
 parserTests = TestList
-  [ TestLabel "pKind" (runParserTests pKind pKindTests)
-  , TestLabel "pType" (runParserTests pType pTypeTests)
-  , TestLabel "pExpr" (runParserTests pExpr pExprTests)
+  [ TestLabel "pKind" (runParserTests False pKind pKindTests)
+  , TestLabel "pType" (runParserTests False pType pTypeTests)
+  , TestLabel "pExpr" (runParserTests False pExpr pExprTests)
   ]
 
 pKindTests :: [(Text, Maybe Kind)]
@@ -46,25 +46,25 @@ pExprTests =
 
 -- ** Helper functions
 
-(|->) :: a -> b -> (a, Maybe b)
+(|->) :: Text -> b -> (Text, Maybe b)
 x |-> y = (x, Just y)
 
-fail :: a -> (a, Maybe b)
+fail :: Text -> (Text, Maybe b)
 fail x = (x, Nothing)
 
 type Parser a = [Token] -> Either String a
 
-runParserTests :: (Show a, Eq a) => Parser a -> [(Text, Maybe a)] -> Test
-runParserTests p trs = TestList [runParserTest p t r | (t, r) <- trs]
+runParserTests :: (Show a, Eq a) => Bool -> Parser a -> [(Text, Maybe a)] -> Test
+runParserTests topLevel p trs = TestList [runParserTest topLevel p t r | (t, r) <- trs]
 
-runParserTest :: (Show a, Eq a) => Parser a -> Text -> Maybe a -> Test
-runParserTest p t r = TestCase (assertEqual (unpack t) (rightToMaybe (runParser p t)) r)
+runParserTest :: (Show a, Eq a) => Bool -> Parser a -> Text -> Maybe a -> Test
+runParserTest topLevel p t r = TestCase (assertEqual (unpack t) r (rightToMaybe (runParser topLevel p t)))
 
-runParser :: Parser a -> Text -> Either String a
-runParser p t = p (runLexer t)
+runParser :: Bool -> Parser a -> Text -> Either String a
+runParser topLevel p t = p (runLexer topLevel t)
 
-runLexer :: Text -> [Token]
-runLexer = resolveLayout True . myLexer
+runLexer :: Bool -> Text -> [Token]
+runLexer topLevel = resolveLayout topLevel . myLexer
 
 rightToMaybe :: Either a b -> Maybe b
 rightToMaybe (Left  _) = Nothing
