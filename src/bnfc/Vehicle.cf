@@ -67,7 +67,7 @@ EImpl.     Expr3	::= Expr4 "=>" Expr3;
 EAnd.      Expr4	::= Expr5 "&&" Expr4;
 EOr.       Expr5	::= Expr6 "||" Expr5;
 EEq.       Expr6	::= Expr7 "==" Expr7;
-EEq.       Expr6	::= Expr7 "!=" Expr7;
+ENeq.      Expr6	::= Expr7 "!=" Expr7;
 ELe.       Expr6	::= Expr7 "<=" Expr7;
 ELt.       Expr6	::= Expr7 "<"  Expr7;
 EGe.       Expr6	::= Expr7 ">=" Expr7;
