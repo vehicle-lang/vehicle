@@ -25,7 +25,7 @@ patterns: [
     match: '\\b(True|False)\\b'
   }
   {
-    name: 'constant.type.vehicle'
+    name: 'entity.type.vehicle'
     match: '\\b(Bool|Real|Nat|Tensor|List|Nil|Cons)\\b'
   }
   {

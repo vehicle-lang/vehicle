@@ -1,4 +1,4 @@
-gen/
+# Haskell
 dist
 dist-*
 cabal-dev
@@ -23,3 +23,9 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
+
+# BNFC
+gen/
+
+# Grammars
+package-lock.json
