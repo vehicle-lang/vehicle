@@ -1,3 +1,5 @@
+-- Correctness conditions for the boolean AND gate
+
 network f : Tensor Real [2] -> Tensor Real [1]
 
 truthy : Real -> Bool
