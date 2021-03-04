@@ -29,6 +29,7 @@ $(BNFC_TARGETS_CORE): $(SRC_DIR_BNFC)/Core.cf
 	     --name-space Vehicle \
 	     --outputdir=$(GEN_DIR_HS) \
 	     $(SRC_DIR_BNFC)/Core.cf
+	rm -f $(GEN_DIR_HS)/Vehicle/Core/Abs.hs
 
 BNFC_TARGETS_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_TARGETS))
 
