@@ -7,26 +7,26 @@ comment "{-" "-}";
 
 -- NOTE: Token rules are tried IN ORDER, so the order matters!
 
-position token TokNetwork {"network"};
-position token TokArrow   {"->"};
-position token TokForall  {"forall"};
-position token TokExists  {"exists"};
+position token TokNetwork  {"network"};
+position token TokArrow    {"->"};
+position token TokForall   {"forall"};
+position token TokExists   {"exists"};
 
-position token TokImpl {"=>"};
-position token TokAnd  {"&&"};
-position token TokOr   {"||"};
-position token TokEq   {"=="};
-position token TokNeq  {"!="};
-position token TokLe   {"<="};
-position token TokLt   {"<"};
-position token TokGe   {">="};
-position token TokGt   {">"};
-position token TokMul  {"*"};
-position token TokDiv  {"/"};
-position token TokAdd  {"+"};
-position token TokSub  {"-"};
-position token TokNeg  {"~"};
-position token TokAt   {"!"};
+position token TokImpl     {"=>"};
+position token TokAnd      {"&&"};
+position token TokOr       {"||"};
+position token TokEq       {"=="};
+position token TokNeq      {"!="};
+position token TokLe       {"<="};
+position token TokLt       {"<"};
+position token TokGe       {">="};
+position token TokGt       {">"};
+position token TokMul      {"*"};
+position token TokDiv      {"/"};
+position token TokAdd      {"+"};
+position token TokSub      {"-"};
+position token TokNeg      {"~"};
+position token TokAt       {"!"};
 
 position token TokType     {"Type"};
 position token TokReal     {"Real"};
