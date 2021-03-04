@@ -3,9 +3,9 @@
 comment "--";
 comment "{-" "-}";
 
--- * Tokens
+-- * ens
 
-position token TokBuiltin
+position token Builtin
   ( {"all"} | {"any"}
 	| {"=>"} | {"&&"} | {"||"}
 	| {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
@@ -14,52 +14,54 @@ position token TokBuiltin
 	| {"Bool"} | {"True"} | {"False"}
 	| {"List"} | {"Nil"} | {"Cons"});
 
-position token TokNat  (digit+);
-position token TokReal (digit+ '.' digit+ ('e' '-'? digit+)?);
-position token TokName (lower (letter | digit | '_')*) ;
+position token Nat  (digit+);
+position token Real (digit+ '.' digit+ ('e' '-'? digit+)?);
+position token Name (lower (letter | digit | '_')*) ;
 
 -- * Kinds
 
-KApp_. Kind_  ::= Kind_ Kind_1;
-KCon_. Kind_1 ::= TokBuiltin;
+KApp.  Kind  ::= Kind Kind1;
+KCon.  Kind1 ::= Builtin;
+KMeta. Kind1 ::= "?" Integer;
 
-coercions Kind_ 1;
+coercions Kind 1;
 
 
 -- * Types
 
-TApp_.    Type_  ::= Type_ Type_1;
-TForall_. Type_  ::= "forall" "(" TokName Kind_1 ")" Type_1;
-TVar_.    Type_1 ::= TokName;
-TCon_.    Type_1 ::= TokBuiltin;
-TLitNat.  Type_1 ::= TokNat;
+TApp.    Type  ::= Type Type1;
+TForall. Type  ::= "forall" "(" Name Kind1 ")" Type1;
+TVar.    Type1 ::= Name;
+TMeta.   Type1 ::= "?" Integer;
+TCon.    Type1 ::= Builtin;
+TLitNat. Type1 ::= Nat;
 
-coercions Type_ 1;
+coercions Type 1;
 
 
 -- * Expressions
 
-EApp.     Expr_  ::= Expr_ Expr_1;
-ELam.     Expr_  ::= "lambda" "(" TokName Type_ ")" Expr_1;
-ETyApp.   Expr_  ::= Expr_ "{" Type_ "}";
-ETyLam.   Expr_  ::= "lambda" "{" TokName Kind_ "}" Expr_1;
-ELet.     Expr_  ::= "let" "(" TokName Type_ ")" Expr_1 Expr_1;
-EAnn.     Expr_  ::= Expr_ ":type" Type_;
-EVar.     Expr_1 ::= TokName;
-ECon.     Expr_1 ::= TokBuiltin;
-ELitNat.  Expr_1 ::= TokNat;
-ELitReal. Expr_1 ::= TokReal;
+EApp.     Expr  ::= Expr Expr1;
+ELam.     Expr  ::= "lambda" "(" Name Type1 ")" Expr1;
+ETyApp.   Expr  ::= Expr "{" Type "}";
+ETyLam.   Expr  ::= "lambda" "{" Name Kind1 "}" Expr1;
+ELet.     Expr  ::= "let" "(" Name Type1 ")" Expr1 Expr1;
+EAnn.     Expr  ::= Expr ":type" Type;
+EVar.     Expr1 ::= Name;
+ECon.     Expr1 ::= Builtin;
+ELitNat.  Expr1 ::= Nat;
+ELitReal. Expr1 ::= Real;
 
-coercions Expr_ 1;
+coercions Expr 1;
 
 
 -- * Declarations
 
-DeclNetw_. Decl_ ::= "(" "declare-network" TokName Type_1 ")";
-DeclExpr_. Decl_ ::= "(" "define-fun" TokName Type_1 Expr_1 ")";
+DeclNetw. Decl ::= "(" "declare-network" Name Type1 ")";
+DeclExpr. Decl ::= "(" "define-fun" Name Type1 Expr1 ")";
 
-separator nonempty Decl_ "";
+separator nonempty Decl "";
 
 -- * Program
 
-Main. Prog_ ::= "(" [Decl_] ")";
+Main. Prog ::= "(" [Decl] ")";

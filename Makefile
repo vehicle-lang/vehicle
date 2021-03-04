@@ -17,7 +17,7 @@ bnfc: bnfc-core bnfc-frontend
 #   builds all parsers.
 #
 
-BNFC_TARGETS_CORE := Print.hs Lex.x Par.y Test.hs ErrM.hs Skel.hs Doc.txt
+BNFC_TARGETS_CORE := Abs.hs Print.hs Lex.x Par.y Test.hs ErrM.hs Skel.hs Doc.txt
 BNFC_TARGETS_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_TARGETS_CORE))
 
 .PHONY: bnfc-core
@@ -28,7 +28,6 @@ $(BNFC_TARGETS_CORE): $(SRC_DIR_BNFC)/Core.cf
 	     --name-space Vehicle \
 	     --outputdir=$(GEN_DIR_HS) \
 	     $(SRC_DIR_BNFC)/Core.cf
-	rm -f $(GEN_DIR_HS)/Vehicle/Core/Abs.hs
 
 BNFC_TARGETS_FRONTEND := Abs.hs Print.hs Lex.x Layout.hs Par.y Test.hs ErrM.hs Skel.hs Doc.txt
 BNFC_TARGETS_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_TARGETS_FRONTEND))

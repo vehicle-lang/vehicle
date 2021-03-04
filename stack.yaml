@@ -3,3 +3,5 @@ system-ghc: true
 allow-newer: true
 packages:
 - .
+extra-deps:
+- monad-supply-0.9@sha256:4326f7e5fb93c471cb9ac9bc4be738ea3f7f77052bff2d7ebdf7e05172623284,1249
