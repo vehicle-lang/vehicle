@@ -7,10 +7,12 @@ comment "{-" "-}";
 
 -- NOTE: Token rules are tried IN ORDER, so the order matters!
 
-position token TokNetwork  {"network"};
 position token TokArrow    {"->"};
 position token TokForall   {"forall"};
 position token TokExists   {"exists"};
+position token TokDot      {"."};
+position token TokElemOf   {":"};
+position token TokLambda   {"\\"};
 
 position token TokImpl     {"=>"};
 position token TokAnd      {"&&"};
@@ -41,6 +43,8 @@ position token TokTensor   {"Tensor"};
 position token TokSeqOpen  {"["};
 position token TokSeqClose {"]"};
 
+position token Nat (digit+);
+position token Real (digit+ '.' digit+ ('e' '-'? digit+)?);
 position token Name (lower (letter | digit | '_')*) ;
 
 separator Name "";
@@ -59,11 +63,11 @@ coercions Kind 1;
 -- * Types
 
 TFun.    Type  ::= Type1 TokArrow Type;
-TForall. Type  ::= TokForall [Name] "." Type;
+TForall. Type  ::= TokForall [Name] TokDot Type;
 TAdd.    Type1 ::= Type1 TokAdd Type2;
 TApp.    Type2 ::= Type2 Type3;
 TVar.    Type3 ::= Name;
-TLitNat. Type3 ::= Integer; -- confusingly, this means Natural
+TLitNat. Type3 ::= Nat;
 TNil.    Type3 ::= TokNil;
 TCons.   Type3 ::= TokCons;
 TTensor. Type3 ::= TokTensor;
@@ -90,12 +94,12 @@ separator Type ",";
 layout "let";
 layout stop "in";
 
-EAnn.      Expr   ::= Expr1 ":" Type;
-EForall.   Expr   ::= TokForall Name ":" Bound "." Expr;
-EExists.   Expr   ::= TokExists Name ":" Bound "." Expr;
+EAnn.      Expr   ::= Expr1 TokElemOf Type;
+EForall.   Expr   ::= TokForall Name TokElemOf Bound TokDot Expr;
+EExists.   Expr   ::= TokExists Name TokElemOf Bound TokDot Expr;
 ELet.      Expr1  ::= "let" "{" [Decl] "}" "in" Expr1;
 EIf.       Expr1  ::= "if" Expr2 "then" Expr2 "else" Expr2;
-ELam.      Expr2  ::= "\\" [Name] TokArrow Expr2;
+ELam.      Expr2  ::= TokLambda [Name] TokArrow Expr2;
 EImpl.     Expr3  ::= Expr4 TokImpl Expr3;
 EAnd.      Expr4  ::= Expr5 TokAnd  Expr4;
 EOr.       Expr5  ::= Expr6 TokOr   Expr5;
@@ -113,8 +117,8 @@ ENeg.      Expr9  ::= TokNeg Expr9;
 EAt.       Expr10 ::= Expr10 TokAt Expr11;
 EApp.      Expr11 ::= Expr11 Expr12;
 EVar.      Expr12 ::= Name;
-ELitNat.   Expr12 ::= Integer;
-ELitReal.  Expr12 ::= Double;
+ELitNat.   Expr12 ::= Nat;
+ELitReal.  Expr12 ::= Real;
 ETensor.   Expr12 ::= TokSeqOpen [Expr] TokSeqClose;
 ETrue.     Expr12 ::= TokTrue;
 EFalse.    Expr12 ::= TokFalse;
@@ -126,7 +130,7 @@ EFalse.    Expr12 ::= TokFalse;
 --
 
 internal ETyApp. Expr ::= Expr Type;
-internal ETyLam. Expr ::= "\\" [Name] TokArrow Expr;
+internal ETyLam. Expr ::= TokLambda [Name] TokArrow Expr;
 
 coercions Expr 12;
 
@@ -140,8 +144,8 @@ BExpr. Bound ::= Expr;
 
 -- * Declarations
 
-DeclNetw. Decl ::= TokNetwork Name ":" Type;
-DeclType. Decl ::= Name ":" Type;
+DeclNetw. Decl ::= "network" Name TokElemOf Type;
+DeclType. Decl ::= Name TokElemOf Type;
 DeclExpr. Decl ::= Name [Name] "=" Expr;
 
 separator Decl ";";
