@@ -5,117 +5,59 @@ comment "{-" "-}";
 
 -- * Tokens
 
-position token UIdent (upper (letter | digit | '_')*) ;
-position token LIdent (lower (letter | digit | '_')*) ;
-position token Infix ([".:-^*+=<>&%$!#%|/\\"]+) ;
+position token Builtin
+  ( {"all"} | {"any"}
+	| {"=>"} | {"&&"} | {"||"}
+	| {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
+	| {"*"} | {"/"} | {"+"} | {"-"} | {"~"} | {"!"}
+	| {"Type"} | {"Tensor"} | {"Real"} | {"Nat"}
+	| {"Bool"} | {"True"} | {"False"}
+	| {"List"} | {"Nil"} | {"Cons"});
 
-separator UIdent "";
-separator LIdent "";
-
+position token Name (lower (letter | digit | '_')*) ;
 
 -- * Kinds
 
-KApp.  Kind  ::= Kind Kind1;
-KStar. Kind1 ::= "*";
-KNat.  Kind1 ::= "Nat";
-KList. Kind1 ::= "List";
+KApp. Kind  ::= Type Type1;
+KCon. Kind1 ::= Builtin;
 
 coercions Kind 1;
 
 
 -- * Types
 
-TFun.    Type ::= Type1 "->" Type;
-TForall. Type ::= "forall" [LIdent] "." Type;
-TAdd.    Type1 ::= Type1 "+" Type2;
-TApp.    Type2 ::= Type2 Type3;
-TVar.    Type3 ::= LIdent;
-TLitNat. Type3 ::= Integer; -- confusingly, this means Natural
-TNil.    Type3 ::= "Nil";
-TCons.   Type3 ::= "Cons";
-TTensor. Type3 ::= "Tensor";
-TBool.   Type3 ::= "Bool";
-TReal.   Type3 ::= "Real";
-TNat.    Type3 ::= "Nat";
-TListOf. Type3 ::= "[" [Type] "]";
+TApp.    Type  ::= Type Type1;
+TForall. Type  ::= "forall" "(" Name Kind1 ")" Type1;
+TVar.    Type1 ::= Name;
+TCon.    Type1 ::= Builtin;
+TLitNat. Type1 ::= Integer; -- confusingly, this means natural;
 
-coercions Type 4;
-
-separator Type ",";
+coercions Type 1;
 
 
 -- * Expressions
 
--- NOTE:
---
---   The syntax for expressions used by the parser is more general than that
---   permitted by our bidirectional typing, which allows us to emit an more
---   specific error message when we're missing a type annotation, rather than
---   emitting a parse error.
---
+EApp.     Expr  ::= Expr Expr1;
+ELam.     Expr  ::= "lambda" "(" Name Type1 ")" Expr1;
+ETyApp.   Expr  ::= Expr "{" Type "}";
+ETyLam.   Expr  ::= "lambda" "{" Name Kind1 "}" Expr1;
+ELet.     Expr  ::= "let" "(" Name Type ")" Expr1 Expr1;
+EAnn.     Expr  ::= Expr  ":type" Type1;
+EVar.     Expr1 ::= Name;
+ECon.     Expr1 ::= Builtin;
+ELitNat.  Expr1 ::= Integer;
+ELitReal. Expr1 ::= Double;
 
-layout "let";
-layout stop "in";
-
-EAnn.      Expr   ::= Expr1 ":" Type;
-EForall.   Expr   ::= "forall" LIdent ":" Bound "." Expr;
-EExists.   Expr   ::= "exists" LIdent ":" Bound "." Expr;
-ELet.      Expr1	::= "let" "{" [Decl] "}" "in" Expr1;
-EIf.       Expr1	::= "if" Expr2 "then" Expr2 "else" Expr2;
-ELam.      Expr2	::= "\\" [LIdent] "->" Expr2;
-EImpl.     Expr3	::= Expr4 "=>" Expr3;
-EAnd.      Expr4	::= Expr5 "&&" Expr4;
-EOr.       Expr5	::= Expr6 "||" Expr5;
-EEq.       Expr6	::= Expr7 "==" Expr7;
-ENeq.      Expr6	::= Expr7 "!=" Expr7;
-ELe.       Expr6	::= Expr7 "<=" Expr7;
-ELt.       Expr6	::= Expr7 "<"  Expr7;
-EGe.       Expr6	::= Expr7 ">=" Expr7;
-EGt.       Expr6	::= Expr7 ">"  Expr7;
-EMul.      Expr7	::= Expr7 "*"  Expr8;
-EDiv.      Expr7	::= Expr7 "/"  Expr8;
-EAdd.      Expr8	::= Expr8 "+"  Expr9;
-ESub.      Expr8	::= Expr8 "-"  Expr9;
-ENeg.      Expr9  ::= "-" Expr9;
-ENot.      Expr9	::= "~" Expr9;
-EAt.       Expr10 ::= Expr10 "!" Expr11;
-EApp.      Expr11 ::= Expr11 Expr12;
-EVar.      Expr12 ::= LIdent;
-ELitNat.   Expr12 ::= Integer;
-ELitReal.  Expr12 ::= Double;
-ETensor.   Expr12 ::= "[" [Expr] "]";
-ETrue.     Expr12 ::= "True";
-EFalse.    Expr12 ::= "False";
-
--- NOTE:
---
---   Type application and abstraction aren't part of the surface syntax, so
---   they're marked as 'internal'.
---
-
-internal ETyApp. Expr ::= Expr Type;
-internal ETyLam. Expr ::= "\\" [LIdent] "->" Expr;
-
-coercions Expr 12;
-
-separator Expr ",";
-
--- * Bounds for quantifiers
-
-BType. Bound ::= Type;
-BExpr. Bound ::= Expr;
+coercions Expr 1;
 
 
 -- * Declarations
 
-DeclNetw. Decl ::= "network" LIdent ":" Type;
-DeclType. Decl ::= LIdent ":" Type;
-DeclExpr. Decl ::= LIdent [LIdent] "=" Expr;
+DeclNetw. Decl ::= "(" "declare-network" Name Type1 ")";
+DeclExpr. Decl ::= "(" "define-fun" Name Type1 Expr1 ")";
 
-separator Decl ";";
+separator nonempty Decl "";
 
 -- * Program
 
-layout toplevel;
-
-Main. Prog ::= [Decl]
+Main. Prog ::= "(" [Decl] ")";

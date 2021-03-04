@@ -31,6 +31,7 @@ position token TokNeg      {"~"};
 position token TokAt       {"!"};
 
 position token TokType     {"Type"};
+position token TokTensor   {"Tensor"};
 position token TokReal     {"Real"};
 position token TokNat      {"Nat"};
 position token TokBool     {"Bool"};
@@ -39,11 +40,10 @@ position token TokFalse    {"False"};
 position token TokList     {"List"};
 position token TokNil      {"Nil"};
 position token TokCons     {"Cons"};
-position token TokTensor   {"Tensor"};
 position token TokSeqOpen  {"["};
 position token TokSeqClose {"]"};
 
-position token Nat (digit+);
+position token Nat  (digit+);
 position token Real (digit+ '.' digit+ ('e' '-'? digit+)?);
 position token Name (lower (letter | digit | '_')*) ;
 
