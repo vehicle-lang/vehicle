@@ -5,39 +5,72 @@ comment "{-" "-}";
 
 -- * Tokens
 
-position token UIdent (upper (letter | digit | '_')*) ;
-position token LIdent (lower (letter | digit | '_')*) ;
-position token Infix ([".:-^*+=<>&%$!#%|/\\"]+) ;
+-- NOTE: Token rules are tried IN ORDER, so the order matters!
 
-separator UIdent "";
-separator LIdent "";
+position token TokNetwork {"network"};
+position token TokArrow   {"->"};
+position token TokForall  {"forall"};
+position token TokExists  {"exists"};
+
+position token TokImpl {"=>"};
+position token TokAnd  {"&&"};
+position token TokOr   {"||"};
+position token TokEq   {"=="};
+position token TokNeq  {"!="};
+position token TokLe   {"<="};
+position token TokLt   {"<"};
+position token TokGe   {">="};
+position token TokGt   {">"};
+position token TokMul  {"*"};
+position token TokDiv  {"/"};
+position token TokAdd  {"+"};
+position token TokSub  {"-"};
+position token TokNeg  {"~"};
+position token TokAt   {"!"};
+
+position token TokType     {"Type"};
+position token TokReal     {"Real"};
+position token TokNat      {"Nat"};
+position token TokBool     {"Bool"};
+position token TokTrue     {"True"};
+position token TokFalse    {"False"};
+position token TokList     {"List"};
+position token TokNil      {"Nil"};
+position token TokCons     {"Cons"};
+position token TokTensor   {"Tensor"};
+position token TokSeqOpen  {"["};
+position token TokSeqClose {"]"};
+
+position token Name (lower (letter | digit | '_')*) ;
+
+separator Name "";
 
 
 -- * Kinds
 
 KApp.  Kind  ::= Kind Kind1;
-KStar. Kind1 ::= "*";
-KNat.  Kind1 ::= "Nat";
-KList. Kind1 ::= "List";
+KType. Kind1 ::= TokType;
+KNat.  Kind1 ::= TokNat;
+KList. Kind1 ::= TokList;
 
 coercions Kind 1;
 
 
 -- * Types
 
-TFun.    Type ::= Type1 "->" Type;
-TForall. Type ::= "forall" [LIdent] "." Type;
-TAdd.    Type1 ::= Type1 "+" Type2;
+TFun.    Type  ::= Type1 TokArrow Type;
+TForall. Type  ::= TokForall [Name] "." Type;
+TAdd.    Type1 ::= Type1 TokAdd Type2;
 TApp.    Type2 ::= Type2 Type3;
-TVar.    Type3 ::= LIdent;
+TVar.    Type3 ::= Name;
 TLitNat. Type3 ::= Integer; -- confusingly, this means Natural
-TNil.    Type3 ::= "Nil";
-TCons.   Type3 ::= "Cons";
-TTensor. Type3 ::= "Tensor";
-TBool.   Type3 ::= "Bool";
-TReal.   Type3 ::= "Real";
-TNat.    Type3 ::= "Nat";
-TListOf. Type3 ::= "[" [Type] "]";
+TNil.    Type3 ::= TokNil;
+TCons.   Type3 ::= TokCons;
+TTensor. Type3 ::= TokTensor;
+TBool.   Type3 ::= TokBool;
+TReal.   Type3 ::= TokReal;
+TNat.    Type3 ::= TokNat;
+TListOf. Type3 ::= TokSeqOpen [Type] TokSeqClose;
 
 coercions Type 4;
 
@@ -58,34 +91,33 @@ layout "let";
 layout stop "in";
 
 EAnn.      Expr   ::= Expr1 ":" Type;
-EForall.   Expr   ::= "forall" LIdent ":" Bound "." Expr;
-EExists.   Expr   ::= "exists" LIdent ":" Bound "." Expr;
-ELet.      Expr1	::= "let" "{" [Decl] "}" "in" Expr1;
-EIf.       Expr1	::= "if" Expr2 "then" Expr2 "else" Expr2;
-ELam.      Expr2	::= "\\" [LIdent] "->" Expr2;
-EImpl.     Expr3	::= Expr4 "=>" Expr3;
-EAnd.      Expr4	::= Expr5 "&&" Expr4;
-EOr.       Expr5	::= Expr6 "||" Expr5;
-EEq.       Expr6	::= Expr7 "==" Expr7;
-ENeq.      Expr6	::= Expr7 "!=" Expr7;
-ELe.       Expr6	::= Expr7 "<=" Expr7;
-ELt.       Expr6	::= Expr7 "<"  Expr7;
-EGe.       Expr6	::= Expr7 ">=" Expr7;
-EGt.       Expr6	::= Expr7 ">"  Expr7;
-EMul.      Expr7	::= Expr7 "*"  Expr8;
-EDiv.      Expr7	::= Expr7 "/"  Expr8;
-EAdd.      Expr8	::= Expr8 "+"  Expr9;
-ESub.      Expr8	::= Expr8 "-"  Expr9;
-ENeg.      Expr9  ::= "-" Expr9;
-ENot.      Expr9	::= "~" Expr9;
-EAt.       Expr10 ::= Expr10 "!" Expr11;
+EForall.   Expr   ::= TokForall Name ":" Bound "." Expr;
+EExists.   Expr   ::= TokExists Name ":" Bound "." Expr;
+ELet.      Expr1  ::= "let" "{" [Decl] "}" "in" Expr1;
+EIf.       Expr1  ::= "if" Expr2 "then" Expr2 "else" Expr2;
+ELam.      Expr2  ::= "\\" [Name] TokArrow Expr2;
+EImpl.     Expr3  ::= Expr4 TokImpl Expr3;
+EAnd.      Expr4  ::= Expr5 TokAnd  Expr4;
+EOr.       Expr5  ::= Expr6 TokOr   Expr5;
+EEq.       Expr6  ::= Expr7 TokEq   Expr7;
+ENeq.      Expr6  ::= Expr7 TokNeq  Expr7;
+ELe.       Expr6  ::= Expr7 TokLe   Expr7;
+ELt.       Expr6  ::= Expr7 TokLt   Expr7;
+EGe.       Expr6  ::= Expr7 TokGe   Expr7;
+EGt.       Expr6  ::= Expr7 TokGt   Expr7;
+EMul.      Expr7  ::= Expr7 TokMul  Expr8;
+EDiv.      Expr7  ::= Expr7 TokDiv  Expr8;
+EAdd.      Expr8  ::= Expr8 TokAdd  Expr9;
+ESub.      Expr8  ::= Expr8 TokSub  Expr9;
+ENeg.      Expr9  ::= TokNeg Expr9;
+EAt.       Expr10 ::= Expr10 TokAt Expr11;
 EApp.      Expr11 ::= Expr11 Expr12;
-EVar.      Expr12 ::= LIdent;
+EVar.      Expr12 ::= Name;
 ELitNat.   Expr12 ::= Integer;
 ELitReal.  Expr12 ::= Double;
-ETensor.   Expr12 ::= "[" [Expr] "]";
-ETrue.     Expr12 ::= "True";
-EFalse.    Expr12 ::= "False";
+ETensor.   Expr12 ::= TokSeqOpen [Expr] TokSeqClose;
+ETrue.     Expr12 ::= TokTrue;
+EFalse.    Expr12 ::= TokFalse;
 
 -- NOTE:
 --
@@ -94,7 +126,7 @@ EFalse.    Expr12 ::= "False";
 --
 
 internal ETyApp. Expr ::= Expr Type;
-internal ETyLam. Expr ::= "\\" [LIdent] "->" Expr;
+internal ETyLam. Expr ::= "\\" [Name] TokArrow Expr;
 
 coercions Expr 12;
 
@@ -108,9 +140,9 @@ BExpr. Bound ::= Expr;
 
 -- * Declarations
 
-DeclNetw. Decl ::= "network" LIdent ":" Type;
-DeclType. Decl ::= LIdent ":" Type;
-DeclExpr. Decl ::= LIdent [LIdent] "=" Expr;
+DeclNetw. Decl ::= TokNetwork Name ":" Type;
+DeclType. Decl ::= Name ":" Type;
+DeclExpr. Decl ::= Name [Name] "=" Expr;
 
 separator Decl ";";
 
