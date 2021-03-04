@@ -38,11 +38,11 @@ coercions Type 1;
 -- * Expressions
 
 EApp.     Expr  ::= Expr Expr1;
-ELam.     Expr  ::= "lambda" "(" Name Type1 ")" Expr1;
+ELam.     Expr  ::= "lambda" "(" Name Type ")" Expr1;
 ETyApp.   Expr  ::= Expr "{" Type "}";
-ETyLam.   Expr  ::= "lambda" "{" Name Kind1 "}" Expr1;
+ETyLam.   Expr  ::= "lambda" "{" Name Kind "}" Expr1;
 ELet.     Expr  ::= "let" "(" Name Type ")" Expr1 Expr1;
-EAnn.     Expr  ::= Expr  ":type" Type1;
+EAnn.     Expr  ::= Expr  ":type" Type;
 EVar.     Expr1 ::= Name;
 ECon.     Expr1 ::= Builtin;
 ELitNat.  Expr1 ::= Integer;
