@@ -23,7 +23,6 @@ source-repository head
 library
   exposed-modules:    Vehicle.Core.Abs
                     , Vehicle.Core.ErrM
-                    , Vehicle.Core.Layout
                     , Vehicle.Core.Lex
                     , Vehicle.Core.Par
                     , Vehicle.Core.Print

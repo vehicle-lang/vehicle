@@ -5,8 +5,6 @@ GEN_DIR_HS := gen/hs
 # Build parsers for Frontend and Core languages using BNFC
 #################################################################################
 
-BNFC_TARGETS := Abs.hs Print.hs Lex.x Layout.hs Par.y Test.hs ErrM.hs Skel.hs Doc.txt
-
 .PHONY: bnfc
 bnfc: bnfc-core bnfc-frontend
 
@@ -19,7 +17,8 @@ bnfc: bnfc-core bnfc-frontend
 #   builds all parsers.
 #
 
-BNFC_TARGETS_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_TARGETS))
+BNFC_TARGETS_CORE := Print.hs Lex.x Par.y Test.hs ErrM.hs Skel.hs Doc.txt
+BNFC_TARGETS_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_TARGETS_CORE))
 
 .PHONY: bnfc-core
 bnfc-core: $(BNFC_TARGETS_CORE)
@@ -31,7 +30,8 @@ $(BNFC_TARGETS_CORE): $(SRC_DIR_BNFC)/Core.cf
 	     $(SRC_DIR_BNFC)/Core.cf
 	rm -f $(GEN_DIR_HS)/Vehicle/Core/Abs.hs
 
-BNFC_TARGETS_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_TARGETS))
+BNFC_TARGETS_FRONTEND := Abs.hs Print.hs Lex.x Layout.hs Par.y Test.hs ErrM.hs Skel.hs Doc.txt
+BNFC_TARGETS_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_TARGETS_FRONTEND))
 
 .PHONY: bnfc-frontend
 bnfc-frontend: $(BNFC_TARGETS_FRONTEND)
