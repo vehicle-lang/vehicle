@@ -9,11 +9,13 @@ module Vehicle.Frontend.Elaborate where
 
 
 import           Prelude hiding (exp)
-import           Control.Monad.Except (MonadError(..))
-import           Control.Monad.Supply (MonadSupply(..))
+import           Control.Exception
+import           Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
+import           Control.Monad.Supply (MonadSupply(..), Supply, evalSupply)
 import           Data.Coerce (Coercible,coerce)
 import           Data.Foldable (foldrM)
 import           Data.List (groupBy)
+import           Data.Maybe (fromMaybe)
 import           Data.Text (Text)
 import qualified Vehicle.Frontend.Abs as VF
 import qualified Vehicle.Core.Abs as VC
@@ -25,12 +27,16 @@ data ElabError
   | MissingDeclExpr VF.Name
   | DuplicateName [VF.Name]
   | LocalDeclNetw VF.Name
+  | Unknown
   deriving (Show)
 
+instance Exception ElabError
 
 -- |Constraint for the monad stack used by the elaborator.
 type MonadElab m = (MonadError ElabError m, MonadSupply Integer m)
 
+runElab :: ExceptT ElabError (Supply Integer) a -> Either ElabError a
+runElab x = fromMaybe (Left Unknown) (evalSupply (runExceptT x) [0..])
 
 -- |Class for the various elaboration functions.
 class Elab vf vc where
@@ -174,7 +180,7 @@ elabTList :: MonadElab m => Position -> [VF.Type] -> m VC.Type
 elabTList pos typs = foldr tCons tNil <$> traverse elab typs
   where
     tNil = VC.TCon (VC.Builtin (pos, "Nil"))
-    tCons typ typs = VC.TApp (VC.TApp (VC.TCon (VC.Builtin (pos, "Cons"))) typ) typs
+    tCons typ1 typs1 = VC.TApp (VC.TApp (VC.TCon (VC.Builtin (pos, "Cons"))) typ1) typs1
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.

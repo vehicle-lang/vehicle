@@ -22,21 +22,21 @@ source-repository head
 
 library
   exposed-modules:    Vehicle.Core.Parse
+                    , Vehicle.Core.Print
                     , Vehicle.Frontend.Elaborate
                     , Vehicle.Frontend.Parse
+                    , Vehicle.Frontend.Print
   other-modules:      Paths_vehicle
                     , Vehicle.Core.Abs
                     , Vehicle.Core.ErrM
                     , Vehicle.Core.Lex
                     , Vehicle.Core.Par
-                    , Vehicle.Core.Print
                     , Vehicle.Core.Skel
                     , Vehicle.Frontend.Abs
                     , Vehicle.Frontend.ErrM
                     , Vehicle.Frontend.Layout
                     , Vehicle.Frontend.Lex
                     , Vehicle.Frontend.Par
-                    , Vehicle.Frontend.Print
                     , Vehicle.Frontend.Skel
   hs-source-dirs:     src/hs
                     , gen/hs
