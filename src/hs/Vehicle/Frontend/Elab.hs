@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Vehicle.Frontend.Elab where
@@ -11,36 +12,41 @@ import           Control.Monad.Except (MonadError(..))
 import           Control.Monad.Supply (MonadSupply(..))
 import           Data.Coerce (Coercible,coerce)
 import           Data.Foldable (foldrM)
-import           Data.List (find, groupBy)
+import           Data.List (groupBy)
 import           Data.Text (Text)
 import qualified Vehicle.Frontend.Abs as VF
 import qualified Vehicle.Core.Abs as VC
 
--- Check a program:
---
--- Group type and expression declarations.
--- If any are missing, throw an error.
--- Perform syntactic elaboration to Core.
--- Type-check Core and perform type-driven elaborations.
 
+
+-- |Errors that may arise during elaboration.
 data ElabError
   = MissingDeclType VF.Name
   | MissingDeclExpr VF.Name
   | DuplicateName [VF.Name]
   | LocalDeclNetw VF.Name
+  deriving (Show)
 
+
+-- |Constraint for the monad stack used by the elaborator.
 type MonadElab m = (MonadError ElabError m, MonadSupply Integer m)
 
+
+-- |Class for the various elaboration functions.
 class Elab vf vc where
   elab :: MonadElab m => vf -> m vc
 
+
 instance Elab VF.Kind VC.Kind where
+
   elab (VF.KApp kind kind2) = VC.KApp <$> elab kind <*> elab kind2
   elab (VF.KType tok) = elabKCon tok
   elab (VF.KNat  tok) = elabKCon tok
   elab (VF.KList tok) = elabKCon tok
 
+
 instance Elab VF.Type VC.Type where
+
   elab (VF.TFun typ1 tokArrow typ2) = elabTOp2 tokArrow typ1 typ2
   elab (VF.TForall _tokForall args _tokDot typ) = elabTForalls args typ
   elab (VF.TAdd typ1 tokAdd typ2) = elabTOp2 tokAdd typ1 typ2
@@ -55,8 +61,9 @@ instance Elab VF.Type VC.Type where
   elab (VF.TNat tokNat) = elabTCon tokNat
 
   -- Elaborate a list literal to a series of Cons and Nil.
-  elab (VF.TListOf _tokSeqOpen typs _tokSeqClose) =
-    undefined
+  elab (VF.TListOf tokSeqOpen typs _tokSeqClose) =
+    elabTList (tokPos tokSeqOpen) typs
+
 
 instance Elab VF.Expr VC.Expr where
 
@@ -98,6 +105,8 @@ instance Elab VF.Expr VC.Expr where
   elab (VF.ELitReal real) = elab real
   elab (VF.ETrue tokTrue) = elabECon tokTrue
   elab (VF.EFalse tokFalse) = elabECon tokFalse
+  elab (VF.EAll tokAll) = elabECon tokAll
+  elab (VF.EAny tokAny) = elabECon tokAny
 
   -- Tensor literals
   elab (VF.ETensor _tokSeqOpen exprs _tokSeqClose) =
@@ -129,6 +138,7 @@ instance Elab [VF.Decl] VC.Decl where
   elab decls =
     throwError (DuplicateName (map declName decls))
 
+
 instance Elab VF.Prog VC.Prog where
   elab (VF.Main decls) = VC.Main <$> elabDecls decls
 
@@ -140,6 +150,11 @@ instance Elab VF.Prog VC.Prog where
 -- type-checked. Therefore, more clever bits have to wait until type-checking.
 --
 -- The following pieces of syntactic sugar are unfolded here:
+--
+--   * type-level list literals are unfolded to Nil and Cons, e.g.,
+--     @[1, 2]@
+--     is unfolded to
+--     @(Cons 1 (Cons 2 Nil))@
 --
 --   * @forall a b. TYPE@
 --     is unfolded to
@@ -164,6 +179,12 @@ instance Elab VF.Prog VC.Prog where
 --     @1 + 5@ is rewritten to @(+ 1 5)@
 --
 --------------------------------------------------------------------------------
+
+elabTList :: MonadElab m => Position -> [VF.Type] -> m VC.Type
+elabTList pos typs = foldr tCons tNil <$> traverse elab typs
+  where
+    tNil = VC.TCon (VC.Builtin (pos, "Nil"))
+    tCons typ typs = VC.TApp (VC.TApp (VC.TCon (VC.Builtin (pos, "Cons"))) typ) typs
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
@@ -260,6 +281,10 @@ declName (VF.DeclNetw name _elemOf _typ) = name
 declName (VF.DeclType name _elemOf _typ) = name
 declName (VF.DeclExpr name _args _exp) = name
 
+-- |Lift a binary /monadic/ function.
+bindM2 :: Monad m => (a -> b -> m c) -> m a -> m b -> m c
+bindM2 f ma mb = do a <- ma; b <- mb; f a b
+
 -- |Positions in BNFC generated grammars are represented by a pair of a line
 --  number and a column number.
 type Position = (Int, Int)
@@ -271,14 +296,13 @@ type Position = (Int, Int)
 --  @position@ keyword.
 type IsToken a = Coercible a (Position, Text)
 
+tokPos :: IsToken a => a -> Position
+tokPos x = let (pos, _tok) = coerce x in pos
+
 -- |Compare the text portion of any two position tokens.
 sameName :: IsToken a => a -> a -> Bool
 sameName x y =
   snd (coerce x :: (Position, Text)) == snd (coerce y :: (Position, Text))
-
--- |Lift a binary /monadic/ function.
-bindM2 :: Monad m => (a -> b -> m c) -> m a -> m b -> m c
-bindM2 f ma mb = do a <- ma; b <- mb; f a b
 
 
 -- * Convert various token types to constructors or variables
@@ -316,6 +340,8 @@ instance Elab VF.TokNeg    VC.Builtin where elab = return . coerce
 instance Elab VF.TokAt     VC.Builtin where elab = return . coerce
 instance Elab VF.TokType   VC.Builtin where elab = return . coerce
 instance Elab VF.TokTensor VC.Builtin where elab = return . coerce
+instance Elab VF.TokAll    VC.Builtin where elab = return . coerce
+instance Elab VF.TokAny    VC.Builtin where elab = return . coerce
 instance Elab VF.TokReal   VC.Builtin where elab = return . coerce
 instance Elab VF.TokNat    VC.Builtin where elab = return . coerce
 instance Elab VF.TokBool   VC.Builtin where elab = return . coerce
