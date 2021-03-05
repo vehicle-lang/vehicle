@@ -5,7 +5,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Vehicle.Frontend.Elab where
+module Vehicle.Frontend.Elaborate where
+
 
 import           Prelude hiding (exp)
 import           Control.Monad.Except (MonadError(..))
@@ -16,7 +17,6 @@ import           Data.List (groupBy)
 import           Data.Text (Text)
 import qualified Vehicle.Frontend.Abs as VF
 import qualified Vehicle.Core.Abs as VC
-
 
 
 -- |Errors that may arise during elaboration.
