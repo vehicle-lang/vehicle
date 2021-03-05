@@ -67,19 +67,19 @@ coercions Kind 1;
 
 -- * Types
 
-TFun.    Type  ::= Type1 TokArrow Type;
-TForall. Type  ::= TokForall [Name] TokDot Type;
-TAdd.    Type1 ::= Type1 TokAdd Type2;
-TApp.    Type2 ::= Type2 Type3;
-TVar.    Type3 ::= Name;
-TLitNat. Type3 ::= Nat;
-TNil.    Type3 ::= TokNil;
-TCons.   Type3 ::= TokCons;
-TTensor. Type3 ::= TokTensor;
-TBool.   Type3 ::= TokBool;
-TReal.   Type3 ::= TokReal;
-TNat.    Type3 ::= TokNat;
-TListOf. Type3 ::= TokSeqOpen [Type] TokSeqClose;
+TFun.     Type  ::= Type1 TokArrow Type;
+TForall.  Type  ::= TokForall [Name] TokDot Type;
+TAdd.     Type1 ::= Type1 TokAdd Type2;
+TApp.     Type2 ::= Type2 Type3;
+TVar.     Type3 ::= Name;
+TTensor.  Type3 ::= TokTensor;
+TBool.    Type3 ::= TokBool;
+TReal.    Type3 ::= TokReal;
+TNat.     Type3 ::= TokNat;
+TNil.     Type3 ::= TokNil;
+TCons.    Type3 ::= TokCons;
+TLitNat.  Type3 ::= Nat;
+TLitList. Type3 ::= TokSeqOpen [Type] TokSeqClose;
 
 coercions Type 4;
 
@@ -99,34 +99,34 @@ separator Type ",";
 layout "let";
 layout stop "in";
 
-EAnn.      Expr   ::= Expr1 TokElemOf Type;
-ELet.      Expr1  ::= "let" "{" [Decl] "}" "in" Expr1;
-EIf.       Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;
-ELam.      Expr2  ::= TokLambda [Name] TokArrow Expr2;
-EImpl.     Expr3  ::= Expr4 TokImpl Expr3;
-EAnd.      Expr4  ::= Expr5 TokAnd Expr4;
-EOr.       Expr5  ::= Expr6 TokOr Expr5;
-EEq.       Expr6  ::= Expr7 TokEq Expr7;
-ENeq.      Expr6  ::= Expr7 TokNeq Expr7;
-ELe.       Expr6  ::= Expr7 TokLe Expr7;
-ELt.       Expr6  ::= Expr7 TokLt Expr7;
-EGe.       Expr6  ::= Expr7 TokGe Expr7;
-EGt.       Expr6  ::= Expr7 TokGt Expr7;
-EMul.      Expr7  ::= Expr7 TokMul Expr8;
-EDiv.      Expr7  ::= Expr7 TokDiv Expr8;
-EAdd.      Expr8  ::= Expr8 TokAdd Expr9;
-ESub.      Expr8  ::= Expr8 TokSub Expr9;
-ENeg.      Expr9  ::= TokNeg Expr9;
-EAt.       Expr10 ::= Expr10 TokAt Expr11;
-EApp.      Expr11 ::= Expr11 Expr12;
-EVar.      Expr12 ::= Name;
-ELitNat.   Expr12 ::= Nat;
-ELitReal.  Expr12 ::= Real;
-EAll.      Expr12 ::= TokAll;
-EAny.      Expr12 ::= TokAny;
-ETrue.     Expr12 ::= TokTrue;
-EFalse.    Expr12 ::= TokFalse;
-ETensor.   Expr12 ::= TokSeqOpen [Expr] TokSeqClose;
+EAnn.       Expr   ::= Expr1 TokElemOf Type;
+ELet.       Expr1  ::= "let" "{" [Decl] "}" "in" Expr1;
+EIf.        Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;
+ELam.       Expr2  ::= TokLambda [Name] TokArrow Expr2;
+EImpl.      Expr3  ::= Expr4 TokImpl Expr3;
+EAnd.       Expr4  ::= Expr5 TokAnd Expr4;
+EOr.        Expr5  ::= Expr6 TokOr Expr5;
+EEq.        Expr6  ::= Expr7 TokEq Expr7;
+ENeq.       Expr6  ::= Expr7 TokNeq Expr7;
+ELe.        Expr6  ::= Expr7 TokLe Expr7;
+ELt.        Expr6  ::= Expr7 TokLt Expr7;
+EGe.        Expr6  ::= Expr7 TokGe Expr7;
+EGt.        Expr6  ::= Expr7 TokGt Expr7;
+EMul.       Expr7  ::= Expr7 TokMul Expr8;
+EDiv.       Expr7  ::= Expr7 TokDiv Expr8;
+EAdd.       Expr8  ::= Expr8 TokAdd Expr9;
+ESub.       Expr8  ::= Expr8 TokSub Expr9;
+ENeg.       Expr9  ::= TokNeg Expr9;
+EAt.        Expr10 ::= Expr10 TokAt Expr11;
+EApp.       Expr11 ::= Expr11 Expr12;
+EVar.       Expr12 ::= Name;
+ETrue.      Expr12 ::= TokTrue;
+EFalse.     Expr12 ::= TokFalse;
+EAll.       Expr12 ::= TokAll;
+EAny.       Expr12 ::= TokAny;
+ELitNat.    Expr12 ::= Nat;
+ELitReal.   Expr12 ::= Real;
+ELitTensor. Expr12 ::= TokSeqOpen [Expr] TokSeqClose;
 
 -- NOTE:
 --

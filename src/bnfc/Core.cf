@@ -9,7 +9,7 @@ position token Builtin
   ( {"all"} | {"any"}
 	| {"=>"} | {"&&"} | {"||"}
 	| {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
-	| {"*"} | {"/"} | {"+"} | {"-"} | {"~"} | {"!"}
+	| {"*"} | {"/"} | {"+"} | {"-"} | {"!"} | {"~"}
 	| {"Type"} | {"Tensor"} | {"Real"} | {"Nat"}
 	| {"Bool"} | {"True"} | {"False"}
 	| {"List"} | {"Nil"} | {"Cons"});
@@ -22,35 +22,43 @@ position token Name (lower (letter | digit | '_')*) ;
 
 KApp.  Kind  ::= Kind Kind1;
 KCon.  Kind1 ::= Builtin;
-KMeta. Kind1 ::= "?" Integer;
+
+internal KMeta. Kind1 ::= "?" Integer;
 
 coercions Kind 1;
 
 
 -- * Types
 
-TApp.    Type  ::= Type Type1;
-TForall. Type  ::= "forall" "(" Name Kind1 ")" Type1;
-TVar.    Type1 ::= Name;
-TMeta.   Type1 ::= "?" Integer;
-TCon.    Type1 ::= Builtin;
-TLitNat. Type1 ::= Nat;
+TApp.     Type  ::= Type Type1;
+TForall.  Type  ::= "forall" "(" Name Kind1 ")" Type1;
+TVar.     Type1 ::= Name;
+TCon.     Type1 ::= Builtin;
+TLitNat.  Type1 ::= Nat;
+TLitList. Type1 ::= "[" [Type1] "]";
+
+internal TMeta. Type1 ::= "?" Integer;
+
+separator Type1 "";
 
 coercions Type 1;
 
 
 -- * Expressions
 
-EApp.     Expr  ::= Expr Expr1;
-ELam.     Expr  ::= "lambda" "(" Name Type1 ")" Expr1;
-ETyApp.   Expr  ::= Expr "{" Type "}";
-ETyLam.   Expr  ::= "lambda" "{" Name Kind1 "}" Expr1;
-ELet.     Expr  ::= "let" "(" Name Type1 ")" Expr1 Expr1;
-EAnn.     Expr  ::= Expr ":type" Type;
-EVar.     Expr1 ::= Name;
-ECon.     Expr1 ::= Builtin;
-ELitNat.  Expr1 ::= Nat;
-ELitReal. Expr1 ::= Real;
+EApp.       Expr  ::= Expr Expr1;
+ELam.       Expr  ::= "lambda" "(" Name Type1 ")" Expr1;
+ETyApp.     Expr  ::= Expr "{" Type "}";
+ETyLam.     Expr  ::= "lambda" "{" Name Kind1 "}" Expr1;
+ELet.       Expr  ::= "let" "(" Name Type1 ")" Expr1 Expr1;
+EAnn.       Expr  ::= Expr ":type" Type;
+EVar.       Expr1 ::= Name;
+ECon.       Expr1 ::= Builtin;
+ELitNat.    Expr1 ::= Nat;
+ELitReal.   Expr1 ::= Real;
+ELitTensor. Expr1 ::= "[" [Expr1] "]";
+
+separator Expr1 "";
 
 coercions Expr 1;
 

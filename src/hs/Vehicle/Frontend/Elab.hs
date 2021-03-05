@@ -52,17 +52,14 @@ instance Elab VF.Type VC.Type where
   elab (VF.TAdd typ1 tokAdd typ2) = elabTOp2 tokAdd typ1 typ2
   elab (VF.TApp typ1 typ2) = VC.TApp <$> elab typ1 <*> elab typ2
   elab (VF.TVar name) = elab name
-  elab (VF.TLitNat nat) = elab nat
   elab (VF.TNil tokNil) = elabTCon tokNil
   elab (VF.TCons tokCons) = elabTCon tokCons
   elab (VF.TTensor tokTensor) = elabTCon tokTensor
   elab (VF.TBool tokBool) = elabTCon tokBool
   elab (VF.TReal tokReal) = elabTCon tokReal
   elab (VF.TNat tokNat) = elabTCon tokNat
-
-  -- Elaborate a list literal to a series of Cons and Nil.
-  elab (VF.TListOf tokSeqOpen typs _tokSeqClose) =
-    elabTList (tokPos tokSeqOpen) typs
+  elab (VF.TLitNat nat) = elab nat
+  elab (VF.TLitList _tokSeqOpen typs _tokSeqClose) = VC.TLitList <$> traverse elab typs
 
 
 instance Elab VF.Expr VC.Expr where
@@ -101,16 +98,13 @@ instance Elab VF.Expr VC.Expr where
   elab (VF.ENeg tokNeg exp) = elabEOp1 tokNeg exp
 
   -- Literals and constants
-  elab (VF.ELitNat nat) = elab nat
-  elab (VF.ELitReal real) = elab real
   elab (VF.ETrue tokTrue) = elabECon tokTrue
   elab (VF.EFalse tokFalse) = elabECon tokFalse
   elab (VF.EAll tokAll) = elabECon tokAll
   elab (VF.EAny tokAny) = elabECon tokAny
-
-  -- Tensor literals
-  elab (VF.ETensor _tokSeqOpen exprs _tokSeqClose) =
-    undefined
+  elab (VF.ELitNat nat) = elab nat
+  elab (VF.ELitReal real) = elab real
+  elab (VF.ELitTensor _tokSeqOpen exprs _tokSeqClose) = VC.ELitTensor <$> traverse elab exprs
 
 
 instance Elab [VF.Decl] VC.Decl where
@@ -151,11 +145,6 @@ instance Elab VF.Prog VC.Prog where
 --
 -- The following pieces of syntactic sugar are unfolded here:
 --
---   * type-level list literals are unfolded to Nil and Cons, e.g.,
---     @[1, 2]@
---     is unfolded to
---     @(Cons 1 (Cons 2 Nil))@
---
 --   * @forall a b. TYPE@
 --     is unfolded to
 --     @(forall a ?_ (forall b ?_ TYPE))@
@@ -180,6 +169,7 @@ instance Elab VF.Prog VC.Prog where
 --
 --------------------------------------------------------------------------------
 
+{-# DEPRECATED elabTList "Use TLitList." #-}
 elabTList :: MonadElab m => Position -> [VF.Type] -> m VC.Type
 elabTList pos typs = foldr tCons tNil <$> traverse elab typs
   where
@@ -297,7 +287,7 @@ type Position = (Int, Int)
 type IsToken a = Coercible a (Position, Text)
 
 tokPos :: IsToken a => a -> Position
-tokPos x = let (pos, _tok) = coerce x in pos
+tokPos x = let (pos, _tok) = coerce x :: (Position, Text) in pos
 
 -- |Compare the text portion of any two position tokens.
 sameName :: IsToken a => a -> a -> Bool
