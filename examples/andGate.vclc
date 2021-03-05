@@ -1,0 +1,23 @@
+(
+  (declare-network f
+    (-> (Tensor Real [2]) (Tensor Real [1])))
+  (define-fun truthy
+    (-> Real Bool) (lambda (x Real) (>= x 0.5)))
+  (define-fun falsey
+    (-> Real Bool) (lambda (x Real) (<= x 0.5)))
+  (define-fun validInput
+    (-> (Tensor Real [2]) Bool)
+    (lambda (x (Tensor Real [2])) (all (lambda (xi Real) (&& (<= 0 xi) (<= xi 1))) x)))
+  (define-fun correctOutput
+    (-> (Tensor Real [2]) Bool)
+    (lambda (x (Tensor Real [2]))
+      (let
+        ((y Real) (! (f x) 0))
+        (&& (=> (&& (! (truthy x) 0) (! (falsey x) 1)) (truthy y))
+        (&& (=> (&& (! (truthy x) 0) (! (truthy x) 1)) (truthy y))
+        (&& (=> (&& (! (falsey x) 0) (! (falsey x) 1)) (truthy y))
+        (=> (&& (! (falsey x) 0) (! (truthy x) 1)) (truthy y))))))))
+  (define-fun correct
+    Bool
+    (all correctOutput validInput))
+)

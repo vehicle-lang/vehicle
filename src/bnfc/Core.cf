@@ -1,7 +1,6 @@
 -- Grammar of Vehicle Core
 
-comment "--";
-comment "{-" "-}";
+comment "(*" "*)";
 
 -- * ens
 
@@ -23,10 +22,9 @@ position token Name (lower (letter | digit | '_')*) ;
 KApp.  Kind  ::= Kind Kind1;
 KCon.  Kind1 ::= Builtin;
 
-internal KMeta. Kind1 ::= "?" Integer;
-
 coercions Kind 1;
 
+internal KMeta. Kind ::= "?" Integer;
 
 -- * Types
 
@@ -37,7 +35,7 @@ TCon.     Type1 ::= Builtin;
 TLitNat.  Type1 ::= Nat;
 TLitList. Type1 ::= "[" [Type1] "]";
 
-internal TMeta. Type1 ::= "?" Integer;
+internal TMeta. Type ::= "?" Integer;
 
 separator Type1 "";
 
@@ -50,7 +48,7 @@ EApp.       Expr  ::= Expr Expr1;
 ELam.       Expr  ::= "lambda" "(" Name Type1 ")" Expr1;
 ETyApp.     Expr  ::= Expr "{" Type "}";
 ETyLam.     Expr  ::= "lambda" "{" Name Kind1 "}" Expr1;
-ELet.       Expr  ::= "let" "(" Name Type1 ")" Expr1 Expr1;
+ELet.       Expr  ::= "let" "(" "(" Name Type1 ")" Expr1 ")" Expr1;
 EAnn.       Expr  ::= Expr ":type" Type;
 EVar.       Expr1 ::= Name;
 ECon.       Expr1 ::= Builtin;
@@ -68,7 +66,7 @@ coercions Expr 1;
 DeclNetw. Decl ::= "(" "declare-network" Name Type1 ")";
 DeclExpr. Decl ::= "(" "define-fun" Name Type1 Expr1 ")";
 
-separator nonempty Decl "";
+separator Decl "";
 
 -- * Program
 

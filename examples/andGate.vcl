@@ -12,11 +12,13 @@ validInput : Tensor Real [2] -> Bool
 validInput x = all (\xi -> 0 <= xi && xi <= 1) x
 
 correctOutput : Tensor Real [2] -> Bool
-correctOutput x = let y = f x ! 0 in
-  (truthy x!0 && falsey x!1 => truthy y) &&
-  (truthy x!0 && truthy x!1 => truthy y) &&
-  (falsey x!0 && falsey x!1 => truthy y) &&
-  (falsey x!0 && truthy x!1 => truthy y)
+correctOutput x =
+  let y : Real
+      y = f x ! 0
+  in (truthy x!0 && falsey x!1 => truthy y) &&
+     (truthy x!0 && truthy x!1 => truthy y) &&
+     (falsey x!0 && falsey x!1 => truthy y) &&
+     (falsey x!0 && truthy x!1 => truthy y)
 
 correct : Bool
 correct = all correctOutput validInput
