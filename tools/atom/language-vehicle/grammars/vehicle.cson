@@ -26,12 +26,12 @@ patterns: [
     match: '^(network)\\b'
   }
   {
-    name: 'entity.name.function'
-    match: '^([a-z][a-zA-Z_0-9]*)\\b'
+    name: 'keyword.function.vehicle'
+    match: '\\b(all|any)\\b'
   }
   {
-    name: 'keyword.vehicle'
-    match: '\\b(forall|exists)\\b'
+    name: 'entity.name.function.vehicle'
+    match: '^([a-z][a-zA-Z_0-9]*)\\b'
   }
   {
     name: 'keyword.control.vehicle'
@@ -48,6 +48,10 @@ patterns: [
   {
     name: 'constant.language.vehicle'
     match: '\\b(True|False)\\b'
+  }
+  {
+    name: 'storate.type.vehicle'
+    match: '\\b(forall|exists)\\b'
   }
   {
     name: 'storage.type.vehicle'

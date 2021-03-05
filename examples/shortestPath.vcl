@@ -7,10 +7,10 @@ validInput : Nat -> Bool
 validInput x = 0 <= x && x <= 15
 
 extendsSomePath : Nat -> Bool
-extendsSomePath i = exists j : validInput. shortestPath i == shortestPath j + 1
+extendsSomePath i = any (\j -> shortestPath i == shortestPath j + 1) validInput
 
 usesShortestPath : Nat -> Bool
-usesShortestPath i = forall j : validInput. shortestPath i <= shortestPath j + 1
+usesShortestPath i = all (\j -> shortestPath i <= shortestPath j + 1) validInput
 
 --- The shortest path to the origin is always the trivial path.
 identityPath : Bool
@@ -18,8 +18,8 @@ identityPath = shortestPath 0 == 0
 
 -- Any path from a non-origin node must be an extension of another path.
 extension : Bool
-extension = forall i : validInput. i != 0 => extendsSomePath i
+extension = all (\i -> i != 0 => extendsSomePath i) validInput
 
 -- The shortest path must be at least as short as any path on offer from its neighbours.
 shortest : Bool
-shortest = forall i : validInput. i != 0 => usesShortestPath i
+shortest = all (\i -> i != 0 => usesShortestPath i) validInput

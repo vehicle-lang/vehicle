@@ -13,10 +13,10 @@ lInfBall : forall n. Tensor Real [n] -> Real -> Tensor Real [n] -> Bool
 lInfBall x e y = lInf (x - y) <= e
 
 validInput : forall n. Tensor Real [n] -> Bool
-validInput x = forall xi : x. 0 <= xi && xi <= 1
+validInput x = all (\xi -> 0 <= xi && xi <= 1) x
 
 robustAround : forall n. Tensor Real [n] -> Bool
-robustAround x = forall z : lInfBall x epsilon. lInfBall (mnist x) delta (mnist z)
+robustAround x = all (\z -> lInfBall (mnist x) delta (mnist z)) (lInfBall x epsilon)
 
 robustness : Bool
-robustness = forall x : trainingData. robustAround x
+robustness = all robustAround trainingData

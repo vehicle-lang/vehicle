@@ -9,7 +9,7 @@ falsey : Real -> Bool
 falsey x = x <= 0.5
 
 validInput : Tensor Real [2] -> Bool
-validInput x = forall xi : x. 0 <= xi && xi <= 1
+validInput x = all (\xi -> 0 <= xi && xi <= 1) x
 
 correctOutput : Tensor Real [2] -> Bool
 correctOutput x = let y = f x ! 0 in
@@ -19,4 +19,4 @@ correctOutput x = let y = f x ! 0 in
   (falsey x!0 && truthy x!1 => truthy y)
 
 correct : Bool
-correct = forall x : validInput. correctOutput x
+correct = all correctOutput validInput
