@@ -287,7 +287,8 @@ type Position = (Int, Int)
 type IsToken a = Coercible a (Position, Text)
 
 tokPos :: IsToken a => a -> Position
-tokPos x = let (pos, _tok) = coerce x :: (Position, Text) in pos
+tokPos x =
+  let (pos, _tok) = coerce x :: (Position, Text) in pos
 
 -- |Compare the text portion of any two position tokens.
 sameName :: IsToken a => a -> a -> Bool
