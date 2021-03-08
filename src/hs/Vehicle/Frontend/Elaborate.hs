@@ -69,6 +69,7 @@ instance Elab VF.Type VC.Type where
   elab (VF.TBool tokBool) = elabTCon tokBool
   elab (VF.TReal tokReal) = elabTCon tokReal
   elab (VF.TInt tokInt) = elabTCon tokInt
+  elab (VF.TList tokList) = elabTCon tokList
   elab (VF.TTensor tokTensor) = elabTCon tokTensor
 
   -- Type-level naturals.
@@ -116,11 +117,13 @@ instance Elab VF.Expr VC.Expr where
   elab (VF.ELitInt nat) = return $ VC.ELitInt nat
   elab (VF.ELitReal real) = return $ VC.ELitReal real
 
-  -- Tensors.
+  -- Lists and tensors.
+  elab (VF.ECons exp1 tokCons exp2) = elabEOp2 tokCons exp1 exp2
+  elab (VF.ENil tokNil) = elabECon tokNil
   elab (VF.EAt exp1 tokAt exp2) = elabEOp2 tokAt exp1 exp2
   elab (VF.EAll tokAll) = elabECon tokAll
   elab (VF.EAny tokAny) = elabECon tokAny
-  elab (VF.ELitTensor _tokSeqOpen exprs _tokSeqClose) = VC.ELitTensor <$> traverse elab exprs
+  elab (VF.ELitSeq _tokSeqOpen exprs _tokSeqClose) = VC.ELitSeq <$> traverse elab exprs
 
 
 instance Elab [VF.Decl] VC.Decl where

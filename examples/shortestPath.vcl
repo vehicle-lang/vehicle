@@ -4,7 +4,7 @@
 network shortestPath : Int -> Int
 
 validInput : Int -> Bool
-validInput x = 0 <= x && x <= 15
+validInput x = 0 <= x and x <= 15
 
 extendsSomePath : Int -> Bool
 extendsSomePath i = any (\j -> shortestPath i == shortestPath j + 1) validInput

@@ -6,9 +6,9 @@ comment "(*" "*)";
 
 position token Builtin
   ( {"all"} | {"any"}
-	| {"=>"} | {"&&"} | {"||"}
+	| {"=>"} | {"and"} | {"or"}
 	| {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
-	| {"*"} | {"/"} | {"+"} | {"-"} | {"!"} | {"~"}
+	| {"*"} | {"/"} | {"+"} | {"-"} | {"!"} | {"not"}
 	| {"Type"} | {"Tensor"} | {"Real"} | {"Nat"}
 	| {"Bool"} | {"True"} | {"False"}
 	| {"List"} | {"Nil"} | {"::"});
@@ -65,8 +65,8 @@ ECon.       Expr1 ::= Builtin;
 ELitInt.    Expr1 ::= Integer; -- NOTE: this means natural
 ELitReal.   Expr1 ::= Double;
 
--- Tensors.
-ELitTensor. Expr1 ::= "[" [Expr1] "]";
+-- Lists and tensors.
+ELitSeq. Expr1 ::= "[" [Expr1] "]";
 
 separator Expr1 "";
 

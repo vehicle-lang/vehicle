@@ -1,5 +1,10 @@
 # Changelog for vehicle
 
+## Version 0.0.3.0
+
+- Added term-level lists.
+- Changed syntax of `&&` and `||` to `and` and `or`.
+
 ## Version 0.0.2.0
 
 - Added `dataset` declarations.

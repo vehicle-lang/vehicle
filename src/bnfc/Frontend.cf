@@ -17,11 +17,20 @@ position token TokDot      {"."};
 position token TokElemOf   {":"};
 position token TokLambda   {"\\"};
 
+position token TokType     {"Type"};
+position token TokDim      {"Dim"};
+position token TokTensor   {"Tensor"};
+position token TokList     {"List"};
+position token TokReal     {"Real"};
+position token TokInt      {"Int"};
+position token TokBool     {"Bool"};
+
 position token TokAll      {"all"};
 position token TokAny      {"any"};
 position token TokImpl     {"=>"};
-position token TokAnd      {"&&"};
-position token TokOr       {"||"};
+position token TokAnd      {"and"};
+position token TokOr       {"or"};
+position token TokNot      {"not"};
 position token TokEq       {"=="};
 position token TokNeq      {"!="};
 position token TokLe       {"<="};
@@ -32,22 +41,14 @@ position token TokMul      {"*"};
 position token TokDiv      {"/"};
 position token TokAdd      {"+"};
 position token TokSub      {"-"};
-position token TokNot      {"~"};
 position token TokAt       {"!"};
 
-position token TokType     {"Type"};
-position token TokDim      {"Dim"};
-position token TokTensor   {"Tensor"};
-position token TokReal     {"Real"};
-position token TokInt      {"Int"};
-position token TokBool     {"Bool"};
-position token TokTrue     {"True"};
-position token TokFalse    {"False"};
-position token TokList     {"List"};
-position token TokNil      {"Nil"};
-position token TokCons     {"::"};
 position token TokSeqOpen  {"["};
 position token TokSeqClose {"]"};
+position token TokCons     {"::"};
+position token TokNil      {"Nil"};
+position token TokTrue     {"True"};
+position token TokFalse    {"False"};
 
 position token Name        (lower (letter | digit | '_')*) ;
 
@@ -71,24 +72,25 @@ coercions Kind 1;
 
 -- Core structure.
 TForall.  Type  ::= TokForall [Name] TokDot Type;
-TApp.     Type2 ::= Type2 Type3;
-TVar.     Type3 ::= Name;
+TApp.     Type3 ::= Type3 Type4;
+TVar.     Type4 ::= Name;
 
 -- Primitive types.
-TFun.     Type  ::= Type1 TokArrow Type;
-TBool.    Type3 ::= TokBool;
-TReal.    Type3 ::= TokReal;
-TInt.     Type3 ::= TokInt;
-TTensor.  Type3 ::= TokTensor;
+TFun.     Type  ::= Type2 TokArrow Type;
+TBool.    Type4 ::= TokBool;
+TReal.    Type4 ::= TokReal;
+TInt.     Type4 ::= TokInt;
+TList.    Type4 ::= TokList;
+TTensor.  Type4 ::= TokTensor;
 
 -- Type-level dimensions.
-TAdd.     Type1 ::= Type1 TokAdd Type2;
-TLitDim.  Type3 ::= Integer; -- confusingly, this means natural
+TAdd.     Type2 ::= Type2 TokAdd Type3;
+TLitDim.  Type4 ::= Integer; -- confusingly, this means natural
 
 -- Type-level lists.
-TNil.     Type3 ::= TokNil;
-TCons.    Type1 ::= Type1 TokCons Type;
-TLitList. Type3 ::= TokSeqOpen [Type] TokSeqClose;
+TNil.     Type4 ::= TokNil;
+TCons.    Type1 ::= Type2 TokCons Type1;
+TLitList. Type4 ::= TokSeqOpen [Type] TokSeqClose;
 
 coercions Type 4;
 
@@ -121,35 +123,37 @@ internal ETyLam. Expr ::= TokLambda "{" [Name] "}" TokArrow Expr;
 
 -- Conditional expressions.
 EIf.        Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;
-EImpl.      Expr3  ::= Expr4 TokImpl Expr3;
-EAnd.       Expr4  ::= Expr5 TokAnd Expr4;
-EOr.        Expr5  ::= Expr6 TokOr Expr5;
-ENot.       Expr9  ::= TokNot Expr9;
-ETrue.      Expr12 ::= TokTrue;
-EFalse.     Expr12 ::= TokFalse;
+EImpl.      Expr4  ::= Expr5 TokImpl Expr4;
+EAnd.       Expr5  ::= Expr6 TokAnd Expr5;
+EOr.        Expr6  ::= Expr7 TokOr Expr6;
+ENot.       Expr10  ::= TokNot Expr10;
+ETrue.      Expr13 ::= TokTrue;
+EFalse.     Expr13 ::= TokFalse;
 
 -- Integers and reals.
-EEq.        Expr6  ::= Expr7 TokEq Expr7;
-ENeq.       Expr6  ::= Expr7 TokNeq Expr7;
-ELe.        Expr6  ::= Expr7 TokLe Expr7;
-ELt.        Expr6  ::= Expr7 TokLt Expr7;
-EGe.        Expr6  ::= Expr7 TokGe Expr7;
-EGt.        Expr6  ::= Expr7 TokGt Expr7;
-EMul.       Expr7  ::= Expr7 TokMul Expr8;
-EDiv.       Expr7  ::= Expr7 TokDiv Expr8;
-EAdd.       Expr8  ::= Expr8 TokAdd Expr9;
-ESub.       Expr8  ::= Expr8 TokSub Expr9;
-ENeg.       Expr9  ::= TokSub Expr9;
-ELitInt.    Expr12 ::= Integer;
-ELitReal.   Expr12 ::= Double;
+EEq.        Expr7  ::= Expr8 TokEq Expr8;
+ENeq.       Expr7  ::= Expr8 TokNeq Expr8;
+ELe.        Expr7  ::= Expr8 TokLe Expr8;
+ELt.        Expr7  ::= Expr8 TokLt Expr8;
+EGe.        Expr7  ::= Expr8 TokGe Expr8;
+EGt.        Expr7  ::= Expr8 TokGt Expr8;
+EMul.       Expr8  ::= Expr8 TokMul Expr9;
+EDiv.       Expr8  ::= Expr8 TokDiv Expr9;
+EAdd.       Expr9  ::= Expr9 TokAdd Expr10;
+ESub.       Expr9  ::= Expr9 TokSub Expr10;
+ENeg.       Expr10 ::= TokSub Expr10;
+ELitInt.    Expr13 ::= Integer;
+ELitReal.   Expr13 ::= Double;
 
--- Tensors.
-EAt.        Expr10 ::= Expr10 TokAt Expr11;
-EAll.       Expr12 ::= TokAll;
-EAny.       Expr12 ::= TokAny;
-ELitTensor. Expr12 ::= TokSeqOpen [Expr] TokSeqClose;
+-- Lists and tensors.
+ECons.      Expr3  ::= Expr4 TokCons Expr3;
+ENil.       Expr13 ::= TokNil;
+EAt.        Expr11 ::= Expr11 TokAt Expr12;
+EAll.       Expr13 ::= TokAll;
+EAny.       Expr13 ::= TokAny;
+ELitSeq.    Expr13 ::= TokSeqOpen [Expr] TokSeqClose;
 
-coercions Expr 12;
+coercions Expr 13;
 
 separator Expr ",";
 
