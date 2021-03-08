@@ -9,6 +9,7 @@ module Vehicle.Frontend.Elaborate where
 
 
 import           Prelude hiding (exp)
+import           Control.Applicative (liftA2)
 import           Control.Exception
 import           Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
 import           Control.Monad.Supply (MonadSupply(..), Supply, evalSupply)
@@ -23,10 +24,12 @@ import qualified Vehicle.Core.Abs as VC
 
 -- |Errors that may arise during elaboration.
 data ElabError
-  = MissingDeclType VF.Name
-  | MissingDeclExpr VF.Name
+  = MissingDefFunType VF.Name
+  | MissingDefFunExpr VF.Name
   | DuplicateName [VF.Name]
   | LocalDeclNetw VF.Name
+  | LocalDeclData VF.Name
+  | LocalDefType VF.Name
   | Unknown
   deriving (Show)
 
@@ -45,51 +48,60 @@ class Elab vf vc where
 
 instance Elab VF.Kind VC.Kind where
 
+  -- Core structure.
   elab (VF.KApp kind kind2) = VC.KApp <$> elab kind <*> elab kind2
-  elab (VF.KType tok) = elabKCon tok
-  elab (VF.KNat  tok) = elabKCon tok
-  elab (VF.KList tok) = elabKCon tok
+
+  -- Primitive kinds.
+  elab (VF.KType tokType) = elabKCon tokType
+  elab (VF.KDim  tokDim) = elabKCon tokDim
+  elab (VF.KList tokList) = elabKCon tokList
 
 
 instance Elab VF.Type VC.Type where
 
-  elab (VF.TFun typ1 tokArrow typ2) = elabTOp2 tokArrow typ1 typ2
+  -- Core structure.
   elab (VF.TForall _tokForall args _tokDot typ) = elabTForalls args typ
-  elab (VF.TAdd typ1 tokAdd typ2) = elabTOp2 tokAdd typ1 typ2
   elab (VF.TApp typ1 typ2) = VC.TApp <$> elab typ1 <*> elab typ2
   elab (VF.TVar name) = elab name
-  elab (VF.TNil tokNil) = elabTCon tokNil
-  elab (VF.TCons tokCons) = elabTCon tokCons
-  elab (VF.TTensor tokTensor) = elabTCon tokTensor
+
+  -- Primitive types.
+  elab (VF.TFun typ1 tokArrow typ2) = elabTOp2 tokArrow typ1 typ2
   elab (VF.TBool tokBool) = elabTCon tokBool
   elab (VF.TReal tokReal) = elabTCon tokReal
-  elab (VF.TNat tokNat) = elabTCon tokNat
-  elab (VF.TLitNat nat) = elab nat
+  elab (VF.TInt tokInt) = elabTCon tokInt
+  elab (VF.TTensor tokTensor) = elabTCon tokTensor
+
+  -- Type-level naturals.
+  elab (VF.TAdd typ1 tokAdd typ2) = elabTOp2 tokAdd typ1 typ2
+  elab (VF.TLitDim nat) = return $ VC.TLitDim nat
+
+  -- Type-level lists.
+  elab (VF.TNil tokNil) = elabTCon tokNil
+  elab (VF.TCons typ1 tokCons typ2) = elabTOp2 tokCons typ1 typ2
   elab (VF.TLitList _tokSeqOpen typs _tokSeqClose) = VC.TLitList <$> traverse elab typs
 
 
 instance Elab VF.Expr VC.Expr where
 
-  -- Type annotations
-  elab (VF.EAnn exp _tokElemOf typ) =
-    VC.EAnn <$> elab exp <*> elab typ
-
-  -- Functions and variables
-  elab (VF.EVar name) = elab name
-  elab (VF.EApp exp exp2) = VC.EApp <$> elab exp <*> elab exp2
+  -- Core structure.
+  elab (VF.EAnn exp _tokElemOf typ) = VC.EAnn <$> elab exp <*> elab typ
+  elab (VF.ELet decls exp) = elabELets decls exp
   elab (VF.ELam _tokLambda args _tokArrow exp) = elabELams args exp
+  elab (VF.EApp exp exp2) = VC.EApp <$> elab exp <*> elab exp2
+  elab (VF.EVar name) = elab name
   elab (VF.ETyApp exp typ) = VC.ETyApp <$> elab exp <*> elab typ
   elab (VF.ETyLam _tokLambda args _tokArrow exp) = elabETyLams args exp
-  elab (VF.ELet decls exp) = elabELets decls exp
 
-  -- If-then-else
-  elab (VF.EIf tokIf exp1 _tokThen exp2 _tokElse exp3) =
-    elabEOp3 tokIf exp1 exp2 exp3
-
-  -- Infix and prefix operators
+  -- Conditional expressions.
+  elab (VF.EIf tokIf exp1 _tokThen exp2 _tokElse exp3) = elabEOp3 tokIf exp1 exp2 exp3
   elab (VF.EImpl exp1 tokImpl exp2) = elabEOp2 tokImpl exp1 exp2
   elab (VF.EAnd exp1 tokAnd exp2) = elabEOp2 tokAnd exp1 exp2
   elab (VF.EOr exp1 tokOr exp2) = elabEOp2 tokOr exp1 exp2
+  elab (VF.ENot tokNot exp) = elabEOp1 tokNot exp
+  elab (VF.ETrue tokTrue) = elabECon tokTrue
+  elab (VF.EFalse tokFalse) = elabECon tokFalse
+
+  -- Integers and reals.
   elab (VF.EEq exp1 tokEq exp2) = elabEOp2 tokEq exp1 exp2
   elab (VF.ENeq exp1 tokNeq exp2) = elabEOp2 tokNeq exp1 exp2
   elab (VF.ELe exp1 tokLe exp2) = elabEOp2 tokLe exp1 exp2
@@ -100,16 +112,14 @@ instance Elab VF.Expr VC.Expr where
   elab (VF.EDiv exp1 tokDiv exp2) = elabEOp2 tokDiv exp1 exp2
   elab (VF.EAdd exp1 tokAdd exp2) = elabEOp2 tokAdd exp1 exp2
   elab (VF.ESub exp1 tokSub exp2) = elabEOp2 tokSub exp1 exp2
-  elab (VF.EAt exp1 tokAt exp2) = elabEOp2 tokAt exp1 exp2
   elab (VF.ENeg tokNeg exp) = elabEOp1 tokNeg exp
+  elab (VF.ELitInt nat) = return $ VC.ELitInt nat
+  elab (VF.ELitReal real) = return $ VC.ELitReal real
 
-  -- Literals and constants
-  elab (VF.ETrue tokTrue) = elabECon tokTrue
-  elab (VF.EFalse tokFalse) = elabECon tokFalse
+  -- Tensors.
+  elab (VF.EAt exp1 tokAt exp2) = elabEOp2 tokAt exp1 exp2
   elab (VF.EAll tokAll) = elabECon tokAll
   elab (VF.EAny tokAny) = elabECon tokAny
-  elab (VF.ELitNat nat) = elab nat
-  elab (VF.ELitReal real) = elab real
   elab (VF.ELitTensor _tokSeqOpen exprs _tokSeqClose) = VC.ELitTensor <$> traverse elab exprs
 
 
@@ -119,20 +129,28 @@ instance Elab [VF.Decl] VC.Decl where
   elab [VF.DeclNetw name _tokElemOf typ] =
     VC.DeclNetw <$> elab name <*> elab typ
 
+  -- Elaborate a dataset declaration.
+  elab [VF.DeclData name _tokElemOf typ] =
+    VC.DeclData <$> elab name <*> elab typ
+
+  -- Elaborate a dataset declaration.
+  elab [VF.DefType name args typ] =
+    VC.DefType <$> elab name <*> traverse elab args <*> elab typ
+
   -- Elaborate a function definition.
-  elab [VF.DeclType _name _tokElemOf typ, VF.DeclExpr name args exp] =
-    VC.DeclExpr <$> elab name <*> elab typ <*> elabELams args exp
+  elab [VF.DefFunType _name _tokElemOf typ, VF.DefFunExpr name args exp] =
+    VC.DefFun <$> elab name <*> elab typ <*> elabELams args exp
 
   -- Why did you write the signature AFTER the function?
-  elab [VF.DeclExpr name1 args exp, VF.DeclType name2 tokElemOf typ] =
-    elab [VF.DeclType name2 tokElemOf typ, VF.DeclExpr name1 args exp]
+  elab [VF.DefFunExpr name1 args exp, VF.DefFunType name2 tokElemOf typ] =
+    elab [VF.DefFunType name2 tokElemOf typ, VF.DefFunExpr name1 args exp]
 
   -- Missing type or expression declaration.
-  elab [VF.DeclType name _tokElemOf _typ] =
-    throwError (MissingDeclExpr name)
+  elab [VF.DefFunType name _tokElemOf _typ] =
+    throwError (MissingDefFunExpr name)
 
-  elab [VF.DeclExpr name _args _exp] =
-    throwError (MissingDeclType name)
+  elab [VF.DefFunExpr name _args _exp] =
+    throwError (MissingDefFunType name)
 
   -- Multiple type of expression declarations with the same name.
   elab decls =
@@ -180,7 +198,7 @@ elabTList :: MonadElab m => Position -> [VF.Type] -> m VC.Type
 elabTList pos typs = foldr tCons tNil <$> traverse elab typs
   where
     tNil = VC.TCon (VC.Builtin (pos, "Nil"))
-    tCons typ1 typs1 = VC.TApp (VC.TApp (VC.TCon (VC.Builtin (pos, "Cons"))) typ1) typs1
+    tCons typ1 = VC.TApp (VC.TApp (VC.TCon (VC.Builtin (pos, "::"))) typ1)
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
@@ -188,32 +206,25 @@ elabELets :: MonadElab m => [VF.Decl] -> VF.Expr -> m VC.Expr
 elabELets decls exp = bindM2 (foldrM f) (elab exp) (elabDecls decls)
   where
     f :: MonadElab m => VC.Decl -> VC.Expr -> m VC.Expr
-    f (VC.DeclExpr name typ exp1) exp2 = return $ VC.ELet name typ exp1 exp2
+    f (VC.DefFun name typ exp1) exp2 = return $ VC.ELet (VC.MkEArg name typ) exp1 exp2
     f (VC.DeclNetw name _typ) _exp2 = throwError (LocalDeclNetw (coerce name))
+    f (VC.DeclData name _typ) _exp2 = throwError (LocalDeclData (coerce name))
+    f (VC.DefType name _args _typ) _exp2 = throwError (LocalDefType (coerce name))
 
 -- |Elaborate a lambda abstraction with /multiple/ bindings to a series of
 --  lambda abstractions with a single binding each.
 elabELams :: MonadElab m => [VF.Name] -> VF.Expr -> m VC.Expr
-elabELams args exp = bindM2 (foldrM f) (elab exp) (traverse elab args)
-  where
-    f :: MonadElab m => VC.Name -> VC.Expr -> m VC.Expr
-    f name exp2 = do meta <- tMeta; return $ VC.ELam name meta exp2
+elabELams args exp = liftA2 (foldr VC.ELam) (elab exp) (traverse elab args)
 
 -- |Elaborate a type abstraction with /multiple/ bindings to a series of type
 --  abstractions with a single binding each.
 elabETyLams :: MonadElab m => [VF.Name] -> VF.Expr -> m VC.Expr
-elabETyLams args exp = bindM2 (foldrM f) (elab exp) (traverse elab args)
-  where
-    f :: MonadElab m => VC.Name -> VC.Expr -> m VC.Expr
-    f name exp2 = do meta <- kMeta; return $ VC.ETyLam name meta exp2
+elabETyLams args exp = liftA2 (foldr VC.ETyLam) (elab exp) (traverse elab args)
 
 -- |Elaborate a universal quantifier with /multiple/ bindings to a series of
 --  universal quantifiers with a single binding each.
 elabTForalls :: MonadElab m => [VF.Name] -> VF.Type -> m VC.Type
-elabTForalls args typ1 = bindM2 (foldrM f) (elab typ1) (traverse elab args)
-  where
-    f :: MonadElab m => VC.Name -> VC.Type -> m VC.Type
-    f name typ2 = do meta <- kMeta; return $ VC.TForall name meta typ2
+elabTForalls args typ1 = liftA2 (foldr VC.TForall) (elab typ1) (traverse elab args)
 
 -- |Takes a list of declarations, and groups type and expression
 --  declarations for the same name. If any name does not have exactly one
@@ -222,8 +233,8 @@ elabDecls :: MonadElab m => [VF.Decl] -> m [VC.Decl]
 elabDecls decls = traverse elab (groupBy cond decls)
   where
     cond :: VF.Decl -> VF.Decl -> Bool
-    cond decl1 decl2 = not (isDeclNetw decl1) &&
-                       not (isDeclNetw decl2) &&
+    cond decl1 decl2 = isDefFun decl1 &&
+                       isDefFun decl2 &&
                        declName decl1 `sameName` declName decl2
 
 -- |Generate a kind meta-variable.
@@ -267,15 +278,18 @@ elabEOp3 :: (MonadElab m, Elab a VC.Builtin) => a -> VF.Expr -> VF.Expr -> VF.Ex
 elabEOp3 tokOp exp1 exp2 exp3 = VC.EApp <$> elabEOp2 tokOp exp1 exp2 <*> elab exp3
 
 -- |Check if a declaration is a network declaration.
-isDeclNetw :: VF.Decl -> Bool
-isDeclNetw (VF.DeclNetw _name _elemOf _typ) = True
-isDeclNetw _ = False
+isDefFun :: VF.Decl -> Bool
+isDefFun (VF.DefFunType _name _elemOf _typ) = True
+isDefFun (VF.DefFunExpr _name _args _exp) = True
+isDefFun _ = False
 
 -- |Get the name for any declaration.
 declName :: VF.Decl -> VF.Name
 declName (VF.DeclNetw name _elemOf _typ) = name
-declName (VF.DeclType name _elemOf _typ) = name
-declName (VF.DeclExpr name _args _exp) = name
+declName (VF.DeclData name _elemOf _typ) = name
+declName (VF.DefType name _args _type) = name
+declName (VF.DefFunType name _elemOf _typ) = name
+declName (VF.DefFunExpr name _args _exp) = name
 
 -- |Lift a binary /monadic/ function.
 bindM2 :: Monad m => (a -> b -> m c) -> m a -> m b -> m c
@@ -304,9 +318,8 @@ sameName x y =
 
 -- * Convert various token types to constructors or variables
 
-instance Elab VF.Nat  VC.Type where elab = fmap VC.TLitNat . elab
-instance Elab VF.Nat  VC.Expr where elab = fmap VC.ELitNat . elab
-instance Elab VF.Real VC.Expr where elab = fmap VC.ELitReal . elab
+instance Elab VF.Name VC.TArg where elab name = VC.MkTArg <$> elab name <*> kMeta
+instance Elab VF.Name VC.EArg where elab name = VC.MkEArg <$> elab name <*> tMeta
 instance Elab VF.Name VC.Type where elab = fmap VC.TVar . elab
 instance Elab VF.Name VC.Expr where elab = fmap VC.EVar . elab
 
@@ -333,22 +346,21 @@ instance Elab VF.TokMul    VC.Builtin where elab = return . coerce
 instance Elab VF.TokDiv    VC.Builtin where elab = return . coerce
 instance Elab VF.TokAdd    VC.Builtin where elab = return . coerce
 instance Elab VF.TokSub    VC.Builtin where elab = return . coerce
-instance Elab VF.TokNeg    VC.Builtin where elab = return . coerce
+instance Elab VF.TokNot    VC.Builtin where elab = return . coerce
 instance Elab VF.TokAt     VC.Builtin where elab = return . coerce
 instance Elab VF.TokType   VC.Builtin where elab = return . coerce
 instance Elab VF.TokTensor VC.Builtin where elab = return . coerce
 instance Elab VF.TokAll    VC.Builtin where elab = return . coerce
 instance Elab VF.TokAny    VC.Builtin where elab = return . coerce
 instance Elab VF.TokReal   VC.Builtin where elab = return . coerce
-instance Elab VF.TokNat    VC.Builtin where elab = return . coerce
+instance Elab VF.TokDim    VC.Builtin where elab = return . coerce
+instance Elab VF.TokInt    VC.Builtin where elab = return . coerce
 instance Elab VF.TokBool   VC.Builtin where elab = return . coerce
 instance Elab VF.TokTrue   VC.Builtin where elab = return . coerce
 instance Elab VF.TokFalse  VC.Builtin where elab = return . coerce
 instance Elab VF.TokList   VC.Builtin where elab = return . coerce
 instance Elab VF.TokNil    VC.Builtin where elab = return . coerce
 instance Elab VF.TokCons   VC.Builtin where elab = return . coerce
-instance Elab VF.Nat       VC.Nat     where elab = return . coerce
-instance Elab VF.Real      VC.Real    where elab = return . coerce
 instance Elab VF.Name      VC.Name    where elab = return . coerce
 
 -- -}

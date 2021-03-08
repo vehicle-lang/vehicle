@@ -32,24 +32,23 @@ position token TokMul      {"*"};
 position token TokDiv      {"/"};
 position token TokAdd      {"+"};
 position token TokSub      {"-"};
-position token TokNeg      {"~"};
+position token TokNot      {"~"};
 position token TokAt       {"!"};
 
 position token TokType     {"Type"};
+position token TokDim      {"Dim"};
 position token TokTensor   {"Tensor"};
 position token TokReal     {"Real"};
-position token TokNat      {"Nat"};
+position token TokInt      {"Int"};
 position token TokBool     {"Bool"};
 position token TokTrue     {"True"};
 position token TokFalse    {"False"};
 position token TokList     {"List"};
 position token TokNil      {"Nil"};
-position token TokCons     {"Cons"};
+position token TokCons     {"::"};
 position token TokSeqOpen  {"["};
 position token TokSeqClose {"]"};
 
-position token Nat         (digit+);
-position token Real        (digit+ '.' digit+ ('e' '-'? digit+)?);
 position token Name        (lower (letter | digit | '_')*) ;
 
 separator Name "";
@@ -57,9 +56,12 @@ separator Name "";
 
 -- * Kinds
 
+-- Core structure.
 KApp.  Kind  ::= Kind Kind1;
+
+-- Primitive kinds.
 KType. Kind1 ::= TokType;
-KNat.  Kind1 ::= TokNat;
+KDim.  Kind1 ::= TokDim;
 KList. Kind1 ::= TokList;
 
 coercions Kind 1;
@@ -67,18 +69,25 @@ coercions Kind 1;
 
 -- * Types
 
-TFun.     Type  ::= Type1 TokArrow Type;
+-- Core structure.
 TForall.  Type  ::= TokForall [Name] TokDot Type;
-TAdd.     Type1 ::= Type1 TokAdd Type2;
 TApp.     Type2 ::= Type2 Type3;
 TVar.     Type3 ::= Name;
-TTensor.  Type3 ::= TokTensor;
+
+-- Primitive types.
+TFun.     Type  ::= Type1 TokArrow Type;
 TBool.    Type3 ::= TokBool;
 TReal.    Type3 ::= TokReal;
-TNat.     Type3 ::= TokNat;
+TInt.     Type3 ::= TokInt;
+TTensor.  Type3 ::= TokTensor;
+
+-- Type-level dimensions.
+TAdd.     Type1 ::= Type1 TokAdd Type2;
+TLitDim.  Type3 ::= Integer; -- confusingly, this means natural
+
+-- Type-level lists.
 TNil.     Type3 ::= TokNil;
-TCons.    Type3 ::= TokCons;
-TLitNat.  Type3 ::= Nat;
+TCons.    Type1 ::= Type1 TokCons Type;
 TLitList. Type3 ::= TokSeqOpen [Type] TokSeqClose;
 
 coercions Type 4;
@@ -99,13 +108,27 @@ separator Type ",";
 layout "let";
 layout stop "in";
 
+-- Core structure.
 EAnn.       Expr   ::= Expr1 TokElemOf Type;
 ELet.       Expr1  ::= "let" "{" [Decl] "}" "in" Expr1;
-EIf.        Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;
 ELam.       Expr2  ::= TokLambda [Name] TokArrow Expr2;
+EApp.       Expr11 ::= Expr11 Expr12;
+EVar.       Expr12 ::= Name;
+
+-- NOTE: these aren't part of the surface syntax.
+internal ETyApp. Expr ::= Expr Type;
+internal ETyLam. Expr ::= TokLambda "{" [Name] "}" TokArrow Expr;
+
+-- Conditional expressions.
+EIf.        Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;
 EImpl.      Expr3  ::= Expr4 TokImpl Expr3;
 EAnd.       Expr4  ::= Expr5 TokAnd Expr4;
 EOr.        Expr5  ::= Expr6 TokOr Expr5;
+ENot.       Expr9  ::= TokNot Expr9;
+ETrue.      Expr12 ::= TokTrue;
+EFalse.     Expr12 ::= TokFalse;
+
+-- Integers and reals.
 EEq.        Expr6  ::= Expr7 TokEq Expr7;
 ENeq.       Expr6  ::= Expr7 TokNeq Expr7;
 ELe.        Expr6  ::= Expr7 TokLe Expr7;
@@ -116,44 +139,31 @@ EMul.       Expr7  ::= Expr7 TokMul Expr8;
 EDiv.       Expr7  ::= Expr7 TokDiv Expr8;
 EAdd.       Expr8  ::= Expr8 TokAdd Expr9;
 ESub.       Expr8  ::= Expr8 TokSub Expr9;
-ENeg.       Expr9  ::= TokNeg Expr9;
+ENeg.       Expr9  ::= TokSub Expr9;
+ELitInt.    Expr12 ::= Integer;
+ELitReal.   Expr12 ::= Double;
+
+-- Tensors.
 EAt.        Expr10 ::= Expr10 TokAt Expr11;
-EApp.       Expr11 ::= Expr11 Expr12;
-EVar.       Expr12 ::= Name;
-ETrue.      Expr12 ::= TokTrue;
-EFalse.     Expr12 ::= TokFalse;
 EAll.       Expr12 ::= TokAll;
 EAny.       Expr12 ::= TokAny;
-ELitNat.    Expr12 ::= Nat;
-ELitReal.   Expr12 ::= Real;
 ELitTensor. Expr12 ::= TokSeqOpen [Expr] TokSeqClose;
-
--- NOTE:
---
---   Type application and abstraction aren't part of the surface syntax, so
---   they're marked as 'internal'.
---
-
-internal ETyApp. Expr ::= Expr Type;
-internal ETyLam. Expr ::= TokLambda "{" [Name] "}" TokArrow Expr;
 
 coercions Expr 12;
 
 separator Expr ",";
 
--- * Bounds for quantifiers
-
-BType. Bound ::= Type;
-BExpr. Bound ::= Expr;
-
 
 -- * Declarations
 
-DeclNetw. Decl ::= "network" Name TokElemOf Type;
-DeclType. Decl ::= Name TokElemOf Type;
-DeclExpr. Decl ::= Name [Name] "=" Expr;
+DeclNetw.   Decl ::= "network" Name TokElemOf Type;
+DeclData.   Decl ::= "dataset" Name TokElemOf Type;
+DefType.    Decl ::= Name [Name] "=" Type;
+DefFunType. Decl ::= Name TokElemOf Type;
+DefFunExpr. Decl ::= Name [Name] "=" Expr;
 
 separator Decl ";";
+
 
 -- * Program
 

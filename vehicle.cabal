@@ -1,7 +1,7 @@
 cabal-version: 1.12
 
 name:           vehicle
-version:        0.1.0.0
+version:        0.1.0.1
 description:    Please see the README on GitHub at <https://github.com/wenkokke/vehicle#readme>
 homepage:       https://github.com/wenkokke/vehicle#readme
 bug-reports:    https://github.com/wenkokke/vehicle/issues

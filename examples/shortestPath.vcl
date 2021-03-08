@@ -1,15 +1,15 @@
 -- Tensors with 1 dimensional inputs should automatically get collapsed,
--- i.e., `Tensor [1] Nat` should be equivalent to `Nat`.
+-- i.e., `Tensor [1] Int` should be equivalent to `Int`.
 
-network shortestPath : Nat -> Nat
+network shortestPath : Int -> Int
 
-validInput : Nat -> Bool
+validInput : Int -> Bool
 validInput x = 0 <= x && x <= 15
 
-extendsSomePath : Nat -> Bool
+extendsSomePath : Int -> Bool
 extendsSomePath i = any (\j -> shortestPath i == shortestPath j + 1) validInput
 
-usesShortestPath : Nat -> Bool
+usesShortestPath : Int -> Bool
 usesShortestPath i = all (\j -> shortestPath i <= shortestPath j + 1) validInput
 
 --- The shortest path to the origin is always the trivial path.

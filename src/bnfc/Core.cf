@@ -11,30 +11,37 @@ position token Builtin
 	| {"*"} | {"/"} | {"+"} | {"-"} | {"!"} | {"~"}
 	| {"Type"} | {"Tensor"} | {"Real"} | {"Nat"}
 	| {"Bool"} | {"True"} | {"False"}
-	| {"List"} | {"Nil"} | {"Cons"});
+	| {"List"} | {"Nil"} | {"::"});
 
-position token Nat  (digit+);
-position token Real (digit+ '.' digit+ ('e' '-'? digit+)?);
 position token Name (lower (letter | digit | '_')*) ;
 
 -- * Kinds
 
+-- Core structure.
 KApp.  Kind  ::= Kind Kind1;
 KCon.  Kind1 ::= Builtin;
 
+-- NOTE: kind meta-variables aren't part of the surface syntax
+internal KMeta. Kind ::= "?" Integer;
+
 coercions Kind 1;
 
-internal KMeta. Kind ::= "?" Integer;
 
 -- * Types
 
+-- Core structure.
+TForall.  Type  ::= "forall" "(" TArg ")" Type1;
 TApp.     Type  ::= Type Type1;
-TForall.  Type  ::= "forall" "(" Name Kind1 ")" Type1;
 TVar.     Type1 ::= Name;
 TCon.     Type1 ::= Builtin;
-TLitNat.  Type1 ::= Nat;
+
+-- Type-level dimensions.
+TLitDim.  Type1 ::= Integer; -- NOTE: this means natural
+
+-- Type-level lists.
 TLitList. Type1 ::= "[" [Type1] "]";
 
+-- NOTE: type meta-variables aren't part of the surface syntax
 internal TMeta. Type ::= "?" Integer;
 
 separator Type1 "";
@@ -44,16 +51,21 @@ coercions Type 1;
 
 -- * Expressions
 
-EApp.       Expr  ::= Expr Expr1;
-ELam.       Expr  ::= "lambda" "(" Name Type1 ")" Expr1;
-ETyApp.     Expr  ::= Expr "{" Type "}";
-ETyLam.     Expr  ::= "lambda" "{" Name Kind1 "}" Expr1;
-ELet.       Expr  ::= "let" "(" "(" Name Type1 ")" Expr1 ")" Expr1;
+-- Core structure.
 EAnn.       Expr  ::= Expr ":type" Type;
+ELet.       Expr  ::= "let" "(" EArg Expr1 ")" Expr1;
+ELam.       Expr  ::= "lambda" "(" EArg ")" Expr1;
+EApp.       Expr  ::= Expr Expr1;
 EVar.       Expr1 ::= Name;
+ETyApp.     Expr  ::= Expr "{" Type "}";
+ETyLam.     Expr  ::= "lambda" "{" TArg "}" Expr1;
 ECon.       Expr1 ::= Builtin;
-ELitNat.    Expr1 ::= Nat;
-ELitReal.   Expr1 ::= Real;
+
+-- Naturals and reals.
+ELitInt.    Expr1 ::= Integer; -- NOTE: this means natural
+ELitReal.   Expr1 ::= Double;
+
+-- Tensors.
 ELitTensor. Expr1 ::= "[" [Expr1] "]";
 
 separator Expr1 "";
@@ -64,9 +76,23 @@ coercions Expr 1;
 -- * Declarations
 
 DeclNetw. Decl ::= "(" "declare-network" Name Type1 ")";
-DeclExpr. Decl ::= "(" "define-fun" Name Type1 Expr1 ")";
+DeclData. Decl ::= "(" "declare-dataset" Name Type1 ")";
+DefType.  Decl ::= "(" "define-type" Name "(" [TArg] ")" Type1 ")";
+DefFun.   Decl ::= "(" "define-fun" Name Type1 Expr1 ")";
 
 separator Decl "";
+
+
+-- * Arguments.
+
+MkTArg. TArg ::= "(" Name Kind1 ")";
+
+separator TArg "";
+
+MkEArg. EArg ::= "(" Name Type1 ")";
+
+separator EArg "";
+
 
 -- * Program
 
