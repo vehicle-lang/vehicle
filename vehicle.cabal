@@ -23,6 +23,8 @@ source-repository head
 library
   exposed-modules:    Vehicle.Core.Parse
                     , Vehicle.Core.Print
+                    , Vehicle.Core.Instance.Recursive
+                    , Vehicle.Frontend.Instance.Recursive
                     , Vehicle.Frontend.Elaborate
                     , Vehicle.Frontend.Parse
                     , Vehicle.Frontend.Print
@@ -31,20 +33,19 @@ library
                     , Vehicle.Core.ErrM
                     , Vehicle.Core.Lex
                     , Vehicle.Core.Par
-                    , Vehicle.Core.Skel
                     , Vehicle.Frontend.Abs
                     , Vehicle.Frontend.ErrM
                     , Vehicle.Frontend.Layout
                     , Vehicle.Frontend.Lex
                     , Vehicle.Frontend.Par
-                    , Vehicle.Frontend.Skel
   hs-source-dirs:     src/hs
                     , gen/hs
-  build-depends:      array        >=0.5 && <1
-                    , base         >=4.7 && <5
-                    , text         >=1.2 && <2
-                    , monad-supply >=0.7 && <1
-                    , mtl          >=2.2 && <3
+  build-depends:      array             >=0.5 && <1
+                    , base              >=4.7 && <5
+                    , text              >=1.2 && <2
+                    , monad-supply      >=0.7 && <1
+                    , mtl               >=2.2 && <3
+                    , recursion-schemes >=5.2 && <6
   build-tools:        alex
                     , happy
   default-language:   Haskell2010
