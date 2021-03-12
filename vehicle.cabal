@@ -23,7 +23,9 @@ source-repository head
 library
   exposed-modules:    Vehicle.Core.Parse
                     , Vehicle.Core.Print
+                    , Vehicle.Core.Instance
                     , Vehicle.Core.Instance.Recursive
+                    , Vehicle.Frontend.Instance
                     , Vehicle.Frontend.Instance.Recursive
                     , Vehicle.Frontend.Elaborate
                     , Vehicle.Frontend.Parse

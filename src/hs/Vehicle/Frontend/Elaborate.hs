@@ -1,39 +1,31 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE UndecidableInstances  #-}
 
-module Vehicle.Frontend.Elaborate where
+module Vehicle.Frontend.Elaborate
+  ( Elab(..)
+  , ElabError(..)
+  , MonadElab
+  , runElab
+  ) where
 
 
-import           Prelude hiding (exp)
-import           Control.Applicative (liftA2)
-import           Control.Exception
+import           Control.Exception (Exception)
 import           Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
 import           Control.Monad.Supply (MonadSupply(..), Supply, evalSupply)
-import           Data.Coerce (Coercible,coerce)
+import           Data.Coerce (Coercible, coerce)
 import           Data.Foldable (foldrM)
+import           Data.Functor.Foldable (fold)
 import           Data.List (groupBy)
 import           Data.Maybe (fromMaybe)
 import           Data.Text (Text)
-import qualified Vehicle.Frontend.Abs as VF
 import qualified Vehicle.Core.Abs as VC
-
-
--- |Errors that may arise during elaboration.
-data ElabError
-  = MissingDefFunType VF.Name
-  | MissingDefFunExpr VF.Name
-  | DuplicateName [VF.Name]
-  | LocalDeclNetw VF.Name
-  | LocalDeclData VF.Name
-  | LocalDefType VF.Name
-  | Unknown
-  deriving (Show)
-
-instance Exception ElabError
+import qualified Vehicle.Frontend.Abs as VF
+import qualified Vehicle.Frontend.Instance.Recursive as VF
 
 -- |Constraint for the monad stack used by the elaborator.
 type MonadElab m = (MonadError ElabError m, MonadSupply Integer m)
@@ -45,123 +37,126 @@ runElab x = fromMaybe (Left Unknown) (evalSupply (runExceptT x) [0..])
 class Elab vf vc where
   elab :: MonadElab m => vf -> m vc
 
-
+-- |Elaborate kinds.
 instance Elab VF.Kind VC.Kind where
+  elab = fold $ \case
 
-  -- Core structure.
-  elab (VF.KApp kind kind2) = VC.KApp <$> elab kind <*> elab kind2
+    -- Core structure.
+    VF.KAppF k1 k2 -> VC.KApp <$> k1 <*> k2
 
-  -- Primitive kinds.
-  elab (VF.KType tokType) = elabKCon tokType
-  elab (VF.KDim  tokDim) = elabKCon tokDim
-  elab (VF.KList tokList) = elabKCon tokList
+    -- Primitive kinds.
+    VF.KTypeF tk   -> kCon tk
+    VF.KDimF tk    -> kCon tk
+    VF.KListF tk   -> kCon tk
 
-
+-- |Elaborate types.
 instance Elab VF.Type VC.Type where
+  elab = fold $ \case
 
-  -- Core structure.
-  elab (VF.TForall _tokForall args _tokDot typ) = elabTForalls args typ
-  elab (VF.TApp typ1 typ2) = VC.TApp <$> elab typ1 <*> elab typ2
-  elab (VF.TVar name) = elab name
+    -- Core structure.
+    VF.TForallF _tk1 ns _tk2 t -> foldr VC.TForall <$> t <*> traverse elab ns
+    VF.TAppF t1 t2             -> VC.TApp <$> t1 <*> t2
+    VF.TVarF n                 -> elab n
 
-  -- Primitive types.
-  elab (VF.TFun typ1 tokArrow typ2) = elabTOp2 tokArrow typ1 typ2
-  elab (VF.TBool tokBool) = elabTCon tokBool
-  elab (VF.TReal tokReal) = elabTCon tokReal
-  elab (VF.TInt tokInt) = elabTCon tokInt
-  elab (VF.TList tokList) = elabTCon tokList
-  elab (VF.TTensor tokTensor) = elabTCon tokTensor
+    -- Primitive types.
+    VF.TFunF t1 tk t2          -> tOp2 tk t1 t2
+    VF.TBoolF tk               -> tCon tk
+    VF.TRealF tk               -> tCon tk
+    VF.TIntF tk                -> tCon tk
+    VF.TListF tk               -> tCon tk
+    VF.TTensorF tk             -> tCon tk
 
-  -- Type-level naturals.
-  elab (VF.TAdd typ1 tokAdd typ2) = elabTOp2 tokAdd typ1 typ2
-  elab (VF.TLitDim nat) = return $ VC.TLitDim nat
+    -- Type-level dimensions.
+    VF.TAddF t1 tk t2          -> tOp2 tk t1 t2
+    VF.TLitDimF nat            -> return $ VC.TLitDim nat
 
-  -- Type-level lists.
-  elab (VF.TNil tokNil) = elabTCon tokNil
-  elab (VF.TCons typ1 tokCons typ2) = elabTOp2 tokCons typ1 typ2
-  elab (VF.TLitList _tokSeqOpen typs _tokSeqClose) = VC.TLitList <$> traverse elab typs
+    -- Type-level lists.
+    VF.TNilF tk                -> tCon tk
+    VF.TConsF t1 tk t2         -> tOp2 tk t1 t2
+    VF.TLitListF _tk1 ts _tk2  -> VC.TLitList <$> sequence ts
 
-
+-- |Elaborate expressions.
 instance Elab VF.Expr VC.Expr where
+  elab = fold $ \case
 
-  -- Core structure.
-  elab (VF.EAnn exp _tokElemOf typ) = VC.EAnn <$> elab exp <*> elab typ
-  elab (VF.ELet decls exp) = elabELets decls exp
-  elab (VF.ELam _tokLambda args _tokArrow exp) = elabELams args exp
-  elab (VF.EApp exp exp2) = VC.EApp <$> elab exp <*> elab exp2
-  elab (VF.EVar name) = elab name
-  elab (VF.ETyApp exp typ) = VC.ETyApp <$> elab exp <*> elab typ
-  elab (VF.ETyLam _tokLambda args _tokArrow exp) = elabETyLams args exp
+    -- Core structure.
+    VF.EAnnF e _tk t               -> VC.EAnn <$> e <*> elab t
+    VF.ELetF ds e                  -> eLet (eDecls ds) e
+    VF.ELamF _tk1 ns _tk2 e        -> foldr VC.ELam <$> e <*> traverse elab ns
+    VF.EAppF e1 e2                 -> VC.EApp <$> e1 <*> e2
+    VF.EVarF n                     -> elab n
+    VF.ETyAppF e t                 -> VC.ETyApp <$> e <*> elab t
+    VF.ETyLamF _tk1 ns _tk2 e      -> foldr VC.ETyLam <$> e <*> traverse elab ns
 
-  -- Conditional expressions.
-  elab (VF.EIf tokIf exp1 _tokThen exp2 _tokElse exp3) = elabEOp3 tokIf exp1 exp2 exp3
-  elab (VF.EImpl exp1 tokImpl exp2) = elabEOp2 tokImpl exp1 exp2
-  elab (VF.EAnd exp1 tokAnd exp2) = elabEOp2 tokAnd exp1 exp2
-  elab (VF.EOr exp1 tokOr exp2) = elabEOp2 tokOr exp1 exp2
-  elab (VF.ENot tokNot exp) = elabEOp1 tokNot exp
-  elab (VF.ETrue tokTrue) = elabECon tokTrue
-  elab (VF.EFalse tokFalse) = elabECon tokFalse
+    -- Conditional expressions.
+    VF.EIfF tk1 e1 _tk2 e2 _tk3 e3 -> eOp3 tk1 e1 e2 e3
+    VF.EImplF e1 tk e2             -> eOp2 tk e1 e2
+    VF.EAndF e1 tk e2              -> eOp2 tk e1 e2
+    VF.EOrF e1 tk e2               -> eOp2 tk e1 e2
+    VF.ENotF tk e                  -> eOp1 tk e
+    VF.ETrueF tk                   -> eCon tk
+    VF.EFalseF tk                  -> eCon tk
 
-  -- Integers and reals.
-  elab (VF.EEq exp1 tokEq exp2) = elabEOp2 tokEq exp1 exp2
-  elab (VF.ENeq exp1 tokNeq exp2) = elabEOp2 tokNeq exp1 exp2
-  elab (VF.ELe exp1 tokLe exp2) = elabEOp2 tokLe exp1 exp2
-  elab (VF.ELt exp1 tokLt exp2) = elabEOp2 tokLt exp1 exp2
-  elab (VF.EGe exp1 tokGe exp2) = elabEOp2 tokGe exp1 exp2
-  elab (VF.EGt exp1 tokGt exp2) = elabEOp2 tokGt exp1 exp2
-  elab (VF.EMul exp1 tokMul exp2) = elabEOp2 tokMul exp1 exp2
-  elab (VF.EDiv exp1 tokDiv exp2) = elabEOp2 tokDiv exp1 exp2
-  elab (VF.EAdd exp1 tokAdd exp2) = elabEOp2 tokAdd exp1 exp2
-  elab (VF.ESub exp1 tokSub exp2) = elabEOp2 tokSub exp1 exp2
-  elab (VF.ENeg tokNeg exp) = elabEOp1 tokNeg exp
-  elab (VF.ELitInt nat) = return $ VC.ELitInt nat
-  elab (VF.ELitReal real) = return $ VC.ELitReal real
+    -- Integers and reals.
+    VF.EEqF e1 tk e2               -> eOp2 tk e1 e2
+    VF.ENeqF e1 tk e2              -> eOp2 tk e1 e2
+    VF.ELeF e1 tk e2               -> eOp2 tk e1 e2
+    VF.ELtF e1 tk e2               -> eOp2 tk e1 e2
+    VF.EGeF e1 tk e2               -> eOp2 tk e1 e2
+    VF.EGtF e1 tk e2               -> eOp2 tk e1 e2
+    VF.EMulF e1 tk e2              -> eOp2 tk e1 e2
+    VF.EDivF e1 tk e2              -> eOp2 tk e1 e2
+    VF.EAddF e1 tk e2              -> eOp2 tk e1 e2
+    VF.ESubF e1 tk e2              -> eOp2 tk e1 e2
+    VF.ENegF tk e                  -> eOp1 tk e
+    VF.ELitIntF nat                -> return $ VC.ELitInt nat
+    VF.ELitRealF real              -> return $ VC.ELitReal real
 
-  -- Lists and tensors.
-  elab (VF.ECons exp1 tokCons exp2) = elabEOp2 tokCons exp1 exp2
-  elab (VF.ENil tokNil) = elabECon tokNil
-  elab (VF.EAt exp1 tokAt exp2) = elabEOp2 tokAt exp1 exp2
-  elab (VF.EAll tokAll) = elabECon tokAll
-  elab (VF.EAny tokAny) = elabECon tokAny
-  elab (VF.ELitSeq _tokSeqOpen exprs _tokSeqClose) = VC.ELitSeq <$> traverse elab exprs
+    -- Lists and tensors.
+    VF.EConsF e1 tk e2             -> eOp2 tk e1 e2
+    VF.ENilF tk                    -> eCon tk
+    VF.EAtF e1 tk e2               -> eOp2 tk e1 e2
+    VF.EAllF tk                    -> eCon tk
+    VF.EAnyF tk                    -> eCon tk
+    VF.ELitSeqF _tk1 es _tk2       -> VC.ELitSeq <$> sequence es
 
-
+-- |Elaborate declarations.
 instance Elab [VF.Decl] VC.Decl where
 
   -- Elaborate a network declaration.
-  elab [VF.DeclNetw name _tokElemOf typ] =
-    VC.DeclNetw <$> elab name <*> elab typ
+  elab [VF.DeclNetw n _tk t] =
+    VC.DeclNetw <$> elab n <*> elab t
 
   -- Elaborate a dataset declaration.
-  elab [VF.DeclData name _tokElemOf typ] =
-    VC.DeclData <$> elab name <*> elab typ
+  elab [VF.DeclData n _tk t] =
+    VC.DeclData <$> elab n <*> elab t
 
   -- Elaborate a dataset declaration.
-  elab [VF.DefType name args typ] =
-    VC.DefType <$> elab name <*> traverse elab args <*> elab typ
+  elab [VF.DefType n ns t] =
+    VC.DefType <$> elab n <*> traverse elab ns <*> elab t
 
   -- Elaborate a function definition.
-  elab [VF.DefFunType _name _tokElemOf typ, VF.DefFunExpr name args exp] =
-    VC.DefFun <$> elab name <*> elab typ <*> elabELams args exp
+  elab [VF.DefFunType _n _tk t, VF.DefFunExpr n ns e] =
+    VC.DefFun <$> elab n <*> elab t <*> (foldr VC.ETyLam <$> elab e <*> traverse elab ns)
 
   -- Why did you write the signature AFTER the function?
-  elab [VF.DefFunExpr name1 args exp, VF.DefFunType name2 tokElemOf typ] =
-    elab [VF.DefFunType name2 tokElemOf typ, VF.DefFunExpr name1 args exp]
+  elab [VF.DefFunExpr n1 ns e, VF.DefFunType n2 tk t] =
+    elab [VF.DefFunType n2 tk t, VF.DefFunExpr n1 ns e]
 
   -- Missing type or expression declaration.
-  elab [VF.DefFunType name _tokElemOf _typ] =
-    throwError (MissingDefFunExpr name)
+  elab [VF.DefFunType n _tk _t] =
+    throwError (MissingDefFunExpr n)
 
-  elab [VF.DefFunExpr name _args _exp] =
-    throwError (MissingDefFunType name)
+  elab [VF.DefFunExpr n _ns _e] =
+    throwError (MissingDefFunType n)
 
-  -- Multiple type of expression declarations with the same name.
-  elab decls =
-    throwError (DuplicateName (map declName decls))
+  -- Multiple type of expression declarations with the same n.
+  elab ds =
+    throwError (DuplicateName (map declName ds))
 
-
+-- |Elaborate programs.
 instance Elab VF.Prog VC.Prog where
-  elab (VF.Main decls) = VC.Main <$> elabDecls decls
+  elab (VF.Main decls) = VC.Main <$> eDecls decls
 
 
 --------------------------------------------------------------------------------
@@ -196,49 +191,30 @@ instance Elab VF.Prog VC.Prog where
 --
 --------------------------------------------------------------------------------
 
-{-# DEPRECATED elabTList "Use TLitList." #-}
-elabTList :: MonadElab m => Position -> [VF.Type] -> m VC.Type
-elabTList pos typs = foldr tCons tNil <$> traverse elab typs
-  where
-    tNil = VC.TCon (VC.Builtin (pos, "Nil"))
-    tCons typ1 = VC.TApp (VC.TApp (VC.TCon (VC.Builtin (pos, "::"))) typ1)
-
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
-elabELets :: MonadElab m => [VF.Decl] -> VF.Expr -> m VC.Expr
-elabELets decls exp = bindM2 (foldrM f) (elab exp) (elabDecls decls)
+eLet :: MonadElab m => m [VC.Decl] -> m VC.Expr -> m VC.Expr
+eLet ds e = bindM2 (foldrM declToLet) e ds
   where
-    f :: MonadElab m => VC.Decl -> VC.Expr -> m VC.Expr
-    f (VC.DefFun name typ exp1) exp2 = return $ VC.ELet (VC.MkEArg name typ) exp1 exp2
-    f (VC.DeclNetw name _typ) _exp2 = throwError (LocalDeclNetw (coerce name))
-    f (VC.DeclData name _typ) _exp2 = throwError (LocalDeclData (coerce name))
-    f (VC.DefType name _args _typ) _exp2 = throwError (LocalDefType (coerce name))
-
--- |Elaborate a lambda abstraction with /multiple/ bindings to a series of
---  lambda abstractions with a single binding each.
-elabELams :: MonadElab m => [VF.Name] -> VF.Expr -> m VC.Expr
-elabELams args exp = liftA2 (foldr VC.ELam) (elab exp) (traverse elab args)
-
--- |Elaborate a type abstraction with /multiple/ bindings to a series of type
---  abstractions with a single binding each.
-elabETyLams :: MonadElab m => [VF.Name] -> VF.Expr -> m VC.Expr
-elabETyLams args exp = liftA2 (foldr VC.ETyLam) (elab exp) (traverse elab args)
+    declToLet :: MonadElab m => VC.Decl -> VC.Expr -> m VC.Expr
+    declToLet (VC.DefFun n t e1) e2 = return $ VC.ELet (VC.MkEArg n t) e1 e2
+    declToLet (VC.DeclNetw n _t) _e2 = throwError (LocalDeclNetw (coerce n))
+    declToLet (VC.DeclData n _t) _e2 = throwError (LocalDeclData (coerce n))
+    declToLet (VC.DefType n _ns _t) _e2 = throwError (LocalDefType (coerce n))
 
 -- |Elaborate a universal quantifier with /multiple/ bindings to a series of
 --  universal quantifiers with a single binding each.
-elabTForalls :: MonadElab m => [VF.Name] -> VF.Type -> m VC.Type
-elabTForalls args typ1 = liftA2 (foldr VC.TForall) (elab typ1) (traverse elab args)
+-- tForall :: MonadElab m => m [VC.Name] -> m VC.Type -> m VC.Type
+-- tForall args t1 = foldr VC.TForall <$> t1 <*> args
 
 -- |Takes a list of declarations, and groups type and expression
 --  declarations for the same name. If any name does not have exactly one
 --  type and one expression declaration, an error is returned.
-elabDecls :: MonadElab m => [VF.Decl] -> m [VC.Decl]
-elabDecls decls = traverse elab (groupBy cond decls)
+eDecls :: MonadElab m => [VF.Decl] -> m [VC.Decl]
+eDecls decls = traverse elab (groupBy cond decls)
   where
     cond :: VF.Decl -> VF.Decl -> Bool
-    cond decl1 decl2 = isDefFun decl1 &&
-                       isDefFun decl2 &&
-                       declName decl1 `sameName` declName decl2
+    cond d1 d2 = isDefFun d1 && isDefFun d2 && declName d1 `sameName` declName d2
 
 -- |Generate a kind meta-variable.
 kMeta :: MonadElab m => m VC.Kind
@@ -249,36 +225,36 @@ tMeta :: MonadElab m => m VC.Type
 tMeta = VC.TMeta <$> supply
 
 -- |Elaborate any builtin token to a kind.
-elabKCon :: (MonadElab m, Elab a VC.Builtin) => a -> m VC.Kind
-elabKCon = fmap VC.KCon . elab
+kCon :: (MonadElab m, Elab a VC.Builtin) => a -> m VC.Kind
+kCon = fmap VC.KCon . elab
 
 -- |Elaborate any builtin token to a type.
-elabTCon :: (MonadElab m, Elab a VC.Builtin) => a -> m VC.Type
-elabTCon = fmap VC.TCon . elab
+tCon :: (MonadElab m, Elab a VC.Builtin) => a -> m VC.Type
+tCon = fmap VC.TCon . elab
 
 -- |Elaborate any builtin token to an expression.
-elabECon :: (MonadElab m, Elab a VC.Builtin) => a -> m VC.Expr
-elabECon = fmap VC.ECon . elab
+eCon :: (MonadElab m, Elab a VC.Builtin) => a -> m VC.Expr
+eCon = fmap VC.ECon . elab
 
 -- |Elaborate a unary function symbol with its argument to a type.
-elabTOp1 :: (MonadElab m, Elab a VC.Builtin) => a -> VF.Type -> m VC.Type
-elabTOp1 tokOp typ1 = VC.TApp <$> elabTCon tokOp <*> elab typ1
+tOp1 :: (MonadElab m, Elab a VC.Builtin) => a -> m VC.Type -> m VC.Type
+tOp1 tkOp t1 = VC.TApp <$> tCon tkOp <*> t1
 
 -- |Elaborate a binary function symbol with its arguments to a type.
-elabTOp2 :: (MonadElab m, Elab a VC.Builtin) => a -> VF.Type -> VF.Type -> m VC.Type
-elabTOp2 tokOp typ1 typ2 = VC.TApp <$> elabTOp1 tokOp typ1 <*> elab typ2
+tOp2 :: (MonadElab m, Elab a VC.Builtin) => a -> m VC.Type -> m VC.Type -> m VC.Type
+tOp2 tkOp t1 t2 = VC.TApp <$> tOp1 tkOp t1 <*> t2
 
 -- |Elaborate a unary function symbol with its argument to an expression.
-elabEOp1 :: (MonadElab m, Elab a VC.Builtin) => a -> VF.Expr -> m VC.Expr
-elabEOp1 tokOp exp1 = VC.EApp <$> elabECon tokOp <*> elab exp1
+eOp1 :: (MonadElab m, Elab a VC.Builtin) => a -> m VC.Expr -> m VC.Expr
+eOp1 tkOp e1 = VC.EApp <$> eCon tkOp <*> e1
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-elabEOp2 :: (MonadElab m, Elab a VC.Builtin) => a -> VF.Expr -> VF.Expr -> m VC.Expr
-elabEOp2 tokOp exp1 exp2 = VC.EApp <$> elabEOp1 tokOp exp1 <*> elab exp2
+eOp2 :: (MonadElab m, Elab a VC.Builtin) => a -> m VC.Expr -> m VC.Expr -> m VC.Expr
+eOp2 tkOp e1 e2 = VC.EApp <$> eOp1 tkOp e1 <*> e2
 
 -- |Elaborate a ternary function symbol with its arguments to an expression.
-elabEOp3 :: (MonadElab m, Elab a VC.Builtin) => a -> VF.Expr -> VF.Expr -> VF.Expr -> m VC.Expr
-elabEOp3 tokOp exp1 exp2 exp3 = VC.EApp <$> elabEOp2 tokOp exp1 exp2 <*> elab exp3
+eOp3 :: (MonadElab m, Elab a VC.Builtin) => a -> m VC.Expr -> m VC.Expr -> m VC.Expr -> m VC.Expr
+eOp3 tkOp e1 e2 e3 = VC.EApp <$> eOp2 tkOp e1 e2 <*> e3
 
 -- |Check if a declaration is a network declaration.
 isDefFun :: VF.Decl -> Bool
@@ -302,21 +278,36 @@ bindM2 f ma mb = do a <- ma; b <- mb; f a b
 --  number and a column number.
 type Position = (Int, Int)
 
+-- |Position tokens in BNFC generated grammars are represented by a pair of a
+-- position and the text token.
+type Token = (Position, Text)
+
 -- |Constraint for newtypes which are /position tokens/. Depends on the fact
 --  that any /position token/ generated by BNFC with @--text@ will be a newtype
 --  wrapping '(Position, Text)', and hence all are coercible to it. This breaks
 --  if the @--text@ option is not passed, or if the token is not marked with the
 --  @position@ keyword.
-type IsToken a = Coercible a (Position, Text)
-
-posOf :: IsToken a => a -> Position
-posOf x =
-  let (pos, _tok) = coerce x :: (Position, Text) in pos
+type IsToken a = Coercible a Token
 
 -- |Compare the text portion of any two position tokens.
 sameName :: IsToken a => a -> a -> Bool
-sameName x y =
-  snd (coerce x :: (Position, Text)) == snd (coerce y :: (Position, Text))
+sameName x y = snd (coerce x :: Token) == snd (coerce y :: Token)
+
+
+-- * Errors
+
+-- | Errors that may arise during elaboration.
+data ElabError
+  = MissingDefFunType VF.Name
+  | MissingDefFunExpr VF.Name
+  | DuplicateName [VF.Name]
+  | LocalDeclNetw VF.Name
+  | LocalDeclData VF.Name
+  | LocalDefType VF.Name
+  | Unknown
+  deriving (Show)
+
+instance Exception ElabError
 
 
 -- * Convert various token types to constructors or variables
