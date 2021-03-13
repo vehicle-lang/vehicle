@@ -6,12 +6,10 @@ module Vehicle.Core.Type where
 import Data.Text (Text)
 import Data.Data (Data, Typeable)
 import GHC.Generics (Generic)
+import Vehicle.Frontend.Type (Position)
 
-newtype Builtin = Builtin ((Int, Int), Text)
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-newtype Name = Name ((Int, Int), Text)
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+-- * Abstract syntax tree for Vehicle Core
 
 data Kind builtin ann
   = KApp ann (Kind builtin ann) (Kind builtin ann)
@@ -62,10 +60,54 @@ data EArg name builtin ann
   = EArg ann name (Type name builtin ann)
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-type PlainKind = Kind      Builtin ()
-type PlainType = Type Name Builtin ()
-type PlainExpr = Expr Name Builtin ()
-type PlainDecl = Decl Name Builtin ()
-type PlainProg = Prog Name Builtin ()
-type PlainTArg = TArg Name Builtin ()
-type PlainEArg = EArg Name Builtin ()
+
+-- * Builtin operations
+
+data Symbol
+  = SType
+  | SDim
+  | SList
+  | STensor
+  | SReal
+  | SInt
+  | SBool
+  | STrue
+  | SFalse
+  | SIf
+  | SImpl
+  | SAnd
+  | SOr
+  | SEq
+  | SNeq
+  | SLe
+  | SLt
+  | SGe
+  | SGt
+  | SMul
+  | SDiv
+  | SAdd
+  | SSub
+  | SNil
+  | SCons
+  | SAt
+  | SAll
+  | SAny
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+newtype Builtin = Builtin (Position, Text)
+
+-- * Specialised variants of types which are used for parsing and printing
+
+newtype BuiltinName = BuiltinName (Position, Text)
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+newtype Name = Name (Position, Text)
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+type PlainKind = Kind      BuiltinName ()
+type PlainType = Type Name BuiltinName ()
+type PlainExpr = Expr Name BuiltinName ()
+type PlainDecl = Decl Name BuiltinName ()
+type PlainProg = Prog Name BuiltinName ()
+type PlainTArg = TArg Name BuiltinName ()
+type PlainEArg = EArg Name BuiltinName ()
