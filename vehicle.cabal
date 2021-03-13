@@ -21,15 +21,17 @@ source-repository head
   location: https://github.com/wenkokke/vehicle
 
 library
-  exposed-modules:    Vehicle.Core.Parse
-                    , Vehicle.Core.Print
-                    , Vehicle.Core.Instance
+  exposed-modules:    Vehicle.Core.Instance
                     , Vehicle.Core.Instance.Recursive
+                    , Vehicle.Core.Parse
+                    , Vehicle.Core.Print
+                    , Vehicle.Core.Type
+                    , Vehicle.Frontend.Elaborate
                     , Vehicle.Frontend.Instance
                     , Vehicle.Frontend.Instance.Recursive
-                    , Vehicle.Frontend.Elaborate
                     , Vehicle.Frontend.Parse
                     , Vehicle.Frontend.Print
+                    , Vehicle.Frontend.Type
   other-modules:      Paths_vehicle
                     , Vehicle.Core.Abs
                     , Vehicle.Core.ErrM

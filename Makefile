@@ -17,8 +17,11 @@ bnfc: bnfc-core bnfc-frontend
 #   builds all parsers.
 #
 
-BNFC_TARGETS_CORE := Abs.hs Print.hs Lex.x Par.y Test.hs ErrM.hs Skel.hs Doc.txt
+BNFC_TARGETS_CORE := Print.hs Lex.x Par.y ErrM.hs
 BNFC_TARGETS_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_TARGETS_CORE))
+
+BNFC_GARBAGE_CORE := Abs.hs Test.hs Skel.hs Doc.txt
+BNFC_GARBAGE_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_GARBAGE_CORE))
 
 .PHONY: bnfc-core
 bnfc-core: $(BNFC_TARGETS_CORE)
@@ -28,9 +31,13 @@ $(BNFC_TARGETS_CORE): $(SRC_DIR_BNFC)/Core.cf
 	     --name-space Vehicle \
 	     --outputdir=$(GEN_DIR_HS) \
 	     $(SRC_DIR_BNFC)/Core.cf
+	rm -f $(BNFC_GARBAGE_CORE)
 
-BNFC_TARGETS_FRONTEND := Abs.hs Print.hs Lex.x Layout.hs Par.y Test.hs ErrM.hs Skel.hs Doc.txt
+BNFC_TARGETS_FRONTEND := Abs.hs Print.hs Lex.x Layout.hs Par.y ErrM.hs
 BNFC_TARGETS_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_TARGETS_FRONTEND))
+
+BNFC_GARBAGE_FRONTEND := Test.hs Skel.hs Doc.txt
+BNFC_GARBAGE_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_GARBAGE_FRONTEND))
 
 .PHONY: bnfc-frontend
 bnfc-frontend: $(BNFC_TARGETS_FRONTEND)
@@ -40,6 +47,7 @@ $(BNFC_TARGETS_FRONTEND): $(SRC_DIR_BNFC)/Frontend.cf
 	     --name-space Vehicle \
 	     --outputdir=$(GEN_DIR_HS) \
 	     $(SRC_DIR_BNFC)/Frontend.cf
+	rm -f $(BNFC_GARBAGE_FRONTEND)
 
 
 #################################################################################

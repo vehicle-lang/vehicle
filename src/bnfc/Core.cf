@@ -83,6 +83,11 @@ DefFun.   Decl ::= "(" "define-fun" Name Type1 Expr1 ")";
 separator Decl "";
 
 
+-- * Program
+
+Main. Prog ::= "(" [Decl] ")";
+
+
 -- * Arguments.
 
 MkTArg. TArg ::= "(" Name Kind1 ")";
@@ -92,8 +97,3 @@ separator TArg "";
 MkEArg. EArg ::= "(" Name Type1 ")";
 
 separator EArg "";
-
-
--- * Program
-
-Main. Prog ::= "(" [Decl] ")";
