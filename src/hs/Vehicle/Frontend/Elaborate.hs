@@ -23,8 +23,7 @@ import           Data.Coerce (coerce)
 import           Data.Foldable (foldrM)
 import           Data.Functor.Foldable (fold)
 import           Data.List (groupBy)
-import           Vehicle.Core.Type (Sort(..), PlainBuiltin(..), PlainName(..))
-import qualified Vehicle.Core.Type as VC
+import           Vehicle.Core.Type (Sort(..))
 import qualified Vehicle.Core.Abs as VCA -- NOTE: In general, avoid importing Abs!
 import           Vehicle.Frontend.Type (tkEq, isDefFun, declName)
 import qualified Vehicle.Frontend.Type as VF
@@ -235,35 +234,35 @@ eDecls decls = traverse elab (groupBy cond decls)
     cond d1 d2 = isDefFun d1 && isDefFun d2 && declName d1 `tkEq` declName d2
 
 -- |Elaborate any builtin token to a kind.
-kCon :: (MonadElab m, Elab a (VC.PlainBuiltin 'KIND)) => a -> m VCA.Kind
+kCon :: (MonadElab m, Elab a (VCA.SortedBuiltin 'KIND)) => a -> m VCA.Kind
 kCon = fmap VCA.KCon . elab
 
 -- |Elaborate any builtin token to a type.
-tCon :: (MonadElab m, Elab a (VC.PlainBuiltin 'TYPE)) => a -> m VCA.Type
+tCon :: (MonadElab m, Elab a (VCA.SortedBuiltin 'TYPE)) => a -> m VCA.Type
 tCon = fmap VCA.TCon . elab
 
 -- |Elaborate any builtin token to an expression.
-eCon :: (MonadElab m, Elab a (VC.PlainBuiltin 'EXPR)) => a -> m VCA.Expr
+eCon :: (MonadElab m, Elab a (VCA.SortedBuiltin 'EXPR)) => a -> m VCA.Expr
 eCon = fmap VCA.ECon . elab
 
 -- |Elaborate a unary function symbol with its argument to a type.
-tOp1 :: (MonadElab m, Elab a (VC.PlainBuiltin 'TYPE)) => a -> m VCA.Type -> m VCA.Type
+tOp1 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'TYPE)) => a -> m VCA.Type -> m VCA.Type
 tOp1 tkOp t1 = VCA.TApp <$> tCon tkOp <*> t1
 
 -- |Elaborate a binary function symbol with its arguments to a type.
-tOp2 :: (MonadElab m, Elab a (VC.PlainBuiltin 'TYPE)) => a -> m VCA.Type -> m VCA.Type -> m VCA.Type
+tOp2 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'TYPE)) => a -> m VCA.Type -> m VCA.Type -> m VCA.Type
 tOp2 tkOp t1 t2 = VCA.TApp <$> tOp1 tkOp t1 <*> t2
 
 -- |Elaborate a unary function symbol with its argument to an expression.
-eOp1 :: (MonadElab m, Elab a (VC.PlainBuiltin 'EXPR)) => a -> m VCA.Expr -> m VCA.Expr
+eOp1 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'EXPR)) => a -> m VCA.Expr -> m VCA.Expr
 eOp1 tkOp e1 = VCA.EApp <$> eCon tkOp <*> e1
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-eOp2 :: (MonadElab m, Elab a (VC.PlainBuiltin 'EXPR)) => a -> m VCA.Expr -> m VCA.Expr -> m VCA.Expr
+eOp2 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'EXPR)) => a -> m VCA.Expr -> m VCA.Expr -> m VCA.Expr
 eOp2 tkOp e1 e2 = VCA.EApp <$> eOp1 tkOp e1 <*> e2
 
 -- |Elaborate a ternary function symbol with its arguments to an expression.
-eOp3 :: (MonadElab m, Elab a (VC.PlainBuiltin 'EXPR)) => a -> m VCA.Expr -> m VCA.Expr -> m VCA.Expr -> m VCA.Expr
+eOp3 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'EXPR)) => a -> m VCA.Expr -> m VCA.Expr -> m VCA.Expr -> m VCA.Expr
 eOp3 tkOp e1 e2 e3 = VCA.EApp <$> eOp2 tkOp e1 e2 <*> e3
 
 -- |Lift a binary /monadic/ function.
@@ -273,50 +272,50 @@ bindM2 f ma mb = do a <- ma; b <- mb; f a b
 
 -- * Convert various token types to constructors or variables
 
-instance Elab VF.Name VC.PlainTArg where elab = return . VCA.MkTypeBinder . coerce
-instance Elab VF.Name VC.PlainEArg where elab = return . VCA.MkExprBinder . coerce
+instance Elab VF.Name VCA.TypeBinder where elab = return . VCA.MkTypeBinder . coerce
+instance Elab VF.Name VCA.ExprBinder where elab = return . VCA.MkExprBinder . coerce
 instance Elab VF.Name VCA.Type where elab = fmap VCA.TVar . elab
 instance Elab VF.Name VCA.Expr where elab = fmap VCA.EVar . elab
 
 
 -- * Convert various token types from Frontend to builtin type in Core
 
-instance Elab VF.TokArrow  (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokForall (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokExists (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokIf     (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokThen   (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokElse   (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokElemOf (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokImpl   (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokAnd    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokOr     (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokEq     (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokNeq    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokLe     (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokLt     (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokGe     (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokGt     (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokMul    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokDiv    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokAdd    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokSub    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokNot    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokAt     (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokType   (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokTensor (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokAll    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokAny    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokReal   (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokDim    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokInt    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokBool   (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokTrue   (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokFalse  (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokList   (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokNil    (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.TokCons   (VC.PlainBuiltin sort) where elab = return . coerce
-instance Elab VF.Name      (VC.PlainName    sort) where elab = return . coerce
+instance Elab VF.TokArrow  (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokForall (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokExists (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokIf     (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokThen   (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokElse   (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokElemOf (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokImpl   (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokAnd    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokOr     (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokEq     (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokNeq    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokLe     (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokLt     (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokGe     (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokGt     (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokMul    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokDiv    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokAdd    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokSub    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokNot    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokAt     (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokType   (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokTensor (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokAll    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokAny    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokReal   (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokDim    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokInt    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokBool   (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokTrue   (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokFalse  (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokList   (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokNil    (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.TokCons   (VCA.SortedBuiltin sort) where elab = return . coerce
+instance Elab VF.Name      (VCA.SortedName    sort) where elab = return . coerce
 
 -- -}
 -- -}

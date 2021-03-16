@@ -7,7 +7,8 @@
 --   (and generated) by BNFC. The module /must/ be called 'Vehicle.Core.Abs', as
 --   this is what BNFC expects (and generates).
 module Vehicle.Core.Abs
-  ( Kind
+  ( -- * Abstract syntax tree
+    Kind
   , pattern KApp
   , pattern KCon
   , pattern KMeta
@@ -38,6 +39,11 @@ module Vehicle.Core.Abs
   , pattern DefFun
   , Prog
   , pattern Main
+  , Builtin(..)
+  , Name(..)
+  , SortedBuiltin(..)
+  , SortedName(..)
+  , SortedAnn(..)
   , KindBuiltin
   , pattern MkKindBuiltin
   , TypeBuiltin
@@ -52,88 +58,113 @@ module Vehicle.Core.Abs
   , pattern MkTypeBinder
   , ExprBinder
   , pattern MkExprBinder
-  , Builtin
-  , pattern Builtin
-  , Name
-  , pattern Name
   ) where
 
-import           Vehicle.Core.Type (Sort(..), PlainAnn(..))
+
+import           Data.Text (Text)
+import           Vehicle.Core.Type (Sort(..))
 import qualified Vehicle.Core.Type as Core
 
-type Kind = Core.PlainKind
 
-pattern KApp k1 k2 = Core.KApp (PlainAnn ()) k1 k2
-pattern KCon c     = Core.KCon (PlainAnn ()) c
-pattern KMeta u    = Core.KMeta (PlainAnn ()) u
+-- * Abstract syntax tree
 
-type Type = Core.PlainType
+type Kind = Core.Kind SortedName SortedBuiltin SortedAnn
 
-pattern TForall n t = Core.TForall (PlainAnn ()) n t
-pattern TApp t1 t2  = Core.TApp (PlainAnn ()) t1 t2
-pattern TVar n      = Core.TVar (PlainAnn ()) n
-pattern TCon c      = Core.TCon (PlainAnn ()) c
-pattern TLitDim d   = Core.TLitDim (PlainAnn ()) d
-pattern TLitList ts = Core.TLitList (PlainAnn ()) ts
-pattern TMeta u     = Core.TMeta (PlainAnn ()) u
+pattern KApp k1 k2 = Core.KApp (SortedAnn ()) k1 k2
+pattern KCon c     = Core.KCon (SortedAnn ()) c
+pattern KMeta u    = Core.KMeta (SortedAnn ()) u
 
-type Expr = Core.PlainExpr
+type Type = Core.Type SortedName SortedBuiltin SortedAnn
 
-pattern EAnn e t     = Core.EAnn (PlainAnn ()) e t
-pattern ELet n e1 e2 = Core.ELet (PlainAnn ()) n e1 e2
-pattern ELam n e     = Core.ELam (PlainAnn ()) n e
-pattern EApp e1 e2   = Core.EApp (PlainAnn ()) e1 e2
-pattern EVar n       = Core.EVar (PlainAnn ()) n
-pattern ETyApp e t   = Core.ETyApp (PlainAnn ()) e t
-pattern ETyLam n e   = Core.ETyLam (PlainAnn ()) n e
-pattern ECon c       = Core.ECon (PlainAnn ()) c
-pattern ELitInt i    = Core.ELitInt (PlainAnn ()) i
-pattern ELitReal r   = Core.ELitReal (PlainAnn ()) r
-pattern ELitSeq es   = Core.ELitSeq (PlainAnn ()) es
+pattern TForall n t = Core.TForall (SortedAnn ()) n t
+pattern TApp t1 t2  = Core.TApp (SortedAnn ()) t1 t2
+pattern TVar n      = Core.TVar (SortedAnn ()) n
+pattern TCon c      = Core.TCon (SortedAnn ()) c
+pattern TLitDim d   = Core.TLitDim (SortedAnn ()) d
+pattern TLitList ts = Core.TLitList (SortedAnn ()) ts
+pattern TMeta u     = Core.TMeta (SortedAnn ()) u
 
-type Decl = Core.PlainDecl
+type Expr = Core.Expr SortedName SortedBuiltin SortedAnn
 
-pattern DeclNetw n t   = Core.DeclNetw (PlainAnn ()) n t
-pattern DeclData n t   = Core.DeclData (PlainAnn ()) n t
-pattern DefType n ns t = Core.DefType (PlainAnn ()) n ns t
-pattern DefFun n t e   = Core.DefFun (PlainAnn ()) n t e
+pattern EAnn e t     = Core.EAnn (SortedAnn ()) e t
+pattern ELet n e1 e2 = Core.ELet (SortedAnn ()) n e1 e2
+pattern ELam n e     = Core.ELam (SortedAnn ()) n e
+pattern EApp e1 e2   = Core.EApp (SortedAnn ()) e1 e2
+pattern EVar n       = Core.EVar (SortedAnn ()) n
+pattern ETyApp e t   = Core.ETyApp (SortedAnn ()) e t
+pattern ETyLam n e   = Core.ETyLam (SortedAnn ()) n e
+pattern ECon c       = Core.ECon (SortedAnn ()) c
+pattern ELitInt i    = Core.ELitInt (SortedAnn ()) i
+pattern ELitReal r   = Core.ELitReal (SortedAnn ()) r
+pattern ELitSeq es   = Core.ELitSeq (SortedAnn ()) es
 
-type Prog = Core.PlainProg
+type Decl = Core.Decl SortedName SortedBuiltin SortedAnn
 
-pattern Main ds = Core.Main (PlainAnn ()) ds
+pattern DeclNetw n t   = Core.DeclNetw (SortedAnn ()) n t
+pattern DeclData n t   = Core.DeclData (SortedAnn ()) n t
+pattern DefType n ns t = Core.DefType (SortedAnn ()) n ns t
+pattern DefFun n t e   = Core.DefFun (SortedAnn ()) n t e
 
-type KindBuiltin = Core.PlainBuiltin 'KIND
+type Prog = Core.Prog SortedName SortedBuiltin SortedAnn
 
-pattern MkKindBuiltin tk = Core.PlainBuiltin tk
+pattern Main ds = Core.Main (SortedAnn ()) ds
 
-type TypeBuiltin = Core.PlainBuiltin 'TYPE
 
-pattern MkTypeBuiltin tk = Core.PlainBuiltin tk
+-- * Tokens
 
-type ExprBuiltin = Core.PlainBuiltin 'EXPR
+-- ** Lexer tokens
 
-pattern MkExprBuiltin tk = Core.PlainBuiltin tk
+type Position = (Int, Int)
+type Token = (Position, Text)
 
-type TypeName = Core.PlainName 'TYPE
+newtype Builtin = Builtin Token
+  deriving (Eq, Ord, Show, Read)
 
-pattern MkTypeName tk = Core.PlainName tk
+newtype Name = Name Token
+  deriving (Eq, Ord, Show, Read)
 
-type ExprName = Core.PlainName 'EXPR
 
-pattern MkExprName tk = Core.PlainName tk
+-- ** Sorted tokens, generic
 
-type TypeBinder = Core.PlainTArg
+newtype SortedBuiltin (sort :: Sort)
+  = SortedBuiltin Builtin
+  deriving (Eq, Ord, Show, Read)
 
-pattern MkTypeBinder tk = Core.TArg (PlainAnn ()) (Core.PlainName tk)
+newtype SortedName (sort :: Sort)
+  = SortedName Name
+  deriving (Eq, Ord, Show, Read)
 
-type ExprBinder = Core.PlainEArg
+newtype SortedAnn (sort :: Sort) (name :: *) (builtin :: *)
+  = SortedAnn ()
+  deriving (Eq, Ord, Show, Read)
 
-pattern MkExprBinder tk = Core.EArg (PlainAnn ()) (Core.PlainName tk)
 
-type Builtin = Core.BuiltinToken
+-- ** Sorted tokens, specialised
 
-pattern Builtin tk = Core.BuiltinToken tk
+type KindBuiltin = SortedBuiltin 'KIND
 
-type Name = Core.NameToken
+pattern MkKindBuiltin tk = SortedBuiltin tk
 
-pattern Name tk = Core.NameToken tk
+type TypeBuiltin = SortedBuiltin 'TYPE
+
+pattern MkTypeBuiltin tk = SortedBuiltin tk
+
+type ExprBuiltin = SortedBuiltin 'EXPR
+
+pattern MkExprBuiltin tk = SortedBuiltin tk
+
+type TypeName = SortedName 'TYPE
+
+pattern MkTypeName tk = SortedName tk
+
+type ExprName = SortedName 'EXPR
+
+pattern MkExprName tk = SortedName tk
+
+type TypeBinder = Core.TArg SortedName SortedBuiltin SortedAnn
+
+pattern MkTypeBinder tk = Core.TArg (SortedAnn ()) (SortedName tk)
+
+type ExprBinder = Core.EArg SortedName SortedBuiltin SortedAnn
+
+pattern MkExprBinder tk = Core.EArg (SortedAnn ()) (SortedName tk)
