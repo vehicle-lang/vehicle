@@ -1,8 +1,9 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeFamilies    #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
 
 module Vehicle.Core.Instance.Recursive where
 

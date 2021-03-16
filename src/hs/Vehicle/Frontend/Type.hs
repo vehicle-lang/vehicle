@@ -24,6 +24,7 @@ type Position = (Int, Int)
 -- |Position tokens in BNFC generated grammars are represented by a pair of a
 -- position and the text token.
 newtype Token = Tk (Position, Text)
+  deriving (Eq, Ord, Show, Read)
 
 tkName :: Token -> Text
 tkName (Tk (_p, tk)) = tk

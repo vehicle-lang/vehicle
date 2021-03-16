@@ -19,7 +19,7 @@ position token Name (lower (letter | digit | '_')*) ;
 
 -- Core structure.
 KApp.  Kind  ::= Kind Kind1;
-KCon.  Kind1 ::= Builtin;
+KCon.  Kind1 ::= KindBuiltin;
 
 -- NOTE: kind meta-variables aren't part of the surface syntax
 internal KMeta. Kind ::= "?" Integer;
@@ -30,10 +30,10 @@ coercions Kind 1;
 -- * Types
 
 -- Core structure.
-TForall.  Type  ::= "forall" "(" TArg ")" Type1;
+TForall.  Type  ::= "forall" TypeBinder Type1;
 TApp.     Type  ::= Type Type1;
-TVar.     Type1 ::= Name;
-TCon.     Type1 ::= Builtin;
+TVar.     Type1 ::= TypeName;
+TCon.     Type1 ::= TypeBuiltin;
 
 -- Type-level dimensions.
 TLitDim.  Type1 ::= Integer; -- NOTE: this means natural
@@ -53,13 +53,13 @@ coercions Type 1;
 
 -- Core structure.
 EAnn.       Expr  ::= Expr ":type" Type;
-ELet.       Expr  ::= "let" "(" EArg Expr1 ")" Expr1;
-ELam.       Expr  ::= "lambda" "(" EArg ")" Expr1;
+ELet.       Expr  ::= "let" ExprBinder Expr1 Expr1;
+ELam.       Expr  ::= "lambda" ExprBinder Expr1;
 EApp.       Expr  ::= Expr Expr1;
-EVar.       Expr1 ::= Name;
+EVar.       Expr1 ::= ExprName;
 ETyApp.     Expr  ::= Expr "{" Type "}";
-ETyLam.     Expr  ::= "lambda" "{" TArg "}" Expr1;
-ECon.       Expr1 ::= Builtin;
+ETyLam.     Expr  ::= "lambda" TypeBinder Expr1;
+ECon.       Expr1 ::= ExprBuiltin;
 
 -- Naturals and reals.
 ELitInt.    Expr1 ::= Integer; -- NOTE: this means natural
@@ -75,10 +75,10 @@ coercions Expr 1;
 
 -- * Declarations
 
-DeclNetw. Decl ::= "(" "declare-network" Name Type1 ")";
-DeclData. Decl ::= "(" "declare-dataset" Name Type1 ")";
-DefType.  Decl ::= "(" "define-type" Name "(" [TArg] ")" Type1 ")";
-DefFun.   Decl ::= "(" "define-fun" Name Type1 Expr1 ")";
+DeclNetw. Decl ::= "(" "declare-network" ExprBinder Type1 ")";
+DeclData. Decl ::= "(" "declare-dataset" ExprBinder Type1 ")";
+DefType.  Decl ::= "(" "define-type" TypeBinder "(" [TypeBinder] ")" Type1 ")";
+DefFun.   Decl ::= "(" "define-fun" ExprBinder Type1 Expr1 ")";
 
 separator Decl "";
 
@@ -88,12 +88,16 @@ separator Decl "";
 Main. Prog ::= "(" [Decl] ")";
 
 
--- * Arguments.
+-- * Names for builtins, binders, and variables
 
-MkTArg. TArg ::= "(" Name Kind1 ")";
+MkKindBuiltin. KindBuiltin ::= Builtin;
+MkTypeBuiltin. TypeBuiltin ::= Builtin;
+MkExprBuiltin. ExprBuiltin ::= Builtin;
 
-separator TArg "";
+MkTypeBinder.  TypeBinder  ::= Name;
+MkExprBinder.  ExprBinder  ::= Name;
 
-MkEArg. EArg ::= "(" Name Type1 ")";
+MkTypeName.    TypeName    ::= Name;
+MkExprName.    ExprName    ::= Name;
 
-separator EArg "";
+separator TypeBinder "";

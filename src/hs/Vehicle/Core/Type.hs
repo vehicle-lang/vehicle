@@ -1,113 +1,201 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Vehicle.Core.Type where
 
-import Data.Text (Text)
-import Data.Data (Data, Typeable)
-import GHC.Generics (Generic)
-import Vehicle.Frontend.Type (Position)
+import qualified Data.Kind as Hs (Type)
+import           Data.Text (Text)
+import           Vehicle.Frontend.Type (Position)
 
 
 -- * Abstract syntax tree for Vehicle Core
 
-data Kind builtin ann
-  = KApp ann (Kind builtin ann) (Kind builtin ann)
-  | KCon ann builtin
-  | KMeta ann Integer
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+-- | Syntactic sorts used in Vehicle Core syntax.
+data Sort = KIND | TYPE | EXPR | DECL | PROG | TARG | EARG
 
-data Type name builtin ann
-  = TForall ann (TArg name builtin ann) (Type name builtin ann)
-  | TApp ann (Type name builtin ann) (Type name builtin ann)
-  | TVar ann name
-  | TCon ann builtin
-  | TLitDim ann Integer
-  | TLitList ann [Type name builtin ann]
-  | TMeta ann Integer
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+-- | Kind of annotations used in Vehicle Core syntax.
+type Ann = Sort -> Hs.Type -> Hs.Type -> Hs.Type
 
-data Expr name builtin ann
-  = EAnn ann (Expr name builtin ann) (Type name builtin ann)
-  | ELet ann (EArg name builtin ann) (Expr name builtin ann) (Expr name builtin ann)
-  | ELam ann (EArg name builtin ann) (Expr name builtin ann)
-  | EApp ann (Expr name builtin ann) (Expr name builtin ann)
-  | EVar ann name
-  | ETyApp ann (Expr name builtin ann) (Type name builtin ann)
-  | ETyLam ann (TArg name builtin ann) (Expr name builtin ann)
-  | ECon ann builtin
-  | ELitInt ann Integer
-  | ELitReal ann Double
-  | ELitSeq ann [Expr name builtin ann]
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+-- | Kind of symbols used in Vehicle Core syntax, i.e., variable and builtin names.
+type Sym = Sort -> Hs.Type
 
-data Decl name builtin ann
-  = DeclNetw ann name (Type name builtin ann)
-  | DeclData ann name (Type name builtin ann)
-  | DefType ann name [TArg name builtin ann] (Type name builtin ann)
-  | DefFun ann name (Type name builtin ann) (Expr name builtin ann)
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+-- | Type of Vehicle Core kinds.
+data Kind (name :: Sym) (builtin :: Sym) (ann :: Ann)
+  = KApp
+    (ann 'KIND (name 'KIND) (builtin 'KIND)) -- ^ Annotation.
+    (Kind name builtin ann)                  -- ^ Function.
+    (Kind name builtin ann)                  -- ^ Argument.
+  | KCon
+    (ann 'KIND (name 'KIND) (builtin 'KIND)) -- ^ Annotation.
+    (builtin 'KIND)                          -- ^ Builtin name.
+  | KMeta
+    (ann 'KIND (name 'KIND) (builtin 'KIND)) -- ^ Annotation.
+    Integer                                  -- ^ Meta variable.
 
-data Prog name builtin ann
-  = Main ann [Decl name builtin ann]
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+-- | Type of Vehicle Core types.
+data Type (name :: Sym) (builtin :: Sym) (ann :: Ann)
+  = TForall
+    (ann 'TYPE (name 'TYPE) (builtin 'TYPE)) -- ^ Annotation.
+    (TArg name builtin ann)                  -- ^ Bound type name.
+    (Type name builtin ann)                  -- ^ Type body.
+  | TApp
+    (ann 'TYPE (name 'TYPE) (builtin 'TYPE)) -- ^ Annotation.
+    (Type name builtin ann)                  -- ^ Function.
+    (Type name builtin ann)                  -- ^ Argument.
+  | TVar
+    (ann 'TYPE (name 'TYPE) (builtin 'TYPE)) -- ^ Annotation.
+    (name 'TYPE)                             -- ^ Variable name.
+  | TCon
+    (ann 'TYPE (name 'TYPE) (builtin 'TYPE)) -- ^ Annotation.
+    (builtin 'TYPE)                          -- ^ Builtin name.
+  | TLitDim
+    (ann 'TYPE (name 'TYPE) (builtin 'TYPE)) -- ^ Annotation.
+    Integer                                  -- ^ Dimension literal.
+  | TLitList
+    (ann 'TYPE (name 'TYPE) (builtin 'TYPE)) -- ^ Annotation.
+    [Type name builtin ann]                  -- ^ List of types.
+  | TMeta
+    (ann 'TYPE (name 'TYPE) (builtin 'TYPE)) -- ^ Annotation.
+    Integer                                  -- ^ Meta variable
 
-data TArg name builtin ann
-  = TArg ann name (Kind builtin ann)
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+-- | Type of Vehicle Core expressions.
+data Expr (name :: Sym) (builtin :: Sym) (ann :: Ann)
+  = EAnn
+    (ann 'EXPR (name 'EXPR) (builtin 'EXPR)) -- ^ Annotation.
+    (Expr name builtin ann)                  -- ^ Expression.
+    (Type name builtin ann)                  -- ^ Expression type.
+  | ELet
+    (ann 'EXPR (name 'EXPR) (builtin 'EXPR)) -- ^ Annotation.
+    (EArg name builtin ann)                  -- ^ Bound expression name.
+    (Expr name builtin ann)                  -- ^ Bound expression body.
+    (Expr name builtin ann)                  -- ^ Expression body.
+  | ELam
+    (ann 'EXPR (name 'EXPR) (builtin 'EXPR)) -- ^ Annotation.
+    (EArg name builtin ann)                  -- ^ Bound expression name.
+    (Expr name builtin ann)                  -- ^ Expression body.
+  | EApp
+    (ann 'EXPR (name 'EXPR) (builtin 'EXPR)) -- ^ Annotation.
+    (Expr name builtin ann)                  -- ^ Function.
+    (Expr name builtin ann)                  -- ^ Argument.
+  | EVar
+    (ann 'EXPR (name 'EXPR) (builtin 'EXPR)) -- ^ Annotation.
+    (name 'EXPR)                             -- ^ Variable name.
+  | ETyApp
+    (ann 'EXPR (name 'EXPR) (builtin 'EXPR)) -- ^ Annotation.
+    (Expr name builtin ann)                  -- ^ Type function.
+    (Type name builtin ann)                  -- ^ Type argument.
+  | ETyLam
+    (ann 'EXPR (name 'EXPR) (builtin 'EXPR)) -- ^ Annotation.
+    (TArg name builtin ann)                  -- ^ Bound type name.
+    (Expr name builtin ann)                  -- ^ Expression body.
+  | ECon
+    (ann 'EXPR (name 'EXPR) (builtin 'EXPR)) -- ^ Annotation.
+    (builtin 'EXPR)                          -- ^ Builtin name.
+  | ELitInt
+    (ann 'EXPR (name 'EXPR) (builtin 'EXPR)) -- ^ Annotation.
+    Integer                                  -- ^ Integer literal.
+  | ELitReal
+    (ann 'EXPR (name 'EXPR) (builtin 'EXPR)) -- ^ Annotation.
+    Double                                   -- ^ "Real" literal.
+  | ELitSeq
+    (ann 'EXPR (name 'EXPR) (builtin 'EXPR)) -- ^ Annotation.
+    [Expr name builtin ann]                  -- ^ List of expressions.
 
-data EArg name builtin ann
-  = EArg ann name (Type name builtin ann)
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+-- | Type of Vehicle Core declaration.
+data Decl (name :: Sym) (builtin :: Sym) (ann :: Ann)
+  = DeclNetw
+    (ann 'DECL (name 'DECL) (builtin 'DECL)) -- ^ Annotation.
+    (EArg name builtin ann)                  -- ^ Network name.
+    (Type name builtin ann)                  -- ^ Network type.
+  | DeclData
+    (ann 'DECL (name 'DECL) (builtin 'DECL)) -- ^ Annotation.
+    (EArg name builtin ann)                  -- ^ Dataset name.
+    (Type name builtin ann)                  -- ^ Dataset type.
+  | DefType
+    (ann 'DECL (name 'DECL) (builtin 'DECL)) -- ^ Annotation.
+    (TArg name builtin ann)                  -- ^ Bound type synonym name.
+    [TArg name builtin ann]                  -- ^ Bound type synonym arguments.
+    (Type name builtin ann)                  -- ^ Bound type synonym body.
+  | DefFun
+    (ann 'DECL (name 'DECL) (builtin 'DECL)) -- ^ Annotation.
+    (EArg name builtin ann)                  -- ^ Bound function name.
+    (Type name builtin ann)                  -- ^ Bound function type.
+    (Expr name builtin ann)                  -- ^ Bound function body.
 
+-- | Type of Vehicle Core programs.
+data Prog (name :: Sym) (builtin :: Sym) (ann :: Ann)
+  = Main
+    (ann 'PROG (name 'PROG) (builtin 'PROG)) -- ^ Annotation.
+    [Decl name builtin ann]                  -- ^ List of declarations.
+
+-- | Type of Vehicle Core type-level name-binding sites.
+data TArg (name :: Sym) (builtin :: Sym) (ann :: Ann)
+  = TArg
+  (ann 'TARG (name 'TARG) (builtin 'TARG))   -- ^ Annotation.
+  (name 'TARG)                               -- ^ Type name.
+
+-- | Type of Vehicle Core expression-level name-binding sites.
+data EArg (name :: Sym) (builtin :: Sym) (ann :: Ann)
+  = EArg
+  (ann 'EARG (name 'EARG) (builtin 'EARG))   -- ^ Annotation.
+  (name 'EARG)                               -- ^ Expression name.
+
+
+-- * Instance
 
 -- * Builtin operations
 
-data Symbol
-  = SType
-  | SDim
-  | SList
-  | STensor
-  | SReal
-  | SInt
-  | SBool
-  | STrue
-  | SFalse
-  | SIf
-  | SImpl
-  | SAnd
-  | SOr
-  | SEq
-  | SNeq
-  | SLe
-  | SLt
-  | SGe
-  | SGt
-  | SMul
-  | SDiv
-  | SAdd
-  | SSub
-  | SNil
-  | SCons
-  | SAt
-  | SAll
-  | SAny
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-newtype Builtin = Builtin (Position, Text)
+-- SType
+-- SDim
+-- SList
+-- STensor
+-- SReal
+-- SInt
+-- SBool
+-- STrue
+-- SFalse
+-- SIf
+-- SImpl
+-- SAnd
+-- SOr
+-- SEq
+-- SNeq
+-- SLe
+-- SLt
+-- SGe
+-- SGt
+-- SMul
+-- SDiv
+-- SAdd
+-- SSub
+-- SNil
+-- SCons
+-- SAt
+-- SAll
+-- SAny
 
 -- * Specialised variants of types which are used for parsing and printing
 
-newtype BuiltinName = BuiltinName (Position, Text)
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+newtype BuiltinToken = BuiltinToken (Position, Text)
+  deriving (Eq, Ord, Show, Read)
 
-newtype Name = Name (Position, Text)
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+newtype NameToken = NameToken (Position, Text)
+  deriving (Eq, Ord, Show, Read)
 
-type PlainKind = Kind      BuiltinName ()
-type PlainType = Type Name BuiltinName ()
-type PlainExpr = Expr Name BuiltinName ()
-type PlainDecl = Decl Name BuiltinName ()
-type PlainProg = Prog Name BuiltinName ()
-type PlainTArg = TArg Name BuiltinName ()
-type PlainEArg = EArg Name BuiltinName ()
+newtype PlainBuiltin (sort :: Sort)
+  = PlainBuiltin BuiltinToken
+
+newtype PlainName (sort :: Sort)
+  = PlainName NameToken
+
+newtype PlainAnn (sort :: Sort) (name :: Hs.Type) (builtin :: Hs.Type)
+  = PlainAnn ()
+
+type PlainKind = Kind PlainName PlainBuiltin PlainAnn
+type PlainType = Type PlainName PlainBuiltin PlainAnn
+type PlainExpr = Expr PlainName PlainBuiltin PlainAnn
+type PlainDecl = Decl PlainName PlainBuiltin PlainAnn
+type PlainProg = Prog PlainName PlainBuiltin PlainAnn
+type PlainTArg = TArg PlainName PlainBuiltin PlainAnn
+type PlainEArg = EArg PlainName PlainBuiltin PlainAnn
