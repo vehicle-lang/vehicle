@@ -1,13 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeFamilies #-}
 
 module Vehicle.Core.Type where
-
-import qualified Data.Kind as Hs (Type)
-import           Data.Text (Text)
-import           Vehicle.Frontend.Type (Position)
-
 
 -- * Abstract syntax tree for Vehicle Core
 
@@ -15,10 +9,10 @@ import           Vehicle.Frontend.Type (Position)
 data Sort = KIND | TYPE | EXPR | DECL | PROG | TARG | EARG
 
 -- | Kind of annotations used in Vehicle Core syntax.
-type Ann = Sort -> Hs.Type -> Hs.Type -> Hs.Type
+type Ann = Sort -> * -> * -> *
 
 -- | Kind of symbols used in Vehicle Core syntax, i.e., variable and builtin names.
-type Sym = Sort -> Hs.Type
+type Sym = Sort -> *
 
 -- | Type of Vehicle Core kinds.
 data Kind (name :: Sym) (builtin :: Sym) (ann :: Ann)
@@ -140,37 +134,3 @@ data EArg (name :: Sym) (builtin :: Sym) (ann :: Ann)
   = EArg
   (ann 'EARG (name 'EARG) (builtin 'EARG))   -- ^ Annotation.
   (name 'EARG)                               -- ^ Expression name.
-
-
--- * Instance
-
--- * Builtin operations
-
--- SType
--- SDim
--- SList
--- STensor
--- SReal
--- SInt
--- SBool
--- STrue
--- SFalse
--- SIf
--- SImpl
--- SAnd
--- SOr
--- SEq
--- SNeq
--- SLe
--- SLt
--- SGe
--- SGt
--- SMul
--- SDiv
--- SAdd
--- SSub
--- SNil
--- SCons
--- SAt
--- SAll
--- SAny

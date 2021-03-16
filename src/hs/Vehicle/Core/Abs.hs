@@ -64,6 +64,7 @@ module Vehicle.Core.Abs
 import           Data.Text (Text)
 import           Vehicle.Core.Type (Sort(..))
 import qualified Vehicle.Core.Type as Core
+import           Vehicle.Prelude.Token (Position)
 
 
 -- * Abstract syntax tree
@@ -114,13 +115,10 @@ pattern Main ds = Core.Main (SortedAnn ()) ds
 
 -- ** Lexer tokens
 
-type Position = (Int, Int)
-type Token = (Position, Text)
-
-newtype Builtin = Builtin Token
+newtype Builtin = Builtin (Position, Text)
   deriving (Eq, Ord, Show, Read)
 
-newtype Name = Name Token
+newtype Name = Name (Position, Text)
   deriving (Eq, Ord, Show, Read)
 
 

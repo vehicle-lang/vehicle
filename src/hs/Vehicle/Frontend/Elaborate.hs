@@ -25,27 +25,26 @@ import           Data.Functor.Foldable (fold)
 import           Data.List (groupBy)
 import           Vehicle.Core.Type (Sort(..))
 import qualified Vehicle.Core.Abs as VCA -- NOTE: In general, avoid importing Abs!
-import           Vehicle.Frontend.Type (tkEq, isDefFun, declName)
 import qualified Vehicle.Frontend.Type as VF
 import qualified Vehicle.Frontend.Instance.Recursive as VF
+import           Vehicle.Prelude
 
 
 -- * Elaboration monad
 
 -- | Errors that may arise during elaboration.
 data ElabError
-  = MissingDefFunType VF.Name
-  | MissingDefFunExpr VF.Name
-  | DuplicateName [VF.Name]
-  | LocalDeclNetw VF.Name
-  | LocalDeclData VF.Name
-  | LocalDefType VF.Name
-  | Unknown
+  = MissingDefFunType Token
+  | MissingDefFunExpr Token
+  | DuplicateName [Token]
+  | LocalDeclNetw Token
+  | LocalDeclData Token
+  | LocalDefType Token
   deriving (Show)
 
 instance Exception ElabError
 
--- |Constraint for the monad stack used by the elaborator.
+-- | Constraint for the monad stack used by the elaborator.
 type MonadElab m = MonadError ElabError m
 
 -- | Run a function in 'MonadElab'.
@@ -162,7 +161,7 @@ instance Elab VF.Expr VCA.Expr where
     VF.EDivF e1 tk e2              -> eOp2 tk e1 e2
     VF.EAddF e1 tk e2              -> eOp2 tk e1 e2
     VF.ESubF e1 tk e2              -> eOp2 tk e1 e2
-    VF.ENegF tk e                  -> eOp1 tk e
+    VF.ENegF tk e                  -> eOp1 (tkRename "~" tk) e
     VF.ELitIntF z                  -> return $ VCA.ELitInt z
     VF.ELitRealF r                 -> return $ VCA.ELitReal r
 
@@ -199,14 +198,14 @@ instance Elab [VF.Decl] VCA.Decl where
 
   -- Missing type or expression declaration.
   elab [VF.DefFunType n _tk _t] =
-    throwError (MissingDefFunExpr n)
+    throwError (MissingDefFunExpr (toToken n))
 
   elab [VF.DefFunExpr n _ns _e] =
-    throwError (MissingDefFunType n)
+    throwError (MissingDefFunType (toToken n))
 
   -- Multiple type of expression declarations with the same n.
   elab ds =
-    throwError (DuplicateName (map declName ds))
+    throwError (DuplicateName (map (toToken . VF.declName) ds))
 
 -- |Elaborate programs.
 instance Elab VF.Prog VCA.Prog where
@@ -220,9 +219,9 @@ eLet ds e = bindM2 (foldrM declToLet) e ds
   where
     declToLet :: MonadElab m => VCA.Decl -> VCA.Expr -> m VCA.Expr
     declToLet (VCA.DefFun n t e1) e2 = return (VCA.ELet n (VCA.EAnn e1 t) e2)
-    declToLet (VCA.DeclNetw (VCA.MkExprBinder n) _t) _e2 = throwError (LocalDeclNetw (coerce n))
-    declToLet (VCA.DeclData (VCA.MkExprBinder n) _t) _e2 = throwError (LocalDeclData (coerce n))
-    declToLet (VCA.DefType (VCA.MkTypeBinder n) _ns _t) _e2 = throwError (LocalDefType (coerce n))
+    declToLet (VCA.DeclNetw (VCA.MkExprBinder n) _t) _e2 = throwError (LocalDeclNetw (toToken n))
+    declToLet (VCA.DeclData (VCA.MkExprBinder n) _t) _e2 = throwError (LocalDeclData (toToken n))
+    declToLet (VCA.DefType (VCA.MkTypeBinder n) _ns _t) _e2 = throwError (LocalDefType (toToken n))
 
 -- |Takes a list of declarations, and groups type and expression
 --  declarations for the same name. If any name does not have exactly one
@@ -231,7 +230,7 @@ eDecls :: MonadElab m => [VF.Decl] -> m [VCA.Decl]
 eDecls decls = traverse elab (groupBy cond decls)
   where
     cond :: VF.Decl -> VF.Decl -> Bool
-    cond d1 d2 = isDefFun d1 && isDefFun d2 && declName d1 `tkEq` declName d2
+    cond d1 d2 = VF.isDefFun d1 && VF.isDefFun d2 && VF.declName d1 `tkEq` VF.declName d2
 
 -- |Elaborate any builtin token to a kind.
 kCon :: (MonadElab m, Elab a (VCA.SortedBuiltin 'KIND)) => a -> m VCA.Kind

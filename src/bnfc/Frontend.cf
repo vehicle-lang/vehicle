@@ -126,7 +126,7 @@ EIf.        Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;
 EImpl.      Expr4  ::= Expr5 TokImpl Expr4;
 EAnd.       Expr5  ::= Expr6 TokAnd Expr5;
 EOr.        Expr6  ::= Expr7 TokOr Expr6;
-ENot.       Expr10  ::= TokNot Expr10;
+ENot.       Expr10 ::= TokNot Expr10;
 ETrue.      Expr13 ::= TokTrue;
 EFalse.     Expr13 ::= TokFalse;
 

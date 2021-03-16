@@ -21,7 +21,9 @@ source-repository head
   location: https://github.com/wenkokke/vehicle
 
 library
-  exposed-modules:    Vehicle.Core.Instance
+  exposed-modules:    Vehicle.Core.Check.Core
+                    , Vehicle.Core.Check.Builtin
+                    , Vehicle.Core.Instance
                     , Vehicle.Core.Instance.Core
                     , Vehicle.Core.Instance.Recursive
                     , Vehicle.Core.Parse
@@ -43,6 +45,8 @@ library
                     , Vehicle.Frontend.Layout
                     , Vehicle.Frontend.Lex
                     , Vehicle.Frontend.Par
+                    , Vehicle.Prelude
+                    , Vehicle.Prelude.Token
   hs-source-dirs:     src/hs
                     , gen/hs
   build-depends:      array             >=0.5 && <1
