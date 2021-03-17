@@ -23,30 +23,35 @@ source-repository head
 library
   exposed-modules:    Vehicle.Core.Check.Core
                     , Vehicle.Core.Check.Builtin
-                    , Vehicle.Core.Instance
-                    , Vehicle.Core.Instance.Core
-                    , Vehicle.Core.Instance.Recursive
                     , Vehicle.Core.Parse
                     , Vehicle.Core.Print
                     , Vehicle.Core.Type
                     , Vehicle.Frontend.Elaborate
-                    , Vehicle.Frontend.Instance
-                    , Vehicle.Frontend.Instance.Recursive
+                    , Vehicle.Frontend.Type
                     , Vehicle.Frontend.Parse
                     , Vehicle.Frontend.Print
-                    , Vehicle.Frontend.Type
   other-modules:      Paths_vehicle
+                    , Vehicle.Core.Type.Core
+                    , Vehicle.Core.Type.Instance
+                    , Vehicle.Core.Type.Instance.Core
+                    , Vehicle.Core.Type.Instance.Recursive
+                    , Vehicle.Frontend.Type.Core
+                    , Vehicle.Frontend.Type.Instance
+                    , Vehicle.Frontend.Type.Instance.Recursive
+                    , Vehicle.Prelude
+                    , Vehicle.Prelude.Token
+                    -- Compatibility module with generated Abs
                     , Vehicle.Core.Abs
+                    -- Files generated from Core.cf
                     , Vehicle.Core.ErrM
                     , Vehicle.Core.Lex
                     , Vehicle.Core.Par
+                    -- Files generated from Frontend.cf
                     , Vehicle.Frontend.Abs
                     , Vehicle.Frontend.ErrM
                     , Vehicle.Frontend.Layout
                     , Vehicle.Frontend.Lex
                     , Vehicle.Frontend.Par
-                    , Vehicle.Prelude
-                    , Vehicle.Prelude.Token
   hs-source-dirs:     src/hs
                     , gen/hs
   build-depends:      array             >=0.5 && <1

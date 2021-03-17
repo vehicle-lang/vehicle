@@ -26,7 +26,6 @@ import           Data.List (groupBy)
 import           Vehicle.Core.Type (Sort(..))
 import qualified Vehicle.Core.Abs as VCA -- NOTE: In general, avoid importing Abs!
 import qualified Vehicle.Frontend.Type as VF
-import qualified Vehicle.Frontend.Instance.Recursive as VF
 import           Vehicle.Prelude
 
 
@@ -161,7 +160,7 @@ instance Elab VF.Expr VCA.Expr where
     VF.EDivF e1 tk e2              -> eOp2 tk e1 e2
     VF.EAddF e1 tk e2              -> eOp2 tk e1 e2
     VF.ESubF e1 tk e2              -> eOp2 tk e1 e2
-    VF.ENegF tk e                  -> eOp1 (tkRename "~" tk) e
+    VF.ENegF tk e                  -> eOp1 (tkUpdateText "~" tk) e
     VF.ELitIntF z                  -> return $ VCA.ELitInt z
     VF.ELitRealF r                 -> return $ VCA.ELitReal r
 

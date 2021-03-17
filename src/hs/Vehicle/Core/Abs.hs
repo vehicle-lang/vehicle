@@ -132,7 +132,7 @@ newtype SortedName (sort :: Sort)
   = SortedName Name
   deriving (Eq, Ord, Show, Read)
 
-newtype SortedAnn (sort :: Sort) (name :: *) (builtin :: *)
+newtype SortedAnn (sort :: Sort)
   = SortedAnn ()
   deriving (Eq, Ord, Show, Read)
 
