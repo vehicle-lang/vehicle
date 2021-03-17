@@ -23,6 +23,7 @@ source-repository head
 library
   exposed-modules:    Vehicle.Core.Check.Core
                     , Vehicle.Core.Check.Builtin
+                    , Vehicle.Core.Check.Type
                     , Vehicle.Core.Parse
                     , Vehicle.Core.Print
                     , Vehicle.Core.Type
@@ -56,6 +57,7 @@ library
                     , gen/hs
   build-depends:      array             >=0.5 && <1
                     , base              >=4.7 && <5
+                    , containers        >=0.6 && <1
                     , text              >=1.2 && <2
                     , monad-supply      >=0.7 && <1
                     , mtl               >=2.2 && <3

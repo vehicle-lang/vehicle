@@ -94,12 +94,13 @@ instance Elab VF.Kind VCA.Kind where
   elab = fold $ \case
 
     -- Core structure.
-    VF.KAppF k1 k2 -> VCA.KApp <$> k1 <*> k2
+    VF.KAppF k1 k2    -> VCA.KApp <$> k1 <*> k2
 
     -- Primitive kinds.
-    VF.KTypeF tk   -> kCon tk
-    VF.KDimF tk    -> kCon tk
-    VF.KListF tk   -> kCon tk
+    VF.KFunF k1 tk k2 -> kOp2 tk k1 k2
+    VF.KTypeF tk      -> kCon tk
+    VF.KDimF tk       -> kCon tk
+    VF.KListF tk      -> kCon tk
 
 -- |Elaborate types.
 instance Elab VF.Type VCA.Type where
@@ -242,6 +243,14 @@ tCon = fmap VCA.TCon . elab
 -- |Elaborate any builtin token to an expression.
 eCon :: (MonadElab m, Elab a (VCA.SortedBuiltin 'EXPR)) => a -> m VCA.Expr
 eCon = fmap VCA.ECon . elab
+
+-- |Elaborate a unary function symbol with its argument to a type.
+kOp1 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'KIND)) => a -> m VCA.Kind -> m VCA.Kind
+kOp1 tkOp k1 = VCA.KApp <$> kCon tkOp <*> k1
+
+-- |Elaborate a binary function symbol with its arguments to a kind.
+kOp2 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'KIND)) => a -> m VCA.Kind -> m VCA.Kind -> m VCA.Kind
+kOp2 tkOp k1 k2 = VCA.KApp <$> kOp1 tkOp k1 <*> k2
 
 -- |Elaborate a unary function symbol with its argument to a type.
 tOp1 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'TYPE)) => a -> m VCA.Type -> m VCA.Type

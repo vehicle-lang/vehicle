@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds    #-}
 {-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE FlexibleContexts   #-}
 {-# LANGUAGE GADTs              #-}
@@ -6,16 +7,19 @@
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
+
 -- | This module implements the check to see if there are any unknown builtins
 -- and converts the builtin representation to a data type (as opposed to 'Text').
 module Vehicle.Core.Check.Builtin where
 
+import           Control.Exception (Exception)
 import           Control.Monad.Except (MonadError(..))
 import           Data.Text (Text)
 import           Vehicle.Core.Check.Core
 import           Vehicle.Core.Type
 import qualified Vehicle.Core.Abs as VCA (SortedBuiltin(..), Builtin(..))
 import           Vehicle.Prelude
+
 
 data Builtin (sort :: Sort) = Builtin
   { pos :: Position
@@ -25,6 +29,7 @@ data Builtin (sort :: Sort) = Builtin
 data BuiltinOp (sort :: Sort) where
 
   -- Builtin kinds
+  KFun    :: BuiltinOp 'KIND
   KType   :: BuiltinOp 'KIND
   KDim    :: BuiltinOp 'KIND
   KList   :: BuiltinOp 'KIND
@@ -71,7 +76,8 @@ deriving instance Show (BuiltinOp sort)
 
 builtinKinds :: [(Text, BuiltinOp 'KIND)]
 builtinKinds =
-  [ "Type" |-> KType
+  [ "->"   |-> KFun
+  , "Type" |-> KType
   , "Dim"  |-> KDim
   , "List" |-> KList
   ]
@@ -107,7 +113,8 @@ builtinExprs =
   , "*"     |-> EMul
   , "/"     |-> EDiv
   , "-"     |-> ESub
-  , "~"     |-> ENeg -- NOTE: negation is changed from "-" to "~" during elaboration
+  , "~"     |-> ENeg
+  -- ^ Negation is changed from "-" to "~" during elaboration.
   , "!"     |-> EAt
   , "Cons"  |-> ECons
   , "Nil"   |-> ENil
@@ -115,18 +122,17 @@ builtinExprs =
   , "any"   |-> EAny
   ]
 
+checkBuiltinWithMap :: MonadCheck m => [(Text, BuiltinOp sort)] -> VCA.SortedBuiltin sort -> m (Builtin sort)
+checkBuiltinWithMap builtins tk = case lookup (tkText tk) builtins of
+  Nothing -> throwError (UnknownBuiltin (toToken tk))
+  Just op -> return (Builtin { pos = tkPos tk, op = op })
+
 checkBuiltin :: MonadCheck m => SSort sort -> VCA.SortedBuiltin sort -> m (Builtin sort)
 checkBuiltin ssort tk = case ssort of
-  SKIND -> withMap builtinKinds tk
-  STYPE -> withMap builtinTypes tk
-  SEXPR -> withMap builtinExprs tk
+  SKIND -> checkBuiltinWithMap builtinKinds tk
+  STYPE -> checkBuiltinWithMap builtinTypes tk
+  SEXPR -> checkBuiltinWithMap builtinExprs tk
   _     -> throwError (UnknownBuiltin (toToken tk))
-  where
-    withMap :: MonadCheck m => [(Text, BuiltinOp sort)] -> VCA.SortedBuiltin sort -> m (Builtin sort)
-    withMap builtins tk = maybe
-                          (throwError (UnknownBuiltin (toToken tk)))
-                          (\b -> return (Builtin { pos = tkPos tk, op = b }))
-                          (lookup (tkText tk) builtins)
 
 checkBuiltins :: (SortedTrifunctor tree, MonadCheck m) =>
                  tree name VCA.SortedBuiltin ann -> m (tree name Builtin ann)

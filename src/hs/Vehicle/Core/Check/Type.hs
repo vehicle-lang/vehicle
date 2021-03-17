@@ -1,23 +1,20 @@
 {-# LANGUAGE ConstraintKinds    #-}
 {-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE LambdaCase         #-}
 
-module Vehicle.Core.Check.Core where
+module Vehicle.Core.Check.Type where
 
 import           Control.Exception (Exception)
 import           Control.Monad.Except (MonadError(..))
 import           Control.Monad.State (MonadState(..))
+import           Data.Functor.Foldable (fold)
+import           Data.Map (Map)
+import qualified Data.Map as M
 import           Data.Text (Text)
 import           Vehicle.Core.Type
+import qualified Vehicle.Core.Abs as VCA (SortedName(..), Name(..))
 import           Vehicle.Prelude
 
-
--- |Errors that may arise during type checking.
 data TypeError
-  = UnknownBuiltin Token
-  | UnboundName Token
+  = UnboundName Token
   deriving (Show)
-
-instance Exception TypeError
-
--- |Constraint for the monad stack used by type checkers.
-type MonadCheck m = (MonadError TypeError m)

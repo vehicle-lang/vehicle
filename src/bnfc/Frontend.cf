@@ -61,6 +61,7 @@ separator Name "";
 KApp.  Kind  ::= Kind Kind1;
 
 -- Primitive kinds.
+KFun.  Kind  ::= Kind1 TokArrow Kind;
 KType. Kind1 ::= TokType;
 KDim.  Kind1 ::= TokDim;
 KList. Kind1 ::= TokList;
