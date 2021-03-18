@@ -7,7 +7,7 @@ comment "{-" "-}";
 
 -- NOTE: Token rules are tried IN ORDER, so the order matters!
 
-position token TokArrow    {"->"};
+position token TokArrow    {"->"};      
 position token TokForall   {"forall"};
 position token TokExists   {"exists"};
 position token TokIf       {"if"};

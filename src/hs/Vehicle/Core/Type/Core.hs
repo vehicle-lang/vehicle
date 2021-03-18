@@ -6,6 +6,12 @@ module Vehicle.Core.Type.Core where
 
 -- * Abstract syntax tree for Vehicle Core
 
+-- Annotations are parameterised over so that they can
+-- store arbitrary information used in e.g. type-checking.
+
+-- Names are parameterised over so that they can store
+-- either the user assigned names or deBruijn indices.
+
 -- | Syntactic sorts used in Vehicle Core syntax.
 data Sort = KIND | TYPE | EXPR | DECL | PROG | TARG | EARG
 
