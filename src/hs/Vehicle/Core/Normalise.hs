@@ -13,7 +13,12 @@ module Vehicle.Core.Normalise
   ) where
 
 import Vehicle.Core.Type ( Sort (..), Expr (..), Sort, EArg (..) )
+<<<<<<< HEAD
 import Vehicle.Core.Instance.Recursive (ExprF (..))
+=======
+import Vehicle.Core.DeBruijn (DeBruijn, SortedDeBruijn)
+import Vehicle.Core.Type.Instance.Recursive (ExprF (..))
+>>>>>>> First preliminary attempt at normalisation
 import Control.Monad.Except (MonadError, Except, runExcept)
 import Data.Map (Map, lookup, insert, notMember)
 import Data.Functor.Foldable (fold)
@@ -22,10 +27,13 @@ import Control.Monad.Error.Class (throwError)
 
 -- * Normalisation monad
 
+<<<<<<< HEAD
 type DeBruijn = Int
 
 newtype SortedDeBruijn (sort :: Sort) 
   = SortedDeBruijn DeBruijn
+=======
+>>>>>>> First preliminary attempt at normalisation
 
 type NormExpr ann = Expr SortedDeBruijn SortedBuiltin ann
 
