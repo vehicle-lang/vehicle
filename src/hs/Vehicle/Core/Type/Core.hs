@@ -17,7 +17,6 @@ module Vehicle.Core.Type.Core
   , TArg
   , EArg
   , NoAnn(..)
-  , pattern NA
   ) where
 
 -- * Abstract syntax tree for Vehicle Core
@@ -199,8 +198,5 @@ data instance Tree 'EARG (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort
   (name 'EARG)              -- ^ Expression name.
 
 -- | Unit annotation.
-newtype NoAnn (sort :: Sort) = NoAnn ()
+data NoAnn (sort :: Sort) = NoAnn
   deriving (Eq, Ord, Show, Read)
-
-pattern NA :: NoAnn sort
-pattern NA = NoAnn ()

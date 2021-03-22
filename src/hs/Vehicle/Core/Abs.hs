@@ -62,7 +62,7 @@ module Vehicle.Core.Abs
 
 
 import           Data.Text (Text)
-import           Vehicle.Core.Type (Sort(..), NoAnn, pattern NA)
+import           Vehicle.Core.Type (Sort(..), NoAnn(..))
 import qualified Vehicle.Core.Type as Core
 import           Vehicle.Prelude.Token (Position)
 
@@ -71,44 +71,44 @@ import           Vehicle.Prelude.Token (Position)
 
 type Kind = Core.Kind SortedName SortedBuiltin NoAnn
 
-pattern KApp k1 k2 = Core.KApp NA k1 k2
-pattern KCon c     = Core.KCon NA c
-pattern KMeta i    = Core.KMeta NA i
+pattern KApp k1 k2 = Core.KApp NoAnn k1 k2
+pattern KCon c     = Core.KCon NoAnn c
+pattern KMeta i    = Core.KMeta NoAnn i
 
 type Type = Core.Type SortedName SortedBuiltin NoAnn
 
-pattern TForall n t = Core.TForall NA n t
-pattern TApp t1 t2  = Core.TApp NA t1 t2
-pattern TVar n      = Core.TVar NA n
-pattern TCon c      = Core.TCon NA c
-pattern TLitDim d   = Core.TLitDim NA d
-pattern TLitList ts = Core.TLitList NA ts
-pattern TMeta i     = Core.TMeta NA i
+pattern TForall n t = Core.TForall NoAnn n t
+pattern TApp t1 t2  = Core.TApp NoAnn t1 t2
+pattern TVar n      = Core.TVar NoAnn n
+pattern TCon c      = Core.TCon NoAnn c
+pattern TLitDim d   = Core.TLitDim NoAnn d
+pattern TLitList ts = Core.TLitList NoAnn ts
+pattern TMeta i     = Core.TMeta NoAnn i
 
 type Expr = Core.Expr SortedName SortedBuiltin NoAnn
 
-pattern EAnn e t     = Core.EAnn NA e t
-pattern ELet n e1 e2 = Core.ELet NA n e1 e2
-pattern ELam n e     = Core.ELam NA n e
-pattern EApp e1 e2   = Core.EApp NA e1 e2
-pattern EVar n       = Core.EVar NA n
-pattern ETyApp e t   = Core.ETyApp NA e t
-pattern ETyLam n e   = Core.ETyLam NA n e
-pattern ECon c       = Core.ECon NA c
-pattern ELitInt i    = Core.ELitInt NA i
-pattern ELitReal r   = Core.ELitReal NA r
-pattern ELitSeq es   = Core.ELitSeq NA es
+pattern EAnn e t     = Core.EAnn NoAnn e t
+pattern ELet n e1 e2 = Core.ELet NoAnn n e1 e2
+pattern ELam n e     = Core.ELam NoAnn n e
+pattern EApp e1 e2   = Core.EApp NoAnn e1 e2
+pattern EVar n       = Core.EVar NoAnn n
+pattern ETyApp e t   = Core.ETyApp NoAnn e t
+pattern ETyLam n e   = Core.ETyLam NoAnn n e
+pattern ECon c       = Core.ECon NoAnn c
+pattern ELitInt i    = Core.ELitInt NoAnn i
+pattern ELitReal r   = Core.ELitReal NoAnn r
+pattern ELitSeq es   = Core.ELitSeq NoAnn es
 
 type Decl = Core.Decl SortedName SortedBuiltin NoAnn
 
-pattern DeclNetw n t   = Core.DeclNetw NA n t
-pattern DeclData n t   = Core.DeclData NA n t
-pattern DefType n ns t = Core.DefType NA n ns t
-pattern DefFun n t e   = Core.DefFun NA n t e
+pattern DeclNetw n t   = Core.DeclNetw NoAnn n t
+pattern DeclData n t   = Core.DeclData NoAnn n t
+pattern DefType n ns t = Core.DefType NoAnn n ns t
+pattern DefFun n t e   = Core.DefFun NoAnn n t e
 
 type Prog = Core.Prog SortedName SortedBuiltin NoAnn
 
-pattern Main ds = Core.Main NA ds
+pattern Main ds = Core.Main NoAnn ds
 
 
 -- * Tokens
@@ -157,8 +157,8 @@ pattern MkExprName tk = SortedName tk
 
 type TypeBinder = Core.TArg SortedName SortedBuiltin NoAnn
 
-pattern MkTypeBinder tk = Core.TArg NA (SortedName tk)
+pattern MkTypeBinder tk = Core.TArg NoAnn (SortedName tk)
 
 type ExprBinder = Core.EArg SortedName SortedBuiltin NoAnn
 
-pattern MkExprBinder tk = Core.EArg NA (SortedName tk)
+pattern MkExprBinder tk = Core.EArg NoAnn (SortedName tk)
