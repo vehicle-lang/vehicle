@@ -12,15 +12,10 @@ import           Control.Exception (Exception)
 import           Control.Monad.Except (MonadError(..))
 import           Control.Monad.State (MonadState(..))
 import           Data.Functor.Foldable (fold)
-import           Data.Text (Text)
 import           Vehicle.Core.Check.Core
 import           Vehicle.Core.Check.Builtin
 import           Vehicle.Core.Type
-import           Vehicle.Core.Abs (SortedName(..), Name(..))
 import           Vehicle.Prelude
-
-type KindEnv name builtin ann = [(Text, Kind name builtin ann)]
-type TypeEnv name builtin ann = [(Text, Type name builtin ann)]
 
 data DeBruijn (sort :: Sort) = DeBruijn
   { pos   :: Position
@@ -29,17 +24,26 @@ data DeBruijn (sort :: Sort) = DeBruijn
 
 data family Info (sort :: Sort)
 data instance Info 'KIND = InfoKind
-data instance Info 'TYPE = InfoType (Kind DeBruijn Builtin NoAnn)
-data instance Info 'EXPR = InfoExpr (Type DeBruijn Builtin NoAnn)
+data instance Info 'TYPE = InfoType (Kind DeBruijn Builtin (K ()))
+data instance Info 'TARG = InfoTArg (Kind DeBruijn Builtin (K ()))
+data instance Info 'EXPR = InfoExpr (Type DeBruijn Builtin (K ()))
+data instance Info 'EARG = InfoEArg (Type DeBruijn Builtin (K ()))
 data instance Info 'DECL = InfoDecl
 data instance Info 'PROG = InfoProg
-data instance Info 'TARG = InfoTArg (Kind DeBruijn Builtin NoAnn)
-data instance Info 'EARG = InfoEArg (Type DeBruijn Builtin NoAnn)
 
-check :: TCM m => SSort sort -> Info sort -> Tree sort SortedName Builtin NoAnn -> m (Tree sort DeBruijn Builtin Info)
+
+check :: (IsToken tkName, TCM m) =>
+         SSort sort ->
+         Info sort ->
+         Tree sort (K tkName) Builtin (K ()) ->
+         m (Tree sort DeBruijn Builtin Info)
 check = undefined
 
-infer :: TCM m => SSort sort -> Tree sort SortedName Builtin NoAnn -> m (Tree sort DeBruijn Builtin Info)
+
+infer :: (IsToken tkName, TCM m) =>
+         SSort sort ->
+         Tree sort (K tkName) Builtin (K ()) ->
+         m (Tree sort DeBruijn Builtin Info)
 infer = undefined
 
 -- | Essentially a no-op. Infers the empty 'KindInfo' for each constructor of
@@ -49,22 +53,24 @@ infer = undefined
 --   into any other sort of tree. If this assumption is violated, 'inferKind'
 --   throws an 'UnexpectedSort' exception.
 --
-inferKind :: TCM m => Kind SortedName Builtin NoAnn -> m (Kind DeBruijn Builtin Info)
+inferKind :: (IsToken tkName, TCM m) => Kind (K tkName) Builtin (K ()) -> m (Kind DeBruijn Builtin Info)
 inferKind = mapTreeM unexpectedSort (const pure) fAnn SKIND
   where
-    fAnn :: TCM m => forall sort. SSort sort -> NoAnn sort -> m (Info sort)
+    fAnn :: TCM m => forall sort. SSort sort -> (K ()) sort -> m (Info sort)
     fAnn SKIND = const (pure InfoKind)
     fAnn ssort = unexpectedSort ssort
 
-inferType :: TCM m => Type SortedName Builtin NoAnn -> m (Type DeBruijn Builtin Info)
+
+inferType :: (IsToken tkName, TCM m) => Type (K tkName) Builtin (K ()) -> m (Type DeBruijn Builtin Info)
 inferType = fold $ \case
-  TForallF  _NA n t   -> undefined
-  TAppF     _NA t1 t2 -> undefined
-  TVarF     _NA n     -> undefined
-  TConF     _NA op    -> undefined
-  TLitDimF  _NA d     -> undefined
-  TLitListF _NA ts    -> undefined
-  TMetaF    _NA i     -> undefined
+  TForallF  _ n t   -> undefined
+  TAppF     _ t1 t2 -> undefined
+  TVarF     _ n     -> undefined
+  TConF     _ op    -> undefined
+  TLitDimF  _ d     -> undefined
+  TLitListF _ ts    -> undefined
+  TMetaF    _ i     -> undefined
+
 
 -- | Throws an 'UnexpectedSort' exception for any sorted type.
 --

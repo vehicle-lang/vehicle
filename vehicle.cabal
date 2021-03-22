@@ -36,6 +36,7 @@ library
                     , Vehicle.Core.Type.Instance
                     , Vehicle.Core.Type.Instance.Core
                     , Vehicle.Core.Type.Instance.Recursive
+                    , Vehicle.Core.Type.Instance.Trifunctor
                     , Vehicle.Frontend.Type.Core
                     , Vehicle.Frontend.Type.Instance
                     , Vehicle.Frontend.Type.Instance.Recursive

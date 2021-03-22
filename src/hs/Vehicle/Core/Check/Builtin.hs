@@ -15,14 +15,10 @@ import           Control.Monad.Except (MonadError(..))
 import           Data.Text (Text)
 import           Vehicle.Core.Check.Core
 import           Vehicle.Core.Type
-import qualified Vehicle.Core.Abs as VCA (SortedBuiltin(..), Builtin(..))
 import           Vehicle.Prelude
 
 
-data Builtin (sort :: Sort) = Builtin
-  { pos :: Position
-  , op  :: BuiltinOp sort
-  }
+data Builtin (sort :: Sort) = Builtin Position (BuiltinOp sort)
 
 data BuiltinOp (sort :: Sort) where
 
@@ -80,7 +76,6 @@ builtinKinds =
   , "List" |-> KList
   ]
 
-
 builtinTypes :: [(Text, BuiltinOp 'TYPE)]
 builtinTypes =
   [ "->"     |-> TFun
@@ -119,17 +114,17 @@ builtinExprs =
   , "any"   |-> EAny
   ]
 
-checkBuiltinWithMap :: TCM m => [(Text, BuiltinOp sort)] -> VCA.SortedBuiltin sort -> m (Builtin sort)
+checkBuiltinWithMap :: (IsToken tk, TCM m) => [(Text, BuiltinOp sort)] -> K tk sort -> m (Builtin sort)
 checkBuiltinWithMap builtins tk = case lookup (tkText tk) builtins of
   Nothing -> throwError (UnknownBuiltin (toToken tk))
-  Just op -> return (Builtin { pos = tkPos tk, op = op })
+  Just op -> return (Builtin (tkPos tk) op)
 
-checkBuiltin :: TCM m => SSort sort -> VCA.SortedBuiltin sort -> m (Builtin sort)
+checkBuiltin :: (IsToken tk, TCM m) => SSort sort -> K tk sort -> m (Builtin sort)
 checkBuiltin ssort tk = case ssort of
   SKIND -> checkBuiltinWithMap builtinKinds tk
   STYPE -> checkBuiltinWithMap builtinTypes tk
   SEXPR -> checkBuiltinWithMap builtinExprs tk
   _     -> throwError (UnknownBuiltin (toToken tk))
 
-checkBuiltins :: (TCM m) => SSort sort -> Tree sort name VCA.SortedBuiltin ann -> m (Tree sort name Builtin ann)
+checkBuiltins :: (IsToken tk, TCM m) => SSort sort -> Tree sort name (K tk) ann -> m (Tree sort name Builtin ann)
 checkBuiltins = mapBuiltinM checkBuiltin
