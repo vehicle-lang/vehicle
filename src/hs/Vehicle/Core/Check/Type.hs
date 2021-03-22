@@ -26,17 +26,23 @@ data DeBruijn (sort :: Sort) = DeBruijn
   , index :: Int
   }
 
+data family Info (sort :: Sort)
+data instance Info 'KIND = InfoKind
+data instance Info 'TYPE = InfoType (Kind DeBruijn Builtin NoAnn)
+data instance Info 'EXPR = InfoExpr (Type DeBruijn Builtin NoAnn)
+data instance Info 'DECL = InfoDecl
+data instance Info 'PROG = InfoProg
+data instance Info 'TARG = InfoTArg (Kind DeBruijn Builtin NoAnn)
+data instance Info 'EARG = InfoEArg (Type DeBruijn Builtin NoAnn)
+
+check :: TCM m => SSort sort -> Info sort -> Tree sort SortedName Builtin NoAnn -> m (Tree sort DeBruijn Builtin Info)
+check = undefined
+
+infer :: TCM m => SSort sort -> Tree sort SortedName Builtin NoAnn -> m (Tree sort DeBruijn Builtin Info)
+infer = undefined
+
+
 {-
--- | Annotation which stores typing information.
-type family CheckInfo (sort :: Sort) where
-  CheckInfo 'TYPE = Kind DeBruijn Builtin NoAnn
-  CheckInfo 'EXPR = Type DeBruijn Builtin NoAnn
-  CheckInfo 'TARG = Kind DeBruijn Builtin NoAnn
-  CheckInfo 'EARG = Type DeBruijn Builtin NoAnn
-  CheckInfo _     = ()
-
-newtype CheckResult (sort :: Sort) = CheckResult (CheckInfo sort)
-
 {-
 class Check (tree :: (Sort -> *) -> (Sort -> *) -> (Sort -> *) -> *) where
   check :: TCM m => CheckResult -> tree SortedName Builtin NoAnn -> m (tree DeBruijn Builtin CheckResult)
