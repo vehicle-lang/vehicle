@@ -16,7 +16,7 @@ module Vehicle.Core.Type.Core
   , Prog
   , TArg
   , EArg
-  , NoAnn(..)
+  , K(..)
   ) where
 
 -- * Abstract syntax tree for Vehicle Core
@@ -197,6 +197,6 @@ data instance Tree 'EARG (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort
   (ann 'EARG)               -- ^ Sort Annotation.
   (name 'EARG)              -- ^ Expression name.
 
--- | Unit annotation.
-data NoAnn (sort :: Sort) = NoAnn
-  deriving (Eq, Ord, Show, Read)
+-- | Constant type-level function.
+newtype K (a :: *) (b :: Sort) = K { unK :: a }
+  deriving (Eq, Ord, Show)

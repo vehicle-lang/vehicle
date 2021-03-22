@@ -8,7 +8,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE RankNTypes        #-}
 
-module Vehicle.Core.Type.Instance.SortedTrifunctor where
+module Vehicle.Core.Type.Instance.Trifunctor where
 
 import Control.Monad.Identity
 import Data.Functor.Foldable (fold)
@@ -39,6 +39,10 @@ mapTreeM fName fBuiltin fAnn = \case
     TLitListF ann ts    -> TLitList <$> fAnn STYPE ann <*> sequenceA ts
     TMetaF    ann i     -> TMeta    <$> fAnn STYPE ann <*> pure i
 
+  -- Type arguments
+  STARG -> \case
+    TArg ann n -> TArg <$> fAnn STARG ann <*> fName STARG n
+
   -- Expressions
   SEXPR -> fold $ \case
     EAnnF     ann e t     -> EAnn     <$> fAnn SEXPR ann <*> e <*> mapTreeM fName fBuiltin fAnn STYPE t
@@ -52,6 +56,10 @@ mapTreeM fName fBuiltin fAnn = \case
     ELitIntF  ann z       -> ELitInt  <$> fAnn SEXPR ann <*> pure z
     ELitRealF ann r       -> ELitReal <$> fAnn SEXPR ann <*> pure r
     ELitSeqF  ann es      -> ELitSeq  <$> fAnn SEXPR ann <*> sequenceA es
+
+  -- Expression arguments
+  SEARG -> \case
+    EArg ann n -> EArg <$> fAnn SEARG ann <*> fName SEARG n
 
   -- Declarations
   SDECL -> \case
@@ -73,14 +81,6 @@ mapTreeM fName fBuiltin fAnn = \case
   -- Programs
   SPROG -> \case
     Main ann ds -> Main <$> fAnn SPROG ann <*> traverse (mapTreeM fName fBuiltin fAnn SDECL) ds
-
-  -- Type arguments
-  STARG -> \case
-    TArg ann n -> TArg <$> fAnn STARG ann <*> fName STARG n
-
-  -- Expression arguments
-  SEARG -> \case
-    EArg ann n -> EArg <$> fAnn SEARG ann <*> fName SEARG n
 
 
 mapTree :: (forall sort. SSort sort -> name sort -> name' sort) ->

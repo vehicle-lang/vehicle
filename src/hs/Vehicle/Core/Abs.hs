@@ -41,9 +41,6 @@ module Vehicle.Core.Abs
   , pattern Main
   , Builtin(..)
   , Name(..)
-  , SortedBuiltin(..)
-  , SortedName(..)
-  , NoAnn(..)
   , KindBuiltin
   , pattern MkKindBuiltin
   , TypeBuiltin
@@ -62,53 +59,53 @@ module Vehicle.Core.Abs
 
 
 import           Data.Text (Text)
-import           Vehicle.Core.Type (Sort(..), NoAnn(..))
+import           Vehicle.Core.Type (Sort(..), K(..))
 import qualified Vehicle.Core.Type as Core
-import           Vehicle.Prelude.Token (Position)
+import           Vehicle.Prelude (Position)
 
 
 -- * Abstract syntax tree
 
-type Kind = Core.Kind SortedName SortedBuiltin NoAnn
+type Kind = Core.Kind (K Name) (K Builtin) (K ())
 
-pattern KApp k1 k2 = Core.KApp NoAnn k1 k2
-pattern KCon c     = Core.KCon NoAnn c
-pattern KMeta i    = Core.KMeta NoAnn i
+pattern KApp k1 k2 = Core.KApp (K ()) k1 k2
+pattern KCon c     = Core.KCon (K ()) c
+pattern KMeta i    = Core.KMeta (K ()) i
 
-type Type = Core.Type SortedName SortedBuiltin NoAnn
+type Type = Core.Type (K Name) (K Builtin) (K ())
 
-pattern TForall n t = Core.TForall NoAnn n t
-pattern TApp t1 t2  = Core.TApp NoAnn t1 t2
-pattern TVar n      = Core.TVar NoAnn n
-pattern TCon c      = Core.TCon NoAnn c
-pattern TLitDim d   = Core.TLitDim NoAnn d
-pattern TLitList ts = Core.TLitList NoAnn ts
-pattern TMeta i     = Core.TMeta NoAnn i
+pattern TForall n t = Core.TForall (K ()) n t
+pattern TApp t1 t2  = Core.TApp (K ()) t1 t2
+pattern TVar n      = Core.TVar (K ()) n
+pattern TCon c      = Core.TCon (K ()) c
+pattern TLitDim d   = Core.TLitDim (K ()) d
+pattern TLitList ts = Core.TLitList (K ()) ts
+pattern TMeta i     = Core.TMeta (K ()) i
 
-type Expr = Core.Expr SortedName SortedBuiltin NoAnn
+type Expr = Core.Expr (K Name) (K Builtin) (K ())
 
-pattern EAnn e t     = Core.EAnn NoAnn e t
-pattern ELet n e1 e2 = Core.ELet NoAnn n e1 e2
-pattern ELam n e     = Core.ELam NoAnn n e
-pattern EApp e1 e2   = Core.EApp NoAnn e1 e2
-pattern EVar n       = Core.EVar NoAnn n
-pattern ETyApp e t   = Core.ETyApp NoAnn e t
-pattern ETyLam n e   = Core.ETyLam NoAnn n e
-pattern ECon c       = Core.ECon NoAnn c
-pattern ELitInt i    = Core.ELitInt NoAnn i
-pattern ELitReal r   = Core.ELitReal NoAnn r
-pattern ELitSeq es   = Core.ELitSeq NoAnn es
+pattern EAnn e t     = Core.EAnn (K ()) e t
+pattern ELet n e1 e2 = Core.ELet (K ()) n e1 e2
+pattern ELam n e     = Core.ELam (K ()) n e
+pattern EApp e1 e2   = Core.EApp (K ()) e1 e2
+pattern EVar n       = Core.EVar (K ()) n
+pattern ETyApp e t   = Core.ETyApp (K ()) e t
+pattern ETyLam n e   = Core.ETyLam (K ()) n e
+pattern ECon c       = Core.ECon (K ()) c
+pattern ELitInt i    = Core.ELitInt (K ()) i
+pattern ELitReal r   = Core.ELitReal (K ()) r
+pattern ELitSeq es   = Core.ELitSeq (K ()) es
 
-type Decl = Core.Decl SortedName SortedBuiltin NoAnn
+type Decl = Core.Decl (K Name) (K Builtin) (K ())
 
-pattern DeclNetw n t   = Core.DeclNetw NoAnn n t
-pattern DeclData n t   = Core.DeclData NoAnn n t
-pattern DefType n ns t = Core.DefType NoAnn n ns t
-pattern DefFun n t e   = Core.DefFun NoAnn n t e
+pattern DeclNetw n t   = Core.DeclNetw (K ()) n t
+pattern DeclData n t   = Core.DeclData (K ()) n t
+pattern DefType n ns t = Core.DefType (K ()) n ns t
+pattern DefFun n t e   = Core.DefFun (K ()) n t e
 
-type Prog = Core.Prog SortedName SortedBuiltin NoAnn
+type Prog = Core.Prog (K Name) (K Builtin) (K ())
 
-pattern Main ds = Core.Main NoAnn ds
+pattern Main ds = Core.Main (K ()) ds
 
 
 -- * Tokens
@@ -116,49 +113,44 @@ pattern Main ds = Core.Main NoAnn ds
 -- ** Lexer tokens
 
 newtype Builtin = Builtin (Position, Text)
-  deriving (Eq, Ord, Show, Read)
 
 newtype Name = Name (Position, Text)
-  deriving (Eq, Ord, Show, Read)
+
+-- ** K tokens, generic
 
 
--- ** Sorted tokens, generic
+-- ** K tokens, specialised
 
-newtype SortedBuiltin (sort :: Sort)
-  = SortedBuiltin Builtin
-  deriving (Eq, Ord, Show, Read)
+type KindBuiltin = K Builtin 'KIND
 
-newtype SortedName (sort :: Sort)
-  = SortedName Name
-  deriving (Eq, Ord, Show, Read)
+pattern MkKindBuiltin tk = K tk
 
 
--- ** Sorted tokens, specialised
+type TypeBuiltin = K Builtin 'TYPE
 
-type KindBuiltin = SortedBuiltin 'KIND
+pattern MkTypeBuiltin tk = K tk
 
-pattern MkKindBuiltin tk = SortedBuiltin tk
 
-type TypeBuiltin = SortedBuiltin 'TYPE
+type ExprBuiltin = K Builtin 'EXPR
 
-pattern MkTypeBuiltin tk = SortedBuiltin tk
+pattern MkExprBuiltin tk = K tk
 
-type ExprBuiltin = SortedBuiltin 'EXPR
 
-pattern MkExprBuiltin tk = SortedBuiltin tk
+type TypeName = K Name 'TYPE
 
-type TypeName = SortedName 'TYPE
+pattern MkTypeName tk = K tk
 
-pattern MkTypeName tk = SortedName tk
 
-type ExprName = SortedName 'EXPR
+type ExprName = K Name 'EXPR
 
-pattern MkExprName tk = SortedName tk
+pattern MkExprName tk = K tk
 
-type TypeBinder = Core.TArg SortedName SortedBuiltin NoAnn
 
-pattern MkTypeBinder tk = Core.TArg NoAnn (SortedName tk)
+type TypeBinder = Core.TArg (K Name) (K Builtin) (K ())
 
-type ExprBinder = Core.EArg SortedName SortedBuiltin NoAnn
+pattern MkTypeBinder tk = Core.TArg (K ()) (K tk)
 
-pattern MkExprBinder tk = Core.EArg NoAnn (SortedName tk)
+
+type ExprBinder = Core.EArg (K Name) (K Builtin) (K ())
+
+pattern MkExprBinder tk = Core.EArg (K ()) (K tk)

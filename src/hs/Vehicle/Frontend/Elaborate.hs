@@ -23,8 +23,8 @@ import           Data.Coerce (coerce)
 import           Data.Foldable (foldrM)
 import           Data.Functor.Foldable (fold)
 import           Data.List (groupBy)
-import           Vehicle.Core.Type (Sort(..))
-import qualified Vehicle.Core.Abs as VCA -- NOTE: In general, avoid importing Abs!
+import           Vehicle.Core.Type (Sort(..), K(..))
+import qualified Vehicle.Core.Abs as VC -- NOTE: In general, avoid importing Abs!
 import qualified Vehicle.Frontend.Type as VF
 import           Vehicle.Prelude
 
@@ -90,11 +90,11 @@ class Elab vf vc where
   elab :: MonadElab m => vf -> m vc
 
 -- |Elaborate kinds.
-instance Elab VF.Kind VCA.Kind where
+instance Elab VF.Kind VC.Kind where
   elab = fold $ \case
 
     -- Core structure.
-    VF.KAppF k1 k2    -> VCA.KApp <$> k1 <*> k2
+    VF.KAppF k1 k2    -> VC.KApp <$> k1 <*> k2
 
     -- Primitive kinds.
     VF.KFunF k1 tk k2 -> kOp2 tk k1 k2
@@ -103,12 +103,12 @@ instance Elab VF.Kind VCA.Kind where
     VF.KListF tk      -> kCon tk
 
 -- |Elaborate types.
-instance Elab VF.Type VCA.Type where
+instance Elab VF.Type VC.Type where
   elab = fold $ \case
 
     -- Core structure.
-    VF.TForallF _tk1 ns _tk2 t -> foldr VCA.TForall <$> t <*> traverse elab ns
-    VF.TAppF t1 t2             -> VCA.TApp <$> t1 <*> t2
+    VF.TForallF _tk1 ns _tk2 t -> foldr VC.TForall <$> t <*> traverse elab ns
+    VF.TAppF t1 t2             -> VC.TApp <$> t1 <*> t2
     VF.TVarF n                 -> elab n
 
     -- Primitive types.
@@ -121,24 +121,24 @@ instance Elab VF.Type VCA.Type where
 
     -- Type-level dimensions.
     VF.TAddF t1 tk t2          -> tOp2 tk t1 t2
-    VF.TLitDimF nat            -> return $ VCA.TLitDim nat
+    VF.TLitDimF nat            -> return $ VC.TLitDim nat
 
     -- Type-level lists.
     VF.TConsF t1 tk t2         -> tOp2 tk t1 t2
-    VF.TLitListF _tk1 ts _tk2  -> VCA.TLitList <$> sequence ts
+    VF.TLitListF _tk1 ts _tk2  -> VC.TLitList <$> sequence ts
 
 -- |Elaborate expressions.
-instance Elab VF.Expr VCA.Expr where
+instance Elab VF.Expr VC.Expr where
   elab = fold $ \case
 
     -- Core structure.
-    VF.EAnnF e _tk t               -> VCA.EAnn <$> e <*> elab t
+    VF.EAnnF e _tk t               -> VC.EAnn <$> e <*> elab t
     VF.ELetF ds e                  -> eLet (eDecls ds) e
-    VF.ELamF _tk1 ns _tk2 e        -> foldr VCA.ELam <$> e <*> traverse elab ns
-    VF.EAppF e1 e2                 -> VCA.EApp <$> e1 <*> e2
+    VF.ELamF _tk1 ns _tk2 e        -> foldr VC.ELam <$> e <*> traverse elab ns
+    VF.EAppF e1 e2                 -> VC.EApp <$> e1 <*> e2
     VF.EVarF n                     -> elab n
-    VF.ETyAppF e t                 -> VCA.ETyApp <$> e <*> elab t
-    VF.ETyLamF _tk1 ns _tk2 e      -> foldr VCA.ETyLam <$> e <*> traverse elab ns
+    VF.ETyAppF e t                 -> VC.ETyApp <$> e <*> elab t
+    VF.ETyLamF _tk1 ns _tk2 e      -> foldr VC.ETyLam <$> e <*> traverse elab ns
 
     -- Conditional expressions.
     VF.EIfF tk1 e1 _tk2 e2 _tk3 e3 -> eOp3 tk1 e1 e2 e3
@@ -161,34 +161,34 @@ instance Elab VF.Expr VCA.Expr where
     VF.EAddF e1 tk e2              -> eOp2 tk e1 e2
     VF.ESubF e1 tk e2              -> eOp2 tk e1 e2
     VF.ENegF tk e                  -> eOp1 (tkUpdateText "~" tk) e
-    VF.ELitIntF z                  -> return $ VCA.ELitInt z
-    VF.ELitRealF r                 -> return $ VCA.ELitReal r
+    VF.ELitIntF z                  -> return $ VC.ELitInt z
+    VF.ELitRealF r                 -> return $ VC.ELitReal r
 
     -- Lists and tensors.
     VF.EConsF e1 tk e2             -> eOp2 tk e1 e2
     VF.EAtF e1 tk e2               -> eOp2 tk e1 e2
     VF.EAllF tk                    -> eCon tk
     VF.EAnyF tk                    -> eCon tk
-    VF.ELitSeqF _tk1 es _tk2       -> VCA.ELitSeq <$> sequence es
+    VF.ELitSeqF _tk1 es _tk2       -> VC.ELitSeq <$> sequence es
 
 -- |Elaborate declarations.
-instance Elab [VF.Decl] VCA.Decl where
+instance Elab [VF.Decl] VC.Decl where
 
   -- Elaborate a network declaration.
   elab [VF.DeclNetw n _tk t] =
-    VCA.DeclNetw <$> elab n <*> elab t
+    VC.DeclNetw <$> elab n <*> elab t
 
   -- Elaborate a dataset declaration.
   elab [VF.DeclData n _tk t] =
-    VCA.DeclData <$> elab n <*> elab t
+    VC.DeclData <$> elab n <*> elab t
 
   -- Elaborate a dataset declaration.
   elab [VF.DefType n ns t] =
-    VCA.DefType <$> elab n <*> traverse elab ns <*> elab t
+    VC.DefType <$> elab n <*> traverse elab ns <*> elab t
 
   -- Elaborate a function definition.
   elab [VF.DefFunType _n _tk t, VF.DefFunExpr n ns e] =
-    VCA.DefFun <$> elab n <*> elab t <*> (foldr VCA.ETyLam <$> elab e <*> traverse elab ns)
+    VC.DefFun <$> elab n <*> elab t <*> (foldr VC.ETyLam <$> elab e <*> traverse elab ns)
 
   -- Why did you write the signature AFTER the function?
   elab [VF.DefFunExpr n1 ns e, VF.DefFunType n2 tk t] =
@@ -206,69 +206,69 @@ instance Elab [VF.Decl] VCA.Decl where
     throwError (DuplicateName (map (toToken . VF.declName) ds))
 
 -- |Elaborate programs.
-instance Elab VF.Prog VCA.Prog where
-  elab (VF.Main decls) = VCA.Main <$> eDecls decls
+instance Elab VF.Prog VC.Prog where
+  elab (VF.Main decls) = VC.Main <$> eDecls decls
 
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
-eLet :: MonadElab m => m [VCA.Decl] -> m VCA.Expr -> m VCA.Expr
+eLet :: MonadElab m => m [VC.Decl] -> m VC.Expr -> m VC.Expr
 eLet ds e = bindM2 (foldrM declToLet) e ds
   where
-    declToLet :: MonadElab m => VCA.Decl -> VCA.Expr -> m VCA.Expr
-    declToLet (VCA.DefFun n t e1) e2 = return (VCA.ELet n (VCA.EAnn e1 t) e2)
-    declToLet (VCA.DeclNetw (VCA.MkExprBinder n) _t) _e2 = throwError (LocalDeclNetw (toToken n))
-    declToLet (VCA.DeclData (VCA.MkExprBinder n) _t) _e2 = throwError (LocalDeclData (toToken n))
-    declToLet (VCA.DefType (VCA.MkTypeBinder n) _ns _t) _e2 = throwError (LocalDefType (toToken n))
+    declToLet :: MonadElab m => VC.Decl -> VC.Expr -> m VC.Expr
+    declToLet (VC.DefFun n t e1) e2 = return (VC.ELet n (VC.EAnn e1 t) e2)
+    declToLet (VC.DeclNetw (VC.MkExprBinder n) _t) _e2 = throwError (LocalDeclNetw (toToken n))
+    declToLet (VC.DeclData (VC.MkExprBinder n) _t) _e2 = throwError (LocalDeclData (toToken n))
+    declToLet (VC.DefType (VC.MkTypeBinder n) _ns _t) _e2 = throwError (LocalDefType (toToken n))
 
 -- |Takes a list of declarations, and groups type and expression
 --  declarations for the same name. If any name does not have exactly one
 --  type and one expression declaration, an error is returned.
-eDecls :: MonadElab m => [VF.Decl] -> m [VCA.Decl]
+eDecls :: MonadElab m => [VF.Decl] -> m [VC.Decl]
 eDecls decls = traverse elab (groupBy cond decls)
   where
     cond :: VF.Decl -> VF.Decl -> Bool
     cond d1 d2 = VF.isDefFun d1 && VF.isDefFun d2 && VF.declName d1 `tkEq` VF.declName d2
 
 -- |Elaborate any builtin token to a kind.
-kCon :: (MonadElab m, Elab a (VCA.SortedBuiltin 'KIND)) => a -> m VCA.Kind
-kCon = fmap VCA.KCon . elab
+kCon :: (MonadElab m, IsToken a) => a -> m VC.Kind
+kCon tk = pure $ VC.KCon (coerce tk)
 
 -- |Elaborate any builtin token to a type.
-tCon :: (MonadElab m, Elab a (VCA.SortedBuiltin 'TYPE)) => a -> m VCA.Type
-tCon = fmap VCA.TCon . elab
+tCon :: (MonadElab m, IsToken a) => a -> m VC.Type
+tCon tk = pure $ VC.TCon (coerce tk)
 
 -- |Elaborate any builtin token to an expression.
-eCon :: (MonadElab m, Elab a (VCA.SortedBuiltin 'EXPR)) => a -> m VCA.Expr
-eCon = fmap VCA.ECon . elab
+eCon :: (MonadElab m, IsToken a) => a -> m VC.Expr
+eCon tk = pure $ VC.ECon (coerce tk)
 
 -- |Elaborate a unary function symbol with its argument to a type.
-kOp1 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'KIND)) => a -> m VCA.Kind -> m VCA.Kind
-kOp1 tkOp k1 = VCA.KApp <$> kCon tkOp <*> k1
+kOp1 :: (MonadElab m, IsToken a) => a -> m VC.Kind -> m VC.Kind
+kOp1 tkOp k1 = VC.KApp <$> kCon tkOp <*> k1
 
 -- |Elaborate a binary function symbol with its arguments to a kind.
-kOp2 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'KIND)) => a -> m VCA.Kind -> m VCA.Kind -> m VCA.Kind
-kOp2 tkOp k1 k2 = VCA.KApp <$> kOp1 tkOp k1 <*> k2
+kOp2 :: (MonadElab m, IsToken a) => a -> m VC.Kind -> m VC.Kind -> m VC.Kind
+kOp2 tkOp k1 k2 = VC.KApp <$> kOp1 tkOp k1 <*> k2
 
 -- |Elaborate a unary function symbol with its argument to a type.
-tOp1 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'TYPE)) => a -> m VCA.Type -> m VCA.Type
-tOp1 tkOp t1 = VCA.TApp <$> tCon tkOp <*> t1
+tOp1 :: (MonadElab m, IsToken a) => a -> m VC.Type -> m VC.Type
+tOp1 tkOp t1 = VC.TApp <$> tCon tkOp <*> t1
 
 -- |Elaborate a binary function symbol with its arguments to a type.
-tOp2 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'TYPE)) => a -> m VCA.Type -> m VCA.Type -> m VCA.Type
-tOp2 tkOp t1 t2 = VCA.TApp <$> tOp1 tkOp t1 <*> t2
+tOp2 :: (MonadElab m, IsToken a) => a -> m VC.Type -> m VC.Type -> m VC.Type
+tOp2 tkOp t1 t2 = VC.TApp <$> tOp1 tkOp t1 <*> t2
 
 -- |Elaborate a unary function symbol with its argument to an expression.
-eOp1 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'EXPR)) => a -> m VCA.Expr -> m VCA.Expr
-eOp1 tkOp e1 = VCA.EApp <$> eCon tkOp <*> e1
+eOp1 :: (MonadElab m, IsToken a) => a -> m VC.Expr -> m VC.Expr
+eOp1 tkOp e1 = VC.EApp <$> eCon tkOp <*> e1
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-eOp2 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'EXPR)) => a -> m VCA.Expr -> m VCA.Expr -> m VCA.Expr
-eOp2 tkOp e1 e2 = VCA.EApp <$> eOp1 tkOp e1 <*> e2
+eOp2 :: (MonadElab m, IsToken a) => a -> m VC.Expr -> m VC.Expr -> m VC.Expr
+eOp2 tkOp e1 e2 = VC.EApp <$> eOp1 tkOp e1 <*> e2
 
 -- |Elaborate a ternary function symbol with its arguments to an expression.
-eOp3 :: (MonadElab m, Elab a (VCA.SortedBuiltin 'EXPR)) => a -> m VCA.Expr -> m VCA.Expr -> m VCA.Expr -> m VCA.Expr
-eOp3 tkOp e1 e2 e3 = VCA.EApp <$> eOp2 tkOp e1 e2 <*> e3
+eOp3 :: (MonadElab m, IsToken a) => a -> m VC.Expr -> m VC.Expr -> m VC.Expr -> m VC.Expr
+eOp3 tkOp e1 e2 e3 = VC.EApp <$> eOp2 tkOp e1 e2 <*> e3
 
 -- |Lift a binary /monadic/ function.
 bindM2 :: Monad m => (a -> b -> m c) -> m a -> m b -> m c
@@ -277,52 +277,14 @@ bindM2 f ma mb = do a <- ma; b <- mb; f a b
 
 -- * Convert various token types to constructors or variables
 
-instance Elab VF.Name VCA.TypeBinder where elab = return . VCA.MkTypeBinder . coerce
-instance Elab VF.Name VCA.ExprBinder where elab = return . VCA.MkExprBinder . coerce
-instance Elab VF.Name VCA.Type where elab = fmap VCA.TVar . elab
-instance Elab VF.Name VCA.Expr where elab = fmap VCA.EVar . elab
+instance Elab VF.Name VC.TypeBinder where
+  elab tk = pure $ VC.MkTypeBinder (coerce tk)
 
+instance Elab VF.Name VC.ExprBinder where
+  elab tk = pure $ VC.MkExprBinder (coerce tk)
 
--- * Convert various token types from Frontend to builtin type in Core
+instance Elab VF.Name VC.Type where
+  elab tk = pure $ VC.TVar (coerce tk)
 
-instance Elab VF.TokArrow  (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokForall (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokExists (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokIf     (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokThen   (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokElse   (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokElemOf (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokImpl   (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokAnd    (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokOr     (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokEq     (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokNeq    (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokLe     (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokLt     (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokGe     (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokGt     (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokMul    (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokDiv    (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokAdd    (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokSub    (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokNot    (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokAt     (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokType   (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokTensor (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokAll    (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokAny    (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokReal   (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokDim    (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokInt    (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokBool   (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokTrue   (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokFalse  (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokList   (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokCons   (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.Name      (VCA.SortedName    sort) where elab = return . coerce
-
--- -}
--- -}
--- -}
--- -}
--- -}
+instance Elab VF.Name VC.Expr where
+  elab tk = pure $ VC.EVar (coerce tk)
