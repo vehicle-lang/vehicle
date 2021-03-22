@@ -11,7 +11,7 @@ position token Builtin
 	| {"*"} | {"/"} | {"+"} | {"-"} | {"~"} | {"!"} | {"not"}
 	| {"->"} | {"Type"} | {"Tensor"} | {"Real"} | {"Nat"}
 	| {"Bool"} | {"True"} | {"False"}
-	| {"List"} | {"Nil"} | {"::"});
+	| {"List"} | {"::"});
 
 position token Name (lower (letter | digit | '_')*) ;
 

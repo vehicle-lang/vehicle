@@ -2,8 +2,7 @@
 {-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE FlexibleContexts   #-}
 {-# LANGUAGE GADTs              #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
@@ -12,7 +11,6 @@
 -- and converts the builtin representation to a data type (as opposed to 'Text').
 module Vehicle.Core.Check.Builtin where
 
-import           Control.Exception (Exception)
 import           Control.Monad.Except (MonadError(..))
 import           Data.Text (Text)
 import           Vehicle.Core.Check.Core
@@ -82,6 +80,7 @@ builtinKinds =
   , "List" |-> KList
   ]
 
+
 builtinTypes :: [(Text, BuiltinOp 'TYPE)]
 builtinTypes =
   [ "->"     |-> TFun
@@ -91,8 +90,7 @@ builtinTypes =
   , "List"   |-> TList
   , "Tensor" |-> TTensor
   , "+"      |-> TAdd
-  , "Nil"    |-> TNil
-  , "Cons"   |-> TCons
+  , "::"     |-> TCons
   ]
 
 builtinExprs :: [(Text, BuiltinOp 'EXPR)]
@@ -116,24 +114,22 @@ builtinExprs =
   , "~"     |-> ENeg
   -- ^ Negation is changed from "-" to "~" during elaboration.
   , "!"     |-> EAt
-  , "Cons"  |-> ECons
-  , "Nil"   |-> ENil
+  , "::"    |-> ECons
   , "all"   |-> EAll
   , "any"   |-> EAny
   ]
 
-checkBuiltinWithMap :: MonadCheck m => [(Text, BuiltinOp sort)] -> VCA.SortedBuiltin sort -> m (Builtin sort)
+checkBuiltinWithMap :: TCM m => [(Text, BuiltinOp sort)] -> VCA.SortedBuiltin sort -> m (Builtin sort)
 checkBuiltinWithMap builtins tk = case lookup (tkText tk) builtins of
   Nothing -> throwError (UnknownBuiltin (toToken tk))
   Just op -> return (Builtin { pos = tkPos tk, op = op })
 
-checkBuiltin :: MonadCheck m => SSort sort -> VCA.SortedBuiltin sort -> m (Builtin sort)
+checkBuiltin :: TCM m => SSort sort -> VCA.SortedBuiltin sort -> m (Builtin sort)
 checkBuiltin ssort tk = case ssort of
   SKIND -> checkBuiltinWithMap builtinKinds tk
   STYPE -> checkBuiltinWithMap builtinTypes tk
   SEXPR -> checkBuiltinWithMap builtinExprs tk
   _     -> throwError (UnknownBuiltin (toToken tk))
 
-checkBuiltins :: (SortedTrifunctor tree, MonadCheck m) =>
-                 tree name VCA.SortedBuiltin ann -> m (tree name Builtin ann)
+checkBuiltins :: (TCM m) => SSort sort -> Tree sort name VCA.SortedBuiltin ann -> m (Tree sort name Builtin ann)
 checkBuiltins = mapBuiltinM checkBuiltin

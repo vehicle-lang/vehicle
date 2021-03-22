@@ -124,7 +124,6 @@ instance Elab VF.Type VCA.Type where
     VF.TLitDimF nat            -> return $ VCA.TLitDim nat
 
     -- Type-level lists.
-    VF.TNilF tk                -> tCon tk
     VF.TConsF t1 tk t2         -> tOp2 tk t1 t2
     VF.TLitListF _tk1 ts _tk2  -> VCA.TLitList <$> sequence ts
 
@@ -167,7 +166,6 @@ instance Elab VF.Expr VCA.Expr where
 
     -- Lists and tensors.
     VF.EConsF e1 tk e2             -> eOp2 tk e1 e2
-    VF.ENilF tk                    -> eCon tk
     VF.EAtF e1 tk e2               -> eOp2 tk e1 e2
     VF.EAllF tk                    -> eCon tk
     VF.EAnyF tk                    -> eCon tk
@@ -320,7 +318,6 @@ instance Elab VF.TokBool   (VCA.SortedBuiltin sort) where elab = return . coerce
 instance Elab VF.TokTrue   (VCA.SortedBuiltin sort) where elab = return . coerce
 instance Elab VF.TokFalse  (VCA.SortedBuiltin sort) where elab = return . coerce
 instance Elab VF.TokList   (VCA.SortedBuiltin sort) where elab = return . coerce
-instance Elab VF.TokNil    (VCA.SortedBuiltin sort) where elab = return . coerce
 instance Elab VF.TokCons   (VCA.SortedBuiltin sort) where elab = return . coerce
 instance Elab VF.Name      (VCA.SortedName    sort) where elab = return . coerce
 

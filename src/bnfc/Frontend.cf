@@ -46,7 +46,6 @@ position token TokAt       {"!"};
 position token TokSeqOpen  {"["};
 position token TokSeqClose {"]"};
 position token TokCons     {"::"};
-position token TokNil      {"Nil"};
 position token TokTrue     {"True"};
 position token TokFalse    {"False"};
 
@@ -89,7 +88,6 @@ TAdd.     Type2 ::= Type2 TokAdd Type3;
 TLitDim.  Type4 ::= Integer; -- confusingly, this means natural
 
 -- Type-level lists.
-TNil.     Type4 ::= TokNil;
 TCons.    Type1 ::= Type2 TokCons Type1;
 TLitList. Type4 ::= TokSeqOpen [Type] TokSeqClose;
 
@@ -148,7 +146,6 @@ ELitReal.   Expr13 ::= Double;
 
 -- Lists and tensors.
 ECons.      Expr3  ::= Expr4 TokCons Expr3;
-ENil.       Expr13 ::= TokNil;
 EAt.        Expr11 ::= Expr11 TokAt Expr12;
 EAll.       Expr13 ::= TokAll;
 EAny.       Expr13 ::= TokAny;
