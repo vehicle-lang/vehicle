@@ -1,7 +1,9 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Vehicle.Core.Type.Instance.Core where
@@ -121,3 +123,9 @@ deriving instance
   , Eq (builtin 'EARG)
   , Eq (ann 'EARG)
   ) => Eq (EArg name builtin ann)
+
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}

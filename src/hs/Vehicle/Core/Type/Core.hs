@@ -1,8 +1,22 @@
-{-# LANGUAGE DataKinds      #-}
-{-# LANGUAGE GADTs          #-}
-{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE DataKinds       #-}
+{-# LANGUAGE GADTs           #-}
+{-# LANGUAGE TypeFamilies    #-}
+{-# LANGUAGE PatternSynonyms #-}
 
-module Vehicle.Core.Type.Core where
+module Vehicle.Core.Type.Core
+  ( Sort(..)
+  , SSort(..)
+  , Tree(..)
+  , Kind
+  , Type
+  , Expr
+  , Decl
+  , Prog
+  , TArg
+  , EArg
+  , NoAnn(..)
+  , pattern NA
+  ) where
 
 -- * Abstract syntax tree for Vehicle Core
 
@@ -25,8 +39,14 @@ data SSort (sort :: Sort) where
   STARG :: SSort 'TARG
   SEARG :: SSort 'EARG
 
+data family Tree (sort :: Sort) (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
+
+type Kind name builtin ann = Tree 'KIND name builtin ann
+
+infixl 4 `KApp`
+
 -- | Type of Vehicle Core kinds.
-data Kind (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
+data instance Tree 'KIND (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
   = KApp
     (ann 'KIND)             -- ^ Sort Annotation.
     (Kind name builtin ann) -- ^ Function.
@@ -38,8 +58,12 @@ data Kind (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
     (ann 'KIND)             -- ^ Sort Annotation.
     Integer                 -- ^ Meta variable.
 
+type Type name builtin ann = Tree 'TYPE name builtin ann
+
+infixl 4 `TApp`
+
 -- | Type of Vehicle Core types.
-data Type (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
+data instance Tree 'TYPE (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
   = TForall
     (ann 'TYPE)             -- ^ Sort Annotation.
     (TArg name builtin ann) -- ^ Bound type name.
@@ -64,8 +88,12 @@ data Type (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
     (ann 'TYPE)             -- ^ Sort Annotation.
     Integer                 -- ^ Meta variable
 
+type Expr name builtin ann = Tree 'EXPR name builtin ann
+
+infixl 4 `EApp`
+
 -- | Type of Vehicle Core expressions.
-data Expr (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
+data instance Tree 'EXPR (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
   = EAnn
     (ann 'EXPR)             -- ^ Sort Annotation.
     (Expr name builtin ann) -- ^ Expression.
@@ -107,8 +135,10 @@ data Expr (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
     (ann 'EXPR)             -- ^ Sort Annotation.
     [Expr name builtin ann] -- ^ List of expressions.
 
+type Decl name builtin ann = Tree 'DECL name builtin ann
+
 -- | Type of Vehicle Core declaration.
-data Decl (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
+data instance Tree 'DECL (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
   = DeclNetw
     (ann 'DECL)             -- ^ Sort Annotation.
     (EArg name builtin ann) -- ^ Network name.
@@ -128,20 +158,33 @@ data Decl (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
     (Type name builtin ann) -- ^ Bound function type.
     (Expr name builtin ann) -- ^ Bound function body.
 
+type Prog name builtin ann = Tree 'PROG name builtin ann
+
 -- | Type of Vehicle Core programs.
-data Prog (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
+data instance Tree 'PROG (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
   = Main
     (ann 'PROG)             -- ^ Sort Annotation.
     [Decl name builtin ann] -- ^ List of declarations.
 
+type TArg name builtin ann = Tree 'TARG name builtin ann
+
 -- | Type of Vehicle Core type-level name-binding sites.
-data TArg (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
+data instance Tree 'TARG (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
   = TArg
   (ann 'TARG)               -- ^ Sort Annotation.
   (name 'TARG)              -- ^ Type name.
 
+type EArg name builtin ann = Tree 'EARG name builtin ann
+
 -- | Type of Vehicle Core expression-level name-binding sites.
-data EArg (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
+data instance Tree 'EARG (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
   = EArg
   (ann 'EARG)               -- ^ Sort Annotation.
   (name 'EARG)              -- ^ Expression name.
+
+-- | Unit annotation.
+newtype NoAnn (sort :: Sort) = NoAnn ()
+  deriving (Eq, Ord, Show, Read)
+
+pattern NA :: NoAnn sort
+pattern NA = NoAnn ()

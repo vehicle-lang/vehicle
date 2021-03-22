@@ -20,4 +20,4 @@ data TypeError
 instance Exception TypeError
 
 -- |Constraint for the monad stack used by type checkers.
-type MonadCheck m = (MonadError TypeError m)
+type TCM m = (MonadError TypeError m)

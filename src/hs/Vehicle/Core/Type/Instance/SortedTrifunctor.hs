@@ -1,7 +1,12 @@
-{-# LANGUAGE DataKinds        #-}
-{-# LANGUAGE KindSignatures   #-}
-{-# LANGUAGE LambdaCase       #-}
-{-# LANGUAGE RankNTypes       #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs             #-}
+{-# LANGUAGE KindSignatures    #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE RankNTypes        #-}
 
 module Vehicle.Core.Type.Instance.SortedTrifunctor where
 
@@ -10,38 +15,23 @@ import Data.Functor.Foldable (fold)
 import Vehicle.Core.Type.Core
 import Vehicle.Core.Type.Instance.Recursive
 
--- | Listen, this is the sensible name to give to this class, I guess, even
---   though it's a mouthful and it's not really informative. If you've got
---   suggestions, please feel free to change it.
-class SortedTrifunctor (tree :: (Sort -> *) -> (Sort -> *) -> (Sort -> *) -> *) where
-  sortedMapM :: (Applicative f) =>
-                (forall sort. SSort sort -> name sort -> f (name' sort)) ->
-                (forall sort. SSort sort -> builtin sort -> f (builtin' sort)) ->
-                (forall sort. SSort sort -> ann sort -> f (ann' sort)) ->
-                tree name builtin ann -> f (tree name' builtin' ann')
 
-  -- | Pure variant of 'sortedMapM'.
-  --   Defaults to running 'sortedMapM' with the 'Identity' functor.
-  sortedMap :: (forall sort. SSort sort -> name sort -> name' sort) ->
-               (forall sort. SSort sort -> builtin sort -> builtin' sort) ->
-               (forall sort. SSort sort -> ann sort -> ann' sort) ->
-               tree name builtin ann -> tree name' builtin' ann'
-  sortedMap fName fBuiltin fAnn tree =
-    runIdentity (sortedMapM fNameM fBuiltinM fAnnM tree)
-    where
-      fNameM    ssort name    = pure (fName    ssort name)
-      fBuiltinM ssort builtin = pure (fBuiltin ssort builtin)
-      fAnnM     ssort ann     = pure (fAnn     ssort ann)
+mapTreeM :: (Applicative f) =>
+            (forall sort. SSort sort -> name sort -> f (name' sort)) ->
+            (forall sort. SSort sort -> builtin sort -> f (builtin' sort)) ->
+            (forall sort. SSort sort -> ann sort -> f (ann' sort)) ->
+            SSort sort -> Tree sort name builtin ann -> f (Tree sort name' builtin' ann')
+mapTreeM fName fBuiltin fAnn = \case
 
-instance SortedTrifunctor Kind where
-  sortedMapM _fName fBuiltin fAnn = fold $ \case
+  -- Kinds
+  SKIND -> fold $ \case
     KAppF  ann k1 k2 -> KApp  <$> fAnn SKIND ann <*> k1 <*> k2
     KConF  ann op    -> KCon  <$> fAnn SKIND ann <*> fBuiltin SKIND op
     KMetaF ann i     -> KMeta <$> fAnn SKIND ann <*> pure i
 
-instance SortedTrifunctor Type where
-  sortedMapM fName fBuiltin fAnn = fold $ \case
-    TForallF  ann n t   -> TForall  <$> fAnn STYPE ann <*> sortedMapM fName fBuiltin fAnn n <*> t
+  -- Types
+  STYPE -> fold $ \case
+    TForallF  ann n t   -> TForall  <$> fAnn STYPE ann <*> mapTreeM fName fBuiltin fAnn STARG n <*> t
     TAppF     ann t1 t2 -> TApp     <$> fAnn STYPE ann <*> t1 <*> t2
     TVarF     ann n     -> TVar     <$> fAnn STYPE ann <*> fName STYPE n
     TConF     ann op    -> TCon     <$> fAnn STYPE ann <*> fBuiltin STYPE op
@@ -49,76 +39,86 @@ instance SortedTrifunctor Type where
     TLitListF ann ts    -> TLitList <$> fAnn STYPE ann <*> sequenceA ts
     TMetaF    ann i     -> TMeta    <$> fAnn STYPE ann <*> pure i
 
-instance SortedTrifunctor Expr where
-  sortedMapM fName fBuiltin fAnn = fold $ \case
-    EAnnF     ann e t     -> EAnn     <$> fAnn SEXPR ann <*> e <*> sortedMapM fName fBuiltin fAnn t
-    ELetF     ann n e1 e2 -> ELet     <$> fAnn SEXPR ann <*> sortedMapM fName fBuiltin fAnn n <*> e1 <*> e2
-    ELamF     ann n e     -> ELam     <$> fAnn SEXPR ann <*> sortedMapM fName fBuiltin fAnn n <*> e
+  -- Expressions
+  SEXPR -> fold $ \case
+    EAnnF     ann e t     -> EAnn     <$> fAnn SEXPR ann <*> e <*> mapTreeM fName fBuiltin fAnn STYPE t
+    ELetF     ann n e1 e2 -> ELet     <$> fAnn SEXPR ann <*> mapTreeM fName fBuiltin fAnn SEARG n <*> e1 <*> e2
+    ELamF     ann n e     -> ELam     <$> fAnn SEXPR ann <*> mapTreeM fName fBuiltin fAnn SEARG n <*> e
     EAppF     ann e1 e2   -> EApp     <$> fAnn SEXPR ann <*> e1 <*> e2
     EVarF     ann n       -> EVar     <$> fAnn SEXPR ann <*> fName SEXPR n
-    ETyAppF   ann e t     -> ETyApp   <$> fAnn SEXPR ann <*> e <*> sortedMapM fName fBuiltin fAnn t
-    ETyLamF   ann n e     -> ETyLam   <$> fAnn SEXPR ann <*> sortedMapM fName fBuiltin fAnn n <*> e
+    ETyAppF   ann e t     -> ETyApp   <$> fAnn SEXPR ann <*> e <*> mapTreeM fName fBuiltin fAnn STYPE t
+    ETyLamF   ann n e     -> ETyLam   <$> fAnn SEXPR ann <*> mapTreeM fName fBuiltin fAnn STARG n <*> e
     EConF     ann op      -> ECon     <$> fAnn SEXPR ann <*> fBuiltin SEXPR op
     ELitIntF  ann z       -> ELitInt  <$> fAnn SEXPR ann <*> pure z
     ELitRealF ann r       -> ELitReal <$> fAnn SEXPR ann <*> pure r
     ELitSeqF  ann es      -> ELitSeq  <$> fAnn SEXPR ann <*> sequenceA es
 
-instance SortedTrifunctor Decl where
-  sortedMapM fName fBuiltin fAnn = \case
+  -- Declarations
+  SDECL -> \case
     DeclNetw ann n t    -> DeclNetw <$> fAnn SDECL ann <*>
-                           sortedMapM fName fBuiltin fAnn n <*>
-                           sortedMapM fName fBuiltin fAnn t
+                           mapTreeM fName fBuiltin fAnn SEARG n <*>
+                           mapTreeM fName fBuiltin fAnn STYPE t
     DeclData ann n t    -> DeclData <$> fAnn SDECL ann <*>
-                           sortedMapM fName fBuiltin fAnn n <*>
-                           sortedMapM fName fBuiltin fAnn t
+                           mapTreeM fName fBuiltin fAnn SEARG n <*>
+                           mapTreeM fName fBuiltin fAnn STYPE t
     DefType  ann n ns t -> DefType <$> fAnn SDECL ann <*>
-                           sortedMapM fName fBuiltin fAnn n <*>
-                           traverse (sortedMapM fName fBuiltin fAnn) ns <*>
-                           sortedMapM fName fBuiltin fAnn t
+                           mapTreeM fName fBuiltin fAnn STARG n <*>
+                           traverse (mapTreeM fName fBuiltin fAnn STARG) ns <*>
+                           mapTreeM fName fBuiltin fAnn STYPE t
     DefFun   ann n t e  -> DefFun <$> fAnn SDECL ann <*>
-                           sortedMapM fName fBuiltin fAnn n <*>
-                           sortedMapM fName fBuiltin fAnn t <*>
-                           sortedMapM fName fBuiltin fAnn e
+                           mapTreeM fName fBuiltin fAnn SEARG n <*>
+                           mapTreeM fName fBuiltin fAnn STYPE t <*>
+                           mapTreeM fName fBuiltin fAnn SEXPR e
 
-instance SortedTrifunctor Prog where
-  sortedMapM fName fBuiltin fAnn = \case
-    Main ann ds -> Main <$> fAnn SPROG ann <*> traverse (sortedMapM fName fBuiltin fAnn) ds
+  -- Programs
+  SPROG -> \case
+    Main ann ds -> Main <$> fAnn SPROG ann <*> traverse (mapTreeM fName fBuiltin fAnn SDECL) ds
 
-instance SortedTrifunctor TArg where
-  sortedMapM fName _fBuiltin fAnn = \case
+  -- Type arguments
+  STARG -> \case
     TArg ann n -> TArg <$> fAnn STARG ann <*> fName STARG n
 
-instance SortedTrifunctor EArg where
-  sortedMapM fName _fBuiltin fAnn = \case
+  -- Expression arguments
+  SEARG -> \case
     EArg ann n -> EArg <$> fAnn SEARG ann <*> fName SEARG n
 
 
-mapNameM :: (SortedTrifunctor tree, Applicative f) =>
+mapTree :: (forall sort. SSort sort -> name sort -> name' sort) ->
+           (forall sort. SSort sort -> builtin sort -> builtin' sort) ->
+           (forall sort. SSort sort -> ann sort -> ann' sort) ->
+           SSort sort -> Tree sort name builtin ann -> Tree sort name' builtin' ann'
+mapTree fName fBuiltin fAnn ssort tree =
+  runIdentity $ mapTreeM ((pure .) . fName) ((pure .) . fBuiltin) ((pure .) . fAnn) ssort tree
+
+mapNameM :: (Applicative f) =>
             (forall sort. SSort sort -> name sort -> f (name' sort)) ->
-            tree name builtin ann -> f (tree name' builtin ann)
-mapNameM fName = sortedMapM fName (const pure) (const pure)
+            SSort sort -> Tree sort name builtin ann -> f (Tree sort name' builtin ann)
+mapNameM fName = mapTreeM fName (const pure) (const pure)
 
-mapName :: (SortedTrifunctor tree) =>
-           (forall sort. SSort sort -> name sort -> name' sort) ->
-           tree name builtin ann -> tree name' builtin ann
-mapName fName = sortedMap fName (const id) (const id)
+mapName :: (forall sort. SSort sort -> name sort -> name' sort) ->
+           SSort sort -> Tree sort name builtin ann -> Tree sort name' builtin ann
+mapName fName = mapTree fName (const id) (const id)
 
-mapBuiltinM :: (SortedTrifunctor tree, Applicative f) =>
+mapBuiltinM :: (Applicative f) =>
                (forall sort. SSort sort -> builtin sort -> f (builtin' sort)) ->
-               tree name builtin ann -> f (tree name builtin' ann)
-mapBuiltinM fBuiltin = sortedMapM (const pure) fBuiltin (const pure)
+               SSort sort -> Tree sort name builtin ann -> f (Tree sort name builtin' ann)
+mapBuiltinM fBuiltin = mapTreeM (const pure) fBuiltin (const pure)
 
-mapBuiltin :: (SortedTrifunctor tree) =>
-              (forall sort. SSort sort -> builtin sort -> builtin' sort) ->
-              tree name builtin ann -> tree name builtin' ann
-mapBuiltin fBuiltin = sortedMap (const id) fBuiltin (const id)
+mapBuiltin :: (forall sort. SSort sort -> builtin sort -> builtin' sort) ->
+              SSort sort -> Tree sort name builtin ann -> Tree sort name builtin' ann
+mapBuiltin fBuiltin = mapTree (const id) fBuiltin (const id)
 
-mapAnnM :: (SortedTrifunctor tree, Applicative f) =>
-            (forall sort. SSort sort -> ann sort -> f (ann' sort)) ->
-            tree name builtin ann -> f (tree name builtin ann')
-mapAnnM fAnn = sortedMapM (const pure) (const pure) fAnn
+mapAnnM :: (Applicative f) => (forall sort. SSort sort -> ann sort -> f (ann' sort)) ->
+           SSort sort -> Tree sort name builtin ann -> f (Tree sort name builtin ann')
+mapAnnM fAnn = mapTreeM (const pure) (const pure) fAnn
 
-mapAnn :: (SortedTrifunctor tree) =>
-          (forall sort. SSort sort -> ann sort -> ann' sort) ->
-          tree name builtin ann -> tree name builtin ann'
-mapAnn fAnn = sortedMap (const id) (const id) fAnn
+mapAnn :: (forall sort. SSort sort -> ann sort -> ann' sort) ->
+          SSort sort -> Tree sort name builtin ann -> Tree sort name builtin ann'
+mapAnn fAnn = mapTree (const id) (const id) fAnn
+
+
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}
