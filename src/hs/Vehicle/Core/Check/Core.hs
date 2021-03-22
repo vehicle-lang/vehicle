@@ -1,5 +1,7 @@
-{-# LANGUAGE ConstraintKinds    #-}
-{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE StandaloneDeriving        #-}
 
 module Vehicle.Core.Check.Core where
 
@@ -7,6 +9,7 @@ import           Control.Exception (Exception)
 import           Control.Monad.Except (MonadError(..))
 import           Control.Monad.State (MonadState(..))
 import           Data.Text (Text)
+import           Text.Printf (printf)
 import           Vehicle.Core.Type
 import           Vehicle.Prelude
 
@@ -15,7 +18,9 @@ import           Vehicle.Prelude
 data TypeError
   = UnknownBuiltin Token
   | UnboundName Token
-  deriving (Show)
+  | UnexpectedName Token
+  | UnexpectedSort Sort
+  deriving Show
 
 instance Exception TypeError
 

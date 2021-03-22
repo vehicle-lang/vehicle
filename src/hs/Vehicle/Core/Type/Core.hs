@@ -1,11 +1,13 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE GADTs           #-}
-{-# LANGUAGE TypeFamilies    #-}
-{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE DataKinds          #-}
+{-# LANGUAGE GADTs              #-}
+{-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE PatternSynonyms    #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Vehicle.Core.Type.Core
   ( Sort(..)
   , SSort(..)
+  , toSort
   , Tree(..)
   , Kind
   , Type
@@ -28,6 +30,7 @@ module Vehicle.Core.Type.Core
 
 -- | Syntactic sorts used in Vehicle Core syntax.
 data Sort = KIND | TYPE | EXPR | DECL | PROG | TARG | EARG
+  deriving (Eq, Ord, Show)
 
 -- | Singleton type for 'Sort'.
 data SSort (sort :: Sort) where
@@ -38,6 +41,19 @@ data SSort (sort :: Sort) where
   SPROG :: SSort 'PROG
   STARG :: SSort 'TARG
   SEARG :: SSort 'EARG
+
+deriving instance (Eq (SSort sort))
+deriving instance (Ord (SSort sort))
+deriving instance (Show (SSort sort))
+
+toSort :: SSort sort -> Sort
+toSort SKIND = KIND
+toSort STYPE = TYPE
+toSort SEXPR = EXPR
+toSort SDECL = DECL
+toSort SPROG = PROG
+toSort STARG = TARG
+toSort SEARG = EARG
 
 data family Tree (sort :: Sort) (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
 
