@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts   #-}
 {-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE RankNTypes         #-}
 {-# LANGUAGE TypeFamilies       #-}
 
 module Vehicle.Core.Check.Type where
@@ -41,15 +42,38 @@ check = undefined
 infer :: TCM m => SSort sort -> Tree sort SortedName Builtin NoAnn -> m (Tree sort DeBruijn Builtin Info)
 infer = undefined
 
+-- | Essentially a no-op. Infers the empty 'KindInfo' for each constructor of
+--   'Kind', and converts /no/ names to 'DeBruijn' indices.
+--
+--   NOTE: this function assumes kinds don't contain names and do not recurse
+--   into any other sort of tree. If this assumption is violated, 'inferKind'
+--   throws an 'UnexpectedSort' exception.
+--
+inferKind :: TCM m => Kind SortedName Builtin NoAnn -> m (Kind DeBruijn Builtin Info)
+inferKind = mapTreeM unexpectedSort (const pure) fAnn SKIND
+  where
+    fAnn :: TCM m => forall sort. SSort sort -> NoAnn sort -> m (Info sort)
+    fAnn SKIND = const (pure InfoKind)
+    fAnn ssort = unexpectedSort ssort
 
-{-
-{-
-class Check (tree :: (Sort -> *) -> (Sort -> *) -> (Sort -> *) -> *) where
-  check :: TCM m => CheckResult -> tree SortedName Builtin NoAnn -> m (tree DeBruijn Builtin CheckResult)
+inferType :: TCM m => Type SortedName Builtin NoAnn -> m (Type DeBruijn Builtin Info)
+inferType = fold $ \case
+  TForallF  _NA n t   -> undefined
+  TAppF     _NA t1 t2 -> undefined
+  TVarF     _NA n     -> undefined
+  TConF     _NA op    -> undefined
+  TLitDimF  _NA d     -> undefined
+  TLitListF _NA ts    -> undefined
+  TMetaF    _NA i     -> undefined
 
-class Infer (tree :: (Sort -> *) -> (Sort -> *) -> (Sort -> *) -> *) where
-  infer :: TCM m => tree SortedName Builtin NoAnn -> m (tree DeBruijn Builtin CheckResult)
--}
+-- | Throws an 'UnexpectedSort' exception for any sorted type.
+--
+--   NOTE: this function is useful for handling the cases which we /know/ do not
+--   occur when using 'mapTree' or 'mapTreeM', e.g., a type recursing back into
+--   a declaration.
+--
+unexpectedSort :: TCM m => SSort sort -> sorted sort -> m (sorted' sort)
+unexpectedSort ssort _ = throwError (UnexpectedSort (toSort ssort))
 
 -- -}
 -- -}

@@ -73,7 +73,7 @@ type Kind = Core.Kind SortedName SortedBuiltin NoAnn
 
 pattern KApp k1 k2 = Core.KApp NA k1 k2
 pattern KCon c     = Core.KCon NA c
-pattern KMeta u    = Core.KMeta NA u
+pattern KMeta i    = Core.KMeta NA i
 
 type Type = Core.Type SortedName SortedBuiltin NoAnn
 
@@ -83,7 +83,7 @@ pattern TVar n      = Core.TVar NA n
 pattern TCon c      = Core.TCon NA c
 pattern TLitDim d   = Core.TLitDim NA d
 pattern TLitList ts = Core.TLitList NA ts
-pattern TMeta u     = Core.TMeta NA u
+pattern TMeta i     = Core.TMeta NA i
 
 type Expr = Core.Expr SortedName SortedBuiltin NoAnn
 

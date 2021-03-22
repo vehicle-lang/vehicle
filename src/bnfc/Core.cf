@@ -21,9 +21,6 @@ position token Name (lower (letter | digit | '_')*) ;
 KApp.  Kind  ::= Kind Kind1;
 KCon.  Kind1 ::= KindBuiltin;
 
--- NOTE: kind meta-variables aren't part of the surface syntax
-internal KMeta. Kind ::= "?" Integer;
-
 coercions Kind 1;
 
 
@@ -40,9 +37,6 @@ TLitDim.  Type1 ::= Integer; -- NOTE: this means natural
 
 -- Type-level lists.
 TLitList. Type1 ::= "[" [Type1] "]";
-
--- NOTE: type meta-variables aren't part of the surface syntax
-internal TMeta. Type ::= "?" Integer;
 
 separator Type1 "";
 
