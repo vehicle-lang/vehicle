@@ -7,16 +7,14 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Vehicle.Core.DeBruijn.Core
-  ( runConvert
+  ( DeBruijn
+  , DeBruijnIndex(..)
+  , SortedDeBruijn(..)
   ) where
 
-import Vehicle.Core.Type
-import qualified Data.List as List
-import Vehicle.Core.Abs (Name(..), SortedName(..))
-import Control.Monad.Except (MonadError, Except, runExcept)
-import Control.Monad.Error.Class (throwError)
+import Vehicle.Core.Type (Sort(..))
+import Vehicle.Core.Abs (Name(..))
 import Vehicle.Prelude (Position)
-import Data.Text (Text)
 
 -- * Types
 
