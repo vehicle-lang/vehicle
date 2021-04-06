@@ -7,9 +7,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Vehicle.Core.DeBruijn.Convert
-  ( DBConvert
+  ( DBConvert(convert)
+  , DeBruijnConversionError(..)
+  , MonadDBConvert
   , runConvert
   ) where
+
 
 import Vehicle.Core.Type
 import Vehicle.Core.DeBruijn.Core (SortedDeBruijn(..), DeBruijnIndex(..))
@@ -22,10 +25,15 @@ import Data.Text (Text)
 -- * Conversion from names to de Bruijn indices
 
 -- |Errors thrown during conversion from names to de Bruijn indices
-newtype DeBruijnConversionError = FreeVariableError Name
+data DeBruijnConversionError = FreeVariableError Text
+  deriving (Show)
 
 -- |Monad stack used during conversion from names to de Bruijn indices.
 type MonadDBConvert m = MonadError DeBruijnConversionError m
+
+-- |Context for de Bruijn conversion.
+-- A list of the bound variable names encountered so far ordered from most to least recent.
+type Context = [Text]
 
 -- |Run a function in 'MonadDBConvert'.
 runConvert :: Except DeBruijnConversionError a -> Either DeBruijnConversionError a
@@ -33,7 +41,7 @@ runConvert = runExcept
 
 -- |Class for the various conversion functions.
 class DBConvert f t where
-  convert :: MonadDBConvert m => [Text] -> f -> m t
+  convert :: MonadDBConvert m => Context -> f -> m t
 
 instance DBConvert (Kind (K Name) builtin ann) (Kind SortedDeBruijn builtin ann) where
   convert _ (KCon ann builtin) = return $ KCon ann builtin
@@ -111,23 +119,47 @@ instance DBConvert (Decl (K Name) builtin ann) (Decl SortedDeBruijn builtin ann)
       cExpr <- convert (varName : ctxt) expr
       return $ DefFun ann cArg cTyp cExpr
 
+instance DBConvert (Prog (K Name) builtin ann) (Prog SortedDeBruijn builtin ann) where
+  convert ctxt (Main ann decls)= Main ann <$> convertDecls ctxt decls
+
 convertEArg :: EArg (K Name) builtin ann -> (Text , EArg SortedDeBruijn builtin ann)
-convertEArg (EArg ann (K name)) = (getText name , EArg ann (SortedDeBruijn name))
+convertEArg (EArg ann (K name)) = (nameText name , EArg ann (SortedDeBruijn name))
 
 convertTArg :: TArg (K Name) builtin ann -> (Text , TArg SortedDeBruijn builtin ann)
-convertTArg (TArg ann (K name)) = (getText name , TArg ann (SortedDeBruijn name))
+convertTArg (TArg ann (K name)) = (nameText name , TArg ann (SortedDeBruijn name))
 
-convertTArgs :: MonadDBConvert m => [Text] -> [TArg (K Name) builtin ann] -> m ([Text], [TArg SortedDeBruijn builtin ann])
+convertTArgs :: MonadDBConvert m => Context -> [TArg (K Name) builtin ann] -> m ([Text], [TArg SortedDeBruijn builtin ann])
 convertTArgs _ [] = return ([], [])
 convertTArgs ctxt (tArg : tArgs) =
     let (varName, cArg) = convertTArg tArg in do
       (varNames, cArgs) <- convertTArgs (varName : ctxt) tArgs
       return (varName : varNames,  cArg : cArgs)
 
-convertName :: MonadDBConvert m => Name -> [Text] -> m DeBruijnIndex
-convertName name@(Name (pos , text)) ctxt = case List.elemIndex text ctxt of
-  Nothing -> throwError $ FreeVariableError name
+convertDecls :: MonadDBConvert m => Context -> [Decl (K Name) builtin ann] -> m [Decl SortedDeBruijn builtin ann]
+convertDecls _ [] = return []
+convertDecls ctxt (decl : decls) = do
+  cDecl <- convert ctxt decl
+  cDecls <- convertDecls (declText decl : ctxt) decls
+  return (cDecl : cDecls)
+
+convertName :: MonadDBConvert m => Name -> Context -> m DeBruijnIndex
+convertName (Name (pos , text)) ctxt = case List.elemIndex text ctxt of
+  Nothing -> throwError $ FreeVariableError text
   Just index -> return $ DeBruijnIndex (pos , index)
 
-getText :: Name -> Text 
-getText (Name (_ , name)) = name
+-- * Helper functions for extracting the Text from binding sites
+
+nameText :: Name -> Text 
+nameText (Name (_ , name)) = name
+
+eArgText :: EArg (K Name) builtin ann -> Text
+eArgText (EArg _ (K name))= nameText name
+
+tArgText :: TArg (K Name) builtin ann -> Text
+tArgText (TArg _ (K name))= nameText name
+
+declText :: Decl (K Name) builtin ann -> Text
+declText (DeclNetw _ arg _) = eArgText arg
+declText (DeclData _ arg _) = eArgText arg
+declText (DefFun _ arg _ _) = eArgText arg
+declText (DefType _ arg _ _) = tArgText arg
