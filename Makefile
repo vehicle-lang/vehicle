@@ -1,5 +1,28 @@
+GHC_VERSION := 8.10.3
 SRC_DIR_BNFC := src/bnfc
 GEN_DIR_HS := gen/hs
+
+#################################################################################
+# Default
+#################################################################################
+
+.PHONY: default
+default: build
+
+
+#################################################################################
+# Initialise project
+#################################################################################
+
+# NOTE:
+#
+#   The init command sets up a few things which only need
+
+.PHONY: init
+init:
+	@echo "Create stack.yaml for GHC $(GHC_VERSION)"
+	@cp stack-$(GHC_VERSION).yaml stack.yaml
+
 
 #################################################################################
 # Build parsers for Frontend and Core languages using BNFC
@@ -26,7 +49,9 @@ BNFC_GARBAGE_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_GARBAGE_CORE
 .PHONY: bnfc-core
 bnfc-core: $(BNFC_TARGETS_CORE)
 
-$(BNFC_TARGETS_CORE): $(SRC_DIR_BNFC)/Core.cf
+$(BNFC_TARGETS_CORE): \
+		require-bnfc \
+		$(SRC_DIR_BNFC)/Core.cf
 	bnfc -m -d --haskell --generic --text-token \
 	     --name-space Vehicle \
 	     --outputdir=$(GEN_DIR_HS) \
@@ -42,7 +67,9 @@ BNFC_GARBAGE_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_GARB
 .PHONY: bnfc-frontend
 bnfc-frontend: $(BNFC_TARGETS_FRONTEND)
 
-$(BNFC_TARGETS_FRONTEND): $(SRC_DIR_BNFC)/Frontend.cf
+$(BNFC_TARGETS_FRONTEND): \
+		require-bnfc \
+		$(SRC_DIR_BNFC)/Frontend.cf
 	bnfc -m -d --haskell --generic --text-token \
 	     --name-space Vehicle \
 	     --outputdir=$(GEN_DIR_HS) \
@@ -55,7 +82,9 @@ $(BNFC_TARGETS_FRONTEND): $(SRC_DIR_BNFC)/Frontend.cf
 #################################################################################
 
 .PHONY: build
-build: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
+build: \
+		require-stack require-stack-yaml \
+		$(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
 	stack build
 
 
@@ -64,7 +93,9 @@ build: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
 #################################################################################
 
 .PHONY: test
-test: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
+test: \
+		require-stack require-stack-yaml \
+		$(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
 	stack test
 
 
@@ -75,3 +106,33 @@ test: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
 .PHONY: clean
 clean:
 	rm -rf $(GEN_DIR_HS)
+
+
+#################################################################################
+# Dependencies with reasonable error messages
+#################################################################################
+
+.PHONY: require-stack
+require-stack:
+ifeq (,$(wildcard $(shell which stack)))
+	@echo "The command you called requires the Haskell Tool Stack"
+	@echo "See: https://docs.haskellstack.org/en/stable/README/"
+	@exit 1
+endif
+
+.PHONY: require-stack-yaml
+require-stack-yaml:
+ifeq (,$(wildcard stack.yaml))
+	@echo "The command you called requires a stack.yaml file"
+	@echo "Please run 'make init' or create one from one of:"
+	@ls stack-*.yaml
+	@exit 1
+endif
+
+.PHONY: require-bnfc
+require-bnfc:
+ifeq (,$(wildcard $(shell which bnfc)))
+	@echo "The command you called requires the BNF Converter"
+	@echo "See: https://bnfc.digitalgrammars.com/"
+	@exit 1
+endif
