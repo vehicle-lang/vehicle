@@ -12,35 +12,19 @@ module Vehicle.Core.Normalise
   , runNorm
   ) where
 
-import Vehicle.Core.Type ( Sort (..), Expr (..), Sort, EArg (..) )
-<<<<<<< HEAD
-import Vehicle.Core.Instance.Recursive (ExprF (..))
-=======
-import Vehicle.Core.DeBruijn (DeBruijn, SortedDeBruijn)
-import Vehicle.Core.Type.Instance.Recursive (ExprF (..))
->>>>>>> First preliminary attempt at normalisation
+import Vehicle.Core.Type ( Tree (..), Expr, K )
+import Vehicle.Core.DeBruijn.Core (SortedDeBruijn(..))
+import Vehicle.Core.DeBruijn.Substitution as DeBruijn
 import Control.Monad.Except (MonadError, Except, runExcept)
-import Data.Map (Map, lookup, insert, notMember)
-import Data.Functor.Foldable (fold)
-import Vehicle.Core.Abs (ExprName, SortedBuiltin)
+import Vehicle.Core.Abs (ExprName, Builtin)
 import Control.Monad.Error.Class (throwError)
 
 -- * Normalisation monad
 
-<<<<<<< HEAD
-type DeBruijn = Int
-
-newtype SortedDeBruijn (sort :: Sort) 
-  = SortedDeBruijn DeBruijn
-=======
->>>>>>> First preliminary attempt at normalisation
-
-type NormExpr ann = Expr SortedDeBruijn SortedBuiltin ann
+type NormExpr ann = Expr SortedDeBruijn (K Builtin) ann
 
 -- |Errors thrown during normalisation
 data NormError = MissingDefFunType ExprName
-    | UnboundVariableError DeBruijn
-    | DuplicateVariableError DeBruijn
     | MalformedLambdaError
 
 -- |Constraint for the monad stack used by the normaliser.
@@ -53,65 +37,33 @@ runNorm = runExcept
 -- |Class for the various normalisation functions.
 -- Invariant is that everything in the context is fully normalised
 class Norm vf where
-  norm :: MonadNorm m => Map DeBruijn vf -> vf -> m vf
+  norm :: MonadNorm m => vf -> m vf
 
 instance Norm (NormExpr ann) where
-  norm ctxt = fold $ \case
-    EVarF ann (SortedDeBruijn i) -> normVar ctxt ann i
-    ELetF _ arg exp1 exp2 -> normLet ctxt (index arg) exp1 exp2
-    EAppF _ exp1 exp2 -> normApp ctxt exp1 exp2
+  norm expr@(ELitInt _ _) = return expr
+  norm expr@(ELitReal _ _) = return expr
+  norm expr@(ECon _ _) = return expr
+  norm expr@(EVar _ _) = return expr
 
-    ELitSeqF ann exprs -> ELitSeq ann <$> sequence exprs
-    EAnnF ann expr typ -> EAnn ann <$> expr <*> pure typ
-    ELamF ann arg expr -> ELam ann arg <$> expr
-    ETyLamF ann targ expr -> ETyLam ann targ <$> expr
-    ETyAppF ann expr typ -> ETyApp ann <$> expr <*> pure typ    
+  norm (ELitSeq ann exprs) = ELitSeq ann <$> traverse norm exprs
+  norm (EAnn ann expr typ) = EAnn ann <$> norm expr <*> pure typ
+  norm (ELam ann arg expr) = ELam ann arg <$> norm expr
+  norm (ETyLam ann targ expr) = ETyLam ann targ <$> norm expr
+  norm (ETyApp ann expr typ) = ETyApp ann <$> norm expr <*> pure typ
 
-    ELitIntF ann val -> return $ ELitInt ann val
-    ELitRealF ann val -> return $ ELitReal ann val
-    EConF ann builtin -> return $ ECon ann builtin
-
-normApp :: (MonadNorm m) => Map DeBruijn (NormExpr ann) -> 
-            m (NormExpr ann) -> m (NormExpr ann) -> m (NormExpr ann) 
-normApp ctxt mFn mArg = do
-    fn <- mFn
-    arg <- mArg
-    varName <- lamVarName fn
-    varBody <- lamBody fn
-    updatedCtxt <- updateCtxt ctxt varName arg
-    norm updatedCtxt varBody 
-
-normLet :: (MonadNorm m) => Map DeBruijn (NormExpr ann) -> 
-            DeBruijn -> m (NormExpr ann) -> m (NormExpr ann) -> m (NormExpr ann)
-normLet ctxt name exp1 exp2 = do
-  nexp1 <- exp1
-  nexp2 <- exp2
-  updatedCtxt <- updateCtxt ctxt name nexp1
-  norm updatedCtxt nexp2 
-
-normVar :: (MonadNorm m) => Map DeBruijn (NormExpr ann) ->
-            ann 'EXPR (SortedDeBruijn 'EXPR) (SortedBuiltin 'EXPR) -> DeBruijn -> 
-            m (NormExpr ann)
-normVar ctxt ann i = case Data.Map.lookup i ctxt of 
-  { Nothing -> return $ EVar ann (SortedDeBruijn i)
-  ; Just expr -> return expr
-  }
+  norm (ELet _ _ letValue letBody) = do
+    normalisedLetValue <- norm letValue
+    let letBodyWithSubstitution = DeBruijn.subst 0 normalisedLetValue letBody
+    norm letBodyWithSubstitution
+  
+  norm (EApp _ func arg) = do
+    funcBody <- lamBody func
+    normalisedArg <- norm arg
+    let substFuncBody = DeBruijn.subst 0 normalisedArg funcBody
+    norm substFuncBody
 
 -- * Helper functions
-
-index :: EArg SortedDeBruijn builtin ann -> DeBruijn
-index (EArg _ (SortedDeBruijn i)) = i
-
-lamVarName :: (MonadNorm m) => NormExpr ann -> m DeBruijn
-lamVarName (ELam _ arg _) = return $ index arg
-lamVarName _ = throwError $ MalformedLambdaError
 
 lamBody :: (MonadNorm m) => NormExpr ann -> m (NormExpr ann)
 lamBody (ELam _ _ e) = return e
 lamBody _ = throwError MalformedLambdaError
-
-updateCtxt :: (MonadNorm m) => Map DeBruijn (NormExpr ann) -> 
-              DeBruijn -> NormExpr ann -> m (Map DeBruijn (NormExpr ann))
-updateCtxt ctxt i expr = if notMember i ctxt
-  then return $ insert i expr ctxt
-  else throwError $ DuplicateVariableError i
