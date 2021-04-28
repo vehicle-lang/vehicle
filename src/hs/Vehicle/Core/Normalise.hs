@@ -14,33 +14,16 @@ module Vehicle.Core.Normalise
   , runNorm
   ) where
 
-import Data.Range (Range)
-import Data.Text (Text)
-import Vehicle.Prelude (Position)
-import Vehicle.Core.Type ( Tree (..), Expr, Type, Decl, Prog, K(..), TArg, Sort(EXPR))
-import Vehicle.Core.DeBruijn.Core (SortedDeBruijn(..), DeBruijnIndex(..))
+import Vehicle.Core.Type ( Tree (..))
 import Vehicle.Core.DeBruijn.Substitution as DeBruijn
-import Control.Monad.Except (MonadError, Except, runExcept)
-import Vehicle.Core.Abs (ExprName, Builtin(..))
+import Control.Monad.Except (Except, runExcept)
 import Control.Monad.Error.Class (throwError)
-
--- |Errors thrown during normalisation
-data NormError = MissingDefFunType ExprName
-    | MalformedLambdaError
-    | NotImplementedError
-
--- |Constraint for the monad stack used by the normaliser.
-type MonadNorm m = MonadError NormError m
+import Vehicle.Core.Normalise.Core
+import Vehicle.Core.Normalise.Quantifier (normQuantifier, Quantifier(..))
 
 -- |Run a function in 'MonadNorm'.
 runNorm :: Except NormError a -> Either NormError a
 runNorm = runExcept
-
--- |Some useful type synonyms
-type NormExpr ann = Expr SortedDeBruijn (K Builtin) ann
-type NormType ann = Type SortedDeBruijn (K Builtin) ann
-type NormDecl ann = Decl SortedDeBruijn (K Builtin) ann
-type NormProg ann = Prog SortedDeBruijn (K Builtin) ann
 
 -- |Class for the various normalisation functions.
 -- Invariant is that everything in the context is fully normalised
@@ -93,18 +76,6 @@ instance Norm (NormDecl ann) where
 instance Norm (NormProg ann) where
   norm (Main ann decls)= Main ann <$> traverse norm decls
 
-pattern EOp0 op ann0 pos = ECon ann0 (K (Builtin (pos , op)))
-pattern EOp1 op e1 ann0 ann1 pos = EApp ann1 (EOp0 op ann0 pos) e1
-pattern EOp2 op e1 e2 ann0 ann1 ann2 pos = EApp ann2 (EOp1 op e1 ann0 ann1 pos) e2
-pattern EOp3 op e1 e2 e3 ann0 ann1 ann2 ann3 pos  = EApp ann3 (EOp2 op e1 e2 ann0 ann1 ann2 pos) e3
-
-pattern ETrue ann pos = EOp0 "true" ann pos
-pattern EFalse ann pos = EOp0 "false" ann pos
-
-mkBool :: Bool -> ann 'EXPR -> Position -> NormExpr ann
-mkBool True ann pos = EOp0 "true" ann pos 
-mkBool False ann pos = EOp0 "false" ann pos
-
 normApp :: 
   (MonadNorm m) =>
   NormExpr ann -> 
@@ -135,7 +106,6 @@ normApp (EOp2 "<" (ELitInt _ i) (ELitInt _ j) ann0 _ _ pos) = return $ mkBool (i
 normApp (EOp2 "+" (ELitInt _ i) (ELitInt _ j) ann0 _ _ _) = return $ ELitInt ann0 (i + j)
 normApp (EOp2 "-" (ELitInt _ i) (ELitInt _ j) ann0 _ _ _) = return $ ELitInt ann0 (i - j)
 normApp (EOp2 "*" (ELitInt _ i) (ELitInt _ j) ann0 _ _ _) = return $ ELitInt ann0 (i * j)
-normApp (EOp2 "/" (ELitInt _ i) (ELitInt _ j) ann0 _ _ _) = return $ ELitInt ann0 (i / j)
 -- Real builtins
 normApp (EOp2 "==" (ELitReal _ x) (ELitReal _ y) ann0 _ _ pos) = return $ mkBool (x == y) ann0 pos
 normApp (EOp2 "<=" (ELitReal _ x) (ELitReal _ y) ann0 _ _ pos) = return $ mkBool (x <= y) ann0 pos
@@ -152,7 +122,7 @@ normApp (EOp2 "!" (ELitSeq _ es) (ELitInt _ i) _ _ _ _) = return $ es !! fromInt
 normApp (EOp2 "!" (EOp2 "::" e1 _ _ _ _ _) (ELitInt _ 0) _ _ _ _) = return e1
 normApp (EOp2 "!" (EOp2 "::" _ es _ _ _ _) (ELitInt ann3 i) ann0 ann1 ann2 pos) = normApp (EOp2 "!" es (ELitInt ann3 (i - 1)) ann0 ann1 ann2 pos)
 -- Quantifier builtins
---normApp (EOp2 "All" _ _ _ _ _ _) = throwError NotImplementedError
---normApp (EOp2 "Any" _ _ _ _ _ _) = throwError NotImplementedError
+normApp (EOp2 "All" e1 e2 ann0 ann1 ann2 pos) = normQuantifier All e1 e2 ann0 ann1 ann2 pos >>= norm
+normApp (EOp2 "Any" e1 e2 ann0 ann1 ann2 pos) = normQuantifier Any e1 e2 ann0 ann1 ann2 pos >>= norm
 -- Fall-through case
 normApp expr = return expr
