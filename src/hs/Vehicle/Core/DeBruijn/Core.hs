@@ -10,6 +10,7 @@ module Vehicle.Core.DeBruijn.Core
   ( DeBruijn
   , DeBruijnIndex(..)
   , SortedDeBruijn(..)
+  , dbValue
   ) where
 
 import Vehicle.Core.Type (Sort(..))
@@ -39,5 +40,9 @@ type family DeBruijn (sort :: Sort) where
   DeBruijn 'TARG = Name 
   DeBruijn 'EARG = Name 
 
--- The de Bruijn representation equipped with sorts
+-- |The de Bruijn representation equipped with sorts
 newtype SortedDeBruijn (sort :: Sort) = SortedDeBruijn (DeBruijn sort)
+
+-- |Returns the index value of the SortedDeBruijn index.
+dbValue :: SortedDeBruijn 'EXPR -> Int
+dbValue (SortedDeBruijn (DeBruijnIndex (_ , l))) = l
