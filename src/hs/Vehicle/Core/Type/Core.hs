@@ -7,6 +7,7 @@
 module Vehicle.Core.Type.Core
   ( Sort(..)
   , SSort(..)
+  , KnownSort(..)
   , toSort
   , Tree(..)
   , Kind
@@ -44,6 +45,17 @@ data SSort (sort :: Sort) where
 deriving instance (Eq (SSort sort))
 deriving instance (Ord (SSort sort))
 deriving instance (Show (SSort sort))
+
+class KnownSort (sort :: Sort) where
+  sortSing :: SSort sort
+
+instance KnownSort 'KIND where sortSing = SKIND
+instance KnownSort 'TYPE where sortSing = STYPE
+instance KnownSort 'EXPR where sortSing = SEXPR
+instance KnownSort 'DECL where sortSing = SDECL
+instance KnownSort 'PROG where sortSing = SPROG
+instance KnownSort 'TARG where sortSing = STARG
+instance KnownSort 'EARG where sortSing = SEARG
 
 toSort :: SSort sort -> Sort
 toSort SKIND = KIND
