@@ -194,7 +194,6 @@ instance Recursive (EArg name builtin ann) where
 instance Corecursive (EArg name builtin ann) where
   embed (EArgF ann ds) = EArg ann ds
 
-
 -- -}
 -- -}
 -- -}

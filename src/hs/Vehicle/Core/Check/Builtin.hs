@@ -4,6 +4,7 @@
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This module implements the check to see if there are any unknown builtins
 -- and converts the builtin representation to a data type (as opposed to 'Text').
@@ -66,12 +67,12 @@ checkBuiltinWithMap builtins tk = case lookup (tkText tk) builtins of
   Nothing -> throwError (UnknownBuiltin (toToken tk))
   Just op -> return (Builtin (tkPos tk) op)
 
-checkBuiltin :: (IsToken tk, TCM m) => SSort sort -> K tk sort -> m (Builtin sort)
-checkBuiltin ssort tk = case ssort of
+checkBuiltin :: (IsToken tk, KnownSort sort, TCM m) => K tk sort -> m (Builtin sort)
+checkBuiltin (tk :: K tk sort) = case sortSing :: SSort sort of
   SKIND -> checkBuiltinWithMap builtinKinds tk
   STYPE -> checkBuiltinWithMap builtinTypes tk
   SEXPR -> checkBuiltinWithMap builtinExprs tk
   _     -> throwError (UnknownBuiltin (toToken tk))
 
-checkBuiltins :: (IsToken tk, TCM m) => SSort sort -> Tree sort name (K tk) ann -> m (Tree sort name Builtin ann)
+checkBuiltins :: (IsToken tk, KnownSort sort, TCM m) => Tree sort name (K tk) ann -> m (Tree sort name Builtin ann)
 checkBuiltins = mapBuiltinM checkBuiltin

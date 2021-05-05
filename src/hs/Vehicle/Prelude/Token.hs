@@ -4,23 +4,33 @@
 
 module Vehicle.Prelude.Token
   ( Position
+  , line
+  , column
   , Token(..)
   , IsToken
   , toToken
   , fromToken
   , tkText
+  , tkLength
   , tkPos
   , tkEq
   , tkUpdateText
   ) where
 
-import Data.Function (on)
-import Data.Coerce (Coercible, coerce)
-import Data.Text (Text)
+import           Data.Function (on)
+import           Data.Coerce (Coercible, coerce)
+import           Data.Text (Text)
+import qualified Data.Text as T
 
 -- |Positions in BNFC generated grammars are represented by a pair of a line
 --  number and a column number.
 type Position = (Int, Int)
+
+line :: Position -> Int
+line = fst
+
+column :: Position -> Int
+column = snd
 
 -- |Position tokens in BNFC generated grammars are represented by a pair of a
 -- position and the text token.
@@ -48,6 +58,9 @@ fromToken = coerce
 -- |Get the 'Text' field of a 'Token'.
 tkText :: IsToken a => a -> Text
 tkText = text . toToken
+
+tkLength :: IsToken a => a -> Int
+tkLength = T.length . tkText
 
 -- |Get the 'Position' field of a 'Token'.
 tkPos :: IsToken a => a -> Position
