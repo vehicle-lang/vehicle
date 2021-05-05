@@ -18,6 +18,8 @@ import           Vehicle.Core.Type
 import           Vehicle.Prelude
 
 
+-- TODO: migrate to Vehicle.Core.Type.Builtin
+
 data Builtin (sort :: Sort) = Builtin Position (BuiltinOp sort)
 
 data BuiltinOp (sort :: Sort) where

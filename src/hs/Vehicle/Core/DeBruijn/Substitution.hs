@@ -11,11 +11,11 @@ module Vehicle.Core.DeBruijn.Substitution
   ) where
 
 import Vehicle.Core.Type
-import Vehicle.Core.DeBruijn.Core ( SortedDeBruijn(..), DeBruijnIndex(..) )
+import Vehicle.Core.DeBruijn.Core (SortedDeBruijn(..), Ix(..))
 
 -- Implementation of substitution and lifting for De Bruijn indexed terms.
--- Code loosely based off of http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
-
+-- Code loosely based off of:
+-- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
 
 -- * DeBruijn lifting
 
@@ -37,12 +37,11 @@ instance DeBruijnLifting (Type SortedDeBruijn builtin ann) where
     -- Increase the depth as we move across a binding site
     (lift (d + 1) body)
 
-  lift d (TVar ann (SortedDeBruijn (DeBruijnIndex (pos, i)))) = TVar ann (SortedDeBruijn (DeBruijnIndex (pos,
-    if d <= i
-      -- Index is referencing the environment so increment it
-      then i + 1
-      -- Index is locally bound so no need to increment it
-      else i)))
+  lift d (TVar ann (SortedDeBruijn (Ix (pos, i)))) = TVar ann (SortedDeBruijn (Ix (pos, i')))
+    where
+      i' | d <= i    = i + 1 -- Index is referencing the environment so increment it
+         | otherwise = i     -- Index is locally bound so no need to increment it
+
 
 instance DeBruijnLifting (Expr SortedDeBruijn builtin ann) where
   lift _ expr@(ELitInt _ _) = expr
@@ -55,12 +54,10 @@ instance DeBruijnLifting (Expr SortedDeBruijn builtin ann) where
   lift d (ETyLam ann targ expr) = ETyLam ann targ (lift d expr)
   lift d (ETyApp ann expr typ) = ETyApp ann (lift d expr) typ
 
-  lift d (EVar ann (SortedDeBruijn (DeBruijnIndex (pos, i)))) = EVar ann (SortedDeBruijn (DeBruijnIndex (pos,
-    if d <= i
-      -- Index is referencing the environment so increment it
-      then i + 1
-      -- Index is locally bound so no need to increment it
-      else i)))
+  lift d (EVar ann (SortedDeBruijn (Ix (pos, i)))) = EVar ann (SortedDeBruijn (Ix (pos, i')))
+    where
+      i' | d <= i    = i + 1 -- Index is referencing the environment so increment it
+         | otherwise = i     -- Index is locally bound so no need to increment it
 
   lift d (ELet ann arg exp1 exp2) = ELet ann arg
     -- Maintain the current depth as move across the let bound expression
@@ -94,14 +91,14 @@ instance DeBruijnSubstitution (Type SortedDeBruijn builtin ann) where
     -- Increase the depth as we move across a binding site
     TForall ann arg (subst (d + 1) (lift 0 sub) body)
 
-  subst d sub (TVar ann (SortedDeBruijn (DeBruijnIndex (pos, i)))) =
+  subst d sub (TVar ann (SortedDeBruijn (Ix (pos, i)))) =
     case compare i d of
       -- Index matches the expression we're substituting for
       EQ -> sub
       -- Index was bound in the original type
-      LT -> TVar ann (SortedDeBruijn (DeBruijnIndex (pos, i)))
+      LT -> TVar ann (SortedDeBruijn (Ix (pos, i)))
       -- Index was free in the original type, and we've removed a binder so decrease it by 1.
-      GT -> TVar ann (SortedDeBruijn (DeBruijnIndex (pos, i - 1)))
+      GT -> TVar ann (SortedDeBruijn (Ix (pos, i - 1)))
 
 instance DeBruijnSubstitution (Expr SortedDeBruijn builtin ann) where
   subst _ _ expr@(ELitInt _ _) = expr
@@ -114,14 +111,14 @@ instance DeBruijnSubstitution (Expr SortedDeBruijn builtin ann) where
   subst d sub (ETyApp ann expr typ) = ETyApp ann (subst d sub expr) typ
   subst d sub (EApp ann exp1 exp2) = EApp ann (subst d sub exp1) (subst d sub exp2)
 
-  subst d sub (EVar ann (SortedDeBruijn (DeBruijnIndex (pos , i)))) =
+  subst d sub (EVar ann (SortedDeBruijn (Ix (pos , i)))) =
     case compare i d of
       -- Index matches the expression we're substituting for
       EQ -> sub
       -- Index was bound in the original expression
-      LT -> EVar ann (SortedDeBruijn (DeBruijnIndex (pos, i)))
+      LT -> EVar ann (SortedDeBruijn (Ix (pos, i)))
       -- Index was free in the original expression, and we've removed a binder so decrease it by 1.
-      GT -> EVar ann (SortedDeBruijn (DeBruijnIndex (pos, i - 1)))
+      GT -> EVar ann (SortedDeBruijn (Ix (pos, i - 1)))
 
   subst d sub (ELet ann arg exp1 exp2) =
     -- Increase the depth as we move across a binding site

@@ -77,9 +77,9 @@ instance Norm (NormDecl ann) where
 instance Norm (NormProg ann) where
   norm (Main ann decls)= Main ann <$> traverse norm decls
 
-normApp :: 
+normApp ::
   (MonadNorm m) =>
-  NormExpr ann -> 
+  NormExpr ann ->
   m (NormExpr ann)
 -- Lambda expressions
 normApp (EApp _ (ELam _ _ funcBody) arg) = norm (DeBruijn.subst 0 arg funcBody)
