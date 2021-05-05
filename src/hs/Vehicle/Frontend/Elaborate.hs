@@ -23,7 +23,7 @@ import           Data.Coerce (coerce)
 import           Data.Foldable (foldrM)
 import           Data.Functor.Foldable (fold)
 import           Data.List (groupBy)
-import           Vehicle.Core.Type (Sort(..), K(..))
+import           Vehicle.Core.Type (K(..))
 import qualified Vehicle.Core.Abs as VC -- NOTE: In general, avoid importing Abs!
 import qualified Vehicle.Frontend.Type as VF
 import           Vehicle.Prelude

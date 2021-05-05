@@ -16,6 +16,7 @@ module Vehicle.Core.Normalise
 
 import Vehicle.Core.Type ( Tree (..))
 import Vehicle.Core.DeBruijn.Substitution as DeBruijn
+import Vehicle.Core.Check.Builtin (BuiltinOp(..), Builtin(..))
 import Control.Monad.Except (Except, runExcept)
 import Control.Monad.Error.Class (throwError)
 import Vehicle.Core.Normalise.Core
@@ -83,46 +84,46 @@ normApp ::
 -- Lambda expressions
 normApp (EApp _ (ELam _ _ funcBody) arg) = norm (DeBruijn.subst 0 arg funcBody)
 -- Boolean builtins
-normApp (EOp2 "==" (ETrue _ _) e2 _ _ _ _) = return e2
-normApp (EOp2 "==" (EFalse _ _) e2 ann0 ann1 _ pos) = normApp $ EOp1 "not" e2 ann0 ann1 pos
-normApp (EOp1 "not" (ETrue _ _) ann0 _ pos) = return $ EFalse ann0 pos
-normApp (EOp1 "not" (EFalse _ _) ann0 _ pos) = return $ ETrue ann0 pos
-normApp (EOp2 "and" (ETrue _ _) e2 _ _ _ _) = return e2
-normApp (EOp2 "and" (EFalse _ _) _ ann0 _ _ pos) = return $ EFalse ann0 pos
-normApp (EOp2 "and" e1 (ETrue _ _) _ _ _ _) = return e1
-normApp (EOp2 "and" _ (EFalse _ _) ann0 _ _ pos) = return $ EFalse ann0 pos
-normApp (EOp2 "or" (ETrue _ _) _ ann0 _ _ pos) = return $ ETrue ann0 pos
-normApp (EOp2 "or" (EFalse _ _) e2 _ _ _ _) = return e2
-normApp (EOp2 "or" _ (ETrue _ _) ann0 _ _ pos) = return $ ETrue ann0 pos
-normApp (EOp2 "or" e1 (EFalse _ _) _ _ _ _) = return e1
+normApp (EOp2 EEq (EOp0 ETrue _ _) e2 _ _ _ _) = return e2
+normApp (EOp2 EEq (EOp0 EFalse _ _) e2 ann0 ann1 _ pos) = normApp $ EOp1 ENot e2 ann0 ann1 pos
+normApp (EOp1 ENot (EOp0 ETrue _ _) ann0 _ pos) = return $ EOp0 EFalse ann0 pos
+normApp (EOp1 ENot (EOp0 EFalse _ _) ann0 _ pos) = return $ EOp0 ETrue ann0 pos
+normApp (EOp2 EAnd (EOp0 ETrue _ _) e2 _ _ _ _) = return e2
+normApp (EOp2 EAnd (EOp0 EFalse _ _) _ ann0 _ _ pos) = return $ EOp0 EFalse ann0 pos
+normApp (EOp2 EAnd e1 (EOp0 ETrue _ _) _ _ _ _) = return e1
+normApp (EOp2 EAnd _ (EOp0 EFalse _ _) ann0 _ _ pos) = return $ EOp0 EFalse ann0 pos
+normApp (EOp2 EOr (EOp0 ETrue _ _) _ ann0 _ _ pos) = return $ EOp0 ETrue ann0 pos
+normApp (EOp2 EOr (EOp0 EFalse _ _) e2 _ _ _ _) = return e2
+normApp (EOp2 EOr _ (EOp0 ETrue _ _) ann0 _ _ pos) = return $ EOp0 ETrue ann0 pos
+normApp (EOp2 EOr e1 (EOp0 EFalse _ _) _ _ _ _) = return e1
 -- See https://github.com/wenkokke/vehicle/issues/2
-normApp (EOp3 "if" (ETrue _ _) e2 _ _ _ _ _ _) = return e2
-normApp (EOp3 "if" (EFalse _ _) _ e3 _ _ _ _ _) = return e3
+normApp (EOp3 EIf (EOp0 ETrue _ _) e2 _ _ _ _ _ _) = return e2
+normApp (EOp3 EIf (EOp0 EFalse _ _) _ e3 _ _ _ _ _) = return e3
 -- Natural builtins
-normApp (EOp2 "==" (ELitInt _ i) (ELitInt _ j) ann0 _ _ pos) = return $ mkBool (i == j) ann0 pos
-normApp (EOp2 "<=" (ELitInt _ i) (ELitInt _ j) ann0 _ _ pos) = return $ mkBool (i <= j) ann0 pos
-normApp (EOp2 "<" (ELitInt _ i) (ELitInt _ j) ann0 _ _ pos) = return $ mkBool (i < j) ann0 pos
+normApp (EOp2 EEq (ELitInt _ i) (ELitInt _ j) ann0 _ _ pos) = return $ mkBool (i == j) ann0 pos
+normApp (EOp2 ELe (ELitInt _ i) (ELitInt _ j) ann0 _ _ pos) = return $ mkBool (i <= j) ann0 pos
+normApp (EOp2 ELt (ELitInt _ i) (ELitInt _ j) ann0 _ _ pos) = return $ mkBool (i < j) ann0 pos
 -- TODO implement associativity rules?
-normApp (EOp2 "+" (ELitInt _ i) (ELitInt _ j) ann0 _ _ _) = return $ ELitInt ann0 (i + j)
-normApp (EOp2 "-" (ELitInt _ i) (ELitInt _ j) ann0 _ _ _) = return $ ELitInt ann0 (i - j)
-normApp (EOp2 "*" (ELitInt _ i) (ELitInt _ j) ann0 _ _ _) = return $ ELitInt ann0 (i * j)
+normApp (EOp2 EAdd (ELitInt _ i) (ELitInt _ j) ann0 _ _ _) = return $ ELitInt ann0 (i + j)
+normApp (EOp2 ESub (ELitInt _ i) (ELitInt _ j) ann0 _ _ _) = return $ ELitInt ann0 (i - j)
+normApp (EOp2 EMul (ELitInt _ i) (ELitInt _ j) ann0 _ _ _) = return $ ELitInt ann0 (i * j)
 -- Real builtins
-normApp (EOp2 "==" (ELitReal _ x) (ELitReal _ y) ann0 _ _ pos) = return $ mkBool (x == y) ann0 pos
-normApp (EOp2 "<=" (ELitReal _ x) (ELitReal _ y) ann0 _ _ pos) = return $ mkBool (x <= y) ann0 pos
-normApp (EOp2 "<" (ELitReal _ x) (ELitReal _ y) ann0 _ _ pos) = return $ mkBool (x < y) ann0 pos
+normApp (EOp2 EEq (ELitReal _ x) (ELitReal _ y) ann0 _ _ pos) = return $ mkBool (x == y) ann0 pos
+normApp (EOp2 ELe (ELitReal _ x) (ELitReal _ y) ann0 _ _ pos) = return $ mkBool (x <= y) ann0 pos
+normApp (EOp2 ELt (ELitReal _ x) (ELitReal _ y) ann0 _ _ pos) = return $ mkBool (x < y) ann0 pos
 -- TODO implement associativity rules?
-normApp (EOp2 "+" (ELitReal _ x) (ELitReal _ y) ann0 _ _ _) = return $ ELitReal ann0 (x + y)
-normApp (EOp2 "-" (ELitReal _ x) (ELitReal _ y) ann0 _ _ _) = return $ ELitReal ann0 (x - y)
-normApp (EOp2 "*" (ELitReal _ x) (ELitReal _ y) ann0 _ _ _) = return $ ELitReal ann0 (x * y)
-normApp (EOp2 "/" (ELitReal _ x) (ELitReal _ y) ann0 _ _ _) = return $ ELitReal ann0 (x / y)
-normApp (EOp1 "~" (ELitReal _ x) ann0 _ _) = return $ ELitReal ann0 (- x)
+normApp (EOp2 EAdd (ELitReal _ x) (ELitReal _ y) ann0 _ _ _) = return $ ELitReal ann0 (x + y)
+normApp (EOp2 ESub (ELitReal _ x) (ELitReal _ y) ann0 _ _ _) = return $ ELitReal ann0 (x - y)
+normApp (EOp2 EMul (ELitReal _ x) (ELitReal _ y) ann0 _ _ _) = return $ ELitReal ann0 (x * y)
+normApp (EOp2 EDiv (ELitReal _ x) (ELitReal _ y) ann0 _ _ _) = return $ ELitReal ann0 (x / y)
+normApp (EOp1 ENeg (ELitReal _ x) ann0 _ _) = return $ ELitReal ann0 (- x)
 -- Tensor builtins
-normApp (EOp2 "::" e (ELitSeq _ es) ann0 _ _ _) = return $ ELitSeq ann0 (e : es)
-normApp (EOp2 "!" (ELitSeq _ es) (ELitInt _ i) _ _ _ _) = return $ es !! fromIntegral i
-normApp (EOp2 "!" (EOp2 "::" e1 _ _ _ _ _) (ELitInt _ 0) _ _ _ _) = return e1
-normApp (EOp2 "!" (EOp2 "::" _ es _ _ _ _) (ELitInt ann3 i) ann0 ann1 ann2 pos) = normApp (EOp2 "!" es (ELitInt ann3 (i - 1)) ann0 ann1 ann2 pos)
+normApp (EOp2 ECons e (ELitSeq _ es) ann0 _ _ _) = return $ ELitSeq ann0 (e : es)
+normApp (EOp2 EAt (ELitSeq _ es) (ELitInt _ i) _ _ _ _) = return $ es !! fromIntegral i
+normApp (EOp2 EAt (EOp2 ECons e1 _ _ _ _ _) (ELitInt _ 0) _ _ _ _) = return e1
+normApp (EOp2 EAt (EOp2 ECons _ es _ _ _ _) (ELitInt ann3 i) ann0 ann1 ann2 pos) = normApp (EOp2 EAt es (ELitInt ann3 (i - 1)) ann0 ann1 ann2 pos)
 -- Quantifier builtins
-normApp (EOp2 "All" e1 e2 ann0 ann1 ann2 pos) = normQuantifier All e1 e2 ann0 ann1 ann2 pos >>= norm
-normApp (EOp2 "Any" e1 e2 ann0 ann1 ann2 pos) = normQuantifier Any e1 e2 ann0 ann1 ann2 pos >>= norm
+normApp (EOp2 EAll e1 e2 ann0 ann1 ann2 pos) = normQuantifier All e1 e2 ann0 ann1 ann2 pos >>= norm
+normApp (EOp2 EAny e1 e2 ann0 ann1 ann2 pos) = normQuantifier Any e1 e2 ann0 ann1 ann2 pos >>= norm
 -- Fall-through case
 normApp expr = return expr

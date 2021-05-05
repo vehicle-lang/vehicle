@@ -30,3 +30,6 @@ gen/
 
 # Grammars
 package-lock.json
+
+# VSCode
+.vscode/
