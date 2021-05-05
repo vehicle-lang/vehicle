@@ -17,13 +17,13 @@ import Vehicle.Core.Type ( Tree(..), Sort(EXPR) )
 import Data.Range (Range (..), fromRanges, intersection, union, invert, lbi, lbe, ubi, ube, mergeRanges)
 import Data.Text (Text)
 import Vehicle.Prelude (Position)
-import Vehicle.Core.DeBruijn.Core ( dbValue )
+import Vehicle.Core.DeBruijn.Core ( ix )
 import Vehicle.Core.DeBruijn.Substitution as DeBruijn ( subst )
 import Control.Monad.Error.Class (throwError)
 import Vehicle.Core.Normalise.Core
 
 -----------
--- Types -- 
+-- Types --
 -----------
 -- FIX THIS WHEN TYPE-CHECKER UP AND RUNNING
 
@@ -65,11 +65,9 @@ normQuantifier quant domain condition ann0 ann1 ann2 pos = case getQuantifierVal
   Just [] -> throwError $ EmptyQuantifierDomain pos
   -- Can expand quantifier with non-empty domain
   Just es ->
-    let
-      linkOp = \x y -> EOp2 (linkingOp quant) x y ann0 ann1 ann2 pos
-      substValue = \v -> DeBruijn.subst 0 v condition
-    in
-      return $ foldr1 linkOp (map substValue es)
+    let linkOp x y = EOp2 (linkingOp quant) x y ann0 ann1 ann2 pos
+        substValue v = DeBruijn.subst 0 v condition
+    in  return $ foldr1 linkOp (map substValue es)
 
 getQuantifierValues
   :: NormExpr ann
@@ -82,29 +80,40 @@ getQuantifierValues domain ann pos = case getType domain of
   _ -> Nothing
 
 getIntQuantifierValues
-  :: NormExpr ann -- ^ expression describing the domain of the quantified integer variable
-  -> ann 'EXPR -- ^ the annotation accompanying the quantifier
+  :: NormExpr ann -- ^ Expression describing the domain of the quantified integer variable.
+  -> ann 'EXPR    -- ^ The annotation accompanying the quantifier.
   -> [NormExpr ann]
-getIntQuantifierValues domain ann = 
+getIntQuantifierValues domain ann =
   let ranges = mergeRanges $ getIntVariableRanges 0 domain in
     -- TODO: there should probably be a size check here.
     map (ELitInt ann) (fromRanges ranges)
 
--- | Attempts to find bounds on the provided integer variable. 
--- 
--- TODO: this should probably be eventually implemented via an SMT solver
--- but this naive check will do for the moment.
+-- | Attempts to find bounds on the provided integer variable.
+--
+-- TODO: this should probably be eventually implemented via an SMT solver,
+--       but this naive check will do for the moment.
+--
 getIntVariableRanges
-  :: Int -- ^ Current deBruijn level
+  :: Int          -- ^ Current deBruijn level
   -> NormExpr ann -- ^ Fully normalised expression that may contain bounds on the variable
   -> [Range Integer]
-getIntVariableRanges l (EOp2 EEq (ELitInt _ i) (EVar _ v) _ _ _ _) = if dbValue v  == l then [SingletonRange i] else [InfiniteRange]
-getIntVariableRanges l (EOp2 EEq (EVar _ v) (ELitInt _ i) _ _ _ _) = if dbValue v == l then [SingletonRange i] else [InfiniteRange]
-getIntVariableRanges l (EOp2 ELe (ELitInt _ i) (EVar _ v) _ _ _ _) = if dbValue v == l then [ubi i] else [InfiniteRange]
-getIntVariableRanges l (EOp2 ELe (EVar _ v) (ELitInt _ i) _ _ _ _) = if dbValue v == l then [lbi i] else [InfiniteRange]
-getIntVariableRanges l (EOp2 ELt (ELitInt _ i) (EVar _ v) _ _ _ _) = if dbValue v == l then [ube i] else [InfiniteRange]
-getIntVariableRanges l (EOp2 ELt (EVar _ v) (ELitInt _ i) _ _ _ _) = if dbValue v == l then [lbe i] else [InfiniteRange]
-getIntVariableRanges l (EOp1 ENot e _ _ _) = invert (getIntVariableRanges l e)
-getIntVariableRanges l (EOp2 EAnd e1 e2 _ _ _ _) = getIntVariableRanges l e1 `intersection` getIntVariableRanges l e2
-getIntVariableRanges l (EOp2 EOr e1 e2 _ _ _ _) = getIntVariableRanges l e1 `union` getIntVariableRanges l e2
-getIntVariableRanges _ _ = [InfiniteRange]
+getIntVariableRanges l (EOp2 EEq (ELitInt _ i) (EVar _ v) _ _ _ _)
+  | ix v == l = [SingletonRange i]
+getIntVariableRanges l (EOp2 EEq (EVar _ v) (ELitInt _ i) _ _ _ _)
+  | ix v == l = [SingletonRange i]
+getIntVariableRanges l (EOp2 ELe (ELitInt _ i) (EVar _ v) _ _ _ _)
+  | ix v == l = [ubi i]
+getIntVariableRanges l (EOp2 ELe (EVar _ v) (ELitInt _ i) _ _ _ _)
+  | ix v == l = [lbi i]
+getIntVariableRanges l (EOp2 ELt (ELitInt _ i) (EVar _ v) _ _ _ _)
+  | ix v == l = [ube i]
+getIntVariableRanges l (EOp2 ELt (EVar _ v) (ELitInt _ i) _ _ _ _)
+  | ix v == l = [lbe i]
+getIntVariableRanges l (EOp1 ENot e _ _ _)
+  = invert (getIntVariableRanges l e)
+getIntVariableRanges l (EOp2 EAnd e1 e2 _ _ _ _)
+  = getIntVariableRanges l e1 `intersection` getIntVariableRanges l e2
+getIntVariableRanges l (EOp2 EOr e1 e2 _ _ _ _)
+  = getIntVariableRanges l e1 `union` getIntVariableRanges l e2
+getIntVariableRanges _ _
+  = [InfiniteRange]
