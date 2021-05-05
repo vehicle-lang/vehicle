@@ -57,7 +57,7 @@ instance DBConvert (Type (K Name) builtin ann) (Type SortedDeBruijn builtin ann)
   convert ctxt (TApp ann fn arg) = TApp ann <$> convert ctxt fn <*> convert ctxt arg
   convert ctxt (TLitList ann typs) = TLitList ann <$> traverse (convert ctxt) typs
 
-  convert ctxt (TForall ann arg body) = 
+  convert ctxt (TForall ann arg body) =
     let (name, cArg) = convertTArg arg in do
       cBody <- convert (name : ctxt) body
       return $ TForall ann cArg cBody
@@ -79,8 +79,8 @@ instance DBConvert (Expr (K Name) builtin ann) (Expr SortedDeBruijn builtin ann)
   convert ctxt (EVar ann (K name)) = do
     index <- convertName name ctxt
     return $ EVar ann (SortedDeBruijn index)
-  
-  convert ctxt (ELet ann arg expr1 expr2) = 
+
+  convert ctxt (ELet ann arg expr1 expr2) =
     let (varName, cArg) = convertEArg arg in do
       cExp1 <- convert ctxt expr1
       cExp2 <- convert (varName : ctxt) expr2
@@ -91,23 +91,23 @@ instance DBConvert (Expr (K Name) builtin ann) (Expr SortedDeBruijn builtin ann)
       cExpr <- convert (varName : ctxt) expr
       return $ ELam ann cArg cExpr
 
-  convert ctxt (ETyLam ann arg expr) = 
+  convert ctxt (ETyLam ann arg expr) =
     let (varName, cArg) = convertTArg arg in do
       cExpr <- convert (varName : ctxt) expr
       return $ ETyLam ann cArg cExpr
 
 instance DBConvert (Decl (K Name) builtin ann) (Decl SortedDeBruijn builtin ann) where
-  convert ctxt (DeclNetw ann arg typ) = 
+  convert ctxt (DeclNetw ann arg typ) =
     let (varName, cArg) = convertEArg arg in do
       cTyp <- convert (varName : ctxt) typ
       return $ DeclNetw ann cArg cTyp
 
-  convert ctxt (DeclData ann arg typ) = 
+  convert ctxt (DeclData ann arg typ) =
     let (varName, cArg) = convertEArg arg in do
       cTyp <- convert (varName : ctxt) typ
       return $ DeclData ann cArg cTyp
-  
-  convert ctxt (DefType ann arg args typ) = 
+
+  convert ctxt (DefType ann arg args typ) =
     let (varName, cArg) = convertTArg arg in do
       (varNames , cArgs) <- convertTArgs (varName : ctxt) args
       cTyp <- convert (reverse varNames ++ (varName : ctxt)) typ
@@ -149,7 +149,7 @@ convertName (Name (pos , text)) ctxt = case List.elemIndex text ctxt of
 
 -- * Helper functions for extracting the Text from binding sites
 
-nameText :: Name -> Text 
+nameText :: Name -> Text
 nameText (Name (_ , name)) = name
 
 eArgText :: EArg (K Name) builtin ann -> Text

@@ -37,8 +37,8 @@ type family DeBruijn (sort :: Sort) where
   DeBruijn 'EXPR = DeBruijnIndex
   DeBruijn 'DECL = Empty
   DeBruijn 'PROG = Empty
-  DeBruijn 'TARG = Name 
-  DeBruijn 'EARG = Name 
+  DeBruijn 'TARG = Name
+  DeBruijn 'EARG = Name
 
 -- |The de Bruijn representation equipped with sorts
 newtype SortedDeBruijn (sort :: Sort) = SortedDeBruijn (DeBruijn sort)
