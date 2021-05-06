@@ -23,7 +23,6 @@ source-repository head
 library
   exposed-modules:    Vehicle.Core.Check.Builtin
                     , Vehicle.Core.Check.Core
-                    , Vehicle.Core.Check.Type
                     , Vehicle.Core.Parse
                     , Vehicle.Core.Print
                     , Vehicle.Core.Type
@@ -35,9 +34,8 @@ library
                     , Vehicle.Core.Type.Builtin
                     , Vehicle.Core.Type.Core
                     , Vehicle.Core.Type.Instance
-                    , Vehicle.Core.Type.Instance.Core
-                    , Vehicle.Core.Type.Instance.Fields
-                    , Vehicle.Core.Type.Instance.Recursive
+                    , Vehicle.Core.Type.Fields
+                    , Vehicle.Core.Type.Recursive
                     , Vehicle.Frontend.Type.Core
                     , Vehicle.Frontend.Type.Instance
                     , Vehicle.Frontend.Type.Instance.Recursive

@@ -35,10 +35,16 @@ tkProvenance tk = Provenance [begin +=+ end]
     begin = tkPos tk
     end   = (line begin, column begin + tkLength tk)
 
+
+-- |Takes the output produced by the writer, and feeds it back into the result.
+--
+-- TODO: this is rather ugly
+--
 knot ::
-  Writer Provenance (TreeF sort name builtin ann (Tree sort name builtin (K Provenance :*: ann))) ->
+  Writer Provenance (Provenance -> Tree sort name builtin (K Provenance :*: ann)) ->
   Writer Provenance (Tree sort name builtin (K Provenance :*: ann))
-knot =
+knot wf = let (f, p) = runWriter wf in writer (f p, p)
+
 
 -- |Save the provenance at each annotation.
 saveProvenance :: forall sort name builtin ann.
@@ -59,10 +65,13 @@ saveProvenance = case sortSing :: SSort sort of
 
   -- Types.
   STYPE -> fold $ \case
-    TForallF ann n t -> undefined
-    TAppF ann t1 t2 -> undefined
-    TVar ann n -> undefined
-    TCon ann op -> undefined
-    TLitDim ann d -> undefined
-    TLitList ann tys -> undefined
-    TMeta ann i -> undefined
+    TForallF  ann wn wt -> do n <- wn
+                              t <- wt
+                              tell (tkProvenance n)
+                              return $ \p -> TForall (K p :*: ann) n t
+    TAppF     ann t1 t2 -> undefined
+    TVarF     ann n     -> undefined
+    TConF     ann op    -> undefined
+    TLitDimF  ann d     -> undefined
+    TLitListF ann ts    -> undefined
+    TMetaF    ann i     -> undefined

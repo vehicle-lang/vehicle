@@ -34,14 +34,14 @@ data instance Info 'PROG = InfoProg
 
 check :: (IsToken tkName, KnownSort sort, TCM m) =>
          Info sort ->
-         Tree sort (K tkName) Builtin (K ()) ->
-         m (Tree sort DeBruijn Builtin Info)
+         Tree (K tkName) Builtin (K ()) sort ->
+         m (Tree DeBruijn Builtin Info sort)
 check = undefined
 
 
 infer :: (IsToken tkName, KnownSort sort, TCM m) =>
-         Tree sort (K tkName) Builtin (K ()) ->
-         m (Tree sort DeBruijn Builtin Info)
+         Tree (K tkName) Builtin (K ()) sort ->
+         m (Tree DeBruijn Builtin Info sort)
 infer = undefined
 
 -- -}

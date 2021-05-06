@@ -74,5 +74,5 @@ checkBuiltin (tk :: K tk sort) = case sortSing :: SSort sort of
   SEXPR -> checkBuiltinWithMap builtinExprs tk
   _     -> throwError (UnknownBuiltin (toToken tk))
 
-checkBuiltins :: (IsToken tk, KnownSort sort, TCM m) => Tree sort name (K tk) ann -> m (Tree sort name Builtin ann)
+checkBuiltins :: (IsToken tk, KnownSort sort, TCM m) => Tree name (K tk) ann sort -> m (Tree name Builtin ann sort)
 checkBuiltins = mapBuiltinM checkBuiltin
