@@ -6,7 +6,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Vehicle.Core.DeBruijn.CheckScope
+module Vehicle.Core.DeBruijn.Scope
   ( Scope(checkScope)
   , ScopeError(..)
   , MonadScope
