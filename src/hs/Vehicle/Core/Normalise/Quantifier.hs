@@ -12,7 +12,7 @@ module Vehicle.Core.Normalise.Quantifier
   , Quantifier(..)
   ) where
 
-import Vehicle.Core.Check.Builtin (BuiltinOp(..))
+import Vehicle.Core.Type.Builtin (BuiltinOp(..))
 import Vehicle.Core.Type ( Tree(..), Sort(EXPR) )
 import Data.Range (Range (..), fromRanges, intersection, union, invert, lbi, lbe, ubi, ube, mergeRanges)
 import Data.Text (Text)

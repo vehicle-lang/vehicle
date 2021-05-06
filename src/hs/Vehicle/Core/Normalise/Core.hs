@@ -19,7 +19,7 @@ module Vehicle.Core.Normalise.Core
   , mkBool
   ) where
 
-import Vehicle.Core.Check.Builtin (BuiltinOp(..), Builtin(..))
+import Vehicle.Core.Type.Builtin (BuiltinOp(..), Builtin(..))
 import Vehicle.Prelude (Position)
 import Vehicle.Core.Type ( Sort(..), Tree (..), Expr, Type, Decl, Prog)
 import Vehicle.Core.DeBruijn.Core (SortedDeBruijn(..))
