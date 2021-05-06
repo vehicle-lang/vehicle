@@ -6,11 +6,15 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Vehicle.Core.DeBruijn.Scope
+module Vehicle.Core.Check.Scope
   ( Scope(checkScope)
   , ScopeError(..)
   , MonadScope
   , runScope
+  , nameText
+  , eArgName
+  , tArgName
+  , declName
   ) where
 
 
@@ -43,13 +47,13 @@ runScope = runExcept
 -- |Class for the various conversion functions.
 class Scope tree1 tree2 where
   checkScope :: MonadScope m => Context -> tree1 -> m tree2
-
+{-
 instance Scope (Kind (K Name) builtin ann) (Kind SortedDeBruijn builtin ann) where
   checkScope _ctx = fold $ \case
     KConF  ann op    -> return $ KCon ann op
     KMetaF ann i     -> return $ KMeta ann i
     KAppF  ann k1 k2 -> KApp ann <$> k1 <*> k2
-
+-}
 instance Scope (Type (K Name) builtin ann) (Type SortedDeBruijn builtin ann) where
   checkScope _ (TCon ann builtin) = return $ TCon ann builtin
   checkScope _ (TLitDim ann dim) = return $ TLitDim ann dim
@@ -140,7 +144,7 @@ checkScopeDecls :: MonadScope m => Context -> [Decl (K Name) builtin ann] -> m [
 checkScopeDecls _ [] = return []
 checkScopeDecls ctxt (decl : decls) = do
   cDecl <- checkScope ctxt decl
-  cDecls <- checkScopeDecls (declText decl : ctxt) decls
+  cDecls <- checkScopeDecls (declName decl : ctxt) decls
   return (cDecl : cDecls)
 
 checkScopeName :: MonadScope m => Name -> Context -> m Ix
@@ -153,14 +157,14 @@ checkScopeName (Name (pos , text)) ctxt = case List.elemIndex text ctxt of
 nameText :: Name -> Text
 nameText (Name (_ , name)) = name
 
-eArgText :: EArg (K Name) builtin ann -> Text
-eArgText (EArg _ (K name))= nameText name
+eArgName :: EArg (K Name) builtin ann -> Text
+eArgName (EArg _ (K name))= nameText name
 
-tArgText :: TArg (K Name) builtin ann -> Text
-tArgText (TArg _ (K name))= nameText name
+tArgName :: TArg (K Name) builtin ann -> Text
+tArgName (TArg _ (K name))= nameText name
 
-declText :: Decl (K Name) builtin ann -> Text
-declText (DeclNetw _ arg _) = eArgText arg
-declText (DeclData _ arg _) = eArgText arg
-declText (DefFun _ arg _ _) = eArgText arg
-declText (DefType _ arg _ _) = tArgText arg
+declName :: Decl (K Name) builtin ann -> Text
+declName (DeclNetw _ arg _) = eArgName arg
+declName (DeclData _ arg _) = eArgName arg
+declName (DefFun _ arg _ _) = eArgName arg
+declName (DefType _ arg _ _) = tArgName arg

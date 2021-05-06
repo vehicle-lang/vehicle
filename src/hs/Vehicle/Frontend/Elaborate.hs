@@ -182,7 +182,7 @@ instance Elab [VF.Decl] VC.Decl where
   elab [VF.DeclData n _tk t] =
     VC.DeclData <$> elab n <*> elab t
 
-  -- Elaborate a dataset declaration.
+  -- Elaborate a type definition.
   elab [VF.DefType n ns t] =
     VC.DefType <$> elab n <*> traverse elab ns <*> elab t
 

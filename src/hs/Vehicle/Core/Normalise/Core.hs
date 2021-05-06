@@ -26,7 +26,6 @@ import Vehicle.Core.DeBruijn.Core (SortedDeBruijn(..))
 import Control.Monad.Except (MonadError)
 import Vehicle.Core.Abs (ExprName)
 
-
 -- |Errors thrown during normalisation
 data NormError
   = MissingDefFunType ExprName -- TODO: should be a type error?
@@ -49,7 +48,6 @@ pattern EOp0 op ann0 pos = ECon ann0 (Builtin pos op)
 pattern EOp1 op e1 ann0 ann1 pos = EApp ann1 (EOp0 op ann0 pos) e1
 pattern EOp2 op e1 e2 ann0 ann1 ann2 pos = EApp ann2 (EOp1 op e1 ann0 ann1 pos) e2
 pattern EOp3 op e1 e2 e3 ann0 ann1 ann2 ann3 pos  = EApp ann3 (EOp2 op e1 e2 ann0 ann1 ann2 pos) e3
-
 
 -- TODO: migrate to different module?
 

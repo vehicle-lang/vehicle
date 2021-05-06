@@ -20,6 +20,17 @@ import Vehicle.Core.Type.Builtin (BuiltinOp(..))
 import Control.Monad.Except (Except, runExcept)
 import Control.Monad.Error.Class (throwError)
 import Vehicle.Core.Normalise.Core
+    ( pattern EOp0,
+      pattern EOp1,
+      pattern EOp2,
+      pattern EOp3,
+      mkBool,
+      MonadNorm,
+      NormDecl,
+      NormError(..),
+      NormExpr,
+      NormProg,
+      NormType )
 import Vehicle.Core.Normalise.Quantifier (normQuantifier, Quantifier(..))
 
 -- |Run a function in 'MonadNorm'.
