@@ -16,26 +16,7 @@ import Vehicle.Core.Type.Core
 import Vehicle.Core.Type.Recursive
 
 
--- |Apply sorted functions to all names, builtins, and annotations in a tree.
-mapFields ::
-  (forall sort. KnownSort sort => name sort -> name' sort) ->
-  (forall sort. KnownSort sort => builtin sort -> builtin' sort) ->
-  (forall sort. KnownSort sort => ann sort -> ann' sort) ->
-  (forall sort. KnownSort sort => Tree name builtin ann sort -> Tree name' builtin' ann' sort)
-
-mapFields f g h tree = runIdentity $ mapFieldsM (pure . f) (pure . g) (pure . h) tree
-
-
--- |Effectful version of |mapFields|.
-mapFieldsM ::
-  (Monad m) =>
-  (forall sort. KnownSort sort => name sort -> m (name' sort)) ->
-  (forall sort. KnownSort sort => builtin sort -> m (builtin' sort)) ->
-  (forall sort. KnownSort sort => ann sort -> m (ann' sort)) ->
-  (forall sort. KnownSort sort => Tree name builtin ann sort -> m (Tree name' builtin' ann' sort))
-
-mapFieldsM f g h = foldTreeM (fmap embed . updFieldsM f g h)
-
+-- * Update fields in one layer
 
 -- |Apply sorted functions to the names, builtins, and annotations in one layer.
 updFields ::
@@ -45,7 +26,6 @@ updFields ::
   (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> TreeF name' builtin' ann' sort tree)
 
 updFields f g h tree = runIdentity $ updFieldsM (pure . f) (pure . g) (pure . h) tree
-
 
 -- |Effectful version of |updFields|.
 updFieldsM ::
@@ -106,7 +86,72 @@ updFieldsM f g h (tree :: TreeF name builtin ann sort tree) = case sortSing :: S
   SPROG -> case tree of
     MainF ann ds -> MainF <$> h ann <*> pure ds
 
+-- |Apply sorted function to the names in one layer.
+updName ::
+  (forall sort. KnownSort sort => name sort -> name' sort) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> TreeF name' builtin ann sort tree)
 
+updName f = updFields f id id
+
+-- |Effectful version |updName|.
+updNameM ::
+  (Applicative f) =>
+  (forall sort. KnownSort sort => name sort -> f (name' sort)) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> f (TreeF name' builtin ann sort tree))
+
+updNameM f = updFieldsM f pure pure
+
+-- |Apply sorted function to the builtins in one layer.
+updBuiltin ::
+  (forall sort. KnownSort sort => builtin sort -> builtin' sort) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> TreeF name builtin' ann sort tree)
+
+updBuiltin g = updFields id g id
+
+-- |Effectful version |updBuiltin|.
+updBuiltinM ::
+  (Applicative f) =>
+  (forall sort. KnownSort sort => builtin sort -> f (builtin' sort)) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> f (TreeF name builtin' ann sort tree))
+
+updBuiltinM g = updFieldsM pure g pure
+
+-- |Apply sorted function to the annotation in one layer.
+updAnn ::
+  (forall sort. KnownSort sort => ann sort -> ann' sort) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> TreeF name builtin ann' sort tree)
+
+updAnn h = updFields id id h
+
+-- |Effectful version |updAnn|.
+updAnnM ::
+  (Applicative f) =>
+  (forall sort. KnownSort sort => ann sort -> f (ann' sort)) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> f (TreeF name builtin ann' sort tree))
+
+updAnnM h = updFieldsM pure pure h
+
+
+-- * Update fields in a tree
+
+-- |Apply sorted functions to all names, builtins, and annotations in a tree.
+mapFields ::
+  (forall sort. KnownSort sort => name sort -> name' sort) ->
+  (forall sort. KnownSort sort => builtin sort -> builtin' sort) ->
+  (forall sort. KnownSort sort => ann sort -> ann' sort) ->
+  (forall sort. KnownSort sort => Tree name builtin ann sort -> Tree name' builtin' ann' sort)
+
+mapFields f g h tree = runIdentity $ mapFieldsM (pure . f) (pure . g) (pure . h) tree
+
+-- |Effectful version of |mapFields|.
+mapFieldsM ::
+  (Monad m) =>
+  (forall sort. KnownSort sort => name sort -> m (name' sort)) ->
+  (forall sort. KnownSort sort => builtin sort -> m (builtin' sort)) ->
+  (forall sort. KnownSort sort => ann sort -> m (ann' sort)) ->
+  (forall sort. KnownSort sort => Tree name builtin ann sort -> m (Tree name' builtin' ann' sort))
+
+mapFieldsM f g h = foldTreeM (fmap embed . updFieldsM f g h)
 
 -- |Apply sorted functions to all names in a tree.
 mapName ::
