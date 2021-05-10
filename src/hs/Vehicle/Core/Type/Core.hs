@@ -1,3 +1,4 @@
+{-# LANGUAGE PolyKinds          #-}
 {-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE TypeFamilies       #-}
@@ -210,5 +211,5 @@ data instance Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
   (name 'EARG)              -- ^ Expression name.
 
 -- | Constant type-level function.
-newtype K (a :: *) (b :: Sort) = K { unK :: a }
+newtype K (a :: *) (b :: k) = K { unK :: a }
   deriving (Eq, Ord, Show)

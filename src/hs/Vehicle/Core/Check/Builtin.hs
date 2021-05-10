@@ -7,16 +7,21 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This module implements the check to see if there are any unknown builtins
--- and converts the builtin representation to a data type (as opposed to 'Text').
+-- and converts the builtin representation to a data type (as opposed to 'Symbol').
 module Vehicle.Core.Check.Builtin where
 
-import           Control.Monad.Except (MonadError(..))
-import           Data.Text (Text)
-import           Vehicle.Core.Check.Core
-import           Vehicle.Core.Type
-import           Vehicle.Prelude
+import Control.Monad.Except (MonadError(..))
+import Vehicle.Core.Type
+import Vehicle.Prelude
 
-builtinKinds :: [(Text, BuiltinOp 'KIND)]
+-- |Type of errors thrown by builtin checking.
+newtype BuiltinError
+  = UnknownBuiltin Token
+  deriving (Show)
+
+instance Exception BuiltinError
+
+builtinKinds :: [(Symbol, BuiltinOp 'KIND)]
 builtinKinds =
   [ "->"   |-> KFun
   , "Type" |-> KType
@@ -24,7 +29,7 @@ builtinKinds =
   , "List" |-> KList
   ]
 
-builtinTypes :: [(Text, BuiltinOp 'TYPE)]
+builtinTypes :: [(Symbol, BuiltinOp 'TYPE)]
 builtinTypes =
   [ "->"     |-> TFun
   , "Bool"   |-> TBool
@@ -37,7 +42,7 @@ builtinTypes =
   , "::"     |-> TCons
   ]
 
-builtinExprs :: [(Text, BuiltinOp 'EXPR)]
+builtinExprs :: [(Symbol, BuiltinOp 'EXPR)]
 builtinExprs =
   [ "if"    |-> EIf
   , "=>"    |-> EImpl
@@ -63,17 +68,27 @@ builtinExprs =
   , "any"   |-> EAny
   ]
 
-checkBuiltinWithMap :: (IsToken tk, TCM m) => [(Text, BuiltinOp sort)] -> K tk sort -> m (Builtin sort)
-checkBuiltinWithMap builtins tk = case lookup (tkText tk) builtins of
+checkBuiltinWithMap ::
+  (MonadBuiltin m, IsToken tk) =>
+  [(Symbol, BuiltinOp sort)] ->
+  K tk sort ->
+  m (Builtin sort)
+checkBuiltinWithMap builtins tk = case lookup (tkSymbol tk) builtins of
   Nothing -> throwError (UnknownBuiltin (toToken tk))
   Just op -> return (Builtin (tkPos tk) op)
 
-checkBuiltin :: (IsToken tk, KnownSort sort, TCM m) => K tk sort -> m (Builtin sort)
+checkBuiltin ::
+  (MonadBuiltin m, IsToken tk, KnownSort sort) =>
+  K tk sort ->
+  m (Builtin sort)
 checkBuiltin (tk :: K tk sort) = case sortSing :: SSort sort of
   SKIND -> checkBuiltinWithMap builtinKinds tk
   STYPE -> checkBuiltinWithMap builtinTypes tk
   SEXPR -> checkBuiltinWithMap builtinExprs tk
   _     -> throwError (UnknownBuiltin (toToken tk))
 
-checkBuiltins :: (IsToken tk, KnownSort sort, TCM m) => Tree name (K tk) ann sort -> m (Tree name Builtin ann sort)
+checkBuiltins ::
+  (MonadError BuiltinError m, IsToken tk, KnownSort sort) =>
+  Tree name (K tk) ann sort ->
+  m (Tree name Builtin ann sort)
 checkBuiltins = mapBuiltinM checkBuiltin

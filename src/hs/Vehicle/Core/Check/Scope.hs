@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -6,31 +5,53 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Vehicle.Core.Check.Scope
-  ( Scope(checkScope)
-  , ScopeError(..)
-  , MonadScope
-  , runScope
-  , nameText
-  , eArgName
-  , tArgName
-  , declName
-  ) where
+module Vehicle.Core.Check.Scope where
 
-
-import Data.Functor.Foldable (fold)
-import Vehicle.Core.Type
-import Vehicle.Core.DeBruijn.Core (SortedDeBruijn(..), Ix(..))
-import qualified Data.List as List
-import Vehicle.Core.Abs (Name(..))
-import Control.Monad.Except (MonadError, Except, runExcept)
+import Control.Monad.Except (MonadError, Except, runExcept, liftEither)
 import Control.Monad.Error.Class (throwError)
-import Data.Text (Text)
+import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
+import Control.Monad.Trans (lift)
+import qualified Data.List as List
+import Vehicle.Core.Type
+import Vehicle.Prelude
+
+
+-- |Type of scope checking contexts.
+data Ctx = Ctx { tEnv :: [Symbol], eEnv :: [Symbol] }
+
+-- |The empty scope checking context.
+emptyCtx :: Ctx
+emptyCtx = Ctx { tEnv = [], eEnv = [] }
+
+-- |The scope checking monad.
+type Scope a = ReaderT Ctx (Except ScopeError) a
+
+runScope :: MonadError ScopeError m => Scope a -> m a
+runScope m = liftEither . runExcept $ runReaderT m emptyCtx
+
+-- |Type of errors thrown by scope checking.
+newtype ScopeError
+  = UnboundName Token
+  deriving (Show)
+
+checkScope ::
+  (MonadError ScopeError m, IsToken name, KnownSort sort) =>
+  Tree (K name) builtin ann sort ->
+  m (Tree DeBruijn builtin ann sort)
+checkScope = runScope . sortedFoldM checkScope'
+
+checkScope' ::
+  (IsToken name, KnownSort sort) =>
+  TreeF (K name) builtin ann sort (Tree DeBruijn builtin ann) ->
+  Scope (Tree DeBruijn builtin ann sort)
+checkScope' = _
+
+{-
 
 -- * Conversion from names to de Bruijn indices
 
 -- |Errors thrown during conversion from names to de Bruijn indices
-newtype ScopeError = UnboundName Text
+newtype ScopeError = UnboundName Symbol
   deriving (Show)
 
 -- |Monad stack used during conversion from names to de Bruijn indices.
@@ -38,7 +59,7 @@ type MonadScope m = MonadError ScopeError m
 
 -- |Context for de Bruijn conversion.
 -- A list of the bound variable names encountered so far ordered from most to least recent.
-type Context = [Text]
+data Ctx = Ctx { kenv :: [Symbol], tenv :: [Symbol] }
 
 -- |Run a function in 'MonadScope'.
 runScope :: Except ScopeError a -> Either ScopeError a
@@ -127,13 +148,13 @@ instance Scope (Decl (K Name) builtin ann) (Decl SortedDeBruijn builtin ann) whe
 instance Scope (Prog (K Name) builtin ann) (Prog SortedDeBruijn builtin ann) where
   checkScope ctxt (Main ann decls)= Main ann <$> checkScopeDecls ctxt decls
 
-checkScopeEArg :: EArg (K Name) builtin ann -> (Text , EArg SortedDeBruijn builtin ann)
-checkScopeEArg (EArg ann (K name)) = (nameText name , EArg ann (SortedDeBruijn name))
+checkScopeEArg :: EArg (K Name) builtin ann -> (Symbol , EArg SortedDeBruijn builtin ann)
+checkScopeEArg (EArg ann (K name)) = (nameSymbol name , EArg ann (SortedDeBruijn name))
 
-checkScopeTArg :: TArg (K Name) builtin ann -> (Text , TArg SortedDeBruijn builtin ann)
-checkScopeTArg (TArg ann (K name)) = (nameText name , TArg ann (SortedDeBruijn name))
+checkScopeTArg :: TArg (K Name) builtin ann -> (Symbol , TArg SortedDeBruijn builtin ann)
+checkScopeTArg (TArg ann (K name)) = (nameSymbol name , TArg ann (SortedDeBruijn name))
 
-checkScopeTArgs :: MonadScope m => Context -> [TArg (K Name) builtin ann] -> m ([Text], [TArg SortedDeBruijn builtin ann])
+checkScopeTArgs :: MonadScope m => Context -> [TArg (K Name) builtin ann] -> m ([Symbol], [TArg SortedDeBruijn builtin ann])
 checkScopeTArgs _ [] = return ([], [])
 checkScopeTArgs ctxt (tArg : tArgs) =
     let (varName, cArg) = checkScopeTArg tArg in do
@@ -152,19 +173,25 @@ checkScopeName (Name (pos , text)) ctxt = case List.elemIndex text ctxt of
   Nothing -> throwError $ UnboundName text
   Just index -> return $ Ix (pos , index)
 
--- * Helper functions for extracting the Text from binding sites
+-- * Helper functions for extracting the Symbol from binding sites
 
-nameText :: Name -> Text
-nameText (Name (_ , name)) = name
+nameSymbol :: Name -> Symbol
+nameSymbol (Name (_ , name)) = name
 
-eArgName :: EArg (K Name) builtin ann -> Text
-eArgName (EArg _ (K name))= nameText name
+eArgName :: EArg (K Name) builtin ann -> Symbol
+eArgName (EArg _ (K name))= nameSymbol name
 
-tArgName :: TArg (K Name) builtin ann -> Text
-tArgName (TArg _ (K name))= nameText name
+tArgName :: TArg (K Name) builtin ann -> Symbol
+tArgName (TArg _ (K name))= nameSymbol name
 
-declName :: Decl (K Name) builtin ann -> Text
+declName :: Decl (K Name) builtin ann -> Symbol
 declName (DeclNetw _ arg _) = eArgName arg
 declName (DeclData _ arg _) = eArgName arg
 declName (DefFun _ arg _ _) = eArgName arg
 declName (DefType _ arg _ _) = tArgName arg
+
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}
