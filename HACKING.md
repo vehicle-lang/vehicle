@@ -5,7 +5,7 @@ Let's say you want to add a builtin operator for exponentials. Here's what you n
 Add frontend syntax in `src/bnfc/Frontend.cf`, and adjust the indices where necessary to get the appropriate fixity and associativity:
 
 ```diff
-@@ src/bnfc/Frontend.cf
+--- src/bnfc/Frontend.cf
 
 + position token TokExp      {"^"};
   position token TokMul      {"*"};
@@ -19,13 +19,13 @@ Add frontend syntax in `src/bnfc/Frontend.cf`, and adjust the indices where nece
 - EDiv.       Expr8  ::= Expr8 TokDiv Expr9;
 + EDiv.       Expr9  ::= Expr9 TokDiv Expr10;
 
-@@ etc.
+  etc.
 ```
 
 Add core syntax in `src/bnfc/Core.cf`:
 
 ```diff
-@@ src/bnfc/Core.cf
+--- src/bnfc/Core.cf
 
   position token Builtin
     ( {"all"} | {"any"}
@@ -44,7 +44,7 @@ Add core syntax in `src/bnfc/Core.cf`:
 Add a case to elaboration in `Vehicle.Frontend.Elaborate`:
 
 ```diff
-@@ src/hs/Vehicle/Frontend/Elaborate.hs
+--- src/hs/Vehicle/Frontend/Elaborate.hs
 
   VF.EGeF e1 tk e2               -> eOp2 tk e1 e2
   VF.EGtF e1 tk e2               -> eOp2 tk e1 e2
@@ -56,7 +56,7 @@ Add a case to elaboration in `Vehicle.Frontend.Elaborate`:
 Add a builtin operator to `Vehicle.Core.Type.Builtin`:
 
 ```diff
-@@ src/hs/Vehicle/Core/Type/Builtin.hs
+--- src/hs/Vehicle/Core/Type/Builtin.hs
 
   EGe     :: BuiltinOp 'EXPR
   EGt     :: BuiltinOp 'EXPR
@@ -68,7 +68,7 @@ Add a builtin operator to `Vehicle.Core.Type.Builtin`:
 Add a case to the builtin checker in `Vehicle.Core.Check.Builtin`:
 
 ```diff
-@@ src/hs/Vehicle/Core/Check/Builtin.hs
+--- src/hs/Vehicle/Core/Check/Builtin.hs
 
   , ">="    |-> EGe
   , ">"     |-> EGt
