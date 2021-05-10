@@ -9,7 +9,7 @@ Add frontend syntax in `src/bnfc/Frontend.cf`:
   position token TokGt       {">"};
 + position token TokExp      {"^"};
   position token TokMul      {"*"};
-  position token TokDiv      {"/"**;
+  position token TokDiv      {"/"};
 
   EGe.        Expr7  ::= Expr8 TokGe Expr8;
   EGt.        Expr7  ::= Expr8 TokGt Expr8;
