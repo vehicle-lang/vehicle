@@ -5,6 +5,8 @@ Let's say you want to add a builtin operator for exponentials. Here's what you n
 Add frontend syntax in `src/bnfc/Frontend.cf`:
 
 ```diff
+  position token TokGe       {">="};
+  position token TokGt       {">"};
 + position token TokExp      {"^"};
   position token TokMul      {"*"};
   position token TokDiv      {"/"**;
