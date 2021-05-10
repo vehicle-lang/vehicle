@@ -10,9 +10,10 @@ position token Builtin
 	| {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
 	| {"*"} | {"/"} | {"+"} | {"-"} | {"~"} | {"!"} | {"not"}
 	| {"->"} | {"Type"} | {"Tensor"} | {"Real"} | {"Nat"}
-	| {"Prop"}
+	|  {"Prop"}
   | {"Bool"} | {"True"} | {"False"}
-	| {"List"} | {"::"});
+	| {"List"} | {"::"}
+  );
 
 position token Name (lower (letter | digit | '_')*) ;
 
