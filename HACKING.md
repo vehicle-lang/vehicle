@@ -6,6 +6,7 @@ Add frontend syntax in `src/bnfc/Frontend.cf`, and adjust the indices where nece
 
 ```diff
 --- src/bnfc/Frontend.cf
++++ src/bnfc/Frontend.cf
 
 + position token TokExp      {"^"};
   position token TokMul      {"*"};
@@ -26,6 +27,7 @@ Add core syntax in `src/bnfc/Core.cf`:
 
 ```diff
 --- src/bnfc/Core.cf
++++ src/bnfc/Core.cf
 
   position token Builtin
     ( {"all"} | {"any"}
@@ -45,6 +47,7 @@ Add a case to elaboration in `Vehicle.Frontend.Elaborate`:
 
 ```diff
 --- src/hs/Vehicle/Frontend/Elaborate.hs
++++ src/hs/Vehicle/Frontend/Elaborate.hs
 
   VF.EGeF e1 tk e2               -> eOp2 tk e1 e2
   VF.EGtF e1 tk e2               -> eOp2 tk e1 e2
@@ -57,6 +60,7 @@ Add a builtin operator to `Vehicle.Core.Type.Builtin`:
 
 ```diff
 --- src/hs/Vehicle/Core/Type/Builtin.hs
++++ src/hs/Vehicle/Core/Type/Builtin.hs
 
   EGe     :: BuiltinOp 'EXPR
   EGt     :: BuiltinOp 'EXPR
@@ -69,6 +73,7 @@ Add a case to the builtin checker in `Vehicle.Core.Check.Builtin`:
 
 ```diff
 --- src/hs/Vehicle/Core/Check/Builtin.hs
++++ src/hs/Vehicle/Core/Check/Builtin.hs
 
   , ">="    |-> EGe
   , ">"     |-> EGt
