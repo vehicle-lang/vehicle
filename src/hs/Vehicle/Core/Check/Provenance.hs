@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -55,9 +56,9 @@ tellProvenance (tree :: TreeF name builtin ann sort sorted) = case sortSing :: S
 
   -- Expressions
   SEXPR -> case tree of
-    EVarF     _ann n  -> tell (tkProvenance n)
-    EConF     _ann op -> tell (tkProvenance op)
-    _                 -> return ()
+    EVarF _ann n  -> tell (tkProvenance n)
+    EConF _ann op -> tell (tkProvenance op)
+    _             -> return ()
 
   -- Expression arguments
   SEARG -> case tree of
@@ -76,14 +77,8 @@ saveProvenance ::
   Tree (K name) (K builtin) ann sort ->
   Tree (K name) (K builtin) (K Provenance :*: ann) sort
 
-saveProvenance = _
+saveProvenance = Prelude.fst . runWriter . sortedFoldM go
   where
-    go ::
-      (forall sort. KnownSort sort => TreeF name builtin ann sort sorted -> Writer Provenance (sorted sort)) ->
-      (forall sort. KnownSort sort => Tree  name builtin ann sort        -> Writer Provenance (sorted sort))
-    go = _
-
-
-  -- Prelude.fst . runWriter . sortedFoldM $ \tree -> do
-  -- ((), p) <- listen (tellProvenance tree)
-  -- return . embed $ updAnn (K p :*:) tree
+    go tree = do
+      ((), p) <- listen (tellProvenance tree)
+      return . embed $ updAnn (K p :*:) tree
