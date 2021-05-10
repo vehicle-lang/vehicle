@@ -26,9 +26,6 @@ Add frontend syntax in `src/bnfc/Frontend.cf`, and adjust the indices where nece
 Add core syntax in `src/bnfc/Core.cf`:
 
 ```diff
---- src/bnfc/Core.cf
-+++ src/bnfc/Core.cf
-
   position token Builtin
     ( {"all"} | {"any"}
     | {"=>"} | {"and"} | {"or"}
@@ -46,9 +43,6 @@ Add core syntax in `src/bnfc/Core.cf`:
 Add a case to elaboration in `Vehicle.Frontend.Elaborate`:
 
 ```diff
---- src/hs/Vehicle/Frontend/Elaborate.hs
-+++ src/hs/Vehicle/Frontend/Elaborate.hs
-
   VF.EGeF e1 tk e2               -> eOp2 tk e1 e2
   VF.EGtF e1 tk e2               -> eOp2 tk e1 e2
 + VF.EExpF e1 tk e2              -> eOp2 tk e1 e2
@@ -59,9 +53,6 @@ Add a case to elaboration in `Vehicle.Frontend.Elaborate`:
 Add a builtin operator to `Vehicle.Core.Type.Builtin`:
 
 ```diff
---- src/hs/Vehicle/Core/Type/Builtin.hs
-+++ src/hs/Vehicle/Core/Type/Builtin.hs
-
   EGe     :: BuiltinOp 'EXPR
   EGt     :: BuiltinOp 'EXPR
 + EExp    :: BuiltinOp 'EXPR
@@ -72,9 +63,6 @@ Add a builtin operator to `Vehicle.Core.Type.Builtin`:
 Add a case to the builtin checker in `Vehicle.Core.Check.Builtin`:
 
 ```diff
---- src/hs/Vehicle/Core/Check/Builtin.hs
-+++ src/hs/Vehicle/Core/Check/Builtin.hs
-
   , ">="    |-> EGe
   , ">"     |-> EGt
 + , "^"     |-> EExp
