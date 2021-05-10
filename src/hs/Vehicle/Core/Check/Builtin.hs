@@ -28,6 +28,7 @@ builtinTypes :: [(Text, BuiltinOp 'TYPE)]
 builtinTypes =
   [ "->"     |-> TFun
   , "Bool"   |-> TBool
+  , "Prop"   |-> TProp
   , "Int"    |-> TInt
   , "Real"   |-> TReal
   , "List"   |-> TList

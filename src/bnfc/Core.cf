@@ -10,7 +10,8 @@ position token Builtin
 	| {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
 	| {"*"} | {"/"} | {"+"} | {"-"} | {"~"} | {"!"} | {"not"}
 	| {"->"} | {"Type"} | {"Tensor"} | {"Real"} | {"Nat"}
-	| {"Bool"} | {"True"} | {"False"}
+	| {"Prop"}
+  | {"Bool"} | {"True"} | {"False"}
 	| {"List"} | {"::"});
 
 position token Name (lower (letter | digit | '_')*) ;

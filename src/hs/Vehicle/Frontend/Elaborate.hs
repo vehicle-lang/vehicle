@@ -114,6 +114,7 @@ instance Elab VF.Type VC.Type where
     -- Primitive types.
     VF.TFunF t1 tk t2          -> tOp2 tk t1 t2
     VF.TBoolF tk               -> tCon tk
+    VF.TPropF tk               -> tCon tk
     VF.TRealF tk               -> tCon tk
     VF.TIntF tk                -> tCon tk
     VF.TListF tk               -> tCon tk

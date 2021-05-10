@@ -7,7 +7,7 @@ comment "{-" "-}";
 
 -- NOTE: Token rules are tried IN ORDER, so the order matters!
 
-position token TokArrow    {"->"};      
+position token TokArrow    {"->"};
 position token TokForall   {"forall"};
 position token TokExists   {"exists"};
 position token TokIf       {"if"};
@@ -24,6 +24,7 @@ position token TokList     {"List"};
 position token TokReal     {"Real"};
 position token TokInt      {"Int"};
 position token TokBool     {"Bool"};
+position token TokProp     {"Prop"};
 
 position token TokAll      {"all"};
 position token TokAny      {"any"};
@@ -78,6 +79,7 @@ TVar.     Type4 ::= Name;
 -- Primitive types.
 TFun.     Type  ::= Type2 TokArrow Type;
 TBool.    Type4 ::= TokBool;
+TProp.    Type4 ::= TokProp;
 TReal.    Type4 ::= TokReal;
 TInt.     Type4 ::= TokInt;
 TList.    Type4 ::= TokList;

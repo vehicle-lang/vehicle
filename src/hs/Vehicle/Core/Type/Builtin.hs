@@ -24,6 +24,7 @@ data BuiltinOp (sort :: Sort) where
   -- Builtin types
   TFun    :: BuiltinOp 'TYPE
   TBool   :: BuiltinOp 'TYPE
+  TProp   :: BuiltinOp 'TYPE
   TInt    :: BuiltinOp 'TYPE
   TReal   :: BuiltinOp 'TYPE
   TList   :: BuiltinOp 'TYPE
