@@ -2,7 +2,7 @@
 
 Let's say you want to add a builtin operator for exponentials. Here's what you need to do:
 
-Add frontend syntax in `src/bnfc/Frontend.cf`, and adjust the indices where necessary to get the appropriate fixity and associativity:
+Add frontend syntax in `src/bnfc/Frontend.cf`:
 
 ```diff
 + position token TokExp      {"^"};
@@ -18,7 +18,12 @@ Add frontend syntax in `src/bnfc/Frontend.cf`, and adjust the indices where nece
 + EDiv.       Expr9  ::= Expr9 TokDiv Expr10;
 
   etc.
+
+- coercions Expr 13;
++ coercions Expr 14;
 ```
+
+Make sure to adjust the indices where necessary to get the appropriate fixity and associativity. For instance, we'd like the fixity level for exponentials to be *between* that of comparisons and multiplication/division, so we assign it level 8, and must increment the index for any level above 8. We must also update the *coercions* declaration, which generates coercions between all the various levels.
 
 Add core syntax in `src/bnfc/Core.cf`:
 
