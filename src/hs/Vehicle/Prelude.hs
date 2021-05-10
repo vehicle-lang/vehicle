@@ -16,5 +16,5 @@ infix 1 |->
 (|->) = (,)
 
 -- | Indexed product.
-data (:*:) (f :: k -> *) (g :: k -> *) (x :: k) = (:*:) { fst :: f x, snd :: g x }
+data (:*:) (f :: k -> *) (g :: k -> *) (x :: k) = (:*:) { sortedFst :: f x, sortedSnd :: g x }
   deriving (Eq, Ord, Show)

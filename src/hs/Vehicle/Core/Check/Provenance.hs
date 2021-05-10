@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -71,13 +70,13 @@ tellProvenance (tree :: TreeF name builtin ann sort sorted) = case sortSing :: S
   SPROG -> return ()
 
 
--- |Save the provenance information for the tree.
+-- |Save the provenance information at each node in the tree.
 saveProvenance ::
   (IsToken name, IsToken builtin, KnownSort sort) =>
   Tree (K name) (K builtin) ann sort ->
   Tree (K name) (K builtin) (K Provenance :*: ann) sort
 
-saveProvenance = Prelude.fst . runWriter . sortedFoldM go
+saveProvenance = fst . runWriter . sortedFoldM go
   where
     go tree = do
       ((), p) <- listen (tellProvenance tree)
