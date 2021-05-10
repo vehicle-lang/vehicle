@@ -5,9 +5,6 @@ Let's say you want to add a builtin operator for exponentials. Here's what you n
 Add frontend syntax in `src/bnfc/Frontend.cf`, and adjust the indices where necessary to get the appropriate fixity and associativity:
 
 ```diff
---- src/bnfc/Frontend.cf
-+++ src/bnfc/Frontend.cf
-
 + position token TokExp      {"^"};
   position token TokMul      {"*"};
   position token TokDiv      {"/"**;
@@ -40,7 +37,7 @@ Add core syntax in `src/bnfc/Core.cf`:
 
 ```
 
-Add a case to elaboration in `Vehicle.Frontend.Elaborate`:
+Add a case to elaboration in `src/hs/Vehicle/Frontend/Elaborate.hs`:
 
 ```diff
   VF.EGeF e1 tk e2               -> eOp2 tk e1 e2
@@ -50,7 +47,7 @@ Add a case to elaboration in `Vehicle.Frontend.Elaborate`:
   VF.EDivF e1 tk e2              -> eOp2 tk e1 e2
 ```
 
-Add a builtin operator to `Vehicle.Core.Type.Builtin`:
+Add a builtin operator to `src/hs/Vehicle/Core/Type/Builtin.hs`:
 
 ```diff
   EGe     :: BuiltinOp 'EXPR
@@ -60,7 +57,7 @@ Add a builtin operator to `Vehicle.Core.Type.Builtin`:
   EDiv    :: BuiltinOp 'EXPR
 ```
 
-Add a case to the builtin checker in `Vehicle.Core.Check.Builtin`:
+Add a case to the builtin checker in `src/hs/Vehicle/Core/Check/Builtin.hs`:
 
 ```diff
   , ">="    |-> EGe
