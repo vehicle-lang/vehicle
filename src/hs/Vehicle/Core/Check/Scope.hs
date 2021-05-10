@@ -1,19 +1,21 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 
 module Vehicle.Core.Check.Scope where
 
-import Control.Monad.Except (MonadError, Except, runExcept, liftEither)
-import Control.Monad.Error.Class (throwError)
-import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
-import Control.Monad.Trans (lift)
+import           Control.Monad.Except (MonadError, Except, runExcept, liftEither)
+import           Control.Monad.Error.Class (throwError)
+import           Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
+import           Control.Monad.Trans (lift)
 import qualified Data.List as List
-import Vehicle.Core.Type
-import Vehicle.Prelude
+import           Vehicle.Core.Type
+import           Vehicle.Prelude
 
 
 -- |Type of scope checking contexts.
@@ -38,13 +40,62 @@ checkScope ::
   (MonadError ScopeError m, IsToken name, KnownSort sort) =>
   Tree (K name) builtin ann sort ->
   m (Tree DeBruijn builtin ann sort)
-checkScope = runScope . sortedFoldM checkScope'
+checkScope tree = runScope (unO (sortedFoldM checkScopeF tree))
 
-checkScope' ::
-  (IsToken name, KnownSort sort) =>
-  TreeF (K name) builtin ann sort (Tree DeBruijn builtin ann) ->
-  Scope (Tree DeBruijn builtin ann sort)
-checkScope' = _
+checkScopeF ::
+  (MonadError ScopeError m, MonadReader Ctx m, IsToken name, KnownSort sort) =>
+  TreeF (K name) builtin ann sort (m `O` Tree DeBruijn builtin ann) ->
+  (m `O` Tree DeBruijn builtin ann) sort
+checkScopeF (tree :: TreeF name builtin ann sort tree) = case sortSing :: SSort sort of
+
+  -- Kinds
+  SKIND -> case tree of
+    KAppF  ann k1 k2 -> _
+    KConF  ann op    -> _
+    KMetaF ann i     -> _
+
+  -- Types
+  STYPE -> case tree of
+    TForallF  ann n t   -> _
+    TAppF     ann t1 t2 -> _
+    TVarF     ann n     -> _
+    TConF     ann op    -> _
+    TLitDimF  ann d     -> _
+    TLitListF ann ts    -> _
+    TMetaF    ann i     -> _
+
+  -- Type arguments
+  STARG -> case tree of
+    TArgF ann n -> _
+
+  -- Expressions
+  SEXPR -> case tree of
+    EAnnF     ann e t     -> _
+    ELetF     ann n e1 e2 -> _
+    ELamF     ann n e     -> _
+    EAppF     ann e1 e2   -> _
+    EVarF     ann n       -> _
+    ETyAppF   ann e t     -> _
+    ETyLamF   ann n e     -> _
+    EConF     ann op      -> _
+    ELitIntF  ann z       -> _
+    ELitRealF ann r       -> _
+    ELitSeqF  ann es      -> _
+
+  -- Expression arguments
+  SEARG -> case tree of
+    EArgF ann n -> _
+
+  -- Declarations
+  SDECL -> case tree of
+    DeclNetwF ann n t    -> _
+    DeclDataF ann n t    -> _
+    DefTypeF  ann n ns t -> _
+    DefFunF   ann n t e  -> _
+
+  -- Programs
+  SPROG -> case tree of
+    MainF ann ds -> _
 
 {-
 

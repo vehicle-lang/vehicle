@@ -10,6 +10,8 @@ module Vehicle.Prelude
   , (:*:)(..)
   , type DecIn
   , type In
+  , K(..)
+  , O(..)
   ) where
 
 import Vehicle.Prelude.Token as X
@@ -30,4 +32,12 @@ type family DecIn (x :: k) (xs :: [k]) :: Bool where
   DecIn x (x ': xs) = 'True
   DecIn x (y ': xs) = DecIn x xs
 
+-- |
 type In (x :: k) (xs :: [k]) = DecIn x xs ~ 'True
+
+-- |Type-level constant function.
+newtype K (a :: *) (b :: k) = K { unK :: a }
+  deriving (Eq, Ord, Show)
+
+-- |Type-level function composition.
+newtype O (g :: * -> *) (f :: k -> *) (a :: k) = O { unO :: g (f a) }

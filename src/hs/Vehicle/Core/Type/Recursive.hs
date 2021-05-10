@@ -4,11 +4,13 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 
 module Vehicle.Core.Type.Recursive where
 
-import Control.Monad.Identity
-import Vehicle.Core.Type.Core
+import           Control.Monad.Identity
+import           Vehicle.Core.Type.Core
+import           Vehicle.Prelude
 
 
 -- * Base functor for kinds
@@ -205,101 +207,206 @@ embed = case sortSing :: SSort sort of
   SPROG -> \case
     MainF ann ds -> Main ann ds
 
--- |Apply a sorted function to each recursive position.
-mapTreeF ::
-  (forall sort. KnownSort sort => sorted1 sort -> sorted2 sort) ->
-  (forall sort. KnownSort sort => TreeF name builtin ann sort sorted1 -> TreeF name builtin ann sort sorted2)
-mapTreeF f tree = runIdentity $ mapTreeFM (pure . f) tree
-
-
--- |Effectful version of |mapTreeF|.
-mapTreeFM ::
+-- |Map each element of the layer to an action, evaluate these actions from left to right, and collect the results.
+traverseTreeF ::
   (Applicative f) =>
-  (forall sort. KnownSort sort => sorted1 sort -> f (sorted2 sort)) ->
-  (forall sort. KnownSort sort => TreeF name builtin ann sort sorted1 -> f (TreeF name builtin ann sort sorted2))
+  (forall sort. KnownSort sort => name1    sort -> f (name2    sort)) ->
+  (forall sort. KnownSort sort => builtin1 sort -> f (builtin2 sort)) ->
+  (forall sort. KnownSort sort => ann1     sort -> f (ann2     sort)) ->
+  (forall sort. KnownSort sort => sorted1  sort -> f (sorted2  sort)) ->
+  (forall sort. KnownSort sort => TreeF name1 builtin1 ann1 sort sorted1 -> f (TreeF name2 builtin2 ann2 sort sorted2))
 
--- NOTE: The effectful version can be implemented in terms of the pure version,
---       similar to how it's done in the recursion-schemes package. However,
---       it's a bit tricky, as we'd have to compute the applicative functor |f|
---       with the sorted type |sorted2|. Therefore, it's easier to define the
---       effectful version, and derive the pure version.
+traverseTreeF fName fBuiltin fAnn fRec (tree :: TreeF name1 builtin1 ann1 sort sorted1) = case sortSing :: SSort sort of
 
-mapTreeFM f (tree :: TreeF _name _builtin _ann sort _sorted1) = case sortSing :: SSort sort of
-
-  -- Kinds
+ -- Kinds
   SKIND -> case tree of
-    KAppF  ann k1 k2 -> KAppF ann <$> f k1 <*> f k2
-    KConF  ann op    -> pure $ KConF  ann op
-    KMetaF ann i     -> pure $ KMetaF ann i
+    KAppF  ann k1 k2 -> KAppF  <$> fAnn ann <*> fRec k1 <*> fRec k2
+    KConF  ann op    -> KConF  <$> fAnn ann <*> fBuiltin op
+    KMetaF ann i     -> KMetaF <$> fAnn ann <*> pure i
 
   -- Types
   STYPE -> case tree of
-    TForallF  ann n t   -> TForallF ann <$> f n <*> f t
-    TAppF     ann t1 t2 -> TAppF ann <$> f t1 <*> f t2
-    TVarF     ann n     -> pure $ TVarF ann n
-    TConF     ann op    -> pure $ TConF ann op
-    TLitDimF  ann d     -> pure $ TLitDimF ann d
-    TLitListF ann ts    -> TLitListF ann <$> traverse f ts
-    TMetaF    ann i     -> pure $ TMetaF ann i
+    TForallF  ann n t   -> TForallF  <$> fAnn ann <*> fRec n <*> fRec t
+    TAppF     ann t1 t2 -> TAppF     <$> fAnn ann <*> fRec t1 <*> fRec t2
+    TVarF     ann n     -> TVarF     <$> fAnn ann <*> fName n
+    TConF     ann op    -> TConF     <$> fAnn ann <*> fBuiltin op
+    TLitDimF  ann d     -> TLitDimF  <$> fAnn ann <*> pure d
+    TLitListF ann ts    -> TLitListF <$> fAnn ann <*> traverse fRec ts
+    TMetaF    ann i     -> TMetaF    <$> fAnn ann <*> pure i
 
   -- Type arguments
   STARG -> case tree of
-    TArgF ann n -> pure $ TArgF ann n
+    TArgF ann n -> TArgF <$> fAnn ann <*> fName n
 
   -- Expressions
   SEXPR -> case tree of
-    EAnnF     ann e t     -> EAnnF ann <$> f e <*> f t
-    ELetF     ann n e1 e2 -> ELetF ann <$> f n <*> f e1 <*> f e2
-    ELamF     ann n e     -> ELamF ann <$> f n <*> f e
-    EAppF     ann e1 e2   -> EAppF ann <$> f e1 <*> f e2
-    EVarF     ann n       -> pure $ EVarF ann n
-    ETyAppF   ann e t     -> ETyAppF ann <$> f e <*> f t
-    ETyLamF   ann n e     -> ETyLamF ann <$> f n <*> f e
-    EConF     ann op      -> pure $ EConF ann op
-    ELitIntF  ann z       -> pure $ ELitIntF ann z
-    ELitRealF ann r       -> pure $ ELitRealF ann r
-    ELitSeqF  ann es      -> ELitSeqF ann <$> traverse f es
+    EAnnF     ann e t     -> EAnnF     <$> fAnn ann <*> fRec e <*> fRec t
+    ELetF     ann n e1 e2 -> ELetF     <$> fAnn ann <*> fRec n <*> fRec e1 <*> fRec e2
+    ELamF     ann n e     -> ELamF     <$> fAnn ann <*> fRec n <*> fRec e
+    EAppF     ann e1 e2   -> EAppF     <$> fAnn ann <*> fRec e1 <*> fRec e2
+    EVarF     ann n       -> EVarF     <$> fAnn ann <*> fName n
+    ETyAppF   ann e t     -> ETyAppF   <$> fAnn ann <*> fRec e <*> fRec t
+    ETyLamF   ann n e     -> ETyLamF   <$> fAnn ann <*> fRec n <*> fRec e
+    EConF     ann op      -> EConF     <$> fAnn ann <*> fBuiltin op
+    ELitIntF  ann z       -> ELitIntF  <$> fAnn ann <*> pure z
+    ELitRealF ann r       -> ELitRealF <$> fAnn ann <*> pure r
+    ELitSeqF  ann es      -> ELitSeqF  <$> fAnn ann <*> traverse fRec es
 
   -- Expression arguments
   SEARG -> case tree of
-    EArgF ann n -> pure $ EArgF ann n
+    EArgF ann n -> EArgF <$> fAnn ann <*> fName n
 
   -- Declarations
   SDECL -> case tree of
-    DeclNetwF ann n t    -> DeclNetwF ann <$> f n <*> f t
-    DeclDataF ann n t    -> DeclDataF ann <$> f n <*> f t
-    DefTypeF  ann n ns t -> DefTypeF ann <$> f n <*> traverse f ns <*> f t
-    DefFunF   ann n t e  -> DefFunF ann <$> f n <*> f t <*> f e
+    DeclNetwF ann n t    -> DeclNetwF <$> fAnn ann <*> fRec n <*> fRec t
+    DeclDataF ann n t    -> DeclDataF <$> fAnn ann <*> fRec n <*> fRec t
+    DefTypeF  ann n ns t -> DefTypeF  <$> fAnn ann <*> fRec n <*> traverse fRec ns <*> fRec t
+    DefFunF   ann n t e  -> DefFunF   <$> fAnn ann <*> fRec n <*> fRec t <*> fRec e
 
   -- Programs
   SPROG -> case tree of
-    MainF ann ds -> MainF ann <$> traverse f ds
+    MainF ann ds -> MainF <$> fAnn ann <*> traverse fRec ds
+
+-- |Evaluate each action in the layer from left to right, and collect the results.
+sequenceTreeF ::
+  (Applicative f, KnownSort sort) =>
+  TreeF (f `O` name) (f `O` builtin) (f `O` ann) sort (f `O` sorted) ->
+  f (TreeF name builtin ann sort sorted)
+
+sequenceTreeF = traverseTreeF unO unO unO unO
+
+-- |Apply a function to each element of the layer.
+mapTreeF ::
+  (forall sort. KnownSort sort => name1    sort -> name2    sort) ->
+  (forall sort. KnownSort sort => builtin1 sort -> builtin2 sort) ->
+  (forall sort. KnownSort sort => ann1     sort -> ann2     sort) ->
+  (forall sort. KnownSort sort => sorted1  sort -> sorted2  sort) ->
+  (forall sort. KnownSort sort => TreeF name1 builtin1 ann1 sort sorted1 -> TreeF name2 builtin2 ann2 sort sorted2)
+
+mapTreeF fName fBuiltin fAnn fRec =
+  runIdentity . traverseTreeF (pure . fName) (pure . fBuiltin) (pure . fAnn) (pure . fRec)
 
 -- |Folds a tree down to a sorted value, one layer at a time.
-sortedFold ::
+foldTree ::
   (forall sort. KnownSort sort => TreeF name builtin ann sort sorted -> sorted sort) ->
   (forall sort. KnownSort sort => Tree  name builtin ann sort        -> sorted sort)
-sortedFold f tree = runIdentity $ sortedFoldM (pure . f) tree
+foldTree f = runIdentity . foldTreeM (pure . f)
 
--- |Effectful version of |sortedFold|.
-sortedFoldM ::
+-- |Effectful version of |foldTree|.
+foldTreeM ::
   (Monad m) =>
   (forall sort. KnownSort sort => TreeF name builtin ann sort sorted -> m (sorted sort)) ->
   (forall sort. KnownSort sort => Tree  name builtin ann sort        -> m (sorted sort))
-sortedFoldM f tree = f =<< mapTreeFM (sortedFoldM f) (project tree)
+foldTreeM f tree = f =<< traverseTreeF pure pure pure (foldTreeM f) (project tree)
 
--- |Folds a tree down to a value, one layer at a time.
-constFold ::
-  (forall sort. KnownSort sort => TreeF name builtin ann sort (K a) -> a) ->
-  (forall sort. KnownSort sort => Tree  name builtin ann sort       -> a)
-constFold f tree = unK (sortedFold (K . f) tree)
 
--- |Effectful version of |constFold|.
-constFoldM ::
+-- * Update fields in one layer
+
+-- |Apply sorted function to the names in one layer.
+mapTreeFName ::
+  (forall sort. KnownSort sort => name sort -> name' sort) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> TreeF name' builtin ann sort tree)
+
+mapTreeFName f = mapTreeF f id id id
+
+-- |Effectful version |mapTreeFName|.
+traverseTreeFName ::
+  (Applicative f) =>
+  (forall sort. KnownSort sort => name sort -> f (name' sort)) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> f (TreeF name' builtin ann sort tree))
+
+traverseTreeFName f = traverseTreeF f pure pure pure
+
+-- |Apply sorted function to the builtins in one layer.
+mapTreeFBuiltin ::
+  (forall sort. KnownSort sort => builtin sort -> builtin' sort) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> TreeF name builtin' ann sort tree)
+
+mapTreeFBuiltin g = mapTreeF id g id id
+
+-- |Effectful version |mapTreeFBuiltin|.
+traverseTreeFBuiltin ::
+  (Applicative f) =>
+  (forall sort. KnownSort sort => builtin sort -> f (builtin' sort)) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> f (TreeF name builtin' ann sort tree))
+
+traverseTreeFBuiltin g = traverseTreeF pure g pure pure
+
+-- |Apply sorted function to the annotation in one layer.
+mapTreeFAnn ::
+  (forall sort. KnownSort sort => ann sort -> ann' sort) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> TreeF name builtin ann' sort tree)
+
+mapTreeFAnn h = mapTreeF id id h id
+
+-- |Effectful version |mapTreeFAnn|.
+traverseTreeFAnn ::
+  (Applicative f) =>
+  (forall sort. KnownSort sort => ann sort -> f (ann' sort)) ->
+  (forall sort. KnownSort sort => TreeF name builtin ann sort tree -> f (TreeF name builtin ann' sort tree))
+
+traverseTreeFAnn h = traverseTreeF pure pure h pure
+
+
+-- * Update fields in a tree
+
+-- |Apply sorted functions to all names, builtins, and annotations in a tree.
+mapTreeFields ::
+  (forall sort. KnownSort sort => name sort -> name' sort) ->
+  (forall sort. KnownSort sort => builtin sort -> builtin' sort) ->
+  (forall sort. KnownSort sort => ann sort -> ann' sort) ->
+  (forall sort. KnownSort sort => Tree name builtin ann sort -> Tree name' builtin' ann' sort)
+
+mapTreeFields f g h = runIdentity . traverseFields (pure . f) (pure . g) (pure . h)
+
+-- |Effectful version of |mapFields|.
+traverseTreeFields ::
   (Monad m) =>
-  (forall sort. KnownSort sort => TreeF name builtin ann sort (K a) -> m a) ->
-  (forall sort. KnownSort sort => Tree  name builtin ann sort       -> m a)
-constFoldM f tree = unK <$> sortedFoldM (fmap K . f) tree
+  (forall sort. KnownSort sort => name1    sort -> m (name2    sort)) ->
+  (forall sort. KnownSort sort => builtin1 sort -> m (builtin2 sort)) ->
+  (forall sort. KnownSort sort => ann1     sort -> m (ann2     sort)) ->
+  (forall sort. KnownSort sort => Tree name1 builtin1 ann1 sort -> m (Tree name2 builtin2 ann2 sort))
+
+traverseTreeFields f g h = foldTreeM (fmap embed . traverseTreeF f g h pure)
+
+-- |Apply sorted functions to all names in a tree.
+mapTreeName ::
+  (forall sort. KnownSort sort => name sort -> name' sort) ->
+  (forall sort. KnownSort sort => Tree name builtin ann sort -> Tree name' builtin ann sort)
+mapTreeName f = mapTreeFields f id id
+
+-- |Effectful version of |mapTreeName|.
+traverseTreeName ::
+  (Monad m) =>
+  (forall sort. KnownSort sort => name sort -> m (name' sort)) ->
+  (forall sort. KnownSort sort => Tree name builtin ann sort -> m (Tree name' builtin ann sort))
+traverseTreeName f = traverseTreeFields f pure pure
+
+-- |Apply sorted functions to all builtins in a tree.
+mapTreeBuiltin ::
+  (forall sort. KnownSort sort => builtin sort -> builtin' sort) ->
+  (forall sort. KnownSort sort => Tree name builtin ann sort -> Tree name builtin' ann sort)
+mapTreeBuiltin g = mapTreeFields id g id
+
+-- |Effectful version of |mapTreeBuiltin|.
+traverseTreeBuiltin ::
+  (Monad m) =>
+  (forall sort. KnownSort sort => builtin sort -> m (builtin' sort)) ->
+  (forall sort. KnownSort sort => Tree name builtin ann sort -> m (Tree name builtin' ann sort))
+traverseTreeBuiltin g = traverseTreeFields pure g pure
+
+-- |Apply sorted functions to all annotations in a tree.
+mapTreeAnn ::
+  (forall sort. KnownSort sort => ann sort -> ann' sort) ->
+  (forall sort. KnownSort sort => Tree name builtin ann sort -> Tree name builtin ann' sort)
+mapTreeAnn h = mapTreeFields id id h
+
+-- |Effectful version of |mapTreeAnn|.
+traverseTreeAnn ::
+  (Monad m) =>
+  (forall sort. KnownSort sort => ann sort -> m (ann' sort)) ->
+  (forall sort. KnownSort sort => Tree name builtin ann sort -> m (Tree name builtin ann' sort))
+traverseTreeAnn h = traverseTreeFields pure pure h
 
 -- -}
 -- -}
