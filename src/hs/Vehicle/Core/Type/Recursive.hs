@@ -275,18 +275,31 @@ mapTreeFM f (tree :: TreeF _name _builtin _ann sort _sorted1) = case sortSing ::
   SPROG -> case tree of
     MainF ann ds -> MainF ann <$> traverse f ds
 
--- |Folds a tree down to a value, one layer at a time.
-foldTree ::
+-- |Folds a tree down to a sorted value, one layer at a time.
+sortedFold ::
   (forall sort. KnownSort sort => TreeF name builtin ann sort sorted -> sorted sort) ->
   (forall sort. KnownSort sort => Tree  name builtin ann sort        -> sorted sort)
-foldTree f tree = runIdentity $ foldTreeM (pure . f) tree
+sortedFold f tree = runIdentity $ sortedFoldM (pure . f) tree
 
--- |Effectful version of |foldTree|.
-foldTreeM ::
+-- |Effectful version of |sortedFold|.
+sortedFoldM ::
   (Monad m) =>
   (forall sort. KnownSort sort => TreeF name builtin ann sort sorted -> m (sorted sort)) ->
   (forall sort. KnownSort sort => Tree  name builtin ann sort        -> m (sorted sort))
-foldTreeM f tree = f =<< mapTreeFM (foldTreeM f) (project tree)
+sortedFoldM f tree = f =<< mapTreeFM (sortedFoldM f) (project tree)
+
+-- |Folds a tree down to a value, one layer at a time.
+constFold ::
+  (forall sort. KnownSort sort => TreeF name builtin ann sort (K a) -> a) ->
+  (forall sort. KnownSort sort => Tree  name builtin ann sort       -> a)
+constFold f tree = unK (sortedFold (K . f) tree)
+
+-- |Effectful version of |constFold|.
+constFoldM ::
+  (Monad m) =>
+  (forall sort. KnownSort sort => TreeF name builtin ann sort (K a) -> m a) ->
+  (forall sort. KnownSort sort => Tree  name builtin ann sort       -> m a)
+constFoldM f tree = unK <$> sortedFoldM (fmap K . f) tree
 
 -- -}
 -- -}

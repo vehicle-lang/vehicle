@@ -151,7 +151,7 @@ mapFieldsM ::
   (forall sort. KnownSort sort => ann sort -> m (ann' sort)) ->
   (forall sort. KnownSort sort => Tree name builtin ann sort -> m (Tree name' builtin' ann' sort))
 
-mapFieldsM f g h = foldTreeM (fmap embed . updFieldsM f g h)
+mapFieldsM f g h = sortedFoldM (fmap embed . updFieldsM f g h)
 
 -- |Apply sorted functions to all names in a tree.
 mapName ::

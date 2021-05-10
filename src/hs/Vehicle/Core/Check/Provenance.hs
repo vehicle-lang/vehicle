@@ -1,21 +1,16 @@
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE LambdaCase           #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes          #-}
 
 module Vehicle.Core.Check.Provenance where
 
 import           Control.Monad.Writer
-import           Data.Functor.Foldable (fold)
 import           Data.Range (Range(..), (+=+))
 import qualified Data.Range as Range
-import           Data.Semigroup (Semigroup(..))
-import           Data.Text (Text)
-import qualified Data.Text as T
-import           Vehicle.Core.Check.Core
 import           Vehicle.Core.Type
 import           Vehicle.Prelude
 
@@ -36,42 +31,59 @@ tkProvenance tk = Provenance [begin +=+ end]
     end   = (line begin, column begin + tkLength tk)
 
 
--- |Takes the output produced by the writer, and feeds it back into the result.
---
--- TODO: this is rather ugly
---
-knot ::
-  Writer Provenance (Provenance -> Tree sort name builtin (K Provenance :*: ann)) ->
-  Writer Provenance (Tree sort name builtin (K Provenance :*: ann))
-knot wf = let (f, p) = runWriter wf in writer (f p, p)
+-- |Get the provenance for a single layer.
+tellProvenance ::
+  (IsToken name, IsToken builtin, KnownSort sort) =>
+  TreeF (K name) (K builtin) ann sort sorted -> Writer Provenance ()
+
+tellProvenance (tree :: TreeF name builtin ann sort sorted) = case sortSing :: SSort sort of
+
+  -- Kinds
+  SKIND -> case tree of
+    KConF  _ann op -> tell (tkProvenance op)
+    _              -> return ()
+
+  -- Types
+  STYPE -> case tree of
+    TVarF _ann n  -> tell (tkProvenance n)
+    TConF _ann op -> tell (tkProvenance op)
+    _             -> return ()
+
+  -- Type arguments
+  STARG -> case tree of
+    TArgF _ann n -> tell (tkProvenance n)
+
+  -- Expressions
+  SEXPR -> case tree of
+    EVarF     _ann n  -> tell (tkProvenance n)
+    EConF     _ann op -> tell (tkProvenance op)
+    _                 -> return ()
+
+  -- Expression arguments
+  SEARG -> case tree of
+    EArgF _ann n -> tell (tkProvenance n)
+
+  -- Declarations
+  SDECL -> return ()
+
+  -- Programs
+  SPROG -> return ()
 
 
--- |Save the provenance at each annotation.
-saveProvenance :: forall sort name builtin ann.
-  (KnownSort sort, IsToken name, IsToken builtin) =>
-  Tree sort (K name) (K builtin) ann ->
-  Writer Provenance (Tree sort (K name) (K builtin) (K Provenance :*: ann))
+-- |Save the provenance information for the tree.
+saveProvenance ::
+  (IsToken name, IsToken builtin, KnownSort sort) =>
+  Tree (K name) (K builtin) ann sort ->
+  Tree (K name) (K builtin) (K Provenance :*: ann) sort
 
-saveProvenance = case sortSing :: SSort sort of
+saveProvenance = _
+  where
+    go ::
+      (forall sort. KnownSort sort => TreeF name builtin ann sort sorted -> Writer Provenance (sorted sort)) ->
+      (forall sort. KnownSort sort => Tree  name builtin ann sort        -> Writer Provenance (sorted sort))
+    go = _
 
-  -- Kinds.
-  SKIND -> fold $ \case
-    KConF  ann op      -> knot $ do tell (tkProvenance op)
-                                    return $ \p -> KCon (K p :*: ann) op
-    KMetaF ann i       -> knot $ do return $ \p -> KMeta (K p :*: ann) i
-    KAppF  ann wk1 wk2 -> knot $ do k1 <- wk1
-                                    k2 <- wk2
-                                    return $ \p -> KApp (K p :*: ann) k1 k2
 
-  -- Types.
-  STYPE -> fold $ \case
-    TForallF  ann wn wt -> do n <- wn
-                              t <- wt
-                              tell (tkProvenance n)
-                              return $ \p -> TForall (K p :*: ann) n t
-    TAppF     ann t1 t2 -> undefined
-    TVarF     ann n     -> undefined
-    TConF     ann op    -> undefined
-    TLitDimF  ann d     -> undefined
-    TLitListF ann ts    -> undefined
-    TMetaF    ann i     -> undefined
+  -- Prelude.fst . runWriter . sortedFoldM $ \tree -> do
+  -- ((), p) <- listen (tellProvenance tree)
+  -- return . embed $ updAnn (K p :*:) tree
