@@ -18,9 +18,9 @@ data CheckError
 type TCM a = Except CheckError a
 
 check ::
-  (IsToken name, IsToken builtin, KnownSort sort) =>
-  Tree (K name) (K builtin) ann sort ->
-  TCM (Tree DeBruijn Builtin (K Provenance :*: ann) sort)
+  (IsToken name, IsToken builtin) =>
+  Prog (K name) (K builtin) ann ->
+  TCM (Prog DeBruijn Builtin (K Provenance :*: ann))
 check tree0 = do
   let tree1 = saveProvenance tree0
   tree2 <- withExcept BuiltinError (checkBuiltins tree1)

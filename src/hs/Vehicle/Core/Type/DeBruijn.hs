@@ -10,34 +10,33 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Vehicle.Core.Type.DeBruijn
-  ( Idx
-  , DeBruijn
-  , idx
-  , text
+  ( Index
+  , DeBruijn(..)
+  , indexOf
+  , symbolOf
   ) where
 
-import Data.Text (Text)
 import Vehicle.Core.Type.Core (Sort(..), KnownSort(..), SSort(..))
-import Vehicle.Prelude (In)
+import Vehicle.Prelude
 
 -- * Types
 
-type Idx = Int
+type Index = Int
 
 data DeBruijn (sort :: Sort) where
-  TIdx :: Idx  -> DeBruijn 'TYPE
-  EIdx :: Idx  -> DeBruijn 'EXPR
-  TArg :: Text -> DeBruijn 'TARG
-  EArg :: Text -> DeBruijn 'EARG
+  TIdx :: Index  -> DeBruijn 'TYPE
+  EIdx :: Index  -> DeBruijn 'EXPR
+  TSym :: Symbol -> DeBruijn 'TARG
+  ESym :: Symbol -> DeBruijn 'EARG
 
 -- |Returns the index of a |DeBruijn|.
-idx :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => DeBruijn sort -> Idx
-idx = case sortSing :: SSort sort of
+indexOf :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => DeBruijn sort -> Index
+indexOf = case sortSing :: SSort sort of
   STYPE -> \(TIdx i) -> i
   SEXPR -> \(EIdx i) -> i
 
 -- |Returns the name of a |DeBruijn|.
-text :: forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) => DeBruijn sort -> Text
-text = case sortSing :: SSort sort of
-  STARG -> \(TArg n) -> n
-  SEARG -> \(EArg n) -> n
+symbolOf :: forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) => DeBruijn sort -> Symbol
+symbolOf = case sortSing :: SSort sort of
+  STARG -> \(TSym n) -> n
+  SEARG -> \(ESym n) -> n

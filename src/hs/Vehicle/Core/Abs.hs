@@ -122,34 +122,41 @@ newtype Name = Name (Position, Symbol)
 
 type KindBuiltin = K Builtin 'KIND
 
+pattern MkKindBuiltin :: Builtin -> KindBuiltin
 pattern MkKindBuiltin tk = K tk
 
 
 type TypeBuiltin = K Builtin 'TYPE
 
+pattern MkTypeBuiltin :: Builtin -> TypeBuiltin
 pattern MkTypeBuiltin tk = K tk
 
 
 type ExprBuiltin = K Builtin 'EXPR
 
+pattern MkExprBuiltin :: Builtin -> ExprBuiltin
 pattern MkExprBuiltin tk = K tk
 
 
 type TypeName = K Name 'TYPE
 
+pattern MkTypeName :: Name -> TypeName
 pattern MkTypeName tk = K tk
 
 
 type ExprName = K Name 'EXPR
 
+pattern MkExprName :: Name -> ExprName
 pattern MkExprName tk = K tk
 
 
 type TypeBinder = Core.TArg (K Name) (K Builtin) (K ())
 
+pattern MkTypeBinder :: Name -> TypeBinder
 pattern MkTypeBinder tk = Core.TArg (K ()) (K tk)
 
 
 type ExprBinder = Core.EArg (K Name) (K Builtin) (K ())
 
+pattern MkExprBinder :: Name -> ExprBinder
 pattern MkExprBinder tk = Core.EArg (K ()) (K tk)

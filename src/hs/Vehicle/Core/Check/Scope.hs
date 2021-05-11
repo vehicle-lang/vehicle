@@ -24,12 +24,9 @@ data Ctx = Ctx { tEnv :: [Symbol], eEnv :: [Symbol] }
 emptyCtx :: Ctx
 emptyCtx = Ctx { tEnv = [], eEnv = [] }
 
--- |The scope checking monad.
-type Scope a = ReaderT Ctx (Except ScopeError) a
-
 -- |Evaluates the |Reader| portions of the monad stack used in scope checking.
-runScope :: MonadError ScopeError m => Scope a -> m a
-runScope m = liftEither . runExcept $ runReaderT m emptyCtx
+runScope :: ReaderT Ctx (Except ScopeError) a -> Except ScopeError a
+runScope m = runReaderT m emptyCtx
 
 -- |Type of errors thrown by scope checking.
 data ScopeError
@@ -50,23 +47,33 @@ unexpectedName (K n :: K name sort) =
 
 -- |
 checkScope ::
-  (MonadError ScopeError m, IsToken name, KnownSort sort) =>
-  Tree (K name) builtin ann sort ->
-  m (Tree DeBruijn builtin ann sort)
-checkScope tree = runScope (foldTreeO checkScopeF tree)
+  (IsToken name) =>
+  Tree (K name) builtin ann 'PROG ->
+  Except ScopeError (Tree DeBruijn builtin ann 'PROG)
+checkScope tree = runScope (unR (foldTree checkScopeF tree))
+
+-- private
+type family ResultType (builtin :: Sort -> *) (ann :: Sort -> *) (sort :: Sort) :: * where
+  ResultType builtin ann 'TARG = (Tree DeBruijn builtin ann 'TARG, Symbol)
+  ResultType builtin ann 'EARG = (Tree DeBruijn builtin ann 'EARG, Symbol)
+  ResultType builtin ann  sort = ReaderT Ctx (Except ScopeError) (Tree DeBruijn builtin ann sort)
+
+-- private
+newtype Result (builtin :: Sort -> *) (ann :: Sort -> *) (sort :: Sort)
+  = R { unR :: ResultType builtin ann sort }
 
 -- |
 checkScopeF ::
-  (MonadError ScopeError m, MonadReader Ctx m, IsToken name, KnownSort sort) =>
-  TreeF (K name) builtin ann sort (m `O` Tree DeBruijn builtin ann) ->
-  m (Tree DeBruijn builtin ann sort)
+  (IsToken name, KnownSort sort) =>
+  TreeF (K name) builtin ann sort (Result builtin ann) ->
+  Result builtin ann sort
 checkScopeF (tree :: TreeF name builtin ann sort tree) = case sortSing :: SSort sort of
 
   -- Kinds
-  --
-  -- NOTE: Kinds don't contain any names, so we don't need to pattern match any further.
-  --
-  SKIND -> embed <$> traverseTreeF unexpectedName pure pure unO tree
+  SKIND -> case tree of
+    KAppF  _ann k1 k2 -> undefined
+    KConF  _ann op    -> undefined
+    KMetaF _ann i     -> undefined
 
   -- Types
   STYPE -> case tree of
@@ -80,7 +87,7 @@ checkScopeF (tree :: TreeF name builtin ann sort tree) = case sortSing :: SSort 
 
   -- Type arguments
   STARG -> case tree of
-    TArgF _ann n -> undefined
+    TArgF ann n -> let s = tkSym n in R (TArg ann (TSym s), s)
 
   -- Expressions
   SEXPR -> case tree of
@@ -98,7 +105,7 @@ checkScopeF (tree :: TreeF name builtin ann sort tree) = case sortSing :: SSort 
 
   -- Expression arguments
   SEARG -> case tree of
-    EArgF _ann n -> undefined
+    EArgF ann n -> let s = tkSym n in R (EArg ann (ESym s), s)
 
   -- Declarations
   SDECL -> case tree of
