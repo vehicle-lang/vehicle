@@ -37,7 +37,6 @@ library
                     , Vehicle.Core.Type.Core
                     , Vehicle.Core.Type.DeBruijn
                     , Vehicle.Core.Type.Instance
-                    , Vehicle.Core.Type.Fields
                     , Vehicle.Core.Type.Recursive
                     , Vehicle.Frontend.Type.Core
                     , Vehicle.Frontend.Type.Instance

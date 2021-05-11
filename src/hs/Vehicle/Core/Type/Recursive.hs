@@ -299,6 +299,13 @@ foldTreeM ::
   (forall sort. KnownSort sort => Tree  name builtin ann sort        -> m (sorted sort))
 foldTreeM f tree = f =<< traverseTreeF pure pure pure (foldTreeM f) (project tree)
 
+-- |Folds a tree down to a sorted value, one layer at a time.
+foldTreeO ::
+  (Applicative f) =>
+  (forall sort. KnownSort sort => TreeF name builtin ann sort (f `O` sorted) -> f (sorted sort)) ->
+  (forall sort. KnownSort sort => Tree  name builtin ann sort                -> f (sorted sort))
+foldTreeO f = unO . foldTree (O . f)
+
 
 -- * Update fields in one layer
 
@@ -357,7 +364,7 @@ mapTreeFields ::
   (forall sort. KnownSort sort => ann sort -> ann' sort) ->
   (forall sort. KnownSort sort => Tree name builtin ann sort -> Tree name' builtin' ann' sort)
 
-mapTreeFields f g h = runIdentity . traverseFields (pure . f) (pure . g) (pure . h)
+mapTreeFields f g h = runIdentity . traverseTreeFields (pure . f) (pure . g) (pure . h)
 
 -- |Effectful version of |mapFields|.
 traverseTreeFields ::

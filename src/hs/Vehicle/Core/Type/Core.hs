@@ -1,15 +1,19 @@
-{-# LANGUAGE PolyKinds          #-}
-{-# LANGUAGE DataKinds          #-}
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE TypeFamilies       #-}
-{-# LANGUAGE PatternSynonyms    #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE PatternSynonyms     #-}
+{-# LANGUAGE PolyKinds           #-}
+{-# LANGUAGE StandaloneDeriving  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Vehicle.Core.Type.Core
   ( Sort(..)
   , SSort(..)
   , KnownSort(..)
   , toSort
+  , sort
   , Tree(..)
   , Kind
   , Type
@@ -65,6 +69,9 @@ toSort SDECL = DECL
 toSort SPROG = PROG
 toSort STARG = TARG
 toSort SEARG = EARG
+
+sort :: forall sort. KnownSort sort => Sort
+sort = toSort (sortSing @sort)
 
 data family Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *) (sort :: Sort)
 

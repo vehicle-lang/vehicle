@@ -73,8 +73,8 @@ saveProvenance ::
   Tree (K name) (K builtin) ann sort ->
   Tree (K name) (K builtin) (K Provenance :*: ann) sort
 
-saveProvenance = fst . runWriter . sortedFoldM go
+saveProvenance = fst . runWriter . foldTreeM go
   where
     go tree = do
       ((), p) <- listen (tellProvenance tree)
-      return . embed $ updAnn (K p :*:) tree
+      return . embed $ mapTreeFAnn (K p :*:) tree

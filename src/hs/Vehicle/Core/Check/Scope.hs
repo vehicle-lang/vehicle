@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -12,8 +13,6 @@ module Vehicle.Core.Check.Scope where
 import           Control.Monad.Except (MonadError, Except, runExcept, liftEither)
 import           Control.Monad.Error.Class (throwError)
 import           Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
-import           Control.Monad.Trans (lift)
-import qualified Data.List as List
 import           Vehicle.Core.Type
 import           Vehicle.Prelude
 
@@ -28,74 +27,86 @@ emptyCtx = Ctx { tEnv = [], eEnv = [] }
 -- |The scope checking monad.
 type Scope a = ReaderT Ctx (Except ScopeError) a
 
+-- |Evaluates the |Reader| portions of the monad stack used in scope checking.
 runScope :: MonadError ScopeError m => Scope a -> m a
 runScope m = liftEither . runExcept $ runReaderT m emptyCtx
 
 -- |Type of errors thrown by scope checking.
-newtype ScopeError
+data ScopeError
   = UnboundName Token
+  | UnexpectedName Sort Token
   deriving (Show)
 
+-- |Throw an |UnexpectedName| error.
+--
+-- NOTE: No |UnexpectedName| error should ever be thrown. No names are used in,
+--       e.g., kinds, but the parser does not guarantee this constraint.
+--
+unexpectedName ::
+  (MonadError ScopeError m, IsToken name, KnownSort sort) =>
+  K name sort -> m (DeBruijn sort)
+unexpectedName (K n :: K name sort) =
+  throwError $ UnexpectedName (sort @sort) (toToken n)
+
+-- |
 checkScope ::
   (MonadError ScopeError m, IsToken name, KnownSort sort) =>
   Tree (K name) builtin ann sort ->
   m (Tree DeBruijn builtin ann sort)
-checkScope tree = runScope (unO (sortedFoldM checkScopeF tree))
+checkScope tree = runScope (foldTreeO checkScopeF tree)
 
+-- |
 checkScopeF ::
   (MonadError ScopeError m, MonadReader Ctx m, IsToken name, KnownSort sort) =>
   TreeF (K name) builtin ann sort (m `O` Tree DeBruijn builtin ann) ->
-  (m `O` Tree DeBruijn builtin ann) sort
+  m (Tree DeBruijn builtin ann sort)
 checkScopeF (tree :: TreeF name builtin ann sort tree) = case sortSing :: SSort sort of
 
   -- Kinds
-  SKIND -> case tree of
-    KAppF  ann k1 k2 -> _
-    KConF  ann op    -> _
-    KMetaF ann i     -> _
+  SKIND -> embed <$> traverseTreeF unexpectedName pure pure unO tree
 
   -- Types
   STYPE -> case tree of
-    TForallF  ann n t   -> _
-    TAppF     ann t1 t2 -> _
-    TVarF     ann n     -> _
-    TConF     ann op    -> _
-    TLitDimF  ann d     -> _
-    TLitListF ann ts    -> _
-    TMetaF    ann i     -> _
+    TForallF  ann n t   -> undefined
+    TAppF     ann t1 t2 -> undefined
+    TVarF     ann n     -> undefined
+    TConF     ann op    -> undefined
+    TLitDimF  ann d     -> undefined
+    TLitListF ann ts    -> undefined
+    TMetaF    ann i     -> undefined
 
   -- Type arguments
   STARG -> case tree of
-    TArgF ann n -> _
+    TArgF ann n -> undefined
 
   -- Expressions
   SEXPR -> case tree of
-    EAnnF     ann e t     -> _
-    ELetF     ann n e1 e2 -> _
-    ELamF     ann n e     -> _
-    EAppF     ann e1 e2   -> _
-    EVarF     ann n       -> _
-    ETyAppF   ann e t     -> _
-    ETyLamF   ann n e     -> _
-    EConF     ann op      -> _
-    ELitIntF  ann z       -> _
-    ELitRealF ann r       -> _
-    ELitSeqF  ann es      -> _
+    EAnnF     ann e t     -> undefined
+    ELetF     ann n e1 e2 -> undefined
+    ELamF     ann n e     -> undefined
+    EAppF     ann e1 e2   -> undefined
+    EVarF     ann n       -> undefined
+    ETyAppF   ann e t     -> undefined
+    ETyLamF   ann n e     -> undefined
+    EConF     ann op      -> undefined
+    ELitIntF  ann z       -> undefined
+    ELitRealF ann r       -> undefined
+    ELitSeqF  ann es      -> undefined
 
   -- Expression arguments
   SEARG -> case tree of
-    EArgF ann n -> _
+    EArgF ann n -> undefined
 
   -- Declarations
   SDECL -> case tree of
-    DeclNetwF ann n t    -> _
-    DeclDataF ann n t    -> _
-    DefTypeF  ann n ns t -> _
-    DefFunF   ann n t e  -> _
+    DeclNetwF ann n t    -> undefined
+    DeclDataF ann n t    -> undefined
+    DefTypeF  ann n ns t -> undefined
+    DefFunF   ann n t e  -> undefined
 
   -- Programs
   SPROG -> case tree of
-    MainF ann ds -> _
+    MainF ann ds -> undefined
 
 {-
 

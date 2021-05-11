@@ -58,10 +58,9 @@ module Vehicle.Core.Abs
   ) where
 
 
-import           Data.Text (Text)
-import           Vehicle.Core.Type (Sort(..), K(..))
+import           Vehicle.Core.Type (Sort(..))
 import qualified Vehicle.Core.Type as Core
-import           Vehicle.Prelude (Position)
+import           Vehicle.Prelude (Position, Symbol, K(..))
 
 
 -- * Abstract syntax tree
@@ -112,9 +111,9 @@ pattern Main ds = Core.Main (K ()) ds
 
 -- ** Lexer tokens
 
-newtype Builtin = Builtin (Position, Text)
+newtype Builtin = Builtin (Position, Symbol)
 
-newtype Name = Name (Position, Text)
+newtype Name = Name (Position, Symbol)
 
 -- ** K tokens, generic
 

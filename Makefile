@@ -31,6 +31,9 @@ init:
 .PHONY: bnfc
 bnfc: bnfc-core bnfc-frontend
 
+$(GEN_DIR_HS):
+	mkdir -p $(GEN_DIR_HS)
+
 
 # NOTE:
 #
@@ -49,10 +52,8 @@ BNFC_GARBAGE_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_GARBAGE_CORE
 .PHONY: bnfc-core
 bnfc-core: $(BNFC_TARGETS_CORE)
 
-$(BNFC_TARGETS_CORE): \
-		require-bnfc \
-		$(SRC_DIR_BNFC)/Core.cf
-	bnfc -m -d --haskell --generic --text-token \
+$(BNFC_TARGETS_CORE): $(SRC_DIR_BNFC)/Core.cf | require-bnfc $(GEN_DIR_HS)
+	bnfc -d --haskell --generic --text-token \
 	     --name-space Vehicle \
 	     --outputdir=$(GEN_DIR_HS) \
 	     $(SRC_DIR_BNFC)/Core.cf
@@ -67,10 +68,8 @@ BNFC_GARBAGE_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_GARB
 .PHONY: bnfc-frontend
 bnfc-frontend: $(BNFC_TARGETS_FRONTEND)
 
-$(BNFC_TARGETS_FRONTEND): \
-		require-bnfc \
-		$(SRC_DIR_BNFC)/Frontend.cf
-	bnfc -m -d --haskell --generic --text-token \
+$(BNFC_TARGETS_FRONTEND): $(SRC_DIR_BNFC)/Frontend.cf | require-bnfc $(GEN_DIR_HS)
+	bnfc -d --haskell --generic --text-token \
 	     --name-space Vehicle \
 	     --outputdir=$(GEN_DIR_HS) \
 	     $(SRC_DIR_BNFC)/Frontend.cf

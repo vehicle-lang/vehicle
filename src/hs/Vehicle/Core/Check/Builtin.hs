@@ -19,8 +19,6 @@ newtype BuiltinError
   = UnknownBuiltin Token
   deriving (Show)
 
-instance Exception BuiltinError
-
 builtinKinds :: [(Symbol, BuiltinOp 'KIND)]
 builtinKinds =
   [ "->"   |-> KFun
@@ -69,26 +67,26 @@ builtinExprs =
   ]
 
 checkBuiltinWithMap ::
-  (MonadBuiltin m, IsToken tk) =>
+  (MonadError BuiltinError m, IsToken builtin) =>
   [(Symbol, BuiltinOp sort)] ->
-  K tk sort ->
+  K builtin sort ->
   m (Builtin sort)
-checkBuiltinWithMap builtins tk = case lookup (tkSymbol tk) builtins of
+checkBuiltinWithMap builtins tk = case lookup (tkSym tk) builtins of
   Nothing -> throwError (UnknownBuiltin (toToken tk))
   Just op -> return (Builtin (tkPos tk) op)
 
 checkBuiltin ::
-  (MonadBuiltin m, IsToken tk, KnownSort sort) =>
-  K tk sort ->
+  (MonadError BuiltinError m, IsToken builtin, KnownSort sort) =>
+  K builtin sort ->
   m (Builtin sort)
-checkBuiltin (tk :: K tk sort) = case sortSing :: SSort sort of
+checkBuiltin (tk :: K builtin sort) = case sortSing :: SSort sort of
   SKIND -> checkBuiltinWithMap builtinKinds tk
   STYPE -> checkBuiltinWithMap builtinTypes tk
   SEXPR -> checkBuiltinWithMap builtinExprs tk
   _     -> throwError (UnknownBuiltin (toToken tk))
 
 checkBuiltins ::
-  (MonadError BuiltinError m, IsToken tk, KnownSort sort) =>
-  Tree name (K tk) ann sort ->
+  (MonadError BuiltinError m, IsToken builtin, KnownSort sort) =>
+  Tree name (K builtin) ann sort ->
   m (Tree name Builtin ann sort)
-checkBuiltins = mapBuiltinM checkBuiltin
+checkBuiltins = traverseTreeBuiltin checkBuiltin
