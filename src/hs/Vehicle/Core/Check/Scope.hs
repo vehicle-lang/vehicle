@@ -63,50 +63,53 @@ checkScopeF ::
 checkScopeF (tree :: TreeF name builtin ann sort tree) = case sortSing :: SSort sort of
 
   -- Kinds
+  --
+  -- NOTE: Kinds don't contain any names, so we don't need to pattern match any further.
+  --
   SKIND -> embed <$> traverseTreeF unexpectedName pure pure unO tree
 
   -- Types
   STYPE -> case tree of
-    TForallF  ann n t   -> undefined
-    TAppF     ann t1 t2 -> undefined
-    TVarF     ann n     -> undefined
-    TConF     ann op    -> undefined
-    TLitDimF  ann d     -> undefined
-    TLitListF ann ts    -> undefined
-    TMetaF    ann i     -> undefined
+    TForallF  _ann n t   -> undefined
+    TAppF     _ann t1 t2 -> undefined
+    TVarF     _ann n     -> undefined
+    TConF     _ann op    -> undefined
+    TLitDimF  _ann d     -> undefined
+    TLitListF _ann ts    -> undefined
+    TMetaF    _ann i     -> undefined
 
   -- Type arguments
   STARG -> case tree of
-    TArgF ann n -> undefined
+    TArgF _ann n -> undefined
 
   -- Expressions
   SEXPR -> case tree of
-    EAnnF     ann e t     -> undefined
-    ELetF     ann n e1 e2 -> undefined
-    ELamF     ann n e     -> undefined
-    EAppF     ann e1 e2   -> undefined
-    EVarF     ann n       -> undefined
-    ETyAppF   ann e t     -> undefined
-    ETyLamF   ann n e     -> undefined
-    EConF     ann op      -> undefined
-    ELitIntF  ann z       -> undefined
-    ELitRealF ann r       -> undefined
-    ELitSeqF  ann es      -> undefined
+    EAnnF     _ann e t     -> undefined
+    ELetF     _ann n e1 e2 -> undefined
+    ELamF     _ann n e     -> undefined
+    EAppF     _ann e1 e2   -> undefined
+    EVarF     _ann n       -> undefined
+    ETyAppF   _ann e t     -> undefined
+    ETyLamF   _ann n e     -> undefined
+    EConF     _ann op      -> undefined
+    ELitIntF  _ann z       -> undefined
+    ELitRealF _ann r       -> undefined
+    ELitSeqF  _ann es      -> undefined
 
   -- Expression arguments
   SEARG -> case tree of
-    EArgF ann n -> undefined
+    EArgF _ann n -> undefined
 
   -- Declarations
   SDECL -> case tree of
-    DeclNetwF ann n t    -> undefined
-    DeclDataF ann n t    -> undefined
-    DefTypeF  ann n ns t -> undefined
-    DefFunF   ann n t e  -> undefined
+    DeclNetwF _ann n t    -> undefined
+    DeclDataF _ann n t    -> undefined
+    DefTypeF  _ann n ns t -> undefined
+    DefFunF   _ann n t e  -> undefined
 
   -- Programs
   SPROG -> case tree of
-    MainF ann ds -> undefined
+    MainF _ann ds -> undefined
 
 {-
 
