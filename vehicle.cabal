@@ -57,14 +57,16 @@ library
                     , Vehicle.Frontend.Par
   hs-source-dirs:     src/hs
                     , gen/hs
-  build-depends:      array             >=0.5 && <1
-                    , base              >=4.7 && <5
-                    , text              >=1.2 && <2
-                    , monad-supply      >=0.7 && <1
-                    , mtl               >=2.2 && <3
-                    , recursion-schemes >=5.2 && <6
-                    , range             >=0.3 && <1
-                    , containers        >=0.5 && <1
+  build-depends:      array                >=0.5 && <1
+                    , base                 >=4.7 && <5
+                    , hashable             >=1.3 && <2
+                    , text                 >=1.2 && <2
+                    , monad-supply         >=0.7 && <1
+                    , mtl                  >=2.2 && <3
+                    , recursion-schemes    >=5.2 && <6
+                    , range                >=0.3 && <1
+                    , containers           >=0.5 && <1
+                    , unordered-containers >=0.2 && <1
   build-tools:        alex
                     , happy
   default-language:   Haskell2010

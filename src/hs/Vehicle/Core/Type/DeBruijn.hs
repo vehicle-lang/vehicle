@@ -12,8 +12,10 @@
 module Vehicle.Core.Type.DeBruijn
   ( Index
   , DeBruijn(..)
-  , indexOf
-  , symbolOf
+  , fromIndex
+  , toIndex
+  , fromSymbol
+  , toSymbol
   ) where
 
 import Vehicle.Core.Type.Core (Sort(..), KnownSort(..), SSort(..))
@@ -23,20 +25,46 @@ import Vehicle.Prelude
 
 type Index = Int
 
-data DeBruijn (sort :: Sort) where
-  TIdx :: Index  -> DeBruijn 'TYPE
-  EIdx :: Index  -> DeBruijn 'EXPR
-  TSym :: Symbol -> DeBruijn 'TARG
-  ESym :: Symbol -> DeBruijn 'EARG
+type family DEBRUIJN (sort :: Sort) where
+  DEBRUIJN 'TYPE = Index
+  DEBRUIJN 'EXPR = Index
+  DEBRUIJN 'TARG = Symbol
+  DEBRUIJN 'EARG = Symbol
 
--- |Returns the index of a |DeBruijn|.
-indexOf :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => DeBruijn sort -> Index
-indexOf = case sortSing :: SSort sort of
-  STYPE -> \(TIdx i) -> i
-  SEXPR -> \(EIdx i) -> i
+newtype DeBruijn (sort :: Sort) = DB { unDB :: DEBRUIJN sort }
 
--- |Returns the name of a |DeBruijn|.
-symbolOf :: forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) => DeBruijn sort -> Symbol
-symbolOf = case sortSing :: SSort sort of
-  STARG -> \(TSym n) -> n
-  SEARG -> \(ESym n) -> n
+
+-- |Wraps an |Index| as a |DeBruijn|.
+fromIndex ::
+  forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
+  Index -> DeBruijn sort
+fromIndex = case sortSing :: SSort sort of
+  STYPE -> DB
+  SEXPR -> DB
+
+-- |Returns the |Index| of a |DeBruijn|.
+toIndex ::
+  forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
+  DeBruijn sort -> Index
+
+toIndex = case sortSing :: SSort sort of
+  STYPE -> unDB
+  SEXPR -> unDB
+
+-- |Wraps a |Symbol| as a |DeBruijn|.
+fromSymbol ::
+  forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) =>
+  Symbol -> DeBruijn sort
+
+fromSymbol = case sortSing :: SSort sort of
+  STARG -> DB
+  SEARG -> DB
+
+-- |Returns the |Symbol| of a |DeBruijn|.
+toSymbol ::
+  forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) =>
+  DeBruijn sort -> Symbol
+
+toSymbol = case sortSing :: SSort sort of
+  STARG -> unDB
+  SEARG -> unDB

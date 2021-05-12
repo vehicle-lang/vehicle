@@ -24,6 +24,8 @@ module Vehicle.Core.Type.Core
   , EArg
   ) where
 
+import Data.Hashable (Hashable(..), hashUsing)
+
 -- * Abstract syntax tree for Vehicle Core
 
 -- Annotations are parameterised over so that they can
@@ -34,7 +36,10 @@ module Vehicle.Core.Type.Core
 
 -- | Syntactic sorts used in Vehicle Core syntax.
 data Sort = KIND | TYPE | EXPR | DECL | PROG | TARG | EARG
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Enum, Show)
+
+instance Hashable Sort where
+  hashWithSalt = hashUsing fromEnum
 
 -- | Singleton type for 'Sort'.
 data SSort (sort :: Sort) where
