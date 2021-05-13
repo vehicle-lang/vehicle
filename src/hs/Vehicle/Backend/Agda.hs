@@ -59,6 +59,8 @@ instance Show Dependency where
 
 type Code = Text -- TODO: migrate to Doc?
 
+-- TODO: Define a type of expressions and holes, and define application such that it prioritises filing in holes before juxtaposing terms. That way we can get mixfix notations compositionally without doing deep pattern matches.
+
 opToAgda :: BuiltinOp sort -> Code
 opToAgda KFun    = ""
 opToAgda KType   = ""
