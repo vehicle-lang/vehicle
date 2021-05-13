@@ -14,7 +14,7 @@ import           Control.Monad.State (MonadState(..))
 import           Data.Functor.Foldable (fold)
 import           Vehicle.Core.Check.Core
 import           Vehicle.Core.Check.Builtin
-import           Vehicle.Core.Type
+import           Vehicle.Core.AST
 import           Vehicle.Prelude
 
 data DeBruijn (sort :: Sort) = DeBruijn

@@ -11,7 +11,7 @@
 module Vehicle.Core.Check.Builtin where
 
 import Control.Monad.Except (MonadError(..))
-import Vehicle.Core.Type
+import Vehicle.Core.AST
 import Vehicle.Prelude
 
 -- |Type of errors thrown by builtin checking.

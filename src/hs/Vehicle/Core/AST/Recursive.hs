@@ -6,10 +6,10 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 
-module Vehicle.Core.Type.Recursive where
+module Vehicle.Core.AST.Recursive where
 
 import           Control.Monad.Identity
-import           Vehicle.Core.Type.Core
+import           Vehicle.Core.AST.Core
 import           Vehicle.Prelude
 
 

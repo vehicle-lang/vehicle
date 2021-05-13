@@ -6,9 +6,9 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
 -- | This module exports the datatype representations of the builtin symbols.
-module Vehicle.Core.Type.Builtin where
+module Vehicle.Core.AST.Builtin where
 
-import           Vehicle.Core.Type.Core
+import           Vehicle.Core.AST.Core
 import           Vehicle.Prelude
 
 data Builtin (sort :: Sort) = Builtin Position (BuiltinOp sort)

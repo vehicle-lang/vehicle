@@ -19,7 +19,7 @@ import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as Map
 import           Data.List (elemIndex)
 import           Data.Maybe (fromMaybe)
-import           Vehicle.Core.Type
+import           Vehicle.Core.AST
 import           Vehicle.Prelude
 
 

@@ -9,7 +9,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Vehicle.Core.Type.DeBruijn
+module Vehicle.Core.AST.DeBruijn
   ( Index
   , DeBruijn(..)
   , fromIndex
@@ -18,7 +18,7 @@ module Vehicle.Core.Type.DeBruijn
   , toSymbol
   ) where
 
-import Vehicle.Core.Type.Core (Sort(..), KnownSort(..), SSort(..))
+import Vehicle.Core.AST.Core (Sort(..), KnownSort(..), SSort(..))
 import Vehicle.Prelude
 
 -- * Types

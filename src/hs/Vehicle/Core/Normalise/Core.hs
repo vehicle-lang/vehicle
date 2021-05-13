@@ -19,9 +19,9 @@ module Vehicle.Core.Normalise.Core
   , mkBool
   ) where
 
-import Vehicle.Core.Type.Builtin (BuiltinOp(..), Builtin(..))
+import Vehicle.Core.AST.Builtin (BuiltinOp(..), Builtin(..))
 import Vehicle.Prelude (Position)
-import Vehicle.Core.Type ( Sort(..), Tree (..), Expr, Type, Decl, Prog)
+import Vehicle.Core.AST ( Sort(..), Tree (..), Expr, Type, Decl, Prog)
 import Vehicle.Core.DeBruijn.Core (SortedDeBruijn(..))
 import Control.Monad.Except (MonadError)
 import Vehicle.Core.Abs (ExprName)

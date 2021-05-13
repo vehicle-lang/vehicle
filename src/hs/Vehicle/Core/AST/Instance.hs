@@ -6,9 +6,9 @@
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Vehicle.Core.Type.Instance where
+module Vehicle.Core.AST.Instance where
 
-import Vehicle.Core.Type.Core
+import Vehicle.Core.AST.Core
 
 -- * Kinds
 

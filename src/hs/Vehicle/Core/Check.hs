@@ -4,7 +4,7 @@
 module Vehicle.Core.Check where
 
 import           Control.Monad.Except (Except, withExcept)
-import           Vehicle.Core.Type
+import           Vehicle.Core.AST
 import           Vehicle.Core.Check.Builtin
 import           Vehicle.Core.Check.Provenance
 import           Vehicle.Core.Check.Scope

@@ -54,7 +54,7 @@ Add a case to elaboration in `src/hs/Vehicle/Frontend/Elaborate.hs`:
   VF.EDivF e1 tk e2              -> eOp2 tk e1 e2
 ```
 
-Add a builtin operator to `src/hs/Vehicle/Core/Type/Builtin.hs`:
+Add a builtin operator to `src/hs/Vehicle/Core/AST/Builtin.hs`:
 
 ```diff
   EGe     :: BuiltinOp 'EXPR

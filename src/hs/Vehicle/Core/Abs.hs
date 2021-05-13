@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- | Provides compatibility between the /more general/ type for Vehicle Core
---   abstract syntax trees defined in 'Vehicle.Core.Type' and the type expected
+--   abstract syntax trees defined in 'Vehicle.Core.AST' and the type expected
 --   (and generated) by BNFC. The module /must/ be called 'Vehicle.Core.Abs', as
 --   this is what BNFC expects (and generates).
 module Vehicle.Core.Abs
@@ -58,8 +58,8 @@ module Vehicle.Core.Abs
   ) where
 
 
-import           Vehicle.Core.Type (Sort(..))
-import qualified Vehicle.Core.Type as Core
+import           Vehicle.Core.AST (Sort(..))
+import qualified Vehicle.Core.AST as Core
 import           Vehicle.Prelude (Position, Symbol, K(..))
 
 

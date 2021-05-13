@@ -11,7 +11,7 @@ module Vehicle.Core.Check.Provenance where
 import           Control.Monad.Writer
 import           Data.Range (Range(..))
 import qualified Data.Range as Range
-import           Vehicle.Core.Type
+import           Vehicle.Core.AST
 import           Vehicle.Prelude
 
 

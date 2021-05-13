@@ -10,7 +10,7 @@ module Vehicle.Core.DeBruijn.Substitution
   ( subst
   ) where
 
-import Vehicle.Core.Type
+import Vehicle.Core.AST
 import Vehicle.Core.DeBruijn.Core (SortedDeBruijn(..), Ix(..))
 
 -- Implementation of substitution and lifting for De Bruijn indexed terms.

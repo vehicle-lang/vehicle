@@ -8,7 +8,7 @@
 {-# LANGUAGE StandaloneDeriving  #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Vehicle.Core.Type.Core
+module Vehicle.Core.AST.Core
   ( Sort(..)
   , SSort(..)
   , KnownSort(..)

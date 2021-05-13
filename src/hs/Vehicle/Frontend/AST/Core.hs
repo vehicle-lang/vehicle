@@ -1,4 +1,4 @@
-module Vehicle.Frontend.Type.Core
+module Vehicle.Frontend.AST.Core
   ( module X
   , isDefFun
   , declName

@@ -11,7 +11,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad (liftM2)
 import Vehicle.Core.Check.Scope (nameText, eArgName, tArgName)
-import Vehicle.Core.Type ( Tree (..), K(..), BuiltinOp(..))
+import Vehicle.Core.AST ( Tree (..), K(..), BuiltinOp(..))
 import Control.Monad.Except (MonadError)
 import Control.Monad.Error.Class (throwError)
 import Vehicle.Core.Compile.Core

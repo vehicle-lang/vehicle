@@ -24,7 +24,7 @@ import           Data.Foldable (foldrM)
 import           Data.Functor.Foldable (fold)
 import           Data.List (groupBy)
 import qualified Vehicle.Core.Abs as VC -- NOTE: In general, avoid importing Abs!
-import qualified Vehicle.Frontend.Type as VF
+import qualified Vehicle.Frontend.AST as VF
 import           Vehicle.Prelude
 
 
