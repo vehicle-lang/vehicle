@@ -41,12 +41,12 @@ library
                     , Vehicle.Core.Compile.Builtin
                     , Vehicle.Core.Compile.Provenance
                     , Vehicle.Core.Compile.Scope
-                    , Vehicle.Core.Compile.Normalise
-                    , Vehicle.Core.Compile.Normalise.Core
-                    , Vehicle.Core.Compile.Normalise.Quantifier
-                    , Vehicle.Core.Compile.Normalise.DeBruijnSubstitution
-                    , Vehicle.Backend.Compile.Agda
-                    , Vehicle.Backend.Compile.Core
+                    , Vehicle.Core.Normalise
+                    , Vehicle.Core.Normalise.Core
+                    , Vehicle.Core.Normalise.Quantifier
+                    , Vehicle.Core.Normalise.DeBruijnSubstitution
+                    , Vehicle.Backend.Agda
+                    , Vehicle.Backend.Core
                     , Vehicle.Prelude
                     , Vehicle.Prelude.Token
                     -- Compatibility module with generated Abs

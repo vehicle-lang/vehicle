@@ -3,9 +3,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-
 {-# LANGUAGE DataKinds #-}
-module Vehicle.Core.Compile.Normalise.Core
+
+module Vehicle.Core.Normalise.Core
   ( NormError (..)
   , MonadNorm
   , NormExpr
@@ -21,7 +21,7 @@ module Vehicle.Core.Compile.Normalise.Core
 
 import Vehicle.Core.AST.Builtin (BuiltinOp(..), Builtin(..))
 import Vehicle.Prelude (Position)
-import Vehicle.Core.AST ( Sort(..), Tree (..), Expr, Type, Decl, Prog)
+import Vehicle.Core.AST (Sort(..), Tree (..), Expr, Type, Decl, Prog)
 import Vehicle.Core.AST.DeBruijn (DeBruijn(..))
 import Control.Monad.Except (MonadError)
 import Vehicle.Core.Abs (ExprName)

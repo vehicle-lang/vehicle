@@ -7,19 +7,20 @@
 
 module Vehicle.Backend.Agda where
 
-import Data.Text as Text (Text, intercalate, unwords, pack, toUpper, null, splitAt)
-import Data.Set (Set)
+import           Data.Text as Text (Text, intercalate, unwords, pack, toUpper, null, splitAt)
+import           Data.Set (Set)
 import qualified Data.Set as Set
-import Control.Monad (liftM2)
-import Vehicle.Core.AST ( Tree (..), BuiltinOp(..))
-import Control.Monad.Except (MonadError)
-import Control.Monad.Error.Class (throwError)
-import Vehicle.Prelude (K(..), Symbol)
-import Vehicle.Backend.Core
+import           Control.Monad (liftM2)
+import           Control.Monad.Except (MonadError)
+import           Control.Monad.Error.Class (throwError)
+import           Vehicle.Backend.Core
+import           Vehicle.Core.AST (Tree(..), Expr, Type, Decl, Prog, EArg, TArg, Builtin(..), BuiltinOp(..))
+import           Vehicle.Core.Abs (Name(..))
+import           Vehicle.Prelude (K(..), Symbol)
 
 commentToken :: Text
 commentToken = "--"
-{-
+
 nameSymbol :: Name -> Symbol
 nameSymbol (Name (_ , name)) = name
 
@@ -28,7 +29,7 @@ eArgName (EArg _ (K name))= nameSymbol name
 
 tArgName :: TArg (K Name) builtin ann -> Symbol
 tArgName (TArg _ (K name))= nameSymbol name
--}
+
 -------------------------
 -- Module dependencies --
 -------------------------
@@ -153,7 +154,7 @@ instance Compile (TransProg ann) where
 
 instance Compile (TransDecl ann) where
   compile (DefType _ann arg args typ) = do
-    let typeName = tkSym arg
+    let typeName = tArgName arg
     let typeArgs = Text.unwords (map tArgName args)
     concatCode [ comp typeName , comp typeArgs , comp "=" , compile typ]
 
@@ -173,7 +174,7 @@ instance Compile (TransDecl ann) where
 instance Compile (TransType ann) where
   compile (TLitDim _ann d) = comp $ pack $ show d
   compile (TMeta _ann _i) = throwError $ CompilationUnsupported "TMeta"
-  compile (TVar _ann (K name)) = comp $ nameText name
+  compile (TVar _ann (K name)) = comp $ nameSymbol name
   compile (TLitList _ann typs) = concatCode [ compWithDep "[" DataList, concatList $ map compile typs, comp "]"]
 
   compile (TForall _ann arg forallBody) = concatCode [ comp "∀" , comp $ tArgName arg,  comp "→" , compile forallBody ]
@@ -191,7 +192,7 @@ instance Compile (TransType ann) where
 instance Compile (TransExpr ann) where
   compile (ELitInt _ n) = comp $ pack $ show n
   compile (ELitReal _ _j) = throwError $ CompilationUnsupported "Real literals"
-  compile (EVar _ (K name)) = comp $ nameText name
+  compile (EVar _ (K name)) = comp $ nameSymbol name
 
   compile (ELitSeq _ exprs) = concatCode [ compWithDep "[" DataList, concatList $ map compile exprs, comp "]"]
   compile (EAnn _ expr typ) = concatCode [ comp "(", compile expr, comp ":", compile typ, comp ")"]

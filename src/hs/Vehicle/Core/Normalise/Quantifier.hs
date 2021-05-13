@@ -7,18 +7,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
-module Vehicle.Core.Compile.Normalise.Quantifier
+module Vehicle.Core.Normalise.Quantifier
   ( normQuantifier
   , Quantifier(..)
   ) where
 
-import Vehicle.Core.AST ( Tree(..), Sort(EXPR), BuiltinOp(..), toIndex )
+import Control.Monad.Error.Class (throwError)
 import Data.Range (Range (..), fromRanges, intersection, union, invert, lbi, lbe, ubi, ube, mergeRanges)
 import Data.Text (Text)
+import Vehicle.Core.AST (Tree(..), Sort(EXPR), BuiltinOp(..), toIndex)
+import Vehicle.Core.Normalise.Core
+import Vehicle.Core.Normalise.DeBruijnSubstitution as DeBruijn (subst)
 import Vehicle.Prelude (Position)
-import Vehicle.Core.Compile.Normalise.DeBruijnSubstitution as DeBruijn ( subst )
-import Control.Monad.Error.Class (throwError)
-import Vehicle.Core.Compile.Normalise.Core
 
 -----------
 -- Types --

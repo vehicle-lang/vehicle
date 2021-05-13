@@ -138,7 +138,7 @@ checkScopeF = case sortSing @sort of
 
   -- Programs
   SPROG -> \case
-    MainF ann ds -> undefined
+    MainF ann ds -> stateToReader $ Main ann <$> traverse unR ds
 
 
 -- * Contexts

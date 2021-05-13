@@ -14,24 +14,25 @@ module Vehicle.Core.Normalise
   , runNorm
   ) where
 
-import Vehicle.Core.AST ( Tree (..))
-import Vehicle.Core.Compile.Normalise.DeBruijnSubstitution as DeBruijn ( subst )
-import Vehicle.Core.AST.Builtin (BuiltinOp(..))
 import Control.Monad.Except (Except, runExcept)
 import Control.Monad.Error.Class (throwError)
-import Vehicle.Core.Compile.Normalise.Core
-    ( pattern EOp0,
-      pattern EOp1,
-      pattern EOp2,
-      pattern EOp3,
-      mkBool,
-      MonadNorm,
-      NormDecl,
-      NormError(..),
-      NormExpr,
-      NormProg,
-      NormType )
-import Vehicle.Core.Compile.Normalise.Quantifier (normQuantifier, Quantifier(..))
+import Vehicle.Core.AST ( Tree (..))
+import Vehicle.Core.AST.Builtin (BuiltinOp(..))
+import Vehicle.Core.Normalise.Core
+       ( pattern EOp0
+       , pattern EOp1
+       , pattern EOp2
+       , pattern EOp3
+       , mkBool
+       , MonadNorm
+       , NormDecl
+       , NormError(..)
+       , NormExpr
+       , NormProg
+       , NormType
+       )
+import Vehicle.Core.Normalise.DeBruijnSubstitution as DeBruijn (subst)
+import Vehicle.Core.Normalise.Quantifier (normQuantifier, Quantifier(..))
 
 -- |Run a function in 'MonadNorm'.
 runNorm :: Except NormError a -> Either NormError a
