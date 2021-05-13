@@ -14,8 +14,8 @@ import Control.Monad (liftM2)
 import Vehicle.Core.AST ( Tree (..), BuiltinOp(..))
 import Control.Monad.Except (MonadError)
 import Control.Monad.Error.Class (throwError)
-import Vehicle.Core.Compile.Core
 import Vehicle.Prelude (K(..), Symbol)
+import Vehicle.Backend.Core
 
 commentToken :: Text
 commentToken = "--"

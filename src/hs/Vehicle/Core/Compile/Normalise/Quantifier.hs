@@ -7,7 +7,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
-module Vehicle.Core.Normalise.Quantifier
+module Vehicle.Core.Compile.Normalise.Quantifier
   ( normQuantifier
   , Quantifier(..)
   ) where
@@ -16,9 +16,9 @@ import Vehicle.Core.AST ( Tree(..), Sort(EXPR), BuiltinOp(..), toIndex )
 import Data.Range (Range (..), fromRanges, intersection, union, invert, lbi, lbe, ubi, ube, mergeRanges)
 import Data.Text (Text)
 import Vehicle.Prelude (Position)
-import Vehicle.Core.Compile.DeBruijn.Substitution as DeBruijn ( subst )
+import Vehicle.Core.Compile.Normalise.DeBruijnSubstitution as DeBruijn ( subst )
 import Control.Monad.Error.Class (throwError)
-import Vehicle.Core.Normalise.Core
+import Vehicle.Core.Compile.Normalise.Core
 
 -----------
 -- Types --

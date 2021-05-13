@@ -19,7 +19,7 @@ import Vehicle.Core.Compile.Normalise.DeBruijnSubstitution as DeBruijn ( subst )
 import Vehicle.Core.AST.Builtin (BuiltinOp(..))
 import Control.Monad.Except (Except, runExcept)
 import Control.Monad.Error.Class (throwError)
-import Vehicle.Core.Normalise.Core
+import Vehicle.Core.Compile.Normalise.Core
     ( pattern EOp0,
       pattern EOp1,
       pattern EOp2,
@@ -31,7 +31,7 @@ import Vehicle.Core.Normalise.Core
       NormExpr,
       NormProg,
       NormType )
-import Vehicle.Core.Normalise.Quantifier (normQuantifier, Quantifier(..))
+import Vehicle.Core.Compile.Normalise.Quantifier (normQuantifier, Quantifier(..))
 
 -- |Run a function in 'MonadNorm'.
 runNorm :: Except NormError a -> Either NormError a

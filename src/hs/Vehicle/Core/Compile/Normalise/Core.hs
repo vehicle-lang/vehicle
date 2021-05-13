@@ -5,7 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 {-# LANGUAGE DataKinds #-}
-module Vehicle.Core.Normalise.Core
+module Vehicle.Core.Compile.Normalise.Core
   ( NormError (..)
   , MonadNorm
   , NormExpr
