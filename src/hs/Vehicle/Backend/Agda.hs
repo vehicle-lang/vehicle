@@ -1,9 +1,9 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Vehicle.Backend.Agda where
 
@@ -18,6 +18,88 @@ import           Vehicle.Core.AST (Tree(..), Expr, Type, Decl, Prog, EArg, TArg,
 import           Vehicle.Core.Abs (Name(..))
 import           Vehicle.Prelude (K(..), Symbol)
 
+
+-- TODO:
+--
+--   - [ ] Declare a series of type synonyms and patterns akin to those in
+--         Vehicle.Core.Abs for use with backends, which use the Builtin
+--         type for builtins and a generic (K name) type for names.
+--   - [ ] Rewrite the compilation to Agda to use a generic foldTree operation
+--         in the dependency-writer and error monads.
+--   - [ ] Rewrite the compilation to Agda to use a pretty printing library,
+--         instead of manipulating text.
+
+data Dependency
+  = AISEC -- ^ The AISEC Agda library
+  | Data_Unit
+  | Data_Empy
+  | Data_Product
+  | Data_Sum
+  | Data_Nat
+  | Data_Vec
+  | Data_Rat
+  | Data_Bool
+  | Data_List
+  | Relation_Binary_PropositionalEquality
+  deriving (Eq)
+
+instance Show Dependency where
+  show AISEC        = "AISEC"
+  show Data_Unit    = "Data.Unit"
+  show Data_Empy    = "Data.Empy"
+  show Data_Product = "Data.Product"
+  show Data_Sum     = "Data.Sum"
+  show Data_Nat     = "Data.Nat"
+  show Data_Vec     = "Data.Vec"
+  show Data_Rat     = "Data.Rat"
+  show Data_Bool    = "Data.Bool"
+  show Data_List    = "Data.List"
+  show Relation_Binary_PropositionalEquality
+                    = "Relation.Binary.PropositionalEquality"
+
+type Code = Text -- TODO: migrate to Doc?
+
+opToAgda :: BuiltinOp sort -> Code
+opToAgda KFun    = ""
+opToAgda KType   = ""
+opToAgda KDim    = ""
+opToAgda KList   = ""
+opToAgda TFun    = ""
+opToAgda TBool   = ""
+opToAgda TProp   = ""
+opToAgda TInt    = ""
+opToAgda TReal   = ""
+opToAgda TList   = ""
+opToAgda TTensor = ""
+opToAgda TAdd    = ""
+opToAgda TNil    = ""
+opToAgda TCons   = ""
+opToAgda EIf     = ""
+opToAgda EImpl   = ""
+opToAgda EAnd    = ""
+opToAgda EOr     = ""
+opToAgda ENot    = ""
+opToAgda ETrue   = ""
+opToAgda EFalse  = ""
+opToAgda EEq     = ""
+opToAgda ENeq    = ""
+opToAgda ELe     = ""
+opToAgda ELt     = ""
+opToAgda EGe     = ""
+opToAgda EGt     = ""
+opToAgda EMul    = ""
+opToAgda EDiv    = ""
+opToAgda EAdd    = ""
+opToAgda ESub    = ""
+opToAgda ENeg    = ""
+opToAgda ECons   = ""
+opToAgda ENil    = ""
+opToAgda EAt     = ""
+opToAgda EAll    = ""
+opToAgda EAny    = ""
+
+
+{-
 commentToken :: Text
 commentToken = "--"
 
@@ -25,10 +107,10 @@ nameSymbol :: Name -> Symbol
 nameSymbol (Name (_ , name)) = name
 
 eArgName :: EArg (K Name) builtin ann -> Symbol
-eArgName (EArg _ (K name))= nameSymbol name
+eArgName (EArg _ (K name)) = nameSymbol name
 
 tArgName :: TArg (K Name) builtin ann -> Symbol
-tArgName (TArg _ (K name))= nameSymbol name
+tArgName (TArg _ (K name)) = nameSymbol name
 
 -------------------------
 -- Module dependencies --
@@ -249,3 +331,9 @@ capitaliseTypeName name
   | otherwise =
     let (firstLetter, remainder) = Text.splitAt 1 name in
       Text.toUpper firstLetter <> remainder
+
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}
