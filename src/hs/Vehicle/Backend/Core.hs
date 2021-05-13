@@ -4,7 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Vehicle.Core.Compile.Core where
+module Vehicle.Backend.Core where
 
 import Data.Text as Text (Text, intercalate)
 import Vehicle.Core.AST ( Tree (..), Expr, Type, Decl, Prog, EArg, TArg, Builtin(..))

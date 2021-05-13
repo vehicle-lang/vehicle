@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 
-module Vehicle.Core.Compile.Agda where
+module Vehicle.Backend.Agda where
 
 import Data.Text as Text (Text, intercalate, unwords, pack, toUpper, null, splitAt)
 import Data.Set (Set)
@@ -19,7 +19,7 @@ import Vehicle.Prelude (K(..), Symbol)
 
 commentToken :: Text
 commentToken = "--"
-
+{-
 nameSymbol :: Name -> Symbol
 nameSymbol (Name (_ , name)) = name
 
@@ -28,13 +28,7 @@ eArgName (EArg _ (K name))= nameSymbol name
 
 tArgName :: TArg (K Name) builtin ann -> Symbol
 tArgName (TArg _ (K name))= nameSymbol name
-
-declName :: Decl (K Name) builtin ann -> Symbol
-declName (DeclNetw _ arg _) = eArgName arg
-declName (DeclData _ arg _) = eArgName arg
-declName (DefFun _ arg _ _) = eArgName arg
-declName (DefType _ arg _ _) = tArgName arg
-
+-}
 -------------------------
 -- Module dependencies --
 -------------------------
