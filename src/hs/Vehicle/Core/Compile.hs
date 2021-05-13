@@ -1,13 +1,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators    #-}
 
-module Vehicle.Core.Check where
+module Vehicle.Core.Compile where
 
 import           Control.Monad.Except (Except, withExcept)
 import           Vehicle.Core.AST
-import           Vehicle.Core.Check.Builtin
-import           Vehicle.Core.Check.Provenance
-import           Vehicle.Core.Check.Scope
+import           Vehicle.Core.Compile.Builtin
+import           Vehicle.Core.Compile.Provenance
+import           Vehicle.Core.Compile.Scope
 import           Vehicle.Prelude
 
 data CheckError

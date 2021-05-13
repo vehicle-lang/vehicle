@@ -6,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes          #-}
 
-module Vehicle.Core.Check.Provenance where
+module Vehicle.Core.Compile.Provenance where
 
 import           Control.Monad.Writer
 import           Data.Range (Range(..))

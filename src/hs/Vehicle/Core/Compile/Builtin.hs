@@ -8,7 +8,7 @@
 
 -- | This module implements the check to see if there are any unknown builtins
 -- and converts the builtin representation to a data type (as opposed to 'Symbol').
-module Vehicle.Core.Check.Builtin where
+module Vehicle.Core.Compile.Builtin where
 
 import Control.Monad.Except (MonadError(..))
 import Vehicle.Core.AST

@@ -6,7 +6,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Vehicle.Core.Check.DeBruijn.Substitution
+module Vehicle.Core.Compile.Normalise.DeBruijnSubstitution
   ( subst
   ) where
 

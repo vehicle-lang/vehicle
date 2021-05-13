@@ -6,14 +6,14 @@
 {-# LANGUAGE RankNTypes         #-}
 {-# LANGUAGE TypeFamilies       #-}
 
-module Vehicle.Core.Check.Type where
+module Vehicle.Core.Compile.Type where
 
 import           Control.Exception (Exception)
 import           Control.Monad.Except (MonadError(..))
 import           Control.Monad.State (MonadState(..))
 import           Data.Functor.Foldable (fold)
-import           Vehicle.Core.Check.Core
-import           Vehicle.Core.Check.Builtin
+import           Vehicle.Core.Compile.Core
+import           Vehicle.Core.Compile.Builtin
 import           Vehicle.Core.AST
 import           Vehicle.Prelude
 

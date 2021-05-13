@@ -21,7 +21,7 @@ source-repository head
   location: https://github.com/wenkokke/vehicle
 
 library
-  exposed-modules:    Vehicle.Core.Check
+  exposed-modules:    Vehicle.Core.Compile
                     , Vehicle.Core.Parse
                     , Vehicle.Core.Print
                     , Vehicle.Core.AST
@@ -30,21 +30,21 @@ library
                     , Vehicle.Frontend.Parse
                     , Vehicle.Frontend.Print
   other-modules:      Paths_vehicle
-                    , Vehicle.Core.Check.Builtin
-                    , Vehicle.Core.Check.Provenance
-                    , Vehicle.Core.Check.Scope
-                    , Vehicle.Core.Check.DeBruijn.Substitution
+                    , Vehicle.Frontend.AST.Core
+                    , Vehicle.Frontend.AST.Instance
+                    , Vehicle.Frontend.AST.Instance.Recursive
                     , Vehicle.Core.AST.Builtin
                     , Vehicle.Core.AST.Core
                     , Vehicle.Core.AST.DeBruijn
                     , Vehicle.Core.AST.Instance
                     , Vehicle.Core.AST.Recursive
-                    , Vehicle.Core.Normalise
-                    , Vehicle.Core.Normalise.Core
-                    , Vehicle.Core.Normalise.Quantifier
-                    , Vehicle.Frontend.AST.Core
-                    , Vehicle.Frontend.AST.Instance
-                    , Vehicle.Frontend.AST.Instance.Recursive
+                    , Vehicle.Core.Compile.Builtin
+                    , Vehicle.Core.Compile.Provenance
+                    , Vehicle.Core.Compile.Scope
+                    , Vehicle.Core.Compile.Normalise
+                    , Vehicle.Core.Compile.Normalise.Core
+                    , Vehicle.Core.Compile.Normalise.Quantifier
+                    , Vehicle.Core.Compile.Normalise.DeBruijnSubstitution
                     , Vehicle.Backend.Compile.Agda
                     , Vehicle.Backend.Compile.Core
                     , Vehicle.Prelude

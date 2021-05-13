@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 
-module Vehicle.Core.Check.Scope where
+module Vehicle.Core.Compile.Scope where
 
 import           Control.Monad.Except (MonadError(..), Except, runExcept, liftEither)
 import           Control.Monad.Error.Class (throwError)
