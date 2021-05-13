@@ -1,27 +1,27 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators    #-}
 
-module Vehicle.Core.Compile where
+module Vehicle.Core.Compile
+  ( compile
+  ) where
 
 import           Control.Monad.Except (Except, withExcept)
 import           Vehicle.Core.AST
-import           Vehicle.Core.Compile.Builtin
-import           Vehicle.Core.Compile.Provenance
-import           Vehicle.Core.Compile.Scope
+import           Vehicle.Core.Compile.Builtin (checkBuiltins, BuiltinError(..))
+import           Vehicle.Core.Compile.Provenance (Provenance, saveProvenance)
+import           Vehicle.Core.Compile.Scope (checkScope, ScopeError(..))
 import           Vehicle.Prelude
 
-data CheckError
+data CompileError
   = BuiltinError BuiltinError
   | ScopeError ScopeError
   deriving Show
 
-type TCM a = Except CheckError a
-
-check ::
+compile ::
   (IsToken name, IsToken builtin, KnownSort sort) =>
   Tree (K name) (K builtin) ann sort ->
-  TCM (Tree DeBruijn Builtin (K Provenance :*: ann) sort)
-check tree0 = do
+  Except CompileError (Tree DeBruijn Builtin (K Provenance :*: ann) sort)
+compile tree0 = do
   let tree1 = saveProvenance tree0
   tree2 <- withExcept BuiltinError (checkBuiltins tree1)
   tree3 <- withExcept ScopeError (checkScope tree2)

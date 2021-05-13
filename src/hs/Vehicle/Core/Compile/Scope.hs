@@ -34,11 +34,11 @@ checkScope tree = fromResult (foldTree (R . checkScopeF) tree)
 type family RESULT (builtin :: Sort -> *) (ann :: Sort -> *) (sort :: Sort) :: * where
   RESULT builtin ann 'KIND = Kind DeBruijn builtin ann
   RESULT builtin ann 'TYPE = ReaderT Ctx (Except ScopeError) (Type DeBruijn builtin ann)
+  RESULT builtin ann 'TARG = (TArg DeBruijn builtin ann, Symbol)
   RESULT builtin ann 'EXPR = ReaderT Ctx (Except ScopeError) (Expr DeBruijn builtin ann)
+  RESULT builtin ann 'EARG = (EArg DeBruijn builtin ann, Symbol)
   RESULT builtin ann 'DECL = StateT  Ctx (Except ScopeError) (Decl DeBruijn builtin ann)
   RESULT builtin ann 'PROG = ReaderT Ctx (Except ScopeError) (Prog DeBruijn builtin ann)
-  RESULT builtin ann 'TARG = (TArg DeBruijn builtin ann, Symbol)
-  RESULT builtin ann 'EARG = (EArg DeBruijn builtin ann, Symbol)
 
 -- private
 newtype Result (builtin :: Sort -> *) (ann :: Sort -> *) (sort :: Sort)

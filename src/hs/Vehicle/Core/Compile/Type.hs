@@ -17,19 +17,24 @@ import           Vehicle.Core.Compile.Builtin
 import           Vehicle.Core.AST
 import           Vehicle.Prelude
 
-data DeBruijn (sort :: Sort) = DeBruijn
-  { pos   :: Position
-  , index :: Int
-  }
 
-data family Info (sort :: Sort)
-data instance Info 'KIND = InfoKind
-data instance Info 'TYPE = InfoType (Kind DeBruijn Builtin (K ()))
-data instance Info 'TARG = InfoTArg (Kind DeBruijn Builtin (K ()))
-data instance Info 'EXPR = InfoExpr (Type DeBruijn Builtin (K ()))
-data instance Info 'EARG = InfoEArg (Type DeBruijn Builtin (K ()))
-data instance Info 'DECL = InfoDecl
-data instance Info 'PROG = InfoProg
+type family INFO (ann :: Sort -> *) (sort :: Sort) where
+  INFO ann 'KIND = ()
+  INFO ann 'TYPE = ()
+  INFO ann 'TARG = ()
+  INFO ann 'EXPR = ()
+  INFO ann 'EARG = ()
+  INFO ann 'DECL = ()
+  INFO ann 'PROG = ()
+
+-- data family Info (sort :: Sort)
+-- data instance Info 'KIND = InfoKind
+-- data instance Info 'TYPE = InfoType (Kind DeBruijn Builtin (K ()))
+-- data instance Info 'TARG = InfoTArg (Kind DeBruijn Builtin (K ()))
+-- data instance Info 'EXPR = InfoExpr (Type DeBruijn Builtin (K ()))
+-- data instance Info 'EARG = InfoEArg (Type DeBruijn Builtin (K ()))
+-- data instance Info 'DECL = InfoDecl
+-- data instance Info 'PROG = InfoProg
 
 
 check :: (IsToken tkName, KnownSort sort, TCM m) =>
