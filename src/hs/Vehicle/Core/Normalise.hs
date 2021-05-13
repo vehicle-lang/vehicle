@@ -15,7 +15,7 @@ module Vehicle.Core.Normalise
   ) where
 
 import Vehicle.Core.AST ( Tree (..))
-import Vehicle.Core.DeBruijn.Substitution as DeBruijn ( subst )
+import Vehicle.Core.Check.DeBruijn.Substitution as DeBruijn ( subst )
 import Vehicle.Core.AST.Builtin (BuiltinOp(..))
 import Control.Monad.Except (Except, runExcept)
 import Control.Monad.Error.Class (throwError)

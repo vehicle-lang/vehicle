@@ -123,9 +123,3 @@ deriving instance
   , Eq (builtin 'EARG)
   , Eq (ann 'EARG)
   ) => Eq (EArg name builtin ann)
-
--- -}
--- -}
--- -}
--- -}
--- -}

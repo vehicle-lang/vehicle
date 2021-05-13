@@ -7,9 +7,9 @@
 module Vehicle.Core.Compile.Core where
 
 import Data.Text as Text (Text, intercalate)
-import Vehicle.Core.AST ( Tree (..), Expr, Type, Decl, Prog, EArg, TArg, K(..))
+import Vehicle.Core.AST ( Tree (..), Expr, Type, Decl, Prog, EArg, TArg, Builtin(..))
 import Vehicle.Core.Abs (Name(..))
-import Vehicle.Core.AST.Builtin (Builtin(..))
+import Vehicle.Prelude (K(..))
 
 -- |Some useful type synonyms
 type TransExpr ann = Expr (K Name) Builtin ann

@@ -12,13 +12,11 @@ module Vehicle.Core.Normalise.Quantifier
   , Quantifier(..)
   ) where
 
-import Vehicle.Core.AST.Builtin (BuiltinOp(..))
-import Vehicle.Core.AST ( Tree(..), Sort(EXPR) )
+import Vehicle.Core.AST ( Tree(..), Sort(EXPR), BuiltinOp(..), toIndex )
 import Data.Range (Range (..), fromRanges, intersection, union, invert, lbi, lbe, ubi, ube, mergeRanges)
 import Data.Text (Text)
 import Vehicle.Prelude (Position)
-import Vehicle.Core.DeBruijn.Core ( ix )
-import Vehicle.Core.DeBruijn.Substitution as DeBruijn ( subst )
+import Vehicle.Core.Check.DeBruijn.Substitution as DeBruijn ( subst )
 import Control.Monad.Error.Class (throwError)
 import Vehicle.Core.Normalise.Core
 
@@ -98,17 +96,17 @@ getIntVariableRanges
   -> NormExpr ann -- ^ Fully normalised expression that may contain bounds on the variable
   -> [Range Integer]
 getIntVariableRanges l (EOp2 EEq (ELitInt _ i) (EVar _ v) _ _ _ _)
-  | ix v == l = [SingletonRange i]
+  | toIndex v == l = [SingletonRange i]
 getIntVariableRanges l (EOp2 EEq (EVar _ v) (ELitInt _ i) _ _ _ _)
-  | ix v == l = [SingletonRange i]
+  | toIndex v == l = [SingletonRange i]
 getIntVariableRanges l (EOp2 ELe (ELitInt _ i) (EVar _ v) _ _ _ _)
-  | ix v == l = [ubi i]
+  | toIndex v == l = [ubi i]
 getIntVariableRanges l (EOp2 ELe (EVar _ v) (ELitInt _ i) _ _ _ _)
-  | ix v == l = [lbi i]
+  | toIndex v == l = [lbi i]
 getIntVariableRanges l (EOp2 ELt (ELitInt _ i) (EVar _ v) _ _ _ _)
-  | ix v == l = [ube i]
+  | toIndex v == l = [ube i]
 getIntVariableRanges l (EOp2 ELt (EVar _ v) (ELitInt _ i) _ _ _ _)
-  | ix v == l = [lbe i]
+  | toIndex v == l = [lbe i]
 getIntVariableRanges l (EOp1 ENot e _ _ _)
   = invert (getIntVariableRanges l e)
 getIntVariableRanges l (EOp2 EAnd e1 e2 _ _ _ _)

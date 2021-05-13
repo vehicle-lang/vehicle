@@ -345,20 +345,6 @@ checkScopeName (Name (pos , text)) ctxt = case List.elemIndex text ctxt of
 
 -- * Helper functions for extracting the Symbol from binding sites
 
-nameSymbol :: Name -> Symbol
-nameSymbol (Name (_ , name)) = name
-
-eArgName :: EArg (K Name) builtin ann -> Symbol
-eArgName (EArg _ (K name))= nameSymbol name
-
-tArgName :: TArg (K Name) builtin ann -> Symbol
-tArgName (TArg _ (K name))= nameSymbol name
-
-declName :: Decl (K Name) builtin ann -> Symbol
-declName (DeclNetw _ arg _) = eArgName arg
-declName (DeclData _ arg _) = eArgName arg
-declName (DefFun _ arg _ _) = eArgName arg
-declName (DefType _ arg _ _) = tArgName arg
 
 -- -}
 -- -}

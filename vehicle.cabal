@@ -33,11 +33,17 @@ library
                     , Vehicle.Core.Check.Builtin
                     , Vehicle.Core.Check.Provenance
                     , Vehicle.Core.Check.Scope
+                    , Vehicle.Core.Check.DeBruijn.Substitution
                     , Vehicle.Core.AST.Builtin
                     , Vehicle.Core.AST.Core
                     , Vehicle.Core.AST.DeBruijn
                     , Vehicle.Core.AST.Instance
                     , Vehicle.Core.AST.Recursive
+                    , Vehicle.Core.Compile.Agda
+                    , Vehicle.Core.Compile.Core
+                    , Vehicle.Core.Normalise
+                    , Vehicle.Core.Normalise.Core
+                    , Vehicle.Core.Normalise.Quantifier
                     , Vehicle.Frontend.AST.Core
                     , Vehicle.Frontend.AST.Instance
                     , Vehicle.Frontend.AST.Instance.Recursive

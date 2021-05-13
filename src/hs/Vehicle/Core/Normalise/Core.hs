@@ -22,7 +22,7 @@ module Vehicle.Core.Normalise.Core
 import Vehicle.Core.AST.Builtin (BuiltinOp(..), Builtin(..))
 import Vehicle.Prelude (Position)
 import Vehicle.Core.AST ( Sort(..), Tree (..), Expr, Type, Decl, Prog)
-import Vehicle.Core.DeBruijn.Core (SortedDeBruijn(..))
+import Vehicle.Core.AST.DeBruijn (DeBruijn(..))
 import Control.Monad.Except (MonadError)
 import Vehicle.Core.Abs (ExprName)
 
@@ -36,10 +36,10 @@ data NormError
 type MonadNorm m = MonadError NormError m
 
 -- |Some useful type synonyms
-type NormExpr ann = Expr SortedDeBruijn Builtin ann
-type NormType ann = Type SortedDeBruijn Builtin ann
-type NormDecl ann = Decl SortedDeBruijn Builtin ann
-type NormProg ann = Prog SortedDeBruijn Builtin ann
+type NormExpr ann = Expr DeBruijn Builtin ann
+type NormType ann = Type DeBruijn Builtin ann
+type NormDecl ann = Decl DeBruijn Builtin ann
+type NormProg ann = Prog DeBruijn Builtin ann
 
 -- TODO: migrate to module with builtins
 

@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
 
 module Vehicle.Core.Compile.Agda where
 
@@ -10,15 +11,29 @@ import Data.Text as Text (Text, intercalate, unwords, pack, toUpper, null, split
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad (liftM2)
-import Vehicle.Core.Check.Scope (nameText, eArgName, tArgName)
-import Vehicle.Core.AST ( Tree (..), K(..), BuiltinOp(..))
+import Vehicle.Core.AST ( Tree (..), BuiltinOp(..))
 import Control.Monad.Except (MonadError)
 import Control.Monad.Error.Class (throwError)
 import Vehicle.Core.Compile.Core
-
+import Vehicle.Prelude (K(..), Symbol)
 
 commentToken :: Text
 commentToken = "--"
+
+nameSymbol :: Name -> Symbol
+nameSymbol (Name (_ , name)) = name
+
+eArgName :: EArg (K Name) builtin ann -> Symbol
+eArgName (EArg _ (K name))= nameSymbol name
+
+tArgName :: TArg (K Name) builtin ann -> Symbol
+tArgName (TArg _ (K name))= nameSymbol name
+
+declName :: Decl (K Name) builtin ann -> Symbol
+declName (DeclNetw _ arg _) = eArgName arg
+declName (DeclData _ arg _) = eArgName arg
+declName (DefFun _ arg _ _) = eArgName arg
+declName (DefType _ arg _ _) = tArgName arg
 
 -------------------------
 -- Module dependencies --
@@ -144,7 +159,7 @@ instance Compile (TransProg ann) where
 
 instance Compile (TransDecl ann) where
   compile (DefType _ann arg args typ) = do
-    let typeName = tArgName arg
+    let typeName = tkSym arg
     let typeArgs = Text.unwords (map tArgName args)
     concatCode [ comp typeName , comp typeArgs , comp "=" , compile typ]
 
