@@ -19,7 +19,7 @@ newtype BuiltinError
   = UnknownBuiltin Token
   deriving (Show)
 
-builtinKinds :: [(Symbol, BuiltinOp 'KIND)]
+builtinKinds :: [(Symbol, Builtin 'KIND)]
 builtinKinds =
   [ "->"   |-> KFun
   , "Type" |-> KType
@@ -27,7 +27,7 @@ builtinKinds =
   , "List" |-> KList
   ]
 
-builtinTypes :: [(Symbol, BuiltinOp 'TYPE)]
+builtinTypes :: [(Symbol, Builtin 'TYPE)]
 builtinTypes =
   [ "->"     |-> TFun
   , "Bool"   |-> TBool
@@ -40,7 +40,7 @@ builtinTypes =
   , "::"     |-> TCons
   ]
 
-builtinExprs :: [(Symbol, BuiltinOp 'EXPR)]
+builtinExprs :: [(Symbol, Builtin 'EXPR)]
 builtinExprs =
   [ "if"    |-> EIf
   , "=>"    |-> EImpl
@@ -68,12 +68,12 @@ builtinExprs =
 
 checkBuiltinWithMap ::
   (MonadError BuiltinError m, IsToken builtin) =>
-  [(Symbol, BuiltinOp sort)] ->
+  [(Symbol, Builtin sort)] ->
   K builtin sort ->
   m (Builtin sort)
 checkBuiltinWithMap builtins tk = case lookup (tkSymbol tk) builtins of
   Nothing -> throwError (UnknownBuiltin (toToken tk))
-  Just op -> return (Builtin (tkPosition tk) op)
+  Just op -> return op
 
 checkBuiltin ::
   (MonadError BuiltinError m, IsToken builtin, KnownSort sort) =>

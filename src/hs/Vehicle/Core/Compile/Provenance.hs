@@ -16,6 +16,7 @@ import           Vehicle.Prelude
 
 
 newtype Provenance = Provenance { fromProvenance :: [Range Position] }
+  deriving (Eq, Show)
 
 instance Semigroup Provenance where
   r1 <> r2 = Provenance $ fromProvenance r1 `Range.union` fromProvenance r2

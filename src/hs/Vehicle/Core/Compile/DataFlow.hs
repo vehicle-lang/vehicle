@@ -7,9 +7,9 @@
 
 module Vehicle.Core.Compile.DataFlow where
 
-import Control.Monad.Reader (MonadReader(..), ReaderT, runReaderT, local)
-import Control.Monad.State (MonadState(..), StateT, runStateT, evalStateT, modify)
-import Control.Monad.Writer (WriterT, runWriterT)
+import Control.Monad.Reader (MonadReader(..), ReaderT, runReaderT, mapReaderT, local)
+import Control.Monad.State (MonadState(..), StateT, runStateT, evalStateT, mapStateT, modify)
+import Control.Monad.Writer (WriterT, runWriterT, mapWriterT)
 import Control.Monad.Trans (MonadTrans(..))
 import Vehicle.Core.AST
 import Vehicle.Prelude (In)
@@ -45,6 +45,21 @@ runDF (m :: DataFlow s m sorted sort) = case sortSing @sort of
   SEARG -> runWriterT $ unDF m
   SDECL -> runStateT  $ unDF m
   SPROG -> runReaderT $ unDF m
+
+mapDF ::
+  forall m n s sorted sort.
+  (KnownSort sort, Monad m, Monad n) =>
+  (forall a. m a -> n a) ->
+  DataFlow s m sorted sort ->
+  DataFlow s n sorted sort
+mapDF f (DF df) = DF $ case sortSing @sort of
+  SKIND ->            f df
+  STYPE -> mapReaderT f df
+  STARG -> mapWriterT f df
+  SEXPR -> mapReaderT f df
+  SEARG -> mapWriterT f df
+  SDECL -> mapStateT  f df
+  SPROG -> mapReaderT f df
 
 -- |RunDF a |DataFlow| object, ignoring any output.
 toReader :: (Monad m, KnownSort sort) => DataFlow s m sorted sort -> s -> m (sorted sort)

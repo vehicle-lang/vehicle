@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds    #-}
 {-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -9,55 +10,72 @@
 module Vehicle.Core.AST.Builtin where
 
 import           Vehicle.Core.AST.Core
-import           Vehicle.Prelude
 
-data Builtin (sort :: Sort) = Builtin Position (BuiltinOp sort)
-
-data BuiltinOp (sort :: Sort) where
+data Builtin (sort :: Sort) where
 
   -- Builtin kinds
-  KFun    :: BuiltinOp 'KIND
-  KType   :: BuiltinOp 'KIND
-  KDim    :: BuiltinOp 'KIND
-  KList   :: BuiltinOp 'KIND
+  KFun    :: Builtin 'KIND
+  KType   :: Builtin 'KIND
+  KDim    :: Builtin 'KIND
+  KList   :: Builtin 'KIND
 
   -- Builtin types
-  TFun    :: BuiltinOp 'TYPE
-  TBool   :: BuiltinOp 'TYPE
-  TProp   :: BuiltinOp 'TYPE
-  TInt    :: BuiltinOp 'TYPE
-  TReal   :: BuiltinOp 'TYPE
-  TList   :: BuiltinOp 'TYPE
-  TTensor :: BuiltinOp 'TYPE
-  TAdd    :: BuiltinOp 'TYPE
-  TNil    :: BuiltinOp 'TYPE
-  TCons   :: BuiltinOp 'TYPE
+  TFun    :: Builtin 'TYPE
+  TBool   :: Builtin 'TYPE
+  TProp   :: Builtin 'TYPE
+  TInt    :: Builtin 'TYPE
+  TReal   :: Builtin 'TYPE
+  TList   :: Builtin 'TYPE
+  TTensor :: Builtin 'TYPE
+  TAdd    :: Builtin 'TYPE
+  TNil    :: Builtin 'TYPE
+  TCons   :: Builtin 'TYPE
 
   -- Builtin expressions
-  EIf     :: BuiltinOp 'EXPR
-  EImpl   :: BuiltinOp 'EXPR
-  EAnd    :: BuiltinOp 'EXPR
-  EOr     :: BuiltinOp 'EXPR
-  ENot    :: BuiltinOp 'EXPR
-  ETrue   :: BuiltinOp 'EXPR
-  EFalse  :: BuiltinOp 'EXPR
-  EEq     :: BuiltinOp 'EXPR
-  ENeq    :: BuiltinOp 'EXPR
-  ELe     :: BuiltinOp 'EXPR
-  ELt     :: BuiltinOp 'EXPR
-  EGe     :: BuiltinOp 'EXPR
-  EGt     :: BuiltinOp 'EXPR
-  EMul    :: BuiltinOp 'EXPR
-  EDiv    :: BuiltinOp 'EXPR
-  EAdd    :: BuiltinOp 'EXPR
-  ESub    :: BuiltinOp 'EXPR
-  ENeg    :: BuiltinOp 'EXPR
-  ECons   :: BuiltinOp 'EXPR
-  ENil    :: BuiltinOp 'EXPR
-  EAt     :: BuiltinOp 'EXPR
-  EAll    :: BuiltinOp 'EXPR
-  EAny    :: BuiltinOp 'EXPR
+  EIf     :: Builtin 'EXPR
+  EImpl   :: Builtin 'EXPR
+  EAnd    :: Builtin 'EXPR
+  EOr     :: Builtin 'EXPR
+  ENot    :: Builtin 'EXPR
+  ETrue   :: Builtin 'EXPR
+  EFalse  :: Builtin 'EXPR
+  EEq     :: Builtin 'EXPR
+  ENeq    :: Builtin 'EXPR
+  ELe     :: Builtin 'EXPR
+  ELt     :: Builtin 'EXPR
+  EGe     :: Builtin 'EXPR
+  EGt     :: Builtin 'EXPR
+  EMul    :: Builtin 'EXPR
+  EDiv    :: Builtin 'EXPR
+  EAdd    :: Builtin 'EXPR
+  ESub    :: Builtin 'EXPR
+  ENeg    :: Builtin 'EXPR
+  ECons   :: Builtin 'EXPR
+  ENil    :: Builtin 'EXPR
+  EAt     :: Builtin 'EXPR
+  EAll    :: Builtin 'EXPR
+  EAny    :: Builtin 'EXPR
 
-deriving instance Eq (BuiltinOp sort)
-deriving instance Ord (BuiltinOp sort)
-deriving instance Show (BuiltinOp sort)
+deriving instance Eq (Builtin 'KIND)
+deriving instance Eq (Builtin 'TYPE)
+deriving instance Eq (Builtin 'TARG)
+deriving instance Eq (Builtin 'EXPR)
+deriving instance Eq (Builtin 'EARG)
+deriving instance Eq (Builtin 'DECL)
+deriving instance Eq (Builtin 'PROG)
+
+deriving instance Ord (Builtin 'KIND)
+deriving instance Ord (Builtin 'TYPE)
+deriving instance Ord (Builtin 'TARG)
+deriving instance Ord (Builtin 'EXPR)
+deriving instance Ord (Builtin 'EARG)
+deriving instance Ord (Builtin 'DECL)
+deriving instance Ord (Builtin 'PROG)
+
+deriving instance Show (Builtin 'KIND)
+deriving instance Show (Builtin 'TYPE)
+deriving instance Show (Builtin 'TARG)
+deriving instance Show (Builtin 'EXPR)
+deriving instance Show (Builtin 'EARG)
+deriving instance Show (Builtin 'DECL)
+deriving instance Show (Builtin 'PROG)

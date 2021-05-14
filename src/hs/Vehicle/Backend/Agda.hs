@@ -14,7 +14,7 @@ import           Control.Monad (liftM2)
 import           Control.Monad.Except (MonadError)
 import           Control.Monad.Error.Class (throwError)
 import           Vehicle.Backend.Core
-import           Vehicle.Core.AST (Tree(..), Expr, Type, Decl, Prog, EArg, TArg, Builtin(..), BuiltinOp(..))
+import           Vehicle.Core.AST (Tree(..), Expr, Type, Decl, Prog, EArg, TArg, Builtin(..))
 import           Vehicle.Core.Abs (Name(..))
 import           Vehicle.Prelude (K(..), Symbol)
 
@@ -68,45 +68,6 @@ instance Show Dependency where
 type Code = Text -- TODO: migrate to Doc?
 
 -- TODO: Define a type of expressions and holes, and define application such that it prioritises filing in holes before juxtaposing terms. That way we can get mixfix notations compositionally without doing deep pattern matches.
-
-opToAgda :: BuiltinOp sort -> Code
-opToAgda KFun    = ""
-opToAgda KType   = ""
-opToAgda KDim    = ""
-opToAgda KList   = ""
-opToAgda TFun    = ""
-opToAgda TBool   = ""
-opToAgda TProp   = ""
-opToAgda TInt    = ""
-opToAgda TReal   = ""
-opToAgda TList   = ""
-opToAgda TTensor = ""
-opToAgda TAdd    = ""
-opToAgda TNil    = ""
-opToAgda TCons   = ""
-opToAgda EIf     = ""
-opToAgda EImpl   = ""
-opToAgda EAnd    = ""
-opToAgda EOr     = ""
-opToAgda ENot    = ""
-opToAgda ETrue   = ""
-opToAgda EFalse  = ""
-opToAgda EEq     = ""
-opToAgda ENeq    = ""
-opToAgda ELe     = ""
-opToAgda ELt     = ""
-opToAgda EGe     = ""
-opToAgda EGt     = ""
-opToAgda EMul    = ""
-opToAgda EDiv    = ""
-opToAgda EAdd    = ""
-opToAgda ESub    = ""
-opToAgda ENeg    = ""
-opToAgda ECons   = ""
-opToAgda ENil    = ""
-opToAgda EAt     = ""
-opToAgda EAll    = ""
-opToAgda EAny    = ""
 
 
 {-

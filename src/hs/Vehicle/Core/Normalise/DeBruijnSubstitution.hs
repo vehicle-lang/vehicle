@@ -36,7 +36,7 @@ instance DeBruijnLifting (Type DeBruijn builtin ann) where
     -- Increase the depth as we move across a binding site
     (lift (d + 1) body)
 
-  lift d (TVar ann (DB i)) = TVar ann (DB i')
+  lift d (TVar ann (TIndex i)) = TVar ann (TIndex i')
     where
       i' | d <= i    = i + 1 -- Index is referencing the environment so increment it
          | otherwise = i     -- Index is locally bound so no need to increment it
@@ -53,7 +53,7 @@ instance DeBruijnLifting (Expr DeBruijn builtin ann) where
   lift d (ETyLam ann targ expr) = ETyLam ann targ (lift d expr)
   lift d (ETyApp ann expr typ) = ETyApp ann (lift d expr) typ
 
-  lift d (EVar ann (DB i)) = EVar ann (DB i')
+  lift d (EVar ann (EIndex i)) = EVar ann (EIndex i')
     where
       i' | d <= i    = i + 1 -- Index is referencing the environment so increment it
          | otherwise = i     -- Index is locally bound so no need to increment it
@@ -90,14 +90,14 @@ instance DeBruijnSubstitution (Type DeBruijn builtin ann) where
     -- Increase the depth as we move across a binding site
     TForall ann arg (subst (d + 1) (lift 0 sub) body)
 
-  subst d sub (TVar ann (DB i)) =
+  subst d sub (TVar ann (TIndex i)) =
     case compare i d of
       -- Index matches the expression we're substituting for
       EQ -> sub
       -- Index was bound in the original type
-      LT -> TVar ann (DB i)
+      LT -> TVar ann (TIndex i)
       -- Index was free in the original type, and we've removed a binder so decrease it by 1.
-      GT -> TVar ann (DB (i - 1))
+      GT -> TVar ann (TIndex (i - 1))
 
 instance DeBruijnSubstitution (Expr DeBruijn builtin ann) where
   subst _ _ expr@(ELitInt _ _) = expr
@@ -110,14 +110,14 @@ instance DeBruijnSubstitution (Expr DeBruijn builtin ann) where
   subst d sub (ETyApp ann expr typ) = ETyApp ann (subst d sub expr) typ
   subst d sub (EApp ann exp1 exp2) = EApp ann (subst d sub exp1) (subst d sub exp2)
 
-  subst d sub (EVar ann (DB i)) =
+  subst d sub (EVar ann (EIndex i)) =
     case compare i d of
       -- Index matches the expression we're substituting for
       EQ -> sub
       -- Index was bound in the original expression
-      LT -> EVar ann (DB i)
+      LT -> EVar ann (EIndex i)
       -- Index was free in the original expression, and we've removed a binder so decrease it by 1.
-      GT -> EVar ann (DB (i - 1))
+      GT -> EVar ann (EIndex (i - 1))
 
   subst d sub (ELet ann arg exp1 exp2) =
     -- Increase the depth as we move across a binding site

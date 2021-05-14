@@ -37,11 +37,11 @@ fileHeader commentToken = intercalate ("\n" <> commentToken <> " ") [
 
 -- Perhaps these are useful elsewhere and should be lifted?
 
-pattern TOp0 op ann0 pos = TCon ann0 (Builtin pos op)
-pattern TOp1 op e1 ann0 ann1 pos = TApp ann1 (TOp0 op ann0 pos) e1
-pattern TOp2 op e1 e2 ann0 ann1 ann2 pos = TApp ann2 (TOp1 op e1 ann0 ann1 pos) e2
+pattern TOp0 op ann0 = TCon ann0 op
+pattern TOp1 op e1 ann0 ann1 = TApp ann1 (TOp0 op ann0 ) e1
+pattern TOp2 op e1 e2 ann0 ann1 ann2 = TApp ann2 (TOp1 op e1 ann0 ann1 ) e2
 
-pattern EOp0 op ann0 pos = ECon ann0 (Builtin pos op)
-pattern EOp1 op e1 ann0 ann1 pos = EApp ann1 (EOp0 op ann0 pos) e1
-pattern EOp2 op e1 e2 ann0 ann1 ann2 pos = EApp ann2 (EOp1 op e1 ann0 ann1 pos) e2
-pattern EOp3 op e1 e2 e3 ann0 ann1 ann2 ann3 pos  = EApp ann3 (EOp2 op e1 e2 ann0 ann1 ann2 pos) e3
+pattern EOp0 op ann0  = ECon ann0 op
+pattern EOp1 op e1 ann0 ann1  = EApp ann1 (EOp0 op ann0 ) e1
+pattern EOp2 op e1 e2 ann0 ann1 ann2  = EApp ann2 (EOp1 op e1 ann0 ann1 ) e2
+pattern EOp3 op e1 e2 e3 ann0 ann1 ann2 ann3   = EApp ann3 (EOp2 op e1 e2 ann0 ann1 ann2 ) e3

@@ -19,18 +19,18 @@ module Vehicle.Core.Normalise.Core
   , mkBool
   ) where
 
-import Vehicle.Core.AST.Builtin (BuiltinOp(..), Builtin(..))
-import Vehicle.Prelude (Position)
+import Vehicle.Core.AST.Builtin (Builtin(..))
 import Vehicle.Core.AST (Sort(..), Tree (..), Expr, Type, Decl, Prog)
 import Vehicle.Core.AST.DeBruijn (DeBruijn(..))
 import Control.Monad.Except (MonadError)
 import Vehicle.Core.Abs (ExprName)
+import Vehicle.Core.Compile.Provenance (Provenance)
 
 -- |Errors thrown during normalisation
 data NormError
   = MissingDefFunType ExprName -- TODO: should be a type error?
   | MalformedLambdaError       -- TODO: should be a type error?
-  | EmptyQuantifierDomain Position
+  | EmptyQuantifierDomain Provenance
 
 -- |Constraint for the monad stack used by the normaliser.
 type MonadNorm m = MonadError NormError m
@@ -44,13 +44,13 @@ type NormProg ann = Prog DeBruijn Builtin ann
 -- TODO: migrate to module with builtins
 
 -- |Pattern synonyms to help matching during normalisation. Perhaps these are useful elsewhere and should be lifted?
-pattern EOp0 op ann0 pos = ECon ann0 (Builtin pos op)
-pattern EOp1 op e1 ann0 ann1 pos = EApp ann1 (EOp0 op ann0 pos) e1
-pattern EOp2 op e1 e2 ann0 ann1 ann2 pos = EApp ann2 (EOp1 op e1 ann0 ann1 pos) e2
-pattern EOp3 op e1 e2 e3 ann0 ann1 ann2 ann3 pos  = EApp ann3 (EOp2 op e1 e2 ann0 ann1 ann2 pos) e3
+pattern EOp0 op ann0 = ECon ann0 op
+pattern EOp1 op e1 ann0 ann1 = EApp ann1 (EOp0 op ann0) e1
+pattern EOp2 op e1 e2 ann0 ann1 ann2 = EApp ann2 (EOp1 op e1 ann0 ann1) e2
+pattern EOp3 op e1 e2 e3 ann0 ann1 ann2 ann3 = EApp ann3 (EOp2 op e1 e2 ann0 ann1 ann2) e3
 
 -- TODO: migrate to different module?
 
-mkBool :: Bool -> ann 'EXPR -> Position -> NormExpr ann
-mkBool True ann pos = EOp0 ETrue ann pos
-mkBool False ann pos = EOp0 EFalse ann pos
+mkBool :: Bool -> ann 'EXPR -> NormExpr ann
+mkBool True  ann = EOp0 ETrue  ann
+mkBool False ann = EOp0 EFalse ann

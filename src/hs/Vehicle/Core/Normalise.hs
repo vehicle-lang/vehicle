@@ -7,7 +7,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
-module Vehicle.Core.Normalise
+module Vehicle.Core.Normalise where
+
+-- TODO: position was removed from Builtin, as it is stored as provenance in the annotation
+
+{-
   ( Norm
   , NormError (..)
   , MonadNorm
@@ -17,7 +21,7 @@ module Vehicle.Core.Normalise
 import Control.Monad.Except (Except, runExcept)
 import Control.Monad.Error.Class (throwError)
 import Vehicle.Core.AST ( Tree (..))
-import Vehicle.Core.AST.Builtin (BuiltinOp(..))
+import Vehicle.Core.AST.Builtin (Builtin(..))
 import Vehicle.Core.Normalise.Core
        ( pattern EOp0
        , pattern EOp1
@@ -139,3 +143,9 @@ normApp (EOp2 EAll e1 e2 ann0 ann1 ann2 pos) = normQuantifier All e1 e2 ann0 ann
 normApp (EOp2 EAny e1 e2 ann0 ann1 ann2 pos) = normQuantifier Any e1 e2 ann0 ann1 ann2 pos >>= norm
 -- Fall-through case
 normApp expr = return expr
+
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}
