@@ -49,8 +49,8 @@ singletonCtx sort symbol = Map.singleton sort [symbol]
 
 -- |Find the index for a given name.
 lookupIndex ::
-  (MonadError ScopeError m, MonadReader Ctx m, IsToken name, KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
-  K name sort -> m (DeBruijn sort)
+  (IsToken name, KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
+  K name sort -> ReaderT Ctx (Except ScopeError) (DeBruijn sort)
 
 lookupIndex (K n :: K name sort) = do
   ctx <- ask
