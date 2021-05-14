@@ -47,17 +47,17 @@ type Ctx = HashMap Sort [Symbol]
 singletonCtx :: Sort -> Symbol -> Ctx
 singletonCtx sort symbol = Map.singleton sort [symbol]
 
--- |Find the environment for a given name.
-lookupEnv :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> [Symbol]
-lookupEnv = Map.findWithDefault [] (sort @sort)
+-- |Get the sub-context for a given sort.
+getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> [Symbol]
+getSubCtxFor = Map.findWithDefault [] (sort @sort)
 
--- |Find the index for a given name.
-lookupIndex ::
+-- |Find the index for a given name of a given sort.
+getIndex ::
   (IsToken name, KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
   K name sort -> ReaderT Ctx (Except ScopeError) (DeBruijn sort)
 
-lookupIndex (K n :: K name sort) = do
-  env <- lookupEnv @sort <$> ask
+getIndex (K n :: K name sort) = do
+  env <- getSubCtxFor @sort <$> ask
   let maybeIndex = elemIndex (tkSym n) env
   let indexOrError = maybe (unboundName n) return maybeIndex
   fromIndex <$> indexOrError
@@ -105,7 +105,7 @@ checkScopeF = case sortSing @sort of
   STYPE -> \case
     TForallF  ann n t   -> bindLocal n $ \n' -> TForall ann n' <$> unDF t
     TAppF     ann t1 t2 -> TApp ann <$> unDF t1 <*> unDF t2
-    TVarF     ann n     -> TVar ann <$> lookupIndex n
+    TVarF     ann n     -> TVar ann <$> getIndex n
     TConF     ann op    -> return $ TCon ann op
     TLitDimF  ann d     -> return $ TLitDim ann d
     TLitListF ann ts    -> TLitList ann <$> traverse unDF ts
@@ -131,7 +131,7 @@ checkScopeF = case sortSing @sort of
     ELetF     ann n e1 e2 -> bindLocal n $ \n' -> ELet ann n' <$> unDF e1 <*> unDF e2
     ELamF     ann n e     -> bindLocal n $ \n' -> ELam ann n' <$> unDF e
     EAppF     ann e1 e2   -> EApp ann <$> unDF e1 <*> unDF e2
-    EVarF     ann n       -> EVar ann <$> lookupIndex n
+    EVarF     ann n       -> EVar ann <$> getIndex n
     ETyAppF   ann e t     -> ETyApp ann <$> unDF e <*> unDF t
     ETyLamF   ann n e     -> bindLocal n $ \n' -> ETyLam ann n' <$> unDF e
     EConF     ann op      -> return $ ECon ann op

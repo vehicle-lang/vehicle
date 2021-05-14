@@ -62,17 +62,19 @@ instance Semigroup Ctx where
 instance Monoid Ctx where
   mempty = Ctx mempty mempty
 
-lookupEnv :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq (TYPEINFO sort)
-lookupEnv Ctx{..} = case sortSing @sort of { STYPE -> typeEnv; SEXPR -> exprEnv }
+-- |Get the sub-context for a given sort.
+getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq (TYPEINFO sort)
+getSubCtxFor Ctx{..} = case sortSing @sort of { STYPE -> typeEnv; SEXPR -> exprEnv }
 
-lookupTypeInfo ::
+-- |Find the type information for a given deBruijn index of a given sort.
+getTypeInfo ::
   forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
   K Provenance sort ->
   DeBruijn sort ->
   ReaderT Ctx (Except TypeError) (TYPEINFO sort)
-lookupTypeInfo p db = do
+getTypeInfo p db = do
   let idx = toIndex db
-  env <- lookupEnv @sort <$> ask
+  env <- getSubCtxFor @sort <$> ask
   maybe (indexOutOfBounds p db) return (env !? idx)
 
 {-
