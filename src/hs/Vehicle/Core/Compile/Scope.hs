@@ -70,7 +70,7 @@ getIndex ::
 
 getIndex (K n :: K name sort) = do
   subctx <- getSubCtxFor @sort <$> ask
-  let maybeIndex = Seq.elemIndexL (tkSym n) subctx
+  let maybeIndex = Seq.elemIndexL (tkSymbol n) subctx
   let indexOrError = maybe (unboundName n) return maybeIndex
   fromIndex <$> indexOrError
 
@@ -128,7 +128,7 @@ checkScopeF = case sortSing @sort of
   -- Return the argument as-is paired with its underlying symbol.
   --
   STARG -> \case
-    TArgF ann n -> do let s = tkSym n
+    TArgF ann n -> do let s = tkSymbol n
                       tell (singletonCtx STYPE s)
                       return $ TArg ann (fromSymbol s)
 
@@ -156,7 +156,7 @@ checkScopeF = case sortSing @sort of
   -- Return the argument as-is paired with its underlying symbol.
   --
   SEARG -> \case
-    EArgF ann n -> do let s = tkSym n
+    EArgF ann n -> do let s = tkSymbol n
                       tell (singletonCtx SEXPR s)
                       return $ EArg ann (fromSymbol s)
 

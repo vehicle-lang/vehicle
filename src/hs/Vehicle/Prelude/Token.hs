@@ -11,8 +11,8 @@ module Vehicle.Prelude.Token
   , IsToken
   , toToken
   , fromToken
-  , tkSym
-  , tkPos
+  , tkSymbol
+  , tkPosition
   , tkLength
   , tkRange
   , tkEq
@@ -63,22 +63,22 @@ fromToken :: IsToken a => Token -> a
 fromToken = coerce
 
 -- |Get the symbol of a token.
-tkSym :: IsToken a => a -> Text
-tkSym = sym. toToken
+tkSymbol :: IsToken a => a -> Text
+tkSymbol = sym. toToken
 
 -- |Get the starting position of a token.
-tkPos :: IsToken a => a -> Position
-tkPos = pos . toToken
+tkPosition :: IsToken a => a -> Position
+tkPosition = pos . toToken
 
 -- |Get the length of a token.
 tkLength :: IsToken a => a -> Int
-tkLength = T.length . tkSym
+tkLength = T.length . tkSymbol
 
 -- |Get the starting and ending position of a token.
 tkRange :: IsToken a => a -> [Range Position]
 tkRange tk = [start +=+ end]
   where
-    start = tkPos tk
+    start = tkPosition tk
     end   = (line start, column start + tkLength tk)
 
 -- |Compare the text portion of any two position tokens.
@@ -87,4 +87,4 @@ tkEq = (==) `on` toToken
 
 -- |Change name of a token.
 tkUpdateText :: IsToken a => Text -> a -> a
-tkUpdateText txt tk = fromToken (Token { pos = tkPos tk, sym = txt})
+tkUpdateText txt tk = fromToken (Token { pos = tkPosition tk, sym = txt})

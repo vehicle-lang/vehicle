@@ -71,9 +71,9 @@ checkBuiltinWithMap ::
   [(Symbol, BuiltinOp sort)] ->
   K builtin sort ->
   m (Builtin sort)
-checkBuiltinWithMap builtins tk = case lookup (tkSym tk) builtins of
+checkBuiltinWithMap builtins tk = case lookup (tkSymbol tk) builtins of
   Nothing -> throwError (UnknownBuiltin (toToken tk))
-  Just op -> return (Builtin (tkPos tk) op)
+  Just op -> return (Builtin (tkPosition tk) op)
 
 checkBuiltin ::
   (MonadError BuiltinError m, IsToken builtin, KnownSort sort) =>
