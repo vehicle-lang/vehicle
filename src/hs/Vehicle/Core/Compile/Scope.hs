@@ -5,10 +5,11 @@
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE LiberalTypeSynonyms #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Vehicle.Core.Compile.Scope
   ( checkScope
@@ -18,6 +19,8 @@ module Vehicle.Core.Compile.Scope
 import           Control.Monad.Except (MonadError(..), Except)
 import           Control.Monad.Reader (MonadReader(..), ReaderT)
 import           Control.Monad.Writer (MonadWriter(..))
+import           Data.Sequence (Seq, (!?))
+import qualified Data.Sequence as Seq
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as Map
 import           Data.List (elemIndex)
@@ -41,15 +44,24 @@ unboundName n = throwError $ UnboundName (toToken n)
 -- * Scope checking contexts.
 
 -- |Type of scope checking contexts.
-type Ctx = HashMap Sort [Symbol]
+-- type Ctx = HashMap Sort [Symbol]
+data Ctx = Ctx { typeSymbols :: Seq Symbol, exprSymbols :: Seq Symbol }
+
+instance Semigroup Ctx where
+  Ctx typeSymbols1 exprSymbols1 <> Ctx typeSymbols2 exprSymbols2 =
+    Ctx (typeSymbols1 <> typeSymbols2) (exprSymbols1 <> exprSymbols2)
+
+instance Monoid Ctx where
+  mempty = Ctx mempty mempty
 
 -- |Create a context with a single symbol of the given sort.
-singletonCtx :: Sort -> Symbol -> Ctx
-singletonCtx sort symbol = Map.singleton sort [symbol]
+singletonCtx :: (sort `In` ['TYPE, 'EXPR]) => SSort sort -> Symbol -> Ctx
+singletonCtx STYPE symbol = Ctx (Seq.singleton symbol) Seq.empty
+singletonCtx SEXPR symbol = Ctx Seq.empty (Seq.singleton symbol)
 
 -- |Get the sub-context for a given sort.
-getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> [Symbol]
-getSubCtxFor = Map.findWithDefault [] (sort @sort)
+getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq Symbol
+getSubCtxFor Ctx{..} = case sortSing @sort of { STYPE -> typeSymbols; SEXPR -> exprSymbols }
 
 -- |Find the index for a given name of a given sort.
 getIndex ::
@@ -57,8 +69,8 @@ getIndex ::
   K name sort -> ReaderT Ctx (Except ScopeError) (DeBruijn sort)
 
 getIndex (K n :: K name sort) = do
-  env <- getSubCtxFor @sort <$> ask
-  let maybeIndex = elemIndex (tkSym n) env
+  subctx <- getSubCtxFor @sort <$> ask
+  let maybeIndex = Seq.elemIndexL (tkSym n) subctx
   let indexOrError = maybe (unboundName n) return maybeIndex
   fromIndex <$> indexOrError
 
@@ -117,7 +129,7 @@ checkScopeF = case sortSing @sort of
   --
   STARG -> \case
     TArgF ann n -> do let s = tkSym n
-                      tell (singletonCtx TYPE s)
+                      tell (singletonCtx STYPE s)
                       return $ TArg ann (fromSymbol s)
 
   -- Expressions
@@ -145,7 +157,7 @@ checkScopeF = case sortSing @sort of
   --
   SEARG -> \case
     EArgF ann n -> do let s = tkSym n
-                      tell (singletonCtx EXPR s)
+                      tell (singletonCtx SEXPR s)
                       return $ EArg ann (fromSymbol s)
 
   -- Declarations
