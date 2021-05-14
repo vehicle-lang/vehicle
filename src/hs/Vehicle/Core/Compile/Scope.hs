@@ -63,7 +63,7 @@ lookupIndex (K n :: K name sort) = do
 
 -- * Scope checking.
 
--- |
+-- |Check if a tree is well-scoped, replacing name tokens with deBruijn indices.
 checkScope ::
   (IsToken name, KnownSort sort) =>
   Tree (K name) builtin ann sort ->
@@ -73,7 +73,7 @@ checkScope tree = DF.toReader (foldTree (DF . checkScopeF) tree) mempty
 type SCOPE builtin ann sort = DATAFLOW Ctx (Except ScopeError) (Tree DeBruijn builtin ann) sort
 type Scope builtin ann      = DataFlow Ctx (Except ScopeError) (Tree DeBruijn builtin ann)
 
--- |
+-- |Check if a single layer is well-scoped in the appropriate data-flow context.
 checkScopeF ::
   forall name builtin ann sort.
   (IsToken name, KnownSort sort) =>
