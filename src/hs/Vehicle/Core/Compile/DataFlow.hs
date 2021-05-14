@@ -76,6 +76,40 @@ asWriter = case sortSing @sort of
   STARG -> unDF
   SEARG -> unDF
 
+
+-- * High-level operations reflecting various forms of binding and data-flow
+
+-- |Pass the context from the state monad to the reader monad.
+passCtx ::
+  (Monad m, KnownSort sort, sort `In` ['TYPE, 'EXPR, 'PROG]) =>
+  DataFlow s m sorted sort -> StateT s m (sorted sort)
+passCtx df = readerToState (asReader df)
+
+-- |Bind the given name in the state monad.
+bind ::
+  (Monoid s, Monad m, KnownSort sort, sort `In` ['TARG, 'EARG]) =>
+  DataFlow s m sorted sort -> StateT s m (sorted sort)
+bind df = writerToState (asWriter df)
+
+-- |Bind the given name /locally/ in the reader monad.
+bindLocal ::
+  (Monoid s, Monad m, KnownSort sort, sort `In` ['TARG, 'EARG]) =>
+  DataFlow s m sorted sort -> (sorted sort -> ReaderT s m a) -> ReaderT s m a
+bindLocal df k = writerToReader (asWriter df) k
+
+-- |Bind a series of names /locally/ in a reader monad, then embeds the resulting value in a state monad.
+bindAllLocal ::
+  (Monoid s, Monad m, KnownSort sort, sort `In` ['TARG, 'EARG]) =>
+  [DataFlow s m sorted sort] ->
+  ([sorted sort] -> ReaderT s m a) -> StateT s m a
+bindAllLocal = (readerToState .) . bindAllLocal'
+  where
+    bindAllLocal' []       k = k []
+    bindAllLocal' (df:dfs) k = bindLocal df (\n -> bindAllLocal' dfs (\ns -> k (n:ns)))
+
+
+-- * Low-level conversions between various data-flow models
+
 -- |Convert a reader monad to a state monad.
 readerToState :: Monad m => ReaderT s m a -> StateT s m a
 readerToState m = do x <- get; lift (runReaderT m x)

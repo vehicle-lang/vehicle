@@ -16,7 +16,6 @@ module Vehicle.Core.Compile.Scope
 
 import           Control.Monad.Except (MonadError(..), Except)
 import           Control.Monad.Reader (MonadReader(..), ReaderT)
-import           Control.Monad.State (StateT)
 import           Control.Monad.Writer (MonadWriter(..))
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as Map
@@ -164,41 +163,6 @@ checkScopeF = case sortSing @sort of
   -- Programs
   SPROG -> \case
     MainF ann ds -> stateToReader $ Main ann <$> traverse unDF ds
-
--- |Pass the context from the state monad to the reader monad.
-passCtx ::
-  (KnownSort sort, sort `In` ['TYPE, 'EXPR, 'PROG]) =>
-  Scope builtin ann sort ->
-  StateT Ctx (Except ScopeError) (Tree DeBruijn builtin ann sort)
-passCtx df = readerToState (asReader df)
-
--- |Bind the given name in the state monad.
-bind ::
-  (KnownSort sort, sort `In` ['TARG, 'EARG]) =>
-  Scope builtin ann sort ->
-  StateT Ctx (Except ScopeError) (Tree DeBruijn builtin ann sort)
-bind df = writerToState (asWriter df)
-
--- |Bind the given name /locally/ in the reader monad.
-bindLocal ::
-  (KnownSort sort, sort `In` ['TARG, 'EARG]) =>
-  Scope builtin ann sort ->
-  (Tree DeBruijn builtin ann sort -> ReaderT Ctx (Except ScopeError) a) -> ReaderT Ctx (Except ScopeError) a
-bindLocal df k = writerToReader (asWriter df) k
-
--- |Bind a series of names /locally/ in a reader monad, then embeds the resulting value in a state monad.
-bindAllLocal ::
-  (KnownSort sort, sort `In` ['TARG, 'EARG]) =>
-  [Scope builtin ann sort] ->
-  ([Tree DeBruijn builtin ann sort] -> ReaderT Ctx (Except ScopeError) a) -> StateT Ctx (Except ScopeError) a
-bindAllLocal = (readerToState .) . bindAllLocal'
-  where
-    bindAllLocal' ::
-      (KnownSort sort, sort `In` ['TARG, 'EARG]) =>
-      [Scope builtin ann sort] ->
-      ([Tree DeBruijn builtin ann sort] -> ReaderT Ctx (Except ScopeError) a) -> ReaderT Ctx (Except ScopeError) a
-    bindAllLocal' []       k = k []
-    bindAllLocal' (df:dfs) k = bindLocal df (\n -> bindAllLocal' dfs (\ns -> k (n:ns)))
 
 -- -}
 -- -}
