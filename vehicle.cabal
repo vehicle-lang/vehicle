@@ -41,6 +41,7 @@ library
                     , Vehicle.Core.Compile.Builtin
                     , Vehicle.Core.Compile.Provenance
                     , Vehicle.Core.Compile.Scope
+                    , Vehicle.Core.Compile.Type
                     , Vehicle.Core.Normalise
                     , Vehicle.Core.Normalise.Core
                     , Vehicle.Core.Normalise.Quantifier

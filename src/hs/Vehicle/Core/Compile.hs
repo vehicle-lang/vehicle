@@ -20,9 +20,9 @@ data CompileError
 compile ::
   (IsToken name, IsToken builtin, KnownSort sort) =>
   Tree (K name) (K builtin) ann sort ->
-  Except CompileError (Tree DeBruijn Builtin (K Provenance :*: ann) sort)
+  Except CompileError (ATree (K Provenance) sort)
 compile tree0 = do
-  let tree1 = saveProvenance tree0
+  let tree1 = mapTreeAnn sortedFst (saveProvenance tree0)
   tree2 <- withExcept BuiltinError (checkBuiltins tree1)
   tree3 <- withExcept ScopeError (checkScope tree2)
   return tree3
