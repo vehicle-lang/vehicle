@@ -1,26 +1,79 @@
+{-# LANGUAGE AllowAmbiguousTypes  #-}
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE KindSignatures       #-}
 {-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE LiberalTypeSynonyms  #-}
 {-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE RecordWildCards      #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Vehicle.Core.Compile.Type where
 
 import           Control.Arrow
-import           Control.Monad.Except (ExceptT, MonadError(..))
-import           Control.Monad.Identity (IdentityT)
+import           Control.Monad.Except (Except, MonadError(..))
 import           Control.Monad.Reader (Reader, ReaderT, MonadReader(..))
 import           Control.Monad.State (State, StateT , MonadState(..))
 import           Control.Monad.Writer (Writer, WriterT, MonadWriter(..))
+import           Data.Sequence (Seq, (!?))
 import           Vehicle.Core.AST
 import           Vehicle.Core.Compile.Provenance (Provenance)
 import           Vehicle.Prelude
+
+
+-- * Errors thrown during type checking
+
+data TypeError
+  = IndexOutOfBounds Provenance Index
+
+indexOutOfBounds ::
+  (MonadError TypeError m, KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
+  K Provenance sort -> DeBruijn sort -> m a
+indexOutOfBounds (K p) db =
+  throwError $ IndexOutOfBounds p (toIndex db)
+
+-- * Type information
+
+-- |Type information, based on sort.
+newtype TypeInfo (sort :: Sort)
+  = TI { unTI :: TYPEINFO sort }
+
+-- |Computes type information based on sort; kinds for types, types for expressions.
+type family TYPEINFO (sort :: Sort) where
+  TYPEINFO 'KIND = ()
+  TYPEINFO 'TYPE = AKind (TypeInfo :*: K Provenance)
+  TYPEINFO 'TARG = AKind (TypeInfo :*: K Provenance)
+  TYPEINFO 'EXPR = AType (TypeInfo :*: K Provenance)
+  TYPEINFO 'EARG = AType (TypeInfo :*: K Provenance)
+  TYPEINFO 'DECL = ()
+  TYPEINFO 'PROG = ()
+
+
+-- |Type context.
+data Ctx = Ctx { typeEnv :: Seq (TYPEINFO 'TYPE), exprEnv :: Seq (TYPEINFO 'EXPR) }
+
+instance Semigroup Ctx where
+  Ctx typeEnv1 exprEnv1 <> Ctx typeEnv2 exprEnv2 = Ctx (typeEnv1 <> typeEnv2) (exprEnv1 <> exprEnv2)
+
+instance Monoid Ctx where
+  mempty = Ctx mempty mempty
+
+lookupEnv :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq (TYPEINFO sort)
+lookupEnv Ctx{..} = case sortSing @sort of { STYPE -> typeEnv; SEXPR -> exprEnv }
+
+lookupTypeInfo ::
+  forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
+  K Provenance sort ->
+  DeBruijn sort ->
+  ReaderT Ctx (Except TypeError) (TYPEINFO sort)
+lookupTypeInfo p db = do
+  let idx = toIndex db
+  env <- lookupEnv @sort <$> ask
+  maybe (indexOutOfBounds p db) return (env !? idx)
 
 {-
 data TypeError

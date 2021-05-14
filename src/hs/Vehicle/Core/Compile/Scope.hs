@@ -1,13 +1,14 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE LiberalTypeSynonyms   #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds     #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE LiberalTypeSynonyms #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Vehicle.Core.Compile.Scope
   ( checkScope
@@ -46,15 +47,18 @@ type Ctx = HashMap Sort [Symbol]
 singletonCtx :: Sort -> Symbol -> Ctx
 singletonCtx sort symbol = Map.singleton sort [symbol]
 
+-- |Find the environment for a given name.
+lookupEnv :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> [Symbol]
+lookupEnv = Map.findWithDefault [] (sort @sort)
+
 -- |Find the index for a given name.
 lookupIndex ::
   (IsToken name, KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
   K name sort -> ReaderT Ctx (Except ScopeError) (DeBruijn sort)
 
 lookupIndex (K n :: K name sort) = do
-  ctx <- ask
-  let symbols = Map.findWithDefault [] (sort @sort) ctx
-  let maybeIndex = elemIndex (tkSym n) symbols
+  env <- lookupEnv @sort <$> ask
+  let maybeIndex = elemIndex (tkSym n) env
   let indexOrError = maybe (unboundName n) return maybeIndex
   fromIndex <$> indexOrError
 
