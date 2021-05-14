@@ -8,11 +8,13 @@ module Vehicle.Core.Compile.DataFlow where
 
 import Control.Monad.Reader (MonadReader(..), ReaderT, runReaderT, local)
 import Control.Monad.State (MonadState(..), StateT, runStateT, evalStateT, modify)
-import Control.Monad.Writer (MonadWriter(..), WriterT, runWriterT)
+import Control.Monad.Writer (WriterT, runWriterT)
 import Control.Monad.Trans (MonadTrans(..))
 import Vehicle.Core.AST
 
 -- |Encapsulates the data-flow for most passes along the syntax tree.
+--
+--
 type family DATAFLOW (s :: *) (m :: * -> *) (sorted :: Sort -> *) (sort :: Sort) where
   DATAFLOW s m sorted 'KIND =           m (sorted 'KIND) -- no information
   DATAFLOW s m sorted 'TYPE = ReaderT s m (sorted 'TYPE) -- read-only

@@ -9,7 +9,10 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 
-module Vehicle.Core.Compile.Scope where
+module Vehicle.Core.Compile.Scope
+  ( checkScope
+  , ScopeError(..)
+  ) where
 
 import           Control.Monad.Except (MonadError(..), Except, runExcept, liftEither)
 import           Control.Monad.Error.Class (throwError)
@@ -22,19 +25,23 @@ import qualified Data.HashMap.Strict as Map
 import           Data.List (elemIndex)
 import           Data.Maybe (fromMaybe)
 import           Vehicle.Core.AST
-import           Vehicle.Core.Compile.DataFlow
+import           Vehicle.Core.Compile.DataFlow as DF
 import           Vehicle.Prelude
 
-type SCOPE builtin ann sort = DATAFLOW Ctx (Except ScopeError) (Tree DeBruijn builtin ann) sort
-type Scope builtin ann      = DataFlow Ctx (Except ScopeError) (Tree DeBruijn builtin ann)
-
+-- |Type of errors thrown by scope checking.
+newtype ScopeError
+  = UnboundName Token
+  deriving (Show)
 
 -- |
 checkScope ::
   (IsToken name, KnownSort sort) =>
   Tree (K name) builtin ann sort ->
   Except ScopeError (Tree DeBruijn builtin ann sort)
-checkScope tree = toReader (foldTree (DF . checkScopeF) tree) emptyCtx
+checkScope tree = DF.toReader (foldTree (DF . checkScopeF) tree) mempty
+
+type SCOPE builtin ann sort = DATAFLOW Ctx (Except ScopeError) (Tree DeBruijn builtin ann) sort
+type Scope builtin ann      = DataFlow Ctx (Except ScopeError) (Tree DeBruijn builtin ann)
 
 -- |
 checkScopeF ::
@@ -65,7 +72,7 @@ checkScopeF = case sortSing @sort of
   STYPE -> \case
     TForallF  ann n t   -> writerToReader (unDF n) $ \n' -> TForall ann n' <$> unDF t
     TAppF     ann t1 t2 -> TApp ann <$> unDF t1 <*> unDF t2
-    TVarF     ann n     -> TVar ann <$> getIndex n
+    TVarF     ann n     -> TVar ann <$> lookupIndex n
     TConF     ann op    -> return $ TCon ann op
     TLitDimF  ann d     -> return $ TLitDim ann d
     TLitListF ann ts    -> TLitList ann <$> traverse unDF ts
@@ -91,7 +98,7 @@ checkScopeF = case sortSing @sort of
     ELetF     ann n e1 e2 -> writerToReader (unDF n) $ \n' -> ELet ann n' <$> unDF e1 <*> unDF e2
     ELamF     ann n e     -> writerToReader (unDF n) $ \n' -> ELam ann n' <$> unDF e
     EAppF     ann e1 e2   -> EApp ann <$> unDF e1 <*> unDF e2
-    EVarF     ann n       -> EVar ann <$> getIndex n
+    EVarF     ann n       -> EVar ann <$> lookupIndex n
     ETyAppF   ann e t     -> ETyApp ann <$> unDF e <*> unDF t
     ETyLamF   ann n e     -> writerToReader (unDF n) $ \n' -> ETyLam ann n' <$> unDF e
     EConF     ann op      -> return $ ECon ann op
@@ -116,15 +123,15 @@ checkScopeF = case sortSing @sort of
     DeclDataF ann n t    -> do n' <- writerToState (unDF n)
                                t' <- readerToState (unDF t)
                                return $ DeclData ann n' t'
-    DefTypeF  ann n ns t -> do _
+    DefTypeF  ann n ns t -> do n' <- writerToState (unDF n)
+                               _
                                -- n' <- writerToState (unDF n)
                                -- readerToState . bindAllLocal ns $ \ns' ->
                                --   DefType ann n' ns' <$> unDF t
-    DefFunF   ann n t e  -> do _
-                               -- n' <- writerToState (unDF n)
-                               -- t' <- readerToState (unDF t)
-                               -- e' <- readerToState (unDF e)
-                               -- return $ DefFun ann <$> n' <*> t' <*> e'
+    DefFunF   ann n t e  -> do t' <- readerToState (unDF t)
+                               n' <- writerToState (unDF n)
+                               e' <- readerToState (unDF e)
+                               return $ DefFun ann n' t' e'
 
   -- Programs
   SPROG -> \case
@@ -136,51 +143,23 @@ checkScopeF = case sortSing @sort of
 -- |Type of scope checking contexts.
 type Ctx = HashMap Sort [Symbol]
 
--- |The empty scope checking context.
-emptyCtx :: Ctx
-emptyCtx = Map.empty
-
 singletonCtx :: Sort -> Symbol -> Ctx
-singletonCtx sort s = sort `extWith` s $ emptyCtx
-
--- |Extend a context for the given sort with the given symbol.
-extWith :: Sort -> Symbol -> Ctx -> Ctx
-extWith sort s = Map.alter (\mss -> Just (s:fromMaybe [] mss)) sort
+singletonCtx sort symbol = Map.singleton sort [symbol]
 
 -- |Get the index
-getIndex ::
+lookupIndex ::
   (MonadError ScopeError m, MonadReader Ctx m, IsToken name, KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
   K name sort -> m (DeBruijn sort)
 
-getIndex (K n :: K name sort) = do
-  ss <- Map.findWithDefault [] (sort @sort) <$> ask
-  fromIndex <$> maybe (unboundName n) return (elemIndex (tkSym n) ss)
-
-
--- * Scope errors
-
--- |Type of errors thrown by scope checking.
-data ScopeError
-  = UnboundName Token
-  | UnexpectedName Sort Token
-  deriving (Show)
+lookupIndex (K n :: K name sort) = do
+  symbols <- Map.findWithDefault [] (sort @sort) <$> ask
+  let maybeIndex = elemIndex (tkSym n) symbols
+  let indexOrError = maybe (unboundName n) return maybeIndex
+  fromIndex <$> indexOrError
 
 -- |Throw an |UnboundName| error.
-unboundName ::
-  (MonadError ScopeError m, IsToken name) => name -> m a
-unboundName n =
-  throwError $ UnboundName (toToken n)
-
--- |Throw an |UnexpectedName| error.
---
--- NOTE: No |UnexpectedName| error should ever be thrown. No names are used in,
---       e.g., kinds, but the parser does not guarantee this constraint.
---
-unexpectedName ::
-  (MonadError ScopeError m, IsToken name, KnownSort sort) =>
-  K name sort -> m (DeBruijn sort)
-unexpectedName (K n :: K name sort) =
-  throwError $ UnexpectedName (sort @sort) (toToken n)
+unboundName :: (MonadError ScopeError m, IsToken name) => name -> m a
+unboundName n = throwError $ UnboundName (toToken n)
 
 -- -}
 -- -}
