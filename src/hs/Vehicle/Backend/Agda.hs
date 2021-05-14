@@ -29,6 +29,14 @@ import           Vehicle.Prelude (K(..), Symbol)
 --   - [ ] Rewrite the compilation to Agda to use a pretty printing library,
 --         instead of manipulating text.
 
+-- data Agda
+--   = S Symbol
+--   | L [Agda]
+--   | H
+--
+-- ap :: Agda -> Agda -> Agda
+-- ap f x = L [f, x]
+
 data Dependency
   = AISEC -- ^ The AISEC Agda library
   | Data_Unit

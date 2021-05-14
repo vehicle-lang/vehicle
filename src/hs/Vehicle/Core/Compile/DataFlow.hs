@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeOperators       #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -11,10 +12,9 @@ import Control.Monad.State (MonadState(..), StateT, runStateT, evalStateT, modif
 import Control.Monad.Writer (WriterT, runWriterT)
 import Control.Monad.Trans (MonadTrans(..))
 import Vehicle.Core.AST
+import Vehicle.Prelude (In)
 
 -- |Encapsulates the data-flow for most passes along the syntax tree.
---
---
 type family DATAFLOW (s :: *) (m :: * -> *) (sorted :: Sort -> *) (sort :: Sort) where
   DATAFLOW s m sorted 'KIND =           m (sorted 'KIND) -- no information
   DATAFLOW s m sorted 'TYPE = ReaderT s m (sorted 'TYPE) -- read-only
@@ -56,6 +56,25 @@ toReader (m :: DataFlow s m sorted sort) s = case sortSing @sort of
   SEARG -> fst <$> runDF m
   SDECL -> fst <$> runDF m s
   SPROG ->         runDF m s
+
+-- |Assert that a particular sort gives rise to reader data flow.
+asReader ::
+  forall sort s m sorted.
+  (KnownSort sort, sort `In` ['TYPE, 'EXPR, 'PROG], Monad m) =>
+  DataFlow s m sorted sort -> ReaderT s m (sorted sort)
+asReader = case sortSing @sort of
+  STYPE -> unDF
+  SEXPR -> unDF
+  SPROG -> unDF
+
+-- |Assert that a particular sort gives rise to writer data flow.
+asWriter ::
+  forall sort s m sorted.
+  (KnownSort sort, sort `In` ['TARG, 'EARG], Monad m) =>
+  DataFlow s m sorted sort -> WriterT s m (sorted sort)
+asWriter = case sortSing @sort of
+  STARG -> unDF
+  SEARG -> unDF
 
 -- |Convert a reader monad to a state monad.
 readerToState :: Monad m => ReaderT s m a -> StateT s m a
