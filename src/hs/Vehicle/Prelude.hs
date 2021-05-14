@@ -23,7 +23,7 @@ infix 1 |->
 (|->) = (,)
 
 -- | Indexed product.
-data (:*:) (f :: k -> *) (g :: k -> *) (x :: k) = (:*:) { sortedFst :: f x, sortedSnd :: g x }
+data (:*:) (f :: k -> *) (g :: k -> *) (x :: k) = (:*:) { ifst :: f x, isnd :: g x }
   deriving (Eq, Ord, Show)
 
 -- |

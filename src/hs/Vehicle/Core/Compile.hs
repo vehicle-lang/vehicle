@@ -22,7 +22,7 @@ compile ::
   Tree (K name) (K builtin) ann sort ->
   Except CompileError (ATree (K Provenance) sort)
 compile tree0 = do
-  let tree1 = mapTreeAnn sortedFst (saveProvenance tree0)
+  let tree1 = mapTreeAnn ifst (saveProvenance tree0)
   tree2 <- withExcept BuiltinError (checkBuiltins tree1)
   tree3 <- withExcept ScopeError (checkScope tree2)
   return tree3
