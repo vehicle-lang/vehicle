@@ -54,20 +54,17 @@ unsupportedOperation p = Chk uoDF :*: Inf uoDF
     uoDF = liftDF . throwError . UnsupportedOperation . unK $ p
 
 
--- * Type information
-
-
 -- * Type contexts
 
 -- |Type context.
 data Ctx = Ctx { typeInfo :: Seq (Info 'TYPE), exprInfo :: Seq (Info 'EXPR) }
 
 instance Semigroup Ctx where
-  Ctx typeInfo1 exprInfo1 <> Ctx typeInfo2 exprInfo2 =
-    Ctx (typeInfo1 <> typeInfo2) (exprInfo1 <> exprInfo2)
+  Ctx ti1 ei1 <> Ctx ti2 ei2 = Ctx (ti1 <> ti2) (ei1 <> ei2)
 
 instance Monoid Ctx where
   mempty = Ctx mempty mempty
+
 
 -- |Get the sub-context for a given sort.
 getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq (Info sort)
@@ -86,7 +83,8 @@ getInfo p db = do
     (throwError $ IndexOutOfBounds (unK p) (toIndex db))
     return (subctx !? idx)
 
--- *
+
+-- * Bidirectional type checking and inference algorithm
 
 -- |Type of a checking algorithm.
 --
@@ -116,8 +114,9 @@ type CHECK (sort :: Sort)
 -- information to check against via a reader monad, it /provides/ said information via a writer monad.
 --
 -- NOTE: An inference pass returns a /list/ of types, because |MonadWriter| requires a |Monoid|
---       constraint on the written data. We interpret the empty list as a failed inference, and
---       any non-singleton list as an ambiguous type.
+--       constraint on the written data. Rather than create a constraint which throws hard errors
+--       when either |mempty| or |mappend| is used, we chose to use a list of types. We interpret
+--       the empty list as a failed inference, and any non-singleton list as an ambiguous inference.
 --
 newtype Infer (sort :: Sort)
   = Inf { unInf ::
@@ -162,7 +161,7 @@ checkInferF = case sortSing @sort of
   SKIND -> \case
     KAppF  p k1 k2 -> withInfer p $ KApp (noInfo :*: p) <$> runInfer k1 <*> runInfer k2
     KConF  p op    -> withInfer p $ return $ KCon (noInfo :*: p) op
-    KMetaF p i     -> unsupportedOperation p
+    KMetaF p _i    -> unsupportedOperation p
 
   -- Types
   STYPE -> \case
