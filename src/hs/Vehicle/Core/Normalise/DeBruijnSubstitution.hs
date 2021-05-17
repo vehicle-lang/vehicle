@@ -30,7 +30,7 @@ instance DeBruijnLifting (Type DeBruijn builtin ann) where
   lift _ expr@(TMeta _ _) = expr
 
   lift d (TApp ann fn arg) = TApp ann (lift d fn) (lift d arg)
-  lift d (TLitList ann typs) = TLitList ann (map (lift d) typs)
+  lift d (TLitDimList ann typs) = TLitDimList ann (map (lift d) typs)
 
   lift d (TForall ann arg body) = TForall ann arg
     -- Increase the depth as we move across a binding site
@@ -84,7 +84,7 @@ instance DeBruijnSubstitution (Type DeBruijn builtin ann) where
   subst _ _ expr@(TMeta _ _) = expr
 
   subst d sub (TApp ann fn arg) = TApp ann (subst d sub fn) (subst d sub arg)
-  subst d sub (TLitList ann typs) = TLitList ann (map (subst d sub) typs)
+  subst d sub (TLitDimList ann typs) = TLitDimList ann (map (subst d sub) typs)
 
   subst d sub (TForall ann arg body) =
     -- Increase the depth as we move across a binding site

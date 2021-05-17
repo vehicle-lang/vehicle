@@ -9,24 +9,8 @@
 module Vehicle.Core.Compile.Provenance where
 
 import           Control.Monad.Writer
-import           Data.Range (Range(..))
-import qualified Data.Range as Range
 import           Vehicle.Core.AST
 import           Vehicle.Prelude
-
-
-newtype Provenance = Provenance { fromProvenance :: [Range Position] }
-  deriving (Eq, Show)
-
-instance Semigroup Provenance where
-  r1 <> r2 = Provenance $ fromProvenance r1 `Range.union` fromProvenance r2
-
-instance Monoid Provenance where
-  mempty = Provenance []
-
--- |Get the provenance for a single token.
-tkProvenance :: IsToken a => a -> Provenance
-tkProvenance = Provenance . tkRange
 
 
 -- |Get the provenance for a single layer.

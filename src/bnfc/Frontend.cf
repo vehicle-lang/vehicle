@@ -90,8 +90,8 @@ TAdd.     Type2 ::= Type2 TokAdd Type3;
 TLitDim.  Type4 ::= Integer; -- confusingly, this means natural
 
 -- Type-level lists.
-TCons.    Type1 ::= Type2 TokCons Type1;
-TLitList. Type4 ::= TokSeqOpen [Type] TokSeqClose;
+TCons.       Type1 ::= Type2 TokCons Type1;
+TLitDimList. Type4 ::= TokSeqOpen [Type] TokSeqClose;
 
 coercions Type 4;
 

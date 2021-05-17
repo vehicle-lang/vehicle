@@ -18,7 +18,7 @@ module Vehicle.Core.Abs
   , pattern TVar
   , pattern TCon
   , pattern TLitDim
-  , pattern TLitList
+  , pattern TLitDimList
   , pattern TMeta
   , Expr
   , pattern EAnn
@@ -73,13 +73,13 @@ pattern KMeta i    = Core.KMeta (K ()) i
 
 type Type = Core.Type (K Name) (K Builtin) (K ())
 
-pattern TForall n t = Core.TForall (K ()) n t
-pattern TApp t1 t2  = Core.TApp (K ()) t1 t2
-pattern TVar n      = Core.TVar (K ()) n
-pattern TCon c      = Core.TCon (K ()) c
-pattern TLitDim d   = Core.TLitDim (K ()) d
-pattern TLitList ts = Core.TLitList (K ()) ts
-pattern TMeta i     = Core.TMeta (K ()) i
+pattern TForall n t    = Core.TForall (K ()) n t
+pattern TApp t1 t2     = Core.TApp (K ()) t1 t2
+pattern TVar n         = Core.TVar (K ()) n
+pattern TCon c         = Core.TCon (K ()) c
+pattern TLitDim d      = Core.TLitDim (K ()) d
+pattern TLitDimList ts = Core.TLitDimList (K ()) ts
+pattern TMeta i        = Core.TMeta (K ()) i
 
 type Expr = Core.Expr (K Name) (K Builtin) (K ())
 

@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE LambdaCase                #-}
 {-# LANGUAGE LiberalTypeSynonyms       #-}
 {-# LANGUAGE RankNTypes                #-}
@@ -21,7 +22,6 @@ import           Control.Monad.Writer (WriterT, runWriterT)
 import           Data.Sequence (Seq, (!?))
 import           Vehicle.Core.AST
 import           Vehicle.Core.Compile.DataFlow
-import           Vehicle.Core.Compile.Provenance (Provenance)
 import           Vehicle.Prelude
 
 -- TODO:
@@ -56,29 +56,6 @@ unsupportedOperation p = Chk uoDF :*: Inf uoDF
 
 -- * Type information
 
--- |Type information, based on sort.
-newtype Info (sort :: Sort) = I { unI :: INFO sort }
-
--- |Computes type information based on sort; kinds for types, types for expressions.
-type family INFO (sort :: Sort) where
-  INFO 'KIND = ()
-  INFO 'TYPE = AKind (Info :*: K Provenance)
-  INFO 'TARG = AKind (Info :*: K Provenance)
-  INFO 'EXPR = AType (Info :*: K Provenance)
-  INFO 'EARG = AType (Info :*: K Provenance)
-  INFO 'DECL = ()
-  INFO 'PROG = ()
-
-instance KnownSort sort => Eq (Info sort) where
-  I info1 == I info2 = case sortSing @sort of
-    SKIND -> info1 == info2
-    STYPE -> info1 == info2
-    STARG -> info1 == info2
-    SEXPR -> info1 == info2
-    SEARG -> info1 == info2
-    SDECL -> info1 == info2
-    SPROG -> info1 == info2
-
 
 -- * Type contexts
 
@@ -108,9 +85,6 @@ getInfo p db = do
   maybe
     (throwError $ IndexOutOfBounds (unK p) (toIndex db))
     return (subctx !? idx)
-
-noInfo :: forall sort. (KnownSort sort, sort `In` ['KIND, 'DECL, 'PROG]) => Info sort
-noInfo = case sortSing @sort of { SKIND -> I (); SDECL -> I (); SPROG -> I () }
 
 -- *
 
@@ -159,6 +133,16 @@ type INFER (sort :: Sort)
     (Tree DeBruijn Builtin (Info :*: K Provenance))
     sort
 
+
+
+-- Roughly:
+--
+-- - Introduction forms are checked
+-- - Elimination forms and variables are inferred
+-- - if_then_else can be checkable
+-- - variable with polymorphic type
+-- - union-find algorithm for unification and substitution
+
 checkInferF ::
   forall sort.
   (KnownSort sort) =>
@@ -182,13 +166,13 @@ checkInferF = case sortSing @sort of
 
   -- Types
   STYPE -> \case
-    TForallF  p n t   -> withInfer p $ undefined
-    TAppF     p t1 t2 -> withInfer p $ undefined
-    TVarF     p n     -> withInfer p $ undefined
-    TConF     p op    -> withInfer p $ undefined
-    TLitDimF  p d     -> withInfer p $ undefined
-    TLitListF p ts    -> withInfer p $ undefined
-    TMetaF    p i     -> unsupportedOperation p
+    TForallF     p n t   -> withInfer p $ undefined
+    TAppF        p t1 t2 -> withInfer p $ undefined
+    TVarF        p n     -> withInfer p $ undefined
+    TConF        p op    -> withInfer p $ return $ TCon (kindOf op :*: p) op
+    TLitDimF     p d     -> withInfer p $ return $ TLitDim (kDim :*: p) d
+    TLitDimListF p ts    -> withInfer p $ undefined
+    TMetaF       p i     -> unsupportedOperation p
 
   -- Type argument
   STARG -> \case
@@ -224,6 +208,72 @@ checkInferF = case sortSing @sort of
     MainF p ds -> undefined
 
 
+
+-- |Return the kind for builtin types.
+kindOf :: Builtin 'TYPE -> Info 'TYPE
+kindOf = \case
+  TFun    -> kType ~> kType ~> kType
+  TBool   -> kType
+  TProp   -> kType
+  TInt    -> kType
+  TReal   -> kType
+  TList   -> kType ~> kType
+  TTensor -> kDim ~> kType ~> kType
+  TAdd    -> kDim ~> kDim ~> kDim
+  TCons   -> kDim ~> kDimList ~> kDimList
+  where
+
+
+-- * A tiny DSL for writing kinds and types as |Info| expressions
+
+infixl 3 `kApp`
+
+kApp :: Info 'TYPE -> Info 'TYPE -> Info 'TYPE
+kApp = liftInfo2 $ KApp mempty
+
+infixr 4 ~>
+
+(~>) :: Info 'TYPE -> Info 'TYPE -> Info 'TYPE
+k1 ~> k2 = kFun `kApp` k1 `kApp` k2
+
+kFun     = Info $ KCon mempty KFun     :: Info 'TYPE
+kType    = Info $ KCon mempty KType    :: Info 'TYPE
+kDim     = Info $ KCon mempty KDim     :: Info 'TYPE
+kDimList = Info $ KCon mempty KDimList :: Info 'TYPE
+
+
+-- * Combinators for writing bidirectional typing algorithms
+
+-- |Runs the checking portion of a check-and-infer algorithm.
+runCheck :: (Check :*: Infer) sort -> CHECK sort
+runCheck = unDF . unChk . ifst
+
+-- |Runs the inference portion of a check-and-infer algorithm.
+runInfer :: (Check :*: Infer) sort -> INFER sort
+runInfer = unDF . unInf . isnd
+
+-- |Creates a combined check-and-infer pass from a checking pass.
+withCheck ::
+  forall sort.
+  (KnownSort sort) =>
+  K Provenance sort ->
+  CHECK sort -> (Check :*: Infer) sort
+withCheck p chk = Chk (DF chk) :*: inf
+  where
+    inf :: Infer sort
+    inf = Inf . liftDF . throwError $ MissingAnnotation (unK p)
+
+-- |Creates a combined check-and-infer pass from an inference pass, via |inferToCheck|.
+withInfer ::
+  forall sort.
+  (Eq (INFO sort), KnownSort sort) =>
+  K Provenance sort ->
+  INFER sort -> (Check :*: Infer) sort
+withInfer p inf = chk :*: Inf (DF inf)
+  where
+    chk :: Check sort
+    chk = Chk $ mapDF (inferToCheck p) (DF inf)
+
 -- |Converts an inference pass to a checking pass by comparing the inferred
 --  information against the checked information.
 inferToCheck ::
@@ -238,53 +288,6 @@ inferToCheck p inf = do
   if expected `elem` inferred
     then return x
     else throwError $ Mismatch @sort (unK p) inferred expected
-
-runCheck :: (Check :*: Infer) sort -> CHECK sort
-runCheck = unDF . unChk . ifst
-
-runInfer :: (Check :*: Infer) sort -> INFER sort
-runInfer = unDF . unInf . isnd
-
--- |Creates a combined check-and-infer pass from an inference pass, via |inferToCheck|.
-withInfer ::
-  forall sort.
-  (Eq (INFO sort), KnownSort sort) =>
-  K Provenance sort ->
-  INFER sort -> (Check :*: Infer) sort
-withInfer p inf = chk :*: Inf (DF inf)
-  where
-    chk :: Check sort
-    chk = Chk $ mapDF (inferToCheck p) (DF inf)
-
--- |Creates a combined check-and-infer pass from a checking pass.
-withCheck ::
-  forall sort.
-  (KnownSort sort) =>
-  K Provenance sort ->
-  CHECK sort -> (Check :*: Infer) sort
-withCheck p chk = Chk (DF chk) :*: inf
-  where
-    inf :: Infer sort
-    inf = Inf . liftDF . throwError $ MissingAnnotation (unK p)
-
--- Roughly:
---
--- - Introduction forms are checked
--- - Elimination forms and variables are inferred
--- - if_then_else can be checkable
--- - variable with polymorphic type
--- - union-find algorithm for unification and substitution
-
--- * Helper functions
-
--- return2 :: (Monad m1, Monad m2) => a -> (m1 a, m2 a)
--- return2 x = (return x, return x)
-
--- (<$$>) :: (Functor f1, Functor f2) => (a -> b) -> (f1 a, f2 a) -> (f1 b, f2 b)
--- (<$$>) f (x, y) = (f <$> x, f <$> y)
-
--- (<**>) :: (Applicative f1, Applicative f2) => (f1 (a -> c), f2 (b -> d)) -> (f1 a, f2 b) -> (f1 c, f2 d)
--- (<**>) (f, g) (a, b) = (f <*> a, g <*> b)
 
 -- -}
 -- -}

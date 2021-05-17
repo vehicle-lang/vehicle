@@ -24,7 +24,7 @@ builtinKinds =
   [ "->"   |-> KFun
   , "Type" |-> KType
   , "Dim"  |-> KDim
-  , "List" |-> KList
+  , "List" |-> KDimList
   ]
 
 builtinTypes :: [(Symbol, Builtin 'TYPE)]

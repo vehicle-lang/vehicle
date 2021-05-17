@@ -30,13 +30,13 @@ data instance TreeF name builtin ann 'KIND tree
 type TypeF name builtin ann tree = TreeF name builtin ann 'TYPE tree
 
 data instance TreeF name builtin ann 'TYPE tree
-  = TForallF  (ann 'TYPE) (tree 'TARG) (tree 'TYPE)
-  | TAppF     (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
-  | TVarF     (ann 'TYPE) (name 'TYPE)
-  | TConF     (ann 'TYPE) (builtin 'TYPE)
-  | TLitDimF  (ann 'TYPE) Integer
-  | TLitListF (ann 'TYPE) [tree 'TYPE]
-  | TMetaF    (ann 'TYPE) Integer
+  = TForallF     (ann 'TYPE) (tree 'TARG) (tree 'TYPE)
+  | TAppF        (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
+  | TVarF        (ann 'TYPE) (name 'TYPE)
+  | TConF        (ann 'TYPE) (builtin 'TYPE)
+  | TLitDimF     (ann 'TYPE) Integer
+  | TLitDimListF (ann 'TYPE) [tree 'TYPE]
+  | TMetaF       (ann 'TYPE) Integer
 
 
 -- * Base functor for expressions
@@ -108,13 +108,13 @@ project = case sortSing :: SSort sort of
 
   -- Types
   STYPE -> \case
-    TForall  ann n t   -> TForallF  ann n t
-    TApp     ann t1 t2 -> TAppF     ann t1 t2
-    TVar     ann n     -> TVarF     ann n
-    TCon     ann op    -> TConF     ann op
-    TLitDim  ann d     -> TLitDimF  ann d
-    TLitList ann ts    -> TLitListF ann ts
-    TMeta    ann i     -> TMetaF    ann i
+    TForall     ann n t   -> TForallF     ann n t
+    TApp        ann t1 t2 -> TAppF        ann t1 t2
+    TVar        ann n     -> TVarF        ann n
+    TCon        ann op    -> TConF        ann op
+    TLitDim     ann d     -> TLitDimF     ann d
+    TLitDimList ann ts    -> TLitDimListF ann ts
+    TMeta       ann i     -> TMetaF       ann i
 
   -- Type arguments
   STARG -> \case
@@ -166,13 +166,13 @@ embed = case sortSing :: SSort sort of
 
   -- Types
   STYPE -> \case
-    TForallF  ann n t   -> TForall  ann n t
-    TAppF     ann t1 t2 -> TApp     ann t1 t2
-    TVarF     ann n     -> TVar     ann n
-    TConF     ann op    -> TCon     ann op
-    TLitDimF  ann d     -> TLitDim  ann d
-    TLitListF ann ts    -> TLitList ann ts
-    TMetaF    ann i     -> TMeta    ann i
+    TForallF     ann n t   -> TForall     ann n t
+    TAppF        ann t1 t2 -> TApp        ann t1 t2
+    TVarF        ann n     -> TVar        ann n
+    TConF        ann op    -> TCon        ann op
+    TLitDimF     ann d     -> TLitDim     ann d
+    TLitDimListF ann ts    -> TLitDimList ann ts
+    TMetaF       ann i     -> TMeta       ann i
 
   -- Type arguments
   STARG -> \case
@@ -214,7 +214,8 @@ traverseTreeF ::
   (forall sort. KnownSort sort => builtin1 sort -> f (builtin2 sort)) ->
   (forall sort. KnownSort sort => ann1     sort -> f (ann2     sort)) ->
   (forall sort. KnownSort sort => sorted1  sort -> f (sorted2  sort)) ->
-  (forall sort. KnownSort sort => TreeF name1 builtin1 ann1 sort sorted1 -> f (TreeF name2 builtin2 ann2 sort sorted2))
+  forall sort. KnownSort sort => TreeF name1 builtin1 ann1 sort sorted1 ->
+  f (TreeF name2 builtin2 ann2 sort sorted2)
 
 traverseTreeF fName fBuiltin fAnn fRec (tree :: TreeF name1 builtin1 ann1 sort sorted1) = case sortSing :: SSort sort of
 
@@ -226,13 +227,13 @@ traverseTreeF fName fBuiltin fAnn fRec (tree :: TreeF name1 builtin1 ann1 sort s
 
   -- Types
   STYPE -> case tree of
-    TForallF  ann n t   -> TForallF  <$> fAnn ann <*> fRec n <*> fRec t
-    TAppF     ann t1 t2 -> TAppF     <$> fAnn ann <*> fRec t1 <*> fRec t2
-    TVarF     ann n     -> TVarF     <$> fAnn ann <*> fName n
-    TConF     ann op    -> TConF     <$> fAnn ann <*> fBuiltin op
-    TLitDimF  ann d     -> TLitDimF  <$> fAnn ann <*> pure d
-    TLitListF ann ts    -> TLitListF <$> fAnn ann <*> traverse fRec ts
-    TMetaF    ann i     -> TMetaF    <$> fAnn ann <*> pure i
+    TForallF     ann n t   -> TForallF     <$> fAnn ann <*> fRec n <*> fRec t
+    TAppF        ann t1 t2 -> TAppF        <$> fAnn ann <*> fRec t1 <*> fRec t2
+    TVarF        ann n     -> TVarF        <$> fAnn ann <*> fName n
+    TConF        ann op    -> TConF        <$> fAnn ann <*> fBuiltin op
+    TLitDimF     ann d     -> TLitDimF     <$> fAnn ann <*> pure d
+    TLitDimListF ann ts    -> TLitDimListF <$> fAnn ann <*> traverse fRec ts
+    TMetaF       ann i     -> TMetaF       <$> fAnn ann <*> pure i
 
   -- Type arguments
   STARG -> case tree of
@@ -298,13 +299,6 @@ foldTreeM ::
   (forall sort. KnownSort sort => TreeF name builtin ann sort sorted -> m (sorted sort)) ->
   (forall sort. KnownSort sort => Tree  name builtin ann sort        -> m (sorted sort))
 foldTreeM f tree = f =<< traverseTreeF pure pure pure (foldTreeM f) (project tree)
-
--- |Folds a tree down to a sorted value, one layer at a time.
-foldTreeO ::
-  (Applicative f) =>
-  (forall sort. KnownSort sort => TreeF name builtin ann sort (f `O` sorted) -> f (sorted sort)) ->
-  (forall sort. KnownSort sort => Tree  name builtin ann sort                -> f (sorted sort))
-foldTreeO f = unO . foldTree (O . f)
 
 
 -- * Update fields in one layer

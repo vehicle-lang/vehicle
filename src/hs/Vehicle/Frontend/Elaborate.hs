@@ -111,21 +111,21 @@ instance Elab VF.Type VC.Type where
     VF.TVarF n                 -> elab n
 
     -- Primitive types.
-    VF.TFunF t1 tk t2          -> tOp2 tk t1 t2
-    VF.TBoolF tk               -> tCon tk
-    VF.TPropF tk               -> tCon tk
-    VF.TRealF tk               -> tCon tk
-    VF.TIntF tk                -> tCon tk
-    VF.TListF tk               -> tCon tk
-    VF.TTensorF tk             -> tCon tk
+    VF.TFunF t1 tk t2 -> tOp2 tk t1 t2
+    VF.TBoolF tk      -> tCon tk
+    VF.TPropF tk      -> tCon tk
+    VF.TRealF tk      -> tCon tk
+    VF.TIntF tk       -> tCon tk
+    VF.TListF tk      -> tCon tk
+    VF.TTensorF tk    -> tCon tk
 
     -- Type-level dimensions.
-    VF.TAddF t1 tk t2          -> tOp2 tk t1 t2
-    VF.TLitDimF nat            -> return $ VC.TLitDim nat
+    VF.TAddF t1 tk t2 -> tOp2 tk t1 t2
+    VF.TLitDimF nat   -> return $ VC.TLitDim nat
 
     -- Type-level lists.
-    VF.TConsF t1 tk t2         -> tOp2 tk t1 t2
-    VF.TLitListF _tk1 ts _tk2  -> VC.TLitList <$> sequence ts
+    VF.TConsF t1 tk t2            -> tOp2 tk t1 t2
+    VF.TLitDimListF _tk1 ts _tk2  -> VC.TLitDimList <$> sequence ts
 
 -- |Elaborate expressions.
 instance Elab VF.Expr VC.Expr where

@@ -8,7 +8,7 @@ module Vehicle.Core.Compile
 import           Control.Monad.Except (Except, withExcept)
 import           Vehicle.Core.AST
 import           Vehicle.Core.Compile.Builtin (checkBuiltins, BuiltinError(..))
-import           Vehicle.Core.Compile.Provenance (Provenance, saveProvenance)
+import           Vehicle.Core.Compile.Provenance (saveProvenance)
 import           Vehicle.Core.Compile.Scope (checkScope, ScopeError(..))
 import           Vehicle.Prelude
 

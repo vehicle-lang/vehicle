@@ -120,7 +120,7 @@ data instance Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
   | TLitDim
     (ann 'TYPE)             -- ^ Sort Annotation.
     Integer                 -- ^ Dimension literal.
-  | TLitList
+  | TLitDimList
     (ann 'TYPE)             -- ^ Sort Annotation.
     [Type name builtin ann] -- ^ List of types.
   | TMeta

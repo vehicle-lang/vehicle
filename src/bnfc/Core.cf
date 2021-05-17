@@ -29,16 +29,16 @@ coercions Kind 1;
 -- * Types
 
 -- Core structure.
-TForall.  Type  ::= "forall" TypeBinder Type1;
-TApp.     Type  ::= Type Type1;
-TVar.     Type1 ::= TypeName;
-TCon.     Type1 ::= TypeBuiltin;
+TForall.     Type  ::= "forall" TypeBinder Type1;
+TApp.        Type  ::= Type Type1;
+TVar.        Type1 ::= TypeName;
+TCon.        Type1 ::= TypeBuiltin;
 
 -- Type-level dimensions.
-TLitDim.  Type1 ::= Integer; -- NOTE: this means natural
+TLitDim.     Type1 ::= Integer; -- NOTE: this means natural
 
--- Type-level lists.
-TLitList. Type1 ::= "[" [Type1] "]";
+-- Type-level lists of dimensions.
+TLitDimList. Type1 ::= "[" [Type1] "]";
 
 separator Type1 "";
 
@@ -62,7 +62,7 @@ ELitInt.    Expr1 ::= Integer; -- NOTE: this means natural
 ELitReal.   Expr1 ::= Double;
 
 -- Lists and tensors.
-ELitSeq. Expr1 ::= "[" [Expr1] "]";
+ELitSeq.    Expr1 ::= "[" [Expr1] "]";
 
 separator Expr1 "";
 

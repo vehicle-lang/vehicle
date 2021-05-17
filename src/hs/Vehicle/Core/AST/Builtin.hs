@@ -14,47 +14,47 @@ import           Vehicle.Core.AST.Core
 data Builtin (sort :: Sort) where
 
   -- Builtin kinds
-  KFun    :: Builtin 'KIND
-  KType   :: Builtin 'KIND
-  KDim    :: Builtin 'KIND
-  KList   :: Builtin 'KIND
+  KFun     :: Builtin 'KIND
+  KType    :: Builtin 'KIND
+  KDim     :: Builtin 'KIND
+  KDimList :: Builtin 'KIND
 
   -- Builtin types
-  TFun    :: Builtin 'TYPE
-  TBool   :: Builtin 'TYPE
-  TProp   :: Builtin 'TYPE
-  TInt    :: Builtin 'TYPE
-  TReal   :: Builtin 'TYPE
-  TList   :: Builtin 'TYPE
-  TTensor :: Builtin 'TYPE
-  TAdd    :: Builtin 'TYPE
-  TNil    :: Builtin 'TYPE
-  TCons   :: Builtin 'TYPE
+  TFun     :: Builtin 'TYPE
+  TBool    :: Builtin 'TYPE
+  TProp    :: Builtin 'TYPE
+  TInt     :: Builtin 'TYPE
+  TReal    :: Builtin 'TYPE
+  TList    :: Builtin 'TYPE
+  TTensor  :: Builtin 'TYPE
+  TAdd     :: Builtin 'TYPE
+  TNil     :: Builtin 'TYPE
+  TCons    :: Builtin 'TYPE
 
   -- Builtin expressions
-  EIf     :: Builtin 'EXPR
-  EImpl   :: Builtin 'EXPR
-  EAnd    :: Builtin 'EXPR
-  EOr     :: Builtin 'EXPR
-  ENot    :: Builtin 'EXPR
-  ETrue   :: Builtin 'EXPR
-  EFalse  :: Builtin 'EXPR
-  EEq     :: Builtin 'EXPR
-  ENeq    :: Builtin 'EXPR
-  ELe     :: Builtin 'EXPR
-  ELt     :: Builtin 'EXPR
-  EGe     :: Builtin 'EXPR
-  EGt     :: Builtin 'EXPR
-  EMul    :: Builtin 'EXPR
-  EDiv    :: Builtin 'EXPR
-  EAdd    :: Builtin 'EXPR
-  ESub    :: Builtin 'EXPR
-  ENeg    :: Builtin 'EXPR
-  ECons   :: Builtin 'EXPR
-  ENil    :: Builtin 'EXPR
-  EAt     :: Builtin 'EXPR
-  EAll    :: Builtin 'EXPR
-  EAny    :: Builtin 'EXPR
+  EIf      :: Builtin 'EXPR
+  EImpl    :: Builtin 'EXPR
+  EAnd     :: Builtin 'EXPR
+  EOr      :: Builtin 'EXPR
+  ENot     :: Builtin 'EXPR
+  ETrue    :: Builtin 'EXPR
+  EFalse   :: Builtin 'EXPR
+  EEq      :: Builtin 'EXPR
+  ENeq     :: Builtin 'EXPR
+  ELe      :: Builtin 'EXPR
+  ELt      :: Builtin 'EXPR
+  EGe      :: Builtin 'EXPR
+  EGt      :: Builtin 'EXPR
+  EMul     :: Builtin 'EXPR
+  EDiv     :: Builtin 'EXPR
+  EAdd     :: Builtin 'EXPR
+  ESub     :: Builtin 'EXPR
+  ENeg     :: Builtin 'EXPR
+  ECons    :: Builtin 'EXPR
+  ENil     :: Builtin 'EXPR
+  EAt      :: Builtin 'EXPR
+  EAll     :: Builtin 'EXPR
+  EAny     :: Builtin 'EXPR
 
 deriving instance Eq (Builtin 'KIND)
 deriving instance Eq (Builtin 'TYPE)

@@ -115,13 +115,13 @@ checkScopeF = case sortSing @sort of
   -- Otherwise, we simply recurse.
   --
   STYPE -> \case
-    TForallF  ann n t   -> bindLocal n $ \n' -> TForall ann n' <$> unDF t
-    TAppF     ann t1 t2 -> TApp ann <$> unDF t1 <*> unDF t2
-    TVarF     ann n     -> TVar ann <$> getIndex n
-    TConF     ann op    -> return $ TCon ann op
-    TLitDimF  ann d     -> return $ TLitDim ann d
-    TLitListF ann ts    -> TLitList ann <$> traverse unDF ts
-    TMetaF    ann i     -> return $ TMeta ann i
+    TForallF     ann n t   -> bindLocal n $ \n' -> TForall ann n' <$> unDF t
+    TAppF        ann t1 t2 -> TApp ann <$> unDF t1 <*> unDF t2
+    TVarF        ann n     -> TVar ann <$> getIndex n
+    TConF        ann op    -> return $ TCon ann op
+    TLitDimF     ann d     -> return $ TLitDim ann d
+    TLitDimListF ann ts    -> TLitDimList ann <$> traverse unDF ts
+    TMetaF       ann i     -> return $ TMeta ann i
 
   -- Type arguments
   --

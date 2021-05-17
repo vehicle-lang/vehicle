@@ -15,11 +15,9 @@ module Vehicle.Core.Normalise.Quantifier
 import Control.Monad.Error.Class (throwError)
 import Data.Range (Range (..), fromRanges, intersection, union, invert, lbi, lbe, ubi, ube, mergeRanges)
 import Data.Text (Text)
-import Vehicle.Core.AST (Tree(..), Sort(EXPR), Builtin(..), toIndex)
-import Vehicle.Core.Compile.Provenance (Provenance)
+import Vehicle.Core.AST
 import Vehicle.Core.Normalise.Core
 import Vehicle.Core.Normalise.DeBruijnSubstitution as DeBruijn (subst)
-import Vehicle.Prelude (Position)
 
 -----------
 -- Types --

@@ -1,9 +1,8 @@
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Vehicle.Core.Normalise.Core
   ( NormError (..)
@@ -19,12 +18,9 @@ module Vehicle.Core.Normalise.Core
   , mkBool
   ) where
 
-import Vehicle.Core.AST.Builtin (Builtin(..))
-import Vehicle.Core.AST (Sort(..), Tree (..), Expr, Type, Decl, Prog)
-import Vehicle.Core.AST.DeBruijn (DeBruijn(..))
+import Vehicle.Core.AST
 import Control.Monad.Except (MonadError)
 import Vehicle.Core.Abs (ExprName)
-import Vehicle.Core.Compile.Provenance (Provenance)
 
 -- |Errors thrown during normalisation
 data NormError
