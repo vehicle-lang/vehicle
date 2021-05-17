@@ -16,7 +16,7 @@
 module Vehicle.Core.Compile.Type where
 
 import           Control.Monad.Except (Except, MonadError(..))
-import           Control.Monad.Reader (ReaderT, MonadReader(..))
+import           Control.Monad.Reader (ReaderT, runReaderT, MonadReader(..))
 import           Control.Monad.Trans (MonadTrans(..))
 import           Control.Monad.Writer (WriterT, runWriterT)
 import           Data.Sequence (Seq, (!?))
@@ -220,7 +220,6 @@ kindOf = \case
   TTensor -> kDim ~> kType ~> kType
   TAdd    -> kDim ~> kDim ~> kDim
   TCons   -> kDim ~> kDimList ~> kDimList
-  where
 
 
 -- * A tiny DSL for writing kinds and types as |Info| expressions
@@ -235,10 +234,11 @@ infixr 4 ~>
 (~>) :: Info 'TYPE -> Info 'TYPE -> Info 'TYPE
 k1 ~> k2 = kFun `kApp` k1 `kApp` k2
 
-kFun     = Info $ KCon mempty KFun     :: Info 'TYPE
-kType    = Info $ KCon mempty KType    :: Info 'TYPE
-kDim     = Info $ KCon mempty KDim     :: Info 'TYPE
-kDimList = Info $ KCon mempty KDimList :: Info 'TYPE
+kFun, kType, kDim, kDimList :: Info 'TYPE
+kFun     = Info $ KCon mempty KFun
+kType    = Info $ KCon mempty KType
+kDim     = Info $ KCon mempty KDim
+kDimList = Info $ KCon mempty KDimList
 
 
 -- * Combinators for writing bidirectional typing algorithms
@@ -250,6 +250,13 @@ runCheck = unDF . unChk . ifst
 -- |Runs the inference portion of a check-and-infer algorithm.
 runInfer :: (Check :*: Infer) sort -> INFER sort
 runInfer = unDF . unInf . isnd
+
+-- |Runs the checking portion of a check-and-infer algorithm, then switches to inference.
+runCheckAsInfer ::
+  (KnownSort sort) =>
+  INFO sort -> (Check :*: Infer) sort -> Infer sort
+runCheckAsInfer info =
+  Inf . mapDF (\m -> lift $ runReaderT m info) . unChk . ifst
 
 -- |Creates a combined check-and-infer pass from a checking pass.
 withCheck ::

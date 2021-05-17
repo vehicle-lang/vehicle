@@ -28,7 +28,6 @@ data Builtin (sort :: Sort) where
   TList    :: Builtin 'TYPE
   TTensor  :: Builtin 'TYPE
   TAdd     :: Builtin 'TYPE
-  TNil     :: Builtin 'TYPE
   TCons    :: Builtin 'TYPE
 
   -- Builtin expressions
@@ -51,7 +50,6 @@ data Builtin (sort :: Sort) where
   ESub     :: Builtin 'EXPR
   ENeg     :: Builtin 'EXPR
   ECons    :: Builtin 'EXPR
-  ENil     :: Builtin 'EXPR
   EAt      :: Builtin 'EXPR
   EAll     :: Builtin 'EXPR
   EAny     :: Builtin 'EXPR
