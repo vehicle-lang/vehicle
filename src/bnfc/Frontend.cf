@@ -117,10 +117,8 @@ ELet.       Expr1  ::= "let" "{" [Decl] "}" "in" Expr1;
 ELam.       Expr2  ::= TokLambda [Name] TokArrow Expr2;
 EApp.       Expr11 ::= Expr11 Expr12;
 EVar.       Expr12 ::= Name;
-
--- NOTE: these aren't part of the surface syntax.
-internal ETyApp. Expr ::= Expr Type;
-internal ETyLam. Expr ::= TokLambda "{" [Name] "}" TokArrow Expr;
+ETyApp.     Expr ::= Expr "{" Type "}";
+ETyLam.     Expr ::= TokLambda "{" [Name] "}" TokArrow Expr;
 
 -- Conditional expressions.
 EIf.        Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;

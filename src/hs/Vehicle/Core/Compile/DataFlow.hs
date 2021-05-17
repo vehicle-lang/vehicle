@@ -61,6 +61,21 @@ mapDF f (DF df) = DF $ case sortSing @sort of
   SDECL -> mapStateT  f df
   SPROG -> mapReaderT f df
 
+liftDF ::
+  forall sort m sorted s.
+  (KnownSort sort, Monoid s, Monad m) =>
+  m (sorted sort) ->
+  DataFlow s m sorted sort
+liftDF m = DF $ case sortSing @sort of
+  SKIND -> m
+  STYPE -> lift m
+  STARG -> lift m
+  SEXPR -> lift m
+  SEARG -> lift m
+  SDECL -> lift m
+  SPROG -> lift m
+
+
 -- |RunDF a |DataFlow| object, ignoring any output.
 toReader :: (Monad m, KnownSort sort) => DataFlow s m sorted sort -> s -> m (sorted sort)
 toReader (m :: DataFlow s m sorted sort) s = case sortSing @sort of
