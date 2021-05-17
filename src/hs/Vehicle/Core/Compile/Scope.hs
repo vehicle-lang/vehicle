@@ -4,8 +4,6 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE LiberalTypeSynonyms #-}
-{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
@@ -16,16 +14,11 @@ module Vehicle.Core.Compile.Scope
   , ScopeError(..)
   ) where
 
-import           Control.Monad.Except (MonadError(..), Except)
-import           Control.Monad.Reader (MonadReader(..), ReaderT)
-import           Control.Monad.Writer (MonadWriter(..))
-import           Data.Sequence (Seq, (!?))
+import           Control.Monad.Except
+import           Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
-import           Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as Map
-import           Data.List (elemIndex)
 import           Vehicle.Core.AST
-import           Vehicle.Core.Compile.DataFlow as DF
+import           Vehicle.Core.Compile.Dataflow
 import           Vehicle.Prelude
 
 
@@ -61,15 +54,14 @@ singletonCtx SEXPR symbol = Ctx Seq.empty (Seq.singleton symbol)
 
 -- |Get the sub-context for a given sort.
 getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq Symbol
-getSubCtxFor Ctx{..} = case sortSing @sort of { STYPE -> typeSymbols; SEXPR -> exprSymbols }
+getSubCtxFor = case sortSing @sort of STYPE -> typeSymbols; SEXPR -> exprSymbols
 
 -- |Find the index for a given name of a given sort.
 getIndex ::
   (IsToken name, KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
-  K name sort -> ReaderT Ctx (Except ScopeError) (DeBruijn sort)
-
+  K name sort -> DataflowT sort Ctx (Except ScopeError) (DeBruijn sort)
 getIndex (K n :: K name sort) = do
-  subctx <- getSubCtxFor @sort <$> ask
+  subctx <- getSubCtxFor @sort <$> askData
   let maybeIndex = Seq.elemIndexL (tkSymbol n) subctx
   let indexOrError = maybe (unboundName n) return maybeIndex
   fromIndex <$> indexOrError
@@ -80,20 +72,17 @@ getIndex (K n :: K name sort) = do
 
 -- |Check if a tree is well-scoped, replacing name tokens with deBruijn indices.
 checkScope ::
-  (IsToken name, KnownSort sort) =>
+  (KnownSort sort, IsToken name) =>
   Tree (K name) builtin ann sort ->
   Except ScopeError (Tree DeBruijn builtin ann sort)
-checkScope tree = DF.toReader (foldTree (DF . checkScopeF) tree) mempty
-
-type SCOPE builtin ann sort = DATAFLOW Ctx (Except ScopeError) (Tree DeBruijn builtin ann) sort
-type Scope builtin ann      = DataFlow Ctx (Except ScopeError) (Tree DeBruijn builtin ann)
+checkScope = evalDataflowT mempty . unSDF . foldTree (SDF . checkScopeF)
 
 -- |Check if a single layer is well-scoped in the appropriate data-flow context.
 checkScopeF ::
   forall name builtin ann sort.
   (IsToken name, KnownSort sort) =>
-  TreeF (K name) builtin ann sort (Scope builtin ann) ->
-  SCOPE builtin ann sort
+  TreeF (K name) builtin ann sort (SortedDataflowT Ctx (Except ScopeError) (Tree DeBruijn builtin ann)) ->
+  DataflowT sort Ctx (Except ScopeError) (Tree DeBruijn builtin ann sort)
 
 checkScopeF = case sortSing @sort of
 
@@ -104,7 +93,7 @@ checkScopeF = case sortSing @sort of
   -- and we simply reconstruct the type.
   --
   SKIND -> \case
-    KAppF  ann k1 k2 -> KApp ann <$> unDF k1 <*> unDF k2
+    KAppF  ann k1 k2 -> KApp ann <$> sflow k1 <*> sflow k2
     KConF  ann op    -> return $ KCon ann op
     KMetaF ann i     -> return $ KMeta ann i
 
@@ -115,12 +104,12 @@ checkScopeF = case sortSing @sort of
   -- Otherwise, we simply recurse.
   --
   STYPE -> \case
-    TForallF     ann n t   -> bindLocal n $ \n' -> TForall ann n' <$> unDF t
-    TAppF        ann t1 t2 -> TApp ann <$> unDF t1 <*> unDF t2
+    TForallF     ann n t   -> sbindLocal n $ \n' -> TForall ann n' <$> sflow t
+    TAppF        ann t1 t2 -> TApp ann <$> sflow t1 <*> sflow t2
     TVarF        ann n     -> TVar ann <$> getIndex n
     TConF        ann op    -> return $ TCon ann op
     TLitDimF     ann d     -> return $ TLitDim ann d
-    TLitDimListF ann ts    -> TLitDimList ann <$> traverse unDF ts
+    TLitDimListF ann ts    -> TLitDimList ann <$> traverse sflow ts
     TMetaF       ann i     -> return $ TMeta ann i
 
   -- Type arguments
@@ -129,7 +118,7 @@ checkScopeF = case sortSing @sort of
   --
   STARG -> \case
     TArgF ann n -> do let s = tkSymbol n
-                      tell (singletonCtx STYPE s)
+                      tellData (singletonCtx STYPE s)
                       return $ TArg ann (fromSymbol s)
 
   -- Expressions
@@ -139,17 +128,17 @@ checkScopeF = case sortSing @sort of
   -- Otherwise, we simply recurse.
   --
   SEXPR -> \case
-    EAnnF     ann e t     -> EAnn ann <$> unDF e <*> unDF t
-    ELetF     ann n e1 e2 -> bindLocal n $ \n' -> ELet ann n' <$> unDF e1 <*> unDF e2
-    ELamF     ann n e     -> bindLocal n $ \n' -> ELam ann n' <$> unDF e
-    EAppF     ann e1 e2   -> EApp ann <$> unDF e1 <*> unDF e2
+    EAnnF     ann e t     -> EAnn ann <$> sflow e <*> sflow t
+    ELetF     ann n e1 e2 -> sbindLocal n $ \n' -> ELet ann n' <$> sflow e1 <*> sflow e2
+    ELamF     ann n e     -> sbindLocal n $ \n' -> ELam ann n' <$> sflow e
+    EAppF     ann e1 e2   -> EApp ann <$> sflow e1 <*> sflow e2
     EVarF     ann n       -> EVar ann <$> getIndex n
-    ETyAppF   ann e t     -> ETyApp ann <$> unDF e <*> unDF t
-    ETyLamF   ann n e     -> bindLocal n $ \n' -> ETyLam ann n' <$> unDF e
+    ETyAppF   ann e t     -> ETyApp ann <$> sflow e <*> sflow t
+    ETyLamF   ann n e     -> sbindLocal n $ \n' -> ETyLam ann n' <$> sflow e
     EConF     ann op      -> return $ ECon ann op
     ELitIntF  ann z       -> return $ ELitInt ann z
     ELitRealF ann r       -> return $ ELitReal ann r
-    ELitSeqF  ann es      -> ELitSeq ann <$> traverse unDF es
+    ELitSeqF  ann es      -> ELitSeq ann <$> traverse sflow es
 
   -- Expression arguments
   --
@@ -157,28 +146,29 @@ checkScopeF = case sortSing @sort of
   --
   SEARG -> \case
     EArgF ann n -> do let s = tkSymbol n
-                      tell (singletonCtx SEXPR s)
+                      tellData (singletonCtx SEXPR s)
                       return $ EArg ann (fromSymbol s)
 
   -- Declarations
   SDECL -> \case
-    DeclNetwF ann n t    -> do n' <- bind n
-                               t' <- passCtx t
+    DeclNetwF ann n t    -> do n' <- sflow n
+                               t' <- sflow t
                                return $ DeclNetw ann n' t'
-    DeclDataF ann n t    -> do n' <- bind n
-                               t' <- passCtx t
+    DeclDataF ann n t    -> do n' <- sflow n
+                               t' <- sflow t
                                return $ DeclData ann n' t'
-    DefTypeF  ann n ns t -> do n' <- bind n
-                               bindAllLocal ns $ \ns' ->
-                                 DefType ann n' ns' <$> unDF t
-    DefFunF   ann n t e  -> do t' <- passCtx t
-                               n' <- bind n
-                               e' <- passCtx e
+    DefTypeF  ann n ns t -> do n' <- sflow n
+                               flow $
+                                 sbindAllLocal ns $ \ns' ->
+                                   DefType ann n' ns' <$> unSDF t
+    DefFunF   ann n t e  -> do t' <- sflow t
+                               n' <- sflow n
+                               e' <- sflow e
                                return $ DefFun ann n' t' e'
 
   -- Programs
   SPROG -> \case
-    MainF ann ds -> stateToReader $ Main ann <$> traverse unDF ds
+    MainF ann ds -> Main ann <$> traverse sflow ds
 
 -- -}
 -- -}

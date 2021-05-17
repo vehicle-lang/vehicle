@@ -1,144 +1,228 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE UndecidableInstances  #-}
 
-module Vehicle.Core.Compile.DataFlow where
+module Vehicle.Core.Compile.Dataflow where
 
-import Control.Monad.Reader (MonadReader(..), ReaderT, runReaderT, mapReaderT, local)
-import Control.Monad.State (MonadState(..), StateT, runStateT, evalStateT, mapStateT, modify)
-import Control.Monad.Writer (WriterT, runWriterT, mapWriterT)
-import Control.Monad.Trans (MonadTrans(..))
+import Control.Monad.Except
+import Control.Monad.Identity
+import Control.Monad.Reader
+import Control.Monad.State
+import Control.Monad.Writer
 import Vehicle.Core.AST
-import Vehicle.Prelude (In)
+import Vehicle.Prelude
 
--- |Encapsulates the data-flow for most passes along the syntax tree.
-type family DATAFLOW (s :: *) (m :: * -> *) (sorted :: Sort -> *) (sort :: Sort) where
-  DATAFLOW s m sorted 'KIND =           m (sorted 'KIND) -- no information
-  DATAFLOW s m sorted 'TYPE = ReaderT s m (sorted 'TYPE) -- read-only
-  DATAFLOW s m sorted 'TARG = WriterT s m (sorted 'TARG) -- write-only
-  DATAFLOW s m sorted 'EXPR = ReaderT s m (sorted 'EXPR) -- read-only
-  DATAFLOW s m sorted 'EARG = WriterT s m (sorted 'EARG) -- write-only
-  DATAFLOW s m sorted 'DECL = StateT  s m (sorted 'DECL) -- read-write
-  DATAFLOW s m sorted 'PROG = ReaderT s m (sorted 'PROG) -- read-only
+-- |Encapsulates the dataflow for a checking algorithm on sorted trees.
+newtype SortedDataflowT (s :: *) (m :: * -> *) (sorted :: Sort -> *) (sort :: Sort)
+  = SDF { unSDF :: DataflowT sort s m (sorted sort) }
 
-newtype DataFlow (s :: *) (m :: * -> *) (sorted :: Sort -> *) (sort :: Sort)
-  = DF { unDF :: DATAFLOW s m sorted sort }
+-- |Encapsulates the dataflow for a checking algorithm on sorted trees.
+newtype DataflowT (sort :: Sort) (s :: *) (m :: * -> *) (a :: *)
+  = DF { unDF :: DATAFLOW sort s m a }
 
-type family RUNDF (s :: *) (m :: * -> *) (sorted :: Sort -> *) (sort :: Sort) where
-  RUNDF s m sorted 'KIND =      m (sorted 'KIND   )
-  RUNDF s m sorted 'TYPE = s -> m (sorted 'TYPE   )
-  RUNDF s m sorted 'TARG =      m (sorted 'TARG, s)
-  RUNDF s m sorted 'EXPR = s -> m (sorted 'EXPR   )
-  RUNDF s m sorted 'EARG =      m (sorted 'EARG, s)
-  RUNDF s m sorted 'DECL = s -> m (sorted 'DECL, s)
-  RUNDF s m sorted 'PROG = s -> m (sorted 'PROG   )
+type family DATAFLOW (sort :: Sort) (s :: *) :: (* -> *) -> (* -> *) where
+  DATAFLOW 'KIND s = IdentityT
+  DATAFLOW 'TYPE s = ReaderT s
+  DATAFLOW 'TARG s = WriterT s
+  DATAFLOW 'EXPR s = ReaderT s
+  DATAFLOW 'EARG s = WriterT s
+  DATAFLOW 'DECL s = StateT  s
+  DATAFLOW 'PROG s = IdentityT
 
-runDF :: KnownSort sort => DataFlow s m sorted sort -> RUNDF s m sorted sort
-runDF (m :: DataFlow s m sorted sort) = case sortSing @sort of
-  SKIND ->              unDF m
-  STYPE -> runReaderT $ unDF m
-  STARG -> runWriterT $ unDF m
-  SEXPR -> runReaderT $ unDF m
-  SEARG -> runWriterT $ unDF m
-  SDECL -> runStateT  $ unDF m
-  SPROG -> runReaderT $ unDF m
+instance (KnownSort sort) => MonadTrans (DataflowT sort s) where
+  lift = case sortSing @sort of
+    SKIND -> lift
+    STYPE -> lift
+    STARG -> lift
+    SEXPR -> lift
+    SEARG -> lift
+    SDECL -> lift
+    SPROG -> lift
 
-mapDF ::
-  forall m n s sorted sort.
-  (KnownSort sort, Monad m, Monad n) =>
-  (forall a. m a -> n a) ->
-  DataFlow s m sorted sort ->
-  DataFlow s n sorted sort
-mapDF f (DF df) = DF $ case sortSing @sort of
-  SKIND ->            f df
-  STYPE -> mapReaderT f df
-  STARG -> mapWriterT f df
-  SEXPR -> mapReaderT f df
-  SEARG -> mapWriterT f df
-  SDECL -> mapStateT  f df
-  SPROG -> mapReaderT f df
+instance (KnownSort sort, Functor f) => Functor (DataflowT sort s f) where
+  fmap = case sortSing @sort of
+    SKIND -> fmap
+    STYPE -> fmap
+    STARG -> fmap
+    SEXPR -> fmap
+    SEARG -> fmap
+    SDECL -> fmap
+    SPROG -> fmap
 
-liftDF ::
-  forall sort m sorted s.
-  (KnownSort sort, Monoid s, Monad m) =>
-  m (sorted sort) ->
-  DataFlow s m sorted sort
-liftDF m = DF $ case sortSing @sort of
-  SKIND -> m
-  STYPE -> lift m
-  STARG -> lift m
-  SEXPR -> lift m
-  SEARG -> lift m
-  SDECL -> lift m
-  SPROG -> lift m
+instance (KnownSort sort, Applicative f) => Applicative (DataflowT sort s f) where
+  pure = case sortSing @sort of
+    SKIND -> pure
+    STYPE -> pure
+    STARG -> pure
+    SEXPR -> pure
+    SEARG -> pure
+    SDECL -> pure
+    SPROG -> pure
+
+  (<*>) = case sortSing @sort of
+    SKIND -> (<*>)
+    STYPE -> (<*>)
+    STARG -> (<*>)
+    SEXPR -> (<*>)
+    SEARG -> (<*>)
+    SDECL -> (<*>)
+    SPROG -> (<*>)
+
+instance (KnownSort sort, Monad m) => Monad (DataflowT sort s m) where
+  (>>=) = case sortSing @sort of
+    SKIND -> (>>=)
+    STYPE -> (>>=)
+    STARG -> (>>=)
+    SEXPR -> (>>=)
+    SEARG -> (>>=)
+    SDECL -> (>>=)
+    SPROG -> (>>=)
+
+instance (KnownSort sort, MonadError e m) => MonadError e (DataflowT sort s m) where
+  throwError = lift . throwError
+  catchError = case sortSing @sort of
+    SKIND -> catchError
+    STYPE -> catchError
+    STARG -> catchError
+    SEXPR -> catchError
+    SEARG -> catchError
+    SDECL -> catchError
+    SPROG -> catchError
+
+instance (KnownSort sort, MonadReader r m) => MonadReader r (DataflowT sort s m) where
+  ask   = lift ask
+  local = case sortSing @sort of
+    SKIND -> local
+    STYPE -> local
+    STARG -> local
+    SEXPR -> local
+    SEARG -> local
+    SDECL -> local
+    SPROG -> local
+
+instance (KnownSort sort, sort `In` ['TARG, 'EARG], Monoid s, Monad m) => MonadWriter s (DataflowT sort s m) where
+  tell   = fromWriterT . tell
+  listen = fromWriterT . listen . toWriterT
+  pass   = fromWriterT . pass   . toWriterT
+
+runDataflowT :: forall sort m s a. (KnownSort sort, Monad m) => s -> DataflowT sort s m a -> m (a, s)
+runDataflowT input (DF x) = case sortSing @sort of
+    SKIND -> do y <- runIdentityT x; return (y, input)
+    STYPE -> do y <- runReaderT x input; return (y, input)
+    STARG -> do (y, output) <- runWriterT x; return (y, output)
+    SEXPR -> do y <- runReaderT x input; return (y, input)
+    SEARG -> do (y, output) <- runWriterT x; return (y, output)
+    SDECL -> do (y, output) <- runStateT x input; return (y, output)
+    SPROG -> do y <- runIdentityT x; return (y, input)
+
+evalDataflowT :: forall sort m s a. (KnownSort sort, Monad m) => s -> DataflowT sort s m a -> m a
+evalDataflowT input df = fst <$> runDataflowT input df
+
+askData ::
+  forall sort s m.
+  (KnownSort sort, sort `In` ['TYPE, 'EXPR], Monad m) =>
+  DataflowT sort s m s
+askData = fromReaderT ask
+
+tellData ::
+  forall sort s m.
+  (KnownSort sort, sort `In` ['TARG, 'EARG], Monoid s, Monad m) =>
+  s -> DataflowT sort s m ()
+tellData = fromWriterT . tell
 
 
--- |RunDF a |DataFlow| object, ignoring any output.
-toReader :: (Monad m, KnownSort sort) => DataFlow s m sorted sort -> s -> m (sorted sort)
-toReader (m :: DataFlow s m sorted sort) s = case sortSing @sort of
-  SKIND ->         runDF m
-  STYPE ->         runDF m s
-  STARG -> fst <$> runDF m
-  SEXPR ->         runDF m s
-  SEARG -> fst <$> runDF m
-  SDECL -> fst <$> runDF m s
-  SPROG ->         runDF m s
+-- * Cast |DataflowT| to specific monad transformers
 
--- |Assert that a particular sort gives rise to reader data flow.
-asReader ::
-  forall sort s m sorted.
-  (KnownSort sort, sort `In` ['TYPE, 'EXPR, 'PROG], Monad m) =>
-  DataFlow s m sorted sort -> ReaderT s m (sorted sort)
-asReader = case sortSing @sort of
-  STYPE -> unDF
-  SEXPR -> unDF
-  SPROG -> unDF
+-- |Convert from the |IdentityT| transformer to the |DataflowT| transformer.
+fromIdentityT ::
+  forall sort s m a.
+  (KnownSort sort, sort `In` ['KIND, 'PROG], Monad m) =>
+  IdentityT m a -> DataflowT sort s m a
+fromIdentityT = case sortSing @sort of SKIND -> DF; SPROG -> DF
 
--- |Assert that a particular sort gives rise to writer data flow.
-asWriter ::
-  forall sort s m sorted.
+-- |Convert from the |ReaderT| transformer to the |DataflowT| transformer.
+fromReaderT ::
+  forall sort s m a.
+  (KnownSort sort, sort `In` ['TYPE, 'EXPR], Monad m) =>
+  ReaderT s m a -> DataflowT sort s m a
+fromReaderT = case sortSing @sort of STYPE -> DF; SEXPR -> DF
+
+-- |Convert from the |WriterT| transformer to the |DataflowT| transformer.
+fromWriterT ::
+  forall sort s m a.
   (KnownSort sort, sort `In` ['TARG, 'EARG], Monad m) =>
-  DataFlow s m sorted sort -> WriterT s m (sorted sort)
-asWriter = case sortSing @sort of
-  STARG -> unDF
-  SEARG -> unDF
+  WriterT s m a -> DataflowT sort s m a
+fromWriterT = case sortSing @sort of STARG -> DF; SEARG -> DF
+
+-- |Convert from the |DataflowT| transformer to the |IdentityT| transformer.
+toIdentityT ::
+  forall sort s m a.
+  (KnownSort sort, sort `In` ['KIND, 'PROG], Monad m) =>
+  DataflowT sort s m a -> IdentityT m a
+toIdentityT = case sortSing @sort of SKIND -> unDF; SPROG -> unDF
+
+-- |Convert from the |DataflowT| transformer to the |ReaderT| transformer.
+toReaderT ::
+  forall sort s m a.
+  (KnownSort sort, sort `In` ['TYPE, 'EXPR], Monad m) =>
+  DataflowT sort s m a -> ReaderT s m a
+toReaderT = case sortSing @sort of STYPE -> unDF; SEXPR -> unDF
+
+-- |Convert from the |DataflowT| transformer to the |WriterT| transformer.
+toWriterT ::
+  forall sort s m a.
+  (KnownSort sort, sort `In` ['TARG, 'EARG], Monad m) =>
+  DataflowT sort s m a -> WriterT s m a
+toWriterT = case sortSing @sort of STARG -> unDF; SEARG -> unDF
 
 
--- * High-level operations reflecting various forms of binding and data-flow
-
--- |Pass the context from the state monad to the reader monad.
-passCtx ::
-  (Monad m, KnownSort sort, sort `In` ['TYPE, 'EXPR, 'PROG]) =>
-  DataFlow s m sorted sort -> StateT s m (sorted sort)
-passCtx df = readerToState (asReader df)
-
--- |Bind the given name in the state monad.
-bind ::
-  (Monoid s, Monad m, KnownSort sort, sort `In` ['TARG, 'EARG]) =>
-  DataFlow s m sorted sort -> StateT s m (sorted sort)
-bind df = writerToState (asWriter df)
-
--- |Bind the given name /locally/ in the reader monad.
-bindLocal ::
-  (Monoid s, Monad m, KnownSort sort, sort `In` ['TARG, 'EARG]) =>
-  DataFlow s m sorted sort -> (sorted sort -> ReaderT s m a) -> ReaderT s m a
-bindLocal df k = writerToReader (asWriter df) k
-
--- |Bind a series of names /locally/ in a reader monad, then embeds the resulting value in a state monad.
-bindAllLocal ::
-  (Monoid s, Monad m, KnownSort sort, sort `In` ['TARG, 'EARG]) =>
-  [DataFlow s m sorted sort] ->
-  ([sorted sort] -> ReaderT s m a) -> StateT s m a
-bindAllLocal = (readerToState .) . bindAllLocal'
-  where
-    bindAllLocal' []       k = k []
-    bindAllLocal' (df:dfs) k = bindLocal df (\n -> bindAllLocal' dfs (\ns -> k (n:ns)))
+-- * Convert between various dataflow monads
 
 
--- * Low-level conversions between various data-flow models
+class Flow (sort1 :: Sort) (sort2 :: Sort) where
+
+  -- |Convert dataflow for |sort1| to dataflow for |sort2|.
+  flow :: (Monoid s, Monad m)
+       => DataflowT sort1 s m a
+       -> DataflowT sort2 s m a
+
+instance Flow  sort  sort where flow = id
+instance Flow 'KIND 'TYPE where flow = DF . identityToReader . unDF
+instance Flow 'TYPE 'EXPR where flow = DF . unDF
+instance Flow 'TARG 'DECL where flow = DF . writerToState . unDF
+instance Flow 'TYPE 'DECL where flow = DF . readerToState . unDF
+instance Flow 'EARG 'DECL where flow = DF . writerToState . unDF
+instance Flow 'EXPR 'DECL where flow = DF . readerToState . unDF
+instance Flow 'DECL 'PROG where flow = DF . stateToIdentity . unDF
+
+-- |Variant of |flow| whose argument is a |SortedDataflowT|.
+sflow :: (Flow sort1 sort2, Monoid s, Monad m)
+      => SortedDataflowT s m sorted sort1
+      -> DataflowT sort2 s m (sorted sort1)
+sflow = flow . unSDF
+
+-- |Alias for |flow|.
+bind :: (Flow sort1 sort2, Monoid s, Monad m)
+     => DataflowT sort1 s m a
+     -> DataflowT sort2 s m a
+bind = flow
+
+-- |Alias for |sflow|.
+sbind :: (Flow sort1 sort2, Monoid s, Monad m)
+      => SortedDataflowT s m sorted sort1
+      -> DataflowT sort2 s m (sorted sort1)
+sbind = sflow
+
+-- |Convert an identity monad to a reader monad.
+identityToReader :: Monad m => IdentityT m a -> ReaderT s m a
+identityToReader m = lift (runIdentityT m)
 
 -- |Convert a reader monad to a state monad.
 readerToState :: Monad m => ReaderT s m a -> StateT s m a
@@ -146,12 +230,55 @@ readerToState m = do x <- get; lift (runReaderT m x)
 
 -- |Convert a writer monad to a state monad.
 writerToState :: (Monoid s, Monad m) => WriterT s m a -> StateT s m a
-writerToState m = do (x, s) <- lift $ runWriterT m; modify (s<>); return x
-
--- |Convert a writer monad to a local change in a reader monad.
-writerToReader :: (Monoid s, Monad m) => WriterT s m a -> (a -> ReaderT s m b) -> ReaderT s m b
-writerToReader m k = do (x, s) <- lift $ runWriterT m; local (s<>) (k x)
+writerToState m = do (x, s) <- lift (runWriterT m); modify (s<>); return x
 
 -- |Convert a state monad to a reader monad.
-stateToReader :: Monad m => StateT s m a -> ReaderT s m a
-stateToReader m = do x <- ask; lift (evalStateT m x)
+stateToIdentity :: (Monoid s, Monad m) => StateT s m a -> IdentityT m a
+stateToIdentity m = lift (evalStateT m mempty)
+
+-- |Convert a writer monad to a local change in a reader monad.
+writerToReaderLocal :: (Monoid s, Monad m) => WriterT s m a -> (a -> ReaderT s m b) -> ReaderT s m b
+writerToReaderLocal m k = do (x, s) <- lift (runWriterT m); local (s<>) (k x)
+
+-- |Bind the output of a writer monad locally in a reader monad.
+bindLocal :: ( KnownSort wsort, wsort `In` ['TARG, 'EARG]
+             , KnownSort rsort, rsort `In` ['TYPE, 'EXPR]
+             , Monoid s, Monad m)
+          => DataflowT wsort s m a
+          -> (a -> DataflowT rsort s m b)
+          -> DataflowT rsort s m b
+bindLocal df k = fromReaderT $ writerToReaderLocal (toWriterT df) (toReaderT . k)
+
+-- |Bind a list of outputs of a writer monad locally in a reader monad.
+bindAllLocal :: ( KnownSort wsort, wsort `In` ['TARG, 'EARG]
+                , KnownSort rsort, rsort `In` ['TYPE, 'EXPR]
+                , Monoid s, Monad m)
+             => [DataflowT wsort s m a]
+             -> ([a] -> DataflowT rsort s m b)
+             -> DataflowT rsort s m b
+bindAllLocal []     k = k []
+bindAllLocal (w:ws) k = bindLocal w (\r -> bindAllLocal ws (\rs -> k (r:rs)))
+
+-- |Variant of |sbindLocal| whose argument is a |SortedDataflowT|.
+sbindLocal :: ( KnownSort wsort, wsort `In` ['TARG, 'EARG]
+              , KnownSort rsort, rsort `In` ['TYPE, 'EXPR]
+              , Monoid s, Monad m)
+           => SortedDataflowT s m sorted wsort
+           -> (sorted wsort -> DataflowT rsort s m b)
+           -> DataflowT rsort s m b
+sbindLocal = bindLocal . unSDF
+
+-- |Variant of |sbindAllLocal| whose argument is a |SortedDataflowT|.
+sbindAllLocal :: ( KnownSort wsort, wsort `In` ['TARG, 'EARG]
+                 , KnownSort rsort, rsort `In` ['TYPE, 'EXPR]
+                 , Monoid s, Monad m)
+              => [SortedDataflowT s m sorted wsort]
+              -> ([sorted wsort] -> DataflowT rsort s m b)
+              -> DataflowT rsort s m b
+sbindAllLocal = bindAllLocal . fmap unSDF
+
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}

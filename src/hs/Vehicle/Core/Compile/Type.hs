@@ -8,6 +8,7 @@
 {-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE RecordWildCards           #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TupleSections             #-}
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
@@ -16,9 +17,9 @@
 module Vehicle.Core.Compile.Type where
 
 import           Control.Monad.Except (Except, MonadError(..))
-import           Control.Monad.Reader (ReaderT, runReaderT, MonadReader(..))
+import           Control.Monad.Reader (ReaderT, runReaderT, MonadReader(..), asks)
 import           Control.Monad.Trans (MonadTrans(..))
-import           Control.Monad.Writer (WriterT, runWriterT)
+import           Control.Monad.Writer (WriterT, runWriterT, MonadWriter(..))
 import           Data.Sequence (Seq, (!?))
 import           Vehicle.Core.AST
 import           Vehicle.Core.Compile.DataFlow
@@ -39,7 +40,7 @@ data TypeError
   | forall sort. KnownSort sort =>
     Mismatch
       Provenance  -- ^ The location of the mismatch.
-      [INFO sort] -- ^ The inferred type.
+      (INFO sort) -- ^ The inferred type.
       (INFO sort) -- ^ The expected type.
   | MissingAnnotation
       Provenance  -- ^ The location of the missing annotation.
@@ -66,22 +67,19 @@ instance Monoid Ctx where
   mempty = Ctx mempty mempty
 
 
--- |Get the sub-context for a given sort.
-getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq (Info sort)
-getSubCtxFor Ctx{..} = case sortSing @sort of { STYPE -> typeInfo; SEXPR -> exprInfo }
-
 -- |Find the type information for a given deBruijn index of a given sort.
 getInfo ::
   forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
   K Provenance sort ->
   DeBruijn sort ->
-  ReaderT Ctx (Except TypeError) (Info sort)
-getInfo p db = do
-  let idx = toIndex db
-  subctx <- getSubCtxFor @sort <$> ask
-  maybe
-    (throwError $ IndexOutOfBounds (unK p) (toIndex db))
-    return (subctx !? idx)
+  INFER Info sort
+getInfo p db =
+  let idx = toIndex db in
+    case sortSing @sort of
+      STYPE -> do subctx <- asks typeInfo
+                  maybe (throwError $ IndexOutOfBounds (unK p) idx) return (subctx !? idx)
+      SEXPR -> do subctx <- asks exprInfo
+                  maybe (throwError $ IndexOutOfBounds (unK p) idx) return (subctx !? idx)
 
 
 -- * Bidirectional type checking and inference algorithm
@@ -102,7 +100,7 @@ newtype Check (sort :: Sort)
             sort
         }
 
-type CHECK (sort :: Sort)
+type CHECK (sorted :: Sort -> *) (sort :: Sort)
   = (DATAFLOW Ctx)
     (ReaderT (INFO sort) (Except TypeError))
     (Tree DeBruijn Builtin (Info :*: K Provenance))
@@ -113,23 +111,18 @@ type CHECK (sort :: Sort)
 -- A computation of the |Infer| type is similar to the |Check| type, but instead of /requiring/ the
 -- information to check against via a reader monad, it /provides/ said information via a writer monad.
 --
--- NOTE: An inference pass returns a /list/ of types, because |MonadWriter| requires a |Monoid|
---       constraint on the written data. Rather than create a constraint which throws hard errors
---       when either |mempty| or |mappend| is used, we chose to use a list of types. We interpret
---       the empty list as a failed inference, and any non-singleton list as an ambiguous inference.
---
 newtype Infer (sort :: Sort)
   = Inf { unInf ::
             (DataFlow Ctx)
-            (WriterT [INFO sort] (Except TypeError))
-            (Tree DeBruijn Builtin (Info :*: K Provenance))
+            (Except TypeError)
+            (Tree DeBruijn Builtin (Info :*: K Provenance) :*: Info)
             sort
         }
 
-type INFER (sort :: Sort)
+type INFER (sorted :: Sort -> *) (sort :: Sort)
   = (DATAFLOW Ctx)
-    (WriterT [INFO sort] (Except TypeError))
-    (Tree DeBruijn Builtin (Info :*: K Provenance))
+    (Except TypeError)
+    (Tree DeBruijn Builtin (Info :*: K Provenance) :*: Info)
     sort
 
 
@@ -159,8 +152,8 @@ checkInferF = case sortSing @sort of
   --       invoking the inference algorithm.
   --
   SKIND -> \case
-    KAppF  p k1 k2 -> withInfer p $ KApp (noInfo :*: p) <$> runInfer k1 <*> runInfer k2
-    KConF  p op    -> withInfer p $ return $ KCon (noInfo :*: p) op
+    KAppF  p k1 k2 -> _
+    KConF  p op    -> _
     KMetaF p _i    -> unsupportedOperation p
 
   -- Types
@@ -168,9 +161,13 @@ checkInferF = case sortSing @sort of
     TForallF     p n t   -> withInfer p $ undefined
     TAppF        p t1 t2 -> withInfer p $ undefined
     TVarF        p n     -> withInfer p $ undefined
-    TConF        p op    -> withInfer p $ return $ TCon (kindOf op :*: p) op
-    TLitDimF     p d     -> withInfer p $ return $ TLitDim (kDim :*: p) d
-    TLitDimListF p ts    -> withInfer p $ TLitDimList (kDimList :*: p) <$> traverse (runCheckAsInfer kDim) ts
+      -- info <- getInfo p n
+      -- tell [unInfo info]
+      -- return $ TVar (info :*: p) n
+
+    TConF        p op    -> withInfer p $ undefined -- return $ TCon (kindOf op :*: p) op
+    TLitDimF     p d     -> withInfer p $ undefined -- return $ TLitDim (kDim :*: p) d
+    TLitDimListF p ts    -> withInfer p $ undefined -- TLitDimList (kDimList :*: p) <$> traverse (runCheckAsInfer kDim) ts
     TMetaF       p i     -> unsupportedOperation p
 
   -- Type argument
@@ -244,57 +241,65 @@ kDimList = Info $ KCon mempty KDimList
 -- * Combinators for writing bidirectional typing algorithms
 
 -- |Runs the checking portion of a check-and-infer algorithm.
-runCheck :: (Check :*: Infer) sort -> CHECK sort
-runCheck = unDF . unChk . ifst
+runCheck ::
+  (Check :*: Infer) sort ->
+  CHECK (Tree DeBruijn Builtin (Info :*: K Provenance)) sort
+runCheck chkInf = unDF (unChk (ifst chkInf))
 
 -- |Runs the inference portion of a check-and-infer algorithm.
-runInfer :: (Check :*: Infer) sort -> INFER sort
-runInfer = unDF . unInf . isnd
+runInfer ::
+  (Check :*: Infer) sort ->
+  INFER (Tree DeBruijn Builtin (Info :*: K Provenance) :*: Info) sort
+runInfer = undefined -- unDF . unInf . isnd
 
 -- |Runs the checking portion of a check-and-infer algorithm, then switches to inference.
 runCheckAsInfer ::
-  forall sort. (KnownSort sort) =>
-  Info sort -> (Check :*: Infer) sort -> INFER sort
-runCheckAsInfer info chkInf = unDF . unInf $ inf
-  where
-    chk :: Check sort
-    chk = ifst chkInf
-    inf :: Infer sort
-    inf = Inf . mapDF (lift @(WriterT _) . flip runReaderT (unInfo info)) . unChk $ chk
+  forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR, 'PROG]) =>
+  Info sort -> (Check :*: Infer) sort -> INFER (Tree DeBruijn Builtin (Info :*: K Provenance)) sort
+runCheckAsInfer info chkInf = undefined
+
+  -- unDF . unInf $ inf
+  -- where
+  --   chk :: Check sort
+  --   chk = ifst chkInf
+  --   inf :: Infer sort
+  --   inf = Inf . mapDF (lift @(WriterT _) . flip runReaderT (unInfo info)) . unChk $ chk
 
 -- |Creates a combined check-and-infer pass from a checking pass.
 withCheck ::
-  forall sort. (KnownSort sort) =>
-  K Provenance sort ->
-  CHECK sort -> (Check :*: Infer) sort
-withCheck p chk = Chk (DF chk) :*: inf
-  where
-    inf :: Infer sort
-    inf = Inf . liftDF . throwError $ MissingAnnotation (unK p)
+  forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR, 'PROG]) =>
+  K Provenance sort -> CHECK (Tree DeBruijn Builtin (Info :*: K Provenance)) sort -> (Check :*: Infer) sort
+withCheck p chk = undefined
+
+  -- Chk (DF chk) :*: inf
+  -- where
+  --   inf :: Infer sort
+  --   inf = Inf . liftDF . throwError $ MissingAnnotation (unK p)
 
 -- |Creates a combined check-and-infer pass from an inference pass, via |inferToCheck|.
 withInfer ::
   forall sort. (Eq (INFO sort), KnownSort sort) =>
-  K Provenance sort ->
-  INFER sort -> (Check :*: Infer) sort
-withInfer p inf = chk :*: Inf (DF inf)
-  where
-    chk :: Check sort
-    chk = Chk $ mapDF (inferToCheck p) (DF inf)
+  K Provenance sort -> INFER (Tree DeBruijn Builtin (Info :*: K Provenance)) sort -> (Check :*: Infer) sort
+withInfer p inf = undefined
 
--- |Converts an inference pass to a checking pass by comparing the inferred
---  information against the checked information.
-inferToCheck ::
-  forall sort a. (Eq (INFO sort), KnownSort sort) =>
-  K Provenance sort ->
-  WriterT [INFO sort] (Except TypeError) a ->
-  ReaderT (INFO sort) (Except TypeError) a
-inferToCheck p inf = do
-  (x, inferred) <- lift $ runWriterT inf
-  expected <- ask
-  if expected `elem` inferred
-    then return x
-    else throwError $ Mismatch @sort (unK p) inferred expected
+  -- chk :*: Inf (DF inf)
+  -- where
+  --   chk :: Check sort
+  --   chk = Chk $ mapDF (inferToCheck p) (DF inf)
+
+  --   -- Converts an inference pass to a checking pass by comparing the inferred
+  --   -- information against the checked information.
+  --   inferToCheck ::
+  --     forall sort a. (Eq (INFO sort), KnownSort sort) =>
+  --     K Provenance sort ->
+  --     Except TypeError (a, INFO sort) ->
+  --     ReaderT (INFO sort) (Except TypeError) a
+  --   inferToCheck p inf = do
+  --     (x, inferred) <- lift inf
+  --     expected <- ask
+  --     if inferred == expected
+  --       then return x
+  --       else throwError $ Mismatch @sort (unK p) inferred expected
 
 -- -}
 -- -}
