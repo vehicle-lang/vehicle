@@ -170,7 +170,7 @@ checkInferF = case sortSing @sort of
     TVarF        p n     -> withInfer p $ undefined
     TConF        p op    -> withInfer p $ return $ TCon (kindOf op :*: p) op
     TLitDimF     p d     -> withInfer p $ return $ TLitDim (kDim :*: p) d
-    TLitDimListF p ts    -> withInfer p $ undefined
+    TLitDimListF p ts    -> withInfer p $ TLitDimList (kDimList :*: p) <$> traverse (runCheckAsInfer kDim) ts
     TMetaF       p i     -> unsupportedOperation p
 
   -- Type argument
@@ -253,15 +253,18 @@ runInfer = unDF . unInf . isnd
 
 -- |Runs the checking portion of a check-and-infer algorithm, then switches to inference.
 runCheckAsInfer ::
-  (KnownSort sort) =>
-  INFO sort -> (Check :*: Infer) sort -> Infer sort
-runCheckAsInfer info =
-  Inf . mapDF (\m -> lift $ runReaderT m info) . unChk . ifst
+  forall sort. (KnownSort sort) =>
+  Info sort -> (Check :*: Infer) sort -> INFER sort
+runCheckAsInfer info chkInf = unDF . unInf $ inf
+  where
+    chk :: Check sort
+    chk = ifst chkInf
+    inf :: Infer sort
+    inf = Inf . mapDF (lift @(WriterT _) . flip runReaderT (unInfo info)) . unChk $ chk
 
 -- |Creates a combined check-and-infer pass from a checking pass.
 withCheck ::
-  forall sort.
-  (KnownSort sort) =>
+  forall sort. (KnownSort sort) =>
   K Provenance sort ->
   CHECK sort -> (Check :*: Infer) sort
 withCheck p chk = Chk (DF chk) :*: inf
@@ -271,8 +274,7 @@ withCheck p chk = Chk (DF chk) :*: inf
 
 -- |Creates a combined check-and-infer pass from an inference pass, via |inferToCheck|.
 withInfer ::
-  forall sort.
-  (Eq (INFO sort), KnownSort sort) =>
+  forall sort. (Eq (INFO sort), KnownSort sort) =>
   K Provenance sort ->
   INFER sort -> (Check :*: Infer) sort
 withInfer p inf = chk :*: Inf (DF inf)
@@ -283,8 +285,7 @@ withInfer p inf = chk :*: Inf (DF inf)
 -- |Converts an inference pass to a checking pass by comparing the inferred
 --  information against the checked information.
 inferToCheck ::
-  forall sort a.
-  (Eq (INFO sort), KnownSort sort) =>
+  forall sort a. (Eq (INFO sort), KnownSort sort) =>
   K Provenance sort ->
   WriterT [INFO sort] (Except TypeError) a ->
   ReaderT (INFO sort) (Except TypeError) a
