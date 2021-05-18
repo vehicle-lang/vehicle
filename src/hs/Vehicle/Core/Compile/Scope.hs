@@ -37,7 +37,6 @@ unboundName n = throwError $ UnboundName (toToken n)
 -- * Scope checking contexts.
 
 -- |Type of scope checking contexts.
--- type Ctx = HashMap Sort [Symbol]
 data Ctx = Ctx { typeSymbols :: Seq Symbol, exprSymbols :: Seq Symbol }
 
 instance Semigroup Ctx where
