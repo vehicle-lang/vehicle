@@ -97,16 +97,9 @@ instance (KnownSort sort, MonadError e m) => MonadError e (DataflowT sort s m) w
     SDECL -> catchError
     SPROG -> catchError
 
-instance (KnownSort sort, MonadReader r m) => MonadReader r (DataflowT sort s m) where
-  ask   = lift ask
-  local = case sortSing @sort of
-    SKIND -> local
-    STYPE -> local
-    STARG -> local
-    SEXPR -> local
-    SEARG -> local
-    SDECL -> local
-    SPROG -> local
+instance (KnownSort sort, sort `In` ['TYPE, 'EXPR], Monad m) => MonadReader r (DataflowT sort r m) where
+  ask     = fromReaderT ask
+  local k = fromReaderT . local k . toReaderT
 
 instance (KnownSort sort, sort `In` ['TARG, 'EARG], Monoid s, Monad m) => MonadWriter s (DataflowT sort s m) where
   tell   = fromWriterT . tell

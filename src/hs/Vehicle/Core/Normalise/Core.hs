@@ -18,7 +18,7 @@ module Vehicle.Core.Normalise.Core
   , mkBool
   ) where
 
-import Control.Monad.Trans.Except ()
+import Control.Monad.Except (MonadError)
 import Vehicle.Core.AST
 import Vehicle.Core.Abs (ExprName)
 

@@ -80,6 +80,21 @@ library
   build-tools:        alex
                     , happy
   default-language:   Haskell2010
+  default-extensions: DataKinds
+                      FlexibleContexts
+                      FlexibleInstances
+                      ImportQualifiedPost
+                      InstanceSigs
+                      LambdaCase
+                      MultiParamTypeClasses
+                      RankNTypes
+                      RecordWildCards
+                      ScopedTypeVariables
+                      TupleSections
+                      TypeApplications
+                      TypeFamilies
+                      TypeOperators
+
   ghc-options:        -Wall
 
 executable vehicle

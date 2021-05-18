@@ -11,7 +11,7 @@ import           Data.Text as Text (Text, intercalate, unwords, pack, toUpper, n
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Control.Monad (liftM2)
-import           Control.Monad.Trans.Except (MonadError(..))
+import           Control.Monad.Except (MonadError(..))
 import           Vehicle.Backend.Core
 import           Vehicle.Core.AST (Tree(..), Expr, Type, Decl, Prog, EArg, TArg, Builtin(..))
 import           Vehicle.Core.Abs (Name(..))
