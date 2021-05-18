@@ -179,33 +179,35 @@ checkInferF = case sortSing @sort of
 -- |Constructed a bidirectional step from a checking step.
 --
 --  Concretely, the resulting algorithm always throws an error if the inference
---  portion is invoked.
+--  portion is invoked, with the exception of sorts which have trivial
+--  information, i.e., kinds, declarations, and programs, for which checking
+--  and inference coincide.
 --
 fromCheck ::
   forall sort. (KnownSort sort) =>
   K Provenance sort -> Check sort (CheckedTree sort) ->
   (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
 fromCheck p chk = (chk, checkToInfer p chk)
+  where
+    checkToInfer ::
+      forall sort. (KnownSort sort) =>
+      K Provenance sort -> Check sort (CheckedTree sort) -> Infer sort (CheckedTree sort)
+    checkToInfer p chk = case sortSing @sort of
+      SKIND -> inferNoop chk
+      STYPE -> inferError p
+      STARG -> inferError p -- TODO: could be implemented as something sensible?
+      SEXPR -> inferError p
+      SEARG -> inferError p -- TODO: could be implemented as something sensible?
+      SDECL -> inferNoop chk
+      SPROG -> inferNoop chk
 
-checkToInfer ::
-  forall sort. (KnownSort sort) =>
-  K Provenance sort -> Check sort (CheckedTree sort) -> Infer sort (CheckedTree sort)
-checkToInfer p chk = case sortSing @sort of
-  SKIND -> inferNoop chk
-  STYPE -> inferError p
-  STARG -> inferError p -- TODO: could be implemented as something sensible?
-  SEXPR -> inferError p
-  SEARG -> inferError p -- TODO: could be implemented as something sensible?
-  SDECL -> inferNoop chk
-  SPROG -> inferNoop chk
+    -- |An inference mode which always throws an error.
+    inferError :: forall sort a. (KnownSort sort) => K Provenance sort -> Infer sort a
+    inferError p = Inf $ throwError (MissingAnnotation (unK p))
 
--- |An inference mode which always throws an error.
-inferError :: forall sort a. (KnownSort sort) => K Provenance sort -> Infer sort a
-inferError p = Inf $ throwError (MissingAnnotation (unK p))
-
--- |For sorts with trivial information, checking and inference coincide into a no-op.
-inferNoop :: forall sort a. (KnownSort sort, Monoid (Info sort)) => Check sort a -> Infer sort a
-inferNoop chk = Inf $ do x <- runReaderT (unChk chk) mempty; return (x, mempty)
+    -- |For sorts with trivial information, checking and inference coincide into a no-op.
+    inferNoop :: forall sort a. (KnownSort sort, Monoid (Info sort)) => Check sort a -> Infer sort a
+    inferNoop chk = Inf $ do x <- runReaderT (unChk chk) mempty; return (x, mempty)
 
 -- |Constructed a bidirectional step from an inference step.
 --
@@ -218,16 +220,16 @@ fromInfer ::
   K Provenance sort -> Infer sort (CheckedTree sort) ->
   (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
 fromInfer p inf = (inferToCheck p inf, inf)
-
-inferToCheck ::
-  forall sort. (KnownSort sort, Eq (Info sort)) =>
-  K Provenance sort -> Infer sort (CheckedTree sort) -> Check sort (CheckedTree sort)
-inferToCheck p inf = Chk $ do
-  (tree, inferred) <- lift (unInf inf)
-  expected <- ask
-  if inferred == expected
-    then return tree
-    else throwError (Mismatch @sort (unK p) inferred expected)
+  where
+    inferToCheck ::
+      forall sort. (KnownSort sort, Eq (Info sort)) =>
+      K Provenance sort -> Infer sort (CheckedTree sort) -> Check sort (CheckedTree sort)
+    inferToCheck p inf = Chk $ do
+      (tree, inferred) <- lift (unInf inf)
+      expected <- ask
+      if inferred == expected
+        then return tree
+        else throwError (Mismatch @sort (unK p) inferred expected)
 
 -- |Run and continue in checking mode.
 runCheck :: SortedCheckInfer sort -> Check sort (CheckedTree sort)
