@@ -11,11 +11,12 @@
 
 module Vehicle.Core.Compile.Dataflow where
 
-import Control.Monad.Except
-import Control.Monad.Identity
-import Control.Monad.Reader
-import Control.Monad.State
-import Control.Monad.Writer
+import Control.Monad.Trans (MonadTrans(..))
+import Control.Monad.Except (MonadError(..))
+import Control.Monad.Identity (IdentityT(..))
+import Control.Monad.Reader (MonadReader(..), ReaderT(..))
+import Control.Monad.State (MonadState(..), StateT(..), modify, evalStateT)
+import Control.Monad.Writer (MonadWriter(..), WriterT(..))
 import Vehicle.Core.AST
 import Vehicle.Prelude
 

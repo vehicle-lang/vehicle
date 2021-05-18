@@ -18,8 +18,8 @@ module Vehicle.Core.Normalise.Core
   , mkBool
   ) where
 
+import Control.Monad.Trans.Except ()
 import Vehicle.Core.AST
-import Control.Monad.Except (MonadError)
 import Vehicle.Core.Abs (ExprName)
 
 -- |Errors thrown during normalisation

@@ -11,8 +11,7 @@ import           Data.Text as Text (Text, intercalate, unwords, pack, toUpper, n
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Control.Monad (liftM2)
-import           Control.Monad.Except (MonadError)
-import           Control.Monad.Error.Class (throwError)
+import           Control.Monad.Trans.Except (MonadError(..))
 import           Vehicle.Backend.Core
 import           Vehicle.Core.AST (Tree(..), Expr, Type, Decl, Prog, EArg, TArg, Builtin(..))
 import           Vehicle.Core.Abs (Name(..))
@@ -221,12 +220,12 @@ instance Compile (TransDecl ann) where
       in
         concatLines [ line1, line2]
 
-  compile DeclData {} = throwError $ CompilationUnsupported "dataset"
-  compile DeclNetw {} = throwError $ CompilationUnsupported "network"
+  compile DeclData {} = throwE $ CompilationUnsupported "dataset"
+  compile DeclNetw {} = throwE $ CompilationUnsupported "network"
 
 instance Compile (TransType ann) where
   compile (TLitDim _ann d) = comp $ pack $ show d
-  compile (TMeta _ann _i) = throwError $ CompilationUnsupported "TMeta"
+  compile (TMeta _ann _i) = throwE $ CompilationUnsupported "TMeta"
   compile (TVar _ann (K name)) = comp $ nameSymbol name
   compile (TLitList _ann typs) = concatCode [ compWithDep "[" DataList, concatList $ map compile typs, comp "]"]
 
@@ -240,18 +239,18 @@ instance Compile (TransType ann) where
   compile (TOp2 TAdd t1 t2 _ _ _ _) = concatCode [ compile t1 , compWithDep "+" DataNat , compile t2 ]
   compile (TOp2 TCons t1 t2 _ _ _ _) = concatCode [ compile t1 , compWithDep "∷" DataList , compile t2 ]
   compile (TOp2 TFun t1 t2 _ _ _ _) = concatCode [ compile t1 , comp "→" , compile t2 ]
-  compile _typ = throwError $ CompilationUnsupported "Unknown type application"
+  compile _typ = throwE $ CompilationUnsupported "Unknown type application"
 
 instance Compile (TransExpr ann) where
   compile (ELitInt _ n) = comp $ pack $ show n
-  compile (ELitReal _ _j) = throwError $ CompilationUnsupported "Real literals"
+  compile (ELitReal _ _j) = throwE $ CompilationUnsupported "Real literals"
   compile (EVar _ (K name)) = comp $ nameSymbol name
 
   compile (ELitSeq _ exprs) = concatCode [ compWithDep "[" DataList, concatList $ map compile exprs, comp "]"]
   compile (EAnn _ expr typ) = concatCode [ comp "(", compile expr, comp ":", compile typ, comp ")"]
   compile (ELam _ arg expr) = concatCode [ comp "λ", comp $ eArgName arg, comp "→" , compile expr]
-  compile (ETyApp _ann _expr _typ) = throwError $ CompilationUnsupported "ETyApp"
-  compile (ETyLam _ann _targ _expr) = throwError $ CompilationUnsupported "ETyLam"
+  compile (ETyApp _ann _expr _typ) = throwE $ CompilationUnsupported "ETyApp"
+  compile (ETyLam _ann _targ _expr) = throwE $ CompilationUnsupported "ETyLam"
   compile (ELet _ arg value body) = concatCode [ comp "let", comp $ eArgName arg, comp "=", compile value, comp "in", compile body ]
 
   compile (EOp0 ETrue _ _) = compWithDep "⊤" DataUnit
@@ -282,7 +281,7 @@ instance Compile (TransExpr ann) where
   compile (EOp2 EAll e1 e2 _ _ _ _) = concatCode [ comp "∀", compile e1, comp "→", compile e2 ]
   compile (EOp2 EAny e1 e2 _ _ _ _) = concatCode [ comp "∃", compile e1, comp "→", compile e2 ]
 
-  compile _expr = throwError $ CompilationUnsupported "Unknown expression application"
+  compile _expr = throwE $ CompilationUnsupported "Unknown expression application"
 
 isVerificationCondition :: TransType ann -> Bool
 isVerificationCondition (TOp0 TBool _ _) = True

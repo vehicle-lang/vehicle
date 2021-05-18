@@ -8,9 +8,9 @@
 
 module Vehicle.Core.AST.Recursive where
 
-import           Control.Monad.Identity
-import           Vehicle.Core.AST.Core
-import           Vehicle.Prelude
+import Data.Functor.Identity (Identity(..))
+import Vehicle.Core.AST.Core
+import Vehicle.Prelude
 
 
 -- * Base functor for kinds

@@ -1,3 +1,44 @@
+# Guide to one-name variable names
+
+```haskell
+-- The names k, t, e, and d are used for the core sorts in the AST
+k    :: Kind name builtin ann
+t    :: Type name builtin ann
+e    :: Expr name builtin ann
+d    :: Decl name builtin ann
+
+-- For generic AST elements the name tree is used
+tree :: Tree name builtin ann sort
+
+-- The names n, op, and ann are used for whatever types are in the
+-- name, builtin, and annotation positions in the AST
+n    :: name
+op   :: builtin
+ann  :: ann
+
+-- The name n is also overloaded to type and expression arguments,
+-- as these are morally also names, albeit in binding position
+n    :: TArg name builtin ann
+n    :: EArg name builtin ann
+
+-- The name op is overloaded for values from the dedicated builtin type
+op   :: Builtin sort
+
+-- The name db is used for deBruijn indices, and the name ix is used
+-- for the underlying index type
+db   :: DeBruijn sort
+ix   :: Index
+
+-- The name p is used for provenance variables, and those wrapped by K
+p    :: Provenance
+p    :: K Provenance sort
+
+-- Any of the below names suffixed with an 's' denotes a sequence of
+-- elements of that type, e.g., ops is a list of builtins
+ops  :: [Builtin sort]
+```
+
+
 # How to add a new builtin?
 
 Let's say you want to add a builtin operator for exponentials. Here's what you need to do:

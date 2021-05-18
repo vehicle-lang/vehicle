@@ -4,6 +4,7 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE ImportQualifiedPost   #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE OverloadedStrings     #-}
@@ -17,15 +18,14 @@ module Vehicle.Frontend.Elaborate
   ) where
 
 
-import           Control.Exception (Exception)
-import           Control.Monad.Except (MonadError(..), Except, runExcept)
-import           Data.Coerce (coerce)
-import           Data.Foldable (foldrM)
-import           Data.Functor.Foldable (fold)
-import           Data.List (groupBy)
-import qualified Vehicle.Core.Abs as VC -- NOTE: In general, avoid importing Abs!
-import qualified Vehicle.Frontend.AST as VF
-import           Vehicle.Prelude
+import Control.Monad.Except (MonadError(..), Except, runExcept)
+import Data.Coerce (coerce)
+import Data.Foldable (foldrM)
+import Data.Functor.Foldable (fold)
+import Data.List (groupBy)
+import Vehicle.Core.Abs qualified as VC
+import Vehicle.Frontend.AST qualified as VF
+import Vehicle.Prelude
 
 
 -- * Elaboration monad
@@ -39,8 +39,6 @@ data ElabError
   | LocalDeclData Token
   | LocalDefType Token
   deriving (Show)
-
-instance Exception ElabError
 
 -- | Constraint for the monad stack used by the elaborator.
 type MonadElab m = MonadError ElabError m

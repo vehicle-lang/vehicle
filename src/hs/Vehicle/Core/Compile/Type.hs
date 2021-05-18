@@ -16,10 +16,10 @@
 
 module Vehicle.Core.Compile.Type where
 
-import           Control.Monad.Except (Except, MonadError(..))
-import           Control.Monad.Reader (ReaderT, runReaderT, MonadReader(..), asks)
+import           Control.Monad.Except (MonadError(..), Except)
+import           Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import           Control.Monad.Trans (MonadTrans(..))
-import           Control.Monad.Writer (WriterT, runWriterT, MonadWriter(..))
+import           Control.Monad.Writer (MonadWriter(..), WriterT(..))
 import           Data.Sequence (Seq, (!?))
 import qualified Data.Sequence as Seq
 import           Vehicle.Core.AST
@@ -70,6 +70,10 @@ getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -
 getSubCtxFor = case sortSing @sort of STYPE -> typeInfo; SEXPR -> exprInfo
 
 -- |Find the type information for a given deBruijn index of a given sort.
+getInfo ::
+  forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
+  K Provenance sort -> DeBruijn sort -> Infer sort ()
+getInfo p db = _
 -- getInfo ::
 --   forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
 --   K Provenance sort -> DeBruijn sort -> INFER Info sort
@@ -105,11 +109,69 @@ checkInfer ::
  (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
 checkInfer = unSCI . foldTree (SCI . checkInferF)
 
+-- |Check if a single layer is well-kinded and well-typed, see |checkInfer|.
 checkInferF ::
   forall sort. (KnownSort sort) =>
   TreeF DeBruijn Builtin (K Provenance) sort SortedCheckInfer ->
   (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
-checkInferF = undefined
+checkInferF = case sortSing @sort of
+
+  SKIND -> \case
+    KAppF  p k1 k2 -> _
+    KConF  p op    -> undefined
+    KMetaF p i     -> undefined
+
+  -- Types
+  STYPE -> \case
+    TForallF     p n t   -> undefined
+    TAppF        p t1 t2 -> undefined
+    TVarF        p n     -> undefined
+    TConF        p op    -> undefined
+    TLitDimF     p d     -> undefined
+    TLitDimListF p ts    -> undefined
+    TMetaF       p i     -> undefined
+
+  -- Type argument
+  STARG -> \case
+    TArgF p n -> undefined
+
+  -- Expressions
+  SEXPR -> \case
+    EAnnF     p e t     -> undefined
+    ELetF     p n e1 e2 -> undefined
+    ELamF     p n e     -> undefined
+    EAppF     p e1 e2   -> undefined
+    EVarF     p n       -> undefined
+    ETyAppF   p e t     -> undefined
+    ETyLamF   p n e     -> undefined
+    EConF     p op      -> undefined
+    ELitIntF  p z       -> undefined
+    ELitRealF p r       -> undefined
+    ELitSeqF  p es      -> undefined
+
+  -- Expression arguments
+  SEARG -> \case
+    EArgF p n -> undefined
+
+  -- Declarations
+  SDECL -> \case
+    DeclNetwF p n t    -> undefined
+    DeclDataF p n t    -> undefined
+    DefTypeF  p n ns t -> undefined
+    DefFunF   p n t e  -> undefined
+
+  -- Programs
+  SPROG -> \case
+    MainF p ds -> undefined
+
+infer :: forall sort. (KnownSort sort) => Infer sort (CheckedTree sort) -> SortedCheckInfer sort
+infer inf = SCI (chk, inf)
+  where
+    chk :: Check sort (CheckedTree sort)
+    chk = Chk $ _
+
+check :: forall sort. (KnownSort sort) => Check sort (CheckedTree sort) -> SortedCheckInfer sort
+check chk = _
 
 {-
 
@@ -203,25 +265,6 @@ kindOf = \case
   TTensor -> kDim ~> kType ~> kType
   TAdd    -> kDim ~> kDim ~> kDim
   TCons   -> kDim ~> kDimList ~> kDimList
-
-
--- * A tiny DSL for writing kinds and types as |Info| expressions
-
-infixl 3 `kApp`
-
-kApp :: Info 'TYPE -> Info 'TYPE -> Info 'TYPE
-kApp = liftInfo2 $ KApp mempty
-
-infixr 4 ~>
-
-(~>) :: Info 'TYPE -> Info 'TYPE -> Info 'TYPE
-k1 ~> k2 = kFun `kApp` k1 `kApp` k2
-
-kFun, kType, kDim, kDimList :: Info 'TYPE
-kFun     = Info $ KCon mempty KFun
-kType    = Info $ KCon mempty KType
-kDim     = Info $ KCon mempty KDim
-kDimList = Info $ KCon mempty KDimList
 
 
 -- * Combinators for writing bidirectional typing algorithms

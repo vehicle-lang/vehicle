@@ -83,9 +83,26 @@ instance Monoid (Info 'PROG) where
   mempty = Info ()
 
 
--- |Return the empty information for sorts which don't store any.
-noInfo :: forall sort. (KnownSort sort, sort `In` ['KIND, 'DECL, 'PROG]) => Info sort
-noInfo = Info $ case sortSing @sort of { SKIND -> (); SDECL -> (); SPROG -> () }
+-- * DSL for writing kinds as info annotations
+
+infixl 3 `kApp`
+
+kApp :: Info 'TYPE -> Info 'TYPE -> Info 'TYPE
+kApp = liftInfo2 $ KApp mempty
+
+infixr 4 ~>
+
+(~>) :: Info 'TYPE -> Info 'TYPE -> Info 'TYPE
+k1 ~> k2 = kFun `kApp` k1 `kApp` k2
+
+kFun, kType, kDim, kDimList :: Info 'TYPE
+kFun     = Info $ KCon mempty KFun
+kType    = Info $ KCon mempty KType
+kDim     = Info $ KCon mempty KDim
+kDimList = Info $ KCon mempty KDimList
+
+
+-- * Helper functions
 
 -- |Lift unary functions on |INFO| to functions on |Info|.
 liftInfo1 :: (INFO sort -> INFO sort) -> (Info sort -> Info sort)

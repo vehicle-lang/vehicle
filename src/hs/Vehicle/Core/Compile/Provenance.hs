@@ -8,9 +8,9 @@
 
 module Vehicle.Core.Compile.Provenance where
 
-import           Control.Monad.Writer
-import           Vehicle.Core.AST
-import           Vehicle.Prelude
+import Control.Monad.Writer (MonadWriter(..), Writer, runWriter)
+import Vehicle.Core.AST
+import Vehicle.Prelude
 
 
 -- |Get the provenance for a single layer.
