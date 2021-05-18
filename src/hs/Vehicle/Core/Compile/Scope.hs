@@ -41,8 +41,7 @@ unboundName n = throwError $ UnboundName (toToken n)
 data Ctx = Ctx { typeSymbols :: Seq Symbol, exprSymbols :: Seq Symbol }
 
 instance Semigroup Ctx where
-  Ctx typeSymbols1 exprSymbols1 <> Ctx typeSymbols2 exprSymbols2 =
-    Ctx (typeSymbols1 <> typeSymbols2) (exprSymbols1 <> exprSymbols2)
+  Ctx ts1 es1 <> Ctx ts2 es2 = Ctx (ts1 <> ts2) (es1 <> es2)
 
 instance Monoid Ctx where
   mempty = Ctx mempty mempty

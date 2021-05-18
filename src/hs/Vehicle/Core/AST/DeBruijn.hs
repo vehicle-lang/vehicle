@@ -12,6 +12,7 @@
 
 module Vehicle.Core.AST.DeBruijn
   ( Index
+  , Name(..)
   , DeBruijn(..)
   , fromIndex
   , toIndex
@@ -24,13 +25,19 @@ import Vehicle.Prelude
 
 -- * Types
 
+data Name
+  = User Symbol
+  | Machine
+
+deriving instance Eq Name
+
 type Index = Int
 
 data DeBruijn (sort :: Sort) where
-  TIndex  :: Index  -> DeBruijn 'TYPE
-  EIndex  :: Index  -> DeBruijn 'EXPR
-  TSymbol :: Symbol -> DeBruijn 'TARG
-  ESymbol :: Symbol -> DeBruijn 'EARG
+  TIndex  :: Index -> DeBruijn 'TYPE
+  EIndex  :: Index -> DeBruijn 'EXPR
+  TSymbol :: Name  -> DeBruijn 'TARG
+  ESymbol :: Name  -> DeBruijn 'EARG
 
 
 -- |Wraps an |Index| as a |DeBruijn|.
@@ -47,12 +54,13 @@ toIndex (EIndex index) = index
 -- |Wraps a |Symbol| as a |DeBruijn|.
 fromSymbol :: forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) => Symbol -> DeBruijn sort
 fromSymbol = case sortSing :: SSort sort of
-  STARG -> TSymbol
-  SEARG -> ESymbol
+  STARG -> TSymbol . User
+  SEARG -> ESymbol . User
 
 -- |Returns the |Symbol| of a |DeBruijn|.
-toSymbol :: forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) => DeBruijn sort -> Symbol
-toSymbol (TSymbol symbol) = symbol
-toSymbol (ESymbol symbol) = symbol
+toSymbol :: forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) => DeBruijn sort -> Maybe Symbol
+toSymbol (TSymbol (User symbol)) = Just symbol
+toSymbol (ESymbol (User symbol)) = Just symbol
+toSymbol _                       = Nothing
 
 deriving instance Eq (DeBruijn sort)

@@ -66,22 +66,27 @@ instance Semigroup Ctx where
 instance Monoid Ctx where
   mempty = Ctx mempty mempty
 
+-- |Create a context with a single piece of information of the given sort.
+singletonCtx :: (sort `In` ['TYPE, 'EXPR]) => SSort sort -> Info sort -> Ctx
+singletonCtx STYPE info = Ctx (Seq.singleton info) Seq.empty
+singletonCtx SEXPR info = Ctx Seq.empty (Seq.singleton info)
+
+-- |Get the sub-context for a given sort.
+getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq (Info sort)
+getSubCtxFor = case sortSing @sort of STYPE -> typeInfo; SEXPR -> exprInfo
 
 -- |Find the type information for a given deBruijn index of a given sort.
 getInfo ::
   forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
-  K Provenance sort ->
-  DeBruijn sort ->
-  INFER Info sort
-getInfo p db =
-  let idx = toIndex db in
-    case sortSing @sort of
-      STYPE -> do subctx <- asks typeInfo
-                  maybe (throwError $ IndexOutOfBounds (unK p) idx) return (subctx !? idx)
-      SEXPR -> do subctx <- asks exprInfo
-                  maybe (throwError $ IndexOutOfBounds (unK p) idx) return (subctx !? idx)
+  K Provenance sort -> DeBruijn sort -> INFER Info sort
+getInfo p db = do
+  subctx <- getSubCtxFor @sort <$> getData
+  let index = toIndex db
+  let maybeInfo = subctx !? index
+  maybe (throwError $ IndexOutOfBounds (unK p) index) return maybeInfo
 
 
+{-
 -- * Bidirectional type checking and inference algorithm
 
 -- |Type of a checking algorithm.
