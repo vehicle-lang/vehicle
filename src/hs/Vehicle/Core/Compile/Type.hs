@@ -114,12 +114,14 @@ newtype Infer (sort :: Sort) (a :: *)
 newtype SortedCheckInfer (sort :: Sort)
   = SCI { unSCI :: (Check sort (CheckedTree sort), Infer sort (CheckedTree sort)) }
 
+
 -- |Check if a tree is well-kinded and well-typed, and insert typing information.
 checkInfer ::
   forall sort. (KnownSort sort) =>
   Tree DeBruijn Builtin (K Provenance) sort ->
  (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
 checkInfer = unSCI . foldTree (SCI . checkInferF)
+
 
 -- |Check if a single layer is well-kinded and well-typed, see |checkInfer|.
 checkInferF ::
@@ -135,13 +137,13 @@ checkInferF = case sortSing @sort of
 
   -- Types
   STYPE -> \case
-    TForallF     p n t   -> undefined
-    TAppF        p t1 t2 -> undefined
-    TVarF        p n     -> undefined
-    TConF        p op    -> undefined
-    TLitDimF     p d     -> undefined
-    TLitDimListF p ts    -> undefined
-    TMetaF       p i     -> undefined
+    TForallF     p n t   -> fromInfer p $ undefined
+    TAppF        p t1 t2 -> fromInfer p $ undefined
+    TVarF        p n     -> fromInfer p $ undefined
+    TConF        p op    -> fromInfer p $ undefined
+    TLitDimF     p d     -> fromInfer p $ undefined
+    TLitDimListF p ts    -> fromInfer p $ undefined
+    TMetaF       p _i    -> fromCheck p $ throwError (UnsupportedOperation (unK p))
 
   -- Type argument
   STARG -> \case
@@ -239,6 +241,20 @@ runCheck (SCI (chk, _inf)) = chk
 runInfer :: SortedCheckInfer sort -> Infer sort (CheckedTree sort)
 runInfer (SCI (_chk, inf)) = inf
 
+-- |Return the kind for builtin types.
+kindOf :: Builtin 'TYPE -> Info 'TYPE
+kindOf = \case
+  TFun    -> kType ~> kType ~> kType
+  TBool   -> kType
+  TProp   -> kType
+  TInt    -> kType
+  TReal   -> kType
+  TList   -> kType ~> kType
+  TTensor -> kDim ~> kType ~> kType
+  TAdd    -> kDim ~> kDim ~> kDim
+  TCons   -> kDim ~> kDimList ~> kDimList
+
+
 {-
 
 --- Roughly:
@@ -319,46 +335,6 @@ checkInferF = case sortSing @sort of
 
 
 
--- |Return the kind for builtin types.
-kindOf :: Builtin 'TYPE -> Info 'TYPE
-kindOf = \case
-  TFun    -> kType ~> kType ~> kType
-  TBool   -> kType
-  TProp   -> kType
-  TInt    -> kType
-  TReal   -> kType
-  TList   -> kType ~> kType
-  TTensor -> kDim ~> kType ~> kType
-  TAdd    -> kDim ~> kDim ~> kDim
-  TCons   -> kDim ~> kDimList ~> kDimList
-
-
--- * Combinators for writing bidirectional typing algorithms
-
--- |Runs the checking portion of a check-and-infer algorithm.
-runCheck ::
-  (Check :*: Infer) sort ->
-  CHECK (Tree DeBruijn Builtin (Info :*: K Provenance)) sort
-runCheck chkInf = unDF (unChk (ifst chkInf))
-
--- |Runs the inference portion of a check-and-infer algorithm.
-runInfer ::
-  (Check :*: Infer) sort ->
-  INFER (Tree DeBruijn Builtin (Info :*: K Provenance) :*: Info) sort
-runInfer = undefined -- unDF . unInf . isnd
-
--- |Runs the checking portion of a check-and-infer algorithm, then switches to inference.
-runCheckAsInfer ::
-  forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR, 'PROG]) =>
-  Info sort -> (Check :*: Infer) sort -> INFER (Tree DeBruijn Builtin (Info :*: K Provenance)) sort
-runCheckAsInfer info chkInf = undefined
-
-  -- unDF . unInf $ inf
-  -- where
-  --   chk :: Check sort
-  --   chk = ifst chkInf
-  --   inf :: Infer sort
-  --   inf = Inf . mapDF (lift @(WriterT _) . flip runReaderT (unInfo info)) . unChk $ chk
 
 -- -}
 -- -}
