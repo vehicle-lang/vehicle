@@ -16,6 +16,7 @@ import Control.Monad.Except (MonadError(..))
 import Control.Monad.Identity (IdentityT(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Control.Monad.State (MonadState(..), StateT(..), modify, evalStateT)
+import Control.Monad.Supply (MonadSupply(..))
 import Control.Monad.Writer (MonadWriter(..), WriterT(..))
 import Vehicle.Core.AST
 import Vehicle.Prelude
@@ -96,6 +97,10 @@ instance (KnownSort sort, MonadError e m) => MonadError e (DataflowT sort s m) w
     SEARG -> catchError
     SDECL -> catchError
     SPROG -> catchError
+
+instance (KnownSort sort, MonadSupply s f m) => MonadSupply s f (DataflowT sort d m) where
+  supply  = lift . supply
+  provide = lift . provide
 
 instance (KnownSort sort, sort `In` ['TYPE, 'EXPR], Monad m) => MonadReader r (DataflowT sort r m) where
   ask     = fromReaderT ask

@@ -20,7 +20,7 @@ module Vehicle.Core.Compile.Type where
 
 import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
-import Control.Monad.Supply (MonadSupply(..), SupplyT(..))
+import Control.Monad.Supply (MonadSupply(..), SupplyT(..), demand)
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Writer (MonadWriter(..), WriterT(..))
 import Data.Text (Text)
@@ -115,13 +115,16 @@ newtype SortedCheckInfer (sort :: Sort)
 -- |Find the type information for a given deBruijn index of a given sort.
 getInfo ::
   forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
-  K Provenance sort -> DeBruijn sort -> Infer sort ()
+  K Provenance sort -> DeBruijn sort -> TCM sort (Info sort)
 getInfo p db = do
   subctx <- getSubCtxFor @sort <$> ask
   let ix = toIndex db
   let maybeInfo = subctx !? ix
   info <- maybe (throwError $ IndexOutOfBounds (unK p) ix) return maybeInfo
-  return ((), info)
+  return info
+
+freshMeta :: TCM sort (Info 'TYPE)
+freshMeta = Info . KMeta mempty <$> demand
 
 -- |Check if a tree is well-kinded and well-typed, and insert typing information.
 checkInfer ::
@@ -137,54 +140,68 @@ checkInferF ::
   (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
 checkInferF = case sortSing @sort of
 
+  -- Kinds.
   SKIND -> \case
-    KAppF  p k1 k2 -> fromCheck p $
-      KApp (mempty :*: p) <$> runCheck k1 <*> runCheck k2
-    KConF  p op    -> fromCheck p $
-      KCon (mempty :*: p) <$> pure op
-    KMetaF p _i    -> fromCheck p $
-      throwError (UnsupportedOperation "KMeta" (unK p))
+    KAppF  p k1 k2 -> fromCheck p $ KApp (mempty :*: p) <$> runCheck k1 <*> runCheck k2
+    KConF  p op    -> fromCheck p $ KCon (mempty :*: p) <$> pure op
+    KMetaF p _i    -> fromCheck p $ throwError $ UnsupportedOperation "KMeta" (unK p)
 
-  -- Types
+  -- Types.
   STYPE -> \case
+
     --
-    TForallF     p n t   -> fromInfer p $ do
+    TForallF p n t -> fromInfer p $ do
       undefined
 
-    -- For applications, we infer the kind of the function and check the kind of
-    -- the argument.
-    TAppF        p t1 t2 -> fromInfer p $ do
+    -- For type applications:
+    -- infer the kind of the type function, check the kind of its argument.
+    TAppF p tFun tArg -> fromInfer p $ do
 
       -- Infer the kind of the function.
-      (t1, k) <- runInfer t1
+      (tFun, kFun) <- runInfer tFun
 
-      -- Check if it's a function kind.
-      (k1, k2) <- case unInfo k of
-        KApp _ (KApp _ (KCon _ KFun) k1) k2 -> return (k1, k2)
-        _                                   -> _
-      _
+      -- Check if it's a function kind: if so, return the two argument; if not, throw an error.
+      (kArg, kRes) <- case unInfo kFun of
+        _kFun@(KApp _ (KApp _ (KCon _ KFun) kArg) kRes) ->
+          return (Info kArg, Info kRes)
+        _kFun -> do
+          expected <- (~>) <$> freshMeta <*> freshMeta
+          throwError $ Mismatch (unK p) kFun expected
 
-    --
-    TVarF        p n     -> fromInfer p $ do
-      ((), k) <- getInfo p n
+      -- Check the kind of the argument.
+      tArg <- runCheckWith kArg tArg
+
+      -- Return the appropriately annotated type with its inferred kind.
+      return (TApp (kRes :*: p) tFun tArg, kRes)
+
+    -- For type variables:
+    -- lookup the kind of the variable in the context.
+    TVarF p n -> fromInfer p $ do
+      k <- getInfo p n
       return (TVar (k :*: p) n, k)
 
-    -- For builtins, we look up the kind using |kindOf|.
-    TConF        p op    -> fromInfer p $ do
+    -- For type builtins:
+    -- lookup the kind of the builtin using |kindOf|.
+    TConF p op -> fromInfer p $ do
       let k = kindOf op
       return (TCon (k :*: p) op, k)
 
-    --
-    TLitDimF     p d     -> fromInfer p $ do
-      undefined
+    -- For dimension literals:
+    -- all dimension literals have kind |kDim|.
+    TLitDimF p d -> fromInfer p $ do
+      let k = kDim
+      return (TLitDim (k :*: p) d, k)
 
-    --
-    TLitDimListF p ts    -> fromInfer p $ do
-      undefined
+    -- For lists of dimension literals:
+    -- check that each element has kind |kDim|, return |kDimList|.
+    TLitDimListF p ts -> fromInfer p $ do
+      ts <- traverse (runCheckWith kDim) ts
+      let k = kDimList
+      return (TLitDimList (k :*: p) ts, k)
 
-    --
-    TMetaF       p _i    -> fromCheck p $
-      throwError (UnsupportedOperation "TMeta" (unK p))
+    -- Type meta-variables are currently unsupported.
+    TMetaF p _i -> fromCheck p $
+      throwError $ UnsupportedOperation "TMeta" (unK p)
 
   -- Type argument
   STARG -> \case
@@ -277,6 +294,10 @@ fromInfer p inf = (inferToCheck p inf, inf)
 -- |Run and continue in checking mode.
 runCheck :: SortedCheckInfer sort -> Check sort (CheckedTree sort)
 runCheck (SCI (chk, _inf)) = chk
+
+-- |Run and continue in checking mode.
+runCheckWith :: Info sort -> SortedCheckInfer sort -> TCM sort (CheckedTree sort)
+runCheckWith info (SCI (chk, _inf)) = runReaderT chk info
 
 -- |Run and continue in inference mode.
 runInfer :: SortedCheckInfer sort -> Infer sort (CheckedTree sort)

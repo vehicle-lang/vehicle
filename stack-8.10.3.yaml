@@ -8,4 +8,4 @@ packages:
 - .
 
 extra-deps:
-- monad-supply-0.9@sha256:4326f7e5fb93c471cb9ac9bc4be738ea3f7f77052bff2d7ebdf7e05172623284,1249
+- transformers-supply-0.1.0@sha256:a71d9b6685a09193aab4811c73f53a6eddc6d606f6daf0337ab256e5eae7f2dc,2444
