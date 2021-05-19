@@ -85,29 +85,32 @@ instance Monoid (Info 'PROG) where
 
 -- * DSL for writing kinds as info annotations
 
+toKind ::
+  forall sort. (KnownSort sort, sort `In` ['TYPE, 'TARG]) =>
+  Info sort -> AKind (Info :*: K Provenance)
+toKind = case sortSing @sort of STYPE -> unInfo; STARG -> unInfo
+
+fromKind ::
+  forall sort. (KnownSort sort, sort `In` ['TYPE, 'TARG]) =>
+  AKind (Info :*: K Provenance) -> Info sort
+fromKind = case sortSing @sort of STYPE -> Info; STARG -> Info
+
 infixl 3 `kApp`
 
-kApp :: Info 'TYPE -> Info 'TYPE -> Info 'TYPE
-kApp = liftInfo2 $ KApp mempty
+kApp ::
+  forall sort. (KnownSort sort, sort `In` ['TYPE, 'TARG]) =>
+  Info sort -> Info sort -> Info sort
+kApp k1 k2 = fromKind $ KApp mempty (toKind k1) (toKind k2)
 
 infixr 4 ~>
 
-(~>) :: Info 'TYPE -> Info 'TYPE -> Info 'TYPE
+(~>) ::
+  forall sort. (KnownSort sort, sort `In` ['TYPE, 'TARG]) =>
+  Info sort -> Info sort -> Info sort
 k1 ~> k2 = kFun `kApp` k1 `kApp` k2
 
-kFun, kType, kDim, kDimList :: Info 'TYPE
-kFun     = Info $ KCon mempty KFun
-kType    = Info $ KCon mempty KType
-kDim     = Info $ KCon mempty KDim
-kDimList = Info $ KCon mempty KDimList
-
-
--- * Helper functions
-
--- |Lift unary functions on |INFO| to functions on |Info|.
-liftInfo1 :: (INFO sort -> INFO sort) -> (Info sort -> Info sort)
-liftInfo1 f info1 = Info $ f (unInfo info1)
-
--- |Lift binary functions on |INFO| to functions on |Info|.
-liftInfo2 :: (INFO sort -> INFO sort -> INFO sort) -> (Info sort -> Info sort -> Info sort)
-liftInfo2 f info1 info2 = Info $ f (unInfo info1) (unInfo info2)
+kFun, kType, kDim, kDimList :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'TARG]) => Info sort
+kFun     = fromKind (KCon mempty KFun)
+kType    = fromKind (KCon mempty KType)
+kDim     = fromKind (KCon mempty KDim)
+kDimList = fromKind (KCon mempty KDimList)

@@ -152,10 +152,11 @@ checkInferF = case sortSing @sort of
     -- For type quantification:
     -- the result of a quantification also has kind |kType|
     TForallF p n t -> fromInfer p $ do
-      bindLocal (runInfer n) $ \(n, _kArg) -> do
+      let kArg = kType
+      bindLocal (runCheckWith kArg n) $ \n -> do
         t <- runCheckWith kType t
-        let k = kType
-        return (TForall (k :*: p) n t, k)
+        let kRes = kType
+        return (TForall (kRes :*: p) n t, kRes)
 
     -- For type applications:
     -- infer the kind of the type function, check the kind of its argument.
@@ -209,7 +210,10 @@ checkInferF = case sortSing @sort of
 
   -- Type argument
   STARG -> \case
-    TArgF p n -> undefined
+    TArgF p n -> fromCheck p $ do
+      k <- ask
+      tell $ singletonCtx STYPE (fromKind . toKind $ k)
+      return (TArg (k :*: p) n)
 
   -- Expressions
   SEXPR -> \case
