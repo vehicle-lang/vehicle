@@ -123,7 +123,7 @@ getInfo p db = do
   info <- maybe (throwError $ IndexOutOfBounds (unK p) ix) return maybeInfo
   return info
 
-freshMeta :: TCM sort (Info 'TYPE)
+freshMeta :: KnownSort sort => TCM sort (Info 'TYPE)
 freshMeta = Info . KMeta mempty <$> demand
 
 -- |Check if a tree is well-kinded and well-typed, and insert typing information.
@@ -149,9 +149,13 @@ checkInferF = case sortSing @sort of
   -- Types.
   STYPE -> \case
 
-    --
+    -- For type quantification:
+    -- the result of a quantification also has kind |kType|
     TForallF p n t -> fromInfer p $ do
-      undefined
+      bindLocal (runInfer n) $ \(n, _kArg) -> do
+        t <- runCheckWith kType t
+        let k = kType
+        return (TForall (k :*: p) n t, k)
 
     -- For type applications:
     -- infer the kind of the type function, check the kind of its argument.
