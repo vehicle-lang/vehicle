@@ -6,6 +6,7 @@
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE LambdaCase                #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE RecordWildCards           #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
@@ -19,8 +20,10 @@ module Vehicle.Core.Compile.Type where
 
 import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
+import Control.Monad.Supply (MonadSupply(..), SupplyT(..))
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Writer (MonadWriter(..), WriterT(..))
+import Data.Text (Text)
 import Data.Sequence (Seq, (!?))
 import Data.Sequence qualified as Seq
 import Vehicle.Core.AST
@@ -47,10 +50,16 @@ data TypeError
   | MissingAnnotation
       Provenance  -- ^ The location of the missing annotation.
   | UnsupportedOperation
+      Text        -- ^ A description of the unsupported operation.
       Provenance  -- ^ The location of the unsupported operation.
 
+-- * Meta-variables
 
--- * Type contexts
+-- TODO: should be migrated to an AST module
+
+type Meta = Integer
+
+-- * Type and kind contexts
 
 -- |Type context.
 data Ctx = Ctx { typeInfo :: Seq (Info 'TYPE), exprInfo :: Seq (Info 'EXPR) }
@@ -70,50 +79,49 @@ singletonCtx SEXPR info = Ctx Seq.empty (Seq.singleton info)
 getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq (Info sort)
 getSubCtxFor = case sortSing @sort of STYPE -> typeInfo; SEXPR -> exprInfo
 
--- |Find the type information for a given deBruijn index of a given sort.
-getInfo ::
-  forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
-  K Provenance sort -> DeBruijn sort -> Infer sort ()
-getInfo p db = Inf $ do
-  subctx <- getSubCtxFor @sort <$> ask
-  let ix = toIndex db
-  let maybeInfo = subctx !? ix
-  info <- maybe (throwError $ IndexOutOfBounds (unK p) ix) return maybeInfo
-  return ((), info)
-
 
 -- * Bidirectional type checking and inference algorithm
 
 -- |The type of trees output by the type checking algorithm.
 type CheckedTree (sort :: Sort) = Tree DeBruijn Builtin (Info :*: K Provenance) sort
 
--- |A checking pass, which combines a dataflow monad, a reader monad---providing
---  the information to check against---and an exception monad.
-newtype Check (sort :: Sort) (a :: *)
-  = Chk { unChk :: ReaderT (Info sort) (DataflowT sort Ctx (Except TypeError)) a }
+-- |The type checking monad stack shared between checking and inference. It provides:
+--
+--    1. a dataflow monad which propagates the kind and type environment according to sort;
+--    2. a supply monad which provides an infinite supply of fresh meta-variables; and
+--    3. an exception monad for throwing type errors.
+--
+type TCM (sort :: Sort) = DataflowT sort Ctx (SupplyT Meta (Except TypeError))
 
-instance KnownSort sort => Functor (Check sort) where
-  fmap f (Chk x) = Chk (fmap f x)
+-- |The checking monad, which augments the monad stack with a reader monad, which provides
+--  the type to check against.
+type Check (sort :: Sort) (a :: *) = ReaderT (Info sort) (TCM sort) a
 
-instance KnownSort sort => Applicative (Check sort) where
-  pure x = Chk (pure x)
-  Chk f <*> Chk x = Chk (f <*> x)
+-- |The inference pseudo-monad, which is exactly the type checking monad, but requires that
+--  the return type is a pair of the return value and the inferred information.
+--
+--  Note that |Infer sort| does not form a monad, as there is no way to know how to combine
+--  the various bits of information. We cannot use a writer monad, as we do not have a
+--  sensible monoid instance for |Info sort|, and we want to change the manner of combining
+--  these bits of information for each inference steep.
+--
+type Infer (sort :: Sort) (a :: *) = TCM sort (a, Info sort)
 
-instance KnownSort sort => Monad (Check sort) where
-  Chk x >>= f = Chk (x >>= unChk . f)
-
-instance KnownSort sort => MonadError TypeError (Check sort) where
-  throwError e = Chk (throwError e)
-  catchError (Chk x) k = Chk (catchError x (unChk . k))
-
--- |An inference pass, which combines a dataflow monad with an exception monad,
---  and returns a pair of the return value and the inferred information.
-newtype Infer (sort :: Sort) (a :: *)
-  = Inf { unInf :: DataflowT sort Ctx (Except TypeError) (a, Info sort) }
-
+-- |Type which wraps a pair of a checking and an inference monad such that they can be used
+--  in a sorted position, e.g., as the recursive position in |foldTree|.
 newtype SortedCheckInfer (sort :: Sort)
   = SCI { unSCI :: (Check sort (CheckedTree sort), Infer sort (CheckedTree sort)) }
 
+-- |Find the type information for a given deBruijn index of a given sort.
+getInfo ::
+  forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
+  K Provenance sort -> DeBruijn sort -> Infer sort ()
+getInfo p db = do
+  subctx <- getSubCtxFor @sort <$> ask
+  let ix = toIndex db
+  let maybeInfo = subctx !? ix
+  info <- maybe (throwError $ IndexOutOfBounds (unK p) ix) return maybeInfo
+  return ((), info)
 
 -- |Check if a tree is well-kinded and well-typed, and insert typing information.
 checkInfer ::
@@ -121,7 +129,6 @@ checkInfer ::
   Tree DeBruijn Builtin (K Provenance) sort ->
  (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
 checkInfer = unSCI . foldTree (SCI . checkInferF)
-
 
 -- |Check if a single layer is well-kinded and well-typed, see |checkInfer|.
 checkInferF ::
@@ -131,19 +138,53 @@ checkInferF ::
 checkInferF = case sortSing @sort of
 
   SKIND -> \case
-    KAppF  p k1 k2 -> fromCheck p $ KApp (mempty :*: p) <$> runCheck k1 <*> runCheck k2
-    KConF  p op    -> fromCheck p $ KCon (mempty :*: p) <$> pure op
-    KMetaF p _i    -> fromCheck p $ throwError (UnsupportedOperation (unK p))
+    KAppF  p k1 k2 -> fromCheck p $
+      KApp (mempty :*: p) <$> runCheck k1 <*> runCheck k2
+    KConF  p op    -> fromCheck p $
+      KCon (mempty :*: p) <$> pure op
+    KMetaF p _i    -> fromCheck p $
+      throwError (UnsupportedOperation "KMeta" (unK p))
 
   -- Types
   STYPE -> \case
-    TForallF     p n t   -> fromInfer p $ undefined
-    TAppF        p t1 t2 -> fromInfer p $ undefined
-    TVarF        p n     -> fromInfer p $ undefined
-    TConF        p op    -> fromInfer p $ undefined
-    TLitDimF     p d     -> fromInfer p $ undefined
-    TLitDimListF p ts    -> fromInfer p $ undefined
-    TMetaF       p _i    -> fromCheck p $ throwError (UnsupportedOperation (unK p))
+    --
+    TForallF     p n t   -> fromInfer p $ do
+      undefined
+
+    -- For applications, we infer the kind of the function and check the kind of
+    -- the argument.
+    TAppF        p t1 t2 -> fromInfer p $ do
+
+      -- Infer the kind of the function.
+      (t1, k) <- runInfer t1
+
+      -- Check if it's a function kind.
+      (k1, k2) <- case unInfo k of
+        KApp _ (KApp _ (KCon _ KFun) k1) k2 -> return (k1, k2)
+        _                                   -> _
+      _
+
+    --
+    TVarF        p n     -> fromInfer p $ do
+      ((), k) <- getInfo p n
+      return (TVar (k :*: p) n, k)
+
+    -- For builtins, we look up the kind using |kindOf|.
+    TConF        p op    -> fromInfer p $ do
+      let k = kindOf op
+      return (TCon (k :*: p) op, k)
+
+    --
+    TLitDimF     p d     -> fromInfer p $ do
+      undefined
+
+    --
+    TLitDimListF p ts    -> fromInfer p $ do
+      undefined
+
+    --
+    TMetaF       p _i    -> fromCheck p $
+      throwError (UnsupportedOperation "TMeta" (unK p))
 
   -- Type argument
   STARG -> \case
@@ -205,11 +246,11 @@ fromCheck p chk = (chk, checkToInfer p chk)
 
     -- |An inference mode which always throws an error.
     inferError :: forall sort a. (KnownSort sort) => K Provenance sort -> Infer sort a
-    inferError p = Inf $ throwError (MissingAnnotation (unK p))
+    inferError p = throwError (MissingAnnotation (unK p))
 
     -- |For sorts with trivial information, checking and inference coincide into a no-op.
     inferNoop :: forall sort a. (KnownSort sort, Monoid (Info sort)) => Check sort a -> Infer sort a
-    inferNoop chk = Inf $ do x <- runReaderT (unChk chk) mempty; return (x, mempty)
+    inferNoop chk = do x <- runReaderT chk mempty; return (x, mempty)
 
 -- |Constructed a bidirectional step from an inference step.
 --
@@ -226,8 +267,8 @@ fromInfer p inf = (inferToCheck p inf, inf)
     inferToCheck ::
       forall sort. (KnownSort sort, Eq (Info sort)) =>
       K Provenance sort -> Infer sort (CheckedTree sort) -> Check sort (CheckedTree sort)
-    inferToCheck p inf = Chk $ do
-      (tree, inferred) <- lift (unInf inf)
+    inferToCheck p inf = do
+      (tree, inferred) <- lift inf
       expected <- ask
       if inferred == expected
         then return tree
@@ -264,77 +305,6 @@ kindOf = \case
 -- - if_then_else can be checkable
 -- - variable with polymorphic type
 -- - union-find algorithm for unification and substitution
-
-checkInferF ::
-  forall sort.
-  (KnownSort sort) =>
-  ATreeF (K Provenance) sort (Check :*: Infer) ->
-  (Check :*: Infer) sort
-
-checkInferF = case sortSing @sort of
-
-  -- Kinds
-  --
-  -- NOTE: Kinds are always well-formed, and they don't store any useful typing information.
-  --       However, we /must/ iterate over kinds to add the singleton information |noInfo|.
-  --       We implement this using |withInfer| so that we automatically get a valid checking
-  --       algorithm out of it as well -- the other way around would result in an error when
-  --       invoking the inference algorithm.
-  --
-  SKIND -> \case
-    KAppF  p k1 k2 -> _
-    KConF  p op    -> _
-    KMetaF p _i    -> unsupportedOperation p
-
-  -- Types
-  STYPE -> \case
-    TForallF     p n t   -> withInfer p $ undefined
-    TAppF        p t1 t2 -> withInfer p $ undefined
-    TVarF        p n     -> withInfer p $ undefined
-      -- info <- getInfo p n
-      -- tell [unInfo info]
-      -- return $ TVar (info :*: p) n
-
-    TConF        p op    -> withInfer p $ undefined -- return $ TCon (kindOf op :*: p) op
-    TLitDimF     p d     -> withInfer p $ undefined -- return $ TLitDim (kDim :*: p) d
-    TLitDimListF p ts    -> withInfer p $ undefined -- TLitDimList (kDimList :*: p) <$> traverse (runCheckAsInfer kDim) ts
-    TMetaF       p i     -> unsupportedOperation p
-
-  -- Type argument
-  STARG -> \case
-    TArgF p n -> undefined
-
-  -- Expressions
-  SEXPR -> \case
-    EAnnF     p e t     -> undefined
-    ELetF     p n e1 e2 -> undefined
-    ELamF     p n e     -> undefined
-    EAppF     p e1 e2   -> undefined
-    EVarF     p n       -> undefined
-    ETyAppF   p e t     -> undefined
-    ETyLamF   p n e     -> undefined
-    EConF     p op      -> undefined
-    ELitIntF  p z       -> undefined
-    ELitRealF p r       -> undefined
-    ELitSeqF  p es      -> undefined
-
-  -- Expression arguments
-  SEARG -> \case
-    EArgF p n -> undefined
-
-  -- Declarations
-  SDECL -> \case
-    DeclNetwF p n t    -> undefined
-    DeclDataF p n t    -> undefined
-    DefTypeF  p n ns t -> undefined
-    DefFunF   p n t e  -> undefined
-
-  -- Programs
-  SPROG -> \case
-    MainF p ds -> undefined
-
-
-
 
 -- -}
 -- -}
