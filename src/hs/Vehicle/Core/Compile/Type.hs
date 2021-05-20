@@ -20,9 +20,9 @@ module Vehicle.Core.Compile.Type where
 
 import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
-import Control.Monad.Supply (MonadSupply(..), SupplyT(..), demand)
+import Control.Monad.Supply (SupplyT, demand)
 import Control.Monad.Trans (MonadTrans(..))
-import Control.Monad.Writer (MonadWriter(..), WriterT(..))
+import Control.Monad.Writer (MonadWriter(..))
 import Data.Text (Text)
 import Data.Sequence (Seq, (!?))
 import Data.Sequence qualified as Seq
@@ -147,6 +147,10 @@ checkInferF = case sortSing @sort of
     KMetaF p _i    -> fromCheck p $ throwError $ UnsupportedOperation "KMeta" (unK p)
 
   -- Types.
+  --
+  -- TODO: convert to Hindley-Milner style checking for kind checking, so that we can generalise
+  --       the forall without requiring a type annotation.
+  --
   STYPE -> \case
 
     -- For type quantification:
@@ -271,7 +275,7 @@ fromCheck p chk = (chk, checkToInfer p chk)
 
     -- |An inference mode which always throws an error.
     inferError :: forall sort a. (KnownSort sort) => K Provenance sort -> Infer sort a
-    inferError p = throwError (MissingAnnotation (unK p))
+    inferError p = throwError $ MissingAnnotation (unK p)
 
     -- |For sorts with trivial information, checking and inference coincide into a no-op.
     inferNoop :: forall sort a. (KnownSort sort, Monoid (Info sort)) => Check sort a -> Infer sort a
