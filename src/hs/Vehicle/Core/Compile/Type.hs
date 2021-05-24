@@ -221,21 +221,27 @@ checkInferF = case sortSing @sort of
 
   -- Expressions
   SEXPR -> \case
-    EAnnF     p e t     -> undefined
-    ELetF     p n e1 e2 -> undefined
-    ELamF     p n e     -> undefined
-    EAppF     p e1 e2   -> undefined
-    EVarF     p n       -> undefined
-    ETyAppF   p e t     -> undefined
-    ETyLamF   p n e     -> undefined
+    EAnnF     p e t     -> let t' :: TCM 'EXPR (Info 'EXPR)
+                               t' = do (t, k) <- flow (runInfer t)
+                                       return (Info t)
+                           in fromCheckWithAnn p t' (runCheck e)
+    ELetF     p n e1 e2 -> fromInfer p $ _
+    ELamF     p n e     -> fromCheck p $ _
+    EAppF     p e1 e2   -> fromInfer p $ _
+    EVarF     p n       -> fromInfer p $ _
+    ETyAppF   p e t     -> fromInfer p $ _
+    ETyLamF   p n e     -> fromCheck p $ _
     EConF     p op      -> undefined
-    ELitIntF  p z       -> undefined
-    ELitRealF p r       -> undefined
-    ELitSeqF  p es      -> undefined
+    ELitIntF  p z       -> fromInfer p $ _
+    ELitRealF p r       -> fromInfer p $ _
+    ELitSeqF  p es      -> fromCheck p $ _
 
   -- Expression arguments
   SEARG -> \case
-    EArgF p n -> undefined
+    EArgF p n -> fromCheck p $ do
+      t <- ask
+      tell $ singletonCtx SEXPR (fromType . toType $ t)
+      return (EArg (t :*: p) n)
 
   -- Declarations
   SDECL -> \case
@@ -247,6 +253,19 @@ checkInferF = case sortSing @sort of
   -- Programs
   SPROG -> \case
     MainF p ds -> undefined
+
+
+-- |Switch from inference mode to checking mode upon finding a type annotation.
+fromCheckWithAnn ::
+  forall sort. (KnownSort sort) =>
+  K Provenance sort -> TCM sort (Info sort) -> Check sort (CheckedTree sort) ->
+  (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
+fromCheckWithAnn p tcmAnnotated chk = fromInfer p inf
+  where
+    inf :: Infer sort (CheckedTree sort)
+    inf = do annotated <- tcmAnnotated
+             tree <- runReaderT chk annotated
+             return (tree, annotated)
 
 -- |Constructed a bidirectional step from a checking step.
 --

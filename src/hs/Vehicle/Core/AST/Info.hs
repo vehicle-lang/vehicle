@@ -82,7 +82,6 @@ instance Semigroup (Info 'PROG) where
 instance Monoid (Info 'PROG) where
   mempty = Info ()
 
-
 -- * DSL for writing kinds as info annotations
 
 toKind ::
@@ -114,3 +113,15 @@ kFun     = fromKind (KCon mempty KFun)
 kType    = fromKind (KCon mempty KType)
 kDim     = fromKind (KCon mempty KDim)
 kDimList = fromKind (KCon mempty KDimList)
+
+-- * DSL for writing types as info annotations
+
+toType ::
+  forall sort. (KnownSort sort, sort `In` ['EXPR, 'EARG]) =>
+  Info sort -> AType (Info :*: K Provenance)
+toType = case sortSing @sort of SEXPR -> unInfo; SEARG -> unInfo
+
+fromType ::
+  forall sort. (KnownSort sort, sort `In` ['EXPR, 'EARG]) =>
+  AType (Info :*: K Provenance) -> Info sort
+fromType = case sortSing @sort of SEXPR -> Info; SEARG -> Info
