@@ -9,6 +9,7 @@
 module Vehicle.Core.AST.Instance where
 
 import Vehicle.Core.AST.Core
+import Vehicle.Prelude.Sort
 
 -- * Kinds
 

@@ -53,6 +53,7 @@ library
                     , Vehicle.Backend.Core
                     , Vehicle.Prelude
                     , Vehicle.Prelude.Token
+                    , Vehicle.Prelude.Sort
                     -- Compatibility module with generated Abs
                     , Vehicle.Core.Abs
                     -- Files generated from Core.cf

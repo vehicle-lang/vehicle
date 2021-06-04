@@ -15,6 +15,7 @@ module Vehicle.Prelude
   ) where
 
 import Vehicle.Prelude.Token as X
+import Vehicle.Prelude.Sort as X
 
 infix 1 |->
 

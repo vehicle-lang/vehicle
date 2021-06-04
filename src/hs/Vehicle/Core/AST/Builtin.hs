@@ -9,7 +9,7 @@
 -- | This module exports the datatype representations of the builtin symbols.
 module Vehicle.Core.AST.Builtin where
 
-import           Vehicle.Core.AST.Core
+import Vehicle.Prelude.Sort
 
 data Builtin (sort :: Sort) where
 

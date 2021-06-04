@@ -20,7 +20,6 @@ module Vehicle.Core.AST.DeBruijn
   , toSymbol
   ) where
 
-import Vehicle.Core.AST.Core (Sort(..), KnownSort(..), SSort(..))
 import Vehicle.Prelude
 
 -- * Types
