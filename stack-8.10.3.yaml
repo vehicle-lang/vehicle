@@ -8,4 +8,6 @@ packages:
 - .
 
 extra-deps:
-- transformers-supply-0.1.0@sha256:a71d9b6685a09193aab4811c73f53a6eddc6d606f6daf0337ab256e5eae7f2dc,2444
+- git: https://github.com/wenkokke/transformers-supply.git
+  commit: 0568f61af6bdea86380fe9212fed7cd9804ba23c
+
