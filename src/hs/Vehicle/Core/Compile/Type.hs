@@ -232,10 +232,10 @@ checkInferF = case sortSing @sort of
       return (EVar (t :*: p) n, t)
 
     ELetF p n e1 e2 -> fromInfer p $ do
-      _
+      undefined
 
     ELamF p n e -> fromCheck p $ do
-      _
+      undefined
 
     EAppF p eFun eArg -> fromInfer p $ do
 
@@ -243,24 +243,24 @@ checkInferF = case sortSing @sort of
       (eFun, tFun) <- runInfer eFun
 
       -- Check if it's a function type: if so, return the two arguments; if not, throw an error.
-      _
+      undefined
 
     ETyAppF p e t -> fromInfer p $ do
-      _
+      undefined
 
     ETyLamF p n e -> fromCheck p $ do
-      _
+      undefined
 
     EConF p op -> undefined
 
     ELitIntF p z -> fromInfer p $ do
-      _
+      undefined
 
     ELitRealF p r -> fromInfer p $ do
-      _
+      undefined
 
     ELitSeqF p es -> fromCheck p $ do
-      _
+      undefined
 
   -- Expression arguments
   SEARG -> \case
