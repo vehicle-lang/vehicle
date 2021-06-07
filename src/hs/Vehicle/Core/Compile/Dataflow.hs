@@ -24,6 +24,7 @@ import Vehicle.Prelude
 -- |Encapsulates the dataflow for a checking algorithm on sorted trees.
 newtype SortedDataflowT (s :: *) (m :: * -> *) (sorted :: Sort -> *) (sort :: Sort)
   = SDF { unSDF :: DataflowT sort s m (sorted sort) }
+  -- unSDF -> unwrapSortedDataflowT
 
 -- |Encapsulates the dataflow for a checking algorithm on sorted trees.
 newtype DataflowT (sort :: Sort) (s :: *) (m :: * -> *) (a :: *)
@@ -101,6 +102,8 @@ instance (KnownSort sort, MonadError e m) => MonadError e (DataflowT sort s m) w
 instance (KnownSort sort, MonadSupply s f m) => MonadSupply s f (DataflowT sort d m) where
   supply  = lift . supply
   provide = lift . provide
+
+-- TODO: change these instances to redirect to the underlying monad
 
 instance (KnownSort sort, sort `In` ['TYPE, 'EXPR], Monad m) => MonadReader r (DataflowT sort r m) where
   ask     = fromReaderT ask

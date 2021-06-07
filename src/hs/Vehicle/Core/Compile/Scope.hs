@@ -80,6 +80,7 @@ checkScopeF ::
   forall name builtin ann sort.
   (IsToken name, KnownSort sort) =>
   TreeF (K name) builtin ann sort (SortedDataflowT Ctx (Except ScopeError) (Tree DeBruijn builtin ann)) ->
+        -- ^^ --                                                                 -- ^^ --
   DataflowT sort Ctx (Except ScopeError) (Tree DeBruijn builtin ann sort)
 
 checkScopeF = case sortSing @sort of
