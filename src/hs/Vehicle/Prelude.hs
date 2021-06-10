@@ -12,10 +12,14 @@ module Vehicle.Prelude
   , type In
   , K(..)
   , O(..)
+  , rangeStart
   ) where
+
+import Data.Range
 
 import Vehicle.Prelude.Token as X
 import Vehicle.Prelude.Sort as X
+import Vehicle.Prelude.Provenance as X
 
 infix 1 |->
 
@@ -54,3 +58,17 @@ instance Monoid a => Monoid (K a sort) where
 
 -- |Type-level function composition.
 newtype O (g :: * -> *) (f :: k -> *) (a :: k) = O { unO :: g (f a) }
+
+
+-- |Attempts to extract the first element from a bound
+boundStart :: Bound a -> Maybe a
+boundStart (Bound v Inclusive)= Just v
+boundStart (Bound _v Exclusive)= Nothing
+
+-- |Attempts to extract the first element in a range
+rangeStart :: Range a -> Maybe a
+rangeStart (SingletonRange a)          = Just a
+rangeStart (SpanRange lb _ub)          = boundStart lb
+rangeStart (LowerBoundRange b)         = boundStart b
+rangeStart (UpperBoundRange _)         = Nothing
+rangeStart InfiniteRange               = Nothing

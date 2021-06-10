@@ -11,9 +11,9 @@ import Vehicle.Core.AST.Builtin
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
 import Vehicle.Core.AST.Instance ()
-import Vehicle.Core.AST.Provenance
 import Vehicle.Core.AST.Recursive
 import Vehicle.Prelude
+import Vehicle.Prelude.Provenance
 
 
 -- |Abstract syntax trees, where the representation of names and builtins is fixed.

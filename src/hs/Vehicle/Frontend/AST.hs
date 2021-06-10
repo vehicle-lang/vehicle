@@ -3,4 +3,6 @@ module Vehicle.Frontend.AST
   ) where
 
 import Vehicle.Frontend.AST.Core as X
-import Vehicle.Frontend.AST.Instance as X
+import Vehicle.Frontend.AST.Recursive as X
+import Vehicle.Frontend.AST.Instance as X ()
+import Vehicle.Frontend.AST.Utils as X

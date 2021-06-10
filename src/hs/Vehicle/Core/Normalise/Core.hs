@@ -21,6 +21,7 @@ module Vehicle.Core.Normalise.Core
 import Control.Monad.Except (MonadError)
 import Vehicle.Core.AST
 import Vehicle.Core.Abs (ExprName)
+import Vehicle.Prelude ( Provenance )
 
 -- |Errors thrown during normalisation
 data NormError

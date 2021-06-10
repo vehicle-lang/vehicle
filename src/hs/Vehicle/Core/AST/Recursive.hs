@@ -408,9 +408,3 @@ traverseTreeAnn ::
   (forall sort. KnownSort sort => ann sort -> m (ann' sort)) ->
   (forall sort. KnownSort sort => Tree name builtin ann sort -> m (Tree name builtin ann' sort))
 traverseTreeAnn h = traverseTreeFields pure pure h
-
--- -}
--- -}
--- -}
--- -}
--- -}

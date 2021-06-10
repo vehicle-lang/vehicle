@@ -85,6 +85,17 @@ Add core syntax in `src/bnfc/Core.cf`:
 
 ```
 
+Add a case to the frontend AST in `src/hs/Vehicle/Frontend/AST/Core.hs`:
+```diff
+  | EGe      (ann 'EXPR) (Expr ann) (Expr ann)
+  | EGt      (ann 'EXPR) (Expr ann) (Expr ann)
++ | EPow     (ann 'EXPR) (Expr ann) (Expr ann)
+  | EMul     (ann 'EXPR) (Expr ann) (Expr ann)
+  | EDiv     (ann 'EXPR) (Expr ann) (Expr ann)
+```
+
+Add cases to the recursive folds over the AST in `src/hs/Vehicle/Frontend/AST/Recursive.hs`.
+
 Add a case to elaboration in `src/hs/Vehicle/Frontend/Elaborate.hs`:
 
 ```diff

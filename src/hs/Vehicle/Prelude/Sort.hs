@@ -17,7 +17,7 @@ module Vehicle.Prelude.Sort
 import Data.Hashable (Hashable(..), hashUsing)
 
 
-  -- | Syntactic sorts used in Vehicle Core syntax.
+-- | Syntactic sorts used in Vehicle Core syntax.
 data Sort = KIND | TYPE | EXPR | DECL | PROG | TARG | EARG
   deriving (Eq, Ord, Enum, Show)
 

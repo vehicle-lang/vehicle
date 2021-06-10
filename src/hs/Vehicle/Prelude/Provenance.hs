@@ -1,13 +1,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Vehicle.Core.AST.Provenance
+module Vehicle.Prelude.Provenance
   ( Provenance(..)
   , tkProvenance
   ) where
 
 import           Data.Range (Range)
 import qualified Data.Range as Range
-import           Vehicle.Prelude
+
+import           Vehicle.Prelude.Token ( tkRange, IsToken, Position, Token(..) )
 
 newtype Provenance = Provenance { fromProvenance :: [Range Position] }
   deriving (Eq, Show)

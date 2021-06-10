@@ -18,6 +18,7 @@ import Data.Text (Text)
 import Vehicle.Core.AST
 import Vehicle.Core.Normalise.Core
 import Vehicle.Core.Normalise.DeBruijnSubstitution as DeBruijn (subst)
+import Vehicle.Prelude (Provenance)
 
 -----------
 -- Types --

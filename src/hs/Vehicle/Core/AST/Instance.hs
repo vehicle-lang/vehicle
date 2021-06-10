@@ -120,7 +120,6 @@ deriving instance
   , Eq (builtin 'EXPR)
   , Eq (ann 'EXPR)
   , Eq (name 'EARG)
-  , Eq (name 'EARG)
   , Eq (builtin 'EARG)
   , Eq (ann 'EARG)
   ) => Eq (EArg name builtin ann)

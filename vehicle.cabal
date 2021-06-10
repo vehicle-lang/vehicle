@@ -32,7 +32,8 @@ library
   other-modules:      Paths_vehicle
                     , Vehicle.Frontend.AST.Core
                     , Vehicle.Frontend.AST.Instance
-                    , Vehicle.Frontend.AST.Instance.Recursive
+                    , Vehicle.Frontend.AST.Recursive
+                    , Vehicle.Frontend.AST.Utils
                     , Vehicle.Core.AST.Builtin
                     , Vehicle.Core.AST.Core
                     , Vehicle.Core.AST.DeBruijn
@@ -61,11 +62,11 @@ library
                     , Vehicle.Core.Lex
                     , Vehicle.Core.Par
                     -- Files generated from Frontend.cf
-                    , Vehicle.Frontend.Abs
                     , Vehicle.Frontend.ErrM
                     , Vehicle.Frontend.Layout
                     , Vehicle.Frontend.Lex
                     , Vehicle.Frontend.Par
+                    , Vehicle.Frontend.Abs
   hs-source-dirs:     src/hs
                     , gen/hs
   build-depends:      array                >=0.5 && <1

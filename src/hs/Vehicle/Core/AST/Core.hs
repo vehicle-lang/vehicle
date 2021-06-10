@@ -22,8 +22,6 @@ import Vehicle.Prelude
 -- Names are parameterised over so that they can store
 -- either the user assigned names or deBruijn indices.
 
-
-
 data family Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *) (sort :: Sort)
 
 type Kind name builtin ann = Tree name builtin ann 'KIND
