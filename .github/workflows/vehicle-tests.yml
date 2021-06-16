@@ -16,7 +16,7 @@ jobs:
           ghc-version: '8.10.3' # Exact version of ghc to use
           # cabal-version: 'latest'. Omitted, but defaults to 'latest'
           enable-stack: true
-          stack-version: '8.10.3'
+          stack-version: latest
 
       - name: Setup stack
         run: cp stack-8-10.3.yaml stack.yaml
