@@ -19,7 +19,7 @@ jobs:
           stack-version: latest
 
       - name: Setup stack
-        run: cp stack-8-10.3.yaml stack.yaml
+        run: cp stack-8.10.3.yaml stack.yaml
 
       - name: Install dependencies
         run: stack install BNFC
