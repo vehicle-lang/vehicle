@@ -17,7 +17,11 @@ jobs:
           # cabal-version: 'latest'. Omitted, but defaults to 'latest'
           enable-stack: true
           stack-version: '8-10.3'
+
+      - name: Setup stack
         run: cp stack-8-10.3.yaml stack.yaml
+
+      - name: Install dependencies
         run: stack install BNFC
 
       - name: Run test suite
