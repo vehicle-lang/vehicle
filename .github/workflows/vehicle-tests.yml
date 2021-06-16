@@ -1,0 +1,24 @@
+name: Vehicle test suite
+
+on: [push]
+
+jobs:
+  install:
+    name: Install Haskell and Stack
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout out code
+        uses: actions/checkout@v2
+
+      - name: Install Haskell and Stack
+        uses: haskell/actions/setup@v1
+        with:
+          ghc-version: 'ghc-8.10.3' # Exact version of ghc to use
+          # cabal-version: 'latest'. Omitted, but defaults to 'latest'
+          enable-stack: true
+          stack-version: '8-10.3'
+        run: cp stack-8-10.3.yaml stack.yaml
+        run: stack install BNFC
+
+      - name: Run test suite
+        run: make test
