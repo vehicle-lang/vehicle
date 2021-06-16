@@ -13,10 +13,10 @@ jobs:
       - name: Install Haskell and Stack
         uses: haskell/actions/setup@v1
         with:
-          ghc-version: 'ghc-8.10.3' # Exact version of ghc to use
+          ghc-version: '8.10.3' # Exact version of ghc to use
           # cabal-version: 'latest'. Omitted, but defaults to 'latest'
           enable-stack: true
-          stack-version: '8-10.3'
+          stack-version: '8.10.3'
 
       - name: Setup stack
         run: cp stack-8-10.3.yaml stack.yaml
