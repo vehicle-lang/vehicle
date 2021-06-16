@@ -43,7 +43,6 @@ library
                     , Vehicle.Core.AST.Recursive
                     , Vehicle.Core.Compile.Builtin
                     , Vehicle.Core.Compile.Dataflow
-                    , Vehicle.Core.Compile.Provenance
                     , Vehicle.Core.Compile.Scope
                     , Vehicle.Core.Compile.Type
                     , Vehicle.Core.Normalise
@@ -55,6 +54,7 @@ library
                     , Vehicle.Prelude
                     , Vehicle.Prelude.Token
                     , Vehicle.Prelude.Sort
+                    , Vehicle.Prelude.Provenance
                     -- Compatibility module with generated Abs
                     , Vehicle.Core.Abs
                     -- Files generated from Core.cf
