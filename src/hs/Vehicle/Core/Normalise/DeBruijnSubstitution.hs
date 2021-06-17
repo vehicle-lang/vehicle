@@ -24,7 +24,7 @@ class DeBruijnLifting t where
         -> t  -- ^ expression containing the variable references to lift
         -> t  -- ^ the result of the lifting
 
-instance DeBruijnLifting (Type DeBruijn builtin ann) where
+instance DeBruijnLifting (Type DeBruijn ann) where
   lift _ expr@(TCon _ _) = expr
   lift _ expr@(TLitDim _ _) = expr
   lift _ expr@(TMeta _ _) = expr
@@ -42,7 +42,7 @@ instance DeBruijnLifting (Type DeBruijn builtin ann) where
          | otherwise = i     -- Index is locally bound so no need to increment it
 
 
-instance DeBruijnLifting (Expr DeBruijn builtin ann) where
+instance DeBruijnLifting (Expr DeBruijn ann) where
   lift _ expr@(ELitInt _ _) = expr
   lift _ expr@(ELitReal _ _) = expr
   lift _ expr@(ECon _ _) = expr
@@ -78,7 +78,7 @@ class DeBruijnSubstitution t where
         -> t   -- ^ expression to substitute into
         -> t   -- ^ the result of the substitution
 
-instance DeBruijnSubstitution (Type DeBruijn builtin ann) where
+instance DeBruijnSubstitution (Type DeBruijn ann) where
   subst _ _ expr@(TCon _ _) = expr
   subst _ _ expr@(TLitDim _ _) = expr
   subst _ _ expr@(TMeta _ _) = expr
@@ -99,7 +99,7 @@ instance DeBruijnSubstitution (Type DeBruijn builtin ann) where
       -- Index was free in the original type, and we've removed a binder so decrease it by 1.
       GT -> TVar ann (TIndex (i - 1))
 
-instance DeBruijnSubstitution (Expr DeBruijn builtin ann) where
+instance DeBruijnSubstitution (Expr DeBruijn ann) where
   subst _ _ expr@(ELitInt _ _) = expr
   subst _ _ expr@(ELitReal _ _) = expr
   subst _ _ expr@(ECon _ _) = expr

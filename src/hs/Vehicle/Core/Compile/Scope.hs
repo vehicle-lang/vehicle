@@ -71,17 +71,17 @@ getIndex (K n :: K name sort) = do
 -- |Check if a tree is well-scoped, replacing name tokens with deBruijn indices.
 checkScope ::
   (KnownSort sort, IsToken name) =>
-  Tree (K name) builtin ann sort ->
-  Except ScopeError (Tree DeBruijn builtin ann sort)
+  Tree (K name) ann sort ->
+  Except ScopeError (Tree DeBruijn ann sort)
 checkScope = evalDataflowT mempty . unSDF . foldTree (SDF . checkScopeF)
 
 -- |Check if a single layer is well-scoped in the appropriate data-flow context.
 checkScopeF ::
-  forall name builtin ann sort.
+  forall name ann sort.
   (IsToken name, KnownSort sort) =>
-  TreeF (K name) builtin ann sort (SortedDataflowT Ctx (Except ScopeError) (Tree DeBruijn builtin ann)) ->
+  TreeF (K name) ann sort (SortedDataflowT Ctx (Except ScopeError) (Tree DeBruijn ann)) ->
         -- ^^ --                                                                 -- ^^ --
-  DataflowT sort Ctx (Except ScopeError) (Tree DeBruijn builtin ann sort)
+  DataflowT sort Ctx (Except ScopeError) (Tree DeBruijn ann sort)
 
 checkScopeF = case sortSing @sort of
 

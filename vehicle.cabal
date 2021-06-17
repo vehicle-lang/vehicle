@@ -42,7 +42,6 @@ library
                     , Vehicle.Core.AST.Recursive
                     , Vehicle.Core.AST.Utils
                     , Vehicle.Core.Compile.Dataflow
-                    , Vehicle.Core.Compile.Provenance
                     , Vehicle.Core.Compile.Scope
                     , Vehicle.Core.Compile.Type
                     , Vehicle.Core.Normalise

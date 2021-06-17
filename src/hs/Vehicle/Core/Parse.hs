@@ -27,14 +27,14 @@ import Vehicle.Prelude
 --------------------------------------------------------------------------------
 -- "Parsed" type synonyms
 
-type PTree = V.Tree (K Symbol) V.Builtin (K Provenance)
-type PKind = V.Kind (K Symbol) V.Builtin (K Provenance)
-type PType = V.Type (K Symbol) V.Builtin (K Provenance)
-type PTArg = V.TArg (K Symbol) V.Builtin (K Provenance)
-type PExpr = V.Expr (K Symbol) V.Builtin (K Provenance)
-type PEArg = V.EArg (K Symbol) V.Builtin (K Provenance)
-type PDecl = V.Decl (K Symbol) V.Builtin (K Provenance)
-type PProg = V.Prog (K Symbol) V.Builtin (K Provenance)
+type PTree = V.Tree (K Symbol) (K Provenance)
+type PKind = V.Kind (K Symbol) (K Provenance)
+type PType = V.Type (K Symbol) (K Provenance)
+type PTArg = V.TArg (K Symbol) (K Provenance)
+type PExpr = V.Expr (K Symbol) (K Provenance)
+type PEArg = V.EArg (K Symbol) (K Provenance)
+type PDecl = V.Decl (K Symbol) (K Provenance)
+type PProg = V.Prog (K Symbol) (K Provenance)
 
 --------------------------------------------------------------------------------
 -- Parsing

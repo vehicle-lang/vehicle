@@ -83,7 +83,7 @@ getSubCtxFor = case sortSing @sort of STYPE -> typeInfo; SEXPR -> exprInfo
 -- * Bidirectional type checking and inference algorithm
 
 -- |The type of trees output by the type checking algorithm.
-type CheckedTree (sort :: Sort) = Tree DeBruijn Builtin (Info :*: K Provenance) sort
+type CheckedTree (sort :: Sort) = Tree DeBruijn (Info :*: K Provenance) sort
 
 -- |The type checking monad stack shared between checking and inference. It provides:
 --
@@ -129,14 +129,14 @@ freshMeta = Info . KMeta mempty <$> demand
 -- |Check if a tree is well-kinded and well-typed, and insert typing information.
 checkInfer ::
   forall sort. (KnownSort sort) =>
-  Tree DeBruijn Builtin (K Provenance) sort ->
+  Tree DeBruijn (K Provenance) sort ->
  (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
 checkInfer = unSCI . foldTree (SCI . checkInferF)
 
 -- |Check if a single layer is well-kinded and well-typed, see |checkInfer|.
 checkInferF ::
   forall sort. (KnownSort sort) =>
-  TreeF DeBruijn Builtin (K Provenance) sort SortedCheckInfer ->
+  TreeF DeBruijn (K Provenance) sort SortedCheckInfer ->
   (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
 checkInferF = case sortSing @sort of
 

@@ -33,10 +33,10 @@ data NormError
 type MonadNorm m = MonadError NormError m
 
 -- |Some useful type synonyms
-type NormExpr ann = Expr DeBruijn Builtin ann
-type NormType ann = Type DeBruijn Builtin ann
-type NormDecl ann = Decl DeBruijn Builtin ann
-type NormProg ann = Prog DeBruijn Builtin ann
+type NormExpr ann = Expr DeBruijn ann
+type NormType ann = Type DeBruijn ann
+type NormDecl ann = Decl DeBruijn ann
+type NormProg ann = Prog DeBruijn ann
 
 -- TODO: migrate to module with builtins
 

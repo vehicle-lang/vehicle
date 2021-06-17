@@ -9,9 +9,9 @@ import Vehicle.Prelude.Sort (KnownSort, SSort(..), sortSing)
 import Vehicle.Core.AST.Core (Tree(..))
 
 -- |Extract the annotation
-annotation :: forall sort name builtin ann.
+annotation :: forall sort name ann.
               KnownSort sort =>
-              Tree name builtin ann sort ->
+              Tree name ann sort ->
               ann sort
 annotation = case sortSing :: SSort sort of
   -- Kinds

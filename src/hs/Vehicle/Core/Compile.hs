@@ -16,6 +16,6 @@ newtype CompileError
 
 compile ::
   (IsToken name, KnownSort sort) =>
-  Tree (K name) Builtin (K Provenance) sort ->
+  Tree (K name) (K Provenance) sort ->
   Except CompileError (ATree (K Provenance) sort)
 compile tree0 = withExcept ScopeError (checkScope tree0)

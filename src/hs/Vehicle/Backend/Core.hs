@@ -12,12 +12,12 @@ import Vehicle.Core.Abs (Name(..))
 import Vehicle.Prelude (K(..))
 
 -- |Some useful type synonyms
-type TransExpr ann = Expr (K Name) Builtin ann
-type TransType ann = Type (K Name) Builtin ann
-type TransDecl ann = Decl (K Name) Builtin ann
-type TransProg ann = Prog (K Name) Builtin ann
-type TransEArg ann = EArg (K Name) Builtin ann
-type TransTArg ann = TArg (K Name) Builtin ann
+type TransExpr ann = Expr (K Name) ann
+type TransType ann = Type (K Name) ann
+type TransDecl ann = Decl (K Name) ann
+type TransProg ann = Prog (K Name) ann
+type TransEArg ann = EArg (K Name) ann
+type TransTArg ann = TArg (K Name) ann
 
 -- |Generate the file header given the token used to start comments in the target language
 fileHeader :: Text -> Text

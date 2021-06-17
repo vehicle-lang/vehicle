@@ -45,13 +45,13 @@ type FProg = VF.Prog (K Provenance)
 
 -- * Target core types
 
-type CKind = VC.Kind (K Name) VC.Builtin (K Provenance)
-type CType = VC.Type (K Name) VC.Builtin (K Provenance)
-type CTArg = VC.TArg (K Name) VC.Builtin (K Provenance)
-type CExpr = VC.Expr (K Name) VC.Builtin (K Provenance)
-type CEArg = VC.EArg (K Name) VC.Builtin (K Provenance)
-type CDecl = VC.Decl (K Name) VC.Builtin (K Provenance)
-type CProg = VC.Prog (K Name) VC.Builtin (K Provenance)
+type CKind = VC.Kind (K Name) (K Provenance)
+type CType = VC.Type (K Name) (K Provenance)
+type CTArg = VC.TArg (K Name) (K Provenance)
+type CExpr = VC.Expr (K Name) (K Provenance)
+type CEArg = VC.EArg (K Name) (K Provenance)
+type CDecl = VC.Decl (K Name) (K Provenance)
+type CProg = VC.Prog (K Name) (K Provenance)
 
 
 -- * Elaboration monad

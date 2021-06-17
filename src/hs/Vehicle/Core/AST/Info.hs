@@ -13,12 +13,11 @@ import Vehicle.Core.AST.DeBruijn
 import Vehicle.Core.AST.Instance ()
 import Vehicle.Core.AST.Recursive
 import Vehicle.Prelude
-import Vehicle.Prelude.Provenance
 
 
 -- |Abstract syntax trees, where the representation of names and builtins is fixed.
 type ATree (ann :: Sort -> *) (sort :: Sort)
-  = Tree DeBruijn Builtin ann sort
+  = Tree DeBruijn ann sort
 
 type AKind ann = ATree ann 'KIND
 type AType ann = ATree ann 'TYPE
@@ -30,7 +29,7 @@ type AProg ann = ATree ann 'PROG
 
 -- |Abstract syntax trees, where the representation of names and builtins is fixed.
 type ATreeF (ann :: Sort -> *) (sort :: Sort) (sorted :: Sort -> *)
-  = TreeF DeBruijn Builtin ann sort sorted
+  = TreeF DeBruijn ann sort sorted
 
 type AKindF ann sorted = ATreeF ann 'KIND sorted
 type ATypeF ann sorted = ATreeF ann 'TYPE sorted

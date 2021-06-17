@@ -14,112 +14,86 @@ import Vehicle.Prelude.Sort
 -- * Kinds
 
 deriving instance
-  ( Eq (builtin 'KIND)
-  , Eq (ann 'KIND)
-  ) => Eq (Kind name builtin ann)
+  ( Eq (ann 'KIND)
+  ) => Eq (Kind name ann)
 
 deriving instance
-  ( Ord (builtin 'KIND)
-  , Ord (ann 'KIND)
-  ) => Ord (Kind name builtin ann)
+  ( Ord (ann 'KIND)
+  ) => Ord (Kind name ann)
 
 deriving instance
-  ( Show (builtin 'KIND)
-  , Show (ann 'KIND)
-  ) => Show (Kind name builtin ann)
-
+  ( Show (ann 'KIND)
+  ) => Show (Kind name ann)
+{-
 deriving instance
-  ( Read (builtin 'KIND)
-  , Read (ann 'KIND)
-  ) => Read (Kind name builtin ann)
-
+  ( Read (ann 'KIND)
+  ) => Read (Kind name ann)
+-}
 -- * Types
 
 deriving instance
   ( Eq (name 'KIND)
-  , Eq (builtin 'KIND)
   , Eq (ann 'KIND)
   , Eq (name 'TYPE)
-  , Eq (builtin 'TYPE)
   , Eq (ann 'TYPE)
   , Eq (name 'TARG)
-  , Eq (builtin 'TARG)
   , Eq (ann 'TARG)
-  ) => Eq (Type name builtin ann)
+  ) => Eq (Type name ann)
 
 -- * Expressions
 
 deriving instance
   ( Eq (name 'KIND)
-  , Eq (builtin 'KIND)
   , Eq (ann 'KIND)
   , Eq (name 'TYPE)
-  , Eq (builtin 'TYPE)
   , Eq (ann 'TYPE)
   , Eq (name 'TARG)
-  , Eq (builtin 'TARG)
   , Eq (ann 'TARG)
   , Eq (name 'EXPR)
-  , Eq (builtin 'EXPR)
   , Eq (ann 'EXPR)
   , Eq (name 'EARG)
-  , Eq (builtin 'EARG)
   , Eq (ann 'EARG)
-  ) => Eq (Expr name builtin ann)
+  ) => Eq (Expr name ann)
 
 -- * Declarations
 
 deriving instance
   ( Eq (name 'KIND)
-  , Eq (builtin 'KIND)
   , Eq (ann 'KIND)
   , Eq (name 'TYPE)
-  , Eq (builtin 'TYPE)
   , Eq (ann 'TYPE)
   , Eq (name 'TARG)
-  , Eq (builtin 'TARG)
   , Eq (ann 'TARG)
   , Eq (name 'EXPR)
-  , Eq (builtin 'EXPR)
   , Eq (ann 'EXPR)
   , Eq (name 'EARG)
-  , Eq (builtin 'EARG)
   , Eq (ann 'EARG)
   , Eq (name 'DECL)
-  , Eq (builtin 'DECL)
   , Eq (ann 'DECL)
-  ) => Eq (Decl name builtin ann)
+  ) => Eq (Decl name ann)
 
 -- * Type arguments
 
 deriving instance
   ( Eq (name 'KIND)
-  , Eq (builtin 'KIND)
   , Eq (ann 'KIND)
   , Eq (name 'TYPE)
-  , Eq (builtin 'TYPE)
   , Eq (ann 'TYPE)
   , Eq (name 'TARG)
-  , Eq (builtin 'TARG)
   , Eq (ann 'TARG)
-  ) => Eq (TArg name builtin ann)
+  ) => Eq (TArg name ann)
 
 -- * Expression arguments
 
 deriving instance
   ( Eq (name 'KIND)
-  , Eq (builtin 'KIND)
   , Eq (ann 'KIND)
   , Eq (name 'TYPE)
-  , Eq (builtin 'TYPE)
   , Eq (ann 'TYPE)
   , Eq (name 'TARG)
-  , Eq (builtin 'TARG)
   , Eq (ann 'TARG)
   , Eq (name 'EXPR)
-  , Eq (builtin 'EXPR)
   , Eq (ann 'EXPR)
   , Eq (name 'EARG)
-  , Eq (builtin 'EARG)
   , Eq (ann 'EARG)
-  ) => Eq (EArg name builtin ann)
+  ) => Eq (EArg name ann)

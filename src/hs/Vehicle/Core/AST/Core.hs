@@ -13,6 +13,7 @@ module Vehicle.Core.AST.Core
   ) where
 
 import Vehicle.Prelude
+import Vehicle.Core.AST.Builtin
 
 -- * Abstract syntax tree for Vehicle Core
 
@@ -22,92 +23,92 @@ import Vehicle.Prelude
 -- Names are parameterised over so that they can store
 -- either the user assigned names or deBruijn indices.
 
-data family Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *) (sort :: Sort)
+data family Tree (name :: Sort -> *) (ann :: Sort -> *) (sort :: Sort)
 
-type Kind name builtin ann = Tree name builtin ann 'KIND
+type Kind name ann = Tree name ann 'KIND
 
 infixl 4 `KApp`
 
 -- | Type of Vehicle Core kinds.
-data instance Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *) 'KIND
+data instance Tree (name :: Sort -> *) (ann :: Sort -> *) 'KIND
   = KApp
     (ann 'KIND)             -- ^ Sort Annotation.
-    (Kind name builtin ann) -- ^ Function.
-    (Kind name builtin ann) -- ^ Argument.
+    (Kind name ann)         -- ^ Function.
+    (Kind name ann)         -- ^ Argument.
   | KCon
     (ann 'KIND)             -- ^ Sort Annotation.
-    (builtin 'KIND)         -- ^ Builtin name.
+    (Builtin 'KIND)         -- ^ Builtin name.
   | KMeta
     (ann 'KIND)             -- ^ Sort Annotation.
     Integer                 -- ^ Meta variable.
 
-type Type name builtin ann = Tree name builtin ann 'TYPE
+type Type name ann = Tree name ann 'TYPE
 
 infixl 4 `TApp`
 
 -- | Type of Vehicle Core types.
-data instance Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *) 'TYPE
+data instance Tree (name :: Sort -> *) (ann :: Sort -> *) 'TYPE
   = TForall
     (ann 'TYPE)             -- ^ Sort Annotation.
-    (TArg name builtin ann) -- ^ Bound type name.
-    (Type name builtin ann) -- ^ Type body.
+    (TArg name ann)         -- ^ Bound type name.
+    (Type name ann)         -- ^ Type body.
   | TApp
     (ann 'TYPE)             -- ^ Sort Annotation.
-    (Type name builtin ann) -- ^ Function.
-    (Type name builtin ann) -- ^ Argument.
+    (Type name ann)         -- ^ Function.
+    (Type name ann)         -- ^ Argument.
   | TVar
     (ann 'TYPE)             -- ^ Sort Annotation.
     (name 'TYPE)            -- ^ Variable name.
   | TCon
     (ann 'TYPE)             -- ^ Sort Annotation.
-    (builtin 'TYPE)         -- ^ Builtin name.
+    (Builtin 'TYPE)         -- ^ Builtin name.
   | TLitDim
     (ann 'TYPE)             -- ^ Sort Annotation.
     Integer                 -- ^ Dimension literal.
   | TLitDimList
     (ann 'TYPE)             -- ^ Sort Annotation.
-    [Type name builtin ann] -- ^ List of types.
+    [Type name ann]         -- ^ List of types.
   | TMeta
     (ann 'TYPE)             -- ^ Sort Annotation.
     Integer                 -- ^ Meta variable
 
-type Expr name builtin ann = Tree name builtin ann 'EXPR
+type Expr name ann = Tree name ann 'EXPR
 
 infixl 4 `EApp`
 
 -- | Type of Vehicle Core expressions.
-data instance Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *) 'EXPR
+data instance Tree (name :: Sort -> *) (ann :: Sort -> *) 'EXPR
   = EAnn
     (ann 'EXPR)             -- ^ Sort Annotation.
-    (Expr name builtin ann) -- ^ Expression.
-    (Type name builtin ann) -- ^ Expression type.
+    (Expr name ann)         -- ^ Expression.
+    (Type name ann)         -- ^ Expression type.
   | ELet
     (ann 'EXPR)             -- ^ Sort Annotation.
-    (EArg name builtin ann) -- ^ Bound expression name.
-    (Expr name builtin ann) -- ^ Bound expression body.
-    (Expr name builtin ann) -- ^ Expression body.
+    (EArg name ann)         -- ^ Bound expression name.
+    (Expr name ann)         -- ^ Bound expression body.
+    (Expr name ann)         -- ^ Expression body.
   | ELam
     (ann 'EXPR)             -- ^ Sort Annotation.
-    (EArg name builtin ann) -- ^ Bound expression name.
-    (Expr name builtin ann) -- ^ Expression body.
+    (EArg name ann)         -- ^ Bound expression name.
+    (Expr name ann)         -- ^ Expression body.
   | EApp
     (ann 'EXPR)             -- ^ Sort Annotation.
-    (Expr name builtin ann) -- ^ Function.
-    (Expr name builtin ann) -- ^ Argument.
+    (Expr name ann)         -- ^ Function.
+    (Expr name ann)         -- ^ Argument.
   | EVar
     (ann 'EXPR)             -- ^ Sort Annotation.
     (name 'EXPR)            -- ^ Variable name.
   | ETyApp
     (ann 'EXPR)             -- ^ Sort Annotation.
-    (Expr name builtin ann) -- ^ Type function.
-    (Type name builtin ann) -- ^ Type argument.
+    (Expr name ann)         -- ^ Type function.
+    (Type name ann)         -- ^ Type argument.
   | ETyLam
     (ann 'EXPR)             -- ^ Sort Annotation.
-    (TArg name builtin ann) -- ^ Bound type name.
-    (Expr name builtin ann) -- ^ Expression body.
+    (TArg name ann)         -- ^ Bound type name.
+    (Expr name ann)         -- ^ Expression body.
   | ECon
     (ann 'EXPR)             -- ^ Sort Annotation.
-    (builtin 'EXPR)         -- ^ Builtin name.
+    (Builtin 'EXPR)         -- ^ Builtin name.
   | ELitInt
     (ann 'EXPR)             -- ^ Sort Annotation.
     Integer                 -- ^ Integer literal.
@@ -116,51 +117,51 @@ data instance Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)
     Double                  -- ^ "Real" literal.
   | ELitSeq
     (ann 'EXPR)             -- ^ Sort Annotation.
-    [Expr name builtin ann] -- ^ List of expressions.
+    [Expr name ann]         -- ^ List of expressions.
 
-type Decl name builtin ann = Tree name builtin ann 'DECL
+type Decl name ann = Tree name ann 'DECL
 
 -- | Type of Vehicle Core declaration.
-data instance Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *) 'DECL
+data instance Tree (name :: Sort -> *) (ann :: Sort -> *) 'DECL
   = DeclNetw
     (ann 'DECL)             -- ^ Sort Annotation.
-    (EArg name builtin ann) -- ^ Network name.
-    (Type name builtin ann) -- ^ Network type.
+    (EArg name ann)         -- ^ Network name.
+    (Type name ann)         -- ^ Network type.
   | DeclData
     (ann 'DECL)             -- ^ Sort Annotation.
-    (EArg name builtin ann) -- ^ Dataset name.
-    (Type name builtin ann) -- ^ Dataset type.
+    (EArg name ann)         -- ^ Dataset name.
+    (Type name ann)         -- ^ Dataset type.
   | DefType
     (ann 'DECL)             -- ^ Sort Annotation.
-    (TArg name builtin ann) -- ^ Bound type synonym name.
-    [TArg name builtin ann] -- ^ Bound type synonym arguments.
-    (Type name builtin ann) -- ^ Bound type synonym body.
+    (TArg name ann)         -- ^ Bound type synonym name.
+    [TArg name ann]         -- ^ Bound type synonym arguments.
+    (Type name ann)         -- ^ Bound type synonym body.
   | DefFun
     (ann 'DECL)             -- ^ Sort Annotation.
-    (EArg name builtin ann) -- ^ Bound function name.
-    (Type name builtin ann) -- ^ Bound function type.
-    (Expr name builtin ann) -- ^ Bound function body.
+    (EArg name ann)         -- ^ Bound function name.
+    (Type name ann)         -- ^ Bound function type.
+    (Expr name ann)         -- ^ Bound function body.
 
-type Prog name builtin ann = Tree name builtin ann 'PROG
+type Prog name ann = Tree name ann 'PROG
 
 -- | Type of Vehicle Core programs.
-data instance Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *)  'PROG
+data instance Tree (name :: Sort -> *) (ann :: Sort -> *)  'PROG
   = Main
     (ann 'PROG)             -- ^ Sort Annotation.
-    [Decl name builtin ann] -- ^ List of declarations.
+    [Decl name ann]         -- ^ List of declarations.
 
-type TArg name builtin ann = Tree name builtin ann 'TARG
+type TArg name ann = Tree name ann 'TARG
 
 -- | Type of Vehicle Core type-level name-binding sites.
-data instance Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *) 'TARG
+data instance Tree (name :: Sort -> *) (ann :: Sort -> *) 'TARG
   = TArg
   (ann 'TARG)               -- ^ Sort Annotation.
   (name 'TARG)              -- ^ Type name.
 
-type EArg name builtin ann = Tree name builtin ann 'EARG
+type EArg name ann = Tree name ann 'EARG
 
 -- | Type of Vehicle Core expression-level name-binding sites.
-data instance Tree (name :: Sort -> *) (builtin :: Sort -> *) (ann :: Sort -> *) 'EARG
+data instance Tree (name :: Sort -> *) (ann :: Sort -> *) 'EARG
   = EArg
   (ann 'EARG)               -- ^ Sort Annotation.
   (name 'EARG)              -- ^ Expression name.
