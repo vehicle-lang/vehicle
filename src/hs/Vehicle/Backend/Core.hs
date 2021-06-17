@@ -7,7 +7,7 @@
 module Vehicle.Backend.Core where
 
 import Data.Text as Text (Text, intercalate)
-import Vehicle.Core.AST (Tree (..), Expr, Type, Decl, Prog, EArg, TArg, Builtin(..))
+import Vehicle.Core.AST (Tree (..), Expr, Type, Decl, Prog, EArg, TArg)
 import Vehicle.Core.Abs (Name(..))
 import Vehicle.Prelude (K(..))
 

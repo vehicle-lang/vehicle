@@ -15,7 +15,7 @@ newtype CompileError
   deriving Show
 
 compile ::
-  (IsToken name, KnownSort sort) =>
-  Tree (K name) (K Provenance) sort ->
+  (KnownSort sort) =>
+  Tree (K Symbol) (K Provenance) sort ->
   Except CompileError (ATree (K Provenance) sort)
 compile tree0 = withExcept ScopeError (checkScope tree0)

@@ -24,11 +24,7 @@ deriving instance
 deriving instance
   ( Show (ann 'KIND)
   ) => Show (Kind name ann)
-{-
-deriving instance
-  ( Read (ann 'KIND)
-  ) => Read (Kind name ann)
--}
+
 -- * Types
 
 deriving instance

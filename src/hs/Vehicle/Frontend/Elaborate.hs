@@ -45,13 +45,13 @@ type FProg = VF.Prog (K Provenance)
 
 -- * Target core types
 
-type CKind = VC.Kind (K Name) (K Provenance)
-type CType = VC.Type (K Name) (K Provenance)
-type CTArg = VC.TArg (K Name) (K Provenance)
-type CExpr = VC.Expr (K Name) (K Provenance)
-type CEArg = VC.EArg (K Name) (K Provenance)
-type CDecl = VC.Decl (K Name) (K Provenance)
-type CProg = VC.Prog (K Name) (K Provenance)
+type CKind = VC.Kind (K Symbol) (K Provenance)
+type CType = VC.Type (K Symbol) (K Provenance)
+type CTArg = VC.TArg (K Symbol) (K Provenance)
+type CExpr = VC.Expr (K Symbol) (K Provenance)
+type CEArg = VC.EArg (K Symbol) (K Provenance)
+type CDecl = VC.Decl (K Symbol) (K Provenance)
+type CProg = VC.Prog (K Symbol) (K Provenance)
 
 
 -- * Elaboration monad
@@ -132,7 +132,7 @@ instance Elab FType CType where
   -- Core structure.
   elab (VF.TForall ann ns t)   = foldr (VC.TForall ann) <$> elab t <*> traverse elab ns
   elab (VF.TApp    ann t1 t2)  = VC.TApp ann <$> elab t1 <*> elab t2
-  elab (VF.TVar    ann n)      = return $ VC.TVar ann $ mkName ann n
+  elab (VF.TVar    ann n)      = return $ VC.TVar ann (K n)
 
   -- Primitive types.
   elab (VF.TFun    ann t1 t2)  = tOp2 VC.TFun ann t1 t2
@@ -153,7 +153,7 @@ instance Elab FType CType where
 
 -- |Elaborate type arguments.
 instance Elab FTArg CTArg where
-  elab (VF.TArg ann n) = return $ VC.TArg ann $ mkName ann n
+  elab (VF.TArg ann n) = return $ VC.TArg ann $ (K n)
 
 -- |Elaborate expressions.
 instance Elab FExpr CExpr where
@@ -162,7 +162,7 @@ instance Elab FExpr CExpr where
   elab (VF.ELet   ann ds e)  = elabLet ann (groupDecls ds) (elab e)
   elab (VF.ELam   ann ns e)  = foldr (VC.ELam ann) <$> elab e <*> traverse elab ns
   elab (VF.EApp   ann e1 e2) = VC.EApp ann <$> elab e1 <*> elab e2
-  elab (VF.EVar   ann n)     = return $ VC.EVar ann $ mkName ann n
+  elab (VF.EVar   ann n)     = return $ VC.EVar ann $ (K n)
   elab (VF.ETyApp ann e t)   = VC.ETyApp ann <$> elab e <*> elab t
   elab (VF.ETyLam ann ns e)  = foldr (VC.ETyLam ann) <$> elab e <*> traverse elab ns
 
@@ -199,7 +199,7 @@ instance Elab FExpr CExpr where
 
 -- |Elaborate expression arguments.
 instance Elab FEArg CEArg where
-  elab (VF.EArg ann n) = return $ VC.EArg ann $ mkName ann n
+  elab (VF.EArg ann n) = return $ VC.EArg ann $ (K n)
 
 -- |Elaborate declarations.
 instance Elab (NEList.NonEmpty FDecl) CDecl where
@@ -309,8 +309,3 @@ eOp2 b ann e1 e2 = VC.EApp ann <$> eOp1 b ann e1 <*> elab e2
 -- |Elaborate a binary function symbol with its arguments to an expression.
 eOp3 :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> FExpr -> FExpr -> FExpr -> m CExpr
 eOp3 b ann e1 e2 e3 = VC.EApp ann <$> eOp2 b ann e1 e2 <*> elab e3
-
--- |Temporary method to construct a name out of the
-mkName :: KnownSort sort => K Provenance sort -> Symbol -> K Name sort
-mkName (K (Provenance []))     s = K $ Name ((0, 0) , s)
-mkName (K (Provenance (p :_))) s = K $ Name (fromMaybe (0, 0) (rangeStart p), s)

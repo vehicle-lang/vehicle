@@ -25,13 +25,12 @@ import           Vehicle.Prelude
 -- * Errors thrown during scope checking.
 
 -- |Type of errors thrown by scope checking.
-newtype ScopeError
-  = UnboundName Token
+data ScopeError = UnboundName Symbol Provenance
   deriving (Show)
 
 -- |Throw an |UnboundName| error using an arbitrary token.
-unboundName :: (MonadError ScopeError m, IsToken name) => name -> m a
-unboundName n = throwError $ UnboundName (toToken n)
+unboundName :: MonadError ScopeError m => Symbol -> Provenance -> m a
+unboundName n p = throwError $ UnboundName n p
 
 
 -- * Scope checking contexts.
@@ -56,12 +55,12 @@ getSubCtxFor = case sortSing @sort of STYPE -> typeSymbols; SEXPR -> exprSymbols
 
 -- |Find the index for a given name of a given sort.
 getIndex ::
-  (IsToken name, KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
-  K name sort -> DataflowT sort Ctx (Except ScopeError) (DeBruijn sort)
-getIndex (K n :: K name sort) = do
+  (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
+  K Provenance sort -> K Symbol sort -> DataflowT sort Ctx (Except ScopeError) (DeBruijn sort)
+getIndex ann (K n :: K name sort) = do
   subctx <- getSubCtxFor @sort <$> askData
-  let maybeIndex = Seq.elemIndexL (tkSymbol n) subctx
-  let indexOrError = maybe (unboundName n) return maybeIndex
+  let maybeIndex = Seq.elemIndexL n subctx
+  let indexOrError = maybe (unboundName n (unK ann)) return maybeIndex
   fromIndex <$> indexOrError
 
 
@@ -70,18 +69,19 @@ getIndex (K n :: K name sort) = do
 
 -- |Check if a tree is well-scoped, replacing name tokens with deBruijn indices.
 checkScope ::
-  (KnownSort sort, IsToken name) =>
-  Tree (K name) ann sort ->
-  Except ScopeError (Tree DeBruijn ann sort)
+  forall sort.
+  (KnownSort sort) =>
+  Tree (K Symbol) (K Provenance) sort ->
+  Except ScopeError (Tree DeBruijn (K Provenance) sort)
 checkScope = evalDataflowT mempty . unSDF . foldTree (SDF . checkScopeF)
 
 -- |Check if a single layer is well-scoped in the appropriate data-flow context.
 checkScopeF ::
-  forall name ann sort.
-  (IsToken name, KnownSort sort) =>
-  TreeF (K name) ann sort (SortedDataflowT Ctx (Except ScopeError) (Tree DeBruijn ann)) ->
-        -- ^^ --                                                                 -- ^^ --
-  DataflowT sort Ctx (Except ScopeError) (Tree DeBruijn ann sort)
+  forall sort.
+  (KnownSort sort) =>
+  TreeF (K Symbol) (K Provenance) sort (SortedDataflowT Ctx (Except ScopeError) (Tree DeBruijn (K Provenance))) ->
+         -- ^^ --                                                          -- ^^ --
+  DataflowT sort Ctx (Except ScopeError) (Tree DeBruijn (K Provenance) sort)
 
 checkScopeF = case sortSing @sort of
 
@@ -105,7 +105,7 @@ checkScopeF = case sortSing @sort of
   STYPE -> \case
     TForallF     ann n t   -> sbindLocal n $ \n' -> TForall ann n' <$> sflow t
     TAppF        ann t1 t2 -> TApp ann <$> sflow t1 <*> sflow t2
-    TVarF        ann n     -> TVar ann <$> getIndex n
+    TVarF        ann n     -> TVar ann <$> getIndex ann n
     TConF        ann op    -> return $ TCon ann op
     TLitDimF     ann d     -> return $ TLitDim ann d
     TLitDimListF ann ts    -> TLitDimList ann <$> traverse sflow ts
@@ -116,7 +116,7 @@ checkScopeF = case sortSing @sort of
   -- Return the argument as-is paired with its underlying symbol.
   --
   STARG -> \case
-    TArgF ann n -> do let s = tkSymbol n
+    TArgF ann n -> do let s = unK n
                       tellData (singletonCtx STYPE s)
                       return $ TArg ann (fromSymbol s)
 
@@ -131,7 +131,7 @@ checkScopeF = case sortSing @sort of
     ELetF     ann n e1 e2 -> sbindLocal n $ \n' -> ELet ann n' <$> sflow e1 <*> sflow e2
     ELamF     ann n e     -> sbindLocal n $ \n' -> ELam ann n' <$> sflow e
     EAppF     ann e1 e2   -> EApp ann <$> sflow e1 <*> sflow e2
-    EVarF     ann n       -> EVar ann <$> getIndex n
+    EVarF     ann n       -> EVar ann <$> getIndex ann n
     ETyAppF   ann e t     -> ETyApp ann <$> sflow e <*> sflow t
     ETyLamF   ann n e     -> sbindLocal n $ \n' -> ETyLam ann n' <$> sflow e
     EConF     ann op      -> return $ ECon ann op
@@ -144,7 +144,7 @@ checkScopeF = case sortSing @sort of
   -- Return the argument as-is paired with its underlying symbol.
   --
   SEARG -> \case
-    EArgF ann n -> do let s = tkSymbol n
+    EArgF ann n -> do let s = unK n
                       tellData (singletonCtx SEXPR s)
                       return $ EArg ann (fromSymbol s)
 
@@ -168,9 +168,3 @@ checkScopeF = case sortSing @sort of
   -- Programs
   SPROG -> \case
     MainF ann ds -> Main ann <$> traverse sflow ds
-
--- -}
--- -}
--- -}
--- -}
--- -}
