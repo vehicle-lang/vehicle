@@ -116,7 +116,7 @@ Add a builtin operator to `src/hs/Vehicle/Core/AST/Builtin.hs`:
   EDiv    :: BuiltinOp 'EXPR
 ```
 
-Add a case to the builtin checker in `src/hs/Vehicle/Core/Check/Builtin.hs`:
+Add a case to the builtin checking in `src/hs/Vehicle/Core/Parse.hs`:
 
 ```diff
   , ">="    |-> EGe

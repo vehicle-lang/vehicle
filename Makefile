@@ -46,7 +46,7 @@ $(GEN_DIR_HS):
 BNFC_TARGETS_CORE := Print.hs Lex.x Par.y ErrM.hs
 BNFC_TARGETS_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_TARGETS_CORE))
 
-BNFC_GARBAGE_CORE := Abs.hs Test.hs Skel.hs Doc.txt
+BNFC_GARBAGE_CORE := Test.hs Skel.hs Doc.txt
 BNFC_GARBAGE_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_GARBAGE_CORE))
 
 .PHONY: bnfc-core

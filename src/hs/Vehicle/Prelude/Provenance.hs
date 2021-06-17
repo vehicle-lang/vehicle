@@ -3,6 +3,7 @@
 module Vehicle.Prelude.Provenance
   ( Provenance(..)
   , tkProvenance
+  , HasProvenance(..)
   ) where
 
 import           Data.Range (Range)
@@ -18,6 +19,12 @@ instance Semigroup Provenance where
 
 instance Monoid Provenance where
   mempty = Provenance []
+
+class HasProvenance a where
+  prov :: a -> Provenance
+
+instance HasProvenance a => HasProvenance [a] where
+  prov xs = foldMap prov xs
 
 -- |Get the provenance for a single token.
 tkProvenance :: IsToken a => a -> Provenance

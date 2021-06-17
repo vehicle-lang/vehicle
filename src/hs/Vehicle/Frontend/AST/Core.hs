@@ -17,7 +17,6 @@ module Vehicle.Frontend.AST.Core
 
 import Prelude (Double, Integer)
 
-import Vehicle.Frontend.Abs (Name)
 import Vehicle.Prelude
 
 -- | The core Tree structure, parameterised by an annotation type so different
