@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ConstraintKinds    #-}
 {-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE FlexibleContexts   #-}
@@ -5,11 +6,20 @@
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This module exports the datatype representations of the builtin symbols.
-module Vehicle.Core.AST.Builtin where
+{-# LANGUAGE TypeOperators #-}
+module Vehicle.Core.AST.Builtin
+  ( Builtin(..)
+  , builtinFromSymbol
+  , symbolFromBuiltin
+  ) where
 
 import Vehicle.Prelude.Sort
+import Vehicle.Prelude
 
 data Builtin (sort :: Sort) where
 
@@ -53,6 +63,83 @@ data Builtin (sort :: Sort) where
   EAt      :: Builtin 'EXPR
   EAll     :: Builtin 'EXPR
   EAny     :: Builtin 'EXPR
+
+--------------------------------------------------------------------------------
+-- Mappings from builtins to symbols
+
+builtinKinds :: [(Symbol, Builtin 'KIND)]
+builtinKinds =
+  [ "->"   |-> KFun
+  , "Type" |-> KType
+  , "Dim"  |-> KDim
+  , "List" |-> KDimList
+  ]
+
+builtinTypes :: [(Symbol, Builtin 'TYPE)]
+builtinTypes =
+  [ "->"     |-> TFun
+  , "Bool"   |-> TBool
+  , "Prop"   |-> TProp
+  , "Int"    |-> TInt
+  , "Real"   |-> TReal
+  , "List"   |-> TList
+  , "Tensor" |-> TTensor
+  , "+"      |-> TAdd
+  , "::"     |-> TCons
+  ]
+
+builtinExprs :: [(Symbol, Builtin 'EXPR)]
+builtinExprs =
+  [ "if"    |-> EIf
+  , "=>"    |-> EImpl
+  , "and"   |-> EAnd
+  , "or"    |-> EOr
+  , "not"   |-> ENot
+  , "True"  |-> ETrue
+  , "False" |-> EFalse
+  , "=="    |-> EEq
+  , "!="    |-> ENeq
+  , "<="    |-> ELe
+  , "<"     |-> ELt
+  , ">="    |-> EGe
+  , ">"     |-> EGt
+  , "*"     |-> EMul
+  , "/"     |-> EDiv
+  , "-"     |-> ESub
+  -- Negation is changed from "-" to "~" during elaboration.
+  , "~"     |-> ENeg
+  , "!"     |-> EAt
+  , "::"    |-> ECons
+  , "all"   |-> EAll
+  , "any"   |-> EAny
+  ]
+
+sortBuiltins :: forall sort. (KnownSort sort, sort `In` ['KIND, 'TYPE, 'EXPR]) => [(Symbol, Builtin sort)]
+sortBuiltins = case sortSing @sort of
+  SKIND -> builtinKinds
+  STYPE -> builtinTypes
+  SEXPR -> builtinExprs
+
+builtinFromSymbol
+  :: forall sort . (KnownSort sort, sort `In` ['KIND, 'TYPE, 'EXPR])
+  => Symbol
+  -> Maybe (Builtin sort)
+builtinFromSymbol symbol = lookup symbol sortBuiltins
+
+symbolFromBuiltin
+  :: forall sort . (KnownSort sort, sort `In` ['KIND, 'TYPE, 'EXPR], Eq (Builtin sort))
+  => Builtin sort
+  -> Maybe Symbol
+symbolFromBuiltin builtin = lookup' builtin sortBuiltins
+
+lookup' :: (Eq b) => b -> [(a,b)] -> Maybe a
+lookup' _ [] =  Nothing
+lookup' key ((x,y):xys)
+  | key == y  =  Just x
+  | otherwise =  lookup' key xys
+
+--------------------------------------------------------------------------------
+-- Instances
 
 deriving instance Eq (Builtin 'KIND)
 deriving instance Eq (Builtin 'TYPE)

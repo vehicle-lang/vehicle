@@ -9,9 +9,12 @@
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 module Vehicle.Core.Parse
   ( parseText
   , parseFile
+  , PProg
   ) where
 
 import Data.Text (Text)
@@ -106,69 +109,21 @@ instance HasProvenance ExprBuiltin where
   prov = tkProvenance . unExprBuiltin
 
 instance Convert KindBuiltin (V.Builtin 'KIND) where
-  conv = findBuiltin builtinKinds . unKindBuiltin
+  conv = lookupBuiltin . unKindBuiltin
 
 instance Convert TypeBuiltin (V.Builtin 'TYPE) where
-  conv = findBuiltin builtinTypes . unTypeBuiltin
+  conv = lookupBuiltin . unTypeBuiltin
 
 instance Convert ExprBuiltin (V.Builtin 'EXPR) where
-  conv = findBuiltin builtinExprs . unExprBuiltin
+  conv = lookupBuiltin . unExprBuiltin
 
-findBuiltin ::
-  (MonadError BuiltinError m) =>
-  [(Symbol, V.Builtin sort)] ->
-  B.Builtin ->
-  m (V.Builtin sort)
-findBuiltin builtins tk = case lookup (tkSymbol tk) builtins of
-  Nothing -> throwError (UnknownBuiltin (toToken tk))
-  Just op -> return op
-
-builtinKinds :: [(Symbol, V.Builtin 'KIND)]
-builtinKinds =
-  [ "->"   |-> KFun
-  , "Type" |-> KType
-  , "Dim"  |-> KDim
-  , "List" |-> KDimList
-  ]
-
-builtinTypes :: [(Symbol, V.Builtin 'TYPE)]
-builtinTypes =
-  [ "->"     |-> TFun
-  , "Bool"   |-> TBool
-  , "Prop"   |-> TProp
-  , "Int"    |-> TInt
-  , "Real"   |-> TReal
-  , "List"   |-> TList
-  , "Tensor" |-> TTensor
-  , "+"      |-> TAdd
-  , "::"     |-> TCons
-  ]
-
-builtinExprs :: [(Symbol, V.Builtin 'EXPR)]
-builtinExprs =
-  [ "if"    |-> EIf
-  , "=>"    |-> EImpl
-  , "and"   |-> EAnd
-  , "or"    |-> EOr
-  , "not"   |-> ENot
-  , "True"  |-> ETrue
-  , "False" |-> EFalse
-  , "=="    |-> EEq
-  , "!="    |-> ENeq
-  , "<="    |-> ELe
-  , "<"     |-> ELt
-  , ">="    |-> EGe
-  , ">"     |-> EGt
-  , "*"     |-> EMul
-  , "/"     |-> EDiv
-  , "-"     |-> ESub
-  -- Negation is changed from "-" to "~" during elaboration.
-  , "~"     |-> ENeg
-  , "!"     |-> EAt
-  , "::"    |-> ECons
-  , "all"   |-> EAll
-  , "any"   |-> EAny
-  ]
+lookupBuiltin
+  :: (MonadConv m, IsToken tok, KnownSort sort, sort `In` ['KIND, 'TYPE, 'EXPR])
+  => tok
+  -> m (V.Builtin sort)
+lookupBuiltin tk = case builtinFromSymbol (tkSymbol tk) of
+  Nothing -> throwError $ UnknownBuiltin $ toToken tk
+  Just v -> return v
 
 --------------------------------------------------------------------------------
 -- AST

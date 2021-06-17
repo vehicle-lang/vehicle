@@ -8,8 +8,11 @@ import qualified Data.Text.IO as T
 import           System.Environment (getArgs)
 import           System.Exit (exitSuccess, exitFailure)
 import           System.Console.GetOpt
+
+import qualified Vehicle.Core.AST as VC
 import qualified Vehicle.Core.Parse as VC
 import qualified Vehicle.Core.Print as VC
+import qualified Vehicle.Frontend.AST as VF
 import qualified Vehicle.Frontend.Elaborate as VF
 import qualified Vehicle.Frontend.Parse as VF
 
@@ -59,7 +62,7 @@ main = do
   putStrLn (VC.printTree progVC)
 
 
-parseAndElab :: Lang -> Text -> IO VC.Prog
+parseAndElab :: Lang -> Text -> IO VC.PProg
 parseAndElab Frontend contents = do
   progVF <- fromEitherIO (VF.parseText contents)
   fromEitherIO (VF.runElab (VF.elab progVF))
