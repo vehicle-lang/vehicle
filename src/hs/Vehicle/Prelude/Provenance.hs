@@ -26,6 +26,8 @@ instance Monoid Provenance where
   mempty = Provenance []
 
 -- | Class for types which have provenance information
+
+-- | TODO - Replace with general class `Has` once we have indexed lists?
 class HasProvenance a where
   prov :: a -> Provenance
 

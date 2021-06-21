@@ -6,6 +6,8 @@
 
 module Vehicle.Prelude.Types where
 
+-- TODO swap out for lists?
+
 -- | Type-level indexed product.
 data (:*:) (f :: k -> *) (g :: k -> *) (x :: k) = (:*:) { ifst :: f x, isnd :: g x }
   deriving (Eq, Ord, Show)

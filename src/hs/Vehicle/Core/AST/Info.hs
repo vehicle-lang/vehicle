@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -12,6 +13,7 @@ import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
 import Vehicle.Core.AST.Instance ()
 import Vehicle.Core.AST.Recursive
+import Vehicle.Core.AST.Utils (annotation)
 import Vehicle.Prelude
 
 
@@ -84,45 +86,105 @@ instance Monoid (Info 'PROG) where
 
 -- * DSL for writing kinds as info annotations
 
-toKind ::
-  forall sort. (KnownSort sort, sort `In` ['TYPE, 'TARG]) =>
-  Info sort -> AKind (Info :*: K Provenance)
-toKind = case sortSing @sort of STYPE -> unInfo; STARG -> unInfo
+class DSL (sort :: Sort) where
+  type Underlying (sort :: Sort) :: Sort
+  infixl 3 `app`
+  infixr 4 ~>
+  con  :: Builtin (Underlying sort) -> Info sort
+  (~>) :: Info sort -> Info sort -> Info sort
+  app  :: Info sort -> Info sort -> Info sort
 
-fromKind ::
-  forall sort. (KnownSort sort, sort `In` ['TYPE, 'TARG]) =>
-  AKind (Info :*: K Provenance) -> Info sort
-fromKind = case sortSing @sort of STYPE -> Info; STARG -> Info
+instance DSL 'TYPE where
+  type Underlying 'TYPE = 'KIND
+  con op      = Info (KCon mempty op)
+  k1 ~> k2    = kFun `app` k1 `app` k2
+  k1 `app` k2 = Info $ KApp mempty (unInfo k1) (unInfo k2)
 
-infixl 3 `kApp`
+instance DSL 'TARG where
+  type Underlying 'TARG = 'KIND
+  con op      = Info (KCon mempty op)
+  k1 ~> k2    = kFun `app` k1 `app` k2
+  k1 `app` k2 = Info $ KApp mempty (unInfo k1) (unInfo k2)
 
-kApp ::
-  forall sort. (KnownSort sort, sort `In` ['TYPE, 'TARG]) =>
-  Info sort -> Info sort -> Info sort
-kApp k1 k2 = fromKind $ KApp mempty (toKind k1) (toKind k2)
+-- TODO remove duplication of instances
+-- TODO make tRes top-level function
 
-infixr 4 ~>
+instance DSL 'EXPR where
+  type Underlying 'EXPR = 'TYPE
+  con op      = Info (TCon (kindOf op :*: mempty) op)
+  k1 ~> k2    = tFun `app` k1 `app` k2
+  k1 `app` k2 = Info $ TApp (tRes :*: mempty) (unInfo k1) (unInfo k2)
+    where
+      tRes = resultOf (ifst (annotation (unInfo k1)))
 
-(~>) ::
-  forall sort. (KnownSort sort, sort `In` ['TYPE, 'TARG]) =>
-  Info sort -> Info sort -> Info sort
-k1 ~> k2 = kFun `kApp` k1 `kApp` k2
+instance DSL 'EARG where
+  type Underlying 'EARG = 'TYPE
+  con op      = Info (TCon (kindOf op :*: mempty) op)
+  k1 ~> k2    = tFun `app` k1 `app` k2
+  k1 `app` k2 = Info $ TApp (tRes :*: mempty) (unInfo k1) (unInfo k2)
+    where
+      tRes = resultOf (ifst (annotation (unInfo k1)))
 
-kFun, kType, kDim, kDimList :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'TARG]) => Info sort
-kFun     = fromKind (KCon mempty KFun)
-kType    = fromKind (KCon mempty KType)
-kDim     = fromKind (KCon mempty KDim)
-kDimList = fromKind (KCon mempty KDimList)
+resultOf :: Info 'TYPE -> Info 'TYPE
+resultOf (Info (KApp _ (KApp _ (KCon _ KFun) _kArg) kRes)) = Info kRes
+resultOf _ = error $ unlines
+  [ "Incorrect kind annotation."
+  , "Perhaps an error in kindOf?"
+  , "Please report as a bug."
+  ]
 
+kFun, kType, kDim, kDimList :: (DSL sort, Underlying sort ~ 'KIND) => Info sort
+kFun     = con KFun
+kType    = con KType
+kDim     = con KDim
+kDimList = con KDimList
 
--- * DSL for writing types as info annotations
+tFun, tBool, tProp, tInt, tReal, tList, tTensor, tAdd, tCons :: (DSL sort, Underlying sort ~ 'TYPE) => Info sort
+tFun     = con TFun
+tBool    = con TBool
+tProp    = con TProp
+tInt     = con TInt
+tReal    = con TReal
+tList    = con TList
+tTensor  = con TTensor
+tAdd     = con TAdd
+tCons    = con TCons
 
-toType ::
-  forall sort. (KnownSort sort, sort `In` ['EXPR, 'EARG]) =>
-  Info sort -> AType (Info :*: K Provenance)
-toType = case sortSing @sort of SEXPR -> unInfo; SEARG -> unInfo
+-- |Return the kind for builtin types.
+kindOf :: Builtin 'TYPE -> Info 'TYPE
+kindOf = \case
+  TFun    -> kType ~> kType ~> kType
+  TBool   -> kType
+  TProp   -> kType
+  TInt    -> kType
+  TReal   -> kType
+  TList   -> kType ~> kType
+  TTensor -> kDim ~> kType ~> kType
+  TAdd    -> kDim ~> kDim ~> kDim
+  TCons   -> kDim ~> kDimList ~> kDimList
 
-fromType ::
-  forall sort. (KnownSort sort, sort `In` ['EXPR, 'EARG]) =>
-  AType (Info :*: K Provenance) -> Info sort
-fromType = case sortSing @sort of SEXPR -> Info; SEARG -> Info
+-- |Return the kind for builtin exprs.
+typeOf :: Builtin 'EXPR -> Info 'EXPR
+typeOf = \case
+  EIf      -> tBool ~> tInt ~> tInt -- TODO need HM to get rid of "tInt"s everywhere
+  EImpl    -> tBool ~> tBool ~> tBool
+  EAnd     -> tBool ~> tBool ~> tBool
+  EOr      -> tBool ~> tBool ~> tBool
+  ENot     -> tBool ~> tBool
+  ETrue    -> tBool
+  EFalse   -> tBool
+  EEq      -> tInt ~> tInt ~> tBool
+  ENeq     -> tInt ~> tInt ~> tBool
+  ELe      -> tInt ~> tInt ~> tBool
+  ELt      -> tInt ~> tInt ~> tBool
+  EGe      -> tInt ~> tInt ~> tBool
+  EGt      -> tInt ~> tInt ~> tBool
+  EMul     -> tInt ~> tInt ~> tInt
+  EDiv     -> tInt ~> tInt ~> tInt
+  EAdd     -> tInt ~> tInt ~> tInt
+  ESub     -> tInt ~> tInt ~> tInt
+  ENeg     -> tInt ~> tInt
+  ECons    -> tInt ~> tList `app` tInt ~> tList `app` tInt
+  EAt      -> tList `app` tInt ~> tInt ~> tInt
+  EAll     -> tList `app` tInt ~> (tInt ~> tBool) ~> tBool
+  EAny     -> tList `app` tInt ~> (tInt ~> tBool) ~> tBool

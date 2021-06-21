@@ -123,8 +123,11 @@ getInfo p db = do
   info <- maybe (throwError $ IndexOutOfBounds (unK p) ix) return maybeInfo
   return info
 
-freshMeta :: KnownSort sort => TCM sort (Info 'TYPE)
-freshMeta = Info . KMeta mempty <$> demand
+freshKMeta :: KnownSort sort => TCM sort (Info 'TYPE)
+freshKMeta = Info . KMeta mempty <$> demand
+
+freshTMeta :: KnownSort sort => TCM sort (Info 'EXPR)
+freshTMeta = Info . TMeta mempty <$> demand
 
 -- |Check if a tree is well-kinded and well-typed, and insert typing information.
 checkInfer ::
@@ -174,7 +177,7 @@ checkInferF = case sortSing @sort of
         _kFun@(KApp _ (KApp _ (KCon _ KFun) kArg) kRes) ->
           return (Info kArg, Info kRes)
         _kFun -> do
-          expected <- (~>) <$> freshMeta <*> freshMeta
+          expected <- (~>) <$> freshKMeta <*> freshKMeta
           throwError $ Mismatch (unK p) kFun expected
 
       -- Check the kind of the argument.
@@ -243,7 +246,18 @@ checkInferF = case sortSing @sort of
       (eFun, tFun) <- runInfer eFun
 
       -- Check if it's a function type: if so, return the two arguments; if not, throw an error.
-      undefined
+      (tArg, tRes) <- case unInfo tFun of
+        _tFun@(TApp _ (TApp _ (TCon _ TFun) tArg) tRes) ->
+          return (Info tArg, Info tRes)
+        _tFun -> do
+          expected <- (~>) <$> freshTMeta <*> freshTMeta
+          throwError $ Mismatch (unK p) tFun expected
+
+      -- Check the kind of the argument.
+      eArg <- runCheckWith tArg eArg
+
+      -- Return the appropriately annotated type with its inferred kind.
+      return (EApp (tRes :*: p) eFun eArg, tRes)
 
     ETyAppF p e t -> fromInfer p $ do
       undefined
@@ -329,7 +343,7 @@ fromCheck p chk = (chk, checkToInfer p chk)
 -- |Constructed a bidirectional step from an inference step.
 --
 --  Concretely, the resulting algorithm runs the inference mode, then compares
---  the inferred type to the expected type. If they're equal, it returns as
+--  the inferred type to the expected type. If thKey're equal, it returns as
 --  usual. If they're not, it throws an error.
 --
 fromInfer ::
@@ -360,18 +374,7 @@ runCheckWith info (SCI (chk, _inf)) = runReaderT chk info
 runInfer :: SortedCheckInfer sort -> Infer sort (CheckedTree sort)
 runInfer (SCI (_chk, inf)) = inf
 
--- |Return the kind for builtin types.
-kindOf :: Builtin 'TYPE -> Info 'TYPE
-kindOf = \case
-  TFun    -> kType ~> kType ~> kType
-  TBool   -> kType
-  TProp   -> kType
-  TInt    -> kType
-  TReal   -> kType
-  TList   -> kType ~> kType
-  TTensor -> kDim ~> kType ~> kType
-  TAdd    -> kDim ~> kDim ~> kDim
-  TCons   -> kDim ~> kDimList ~> kDimList
+
 
 
 {-

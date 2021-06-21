@@ -129,11 +129,11 @@ data instance TreeF ann 'PROG tree
 
 -- |Map from a sorted functor to an unsorted functor.
 mapSorted ::
-  (forall sort . KnownSort sort => sorted sort -> value) ->
+  (forall sort . KnownSort sort => sorted sort -> unsorted) ->
   forall sort ann.
   KnownSort sort =>
   S.TreeF ann sort sorted ->
-  TreeF ann sort value
+  TreeF ann sort unsorted
 mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
 
   -- Kinds
