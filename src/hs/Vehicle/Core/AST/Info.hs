@@ -17,7 +17,7 @@ import Vehicle.Core.AST.Utils (annotation)
 import Vehicle.Prelude
 
 
--- |Abstract syntax trees, where the representation of names and builtins is fixed.
+-- |Abstract syntax trees, where the representation of names is fixed.
 type ATree (ann :: Sort -> *) (sort :: Sort)
   = Tree DeBruijn ann sort
 
@@ -29,7 +29,7 @@ type AEArg ann = ATree ann 'EARG
 type ADecl ann = ATree ann 'DECL
 type AProg ann = ATree ann 'PROG
 
--- |Abstract syntax trees, where the representation of names and builtins is fixed.
+-- |Abstract syntax trees, where the representation of names is fixed.
 type ATreeF (ann :: Sort -> *) (sort :: Sort) (sorted :: Sort -> *)
   = TreeF DeBruijn ann sort sorted
 

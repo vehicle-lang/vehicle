@@ -35,6 +35,7 @@ library
                     , Vehicle.Frontend.AST.Recursive.Sorted
                     , Vehicle.Frontend.AST.Recursive.Unsorted
                     , Vehicle.Frontend.AST.Utils
+                    , Vehicle.Frontend.AST.Info
                     , Vehicle.Core.AST.Builtin
                     , Vehicle.Core.AST.Core
                     , Vehicle.Core.AST.DeBruijn
@@ -49,8 +50,8 @@ library
                     , Vehicle.Core.Normalise.Core
                     , Vehicle.Core.Normalise.Quantifier
                     , Vehicle.Core.Normalise.DeBruijnSubstitution
-                    , Vehicle.Backend.Agda
-                    , Vehicle.Backend.Core
+                    , Vehicle.Backend.ITP.Agda
+                    , Vehicle.Backend.ITP.Core
                     , Vehicle.Prelude
                     , Vehicle.Prelude.Token
                     , Vehicle.Prelude.Sort
