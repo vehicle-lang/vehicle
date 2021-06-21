@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 
-module Vehicle.Frontend.AST.Recursive where
+module Vehicle.Frontend.AST.Recursive.Sorted where
 
 import Data.Functor.Identity (Identity(..))
 import Vehicle.Frontend.AST.Core ( Tree(..) )
@@ -27,7 +27,6 @@ data instance TreeF ann 'KIND tree
   | KDimF  (ann 'KIND)
   | KListF (ann 'KIND)
 
-
 -- * Base functor for types
 
 type TypeF ann tree = TreeF ann 'TYPE tree
@@ -47,7 +46,6 @@ data instance TreeF ann 'TYPE tree
   | TLitDimF     (ann 'TYPE) Integer
   | TConsF       (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
   | TLitDimListF (ann 'TYPE) [tree 'TYPE]
-
 
 -- * Base functor for expression arguments
 
@@ -418,7 +416,6 @@ foldTreeM ::
   (forall sort. KnownSort sort => TreeF ann sort sorted -> m (sorted sort)) ->
   (forall sort. KnownSort sort => Tree  ann sort        -> m (sorted sort))
 foldTreeM f tree = f =<< traverseTreeF pure (foldTreeM f) (project tree)
-
 
 -- * Update fields in one layer
 

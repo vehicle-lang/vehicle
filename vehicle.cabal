@@ -32,7 +32,8 @@ library
   other-modules:      Paths_vehicle
                     , Vehicle.Frontend.AST.Core
                     , Vehicle.Frontend.AST.Instance
-                    , Vehicle.Frontend.AST.Recursive
+                    , Vehicle.Frontend.AST.Recursive.Sorted
+                    , Vehicle.Frontend.AST.Recursive.Unsorted
                     , Vehicle.Frontend.AST.Utils
                     , Vehicle.Core.AST.Builtin
                     , Vehicle.Core.AST.Core
