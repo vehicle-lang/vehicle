@@ -139,16 +139,31 @@ kType    = con KType
 kDim     = con KDim
 kDimList = con KDimList
 
-tFun, tBool, tProp, tInt, tReal, tList, tTensor, tAdd, tCons :: (DSL sort, Underlying sort ~ 'TYPE) => Info sort
+tFun, tBool, tProp, tInt, tReal, tAdd, tCons :: (DSL sort, Underlying sort ~ 'TYPE) => Info sort
 tFun     = con TFun
 tBool    = con TBool
 tProp    = con TProp
 tInt     = con TInt
 tReal    = con TReal
-tList    = con TList
-tTensor  = con TTensor
 tAdd     = con TAdd
 tCons    = con TCons
+
+tLitDim :: Integer -> Info 'EXPR
+tLitDim d = Info $ TLitDim (kDim :*: mempty) d
+
+tTensor :: (DSL sort, Underlying sort ~ 'TYPE) => Info sort -> Info sort -> Info sort
+tTensor tDim tElem = con TTensor `app` tDim `app` tElem
+
+tList :: (DSL sort, Underlying sort ~ 'TYPE) => Info sort -> Info sort
+tList tElem = con TList `app` tElem
+
+-- TODO figure out how to do this without horrible -1 hacks
+tForall :: (Info 'EXPR -> Info 'EXPR) -> Info 'EXPR
+tForall f = Info quantBody
+  where
+    badBody   = f (Info (TVar (kType :*: mempty) (TIndex (-1))))
+    body      = liftDeBruijn @'TYPE (BindingDepth (-1) 0) (unInfo badBody)
+    quantBody = TForall (kType :*: mempty) (TArg (kType :*: mempty) (TSymbol Machine)) body
 
 -- |Return the kind for builtin types.
 kindOf :: Builtin 'TYPE -> Info 'TYPE
@@ -166,25 +181,28 @@ kindOf = \case
 -- |Return the kind for builtin exprs.
 typeOf :: Builtin 'EXPR -> Info 'EXPR
 typeOf = \case
-  EIf      -> tBool ~> tInt ~> tInt -- TODO need HM to get rid of "tInt"s everywhere
+  EIf      -> tForall $ \t -> tBool ~> t ~> t
   EImpl    -> tBool ~> tBool ~> tBool
   EAnd     -> tBool ~> tBool ~> tBool
   EOr      -> tBool ~> tBool ~> tBool
   ENot     -> tBool ~> tBool
   ETrue    -> tBool
   EFalse   -> tBool
-  EEq      -> tInt ~> tInt ~> tBool
-  ENeq     -> tInt ~> tInt ~> tBool
-  ELe      -> tInt ~> tInt ~> tBool
-  ELt      -> tInt ~> tInt ~> tBool
-  EGe      -> tInt ~> tInt ~> tBool
-  EGt      -> tInt ~> tInt ~> tBool
+  EEq      -> tForall $ \t -> t ~> t ~> tBool
+  ENeq     -> tForall $ \t -> t ~> t ~> tBool
+  ELe      -> tForall $ \t -> t ~> t ~> tBool
+  ELt      -> tForall $ \t -> t ~> t ~> tBool
+  EGe      -> tForall $ \t -> t ~> t ~> tBool
+  EGt      -> tForall $ \t -> t ~> t ~> tBool
+
+  -- TODO need some sort of bounded quantification over int/real?
   EMul     -> tInt ~> tInt ~> tInt
   EDiv     -> tInt ~> tInt ~> tInt
   EAdd     -> tInt ~> tInt ~> tInt
   ESub     -> tInt ~> tInt ~> tInt
   ENeg     -> tInt ~> tInt
-  ECons    -> tInt ~> tList `app` tInt ~> tList `app` tInt
-  EAt      -> tList `app` tInt ~> tInt ~> tInt
-  EAll     -> tList `app` tInt ~> (tInt ~> tBool) ~> tBool
-  EAny     -> tList `app` tInt ~> (tInt ~> tBool) ~> tBool
+
+  ECons    -> tForall $ \t -> t ~> tList t ~> tList t
+  EAt      -> tForall $ \t -> tList t ~> tInt ~> t
+  EAll     -> tForall $ \t -> tList t ~> (t ~> tBool) ~> tBool
+  EAny     -> tForall $ \t -> tList t ~> (t ~> tBool) ~> tBool

@@ -24,6 +24,7 @@ import Control.Monad.Supply (SupplyT, demand)
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Writer (MonadWriter(..))
 import Data.Text (Text)
+import Data.Coerce (coerce)
 import Data.Sequence (Seq, (!?))
 import Data.Sequence qualified as Seq
 import Vehicle.Core.AST
@@ -45,7 +46,7 @@ data TypeError
   | forall sort. KnownSort sort =>
     Mismatch
       Provenance  -- ^ The location of the mismatch.
-      (Info sort) -- ^ The inferred type.
+      [Info sort] -- ^ The possible inferred types.
       (Info sort) -- ^ The expected type.
   | MissingAnnotation
       Provenance  -- ^ The location of the missing annotation.
@@ -127,7 +128,10 @@ freshKMeta :: KnownSort sort => TCM sort (Info 'TYPE)
 freshKMeta = Info . KMeta mempty <$> demand
 
 freshTMeta :: KnownSort sort => TCM sort (Info 'EXPR)
-freshTMeta = Info . TMeta mempty <$> demand
+freshTMeta = do
+  x <- demand
+  k <- freshKMeta
+  return $ Info (TMeta (k :*: mempty) x)
 
 -- |Check if a tree is well-kinded and well-typed, and insert typing information.
 checkInfer ::
@@ -146,10 +150,7 @@ checkInferF = case sortSing @sort of
   -- Kinds.
   SKIND -> \case
     KAppF  p k1 k2 -> fromCheck p $ KApp (mempty :*: p) <$> runCheck k1 <*> runCheck k2
-    KConF  p op    -> fromCheck p $ KCon (mempty :*: p) <$> pure op
-    KMetaF p _i    -> fromCheck p $ throwError $ UnsupportedOperation "KMeta" (unK p)
-
-  -- Types.
+    KConF  p op    -> fromCheck p $ KCon Mismatch
   --
   -- TODO: convert to Hindley-Milner style checking for kind checking, so that we can generalise
   --       the forall without requiring a type annotation.
@@ -178,7 +179,7 @@ checkInferF = case sortSing @sort of
           return (Info kArg, Info kRes)
         _kFun -> do
           expected <- (~>) <$> freshKMeta <*> freshKMeta
-          throwError $ Mismatch (unK p) kFun expected
+          throwError $ Mismatch (unK p) [kFun] expected
 
       -- Check the kind of the argument.
       tArg <- runCheckWith kArg tArg
@@ -219,7 +220,7 @@ checkInferF = case sortSing @sort of
   STARG -> \case
     TArgF p n -> fromCheck p $ do
       k <- ask
-      tell $ singletonCtx STYPE (fromKind . toKind $ k)
+      tell $ singletonCtx STYPE (Info . unInfo $ k)
       return (TArg (k :*: p) n)
 
   -- Expressions
@@ -251,7 +252,7 @@ checkInferF = case sortSing @sort of
           return (Info tArg, Info tRes)
         _tFun -> do
           expected <- (~>) <$> freshTMeta <*> freshTMeta
-          throwError $ Mismatch (unK p) tFun expected
+          throwError $ Mismatch (unK p) [tFun] expected
 
       -- Check the kind of the argument.
       eArg <- runCheckWith tArg eArg
@@ -265,34 +266,70 @@ checkInferF = case sortSing @sort of
     ETyLamF p n e -> fromCheck p $ do
       undefined
 
-    EConF p op -> undefined
+    EConF p op -> fromInfer p $ do
+      let t = typeOf op
+      return (ECon (t :*: p) op, t)
 
     ELitIntF p z -> fromInfer p $ do
-      undefined
+      let t = tInt
+      return (ELitInt (t :*: p) z, t)
 
     ELitRealF p r -> fromInfer p $ do
-      undefined
+      let t = tReal
+      return (ELitReal (t :*: p) r, t)
 
     ELitSeqF p es -> fromCheck p $ do
-      undefined
+      tExpected <- ask
+      let dActual = toInteger $ length es
+
+      -- Literal sequences can be tensors for the moment
+      -- TODO work out how to allow them to be lists as well
+      tElem <- case unInfo tExpected of
+        (TApp _ (TApp _ (TCon _ TTensor) (TLitDim _ dExpected)) tElem)
+          | dActual == dExpected -> return $ Info tElem
+        (TApp _ (TCon _ TList) tElem) ->
+          return $ Info tElem
+        _ -> do
+          tElem <- lift freshTMeta
+          let tTensorActual = tTensor (tLitDim dActual) tElem
+          let tListActual   = tList tElem
+          throwError $ Mismatch (unK p) [tTensorActual , tListActual] tExpected
+
+      es <- lift (traverse (runCheckWith tElem) es)
+      return $ ELitSeq (tExpected :*: p) es
 
   -- Expression arguments
   SEARG -> \case
     EArgF p n -> fromCheck p $ do
       t <- ask
-      tell $ singletonCtx SEXPR (fromType . toType $ t)
+      tell $ singletonCtx SEXPR (coerce t)
       return (EArg (t :*: p) n)
 
   -- Declarations
   SDECL -> \case
-    DeclNetwF p n t    -> undefined
-    DeclDataF p n t    -> undefined
-    DefTypeF  p n ns t -> undefined
-    DefFunF   p n t e  -> undefined
+    DeclNetwF p n t    -> fromInfer p $ do
+      (t , _k) <- flow $ runInfer t
+      n <- flow $ runCheckWith (Info t) n
+      return (DeclNetw (mempty :*: p) n t, mempty)
+
+    DeclDataF p n t    -> fromInfer p $ do
+      (t , _k) <- flow $ runInfer t
+      n <- flow $ runCheckWith (Info t) n
+      return (DeclData (mempty :*: p) n t, mempty)
+
+    DefTypeF  p n nArgs t -> undefined
+
+    DefFunF   p n t e  -> fromInfer p $ do
+      (t , _k) <- flow $ runInfer t
+      e <- flow $ runCheckWith (Info t) e
+      n <- flow $ runCheckWith (Info t) n
+      return (DefFun (mempty :*: p) n t e, mempty)
 
   -- Programs
   SPROG -> \case
-    MainF p ds -> undefined
+    MainF p ds -> fromInfer p $ do
+      ds <- flow $ traverse (runCheckWith mempty) ds
+      return (Main (mempty :*: p) ds , mempty)
 
 
 -- |Switch from inference mode to checking mode upon finding a type annotation.
