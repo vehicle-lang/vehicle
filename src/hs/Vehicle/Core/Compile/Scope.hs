@@ -80,7 +80,6 @@ checkScopeF ::
   forall sort.
   (KnownSort sort) =>
   TreeF (K Symbol) (K Provenance) sort (SortedDataflowT Ctx (Except ScopeError) (Tree DeBruijn (K Provenance))) ->
-         -- ^^ --                                                          -- ^^ --
   DataflowT sort Ctx (Except ScopeError) (Tree DeBruijn (K Provenance) sort)
 
 checkScopeF = case sortSing @sort of

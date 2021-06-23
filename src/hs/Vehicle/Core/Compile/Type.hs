@@ -121,8 +121,7 @@ getInfo p db = do
   subctx <- getSubCtxFor @sort <$> ask
   let ix = toIndex db
   let maybeInfo = subctx !? ix
-  info <- maybe (throwError $ IndexOutOfBounds (unK p) ix) return maybeInfo
-  return info
+  maybe (throwError $ IndexOutOfBounds (unK p) ix) return maybeInfo
 
 freshKMeta :: KnownSort sort => TCM sort (Info 'TYPE)
 freshKMeta = Info . KMeta mempty <$> demand
@@ -150,7 +149,8 @@ checkInferF = case sortSing @sort of
   -- Kinds.
   SKIND -> \case
     KAppF  p k1 k2 -> fromCheck p $ KApp (mempty :*: p) <$> runCheck k1 <*> runCheck k2
-    KConF  p op    -> fromCheck p $ KCon Mismatch
+    KConF  p op    -> fromCheck p $ pure (KCon (mempty :*: p) op)
+    KMetaF p _i    -> fromCheck p $ throwError $ UnsupportedOperation "KMeta" (unK p)
   --
   -- TODO: convert to Hindley-Milner style checking for kind checking, so that we can generalise
   --       the forall without requiring a type annotation.
@@ -235,10 +235,10 @@ checkInferF = case sortSing @sort of
       t <- getInfo p n
       return (EVar (t :*: p) n, t)
 
-    ELetF p n e1 e2 -> fromInfer p $ do
+    ELetF p n e1 e2 -> fromInfer p $
       undefined
 
-    ELamF p n e -> fromCheck p $ do
+    ELamF p n e -> fromCheck p $
       undefined
 
     EAppF p eFun eArg -> fromInfer p $ do
@@ -260,10 +260,10 @@ checkInferF = case sortSing @sort of
       -- Return the appropriately annotated type with its inferred kind.
       return (EApp (tRes :*: p) eFun eArg, tRes)
 
-    ETyAppF p e t -> fromInfer p $ do
+    ETyAppF p e t -> fromInfer p $
       undefined
 
-    ETyLamF p n e -> fromCheck p $ do
+    ETyLamF p n e -> fromCheck p $
       undefined
 
     EConF p op -> fromInfer p $ do
@@ -397,7 +397,7 @@ fromInfer p inf = (inferToCheck p inf, inf)
       expected <- ask
       if inferred == expected
         then return tree
-        else throwError (Mismatch @sort (unK p) inferred expected)
+        else throwError (Mismatch @sort (unK p) [inferred] expected)
 
 -- |Run and continue in checking mode.
 runCheck :: SortedCheckInfer sort -> Check sort (CheckedTree sort)
@@ -424,8 +424,4 @@ runInfer (SCI (_chk, inf)) = inf
 -- - variable with polymorphic type
 -- - union-find algorithm for unification and substitution
 
--- -}
--- -}
--- -}
--- -}
--- -}
+-}
