@@ -155,6 +155,7 @@ checkInferF = case sortSing @sort of
   -- TODO: convert to Hindley-Milner style checking for kind checking, so that we can generalise
   --       the forall without requiring a type annotation.
   --
+  -- TODO: variable names are clashing with the DSL for writing types (e.g. tForall)
   STYPE -> \case
 
     -- For type quantification:
@@ -235,14 +236,32 @@ checkInferF = case sortSing @sort of
       t <- getInfo p n
       return (EVar (t :*: p) n, t)
 
-    ELetF p n e1 e2 -> fromInfer p $
-      undefined
+    ELetF p n e1 e2 -> fromInfer p $ do
+      -- Infer the type of the let body
+      (e1, t1) <- runInfer e1
 
-    ELamF p n e -> fromCheck p $
-      undefined
+      -- Add the let bound name to the context and type check the body
+      bindLocal (runCheckWith (coerce t1) n) $ \n -> do
+        (e2, t2) <- runInfer e2
+        return (ELet (t2 :*: p) n e1 e2, t2)
+
+    ELamF p n e -> fromCheck p $ do
+      tFun <- ask
+
+      -- Check if it's a function type: if so, return the two arguments; if not, throw an error.
+      (tArg, tRes) <- case unInfo tFun of
+        _tFun@(TApp _ (TApp _ (TCon _ TFun) tArg) tRes) ->
+          return (Info tArg, Info tRes)
+        _tFun -> do
+          expected <- lift $ (~>) <$> freshTMeta <*> freshTMeta
+          throwError $ Mismatch (unK p) [tFun] expected
+
+      -- Add the argument to the context and type check the body
+      lift $ bindLocal (runCheckWith tArg n) $ \n -> do
+        e <- runCheckWith tRes e
+        return $ ELam (tRes :*: p) n e
 
     EAppF p eFun eArg -> fromInfer p $ do
-
       -- Infer the type of the function.
       (eFun, tFun) <- runInfer eFun
 
@@ -260,11 +279,25 @@ checkInferF = case sortSing @sort of
       -- Return the appropriately annotated type with its inferred kind.
       return (EApp (tRes :*: p) eFun eArg, tRes)
 
-    ETyAppF p e t -> fromInfer p $
+    ETyAppF p eTyFun tArg -> fromInfer p $ do
       undefined
 
-    ETyLamF p n e -> fromCheck p $
-      undefined
+    ETyLamF p n e -> fromCheck p $ do
+      tForall' <- ask
+
+      -- Check if it's a function type: if so, return the two arguments; if not, throw an error.
+      (kArg, tRes) <- case unInfo tForall' of
+        _tForall'@(TForall _ tArg tRes) ->
+          return (ifst (annotation tArg) , Info tRes)
+        _tForall' -> do
+          tMeta <- lift freshTMeta
+          let expected = tForall (const tMeta)
+          throwError $ Mismatch (unK p) [tForall'] expected
+
+      -- Add the argument to the context and check the body
+      lift $ bindLocal (runCheckWith kArg n) $ \n -> do
+        e <- runCheckWith tRes e
+        return $ ETyLam (tRes :*: p) n e
 
     EConF p op -> fromInfer p $ do
       let t = typeOf op
