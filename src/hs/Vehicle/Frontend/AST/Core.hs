@@ -43,19 +43,19 @@ type Type ann = Tree ann 'TYPE
 infixl 4 `TApp`
 
 data instance Tree (ann :: Sort -> *) 'TYPE
-    = TForall (ann 'TYPE) [TArg ann] (Type ann)
-    | TApp (ann 'TYPE) (Type ann) (Type ann)
-    | TVar (ann 'TYPE) Symbol
-    | TFun (ann 'TYPE) (Type ann) (Type ann)
-    | TBool (ann 'TYPE)
-    | TProp (ann 'TYPE)
-    | TReal (ann 'TYPE)
-    | TInt  (ann 'TYPE)
-    | TList (ann 'TYPE)
-    | TTensor (ann 'TYPE)
-    | TAdd (ann 'TYPE) (Type ann) (Type ann)
-    | TLitDim (ann 'TYPE) Integer
-    | TCons (ann 'TYPE) (Type ann) (Type ann)
+    = TForall     (ann 'TYPE) [TArg ann] (Type ann)
+    | TApp        (ann 'TYPE) (Type ann) (Type ann)
+    | TVar        (ann 'TYPE) Symbol
+    | TFun        (ann 'TYPE) (Type ann) (Type ann)
+    | TBool       (ann 'TYPE)
+    | TProp       (ann 'TYPE)
+    | TReal       (ann 'TYPE)
+    | TInt        (ann 'TYPE)
+    | TList       (ann 'TYPE) (Type ann)
+    | TTensor     (ann 'TYPE) (Type ann) (Type ann)
+    | TAdd        (ann 'TYPE) (Type ann) (Type ann)
+    | TLitDim     (ann 'TYPE) Integer
+    | TCons       (ann 'TYPE) (Type ann) (Type ann)
     | TLitDimList (ann 'TYPE) [Type ann]
 
 
@@ -117,9 +117,9 @@ data instance Tree (ann :: Sort -> *) 'EARG
 type Decl ann = Tree ann 'DECL
 
 data instance Tree (ann :: Sort -> *) 'DECL
-  = DeclNetw (ann 'DECL) (EArg ann) (Type ann)
-  | DeclData (ann 'DECL) (EArg ann) (Type ann)
-  | DefType  (ann 'DECL) (TArg ann) [TArg ann] (Type ann)
+  = DeclNetw   (ann 'DECL) (EArg ann) (Type ann)
+  | DeclData   (ann 'DECL) (EArg ann) (Type ann)
+  | DefType    (ann 'DECL) (TArg ann) [TArg ann] (Type ann)
   | DefFunType (ann 'DECL) (EArg ann) (Type ann)
   | DefFunExpr (ann 'DECL) (EArg ann) [EArg ann] (Expr ann)
 

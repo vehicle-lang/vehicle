@@ -135,13 +135,13 @@ instance Elab FType CType where
   elab (VF.TVar    ann n)      = return $ VC.TVar ann (K n)
 
   -- Primitive types.
-  elab (VF.TFun    ann t1 t2)  = tOp2 VC.TFun ann t1 t2
-  elab (VF.TBool   ann)        = tCon VC.TBool ann
-  elab (VF.TProp   ann)        = tCon VC.TProp ann
-  elab (VF.TReal   ann)        = tCon VC.TReal ann
-  elab (VF.TInt    ann)        = tCon VC.TInt ann
-  elab (VF.TList   ann)        = tCon VC.TList ann
-  elab (VF.TTensor ann)        = tCon VC.TTensor ann
+  elab (VF.TFun    ann t1 t2)  = tOp2 VC.TFun    ann t1 t2
+  elab (VF.TBool   ann)        = tCon VC.TBool   ann
+  elab (VF.TProp   ann)        = tCon VC.TProp   ann
+  elab (VF.TReal   ann)        = tCon VC.TReal   ann
+  elab (VF.TInt    ann)        = tCon VC.TInt    ann
+  elab (VF.TList   ann t)      = tOp1 VC.TList   ann t
+  elab (VF.TTensor ann t1 t2)  = tOp2 VC.TTensor ann t1 t2
 
   -- Type-level dimensions.
   elab (VF.TAdd    ann t1 t2)  = tOp2 VC.TAdd ann t1 t2

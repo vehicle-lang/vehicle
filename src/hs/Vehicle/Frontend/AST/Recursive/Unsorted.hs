@@ -46,8 +46,8 @@ data instance TreeF ann 'TYPE tree
   | TPropF       (ann 'TYPE)
   | TRealF       (ann 'TYPE)
   | TIntF        (ann 'TYPE)
-  | TListF       (ann 'TYPE)
-  | TTensorF     (ann 'TYPE)
+  | TListF       (ann 'TYPE) tree
+  | TTensorF     (ann 'TYPE) tree tree
   | TAddF        (ann 'TYPE) tree tree
   | TLitDimF     (ann 'TYPE) Integer
   | TConsF       (ann 'TYPE) tree tree
@@ -154,8 +154,8 @@ mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
     S.TPropF       ann       -> TPropF       ann
     S.TRealF       ann       -> TRealF       ann
     S.TIntF        ann       -> TIntF        ann
-    S.TListF       ann       -> TListF       ann
-    S.TTensorF     ann       -> TTensorF     ann
+    S.TListF       ann t     -> TListF       ann (f t)
+    S.TTensorF     ann t1 t2 -> TTensorF     ann (f t1) (f t2)
     S.TAddF        ann t1 t2 -> TAddF        ann (f t1) (f t2)
     S.TLitDimF     ann i     -> TLitDimF     ann i
     S.TConsF       ann t1 t2 -> TConsF       ann (f t1) (f t2)

@@ -103,8 +103,8 @@ instance Convert B.Type PType where
   conv (B.TProp tk)               = op0 V.TProp (tkProv tk)
   conv (B.TReal tk)               = op0 V.TReal (tkProv tk)
   conv (B.TInt tk)                = op0 V.TInt (tkProv tk)
-  conv (B.TList tk)               = op0 V.TList (tkProv tk)
-  conv (B.TTensor tk)             = op0 V.TTensor (tkProv tk)
+  conv (B.TList tk t)             = op1 V.TList (tkProv tk) (conv t)
+  conv (B.TTensor tk t1 t2)       = op2 V.TTensor (tkProv tk) (conv t1) (conv t2)
   conv (B.TAdd t1 tk t2)          = op2 V.TAdd (tkProv tk) (conv t1) (conv t2)
   conv (B.TLitDim i)              = V.TLitDim mempty i
   conv (B.TCons t1 tk t2)         = op2 V.TCons (tkProv tk) (conv t1) (conv t2)

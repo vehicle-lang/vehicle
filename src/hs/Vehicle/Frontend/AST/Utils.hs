@@ -55,8 +55,8 @@ annotation = case sortSing :: SSort sort of
     TProp       ann         -> ann
     TReal       ann         -> ann
     TInt        ann         -> ann
-    TList       ann         -> ann
-    TTensor     ann         -> ann
+    TList       ann _t      -> ann
+    TTensor     ann _t1 _t2 -> ann
     TAdd        ann _t1 _t2 -> ann
     TLitDim     ann _i      -> ann
     TCons       ann _t1 _t2 -> ann

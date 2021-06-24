@@ -74,26 +74,26 @@ coercions Kind 1;
 -- Core structure.
 TForall.  Type  ::= TokForall [Name] TokDot Type;
 TApp.     Type3 ::= Type3 Type4;
-TVar.     Type4 ::= Name;
+TVar.     Type5 ::= Name;
 
 -- Primitive types.
 TFun.     Type  ::= Type2 TokArrow Type;
-TBool.    Type4 ::= TokBool;
-TProp.    Type4 ::= TokProp;
-TReal.    Type4 ::= TokReal;
-TInt.     Type4 ::= TokInt;
-TList.    Type4 ::= TokList;
-TTensor.  Type4 ::= TokTensor;
+TList.    Type4 ::= TokList Type5;
+TTensor.  Type4 ::= TokTensor Type5 Type5;
+TBool.    Type5 ::= TokBool;
+TProp.    Type5 ::= TokProp;
+TReal.    Type5 ::= TokReal;
+TInt.     Type5 ::= TokInt;
 
 -- Type-level dimensions.
 TAdd.     Type2 ::= Type2 TokAdd Type3;
-TLitDim.  Type4 ::= Integer; -- confusingly, this means natural
+TLitDim.  Type5 ::= Integer; -- confusingly, this means natural
 
 -- Type-level lists.
 TCons.       Type1 ::= Type2 TokCons Type1;
-TLitDimList. Type4 ::= TokSeqOpen [Type] TokSeqClose;
+TLitDimList. Type5 ::= TokSeqOpen [Type] TokSeqClose;
 
-coercions Type 4;
+coercions Type 5;
 
 separator Type ",";
 

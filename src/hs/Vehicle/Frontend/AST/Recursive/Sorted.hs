@@ -40,8 +40,8 @@ data instance TreeF ann 'TYPE tree
   | TPropF       (ann 'TYPE)
   | TRealF       (ann 'TYPE)
   | TIntF        (ann 'TYPE)
-  | TListF       (ann 'TYPE)
-  | TTensorF     (ann 'TYPE)
+  | TListF       (ann 'TYPE) (tree 'TYPE)
+  | TTensorF     (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
   | TAddF        (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
   | TLitDimF     (ann 'TYPE) Integer
   | TConsF       (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
@@ -148,8 +148,8 @@ project = case sortSing :: SSort sort of
     TProp       ann       -> TPropF       ann
     TReal       ann       -> TRealF       ann
     TInt        ann       -> TIntF        ann
-    TList       ann       -> TListF       ann
-    TTensor     ann       -> TTensorF     ann
+    TList       ann t     -> TListF       ann t
+    TTensor     ann t1 t2 -> TTensorF     ann t1 t2
     TAdd        ann t1 t2 -> TAddF        ann t1 t2
     TLitDim     ann i     -> TLitDimF     ann i
     TCons       ann t1 t2 -> TConsF       ann t1 t2
@@ -236,8 +236,8 @@ embed = case sortSing :: SSort sort of
     TPropF       ann       -> TProp       ann
     TRealF       ann       -> TReal       ann
     TIntF        ann       -> TInt        ann
-    TListF       ann       -> TList       ann
-    TTensorF     ann       -> TTensor     ann
+    TListF       ann t     -> TList       ann t
+    TTensorF     ann t1 t2 -> TTensor     ann t1 t2
     TAddF        ann t1 t2 -> TAdd        ann t1 t2
     TLitDimF     ann i     -> TLitDim     ann i
     TConsF       ann t1 t2 -> TCons       ann t1 t2
@@ -326,8 +326,8 @@ traverseTreeF fAnn fRec (tree :: TreeF ann1 sort sorted1) = case sortSing :: SSo
     TPropF       ann       -> TPropF       <$> fAnn ann
     TRealF       ann       -> TRealF       <$> fAnn ann
     TIntF        ann       -> TIntF        <$> fAnn ann
-    TListF       ann       -> TListF       <$> fAnn ann
-    TTensorF     ann       -> TTensorF     <$> fAnn ann
+    TListF       ann t     -> TListF       <$> fAnn ann <*> fRec t
+    TTensorF     ann t1 t2 -> TTensorF     <$> fAnn ann <*> fRec t1 <*> fRec t2
     TAddF        ann t1 t2 -> TAddF        <$> fAnn ann <*> fRec t1 <*> fRec t2
     TLitDimF     ann i     -> TLitDimF     <$> fAnn ann <*> pure i
     TConsF       ann t1 t2 -> TConsF       <$> fAnn ann <*> fRec t1 <*> fRec t2
