@@ -9,28 +9,6 @@ import Vehicle.Prelude (Symbol)
 import Vehicle.Prelude.Sort (KnownSort, SSort(..), sortSing)
 import Vehicle.Frontend.AST.Core ( Decl, EArg, TArg, Tree(..) )
 
--- |Check if a declaration is a network declaration.
-isDefFun :: Decl ann -> Bool
-isDefFun (DefFunType _ann _name _typ) = True
-isDefFun (DefFunExpr _ann _name _args _exp) = True
-isDefFun _ = False
-
--- |Get the name of targ
-tArgName :: TArg ann -> Symbol
-tArgName (TArg _ann name) = name
-
--- | Get the name of an expression argument
-eArgName :: EArg ann -> Symbol
-eArgName (EArg _ann name)= name
-
--- |Get the name for any declaration.
-declName :: Decl ann -> Symbol
-declName (DeclNetw   _ann arg _typ)        = eArgName arg
-declName (DeclData   _ann arg _typ)        = eArgName arg
-declName (DefType    _ann arg _args _type) = tArgName arg
-declName (DefFunType _ann arg _typ)        = eArgName arg
-declName (DefFunExpr _ann arg _args _exp)  = eArgName arg
-
 -- |Extract the annotation
 annotation :: forall sort ann.
               KnownSort sort =>
@@ -107,11 +85,10 @@ annotation = case sortSing :: SSort sort of
 
   -- Declarations
   SDECL -> \case
-    DeclNetw   ann _n _t     -> ann
-    DeclData   ann _n _t     -> ann
-    DefType    ann _n _ns _t -> ann
-    DefFunType ann _n _t     -> ann
-    DefFunExpr ann _n _ns _e -> ann
+    DeclNetw ann _n _t        -> ann
+    DeclData ann _n _t        -> ann
+    DefType  ann _n _ns _t    -> ann
+    DefFun   ann _n _t _ns _e -> ann
 
   -- Programs
   SPROG -> \case

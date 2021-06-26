@@ -113,11 +113,10 @@ data instance TreeF ann 'EARG tree
 type DeclF ann tree = TreeF ann 'DECL tree
 
 data instance TreeF ann 'DECL tree
-  = DeclNetwF   (ann 'DECL) tree tree
-  | DeclDataF   (ann 'DECL) tree tree
-  | DefTypeF    (ann 'DECL) tree [tree] tree
-  | DefFunTypeF (ann 'DECL) tree tree
-  | DefFunExprF (ann 'DECL) tree [tree] tree
+  = DeclNetwF (ann 'DECL) tree tree
+  | DeclDataF (ann 'DECL) tree tree
+  | DefTypeF  (ann 'DECL) tree [tree] tree
+  | DefFunF   (ann 'DECL) tree tree [tree] tree
 
 
 -- * Base functor for programs
@@ -206,11 +205,10 @@ mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
 
   -- Declarations
   SDECL -> case tree of
-    S.DeclNetwF   ann n t    -> DeclNetwF   ann (f n) (f t)
-    S.DeclDataF   ann n t    -> DeclDataF   ann (f n) (f t)
-    S.DefTypeF    ann n ns t -> DefTypeF    ann (f n) (map f ns) (f t)
-    S.DefFunTypeF ann n t    -> DefFunTypeF ann (f n) (f t)
-    S.DefFunExprF ann n ns e -> DefFunExprF ann (f n) (map f ns) (f e)
+    S.DeclNetwF ann n t      -> DeclNetwF ann (f n) (f t)
+    S.DeclDataF ann n t      -> DeclDataF ann (f n) (f t)
+    S.DefTypeF  ann n ns t   -> DefTypeF  ann (f n) (map f ns) (f t)
+    S.DefFunF   ann n t ns e -> DefFunF   ann (f n) (f t) (map f ns) (f e)
 
   -- Programs
   SPROG -> case tree of

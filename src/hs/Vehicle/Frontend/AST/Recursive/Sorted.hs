@@ -110,8 +110,7 @@ data instance TreeF ann 'DECL tree
   = DeclNetwF   (ann 'DECL) (tree 'EARG) (tree 'TYPE)
   | DeclDataF   (ann 'DECL) (tree 'EARG) (tree 'TYPE)
   | DefTypeF    (ann 'DECL) (tree 'TARG) [tree 'TARG] (tree 'TYPE)
-  | DefFunTypeF (ann 'DECL) (tree 'EARG) (tree 'TYPE)
-  | DefFunExprF (ann 'DECL) (tree 'EARG) [tree 'EARG] (tree 'EXPR)
+  | DefFunF     (ann 'DECL) (tree 'EARG) (tree 'TYPE) [tree 'EARG] (tree 'EXPR)
 
 
 -- * Base functor for programs
@@ -200,11 +199,10 @@ project = case sortSing :: SSort sort of
 
   -- Declarations
   SDECL -> \case
-    DeclNetw   ann n t    -> DeclNetwF   ann n t
-    DeclData   ann n t    -> DeclDataF   ann n t
-    DefType    ann n ns t -> DefTypeF    ann n ns t
-    DefFunType ann n t    -> DefFunTypeF ann n t
-    DefFunExpr ann n ns e -> DefFunExprF ann n ns e
+    DeclNetw ann n t      -> DeclNetwF ann n t
+    DeclData ann n t      -> DeclDataF ann n t
+    DefType  ann n ns t   -> DefTypeF  ann n ns t
+    DefFun   ann n t ns e -> DefFunF   ann n t ns e
 
   -- Programs
   SPROG -> \case
@@ -288,11 +286,10 @@ embed = case sortSing :: SSort sort of
 
   -- Declarations
   SDECL -> \case
-    DeclNetwF   ann n t    -> DeclNetw   ann n t
-    DeclDataF   ann n t    -> DeclData   ann n t
-    DefTypeF    ann n ns t -> DefType    ann n ns t
-    DefFunTypeF ann n t    -> DefFunType ann n t
-    DefFunExprF ann n ns e -> DefFunExpr ann n ns e
+    DeclNetwF ann n t      -> DeclNetw ann n t
+    DeclDataF ann n t      -> DeclData ann n t
+    DefTypeF  ann n ns t   -> DefType  ann n ns t
+    DefFunF   ann n t ns e -> DefFun   ann n t ns e
 
   -- Programs
   SPROG -> \case
@@ -378,11 +375,10 @@ traverseTreeF fAnn fRec (tree :: TreeF ann1 sort sorted1) = case sortSing :: SSo
 
   -- Declarations
   SDECL -> case tree of
-    DeclNetwF   ann n t    -> DeclNetwF   <$> fAnn ann <*> fRec n <*> fRec t
-    DeclDataF   ann n t    -> DeclDataF   <$> fAnn ann <*> fRec n <*> fRec t
-    DefTypeF    ann n ns t -> DefTypeF    <$> fAnn ann <*> fRec n <*> traverse fRec ns <*> fRec t
-    DefFunTypeF ann n t    -> DefFunTypeF <$> fAnn ann <*> fRec n <*> fRec t
-    DefFunExprF ann n ns e -> DefFunExprF <$> fAnn ann <*> fRec n <*> traverse fRec ns <*> fRec e
+    DeclNetwF ann n t      -> DeclNetwF <$> fAnn ann <*> fRec n <*> fRec t
+    DeclDataF ann n t      -> DeclDataF <$> fAnn ann <*> fRec n <*> fRec t
+    DefTypeF  ann n ns t   -> DefTypeF  <$> fAnn ann <*> fRec n <*> traverse fRec ns <*> fRec t
+    DefFunF   ann n t ns e -> DefFunF   <$> fAnn ann <*> fRec n <*> fRec t <*> traverse fRec ns <*> fRec e
 
   -- Programs
   SPROG -> case tree of

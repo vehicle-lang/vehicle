@@ -120,9 +120,7 @@ data instance Tree (ann :: Sort -> *) 'DECL
   = DeclNetw   (ann 'DECL) (EArg ann) (Type ann)
   | DeclData   (ann 'DECL) (EArg ann) (Type ann)
   | DefType    (ann 'DECL) (TArg ann) [TArg ann] (Type ann)
-  | DefFunType (ann 'DECL) (EArg ann) (Type ann)
-  | DefFunExpr (ann 'DECL) (EArg ann) [EArg ann] (Expr ann)
-
+  | DefFun     (ann 'DECL) (EArg ann) (Type ann) [EArg ann] (Expr ann)
 
 type Prog ann = Tree ann 'PROG
 

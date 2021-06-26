@@ -12,7 +12,6 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE OverloadedLists #-}
 
 {-# LANGUAGE TypeFamilies #-}
 module Vehicle.Frontend.Elaborate
@@ -22,15 +21,20 @@ module Vehicle.Frontend.Elaborate
   , runElab
   ) where
 
-
 import Control.Monad.Except (MonadError(..), Except, runExcept)
 import Data.Foldable (foldrM)
-import Data.List.NonEmpty qualified as NEList (NonEmpty(..), groupBy, map, head)
-import Data.Maybe (fromMaybe)
 
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
 import Vehicle.Frontend.AST qualified as VF
-import Vehicle.Core.Abs (Name(..))
+{-
+import Vehicle.Frontend.AST.Recursive.Sorted as VF
+
+
+elabF :: forall sort. KnownSort sort
+      => VF.TreeF (K Provenance) sort VC.Tree
+      -> VC.Tree sort
+elabF = _
+-}
 import Vehicle.Prelude
 
 -- * Source core types
@@ -58,10 +62,7 @@ type CProg = VC.Prog (K Symbol) (K Provenance)
 
 -- | Errors that may arise during elaboration.
 data ElabError
-  = MissingDefFunType Symbol Provenance
-  | MissingDefFunExpr Symbol Provenance
-  | DuplicateName Symbol (NEList.NonEmpty Provenance)
-  | LocalDeclNetw Provenance
+  = LocalDeclNetw Provenance
   | LocalDeclData Provenance
   | LocalDefType Provenance
   deriving (Show)
@@ -108,10 +109,6 @@ runElab = runExcept
 --
 --------------------------------------------------------------------------------
 
--- It would be nice to be able to do this via the recursive fold defined for the
--- core tree but unfortunately this doesn't work due to the need to combine the
--- `DefFunType` and `DefFunExpr` into one `DefFun`.
-
 -- |Class for the various elaboration functions.
 class Elab vf vc where
   elab :: MonadElab m => vf -> m vc
@@ -153,16 +150,16 @@ instance Elab FType CType where
 
 -- |Elaborate type arguments.
 instance Elab FTArg CTArg where
-  elab (VF.TArg ann n) = return $ VC.TArg ann $ (K n)
+  elab (VF.TArg ann n) = return $ VC.TArg ann $ K n
 
 -- |Elaborate expressions.
 instance Elab FExpr CExpr where
   -- Core structure.
   elab (VF.EAnn   ann e t)   = VC.EAnn ann <$> elab e <*> elab t
-  elab (VF.ELet   ann ds e)  = elabLet ann (groupDecls ds) (elab e)
+  elab (VF.ELet   ann ds e)  = elabLet ann (traverse elab ds) (elab e)
   elab (VF.ELam   ann ns e)  = foldr (VC.ELam ann) <$> elab e <*> traverse elab ns
   elab (VF.EApp   ann e1 e2) = VC.EApp ann <$> elab e1 <*> elab e2
-  elab (VF.EVar   ann n)     = return $ VC.EVar ann $ (K n)
+  elab (VF.EVar   ann n)     = return $ VC.EVar ann $ K n
   elab (VF.ETyApp ann e t)   = VC.ETyApp ann <$> elab e <*> elab t
   elab (VF.ETyLam ann ns e)  = foldr (VC.ETyLam ann) <$> elab e <*> traverse elab ns
 
@@ -191,60 +188,28 @@ instance Elab FExpr CExpr where
   elab (VF.ELitReal ann r)     = return $ VC.ELitReal ann r
 
   -- Lists and tensors.
-  elab (VF.ECons ann e1 e2) = eOp2 VC.ECons ann e1 e2
-  elab (VF.EAt ann e1 e2)   = eOp2 VC.EAt ann e1 e2
-  elab (VF.EAll ann)        = eCon VC.EAll ann
-  elab (VF.EAny ann)        = eCon VC.EAny ann
-  elab (VF.ELitSeq ann es)  = VC.ELitSeq ann <$> traverse elab es
-
--- |Elaborate expression arguments.
-instance Elab FEArg CEArg where
-  elab (VF.EArg ann n) = return $ VC.EArg ann $ (K n)
+  elab (VF.ECons   ann e1 e2) = eOp2 VC.ECons ann e1 e2
+  elab (VF.EAt     ann e1 e2) = eOp2 VC.EAt ann e1 e2
+  elab (VF.EAll    ann)       = eCon VC.EAll ann
+  elab (VF.EAny    ann)       = eCon VC.EAny ann
+  elab (VF.ELitSeq ann es)    = VC.ELitSeq ann <$> traverse elab es
 
 -- |Elaborate declarations.
-instance Elab (NEList.NonEmpty FDecl) CDecl where
+instance Elab FDecl CDecl where
+  elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann <$> elab n <*> elab t
+  elab (VF.DeclData ann n t)      = VC.DeclData ann <$> elab n <*> elab t
+  elab (VF.DefType  ann n ns t)   = VC.DefType  ann <$> elab n <*> traverse elab ns <*> elab t
+  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann <$> elab n <*> elab t <*> expr
+    where
+      expr = foldr (VC.ELam (K (unK ann))) <$> elab e <*> traverse elab ns
 
-  -- Elaborate a network declaration.
-  elab [VF.DeclNetw ann n t] =
-    VC.DeclNetw ann <$> elab n <*> elab t
-
-  -- Elaborate a dataset declaration.
-  elab [VF.DeclData ann n t] =
-    VC.DeclData ann <$> elab n <*> elab t
-
-  -- Elaborate a type definition.
-  elab [VF.DefType ann n ns t] =
-    VC.DefType ann <$> elab n <*> traverse elab ns <*> elab t
-
-  -- Elaborate a function definition.
-  elab [VF.DefFunType ann1 _n t, VF.DefFunExpr ann2 n ns e] =
-    VC.DefFun ann <$> elab n <*> elab t <*> expr
-      where
-        ann  = K (unK ann1 <> unK ann2)
-        expr = foldr (VC.ELam (K (unK ann1))) <$> elab e <*> traverse elab ns
-
-  -- Why did you write the signature AFTER the function?
-  elab [e1@VF.DefFunExpr {}, e2@VF.DefFunType {}] =
-    elab (e2 NEList.:| [e1])
-
-  -- Missing type or expression declaration.
-  elab [VF.DefFunType ann n _t] =
-    throwError $ MissingDefFunExpr (VF.eArgName n) (unK ann)
-
-  elab [VF.DefFunExpr ann n _ns _e] =
-    throwError $ MissingDefFunType (VF.eArgName n) (unK ann)
-
-  -- Multiple type of expression declarations with the same n.
-  elab ds =
-    throwError $ DuplicateName name provs
-      where
-        name  = NEList.head (NEList.map VF.declName ds)
-        provs = NEList.map (unK . VF.annotation) ds
+-- |Elaborate type arguments.
+instance Elab FEArg CEArg where
+  elab (VF.EArg ann n) = return $ VC.EArg ann $ K n
 
 -- |Elaborate programs.
 instance Elab FProg CProg where
-  elab (VF.Main ann decls) = VC.Main ann <$> groupDecls decls
-
+  elab (VF.Main ann decls) = VC.Main ann <$> traverse elab decls
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
@@ -256,15 +221,6 @@ elabLet ann1 ds e = bindM2 (foldrM declToLet) e ds
     declToLet (VC.DeclNetw ann2 _n _t)     _e2 = throwError $ LocalDeclNetw (unK ann2)
     declToLet (VC.DeclData ann2 _n _t)     _e2 = throwError $ LocalDeclData (unK ann2)
     declToLet (VC.DefType  ann2 _n _ns _t) _e2 = throwError $ LocalDefType  (unK ann2)
-
--- |Takes a list of declarations, and groups type and expression
---  declarations for the same name. If any name does not have exactly one
---  type and one expression declaration, an error is returned.
-groupDecls :: MonadElab m => [FDecl] -> m [CDecl]
-groupDecls decls = traverse elab (NEList.groupBy cond decls)
-  where
-    cond :: VF.Decl ann -> VF.Decl ann -> Bool
-    cond d1 d2 = VF.isDefFun d1 && VF.isDefFun d2 && VF.declName d1 == VF.declName d2
 
 -- |Lift a binary /monadic/ function.
 bindM2 :: Monad m => (a -> b -> m c) -> m a -> m b -> m c

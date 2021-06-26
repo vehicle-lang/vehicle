@@ -63,7 +63,7 @@ fromToken :: IsToken a => Token -> a
 fromToken = coerce
 
 -- |Get the symbol of a token.
-tkSymbol :: IsToken a => a -> Text
+tkSymbol :: IsToken a => a -> Symbol
 tkSymbol = sym. toToken
 
 -- |Get the starting position of a token.

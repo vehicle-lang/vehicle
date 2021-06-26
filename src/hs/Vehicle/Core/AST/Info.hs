@@ -174,7 +174,7 @@ kindOf = \case
   TInt    -> kType
   TReal   -> kType
   TList   -> kType ~> kType
-  TTensor -> kDim ~> kType ~> kType
+  TTensor -> kType ~> kDim ~> kType
   TAdd    -> kDim ~> kDim ~> kDim
   TCons   -> kDim ~> kDimList ~> kDimList
 
