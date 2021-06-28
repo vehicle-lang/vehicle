@@ -25,6 +25,8 @@ module Vehicle.Core.AST.DeBruijn
   , DeBruijnLifting(..)
   ) where
 
+import qualified Data.List.NonEmpty as NonEmpty (map)
+
 import Vehicle.Prelude
 import Vehicle.Core.AST.Core
 
@@ -104,7 +106,7 @@ instance DeBruijnLifting 'TYPE where
   liftDeBruijn _ expr@(TMeta _ _) = expr
 
   liftDeBruijn d (TApp ann fn arg) = TApp ann (liftDeBruijn d fn) (liftDeBruijn d arg)
-  liftDeBruijn d (TLitDimList ann typs) = TLitDimList ann (map (liftDeBruijn d) typs)
+  liftDeBruijn d (TLitDimList ann typs) = TLitDimList ann (NonEmpty.map (liftDeBruijn d) typs)
 
   liftDeBruijn d (TForall ann arg body) = TForall ann arg
     -- Increase the depth as we move across a binding site
@@ -121,7 +123,7 @@ instance DeBruijnLifting 'EXPR where
   liftDeBruijn _ expr@(ECon _ _)     = expr
 
   liftDeBruijn d (EApp    ann exp1 exp2) = EApp ann (liftDeBruijn d exp1) (liftDeBruijn d exp2)
-  liftDeBruijn d (ELitSeq ann exprs)     = ELitSeq ann (map (liftDeBruijn d) exprs)
+  liftDeBruijn d (ELitSeq ann exprs)     = ELitSeq ann (NonEmpty.map (liftDeBruijn d) exprs)
   liftDeBruijn d (EAnn    ann expr typ)  = EAnn ann (liftDeBruijn d expr) typ
   liftDeBruijn d (ETyLam  ann targ expr) = ETyLam ann targ (liftDeBruijn d expr)
   liftDeBruijn d (ETyApp  ann expr typ)  = ETyApp ann (liftDeBruijn d expr) typ

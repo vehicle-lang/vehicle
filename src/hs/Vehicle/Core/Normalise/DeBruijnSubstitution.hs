@@ -13,6 +13,8 @@ module Vehicle.Core.Normalise.DeBruijnSubstitution
   ( subst
   ) where
 
+import qualified Data.List.NonEmpty as NonEmpty (map)
+
 import Vehicle.Core.AST
 
 -- * DeBruijn substitution
@@ -29,7 +31,7 @@ instance DeBruijnSubstitution (Type DeBruijn ann) where
   subst _ _ expr@(TMeta _ _)   = expr
 
   subst d sub (TApp ann fn arg)      = TApp ann (subst d sub fn) (subst d sub arg)
-  subst d sub (TLitDimList ann typs) = TLitDimList ann (map (subst d sub) typs)
+  subst d sub (TLitDimList ann typs) = TLitDimList ann (NonEmpty.map (subst d sub) typs)
 
   subst d sub (TForall ann arg body) =
     -- Increase the depth as we move across a binding site
@@ -49,7 +51,7 @@ instance DeBruijnSubstitution (Expr DeBruijn ann) where
   subst _ _ expr@(ELitReal _ _) = expr
   subst _ _ expr@(ECon _ _)     = expr
 
-  subst d sub (ELitSeq ann exprs)     = ELitSeq ann (map (subst d sub) exprs)
+  subst d sub (ELitSeq ann exprs)     = ELitSeq ann (NonEmpty.map (subst d sub) exprs)
   subst d sub (EAnn    ann expr typ)  = EAnn    ann (subst d sub expr) typ
   subst d sub (ETyLam  ann targ expr) = ETyLam  ann targ (subst d sub expr)
   subst d sub (ETyApp  ann expr typ)  = ETyApp  ann (subst d sub expr) typ

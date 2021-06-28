@@ -9,6 +9,8 @@
 module Vehicle.Core.AST.Recursive where
 
 import Data.Functor.Identity (Identity(..))
+import Data.List.NonEmpty (NonEmpty)
+
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.Builtin
 import Vehicle.Prelude
@@ -36,7 +38,7 @@ data instance TreeF name ann 'TYPE tree
   | TVarF        (ann 'TYPE) (name 'TYPE)
   | TConF        (ann 'TYPE) (Builtin 'TYPE)
   | TLitDimF     (ann 'TYPE) Integer
-  | TLitDimListF (ann 'TYPE) [tree 'TYPE]
+  | TLitDimListF (ann 'TYPE) (NonEmpty (tree 'TYPE))
   | TMetaF       (ann 'TYPE) Integer
 
 
@@ -55,7 +57,7 @@ data instance TreeF name ann 'EXPR tree
   | EConF     (ann 'EXPR) (Builtin 'EXPR)
   | ELitIntF  (ann 'EXPR) Integer
   | ELitRealF (ann 'EXPR) Double
-  | ELitSeqF  (ann 'EXPR) [tree 'EXPR]
+  | ELitSeqF  (ann 'EXPR) (NonEmpty (tree 'EXPR))
 
 
 -- * Base functor for declarations
@@ -74,7 +76,7 @@ data instance TreeF name ann 'DECL tree
 type ProgF name builtin ann tree = TreeF name ann 'PROG tree
 
 data instance TreeF name ann 'PROG tree
-  = MainF (ann 'PROG) [tree 'DECL]
+  = MainF (ann 'PROG) (NonEmpty (tree 'DECL))
 
 
 -- * Base functor for expression arguments

@@ -23,18 +23,11 @@ module Vehicle.Frontend.Elaborate
 
 import Control.Monad.Except (MonadError(..), Except, runExcept)
 import Data.Foldable (foldrM)
+import Data.List.NonEmpty (NonEmpty)
 
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
 import Vehicle.Frontend.AST qualified as VF
-{-
-import Vehicle.Frontend.AST.Recursive.Sorted as VF
 
-
-elabF :: forall sort. KnownSort sort
-      => VF.TreeF (K Provenance) sort VC.Tree
-      -> VC.Tree sort
-elabF = _
--}
 import Vehicle.Prelude
 
 -- * Source core types
@@ -213,7 +206,7 @@ instance Elab FProg CProg where
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
-elabLet :: MonadElab m => K Provenance 'EXPR -> m [CDecl] -> m CExpr -> m CExpr
+elabLet :: MonadElab m => K Provenance 'EXPR -> m (NonEmpty CDecl) -> m CExpr -> m CExpr
 elabLet ann1 ds e = bindM2 (foldrM declToLet) e ds
   where
     declToLet :: MonadElab m => CDecl -> CExpr -> m CExpr

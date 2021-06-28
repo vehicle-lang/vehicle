@@ -107,6 +107,8 @@ separator Type ",";
 --   specific error message when we're missing a type annotation, rather than
 --   emitting a parse error.
 --
+--   See https://github.com/BNFC/bnfc/issues/372 for why tokens
+--   aren't used for `let` and `in`.
 
 layout "let";
 layout stop "in";
@@ -117,8 +119,8 @@ ELet.       Expr1  ::= "let" "{" [Decl] "}" "in" Expr1;
 ELam.       Expr2  ::= TokLambda [Name] TokArrow Expr2;
 EApp.       Expr11 ::= Expr11 Expr12;
 EVar.       Expr12 ::= Name;
-ETyApp.     Expr ::= Expr "{" Type "}";
-ETyLam.     Expr ::= TokLambda "{" [Name] "}" TokArrow Expr;
+ETyApp.     Expr   ::= Expr "{" Type "}";
+ETyLam.     Expr   ::= TokLambda "{" [Name] "}" TokArrow Expr;
 
 -- Conditional expressions.
 EIf.        Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;

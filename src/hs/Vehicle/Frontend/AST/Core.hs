@@ -15,6 +15,7 @@ module Vehicle.Frontend.AST.Core
   , EArg
   ) where
 
+import Data.List.NonEmpty (NonEmpty)
 import Prelude (Double, Integer)
 
 import Vehicle.Prelude
@@ -43,7 +44,7 @@ type Type ann = Tree ann 'TYPE
 infixl 4 `TApp`
 
 data instance Tree (ann :: Sort -> *) 'TYPE
-    = TForall     (ann 'TYPE) [TArg ann] (Type ann)
+    = TForall     (ann 'TYPE) (NonEmpty (TArg ann)) (Type ann)
     | TApp        (ann 'TYPE) (Type ann) (Type ann)
     | TVar        (ann 'TYPE) Symbol
     | TFun        (ann 'TYPE) (Type ann) (Type ann)
@@ -56,7 +57,7 @@ data instance Tree (ann :: Sort -> *) 'TYPE
     | TAdd        (ann 'TYPE) (Type ann) (Type ann)
     | TLitDim     (ann 'TYPE) Integer
     | TCons       (ann 'TYPE) (Type ann) (Type ann)
-    | TLitDimList (ann 'TYPE) [Type ann]
+    | TLitDimList (ann 'TYPE) (NonEmpty (Type ann))
 
 
 -- | Type of Vehicle Frontend type-level name-binding sites.
@@ -73,12 +74,12 @@ infixl 4 `EApp`
 
 data instance Tree (ann :: Sort -> *) 'EXPR
     = EAnn     (ann 'EXPR) (Expr ann) (Type ann)
-    | ELet     (ann 'EXPR) [Decl ann] (Expr ann)
-    | ELam     (ann 'EXPR) [EArg ann] (Expr ann)
+    | ELet     (ann 'EXPR) (NonEmpty (Decl ann)) (Expr ann)
+    | ELam     (ann 'EXPR) (NonEmpty (EArg ann)) (Expr ann)
     | EApp     (ann 'EXPR) (Expr ann) (Expr ann)
     | EVar     (ann 'EXPR) Symbol
     | ETyApp   (ann 'EXPR) (Expr ann) (Type ann)
-    | ETyLam   (ann 'EXPR) [TArg ann] (Expr ann)
+    | ETyLam   (ann 'EXPR) (NonEmpty (TArg ann)) (Expr ann)
     | EIf      (ann 'EXPR) (Expr ann) (Expr ann) (Expr ann)
     | EImpl    (ann 'EXPR) (Expr ann) (Expr ann)
     | EAnd     (ann 'EXPR) (Expr ann) (Expr ann)
@@ -103,7 +104,7 @@ data instance Tree (ann :: Sort -> *) 'EXPR
     | EAt      (ann 'EXPR) (Expr ann) (Expr ann)
     | EAll     (ann 'EXPR)
     | EAny     (ann 'EXPR)
-    | ELitSeq  (ann 'EXPR) [Expr ann]
+    | ELitSeq  (ann 'EXPR) (NonEmpty (Expr ann))
 
 
 -- | Type of Vehicle Frontend expression-level name-binding sites.
@@ -126,4 +127,4 @@ type Prog ann = Tree ann 'PROG
 
 -- | Type of Vehicle Frontend programs.
 data instance Tree (ann :: Sort -> *) 'PROG
-  = Main (ann 'PROG) [Decl ann]
+  = Main (ann 'PROG) (NonEmpty (Decl ann))

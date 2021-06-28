@@ -6,6 +6,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -18,7 +19,8 @@ module Vehicle.Frontend.Parse
 
 import Data.Text (Text, unpack)
 import qualified Data.Text.IO as T
-import qualified Data.List.NonEmpty as NEList (NonEmpty(..), groupBy, map, head)
+import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NonEmpty (groupBy1, map, head)
 import System.Exit (exitFailure)
 import Control.Monad.Except (MonadError, throwError)
 
@@ -79,10 +81,11 @@ runLexer topLevel = resolveLayout topLevel . myLexer
 data ParseError
   = MissingDefFunType Symbol Provenance
   | MissingDefFunExpr Symbol Provenance
-  | DuplicateName     Symbol (NEList.NonEmpty Provenance)
+  | DuplicateName     Symbol (NonEmpty Provenance)
   | LocalDeclNetw     Provenance
   | LocalDeclData     Provenance
   | LocalDefType      Provenance
+  | EmptyList         Provenance
   | BNFCParseError    String
 
 instance Show ParseError where
@@ -93,6 +96,7 @@ instance Show ParseError where
     LocalDeclNetw     p      -> "Network declerations are not allowed in let bindings" <> " (" <> show p <> ")"
     LocalDeclData     p      -> "Dataset declerations are not allowed in let bindings" <> " (" <> show p <> ")"
     LocalDefType      p      -> "Type declerations are not allowed in let bindings"    <> " (" <> show p <> ")"
+    EmptyList         p      -> "Must have a non-empty list of tokens"                 <> " (" <> show p <> ")"
     BNFCParseError    text   -> text
 
 --------------------------------------------------------------------------------
@@ -132,7 +136,7 @@ instance Convert B.Kind PKind where
   conv (B.KList tk)      = op0 V.KList (tkProv tk)
 
 instance Convert B.Type PType where
-  conv (B.TForall tk1 ns tk2 t)   = op2 V.TForall (tkProv tk1 <> tkProv tk2) (traverse conv ns) (conv t)
+  conv (B.TForall tk1 ns tk2 t)   = op2 V.TForall (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv t)
   conv (B.TApp t1 t2)             = op2 V.TApp mempty (conv t1) (conv t2)
   conv (B.TVar n)                 = return $ V.TVar (K (tkProv n)) (tkSymbol n)
   conv (B.TFun t1 tk t2)          = op2 V.TFun (tkProv tk) (conv t1) (conv t2)
@@ -145,19 +149,19 @@ instance Convert B.Type PType where
   conv (B.TAdd t1 tk t2)          = op2 V.TAdd (tkProv tk) (conv t1) (conv t2)
   conv (B.TLitDim i)              = return $ V.TLitDim mempty i
   conv (B.TCons t1 tk t2)         = op2 V.TCons (tkProv tk) (conv t1) (conv t2)
-  conv (B.TLitDimList tk1 ts tk2) = op1 V.TLitDimList (tkProv tk1 <> tkProv tk2) (traverse conv ts)
+  conv (B.TLitDimList tk1 ts tk2) = op1 V.TLitDimList (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ts)
 
 instance Convert Name PTArg where
   conv n = return $ V.TArg (K (tkProv n)) (tkSymbol n)
 
 instance Convert B.Expr PExpr where
   conv (B.EAnn e tk t)              = op2 V.EAnn (tkProv tk) (conv e) (conv t)
-  conv (B.ELet ds e)                = op2 V.ELet mempty (filterLets ds >>= groupDecls) (conv e)
-  conv (B.ELam tk1 ns tk2 e)        = op2 V.ELam (tkProv tk1 <> tkProv tk2) (traverse conv ns) (conv e)
+  conv (B.ELet ds e)                = op2 V.ELet mempty (filterLetDecls ds >>= groupDecls mempty) (conv e)
+  conv (B.ELam tk1 ns tk2 e)        = op2 V.ELam (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
   conv (B.EApp e1 e2)               = op2 V.EApp mempty (conv e1) (conv e2)
   conv (B.EVar n)                   = return $ V.EVar (K (tkProv n)) (tkSymbol n)
   conv (B.ETyApp e t)               = op2 V.ETyApp mempty (conv e) (conv t)
-  conv (B.ETyLam tk1 ns tk2 e)      = op2 V.ETyLam (tkProv tk1 <> tkProv tk2) (traverse conv ns) (conv e)
+  conv (B.ETyLam tk1 ns tk2 e)      = op2 V.ETyLam (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
   conv (B.EIf tk1 e1 tk2 e2 tk3 e3) = op3 V.EIf    (tkProv tk1 <> tkProv tk2 <> tkProv tk3) (conv e1) (conv e2) (conv e3)
   conv (B.EImpl e1 tk e2)           = op2 V.EImpl  (tkProv tk) (conv e1) (conv e2)
   conv (B.EAnd e1 tk e2)            = op2 V.EAnd   (tkProv tk) (conv e1) (conv e2)
@@ -182,13 +186,13 @@ instance Convert B.Expr PExpr where
   conv (B.EAt e1 tk e2)             = op2 V.EAt    (tkProv tk) (conv e1) (conv e2)
   conv (B.EAll tk)                  = op0 V.EAll   (tkProv tk)
   conv (B.EAny tk)                  = op0 V.EAny   (tkProv tk)
-  conv (B.ELitSeq tk1 es tk2)       = op1 V.ELitSeq (tkProv tk1 <> tkProv tk2) (traverse conv es)
+  conv (B.ELitSeq tk1 es tk2)       = op1 V.ELitSeq (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 es)
 
 instance Convert Name PEArg where
   conv n = return $ V.EArg (K (tkProv n)) (tkSymbol n)
 
 -- |Elaborate declarations.
-instance Convert (NEList.NonEmpty B.Decl) PDecl where
+instance Convert (NonEmpty B.Decl) PDecl where
 
   -- Elaborate a network declaration.
   conv [B.DeclNetw n tk t] = op2 V.DeclNetw (tkProv tk) (conv n) (conv t)
@@ -205,7 +209,7 @@ instance Convert (NEList.NonEmpty B.Decl) PDecl where
 
   -- Why did you write the signature AFTER the function?
   conv [e1@B.DefFunExpr {}, e2@B.DefFunType {}] =
-    conv (e2 NEList.:| [e1])
+    conv (e2 :| [e1])
 
   -- Missing type or expression declaration.
   conv [B.DefFunType n _tk _t] =
@@ -218,12 +222,12 @@ instance Convert (NEList.NonEmpty B.Decl) PDecl where
   conv ds =
     throwError $ DuplicateName symbol provs
       where
-        symbol = tkSymbol $ declName $ NEList.head ds
-        provs  = NEList.map (tkProv . declName) ds
+        symbol = tkSymbol $ declName $ NonEmpty.head ds
+        provs  = NonEmpty.map (tkProv . declName) ds
 
 -- |Elaborate programs.
 instance Convert B.Prog PProg where
-  conv (B.Main decls) = op1 V.Main mempty (groupDecls decls)
+  conv (B.Main decls) = op1 V.Main mempty (groupDecls mempty decls)
 
 op0 :: MonadParse m
     => (K Provenance sort -> PTree sort)
@@ -266,8 +270,8 @@ op4 mk p t1 t2 t3 t4 = do
 
 -- |Filter a let binding's declarations to strip out invalid declarations.
 -- TODO would probably be better to be more precise in the grammar
-filterLets :: MonadParse m => [ B.Decl ] -> m [ B.Decl ]
-filterLets = traverse declToLet
+filterLetDecls :: MonadParse m => [ B.Decl ] -> m [ B.Decl ]
+filterLetDecls = traverse declToLet
   where
     declToLet :: MonadParse m => B.Decl -> m B.Decl
     declToLet (B.DeclNetw n _n _t)  = throwError $ LocalDeclNetw (tkProv n)
@@ -278,8 +282,9 @@ filterLets = traverse declToLet
 -- |Takes a list of declarations, and groups type and expression
 --  declarations for the same name. If any name does not have exactly one
 --  type and one expression declaration, an error is returned.
-groupDecls :: MonadParse m => [B.Decl] -> m [PDecl]
-groupDecls decls = traverse conv (NEList.groupBy cond decls)
+groupDecls :: MonadParse m => Provenance -> [B.Decl] -> m (NonEmpty PDecl)
+groupDecls p  []       = throwError $ EmptyList p
+groupDecls _p (d : ds) = traverse conv (NonEmpty.groupBy1 cond (d :| ds))
   where
     cond :: B.Decl -> B.Decl -> Bool
     cond d1 d2 = isDefFun d1 && isDefFun d2 && tkSymbol (declName d1) == tkSymbol (declName d2)
@@ -297,3 +302,12 @@ declName (DeclData   n _ _) = n
 declName (DefType    n _ _) = n
 declName (DefFunType n _ _) = n
 declName (DefFunExpr n _ _) = n
+
+
+-- A traversal that checks that the list is non-empty. In theory this would be
+-- much nicer if the parser could handle this automatically
+-- (see https://github.com/BNFC/bnfc/issues/371)
+traverseNonEmpty :: (MonadParse m , Convert a b, IsToken t1, IsToken t2)
+                 => t1 -> t2 -> [a] -> m (NonEmpty b)
+traverseNonEmpty tk1 tk2 []       = throwError $ EmptyList (tkProv tk1 <> tkProv tk2)
+traverseNonEmpty _   _   (x : xs) = traverse conv (x :| xs)

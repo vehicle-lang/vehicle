@@ -17,10 +17,11 @@ module Vehicle.Core.Parse
   , PProg
   ) where
 
+import Control.Monad.Except (MonadError(..))
 import Data.Text (Text)
 import qualified Data.Text.IO as T
+import Data.List.NonEmpty (NonEmpty(..))
 import System.Exit (exitFailure)
-import Control.Monad.Except (MonadError(..))
 
 import Vehicle.Core.Abs as B
 import Vehicle.Core.Par (pProg, myLexer)
@@ -78,13 +79,14 @@ instance KnownSort sort => HasProvenance (PTree sort) where
 -- * Conversion
 
 class Convert vf vc where
-  conv :: MonadConv m => vf -> m vc
+  conv :: MonadParse m => vf -> m vc
 
-type MonadConv m = MonadError BuiltinError m
+type MonadParse m = MonadError BuiltinError m
 
 -- |Type of errors thrown by builtin checking.
-newtype BuiltinError
+data BuiltinError
   = UnknownBuiltin Token
+  | EmptyList
   deriving (Show)
 
 --------------------------------------------------------------------------------
@@ -118,7 +120,7 @@ instance Convert ExprBuiltin (V.Builtin 'EXPR) where
   conv = lookupBuiltin . unExprBuiltin
 
 lookupBuiltin
-  :: (MonadConv m, IsToken tok, KnownSort sort, sort `In` ['KIND, 'TYPE, 'EXPR])
+  :: (MonadParse m, IsToken tok, KnownSort sort, sort `In` ['KIND, 'TYPE, 'EXPR])
   => tok
   -> m (V.Builtin sort)
 lookupBuiltin tk = case builtinFromSymbol (tkSymbol tk) of
@@ -140,7 +142,7 @@ instance Convert B.Type PType where
     B.TVar n         -> conv n
     B.TCon c         -> V.TCon (K (prov c)) <$> conv c
     B.TLitDim d      -> return $ V.TLitDim mempty d
-    B.TLitDimList ts -> op1 V.TLitDimList <$> traverse conv ts
+    B.TLitDimList ts -> op1 V.TLitDimList <$> traverseNonEmpty ts
 
 instance Convert B.TypeName PType where
   conv (MkTypeName n) = return $ V.TVar (K (tkProvenance n)) (K (tkSymbol n))
@@ -160,7 +162,7 @@ instance Convert B.Expr PExpr where
     B.ECon c       -> V.ECon (K (prov c)) <$> conv c
     B.ELitInt i    -> return $ V.ELitInt mempty i
     B.ELitReal r   -> return $ V.ELitReal mempty r
-    B.ELitSeq es   -> op1 V.ELitSeq <$> traverse conv es
+    B.ELitSeq es   -> op1 V.ELitSeq <$> traverseNonEmpty es
 
 instance Convert B.ExprName PExpr where
   conv (MkExprName n) = return $ V.EVar (K (tkProvenance n)) (K (tkSymbol n))
@@ -176,7 +178,7 @@ instance Convert B.Decl PDecl where
     B.DefFun n t e   -> op3 V.DefFun   <$> conv n <*> conv t <*> conv e
 
 instance Convert B.Prog PProg where
-  conv (B.Main ds) = op1 V.Main <$> traverse conv ds
+  conv (B.Main ds) = op1 V.Main <$> traverseNonEmpty ds
 
 op1 :: (HasProvenance a)
     => (K Provenance sort -> a -> PTree sort)
@@ -192,3 +194,11 @@ op3 :: (KnownSort sort, HasProvenance a, HasProvenance b, HasProvenance c)
     => (K Provenance sort -> a -> b -> c -> PTree sort)
     -> a -> b -> c -> PTree sort
 op3 mk t1 t2 t3 = mk (K (prov t1 <> prov t2 <> prov t3)) t1 t2 t3
+
+-- A traversal that checks that the list is non-empty. In theory this would be
+-- much nicer if the parser could handle this automatically
+-- (see https://github.com/BNFC/bnfc/issues/371)
+traverseNonEmpty :: (MonadParse m , Convert a b)
+                 => [a] -> m (NonEmpty b)
+traverseNonEmpty []       = throwError EmptyList
+traverseNonEmpty (x : xs) = traverse conv (x :| xs)

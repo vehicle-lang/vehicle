@@ -34,7 +34,7 @@ class HasProvenance a where
 instance HasProvenance Provenance where
   prov = id
 
-instance HasProvenance a => HasProvenance [a] where
+instance (HasProvenance a , Foldable t) => HasProvenance (t a) where
   prov xs = foldMap prov xs
 
 instance HasProvenance a => HasProvenance (K a s) where

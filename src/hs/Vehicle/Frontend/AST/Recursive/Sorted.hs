@@ -9,6 +9,8 @@
 module Vehicle.Frontend.AST.Recursive.Sorted where
 
 import Data.Functor.Identity (Identity(..))
+import Data.List.NonEmpty (NonEmpty)
+
 import Vehicle.Frontend.AST.Core ( Tree(..) )
 import Vehicle.Prelude (KnownSort(..), SSort(..), Sort(..), Symbol, O(..))
 
@@ -32,7 +34,7 @@ data instance TreeF ann 'KIND tree
 type TypeF ann tree = TreeF ann 'TYPE tree
 
 data instance TreeF ann 'TYPE tree
-  = TForallF     (ann 'TYPE) [tree 'TARG] (tree 'TYPE)
+  = TForallF     (ann 'TYPE) (NonEmpty (tree 'TARG)) (tree 'TYPE)
   | TAppF        (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
   | TVarF        (ann 'TYPE) Symbol
   | TFunF        (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
@@ -45,7 +47,7 @@ data instance TreeF ann 'TYPE tree
   | TAddF        (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
   | TLitDimF     (ann 'TYPE) Integer
   | TConsF       (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
-  | TLitDimListF (ann 'TYPE) [tree 'TYPE]
+  | TLitDimListF (ann 'TYPE) (NonEmpty (tree 'TYPE))
 
 -- * Base functor for expression arguments
 
@@ -61,12 +63,12 @@ type ExprF ann tree = TreeF ann 'EXPR tree
 
 data instance TreeF ann 'EXPR tree
   = EAnnF     (ann 'EXPR) (tree 'EXPR) (tree 'TYPE)
-  | ELetF     (ann 'EXPR) [tree 'DECL] (tree 'EXPR)
-  | ELamF     (ann 'EXPR) [tree 'EARG] (tree 'EXPR)
+  | ELetF     (ann 'EXPR) (NonEmpty (tree 'DECL)) (tree 'EXPR)
+  | ELamF     (ann 'EXPR) (NonEmpty (tree 'EARG)) (tree 'EXPR)
   | EAppF     (ann 'EXPR) (tree 'EXPR) (tree 'EXPR)
   | EVarF     (ann 'EXPR) Symbol
   | ETyAppF   (ann 'EXPR) (tree 'EXPR) (tree 'TYPE)
-  | ETyLamF   (ann 'EXPR) [tree 'TARG] (tree 'EXPR)
+  | ETyLamF   (ann 'EXPR) (NonEmpty (tree 'TARG)) (tree 'EXPR)
   | EIfF      (ann 'EXPR) (tree 'EXPR) (tree 'EXPR) (tree 'EXPR)
   | EImplF    (ann 'EXPR) (tree 'EXPR) (tree 'EXPR)
   | EAndF     (ann 'EXPR) (tree 'EXPR) (tree 'EXPR)
@@ -91,7 +93,7 @@ data instance TreeF ann 'EXPR tree
   | EAtF      (ann 'EXPR) (tree 'EXPR) (tree 'EXPR)
   | EAllF     (ann 'EXPR)
   | EAnyF     (ann 'EXPR)
-  | ELitSeqF  (ann 'EXPR) [tree 'EXPR]
+  | ELitSeqF  (ann 'EXPR) (NonEmpty (tree 'EXPR))
 
 
 -- * Base functor for expression arguments
@@ -118,7 +120,7 @@ data instance TreeF ann 'DECL tree
 type ProgF ann tree = TreeF ann 'PROG tree
 
 data instance TreeF ann 'PROG tree
-  = MainF (ann 'PROG) [tree 'DECL]
+  = MainF (ann 'PROG) (NonEmpty (tree 'DECL))
 
 
 -- |Unroll a single recursion layer.

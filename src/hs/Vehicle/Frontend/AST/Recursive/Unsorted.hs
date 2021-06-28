@@ -10,6 +10,9 @@
 module Vehicle.Frontend.AST.Recursive.Unsorted where
 
 import Data.Functor.Identity (Identity(..))
+import Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NonEmpty (map)
+
 import Vehicle.Frontend.AST.Core ( Tree(..) )
 import Vehicle.Prelude (KnownSort(..), SSort(..), Sort(..), Symbol, K(..))
 import qualified Vehicle.Frontend.AST.Recursive.Sorted as S (TreeF(..), foldTreeM)
@@ -38,7 +41,7 @@ data instance TreeF ann 'KIND tree
 type TypeF ann tree = TreeF ann 'TYPE tree
 
 data instance TreeF ann 'TYPE tree
-  = TForallF     (ann 'TYPE) [tree] tree
+  = TForallF     (ann 'TYPE) (NonEmpty tree) tree
   | TAppF        (ann 'TYPE) tree tree
   | TVarF        (ann 'TYPE) Symbol
   | TFunF        (ann 'TYPE) tree tree
@@ -51,7 +54,7 @@ data instance TreeF ann 'TYPE tree
   | TAddF        (ann 'TYPE) tree tree
   | TLitDimF     (ann 'TYPE) Integer
   | TConsF       (ann 'TYPE) tree tree
-  | TLitDimListF (ann 'TYPE) [tree]
+  | TLitDimListF (ann 'TYPE) (NonEmpty tree)
 
 -- * Base functor for expression arguments
 
@@ -67,12 +70,12 @@ type ExprF ann tree = TreeF ann 'EXPR tree
 
 data instance TreeF ann 'EXPR tree
   = EAnnF     (ann 'EXPR) tree tree
-  | ELetF     (ann 'EXPR) [tree] tree
-  | ELamF     (ann 'EXPR) [tree] tree
+  | ELetF     (ann 'EXPR) (NonEmpty tree) tree
+  | ELamF     (ann 'EXPR) (NonEmpty tree) tree
   | EAppF     (ann 'EXPR) tree tree
   | EVarF     (ann 'EXPR) Symbol
   | ETyAppF   (ann 'EXPR) tree tree
-  | ETyLamF   (ann 'EXPR) [tree] tree
+  | ETyLamF   (ann 'EXPR) (NonEmpty tree) tree
   | EIfF      (ann 'EXPR) tree tree tree
   | EImplF    (ann 'EXPR) tree tree
   | EAndF     (ann 'EXPR) tree tree
@@ -97,7 +100,7 @@ data instance TreeF ann 'EXPR tree
   | EAtF      (ann 'EXPR) tree tree
   | EAllF     (ann 'EXPR)
   | EAnyF     (ann 'EXPR)
-  | ELitSeqF  (ann 'EXPR) [tree]
+  | ELitSeqF  (ann 'EXPR) (NonEmpty tree)
 
 
 -- * Base functor for expression arguments
@@ -124,7 +127,7 @@ data instance TreeF ann 'DECL tree
 type ProgF ann tree = TreeF ann 'PROG tree
 
 data instance TreeF ann 'PROG tree
-  = MainF (ann 'PROG) [tree]
+  = MainF (ann 'PROG) (NonEmpty tree)
 
 -- |Map from a sorted functor to an unsorted functor.
 mapSorted ::
@@ -145,7 +148,7 @@ mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
 
   -- Types
   STYPE -> case tree of
-    S.TForallF     ann ns t  -> TForallF     ann (map f ns) (f t)
+    S.TForallF     ann ns t  -> TForallF     ann (NonEmpty.map f ns) (f t)
     S.TAppF        ann t1 t2 -> TAppF        ann (f t1) (f t2)
     S.TVarF        ann n     -> TVarF        ann n
     S.TFunF        ann t1 t2 -> TFunF        ann (f t1) (f t2)
@@ -158,7 +161,7 @@ mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
     S.TAddF        ann t1 t2 -> TAddF        ann (f t1) (f t2)
     S.TLitDimF     ann i     -> TLitDimF     ann i
     S.TConsF       ann t1 t2 -> TConsF       ann (f t1) (f t2)
-    S.TLitDimListF ann ts    -> TLitDimListF ann (map f ts)
+    S.TLitDimListF ann ts    -> TLitDimListF ann (NonEmpty.map f ts)
 
   -- Type arguments
   STARG -> case tree of
@@ -167,12 +170,12 @@ mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
   -- Expressions
   SEXPR -> case tree of
     S.EAnnF     ann e t      -> EAnnF     ann (f e) (f t)
-    S.ELetF     ann ds e     -> ELetF     ann (map f ds) (f e)
-    S.ELamF     ann ns e     -> ELamF     ann (map f ns) (f e)
+    S.ELetF     ann ds e     -> ELetF     ann (NonEmpty.map f ds) (f e)
+    S.ELamF     ann ns e     -> ELamF     ann (NonEmpty.map f ns) (f e)
     S.EAppF     ann e1 e2    -> EAppF     ann (f e1) (f e2)
     S.EVarF     ann n        -> EVarF     ann n
     S.ETyAppF   ann e t      -> ETyAppF   ann (f e) (f t)
-    S.ETyLamF   ann ns e     -> ETyLamF   ann (map f ns) (f e)
+    S.ETyLamF   ann ns e     -> ETyLamF   ann (NonEmpty.map f ns) (f e)
     S.EIfF      ann e1 e2 e3 -> EIfF      ann (f e1) (f e2) (f e3)
     S.EImplF    ann e1 e2    -> EImplF    ann (f e1) (f e2)
     S.EAndF     ann e1 e2    -> EAndF     ann (f e1) (f e2)
@@ -197,7 +200,7 @@ mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
     S.EAtF      ann e1 e2    -> EAtF      ann (f e1) (f e2)
     S.EAllF     ann          -> EAllF     ann
     S.EAnyF     ann          -> EAnyF     ann
-    S.ELitSeqF  ann es       -> ELitSeqF  ann (map f es)
+    S.ELitSeqF  ann es       -> ELitSeqF  ann (NonEmpty.map f es)
 
   -- Expression arguments
   SEARG -> case tree of
@@ -212,7 +215,7 @@ mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
 
   -- Programs
   SPROG -> case tree of
-    S.MainF ann ds -> MainF ann (map f ds)
+    S.MainF ann ds -> MainF ann (NonEmpty.map f ds)
 
 -- |Folds a tree down to a sorted value, one layer at a time.
 foldTree ::

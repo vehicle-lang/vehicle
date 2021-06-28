@@ -18,6 +18,8 @@ module Vehicle.Core.Print where
 
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
+import qualified Data.List.NonEmpty as NonEmpty (toList)
+
 import Prettyprinter (Pretty(..), Doc, layoutPretty, parens, brackets, vsep, hsep, (<+>), line, defaultLayoutOptions)
 import Prettyprinter.Render.Text (renderStrict)
 
@@ -69,7 +71,7 @@ instance ( Pretty (name 'TYPE)
     TVar        _ann n     -> pretty n
     TCon        _ann op    -> pretty op
     TLitDim     _ann d     -> pretty d
-    TLitDimList _ann ts    -> brackets $ hsep $ map pretty ts
+    TLitDimList _ann ts    -> brackets $ hsep $ map pretty (NonEmpty.toList ts)
     TMeta       _ann i     -> pretty i
 
 instance ( Pretty (name 'TYPE)
@@ -109,4 +111,4 @@ instance ( Pretty (name 'TYPE)
          , Pretty (name 'EXPR)
          , Pretty (name 'EARG)
          ) => Pretty (Prog name ann) where
-  pretty (Main _ann ds) = vsep (map pretty ds)
+  pretty (Main _ann ds) = vsep (map pretty (NonEmpty.toList ds))
