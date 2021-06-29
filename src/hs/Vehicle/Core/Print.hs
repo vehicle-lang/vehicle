@@ -20,11 +20,11 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 
-import Prettyprinter (Pretty(..), Doc, layoutPretty, parens, brackets, vsep, hsep, (<+>), line, defaultLayoutOptions)
+import Prettyprinter (Pretty(..), Doc, layoutPretty, parens, brackets, (<+>), line, defaultLayoutOptions)
 import Prettyprinter.Render.Text (renderStrict)
 
 import Vehicle.Core.AST
-import Vehicle.Prelude hiding (line)
+import Vehicle.Prelude
 
 printTree :: Pretty a => a -> String
 printTree a = unpack $ renderStrict $ layoutPretty defaultLayoutOptions $ pretty a

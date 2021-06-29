@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE DataKinds           #-}
@@ -8,6 +9,7 @@
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE OverloadedStrings   #-}
 
 {-# LANGUAGE ExistentialQuantification #-}
 module Vehicle.Core.Compile.Scope
@@ -16,14 +18,17 @@ module Vehicle.Core.Compile.Scope
   , ScopeError(..)
   ) where
 
-import           Control.Monad.Except
-import           Control.Monad.Supply (Supply, SupplyT, demand)
-import           Control.Monad.Identity (Identity, runIdentity)
-import           Data.Sequence (Seq, (!?))
-import qualified Data.Sequence as Seq
-import           Vehicle.Core.AST
-import           Vehicle.Core.Compile.Dataflow
-import           Vehicle.Prelude
+import Control.Monad.Except
+import Control.Monad.Supply (Supply, SupplyT, demand)
+import Control.Monad.Identity (Identity, runIdentity)
+import Data.Sequence (Seq, (!?))
+import Data.Sequence qualified as Seq
+import Prettyprinter (pretty, (<+>))
+
+import Vehicle.Core.AST
+import Vehicle.Core.Compile.Dataflow
+import Vehicle.Prelude
+import Vehicle.Error
 
 
 -- * Errors thrown during scope checking.
@@ -31,17 +36,29 @@ import           Vehicle.Prelude
 -- |Type of errors thrown by scope checking.
 data ScopeError
   = UnboundName Symbol Provenance
-  | forall sort. KnownSort sort =>
-      IndexOutOfBounds (DeBruijn sort) Provenance
+  | IndexOutOfBounds Index Int Provenance
+
+instance MeaningfulError ScopeError where
+  details  (UnboundName name p) = UError $ UserError
+    { problem    = "The name" <+> squotes name <+> "is not in scope"
+    , provenance = p
+    -- TODO can use Levenschtein distance to search contexts/builtins
+    , fix        = pretty ("Unknown" :: String)
+    }
+
+  details (IndexOutOfBounds index ctxSize p) = DError $ DeveloperError
+    { problem    = "DeBruijn index" <+> pretty index <+>
+                   "greater than current context size" <+> pretty ctxSize
+    , provenance = p
+    }
 
 -- |Throw an |UnboundName| error using an arbitrary token.
 unboundName :: MonadError ScopeError m => Symbol -> Provenance -> m a
 unboundName n p = throwError $ UnboundName n p
 
 -- |Throw an |IndexOutOfBounds| error using an arbitrary index.
-indexOutOfBounds :: (KnownSort sort, MonadError ScopeError m)
-                 => DeBruijn sort -> Provenance -> m a
-indexOutOfBounds n p = throwError $ IndexOutOfBounds n p
+indexOutOfBounds :: MonadError ScopeError m => Index -> Int -> Provenance -> m a
+indexOutOfBounds index ctxSize p = throwError $ IndexOutOfBounds index ctxSize p
 
 -- * Scope checking contexts.
 
@@ -81,7 +98,7 @@ getName ann (db :: DeBruijn sort) = do
   subctx <- getSubCtxFor @sort <$> askData
   let index = toIndex db
   let maybeSymbol = subctx !? index
-  let symbolOrError = maybe (indexOutOfBounds db (unK ann)) return maybeSymbol
+  let symbolOrError = maybe (indexOutOfBounds index (length subctx) (unK ann)) return maybeSymbol
   K <$> symbolOrError
 
 -- * Scope checking.

@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ConstraintKinds     #-}
@@ -10,21 +11,20 @@
 
 module Vehicle.Backend.ITP.Agda where
 
-import           Data.List.NonEmpty (NonEmpty)
-import           Data.Text as Text (Text, intercalate, unwords, pack, toUpper, null, splitAt)
-import           Data.Foldable (fold)
-import qualified Data.List.NonEmpty as List
-import           Data.Set (Set)
-import qualified Data.Set as Set
-import           Control.Monad.Except (MonadError(..))
-import           Control.Monad.Reader (MonadReader(..))
+import Control.Monad.Except (MonadError(..))
+import Control.Monad.Reader (MonadReader(..))
+import Data.List.NonEmpty as NonEmpty (NonEmpty, toList)
+import Data.Text as Text (Text, intercalate, unwords, pack, toUpper, null, splitAt)
+import Data.Foldable (fold)
+import Data.List.NonEmpty qualified as List
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Prettyprinter hiding (hsep, vsep, hcat, vcat)
+import Prettyprinter.Render.Text (renderStrict)
 
-import           Prettyprinter hiding (hsep, vsep, hcat, vcat)
-import           Prettyprinter.Render.Text (renderStrict)
-
-import           Vehicle.Backend.ITP.Core
-import           Vehicle.Frontend.AST (Tree(..), annotation)
-import           Vehicle.Prelude (Sort(..), Symbol)
+import Vehicle.Prelude
+import Vehicle.Frontend.AST
+import Vehicle.Backend.ITP.Core
 
 --------------------------------------------------------------------------------
 -- Agda-specific options
@@ -151,7 +151,7 @@ type MonadAgdaCompile m = MonadCompile m AgdaOptions
 
 compileProgramToAgda
   :: MonadAgdaCompile m
-  => TProg
+  => OutputProg
   -> m Text
 compileProgramToAgda program = do
   programDoc <- compile program
@@ -168,10 +168,7 @@ compileProgramToAgda program = do
     ]
 
 class CompileToAgda (sort :: Sort) where
-  compile
-    :: MonadAgdaCompile m
-    => TTree sort
-    -> m Code
+  compile :: MonadAgdaCompile m => OutputTree sort -> m Code
 
 --------------------------------------------------------------------------------
 -- Compilation of program tree
@@ -245,28 +242,28 @@ instance CompileToAgda 'EXPR where
       ce3 <- compile e3
       return $ "if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3
 
-    EImpl    ann e1 e2    -> compileBoolOp2 Impl  <$> booleanType ann <*> compile e1 <*> compile e2
-    EAnd     ann e1 e2    -> compileBoolOp2 And   <$> booleanType ann <*> compile e1 <*> compile e2
-    EOr      ann e1 e2    -> compileBoolOp2 Or    <$> booleanType ann <*> compile e1 <*> compile e2
-    ENot     ann e        -> compileBoolOp1 Not   <$> booleanType ann <*> compile e
-    ETrue    ann          -> compileBoolOp0 True  <$> booleanType ann
-    EFalse   ann          -> compileBoolOp0 False <$> booleanType ann
+    e@(EImpl    _ann e1 e2)    -> compileBoolOp2 Impl  <$> booleanType e <*> compile e1 <*> compile e2
+    e@(EAnd     _ann e1 e2)    -> compileBoolOp2 And   <$> booleanType e <*> compile e1 <*> compile e2
+    e@(EOr      _ann e1 e2)    -> compileBoolOp2 Or    <$> booleanType e <*> compile e1 <*> compile e2
+    e@(ENot     _ann e1)       -> compileBoolOp1 Not   <$> booleanType e <*> compile e1
+    e@(ETrue    _ann)          -> compileBoolOp0 True  <$> booleanType e
+    e@(EFalse   _ann)          -> compileBoolOp0 False <$> booleanType e
 
-    EAll     _ann         -> return $ pretty ("∀" :: Text)
-    EAny     _ann         -> return $ pretty ("∃" :: Text)
-    EEq      ann e1 e2    -> compileEquality ann e1 e2
-    ENeq     ann e1 e2    -> compileBoolOp1 Not Prop <$> compileEquality ann e1 e2
+    EAll     _ann           -> return $ pretty ("∀" :: Text)
+    EAny     _ann           -> return $ pretty ("∃" :: Text)
+    e@(EEq   _ann e1 e2)    -> compileEquality e e1 e2
+    e@(ENeq  _ann e1 e2)    -> compileBoolOp1 Not Prop <$> compileEquality e e1 e2
 
-    ELe      ann e1 e2    -> compileNumOrder' Leq ann e1 e2
-    ELt      ann e1 e2    -> compileNumOrder' Lt  ann e1 e2
-    EGe      ann e1 e2    -> compileNumOrder' Geq ann e1 e2
-    EGt      ann e1 e2    -> compileNumOrder' Gt  ann e1 e2
+    e@(ELe   _ann e1 e2)    -> compileNumOrder' Leq e e1 e2
+    e@(ELt   _ann e1 e2)    -> compileNumOrder' Lt  e e1 e2
+    e@(EGe   _ann e1 e2)    -> compileNumOrder' Geq e e1 e2
+    e@(EGt   _ann e1 e2)    -> compileNumOrder' Gt  e e1 e2
 
-    EMul     ann e1 e2    -> compileNumOp2 Mul <$> numericType ann <*> compile e1 <*> compile e2
-    EDiv     ann e1 e2    -> compileNumOp2 Div <$> numericType ann <*> compile e1 <*> compile e2
-    EAdd     ann e1 e2    -> compileNumOp2 Add <$> numericType ann <*> compile e1 <*> compile e2
-    ESub     ann e1 e2    -> compileNumOp2 Sub <$> numericType ann <*> compile e1 <*> compile e2
-    ENeg     ann e        -> compileNumOp1 Neg <$> numericType ann <*> compile e
+    e@(EMul  _ann e1 e2)    -> compileNumOp2 Mul <$> numericType e <*> compile e1 <*> compile e2
+    e@(EDiv  _ann e1 e2)    -> compileNumOp2 Div <$> numericType e <*> compile e1 <*> compile e2
+    e@(EAdd  _ann e1 e2)    -> compileNumOp2 Add <$> numericType e <*> compile e1 <*> compile e2
+    e@(ESub  _ann e1 e2)    -> compileNumOp2 Sub <$> numericType e <*> compile e1 <*> compile e2
+    e@(ENeg  _ann e1)       -> compileNumOp1 Neg <$> numericType e <*> compile e1
 
     ELitInt  _ann i       -> return $ pretty i
     ELitReal _ann d       -> return $ pretty d
@@ -279,7 +276,7 @@ instance CompileToAgda 'EARG where
 
 instance CompileToAgda 'DECL where
   compile = \case
-    DeclData ann _n _t     -> throwError $ CompilationUnsupported "dataset" (annotatedProv ann)
+    DeclData ann _n _t     -> throwError $ CompilationUnsupported (prov ann) "dataset"
     DeclNetw _ann n t      -> compileNetwork <$> compile n <*> compile t
     DefType  _ann n ns t   -> compileTypeDef <$> compile n <*> traverse compile ns <*> compile t
     DefFun   _ann n t ns e -> compileFunDef  <$> compile n <*> compile t <*> traverse compile ns <*> compile e
@@ -292,7 +289,7 @@ instance CompileToAgda 'PROG where
 
 -- |Compiling literal sequences
 compileLitSeq :: NonEmpty Code -> Code
-compileLitSeq ls = annotate ann (brackets (concatWith (\u v -> u <+> "," <+> v) ls))
+compileLitSeq ls = annotate ann (encloseSep "[ " " ]" " , " (NonEmpty.toList ls))
   where ann = (Set.singleton AISECUtils , maxBound :: Int)
 
 -- |Compiling cons operator
@@ -339,10 +336,15 @@ compileNumOp2 Add Real = annotateInfixOp2 [DataRat]       6 id "ℚ.+"
 compileNumOp2 Sub Real = annotateInfixOp2 [DataRat]       6 id "ℚ.-"
 
 -- |Compiling numeric orders
-compileNumOrder' :: MonadAgdaCompile m => OrderType -> TAnn 'EXPR -> TExpr -> TExpr -> m Code
-compileNumOrder' orderType orderAnn e1 e2 = do
-  numType  <- numericType (annotation e1)
-  boolType <- booleanType orderAnn
+compileNumOrder' :: MonadAgdaCompile m
+                 => OrderType
+                 -> OutputExpr
+                 -> OutputExpr
+                 -> OutputExpr
+                 -> m Code
+compileNumOrder' orderType e e1 e2 = do
+  boolType <- booleanType e
+  numType  <- numericType e1
   ce1      <- compile e1
   ce2      <- compile e2
   return $ compileNumOrder orderType numType boolType ce1 ce2
@@ -366,31 +368,58 @@ compileNumOrder Geq Real Prop = annotateInfixOp2 [DataRat]             4 id     
 compileNumOrder Gt  Real Prop = annotateInfixOp2 [DataRat]             4 id         "ℚ.>"
 
 -- TODO implement this via proof by reflection
-compileLookup :: MonadAgdaCompile m => TAnn 'EXPR -> TExpr -> TExpr -> m Code
-compileLookup ann cont (ELitInt indexAnn index) = do
-  cType <- containerType ann
+compileLookup :: MonadAgdaCompile m => OutputAnn 'EXPR -> OutputExpr -> OutputExpr -> m Code
+compileLookup ann cont (ELitInt indexAnn index) =
+  let containerAnn = annotation cont in do
+  cType <- containerType cont
   case cType of
     Tensor ns
       | index < List.head ns -> do
         tensor <- compile cont
         return $ tensor <+> pretty index
       | otherwise            -> throwError $
-        IndexOutOfBounds (annotatedType (annotation cont)) index (annotatedProv indexAnn)
+        TensorIndexOutOfBounds (prov indexAnn) (annotatedType containerAnn) index
     -- Tricky to support lists as we can't guarantee the index is within the length
     -- of the list.
-    List      -> throwError $ CompilationUnsupported "Lookup in lists" (annotatedProv ann)
+    List      -> throwError $ CompilationUnsupported (prov ann) "Lookup in lists"
 
 -- Tricky to support variable indices as we can't guarantee
 -- they're bounded by the length of the list.
 compileLookup ann _cont (EVar    _ _) = throwError $
-  CompilationUnsupported "Lookup of variable indices" (annotatedProv ann)
+  CompilationUnsupported (prov ann) "Lookup of variable indices"
 
 -- Anything else is an error.
 compileLookup ann _cont e             = throwError $
-  UnexpectedExpr e (annotatedProv ann)
+  UnexpectedExpr (prov ann) e
+
+compileEquality :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> OutputExpr -> m Code
+compileEquality e e1 e2 = do
+  equalityType <- booleanType e
+  case equalityType of
+    Prop -> compilePropEquality e1 e2
+    Bool -> compileBoolEquality e1 e2
+
+-- Equality in properties is simply compiled to propositional equality
+compilePropEquality :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> m Code
+compilePropEquality e1 e2 = annotateInfixOp2 [PropEquality] 4 id "≡" <$> compile e1 <*> compile e2
+
+data EqualityTypeError
+  = UnexpectedEqualityType
+  | PolymorphicEqualityType Symbol
+
+-- Equality in boolean functions is more complicated as we need an actual decision procedure.
+-- We handle this using instance arguments
+compileBoolEquality :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> m Code
+compileBoolEquality e1 e2 = let t1 = annotatedType (annotation e1) in
+  case equalityDependencies t1 of
+    Left UnexpectedEqualityType      -> throwError $ UnexpectedType (prov e1) e1 t1 expectedTypes
+      where expectedTypes = ["Tensor", "Real", "Int", "List"]
+    Left (PolymorphicEqualityType n) -> throwError $ CompilationUnsupported (prov e1) ("Polymorphic equality over '" <> n <> "'")
+    Right dependencies ->
+      annotateInfixOp2 ([RelNullary] <> dependencies) 4 boolBraces "≟" <$> compile e1 <*> compile e2
 
 -- Calculates the dependencies needed for equality over the provided type
-equalityDependencies :: MonadAgdaCompile m => TType -> m [Dependency]
+equalityDependencies :: MonadError EqualityTypeError m => OutputType -> m [Dependency]
 equalityDependencies = \case
   TInt    _ann        -> return [DataIntInstances]
   TReal   _ann        -> return [DataRatInstances]
@@ -401,18 +430,8 @@ equalityDependencies = \case
   TTensor _ann t1 _t2 -> do
     deps <- equalityDependencies t1
     return $ [DataTensorInstances] <> deps
-  TVar    ann  n      -> throwError $ CompilationUnsupported ("Polymorphic equality over '" <> n <> "'") (annotatedProv ann)
-  t                   -> throwError $ UnexpectedType t (annotatedProv (annotation t))
-
-compileEquality :: MonadAgdaCompile m => TAnn 'EXPR -> TExpr -> TExpr -> m Code
-compileEquality ann e1 e2 = do
-  typ <- booleanType ann
-  case typ of
-    Prop -> annotateInfixOp2 [PropEquality] 4 id "≡" <$> compile e1 <*> compile e2
-    Bool -> do
-      dependencies <- equalityDependencies (annotatedType (annotation e1))
-      -- Boolean equality is handled by instance arguments
-      annotateInfixOp2 ([RelNullary] <> dependencies) 4 boolBraces "≟" <$> compile e1 <*> compile e2
+  TVar    _ann  n     -> throwError (PolymorphicEqualityType n)
+  _                   -> throwError UnexpectedEqualityType
 
 compileProp :: MonadAgdaCompile m => m Code
 compileProp = do

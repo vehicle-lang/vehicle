@@ -14,7 +14,7 @@ import Vehicle.Core.AST.DeBruijn
 import Vehicle.Core.AST.Instance ()
 import Vehicle.Core.AST.Info.Core
 import Vehicle.Core.AST.Utils (annotation)
-import Vehicle.Prelude
+import Vehicle.Prelude hiding (error)
 
 -- * DSL for writing kinds as info annotations
 

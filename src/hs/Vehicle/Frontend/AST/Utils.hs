@@ -4,33 +4,16 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Vehicle.Frontend.AST.Utils where
 
 import Vehicle.Prelude
 import Vehicle.Frontend.AST.Core (Tree(..))
 import Vehicle.Frontend.AST.Info (Info)
 
-type InputAnn = K Provenance :: Sort -> *
-type InputTree sort = Tree InputAnn sort
-type InputKind = InputTree 'KIND
-type InputType = InputTree 'TYPE
-type InputTArg = InputTree 'TARG
-type InputExpr = InputTree 'EXPR
-type InputEArg = InputTree 'EARG
-type InputDecl = InputTree 'DECL
-type InputProg = InputTree 'PROG
-
-type OutputAnn = Info :*: K Provenance :: Sort -> *
-type OutputTree sort = Tree OutputAnn sort
-type OutputKind = OutputTree 'KIND
-type OutputType = OutputTree 'TYPE
-type OutputTArg = OutputTree 'TARG
-type OutputExpr = OutputTree 'EXPR
-type OutputEArg = OutputTree 'EARG
-type OutputDecl = OutputTree 'DECL
-type OutputProg = OutputTree 'PROG
-
--- |Extract the annotation
+-- |Extract the top-level annotation from a tree
 annotation :: forall sort ann.
               KnownSort sort =>
               Tree ann sort ->
@@ -115,3 +98,39 @@ annotation = case sortSing :: SSort sort of
   SPROG -> \case
     Main ann _ds -> ann
 
+-- | Type of annotations attached to the Frontend AST after parsing
+-- before being analysed by the compiler
+type InputAnn = K Provenance :: Sort -> *
+
+type InputTree sort = Tree InputAnn sort
+type InputKind = InputTree 'KIND
+type InputType = InputTree 'TYPE
+type InputTArg = InputTree 'TARG
+type InputExpr = InputTree 'EXPR
+type InputEArg = InputTree 'EARG
+type InputDecl = InputTree 'DECL
+type InputProg = InputTree 'PROG
+
+instance KnownSort sort => HasProvenance (InputAnn sort) where
+  prov (K p) = p
+
+instance KnownSort sort => HasProvenance (InputTree sort) where
+  prov = prov . annotation
+
+-- | Type of annotations attached to the Frontend AST that are output by the compiler
+type OutputAnn = Info :*: K Provenance :: Sort -> *
+
+type OutputTree sort = Tree OutputAnn sort
+type OutputKind = OutputTree 'KIND
+type OutputType = OutputTree 'TYPE
+type OutputTArg = OutputTree 'TARG
+type OutputExpr = OutputTree 'EXPR
+type OutputEArg = OutputTree 'EARG
+type OutputDecl = OutputTree 'DECL
+type OutputProg = OutputTree 'PROG
+
+instance KnownSort sort => HasProvenance (OutputAnn sort) where
+  prov (_ :*: K p) = p
+
+instance KnownSort sort => HasProvenance (OutputTree sort) where
+  prov = prov . annotation

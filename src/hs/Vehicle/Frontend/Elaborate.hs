@@ -24,20 +24,30 @@ import Control.Monad.Except (MonadError(..), Except, runExcept)
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Coerce (coerce)
+import Prettyprinter ((<+>))
 
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
 import Vehicle.Frontend.AST qualified as VF
 
 import Vehicle.Prelude
+import Vehicle.Error
 
 -- * Elaboration monad
 
--- | Errors that may arise during elaboration.
+-- | Errors that may arise during elaboration. In theory with a more
+-- granular distinction between local and top-level declarations
+-- in the AST we could get rid of these errors entirely.
 data ElabError
-  = LocalDeclNetw Provenance
-  | LocalDeclData Provenance
-  | LocalDefType  Provenance
-  deriving (Show)
+  = InvalidLocalDecl Symbol Provenance
+
+instance MeaningfulError ElabError where
+  -- The devs are responsible for all elaboration errors as they
+  --  should already have been checked during parsing!
+  details (InvalidLocalDecl name p) = DError $ DeveloperError
+    { problem    = squotes name <+> "declarations within let expressions \
+                  \ should have been caught by the parser"
+    , provenance = p
+    }
 
 -- | Constraint for the monad stack used by the elaborator.
 type MonadElab m = MonadError ElabError m
@@ -191,9 +201,9 @@ elabLet ann1 ds e = bindM2 (foldrM declToLet) e ds
   where
     declToLet :: MonadElab m => VC.InputDecl -> VC.InputExpr -> m VC.InputExpr
     declToLet (VC.DefFun   ann2  n t e1)    e2 = return $ VC.ELet ann1 n (VC.EAnn (K (unK ann2)) e1 t) e2
-    declToLet (VC.DeclNetw ann2 _n _t)     _e2 = throwError $ LocalDeclNetw (unK ann2)
-    declToLet (VC.DeclData ann2 _n _t)     _e2 = throwError $ LocalDeclData (unK ann2)
-    declToLet (VC.DefType  ann2 _n _ns _t) _e2 = throwError $ LocalDefType  (unK ann2)
+    declToLet (VC.DeclNetw ann2 _n _t)     _e2 = throwError $ InvalidLocalDecl "network" (unK ann2)
+    declToLet (VC.DeclData ann2 _n _t)     _e2 = throwError $ InvalidLocalDecl "dataset" (unK ann2)
+    declToLet (VC.DefType  ann2 _n _ns _t) _e2 = throwError $ InvalidLocalDecl "type"    (unK ann2)
 
 -- |Lift a binary /monadic/ function.
 bindM2 :: Monad m => (a -> b -> m c) -> m a -> m b -> m c

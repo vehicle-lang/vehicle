@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -14,48 +15,67 @@
 module Vehicle.Core.Parse
   ( parseText
   , parseFile
-  , PProg
+  , ParseError(..)
   ) where
 
 import Control.Monad.Except (MonadError(..))
-import Data.Text (Text)
-import qualified Data.Text.IO as T
+import Data.Text (Text, pack)
+import Data.Text.IO qualified as T
 import Data.List.NonEmpty (NonEmpty(..))
+import Prettyprinter ( (<+>), pretty )
 import System.Exit (exitFailure)
 
 import Vehicle.Core.Abs as B
 import Vehicle.Core.Par (pProg, myLexer)
 import Vehicle.Core.AST as V hiding (Name)
 import Vehicle.Prelude
-
---------------------------------------------------------------------------------
--- "Parsed" type synonyms
-
-type PTree = V.Tree (K Symbol) (K Provenance)
-type PKind = V.Kind (K Symbol) (K Provenance)
-type PType = V.Type (K Symbol) (K Provenance)
-type PTArg = V.TArg (K Symbol) (K Provenance)
-type PExpr = V.Expr (K Symbol) (K Provenance)
-type PEArg = V.EArg (K Symbol) (K Provenance)
-type PDecl = V.Decl (K Symbol) (K Provenance)
-type PProg = V.Prog (K Symbol) (K Provenance)
+import Vehicle.Error
 
 --------------------------------------------------------------------------------
 -- Parsing
 
-parseText :: Text -> Either String PProg
+parseText :: Text -> Either ParseError V.InputProg
 parseText txt = case pProg (myLexer txt) of
-  Left v  -> Left v
-  Right p -> case conv p of
-    Left  u -> Left $ show u
-    Right r -> Right r
+  Left err1      -> Left $ BNFCParseError err1
+  Right bnfcProg -> case conv bnfcProg of
+    Left  err2 -> Left  err2
+    Right prog -> Right prog
 
-parseFile :: FilePath -> IO PProg
+-- Used in both application and testing which is why it lives here.
+parseFile :: FilePath -> IO V.InputProg
 parseFile file = do
   contents <- T.readFile file
   case parseText contents of
-    Left err -> do putStrLn err; exitFailure
+    Left err -> do print (details err); exitFailure
     Right ast -> return ast
+
+--------------------------------------------------------------------------------
+-- Errors
+
+-- |Type of errors thrown when parsing.
+data ParseError
+  = UnknownBuiltin Token
+  | MissingVariables
+  | BNFCParseError String
+
+instance MeaningfulError ParseError where
+  details (UnknownBuiltin tk) = UError $ UserError
+    { problem    = "Unknown symbol" <+> pretty (tkSymbol tk)
+    , provenance = tkProvenance tk
+    , fix        = "Please consult the documentation for a description of Vehicle syntax"
+    }
+
+  -- TODO improve this error message. The problem is that there are no tokens
+  -- in the Core language grammar and therefore we can't extract them.
+  details MissingVariables = UError $ UserError
+    { problem    = "Expected at least one variable/declaration"
+    , provenance = mempty
+    , fix        = "Unknown"
+    }
+
+  -- TODO need to revamp this error, BNFC must provide some more
+  -- information than a simple string surely?
+  details (BNFCParseError text) = EError $ ExternalError (pack text)
 
 --------------------------------------------------------------------------------
 -- Conversion from BNFC AST
@@ -71,23 +91,12 @@ parseFile file = do
 --
 --   2) convert the builtin strings into `Builtin`s
 
--- * Can extract provenance from
-
-instance KnownSort sort => HasProvenance (PTree sort) where
-  prov = unK . annotation
-
 -- * Conversion
 
 class Convert vf vc where
   conv :: MonadParse m => vf -> m vc
 
-type MonadParse m = MonadError BuiltinError m
-
--- |Type of errors thrown by builtin checking.
-data BuiltinError
-  = UnknownBuiltin Token
-  | EmptyList
-  deriving (Show)
+type MonadParse m = MonadError ParseError m
 
 --------------------------------------------------------------------------------
 -- Builtins
@@ -128,14 +137,14 @@ lookupBuiltin tk = case builtinFromSymbol (tkSymbol tk) of
   Just v -> return v
 
 --------------------------------------------------------------------------------
--- AST
+-- AST conversion
 
-instance Convert B.Kind PKind where
+instance Convert B.Kind V.InputKind where
   conv = \case
     B.KApp k1 k2 -> op2 V.KApp <$> conv k1 <*> conv k2
     B.KCon c     -> V.KCon (K (prov c)) <$> conv c
 
-instance Convert B.Type PType where
+instance Convert B.Type V.InputType where
   conv = \case
     B.TForall n t    -> op2 V.TForall <$> conv n <*> conv t
     B.TApp t1 t2     -> op2 V.TApp <$> conv t1 <*> conv t2
@@ -144,13 +153,13 @@ instance Convert B.Type PType where
     B.TLitDim d      -> return $ V.TLitDim mempty d
     B.TLitDimList ts -> op1 V.TLitDimList <$> traverseNonEmpty ts
 
-instance Convert B.TypeName PType where
+instance Convert B.TypeName V.InputType where
   conv (MkTypeName n) = return $ V.TVar (K (tkProvenance n)) (K (tkSymbol n))
 
-instance Convert B.TypeBinder PTArg where
+instance Convert B.TypeBinder V.InputTArg where
   conv (MkTypeBinder n) = return $ V.TArg (K (tkProvenance n)) (K (tkSymbol n))
 
-instance Convert B.Expr PExpr where
+instance Convert B.Expr V.InputExpr where
   conv = \case
     B.EAnn e t     -> op2 V.EAnn <$> conv e <*> conv t
     B.ELet n e1 e2 -> op3 V.ELet <$> conv n <*> conv e1 <*> conv e2
@@ -164,35 +173,35 @@ instance Convert B.Expr PExpr where
     B.ELitReal r   -> return $ V.ELitReal mempty r
     B.ELitSeq es   -> op1 V.ELitSeq <$> traverseNonEmpty es
 
-instance Convert B.ExprName PExpr where
+instance Convert B.ExprName V.InputExpr where
   conv (MkExprName n) = return $ V.EVar (K (tkProvenance n)) (K (tkSymbol n))
 
-instance Convert B.ExprBinder PEArg where
+instance Convert B.ExprBinder V.InputEArg where
   conv (MkExprBinder n) = return $ V.EArg (K (tkProvenance n)) (K (tkSymbol n))
 
-instance Convert B.Decl PDecl where
+instance Convert B.Decl V.InputDecl where
   conv = \case
     B.DeclNetw n t   -> op2 V.DeclNetw <$> conv n <*> conv t
     B.DeclData n t   -> op2 V.DeclData <$> conv n <*> conv t
     B.DefType n ns t -> op3 V.DefType  <$> conv n <*> traverse conv ns <*> conv t
     B.DefFun n t e   -> op3 V.DefFun   <$> conv n <*> conv t <*> conv e
 
-instance Convert B.Prog PProg where
+instance Convert B.Prog V.InputProg where
   conv (B.Main ds) = op1 V.Main <$> traverseNonEmpty ds
 
 op1 :: (HasProvenance a)
-    => (K Provenance sort -> a -> PTree sort)
-    -> a -> PTree sort
+    => (K Provenance sort -> a -> V.InputTree sort)
+    -> a -> V.InputTree sort
 op1 mk t = mk (K (prov t)) t
 
 op2 :: (KnownSort sort, HasProvenance a, HasProvenance b)
-    => (K Provenance sort -> a -> b -> PTree sort)
-    -> a -> b -> PTree sort
+    => (K Provenance sort -> a -> b -> V.InputTree sort)
+    -> a -> b -> V.InputTree sort
 op2 mk t1 t2 = mk (K (prov t1 <> prov t2)) t1 t2
 
 op3 :: (KnownSort sort, HasProvenance a, HasProvenance b, HasProvenance c)
-    => (K Provenance sort -> a -> b -> c -> PTree sort)
-    -> a -> b -> c -> PTree sort
+    => (K Provenance sort -> a -> b -> c -> V.InputTree sort)
+    -> a -> b -> c -> V.InputTree sort
 op3 mk t1 t2 t3 = mk (K (prov t1 <> prov t2 <> prov t3)) t1 t2 t3
 
 -- A traversal that checks that the list is non-empty. In theory this would be
@@ -200,5 +209,5 @@ op3 mk t1 t2 t3 = mk (K (prov t1 <> prov t2 <> prov t3)) t1 t2 t3
 -- (see https://github.com/BNFC/bnfc/issues/371)
 traverseNonEmpty :: (MonadParse m , Convert a b)
                  => [a] -> m (NonEmpty b)
-traverseNonEmpty []       = throwError EmptyList
+traverseNonEmpty []       = throwError MissingVariables
 traverseNonEmpty (x : xs) = traverse conv (x :| xs)

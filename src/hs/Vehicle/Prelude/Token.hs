@@ -5,8 +5,8 @@
 module Vehicle.Prelude.Token
   ( Symbol
   , Position
-  , line
-  , column
+  , posLine
+  , posColumn
   , Token(..)
   , IsToken
   , toToken
@@ -33,11 +33,11 @@ type Symbol = Text
 --  number and a column number.
 type Position = (Int, Int)
 
-line :: Position -> Int
-line = fst
+posLine :: Position -> Int
+posLine = fst
 
-column :: Position -> Int
-column = snd
+posColumn :: Position -> Int
+posColumn = snd
 
 -- |Position tokens in BNFC generated grammars are represented by a pair of a
 -- position and the text token.
@@ -79,7 +79,7 @@ tkRange :: IsToken a => a -> [Range Position]
 tkRange tk = [start +=+ end]
   where
     start = tkPosition tk
-    end   = (line start, column start + tkLength tk)
+    end   = (posLine start, posColumn start + tkLength tk)
 
 -- |Compare the text portion of any two position tokens.
 tkEq :: IsToken a => a -> a -> Bool

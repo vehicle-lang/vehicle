@@ -7,11 +7,6 @@
 module Vehicle.Prelude
   ( module X
   , (|->)
-  , (:*:)(..)
-  , type DecIn
-  , type In
-  , K(..)
-  , O(..)
   , rangeStart
   ) where
 
@@ -21,6 +16,7 @@ import Vehicle.Prelude.Token as X
 import Vehicle.Prelude.Sort as X
 import Vehicle.Prelude.Provenance as X
 import Vehicle.Prelude.Types as X
+import Vehicle.Prelude.Prettyprinter as X
 
 infix 1 |->
 

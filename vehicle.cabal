@@ -29,6 +29,7 @@ library
                     , Vehicle.Frontend.AST
                     , Vehicle.Frontend.Parse
                     , Vehicle.Frontend.Print
+                    , Vehicle.Error
   other-modules:      Paths_vehicle
                     , Vehicle.Frontend.AST.Core
                     , Vehicle.Frontend.AST.Instance
@@ -53,12 +54,12 @@ library
                     , Vehicle.Core.Normalise.DeBruijnSubstitution
                     , Vehicle.Backend.ITP.Agda
                     , Vehicle.Backend.ITP.Core
-                    , Vehicle.Backend.ITP.Vehicle
                     , Vehicle.Prelude
                     , Vehicle.Prelude.Token
                     , Vehicle.Prelude.Sort
                     , Vehicle.Prelude.Provenance
                     , Vehicle.Prelude.Types
+                    , Vehicle.Prelude.Prettyprinter
                     -- Compatibility module with generated Abs
                     , Vehicle.Core.Abs
                     -- Files generated from Core.cf
@@ -89,6 +90,8 @@ library
   default-language:   Haskell2010
 
   ghc-options:        -Wall
+  default-extensions: DuplicateRecordFields
+                    , ImportQualifiedPost
 
 executable vehicle
   main-is:            Main.hs

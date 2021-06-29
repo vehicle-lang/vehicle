@@ -3,37 +3,16 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
+{-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Vehicle.Core.AST.Utils where
 
 import Vehicle.Prelude
 import Vehicle.Core.AST.Core (Tree(..))
 import Vehicle.Core.AST.Recursive (TreeF)
 import Vehicle.Core.AST.Info.Core (Info)
-
-type InputAnn = K Provenance :: Sort -> *
-type InputTree sort = Tree (K Symbol) InputAnn sort
-type InputKind = InputTree 'KIND
-type InputType = InputTree 'TYPE
-type InputTArg = InputTree 'TARG
-type InputExpr = InputTree 'EXPR
-type InputEArg = InputTree 'EARG
-type InputDecl = InputTree 'DECL
-type InputProg = InputTree 'PROG
-type InputTreeF (sort :: Sort) (sorted :: Sort -> *)
-  = TreeF (K Symbol) InputAnn sort sorted
-
-type OutputAnn = Info :*: K Provenance :: Sort -> *
-type OutputTree sort = Tree (K Symbol) OutputAnn sort
-type OutputKind = OutputTree 'KIND
-type OutputType = OutputTree 'TYPE
-type OutputTArg = OutputTree 'TARG
-type OutputExpr = OutputTree 'EXPR
-type OutputEArg = OutputTree 'EARG
-type OutputDecl = OutputTree 'DECL
-type OutputProg = OutputTree 'PROG
-type OutputTreeF (sort :: Sort) (sorted :: Sort -> *)
-  = TreeF (K Symbol) OutputAnn sort sorted
 
 -- |Extract the annotation
 annotation :: forall sort name ann.
@@ -90,3 +69,45 @@ annotation = case sortSing :: SSort sort of
   SPROG -> \case
     Main ann _ds -> ann
 
+-- | Type of annotations attached to the Frontend AST after parsing
+-- before being analysed by the compiler
+type InputAnn = K Provenance :: Sort -> *
+
+type InputTree sort = Tree (K Symbol) InputAnn sort
+type InputKind = InputTree 'KIND
+type InputType = InputTree 'TYPE
+type InputTArg = InputTree 'TARG
+type InputExpr = InputTree 'EXPR
+type InputEArg = InputTree 'EARG
+type InputDecl = InputTree 'DECL
+type InputProg = InputTree 'PROG
+
+type InputTreeF (sort :: Sort) (sorted :: Sort -> *)
+  = TreeF (K Symbol) InputAnn sort sorted
+
+instance KnownSort sort => HasProvenance (InputAnn sort) where
+  prov (K p) = p
+
+instance KnownSort sort => HasProvenance (InputTree sort) where
+  prov = prov . annotation
+
+-- | Type of annotations attached to the Core AST that are output by the compiler
+type OutputAnn = Info :*: K Provenance :: Sort -> *
+
+type OutputTree sort = Tree (K Symbol) OutputAnn sort
+
+type OutputKind = OutputTree 'KIND
+type OutputType = OutputTree 'TYPE
+type OutputTArg = OutputTree 'TARG
+type OutputExpr = OutputTree 'EXPR
+type OutputEArg = OutputTree 'EARG
+type OutputDecl = OutputTree 'DECL
+type OutputProg = OutputTree 'PROG
+type OutputTreeF (sort :: Sort) (sorted :: Sort -> *)
+  = TreeF (K Symbol) OutputAnn sort sorted
+
+instance KnownSort sort => HasProvenance (OutputAnn sort) where
+  prov (_ :*: K p) = p
+
+instance KnownSort sort => HasProvenance (OutputTree sort) where
+  prov = prov . annotation

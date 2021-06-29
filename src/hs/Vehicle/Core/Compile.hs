@@ -3,6 +3,7 @@
 
 module Vehicle.Core.Compile
   ( compile
+  , CompileError(..)
   ) where
 
 import           Control.Monad.Except (Except, withExcept)

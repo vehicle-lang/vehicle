@@ -7,6 +7,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -17,55 +18,32 @@ module Vehicle.Frontend.Parse
   , ParseError(..)
   ) where
 
-import Data.Text (Text, unpack)
-import qualified Data.Text.IO as T
-import Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.List.NonEmpty as NonEmpty (groupBy1, map, head)
-import System.Exit (exitFailure)
 import Control.Monad.Except (MonadError, throwError)
-
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Foldable (fold)
+import Data.List.NonEmpty qualified as NonEmpty (groupBy1, map, head)
+import Data.Text (Text, pack)
+import Data.Text.IO qualified as T
+import Prettyprinter ( (<+>), line, pretty )
+import System.Exit (exitFailure)
 
 import Vehicle.Frontend.Abs as B
 import Vehicle.Frontend.Layout (resolveLayout)
 import Vehicle.Frontend.Lex as L (Token)
 import Vehicle.Frontend.Par (pProg, myLexer)
-
-import qualified Vehicle.Frontend.AST as V
-import Vehicle.Frontend.AST.Utils (annotation)
-
-import Vehicle.Prelude (K(..), KnownSort, Token(..), Symbol, tkSymbol, IsToken)
-import Vehicle.Prelude.Provenance (Provenance (..), tkProvenance, HasProvenance(..))
-
---------------------------------------------------------------------------------
--- * Type synonyms
-
-type PTree = V.Tree (K Provenance)
-type PKind = V.Kind (K Provenance)
-type PType = V.Type (K Provenance)
-type PTArg = V.TArg (K Provenance)
-type PExpr = V.Expr (K Provenance)
-type PEArg = V.EArg (K Provenance)
-type PDecl = V.Decl (K Provenance)
-type PProg = V.Prog (K Provenance)
+import Vehicle.Frontend.AST qualified as V
+import Vehicle.Prelude
+import Vehicle.Error
 
 --------------------------------------------------------------------------------
 -- Parsing
 
-
-parseText :: Text -> Either ParseError PProg
+parseText :: Text -> Either ParseError V.InputProg
 parseText txt = case runParser True pProg txt of
   Left err1       -> Left $ BNFCParseError err1
   Right bnfcProg -> case conv bnfcProg of
     Left err2  -> Left err2
     Right prog -> Right prog
-
-parseFile :: FilePath -> IO PProg
-parseFile file = do
-  contents <- T.readFile file
-  case parseText contents of
-    Left err -> do print err; exitFailure
-    Right ast -> return ast
-
 
 type Parser a = [L.Token] -> Either String a
 
@@ -75,30 +53,72 @@ runParser topLevel p t = p (runLexer topLevel t)
 runLexer :: Bool -> Text -> [L.Token]
 runLexer topLevel = resolveLayout topLevel . myLexer
 
+-- Used in both application and testing which is why it lives here.
+parseFile :: FilePath -> IO V.InputProg
+parseFile file = do
+  contents <- T.readFile file
+  case parseText contents of
+    Left err -> do print (details err); exitFailure
+    Right ast -> return ast
+
 --------------------------------------------------------------------------------
 -- Errors
 
 data ParseError
-  = MissingDefFunType Symbol Provenance
-  | MissingDefFunExpr Symbol Provenance
-  | DuplicateName     Symbol (NonEmpty Provenance)
-  | LocalDeclNetw     Provenance
-  | LocalDeclData     Provenance
-  | LocalDefType      Provenance
-  | EmptyList         Provenance
-  | BNFCParseError    String
+  = MissingDefFunType    Symbol Provenance
+  | MissingDefFunExpr    Symbol Provenance
+  | DuplicateName        Symbol (NonEmpty Provenance)
+  | InvalidLocalDecl     Symbol Provenance
+  | MissingDeclarations  (Maybe Symbol) Provenance
+  | MissingVariables     Symbol Provenance
+  | BNFCParseError       String
 
--- TODO change to pretty printing
-instance Show ParseError where
-  show = \case
-    MissingDefFunType name p -> "No definition provided for function " <> unpack name  <> " (" <> show p <> ")"
-    MissingDefFunExpr name p -> "No type provided for function "       <> unpack name  <> " (" <> show p <> ")"
-    DuplicateName     name p -> "Duplicate definitions found for "     <> unpack name  <> " (" <> show p <> ")"
-    LocalDeclNetw     p      -> "Network declarations are not allowed in let bindings" <> " (" <> show p <> ")"
-    LocalDeclData     p      -> "Dataset declarations are not allowed in let bindings" <> " (" <> show p <> ")"
-    LocalDefType      p      -> "Type declarations are not allowed in let bindings"    <> " (" <> show p <> ")"
-    EmptyList         p      -> "Must have a non-empty list of tokens"                 <> " (" <> show p <> ")"
-    BNFCParseError    text   -> text
+instance MeaningfulError ParseError where
+  details (MissingDefFunType name p) = UError $ UserError
+    { problem    = "missing type for the declaration" <+> squotes name
+    , provenance = p
+    , fix        = "add a type for the declaration, e.g."
+                   <> line <> line
+                   <> "addOne :: Int -> Int    <-----   type declaration" <> line
+                   <> "addOne x = x + 1"
+    }
+
+  details (MissingDefFunExpr name p) = UError $ UserError
+    { problem    = "missing definition for the declaration" <+> squotes name
+    , provenance = p
+    , fix        = "add a definition for the declaration, e.g."
+                   <> line <> line
+                   <> "addOne :: Int -> Int" <> line
+                   <> "addOne x = x + 1     <-----   declaration definition"
+    }
+
+  details (DuplicateName name p) = UError $ UserError
+    { problem    = "multiple definitions found with the name" <+> squotes name
+    , provenance = fold p
+    , fix        = "remove or rename the duplicate definitions"
+    }
+
+  details (InvalidLocalDecl name p) = UError $ UserError
+    { problem    = squotes name <+> "declarations are not allowed within let expressions"
+    , provenance = p
+    , fix        = "move the" <+> squotes name <+> "declaration to the top-level"
+    }
+
+  details (MissingVariables symbol p) = UError $ UserError
+    { problem    = "expected at least one name after" <+> squotes symbol
+    , provenance = p
+    , fix        = "add one or more names after" <+> squotes symbol
+    }
+
+  details (MissingDeclarations symbol p) = UError $ UserError
+    { problem    = "expected at least one declaration" <> symbolText
+    , provenance = p
+    , fix        = "add one or more declarations" <> symbolText
+    } where symbolText = maybe mempty (\u -> "after" <+> pretty u) symbol
+
+  -- TODO need to revamp this error, BNFC must provide some more
+  -- information than a simple string surely?
+  details (BNFCParseError text) = EError $ ExternalError (pack text)
 
 --------------------------------------------------------------------------------
 -- Conversion from BNFC AST
@@ -121,22 +141,19 @@ type MonadParse m = MonadError ParseError m
 tkProv :: IsToken a => a -> Provenance
 tkProv = tkProvenance
 
-instance KnownSort sort => HasProvenance (V.Tree (K Provenance) sort) where
-  prov = unK . annotation
-
 -- * Conversion
 
 class Convert vf vc where
   conv :: MonadParse m => vf -> m vc
 
-instance Convert B.Kind PKind where
+instance Convert B.Kind V.InputKind where
   conv (B.KApp k1 k2)    = op2 V.KApp     mempty (conv k1) (conv k2)
   conv (B.KFun k1 tk k2) = op2 V.KFun     (tkProv tk) (conv k1) (conv k2)
   conv (B.KType tk)      = op0 V.KType    (tkProv tk)
   conv (B.KDim tk)       = op0 V.KDim     (tkProv tk)
   conv (B.KDimList tk)   = op0 V.KDimList (tkProv tk)
 
-instance Convert B.Type PType where
+instance Convert B.Type V.InputType where
   conv (B.TForall tk1 ns tk2 t)   = op2 V.TForall (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv t)
   conv (B.TApp t1 t2)             = op2 V.TApp mempty (conv t1) (conv t2)
   conv (B.TVar n)                 = return $ V.TVar (K (tkProv n)) (tkSymbol n)
@@ -152,12 +169,12 @@ instance Convert B.Type PType where
   conv (B.TCons t1 tk t2)         = op2 V.TCons (tkProv tk) (conv t1) (conv t2)
   conv (B.TLitDimList tk1 ts tk2) = op1 V.TLitDimList (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ts)
 
-instance Convert Name PTArg where
+instance Convert Name V.InputTArg where
   conv n = return $ V.TArg (K (tkProv n)) (tkSymbol n)
 
-instance Convert B.Expr PExpr where
+instance Convert B.Expr V.InputExpr where
   conv (B.EAnn e tk t)              = op2 V.EAnn (tkProv tk) (conv e) (conv t)
-  conv (B.ELet ds e)                = op2 V.ELet mempty (filterLetDecls ds >>= groupDecls mempty) (conv e)
+  conv (B.ELet ds e)                = op2 V.ELet mempty (filterLetDecls ds >>= groupDecls (Just "let") mempty) (conv e)
   conv (B.ELam tk1 ns tk2 e)        = op2 V.ELam (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
   conv (B.EApp e1 e2)               = op2 V.EApp mempty (conv e1) (conv e2)
   conv (B.EVar n)                   = return $ V.EVar (K (tkProv n)) (tkSymbol n)
@@ -189,11 +206,11 @@ instance Convert B.Expr PExpr where
   conv (B.EAny tk)                  = op0 V.EAny   (tkProv tk)
   conv (B.ELitSeq tk1 es tk2)       = op1 V.ELitSeq (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 es)
 
-instance Convert Name PEArg where
+instance Convert Name V.InputEArg where
   conv n = return $ V.EArg (K (tkProv n)) (tkSymbol n)
 
 -- |Elaborate declarations.
-instance Convert (NonEmpty B.Decl) PDecl where
+instance Convert (NonEmpty B.Decl) V.InputDecl where
 
   -- Elaborate a network declaration.
   conv [B.DeclNetw n tk t] = op2 V.DeclNetw (tkProv tk) (conv n) (conv t)
@@ -227,32 +244,32 @@ instance Convert (NonEmpty B.Decl) PDecl where
         provs  = NonEmpty.map (tkProv . declName) ds
 
 -- |Elaborate programs.
-instance Convert B.Prog PProg where
-  conv (B.Main decls) = op1 V.Main mempty (groupDecls mempty decls)
+instance Convert B.Prog V.InputProg where
+  conv (B.Main decls) = op1 V.Main mempty (groupDecls Nothing mempty decls)
 
 op0 :: MonadParse m
-    => (K Provenance sort -> PTree sort)
-    -> Provenance -> m (PTree sort)
+    => (K Provenance sort -> V.InputTree sort)
+    -> Provenance -> m (V.InputTree sort)
 op0 mk p = return $ mk (K p)
 
 op1 :: (MonadParse m, HasProvenance a)
-    => (K Provenance sort -> a -> PTree sort)
-    -> Provenance -> m a -> m (PTree sort)
+    => (K Provenance sort -> a -> V.InputTree sort)
+    -> Provenance -> m a -> m (V.InputTree sort)
 op1 mk p t = do
   ct <- t
   return $ mk (K (p <> prov ct)) ct
 
 op2 :: (MonadParse m, HasProvenance a, HasProvenance b)
-    => (K Provenance sort -> a -> b -> PTree sort)
-    -> Provenance -> m a -> m b -> m (PTree sort)
+    => (K Provenance sort -> a -> b -> V.InputTree sort)
+    -> Provenance -> m a -> m b -> m (V.InputTree sort)
 op2 mk p t1 t2 = do
   ct1 <- t1
   ct2 <- t2
   return $ mk (K (p <> prov ct1 <> prov ct2)) ct1 ct2
 
 op3 :: (MonadParse m, HasProvenance a, HasProvenance b, HasProvenance c)
-    => (K Provenance sort -> a -> b -> c -> PTree sort)
-    -> Provenance -> m a -> m b -> m c -> m (PTree sort)
+    => (K Provenance sort -> a -> b -> c -> V.InputTree sort)
+    -> Provenance -> m a -> m b -> m c -> m (V.InputTree sort)
 op3 mk p t1 t2 t3 = do
   ct1 <- t1
   ct2 <- t2
@@ -260,8 +277,8 @@ op3 mk p t1 t2 t3 = do
   return $ mk (K (p <> prov ct1 <> prov ct2 <> prov ct3)) ct1 ct2 ct3
 
 op4 :: (MonadParse m, HasProvenance a, HasProvenance b, HasProvenance c, HasProvenance d)
-    => (K Provenance sort -> a -> b -> c -> d -> PTree sort)
-    -> Provenance -> m a -> m b -> m c -> m d -> m (PTree sort)
+    => (K Provenance sort -> a -> b -> c -> d -> V.InputTree sort)
+    -> Provenance -> m a -> m b -> m c -> m d -> m (V.InputTree sort)
 op4 mk p t1 t2 t3 t4 = do
   ct1 <- t1
   ct2 <- t2
@@ -275,17 +292,16 @@ filterLetDecls :: MonadParse m => [ B.Decl ] -> m [ B.Decl ]
 filterLetDecls = traverse declToLet
   where
     declToLet :: MonadParse m => B.Decl -> m B.Decl
-    declToLet (B.DeclNetw n _n _t)  = throwError $ LocalDeclNetw (tkProv n)
-    declToLet (B.DeclData n _n _t)  = throwError $ LocalDeclData (tkProv n)
-    declToLet (B.DefType  n _ns _t) = throwError $ LocalDefType  (tkProv n)
+    declToLet (B.DeclNetw n _n _t)  = throwError $ InvalidLocalDecl "network" (tkProv n)
+    declToLet (B.DeclData n _n _t)  = throwError $ InvalidLocalDecl "dataset" (tkProv n)
+    declToLet (B.DefType  n _ns _t) = throwError $ InvalidLocalDecl "type"    (tkProv n)
     declToLet d                     = return d
 
 -- |Takes a list of declarations, and groups type and expression
---  declarations for the same name. If any name does not have exactly one
---  type and one expression declaration, an error is returned.
-groupDecls :: MonadParse m => Provenance -> [B.Decl] -> m (NonEmpty PDecl)
-groupDecls p  []       = throwError $ EmptyList p
-groupDecls _p (d : ds) = traverse conv (NonEmpty.groupBy1 cond (d :| ds))
+--  declarations by their name.
+groupDecls :: MonadParse m => Maybe Symbol -> Provenance -> [B.Decl] -> m (NonEmpty V.InputDecl)
+groupDecls s   p []       = throwError $ MissingDeclarations s p
+groupDecls _s _p (d : ds) = traverse conv (NonEmpty.groupBy1 cond (d :| ds))
   where
     cond :: B.Decl -> B.Decl -> Bool
     cond d1 d2 = isDefFun d1 && isDefFun d2 && tkSymbol (declName d1) == tkSymbol (declName d2)
@@ -293,8 +309,8 @@ groupDecls _p (d : ds) = traverse conv (NonEmpty.groupBy1 cond (d :| ds))
 -- |Check if a declaration is a network declaration.
 isDefFun :: B.Decl -> Bool
 isDefFun (B.DefFunType _name _args _exp) = True
-isDefFun (B.DefFunExpr _ann _name _typ)       = True
-isDefFun _                                    = False
+isDefFun (B.DefFunExpr _ann _name _typ)  = True
+isDefFun _                               = False
 
 -- |Get the name for any declaration.
 declName :: B.Decl -> Name
@@ -310,5 +326,5 @@ declName (DefFunExpr n _ _) = n
 -- (see https://github.com/BNFC/bnfc/issues/371)
 traverseNonEmpty :: (MonadParse m , Convert a b, IsToken t1, IsToken t2)
                  => t1 -> t2 -> [a] -> m (NonEmpty b)
-traverseNonEmpty tk1 tk2 []       = throwError $ EmptyList (tkProv tk1 <> tkProv tk2)
+traverseNonEmpty tk1 tk2 []       = throwError $ MissingVariables (tkSymbol tk1) (tkProv tk1 <> tkProv tk2)
 traverseNonEmpty _   _   (x : xs) = traverse conv (x :| xs)
