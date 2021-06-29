@@ -365,6 +365,7 @@ compileNumOrder Lt  Real Prop = annotateInfixOp2 [DataRat]             4 id     
 compileNumOrder Geq Real Prop = annotateInfixOp2 [DataRat]             4 id         "ℚ.≥"
 compileNumOrder Gt  Real Prop = annotateInfixOp2 [DataRat]             4 id         "ℚ.>"
 
+-- TODO implement this via proof by reflection
 compileLookup :: MonadAgdaCompile m => TAnn 'EXPR -> TExpr -> TExpr -> m Code
 compileLookup ann cont (ELitInt indexAnn index) = do
   cType <- containerType ann

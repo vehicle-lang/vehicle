@@ -88,14 +88,15 @@ data ParseError
   | EmptyList         Provenance
   | BNFCParseError    String
 
+-- TODO change to pretty printing
 instance Show ParseError where
   show = \case
     MissingDefFunType name p -> "No definition provided for function " <> unpack name  <> " (" <> show p <> ")"
     MissingDefFunExpr name p -> "No type provided for function "       <> unpack name  <> " (" <> show p <> ")"
     DuplicateName     name p -> "Duplicate definitions found for "     <> unpack name  <> " (" <> show p <> ")"
-    LocalDeclNetw     p      -> "Network declerations are not allowed in let bindings" <> " (" <> show p <> ")"
-    LocalDeclData     p      -> "Dataset declerations are not allowed in let bindings" <> " (" <> show p <> ")"
-    LocalDefType      p      -> "Type declerations are not allowed in let bindings"    <> " (" <> show p <> ")"
+    LocalDeclNetw     p      -> "Network declarations are not allowed in let bindings" <> " (" <> show p <> ")"
+    LocalDeclData     p      -> "Dataset declarations are not allowed in let bindings" <> " (" <> show p <> ")"
+    LocalDefType      p      -> "Type declarations are not allowed in let bindings"    <> " (" <> show p <> ")"
     EmptyList         p      -> "Must have a non-empty list of tokens"                 <> " (" <> show p <> ")"
     BNFCParseError    text   -> text
 

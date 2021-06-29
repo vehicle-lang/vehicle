@@ -7,15 +7,14 @@ module Vehicle.Core.Compile
 
 import           Control.Monad.Except (Except, withExcept)
 import           Vehicle.Core.AST
-import           Vehicle.Core.Compile.Scope (checkScope, ScopeError(..))
+import           Vehicle.Core.Compile.Scope (symbolToDeBruijn, ScopeError(..))
 import           Vehicle.Prelude
 
 newtype CompileError
   = ScopeError ScopeError
-  deriving Show
 
 compile ::
   (KnownSort sort) =>
   Tree (K Symbol) (K Provenance) sort ->
   Except CompileError (ATree (K Provenance) sort)
-compile tree0 = withExcept ScopeError (checkScope tree0)
+compile tree0 = withExcept ScopeError (symbolToDeBruijn tree0)

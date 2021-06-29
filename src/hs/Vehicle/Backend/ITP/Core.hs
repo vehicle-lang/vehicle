@@ -11,7 +11,6 @@ module Vehicle.Backend.ITP.Core where
 import Data.Text as Text (Text, intercalate, pack)
 import Data.Map (Map)
 import Data.List.NonEmpty (NonEmpty)
-import qualified Data.List.NonEmpty as NonEmpty (map)
 import Data.Version (Version)
 
 import Prettyprinter as Pretty
@@ -31,17 +30,18 @@ import Vehicle.Prelude (K(..), Sort(..), Provenance, (:*:)(..), Symbol)
 --------------------------------------------------------------------------------
 -- Options
 
--- | Options
-data ITPOptions o = ITPOptions
+-- |The options that are specificable by the user when compiling to an ITP
+-- backend
+data ITPOptions backendOpts = ITPOptions
   { vehicleUIDs     :: Map Text Text
   , aisecVersion    :: Version
   , filepath        :: Text
-  , backendOptions  :: o
+  , backendOptions  :: backendOpts
   }
 
 -- |Generate the file header given the token used to start comments in the
 -- target language
-fileHeader :: ITPOptions o -> Text -> Text
+fileHeader :: ITPOptions backendOpts -> Text -> Text
 fileHeader options commentToken = intercalate ("\n" <> commentToken <> " ")
   [ "This file was generated automatically by the AISEC tool"
   , "and should not be modified manually!"

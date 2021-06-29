@@ -18,6 +18,7 @@ module Vehicle.Core.AST.DeBruijn
   , toIndex
   , fromSymbol
   , toSymbol
+  , toName
   , BindingDepth(..)
   , incrTypeDepth
   , incrExprDepth
@@ -69,6 +70,10 @@ toSymbol :: forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) => DeBruijn 
 toSymbol (TSymbol (User symbol)) = Just symbol
 toSymbol (ESymbol (User symbol)) = Just symbol
 toSymbol _                       = Nothing
+
+toName :: forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) => DeBruijn sort -> Name
+toName (TSymbol name) = name
+toName (ESymbol name) = name
 
 deriving instance Eq (DeBruijn sort)
 
