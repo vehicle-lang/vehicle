@@ -37,43 +37,42 @@ type AbsDeclF ann sorted = AbsTreeF ann 'DECL sorted
 type AbsProgF ann sorted = AbsTreeF ann 'PROG sorted
 
 -- |Type information, based on sort.
-newtype Info (sort :: Sort) = Info { unInfo :: INFO sort }
+newtype Info (name :: Sort -> *) (sort :: Sort) = Info { unInfo :: INFO name sort }
 
 -- |Computes type information based on sort; kinds for types, types for expressions.
-type family INFO (sort :: Sort) where
-  INFO 'KIND = ()
-  INFO 'TYPE = AbsKind (Info :*: K Provenance)
-  INFO 'TARG = AbsKind (Info :*: K Provenance)
-  INFO 'EXPR = AbsType (Info :*: K Provenance)
-  INFO 'EARG = AbsType (Info :*: K Provenance)
-  INFO 'DECL = ()
-  INFO 'PROG = ()
+type family INFO (name :: Sort -> *) (sort :: Sort) where
+  INFO name 'KIND = ()
+  INFO name 'TYPE = Kind name (Info name :*: K Provenance)
+  INFO name 'TARG = Kind name (Info name :*: K Provenance)
+  INFO name 'EXPR = Type name (Info name :*: K Provenance)
+  INFO name 'EARG = Type name (Info name :*: K Provenance)
+  INFO name 'DECL = ()
+  INFO name 'PROG = ()
 
-instance KnownSort sort => Eq (Info sort) where
-  Info info1 == Info info2 =
-    case sortSing @sort of
-      SKIND -> info1 == info2
-      STYPE -> info1 == info2
-      STARG -> info1 == info2
-      SEXPR -> info1 == info2
-      SEARG -> info1 == info2
-      SDECL -> info1 == info2
-      SPROG -> info1 == info2
+instance KnownSort sort => Eq (Info name sort) where
+  x == y = case sortSing @sort of
+    SKIND -> x == y
+    STYPE -> x == y
+    STARG -> x == y
+    SEXPR -> x == y
+    SEARG -> x == y
+    SDECL -> x == y
+    SPROG -> x == y
 
-instance Semigroup (Info 'KIND) where
+instance Semigroup (Info name 'KIND) where
   Info () <> Info () = Info ()
 
-instance Monoid (Info 'KIND) where
+instance Monoid (Info name 'KIND) where
   mempty = Info ()
 
-instance Semigroup (Info 'DECL) where
+instance Semigroup (Info name 'DECL) where
   Info () <> Info () = Info ()
 
-instance Monoid (Info 'DECL) where
+instance Monoid (Info name 'DECL) where
   mempty = Info ()
 
-instance Semigroup (Info 'PROG) where
+instance Semigroup (Info name 'PROG) where
   Info () <> Info () = Info ()
 
-instance Monoid (Info 'PROG) where
+instance Monoid (Info name 'PROG) where
   mempty = Info ()

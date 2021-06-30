@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
@@ -19,14 +20,18 @@ import Vehicle.Core.Parse qualified as VC
 import Vehicle.Core.Print qualified as VC
 import Vehicle.Core.Compile qualified as VC
 import Vehicle.Frontend.AST qualified as VF
+import Vehicle.Frontend.Print qualified as VF
 import Vehicle.Frontend.Elaborate qualified as VF
+import Vehicle.Frontend.Delaborate qualified as VF
 import Vehicle.Frontend.Parse qualified as VF
+import Vehicle.Backend.ITP.Core (ITPOptions(..))
+import Vehicle.Backend.ITP.Agda (AgdaOptions(..), compileToAgda)
 import Vehicle.Error qualified as V
 
 --------------------------------------------------------------------------------
 -- Command flow
 
-data InputLang = Frontend | Core
+data VehicleLang = Frontend | Core
 
 data ITP = Agda
 
@@ -35,6 +40,7 @@ data Solver
 data OutputTarget
   = ITP ITP
   | Solver Solver
+  | Vehicle VehicleLang
 
 --------------------------------------------------------------------------------
 -- Command-line options
@@ -42,9 +48,10 @@ data OutputTarget
 data Options = Options
   { showHelp     :: Bool
   , showVersion  :: Bool
+  , inputLang    :: VehicleLang
   , inputFile    :: Maybe FilePath
-  , inputLang    :: InputLang
   , outputTarget :: Maybe OutputTarget
+  , outputFile   :: Maybe FilePath
   }
 
 defaultOptions :: Options
@@ -54,6 +61,7 @@ defaultOptions = Options
   , inputFile    = Nothing
   , inputLang    = Frontend
   , outputTarget = Nothing
+  , outputFile   = Nothing
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -77,6 +85,10 @@ options =
   , Option ['t'] ["target"]
     (ReqArg (\arg opts -> opts { outputTarget = parseOutputTarget arg}) "OutputTarget")
     "Compilation target."
+
+  , Option ['o'] ["output-file"]
+    (ReqArg (\arg opts -> opts { outputTarget = parseOutputTarget arg}) "FILE")
+    "Output file."
   ]
 
 usageHeader :: String
@@ -92,7 +104,9 @@ parseOutputTarget :: String -> Maybe OutputTarget
 parseOutputTarget s = outputTargets !? map toLower s
   where
     outputTargets =
-      [ "agda" |-> ITP Agda
+      [ "agda"         |-> ITP Agda
+      , "vehicle-core" |-> Vehicle Core
+      , "vehicle"      |-> Vehicle Frontend
       ]
 
 --------------------------------------------------------------------------------
@@ -125,12 +139,35 @@ main = do
       putStrLn "Please specify an output target with -t or --target"
       exitFailure
 
-    Just (ITP itp) -> putStrLn (VC.printTree compCoreProg)
-      -- Delaborate back to front end
+    Just (ITP itp) -> do
+      compFrontProg <- fromEitherIO $ VF.runDelab compCoreProg
 
-    Just (Solver v) -> putStrLn (VC.printTree compCoreProg)
+      outputText <- case itp of
+        Agda -> do
+          let itpOptions = ITPOptions
+                { vehicleUIDs  = mempty
+                , aisecVersion = version
+                , backendOpts  = AgdaOptions
+                  { useProp    = False
+                  , modulePath = ["Testing"]
+                  }
+                }
+          fromEitherIO $ compileToAgda itpOptions compFrontProg
 
-parseAndElab :: InputLang -> Text -> IO VC.InputProg
+      case outputFile of
+        Nothing             -> T.putStrLn (VC.printTree compCoreProg)
+        Just outputFilePath -> T.writeFile outputFilePath outputText
+
+    Just (Solver v) -> do
+      putStrLn "No solvers implemented yet"
+      exitFailure
+
+    Just (Vehicle Core) -> T.putStrLn (VC.printTree compCoreProg)
+    Just (Vehicle Frontend) -> do
+      compFrontProg <- fromEitherIO $ VF.runDelab compCoreProg
+      T.putStrLn (VF.printTree compFrontProg)
+
+parseAndElab :: VehicleLang -> Text -> IO VC.InputProg
 parseAndElab Frontend contents = do
   progVF <- fromEitherIO (VF.parseText contents)
   fromEitherIO (VF.runElab (VF.elab progVF))
@@ -143,7 +180,7 @@ compile prog = do
 
 fromEitherIO :: V.MeaningfulError e => Either e a -> IO a
 fromEitherIO (Left err) = do print (V.details err); exitFailure
-fromEitherIO (Right x) = return x
+fromEitherIO (Right x)  = return x
 
 readFileOrStdin :: Maybe FilePath -> IO Text
 readFileOrStdin (Just file) = T.readFile file

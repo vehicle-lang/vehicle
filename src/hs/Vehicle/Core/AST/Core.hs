@@ -18,8 +18,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Prelude
 import Vehicle.Core.AST.Builtin
 
--- * Meta-variables
-
+-- |Meta-variables
 type Meta = Integer
 
 -- * Abstract syntax tree for Vehicle Core

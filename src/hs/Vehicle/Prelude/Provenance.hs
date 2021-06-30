@@ -13,7 +13,8 @@ import Data.Range qualified as Range
 import Prettyprinter
 
 import Vehicle.Prelude.Token ( tkRange, IsToken, Position, Token(..) )
-import Vehicle.Prelude.Types ( K(K) )
+import Vehicle.Prelude.Types ( K(K), (:*:)(..) )
+import Vehicle.Prelude.Sort (KnownSort)
 
 -- | A set of locations in the source file
 newtype Provenance = Provenance { fromProvenance :: [Range Position] }

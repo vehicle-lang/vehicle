@@ -147,7 +147,6 @@ class Convert vf vc where
   conv :: MonadParse m => vf -> m vc
 
 instance Convert B.Kind V.InputKind where
-  conv (B.KApp k1 k2)    = op2 V.KApp     mempty (conv k1) (conv k2)
   conv (B.KFun k1 tk k2) = op2 V.KFun     (tkProv tk) (conv k1) (conv k2)
   conv (B.KType tk)      = op0 V.KType    (tkProv tk)
   conv (B.KDim tk)       = op0 V.KDim     (tkProv tk)
@@ -155,7 +154,6 @@ instance Convert B.Kind V.InputKind where
 
 instance Convert B.Type V.InputType where
   conv (B.TForall tk1 ns tk2 t)   = op2 V.TForall (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv t)
-  conv (B.TApp t1 t2)             = op2 V.TApp mempty (conv t1) (conv t2)
   conv (B.TVar n)                 = return $ V.TVar (K (tkProv n)) (tkSymbol n)
   conv (B.TFun t1 tk t2)          = op2 V.TFun (tkProv tk) (conv t1) (conv t2)
   conv (B.TBool tk)               = op0 V.TBool (tkProv tk)
@@ -208,6 +206,10 @@ instance Convert B.Expr V.InputExpr where
 
 instance Convert Name V.InputEArg where
   conv n = return $ V.EArg (K (tkProv n)) (tkSymbol n)
+
+instance Convert B.Arg (Either V.InputTArg V.InputEArg) where
+  conv (B.TArg n) = return $ Left  (V.TArg (K $ tkProv n) (tkSymbol n))
+  conv (B.EArg n) = return $ Right (V.EArg (K $ tkProv n) (tkSymbol n))
 
 -- |Elaborate declarations.
 instance Convert (NonEmpty B.Decl) V.InputDecl where

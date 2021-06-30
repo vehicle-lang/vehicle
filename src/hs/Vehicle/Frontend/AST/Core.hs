@@ -16,7 +16,6 @@ module Vehicle.Frontend.AST.Core
   ) where
 
 import Data.List.NonEmpty (NonEmpty)
-import Prelude (Double, Integer)
 
 import Vehicle.Prelude
 
@@ -28,11 +27,8 @@ data family Tree (ann :: Sort -> *) (sort :: Sort)
 -- | Type of Vehicle Frontend sorts.
 type Kind ann = Tree ann 'KIND
 
-infixl 4 `KApp`
-
 data instance Tree (ann :: Sort -> *) 'KIND
-    = KApp     (ann 'KIND) (Kind ann) (Kind ann)
-    | KFun     (ann 'KIND) (Kind ann) (Kind ann)
+    = KFun     (ann 'KIND) (Kind ann) (Kind ann)
     | KType    (ann 'KIND)
     | KDim     (ann 'KIND)
     | KDimList (ann 'KIND)
@@ -41,11 +37,8 @@ data instance Tree (ann :: Sort -> *) 'KIND
 -- | Type of Vehicle Frontend types.
 type Type ann = Tree ann 'TYPE
 
-infixl 4 `TApp`
-
 data instance Tree (ann :: Sort -> *) 'TYPE
     = TForall     (ann 'TYPE) (NonEmpty (TArg ann)) (Type ann)
-    | TApp        (ann 'TYPE) (Type ann) (Type ann)
     | TVar        (ann 'TYPE) Symbol
     | TFun        (ann 'TYPE) (Type ann) (Type ann)
     | TBool       (ann 'TYPE)
@@ -121,7 +114,7 @@ data instance Tree (ann :: Sort -> *) 'DECL
   = DeclNetw   (ann 'DECL) (EArg ann) (Type ann)
   | DeclData   (ann 'DECL) (EArg ann) (Type ann)
   | DefType    (ann 'DECL) (TArg ann) [TArg ann] (Type ann)
-  | DefFun     (ann 'DECL) (EArg ann) (Type ann) [EArg ann] (Expr ann)
+  | DefFun     (ann 'DECL) (EArg ann) (Type ann) [Either (TArg ann) (EArg ann)] (Expr ann)
 
 type Prog ann = Tree ann 'PROG
 

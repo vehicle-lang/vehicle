@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -9,8 +10,10 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Vehicle.Frontend.AST.Utils where
 
+import Data.List.NonEmpty(NonEmpty(..))
+
 import Vehicle.Prelude
-import Vehicle.Frontend.AST.Core (Tree(..))
+import Vehicle.Frontend.AST.Core (Tree(..), EArg, Expr, Type)
 import Vehicle.Frontend.AST.Info (Info)
 
 -- |Extract the top-level annotation from a tree
@@ -21,7 +24,6 @@ annotation :: forall sort ann.
 annotation = case sortSing :: SSort sort of
   -- Kinds
   SKIND -> \case
-    KApp     ann _k1 _k2 -> ann
     KFun     ann _k1 _k2 -> ann
     KType    ann         -> ann
     KDim     ann         -> ann
@@ -30,7 +32,6 @@ annotation = case sortSing :: SSort sort of
   -- Types
   STYPE -> \case
     TForall     ann _ns _t  -> ann
-    TApp        ann _t1 _t2 -> ann
     TVar        ann _n      -> ann
     TFun        ann _t1 _t2 -> ann
     TBool       ann         -> ann
@@ -134,3 +135,6 @@ instance KnownSort sort => HasProvenance (OutputAnn sort) where
 
 instance KnownSort sort => HasProvenance (OutputTree sort) where
   prov = prov . annotation
+
+pattern ELet1 :: ann 'EXPR -> ann 'DECL -> EArg ann -> Type ann -> Expr ann -> Expr ann -> Expr ann
+pattern ELet1 ann1 ann2 n t e1 e2 = ELet ann1 (DefFun ann2 n t [] e1 :| []) e2

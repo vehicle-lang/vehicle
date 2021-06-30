@@ -21,7 +21,7 @@ module Vehicle.Core.Compile.Scope
 import Control.Monad.Except
 import Control.Monad.Supply (Supply, SupplyT, demand)
 import Control.Monad.Identity (Identity, runIdentity)
-import Data.Sequence (Seq, (!?))
+import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Prettyprinter (pretty, (<+>))
 
@@ -95,14 +95,14 @@ getIndex ann (K n :: K name sort) = do
 -- |Find the name for a given index of a given sort.
 getName ::
   (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
-  (Info :*: K Provenance) sort ->
+  Provenance ->
   DeBruijn sort ->
   DataflowT sort (Ctx Name) (Except ScopeError) (K Name sort)
-getName ann (db :: DeBruijn sort) = do
+getName p (db :: DeBruijn sort) = do
   subctx <- getSubCtxFor @sort <$> askData
   let index = toIndex db
   let maybeSymbol = subctx Seq.!? index
-  let symbolOrError = maybe (indexOutOfBounds index (length subctx) (prov ann)) return maybeSymbol
+  let symbolOrError = maybe (indexOutOfBounds index (length subctx) p) return maybeSymbol
   K <$> symbolOrError
 
 -- * Scope checking.
@@ -215,16 +215,16 @@ symbolToDeBruijnF = case sortSing @sort of
 deBruijnToName ::
   forall sort.
   (KnownSort sort) =>
-  Tree DeBruijn (Info :*: K Provenance) sort ->
-  Except ScopeError (Tree (K Name) (Info :*: K Provenance) sort)
+  Tree DeBruijn (Info (K Symbol) :*: K Provenance) sort ->
+  Except ScopeError (Tree (K Name) (Info (K Symbol) :*: K Provenance) sort)
 deBruijnToName = evalDataflowT mempty . unSDF . foldTree (SDF . deBruijnToNameF)
 
 -- |Check if a single layer is well-scoped in the appropriate data-flow context.
 deBruijnToNameF ::
   forall sort.
   (KnownSort sort) =>
-  TreeF DeBruijn (Info :*: K Provenance) sort (SortedDataflowT (Ctx Name) (Except ScopeError) (Tree (K Name) (Info :*: K Provenance))) ->
-  DataflowT sort (Ctx Name) (Except ScopeError) (Tree (K Name) (Info :*: K Provenance) sort)
+  TreeF DeBruijn (Info (K Symbol) :*: K Provenance) sort (SortedDataflowT (Ctx Name) (Except ScopeError) (Tree (K Name) (Info (K Symbol) :*: K Provenance))) ->
+  DataflowT sort (Ctx Name) (Except ScopeError) (Tree (K Name) (Info (K Symbol) :*: K Provenance) sort)
 
 deBruijnToNameF = case sortSing @sort of
 
@@ -248,7 +248,7 @@ deBruijnToNameF = case sortSing @sort of
   STYPE -> \case
     TForallF     ann n t   -> sbindLocal n $ \n' -> TForall ann n' <$> sflow t
     TAppF        ann t1 t2 -> TApp ann <$> sflow t1 <*> sflow t2
-    TVarF        ann n     -> TVar ann <$> getName ann n
+    TVarF        ann n     -> TVar ann <$> getName (prov ann) n
     TConF        ann op    -> return $ TCon ann op
     TLitDimF     ann d     -> return $ TLitDim ann d
     TLitDimListF ann ts    -> TLitDimList ann <$> traverse sflow ts
@@ -274,7 +274,7 @@ deBruijnToNameF = case sortSing @sort of
     ELetF     ann n e1 e2 -> sbindLocal n $ \n' -> ELet ann n' <$> sflow e1 <*> sflow e2
     ELamF     ann n e     -> sbindLocal n $ \n' -> ELam ann n' <$> sflow e
     EAppF     ann e1 e2   -> EApp ann <$> sflow e1 <*> sflow e2
-    EVarF     ann n       -> EVar ann <$> getName ann n
+    EVarF     ann n       -> EVar ann <$> getName (prov ann) n
     ETyAppF   ann e t     -> ETyApp ann <$> sflow e <*> sflow t
     ETyLamF   ann n e     -> sbindLocal n $ \n' -> ETyLam ann n' <$> sflow e
     EConF     ann op      -> return $ ECon ann op
@@ -324,13 +324,35 @@ nameToSymbol = traverseTreeName (go . unK >=> return . K)
     go (User symbol) = return symbol
     go Machine       = demand
 
+
 -- | Converts deBruijn indices back into symbols with an machine
 -- (i.e. automatically generated) names provided by the supply monad.
 deBruijnToSymbol ::
   forall sort.
   (KnownSort sort) =>
-  Tree DeBruijn (Info :*: K Provenance) sort ->
-  ExceptT ScopeError (SupplyT Symbol Identity) (Tree (K Symbol) (Info :*: K Provenance) sort)
-deBruijnToSymbol t = do
-  ct <- mapExceptT (return . runIdentity) (deBruijnToName t)
-  lift (nameToSymbol ct)
+  Tree DeBruijn (Info DeBruijn :*: K Provenance) sort ->
+  ExceptT ScopeError (SupplyT Symbol Identity) (Tree (K Symbol) (Info (K Symbol) :*: K Provenance) sort)
+deBruijnToSymbol t = traverseTreeAnn convertAnn t >>= convertLayer
+  where
+    convertLayer ::
+      forall sort1.
+      (KnownSort sort1) =>
+      Tree DeBruijn (Info (K Symbol) :*: K Provenance) sort1 ->
+      ExceptT ScopeError (SupplyT Symbol Identity) (Tree (K Symbol) (Info (K Symbol) :*: K Provenance) sort1)
+    convertLayer t = do
+      ct <- mapExceptT (return . runIdentity) (deBruijnToName t)
+      lift (nameToSymbol ct)
+
+    convertAnn ::
+      forall sort2.
+      KnownSort sort2 =>
+      (Info DeBruijn :*: K Provenance) sort2 ->
+      ExceptT ScopeError (SupplyT Symbol Identity) ((Info (K Symbol) :*: K Provenance) sort2)
+    convertAnn (Info v :*: p) = case sortSing @sort2 of
+      SKIND -> return $ Info v :*: p
+      STYPE -> do v <- deBruijnToSymbol v; return $ Info v :*: p
+      STARG -> do v <- deBruijnToSymbol v; return $ Info v :*: p
+      SEXPR -> do v <- deBruijnToSymbol v; return $ Info v :*: p
+      SEARG -> do v <- deBruijnToSymbol v; return $ Info v :*: p
+      SDECL -> return $ Info v :*: p
+      SPROG -> return $ Info v :*: p

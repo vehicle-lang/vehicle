@@ -57,9 +57,6 @@ separator Name "";
 
 -- * Kinds
 
--- Core structure.
-KApp.     Kind  ::= Kind Kind1;
-
 -- Primitive kinds.
 KFun.     Kind  ::= Kind1 TokArrow Kind;
 KType.    Kind1 ::= TokType;
@@ -73,7 +70,6 @@ coercions Kind 1;
 
 -- Core structure.
 TForall.  Type  ::= TokForall [Name] TokDot Type;
-TApp.     Type3 ::= Type3 Type4;
 TVar.     Type5 ::= Name;
 
 -- Primitive types.
@@ -98,6 +94,14 @@ coercions Type 5;
 separator Type ",";
 
 
+-- * Top-level function arguments
+
+TArg. Arg ::= "{" Name "}";
+EArg. Arg ::= Name;
+
+separator Arg "";
+
+
 -- * Expressions
 
 -- NOTE:
@@ -119,8 +123,9 @@ ELet.       Expr1  ::= "let" "{" [Decl] "}" "in" Expr1;
 ELam.       Expr2  ::= TokLambda [Name] TokArrow Expr2;
 EApp.       Expr11 ::= Expr11 Expr12;
 EVar.       Expr12 ::= Name;
-ETyApp.     Expr   ::= Expr "{" Type "}";
-ETyLam.     Expr   ::= TokLambda "{" [Name] "}" TokArrow Expr;
+ETyApp.     Expr11 ::= Expr11 "{" Type "}";
+ETyLam.     Expr2  ::= TokLambda "{" [Name] "}" TokArrow Expr2;
+-- TODO merge eLam and eTyLam using Arg
 
 -- Conditional expressions.
 EIf.        Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;
@@ -162,9 +167,9 @@ separator Expr ",";
 
 DeclNetw.   Decl ::= "network" Name TokElemOf Type;
 DeclData.   Decl ::= "dataset" Name TokElemOf Type;
-DefType.    Decl ::= Name [Name] "=" Type;
+DefType.    Decl ::= "type"    Name [Name] "=" Type;
 DefFunType. Decl ::= Name TokElemOf Type;
-DefFunExpr. Decl ::= Name [Name] "=" Expr;
+DefFunExpr. Decl ::= Name [Arg] "=" Expr;
 
 separator Decl ";";
 

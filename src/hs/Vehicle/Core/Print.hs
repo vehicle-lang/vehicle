@@ -18,7 +18,7 @@
 module Vehicle.Core.Print where
 
 import Data.Maybe (fromMaybe)
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 
 import Prettyprinter (Pretty(..), Doc, layoutPretty, parens, brackets, (<+>), line, defaultLayoutOptions)
@@ -27,8 +27,8 @@ import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Core.AST
 import Vehicle.Prelude
 
-printTree :: Pretty a => a -> String
-printTree a = unpack $ renderStrict $ layoutPretty defaultLayoutOptions $ pretty a
+printTree :: Pretty a => a -> Text
+printTree a = renderStrict $ layoutPretty defaultLayoutOptions $ pretty a
 
 instance Pretty (K Symbol 'TARG) where
   pretty = pretty . unK
@@ -128,8 +128,8 @@ instance ( Pretty (name 'TYPE)
   pretty (Main _ann ds) = vsep (map pretty (NonEmpty.toList ds))
 
 
-prettyInfo :: KnownSort sort => Info sort -> Doc a
-prettyInfo (Info t :: Info sort) = case sortSing @sort of
+prettyInfo :: (KnownSort sort, Pretty (name 'TARG), Pretty (name 'TYPE)) => Info name sort -> Doc a
+prettyInfo (Info t :: Info name sort) = case sortSing @sort of
   SKIND -> pretty t
   STYPE -> pretty t
   STARG -> pretty t

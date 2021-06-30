@@ -92,7 +92,7 @@ instance KnownSort sort => HasProvenance (InputTree sort) where
   prov = prov . annotation
 
 -- | Type of annotations attached to the Core AST that are output by the compiler
-type OutputAnn = Info :*: K Provenance :: Sort -> *
+type OutputAnn = Info (K Symbol) :*: K Provenance :: Sort -> *
 
 type OutputTree sort = Tree (K Symbol) OutputAnn sort
 

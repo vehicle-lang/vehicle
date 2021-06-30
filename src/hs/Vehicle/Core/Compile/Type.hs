@@ -54,8 +54,8 @@ data TypeError
   | forall sort. KnownSort sort =>
     Mismatch
       Provenance  -- ^ The location of the mismatch.
-      [Info sort] -- ^ The possible inferred types.
-      (Info sort) -- ^ The expected type.
+      [Info DeBruijn sort] -- ^ The possible inferred types.
+      (Info DeBruijn sort) -- ^ The expected type.
   | MissingAnnotation
       Provenance  -- ^ The location of the missing annotation.
   | UnsupportedOperation
@@ -89,7 +89,7 @@ instance MeaningfulError TypeError where
 -- * Type and kind contexts
 
 -- |Type context.
-data Ctx = Ctx { typeInfo :: Seq (Info 'TYPE), exprInfo :: Seq (Info 'EXPR) }
+data Ctx = Ctx { typeInfo :: Seq (Info DeBruijn 'TYPE), exprInfo :: Seq (Info DeBruijn 'EXPR) }
 
 instance Semigroup Ctx where
   Ctx ti1 ei1 <> Ctx ti2 ei2 = Ctx (ti1 <> ti2) (ei1 <> ei2)
@@ -98,19 +98,19 @@ instance Monoid Ctx where
   mempty = Ctx mempty mempty
 
 -- |Create a context with a single piece of information of the given sort.
-singletonCtx :: (sort `In` ['TYPE, 'EXPR]) => SSort sort -> Info sort -> Ctx
+singletonCtx :: (sort `In` ['TYPE, 'EXPR]) => SSort sort -> Info DeBruijn sort -> Ctx
 singletonCtx STYPE info = Ctx (Seq.singleton info) Seq.empty
 singletonCtx SEXPR info = Ctx Seq.empty (Seq.singleton info)
 
 -- |Get the sub-context for a given sort.
-getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq (Info sort)
+getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq (Info DeBruijn sort)
 getSubCtxFor = case sortSing @sort of STYPE -> typeInfo; SEXPR -> exprInfo
 
 
 -- * Bidirectional type checking and inference algorithm
 
 -- |The type of trees output by the type checking algorithm.
-type CheckedTree (sort :: Sort) = Tree DeBruijn (Info :*: K Provenance) sort
+type CheckedTree (sort :: Sort) = Tree DeBruijn (Info DeBruijn :*: K Provenance) sort
 
 -- |The type checking monad stack shared between checking and inference. It provides:
 --
@@ -122,7 +122,7 @@ type TCM (sort :: Sort) = DataflowT sort Ctx (SupplyT Meta (Except TypeError))
 
 -- |The checking monad, which augments the monad stack with a reader monad, which provides
 --  the type to check against.
-type Check (sort :: Sort) (a :: *) = ReaderT (Info sort) (TCM sort) a
+type Check (sort :: Sort) (a :: *) = ReaderT (Info DeBruijn sort) (TCM sort) a
 
 -- |The inference pseudo-monad, which is exactly the type checking monad, but requires that
 --  the return type is a pair of the return value and the inferred information.
@@ -132,7 +132,7 @@ type Check (sort :: Sort) (a :: *) = ReaderT (Info sort) (TCM sort) a
 --  sensible monoid instance for |Info sort|, and we want to change the manner of combining
 --  these bits of information for each inference steep.
 --
-type Infer (sort :: Sort) (a :: *) = TCM sort (a, Info sort)
+type Infer (sort :: Sort) (a :: *) = TCM sort (a, Info DeBruijn sort)
 
 -- |Type which wraps a pair of a checking and an inference monad such that they can be used
 --  in a sorted position, e.g., as the recursive position in |foldTree|.
@@ -142,17 +142,17 @@ newtype SortedCheckInfer (sort :: Sort)
 -- |Find the type information for a given deBruijn index of a given sort.
 getInfo ::
   forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
-  K Provenance sort -> DeBruijn sort -> TCM sort (Info sort)
+  K Provenance sort -> DeBruijn sort -> TCM sort (Info DeBruijn sort)
 getInfo p db = do
   subctx <- getSubCtxFor @sort <$> ask
   let ix = toIndex db
   let maybeInfo = subctx Seq.!? ix
   maybe (throwError $ IndexOutOfBounds (unK p) ix) return maybeInfo
 
-freshKMeta :: KnownSort sort => TCM sort (Info 'TYPE)
+freshKMeta :: KnownSort sort => TCM sort (Info DeBruijn 'TYPE)
 freshKMeta = Info . KMeta mempty <$> demand
 
-freshTMeta :: KnownSort sort => TCM sort (Info 'EXPR)
+freshTMeta :: KnownSort sort => TCM sort (Info DeBruijn 'EXPR)
 freshTMeta = do
   x <- demand
   k <- freshKMeta
@@ -253,7 +253,7 @@ checkInferF = case sortSing @sort of
   -- Expressions
   SEXPR -> \case
     EAnnF p e t ->
-      let t' :: TCM 'EXPR (Info 'EXPR)
+      let t' :: TCM 'EXPR (Info DeBruijn 'EXPR)
           t' = do (t, _k) <- flow (runInfer t)
                   return (Info t)
       in fromCheckWithAnn p t' (runCheck e)
@@ -408,7 +408,7 @@ checkInferF = case sortSing @sort of
 -- |Switch from inference mode to checking mode upon finding a type annotation.
 fromCheckWithAnn ::
   forall sort. (KnownSort sort) =>
-  K Provenance sort -> TCM sort (Info sort) -> Check sort (CheckedTree sort) ->
+  K Provenance sort -> TCM sort (Info DeBruijn sort) -> Check sort (CheckedTree sort) ->
   (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
 fromCheckWithAnn p tcmAnnotated chk = fromInfer p inf
   where
@@ -447,7 +447,7 @@ fromCheck p chk = (chk, checkToInfer p chk)
     inferError p = throwError $ MissingAnnotation (unK p)
 
     -- |For sorts with trivial information, checking and inference coincide into a no-op.
-    inferNoop :: forall sort a. (KnownSort sort, Monoid (Info sort)) => Check sort a -> Infer sort a
+    inferNoop :: forall sort a. (KnownSort sort, Monoid (Info DeBruijn sort)) => Check sort a -> Infer sort a
     inferNoop chk = do x <- runReaderT chk mempty; return (x, mempty)
 
 -- |Constructed a bidirectional step from an inference step.
@@ -457,13 +457,13 @@ fromCheck p chk = (chk, checkToInfer p chk)
 --  usual. If they're not, it throws an error.
 --
 fromInfer ::
-  forall sort. (KnownSort sort, Eq (Info sort)) =>
+  forall sort. (KnownSort sort, Eq (Info DeBruijn sort)) =>
   K Provenance sort -> Infer sort (CheckedTree sort) ->
   (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
 fromInfer p inf = (inferToCheck p inf, inf)
   where
     inferToCheck ::
-      forall sort. (KnownSort sort, Eq (Info sort)) =>
+      forall sort. (KnownSort sort, Eq (Info DeBruijn sort)) =>
       K Provenance sort -> Infer sort (CheckedTree sort) -> Check sort (CheckedTree sort)
     inferToCheck p inf = do
       (tree, inferred) <- lift inf
@@ -477,7 +477,7 @@ runCheck :: SortedCheckInfer sort -> Check sort (CheckedTree sort)
 runCheck (SCI (chk, _inf)) = chk
 
 -- |Run and continue in checking mode.
-runCheckWith :: Info sort -> SortedCheckInfer sort -> TCM sort (CheckedTree sort)
+runCheckWith :: Info DeBruijn sort -> SortedCheckInfer sort -> TCM sort (CheckedTree sort)
 runCheckWith info (SCI (chk, _inf)) = runReaderT chk info
 
 -- |Run and continue in inference mode.

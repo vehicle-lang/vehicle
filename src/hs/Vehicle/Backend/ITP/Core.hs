@@ -40,10 +40,9 @@ instance Pretty Backend where
 -- |The options that are specificable by the user when compiling to an ITP
 -- backend
 data ITPOptions backendOpts = ITPOptions
-  { vehicleUIDs     :: Map Text Text
-  , aisecVersion    :: Version
-  , filepath        :: Text
-  , backendOptions  :: backendOpts
+  { vehicleUIDs  :: Map Text Text
+  , aisecVersion :: Version
+  , backendOpts  :: backendOpts
   }
 
 -- |Generate the file header given the token used to start comments in the

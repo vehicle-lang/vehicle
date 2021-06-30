@@ -8,6 +8,7 @@
 
 module Vehicle.Frontend.AST.Recursive.Sorted where
 
+import Data.Bitraversable (Bitraversable(..))
 import Data.Functor.Identity (Identity(..))
 import Data.List.NonEmpty (NonEmpty)
 
@@ -23,8 +24,7 @@ data family TreeF (ann :: Sort -> *) (sort :: Sort) (tree :: Sort -> *)
 type KindF ann tree = TreeF ann 'KIND tree
 
 data instance TreeF ann 'KIND tree
-  = KAppF     (ann 'KIND) (tree 'KIND) (tree 'KIND)
-  | KFunF     (ann 'KIND) (tree 'KIND) (tree 'KIND)
+  = KFunF     (ann 'KIND) (tree 'KIND) (tree 'KIND)
   | KTypeF    (ann 'KIND)
   | KDimF     (ann 'KIND)
   | KDimListF (ann 'KIND)
@@ -35,7 +35,6 @@ type TypeF ann tree = TreeF ann 'TYPE tree
 
 data instance TreeF ann 'TYPE tree
   = TForallF     (ann 'TYPE) (NonEmpty (tree 'TARG)) (tree 'TYPE)
-  | TAppF        (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
   | TVarF        (ann 'TYPE) Symbol
   | TFunF        (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
   | TBoolF       (ann 'TYPE)
@@ -112,7 +111,7 @@ data instance TreeF ann 'DECL tree
   = DeclNetwF   (ann 'DECL) (tree 'EARG) (tree 'TYPE)
   | DeclDataF   (ann 'DECL) (tree 'EARG) (tree 'TYPE)
   | DefTypeF    (ann 'DECL) (tree 'TARG) [tree 'TARG] (tree 'TYPE)
-  | DefFunF     (ann 'DECL) (tree 'EARG) (tree 'TYPE) [tree 'EARG] (tree 'EXPR)
+  | DefFunF     (ann 'DECL) (tree 'EARG) (tree 'TYPE) [Either (tree 'TARG) (tree 'EARG)] (tree 'EXPR)
 
 
 -- * Base functor for programs
@@ -133,7 +132,6 @@ project = case sortSing :: SSort sort of
 
   -- Kinds
   SKIND -> \case
-    KApp     ann k1 k2 -> KAppF     ann k1 k2
     KFun     ann k1 k2 -> KFunF     ann k1 k2
     KType    ann       -> KTypeF    ann
     KDim     ann       -> KDimF     ann
@@ -142,7 +140,6 @@ project = case sortSing :: SSort sort of
   -- Types
   STYPE -> \case
     TForall     ann ns t  -> TForallF     ann ns t
-    TApp        ann t1 t2 -> TAppF        ann t1 t2
     TVar        ann n     -> TVarF        ann n
     TFun        ann t1 t2 -> TFunF        ann t1 t2
     TBool       ann       -> TBoolF       ann
@@ -220,7 +217,6 @@ embed = case sortSing :: SSort sort of
 
   -- Kinds
   SKIND -> \case
-    KAppF     ann k1 k2 -> KApp     ann k1 k2
     KFunF     ann k1 k2 -> KFun     ann k1 k2
     KTypeF    ann       -> KType    ann
     KDimF     ann       -> KDim     ann
@@ -229,7 +225,6 @@ embed = case sortSing :: SSort sort of
   -- Types
   STYPE -> \case
     TForallF     ann ns t  -> TForall     ann ns t
-    TAppF        ann t1 t2 -> TApp        ann t1 t2
     TVarF        ann n     -> TVar        ann n
     TFunF        ann t1 t2 -> TFun        ann t1 t2
     TBoolF       ann       -> TBool       ann
@@ -300,7 +295,7 @@ embed = case sortSing :: SSort sort of
 -- |Map each element of the layer to an action, evaluate these actions
 -- from left to right, and collect the results.
 traverseTreeF ::
-  (Applicative f) =>
+  forall f ann1 ann2 sorted1 sorted2. (Applicative f) =>
   (forall sort. KnownSort sort => ann1     sort -> f (ann2     sort)) ->
   (forall sort. KnownSort sort => sorted1  sort -> f (sorted2  sort)) ->
   forall sort. KnownSort sort => TreeF ann1 sort sorted1 ->
@@ -309,7 +304,6 @@ traverseTreeF ::
 traverseTreeF fAnn fRec (tree :: TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
  -- Kinds
   SKIND -> case tree of
-    KAppF     ann k1 k2 -> KAppF     <$> fAnn ann <*> fRec k1 <*> fRec k2
     KFunF     ann k1 k2 -> KFunF     <$> fAnn ann <*> fRec k1 <*> fRec k2
     KTypeF    ann       -> KTypeF    <$> fAnn ann
     KDimF     ann       -> KDimF     <$> fAnn ann
@@ -318,7 +312,6 @@ traverseTreeF fAnn fRec (tree :: TreeF ann1 sort sorted1) = case sortSing :: SSo
   -- Types
   STYPE -> case tree of
     TForallF     ann ns t  -> TForallF     <$> fAnn ann <*> traverse fRec ns <*> fRec t
-    TAppF        ann t1 t2 -> TAppF        <$> fAnn ann <*> fRec t1 <*> fRec t2
     TVarF        ann n     -> TVarF        <$> fAnn ann <*> pure n
     TFunF        ann t1 t2 -> TFunF        <$> fAnn ann <*> fRec t1 <*> fRec t2
     TBoolF       ann       -> TBoolF       <$> fAnn ann
@@ -380,7 +373,7 @@ traverseTreeF fAnn fRec (tree :: TreeF ann1 sort sorted1) = case sortSing :: SSo
     DeclNetwF ann n t      -> DeclNetwF <$> fAnn ann <*> fRec n <*> fRec t
     DeclDataF ann n t      -> DeclDataF <$> fAnn ann <*> fRec n <*> fRec t
     DefTypeF  ann n ns t   -> DefTypeF  <$> fAnn ann <*> fRec n <*> traverse fRec ns <*> fRec t
-    DefFunF   ann n t ns e -> DefFunF   <$> fAnn ann <*> fRec n <*> fRec t <*> traverse fRec ns <*> fRec e
+    DefFunF   ann n t ns e -> DefFunF   <$> fAnn ann <*> fRec n <*> fRec t <*> traverse (bitraverse fRec fRec) ns <*> fRec e
 
   -- Programs
   SPROG -> case tree of

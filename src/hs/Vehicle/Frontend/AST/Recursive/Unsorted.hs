@@ -140,7 +140,6 @@ mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
 
   -- Kinds
   SKIND -> case tree of
-    S.KAppF     ann k1 k2 -> KAppF     ann (f k1) (f k2)
     S.KFunF     ann k1 k2 -> KFunF     ann (f k1) (f k2)
     S.KTypeF    ann       -> KTypeF    ann
     S.KDimF     ann       -> KDimF     ann
@@ -149,7 +148,6 @@ mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
   -- Types
   STYPE -> case tree of
     S.TForallF     ann ns t  -> TForallF     ann (NonEmpty.map f ns) (f t)
-    S.TAppF        ann t1 t2 -> TAppF        ann (f t1) (f t2)
     S.TVarF        ann n     -> TVarF        ann n
     S.TFunF        ann t1 t2 -> TFunF        ann (f t1) (f t2)
     S.TBoolF       ann       -> TBoolF       ann
@@ -211,7 +209,7 @@ mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
     S.DeclNetwF ann n t      -> DeclNetwF ann (f n) (f t)
     S.DeclDataF ann n t      -> DeclDataF ann (f n) (f t)
     S.DefTypeF  ann n ns t   -> DefTypeF  ann (f n) (map f ns) (f t)
-    S.DefFunF   ann n t ns e -> DefFunF   ann (f n) (f t) (map f ns) (f e)
+    S.DefFunF   ann n t ns e -> DefFunF   ann (f n) (f t) (map (either f f) ns) (f e)
 
   -- Programs
   SPROG -> case tree of

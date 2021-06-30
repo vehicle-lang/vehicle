@@ -11,7 +11,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 
-module Vehicle.Frontend.Print where
+module Vehicle.Frontend.Print (printTree) where
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -146,5 +146,5 @@ compileF (tree :: TreeF ann sort Code) = case sortSing :: SSort sort of
 instance KnownSort sort => Pretty (Tree ann sort) where
   pretty t = unAnnotate (compile t)
 
-print :: KnownSort sort => Tree ann sort -> Text
-print t = renderStrict $ layoutPretty defaultLayoutOptions (pretty t)
+printTree :: KnownSort sort => Tree ann sort -> Text
+printTree t = renderStrict $ layoutPretty defaultLayoutOptions (pretty t)

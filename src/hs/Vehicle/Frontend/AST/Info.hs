@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 
+{-# LANGUAGE FlexibleInstances #-}
 module Vehicle.Frontend.AST.Info where
 
 import Vehicle.Frontend.AST.Core
@@ -20,3 +21,21 @@ type family INFO (sort :: Sort) where
   INFO 'EARG = Type (Info :*: K Provenance)
   INFO 'DECL = ()
   INFO 'PROG = ()
+
+instance Semigroup (Info 'KIND) where
+  Info () <> Info () = Info ()
+
+instance Monoid (Info 'KIND) where
+  mempty = Info ()
+
+instance Semigroup (Info 'DECL) where
+  Info () <> Info () = Info ()
+
+instance Monoid (Info 'DECL) where
+  mempty = Info ()
+
+instance Semigroup (Info 'PROG) where
+  Info () <> Info () = Info ()
+
+instance Monoid (Info 'PROG) where
+  mempty = Info ()

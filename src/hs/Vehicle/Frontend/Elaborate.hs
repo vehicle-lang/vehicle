@@ -25,6 +25,7 @@ import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Coerce (coerce)
 import Prettyprinter ((<+>))
+import Data.Bitraversable (Bitraversable(..))
 
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
 import Vehicle.Frontend.AST qualified as VF
@@ -97,7 +98,6 @@ class Elab (sort :: Sort) where
 
 -- |Elaborate kinds.
 instance Elab 'KIND where
-  elab (VF.KApp     ann k1 k2) = VC.KApp ann <$> elab k1 <*> elab k2
   elab (VF.KFun     ann k1 k2) = kOp2 VC.KFun ann k1 k2
   elab (VF.KType    ann)       = kCon VC.KType ann
   elab (VF.KDim     ann)       = kCon VC.KDim ann
@@ -107,7 +107,6 @@ instance Elab 'KIND where
 instance Elab 'TYPE where
   -- Core structure.
   elab (VF.TForall ann ns t)   = foldr (VC.TForall ann) <$> elab t <*> traverse elab ns
-  elab (VF.TApp    ann t1 t2)  = VC.TApp ann <$> elab t1 <*> elab t2
   elab (VF.TVar    ann n)      = return $ VC.TVar ann (K n)
 
   -- Primitive types.
@@ -184,7 +183,9 @@ instance Elab 'DECL where
   elab (VF.DefType  ann n ns t)   = VC.DefType  ann <$> elab n <*> traverse elab ns <*> elab t
   elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann <$> elab n <*> elab t <*> expr
     where
-      expr = foldr (VC.ELam (coerce ann)) <$> elab e <*> traverse elab ns
+      expr = foldr argLam <$> elab e <*> traverse (bitraverse elab elab) ns
+      argLam (Right n) = VC.ELam   (coerce ann) n
+      argLam (Left  n) = VC.ETyLam (coerce ann) n
 
 -- |Elaborate programs.
 instance Elab 'PROG where

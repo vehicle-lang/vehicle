@@ -28,14 +28,14 @@ instance MeaningfulError CompileError where
   details (ScopeError e) = details e
   details (TypeError  e) = details e
 
-runScopeChecking :: KnownSort sort =>
-                    Tree (K Symbol) (K Provenance) sort ->
-                    Except ScopeError (Tree DeBruijn (K Provenance) sort)
-runScopeChecking = symbolToDeBruijn
+runSymbolToDeBruijn :: KnownSort sort =>
+                       Tree (K Symbol) (K Provenance) sort ->
+                       Except ScopeError (Tree DeBruijn (K Provenance) sort)
+runSymbolToDeBruijn = symbolToDeBruijn
 
 runTypeChecking :: KnownSort sort =>
                    Tree DeBruijn (K Provenance) sort ->
-                   Except TypeError (Tree DeBruijn (Info :*: K Provenance) sort)
+                   Except TypeError (Tree DeBruijn (Info DeBruijn :*: K Provenance) sort)
 runTypeChecking = discardInferred . supplyMetaVars . propagateCtx . inferAndAnnotate
   where
     inferAndAnnotate = snd . checkInfer
@@ -43,13 +43,13 @@ runTypeChecking = discardInferred . supplyMetaVars . propagateCtx . inferAndAnno
     propagateCtx     = evalDataflowT mempty
     discardInferred  = mapExcept (right fst)
 
-runUnscopeChecking :: KnownSort sort =>
-                      Tree DeBruijn (Info :*: K Provenance) sort ->
-                      Except ScopeError (Tree (K Symbol) (Info :*: K Provenance) sort)
-runUnscopeChecking = mapExceptT assignMachineVariables . deBruijnToSymbol
+runDeBruijnToSymbol :: KnownSort sort =>
+                       Tree DeBruijn (Info DeBruijn :*: K Provenance) sort ->
+                       Except ScopeError (Tree (K Symbol) (Info (K Symbol) :*: K Provenance) sort)
+runDeBruijnToSymbol = mapExceptT assignMachineVariables . deBruijnToSymbol
   where
     -- Machine variables are assigned the names: v1, v2, ...
-    assignMachineVariables :: SupplyT Symbol Identity  (Either ScopeError (Tree (K Symbol) (Info :*: K Provenance) sort))
+    assignMachineVariables :: SupplyT Symbol Identity  (Either ScopeError (Tree (K Symbol) (Info (K Symbol) :*: K Provenance) sort))
                            -> Identity (Either ScopeError (OutputTree sort))
     assignMachineVariables s = runSupplyT (withSupplyT (\i -> "v" <> pack (show i)) s) (+ 1) (0 :: Integer)
 
@@ -58,7 +58,7 @@ compile ::
   InputTree sort ->
   Either CompileError (OutputTree sort)
 compile tree0 = runExcept $ do
-  tree1 <- withExcept ScopeError (runScopeChecking tree0)
+  tree1 <- withExcept ScopeError (runSymbolToDeBruijn tree0)
   tree2 <- withExcept TypeError  (runTypeChecking tree1)
-  tree3 <- withExcept ScopeError (runUnscopeChecking tree2)
+  tree3 <- withExcept ScopeError (runDeBruijnToSymbol tree2)
   return tree3

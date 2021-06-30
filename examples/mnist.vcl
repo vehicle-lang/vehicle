@@ -6,17 +6,20 @@ epsilon = 0.1
 delta : Real
 delta = 0.1
 
+max : Real -> Real -> Real
+max x y = if x >= y then x else y
+
 lInf : forall n. Tensor Real n -> Real
-lInf x = max x
+lInf {n} x = max x
 
 lInfBall : forall n. Tensor Real [n] -> Real -> Tensor Real [n] -> Bool
-lInfBall x e y = lInf (x - y) <= e
+lInfBall {n} x e y = lInf {n} (x - y) <= e
 
 validInput : forall n. Tensor Real [n] -> Bool
-validInput x = all (\xi -> 0 <= xi and xi <= 1) x
+validInput {n} x = all (\xi -> 0 <= xi and xi <= 1) x
 
-robustAround : forall n. Tensor Real [n] -> Bool
-robustAround x = all (\z -> lInfBall (mnist x) delta (mnist z)) (lInfBall x epsilon)
+robustAround : Tensor Real [784] -> Bool
+robustAround x = all (\z -> lInfBall {784} (mnist x) delta (mnist z)) (lInfBall {10} x epsilon)
 
 robustness : Bool
 robustness = all robustAround trainingData
