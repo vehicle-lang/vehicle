@@ -2,11 +2,38 @@
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Vehicle.Core.AST.Utils where
 
-import Vehicle.Prelude.Sort (KnownSort, SSort(..), sortSing)
+import Vehicle.Prelude
 import Vehicle.Core.AST.Core (Tree(..))
+import Vehicle.Core.AST.Recursive (TreeF)
+import Vehicle.Core.AST.Info.Core (Info)
+
+type InputAnn = K Provenance :: Sort -> *
+type InputTree sort = Tree (K Symbol) InputAnn sort
+type InputKind = InputTree 'KIND
+type InputType = InputTree 'TYPE
+type InputTArg = InputTree 'TARG
+type InputExpr = InputTree 'EXPR
+type InputEArg = InputTree 'EARG
+type InputDecl = InputTree 'DECL
+type InputProg = InputTree 'PROG
+type InputTreeF (sort :: Sort) (sorted :: Sort -> *)
+  = TreeF (K Symbol) InputAnn sort sorted
+
+type OutputAnn = Info :*: K Provenance :: Sort -> *
+type OutputTree sort = Tree (K Symbol) OutputAnn sort
+type OutputKind = OutputTree 'KIND
+type OutputType = OutputTree 'TYPE
+type OutputTArg = OutputTree 'TARG
+type OutputExpr = OutputTree 'EXPR
+type OutputEArg = OutputTree 'EARG
+type OutputDecl = OutputTree 'DECL
+type OutputProg = OutputTree 'PROG
+type OutputTreeF (sort :: Sort) (sorted :: Sort -> *)
+  = TreeF (K Symbol) OutputAnn sort sorted
 
 -- |Extract the annotation
 annotation :: forall sort name ann.

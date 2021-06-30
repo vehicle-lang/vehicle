@@ -12,6 +12,12 @@ module Vehicle.Prelude.Types where
 data (:*:) (f :: k -> *) (g :: k -> *) (x :: k) = (:*:) { ifst :: f x, isnd :: g x }
   deriving (Eq, Ord, Show)
 
+ifirst :: (f x -> g x) -> (f :*: h) x -> (g :*: h) x
+ifirst f (x :*: y) = f x :*: y
+
+isecond :: (f x -> g x) -> (h :*: f) x -> (h :*: g) x
+isecond f (x :*: y) = x :*: f y
+
 instance (Semigroup (f x), Semigroup (g x)) => Semigroup ((f :*: g) x) where
   (x1 :*: y1) <> (x2 :*: y2) = (x1 <> x2) :*: (y1 <> y2)
 

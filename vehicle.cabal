@@ -39,7 +39,8 @@ library
                     , Vehicle.Core.AST.Builtin
                     , Vehicle.Core.AST.Core
                     , Vehicle.Core.AST.DeBruijn
-                    , Vehicle.Core.AST.Info
+                    , Vehicle.Core.AST.Info.Core
+                    , Vehicle.Core.AST.Info.DSL
                     , Vehicle.Core.AST.Instance
                     , Vehicle.Core.AST.Recursive
                     , Vehicle.Core.AST.Utils

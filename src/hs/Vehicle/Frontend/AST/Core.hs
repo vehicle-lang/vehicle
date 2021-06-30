@@ -31,11 +31,11 @@ type Kind ann = Tree ann 'KIND
 infixl 4 `KApp`
 
 data instance Tree (ann :: Sort -> *) 'KIND
-    = KApp  (ann 'KIND) (Kind ann) (Kind ann)
-    | KFun  (ann 'KIND) (Kind ann) (Kind ann)
-    | KType (ann 'KIND)
-    | KDim  (ann 'KIND)
-    | KList (ann 'KIND)
+    = KApp     (ann 'KIND) (Kind ann) (Kind ann)
+    | KFun     (ann 'KIND) (Kind ann) (Kind ann)
+    | KType    (ann 'KIND)
+    | KDim     (ann 'KIND)
+    | KDimList (ann 'KIND)
 
 
 -- | Type of Vehicle Frontend types.

@@ -23,32 +23,12 @@ module Vehicle.Frontend.Elaborate
 import Control.Monad.Except (MonadError(..), Except, runExcept)
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty)
+import Data.Coerce (coerce)
 
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
 import Vehicle.Frontend.AST qualified as VF
 
 import Vehicle.Prelude
-
--- * Source core types
-
-type FKind = VF.Kind (K Provenance)
-type FType = VF.Type (K Provenance)
-type FTArg = VF.TArg (K Provenance)
-type FExpr = VF.Expr (K Provenance)
-type FEArg = VF.EArg (K Provenance)
-type FDecl = VF.Decl (K Provenance)
-type FProg = VF.Prog (K Provenance)
-
--- * Target core types
-
-type CKind = VC.Kind (K Symbol) (K Provenance)
-type CType = VC.Type (K Symbol) (K Provenance)
-type CTArg = VC.TArg (K Symbol) (K Provenance)
-type CExpr = VC.Expr (K Symbol) (K Provenance)
-type CEArg = VC.EArg (K Symbol) (K Provenance)
-type CDecl = VC.Decl (K Symbol) (K Provenance)
-type CProg = VC.Prog (K Symbol) (K Provenance)
-
 
 -- * Elaboration monad
 
@@ -56,7 +36,7 @@ type CProg = VC.Prog (K Symbol) (K Provenance)
 data ElabError
   = LocalDeclNetw Provenance
   | LocalDeclData Provenance
-  | LocalDefType Provenance
+  | LocalDefType  Provenance
   deriving (Show)
 
 -- | Constraint for the monad stack used by the elaborator.
@@ -102,22 +82,19 @@ runElab = runExcept
 --------------------------------------------------------------------------------
 
 -- |Class for the various elaboration functions.
-class Elab vf vc where
-  elab :: MonadElab m => vf -> m vc
+class Elab (sort :: Sort) where
+  elab :: MonadElab m => VF.InputTree sort -> m (VC.InputTree sort)
 
 -- |Elaborate kinds.
-instance Elab FKind CKind where
-    -- Core structure.
-  elab (VF.KApp ann k1 k2)  = VC.KApp ann <$> elab k1 <*> elab k2
-
-    -- Primitive kinds.
-  elab (VF.KFun  ann k1 k2) = kOp2 VC.KFun ann k1 k2
-  elab (VF.KType ann)       = kCon VC.KType ann
-  elab (VF.KDim  ann)       = kCon VC.KDim ann
-  elab (VF.KList ann)       = kCon VC.KDimList ann
+instance Elab 'KIND where
+  elab (VF.KApp     ann k1 k2) = VC.KApp ann <$> elab k1 <*> elab k2
+  elab (VF.KFun     ann k1 k2) = kOp2 VC.KFun ann k1 k2
+  elab (VF.KType    ann)       = kCon VC.KType ann
+  elab (VF.KDim     ann)       = kCon VC.KDim ann
+  elab (VF.KDimList ann)       = kCon VC.KDimList ann
 
 -- |Elaborate types.
-instance Elab FType CType where
+instance Elab 'TYPE where
   -- Core structure.
   elab (VF.TForall ann ns t)   = foldr (VC.TForall ann) <$> elab t <*> traverse elab ns
   elab (VF.TApp    ann t1 t2)  = VC.TApp ann <$> elab t1 <*> elab t2
@@ -141,11 +118,11 @@ instance Elab FType CType where
   elab (VF.TLitDimList ann ts) = VC.TLitDimList ann <$> traverse elab ts
 
 -- |Elaborate type arguments.
-instance Elab FTArg CTArg where
+instance Elab 'TARG where
   elab (VF.TArg ann n) = return $ VC.TArg ann $ K n
 
 -- |Elaborate expressions.
-instance Elab FExpr CExpr where
+instance Elab 'EXPR where
   -- Core structure.
   elab (VF.EAnn   ann e t)   = VC.EAnn ann <$> elab e <*> elab t
   elab (VF.ELet   ann ds e)  = elabLet ann (traverse elab ds) (elab e)
@@ -186,29 +163,33 @@ instance Elab FExpr CExpr where
   elab (VF.EAny    ann)       = eCon VC.EAny ann
   elab (VF.ELitSeq ann es)    = VC.ELitSeq ann <$> traverse elab es
 
+-- |Elaborate type arguments.
+instance Elab 'EARG where
+  elab (VF.EArg ann n) = return $ VC.EArg ann $ K n
+
 -- |Elaborate declarations.
-instance Elab FDecl CDecl where
+instance Elab 'DECL where
   elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann <$> elab n <*> elab t
   elab (VF.DeclData ann n t)      = VC.DeclData ann <$> elab n <*> elab t
   elab (VF.DefType  ann n ns t)   = VC.DefType  ann <$> elab n <*> traverse elab ns <*> elab t
   elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann <$> elab n <*> elab t <*> expr
     where
-      expr = foldr (VC.ELam (K (unK ann))) <$> elab e <*> traverse elab ns
-
--- |Elaborate type arguments.
-instance Elab FEArg CEArg where
-  elab (VF.EArg ann n) = return $ VC.EArg ann $ K n
+      expr = foldr (VC.ELam (coerce ann)) <$> elab e <*> traverse elab ns
 
 -- |Elaborate programs.
-instance Elab FProg CProg where
+instance Elab 'PROG where
   elab (VF.Main ann decls) = VC.Main ann <$> traverse elab decls
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
-elabLet :: MonadElab m => K Provenance 'EXPR -> m (NonEmpty CDecl) -> m CExpr -> m CExpr
+elabLet :: MonadElab m
+        => K Provenance 'EXPR
+        -> m (NonEmpty VC.InputDecl)
+        -> m VC.InputExpr
+        -> m VC.InputExpr
 elabLet ann1 ds e = bindM2 (foldrM declToLet) e ds
   where
-    declToLet :: MonadElab m => CDecl -> CExpr -> m CExpr
+    declToLet :: MonadElab m => VC.InputDecl -> VC.InputExpr -> m VC.InputExpr
     declToLet (VC.DefFun   ann2  n t e1)    e2 = return $ VC.ELet ann1 n (VC.EAnn (K (unK ann2)) e1 t) e2
     declToLet (VC.DeclNetw ann2 _n _t)     _e2 = throwError $ LocalDeclNetw (unK ann2)
     declToLet (VC.DeclData ann2 _n _t)     _e2 = throwError $ LocalDeclData (unK ann2)
@@ -219,41 +200,41 @@ bindM2 :: Monad m => (a -> b -> m c) -> m a -> m b -> m c
 bindM2 f ma mb = do a <- ma; b <- mb; f a b
 
 -- |Elaborate any builtin token to a kind.
-kCon :: (MonadElab m) => VC.Builtin 'KIND -> K Provenance 'KIND -> m CKind
+kCon :: (MonadElab m) => VC.Builtin 'KIND -> K Provenance 'KIND -> m VC.InputKind
 kCon b ann = return $ VC.KCon ann b
 
 -- |Elaborate a unary function symbol with its argument to a kind.
-kOp1 :: (MonadElab m) => VC.Builtin 'KIND -> K Provenance 'KIND -> FKind -> m CKind
+kOp1 :: (MonadElab m) => VC.Builtin 'KIND -> K Provenance 'KIND -> VF.InputKind -> m VC.InputKind
 kOp1 b ann k1 = VC.KApp ann <$> kCon b ann <*> elab k1
 
 -- |Elaborate a binary function symbol with its arguments to a kind.
-kOp2 :: (MonadElab m) => VC.Builtin 'KIND -> K Provenance 'KIND -> FKind -> FKind -> m CKind
+kOp2 :: (MonadElab m) => VC.Builtin 'KIND -> K Provenance 'KIND -> VF.InputKind -> VF.InputKind -> m VC.InputKind
 kOp2 b ann k1 k2 = VC.KApp ann <$> kOp1 b ann k1 <*> elab k2
 
 -- |Elaborate any builtin token to a type.
-tCon :: (MonadElab m) => VC.Builtin 'TYPE -> K Provenance 'TYPE -> m CType
+tCon :: (MonadElab m) => VC.Builtin 'TYPE -> K Provenance 'TYPE -> m VC.InputType
 tCon b ann = return $ VC.TCon ann b
 
 -- |Elaborate a unary function symbol with its argument to a type.
-tOp1 :: (MonadElab m) => VC.Builtin 'TYPE -> K Provenance 'TYPE -> FType -> m CType
+tOp1 :: (MonadElab m) => VC.Builtin 'TYPE -> K Provenance 'TYPE -> VF.InputType -> m VC.InputType
 tOp1 b ann t1 = VC.TApp ann <$> tCon b ann <*> elab t1
 
 -- |Elaborate a binary function symbol with its arguments to a type.
-tOp2 :: (MonadElab m) => VC.Builtin 'TYPE -> K Provenance 'TYPE -> FType -> FType -> m CType
+tOp2 :: (MonadElab m) => VC.Builtin 'TYPE -> K Provenance 'TYPE -> VF.InputType -> VF.InputType -> m VC.InputType
 tOp2 b ann t1 t2 = VC.TApp ann <$> tOp1 b ann t1 <*> elab t2
 
 -- |Elaborate any builtin token to an expression.
-eCon :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> m CExpr
+eCon :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> m VC.InputExpr
 eCon b ann = return $ VC.ECon ann b
 
 -- |Elaborate a unary function symbol with its argument to an expression.
-eOp1 :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> FExpr -> m CExpr
+eOp1 :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> VF.InputExpr -> m VC.InputExpr
 eOp1 b ann e1 = VC.EApp ann <$> eCon b ann <*> elab e1
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-eOp2 :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> FExpr -> FExpr -> m CExpr
+eOp2 :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
 eOp2 b ann e1 e2 = VC.EApp ann <$> eOp1 b ann e1 <*> elab e2
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-eOp3 :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> FExpr -> FExpr -> FExpr -> m CExpr
+eOp3 :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
 eOp3 b ann e1 e2 e3 = VC.EApp ann <$> eOp2 b ann e1 e2 <*> elab e3

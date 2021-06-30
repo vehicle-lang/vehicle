@@ -30,11 +30,11 @@ data family TreeF (ann :: Sort -> *) (sort :: Sort) (tree :: *)
 type KindF ann tree = TreeF ann 'KIND tree
 
 data instance TreeF ann 'KIND tree
-  = KAppF  (ann 'KIND) tree tree
-  | KFunF  (ann 'KIND) tree tree
-  | KTypeF (ann 'KIND)
-  | KDimF  (ann 'KIND)
-  | KListF (ann 'KIND)
+  = KAppF     (ann 'KIND) tree tree
+  | KFunF     (ann 'KIND) tree tree
+  | KTypeF    (ann 'KIND)
+  | KDimF     (ann 'KIND)
+  | KDimListF (ann 'KIND)
 
 -- * Base functor for types
 
@@ -140,11 +140,11 @@ mapSorted f (tree :: S.TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
 
   -- Kinds
   SKIND -> case tree of
-    S.KAppF  ann k1 k2 -> KAppF  ann (f k1) (f k2)
-    S.KFunF  ann k1 k2 -> KFunF  ann (f k1) (f k2)
-    S.KTypeF ann       -> KTypeF ann
-    S.KDimF  ann       -> KDimF  ann
-    S.KListF ann       -> KListF ann
+    S.KAppF     ann k1 k2 -> KAppF     ann (f k1) (f k2)
+    S.KFunF     ann k1 k2 -> KFunF     ann (f k1) (f k2)
+    S.KTypeF    ann       -> KTypeF    ann
+    S.KDimF     ann       -> KDimF     ann
+    S.KDimListF ann       -> KDimListF ann
 
   -- Types
   STYPE -> case tree of

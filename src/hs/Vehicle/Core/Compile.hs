@@ -16,5 +16,5 @@ newtype CompileError
 compile ::
   (KnownSort sort) =>
   Tree (K Symbol) (K Provenance) sort ->
-  Except CompileError (ATree (K Provenance) sort)
+  Except CompileError (AbsTree (K Provenance) sort)
 compile tree0 = withExcept ScopeError (symbolToDeBruijn tree0)

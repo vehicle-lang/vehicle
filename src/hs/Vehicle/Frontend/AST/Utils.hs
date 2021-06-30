@@ -1,13 +1,34 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+
 module Vehicle.Frontend.AST.Utils where
 
-import Vehicle.Prelude (Symbol)
-import Vehicle.Prelude.Sort (KnownSort, SSort(..), sortSing)
-import Vehicle.Frontend.AST.Core ( Decl, EArg, TArg, Tree(..) )
+import Vehicle.Prelude
+import Vehicle.Frontend.AST.Core (Tree(..))
+import Vehicle.Frontend.AST.Info (Info)
+
+type InputAnn = K Provenance :: Sort -> *
+type InputTree sort = Tree InputAnn sort
+type InputKind = InputTree 'KIND
+type InputType = InputTree 'TYPE
+type InputTArg = InputTree 'TARG
+type InputExpr = InputTree 'EXPR
+type InputEArg = InputTree 'EARG
+type InputDecl = InputTree 'DECL
+type InputProg = InputTree 'PROG
+
+type OutputAnn = Info :*: K Provenance :: Sort -> *
+type OutputTree sort = Tree OutputAnn sort
+type OutputKind = OutputTree 'KIND
+type OutputType = OutputTree 'TYPE
+type OutputTArg = OutputTree 'TARG
+type OutputExpr = OutputTree 'EXPR
+type OutputEArg = OutputTree 'EARG
+type OutputDecl = OutputTree 'DECL
+type OutputProg = OutputTree 'PROG
 
 -- |Extract the annotation
 annotation :: forall sort ann.
@@ -17,11 +38,11 @@ annotation :: forall sort ann.
 annotation = case sortSing :: SSort sort of
   -- Kinds
   SKIND -> \case
-    KApp  ann _k1 _k2 -> ann
-    KFun  ann _k1 _k2 -> ann
-    KType ann         -> ann
-    KDim  ann         -> ann
-    KList ann         -> ann
+    KApp     ann _k1 _k2 -> ann
+    KFun     ann _k1 _k2 -> ann
+    KType    ann         -> ann
+    KDim     ann         -> ann
+    KDimList ann         -> ann
 
   -- Types
   STYPE -> \case

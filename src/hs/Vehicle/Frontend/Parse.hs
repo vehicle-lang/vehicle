@@ -130,11 +130,11 @@ class Convert vf vc where
   conv :: MonadParse m => vf -> m vc
 
 instance Convert B.Kind PKind where
-  conv (B.KApp k1 k2)    = op2 V.KApp  mempty (conv k1) (conv k2)
-  conv (B.KFun k1 tk k2) = op2 V.KFun  (tkProv tk) (conv k1) (conv k2)
-  conv (B.KType tk)      = op0 V.KType (tkProv tk)
-  conv (B.KDim tk)       = op0 V.KDim  (tkProv tk)
-  conv (B.KList tk)      = op0 V.KList (tkProv tk)
+  conv (B.KApp k1 k2)    = op2 V.KApp     mempty (conv k1) (conv k2)
+  conv (B.KFun k1 tk k2) = op2 V.KFun     (tkProv tk) (conv k1) (conv k2)
+  conv (B.KType tk)      = op0 V.KType    (tkProv tk)
+  conv (B.KDim tk)       = op0 V.KDim     (tkProv tk)
+  conv (B.KDimList tk)   = op0 V.KDimList (tkProv tk)
 
 instance Convert B.Type PType where
   conv (B.TForall tk1 ns tk2 t)   = op2 V.TForall (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv t)

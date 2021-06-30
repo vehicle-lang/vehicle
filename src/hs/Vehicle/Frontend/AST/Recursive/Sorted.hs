@@ -23,11 +23,11 @@ data family TreeF (ann :: Sort -> *) (sort :: Sort) (tree :: Sort -> *)
 type KindF ann tree = TreeF ann 'KIND tree
 
 data instance TreeF ann 'KIND tree
-  = KAppF  (ann 'KIND) (tree 'KIND) (tree 'KIND)
-  | KFunF  (ann 'KIND) (tree 'KIND) (tree 'KIND)
-  | KTypeF (ann 'KIND)
-  | KDimF  (ann 'KIND)
-  | KListF (ann 'KIND)
+  = KAppF     (ann 'KIND) (tree 'KIND) (tree 'KIND)
+  | KFunF     (ann 'KIND) (tree 'KIND) (tree 'KIND)
+  | KTypeF    (ann 'KIND)
+  | KDimF     (ann 'KIND)
+  | KDimListF (ann 'KIND)
 
 -- * Base functor for types
 
@@ -133,11 +133,11 @@ project = case sortSing :: SSort sort of
 
   -- Kinds
   SKIND -> \case
-    KApp  ann k1 k2 -> KAppF  ann k1 k2
-    KFun  ann k1 k2 -> KFunF  ann k1 k2
-    KType ann       -> KTypeF ann
-    KDim  ann       -> KDimF  ann
-    KList ann       -> KListF ann
+    KApp     ann k1 k2 -> KAppF     ann k1 k2
+    KFun     ann k1 k2 -> KFunF     ann k1 k2
+    KType    ann       -> KTypeF    ann
+    KDim     ann       -> KDimF     ann
+    KDimList ann       -> KDimListF ann
 
   -- Types
   STYPE -> \case
@@ -220,11 +220,11 @@ embed = case sortSing :: SSort sort of
 
   -- Kinds
   SKIND -> \case
-    KAppF  ann k1 k2 -> KApp  ann k1 k2
-    KFunF  ann k1 k2 -> KFun  ann k1 k2
-    KTypeF ann       -> KType ann
-    KDimF  ann       -> KDim  ann
-    KListF ann       -> KList ann
+    KAppF     ann k1 k2 -> KApp     ann k1 k2
+    KFunF     ann k1 k2 -> KFun     ann k1 k2
+    KTypeF    ann       -> KType    ann
+    KDimF     ann       -> KDim     ann
+    KDimListF ann       -> KDimList ann
 
   -- Types
   STYPE -> \case
@@ -309,11 +309,11 @@ traverseTreeF ::
 traverseTreeF fAnn fRec (tree :: TreeF ann1 sort sorted1) = case sortSing :: SSort sort of
  -- Kinds
   SKIND -> case tree of
-    KAppF  ann k1 k2 -> KAppF  <$> fAnn ann <*> fRec k1 <*> fRec k2
-    KFunF  ann k1 k2 -> KFunF  <$> fAnn ann <*> fRec k1 <*> fRec k2
-    KTypeF ann       -> KTypeF <$> fAnn ann
-    KDimF  ann       -> KDimF  <$> fAnn ann
-    KListF ann       -> KListF <$> fAnn ann
+    KAppF     ann k1 k2 -> KAppF     <$> fAnn ann <*> fRec k1 <*> fRec k2
+    KFunF     ann k1 k2 -> KFunF     <$> fAnn ann <*> fRec k1 <*> fRec k2
+    KTypeF    ann       -> KTypeF    <$> fAnn ann
+    KDimF     ann       -> KDimF     <$> fAnn ann
+    KDimListF ann       -> KDimListF <$> fAnn ann
 
   -- Types
   STYPE -> case tree of
