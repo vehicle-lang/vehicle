@@ -8,21 +8,15 @@
 {-# LANGUAGE DataKinds #-}
 module Vehicle.Backend.ITP.Core where
 
+import Control.Monad.Except (MonadError(..), Except)
+import Control.Monad.Reader (MonadReader, MonadReader(..), ReaderT(..))
 import Data.Text as Text (Text, intercalate, pack)
 import Data.Map (Map)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Version (Version)
+import Prettyprinter.Internal as P (Doc(Annotated), (<+>), concatWith, line, line')
 
-import Prettyprinter as Pretty
-
-import Control.Monad.Except (MonadError(..), Except)
-import Control.Monad.Reader (MonadReader, MonadReader(..), ReaderT(..))
-
-
-import Prettyprinter.Internal as P
-
-import Vehicle.Frontend.AST (Tree(..), Expr, Type, Decl, Prog, Kind, EArg, TArg)
-import Vehicle.Frontend.AST.Info ( Info(..) )
+import Vehicle.Frontend.AST (Tree(..), Expr, Type, Decl, Prog, Kind, EArg, TArg, Info(..))
 import Vehicle.Prelude (K(..), Sort(..), Provenance, (:*:)(..), Symbol)
 
 -- * Utilities when compiling to an interactive theorem prover backend
@@ -182,3 +176,6 @@ hcat = concatWith (<>)
 
 vcat :: Foldable t => t (Doc ann) -> Doc ann
 vcat = concatWith (\x y -> x <> line' <> y)
+
+vsep2 :: Foldable t => t (Doc ann) -> Doc ann
+vsep2 = concatWith (\x y -> x <> line <> line <> y)
