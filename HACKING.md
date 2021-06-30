@@ -2,26 +2,25 @@
 
 ```haskell
 -- The names k, t, e, and d are used for the core sorts in the AST
-k    :: Kind name builtin ann
-t    :: Type name builtin ann
-e    :: Expr name builtin ann
-d    :: Decl name builtin ann
+k    :: Kind name ann
+t    :: Type name ann
+e    :: Expr name ann
+d    :: Decl name ann
 
 -- For generic AST elements the name tree is used
-tree :: Tree name builtin ann sort
+tree :: Tree name ann sort
 
--- The names n, op, and ann are used for whatever types are in the
--- name, builtin, and annotation positions in the AST
+-- The names n and ann are used for whatever types are in the
+-- name,and annotation positions in the AST
 n    :: name
-op   :: builtin
 ann  :: ann
 
 -- The name n is also overloaded to type and expression arguments,
 -- as these are morally also names, albeit in binding position
-n    :: TArg name builtin ann
-n    :: EArg name builtin ann
+n    :: TArg name ann
+n    :: EArg name ann
 
--- The name op is overloaded for values from the dedicated builtin type
+-- The name op is are used for values from the dedicated builtin type
 op   :: Builtin sort
 
 -- The name db is used for deBruijn indices, and the name ix is used
