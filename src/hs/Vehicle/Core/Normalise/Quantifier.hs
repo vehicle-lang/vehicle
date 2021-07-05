@@ -17,7 +17,7 @@ import Data.Range (Range (..), fromRanges, intersection, union, invert, lbi, lbe
 import Data.Text (Text)
 import Vehicle.Core.AST
 import Vehicle.Core.Normalise.Core
-import Vehicle.Core.Normalise.DeBruijnSubstitution as DeBruijn (subst)
+import Vehicle.Core.Compile.Subst as DeBruijn (subst)
 import Vehicle.Prelude (Provenance)
 
 -----------
@@ -64,7 +64,7 @@ normQuantifier quant domain condition ann0 ann1 ann2 p = case getQuantifierValue
   -- Can expand quantifier with non-empty domain
   Just es ->
     let linkOp x y = EOp2 (linkingOp quant) x y ann0 ann1 ann2
-        substValue v = DeBruijn.subst initialBindingDepth v condition
+        substValue v = DeBruijn.subst v condition
     in  return $ foldr1 linkOp (map substValue es)
 
 getQuantifierValues

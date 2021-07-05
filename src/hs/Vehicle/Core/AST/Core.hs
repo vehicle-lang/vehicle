@@ -10,12 +10,17 @@ module Vehicle.Core.AST.Core
   , Prog
   , TArg
   , EArg
+  , Meta
   ) where
 
 import Data.List.NonEmpty (NonEmpty)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST.Builtin
+
+-- * Meta-variables
+
+type Meta = Integer
 
 -- * Abstract syntax tree for Vehicle Core
 
@@ -42,7 +47,7 @@ data instance Tree (name :: Sort -> *) (ann :: Sort -> *) 'KIND
     (Builtin 'KIND)            -- ^ Builtin name.
   | KMeta
     (ann 'KIND)                -- ^ Sort Annotation.
-    Integer                    -- ^ Meta variable.
+    Meta                       -- ^ Meta variable.
 
 type Type name ann = Tree name ann 'TYPE
 
@@ -72,7 +77,7 @@ data instance Tree (name :: Sort -> *) (ann :: Sort -> *) 'TYPE
     (NonEmpty (Type name ann)) -- ^ List of types.
   | TMeta
     (ann 'TYPE)                -- ^ Sort Annotation.
-    Integer                    -- ^ Meta variable
+    Meta                       -- ^ Meta variable
 
 type Expr name ann = Tree name ann 'EXPR
 

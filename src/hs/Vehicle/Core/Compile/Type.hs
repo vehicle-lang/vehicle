@@ -16,7 +16,10 @@
 {-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
-module Vehicle.Core.Compile.Type where
+module Vehicle.Core.Compile.Type
+  ( TypeError(..)
+  , checkInfer
+  ) where
 
 import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
@@ -27,9 +30,14 @@ import Data.Text (Text)
 import Data.Coerce (coerce)
 import Data.Sequence (Seq, (!?))
 import Data.Sequence qualified as Seq
+import Prettyprinter ( (<+>), Pretty(pretty), encloseSep, lbracket, rbracket, comma )
+
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Dataflow
+import Vehicle.Core.Compile.Subst (subst)
+import Vehicle.Core.Print ( prettyInfo )
 import Vehicle.Prelude
+import Vehicle.Error
 
 -- TODO:
 --
@@ -51,14 +59,32 @@ data TypeError
   | MissingAnnotation
       Provenance  -- ^ The location of the missing annotation.
   | UnsupportedOperation
-      Text        -- ^ A description of the unsupported operation.
       Provenance  -- ^ The location of the unsupported operation.
+      Text        -- ^ A description of the unsupported operation.
 
--- * Meta-variables
+instance MeaningfulError TypeError where
+  details (IndexOutOfBounds p index) = DError $ DeveloperError
+    { provenance = p
+    , problem    = "DeBruijn index" <+> pretty index <+> "out of bounds"
+    }
 
--- TODO: should be migrated to an AST module
+  details (Mismatch p candidates expected) = UError $ UserError
+    { provenance = p
+    , problem    = "expected something of type" <+> prettyInfo expected <+>
+                   "but inferred types" <+> encloseSep lbracket rbracket comma (map prettyInfo candidates)
+    , fix        = "unknown"
+    }
 
-type Meta = Integer
+  details (MissingAnnotation p) = DError $ DeveloperError
+    { provenance = p
+    , problem    = "missing annotation"
+    }
+
+  details (UnsupportedOperation p t) = UError $ UserError
+    { provenance = p
+    , problem    = "type-checking of" <+> squotes t <+> "not currently supported"
+    , fix        = "unknown"
+    }
 
 -- * Type and kind contexts
 
@@ -120,7 +146,7 @@ getInfo ::
 getInfo p db = do
   subctx <- getSubCtxFor @sort <$> ask
   let ix = toIndex db
-  let maybeInfo = subctx !? ix
+  let maybeInfo = subctx Seq.!? ix
   maybe (throwError $ IndexOutOfBounds (unK p) ix) return maybeInfo
 
 freshKMeta :: KnownSort sort => TCM sort (Info 'TYPE)
@@ -136,7 +162,7 @@ freshTMeta = do
 checkInfer ::
   forall sort. (KnownSort sort) =>
   Tree DeBruijn (K Provenance) sort ->
- (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
+  (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
 checkInfer = unSCI . foldTree (SCI . checkInferF)
 
 -- |Check if a single layer is well-kinded and well-typed, see |checkInfer|.
@@ -150,7 +176,7 @@ checkInferF = case sortSing @sort of
   SKIND -> \case
     KAppF  p k1 k2 -> fromCheck p $ KApp (mempty :*: p) <$> runCheck k1 <*> runCheck k2
     KConF  p op    -> fromCheck p $ pure (KCon (mempty :*: p) op)
-    KMetaF p _i    -> fromCheck p $ throwError $ UnsupportedOperation "KMeta" (unK p)
+    KMetaF p _i    -> fromCheck p $ throwError $ UnsupportedOperation (unK p) "KMeta"
   --
   -- TODO: convert to Hindley-Milner style checking for kind checking, so that we can generalise
   --       the forall without requiring a type annotation.
@@ -215,7 +241,7 @@ checkInferF = case sortSing @sort of
 
     -- Type meta-variables are currently unsupported.
     TMetaF p _i -> fromCheck p $
-      throwError $ UnsupportedOperation "TMeta" (unK p)
+      throwError $ UnsupportedOperation (unK p) "TMeta"
 
   -- Type argument
   STARG -> \case
@@ -228,7 +254,7 @@ checkInferF = case sortSing @sort of
   SEXPR -> \case
     EAnnF p e t ->
       let t' :: TCM 'EXPR (Info 'EXPR)
-          t' = do (t, k) <- flow (runInfer t)
+          t' = do (t, _k) <- flow (runInfer t)
                   return (Info t)
       in fromCheckWithAnn p t' (runCheck e)
 
@@ -280,12 +306,26 @@ checkInferF = case sortSing @sort of
       return (EApp (tRes :*: p) eFun eArg, tRes)
 
     ETyAppF p eTyFun tArg -> fromInfer p $ do
-      undefined
+      (eTyFun, tForall') <- runInfer eTyFun
+
+      -- Check if it's a forall type: if so, return the two arguments; if not, throw an error.
+      (kArg, tRes) <- case unInfo tForall' of
+        _tForall'@(TForall _ tArg tRes) ->
+          return (ifst (annotation tArg) , tRes)
+        _tForall' -> do
+          tMeta <- freshTMeta
+          let expected = tForall (const tMeta)
+          throwError $ Mismatch (unK p) [tForall'] expected
+
+      tArg <- flow $ runCheckWith (coerce kArg) tArg
+      let tRes' = Info $ subst tArg tRes
+
+      return (ETyApp (tRes' :*: p) eTyFun tArg, tRes')
 
     ETyLamF p n e -> fromCheck p $ do
       tForall' <- ask
 
-      -- Check if it's a function type: if so, return the two arguments; if not, throw an error.
+      -- Check if it's a forall type: if so, return the two arguments; if not, throw an error.
       (kArg, tRes) <- case unInfo tForall' of
         _tForall'@(TForall _ tArg tRes) ->
           return (ifst (annotation tArg) , Info tRes)

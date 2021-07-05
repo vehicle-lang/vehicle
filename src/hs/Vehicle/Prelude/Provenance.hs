@@ -8,12 +8,12 @@ module Vehicle.Prelude.Provenance
   , HasProvenance(..)
   ) where
 
-import           Data.Range (Range)
-import qualified Data.Range as Range
-import           Prettyprinter
+import Data.Range (Range)
+import Data.Range qualified as Range
+import Prettyprinter
 
-import           Vehicle.Prelude.Token ( tkRange, IsToken, Position, Token(..) )
-import           Vehicle.Prelude.Types
+import Vehicle.Prelude.Token ( tkRange, IsToken, Position, Token(..) )
+import Vehicle.Prelude.Types ( K(K) )
 
 -- | A set of locations in the source file
 newtype Provenance = Provenance { fromProvenance :: [Range Position] }

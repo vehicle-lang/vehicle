@@ -7,6 +7,7 @@
 module Vehicle.Prelude
   ( module X
   , (|->)
+  , (!?)
   , rangeStart
   ) where
 
@@ -36,3 +37,9 @@ rangeStart (SpanRange lb _ub)          = boundStart lb
 rangeStart (LowerBoundRange b)         = boundStart b
 rangeStart (UpperBoundRange _)         = Nothing
 rangeStart InfiniteRange               = Nothing
+
+(!?) :: Eq a => [(a,b)] -> a -> Maybe b
+[] !? _ = Nothing
+((k , v) : xs) !? k'
+  | k == k'   = Just v
+  | otherwise = xs !? k'
