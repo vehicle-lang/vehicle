@@ -159,7 +159,7 @@ main = do
           fromEitherIO $ compileToAgda itpOptions compFrontProg
 
       case outputFile of
-        Nothing             -> T.putStrLn (VC.printTree compCoreProg)
+        Nothing             -> T.putStrLn outputText
         Just outputFilePath -> T.writeFile outputFilePath outputText
 
     Just (Solver v) -> do
