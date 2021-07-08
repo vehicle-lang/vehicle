@@ -51,8 +51,8 @@ type family INFO (name :: Sort -> *) (sort :: Sort) where
   INFO name 'DECL = ()
   INFO name 'PROG = ()
 
-instance KnownSort sort => Eq (Info name sort) where
-  x == y = case sortSing @sort of
+instance (KnownSort sort, Eq (name 'KIND), Eq (name 'TYPE), Eq (name 'TARG)) => Eq (Info name sort) where
+  Info x == Info y = case sortSing @sort of
     SKIND -> x == y
     STYPE -> x == y
     STARG -> x == y
@@ -60,6 +60,16 @@ instance KnownSort sort => Eq (Info name sort) where
     SEARG -> x == y
     SDECL -> x == y
     SPROG -> x == y
+
+instance (KnownSort sort, Show (name 'KIND), Show (name 'TYPE), Show (name 'TARG)) => Show (Info name sort) where
+  show (Info x) = case sortSing @sort of
+    SKIND -> show x
+    STYPE -> show x
+    STARG -> show x
+    SEXPR -> show x
+    SEARG -> show x
+    SDECL -> show x
+    SPROG -> show x
 
 instance Semigroup (Info name 'KIND) where
   Info () <> Info () = Info ()
