@@ -39,73 +39,73 @@ type family DATAFLOW (sort :: Sort) (s :: *) :: (* -> *) -> (* -> *) where
   DATAFLOW 'DECL s = StateT  s
   DATAFLOW 'PROG s = IdentityT
 
-instance (KnownSort sort) => MonadTrans (DataflowT sort s) where
+instance (KnownSort sort, Monoid s) => MonadTrans (DataflowT sort s) where
   lift = case sortSing @sort of
-    SKIND -> lift
-    STYPE -> lift
-    STARG -> lift
-    SEXPR -> lift
-    SEARG -> lift
-    SDECL -> lift
-    SPROG -> lift
+    SKIND -> DF . lift
+    STYPE -> DF . lift
+    STARG -> DF . lift
+    SEXPR -> DF . lift
+    SEARG -> DF . lift
+    SDECL -> DF . lift
+    SPROG -> DF . lift
 
 instance (KnownSort sort, Functor f) => Functor (DataflowT sort s f) where
-  fmap = case sortSing @sort of
-    SKIND -> fmap
-    STYPE -> fmap
-    STARG -> fmap
-    SEXPR -> fmap
-    SEARG -> fmap
-    SDECL -> fmap
-    SPROG -> fmap
+  fmap f = case sortSing @sort of
+    SKIND -> DF . fmap f . unDF
+    STYPE -> DF . fmap f . unDF
+    STARG -> DF . fmap f . unDF
+    SEXPR -> DF . fmap f . unDF
+    SEARG -> DF . fmap f . unDF
+    SDECL -> DF . fmap f . unDF
+    SPROG -> DF . fmap f . unDF
 
-instance (KnownSort sort, Applicative f) => Applicative (DataflowT sort s f) where
+instance (KnownSort sort, Monad f, Monoid s) => Applicative (DataflowT sort s f) where
   pure = case sortSing @sort of
-    SKIND -> pure
-    STYPE -> pure
-    STARG -> pure
-    SEXPR -> pure
-    SEARG -> pure
-    SDECL -> pure
-    SPROG -> pure
+    SKIND -> DF . pure
+    STYPE -> DF . pure
+    STARG -> DF . pure
+    SEXPR -> DF . pure
+    SEARG -> DF . pure
+    SDECL -> DF . pure
+    SPROG -> DF . pure
 
-  (<*>) = case sortSing @sort of
-    SKIND -> (<*>)
-    STYPE -> (<*>)
-    STARG -> (<*>)
-    SEXPR -> (<*>)
-    SEARG -> (<*>)
-    SDECL -> (<*>)
-    SPROG -> (<*>)
+  f <*> a = case sortSing @sort of
+    SKIND -> DF (unDF f <*> unDF a)
+    STYPE -> DF (unDF f <*> unDF a)
+    STARG -> DF (unDF f <*> unDF a)
+    SEXPR -> DF (unDF f <*> unDF a)
+    SEARG -> DF (unDF f <*> unDF a)
+    SDECL -> DF (unDF f <*> unDF a)
+    SPROG -> DF (unDF f <*> unDF a)
 
-instance (KnownSort sort, Monad m) => Monad (DataflowT sort s m) where
-  (>>=) = case sortSing @sort of
-    SKIND -> (>>=)
-    STYPE -> (>>=)
-    STARG -> (>>=)
-    SEXPR -> (>>=)
-    SEARG -> (>>=)
-    SDECL -> (>>=)
-    SPROG -> (>>=)
+instance (KnownSort sort, Monoid s, Monad m) => Monad (DataflowT sort s m) where
+  m >>= k = case sortSing @sort of
+    SKIND -> DF (unDF m >>= (unDF . k))
+    STYPE -> DF (unDF m >>= (unDF . k))
+    STARG -> DF (unDF m >>= (unDF . k))
+    SEXPR -> DF (unDF m >>= (unDF . k))
+    SEARG -> DF (unDF m >>= (unDF . k))
+    SDECL -> DF (unDF m >>= (unDF . k))
+    SPROG -> DF (unDF m >>= (unDF . k))
 
-instance (KnownSort sort, MonadError e m) => MonadError e (DataflowT sort s m) where
+instance (KnownSort sort, MonadError e m, Monoid s) => MonadError e (DataflowT sort s m) where
   throwError = lift . throwError
-  catchError = case sortSing @sort of
-    SKIND -> catchError
-    STYPE -> catchError
-    STARG -> catchError
-    SEXPR -> catchError
-    SEARG -> catchError
-    SDECL -> catchError
-    SPROG -> catchError
+  catchError m h = case sortSing @sort of
+    SKIND -> DF (catchError (unDF m) (unDF . h))
+    STYPE -> DF (catchError (unDF m) (unDF . h))
+    STARG -> DF (catchError (unDF m) (unDF . h))
+    SEXPR -> DF (catchError (unDF m) (unDF . h))
+    SEARG -> DF (catchError (unDF m) (unDF . h))
+    SDECL -> DF (catchError (unDF m) (unDF . h))
+    SPROG -> DF (catchError (unDF m) (unDF . h))
 
-instance (KnownSort sort, MonadSupply s f m) => MonadSupply s f (DataflowT sort d m) where
+instance (KnownSort sort, MonadSupply s f m, Monoid d) => MonadSupply s f (DataflowT sort d m) where
   supply  = lift . supply
   provide = lift . provide
 
 -- TODO: change these instances to redirect to the underlying monad
 
-instance (KnownSort sort, sort `In` ['TYPE, 'EXPR], Monad m) => MonadReader r (DataflowT sort r m) where
+instance (KnownSort sort, sort `In` ['TYPE, 'EXPR], Monad m, Monoid r) => MonadReader r (DataflowT sort r m) where
   ask     = fromReaderT ask
   local k = fromReaderT . local k . toReaderT
 
