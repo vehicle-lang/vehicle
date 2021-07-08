@@ -27,6 +27,7 @@ import Control.Monad.Supply (SupplyT, demand)
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Writer (MonadWriter(..))
 import Data.Text (Text)
+import Data.Maybe (fromMaybe)
 import Data.Coerce (coerce)
 import Data.Sequence (Seq, (!?))
 import Data.Sequence qualified as Seq
@@ -186,12 +187,12 @@ checkInferF = case sortSing @sort of
 
     -- For type quantification:
     -- the result of a quantification also has kind |kType|
-    TForallF p n t -> fromInfer p $ do
-      let kArg = kType
+    TForallF p kOptArg n t -> fromInfer p $ do
+      kArg <- maybe (return kType) (fmap Info . flow . runCheckWith mempty) kOptArg
       bindLocal (runCheckWith kArg n) $ \n -> do
         t <- runCheckWith kType t
         let kRes = kType
-        return (TForall (kRes :*: p) n t, kRes)
+        return (TForall (kRes :*: p) (Just $ unInfo kArg) n t, kRes)
 
     -- For type applications:
     -- infer the kind of the type function, check the kind of its argument.
@@ -310,11 +311,12 @@ checkInferF = case sortSing @sort of
 
       -- Check if it's a forall type: if so, return the two arguments; if not, throw an error.
       (kArg, tRes) <- case unInfo tForall' of
-        _tForall'@(TForall _ tArg tRes) ->
+        _tForall'@(TForall _ _ tArg tRes) ->
           return (ifst (annotation tArg) , tRes)
         _tForall' -> do
           tMeta <- freshTMeta
-          let expected = tForall (const tMeta)
+          kMeta <- freshKMeta
+          let expected = tForall kMeta (const tMeta)
           throwError $ Mismatch (unK p) [tForall'] expected
 
       tArg <- flow $ runCheckWith (coerce kArg) tArg
@@ -327,11 +329,12 @@ checkInferF = case sortSing @sort of
 
       -- Check if it's a forall type: if so, return the two arguments; if not, throw an error.
       (kArg, tRes) <- case unInfo tForall' of
-        _tForall'@(TForall _ tArg tRes) ->
+        _tForall'@(TForall _ _ tArg tRes) ->
           return (ifst (annotation tArg) , Info tRes)
         _tForall' -> do
           tMeta <- lift freshTMeta
-          let expected = tForall (const tMeta)
+          kMeta <- lift freshKMeta
+          let expected = tForall kMeta (const tMeta)
           throwError $ Mismatch (unK p) [tForall'] expected
 
       -- Add the argument to the context and check the body

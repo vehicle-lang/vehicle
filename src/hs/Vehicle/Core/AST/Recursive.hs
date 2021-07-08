@@ -33,7 +33,7 @@ data instance TreeF name ann 'KIND tree
 type TypeF name ann tree = TreeF name ann 'TYPE tree
 
 data instance TreeF name ann 'TYPE tree
-  = TForallF     (ann 'TYPE) (tree 'TARG) (tree 'TYPE)
+  = TForallF     (ann 'TYPE) (Maybe (tree 'KIND)) (tree 'TARG) (tree 'TYPE)
   | TAppF        (ann 'TYPE) (tree 'TYPE) (tree 'TYPE)
   | TVarF        (ann 'TYPE) (name 'TYPE)
   | TConF        (ann 'TYPE) (Builtin 'TYPE)
@@ -111,7 +111,7 @@ project = case sortSing :: SSort sort of
 
   -- Types
   STYPE -> \case
-    TForall     ann n t   -> TForallF     ann n t
+    TForall     ann k n t -> TForallF     ann k n t
     TApp        ann t1 t2 -> TAppF        ann t1 t2
     TVar        ann n     -> TVarF        ann n
     TCon        ann op    -> TConF        ann op
@@ -169,7 +169,7 @@ embed = case sortSing :: SSort sort of
 
   -- Types
   STYPE -> \case
-    TForallF     ann n t   -> TForall     ann n t
+    TForallF     ann k n t -> TForall     ann k n t
     TAppF        ann t1 t2 -> TApp        ann t1 t2
     TVarF        ann n     -> TVar        ann n
     TConF        ann op    -> TCon        ann op
@@ -229,7 +229,7 @@ traverseTreeF fName fAnn fRec (tree :: TreeF name1 ann1 sort sorted1) = case sor
 
   -- Types
   STYPE -> case tree of
-    TForallF     ann n t   -> TForallF     <$> fAnn ann <*> fRec n <*> fRec t
+    TForallF     ann k n t -> TForallF     <$> fAnn ann <*> traverse fRec k <*> fRec n <*> fRec t
     TAppF        ann t1 t2 -> TAppF        <$> fAnn ann <*> fRec t1 <*> fRec t2
     TVarF        ann n     -> TVarF        <$> fAnn ann <*> fName n
     TConF        ann op    -> TConF        <$> fAnn ann <*> pure op

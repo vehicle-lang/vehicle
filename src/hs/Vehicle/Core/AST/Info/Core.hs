@@ -39,13 +39,15 @@ type AbsProgF ann sorted = AbsTreeF ann 'PROG sorted
 -- |Type information, based on sort.
 newtype Info (name :: Sort -> *) (sort :: Sort) = Info { unInfo :: INFO name sort }
 
+type InfoAnn name = Info name :*: K Provenance
+
 -- |Computes type information based on sort; kinds for types, types for expressions.
 type family INFO (name :: Sort -> *) (sort :: Sort) where
   INFO name 'KIND = ()
-  INFO name 'TYPE = Kind name (Info name :*: K Provenance)
-  INFO name 'TARG = Kind name (Info name :*: K Provenance)
-  INFO name 'EXPR = Type name (Info name :*: K Provenance)
-  INFO name 'EARG = Type name (Info name :*: K Provenance)
+  INFO name 'TYPE = Kind name (InfoAnn name)
+  INFO name 'TARG = Kind name (InfoAnn name)
+  INFO name 'EXPR = Type name (InfoAnn name)
+  INFO name 'EARG = Type name (InfoAnn name)
   INFO name 'DECL = ()
   INFO name 'PROG = ()
 

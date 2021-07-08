@@ -146,7 +146,7 @@ instance Convert B.Kind V.InputKind where
 
 instance Convert B.Type V.InputType where
   conv = \case
-    B.TForall n t    -> op2 V.TForall <$> conv n <*> conv t
+    B.TForall n t    -> op2 (`V.TForall` Nothing) <$> conv n <*> conv t
     B.TApp t1 t2     -> op2 V.TApp <$> conv t1 <*> conv t2
     B.TVar n         -> conv n
     B.TCon c         -> V.TCon (K (prov c)) <$> conv c

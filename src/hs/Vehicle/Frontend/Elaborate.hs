@@ -106,7 +106,7 @@ instance Elab 'KIND where
 -- |Elaborate types.
 instance Elab 'TYPE where
   -- Core structure.
-  elab (VF.TForall ann ns t)   = foldr (VC.TForall ann) <$> elab t <*> traverse elab ns
+  elab (VF.TForall ann ns t)   = foldr (VC.TForall ann Nothing) <$> elab t <*> traverse elab ns
   elab (VF.TVar    ann n)      = return $ VC.TVar ann (K n)
 
   -- Primitive types.

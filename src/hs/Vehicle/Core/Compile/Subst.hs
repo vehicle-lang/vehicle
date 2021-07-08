@@ -36,9 +36,9 @@ instance Subst 'TYPE where
   substAcc d sub (TApp ann fn arg)      = TApp ann (substAcc d sub fn) (substAcc d sub arg)
   substAcc d sub (TLitDimList ann typs) = TLitDimList ann (NonEmpty.map (substAcc d sub) typs)
 
-  substAcc d sub (TForall ann arg body) =
+  substAcc d sub (TForall ann optKind arg body) =
     -- Increase the depth as we move across a binding site
-    TForall ann arg (substAcc (incrTypeDepth d) (liftDeBruijn initialBindingDepth sub) body)
+    TForall ann optKind arg (substAcc (incrTypeDepth d) (liftDeBruijn initialBindingDepth sub) body)
 
   substAcc d sub (TVar ann (TIndex i))  =
     case compare i (typeDepth d) of

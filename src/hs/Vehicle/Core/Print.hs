@@ -80,7 +80,7 @@ instance ( Pretty (name 'TYPE)
          , Pretty (name 'TARG)
          ) => Pretty (Type name ann) where
   pretty = \case
-    TForall     _ann n t   -> "forall" <+> pretty n <+> pretty t
+    TForall     _ann k n t  -> "forall" <+> pretty n <+> ":" <+> pretty k <+> pretty t
     TApp        _ann t1 t2 -> pretty t1 <> parens (pretty t2)
     TVar        _ann n     -> pretty n
     TCon        _ann op    -> pretty op
@@ -96,7 +96,7 @@ instance ( Pretty (name 'TYPE)
   pretty = \case
     EAnn     _ann e t     -> parens $ pretty e <+> ":type" <+> pretty t
     ELet     _ann n e1 e2 -> "let" <+> pretty n <+> pretty e1 <+> pretty e2
-    ELam     _ann n e     -> "lambda" <+> pretty n <+> pretty e
+    ELam     _ann n e     -> "lambda" <+> pretty n <+> parens (pretty e)
     EApp     _ann e1 e2   -> pretty e1 <+> parens (pretty e2)
     EVar     _ann n       -> pretty n
     ETyApp   _ann e t     -> pretty e <+> pretty t
@@ -115,10 +115,10 @@ instance ( Pretty (name 'TYPE)
          , Pretty (name 'EARG)
          ) => Pretty (Decl name ann) where
   pretty = \case
-    DeclNetw _ann n t    -> parens $ "declare-network" <+> pretty n <+> ":" <+> pretty t <+> line
-    DeclData _ann n t    -> parens $ "declare-dataset" <+> pretty n <+> ":" <+> pretty t <+> line
-    DefType  _ann n ns t -> parens $ "define-type" <+> pretty n <+> parens (pretty ns) <+> pretty t
-    DefFun   _ann n t e  -> parens $ "define-fun" <+> pretty n <+> pretty t <+> pretty e
+    DeclNetw _ann n t    -> parens ("declare-network" <+> pretty n <+> ":" <+> pretty t) <+> line
+    DeclData _ann n t    -> parens ("declare-dataset" <+> pretty n <+> ":" <+> pretty t) <+> line
+    DefType  _ann n ns t -> parens ("define-type" <+> pretty n <+> parens (pretty ns) <+> pretty t) <+> line
+    DefFun   _ann n t e  -> parens ("define-fun" <+> pretty n <+> parens (pretty t) <+> parens (pretty e)) <+> line
 
 instance ( Pretty (name 'TYPE)
          , Pretty (name 'TARG)

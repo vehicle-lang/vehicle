@@ -113,7 +113,7 @@ instance DeBruijnLifting 'TYPE where
   liftDeBruijn d (TApp ann fn arg) = TApp ann (liftDeBruijn d fn) (liftDeBruijn d arg)
   liftDeBruijn d (TLitDimList ann typs) = TLitDimList ann (NonEmpty.map (liftDeBruijn d) typs)
 
-  liftDeBruijn d (TForall ann arg body) = TForall ann arg
+  liftDeBruijn d (TForall ann optKind arg body) = TForall ann optKind arg
     -- Increase the depth as we move across a binding site
     (liftDeBruijn (incrTypeDepth d) body)
 

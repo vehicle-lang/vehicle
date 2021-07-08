@@ -12,7 +12,7 @@ import Vehicle.Core.AST.Builtin ( Builtin(..) )
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
 import Vehicle.Core.AST.Instance ()
-import Vehicle.Core.AST.Info.Core ( Info(..) )
+import Vehicle.Core.AST.Info.Core ( Info(..), InfoAnn)
 import Vehicle.Core.AST.Utils (annotation)
 import Vehicle.Prelude
 
@@ -90,12 +90,12 @@ tList :: (DSL sort, Underlying sort ~ 'TYPE) => Info name sort -> Info name sort
 tList tElem = con TList `app` tElem
 
 -- TODO figure out how to do this without horrible -1 hacks
-tForall :: (Info DeBruijn 'EXPR -> Info DeBruijn 'EXPR) -> Info DeBruijn 'EXPR
-tForall f = Info quantBody
+tForall :: Info DeBruijn 'TYPE -> (Info DeBruijn 'EXPR -> Info DeBruijn 'EXPR) -> Info DeBruijn 'EXPR
+tForall k f = Info quantBody
   where
     badBody   = f (Info (TVar (kType :*: mempty) (TIndex (-1))))
     body      = liftDeBruijn @'TYPE (BindingDepth (-1) 0) (unInfo badBody)
-    quantBody = TForall (kType :*: mempty) (TArg (kType :*: mempty) (TSymbol Machine)) body
+    quantBody = TForall (kType :*: mempty) (Just $ unInfo k) (TArg (kType :*: mempty) (TSymbol Machine)) body
 
 -- |Return the kind for builtin types.
 kindOf :: Builtin 'TYPE -> Info name 'TYPE
@@ -113,28 +113,28 @@ kindOf = \case
 -- |Return the kind for builtin exprs.
 typeOf :: Builtin 'EXPR -> Info DeBruijn 'EXPR
 typeOf = \case
-  EIf      -> tForall $ \t -> tBool ~> t ~> t
-  EImpl    -> tBool ~> tBool ~> tBool
-  EAnd     -> tBool ~> tBool ~> tBool
-  EOr      -> tBool ~> tBool ~> tBool
-  ENot     -> tBool ~> tBool
-  ETrue    -> tBool
-  EFalse   -> tBool
-  EEq      -> tForall $ \t -> t ~> t ~> tBool
-  ENeq     -> tForall $ \t -> t ~> t ~> tBool
-  ELe      -> tForall $ \t -> t ~> t ~> tBool
-  ELt      -> tForall $ \t -> t ~> t ~> tBool
-  EGe      -> tForall $ \t -> t ~> t ~> tBool
-  EGt      -> tForall $ \t -> t ~> t ~> tBool
+  EIf      -> tForall kType $ \t -> tProp ~> t ~> t
+  EImpl    -> tProp ~> tProp ~> tProp
+  EAnd     -> tProp ~> tProp ~> tProp
+  EOr      -> tProp ~> tProp ~> tProp
+  ENot     -> tProp ~> tProp
+  ETrue    -> tProp
+  EFalse   -> tProp
+  EEq      -> tForall kType $ \t -> t ~> t ~> tProp
+  ENeq     -> tForall kType $ \t -> t ~> t ~> tProp
+  ELe      -> tForall kType $ \t -> t ~> t ~> tProp
+  ELt      -> tForall kType $ \t -> t ~> t ~> tProp
+  EGe      -> tForall kType $ \t -> t ~> t ~> tProp
+  EGt      -> tForall kType $ \t -> t ~> t ~> tProp
 
   -- TODO need some sort of bounded quantification over int/real?
-  EMul     -> tInt ~> tInt ~> tInt
-  EDiv     -> tInt ~> tInt ~> tInt
-  EAdd     -> tInt ~> tInt ~> tInt
-  ESub     -> tInt ~> tInt ~> tInt
-  ENeg     -> tInt ~> tInt
+  EMul     -> tReal ~> tReal ~> tReal
+  EDiv     -> tReal ~> tReal ~> tReal
+  EAdd     -> tReal ~> tReal ~> tReal
+  ESub     -> tReal ~> tReal ~> tReal
+  ENeg     -> tReal ~> tReal
 
-  ECons    -> tForall $ \t -> t ~> tList t ~> tList t
-  EAt      -> tForall $ \t -> tList t ~> tInt ~> t
-  EAll     -> tForall $ \t -> tList t ~> (t ~> tBool) ~> tBool
-  EAny     -> tForall $ \t -> tList t ~> (t ~> tBool) ~> tBool
+  ECons    -> tForall kType $ \t -> t ~> tList t ~> tList t
+  EAt      -> tForall kType $ \t -> tForall kDim $ \d -> tTensor t d ~> tInt ~> t
+  EAll     -> tForall kType $ \t -> tForall kDim $ \d -> tTensor t d ~> (t ~> tProp) ~> tProp
+  EAny     -> tForall kType $ \t -> tForall kDim $ \d -> tTensor t d ~> (t ~> tProp) ~> tProp

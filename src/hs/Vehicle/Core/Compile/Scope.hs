@@ -142,7 +142,7 @@ symbolToDeBruijnF = case sortSing @sort of
   -- Otherwise, we simply recurse.
   --
   STYPE -> \case
-    TForallF     ann n t   -> sbindLocal n $ \n' -> TForall ann n' <$> sflow t
+    TForallF     ann k n t -> sbindLocal n $ \n' -> TForall ann <$> traverse sflow k  <*> pure n' <*> sflow t
     TAppF        ann t1 t2 -> TApp ann <$> sflow t1 <*> sflow t2
     TVarF        ann n     -> TVar ann <$> getIndex ann n
     TConF        ann op    -> return $ TCon ann op
@@ -246,7 +246,7 @@ deBruijnToNameF = case sortSing @sort of
   -- Otherwise, we simply recurse.
   --
   STYPE -> \case
-    TForallF     ann n t   -> sbindLocal n $ \n' -> TForall ann n' <$> sflow t
+    TForallF     ann k n t -> sbindLocal n $ \n' -> TForall ann <$> traverse sflow k <*> pure n' <*> sflow t
     TAppF        ann t1 t2 -> TApp ann <$> sflow t1 <*> sflow t2
     TVarF        ann n     -> TVar ann <$> getName (prov ann) n
     TConF        ann op    -> return $ TCon ann op

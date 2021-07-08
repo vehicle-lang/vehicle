@@ -28,13 +28,13 @@ annotation = case sortSing :: SSort sort of
 
   -- Types
   STYPE -> \case
-    TForall     ann _ns _t  -> ann
-    TApp        ann _t1 _t2 -> ann
-    TVar        ann _n      -> ann
-    TCon        ann _b      -> ann
-    TLitDim     ann _i      -> ann
-    TLitDimList ann _ts     -> ann
-    TMeta       ann _i      -> ann
+    TForall     ann _k _ns _t  -> ann
+    TApp        ann _t1 _t2    -> ann
+    TVar        ann _n         -> ann
+    TCon        ann _b         -> ann
+    TLitDim     ann _i         -> ann
+    TLitDimList ann _ts        -> ann
+    TMeta       ann _i         -> ann
 
   -- Type arguments
   STARG -> \case

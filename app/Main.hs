@@ -130,8 +130,12 @@ main = do
   contents <- readFileOrStdin inputFile
   coreProg <- parseAndElab inputLang contents
 
+  T.putStrLn (VC.printTree coreProg)
+
   -- Scope check, type check etc.
   compCoreProg <- compile coreProg
+
+  T.putStrLn (VC.printTree compCoreProg)
 
   -- Compile to requested backend
   case outputTarget of

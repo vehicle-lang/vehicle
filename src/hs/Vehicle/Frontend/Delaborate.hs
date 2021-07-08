@@ -191,7 +191,7 @@ delabF (tree :: VC.TreeF (K Symbol) VF.OutputAnn sort SortedOutputTree) =
 
   -- Types
   STYPE -> case tree of
-    VC.TForallF     ann n t   -> do n <- plugFlow n; t <- unSOT t; return $ VF.TForall ann (n :| []) t
+    VC.TForallF     ann _k n t -> do n <- plugFlow n; t <- unSOT t; return $ VF.TForall ann (n :| []) t
     -- Annotation is not used here, as it was duplicated during elaboration
     VC.TAppF       _ann t1 t2 -> do t2 <- unSOT t2; addArg t2; unSOT t1
     VC.TVarF        ann n     -> return $ VF.TVar ann (unK n)

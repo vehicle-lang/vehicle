@@ -56,6 +56,7 @@ infixl 4 `TApp`
 data instance Tree (name :: Sort -> *) (ann :: Sort -> *) 'TYPE
   = TForall
     (ann 'TYPE)                -- ^ Sort Annotation.
+    (Maybe (Kind name ann))    -- ^ User info
     (TArg name ann)            -- ^ Bound type name.
     (Type name ann)            -- ^ Type body.
   | TApp
