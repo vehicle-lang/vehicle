@@ -84,8 +84,8 @@ compileF (tree :: TreeF ann sort Code) = case sortSing :: SSort sort of
     TFunF        _ann t1 t2 -> compileInfixOp2 2 "->"  t1 t2
     TPropF       _ann       -> compileConstant "Prop"
     TBoolF       _ann       -> compileConstant "Bool"
-    TRealF       _ann       -> compileConstant "ℚ"
-    TIntF        _ann       -> compileConstant "ℤ"
+    TRealF       _ann       -> compileConstant "Real"
+    TIntF        _ann       -> compileConstant "Int"
     TListF       _ann t     -> compileApp1 "List"     t
     TTensorF     _ann t1 t2 -> compileApp2 "Tensor"   t1 t2
     TAddF        _ann t1 t2 -> compileInfixOp2 2 "+"  t1 t2
@@ -118,11 +118,11 @@ compileF (tree :: TreeF ann sort Code) = case sortSing :: SSort sort of
     ELeF      _ann e1 e2    -> compileInfixOp2 8 "<=" e1 e2
     ELtF      _ann e1 e2    -> compileInfixOp2 8 "<"  e1 e2
     EGeF      _ann e1 e2    -> compileInfixOp2 8 ">=" e1 e2
-    EGtF      _ann e1 e2    -> compileInfixOp2 8 "<=" e1 e2
-    EMulF     _ann e1 e2    -> compileInfixOp2 8 "*" e1 e2
-    EDivF     _ann e1 e2    -> compileInfixOp2 8 "/" e1 e2
-    EAddF     _ann e1 e2    -> compileInfixOp2 9 "+" e1 e2
-    ESubF     _ann e1 e2    -> compileInfixOp2 9 "-" e1 e2
+    EGtF      _ann e1 e2    -> compileInfixOp2 8 ">"  e1 e2
+    EMulF     _ann e1 e2    -> compileInfixOp2 8 "*"  e1 e2
+    EDivF     _ann e1 e2    -> compileInfixOp2 8 "/"  e1 e2
+    EAddF     _ann e1 e2    -> compileInfixOp2 9 "+"  e1 e2
+    ESubF     _ann e1 e2    -> compileInfixOp2 9 "-"  e1 e2
     ENegF     _ann e        -> compileApp1 "-" e
     ELitIntF  _ann i        -> pretty i
     ELitRealF _ann d        -> pretty d

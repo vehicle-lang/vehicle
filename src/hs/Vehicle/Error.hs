@@ -40,10 +40,10 @@ class MeaningfulError e where
 
 instance Pretty VehicleError where
   pretty (UError (UserError p prob probFix)) =
-    unAnnotate $ appendProvenance prob p <> line <> fixText probFix
+    unAnnotate $ "Error:" <+> appendProvenance prob p <> line <> fixText probFix
 
   pretty (DError (DeveloperError p prob)) =
-    unAnnotate $ devErrorText <> line <> line <> appendProvenance prob p
+    unAnnotate $ devErrorText <> line <> line <> "Error:" <+> appendProvenance prob p
 
   pretty (EError (ExternalError text)) =
     pretty text
@@ -53,8 +53,8 @@ instance Show VehicleError where
 
 devErrorText :: Doc ann
 devErrorText =
-  "Apologies, something went wrong internally. Please report the error \
-  \ shown below to `https://github.com/wenkokke/vehicle/issues`. \n\n"
+  "Something went wrong internally. Please report the error \
+  \shown below to `https://github.com/wenkokke/vehicle/issues`."
 
 appendProvenance :: Doc ann -> Provenance -> Doc ann
 appendProvenance doc p = doc <+> "(" <> pretty p <> ")"

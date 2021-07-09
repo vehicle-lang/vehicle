@@ -5,7 +5,6 @@
 module Vehicle
   ( VehicleLang(..)
   , ITP(..)
-  , Solver(..)
   , OutputTarget(..)
   , Options(..)
   , defaultOptions
@@ -41,15 +40,15 @@ import Vehicle.Error qualified as V
 -- Command-line options
 
 data VehicleLang = Frontend | Core
+  deriving (Show)
 
 data ITP = Agda
-
-data Solver
+  deriving (Show)
 
 data OutputTarget
   = ITP ITP
-  | Solver Solver
   | Vehicle VehicleLang
+  deriving (Show)
 
 data Options = Options
   { showHelp     :: Bool
@@ -145,10 +144,8 @@ run _opts@Options{..} = do
   -- Scope check, type check etc.
   compCoreProg <- fromEitherIO $ VC.compile coreProg
 
-  T.putStrLn (VC.printTree compCoreProg)
-
   -- Compile to requested backend
-  case outputTarget of
+  outputText <- case outputTarget of
     Nothing -> do
       putStrLn "Please specify an output target with -t or --target"
       exitFailure
@@ -156,7 +153,7 @@ run _opts@Options{..} = do
     Just (ITP itp) -> do
       compFrontProg <- fromEitherIO $ VF.runDelab compCoreProg
 
-      outputText <- case itp of
+      case itp of
         Agda -> do
           let itpOptions = ITPOptions
                 { vehicleUIDs  = mempty
@@ -168,18 +165,18 @@ run _opts@Options{..} = do
                 }
           fromEitherIO $ compileToAgda itpOptions compFrontProg
 
-      case outputFile of
-        Nothing             -> T.putStrLn outputText
-        Just outputFilePath -> T.writeFile outputFilePath outputText
+    Just (Vehicle Core) ->
+      return $ VC.printTree compCoreProg
 
-    Just (Solver v) -> do
-      putStrLn "No solvers implemented yet"
-      exitFailure
-
-    Just (Vehicle Core) -> T.putStrLn (VC.printTree compCoreProg)
     Just (Vehicle Frontend) -> do
       compFrontProg <- fromEitherIO $ VF.runDelab compCoreProg
-      T.putStrLn (VF.printTree compFrontProg)
+      return $ VF.printTree compFrontProg
+
+  -- Output the result to either the command line or the specified output file
+  case outputFile of
+    Nothing             -> T.putStrLn outputText
+    Just outputFilePath -> T.writeFile outputFilePath outputText
+
 
 parseAndElab :: VehicleLang -> Text -> IO VC.InputProg
 parseAndElab Frontend contents = do

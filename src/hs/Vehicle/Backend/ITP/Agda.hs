@@ -13,7 +13,8 @@ module Vehicle.Backend.ITP.Agda
   (AgdaOptions(..), compileToAgda) where
 
 import Data.List.NonEmpty (NonEmpty)
-import Data.Text as Text (Text, intercalate, unwords, pack, toUpper, null, splitAt)
+import Data.Text (Text)
+import Data.Text qualified as Text (intercalate, unwords, null, pack, toUpper, splitAt)
 import Data.Foldable (fold)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
@@ -86,7 +87,7 @@ instance Show Dependency where
   show RelNullary          = "Relation.Nullary"
 
 importStatement :: Dependency -> Text
-importStatement dep = "open import " <> pack (show dep)
+importStatement dep = "open import " <> Text.pack (show dep)
 
 importStatements :: Set Dependency -> Text
 importStatements deps = Text.unwords $ map importStatement $ Set.toList deps
@@ -94,7 +95,7 @@ importStatements deps = Text.unwords $ map importStatement $ Set.toList deps
 type ModulePath = [Text]
 
 moduleHeader :: ModulePath -> Text
-moduleHeader path = "module " <> intercalate "." path <> " where"
+moduleHeader path = "module " <> Text.intercalate "." path <> " where"
 
 
 --------------------------------------------------------------------------------
@@ -165,7 +166,7 @@ compileProgramToAgda program = do
   let progamDependencies = fold (reAnnotateS fst programStream)
   let programText = renderStrict programStream
   options <- ask
-  return $ intercalate "\n\n"
+  return $ Text.intercalate "\n\n"
     [ fileHeader options "--"
     , importStatements progamDependencies
     , moduleHeader (modulePath (backendOpts options))
@@ -192,7 +193,7 @@ instance CompileToAgda 'TYPE where
       return $ "∀" <+> hsep cns <+> ct
 
     TVar    _ann n     -> return $ pretty n
-    TFun    _ann t1 t2 -> annotateInfixOp2 [] (maxBound :: Int) id "→" <$> compile t1 <*> compile t2
+    TFun    _ann t1 t2 -> annotateInfixOp2 [] 20 id "→" <$> compile t1 <*> compile t2
     TProp   _ann       -> compileProp
     TBool   _ann       -> return $ annotateConstant DataBool "Bool"
     TReal   _ann       -> return $ annotateConstant DataRat "ℚ"
@@ -292,7 +293,7 @@ instance CompileToAgda 'DECL where
 instance CompileToAgda 'PROG where
   compile (Main _ann ds) = do
     cds <- traverse compile ds
-    return $ vsep cds
+    return $ vsep2 cds
 
 -- |Compiling literal sequences
 compileLitSeq :: NonEmpty Code -> Code
@@ -462,7 +463,7 @@ compileTypeDef n args t = "pattern" <+> n <+> hsep args <+> "=" <+> t
 compileFunDef :: Code -> Code -> [Code] -> Code -> Code
 compileFunDef n t ns e =
   n <+> ":" <+> t <> hardline <>
-  n <+> hsep ns <+> "=" <+> e
+  n <+> (if null ns then mempty else hsep ns <> " ") <> "=" <+> e
 
 compileProperty :: Code -> Code -> Code
 compileProperty eArg expr =

@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -11,10 +12,10 @@ module Vehicle.Backend.ITP.Core where
 
 import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader, MonadReader(..), ReaderT(..))
-import Data.Text as Text (Text, intercalate, pack)
+import Data.Text as Text (Text, intercalate, pack, append)
 import Data.Map (Map)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Version (Version)
+import Data.Version (Version, showVersion)
 import Prettyprinter as Pretty hiding (squotes)
 
 import Vehicle.Frontend.AST (Tree(..), OutputAnn, OutputType, OutputExpr, annotation)
@@ -48,13 +49,14 @@ data ITPOptions backendOpts = ITPOptions
 -- |Generate the file header given the token used to start comments in the
 -- target language
 fileHeader :: ITPOptions backendOpts -> Text -> Text
-fileHeader options commentToken = intercalate ("\n" <> commentToken <> " ")
-  [ "This file was generated automatically by the AISEC tool"
-  , "and should not be modified manually!"
-  , "Metadata"
-  , " - AISEC version: " <> pack (show (aisecVersion options))
-  , " - Date generated: ???"
-  ]
+fileHeader options commentToken = intercalate "\n" $
+  map (append (commentToken <> " "))
+    [ "This file was generated automatically by the AISEC tool"
+    , "and should not be modified manually!"
+    , "Metadata"
+    , " - AISEC version: " <> pack (showVersion (aisecVersion options))
+    , " - Date generated: ???"
+    ]
 
 --------------------------------------------------------------------------------
 -- AST abbreviations
@@ -94,7 +96,7 @@ instance MeaningfulError CompileError where
   details (UnexpectedType p expr actualType expectedTypes) = DError $ DeveloperError
     { provenance = p
     , problem    = "unexpected type found for expression" <+> pretty expr <> "." <> line
-                   <> "Was expecting one of" <+> pretty expectedTypes <+> "but found" <+> pretty actualType
+                   <> "Was expecting one of" <+> list (map pretty expectedTypes) <+> "but found" <+> pretty actualType
     }
 
   details (UnexpectedExpr p expr) = DError $ DeveloperError
@@ -122,10 +124,14 @@ data BoolType
   | Prop
 
 booleanType :: MonadCompile m options => OutputExpr -> m BoolType
-booleanType expr = let ann = annotation expr in case annotatedType ann of
-  TBool _ -> return Bool
-  TProp _ -> return Prop
-  typ     -> throwError $ UnexpectedType (prov ann) expr typ ["Bool", "Prop"]
+booleanType expr = go (annotatedType (annotation expr))
+  where
+    go :: MonadCompile m options => OutputType -> m BoolType
+    go = \case
+      TBool _ann        -> return Bool
+      TProp _ann        -> return Prop
+      TFun  _ann _t1 t2 -> go t2
+      typ               -> throwError $ UnexpectedType (prov expr) expr typ ["Bool", "Prop", "X -> Bool", "X -> Prop"]
 
 -- | Types of container data supported
 data ContainerType

@@ -31,7 +31,7 @@ instance Monoid Provenance where
 
 instance Pretty Provenance where
   -- TODO probably need to do something more elegant here.
-  pretty = pretty . show
+  pretty (Provenance ranges) = pretty (show ranges)
 
 -- | Class for types which have provenance information
 
