@@ -113,10 +113,14 @@ data NumericType
   | Real
 
 numericType :: MonadCompile m options => OutputExpr -> m NumericType
-numericType expr = let ann = annotation expr in case annotatedType ann of
-  TInt  _ -> return Int
-  TReal _ -> return Real
-  typ     -> throwError $ UnexpectedType (prov ann) expr typ ["Real", "Int"]
+numericType expr = go $ annotatedType (annotation expr)
+  where
+    go :: MonadCompile m options => OutputType -> m NumericType
+    go = \case
+      TInt  _ann        -> return Int
+      TReal _ann        -> return Real
+      TFun  _ann _t1 t2 -> go t2
+      typ               -> throwError $ UnexpectedType (prov expr) expr typ ["Real", "Int", "X -> Bool", "X -> Prop"]
 
 -- |Types of boolean data supported
 data BoolType
