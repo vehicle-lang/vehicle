@@ -36,6 +36,15 @@ deriving instance
   , Eq (ann 'TARG)
   ) => Eq (Type name ann)
 
+deriving instance
+  ( Show (name 'KIND)
+  , Show (ann 'KIND)
+  , Show (name 'TYPE)
+  , Show (ann 'TYPE)
+  , Show (name 'TARG)
+  , Show (ann 'TARG)
+  ) => Show (Type name ann)
+
 -- * Expressions
 
 deriving instance
@@ -50,6 +59,19 @@ deriving instance
   , Eq (name 'EARG)
   , Eq (ann 'EARG)
   ) => Eq (Expr name ann)
+
+deriving instance
+  ( Show (name 'KIND)
+  , Show (ann 'KIND)
+  , Show (name 'TYPE)
+  , Show (ann 'TYPE)
+  , Show (name 'TARG)
+  , Show (ann 'TARG)
+  , Show (name 'EXPR)
+  , Show (ann 'EXPR)
+  , Show (name 'EARG)
+  , Show (ann 'EARG)
+  ) => Show (Expr name ann)
 
 -- * Declarations
 
@@ -68,6 +90,21 @@ deriving instance
   , Eq (ann 'DECL)
   ) => Eq (Decl name ann)
 
+deriving instance
+  ( Show (name 'KIND)
+  , Show (ann 'KIND)
+  , Show (name 'TYPE)
+  , Show (ann 'TYPE)
+  , Show (name 'TARG)
+  , Show (ann 'TARG)
+  , Show (name 'EXPR)
+  , Show (ann 'EXPR)
+  , Show (name 'EARG)
+  , Show (ann 'EARG)
+  , Show (name 'DECL)
+  , Show (ann 'DECL)
+  ) => Show (Decl name ann)
+
 -- * Type arguments
 
 deriving instance
@@ -78,6 +115,15 @@ deriving instance
   , Eq (name 'TARG)
   , Eq (ann 'TARG)
   ) => Eq (TArg name ann)
+
+deriving instance
+  ( Show (name 'KIND)
+  , Show (ann 'KIND)
+  , Show (name 'TYPE)
+  , Show (ann 'TYPE)
+  , Show (name 'TARG)
+  , Show (ann 'TARG)
+  ) => Show (TArg name ann)
 
 -- * Expression arguments
 
@@ -93,3 +139,35 @@ deriving instance
   , Eq (name 'EARG)
   , Eq (ann 'EARG)
   ) => Eq (EArg name ann)
+
+deriving instance
+  ( Show (name 'KIND)
+  , Show (ann 'KIND)
+  , Show (name 'TYPE)
+  , Show (ann 'TYPE)
+  , Show (name 'TARG)
+  , Show (ann 'TARG)
+  , Show (name 'EXPR)
+  , Show (ann 'EXPR)
+  , Show (name 'EARG)
+  , Show (ann 'EARG)
+  ) => Show (EArg name ann)
+
+-- * Programs
+
+deriving instance
+  ( Show (name 'KIND)
+  , Show (ann 'KIND)
+  , Show (name 'TYPE)
+  , Show (ann 'TYPE)
+  , Show (name 'TARG)
+  , Show (ann 'TARG)
+  , Show (name 'EXPR)
+  , Show (ann 'EXPR)
+  , Show (name 'EARG)
+  , Show (ann 'EARG)
+  , Show (name 'DECL)
+  , Show (ann 'DECL)
+  , Show (name 'PROG)
+  , Show (ann 'PROG)
+  ) => Show (Prog name ann)

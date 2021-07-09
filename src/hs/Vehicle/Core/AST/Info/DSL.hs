@@ -106,7 +106,7 @@ kindOf = \case
   TInt    -> kType
   TReal   -> kType
   TList   -> kType ~> kType
-  TTensor -> kType ~> kDim ~> kType
+  TTensor -> kType ~> kDimList ~> kType
   TAdd    -> kDim ~> kDim ~> kDim
   TCons   -> kDim ~> kDimList ~> kDimList
 
@@ -120,12 +120,18 @@ typeOf = \case
   ENot     -> tProp ~> tProp
   ETrue    -> tProp
   EFalse   -> tProp
-  EEq      -> tForall kType $ \t -> t ~> t ~> tProp
-  ENeq     -> tForall kType $ \t -> t ~> t ~> tProp
-  ELe      -> tForall kType $ \t -> t ~> t ~> tProp
-  ELt      -> tForall kType $ \t -> t ~> t ~> tProp
-  EGe      -> tForall kType $ \t -> t ~> t ~> tProp
-  EGt      -> tForall kType $ \t -> t ~> t ~> tProp
+  EEq      -> tReal ~> tReal ~> tProp
+  ENeq     -> tReal ~> tReal ~> tProp
+  ELe      -> tReal ~> tReal ~> tProp
+  ELt      -> tReal ~> tReal ~> tProp
+  EGe      -> tReal ~> tReal ~> tProp
+  EGt      -> tReal ~> tReal ~> tProp
+  -- EEq      -> tForall kType $ \t -> t ~> t ~> tProp
+  -- ENeq     -> tForall kType $ \t -> t ~> t ~> tProp
+  -- ELe      -> tForall kType $ \t -> t ~> t ~> tProp
+  -- ELt      -> tForall kType $ \t -> t ~> t ~> tProp
+  -- EGe      -> tForall kType $ \t -> t ~> t ~> tProp
+  -- EGt      -> tForall kType $ \t -> t ~> t ~> tProp
 
   -- TODO need some sort of bounded quantification over int/real?
   EMul     -> tReal ~> tReal ~> tReal

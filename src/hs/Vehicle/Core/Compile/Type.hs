@@ -385,6 +385,7 @@ checkInferF = case sortSing @sort of
   SDECL -> \case
     DeclNetwF p n t    -> fromInfer p $ do
       (t , _k) <- flow $ runInfer t
+      -- BOB: should we check that the type has kind STAR?
       n <- flow $ runCheckWith (Info t) n
       return (DeclNetw (mempty :*: p) n t, mempty)
 
@@ -404,8 +405,8 @@ checkInferF = case sortSing @sort of
   -- Programs
   SPROG -> \case
     MainF p ds -> fromInfer p $ do
-      ds <- flow $ traverse (runCheckWith mempty) ds
-      return (Main (mempty :*: p) ds , mempty)
+      ds <- flow $ traverse (runCheckWith (Info ())) ds
+      return (Main (mempty :*: p) ds , Info ())
 
 
 -- |Switch from inference mode to checking mode upon finding a type annotation.

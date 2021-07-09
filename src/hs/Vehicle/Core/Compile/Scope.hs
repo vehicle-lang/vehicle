@@ -189,24 +189,24 @@ symbolToDeBruijnF = case sortSing @sort of
 
   -- Declarations
   SDECL -> \case
-    DeclNetwF ann n t    -> do n' <- sflow n
-                               t' <- sflow t
+    DeclNetwF ann n t    -> do t' <- sflow t
+                               n' <- sflow n
                                return $ DeclNetw ann n' t'
-    DeclDataF ann n t    -> do n' <- sflow n
-                               t' <- sflow t
+    DeclDataF ann n t    -> do t' <- sflow t
+                               n' <- sflow n
                                return $ DeclData ann n' t'
     DefTypeF  ann n ns t -> do n' <- sflow n
                                flow $
                                  sbindAllLocal ns $ \ns' ->
                                    DefType ann n' ns' <$> unSDF t
     DefFunF   ann n t e  -> do t' <- sflow t
-                               n' <- sflow n
                                e' <- sflow e
+                               n' <- sflow n
                                return $ DefFun ann n' t' e'
 
   -- Programs
   SPROG -> \case
-    MainF ann ds -> Main ann <$> traverse sflow ds
+    MainF ann ds -> Main ann <$> flow (traverse unSDF ds)
 
 
 
@@ -293,24 +293,24 @@ deBruijnToNameF = case sortSing @sort of
 
   -- Declarations
   SDECL -> \case
-    DeclNetwF ann n t    -> do n' <- sflow n
-                               t' <- sflow t
+    DeclNetwF ann n t    -> do t' <- sflow t
+                               n' <- sflow n
                                return $ DeclNetw ann n' t'
-    DeclDataF ann n t    -> do n' <- sflow n
-                               t' <- sflow t
+    DeclDataF ann n t    -> do t' <- sflow t
+                               n' <- sflow n
                                return $ DeclData ann n' t'
     DefTypeF  ann n ns t -> do n' <- sflow n
                                flow $
                                  sbindAllLocal ns $ \ns' ->
                                    DefType ann n' ns' <$> unSDF t
     DefFunF   ann n t e  -> do t' <- sflow t
-                               n' <- sflow n
                                e' <- sflow e
+                               n' <- sflow n
                                return $ DefFun ann n' t' e'
 
   -- Programs
   SPROG -> \case
-    MainF ann ds -> Main ann <$> traverse sflow ds
+    MainF ann ds -> Main ann <$> flow (traverse unSDF ds)
 
 -- | Maps any machine (i.e. automatically generated) names to symbols
 -- provided by the supply monad.

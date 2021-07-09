@@ -36,6 +36,7 @@ import Vehicle.Core.AST.Core
 data Name
   = User Symbol
   | Machine
+  deriving Show
 
 deriving instance Eq Name
 
@@ -77,6 +78,7 @@ toName (ESymbol name) = name
 
 deriving instance Eq (DeBruijn sort)
 
+deriving instance Show (DeBruijn sort)
 
 data BindingDepth = BindingDepth { typeDepth :: Int , exprDepth :: Int}
 
