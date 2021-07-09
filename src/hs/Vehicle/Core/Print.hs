@@ -71,7 +71,7 @@ instance Pretty (Kind name ann) where
   pretty = \case
     KApp  _ann k1 k2 -> pretty k1 <+> parens (pretty k2)
     KCon  _ann op    -> pretty op
-    KMeta _ann i     -> pretty i
+    KMeta _ann i     -> "k" <> pretty i
 
 instance Pretty (name 'TARG) => Pretty (TArg name ann) where
   pretty (TArg _ann n) = pretty n
@@ -86,7 +86,7 @@ instance ( Pretty (name 'TYPE)
     TCon        _ann op    -> pretty op
     TLitDim     _ann d     -> pretty d
     TLitDimList _ann ts    -> brackets $ hsep $ map pretty (NonEmpty.toList ts)
-    TMeta       _ann i     -> pretty i
+    TMeta       _ann i     -> "t" <> pretty i
 
 instance ( Pretty (name 'TYPE)
          , Pretty (name 'TARG)

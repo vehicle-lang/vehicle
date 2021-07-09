@@ -8,11 +8,14 @@
 
 module Vehicle.Core.AST.Info.DSL where
 
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty (map)
+
 import Vehicle.Core.AST.Builtin ( Builtin(..) )
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
 import Vehicle.Core.AST.Instance ()
-import Vehicle.Core.AST.Info.Core ( Info(..), InfoAnn)
+import Vehicle.Core.AST.Info.Core ( Info(..))
 import Vehicle.Core.AST.Utils (annotation)
 import Vehicle.Prelude
 
@@ -88,6 +91,9 @@ tTensor tDim tElem = con TTensor `app` tDim `app` tElem
 
 tList :: (DSL sort, Underlying sort ~ 'TYPE) => Info name sort -> Info name sort
 tList tElem = con TList `app` tElem
+
+tLitDimList :: NonEmpty (Info name 'EXPR) -> Info name 'EXPR
+tLitDimList ts = Info $ TLitDimList (kDimList :*: mempty) (NonEmpty.map unInfo ts)
 
 -- TODO figure out how to do this without horrible -1 hacks
 tForall :: Info DeBruijn 'TYPE -> (Info DeBruijn 'EXPR -> Info DeBruijn 'EXPR) -> Info DeBruijn 'EXPR

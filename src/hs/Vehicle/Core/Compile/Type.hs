@@ -31,6 +31,8 @@ import Data.Maybe (fromMaybe)
 import Data.Coerce (coerce)
 import Data.Sequence (Seq, (!?))
 import Data.Sequence qualified as Seq
+import Data.List.NonEmpty (NonEmpty(..))
+import Debug.Trace (trace)
 import Prettyprinter ( (<+>), Pretty(pretty), encloseSep, lbracket, rbracket, comma )
 
 import Vehicle.Core.AST
@@ -356,23 +358,26 @@ checkInferF = case sortSing @sort of
 
     ELitSeqF p es -> fromCheck p $ do
       tExpected <- ask
-      let dActual = toInteger $ length es
+      let actualFirstDimension = toInteger $ length es
 
-      -- Literal sequences can be tensors for the moment
-      -- TODO work out how to allow them to be lists as well
       tElem <- case unInfo tExpected of
-        (TApp _ (TApp _ (TCon _ TTensor) (TLitDim _ dExpected)) tElem)
-          | dActual == dExpected -> return $ Info tElem
+        (TApp ann1 (TApp ann2 (TCon ann3 TTensor) tElem) (TLitDimList ann4 (TLitDim _ann5 expectedFirstDimension :| ds)))
+          | actualFirstDimension == expectedFirstDimension -> case ds of
+            -- If there is only one dimension, the elements' type should be the tensor's type argument.
+            []         -> return $ Info tElem
+            -- If there is more than one dimension, the elements's type should be a tensor with one less dimension than the original.
+            (d2 : ds2) -> return $ Info $ TApp ann1 (TApp ann2 (TCon ann3 TTensor) tElem) (TLitDimList ann4 (d2 :| ds2))
         (TApp _ (TCon _ TList) tElem) ->
           return $ Info tElem
         _ -> do
           tElem <- lift freshTMeta
-          let tTensorActual = tTensor (tLitDim dActual) tElem
+          let tTensorActual = tTensor tElem (tLitDimList (tLitDim actualFirstDimension :| []))
           let tListActual   = tList tElem
           throwError $ Mismatch (unK p) [tTensorActual , tListActual] tExpected
 
       es <- lift (traverse (runCheckWith tElem) es)
       return $ ELitSeq (tExpected :*: p) es
+
 
   -- Expression arguments
   SEARG -> \case
@@ -457,7 +462,7 @@ fromCheck p chk = (chk, checkToInfer p chk)
 -- |Constructed a bidirectional step from an inference step.
 --
 --  Concretely, the resulting algorithm runs the inference mode, then compares
---  the inferred type to the expected type. If thKey're equal, it returns as
+--  the inferred type to the expected type. If they're equal, it returns as
 --  usual. If they're not, it throws an error.
 --
 fromInfer ::
