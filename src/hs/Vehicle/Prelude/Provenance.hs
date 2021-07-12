@@ -18,8 +18,11 @@ import Vehicle.Prelude.Types ( K(K) )
 --------------------------------------------------------------------------------
 -- Position
 
--- |A position in the source file is represented by a line number and a column number.
--- (Note the names |line| and |column| clash with lots of other functions)
+-- |A position in the source file is represented by a line number and a column
+-- number.
+--
+-- Note we don't use the names `line` and `column` as they clash with the
+-- `Prettyprinter` library.
 data Position = Position
   { posLine   :: Int
   , posColumn :: Int
@@ -29,11 +32,25 @@ instance Show Position where
   show (Position l c) = show (l, c)
 
 instance Pretty Position where
-  pretty (Position l c) = "Line" <+> pretty l <> " Col" <+> pretty c
+  pretty (Position l c) = "Line" <+> pretty l <+> "Column" <+> pretty c
 
 -- |Get the starting position of a token.
 tkPosition :: IsToken a => a -> Position
 tkPosition t = let (l, c) = tkLocation t in Position l c
+
+--------------------------------------------------------------------------------
+-- Position ranges
+
+instance Pretty (Range Position) where
+  pretty (SpanRange (Bound p1 Inclusive) (Bound p2 Inclusive)) =
+    if posLine p1 == posLine p2 then
+      "Line" <+> pretty (posLine p1) <> "," <+>
+      "Columns" <+> pretty (posColumn p1) <> "-" <> pretty (posColumn p2)
+    else
+      pretty p1 <+> "-" <+> pretty p2
+  -- I think we exclusively use inclusive span ranges so for the moment
+  -- don't do anything special when showing them.
+  pretty r = pretty $ show r
 
 -- | Takes the union of two sets of position ranges and then joins any adjacent
 -- ranges (e.g. r1=[(1,10)-(1,20)] & r2=[(1,21)-(1,25)] gets mapped to
@@ -96,7 +113,10 @@ instance Monoid Provenance where
 
 instance Pretty Provenance where
   -- TODO probably need to do something more elegant here.
-  pretty (Provenance ranges) = pretty (show ranges)
+  pretty (Provenance ranges) = case ranges of
+    []  -> "no source location"
+    [r] -> pretty r
+    rs  -> concatWith (\u v -> u <> "," <> v) (map pretty rs)
 
 --------------------------------------------------------------------------------
 -- Provenance type-class
