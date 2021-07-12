@@ -7,6 +7,8 @@ import Prettyprinter.Internal (Doc(Annotated))
 -- * Additions to the prettyprinter library
 
 --------------------------------------------------------------------------------
+-- More flexible combinators
+
 -- Redefining some pretty printer primitives to work with `Foldable`.
 -- Can remove once https://github.com/quchen/prettyprinter/pull/200 is released.
 

@@ -27,12 +27,10 @@ import Control.Monad.Supply (SupplyT, demand)
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Writer (MonadWriter(..))
 import Data.Text (Text)
-import Data.Maybe (fromMaybe)
 import Data.Coerce (coerce)
-import Data.Sequence (Seq, (!?))
+import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.List.NonEmpty (NonEmpty(..))
-import Debug.Trace (trace)
 import Prettyprinter ( (<+>), Pretty(pretty), encloseSep, lbracket, rbracket, comma )
 
 import Vehicle.Core.AST

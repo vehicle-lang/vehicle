@@ -27,6 +27,7 @@ import Data.Text.IO qualified as T
 import Prettyprinter ( (<+>), line, pretty )
 import System.Exit (exitFailure)
 
+
 import Vehicle.Frontend.Abs as B
 import Vehicle.Frontend.Layout (resolveLayout)
 import Vehicle.Frontend.Lex as L (Token)
@@ -171,10 +172,10 @@ instance Convert Name V.InputTArg where
   conv n = return $ V.TArg (K (tkProv n)) (tkSymbol n)
 
 instance Convert B.Expr V.InputExpr where
-  conv (B.EAnn e tk t)              = op2 V.EAnn (tkProv tk) (conv e) (conv t)
-  conv (B.ELet ds e)                = op2 V.ELet mempty (filterLetDecls ds >>= groupDecls (Just "let") mempty) (conv e)
-  conv (B.ELam tk1 ns tk2 e)        = op2 V.ELam (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
-  conv (B.EApp e1 e2)               = op2 V.EApp mempty (conv e1) (conv e2)
+  conv (B.EAnn e tk t)              = op2 V.EAnn   (tkProv tk) (conv e) (conv t)
+  conv (B.ELet ds e)                = op2 V.ELet   mempty (filterLetDecls ds >>= groupDecls (Just "let") mempty) (conv e)
+  conv (B.ELam tk1 ns tk2 e)        = op2 V.ELam   (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
+  conv (B.EApp e1 e2)               = op2 V.EApp   mempty (conv e1) (conv e2)
   conv (B.EVar n)                   = return $ V.EVar (K (tkProv n)) (tkSymbol n)
   conv (B.ETyApp e t)               = op2 V.ETyApp mempty (conv e) (conv t)
   conv (B.ETyLam tk1 ns tk2 e)      = op2 V.ETyLam (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)

@@ -20,8 +20,8 @@ main = runTestTT . TestList $
 fileTests :: [FilePath]
 fileTests =
   [ "examples/simple.vcl"
-  --, "examples/andGate.vcl"
-  --, "examples/mnist.vcl"
+  -- , "examples/andGate.vcl"
+  -- , "examples/mnist.vcl"
   --, "examples/shortestPath.vcl"
   ]
 {-

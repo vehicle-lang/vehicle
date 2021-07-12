@@ -2,24 +2,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms  #-}
 
-module Vehicle.Prelude.Token
-  ( Symbol
-  , Position
-  , posLine
-  , posColumn
-  , Token(..)
-  , IsToken
-  , toToken
-  , fromToken
-  , tkSymbol
-  , tkPosition
-  , tkLength
-  , tkRange
-  , tkEq
-  , tkUpdateText
-  ) where
+module Vehicle.Prelude.Token where
 
-import           Data.Range (Range(..), (+=+))
 import           Data.Function (on)
 import           Data.Coerce (Coercible, coerce)
 import           Data.Text (Text)
@@ -29,22 +13,12 @@ import qualified Data.Text as T
 -- |Symbols in BNFC generated grammars are represented by |Text|.
 type Symbol = Text
 
--- |Positions in BNFC generated grammars are represented by a pair of a line
---  number and a column number.
-type Position = (Int, Int)
-
-posLine :: Position -> Int
-posLine = fst
-
-posColumn :: Position -> Int
-posColumn = snd
-
 -- |Position tokens in BNFC generated grammars are represented by a pair of a
 -- position and the text token.
-newtype Token = Tk (Position, Symbol)
+newtype Token = Tk ((Int , Int), Symbol)
   deriving (Eq, Ord, Show, Read)
 
-pattern Token :: Position -> Symbol -> Token
+pattern Token :: (Int , Int) -> Symbol -> Token
 pattern Token{pos,sym} = Tk (pos,sym)
 
 -- |Constraint for newtypes which are /position tokens/. Depends on the fact
@@ -66,25 +40,18 @@ fromToken = coerce
 tkSymbol :: IsToken a => a -> Symbol
 tkSymbol = sym. toToken
 
--- |Get the starting position of a token.
-tkPosition :: IsToken a => a -> Position
-tkPosition = pos . toToken
-
 -- |Get the length of a token.
 tkLength :: IsToken a => a -> Int
 tkLength = T.length . tkSymbol
-
--- |Get the starting and ending position of a token.
-tkRange :: IsToken a => a -> [Range Position]
-tkRange tk = [start +=+ end]
-  where
-    start = tkPosition tk
-    end   = (posLine start, posColumn start + tkLength tk)
 
 -- |Compare the text portion of any two position tokens.
 tkEq :: IsToken a => a -> a -> Bool
 tkEq = (==) `on` toToken
 
+-- |Get the starting position of a token.
+tkLocation :: IsToken a => a -> (Int, Int)
+tkLocation = pos . toToken
+
 -- |Change name of a token.
 tkUpdateText :: IsToken a => Text -> a -> a
-tkUpdateText txt tk = fromToken (Token { pos = tkPosition tk, sym = txt})
+tkUpdateText txt tk = fromToken (Token { pos = tkLocation tk, sym = txt})
