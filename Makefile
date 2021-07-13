@@ -19,12 +19,9 @@ default: build
 #   The init command sets up a few things which only need
 
 .PHONY: init
-init: .githooks/commit
+init:
 	@echo "Create stack.yaml for GHC $(GHC_VERSION)"
 	@cp stack-$(GHC_VERSION).yaml stack.yaml
-
-.githooks/commit: on_commit.sh
-	cp $< $@
 
 #################################################################################
 # Format code within project
