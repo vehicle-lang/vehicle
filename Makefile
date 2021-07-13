@@ -19,10 +19,20 @@ default: build
 #   The init command sets up a few things which only need
 
 .PHONY: init
-init:
+init: .githooks/commit
 	@echo "Create stack.yaml for GHC $(GHC_VERSION)"
 	@cp stack-$(GHC_VERSION).yaml stack.yaml
 
+.githooks/commit: on_commit.sh
+	cp $< $@
+
+#################################################################################
+# Format code within project
+#################################################################################
+
+.PHONY: format
+format: require-ormolu
+	@ormolu --mode inplace $(git ls-files '*.hs')
 
 #################################################################################
 # Build parsers for Frontend and Core languages using BNFC
@@ -133,5 +143,13 @@ require-bnfc:
 ifeq (,$(wildcard $(shell which bnfc)))
 	@echo "The command you called requires the BNF Converter"
 	@echo "See: https://bnfc.digitalgrammars.com/"
+	@exit 1
+endif
+
+.PHONY: require-ormolu
+require-ormolu:e
+ifeq (,$(wildcard $(shell which ormolu)))
+	@echo "The command you called requires the ormolu Haskel formatter"
+	@echo "See: https://github.com/tweag/ormolu"
 	@exit 1
 endif

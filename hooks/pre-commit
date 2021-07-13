@@ -1,0 +1,3 @@
+#!/bin/sh
+
+ormolu --mode check $(git ls-files '*.hs')
