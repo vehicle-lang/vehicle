@@ -131,7 +131,7 @@ tellData ::
   forall sort s m.
   (KnownSort sort, sort `In` ['TARG, 'EARG], Monoid s, Monad m) =>
   s -> DataflowT sort s m ()
-tellData s = fromStateT $ modify (<>s)
+tellData s = fromStateT $ modify (s<>)
 
 
 -- * Cast |DataflowT| to specific monad transformers
