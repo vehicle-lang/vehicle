@@ -5,13 +5,12 @@
 module Vehicle.Core.Compile
   ( CompileError(..)
   , compile
+  , runTypeChecking
   ) where
 
 import Control.Arrow (right)
-import Control.Monad.Supply (SupplyT, withSupplyT, runSupplyT)
-import Control.Monad.Except (Except, withExcept, runExcept, mapExceptT, mapExcept)
-import Control.Monad.Identity (Identity)
-import Data.Text (pack)
+import Control.Monad.Supply (runSupplyT)
+import Control.Monad.Except (Except, withExcept, runExcept, mapExcept)
 
 import Vehicle.Core.AST(Tree, InputTree, Info, OutputTree, DeBruijn)
 import Vehicle.Core.Compile.Scope (ScopeError(..), symbolToDeBruijn, deBruijnToSymbol)
@@ -43,16 +42,6 @@ runTypeChecking = discardInferred . supplyMetaVars . propagateCtx . inferAndAnno
     propagateCtx     = evalDataflowT mempty
     discardInferred  = mapExcept (right fst)
 
-runDeBruijnToSymbol :: KnownSort sort =>
-                       Tree DeBruijn (Info DeBruijn :*: K Provenance) sort ->
-                       Except ScopeError (Tree (K Symbol) (Info (K Symbol) :*: K Provenance) sort)
-runDeBruijnToSymbol = mapExceptT assignMachineVariables . deBruijnToSymbol
-  where
-    -- Machine variables are assigned the names: v1, v2, ...
-    assignMachineVariables :: SupplyT Symbol Identity  (Either ScopeError (Tree (K Symbol) (Info (K Symbol) :*: K Provenance) sort))
-                           -> Identity (Either ScopeError (OutputTree sort))
-    assignMachineVariables s = runSupplyT (withSupplyT (\i -> "v" <> pack (show i)) s) (+ 1) (0 :: Integer)
-
 compile ::
   (KnownSort sort) =>
   InputTree sort ->
@@ -60,5 +49,5 @@ compile ::
 compile tree0 = runExcept $ do
   tree1 <- withExcept ScopeError (runSymbolToDeBruijn tree0)
   tree2 <- withExcept TypeError  (runTypeChecking tree1)
-  tree3 <- withExcept ScopeError (runDeBruijnToSymbol tree2)
+  tree3 <- withExcept ScopeError (deBruijnToSymbol tree2)
   return tree3
