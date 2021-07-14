@@ -2,98 +2,62 @@
 
 comment "(*" "*)";
 
--- * ens
+-- * Tokens
 
 position token Builtin
-  ( {"all"} | {"any"}
-  | {"=>"} | {"and"} | {"or"}
+  ( {"Type"} | {"Kind"} | {"Constraint"}
+  | {"all"} | {"any"}
+  | {"=>"} | {"and"} | {"or"} | {"not"}
   | {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
-  | {"*"} | {"/"} | {"+"} | {"-"} | {"~"} | {"!"} | {"not"}
-  | {"->"} | {"Type"} | {"Tensor"} | {"Real"} | {"Nat"}
-  | {"Prop"}
-  | {"Bool"} | {"True"} | {"False"}
-  | {"List"} | {"::"}
+  | {"*"} | {"/"} | {"+"} | {"-"} | {"~"}
+  | {"Nat"} | {"Int"} | {"Real"}
+  | {"Prop"} | {"Bool"}
+  | {"Tensor"} | {"List"} | {"::"} | {"!"}
+  | {"Eq"} | {"Ord"} | {"Container"} | {"Number"}
   );
 
 position token Name (lower (letter | digit | '_')*) ;
+position token Meta ('?' digit+) ;
+position token Bool ({"True"} | {"False"}) ;
 
--- * Kinds
+-- * Names for builtins, binders, and variables
 
--- Core structure.
-KApp.  Kind  ::= Kind Kind1;
-KCon.  Kind1 ::= KindBuiltin;
-
-coercions Kind 1;
-
-
--- * Types
+ExplicitNameAndType. Binder ::= "(" Name Expr1 ")";
+ExplicitName.        Binder ::= Name;
+ImplicitNameAndType. Binder ::= "{" Name Expr1 "}";
+ImplicitName.        Binder ::= "{" Name "}";
 
 -- Core structure.
-TForall.     Type  ::= "forall" TypeBinder Type1;
-TApp.        Type  ::= Type Type1;
-TVar.        Type1 ::= TypeName;
-TCon.        Type1 ::= TypeBuiltin;
 
--- Type-level dimensions.
-TLitDim.     Type1 ::= Integer; -- NOTE: this means natural
-
--- Type-level lists of dimensions.
-TLitDimList. Type1 ::= "[" [Type1] "]";
-
-separator Type1 "";
-
-coercions Type 1;
-
-
--- * Expressions
-
--- Core structure.
-EAnn.       Expr  ::= Expr ":type" Type;
-ELet.       Expr  ::= "let" ExprBinder Expr1 Expr1;
-ELam.       Expr  ::= "lambda" ExprBinder Expr1;
-EApp.       Expr  ::= Expr Expr1;
-EVar.       Expr1 ::= ExprName;
-ETyApp.     Expr  ::= Expr "{" Type "}";
-ETyLam.     Expr  ::= "lambda" TypeBinder Expr1;
-ECon.       Expr1 ::= ExprBuiltin;
-
--- Naturals and reals.
-ELitInt.    Expr1 ::= Integer; -- NOTE: this means natural
-ELitReal.   Expr1 ::= Double;
-
--- Lists and tensors.
-ELitSeq.    Expr1 ::= "[" [Expr1] "]";
-
-separator Expr1 "";
+App.         Expr  ::= Expr Expr1;
+Builtin.     Expr1 ::= Builtin;
+Pi.          Expr  ::= "pi" Binder Expr1;
+App.         Expr  ::= Expr Expr1;
+Lam.         Expr  ::= "lambda" Binder Expr1;
+Var.         Expr1 ::= Name;
+Meta.        Expr  ::= Meta;
+Let.         Expr  ::= "let" Binder Expr1 Expr1;
+Seq.         Expr  ::= "[" [Expr] "]";
+Ann.         Expr  ::= Expr ":type" Expr;
+Literal.     Expr1 ::= Literal;
 
 coercions Expr 1;
 
+-- * Literals
+
+LitNat.  Literal ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
+LitReal. Literal ::= Double;
+LitBool. Literal ::= Bool;
 
 -- * Declarations
 
-DeclNetw. Decl ::= "(" "declare-network" ExprBinder Type1 ")";
-DeclData. Decl ::= "(" "declare-dataset" ExprBinder Type1 ")";
-DefType.  Decl ::= "(" "define-type" TypeBinder "(" [TypeBinder] ")" Type1 ")";
-DefFun.   Decl ::= "(" "define-fun" ExprBinder Type1 Expr1 ")";
+DeclNetw. Decl ::= "(" "declare-network" Binder Type1 ")";
+DeclData. Decl ::= "(" "declare-dataset" Binder Type1 ")";
+DefFun.   Decl ::= "(" "define-fun"      Binder Type1 Expr1 ")";
 
 separator Decl "";
-
 
 -- * Program
 
 Main. Prog ::= "(" [Decl] ")";
 
-
--- * Names for builtins, binders, and variables
-
-MkKindBuiltin. KindBuiltin ::= Builtin;
-MkTypeBuiltin. TypeBuiltin ::= Builtin;
-MkExprBuiltin. ExprBuiltin ::= Builtin;
-
-MkTypeBinder.  TypeBinder  ::= Name;
-MkExprBinder.  ExprBinder  ::= Name;
-
-MkTypeName.    TypeName    ::= Name;
-MkExprName.    ExprName    ::= Name;
-
-separator TypeBinder "";

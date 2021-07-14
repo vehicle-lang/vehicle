@@ -58,12 +58,22 @@ tList tElem = con List `app` tElem
 eList :: Monoid ann => Seq (Expr name binder ann) -> Expr name binder ann
 eList = Seq mempty
 
+
+data TypedAnn = TypedAnn (DeBruijnExpr TypedAnn) Provenance
+type TypedExpr = DeBruijnExpr TypedAnn
+
+instance Semigroup TypedAnn where
+  t1 <> t2 = _
+
+instance Monoid TypedAnn where
+  mempty = _
+
 -- TODO figure out how to do this without horrible -1 hacks
 tForall
   :: Constraints
-  -> DeBruijnExpr ann
-  -> (DeBruijnExpr ann -> DeBruijnExpr ann)
-  -> DeBruijnExpr ann
+  -> TypedExpr
+  -> (TypedExpr -> TypedExpr)
+  -> TypedExpr
 tForall constraints k f = quantBody
   where
     badBody   = f (Bound _ (Index (-1)))
@@ -76,27 +86,27 @@ tForall constraints k f = quantBody
 constrainedTForall
   :: Provenance
   -> ConstraintType
-  -> DeBruijnExpr ann
-  -> (DeBruijnExpr ann -> DeBruijnExpr ann)
-  -> DeBruijnExpr ann
+  -> TypedExpr
+  -> (TypedExpr -> TypedExpr)
+  -> TypedExpr
 constrainedTForall p constraintType = tForall constraints
   where constraints = Set.singleton (Constraint p constraintType)
 
 unconstrainedTForall
-  :: DeBruijnExpr ann
-  -> (DeBruijnExpr ann -> DeBruijnExpr ann)
-  -> DeBruijnExpr ann
+  :: TypedExpr
+  -> (TypedExpr -> TypedExpr)
+  -> TypedExpr
 unconstrainedTForall = tForall mempty
 
 -- |Return the kind for builtin exprs.
-typeOf :: Monoid ann => Provenance -> Builtin AbstractBuiltinOp -> DeBruijnExpr ann
+typeOf :: Provenance -> Builtin AbstractBuiltinOp -> TypedExpr
 typeOf p = \case
   PrimitiveType _ -> tStar
   List            -> tStar ~> tStar
   Tensor          -> tStar ~> tList tNat ~> tStar
   Op op           -> typeOfAbstractOp p op
 
-typeOfAbstractOp :: Monoid ann => Provenance -> AbstractBuiltinOp -> DeBruijnExpr ann
+typeOfAbstractOp :: Provenance -> AbstractBuiltinOp -> TypedExpr
 typeOfAbstractOp p = \case
   If   -> unconstrainedTForall tStar $ \t -> tProp ~> t ~> t
   Cons -> unconstrainedTForall tStar $ \t -> t ~> tList t ~> tList t
@@ -125,50 +135,50 @@ typeOfAbstractOp p = \case
   All  -> typeOfQuantifierOp p
   Any  -> typeOfQuantifierOp p
 
-typeOfEqualityOp :: Monoid ann => Provenance -> DeBruijnExpr ann
+typeOfEqualityOp :: Provenance -> TypedExpr
 typeOfEqualityOp p =
   constrainedTForall p Distinguishable tStar $ \t ->
     constrainedTForall p Truthy tStar $ \r ->
       t ~> t ~> r
 
-typeOfComparisonOp :: Monoid ann => Provenance -> DeBruijnExpr ann
+typeOfComparisonOp :: Provenance -> TypedExpr
 typeOfComparisonOp p =
   constrainedTForall p Comparable tStar $ \t ->
     constrainedTForall p Truthy tStar $ \r ->
       t ~> t ~> r
 
-typeOfBoolOp2 :: Monoid ann => Provenance -> DeBruijnExpr ann
+typeOfBoolOp2 :: Provenance -> TypedExpr
 typeOfBoolOp2 p =
   constrainedTForall p Truthy tStar $ \t ->
     t ~> t ~> t
 
-typeOfBoolOp1 :: Monoid ann => Provenance -> DeBruijnExpr ann
+typeOfBoolOp1 :: Provenance -> TypedExpr
 typeOfBoolOp1 p =
   constrainedTForall p Truthy tStar $ \t ->
     t ~> t
 
-typeOfNumOp2 :: Monoid ann => Provenance -> ConstraintType -> DeBruijnExpr ann
+typeOfNumOp2 :: Provenance -> ConstraintType -> TypedExpr
 typeOfNumOp2 p constraintType =
   constrainedTForall p constraintType tStar $ \t ->
     t ~> t ~> t
 
-typeOfNumOp1 :: Monoid ann => Provenance -> ConstraintType -> DeBruijnExpr ann
+typeOfNumOp1 :: Provenance -> ConstraintType -> TypedExpr
 typeOfNumOp1 p constraintType =
   constrainedTForall p constraintType tStar $ \t ->
     t ~> t
 
-typeOfQuantifierOp :: Monoid ann => Provenance -> DeBruijnExpr ann
+typeOfQuantifierOp :: Provenance -> TypedExpr
 typeOfQuantifierOp p =
   constrainedTForall p Quantifiable tStar $ \t
     -> t ~> (t ~> tProp) ~> tProp
 
-typeOfAtOp :: Monoid ann => Provenance -> DeBruijnExpr ann
+typeOfAtOp :: Provenance -> TypedExpr
 typeOfAtOp p =
   constrainedTForall p Indexable tStar $ \t ->
     t ~> tNat ~> t
 
 
-typeOfConcreteOp :: Monoid ann => ConcreteBuiltinOp -> DeBruijnExpr ann
+typeOfConcreteOp :: ConcreteBuiltinOp -> TypedExpr
 typeOfConcreteOp = \case
   ConcIf              -> unconstrainedTForall tStar $ \t -> tProp ~> t ~> t
 

@@ -8,6 +8,7 @@ module Vehicle.Core.AST.Core
   , Decl(..)
   , Prog(..)
   , Meta
+  , Arg(..)
   , Binder(..)
   , Literal(..)
   ) where
@@ -18,15 +19,22 @@ import Data.List.NonEmpty (NonEmpty)
 import Numeric.Natural (Natural)
 
 import Vehicle.Prelude (Symbol, Provenance)
-import Vehicle.Core.AST.Builtin (Builtin, AbstractBuiltinOp)
-import Vehicle.Core.AST.Constraint
+import Vehicle.Core.AST.Builtin (Builtin)
 
 -- |Meta-variables
 type Meta = Integer
+
 type Identifier = Symbol
 
+data Visibility = Explicit | Inferred
+  deriving (Eq, Ord, Show)
+
+data Arg name binder ann
+  = Arg ann Visibility (Expr name binder ann)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
 data Binder binder ann
-  = Binder ann binder
+  = Binder ann binder Visibility
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data Literal
@@ -46,19 +54,18 @@ data Literal
 
 -- | Expr of Vehicle Core expressions.
 data Expr name binder ann
-  = Star
-    ann                             -- ^ Annotation.
-  | App
+  = App
     ann                             -- ^ Annotation.
     (Expr name binder ann)          -- ^ Function.
-    (Expr name binder ann)          -- ^ Argument.
-  | Fun
+    (Arg  name binder ann)          -- ^ Argument.
+  | Pi
     ann                             -- ^ Annotation.
+    (Binder binder ann)
     (Expr name binder ann)          -- ^ Function.
     (Expr name binder ann)          -- ^ Argument.
   | Builtin
     ann                             -- ^ Annotation.
-    (Builtin AbstractBuiltinOp)     -- ^ Builtin name.
+    Builtin                         -- ^ Builtin name.
   | Bound
     ann                             -- ^ Annotation.
     name                            -- ^ Variable name.
@@ -68,11 +75,6 @@ data Expr name binder ann
   | Meta
     ann                             -- ^ Annotation.
     Meta                            -- ^ Meta variable.
-  | Forall
-    ann                             -- ^ Annotation.
-    (Binder binder ann)             -- ^ Bound expr name.
-    Constraints                     -- ^ Constraints on the bound variable
-    (Expr name binder ann)          -- ^ Expr body.
   | Let
     ann                             -- ^ Annotation.
     (Binder binder ann)             -- ^ Bound expression name.
@@ -87,7 +89,7 @@ data Expr name binder ann
     Literal
   | Seq
     ann                             -- ^ Annotation.
-    (Seq (Expr name binder ann)) -- ^ List of expressions.
+    (Seq (Expr name binder ann))    -- ^ List of expressions.
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- | Expr of Vehicle Core declaration.
