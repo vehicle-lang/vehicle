@@ -9,105 +9,42 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Vehicle.Core.AST.Utils where
 
-import Vehicle.Prelude
-import Vehicle.Core.AST.Core (Tree(..))
-import Vehicle.Core.AST.Recursive (TreeF)
-import Vehicle.Core.AST.Info.Core (Info)
+import Vehicle.Prelude ( Provenance, Symbol )
+import Vehicle.Core.AST.Core (Expr(..), Decl(..), Prog(..), Binder(..))
 
 -- |Extract the annotation
-annotation :: forall sort name ann.
-              KnownSort sort =>
-              Tree name ann sort ->
-              ann sort
-annotation = case sortSing :: SSort sort of
-  -- Kinds
-  SKIND -> \case
-    KApp  ann _k1 _k2 -> ann
-    KCon  ann _b      -> ann
-    KMeta ann _i      -> ann
-
-  -- Types
-  STYPE -> \case
-    TForall     ann _k _ns _t  -> ann
-    TApp        ann _t1 _t2    -> ann
-    TVar        ann _n         -> ann
-    TCon        ann _b         -> ann
-    TLitDim     ann _i         -> ann
-    TLitDimList ann _ts        -> ann
-    TMeta       ann _i         -> ann
-
-  -- Type arguments
-  STARG -> \case
-    TArg ann _n -> ann
-
-  -- Expressions
-  SEXPR -> \case
-    EAnn     ann _e _t       -> ann
-    ELet     ann _n _e1 _e2  -> ann
-    ELam     ann _ns _e      -> ann
-    EApp     ann _e1 _e2     -> ann
-    EVar     ann _n          -> ann
-    ETyApp   ann _e _t       -> ann
-    ETyLam   ann _ns _e      -> ann
-    ECon     ann _b          -> ann
-    ELitInt  ann _i          -> ann
-    ELitReal ann _d          -> ann
-    ELitSeq  ann _es         -> ann
-
-  -- Expression arguments
-  SEARG -> \case
-    EArg ann _n -> ann
-
-  -- Declarations
-  SDECL -> \case
-    DeclNetw   ann _n _t     -> ann
-    DeclData   ann _n _t     -> ann
-    DefType    ann _n _ns _t -> ann
-    DefFun     ann _n _t _e  -> ann
-
-  -- Programs
-  SPROG -> \case
-    Main ann _ds -> ann
+annotation :: Expr name binder ann -> ann
+annotation = \case
+  Star    ann       -> ann
+  App     ann _ _   -> ann
+  Fun     ann _ _   -> ann
+  Builtin ann _     -> ann
+  Bound   ann _     -> ann
+  Free    ann _     -> ann
+  Meta    ann _     -> ann
+  Forall  ann _ _ _ -> ann
+  Let     ann _ _ _ -> ann
+  Lam     ann _ _   -> ann
+  Literal ann _     -> ann
+  Seq     ann _     -> ann
 
 -- | Type of annotations attached to the Frontend AST after parsing
 -- before being analysed by the compiler
-type InputAnn = K Provenance :: Sort -> *
+type InputName = Symbol
+type InputBind = Symbol
+type InputAnn  = Provenance
 
-type InputTree sort = Tree (K Symbol) InputAnn sort
-type InputKind = InputTree 'KIND
-type InputType = InputTree 'TYPE
-type InputTArg = InputTree 'TARG
-type InputExpr = InputTree 'EXPR
-type InputEArg = InputTree 'EARG
-type InputDecl = InputTree 'DECL
-type InputProg = InputTree 'PROG
-
-type InputTreeF (sort :: Sort) (sorted :: Sort -> *)
-  = TreeF (K Symbol) InputAnn sort sorted
-
-instance KnownSort sort => HasProvenance (InputAnn sort) where
-  prov (K p) = p
-
-instance KnownSort sort => HasProvenance (InputTree sort) where
-  prov = prov . annotation
+type InputBinder = Binder InputBind InputAnn
+type InputExpr   = Expr InputName InputBind InputAnn
+type InputDecl   = Decl InputName InputBind InputAnn
+type InputProg   = Prog InputName InputBind InputAnn
 
 -- | Type of annotations attached to the Core AST that are output by the compiler
-type OutputAnn = Info (K Symbol) :*: K Provenance :: Sort -> *
+type OutputName   = Symbol
+type OutputBind   = Symbol
+data OutputAnn    = OutputAnn (Expr OutputName OutputBind OutputAnn) Provenance
 
-type OutputTree sort = Tree (K Symbol) OutputAnn sort
-
-type OutputKind = OutputTree 'KIND
-type OutputType = OutputTree 'TYPE
-type OutputTArg = OutputTree 'TARG
-type OutputExpr = OutputTree 'EXPR
-type OutputEArg = OutputTree 'EARG
-type OutputDecl = OutputTree 'DECL
-type OutputProg = OutputTree 'PROG
-type OutputTreeF (sort :: Sort) (sorted :: Sort -> *)
-  = TreeF (K Symbol) OutputAnn sort sorted
-
-instance KnownSort sort => HasProvenance (OutputAnn sort) where
-  prov (_ :*: K p) = p
-
-instance KnownSort sort => HasProvenance (OutputTree sort) where
-  prov = prov . annotation
+type OutputBinder = Binder InputBind InputAnn
+type OutputExpr   = Expr OutputName OutputBind OutputAnn
+type OutputDecl   = Decl OutputName OutputBind OutputAnn
+type OutputProg   = Prog OutputName OutputBind OutputAnn

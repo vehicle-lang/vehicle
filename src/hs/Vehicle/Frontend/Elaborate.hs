@@ -1,18 +1,4 @@
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE RankNTypes #-}
 
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE ImportQualifiedPost   #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-
-{-# LANGUAGE TypeFamilies #-}
 module Vehicle.Frontend.Elaborate
   ( Elab(..)
   , ElabError(..)
@@ -210,42 +196,18 @@ elabLet ann1 ds e = bindM2 (foldrM declToLet) e ds
 bindM2 :: Monad m => (a -> b -> m c) -> m a -> m b -> m c
 bindM2 f ma mb = do a <- ma; b <- mb; f a b
 
--- |Elaborate any builtin token to a kind.
-kCon :: (MonadElab m) => VC.Builtin 'KIND -> K Provenance 'KIND -> m VC.InputKind
-kCon b ann = return $ VC.KCon ann b
-
--- |Elaborate a unary function symbol with its argument to a kind.
-kOp1 :: (MonadElab m) => VC.Builtin 'KIND -> K Provenance 'KIND -> VF.InputKind -> m VC.InputKind
-kOp1 b ann k1 = VC.KApp ann <$> kCon b ann <*> elab k1
-
--- |Elaborate a binary function symbol with its arguments to a kind.
-kOp2 :: (MonadElab m) => VC.Builtin 'KIND -> K Provenance 'KIND -> VF.InputKind -> VF.InputKind -> m VC.InputKind
-kOp2 b ann k1 k2 = VC.KApp ann <$> kOp1 b ann k1 <*> elab k2
-
--- |Elaborate any builtin token to a type.
-tCon :: (MonadElab m) => VC.Builtin 'TYPE -> K Provenance 'TYPE -> m VC.InputType
-tCon b ann = return $ VC.TCon ann b
-
--- |Elaborate a unary function symbol with its argument to a type.
-tOp1 :: (MonadElab m) => VC.Builtin 'TYPE -> K Provenance 'TYPE -> VF.InputType -> m VC.InputType
-tOp1 b ann t1 = VC.TApp ann <$> tCon b ann <*> elab t1
-
--- |Elaborate a binary function symbol with its arguments to a type.
-tOp2 :: (MonadElab m) => VC.Builtin 'TYPE -> K Provenance 'TYPE -> VF.InputType -> VF.InputType -> m VC.InputType
-tOp2 b ann t1 t2 = VC.TApp ann <$> tOp1 b ann t1 <*> elab t2
-
 -- |Elaborate any builtin token to an expression.
-eCon :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> m VC.InputExpr
+eCon :: (MonadElab m) => VC.Builtin -> K Provenance 'EXPR -> m VC.InputExpr
 eCon b ann = return $ VC.ECon ann b
 
 -- |Elaborate a unary function symbol with its argument to an expression.
-eOp1 :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> VF.InputExpr -> m VC.InputExpr
+eOp1 :: (MonadElab m) => VC.Builtin -> K Provenance 'EXPR -> VF.InputExpr -> m VC.InputExpr
 eOp1 b ann e1 = VC.EApp ann <$> eCon b ann <*> elab e1
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-eOp2 :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
+eOp2 :: (MonadElab m) => VC.Builtin -> K Provenance 'EXPR -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
 eOp2 b ann e1 e2 = VC.EApp ann <$> eOp1 b ann e1 <*> elab e2
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-eOp3 :: (MonadElab m) => VC.Builtin 'EXPR -> K Provenance 'EXPR -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
+eOp3 :: (MonadElab m) => VC.Builtin -> K Provenance 'EXPR -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
 eOp3 b ann e1 e2 e3 = VC.EApp ann <$> eOp2 b ann e1 e2 <*> elab e3

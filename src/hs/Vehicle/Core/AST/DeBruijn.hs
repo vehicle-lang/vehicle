@@ -11,141 +11,95 @@
 {-# LANGUAGE StandaloneDeriving    #-}
 
 module Vehicle.Core.AST.DeBruijn
-  ( Index
-  , Name(..)
-  , DeBruijn(..)
-  , fromIndex
-  , toIndex
-  , fromSymbol
+  ( DeBruijnBinder(..)
+  , DeBruijnIndex(..)
+  , DeBruijnExpr
   , toSymbol
-  , toName
-  , BindingDepth(..)
-  , incrTypeDepth
-  , incrExprDepth
-  , initialBindingDepth
-  , DeBruijnLifting(..)
+  , BindingDepth
+  , liftDeBruijn
+  , substDeBruijn
   ) where
 
-import qualified Data.List.NonEmpty as NonEmpty (map)
+import Vehicle.Prelude (Symbol)
+import Vehicle.Core.AST.Core (Expr(..))
 
-import Vehicle.Prelude
-import Vehicle.Core.AST.Core
+--------------------------------------------------------------------------------
+-- Definitions
 
--- * Types
-
-data Name
+-- |The type of data DeBruijn indices store at binding sites
+data DeBruijnBinder
   = User Symbol
   | Machine
-  deriving Show
+  deriving (Eq, Ord, Show)
 
-deriving instance Eq Name
+-- |The type of data DeBruijn indices store at name sites
+newtype DeBruijnIndex = Index Int
+  deriving (Eq, Ord, Show)
 
-type Index = Int
+-- |Returns the |Symbol| of a DeBruijn binder.
+toSymbol :: DeBruijnBinder -> Maybe Symbol
+toSymbol (User symbol) = Just symbol
+toSymbol Machine       = Nothing
 
-data DeBruijn (sort :: Sort) where
-  TIndex  :: Index -> DeBruijn 'TYPE
-  EIndex  :: Index -> DeBruijn 'EXPR
-  TSymbol :: Name  -> DeBruijn 'TARG
-  ESymbol :: Name  -> DeBruijn 'EARG
+-- An expression that uses DeBruijn index scheme for both binders and names.
+type DeBruijnExpr ann = Expr DeBruijnIndex DeBruijnBinder ann
 
+--------------------------------------------------------------------------------
+-- DeBruijn operations
 
--- |Wraps an |Index| as a |DeBruijn|.
-fromIndex :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Index -> DeBruijn sort
-fromIndex = case sortSing :: SSort sort of
-  STYPE -> TIndex
-  SEXPR -> EIndex
+-- | Used to track the number of binders we're underneath during a traversal of
+-- an expression
+type BindingDepth = Int
 
--- |Returns the |Index| of a |DeBruijn|.
-toIndex :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => DeBruijn sort -> Index
-toIndex (TIndex index) = index
-toIndex (EIndex index) = index
-
--- |Wraps a |Symbol| as a |DeBruijn|.
-fromSymbol :: forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) => Symbol -> DeBruijn sort
-fromSymbol = case sortSing :: SSort sort of
-  STARG -> TSymbol . User
-  SEARG -> ESymbol . User
-
--- |Returns the |Symbol| of a |DeBruijn|.
-toSymbol :: forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) => DeBruijn sort -> Maybe Symbol
-toSymbol (TSymbol (User symbol)) = Just symbol
-toSymbol (ESymbol (User symbol)) = Just symbol
-toSymbol _                       = Nothing
-
-toName :: forall sort. (KnownSort sort, sort `In` ['TARG, 'EARG]) => DeBruijn sort -> Name
-toName (TSymbol name) = name
-toName (ESymbol name) = name
-
-deriving instance Eq (DeBruijn sort)
-
-deriving instance Show (DeBruijn sort)
-
-data BindingDepth = BindingDepth { typeDepth :: Int , exprDepth :: Int}
-
-incrTypeDepth :: BindingDepth -> BindingDepth
-incrTypeDepth (BindingDepth t e) = BindingDepth (t + 1) e
-
-incrExprDepth :: BindingDepth -> BindingDepth
-incrExprDepth (BindingDepth t e) = BindingDepth t (e + 1)
-
-initialBindingDepth :: BindingDepth
-initialBindingDepth = BindingDepth 0 0
-
-
--- Implementation of substitution and lifting for De Bruijn indexed terms.
+-- | lift all deBruin indices that refer to environment variables by 1.
 -- Code loosely based off of:
 -- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
-
--- TODO condense down to a single case per SORT in the same pattern as the scope checker?
--- (using Dataflow monad?)
-
--- * DeBruijn lifting
-
-class DeBruijnLifting (sort :: Sort) where
-  -- | liftDeBruijn all deBruin indices that refer to environment variables by 1.
-  liftDeBruijn :: BindingDepth           -- ^ current binding depth
-               -> Tree DeBruijn ann sort -- ^ expression containing the variable references to lift
-               -> Tree DeBruijn ann sort -- ^ the result of the lifting
-
-instance DeBruijnLifting 'TYPE where
-  liftDeBruijn _ expr@(TCon _ _) = expr
-  liftDeBruijn _ expr@(TLitDim _ _) = expr
-  liftDeBruijn _ expr@(TMeta _ _) = expr
-
-  liftDeBruijn d (TApp ann fn arg) = TApp ann (liftDeBruijn d fn) (liftDeBruijn d arg)
-  liftDeBruijn d (TLitDimList ann typs) = TLitDimList ann (NonEmpty.map (liftDeBruijn d) typs)
-
-  liftDeBruijn d (TForall ann optKind arg body) = TForall ann optKind arg
-    -- Increase the depth as we move across a binding site
-    (liftDeBruijn (incrTypeDepth d) body)
-
-  liftDeBruijn d (TVar ann (TIndex i)) = TVar ann (TIndex i')
+liftDeBruijn
+  :: BindingDepth      -- ^ current binding depth
+  -> DeBruijnExpr ann  -- ^ expression to lift
+  -> DeBruijnExpr ann  -- ^ the result of the lifting
+liftDeBruijn d = \case
+  Star    ann               -> Star ann
+  App     ann e1 e2         -> App ann (liftDeBruijn d e1) (liftDeBruijn d e2)
+  Fun     ann e1 e2         -> Fun ann (liftDeBruijn d e1) (liftDeBruijn d e2)
+  Builtin ann op            -> Builtin ann op
+  Meta    ann m             -> Meta ann m
+  Forall  ann binder cons e -> Forall ann binder cons (liftDeBruijn (d + 1) e)
+  Let     ann binder e1 e2  -> Let ann binder (liftDeBruijn d e1) (liftDeBruijn (d + 1) e2)
+  Lam     ann binder e      -> Lam ann binder (liftDeBruijn (d + 1) e)
+  Literal ann l             -> Literal ann l
+  Seq     ann es            -> Seq ann (fmap (liftDeBruijn d) es)
+  Free    ann ident         -> Free ann ident
+  Bound   ann (Index i)     -> Bound ann (Index i')
     where
-      i' | typeDepth d <= i = i + 1 -- Index is referencing the environment so increment it
-         | otherwise        = i     -- Index is locally bound so no need to increment it
+      i' | d <= i    = i + 1 -- Index is referencing the environment so increment it
+         | otherwise = i     -- Index is locally bound so no need to increment it
 
-instance DeBruijnLifting 'EXPR where
-  liftDeBruijn _ expr@(ELitInt _ _)  = expr
-  liftDeBruijn _ expr@(ELitReal _ _) = expr
-  liftDeBruijn _ expr@(ECon _ _)     = expr
-
-  liftDeBruijn d (EApp    ann exp1 exp2) = EApp ann (liftDeBruijn d exp1) (liftDeBruijn d exp2)
-  liftDeBruijn d (ELitSeq ann exprs)     = ELitSeq ann (NonEmpty.map (liftDeBruijn d) exprs)
-  liftDeBruijn d (EAnn    ann expr typ)  = EAnn ann (liftDeBruijn d expr) typ
-  liftDeBruijn d (ETyLam  ann targ expr) = ETyLam ann targ (liftDeBruijn d expr)
-  liftDeBruijn d (ETyApp  ann expr typ)  = ETyApp ann (liftDeBruijn d expr) typ
-
-  liftDeBruijn d (EVar ann (EIndex i)) = EVar ann (EIndex i')
-    where
-      i' | exprDepth d <= i = i + 1 -- Index is referencing the environment so increment it
-         | otherwise        = i     -- Index is locally bound so no need to increment it
-
-  liftDeBruijn d (ELet ann arg exp1 exp2) = ELet ann arg
-    -- Maintain the current depth as move across the let bound expression
-    (liftDeBruijn d exp1)
-    -- Increase the current depth as we move across the variable
-    (liftDeBruijn (incrExprDepth d) exp2)
-
-  liftDeBruijn d (ELam ann arg expr) = ELam ann arg
-    -- Increase the current depth as we move across a lambda.
-    (liftDeBruijn (incrExprDepth d) expr)
+-- |Substitute the provided expression for all variables at the current binding depth.
+-- Code loosely based off of:
+-- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
+substDeBruijn
+  :: BindingDepth     -- ^ current binding depth
+  -> DeBruijnExpr ann -- ^ expression to substitute
+  -> DeBruijnExpr ann -- ^ expression to substitute into
+  -> DeBruijnExpr ann -- ^ the result of the substitution
+substDeBruijn d sub = \case
+  Star    ann               -> Star ann
+  App     ann e1 e2         -> App ann (substDeBruijn d sub e1) (substDeBruijn d sub e2)
+  Fun     ann e1 e2         -> Fun ann (substDeBruijn d sub e1) (substDeBruijn d sub e2)
+  Builtin ann op            -> Builtin ann op
+  Meta    ann m             -> Meta ann m
+  Forall  ann binder cons e -> Forall ann binder cons (substDeBruijn (d + 1) (liftDeBruijn 0 sub) e)
+  Let     ann binder e1 e2  -> Let ann binder (substDeBruijn d sub e1) (substDeBruijn (d + 1) (liftDeBruijn 0 sub) e2)
+  Lam     ann binder e      -> Lam ann binder (substDeBruijn (d + 1) (liftDeBruijn 0 sub) e)
+  Literal ann l             -> Literal ann l
+  Seq     ann es            -> Seq ann (fmap (substDeBruijn d sub) es)
+  Free    ann ident         -> Free ann ident
+  Bound   ann (Index i)     ->
+    case compare i d of
+      -- Index matches the expression we're substituting for
+      EQ -> sub
+      -- Index was bound in the original expression
+      LT -> Bound ann (Index i)
+      -- Index was free in the original expression, and we've removed a binder so decrease it by 1.
+      GT -> Bound ann (Index (i - 1))

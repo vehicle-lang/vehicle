@@ -1,136 +1,97 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ConstraintKinds    #-}
-{-# LANGUAGE DataKinds          #-}
-{-# LANGUAGE FlexibleContexts   #-}
-{-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE KindSignatures     #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 -- | This module exports the datatype representations of the builtin symbols.
-{-# LANGUAGE TypeOperators #-}
+
 module Vehicle.Core.AST.Builtin
   ( Builtin(..)
+  , AbstractBuiltinOp(..)
+  , ConcreteBuiltinOp(..)
+  , pattern PrimitiveNumber
+  , pattern PrimitiveTruth
   , builtinFromSymbol
   , symbolFromBuiltin
+  , symbolFromConcreteBuiltin
   ) where
 
-import Vehicle.Prelude.Sort
 import Vehicle.Prelude
 
-data Builtin (sort :: Sort) where
-
-  -- Builtin kinds
-  KFun     :: Builtin 'KIND
-  KType    :: Builtin 'KIND
-  KDim     :: Builtin 'KIND
-  KDimList :: Builtin 'KIND
-
-  -- Builtin types
-  TFun     :: Builtin 'TYPE
-  TBool    :: Builtin 'TYPE
-  TProp    :: Builtin 'TYPE
-  TInt     :: Builtin 'TYPE
-  TReal    :: Builtin 'TYPE
-  TList    :: Builtin 'TYPE
-  TTensor  :: Builtin 'TYPE
-  TAdd     :: Builtin 'TYPE
-  TCons    :: Builtin 'TYPE
-
-  -- Builtin expressions
-  EIf      :: Builtin 'EXPR
-  EImpl    :: Builtin 'EXPR
-  EAnd     :: Builtin 'EXPR
-  EOr      :: Builtin 'EXPR
-  ENot     :: Builtin 'EXPR
-  ETrue    :: Builtin 'EXPR
-  EFalse   :: Builtin 'EXPR
-  EEq      :: Builtin 'EXPR
-  ENeq     :: Builtin 'EXPR
-  ELe      :: Builtin 'EXPR
-  ELt      :: Builtin 'EXPR
-  EGe      :: Builtin 'EXPR
-  EGt      :: Builtin 'EXPR
-  EMul     :: Builtin 'EXPR
-  EDiv     :: Builtin 'EXPR
-  EAdd     :: Builtin 'EXPR
-  ESub     :: Builtin 'EXPR
-  ENeg     :: Builtin 'EXPR
-  ECons    :: Builtin 'EXPR
-  EAt      :: Builtin 'EXPR
-  EAll     :: Builtin 'EXPR
-  EAny     :: Builtin 'EXPR
-
 --------------------------------------------------------------------------------
--- Mappings from builtins to symbols
+-- Standard builtins
 
-builtinKinds :: [(Symbol, Builtin 'KIND)]
-builtinKinds =
-  [ "->"   |-> KFun
-  , "Type" |-> KType
-  , "Dim"  |-> KDim
-  , "List" |-> KDimList
-  ]
+-- |Builtins to the Vehicle language
+data Builtin builtinOp
+  = PrimitiveType PrimitiveType
+  | List
+  | Tensor
+  | Op builtinOp
+  deriving (Eq, Ord, Show)
 
-builtinTypes :: [(Symbol, Builtin 'TYPE)]
-builtinTypes =
-  [ "->"     |-> TFun
-  , "Bool"   |-> TBool
-  , "Prop"   |-> TProp
-  , "Int"    |-> TInt
-  , "Real"   |-> TReal
-  , "List"   |-> TList
-  , "Tensor" |-> TTensor
-  , "+"      |-> TAdd
-  , "::"     |-> TCons
-  ]
+pattern PrimitiveNumber :: PrimitiveNumber -> Builtin builtinOp
+pattern PrimitiveNumber prim = PrimitiveType (Number prim)
 
-builtinExprs :: [(Symbol, Builtin 'EXPR)]
-builtinExprs =
-  [ "if"    |-> EIf
-  , "=>"    |-> EImpl
-  , "and"   |-> EAnd
-  , "or"    |-> EOr
-  , "not"   |-> ENot
-  , "True"  |-> ETrue
-  , "False" |-> EFalse
-  , "=="    |-> EEq
-  , "!="    |-> ENeq
-  , "<="    |-> ELe
-  , "<"     |-> ELt
-  , ">="    |-> EGe
-  , ">"     |-> EGt
-  , "*"     |-> EMul
-  , "/"     |-> EDiv
-  , "-"     |-> ESub
+pattern PrimitiveTruth :: PrimitiveTruth -> Builtin builtinOp
+pattern PrimitiveTruth prim = PrimitiveType (Truth prim)
+
+-- |Builtin ops which we do not yet know what concrete type
+-- they are being applied to.
+data AbstractBuiltinOp
+  = If
+  | Impl
+  | And
+  | Or
+  | Not
+  | Eq
+  | Neq
+  | Le
+  | Lt
+  | Ge
+  | Gt
+  | Mul
+  | Div
+  | Add
+  | Sub
+  | Neg
+  | Cons
+  | At
+  | All
+  | Any
+  deriving (Eq, Ord, Show)
+
+builtinSymbols :: [(Symbol, Builtin AbstractBuiltinOp)]
+builtinSymbols =
+  [ "Bool"   |-> PrimitiveTruth Bool
+  , "Prop"   |-> PrimitiveTruth Prop
+  , "Nat"    |-> PrimitiveNumber Nat
+  , "Int"    |-> PrimitiveNumber Int
+  , "Real"   |-> PrimitiveNumber Real
+  , "List"   |-> List
+  , "Tensor" |-> Tensor
+  , "if"     |-> Op If
+  , "=>"     |-> Op Impl
+  , "and"    |-> Op And
+  , "or"     |-> Op Or
+  , "not"    |-> Op Not
+  , "=="     |-> Op Eq
+  , "!="     |-> Op Neq
+  , "<="     |-> Op Le
+  , "<"      |-> Op Lt
+  , ">="     |-> Op Ge
+  , ">"      |-> Op Gt
+  , "*"      |-> Op Mul
+  , "/"      |-> Op Div
+  , "-"      |-> Op Sub
   -- Negation is changed from "-" to "~" during elaboration.
-  , "~"     |-> ENeg
-  , "!"     |-> EAt
-  , "::"    |-> ECons
-  , "all"   |-> EAll
-  , "any"   |-> EAny
+  , "~"      |-> Op Neg
+  , "!"      |-> Op At
+  , "::"     |-> Op Cons
+  , "all"    |-> Op All
+  , "any"    |-> Op Any
   ]
 
-sortBuiltins :: forall sort. (KnownSort sort, sort `In` ['KIND, 'TYPE, 'EXPR]) => [(Symbol, Builtin sort)]
-sortBuiltins = case sortSing @sort of
-  SKIND -> builtinKinds
-  STYPE -> builtinTypes
-  SEXPR -> builtinExprs
 
-builtinFromSymbol
-  :: forall sort . (KnownSort sort, sort `In` ['KIND, 'TYPE, 'EXPR])
-  => Symbol
-  -> Maybe (Builtin sort)
-builtinFromSymbol symbol = lookup symbol sortBuiltins
+builtinFromSymbol :: Symbol -> Maybe (Builtin AbstractBuiltinOp)
+builtinFromSymbol symbol = lookup symbol builtinSymbols
 
-symbolFromBuiltin
-  :: forall sort . (KnownSort sort, sort `In` ['KIND, 'TYPE, 'EXPR], Eq (Builtin sort))
-  => Builtin sort
-  -> Maybe Symbol
-symbolFromBuiltin builtin = lookup' builtin sortBuiltins
+symbolFromBuiltin :: Builtin AbstractBuiltinOp -> Maybe Symbol
+symbolFromBuiltin builtin = lookup' builtin builtinSymbols
 
 lookup' :: (Eq b) => b -> [(a,b)] -> Maybe a
 lookup' _ [] =  Nothing
@@ -138,29 +99,68 @@ lookup' key ((x,y):xys)
   | key == y  =  Just x
   | otherwise =  lookup' key xys
 
+
+
 --------------------------------------------------------------------------------
--- Instances
+-- Concrete builtins
 
-deriving instance Eq (Builtin 'KIND)
-deriving instance Eq (Builtin 'TYPE)
-deriving instance Eq (Builtin 'TARG)
-deriving instance Eq (Builtin 'EXPR)
-deriving instance Eq (Builtin 'EARG)
-deriving instance Eq (Builtin 'DECL)
-deriving instance Eq (Builtin 'PROG)
+-- TODO Wen, I'm less and less sure these are needed now that we have type
+-- classes but keeping them for now.
 
-deriving instance Ord (Builtin 'KIND)
-deriving instance Ord (Builtin 'TYPE)
-deriving instance Ord (Builtin 'TARG)
-deriving instance Ord (Builtin 'EXPR)
-deriving instance Ord (Builtin 'EARG)
-deriving instance Ord (Builtin 'DECL)
-deriving instance Ord (Builtin 'PROG)
+-- |Builtin operations for which it is known what type they're
+-- being applied to.
+data ConcreteBuiltinOp
+  = ConcIf
+  | ConcImpl PrimitiveTruth
+  | ConcAnd  PrimitiveTruth
+  | ConcOr   PrimitiveTruth
+  | ConcNot  PrimitiveTruth
+  | ConcEq   PrimitiveType   PrimitiveTruth
+  | ConcNeq  PrimitiveType   PrimitiveTruth
+  | ConcLe   PrimitiveNumber PrimitiveTruth
+  | ConcLt   PrimitiveNumber PrimitiveTruth
+  | ConcGe   PrimitiveNumber PrimitiveTruth
+  | ConcGt   PrimitiveNumber PrimitiveTruth
+  | ConcMul  PrimitiveNumber
+  | ConcDiv  PrimitiveNumber
+  | ConcAdd  PrimitiveNumber
+  | ConcSub  PrimitiveNumber
+  | ConcNeg  PrimitiveNumber
+  | ConcCons
+  | ConcAt   PrimitiveContainer
+  | ConcAll  PrimitiveContainer PrimitiveTruth
+  | ConcAny  PrimitiveContainer PrimitiveTruth
+  deriving (Eq, Ord, Show)
 
-deriving instance Show (Builtin 'KIND)
-deriving instance Show (Builtin 'TYPE)
-deriving instance Show (Builtin 'TARG)
-deriving instance Show (Builtin 'EXPR)
-deriving instance Show (Builtin 'EARG)
-deriving instance Show (Builtin 'DECL)
-deriving instance Show (Builtin 'PROG)
+abstractBuiltin :: Builtin ConcreteBuiltinOp -> Builtin AbstractBuiltinOp
+abstractBuiltin = \case
+  PrimitiveType t -> PrimitiveType t
+  List            -> List
+  Tensor          -> Tensor
+  Op builtinOp    -> Op $ abstractOp builtinOp
+
+abstractOp :: ConcreteBuiltinOp -> AbstractBuiltinOp
+abstractOp = \case
+  ConcIf       -> If
+  ConcImpl _   -> Impl
+  ConcAnd  _   -> And
+  ConcOr   _   -> Or
+  ConcNot  _   -> Not
+  ConcEq   _ _ -> Eq
+  ConcNeq  _ _ -> Neq
+  ConcLe   _ _ -> Le
+  ConcLt   _ _ -> Lt
+  ConcGe   _ _ -> Ge
+  ConcGt   _ _ -> Gt
+  ConcMul  _   -> Mul
+  ConcDiv  _   -> Div
+  ConcAdd  _   -> Add
+  ConcSub  _   -> Sub
+  ConcNeg  _   -> Neg
+  ConcCons     -> Cons
+  ConcAt   _   -> At
+  ConcAll  _ _ -> All
+  ConcAny  _ _ -> Any
+
+symbolFromConcreteBuiltin :: Builtin ConcreteBuiltinOp -> Maybe Symbol
+symbolFromConcreteBuiltin = symbolFromBuiltin . abstractBuiltin

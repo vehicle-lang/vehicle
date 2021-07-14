@@ -119,19 +119,16 @@ instance HasProvenance TypeBuiltin where
 instance HasProvenance ExprBuiltin where
   prov = tkProvenance . unExprBuiltin
 
-instance Convert KindBuiltin (V.Builtin 'KIND) where
+instance Convert KindBuiltin V.Builtin where
   conv = lookupBuiltin . unKindBuiltin
 
-instance Convert TypeBuiltin (V.Builtin 'TYPE) where
+instance Convert TypeBuiltin V.Builtin where
   conv = lookupBuiltin . unTypeBuiltin
 
-instance Convert ExprBuiltin (V.Builtin 'EXPR) where
+instance Convert ExprBuiltin V.Builtin where
   conv = lookupBuiltin . unExprBuiltin
 
-lookupBuiltin
-  :: (MonadParse m, IsToken tok, KnownSort sort, sort `In` ['KIND, 'TYPE, 'EXPR])
-  => tok
-  -> m (V.Builtin sort)
+lookupBuiltin :: (MonadParse m, IsToken tok) => tok -> m (V.Builtin sort)
 lookupBuiltin tk = case builtinFromSymbol (tkSymbol tk) of
   Nothing -> throwError $ UnknownBuiltin $ toToken tk
   Just v -> return v
@@ -139,45 +136,45 @@ lookupBuiltin tk = case builtinFromSymbol (tkSymbol tk) of
 --------------------------------------------------------------------------------
 -- AST conversion
 
-instance Convert B.Kind V.InputKind where
+instance Convert B.Kind V.InputExpr where
   conv = \case
-    B.KApp k1 k2 -> op2 V.KApp <$> conv k1 <*> conv k2
-    B.KCon c     -> V.KCon (K (prov c)) <$> conv c
+    B.KApp k1 k2 -> op2 V.App <$> conv k1 <*> conv k2
+    B.KCon c     -> V.Builtin (K (prov c)) <$> conv c
 
-instance Convert B.Type V.InputType where
+instance Convert B.Type V.InputExpr where
   conv = \case
-    B.TForall n t    -> op2 (`V.TForall` Nothing) <$> conv n <*> conv t
-    B.TApp t1 t2     -> op2 V.TApp <$> conv t1 <*> conv t2
+    B.TForall n t    -> op2 (`V.Forall` Nothing) <$> conv n <*> conv t
+    B.TApp t1 t2     -> op2 V.App <$> conv t1 <*> conv t2
     B.TVar n         -> conv n
-    B.TCon c         -> V.TCon (K (prov c)) <$> conv c
-    B.TLitDim d      -> return $ V.TLitDim mempty d
-    B.TLitDimList ts -> op1 V.TLitDimList <$> traverseNonEmpty ts
+    B.TCon c         -> V.Builtin (K (prov c)) <$> conv c
+    B.TLitDim d      -> return $ V.Literal mempty (NatLiteral d)
+    B.TLitDimList ts -> op1 V.Seq <$> traverseNonEmpty ts
 
-instance Convert B.TypeName V.InputType where
-  conv (MkTypeName n) = return $ V.TVar (K (tkProvenance n)) (K (tkSymbol n))
+instance Convert B.TypeName V.InputExpr where
+  conv (MkTypeName n) = return $ V.Bound (K (tkProvenance n)) (K (tkSymbol n))
 
 instance Convert B.TypeBinder V.InputTArg where
-  conv (MkTypeBinder n) = return $ V.TArg (K (tkProvenance n)) (K (tkSymbol n))
+  conv (MkTypeBinder n) = return $ V.Binder (K (tkProvenance n)) (K (tkSymbol n))
 
 instance Convert B.Expr V.InputExpr where
   conv = \case
-    B.EAnn e t     -> op2 V.EAnn <$> conv e <*> conv t
-    B.ELet n e1 e2 -> op3 V.ELet <$> conv n <*> conv e1 <*> conv e2
-    B.ELam n e     -> op2 V.ELam <$> conv n <*> conv e
-    B.EApp e1 e2   -> op2 V.EApp <$> conv e1 <*> conv e2
+    B.EAnn e t     -> op2 V.Ann <$> conv e <*> conv t
+    B.ELet n e1 e2 -> op3 V.Let <$> conv n <*> conv e1 <*> conv e2
+    B.ELam n e     -> op2 V.Lam <$> conv n <*> conv e
+    B.EApp e1 e2   -> op2 V.App <$> conv e1 <*> conv e2
     B.EVar n       -> conv n
-    B.ETyApp e t   -> op2 V.ETyApp <$> conv e <*> conv t
-    B.ETyLam n e   -> op2 V.ETyLam <$> conv n <*> conv e
-    B.ECon c       -> V.ECon (K (prov c)) <$> conv c
-    B.ELitInt i    -> return $ V.ELitInt mempty i
-    B.ELitReal r   -> return $ V.ELitReal mempty r
-    B.ELitSeq es   -> op1 V.ELitSeq <$> traverseNonEmpty es
+    B.ETyApp e t   -> op2 V.App <$> conv e <*> conv t
+    B.ETyLam n e   -> op2 V.Lam <$> conv n <*> conv e
+    B.ECon c       -> V.Builtin (K (prov c)) <$> conv c
+    B.ELitInt i    -> return $ V.Literal mempty i
+    B.ELitReal r   -> return $ V.Literal mempty r
+    B.ELitSeq es   -> op1 V.Seq <$> traverseNonEmpty es
 
 instance Convert B.ExprName V.InputExpr where
-  conv (MkExprName n) = return $ V.EVar (K (tkProvenance n)) (K (tkSymbol n))
+  conv (MkExprName n) = return $ V.Bound (K (tkProvenance n)) (K (tkSymbol n))
 
 instance Convert B.ExprBinder V.InputEArg where
-  conv (MkExprBinder n) = return $ V.EArg (K (tkProvenance n)) (K (tkSymbol n))
+  conv (MkExprBinder n) = return $ V.Bound (K (tkProvenance n)) (K (tkSymbol n))
 
 instance Convert B.Decl V.InputDecl where
   conv = \case
@@ -190,18 +187,18 @@ instance Convert B.Prog V.InputProg where
   conv (B.Main ds) = op1 V.Main <$> traverseNonEmpty ds
 
 op1 :: (HasProvenance a)
-    => (K Provenance sort -> a -> V.InputTree sort)
-    -> a -> V.InputTree sort
+    => (Provenance -> a -> V.InputExpr)
+    -> a -> V.InputExpr
 op1 mk t = mk (K (prov t)) t
 
-op2 :: (KnownSort sort, HasProvenance a, HasProvenance b)
-    => (K Provenance sort -> a -> b -> V.InputTree sort)
-    -> a -> b -> V.InputTree sort
+op2 :: (HasProvenance a, HasProvenance b)
+    => (Provenance -> a -> b -> V.InputExpr sort)
+    -> a -> b -> V.InputExpr
 op2 mk t1 t2 = mk (K (prov t1 <> prov t2)) t1 t2
 
-op3 :: (KnownSort sort, HasProvenance a, HasProvenance b, HasProvenance c)
-    => (K Provenance sort -> a -> b -> c -> V.InputTree sort)
-    -> a -> b -> c -> V.InputTree sort
+op3 :: (HasProvenance a, HasProvenance b, HasProvenance c)
+    => (Provenance -> a -> b -> c -> V.InputExpr)
+    -> a -> b -> c -> V.InputExpr
 op3 mk t1 t2 t3 = mk (K (prov t1 <> prov t2 <> prov t3)) t1 t2 t3
 
 -- A traversal that checks that the list is non-empty. In theory this would be

@@ -41,6 +41,16 @@ tkPosition t = let (l, c) = tkLocation t in Position l c
 --------------------------------------------------------------------------------
 -- Position ranges
 
+-- All the code in this section relies on the assumption that we only use
+-- inclusive span ranges in our code.
+
+pattern IRange :: a -> a -> Range a
+pattern IRange p1 p2 = SpanRange (Bound p1 Inclusive) (Bound p2 Inclusive)
+
+instance Ord (Range Position) where
+  IRange p1 p2 <= IRange p3 p4 = p1 < p3 || (p1 == p3 && p2 <= p4)
+  _ <= _                       = True
+
 instance Pretty (Range Position) where
   pretty (SpanRange (Bound p1 Inclusive) (Bound p2 Inclusive)) =
     if posLine p1 == posLine p2 then
@@ -93,7 +103,10 @@ joinRanges rs1 rs2 = combineRanges $ rs1 `union` rs2
 
 -- |A set of locations in the source file
 newtype Provenance = Provenance [Range Position]
-  deriving (Show)
+  deriving (Show, Ord)
+
+instance Eq Provenance where
+  x == y = True
 
 -- |Get the provenance for a single token.
 tkProvenance :: IsToken a => a -> Provenance
@@ -101,9 +114,6 @@ tkProvenance tk = Provenance [start +=+ end]
   where
     start = tkPosition tk
     end   = Position (posLine start) (posColumn start + tkLength tk)
-
-instance Eq Provenance where
-  x == y = True
 
 instance Semigroup Provenance where
   Provenance r1 <> Provenance r2 = Provenance $ joinRanges r1 r2
