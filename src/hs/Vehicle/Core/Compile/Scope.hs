@@ -19,10 +19,11 @@ module Vehicle.Core.Compile.Scope
   ) where
 
 import Control.Monad.Except
-import Control.Monad.Supply (Supply, SupplyT, demand)
-import Control.Monad.Identity (Identity, runIdentity)
+import Control.Monad.Supply (Supply, demand, runSupplyT, withSupplyT)
+import Control.Monad.Identity (runIdentity)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
+import Data.Text (pack)
 import Prettyprinter (pretty, (<+>))
 
 import Vehicle.Core.AST
@@ -37,6 +38,7 @@ import Vehicle.Error
 data ScopeError
   = UnboundName Symbol Provenance
   | IndexOutOfBounds Index Int Provenance
+  deriving Show
 
 instance MeaningfulError ScopeError where
   details  (UnboundName name p) = UError $ UserError
@@ -215,16 +217,23 @@ symbolToDeBruijnF = case sortSing @sort of
 deBruijnToName ::
   forall sort.
   (KnownSort sort) =>
-  Tree DeBruijn (Info (K Symbol) :*: K Provenance) sort ->
-  Except ScopeError (Tree (K Name) (Info (K Symbol) :*: K Provenance) sort)
-deBruijnToName = evalDataflowT mempty . unSDF . foldTree (SDF . deBruijnToNameF)
+  Tree DeBruijn (Info DeBruijn :*: K Provenance) sort ->
+  Except ScopeError (Tree (K Name) (Info (K Name) :*: K Provenance) sort)
+deBruijnToName = evalDataflowT mempty . deBruijnToName'
+
+deBruijnToName' ::
+  forall sort.
+  (KnownSort sort) =>
+  Tree DeBruijn (Info DeBruijn :*: K Provenance) sort ->
+  DataflowT sort (Ctx Name) (Except ScopeError) (Tree (K Name) (Info (K Name) :*: K Provenance) sort)
+deBruijnToName' = unSDF . foldTree (SDF . deBruijnToNameF)
 
 -- |Check if a single layer is well-scoped in the appropriate data-flow context.
 deBruijnToNameF ::
   forall sort.
   (KnownSort sort) =>
-  TreeF DeBruijn (Info (K Symbol) :*: K Provenance) sort (SortedDataflowT (Ctx Name) (Except ScopeError) (Tree (K Name) (Info (K Symbol) :*: K Provenance))) ->
-  DataflowT sort (Ctx Name) (Except ScopeError) (Tree (K Name) (Info (K Symbol) :*: K Provenance) sort)
+  TreeF DeBruijn (Info DeBruijn :*: K Provenance) sort (SortedDataflowT (Ctx Name) (Except ScopeError) (Tree (K Name) (Info (K Name) :*: K Provenance))) ->
+  DataflowT sort (Ctx Name) (Except ScopeError) (Tree (K Name) (Info (K Name) :*: K Provenance) sort)
 
 deBruijnToNameF = case sortSing @sort of
 
@@ -235,9 +244,9 @@ deBruijnToNameF = case sortSing @sort of
   -- and we simply reconstruct the type.
   --
   SKIND -> \case
-    KAppF  ann k1 k2 -> KApp ann <$> sflow k1 <*> sflow k2
-    KConF  ann op    -> return $ KCon ann op
-    KMetaF ann i     -> return $ KMeta ann i
+    KAppF  ann k1 k2 -> KApp  <$> convertAnn ann <*> sflow k1 <*> sflow k2
+    KConF  ann op    -> KCon  <$> convertAnn ann <*> pure op
+    KMetaF ann i     -> KMeta <$> convertAnn ann <*> pure i
 
   -- Types
   --
@@ -246,13 +255,13 @@ deBruijnToNameF = case sortSing @sort of
   -- Otherwise, we simply recurse.
   --
   STYPE -> \case
-    TForallF     ann k n t -> sbindLocal n $ \n' -> TForall ann <$> traverse sflow k <*> pure n' <*> sflow t
-    TAppF        ann t1 t2 -> TApp ann <$> sflow t1 <*> sflow t2
-    TVarF        ann n     -> TVar ann <$> getName (prov ann) n
-    TConF        ann op    -> return $ TCon ann op
-    TLitDimF     ann d     -> return $ TLitDim ann d
-    TLitDimListF ann ts    -> TLitDimList ann <$> traverse sflow ts
-    TMetaF       ann i     -> return $ TMeta ann i
+    TForallF     ann k n t -> sbindLocal n $ \n' -> TForall <$> convertAnn ann <*> traverse sflow k <*> pure n' <*> sflow t
+    TAppF        ann t1 t2 -> TApp <$> convertAnn ann <*> sflow t1 <*> sflow t2
+    TVarF        ann n     -> TVar <$> convertAnn ann <*> getName (unK $ isnd ann) n
+    TConF        ann op    -> TCon <$> convertAnn ann <*> pure op
+    TLitDimF     ann d     -> TLitDim     <$> convertAnn ann <*> pure d
+    TLitDimListF ann ts    -> TLitDimList <$> convertAnn ann <*> traverse sflow ts
+    TMetaF       ann i     -> TMeta       <$> convertAnn ann <*> pure i
 
   -- Type arguments
   --
@@ -261,7 +270,7 @@ deBruijnToNameF = case sortSing @sort of
   STARG -> \case
     TArgF ann n -> do let s = toName n
                       tellData (singletonCtx STYPE s)
-                      return $ TArg ann (K s)
+                      TArg <$> convertAnn ann <*> pure (K s)
 
   -- Expressions
   --
@@ -270,17 +279,17 @@ deBruijnToNameF = case sortSing @sort of
   -- Otherwise, we simply recurse.
   --
   SEXPR -> \case
-    EAnnF     ann e t     -> EAnn ann <$> sflow e <*> sflow t
-    ELetF     ann n e1 e2 -> sbindLocal n $ \n' -> ELet ann n' <$> sflow e1 <*> sflow e2
-    ELamF     ann n e     -> sbindLocal n $ \n' -> ELam ann n' <$> sflow e
-    EAppF     ann e1 e2   -> EApp ann <$> sflow e1 <*> sflow e2
-    EVarF     ann n       -> EVar ann <$> getName (prov ann) n
-    ETyAppF   ann e t     -> ETyApp ann <$> sflow e <*> sflow t
-    ETyLamF   ann n e     -> sbindLocal n $ \n' -> ETyLam ann n' <$> sflow e
-    EConF     ann op      -> return $ ECon ann op
-    ELitIntF  ann z       -> return $ ELitInt ann z
-    ELitRealF ann r       -> return $ ELitReal ann r
-    ELitSeqF  ann es      -> ELitSeq ann <$> traverse sflow es
+    EAnnF     ann e t     -> EAnn <$> convertAnn ann <*> sflow e <*> sflow t
+    ELetF     ann n e1 e2 -> sbindLocal n $ \n' -> ELet <$> convertAnn ann <*> pure n' <*> sflow e1 <*> sflow e2
+    ELamF     ann n e     -> sbindLocal n $ \n' -> ELam <$> convertAnn ann <*> pure n' <*> sflow e
+    EAppF     ann e1 e2   -> EApp <$> convertAnn ann <*> sflow e1 <*> sflow e2
+    EVarF     ann n       -> EVar <$> convertAnn ann <*> getName (unK $ isnd ann) n
+    ETyAppF   ann e t     -> ETyApp <$> convertAnn ann <*> sflow e <*> sflow t
+    ETyLamF   ann n e     -> sbindLocal n $ \n' -> ETyLam <$> convertAnn ann <*> pure n' <*> sflow e
+    EConF     ann op      -> ECon <$> convertAnn ann <*> pure op
+    ELitIntF  ann z       -> ELitInt <$> convertAnn ann <*> pure z
+    ELitRealF ann r       -> ELitReal <$> convertAnn ann <*> pure r
+    ELitSeqF  ann es      -> ELitSeq <$> convertAnn ann <*> traverse sflow es
 
   -- Expression arguments
   --
@@ -289,70 +298,77 @@ deBruijnToNameF = case sortSing @sort of
   SEARG -> \case
     EArgF ann n -> do let s = toName n
                       tellData (singletonCtx SEXPR s)
-                      return $ EArg ann (K s)
+                      EArg <$> convertAnn ann <*> pure (K s)
 
   -- Declarations
   SDECL -> \case
-    DeclNetwF ann n t    -> do t' <- sflow t
-                               n' <- sflow n
-                               return $ DeclNetw ann n' t'
-    DeclDataF ann n t    -> do t' <- sflow t
-                               n' <- sflow n
-                               return $ DeclData ann n' t'
-    DefTypeF  ann n ns t -> do n' <- sflow n
+    DeclNetwF ann n t    -> do ann' <- convertAnn ann
+                               t'   <- sflow t
+                               n'   <- sflow n
+                               return $ DeclNetw ann' n' t'
+    DeclDataF ann n t    -> do ann' <- convertAnn ann
+                               t'   <- sflow t
+                               n'   <- sflow n
+                               return $ DeclData ann' n' t'
+    DefTypeF  ann n ns t -> do ann' <- convertAnn ann
+                               n'   <- sflow n
                                flow $
                                  sbindAllLocal ns $ \ns' ->
-                                   DefType ann n' ns' <$> unSDF t
-    DefFunF   ann n t e  -> do t' <- sflow t
-                               e' <- sflow e
-                               n' <- sflow n
-                               return $ DefFun ann n' t' e'
+                                   DefType ann' n' ns' <$> unSDF t
+    DefFunF   ann n t e  -> do ann' <- convertAnn ann
+                               t'   <- sflow t
+                               e'   <- sflow e
+                               n'   <- sflow n
+                               return $ DefFun ann' n' t' e'
 
   -- Programs
   SPROG -> \case
-    MainF ann ds -> Main ann <$> flow (traverse unSDF ds)
+    MainF ann ds -> Main <$> convertAnn ann <*> flow (traverse unSDF ds)
 
--- | Maps any machine (i.e. automatically generated) names to symbols
--- provided by the supply monad.
-nameToSymbol :: forall ann sort.
-  (KnownSort sort) =>
-  Tree (K Name) ann sort ->
-  Supply Symbol (Tree (K Symbol) ann sort)
-nameToSymbol = traverseTreeName (go . unK >=> return . K)
-  where
-    go :: Name -> Supply Symbol Symbol
-    go (User symbol) = return symbol
-    go Machine       = demand
-
-
--- | Converts deBruijn indices back into symbols with an machine
--- (i.e. automatically generated) names provided by the supply monad.
-deBruijnToSymbol ::
+convertAnn ::
   forall sort.
-  (KnownSort sort) =>
-  Tree DeBruijn (Info DeBruijn :*: K Provenance) sort ->
-  ExceptT ScopeError (SupplyT Symbol Identity) (Tree (K Symbol) (Info (K Symbol) :*: K Provenance) sort)
-deBruijnToSymbol t = traverseTreeAnn convertAnn t >>= convertLayer
-  where
-    convertLayer ::
-      forall sort1.
-      (KnownSort sort1) =>
-      Tree DeBruijn (Info (K Symbol) :*: K Provenance) sort1 ->
-      ExceptT ScopeError (SupplyT Symbol Identity) (Tree (K Symbol) (Info (K Symbol) :*: K Provenance) sort1)
-    convertLayer t = do
-      ct <- mapExceptT (return . runIdentity) (deBruijnToName t)
-      lift (nameToSymbol ct)
+  KnownSort sort =>
+  (Info DeBruijn :*: K Provenance) sort ->
+  DataflowT sort (Ctx Name) (Except ScopeError) ((Info (K Name) :*: K Provenance) sort)
+convertAnn (Info v :*: p) = case sortSing @sort of
+  SKIND -> return $ Info v :*: p
+  STYPE -> do v' <- flow $ deBruijnToName' v; return $ Info v' :*: p
+  STARG -> do v' <- flow $ deBruijnToName' v; return $ Info v' :*: p
+  SEXPR -> do v' <- flow $ deBruijnToName' v; return $ Info v' :*: p
+  SEARG -> do v' <- flow $ deBruijnToName' v; return $ Info v' :*: p
+  SDECL -> return $ Info v :*: p
+  SPROG -> return $ Info v :*: p
 
-    convertAnn ::
-      forall sort2.
-      KnownSort sort2 =>
-      (Info DeBruijn :*: K Provenance) sort2 ->
-      ExceptT ScopeError (SupplyT Symbol Identity) ((Info (K Symbol) :*: K Provenance) sort2)
-    convertAnn (Info v :*: p) = case sortSing @sort2 of
+nameToSymbol ::
+  forall sort.
+  KnownSort sort =>
+  Tree (K Name) (Info (K Name) :*: K Provenance) sort ->
+  Supply Symbol (Tree (K Symbol) (Info (K Symbol) :*: K Provenance) sort)
+nameToSymbol = traverseTreeFields convName convAnn
+  where
+    convName :: forall sort2. KnownSort sort2 => K Name sort2 -> Supply Symbol (K Symbol sort2)
+    convName (K (User symbol)) = return (K symbol)
+    convName (K Machine)       = K <$> demand
+
+    convAnn :: forall sort2. KnownSort sort2 =>
+      (Info (K Name) :*: K Provenance) sort2 ->
+      Supply Symbol ((Info (K Symbol) :*: K Provenance) sort2)
+    convAnn (Info v :*: p) = case sortSing @sort2 of
       SKIND -> return $ Info v :*: p
-      STYPE -> do v <- deBruijnToSymbol v; return $ Info v :*: p
-      STARG -> do v <- deBruijnToSymbol v; return $ Info v :*: p
-      SEXPR -> do v <- deBruijnToSymbol v; return $ Info v :*: p
-      SEARG -> do v <- deBruijnToSymbol v; return $ Info v :*: p
+      STYPE -> do v' <- nameToSymbol v; return $ Info v' :*: p
+      STARG -> do v' <- nameToSymbol v; return $ Info v' :*: p
+      SEXPR -> do v' <- nameToSymbol v; return $ Info v' :*: p
+      SEARG -> do v' <- nameToSymbol v; return $ Info v' :*: p
       SDECL -> return $ Info v :*: p
       SPROG -> return $ Info v :*: p
+
+
+
+deBruijnToSymbol ::
+  forall sort.
+  KnownSort sort =>
+  Tree DeBruijn (Info DeBruijn :*: K Provenance) sort ->
+  Except ScopeError (Tree (K Symbol) (Info (K Symbol) :*: K Provenance) sort)
+deBruijnToSymbol dbTree = do
+  nmTree <- deBruijnToName dbTree
+  return $ runIdentity $ runSupplyT (withSupplyT (\i -> "v" <> pack (show i)) (nameToSymbol nmTree)) (+1) (0 :: Integer)

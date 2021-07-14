@@ -248,7 +248,7 @@ checkInferF = case sortSing @sort of
   STARG -> \case
     TArgF p n -> fromCheck p $ do
       k <- ask
-      tell $ singletonCtx STYPE (Info . unInfo $ k)
+      lift (tellData $ singletonCtx STYPE (Info . unInfo $ k))
       return (TArg (k :*: p) n)
 
   -- Expressions
@@ -381,7 +381,7 @@ checkInferF = case sortSing @sort of
   SEARG -> \case
     EArgF p n -> fromCheck p $ do
       t <- ask
-      tell $ singletonCtx SEXPR (coerce t)
+      lift (tellData $ singletonCtx SEXPR (coerce t))
       return (EArg (t :*: p) n)
 
   -- Declarations
