@@ -7,10 +7,6 @@
 module Vehicle.Core.Normalise.Core
   ( NormError (..)
   , MonadNorm
-  , NormExpr
-  , NormType
-  , NormDecl
-  , NormProg
   , pattern EOp0
   , pattern EOp1
   , pattern EOp2
@@ -32,22 +28,15 @@ data NormError
 -- |Constraint for the monad stack used by the normaliser.
 type MonadNorm m = MonadError NormError m
 
--- |Some useful type synonyms
-type NormExpr ann = Expr DeBruijn ann
-type NormType ann = Type DeBruijn ann
-type NormDecl ann = Decl DeBruijn ann
-type NormProg ann = Prog DeBruijn ann
-
 -- TODO: migrate to module with builtins
 
 -- |Pattern synonyms to help matching during normalisation. Perhaps these are useful elsewhere and should be lifted?
-pattern EOp0 op ann0 = ECon ann0 op
-pattern EOp1 op e1 ann0 ann1 = EApp ann1 (EOp0 op ann0) e1
-pattern EOp2 op e1 e2 ann0 ann1 ann2 = EApp ann2 (EOp1 op e1 ann0 ann1) e2
-pattern EOp3 op e1 e2 e3 ann0 ann1 ann2 ann3 = EApp ann3 (EOp2 op e1 e2 ann0 ann1 ann2) e3
+pattern EOp0 op ann0 = Builtin ann0 op
+pattern EOp1 op e1 ann0 ann1 = App ann1 (EOp0 op ann0) e1
+pattern EOp2 op e1 e2 ann0 ann1 ann2 = App ann2 (EOp1 op e1 ann0 ann1) e2
+pattern EOp3 op e1 e2 e3 ann0 ann1 ann2 ann3 = App ann3 (EOp2 op e1 e2 ann0 ann1 ann2) e3
 
 -- TODO: migrate to different module?
 
-mkBool :: Bool -> ann 'EXPR -> NormExpr ann
-mkBool True  ann = EOp0 ETrue  ann
-mkBool False ann = EOp0 EFalse ann
+mkBool :: Bool -> ann -> DeBruijnExpr ann
+mkBool b ann = Literal ann (LitBool b)

@@ -15,6 +15,7 @@ import Vehicle.Core.AST.Builtin
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
 import Vehicle.Core.AST.Constraint
+import Vehicle.Core.AST.Utils
 import Vehicle.Prelude
 
 
@@ -32,13 +33,13 @@ app = App mempty
 tStar :: Monoid ann => Expr name binder ann
 tStar = Star mempty
 
-tPrim :: PrimitiveType -> Expr name binder ann
+tPrim :: Monoid ann => PrimitiveType -> Expr name binder ann
 tPrim = con . PrimitiveType
 
-tPrimNumber :: PrimitiveNumber -> Expr name binder ann
+tPrimNumber :: Monoid ann => PrimitiveNumber -> Expr name binder ann
 tPrimNumber = tPrim . Number
 
-tPrimTruth :: PrimitiveTruth -> Expr name binder ann
+tPrimTruth :: Monoid ann => PrimitiveTruth -> Expr name binder ann
 tPrimTruth = tPrim . Truth
 
 tBool, tProp, tNat, tInt, tReal :: Monoid ann => Expr name binder ann
@@ -48,13 +49,13 @@ tNat     = tPrimNumber Nat
 tInt     = tPrimNumber Int
 tReal    = tPrimNumber Real
 
-tTensor :: Expr name binder ann -> Expr name binder ann -> Expr name binder ann
+tTensor :: Monoid ann => Expr name binder ann -> Expr name binder ann -> Expr name binder ann
 tTensor tDim tElem = con Tensor `app` tDim `app` tElem
 
-tList :: Expr name binder ann -> Expr name binder ann
+tList :: Monoid ann => Expr name binder ann -> Expr name binder ann
 tList tElem = con List `app` tElem
 
-eList :: Seq (Expr name binder ann) -> Expr name binder ann
+eList :: Monoid ann => Seq (Expr name binder ann) -> Expr name binder ann
 eList = Seq mempty
 
 -- TODO figure out how to do this without horrible -1 hacks
@@ -65,9 +66,12 @@ tForall
   -> DeBruijnExpr ann
 tForall constraints k f = quantBody
   where
-    badBody   = f (Bound (tStar :*: mempty) (DIndex (-1)))
-    body      = liftDeBruijn (BindingDepth (-1) 0) (unInfo badBody)
-    quantBody = TForall (kType :*: mempty) (TArg (kType :*: mempty) (TSymbol Machine)) body
+    badBody   = f (Bound _ (Index (-1)))
+      --(tStar :*: mempty)
+    body      = liftDeBruijn (-1) badBody
+    quantBody = Forall _ (Binder _ Machine) constraints body
+      -- (kType :*: mempty)
+      -- (k :*: mempty)
 
 constrainedTForall
   :: Provenance
@@ -85,14 +89,14 @@ unconstrainedTForall
 unconstrainedTForall = tForall mempty
 
 -- |Return the kind for builtin exprs.
-typeOf :: Provenance -> Builtin AbstractBuiltinOp -> DeBruijnExpr ann
+typeOf :: Monoid ann => Provenance -> Builtin AbstractBuiltinOp -> DeBruijnExpr ann
 typeOf p = \case
   PrimitiveType _ -> tStar
   List            -> tStar ~> tStar
   Tensor          -> tStar ~> tList tNat ~> tStar
   Op op           -> typeOfAbstractOp p op
 
-typeOfAbstractOp :: Provenance -> AbstractBuiltinOp -> DeBruijnExpr ann
+typeOfAbstractOp :: Monoid ann => Provenance -> AbstractBuiltinOp -> DeBruijnExpr ann
 typeOfAbstractOp p = \case
   If   -> unconstrainedTForall tStar $ \t -> tProp ~> t ~> t
   Cons -> unconstrainedTForall tStar $ \t -> t ~> tList t ~> tList t
@@ -121,50 +125,50 @@ typeOfAbstractOp p = \case
   All  -> typeOfQuantifierOp p
   Any  -> typeOfQuantifierOp p
 
-typeOfEqualityOp :: Provenance -> DeBruijnExpr ann
+typeOfEqualityOp :: Monoid ann => Provenance -> DeBruijnExpr ann
 typeOfEqualityOp p =
   constrainedTForall p Distinguishable tStar $ \t ->
     constrainedTForall p Truthy tStar $ \r ->
       t ~> t ~> r
 
-typeOfComparisonOp :: Provenance -> DeBruijnExpr ann
+typeOfComparisonOp :: Monoid ann => Provenance -> DeBruijnExpr ann
 typeOfComparisonOp p =
   constrainedTForall p Comparable tStar $ \t ->
     constrainedTForall p Truthy tStar $ \r ->
       t ~> t ~> r
 
-typeOfBoolOp2 :: Provenance -> DeBruijnExpr ann
+typeOfBoolOp2 :: Monoid ann => Provenance -> DeBruijnExpr ann
 typeOfBoolOp2 p =
   constrainedTForall p Truthy tStar $ \t ->
     t ~> t ~> t
 
-typeOfBoolOp1 :: Provenance -> DeBruijnExpr ann
+typeOfBoolOp1 :: Monoid ann => Provenance -> DeBruijnExpr ann
 typeOfBoolOp1 p =
   constrainedTForall p Truthy tStar $ \t ->
     t ~> t
 
-typeOfNumOp2 :: Provenance -> ConstraintType -> DeBruijnExpr ann
+typeOfNumOp2 :: Monoid ann => Provenance -> ConstraintType -> DeBruijnExpr ann
 typeOfNumOp2 p constraintType =
   constrainedTForall p constraintType tStar $ \t ->
     t ~> t ~> t
 
-typeOfNumOp1 :: Provenance -> ConstraintType -> DeBruijnExpr ann
+typeOfNumOp1 :: Monoid ann => Provenance -> ConstraintType -> DeBruijnExpr ann
 typeOfNumOp1 p constraintType =
   constrainedTForall p constraintType tStar $ \t ->
     t ~> t
 
-typeOfQuantifierOp :: Provenance -> DeBruijnExpr ann
+typeOfQuantifierOp :: Monoid ann => Provenance -> DeBruijnExpr ann
 typeOfQuantifierOp p =
   constrainedTForall p Quantifiable tStar $ \t
     -> t ~> (t ~> tProp) ~> tProp
 
-typeOfAtOp :: Provenance -> DeBruijnExpr ann
+typeOfAtOp :: Monoid ann => Provenance -> DeBruijnExpr ann
 typeOfAtOp p =
   constrainedTForall p Indexable tStar $ \t ->
     t ~> tNat ~> t
 
 
-typeOfConcreteOp :: ConcreteBuiltinOp -> DeBruijnExpr ann
+typeOfConcreteOp :: Monoid ann => ConcreteBuiltinOp -> DeBruijnExpr ann
 typeOfConcreteOp = \case
   ConcIf              -> unconstrainedTForall tStar $ \t -> tProp ~> t ~> t
 

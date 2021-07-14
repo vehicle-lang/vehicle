@@ -1,12 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE DataKinds #-}
 
 module Vehicle.Backend.ITP.Core where
 
@@ -122,27 +113,17 @@ numericType expr = go $ annotatedType (annotation expr)
       TFun  _ann _t1 t2 -> go t2
       typ               -> throwError $ UnexpectedType (prov expr) expr typ ["Real", "Int", "X -> Bool", "X -> Prop"]
 
--- |Types of boolean data supported
-data BoolType
-  = Bool
-  | Prop
-
-booleanType :: MonadCompile m options => OutputExpr -> m BoolType
-booleanType expr = go (annotatedType (annotation expr))
+truthType :: MonadCompile m options => OutputExpr -> m PrimitiveTruth
+truthType expr = go (annotatedType (annotation expr))
   where
-    go :: MonadCompile m options => OutputType -> m BoolType
+    go :: MonadCompile m options => OutputType -> m PrimitiveTruth
     go = \case
       TBool _ann        -> return Bool
       TProp _ann        -> return Prop
       TFun  _ann _t1 t2 -> go t2
       typ               -> throwError $ UnexpectedType (prov expr) expr typ ["Bool", "Prop", "X -> Bool", "X -> Prop"]
 
--- | Types of container data supported
-data ContainerType
-  = List
-  | Tensor (NonEmpty Integer)
-
-containerType :: MonadCompile m options => OutputExpr -> m ContainerType
+containerType :: MonadCompile m options => OutputExpr -> m PrimitiveContainer
 containerType expr = let ann = annotation expr in case annotatedType ann of
   TList   _ _                    -> return List
   TTensor _ _ (TLitDimList _ ds) -> Tensor <$> traverse fromLit ds

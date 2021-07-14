@@ -33,7 +33,7 @@ instance Pretty (Builtin AbstractBuiltinOp) where
   pretty b = pretty $ fromMaybe "" (symbolFromBuiltin b)
 
 instance Pretty name => Pretty (Binder name ann) where
-  pretty (Binder _ann name ) = pretty name
+  pretty (Binder _ann name ) = "Binder" <+> pretty name
 
 instance ( Pretty name
          , Pretty binder

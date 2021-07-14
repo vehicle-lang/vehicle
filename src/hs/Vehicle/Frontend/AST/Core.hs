@@ -1,7 +1,3 @@
-{-# LANGUAGE KindSignatures #-}
-
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 module Vehicle.Frontend.AST.Core

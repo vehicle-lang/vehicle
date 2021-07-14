@@ -1,19 +1,10 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE PolyKinds             #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE StandaloneDeriving    #-}
 
 module Vehicle.Core.AST.DeBruijn
   ( DeBruijnBinder(..)
   , DeBruijnIndex(..)
   , DeBruijnExpr
+  , DeBruijnDecl
+  , DeBruijnProg
   , toSymbol
   , BindingDepth
   , liftDeBruijn
@@ -21,7 +12,7 @@ module Vehicle.Core.AST.DeBruijn
   ) where
 
 import Vehicle.Prelude (Symbol)
-import Vehicle.Core.AST.Core (Expr(..))
+import Vehicle.Core.AST.Core (Expr(..), Decl, Prog)
 
 --------------------------------------------------------------------------------
 -- Definitions
@@ -43,6 +34,8 @@ toSymbol Machine       = Nothing
 
 -- An expression that uses DeBruijn index scheme for both binders and names.
 type DeBruijnExpr ann = Expr DeBruijnIndex DeBruijnBinder ann
+type DeBruijnDecl ann = Decl DeBruijnIndex DeBruijnBinder ann
+type DeBruijnProg ann = Prog DeBruijnIndex DeBruijnBinder ann
 
 --------------------------------------------------------------------------------
 -- DeBruijn operations
