@@ -1,12 +1,5 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-
-{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Core.AST.Utils where
 
 import Vehicle.Prelude ( Provenance, Symbol )
@@ -15,36 +8,38 @@ import Vehicle.Core.AST.Core (Expr(..), Decl(..), Prog(..), Binder(..))
 -- |Extract the annotation
 annotation :: Expr name binder ann -> ann
 annotation = \case
-  Star    ann       -> ann
-  App     ann _ _   -> ann
-  Fun     ann _ _   -> ann
-  Builtin ann _     -> ann
-  Bound   ann _     -> ann
-  Free    ann _     -> ann
-  Meta    ann _     -> ann
-  Forall  ann _ _ _ -> ann
-  Let     ann _ _ _ -> ann
-  Lam     ann _ _   -> ann
-  Literal ann _     -> ann
-  Seq     ann _     -> ann
+  App      ann _ _   -> ann
+  Pi       ann _ _ _ -> ann
+  Builtin  ann _     -> ann
+  Bound    ann _     -> ann
+  Free     ann _     -> ann
+  Meta     ann _     -> ann
+  Let      ann _ _ _ -> ann
+  Lam      ann _ _   -> ann
+  Literal  ann _     -> ann
+  Seq      ann _     -> ann
+
+-- | An annotation that stores both the type of the expression and some other arbitrary annotations.
+-- Used to avoid unrestricted type-level recursion.
+data TypedAnn binder var ann = TypedAnn (Expr binder var (TypedAnn binder var ann)) ann
 
 -- | Type of annotations attached to the Frontend AST after parsing
 -- before being analysed by the compiler
-type InputName = Symbol
 type InputBind = Symbol
+type InputVar  = Symbol
 type InputAnn  = Provenance
 
-type InputBinder = Binder InputBind InputAnn
-type InputExpr   = Expr InputName InputBind InputAnn
-type InputDecl   = Decl InputName InputBind InputAnn
-type InputProg   = Prog InputName InputBind InputAnn
+type InputBinder = Binder InputBind          InputAnn
+type InputExpr   = Expr   InputBind InputVar InputAnn
+type InputDecl   = Decl   InputBind InputVar InputAnn
+type InputProg   = Prog   InputBind InputVar InputAnn
 
 -- | Type of annotations attached to the Core AST that are output by the compiler
-type OutputName   = Symbol
-type OutputBind   = Symbol
-data OutputAnn    = OutputAnn (Expr OutputName OutputBind OutputAnn) Provenance
+type OutputBind = Symbol
+type OutputVar  = Symbol
+type OutputAnn  = TypedAnn OutputBind OutputVar Provenance
 
-type OutputBinder = Binder InputBind InputAnn
-type OutputExpr   = Expr OutputName OutputBind OutputAnn
-type OutputDecl   = Decl OutputName OutputBind OutputAnn
-type OutputProg   = Prog OutputName OutputBind OutputAnn
+type OutputBinder = Binder OutputBind           OutputAnn
+type OutputExpr   = Expr   OutputBind OutputVar OutputAnn
+type OutputDecl   = Decl   OutputBind OutputVar OutputAnn
+type OutputProg   = Prog   OutputBind OutputVar OutputAnn

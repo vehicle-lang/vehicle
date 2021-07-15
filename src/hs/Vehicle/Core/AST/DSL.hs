@@ -14,7 +14,6 @@ import Data.Set qualified as Set (singleton)
 import Vehicle.Core.AST.Builtin
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
-import Vehicle.Core.AST.Constraint
 import Vehicle.Core.AST.Utils
 import Vehicle.Prelude
 

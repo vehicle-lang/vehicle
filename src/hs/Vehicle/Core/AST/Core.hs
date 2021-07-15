@@ -29,8 +29,8 @@ type Identifier = Symbol
 data Visibility = Explicit | Inferred
   deriving (Eq, Ord, Show)
 
-data Arg name binder ann
-  = Arg ann Visibility (Expr name binder ann)
+data Arg binder var ann
+  = Arg ann Visibility (Expr binder var ann)
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data Binder binder ann
@@ -46,77 +46,100 @@ data Literal
 
 -- * Abstract syntax tree for Vehicle Core
 
--- Annotations are parameterised over so that they can
--- store arbitrary information used in e.g. expr-checking.
 
+-- | Type of Vehicle Core expressions.
+--
+-- Annotations are parameterised over so that they can
+-- store arbitrary information used in e.g. type-checking.
+--
 -- Names are parameterised over so that they can store
 -- either the user assigned names or deBruijn indices.
+data Expr binder var ann
 
--- | Expr of Vehicle Core expressions.
-data Expr name binder ann
+  -- | Application of one term to another.
   = App
-    ann                             -- ^ Annotation.
-    (Expr name binder ann)          -- ^ Function.
-    (Arg  name binder ann)          -- ^ Argument.
+    ann                         -- Annotation.
+    (Expr binder var ann)       -- Function.
+    (Arg  binder var ann)       -- Argument.
+
+  -- | Dependent product (subsumes both function and forall).
   | Pi
-    ann                             -- ^ Annotation.
-    (Binder binder ann)
-    (Expr name binder ann)          -- ^ Function.
-    (Expr name binder ann)          -- ^ Argument.
+    ann                         -- Annotation.
+    (Binder binder ann)         -- The bound name
+    (Expr binder var ann)       -- Argument type.
+    (Expr binder var ann)       -- (Dependent) result type.
+
+  -- | Terms consisting of constants that are built into the language.
   | Builtin
-    ann                             -- ^ Annotation.
-    Builtin                         -- ^ Builtin name.
+    ann                         -- Annotation.
+    Builtin                     -- Builtin name.
+
+  -- | Variables that are bound by other expressions
   | Bound
-    ann                             -- ^ Annotation.
-    name                            -- ^ Variable name.
-  | Free                            -- ^ Top-level definitions
-    ann                             -- ^ Annotation.
-    Identifier                      -- ^ Idenitifer.
+    ann                         -- Annotation.
+    var                         -- Variable name.
+
+  -- | Variables that are free within the expression and instead bound by top level declarations, see `Decl`.
+  | Free
+    ann                         -- Annotation.
+    Identifier                  -- Idenitifer.
+
+  -- | Unsolved meta variables.
   | Meta
-    ann                             -- ^ Annotation.
-    Meta                            -- ^ Meta variable.
+    ann                         -- Annotation.
+    Meta                        -- Meta variable.
+
+  -- | Let expressions.
   | Let
-    ann                             -- ^ Annotation.
-    (Binder binder ann)             -- ^ Bound expression name.
-    (Expr name binder ann)          -- ^ Bound expression body.
-    (Expr name binder ann)          -- ^ Expression body.
+    ann                         -- Annotation.
+    (Binder binder     ann)     -- Bound expression name.
+    (Expr   binder var ann)     -- Bound expression body.
+    (Expr   binder var ann)     -- Expression body.
+
+  -- | Lambda expressions (i.e. anonymous functions).
   | Lam
-    ann                             -- ^ Annotation.
-    (Binder binder ann)             -- ^ Bound expression name.
-    (Expr name binder ann)          -- ^ Expression body.
+    ann                         -- Annotation.
+    (Binder binder ann)         -- Bound expression name.
+    (Expr binder var ann)       -- Expression body.
+
+  -- | Built-in literal values e.g. numbers/booleans.
   | Literal
-    ann
-    Literal
+    ann                         -- Annotation.
+    Literal                     -- Value.
+
+  -- | A sequence of terms for e.g. list literals.
   | Seq
-    ann                             -- ^ Annotation.
-    (Seq (Expr name binder ann))    -- ^ List of expressions.
+    ann                         -- Annotation.
+    (Seq (Expr binder var ann)) -- List of expressions.
+
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
--- | Expr of Vehicle Core declaration.
-data Decl name binder ann
+
+-- | Type of Vehicle Core declaration.
+data Decl binder var ann
   = DeclNetw
-    Provenance                           -- ^ Location in source file.
-    (Binder binder ann)                  -- ^ Network name.
-    (Expr name binder ann)               -- ^ Network expr.
+    Provenance                 -- Location in source file.
+    (Binder binder     ann)    -- Network name.
+    (Expr   binder var ann)    -- Network type.
   | DeclData
-    Provenance                           -- ^ Location in source file.
-    (Binder binder ann)                  -- ^ Dataset name.
-    (Expr name binder ann)               -- ^ Dataset expr.
+    Provenance                 -- Location in source file.
+    (Binder binder     ann)    -- Dataset name.
+    (Expr   binder var ann)    -- Dataset type.
   | DefType
-    Provenance                           -- ^ Location in source file.
-    (Binder binder ann)                  -- ^ Bound expr synonym name.
-    [Binder binder ann]                  -- ^ Bound expr synonym arguments.
-    (Expr name binder ann)               -- ^ Bound expr synonym body.
+    Provenance                 -- Location in source file.
+    (Binder binder     ann)    -- Bound expr synonym name.
+    [Binder binder     ann]    -- Bound expr synonym arguments.
+    (Expr   binder var ann)    -- Bound expr synonym body.
   | DefFun
-    Provenance                           -- ^ Location in source file.
-    (Binder binder ann)                  -- ^ Bound function name.
-    (Expr name binder ann)               -- ^ Bound function expr.
-    (Expr name binder ann)               -- ^ Bound function body.
+    Provenance                 -- Location in source file.
+    (Binder binder   ann)      -- Bound function name.
+    (Expr binder var ann)      -- Bound function type.
+    (Expr binder var ann)      -- Bound function body.
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
--- | Expr of Vehicle Core programs.
-newtype Prog name binder ann
-  = Main (NonEmpty (Decl name binder ann)) -- ^ List of declarations.
+-- | Type of Vehicle Core programs.
+newtype Prog binder var ann
+  = Main (NonEmpty (Decl binder var ann)) -- ^ List of declarations.
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 makeBaseFunctor ''Expr
