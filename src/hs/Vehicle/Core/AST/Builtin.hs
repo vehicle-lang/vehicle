@@ -2,6 +2,7 @@
 
 module Vehicle.Core.AST.Builtin
   ( Builtin(..)
+  , Constraint(..)
   , pattern PrimitiveNumber
   , pattern PrimitiveTruth
   , builtinFromSymbol
@@ -15,8 +16,7 @@ import Vehicle.Prelude
 
 -- |Builtins to the Vehicle language
 data Builtin
-  = Kind
-  | Type
+  = Type
   | Constraint
   | PrimitiveType PrimitiveType
   | List
@@ -44,24 +44,25 @@ data Builtin
   | Any
   deriving (Eq, Ord, Show)
 
+data Constraint
+  = HasEq
+  | HasOrd
+  | IsTruth
+  | IsNumber
+  | IsContainer
+  | IsQuantifiable
+  deriving (Eq, Ord, Show)
+
 pattern PrimitiveNumber :: PrimitiveNumber -> Builtin
 pattern PrimitiveNumber prim = PrimitiveType (Number prim)
 
 pattern PrimitiveTruth :: PrimitiveTruth -> Builtin
 pattern PrimitiveTruth prim = PrimitiveType (Truth prim)
 
-data Constraint
-  = HasEq
-  | HasOrd
-  | IsContainer
-  | IsNumber
-  deriving (Eq, Ord, Show)
-
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols =
   -- Types
-  [ "Kind"       |-> Kind
-  , "Type"       |-> Type
+  [ "Type"       |-> Type
   , "Constraint" |-> Constraint
   , "Bool"       |-> PrimitiveTruth Bool
   , "Prop"       |-> PrimitiveTruth Prop
@@ -73,8 +74,10 @@ builtinSymbols =
   -- Constraints
   , "Eq"         |-> Implements HasEq
   , "Ord"        |-> Implements HasOrd
+  , "Truth"      |-> Implements IsTruth
   , "Container"  |-> Implements IsContainer
   , "Number"     |-> Implements IsNumber
+  , "Quantify"   |-> Implements IsQuantifiable
   -- Operations
   , "if"         |-> If
   , "=>"         |-> Impl

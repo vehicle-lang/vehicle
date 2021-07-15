@@ -9,6 +9,7 @@ module Vehicle.Core.AST.Core
   , Prog(..)
   , Meta
   , Arg(..)
+  , Visibility(..)
   , Binder(..)
   , Literal(..)
   ) where
@@ -30,11 +31,11 @@ data Visibility = Explicit | Inferred
   deriving (Eq, Ord, Show)
 
 data Arg binder var ann
-  = Arg ann Visibility (Expr binder var ann)
+  = Arg Visibility (Expr binder var ann)
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data Binder binder ann
-  = Binder ann binder Visibility
+  = Binder ann (Maybe binder) Visibility
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data Literal
@@ -56,17 +57,20 @@ data Literal
 -- either the user assigned names or deBruijn indices.
 data Expr binder var ann
 
+  -- | The type of types. It has no type of it's own and correspondingly no annotation.
+  = Kind
+
   -- | Application of one term to another.
-  = App
+  | App
     ann                         -- Annotation.
     (Expr binder var ann)       -- Function.
     (Arg  binder var ann)       -- Argument.
 
-  -- | Dependent product (subsumes both function and forall).
+  -- | Dependent product (subsumes both functions and universal quantification).
   | Pi
     ann                         -- Annotation.
     (Binder binder ann)         -- The bound name
-    (Expr binder var ann)       -- Argument type.
+    (Expr binder var ann)       -- The type of the bound name.
     (Expr binder var ann)       -- (Dependent) result type.
 
   -- | Terms consisting of constants that are built into the language.

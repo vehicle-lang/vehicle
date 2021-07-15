@@ -9,106 +9,132 @@
 module Vehicle.Core.AST.DSL where
 
 import Data.Sequence (Seq)
-import Data.Set qualified as Set (singleton)
 
 import Vehicle.Core.AST.Builtin
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
-import Vehicle.Core.AST.Utils
+import Vehicle.Core.AST.Utils (RecAnn(..))
 import Vehicle.Prelude
 
 
+
+type TypedAnn  = DeBruijnAnn Provenance
+type TypedExpr = DeBruijnExpr TypedAnn
+
+freshAnn :: TypedExpr -> TypedAnn
+freshAnn t = RecAnn t mempty
+
+getResultType :: TypedExpr -> TypedExpr
+getResultType (Pi _ann _binder x _y) = x
+getResultType _                      = error "expecting a Pi type"
+
 -- * DSL for writing kinds as info annotations
 
-(~>) :: Monoid ann => Expr name binder ann -> Expr name binder ann -> Expr name binder ann
-x ~> y = Fun mempty x y
+con :: Builtin -> TypedExpr -> TypedExpr
+con b t = Builtin (freshAnn t) b
 
-con :: Monoid ann => Builtin AbstractBuiltinOp -> Expr name binder ann
-con = Builtin mempty
+(~>) :: TypedExpr -> TypedExpr -> TypedExpr
+x ~> y = Pi (freshAnn kType) (Binder (freshAnn x) Nothing Explicit) x y
 
-app :: Monoid ann => Expr name binder ann -> Expr name binder ann -> Expr name binder ann
-app = App mempty
+app :: TypedExpr -> TypedExpr -> TypedExpr
+app fun arg = App (freshAnn (getResultType fun)) fun (Arg Explicit arg)
+  --(freshAnn (getType arg))
 
-tStar :: Monoid ann => Expr name binder ann
-tStar = Star mempty
+-- * Kinds
 
-tPrim :: Monoid ann => PrimitiveType -> Expr name binder ann
-tPrim = con . PrimitiveType
+kType :: TypedExpr
+kType = con Type Kind
 
-tPrimNumber :: Monoid ann => PrimitiveNumber -> Expr name binder ann
+kConstraint :: TypedExpr
+kConstraint = con Constraint Kind
+
+-- * Types
+
+tPrim :: PrimitiveType -> TypedExpr
+tPrim t = con (PrimitiveType t) kType
+
+tPrimNumber :: PrimitiveNumber -> TypedExpr
 tPrimNumber = tPrim . Number
 
-tPrimTruth :: Monoid ann => PrimitiveTruth -> Expr name binder ann
+tPrimTruth :: PrimitiveTruth -> TypedExpr
 tPrimTruth = tPrim . Truth
 
-tBool, tProp, tNat, tInt, tReal :: Monoid ann => Expr name binder ann
+tBool, tProp, tNat, tInt, tReal :: TypedExpr
 tBool    = tPrimTruth Bool
 tProp    = tPrimTruth Prop
 tNat     = tPrimNumber Nat
 tInt     = tPrimNumber Int
 tReal    = tPrimNumber Real
 
-tTensor :: Monoid ann => Expr name binder ann -> Expr name binder ann -> Expr name binder ann
-tTensor tDim tElem = con Tensor `app` tDim `app` tElem
+tTensor :: TypedExpr -> TypedExpr -> TypedExpr
+tTensor tElem tDim = con Tensor kType `app` tDim `app` tElem
 
-tList :: Monoid ann => Expr name binder ann -> Expr name binder ann
-tList tElem = con List `app` tElem
-
-eList :: Monoid ann => Seq (Expr name binder ann) -> Expr name binder ann
-eList = Seq mempty
-
-
-data TypedAnn = TypedAnn (DeBruijnExpr TypedAnn) Provenance
-type TypedExpr = DeBruijnExpr TypedAnn
-
-instance Semigroup TypedAnn where
-  t1 <> t2 = _
-
-instance Monoid TypedAnn where
-  mempty = _
+tList :: TypedExpr -> TypedExpr
+tList tElem = con List (typeOf mempty List) `app` tElem
 
 -- TODO figure out how to do this without horrible -1 hacks
 tForall
-  :: Constraints
-  -> TypedExpr
-  -> (TypedExpr -> TypedExpr)
-  -> TypedExpr
-tForall constraints k f = quantBody
-  where
-    badBody   = f (Bound _ (Index (-1)))
-      --(tStar :*: mempty)
-    body      = liftDeBruijn (-1) badBody
-    quantBody = Forall _ (Binder _ Machine) constraints body
-      -- (kType :*: mempty)
-      -- (k :*: mempty)
-
-constrainedTForall
-  :: Provenance
-  -> ConstraintType
-  -> TypedExpr
-  -> (TypedExpr -> TypedExpr)
-  -> TypedExpr
-constrainedTForall p constraintType = tForall constraints
-  where constraints = Set.singleton (Constraint p constraintType)
-
-unconstrainedTForall
   :: TypedExpr
   -> (TypedExpr -> TypedExpr)
   -> TypedExpr
-unconstrainedTForall = tForall mempty
+tForall k f = quantBody
+  where
+    badBody   = f (Bound (RecAnn kType mempty) (Index (-1)))
+    body      = liftAcc (-1) badBody
+    -- TODO Seems weird to have the kind used twice. I suspect the definition of Pi isn't quite right.
+    quantBody = Pi (RecAnn kType mempty) (Binder (freshAnn k) (Just Machine) Inferred) k body
+
+-- * Constraints
+
+constraint :: Provenance -> Constraint -> TypedExpr
+constraint p c = Builtin (RecAnn kConstraint p) (Implements c)
+
+hasEq :: Provenance -> TypedExpr -> TypedExpr -> TypedExpr
+hasEq p t1 t2 = constraint p HasEq `app` t1 `app` t2
+
+hasOrd :: Provenance -> TypedExpr -> TypedExpr -> TypedExpr
+hasOrd p t1 t2 = constraint p HasOrd `app` t1 `app` t2
+
+isTruth :: Provenance -> TypedExpr -> TypedExpr
+isTruth p t = constraint p IsTruth `app` t
+
+isNumber :: Provenance -> TypedExpr -> TypedExpr
+isNumber p t = constraint p IsNumber `app` t
+
+isContainer :: Provenance -> TypedExpr -> TypedExpr -> TypedExpr
+isContainer p tCont tElem = constraint p IsContainer `app` tCont `app` tElem
+
+isQuantifiable :: Provenance -> TypedExpr -> TypedExpr -> TypedExpr
+isQuantifiable p tDom tTruth = constraint p IsQuantifiable `app` tDom `app` tTruth
+
+-- * Expressions
+
+list :: Seq TypedExpr -> TypedExpr -> TypedExpr
+list es tElem =
+  tForall kType $ \tCont ->
+    isContainer mempty tCont tElem ~> Seq (freshAnn tCont) es
+
+-- * Builtins
 
 -- |Return the kind for builtin exprs.
-typeOf :: Provenance -> Builtin AbstractBuiltinOp -> TypedExpr
+typeOf :: Provenance -> Builtin -> TypedExpr
 typeOf p = \case
-  PrimitiveType _ -> tStar
-  List            -> tStar ~> tStar
-  Tensor          -> tStar ~> tList tNat ~> tStar
-  Op op           -> typeOfAbstractOp p op
+  Type            -> Kind
+  Constraint      -> Kind
 
-typeOfAbstractOp :: Provenance -> AbstractBuiltinOp -> TypedExpr
-typeOfAbstractOp p = \case
-  If   -> unconstrainedTForall tStar $ \t -> tProp ~> t ~> t
-  Cons -> unconstrainedTForall tStar $ \t -> t ~> tList t ~> tList t
+  PrimitiveType _ -> kType
+  List            -> kType ~> kType
+  Tensor          -> kType ~> tList tNat ~> kType
+
+  Implements HasEq          -> kType ~> kType ~> kConstraint
+  Implements HasOrd         -> kType ~> kType ~> kConstraint
+  Implements IsTruth        -> kType ~> kConstraint
+  Implements IsNumber       -> kType ~> kConstraint
+  Implements IsContainer    -> kType ~> kConstraint
+  Implements IsQuantifiable -> kType ~> kType ~> kConstraint
+
+  If   -> tForall kType $ \t -> tProp ~> t ~> t
+  Cons -> tForall kType $ \t -> t ~> tList t ~> tList t
 
   Impl -> typeOfBoolOp2 p
   And  -> typeOfBoolOp2 p
@@ -123,11 +149,11 @@ typeOfAbstractOp p = \case
   Ge   -> typeOfComparisonOp p
   Gt   -> typeOfComparisonOp p
 
-  Add  -> typeOfNumOp2 p HasAdd
-  Sub  -> typeOfNumOp2 p HasSub
-  Mul  -> typeOfNumOp2 p HasMul
-  Div  -> typeOfNumOp2 p HasDiv
-  Neg  -> typeOfNumOp1 p HasNeg
+  Add  -> typeOfNumOp2 p
+  Sub  -> typeOfNumOp2 p
+  Mul  -> typeOfNumOp2 p
+  Div  -> typeOfNumOp2 p
+  Neg  -> typeOfNumOp1 p
 
   At   -> typeOfAtOp p
 
@@ -136,84 +162,44 @@ typeOfAbstractOp p = \case
 
 typeOfEqualityOp :: Provenance -> TypedExpr
 typeOfEqualityOp p =
-  constrainedTForall p Distinguishable tStar $ \t ->
-    constrainedTForall p Truthy tStar $ \r ->
-      t ~> t ~> r
+  tForall kType $ \t ->
+    tForall kType $ \r ->
+      hasEq p t r ~> t ~> t ~> r
 
 typeOfComparisonOp :: Provenance -> TypedExpr
 typeOfComparisonOp p =
-  constrainedTForall p Comparable tStar $ \t ->
-    constrainedTForall p Truthy tStar $ \r ->
-      t ~> t ~> r
+  tForall kType $ \t ->
+    tForall kType $ \r ->
+      hasOrd p t r ~> t ~> t ~> r
 
 typeOfBoolOp2 :: Provenance -> TypedExpr
 typeOfBoolOp2 p =
-  constrainedTForall p Truthy tStar $ \t ->
-    t ~> t ~> t
+  tForall kType $ \t ->
+    isTruth p t ~> t ~> t ~> t
 
 typeOfBoolOp1 :: Provenance -> TypedExpr
 typeOfBoolOp1 p =
-  constrainedTForall p Truthy tStar $ \t ->
-    t ~> t
+  tForall kType $ \t ->
+    isTruth p t ~> t ~> t
 
-typeOfNumOp2 :: Provenance -> ConstraintType -> TypedExpr
-typeOfNumOp2 p constraintType =
-  constrainedTForall p constraintType tStar $ \t ->
-    t ~> t ~> t
+typeOfNumOp2 :: Provenance -> TypedExpr
+typeOfNumOp2 p =
+  tForall kType $ \t ->
+    isNumber p t ~> t ~> t ~> t
 
-typeOfNumOp1 :: Provenance -> ConstraintType -> TypedExpr
-typeOfNumOp1 p constraintType =
-  constrainedTForall p constraintType tStar $ \t ->
-    t ~> t
+typeOfNumOp1 :: Provenance -> TypedExpr
+typeOfNumOp1 p =
+  tForall kType $ \t ->
+    isNumber p t ~> t ~> t
 
 typeOfQuantifierOp :: Provenance -> TypedExpr
 typeOfQuantifierOp p =
-  constrainedTForall p Quantifiable tStar $ \t
-    -> t ~> (t ~> tProp) ~> tProp
+  tForall kType $ \t ->
+    tForall kType $ \r ->
+      isQuantifiable p t r ~> t ~> (t ~> r) ~> r
 
 typeOfAtOp :: Provenance -> TypedExpr
 typeOfAtOp p =
-  constrainedTForall p Indexable tStar $ \t ->
-    t ~> tNat ~> t
-
-
-typeOfConcreteOp :: ConcreteBuiltinOp -> TypedExpr
-typeOfConcreteOp = \case
-  ConcIf              -> unconstrainedTForall tStar $ \t -> tProp ~> t ~> t
-
-  ConcImpl truth      -> tPrimTruth truth ~> tPrimTruth truth ~> tPrimTruth truth
-  ConcAnd  truth      -> tPrimTruth truth ~> tPrimTruth truth ~> tPrimTruth truth
-  ConcOr   truth      -> tPrimTruth truth ~> tPrimTruth truth ~> tPrimTruth truth
-  ConcNot  truth      -> tPrimTruth truth ~> tPrimTruth truth
-
-  ConcEq  arg truth   -> tPrim arg ~> tPrim arg ~> tPrimTruth truth
-  ConcNeq arg truth   -> tPrim arg ~> tPrim arg ~> tPrimTruth truth
-
-  ConcLe  num truth   -> tPrimNumber num ~> tPrimNumber num ~> tPrimTruth truth
-  ConcLt  num truth   -> tPrimNumber num ~> tPrimNumber num ~> tPrimTruth truth
-  ConcGe  num truth   -> tPrimNumber num ~> tPrimNumber num ~> tPrimTruth truth
-  ConcGt  num truth   -> tPrimNumber num ~> tPrimNumber num ~> tPrimTruth truth
-
-  ConcAdd num         -> tPrimNumber num ~> tPrimNumber num ~> tPrimNumber num
-  ConcSub num         -> tPrimNumber num ~> tPrimNumber num ~> tPrimNumber num
-  ConcMul num         -> tPrimNumber num ~> tPrimNumber num ~> tPrimNumber num
-  ConcDiv num         -> tPrimNumber num ~> tPrimNumber num ~> tPrimNumber num
-  ConcNeg num         -> tPrimNumber num ~> tPrimNumber num
-
-  ConcCons            -> unconstrainedTForall tStar $ \t -> t ~> tList t ~> tList t
-
-  ConcAt  ListContainer          -> unconstrainedTForall tStar $ \t -> tList t ~> tNat ~> t
-  ConcAt  TensorContainer        -> unconstrainedTForall tStar $ \t -> unconstrainedTForall tNat $ \d -> tTensor t d ~> tNat ~> t
-  ConcAt  SetContainer           -> error "Cannot index into sets"
-
-  ConcAll ListContainer result   -> unconstrainedTForall tStar $ \t -> tList t ~> (t ~> tPrimTruth result) ~> tPrimTruth result
-  ConcAny ListContainer result   -> unconstrainedTForall tStar $ \t -> tList t ~> (t ~> tPrimTruth result) ~> tPrimTruth result
-
-  ConcAll TensorContainer result -> unconstrainedTForall tStar $ \t -> unconstrainedTForall tNat $ \d -> tTensor t d ~> (t ~> tPrimTruth result) ~> tPrimTruth result
-  ConcAny TensorContainer result -> unconstrainedTForall tStar $ \t -> unconstrainedTForall tNat $ \d -> tTensor t d ~> (t ~> tPrimTruth result) ~> tPrimTruth result
-
-  ConcAll SetContainer Prop      -> unconstrainedTForall tStar $ \t -> (t ~> tBool) ~> (t ~> tProp) ~> tProp
-  ConcAny SetContainer Prop      -> unconstrainedTForall tStar $ \t -> (t ~> tBool) ~> (t ~> tProp) ~> tProp
-
-  ConcAll SetContainer Bool      -> error "Cannot quantify over bool"
-  ConcAny SetContainer Bool      -> error "Cannot quantify over bool"
+  tForall kType $ \tCont ->
+    tForall kType $ \tElem ->
+      isContainer p tCont tElem ~> tCont ~> tNat ~> tElem

@@ -8,6 +8,7 @@ import Vehicle.Core.AST.Core (Expr(..), Decl(..), Prog(..), Binder(..))
 -- |Extract the annotation
 annotation :: Expr name binder ann -> ann
 annotation = \case
+  Kind               -> error "Should not be requesting an annotation from Kind"
   App      ann _ _   -> ann
   Pi       ann _ _ _ -> ann
   Builtin  ann _     -> ann
@@ -21,7 +22,7 @@ annotation = \case
 
 -- | An annotation that stores both the type of the expression and some other arbitrary annotations.
 -- Used to avoid unrestricted type-level recursion.
-data TypedAnn binder var ann = TypedAnn (Expr binder var (TypedAnn binder var ann)) ann
+data RecAnn binder var ann = RecAnn (Expr binder var (RecAnn binder var ann)) ann
 
 -- | Type of annotations attached to the Frontend AST after parsing
 -- before being analysed by the compiler
@@ -37,7 +38,7 @@ type InputProg   = Prog   InputBind InputVar InputAnn
 -- | Type of annotations attached to the Core AST that are output by the compiler
 type OutputBind = Symbol
 type OutputVar  = Symbol
-type OutputAnn  = TypedAnn OutputBind OutputVar Provenance
+type OutputAnn  = RecAnn OutputBind OutputVar Provenance
 
 type OutputBinder = Binder OutputBind           OutputAnn
 type OutputExpr   = Expr   OutputBind OutputVar OutputAnn

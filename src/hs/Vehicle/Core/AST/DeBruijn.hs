@@ -2,6 +2,7 @@
 module Vehicle.Core.AST.DeBruijn
   ( Name(..)
   , Index(..)
+  , DeBruijnAnn
   , DeBruijnExpr
   , DeBruijnDecl
   , DeBruijnProg
@@ -34,6 +35,7 @@ type DeBruijnArg    ann = Arg    Name Index ann
 type DeBruijnExpr   ann = Expr   Name Index ann
 type DeBruijnDecl   ann = Decl   Name Index ann
 type DeBruijnProg   ann = Prog   Name Index ann
+type DeBruijnAnn    ann = RecAnn Name Index ann
 
 --------------------------------------------------------------------------------
 -- * DeBruijn operations
@@ -55,6 +57,7 @@ class Liftable a where
 
 instance Liftable ann => Liftable (DeBruijnExpr ann) where
   liftAcc d = \case
+    Kind                       -> Kind
     App     ann fun arg        -> App     (liftAcc d ann) (liftAcc d fun) (liftAcc d arg)
     Pi      ann binder dom cod -> Pi      (liftAcc d ann) (liftAcc d binder) (liftAcc d dom) (liftAcc (d + 1) cod)
     Builtin ann op             -> Builtin (liftAcc d ann) op
@@ -70,15 +73,15 @@ instance Liftable ann => Liftable (DeBruijnExpr ann) where
            | otherwise = i     -- Index is locally bound so no need to increment it
 
 instance Liftable ann => Liftable (DeBruijnArg ann) where
-  liftAcc d (Arg ann vis e) = Arg (liftAcc d ann) vis (liftAcc d e)
+  liftAcc d (Arg vis e) = Arg vis (liftAcc d e)
 
 instance Liftable ann => Liftable (DeBruijnBinder ann) where
   liftAcc d (Binder ann b vis) = Binder (liftAcc d ann) b vis
 
 -- ** Concrete liftable instances
 
-instance Liftable (TypedAnn Name Index ann) where
-  liftAcc d (TypedAnn expr ann) = TypedAnn (liftAcc d expr) ann
+instance Liftable (DeBruijnAnn ann) where
+  liftAcc d (RecAnn expr ann) = RecAnn (liftAcc d expr) ann
 
 
 -- ** Substitution
@@ -106,6 +109,7 @@ class Substitutable ann (a :: * -> *) where
 
 instance Substitutable ann (Expr Name Index) where
   substAcc d sub = \case
+    Kind                       -> Kind
     App     ann fun arg        -> App     (substAnn d sub ann) (substAcc d sub fun) (substAcc d sub arg)
     Pi      ann binder dom cod -> Pi      (substAnn d sub ann) (substAcc d sub binder) (substAcc d sub dom) (substAcc (d + 1) (lift sub) cod)
     Builtin ann op             -> Builtin (substAnn d sub ann) op
@@ -125,7 +129,7 @@ instance Substitutable ann (Expr Name Index) where
         GT -> Bound ann (Index (i - 1))
 
 instance Substitutable ann (Arg Name Index) where
-  substAcc d sub (Arg ann vis e) = Arg (substAnn d sub ann) vis (substAcc d sub e)
+  substAcc d sub (Arg vis e) = Arg vis (substAcc d sub e)
 
 instance Substitutable ann (Binder Name) where
   substAcc d sub (Binder ann b vis) = Binder (substAnn d sub ann) b vis
@@ -135,5 +139,5 @@ instance Substitutable ann (Binder Name) where
 instance SubstitutableAnn InputAnn where
   substAnn _ _ p = p
 
-instance SubstitutableAnn (TypedAnn Name Index ann) where
-  substAnn d sub (TypedAnn expr ann) = TypedAnn (substAcc d sub expr) ann
+instance SubstitutableAnn (DeBruijnAnn ann) where
+  substAnn d sub (RecAnn expr ann) = RecAnn (substAcc d sub expr) ann

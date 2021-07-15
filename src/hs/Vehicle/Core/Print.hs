@@ -15,7 +15,7 @@ import Vehicle.Prelude ( hsep, vsep )
 printTree :: Pretty a => a -> Text
 printTree a = renderStrict $ layoutPretty defaultLayoutOptions $ pretty a
 
-instance Pretty DeBruijnIndex where
+instance Pretty Index where
   pretty (Index index) = pretty index
 
 instance Pretty Literal where
@@ -25,32 +25,30 @@ instance Pretty Literal where
     LitReal x -> pretty x
     LitBool x -> pretty x
 
-instance Pretty DeBruijnBinder where
+instance Pretty Name where
   pretty Machine = "Machine"
   pretty (User symbol) = pretty symbol
 
-instance Pretty (Builtin AbstractBuiltinOp) where
+instance Pretty Builtin where
   pretty b = pretty $ fromMaybe "" (symbolFromBuiltin b)
 
 instance Pretty name => Pretty (Binder name ann) where
-  pretty (Binder _ann name ) = "Binder" <+> pretty name
+  pretty (Binder _ann vis name ) = "Binder" <+> pretty name
 
 instance ( Pretty name
          , Pretty binder
          ) => Pretty (Expr name binder ann) where
   pretty = \case
-    Star    _ann                -> "Star"
-    App     _ann e1 e2          -> "App"     <+> pretty e1 <+> parens (pretty e2)
-    Fun     _ann e1 e2          -> "Fun"     <+> parens (pretty e1) <+> parens (pretty e2)
-    Builtin _ann op             -> "Builtin" <+> pretty op
-    Meta    _ann m              -> "Meta"    <+> pretty m
-    Forall  _ann binder _cons e -> "Forall"  <+> parens (pretty binder) <+> parens (pretty e)
-    Let     _ann binder e1 e2   -> "Let"     <+> parens (pretty binder) <+> pretty e1 <+> pretty e2
-    Lam     _ann binder e       -> "Lambda"  <+> parens (pretty binder) <+> parens (pretty e)
-    Literal _ann l              -> "Literal" <+> pretty l
-    Seq     _ann es             -> "Seq"     <+> hsep (fmap pretty es)
-    Free    _ann ident          -> "Free"    <+> pretty ident
-    Bound   _ann i              -> "Bound"   <+> parens (pretty i)
+    App     _ann fun arg        -> pretty fun <+> parens (pretty arg)
+    Pi      _ann binder e1 e2   -> "pi" <+> pretty binder <+> parens (pretty e1) <+> parens (pretty e2)
+    Builtin _ann op             -> pretty op
+    Meta    _ann m              -> "?" <> pretty m
+    Let     _ann binder e1 e2   -> "let"     <+> pretty binder <+> parens (pretty e1) <+> parens (pretty e2)
+    Lam     _ann binder e       -> "lambda"  <+> pretty binder <+> parens (pretty e)
+    Literal _ann l              -> pretty l
+    Seq     _ann es             -> hsep (fmap pretty es)
+    Free    _ann ident          -> pretty ident
+    Bound   _ann i              -> parens (pretty i)
 
 instance ( Pretty name
          , Pretty binder

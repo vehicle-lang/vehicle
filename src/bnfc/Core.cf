@@ -27,33 +27,33 @@ ExplicitName.        Binder ::= Name;
 ImplicitNameAndType. Binder ::= "{" Name Expr1 "}";
 ImplicitName.        Binder ::= "{" Name "}";
 
--- Core structure.
+-- * Literals
 
+LitNat.  Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
+LitReal. Lit ::= Double;
+LitBool. Lit ::= Bool;
+
+-- Core structure.
+Kind.        Expr  ::= "kind";
 App.         Expr  ::= Expr Expr1;
 Builtin.     Expr1 ::= Builtin;
 Pi.          Expr  ::= "pi" Binder Expr1;
-App.         Expr  ::= Expr Expr1;
 Lam.         Expr  ::= "lambda" Binder Expr1;
 Var.         Expr1 ::= Name;
 Meta.        Expr  ::= Meta;
 Let.         Expr  ::= "let" Binder Expr1 Expr1;
-Seq.         Expr  ::= "[" [Expr] "]";
+Seq.         Expr1 ::= "[" [Expr1] "]";
 Ann.         Expr  ::= Expr ":type" Expr;
-Literal.     Expr1 ::= Literal;
+Literal.     Expr1 ::= Lit;
 
 coercions Expr 1;
-
--- * Literals
-
-LitNat.  Literal ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
-LitReal. Literal ::= Double;
-LitBool. Literal ::= Bool;
+separator Expr1 "";
 
 -- * Declarations
 
-DeclNetw. Decl ::= "(" "declare-network" Binder Type1 ")";
-DeclData. Decl ::= "(" "declare-dataset" Binder Type1 ")";
-DefFun.   Decl ::= "(" "define-fun"      Binder Type1 Expr1 ")";
+DeclNetw. Decl ::= "(" "declare-network" Binder Expr1 ")";
+DeclData. Decl ::= "(" "declare-dataset" Binder Expr1 ")";
+DefFun.   Decl ::= "(" "define-fun"      Binder Expr1 Expr1 ")";
 
 separator Decl "";
 
