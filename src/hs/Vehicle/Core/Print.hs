@@ -10,10 +10,14 @@ import Prettyprinter (Pretty(..), layoutPretty, parens, (<+>), line, defaultLayo
 import Prettyprinter.Render.Text (renderStrict)
 
 import Vehicle.Core.AST
-import Vehicle.Prelude ( hsep, vsep )
+import Vehicle.Prelude (hsep, vsep, Visibility(..))
 
 printTree :: Pretty a => a -> Text
 printTree a = renderStrict $ layoutPretty defaultLayoutOptions $ pretty a
+
+instance Pretty Name where
+  pretty Machine = "machine"
+  pretty (User symbol) = pretty symbol
 
 instance Pretty Index where
   pretty (Index index) = pretty index
@@ -25,20 +29,23 @@ instance Pretty Literal where
     LitReal x -> pretty x
     LitBool x -> pretty x
 
-instance Pretty Name where
-  pretty Machine = "Machine"
-  pretty (User symbol) = pretty symbol
-
 instance Pretty Builtin where
   pretty b = pretty $ fromMaybe "" (symbolFromBuiltin b)
 
-instance Pretty name => Pretty (Binder name ann) where
-  pretty (Binder _ann vis name ) = "Binder" <+> pretty name
+instance ( Pretty binder
+         , Pretty var
+         ) => Pretty (Arg binder var name) where
+  pretty (Arg Explicit expr) = pretty expr
+  pretty (Arg Implicit expr) = "{" <> pretty expr <> "}"
 
-instance ( Pretty name
-         , Pretty binder
-         ) => Pretty (Expr name binder ann) where
+instance Pretty binder => Pretty (Binder binder ann) where
+  pretty _ = _
+
+instance ( Pretty binder
+         , Pretty var
+         ) => Pretty (Expr binder var ann) where
   pretty = \case
+    Kind                        -> "kind"
     App     _ann fun arg        -> pretty fun <+> parens (pretty arg)
     Pi      _ann binder e1 e2   -> "pi" <+> pretty binder <+> parens (pretty e1) <+> parens (pretty e2)
     Builtin _ann op             -> pretty op

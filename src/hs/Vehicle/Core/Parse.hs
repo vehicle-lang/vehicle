@@ -1,17 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeFamilies #-}
 module Vehicle.Core.Parse
   ( parseText
   , parseFile
@@ -19,14 +8,16 @@ module Vehicle.Core.Parse
   ) where
 
 import Control.Monad.Except (MonadError(..))
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import Data.Text.IO qualified as T
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Sequence as Seq ( fromList )
 import Prettyprinter ( (<+>), pretty )
 import System.Exit (exitFailure)
 
 import Vehicle.Core.Abs as B
 import Vehicle.Core.Par (pProg, myLexer)
+import Vehicle.Core.Print (printTree)
 import Vehicle.Core.AST as V hiding (Name)
 import Vehicle.Prelude
 import Vehicle.Error
@@ -55,7 +46,8 @@ parseFile file = do
 -- |Type of errors thrown when parsing.
 data ParseError
   = UnknownBuiltin Token
-  | MissingVariables
+  | MalformedPiBinder Token
+  | MalformedLamBinder V.InputExpr
   | BNFCParseError String
 
 instance MeaningfulError ParseError where
@@ -65,13 +57,18 @@ instance MeaningfulError ParseError where
     , fix        = "Please consult the documentation for a description of Vehicle syntax"
     }
 
-  -- TODO improve this error message. The problem is that there are no tokens
-  -- in the Core language grammar and therefore we can't extract them.
-  details MissingVariables = UError $ UserError
-    { problem    = "Expected at least one variable/declaration"
-    , provenance = mempty
+  details (MalformedPiBinder tk) = UError $ UserError
+    { problem    = "Malformed binder for Pi, expected a type but only found name" <+> pretty (tkSymbol tk)
+    , provenance = tkProvenance tk
     , fix        = "Unknown"
     }
+
+  details (MalformedLamBinder expr) = UError $ UserError
+    { problem    = "Malformed binder for Lambda, expected a name but only found an expression" <+> printTree expr
+    , provenance = annotation expr
+    , fix        = "Unknown"
+    }
+
 
   -- TODO need to revamp this error, BNFC must provide some more
   -- information than a simple string surely?
@@ -99,112 +96,79 @@ class Convert vf vc where
 type MonadParse m = MonadError ParseError m
 
 --------------------------------------------------------------------------------
--- Builtins
-
-unKindBuiltin :: KindBuiltin -> B.Builtin
-unKindBuiltin (MkKindBuiltin b) = b
-
-unTypeBuiltin :: TypeBuiltin -> B.Builtin
-unTypeBuiltin (MkTypeBuiltin b) = b
-
-unExprBuiltin :: ExprBuiltin -> B.Builtin
-unExprBuiltin (MkExprBuiltin b) = b
-
-instance HasProvenance KindBuiltin where
-  prov = tkProvenance . unKindBuiltin
-
-instance HasProvenance TypeBuiltin where
-  prov = tkProvenance . unTypeBuiltin
-
-instance HasProvenance ExprBuiltin where
-  prov = tkProvenance . unExprBuiltin
-
-instance Convert KindBuiltin V.Builtin where
-  conv = lookupBuiltin . unKindBuiltin
-
-instance Convert TypeBuiltin V.Builtin where
-  conv = lookupBuiltin . unTypeBuiltin
-
-instance Convert ExprBuiltin V.Builtin where
-  conv = lookupBuiltin . unExprBuiltin
-
-lookupBuiltin :: (MonadParse m, IsToken tok) => tok -> m (V.Builtin sort)
-lookupBuiltin tk = case builtinFromSymbol (tkSymbol tk) of
-  Nothing -> throwError $ UnknownBuiltin $ toToken tk
-  Just v -> return v
-
---------------------------------------------------------------------------------
 -- AST conversion
 
-instance Convert B.Kind V.InputExpr where
+lookupBuiltin :: MonadParse m => B.BuiltinToken -> m V.Builtin
+lookupBuiltin (BuiltinToken tk) = case builtinFromSymbol (tkSymbol tk) of
+    Nothing -> throwError $ UnknownBuiltin $ toToken tk
+    Just v  -> return v
+
+instance Convert B.Binder V.InputPiBinder where
   conv = \case
-    B.KApp k1 k2 -> op2 V.App <$> conv k1 <*> conv k2
-    B.KCon c     -> V.Builtin (K (prov c)) <$> conv c
+    B.ExplicitNameAndType n e -> V.PiBinder (tkProvenance n) Explicit (Just (tkSymbol n)) <$> conv e
+    B.ImplicitNameAndType n e -> V.PiBinder (tkProvenance n) Implicit (Just (tkSymbol n)) <$> conv e
+    B.ExplicitName n          -> throwError $ MalformedPiBinder (toToken n)
+    B.ImplicitName n          -> throwError $ MalformedPiBinder (toToken n)
+    B.ExplicitType e          -> do ce <- conv e; return $ V.PiBinder (annotation ce) Explicit Nothing ce
+    B.EmplicitType e          -> do ce <- conv e; return $ V.PiBinder (annotation ce) Implicit Nothing ce
 
-instance Convert B.Type V.InputExpr where
+instance Convert B.Binder V.InputLamBinder where
   conv = \case
-    B.TForall n t    -> op2 (`V.Forall` Nothing) <$> conv n <*> conv t
-    B.TApp t1 t2     -> op2 V.App <$> conv t1 <*> conv t2
-    B.TVar n         -> conv n
-    B.TCon c         -> V.Builtin (K (prov c)) <$> conv c
-    B.TLitDim d      -> return $ V.Literal mempty (NatLiteral d)
-    B.TLitDimList ts -> op1 V.Seq <$> traverseNonEmpty ts
+    B.ExplicitNameAndType n e -> V.LamBinder (tkProvenance n) Explicit (tkSymbol n) . Just <$> conv e
+    B.ImplicitNameAndType n e -> V.LamBinder (tkProvenance n) Implicit (tkSymbol n) . Just <$> conv e
+    B.ExplicitName n          -> return $ V.LamBinder (tkProvenance n) Explicit (tkSymbol n) Nothing
+    B.ImplicitName n          -> return $ V.LamBinder (tkProvenance n) Implicit (tkSymbol n) Nothing
+    B.ExplicitType e          -> do ce <- conv e; throwError $ MalformedLamBinder ce
+    B.EmplicitType e          -> do ce <- conv e; throwError $ MalformedLamBinder ce
 
-instance Convert B.TypeName V.InputExpr where
-  conv (MkTypeName n) = return $ V.Bound (K (tkProvenance n)) (K (tkSymbol n))
+instance Convert B.Arg V.InputArg where
+  conv = \case
+    B.ImplicitArg e -> V.Arg Implicit <$> conv e
+    B.ExplicitArg e -> V.Arg Explicit <$> conv e
 
-instance Convert B.TypeBinder V.InputTArg where
-  conv (MkTypeBinder n) = return $ V.Binder (K (tkProvenance n)) (K (tkSymbol n))
+instance Convert B.Lit V.Literal where
+  conv = \case
+    B.LitNat  n -> return $ V.LitInt  n
+    B.LitReal r -> return $ V.LitReal r
+    B.LitBool b -> return $ V.LitBool (read (unpack $ tkSymbol b))
 
 instance Convert B.Expr V.InputExpr where
   conv = \case
-    B.EAnn e t     -> op2 V.Ann <$> conv e <*> conv t
-    B.ELet n e1 e2 -> op3 V.Let <$> conv n <*> conv e1 <*> conv e2
-    B.ELam n e     -> op2 V.Lam <$> conv n <*> conv e
-    B.EApp e1 e2   -> op2 V.App <$> conv e1 <*> conv e2
-    B.EVar n       -> conv n
-    B.ETyApp e t   -> op2 V.App <$> conv e <*> conv t
-    B.ETyLam n e   -> op2 V.Lam <$> conv n <*> conv e
-    B.ECon c       -> V.Builtin (K (prov c)) <$> conv c
-    B.ELitInt i    -> return $ V.Literal mempty i
-    B.ELitReal r   -> return $ V.Literal mempty r
-    B.ELitSeq es   -> op1 V.Seq <$> traverseNonEmpty es
+    B.Kind             -> return V.Kind
+    B.App fun arg      -> op2 V.App <$> conv fun <*> conv arg
+    B.Pi  binder expr  -> op2 V.Pi  <$> conv binder <*> conv expr;
+    B.Lam binder e     -> op2 V.Lam <$> conv binder <*> conv e
+    B.Let binder e1 e2 -> op3 V.Let <$> conv binder <*> conv e1 <*> conv e2
+    B.Seq es           -> op1 V.Seq <$> traverse conv (Seq.fromList es)
+    B.Ann expr typ     -> undefined -- TODO
+    B.Builtin c        -> V.Builtin (tkProvenance c) <$> lookupBuiltin c
+    B.Literal v        -> V.Literal mempty <$> conv v
+    B.Meta m           -> return $ V.Meta  mempty m
+    B.Var n            -> return $ V.Bound (tkProvenance n) (tkSymbol n)
 
-instance Convert B.ExprName V.InputExpr where
-  conv (MkExprName n) = return $ V.Bound (K (tkProvenance n)) (K (tkSymbol n))
-
-instance Convert B.ExprBinder V.InputEArg where
-  conv (MkExprBinder n) = return $ V.Bound (K (tkProvenance n)) (K (tkSymbol n))
+instance Convert B.NameToken V.InputIdent where
+  conv n = return $ Ident (tkProvenance n) (tkSymbol n)
 
 instance Convert B.Decl V.InputDecl where
   conv = \case
     B.DeclNetw n t   -> op2 V.DeclNetw <$> conv n <*> conv t
     B.DeclData n t   -> op2 V.DeclData <$> conv n <*> conv t
-    B.DefType n ns t -> op3 V.DefType  <$> conv n <*> traverse conv ns <*> conv t
-    B.DefFun n t e   -> op3 V.DefFun   <$> conv n <*> conv t <*> conv e
+    B.DefFun   n t e -> op3 V.DefFun   <$> conv n <*> conv t <*> conv e
 
 instance Convert B.Prog V.InputProg where
-  conv (B.Main ds) = op1 V.Main <$> traverseNonEmpty ds
+  conv (B.Main ds) = V.Main <$> traverse conv ds
 
 op1 :: (HasProvenance a)
-    => (Provenance -> a -> V.InputExpr)
-    -> a -> V.InputExpr
-op1 mk t = mk (K (prov t)) t
+    => (Provenance -> a -> b)
+    -> a -> b
+op1 mk t = mk (prov t) t
 
 op2 :: (HasProvenance a, HasProvenance b)
-    => (Provenance -> a -> b -> V.InputExpr sort)
-    -> a -> b -> V.InputExpr
-op2 mk t1 t2 = mk (K (prov t1 <> prov t2)) t1 t2
+    => (Provenance -> a -> b -> c)
+    -> a -> b -> c
+op2 mk t1 t2 = mk (prov t1 <> prov t2) t1 t2
 
 op3 :: (HasProvenance a, HasProvenance b, HasProvenance c)
-    => (Provenance -> a -> b -> c -> V.InputExpr)
-    -> a -> b -> c -> V.InputExpr
-op3 mk t1 t2 t3 = mk (K (prov t1 <> prov t2 <> prov t3)) t1 t2 t3
-
--- A traversal that checks that the list is non-empty. In theory this would be
--- much nicer if the parser could handle this automatically
--- (see https://github.com/BNFC/bnfc/issues/371)
-traverseNonEmpty :: (MonadParse m , Convert a b)
-                 => [a] -> m (NonEmpty b)
-traverseNonEmpty []       = throwError MissingVariables
-traverseNonEmpty (x : xs) = traverse conv (x :| xs)
+    => (Provenance -> a -> b -> c -> d)
+    -> a -> b -> c -> d
+op3 mk t1 t2 t3 = mk (prov t1 <> prov t2 <> prov t3) t1 t2 t3

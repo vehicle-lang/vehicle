@@ -9,33 +9,42 @@ module Vehicle.Core.AST.Core
   , Prog(..)
   , Meta
   , Arg(..)
-  , Visibility(..)
-  , Binder(..)
+  , PiBinder(..)
+  , LamBinder(..)
   , Literal(..)
+  , Ident(..)
   ) where
 
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Sequence (Seq)
-import Data.List.NonEmpty (NonEmpty)
 import Numeric.Natural (Natural)
 
-import Vehicle.Prelude (Symbol, Provenance)
+import Vehicle.Prelude (Symbol, Provenance, Visibility)
 import Vehicle.Core.AST.Builtin (Builtin)
 
--- |Meta-variables
+-- | Meta-variables
 type Meta = Integer
-
-type Identifier = Symbol
-
-data Visibility = Explicit | Inferred
-  deriving (Eq, Ord, Show)
 
 data Arg binder var ann
   = Arg Visibility (Expr binder var ann)
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
-data Binder binder ann
-  = Binder ann (Maybe binder) Visibility
+-- | Binder for Pi types
+data PiBinder binder var ann
+  = PiBinder
+    ann
+    Visibility                   -- Whether binding is explicit or inferred
+    (Maybe binder)               -- The (optional) name of the bound variable
+    (Expr binder var ann)        -- The type of the bound variable
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+-- | Binder for Let and Lambda types
+data LamBinder binder var ann
+  = LamBinder
+    ann
+    Visibility                    -- Whether the binding is explicit or inferred
+    binder                        -- The name of the bound variable
+    (Maybe (Expr binder var ann)) -- The (optional) type of the bound variable
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data Literal
@@ -69,9 +78,8 @@ data Expr binder var ann
   -- | Dependent product (subsumes both functions and universal quantification).
   | Pi
     ann                         -- Annotation.
-    (Binder binder ann)         -- The bound name
-    (Expr binder var ann)       -- The type of the bound name.
-    (Expr binder var ann)       -- (Dependent) result type.
+    (PiBinder binder var ann)   -- The bound name
+    (Expr     binder var ann)   -- (Dependent) result type.
 
   -- | Terms consisting of constants that are built into the language.
   | Builtin
@@ -86,7 +94,7 @@ data Expr binder var ann
   -- | Variables that are free within the expression and instead bound by top level declarations, see `Decl`.
   | Free
     ann                         -- Annotation.
-    Identifier                  -- Idenitifer.
+    Symbol                      -- Identifer.
 
   -- | Unsolved meta variables.
   | Meta
@@ -96,15 +104,15 @@ data Expr binder var ann
   -- | Let expressions.
   | Let
     ann                         -- Annotation.
-    (Binder binder     ann)     -- Bound expression name.
-    (Expr   binder var ann)     -- Bound expression body.
-    (Expr   binder var ann)     -- Expression body.
+    (LamBinder binder var ann)  -- Bound expression name.
+    (Expr      binder var ann)  -- Bound expression body.
+    (Expr      binder var ann)  -- Expression body.
 
   -- | Lambda expressions (i.e. anonymous functions).
   | Lam
     ann                         -- Annotation.
-    (Binder binder ann)         -- Bound expression name.
-    (Expr binder var ann)       -- Expression body.
+    (LamBinder binder var ann)  -- Bound expression name.
+    (Expr      binder var ann)  -- Expression body.
 
   -- | Built-in literal values e.g. numbers/booleans.
   | Literal
@@ -118,32 +126,36 @@ data Expr binder var ann
 
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
+-- | Identifiers for top-level declerations
+data Ident ann
+  = Ident ann Symbol
+  deriving (Eq, Show, Functor, Foldable, Traversable)
 
--- | Type of Vehicle Core declaration.
+-- | Type of top-level declarations.
 data Decl binder var ann
   = DeclNetw
     Provenance                 -- Location in source file.
-    (Binder binder     ann)    -- Network name.
+    (Ident ann)                -- Network name.
     (Expr   binder var ann)    -- Network type.
   | DeclData
     Provenance                 -- Location in source file.
-    (Binder binder     ann)    -- Dataset name.
+    (Ident ann)                -- Dataset name.
     (Expr   binder var ann)    -- Dataset type.
   | DefType
     Provenance                 -- Location in source file.
-    (Binder binder     ann)    -- Bound expr synonym name.
-    [Binder binder     ann]    -- Bound expr synonym arguments.
-    (Expr   binder var ann)    -- Bound expr synonym body.
+    (Ident ann)                -- Bound expr synonym name.
+    [LamBinder binder var ann] -- Bound expr synonym arguments.
+    (Expr      binder var ann) -- Bound expr synonym body.
   | DefFun
     Provenance                 -- Location in source file.
-    (Binder binder   ann)      -- Bound function name.
+    (Ident ann)                -- Bound function name.
     (Expr binder var ann)      -- Bound function type.
     (Expr binder var ann)      -- Bound function body.
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- | Type of Vehicle Core programs.
 newtype Prog binder var ann
-  = Main (NonEmpty (Decl binder var ann)) -- ^ List of declarations.
+  = Main [Decl binder var ann] -- ^ List of declarations.
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 makeBaseFunctor ''Expr

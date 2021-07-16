@@ -17,7 +17,6 @@ import Data.Range (Range (..), fromRanges, intersection, union, invert, lbi, lbe
 import Data.Text (Text)
 import Vehicle.Core.AST
 import Vehicle.Core.Normalise.Core
-import Vehicle.Core.Compile.Subst as DeBruijn (subst)
 import Vehicle.Prelude (Provenance)
 
 -----------

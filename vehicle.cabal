@@ -29,6 +29,12 @@ library
   import:               common-base
   exposed-modules:      Vehicle
   other-modules:        Vehicle.Prelude
+                      , Vehicle.Prelude.Token
+                      , Vehicle.Prelude.Sort
+                      , Vehicle.Prelude.Provenance
+                      , Vehicle.Prelude.Types
+                      , Vehicle.Prelude.Language
+                      , Vehicle.Prelude.Prettyprinter
                       , Vehicle.Error
                       , Vehicle.Frontend.AST
                       , Vehicle.Frontend.AST.Core
@@ -43,7 +49,6 @@ library
                       , Vehicle.Frontend.Print
                       , Vehicle.Core.AST
                       , Vehicle.Core.AST.Builtin
-                      , Vehicle.Core.AST.Constraint
                       , Vehicle.Core.AST.Core
                       , Vehicle.Core.AST.DeBruijn
                       , Vehicle.Core.AST.DSL
@@ -59,12 +64,6 @@ library
                       , Vehicle.Core.Print
                       , Vehicle.Backend.ITP.Agda
                       , Vehicle.Backend.ITP.Core
-                      , Vehicle.Prelude.Token
-                      , Vehicle.Prelude.Sort
-                      , Vehicle.Prelude.Provenance
-                      , Vehicle.Prelude.Types
-                      , Vehicle.Prelude.Primitive
-                      , Vehicle.Prelude.Prettyprinter
                       -- Files generated from Core.cf
                       , Vehicle.Core.Abs
                       , Vehicle.Core.ErrM

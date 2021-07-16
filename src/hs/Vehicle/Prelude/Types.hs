@@ -1,9 +1,3 @@
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE ConstraintKinds #-}
-
 module Vehicle.Prelude.Types where
 
 -- TODO swap out for lists?

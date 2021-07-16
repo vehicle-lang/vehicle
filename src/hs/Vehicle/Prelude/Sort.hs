@@ -1,10 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE GADTs               #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE StandaloneDeriving  #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Vehicle.Prelude.Sort
   ( Sort(..)

@@ -17,7 +17,7 @@ import Control.Monad.Identity (IdentityT(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Control.Monad.State (MonadState(..), StateT(..), modify, evalStateT)
 import Control.Monad.Supply (MonadSupply(..))
-import Vehicle.Core.AST
+import Vehicle.Core.AST hiding (lift)
 import Vehicle.Prelude
 
 -- |Encapsulates the dataflow for a checking algorithm on sorted trees.
@@ -30,71 +30,43 @@ newtype DataflowT (sort :: Sort) (s :: *) (m :: * -> *) (a :: *)
   = DF { unDF :: DATAFLOW sort s m a }
 
 type family DATAFLOW (sort :: Sort) (s :: *) :: (* -> *) -> (* -> *) where
-  DATAFLOW 'KIND s = IdentityT
-  DATAFLOW 'TYPE s = ReaderT s
-  DATAFLOW 'TARG s = StateT  s
-  DATAFLOW 'EXPR s = ReaderT s
-  DATAFLOW 'EARG s = StateT  s
+  DATAFLOW 'EXPR s = StateT s
   DATAFLOW 'DECL s = StateT  s
   DATAFLOW 'PROG s = IdentityT
 
 instance (KnownSort sort, Monoid s) => MonadTrans (DataflowT sort s) where
   lift = case sortSing @sort of
-    SKIND -> DF . lift
-    STYPE -> DF . lift
-    STARG -> DF . lift
     SEXPR -> DF . lift
-    SEARG -> DF . lift
     SDECL -> DF . lift
     SPROG -> DF . lift
 
 instance (KnownSort sort, Functor f) => Functor (DataflowT sort s f) where
   fmap f = case sortSing @sort of
-    SKIND -> DF . fmap f . unDF
-    STYPE -> DF . fmap f . unDF
-    STARG -> DF . fmap f . unDF
     SEXPR -> DF . fmap f . unDF
-    SEARG -> DF . fmap f . unDF
     SDECL -> DF . fmap f . unDF
     SPROG -> DF . fmap f . unDF
 
 instance (KnownSort sort, Monad f, Monoid s) => Applicative (DataflowT sort s f) where
   pure = case sortSing @sort of
-    SKIND -> DF . pure
-    STYPE -> DF . pure
-    STARG -> DF . pure
     SEXPR -> DF . pure
-    SEARG -> DF . pure
     SDECL -> DF . pure
     SPROG -> DF . pure
 
   f <*> a = case sortSing @sort of
-    SKIND -> DF (unDF f <*> unDF a)
-    STYPE -> DF (unDF f <*> unDF a)
-    STARG -> DF (unDF f <*> unDF a)
     SEXPR -> DF (unDF f <*> unDF a)
-    SEARG -> DF (unDF f <*> unDF a)
     SDECL -> DF (unDF f <*> unDF a)
     SPROG -> DF (unDF f <*> unDF a)
 
 instance (KnownSort sort, Monoid s, Monad m) => Monad (DataflowT sort s m) where
   m >>= k = case sortSing @sort of
-    SKIND -> DF (unDF m >>= (unDF . k))
-    STYPE -> DF (unDF m >>= (unDF . k))
-    STARG -> DF (unDF m >>= (unDF . k))
     SEXPR -> DF (unDF m >>= (unDF . k))
-    SEARG -> DF (unDF m >>= (unDF . k))
     SDECL -> DF (unDF m >>= (unDF . k))
     SPROG -> DF (unDF m >>= (unDF . k))
 
 instance (KnownSort sort, MonadError e m, Monoid s) => MonadError e (DataflowT sort s m) where
   throwError = lift . throwError
   catchError m h = case sortSing @sort of
-    SKIND -> DF (catchError (unDF m) (unDF . h))
-    STYPE -> DF (catchError (unDF m) (unDF . h))
-    STARG -> DF (catchError (unDF m) (unDF . h))
     SEXPR -> DF (catchError (unDF m) (unDF . h))
-    SEARG -> DF (catchError (unDF m) (unDF . h))
     SDECL -> DF (catchError (unDF m) (unDF . h))
     SPROG -> DF (catchError (unDF m) (unDF . h))
 
@@ -104,27 +76,20 @@ instance (KnownSort sort, MonadSupply s f m, Monoid d) => MonadSupply s f (Dataf
 
 -- TODO: change these instances to redirect to the underlying monad
 
-instance (KnownSort sort, sort `In` ['TYPE, 'EXPR], Monad m, Monoid r) => MonadReader r (DataflowT sort r m) where
+instance (Monad m, Monoid r) => MonadReader r (DataflowT 'EXPR r m) where
   ask     = fromReaderT ask
   local k = fromReaderT . local k . toReaderT
 
 runDataflowT :: forall sort m s a. (KnownSort sort, Monad m) => s -> DataflowT sort s m a -> m (a, s)
 runDataflowT input (DF x) = case sortSing @sort of
-    SKIND -> do y <- runIdentityT x; return (y, input)
-    STYPE -> do y <- runReaderT x input; return (y, input)
-    STARG -> do (y, output) <- runStateT x input; return (y, output)
-    SEXPR -> do y <- runReaderT x input; return (y, input)
-    SEARG -> do (y, output) <- runStateT x input; return (y, output)
+    SEXPR ->do (y, output) <- runStateT x input; return (y, output)
     SDECL -> do (y, output) <- runStateT x input; return (y, output)
     SPROG -> do y <- runIdentityT x; return (y, input)
 
 evalDataflowT :: forall sort m s a. (KnownSort sort, Monad m) => s -> DataflowT sort s m a -> m a
 evalDataflowT input df = fst <$> runDataflowT input df
 
-askData ::
-  forall sort s m.
-  (KnownSort sort, sort `In` ['TYPE, 'EXPR], Monad m) =>
-  DataflowT sort s m s
+askData :: forall s m. Monad m => DataflowT 'EXPR s m s
 askData = fromReaderT ask
 
 tellData ::
@@ -137,16 +102,13 @@ tellData s = fromStateT $ modify (s<>)
 -- * Cast |DataflowT| to specific monad transformers
 
 -- |Convert from the |IdentityT| transformer to the |DataflowT| transformer.
-fromIdentityT ::
-  forall sort s m a.
-  (KnownSort sort, sort `In` ['KIND, 'PROG], Monad m) =>
-  IdentityT m a -> DataflowT sort s m a
-fromIdentityT = case sortSing @sort of SKIND -> DF; SPROG -> DF
+fromIdentityT :: forall s m a. Monad m => IdentityT m a -> DataflowT 'PROG s m a
+fromIdentityT = DF
 
 -- |Convert from the |ReaderT| transformer to the |DataflowT| transformer.
 fromReaderT ::
   forall sort s m a.
-  (KnownSort sort, sort `In` ['TYPE, 'EXPR], Monad m) =>
+  (Monad m) =>
   ReaderT s m a -> DataflowT sort s m a
 fromReaderT = case sortSing @sort of STYPE -> DF; SEXPR -> DF
 
@@ -189,14 +151,7 @@ class Flow (sort1 :: Sort) (sort2 :: Sort) where
        -> DataflowT sort2 s m a
 
 instance Flow  sort  sort where flow = id
-instance Flow 'KIND 'TYPE where flow = DF . identityToReader . unDF
-instance Flow 'KIND 'TARG where flow = DF . identityToState . unDF
-instance Flow 'TYPE 'EXPR where flow = DF . unDF
-instance Flow 'TARG 'DECL where flow = DF . unDF
-instance Flow 'TYPE 'DECL where flow = DF . readerToState . unDF
-instance Flow 'TYPE 'EARG where flow = DF . readerToState . unDF
-instance Flow 'EARG 'DECL where flow = DF . unDF
-instance Flow 'EXPR 'DECL where flow = DF . readerToState . unDF
+instance Flow 'EXPR 'DECL where flow = DF . unDF
 instance Flow 'DECL 'PROG where flow = DF . stateToIdentity . unDF
 
 -- |Variant of |flow| whose argument is a |SortedDataflowT|.

@@ -3,14 +3,14 @@
 module Vehicle.Core.AST.Utils where
 
 import Vehicle.Prelude ( Provenance, Symbol )
-import Vehicle.Core.AST.Core (Expr(..), Decl(..), Prog(..), Binder(..))
+import Vehicle.Core.AST.Core (Expr(..), Arg, Ident, Decl, Prog, PiBinder, LamBinder)
 
 -- |Extract the annotation
 annotation :: Expr name binder ann -> ann
 annotation = \case
   Kind               -> error "Should not be requesting an annotation from Kind"
   App      ann _ _   -> ann
-  Pi       ann _ _ _ -> ann
+  Pi       ann _ _   -> ann
   Builtin  ann _     -> ann
   Bound    ann _     -> ann
   Free     ann _     -> ann
@@ -30,17 +30,23 @@ type InputBind = Symbol
 type InputVar  = Symbol
 type InputAnn  = Provenance
 
-type InputBinder = Binder InputBind          InputAnn
-type InputExpr   = Expr   InputBind InputVar InputAnn
-type InputDecl   = Decl   InputBind InputVar InputAnn
-type InputProg   = Prog   InputBind InputVar InputAnn
+type InputArg       = Arg       InputBind InputVar InputAnn
+type InputPiBinder  = PiBinder  InputBind InputVar InputAnn
+type InputLamBinder = LamBinder InputBind InputVar InputAnn
+type InputExpr      = Expr      InputBind InputVar InputAnn
+type InputIdent     = Ident     InputAnn
+type InputDecl      = Decl      InputBind InputVar InputAnn
+type InputProg      = Prog      InputBind InputVar InputAnn
 
 -- | Type of annotations attached to the Core AST that are output by the compiler
 type OutputBind = Symbol
 type OutputVar  = Symbol
 type OutputAnn  = RecAnn OutputBind OutputVar Provenance
 
-type OutputBinder = Binder OutputBind           OutputAnn
-type OutputExpr   = Expr   OutputBind OutputVar OutputAnn
-type OutputDecl   = Decl   OutputBind OutputVar OutputAnn
-type OutputProg   = Prog   OutputBind OutputVar OutputAnn
+type OutputArg       = Arg       OutputBind OutputVar OutputAnn
+type OutputPiBinder  = PiBinder  OutputBind OutputVar OutputAnn
+type OutputLamBinder = LamBinder OutputBind OutputVar OutputAnn
+type OutputExpr      = Expr      OutputBind OutputVar OutputAnn
+type OutputIdent     = Ident     OutputAnn
+type OutputDecl      = Decl      OutputBind OutputVar OutputAnn
+type OutputProg      = Prog      OutputBind OutputVar OutputAnn

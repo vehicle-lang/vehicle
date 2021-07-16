@@ -24,9 +24,9 @@ type TypedExpr = DeBruijnExpr TypedAnn
 freshAnn :: TypedExpr -> TypedAnn
 freshAnn t = RecAnn t mempty
 
-getResultType :: TypedExpr -> TypedExpr
-getResultType (Pi _ann _binder x _y) = x
-getResultType _                      = error "expecting a Pi type"
+getFunResultType :: TypedExpr -> TypedExpr
+getFunResultType (Pi _ann _binder res) = res
+getFunResultType _                     = error "expecting a Pi type"
 
 -- * DSL for writing kinds as info annotations
 
@@ -34,11 +34,10 @@ con :: Builtin -> TypedExpr -> TypedExpr
 con b t = Builtin (freshAnn t) b
 
 (~>) :: TypedExpr -> TypedExpr -> TypedExpr
-x ~> y = Pi (freshAnn kType) (Binder (freshAnn x) Nothing Explicit) x y
+x ~> y = Pi (freshAnn kType) (PiBinder (freshAnn x) Explicit Nothing x) y
 
 app :: TypedExpr -> TypedExpr -> TypedExpr
-app fun arg = App (freshAnn (getResultType fun)) fun (Arg Explicit arg)
-  --(freshAnn (getType arg))
+app fun arg = App (freshAnn (getFunResultType fun)) fun (Arg Explicit arg)
 
 -- * Kinds
 
@@ -81,8 +80,7 @@ tForall k f = quantBody
   where
     badBody   = f (Bound (RecAnn kType mempty) (Index (-1)))
     body      = liftAcc (-1) badBody
-    -- TODO Seems weird to have the kind used twice. I suspect the definition of Pi isn't quite right.
-    quantBody = Pi (RecAnn kType mempty) (Binder (freshAnn k) (Just Machine) Inferred) k body
+    quantBody = Pi (RecAnn kType mempty) (PiBinder (freshAnn k) Inferred (Just Machine) k) body
 
 -- * Constraints
 

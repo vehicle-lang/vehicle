@@ -6,7 +6,8 @@ module Vehicle.Core.AST.DeBruijn
   , DeBruijnExpr
   , DeBruijnDecl
   , DeBruijnProg
-  , DeBruijnBinder
+  , DeBruijnPiBinder
+  , DeBruijnLamBinder
   , BindingDepth
   , Liftable(..)
   , Substitutable(..)
@@ -30,12 +31,13 @@ newtype Index = Index Int
   deriving (Eq, Ord, Show)
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type DeBruijnBinder ann = Binder Name       ann
-type DeBruijnArg    ann = Arg    Name Index ann
-type DeBruijnExpr   ann = Expr   Name Index ann
-type DeBruijnDecl   ann = Decl   Name Index ann
-type DeBruijnProg   ann = Prog   Name Index ann
-type DeBruijnAnn    ann = RecAnn Name Index ann
+type DeBruijnPiBinder  ann = PiBinder  Name Index ann
+type DeBruijnLamBinder ann = LamBinder Name Index ann
+type DeBruijnArg       ann = Arg       Name Index ann
+type DeBruijnExpr      ann = Expr      Name Index ann
+type DeBruijnDecl      ann = Decl      Name Index ann
+type DeBruijnProg      ann = Prog      Name Index ann
+type DeBruijnAnn       ann = RecAnn    Name Index ann
 
 --------------------------------------------------------------------------------
 -- * DeBruijn operations
@@ -57,17 +59,17 @@ class Liftable a where
 
 instance Liftable ann => Liftable (DeBruijnExpr ann) where
   liftAcc d = \case
-    Kind                       -> Kind
-    App     ann fun arg        -> App     (liftAcc d ann) (liftAcc d fun) (liftAcc d arg)
-    Pi      ann binder dom cod -> Pi      (liftAcc d ann) (liftAcc d binder) (liftAcc d dom) (liftAcc (d + 1) cod)
-    Builtin ann op             -> Builtin (liftAcc d ann) op
-    Meta    ann m              -> Meta    (liftAcc d ann) m
-    Let     ann binder e1 e2   -> Let     (liftAcc d ann) (liftAcc d binder) (liftAcc d e1) (liftAcc (d + 1) e2)
-    Lam     ann binder e       -> Lam     (liftAcc d ann) (liftAcc d binder) (liftAcc (d + 1) e)
-    Literal ann l              -> Literal (liftAcc d ann) l
-    Seq     ann es             -> Seq     (liftAcc d ann) (fmap (liftAcc d) es)
-    Free    ann ident          -> Free    (liftAcc d ann) ident
-    Bound   ann (Index i)      -> Bound   (liftAcc d ann) (Index i')
+    Kind                     -> Kind
+    App     ann fun arg      -> App     (liftAcc d ann) (liftAcc d fun) (liftAcc d arg)
+    Pi      ann binder res   -> Pi      (liftAcc d ann) (liftAcc d binder) (liftAcc (d + 1) res)
+    Builtin ann op           -> Builtin (liftAcc d ann) op
+    Meta    ann m            -> Meta    (liftAcc d ann) m
+    Let     ann binder e1 e2 -> Let     (liftAcc d ann) (liftAcc d binder) (liftAcc d e1) (liftAcc (d + 1) e2)
+    Lam     ann binder e     -> Lam     (liftAcc d ann) (liftAcc d binder) (liftAcc (d + 1) e)
+    Literal ann l            -> Literal (liftAcc d ann) l
+    Seq     ann es           -> Seq     (liftAcc d ann) (fmap (liftAcc d) es)
+    Free    ann ident        -> Free    (liftAcc d ann) ident
+    Bound   ann (Index i)    -> Bound   (liftAcc d ann) (Index i')
       where
         i' | d <= i    = i + 1 -- Index is referencing the environment so increment it
            | otherwise = i     -- Index is locally bound so no need to increment it
@@ -75,8 +77,11 @@ instance Liftable ann => Liftable (DeBruijnExpr ann) where
 instance Liftable ann => Liftable (DeBruijnArg ann) where
   liftAcc d (Arg vis e) = Arg vis (liftAcc d e)
 
-instance Liftable ann => Liftable (DeBruijnBinder ann) where
-  liftAcc d (Binder ann b vis) = Binder (liftAcc d ann) b vis
+instance Liftable ann => Liftable (DeBruijnPiBinder ann) where
+  liftAcc d (PiBinder ann vis binder expr) = PiBinder (liftAcc d ann) vis binder (liftAcc d expr)
+
+instance Liftable ann => Liftable (DeBruijnLamBinder ann) where
+  liftAcc d (LamBinder ann vis binder expr) = LamBinder (liftAcc d ann) vis binder (fmap (liftAcc d) expr)
 
 -- ** Concrete liftable instances
 
@@ -111,11 +116,11 @@ instance Substitutable ann (Expr Name Index) where
   substAcc d sub = \case
     Kind                       -> Kind
     App     ann fun arg        -> App     (substAnn d sub ann) (substAcc d sub fun) (substAcc d sub arg)
-    Pi      ann binder dom cod -> Pi      (substAnn d sub ann) (substAcc d sub binder) (substAcc d sub dom) (substAcc (d + 1) (lift sub) cod)
+    Pi      ann binder res     -> Pi      (substAnn d sub ann) (substAcc d sub binder) (substAcc (d + 1) (lift sub) res)
     Builtin ann op             -> Builtin (substAnn d sub ann) op
     Meta    ann m              -> Meta    (substAnn d sub ann) m
-    Let     ann binder e1 e2   -> Let     (substAnn d sub ann) binder (substAcc d sub e1) (substAcc (d + 1) (lift sub) e2)
-    Lam     ann binder e       -> Lam     (substAnn d sub ann) binder (substAcc (d + 1) (lift sub) e)
+    Let     ann binder e1 e2   -> Let     (substAnn d sub ann) (substAcc d sub binder) (substAcc d sub e1) (substAcc (d + 1) (lift sub) e2)
+    Lam     ann binder e       -> Lam     (substAnn d sub ann) (substAcc d sub binder) (substAcc (d + 1) (lift sub) e)
     Literal ann l              -> Literal (substAnn d sub ann) l
     Seq     ann es             -> Seq     (substAnn d sub ann) (fmap (substAcc d sub) es)
     Free    ann ident          -> Free    (substAnn d sub ann) ident
@@ -131,8 +136,11 @@ instance Substitutable ann (Expr Name Index) where
 instance Substitutable ann (Arg Name Index) where
   substAcc d sub (Arg vis e) = Arg vis (substAcc d sub e)
 
-instance Substitutable ann (Binder Name) where
-  substAcc d sub (Binder ann b vis) = Binder (substAnn d sub ann) b vis
+instance Substitutable ann (PiBinder Name Index) where
+  substAcc d sub (PiBinder ann vis binder expr) = PiBinder (substAnn d sub ann) vis binder (substAcc d sub expr)
+
+instance Substitutable ann (LamBinder Name Index) where
+  substAcc d sub (LamBinder ann vis binder expr) = LamBinder (substAnn d sub ann) vis binder (fmap (substAcc d sub) expr)
 
 -- ** Concrete substitution instances
 

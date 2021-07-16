@@ -15,105 +15,94 @@ import Data.List.NonEmpty (NonEmpty)
 
 import Vehicle.Prelude
 
+-- | Type of Vehicle Frontend type-level name-binding sites.
+data Arg ann
+  = Arg ann Symbol
+
+
 -- | The core Tree structure, parameterised by an annotation type so different
 -- types of data can be associated with it's parts.
-data family Tree (ann :: Sort -> *) (sort :: Sort)
+data Expr ann
+  -- Kinds
+  = Kind
+  | Type
+  -- Types
+  | TForall     ann (NonEmpty (Expr ann)) (Expr ann)
+  | TVar        ann Symbol
+  | TFun        ann (Type ann) (Type ann)
+  | TBool       ann
+  | TProp       ann
+  | TReal       ann
+  | TInt        ann
+  | TList       ann (Type ann)
+  | TTensor     ann (Type ann) (Type ann)
+  | TAdd        ann (Type ann) (Type ann)
+  | TLitDim     ann Integer
+  | TCons       ann (Type ann) (Type ann)
+  | TLitDimList ann (NonEmpty (Type ann))
+  -- Expressions
+  | EAnn        ann (Expr ann) (Type ann)
+  | ELet        ann (NonEmpty  (Decl ann)) (Expr ann)
+  | ELam        ann (NonEmpty  (Arg  ann)) (Expr ann)
+  | EApp        ann (Expr ann) (Expr ann)
+  | EVar        ann Symbol
+  | ETyApp      ann (Expr ann) (Type ann)
+  | ETyLam      ann (NonEmpty  (Arg  ann)) (Expr ann)
+  | EIf         ann (Expr ann) (Expr ann) (Expr ann)
+  | EImpl       ann (Expr ann) (Expr ann)
+  | EAnd        ann (Expr ann) (Expr ann)
+  | EOr         ann (Expr ann) (Expr ann)
+  | ENot        ann (Expr ann)
+  | ETrue       ann
+  | EFalse      ann
+  | EEq         ann (Expr ann) (Expr ann)
+  | ENeq        ann (Expr ann) (Expr ann)
+  | ELe         ann (Expr ann) (Expr ann)
+  | ELt         ann (Expr ann) (Expr ann)
+  | EGe         ann (Expr ann) (Expr ann)
+  | EGt         ann (Expr ann) (Expr ann)
+  | EMul        ann (Expr ann) (Expr ann)
+  | EDiv        ann (Expr ann) (Expr ann)
+  | EAdd        ann (Expr ann) (Expr ann)
+  | ESub        ann (Expr ann) (Expr ann)
+  | ENeg        ann (Expr ann)
+  | ELitInt     ann Integer
+  | ELitReal    ann Double
+  | ECons       ann (Expr ann) (Expr ann)
+  | EAt         ann (Expr ann) (Expr ann)
+  | EAll        ann
+  | EAny        ann
+  | ELitSeq     ann (NonEmpty (Expr ann))
 
-
--- | Type of Vehicle Frontend sorts.
-type Kind ann = Tree ann 'KIND
-
-data instance Tree (ann :: Sort -> *) 'KIND
-    = KFun     (ann 'KIND) (Kind ann) (Kind ann)
-    | KType    (ann 'KIND)
-    | KDim     (ann 'KIND)
-    | KDimList (ann 'KIND)
-
-
--- | Type of Vehicle Frontend types.
-type Type ann = Tree ann 'TYPE
-
-data instance Tree (ann :: Sort -> *) 'TYPE
-    = TForall     (ann 'TYPE) (NonEmpty (TArg ann)) (Type ann)
-    | TVar        (ann 'TYPE) Symbol
-    | TFun        (ann 'TYPE) (Type ann) (Type ann)
-    | TBool       (ann 'TYPE)
-    | TProp       (ann 'TYPE)
-    | TReal       (ann 'TYPE)
-    | TInt        (ann 'TYPE)
-    | TList       (ann 'TYPE) (Type ann)
-    | TTensor     (ann 'TYPE) (Type ann) (Type ann)
-    | TAdd        (ann 'TYPE) (Type ann) (Type ann)
-    | TLitDim     (ann 'TYPE) Integer
-    | TCons       (ann 'TYPE) (Type ann) (Type ann)
-    | TLitDimList (ann 'TYPE) (NonEmpty (Type ann))
-
-
--- | Type of Vehicle Frontend type-level name-binding sites.
-type TArg ann = Tree ann 'TARG
-
-data instance Tree (ann :: Sort -> *) 'TARG
-  = TArg (ann 'TARG) Symbol
-
-
--- | Type of Vehicle Frontend expressions.
-type Expr ann = Tree ann 'EXPR
-
-infixl 4 `EApp`
-
-data instance Tree (ann :: Sort -> *) 'EXPR
-    = EAnn     (ann 'EXPR) (Expr ann) (Type ann)
-    | ELet     (ann 'EXPR) (NonEmpty (Decl ann)) (Expr ann)
-    | ELam     (ann 'EXPR) (NonEmpty (EArg ann)) (Expr ann)
-    | EApp     (ann 'EXPR) (Expr ann) (Expr ann)
-    | EVar     (ann 'EXPR) Symbol
-    | ETyApp   (ann 'EXPR) (Expr ann) (Type ann)
-    | ETyLam   (ann 'EXPR) (NonEmpty (TArg ann)) (Expr ann)
-    | EIf      (ann 'EXPR) (Expr ann) (Expr ann) (Expr ann)
-    | EImpl    (ann 'EXPR) (Expr ann) (Expr ann)
-    | EAnd     (ann 'EXPR) (Expr ann) (Expr ann)
-    | EOr      (ann 'EXPR) (Expr ann) (Expr ann)
-    | ENot     (ann 'EXPR) (Expr ann)
-    | ETrue    (ann 'EXPR)
-    | EFalse   (ann 'EXPR)
-    | EEq      (ann 'EXPR) (Expr ann) (Expr ann)
-    | ENeq     (ann 'EXPR) (Expr ann) (Expr ann)
-    | ELe      (ann 'EXPR) (Expr ann) (Expr ann)
-    | ELt      (ann 'EXPR) (Expr ann) (Expr ann)
-    | EGe      (ann 'EXPR) (Expr ann) (Expr ann)
-    | EGt      (ann 'EXPR) (Expr ann) (Expr ann)
-    | EMul     (ann 'EXPR) (Expr ann) (Expr ann)
-    | EDiv     (ann 'EXPR) (Expr ann) (Expr ann)
-    | EAdd     (ann 'EXPR) (Expr ann) (Expr ann)
-    | ESub     (ann 'EXPR) (Expr ann) (Expr ann)
-    | ENeg     (ann 'EXPR) (Expr ann)
-    | ELitInt  (ann 'EXPR) Integer
-    | ELitReal (ann 'EXPR) Double
-    | ECons    (ann 'EXPR) (Expr ann) (Expr ann)
-    | EAt      (ann 'EXPR) (Expr ann) (Expr ann)
-    | EAll     (ann 'EXPR)
-    | EAny     (ann 'EXPR)
-    | ELitSeq  (ann 'EXPR) (NonEmpty (Expr ann))
-
-
--- | Type of Vehicle Frontend expression-level name-binding sites.
-type EArg ann = Tree ann 'EARG
-
-data instance Tree (ann :: Sort -> *) 'EARG
-  = EArg (ann 'EARG) Symbol
-
+data Ident ann
+  = Ident ann Symbol
 
 -- | Type of Vehicle Frontend declaration.
-type Decl ann = Tree ann 'DECL
+data Decl ann
+  = DeclNetw
+    ann
+    (Ident ann) -- Name of the declared network.
+    (Expr  ann) -- Type of the declared network.
 
-data instance Tree (ann :: Sort -> *) 'DECL
-  = DeclNetw   (ann 'DECL) (EArg ann) (Type ann)
-  | DeclData   (ann 'DECL) (EArg ann) (Type ann)
-  | DefType    (ann 'DECL) (TArg ann) [TArg ann] (Type ann)
-  | DefFun     (ann 'DECL) (EArg ann) (Type ann) [Either (TArg ann) (EArg ann)] (Expr ann)
+  | DeclData
+    ann
+    (Ident ann) -- Name of the declared dataset.
+    (Expr  ann) -- Type of the declared dataset.
 
-type Prog ann = Tree ann 'PROG
+  | DefType
+    ann
+    (Ident ann) -- Name of the type declaration.
+    [Arg   ann] -- Args of the type declaration.
+    (Expr  ann) -- Body of the type declaration.
 
--- | Type of Vehicle Frontend programs.
-data instance Tree (ann :: Sort -> *) 'PROG
-  = Main (ann 'PROG) (NonEmpty (Decl ann))
+  | DefFun
+    ann
+    (Ident ann) -- Name of the function declaration.
+    (Expr  ann) -- Type of the function declaration.
+    [Arg   ann] -- Args of the function declaration.
+    (Expr  ann) -- Body of the function declaration.
+
+-- | Type of Vehicle programs
+newtype Prog ann
+  = Main
+    (NonEmpty (Decl ann)) -- Sequence of declarations

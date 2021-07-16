@@ -1,7 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Vehicle.Error where
 

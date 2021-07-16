@@ -4,7 +4,7 @@ comment "(*" "*)";
 
 -- * Tokens
 
-position token Builtin
+position token BuiltinToken
   ( {"Type"} | {"Kind"} | {"Constraint"}
   | {"all"} | {"any"}
   | {"=>"} | {"and"} | {"or"} | {"not"}
@@ -15,35 +15,41 @@ position token Builtin
   | {"Tensor"} | {"List"} | {"::"} | {"!"}
   | {"Eq"} | {"Ord"} | {"Container"} | {"Number"}
   );
+position token NameToken (lower (letter | digit | '_')*) ;
+position token BoolToken ({"True"} | {"False"}) ;
 
-position token Name (lower (letter | digit | '_')*) ;
-position token Meta ('?' digit+) ;
-position token Bool ({"True"} | {"False"}) ;
+-- * Binders
 
--- * Names for builtins, binders, and variables
+ExplicitNameAndType. Binder ::= "(" NameToken Expr1 ")";
+ImplicitNameAndType. Binder ::= "{" NameToken Expr1 "}";
+ExplicitName.        Binder ::= NameToken;
+ImplicitName.        Binder ::= "{" NameToken "}";
+ExplicitType.        Binder ::= Expr1;
+EmplicitType.        Binder ::= "{" Expr1 "}";
 
-ExplicitNameAndType. Binder ::= "(" Name Expr1 ")";
-ExplicitName.        Binder ::= Name;
-ImplicitNameAndType. Binder ::= "{" Name Expr1 "}";
-ImplicitName.        Binder ::= "{" Name "}";
+-- * Function arguments
+
+ImplicitArg. Arg ::= Expr1;
+ExplicitArg. Arg ::= "{" Expr1 "}";
 
 -- * Literals
 
 LitNat.  Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
 LitReal. Lit ::= Double;
-LitBool. Lit ::= Bool;
+LitBool. Lit ::= BoolToken;
 
--- Core structure.
+-- * Core structure.
+
 Kind.        Expr  ::= "kind";
-App.         Expr  ::= Expr Expr1;
-Builtin.     Expr1 ::= Builtin;
+App.         Expr  ::= Expr Arg;
 Pi.          Expr  ::= "pi" Binder Expr1;
 Lam.         Expr  ::= "lambda" Binder Expr1;
-Var.         Expr1 ::= Name;
-Meta.        Expr  ::= Meta;
 Let.         Expr  ::= "let" Binder Expr1 Expr1;
 Seq.         Expr1 ::= "[" [Expr1] "]";
 Ann.         Expr  ::= Expr ":type" Expr;
+Builtin.     Expr1 ::= BuiltinToken;
+Var.         Expr1 ::= NameToken;
+Meta.        Expr1 ::= "meta" Integer;
 Literal.     Expr1 ::= Lit;
 
 coercions Expr 1;
@@ -51,9 +57,9 @@ separator Expr1 "";
 
 -- * Declarations
 
-DeclNetw. Decl ::= "(" "declare-network" Binder Expr1 ")";
-DeclData. Decl ::= "(" "declare-dataset" Binder Expr1 ")";
-DefFun.   Decl ::= "(" "define-fun"      Binder Expr1 Expr1 ")";
+DeclNetw. Decl ::= "(" "declare-network" NameToken Expr1 ")";
+DeclData. Decl ::= "(" "declare-dataset" NameToken Expr1 ")";
+DefFun.   Decl ::= "(" "define-fun"      NameToken Expr1 Expr1 ")";
 
 separator Decl "";
 

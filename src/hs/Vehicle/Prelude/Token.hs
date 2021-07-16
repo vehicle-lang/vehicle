@@ -1,17 +1,11 @@
-{-# LANGUAGE ConstraintKinds  #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PatternSynonyms  #-}
-
 module Vehicle.Prelude.Token where
 
-import           Data.Function (on)
-import           Data.Coerce (Coercible, coerce)
-import           Data.Text (Text)
-import qualified Data.Text as T
+import Data.Function (on)
+import Data.Coerce (Coercible, coerce)
+import Data.Text (Text)
+import Data.Text qualified as T
 
-
--- |Symbols in BNFC generated grammars are represented by |Text|.
-type Symbol = Text
+import Vehicle.Prelude.Language (Symbol)
 
 -- |Position tokens in BNFC generated grammars are represented by a pair of a
 -- position and the text token.

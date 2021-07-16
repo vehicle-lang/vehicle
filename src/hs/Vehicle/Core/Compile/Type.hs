@@ -35,7 +35,6 @@ import Prettyprinter ( (<+>), Pretty(pretty), encloseSep, lbracket, rbracket, co
 
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Dataflow
-import Vehicle.Core.Compile.Subst (subst)
 import Vehicle.Core.Print ( prettyInfo )
 import Vehicle.Prelude
 import Vehicle.Error
