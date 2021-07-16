@@ -14,12 +14,12 @@ data PrimitiveNumber
   = Nat
   | Int
   | Real
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Show, Read, Enum)
 
 data PrimitiveTruth
   = Bool
   | Prop
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Show, Read, Enum)
 
 data PrimitiveType
   = Number PrimitiveNumber
@@ -30,4 +30,4 @@ data PrimitiveContainer
   = ListContainer
   | TensorContainer
   | SetContainer
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Enum)

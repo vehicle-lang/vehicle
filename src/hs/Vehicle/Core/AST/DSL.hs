@@ -80,7 +80,7 @@ tForall k f = quantBody
   where
     badBody   = f (Bound (RecAnn kType mempty) (Index (-1)))
     body      = liftAcc (-1) badBody
-    quantBody = Pi (RecAnn kType mempty) (PiBinder (freshAnn k) Inferred (Just Machine) k) body
+    quantBody = Pi (RecAnn kType mempty) (PiBinder (freshAnn k) Implicit (Just Machine) k) body
 
 -- * Constraints
 

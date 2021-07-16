@@ -4,9 +4,8 @@ module Vehicle.Core.Print where
 
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.List.NonEmpty as NonEmpty (toList)
 
-import Prettyprinter (Pretty(..), layoutPretty, parens, (<+>), line, defaultLayoutOptions)
+import Prettyprinter (Pretty(..), Doc, layoutPretty, braces, parens, (<+>), line, defaultLayoutOptions)
 import Prettyprinter.Render.Text (renderStrict)
 
 import Vehicle.Core.AST
@@ -15,8 +14,12 @@ import Vehicle.Prelude (hsep, vsep, Visibility(..))
 printTree :: Pretty a => a -> Text
 printTree a = renderStrict $ layoutPretty defaultLayoutOptions $ pretty a
 
+brackets :: Visibility -> (Doc a -> Doc a)
+brackets Implicit = braces
+brackets Explicit = parens
+
 instance Pretty Name where
-  pretty Machine = "machine"
+  pretty Machine       = "machine"
   pretty (User symbol) = pretty symbol
 
 instance Pretty Index where
@@ -32,14 +35,24 @@ instance Pretty Literal where
 instance Pretty Builtin where
   pretty b = pretty $ fromMaybe "" (symbolFromBuiltin b)
 
+instance Pretty (Ident ann) where
+  pretty (Ident _ann n) = pretty n
+
 instance ( Pretty binder
          , Pretty var
          ) => Pretty (Arg binder var name) where
   pretty (Arg Explicit expr) = pretty expr
   pretty (Arg Implicit expr) = "{" <> pretty expr <> "}"
 
-instance Pretty binder => Pretty (Binder binder ann) where
-  pretty _ = _
+instance ( Pretty binder
+         , Pretty var
+         ) => Pretty (PiBinder binder var ann) where
+  pretty (PiBinder _ann vis name typ) = brackets vis (pretty name <+> pretty typ)
+
+instance ( Pretty binder
+         , Pretty var
+         ) => Pretty (LamBinder binder var ann) where
+  pretty (LamBinder _ann vis name typ) = brackets vis (pretty name <+> pretty typ)
 
 instance ( Pretty binder
          , Pretty var
@@ -47,7 +60,7 @@ instance ( Pretty binder
   pretty = \case
     Kind                        -> "kind"
     App     _ann fun arg        -> pretty fun <+> parens (pretty arg)
-    Pi      _ann binder e1 e2   -> "pi" <+> pretty binder <+> parens (pretty e1) <+> parens (pretty e2)
+    Pi      _ann binder res     -> "pi" <+> pretty binder <+> parens (pretty res)
     Builtin _ann op             -> pretty op
     Meta    _ann m              -> "?" <> pretty m
     Let     _ann binder e1 e2   -> "let"     <+> pretty binder <+> parens (pretty e1) <+> parens (pretty e2)
@@ -69,4 +82,4 @@ instance ( Pretty name
 instance ( Pretty name
          , Pretty binder
          ) => Pretty (Prog name binder ann) where
-  pretty (Main ds) = vsep (map pretty (NonEmpty.toList ds))
+  pretty (Main ds) = vsep (map pretty ds)

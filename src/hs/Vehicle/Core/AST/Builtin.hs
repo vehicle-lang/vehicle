@@ -51,7 +51,7 @@ data Constraint
   | IsNumber
   | IsContainer
   | IsQuantifiable
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Enum, Show)
 
 pattern PrimitiveNumber :: PrimitiveNumber -> Builtin
 pattern PrimitiveNumber prim = PrimitiveType (Number prim)
