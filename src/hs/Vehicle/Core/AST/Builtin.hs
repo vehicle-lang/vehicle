@@ -16,9 +16,7 @@ import Vehicle.Prelude
 
 -- |Builtins to the Vehicle language
 data Builtin
-  = Type
-  | Constraint
-  | PrimitiveType PrimitiveType
+  = PrimitiveType PrimitiveType
   | List
   | Tensor
   | Implements Constraint
@@ -62,10 +60,8 @@ pattern PrimitiveTruth prim = PrimitiveType (TTruth prim)
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols =
   -- Types
-  [ "Type"       |-> Type
-  , "Constraint" |-> Constraint
-  , "Bool"       |-> PrimitiveTruth  TBool
-  , "Prop"       |-> PrimitiveTruth  TProp
+  [ "Bool"       |-> PrimitiveTruth TBool
+  , "Prop"       |-> PrimitiveTruth TProp
   , "Nat"        |-> PrimitiveNumber TNat
   , "Int"        |-> PrimitiveNumber TInt
   , "Real"       |-> PrimitiveNumber TReal

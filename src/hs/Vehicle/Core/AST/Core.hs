@@ -3,25 +3,17 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 
-module Vehicle.Core.AST.Core
-  ( Expr(..)
-  , Decl(..)
-  , Prog(..)
-  , Meta
-  , Arg(..)
-  , Binder(..)
-  , Ident(..)
-  , DeclName(..)
-  ) where
+module Vehicle.Core.AST.Core where
 
+import Numeric.Natural (Natural)
 import Data.Functor.Foldable.TH (makeBaseFunctor)
-import Data.Sequence (Seq)
 
 import Vehicle.Prelude (Symbol, Provenance, Visibility, Literal)
 import Vehicle.Core.AST.Builtin (Builtin)
 
 -- | Meta-variables
 type Meta = Int
+type Level = Natural
 
 data Arg binder var ann
   = Arg Visibility (Expr binder var ann)
@@ -48,8 +40,11 @@ data Binder binder var ann
 -- either the user assigned names or deBruijn indices.
 data Expr binder var ann
 
-  -- | The type of types. It has no type of it's own and correspondingly no annotation.
-  = Kind
+  -- | The type of types. The type @Type l@ has type @Type (l+1)@.
+  = Type Level
+
+  -- | The type of type-class constraints. It has type @Type 1@.
+  | Constraint
 
   -- | User annotation
   | Ann
@@ -148,3 +143,7 @@ newtype Prog binder var ann
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 makeBaseFunctor ''Expr
+
+-- | An annotation that stores both the type of the expression and some other arbitrary annotations.
+-- Used post-type checking. Avoids unrestricted type-level recursion.
+data RecAnn binder var ann = RecAnn (Expr binder var (RecAnn binder var ann)) ann

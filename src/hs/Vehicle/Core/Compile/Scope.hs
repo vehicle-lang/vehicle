@@ -27,7 +27,6 @@ import Data.Text (pack)
 import Prettyprinter (pretty, (<+>))
 
 import Vehicle.Core.AST
-import Vehicle.Core.Compile.Dataflow
 import Vehicle.Prelude
 import Vehicle.Error
 

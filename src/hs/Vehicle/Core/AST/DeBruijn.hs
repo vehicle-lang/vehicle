@@ -12,9 +12,8 @@ module Vehicle.Core.AST.DeBruijn
   , Substitutable(..)
   ) where
 
-import Vehicle.Prelude (Symbol)
+import Vehicle.Prelude
 import Vehicle.Core.AST.Core
-import Vehicle.Core.AST.Utils
 
 --------------------------------------------------------------------------------
 -- Definitions
@@ -57,8 +56,10 @@ class Liftable a where
 
 instance Liftable ann => Liftable (DeBruijnExpr ann) where
   liftAcc d = \case
-    Kind                     -> Kind
+    Type l                   -> Type l
+    Constraint               -> Constraint
     Meta    m                -> Meta     m
+    Ann     ann term typ     -> Ann     (liftAcc d ann) (liftAcc d term) (liftAcc d typ)
     App     ann fun arg      -> App     (liftAcc d ann) (liftAcc d fun) (liftAcc d arg)
     Pi      ann binder res   -> Pi      (liftAcc d ann) (liftAcc d binder) (liftAcc (d + 1) res)
     Builtin ann op           -> Builtin (liftAcc d ann) op
@@ -109,8 +110,10 @@ class Substitutable ann (a :: * -> *) where
 
 instance Substitutable ann (Expr Name Index) where
   substAcc d sub = \case
-    Kind                       -> Kind
+    Type l                     -> Type l
+    Constraint                 -> Constraint
     Meta    m                  -> Meta m
+    Ann     ann term typ       -> Ann     (substAnn d sub ann) (substAcc d sub term) (substAcc d sub typ)
     App     ann fun arg        -> App     (substAnn d sub ann) (substAcc d sub fun) (substAcc d sub arg)
     Pi      ann binder res     -> Pi      (substAnn d sub ann) (substAcc d sub binder) (substAcc (d + 1) (lift sub) res)
     Builtin ann op             -> Builtin (substAnn d sub ann) op
@@ -135,9 +138,6 @@ instance Substitutable ann (Binder Name Index) where
   substAcc d sub (Binder ann vis binder expr) = Binder (substAnn d sub ann) vis binder (substAcc d sub expr)
 
 -- ** Concrete substitution instances
-
-instance SubstitutableAnn InputAnn where
-  substAnn _ _ p = p
 
 instance SubstitutableAnn (DeBruijnAnn ann) where
   substAnn d sub (RecAnn expr ann) = RecAnn (substAcc d sub expr) ann

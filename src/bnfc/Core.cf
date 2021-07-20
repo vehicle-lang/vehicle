@@ -17,6 +17,7 @@ position token BuiltinToken
   );
 position token NameToken (lower (letter | digit | '_')*) ;
 position token BoolToken ({"True"} | {"False"}) ;
+position token MetaToken ("?" digit+);
 
 -- * Binders
 
@@ -40,17 +41,17 @@ LitBool. Lit ::= BoolToken;
 
 -- * Core structure.
 
-Kind.        Expr  ::= "kind";
-App.         Expr  ::= Expr Arg;
-Pi.          Expr  ::= "pi" Binder Expr1;
-Lam.         Expr  ::= "lambda" Binder Expr1;
-Let.         Expr  ::= "let" Binder Expr1 Expr1;
-Seq.         Expr1 ::= "[" [Expr1] "]";
-Ann.         Expr  ::= Expr ":type" Expr;
-Builtin.     Expr1 ::= BuiltinToken;
-Var.         Expr1 ::= NameToken;
-Meta.        Expr1 ::= "meta" Integer;
-Literal.     Expr1 ::= Lit;
+Kind.          Expr  ::= "kind";
+App.           Expr  ::= Expr Arg;
+Pi.            Expr  ::= "pi" Binder Expr1;
+Lam.           Expr  ::= "lambda" Binder Expr1;
+Let.           Expr  ::= "let" Binder Expr1 Expr1;
+Seq.           Expr1 ::= "[" [Expr1] "]";
+Ann.           Expr  ::= Expr ":type" Expr;
+Builtin.       Expr1 ::= BuiltinToken;
+Var.           Expr1 ::= NameToken;
+Literal.       Expr1 ::= Lit;
+internal Meta. Expr1 ::= MetaToken;
 
 coercions Expr 1;
 separator Expr1 "";

@@ -1,47 +1,15 @@
 module Vehicle.Frontend.Elaborate
   ( Elab(..)
-  , ElabError(..)
-  , MonadElab
-  , runElab
   ) where
 
-import Control.Monad.Except (MonadError(..), Except, runExcept)
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Coerce (coerce)
-import Prettyprinter ((<+>))
-import Data.Bitraversable (Bitraversable(..))
 
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
 import Vehicle.Frontend.AST qualified as VF
 
 import Vehicle.Prelude
 import Vehicle.Error
-
--- * Elaboration monad
-
--- | Errors that may arise during elaboration. In theory with a more
--- granular distinction between local and top-level declarations
--- in the AST we could get rid of these errors entirely.
-data ElabError
-  = InvalidLocalDecl Symbol Provenance
-
-instance MeaningfulError ElabError where
-  -- The devs are responsible for all elaboration errors as they
-  --  should already have been checked during parsing!
-  details (InvalidLocalDecl name p) = DError $ DeveloperError
-    { problem    = squotes name <+> "declarations within let expressions \
-                  \ should have been caught by the parser"
-    , provenance = p
-    }
-
--- | Constraint for the monad stack used by the elaborator.
-type MonadElab m = MonadError ElabError m
-
--- | Run a function in 'MonadElab'.
-runElab :: Except ElabError a -> Either ElabError a
-runElab = runExcept
-
 
 -- * Elaboration class
 
@@ -79,22 +47,27 @@ runElab = runExcept
 
 -- |Class for the various elaboration functions.
 class Elab a b where
-  elab :: MonadElab m => a -> m b
+  elab :: a -> b
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
-instance Elab VF.InputLetDecl VC.InputExpr where
-  elab (VF.LetDecl ann n e) = return $ VC.Let _ _ _
+elabLetDecl :: VC.InputAnn -> VF.InputLetDecl -> VC.InputExpr -> VC.InputExpr
+elabLetDecl ann1 (VF.LetDecl ann2 n e) body = do
+  cBody <- body
+  VC.Let _ (VC.Binder _ Explicit _ _) (elab e) body
+
+elabForallBinder :: VF.InputExpr -> VF.InputExpr -> VC.InputExpr
+elabForallBinder = _
 
 instance Elab VF.InputExpr VC.InputExpr where
   elab = \case
     -- Elaborate kinds.
-    VF.Kind               -> return VC.Kind
-    VF.Type    ann        -> op0 VC.Type ann
+    VF.Kind              -> VC.Kind
+    VF.Type   ann        -> op0 VC.Type ann
 
     -- Elaborate types.
-    VF.Forall ann ns t   -> foldr (VC.Pi ann Nothing) <$> elab t <*> traverse elab ns
-    VF.Fun    ann t1 t2  -> do ct1 <- elab t1; ct2 <- elab t2; return $ VC.Pi ann (VC.Binder _ _ _ _) ct2
+    VF.Forall ann ns t   -> foldr _ (elab t) (fmap elab ns)
+    VF.Fun    ann t1 t2  -> VC.Pi ann (VC.Binder _ Explicit _ (elab t1)) (elab t2)
     VF.Bool   ann        -> op0 (VC.PrimitiveTruth  TBool) ann
     VF.Prop   ann        -> op0 (VC.PrimitiveTruth  TProp) ann
     VF.Real   ann        -> op0 (VC.PrimitiveNumber TReal) ann
@@ -103,12 +76,12 @@ instance Elab VF.InputExpr VC.InputExpr where
     VF.Tensor ann t1 t2  -> op2 VC.Tensor ann t1 t2
 
     -- Elaborate expressions.
-    VF.Ann     ann e t   -> VC.Ann ann <$> elab e <*> elab t
-    VF.Let     ann ds e  -> elabLet ann (traverse elab ds) (elab e)
-    VF.Lam     ann ns e  -> foldr (VC.Lam ann) <$> elab e <*> traverse elab ns
-    VF.App     ann e1 e2 -> VC.App ann <$> elab e1 <*> elab e2
-    VF.Var     ann n     -> return $ VC.Bound ann n
-    VF.Literal ann l     -> return $ VC.Literal ann l
+    VF.Ann     ann e t   -> VC.Ann ann (elab e) (elab t)
+    VF.Let     ann ds e  -> foldr (elabLetDecl ann) (elab e) ds
+    VF.Lam     ann ns e  -> foldr (VC.Lam ann) (elab e) (fmap elab ns)
+    VF.App     ann e1 e2 -> VC.App ann (elab e1) (elab e2)
+    VF.Var     ann n     -> VC.Bound ann n
+    VF.Literal ann l     -> VC.Literal ann l
 
     -- Conditional expressions.
     VF.If    ann e1 e2 e3 -> op3 VC.If      ann e1 e2 e3
@@ -132,40 +105,36 @@ instance Elab VF.InputExpr VC.InputExpr where
 
     -- Lists and tensors.
     VF.Cons   ann e1 e2 -> op2 VC.Cons ann e1 e2
-    VF.At     ann e1 e2 -> op2 VC.At ann e1 e2
-    VF.All    ann       -> op0 VC.All ann
-    VF.Any    ann       -> op0 VC.Any ann
-    VF.Seq    ann es    -> VC.Seq ann <$> traverse elab es
+    VF.At     ann e1 e2 -> op2 VC.At   ann e1 e2
+    VF.All    ann       -> op0 VC.All  ann
+    VF.Any    ann       -> op0 VC.Any  ann
+    VF.Seq    ann es    -> VC.Seq ann (fmap elab es)
 
 -- |Elaborate declarations.
 instance Elab VF.InputDecl VC.InputDecl where
-  elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann <$> elab n <*> elab t
-  elab (VF.DeclData ann n t)      = VC.DeclData ann <$> elab n <*> elab t
-  elab (VF.DefType  ann n ns t)   = VC.DefType  ann <$> elab n <*> traverse elab ns <*> elab t
-  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann <$> elab n <*> elab t <*> expr
+  elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann (elab n) (elab t)
+  elab (VF.DeclData ann n t)      = VC.DeclData ann (elab n) (elab t)
+  elab (VF.DefType  ann n ns t)   = VC.DefType  ann (elab n) (fmap elab ns) (elab t)
+  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann (elab n) (elab t) expr
     where
-      expr = foldr (VC.Lam ann) <$> elab e <*> traverse elab ns
+      expr = foldr (VC.Lam ann) (elab e) (fmap elab ns)
 
 -- |Elaborate programs.
 instance Elab VF.InputProg VC.InputProg where
-  elab (VF.Main decls) = VC.Main <$> traverse elab decls
-
--- |Lift a binary /monadic/ function.
-bindM2 :: Monad m => (a -> b -> m c) -> m a -> m b -> m c
-bindM2 f ma mb = do a <- ma; b <- mb; f a b
+  elab (VF.Main decls) = VC.Main (fmap elab decls)
 
 -- |Elaborate any builtin token to an expression.
-op0 :: (MonadElab m) => VC.Builtin -> VF.InputAnn -> m VC.InputExpr
-op0 b ann = return $ VC.Builtin ann b
+op0 :: VC.Builtin -> VF.InputAnn -> VC.InputExpr
+op0 b ann = VC.Builtin ann b
 
 -- |Elaborate a unary function symbol with its argument to an expression.
-op1 :: (MonadElab m) => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> m VC.InputExpr
-op1 b ann e1 = VC.App ann <$> op0 b ann <*> elab e1
+op1 :: VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VC.InputExpr
+op1 b ann e1 = VC.App ann (op0 b ann) (elab e1)
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-op2 :: (MonadElab m) => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
-op2 b ann e1 e2 = VC.App ann <$> op1 b ann e1 <*> elab e2
+op2 :: VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> VC.InputExpr
+op2 b ann e1 e2 = VC.App ann (op1 b ann e1) (elab e2)
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-op3 :: (MonadElab m) => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
-op3 b ann e1 e2 e3 = VC.App ann <$> op2 b ann e1 e2 <*> elab e3
+op3 :: VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> VC.InputExpr
+op3 b ann e1 e2 e3 = VC.App ann (op2 b ann e1 e2) (elab e3)

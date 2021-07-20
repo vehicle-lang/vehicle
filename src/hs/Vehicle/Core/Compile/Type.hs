@@ -20,12 +20,12 @@ module Vehicle.Core.Compile.Type where
 
 import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
-import Control.Monad.Supply (SupplyT, demand)
 import Control.Monad.Trans (MonadTrans(..))
-import Control.Monad.Writer (MonadWriter(..))
-import Control.Monad.State (MonadState(..), StateT(..))
+import Control.Monad.State (MonadState(..), StateT(..), modify)
 import Data.Text (Text)
+import Text.Printf (printf)
 import Data.List (foldl')
+import Data.List.NonEmpty qualified as NonEmpty (scanl, head)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.IntMap (IntMap)
@@ -37,6 +37,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Prettyprinter ( (<+>), Pretty(pretty), encloseSep, lbracket, rbracket, comma )
 
 import Vehicle.Core.AST hiding (lift)
+import Vehicle.Core.Compile.DSL
 -- import Vehicle.Core.Print ( prettyInfo )
 import Vehicle.Prelude
 import Vehicle.Error
@@ -48,7 +49,7 @@ import Vehicle.Error
 --
 
 -- * Errors thrown during type checking
-{-
+
 data TypeError
   = IndexOutOfBounds
       Provenance  -- ^ The location of the deBruijn index.
@@ -63,7 +64,7 @@ data TypeError
   | UnsupportedOperation
       Provenance  -- ^ The location of the unsupported operation.
       Text        -- ^ A description of the unsupported operation.
-
+{-
 instance MeaningfulError TypeError where
   details (IndexOutOfBounds p index) = DError $ DeveloperError
     { provenance = p
@@ -93,8 +94,6 @@ instance MeaningfulError TypeError where
 -- |Type context.
 
 type TypingError = ()
-type CheckedExpr = Expr Name Index (RecAnn Name Index Provenance)
-type UncheckedExpr = Expr Name Index Provenance
 
 type DeclCtx  = Map Ident CheckedExpr
 type BoundCtx = [CheckedExpr]
@@ -115,40 +114,81 @@ type TCM a =
 getMetaCtx :: TCM MetaCtx
 getMetaCtx = get
 
+modifyMetaCtx :: (MetaCtx -> MetaCtx) -> TCM ()
+modifyMetaCtx = modify
+
+getMetaType :: Meta -> TCM CheckedExpr
+getMetaType i = do
+  ctx <- getMetaCtx;
+  case IntMap.lookup i (metaVariableTypes ctx) of
+    Just typ -> typ
+    Nothing  -> developerError (printf "Meta variable ?%d not found in context" i)
+
 getBoundCtx :: TCM BoundCtx
 getBoundCtx = ask
 
 getDeclCtx :: TCM DeclCtx
 getDeclCtx = lift (lift ask)
 
-freshMetaVar :: TCM Meta
-freshMetaVar = do
+freshMetaName :: TCM Meta
+freshMetaName = do
   MetaCtx {..} <- getMetaCtx;
   put $ MetaCtx { nextMeta = succ nextMeta , ..}
   return nextMeta
 
+-- | Creates a fresh meta variable. Meta variables need to remember what was
+-- in the current context when they were created. We do this by creating a
+-- meta-variable that takes everything in the current context as an argument
+-- and then which is immediately applied to everything in the current context.
+-- Post unification, any unneeded context arguments will be normalised away.
 freshMeta :: CheckedExpr -> TCM CheckedExpr
 freshMeta resultType = do
   -- Create a fresh name
-  freshName <- freshMetaVar
+  metaName <- freshMetaName
+
   -- Create a Pi type that abstracts over all bound variables
   boundCtx  <- getBoundCtx
-
-  let makePi :: CheckedExpr -> CheckedExpr -> CheckedExpr
-      makePi a b = Pi (makeTypeAnn _) (Binder (makeTypeAnn (getType a)) Explicit Machine a) b
-
-  let metaType = foldl' makePi resultType boundCtx
-  _
+  let metaType = foldl' (tPi Explicit) resultType boundCtx
 
   -- Stores type in meta-context
+  modifyMetaCtx $ \MetaCtx {..} ->
+    MetaCtx { metaVariableTypes = IntMap.insert metaName metaType metaVariableTypes , ..}
+
+  -- Create bound variables for everything in the context
+  let boundEnv =
+        [ Bound (makeTypeAnn varType) (Index varIndex)
+        | (varIndex , varType) <- zip [0..] boundCtx ]
 
   -- Returns a meta applied to every bound variable in the context
+  let meta = foldl' app (Meta metaName) boundEnv
+  return meta
+
+freshUncheckedMeta :: CheckedExpr -> TCM UncheckedExpr
+freshUncheckedMeta resultType = do
+  -- Create a fresh name
+  metaName <- freshMetaName
+
+  -- Create a Pi type that abstracts over all bound variables
+  boundCtx  <- getBoundCtx
+  let metaType = foldl' (tPi Explicit) resultType boundCtx
+
+  -- Stores type in meta-context
+  modifyMetaCtx $ \MetaCtx {..} ->
+    MetaCtx { metaVariableTypes = IntMap.insert metaName metaType metaVariableTypes , ..}
+
+  -- Create bound variables for everything in the context
+  let boundEnv = [ Bound mempty (Index varIndex) | varIndex <- [0..length boundCtx - 1]]
+
+  -- Returns a meta applied to every bound variable in the context
+  let meta = foldl' (\f x -> App mempty f (Arg Explicit x)) (Meta metaName) boundEnv
+  return meta
 
 check :: CheckedExpr     -- Type we're checking against
       -> UncheckedExpr   -- Expression being type-checked
-      -> TCM CheckedExpr
+      -> TCM CheckedExpr -- Updated expression
 check target = \case
-  Kind               -> _
+  Type l             -> _
+  Constraint         -> _
   Meta     _         -> _
   Ann      ann _ _   -> _
   App      ann _ _   -> _
@@ -161,9 +201,64 @@ check target = \case
   Literal  ann _     -> _
   Seq      ann _     -> _
 
+-- | Takes in an unchecked expression and attempts to infer it's type.
+-- Returns the expression annotated with its type as well as the type itself.
 infer :: UncheckedExpr
       -> TCM (CheckedExpr, CheckedExpr)
-infer = _
+infer = \case
+  Type l -> return (Type l , Type (l + 1))
+
+  Constraint -> return (Constraint , Type 1)
+
+  Meta i -> do
+    metaType <- getMetaType i
+    return (Meta i , metaType)
+
+  Ann      ann e t   -> do
+    (t', _) <- infer t
+    e' <- check t' e
+    let ann' = RecAnn t' ann
+    return (Ann ann' e' t' , t')
+
+  App p fun (Arg argVis arg) -> do
+    -- Infer the kind of the function.
+    (fun' , tFun) <- infer fun
+
+    -- Check if it's a function kind: if so, return the two argument; if not, throw an error.
+    case tFun of
+      Pi _ (Binder _ funVis _ tArg) tRes
+        | argVis == funVis -> do
+          -- Check the kind of the argument.
+          arg' <- check tArg arg
+
+          -- Return the appropriately annotated type with its inferred kind.
+          return (App (RecAnn tRes p) fun' (Arg argVis arg') , tRes)
+
+      Pi _ (Binder _ Implicit _ tArg) tRes -> do
+        metaArg <- freshUncheckedMeta tArg
+        let funWithImplicit = App mempty fun (Arg Implicit metaArg)
+        infer (App p funWithImplicit (Arg argVis arg))
+
+      _ -> do
+        expected <- (~>) <$> freshMeta <*> freshMeta
+        throwError $ Mismatch p tFun expected
+
+
+  Pi       ann _ _   -> _
+
+  Builtin  ann _     -> _
+
+  Bound    ann _     -> _
+
+  Free     ann _     -> _
+
+  Let      ann _ _ _ -> _
+
+  Lam      ann _ _   -> _
+
+  Literal  ann _     -> _
+
+  Seq      ann _     -> _
 
 {-
 -- |Create a context with a single piece of information of the given sort.
@@ -253,22 +348,6 @@ checkInferF = case sortSing @sort of
     -- infer the kind of the type function, check the kind of its argument.
     TAppF p tFun tArg -> fromInfer p $ do
 
-      -- Infer the kind of the function.
-      (tFun, kFun) <- runInfer tFun
-
-      -- Check if it's a function kind: if so, return the two argument; if not, throw an error.
-      (kArg, kRes) <- case unInfo kFun of
-        _kFun@(KApp _ (KApp _ (KCon _ KFun) kArg) kRes) ->
-          return (Info kArg, Info kRes)
-        _kFun -> do
-          expected <- (~>) <$> freshKMeta <*> freshKMeta
-          throwError $ Mismatch (unK p) [kFun] expected
-
-      -- Check the kind of the argument.
-      tArg <- runCheckWith kArg tArg
-
-      -- Return the appropriately annotated type with its inferred kind.
-      return (TApp (kRes :*: p) tFun tArg, kRes)
 
     -- For type variables:
     -- lookup the kind of the variable in the context.

@@ -6,33 +6,15 @@ import Numeric.Natural (Natural)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST.Core
+import Vehicle.Core.AST.DeBruijn
 
-instance HasProvenance DeclName where
-  prov (DeclName p _) = p
+-- * Type synonyms for Type levels
 
--- |Extract a term's annotation
-annotation :: Expr name binder ann -> ann
-annotation = \case
-  Kind               -> error "Should not be requesting an annotation from Kind"
-  Meta     _         -> error "Should not be requesting an annotation from Meta"
-  Ann      ann _ _   -> ann
-  App      ann _ _   -> ann
-  Pi       ann _ _   -> ann
-  Builtin  ann _     -> ann
-  Bound    ann _     -> ann
-  Free     ann _     -> ann
-  Let      ann _ _ _ -> ann
-  Lam      ann _ _   -> ann
-  Literal  ann _     -> ann
-  Seq      ann _     -> ann
+pattern Type0 :: Expr binder var ann
+pattern Type0 = Type 0
 
--- | An annotation that stores both the type of the expression and some other arbitrary annotations.
--- Used post-type checking. Avoids unrestricted type-level recursion.
-data RecAnn binder var ann = RecAnn (Expr binder var (RecAnn binder var ann)) ann
-
--- | Extracts the type of the term from the term's annotation.
-getType :: Expr binder var (RecAnn binder var ann) -> Expr binder var (RecAnn binder var ann)
-getType e = let RecAnn t _ = annotation e in t
+pattern Type1 :: Expr binder var ann
+pattern Type1 = Type 1
 
 -- * Type synonyms for literals
 
@@ -72,3 +54,47 @@ type OutputBinder = Binder OutputBind OutputVar OutputAnn
 type OutputExpr   = Expr   OutputBind OutputVar OutputAnn
 type OutputDecl   = Decl   OutputBind OutputVar OutputAnn
 type OutputProg   = Prog   OutputBind OutputVar OutputAnn
+
+-- * Types pre type-checking
+
+type UncheckedAnn  = Provenance
+type UncheckedExpr = DeBruijnExpr UncheckedAnn
+type UncheckedDecl = DeBruijnDecl UncheckedAnn
+type UncheckedProg = DeBruijnProg UncheckedAnn
+
+-- * Types post type-checking
+
+type CheckedAnn  = DeBruijnAnn Provenance
+type CheckedExpr = DeBruijnExpr CheckedAnn
+type CheckedDecl = DeBruijnDecl CheckedAnn
+type CheckedProg = DeBruijnProg CheckedAnn
+
+
+-- |Extract a term's annotation
+annotation :: Expr name binder ann -> ann
+annotation = \case
+  Type     _         -> error "Should not be requesting an annotation from Type"
+  Constraint         -> error "Should not be requesting an annotation from Constraint"
+  Meta     _         -> error "Should not be requesting an annotation from Meta"
+  Ann      ann _ _   -> ann
+  App      ann _ _   -> ann
+  Pi       ann _ _   -> ann
+  Builtin  ann _     -> ann
+  Bound    ann _     -> ann
+  Free     ann _     -> ann
+  Let      ann _ _ _ -> ann
+  Lam      ann _ _   -> ann
+  Literal  ann _     -> ann
+  Seq      ann _     -> ann
+
+-- | Extracts the type of the term from the term's annotation.
+getType :: Expr binder var (RecAnn binder var ann) -> Expr binder var (RecAnn binder var ann)
+getType (Type l)   = Type (l + 1)
+getType Constraint = Type1
+getType e          = let RecAnn t _ = annotation e in t
+
+-- * Instances
+
+instance HasProvenance DeclName where
+  prov (DeclName p _) = p
+
