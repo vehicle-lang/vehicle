@@ -57,6 +57,7 @@
 # - ignore: {name: Use let}
 # - ignore: {name: Use const, within: SpecialModule} # Only within certain modules
 - ignore: {name: Redundant return}
+- ignore: {name: Avoid lambda}
 
 # Define some custom infix operators
 # - fixity: infixr 3 ~^#^~

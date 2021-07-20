@@ -10,7 +10,6 @@ import Data.Version (Version, showVersion)
 import Prettyprinter as Pretty hiding (squotes)
 
 import Vehicle.Frontend.AST (Tree(..), OutputAnn, OutputType, OutputExpr, annotation)
-import Vehicle.Frontend.AST.Info ( Info(..) )
 import Vehicle.Frontend.Print ()
 import Vehicle.Prelude
 import Vehicle.Error

@@ -13,7 +13,7 @@ import Data.Sequence (Seq)
 import Vehicle.Core.AST.Builtin
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
-import Vehicle.Core.AST.Utils (RecAnn(..))
+import Vehicle.Core.AST.Utils (RecAnn(..), annotation)
 import Vehicle.Prelude
 
 
@@ -21,8 +21,8 @@ import Vehicle.Prelude
 type TypedAnn  = DeBruijnAnn Provenance
 type TypedExpr = DeBruijnExpr TypedAnn
 
-freshAnn :: TypedExpr -> TypedAnn
-freshAnn t = RecAnn t mempty
+makeTypeAnn :: TypedExpr -> TypedAnn
+makeTypeAnn t = RecAnn t mempty
 
 getFunResultType :: TypedExpr -> TypedExpr
 getFunResultType (Pi _ann _binder res) = res
@@ -31,13 +31,13 @@ getFunResultType _                     = error "expecting a Pi type"
 -- * DSL for writing kinds as info annotations
 
 con :: Builtin -> TypedExpr -> TypedExpr
-con b t = Builtin (freshAnn t) b
+con b t = Builtin (makeTypeAnn t) b
 
 (~>) :: TypedExpr -> TypedExpr -> TypedExpr
-x ~> y = Pi (freshAnn kType) (PiBinder (freshAnn x) Explicit Nothing x) y
+x ~> y = Pi (makeTypeAnn kType) (Binder (makeTypeAnn x) Explicit Machine x) y
 
 app :: TypedExpr -> TypedExpr -> TypedExpr
-app fun arg = App (freshAnn (getFunResultType fun)) fun (Arg Explicit arg)
+app fun arg = App (makeTypeAnn (getFunResultType fun)) fun (Arg Explicit arg)
 
 -- * Kinds
 
@@ -49,21 +49,26 @@ kConstraint = con Constraint Kind
 
 -- * Types
 
+tUpperBound :: TypedExpr -> TypedExpr -> TypedExpr
+tUpperBound e1 e2 = case annotation e1 of
+  Kind -> _
+  _ -> _
+
 tPrim :: PrimitiveType -> TypedExpr
 tPrim t = con (PrimitiveType t) kType
 
-tPrimNumber :: PrimitiveNumber -> TypedExpr
-tPrimNumber = tPrim . Number
+tPrimNumber :: PrimitiveNumberType -> TypedExpr
+tPrimNumber = tPrim . TNumber
 
-tPrimTruth :: PrimitiveTruth -> TypedExpr
-tPrimTruth = tPrim . Truth
+tPrimTruth :: PrimitiveTruthType -> TypedExpr
+tPrimTruth = tPrim . TTruth
 
 tBool, tProp, tNat, tInt, tReal :: TypedExpr
-tBool    = tPrimTruth Bool
-tProp    = tPrimTruth Prop
-tNat     = tPrimNumber Nat
-tInt     = tPrimNumber Int
-tReal    = tPrimNumber Real
+tBool    = tPrimTruth  TBool
+tProp    = tPrimTruth  TProp
+tNat     = tPrimNumber TNat
+tInt     = tPrimNumber TInt
+tReal    = tPrimNumber TReal
 
 tTensor :: TypedExpr -> TypedExpr -> TypedExpr
 tTensor tElem tDim = con Tensor kType `app` tDim `app` tElem
@@ -80,7 +85,7 @@ tForall k f = quantBody
   where
     badBody   = f (Bound (RecAnn kType mempty) (Index (-1)))
     body      = liftAcc (-1) badBody
-    quantBody = Pi (RecAnn kType mempty) (PiBinder (freshAnn k) Implicit (Just Machine) k) body
+    quantBody = Pi (RecAnn kType mempty) (Binder (makeTypeAnn k) Implicit Machine k) body
 
 -- * Constraints
 
@@ -110,7 +115,7 @@ isQuantifiable p tDom tTruth = constraint p IsQuantifiable `app` tDom `app` tTru
 list :: Seq TypedExpr -> TypedExpr -> TypedExpr
 list es tElem =
   tForall kType $ \tCont ->
-    isContainer mempty tCont tElem ~> Seq (freshAnn tCont) es
+    isContainer mempty tCont tElem ~> Seq (makeTypeAnn tCont) es
 
 -- * Builtins
 

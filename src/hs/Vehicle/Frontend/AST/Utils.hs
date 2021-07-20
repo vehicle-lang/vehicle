@@ -1,140 +1,116 @@
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
 module Vehicle.Frontend.AST.Utils where
 
 import Data.List.NonEmpty(NonEmpty(..))
+import Numeric.Natural (Natural)
 
 import Vehicle.Prelude
-import Vehicle.Frontend.AST.Core (Tree(..), EArg, Expr, Type)
-import Vehicle.Frontend.AST.Info (Info)
+import Vehicle.Frontend.AST.Core
 
--- |Extract the top-level annotation from a tree
-annotation :: forall sort ann.
-              KnownSort sort =>
-              Tree ann sort ->
-              ann sort
-annotation = case sortSing :: SSort sort of
+-- |Extract the top-level annotation from a expression
+annotation :: Expr ann -> ann
+annotation = \case
   -- Kinds
-  SKIND -> \case
-    KFun     ann _k1 _k2 -> ann
-    KType    ann         -> ann
-    KDim     ann         -> ann
-    KDimList ann         -> ann
+  Kind                    -> error "Should not be requesting an annotation from Kind"
+  Type    ann             -> ann
 
   -- Types
-  STYPE -> \case
-    TForall     ann _ns _t  -> ann
-    TVar        ann _n      -> ann
-    TFun        ann _t1 _t2 -> ann
-    TBool       ann         -> ann
-    TProp       ann         -> ann
-    TReal       ann         -> ann
-    TInt        ann         -> ann
-    TList       ann _t      -> ann
-    TTensor     ann _t1 _t2 -> ann
-    TAdd        ann _t1 _t2 -> ann
-    TLitDim     ann _i      -> ann
-    TCons       ann _t1 _t2 -> ann
-    TLitDimList ann _ts     -> ann
-
-  -- Type arguments
-  STARG -> \case
-    TArg ann _n -> ann
+  Forall     ann _ns _t  -> ann
+  Fun        ann _t1 _t2 -> ann
+  Bool       ann         -> ann
+  Prop       ann         -> ann
+  Real       ann         -> ann
+  Int        ann         -> ann
+  List       ann _t      -> ann
+  Tensor     ann _t1 _t2 -> ann
 
   -- Expressions
-  SEXPR -> \case
-    EAnn     ann _e _t       -> ann
-    ELet     ann _ds _e      -> ann
-    ELam     ann _ns _e      -> ann
-    EApp     ann _e1 _e2     -> ann
-    EVar     ann _n          -> ann
-    ETyApp   ann _e _t       -> ann
-    ETyLam   ann _ns _e      -> ann
-    EIf      ann _e1 _e2 _e3 -> ann
-    EImpl    ann _e1 _e2     -> ann
-    EAnd     ann _e1 _e2     -> ann
-    EOr      ann _e1 _e2     -> ann
-    ENot     ann _e          -> ann
-    ETrue    ann             -> ann
-    EFalse   ann             -> ann
-    EEq      ann _e1 _e2     -> ann
-    ENeq     ann _e1 _e2     -> ann
-    ELe      ann _e1 _e2     -> ann
-    ELt      ann _e1 _e2     -> ann
-    EGe      ann _e1 _e2     -> ann
-    EGt      ann _e1 _e2     -> ann
-    EMul     ann _e1 _e2     -> ann
-    EDiv     ann _e1 _e2     -> ann
-    EAdd     ann _e1 _e2     -> ann
-    ESub     ann _e1 _e2     -> ann
-    ENeg     ann _e          -> ann
-    ELitInt  ann _i          -> ann
-    ELitReal ann _d          -> ann
-    ECons    ann _e1 _e2     -> ann
-    EAt      ann _e1 _e2     -> ann
-    EAll     ann             -> ann
-    EAny     ann             -> ann
-    ELitSeq  ann _es         -> ann
+  Ann     ann _e _t       -> ann
+  Literal ann _l          -> ann
+  Var     ann _n          -> ann
+  Let     ann _ds _e      -> ann
+  Lam     ann _ns _e      -> ann
+  App     ann _e1 _e2     -> ann
+  If      ann _e1 _e2 _e3 -> ann
+  Impl    ann _e1 _e2     -> ann
+  And     ann _e1 _e2     -> ann
+  Or      ann _e1 _e2     -> ann
+  Not     ann _e          -> ann
+  Eq      ann _e1 _e2     -> ann
+  Neq     ann _e1 _e2     -> ann
+  Le      ann _e1 _e2     -> ann
+  Lt      ann _e1 _e2     -> ann
+  Ge      ann _e1 _e2     -> ann
+  Gt      ann _e1 _e2     -> ann
+  Mul     ann _e1 _e2     -> ann
+  Div     ann _e1 _e2     -> ann
+  Add     ann _e1 _e2     -> ann
+  Sub     ann _e1 _e2     -> ann
+  Neg     ann _e          -> ann
+  Cons    ann _e1 _e2     -> ann
+  At      ann _e1 _e2     -> ann
+  All     ann             -> ann
+  Any     ann             -> ann
+  Seq     ann _es         -> ann
 
-  -- Expression arguments
-  SEARG -> \case
-    EArg ann _n -> ann
+-- * Type synonyms for literals
 
-  -- Declarations
-  SDECL -> \case
-    DeclNetw ann _n _t        -> ann
-    DeclData ann _n _t        -> ann
-    DefType  ann _n _ns _t    -> ann
-    DefFun   ann _n _t _ns _e -> ann
+pattern LitNat :: ann -> Natural -> Expr ann
+pattern LitNat ann n = Literal ann (LNat n)
 
-  -- Programs
-  SPROG -> \case
-    Main ann _ds -> ann
+pattern LitInt :: ann -> Integer -> Expr ann
+pattern LitInt ann n = Literal ann (LInt n)
 
--- | Type of annotations attached to the Frontend AST after parsing
+pattern LitReal :: ann -> Double -> Expr ann
+pattern LitReal ann n = Literal ann (LReal n)
+
+pattern LitBool :: ann -> Bool -> Expr ann
+pattern LitBool ann n = Literal ann (LBool n)
+
+
+-- * Type of annotations attached to the Frontend AST after parsing
 -- before being analysed by the compiler
-type InputAnn = K Provenance :: Sort -> *
 
-type InputTree sort = Tree InputAnn sort
-type InputKind = InputTree 'KIND
-type InputType = InputTree 'TYPE
-type InputTArg = InputTree 'TARG
-type InputExpr = InputTree 'EXPR
-type InputEArg = InputTree 'EARG
-type InputDecl = InputTree 'DECL
-type InputProg = InputTree 'PROG
+data MaybeRecAnn ann = MaybeRecAnn (Maybe (Expr (RecAnn ann))) ann
 
+type InputAnn = Provenance
+
+type InputArg     = Arg     InputAnn
+type InputLetDecl = LetDecl InputAnn
+type InputExpr    = Expr    InputAnn
+type InputDecl    = Decl    InputAnn
+type InputIdent   = Ident   InputAnn
+type InputProg    = Prog    InputAnn
+
+{-
 instance KnownSort sort => HasProvenance (InputAnn sort) where
   prov (K p) = p
 
 instance KnownSort sort => HasProvenance (InputTree sort) where
   prov = prov . annotation
+-}
 
--- | Type of annotations attached to the Frontend AST that are output by the compiler
-type OutputAnn = Info :*: K Provenance :: Sort -> *
+-- * Type of annotations attached to the Frontend AST that are output by the compiler
 
-type OutputTree sort = Tree OutputAnn sort
-type OutputKind = OutputTree 'KIND
-type OutputType = OutputTree 'TYPE
-type OutputTArg = OutputTree 'TARG
-type OutputExpr = OutputTree 'EXPR
-type OutputEArg = OutputTree 'EARG
-type OutputDecl = OutputTree 'DECL
-type OutputProg = OutputTree 'PROG
+-- | An annotation that stores both the type of the expression and some other arbitrary annotations.
+-- Used to avoid unrestricted type-level recursion.
+data RecAnn ann = RecAnn (Expr (RecAnn ann)) ann
 
+type OutputAnn = RecAnn Provenance
+
+type OutputArg     = Arg     OutputAnn
+type OutputLetDecl = LetDecl OutputAnn
+type OutputExpr    = Expr    OutputAnn
+type OutputDecl    = Decl    OutputAnn
+type OutputIdent   = Ident   OutputAnn
+type OutputProg    = Prog    OutputAnn
+
+{-
 instance KnownSort sort => HasProvenance (OutputAnn sort) where
   prov (_ :*: K p) = p
 
 instance KnownSort sort => HasProvenance (OutputTree sort) where
   prov = prov . annotation
-
-pattern ELet1 :: ann 'EXPR -> ann 'DECL -> EArg ann -> Type ann -> Expr ann -> Expr ann -> Expr ann
-pattern ELet1 ann1 ann2 n t e1 e2 = ELet ann1 (DefFun ann2 n t [] e1 :| []) e2
+-}
+pattern Let1 :: ann -> ann -> Ident ann -> Expr ann -> Expr ann -> Expr ann
+pattern Let1 ann1 ann2 n e1 e2 = Let ann1 (LetDecl ann2 n e1 :| []) e2

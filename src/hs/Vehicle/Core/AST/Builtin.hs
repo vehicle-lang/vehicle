@@ -53,22 +53,22 @@ data Constraint
   | IsQuantifiable
   deriving (Eq, Ord, Enum, Show)
 
-pattern PrimitiveNumber :: PrimitiveNumber -> Builtin
-pattern PrimitiveNumber prim = PrimitiveType (Number prim)
+pattern PrimitiveNumber :: PrimitiveNumberType -> Builtin
+pattern PrimitiveNumber prim = PrimitiveType (TNumber prim)
 
-pattern PrimitiveTruth :: PrimitiveTruth -> Builtin
-pattern PrimitiveTruth prim = PrimitiveType (Truth prim)
+pattern PrimitiveTruth :: PrimitiveTruthType -> Builtin
+pattern PrimitiveTruth prim = PrimitiveType (TTruth prim)
 
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols =
   -- Types
   [ "Type"       |-> Type
   , "Constraint" |-> Constraint
-  , "Bool"       |-> PrimitiveTruth Bool
-  , "Prop"       |-> PrimitiveTruth Prop
-  , "Nat"        |-> PrimitiveNumber Nat
-  , "Int"        |-> PrimitiveNumber Int
-  , "Real"       |-> PrimitiveNumber Real
+  , "Bool"       |-> PrimitiveTruth  TBool
+  , "Prop"       |-> PrimitiveTruth  TProp
+  , "Nat"        |-> PrimitiveNumber TNat
+  , "Int"        |-> PrimitiveNumber TInt
+  , "Real"       |-> PrimitiveNumber TReal
   , "List"       |-> List
   , "Tensor"     |-> Tensor
   -- Constraints

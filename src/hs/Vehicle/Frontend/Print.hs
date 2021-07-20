@@ -11,16 +11,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 
-module Vehicle.Frontend.Print (printTree) where
+module Vehicle.Frontend.Print (printExpr) where
 
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
+import Data.Functor.Foldable (Recursive(..))
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 import Prettyprinter.Render.Text (renderStrict)
 
-import Vehicle.Frontend.AST (Tree)
-import Vehicle.Frontend.AST.Recursive.Unsorted
+import Vehicle.Frontend.AST
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -64,87 +62,85 @@ compileInfixOp2 :: Precedence -> Symbol -> Code -> Code -> Code
 compileInfixOp2 p symbol = annotateOp2 True p (pretty symbol)
 
 -- |Compiling literal sequences
-compileLitSeq :: NonEmpty Code -> Code
-compileLitSeq ls = annotate 20 (encloseSep "[ " " ]" " , " (NonEmpty.toList ls))
+compileSeq :: [Code] -> Code
+compileSeq ls = annotate 20 (encloseSep "[ " " ]" " , " ls)
 
 --------------------------------------------------------------------------------
 -- Compilation of program tree
 
-compile :: forall sort ann. KnownSort sort => Tree ann sort -> Code
-compile = foldTree compileF
+class Compile a where
+  compile :: a -> Code
 
-compileF :: (forall sort. KnownSort sort => TreeF ann sort Code -> Code)
-compileF (tree :: TreeF ann sort Code) = case sortSing :: SSort sort of
-  SKIND -> mempty
+instance Compile Literal where
+  compile = \case
+    LNat  v -> pretty v
+    LInt  v -> pretty v
+    LReal v -> pretty v
+    LBool v -> pretty v
 
-  STYPE -> case tree of
-    TForallF     _ann ns t  -> "forall" <+> hsep ns <+> t
-    TAppF        _ann t1 t2 -> compileApp1 t1 t2
-    TVarF        _ann n     -> pretty n
-    TFunF        _ann t1 t2 -> compileInfixOp2 2 "->"  t1 t2
-    TPropF       _ann       -> compileConstant "Prop"
-    TBoolF       _ann       -> compileConstant "Bool"
-    TRealF       _ann       -> compileConstant "Real"
-    TIntF        _ann       -> compileConstant "Int"
-    TListF       _ann t     -> compileApp1 "List"     t
-    TTensorF     _ann t1 t2 -> compileApp2 "Tensor"   t1 t2
-    TAddF        _ann t1 t2 -> compileInfixOp2 2 "+"  t1 t2
-    TConsF       _ann t1 t2 -> compileInfixOp2 1 "::" t1 t2
-    TLitDimF     _ann i     -> pretty i
-    TLitDimListF _ann ts    -> compileLitSeq ts
+instance Compile (Arg ann) where
+  compile (Arg _ann Explicit  e) = pretty e
+  compile (Arg _ann Implicit _e) = ""
 
-  STARG -> case tree of
-   TArgF _ann n -> pretty n
+instance Compile (LetDecl ann) where
+  compile (LetDecl _ann n e) = compile n <+> compile e
 
-  SEXPR -> case tree of
-    EAnnF     _ann e t      -> e <+> ":" <+> t
-    ELetF     _ann ds e     -> "let" <+> vsep ds <+> "in" <+> e
-    ELamF     _ann ns e     -> "λ" <+> vsep ns <+> "→" <+> e
-    EAppF     _ann e1 e2    -> e1 <+> parens e2
-    EVarF     _ann n        -> pretty n
-    ETyAppF   _ann _e _t    -> mempty
-    ETyLamF   _ann _ns _e   -> mempty
-    EIfF      _ann e1 e2 e3 -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
-    EImplF    _ann e1 e2    -> compileInfixOp2 4 "=>"  e1 e2
-    EAndF     _ann e1 e2    -> compileInfixOp2 5 "and" e1 e2
-    EOrF      _ann e1 e2    -> compileInfixOp2 6 "or"  e1 e2
-    ENotF     _ann e        -> compileApp1     "not" e
-    ETrueF    _ann          -> compileConstant "True"
-    EFalseF   _ann          -> compileConstant "False"
-    EAllF     _ann          -> "∀"
-    EAnyF     _ann          -> "∃"
-    EEqF      _ann e1 e2    -> compileInfixOp2 8 "==" e1 e2
-    ENeqF     _ann e1 e2    -> compileInfixOp2 8 "!=" e1 e2
-    ELeF      _ann e1 e2    -> compileInfixOp2 8 "<=" e1 e2
-    ELtF      _ann e1 e2    -> compileInfixOp2 8 "<"  e1 e2
-    EGeF      _ann e1 e2    -> compileInfixOp2 8 ">=" e1 e2
-    EGtF      _ann e1 e2    -> compileInfixOp2 8 ">"  e1 e2
-    EMulF     _ann e1 e2    -> compileInfixOp2 8 "*"  e1 e2
-    EDivF     _ann e1 e2    -> compileInfixOp2 8 "/"  e1 e2
-    EAddF     _ann e1 e2    -> compileInfixOp2 9 "+"  e1 e2
-    ESubF     _ann e1 e2    -> compileInfixOp2 9 "-"  e1 e2
-    ENegF     _ann e        -> compileApp1 "-" e
-    ELitIntF  _ann i        -> pretty i
-    ELitRealF _ann d        -> pretty d
-    EConsF    _ann e1 e2    -> compileInfixOp2 3 "::" e1 e2
-    EAtF      _ann  e1 e2   -> compileInfixOp2 11 "!"    e1 e2
-    ELitSeqF  _ann es       -> compileLitSeq es
+instance Compile (Ident ann) where
+  compile (Ident _ann n) = pretty n
 
-  SEARG -> case tree of
-    EArgF _ann n -> pretty n
+instance Compile (Expr ann) where
+  compile = cata $ \case
+    KindF                  -> "Kind"
+    TypeF    _ann          -> "Type"
 
-  SDECL -> case tree of
-    DeclDataF _ann n t      -> "dataset" <+> n <+> ":" <+> t
-    DeclNetwF _ann n t      -> "network" <+> n <+> ":" <+> t
-    DefTypeF  _ann n ns t   -> "type"    <+> n <+> hsep ns <+> "=" <+> t
-    DefFunF   _ann n t ns e -> n <+> ":" <+> t <> hardline <> n <+> hsep ns <+> "=" <+> e
+    ForallF  _ann ns t     -> "forall" <+> hsep ns <+> t
+    FunF     _ann t1 t2    -> compileInfixOp2 2 "->"  t1 t2
+    PropF    _ann          -> compileConstant "Prop"
+    BoolF    _ann          -> compileConstant "Bool"
+    RealF    _ann          -> compileConstant "Real"
+    IntF     _ann          -> compileConstant "Int"
+    ListF    _ann t        -> compileApp1 "List"     t
+    TensorF  _ann t1 t2    -> compileApp2 "Tensor"   t1 t2
 
-  -- Programs
-  SPROG -> case tree of
-    MainF _ann ds -> vsep2 ds
+    AnnF     _ann e t      -> parens (e <+> ":" <+> t)
+    LiteralF _ann l        -> compile l
+    LetF     _ann ds e     -> "let" <+> vsep (fmap compile ds) <+> "in" <+> e
+    LamF     _ann ns e     -> "\\"  <+> hsep (fmap compile ns) <+> "->" <+> e
+    AppF     _ann e1 e2    -> e1 <+> parens (compile e2)
+    VarF     _ann n        -> pretty n
+    IfF      _ann e1 e2 e3 -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
+    ImplF    _ann e1 e2    -> compileInfixOp2 4 "=>"  e1 e2
+    AndF     _ann e1 e2    -> compileInfixOp2 5 "and" e1 e2
+    OrF      _ann e1 e2    -> compileInfixOp2 6 "or"  e1 e2
+    NotF     _ann e        -> compileApp1     "not" e
+    AllF     _ann          -> "∀"
+    AnyF     _ann          -> "∃"
+    EqF      _ann e1 e2    -> compileInfixOp2 8 "==" e1 e2
+    NeqF     _ann e1 e2    -> compileInfixOp2 8 "!=" e1 e2
+    LeF      _ann e1 e2    -> compileInfixOp2 8 "<=" e1 e2
+    LtF      _ann e1 e2    -> compileInfixOp2 8 "<"  e1 e2
+    GeF      _ann e1 e2    -> compileInfixOp2 8 ">=" e1 e2
+    GtF      _ann e1 e2    -> compileInfixOp2 8 ">"  e1 e2
+    MulF     _ann e1 e2    -> compileInfixOp2 8 "*"  e1 e2
+    DivF     _ann e1 e2    -> compileInfixOp2 8 "/"  e1 e2
+    AddF     _ann e1 e2    -> compileInfixOp2 9 "+"  e1 e2
+    SubF     _ann e1 e2    -> compileInfixOp2 9 "-"  e1 e2
+    NegF     _ann e        -> compileApp1 "-" e
+    SeqF     _ann es       -> compileSeq es
+    ConsF    _ann e1 e2    -> compileInfixOp2 3 "::" e1 e2
+    AtF      _ann  e1 e2   -> compileInfixOp2 11 "!" e1 e2
 
-instance KnownSort sort => Pretty (Tree ann sort) where
-  pretty t = unAnnotate (compile t)
+instance Compile (Decl ann) where
+  compile = \case
+    DeclData _ann n t      -> "dataset" <+> compile n <+> ":" <+> compile t
+    DeclNetw _ann n t      -> "network" <+> compile n <+> ":" <+> compile t
+    DefType  _ann n ns t   -> "type"    <+> compile n <+> hsep (fmap compile ns) <+> "=" <+> compile t
+    DefFun   _ann n t ns e ->
+      compile n <+> ":" <+> compile t <> hardline <>
+      compile n <+> hsep (fmap compile ns) <+> "=" <+> compile e
 
-printTree :: KnownSort sort => Tree ann sort -> Text
-printTree t = renderStrict $ layoutPretty defaultLayoutOptions (pretty t)
+instance Compile (Prog ann) where
+  compile (Main ds) = vsep2 (fmap compile ds)
+
+printExpr :: Compile a => a -> Text
+printExpr t = renderStrict $ layoutPretty defaultLayoutOptions (compile t)

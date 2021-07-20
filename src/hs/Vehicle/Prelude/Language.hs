@@ -2,32 +2,41 @@
 module Vehicle.Prelude.Language where
 
 import Data.Text (Text)
+import Numeric.Natural (Natural)
 
--- |Symbols in the language are represented by the `Text` type.
+-- | Symbols in the language are represented by the `Text` type.
 type Symbol = Text
 
 -- | Visibility of function arguments
 data Visibility = Explicit | Implicit
   deriving (Eq, Ord, Show)
 
-data PrimitiveNumber
-  = Nat
-  | Int
-  | Real
+-- | Literals in the language
+data Literal
+  = LNat  Natural
+  | LInt  Integer
+  | LReal Double
+  | LBool Bool
+  deriving (Eq, Ord, Show)
+
+data PrimitiveNumberType
+  = TNat
+  | TInt
+  | TReal
   deriving (Eq, Ord, Show, Read, Enum)
 
-data PrimitiveTruth
-  = Bool
-  | Prop
+data PrimitiveTruthType
+  = TBool
+  | TProp
   deriving (Eq, Ord, Show, Read, Enum)
 
 data PrimitiveType
-  = Number PrimitiveNumber
-  | Truth  PrimitiveTruth
+  = TNumber PrimitiveNumberType
+  | TTruth  PrimitiveTruthType
   deriving (Eq, Ord, Show)
 
-data PrimitiveContainer
-  = ListContainer
-  | TensorContainer
-  | SetContainer
+data ContainerType
+  = TListContainer
+  | TTensorContainer
+  | TSetContainer
   deriving (Eq, Ord, Show, Enum)

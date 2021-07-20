@@ -16,26 +16,28 @@
 {-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
-module Vehicle.Core.Compile.Type
-  ( TypeError(..)
-  , checkInfer
-  ) where
+module Vehicle.Core.Compile.Type where
 
 import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Control.Monad.Supply (SupplyT, demand)
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Writer (MonadWriter(..))
+import Control.Monad.State (MonadState(..), StateT(..))
 import Data.Text (Text)
+import Data.List (foldl')
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.IntMap (IntMap)
+import Data.IntMap qualified as IntMap
 import Data.Coerce (coerce)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.List.NonEmpty (NonEmpty(..))
 import Prettyprinter ( (<+>), Pretty(pretty), encloseSep, lbracket, rbracket, comma )
 
-import Vehicle.Core.AST
-import Vehicle.Core.Compile.Dataflow
-import Vehicle.Core.Print ( prettyInfo )
+import Vehicle.Core.AST hiding (lift)
+-- import Vehicle.Core.Print ( prettyInfo )
 import Vehicle.Prelude
 import Vehicle.Error
 
@@ -46,7 +48,7 @@ import Vehicle.Error
 --
 
 -- * Errors thrown during type checking
-
+{-
 data TypeError
   = IndexOutOfBounds
       Provenance  -- ^ The location of the deBruijn index.
@@ -54,8 +56,8 @@ data TypeError
   | forall sort. KnownSort sort =>
     Mismatch
       Provenance  -- ^ The location of the mismatch.
-      [Info DeBruijn sort] -- ^ The possible inferred types.
-      (Info DeBruijn sort) -- ^ The expected type.
+      [DeBruijnExpr Provenance] -- ^ The possible inferred types.
+      (DeBruijnExpr Provenance) -- ^ The expected type.
   | MissingAnnotation
       Provenance  -- ^ The location of the missing annotation.
   | UnsupportedOperation
@@ -85,18 +87,85 @@ instance MeaningfulError TypeError where
     , problem    = "type-checking of" <+> squotes t <+> "not currently supported"
     , fix        = "unknown"
     }
-
+-}
 -- * Type and kind contexts
 
 -- |Type context.
-data Ctx = Ctx { typeInfo :: Seq (Info DeBruijn 'TYPE), exprInfo :: Seq (Info DeBruijn 'EXPR) }
 
-instance Semigroup Ctx where
-  Ctx ti1 ei1 <> Ctx ti2 ei2 = Ctx (ti1 <> ti2) (ei1 <> ei2)
+type TypingError = ()
+type CheckedExpr = Expr Name Index (RecAnn Name Index Provenance)
+type UncheckedExpr = Expr Name Index Provenance
 
-instance Monoid Ctx where
-  mempty = Ctx mempty mempty
+type DeclCtx  = Map Ident CheckedExpr
+type BoundCtx = [CheckedExpr]
+data MetaCtx  = MetaCtx
+  { nextMeta               :: Meta
+  , metaVariableTypes      :: IntMap CheckedExpr
+  , unificationConstraints :: [(CheckedExpr, CheckedExpr)]
+  , typeClassConstraints   :: [CheckedExpr]
+  }
 
+type TCM a =
+  StateT MetaCtx
+    (ReaderT BoundCtx
+      (ReaderT DeclCtx
+        (Except TypingError)))
+          a
+
+getMetaCtx :: TCM MetaCtx
+getMetaCtx = get
+
+getBoundCtx :: TCM BoundCtx
+getBoundCtx = ask
+
+getDeclCtx :: TCM DeclCtx
+getDeclCtx = lift (lift ask)
+
+freshMetaVar :: TCM Meta
+freshMetaVar = do
+  MetaCtx {..} <- getMetaCtx;
+  put $ MetaCtx { nextMeta = succ nextMeta , ..}
+  return nextMeta
+
+freshMeta :: CheckedExpr -> TCM CheckedExpr
+freshMeta resultType = do
+  -- Create a fresh name
+  freshName <- freshMetaVar
+  -- Create a Pi type that abstracts over all bound variables
+  boundCtx  <- getBoundCtx
+
+  let makePi :: CheckedExpr -> CheckedExpr -> CheckedExpr
+      makePi a b = Pi (makeTypeAnn _) (Binder (makeTypeAnn (getType a)) Explicit Machine a) b
+
+  let metaType = foldl' makePi resultType boundCtx
+  _
+
+  -- Stores type in meta-context
+
+  -- Returns a meta applied to every bound variable in the context
+
+check :: CheckedExpr     -- Type we're checking against
+      -> UncheckedExpr   -- Expression being type-checked
+      -> TCM CheckedExpr
+check target = \case
+  Kind               -> _
+  Meta     _         -> _
+  Ann      ann _ _   -> _
+  App      ann _ _   -> _
+  Pi       ann _ _   -> _
+  Builtin  ann _     -> _
+  Bound    ann _     -> _
+  Free     ann _     -> _
+  Let      ann _ _ _ -> _
+  Lam      ann _ _   -> _
+  Literal  ann _     -> _
+  Seq      ann _     -> _
+
+infer :: UncheckedExpr
+      -> TCM (CheckedExpr, CheckedExpr)
+infer = _
+
+{-
 -- |Create a context with a single piece of information of the given sort.
 singletonCtx :: (sort `In` ['TYPE, 'EXPR]) => SSort sort -> Info DeBruijn sort -> Ctx
 singletonCtx STYPE info = Ctx (Seq.singleton info) Seq.empty
@@ -120,19 +189,6 @@ type CheckedTree (sort :: Sort) = Tree DeBruijn (Info DeBruijn :*: K Provenance)
 --
 type TCM (sort :: Sort) = DataflowT sort Ctx (SupplyT Meta (Except TypeError))
 
--- |The checking monad, which augments the monad stack with a reader monad, which provides
---  the type to check against.
-type Check (sort :: Sort) (a :: *) = ReaderT (Info DeBruijn sort) (TCM sort) a
-
--- |The inference pseudo-monad, which is exactly the type checking monad, but requires that
---  the return type is a pair of the return value and the inferred information.
---
---  Note that |Infer sort| does not form a monad, as there is no way to know how to combine
---  the various bits of information. We cannot use a writer monad, as we do not have a
---  sensible monoid instance for |Info sort|, and we want to change the manner of combining
---  these bits of information for each inference steep.
---
-type Infer (sort :: Sort) (a :: *) = TCM sort (a, Info DeBruijn sort)
 
 -- |Type which wraps a pair of a checking and an inference monad such that they can be used
 --  in a sorted position, e.g., as the recursive position in |foldTree|.
@@ -503,4 +559,5 @@ runInfer (SCI (_chk, inf)) = inf
 -- - variable with polymorphic type
 -- - union-find algorithm for unification and substitution
 
+-}
 -}

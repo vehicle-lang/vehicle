@@ -1,4 +1,3 @@
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Core.Parse
@@ -102,51 +101,42 @@ lookupBuiltin (BuiltinToken tk) = case builtinFromSymbol (tkSymbol tk) of
     Nothing -> throwError $ UnknownBuiltin $ toToken tk
     Just v  -> return v
 
-instance Convert B.Binder V.InputPiBinder where
+instance Convert B.Binder V.InputBinder where
   conv = \case
-    B.ExplicitNameAndType n e -> V.PiBinder (tkProvenance n) Explicit (Just (tkSymbol n)) <$> conv e
-    B.ImplicitNameAndType n e -> V.PiBinder (tkProvenance n) Implicit (Just (tkSymbol n)) <$> conv e
-    B.ExplicitName n          -> throwError $ MalformedPiBinder (toToken n)
-    B.ImplicitName n          -> throwError $ MalformedPiBinder (toToken n)
-    B.ExplicitType e          -> do ce <- conv e; return $ V.PiBinder (annotation ce) Explicit Nothing ce
-    B.EmplicitType e          -> do ce <- conv e; return $ V.PiBinder (annotation ce) Implicit Nothing ce
-
-instance Convert B.Binder V.InputLamBinder where
-  conv = \case
-    B.ExplicitNameAndType n e -> V.LamBinder (tkProvenance n) Explicit (tkSymbol n) . Just <$> conv e
-    B.ImplicitNameAndType n e -> V.LamBinder (tkProvenance n) Implicit (tkSymbol n) . Just <$> conv e
-    B.ExplicitName n          -> return $ V.LamBinder (tkProvenance n) Explicit (tkSymbol n) Nothing
-    B.ImplicitName n          -> return $ V.LamBinder (tkProvenance n) Implicit (tkSymbol n) Nothing
-    B.ExplicitType e          -> do ce <- conv e; throwError $ MalformedLamBinder ce
-    B.EmplicitType e          -> do ce <- conv e; throwError $ MalformedLamBinder ce
+    B.ExplicitNameAndType n e -> V.Binder (tkProvenance n) Explicit (tkSymbol n) <$> conv e
+    B.ImplicitNameAndType n e -> V.Binder (tkProvenance n) Implicit (tkSymbol n) <$> conv e
+    B.ExplicitName n          -> return $ V.Binder (tkProvenance n) Explicit (tkSymbol n) (V.Meta _)
+    B.ImplicitName n          -> return $ V.Binder (tkProvenance n) Implicit (tkSymbol n) (V.Meta _)
+    B.ExplicitType e          -> do ce <- conv e; return $ V.Binder (annotation ce) Explicit _ ce
+    B.EmplicitType e          -> do ce <- conv e; return $ V.Binder (annotation ce) Implicit _ ce
 
 instance Convert B.Arg V.InputArg where
   conv = \case
     B.ImplicitArg e -> V.Arg Implicit <$> conv e
     B.ExplicitArg e -> V.Arg Explicit <$> conv e
 
-instance Convert B.Lit V.Literal where
+instance Convert B.Lit Literal where
   conv = \case
-    B.LitNat  n -> return $ V.LitInt  n
-    B.LitReal r -> return $ V.LitReal r
-    B.LitBool b -> return $ V.LitBool (read (unpack $ tkSymbol b))
+    B.LitNat  n -> return $ LInt  n
+    B.LitReal r -> return $ LReal r
+    B.LitBool b -> return $ LBool (read (unpack $ tkSymbol b))
 
 instance Convert B.Expr V.InputExpr where
   conv = \case
     B.Kind             -> return V.Kind
+    B.Meta m           -> return $ V.Meta (fromIntegral m)
+    B.Ann term typ     -> op2 V.Ann <$> conv term <*> conv typ
     B.App fun arg      -> op2 V.App <$> conv fun <*> conv arg
     B.Pi  binder expr  -> op2 V.Pi  <$> conv binder <*> conv expr;
     B.Lam binder e     -> op2 V.Lam <$> conv binder <*> conv e
     B.Let binder e1 e2 -> op3 V.Let <$> conv binder <*> conv e1 <*> conv e2
     B.Seq es           -> op1 V.Seq <$> traverse conv (Seq.fromList es)
-    B.Ann expr typ     -> undefined -- TODO
     B.Builtin c        -> V.Builtin (tkProvenance c) <$> lookupBuiltin c
     B.Literal v        -> V.Literal mempty <$> conv v
-    B.Meta m           -> return $ V.Meta  mempty m
     B.Var n            -> return $ V.Bound (tkProvenance n) (tkSymbol n)
 
-instance Convert B.NameToken V.InputIdent where
-  conv n = return $ Ident (tkProvenance n) (tkSymbol n)
+instance Convert B.NameToken V.DeclName where
+  conv n = return $ DeclName (tkProvenance n) (Ident (tkSymbol n))
 
 instance Convert B.Decl V.InputDecl where
   conv = \case

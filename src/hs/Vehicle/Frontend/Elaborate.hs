@@ -1,4 +1,3 @@
-
 module Vehicle.Frontend.Elaborate
   ( Elab(..)
   , ElabError(..)
@@ -79,135 +78,94 @@ runElab = runExcept
 --------------------------------------------------------------------------------
 
 -- |Class for the various elaboration functions.
-class Elab (sort :: Sort) where
-  elab :: MonadElab m => VF.InputTree sort -> m (VC.InputTree sort)
+class Elab a b where
+  elab :: MonadElab m => a -> m b
 
--- |Elaborate kinds.
-instance Elab 'KIND where
-  elab (VF.KFun     ann k1 k2) = kOp2 VC.KFun ann k1 k2
-  elab (VF.KType    ann)       = kCon VC.KType ann
-  elab (VF.KDim     ann)       = kCon VC.KDim ann
-  elab (VF.KDimList ann)       = kCon VC.KDimList ann
+-- |Elaborate a let binding with /multiple/ bindings to a series of let
+--  bindings with a single binding each.
+instance Elab VF.InputLetDecl VC.InputExpr where
+  elab (VF.LetDecl ann n e) = return $ VC.Let _ _ _
 
--- |Elaborate types.
-instance Elab 'TYPE where
-  -- Core structure.
-  elab (VF.TForall ann ns t)   = foldr (VC.TForall ann Nothing) <$> elab t <*> traverse elab ns
-  elab (VF.TVar    ann n)      = return $ VC.TVar ann (K n)
+instance Elab VF.InputExpr VC.InputExpr where
+  elab = \case
+    -- Elaborate kinds.
+    VF.Kind               -> return VC.Kind
+    VF.Type    ann        -> op0 VC.Type ann
 
-  -- Primitive types.
-  elab (VF.TFun    ann t1 t2)  = tOp2 VC.TFun    ann t1 t2
-  elab (VF.TBool   ann)        = tCon VC.TBool   ann
-  elab (VF.TProp   ann)        = tCon VC.TProp   ann
-  elab (VF.TReal   ann)        = tCon VC.TReal   ann
-  elab (VF.TInt    ann)        = tCon VC.TInt    ann
-  elab (VF.TList   ann t)      = tOp1 VC.TList   ann t
-  elab (VF.TTensor ann t1 t2)  = tOp2 VC.TTensor ann t1 t2
+    -- Elaborate types.
+    VF.Forall ann ns t   -> foldr (VC.Pi ann Nothing) <$> elab t <*> traverse elab ns
+    VF.Fun    ann t1 t2  -> do ct1 <- elab t1; ct2 <- elab t2; return $ VC.Pi ann (VC.Binder _ _ _ _) ct2
+    VF.Bool   ann        -> op0 (VC.PrimitiveTruth  TBool) ann
+    VF.Prop   ann        -> op0 (VC.PrimitiveTruth  TProp) ann
+    VF.Real   ann        -> op0 (VC.PrimitiveNumber TReal) ann
+    VF.Int    ann        -> op0 (VC.PrimitiveNumber TInt)  ann
+    VF.List   ann t      -> op1 VC.List   ann t
+    VF.Tensor ann t1 t2  -> op2 VC.Tensor ann t1 t2
 
-  -- Type-level dimensions.
-  elab (VF.TAdd    ann t1 t2)  = tOp2 VC.TAdd ann t1 t2
-  elab (VF.TLitDim ann n)      = return $ VC.TLitDim ann n
+    -- Elaborate expressions.
+    VF.Ann     ann e t   -> VC.Ann ann <$> elab e <*> elab t
+    VF.Let     ann ds e  -> elabLet ann (traverse elab ds) (elab e)
+    VF.Lam     ann ns e  -> foldr (VC.Lam ann) <$> elab e <*> traverse elab ns
+    VF.App     ann e1 e2 -> VC.App ann <$> elab e1 <*> elab e2
+    VF.Var     ann n     -> return $ VC.Bound ann n
+    VF.Literal ann l     -> return $ VC.Literal ann l
 
-  -- Type-level lists.
-  elab (VF.TCons ann t1 t2)    = tOp2 VC.TCons ann t1 t2
-  elab (VF.TLitDimList ann ts) = VC.TLitDimList ann <$> traverse elab ts
+    -- Conditional expressions.
+    VF.If    ann e1 e2 e3 -> op3 VC.If      ann e1 e2 e3
+    VF.Impl  ann e1 e2    -> op2 VC.Impl    ann e1 e2
+    VF.And   ann e1 e2    -> op2 VC.And     ann e1 e2
+    VF.Or    ann e1 e2    -> op2 VC.Or      ann e1 e2
+    VF.Not   ann e        -> op1 VC.Not     ann e
 
--- |Elaborate type arguments.
-instance Elab 'TARG where
-  elab (VF.TArg ann n) = return $ VC.TArg ann $ K n
+    -- Integers and reals.
+    VF.Eq      ann e1 e2 -> op2 VC.Eq  ann e1 e2
+    VF.Neq     ann e1 e2 -> op2 VC.Neq ann e1 e2
+    VF.Le      ann e1 e2 -> op2 VC.Le  ann e1 e2
+    VF.Lt      ann e1 e2 -> op2 VC.Lt  ann e1 e2
+    VF.Ge      ann e1 e2 -> op2 VC.Ge  ann e1 e2
+    VF.Gt      ann e1 e2 -> op2 VC.Gt  ann e1 e2
+    VF.Mul     ann e1 e2 -> op2 VC.Mul ann e1 e2
+    VF.Div     ann e1 e2 -> op2 VC.Div ann e1 e2
+    VF.Add     ann e1 e2 -> op2 VC.Add ann e1 e2
+    VF.Sub     ann e1 e2 -> op2 VC.Sub ann e1 e2
+    VF.Neg     ann e     -> op1 VC.Neg ann e
 
--- |Elaborate expressions.
-instance Elab 'EXPR where
-  -- Core structure.
-  elab (VF.EAnn   ann e t)   = VC.EAnn ann <$> elab e <*> elab t
-  elab (VF.ELet   ann ds e)  = elabLet ann (traverse elab ds) (elab e)
-  elab (VF.ELam   ann ns e)  = foldr (VC.ELam ann) <$> elab e <*> traverse elab ns
-  elab (VF.EApp   ann e1 e2) = VC.EApp ann <$> elab e1 <*> elab e2
-  elab (VF.EVar   ann n)     = return $ VC.EVar ann $ K n
-  elab (VF.ETyApp ann e t)   = VC.ETyApp ann <$> elab e <*> elab t
-  elab (VF.ETyLam ann ns e)  = foldr (VC.ETyLam ann) <$> elab e <*> traverse elab ns
-
-  -- Conditional expressions.
-  elab (VF.EIf    ann e1 e2 e3) = eOp3 VC.EIf    ann e1 e2 e3
-  elab (VF.EImpl  ann e1 e2)    = eOp2 VC.EImpl  ann e1 e2
-  elab (VF.EAnd   ann e1 e2)    = eOp2 VC.EAnd   ann e1 e2
-  elab (VF.EOr    ann e1 e2)    = eOp2 VC.EOr    ann e1 e2
-  elab (VF.ENot   ann e)        = eOp1 VC.ENot   ann e
-  elab (VF.ETrue  ann)          = eCon VC.ETrue  ann
-  elab (VF.EFalse ann)          = eCon VC.EFalse ann
-
-  -- Integers and reals.
-  elab (VF.EEq      ann e1 e2) = eOp2 VC.EEq  ann e1 e2
-  elab (VF.ENeq     ann e1 e2) = eOp2 VC.ENeq ann e1 e2
-  elab (VF.ELe      ann e1 e2) = eOp2 VC.ELe  ann e1 e2
-  elab (VF.ELt      ann e1 e2) = eOp2 VC.ELt  ann e1 e2
-  elab (VF.EGe      ann e1 e2) = eOp2 VC.EGe  ann e1 e2
-  elab (VF.EGt      ann e1 e2) = eOp2 VC.EGt  ann e1 e2
-  elab (VF.EMul     ann e1 e2) = eOp2 VC.EMul ann e1 e2
-  elab (VF.EDiv     ann e1 e2) = eOp2 VC.EDiv ann e1 e2
-  elab (VF.EAdd     ann e1 e2) = eOp2 VC.EAdd ann e1 e2
-  elab (VF.ESub     ann e1 e2) = eOp2 VC.ESub ann e1 e2
-  elab (VF.ENeg     ann e)     = eOp1 VC.ENeg ann e
-  elab (VF.ELitInt  ann z)     = return $ VC.ELitInt ann z
-  elab (VF.ELitReal ann r)     = return $ VC.ELitReal ann r
-
-  -- Lists and tensors.
-  elab (VF.ECons   ann e1 e2) = eOp2 VC.ECons ann e1 e2
-  elab (VF.EAt     ann e1 e2) = eOp2 VC.EAt ann e1 e2
-  elab (VF.EAll    ann)       = eCon VC.EAll ann
-  elab (VF.EAny    ann)       = eCon VC.EAny ann
-  elab (VF.ELitSeq ann es)    = VC.ELitSeq ann <$> traverse elab es
-
--- |Elaborate type arguments.
-instance Elab 'EARG where
-  elab (VF.EArg ann n) = return $ VC.EArg ann $ K n
+    -- Lists and tensors.
+    VF.Cons   ann e1 e2 -> op2 VC.Cons ann e1 e2
+    VF.At     ann e1 e2 -> op2 VC.At ann e1 e2
+    VF.All    ann       -> op0 VC.All ann
+    VF.Any    ann       -> op0 VC.Any ann
+    VF.Seq    ann es    -> VC.Seq ann <$> traverse elab es
 
 -- |Elaborate declarations.
-instance Elab 'DECL where
+instance Elab VF.InputDecl VC.InputDecl where
   elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann <$> elab n <*> elab t
   elab (VF.DeclData ann n t)      = VC.DeclData ann <$> elab n <*> elab t
   elab (VF.DefType  ann n ns t)   = VC.DefType  ann <$> elab n <*> traverse elab ns <*> elab t
   elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann <$> elab n <*> elab t <*> expr
     where
-      expr = foldr argLam <$> elab e <*> traverse (bitraverse elab elab) ns
-      argLam (Right n) = VC.ELam   (coerce ann) n
-      argLam (Left  n) = VC.ETyLam (coerce ann) n
+      expr = foldr (VC.Lam ann) <$> elab e <*> traverse elab ns
 
 -- |Elaborate programs.
-instance Elab 'PROG where
-  elab (VF.Main ann decls) = VC.Main ann <$> traverse elab decls
-
--- |Elaborate a let binding with /multiple/ bindings to a series of let
---  bindings with a single binding each.
-elabLet :: MonadElab m
-        => K Provenance 'EXPR
-        -> m (NonEmpty VC.InputDecl)
-        -> m VC.InputExpr
-        -> m VC.InputExpr
-elabLet ann1 ds e = bindM2 (foldrM declToLet) e ds
-  where
-    declToLet :: MonadElab m => VC.InputDecl -> VC.InputExpr -> m VC.InputExpr
-    declToLet (VC.DefFun   ann2  n t e1)    e2 = return $ VC.ELet ann1 n (VC.EAnn (K (unK ann2)) e1 t) e2
-    declToLet (VC.DeclNetw ann2 _n _t)     _e2 = throwError $ InvalidLocalDecl "network" (unK ann2)
-    declToLet (VC.DeclData ann2 _n _t)     _e2 = throwError $ InvalidLocalDecl "dataset" (unK ann2)
-    declToLet (VC.DefType  ann2 _n _ns _t) _e2 = throwError $ InvalidLocalDecl "type"    (unK ann2)
+instance Elab VF.InputProg VC.InputProg where
+  elab (VF.Main decls) = VC.Main <$> traverse elab decls
 
 -- |Lift a binary /monadic/ function.
 bindM2 :: Monad m => (a -> b -> m c) -> m a -> m b -> m c
 bindM2 f ma mb = do a <- ma; b <- mb; f a b
 
 -- |Elaborate any builtin token to an expression.
-eCon :: (MonadElab m) => VC.Builtin -> K Provenance 'EXPR -> m VC.InputExpr
-eCon b ann = return $ VC.ECon ann b
+op0 :: (MonadElab m) => VC.Builtin -> VF.InputAnn -> m VC.InputExpr
+op0 b ann = return $ VC.Builtin ann b
 
 -- |Elaborate a unary function symbol with its argument to an expression.
-eOp1 :: (MonadElab m) => VC.Builtin -> K Provenance 'EXPR -> VF.InputExpr -> m VC.InputExpr
-eOp1 b ann e1 = VC.EApp ann <$> eCon b ann <*> elab e1
+op1 :: (MonadElab m) => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> m VC.InputExpr
+op1 b ann e1 = VC.App ann <$> op0 b ann <*> elab e1
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-eOp2 :: (MonadElab m) => VC.Builtin -> K Provenance 'EXPR -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
-eOp2 b ann e1 e2 = VC.EApp ann <$> eOp1 b ann e1 <*> elab e2
+op2 :: (MonadElab m) => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
+op2 b ann e1 e2 = VC.App ann <$> op1 b ann e1 <*> elab e2
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-eOp3 :: (MonadElab m) => VC.Builtin -> K Provenance 'EXPR -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
-eOp3 b ann e1 e2 e3 = VC.EApp ann <$> eOp2 b ann e1 e2 <*> elab e3
+op3 :: (MonadElab m) => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
+op3 b ann e1 e2 e3 = VC.App ann <$> op2 b ann e1 e2 <*> elab e3

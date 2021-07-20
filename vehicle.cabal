@@ -36,17 +36,17 @@ library
                       , Vehicle.Prelude.Language
                       , Vehicle.Prelude.Prettyprinter
                       , Vehicle.Error
-                      , Vehicle.Frontend.AST
-                      , Vehicle.Frontend.AST.Core
-                      , Vehicle.Frontend.AST.Instance
-                      , Vehicle.Frontend.AST.Recursive.Sorted
-                      , Vehicle.Frontend.AST.Recursive.Unsorted
-                      , Vehicle.Frontend.AST.Utils
-                      , Vehicle.Frontend.AST.Info
-                      , Vehicle.Frontend.Delaborate
-                      , Vehicle.Frontend.Elaborate
-                      , Vehicle.Frontend.Parse
-                      , Vehicle.Frontend.Print
+                      -- , Vehicle.Frontend.AST
+                      -- , Vehicle.Frontend.AST.Core
+                      -- , Vehicle.Frontend.AST.Instance
+                      -- , Vehicle.Frontend.AST.Recursive.Sorted
+                      -- , Vehicle.Frontend.AST.Recursive.Unsorted
+                      -- , Vehicle.Frontend.AST.Utils
+                      -- , Vehicle.Frontend.AST.Info
+                      -- , Vehicle.Frontend.Delaborate
+                      -- , Vehicle.Frontend.Elaborate
+                      -- , Vehicle.Frontend.Parse
+                      -- , Vehicle.Frontend.Print
                       , Vehicle.Core.AST
                       , Vehicle.Core.AST.Builtin
                       , Vehicle.Core.AST.Core
@@ -58,8 +58,8 @@ library
                       , Vehicle.Core.Compile.Scope
                       , Vehicle.Core.Compile.Type
                       , Vehicle.Core.Normalise
-                      , Vehicle.Core.Normalise.Core
-                      , Vehicle.Core.Normalise.Quantifier
+                      -- , Vehicle.Core.Normalise.Core
+                      -- , Vehicle.Core.Normalise.Quantifier
                       , Vehicle.Core.Parse
                       , Vehicle.Core.Print
                       , Vehicle.Backend.ITP.Agda
@@ -81,6 +81,7 @@ library
                       , gen/hs
   build-depends:        array                >=0.5 && <1
                       , hashable             >=1.3 && <2
+                      -- TODO can we eliminate this
                       , transformers-supply  >=0.2 && <1
                       , transformers         >=0.4 && <0.6
                       , mtl                  >=2.2 && <3
@@ -88,6 +89,7 @@ library
                       , range                >=0.3 && <1
                       , containers           >=0.5 && <1
                       , prettyprinter        >=1.7 && <2
+                      , data-fix             >=0.2 && <1
   build-tool-depends:   alex:alex
                       , happy:happy
   ghc-options:          -Wall
@@ -112,6 +114,8 @@ library
                       , TupleSections
                       , PatternSynonyms
                       , LiberalTypeSynonyms
+                      , DuplicateRecordFields
+                      , RecordWildCards
 
 executable vehicle
   import:             common-base

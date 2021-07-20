@@ -97,7 +97,7 @@ hole p = get >>= \case
 plug :: Hole a b -> Except DelabError b
 plug h = evalStateT h []
 
-plugFlow :: SortedOutputTree sort1 -> Hole (VF.OutputTree sort2) (VF.OutputTree sort1)
+plugFlow :: SortedOutputTree sort1 -> Hole VF.OutputExpr VF.OutputExpr
 plugFlow h = lift (plug (unSOT h))
 
 addArg :: a -> Hole a ()
@@ -107,51 +107,49 @@ addArg x = modify (x :)
 outputProv :: VF.OutputAnn sort -> Provenance
 outputProv = unK . isnd
 
-delabBuiltin :: KnownSort sort
-             => VF.OutputAnn sort
-             -> VC.Builtin sort
-             -> Hole (VF.OutputTree sort) (VF.OutputTree sort)
+delabBuiltin :: VF.OutputAnn
+             -> VC.Builtin
+             -> Hole VF.OutputExpr VF.OutputExpr
 delabBuiltin ann = let p = outputProv ann in \case
-  VC.KFun     -> VF.KFun   ann <$> hole p <*> hole p
-  VC.KType    -> return $ VF.KType ann
-  VC.KDim     -> return $ VF.KDim ann
-  VC.KDimList -> return $ VF.KDimList ann
-  VC.TFun     -> VF.TFun   ann <$> hole p <*> hole p
-  VC.TBool    -> return $ VF.TBool ann
-  VC.TProp    -> return $ VF.TProp ann
-  VC.TInt     -> return $ VF.TInt ann
-  VC.TReal    -> return $ VF.TReal ann
-  VC.TList    -> VF.TList   ann <$> hole p
-  VC.TTensor  -> VF.TTensor ann <$> hole p <*> hole p
-  VC.TAdd     -> VF.TAdd    ann <$> hole p <*> hole p
-  VC.TCons    -> VF.TCons   ann <$> hole p <*> hole p
-  VC.EIf      -> VF.EIf     ann <$> hole p <*> hole p <*> hole p
-  VC.EImpl    -> VF.EImpl   ann <$> hole p <*> hole p
-  VC.EAnd     -> VF.EAnd    ann <$> hole p <*> hole p
-  VC.EOr      -> VF.EOr     ann <$> hole p <*> hole p
-  VC.ENot     -> VF.ENot    ann <$> hole p
-  VC.ETrue    -> return $ VF.ETrue ann
-  VC.EFalse   -> return $ VF.EFalse ann
-  VC.EEq      -> VF.EEq     ann <$> hole p <*> hole p
-  VC.ENeq     -> VF.ENeq    ann <$> hole p <*> hole p
-  VC.ELe      -> VF.ELe     ann <$> hole p <*> hole p
-  VC.ELt      -> VF.ELt     ann <$> hole p <*> hole p
-  VC.EGe      -> VF.EGe     ann <$> hole p <*> hole p
-  VC.EGt      -> VF.EGt     ann <$> hole p <*> hole p
-  VC.EMul     -> VF.EMul    ann <$> hole p <*> hole p
-  VC.EDiv     -> VF.EDiv    ann <$> hole p <*> hole p
-  VC.EAdd     -> VF.EAdd    ann <$> hole p <*> hole p
-  VC.ESub     -> VF.ESub    ann <$> hole p <*> hole p
-  VC.ENeg     -> VF.ENeg    ann <$> hole p
-  VC.ECons    -> VF.ECons   ann <$> hole p <*> hole p
-  VC.EAt      -> VF.EAt     ann <$> hole p <*> hole p
-  VC.EAll     -> return $ VF.EAll ann
-  VC.EAny     -> return $ VF.EAny ann
+  VC.Type    -> return $ VF.Type ann
+  VC.PrimitiveTruth  TBool   -> return $ VF.Bool ann
+  VC.PrimitiveTruth  TProp   -> return $ VF.Prop ann
+  VC.PrimitiveNumber TInt    -> return $ VF.Int ann
+  VC.PrimitiveNumber TReal   -> return $ VF.Real ann
+  VC.List    -> VF.List   ann <$> hole p
+  VC.Tensor  -> VF.Tensor ann <$> hole p <*> hole p
+  VC.Add     -> VF.Add    ann <$> hole p <*> hole p
+  VC.Cons    -> VF.Cons   ann <$> hole p <*> hole p
+  VC.If      -> VF.If     ann <$> hole p <*> hole p <*> hole p
+  VC.Impl    -> VF.Impl   ann <$> hole p <*> hole p
+  VC.And     -> VF.And    ann <$> hole p <*> hole p
+  VC.Or      -> VF.Or     ann <$> hole p <*> hole p
+  VC.Not     -> VF.Not    ann <$> hole p
+  VC.Eq      -> VF.Eq     ann <$> hole p <*> hole p
+  VC.Neq     -> VF.Neq    ann <$> hole p <*> hole p
+  VC.Le      -> VF.Le     ann <$> hole p <*> hole p
+  VC.Lt      -> VF.Lt     ann <$> hole p <*> hole p
+  VC.Ge      -> VF.Ge     ann <$> hole p <*> hole p
+  VC.Gt      -> VF.Gt     ann <$> hole p <*> hole p
+  VC.Mul     -> VF.Mul    ann <$> hole p <*> hole p
+  VC.Div     -> VF.Div    ann <$> hole p <*> hole p
+  VC.Add     -> VF.Add    ann <$> hole p <*> hole p
+  VC.Sub     -> VF.Sub    ann <$> hole p <*> hole p
+  VC.Neg     -> VF.Neg    ann <$> hole p
+  VC.Cons    -> VF.Cons   ann <$> hole p <*> hole p
+  VC.At      -> VF.At     ann <$> hole p <*> hole p
+  VC.All     -> return $ VF.All ann
+  VC.Any     -> return $ VF.Any ann
 
-newtype SortedOutputTree (sort :: Sort) =
-  SOT { unSOT :: Hole (VF.OutputTree sort) (VF.OutputTree sort) }
+delabLiteral :: VF.OutputAnn
+             -> VC.Literal
+             -> Hole VF.OutputExpr VF.OutputExpr
+delabLiteral = _
 
-delab :: forall sort. KnownSort sort => VC.OutputTree sort -> SortedOutputTree sort
+newtype SortedOutputTree =
+  SOT { unSOT :: Hole VF.OutputExpr VF.OutputExpr }
+
+delab :: forall sort. KnownSort sort => VC.OutputExpr -> SortedOutputTree
 delab t = SOT $ do t <- VC.traverseTreeAnn delabAnn t; delabLayer t
   where
     delabLayer ::

@@ -147,63 +147,60 @@ tkProv = tkProvenance
 class Convert vf vc where
   conv :: MonadParse m => vf -> m vc
 
-instance Convert B.Kind V.InputKind where
+instance Convert B.Kind V.InputExpr where
   conv (B.KFun k1 tk k2) = op2 V.KFun     (tkProv tk) (conv k1) (conv k2)
   conv (B.KType tk)      = op0 V.KType    (tkProv tk)
   conv (B.KDim tk)       = op0 V.KDim     (tkProv tk)
   conv (B.KDimList tk)   = op0 V.KDimList (tkProv tk)
 
-instance Convert B.Type V.InputType where
-  conv (B.TForall tk1 ns tk2 t)   = op2 V.TForall (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv t)
-  conv (B.TVar n)                 = return $ V.TVar (K (tkProv n)) (tkSymbol n)
-  conv (B.TFun t1 tk t2)          = op2 V.TFun (tkProv tk) (conv t1) (conv t2)
-  conv (B.TBool tk)               = op0 V.TBool (tkProv tk)
-  conv (B.TProp tk)               = op0 V.TProp (tkProv tk)
-  conv (B.TReal tk)               = op0 V.TReal (tkProv tk)
-  conv (B.TInt tk)                = op0 V.TInt (tkProv tk)
-  conv (B.TList tk t)             = op1 V.TList (tkProv tk) (conv t)
-  conv (B.TTensor tk t1 t2)       = op2 V.TTensor (tkProv tk) (conv t1) (conv t2)
-  conv (B.TAdd t1 tk t2)          = op2 V.TAdd (tkProv tk) (conv t1) (conv t2)
-  conv (B.TLitDim i)              = return $ V.TLitDim mempty i
-  conv (B.TCons t1 tk t2)         = op2 V.TCons (tkProv tk) (conv t1) (conv t2)
-  conv (B.TLitDimList tk1 ts tk2) = op1 V.TLitDimList (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ts)
-
-instance Convert Name V.InputTArg where
-  conv n = return $ V.TArg (K (tkProv n)) (tkSymbol n)
+instance Convert B.Type V.InputExpr where
+  conv (B.TForall tk1 ns tk2 t)   = op2 V.Forall (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv t)
+  conv (B.TVar n)                 = return $ V.Var (K (tkProv n)) (tkSymbol n)
+  conv (B.TFun t1 tk t2)          = op2 V.Fun (tkProv tk) (conv t1) (conv t2)
+  conv (B.TBool tk)               = op0 V.Bool (tkProv tk)
+  conv (B.TProp tk)               = op0 V.Prop (tkProv tk)
+  conv (B.TReal tk)               = op0 V.Real (tkProv tk)
+  conv (B.TInt tk)                = op0 V.Int (tkProv tk)
+  conv (B.TList tk t)             = op1 V.List (tkProv tk) (conv t)
+  conv (B.TTensor tk t1 t2)       = op2 V.Tensor (tkProv tk) (conv t1) (conv t2)
+  conv (B.TAdd t1 tk t2)          = op2 V.Add (tkProv tk) (conv t1) (conv t2)
+  conv (B.TLitDim i)              = return $ V.LitInt mempty i
+  conv (B.TCons t1 tk t2)         = op2 V.Cons (tkProv tk) (conv t1) (conv t2)
+  conv (B.TLitDimList tk1 ts tk2) = op1 V.Seq (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ts)
 
 instance Convert B.Expr V.InputExpr where
-  conv (B.EAnn e tk t)              = op2 V.EAnn   (tkProv tk) (conv e) (conv t)
-  conv (B.ELet ds e)                = op2 V.ELet   mempty (filterLetDecls ds >>= groupDecls (Just "let") mempty) (conv e)
-  conv (B.ELam tk1 ns tk2 e)        = op2 V.ELam   (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
-  conv (B.EApp e1 e2)               = op2 V.EApp   mempty (conv e1) (conv e2)
-  conv (B.EVar n)                   = return $ V.EVar (K (tkProv n)) (tkSymbol n)
+  conv (B.EAnn e tk t)              = op2 V.Ann   (tkProv tk) (conv e) (conv t)
+  conv (B.ELet ds e)                = op2 V.Let   mempty (filterLetDecls ds >>= groupDecls (Just "let") mempty) (conv e)
+  conv (B.ELam tk1 ns tk2 e)        = op2 V.Lam   (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
+  conv (B.EApp e1 e2)               = op2 V.App   mempty (conv e1) (conv e2)
+  conv (B.EVar n)                   = return $ V.Var (K (tkProv n)) (tkSymbol n)
   conv (B.ETyApp e t)               = op2 V.ETyApp mempty (conv e) (conv t)
-  conv (B.ETyLam tk1 ns tk2 e)      = op2 V.ETyLam (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
-  conv (B.EIf tk1 e1 tk2 e2 tk3 e3) = op3 V.EIf    (tkProv tk1 <> tkProv tk2 <> tkProv tk3) (conv e1) (conv e2) (conv e3)
-  conv (B.EImpl e1 tk e2)           = op2 V.EImpl  (tkProv tk) (conv e1) (conv e2)
-  conv (B.EAnd e1 tk e2)            = op2 V.EAnd   (tkProv tk) (conv e1) (conv e2)
-  conv (B.EOr e1 tk e2)             = op2 V.EOr    (tkProv tk) (conv e1) (conv e2)
-  conv (B.ENot tk e)                = op1 V.ENot   (tkProv tk) (conv e)
-  conv (B.ETrue tk)                 = op0 V.ETrue  (tkProv tk)
-  conv (B.EFalse tk)                = op0 V.EFalse (tkProv tk)
-  conv (B.EEq e1 tk e2)             = op2 V.EEq    (tkProv tk) (conv e1) (conv e2)
-  conv (B.ENeq e1 tk e2)            = op2 V.ENeq   (tkProv tk) (conv e1) (conv e2)
-  conv (B.ELe e1 tk e2)             = op2 V.ELe    (tkProv tk) (conv e1) (conv e2)
-  conv (B.ELt e1 tk e2)             = op2 V.ELt    (tkProv tk) (conv e1) (conv e2)
-  conv (B.EGe e1 tk e2)             = op2 V.EGe    (tkProv tk) (conv e1) (conv e2)
-  conv (B.EGt e1 tk e2)             = op2 V.EGt    (tkProv tk) (conv e1) (conv e2)
-  conv (B.EMul e1 tk e2)            = op2 V.EMul   (tkProv tk) (conv e1) (conv e2)
-  conv (B.EDiv e1 tk e2)            = op2 V.EDiv   (tkProv tk) (conv e1) (conv e2)
-  conv (B.EAdd e1 tk e2)            = op2 V.EAdd   (tkProv tk) (conv e1) (conv e2)
-  conv (B.ESub e1 tk e2)            = op2 V.ESub   (tkProv tk) (conv e1) (conv e2)
-  conv (B.ENeg tk e)                = op1 V.ENeg   (tkProv tk) (conv e)
+  conv (B.ETyLam tk1 ns tk2 e)      = op2 V.TyLam (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
+  conv (B.EIf tk1 e1 tk2 e2 tk3 e3) = op3 V.If    (tkProv tk1 <> tkProv tk2 <> tkProv tk3) (conv e1) (conv e2) (conv e3)
+  conv (B.EImpl e1 tk e2)           = op2 V.Impl  (tkProv tk) (conv e1) (conv e2)
+  conv (B.EAnd e1 tk e2)            = op2 V.And   (tkProv tk) (conv e1) (conv e2)
+  conv (B.EOr e1 tk e2)             = op2 V.Or    (tkProv tk) (conv e1) (conv e2)
+  conv (B.ENot tk e)                = op1 V.Not   (tkProv tk) (conv e)
+  conv (B.ETrue tk)                 = op0 V.True  (tkProv tk)
+  conv (B.EFalse tk)                = op0 V.False (tkProv tk)
+  conv (B.EEq e1 tk e2)             = op2 V.Eq    (tkProv tk) (conv e1) (conv e2)
+  conv (B.ENeq e1 tk e2)            = op2 V.Neq   (tkProv tk) (conv e1) (conv e2)
+  conv (B.ELe e1 tk e2)             = op2 V.Le    (tkProv tk) (conv e1) (conv e2)
+  conv (B.ELt e1 tk e2)             = op2 V.Lt    (tkProv tk) (conv e1) (conv e2)
+  conv (B.EGe e1 tk e2)             = op2 V.Ge    (tkProv tk) (conv e1) (conv e2)
+  conv (B.EGt e1 tk e2)             = op2 V.Gt    (tkProv tk) (conv e1) (conv e2)
+  conv (B.EMul e1 tk e2)            = op2 V.Mul   (tkProv tk) (conv e1) (conv e2)
+  conv (B.EDiv e1 tk e2)            = op2 V.Div   (tkProv tk) (conv e1) (conv e2)
+  conv (B.EAdd e1 tk e2)            = op2 V.Add   (tkProv tk) (conv e1) (conv e2)
+  conv (B.ESub e1 tk e2)            = op2 V.Sub   (tkProv tk) (conv e1) (conv e2)
+  conv (B.ENeg tk e)                = op1 V.Neg   (tkProv tk) (conv e)
   conv (B.ELitInt i)                = return $ V.ELitInt mempty i
   conv (B.ELitReal d)               = return $ V.ELitReal mempty d
-  conv (B.ECons e1 tk e2)           = op2 V.ECons  (tkProv tk) (conv e1) (conv e2)
-  conv (B.EAt e1 tk e2)             = op2 V.EAt    (tkProv tk) (conv e1) (conv e2)
-  conv (B.EAll tk)                  = op0 V.EAll   (tkProv tk)
-  conv (B.EAny tk)                  = op0 V.EAny   (tkProv tk)
-  conv (B.ELitSeq tk1 es tk2)       = op1 V.ELitSeq (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 es)
+  conv (B.ECons e1 tk e2)           = op2 V.Cons  (tkProv tk) (conv e1) (conv e2)
+  conv (B.EAt e1 tk e2)             = op2 V.At    (tkProv tk) (conv e1) (conv e2)
+  conv (B.EAll tk)                  = op0 V.All   (tkProv tk)
+  conv (B.EAny tk)                  = op0 V.Any   (tkProv tk)
+  conv (B.ELitSeq tk1 es tk2)       = op1 V.Seq (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 es)
 
 instance Convert Name V.InputEArg where
   conv n = return $ V.EArg (K (tkProv n)) (tkSymbol n)
@@ -251,28 +248,28 @@ instance Convert B.Prog V.InputProg where
   conv (B.Main decls) = op1 V.Main mempty (groupDecls Nothing mempty decls)
 
 op0 :: MonadParse m
-    => (K Provenance sort -> V.InputTree sort)
-    -> Provenance -> m (V.InputTree sort)
+    => (Provenance -> a)
+    -> Provenance -> m a
 op0 mk p = return $ mk (K p)
 
 op1 :: (MonadParse m, HasProvenance a)
-    => (K Provenance sort -> a -> V.InputTree sort)
-    -> Provenance -> m a -> m (V.InputTree sort)
+    => (Provenance -> a -> b)
+    -> Provenance -> m a -> m b
 op1 mk p t = do
   ct <- t
   return $ mk (K (p <> prov ct)) ct
 
 op2 :: (MonadParse m, HasProvenance a, HasProvenance b)
-    => (K Provenance sort -> a -> b -> V.InputTree sort)
-    -> Provenance -> m a -> m b -> m (V.InputTree sort)
+    => (Provenance -> a -> b -> c)
+    -> Provenance -> m a -> m b -> m c
 op2 mk p t1 t2 = do
   ct1 <- t1
   ct2 <- t2
   return $ mk (K (p <> prov ct1 <> prov ct2)) ct1 ct2
 
 op3 :: (MonadParse m, HasProvenance a, HasProvenance b, HasProvenance c)
-    => (K Provenance sort -> a -> b -> c -> V.InputTree sort)
-    -> Provenance -> m a -> m b -> m c -> m (V.InputTree sort)
+    => (Provenance -> a -> b -> c -> d)
+    -> Provenance -> m a -> m b -> m c -> m d
 op3 mk p t1 t2 t3 = do
   ct1 <- t1
   ct2 <- t2
@@ -280,8 +277,8 @@ op3 mk p t1 t2 t3 = do
   return $ mk (K (p <> prov ct1 <> prov ct2 <> prov ct3)) ct1 ct2 ct3
 
 op4 :: (MonadParse m, HasProvenance a, HasProvenance b, HasProvenance c, HasProvenance d)
-    => (K Provenance sort -> a -> b -> c -> d -> V.InputTree sort)
-    -> Provenance -> m a -> m b -> m c -> m d -> m (V.InputTree sort)
+    => (K Provenance sort -> a -> b -> c -> d -> e)
+    -> Provenance -> m a -> m b -> m c -> m d -> m e
 op4 mk p t1 t2 t3 t4 = do
   ct1 <- t1
   ct2 <- t2
