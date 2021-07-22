@@ -51,10 +51,9 @@ library
                       , Vehicle.Core.AST.Builtin
                       , Vehicle.Core.AST.Core
                       , Vehicle.Core.AST.DeBruijn
-                      , Vehicle.Core.AST.DSL
                       , Vehicle.Core.AST.Utils
                       , Vehicle.Core.Compile
-                      , Vehicle.Core.Compile.Dataflow
+                      , Vehicle.Core.Compile.DSL
                       , Vehicle.Core.Compile.Scope
                       , Vehicle.Core.Compile.Type
                       , Vehicle.Core.Normalise

@@ -3,6 +3,7 @@ module Vehicle.Prelude.Language where
 
 import Data.Text (Text)
 import Numeric.Natural (Natural)
+import Prettyprinter (Doc, braces)
 
 -- | Symbols in the language are represented by the `Text` type.
 type Symbol = Text
@@ -10,6 +11,10 @@ type Symbol = Text
 -- | Visibility of function arguments
 data Visibility = Explicit | Implicit
   deriving (Eq, Ord, Show)
+
+visBrackets :: Visibility -> (Doc a -> Doc a)
+visBrackets Explicit = id
+visBrackets Implicit = braces
 
 -- | Literals in the language
 data Literal

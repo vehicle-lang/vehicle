@@ -36,7 +36,6 @@ import Vehicle.Error
 -- |Type of errors thrown by scope checking.
 data ScopeError
   = UnboundName Symbol Provenance
-  | IndexOutOfBounds Index Int Provenance
   deriving Show
 
 instance MeaningfulError ScopeError where
@@ -47,24 +46,20 @@ instance MeaningfulError ScopeError where
     , fix        = pretty ("Unknown" :: String)
     }
 
-  details (IndexOutOfBounds index ctxSize p) = DError $ DeveloperError
-    { problem    = "DeBruijn index" <+> pretty index <+>
-                   "greater than current context size" <+> pretty ctxSize
-    , provenance = p
-    }
-
 -- |Throw an |UnboundName| error using an arbitrary token.
 unboundName :: MonadError ScopeError m => Symbol -> Provenance -> m a
 unboundName n p = throwError $ UnboundName n p
 
 -- |Throw an |IndexOutOfBounds| error using an arbitrary index.
 indexOutOfBounds :: MonadError ScopeError m => Index -> Int -> Provenance -> m a
-indexOutOfBounds index ctxSize p = throwError $ IndexOutOfBounds index ctxSize p
+indexOutOfBounds index ctxSize p = developerError $
+  "DeBruijn index" <+> pretty index <+>
+  "greater than current context size" <+> pretty ctxSize
 
 -- * Scope checking contexts.
 
 -- |Type of scope checking contexts.
-data Ctx a = Ctx { typeSymbols :: Seq a, exprSymbols :: Seq a }
+data Ctx a = Ctx { declSymbols :: Seq Identifier, exprSymbols :: Seq a }
 
 instance Semigroup (Ctx a) where
   Ctx ts1 es1 <> Ctx ts2 es2 = Ctx (ts1 <> ts2) (es1 <> es2)

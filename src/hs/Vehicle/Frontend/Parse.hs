@@ -1,17 +1,5 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-{-# LANGUAGE ConstraintKinds #-}
 module Vehicle.Frontend.Parse
   ( parseText
   , parseFile
@@ -28,7 +16,7 @@ import Prettyprinter ( (<+>), line, pretty )
 import System.Exit (exitFailure)
 
 
-import Vehicle.Frontend.Abs as B
+import Vehicle.Frontend.Abs qualified as B
 import Vehicle.Frontend.Layout (resolveLayout)
 import Vehicle.Frontend.Lex as L (Token)
 import Vehicle.Frontend.Par (pProg, myLexer)
@@ -148,66 +136,57 @@ class Convert vf vc where
   conv :: MonadParse m => vf -> m vc
 
 instance Convert B.Kind V.InputExpr where
-  conv (B.KFun k1 tk k2) = op2 V.KFun     (tkProv tk) (conv k1) (conv k2)
-  conv (B.KType tk)      = op0 V.KType    (tkProv tk)
-  conv (B.KDim tk)       = op0 V.KDim     (tkProv tk)
-  conv (B.KDimList tk)   = op0 V.KDimList (tkProv tk)
+  conv (B.Fun k1 tk k2) = op2 V.KFun     (tkProv tk) (conv k1) (conv k2)
+  conv (B.Type tk)      = op0 V.KType    (tkProv tk)
 
 instance Convert B.Type V.InputExpr where
-  conv (B.TForall tk1 ns tk2 t)   = op2 V.Forall (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv t)
-  conv (B.TVar n)                 = return $ V.Var (K (tkProv n)) (tkSymbol n)
-  conv (B.TFun t1 tk t2)          = op2 V.Fun (tkProv tk) (conv t1) (conv t2)
-  conv (B.TBool tk)               = op0 V.Bool (tkProv tk)
-  conv (B.TProp tk)               = op0 V.Prop (tkProv tk)
-  conv (B.TReal tk)               = op0 V.Real (tkProv tk)
-  conv (B.TInt tk)                = op0 V.Int (tkProv tk)
-  conv (B.TList tk t)             = op1 V.List (tkProv tk) (conv t)
-  conv (B.TTensor tk t1 t2)       = op2 V.Tensor (tkProv tk) (conv t1) (conv t2)
-  conv (B.TAdd t1 tk t2)          = op2 V.Add (tkProv tk) (conv t1) (conv t2)
-  conv (B.TLitDim i)              = return $ V.LitInt mempty i
-  conv (B.TCons t1 tk t2)         = op2 V.Cons (tkProv tk) (conv t1) (conv t2)
-  conv (B.TLitDimList tk1 ts tk2) = op1 V.Seq (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ts)
+  conv (B.Forall tk1 ns tk2 t)   = op2 V.Forall (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv t)
+  conv (B.Var n)                 = return $ V.Var (K (tkProv n)) (tkSymbol n)
+  conv (B.Fun t1 tk t2)          = op2 V.Fun (tkProv tk) (conv t1) (conv t2)
+  conv (B.Bool tk)               = op0 V.Bool (tkProv tk)
+  conv (B.Prop tk)               = op0 V.Prop (tkProv tk)
+  conv (B.Real tk)               = op0 V.Real (tkProv tk)
+  conv (B.Int tk)                = op0 V.Int (tkProv tk)
+  conv (B.List tk t)             = op1 V.List (tkProv tk) (conv t)
+  conv (B.Tensor tk t1 t2)       = op2 V.Tensor (tkProv tk) (conv t1) (conv t2)
+  conv (B.Add t1 tk t2)          = op2 V.Add (tkProv tk) (conv t1) (conv t2)
+  conv (B.Cons t1 tk t2)         = op2 V.Cons (tkProv tk) (conv t1) (conv t2)
 
 instance Convert B.Expr V.InputExpr where
-  conv (B.EAnn e tk t)              = op2 V.Ann   (tkProv tk) (conv e) (conv t)
-  conv (B.ELet ds e)                = op2 V.Let   mempty (filterLetDecls ds >>= groupDecls (Just "let") mempty) (conv e)
-  conv (B.ELam tk1 ns tk2 e)        = op2 V.Lam   (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
-  conv (B.EApp e1 e2)               = op2 V.App   mempty (conv e1) (conv e2)
-  conv (B.EVar n)                   = return $ V.Var (K (tkProv n)) (tkSymbol n)
-  conv (B.ETyApp e t)               = op2 V.ETyApp mempty (conv e) (conv t)
-  conv (B.ETyLam tk1 ns tk2 e)      = op2 V.TyLam (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
-  conv (B.EIf tk1 e1 tk2 e2 tk3 e3) = op3 V.If    (tkProv tk1 <> tkProv tk2 <> tkProv tk3) (conv e1) (conv e2) (conv e3)
-  conv (B.EImpl e1 tk e2)           = op2 V.Impl  (tkProv tk) (conv e1) (conv e2)
-  conv (B.EAnd e1 tk e2)            = op2 V.And   (tkProv tk) (conv e1) (conv e2)
-  conv (B.EOr e1 tk e2)             = op2 V.Or    (tkProv tk) (conv e1) (conv e2)
-  conv (B.ENot tk e)                = op1 V.Not   (tkProv tk) (conv e)
-  conv (B.ETrue tk)                 = op0 V.True  (tkProv tk)
-  conv (B.EFalse tk)                = op0 V.False (tkProv tk)
-  conv (B.EEq e1 tk e2)             = op2 V.Eq    (tkProv tk) (conv e1) (conv e2)
-  conv (B.ENeq e1 tk e2)            = op2 V.Neq   (tkProv tk) (conv e1) (conv e2)
-  conv (B.ELe e1 tk e2)             = op2 V.Le    (tkProv tk) (conv e1) (conv e2)
-  conv (B.ELt e1 tk e2)             = op2 V.Lt    (tkProv tk) (conv e1) (conv e2)
-  conv (B.EGe e1 tk e2)             = op2 V.Ge    (tkProv tk) (conv e1) (conv e2)
-  conv (B.EGt e1 tk e2)             = op2 V.Gt    (tkProv tk) (conv e1) (conv e2)
-  conv (B.EMul e1 tk e2)            = op2 V.Mul   (tkProv tk) (conv e1) (conv e2)
-  conv (B.EDiv e1 tk e2)            = op2 V.Div   (tkProv tk) (conv e1) (conv e2)
-  conv (B.EAdd e1 tk e2)            = op2 V.Add   (tkProv tk) (conv e1) (conv e2)
-  conv (B.ESub e1 tk e2)            = op2 V.Sub   (tkProv tk) (conv e1) (conv e2)
-  conv (B.ENeg tk e)                = op1 V.Neg   (tkProv tk) (conv e)
-  conv (B.ELitInt i)                = return $ V.ELitInt mempty i
-  conv (B.ELitReal d)               = return $ V.ELitReal mempty d
-  conv (B.ECons e1 tk e2)           = op2 V.Cons  (tkProv tk) (conv e1) (conv e2)
-  conv (B.EAt e1 tk e2)             = op2 V.At    (tkProv tk) (conv e1) (conv e2)
-  conv (B.EAll tk)                  = op0 V.All   (tkProv tk)
-  conv (B.EAny tk)                  = op0 V.Any   (tkProv tk)
-  conv (B.ELitSeq tk1 es tk2)       = op1 V.Seq (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 es)
+  conv (B.Ann e tk t)              = op2 V.Ann   (tkProv tk) (conv e) (conv t)
+  conv (B.Let ds e)                = op2 V.Let   mempty (filterLetDecls ds >>= groupDecls (Just "let") mempty) (conv e)
+  conv (B.Lam tk1 ns tk2 e)        = op2 V.Lam   (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
+  conv (B.App e1 e2)               = op2 V.App   mempty (conv e1) (conv e2)
+  conv (B.Var n)                   = return $ V.Var (K (tkProv n)) (tkSymbol n)
+  conv (B.If tk1 e1 tk2 e2 tk3 e3) = op3 V.If    (tkProv tk1 <> tkProv tk2 <> tkProv tk3) (conv e1) (conv e2) (conv e3)
+  conv (B.Impl e1 tk e2)           = op2 V.Impl  (tkProv tk) (conv e1) (conv e2)
+  conv (B.And e1 tk e2)            = op2 V.And   (tkProv tk) (conv e1) (conv e2)
+  conv (B.Or e1 tk e2)             = op2 V.Or    (tkProv tk) (conv e1) (conv e2)
+  conv (B.Not tk e)                = op1 V.Not   (tkProv tk) (conv e)
+  conv (B.True tk)                 = op0 V.True  (tkProv tk)
+  conv (B.False tk)                = op0 V.False (tkProv tk)
+  conv (B.Eq e1 tk e2)             = op2 V.Eq    (tkProv tk) (conv e1) (conv e2)
+  conv (B.Neq e1 tk e2)            = op2 V.Neq   (tkProv tk) (conv e1) (conv e2)
+  conv (B.Le e1 tk e2)             = op2 V.Le    (tkProv tk) (conv e1) (conv e2)
+  conv (B.Lt e1 tk e2)             = op2 V.Lt    (tkProv tk) (conv e1) (conv e2)
+  conv (B.Ge e1 tk e2)             = op2 V.Ge    (tkProv tk) (conv e1) (conv e2)
+  conv (B.Gt e1 tk e2)             = op2 V.Gt    (tkProv tk) (conv e1) (conv e2)
+  conv (B.Mul e1 tk e2)            = op2 V.Mul   (tkProv tk) (conv e1) (conv e2)
+  conv (B.Div e1 tk e2)            = op2 V.Div   (tkProv tk) (conv e1) (conv e2)
+  conv (B.Add e1 tk e2)            = op2 V.Add   (tkProv tk) (conv e1) (conv e2)
+  conv (B.Sub e1 tk e2)            = op2 V.Sub   (tkProv tk) (conv e1) (conv e2)
+  conv (B.Neg tk e)                = op1 V.Neg   (tkProv tk) (conv e)
+  conv (B.LitInt i)                = return $ V.ELitInt mempty i
+  conv (B.LitReal d)               = return $ V.ELitReal mempty d
+  conv (B.Cons e1 tk e2)           = op2 V.Cons  (tkProv tk) (conv e1) (conv e2)
+  conv (B.At e1 tk e2)             = op2 V.At    (tkProv tk) (conv e1) (conv e2)
+  conv (B.All tk)                  = op0 V.All   (tkProv tk)
+  conv (B.Any tk)                  = op0 V.Any   (tkProv tk)
+  conv (B.Seq tk1 es tk2)          = op1 V.Seq (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 es)
 
-instance Convert Name V.InputEArg where
-  conv n = return $ V.EArg (K (tkProv n)) (tkSymbol n)
-
-instance Convert B.Arg (Either V.InputTArg V.InputEArg) where
-  conv (B.TArg n) = return $ Left  (V.TArg (K $ tkProv n) (tkSymbol n))
-  conv (B.EArg n) = return $ Right (V.EArg (K $ tkProv n) (tkSymbol n))
+instance Convert B.Arg V.Arg where
+  conv (B.ImplicitArg e) = V.Arg _ Implicit <$> conv e
+  conv (B.ExplicitArg e) = V.Arg _ Explicit <$> conv e
 
 -- |Elaborate declarations.
 instance Convert (NonEmpty B.Decl) V.InputDecl where

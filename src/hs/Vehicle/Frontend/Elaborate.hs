@@ -62,8 +62,8 @@ elabForallBinder = _
 instance Elab VF.InputExpr VC.InputExpr where
   elab = \case
     -- Elaborate kinds.
-    VF.Kind              -> VC.Kind
-    VF.Type   ann        -> op0 VC.Type ann
+    VF.Kind              -> VC.Type1
+    VF.Type   ann        -> VC.Type0
 
     -- Elaborate types.
     VF.Forall ann ns t   -> foldr _ (elab t) (fmap elab ns)

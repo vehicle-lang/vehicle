@@ -1,28 +1,12 @@
-{-# LANGUAGE DataKinds                 #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE InstanceSigs              #-}
-{-# LANGUAGE ImportQualifiedPost       #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE LambdaCase                #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE RankNTypes                #-}
-{-# LANGUAGE RecordWildCards           #-}
-{-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TupleSections             #-}
-{-# LANGUAGE TypeApplications          #-}
-{-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE TypeOperators             #-}
-{-# LANGUAGE UndecidableInstances      #-}
-
 module Vehicle.Core.Compile.Type where
 
+import Control.Monad (when, unless)
 import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.State (MonadState(..), StateT(..), modify)
 import Data.Text (Text)
+import Data.Foldable (toList)
 import Text.Printf (printf)
 import Data.List (foldl')
 import Data.List.NonEmpty qualified as NonEmpty (scanl, head)
@@ -50,20 +34,22 @@ import Vehicle.Error
 
 -- * Errors thrown during type checking
 
-data TypeError
+data TypingError
   = IndexOutOfBounds
-      Provenance  -- ^ The location of the deBruijn index.
-      Index       -- ^ The deBruijn index.
-  | forall sort. KnownSort sort =>
-    Mismatch
-      Provenance  -- ^ The location of the mismatch.
-      [DeBruijnExpr Provenance] -- ^ The possible inferred types.
-      (DeBruijnExpr Provenance) -- ^ The expected type.
+    Provenance    -- ^ The location of the deBruijn index.
+    Index         -- ^ The deBruijn index.
+  | UnresolvedHole
+    Provenance    -- ^ The location of the hole
+    Symbol        -- ^ The name of the hole
+  | Mismatch
+    Provenance    -- ^ The location of the mismatch.
+    CheckedExpr   -- ^ The possible inferred types.
+    CheckedExpr   -- ^ The expected type.
   | MissingAnnotation
-      Provenance  -- ^ The location of the missing annotation.
+    Provenance    -- ^ The location of the missing annotation.
   | UnsupportedOperation
-      Provenance  -- ^ The location of the unsupported operation.
-      Text        -- ^ A description of the unsupported operation.
+    Provenance    -- ^ The location of the unsupported operation.
+    Text          -- ^ A description of the unsupported operation.
 {-
 instance MeaningfulError TypeError where
   details (IndexOutOfBounds p index) = DError $ DeveloperError
@@ -92,16 +78,16 @@ instance MeaningfulError TypeError where
 -- * Type and kind contexts
 
 -- |Type context.
+data UnificationConstraint = Unify CheckedExpr CheckedExpr
+data TypeClassConstraint   = Meta `Has` CheckedExpr
 
-type TypingError = ()
-
-type DeclCtx  = Map Ident CheckedExpr
-type BoundCtx = [CheckedExpr]
+type DeclCtx  = Map Symbol CheckedExpr
+type BoundCtx = Seq CheckedExpr
 data MetaCtx  = MetaCtx
   { nextMeta               :: Meta
   , metaVariableTypes      :: IntMap CheckedExpr
-  , unificationConstraints :: [(CheckedExpr, CheckedExpr)]
-  , typeClassConstraints   :: [CheckedExpr]
+  , unificationConstraints :: [UnificationConstraint]
+  , typeClassConstraints   :: [TypeClassConstraint]
   }
 
 type TCM a =
@@ -117,15 +103,26 @@ getMetaCtx = get
 modifyMetaCtx :: (MetaCtx -> MetaCtx) -> TCM ()
 modifyMetaCtx = modify
 
+addUnificationConstraints :: [UnificationConstraint] -> TCM ()
+addUnificationConstraints cs = modifyMetaCtx $ \ MetaCtx {..} ->
+  MetaCtx { unificationConstraints = cs <> unificationConstraints, ..}
+
+addTypeClassConstraints :: [TypeClassConstraint] -> TCM ()
+addTypeClassConstraints ts = modifyMetaCtx $ \ MetaCtx {..} ->
+  MetaCtx { typeClassConstraints = ts <> typeClassConstraints, ..}
+
 getMetaType :: Meta -> TCM CheckedExpr
 getMetaType i = do
   ctx <- getMetaCtx;
   case IntMap.lookup i (metaVariableTypes ctx) of
-    Just typ -> typ
+    Just typ -> return typ
     Nothing  -> developerError (printf "Meta variable ?%d not found in context" i)
 
 getBoundCtx :: TCM BoundCtx
 getBoundCtx = ask
+
+modifyBoundCtx :: (BoundCtx -> BoundCtx) -> TCM a -> TCM a
+modifyBoundCtx = local
 
 getDeclCtx :: TCM DeclCtx
 getDeclCtx = lift (lift ask)
@@ -136,19 +133,23 @@ freshMetaName = do
   put $ MetaCtx { nextMeta = succ nextMeta , ..}
   return nextMeta
 
+-- TODO unify these functions in a pleasing way
+
 -- | Creates a fresh meta variable. Meta variables need to remember what was
 -- in the current context when they were created. We do this by creating a
 -- meta-variable that takes everything in the current context as an argument
 -- and then which is immediately applied to everything in the current context.
 -- Post unification, any unneeded context arguments will be normalised away.
-freshMeta :: CheckedExpr -> TCM CheckedExpr
+-- It returns the name of the meta and the expression of it applied to every
+-- variable in the context.
+freshMeta :: CheckedExpr -> TCM (Meta, CheckedExpr)
 freshMeta resultType = do
   -- Create a fresh name
   metaName <- freshMetaName
 
   -- Create a Pi type that abstracts over all bound variables
   boundCtx  <- getBoundCtx
-  let metaType = foldl' (tPi Explicit) resultType boundCtx
+  let metaType = foldl' (tPiInternal Explicit) resultType boundCtx
 
   -- Stores type in meta-context
   modifyMetaCtx $ \MetaCtx {..} ->
@@ -157,20 +158,27 @@ freshMeta resultType = do
   -- Create bound variables for everything in the context
   let boundEnv =
         [ Bound (makeTypeAnn varType) (Index varIndex)
-        | (varIndex , varType) <- zip [0..] boundCtx ]
+        | (varIndex , varType) <- zip [0..] (toList boundCtx) ]
 
   -- Returns a meta applied to every bound variable in the context
   let meta = foldl' app (Meta metaName) boundEnv
-  return meta
+  return (metaName, meta)
 
-freshUncheckedMeta :: CheckedExpr -> TCM UncheckedExpr
+-- | Creates a fresh meta variable. Meta variables need to remember what was
+-- in the current context when they were created. We do this by creating a
+-- meta-variable that takes everything in the current context as an argument
+-- and then which is immediately applied to everything in the current context.
+-- Post unification, any unneeded context arguments will be normalised away.
+-- It returns the name of the meta and the expression of it applied to every
+-- variable in the context.
+freshUncheckedMeta :: CheckedExpr -> TCM (Meta, UncheckedExpr)
 freshUncheckedMeta resultType = do
   -- Create a fresh name
   metaName <- freshMetaName
 
   -- Create a Pi type that abstracts over all bound variables
   boundCtx  <- getBoundCtx
-  let metaType = foldl' (tPi Explicit) resultType boundCtx
+  let metaType = foldl' (tPiInternal Explicit) resultType boundCtx
 
   -- Stores type in meta-context
   modifyMetaCtx $ \MetaCtx {..} ->
@@ -180,16 +188,18 @@ freshUncheckedMeta resultType = do
   let boundEnv = [ Bound mempty (Index varIndex) | varIndex <- [0..length boundCtx - 1]]
 
   -- Returns a meta applied to every bound variable in the context
-  let meta = foldl' (\f x -> App mempty f (Arg Explicit x)) (Meta metaName) boundEnv
-  return meta
+  let meta = foldl' (\f x -> App mempty f (Arg mempty Explicit x)) (Meta metaName) boundEnv
+  return (metaName, meta)
 
 check :: CheckedExpr     -- Type we're checking against
       -> UncheckedExpr   -- Expression being type-checked
       -> TCM CheckedExpr -- Updated expression
-check target = \case
+check target = _
+{-\case
   Type l             -> _
   Constraint         -> _
   Meta     _         -> _
+  Hole     _ _       -> _
   Ann      ann _ _   -> _
   App      ann _ _   -> _
   Pi       ann _ _   -> _
@@ -200,19 +210,62 @@ check target = \case
   Lam      ann _ _   -> _
   Literal  ann _     -> _
   Seq      ann _     -> _
+-}
+{-
+
+    ELitSeqF p es -> fromCheck p $ do
+      tExpected <- ask
+      let actualFirstDimension = toInteger $ length es
+
+      tElem <- case unInfo tExpected of
+        (TApp ann1 (TApp ann2 (TCon ann3 TTensor) tElem) (TLitDimList ann4 (TLitDim _ann5 expectedFirstDimension :| ds)))
+          | actualFirstDimension == expectedFirstDimension -> case ds of
+            -- If there is only one dimension, the elements' type should be the tensor's type argument.
+            []         -> return $ Info tElem
+            -- If there is more than one dimension, the elements's type should be a tensor with one less dimension than the original.
+            (d2 : ds2) -> return $ Info $ TApp ann1 (TApp ann2 (TCon ann3 TTensor) tElem) (TLitDimList ann4 (d2 :| ds2))
+        (TApp _ (TCon _ TList) tElem) ->
+          return $ Info tElem
+        _ -> do
+          tElem <- lift freshTMeta
+          let tTensorActual = tTensor tElem (tLitDimList (tLitDim actualFirstDimension :| []))
+          let tListActual   = tList tElem
+          throwError $ Mismatch (unK p) [tTensorActual , tListActual] tExpected
+
+      es <- lift (traverse (runCheckWith tElem) es)
+      return $ ELitSeq (tExpected :*: p) es
+-}
+    {-
+    ELamF p n e -> fromCheck p $ do
+      tFun <- ask
+
+      -- Check if it's a function type: if so, return the two arguments; if not, throw an error.
+      (tArg, tRes) <- case unInfo tFun of
+        _tFun@(TApp _ (TApp _ (TCon _ TFun) tArg) tRes) ->
+          return (Info tArg, Info tRes)
+        _tFun -> do
+          expected <- lift $ (~>) <$> freshTMeta <*> freshTMeta
+          throwError $ Mismatch (unK p) [tFun] expected
+
+      -}
 
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
 infer :: UncheckedExpr
       -> TCM (CheckedExpr, CheckedExpr)
 infer = \case
-  Type l -> return (Type l , Type (l + 1))
+  Type l ->
+    return (Type l , Type (l + 1))
 
-  Constraint -> return (Constraint , Type 1)
+  Constraint ->
+    return (Constraint , Type 1)
 
   Meta i -> do
     metaType <- getMetaType i
     return (Meta i , metaType)
+
+  Hole p s ->
+    throwError $ UnresolvedHole p s
 
   Ann      ann e t   -> do
     (t', _) <- infer t
@@ -220,56 +273,114 @@ infer = \case
     let ann' = RecAnn t' ann
     return (Ann ann' e' t' , t')
 
-  App p fun (Arg argVis arg) -> do
-    -- Infer the kind of the function.
-    (fun' , tFun) <- infer fun
+  App p fun arg@(Arg pArg vArg eArg) -> do
+    -- Infer the type of the function.
+    (fun' , tFun') <- infer fun
 
-    -- Check if it's a function kind: if so, return the two argument; if not, throw an error.
-    case tFun of
-      Pi _ (Binder _ funVis _ tArg) tRes
-        | argVis == funVis -> do
-          -- Check the kind of the argument.
-          arg' <- check tArg arg
+    case tFun' of
+      -- Check if it's a Pi type which is expecting the right visibility
+      Pi _ (Binder _ vFun _ tArg) tRes
+        | vArg == vFun -> do
+          -- Check the type of the argument.
+          eArg' <- check tArg eArg
 
           -- Return the appropriately annotated type with its inferred kind.
-          return (App (RecAnn tRes p) fun' (Arg argVis arg') , tRes)
+          return (App (RecAnn tRes p) fun' (Arg pArg vArg eArg') , tRes)
 
-      Pi _ (Binder _ Implicit _ tArg) tRes -> do
-        metaArg <- freshUncheckedMeta tArg
-        let funWithImplicit = App mempty fun (Arg Implicit metaArg)
-        infer (App p funWithImplicit (Arg argVis arg))
+      -- Check if it's a Pi type which is expecting an implicit argument
+      -- but is being applied to an explicit argument
+      Pi _ (Binder _ Implicit _ tArg) _tRes -> do
+        -- Generate a fresh meta variable
+        (meta, metaArg) <- freshUncheckedMeta tArg
+
+        -- TODO Wen is worried about interactions between the Pi abstractions over
+        -- the context and the type-class search later on.
+
+        -- Check if the implicit argument is a type-class
+        when (isConstraint tArg) $
+          addTypeClassConstraints [meta `Has` tArg]
+
+        -- Apply the function to the new meta.
+        let funWithImplicit = App mempty fun (Arg mempty Implicit metaArg)
+
+        -- Try again to infer the type of the application.
+        infer (App p funWithImplicit arg)
 
       _ -> do
-        expected <- (~>) <$> freshMeta <*> freshMeta
-        throwError $ Mismatch p tFun expected
+        let expected = hole "a" ~> hole "b"
+        throwError $ Mismatch p tFun' expected
 
 
-  Pi       ann _ _   -> _
+  Pi p (Binder pBound vis name arg) res -> do
+    (arg', tArg') <- infer arg
 
-  Builtin  ann _     -> _
+    modifyBoundCtx (arg' Seq.<|) $ do
+      (res', tRes') <- infer res
+      let t' = tArg' `tMax` tRes'
+      return (Pi (RecAnn t' p) (Binder pBound vis name arg') res' , t')
 
-  Bound    ann _     -> _
+  Builtin p op -> do
+    let t' = typeOfBuiltin p op
+    return (Builtin (RecAnn t' p) op, t')
 
-  Free     ann _     -> _
+  Bound p (Index i) -> do
+    -- Lookup the type of the variable in the context.
+    ctx <- getBoundCtx
+    case ctx Seq.!? i of
+      Just t' -> return (Bound (RecAnn t' p) (Index i), t')
+      Nothing -> developerError $
+        printf "Index %d out of bounds when looking up variable in context %s at %s" i (show ctx) (showProv p)
 
-  Let      ann _ _ _ -> _
+  Free p name -> do
+    -- Lookup the type of the declaration variable in the context.
+    ctx <- getDeclCtx
+    case Map.lookup name ctx of
+      Just t' -> return (Free (RecAnn t' p) name, t')
+      -- This should have been caught during scope checking
+      Nothing -> developerError $
+        printf "Declaration %s not found when looking up variable in context %s at %s" name (show ctx) (showProv p)
 
-  Lam      ann _ _   -> _
+  Let p (Binder pBound vis name tBound) arg body -> do
+    -- Infer the type of the let arg from the annotation on the binder
+    (tBound', _) <- infer tBound
 
-  Literal  ann _     -> _
+    -- Check the arg actually has that type
+    arg' <- check tBound' arg
 
-  Seq      ann _     -> _
+    -- Update the context with the bound variable
+    modifyBoundCtx (tBound' Seq.<|) $ do
+      -- Infer the type of the body
+      (body' , tBody') <- infer body
+      return (Let (RecAnn tBody' p) (Binder pBound vis name tBound') arg' body' , tBody')
 
+  Lam p (Binder pBound vis name tBound) body -> do
+    -- Infer the type of the bound variable from the binder
+    (tBound', _) <- infer tBound
+
+    -- Update the context with the bound variable
+    modifyBoundCtx (tBound' Seq.<|) $ do
+      (body' , tBody') <- infer body
+      let t' = tPi pBound vis name tBound' tBody'
+      return (Lam (RecAnn t' p) (Binder pBound vis name t') body' , t')
+
+  Literal p l -> do
+    let t' = typeOfLiteral p l
+    return (Literal (RecAnn t' p) l, t')
+
+  Seq p es -> do
+    (es', ts') <- unzip <$> traverse infer es
+    let tElemTCM
+          | null ts'  = snd <$> freshMeta Type0
+          | otherwise = do
+              addUnificationConstraints (zipWith Unify ts' (tail ts'))
+              return $ head ts'
+    tElem' <- tElemTCM
+
+    (meta, tCont') <- freshMeta Type0
+    addTypeClassConstraints [meta `Has` isContainer p tCont' tElem']
+
+    return (Seq (RecAnn tCont' p) es' , tCont')
 {-
--- |Create a context with a single piece of information of the given sort.
-singletonCtx :: (sort `In` ['TYPE, 'EXPR]) => SSort sort -> Info DeBruijn sort -> Ctx
-singletonCtx STYPE info = Ctx (Seq.singleton info) Seq.empty
-singletonCtx SEXPR info = Ctx Seq.empty (Seq.singleton info)
-
--- |Get the sub-context for a given sort.
-getSubCtxFor :: forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) => Ctx -> Seq (Info DeBruijn sort)
-getSubCtxFor = case sortSing @sort of STYPE -> typeInfo; SEXPR -> exprInfo
-
 
 -- * Bidirectional type checking and inference algorithm
 
@@ -283,12 +394,6 @@ type CheckedTree (sort :: Sort) = Tree DeBruijn (Info DeBruijn :*: K Provenance)
 --    3. an exception monad for throwing type errors.
 --
 type TCM (sort :: Sort) = DataflowT sort Ctx (SupplyT Meta (Except TypeError))
-
-
--- |Type which wraps a pair of a checking and an inference monad such that they can be used
---  in a sorted position, e.g., as the recursive position in |foldTree|.
-newtype SortedCheckInfer (sort :: Sort)
-  = SCI { unSCI :: (Check sort (CheckedTree sort), Infer sort (CheckedTree sort)) }
 
 -- |Find the type information for a given deBruijn index of a given sort.
 getInfo ::
@@ -348,31 +453,11 @@ checkInferF = case sortSing @sort of
     -- infer the kind of the type function, check the kind of its argument.
     TAppF p tFun tArg -> fromInfer p $ do
 
-
-    -- For type variables:
-    -- lookup the kind of the variable in the context.
-    TVarF p n -> fromInfer p $ do
-      k <- getInfo p n
-      return (TVar (k :*: p) n, k)
-
     -- For type builtins:
     -- lookup the kind of the builtin using |kindOf|.
     TConF p op -> fromInfer p $ do
       let k = kindOf op
       return (TCon (k :*: p) op, k)
-
-    -- For dimension literals:
-    -- all dimension literals have kind |kDim|.
-    TLitDimF p d -> fromInfer p $ do
-      let k = kDim
-      return (TLitDim (k :*: p) d, k)
-
-    -- For lists of dimension literals:
-    -- check that each element has kind |kDim|, return |kDimList|.
-    TLitDimListF p ts -> fromInfer p $ do
-      ts <- traverse (runCheckWith kDim) ts
-      let k = kDimList
-      return (TLitDimList (k :*: p) ts, k)
 
     -- Type meta-variables are currently unsupported.
     TMetaF p _i -> fromCheck p $
@@ -397,30 +482,6 @@ checkInferF = case sortSing @sort of
       t <- getInfo p n
       return (EVar (t :*: p) n, t)
 
-    ELetF p n e1 e2 -> fromInfer p $ do
-      -- Infer the type of the let body
-      (e1, t1) <- runInfer e1
-
-      -- Add the let bound name to the context and type check the body
-      bindLocal (runCheckWith (coerce t1) n) $ \n -> do
-        (e2, t2) <- runInfer e2
-        return (ELet (t2 :*: p) n e1 e2, t2)
-
-    ELamF p n e -> fromCheck p $ do
-      tFun <- ask
-
-      -- Check if it's a function type: if so, return the two arguments; if not, throw an error.
-      (tArg, tRes) <- case unInfo tFun of
-        _tFun@(TApp _ (TApp _ (TCon _ TFun) tArg) tRes) ->
-          return (Info tArg, Info tRes)
-        _tFun -> do
-          expected <- lift $ (~>) <$> freshTMeta <*> freshTMeta
-          throwError $ Mismatch (unK p) [tFun] expected
-
-      -- Add the argument to the context and type check the body
-      lift $ bindLocal (runCheckWith tArg n) $ \n -> do
-        e <- runCheckWith tRes e
-        return $ ELam (tRes :*: p) n e
 
     EAppF p eFun eArg -> fromInfer p $ do
       -- Infer the type of the function.
@@ -476,10 +537,6 @@ checkInferF = case sortSing @sort of
         e <- runCheckWith tRes e
         return $ ETyLam (tRes :*: p) n e
 
-    EConF p op -> fromInfer p $ do
-      let t = typeOf op
-      return (ECon (t :*: p) op, t)
-
     ELitIntF p z -> fromInfer p $ do
       let t = tInt
       return (ELitInt (t :*: p) z, t)
@@ -488,27 +545,7 @@ checkInferF = case sortSing @sort of
       let t = tReal
       return (ELitReal (t :*: p) r, t)
 
-    ELitSeqF p es -> fromCheck p $ do
-      tExpected <- ask
-      let actualFirstDimension = toInteger $ length es
 
-      tElem <- case unInfo tExpected of
-        (TApp ann1 (TApp ann2 (TCon ann3 TTensor) tElem) (TLitDimList ann4 (TLitDim _ann5 expectedFirstDimension :| ds)))
-          | actualFirstDimension == expectedFirstDimension -> case ds of
-            -- If there is only one dimension, the elements' type should be the tensor's type argument.
-            []         -> return $ Info tElem
-            -- If there is more than one dimension, the elements's type should be a tensor with one less dimension than the original.
-            (d2 : ds2) -> return $ Info $ TApp ann1 (TApp ann2 (TCon ann3 TTensor) tElem) (TLitDimList ann4 (d2 :| ds2))
-        (TApp _ (TCon _ TList) tElem) ->
-          return $ Info tElem
-        _ -> do
-          tElem <- lift freshTMeta
-          let tTensorActual = tTensor tElem (tLitDimList (tLitDim actualFirstDimension :| []))
-          let tListActual   = tList tElem
-          throwError $ Mismatch (unK p) [tTensorActual , tListActual] tExpected
-
-      es <- lift (traverse (runCheckWith tElem) es)
-      return $ ELitSeq (tExpected :*: p) es
 
 
   -- Expression arguments
@@ -640,3 +677,97 @@ runInfer (SCI (_chk, inf)) = inf
 
 -}
 -}
+
+typeOfLiteral :: Provenance -> Literal -> CheckedExpr
+typeOfLiteral p (LNat  _) = tForall Type0 $ \t -> isNatural p t ~~> t
+typeOfLiteral p (LInt  _) = tForall Type0 $ \t -> isIntegral p t ~~> t
+typeOfLiteral p (LReal _) = tForall Type0 $ \t -> isReal p t ~~> t
+typeOfLiteral p (LBool _) = tForall Type0 $ \t -> isTruth p t ~~> t
+
+-- |Return the kind for builtin exprs.
+typeOfBuiltin :: Provenance -> Builtin -> CheckedExpr
+typeOfBuiltin p = \case
+  PrimitiveType _ -> Type0
+  List            -> Type0 ~> Type0
+  Tensor          -> Type0 ~> tList tNat ~> Type0
+
+  Implements HasEq          -> Type0 ~> Type0 ~> Constraint
+  Implements HasOrd         -> Type0 ~> Type0 ~> Constraint
+  Implements IsTruth        -> Type0 ~> Constraint
+  Implements IsNatural      -> Type0 ~> Constraint
+  Implements IsIntegral     -> Type0 ~> Constraint
+  Implements IsRational     -> Type0 ~> Constraint
+  Implements IsReal         -> Type0 ~> Constraint
+  Implements IsContainer    -> Type0 ~> Constraint
+  Implements IsQuantifiable -> Type0 ~> Type0 ~> Constraint
+
+  If   -> tForall Type0 $ \t -> tProp ~> t ~> t
+  Cons -> tForall Type0 $ \t -> t ~> tList t ~> tList t
+
+  Impl -> typeOfBoolOp2 p
+  And  -> typeOfBoolOp2 p
+  Or   -> typeOfBoolOp2 p
+  Not  -> typeOfBoolOp1 p
+
+  Eq   -> typeOfEqualityOp p
+  Neq  -> typeOfEqualityOp p
+
+  Le   -> typeOfComparisonOp p
+  Lt   -> typeOfComparisonOp p
+  Ge   -> typeOfComparisonOp p
+  Gt   -> typeOfComparisonOp p
+
+  Add  -> typeOfNumOp2 (isNatural  p)
+  Sub  -> typeOfNumOp2 (isIntegral p)
+  Mul  -> typeOfNumOp2 (isNatural  p)
+  Div  -> typeOfNumOp2 (isRational p)
+  Neg  -> typeOfNumOp1 (isIntegral p)
+
+  At   -> typeOfAtOp p
+
+  All  -> typeOfQuantifierOp p
+  Any  -> typeOfQuantifierOp p
+
+typeOfEqualityOp :: Provenance -> CheckedExpr
+typeOfEqualityOp p =
+  tForall Type0 $ \t ->
+    tForall Type0 $ \r ->
+      hasEq p t r ~~> t ~> t ~> r
+
+typeOfComparisonOp :: Provenance -> CheckedExpr
+typeOfComparisonOp p =
+  tForall Type0 $ \t ->
+    tForall Type0 $ \r ->
+      hasOrd p t r ~~> t ~> t ~> r
+
+typeOfBoolOp2 :: Provenance -> CheckedExpr
+typeOfBoolOp2 p =
+  tForall Type0 $ \t ->
+    isTruth p t ~~> t ~> t ~> t
+
+typeOfBoolOp1 :: Provenance -> CheckedExpr
+typeOfBoolOp1 p =
+  tForall Type0 $ \t ->
+    isTruth p t ~~> t ~> t
+
+typeOfNumOp2 :: (CheckedExpr -> CheckedExpr) -> CheckedExpr
+typeOfNumOp2 numConstraint =
+  tForall Type0 $ \t ->
+    numConstraint t ~~> t ~> t ~> t
+
+typeOfNumOp1 :: (CheckedExpr -> CheckedExpr) -> CheckedExpr
+typeOfNumOp1 numConstraint =
+  tForall Type0 $ \t ->
+    numConstraint t ~~> t ~> t
+
+typeOfQuantifierOp :: Provenance -> CheckedExpr
+typeOfQuantifierOp p =
+  tForall Type0 $ \t ->
+    tForall Type0 $ \r ->
+      isQuantifiable p t r ~~> t ~> (t ~> r) ~> r
+
+typeOfAtOp :: Provenance -> CheckedExpr
+typeOfAtOp p =
+  tForall Type0 $ \tCont ->
+    tForall Type0 $ \tElem ->
+      isContainer p tCont tElem ~~> tCont ~> tNat ~> tElem

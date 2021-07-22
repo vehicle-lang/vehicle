@@ -3,10 +3,12 @@ module Vehicle.Prelude.Provenance
   ( Provenance
   , tkProvenance
   , HasProvenance(..)
+  , showProv
   ) where
 
 import Data.Range hiding (joinRanges)
 import Prettyprinter
+import Prettyprinter.Render.String (renderString)
 
 import Vehicle.Prelude.Token
 import Vehicle.Prelude.Types ( K(K) )
@@ -57,6 +59,10 @@ instance Pretty (Range Position) where
   -- I think we exclusively use inclusive span ranges so for the moment
   -- don't do anything special when showing them.
   pretty r = pretty $ show r
+
+-- TODO make instance of PrintfArg
+showProv :: Provenance -> String
+showProv p = renderString $ layoutPretty defaultLayoutOptions (pretty p)
 
 -- | Takes the union of two sets of position ranges and then joins any adjacent
 -- ranges (e.g. r1=[(1,10)-(1,20)] & r2=[(1,21)-(1,25)] gets mapped to

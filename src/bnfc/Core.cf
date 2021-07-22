@@ -5,7 +5,7 @@ comment "(*" "*)";
 -- * Tokens
 
 position token BuiltinToken
-  ( {"Type"} | {"Kind"} | {"Constraint"}
+  ( {"Constraint"}
   | {"all"} | {"any"}
   | {"=>"} | {"and"} | {"or"} | {"not"}
   | {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
@@ -17,21 +17,20 @@ position token BuiltinToken
   );
 position token NameToken (lower (letter | digit | '_')*) ;
 position token BoolToken ({"True"} | {"False"}) ;
-position token MetaToken ("?" digit+);
+position token HoleToken ({"?"} (letter | digit | '_')*);
+position token TypeToken ({"Type"} digit+);
 
 -- * Binders
 
-ExplicitNameAndType. Binder ::= "(" NameToken Expr1 ")";
-ImplicitNameAndType. Binder ::= "{" NameToken Expr1 "}";
+ExplicitNameAndType. Binder ::= "(" NameToken ":type" Expr ")";
+ImplicitNameAndType. Binder ::= "{" NameToken ":type" Expr "}";
 ExplicitName.        Binder ::= NameToken;
 ImplicitName.        Binder ::= "{" NameToken "}";
-ExplicitType.        Binder ::= Expr1;
-EmplicitType.        Binder ::= "{" Expr1 "}";
 
 -- * Function arguments
 
-ImplicitArg. Arg ::= Expr1;
-ExplicitArg. Arg ::= "{" Expr1 "}";
+ExplicitArg. Arg ::= Expr1;
+ImplicitArg. Arg ::= "{" Expr "}";
 
 -- * Literals
 
@@ -41,17 +40,17 @@ LitBool. Lit ::= BoolToken;
 
 -- * Core structure.
 
-Kind.          Expr  ::= "kind";
-App.           Expr  ::= Expr Arg;
-Pi.            Expr  ::= "pi" Binder Expr1;
-Lam.           Expr  ::= "lambda" Binder Expr1;
-Let.           Expr  ::= "let" Binder Expr1 Expr1;
+Ann.           Expr  ::= Expr1 ":type" Expr1;
+Pi.            Expr ::= "pi" Binder Expr1;
+Let.           Expr ::= "let" Binder Expr1 Expr1;
+Lam.           Expr ::= "lambda" Binder Expr1;
+App.           Expr ::= Expr1 Arg;
+Type.          Expr1 ::= TypeToken;
 Seq.           Expr1 ::= "[" [Expr1] "]";
-Ann.           Expr  ::= Expr ":type" Expr;
 Builtin.       Expr1 ::= BuiltinToken;
 Var.           Expr1 ::= NameToken;
 Literal.       Expr1 ::= Lit;
-internal Meta. Expr1 ::= MetaToken;
+Hole.          Expr1 ::= HoleToken;
 
 coercions Expr 1;
 separator Expr1 "";

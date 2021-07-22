@@ -15,7 +15,6 @@ import Control.Monad.Except (Except, withExcept, runExcept, mapExcept)
 import Vehicle.Core.AST (Tree, InputTree, Info, OutputTree, DeBruijn)
 import Vehicle.Core.Compile.Scope (ScopeError(..), symbolToDeBruijn, deBruijnToSymbol)
 import Vehicle.Core.Compile.Type (TypeError(..), checkInfer)
-import Vehicle.Core.Compile.Dataflow
 import Vehicle.Prelude
 import Vehicle.Error ( MeaningfulError(..) )
 

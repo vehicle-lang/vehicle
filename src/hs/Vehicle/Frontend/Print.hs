@@ -78,12 +78,17 @@ instance Compile Literal where
     LReal v -> pretty v
     LBool v -> pretty v
 
+instance Compile (Binder ann) where
+  compile (Binder _p vis n typeAnn) =
+    let typAnn = maybe "" (\t -> ":" <+> compile t) typeAnn
+    in  visBrackets vis (pretty n <> typAnn)
+
 instance Compile (Arg ann) where
-  compile (Arg _ann Explicit  e) = pretty e
-  compile (Arg _ann Implicit _e) = ""
+  compile (Arg _p Explicit  e) = compile e
+  compile (Arg _p Implicit _e) = ""
 
 instance Compile (LetDecl ann) where
-  compile (LetDecl _ann n e) = compile n <+> compile e
+  compile (LetDecl _p n e) = compile n <+> compile e
 
 instance Compile (Ident ann) where
   compile (Ident _ann n) = pretty n

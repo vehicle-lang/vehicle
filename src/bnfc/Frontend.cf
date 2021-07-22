@@ -17,8 +17,6 @@ position token TokDot      {"."};
 position token TokElemOf   {":"};
 position token TokLambda   {"\\"};
 
-position token TokType     {"Type"};
-position token TokDim      {"Dim"};
 position token TokTensor   {"Tensor"};
 position token TokList     {"List"};
 position token TokReal     {"Real"};
@@ -55,52 +53,31 @@ position token Name        (lower (letter | digit | '_')*) ;
 separator Name "";
 
 
--- * Kinds
+-- * Binders
 
--- Primitive kinds.
-KFun.     Kind  ::= Kind1 TokArrow Kind;
-KType.    Kind1 ::= TokType;
-KDim.     Kind1 ::= TokDim;
-KDimList. Kind1 ::= TokList;
+ExplicitBinderUnann. Binder ::= Name;
+ExplicitBinderAnn.   Binder ::= Name TokElemOf Expr14;
+ImplicitBinderUnann. Binder ::= "{" Name "}";
+ImplicitBinderAnn.   Binder ::= "{" Name TokElemOf Expr14 "}";
 
-coercions Kind 1;
+separator Binder "";
 
+-- * Arguments
 
--- * Types
+ExplicitArg. Arg ::= Expr14;
+ImplicitArg. Arg ::= "{" Expr14 "}";
 
--- Core structure.
-TForall.  Type  ::= TokForall [Name] TokDot Type;
-TVar.     Type5 ::= Name;
+-- * Individual let declarations
 
--- Primitive types.
-TFun.     Type  ::= Type2 TokArrow Type;
-TList.    Type4 ::= TokList Type5;
-TTensor.  Type4 ::= TokTensor Type5 Type5;
-TBool.    Type5 ::= TokBool;
-TProp.    Type5 ::= TokProp;
-TReal.    Type5 ::= TokReal;
-TInt.     Type5 ::= TokInt;
+LDecl. LetDecl ::= Binder "=" Expr;
 
--- Type-level dimensions.
-TAdd.     Type2 ::= Type2 TokAdd Type3;
-TLitDim.  Type5 ::= Integer; -- confusingly, this means natural
+separator LetDecl ",";
 
--- Type-level lists.
-TCons.       Type1 ::= Type2 TokCons Type1;
-TLitDimList. Type5 ::= TokSeqOpen [Type] TokSeqClose;
+-- * Literals
 
-coercions Type 5;
-
-separator Type ",";
-
-
--- * Top-level function arguments
-
-TArg. Arg ::= "{" Name "}";
-EArg. Arg ::= Name;
-
-separator Arg "";
-
+LitNat.  Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
+LitReal. Lit ::= Double;
+LitBool. Lit ::= BoolToken;
 
 -- * Expressions
 
@@ -114,62 +91,71 @@ separator Arg "";
 --   See https://github.com/BNFC/bnfc/issues/372 for why tokens
 --   aren't used for `let` and `in`.
 
-layout "let";
-layout stop "in";
+-- Kinds.
+internal Type.       Expr14 ::= "Type" Integer;
+internal Constraint. Expr14 ::= "Constraint";
 
 -- Core structure.
-EAnn.       Expr   ::= Expr1 TokElemOf Type;
-ELet.       Expr1  ::= "let" "{" [Decl] "}" "in" Expr1;
-ELam.       Expr2  ::= TokLambda [Name] TokArrow Expr2;
-EApp.       Expr11 ::= Expr11 Expr12;
-EVar.       Expr12 ::= Name;
-ETyApp.     Expr11 ::= Expr11 "{" Type "}";
-ETyLam.     Expr2  ::= TokLambda "{" [Name] "}" TokArrow Expr2;
--- TODO merge eLam and eTyLam using Arg
+Forall.  Expr   ::= TokForall [Binder] TokDot Expr;
+Ann.     Expr   ::= Expr1 TokElemOf Expr;
+Let.     Expr1  ::= "let" "{" [LetDecl] "}" "in" Expr1;
+Lam.     Expr2  ::= TokLambda [Binder] TokArrow Expr2;
+App.     Expr12 ::= Expr13 Arg;
+Var.     Expr14 ::= Name;
+Fun.     Expr12 ::= Expr13 TokArrow Expr12;
 
--- Conditional expressions.
-EIf.        Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;
-EImpl.      Expr4  ::= Expr5 TokImpl Expr4;
-EAnd.       Expr5  ::= Expr6 TokAnd Expr5;
-EOr.        Expr6  ::= Expr7 TokOr Expr6;
-ENot.       Expr10 ::= TokNot Expr10;
-ETrue.      Expr13 ::= TokTrue;
-EFalse.     Expr13 ::= TokFalse;
+-- Primitive types.
+List.    Expr13 ::= TokList Expr14;
+Tensor.  Expr13 ::= TokTensor Expr14 Expr14;
+Bool.    Expr14 ::= TokBool;
+Prop.    Expr14 ::= TokProp;
+Real.    Expr14 ::= TokReal;
+Int.     Expr14 ::= TokInt;
 
--- Integers and reals.
-EEq.        Expr7  ::= Expr8 TokEq Expr8;
-ENeq.       Expr7  ::= Expr8 TokNeq Expr8;
-ELe.        Expr7  ::= Expr8 TokLe Expr8;
-ELt.        Expr7  ::= Expr8 TokLt Expr8;
-EGe.        Expr7  ::= Expr8 TokGe Expr8;
-EGt.        Expr7  ::= Expr8 TokGt Expr8;
-EMul.       Expr8  ::= Expr8 TokMul Expr9;
-EDiv.       Expr8  ::= Expr8 TokDiv Expr9;
-EAdd.       Expr9  ::= Expr9 TokAdd Expr10;
-ESub.       Expr9  ::= Expr9 TokSub Expr10;
-ENeg.       Expr10 ::= TokSub Expr10;
-ELitInt.    Expr13 ::= Integer;
-ELitReal.   Expr13 ::= Double;
+-- Boolean expressions.
+If.      Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;
+Impl.    Expr4  ::= Expr5 TokImpl Expr4;
+And.     Expr5  ::= Expr6 TokAnd Expr5;
+Or.      Expr6  ::= Expr7 TokOr Expr6;
+Eq.      Expr7  ::= Expr8 TokEq  Expr8;
+Neq.     Expr7  ::= Expr8 TokNeq Expr8;
+Not.     Expr10 ::= TokNot Expr10;
+
+-- Numeric expressions.
+Le.      Expr7  ::= Expr8 TokLe  Expr8;
+Lt.      Expr7  ::= Expr8 TokLt  Expr8;
+Ge.      Expr7  ::= Expr8 TokGe  Expr8;
+Gt.      Expr7  ::= Expr8 TokGt  Expr8;
+Mul.     Expr8  ::= Expr8 TokMul Expr9;
+Div.     Expr8  ::= Expr8 TokDiv Expr9;
+Add.     Expr9  ::= Expr9 TokAdd Expr10;
+Sub.     Expr9  ::= Expr9 TokSub Expr10;
+Neg.     Expr10 ::= TokSub Expr10;
+Lit.     Expr14 ::= Literal;
 
 -- Lists and tensors.
-ECons.      Expr3  ::= Expr4 TokCons Expr3;
-EAt.        Expr11 ::= Expr11 TokAt Expr12;
-EAll.       Expr13 ::= TokAll;
-EAny.       Expr13 ::= TokAny;
-ELitSeq.    Expr13 ::= TokSeqOpen [Expr] TokSeqClose;
+Cons.    Expr3  ::= Expr4 TokCons Expr3;
+At.      Expr11 ::= Expr11 TokAt Expr12;
+Seq.     Expr14 ::= TokSeqOpen [Expr] TokSeqClose;
 
-coercions Expr 13;
+-- Quantification
+All.     Expr14 ::= TokAll;
+Any.     Expr14 ::= TokAny;
 
+coercions Expr 14;
 separator Expr ",";
+
+layout "let";
+layout stop "in";
 
 
 -- * Declarations
 
-DeclNetw.   Decl ::= "network" Name TokElemOf Type;
-DeclData.   Decl ::= "dataset" Name TokElemOf Type;
-DefType.    Decl ::= "type"    Name [Name] "=" Type;
-DefFunType. Decl ::= Name TokElemOf Type;
-DefFunExpr. Decl ::= Name [Arg] "=" Expr;
+DeclNetw.   Decl ::= "network" Name TokElemOf Expr;
+DeclData.   Decl ::= "dataset" Name TokElemOf Expr;
+DefType.    Decl ::= "type"    Name [Name] "=" Expr;
+DefFunType. Decl ::= Name TokElemOf Expr;
+DefFunExpr. Decl ::= Name [Binder] "=" Expr;
 
 separator Decl ";";
 

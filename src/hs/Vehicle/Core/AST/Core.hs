@@ -13,19 +13,24 @@ import Vehicle.Core.AST.Builtin (Builtin)
 
 -- | Meta-variables
 type Meta = Int
+
+-- | Universe levels
 type Level = Natural
 
 data Arg binder var ann
-  = Arg Visibility (Expr binder var ann)
+  = Arg
+    Provenance
+    Visibility
+    (Expr binder var ann)
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- | Binder for Pi types
 data Binder binder var ann
   = Binder
-    ann
-    Visibility                   -- Whether binding is explicit or inferred
-    binder                       -- The name of the bound variable
-    (Expr binder var ann)        -- The type of the bound variable
+    Provenance
+    Visibility             -- Whether binding is explicit or inferred
+    binder                 -- The name of the bound variable
+    (Expr binder var ann)  -- The type of the bound variable
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- * Abstract syntax tree for Vehicle Core
@@ -79,6 +84,9 @@ data Expr binder var ann
     ann                      -- Annotation.
     Symbol                   -- Identifer.
 
+  -- | A hole in the program. Differs from meta-variables as they are not typed.
+  | Hole Provenance Symbol
+
   -- | Unsolved meta variables.
   | Meta Meta                -- Meta variable.
 
@@ -107,6 +115,7 @@ data Expr binder var ann
 
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
+makeBaseFunctor ''Expr
 
 newtype Ident = Ident Symbol
   deriving (Eq, Ord, Show)
@@ -142,8 +151,9 @@ newtype Prog binder var ann
   = Main [Decl binder var ann] -- ^ List of declarations.
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
-makeBaseFunctor ''Expr
+-- TODO make this nicer and differentiate why we're calling it (debug vs user error messages)
 
 -- | An annotation that stores both the type of the expression and some other arbitrary annotations.
 -- Used post-type checking. Avoids unrestricted type-level recursion.
 data RecAnn binder var ann = RecAnn (Expr binder var (RecAnn binder var ann)) ann
+  deriving (Show)

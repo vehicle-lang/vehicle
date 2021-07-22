@@ -123,14 +123,14 @@ instance Convert B.Lit Literal where
 
 instance Convert B.Expr V.InputExpr where
   conv = \case
-    B.Kind             -> return V.Kind
+    B.Kind             -> return $ V.Type 1
     B.Meta m           -> return $ V.Meta (fromIntegral m)
     B.Ann term typ     -> op2 V.Ann <$> conv term <*> conv typ
     B.App fun arg      -> op2 V.App <$> conv fun <*> conv arg
     B.Pi  binder expr  -> op2 V.Pi  <$> conv binder <*> conv expr;
     B.Lam binder e     -> op2 V.Lam <$> conv binder <*> conv e
     B.Let binder e1 e2 -> op3 V.Let <$> conv binder <*> conv e1 <*> conv e2
-    B.Seq es           -> op1 V.Seq <$> traverse conv (Seq.fromList es)
+    B.Seq es           -> op1 V.Seq <$> traverse conv es
     B.Builtin c        -> V.Builtin (tkProvenance c) <$> lookupBuiltin c
     B.Literal v        -> V.Literal mempty <$> conv v
     B.Var n            -> return $ V.Bound (tkProvenance n) (tkSymbol n)

@@ -1,7 +1,6 @@
 
 module Vehicle.Frontend.AST.Utils where
 
-import Data.List.NonEmpty(NonEmpty(..))
 import Numeric.Natural (Natural)
 
 import Vehicle.Prelude
@@ -111,6 +110,7 @@ instance KnownSort sort => HasProvenance (OutputAnn sort) where
 
 instance KnownSort sort => HasProvenance (OutputTree sort) where
   prov = prov . annotation
--}
+
 pattern Let1 :: ann -> ann -> Ident ann -> Expr ann -> Expr ann -> Expr ann
 pattern Let1 ann1 ann2 n e1 e2 = Let ann1 (LetDecl ann2 n e1 :| []) e2
+-}

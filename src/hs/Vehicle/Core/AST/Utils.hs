@@ -76,6 +76,7 @@ annotation = \case
   Type     _         -> error "Should not be requesting an annotation from Type"
   Constraint         -> error "Should not be requesting an annotation from Constraint"
   Meta     _         -> error "Should not be requesting an annotation from Meta"
+  Hole     _   _     -> error "Should not be requesting an annotation from Hole"
   Ann      ann _ _   -> ann
   App      ann _ _   -> ann
   Pi       ann _ _   -> ann
@@ -92,6 +93,11 @@ getType :: Expr binder var (RecAnn binder var ann) -> Expr binder var (RecAnn bi
 getType (Type l)   = Type (l + 1)
 getType Constraint = Type1
 getType e          = let RecAnn t _ = annotation e in t
+
+isConstraint :: CheckedExpr -> Bool
+isConstraint e = case getType e of
+  Constraint -> True
+  _          -> False
 
 -- * Instances
 

@@ -59,6 +59,7 @@ instance Liftable ann => Liftable (DeBruijnExpr ann) where
     Type l                   -> Type l
     Constraint               -> Constraint
     Meta    m                -> Meta     m
+    Hole    p name           -> Hole     p name
     Ann     ann term typ     -> Ann     (liftAcc d ann) (liftAcc d term) (liftAcc d typ)
     App     ann fun arg      -> App     (liftAcc d ann) (liftAcc d fun) (liftAcc d arg)
     Pi      ann binder res   -> Pi      (liftAcc d ann) (liftAcc d binder) (liftAcc (d + 1) res)
@@ -74,10 +75,10 @@ instance Liftable ann => Liftable (DeBruijnExpr ann) where
            | otherwise = i     -- Index is locally bound so no need to increment it
 
 instance Liftable ann => Liftable (DeBruijnArg ann) where
-  liftAcc d (Arg vis e) = Arg vis (liftAcc d e)
+  liftAcc d (Arg p vis e) = Arg p vis (liftAcc d e)
 
 instance Liftable ann => Liftable (DeBruijnBinder ann) where
-  liftAcc d (Binder ann vis binder expr) = Binder (liftAcc d ann) vis binder (fmap (liftAcc d) expr)
+  liftAcc d (Binder p vis binder expr) = Binder p vis binder (fmap (liftAcc d) expr)
 
 -- ** Concrete liftable instances
 
@@ -110,19 +111,20 @@ class Substitutable ann (a :: * -> *) where
 
 instance Substitutable ann (Expr Name Index) where
   substAcc d sub = \case
-    Type l                     -> Type l
-    Constraint                 -> Constraint
-    Meta    m                  -> Meta m
-    Ann     ann term typ       -> Ann     (substAnn d sub ann) (substAcc d sub term) (substAcc d sub typ)
-    App     ann fun arg        -> App     (substAnn d sub ann) (substAcc d sub fun) (substAcc d sub arg)
-    Pi      ann binder res     -> Pi      (substAnn d sub ann) (substAcc d sub binder) (substAcc (d + 1) (lift sub) res)
-    Builtin ann op             -> Builtin (substAnn d sub ann) op
-    Let     ann binder e1 e2   -> Let     (substAnn d sub ann) (substAcc d sub binder) (substAcc d sub e1) (substAcc (d + 1) (lift sub) e2)
-    Lam     ann binder e       -> Lam     (substAnn d sub ann) (substAcc d sub binder) (substAcc (d + 1) (lift sub) e)
-    Literal ann l              -> Literal (substAnn d sub ann) l
-    Seq     ann es             -> Seq     (substAnn d sub ann) (fmap (substAcc d sub) es)
-    Free    ann ident          -> Free    (substAnn d sub ann) ident
-    Bound   ann (Index i)      ->
+    Type l                   -> Type l
+    Constraint               -> Constraint
+    Meta    m                -> Meta m
+    Hole    p name           -> Hole     p name
+    Ann     ann term typ     -> Ann     (substAnn d sub ann) (substAcc d sub term) (substAcc d sub typ)
+    App     ann fun arg      -> App     (substAnn d sub ann) (substAcc d sub fun) (substAcc d sub arg)
+    Pi      ann binder res   -> Pi      (substAnn d sub ann) (substAcc d sub binder) (substAcc (d + 1) (lift sub) res)
+    Builtin ann op           -> Builtin (substAnn d sub ann) op
+    Let     ann binder e1 e2 -> Let     (substAnn d sub ann) (substAcc d sub binder) (substAcc d sub e1) (substAcc (d + 1) (lift sub) e2)
+    Lam     ann binder e     -> Lam     (substAnn d sub ann) (substAcc d sub binder) (substAcc (d + 1) (lift sub) e)
+    Literal ann l            -> Literal (substAnn d sub ann) l
+    Seq     ann es           -> Seq     (substAnn d sub ann) (fmap (substAcc d sub) es)
+    Free    ann ident        -> Free    (substAnn d sub ann) ident
+    Bound   ann (Index i)    ->
       case compare i d of
         -- Index matches the expression we're substituting for
         EQ -> sub
@@ -132,10 +134,10 @@ instance Substitutable ann (Expr Name Index) where
         GT -> Bound ann (Index (i - 1))
 
 instance Substitutable ann (Arg Name Index) where
-  substAcc d sub (Arg vis e) = Arg vis (substAcc d sub e)
+  substAcc d sub (Arg p vis e) = Arg p vis (substAcc d sub e)
 
 instance Substitutable ann (Binder Name Index) where
-  substAcc d sub (Binder ann vis binder expr) = Binder (substAnn d sub ann) vis binder (substAcc d sub expr)
+  substAcc d sub (Binder p vis binder expr) = Binder p vis binder (substAcc d sub expr)
 
 -- ** Concrete substitution instances
 

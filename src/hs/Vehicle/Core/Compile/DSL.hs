@@ -13,12 +13,15 @@ getFunResultType _                     = error "expecting a Pi type"
 
 -- * DSL for writing kinds as info annotations
 
-tPi :: Visibility -> CheckedExpr -> CheckedExpr -> CheckedExpr
-tPi vis a b =
+tPi :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
+tPi p vis name a b =
   let aType = getType a
       bType = getType b
       abType = aType `tMax` bType
-  in  Pi (makeTypeAnn abType) (Binder (makeTypeAnn aType) vis Machine a) b
+  in  Pi (makeTypeAnn abType) (Binder p vis name a) b
+
+tPiInternal :: Visibility -> CheckedExpr -> CheckedExpr -> CheckedExpr
+tPiInternal vis = tPi mempty vis Machine
 
 -- TODO figure out how to do this without horrible -1 hacks
 tForall
@@ -29,16 +32,22 @@ tForall k f = quantBody
   where
     badBody   = f (Bound (RecAnn Type0 mempty) (Index (-1)))
     body      = liftAcc (-1) badBody
-    quantBody = tPi Implicit k body
+    quantBody = tPiInternal Implicit k body
 
 (~>) :: CheckedExpr -> CheckedExpr -> CheckedExpr
-x ~> y = tPi Explicit x y
+x ~> y = tPiInternal Explicit x y
+
+(~~>) :: CheckedExpr -> CheckedExpr -> CheckedExpr
+x ~~> y = tPiInternal Implicit x y
 
 con :: Builtin -> CheckedExpr -> CheckedExpr
 con b t = Builtin (makeTypeAnn t) b
 
 app :: CheckedExpr -> CheckedExpr -> CheckedExpr
-app fun arg = App (makeTypeAnn (getFunResultType fun)) fun (Arg Explicit arg)
+app fun arg = App (makeTypeAnn (getFunResultType fun)) fun (Arg mempty Explicit arg)
+
+hole :: Symbol -> CheckedExpr
+hole = Hole mempty
 
 -- * Types
 
@@ -83,8 +92,17 @@ hasOrd p t1 t2 = constraint p HasOrd `app` t1 `app` t2
 isTruth :: Provenance -> CheckedExpr -> CheckedExpr
 isTruth p t = constraint p IsTruth `app` t
 
-isNumber :: Provenance -> CheckedExpr -> CheckedExpr
-isNumber p t = constraint p IsNumber `app` t
+isNatural :: Provenance -> CheckedExpr -> CheckedExpr
+isNatural p t = constraint p IsNatural `app` t
+
+isIntegral :: Provenance -> CheckedExpr -> CheckedExpr
+isIntegral p t = constraint p IsIntegral `app` t
+
+isRational :: Provenance -> CheckedExpr -> CheckedExpr
+isRational p t = constraint p IsRational `app` t
+
+isReal :: Provenance -> CheckedExpr -> CheckedExpr
+isReal p t = constraint p IsReal `app` t
 
 isContainer :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
 isContainer p tCont tElem = constraint p IsContainer `app` tCont `app` tElem
@@ -98,90 +116,3 @@ list :: [CheckedExpr] -> CheckedExpr -> CheckedExpr
 list es tElem =
   tForall Type0 $ \tCont ->
     isContainer mempty tCont tElem ~> Seq (makeTypeAnn tCont) es
-
--- * Builtins
-
--- |Return the kind for builtin exprs.
-typeOf :: Provenance -> Builtin -> CheckedExpr
-typeOf p = \case
-  PrimitiveType _ -> Type0
-  List            -> Type0 ~> Type0
-  Tensor          -> Type0 ~> tList tNat ~> Type0
-
-  Implements HasEq          -> Type0 ~> Type0 ~> Constraint
-  Implements HasOrd         -> Type0 ~> Type0 ~> Constraint
-  Implements IsTruth        -> Type0 ~> Constraint
-  Implements IsNumber       -> Type0 ~> Constraint
-  Implements IsContainer    -> Type0 ~> Constraint
-  Implements IsQuantifiable -> Type0 ~> Type0 ~> Constraint
-
-  If   -> tForall Type0 $ \t -> tProp ~> t ~> t
-  Cons -> tForall Type0 $ \t -> t ~> tList t ~> tList t
-
-  Impl -> typeOfBoolOp2 p
-  And  -> typeOfBoolOp2 p
-  Or   -> typeOfBoolOp2 p
-  Not  -> typeOfBoolOp1 p
-
-  Eq   -> typeOfEqualityOp p
-  Neq  -> typeOfEqualityOp p
-
-  Le   -> typeOfComparisonOp p
-  Lt   -> typeOfComparisonOp p
-  Ge   -> typeOfComparisonOp p
-  Gt   -> typeOfComparisonOp p
-
-  Add  -> typeOfNumOp2 p
-  Sub  -> typeOfNumOp2 p
-  Mul  -> typeOfNumOp2 p
-  Div  -> typeOfNumOp2 p
-  Neg  -> typeOfNumOp1 p
-
-  At   -> typeOfAtOp p
-
-  All  -> typeOfQuantifierOp p
-  Any  -> typeOfQuantifierOp p
-
-typeOfEqualityOp :: Provenance -> CheckedExpr
-typeOfEqualityOp p =
-  tForall Type0 $ \t ->
-    tForall Type0 $ \r ->
-      hasEq p t r ~> t ~> t ~> r
-
-typeOfComparisonOp :: Provenance -> CheckedExpr
-typeOfComparisonOp p =
-  tForall Type0 $ \t ->
-    tForall Type0 $ \r ->
-      hasOrd p t r ~> t ~> t ~> r
-
-typeOfBoolOp2 :: Provenance -> CheckedExpr
-typeOfBoolOp2 p =
-  tForall Type0 $ \t ->
-    isTruth p t ~> t ~> t ~> t
-
-typeOfBoolOp1 :: Provenance -> CheckedExpr
-typeOfBoolOp1 p =
-  tForall Type0 $ \t ->
-    isTruth p t ~> t ~> t
-
-typeOfNumOp2 :: Provenance -> CheckedExpr
-typeOfNumOp2 p =
-  tForall Type0 $ \t ->
-    isNumber p t ~> t ~> t ~> t
-
-typeOfNumOp1 :: Provenance -> CheckedExpr
-typeOfNumOp1 p =
-  tForall Type0 $ \t ->
-    isNumber p t ~> t ~> t
-
-typeOfQuantifierOp :: Provenance -> CheckedExpr
-typeOfQuantifierOp p =
-  tForall Type0 $ \t ->
-    tForall Type0 $ \r ->
-      isQuantifiable p t r ~> t ~> (t ~> r) ~> r
-
-typeOfAtOp :: Provenance -> CheckedExpr
-typeOfAtOp p =
-  tForall Type0 $ \tCont ->
-    tForall Type0 $ \tElem ->
-      isContainer p tCont tElem ~> tCont ~> tNat ~> tElem

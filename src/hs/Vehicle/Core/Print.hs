@@ -56,13 +56,15 @@ instance ( Pretty binder
          , Pretty var
          ) => Pretty (Expr binder var ann) where
   pretty = \case
-    Kind                        -> "kind"
+    Type l                      -> "Type" <+> pretty l
+    Constraint                  -> "Constraint"
     Meta m                      -> "?" <> pretty m
+    Ann     _ann term typ       -> pretty term <+> ":type" <+> pretty typ
     App     _ann fun arg        -> pretty fun <+> parens (pretty arg)
     Pi      _ann binder res     -> "pi" <+> pretty binder <+> parens (pretty res)
     Builtin _ann op             -> pretty op
-    Let     _ann binder e1 e2   -> "let"     <+> pretty binder <+> parens (pretty e1) <+> parens (pretty e2)
-    Lam     _ann binder e       -> "lambda"  <+> pretty binder <+> parens (pretty e)
+    Let     _ann binder e1 e2   -> "let"    <+> pretty binder <+> parens (pretty e1) <+> parens (pretty e2)
+    Lam     _ann binder e       -> "lambda" <+> pretty binder <+> parens (pretty e)
     Literal _ann l              -> pretty l
     Seq     _ann es             -> hsep (fmap pretty es)
     Free    _ann ident          -> pretty ident

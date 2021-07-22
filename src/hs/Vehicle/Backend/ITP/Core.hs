@@ -51,7 +51,7 @@ fileHeader options commentToken = intercalate "\n" $
 --------------------------------------------------------------------------------
 -- AST abbreviations
 
-annotatedType :: OutputAnn 'EXPR -> OutputType
+annotatedType :: OutputAnn 'EXPR -> OutputExpr
 annotatedType (t :*: _) = unInfo t
 
 --------------------------------------------------------------------------------
@@ -66,9 +66,7 @@ type Compile a options = ReaderT (ITPOptions options) (Except CompileError) a
 -- * Type of errors that can be thrown during compilation
 data CompileError
   = CompilationUnsupported Provenance Symbol
-  | TensorIndexOutOfBounds Provenance OutputType Integer
-  | UnexpectedType         Provenance OutputExpr OutputType [Symbol]
-  | UnexpectedExpr         Provenance OutputExpr
+  | TensorIndexOutOfBounds Provenance OutputExpr Integer
 
 instance MeaningfulError CompileError where
   details (CompilationUnsupported p symbol) = UError $ UserError
@@ -83,16 +81,16 @@ instance MeaningfulError CompileError where
     , fix        = "check your indexing"
     }
 
-  details (UnexpectedType p expr actualType expectedTypes) = DError $ DeveloperError
-    { provenance = p
-    , problem    = "unexpected type found for expression" <+> pretty expr <> "." <> line
-                   <> "Was expecting one of" <+> list (map pretty expectedTypes) <+> "but found" <+> pretty actualType
-    }
+unexpectedType :: Provenance -> OutputExpr -> OutputExpr -> [OutputExpr] -> a
+unexpectedType p expr actualType expectedTypes = developerError $
+  "unexpected type found for expression" <+> pretty expr <> "." <> line <>
+  "Was expecting one of" <+> list (map pretty expectedTypes) <+>
+  "but found" <+> pretty actualType
 
-  details (UnexpectedExpr p expr) = DError $ DeveloperError
-    { provenance = p
-    , problem    = "unexpected expression" <+> pretty expr
-    }
+unexpectedExpr :: Provenance -> OutputExpr -> [OutputExpr] -> a
+unexpectedExpr p actualExpr expectedExprs = developerError $
+  "Was expecting something of the form" <+> list (map pretty expectedExprs) <+>
+  "but found" <+> pretty actualExpr <> "."
 
 --------------------------------------------------------------------------------
 -- Subcategories of types/expressions
@@ -105,31 +103,31 @@ data NumericType
 numericType :: MonadCompile m options => OutputExpr -> m NumericType
 numericType expr = go $ annotatedType (annotation expr)
   where
-    go :: MonadCompile m options => OutputType -> m NumericType
+    go :: MonadCompile m options => OutputExpr -> m NumericType
     go = \case
-      TInt  _ann        -> return Int
-      TReal _ann        -> return Real
-      TFun  _ann _t1 t2 -> go t2
+      Int  _ann        -> return Int
+      Real _ann        -> return Real
+      Fun  _ann _t1 t2 -> go t2
       typ               -> throwError $ UnexpectedType (prov expr) expr typ ["Real", "Int", "X -> Bool", "X -> Prop"]
 
 truthType :: MonadCompile m options => OutputExpr -> m PrimitiveTruth
 truthType expr = go (annotatedType (annotation expr))
   where
-    go :: MonadCompile m options => OutputType -> m PrimitiveTruth
+    go :: MonadCompile m options => OutputExpr -> m PrimitiveTruth
     go = \case
-      TBool _ann        -> return Bool
-      TProp _ann        -> return Prop
-      TFun  _ann _t1 t2 -> go t2
-      typ               -> throwError $ UnexpectedType (prov expr) expr typ ["Bool", "Prop", "X -> Bool", "X -> Prop"]
+      Bool _ann        -> return Bool
+      Prop _ann        -> return Prop
+      Fun  _ann _t1 t2 -> go t2
+      typ              -> throwError $ UnexpectedType (prov expr) expr typ ["Bool", "Prop", "X -> Bool", "X -> Prop"]
 
 containerType :: MonadCompile m options => OutputExpr -> m PrimitiveContainer
 containerType expr = let ann = annotation expr in case annotatedType ann of
-  TList   _ _                    -> return List
-  TTensor _ _ (TLitDimList _ ds) -> Tensor <$> traverse fromLit ds
+  List   _ _            -> return List
+  Tensor _ _ (Seq _ ds) -> Tensor <$> traverse fromLit ds
     where
-      fromLit :: MonadCompile m options => OutputType -> m Integer
-      fromLit (TLitDim _ i) = return i
-      fromLit t             = throwError $ UnexpectedType (prov ann) expr t ["a literal"]
+      fromLit :: MonadCompile m options => OutputExpr -> m Integer
+      fromLit (LitInt _ i) = return i
+      fromLit t            = throwError $ UnexpectedType (prov ann) expr t ["a literal"]
   t              -> throwError $ UnexpectedType (prov ann) expr t ["List", "Tensor"]
 
 -- |Types of numeric orders

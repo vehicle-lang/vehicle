@@ -46,7 +46,10 @@ data Constraint
   = HasEq
   | HasOrd
   | IsTruth
-  | IsNumber
+  | IsNatural
+  | IsIntegral
+  | IsRational
+  | IsReal
   | IsContainer
   | IsQuantifiable
   deriving (Eq, Ord, Enum, Show)
@@ -72,7 +75,10 @@ builtinSymbols =
   , "Ord"        |-> Implements HasOrd
   , "Truth"      |-> Implements IsTruth
   , "Container"  |-> Implements IsContainer
-  , "Number"     |-> Implements IsNumber
+  , "Natural"    |-> Implements IsNatural
+  , "Integral"   |-> Implements IsIntegral
+  , "Rational"   |-> Implements IsRational
+  , "Real"       |-> Implements IsReal
   , "Quantify"   |-> Implements IsQuantifiable
   -- Operations
   , "if"         |-> If
