@@ -1,13 +1,25 @@
-{-# LANGUAGE DuplicateRecordFields #-}
 
-module Vehicle.Error where
+module Vehicle.Prelude.Error where
 
 import Data.Text (Text)
 import Data.Void (Void)
-import Prettyprinter (Doc, Pretty(..), (<+>), squotes, line, unAnnotate, layoutPretty, defaultLayoutOptions)
-import Prettyprinter.Render.String (renderString)
+import GHC.Stack (HasCallStack)
+import Prettyprinter (Doc, Pretty(..), (<+>), squotes, line, unAnnotate)
 
 import Vehicle.Prelude.Provenance (Provenance)
+import Vehicle.Prelude.Prettyprinter
+
+--------------------------------------------------------------------------------
+-- Developer errors
+
+developerError :: HasCallStack => Doc a -> b
+developerError message = error $ layoutAsString $
+  "Something went wrong internally. Please report the error" <+>
+  "shown below to `https://github.com/wenkokke/vehicle/issues`." <> line <>
+  "Error:" <+> message
+
+--------------------------------------------------------------------------------
+-- User errors
 
 -- |Errors that are the user's responsibility to fix.
 data UserError = UserError
@@ -36,7 +48,7 @@ instance Pretty VehicleError where
     pretty text
 
 instance Show VehicleError where
-  show = renderString . layoutPretty defaultLayoutOptions . pretty
+  show = layoutAsString . pretty
 
 appendProvenance :: Doc ann -> Provenance -> Doc ann
 appendProvenance doc p = doc <+> "(" <> pretty p <> ")"

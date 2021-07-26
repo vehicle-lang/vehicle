@@ -9,7 +9,8 @@ module Vehicle.Frontend.Parse
 import Control.Monad.Except (MonadError, throwError)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Foldable (fold)
-import Data.List.NonEmpty qualified as NonEmpty (groupBy1, map, head)
+import GHC.Natural (naturalFromInteger)
+import Data.List.NonEmpty qualified as NonEmpty (groupBy1, map, head, toList)
 import Data.Text (Text, pack)
 import Data.Text.IO qualified as T
 import Prettyprinter ( (<+>), line, pretty )
@@ -22,7 +23,6 @@ import Vehicle.Frontend.Lex as L (Token)
 import Vehicle.Frontend.Par (pProg, myLexer)
 import Vehicle.Frontend.AST qualified as V
 import Vehicle.Prelude
-import Vehicle.Error
 
 --------------------------------------------------------------------------------
 -- Parsing
@@ -57,7 +57,6 @@ data ParseError
   = MissingDefFunType    Symbol Provenance
   | MissingDefFunExpr    Symbol Provenance
   | DuplicateName        Symbol (NonEmpty Provenance)
-  | InvalidLocalDecl     Symbol Provenance
   | MissingDeclarations  (Maybe Symbol) Provenance
   | MissingVariables     Symbol Provenance
   | BNFCParseError       String
@@ -85,12 +84,6 @@ instance MeaningfulError ParseError where
     { problem    = "multiple definitions found with the name" <+> squotes name
     , provenance = fold p
     , fix        = "remove or rename the duplicate definitions"
-    }
-
-  details (InvalidLocalDecl name p) = UError $ UserError
-    { problem    = squotes name <+> "declarations are not allowed within let expressions"
-    , provenance = p
-    , fix        = "move the" <+> squotes name <+> "declaration to the top-level"
     }
 
   details (MissingVariables symbol p) = UError $ UserError
@@ -135,108 +128,108 @@ tkProv = tkProvenance
 class Convert vf vc where
   conv :: MonadParse m => vf -> m vc
 
-instance Convert B.Kind V.InputExpr where
-  conv (B.Fun k1 tk k2) = op2 V.KFun     (tkProv tk) (conv k1) (conv k2)
-  conv (B.Type tk)      = op0 V.KType    (tkProv tk)
-
-instance Convert B.Type V.InputExpr where
-  conv (B.Forall tk1 ns tk2 t)   = op2 V.Forall (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv t)
-  conv (B.Var n)                 = return $ V.Var (K (tkProv n)) (tkSymbol n)
-  conv (B.Fun t1 tk t2)          = op2 V.Fun (tkProv tk) (conv t1) (conv t2)
-  conv (B.Bool tk)               = op0 V.Bool (tkProv tk)
-  conv (B.Prop tk)               = op0 V.Prop (tkProv tk)
-  conv (B.Real tk)               = op0 V.Real (tkProv tk)
-  conv (B.Int tk)                = op0 V.Int (tkProv tk)
-  conv (B.List tk t)             = op1 V.List (tkProv tk) (conv t)
-  conv (B.Tensor tk t1 t2)       = op2 V.Tensor (tkProv tk) (conv t1) (conv t2)
-  conv (B.Add t1 tk t2)          = op2 V.Add (tkProv tk) (conv t1) (conv t2)
-  conv (B.Cons t1 tk t2)         = op2 V.Cons (tkProv tk) (conv t1) (conv t2)
+instance Convert B.Arg V.InputArg where
+  conv (B.ExplicitArg e) = do ce <- conv e; return $ V.Arg (V.annotation ce) Explicit ce
+  conv (B.ImplicitArg e) = do
+    ce <- conv e;
+    let p = expandProvenance (1, 1) (V.annotation ce)
+    return $ V.Arg p Implicit ce
 
 instance Convert B.Expr V.InputExpr where
-  conv (B.Ann e tk t)              = op2 V.Ann   (tkProv tk) (conv e) (conv t)
-  conv (B.Let ds e)                = op2 V.Let   mempty (filterLetDecls ds >>= groupDecls (Just "let") mempty) (conv e)
-  conv (B.Lam tk1 ns tk2 e)        = op2 V.Lam   (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 ns) (conv e)
-  conv (B.App e1 e2)               = op2 V.App   mempty (conv e1) (conv e2)
-  conv (B.Var n)                   = return $ V.Var (K (tkProv n)) (tkSymbol n)
-  conv (B.If tk1 e1 tk2 e2 tk3 e3) = op3 V.If    (tkProv tk1 <> tkProv tk2 <> tkProv tk3) (conv e1) (conv e2) (conv e3)
-  conv (B.Impl e1 tk e2)           = op2 V.Impl  (tkProv tk) (conv e1) (conv e2)
-  conv (B.And e1 tk e2)            = op2 V.And   (tkProv tk) (conv e1) (conv e2)
-  conv (B.Or e1 tk e2)             = op2 V.Or    (tkProv tk) (conv e1) (conv e2)
-  conv (B.Not tk e)                = op1 V.Not   (tkProv tk) (conv e)
-  conv (B.True tk)                 = op0 V.True  (tkProv tk)
-  conv (B.False tk)                = op0 V.False (tkProv tk)
-  conv (B.Eq e1 tk e2)             = op2 V.Eq    (tkProv tk) (conv e1) (conv e2)
-  conv (B.Neq e1 tk e2)            = op2 V.Neq   (tkProv tk) (conv e1) (conv e2)
-  conv (B.Le e1 tk e2)             = op2 V.Le    (tkProv tk) (conv e1) (conv e2)
-  conv (B.Lt e1 tk e2)             = op2 V.Lt    (tkProv tk) (conv e1) (conv e2)
-  conv (B.Ge e1 tk e2)             = op2 V.Ge    (tkProv tk) (conv e1) (conv e2)
-  conv (B.Gt e1 tk e2)             = op2 V.Gt    (tkProv tk) (conv e1) (conv e2)
-  conv (B.Mul e1 tk e2)            = op2 V.Mul   (tkProv tk) (conv e1) (conv e2)
-  conv (B.Div e1 tk e2)            = op2 V.Div   (tkProv tk) (conv e1) (conv e2)
-  conv (B.Add e1 tk e2)            = op2 V.Add   (tkProv tk) (conv e1) (conv e2)
-  conv (B.Sub e1 tk e2)            = op2 V.Sub   (tkProv tk) (conv e1) (conv e2)
-  conv (B.Neg tk e)                = op1 V.Neg   (tkProv tk) (conv e)
-  conv (B.LitInt i)                = return $ V.ELitInt mempty i
-  conv (B.LitReal d)               = return $ V.ELitReal mempty d
-  conv (B.Cons e1 tk e2)           = op2 V.Cons  (tkProv tk) (conv e1) (conv e2)
-  conv (B.At e1 tk e2)             = op2 V.At    (tkProv tk) (conv e1) (conv e2)
-  conv (B.All tk)                  = op0 V.All   (tkProv tk)
-  conv (B.Any tk)                  = op0 V.Any   (tkProv tk)
-  conv (B.Seq tk1 es tk2)          = op1 V.Seq (tkProv tk1 <> tkProv tk2) (traverseNonEmpty tk1 tk2 es)
+  conv = \case
+    B.Type l                  -> return (V.Type (naturalFromInteger l))
+    B.Constraint              -> return V.Constraint
+    B.Var n                   -> return $ V.Var (tkProv n) (tkSymbol n)
+    B.Ann e tk t              -> op2 V.Ann    (tkProv tk) (conv e) (conv t)
+    B.Forall tk1 ns tk2 t     -> op2 V.Forall (tkProv tk1 <> tkProv tk2) (traverseNonEmpty (tkSymbol tk1) (tkProv tk1) ns) (conv t)
+    B.Fun t1 tk t2            -> op2 V.Fun    (tkProv tk) (conv t1) (conv t2)
+    B.Let ds e                -> op2 V.Let    mempty (traverseNonEmpty "let" mempty ds) (conv e)
+    B.App e1 e2               -> op2 V.App    mempty (conv e1) (conv e2)
+    B.Lam tk1 ns tk2 e        -> op2 V.Lam    (tkProv tk1 <> tkProv tk2) (traverseNonEmpty (tkSymbol tk1) (tkProv tk1) ns) (conv e)
+    B.Bool tk                 -> op0 V.Bool   (tkProv tk)
+    B.Prop tk                 -> op0 V.Prop   (tkProv tk)
+    B.Real tk                 -> op0 V.Real   (tkProv tk)
+    B.Int tk                  -> op0 V.Int    (tkProv tk)
+    B.List tk t               -> op1 V.List   (tkProv tk) (conv t)
+    B.Tensor tk t1 t2         -> op2 V.Tensor (tkProv tk) (conv t1) (conv t2)
+    B.If tk1 e1 tk2 e2 tk3 e3 -> op3 V.If     (tkProv tk1 <> tkProv tk2 <> tkProv tk3) (conv e1) (conv e2) (conv e3)
+    B.Impl e1 tk e2           -> op2 V.Impl   (tkProv tk) (conv e1) (conv e2)
+    B.And e1 tk e2            -> op2 V.And    (tkProv tk) (conv e1) (conv e2)
+    B.Or e1 tk e2             -> op2 V.Or     (tkProv tk) (conv e1) (conv e2)
+    B.Not tk e                -> op1 V.Not    (tkProv tk) (conv e)
+    B.Eq e1 tk e2             -> op2 V.Eq     (tkProv tk) (conv e1) (conv e2)
+    B.Neq e1 tk e2            -> op2 V.Neq    (tkProv tk) (conv e1) (conv e2)
+    B.Le e1 tk e2             -> op2 V.Le     (tkProv tk) (conv e1) (conv e2)
+    B.Lt e1 tk e2             -> op2 V.Lt     (tkProv tk) (conv e1) (conv e2)
+    B.Ge e1 tk e2             -> op2 V.Ge     (tkProv tk) (conv e1) (conv e2)
+    B.Gt e1 tk e2             -> op2 V.Gt     (tkProv tk) (conv e1) (conv e2)
+    B.Mul e1 tk e2            -> op2 V.Mul    (tkProv tk) (conv e1) (conv e2)
+    B.Div e1 tk e2            -> op2 V.Div    (tkProv tk) (conv e1) (conv e2)
+    B.Add e1 tk e2            -> op2 V.Add    (tkProv tk) (conv e1) (conv e2)
+    B.Sub e1 tk e2            -> op2 V.Sub    (tkProv tk) (conv e1) (conv e2)
+    B.Neg tk e                -> op1 V.Neg    (tkProv tk) (conv e)
+    B.Cons e1 tk e2           -> op2 V.Cons   (tkProv tk) (conv e1) (conv e2)
+    B.At e1 tk e2             -> op2 V.At     (tkProv tk) (conv e1) (conv e2)
+    B.All tk                  -> op0 V.All    (tkProv tk)
+    B.Any tk                  -> op0 V.Any    (tkProv tk)
+    B.Seq tk1 es tk2          -> op1 V.Seq    (tkProv tk1 <> tkProv tk2) (traverse conv es)
+    B.Literal  (B.LitNat  v)  -> return $ V.LitInt  mempty v
+    B.Literal  (B.LitReal v)  -> return $ V.LitReal mempty v
+    B.Literal  B.LitTrue      -> return $ V.LitBool mempty True
+    B.Literal  B.LitFalse     -> return $ V.LitBool mempty False
 
-instance Convert B.Arg V.Arg where
-  conv (B.ImplicitArg e) = V.Arg _ Implicit <$> conv e
-  conv (B.ExplicitArg e) = V.Arg _ Explicit <$> conv e
+instance Convert B.Name DeclIdentifier where
+  conv n = return $ DeclIdentifier (tkProv n) (tkSymbol n)
 
 -- |Elaborate declarations.
 instance Convert (NonEmpty B.Decl) V.InputDecl where
+  conv = \case
+    -- Elaborate a network declaration.
+    (B.DeclNetw n tk t :| []) -> op2 V.DeclNetw (tkProv tk) (conv n) (conv t)
 
-  -- Elaborate a network declaration.
-  conv [B.DeclNetw n tk t] = op2 V.DeclNetw (tkProv tk) (conv n) (conv t)
+    -- Elaborate a dataset declaration.
+    (B.DeclData n tk t :| []) -> op2 V.DeclData (tkProv tk) (conv n) (conv t)
 
-  -- Elaborate a dataset declaration.
-  conv [B.DeclData n tk t] = op2 V.DeclData (tkProv tk) (conv n) (conv t)
+    -- Elaborate a type definition.
+    (B.DefType n ns t :| []) -> op3 V.DefType mempty (conv n) (traverse conv ns) (conv t)
 
-  -- Elaborate a type definition.
-  conv [B.DefType n ns t] = op3 V.DefType mempty (conv n) (traverse conv ns) (conv t)
+    -- Elaborate a function definition.
+    (B.DefFunType n tk t  :| [B.DefFunExpr n2 ns e]) ->
+      op4 V.DefFun (tkProv tk <> tkProv n2) (conv n) (conv t) (traverse conv ns) (conv e)
 
-  -- Elaborate a function definition.
-  conv [B.DefFunType n tk t, B.DefFunExpr n2 ns e] =
-    op4 V.DefFun (tkProv tk <> tkProv n2) (conv n) (conv t) (traverse conv ns) (conv e)
+    -- Why did you write the signature AFTER the function?
+    (e1@B.DefFunExpr {} :| [e2@B.DefFunType {}]) ->
+      conv (e2 :| [e1])
 
-  -- Why did you write the signature AFTER the function?
-  conv [e1@B.DefFunExpr {}, e2@B.DefFunType {}] =
-    conv (e2 :| [e1])
+    -- Missing type or expression declaration.
+    (B.DefFunType n _tk _t :| []) ->
+      throwError $ MissingDefFunExpr (tkSymbol n) (tkProv n)
 
-  -- Missing type or expression declaration.
-  conv [B.DefFunType n _tk _t] =
-    throwError $ MissingDefFunExpr (tkSymbol n) (tkProv n)
+    (B.DefFunExpr n _ns _e :| []) ->
+      throwError $ MissingDefFunType (tkSymbol n) (tkProv n)
 
-  conv [B.DefFunExpr n _ns _e] =
-    throwError $ MissingDefFunType (tkSymbol n) (tkProv n)
-
-  -- Multiple type of expression declarations with the same n.
-  conv ds =
-    throwError $ DuplicateName symbol provs
-      where
-        symbol = tkSymbol $ declName $ NonEmpty.head ds
-        provs  = NonEmpty.map (tkProv . declName) ds
+    -- Multiple type of expression declarations with the same n.
+    ds ->
+      throwError $ DuplicateName symbol provs
+        where
+          symbol = tkSymbol $ declName $ NonEmpty.head ds
+          provs  = fmap (tkProv . declName) ds
 
 -- |Elaborate programs.
 instance Convert B.Prog V.InputProg where
-  conv (B.Main decls) = op1 V.Main mempty (groupDecls Nothing mempty decls)
+  conv (B.Main decls) = V.Main <$> groupDecls decls
 
 op0 :: MonadParse m
     => (Provenance -> a)
     -> Provenance -> m a
-op0 mk p = return $ mk (K p)
+op0 mk p = return $ mk p
 
 op1 :: (MonadParse m, HasProvenance a)
     => (Provenance -> a -> b)
     -> Provenance -> m a -> m b
 op1 mk p t = do
   ct <- t
-  return $ mk (K (p <> prov ct)) ct
+  return $ mk (p <> prov ct) ct
 
 op2 :: (MonadParse m, HasProvenance a, HasProvenance b)
     => (Provenance -> a -> b -> c)
@@ -244,7 +237,7 @@ op2 :: (MonadParse m, HasProvenance a, HasProvenance b)
 op2 mk p t1 t2 = do
   ct1 <- t1
   ct2 <- t2
-  return $ mk (K (p <> prov ct1 <> prov ct2)) ct1 ct2
+  return $ mk (p <> prov ct1 <> prov ct2) ct1 ct2
 
 op3 :: (MonadParse m, HasProvenance a, HasProvenance b, HasProvenance c)
     => (Provenance -> a -> b -> c -> d)
@@ -253,34 +246,23 @@ op3 mk p t1 t2 t3 = do
   ct1 <- t1
   ct2 <- t2
   ct3 <- t3
-  return $ mk (K (p <> prov ct1 <> prov ct2 <> prov ct3)) ct1 ct2 ct3
+  return $ mk (p <> prov ct1 <> prov ct2 <> prov ct3) ct1 ct2 ct3
 
 op4 :: (MonadParse m, HasProvenance a, HasProvenance b, HasProvenance c, HasProvenance d)
-    => (K Provenance sort -> a -> b -> c -> d -> e)
+    => (Provenance -> a -> b -> c -> d -> e)
     -> Provenance -> m a -> m b -> m c -> m d -> m e
 op4 mk p t1 t2 t3 t4 = do
   ct1 <- t1
   ct2 <- t2
   ct3 <- t3
   ct4 <- t4
-  return $ mk (K (p <> prov ct1 <> prov ct2 <> prov ct3 <> prov ct4)) ct1 ct2 ct3 ct4
-
--- |Filter a let binding's declarations to strip out invalid declarations.
--- TODO would probably be better to be more precise in the grammar
-filterLetDecls :: MonadParse m => [ B.Decl ] -> m [ B.Decl ]
-filterLetDecls = traverse declToLet
-  where
-    declToLet :: MonadParse m => B.Decl -> m B.Decl
-    declToLet (B.DeclNetw n _n _t)  = throwError $ InvalidLocalDecl "network" (tkProv n)
-    declToLet (B.DeclData n _n _t)  = throwError $ InvalidLocalDecl "dataset" (tkProv n)
-    declToLet (B.DefType  n _ns _t) = throwError $ InvalidLocalDecl "type"    (tkProv n)
-    declToLet d                     = return d
+  return $ mk (p <> prov ct1 <> prov ct2 <> prov ct3 <> prov ct4) ct1 ct2 ct3 ct4
 
 -- |Takes a list of declarations, and groups type and expression
 --  declarations by their name.
-groupDecls :: MonadParse m => Maybe Symbol -> Provenance -> [B.Decl] -> m (NonEmpty V.InputDecl)
-groupDecls s   p []       = throwError $ MissingDeclarations s p
-groupDecls _s _p (d : ds) = traverse conv (NonEmpty.groupBy1 cond (d :| ds))
+groupDecls :: MonadParse m => [B.Decl] -> m [V.InputDecl]
+groupDecls []       = return []
+groupDecls (d : ds) = NonEmpty.toList <$> traverse conv (NonEmpty.groupBy1 cond (d :| ds))
   where
     cond :: B.Decl -> B.Decl -> Bool
     cond d1 d2 = isDefFun d1 && isDefFun d2 && tkSymbol (declName d1) == tkSymbol (declName d2)
@@ -292,18 +274,18 @@ isDefFun (B.DefFunExpr _ann _name _typ)  = True
 isDefFun _                               = False
 
 -- |Get the name for any declaration.
-declName :: B.Decl -> Name
-declName (DeclNetw   n _ _) = n
-declName (DeclData   n _ _) = n
-declName (DefType    n _ _) = n
-declName (DefFunType n _ _) = n
-declName (DefFunExpr n _ _) = n
+declName :: B.Decl -> B.Name
+declName (B.DeclNetw   n _ _) = n
+declName (B.DeclData   n _ _) = n
+declName (B.DefType    n _ _) = n
+declName (B.DefFunType n _ _) = n
+declName (B.DefFunExpr n _ _) = n
 
 
 -- A traversal that checks that the list is non-empty. In theory this would be
 -- much nicer if the parser could handle this automatically
 -- (see https://github.com/BNFC/bnfc/issues/371)
-traverseNonEmpty :: (MonadParse m , Convert a b, IsToken t1, IsToken t2)
-                 => t1 -> t2 -> [a] -> m (NonEmpty b)
-traverseNonEmpty tk1 tk2 []       = throwError $ MissingVariables (tkSymbol tk1) (tkProv tk1 <> tkProv tk2)
-traverseNonEmpty _   _   (x : xs) = traverse conv (x :| xs)
+traverseNonEmpty :: (MonadParse m , Convert a b)
+                 => Symbol -> Provenance -> [a] -> m (NonEmpty b)
+traverseNonEmpty s p []       = throwError $ MissingVariables s p
+traverseNonEmpty _ _ (x : xs) = traverse conv (x :| xs)

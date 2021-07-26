@@ -28,7 +28,6 @@ import Prettyprinter (pretty, (<+>))
 
 import Vehicle.Core.AST
 import Vehicle.Prelude
-import Vehicle.Error
 
 
 -- * Errors thrown during scope checking.
@@ -59,7 +58,7 @@ indexOutOfBounds index ctxSize p = developerError $
 -- * Scope checking contexts.
 
 -- |Type of scope checking contexts.
-data Ctx a = Ctx { declSymbols :: Seq Identifier, exprSymbols :: Seq a }
+data Ctx a = Ctx { declSymbols :: Seq DeclIdentifier, exprSymbols :: Seq a }
 
 instance Semigroup (Ctx a) where
   Ctx ts1 es1 <> Ctx ts2 es2 = Ctx (ts1 <> ts2) (es1 <> es2)

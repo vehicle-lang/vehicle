@@ -54,10 +54,10 @@ data Constraint
   | IsQuantifiable
   deriving (Eq, Ord, Enum, Show)
 
-pattern PrimitiveNumber :: PrimitiveNumberType -> Builtin
+pattern PrimitiveNumber :: NumberType -> Builtin
 pattern PrimitiveNumber prim = PrimitiveType (TNumber prim)
 
-pattern PrimitiveTruth :: PrimitiveTruthType -> Builtin
+pattern PrimitiveTruth :: TruthType -> Builtin
 pattern PrimitiveTruth prim = PrimitiveType (TTruth prim)
 
 builtinSymbols :: [(Symbol, Builtin)]

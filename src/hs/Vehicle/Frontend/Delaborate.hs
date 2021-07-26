@@ -1,11 +1,10 @@
 
 module Vehicle.Frontend.Delaborate
-  ( DelabError(..)
-  , runDelab
+  ( runDelab
   ) where
 
 import Control.Monad.Trans (lift)
-import Control.Monad.State (MonadState(..), StateT, evalStateT, modify)
+import Control.Monad.State (MonadState(..), State, evalStateT, modify)
 import Control.Monad.Except (MonadError(..), Except, runExcept)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
@@ -13,15 +12,14 @@ import Prettyprinter (pretty, (<+>))
 
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
 import Vehicle.Frontend.AST qualified as VF
-import Vehicle.Error
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Delaboration converts a program in the Core language to the Frontend language
 
-runDelab :: VC.OutputProg -> Either DelabError VF.OutputProg
+runDelab :: VC.OutputProg -> VF.OutputProg
 runDelab prog = runExcept $ evalStateT (unSOT $ delab prog) []
-
+{-
 data DelabError
   = PartiallyAppliedOperator Provenance
   | UnsolvedMeta Provenance VC.Meta
@@ -36,7 +34,7 @@ instance MeaningfulError DelabError where
     { provenance = p
     , problem    = "unsolved meta variable" <+> pretty meta
     }
-
+-}
 -- * Delaboration class
 
 --------------------------------------------------------------------------------
@@ -73,32 +71,33 @@ instance MeaningfulError DelabError where
 
 -- | Parameter "a" represents the type of the holes left in the expression.
 --   Parameter b represents the type of the whole expression.
-type Hole a b = StateT [a] (Except DelabError) b
+type Hole a b = State [a] b
 
 hole :: Provenance -> Hole a a
 hole p = get >>= \case
   []       -> throwError $ PartiallyAppliedOperator p
   (x : xs) -> do put xs ; return x
 
-plug :: Hole a b -> Except DelabError b
-plug h = evalStateT h []
+plug :: Hole a b -> b
+plug h = evalState h []
 
 addArg :: a -> Hole a ()
 addArg x = modify (x :)
 
 -- TODO make HasProvenance work
-outputProv :: VF.OutputAnn sort -> Provenance
+outputProv :: VF.OutputAnn -> Provenance
 outputProv = unK . isnd
 
 delabBuiltin :: VF.OutputAnn
              -> VC.Builtin
              -> Hole VF.OutputExpr VF.OutputExpr
 delabBuiltin ann = let p = outputProv ann in \case
-  VC.Type    -> return $ VF.Type ann
   VC.PrimitiveTruth  TBool   -> return $ VF.Bool ann
   VC.PrimitiveTruth  TProp   -> return $ VF.Prop ann
   VC.PrimitiveNumber TInt    -> return $ VF.Int ann
   VC.PrimitiveNumber TReal   -> return $ VF.Real ann
+  VC.PrimitiveNumber TNat    -> return $ VF.Nat ann
+  VC.Implements constraint   -> _
   VC.List    -> VF.List   ann <$> hole p
   VC.Tensor  -> VF.Tensor ann <$> hole p <*> hole p
   VC.Add     -> VF.Add    ann <$> hole p <*> hole p
@@ -125,7 +124,7 @@ delabBuiltin ann = let p = outputProv ann in \case
   VC.Any     -> return $ VF.Any ann
 
 delabLiteral :: VF.OutputAnn
-             -> VC.Literal
+             -> Literal
              -> Hole VF.OutputExpr VF.OutputExpr
 delabLiteral = _
 
@@ -145,7 +144,7 @@ instance Delaborate VC.OutputExpr VF.OutputExpr where
         Hole VF.OutputExpr (VF.RecAnn Provenance)
       delabAnn (VC.RecAnn e p) = do v <- plugFlow (delab v); return $ VF.RecAnn v p
 
-delabF :: VC.ExprF (K Symbol) VF.OutputAnn (Hole VF.OutputExpr VF.OutputExpr)
+delabF :: VC.ExprF Symbol Symbol VF.OutputAnn (Hole VF.OutputExpr VF.OutputExpr)
        -> Hole VF.OutputExpr VF.OutputExpr
 delabF = \case
   VC.TypeF l    -> _
@@ -154,13 +153,13 @@ delabF = \case
   VC.AnnF ann e t    -> do e <- unSOT e; t <- plugFlow t; return $ VF.Ann ann e t
   -- Annotation is not used here, as it was duplicated during elaboration
   VC.AppF _ann k1 k2 -> do k2 <- unSOT k2; addArg k2; unSOT k1
-  VC.BuiltinF ann op    -> delabBuiltin ann op
-  VC.MetaF    ann i     -> throwError $ UnsolvedMeta (outputProv ann) i
+  VC.BuiltinF ann op -> delabBuiltin ann op
+  VC.MetaF    i      -> throwError $ UnsolvedMeta (outputProv ann) i
 
-  VC.Pi          ann binder n t -> do n <- plugFlow n; t <- unSOT t; return $ _ --VF.TForall ann (n :| []) t
-  VC.BoundF      ann n     -> return $ VF.Var ann n
-  VC.FreeF       ann n     -> return $ VF.Var ann n
-  VC.MetaF       ann i     -> throwError $ UnsolvedMeta (outputProv ann) i
+  VC.Pi          ann binder t -> do n <- plugFlow n; t <- unSOT t; return $ _ --VF.TForall ann (n :| []) t
+  VC.BoundF      ann n        -> return $ VF.Var ann n
+  VC.FreeF       ann n        -> return $ VF.Var ann n
+  VC.MetaF       i            -> throwError $ UnsolvedMeta (outputProv ann) i
 
   -- Expressions
   VC.LetF     ann n e1 e2 -> delabLet ann <$> plugFlow n <*> unSOT e1 <*> unSOT e2
@@ -177,10 +176,10 @@ instance Delaborate VC.OutputDecl VF.OutputDecl where
 
 instance Delaborate VC.OutputProg VF.OutputProg where
   delab = \case
-    VC.Main ann ds -> do ds <- traverse plugFlow ds; return $ VF.Main ann ds
+    VC.Main ds -> do ds <- traverse plugFlow ds; return $ VF.Main ds
 
 
-
+{-
 delabLet :: VF.OutputAnn 'EXPR -> VF.OutputArg -> VF.OutputExpr -> VF.OutputExpr -> VF.OutputExpr
 delabLet ann n = VF.ELet1 ann (mempty :*: K (outputProv ann)) n (VF.unInfo $ ifst ann)
 
@@ -191,3 +190,4 @@ decomposeFun result                      = result
 
 delabFun :: VF.OutputAnn 'DECL -> VF.OutputEArg -> VF.OutputType -> VF.OutputExpr -> VF.OutputDecl
 delabFun ann n t e = let (body , args) = decomposeFun (e , []) in VF.DefFun ann n t args body
+-}

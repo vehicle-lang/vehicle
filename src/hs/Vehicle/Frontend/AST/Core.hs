@@ -39,15 +39,16 @@ data LetDecl ann
 -- types of data can be associated with it's parts.
 data Expr ann
   -- Kinds
-  = Kind
-  | Type     ann
+  = Type Level
+  | Constraint
   -- Types
-  | Forall   ann (NonEmpty (Expr ann)) (Expr ann)
+  | Forall   ann (NonEmpty (Binder ann)) (Expr ann)
   | Fun      ann (Expr ann) (Expr ann)
   | Bool     ann
   | Prop     ann
   | Real     ann
   | Int      ann
+  | Nat      ann
   | List     ann (Expr ann)
   | Tensor   ann (Expr ann) (Expr ann)
   -- Terms
@@ -80,36 +81,30 @@ data Expr ann
   | Seq      ann [Expr ann]
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
-data Ident ann
-  = Ident
-    ann
-    Symbol
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
-
 -- | Type of Vehicle Frontend declaration.
 data Decl ann
   = DeclNetw
-    ann
-    (Ident ann) -- Name of the declared network.
-    (Expr  ann) -- Type of the declared network.
+    Provenance
+    DeclIdentifier -- Name of the declared network.
+    (Expr  ann)    -- Type of the declared network.
 
   | DeclData
-    ann
-    (Ident ann) -- Name of the declared dataset.
-    (Expr  ann) -- Type of the declared dataset.
+    Provenance
+    DeclIdentifier -- Name of the declared dataset.
+    (Expr  ann)    -- Type of the declared dataset.
 
   | DefType
-    ann
-    (Ident ann) -- Name of the type declaration.
-    [Arg   ann] -- Args of the type declaration.
-    (Expr  ann) -- Body of the type declaration.
+    Provenance
+    DeclIdentifier -- Name of the type declaration.
+    [Binder ann]   -- Variables of the type declaration.
+    (Expr   ann)   -- Body of the type declaration.
 
   | DefFun
-    ann
-    (Ident ann) -- Name of the function declaration.
-    (Expr  ann) -- Type of the function declaration.
-    [Arg   ann] -- Args of the function declaration.
-    (Expr  ann) -- Body of the function declaration.
+    Provenance
+    DeclIdentifier -- Name of the function declaration.
+    (Expr   ann)   -- Type of the function declaration.
+    [Binder ann]   -- Variables of the function declaration.
+    (Expr   ann)   -- Body of the function declaration.
 
   deriving (Eq, Ord, Show)
 

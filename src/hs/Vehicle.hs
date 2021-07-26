@@ -33,7 +33,6 @@ import Vehicle.Frontend.Delaborate qualified as VF
 import Vehicle.Frontend.Parse qualified as VF
 import Vehicle.Backend.ITP.Core (ITPOptions(..))
 import Vehicle.Backend.ITP.Agda (AgdaOptions(..), compileToAgda)
-import Vehicle.Error qualified as V
 
 
 --------------------------------------------------------------------------------

@@ -4,15 +4,13 @@ module Vehicle.Core.Print where
 
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-
-import Prettyprinter (Pretty(..), Doc, layoutPretty, braces, parens, (<+>), line, defaultLayoutOptions)
-import Prettyprinter.Render.Text (renderStrict)
+import Prettyprinter (Pretty(..), Doc, braces, parens, (<+>), line)
 
 import Vehicle.Core.AST
 import Vehicle.Prelude
 
 printTree :: Pretty a => a -> Text
-printTree a = renderStrict $ layoutPretty defaultLayoutOptions $ pretty a
+printTree = layoutAsText . pretty
 
 brackets :: Visibility -> (Doc a -> Doc a)
 brackets Implicit = braces
@@ -38,14 +36,13 @@ instance Pretty Builtin where
 instance Pretty Ident where
   pretty (Ident n) = pretty n
 
-instance Pretty DeclName where
-  pretty (DeclName _ann n) = pretty n
+instance Pretty DeclIdentifier where
+  pretty (DeclIdentifier _ann n) = pretty n
 
 instance ( Pretty binder
          , Pretty var
          ) => Pretty (Arg binder var name) where
-  pretty (Arg Explicit expr) = pretty expr
-  pretty (Arg Implicit expr) = "{" <> pretty expr <> "}"
+  pretty (Arg _p vis expr) = visBrackets vis $ pretty expr
 
 instance ( Pretty binder
          , Pretty var
@@ -58,7 +55,8 @@ instance ( Pretty binder
   pretty = \case
     Type l                      -> "Type" <+> pretty l
     Constraint                  -> "Constraint"
-    Meta m                      -> "?" <> pretty m
+    Hole    _    name           -> "?" <> pretty name
+    Meta         m              -> "?" <> pretty m
     Ann     _ann term typ       -> pretty term <+> ":type" <+> pretty typ
     App     _ann fun arg        -> pretty fun <+> parens (pretty arg)
     Pi      _ann binder res     -> "pi" <+> pretty binder <+> parens (pretty res)

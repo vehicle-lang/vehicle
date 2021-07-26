@@ -1,8 +1,12 @@
 
 module Vehicle.Prelude.Prettyprinter where
 
-import Prettyprinter ( Doc, (<+>), concatWith, line, line' )
+import Data.Text (Text)
+
+import Prettyprinter ( Doc, (<+>), concatWith, line, line', layoutPretty, (<+>), defaultLayoutOptions)
 import Prettyprinter.Internal (Doc(Annotated))
+import Prettyprinter.Render.String (renderString)
+import Prettyprinter.Render.Text (renderStrict)
 
 -- * Additions to the prettyprinter library
 
@@ -33,3 +37,9 @@ vsep2 = concatWith (\x y -> x <> line <> line <> y)
 docAnn :: Doc ann -> Maybe ann
 docAnn (Annotated a _) = Just a
 docAnn _               = Nothing
+
+layoutAsString :: Doc ann -> String
+layoutAsString = renderString . layoutPretty defaultLayoutOptions
+
+layoutAsText :: Doc ann -> Text
+layoutAsText = renderStrict . layoutPretty defaultLayoutOptions

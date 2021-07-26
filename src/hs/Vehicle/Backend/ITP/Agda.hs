@@ -165,7 +165,7 @@ compileProgramToAgda program = do
 class CompileToAgda (sort :: Sort) where
   compile
     :: MonadAgdaCompile m
-    => OutputTree sort
+    => OutputExpr
     -> m Code
 
 --------------------------------------------------------------------------------

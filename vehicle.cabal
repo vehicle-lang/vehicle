@@ -35,18 +35,14 @@ library
                       , Vehicle.Prelude.Types
                       , Vehicle.Prelude.Language
                       , Vehicle.Prelude.Prettyprinter
-                      , Vehicle.Error
-                      -- , Vehicle.Frontend.AST
-                      -- , Vehicle.Frontend.AST.Core
-                      -- , Vehicle.Frontend.AST.Instance
-                      -- , Vehicle.Frontend.AST.Recursive.Sorted
-                      -- , Vehicle.Frontend.AST.Recursive.Unsorted
-                      -- , Vehicle.Frontend.AST.Utils
-                      -- , Vehicle.Frontend.AST.Info
-                      -- , Vehicle.Frontend.Delaborate
-                      -- , Vehicle.Frontend.Elaborate
-                      -- , Vehicle.Frontend.Parse
-                      -- , Vehicle.Frontend.Print
+                      , Vehicle.Prelude.Error
+                      , Vehicle.Frontend.AST
+                      , Vehicle.Frontend.AST.Core
+                      , Vehicle.Frontend.AST.Utils
+                      , Vehicle.Frontend.Delaborate
+                      , Vehicle.Frontend.Elaborate
+                      , Vehicle.Frontend.Parse
+                      , Vehicle.Frontend.Print
                       , Vehicle.Core.AST
                       , Vehicle.Core.AST.Builtin
                       , Vehicle.Core.AST.Core

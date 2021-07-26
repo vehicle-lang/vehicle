@@ -12,7 +12,6 @@ import Prettyprinter as Pretty hiding (squotes)
 import Vehicle.Frontend.AST
 import Vehicle.Frontend.Print ()
 import Vehicle.Prelude
-import Vehicle.Error
 
 -- * Utilities when compiling to an interactive theorem prover backend
 
@@ -49,12 +48,6 @@ fileHeader options commentToken = intercalate "\n" $
     ]
 
 --------------------------------------------------------------------------------
--- AST abbreviations
-
-annotatedType :: OutputAnn 'EXPR -> OutputExpr
-annotatedType (t :*: _) = unInfo t
-
---------------------------------------------------------------------------------
 -- Control
 
 -- |Constraint for the monad stack used by the Compiler.
@@ -81,54 +74,49 @@ instance MeaningfulError CompileError where
     , fix        = "check your indexing"
     }
 
-unexpectedType :: Provenance -> OutputExpr -> OutputExpr -> [OutputExpr] -> a
-unexpectedType p expr actualType expectedTypes = developerError $
+unexpectedTypeError :: Provenance -> OutputExpr -> OutputExpr -> [OutputExpr] -> a
+unexpectedTypeError p expr actualType expectedTypes = developerError p $
   "unexpected type found for expression" <+> pretty expr <> "." <> line <>
   "Was expecting one of" <+> list (map pretty expectedTypes) <+>
   "but found" <+> pretty actualType
 
-unexpectedExpr :: Provenance -> OutputExpr -> [OutputExpr] -> a
-unexpectedExpr p actualExpr expectedExprs = developerError $
+unexpectedExprError :: Provenance -> OutputExpr -> [OutputExpr] -> a
+unexpectedExprError p actualExpr expectedExprs = developerError p $
   "Was expecting something of the form" <+> list (map pretty expectedExprs) <+>
   "but found" <+> pretty actualExpr <> "."
 
 --------------------------------------------------------------------------------
 -- Subcategories of types/expressions
 
--- * Types of numeric data supported
-data NumericType
-  = Int
-  | Real
-
-numericType :: MonadCompile m options => OutputExpr -> m NumericType
-numericType expr = go $ annotatedType (annotation expr)
+numericType :: OutputExpr -> NumberType
+numericType expr = go $ getType expr
   where
-    go :: MonadCompile m options => OutputExpr -> m NumericType
+    go :: OutputExpr -> NumberType
     go = \case
-      Int  _ann        -> return Int
-      Real _ann        -> return Real
-      Fun  _ann _t1 t2 -> go t2
-      typ               -> throwError $ UnexpectedType (prov expr) expr typ ["Real", "Int", "X -> Bool", "X -> Prop"]
+      Int   _ann        -> TInt
+      Real  _ann        -> TReal
+      Fun   _ann _t1 t2 -> go t2
+      typ               -> unexpectedTypeError (prov expr) expr typ ["Real", "Int", "X -> Bool", "X -> Prop"]
 
-truthType :: MonadCompile m options => OutputExpr -> m PrimitiveTruth
-truthType expr = go (annotatedType (annotation expr))
+truthType :: OutputExpr -> TruthType
+truthType expr = go $ getType expr
   where
-    go :: MonadCompile m options => OutputExpr -> m PrimitiveTruth
+    go :: OutputExpr -> TruthType
     go = \case
-      Bool _ann        -> return Bool
-      Prop _ann        -> return Prop
+      Bool _ann        -> TBool
+      Prop _ann        -> TProp
       Fun  _ann _t1 t2 -> go t2
-      typ              -> throwError $ UnexpectedType (prov expr) expr typ ["Bool", "Prop", "X -> Bool", "X -> Prop"]
+      typ              -> unexpectedTypeError (prov expr) expr typ ["Bool", "Prop", "X -> Bool", "X -> Prop"]
 
-containerType :: MonadCompile m options => OutputExpr -> m PrimitiveContainer
-containerType expr = let ann = annotation expr in case annotatedType ann of
-  List   _ _            -> return List
-  Tensor _ _ (Seq _ ds) -> Tensor <$> traverse fromLit ds
+containerType :: OutputExpr -> ContainerType
+containerType expr = case getType expr of
+  List   _ _            -> TList
+  Tensor _ _ (Seq _ ds) -> TTensor (map fromLit ds)
     where
-      fromLit :: MonadCompile m options => OutputExpr -> m Integer
-      fromLit (LitInt _ i) = return i
-      fromLit t            = throwError $ UnexpectedType (prov ann) expr t ["a literal"]
-  t              -> throwError $ UnexpectedType (prov ann) expr t ["List", "Tensor"]
+      fromLit :: OutputExpr -> Integer
+      fromLit (LitInt _ i) = i
+      fromLit t            = unexpectedTypeError (prov ann) expr t ["a literal"]
+  t              -> unexpectedTypeError (prov ann) expr t ["List", "Tensor"]
 
 -- |Types of numeric orders
 data OrderType

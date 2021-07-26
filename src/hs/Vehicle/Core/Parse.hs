@@ -9,16 +9,13 @@ module Vehicle.Core.Parse
 import Control.Monad.Except (MonadError(..))
 import Data.Text (Text, pack, unpack)
 import Data.Text.IO qualified as T
-import Data.Sequence as Seq ( fromList )
 import Prettyprinter ( (<+>), pretty )
 import System.Exit (exitFailure)
 
 import Vehicle.Core.Abs as B
 import Vehicle.Core.Par (pProg, myLexer)
-import Vehicle.Core.Print (printTree)
 import Vehicle.Core.AST as V hiding (Name)
 import Vehicle.Prelude
-import Vehicle.Error
 
 --------------------------------------------------------------------------------
 -- Parsing
@@ -107,13 +104,11 @@ instance Convert B.Binder V.InputBinder where
     B.ImplicitNameAndType n e -> V.Binder (tkProvenance n) Implicit (tkSymbol n) <$> conv e
     B.ExplicitName n          -> return $ V.Binder (tkProvenance n) Explicit (tkSymbol n) (V.Meta _)
     B.ImplicitName n          -> return $ V.Binder (tkProvenance n) Implicit (tkSymbol n) (V.Meta _)
-    B.ExplicitType e          -> do ce <- conv e; return $ V.Binder (annotation ce) Explicit _ ce
-    B.EmplicitType e          -> do ce <- conv e; return $ V.Binder (annotation ce) Implicit _ ce
 
 instance Convert B.Arg V.InputArg where
   conv = \case
-    B.ImplicitArg e -> V.Arg Implicit <$> conv e
-    B.ExplicitArg e -> V.Arg Explicit <$> conv e
+    B.ImplicitArg e -> V.Arg _ Implicit <$> conv e
+    B.ExplicitArg e -> V.Arg _ Explicit <$> conv e
 
 instance Convert B.Lit Literal where
   conv = \case
@@ -123,8 +118,8 @@ instance Convert B.Lit Literal where
 
 instance Convert B.Expr V.InputExpr where
   conv = \case
-    B.Kind             -> return $ V.Type 1
-    B.Meta m           -> return $ V.Meta (fromIntegral m)
+    B.Type l           -> return $ V.Type l
+    B.Hole name        -> return $ V.Hole (tkProvenance name) (tkSymbol name)
     B.Ann term typ     -> op2 V.Ann <$> conv term <*> conv typ
     B.App fun arg      -> op2 V.App <$> conv fun <*> conv arg
     B.Pi  binder expr  -> op2 V.Pi  <$> conv binder <*> conv expr;
@@ -135,8 +130,8 @@ instance Convert B.Expr V.InputExpr where
     B.Literal v        -> V.Literal mempty <$> conv v
     B.Var n            -> return $ V.Bound (tkProvenance n) (tkSymbol n)
 
-instance Convert B.NameToken V.DeclName where
-  conv n = return $ DeclName (tkProvenance n) (Ident (tkSymbol n))
+instance Convert B.NameToken DeclIdentifier where
+  conv n = return $ DeclIdentifier (tkProvenance n) (tkSymbol n)
 
 instance Convert B.Decl V.InputDecl where
   conv = \case

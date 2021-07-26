@@ -2,14 +2,10 @@ module Vehicle.Frontend.Elaborate
   ( Elab(..)
   ) where
 
-import Data.Foldable (foldrM)
-import Data.List.NonEmpty (NonEmpty)
-
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
 import Vehicle.Frontend.AST qualified as VF
 
 import Vehicle.Prelude
-import Vehicle.Error
 
 -- * Elaboration class
 
@@ -51,33 +47,35 @@ class Elab a b where
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
-elabLetDecl :: VC.InputAnn -> VF.InputLetDecl -> VC.InputExpr -> VC.InputExpr
-elabLetDecl ann1 (VF.LetDecl ann2 n e) body = do
-  cBody <- body
-  VC.Let _ (VC.Binder _ Explicit _ _) (elab e) body
+elabLetDecl :: VF.InputLetDecl -> VC.InputExpr -> VC.InputExpr
+elabLetDecl (VF.LetDecl ann binder e) = VC.Let ann (elab binder) (elab e)
 
-elabForallBinder :: VF.InputExpr -> VF.InputExpr -> VC.InputExpr
-elabForallBinder = _
+instance Elab VF.InputBinder VC.InputBinder where
+  elab (VF.Binder ann vis name _) = VC.Binder ann vis name _
+
+instance Elab VF.InputArg VC.InputArg where
+  elab (VF.Arg ann vis e) = VC.Arg ann vis (elab e)
 
 instance Elab VF.InputExpr VC.InputExpr where
   elab = \case
     -- Elaborate kinds.
-    VF.Kind              -> VC.Type1
-    VF.Type   ann        -> VC.Type0
+    VF.Type l            -> VC.Type l
+    VF.Constraint        -> VC.Constraint
 
     -- Elaborate types.
-    VF.Forall ann ns t   -> foldr _ (elab t) (fmap elab ns)
-    VF.Fun    ann t1 t2  -> VC.Pi ann (VC.Binder _ Explicit _ (elab t1)) (elab t2)
-    VF.Bool   ann        -> op0 (VC.PrimitiveTruth  TBool) ann
-    VF.Prop   ann        -> op0 (VC.PrimitiveTruth  TProp) ann
-    VF.Real   ann        -> op0 (VC.PrimitiveNumber TReal) ann
-    VF.Int    ann        -> op0 (VC.PrimitiveNumber TInt)  ann
-    VF.List   ann t      -> op1 VC.List   ann t
-    VF.Tensor ann t1 t2  -> op2 VC.Tensor ann t1 t2
+    VF.Forall  ann ns t   -> foldr (VC.Pi ann . elab) (elab t) ns
+    VF.Fun     ann t1 t2  -> VC.Pi ann (VC.Binder (VF.annotation t1) Explicit _ (elab t1)) (elab t2)
+    VF.Bool    ann        -> op0 (VC.PrimitiveTruth  TBool) ann
+    VF.Prop    ann        -> op0 (VC.PrimitiveTruth  TProp) ann
+    VF.Real    ann        -> op0 (VC.PrimitiveNumber TReal) ann
+    VF.Int     ann        -> op0 (VC.PrimitiveNumber TInt)  ann
+    VF.Nat     ann        -> op0 (VC.PrimitiveNumber TNat)  ann
+    VF.List    ann t      -> op1 VC.List   ann t
+    VF.Tensor  ann t1 t2  -> op2 VC.Tensor ann t1 t2
 
     -- Elaborate expressions.
     VF.Ann     ann e t   -> VC.Ann ann (elab e) (elab t)
-    VF.Let     ann ds e  -> foldr (elabLetDecl ann) (elab e) ds
+    VF.Let    _ann ds e  -> foldr elabLetDecl (elab e) ds
     VF.Lam     ann ns e  -> foldr (VC.Lam ann) (elab e) (fmap elab ns)
     VF.App     ann e1 e2 -> VC.App ann (elab e1) (elab e2)
     VF.Var     ann n     -> VC.Bound ann n
@@ -112,10 +110,10 @@ instance Elab VF.InputExpr VC.InputExpr where
 
 -- |Elaborate declarations.
 instance Elab VF.InputDecl VC.InputDecl where
-  elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann (elab n) (elab t)
-  elab (VF.DeclData ann n t)      = VC.DeclData ann (elab n) (elab t)
-  elab (VF.DefType  ann n ns t)   = VC.DefType  ann (elab n) (fmap elab ns) (elab t)
-  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann (elab n) (elab t) expr
+  elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann n (elab t)
+  elab (VF.DeclData ann n t)      = VC.DeclData ann n (elab t)
+  elab (VF.DefType  ann n ns t)   = VC.DefType  ann n (fmap elab ns) (elab t)
+  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann n (elab t) expr
     where
       expr = foldr (VC.Lam ann) (elab e) (fmap elab ns)
 
@@ -123,18 +121,22 @@ instance Elab VF.InputDecl VC.InputDecl where
 instance Elab VF.InputProg VC.InputProg where
   elab (VF.Main decls) = VC.Main (fmap elab decls)
 
+-- |Elaborate a builtin argument to an application Arg
+exprToArg :: VF.InputExpr -> VC.InputArg
+exprToArg e = VC.Arg (VF.annotation e) Explicit (elab e)
+
 -- |Elaborate any builtin token to an expression.
 op0 :: VC.Builtin -> VF.InputAnn -> VC.InputExpr
 op0 b ann = VC.Builtin ann b
 
 -- |Elaborate a unary function symbol with its argument to an expression.
 op1 :: VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VC.InputExpr
-op1 b ann e1 = VC.App ann (op0 b ann) (elab e1)
+op1 b ann e1 = VC.App ann (op0 b ann) (exprToArg e1)
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
 op2 :: VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> VC.InputExpr
-op2 b ann e1 e2 = VC.App ann (op1 b ann e1) (elab e2)
+op2 b ann e1 e2 = VC.App ann (op1 b ann e1) (exprToArg e2)
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
 op3 :: VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> VC.InputExpr
-op3 b ann e1 e2 e3 = VC.App ann (op2 b ann e1 e2) (elab e3)
+op3 b ann e1 e2 e3 = VC.App ann (op2 b ann e1 e2) (exprToArg e3)

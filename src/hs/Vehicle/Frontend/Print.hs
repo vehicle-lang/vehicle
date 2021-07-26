@@ -78,6 +78,9 @@ instance Compile Literal where
     LReal v -> pretty v
     LBool v -> pretty v
 
+instance Compile DeclIdentifier where
+  compile (DeclIdentifier _p n) = pretty n
+
 instance Compile (Binder ann) where
   compile (Binder _p vis n typeAnn) =
     let typAnn = maybe "" (\t -> ":" <+> compile t) typeAnn
@@ -90,15 +93,12 @@ instance Compile (Arg ann) where
 instance Compile (LetDecl ann) where
   compile (LetDecl _p n e) = compile n <+> compile e
 
-instance Compile (Ident ann) where
-  compile (Ident _ann n) = pretty n
-
 instance Compile (Expr ann) where
   compile = cata $ \case
-    KindF                  -> "Kind"
-    TypeF    _ann          -> "Type"
+    TypeF l                -> "Type" <+> pretty l
+    ConstraintF            -> "Constraint"
 
-    ForallF  _ann ns t     -> "forall" <+> hsep ns <+> t
+    ForallF  _ann ns t     -> "forall" <+> hsep (fmap compile ns) <+> t
     FunF     _ann t1 t2    -> compileInfixOp2 2 "->"  t1 t2
     PropF    _ann          -> compileConstant "Prop"
     BoolF    _ann          -> compileConstant "Bool"

@@ -1,12 +1,12 @@
 module Vehicle.Core.Compile.Type where
 
-import Control.Monad (when, unless)
+import Control.Monad (when, unless, zipWithM_)
 import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.State (MonadState(..), StateT(..), modify)
 import Data.Text (Text)
-import Data.Foldable (toList)
+import Data.Foldable (toList, foldrM)
 import Text.Printf (printf)
 import Data.List (foldl')
 import Data.List.NonEmpty qualified as NonEmpty (scanl, head)
@@ -24,7 +24,6 @@ import Vehicle.Core.AST hiding (lift)
 import Vehicle.Core.Compile.DSL
 -- import Vehicle.Core.Print ( prettyInfo )
 import Vehicle.Prelude
-import Vehicle.Error
 
 -- TODO:
 --
@@ -78,7 +77,7 @@ instance MeaningfulError TypeError where
 -- * Type and kind contexts
 
 -- |Type context.
-data UnificationConstraint = Unify CheckedExpr CheckedExpr
+data UnificationConstraint = Unify Provenance CheckedExpr CheckedExpr
 data TypeClassConstraint   = Meta `Has` CheckedExpr
 
 type DeclCtx  = Map Symbol CheckedExpr
@@ -106,6 +105,12 @@ modifyMetaCtx = modify
 addUnificationConstraints :: [UnificationConstraint] -> TCM ()
 addUnificationConstraints cs = modifyMetaCtx $ \ MetaCtx {..} ->
   MetaCtx { unificationConstraints = cs <> unificationConstraints, ..}
+
+unify :: Provenance -> CheckedExpr -> CheckedExpr -> TCM CheckedExpr
+unify p e1 e2 = do
+  addUnificationConstraints [Unify p e1 e2]
+  -- TODO calculate the most general unifier
+  return e1
 
 addTypeClassConstraints :: [TypeClassConstraint] -> TCM ()
 addTypeClassConstraints ts = modifyMetaCtx $ \ MetaCtx {..} ->
@@ -191,63 +196,64 @@ freshUncheckedMeta resultType = do
   let meta = foldl' (\f x -> App mempty f (Arg mempty Explicit x)) (Meta metaName) boundEnv
   return (metaName, meta)
 
+viaInfer :: Provenance -> CheckedExpr -> UncheckedExpr -> TCM CheckedExpr
+viaInfer p expectedType e = do
+  -- TODO may need to change the term when unifying to insert a type application.
+  (e', actualType) <- infer e
+  _t' <- unify p expectedType actualType
+  return e'
+
 check :: CheckedExpr     -- Type we're checking against
       -> UncheckedExpr   -- Expression being type-checked
       -> TCM CheckedExpr -- Updated expression
-check target = _
-{-\case
-  Type l             -> _
-  Constraint         -> _
-  Meta     _         -> _
-  Hole     _ _       -> _
-  Ann      ann _ _   -> _
-  App      ann _ _   -> _
-  Pi       ann _ _   -> _
-  Builtin  ann _     -> _
-  Bound    ann _     -> _
-  Free     ann _     -> _
-  Let      ann _ _ _ -> _
-  Lam      ann _ _   -> _
-  Literal  ann _     -> _
-  Seq      ann _     -> _
--}
-{-
+check expectedType = \case
+  e@(Type _)          -> viaInfer mempty expectedType e
+  e@Constraint        -> viaInfer mempty expectedType e
+  e@(Meta _)          -> viaInfer mempty expectedType e
+  e@(App     p _ _)   -> viaInfer p      expectedType e
+  e@(Pi      p _ _)   -> viaInfer p      expectedType e
+  e@(Builtin p _)     -> viaInfer p      expectedType e
+  e@(Bound   p _)     -> viaInfer p      expectedType e
+  e@(Free    p _)     -> viaInfer p      expectedType e
+  e@(Let     p _ _ _) -> viaInfer p      expectedType e
+  e@(Literal p _)     -> viaInfer p      expectedType e
+  e@(Seq     p _)     -> viaInfer p      expectedType e
+  e@(Ann     p _ _)   -> viaInfer p      expectedType e
 
-    ELitSeqF p es -> fromCheck p $ do
-      tExpected <- ask
-      let actualFirstDimension = toInteger $ length es
+  Hole _p _name -> do
+    -- Replace the hole with meta-variable of the expected type.
+    -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
+    (_, meta) <- freshMeta expectedType
+    return meta
 
-      tElem <- case unInfo tExpected of
-        (TApp ann1 (TApp ann2 (TCon ann3 TTensor) tElem) (TLitDimList ann4 (TLitDim _ann5 expectedFirstDimension :| ds)))
-          | actualFirstDimension == expectedFirstDimension -> case ds of
-            -- If there is only one dimension, the elements' type should be the tensor's type argument.
-            []         -> return $ Info tElem
-            -- If there is more than one dimension, the elements's type should be a tensor with one less dimension than the original.
-            (d2 : ds2) -> return $ Info $ TApp ann1 (TApp ann2 (TCon ann3 TTensor) tElem) (TLitDimList ann4 (d2 :| ds2))
-        (TApp _ (TCon _ TList) tElem) ->
-          return $ Info tElem
-        _ -> do
-          tElem <- lift freshTMeta
-          let tTensorActual = tTensor tElem (tLitDimList (tLitDim actualFirstDimension :| []))
-          let tListActual   = tList tElem
-          throwError $ Mismatch (unK p) [tTensorActual , tListActual] tExpected
+  e@(Lam p (Binder pBound vBound nBound tBound1) body) ->
+    case expectedType of
+      -- Check if it's a Pi type which is expecting the right visibility
+      Pi _ (Binder _ vFun _ tBound2) tRes
+        | vBound == vFun -> do
+          modifyBoundCtx (tBound2 Seq.<|) $ do
+            body' <- check tRes body
+            (tBound1' , _) <- infer tBound1
+            tBound' <- unify p tBound1' tBound2
+            return $ Lam (RecAnn expectedType p) (Binder pBound vBound nBound tBound') body'
 
-      es <- lift (traverse (runCheckWith tElem) es)
-      return $ ELitSeq (tExpected :*: p) es
--}
-    {-
-    ELamF p n e -> fromCheck p $ do
-      tFun <- ask
+      -- Check if it's a Pi type which is expecting an implicit argument
+      -- but is being applied to an explicit argument
+      Pi _ (Binder _ Implicit name tBound2) tRes -> do
+        -- Add the implict argument to the context
+        modifyBoundCtx (tBound2 Seq.<|) $ do
+          -- Check if the type matches the expected result type.
+          e' <- check tRes e
 
-      -- Check if it's a function type: if so, return the two arguments; if not, throw an error.
-      (tArg, tRes) <- case unInfo tFun of
-        _tFun@(TApp _ (TApp _ (TCon _ TFun) tArg) tRes) ->
-          return (Info tArg, Info tRes)
-        _tFun -> do
-          expected <- lift $ (~>) <$> freshTMeta <*> freshTMeta
-          throwError $ Mismatch (unK p) [tFun] expected
+          -- Create a new binder mirroring the implicit Pi binder expected
+          let newBinder = Binder mempty Implicit name tBound2
 
-      -}
+          -- Prepend a new lambda to the expression with the implicit binder
+          return $ Lam (RecAnn expectedType mempty) newBinder e'
+
+      _ -> do
+        let expected = tPiInternal vBound (hole "a") (hole "b")
+        throwError $ Mismatch p expectedType expected
 
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
@@ -267,7 +273,7 @@ infer = \case
   Hole p s ->
     throwError $ UnresolvedHole p s
 
-  Ann      ann e t   -> do
+  Ann ann e t   -> do
     (t', _) <- infer t
     e' <- check t' e
     let ann' = RecAnn t' ann
@@ -307,7 +313,7 @@ infer = \case
         infer (App p funWithImplicit arg)
 
       _ -> do
-        let expected = hole "a" ~> hole "b"
+        let expected = tPiInternal vArg (hole "a") (hole "b")
         throwError $ Mismatch p tFun' expected
 
 
@@ -329,7 +335,7 @@ infer = \case
     case ctx Seq.!? i of
       Just t' -> return (Bound (RecAnn t' p) (Index i), t')
       Nothing -> developerError $
-        printf "Index %d out of bounds when looking up variable in context %s at %s" i (show ctx) (showProv p)
+        _ --printf "Index %d out of bounds when looking up variable in context %s at %s" i (show ctx) (showProv p)
 
   Free p name -> do
     -- Lookup the type of the declaration variable in the context.
@@ -337,8 +343,8 @@ infer = \case
     case Map.lookup name ctx of
       Just t' -> return (Free (RecAnn t' p) name, t')
       -- This should have been caught during scope checking
-      Nothing -> developerError $
-        printf "Declaration %s not found when looking up variable in context %s at %s" name (show ctx) (showProv p)
+      Nothing -> developerError $ _
+        --printf "Declaration %s not found when looking up variable in context %s at %s" name (show ctx) (showProv p)
 
   Let p (Binder pBound vis name tBound) arg body -> do
     -- Infer the type of the let arg from the annotation on the binder
@@ -369,191 +375,20 @@ infer = \case
 
   Seq p es -> do
     (es', ts') <- unzip <$> traverse infer es
-    let tElemTCM
-          | null ts'  = snd <$> freshMeta Type0
-          | otherwise = do
-              addUnificationConstraints (zipWith Unify ts' (tail ts'))
-              return $ head ts'
-    tElem' <- tElemTCM
 
+    -- Generate a fresh meta variable for the case where the list is empty
+    (_, tElem) <- freshMeta Type0
+
+    -- Unify the types of all the elements in the list
+    tElem' <- foldrM (unify p) tElem ts'
+
+    -- Generate a meta-variable for the type of the container
     (meta, tCont') <- freshMeta Type0
     addTypeClassConstraints [meta `Has` isContainer p tCont' tElem']
 
     return (Seq (RecAnn tCont' p) es' , tCont')
 {-
 
--- * Bidirectional type checking and inference algorithm
-
--- |The type of trees output by the type checking algorithm.
-type CheckedTree (sort :: Sort) = Tree DeBruijn (Info DeBruijn :*: K Provenance) sort
-
--- |The type checking monad stack shared between checking and inference. It provides:
---
---    1. a dataflow monad which propagates the kind and type environment according to sort;
---    2. a supply monad which provides an infinite supply of fresh meta-variables; and
---    3. an exception monad for throwing type errors.
---
-type TCM (sort :: Sort) = DataflowT sort Ctx (SupplyT Meta (Except TypeError))
-
--- |Find the type information for a given deBruijn index of a given sort.
-getInfo ::
-  forall sort. (KnownSort sort, sort `In` ['TYPE, 'EXPR]) =>
-  K Provenance sort -> DeBruijn sort -> TCM sort (Info DeBruijn sort)
-getInfo p db = do
-  subctx <- getSubCtxFor @sort <$> ask
-  let ix = toIndex db
-  let maybeInfo = subctx Seq.!? ix
-  maybe (throwError $ IndexOutOfBounds (unK p) ix) return maybeInfo
-
-freshKMeta :: KnownSort sort => TCM sort (Info DeBruijn 'TYPE)
-freshKMeta = Info . KMeta mempty <$> demand
-
-freshTMeta :: KnownSort sort => TCM sort (Info DeBruijn 'EXPR)
-freshTMeta = do
-  x <- demand
-  k <- freshKMeta
-  return $ Info (TMeta (k :*: mempty) x)
-
--- |Check if a tree is well-kinded and well-typed, and insert typing information.
-checkInfer ::
-  forall sort. (KnownSort sort) =>
-  Tree DeBruijn (K Provenance) sort ->
-  (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
-checkInfer = unSCI . foldTree (SCI . checkInferF)
-
--- |Check if a single layer is well-kinded and well-typed, see |checkInfer|.
-checkInferF ::
-  forall sort. (KnownSort sort) =>
-  TreeF DeBruijn (K Provenance) sort SortedCheckInfer ->
-  (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
-checkInferF = case sortSing @sort of
-
-  -- Kinds.
-  SKIND -> \case
-    KAppF  p k1 k2 -> fromCheck p $ KApp (mempty :*: p) <$> runCheck k1 <*> runCheck k2
-    KConF  p op    -> fromCheck p $ pure (KCon (mempty :*: p) op)
-    KMetaF p _i    -> fromCheck p $ throwError $ UnsupportedOperation (unK p) "KMeta"
-  --
-  -- TODO: convert to Hindley-Milner style checking for kind checking, so that we can generalise
-  --       the forall without requiring a type annotation.
-  --
-  -- TODO: variable names are clashing with the DSL for writing types (e.g. tForall)
-  STYPE -> \case
-
-    -- For type quantification:
-    -- the result of a quantification also has kind |kType|
-    TForallF p kOptArg n t -> fromInfer p $ do
-      kArg <- maybe (return kType) (fmap Info . flow . runCheckWith mempty) kOptArg
-      bindLocal (runCheckWith kArg n) $ \n -> do
-        t <- runCheckWith kType t
-        let kRes = kType
-        return (TForall (kRes :*: p) (Just $ unInfo kArg) n t, kRes)
-
-    -- For type applications:
-    -- infer the kind of the type function, check the kind of its argument.
-    TAppF p tFun tArg -> fromInfer p $ do
-
-    -- For type builtins:
-    -- lookup the kind of the builtin using |kindOf|.
-    TConF p op -> fromInfer p $ do
-      let k = kindOf op
-      return (TCon (k :*: p) op, k)
-
-    -- Type meta-variables are currently unsupported.
-    TMetaF p _i -> fromCheck p $
-      throwError $ UnsupportedOperation (unK p) "TMeta"
-
-  -- Type argument
-  STARG -> \case
-    TArgF p n -> fromCheck p $ do
-      k <- ask
-      lift (tellData $ singletonCtx STYPE (Info . unInfo $ k))
-      return (TArg (k :*: p) n)
-
-  -- Expressions
-  SEXPR -> \case
-    EAnnF p e t ->
-      let t' :: TCM 'EXPR (Info DeBruijn 'EXPR)
-          t' = do (t, _k) <- flow (runInfer t)
-                  return (Info t)
-      in fromCheckWithAnn p t' (runCheck e)
-
-    EVarF p n -> fromInfer p $ do
-      t <- getInfo p n
-      return (EVar (t :*: p) n, t)
-
-
-    EAppF p eFun eArg -> fromInfer p $ do
-      -- Infer the type of the function.
-      (eFun, tFun) <- runInfer eFun
-
-      -- Check if it's a function type: if so, return the two arguments; if not, throw an error.
-      (tArg, tRes) <- case unInfo tFun of
-        _tFun@(TApp _ (TApp _ (TCon _ TFun) tArg) tRes) ->
-          return (Info tArg, Info tRes)
-        _tFun -> do
-          expected <- (~>) <$> freshTMeta <*> freshTMeta
-          throwError $ Mismatch (unK p) [tFun] expected
-
-      -- Check the kind of the argument.
-      eArg <- runCheckWith tArg eArg
-
-      -- Return the appropriately annotated type with its inferred kind.
-      return (EApp (tRes :*: p) eFun eArg, tRes)
-
-    ETyAppF p eTyFun tArg -> fromInfer p $ do
-      (eTyFun, tForall') <- runInfer eTyFun
-
-      -- Check if it's a forall type: if so, return the two arguments; if not, throw an error.
-      (kArg, tRes) <- case unInfo tForall' of
-        _tForall'@(TForall _ _ tArg tRes) ->
-          return (ifst (annotation tArg) , tRes)
-        _tForall' -> do
-          tMeta <- freshTMeta
-          kMeta <- freshKMeta
-          let expected = tForall kMeta (const tMeta)
-          throwError $ Mismatch (unK p) [tForall'] expected
-
-      tArg <- flow $ runCheckWith (coerce kArg) tArg
-      let tRes' = Info $ subst tArg tRes
-
-      return (ETyApp (tRes' :*: p) eTyFun tArg, tRes')
-
-    ETyLamF p n e -> fromCheck p $ do
-      tForall' <- ask
-
-      -- Check if it's a forall type: if so, return the two arguments; if not, throw an error.
-      (kArg, tRes) <- case unInfo tForall' of
-        _tForall'@(TForall _ _ tArg tRes) ->
-          return (ifst (annotation tArg) , Info tRes)
-        _tForall' -> do
-          tMeta <- lift freshTMeta
-          kMeta <- lift freshKMeta
-          let expected = tForall kMeta (const tMeta)
-          throwError $ Mismatch (unK p) [tForall'] expected
-
-      -- Add the argument to the context and check the body
-      lift $ bindLocal (runCheckWith kArg n) $ \n -> do
-        e <- runCheckWith tRes e
-        return $ ETyLam (tRes :*: p) n e
-
-    ELitIntF p z -> fromInfer p $ do
-      let t = tInt
-      return (ELitInt (t :*: p) z, t)
-
-    ELitRealF p r -> fromInfer p $ do
-      let t = tReal
-      return (ELitReal (t :*: p) r, t)
-
-
-
-
-  -- Expression arguments
-  SEARG -> \case
-    EArgF p n -> fromCheck p $ do
-      t <- ask
-      lift (tellData $ singletonCtx SEXPR (coerce t))
-      return (EArg (t :*: p) n)
 
   -- Declarations
   SDECL -> \case
@@ -581,101 +416,6 @@ checkInferF = case sortSing @sort of
     MainF p ds -> fromInfer p $ do
       ds <- flow $ traverse (runCheckWith (Info ())) ds
       return (Main (mempty :*: p) ds , Info ())
-
-
--- |Switch from inference mode to checking mode upon finding a type annotation.
-fromCheckWithAnn ::
-  forall sort. (KnownSort sort) =>
-  K Provenance sort -> TCM sort (Info DeBruijn sort) -> Check sort (CheckedTree sort) ->
-  (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
-fromCheckWithAnn p tcmAnnotated chk = fromInfer p inf
-  where
-    inf :: Infer sort (CheckedTree sort)
-    inf = do annotated <- tcmAnnotated
-             tree <- runReaderT chk annotated
-             return (tree, annotated)
-
--- |Constructed a bidirectional step from a checking step.
---
---  Concretely, the resulting algorithm always throws an error if the inference
---  portion is invoked, with the exception of sorts which have trivial
---  information, i.e., kinds, declarations, and programs, for which checking
---  and inference coincide.
---
-fromCheck ::
-  forall sort. (KnownSort sort) =>
-  K Provenance sort -> Check sort (CheckedTree sort) ->
-  (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
-fromCheck p chk = (chk, checkToInfer p chk)
-  where
-    checkToInfer ::
-      forall sort. (KnownSort sort) =>
-      K Provenance sort -> Check sort (CheckedTree sort) -> Infer sort (CheckedTree sort)
-    checkToInfer p chk = case sortSing @sort of
-      SKIND -> inferNoop chk
-      STYPE -> inferError p
-      STARG -> inferError p -- TODO: could be implemented as something sensible?
-      SEXPR -> inferError p
-      SEARG -> inferError p -- TODO: could be implemented as something sensible?
-      SDECL -> inferNoop chk
-      SPROG -> inferNoop chk
-
-    -- |An inference mode which always throws an error.
-    inferError :: forall sort a. (KnownSort sort) => K Provenance sort -> Infer sort a
-    inferError p = throwError $ MissingAnnotation (unK p)
-
-    -- |For sorts with trivial information, checking and inference coincide into a no-op.
-    inferNoop :: forall sort a. (KnownSort sort, Monoid (Info DeBruijn sort)) => Check sort a -> Infer sort a
-    inferNoop chk = do x <- runReaderT chk mempty; return (x, mempty)
-
--- |Constructed a bidirectional step from an inference step.
---
---  Concretely, the resulting algorithm runs the inference mode, then compares
---  the inferred type to the expected type. If they're equal, it returns as
---  usual. If they're not, it throws an error.
---
-fromInfer ::
-  forall sort. (KnownSort sort, Eq (Info DeBruijn sort)) =>
-  K Provenance sort -> Infer sort (CheckedTree sort) ->
-  (Check sort (CheckedTree sort), Infer sort (CheckedTree sort))
-fromInfer p inf = (inferToCheck p inf, inf)
-  where
-    inferToCheck ::
-      forall sort. (KnownSort sort, Eq (Info DeBruijn sort)) =>
-      K Provenance sort -> Infer sort (CheckedTree sort) -> Check sort (CheckedTree sort)
-    inferToCheck p inf = do
-      (tree, inferred) <- lift inf
-      expected <- ask
-      if inferred == expected
-        then return tree
-        else throwError (Mismatch @sort (unK p) [inferred] expected)
-
--- |Run and continue in checking mode.
-runCheck :: SortedCheckInfer sort -> Check sort (CheckedTree sort)
-runCheck (SCI (chk, _inf)) = chk
-
--- |Run and continue in checking mode.
-runCheckWith :: Info DeBruijn sort -> SortedCheckInfer sort -> TCM sort (CheckedTree sort)
-runCheckWith info (SCI (chk, _inf)) = runReaderT chk info
-
--- |Run and continue in inference mode.
-runInfer :: SortedCheckInfer sort -> Infer sort (CheckedTree sort)
-runInfer (SCI (_chk, inf)) = inf
-
-
-
-
-{-
-
---- Roughly:
---
--- - Introduction forms are checked
--- - Elimination forms and variables are inferred
--- - if_then_else can be checkable
--- - variable with polymorphic type
--- - union-find algorithm for unification and substitution
-
--}
 -}
 
 typeOfLiteral :: Provenance -> Literal -> CheckedExpr

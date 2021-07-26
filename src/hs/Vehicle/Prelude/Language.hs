@@ -1,20 +1,33 @@
 
 module Vehicle.Prelude.Language where
 
-import Data.Text (Text)
 import Numeric.Natural (Natural)
 import Prettyprinter (Doc, braces)
 
--- | Symbols in the language are represented by the `Text` type.
-type Symbol = Text
+import Vehicle.Prelude.Provenance (HasProvenance(..), Provenance, expandProvenance)
+import Vehicle.Prelude.Token (Symbol)
+
+-- | Identifiers for top-level declerations
+data DeclIdentifier = DeclIdentifier Provenance Symbol
+  deriving (Eq, Ord, Show)
+
+instance HasProvenance DeclIdentifier where
+  prov (DeclIdentifier p _) = p
+
+-- | Universe levels
+type Level = Natural
 
 -- | Visibility of function arguments
 data Visibility = Explicit | Implicit
   deriving (Eq, Ord, Show)
 
-visBrackets :: Visibility -> (Doc a -> Doc a)
+visBrackets :: Visibility -> Doc a -> Doc a
 visBrackets Explicit = id
 visBrackets Implicit = braces
+
+visProv :: Visibility -> Provenance -> Provenance
+visProv Explicit = id
+visProv Implicit = expandProvenance (1,1)
 
 -- | Literals in the language
 data Literal
@@ -24,24 +37,24 @@ data Literal
   | LBool Bool
   deriving (Eq, Ord, Show)
 
-data PrimitiveNumberType
+data NumberType
   = TNat
   | TInt
   | TReal
   deriving (Eq, Ord, Show, Read, Enum)
 
-data PrimitiveTruthType
+data TruthType
   = TBool
   | TProp
   deriving (Eq, Ord, Show, Read, Enum)
 
-data PrimitiveType
-  = TNumber PrimitiveNumberType
-  | TTruth  PrimitiveTruthType
-  deriving (Eq, Ord, Show)
-
 data ContainerType
-  = TListContainer
-  | TTensorContainer
-  | TSetContainer
+  = TList
+  | TTensor
+  | TSet
   deriving (Eq, Ord, Show, Enum)
+
+data PrimitiveType
+  = TNumber NumberType
+  | TTruth  TruthType
+  deriving (Eq, Ord, Show)

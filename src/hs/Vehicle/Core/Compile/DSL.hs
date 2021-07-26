@@ -58,10 +58,10 @@ tMax _         _         = error "Expected something of type Type. Found of type
 tPrim :: PrimitiveType -> CheckedExpr
 tPrim t = con (PrimitiveType t) Type0
 
-tPrimNumber :: PrimitiveNumberType -> CheckedExpr
+tPrimNumber :: NumberType -> CheckedExpr
 tPrimNumber = tPrim . TNumber
 
-tPrimTruth :: PrimitiveTruthType -> CheckedExpr
+tPrimTruth :: TruthType -> CheckedExpr
 tPrimTruth = tPrim . TTruth
 
 tBool, tProp, tNat, tInt, tReal :: CheckedExpr

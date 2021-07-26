@@ -5,7 +5,8 @@ import Data.Coerce (Coercible, coerce)
 import Data.Text (Text)
 import Data.Text qualified as T
 
-import Vehicle.Prelude.Language (Symbol)
+-- | Symbols in the language are represented by the `Text` type.
+type Symbol = Text
 
 -- |Position tokens in BNFC generated grammars are represented by a pair of a
 -- position and the text token.

@@ -1,5 +1,6 @@
 module Vehicle.Prelude.Types where
 
+{-
 -- TODO swap out for lists?
 
 -- | Type-level indexed product.
@@ -39,3 +40,4 @@ instance Monoid a => Monoid (K a sort) where
 
 -- |Type-level function composition.
 newtype O (g :: * -> *) (f :: k -> *) (a :: k) = O { unO :: g (f a) }
+-}

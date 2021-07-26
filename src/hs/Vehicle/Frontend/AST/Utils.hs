@@ -10,8 +10,8 @@ import Vehicle.Frontend.AST.Core
 annotation :: Expr ann -> ann
 annotation = \case
   -- Kinds
-  Kind                    -> error "Should not be requesting an annotation from Kind"
-  Type    ann             -> ann
+  Type _l                -> error "Should not be requesting an annotation from Type"
+  Constraint             -> error "Should not be requesting an annotation from Constraint"
 
   -- Types
   Forall     ann _ns _t  -> ann
@@ -70,15 +70,13 @@ pattern LitBool ann n = Literal ann (LBool n)
 -- * Type of annotations attached to the Frontend AST after parsing
 -- before being analysed by the compiler
 
-data MaybeRecAnn ann = MaybeRecAnn (Maybe (Expr (RecAnn ann))) ann
-
 type InputAnn = Provenance
 
 type InputArg     = Arg     InputAnn
+type InputBinder  = Binder  InputAnn
 type InputLetDecl = LetDecl InputAnn
 type InputExpr    = Expr    InputAnn
 type InputDecl    = Decl    InputAnn
-type InputIdent   = Ident   InputAnn
 type InputProg    = Prog    InputAnn
 
 {-
@@ -98,12 +96,17 @@ data RecAnn ann = RecAnn (Expr (RecAnn ann)) ann
 type OutputAnn = RecAnn Provenance
 
 type OutputArg     = Arg     OutputAnn
+type OutputBinder  = Binder  OutputAnn
 type OutputLetDecl = LetDecl OutputAnn
 type OutputExpr    = Expr    OutputAnn
 type OutputDecl    = Decl    OutputAnn
-type OutputIdent   = Ident   OutputAnn
 type OutputProg    = Prog    OutputAnn
 
+-- | Extracts the type of the term from the term's annotation.
+getType :: Expr (RecAnn ann) -> Expr (RecAnn ann)
+getType (Type l)   = Type (l + 1)
+getType Constraint = Type 1
+getType e          = let RecAnn t _ = annotation e in t
 {-
 instance KnownSort sort => HasProvenance (OutputAnn sort) where
   prov (_ :*: K p) = p

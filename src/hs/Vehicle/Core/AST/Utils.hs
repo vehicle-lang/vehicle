@@ -99,8 +99,3 @@ isConstraint e = case getType e of
   Constraint -> True
   _          -> False
 
--- * Instances
-
-instance HasProvenance DeclName where
-  prov (DeclName p _) = p
-

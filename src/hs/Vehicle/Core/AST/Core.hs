@@ -5,17 +5,13 @@
 
 module Vehicle.Core.AST.Core where
 
-import Numeric.Natural (Natural)
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 
-import Vehicle.Prelude (Symbol, Provenance, Visibility, Literal)
+import Vehicle.Prelude (Symbol, Provenance, Visibility, Literal, Level, DeclIdentifier)
 import Vehicle.Core.AST.Builtin (Builtin)
 
 -- | Meta-variables
 type Meta = Int
-
--- | Universe levels
-type Level = Natural
 
 data Arg binder var ann
   = Arg
@@ -120,28 +116,24 @@ makeBaseFunctor ''Expr
 newtype Ident = Ident Symbol
   deriving (Eq, Ord, Show)
 
--- | Identifiers for top-level declerations
-data DeclName = DeclName Provenance Ident
-  deriving (Eq, Ord, Show)
-
 -- | Type of top-level declarations.
 data Decl binder var ann
   = DeclNetw
     Provenance                 -- Location in source file.
-    DeclName                   -- Network name.
+    DeclIdentifier             -- Network name.
     (Expr   binder var ann)    -- Network type.
   | DeclData
     Provenance                 -- Location in source file.
-    DeclName                   -- Dataset name.
+    DeclIdentifier             -- Dataset name.
     (Expr   binder var ann)    -- Dataset type.
   | DefType
     Provenance                 -- Location in source file.
-    DeclName                   -- Bound expr synonym name.
-    [Binder binder var ann] -- Bound expr synonym arguments.
+    DeclIdentifier             -- Bound expr synonym name.
+    [Binder binder var ann]    -- Bound expr synonym arguments.
     (Expr      binder var ann) -- Bound expr synonym body.
   | DefFun
     Provenance                 -- Location in source file.
-    DeclName                   -- Bound function name.
+    DeclIdentifier             -- Bound function name.
     (Expr binder var ann)      -- Bound function type.
     (Expr binder var ann)      -- Bound function body.
   deriving (Eq, Show, Functor, Foldable, Traversable)

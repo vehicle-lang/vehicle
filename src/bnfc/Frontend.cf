@@ -75,9 +75,10 @@ separator LetDecl ",";
 
 -- * Literals
 
-LitNat.  Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
-LitReal. Lit ::= Double;
-LitBool. Lit ::= BoolToken;
+LitNat.   Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
+LitReal.  Lit ::= Double;
+LitTrue.  Lit ::= TokTrue;
+LitFalse. Lit ::= TokFalse;
 
 -- * Expressions
 
@@ -101,8 +102,9 @@ Ann.     Expr   ::= Expr1 TokElemOf Expr;
 Let.     Expr1  ::= "let" "{" [LetDecl] "}" "in" Expr1;
 Lam.     Expr2  ::= TokLambda [Binder] TokArrow Expr2;
 App.     Expr12 ::= Expr13 Arg;
-Var.     Expr14 ::= Name;
 Fun.     Expr12 ::= Expr13 TokArrow Expr12;
+Var.     Expr14 ::= Name;
+Literal. Expr14 ::= Lit;
 
 -- Primitive types.
 List.    Expr13 ::= TokList Expr14;
@@ -131,7 +133,6 @@ Div.     Expr8  ::= Expr8 TokDiv Expr9;
 Add.     Expr9  ::= Expr9 TokAdd Expr10;
 Sub.     Expr9  ::= Expr9 TokSub Expr10;
 Neg.     Expr10 ::= TokSub Expr10;
-Lit.     Expr14 ::= Literal;
 
 -- Lists and tensors.
 Cons.    Expr3  ::= Expr4 TokCons Expr3;
@@ -153,7 +154,7 @@ layout stop "in";
 
 DeclNetw.   Decl ::= "network" Name TokElemOf Expr;
 DeclData.   Decl ::= "dataset" Name TokElemOf Expr;
-DefType.    Decl ::= "type"    Name [Name] "=" Expr;
+DefType.    Decl ::= "type"    Name [Binder] "=" Expr;
 DefFunType. Decl ::= Name TokElemOf Expr;
 DefFunExpr. Decl ::= Name [Binder] "=" Expr;
 

@@ -4,17 +4,16 @@ module Vehicle.Prelude
   , (|->)
   , (!?)
   , rangeStart
-  , developerError
   ) where
 
 import Data.Range
-import GHC.Stack (HasCallStack)
 
 import Vehicle.Prelude.Token as X
 import Vehicle.Prelude.Sort as X
 import Vehicle.Prelude.Provenance as X
 import Vehicle.Prelude.Language as X
 import Vehicle.Prelude.Types as X
+import Vehicle.Prelude.Error as X
 import Vehicle.Prelude.Prettyprinter as X
 
 infix 1 |->
@@ -42,9 +41,3 @@ rangeStart InfiniteRange               = Nothing
   | k == k'   = Just v
   | otherwise = xs !? k'
 
-developerError :: HasCallStack => String -> a
-developerError message = error $ unwords
-  [ "Something went wrong internally. Please report the error"
-  , "shown below to `https://github.com/wenkokke/vehicle/issues`."
-  , "Error: " <> message
-  ]

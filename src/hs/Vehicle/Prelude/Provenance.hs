@@ -4,14 +4,14 @@ module Vehicle.Prelude.Provenance
   , tkProvenance
   , HasProvenance(..)
   , showProv
+  , expandProvenance
   ) where
 
 import Data.Range hiding (joinRanges)
 import Prettyprinter
-import Prettyprinter.Render.String (renderString)
 
 import Vehicle.Prelude.Token
-import Vehicle.Prelude.Types ( K(K) )
+import Vehicle.Prelude.Prettyprinter (layoutAsString)
 
 --------------------------------------------------------------------------------
 -- Position
@@ -35,6 +35,9 @@ instance Pretty Position where
 -- |Get the starting position of a token.
 tkPosition :: IsToken a => a -> Position
 tkPosition t = let (l, c) = tkLocation t in Position l c
+
+alterColumn :: (Int -> Int) -> Position -> Position
+alterColumn f (Position l c) = Position l (f c)
 
 --------------------------------------------------------------------------------
 -- Position ranges
@@ -62,7 +65,7 @@ instance Pretty (Range Position) where
 
 -- TODO make instance of PrintfArg
 showProv :: Provenance -> String
-showProv p = renderString $ layoutPretty defaultLayoutOptions (pretty p)
+showProv = layoutAsString . pretty
 
 -- | Takes the union of two sets of position ranges and then joins any adjacent
 -- ranges (e.g. r1=[(1,10)-(1,20)] & r2=[(1,21)-(1,25)] gets mapped to
@@ -100,6 +103,10 @@ joinRanges rs1 rs2 = combineRanges $ rs1 `union` rs2
       Just r12 -> combineRanges (r12 : rs)
     combineRanges rs             = rs
 
+expandRange :: (Int, Int) -> [Range Position] -> [Range Position]
+expandRange (l , r) [IRange start end] = [IRange (alterColumn (\x -> x - l) start) (alterColumn (+ r) end)]
+expandRange _       rs                 = rs
+
 --------------------------------------------------------------------------------
 -- Provenance
 
@@ -116,6 +123,9 @@ tkProvenance tk = Provenance [start +=+ end]
   where
     start = tkPosition tk
     end   = Position (posLine start) (posColumn start + tkLength tk)
+
+expandProvenance :: (Int, Int) -> Provenance -> Provenance
+expandProvenance w (Provenance rs) = Provenance (expandRange w rs)
 
 instance Semigroup Provenance where
   Provenance r1 <> Provenance r2 = Provenance $ joinRanges r1 r2
@@ -142,7 +152,3 @@ instance HasProvenance Provenance where
 
 instance (HasProvenance a , Foldable t) => HasProvenance (t a) where
   prov xs = foldMap prov xs
-
-instance HasProvenance a => HasProvenance (K a s) where
-  prov (K x) = prov x
-
