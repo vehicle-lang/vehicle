@@ -184,13 +184,13 @@ instance DelaborateWithHoles VC.OutputExpr VF.OutputExpr where
     VC.Type l                        -> return (VF.Type l)
     VC.Constraint                    -> return VF.Constraint
     VC.Meta    p i                   -> throwError $ UnsolvedMeta p i
+    VC.Hole    ann n                 -> VF.Hole    <$> delab ann <*> pure n
     VC.Pi      ann binder       body -> delabPi  ann binder       body
     VC.Let     ann binder bound body -> delabLet ann binder bound body
     VC.Lam     ann binder       body -> delabLam ann binder       body
     VC.Builtin ann op                -> do ann' <- delab ann; delabBuiltin ann' op
-    VC.Ann     ann e t               -> VF.Ann     <$> delab ann <*> delabH e   <*> delabH t;
+    VC.Ann     ann e t               -> VF.Ann     <$> delab ann <*> delabH e   <*> delabH t
     VC.App     ann fun arg           -> VF.App     <$> delab ann <*> delabH fun <*> delabH arg
-    VC.Hole    ann n                 -> VF.Hole    <$> delab ann <*> pure n
     VC.Var     ann n                 -> VF.Var     <$> delab ann <*> pure n
     VC.Literal ann z                 -> VF.Literal <$> delab ann <*> pure z
     VC.Seq     ann es                -> VF.Seq     <$> delab ann <*> traverse delabH es

@@ -91,8 +91,8 @@ instance ScopeCheck InputExpr UncheckedExpr where
   check = \case
     Type l                         -> return $ Type l
     Constraint                     -> return Constraint
-    Meta i                         -> return $ Meta i
-    Hole p n                       -> return $ Hole p n
+    Meta p i                       -> return $ Meta p i
+    Hole     ann n                 -> return $ Hole ann n
     Ann      ann e t               -> Ann ann <$> check e <*> check t
     App      ann fun arg           -> App ann <$> check fun <*> check arg
     Pi       ann binder res        -> bindVar binder $ \binder' -> Pi ann binder' <$> check res

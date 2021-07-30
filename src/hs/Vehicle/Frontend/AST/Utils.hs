@@ -119,13 +119,3 @@ getType :: Expr (RecAnn ann) -> Expr (RecAnn ann)
 getType (Type l)   = Type (l + 1)
 getType Constraint = Type 1
 getType e          = let RecAnn t _ = annotation e in t
-{-
-instance KnownSort sort => HasProvenance (OutputAnn sort) where
-  prov (_ :*: K p) = p
-
-instance KnownSort sort => HasProvenance (OutputTree sort) where
-  prov = prov . annotation
-
-pattern Let1 :: ann -> ann -> Ident ann -> Expr ann -> Expr ann -> Expr ann
-pattern Let1 ann1 ann2 n e1 e2 = Let ann1 (LetDecl ann2 n e1 :| []) e2
--}

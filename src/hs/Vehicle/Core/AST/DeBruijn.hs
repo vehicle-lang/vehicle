@@ -64,8 +64,8 @@ instance Liftable ann => Liftable (DeBruijnExpr ann) where
   liftAcc d = \case
     Type l                   -> Type l
     Constraint               -> Constraint
-    Meta    p m              -> Meta    p m
-    Hole    p name           -> Hole    p name
+    Meta p m                 -> Meta p m
+    Hole    ann name         -> Hole    (liftAcc d ann) name
     Ann     ann term typ     -> Ann     (liftAcc d ann) (liftAcc d term) (liftAcc d typ)
     App     ann fun arg      -> App     (liftAcc d ann) (liftAcc d fun) (liftAcc d arg)
     Pi      ann binder res   -> Pi      (liftAcc d ann) (liftAcc d binder) (liftAcc (d + 1) res)
@@ -119,8 +119,8 @@ instance Substitutable ann (Expr Name Var) where
   substAcc d sub = \case
     Type l                   -> Type l
     Constraint               -> Constraint
-    Meta    p m              -> Meta     p m
-    Hole    p name           -> Hole     p name
+    Meta p m                 -> Meta p m
+    Hole    ann name         -> Hole    (substAnn d sub ann) name
     Ann     ann term typ     -> Ann     (substAnn d sub ann) (substAcc d sub term) (substAcc d sub typ)
     App     ann fun arg      -> App     (substAnn d sub ann) (substAcc d sub fun)  (substAcc d sub arg)
     Pi      ann binder res   -> Pi      (substAnn d sub ann) (substAcc d sub binder) (substAcc (d + 1) (lift sub) res)

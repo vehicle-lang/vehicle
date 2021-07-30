@@ -279,8 +279,8 @@ infer = \case
     metaType <- getMetaType i
     return (Meta p i , metaType)
 
-  Hole p s ->
-    throwError $ UnresolvedHole p s
+  Hole ann s ->
+    throwError $ UnresolvedHole (prov ann) s
 
   Ann ann e t   -> do
     (t', _) <- infer t

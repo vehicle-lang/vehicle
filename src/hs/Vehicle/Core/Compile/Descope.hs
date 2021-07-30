@@ -69,7 +69,7 @@ instance Descope CheckedExpr OutputExpr where
   descope c = \case
     Type     l         -> Type l
     Constraint         -> Constraint
-    Meta     i         -> Meta i
+    Meta     p i       -> Meta p i
     Hole     ann name  -> Hole    (descope c ann) name
     Ann      ann e t   -> Ann     (descope c ann) (descope c e) (descope c t)
     App      ann _ _   -> App     (descope c ann) _ _
@@ -83,20 +83,15 @@ instance Descope CheckedExpr OutputExpr where
 
 instance Descope CheckedDecl OutputDecl where
   descope c = \case
-    DeclNetwF ann n t    -> do ann' <- convertAnn ann
+    DeclNetw ann n t -> do ann' <- convertAnn ann
                                t'   <- sflow t
                                n'   <- sflow n
                                return $ DeclNetw ann' n' t'
-    DeclDataF ann n t    -> do ann' <- convertAnn ann
+    DeclData ann n t -> do ann' <- convertAnn ann
                                t'   <- sflow t
                                n'   <- sflow n
                                return $ DeclData ann' n' t'
-    DefTypeF  ann n ns t -> do ann' <- convertAnn ann
-                               n'   <- sflow n
-                               flow $
-                                 sbindAllLocal ns $ \ns' ->
-                                   DefType ann' n' ns' <$> unSDF t
-    DefFunF   ann n t e  -> do ann' <- convertAnn ann
+    DefFun ann n t e  -> do ann' <- convertAnn ann
                                t'   <- sflow t
                                e'   <- sflow e
                                n'   <- sflow n
