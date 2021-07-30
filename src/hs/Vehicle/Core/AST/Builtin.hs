@@ -2,8 +2,6 @@
 
 module Vehicle.Core.AST.Builtin
   ( Builtin(..)
-  , pattern PrimitiveNumber
-  , pattern PrimitiveTruth
   , builtinFromSymbol
   , symbolFromBuiltin
   ) where
@@ -16,7 +14,11 @@ import Vehicle.Prelude
 -- |Builtins to the Vehicle language
 data Builtin
   -- Types
-  = PrimitiveType PrimitiveType
+  = Bool
+  | Prop
+  | Nat
+  | Int
+  | Real
   | List
   | Tensor
   -- Type classes
@@ -52,20 +54,14 @@ data Builtin
   | Any
   deriving (Eq, Ord, Show)
 
-pattern PrimitiveNumber :: NumberType -> Builtin
-pattern PrimitiveNumber prim = PrimitiveType (TNumber prim)
-
-pattern PrimitiveTruth :: TruthType -> Builtin
-pattern PrimitiveTruth prim = PrimitiveType (TTruth prim)
-
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols =
   -- Types
-  [ "Bool"         |-> PrimitiveTruth TBool
-  , "Prop"         |-> PrimitiveTruth TProp
-  , "Nat"          |-> PrimitiveNumber TNat
-  , "Int"          |-> PrimitiveNumber TInt
-  , "Real"         |-> PrimitiveNumber TReal
+  [ "Bool"         |-> Bool
+  , "Prop"         |-> Prop
+  , "Nat"          |-> Nat
+  , "Int"          |-> Int
+  , "Real"         |-> Real
   , "List"         |-> List
   , "Tensor"       |-> Tensor
   -- Type classes

@@ -88,7 +88,7 @@ annotation :: Expr name binder ann -> ann
 annotation = \case
   Type     _         -> error "Should not be requesting an annotation from Type"
   Constraint         -> error "Should not be requesting an annotation from Constraint"
-  Meta     _         -> error "Should not be requesting an annotation from Meta"
+  Meta     _ _       -> error "Should not be requesting an annotation from Meta"
   Hole     _   _     -> error "Should not be requesting an annotation from Hole"
   Ann      ann _ _   -> ann
   App      ann _ _   -> ann

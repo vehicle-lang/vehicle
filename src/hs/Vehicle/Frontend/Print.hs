@@ -95,11 +95,22 @@ instance Compile (LetDecl ann) where
 
 instance Compile (Expr ann) where
   compile = cata $ \case
+     -- Core
+    ForallF  _ann ns t     -> "forall" <+> hsep (fmap compile ns) <+> t
+    FunF     _ann t1 t2    -> compileInfixOp2 2 "->"  t1 t2
+    AnnF     _ann e t      -> parens (e <+> ":" <+> t)
+    LiteralF _ann l        -> compile l
+    LetF     _ann ds e     -> "let" <+> vsep (fmap compile ds) <+> "in" <+> e
+    LamF     _ann ns e     -> "\\"  <+> hsep (fmap compile ns) <+> "->" <+> e
+    AppF     _ann e1 e2    -> e1 <+> parens (compile e2)
+    VarF     _ann n        -> pretty n
+    HoleF    _ann n        -> pretty n
+
+    -- Kinds
     TypeF l                -> "Type" <+> pretty l
     ConstraintF            -> "Constraint"
 
-    ForallF  _ann ns t     -> "forall" <+> hsep (fmap compile ns) <+> t
-    FunF     _ann t1 t2    -> compileInfixOp2 2 "->"  t1 t2
+    -- Types
     PropF    _ann          -> compileConstant "Prop"
     BoolF    _ann          -> compileConstant "Bool"
     NatF     _ann          -> compileConstant "Nat"
@@ -108,12 +119,18 @@ instance Compile (Expr ann) where
     ListF    _ann t        -> compileApp1 "List"     t
     TensorF  _ann t1 t2    -> compileApp2 "Tensor"   t1 t2
 
-    AnnF     _ann e t      -> parens (e <+> ":" <+> t)
-    LiteralF _ann l        -> compile l
-    LetF     _ann ds e     -> "let" <+> vsep (fmap compile ds) <+> "in" <+> e
-    LamF     _ann ns e     -> "\\"  <+> hsep (fmap compile ns) <+> "->" <+> e
-    AppF     _ann e1 e2    -> e1 <+> parens (compile e2)
-    VarF     _ann n        -> pretty n
+    -- Type classes
+    HasEqF       _ann e1 e2 -> compileApp2 "HasEq"       e1 e2
+    HasOrdF      _ann e1 e2 -> compileApp2 "HasOrd"      e1 e2
+    IsContainerF _ann e1 e2 -> compileApp2 "IsContainer" e1 e2
+    IsTruthF     _ann e     -> compileApp1 "IsTruth"     e
+    IsQuantF     _ann e     -> compileApp1 "IsQuant"     e
+    IsNaturalF   _ann e     -> compileApp1 "IsNatural"   e
+    IsIntegralF  _ann e     -> compileApp1 "IsIntegral"  e
+    IsRationalF  _ann e     -> compileApp1 "IsRational"  e
+    IsRealF      _ann e     -> compileApp1 "IsReal"      e
+
+    -- Terms
     IfF      _ann e1 e2 e3 -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
     ImplF    _ann e1 e2    -> compileInfixOp2 4 "=>"  e1 e2
     AndF     _ann e1 e2    -> compileInfixOp2 5 "and" e1 e2

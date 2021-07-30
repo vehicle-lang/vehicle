@@ -10,13 +10,22 @@ import Vehicle.Frontend.AST.Core
 -- |Extract the top-level annotation from a expression
 annotation :: Expr ann -> ann
 annotation = \case
-  -- Kinds
-  Type _l                -> error "Should not be requesting an annotation from Type"
-  Constraint             -> error "Should not be requesting an annotation from Constraint"
-
-  -- Types
+  -- Core
   Forall      ann _ns _t  -> ann
   Fun         ann _t1 _t2 -> ann
+  Ann         ann _e _t   -> ann
+  App         ann _e1 _e2 -> ann
+  Let         ann _ds _e  -> ann
+  Lam         ann _ns _e  -> ann
+  Literal     ann _l      -> ann
+  Var         ann _n      -> ann
+  Hole        ann _n      -> ann
+
+  -- Kinds
+  Type _l    -> error "Should not be requesting an annotation from Type"
+  Constraint -> error "Should not be requesting an annotation from Constraint"
+
+  -- Types
   Bool        ann         -> ann
   Prop        ann         -> ann
   Real        ann         -> ann
@@ -36,13 +45,7 @@ annotation = \case
   IsRational  ann _e      -> ann
   IsReal      ann _e      -> ann
 
-  -- Expressions
-  Ann     ann _e _t       -> ann
-  Literal ann _l          -> ann
-  Var     ann _n          -> ann
-  Let     ann _ds _e      -> ann
-  Lam     ann _ns _e      -> ann
-  App     ann _e1 _e2     -> ann
+  -- Other builtins
   If      ann _e1 _e2 _e3 -> ann
   Impl    ann _e1 _e2     -> ann
   And     ann _e1 _e2     -> ann
@@ -83,8 +86,7 @@ pattern LitBool ann n = Literal ann (LBool n)
 -- * Type of annotations attached to the Frontend AST after parsing
 -- before being analysed by the compiler
 
-type InputAnn = Provenance
-
+type InputAnn     = Provenance
 type InputArg     = Arg     InputAnn
 type InputBinder  = Binder  InputAnn
 type InputLetDecl = LetDecl InputAnn
@@ -101,14 +103,16 @@ instance HasProvenance InputExpr where
 -- Used to avoid unrestricted type-level recursion.
 data RecAnn ann = RecAnn (Expr (RecAnn ann)) ann
 
-type OutputAnn = RecAnn Provenance
-
+type OutputAnn     = RecAnn Provenance
 type OutputArg     = Arg     OutputAnn
 type OutputBinder  = Binder  OutputAnn
 type OutputLetDecl = LetDecl OutputAnn
 type OutputExpr    = Expr    OutputAnn
 type OutputDecl    = Decl    OutputAnn
 type OutputProg    = Prog    OutputAnn
+
+instance HasProvenance OutputAnn where
+  prov (RecAnn _ p) = p
 
 -- | Extracts the type of the term from the term's annotation.
 getType :: Expr (RecAnn ann) -> Expr (RecAnn ann)

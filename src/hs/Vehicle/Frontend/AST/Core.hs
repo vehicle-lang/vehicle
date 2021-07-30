@@ -47,12 +47,22 @@ instance HasProvenance (LetDecl ann) where
 -- | The core Tree structure, parameterised by an annotation type so different
 -- types of data can be associated with it's parts.
 data Expr ann
-  -- Kinds
-  = Type Level
-  | Constraint
-  -- Types
-  | Forall   ann (NonEmpty (Binder ann)) (Expr ann)
+  -- Core
+  = Forall   ann (NonEmpty (Binder ann)) (Expr ann)
   | Fun      ann (Expr ann) (Expr ann)
+  | Ann      ann (Expr ann) (Expr ann)
+  | App      ann (Expr ann) (Arg ann)
+  | Lam      ann (NonEmpty (Binder ann)) (Expr ann)
+  | Let      ann (NonEmpty (LetDecl ann)) (Expr ann)
+  | Var      ann Symbol
+  | Literal  ann Literal
+  | Hole     ann Symbol
+
+  -- Kinds
+  | Type Level
+  | Constraint
+
+  -- Types
   | Bool     ann
   | Prop     ann
   | Real     ann
@@ -60,6 +70,7 @@ data Expr ann
   | Nat      ann
   | List     ann (Expr ann)
   | Tensor   ann (Expr ann) (Expr ann)
+
   -- Type classes
   | HasEq       ann (Expr ann) (Expr ann)
   | HasOrd      ann (Expr ann) (Expr ann)
@@ -70,13 +81,8 @@ data Expr ann
   | IsIntegral  ann (Expr ann)
   | IsRational  ann (Expr ann)
   | IsReal      ann (Expr ann)
+
   -- Terms
-  | Ann      ann (Expr ann) (Expr ann)
-  | App      ann (Expr ann) (Arg ann)
-  | Lam      ann (NonEmpty (Binder ann)) (Expr ann)
-  | Let      ann (NonEmpty (LetDecl ann)) (Expr ann)
-  | Var      ann Symbol
-  | Literal  ann Literal
   | If       ann (Expr ann) (Expr ann) (Expr ann)
   | Impl     ann (Expr ann) (Expr ann)
   | And      ann (Expr ann) (Expr ann)

@@ -16,9 +16,9 @@ import Vehicle.Core.AST hiding (lift)
 import Vehicle.Prelude
 
 
--- * Errors thrown during scope checking.
+-- * Errors.
 
--- |Type of errors thrown by scpe checking.
+-- |Type of errors thrown by scope checking.
 data ScopeError
   = UnboundName Symbol Provenance
   deriving Show

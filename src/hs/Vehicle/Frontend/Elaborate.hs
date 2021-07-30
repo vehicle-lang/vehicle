@@ -3,7 +3,7 @@ module Vehicle.Frontend.Elaborate
   ) where
 
 import Control.Monad.Supply (MonadSupply(..), demand)
-import Control.Monad.Identity (Identity, foldM)
+import Control.Monad.Identity (Identity)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
@@ -51,8 +51,8 @@ type MonadElab m = MonadSupply VC.Meta Identity m
 class Elab a b where
   elab :: MonadElab m => a -> m b
 
-freshMeta :: MonadElab m => m VC.InputExpr
-freshMeta = VC.Meta <$> demand
+freshMeta :: MonadElab m => Provenance -> m VC.InputExpr
+freshMeta p = VC.Meta p <$> demand
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
@@ -69,25 +69,34 @@ elabFunInputType :: MonadElab m => VF.InputExpr -> m VC.InputBinder
 elabFunInputType t = VC.Binder (VF.annotation t) Explicit "@funplaceholder" <$> elab t -- TODO really need to come up with a more satisfying way
 
 instance Elab VF.InputBinder VC.InputBinder where
-  elab (VF.Binder ann vis name t) = VC.Binder ann vis name <$> maybe freshMeta elab t
+  elab (VF.Binder ann vis name t) = VC.Binder ann vis name <$> maybe (freshMeta (prov ann)) elab t
 
 instance Elab VF.InputArg VC.InputArg where
   elab (VF.Arg ann vis e) = VC.Arg ann vis <$> elab e
 
 instance Elab VF.InputExpr VC.InputExpr where
   elab = \case
+    -- Core.
+    VF.Forall  ann ns t   -> elabBinders (VC.Pi ann) (NonEmpty.toList ns) t
+    VF.Fun     ann t1 t2  -> VC.Pi ann <$> elabFunInputType t1 <*> elab t2
+    VF.Ann     ann e t    -> VC.Ann ann <$> elab e <*> elab t
+    VF.Let    _ann ds e   -> elabLetDecls e (NonEmpty.toList ds)
+    VF.Lam     ann ns e   -> elabBinders (VC.Lam ann) (NonEmpty.toList ns) e
+    VF.App     ann e1 e2  -> VC.App ann <$> elab e1 <*> elab e2
+    VF.Var     ann n      -> return $ VC.Var ann n
+    VF.Literal ann l      -> return $ VC.Literal ann l
+    VF.Hole    ann name   -> return $ VC.Hole ann name
+
     -- Kinds.
     VF.Type l            -> return (VC.Type l)
     VF.Constraint        -> return VC.Constraint
 
     -- Types.
-    VF.Forall  ann ns t   -> elabBinders (VC.Pi ann) (NonEmpty.toList ns) t
-    VF.Fun     ann t1 t2  -> VC.Pi ann <$> elabFunInputType t1 <*> elab t2
-    VF.Bool    ann        -> op0 (VC.PrimitiveTruth  TBool) ann
-    VF.Prop    ann        -> op0 (VC.PrimitiveTruth  TProp) ann
-    VF.Real    ann        -> op0 (VC.PrimitiveNumber TReal) ann
-    VF.Int     ann        -> op0 (VC.PrimitiveNumber TInt)  ann
-    VF.Nat     ann        -> op0 (VC.PrimitiveNumber TNat)  ann
+    VF.Bool    ann        -> op0 VC.Bool   ann
+    VF.Prop    ann        -> op0 VC.Prop   ann
+    VF.Real    ann        -> op0 VC.Real   ann
+    VF.Int     ann        -> op0 VC.Int    ann
+    VF.Nat     ann        -> op0 VC.Nat    ann
     VF.List    ann t      -> op1 VC.List   ann t
     VF.Tensor  ann t1 t2  -> op2 VC.Tensor ann t1 t2
 
@@ -101,14 +110,6 @@ instance Elab VF.InputExpr VC.InputExpr where
     VF.IsIntegral  ann e     -> op1 VC.IsIntegral     ann e
     VF.IsRational  ann e     -> op1 VC.IsRational     ann e
     VF.IsReal      ann e     -> op1 VC.IsReal         ann e
-
-    -- Elaborate expressions.
-    VF.Ann     ann e t   -> VC.Ann ann <$> elab e <*> elab t
-    VF.Let    _ann ds e  -> elabLetDecls e (NonEmpty.toList ds)
-    VF.Lam     ann ns e  -> elabBinders (VC.Lam ann) (NonEmpty.toList ns) e
-    VF.App     ann e1 e2 -> VC.App ann <$> elab e1 <*> elab e2
-    VF.Var     ann n     -> return $ VC.Var ann n
-    VF.Literal ann l     -> return $ VC.Literal ann l
 
     -- Conditional expressions.
     VF.If    ann e1 e2 e3 -> op3 VC.If      ann e1 e2 e3
@@ -141,8 +142,8 @@ instance Elab VF.InputExpr VC.InputExpr where
 instance Elab VF.InputDecl VC.InputDecl where
   elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann n <$> elab t
   elab (VF.DeclData ann n t)      = VC.DeclData ann n <$> elab t
-  elab (VF.DefType  ann n ns e)   = VC.DefFun   ann n <$> freshMeta <*> elabBinders (VC.Lam ann) ns e
-  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann n <$> elab t    <*> elabBinders (VC.Lam ann) ns e
+  elab (VF.DefType  ann n ns e)   = VC.DefFun   ann n <$> freshMeta (prov ann) <*> elabBinders (VC.Lam ann) ns e
+  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann n <$> elab t               <*> elabBinders (VC.Lam ann) ns e
 
 -- |Elaborate programs.
 instance Elab VF.InputProg VC.InputProg where

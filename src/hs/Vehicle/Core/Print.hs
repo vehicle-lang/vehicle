@@ -53,8 +53,8 @@ instance ( Pretty binder
   pretty = \case
     Type l                      -> "Type" <+> pretty l
     Constraint                  -> "Constraint"
-    Hole    _    name           -> "?" <> pretty name
-    Meta         m              -> "?" <> pretty m
+    Hole    _p   name           -> "?" <> pretty name
+    Meta    _p   m              -> "?" <> pretty m
     Ann     _ann term typ       -> pretty term <+> ":type" <+> pretty typ
     App     _ann fun arg        -> pretty fun <+> parens (pretty arg)
     Pi      _ann binder res     -> "pi" <+> pretty binder <+> parens (pretty res)

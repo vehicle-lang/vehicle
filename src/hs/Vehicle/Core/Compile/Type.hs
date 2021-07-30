@@ -176,7 +176,7 @@ freshMeta resultType = do
         | (varIndex , varType) <- zip [0..] (toList boundCtx) ]
 
   -- Returns a meta applied to every bound variable in the context
-  let meta = foldl' app (Meta metaName) boundEnv
+  let meta = foldl' app (Meta _ metaName) boundEnv
   return (metaName, meta)
 
 -- | Creates a fresh meta variable. Meta variables need to remember what was
@@ -203,7 +203,7 @@ freshUncheckedMeta resultType = do
   let boundEnv = [ Var mempty (Bound varIndex) | varIndex <- [0..length boundCtx - 1]]
 
   -- Returns a meta applied to every bound variable in the context
-  let meta = foldl' (\f x -> App mempty f (Arg mempty Explicit x)) (Meta metaName) boundEnv
+  let meta = foldl' (\f x -> App mempty f (Arg mempty Explicit x)) (Meta _ metaName) boundEnv
   return (metaName, meta)
 
 viaInfer :: Provenance -> CheckedExpr -> UncheckedExpr -> TCM CheckedExpr
@@ -219,7 +219,7 @@ check :: CheckedExpr     -- Type we're checking against
 check expectedType = \case
   e@(Type _)          -> viaInfer mempty expectedType e
   e@Constraint        -> viaInfer mempty expectedType e
-  e@(Meta _)          -> viaInfer mempty expectedType e
+  e@(Meta _ _)        -> viaInfer mempty expectedType e
   e@(App     p _ _)   -> viaInfer p      expectedType e
   e@(Pi      p _ _)   -> viaInfer p      expectedType e
   e@(Builtin p _)     -> viaInfer p      expectedType e
@@ -275,9 +275,9 @@ infer = \case
   Constraint ->
     return (Constraint , Type 1)
 
-  Meta i -> do
+  Meta p i -> do
     metaType <- getMetaType i
-    return (Meta i , metaType)
+    return (Meta p i , metaType)
 
   Hole p s ->
     throwError $ UnresolvedHole p s
@@ -419,7 +419,11 @@ typeOfLiteral p (LBool _) = tForall Type0 $ \t -> isTruth p t ~~> t
 -- |Return the kind for builtin exprs.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedExpr
 typeOfBuiltin p = \case
-  PrimitiveType _ -> Type0
+  Bool            -> Type0
+  Prop            -> Type0
+  Nat             -> Type0
+  Int             -> Type0
+  Real            -> Type0
   List            -> Type0 ~> Type0
   Tensor          -> Type0 ~> tList tNat ~> Type0
 

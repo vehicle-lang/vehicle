@@ -79,11 +79,15 @@ data Expr binder var ann
     ann                      -- Annotation.
     var                      -- Variable name.
 
-  -- | A hole in the program. Differs from meta-variables as they are not typed.
-  | Hole Provenance Symbol
+  -- | A hole in the program.
+  | Hole
+    ann                      -- Annotation.
+    Symbol                   -- Hole name.
 
   -- | Unsolved meta variables.
-  | Meta Meta                -- Meta variable.
+  | Meta
+    Provenance               -- Source of the meta-variable
+    Meta                     -- Meta variable number.
 
   -- | Let expressions.
   | Let

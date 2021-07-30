@@ -48,17 +48,18 @@ position token TokCons      {"::"};
 position token TokTrue      {"True"};
 position token TokFalse     {"False"};
 
-position token TokTCEq        {"Eq"};
-position token TokTCOrd       {"Ord"};
-position token TokTCContainer {"Container"};
-position token TokTCTruth     {"Truth"};
-position token TokTCQuantify  {"Quantify"};
-position token TokTCNatural   {"Natural"};
-position token TokTCIntegral  {"Integral"};
-position token TokTCRational  {"Rational"};
-position token TokTCReal      {"Real"};
+position token TokTCEq        {"HasEq"};
+position token TokTCOrd       {"HasOrd"};
+position token TokTCContainer {"IsContainer"};
+position token TokTCTruth     {"IsTruth"};
+position token TokTCQuantify  {"IsQuantify"};
+position token TokTCNatural   {"IsNatural"};
+position token TokTCIntegral  {"IsIntegral"};
+position token TokTCRational  {"IsRational"};
+position token TokTCReal      {"IsReal"};
 
 position token Name        (lower (letter | digit | '_')*) ;
+position token HoleToken   ({"?"} (letter | digit | '_')*);
 
 separator Name "";
 
@@ -128,6 +129,7 @@ Fun.     Expr12 ::= Expr13 TokArrow Expr12;
 Var.     Expr14 ::= Name;
 Literal. Expr14 ::= Lit;
 TypeC.   Expr12 ::= TypeClass;
+Hole.    Expr14 ::= HoleToken;
 
 -- Primitive types.
 List.    Expr13 ::= TokList Expr14;

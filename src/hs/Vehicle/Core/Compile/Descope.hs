@@ -55,24 +55,6 @@ symbolToDeBruijnF ::
   TreeF (K Symbol) (K Provenance) sort (SortedDataflowT (Ctx Symbol) (Except ScopeError) (Tree DeBruijn (K Provenance))) ->
   DataflowT sort (Ctx Symbol) (Except ScopeError) (Tree DeBruijn (K Provenance) sort)
 
-
-
-
-
-
-deBruijnToName ::
-  forall sort.
-  (KnownSort sort) =>
-  Tree DeBruijn (Info DeBruijn :*: K Provenance) sort ->
-  Except ScopeError (Tree (K Name) (Info (K Name) :*: K Provenance) sort)
-deBruijnToName = evalDataflowT mempty . deBruijnToName'
-
-deBruijnToName' ::
-  forall sort.
-  (KnownSort sort) =>
-  Tree DeBruijn (Info DeBruijn :*: K Provenance) sort ->
-  DataflowT sort (Ctx Name) (Except ScopeError) (Tree (K Name) (Info (K Name) :*: K Provenance) sort)
-deBruijnToName' = unSDF . foldTree (SDF . deBruijnToNameF)
 -}
 data Ctx = Ctx
 
@@ -88,7 +70,7 @@ instance Descope CheckedExpr OutputExpr where
     Type     l         -> Type l
     Constraint         -> Constraint
     Meta     i         -> Meta i
-    Hole     p name    -> Hole p name
+    Hole     ann name  -> Hole    (descope c ann) name
     Ann      ann e t   -> Ann     (descope c ann) (descope c e) (descope c t)
     App      ann _ _   -> App     (descope c ann) _ _
     Pi       ann _ _   -> Pi      (descope c ann) _ _
@@ -100,12 +82,7 @@ instance Descope CheckedExpr OutputExpr where
     Seq      ann es    -> Seq     (descope c ann) (fmap (descope c) es)
 
 instance Descope CheckedDecl OutputDecl where
-
-
-instance Descope CheckedProg OutputProg where
-{-
-  -- Declarations
-  SDECL -> \case
+  descope c = \case
     DeclNetwF ann n t    -> do ann' <- convertAnn ann
                                t'   <- sflow t
                                n'   <- sflow n
@@ -124,6 +101,12 @@ instance Descope CheckedProg OutputProg where
                                e'   <- sflow e
                                n'   <- sflow n
                                return $ DefFun ann' n' t' e'
+
+instance Descope CheckedProg OutputProg where
+  descope c (Main ds) = Main (fmap descope c ds)
+{-
+  -- Declarations
+  SDECL ->
 
   -- Programs
   SPROG -> \case

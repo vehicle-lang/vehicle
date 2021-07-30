@@ -11,13 +11,20 @@ getFunResultType :: CheckedExpr -> CheckedExpr
 getFunResultType (Pi _ann _binder res) = res
 getFunResultType _                     = error "expecting a Pi type"
 
+
+-- * Kinds
+
+kMax :: CheckedExpr -> CheckedExpr -> CheckedExpr
+kMax (Type l1) (Type l2) = Type (l1 `max` l2)
+kMax _         _         = error "Expected something of type Type. Found of type"
+
 -- * DSL for writing kinds as info annotations
 
 tPi :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
 tPi p vis name a b =
-  let aType = getType a
-      bType = getType b
-      abType = aType `tMax` bType
+  let aType  = getType a
+      bType  = getType b
+      abType = aType `kMax` bType
   in  Pi (makeTypeAnn abType) (Binder p vis name a) b
 
 tPiInternal :: Visibility -> CheckedExpr -> CheckedExpr -> CheckedExpr
@@ -46,37 +53,20 @@ con b t = Builtin (makeTypeAnn t) b
 app :: CheckedExpr -> CheckedExpr -> CheckedExpr
 app fun arg = App (makeTypeAnn (getFunResultType fun)) fun (Arg mempty Explicit arg)
 
-hole :: Symbol -> CheckedExpr
-hole = Hole mempty
-
 -- * Types
 
-tMax :: CheckedExpr -> CheckedExpr -> CheckedExpr
-tMax (Type l1) (Type l2) = Type (l1 `max` l2)
-tMax _         _         = error "Expected something of type Type. Found of type"
-
-tPrim :: PrimitiveType -> CheckedExpr
-tPrim t = con (PrimitiveType t) Type0
-
-tPrimNumber :: NumberType -> CheckedExpr
-tPrimNumber = tPrim . TNumber
-
-tPrimTruth :: TruthType -> CheckedExpr
-tPrimTruth = tPrim . TTruth
-
 tBool, tProp, tNat, tInt, tReal :: CheckedExpr
-tBool    = tPrimTruth  TBool
-tProp    = tPrimTruth  TProp
-tNat     = tPrimNumber TNat
-tInt     = tPrimNumber TInt
-tReal    = tPrimNumber TReal
+tBool    = con Bool Type0
+tProp    = con Prop Type0
+tNat     = con Nat  Type0
+tInt     = con Int  Type0
+tReal    = con Real Type0
 
 tTensor :: CheckedExpr -> CheckedExpr -> CheckedExpr
 tTensor tElem dims = con Tensor (Type0 ~> tList tNat ~> Type0) `app` tElem `app` dims
 
 tList :: CheckedExpr -> CheckedExpr
 tList tElem = con List (Type0 ~> Type0) `app` tElem
-
 
 -- * TypeClass
 
