@@ -2,17 +2,23 @@
 module Vehicle.Prelude.Language where
 
 import Numeric.Natural (Natural)
-import Prettyprinter (Doc, braces)
+import Prettyprinter (Pretty(..), Doc, braces)
 
 import Vehicle.Prelude.Provenance (HasProvenance(..), Provenance, expandProvenance)
 import Vehicle.Prelude.Token (Symbol)
 
--- | Identifiers for top-level declerations
-data DeclIdentifier = DeclIdentifier Provenance Symbol
+newtype Identifier = Identifier Symbol
   deriving (Eq, Ord, Show)
 
-instance HasProvenance DeclIdentifier where
-  prov (DeclIdentifier p _) = p
+instance Pretty Identifier where
+  pretty (Identifier s) = pretty s
+
+-- | Identifiers for top-level declerations
+data WithProvenance a = WithProvenance Provenance a
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+instance HasProvenance (WithProvenance a) where
+  prov (WithProvenance p _) = p
 
 -- | Universe levels
 type Level = Natural

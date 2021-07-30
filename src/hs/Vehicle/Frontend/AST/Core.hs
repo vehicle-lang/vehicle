@@ -19,6 +19,9 @@ data Binder ann
     (Maybe (Expr ann)) -- Variable typing annotation (optional)
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
+instance HasProvenance (Binder ann) where
+  prov (Binder p _ _ _) = p
+
 -- | Arguments to function applications
 data Arg ann
   = Arg
@@ -27,6 +30,9 @@ data Arg ann
     (Expr ann)         -- Argument expression
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
+instance HasProvenance (Arg ann) where
+  prov (Arg p _ _) = p
+
 -- | An individual let declaration
 data LetDecl ann
   = LetDecl
@@ -34,6 +40,9 @@ data LetDecl ann
     (Binder ann)       -- Variable name
     (Expr   ann)       -- Bound expression
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+instance HasProvenance (LetDecl ann) where
+  prov (LetDecl p _ _) = p
 
 -- | The core Tree structure, parameterised by an annotation type so different
 -- types of data can be associated with it's parts.
@@ -51,6 +60,16 @@ data Expr ann
   | Nat      ann
   | List     ann (Expr ann)
   | Tensor   ann (Expr ann) (Expr ann)
+  -- Type classes
+  | HasEq       ann (Expr ann) (Expr ann)
+  | HasOrd      ann (Expr ann) (Expr ann)
+  | IsContainer ann (Expr ann) (Expr ann)
+  | IsTruth     ann (Expr ann)
+  | IsQuant     ann (Expr ann)
+  | IsNatural   ann (Expr ann)
+  | IsIntegral  ann (Expr ann)
+  | IsRational  ann (Expr ann)
+  | IsReal      ann (Expr ann)
   -- Terms
   | Ann      ann (Expr ann) (Expr ann)
   | App      ann (Expr ann) (Arg ann)
@@ -85,26 +104,26 @@ data Expr ann
 data Decl ann
   = DeclNetw
     Provenance
-    DeclIdentifier -- Name of the declared network.
-    (Expr  ann)    -- Type of the declared network.
+    (WithProvenance Identifier) -- Name of the declared network.
+    (Expr  ann)                 -- Type of the declared network.
 
   | DeclData
     Provenance
-    DeclIdentifier -- Name of the declared dataset.
-    (Expr  ann)    -- Type of the declared dataset.
+    (WithProvenance Identifier) -- Name of the declared dataset.
+    (Expr  ann)                 -- Type of the declared dataset.
 
   | DefType
     Provenance
-    DeclIdentifier -- Name of the type declaration.
-    [Binder ann]   -- Variables of the type declaration.
-    (Expr   ann)   -- Body of the type declaration.
+    (WithProvenance Identifier) -- Name of the type declaration.
+    [Binder ann]                -- Variables of the type declaration.
+    (Expr   ann)                -- Body of the type declaration.
 
   | DefFun
     Provenance
-    DeclIdentifier -- Name of the function declaration.
-    (Expr   ann)   -- Type of the function declaration.
-    [Binder ann]   -- Variables of the function declaration.
-    (Expr   ann)   -- Body of the function declaration.
+    (WithProvenance Identifier) -- Name of the function declaration.
+    (Expr   ann)                -- Type of the function declaration.
+    [Binder ann]                -- Variables of the function declaration.
+    (Expr   ann)                -- Body of the function declaration.
 
   deriving (Eq, Ord, Show)
 

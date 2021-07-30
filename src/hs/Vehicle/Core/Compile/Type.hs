@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Vehicle.Core.Compile.Type where
 
 import Control.Monad (when, unless, zipWithM_)
@@ -76,12 +77,21 @@ instance MeaningfulError TypeError where
 -}
 -- * Type and kind contexts
 
--- |Type context.
 data UnificationConstraint = Unify Provenance CheckedExpr CheckedExpr
 data TypeClassConstraint   = Meta `Has` CheckedExpr
 
-type DeclCtx  = Map Symbol CheckedExpr
+-- | The declarations that are currently in scope, indexed into via their names.
+type DeclCtx  = Map Identifier CheckedExpr
+
+instance Pretty DeclCtx where
+  pretty = pretty . show
+
+-- | The expression variables that are in currently in scope, indexed into via De Bruijn expressions.
 type BoundCtx = Seq CheckedExpr
+
+instance Pretty BoundCtx where
+  pretty = pretty . show
+
 data MetaCtx  = MetaCtx
   { nextMeta               :: Meta
   , metaVariableTypes      :: IntMap CheckedExpr
@@ -121,7 +131,7 @@ getMetaType i = do
   ctx <- getMetaCtx;
   case IntMap.lookup i (metaVariableTypes ctx) of
     Just typ -> return typ
-    Nothing  -> developerError (printf "Meta variable ?%d not found in context" i)
+    Nothing  -> developerError ("Meta variable ?" <> pretty i <+> "not found in context")
 
 getBoundCtx :: TCM BoundCtx
 getBoundCtx = ask
@@ -162,7 +172,7 @@ freshMeta resultType = do
 
   -- Create bound variables for everything in the context
   let boundEnv =
-        [ Bound (makeTypeAnn varType) (Index varIndex)
+        [ Var (makeTypeAnn varType) (Bound varIndex)
         | (varIndex , varType) <- zip [0..] (toList boundCtx) ]
 
   -- Returns a meta applied to every bound variable in the context
@@ -190,7 +200,7 @@ freshUncheckedMeta resultType = do
     MetaCtx { metaVariableTypes = IntMap.insert metaName metaType metaVariableTypes , ..}
 
   -- Create bound variables for everything in the context
-  let boundEnv = [ Bound mempty (Index varIndex) | varIndex <- [0..length boundCtx - 1]]
+  let boundEnv = [ Var mempty (Bound varIndex) | varIndex <- [0..length boundCtx - 1]]
 
   -- Returns a meta applied to every bound variable in the context
   let meta = foldl' (\f x -> App mempty f (Arg mempty Explicit x)) (Meta metaName) boundEnv
@@ -213,8 +223,7 @@ check expectedType = \case
   e@(App     p _ _)   -> viaInfer p      expectedType e
   e@(Pi      p _ _)   -> viaInfer p      expectedType e
   e@(Builtin p _)     -> viaInfer p      expectedType e
-  e@(Bound   p _)     -> viaInfer p      expectedType e
-  e@(Free    p _)     -> viaInfer p      expectedType e
+  e@(Var     p _)     -> viaInfer p      expectedType e
   e@(Let     p _ _ _) -> viaInfer p      expectedType e
   e@(Literal p _)     -> viaInfer p      expectedType e
   e@(Seq     p _)     -> viaInfer p      expectedType e
@@ -329,22 +338,22 @@ infer = \case
     let t' = typeOfBuiltin p op
     return (Builtin (RecAnn t' p) op, t')
 
-  Bound p (Index i) -> do
+  Var p (Bound i) -> do
     -- Lookup the type of the variable in the context.
     ctx <- getBoundCtx
     case ctx Seq.!? i of
-      Just t' -> return (Bound (RecAnn t' p) (Index i), t')
+      Just t' -> return (Var (RecAnn t' p) (Bound i), t')
       Nothing -> developerError $
-        _ --printf "Index %d out of bounds when looking up variable in context %s at %s" i (show ctx) (showProv p)
+        "Index" <+> pretty i <+> "out of bounds when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 
-  Free p name -> do
+  Var p (Free ident) -> do
     -- Lookup the type of the declaration variable in the context.
     ctx <- getDeclCtx
-    case Map.lookup name ctx of
-      Just t' -> return (Free (RecAnn t' p) name, t')
+    case Map.lookup ident ctx of
+      Just t' -> return (Var (RecAnn t' p) (Free ident), t')
       -- This should have been caught during scope checking
-      Nothing -> developerError $ _
-        --printf "Declaration %s not found when looking up variable in context %s at %s" name (show ctx) (showProv p)
+      Nothing -> developerError $
+        "Declaration'" <+> pretty ident <+> "'not found when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 
   Let p (Binder pBound vis name tBound) arg body -> do
     -- Infer the type of the let arg from the annotation on the binder
@@ -387,36 +396,19 @@ infer = \case
     addTypeClassConstraints [meta `Has` isContainer p tCont' tElem']
 
     return (Seq (RecAnn tCont' p) es' , tCont')
-{-
 
+inferDecl :: UncheckedDecl -> TCM CheckedDecl
+inferDecl = \case
+  DeclNetw p ident t      -> DeclNetw p ident . fst <$> infer t
+  DeclData p ident t      -> DeclData p ident . fst <$> infer t
+  DefFun   p ident t body -> do
+      (t' , _) <- infer t
+      body' <- check t' body
+      return $ DefFun p ident t' body'
 
-  -- Declarations
-  SDECL -> \case
-    DeclNetwF p n t    -> fromInfer p $ do
-      (t , _k) <- flow $ runInfer t
-      -- BOB: should we check that the type has kind STAR?
-      n <- flow $ runCheckWith (Info t) n
-      return (DeclNetw (mempty :*: p) n t, mempty)
+inferProg :: UncheckedProg -> TCM CheckedProg
+inferProg (Main ds) = Main <$> traverse inferDecl ds
 
-    DeclDataF p n t    -> fromInfer p $ do
-      (t , _k) <- flow $ runInfer t
-      n <- flow $ runCheckWith (Info t) n
-      return (DeclData (mempty :*: p) n t, mempty)
-
-    DefTypeF  p n nArgs t -> undefined
-
-    DefFunF   p n t e  -> fromInfer p $ do
-      (t , _k) <- flow $ runInfer t
-      e <- flow $ runCheckWith (Info t) e
-      n <- flow $ runCheckWith (Info t) n
-      return (DefFun (mempty :*: p) n t e, mempty)
-
-  -- Programs
-  SPROG -> \case
-    MainF p ds -> fromInfer p $ do
-      ds <- flow $ traverse (runCheckWith (Info ())) ds
-      return (Main (mempty :*: p) ds , Info ())
--}
 
 typeOfLiteral :: Provenance -> Literal -> CheckedExpr
 typeOfLiteral p (LNat  _) = tForall Type0 $ \t -> isNatural p t ~~> t
@@ -431,15 +423,15 @@ typeOfBuiltin p = \case
   List            -> Type0 ~> Type0
   Tensor          -> Type0 ~> tList tNat ~> Type0
 
-  Implements HasEq          -> Type0 ~> Type0 ~> Constraint
-  Implements HasOrd         -> Type0 ~> Type0 ~> Constraint
-  Implements IsTruth        -> Type0 ~> Constraint
-  Implements IsNatural      -> Type0 ~> Constraint
-  Implements IsIntegral     -> Type0 ~> Constraint
-  Implements IsRational     -> Type0 ~> Constraint
-  Implements IsReal         -> Type0 ~> Constraint
-  Implements IsContainer    -> Type0 ~> Constraint
-  Implements IsQuantifiable -> Type0 ~> Type0 ~> Constraint
+  HasEq           -> Type0 ~> Type0 ~> Constraint
+  HasOrd          -> Type0 ~> Type0 ~> Constraint
+  IsTruth         -> Type0 ~> Constraint
+  IsNatural       -> Type0 ~> Constraint
+  IsIntegral      -> Type0 ~> Constraint
+  IsRational      -> Type0 ~> Constraint
+  IsReal          -> Type0 ~> Constraint
+  IsContainer     -> Type0 ~> Constraint
+  IsQuantifiable  -> Type0 ~> Type0 ~> Constraint
 
   If   -> tForall Type0 $ \t -> tProp ~> t ~> t
   Cons -> tForall Type0 $ \t -> t ~> tList t ~> tList t

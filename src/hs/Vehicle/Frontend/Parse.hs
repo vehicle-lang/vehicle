@@ -10,10 +10,10 @@ import Control.Monad.Except (MonadError, throwError)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Foldable (fold)
 import GHC.Natural (naturalFromInteger)
-import Data.List.NonEmpty qualified as NonEmpty (groupBy1, map, head, toList)
+import Data.List.NonEmpty qualified as NonEmpty (groupBy1, head, toList)
 import Data.Text (Text, pack)
 import Data.Text.IO qualified as T
-import Prettyprinter ( (<+>), line, pretty )
+import Prettyprinter ( (<+>), line )
 import System.Exit (exitFailure)
 
 
@@ -57,7 +57,6 @@ data ParseError
   = MissingDefFunType    Symbol Provenance
   | MissingDefFunExpr    Symbol Provenance
   | DuplicateName        Symbol (NonEmpty Provenance)
-  | MissingDeclarations  (Maybe Symbol) Provenance
   | MissingVariables     Symbol Provenance
   | BNFCParseError       String
 
@@ -91,12 +90,6 @@ instance MeaningfulError ParseError where
     , provenance = p
     , fix        = "add one or more names after" <+> squotes symbol
     }
-
-  details (MissingDeclarations symbol p) = UError $ UserError
-    { problem    = "expected at least one declaration" <> symbolText
-    , provenance = p
-    , fix        = "add one or more declarations" <> symbolText
-    } where symbolText = maybe mempty (\u -> "after" <+> pretty u) symbol
 
   -- TODO need to revamp this error, BNFC must provide some more
   -- information than a simple string surely?
@@ -135,17 +128,49 @@ instance Convert B.Arg V.InputArg where
     let p = expandProvenance (1, 1) (V.annotation ce)
     return $ V.Arg p Implicit ce
 
+instance Convert B.Name (WithProvenance Identifier) where
+  conv n = return $ WithProvenance (tkProv n) (Identifier (tkSymbol n))
+
+instance Convert B.LetDecl V.InputLetDecl where
+  conv (B.LDecl binder e) = op2 V.LetDecl mempty (conv binder) (conv e)
+
+instance Convert B.Binder V.InputBinder where
+  conv = \case
+    B.ExplicitBinderUnann name        -> convBinder mempty      name Explicit (return Nothing)
+    B.ImplicitBinderUnann name        -> convBinder mempty      name Implicit (return Nothing)
+    B.ExplicitBinderAnn   name tk typ -> convBinder (tkProv tk) name Explicit (Just <$> conv typ)
+    B.ImplicitBinderAnn   name tk typ -> convBinder (tkProv tk) name Implicit (Just <$> conv typ)
+
+instance Convert B.Lit V.InputExpr where
+  conv = \case
+    B.LitNat   v -> return $ V.LitInt  mempty v
+    B.LitReal  v -> return $ V.LitReal mempty v
+    B.LitTrue  p -> return $ V.LitBool (tkProv p) True
+    B.LitFalse p -> return $ V.LitBool (tkProv p) False
+
+instance Convert B.TypeClass V.InputExpr where
+  conv = \case
+    B.TCEq    tk e1 e2 -> op2 V.HasEq       (tkProv tk) (conv e1) (conv e2)
+    B.TCOrd   tk e1 e2 -> op2 V.HasOrd      (tkProv tk) (conv e1) (conv e2)
+    B.TCCont  tk e1 e2 -> op2 V.IsContainer (tkProv tk) (conv e1) (conv e2)
+    B.TCTruth tk e     -> op1 V.IsTruth     (tkProv tk) (conv e)
+    B.TCQuant tk e     -> op1 V.IsQuant     (tkProv tk) (conv e)
+    B.TCNat   tk e     -> op1 V.IsNatural   (tkProv tk) (conv e)
+    B.TCInt   tk e     -> op1 V.IsIntegral  (tkProv tk) (conv e)
+    B.TCRat   tk e     -> op1 V.IsRational  (tkProv tk) (conv e)
+    B.TCReal  tk e     -> op1 V.IsReal      (tkProv tk) (conv e)
+
 instance Convert B.Expr V.InputExpr where
   conv = \case
     B.Type l                  -> return (V.Type (naturalFromInteger l))
     B.Constraint              -> return V.Constraint
     B.Var n                   -> return $ V.Var (tkProv n) (tkSymbol n)
     B.Ann e tk t              -> op2 V.Ann    (tkProv tk) (conv e) (conv t)
-    B.Forall tk1 ns tk2 t     -> op2 V.Forall (tkProv tk1 <> tkProv tk2) (traverseNonEmpty (tkSymbol tk1) (tkProv tk1) ns) (conv t)
+    B.Forall tk1 ns tk2 t     -> op2 V.Forall (tkProv tk1 <> tkProv tk2) (traverse conv =<< toNonEmpty (tkSymbol tk1) (tkProv tk1) ns) (conv t)
     B.Fun t1 tk t2            -> op2 V.Fun    (tkProv tk) (conv t1) (conv t2)
-    B.Let ds e                -> op2 V.Let    mempty (traverseNonEmpty "let" mempty ds) (conv e)
+    B.Let ds e                -> op2 V.Let    mempty (traverse conv =<< toNonEmpty "let" mempty ds) (conv e)
     B.App e1 e2               -> op2 V.App    mempty (conv e1) (conv e2)
-    B.Lam tk1 ns tk2 e        -> op2 V.Lam    (tkProv tk1 <> tkProv tk2) (traverseNonEmpty (tkSymbol tk1) (tkProv tk1) ns) (conv e)
+    B.Lam tk1 ns tk2 e        -> op2 V.Lam    (tkProv tk1 <> tkProv tk2) (traverse conv =<< toNonEmpty (tkSymbol tk1) (tkProv tk1) ns) (conv e)
     B.Bool tk                 -> op0 V.Bool   (tkProv tk)
     B.Prop tk                 -> op0 V.Prop   (tkProv tk)
     B.Real tk                 -> op0 V.Real   (tkProv tk)
@@ -173,13 +198,8 @@ instance Convert B.Expr V.InputExpr where
     B.All tk                  -> op0 V.All    (tkProv tk)
     B.Any tk                  -> op0 V.Any    (tkProv tk)
     B.Seq tk1 es tk2          -> op1 V.Seq    (tkProv tk1 <> tkProv tk2) (traverse conv es)
-    B.Literal  (B.LitNat  v)  -> return $ V.LitInt  mempty v
-    B.Literal  (B.LitReal v)  -> return $ V.LitReal mempty v
-    B.Literal  B.LitTrue      -> return $ V.LitBool mempty True
-    B.Literal  B.LitFalse     -> return $ V.LitBool mempty False
-
-instance Convert B.Name DeclIdentifier where
-  conv n = return $ DeclIdentifier (tkProv n) (tkSymbol n)
+    B.Literal l               -> conv l
+    B.TypeC   tc              -> conv tc
 
 -- |Elaborate declarations.
 instance Convert (NonEmpty B.Decl) V.InputDecl where
@@ -219,8 +239,7 @@ instance Convert (NonEmpty B.Decl) V.InputDecl where
 instance Convert B.Prog V.InputProg where
   conv (B.Main decls) = V.Main <$> groupDecls decls
 
-op0 :: MonadParse m
-    => (Provenance -> a)
+op0 :: MonadParse m => (Provenance -> a)
     -> Provenance -> m a
 op0 mk p = return $ mk p
 
@@ -273,6 +292,11 @@ isDefFun (B.DefFunType _name _args _exp) = True
 isDefFun (B.DefFunExpr _ann _name _typ)  = True
 isDefFun _                               = False
 
+convBinder :: MonadParse m => Provenance -> B.Name -> Visibility -> m  (Maybe V.InputExpr) -> m V.InputBinder
+convBinder p name vis mTyp = do
+  typ <- mTyp
+  return $ V.Binder (p <> tkProv name <> maybe mempty prov typ) vis (tkSymbol name) typ
+
 -- |Get the name for any declaration.
 declName :: B.Decl -> B.Name
 declName (B.DeclNetw   n _ _) = n
@@ -281,11 +305,8 @@ declName (B.DefType    n _ _) = n
 declName (B.DefFunType n _ _) = n
 declName (B.DefFunExpr n _ _) = n
 
-
--- A traversal that checks that the list is non-empty. In theory this would be
--- much nicer if the parser could handle this automatically
+-- In theory this would be much nicer if the parser could handle this automatically
 -- (see https://github.com/BNFC/bnfc/issues/371)
-traverseNonEmpty :: (MonadParse m , Convert a b)
-                 => Symbol -> Provenance -> [a] -> m (NonEmpty b)
-traverseNonEmpty s p []       = throwError $ MissingVariables s p
-traverseNonEmpty _ _ (x : xs) = traverse conv (x :| xs)
+toNonEmpty :: MonadParse m => Symbol -> Provenance -> [a] -> m (NonEmpty a)
+toNonEmpty s p []       = throwError $ MissingVariables s p
+toNonEmpty _ _ (x : xs) = return $ x :| xs

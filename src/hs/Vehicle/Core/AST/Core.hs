@@ -1,24 +1,14 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveTraversable #-}
 
 module Vehicle.Core.AST.Core where
 
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 
-import Vehicle.Prelude (Symbol, Provenance, Visibility, Literal, Level, DeclIdentifier)
+import Vehicle.Prelude
 import Vehicle.Core.AST.Builtin (Builtin)
 
 -- | Meta-variables
 type Meta = Int
-
-data Arg binder var ann
-  = Arg
-    Provenance
-    Visibility
-    (Expr binder var ann)
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- | Binder for Pi types
 data Binder binder var ann
@@ -28,6 +18,20 @@ data Binder binder var ann
     binder                 -- The name of the bound variable
     (Expr binder var ann)  -- The type of the bound variable
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+instance HasProvenance (Binder binder var ann) where
+  prov (Binder p _ _ _) = p
+
+-- | Function arguments
+data Arg binder var ann
+  = Arg
+    Provenance
+    Visibility
+    (Expr binder var ann)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+instance HasProvenance (Arg binder var ann) where
+  prov (Arg p _ _) = p
 
 -- * Abstract syntax tree for Vehicle Core
 
@@ -71,14 +75,9 @@ data Expr binder var ann
     Builtin                  -- Builtin name.
 
   -- | Variables that are bound by other expressions
-  | Bound
+  | Var
     ann                      -- Annotation.
     var                      -- Variable name.
-
-  -- | Variables that are free within the expression and instead bound by top level declarations, see `Decl`.
-  | Free
-    ann                      -- Annotation.
-    Symbol                   -- Identifer.
 
   -- | A hole in the program. Differs from meta-variables as they are not typed.
   | Hole Provenance Symbol
@@ -113,29 +112,21 @@ data Expr binder var ann
 
 makeBaseFunctor ''Expr
 
-newtype Ident = Ident Symbol
-  deriving (Eq, Ord, Show)
-
 -- | Type of top-level declarations.
 data Decl binder var ann
   = DeclNetw
-    Provenance                 -- Location in source file.
-    DeclIdentifier             -- Network name.
-    (Expr   binder var ann)    -- Network type.
+    Provenance                    -- Location in source file.
+    (WithProvenance Identifier)   -- Network name.
+    (Expr   binder var ann)       -- Network type.
   | DeclData
-    Provenance                 -- Location in source file.
-    DeclIdentifier             -- Dataset name.
-    (Expr   binder var ann)    -- Dataset type.
-  | DefType
-    Provenance                 -- Location in source file.
-    DeclIdentifier             -- Bound expr synonym name.
-    [Binder binder var ann]    -- Bound expr synonym arguments.
-    (Expr      binder var ann) -- Bound expr synonym body.
+    Provenance                    -- Location in source file.
+    (WithProvenance Identifier)   -- Dataset name.
+    (Expr   binder var ann)       -- Dataset type.
   | DefFun
-    Provenance                 -- Location in source file.
-    DeclIdentifier             -- Bound function name.
-    (Expr binder var ann)      -- Bound function type.
-    (Expr binder var ann)      -- Bound function body.
+    Provenance                    -- Location in source file.
+    (WithProvenance Identifier)   -- Bound function name.
+    (Expr binder var ann)         -- Bound function type.
+    (Expr binder var ann)         -- Bound function body.
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- | Type of Vehicle Core programs.

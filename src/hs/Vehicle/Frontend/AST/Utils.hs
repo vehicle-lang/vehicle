@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Frontend.AST.Utils where
 
@@ -14,14 +15,26 @@ annotation = \case
   Constraint             -> error "Should not be requesting an annotation from Constraint"
 
   -- Types
-  Forall     ann _ns _t  -> ann
-  Fun        ann _t1 _t2 -> ann
-  Bool       ann         -> ann
-  Prop       ann         -> ann
-  Real       ann         -> ann
-  Int        ann         -> ann
-  List       ann _t      -> ann
-  Tensor     ann _t1 _t2 -> ann
+  Forall      ann _ns _t  -> ann
+  Fun         ann _t1 _t2 -> ann
+  Bool        ann         -> ann
+  Prop        ann         -> ann
+  Real        ann         -> ann
+  Int         ann         -> ann
+  Nat         ann         -> ann
+  List        ann _t      -> ann
+  Tensor      ann _t1 _t2 -> ann
+
+  -- Type classes
+  HasEq       ann _e1 _e2 -> ann
+  HasOrd      ann _e1 _e2 -> ann
+  IsContainer ann _e1 _e2 -> ann
+  IsTruth     ann _e      -> ann
+  IsQuant     ann _e      -> ann
+  IsNatural   ann _e      -> ann
+  IsIntegral  ann _e      -> ann
+  IsRational  ann _e      -> ann
+  IsReal      ann _e      -> ann
 
   -- Expressions
   Ann     ann _e _t       -> ann
@@ -79,13 +92,8 @@ type InputExpr    = Expr    InputAnn
 type InputDecl    = Decl    InputAnn
 type InputProg    = Prog    InputAnn
 
-{-
-instance KnownSort sort => HasProvenance (InputAnn sort) where
-  prov (K p) = p
-
-instance KnownSort sort => HasProvenance (InputTree sort) where
-  prov = prov . annotation
--}
+instance HasProvenance InputExpr where
+  prov e = annotation e
 
 -- * Type of annotations attached to the Frontend AST that are output by the compiler
 

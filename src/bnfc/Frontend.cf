@@ -7,46 +7,56 @@ comment "{-" "-}";
 
 -- NOTE: Token rules are tried IN ORDER, so the order matters!
 
-position token TokArrow    {"->"};
-position token TokForall   {"forall"};
-position token TokExists   {"exists"};
-position token TokIf       {"if"};
-position token TokThen     {"then"};
-position token TokElse     {"else"};
-position token TokDot      {"."};
-position token TokElemOf   {":"};
-position token TokLambda   {"\\"};
+position token TokArrow     {"->"};
+position token TokForall    {"forall"};
+position token TokExists    {"exists"};
+position token TokIf        {"if"};
+position token TokThen      {"then"};
+position token TokElse      {"else"};
+position token TokDot       {"."};
+position token TokElemOf    {":"};
+position token TokLambda    {"\\"};
 
-position token TokTensor   {"Tensor"};
-position token TokList     {"List"};
-position token TokReal     {"Real"};
-position token TokInt      {"Int"};
-position token TokBool     {"Bool"};
-position token TokProp     {"Prop"};
+position token TokTensor    {"Tensor"};
+position token TokList      {"List"};
+position token TokReal      {"Real"};
+position token TokInt       {"Int"};
+position token TokBool      {"Bool"};
+position token TokProp      {"Prop"};
 
-position token TokAll      {"all"};
-position token TokAny      {"any"};
-position token TokImpl     {"=>"};
-position token TokAnd      {"and"};
-position token TokOr       {"or"};
-position token TokNot      {"not"};
-position token TokEq       {"=="};
-position token TokNeq      {"!="};
-position token TokLe       {"<="};
-position token TokLt       {"<"};
-position token TokGe       {">="};
-position token TokGt       {">"};
-position token TokMul      {"*"};
-position token TokDiv      {"/"};
-position token TokAdd      {"+"};
-position token TokSub      {"-"};
-position token TokAt       {"!"};
+position token TokAll       {"all"};
+position token TokAny       {"any"};
+position token TokImpl      {"=>"};
+position token TokAnd       {"and"};
+position token TokOr        {"or"};
+position token TokNot       {"not"};
+position token TokEq        {"=="};
+position token TokNeq       {"!="};
+position token TokLe        {"<="};
+position token TokLt        {"<"};
+position token TokGe        {">="};
+position token TokGt        {">"};
+position token TokMul       {"*"};
+position token TokDiv       {"/"};
+position token TokAdd       {"+"};
+position token TokSub       {"-"};
+position token TokAt        {"!"};
 
-position token TokSeqOpen  {"["};
-position token TokSeqClose {"]"};
-position token TokCons     {"::"};
-position token TokTrue     {"True"};
-position token TokFalse    {"False"};
+position token TokSeqOpen   {"["};
+position token TokSeqClose  {"]"};
+position token TokCons      {"::"};
+position token TokTrue      {"True"};
+position token TokFalse     {"False"};
+
+position token TokTCEq        {"Eq"};
+position token TokTCOrd       {"Ord"};
+position token TokTCContainer {"Container"};
+position token TokTCTruth     {"Truth"};
+position token TokTCQuantify  {"Quantify"};
+position token TokTCNatural   {"Natural"};
+position token TokTCIntegral  {"Integral"};
+position token TokTCRational  {"Rational"};
+position token TokTCReal      {"Real"};
 
 position token Name        (lower (letter | digit | '_')*) ;
 
@@ -80,6 +90,18 @@ LitReal.  Lit ::= Double;
 LitTrue.  Lit ::= TokTrue;
 LitFalse. Lit ::= TokFalse;
 
+-- * Type classes
+
+TCEq.    TypeClass ::= TokTCEq        Expr14 Expr14;
+TCOrd.   TypeClass ::= TokTCOrd       Expr14 Expr14;
+TCCont.  TypeClass ::= TokTCContainer Expr14 Expr14;
+TCTruth. TypeClass ::= TokTCTruth     Expr14;
+TCQuant. TypeClass ::= TokTCQuantify  Expr14;
+TCNat.   TypeClass ::= TokTCNatural   Expr14;
+TCInt.   TypeClass ::= TokTCIntegral  Expr14;
+TCRat.   TypeClass ::= TokTCRational  Expr14;
+TCReal.  TypeClass ::= TokTCReal      Expr14;
+
 -- * Expressions
 
 -- NOTE:
@@ -105,6 +127,7 @@ App.     Expr12 ::= Expr13 Arg;
 Fun.     Expr12 ::= Expr13 TokArrow Expr12;
 Var.     Expr14 ::= Name;
 Literal. Expr14 ::= Lit;
+TypeC.   Expr12 ::= TypeClass;
 
 -- Primitive types.
 List.    Expr13 ::= TokList Expr14;
@@ -142,6 +165,7 @@ Seq.     Expr14 ::= TokSeqOpen [Expr] TokSeqClose;
 -- Quantification
 All.     Expr14 ::= TokAll;
 Any.     Expr14 ::= TokAny;
+
 
 coercions Expr 14;
 separator Expr ",";

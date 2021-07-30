@@ -12,7 +12,6 @@ import Vehicle.Prelude.Token as X
 import Vehicle.Prelude.Sort as X
 import Vehicle.Prelude.Provenance as X
 import Vehicle.Prelude.Language as X
-import Vehicle.Prelude.Types as X
 import Vehicle.Prelude.Error as X
 import Vehicle.Prelude.Prettyprinter as X
 

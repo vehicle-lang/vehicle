@@ -111,6 +111,9 @@ library
                       , LiberalTypeSynonyms
                       , DuplicateRecordFields
                       , RecordWildCards
+                      , DeriveFunctor
+                      , DeriveFoldable
+                      , DeriveTraversable
 
 executable vehicle
   import:             common-base

@@ -162,19 +162,27 @@ compileProgramToAgda program = do
     , programText
     ]
 
-class CompileToAgda (sort :: Sort) where
+class CompileToAgda a where
   compile
     :: MonadAgdaCompile m
-    => OutputExpr
+    => a
     -> m Code
 
 --------------------------------------------------------------------------------
 -- Compilation of program tree
 
-instance CompileToAgda 'KIND where
-  compile _ = return mempty
+instance CompileToAgda OutputBinder where
+  compile (Binder _p v n mType) = return $ pretty n
 
-instance CompileToAgda 'TYPE where
+instance CompileToAgda OutputArg where
+  compile (Arg _p n) = return $ pretty n
+
+instance CompileToAgda OutputLetDecl where
+  compile (LetDecl _p binder bound) = return $ pretty n
+
+instance CompileToAgda OutputExpr where
+
+instance CompileToAgda 'EXPR where
   compile = \case
     TForall _ann ns t  -> do
       cns <- traverse compile ns
@@ -189,80 +197,67 @@ instance CompileToAgda 'TYPE where
     TInt    _ann       -> return $ annotateConstant DataInt "ℤ"
     TList   _ann t     -> annotateApp1 [DataList]   "List"   <$> compile t
     TTensor _ann t1 t2 -> annotateApp2 [AISECUtils] "Tensor" <$> compile t1 <*> compile t2
-    TAdd    _ann t1 t2 -> compileNumOp2 Add Int <$> compile t1 <*> compile t2
-    TCons   _ann t1 t2 -> compileCons           <$> compile t1 <*> compile t2
 
     TLitDim _ann i      -> return $ pretty i
     TLitDimList _ann ts -> compileLitSeq <$> traverse compile ts
 
-instance CompileToAgda 'TARG where
-  compile (TArg _ann n) = return $ pretty n
-
-instance CompileToAgda 'EXPR where
-  compile = \case
-    EAnn _ann e t -> do
+    Ann _ann e t -> do
       ce <- compile e
       ct <- compile t
       return $ ce <+> ":" <+> ct
 
-    ELet _ann ds e -> do
+    Let _ann ds e -> do
       cds <- traverse compile ds
       ce  <- compile e
       return $ "let" <+> vsep cds <+> "in" <+> ce
 
-    ELam _ann ns e -> do
+    Lam _ann ns e -> do
       cns <- traverse compile ns
       ce  <- compile e
       return $ "λ" <+> vsep cns <+> "→" <+> ce
 
-    EApp _ann e1 e2 -> do
+    App _ann e1 e2 -> do
       ce1 <- compile e1
       ce2 <- compile e2
       return $ ce1 <+> parens ce2
 
-    EVar _ann n ->
+    Var _ann n ->
       return $ pretty n
 
-    ETyApp _ann _e _t  ->
-      return mempty
-
-    ETyLam _ann _ns _e ->
-      return mempty
-
-    EIf _ann e1 e2 e3 -> do
+    If _ann e1 e2 e3 -> do
       ce1 <- compile e1
       ce2 <- compile e2
       ce3 <- compile e3
       return $ "if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3
 
-    e@(EImpl    _ann e1 e2) -> compileBoolOp2 Impl  <$> booleanType e <*> compile e1 <*> compile e2
-    e@(EAnd     _ann e1 e2) -> compileBoolOp2 And   <$> booleanType e <*> compile e1 <*> compile e2
-    e@(EOr      _ann e1 e2) -> compileBoolOp2 Or    <$> booleanType e <*> compile e1 <*> compile e2
-    e@(ENot     _ann e1)    -> compileBoolOp1 Not   <$> booleanType e <*> compile e1
-    e@(ETrue    _ann)       -> compileBoolOp0 True  <$> booleanType e
-    e@(EFalse   _ann)       -> compileBoolOp0 False <$> booleanType e
+    e@(Impl    _ann e1 e2) -> compileBoolOp2 Impl  <$> booleanType e <*> compile e1 <*> compile e2
+    e@(And     _ann e1 e2) -> compileBoolOp2 And   <$> booleanType e <*> compile e1 <*> compile e2
+    e@(Or      _ann e1 e2) -> compileBoolOp2 Or    <$> booleanType e <*> compile e1 <*> compile e2
+    e@(Not     _ann e1)    -> compileBoolOp1 Not   <$> booleanType e <*> compile e1
+    e@(True    _ann)       -> compileBoolOp0 True  <$> booleanType e
+    e@(False   _ann)       -> compileBoolOp0 False <$> booleanType e
 
-    EAll     _ann           -> return $ pretty ("∀" :: Text)
-    EAny     _ann           -> return $ pretty ("∃" :: Text)
-    e@(EEq   _ann e1 e2)    -> compileEquality e e1 e2
-    e@(ENeq  _ann e1 e2)    -> compileBoolOp1 Not Prop <$> compileEquality e e1 e2
+    All     _ann           -> return $ pretty ("∀" :: Text)
+    Any     _ann           -> return $ pretty ("∃" :: Text)
+    e@(Eq   _ann e1 e2)    -> compileEquality e e1 e2
+    e@(Neq  _ann e1 e2)    -> compileBoolOp1 Not Prop <$> compileEquality e e1 e2
 
-    e@(ELe   _ann e1 e2)    -> compileNumOrder' Leq e e1 e2
-    e@(ELt   _ann e1 e2)    -> compileNumOrder' Lt  e e1 e2
-    e@(EGe   _ann e1 e2)    -> compileNumOrder' Geq e e1 e2
-    e@(EGt   _ann e1 e2)    -> compileNumOrder' Gt  e e1 e2
+    e@(Le   _ann e1 e2)    -> compileNumOrder' Leq e e1 e2
+    e@(Lt   _ann e1 e2)    -> compileNumOrder' Lt  e e1 e2
+    e@(Ge   _ann e1 e2)    -> compileNumOrder' Geq e e1 e2
+    e@(Gt   _ann e1 e2)    -> compileNumOrder' Gt  e e1 e2
 
-    e@(EMul  _ann e1 e2)    -> compileNumOp2 Mul <$> numericType e <*> compile e1 <*> compile e2
-    e@(EDiv  _ann e1 e2)    -> compileNumOp2 Div <$> numericType e <*> compile e1 <*> compile e2
-    e@(EAdd  _ann e1 e2)    -> compileNumOp2 Add <$> numericType e <*> compile e1 <*> compile e2
-    e@(ESub  _ann e1 e2)    -> compileNumOp2 Sub <$> numericType e <*> compile e1 <*> compile e2
-    e@(ENeg  _ann e1)       -> compileNumOp1 Neg <$> numericType e <*> compile e1
+    e@(Mul  _ann e1 e2)    -> compileNumOp2 Mul <$> numericType e <*> compile e1 <*> compile e2
+    e@(Div  _ann e1 e2)    -> compileNumOp2 Div <$> numericType e <*> compile e1 <*> compile e2
+    e@(Add  _ann e1 e2)    -> compileNumOp2 Add <$> numericType e <*> compile e1 <*> compile e2
+    e@(Sub  _ann e1 e2)    -> compileNumOp2 Sub <$> numericType e <*> compile e1 <*> compile e2
+    e@(Neg  _ann e1)       -> compileNumOp1 Neg <$> numericType e <*> compile e1
 
-    ELitInt  _ann i         -> return $ pretty i
-    ELitReal _ann d         -> return $ pretty d
-    ECons    _ann e1 e2     -> compileCons <$> compile e1 <*> compile e2
-    e@(EAt   _ann e1 e2)    -> compileLookup e e1 e2
-    ELitSeq  _ann es        -> compileLitSeq <$> traverse compile es
+    LitInt  _ann i         -> return $ pretty i
+    LitReal _ann d         -> return $ pretty d
+    Cons    _ann e1 e2     -> compileCons <$> compile e1 <*> compile e2
+    e@(At   _ann e1 e2)    -> compileLookup e e1 e2
+    Seq  _ann es        -> compileLitSeq <$> traverse compile es
 
 instance CompileToAgda 'EARG where
     compile (EArg _ann n) = return $ pretty n
@@ -272,11 +267,7 @@ instance CompileToAgda 'DECL where
     DeclData ann _n _t     -> throwError $ CompilationUnsupported (prov ann) "dataset"
     DeclNetw _ann n t      -> compileNetwork <$> compile n <*> compile t
     DefType  _ann n ns t   -> compileTypeDef <$> compile n <*> traverse compile ns <*> compile t
-    DefFun   _ann n t ns e -> compileFunDef  <$> compile n <*> compile t <*> traverse compileArgs ns <*> compile e
-      where
-        compileArgs :: MonadAgdaCompile m => Either OutputTArg OutputEArg -> m Code
-        compileArgs (Left  tArg) = do x <- compile tArg; return $ "{" <+> x <+> "}"
-        compileArgs (Right eArg) = compile eArg
+    DefFun   _ann n t ns e -> compileFunDef  <$> compile n <*> compile t <*> traverse compile ns <*> compile e
 
   -- Programs
 instance CompileToAgda 'PROG where
@@ -294,7 +285,7 @@ compileCons :: Code -> Code -> Code
 compileCons = annotateInfixOp2 [DataList] 5 id "∷"
 
 -- |Compiling boolean constants
-compileBoolOp0 :: Bool -> BoolType -> Code
+compileBoolOp0 :: Bool -> TruthType -> Code
 compileBoolOp0 True  Bool = annotateConstant DataBool  "true"
 compileBoolOp0 False Bool = annotateConstant DataBool  "false"
 compileBoolOp0 True  Prop = annotateConstant DataUnit  "⊤"
@@ -302,12 +293,12 @@ compileBoolOp0 False Prop = annotateConstant DataEmpty "⊥"
 
 -- |Compiling boolean unary operations
 -- Only negation at the moment
-compileBoolOp1 :: BooleanOp1 -> BoolType -> Code -> Code
+compileBoolOp1 :: BooleanOp1 -> TruthType -> Code -> Code
 compileBoolOp1 Not Bool = annotateOp1 [DataBool]   20 "not"
 compileBoolOp1 Not Prop = annotateOp1 [RelNullary] 3  "¬"
 
 -- |Compiling boolean binary operations
-compileBoolOp2 :: BooleanOp2 -> BoolType -> Code -> Code -> Code
+compileBoolOp2 :: BooleanOp2 -> TruthType -> Code -> Code -> Code
 compileBoolOp2 Impl Bool = annotateInfixOp2 [AISECUtils]  4  id "⇒"
 compileBoolOp2 And  Bool = annotateInfixOp2 [DataBool]    6  id "∧"
 compileBoolOp2 Or   Bool = annotateInfixOp2 [DataBool]    5  id "∨"
@@ -346,7 +337,7 @@ compileNumOrder' orderType e e1 e2 = do
   ce2      <- compile e2
   return $ compileNumOrder orderType numType boolType ce1 ce2
 
-compileNumOrder :: OrderType -> NumericType -> BoolType -> Code -> Code -> Code
+compileNumOrder :: OrderType -> NumericType -> TruthType -> Code -> Code -> Code
 compileNumOrder Leq Int  Bool = annotateInfixOp2 [DataInt, RelNullary] 4 boolBraces "ℤ.≤?"
 compileNumOrder Lt  Int  Bool = annotateInfixOp2 [DataInt, RelNullary] 4 boolBraces "ℤ.<?"
 compileNumOrder Geq Int  Bool = annotateInfixOp2 [DataInt, RelNullary] 4 boolBraces "ℤ.≥?"
@@ -416,7 +407,7 @@ compileBoolEquality e1 e2 = let t1 = annotatedType (annotation e1) in
       annotateInfixOp2 ([RelNullary] <> dependencies) 4 boolBraces "≟" <$> compile e1 <*> compile e2
 
 -- Calculates the dependencies needed for equality over the provided type
-equalityDependencies :: OutputType -> Either EqualityTypeError [Dependency]
+equalityDependencies :: OutputExpr -> Either EqualityTypeError [Dependency]
 equalityDependencies = \case
   TInt    _ann        -> return [DataIntInstances]
   TReal   _ann        -> return [DataRatInstances]

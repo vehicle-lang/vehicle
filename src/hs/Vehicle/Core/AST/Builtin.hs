@@ -2,7 +2,6 @@
 
 module Vehicle.Core.AST.Builtin
   ( Builtin(..)
-  , Constraint(..)
   , pattern PrimitiveNumber
   , pattern PrimitiveTruth
   , builtinFromSymbol
@@ -16,10 +15,21 @@ import Vehicle.Prelude
 
 -- |Builtins to the Vehicle language
 data Builtin
+  -- Types
   = PrimitiveType PrimitiveType
   | List
   | Tensor
-  | Implements Constraint
+  -- Type classes
+  | HasEq
+  | HasOrd
+  | IsTruth
+  | IsNatural
+  | IsIntegral
+  | IsRational
+  | IsReal
+  | IsContainer
+  | IsQuantifiable
+  -- Expressions
   | If
   | Impl
   | And
@@ -42,18 +52,6 @@ data Builtin
   | Any
   deriving (Eq, Ord, Show)
 
-data Constraint
-  = HasEq
-  | HasOrd
-  | IsTruth
-  | IsNatural
-  | IsIntegral
-  | IsRational
-  | IsReal
-  | IsContainer
-  | IsQuantifiable
-  deriving (Eq, Ord, Enum, Show)
-
 pattern PrimitiveNumber :: NumberType -> Builtin
 pattern PrimitiveNumber prim = PrimitiveType (TNumber prim)
 
@@ -63,43 +61,43 @@ pattern PrimitiveTruth prim = PrimitiveType (TTruth prim)
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols =
   -- Types
-  [ "Bool"       |-> PrimitiveTruth TBool
-  , "Prop"       |-> PrimitiveTruth TProp
-  , "Nat"        |-> PrimitiveNumber TNat
-  , "Int"        |-> PrimitiveNumber TInt
-  , "Real"       |-> PrimitiveNumber TReal
-  , "List"       |-> List
-  , "Tensor"     |-> Tensor
-  -- Constraints
-  , "Eq"         |-> Implements HasEq
-  , "Ord"        |-> Implements HasOrd
-  , "Truth"      |-> Implements IsTruth
-  , "Container"  |-> Implements IsContainer
-  , "Natural"    |-> Implements IsNatural
-  , "Integral"   |-> Implements IsIntegral
-  , "Rational"   |-> Implements IsRational
-  , "Real"       |-> Implements IsReal
-  , "Quantify"   |-> Implements IsQuantifiable
+  [ "Bool"         |-> PrimitiveTruth TBool
+  , "Prop"         |-> PrimitiveTruth TProp
+  , "Nat"          |-> PrimitiveNumber TNat
+  , "Int"          |-> PrimitiveNumber TInt
+  , "Real"         |-> PrimitiveNumber TReal
+  , "List"         |-> List
+  , "Tensor"       |-> Tensor
+  -- Type classes
+  , "HasEq"        |-> HasEq
+  , "HasOrd"       |-> HasOrd
+  , "IsTruth"      |-> IsTruth
+  , "IsContainer"  |-> IsContainer
+  , "IsNatural"    |-> IsNatural
+  , "IsIntegral"   |-> IsIntegral
+  , "IsRational"   |-> IsRational
+  , "IsReal"       |-> IsReal
+  , "IsQuantify"   |-> IsQuantifiable
   -- Operations
-  , "if"         |-> If
-  , "=>"         |-> Impl
-  , "and"        |-> And
-  , "or"         |-> Or
-  , "not"        |-> Not
-  , "=="         |-> Eq
-  , "!="         |-> Neq
-  , "<="         |-> Le
-  , "<"          |-> Lt
-  , ">="         |-> Ge
-  , ">"          |-> Gt
-  , "*"          |-> Mul
-  , "/"          |-> Div
-  , "-"          |-> Sub
-  , "~"          |-> Neg -- Negation is changed from "-" to "~" during elaboration.
-  , "!"          |-> At
-  , "::"         |-> Cons
-  , "all"        |-> All
-  , "any"        |-> Any
+  , "if"           |-> If
+  , "=>"           |-> Impl
+  , "and"          |-> And
+  , "or"           |-> Or
+  , "not"          |-> Not
+  , "=="           |-> Eq
+  , "!="           |-> Neq
+  , "<="           |-> Le
+  , "<"            |-> Lt
+  , ">="           |-> Ge
+  , ">"            |-> Gt
+  , "*"            |-> Mul
+  , "/"            |-> Div
+  , "-"            |-> Sub
+  , "~"            |-> Neg -- Negation is changed from "-" to "~" during elaboration.
+  , "!"            |-> At
+  , "::"           |-> Cons
+  , "all"          |-> All
+  , "any"          |-> Any
   ]
 
 builtinFromSymbol :: Symbol -> Maybe Builtin

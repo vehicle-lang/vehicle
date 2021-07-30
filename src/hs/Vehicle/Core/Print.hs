@@ -20,8 +20,9 @@ instance Pretty Name where
   pretty Machine       = "machine"
   pretty (User symbol) = pretty symbol
 
-instance Pretty Index where
-  pretty (Index index) = pretty index
+instance Pretty Var where
+  pretty (Bound index) = pretty index
+  pretty (Free  ident) = pretty ident
 
 instance Pretty Literal where
   pretty = \case
@@ -33,11 +34,8 @@ instance Pretty Literal where
 instance Pretty Builtin where
   pretty b = pretty $ fromMaybe "" (symbolFromBuiltin b)
 
-instance Pretty Ident where
-  pretty (Ident n) = pretty n
-
-instance Pretty DeclIdentifier where
-  pretty (DeclIdentifier _ann n) = pretty n
+instance Pretty (WithProvenance Identifier) where
+  pretty (WithProvenance _ann n) = pretty n
 
 instance ( Pretty binder
          , Pretty var
@@ -65,8 +63,7 @@ instance ( Pretty binder
     Lam     _ann binder e       -> "lambda" <+> pretty binder <+> parens (pretty e)
     Literal _ann l              -> pretty l
     Seq     _ann es             -> hsep (fmap pretty es)
-    Free    _ann ident          -> pretty ident
-    Bound   _ann i              -> parens (pretty i)
+    Var     _ann v              -> pretty v
 
 instance ( Pretty name
          , Pretty binder
@@ -74,7 +71,6 @@ instance ( Pretty name
   pretty = \case
     DeclNetw _ann n t    -> parens ("declare-network" <+> pretty n <+> ":" <+> pretty t) <+> line
     DeclData _ann n t    -> parens ("declare-dataset" <+> pretty n <+> ":" <+> pretty t) <+> line
-    DefType  _ann n ns t -> parens ("define-type" <+> pretty n <+> parens (pretty ns) <+> pretty t) <+> line
     DefFun   _ann n t e  -> parens ("define-fun" <+> pretty n <+> parens (pretty t) <+> parens (pretty e)) <+> line
 
 instance ( Pretty name

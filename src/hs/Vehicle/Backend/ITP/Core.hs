@@ -5,9 +5,8 @@ import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader, MonadReader(..), ReaderT(..))
 import Data.Text as Text (Text, intercalate, pack, append)
 import Data.Map (Map)
-import Data.List.NonEmpty (NonEmpty)
 import Data.Version (Version, showVersion)
-import Prettyprinter as Pretty hiding (squotes)
+import Prettyprinter as Pretty ((<+>), Pretty(pretty), line, list)
 
 import Vehicle.Frontend.AST
 import Vehicle.Frontend.Print ()
@@ -127,23 +126,23 @@ data OrderType
 
 -- |Types of numeric unary operations
 data NumericOp1
-  = Neg
+  = NegOp
 
 -- |Types of numeric binary operations
 data NumericOp2
-  = Mul
-  | Div
-  | Add
-  | Sub
+  = MulOp
+  | DivOp
+  | AddOp
+  | SubOp
 
 -- |Types of boolean unary operations
 data BooleanOp1
-  = Not
+  = NotOp
 
 -- |Types of boolean binary operations
 data BooleanOp2
-  = Impl
-  | And
-  | Or
+  = ImplOp
+  | AndOp
+  | OrOp
 
 type Precedence = Int

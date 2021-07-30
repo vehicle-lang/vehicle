@@ -78,8 +78,8 @@ instance Compile Literal where
     LReal v -> pretty v
     LBool v -> pretty v
 
-instance Compile DeclIdentifier where
-  compile (DeclIdentifier _p n) = pretty n
+instance Compile (WithProvenance Identifier) where
+  compile (WithProvenance _p n) = pretty n
 
 instance Compile (Binder ann) where
   compile (Binder _p vis n typeAnn) =
@@ -102,8 +102,9 @@ instance Compile (Expr ann) where
     FunF     _ann t1 t2    -> compileInfixOp2 2 "->"  t1 t2
     PropF    _ann          -> compileConstant "Prop"
     BoolF    _ann          -> compileConstant "Bool"
-    RealF    _ann          -> compileConstant "Real"
+    NatF     _ann          -> compileConstant "Nat"
     IntF     _ann          -> compileConstant "Int"
+    RealF    _ann          -> compileConstant "Real"
     ListF    _ann t        -> compileApp1 "List"     t
     TensorF  _ann t1 t2    -> compileApp2 "Tensor"   t1 t2
 

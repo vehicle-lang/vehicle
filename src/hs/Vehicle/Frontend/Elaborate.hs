@@ -2,6 +2,10 @@ module Vehicle.Frontend.Elaborate
   ( Elab(..)
   ) where
 
+import Control.Monad.Supply (MonadSupply(..), demand)
+import Control.Monad.Identity (Identity, foldM)
+import Data.List.NonEmpty qualified as NonEmpty (toList)
+
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
 import Vehicle.Frontend.AST qualified as VF
 
@@ -41,30 +45,44 @@ import Vehicle.Prelude
 --
 --------------------------------------------------------------------------------
 
+type MonadElab m = MonadSupply VC.Meta Identity m
+
 -- |Class for the various elaboration functions.
 class Elab a b where
-  elab :: a -> b
+  elab :: MonadElab m => a -> m b
+
+freshMeta :: MonadElab m => m VC.InputExpr
+freshMeta = VC.Meta <$> demand
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
-elabLetDecl :: VF.InputLetDecl -> VC.InputExpr -> VC.InputExpr
-elabLetDecl (VF.LetDecl ann binder e) = VC.Let ann (elab binder) (elab e)
+elabLetDecls :: MonadElab m => VF.InputExpr -> [VF.InputLetDecl] -> m VC.InputExpr
+elabLetDecls = foldr elabLetDecl . elab
+  where
+    elabLetDecl :: MonadElab m => VF.InputLetDecl -> m VC.InputExpr -> m VC.InputExpr
+    elabLetDecl (VF.LetDecl ann binder e) body = VC.Let ann <$> elab binder <*> elab e <*> body
+
+elabBinders :: MonadElab m => (VC.InputBinder -> VC.InputExpr -> VC.InputExpr) -> [VF.InputBinder] -> VF.InputExpr -> m VC.InputExpr
+elabBinders f bs body = foldr (\b d -> f <$> elab b <*> d) (elab body) bs
+
+elabFunInputType :: MonadElab m => VF.InputExpr -> m VC.InputBinder
+elabFunInputType t = VC.Binder (VF.annotation t) Explicit "@funplaceholder" <$> elab t -- TODO really need to come up with a more satisfying way
 
 instance Elab VF.InputBinder VC.InputBinder where
-  elab (VF.Binder ann vis name _) = VC.Binder ann vis name _
+  elab (VF.Binder ann vis name t) = VC.Binder ann vis name <$> maybe freshMeta elab t
 
 instance Elab VF.InputArg VC.InputArg where
-  elab (VF.Arg ann vis e) = VC.Arg ann vis (elab e)
+  elab (VF.Arg ann vis e) = VC.Arg ann vis <$> elab e
 
 instance Elab VF.InputExpr VC.InputExpr where
   elab = \case
-    -- Elaborate kinds.
-    VF.Type l            -> VC.Type l
-    VF.Constraint        -> VC.Constraint
+    -- Kinds.
+    VF.Type l            -> return (VC.Type l)
+    VF.Constraint        -> return VC.Constraint
 
-    -- Elaborate types.
-    VF.Forall  ann ns t   -> foldr (VC.Pi ann . elab) (elab t) ns
-    VF.Fun     ann t1 t2  -> VC.Pi ann (VC.Binder (VF.annotation t1) Explicit _ (elab t1)) (elab t2)
+    -- Types.
+    VF.Forall  ann ns t   -> elabBinders (VC.Pi ann) (NonEmpty.toList ns) t
+    VF.Fun     ann t1 t2  -> VC.Pi ann <$> elabFunInputType t1 <*> elab t2
     VF.Bool    ann        -> op0 (VC.PrimitiveTruth  TBool) ann
     VF.Prop    ann        -> op0 (VC.PrimitiveTruth  TProp) ann
     VF.Real    ann        -> op0 (VC.PrimitiveNumber TReal) ann
@@ -73,13 +91,24 @@ instance Elab VF.InputExpr VC.InputExpr where
     VF.List    ann t      -> op1 VC.List   ann t
     VF.Tensor  ann t1 t2  -> op2 VC.Tensor ann t1 t2
 
+    -- Type classes.
+    VF.HasEq       ann e1 e2 -> op2 VC.HasEq          ann e1 e2
+    VF.HasOrd      ann e1 e2 -> op2 VC.HasOrd         ann e1 e2
+    VF.IsContainer ann e1 e2 -> op2 VC.IsContainer    ann e1 e2
+    VF.IsTruth     ann e     -> op1 VC.IsTruth        ann e
+    VF.IsQuant     ann e     -> op1 VC.IsQuantifiable ann e
+    VF.IsNatural   ann e     -> op1 VC.IsNatural      ann e
+    VF.IsIntegral  ann e     -> op1 VC.IsIntegral     ann e
+    VF.IsRational  ann e     -> op1 VC.IsRational     ann e
+    VF.IsReal      ann e     -> op1 VC.IsReal         ann e
+
     -- Elaborate expressions.
-    VF.Ann     ann e t   -> VC.Ann ann (elab e) (elab t)
-    VF.Let    _ann ds e  -> foldr elabLetDecl (elab e) ds
-    VF.Lam     ann ns e  -> foldr (VC.Lam ann) (elab e) (fmap elab ns)
-    VF.App     ann e1 e2 -> VC.App ann (elab e1) (elab e2)
-    VF.Var     ann n     -> VC.Bound ann n
-    VF.Literal ann l     -> VC.Literal ann l
+    VF.Ann     ann e t   -> VC.Ann ann <$> elab e <*> elab t
+    VF.Let    _ann ds e  -> elabLetDecls e (NonEmpty.toList ds)
+    VF.Lam     ann ns e  -> elabBinders (VC.Lam ann) (NonEmpty.toList ns) e
+    VF.App     ann e1 e2 -> VC.App ann <$> elab e1 <*> elab e2
+    VF.Var     ann n     -> return $ VC.Var ann n
+    VF.Literal ann l     -> return $ VC.Literal ann l
 
     -- Conditional expressions.
     VF.If    ann e1 e2 e3 -> op3 VC.If      ann e1 e2 e3
@@ -106,37 +135,35 @@ instance Elab VF.InputExpr VC.InputExpr where
     VF.At     ann e1 e2 -> op2 VC.At   ann e1 e2
     VF.All    ann       -> op0 VC.All  ann
     VF.Any    ann       -> op0 VC.Any  ann
-    VF.Seq    ann es    -> VC.Seq ann (fmap elab es)
+    VF.Seq    ann es    -> VC.Seq ann <$> traverse elab es
 
 -- |Elaborate declarations.
 instance Elab VF.InputDecl VC.InputDecl where
-  elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann n (elab t)
-  elab (VF.DeclData ann n t)      = VC.DeclData ann n (elab t)
-  elab (VF.DefType  ann n ns t)   = VC.DefType  ann n (fmap elab ns) (elab t)
-  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann n (elab t) expr
-    where
-      expr = foldr (VC.Lam ann) (elab e) (fmap elab ns)
+  elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann n <$> elab t
+  elab (VF.DeclData ann n t)      = VC.DeclData ann n <$> elab t
+  elab (VF.DefType  ann n ns e)   = VC.DefFun   ann n <$> freshMeta <*> elabBinders (VC.Lam ann) ns e
+  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann n <$> elab t    <*> elabBinders (VC.Lam ann) ns e
 
 -- |Elaborate programs.
 instance Elab VF.InputProg VC.InputProg where
-  elab (VF.Main decls) = VC.Main (fmap elab decls)
+  elab (VF.Main decls) = VC.Main <$> traverse elab decls
 
 -- |Elaborate a builtin argument to an application Arg
-exprToArg :: VF.InputExpr -> VC.InputArg
-exprToArg e = VC.Arg (VF.annotation e) Explicit (elab e)
+exprToArg :: MonadElab m => VF.InputExpr -> m VC.InputArg
+exprToArg e = VC.Arg (VF.annotation e) Explicit <$> elab e
 
 -- |Elaborate any builtin token to an expression.
-op0 :: VC.Builtin -> VF.InputAnn -> VC.InputExpr
-op0 b ann = VC.Builtin ann b
+op0 :: MonadElab m => VC.Builtin -> VF.InputAnn -> m VC.InputExpr
+op0 b ann = return $ VC.Builtin ann b
 
 -- |Elaborate a unary function symbol with its argument to an expression.
-op1 :: VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VC.InputExpr
-op1 b ann e1 = VC.App ann (op0 b ann) (exprToArg e1)
+op1 :: MonadElab m => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> m VC.InputExpr
+op1 b ann e1 = VC.App ann <$> op0 b ann <*> exprToArg e1
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-op2 :: VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> VC.InputExpr
-op2 b ann e1 e2 = VC.App ann (op1 b ann e1) (exprToArg e2)
+op2 :: MonadElab m => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
+op2 b ann e1 e2 = VC.App ann <$> op1 b ann e1 <*> exprToArg e2
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
-op3 :: VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> VC.InputExpr
-op3 b ann e1 e2 e3 = VC.App ann (op2 b ann e1 e2) (exprToArg e3)
+op3 :: MonadElab m => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
+op3 b ann e1 e2 e3 = VC.App ann <$> op2 b ann e1 e2 <*> exprToArg e3

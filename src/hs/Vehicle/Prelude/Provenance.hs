@@ -8,6 +8,7 @@ module Vehicle.Prelude.Provenance
   ) where
 
 import Data.Range hiding (joinRanges)
+import Data.List.NonEmpty (NonEmpty)
 import Prettyprinter
 
 import Vehicle.Prelude.Token
@@ -150,5 +151,8 @@ class HasProvenance a where
 instance HasProvenance Provenance where
   prov = id
 
-instance (HasProvenance a , Foldable t) => HasProvenance (t a) where
+instance HasProvenance a => HasProvenance [a] where
+  prov xs = foldMap prov xs
+
+instance HasProvenance a => HasProvenance (NonEmpty a) where
   prov xs = foldMap prov xs

@@ -30,7 +30,7 @@ tForall
   -> CheckedExpr
 tForall k f = quantBody
   where
-    badBody   = f (Bound (RecAnn Type0 mempty) (Index (-1)))
+    badBody   = f (Var (RecAnn Type0 mempty) (Bound (-1)))
     body      = liftAcc (-1) badBody
     quantBody = tPiInternal Implicit k body
 
@@ -78,37 +78,37 @@ tList :: CheckedExpr -> CheckedExpr
 tList tElem = con List (Type0 ~> Type0) `app` tElem
 
 
--- * Constraints
+-- * TypeClass
 
-constraint :: Provenance -> Constraint -> CheckedExpr
-constraint p c = Builtin (RecAnn Constraint p) (Implements c)
+typeClass :: Provenance -> Builtin -> CheckedExpr
+typeClass p = Builtin (RecAnn Constraint p)
 
 hasEq :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-hasEq p t1 t2 = constraint p HasEq `app` t1 `app` t2
+hasEq p t1 t2 = typeClass p HasEq `app` t1 `app` t2
 
 hasOrd :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-hasOrd p t1 t2 = constraint p HasOrd `app` t1 `app` t2
+hasOrd p t1 t2 = typeClass p HasOrd `app` t1 `app` t2
 
 isTruth :: Provenance -> CheckedExpr -> CheckedExpr
-isTruth p t = constraint p IsTruth `app` t
+isTruth p t = typeClass p IsTruth `app` t
 
 isNatural :: Provenance -> CheckedExpr -> CheckedExpr
-isNatural p t = constraint p IsNatural `app` t
+isNatural p t = typeClass p IsNatural `app` t
 
 isIntegral :: Provenance -> CheckedExpr -> CheckedExpr
-isIntegral p t = constraint p IsIntegral `app` t
+isIntegral p t = typeClass p IsIntegral `app` t
 
 isRational :: Provenance -> CheckedExpr -> CheckedExpr
-isRational p t = constraint p IsRational `app` t
+isRational p t = typeClass p IsRational `app` t
 
 isReal :: Provenance -> CheckedExpr -> CheckedExpr
-isReal p t = constraint p IsReal `app` t
+isReal p t = typeClass p IsReal `app` t
 
 isContainer :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-isContainer p tCont tElem = constraint p IsContainer `app` tCont `app` tElem
+isContainer p tCont tElem = typeClass p IsContainer `app` tCont `app` tElem
 
 isQuantifiable :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-isQuantifiable p tDom tTruth = constraint p IsQuantifiable `app` tDom `app` tTruth
+isQuantifiable p tDom tTruth = typeClass p IsQuantifiable `app` tDom `app` tTruth
 
 -- * Expressions
 

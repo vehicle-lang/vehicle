@@ -12,7 +12,7 @@ import Control.Arrow (right)
 import Control.Monad.Supply (runSupplyT)
 import Control.Monad.Except (Except, withExcept, runExcept, mapExcept)
 
-import Vehicle.Core.AST (Tree, InputTree, Info, OutputTree, DeBruijn)
+import Vehicle.Core.AST
 import Vehicle.Core.Compile.Scope (ScopeError(..), symbolToDeBruijn, deBruijnToSymbol)
 import Vehicle.Core.Compile.Type (TypeError(..), checkInfer)
 import Vehicle.Prelude
