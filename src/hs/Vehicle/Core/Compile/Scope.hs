@@ -1,7 +1,7 @@
 
 module Vehicle.Core.Compile.Scope
   ( ScopeError(..)
-  , checkProg
+  , scopeProg
   ) where
 
 import Control.Monad.Except
@@ -69,7 +69,7 @@ getVar ann name = do
 
 bindVar :: InputBinder -> (UncheckedBinder -> ExprSCM UncheckedExpr) -> ExprSCM UncheckedExpr
 bindVar (Binder p v name t) update = do
-  t' <- check t
+  t' <- scope t
   let binder' = Binder p v (User name) t'
   local (addBinderToCtx name) (update binder')
 
@@ -80,53 +80,53 @@ flow r = do
   lift (runReaderT s ctx)
 
 class ScopeCheck a b where
-  check :: a -> ReaderT Ctx SCM b
+  scope :: a -> ReaderT Ctx SCM b
 
 instance ScopeCheck InputArg UncheckedArg where
-  check (Arg p v e) = Arg p v <$> check e
+  scope (Arg p v e) = Arg p v <$> scope e
 
 instance ScopeCheck InputExpr UncheckedExpr where
-  check = \case
+  scope = \case
     Type l                         -> return $ Type l
     Constraint                     -> return Constraint
     Meta p i                       -> return $ Meta p i
     Hole     ann n                 -> return $ Hole ann n
-    Ann      ann e t               -> Ann ann <$> check e <*> check t
-    App      ann fun arg           -> App ann <$> check fun <*> check arg
+    Ann      ann e t               -> Ann ann <$> scope e <*> scope t
+    App      ann fun arg           -> App ann <$> scope fun <*> scope arg
     Builtin  ann op                -> return $ Builtin ann op
     Var      ann v                 -> Var ann <$> getVar ann v
     Literal  ann l                 -> return $ Literal ann l
-    Seq      ann es                -> Seq ann <$> traverse check es
+    Seq      ann es                -> Seq ann <$> traverse scope es
 
     Pi  ann binder res -> do
-      bindVar binder $ \binder' -> Pi ann binder' <$> check res
+      bindVar binder $ \binder' -> Pi ann binder' <$> scope res
 
     Lam ann binder body -> do
-      bindVar binder $ \binder' -> Lam ann binder' <$> check body
+      bindVar binder $ \binder' -> Lam ann binder' <$> scope body
 
     Let ann binder bound body -> do
-      bound' <- check bound
-      bindVar binder $ \binder' -> Let ann binder' bound' <$> check body
+      bound' <- scope bound
+      bindVar binder $ \binder' -> Let ann binder' bound' <$> scope body
 
 
-checkDecl :: InputDecl -> StateT Ctx SCM UncheckedDecl
-checkDecl = \case
+scopeDecl :: InputDecl -> StateT Ctx SCM UncheckedDecl
+scopeDecl = \case
 
   DeclNetw ann n t -> do
-    t' <- flow $ check t
+    t' <- flow $ scope t
     modify (addDeclToCtx n)
     return $ DeclNetw ann n t'
 
   DeclData ann n t -> do
-    t' <- flow $ check t
+    t' <- flow $ scope t
     modify (addDeclToCtx n)
     return $ DeclNetw ann n t'
 
   DefFun ann n t e -> do
-    t' <- flow $ check t
-    e' <- flow $ check e
+    t' <- flow $ scope t
+    e' <- flow $ scope e
     modify (addDeclToCtx n)
     return $ DefFun ann n t' e'
 
-checkProg :: InputProg -> Except ScopeError UncheckedProg
-checkProg (Main ds) = Main <$> evalStateT (traverse checkDecl ds) emptyCtx
+scopeProg :: InputProg -> Except ScopeError UncheckedProg
+scopeProg (Main ds) = Main <$> evalStateT (traverse scopeDecl ds) emptyCtx

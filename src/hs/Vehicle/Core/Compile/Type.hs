@@ -1,11 +1,15 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Vehicle.Core.Compile.Type where
+
+module Vehicle.Core.Compile.Type
+  ( TypingError(..)
+  , runTypeChecking
+  ) where
 
 import Control.Monad (when)
-import Control.Monad.Except (MonadError(..), Except)
+import Control.Monad.Except (MonadError(..), Except, runExcept)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Control.Monad.Trans (MonadTrans(..))
-import Control.Monad.State (MonadState(..), StateT(..), modify)
+import Control.Monad.State (MonadState(..), StateT(..), modify, evalStateT)
 import Data.Text (Text)
 import Data.Foldable (toList, foldrM)
 import Data.List (foldl')
@@ -15,54 +19,47 @@ import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
-import Prettyprinter ( (<+>), Pretty(pretty) )
+import Prettyprinter ((<+>), Pretty(pretty))
 
 import Vehicle.Core.AST hiding (lift)
 import Vehicle.Core.Compile.DSL
--- import Vehicle.Core.Print ( prettyInfo )
+import Vehicle.Core.Print ()
 import Vehicle.Prelude
 
 -- TODO:
 --
---  - Extend contexts with information for meta-variables.
 --  - Add support for unification with meta-variables.
---
 
--- * Errors thrown during type checking
+runTypeChecking :: UncheckedProg -> Meta -> Except TypingError CheckedProg
+runTypeChecking prog nextMeta = do
+  let prog1 = inferProg prog
+  let prog2 = evalStateT prog1 (initialMetaCtx nextMeta)
+  let prog3 = runReaderT prog2 mempty
+  let prog4 = runReaderT prog3 mempty
+  prog4
 
+--------------------------------------------------------------------------------
+-- Errors
+
+-- | Errors thrown during type checking
 data TypingError
-  = IndexOutOfBounds
-    Provenance    -- ^ The location of the deBruijn index.
-    Index         -- ^ The deBruijn index.
-  | UnresolvedHole
+  = UnresolvedHole
     Provenance    -- ^ The location of the hole
     Symbol        -- ^ The name of the hole
   | Mismatch
     Provenance    -- ^ The location of the mismatch.
     CheckedExpr   -- ^ The possible inferred types.
     CheckedExpr   -- ^ The expected type.
-  | MissingAnnotation
-    Provenance    -- ^ The location of the missing annotation.
   | UnsupportedOperation
     Provenance    -- ^ The location of the unsupported operation.
     Text          -- ^ A description of the unsupported operation.
-{-
-instance MeaningfulError TypeError where
-  details (IndexOutOfBounds p index) = DError $ DeveloperError
-    { provenance = p
-    , problem    = "DeBruijn index" <+> pretty index <+> "out of bounds"
-    }
 
-  details (Mismatch p candidates expected) = UError $ UserError
+instance MeaningfulError TypingError where
+  details (Mismatch p candidate expected) = UError $ UserError
     { provenance = p
-    , problem    = "expected something of type" <+> prettyInfo expected <+>
-                   "but inferred types" <+> encloseSep lbracket rbracket comma (map prettyInfo candidates)
+    , problem    = "expected something of type" <+> pretty expected <+>
+                   "but inferred type" <+> pretty candidate
     , fix        = "unknown"
-    }
-
-  details (MissingAnnotation p) = DError $ DeveloperError
-    { provenance = p
-    , problem    = "missing annotation"
     }
 
   details (UnsupportedOperation p t) = UError $ UserError
@@ -70,24 +67,56 @@ instance MeaningfulError TypeError where
     , problem    = "type-checking of" <+> squotes t <+> "not currently supported"
     , fix        = "unknown"
     }
--}
+
+  details (UnresolvedHole p name) = UError $ UserError
+    { provenance = p
+    , problem    = "the type of" <+> squotes name <+> "could not be resolved"
+    , fix        = "unknown"
+    }
+
+--------------------------------------------------------------------------------
+-- Constraints
+
 -- * Type and kind contexts
 
 data UnificationConstraint = Unify Provenance CheckedExpr CheckedExpr
 data TypeClassConstraint   = Meta `Has` CheckedExpr
 
+--------------------------------------------------------------------------------
+-- Contexts
+
+-- | The type-checking monad
+type TCM a =
+  StateT MetaCtx
+    (ReaderT BoundCtx
+      (ReaderT DeclCtx
+        (Except TypingError)))
+          a
+
 -- | The declarations that are currently in scope, indexed into via their names.
-type DeclCtx  = Map Identifier CheckedExpr
+type DeclCtx = Map Identifier CheckedExpr
 
 instance Pretty DeclCtx where
   pretty = pretty . show
 
--- | The expression variables that are in currently in scope, indexed into via De Bruijn expressions.
+getDeclCtx :: TCM DeclCtx
+getDeclCtx = lift (lift ask)
+
+
+-- | The expression variables that are in currently in scope,
+-- indexed into via De Bruijn expressions.
 type BoundCtx = Seq CheckedExpr
 
 instance Pretty BoundCtx where
   pretty = pretty . show
 
+getBoundCtx :: TCM BoundCtx
+getBoundCtx = ask
+
+modifyBoundCtx :: (BoundCtx -> BoundCtx) -> TCM a -> TCM a
+modifyBoundCtx = local
+
+-- | The meta-variables and constraints relating the variables currently in scope.
 data MetaCtx  = MetaCtx
   { nextMeta               :: Meta
   , metaVariableTypes      :: IntMap CheckedExpr
@@ -95,12 +124,13 @@ data MetaCtx  = MetaCtx
   , typeClassConstraints   :: [TypeClassConstraint]
   }
 
-type TCM a =
-  StateT MetaCtx
-    (ReaderT BoundCtx
-      (ReaderT DeclCtx
-        (Except TypingError)))
-          a
+initialMetaCtx :: Meta -> MetaCtx
+initialMetaCtx firstMeta = MetaCtx
+  { nextMeta               = firstMeta
+  , metaVariableTypes      = mempty
+  , unificationConstraints = mempty
+  , typeClassConstraints   = mempty
+  }
 
 getMetaCtx :: TCM MetaCtx
 getMetaCtx = get
@@ -128,15 +158,6 @@ getMetaType i = do
   case IntMap.lookup i (metaVariableTypes ctx) of
     Just typ -> return typ
     Nothing  -> developerError ("Meta variable ?" <> pretty i <+> "not found in context")
-
-getBoundCtx :: TCM BoundCtx
-getBoundCtx = ask
-
-modifyBoundCtx :: (BoundCtx -> BoundCtx) -> TCM a -> TCM a
-modifyBoundCtx = local
-
-getDeclCtx :: TCM DeclCtx
-getDeclCtx = lift (lift ask)
 
 freshMetaName :: TCM Meta
 freshMetaName = do
@@ -202,12 +223,8 @@ freshUncheckedMeta p resultType = do
   let meta = foldl' (\f x -> App mempty f (Arg mempty Explicit x)) (Meta p metaName) boundEnv
   return (metaName, meta)
 
-viaInfer :: Provenance -> CheckedExpr -> UncheckedExpr -> TCM CheckedExpr
-viaInfer p expectedType e = do
-  -- TODO may need to change the term when unifying to insert a type application.
-  (e', actualType) <- infer e
-  _t' <- unify p expectedType actualType
-  return e'
+--------------------------------------------------------------------------------
+-- Type-checking of expressions
 
 check :: CheckedExpr     -- Type we're checking against
       -> UncheckedExpr   -- Expression being type-checked
@@ -408,12 +425,24 @@ inferDecl = \case
 inferProg :: UncheckedProg -> TCM CheckedProg
 inferProg (Main ds) = Main <$> traverse inferDecl ds
 
+viaInfer :: Provenance -> CheckedExpr -> UncheckedExpr -> TCM CheckedExpr
+viaInfer p expectedType e = do
+  -- TODO may need to change the term when unifying to insert a type application.
+  (e', actualType) <- infer e
+  _t' <- unify p expectedType actualType
+  return e'
+
+--------------------------------------------------------------------------------
+-- Typing of literals
 
 typeOfLiteral :: Provenance -> Literal -> CheckedExpr
 typeOfLiteral p (LNat  _) = tForall Type0 $ \t -> isNatural p t ~~> t
 typeOfLiteral p (LInt  _) = tForall Type0 $ \t -> isIntegral p t ~~> t
 typeOfLiteral p (LReal _) = tForall Type0 $ \t -> isReal p t ~~> t
 typeOfLiteral p (LBool _) = tForall Type0 $ \t -> isTruth p t ~~> t
+
+--------------------------------------------------------------------------------
+-- Typing of builtins
 
 -- |Return the kind for builtin exprs.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedExpr
