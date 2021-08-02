@@ -10,10 +10,10 @@ import Vehicle.Core.Print ()
 makeTypeAnn :: CheckedExpr -> CheckedAnn
 makeTypeAnn t = RecAnn t mempty
 
+-- TODO think whether we need to recurse in the case of an implicit binder
 getFunResultType :: CheckedExpr -> CheckedExpr
 getFunResultType (Pi _ann _binder res) = res
-getFunResultType t                     = developerError $
-  "Expecting a Pi type. Found" <+> pretty t <> "."
+getFunResultType t = developerError $ "Expecting a Pi type. Found" <+> pretty t <> "."
 
 -- * Kinds
 
@@ -55,7 +55,7 @@ con :: Builtin -> CheckedExpr -> CheckedExpr
 con b t = Builtin (makeTypeAnn t) b
 
 app :: CheckedExpr -> CheckedExpr -> CheckedExpr
-app fun arg = App (makeTypeAnn (getFunResultType fun)) fun (Arg mempty Explicit arg)
+app fun arg = App (makeTypeAnn (getFunResultType (getType fun))) fun (Arg mempty Explicit arg)
 
 hole :: Symbol -> CheckedExpr
 hole = Hole (RecAnn Type0 mempty)
@@ -77,35 +77,35 @@ tList tElem = con List (Type0 ~> Type0) `app` tElem
 
 -- * TypeClass
 
-typeClass :: Provenance -> Builtin -> CheckedExpr
-typeClass p = Builtin (RecAnn Constraint p)
+typeClass :: Provenance -> Builtin -> CheckedExpr -> CheckedExpr
+typeClass p op t = Builtin (RecAnn t p) op
 
 hasEq :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-hasEq p t1 t2 = typeClass p HasEq `app` t1 `app` t2
+hasEq p tArg tRes = typeClass p HasEq (Type0 ~> Type0 ~> Constraint) `app` tArg `app` tRes
 
 hasOrd :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-hasOrd p t1 t2 = typeClass p HasOrd `app` t1 `app` t2
+hasOrd p tArg tRes = typeClass p HasOrd (Type0 ~> Type0 ~> Constraint) `app` tArg `app` tRes
 
 isTruth :: Provenance -> CheckedExpr -> CheckedExpr
-isTruth p t = typeClass p IsTruth `app` t
+isTruth p t = typeClass p IsTruth (Type0 ~> Constraint) `app` t
 
 isNatural :: Provenance -> CheckedExpr -> CheckedExpr
-isNatural p t = typeClass p IsNatural `app` t
+isNatural p t = typeClass p IsNatural (Type0 ~> Constraint) `app` t
 
 isIntegral :: Provenance -> CheckedExpr -> CheckedExpr
-isIntegral p t = typeClass p IsIntegral `app` t
+isIntegral p t = typeClass p IsIntegral (Type0 ~> Constraint) `app` t
 
 isRational :: Provenance -> CheckedExpr -> CheckedExpr
-isRational p t = typeClass p IsRational `app` t
+isRational p t = typeClass p IsRational (Type0 ~> Constraint) `app` t
 
 isReal :: Provenance -> CheckedExpr -> CheckedExpr
-isReal p t = typeClass p IsReal `app` t
+isReal p t = typeClass p IsReal (Type0 ~> Constraint) `app` t
 
 isContainer :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-isContainer p tCont tElem = typeClass p IsContainer `app` tCont `app` tElem
+isContainer p tCont tElem = typeClass p IsContainer (Type0 ~> Type0 ~> Constraint) `app` tCont `app` tElem
 
 isQuantifiable :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-isQuantifiable p tDom tTruth = typeClass p IsQuantifiable `app` tDom `app` tTruth
+isQuantifiable p tDom tTruth = typeClass p IsQuantifiable (Type0 ~> Type0 ~> Constraint) `app` tDom `app` tTruth
 
 -- * Expressions
 

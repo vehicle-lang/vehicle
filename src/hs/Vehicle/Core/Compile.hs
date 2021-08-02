@@ -23,8 +23,8 @@ instance MeaningfulError CompileError where
   details (ScopeError e) = details e
   details (TypeError  e) = details e
 
-compile :: InputProg -> Meta -> Either CompileError OutputProg
-compile tree0 meta = runExcept $ do
+compile :: InputProg -> Either CompileError OutputProg
+compile tree0 = runExcept $ do
   tree1 <- withExcept ScopeError (scopeProg tree0)
-  tree2 <- withExcept TypeError  (runTypeChecking tree1 meta)
+  tree2 <- withExcept TypeError  (runTypeChecking tree1)
   return $ descopeProg tree2

@@ -158,3 +158,7 @@ instance Compile (Prog ann) where
 
 printTree :: Compile a => a -> Text
 printTree t = renderStrict $ layoutPretty defaultLayoutOptions (compile t)
+
+
+instance Pretty (Expr ann) where
+  pretty = unAnnotate . compile

@@ -86,6 +86,7 @@ builtinSymbols =
   , "<"            |-> Lt
   , ">="           |-> Ge
   , ">"            |-> Gt
+  , "+"            |-> Add
   , "*"            |-> Mul
   , "/"            |-> Div
   , "-"            |-> Sub

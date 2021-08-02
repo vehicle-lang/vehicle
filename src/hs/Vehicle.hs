@@ -136,12 +136,12 @@ run _opts@Options{..} = do
 
   -- Read file, parse and elaborate to core if necessary
   contents <- readFileOrStdin inputFile
-  (coreProg, meta) <- parseAndElab inputLang contents
+  coreProg <- parseAndElab inputLang contents
 
   T.putStrLn (VC.printTree coreProg)
 
   -- Scope check, type check etc.
-  compCoreProg <- fromEitherIO $ VC.compile coreProg meta
+  compCoreProg <- fromEitherIO $ VC.compile coreProg
 
   -- Compile to requested backend
   outputText <- case outputTarget of
@@ -179,7 +179,7 @@ run _opts@Options{..} = do
     Just outputFilePath -> T.writeFile outputFilePath outputText
 
 
-parseAndElab :: VehicleLang -> Text -> IO (VC.InputProg, VC.Meta)
+parseAndElab :: VehicleLang -> Text -> IO VC.InputProg
 parseAndElab Frontend contents = do
   progVF <- fromEitherIO (VF.parseText contents)
   return $ VF.runElab progVF

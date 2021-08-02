@@ -21,7 +21,7 @@ instance Pretty Name where
   pretty (User symbol) = pretty symbol
 
 instance Pretty Var where
-  pretty (Bound index) = pretty index
+  pretty (Bound index) = "i" <> pretty index
   pretty (Free  ident) = pretty ident
 
 instance Pretty Literal where

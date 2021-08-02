@@ -8,9 +8,9 @@ import Data.Map (Map)
 import Data.Version (Version, showVersion)
 import Prettyprinter as Pretty ((<+>), Pretty(pretty), line, list)
 
+import Vehicle.Prelude
 import Vehicle.Frontend.AST
 import Vehicle.Frontend.Print ()
-import Vehicle.Prelude
 
 -- * Utilities when compiling to an interactive theorem prover backend
 
@@ -48,7 +48,7 @@ fileHeader options commentToken = intercalate "\n" $
 
 --------------------------------------------------------------------------------
 -- Control
-{-
+
 -- |Constraint for the monad stack used by the Compiler.
 type MonadCompile m options =
   (MonadError CompileError m, MonadReader (ITPOptions options) m)
@@ -75,15 +75,17 @@ instance MeaningfulError CompileError where
 
 unexpectedTypeError :: Provenance -> OutputExpr -> OutputExpr -> [OutputExpr] -> a
 unexpectedTypeError p expr actualType expectedTypes = developerError $
-  "unexpected type found for expression" <+> pretty expr <> "." <> line <>
+  "Unexpected type found for expression" <+> pretty expr <> "." <> line <>
   "Was expecting one of" <+> list (map pretty expectedTypes) <+>
-  "but found" <+> pretty actualType
+  "but found" <+> pretty actualType <+>
+  "at" <+> pretty p <> "."
 
 unexpectedExprError :: Provenance -> OutputExpr -> [OutputExpr] -> a
 unexpectedExprError p actualExpr expectedExprs = developerError $
   "Was expecting something of the form" <+> list (map pretty expectedExprs) <+>
-  "but found" <+> pretty actualExpr <> "."
-
+  "but found" <+> pretty actualExpr <+>
+  "at" <+> pretty p <> "."
+{-
 --------------------------------------------------------------------------------
 -- Subcategories of types/expressions
 

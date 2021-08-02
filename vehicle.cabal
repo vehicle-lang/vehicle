@@ -51,13 +51,15 @@ library
                       , Vehicle.Core.Compile
                       , Vehicle.Core.Compile.DSL
                       , Vehicle.Core.Compile.Scope
+                      , Vehicle.Core.Compile.Unify
                       , Vehicle.Core.Compile.Type
+                      , Vehicle.Core.Compile.Descope
                       , Vehicle.Core.Normalise
                       -- , Vehicle.Core.Normalise.Core
                       -- , Vehicle.Core.Normalise.Quantifier
                       , Vehicle.Core.Parse
                       , Vehicle.Core.Print
-                      , Vehicle.Backend.ITP.Agda
+                      --, Vehicle.Backend.ITP.Agda
                       , Vehicle.Backend.ITP.Core
                       -- Files generated from Core.cf
                       , Vehicle.Core.Abs
@@ -102,6 +104,7 @@ library
                       , MultiParamTypeClasses
                       , LambdaCase
                       , OverloadedStrings
+                      , OverloadedLists
                       , UndecidableInstances
                       , ScopedTypeVariables
                       , GADTs
@@ -126,7 +129,7 @@ test-suite vehicle-test
   type:               exitcode-stdio-1.0
   main-is:            Spec.hs
   hs-source-dirs:     test
-  ghc-options:        -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:        -threaded -rtsopts -fprof-auto-top -with-rtsopts=-N
   build-depends:      filepath >=1.4 && <2
                     , HUnit    >=1.6 && <2
                     , vehicle

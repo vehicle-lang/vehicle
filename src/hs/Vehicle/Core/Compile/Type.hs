@@ -6,7 +6,7 @@ module Vehicle.Core.Compile.Type
   ) where
 
 import Control.Monad (when)
-import Control.Monad.Except (MonadError(..), Except, runExcept)
+import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.State (MonadState(..), StateT(..), modify, evalStateT)
@@ -23,6 +23,7 @@ import Prettyprinter ((<+>), Pretty(pretty))
 
 import Vehicle.Core.AST hiding (lift)
 import Vehicle.Core.Compile.DSL
+import Vehicle.Core.Compile.Unify
 import Vehicle.Core.Print ()
 import Vehicle.Prelude
 
@@ -30,10 +31,10 @@ import Vehicle.Prelude
 --
 --  - Add support for unification with meta-variables.
 
-runTypeChecking :: UncheckedProg -> Meta -> Except TypingError CheckedProg
-runTypeChecking prog nextMeta = do
+runTypeChecking :: UncheckedProg -> Except TypingError CheckedProg
+runTypeChecking prog = do
   let prog1 = inferProg prog
-  let prog2 = evalStateT prog1 (initialMetaCtx nextMeta)
+  let prog2 = evalStateT prog1 emptyMetaCtx
   let prog3 = runReaderT prog2 mempty
   let prog4 = runReaderT prog3 mempty
   prog4
@@ -73,14 +74,6 @@ instance MeaningfulError TypingError where
     , problem    = "the type of" <+> squotes name <+> "could not be resolved"
     , fix        = "unknown"
     }
-
---------------------------------------------------------------------------------
--- Constraints
-
--- * Type and kind contexts
-
-data UnificationConstraint = Unify Provenance CheckedExpr CheckedExpr
-data TypeClassConstraint   = Meta `Has` CheckedExpr
 
 --------------------------------------------------------------------------------
 -- Contexts
@@ -124,9 +117,9 @@ data MetaCtx  = MetaCtx
   , typeClassConstraints   :: [TypeClassConstraint]
   }
 
-initialMetaCtx :: Meta -> MetaCtx
-initialMetaCtx firstMeta = MetaCtx
-  { nextMeta               = firstMeta
+emptyMetaCtx :: MetaCtx
+emptyMetaCtx = MetaCtx
+  { nextMeta               = 0
   , metaVariableTypes      = mempty
   , unificationConstraints = mempty
   , typeClassConstraints   = mempty
@@ -144,7 +137,8 @@ addUnificationConstraints cs = modifyMetaCtx $ \ MetaCtx {..} ->
 
 unify :: Provenance -> CheckedExpr -> CheckedExpr -> TCM CheckedExpr
 unify p e1 e2 = do
-  addUnificationConstraints [Unify p e1 e2]
+  -- TODO calculate the context
+  addUnificationConstraints [Unify p mempty e1 e2]
   -- TODO calculate the most general unifier
   return e1
 
@@ -255,7 +249,7 @@ check expectedType = \case
         | vBound == vFun -> do
           modifyBoundCtx (tBound2 Seq.<|) $ do
             body' <- check tRes body
-            (tBound1' , _) <- infer tBound1
+            tBound1' <- check (getType tBound2) tBound1
             tBound' <- unify p tBound1' tBound2
             return $ Lam (RecAnn expectedType p) (Binder pBound vBound nBound tBound') body'
 

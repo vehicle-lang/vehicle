@@ -2,8 +2,7 @@ module Vehicle.Frontend.Elaborate
   ( runElab
   ) where
 
-import Control.Monad.Supply (MonadSupply(..), demand, runSupply)
-import Control.Monad.Identity (Identity)
+import Control.Monad.Identity (runIdentity)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Prelude
@@ -42,17 +41,17 @@ import Vehicle.Frontend.AST qualified as VF
 --
 --------------------------------------------------------------------------------
 
-runElab :: VF.InputProg -> (VC.InputProg, VC.Meta)
-runElab prog = runSupply (elabProg prog) (+ 1) 0
+runElab :: VF.InputProg -> VC.InputProg
+runElab prog = runIdentity $ elab prog
 
-type MonadElab m = MonadSupply VC.Meta Identity m
+type MonadElab m = Monad m
 
 -- |Class for the various elaboration functions.
 class Elab a b where
   elab :: MonadElab m => a -> m b
 
-freshMeta :: MonadElab m => Provenance -> m VC.InputExpr
-freshMeta p = VC.Meta p <$> demand
+hole :: MonadElab m => Provenance -> m VC.InputExpr
+hole p = return $ VC.Hole p "_"
 
 -- |Elaborate a let binding with /multiple/ bindings to a series of let
 --  bindings with a single binding each.
@@ -69,7 +68,7 @@ elabFunInputType :: MonadElab m => VF.InputExpr -> m VC.InputBinder
 elabFunInputType t = VC.Binder (VF.annotation t) Explicit "@funplaceholder" <$> elab t -- TODO really need to come up with a more satisfying way
 
 instance Elab VF.InputBinder VC.InputBinder where
-  elab (VF.Binder ann vis name t) = VC.Binder ann vis name <$> maybe (freshMeta (prov ann)) elab t
+  elab (VF.Binder ann vis name t) = VC.Binder ann vis name <$> maybe (hole (prov ann)) elab t
 
 instance Elab VF.InputArg VC.InputArg where
   elab (VF.Arg ann vis e) = VC.Arg ann vis <$> elab e
@@ -142,18 +141,12 @@ instance Elab VF.InputExpr VC.InputExpr where
 instance Elab VF.InputDecl VC.InputDecl where
   elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann n <$> elab t
   elab (VF.DeclData ann n t)      = VC.DeclData ann n <$> elab t
-  elab (VF.DefType  ann n ns e)   = VC.DefFun   ann n <$> freshMeta (prov ann) <*> elabBinders (VC.Lam ann) ns e
+  elab (VF.DefType  ann n ns e)   = VC.DefFun   ann n <$> hole (prov ann) <*> elabBinders (VC.Lam ann) ns e
   elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann n <$> elab t               <*> elabBinders (VC.Lam ann) ns e
 
 -- |Elaborate programs.
 instance Elab VF.InputProg VC.InputProg where
   elab (VF.Main decls) = VC.Main <$> traverse elab decls
-
-elabProg :: MonadElab m => VF.InputProg -> m (VC.InputProg, VC.Meta)
-elabProg prog = do
-  res <- elab prog
-  nextMeta <- demand
-  return (res, nextMeta)
 
 -- |Elaborate a builtin argument to an application Arg
 exprToArg :: MonadElab m => VF.InputExpr -> m VC.InputArg

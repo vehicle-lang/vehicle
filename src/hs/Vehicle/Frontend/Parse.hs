@@ -165,7 +165,7 @@ instance Convert B.Expr V.InputExpr where
     B.Type l                  -> return (V.Type (naturalFromInteger l))
     B.Constraint              -> return V.Constraint
     B.Var  n                  -> return $ V.Var  (tkProv n) (tkSymbol n)
-    B.Hole n                  -> return $ V.Hole (tkProv n) (tkSymbol n) Nothing
+    B.Hole n                  -> return $ V.Hole (tkProv n) (tkSymbol n)
     B.Ann e tk t              -> op2 V.Ann    (tkProv tk) (conv e) (conv t)
     B.Forall tk1 ns tk2 t     -> op2 V.Forall (tkProv tk1 <> tkProv tk2) (traverse conv =<< toNonEmpty (tkSymbol tk1) (tkProv tk1) ns) (conv t)
     B.Fun t1 tk t2            -> op2 V.Fun    (tkProv tk) (conv t1) (conv t2)
