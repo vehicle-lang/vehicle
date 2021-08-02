@@ -46,6 +46,33 @@ type InputProg   = Prog   InputBind InputVar InputAnn
 instance HasProvenance InputExpr where
   prov = annotation
 
+-- * Types pre type-checking
+
+type UncheckedVar    = Var
+type UncheckedBind   = Name
+type UncheckedAnn    = Provenance
+
+type UncheckedBinder = DeBruijnBinder UncheckedAnn
+type UncheckedArg    = DeBruijnArg    UncheckedAnn
+type UncheckedExpr   = DeBruijnExpr   UncheckedAnn
+type UncheckedDecl   = DeBruijnDecl   UncheckedAnn
+type UncheckedProg   = DeBruijnProg   UncheckedAnn
+
+-- * Types post type-checking
+
+type CheckedVar    = Var
+type CheckedBind   = Name
+type CheckedAnn    = DeBruijnAnn Provenance
+
+type CheckedBinder = DeBruijnBinder CheckedAnn
+type CheckedArg    = DeBruijnArg    CheckedAnn
+type CheckedExpr   = DeBruijnExpr   CheckedAnn
+type CheckedDecl   = DeBruijnDecl   CheckedAnn
+type CheckedProg   = DeBruijnProg   CheckedAnn
+
+instance HasProvenance CheckedAnn where
+  prov (RecAnn _ p) = p
+
 -- * Type of annotations attached to the Core AST that are output by the compiler
 
 type OutputBind = Symbol
@@ -64,23 +91,6 @@ instance HasProvenance OutputAnn where
 instance HasProvenance OutputExpr where
   prov = prov . annotation
 
--- * Types pre type-checking
-
-type UncheckedAnn    = Provenance
-type UncheckedBinder = DeBruijnBinder UncheckedAnn
-type UncheckedArg    = DeBruijnArg    UncheckedAnn
-type UncheckedExpr   = DeBruijnExpr   UncheckedAnn
-type UncheckedDecl   = DeBruijnDecl   UncheckedAnn
-type UncheckedProg   = DeBruijnProg   UncheckedAnn
-
--- * Types post type-checking
-
-type CheckedAnn    = DeBruijnAnn Provenance
-type CheckedBinder = DeBruijnBinder CheckedAnn
-type CheckedArg    = DeBruijnArg    CheckedAnn
-type CheckedExpr   = DeBruijnExpr   CheckedAnn
-type CheckedDecl   = DeBruijnDecl   CheckedAnn
-type CheckedProg   = DeBruijnProg   CheckedAnn
 
 
 -- |Extract a term's annotation

@@ -50,8 +50,8 @@ data Ctx = Ctx
 emptyCtx :: Ctx
 emptyCtx = Ctx mempty mempty
 
-addDeclToCtx :: Identifier -> Ctx -> Ctx
-addDeclToCtx ident Ctx {..} = Ctx (Set.insert ident declCtx) exprCtx
+addDeclToCtx :: WithProvenance Identifier -> Ctx -> Ctx
+addDeclToCtx (WithProvenance _ ident) Ctx {..} = Ctx (Set.insert ident declCtx) exprCtx
 
 addBinderToCtx :: Symbol -> Ctx -> Ctx
 addBinderToCtx name Ctx {..} = Ctx declCtx (name : exprCtx)
@@ -73,13 +73,11 @@ bindVar (Binder p v name t) update = do
   let binder' = Binder p v (User name) t'
   local (addBinderToCtx name) (update binder')
 
-bindDecl :: WithProvenance Identifier -> ExprSCM UncheckedDecl -> DeclSCM UncheckedDecl
-bindDecl (WithProvenance _ ident) decl = do
-  -- TODO get Wen to cast an eye over this
-  modify (addDeclToCtx ident)
-  ctx <- get;
-  let r = local (const ctx) decl
-  lift (runReaderT r ctx)
+flow :: ExprSCM a -> DeclSCM a
+flow r = do
+  ctx <- get
+  let s = local (const ctx) r
+  lift (runReaderT s ctx)
 
 class ScopeCheck a b where
   check :: a -> ReaderT Ctx SCM b
@@ -95,19 +93,40 @@ instance ScopeCheck InputExpr UncheckedExpr where
     Hole     ann n                 -> return $ Hole ann n
     Ann      ann e t               -> Ann ann <$> check e <*> check t
     App      ann fun arg           -> App ann <$> check fun <*> check arg
-    Pi       ann binder res        -> bindVar binder $ \binder' -> Pi ann binder' <$> check res
     Builtin  ann op                -> return $ Builtin ann op
     Var      ann v                 -> Var ann <$> getVar ann v
-    Let      ann binder bound body -> bindVar binder $ \binder' -> Let ann binder' <$> check bound <*> check body
-    Lam      ann binder       body -> bindVar binder $ \binder' -> Lam ann binder' <$> check body
     Literal  ann l                 -> return $ Literal ann l
     Seq      ann es                -> Seq ann <$> traverse check es
 
+    Pi  ann binder res -> do
+      bindVar binder $ \binder' -> Pi ann binder' <$> check res
+
+    Lam ann binder body -> do
+      bindVar binder $ \binder' -> Lam ann binder' <$> check body
+
+    Let ann binder bound body -> do
+      bound' <- check bound
+      bindVar binder $ \binder' -> Let ann binder' bound' <$> check body
+
+
 checkDecl :: InputDecl -> StateT Ctx SCM UncheckedDecl
 checkDecl = \case
-  DeclNetw ann n t    -> bindDecl n (DeclNetw ann n <$> check t)
-  DeclData ann n t    -> bindDecl n (DeclData ann n <$> check t)
-  DefFun   ann n t e  -> bindDecl n (DefFun ann n <$> check t <*> check e)
+
+  DeclNetw ann n t -> do
+    t' <- flow $ check t
+    modify (addDeclToCtx n)
+    return $ DeclNetw ann n t'
+
+  DeclData ann n t -> do
+    t' <- flow $ check t
+    modify (addDeclToCtx n)
+    return $ DeclNetw ann n t'
+
+  DefFun ann n t e -> do
+    t' <- flow $ check t
+    e' <- flow $ check e
+    modify (addDeclToCtx n)
+    return $ DefFun ann n t' e'
 
 checkProg :: InputProg -> Except ScopeError UncheckedProg
 checkProg (Main ds) = Main <$> evalStateT (traverse checkDecl ds) emptyCtx

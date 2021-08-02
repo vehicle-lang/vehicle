@@ -3,6 +3,7 @@ module Vehicle.Prelude
   ( module X
   , (|->)
   , (!?)
+  , (!!?)
   , rangeStart
   ) where
 
@@ -39,3 +40,8 @@ rangeStart InfiniteRange               = Nothing
 ((k , v) : xs) !? k'
   | k == k'   = Just v
   | otherwise = xs !? k'
+
+(!!?) :: [a] -> Int -> Maybe a
+[] !!? _       = Nothing
+(x : _)  !!? 0 = Just x
+(_ : xs) !!? i = xs !!? (i - 1)
