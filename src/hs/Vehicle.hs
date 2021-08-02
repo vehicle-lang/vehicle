@@ -22,7 +22,7 @@ import System.Environment (getArgs)
 import System.Exit (exitSuccess, exitFailure)
 import System.Console.GetOpt
 
-import Vehicle.Prelude ((|->) , (!?))
+import Vehicle.Prelude
 import Vehicle.Core.AST qualified as VC
 import Vehicle.Core.Parse qualified as VC
 import Vehicle.Core.Print qualified as VC
@@ -32,7 +32,7 @@ import Vehicle.Frontend.Elaborate qualified as VF
 import Vehicle.Frontend.Delaborate qualified as VF
 import Vehicle.Frontend.Parse qualified as VF
 import Vehicle.Backend.ITP.Core (ITPOptions(..))
-import Vehicle.Backend.ITP.Agda (AgdaOptions(..), compileToAgda)
+--import Vehicle.Backend.ITP.Agda (AgdaOptions(..), compileToAgda)
 
 
 --------------------------------------------------------------------------------
@@ -136,12 +136,12 @@ run _opts@Options{..} = do
 
   -- Read file, parse and elaborate to core if necessary
   contents <- readFileOrStdin inputFile
-  coreProg <- parseAndElab inputLang contents
+  (coreProg, meta) <- parseAndElab inputLang contents
 
   T.putStrLn (VC.printTree coreProg)
 
   -- Scope check, type check etc.
-  compCoreProg <- fromEitherIO $ VC.compile coreProg
+  compCoreProg <- fromEitherIO $ VC.compile coreProg meta
 
   -- Compile to requested backend
   outputText <- case outputTarget of
@@ -150,6 +150,8 @@ run _opts@Options{..} = do
       exitFailure
 
     Just (ITP itp) -> do
+      developerError "Agda not current supported"
+      {-
       compFrontProg <- fromEitherIO $ VF.runDelab compCoreProg
 
       case itp of
@@ -163,7 +165,7 @@ run _opts@Options{..} = do
                   }
                 }
           fromEitherIO $ compileToAgda itpOptions compFrontProg
-
+      -}
     Just (Vehicle Core) ->
       return $ VC.printTree compCoreProg
 
@@ -177,15 +179,15 @@ run _opts@Options{..} = do
     Just outputFilePath -> T.writeFile outputFilePath outputText
 
 
-parseAndElab :: VehicleLang -> Text -> IO VC.InputProg
+parseAndElab :: VehicleLang -> Text -> IO (VC.InputProg, VC.Meta)
 parseAndElab Frontend contents = do
   progVF <- fromEitherIO (VF.parseText contents)
-  fromEitherIO (VF.runElab (VF.elab progVF))
+  return $ VF.runElab progVF
 parseAndElab Core contents =
   fromEitherIO (VC.parseText contents)
 
-fromEitherIO :: V.MeaningfulError e => Either e a -> IO a
-fromEitherIO (Left err) = do print (V.details err); exitFailure
+fromEitherIO :: MeaningfulError e => Either e a -> IO a
+fromEitherIO (Left err) = do print (details err); exitFailure
 fromEitherIO (Right x)  = return x
 
 readFileOrStdin :: Maybe FilePath -> IO Text

@@ -1,17 +1,8 @@
-{-# LANGUAGE ImportQualifiedPost #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE ConstraintKinds     #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
 
-module Vehicle.Frontend.Print (printExpr) where
+module Vehicle.Frontend.Print
+  ( printTree
+  ) where
 
 import Data.Text (Text)
 import Data.Functor.Foldable (Recursive(..))
@@ -165,5 +156,5 @@ instance Compile (Decl ann) where
 instance Compile (Prog ann) where
   compile (Main ds) = vsep2 (fmap compile ds)
 
-printExpr :: Compile a => a -> Text
-printExpr t = renderStrict $ layoutPretty defaultLayoutOptions (compile t)
+printTree :: Compile a => a -> Text
+printTree t = renderStrict $ layoutPretty defaultLayoutOptions (compile t)

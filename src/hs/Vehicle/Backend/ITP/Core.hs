@@ -48,7 +48,7 @@ fileHeader options commentToken = intercalate "\n" $
 
 --------------------------------------------------------------------------------
 -- Control
-
+{-
 -- |Constraint for the monad stack used by the Compiler.
 type MonadCompile m options =
   (MonadError CompileError m, MonadReader (ITPOptions options) m)
@@ -74,13 +74,13 @@ instance MeaningfulError CompileError where
     }
 
 unexpectedTypeError :: Provenance -> OutputExpr -> OutputExpr -> [OutputExpr] -> a
-unexpectedTypeError p expr actualType expectedTypes = developerError p $
+unexpectedTypeError p expr actualType expectedTypes = developerError $
   "unexpected type found for expression" <+> pretty expr <> "." <> line <>
   "Was expecting one of" <+> list (map pretty expectedTypes) <+>
   "but found" <+> pretty actualType
 
 unexpectedExprError :: Provenance -> OutputExpr -> [OutputExpr] -> a
-unexpectedExprError p actualExpr expectedExprs = developerError p $
+unexpectedExprError p actualExpr expectedExprs = developerError $
   "Was expecting something of the form" <+> list (map pretty expectedExprs) <+>
   "but found" <+> pretty actualExpr <> "."
 
@@ -116,7 +116,7 @@ containerType expr = case getType expr of
       fromLit (LitInt _ i) = i
       fromLit t            = unexpectedTypeError (prov ann) expr t ["a literal"]
   t              -> unexpectedTypeError (prov ann) expr t ["List", "Tensor"]
-
+-}
 -- |Types of numeric orders
 data OrderType
   = Leq
