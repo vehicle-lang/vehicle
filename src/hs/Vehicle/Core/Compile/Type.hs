@@ -1,25 +1,21 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Vehicle.Core.Compile.Type where
 
-import Control.Monad (when, unless, zipWithM_)
+import Control.Monad (when)
 import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.State (MonadState(..), StateT(..), modify)
 import Data.Text (Text)
 import Data.Foldable (toList, foldrM)
-import Text.Printf (printf)
 import Data.List (foldl')
-import Data.List.NonEmpty qualified as NonEmpty (scanl, head)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
-import Data.Coerce (coerce)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
-import Data.List.NonEmpty (NonEmpty(..))
-import Prettyprinter ( (<+>), Pretty(pretty), encloseSep, lbracket, rbracket, comma )
+import Prettyprinter ( (<+>), Pretty(pretty) )
 
 import Vehicle.Core.AST hiding (lift)
 import Vehicle.Core.Compile.DSL
@@ -157,8 +153,8 @@ freshMetaName = do
 -- Post unification, any unneeded context arguments will be normalised away.
 -- It returns the name of the meta and the expression of it applied to every
 -- variable in the context.
-freshMeta :: CheckedExpr -> TCM (Meta, CheckedExpr)
-freshMeta resultType = do
+freshMeta :: Provenance -> CheckedExpr -> TCM (Meta, CheckedExpr)
+freshMeta p resultType = do
   -- Create a fresh name
   metaName <- freshMetaName
 
@@ -176,7 +172,7 @@ freshMeta resultType = do
         | (varIndex , varType) <- zip [0..] (toList boundCtx) ]
 
   -- Returns a meta applied to every bound variable in the context
-  let meta = foldl' app (Meta _ metaName) boundEnv
+  let meta = foldl' app (Meta p metaName) boundEnv
   return (metaName, meta)
 
 -- | Creates a fresh meta variable. Meta variables need to remember what was
@@ -186,8 +182,8 @@ freshMeta resultType = do
 -- Post unification, any unneeded context arguments will be normalised away.
 -- It returns the name of the meta and the expression of it applied to every
 -- variable in the context.
-freshUncheckedMeta :: CheckedExpr -> TCM (Meta, UncheckedExpr)
-freshUncheckedMeta resultType = do
+freshUncheckedMeta :: Provenance -> CheckedExpr -> TCM (Meta, UncheckedExpr)
+freshUncheckedMeta p resultType = do
   -- Create a fresh name
   metaName <- freshMetaName
 
@@ -203,7 +199,7 @@ freshUncheckedMeta resultType = do
   let boundEnv = [ Var mempty (Bound varIndex) | varIndex <- [0..length boundCtx - 1]]
 
   -- Returns a meta applied to every bound variable in the context
-  let meta = foldl' (\f x -> App mempty f (Arg mempty Explicit x)) (Meta _ metaName) boundEnv
+  let meta = foldl' (\f x -> App mempty f (Arg mempty Explicit x)) (Meta p metaName) boundEnv
   return (metaName, meta)
 
 viaInfer :: Provenance -> CheckedExpr -> UncheckedExpr -> TCM CheckedExpr
@@ -229,10 +225,10 @@ check expectedType = \case
   e@(Seq     p _)     -> viaInfer p      expectedType e
   e@(Ann     p _ _)   -> viaInfer p      expectedType e
 
-  Hole _p _name -> do
+  Hole p _name -> do
     -- Replace the hole with meta-variable of the expected type.
     -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
-    (_, meta) <- freshMeta expectedType
+    (_, meta) <- freshMeta p expectedType
     return meta
 
   e@(Lam p (Binder pBound vBound nBound tBound1) body) ->
@@ -306,10 +302,13 @@ infer = \case
       -- but is being applied to an explicit argument
       Pi _ (Binder _ Implicit _ tArg) _tRes -> do
         -- Generate a fresh meta variable
-        (meta, metaArg) <- freshUncheckedMeta tArg
+        (meta, metaArg) <- freshUncheckedMeta p tArg
 
         -- TODO Wen is worried about interactions between the Pi abstractions over
         -- the context and the type-class search later on.
+
+        -- TODO can we get rid of the unchecked fresh meta here by using the type
+        -- of the binder?
 
         -- Check if the implicit argument is a type-class
         when (isConstraint tArg) $
@@ -386,13 +385,13 @@ infer = \case
     (es', ts') <- unzip <$> traverse infer es
 
     -- Generate a fresh meta variable for the case where the list is empty
-    (_, tElem) <- freshMeta Type0
+    (_, tElem) <- freshMeta p Type0
 
     -- Unify the types of all the elements in the list
     tElem' <- foldrM (unify p) tElem ts'
 
     -- Generate a meta-variable for the type of the container
-    (meta, tCont') <- freshMeta Type0
+    (meta, tCont') <- freshMeta p Type0
     addTypeClassConstraints [meta `Has` isContainer p tCont' tElem']
 
     return (Seq (RecAnn tCont' p) es' , tCont')

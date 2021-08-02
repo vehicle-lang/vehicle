@@ -39,4 +39,3 @@ rangeStart InfiniteRange               = Nothing
 ((k , v) : xs) !? k'
   | k == k'   = Just v
   | otherwise = xs !? k'
-

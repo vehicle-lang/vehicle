@@ -1,17 +1,14 @@
 module Vehicle.Frontend.Elaborate
-  ( Elab(..)
+  ( runElab
   ) where
 
-import Control.Monad.Supply (MonadSupply(..), demand)
+import Control.Monad.Supply (MonadSupply(..), demand, runSupply)
 import Control.Monad.Identity (Identity)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 
+import Vehicle.Prelude
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
 import Vehicle.Frontend.AST qualified as VF
-
-import Vehicle.Prelude
-
--- * Elaboration class
 
 --------------------------------------------------------------------------------
 -- $sugar
@@ -44,6 +41,9 @@ import Vehicle.Prelude
 --     @1 + 5@ is rewritten to @(+ 1 5)@
 --
 --------------------------------------------------------------------------------
+
+runElab :: VF.InputProg -> (VC.InputProg, VC.Meta)
+runElab prog = runSupply (elabProg prog) (+ 1) 0
 
 type MonadElab m = MonadSupply VC.Meta Identity m
 
@@ -148,6 +148,12 @@ instance Elab VF.InputDecl VC.InputDecl where
 -- |Elaborate programs.
 instance Elab VF.InputProg VC.InputProg where
   elab (VF.Main decls) = VC.Main <$> traverse elab decls
+
+elabProg :: MonadElab m => VF.InputProg -> m (VC.InputProg, VC.Meta)
+elabProg prog = do
+  res <- elab prog
+  nextMeta <- demand
+  return (res, nextMeta)
 
 -- |Elaborate a builtin argument to an application Arg
 exprToArg :: MonadElab m => VF.InputExpr -> m VC.InputArg

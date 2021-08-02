@@ -1,22 +1,26 @@
 
 module Vehicle.Core.Compile.DSL where
 
+import Prettyprinter ((<+>), Pretty(pretty))
+
 import Vehicle.Core.AST
 import Vehicle.Prelude
+import Vehicle.Core.Print ()
 
 makeTypeAnn :: CheckedExpr -> CheckedAnn
 makeTypeAnn t = RecAnn t mempty
 
 getFunResultType :: CheckedExpr -> CheckedExpr
 getFunResultType (Pi _ann _binder res) = res
-getFunResultType _                     = error "expecting a Pi type"
-
+getFunResultType t                     = developerError $
+  "Expecting a Pi type. Found" <+> pretty t <> "."
 
 -- * Kinds
 
-kMax :: CheckedExpr -> CheckedExpr -> CheckedExpr
-kMax (Type l1) (Type l2) = Type (l1 `max` l2)
-kMax _         _         = error "Expected something of type Type. Found of type"
+tMax :: CheckedExpr -> CheckedExpr -> CheckedExpr
+tMax (Type l1) (Type l2) = Type (l1 `max` l2)
+tMax t1         t2       = developerError $
+  "Expected arguments of type Type. Found" <+> pretty t1 <+> "and" <+> pretty t2 <> "."
 
 -- * DSL for writing kinds as info annotations
 
@@ -24,7 +28,7 @@ tPi :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> Checked
 tPi p vis name a b =
   let aType  = getType a
       bType  = getType b
-      abType = aType `kMax` bType
+      abType = aType `tMax` bType
   in  Pi (makeTypeAnn abType) (Binder p vis name a) b
 
 tPiInternal :: Visibility -> CheckedExpr -> CheckedExpr -> CheckedExpr
@@ -52,6 +56,9 @@ con b t = Builtin (makeTypeAnn t) b
 
 app :: CheckedExpr -> CheckedExpr -> CheckedExpr
 app fun arg = App (makeTypeAnn (getFunResultType fun)) fun (Arg mempty Explicit arg)
+
+hole :: Symbol -> CheckedExpr
+hole = Hole (RecAnn Type0 mempty)
 
 -- * Types
 

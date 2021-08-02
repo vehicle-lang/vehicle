@@ -2,9 +2,9 @@
 module Vehicle.Core.Compile.Descope where
 
 import Control.Monad.Except
-import Control.Monad.Supply (Supply, demand, runSupplyT, withSupplyT)
-import Control.Monad.Identity (runIdentity)
-import Control.Monad.State (StateT(..), evalStateT, runStateT, modify, lift, get)
+import Control.Monad.Supply (MonadSupply, Supply, demand, runSupplyT, withSupplyT)
+import Control.Monad.Identity (Identity, runIdentity)
+import Control.Monad.State (MonadState, StateT(..), evalStateT, runStateT, modify, lift, get)
 import Control.Monad.Reader (ReaderT, MonadReader(..), runReaderT)
 import Data.Functor.Foldable (Recursive(..))
 import Data.List (elemIndex)
@@ -54,48 +54,51 @@ symbolToDeBruijnF ::
   (KnownSort sort) =>
   TreeF (K Symbol) (K Provenance) sort (SortedDataflowT (Ctx Symbol) (Except ScopeError) (Tree DeBruijn (K Provenance))) ->
   DataflowT sort (Ctx Symbol) (Except ScopeError) (Tree DeBruijn (K Provenance) sort)
-
 -}
+
 data Ctx = Ctx
 
+type MonadDescope m = (MonadSupply Int Identity m, MonadState Ctx m)
+
 class Descope a b where
-  descope :: Ctx -> a -> b
+  descope :: MonadDescope m => a -> m b
 
 instance Descope CheckedAnn OutputAnn where
-  descope ctx (RecAnn e p) = RecAnn (descope ctx e) p
+  descope ctx (RecAnn e p) = RecAnn <$> descope ctx e <*> pure p
 
 -- |Check if a single layer is well-scoped in the appropriate data-flow context.
 instance Descope CheckedExpr OutputExpr where
   descope c = \case
-    Type     l         -> Type l
-    Constraint         -> Constraint
-    Meta     p i       -> Meta p i
-    Hole     ann name  -> Hole    (descope c ann) name
-    Ann      ann e t   -> Ann     (descope c ann) (descope c e) (descope c t)
-    App      ann _ _   -> App     (descope c ann) _ _
-    Pi       ann _ _   -> Pi      (descope c ann) _ _
-    Builtin  ann op    -> Builtin (descope c ann) _
-    Var      ann v     -> Var     (descope c ann) _
-    Let      ann _ _ _ -> Let     (descope c ann) _ _ _
-    Lam      ann _ _   -> Lam     (descope c ann) _ _
-    Literal  ann l     -> Literal (descope c ann) l
-    Seq      ann es    -> Seq     (descope c ann) (fmap (descope c) es)
+    Type     l                     -> return (Type l)
+    Constraint                     -> return Constraint
+    Meta     p i                   -> return (Meta p i)
+    Hole     ann name              -> Hole    (descope c ann) name
+    Ann      ann e t               -> Ann     (descope c ann) (descope c e) (descope c t)
+    App      ann fun arg           -> App     (descope c ann) _ _
+    Pi       ann binder body       -> Pi      (descope c ann) _ _
+    Builtin  ann op                -> Builtin (descope c ann) _
+    Var      ann v                 -> Var     (descope c ann) _
+    Let      ann binder bound body -> Let     (descope c ann) _ _ _
+    Lam      ann binder body       -> Lam     (descope c ann) _ _
+    Literal  ann l                 -> Literal (descope c ann) l
+    Seq      ann es                -> Seq     (descope c ann) (fmap (descope c) es)
 
 instance Descope CheckedDecl OutputDecl where
   descope c = \case
-    DeclNetw ann n t -> do ann' <- convertAnn ann
+    DeclNetw ann n t -> _ {-do ann' <- convertAnn ann
                                t'   <- sflow t
                                n'   <- sflow n
                                return $ DeclNetw ann' n' t'
-    DeclData ann n t -> do ann' <- convertAnn ann
+                               -}
+    DeclData ann n t -> _ {-do ann' <- convertAnn ann
                                t'   <- sflow t
                                n'   <- sflow n
-                               return $ DeclData ann' n' t'
-    DefFun ann n t e  -> do ann' <- convertAnn ann
+                               return $ DeclData ann' n' t'-}
+    DefFun ann n t e -> _ {-do ann' <- convertAnn ann
                                t'   <- sflow t
                                e'   <- sflow e
                                n'   <- sflow n
-                               return $ DefFun ann' n' t' e'
+                               return $ DefFun ann' n' t' e'-}
 
 instance Descope CheckedProg OutputProg where
   descope c (Main ds) = Main (fmap descope c ds)

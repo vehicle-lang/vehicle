@@ -8,7 +8,7 @@ module Vehicle.Core.Parse
 
 import Control.Monad.Identity (Identity)
 import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
-import Control.Monad.Supply (MonadSupply(..), Supply, SupplyT, demand, runSupplyT, withSupplyT)
+import Control.Monad.Supply (MonadSupply(..), SupplyT, demand, runSupply)
 import Data.Text (Text, pack, unpack)
 import Data.Text.IO qualified as T
 import Prettyprinter ( (<+>), pretty )
@@ -23,13 +23,14 @@ import Vehicle.Prelude
 --------------------------------------------------------------------------------
 -- Parsing
 
-parseText :: Text -> Supply Meta (Either ParseError V.InputProg)
+-- | Parses the provided text and returns the next fresh meta-variable.
+parseText :: Text -> Either ParseError (V.InputProg, Meta)
 parseText txt = case pProg (myLexer txt) of
-  Left err1      -> return $ Left $ BNFCParseError err1
-  Right bnfcProg -> runExceptT $ conv bnfcProg
+  Left err1      -> Left $ BNFCParseError err1
+  Right bnfcProg -> runSupply (runExceptT (convProg bnfcProg)) (+ 1) 0
 
 -- Used in both application and testing which is why it lives here.
-parseFile :: FilePath -> IO (Supply Meta V.InputProg)
+parseFile :: FilePath -> IO (V.InputProg, Meta)
 parseFile file = do
   contents <- T.readFile file
   case parseText contents of
@@ -88,7 +89,7 @@ instance MeaningfulError ParseError where
 class Convert vf vc where
   conv :: MonadParse m => vf -> m vc
 
-type MonadParse m = (MonadError ParseError m, MonadSupply Meta m Identity)
+type MonadParse m = (MonadError ParseError m, MonadSupply Meta Identity m)
 
 --------------------------------------------------------------------------------
 -- AST conversion
@@ -98,15 +99,15 @@ lookupBuiltin (BuiltinToken tk) = case builtinFromSymbol (tkSymbol tk) of
     Nothing -> throwError $ UnknownBuiltin $ toToken tk
     Just v  -> return v
 
-freshMeta :: MonadParse m => m V.InputExpr
-freshMeta = V.Meta <$> demand
+freshMeta :: MonadParse m => Provenance -> m V.InputExpr
+freshMeta p = V.Meta p <$> demand
 
 instance Convert B.Binder V.InputBinder where
   conv = \case
     B.ExplicitNameAndType n e -> convBinder n Explicit (conv e)
     B.ImplicitNameAndType n e -> convBinder n Implicit (conv e)
-    B.ExplicitName        n   -> convBinder n Explicit freshMeta
-    B.ImplicitName        n   -> convBinder n Implicit freshMeta
+    B.ExplicitName        n   -> convBinder n Explicit (freshMeta (tkProvenance n))
+    B.ImplicitName        n   -> convBinder n Implicit (freshMeta (tkProvenance n))
 
 instance Convert B.Arg V.InputArg where
   conv = \case
@@ -147,6 +148,12 @@ instance Convert B.Decl V.InputDecl where
 
 instance Convert B.Prog V.InputProg where
   conv (B.Main ds) = V.Main <$> traverse conv ds
+
+convProg :: MonadParse m => B.Prog -> m (V.InputProg, Meta)
+convProg prog = do
+  res <- conv prog
+  nextMeta <- demand
+  return (res, nextMeta)
 
 op1 :: (HasProvenance a)
     => (Provenance -> a -> b)
