@@ -1,6 +1,12 @@
 name: Vehicle test suite
 
-on: [push]
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
 
 env:
   GHC_VERSION: 8.10.3
