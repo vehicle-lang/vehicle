@@ -2,6 +2,8 @@
 
 module Vehicle.Core.AST.Core where
 
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData)
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 
 import Vehicle.Prelude
@@ -17,7 +19,7 @@ data Binder binder var ann
     Visibility             -- Whether binding is explicit or inferred
     binder                 -- The name of the bound variable
     (Expr binder var ann)  -- The type of the bound variable
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic, NFData)
 
 instance HasProvenance (Binder binder var ann) where
   prov (Binder p _ _ _) = p
@@ -28,7 +30,7 @@ data Arg binder var ann
     Provenance
     Visibility
     (Expr binder var ann)
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic, NFData)
 
 instance HasProvenance (Arg binder var ann) where
   prov (Arg p _ _) = p
@@ -81,19 +83,23 @@ data Expr binder var ann
 
   -- | A hole in the program.
   | Hole
-    ann                      -- Annotation.
+    Provenance               -- Source of the meta-variable
     Symbol                   -- Hole name.
 
   -- | Unsolved meta variables.
   | Meta
-    Provenance               -- Source of the meta-variable
+    ann                      -- Annotation.
     Meta                     -- Meta variable number.
 
   -- | Let expressions.
+  --
+  -- NOTE: that the order of the bound expression and the binder is reversed
+  -- to better mimic the flow of the context, which makes writing monadic
+  -- operations concisely much easier.
   | Let
     ann                      -- Annotation.
-    (Binder binder var ann)  -- Bound expression name.
     (Expr   binder var ann)  -- Bound expression body.
+    (Binder binder var ann)  -- Bound expression name.
     (Expr   binder var ann)  -- Expression body.
 
   -- | Lambda expressions (i.e. anonymous functions).
@@ -112,7 +118,7 @@ data Expr binder var ann
     ann                      -- Annotation.
     [Expr binder var ann]    -- List of expressions.
 
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic, NFData)
 
 makeBaseFunctor ''Expr
 
@@ -131,16 +137,19 @@ data Decl binder var ann
     (WithProvenance Identifier)   -- Bound function name.
     (Expr binder var ann)         -- Bound function type.
     (Expr binder var ann)         -- Bound function body.
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic, NFData)
 
 -- | Type of Vehicle Core programs.
 newtype Prog binder var ann
   = Main [Decl binder var ann] -- ^ List of declarations.
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic, NFData)
 
 -- TODO make this nicer and differentiate why we're calling it (debug vs user error messages)
 
 -- | An annotation that stores both the type of the expression and some other arbitrary annotations.
 -- Used post-type checking. Avoids unrestricted type-level recursion.
 data RecAnn binder var ann = RecAnn (Expr binder var (RecAnn binder var ann)) ann
-  deriving (Show)
+  deriving (Show, Generic, NFData)
+
+instance HasProvenance ann => HasProvenance (RecAnn binder var ann) where
+  prov (RecAnn _ ann) = prov ann

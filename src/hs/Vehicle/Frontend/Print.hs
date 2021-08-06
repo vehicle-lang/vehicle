@@ -7,7 +7,6 @@ module Vehicle.Frontend.Print
 import Data.Text (Text)
 import Data.Functor.Foldable (Recursive(..))
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
-import Prettyprinter.Render.Text (renderStrict)
 
 import Vehicle.Frontend.AST
 import Vehicle.Prelude
@@ -74,7 +73,7 @@ instance Compile (WithProvenance Identifier) where
 
 instance Compile (Binder ann) where
   compile (Binder _p vis n typeAnn) =
-    let typAnn = maybe "" (\t -> ":" <+> compile t) typeAnn
+    let typAnn = maybe "" (\t -> " :" <+> compile t) typeAnn
     in  visBrackets vis (pretty n <> typAnn)
 
 instance Compile (Arg ann) where
@@ -157,8 +156,7 @@ instance Compile (Prog ann) where
   compile (Main ds) = vsep2 (fmap compile ds)
 
 printTree :: Compile a => a -> Text
-printTree t = renderStrict $ layoutPretty defaultLayoutOptions (compile t)
-
+printTree = layoutAsText . compile
 
 instance Pretty (Expr ann) where
   pretty = unAnnotate . compile

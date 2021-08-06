@@ -1,6 +1,9 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Core.Print where
+module Vehicle.Core.Print.Core
+  ( printCore
+  , showCore
+  ) where
 
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -9,20 +12,28 @@ import Prettyprinter (Pretty(..), Doc, braces, parens, (<+>), line)
 import Vehicle.Core.AST
 import Vehicle.Prelude
 
-printTree :: Pretty a => a -> Text
-printTree = layoutAsText . pretty
+--------------------------------------------------------------------------------
+-- Printing to Core language
+
+printCore :: Pretty a => a -> Text
+printCore = layoutAsText . pretty
+
+showCore :: Pretty a => a -> String
+showCore = layoutAsString . pretty
 
 brackets :: Visibility -> (Doc a -> Doc a)
 brackets Implicit = braces
 brackets Explicit = parens
 
 instance Pretty Name where
-  pretty Machine       = "machine"
+  pretty Machine       = "_"
   pretty (User symbol) = pretty symbol
 
 instance Pretty Var where
-  pretty (Bound index) = "i" <> pretty index
   pretty (Free  ident) = pretty ident
+  pretty (Bound index)
+    | index >= 0 = "i" <> pretty index
+    | otherwise  = "i[" <> pretty index <> "]"
 
 instance Pretty Literal where
   pretty = \case
@@ -45,7 +56,7 @@ instance ( Pretty binder
 instance ( Pretty binder
          , Pretty var
          ) => Pretty (Binder binder var ann) where
-  pretty (Binder _ann vis name typ) = brackets vis (pretty name <+> pretty typ)
+  pretty (Binder _ann vis name typ) = brackets vis (pretty name <+> ":type" <+> parens (pretty typ))
 
 instance ( Pretty binder
          , Pretty var
@@ -53,13 +64,13 @@ instance ( Pretty binder
   pretty = \case
     Type l                      -> "Type" <+> pretty l
     Constraint                  -> "Constraint"
-    Hole    _p   name           -> "?" <> pretty name
+    Hole    _p   name           -> "h?" <> pretty name
     Meta    _p   m              -> "?" <> pretty m
     Ann     _ann term typ       -> pretty term <+> ":type" <+> pretty typ
     App     _ann fun arg        -> pretty fun <+> parens (pretty arg)
     Pi      _ann binder res     -> "pi" <+> pretty binder <+> parens (pretty res)
     Builtin _ann op             -> pretty op
-    Let     _ann binder e1 e2   -> "let"    <+> pretty binder <+> parens (pretty e1) <+> parens (pretty e2)
+    Let     _ann e1 binder e2   -> "let"    <+> pretty binder <+> parens (pretty e1) <+> parens (pretty e2)
     Lam     _ann binder e       -> "lambda" <+> pretty binder <+> parens (pretty e)
     Literal _ann l              -> pretty l
     Seq     _ann es             -> hsep (fmap pretty es)

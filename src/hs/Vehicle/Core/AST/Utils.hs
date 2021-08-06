@@ -8,15 +8,14 @@ import Vehicle.Prelude
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
 
--- * Type synonyms for Type levels
+--------------------------------------------------------------------------------
+-- Patterns
 
 pattern Type0 :: Expr binder var ann
 pattern Type0 = Type 0
 
 pattern Type1 :: Expr binder var ann
 pattern Type1 = Type 1
-
--- * Type synonyms for literals
 
 pattern LitNat :: ann -> Natural -> Expr binder var ann
 pattern LitNat ann n = Literal ann (LNat n)
@@ -30,6 +29,9 @@ pattern LitReal ann n = Literal ann (LReal n)
 pattern LitBool :: ann -> Bool -> Expr binder var ann
 pattern LitBool ann n = Literal ann (LBool n)
 
+--------------------------------------------------------------------------------
+-- Type synonyms
+
 -- * Type of annotations attached to the Frontend AST after parsing
 -- before being analysed by the compiler
 
@@ -42,9 +44,6 @@ type InputBinder = Binder InputBind InputVar InputAnn
 type InputExpr   = Expr   InputBind InputVar InputAnn
 type InputDecl   = Decl   InputBind InputVar InputAnn
 type InputProg   = Prog   InputBind InputVar InputAnn
-
-instance HasProvenance InputExpr where
-  prov = annotation
 
 -- * Types pre type-checking
 
@@ -70,9 +69,6 @@ type CheckedExpr   = DeBruijnExpr   CheckedAnn
 type CheckedDecl   = DeBruijnDecl   CheckedAnn
 type CheckedProg   = DeBruijnProg   CheckedAnn
 
-instance HasProvenance CheckedAnn where
-  prov (RecAnn _ p) = p
-
 -- * Type of annotations attached to the Core AST that are output by the compiler
 
 type OutputBind = Symbol
@@ -85,21 +81,39 @@ type OutputExpr   = Expr   OutputBind OutputVar OutputAnn
 type OutputDecl   = Decl   OutputBind OutputVar OutputAnn
 type OutputProg   = Prog   OutputBind OutputVar OutputAnn
 
-instance HasProvenance OutputAnn where
-  prov (RecAnn _ p) = p
+--------------------------------------------------------------------------------
+-- Instances
 
-instance HasProvenance OutputExpr where
-  prov = prov . annotation
+instance HasProvenance ann => HasProvenance (Expr binder var ann) where
+  prov (Hole p _) = p
+  prov e          = prov (annotation e)
 
+instance HasVisibility (Binder binder var ann) where
+  visibility (Binder _ v _ _) = v
 
+instance HasVisibility (Arg binder var ann) where
+  visibility (Arg _ v _) = v
+
+--------------------------------------------------------------------------------
+-- Utility functions
+
+-- |Extract a binder's name
+binderName :: Binder binder var ann -> binder
+binderName (Binder _ _ name _) = name
+
+binderType :: Binder binder var ann -> Expr binder var ann
+binderType (Binder _ _ _ t) = t
+
+argExpr :: Arg binder var ann -> Expr binder var ann
+argExpr (Arg _ _ e) = e
 
 -- |Extract a term's annotation
 annotation :: Expr name binder ann -> ann
 annotation = \case
-  Type     _         -> error "Should not be requesting an annotation from Type"
-  Constraint         -> error "Should not be requesting an annotation from Constraint"
-  Meta     _   _     -> error "Should not be requesting an annotation from Meta"
-  Hole     _   _     -> error "Should not be requesting an annotation from Hole"
+  Type     _         -> developerError "Should not be requesting an annotation from Type"
+  Constraint         -> developerError "Should not be requesting an annotation from Constraint"
+  Hole     _   _     -> developerError "Should not be requesting an annotation from Hole"
+  Meta     ann _     -> ann
   Ann      ann _ _   -> ann
   App      ann _ _   -> ann
   Pi       ann _ _   -> ann
@@ -109,6 +123,7 @@ annotation = \case
   Lam      ann _ _   -> ann
   Literal  ann _     -> ann
   Seq      ann _     -> ann
+
 
 -- | Extracts the type of the term from the term's annotation.
 getType :: Expr binder var (RecAnn binder var ann) -> Expr binder var (RecAnn binder var ann)
@@ -120,4 +135,3 @@ isConstraint :: CheckedExpr -> Bool
 isConstraint e = case getType e of
   Constraint -> True
   _          -> False
-

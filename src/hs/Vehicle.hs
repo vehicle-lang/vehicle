@@ -21,12 +21,14 @@ import Data.Text.IO qualified as T
 import System.Environment (getArgs)
 import System.Exit (exitSuccess, exitFailure)
 import System.Console.GetOpt
+import Debug.Trace (traceShow)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST qualified as VC
 import Vehicle.Core.Parse qualified as VC
-import Vehicle.Core.Print qualified as VC
+import Vehicle.Core.Print.Core qualified as VC
 import Vehicle.Core.Compile qualified as VC
+import Vehicle.Frontend.AST qualified as VF
 import Vehicle.Frontend.Print qualified as VF
 import Vehicle.Frontend.Elaborate qualified as VF
 import Vehicle.Frontend.Delaborate qualified as VF
@@ -138,7 +140,7 @@ run _opts@Options{..} = do
   contents <- readFileOrStdin inputFile
   coreProg <- parseAndElab inputLang contents
 
-  T.putStrLn (VC.printTree coreProg)
+  T.putStrLn (VC.printCore coreProg)
 
   -- Scope check, type check etc.
   compCoreProg <- fromEitherIO $ VC.compile coreProg
@@ -167,11 +169,11 @@ run _opts@Options{..} = do
           fromEitherIO $ compileToAgda itpOptions compFrontProg
       -}
     Just (Vehicle Core) ->
-      return $ VC.printTree compCoreProg
+      return $ VC.printCore compCoreProg
 
     Just (Vehicle Frontend) -> do
-      compFrontProg <- fromEitherIO $ VF.runDelab compCoreProg
-      return $ VF.printTree compFrontProg
+      compFrontProg :: VF.OutputProg <- fromEitherIO $ VF.runDelab compCoreProg
+      return $ VF.printTree $ compFrontProg
 
   -- Output the result to either the command line or the specified output file
   case outputFile of
@@ -187,7 +189,7 @@ parseAndElab Core contents =
   fromEitherIO (VC.parseText contents)
 
 fromEitherIO :: MeaningfulError e => Either e a -> IO a
-fromEitherIO (Left err) = do print (details err); exitFailure
+fromEitherIO (Left err) = do print $ details err; exitFailure
 fromEitherIO (Right x)  = return x
 
 readFileOrStdin :: Maybe FilePath -> IO Text

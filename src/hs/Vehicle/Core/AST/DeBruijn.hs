@@ -10,9 +10,13 @@ module Vehicle.Core.AST.DeBruijn
   , DeBruijnArg
   , DeBruijnBinder
   , BindingDepth
-  , Liftable(..)
-  , Substitutable(..)
+  , cleanDBIndices
+  , substInto
   ) where
+
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData)
+import Control.Monad.State (MonadState, modify, get, evalState)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST.Core
@@ -24,7 +28,7 @@ import Vehicle.Core.AST.Core
 data Name
   = User Symbol
   | Machine
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic, NFData)
 
 type Index = Int
 
@@ -32,7 +36,7 @@ type Index = Int
 data Var
   = Free Identifier
   | Bound Index
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic, NFData)
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
 type DeBruijnBinder    ann = Binder Name Var ann
@@ -43,109 +47,123 @@ type DeBruijnProg      ann = Prog   Name Var ann
 type DeBruijnAnn       ann = RecAnn Name Var ann
 
 --------------------------------------------------------------------------------
--- * DeBruijn operations
+-- A framework for writing generic operations on DeBruijn variables
 
 -- | Used to track the number of binders we're underneath during a traversal of
 -- an expression
 type BindingDepth = Int
 
--- ** Liftable
+-- | A type-synonym for the function that is used to update a bound variable
+type UpdateVariable state ann
+  =  Index                 -- The old deBruijn index of the variable
+  -> ann                   -- The annotation of the variable
+  -> (BindingDepth, state) -- How many binders the variable is under & the current state
+  -> DeBruijnExpr ann      -- The resulting expression
 
-class Liftable a where
-  liftAcc :: BindingDepth -> a -> a
+-- | A type-synonym for the function that is used to update the operation's state
+-- when traversing across a binder.
+type TraverseBinder state ann = state -> state
 
-  -- |Lift all deBruin indices that refer to environment variables by 1.
-  -- Code loosely based off of:
-  -- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
-  lift :: a -> a
-  lift = liftAcc 0
+class MutableAnn ann where
+  alterAnn
+    :: (MonadState (BindingDepth, state) m)
+    => TraverseBinder state ann
+    -> UpdateVariable state ann
+    -> ann
+    -> m ann
 
-instance Liftable ann => Liftable (DeBruijnExpr ann) where
-  liftAcc d = \case
-    Type l                   -> Type l
-    Constraint               -> Constraint
-    Meta p m                 -> Meta p m
-    Hole    ann name         -> Hole    (liftAcc d ann) name
-    Ann     ann term typ     -> Ann     (liftAcc d ann) (liftAcc d term) (liftAcc d typ)
-    App     ann fun arg      -> App     (liftAcc d ann) (liftAcc d fun) (liftAcc d arg)
-    Pi      ann binder res   -> Pi      (liftAcc d ann) (liftAcc d binder) (liftAcc (d + 1) res)
-    Builtin ann op           -> Builtin (liftAcc d ann) op
-    Let     ann binder e1 e2 -> Let     (liftAcc d ann) (liftAcc d binder) (liftAcc d e1) (liftAcc (d + 1) e2)
-    Lam     ann binder e     -> Lam     (liftAcc d ann) (liftAcc d binder) (liftAcc (d + 1) e)
-    Literal ann l            -> Literal (liftAcc d ann) l
-    Seq     ann es           -> Seq     (liftAcc d ann) (fmap (liftAcc d) es)
-    Var     ann (Free i)     -> Var     (liftAcc d ann) (Free i)
-    Var     ann (Bound i)    -> Var     (liftAcc d ann) (Bound i')
+class Mutable ann (a :: * -> *) where
+  alter
+    :: (MutableAnn ann, MonadState (BindingDepth, state) m)
+    => TraverseBinder state ann
+    -> UpdateVariable state ann
+    -> a ann
+    -> m (a ann)
+
+instance MutableAnn ann => Mutable ann (Expr Name Var) where
+  alter body var =
+    let
+      altAnn    = alterAnn body var
+      altBinder = alter    body var
+      altArg    = alter    body var
+      altExpr   = alter    body var
+    in \case
+      Type l                   -> return (Type l)
+      Constraint               -> return Constraint
+      Meta p m                 -> return (Meta p m)
+      Hole p name              -> return (Hole p name)
+      Builtin ann op           -> Builtin <$> altAnn ann <*> pure op
+      Literal ann l            -> Literal <$> altAnn ann <*> pure l
+      Seq     ann es           -> Seq     <$> altAnn ann <*> traverse altExpr es
+      Ann     ann term typ     -> Ann     <$> altAnn ann <*> altExpr   term   <*> altExpr typ
+      App     ann fun arg      -> App     <$> altAnn ann <*> altExpr   fun    <*> altArg arg
+      Pi      ann binder res   -> Pi      <$> altAnn ann <*> altBinder binder <*> altExpr res
+      Let     ann e1 binder e2 -> Let     <$> altAnn ann <*> altExpr e1 <*> altBinder binder <*> altExpr e2
+      Lam     ann binder e     -> Lam     <$> altAnn ann <*> altBinder binder <*> altExpr e
+      Var     ann (Free i)     -> Var     <$> altAnn ann <*> pure (Free i)
+      Var     ann (Bound i)    -> var i   <$> altAnn ann <*> get
+
+instance Mutable ann (Arg Name Var) where
+  alter body var (Arg p vis e) = Arg p vis <$> alter body var e
+
+instance Mutable ann (Binder Name Var) where
+  alter body var (Binder p v b e) = do
+    e' <- alter body var e
+    modify (\(d , s) -> (d+1, body s))
+    return $ Binder p v b e'
+
+instance MutableAnn (DeBruijnAnn ann) where
+  alterAnn body var (RecAnn expr ann) = RecAnn <$> alter body var expr <*> pure ann
+
+--------------------------------------------------------------------------------
+-- Concrete operations
+
+-- Code loosely based off of:
+-- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
+
+-- | Lift all deBruin indices that refer to environment variables by 1.
+liftDBIndices :: MutableAnn ann
+              => DeBruijnExpr ann  -- ^ expression to lift
+              -> DeBruijnExpr ann  -- ^ the result of the lifting
+liftDBIndices e = evalState (alter id alterVar e) (0 , ())
+  where
+    alterVar :: UpdateVariable () ann
+    alterVar i ann (d, _) = Var ann (Bound i')
       where
-        i' | d <= i    = i + 1 -- Index is referencing the environment so increment it
-           | otherwise = i     -- Index is locally bound so no need to increment it
+        i' | d <= i    = i + 1 -- Index is referencing the environment so increment
+           | otherwise = i     -- Index is locally bound so no need to increment
 
-instance Liftable ann => Liftable (DeBruijnArg ann) where
-  liftAcc d (Arg p vis e) = Arg p vis (liftAcc d e)
+-- | Finds all de Bruijn indices set to the provided value and
+-- updates them to their correct value. Used for instantiating Pi types
+-- in the `Vehicle.Core.Compile.DSL`.
+cleanDBIndices :: MutableAnn ann
+               => BindingDepth
+               -> DeBruijnExpr ann
+               -> DeBruijnExpr ann
+cleanDBIndices target e = evalState (alter id alterVar e) (0, ())
+  where
+    alterVar :: UpdateVariable () ann
+    alterVar i ann (d, _)
+      | i == target = Var ann (Bound d)
+      | otherwise   = Var ann (Bound i)
 
-instance Liftable ann => Liftable (DeBruijnBinder ann) where
-  liftAcc d (Binder p vis binder expr) = Binder p vis binder (fmap (liftAcc d) expr)
+-- | De Bruijn aware substitution of one expression into another
+substInto :: MutableAnn ann
+          => DeBruijnExpr ann -- ^ expression to substitute
+          -> DeBruijnExpr ann -- ^ term to substitute into
+          -> DeBruijnExpr ann -- ^ the result of the substitution
+substInto sub e = evalState (alter binderUpdate alterVar e) (0 , sub)
+  where
+    alterVar :: UpdateVariable (DeBruijnExpr ann) ann
+    alterVar i ann (d, sub) = case compare i d of
+      -- Index matches the expression we're substituting for
+      EQ -> sub
+      -- Index was bound in the original expression
+      LT -> Var ann (Bound i)
+      -- Index was free in the original expression,
+      -- and we've removed a binder so decrease it by 1.
+      GT -> Var ann (Bound (i - 1))
 
--- ** Concrete liftable instances
-
-instance Liftable (DeBruijnAnn ann) where
-  liftAcc d (RecAnn expr ann) = RecAnn (liftAcc d expr) ann
-
-
--- ** Substitution
-
-class SubstitutableAnn ann where
-  substAnn
-    :: BindingDepth
-    -> DeBruijnExpr ann
-    -> ann
-    -> ann
-
-class Substitutable ann (a :: * -> *) where
-  substAcc
-    :: (Liftable ann, SubstitutableAnn ann)
-    => BindingDepth      -- ^ current binding depth
-    -> DeBruijnExpr ann  -- ^ expression to substitute
-    -> a ann             -- ^ term to substitute into
-    -> a ann             -- ^ the result of the substitution
-
-  -- |Substitute the provided expression for all variables at the current binding depth.
-  -- Code loosely based off of:
-  -- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
-  subst :: (SubstitutableAnn ann, Liftable ann) => DeBruijnExpr ann -> a ann -> a ann
-  subst = substAcc 0
-
-instance Substitutable ann (Expr Name Var) where
-  substAcc d sub = \case
-    Type l                   -> Type l
-    Constraint               -> Constraint
-    Meta p m                 -> Meta p m
-    Hole    ann name         -> Hole    (substAnn d sub ann) name
-    Ann     ann term typ     -> Ann     (substAnn d sub ann) (substAcc d sub term) (substAcc d sub typ)
-    App     ann fun arg      -> App     (substAnn d sub ann) (substAcc d sub fun)  (substAcc d sub arg)
-    Pi      ann binder res   -> Pi      (substAnn d sub ann) (substAcc d sub binder) (substAcc (d + 1) (lift sub) res)
-    Builtin ann op           -> Builtin (substAnn d sub ann) op
-    Let     ann binder e1 e2 -> Let     (substAnn d sub ann) (substAcc d sub binder) (substAcc d sub e1) (substAcc (d + 1) (lift sub) e2)
-    Lam     ann binder e     -> Lam     (substAnn d sub ann) (substAcc d sub binder) (substAcc (d + 1) (lift sub) e)
-    Literal ann l            -> Literal (substAnn d sub ann) l
-    Seq     ann es           -> Seq     (substAnn d sub ann) (fmap (substAcc d sub) es)
-    Var     ann (Free i)     -> Var     (substAnn d sub ann) (Free i)
-    Var     ann (Bound i)    ->
-      case compare i d of
-        -- Index matches the expression we're substituting for
-        EQ -> sub
-        -- Index was bound in the original expression
-        LT -> Var (substAnn d sub ann) (Bound i)
-        -- Index was free in the original expression, and we've removed a binder so decrease it by 1.
-        GT -> Var (substAnn d sub ann) (Bound (i - 1))
-
-instance Substitutable ann (Arg Name Var) where
-  substAcc d sub (Arg p vis e) = Arg p vis (substAcc d sub e)
-
-instance Substitutable ann (Binder Name Var) where
-  substAcc d sub (Binder p vis binder expr) = Binder p vis binder (substAcc d sub expr)
-
--- ** Concrete substitution instances
-
-instance SubstitutableAnn (DeBruijnAnn ann) where
-  substAnn d sub (RecAnn expr ann) = RecAnn (substAcc d sub expr) ann
+    -- Whenever we go underneath the binder we must lift
+    -- all the indices in the substituted expression
+    binderUpdate sub = liftDBIndices sub

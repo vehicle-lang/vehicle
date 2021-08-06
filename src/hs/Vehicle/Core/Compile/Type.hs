@@ -6,10 +6,11 @@ module Vehicle.Core.Compile.Type
   ) where
 
 import Control.Monad (when)
-import Control.Monad.Except (MonadError(..), Except)
+import Control.Monad.Except (MonadError(..), Except, withExcept)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Control.Monad.Trans (MonadTrans(..))
-import Control.Monad.State (MonadState(..), StateT(..), modify, evalStateT)
+import Control.Monad.State (MonadState(..), StateT(..), modify, runStateT)
+import Debug.Trace (trace)
 import Data.Text (Text)
 import Data.Foldable (toList, foldrM)
 import Data.List (foldl')
@@ -17,14 +18,15 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
-import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
-import Prettyprinter ((<+>), Pretty(pretty))
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.List.NonEmpty qualified as NonEmpty
+import Prettyprinter ((<+>), Pretty(..), line)
 
-import Vehicle.Core.AST hiding (lift)
+import Vehicle.Core.AST
 import Vehicle.Core.Compile.DSL
 import Vehicle.Core.Compile.Unify
-import Vehicle.Core.Print ()
+import Vehicle.Core.Compile.Metas
+import Vehicle.Core.Print.Core (showCore)
 import Vehicle.Prelude
 
 -- TODO:
@@ -34,10 +36,18 @@ import Vehicle.Prelude
 runTypeChecking :: UncheckedProg -> Except TypingError CheckedProg
 runTypeChecking prog = do
   let prog1 = inferProg prog
-  let prog2 = evalStateT prog1 emptyMetaCtx
+  let prog2 = runStateT prog1 emptyMetaCtx
   let prog3 = runReaderT prog2 mempty
   let prog4 = runReaderT prog3 mempty
-  prog4
+  (checkedProg, metaCtx) <- prog4
+  trace (layoutAsString $ pretty metaCtx) (return ())
+  let constraints = unificationConstraints metaCtx
+  (unsolvedConstraints, metaSubst) <- withExcept UnificationError (solve (constraints, mempty))
+  trace (show metaSubst) (return ())
+  case unsolvedConstraints of
+    []     -> return $ substMetas metaSubst checkedProg
+    c : cs -> throwError $ UnsolvedConstraints (c :| cs)
+
 
 --------------------------------------------------------------------------------
 -- Errors
@@ -45,15 +55,19 @@ runTypeChecking prog = do
 -- | Errors thrown during type checking
 data TypingError
   = UnresolvedHole
-    Provenance    -- ^ The location of the hole
-    Symbol        -- ^ The name of the hole
+    Provenance              -- The location of the hole
+    Symbol                  -- The name of the hole
   | Mismatch
-    Provenance    -- ^ The location of the mismatch.
-    CheckedExpr   -- ^ The possible inferred types.
-    CheckedExpr   -- ^ The expected type.
+    Provenance              -- The location of the mismatch.
+    CheckedExpr             -- The possible inferred types.
+    CheckedExpr             -- The expected type.
   | UnsupportedOperation
-    Provenance    -- ^ The location of the unsupported operation.
-    Text          -- ^ A description of the unsupported operation.
+    Provenance              -- The location of the unsupported operation.
+    Text                    -- A description of the unsupported operation.
+  | UnsolvedConstraints
+    (NonEmpty UnificationConstraint) -- The constraints that could not be solved
+  | UnificationError
+    UnificationError
 
 instance MeaningfulError TypingError where
   details (Mismatch p candidate expected) = UError $ UserError
@@ -74,6 +88,15 @@ instance MeaningfulError TypingError where
     , problem    = "the type of" <+> squotes name <+> "could not be resolved"
     , fix        = "unknown"
     }
+
+  details (UnsolvedConstraints cs) = let firstConstraint = NonEmpty.head cs in
+    UError $ UserError
+    { provenance = prov firstConstraint
+    , problem    = ""
+    , fix        = ""
+    }
+
+  details (UnificationError e) = details e
 
 --------------------------------------------------------------------------------
 -- Contexts
@@ -98,16 +121,16 @@ getDeclCtx = lift (lift ask)
 
 -- | The expression variables that are in currently in scope,
 -- indexed into via De Bruijn expressions.
-type BoundCtx = Seq CheckedExpr
-
-instance Pretty BoundCtx where
-  pretty = pretty . show
+type BoundCtx = [(Name, CheckedExpr)]
 
 getBoundCtx :: TCM BoundCtx
 getBoundCtx = ask
 
-modifyBoundCtx :: (BoundCtx -> BoundCtx) -> TCM a -> TCM a
-modifyBoundCtx = local
+addToBoundCtx :: Name -> CheckedExpr -> TCM a -> TCM a
+addToBoundCtx n e = local ((n, e) :)
+
+-- TODO ask Bob whether we need to store metaVariableTypes explicitly in the ctx
+-- Will we get in trouble storing the type on the meta?
 
 -- | The meta-variables and constraints relating the variables currently in scope.
 data MetaCtx  = MetaCtx
@@ -116,6 +139,13 @@ data MetaCtx  = MetaCtx
   , unificationConstraints :: [UnificationConstraint]
   , typeClassConstraints   :: [TypeClassConstraint]
   }
+
+instance Pretty MetaCtx where
+  pretty MetaCtx{..} = "{" <> line <>
+    "nextMeta" <+> "=" <+> pretty nextMeta <> line <>
+    "unificationConstraints" <+> "=" <+> pretty unificationConstraints <> line <>
+    "typeClassConstraints" <+> "=" <+> pretty typeClassConstraints <> line <>
+    "}"
 
 emptyMetaCtx :: MetaCtx
 emptyMetaCtx = MetaCtx
@@ -137,8 +167,9 @@ addUnificationConstraints cs = modifyMetaCtx $ \ MetaCtx {..} ->
 
 unify :: Provenance -> CheckedExpr -> CheckedExpr -> TCM CheckedExpr
 unify p e1 e2 = do
+  ctx <- getBoundCtx
   -- TODO calculate the context
-  addUnificationConstraints [Unify p mempty e1 e2]
+  addUnificationConstraints [makeConstraint p ctx e1 e2]
   -- TODO calculate the most general unifier
   return e1
 
@@ -146,13 +177,14 @@ addTypeClassConstraints :: [TypeClassConstraint] -> TCM ()
 addTypeClassConstraints ts = modifyMetaCtx $ \ MetaCtx {..} ->
   MetaCtx { typeClassConstraints = ts <> typeClassConstraints, ..}
 
+{-
 getMetaType :: Meta -> TCM CheckedExpr
 getMetaType i = do
   ctx <- getMetaCtx;
   case IntMap.lookup i (metaVariableTypes ctx) of
     Just typ -> return typ
     Nothing  -> developerError ("Meta variable ?" <> pretty i <+> "not found in context")
-
+-}
 freshMetaName :: TCM Meta
 freshMetaName = do
   MetaCtx {..} <- getMetaCtx;
@@ -175,7 +207,7 @@ freshMeta p resultType = do
 
   -- Create a Pi type that abstracts over all bound variables
   boundCtx  <- getBoundCtx
-  let metaType = foldl' (tPiInternal Explicit) resultType boundCtx
+  let metaType = foldl' (tPiInternal Explicit) resultType (fmap snd boundCtx)
 
   -- Stores type in meta-context
   modifyMetaCtx $ \MetaCtx {..} ->
@@ -184,46 +216,27 @@ freshMeta p resultType = do
   -- Create bound variables for everything in the context
   let boundEnv =
         [ Var (makeTypeAnn varType) (Bound varIndex)
-        | (varIndex , varType) <- zip [0..] (toList boundCtx) ]
+        | (varIndex , (_ , varType)) <- zip [0..] (toList boundCtx) ]
 
   -- Returns a meta applied to every bound variable in the context
-  let meta = foldl' app (Meta p metaName) boundEnv
-  return (metaName, meta)
-
--- | Creates a fresh meta variable. Meta variables need to remember what was
--- in the current context when they were created. We do this by creating a
--- meta-variable that takes everything in the current context as an argument
--- and then which is immediately applied to everything in the current context.
--- Post unification, any unneeded context arguments will be normalised away.
--- It returns the name of the meta and the expression of it applied to every
--- variable in the context.
-freshUncheckedMeta :: Provenance -> CheckedExpr -> TCM (Meta, UncheckedExpr)
-freshUncheckedMeta p resultType = do
-  -- Create a fresh name
-  metaName <- freshMetaName
-
-  -- Create a Pi type that abstracts over all bound variables
-  boundCtx  <- getBoundCtx
-  let metaType = foldl' (tPiInternal Explicit) resultType boundCtx
-
-  -- Stores type in meta-context
-  modifyMetaCtx $ \MetaCtx {..} ->
-    MetaCtx { metaVariableTypes = IntMap.insert metaName metaType metaVariableTypes , ..}
-
-  -- Create bound variables for everything in the context
-  let boundEnv = [ Var mempty (Bound varIndex) | varIndex <- [0..length boundCtx - 1]]
-
-  -- Returns a meta applied to every bound variable in the context
-  let meta = foldl' (\f x -> App mempty f (Arg mempty Explicit x)) (Meta p metaName) boundEnv
+  let meta = foldl' app (Meta (RecAnn metaType p) metaName) boundEnv
   return (metaName, meta)
 
 --------------------------------------------------------------------------------
 -- Type-checking of expressions
 
+showCheckEntry :: CheckedExpr -> UncheckedExpr -> UncheckedExpr
+showCheckEntry t e = trace ("check-entry " <> showCore e <> " <= " <> showCore t) e
+
+showCheckExit :: TCM CheckedExpr -> TCM CheckedExpr
+showCheckExit m = do
+  e <- m
+  trace ("check-exit  " <> showCore e) (return e)
+
 check :: CheckedExpr     -- Type we're checking against
       -> UncheckedExpr   -- Expression being type-checked
       -> TCM CheckedExpr -- Updated expression
-check expectedType = \case
+check expectedType expr = showCheckExit $ case showCheckEntry expectedType expr of
   e@(Type _)          -> viaInfer mempty expectedType e
   e@Constraint        -> viaInfer mempty expectedType e
   e@(Meta _ _)        -> viaInfer mempty expectedType e
@@ -247,17 +260,18 @@ check expectedType = \case
       -- Check if it's a Pi type which is expecting the right visibility
       Pi _ (Binder _ vFun _ tBound2) tRes
         | vBound == vFun -> do
-          modifyBoundCtx (tBound2 Seq.<|) $ do
+          tBound1' <- check (getType tBound2) tBound1
+          tBound' <- unify p tBound1' tBound2
+
+          addToBoundCtx nBound tBound2 $ do
             body' <- check tRes body
-            tBound1' <- check (getType tBound2) tBound1
-            tBound' <- unify p tBound1' tBound2
             return $ Lam (RecAnn expectedType p) (Binder pBound vBound nBound tBound') body'
 
       -- Check if it's a Pi type which is expecting an implicit argument
       -- but is being applied to an explicit argument
       Pi _ (Binder _ Implicit name tBound2) tRes -> do
         -- Add the implict argument to the context
-        modifyBoundCtx (tBound2 Seq.<|) $ do
+        addToBoundCtx nBound tBound2 $ do
           -- Check if the type matches the expected result type.
           e' <- check tRes e
 
@@ -271,20 +285,65 @@ check expectedType = \case
         let expected = tPiInternal vBound (hole "a") (hole "b")
         throwError $ Mismatch p expectedType expected
 
+
+inferApp :: Provenance -> UncheckedArg -> CheckedExpr -> CheckedExpr -> TCM (CheckedExpr, CheckedExpr)
+inferApp p arg@(Arg pArg vArg eArg) fun' = \case
+  -- Check if it's a Pi type which is expecting the right visibility
+  Pi _ (Binder _ vFun _ tArg') tRes'
+    | vArg == vFun -> do
+      -- Check the type of the argument.
+      eArg' <- check tArg' eArg
+
+      -- Substitute argument in tRes
+      let tResSubst' = eArg' `substInto` tRes'
+
+      -- Return the appropriately annotated type with its inferred kind.
+      return (App (RecAnn tResSubst' p) fun' (Arg pArg vArg eArg') , tResSubst')
+
+  -- Check if it's a Pi type which is expecting an implicit argument
+  -- but is being applied to an explicit argument
+  Pi _ (Binder _ Implicit _ tArg') tRes' -> do
+    -- Generate a fresh meta variable
+    (meta, metaArg) <- freshMeta p tArg'
+
+    -- Substitute meta-variable in tRes
+    let tResSubst' = metaArg `substInto` tRes'
+
+    -- TODO Wen is worried about interactions between the Pi abstractions over
+    -- the context and the type-class search later on.
+
+    -- Check if the implicit argument is a type-class
+    when (isConstraint tArg') $
+      addTypeClassConstraints [meta `Has` tArg']
+
+    -- Apply the function to the new meta and try again to infer the type of the application.
+    inferApp p arg (App (RecAnn tResSubst' mempty) fun' (Arg mempty Implicit metaArg)) tResSubst'
+
+  tFun' -> do
+    let expected = tPiInternal vArg (hole "a") (hole "b")
+    throwError $ Mismatch p tFun' expected
+
+
+showInferEntry :: UncheckedExpr -> UncheckedExpr
+showInferEntry e = trace ("infer-entry " <> showCore e) e
+
+showInferExit :: TCM (CheckedExpr, CheckedExpr) -> TCM (CheckedExpr, CheckedExpr)
+showInferExit m = do
+  (e, t) <- m
+  trace ("infer-exit  " <> showCore e <> " => " <> showCore t) (return (e,t))
+
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
 infer :: UncheckedExpr
       -> TCM (CheckedExpr, CheckedExpr)
-infer = \case
+infer e = showInferExit $ case showInferEntry e of
   Type l ->
     return (Type l , Type (l + 1))
 
   Constraint ->
     return (Constraint , Type 1)
 
-  Meta p i -> do
-    metaType <- getMetaType i
-    return (Meta p i , metaType)
+  Meta _ m -> developerError $ "Trying to infer the type of a meta-variable" <+> pretty m
 
   Hole ann s ->
     throwError $ UnresolvedHole (prov ann) s
@@ -295,51 +354,15 @@ infer = \case
     let ann' = RecAnn t' ann
     return (Ann ann' e' t' , t')
 
-  App p fun arg@(Arg pArg vArg eArg) -> do
+  App p fun arg -> do
     -- Infer the type of the function.
     (fun' , tFun') <- infer fun
-
-    case tFun' of
-      -- Check if it's a Pi type which is expecting the right visibility
-      Pi _ (Binder _ vFun _ tArg) tRes
-        | vArg == vFun -> do
-          -- Check the type of the argument.
-          eArg' <- check tArg eArg
-
-          -- Return the appropriately annotated type with its inferred kind.
-          return (App (RecAnn tRes p) fun' (Arg pArg vArg eArg') , tRes)
-
-      -- Check if it's a Pi type which is expecting an implicit argument
-      -- but is being applied to an explicit argument
-      Pi _ (Binder _ Implicit _ tArg) _tRes -> do
-        -- Generate a fresh meta variable
-        (meta, metaArg) <- freshUncheckedMeta p tArg
-
-        -- TODO Wen is worried about interactions between the Pi abstractions over
-        -- the context and the type-class search later on.
-
-        -- TODO can we get rid of the unchecked fresh meta here by using the type
-        -- of the binder?
-
-        -- Check if the implicit argument is a type-class
-        when (isConstraint tArg) $
-          addTypeClassConstraints [meta `Has` tArg]
-
-        -- Apply the function to the new meta.
-        let funWithImplicit = App mempty fun (Arg mempty Implicit metaArg)
-
-        -- Try again to infer the type of the application.
-        infer (App p funWithImplicit arg)
-
-      _ -> do
-        let expected = tPiInternal vArg (hole "a") (hole "b")
-        throwError $ Mismatch p tFun' expected
-
+    inferApp p arg fun' tFun'
 
   Pi p (Binder pBound vis name arg) res -> do
     (arg', tArg') <- infer arg
 
-    modifyBoundCtx (arg' Seq.<|) $ do
+    addToBoundCtx name arg' $ do
       (res', tRes') <- infer res
       let t' = tArg' `tMax` tRes'
       return (Pi (RecAnn t' p) (Binder pBound vis name arg') res' , t')
@@ -351,9 +374,9 @@ infer = \case
   Var p (Bound i) -> do
     -- Lookup the type of the variable in the context.
     ctx <- getBoundCtx
-    case ctx Seq.!? i of
-      Just t' -> return (Var (RecAnn t' p) (Bound i), t')
-      Nothing -> developerError $
+    case ctx !!? i of
+      Just (_, t') -> return (Var (RecAnn t' p) (Bound i), t')
+      Nothing      -> developerError $
         "Index" <+> pretty i <+> "out of bounds when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 
   Var p (Free ident) -> do
@@ -365,25 +388,25 @@ infer = \case
       Nothing -> developerError $
         "Declaration'" <+> pretty ident <+> "'not found when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 
-  Let p (Binder pBound vis name tBound) arg body -> do
+  Let p bound (Binder pBound vis name tBound)  body -> do
     -- Infer the type of the let arg from the annotation on the binder
     (tBound', _) <- infer tBound
 
-    -- Check the arg actually has that type
-    arg' <- check tBound' arg
+    -- Check the bound expression actually has that type
+    bound' <- check tBound' bound
 
     -- Update the context with the bound variable
-    modifyBoundCtx (tBound' Seq.<|) $ do
+    addToBoundCtx name tBound' $ do
       -- Infer the type of the body
       (body' , tBody') <- infer body
-      return (Let (RecAnn tBody' p) (Binder pBound vis name tBound') arg' body' , tBody')
+      return (Let (RecAnn tBody' p) bound' (Binder pBound vis name tBound') body' , tBody')
 
   Lam p (Binder pBound vis name tBound) body -> do
     -- Infer the type of the bound variable from the binder
     (tBound', _) <- infer tBound
 
     -- Update the context with the bound variable
-    modifyBoundCtx (tBound' Seq.<|) $ do
+    addToBoundCtx name tBound' $ do
       (body' , tBody') <- infer body
       let t' = tPi pBound vis name tBound' tBody'
       return (Lam (RecAnn t' p) (Binder pBound vis name t') body' , t')

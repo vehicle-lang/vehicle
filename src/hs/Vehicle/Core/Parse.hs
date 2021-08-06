@@ -6,9 +6,7 @@ module Vehicle.Core.Parse
   , ParseError(..)
   ) where
 
-import Control.Monad.Identity (Identity)
-import Control.Monad.Except (MonadError(..), ExceptT, runExceptT, runExcept)
-import Control.Monad.Supply (MonadSupply(..), SupplyT, demand, runSupply)
+import Control.Monad.Except (MonadError(..), runExcept)
 import Data.Text (Text, pack, unpack)
 import Data.Text.IO qualified as T
 import Prettyprinter ( (<+>), pretty )
@@ -17,7 +15,7 @@ import System.Exit (exitFailure)
 import Vehicle.Core.Abs as B
 import Vehicle.Core.Par (pProg, myLexer)
 import Vehicle.Core.AST as V hiding (Name)
-import Vehicle.Core.Print ()
+import Vehicle.Core.Print.Core ()
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -131,7 +129,7 @@ instance Convert B.Expr V.InputExpr where
     B.App fun arg      -> op2 V.App <$> conv fun <*> conv arg
     B.Pi  binder expr  -> op2 V.Pi  <$> conv binder <*> conv expr;
     B.Lam binder e     -> op2 V.Lam <$> conv binder <*> conv e
-    B.Let binder e1 e2 -> op3 V.Let <$> conv binder <*> conv e1 <*> conv e2
+    B.Let binder e1 e2 -> op3 V.Let <$> conv e1 <*> conv binder <*>  conv e2
     B.Seq es           -> op1 V.Seq <$> traverse conv es
     B.Builtin c        -> V.Builtin (tkProvenance c) <$> lookupBuiltin c
     B.Literal v        -> V.Literal mempty <$> conv v

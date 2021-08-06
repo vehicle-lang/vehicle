@@ -7,6 +7,8 @@ module Vehicle.Prelude.Provenance
   , expandProvenance
   ) where
 
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData(..))
 import Data.Range hiding (joinRanges)
 import Data.List.NonEmpty (NonEmpty)
 import Prettyprinter
@@ -113,7 +115,10 @@ expandRange _       rs                 = rs
 
 -- |A set of locations in the source file
 newtype Provenance = Provenance [Range Position]
-  deriving (Show, Ord)
+  deriving (Show, Ord, Generic)
+
+instance NFData Provenance where
+  rnf _ = ()
 
 instance Eq Provenance where
   x == y = True
@@ -137,14 +142,14 @@ instance Monoid Provenance where
 instance Pretty Provenance where
   -- TODO probably need to do something more elegant here.
   pretty (Provenance ranges) = case ranges of
-    []  -> "no source location"
+    []  -> "[no source location]"
     [r] -> pretty r
     rs  -> concatWith (\u v -> u <> "," <> v) (map pretty rs)
 
 --------------------------------------------------------------------------------
--- Provenance type-class
+-- Provenance
 
--- | Class for types which have provenance information
+-- | Type class for types which have provenance information
 class HasProvenance a where
   prov :: a -> Provenance
 

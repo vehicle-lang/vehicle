@@ -1,25 +1,27 @@
 
 module Vehicle.Frontend.Delaborate
   ( runDelab
+  , DelabError(..)
   ) where
 
-import Control.Monad.Trans (lift)
-import Control.Monad.State (MonadState(..), StateT, evalStateT, modify)
-import Control.Monad.Except (MonadError(..), Except, runExcept)
+import Control.Monad.State (MonadState(..), evalStateT, modify)
+import Control.Monad.Except (MonadError(..), runExcept)
 import Data.List.NonEmpty (NonEmpty(..), (<|))
-import Data.List.NonEmpty qualified as NonEmpty (toList, reverse)
-import Data.Functor.Foldable (Recursive(..))
+import Data.List.NonEmpty qualified as NonEmpty (reverse)
+import Data.Text (pack)
 import Prettyprinter (pretty, (<+>))
+import Debug.Trace (trace)
 
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
+import Vehicle.Core.Print.Core (showCore)
 import Vehicle.Frontend.AST qualified as VF
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Delaboration converts a program in the Core language to the Frontend language
 
-runDelab :: VC.OutputProg -> Either DelabError VF.OutputProg
-runDelab = runExcept . delab
+runDelab :: Delaborate a b => a -> Either DelabError b
+runDelab e = runExcept $! delab e
 
 data DelabError
   = UnsolvedMeta Provenance VC.Meta
@@ -28,6 +30,7 @@ instance MeaningfulError DelabError where
   details (UnsolvedMeta p meta) = UError $ UserError
     { provenance = p
     , problem    = "unsolved meta variable" <+> pretty meta
+    , fix        = "try adding a type annotation"
     }
 
 -- * Delaboration class
@@ -75,9 +78,8 @@ addArg :: MonadDelabHoles m => VF.OutputExpr -> m ()
 addArg x = modify (x :)
 
 -- | Tests if a binder is from a forall or a function.
--- TODO *really really* need a better way of doing this.
 isFunBinder :: VC.OutputBinder -> Bool
-isFunBinder (VC.Binder _ _ name _) = name == "@funplaceholder"
+isFunBinder (VC.Binder _ vis _ _) = vis == Explicit
 
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
 delabPi :: MonadDelabHoles m => VC.OutputAnn -> VC.OutputBinder -> VC.OutputExpr -> m VF.OutputExpr
@@ -95,15 +97,15 @@ delabPi ann binder@(VC.Binder _ _ _ arg) body
       decomposeForall (args, body) = do body'   <- delab body; return (args , body')
 
 -- | Collapses let expressions into a sequence of let declarations
-delabLet :: MonadDelabHoles m => VC.OutputAnn -> VC.OutputBinder -> VC.OutputExpr -> VC.OutputExpr -> m VF.OutputExpr
-delabLet ann binder bound body = do
+delabLet :: MonadDelabHoles m => VC.OutputAnn -> VC.OutputExpr -> VC.OutputBinder -> VC.OutputExpr -> m VF.OutputExpr
+delabLet ann bound binder body = do
   decl'         <- delabLetDecl ann binder bound
   ann'          <- delab ann
   (ds' , body') <- decomposeLet (decl' :| [], body)
   return $ VF.Let ann' (NonEmpty.reverse ds') body'
   where
     decomposeLet :: MonadDelabHoles m => (NonEmpty VF.OutputLetDecl, VC.OutputExpr) -> m (NonEmpty VF.OutputLetDecl, VF.OutputExpr)
-    decomposeLet (args, VC.Let ann binder bound body) = do decl  <- delabLetDecl ann binder bound; decomposeLet (decl <| args, body)
+    decomposeLet (args, VC.Let ann bound binder body) = do decl  <- delabLetDecl ann binder bound; decomposeLet (decl <| args, body)
     decomposeLet (args, body)                         = do body' <- delab body; return (args , body')
 
     delabLetDecl :: MonadDelabHoles m => VC.OutputAnn -> VC.OutputBinder -> VC.OutputExpr -> m VF.OutputLetDecl
@@ -180,14 +182,14 @@ class DelaborateWithHoles a b where
   delabH :: MonadDelabHoles m => a -> m b
 
 instance DelaborateWithHoles VC.OutputExpr VF.OutputExpr where
-  delabH = \case
+  delabH e = trace ("delab-exit: " <> showCore e) $ case e of
     VC.Type l                        -> return (VF.Type l)
     VC.Constraint                    -> return VF.Constraint
-    VC.Meta    p i                   -> throwError $ UnsolvedMeta p i
-    VC.Hole    ann n                 -> VF.Hole    <$> delab ann <*> pure n
-    VC.Pi      ann binder       body -> delabPi  ann binder       body
-    VC.Let     ann binder bound body -> delabLet ann binder bound body
-    VC.Lam     ann binder       body -> delabLam ann binder       body
+    VC.Hole    p n                   -> return $ VF.Hole p n
+    VC.Meta    ann i                 -> return $ VF.Hole (prov ann) (pack $ "?" <> show i)
+    VC.Pi      ann       binder body -> delabPi  ann       binder body
+    VC.Let     ann bound binder body -> delabLet ann bound binder body
+    VC.Lam     ann       binder body -> delabLam ann       binder body
     VC.Builtin ann op                -> do ann' <- delab ann; delabBuiltin ann' op
     VC.Ann     ann e t               -> VF.Ann     <$> delab ann <*> delabH e   <*> delabH t
     VC.App     ann fun arg           -> VF.App     <$> delab ann <*> delabH fun <*> delabH arg

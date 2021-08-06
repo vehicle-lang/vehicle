@@ -7,12 +7,13 @@ module Vehicle.Core.Compile
   , compile
   ) where
 
+import Control.DeepSeq (force)
 import Control.Monad.Except (withExcept, runExcept)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Scope (ScopeError(..), scopeProg)
-import Vehicle.Core.Compile.Descope (descopeProg)
+import Vehicle.Core.Compile.Descope (runDescope)
 import Vehicle.Core.Compile.Type (TypingError(..), runTypeChecking)
 
 data CompileError
@@ -25,6 +26,6 @@ instance MeaningfulError CompileError where
 
 compile :: InputProg -> Either CompileError OutputProg
 compile tree0 = runExcept $ do
-  tree1 <- withExcept ScopeError (scopeProg tree0)
-  tree2 <- withExcept TypeError  (runTypeChecking tree1)
-  return $ descopeProg tree2
+  tree1 <- withExcept ScopeError (scopeProg $ force tree0)
+  tree2 <- withExcept TypeError  (runTypeChecking $ force tree1)
+  return $ runDescope $ force tree2

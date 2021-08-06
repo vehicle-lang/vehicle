@@ -2,10 +2,13 @@
 module Vehicle.Core.Compile.DSL where
 
 import Prettyprinter ((<+>), Pretty(pretty))
+import Debug.Trace (trace)
+import GHC.Stack (HasCallStack)
 
 import Vehicle.Core.AST
 import Vehicle.Prelude
-import Vehicle.Core.Print ()
+import Vehicle.Core.Print.Core ()
+import Vehicle.Core.Print.Frontend (prettyFrontend)
 
 makeTypeAnn :: CheckedExpr -> CheckedAnn
 makeTypeAnn t = RecAnn t mempty
@@ -17,21 +20,23 @@ getFunResultType t = developerError $ "Expecting a Pi type. Found" <+> pretty t 
 
 -- * Kinds
 
-tMax :: CheckedExpr -> CheckedExpr -> CheckedExpr
-tMax (Type l1) (Type l2) = Type (l1 `max` l2)
-tMax t1         t2       = developerError $
+tMax :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
+tMax (Type l1)  (Type l2)  = Type (l1 `max` l2)
+tMax (Type l1)  Constraint = Type l1
+tMax Constraint (Type l2)  = Type l2
+tMax t1         t2         = developerError $
   "Expected arguments of type Type. Found" <+> pretty t1 <+> "and" <+> pretty t2 <> "."
 
 -- * DSL for writing kinds as info annotations
 
-tPi :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
+tPi :: HasCallStack => Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
 tPi p vis name a b =
   let aType  = getType a
       bType  = getType b
       abType = aType `tMax` bType
   in  Pi (makeTypeAnn abType) (Binder p vis name a) b
 
-tPiInternal :: Visibility -> CheckedExpr -> CheckedExpr -> CheckedExpr
+tPiInternal :: HasCallStack => Visibility -> CheckedExpr -> CheckedExpr -> CheckedExpr
 tPiInternal vis = tPi mempty vis Machine
 
 -- TODO figure out how to do this without horrible -1 hacks
@@ -42,23 +47,26 @@ tForall
 tForall k f = quantBody
   where
     badBody   = f (Var (RecAnn Type0 mempty) (Bound (-1)))
-    body      = liftAcc (-1) badBody
+    body      = cleanDBIndices (-1) badBody
     quantBody = tPiInternal Implicit k body
 
+infixr 4 ~>
 (~>) :: CheckedExpr -> CheckedExpr -> CheckedExpr
 x ~> y = tPiInternal Explicit x y
 
-(~~>) :: CheckedExpr -> CheckedExpr -> CheckedExpr
+infixr 4 ~~>
+(~~>) :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 x ~~> y = tPiInternal Implicit x y
 
 con :: Builtin -> CheckedExpr -> CheckedExpr
 con b t = Builtin (makeTypeAnn t) b
 
+infixl 4 `app`
 app :: CheckedExpr -> CheckedExpr -> CheckedExpr
 app fun arg = App (makeTypeAnn (getFunResultType (getType fun))) fun (Arg mempty Explicit arg)
 
 hole :: Symbol -> CheckedExpr
-hole = Hole (RecAnn Type0 mempty)
+hole = Hole mempty
 
 -- * Types
 

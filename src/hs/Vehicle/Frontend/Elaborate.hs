@@ -42,7 +42,7 @@ import Vehicle.Frontend.AST qualified as VF
 --------------------------------------------------------------------------------
 
 runElab :: VF.InputProg -> VC.InputProg
-runElab prog = runIdentity $ elab prog
+runElab prog = runIdentity $! elab prog
 
 type MonadElab m = Monad m
 
@@ -59,13 +59,13 @@ elabLetDecls :: MonadElab m => VF.InputExpr -> [VF.InputLetDecl] -> m VC.InputEx
 elabLetDecls = foldr elabLetDecl . elab
   where
     elabLetDecl :: MonadElab m => VF.InputLetDecl -> m VC.InputExpr -> m VC.InputExpr
-    elabLetDecl (VF.LetDecl ann binder e) body = VC.Let ann <$> elab binder <*> elab e <*> body
+    elabLetDecl (VF.LetDecl ann binder e) body = VC.Let ann <$> elab e <*> elab binder <*> body
 
 elabBinders :: MonadElab m => (VC.InputBinder -> VC.InputExpr -> VC.InputExpr) -> [VF.InputBinder] -> VF.InputExpr -> m VC.InputExpr
 elabBinders f bs body = foldr (\b d -> f <$> elab b <*> d) (elab body) bs
 
 elabFunInputType :: MonadElab m => VF.InputExpr -> m VC.InputBinder
-elabFunInputType t = VC.Binder (VF.annotation t) Explicit "@funplaceholder" <$> elab t -- TODO really need to come up with a more satisfying way
+elabFunInputType t = VC.Binder (VF.annotation t) Explicit "_" <$> elab t
 
 instance Elab VF.InputBinder VC.InputBinder where
   elab (VF.Binder ann vis name t) = VC.Binder ann vis name <$> maybe (hole (prov ann)) elab t
@@ -142,7 +142,7 @@ instance Elab VF.InputDecl VC.InputDecl where
   elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann n <$> elab t
   elab (VF.DeclData ann n t)      = VC.DeclData ann n <$> elab t
   elab (VF.DefType  ann n ns e)   = VC.DefFun   ann n <$> hole (prov ann) <*> elabBinders (VC.Lam ann) ns e
-  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann n <$> elab t               <*> elabBinders (VC.Lam ann) ns e
+  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann n <$> elab t          <*> elabBinders (VC.Lam ann) ns e
 
 -- |Elaborate programs.
 instance Elab VF.InputProg VC.InputProg where

@@ -19,11 +19,11 @@ annotation = \case
   Lam         ann _ns _e  -> ann
   Literal     ann _l      -> ann
   Var         ann _n      -> ann
-  Hole        ann _n      -> ann
+  Hole _ _   -> developerError "Should not be requesting an annotation from Hole"
 
   -- Kinds
-  Type _l    -> error "Should not be requesting an annotation from Type"
-  Constraint -> error "Should not be requesting an annotation from Constraint"
+  Type _     -> developerError "Should not be requesting an annotation from Type"
+  Constraint -> developerError "Should not be requesting an annotation from Constraint"
 
   -- Types
   Bool        ann         -> ann
@@ -95,7 +95,8 @@ type InputDecl    = Decl    InputAnn
 type InputProg    = Prog    InputAnn
 
 instance HasProvenance InputExpr where
-  prov e = annotation e
+  prov (Hole p _) = p
+  prov e          = annotation e
 
 -- * Type of annotations attached to the Frontend AST that are output by the compiler
 

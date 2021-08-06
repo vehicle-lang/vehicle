@@ -67,7 +67,7 @@ separator Name "";
 -- * Binders
 
 ExplicitBinderUnann. Binder ::= Name;
-ExplicitBinderAnn.   Binder ::= Name TokElemOf Expr14;
+ExplicitBinderAnn.   Binder ::= "(" Name TokElemOf Expr14 ")";
 ImplicitBinderUnann. Binder ::= "{" Name "}";
 ImplicitBinderAnn.   Binder ::= "{" Name TokElemOf Expr14 "}";
 

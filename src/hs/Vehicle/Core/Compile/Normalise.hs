@@ -1,13 +1,5 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 
-module Vehicle.Core.Normalise where
+module Vehicle.Core.Compile.Normalise where
 
 -- TODO: position was removed from Builtin, as it is stored as provenance in the annotation
 

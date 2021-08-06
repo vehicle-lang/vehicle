@@ -53,6 +53,6 @@ compileToAgda filePath = run $ Options
   , showVersion  = False
   , inputLang    = Frontend
   , inputFile    = Just filePath
-  , outputTarget = Just $ ITP Agda
+  , outputTarget = Just $ Vehicle Frontend
   , outputFile   = Nothing
   }

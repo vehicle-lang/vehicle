@@ -1,7 +1,7 @@
 
 module Vehicle.Core.Compile.Descope
-  ( descopeProg
-  , descopeWithCtx
+  ( runDescope
+  , runDescopeWithCtx
   ) where
 
 import Control.Monad.Supply (MonadSupply, demand, runSupply, withSupply)
@@ -9,15 +9,17 @@ import Control.Monad.Identity (Identity)
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.Text (pack)
 import Prettyprinter ((<+>), Pretty(pretty))
+import Debug.Trace (trace)
 
 import Vehicle.Prelude
-import Vehicle.Core.AST hiding (lift)
+import Vehicle.Core.AST
+import Vehicle.Core.Print.Core (showCore)
 
-descopeProg :: CheckedProg -> OutputProg
-descopeProg = descopeWithCtx emptyCtx
+runDescope :: Descope a b => a -> b
+runDescope = runDescopeWithCtx emptyCtx
 
-descopeWithCtx :: Descope a b => Ctx -> a -> b
-descopeWithCtx ctx e = runSupply (withSupply (\i -> "v" <> pack (show i)) (runReaderT (descope e) ctx)) (+ 1) (0 :: Integer)
+runDescopeWithCtx :: Descope a b => Ctx -> a -> b
+runDescopeWithCtx ctx e = runSupply (withSupply (\i -> "v" <> pack (show i)) (runReaderT (descope e) ctx)) (+ 1) (0 :: Integer)
 
 newtype Ctx = Ctx [Symbol]
 
@@ -62,12 +64,20 @@ instance Descope CheckedBinder OutputBinder where
 instance Descope CheckedArg OutputArg where
   descope (Arg p v e) = Arg p v <$> descope e
 
+showScopeEntry :: CheckedExpr -> CheckedExpr
+showScopeEntry e = trace ("descope-entry " <> showCore e) e
+
+showScopeExit :: MonadDescope m => m OutputExpr -> m OutputExpr
+showScopeExit m = do
+  e <- m
+  trace ("descope-exit  " <> showCore e) (return e)
+
 instance Descope CheckedExpr OutputExpr where
-  descope = \case
+  descope e = showScopeExit $ case showScopeEntry e of
     Type     l                     -> return (Type l)
     Constraint                     -> return Constraint
-    Meta     p i                   -> return (Meta p i)
-    Hole     ann name              -> Hole    <$> descope ann <*> pure name
+    Hole     p name                -> return (Hole p name)
+    Meta     ann i                 -> Meta    <$> descope ann <*> pure i
     Var      ann v                 -> Var     <$> descope ann <*> lookupVar (prov ann) v
     Ann      ann e t               -> Ann     <$> descope ann <*> descope e <*> descope t
     App      ann fun arg           -> App     <$> descope ann <*> descope fun <*> descope arg
@@ -76,12 +86,12 @@ instance Descope CheckedExpr OutputExpr where
     Seq      ann es                -> Seq     <$> descope ann <*> traverse descope es
 
 
-    Let ann binder bound body -> do
+    Let ann bound binder body -> do
       ann'    <- descope ann
       bound'  <- descope bound
       binder' <- descope binder
       body'   <- local (addToCtx binder') (descope body)
-      return $ Let ann' binder' bound' body'
+      return $ Let ann' bound' binder' body'
 
     Lam ann binder body -> do
       ann'    <- descope ann

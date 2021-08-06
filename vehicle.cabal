@@ -29,13 +29,13 @@ library
   import:               common-base
   exposed-modules:      Vehicle
   other-modules:        Vehicle.Prelude
-                      , Vehicle.Prelude.Token
-                      , Vehicle.Prelude.Sort
-                      , Vehicle.Prelude.Provenance
-                      , Vehicle.Prelude.Types
+                      , Vehicle.Prelude.Error
                       , Vehicle.Prelude.Language
                       , Vehicle.Prelude.Prettyprinter
-                      , Vehicle.Prelude.Error
+                      , Vehicle.Prelude.Provenance
+                      , Vehicle.Prelude.Sort
+                      , Vehicle.Prelude.Token
+                      , Vehicle.Prelude.Visibility
                       , Vehicle.Frontend.AST
                       , Vehicle.Frontend.AST.Core
                       , Vehicle.Frontend.AST.Utils
@@ -54,11 +54,13 @@ library
                       , Vehicle.Core.Compile.Unify
                       , Vehicle.Core.Compile.Type
                       , Vehicle.Core.Compile.Descope
-                      , Vehicle.Core.Normalise
-                      -- , Vehicle.Core.Normalise.Core
-                      -- , Vehicle.Core.Normalise.Quantifier
+                      , Vehicle.Core.Compile.Normalise
+                      , Vehicle.Core.Compile.Metas
+                      -- , Vehicle.Core.Compile.Normalise.Core
+                      -- , Vehicle.Core.Compile.Normalise.Quantifier
                       , Vehicle.Core.Parse
-                      , Vehicle.Core.Print
+                      , Vehicle.Core.Print.Core
+                      , Vehicle.Core.Print.Frontend
                       --, Vehicle.Backend.ITP.Agda
                       , Vehicle.Backend.ITP.Core
                       -- Files generated from Core.cf
@@ -87,9 +89,10 @@ library
                       , containers           >=0.5 && <1
                       , prettyprinter        >=1.7 && <2
                       , data-fix             >=0.2 && <1
+                      , deepseq              >=1.4 && <2
   build-tool-depends:   alex:alex
                       , happy:happy
-  ghc-options:          -Wall
+  ghc-options:          -Wall -fprint-potential-instances
   default-extensions:   ImportQualifiedPost
                       , TypeApplications
                       , TypeFamilies
@@ -104,7 +107,6 @@ library
                       , MultiParamTypeClasses
                       , LambdaCase
                       , OverloadedStrings
-                      , OverloadedLists
                       , UndecidableInstances
                       , ScopedTypeVariables
                       , GADTs
@@ -117,6 +119,8 @@ library
                       , DeriveFunctor
                       , DeriveFoldable
                       , DeriveTraversable
+                      , DeriveGeneric
+                      , DeriveAnyClass
 
 executable vehicle
   import:             common-base
@@ -129,7 +133,7 @@ test-suite vehicle-test
   type:               exitcode-stdio-1.0
   main-is:            Spec.hs
   hs-source-dirs:     test
-  ghc-options:        -threaded -rtsopts -fprof-auto-top -with-rtsopts=-N
+  ghc-options:        -threaded -rtsopts -with-rtsopts=-N
   build-depends:      filepath >=1.4 && <2
                     , HUnit    >=1.6 && <2
                     , vehicle

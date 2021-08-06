@@ -104,6 +104,16 @@ test: \
 		$(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
 	stack test
 
+# TODO make this into a profile flag
+.PHONY: test-profile
+test: \
+		require-stack require-stack-yaml \
+		$(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
+	stack test --profile --ghc-options="-fexternal-interpreter"
+
+# See https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/exts/template_haskell.html#using-template-haskell-with-profiling
+# for why using template Haskell requires us to pass this extra flag when
+# profiling.
 
 #################################################################################
 # Test Vehicle

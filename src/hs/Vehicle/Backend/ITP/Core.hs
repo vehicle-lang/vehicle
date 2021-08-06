@@ -85,11 +85,27 @@ unexpectedExprError p actualExpr expectedExprs = developerError $
   "Was expecting something of the form" <+> list (map pretty expectedExprs) <+>
   "but found" <+> pretty actualExpr <+>
   "at" <+> pretty p <> "."
-{-
 --------------------------------------------------------------------------------
 -- Subcategories of types/expressions
 
-numericType :: OutputExpr -> NumberType
+data NumericType
+  = TNat
+  | TInt
+  | TReal
+  deriving (Eq, Ord, Show, Read, Enum)
+
+data TruthType
+  = TBool
+  | TProp
+  deriving (Eq, Ord, Show, Read, Enum)
+
+data ContainerType
+  = TList
+  | TTensor [Int]
+  | TSet
+  deriving (Eq, Ord, Show)
+{-
+numericType :: OutputExpr -> NumericType
 numericType expr = go $ getType expr
   where
     go :: OutputExpr -> NumberType
@@ -121,10 +137,10 @@ containerType expr = case getType expr of
 -}
 -- |Types of numeric orders
 data OrderType
-  = Leq
-  | Lt
-  | Geq
-  | Gt
+  = LeqOp
+  | LtOp
+  | GeqOp
+  | GtOp
 
 -- |Types of numeric unary operations
 data NumericOp1

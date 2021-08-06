@@ -12,9 +12,12 @@ import Data.Set (Set,)
 import Data.Set qualified as Set (member, insert)
 import Prettyprinter (pretty, (<+>))
 
-import Vehicle.Core.AST hiding (lift)
+import Vehicle.Core.AST
 import Vehicle.Prelude
 
+
+runScopeCheck :: InputProg -> Except ScopeError UncheckedProg
+runScopeCheck p = do p <- scopeProg p; return $! p
 
 -- * Errors.
 
@@ -104,9 +107,9 @@ instance ScopeCheck InputExpr UncheckedExpr where
     Lam ann binder body -> do
       bindVar binder $ \binder' -> Lam ann binder' <$> scope body
 
-    Let ann binder bound body -> do
+    Let ann bound binder body -> do
       bound' <- scope bound
-      bindVar binder $ \binder' -> Let ann binder' bound' <$> scope body
+      bindVar binder $ \binder' -> Let ann bound' binder' <$> scope body
 
 
 scopeDecl :: InputDecl -> StateT Ctx SCM UncheckedDecl

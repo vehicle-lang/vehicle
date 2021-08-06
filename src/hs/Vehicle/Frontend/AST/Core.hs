@@ -56,7 +56,7 @@ data Expr ann
   | Let      ann (NonEmpty (LetDecl ann)) (Expr ann)
   | Var      ann Symbol
   | Literal  ann Literal
-  | Hole     ann Symbol
+  | Hole     Provenance Symbol
 
   -- Kinds
   | Type Level

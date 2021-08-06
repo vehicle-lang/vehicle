@@ -6,6 +6,9 @@ module Vehicle.Core.AST.Builtin
   , symbolFromBuiltin
   ) where
 
+
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -52,7 +55,7 @@ data Builtin
   | At
   | All
   | Any
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic, NFData)
 
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols =
