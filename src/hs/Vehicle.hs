@@ -22,6 +22,7 @@ import System.Environment (getArgs)
 import System.Exit (exitSuccess, exitFailure)
 import System.Console.GetOpt
 import Debug.Trace (traceShow)
+import Colog ()
 
 import Vehicle.Prelude
 import Vehicle.Core.AST qualified as VC

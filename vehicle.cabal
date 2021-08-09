@@ -36,6 +36,7 @@ library
                       , Vehicle.Prelude.Sort
                       , Vehicle.Prelude.Token
                       , Vehicle.Prelude.Visibility
+                      , Vehicle.Prelude.Logging
                       , Vehicle.Frontend.AST
                       , Vehicle.Frontend.AST.Core
                       , Vehicle.Frontend.AST.Utils
@@ -90,6 +91,7 @@ library
                       , prettyprinter        >=1.7 && <2
                       , data-fix             >=0.2 && <1
                       , deepseq              >=1.4 && <2
+                      , co-log               >=0.4 && <1
   build-tool-depends:   alex:alex
                       , happy:happy
   ghc-options:          -Wall -fprint-potential-instances

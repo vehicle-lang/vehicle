@@ -1,10 +1,10 @@
--- Miscallaenous
-
-fun : Real -> Real
-fun x = x
-
-
--- Reals
+---- Miscallaenous
+--
+--fun : Real -> Real
+--fun x = x
+--
+--
+---- Reals
 --
 --real : Real
 --real = 0.0
@@ -23,10 +23,10 @@ fun x = x
 --
 --negReal : Real
 --negReal = - 2.0
---
---eqReal : Prop
---eqReal = 0.0 == 1.0
---
+
+eqReal : Prop
+eqReal = 0.0 == 1.0
+
 --neqReal : Prop
 --neqReal = 0.0 != 1.0
 --

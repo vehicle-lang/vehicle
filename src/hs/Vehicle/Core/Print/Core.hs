@@ -56,24 +56,24 @@ instance ( Pretty binder
 instance ( Pretty binder
          , Pretty var
          ) => Pretty (Binder binder var ann) where
-  pretty (Binder _ann vis name typ) = brackets vis (pretty name <+> ":type" <+> parens (pretty typ))
+  pretty (Binder _ann vis name typ) = brackets vis (pretty name <+> ":type" <+> pretty typ)
 
 instance ( Pretty binder
          , Pretty var
          ) => Pretty (Expr binder var ann) where
   pretty = \case
-    Type l                      -> "Type" <+> pretty l
+    Type l                      -> "Type" <> pretty l
     Constraint                  -> "Constraint"
     Hole    _p   name           -> "h?" <> pretty name
     Meta    _p   m              -> "?" <> pretty m
-    Ann     _ann term typ       -> pretty term <+> ":type" <+> pretty typ
-    App     _ann fun arg        -> pretty fun <+> parens (pretty arg)
-    Pi      _ann binder res     -> "pi" <+> pretty binder <+> parens (pretty res)
+    Ann     _ann term typ       -> parens (pretty term <+> ":type" <+> pretty typ)
+    App     _ann fun arg        -> parens (pretty fun <+> pretty arg)
+    Pi      _ann binder res     -> parens ("pi" <+> pretty binder <+> pretty res)
+    Let     _ann e1 binder e2   -> parens ("let" <+> pretty binder <+> pretty e1 <+> pretty e2)
+    Lam     _ann binder e       -> parens ("lambda" <+> pretty binder <+> pretty e)
     Builtin _ann op             -> pretty op
-    Let     _ann e1 binder e2   -> "let"    <+> pretty binder <+> parens (pretty e1) <+> parens (pretty e2)
-    Lam     _ann binder e       -> "lambda" <+> pretty binder <+> parens (pretty e)
     Literal _ann l              -> pretty l
-    Seq     _ann es             -> hsep (fmap pretty es)
+    Seq     _ann es             -> "[" <> hsep (fmap pretty es) <> "]"
     Var     _ann v              -> pretty v
 
 instance ( Pretty name

@@ -18,6 +18,7 @@ import Prettyprinter ( (<+>), Pretty(pretty), Doc )
 
 import Vehicle.Prelude
 import Vehicle.Core.Print.Core ()
+import Vehicle.Core.Print.Frontend (prettyFrontend)
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Metas
 
@@ -61,7 +62,8 @@ instance HasProvenance UnificationConstraint where
   prov (Unify p _ _ _ _) = p
 
 instance Pretty UnificationConstraint where
-  pretty (Unify _ _ _ metas (e1, e2)) = prettyMetas metas <+> pretty e1 <+> "~" <+> pretty e2
+  pretty (Unify _ _ _ metas (e1, e2)) =
+    prettyMetas metas <+> prettyFrontend e1 <+> "~" <+> prettyFrontend e2
 
 instance MetaSubstitutable UnificationConstraint where
   substM (Unify p ctx metas history es) =

@@ -147,7 +147,7 @@ instance Pretty Provenance where
     rs  -> concatWith (\u v -> u <> "," <> v) (map pretty rs)
 
 --------------------------------------------------------------------------------
--- Provenance
+-- Type-classes
 
 -- | Type class for types which have provenance information
 class HasProvenance a where

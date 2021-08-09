@@ -16,6 +16,7 @@ import Vehicle.Prelude.Language as X
 import Vehicle.Prelude.Error as X
 import Vehicle.Prelude.Prettyprinter as X
 import Vehicle.Prelude.Visibility as X
+import Vehicle.Prelude.Logging as X
 
 infix 1 |->
 
