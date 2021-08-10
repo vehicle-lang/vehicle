@@ -178,32 +178,37 @@ class CompileToAgda a where
 -- Compilation of program tree
 
 instance CompileToAgda OutputBinder where
-  compile (Binder _p v n mType) = return $ pretty n
+  compile (Binder _p v n Nothing)  = return $ visBrackets v (pretty n)
+  compile (Binder _p v n (Just t)) = do
+    t' <- compile t
+    return $ visBrackets v (pretty n <+> ":" <+> t')
 
 instance CompileToAgda OutputArg where
-  compile (Arg _ann vis n) = _ --return $ pretty n
+  compile (Arg _p v e) = visBrackets v <$> compile e
 
 instance CompileToAgda OutputLetDecl where
-  compile (LetDecl _p binder bound) = return $ pretty n
+  compile (LetDecl _p binder bound) =
+    return $ line <> pretty binder <+> "=" <+> pretty bound
 
-instance CompileToAgda Literal where
-  compile = \case
-    LNat  n -> _
-    LInt  i -> _
-    LReal r -> _
-    LBool b -> _
-    {-
-    e@(True    _ann)       -> compileBoolOp0 True  <$> booleanType e
-    e@(False   _ann)       -> compileBoolOp0 False <$> booleanType e
-    LitInt  _ann i         -> return $ pretty i
-    LitReal _ann d         -> return $ pretty d
-    -}
+instance CompileToAgda Double where
+  compile d = _
 
 instance CompileToAgda OutputExpr where
   compile = \case
-    Type l     -> return $ annotateConstant ("Set" <+> pretty l)
-    Constraint -> developerError "Compiling the constraint type is not supported"
-    Hole ann _ -> developerError "Holes should have been removed"
+    Constraint    -> developerError "The `Constraint` type should not appear"
+    Hole{}        -> developerError "Holes should have been removed"
+
+    e@HasEq{}       -> throwError $ CompilationUnsupported (prov e) "HasEq"
+    e@HasOrd{}      -> throwError $ CompilationUnsupported (prov e) "HasOrd"
+    e@IsTruth{}     -> throwError $ CompilationUnsupported (prov e) "IsTruth"
+    e@IsNatural{}   -> throwError $ CompilationUnsupported (prov e) "IsNatural"
+    e@IsIntegral{}  -> throwError $ CompilationUnsupported (prov e) "IsIntegral"
+    e@IsRational{}  -> throwError $ CompilationUnsupported (prov e) "IsRational"
+    e@IsReal{}      -> throwError $ CompilationUnsupported (prov e) "IsReal"
+    e@IsQuant{}     -> throwError $ CompilationUnsupported (prov e) "IsQuant"
+    e@IsContainer{} -> throwError $ CompilationUnsupported (prov e) "IsContainer"
+
+    Type l -> return $ annotateConstant ("Set" <+> pretty l)
 
     Forall _ann ns t  -> do
       cns <- traverse compile ns
@@ -250,26 +255,26 @@ instance CompileToAgda OutputExpr where
       ce3 <- compile e3
       return $ "if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3
 
-    e@(Impl    _ann e1 e2) -> compileBoolOp2 ImplOp  <$> booleanType e <*> compile e1 <*> compile e2
-    e@(And     _ann e1 e2) -> compileBoolOp2 AndOp   <$> booleanType e <*> compile e1 <*> compile e2
-    e@(Or      _ann e1 e2) -> compileBoolOp2 OrOp    <$> booleanType e <*> compile e1 <*> compile e2
-    e@(Not     _ann e1)    -> compileBoolOp1 NotOp   <$> booleanType e <*> compile e1
+    e@(Impl    _ann e1 e2) -> compileBoolOp2 ImplOp (truthType e) <$> compile e1 <*> compile e2
+    e@(And     _ann e1 e2) -> compileBoolOp2 AndOp  (truthType e) <$> compile e1 <*> compile e2
+    e@(Or      _ann e1 e2) -> compileBoolOp2 OrOp   (truthType e) <$> compile e1 <*> compile e2
+    e@(Not     _ann e1)    -> compileBoolOp1 NotOp  (truthType e) <$> compile e1
 
     All     _ann           -> return $ pretty ("∀" :: Text)
     Any     _ann           -> return $ pretty ("∃" :: Text)
     e@(Eq   _ann e1 e2)    -> compileEquality e e1 e2
-    e@(Neq  _ann e1 e2)    -> compileBoolOp1 Not Prop <$> compileEquality e e1 e2
+    e@(Neq  _ann e1 e2)    -> compileBoolOp1 NotOp Prop <$> compileEquality e e1 e2
 
     e@(Le   _ann e1 e2)    -> compileNumOrder' LeqOp e e1 e2
     e@(Lt   _ann e1 e2)    -> compileNumOrder' LtOp  e e1 e2
     e@(Ge   _ann e1 e2)    -> compileNumOrder' GeqOp e e1 e2
     e@(Gt   _ann e1 e2)    -> compileNumOrder' GtOp  e e1 e2
 
-    e@(Mul  _ann e1 e2)    -> compileNumOp2 MulOp <$> numericType e <*> compile e1 <*> compile e2
-    e@(Div  _ann e1 e2)    -> compileNumOp2 DivOp <$> numericType e <*> compile e1 <*> compile e2
-    e@(Add  _ann e1 e2)    -> compileNumOp2 AddOp <$> numericType e <*> compile e1 <*> compile e2
-    e@(Sub  _ann e1 e2)    -> compileNumOp2 SubOp <$> numericType e <*> compile e1 <*> compile e2
-    e@(Neg  _ann e1)       -> compileNumOp1 NegOp <$> numericType e <*> compile e1
+    e@(Mul  _ann e1 e2)    -> compileNumOp2 MulOp (numericType e) <$> compile e1 <*> compile e2
+    e@(Div  _ann e1 e2)    -> compileNumOp2 DivOp (numericType e) <$> compile e1 <*> compile e2
+    e@(Add  _ann e1 e2)    -> compileNumOp2 AddOp (numericType e) <$> compile e1 <*> compile e2
+    e@(Sub  _ann e1 e2)    -> compileNumOp2 SubOp (numericType e) <$> compile e1 <*> compile e2
+    e@(Neg  _ann e1)       -> compileNumOp1 NegOp (numericType e) <$> compile e1
 
     Cons    _ann e1 e2     -> compileCons <$> compile e1 <*> compile e2
     e@(At   _ann e1 e2)    -> compileLookup e e1 e2
@@ -289,13 +294,26 @@ instance CompileToAgda OutputProg where
     return $ vsep2 cds
 
 -- |Compiling sequences
-compileSeq :: NonEmpty Code -> Code
-compileSeq ls = annotate ann (encloseSep "[ " " ]" " , " (NonEmpty.toList ls))
+compileSeq :: [Code] -> Code
+compileSeq ls = annotate ann (encloseSep "[ " " ]" " , " ls)
   where ann = (Set.singleton AISECUtils , maxBound :: Int)
 
 -- |Compiling cons operator
 compileCons :: Code -> Code -> Code
 compileCons = annotateInfixOp2 [DataList] 5 id "∷"
+
+instance CompileToAgda Literal where
+  compile = \case
+    LNat  n -> return $ pretty n
+    LInt  i -> return $ pretty i
+    LRat  r -> compile r
+    LBool b -> _
+    {-
+    e@(True    _ann)       -> compileBoolOp0 True  <$> booleanType e
+    e@(False   _ann)       -> compileBoolOp0 False <$> booleanType e
+    LitInt  _ann i         -> return $ pretty i
+    LitReal _ann d         -> return $ pretty d
+    -}
 
 -- |Compiling boolean constants
 compileBoolOp0 :: Bool -> TruthType -> Code
@@ -322,11 +340,16 @@ compileBoolOp2 OrOp   TProp = annotateInfixOp2 [DataSum]     1  id "⊎"
 -- |Compiling numeric unary operations
 -- Only negation at the moment
 compileNumOp1 :: NumericOp1 -> NumericType -> Code -> Code
+compileNumOp1 NegOp TNat  = developerError "Negation is not supported for naturals"
 compileNumOp1 NegOp TInt  = annotateOp1 [DataInt] 8 "ℕ.-"
 compileNumOp1 NegOp TReal = annotateOp1 [DataInt] 8 "ℚ.-"
 
 -- |Compiling numeric binary operations
 compileNumOp2 :: NumericOp2 -> NumericType -> Code -> Code -> Code
+compileNumOp2 MulOp TNat  = annotateInfixOp2 [DataNat]       7 id "ℕ.*"
+compileNumOp2 DivOp TNat  = annotateInfixOp2 [DataNatDivMod] 7 id "ℕ./"
+compileNumOp2 AddOp TNat  = annotateInfixOp2 [DataNat]       6 id "ℕ.+"
+compileNumOp2 SubOp TNat  = annotateInfixOp2 [DataNat]       6 id "ℕ.-"
 compileNumOp2 MulOp TInt  = annotateInfixOp2 [DataInt]       7 id "ℤ.*"
 compileNumOp2 DivOp TInt  = annotateInfixOp2 [DataIntDivMod] 7 id "ℤ./"
 compileNumOp2 AddOp TInt  = annotateInfixOp2 [DataInt]       6 id "ℤ.+"
@@ -343,14 +366,18 @@ compileNumOrder' :: MonadAgdaCompile m
                  -> OutputExpr
                  -> OutputExpr
                  -> m Code
-compileNumOrder' orderType e e1 e2 = do
-  boolType <- booleanType e
-  numType  <- numericType e1
-  ce1      <- compile e1
-  ce2      <- compile e2
-  return $ compileNumOrder orderType numType boolType ce1 ce2
+compileNumOrder' orderType e e1 e2 =
+  compileNumOrder orderType (numericType e1) (truthType e) <$> compile e1 <*> compile e2
 
 compileNumOrder :: OrderType -> NumericType -> TruthType -> Code -> Code -> Code
+compileNumOrder LeqOp TNat  TBool = annotateInfixOp2 [DataNat, RelNullary] 4 boolBraces "ℕ.≤?"
+compileNumOrder LtOp  TNat  TBool = annotateInfixOp2 [DataNat, RelNullary] 4 boolBraces "ℕ.<?"
+compileNumOrder GeqOp TNat  TBool = annotateInfixOp2 [DataNat, RelNullary] 4 boolBraces "ℕ.≥?"
+compileNumOrder GtOp  TNat  TBool = annotateInfixOp2 [DataNat, RelNullary] 4 boolBraces "ℕ.>?"
+compileNumOrder LeqOp TNat  TProp = annotateInfixOp2 [DataNat]             4 id         "ℕ.≤"
+compileNumOrder LtOp  TNat  TProp = annotateInfixOp2 [DataNat]             4 id         "ℕ.≤"
+compileNumOrder GeqOp TNat  TProp = annotateInfixOp2 [DataNat]             4 id         "ℕ.≤"
+compileNumOrder GtOp  TNat  TProp = annotateInfixOp2 [DataNat]             4 id         "ℕ.≤"
 compileNumOrder LeqOp TInt  TBool = annotateInfixOp2 [DataInt, RelNullary] 4 boolBraces "ℤ.≤?"
 compileNumOrder LtOp  TInt  TBool = annotateInfixOp2 [DataInt, RelNullary] 4 boolBraces "ℤ.<?"
 compileNumOrder GeqOp TInt  TBool = annotateInfixOp2 [DataInt, RelNullary] 4 boolBraces "ℤ.≥?"
@@ -372,31 +399,27 @@ compileNumOrder GtOp  TReal TProp = annotateInfixOp2 [DataRat]             4 id 
 compileLookup :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> OutputExpr -> m Code
 compileLookup e cont (Literal indexAnn (LNat index)) = do
   let ann = annotation e
-  cType <- containerType e
-  case cType of
+  case containerType e of
     TTensor ns
       | index < NonEmpty.head ns -> do
         tensor <- compile cont
         return $ tensor <+> pretty index
       | otherwise            -> throwError $
-        TensorIndexOutOfBounds (prov indexAnn) (annotatedType ann) index
+        TensorIndexOutOfBounds (prov indexAnn) (getType e) (fromIntegral index)
     -- Tricky to support lists as we can't guarantee the index is within the length
     -- of the list.
     TList      -> throwError $ CompilationUnsupported (prov ann) "Lookup in lists"
 -- Tricky to support variable indices as we can't guarantee
 -- they're bounded by the length of the list.
-compileLookup ann _cont (Var    _ _) = throwError $
-  CompilationUnsupported (prov ann) "Lookup of variable indices"
+compileLookup e _cont (Var    _ _) = throwError $
+  CompilationUnsupported (prov e) "Lookup of variable indices"
 -- Anything else is an error.
-compileLookup ann _cont e             = throwError $
-  UnexpectedExpr (prov ann) e
+compileLookup e _cont index = unexpectedExprError (prov index) e ["Natural", "Var"]
 
 compileEquality :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> OutputExpr -> m Code
-compileEquality e e1 e2 = do
-  equalityType <- booleanType e
-  case equalityType of
-    TProp -> compilePropEquality e1 e2
-    TBool -> compileBoolEquality e1 e2
+compileEquality e e1 e2 = case truthType e of
+  TProp -> compilePropEquality e1 e2
+  TBool -> compileBoolEquality e1 e2
 
 -- Equality in properties is simply compiled to propositional equality
 compilePropEquality :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> m Code
@@ -411,7 +434,7 @@ data EqualityTypeError
 compileBoolEquality :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> m Code
 compileBoolEquality e1 e2 = let t1 = getType e1 in
   case equalityDependencies t1 of
-    Left UnexpectedEqualityType      -> throwError $ UnexpectedType (prov e1) e1 t1 expectedTypes
+    Left UnexpectedEqualityType      -> unexpectedTypeError e1 t1 expectedTypes
       where expectedTypes = ["Tensor", "Real", "Int", "List"]
     Left (PolymorphicEqualityType n) -> throwError $ CompilationUnsupported (prov e1) ("Polymorphic equality over '" <> n <> "'")
     Right dependencies ->
@@ -431,7 +454,7 @@ equalityDependencies = \case
     deps <- equalityDependencies t1
     return $ [DataTensorInstances] <> deps
   Var    _ann  n     -> throwError (PolymorphicEqualityType n)
-  _                   -> throwError UnexpectedEqualityType
+  _                  -> throwError UnexpectedEqualityType
 
 compileProp :: MonadAgdaCompile m => m Code
 compileProp = do

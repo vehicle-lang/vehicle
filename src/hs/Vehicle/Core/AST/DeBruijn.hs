@@ -11,11 +11,16 @@ module Vehicle.Core.AST.DeBruijn
   , DeBruijnArg
   , DeBruijnBinder
   , BindingDepth
+<<<<<<< HEAD
   , cleanDBIndices
   , liftDBIndices
   , substInto
   , patternOfArgs
   , substAll
+=======
+  , substInto
+  , liftDBIndices
+>>>>>>> Revamped DSL
   ) where
 
 import GHC.Generics (Generic)
@@ -131,31 +136,18 @@ instance MutableAnn (DeBruijnAnn ann) where
 -- Code loosely based off of:
 -- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
 
--- | Lift all deBruin indices that refer to environment variables by 1.
+-- | Lift all deBruin indices that refer to environment variables by the provided depth.
 liftDBIndices :: MutableAnn ann
-              => DeBruijnExpr ann  -- ^ expression to lift
+              => BindingDepth
+              -> DeBruijnExpr ann  -- ^ expression to lift
               -> DeBruijnExpr ann  -- ^ the result of the lifting
-liftDBIndices e = evalState (alter id alterVar e) (0 , ())
+liftDBIndices j e = evalState (alter id alterVar e) (0 , ())
   where
     alterVar :: UpdateVariable (State (BindingDepth, ())) () ann
     alterVar i ann (d, _) = return (Var ann (Bound i'))
       where
-        i' | d <= i    = i + 1 -- Index is referencing the environment so increment
-           | otherwise = i     -- Index is locally bound so no need to increment
-
--- | Finds all de Bruijn indices set to the provided value and
--- updates them to their correct value. Used for instantiating Pi types
--- in the `Vehicle.Core.Compile.DSL`.
-cleanDBIndices :: MutableAnn ann
-               => BindingDepth
-               -> DeBruijnExpr ann
-               -> DeBruijnExpr ann
-cleanDBIndices target e = evalState (alter id alterVar e) (0, ())
-  where
-    alterVar :: UpdateVariable (State (BindingDepth, ())) () ann
-    alterVar i ann (d, _)
-      | i == target = return $ Var ann (Bound d)
-      | otherwise   = return $ Var ann (Bound i)
+        i' | d <= i    = i + j -- Index is referencing the environment so increase
+           | otherwise = i     -- Index is locally bound so no need to increase
 
 -- | De Bruijn aware substitution of one expression into another
 substInto :: MutableAnn ann
@@ -176,7 +168,7 @@ substInto sub e = evalState (alter binderUpdate alterVar e) (0 , sub)
 
     -- Whenever we go underneath the binder we must lift
     -- all the indices in the substituted expression
-    binderUpdate sub = liftDBIndices sub
+    binderUpdate sub = liftDBIndices 1 sub
 
 type Substitution ann = IntMap (DeBruijnExpr ann)
 

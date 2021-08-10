@@ -1,24 +1,102 @@
 
-module Vehicle.Core.Compile.DSL where
+module Vehicle.Core.Compile.DSL
+  ( DSL(..)
+  , DSLExpr
+  , toDSL
+  , fromDSL
+  , type0
+  , constraint
+  , tBool
+  , tProp
+  , tNat
+  , tInt
+  , tReal
+  , tList
+  , tTensor
+  , hasEq
+  , hasOrd
+  , isTruth
+  , isNatural
+  , isIntegral
+  , isRational
+  , isReal
+  , isContainer
+  , isQuantifiable
+  , tMax
+  , tHole
+  , cApp
+  , appType
+  , piType
+  ) where
 
+import Prelude hiding (pi)
 import Prettyprinter ((<+>), Pretty(pretty))
-import Debug.Trace (trace)
 import GHC.Stack (HasCallStack)
 
 import Vehicle.Core.AST
 import Vehicle.Prelude
 import Vehicle.Core.Print.Core ()
-import Vehicle.Core.Print.Frontend (prettyFrontend)
 
-makeTypeAnn :: CheckedExpr -> CheckedAnn
-makeTypeAnn t = RecAnn t mempty
+class DSL expr where
+  infixl 4 `app`
+  infixr 4 ~>
+  infixr 4 ~~>
+
+  app :: expr -> expr -> expr
+  pi  :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
+
+  unnamedPi :: Visibility -> expr -> (expr -> expr) -> expr
+  unnamedPi vis = pi mempty vis Machine
+
+  (~>) :: expr -> expr -> expr
+  x ~> y = unnamedPi Explicit x (const y)
+
+  (~~>) :: expr -> expr -> expr
+  x ~~> y = unnamedPi Implicit x (const y)
+
+  forall :: expr -> (expr -> expr) -> expr
+  forall = unnamedPi Implicit
+
+newtype DSLExpr = DSL
+  { unDSL :: BindingDepth -> CheckedExpr
+  }
+
+fromDSL :: DSLExpr -> CheckedExpr
+fromDSL = flip unDSL 0
+
+toDSL :: CheckedExpr -> DSLExpr
+toDSL e = DSL $ \i -> liftDBIndices i e
+
+boundVar :: CheckedExpr -> BindingDepth -> DSLExpr
+boundVar t i = DSL $ \j -> Var (typeAnn t) (Bound (j - (i + 1)))
+
+instance DSL DSLExpr where
+  app fun arg = DSL $ \i ->
+    let fun' = unDSL fun i
+        arg' = unDSL arg i
+    in App (typeAnn $ appType fun' arg') fun' (Arg (prov arg') Explicit arg')
+
+  pi p v n t1 t2 = DSL $ \i ->
+    let t1' = unDSL t1 i
+        t2' = unDSL (t2 (boundVar t1' i)) (i + 1)
+    in Pi (typeAnn $ piType t1' t2') (Binder p v n t1') t2'
+
+typeAnn :: CheckedExpr -> CheckedAnn
+typeAnn t = RecAnn t mempty
+
+appType :: CheckedExpr -> CheckedExpr -> CheckedExpr
+appType fun arg = arg `substInto` getFunResultType (getType fun)
+
+piType :: CheckedExpr -> CheckedExpr -> CheckedExpr
+piType t1 t2 = getType t1 `tMax` getType t2
 
 -- TODO think whether we need to recurse in the case of an implicit binder
 getFunResultType :: CheckedExpr -> CheckedExpr
 getFunResultType (Pi _ann _binder res) = res
 getFunResultType t = developerError $ "Expecting a Pi type. Found" <+> pretty t <> "."
 
--- * Kinds
+cApp :: CheckedExpr -> CheckedExpr -> CheckedExpr
+cApp x y = unDSL (toDSL x `app` toDSL y) 0
 
 tMax :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 tMax (Type l1)  (Type l2)  = Type (l1 `max` l2)
@@ -27,97 +105,61 @@ tMax Constraint (Type l2)  = Type l2
 tMax t1         t2         = developerError $
   "Expected arguments of type Type. Found" <+> pretty t1 <+> "and" <+> pretty t2 <> "."
 
--- * DSL for writing kinds as info annotations
-
-tPi :: HasCallStack => Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
-tPi p vis name a b =
-  let aType  = getType a
-      bType  = getType b
-      abType = aType `tMax` bType
-  in  Pi (makeTypeAnn abType) (Binder p vis name a) b
-
-tPiInternal :: HasCallStack => Visibility -> CheckedExpr -> CheckedExpr -> CheckedExpr
-tPiInternal vis = tPi mempty vis Machine
-
--- TODO figure out how to do this without horrible -1 hacks
-tForall
-  :: CheckedExpr
-  -> (CheckedExpr -> CheckedExpr)
-  -> CheckedExpr
-tForall k f = quantBody
-  where
-    badBody   = f (Var (RecAnn Type0 mempty) (Bound (-1)))
-    body      = cleanDBIndices (-1) badBody
-    quantBody = tPiInternal Implicit k body
-
-infixr 4 ~>
-(~>) :: CheckedExpr -> CheckedExpr -> CheckedExpr
-x ~> y = tPiInternal Explicit x y
-
-infixr 4 ~~>
-(~~>) :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
-x ~~> y = tPiInternal Implicit x y
-
-con :: Builtin -> CheckedExpr -> CheckedExpr
-con b t = Builtin (makeTypeAnn t) b
-
-infixl 4 `app`
-app :: CheckedExpr -> CheckedExpr -> CheckedExpr
-app fun arg = App (makeTypeAnn (getFunResultType (getType fun))) fun (Arg mempty Explicit arg)
-
-hole :: Symbol -> CheckedExpr
-hole = Hole mempty
+con :: Builtin -> DSLExpr -> DSLExpr
+con b t = DSL $ \i -> Builtin (typeAnn (unDSL t i)) b
 
 -- * Types
 
-tBool, tProp, tNat, tInt, tReal :: CheckedExpr
-tBool    = con Bool Type0
-tProp    = con Prop Type0
-tNat     = con Nat  Type0
-tInt     = con Int  Type0
-tReal    = con Real Type0
+type0 :: DSLExpr
+type0 = toDSL Type0
 
-tTensor :: CheckedExpr -> CheckedExpr -> CheckedExpr
-tTensor tElem dims = con Tensor (Type0 ~> tList tNat ~> Type0) `app` tElem `app` dims
+constraint :: DSLExpr
+constraint = toDSL Constraint
 
-tList :: CheckedExpr -> CheckedExpr
-tList tElem = con List (Type0 ~> Type0) `app` tElem
+tBool, tProp, tNat, tInt, tReal :: DSLExpr
+tBool = con Bool type0
+tProp = con Prop type0
+tNat  = con Nat  type0
+tInt  = con Int  type0
+tReal = con Real type0
+
+tTensor :: DSLExpr -> DSLExpr -> DSLExpr
+tTensor tElem dims = con Tensor (type0 ~> tList tNat ~> type0) `app` tElem `app` dims
+
+tList :: DSLExpr -> DSLExpr
+tList tElem = con List (type0 ~> type0) `app` tElem
+
+tHole :: Symbol -> DSLExpr
+tHole name = toDSL $ Hole mempty name
 
 -- * TypeClass
 
-typeClass :: Provenance -> Builtin -> CheckedExpr -> CheckedExpr
-typeClass p op t = Builtin (RecAnn t p) op
+typeClass :: Provenance -> Builtin -> DSLExpr -> DSLExpr
+typeClass p op t = DSL $ \i -> Builtin (RecAnn (unDSL t i) p) op
 
-hasEq :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-hasEq p tArg tRes = typeClass p HasEq (Type0 ~> Type0 ~> Constraint) `app` tArg `app` tRes
+hasEq :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
+hasEq p tArg tRes = typeClass p HasEq ((type0 ~> type0 ~> constraint) `app` tArg `app` tRes)
 
-hasOrd :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-hasOrd p tArg tRes = typeClass p HasOrd (Type0 ~> Type0 ~> Constraint) `app` tArg `app` tRes
+hasOrd :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
+hasOrd p tArg tRes = typeClass p HasOrd (type0 ~> type0 ~> constraint) `app` tArg `app` tRes
 
-isTruth :: Provenance -> CheckedExpr -> CheckedExpr
-isTruth p t = typeClass p IsTruth (Type0 ~> Constraint) `app` t
+isTruth :: Provenance -> DSLExpr -> DSLExpr
+isTruth p t = typeClass p IsTruth (type0 ~> constraint) `app` t
 
-isNatural :: Provenance -> CheckedExpr -> CheckedExpr
-isNatural p t = typeClass p IsNatural (Type0 ~> Constraint) `app` t
+isNatural :: Provenance -> DSLExpr -> DSLExpr
+isNatural p t = typeClass p IsNatural (type0 ~> constraint) `app` t
 
-isIntegral :: Provenance -> CheckedExpr -> CheckedExpr
-isIntegral p t = typeClass p IsIntegral (Type0 ~> Constraint) `app` t
+isIntegral :: Provenance -> DSLExpr -> DSLExpr
+isIntegral p t = typeClass p IsIntegral (type0 ~> constraint) `app` t
 
-isRational :: Provenance -> CheckedExpr -> CheckedExpr
-isRational p t = typeClass p IsRational (Type0 ~> Constraint) `app` t
+isRational :: Provenance -> DSLExpr -> DSLExpr
+isRational p t = typeClass p IsRational (type0 ~> constraint) `app` t
 
-isReal :: Provenance -> CheckedExpr -> CheckedExpr
-isReal p t = typeClass p IsReal (Type0 ~> Constraint) `app` t
+isReal :: Provenance -> DSLExpr -> DSLExpr
+isReal p t = typeClass p IsReal (type0 ~> constraint) `app` t
 
-isContainer :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-isContainer p tCont tElem = typeClass p IsContainer (Type0 ~> Type0 ~> Constraint) `app` tCont `app` tElem
+isContainer :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
+isContainer p tCont tElem = typeClass p IsContainer (type0 ~> type0 ~> constraint) `app` tCont `app` tElem
 
-isQuantifiable :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-isQuantifiable p tDom tTruth = typeClass p IsQuantifiable (Type0 ~> Type0 ~> Constraint) `app` tDom `app` tTruth
-
--- * Expressions
-
-list :: [CheckedExpr] -> CheckedExpr -> CheckedExpr
-list es tElem =
-  tForall Type0 $ \tCont ->
-    isContainer mempty tCont tElem ~> Seq (makeTypeAnn tCont) es
+isQuantifiable :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
+isQuantifiable p tDom tTruth = typeClass p IsQuantifiable (type0 ~> type0 ~> constraint) `app` tDom `app` tTruth

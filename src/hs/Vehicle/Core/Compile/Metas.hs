@@ -6,7 +6,7 @@ module Vehicle.Core.Compile.Metas
   , MetaSubstitutable(..)
   ) where
 
-import Control.Monad.Reader (Reader, runReader, ask)
+import Control.Monad.Reader (Reader, runReader, ask, local)
 
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
@@ -24,10 +24,14 @@ prettyMetas = pretty . IntSet.toList
 type MetaSubstitution = IntMap CheckedExpr
 
 class MetaSubstitutable a where
+  -- TODO change name away from M
   substM :: a -> Reader MetaSubstitution a
 
   substMetas :: MetaSubstitution -> a -> a
   substMetas s e = runReader (substM e) s
+
+  substMetasLiftLocal :: a -> Reader MetaSubstitution a
+  substMetasLiftLocal e = local (IntMap.map (liftDBIndices 1)) (substM e)
 
 instance MetaSubstitutable a => MetaSubstitutable (a, a) where
   substM (e1, e2) = do
@@ -54,9 +58,9 @@ instance MetaSubstitutable CheckedExpr where
     Seq     ann es           -> Seq     <$> substM ann <*> traverse substM es
     Ann     ann term typ     -> Ann     <$> substM ann <*> substM term   <*> substM typ
     App     ann fun arg      -> App     <$> substM ann <*> substM fun    <*> substM arg
-    Pi      ann binder res   -> Pi      <$> substM ann <*> substM binder <*> substM res
-    Let     ann e1 binder e2 -> Let     <$> substM ann <*> substM e1     <*> substM binder <*> substM e2
-    Lam     ann binder e     -> Lam     <$> substM ann <*> substM binder <*> substM e
+    Pi      ann binder res   -> Pi      <$> substM ann <*> substM binder <*> substMetasLiftLocal res
+    Let     ann e1 binder e2 -> Let     <$> substM ann <*> substM e1     <*> substM binder <*> substMetasLiftLocal e2
+    Lam     ann binder e     -> Lam     <$> substM ann <*> substM binder <*> substMetasLiftLocal e
     Var     ann v            -> Var     <$> substM ann <*> pure v
 
     Meta    ann m -> do

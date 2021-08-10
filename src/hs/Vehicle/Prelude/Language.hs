@@ -29,7 +29,7 @@ type Level = Natural
 -- | Literals in the language
 data Literal
   = LNat  Natural
-  | LInt  Integer
-  | LReal Double
+  | LInt  Int
+  | LRat  Double
   | LBool Bool
   deriving (Eq, Ord, Show, Generic, NFData)

@@ -117,8 +117,8 @@ instance Convert B.Arg V.InputArg where
 
 instance Convert B.Lit Literal where
   conv = \case
-    B.LitNat  n -> return $ LInt  n
-    B.LitReal r -> return $ LReal r
+    B.LitNat  n -> return $ LInt (fromIntegral n)
+    B.LitReal r -> return $ LRat r
     B.LitBool b -> return $ LBool (read (unpack $ tkSymbol b))
 
 instance Convert B.Expr V.InputExpr where

@@ -65,7 +65,7 @@ instance Compile Literal where
   compile = \case
     LNat  v -> pretty v
     LInt  v -> pretty v
-    LReal v -> pretty v
+    LRat  v -> pretty v
     LBool v -> pretty v
 
 instance Compile (WithProvenance Identifier) where

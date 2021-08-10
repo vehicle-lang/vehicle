@@ -19,9 +19,6 @@ data Binder ann
     (Maybe (Expr ann)) -- Variable typing annotation (optional)
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
-instance HasProvenance (Binder ann) where
-  prov (Binder p _ _ _) = p
-
 -- | Arguments to function applications
 data Arg ann
   = Arg
@@ -30,9 +27,6 @@ data Arg ann
     (Expr ann)         -- Argument expression
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
-instance HasProvenance (Arg ann) where
-  prov (Arg p _ _) = p
-
 -- | An individual let declaration
 data LetDecl ann
   = LetDecl
@@ -40,9 +34,6 @@ data LetDecl ann
     (Binder ann)       -- Variable name
     (Expr   ann)       -- Bound expression
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
-
-instance HasProvenance (LetDecl ann) where
-  prov (LetDecl p _ _) = p
 
 -- | The core Tree structure, parameterised by an annotation type so different
 -- types of data can be associated with it's parts.
@@ -138,5 +129,9 @@ newtype Prog ann
   = Main [Decl ann] -- Sequence of declarations
 
   deriving (Eq, Ord, Show)
+
+-- | An annotation that stores both the type of the expression and some other
+-- arbitrary annotations. Used to avoid unrestricted type-level recursion.
+data RecAnn ann = RecAnn (Expr (RecAnn ann)) ann
 
 makeBaseFunctor ''Expr

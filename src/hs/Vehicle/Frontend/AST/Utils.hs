@@ -7,6 +7,49 @@ import Numeric.Natural (Natural)
 import Vehicle.Prelude
 import Vehicle.Frontend.AST.Core
 
+--------------------------------------------------------------------------------
+-- Type synonyms for literals
+
+pattern LitNat :: ann -> Natural -> Expr ann
+pattern LitNat ann n = Literal ann (LNat n)
+
+pattern LitInt :: ann -> Int -> Expr ann
+pattern LitInt ann n = Literal ann (LInt n)
+
+pattern LitRat :: ann -> Double -> Expr ann
+pattern LitRat ann n = Literal ann (LRat n)
+
+pattern LitBool :: ann -> Bool -> Expr ann
+pattern LitBool ann n = Literal ann (LBool n)
+
+--------------------------------------------------------------------------------
+-- Type synonyms
+
+-- * Type of annotations attached to the Frontend AST after parsing before being
+-- analysed by the compiler
+
+type InputAnn     = Provenance
+type InputArg     = Arg     InputAnn
+type InputBinder  = Binder  InputAnn
+type InputLetDecl = LetDecl InputAnn
+type InputExpr    = Expr    InputAnn
+type InputDecl    = Decl    InputAnn
+type InputProg    = Prog    InputAnn
+
+-- * Type of annotations attached to the Frontend AST that are output by
+-- the compiler
+
+type OutputAnn     = RecAnn Provenance
+type OutputArg     = Arg     OutputAnn
+type OutputBinder  = Binder  OutputAnn
+type OutputLetDecl = LetDecl OutputAnn
+type OutputExpr    = Expr    OutputAnn
+type OutputDecl    = Decl    OutputAnn
+type OutputProg    = Prog    OutputAnn
+
+--------------------------------------------------------------------------------
+-- Utility functions
+
 -- |Extract the top-level annotation from a expression
 annotation :: Expr ann -> ann
 annotation = \case
@@ -68,55 +111,33 @@ annotation = \case
   Any     ann             -> ann
   Seq     ann _es         -> ann
 
--- * Type synonyms for literals
-
-pattern LitNat :: ann -> Natural -> Expr ann
-pattern LitNat ann n = Literal ann (LNat n)
-
-pattern LitInt :: ann -> Integer -> Expr ann
-pattern LitInt ann n = Literal ann (LInt n)
-
-pattern LitReal :: ann -> Double -> Expr ann
-pattern LitReal ann n = Literal ann (LReal n)
-
-pattern LitBool :: ann -> Bool -> Expr ann
-pattern LitBool ann n = Literal ann (LBool n)
-
-
--- * Type of annotations attached to the Frontend AST after parsing
--- before being analysed by the compiler
-
-type InputAnn     = Provenance
-type InputArg     = Arg     InputAnn
-type InputBinder  = Binder  InputAnn
-type InputLetDecl = LetDecl InputAnn
-type InputExpr    = Expr    InputAnn
-type InputDecl    = Decl    InputAnn
-type InputProg    = Prog    InputAnn
-
-instance HasProvenance InputExpr where
-  prov (Hole p _) = p
-  prov e          = annotation e
-
--- * Type of annotations attached to the Frontend AST that are output by the compiler
-
--- | An annotation that stores both the type of the expression and some other arbitrary annotations.
--- Used to avoid unrestricted type-level recursion.
-data RecAnn ann = RecAnn (Expr (RecAnn ann)) ann
-
-type OutputAnn     = RecAnn Provenance
-type OutputArg     = Arg     OutputAnn
-type OutputBinder  = Binder  OutputAnn
-type OutputLetDecl = LetDecl OutputAnn
-type OutputExpr    = Expr    OutputAnn
-type OutputDecl    = Decl    OutputAnn
-type OutputProg    = Prog    OutputAnn
-
-instance HasProvenance OutputAnn where
-  prov (RecAnn _ p) = p
-
 -- | Extracts the type of the term from the term's annotation.
 getType :: Expr (RecAnn ann) -> Expr (RecAnn ann)
 getType (Type l)   = Type (l + 1)
 getType Constraint = Type 1
 getType e          = let RecAnn t _ = annotation e in t
+
+--------------------------------------------------------------------------------
+-- Instances
+
+instance HasProvenance ann => HasProvenance (Expr ann) where
+  prov (Hole p _) = p
+  prov e          = prov (annotation e)
+
+instance HasProvenance (Binder ann) where
+  prov (Binder p _ _ _) = p
+
+instance HasProvenance (LetDecl ann) where
+  prov (LetDecl p _ _) = p
+
+instance HasProvenance (Arg ann) where
+  prov (Arg p _ _) = p
+
+instance HasProvenance OutputAnn where
+  prov (RecAnn _ p) = p
+
+instance HasVisibility (Binder ann) where
+  visibility (Binder _ v _ _) = v
+
+instance HasVisibility (Arg ann) where
+  visibility (Arg _ v _) = v

@@ -20,11 +20,11 @@ pattern Type1 = Type 1
 pattern LitNat :: ann -> Natural -> Expr binder var ann
 pattern LitNat ann n = Literal ann (LNat n)
 
-pattern LitInt :: ann -> Integer -> Expr binder var ann
+pattern LitInt :: ann -> Int -> Expr binder var ann
 pattern LitInt ann n = Literal ann (LInt n)
 
-pattern LitReal :: ann -> Double -> Expr binder var ann
-pattern LitReal ann n = Literal ann (LReal n)
+pattern LitRat :: ann -> Double -> Expr binder var ann
+pattern LitRat ann n = Literal ann (LRat n)
 
 pattern LitBool :: ann -> Bool -> Expr binder var ann
 pattern LitBool ann n = Literal ann (LBool n)

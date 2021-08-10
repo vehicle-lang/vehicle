@@ -73,18 +73,19 @@ instance MeaningfulError CompileError where
     , fix        = "check your indexing"
     }
 
-unexpectedTypeError :: Provenance -> OutputExpr -> OutputExpr -> [OutputExpr] -> a
-unexpectedTypeError p expr actualType expectedTypes = developerError $
+unexpectedTypeError :: OutputExpr -> OutputExpr -> [String] -> a
+unexpectedTypeError expr actualType expectedTypes = developerError $
   "Unexpected type found for expression" <+> pretty expr <> "." <> line <>
   "Was expecting one of" <+> list (map pretty expectedTypes) <+>
   "but found" <+> pretty actualType <+>
-  "at" <+> pretty p <> "."
+  "at" <+> pretty (prov expr) <> "."
 
 unexpectedExprError :: Provenance -> OutputExpr -> [OutputExpr] -> a
 unexpectedExprError p actualExpr expectedExprs = developerError $
   "Was expecting something of the form" <+> list (map pretty expectedExprs) <+>
   "but found" <+> pretty actualExpr <+>
   "at" <+> pretty p <> "."
+
 --------------------------------------------------------------------------------
 -- Subcategories of types/expressions
 
@@ -102,18 +103,17 @@ data TruthType
 data ContainerType
   = TList
   | TTensor [Int]
-  | TSet
   deriving (Eq, Ord, Show)
-{-
+
 numericType :: OutputExpr -> NumericType
 numericType expr = go $ getType expr
   where
-    go :: OutputExpr -> NumberType
+    go :: OutputExpr -> NumericType
     go = \case
       Int   _ann        -> TInt
       Real  _ann        -> TReal
       Fun   _ann _t1 t2 -> go t2
-      typ               -> unexpectedTypeError (prov expr) expr typ ["Real", "Int", "X -> Bool", "X -> Prop"]
+      typ               -> unexpectedTypeError expr typ ["Real", "Int", "X -> Bool", "X -> Prop"]
 
 truthType :: OutputExpr -> TruthType
 truthType expr = go $ getType expr
@@ -123,18 +123,18 @@ truthType expr = go $ getType expr
       Bool _ann        -> TBool
       Prop _ann        -> TProp
       Fun  _ann _t1 t2 -> go t2
-      typ              -> unexpectedTypeError (prov expr) expr typ ["Bool", "Prop", "X -> Bool", "X -> Prop"]
+      typ              -> unexpectedTypeError expr typ ["Bool", "Prop", "X -> Bool", "X -> Prop"]
 
 containerType :: OutputExpr -> ContainerType
 containerType expr = case getType expr of
   List   _ _            -> TList
   Tensor _ _ (Seq _ ds) -> TTensor (map fromLit ds)
     where
-      fromLit :: OutputExpr -> Integer
+      fromLit :: OutputExpr -> Int
       fromLit (LitInt _ i) = i
-      fromLit t            = unexpectedTypeError (prov ann) expr t ["a literal"]
-  t              -> unexpectedTypeError (prov ann) expr t ["List", "Tensor"]
--}
+      fromLit t            = unexpectedTypeError expr t ["a literal"]
+  t              -> unexpectedTypeError expr t ["List", "Tensor"]
+
 -- |Types of numeric orders
 data OrderType
   = LeqOp

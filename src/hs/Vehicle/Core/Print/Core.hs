@@ -39,7 +39,7 @@ instance Pretty Literal where
   pretty = \case
     LNat  x -> pretty x
     LInt  x -> pretty x
-    LReal x -> pretty x
+    LRat  x -> pretty x
     LBool x -> pretty x
 
 instance Pretty Builtin where
