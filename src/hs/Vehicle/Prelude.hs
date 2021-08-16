@@ -5,6 +5,7 @@ module Vehicle.Prelude
   , (!?)
   , (!!?)
   , rangeStart
+  , repeatN
   ) where
 
 import Data.Range
@@ -47,3 +48,7 @@ rangeStart InfiniteRange               = Nothing
 [] !!? _       = Nothing
 (x : _)  !!? 0 = Just x
 (_ : xs) !!? i = xs !!? (i - 1)
+
+repeatN :: (a -> a) -> Int -> a -> a
+repeatN _ 0 = id
+repeatN f n = f . repeatN f (n-1)
