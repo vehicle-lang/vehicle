@@ -14,10 +14,10 @@ import Vehicle.Frontend.Delaborate ( DelabError, runDelab )
 import Vehicle.Frontend.Print ()
 
 prettyFrontend :: VC.CheckedExpr -> Doc ann
-prettyFrontend e = case runDelab (runDescope e :: VC.OutputExpr) :: Either DelabError VF.OutputExpr of
+prettyFrontend e = pretty e {-case runDelab (runDescope e :: VC.OutputExpr) :: Either DelabError VF.OutputExpr of
   Right expr -> pretty expr
   Left  err  -> developerError $
     "The following error:" <> line <> line <>
     pretty (show (details err)) <> line <> line <>
     "was encountered while trying to delaborate the following core expression:" <> line <> line <>
-    pretty e
+    pretty e -}

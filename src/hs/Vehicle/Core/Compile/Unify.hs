@@ -20,6 +20,7 @@ import Vehicle.Prelude
 import Vehicle.Core.Print.Core ()
 import Vehicle.Core.Print.Frontend (prettyFrontend)
 import Vehicle.Core.AST
+import Vehicle.Core.Compile.DSL (tPiInternal, makeTypeAnn)
 import Vehicle.Core.Compile.Metas
 
 data TypeClassConstraint = Meta `Has` CheckedExpr
@@ -52,11 +53,13 @@ type UnificationHistory = [UnificationPair]
 -- | Represents that the two contained expressions should be equal.
 data UnificationConstraint
   = Unify
-    Provenance         -- The location of the code that gave rise to the constraint
-    UnificationContext -- The context of the constraint is being solved in
-    UnificationHistory -- The history, i.e. unification path that has lead to this.
-    MetaSet            -- The meta-variables that the constraint is blocked on
-    UnificationPair    -- The expressions to unify
+    { unifyProv     :: Provenance         -- The location of the code that gave rise to the constraint
+    , unifyCtxt     :: UnificationContext -- The context of the constraint is being solved in
+    , unifHistory   :: UnificationHistory -- The history, i.e. unification path that has lead to this.
+    , unifBlockedOn :: MetaSet            -- The meta-variables that the constraint is blocked on
+    , unifExprs     :: UnificationPair    -- The expressions to unify
+    }
+  deriving Show
 
 instance HasProvenance UnificationConstraint where
   prov (Unify p _ _ _ _) = p
@@ -155,40 +158,41 @@ solvePass queue constraint = do
       newConstraints <- solveConstraint updatedConstraint
       return (newConstraints <> queue)
 
+pattern x :~: y = (x,y)
+
 solveConstraint :: MonadUnify m => UnificationConstraint -> m [UnificationConstraint]
 -- Errors
-solveConstraint constraint@(Unify p ctx history _  exprs) = case exprs of
-  (Let{}, _)  -> unexpectedCase p "Let bindings"
-  (_, Let{})  -> unexpectedCase p "Let bindings"
-  (Hole{}, _) -> unexpectedCase p "Holes"
-  (_, Hole{}) -> unexpectedCase p "Holes"
+solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = case (decomposeApp e1, decomposeApp e2) of
+  (Let{}, _) :~: _           -> unexpectedCase p "Let bindings"
+  _          :~: (Let{}, _)  -> unexpectedCase p "Let bindings"
+
+  (Hole{}, _) :~: _           -> unexpectedCase p "Holes"
+  _           :~: (Hole{}, _) -> unexpectedCase p "Holes"
 
   -- Rigid-rigid
-  (Constraint,    Constraint)    -> return mempty
-  (Type      l1,  Type      l2)  -> solveEq constraint l1  l2
-  (Builtin _ op1, Builtin _ op2) -> solveEq constraint op1 op2
-  (Var     _ v1,  Var     _ v2)  -> solveEq constraint v1  v2
-  (Literal _ l1,  Literal _ l2)  -> solveEq constraint l1  l2
-
+  (Constraint, [])   :~: (Constraint, [])   -> return mempty
+  (Type    l1, [])   :~: (Type    l2, [])   -> do solveEq constraint l1  l2; return []
+{-
   (Ann _ e1 t1, Ann _ e2 t2) -> return
     [ Unify p ctx (exprs : history) mempty (e1, e2)
     , Unify p ctx (exprs : history) mempty (t1, t2)
     ]
-
-  (Lam _ binder1 body1, Lam _ binder2 body2)
+-}
+  -- TODO: we ASSUME that all terms here are in normal form, so there
+  -- will never be an unreduced redex.
+  ((Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, []))
     | visibility binder1 /= visibility binder2 -> throwError $ UnificationFailure constraint
     | otherwise -> return
       [ Unify p (addToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2) ]
 
-  (Seq _ es1, Seq _ es2)
+  (Seq _ es1, []) :~: (Seq _ es2, [])
     -- TODO more informative error message
     | length es1 /= length es2 -> throwError $ UnificationFailure constraint
     -- TODO need to try and unify `Seq` with `Cons`s.
     | otherwise                -> return $
         zipWith (curry (Unify p ctx (exprs : history) mempty)) es1 es2
 
-
-  (Pi _ binder1 body1, Pi _ binder2 body2)
+  (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
     | visibility binder1 /= visibility binder2 -> throwError $ UnificationFailure constraint
     | otherwise -> return
     -- !!TODO!! Block until binders are solved
@@ -197,6 +201,58 @@ solveConstraint constraint@(Unify p ctx history _  exprs) = case exprs of
       , Unify p (addToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2)
       ]
 
+  (Builtin _ op1, args1) :~: (Builtin _ op2, args2) -> do
+    solveEq constraint op1 op2
+    if length args1 /= length args2 then
+      throwError $ UnificationFailure constraint
+    else
+      traverse (solveArg constraint) (zip args1 args2)
+
+  (Var _ v1, args1) :~: (Var _ v2, args2) -> do
+    solveEq constraint v1 v2
+    if length args1 /= length args2 then
+      throwError $ UnificationFailure constraint
+    else
+      traverse (solveArg constraint) (zip args1 args2)
+
+  (Literal _ l1, args1) :~: (Literal _ l2, args2) -> do
+    solveEq constraint l1 l2
+    if length args1 /= length args2 then
+      throwError $ UnificationFailure constraint
+    else
+      traverse (solveArg constraint) (zip args1 args2)
+
+  (Meta _ i, args1) :~: (Meta _ j, args2) ->
+    throwError $ UnificationFailure constraint
+
+  (Meta _ i, args) :~: t ->
+    -- 1. Check that 'args' is a pattern
+    case patternOfArgs args of
+      Nothing ->
+        -- this constraint is stuck; shelve it for now and hope that
+        -- another constraint allows us to progress.
+        return [constraint]
+      Just subst ->
+        case substAll subst e2 of
+          Nothing ->
+            return [constraint]
+          Just t' ->
+            let solution =
+                  foldr (\(Arg _ v argE) body ->
+                           Lam (makeTypeAnn (tPiInternal v (getType argE) (getType body)))
+                               (Binder mempty v Machine (getType argE)) body)
+                    t' args
+            in
+            metaSolved p i solution
+
+  _t :~: (Meta _ _i, _args) ->
+    solveConstraint (constraint { unifExprs = (e2, e1) })
+    -- 1. Check that 'args1' is a pattern
+    -- 2. Check that 'i' doesn't occur in t
+    -- 3. if ok, i := \xs. t
+ --   throwError $ UnificationFailure constraint
+
+{-
   (e1@App{}, e2@App{}) ->
     case (decomposeApp e1, decomposeApp e2) of
       -- If two heads equal variables then check that all args equal
@@ -218,7 +274,7 @@ solveConstraint constraint@(Unify p ctx history _  exprs) = case exprs of
 
   -- Rigid-flex
   (e1, Meta _ i) -> metaSolved p i e1
-
+-}
   -- Catch-all
   _ -> throwError $ UnificationFailure constraint
 
@@ -242,10 +298,10 @@ solveEq :: (MonadUnify m, Eq a)
         => UnificationConstraint
         -> a
         -> a
-        -> m [UnificationConstraint]
+        -> m ()
 solveEq c v1 v2
   | v1 /= v2  = throwError $ UnificationFailure c
-  | otherwise = return mempty
+  | otherwise = return ()
 
 solveArg :: MonadUnify m
          => UnificationConstraint

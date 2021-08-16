@@ -1,3 +1,4 @@
+{-# LANGUAGE PartialTypeSignatures #-}
 
 module Vehicle.Core.AST.DeBruijn
   ( Name(..)
@@ -11,15 +12,22 @@ module Vehicle.Core.AST.DeBruijn
   , DeBruijnBinder
   , BindingDepth
   , cleanDBIndices
+  , liftDBIndices
   , substInto
+  , patternOfArgs
+  , substAll
   ) where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
-import Control.Monad.State (MonadState, modify, get, evalState)
+import Control.Monad.State (MonadState, modify, get, evalState, evalStateT, State, StateT)
+import Control.Monad.Trans (lift)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST.Core
+
+import Data.IntMap (IntMap)
+import qualified Data.IntMap as IM
 
 --------------------------------------------------------------------------------
 -- Definitions
@@ -54,11 +62,11 @@ type DeBruijnAnn       ann = RecAnn Name Var ann
 type BindingDepth = Int
 
 -- | A type-synonym for the function that is used to update a bound variable
-type UpdateVariable state ann
+type UpdateVariable m state ann
   =  Index                 -- The old deBruijn index of the variable
   -> ann                   -- The annotation of the variable
   -> (BindingDepth, state) -- How many binders the variable is under & the current state
-  -> DeBruijnExpr ann      -- The resulting expression
+  -> m (DeBruijnExpr ann)  -- The resulting expression
 
 -- | A type-synonym for the function that is used to update the operation's state
 -- when traversing across a binder.
@@ -68,7 +76,7 @@ class MutableAnn ann where
   alterAnn
     :: (MonadState (BindingDepth, state) m)
     => TraverseBinder state ann
-    -> UpdateVariable state ann
+    -> UpdateVariable m state ann
     -> ann
     -> m ann
 
@@ -76,7 +84,7 @@ class Mutable ann (a :: * -> *) where
   alter
     :: (MutableAnn ann, MonadState (BindingDepth, state) m)
     => TraverseBinder state ann
-    -> UpdateVariable state ann
+    -> UpdateVariable m state ann
     -> a ann
     -> m (a ann)
 
@@ -101,7 +109,9 @@ instance MutableAnn ann => Mutable ann (Expr Name Var) where
       Let     ann e1 binder e2 -> Let     <$> altAnn ann <*> altExpr e1 <*> altBinder binder <*> altExpr e2
       Lam     ann binder e     -> Lam     <$> altAnn ann <*> altBinder binder <*> altExpr e
       Var     ann (Free i)     -> Var     <$> altAnn ann <*> pure (Free i)
-      Var     ann (Bound i)    -> var i   <$> altAnn ann <*> get
+      Var     ann (Bound i)    -> do ann' <- altAnn ann
+                                     st   <- get
+                                     var i ann' st
 
 instance Mutable ann (Arg Name Var) where
   alter body var (Arg p vis e) = Arg p vis <$> alter body var e
@@ -127,8 +137,8 @@ liftDBIndices :: MutableAnn ann
               -> DeBruijnExpr ann  -- ^ the result of the lifting
 liftDBIndices e = evalState (alter id alterVar e) (0 , ())
   where
-    alterVar :: UpdateVariable () ann
-    alterVar i ann (d, _) = Var ann (Bound i')
+    alterVar :: UpdateVariable (State (BindingDepth, ())) () ann
+    alterVar i ann (d, _) = return (Var ann (Bound i'))
       where
         i' | d <= i    = i + 1 -- Index is referencing the environment so increment
            | otherwise = i     -- Index is locally bound so no need to increment
@@ -142,10 +152,10 @@ cleanDBIndices :: MutableAnn ann
                -> DeBruijnExpr ann
 cleanDBIndices target e = evalState (alter id alterVar e) (0, ())
   where
-    alterVar :: UpdateVariable () ann
+    alterVar :: UpdateVariable (State (BindingDepth, ())) () ann
     alterVar i ann (d, _)
-      | i == target = Var ann (Bound d)
-      | otherwise   = Var ann (Bound i)
+      | i == target = return $ Var ann (Bound d)
+      | otherwise   = return $ Var ann (Bound i)
 
 -- | De Bruijn aware substitution of one expression into another
 substInto :: MutableAnn ann
@@ -154,16 +164,46 @@ substInto :: MutableAnn ann
           -> DeBruijnExpr ann -- ^ the result of the substitution
 substInto sub e = evalState (alter binderUpdate alterVar e) (0 , sub)
   where
-    alterVar :: UpdateVariable (DeBruijnExpr ann) ann
+    alterVar :: UpdateVariable (State _) (DeBruijnExpr ann) ann
     alterVar i ann (d, sub) = case compare i d of
       -- Index matches the expression we're substituting for
-      EQ -> sub
+      EQ -> return sub
       -- Index was bound in the original expression
-      LT -> Var ann (Bound i)
+      LT -> return $ Var ann (Bound i)
       -- Index was free in the original expression,
       -- and we've removed a binder so decrease it by 1.
-      GT -> Var ann (Bound (i - 1))
+      GT -> return $ Var ann (Bound (i - 1))
 
     -- Whenever we go underneath the binder we must lift
     -- all the indices in the substituted expression
     binderUpdate sub = liftDBIndices sub
+
+type Substitution ann = IntMap (DeBruijnExpr ann)
+
+-- TODO: explain what this means:
+--   ?X i2 i4 i1 --> [i2 -> 2, i4 -> 1, i1 -> 0]
+
+patternOfArgs :: [DeBruijnArg ann] -> Maybe (Substitution ann)
+patternOfArgs args = go (length args - 1) IM.empty args
+  where go _ revMap [] = Just revMap
+        go i revMap (Arg _ _ (Var ann (Bound j)) : restArgs) =
+          if IM.member j revMap then
+            Nothing
+          else
+            go (i-1) (IM.insert j (Var ann (Bound i)) revMap) restArgs
+        go _ _ _ = Nothing
+
+substAll :: MutableAnn ann
+         => IntMap (DeBruijnExpr ann)
+         -> DeBruijnExpr ann
+         -> Maybe (DeBruijnExpr ann)
+substAll sub e = evalStateT (alter binderUpdate alterVar e) (0, sub)
+  where
+    alterVar :: UpdateVariable (StateT _ Maybe) (IntMap (DeBruijnExpr ann)) ann
+    alterVar i ann (d, subst) =
+      if i >= d then
+        lift (IM.lookup (i - d) subst)
+      else
+        return $ Var ann (Bound i)
+
+    binderUpdate = IM.map liftDBIndices

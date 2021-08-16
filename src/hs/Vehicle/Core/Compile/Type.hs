@@ -168,7 +168,7 @@ addUnificationConstraints cs = modifyMetaCtx $ \ MetaCtx {..} ->
 unify :: Provenance -> CheckedExpr -> CheckedExpr -> TCM CheckedExpr
 unify p e1 e2 = do
   ctx <- getBoundCtx
-  -- TODO calculate the context
+  -- TODO calculate the context (currently breaks the printing of unification constraints)
   addUnificationConstraints [makeConstraint p ctx e1 e2]
   -- TODO calculate the most general unifier
   return e1
@@ -261,9 +261,9 @@ check expectedType expr = showCheckExit $ case showCheckEntry expectedType expr 
       Pi _ (Binder _ vFun _ tBound2) tRes
         | vBound == vFun -> do
           tBound1' <- check (getType tBound2) tBound1
-          tBound' <- unify p tBound1' tBound2
+          tBound' <- unify p tBound2 tBound1'
 
-          addToBoundCtx nBound tBound2 $ do
+          addToBoundCtx nBound tBound' $ do
             body' <- check tRes body
             return $ Lam (RecAnn expectedType p) (Binder pBound vBound nBound tBound') body'
 
@@ -375,7 +375,9 @@ infer e = showInferExit $ case showInferEntry e of
     -- Lookup the type of the variable in the context.
     ctx <- getBoundCtx
     case ctx !!? i of
-      Just (_, t') -> return (Var (RecAnn t' p) (Bound i), t')
+      Just (_, t') -> do
+        let t'' = repeatN liftDBIndices (i+1) t'
+        return (Var (RecAnn t'' p) (Bound i), t'')
       Nothing      -> developerError $
         "Index" <+> pretty i <+> "out of bounds when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 

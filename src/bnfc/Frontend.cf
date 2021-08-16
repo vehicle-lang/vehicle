@@ -116,8 +116,8 @@ TCReal.  TypeClass ::= TokTCReal      Expr14;
 --   aren't used for `let` and `in`.
 
 -- Kinds.
-internal Type.       Expr14 ::= "Type" Integer;
-internal Constraint. Expr14 ::= "Constraint";
+Type.       Expr14 ::= "Type" Integer;
+Constraint. Expr14 ::= "Constraint";
 
 -- Core structure.
 Forall.  Expr   ::= TokForall [Binder] TokDot Expr;
