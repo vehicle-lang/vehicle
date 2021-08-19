@@ -437,6 +437,7 @@ inferDecl = \case
   DeclNetw p ident t      -> DeclNetw p ident . fst <$> infer t
   DeclData p ident t      -> DeclData p ident . fst <$> infer t
   DefFun   p ident t body -> do
+      -- TODO: check that 't' is actually a type
       (t' , _) <- infer t
       body' <- check t' body
       return $ DefFun p ident t' body'

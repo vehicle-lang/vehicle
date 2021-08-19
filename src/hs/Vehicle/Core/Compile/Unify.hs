@@ -158,6 +158,7 @@ solvePass queue constraint = do
       newConstraints <- solveConstraint updatedConstraint
       return (newConstraints <> queue)
 
+pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
 
 solveConstraint :: MonadUnify m => UnificationConstraint -> m [UnificationConstraint]
@@ -222,59 +223,43 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = case (decomp
     else
       traverse (solveArg constraint) (zip args1 args2)
 
-  (Meta _ i, args1) :~: (Meta _ j, args2) ->
+  (Meta _ _i, _args1) :~: (Meta _ _j, _args2) ->
+    -- TODO: flex-flex unification
     throwError $ UnificationFailure constraint
 
-  (Meta _ i, args) :~: t ->
-    -- 1. Check that 'args' is a pattern
+  (Meta _ i, args) :~: _ ->
+    -- Check that 'args' is a pattern
     case patternOfArgs args of
       Nothing ->
-        -- this constraint is stuck; shelve it for now and hope that
-        -- another constraint allows us to progress.
+        -- This constraint is stuck because it is not pattern; shelve
+        -- it for now and hope that another constraint allows us to
+        -- progress.
         return [constraint]
       Just subst ->
+        -- 'subst' is a renaming that renames the variables in 'e2' to
+        -- ones bound by the metavariable
         case substAll subst e2 of
           Nothing ->
             return [constraint]
-          Just t' ->
+          Just defnBody ->
+            -- TODO: fail if 'Meta _ i' occurs in 'e2'
             let solution =
                   foldr (\(Arg _ v argE) body ->
+                           -- TODO: 'getType argE' needs to be renamed
+                           -- to be in the implicit context being
+                           -- generated here.
                            Lam (makeTypeAnn (tPiInternal v (getType argE) (getType body)))
                                (Binder mempty v Machine (getType argE)) body)
-                    t' args
+                    defnBody
+                    args
             in
             metaSolved p i solution
 
   _t :~: (Meta _ _i, _args) ->
+    -- this is the mirror image of the previous case, so just swap the
+    -- problem over.
     solveConstraint (constraint { unifExprs = (e2, e1) })
-    -- 1. Check that 'args1' is a pattern
-    -- 2. Check that 'i' doesn't occur in t
-    -- 3. if ok, i := \xs. t
- --   throwError $ UnificationFailure constraint
 
-{-
-  (e1@App{}, e2@App{}) ->
-    case (decomposeApp e1, decomposeApp e2) of
-      -- If two heads equal variables then check that all args equal
-      ((Var _ i, e1Args), (Var _ j, e2Args))
-        | i /= j    -> throwError $ UnificationFailure constraint
-        | otherwise -> traverse (solveArg constraint) (zip e1Args e2Args)
-      _ -> throwError $ UnificationFailure constraint
-      {-
-      -- TODO add extra cases
-      -- If two heads meta-variables then flex-flex
-      -- If one each then flex-rigid
-    -}
-
-  -- Flex-flex
-  (Meta _ _, Meta _ _) -> throwError $ UnificationFailure constraint
-
-  -- Flex-rigid
-  (Meta _ i, e2) -> metaSolved p i e2
-
-  -- Rigid-flex
-  (e1, Meta _ i) -> metaSolved p i e1
--}
   -- Catch-all
   _ -> throwError $ UnificationFailure constraint
 

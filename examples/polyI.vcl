@@ -1,6 +1,9 @@
 polyId : forall (t : Type 0). t -> t
 polyId = \t x -> x
 
+polyIdImplicit : forall {t : Type 0}. t -> t
+polyIdImplicit {t} x = x
+
 {-
 realId : Real -> Real
 realId = polyId {Real}
