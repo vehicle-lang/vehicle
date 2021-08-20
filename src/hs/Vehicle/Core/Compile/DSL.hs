@@ -43,6 +43,7 @@ class DSL expr where
   infixr 4 ~~>
 
   app :: expr -> expr -> expr
+  lam :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
   pi  :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
 
   unnamedPi :: Visibility -> expr -> (expr -> expr) -> expr
@@ -71,24 +72,36 @@ boundVar :: CheckedExpr -> BindingDepth -> DSLExpr
 boundVar t i = DSL $ \j -> Var (typeAnn t) (Bound (j - (i + 1)))
 
 instance DSL DSLExpr where
+  lam p v n argType bodyFn = DSL $ \i ->
+    let varType = unDSL argType i
+        var     = boundVar varType i
+        binder  = Binder p v n varType
+        body    = unDSL (bodyFn var) (i + 1)
+    in Lam (typeAnn $ lamType p v n varType (getType body)) binder body
+
+  pi p v n argType bodyFn = DSL $ \i ->
+    let varType = unDSL argType i
+        var     = boundVar varType i
+        binder  = Binder p v n varType
+        body    = unDSL (bodyFn var) (i + 1)
+    in Pi (typeAnn $ piType varType (getType body)) binder body
+
   app fun arg = DSL $ \i ->
     let fun' = unDSL fun i
         arg' = unDSL arg i
     in App (typeAnn $ appType fun' arg') fun' (Arg (prov arg') Explicit arg')
 
-  pi p v n t1 t2 = DSL $ \i ->
-    let t1' = unDSL t1 i
-        t2' = unDSL (t2 (boundVar t1' i)) (i + 1)
-    in Pi (typeAnn $ piType t1' t2') (Binder p v n t1') t2'
-
 typeAnn :: CheckedExpr -> CheckedAnn
 typeAnn t = RecAnn t mempty
 
-appType :: CheckedExpr -> CheckedExpr -> CheckedExpr
-appType fun arg = arg `substInto` getFunResultType (getType fun)
+lamType :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
+lamType p v n varType bodyType = fromDSL (pi p v n (toDSL varType) (const (toDSL bodyType)))
 
 piType :: CheckedExpr -> CheckedExpr -> CheckedExpr
-piType t1 t2 = getType t1 `tMax` getType t2
+piType t1 t2 = t1 `tMax` t2
+
+appType :: CheckedExpr -> CheckedExpr -> CheckedExpr
+appType fun arg = arg `substInto` getFunResultType (getType fun)
 
 -- TODO think whether we need to recurse in the case of an implicit binder
 getFunResultType :: CheckedExpr -> CheckedExpr

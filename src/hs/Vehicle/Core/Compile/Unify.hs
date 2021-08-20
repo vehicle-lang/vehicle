@@ -20,7 +20,7 @@ import Vehicle.Prelude
 import Vehicle.Core.Print.Core ()
 import Vehicle.Core.Print.Frontend (prettyFrontend)
 import Vehicle.Core.AST
-import Vehicle.Core.Compile.DSL (tPiInternal, makeTypeAnn)
+import Vehicle.Core.Compile.DSL (DSL(..), DSLExpr, fromDSL, toDSL)
 import Vehicle.Core.Compile.Metas
 
 data TypeClassConstraint = Meta `Has` CheckedExpr
@@ -75,6 +75,9 @@ instance MetaSubstitutable UnificationConstraint where
 makeConstraint :: Provenance -> [(Name, CheckedExpr)] -> CheckedExpr -> CheckedExpr -> UnificationConstraint
 makeConstraint p ctx e1 e2 = Unify p (UnificationContext (map fst ctx) []) [] mempty (e1, e2)
 
+--------------------------------------------------------------------------------
+-- Error handling
+
 -- | Errors thrown during unification
 newtype UnificationError
   = UnificationFailure UnificationConstraint
@@ -83,8 +86,20 @@ instance MeaningfulError UnificationError where
   details (UnificationFailure constraint) = UError $ UserError
     { provenance = prov constraint
     , problem    = "Could not solve the constraint:" <+> pretty constraint
-    , fix        = "Try adding more constraint"
+    , fix        = "Try adding more type annotations"
     }
+
+unexpectedCase :: Provenance -> Doc ann -> a
+unexpectedCase p expr = developerError $
+  expr <+> "should not exist during unification" <+> pretty p
+
+unexpectedMeta :: Provenance -> Meta -> CheckedExpr -> CheckedExpr -> a
+unexpectedMeta p i new old = developerError $
+  "meta-variable" <+> pretty i <+> "already assigned" <+> pretty old <+>
+  "and should have been substituted out but it is still present and" <+>
+  "was assigned again to" <+> pretty new <+>
+  pretty p
+
 --------------------------------------------------------------------------------
 -- Unification algorithm
 
@@ -101,6 +116,8 @@ type MonadUnify m =
   , MonadReader (Maybe MetaSet) m
   )
 
+type UnificationProblem = ([UnificationConstraint], MetaSubstitution)
+
 isBlocked :: Maybe MetaSet          -- Set of metas solved in the last pass
           -> UnificationConstraint  -- Unification constraint
           -> Bool
@@ -109,17 +126,6 @@ isBlocked (Just solvedMetas) (Unify _ _ _ blockingMetas _) =
   -- A constraint is blocked if it is blocking on at least one meta
   -- and none of the metas it is blocking on have been solved in the last pass.
   not (IntSet.null blockingMetas) && IntSet.disjoint solvedMetas blockingMetas
-
-unexpectedCase :: Provenance -> Doc ann -> a
-unexpectedCase p expr = developerError $ expr <+> "should not exist during unification"  <+> pretty p
-
-unexpectedMeta :: Provenance -> Meta -> CheckedExpr -> CheckedExpr -> a
-unexpectedMeta p i new old = developerError $
-  "meta-variable" <+> pretty i <+> "already assigned" <+> pretty old <+>
-  "and should have been substituted out but it is still present and was assigned again to" <+> pretty new <+>
-  pretty p
-
-type UnificationProblem = ([UnificationConstraint], MetaSubstitution)
 
 solve :: UnificationProblem -> Except UnificationError UnificationProblem
 solve problem = fst <$> go (problem, Nothing)
@@ -243,15 +249,15 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = case (decomp
             return [constraint]
           Just defnBody ->
             -- TODO: fail if 'Meta _ i' occurs in 'e2'
-            let solution =
-                  foldr (\(Arg _ v argE) body ->
-                           -- TODO: 'getType argE' needs to be renamed
-                           -- to be in the implicit context being
-                           -- generated here.
-                           Lam (makeTypeAnn (tPiInternal v (getType argE) (getType body)))
-                               (Binder mempty v Machine (getType argE)) body)
-                    defnBody
-                    args
+            let
+              foldFn :: CheckedArg -> DSLExpr -> DSLExpr
+              foldFn (Arg argP argV argE) body =
+                -- TODO: 'getType argE' needs to be renamed
+                -- to be in the implicit context being
+                -- generated here.
+                lam argP argV Machine (toDSL $ getType argE) (const body)
+
+              solution = fromDSL (foldr foldFn (toDSL defnBody) args)
             in
             metaSolved p i solution
 

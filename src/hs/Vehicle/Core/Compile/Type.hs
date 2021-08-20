@@ -399,7 +399,7 @@ infer e = showInferExit $ case showInferEntry e of
     ctx <- getBoundCtx
     case ctx !!? i of
       Just (_, t') -> do
-        let t'' = repeatN liftDBIndices (i+1) t'
+        let t'' = liftDBIndices (i+1) t'
         return (Var (RecAnn t'' p) (Bound i), t'')
       Nothing      -> developerError $
         "Index" <+> pretty i <+> "out of bounds when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p

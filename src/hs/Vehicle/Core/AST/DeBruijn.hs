@@ -11,16 +11,10 @@ module Vehicle.Core.AST.DeBruijn
   , DeBruijnArg
   , DeBruijnBinder
   , BindingDepth
-<<<<<<< HEAD
-  , cleanDBIndices
   , liftDBIndices
   , substInto
   , patternOfArgs
   , substAll
-=======
-  , substInto
-  , liftDBIndices
->>>>>>> Revamped DSL
   ) where
 
 import GHC.Generics (Generic)
@@ -198,4 +192,4 @@ substAll sub e = evalStateT (alter binderUpdate alterVar e) (0, sub)
       else
         return $ Var ann (Bound i)
 
-    binderUpdate = IM.map liftDBIndices
+    binderUpdate = IM.map (liftDBIndices 1)
