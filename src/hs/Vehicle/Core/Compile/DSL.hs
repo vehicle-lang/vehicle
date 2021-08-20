@@ -84,7 +84,7 @@ instance DSL DSLExpr where
         var     = boundVar varType i
         binder  = Binder p v n varType
         body    = unDSL (bodyFn var) (i + 1)
-    in Pi (typeAnn $ piType varType (getType body)) binder body
+    in Pi (typeAnn $ piType (getType varType) (getType (getType body))) binder body
 
   app fun arg = DSL $ \i ->
     let fun' = unDSL fun i
@@ -97,13 +97,16 @@ typeAnn t = RecAnn t mempty
 lamType :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
 lamType p v n varType bodyType = fromDSL (pi p v n (toDSL varType) (const (toDSL bodyType)))
 
-piType :: CheckedExpr -> CheckedExpr -> CheckedExpr
+piType :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 piType t1 t2 = t1 `tMax` t2
 
 appType :: CheckedExpr -> CheckedExpr -> CheckedExpr
 appType fun arg = arg `substInto` getFunResultType (getType fun)
 
 -- TODO think whether we need to recurse in the case of an implicit binder
+-- TODO the provided type might not be in beta-normal form, so we'd have to reduce it
+-- TODO the provided type might contain defined identifiers, which need to be expanded
+-- TODO (alternative) make sure this is only called on types in beta-normal form
 getFunResultType :: CheckedExpr -> CheckedExpr
 getFunResultType (Pi _ann _binder res) = res
 getFunResultType t = developerError $ "Expecting a Pi type. Found" <+> pretty t <> "."
@@ -151,7 +154,7 @@ typeClass :: Provenance -> Builtin -> DSLExpr -> DSLExpr
 typeClass p op t = DSL $ \i -> Builtin (RecAnn (unDSL t i) p) op
 
 hasEq :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-hasEq p tArg tRes = typeClass p HasEq ((type0 ~> type0 ~> constraint) `app` tArg `app` tRes)
+hasEq p tArg tRes = typeClass p HasEq (type0 ~> type0 ~> constraint) `app` tArg `app` tRes
 
 hasOrd :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
 hasOrd p tArg tRes = typeClass p HasOrd (type0 ~> type0 ~> constraint) `app` tArg `app` tRes

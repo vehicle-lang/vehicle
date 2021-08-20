@@ -19,6 +19,9 @@ instance Pretty Identifier where
 data WithProvenance a = WithProvenance Provenance a
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic, NFData)
 
+deProv :: WithProvenance a -> a
+deProv (WithProvenance _ a) = a
+
 instance HasProvenance (WithProvenance a) where
   prov (WithProvenance p _) = p
 

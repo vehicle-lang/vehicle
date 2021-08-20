@@ -19,7 +19,7 @@ module Vehicle.Core.AST.DeBruijn
 
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
-import Control.Monad.State (MonadState, modify, get, evalState, evalStateT, State, StateT)
+import Control.Monad.Reader (MonadReader, Reader, ask, runReader, runReaderT, local)
 import Control.Monad.Trans (lift)
 
 import Vehicle.Prelude
@@ -73,7 +73,7 @@ type TraverseBinder state ann = state -> state
 
 class MutableAnn ann where
   alterAnn
-    :: (MonadState (BindingDepth, state) m)
+    :: (MonadReader (BindingDepth, state) m)
     => TraverseBinder state ann
     -> UpdateVariable m state ann
     -> ann
@@ -81,7 +81,7 @@ class MutableAnn ann where
 
 class Mutable ann (a :: * -> *) where
   alter
-    :: (MutableAnn ann, MonadState (BindingDepth, state) m)
+    :: (MutableAnn ann, MonadReader (BindingDepth, state) m)
     => TraverseBinder state ann
     -> UpdateVariable m state ann
     -> a ann
@@ -94,6 +94,7 @@ instance MutableAnn ann => Mutable ann (Expr Name Var) where
       altBinder = alter    body var
       altArg    = alter    body var
       altExpr   = alter    body var
+      underB    = underBinder body
     in \case
       Type l                   -> return (Type l)
       Constraint               -> return Constraint
@@ -104,22 +105,26 @@ instance MutableAnn ann => Mutable ann (Expr Name Var) where
       Seq     ann es           -> Seq     <$> altAnn ann <*> traverse altExpr es
       Ann     ann term typ     -> Ann     <$> altAnn ann <*> altExpr   term   <*> altExpr typ
       App     ann fun arg      -> App     <$> altAnn ann <*> altExpr   fun    <*> altArg arg
-      Pi      ann binder res   -> Pi      <$> altAnn ann <*> altBinder binder <*> altExpr res
-      Let     ann e1 binder e2 -> Let     <$> altAnn ann <*> altExpr e1 <*> altBinder binder <*> altExpr e2
-      Lam     ann binder e     -> Lam     <$> altAnn ann <*> altBinder binder <*> altExpr e
+      Pi      ann binder res   -> Pi      <$> altAnn ann <*> altBinder binder <*> underB (altExpr res)
+      Let     ann e1 binder e2 -> Let     <$> altAnn ann <*> altExpr e1 <*> altBinder binder <*> underB (altExpr e2)
+      Lam     ann binder e     -> Lam     <$> altAnn ann <*> altBinder binder <*> underB (altExpr e)
       Var     ann (Free i)     -> Var     <$> altAnn ann <*> pure (Free i)
       Var     ann (Bound i)    -> do ann' <- altAnn ann
-                                     st   <- get
+                                     st   <- ask
                                      var i ann' st
+
+-- Temporarily go under a binder, increasing the binding depth by one
+-- and shifting the current state.
+underBinder :: MonadReader (BindingDepth, state) m =>
+               TraverseBinder state ann -> m a -> m a
+underBinder body = local (\(d, s) -> (d+1, body s))
+
 
 instance Mutable ann (Arg Name Var) where
   alter body var (Arg p vis e) = Arg p vis <$> alter body var e
 
 instance Mutable ann (Binder Name Var) where
-  alter body var (Binder p v b e) = do
-    e' <- alter body var e
-    modify (\(d , s) -> (d+1, body s))
-    return $ Binder p v b e'
+  alter body var (Binder p v b e) = Binder p v b <$> alter body var e
 
 instance MutableAnn (DeBruijnAnn ann) where
   alterAnn body var (RecAnn expr ann) = RecAnn <$> alter body var expr <*> pure ann
@@ -135,25 +140,24 @@ liftDBIndices :: MutableAnn ann
               => BindingDepth
               -> DeBruijnExpr ann  -- ^ expression to lift
               -> DeBruijnExpr ann  -- ^ the result of the lifting
-liftDBIndices j e = evalState (alter id alterVar e) (0 , ())
+liftDBIndices j e = runReader (alter id alterVar e) (0 , ())
   where
-    alterVar :: UpdateVariable (State (BindingDepth, ())) () ann
+    alterVar :: UpdateVariable (Reader (BindingDepth, ())) () ann
     alterVar i ann (d, _) = return (Var ann (Bound i'))
       where
-        i' | d <= i    = i + j -- Index is referencing the environment so increase
-           | otherwise = i     -- Index is locally bound so no need to increase
+        i' | d <= i    = i + j -- Index is referencing the environment so increment
+           | otherwise = i     -- Index is locally bound so no need to increment
 
 -- | De Bruijn aware substitution of one expression into another
 substInto :: MutableAnn ann
           => DeBruijnExpr ann -- ^ expression to substitute
           -> DeBruijnExpr ann -- ^ term to substitute into
           -> DeBruijnExpr ann -- ^ the result of the substitution
-substInto sub e = evalState (alter binderUpdate alterVar e) (0 , sub)
+substInto sub e = runReader (alter binderUpdate alterVar e) (0 , sub)
   where
-    alterVar :: UpdateVariable (State _) (DeBruijnExpr ann) ann
-    alterVar i ann (d, sub) = case compare i d of
+    alterVar i ann (d, subExpr) = case compare i d of
       -- Index matches the expression we're substituting for
-      EQ -> return sub
+      EQ -> return subExpr
       -- Index was bound in the original expression
       LT -> return $ Var ann (Bound i)
       -- Index was free in the original expression,
@@ -180,12 +184,11 @@ patternOfArgs args = go (length args - 1) IM.empty args
         go _ _ _ = Nothing
 
 substAll :: MutableAnn ann
-         => IntMap (DeBruijnExpr ann)
+         => Substitution ann
          -> DeBruijnExpr ann
          -> Maybe (DeBruijnExpr ann)
-substAll sub e = evalStateT (alter binderUpdate alterVar e) (0, sub)
+substAll sub e = runReaderT (alter binderUpdate alterVar e) (0, sub)
   where
-    alterVar :: UpdateVariable (StateT _ Maybe) (IntMap (DeBruijnExpr ann)) ann
     alterVar i ann (d, subst) =
       if i >= d then
         lift (IM.lookup (i - d) subst)

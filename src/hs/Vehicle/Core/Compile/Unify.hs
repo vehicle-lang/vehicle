@@ -20,8 +20,10 @@ import Vehicle.Prelude
 import Vehicle.Core.Print.Core ()
 import Vehicle.Core.Print.Frontend (prettyFrontend)
 import Vehicle.Core.AST
-import Vehicle.Core.Compile.DSL (DSL(..), DSLExpr, fromDSL, toDSL)
+import Vehicle.Core.Compile.DSL (piType)
 import Vehicle.Core.Compile.Metas
+
+import Debug.Trace
 
 data TypeClassConstraint = Meta `Has` CheckedExpr
   deriving (Show)
@@ -167,107 +169,140 @@ solvePass queue constraint = do
 pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
 
+whnf :: MonadUnify m => CheckedExpr -> m CheckedExpr
+whnf (App ann fun arg@(Arg _ _ argE)) = do
+  whnfFun <- whnf fun
+  case whnfFun of
+    Lam _ _ body -> whnf (argE `substInto` body)
+    _            -> return (App ann whnfFun arg)
+whnf (Meta p n) = do
+  subst <- get
+  case IntMap.lookup n subst of
+    Nothing -> return (Meta p n)
+    Just tm -> whnf tm
+-- TODO: expand out declared identifiers once the declCtx stores them
+--  whnf (Free nm) = ...
+whnf (Let _ bound _ body) =
+  whnf (bound `substInto` body)
+whnf (Ann _ body _) = whnf body
+whnf e = return e
+
 solveConstraint :: MonadUnify m => UnificationConstraint -> m [UnificationConstraint]
 -- Errors
-solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = case (decomposeApp e1, decomposeApp e2) of
-  (Let{}, _) :~: _           -> unexpectedCase p "Let bindings"
-  _          :~: (Let{}, _)  -> unexpectedCase p "Let bindings"
+solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
+  whnfE1 <- whnf e1
+  whnfE2 <- whnf e2
+  trace (layoutAsString $ "UNIFY: " <+> pretty whnfE1 <+> " ~ " <+> pretty whnfE2) $ return ()
+  case (decomposeApp whnfE1, decomposeApp whnfE2) of
+    (Let{}, _) :~: _           -> unexpectedCase p "Let bindings"
+    _          :~: (Let{}, _)  -> unexpectedCase p "Let bindings"
 
-  (Hole{}, _) :~: _           -> unexpectedCase p "Holes"
-  _           :~: (Hole{}, _) -> unexpectedCase p "Holes"
+    (Hole{}, _) :~: _           -> unexpectedCase p "Holes"
+    _           :~: (Hole{}, _) -> unexpectedCase p "Holes"
 
-  -- Rigid-rigid
-  (Constraint, [])   :~: (Constraint, [])   -> return mempty
-  (Type    l1, [])   :~: (Type    l2, [])   -> do solveEq constraint l1  l2; return []
+    -- Rigid-rigid
+    (Constraint, [])   :~: (Constraint, [])   -> return mempty
+    (Type    l1, [])   :~: (Type    l2, [])   -> do solveEq constraint l1  l2; return []
 {-
-  (Ann _ e1 t1, Ann _ e2 t2) -> return
+(Ann _ e1 t1, Ann _ e2 t2) -> return
     [ Unify p ctx (exprs : history) mempty (e1, e2)
     , Unify p ctx (exprs : history) mempty (t1, t2)
     ]
 -}
-  -- TODO: we ASSUME that all terms here are in normal form, so there
-  -- will never be an unreduced redex.
-  ((Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, []))
-    | visibility binder1 /= visibility binder2 -> throwError $ UnificationFailure constraint
-    | otherwise -> return
-      [ Unify p (addToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2) ]
+    -- We ASSUME that all terms here are in normal form, so there
+    -- will never be an unreduced redex.
+    ((Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, []))
+      | visibility binder1 /= visibility binder2 -> throwError $ UnificationFailure constraint
+      | otherwise -> return
+        [ Unify p (addToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2) ]
 
-  (Seq _ es1, []) :~: (Seq _ es2, [])
-    -- TODO more informative error message
-    | length es1 /= length es2 -> throwError $ UnificationFailure constraint
-    -- TODO need to try and unify `Seq` with `Cons`s.
-    | otherwise                -> return $
-        zipWith (curry (Unify p ctx (exprs : history) mempty)) es1 es2
+    (Seq _ es1, []) :~: (Seq _ es2, [])
+      -- TODO more informative error message
+      | length es1 /= length es2 -> throwError $ UnificationFailure constraint
+      -- TODO need to try and unify `Seq` with `Cons`s.
+      | otherwise                -> return $
+                                    zipWith (curry (Unify p ctx (exprs : history) mempty)) es1 es2
 
-  (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
-    | visibility binder1 /= visibility binder2 -> throwError $ UnificationFailure constraint
-    | otherwise -> return
-    -- !!TODO!! Block until binders are solved
-    -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
-      [ Unify p ctx (exprs : history) mempty (binderType binder1, binderType binder2)
-      , Unify p (addToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2)
-      ]
+    (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
+      | visibility binder1 /= visibility binder2 -> throwError $ UnificationFailure constraint
+      | otherwise -> do
+          -- !!TODO!! Block until binders are solved
+          -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
+          -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
+          blocked1 <- solveConstraint (Unify p ctx (exprs : history) mempty (binderType binder1, binderType binder2))
+          blocked2 <- solveConstraint (Unify p (addToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2))
+          return (blocked1 ++ blocked2)
 
-  (Builtin _ op1, args1) :~: (Builtin _ op2, args2) -> do
-    solveEq constraint op1 op2
-    if length args1 /= length args2 then
+    (Builtin _ op1, args1) :~: (Builtin _ op2, args2) -> do
+      solveEq constraint op1 op2
+      if length args1 /= length args2 then
+        throwError $ UnificationFailure constraint
+      else
+        traverse (solveArg constraint) (zip args1 args2)
+
+    (Var _ v1, args1) :~: (Var _ v2, args2) -> do
+      solveEq constraint v1 v2
+      if length args1 /= length args2 then
+        throwError $ UnificationFailure constraint
+      else
+        traverse (solveArg constraint) (zip args1 args2)
+
+    (Literal _ l1, args1) :~: (Literal _ l2, args2) -> do
+      solveEq constraint l1 l2
+      if length args1 /= length args2 then
+        throwError $ UnificationFailure constraint
+      else
+        traverse (solveArg constraint) (zip args1 args2)
+
+    (Meta _ _i, _args1) :~: (Meta _ _j, _args2) ->
+      -- TODO: flex-flex unification
       throwError $ UnificationFailure constraint
-    else
-      traverse (solveArg constraint) (zip args1 args2)
 
-  (Var _ v1, args1) :~: (Var _ v2, args2) -> do
-    solveEq constraint v1 v2
-    if length args1 /= length args2 then
-      throwError $ UnificationFailure constraint
-    else
-      traverse (solveArg constraint) (zip args1 args2)
+    (Meta _ i, args) :~: _ ->
+      -- Check that 'args' is a pattern
+      case patternOfArgs args of
+        Nothing ->
+          -- This constraint is stuck because it is not pattern; shelve
+          -- it for now and hope that another constraint allows us to
+          -- progress.
+          return [constraint]
+        Just subst ->
+          -- 'subst' is a renaming that renames the variables in 'e2' to
+          -- ones bound by the metavariable
+          case substAll subst e2 of
+            Nothing ->
+              return [constraint]
+            Just defnBody ->
+              -- TODO: fail if 'Meta _ i' occurs in 'e2'
+              let{-
+                foldFn :: CheckedArg -> DSLExpr -> DSLExpr
+                foldFn (Arg argP argV argE) body =
+                  -- TODO: 'getType argE' needs to be renamed
+                  -- to be in the implicit context being
+                  -- generated here.
+                  lam argP argV Machine (toDSL $ getType argE) (const body) -}
 
-  (Literal _ l1, args1) :~: (Literal _ l2, args2) -> do
-    solveEq constraint l1 l2
-    if length args1 /= length args2 then
-      throwError $ UnificationFailure constraint
-    else
-      traverse (solveArg constraint) (zip args1 args2)
+                -- BUG: using 'DSL' here doesn't work because it cannot handle open terms
+                solution = -- fromDSL (foldr foldFn (toDSL defnBody) args)
+                    foldr (\(Arg _ v argE) body ->
+                             -- TODO: 'getType argE' needs to be
+                             -- renamed to be in the implicit context
+                             -- being generated here. Also, the type
+                             -- level is incorrectly computed.
+                             let ann = RecAnn (piType (getType (getType argE)) (getType (getType body))) mempty in
+                             Lam (RecAnn (Pi ann (Binder mempty v Machine (getType argE)) (getType body)) mempty)
+                                 (Binder mempty v Machine (getType argE)) body)
+                      defnBody
+                      args              in
+              metaSolved p i solution
 
-  (Meta _ _i, _args1) :~: (Meta _ _j, _args2) ->
-    -- TODO: flex-flex unification
-    throwError $ UnificationFailure constraint
+    _t :~: (Meta _ _i, _args) ->
+      -- this is the mirror image of the previous case, so just swap the
+      -- problem over.
+      solveConstraint (constraint { unifExprs = (whnfE2, whnfE1) })
 
-  (Meta _ i, args) :~: _ ->
-    -- Check that 'args' is a pattern
-    case patternOfArgs args of
-      Nothing ->
-        -- This constraint is stuck because it is not pattern; shelve
-        -- it for now and hope that another constraint allows us to
-        -- progress.
-        return [constraint]
-      Just subst ->
-        -- 'subst' is a renaming that renames the variables in 'e2' to
-        -- ones bound by the metavariable
-        case substAll subst e2 of
-          Nothing ->
-            return [constraint]
-          Just defnBody ->
-            -- TODO: fail if 'Meta _ i' occurs in 'e2'
-            let
-              foldFn :: CheckedArg -> DSLExpr -> DSLExpr
-              foldFn (Arg argP argV argE) body =
-                -- TODO: 'getType argE' needs to be renamed
-                -- to be in the implicit context being
-                -- generated here.
-                lam argP argV Machine (toDSL $ getType argE) (const body)
-
-              solution = fromDSL (foldr foldFn (toDSL defnBody) args)
-            in
-            metaSolved p i solution
-
-  _t :~: (Meta _ _i, _args) ->
-    -- this is the mirror image of the previous case, so just swap the
-    -- problem over.
-    solveConstraint (constraint { unifExprs = (e2, e1) })
-
-  -- Catch-all
-  _ -> throwError $ UnificationFailure constraint
+    -- Catch-all
+    _ -> throwError $ UnificationFailure (constraint { unifExprs = (whnfE1, whnfE2) })
 
 metaSolved :: MonadUnify m
            => Provenance
@@ -275,15 +310,17 @@ metaSolved :: MonadUnify m
            -> CheckedExpr
            -> m [UnificationConstraint]
 metaSolved p m e = do
+  trace (layoutAsString $ "solving " <+> pretty m <+> " as " <+> pretty e) $ return ()
+
     -- Update the substitution, throwing an error if the meta-variable is already present
     -- (should have been substituted out)
-    modify (\subst -> IntMap.insertWith (unexpectedMeta p m) m e subst)
+  modify (\subst -> IntMap.insertWith (unexpectedMeta p m) m e subst)
 
     -- Insert the meta-variable into t   he list of metas solved in this pass
-    tell $ IntSet.singleton m
+  tell $ IntSet.singleton m
 
     -- Return an empty list of constraints
-    return []
+  return []
 
 solveEq :: (MonadUnify m, Eq a)
         => UnificationConstraint
@@ -303,6 +340,6 @@ solveArg c@(Unify p ctx history _metas es) (arg1, arg2)
   | otherwise = return $ Unify p ctx (es : history) mempty (argExpr arg1 , argExpr arg2)
 
 decomposeApp :: CheckedExpr -> (CheckedExpr, [CheckedArg])
-decomposeApp (App _ann fun arg) =
-  let (appHead, args) = decomposeApp fun in (appHead, arg : args)
-decomposeApp e = (e, [])
+decomposeApp = go []
+  where go args (App _ann fun arg) = go (arg:args) fun
+        go args e                  = (e, args)

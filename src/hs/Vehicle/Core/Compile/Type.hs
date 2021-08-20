@@ -9,7 +9,8 @@ import Prelude hiding (pi)
 import Control.Monad (when)
 import Control.Monad.Except (MonadError(..), Except, withExcept)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
-import Control.Monad.State (MonadState(..), StateT(..), modify, runStateT)
+import Control.Monad.Trans (MonadTrans(..))
+import Control.Monad.State (MonadState(..), StateT(..), modify, runStateT, evalStateT)
 import Debug.Trace (trace)
 import Data.Text (Text)
 import Data.Foldable (toList, foldrM)
@@ -42,7 +43,7 @@ runTypeChecking prog = do
   trace (layoutAsString $ pretty metaCtx) (return ())
   let constraints = unificationConstraints metaCtx
   (unsolvedConstraints, metaSubst) <- withExcept UnificationError (solve (constraints, mempty))
-  trace (show metaSubst) (return ())
+--  trace (show metaSubst) (return ())
   case unsolvedConstraints of
     []     -> return $ substMetas metaSubst checkedProg
     c : cs -> throwError $ UnsolvedConstraints (c :| cs)
@@ -91,8 +92,8 @@ instance MeaningfulError TypingError where
   details (UnsolvedConstraints cs) = let firstConstraint = NonEmpty.head cs in
     UError $ UserError
     { provenance = prov firstConstraint
-    , problem    = ""
-    , fix        = ""
+    , problem    = "unsolved constraint " <+> pretty firstConstraint
+    , fix        = "unknown"
     }
 
   details (UnificationError e) = details e
@@ -220,9 +221,10 @@ freshMeta p resultType = do
   metaName <- freshMetaName
 
   -- Create a Pi type that abstracts over all bound variables
+  -- TODO: I (Bob) am not convinced this works, toDSL does the wrong thing wrt shifting variable references here
   boundCtx <- getBoundCtx
   let partialPis = [ pi mempty Explicit name (toDSL t) | (name, t) <- boundCtx ]
-  let metaType = fromDSL (foldl' (\x k -> k (const x)) (toDSL resultType) partialPis)
+  let metaType = fromDSL (foldr (\k x -> k (const x)) (toDSL resultType) partialPis)
 
   -- Stores type in meta-context
   modifyMetaCtx $ \MetaCtx {..} ->
@@ -230,8 +232,8 @@ freshMeta p resultType = do
 
   -- Create bound variables for everything in the context
   let boundEnv =
-        [ Var (RecAnn varType mempty) (Bound varIndex)
-        | (varIndex , (_ , varType)) <- zip [0..] (toList boundCtx) ]
+        reverse [ Var (RecAnn varType mempty) (Bound varIndex)
+                | (varIndex , (_ , varType)) <- zip [0..] (toList boundCtx) ]
 
   -- Returns a meta applied to every bound variable in the context
   let meta = foldl' cApp (Meta (RecAnn metaType p) metaName) boundEnv
@@ -272,6 +274,11 @@ check expectedType expr = showCheckExit $ case showCheckEntry expectedType expr 
     (_, meta) <- freshMeta p expectedType
     return meta
 
+  -- TODO: in checking mode, we should insert implicit arguments even
+  -- if there isn't a lambda. This will make examples like:
+  --    f : forall {x : Type 0}. x -> x
+  --    f = polyId
+  -- work
   e@(Lam p (Binder pBound vBound nBound tBound1) body) ->
     case expectedType of
       -- Check if it's a Pi type which is expecting the right visibility
@@ -292,6 +299,8 @@ check expectedType expr = showCheckExit $ case showCheckEntry expectedType expr 
           -- Check if the type matches the expected result type.
           e' <- check tRes e
 
+          -- TODO: we need to shift e' to account for inserted implicit lambdas
+
           -- Create a new binder mirroring the implicit Pi binder expected
           let newBinder = Binder mempty Implicit name tBound2
 
@@ -302,6 +311,25 @@ check expectedType expr = showCheckExit $ case showCheckEntry expectedType expr 
         let expected = unnamedPi vBound (tHole "a") (const (tHole "b"))
         throwError $ Mismatch p expectedType expected
 
+-- Generate new metavariables for any implicit arguments
+insertImplicits :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m (CheckedExpr, CheckedExpr)
+insertImplicits p fun' (Pi _ (Binder _ Implicit _ tArg') tRes') = do
+  (meta, metaArg) <- freshMeta p tArg'
+
+  -- Substitute meta-variable in tRes
+  let tResSubst' = metaArg `substInto` tRes'
+
+  -- TODO Wen is worried about interactions between the Pi abstractions over
+  -- the context and the type-class search later on.
+
+  -- Check if the implicit argument is a type-class
+  when (isConstraint tArg') $
+    addTypeClassConstraints [meta `Has` tArg']
+
+  insertImplicits p (App (RecAnn tResSubst' mempty) fun' (Arg mempty Implicit metaArg)) tResSubst'
+insertImplicits _ fun' typ' =
+  return (fun', typ')
+
 
 inferApp :: TCM m
          => Provenance
@@ -309,7 +337,7 @@ inferApp :: TCM m
          -> CheckedExpr
          -> CheckedExpr
          -> m (CheckedExpr, CheckedExpr)
-inferApp p arg@(Arg pArg vArg eArg) fun' = \case
+inferApp p (Arg pArg vArg eArg) fun' = \case
   -- Check if it's a Pi type which is expecting the right visibility
   Pi _ (Binder _ vFun _ tArg') tRes'
     | vArg == vFun -> do
@@ -321,25 +349,6 @@ inferApp p arg@(Arg pArg vArg eArg) fun' = \case
 
       -- Return the appropriately annotated type with its inferred kind.
       return (App (RecAnn tResSubst' p) fun' (Arg pArg vArg eArg') , tResSubst')
-
-  -- Check if it's a Pi type which is expecting an implicit argument
-  -- but is being applied to an explicit argument
-  Pi _ (Binder _ Implicit _ tArg') tRes' -> do
-    -- Generate a fresh meta variable
-    (meta, metaArg) <- freshMeta p tArg'
-
-    -- Substitute meta-variable in tRes
-    let tResSubst' = metaArg `substInto` tRes'
-
-    -- TODO Wen is worried about interactions between the Pi abstractions over
-    -- the context and the type-class search later on.
-
-    -- Check if the implicit argument is a type-class
-    when (isConstraint tArg') $
-      addTypeClassConstraints [meta `Has` tArg']
-
-    -- Apply the function to the new meta and try again to infer the type of the application.
-    inferApp p arg (App (RecAnn tResSubst' mempty) fun' (Arg mempty Implicit metaArg)) tResSubst'
 
   tFun' -> do
     let expected = unnamedPi vArg (tHole "a") (const $ tHole "b")
@@ -371,15 +380,17 @@ infer e = showInferExit $ case showInferEntry e of
   Hole ann s ->
     throwError $ UnresolvedHole (prov ann) s
 
-  Ann ann e t   -> do
+  Ann ann expr t   -> do
     (t', _) <- infer t
-    e' <- check t' e
+    expr' <- check t' expr
     let ann' = RecAnn t' ann
-    return (Ann ann' e' t' , t')
+    return (Ann ann' expr' t' , t')
 
-  App p fun arg -> do
+  App p fun arg@(Arg _ vArg _) -> do
     -- Infer the type of the function.
-    (fun' , tFun') <- infer fun
+    (fun', tFun') <- infer fun
+    -- if this is an explicit argument, then insert implicits before proceeding
+    (fun', tFun') <- if vArg == Explicit then insertImplicits p fun' tFun' else return (fun', tFun')
     inferApp p arg fun' tFun'
 
   Pi p (Binder pBound vis name arg) res -> do
@@ -455,23 +466,46 @@ infer e = showInferExit $ case showInferEntry e of
 
     return (Seq (RecAnn tCont' p) es' , tCont')
 
-inferDecl :: TCM m => UncheckedDecl -> m CheckedDecl
-inferDecl = \case
-  DeclNetw p ident t      -> DeclNetw p ident . fst <$> infer t
-  DeclData p ident t      -> DeclData p ident . fst <$> infer t
-  DefFun   p ident t body -> do
-      -- TODO: check that 't' is actually a type
-      (t' , _) <- infer t
-      body' <- check t' body
-      return $ DefFun p ident t' body'
+assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
+assertIsType _ (Type _) = return ()
+assertIsType p e        = throwError $ Mismatch p e type0 -- TODO: add a new TypingError 'ExpectedAType'
+
+-- TODO: unify DeclNetw and DeclData
+checkDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
+checkDecls [] = return []
+checkDecls (DeclNetw p ident t : decls) = do
+    (t', ty') <- infer t
+    assertIsType p ty'
+
+    decls' <- addToDeclCtx (deProv ident) t' $ do
+      checkDecls decls
+    return $ DeclNetw p ident t' : decls'
+checkDecls (DeclData p ident t : decls) = do
+    (t', ty') <- infer t
+    assertIsType p ty'
+
+    decls' <- addToDeclCtx (deProv ident) t' $ do
+      checkDecls decls
+    return $ DeclData p ident t' : decls'
+checkDecls (DefFun p ident t body : decls) = do
+    (t', ty') <- infer t
+    assertIsType p ty'
+
+    body' <- check t' body
+
+    decls' <- addToDeclCtx (deProv ident) t' $ do
+      checkDecls decls
+
+    return $ DefFun p ident t' body' : decls'
 
 inferProg :: TCM m => UncheckedProg -> m CheckedProg
-inferProg (Main ds) = Main <$> traverse inferDecl ds
+inferProg (Main ds) = Main <$> checkDecls ds
 
 viaInfer :: TCM m => Provenance -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
 viaInfer p expectedType e = do
   -- TODO may need to change the term when unifying to insert a type application.
   (e', actualType) <- infer e
+  (e', actualType) <- insertImplicits p e' actualType
   _t' <- unify p expectedType actualType
   return e'
 
