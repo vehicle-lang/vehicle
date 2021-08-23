@@ -12,6 +12,7 @@ import Control.Monad.Writer (MonadWriter(..), runWriterT)
 import Control.Monad.State  (MonadState(..), modify, runStateT)
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Control.Monad (foldM)
+import Data.Maybe (fromJust)
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Prettyprinter ( (<+>), Pretty(pretty), Doc )
@@ -169,7 +170,9 @@ solvePass queue constraint = do
 pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
 
-whnf :: MonadUnify m => CheckedExpr -> m CheckedExpr
+-- TODO: move this to elsewhere, we need to normalise types in the
+-- typechecker when checking against them too.
+whnf :: MonadState MetaSubstitution m => CheckedExpr -> m CheckedExpr
 whnf (App ann fun arg@(Arg _ _ argE)) = do
   whnfFun <- whnf fun
   case whnfFun of
@@ -192,7 +195,7 @@ solveConstraint :: MonadUnify m => UnificationConstraint -> m [UnificationConstr
 solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
   whnfE1 <- whnf e1
   whnfE2 <- whnf e2
-  trace (layoutAsString $ "UNIFY: " <+> pretty whnfE1 <+> " ~ " <+> pretty whnfE2) $ return ()
+  -- trace (layoutAsString $ "UNIFY: " <+> pretty whnfE1 <+> " ~ " <+> pretty whnfE2) $ return ()
   case (decomposeApp whnfE1, decomposeApp whnfE2) of
     (Let{}, _) :~: _           -> unexpectedCase p "Let bindings"
     _          :~: (Let{}, _)  -> unexpectedCase p "Let bindings"
@@ -255,7 +258,9 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
         traverse (solveArg constraint) (zip args1 args2)
 
     (Meta _ _i, _args1) :~: (Meta _ _j, _args2) ->
-      -- TODO: flex-flex unification
+      -- TODO: flex-flex unification:
+      --  we could try to solve by trying each direction as a definition, if the metavariables are not equal.
+      --  if the heads are equal, then succeed if the argument lists are identical, otherwise postpone
       throwError $ UnificationFailure constraint
 
     (Meta _ i, args) :~: _ ->
@@ -285,15 +290,18 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
                 -- BUG: using 'DSL' here doesn't work because it cannot handle open terms
                 solution = -- fromDSL (foldr foldFn (toDSL defnBody) args)
                     foldr (\(Arg _ v argE) body ->
+                             let argType = {- fromJust $ substAll subst -} (getType argE)
+                                 bodyType = getType body
                              -- TODO: 'getType argE' needs to be
                              -- renamed to be in the implicit context
-                             -- being generated here. Also, the type
-                             -- level is incorrectly computed.
-                             let ann = RecAnn (piType (getType (getType argE)) (getType (getType body))) mempty in
-                             Lam (RecAnn (Pi ann (Binder mempty v Machine (getType argE)) (getType body)) mempty)
-                                 (Binder mempty v Machine (getType argE)) body)
+                             -- being generated here.
+                                 ann = {- trace ("Type: " ++ show (getType argE) ++ " : " ++ show (getType (getType argE)) ++ " --> " ++ show argType ++ " : " ++ show (getType argType)) $ -} RecAnn (piType (getType argType) (getType bodyType)) mempty
+                             in
+                             Lam (RecAnn (Pi ann (Binder mempty v Machine argType) bodyType) mempty)
+                                 (Binder mempty v Machine argType) body)
                       defnBody
-                      args              in
+                      args
+              in
               metaSolved p i solution
 
     _t :~: (Meta _ _i, _args) ->
@@ -310,7 +318,7 @@ metaSolved :: MonadUnify m
            -> CheckedExpr
            -> m [UnificationConstraint]
 metaSolved p m e = do
-  trace (layoutAsString $ "solving " <+> pretty m <+> " as " <+> pretty e) $ return ()
+  -- trace (layoutAsString $ "solving " <+> pretty m <+> " as " <+> pretty e) $ return ()
 
     -- Update the substitution, throwing an error if the meta-variable is already present
     -- (should have been substituted out)

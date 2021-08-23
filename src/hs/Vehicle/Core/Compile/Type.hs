@@ -43,11 +43,16 @@ runTypeChecking prog = do
   trace (layoutAsString $ pretty metaCtx) (return ())
   let constraints = unificationConstraints metaCtx
   (unsolvedConstraints, metaSubst) <- withExcept UnificationError (solve (constraints, mempty))
---  trace (show metaSubst) (return ())
+  trace (layoutAsString $ prettyMetaSubst metaSubst) (return ())
   case unsolvedConstraints of
     []     -> return $ substMetas metaSubst checkedProg
     c : cs -> throwError $ UnsolvedConstraints (c :| cs)
 
+-- To solve / synthesise typeClassConstraints :
+--  1. Normalise each one in the current metactxt
+--  2. Insert lambdas for each Pi type
+--  3. Match against (a) the list of built-in instances; then (b) against elements in the context
+--  4. If the constraint is a Z3 one, then ask Z3 to solve it (after normalisation)
 
 --------------------------------------------------------------------------------
 -- Errors
@@ -215,16 +220,20 @@ freshMetaName = do
 -- Post unification, any unneeded context arguments will be normalised away.
 -- It returns the name of the meta and the expression of it applied to every
 -- variable in the context.
-freshMeta :: TCM m => Provenance -> CheckedExpr -> m (Meta, CheckedExpr)
+freshMeta :: TCM m => Provenance -> CheckedExpr -> m (Meta, CheckedExpr, CheckedExpr)
 freshMeta p resultType = do
   -- Create a fresh name
   metaName <- freshMetaName
 
   -- Create a Pi type that abstracts over all bound variables
-  -- TODO: I (Bob) am not convinced this works, toDSL does the wrong thing wrt shifting variable references here
   boundCtx <- getBoundCtx
-  let partialPis = [ pi mempty Explicit name (toDSL t) | (name, t) <- boundCtx ]
-  let metaType = fromDSL (foldr (\k x -> k (const x)) (toDSL resultType) partialPis)
+  let metaType =
+        foldr (\(name, t) resTy ->
+                  Pi (RecAnn (piType (getType t) (getType resTy)) mempty)
+                     (Binder mempty Explicit name t)
+                     resTy)
+          resultType
+          (reverse boundCtx)
 
   -- Stores type in meta-context
   modifyMetaCtx $ \MetaCtx {..} ->
@@ -237,14 +246,14 @@ freshMeta p resultType = do
 
   -- Returns a meta applied to every bound variable in the context
   let meta = foldl' cApp (Meta (RecAnn metaType p) metaName) boundEnv
-  return (metaName, meta)
+  return (metaName, meta, metaType)
 
 
 --------------------------------------------------------------------------------
 -- Type-checking of expressions
 
-showCheckEntry :: CheckedExpr -> UncheckedExpr -> UncheckedExpr
-showCheckEntry t e = trace ("check-entry " <> showCore e <> " <= " <> showCore t) e
+showCheckEntry :: CheckedExpr -> UncheckedExpr -> (CheckedExpr, UncheckedExpr)
+showCheckEntry t e = trace ("check-entry " <> showCore e <> " <= " <> showCore t) (t, e)
 
 showCheckExit :: TCM m => m CheckedExpr -> m CheckedExpr
 showCheckExit m = do
@@ -256,24 +265,66 @@ check :: TCM m
       -> UncheckedExpr -- Expression being type-checked
       -> m CheckedExpr -- Updated expression
 check expectedType expr = showCheckExit $ case showCheckEntry expectedType expr of
-  e@(Type _)          -> viaInfer mempty expectedType e
-  e@Constraint        -> viaInfer mempty expectedType e
-  e@(Meta _ _)        -> viaInfer mempty expectedType e
-  e@(App     p _ _)   -> viaInfer p      expectedType e
-  e@(Pi      p _ _)   -> viaInfer p      expectedType e
-  e@(Builtin p _)     -> viaInfer p      expectedType e
-  e@(Var     p _)     -> viaInfer p      expectedType e
-  e@(Let     p _ _ _) -> viaInfer p      expectedType e
-  e@(Literal p _)     -> viaInfer p      expectedType e
-  e@(Seq     p _)     -> viaInfer p      expectedType e
-  e@(Ann     p _ _)   -> viaInfer p      expectedType e
+  (Pi _ (Binder _ vFun _ tBound2) tRes, Lam p (Binder pBound vBound nBound tBound1) body)
+    | vFun == vBound -> do
+       tBound1' <- check (getType tBound2) tBound1
+       tBound' <- unify p tBound2 tBound1'
 
-  Hole p _name -> do
+       addToBoundCtx nBound tBound' $ do
+         body' <- check tRes body
+         return $ Lam (RecAnn expectedType p) (Binder pBound Implicit nBound tBound') body'
+{-
+  (Pi _ (Binder _ Explicit _ tBound2) tRes, Lam p (Binder pBound Explicit nBound tBound1) body) -> do
+       tBound1' <- check (getType tBound2) tBound1
+       tBound' <- unify p tBound2 tBound1'
+
+       addToBoundCtx nBound tBound' $ do
+         body' <- check tRes body
+         return $ Lam (RecAnn expectedType p) (Binder pBound Explicit nBound tBound') body'
+
+  (Pi _ (Binder _ Explicit _ tBound2) tRes, Lam p (Binder pBound Implicit nBound tBound1) body) -> do
+       tBound1' <- check (getType tBound2) tBound1
+       tBound' <- unify p tBound2 tBound1'
+
+       addToBoundCtx nBound tBound' $ do
+         body' <- check tRes body
+         return $ Lam (RecAnn expectedType p) (Binder pBound Explicit nBound tBound') body'
+-}
+  (Pi _ (Binder _ Implicit name tBound2) tRes, e) ->
+    -- Add the implict argument to the context
+    addToBoundCtx Machine tBound2 $ do
+      -- Check if the type matches the expected result type.
+      e' <- check tRes (liftDBIndices 1 e)
+
+      -- Create a new binder mirroring the implicit Pi binder expected
+      let newBinder = Binder mempty Implicit name tBound2
+
+      -- Prepend a new lambda to the expression with the implicit binder
+      return $ Lam (RecAnn expectedType mempty) newBinder e'
+
+  (_, Lam p (Binder _ vBound _ _) _) -> do
+        let expected = unnamedPi vBound (tHole "a") (const (tHole "b"))
+        throwError $ Mismatch p expectedType expected
+
+  (_, Hole p _name) -> do
     -- Replace the hole with meta-variable of the expected type.
     -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
-    (_, meta) <- freshMeta p expectedType
+    (_, meta, _) <- freshMeta p expectedType
     return meta
 
+  (_, e@(Type _))          -> viaInfer mempty expectedType e
+  (_, e@Constraint)        -> viaInfer mempty expectedType e
+  (_, e@(Meta _ _))        -> viaInfer mempty expectedType e
+  (_, e@(App     p _ _))   -> viaInfer p      expectedType e
+  (_, e@(Pi      p _ _))   -> viaInfer p      expectedType e
+  (_, e@(Builtin p _))     -> viaInfer p      expectedType e
+  (_, e@(Var     p _))     -> viaInfer p      expectedType e
+  (_, e@(Let     p _ _ _)) -> viaInfer p      expectedType e
+  (_, e@(Literal p _))     -> viaInfer p      expectedType e
+  (_, e@(Seq     p _))     -> viaInfer p      expectedType e
+  (_, e@(Ann     p _ _))   -> viaInfer p      expectedType e
+
+{-
   -- TODO: in checking mode, we should insert implicit arguments even
   -- if there isn't a lambda. This will make examples like:
   --    f : forall {x : Type 0}. x -> x
@@ -310,11 +361,11 @@ check expectedType expr = showCheckExit $ case showCheckEntry expectedType expr 
       _ -> do
         let expected = unnamedPi vBound (tHole "a") (const (tHole "b"))
         throwError $ Mismatch p expectedType expected
-
+-}
 -- Generate new metavariables for any implicit arguments
 insertImplicits :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m (CheckedExpr, CheckedExpr)
 insertImplicits p fun' (Pi _ (Binder _ Implicit _ tArg') tRes') = do
-  (meta, metaArg) <- freshMeta p tArg'
+  (meta, metaArg, metaType) <- freshMeta p tArg'
 
   -- Substitute meta-variable in tRes
   let tResSubst' = metaArg `substInto` tRes'
@@ -324,7 +375,7 @@ insertImplicits p fun' (Pi _ (Binder _ Implicit _ tArg') tRes') = do
 
   -- Check if the implicit argument is a type-class
   when (isConstraint tArg') $
-    addTypeClassConstraints [meta `Has` tArg']
+    addTypeClassConstraints [meta `Has` metaType]
 
   insertImplicits p (App (RecAnn tResSubst' mempty) fun' (Arg mempty Implicit metaArg)) tResSubst'
 insertImplicits _ fun' typ' =
@@ -455,13 +506,13 @@ infer e = showInferExit $ case showInferEntry e of
     (es', ts') <- unzip <$> traverse infer es
 
     -- Generate a fresh meta variable for the case where the list is empty
-    (_, tElem) <- freshMeta p Type0
+    (_, tElem, _) <- freshMeta p Type0
 
     -- Unify the types of all the elements in the list
     tElem' <- foldrM (unify p) tElem ts'
 
     -- Generate a meta-variable for the type of the container
-    (meta, tCont') <- freshMeta p Type0
+    (meta, tCont', _) <- freshMeta p Type0
     -- addTypeClassConstraints [meta `Has` unembed (isContainer p (embed tCont') (embed tElem'))]
 
     return (Seq (RecAnn tCont' p) es' , tCont')

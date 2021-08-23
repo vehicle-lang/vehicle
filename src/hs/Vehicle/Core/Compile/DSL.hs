@@ -118,6 +118,7 @@ tMax :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 tMax (Type l1)  (Type l2)  = Type (l1 `max` l2)
 tMax (Type l1)  Constraint = Type l1
 tMax Constraint (Type l2)  = Type l2
+tMax Constraint Constraint = Type 1
 tMax t1         t2         = developerError $
   "Expected arguments of type Type. Found" <+> pretty t1 <+> "and" <+> pretty t2 <> "."
 

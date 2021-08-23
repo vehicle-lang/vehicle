@@ -7,9 +7,8 @@ polyIdImplicit x = x
 realId : Real -> Real
 realId = polyId Real
 
--- TODO: insert implicit lambdas even when there is no lambda before it
 polyIdImplicitTwo : forall {t : Type 0}. t -> t
-polyIdImplicitTwo {t} = polyIdImplicit
+polyIdImplicitTwo = polyIdImplicit
 
 realIdImplicit : Real -> Real
 realIdImplicit x = polyIdImplicit x

@@ -129,6 +129,9 @@ instance Mutable ann (Binder Name Var) where
 instance MutableAnn (DeBruijnAnn ann) where
   alterAnn body var (RecAnn expr ann) = RecAnn <$> alter body var expr <*> pure ann
 
+instance MutableAnn Provenance where
+  alterAnn _ _ ann = return ann
+
 --------------------------------------------------------------------------------
 -- Concrete operations
 
@@ -176,9 +179,10 @@ type Substitution ann = IntMap (DeBruijnExpr ann)
 patternOfArgs :: [DeBruijnArg ann] -> Maybe (Substitution ann)
 patternOfArgs args = go (length args - 1) IM.empty args
   where go _ revMap [] = Just revMap
+        -- TODO: we could eta-reduce arguments too, if possible
         go i revMap (Arg _ _ (Var ann (Bound j)) : restArgs) =
           if IM.member j revMap then
-            Nothing
+            Nothing -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning; but then we should make sure the solution is well-typed
           else
             go (i-1) (IM.insert j (Var ann (Bound i)) revMap) restArgs
         go _ _ _ = Nothing

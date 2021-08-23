@@ -65,12 +65,13 @@ instance Descope CheckedArg OutputArg where
   descope (Arg p v e) = Arg p v <$> descope e
 
 showScopeEntry :: CheckedExpr -> CheckedExpr
-showScopeEntry e = trace ("descope-entry " <> showCore e) e
+showScopeEntry e = {-trace ("descope-entry " <> showCore e)-} e
 
 showScopeExit :: MonadDescope m => m OutputExpr -> m OutputExpr
 showScopeExit m = do
   e <- m
-  trace ("descope-exit  " <> showCore e) (return e)
+  {-trace ("descope-exit  " <> showCore e)-}
+  (return e)
 
 instance Descope CheckedExpr OutputExpr where
   descope e = showScopeExit $ case showScopeEntry e of
