@@ -29,7 +29,7 @@ init:
 
 .PHONY: format
 format: require-ormolu
-	@ormolu --mode inplace $(git ls-files '*.hs')
+	@ormolu --mode inplace --cabal-default-extensions $(shell git ls-files '*.hs')
 
 #################################################################################
 # Build parsers for Frontend and Core languages using BNFC
