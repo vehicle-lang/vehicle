@@ -1,0 +1,13 @@
+cradle:
+  cabal:
+    - path: "src/hs"
+      component: "lib:vehicle"
+
+    - path: "gen/hs"
+      component: "lib:vehicle"
+
+    - path: "app/Main.hs"
+      component: "vehicle:exe:vehicle"
+
+    - path: "test"
+      component: "vehicle:test:vehicle-test"
