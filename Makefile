@@ -1,6 +1,25 @@
-GHC_VERSION := 8.10.3
+#################################################################################
+# Configuration
+#################################################################################
+
 SRC_DIR_BNFC := src/bnfc
-GEN_DIR_HS := gen/hs
+GEN_DIR_HS   := gen/hs
+
+GHC_VERSION := 8.10.3
+
+STACK  ?= stack
+ORMOLU ?= ormolu
+BNFC   ?= bnfc
+
+
+# Add profiling flags if STACK_PROFILE is set:
+ifneq (,$(wildcard $(STACK_PROFILE)))
+# To profile code with Template Haskell, you must to pass -fexternal-interpreter.
+# For details, see:
+# https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/exts/template_haskell.html#using-template-haskell-with-profiling
+STACK := $(STACK) --profile --ghc-options="-fexternal-interpreter"
+endif
+
 
 #################################################################################
 # Default
@@ -9,19 +28,17 @@ GEN_DIR_HS := gen/hs
 .PHONY: default
 default: build
 
-
 #################################################################################
 # Initialise project
 #################################################################################
 
-# NOTE:
-#
-#   The init command sets up a few things which only need
-
 .PHONY: init
-init:
-	@echo "Create stack.yaml for GHC $(GHC_VERSION)"
+init: stack.yaml
+
+stack.yaml: stack-$(GHC_VERSION).yaml
+	@echo "Using stack configuration for GHC $(GHC_VERSION)"
 	@cp stack-$(GHC_VERSION).yaml stack.yaml
+
 
 #################################################################################
 # Format code within project
@@ -29,7 +46,8 @@ init:
 
 .PHONY: format
 format: require-ormolu
-	@ormolu --mode inplace --cabal-default-extensions $(shell git ls-files '*.hs')
+	@echo "Format Haskell code using Ormolu"
+	@$(ORMOLU) --mode inplace --cabal-default-extensions $(shell git ls-files '*.hs')
 
 #################################################################################
 # Build parsers for Frontend and Core languages using BNFC
@@ -37,10 +55,6 @@ format: require-ormolu
 
 .PHONY: bnfc
 bnfc: bnfc-core bnfc-frontend
-
-$(GEN_DIR_HS):
-	mkdir -p $(GEN_DIR_HS)
-
 
 # NOTE:
 #
@@ -59,12 +73,17 @@ BNFC_GARBAGE_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_GARBAGE_CORE
 .PHONY: bnfc-core
 bnfc-core: $(BNFC_TARGETS_CORE)
 
-$(BNFC_TARGETS_CORE): $(SRC_DIR_BNFC)/Core.cf | require-bnfc $(GEN_DIR_HS)
-	bnfc -d --haskell --generic --text-token \
-	     --name-space Vehicle \
-	     --outputdir=$(GEN_DIR_HS) \
-	     $(SRC_DIR_BNFC)/Core.cf
-	rm -f $(BNFC_GARBAGE_CORE)
+$(BNFC_TARGETS_CORE): $(SRC_DIR_BNFC)/Core.cf | require-bnfc
+	@mkdir -p $(GEN_DIR_HS)
+	@$(BNFC)										\
+		-d												\
+		--haskell									\
+		--generic									\
+		--text-token							\
+		--name-space Vehicle			\
+		--outputdir=$(GEN_DIR_HS) \
+		$(SRC_DIR_BNFC)/Core.cf
+	@rm -f $(BNFC_GARBAGE_CORE)
 
 BNFC_TARGETS_FRONTEND := Abs.hs Lex.x Layout.hs Par.y ErrM.hs
 BNFC_TARGETS_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_TARGETS_FRONTEND))
@@ -75,12 +94,17 @@ BNFC_GARBAGE_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_GARB
 .PHONY: bnfc-frontend
 bnfc-frontend: $(BNFC_TARGETS_FRONTEND)
 
-$(BNFC_TARGETS_FRONTEND): $(SRC_DIR_BNFC)/Frontend.cf | require-bnfc $(GEN_DIR_HS)
-	bnfc -d --haskell --generic --text-token \
-	     --name-space Vehicle \
-	     --outputdir=$(GEN_DIR_HS) \
-	     $(SRC_DIR_BNFC)/Frontend.cf
-	rm -f $(BNFC_GARBAGE_FRONTEND)
+$(BNFC_TARGETS_FRONTEND): $(SRC_DIR_BNFC)/Frontend.cf | require-bnfc
+	@mkdir -p $(GEN_DIR_HS)
+	@$(BNFC)										\
+		-d												\
+		--haskell									\
+		--generic									\
+		--text-token							\
+		--name-space Vehicle			\
+		--outputdir=$(GEN_DIR_HS) \
+		$(SRC_DIR_BNFC)/Frontend.cf
+	@rm -f $(BNFC_GARBAGE_FRONTEND)
 
 
 #################################################################################
@@ -88,10 +112,8 @@ $(BNFC_TARGETS_FRONTEND): $(SRC_DIR_BNFC)/Frontend.cf | require-bnfc $(GEN_DIR_H
 #################################################################################
 
 .PHONY: build
-build: \
-		require-stack require-stack-yaml \
-		$(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
-	stack build
+build: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND) stack.yaml | require-stack
+	@$(STACK) build
 
 
 #################################################################################
@@ -99,21 +121,9 @@ build: \
 #################################################################################
 
 .PHONY: test
-test: \
-		require-stack require-stack-yaml \
-		$(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
-	stack test
+test: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND) stack.yaml | require-stack
+	@$(STACK) test
 
-# TODO make this into a profile flag
-.PHONY: test-profile
-test: \
-		require-stack require-stack-yaml \
-		$(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND)
-	stack test --profile --ghc-options="-fexternal-interpreter"
-
-# See https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/exts/template_haskell.html#using-template-haskell-with-profiling
-# for why using template Haskell requires us to pass this extra flag when
-# profiling.
 
 #################################################################################
 # Test Vehicle
@@ -121,7 +131,7 @@ test: \
 
 .PHONY: clean
 clean:
-	rm -rf $(GEN_DIR_HS)
+	@rm -rf $(GEN_DIR_HS)
 
 
 #################################################################################
@@ -136,15 +146,6 @@ ifeq (,$(wildcard $(shell which stack)))
 	@exit 1
 endif
 
-.PHONY: require-stack-yaml
-require-stack-yaml:
-ifeq (,$(wildcard stack.yaml))
-	@echo "The command you called requires a stack.yaml file"
-	@echo "Please run 'make init' or create one from one of:"
-	@ls stack-*.yaml
-	@exit 1
-endif
-
 .PHONY: require-bnfc
 require-bnfc:
 ifeq (,$(wildcard $(shell which bnfc)))
@@ -154,7 +155,7 @@ ifeq (,$(wildcard $(shell which bnfc)))
 endif
 
 .PHONY: require-ormolu
-require-ormolu:e
+require-ormolu:
 ifeq (,$(wildcard $(shell which ormolu)))
 	@echo "The command you called requires the ormolu Haskel formatter"
 	@echo "See: https://github.com/tweag/ormolu"
