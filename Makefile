@@ -49,6 +49,11 @@ format: require-ormolu
 	@echo "Format Haskell code using Ormolu"
 	@$(ORMOLU) --mode inplace --cabal-default-extensions $(shell git ls-files '*.hs')
 
+.PHONY: format-check
+format-check: require-ormolu
+	@echo "Check Haskell code using Ormolu"
+	@$(ORMOLU) --mode check --cabal-default-extensions $(shell git ls-files '*.hs')
+
 #################################################################################
 # Build parsers for Frontend and Core languages using BNFC
 #################################################################################
