@@ -2,7 +2,6 @@
 module Vehicle.Core.Compile.DSL
   ( DSL(..)
   , DSLExpr
-  , toDSL
   , fromDSL
   , type0
   , constraint
@@ -43,7 +42,7 @@ class DSL expr where
   infixr 4 ~~>
 
   app :: expr -> expr -> expr
-  lam :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
+  -- lam :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
   pi  :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
 
   unnamedPi :: Visibility -> expr -> (expr -> expr) -> expr
@@ -72,13 +71,14 @@ boundVar :: CheckedExpr -> BindingDepth -> DSLExpr
 boundVar t i = DSL $ \j -> Var (typeAnn t) (Bound (j - (i + 1)))
 
 instance DSL DSLExpr where
+  {-
   lam p v n argType bodyFn = DSL $ \i ->
     let varType = unDSL argType i
         var     = boundVar varType i
         binder  = Binder p v n varType
         body    = unDSL (bodyFn var) (i + 1)
     in Lam (typeAnn $ lamType p v n varType (getType body)) binder body
-
+-}
   pi p v n argType bodyFn = DSL $ \i ->
     let varType = unDSL argType i
         var     = boundVar varType i

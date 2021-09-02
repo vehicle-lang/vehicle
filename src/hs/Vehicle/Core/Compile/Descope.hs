@@ -8,6 +8,7 @@ import Control.Monad.Supply (MonadSupply, demand, runSupply, withSupply)
 import Control.Monad.Identity (Identity)
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.Text (pack)
+import GHC.Stack (HasCallStack)
 import Prettyprinter ((<+>), Pretty(pretty))
 import Debug.Trace (trace)
 
@@ -32,13 +33,13 @@ addToCtx (Binder _ _ name _) (Ctx ctx) = Ctx (name : ctx)
 type MonadDescope m = (MonadSupply Symbol Identity m, MonadReader Ctx m)
 
 -- |Throw an |IndexOutOfBounds| error using an arbitrary index.
-indexOutOfBounds :: Index -> Int -> Provenance -> a
+indexOutOfBounds :: HasCallStack => Index -> Int -> Provenance -> a
 indexOutOfBounds index ctxSize p = developerError $
   "DeBruijn index" <+> pretty index <+>
   "greater than current context size" <+> pretty ctxSize <+>
   "at" <+> pretty p
 
-lookupVar :: MonadDescope m => Provenance -> CheckedVar -> m OutputVar
+lookupVar :: (HasCallStack, MonadDescope m) => Provenance -> CheckedVar -> m OutputVar
 lookupVar p = \case
   Free (Identifier name) -> return name
   Bound i -> do

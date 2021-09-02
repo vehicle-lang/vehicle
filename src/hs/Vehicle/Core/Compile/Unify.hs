@@ -263,6 +263,10 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
       --  if the heads are equal, then succeed if the argument lists are identical, otherwise postpone
       throwError $ UnificationFailure constraint
 
+    -- ?X e1 e2 e3 =?= ?Y x y z
+
+    -- ==> ?Y := \x. \y. \z. ?X e1 e2 e3
+
     (Meta _ i, args) :~: _ ->
       -- Check that 'args' is a pattern
       case patternOfArgs args of

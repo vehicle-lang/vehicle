@@ -32,7 +32,7 @@ network new : forall {d : datatype}. (var d -> comm) -> comm
 -- a little program, assuming two variables 'x' and 'b'
 --  new y.
 --    y := x
---    b := isZero !y
+--    b := isZero (rd y)
 program : var int -> var bool -> comm
 program x b = new {int} (\y -> seq (assign y (rd x)) (assign b (isZero (rd y))))
 

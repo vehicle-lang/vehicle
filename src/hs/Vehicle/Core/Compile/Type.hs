@@ -9,8 +9,7 @@ import Prelude hiding (pi)
 import Control.Monad (when)
 import Control.Monad.Except (MonadError(..), Except, withExcept)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
-import Control.Monad.Trans (MonadTrans(..))
-import Control.Monad.State (MonadState(..), StateT(..), modify, runStateT, evalStateT)
+import Control.Monad.State (MonadState(..), StateT(..), modify, runStateT)
 import Debug.Trace (trace)
 import Data.Text (Text)
 import Data.Foldable (toList, foldrM)
@@ -273,23 +272,7 @@ check expectedType expr = showCheckExit $ case showCheckEntry expectedType expr 
        addToBoundCtx nBound tBound' $ do
          body' <- check tRes body
          return $ Lam (RecAnn expectedType p) (Binder pBound Implicit nBound tBound') body'
-{-
-  (Pi _ (Binder _ Explicit _ tBound2) tRes, Lam p (Binder pBound Explicit nBound tBound1) body) -> do
-       tBound1' <- check (getType tBound2) tBound1
-       tBound' <- unify p tBound2 tBound1'
 
-       addToBoundCtx nBound tBound' $ do
-         body' <- check tRes body
-         return $ Lam (RecAnn expectedType p) (Binder pBound Explicit nBound tBound') body'
-
-  (Pi _ (Binder _ Explicit _ tBound2) tRes, Lam p (Binder pBound Implicit nBound tBound1) body) -> do
-       tBound1' <- check (getType tBound2) tBound1
-       tBound' <- unify p tBound2 tBound1'
-
-       addToBoundCtx nBound tBound' $ do
-         body' <- check tRes body
-         return $ Lam (RecAnn expectedType p) (Binder pBound Explicit nBound tBound') body'
--}
   (Pi _ (Binder _ Implicit name tBound2) tRes, e) ->
     -- Add the implict argument to the context
     addToBoundCtx Machine tBound2 $ do
@@ -324,44 +307,6 @@ check expectedType expr = showCheckExit $ case showCheckEntry expectedType expr 
   (_, e@(Seq     p _))     -> viaInfer p      expectedType e
   (_, e@(Ann     p _ _))   -> viaInfer p      expectedType e
 
-{-
-  -- TODO: in checking mode, we should insert implicit arguments even
-  -- if there isn't a lambda. This will make examples like:
-  --    f : forall {x : Type 0}. x -> x
-  --    f = polyId
-  -- work
-  e@(Lam p (Binder pBound vBound nBound tBound1) body) ->
-    case expectedType of
-      -- Check if it's a Pi type which is expecting the right visibility
-      Pi _ (Binder _ vFun _ tBound2) tRes
-        | vBound == vFun -> do
-          tBound1' <- check (getType tBound2) tBound1
-          tBound' <- unify p tBound2 tBound1'
-
-          addToBoundCtx nBound tBound' $ do
-            body' <- check tRes body
-            return $ Lam (RecAnn expectedType p) (Binder pBound vBound nBound tBound') body'
-
-      -- Check if it's a Pi type which is expecting an implicit argument
-      -- but is being applied to an explicit argument
-      Pi _ (Binder _ Implicit name tBound2) tRes -> do
-        -- Add the implict argument to the context
-        addToBoundCtx nBound tBound2 $ do
-          -- Check if the type matches the expected result type.
-          e' <- check tRes e
-
-          -- TODO: we need to shift e' to account for inserted implicit lambdas
-
-          -- Create a new binder mirroring the implicit Pi binder expected
-          let newBinder = Binder mempty Implicit name tBound2
-
-          -- Prepend a new lambda to the expression with the implicit binder
-          return $ Lam (RecAnn expectedType mempty) newBinder e'
-
-      _ -> do
-        let expected = unnamedPi vBound (tHole "a") (const (tHole "b"))
-        throwError $ Mismatch p expectedType expected
--}
 -- Generate new metavariables for any implicit arguments
 insertImplicits :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m (CheckedExpr, CheckedExpr)
 insertImplicits p fun' (Pi _ (Binder _ Implicit _ tArg') tRes') = do
