@@ -61,8 +61,19 @@ elabLetDecls = foldr elabLetDecl . elab
     elabLetDecl :: MonadElab m => VF.InputLetDecl -> m VC.InputExpr -> m VC.InputExpr
     elabLetDecl (VF.LetDecl ann binder e) body = VC.Let ann <$> elab e <*> elab binder <*> body
 
+elabAndReturnBinders :: MonadElab m =>
+                        (VC.InputBinder -> VC.InputExpr -> VC.InputExpr) ->
+                        [VF.InputBinder] ->
+                        VF.InputExpr ->
+                        m (VC.InputExpr, [VC.InputBinder])
+elabAndReturnBinders _ []       body = elab body >>= (\v -> return (v , []))
+elabAndReturnBinders f (b : bs) body = do
+  b' <- elab b
+  (e' , bs') <- elabAndReturnBinders f bs body
+  return (f b' e' , b' : bs')
+
 elabBinders :: MonadElab m => (VC.InputBinder -> VC.InputExpr -> VC.InputExpr) -> [VF.InputBinder] -> VF.InputExpr -> m VC.InputExpr
-elabBinders f bs body = foldr (\b d -> f <$> elab b <*> d) (elab body) bs
+elabBinders f bs body = fst <$> elabAndReturnBinders f bs body
 
 elabFunInputType :: MonadElab m => VF.InputExpr -> m VC.InputBinder
 elabFunInputType t = VC.Binder (VF.annotation t) Explicit "_" <$> elab t
@@ -141,12 +152,20 @@ instance Elab VF.InputExpr VC.InputExpr where
 instance Elab VF.InputDecl VC.InputDecl where
   elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann n <$> elab t
   elab (VF.DeclData ann n t)      = VC.DeclData ann n <$> elab t
-  elab (VF.DefType  ann n ns e)   = VC.DefFun   ann n VC.Type0 <$> elabBinders (VC.Lam ann) ns e
-  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann n <$> elab t          <*> elabBinders (VC.Lam ann) ns e
+  elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann n <$> elab t <*> elabBinders (VC.Lam ann) ns e
+  elab (VF.DefType  ann n ns e)   = do
+    (body, binders) <- elabAndReturnBinders (VC.Lam ann) ns e
+    let t = typeDefType binders
+    return $ VC.DefFun ann n t body
 
 -- |Elaborate programs.
 instance Elab VF.InputProg VC.InputProg where
   elab (VF.Main decls) = VC.Main <$> traverse elab decls
+
+-- |Construct the type for a type definition
+typeDefType :: [VC.InputBinder] -> VC.InputExpr
+typeDefType []       = VC.Type0
+typeDefType (b : bs) = VC.Pi (prov b) b (typeDefType bs)
 
 -- |Elaborate a builtin argument to an application Arg
 exprToArg :: MonadElab m => VF.InputExpr -> m VC.InputArg
