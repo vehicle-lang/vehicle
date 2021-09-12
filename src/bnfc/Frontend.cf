@@ -58,7 +58,7 @@ position token TokTCIntegral  {"IsIntegral"};
 position token TokTCRational  {"IsRational"};
 position token TokTCReal      {"IsReal"};
 
-position token Name        (lower (letter | digit | '_')*) ;
+position token Name        (letter (letter | digit | '_')*) ;
 position token HoleToken   ({"?"} (letter | digit | '_')*);
 
 separator Name "";
