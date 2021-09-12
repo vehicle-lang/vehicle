@@ -141,7 +141,7 @@ instance Elab VF.InputExpr VC.InputExpr where
 instance Elab VF.InputDecl VC.InputDecl where
   elab (VF.DeclNetw ann n t)      = VC.DeclNetw ann n <$> elab t
   elab (VF.DeclData ann n t)      = VC.DeclData ann n <$> elab t
-  elab (VF.DefType  ann n ns e)   = VC.DefFun   ann n <$> hole (prov ann) <*> elabBinders (VC.Lam ann) ns e
+  elab (VF.DefType  ann n ns e)   = VC.DefFun   ann n VC.Type0 <$> elabBinders (VC.Lam ann) ns e
   elab (VF.DefFun   ann n t ns e) = VC.DefFun   ann n <$> elab t          <*> elabBinders (VC.Lam ann) ns e
 
 -- |Elaborate programs.
