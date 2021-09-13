@@ -126,8 +126,8 @@ instance Compile (Expr ann) where
     AndF     _ann e1 e2    -> compileInfixOp2 5 "and" e1 e2
     OrF      _ann e1 e2    -> compileInfixOp2 6 "or"  e1 e2
     NotF     _ann e        -> compileApp1     "not" e
-    AllF     _ann          -> "∀"
-    AnyF     _ann          -> "∃"
+    AllF     _ann b e      -> "every" <+> compile b <+> "." <+> e
+    AnyF     _ann b e      -> "some"  <+> compile b <+> "." <+> e
     EqF      _ann e1 e2    -> compileInfixOp2 8 "==" e1 e2
     NeqF     _ann e1 e2    -> compileInfixOp2 8 "!=" e1 e2
     LeF      _ann e1 e2    -> compileInfixOp2 8 "<=" e1 e2

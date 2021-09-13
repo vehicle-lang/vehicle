@@ -196,8 +196,8 @@ instance Convert B.Expr V.InputExpr where
     B.Neg tk e                -> op1 V.Neg    (tkProv tk) (conv e)
     B.Cons e1 tk e2           -> op2 V.Cons   (tkProv tk) (conv e1) (conv e2)
     B.At e1 tk e2             -> op2 V.At     (tkProv tk) (conv e1) (conv e2)
-    B.All tk                  -> op0 V.All    (tkProv tk)
-    B.Any tk                  -> op0 V.Any    (tkProv tk)
+    B.All tk1 n tk2 e         -> op2 V.All    (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
+    B.Any tk1 n tk2 e         -> op2 V.Any    (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
     B.Seq tk1 es tk2          -> op1 V.Seq    (tkProv tk1 <> tkProv tk2) (traverse conv es)
     B.Literal l               -> conv l
     B.TypeC   tc              -> conv tc

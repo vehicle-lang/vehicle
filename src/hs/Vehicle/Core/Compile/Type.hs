@@ -563,8 +563,8 @@ typeOfBuiltin p b = fromDSL $ case b of
 
   At   -> typeOfAtOp p
 
-  All  -> typeOfQuantifierOp p
-  Any  -> typeOfQuantifierOp p
+  All  -> typeOfQuantifierOp
+  Any  -> typeOfQuantifierOp
 
 typeOfIf :: DSLExpr
 typeOfIf =
@@ -608,11 +608,10 @@ typeOfNumOp1 numConstraint =
   forall type0 $ \t ->
     numConstraint t ~~> t ~> t
 
-typeOfQuantifierOp :: Provenance -> DSLExpr
-typeOfQuantifierOp p =
+typeOfQuantifierOp :: DSLExpr
+typeOfQuantifierOp =
   forall type0 $ \t ->
-    forall type0 $ \r ->
-      isQuantifiable p t r ~~> t ~> (t ~> r) ~> r
+    (t ~> tProp) ~> tProp
 
 typeOfAtOp :: Provenance -> DSLExpr
 typeOfAtOp p =

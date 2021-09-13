@@ -3,11 +3,14 @@ module Vehicle.Frontend.Elaborate
   ) where
 
 import Control.Monad.Identity (runIdentity)
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Debug.Trace (trace)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
 import Vehicle.Frontend.AST qualified as VF
+import Vehicle.Core.Print.Core (showCore)
 
 --------------------------------------------------------------------------------
 -- $sugar
@@ -144,8 +147,8 @@ instance Elab VF.InputExpr VC.InputExpr where
     -- Lists and tensors.
     VF.Cons   ann e1 e2 -> op2 VC.Cons ann e1 e2
     VF.At     ann e1 e2 -> op2 VC.At   ann e1 e2
-    VF.All    ann       -> op0 VC.All  ann
-    VF.Any    ann       -> op0 VC.Any  ann
+    VF.All    ann n e   -> op1 VC.All  ann (VF.Lam ann (n :| []) e)
+    VF.Any    ann n e   -> op1 VC.Any  ann (VF.Lam ann (n :| []) e)
     VF.Seq    ann es    -> VC.Seq ann <$> traverse elab es
 
 -- |Elaborate declarations.

@@ -92,8 +92,8 @@ data Expr ann
   | Neg      ann (Expr ann)
   | Cons     ann (Expr ann) (Expr ann)
   | At       ann (Expr ann) (Expr ann)
-  | All      ann
-  | Any      ann
+  | All      ann (Binder ann) (Expr ann)
+  | Any      ann (Binder ann) (Expr ann)
   | Seq      ann [Expr ann]
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 

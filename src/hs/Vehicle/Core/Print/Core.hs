@@ -82,7 +82,7 @@ instance ( Pretty name
   pretty = \case
     DeclNetw _ann n t    -> parens ("declare-network" <+> pretty n <+> ":" <+> pretty t) <+> line
     DeclData _ann n t    -> parens ("declare-dataset" <+> pretty n <+> ":" <+> pretty t) <+> line
-    DefFun   _ann n t e  -> parens ("define-fun" <+> pretty n <+> parens (pretty t) <+> parens (pretty e)) <+> line
+    DefFun   _ann n t e  -> parens ("define-fun" <+> pretty n <+> pretty t <+> pretty e) <+> line
 
 instance ( Pretty name
          , Pretty binder
