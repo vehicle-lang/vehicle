@@ -6,6 +6,7 @@ module Vehicle.Prelude
   , (!!?)
   , rangeStart
   , repeatN
+  , duplicate
   ) where
 
 import Data.Range
@@ -52,3 +53,6 @@ rangeStart InfiniteRange               = Nothing
 repeatN :: (a -> a) -> Int -> a -> a
 repeatN _ 0 = id
 repeatN f n = f . repeatN f (n-1)
+
+duplicate :: String -> Int -> String
+duplicate string n = concat $ replicate n string

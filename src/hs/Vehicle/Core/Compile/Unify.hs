@@ -30,14 +30,14 @@ data TypeClassConstraint = Meta `Has` CheckedExpr
   deriving (Show)
 
 instance Pretty TypeClassConstraint where
-  pretty (m `Has` e) = pretty m <+> "~" <+> pretty e
+  pretty (m `Has` e) = "?" <> pretty m <+> "~" <+> pretty e
 
 --------------------------------------------------------------------------------
 -- Definitions
 
 -- The context in which a unification occurs.
 data UnificationContext = UnificationContext
-  { sharedContext :: [Name]         -- The context before any unification starts
+  { sharedContext :: [Name]        -- The context before any unification starts
   , splitContext :: [(Name, Name)] -- The context after unification.
   } deriving (Show)
 

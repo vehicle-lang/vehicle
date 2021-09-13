@@ -3,12 +3,12 @@
 pi : Real
 pi = 3.141592
 
-type AcasXuInput  = Tensor Real [5]
-type AcasXuOutput = Tensor Real [5]
+type InputVector  = Tensor Real [5]
+type OutputVector = Tensor Real [5]
 
 -- The network
 
-network acasXu : AcasXuInput -> AcasXuOutput
+network acasXu : InputVector -> OutputVector
 
 -- Inputs
 
@@ -32,23 +32,24 @@ intruderSpeed x = x ! 4
 clearOfConflictScore : InputVector -> Real
 clearOfConflictScore x = acasXu x ! 0
 
--- To do add
-
-
 -- Property: If the intruder is sufficiently far away, the network advises COC.
 
 intruderFarAway : InputVector -> Prop
 intruderFarAway x =
-  (-pi <= angleToIntruder x <= -0.7 or 0.7 <= angleToIntruder x <= pi)
-  and 12000 <= distanceToIntruder x <= 62000
-  and −pi   <= intruderHeading    x <= -pi + 0.005
-  and 100   <= speed              x <= 1200
-  and 0     <= intruderSpeed      x <= 1200
+  --(- pi <= angleToIntruder x <= -0.7 or 0.7 <= angleToIntruder x <= pi)
+  --and 12000 <= distanceToIntruder x <= 62000
+  --and -pi   <= intruderHeading    x <= -pi + 0.005
+  --and 100   <= speed              x <= 1200
+  --and
+  0 <= intruderSpeed x -- <= 1200
 
 advisesClearOfConflict : InputVector -> Prop
-advisesClearOfConflict x = forall i.
+advisesClearOfConflict x = every (i : Int) . -- [1..5]
   clearOfConflictScore x <= acasXu x ! i
 
 property6 : Prop
-property6 = forall x : InputVector.
-  intruderFarAway x => advisesClearOfConflict x
+property6 = every x. intruderFarAway x => advisesClearOfConflict x
+
+-- every (const True) (\x -> intruderFarAway x => advisesClearOfConflict x)
+
+-- every x : intruderFarAway . advisesClearOfConflict x

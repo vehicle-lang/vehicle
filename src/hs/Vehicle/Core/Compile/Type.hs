@@ -20,6 +20,8 @@ import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Functor ((<&>))
+import Data.Bifunctor (first, second)
 import Prettyprinter ((<+>), Pretty(..), line)
 
 import Vehicle.Core.AST
@@ -37,8 +39,8 @@ runTypeChecking :: UncheckedProg -> Except TypingError CheckedProg
 runTypeChecking prog = do
   let prog1 = inferProg prog
   let prog3 = runReaderT prog1 emptyVariableCtx
-  let prog4 = runStateT  prog3 emptyMetaCtx
-  (checkedProg, metaCtx) <- prog4
+  let prog4 = runStateT  prog3 (emptyMetaCtx, 0)
+  (checkedProg, (metaCtx, _)) <- prog4
   trace (layoutAsString $ pretty metaCtx) (return ())
   let constraints = unificationConstraints metaCtx
   (unsolvedConstraints, metaSubst) <- withExcept UnificationError (solve (constraints, mempty))
@@ -105,11 +107,14 @@ instance MeaningfulError TypingError where
 --------------------------------------------------------------------------------
 -- Contexts
 
+-- Purely for debugging purposes
+type CallDepth = Int
+
 -- | The type-checking monad
 type TCM m =
-  ( MonadError  TypingError  m
-  , MonadState  MetaCtx      m
-  , MonadReader VariableCtx  m
+  ( MonadError  TypingError          m
+  , MonadState  (MetaCtx, CallDepth) m
+  , MonadReader VariableCtx          m
   )
 
 data VariableCtx = VariableCtx
@@ -175,10 +180,19 @@ emptyMetaCtx = MetaCtx
   }
 
 getMetaCtx :: TCM m => m MetaCtx
-getMetaCtx = get
+getMetaCtx = get <&> fst
 
 modifyMetaCtx :: TCM m => (MetaCtx -> MetaCtx) -> m ()
-modifyMetaCtx = modify
+modifyMetaCtx f = modify (first f)
+
+putMetaCtx :: TCM m => MetaCtx -> m ()
+putMetaCtx ctx = modifyMetaCtx (const ctx)
+
+modifyCallDepth :: TCM m => (CallDepth -> CallDepth) -> m CallDepth
+modifyCallDepth f = do
+  (c, d) <- get
+  put (c, f d)
+  return d
 
 addUnificationConstraints :: TCM m => [UnificationConstraint] -> m ()
 addUnificationConstraints cs = modifyMetaCtx $ \ MetaCtx {..} ->
@@ -207,7 +221,7 @@ getMetaType i = do
 freshMetaName :: TCM m => m Meta
 freshMetaName = do
   MetaCtx {..} <- getMetaCtx;
-  put $ MetaCtx { nextMeta = succ nextMeta , ..}
+  putMetaCtx $ MetaCtx { nextMeta = succ nextMeta , ..}
   return nextMeta
 
 -- TODO unify these functions in a pleasing way
@@ -251,61 +265,66 @@ freshMeta p resultType = do
 --------------------------------------------------------------------------------
 -- Type-checking of expressions
 
-showCheckEntry :: CheckedExpr -> UncheckedExpr -> (CheckedExpr, UncheckedExpr)
-showCheckEntry t e = trace ("check-entry " <> showCore e <> " <= " <> showCore t) (t, e)
+showCheckEntry :: TCM m => CheckedExpr -> UncheckedExpr -> m (CheckedExpr, UncheckedExpr)
+showCheckEntry t e = do
+  d <- modifyCallDepth (+1)
+  return $ trace (duplicate " " d <> "check-entry " <> showCore e <> " <= " <> showCore t) (t,e)
 
 showCheckExit :: TCM m => m CheckedExpr -> m CheckedExpr
 showCheckExit m = do
   e <- m
-  trace ("check-exit  " <> showCore e) (return e)
+  d <- modifyCallDepth (\x->x-1)
+  trace (duplicate " " (d-1) <> "check-exit  " <> showCore e) (return e)
 
 check :: TCM m
       => CheckedExpr   -- Type we're checking against
       -> UncheckedExpr -- Expression being type-checked
       -> m CheckedExpr -- Updated expression
-check expectedType expr = showCheckExit $ case showCheckEntry expectedType expr of
-  (Pi _ (Binder _ vFun _ tBound2) tRes, Lam p (Binder pBound vBound nBound tBound1) body)
-    | vFun == vBound -> do
-       tBound1' <- check (getType tBound2) tBound1
-       tBound' <- unify p tBound2 tBound1'
+check expectedType expr = showCheckExit $ do
+  r <- showCheckEntry expectedType expr
+  case r of
+    (Pi _ (Binder _ vFun _ tBound2) tRes, Lam p (Binder pBound vBound nBound tBound1) body)
+      | vFun == vBound -> do
+        tBound1' <- check (getType tBound2) tBound1
+        tBound' <- unify p tBound2 tBound1'
 
-       addToBoundCtx nBound tBound' $ do
-         body' <- check tRes body
-         return $ Lam (RecAnn expectedType p) (Binder pBound Implicit nBound tBound') body'
+        addToBoundCtx nBound tBound' $ do
+          body' <- check tRes body
+          return $ Lam (RecAnn expectedType p) (Binder pBound Implicit nBound tBound') body'
 
-  (Pi _ (Binder _ Implicit name tBound2) tRes, e) ->
-    -- Add the implict argument to the context
-    addToBoundCtx Machine tBound2 $ do
-      -- Check if the type matches the expected result type.
-      e' <- check tRes (liftDBIndices 1 e)
+    (Pi _ (Binder _ Implicit name tBound2) tRes, e) ->
+      -- Add the implict argument to the context
+      addToBoundCtx Machine tBound2 $ do
+        -- Check if the type matches the expected result type.
+        e' <- check tRes (liftDBIndices 1 e)
 
-      -- Create a new binder mirroring the implicit Pi binder expected
-      let newBinder = Binder mempty Implicit name tBound2
+        -- Create a new binder mirroring the implicit Pi binder expected
+        let newBinder = Binder mempty Implicit name tBound2
 
-      -- Prepend a new lambda to the expression with the implicit binder
-      return $ Lam (RecAnn expectedType mempty) newBinder e'
+        -- Prepend a new lambda to the expression with the implicit binder
+        return $ Lam (RecAnn expectedType mempty) newBinder e'
 
-  (_, Lam p (Binder _ vBound _ _) _) -> do
-        let expected = unnamedPi vBound (tHole "a") (const (tHole "b"))
-        throwError $ Mismatch p expectedType expected
+    (_, Lam p (Binder _ vBound _ _) _) -> do
+          let expected = unnamedPi vBound (tHole "a") (const (tHole "b"))
+          throwError $ Mismatch p expectedType expected
 
-  (_, Hole p _name) -> do
-    -- Replace the hole with meta-variable of the expected type.
-    -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
-    (_, meta, _) <- freshMeta p expectedType
-    return meta
+    (_, Hole p _name) -> do
+      -- Replace the hole with meta-variable of the expected type.
+      -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
+      (_, meta, _) <- freshMeta p expectedType
+      return meta
 
-  (_, e@(Type _))          -> viaInfer mempty expectedType e
-  (_, e@Constraint)        -> viaInfer mempty expectedType e
-  (_, e@(Meta _ _))        -> viaInfer mempty expectedType e
-  (_, e@(App     p _ _))   -> viaInfer p      expectedType e
-  (_, e@(Pi      p _ _))   -> viaInfer p      expectedType e
-  (_, e@(Builtin p _))     -> viaInfer p      expectedType e
-  (_, e@(Var     p _))     -> viaInfer p      expectedType e
-  (_, e@(Let     p _ _ _)) -> viaInfer p      expectedType e
-  (_, e@(Literal p _))     -> viaInfer p      expectedType e
-  (_, e@(Seq     p _))     -> viaInfer p      expectedType e
-  (_, e@(Ann     p _ _))   -> viaInfer p      expectedType e
+    (_, e@(Type _))          -> viaInfer mempty expectedType e
+    (_, e@Constraint)        -> viaInfer mempty expectedType e
+    (_, e@(Meta _ _))        -> viaInfer mempty expectedType e
+    (_, e@(App     p _ _))   -> viaInfer p      expectedType e
+    (_, e@(Pi      p _ _))   -> viaInfer p      expectedType e
+    (_, e@(Builtin p _))     -> viaInfer p      expectedType e
+    (_, e@(Var     p _))     -> viaInfer p      expectedType e
+    (_, e@(Let     p _ _ _)) -> viaInfer p      expectedType e
+    (_, e@(Literal p _))     -> viaInfer p      expectedType e
+    (_, e@(Seq     p _))     -> viaInfer p      expectedType e
+    (_, e@(Ann     p _ _))   -> viaInfer p      expectedType e
 
 -- Generate new metavariables for any implicit arguments
 insertImplicits :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m (CheckedExpr, CheckedExpr)
@@ -351,116 +370,121 @@ inferApp p (Arg pArg vArg eArg) fun' = \case
     throwError $ Mismatch p tFun' expected
 
 
-showInferEntry :: UncheckedExpr -> UncheckedExpr
-showInferEntry e = trace ("infer-entry " <> showCore e) e
+showInferEntry :: TCM m => UncheckedExpr -> m UncheckedExpr
+showInferEntry e = do
+  d <- modifyCallDepth (+1)
+  return $ trace (duplicate " " d <> "infer-entry " <> showCore e) e
 
 showInferExit :: TCM m => m (CheckedExpr, CheckedExpr) -> m (CheckedExpr, CheckedExpr)
 showInferExit m = do
   (e, t) <- m
-  trace ("infer-exit  " <> showCore e <> " => " <> showCore t) (return (e,t))
+  d <- modifyCallDepth (\x -> x-1)
+  trace (duplicate " " (d-1) <> "infer-exit  " <> showCore e <> " => " <> showCore t) (return (e,t))
 
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
 infer :: TCM m
       => UncheckedExpr
       -> m (CheckedExpr, CheckedExpr)
-infer e = showInferExit $ case showInferEntry e of
-  Type l ->
-    return (Type l , Type (l + 1))
+infer e = showInferExit $ do
+  r <- showInferEntry e
+  case r of
+    Type l ->
+      return (Type l , Type (l + 1))
 
-  Constraint ->
-    return (Constraint , Type 1)
+    Constraint ->
+      return (Constraint , Type 1)
 
-  Meta _ m -> developerError $ "Trying to infer the type of a meta-variable" <+> pretty m
+    Meta _ m -> developerError $ "Trying to infer the type of a meta-variable" <+> pretty m
 
-  Hole ann s ->
-    throwError $ UnresolvedHole (prov ann) s
+    Hole ann s ->
+      throwError $ UnresolvedHole (prov ann) s
 
-  Ann ann expr t   -> do
-    (t', _) <- infer t
-    expr' <- check t' expr
-    let ann' = RecAnn t' ann
-    return (Ann ann' expr' t' , t')
+    Ann ann expr t   -> do
+      (t', _) <- infer t
+      expr' <- check t' expr
+      let ann' = RecAnn t' ann
+      return (Ann ann' expr' t' , t')
 
-  App p fun arg@(Arg _ vArg _) -> do
-    -- Infer the type of the function.
-    (fun', tFun') <- infer fun
-    -- if this is an explicit argument, then insert implicits before proceeding
-    (fun', tFun') <- if vArg == Explicit then insertImplicits p fun' tFun' else return (fun', tFun')
-    inferApp p arg fun' tFun'
+    App p fun arg@(Arg _ vArg _) -> do
+      -- Infer the type of the function.
+      (fun', tFun') <- infer fun
+      -- if this is an explicit argument, then insert implicits before proceeding
+      (fun', tFun') <- if vArg == Explicit then insertImplicits p fun' tFun' else return (fun', tFun')
+      inferApp p arg fun' tFun'
 
-  Pi p (Binder pBound vis name arg) res -> do
-    (arg', tArg') <- infer arg
+    Pi p (Binder pBound vis name arg) res -> do
+      (arg', tArg') <- infer arg
 
-    addToBoundCtx name arg' $ do
-      (res', tRes') <- infer res
-      let t' = tArg' `tMax` tRes'
-      return (Pi (RecAnn t' p) (Binder pBound vis name arg') res' , t')
+      addToBoundCtx name arg' $ do
+        (res', tRes') <- infer res
+        let t' = tArg' `tMax` tRes'
+        return (Pi (RecAnn t' p) (Binder pBound vis name arg') res' , t')
 
-  Builtin p op -> do
-    let t' = typeOfBuiltin p op
-    return (Builtin (RecAnn t' p) op, t')
+    Builtin p op -> do
+      let t' = typeOfBuiltin p op
+      return (Builtin (RecAnn t' p) op, t')
 
-  Var p (Bound i) -> do
-    -- Lookup the type of the variable in the context.
-    ctx <- getBoundCtx
-    case ctx !!? i of
-      Just (_, t') -> do
-        let t'' = liftDBIndices (i+1) t'
-        return (Var (RecAnn t'' p) (Bound i), t'')
-      Nothing      -> developerError $
-        "Index" <+> pretty i <+> "out of bounds when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
+    Var p (Bound i) -> do
+      -- Lookup the type of the variable in the context.
+      ctx <- getBoundCtx
+      case ctx !!? i of
+        Just (_, t') -> do
+          let t'' = liftDBIndices (i+1) t'
+          return (Var (RecAnn t'' p) (Bound i), t'')
+        Nothing      -> developerError $
+          "Index" <+> pretty i <+> "out of bounds when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 
-  Var p (Free ident) -> do
-    -- Lookup the type of the declaration variable in the context.
-    ctx <- getDeclCtx
-    case Map.lookup ident ctx of
-      Just t' -> return (Var (RecAnn t' p) (Free ident), t')
-      -- This should have been caught during scope checking
-      Nothing -> developerError $
-        "Declaration'" <+> pretty ident <+> "'not found when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
+    Var p (Free ident) -> do
+      -- Lookup the type of the declaration variable in the context.
+      ctx <- getDeclCtx
+      case Map.lookup ident ctx of
+        Just t' -> return (Var (RecAnn t' p) (Free ident), t')
+        -- This should have been caught during scope checking
+        Nothing -> developerError $
+          "Declaration'" <+> pretty ident <+> "'not found when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 
-  Let p bound (Binder pBound vis name tBound)  body -> do
-    -- Infer the type of the let arg from the annotation on the binder
-    (tBound', _) <- infer tBound
+    Let p bound (Binder pBound vis name tBound)  body -> do
+      -- Infer the type of the let arg from the annotation on the binder
+      (tBound', _) <- infer tBound
 
-    -- Check the bound expression actually has that type
-    bound' <- check tBound' bound
+      -- Check the bound expression actually has that type
+      bound' <- check tBound' bound
 
-    -- Update the context with the bound variable
-    addToBoundCtx name tBound' $ do
-      -- Infer the type of the body
-      (body' , tBody') <- infer body
-      return (Let (RecAnn tBody' p) bound' (Binder pBound vis name tBound') body' , tBody')
+      -- Update the context with the bound variable
+      addToBoundCtx name tBound' $ do
+        -- Infer the type of the body
+        (body' , tBody') <- infer body
+        return (Let (RecAnn tBody' p) bound' (Binder pBound vis name tBound') body' , tBody')
 
-  Lam p (Binder pBound vis name tBound) body -> do
-    -- Infer the type of the bound variable from the binder
-    (tBound', _) <- infer tBound
+    Lam p (Binder pBound vis name tBound) body -> do
+      -- Infer the type of the bound variable from the binder
+      (tBound', _) <- infer tBound
 
-    -- Update the context with the bound variable
-    addToBoundCtx name tBound' $ do
-      (body' , tBody') <- infer body
-      let t' = Pi (RecAnn (piType tBound' tBody') p) (Binder pBound vis name tBound') tBody'
-      return (Lam (RecAnn t' p) (Binder pBound vis name tBound') body' , t')
+      -- Update the context with the bound variable
+      addToBoundCtx name tBound' $ do
+        (body' , tBody') <- infer body
+        let t' = Pi (RecAnn (piType tBound' tBody') p) (Binder pBound vis name tBound') tBody'
+        return (Lam (RecAnn t' p) (Binder pBound vis name tBound') body' , t')
 
-  Literal p l -> do
-    let t' = typeOfLiteral p l
-    return (Literal (RecAnn t' p) l, t')
+    Literal p l -> do
+      let t' = typeOfLiteral p l
+      return (Literal (RecAnn t' p) l, t')
 
-  Seq p es -> do
-    (es', ts') <- unzip <$> traverse infer es
+    Seq p es -> do
+      (es', ts') <- unzip <$> traverse infer es
 
-    -- Generate a fresh meta variable for the case where the list is empty
-    (_, tElem, _) <- freshMeta p Type0
+      -- Generate a fresh meta variable for the case where the list is empty
+      (_, tElem, _) <- freshMeta p Type0
 
-    -- Unify the types of all the elements in the list
-    tElem' <- foldrM (unify p) tElem ts'
+      -- Unify the types of all the elements in the list
+      tElem' <- foldrM (unify p) tElem ts'
 
-    -- Generate a meta-variable for the type of the container
-    (meta, tCont', _) <- freshMeta p Type0
-    -- addTypeClassConstraints [meta `Has` unembed (isContainer p (embed tCont') (embed tElem'))]
+      -- Generate a meta-variable for the type of the container
+      (meta, tCont', _) <- freshMeta p Type0
+      -- addTypeClassConstraints [meta `Has` unembed (isContainer p (embed tCont') (embed tElem'))]
 
-    return (Seq (RecAnn tCont' p) es' , tCont')
+      return (Seq (RecAnn tCont' p) es' , tCont')
 
 assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
 assertIsType _ (Type _) = return ()
@@ -484,6 +508,7 @@ checkDecls (DeclData p ident t : decls) = do
       checkDecls decls
     return $ DeclData p ident t' : decls'
 checkDecls (DefFun p ident t body : decls) = do
+    let _ = trace ("check-fun-entry" <> layoutAsString (pretty ident))
     (t', ty') <- infer t
     assertIsType p ty'
 
@@ -492,6 +517,7 @@ checkDecls (DefFun p ident t body : decls) = do
     decls' <- addToDeclCtx (deProv ident) t' $ do
       checkDecls decls
 
+    let _ = trace ("check-fun-exit" <> layoutAsString (pretty ident))
     return $ DefFun p ident t' body' : decls'
 
 inferProg :: TCM m => UncheckedProg -> m CheckedProg
@@ -501,9 +527,9 @@ viaInfer :: TCM m => Provenance -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
 viaInfer p expectedType e = do
   -- TODO may need to change the term when unifying to insert a type application.
   (e', actualType) <- infer e
-  (e', actualType) <- insertImplicits p e' actualType
-  _t' <- unify p expectedType actualType
-  return e'
+  (e'', actualType') <- insertImplicits p e' actualType
+  _t' <- unify p expectedType actualType'
+  return e''
 
 --------------------------------------------------------------------------------
 -- Typing of literals
