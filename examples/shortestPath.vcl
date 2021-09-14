@@ -3,23 +3,23 @@
 
 network shortestPath : Int -> Int
 
-validInput : Int -> Bool
-validInput x = 0 <= x and x <= 15
+validInputs : List Int
+validInputs = [0..15]
 
-extendsSomePath : Int -> Bool
-extendsSomePath i = any (\j -> shortestPath i == shortestPath j + 1) validInput
+extendsSomePath : Int -> Prop
+extendsSomePath i = some j in validInputs . shortestPath i == shortestPath (j + 1)
 
-usesShortestPath : Int -> Bool
-usesShortestPath i = all (\j -> shortestPath i <= shortestPath j + 1) validInput
+usesShortestPath : Int -> Prop
+usesShortestPath i = every j in validInputs . shortestPath i <= shortestPath (j + 1)
 
 --- The shortest path to the origin is always the trivial path.
-identityPath : Bool
+identityPath : Prop
 identityPath = shortestPath 0 == 0
 
 -- Any path from a non-origin node must be an extension of another path.
-extension : Bool
-extension = all (\i -> i != 0 => extendsSomePath i) validInput
+extension : Prop
+extension = every i in validInputs . i != 0 => extendsSomePath i
 
 -- The shortest path must be at least as short as any path on offer from its neighbours.
-shortest : Bool
-shortest = all (\i -> i != 0 => usesShortestPath i) validInput
+shortest : Prop
+shortest = every i in validInputs . i != 0 => usesShortestPath i
