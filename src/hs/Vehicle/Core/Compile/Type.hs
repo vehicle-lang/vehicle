@@ -285,8 +285,7 @@ check expectedType expr = showCheckExit $ do
   case r of
     (Pi _ (Binder _ vFun _ tBound2) tRes, Lam p (Binder pBound vBound nBound tBound1) body)
       | vFun == vBound -> do
-        tBound1' <- check (getType tBound2) tBound1
-        tBound' <- unify p tBound2 tBound1'
+        tBound' <- check tBound2 tBound1
 
         addToBoundCtx nBound tBound' $ do
           body' <- check tRes body
