@@ -42,6 +42,7 @@ import Vehicle.Core.Print.Core (showCore)
 --   * infix operators are rewritten to Polish notation, e.g.,
 --     @1 + 5@ is rewritten to @(+ 1 5)@
 --
+--   * quantifiers over lists are rewritten to folds
 --------------------------------------------------------------------------------
 
 runElab :: VF.InputProg -> VC.InputProg
@@ -145,11 +146,11 @@ instance Elab VF.InputExpr VC.InputExpr where
     VF.Neg     ann e     -> op1 VC.Neg ann e
 
     -- Lists and tensors.
-    VF.Cons   ann e1 e2 -> op2 VC.Cons ann e1 e2
-    VF.At     ann e1 e2 -> op2 VC.At   ann e1 e2
-    VF.All    ann n e   -> op1 VC.All  ann (VF.Lam ann (n :| []) e)
-    VF.Any    ann n e   -> op1 VC.Any  ann (VF.Lam ann (n :| []) e)
-    VF.Seq    ann es    -> VC.Seq ann <$> traverse elab es
+    VF.Cons    ann e1 e2     -> op2 VC.Cons ann e1 e2
+    VF.At      ann e1 e2     -> op2 VC.At   ann e1 e2
+    VF.Quant   ann q n e     -> op1 (VC.Quant q) ann (VF.Lam ann (n :| []) e)
+    VF.QuantIn ann q n e1 e2 -> quantIn ann q n e1 e2
+    VF.Seq     ann es        -> VC.Seq ann <$> traverse elab es
 
 -- |Elaborate declarations.
 instance Elab VF.InputDecl VC.InputDecl where
@@ -170,9 +171,9 @@ typeDefType :: [VC.InputBinder] -> VC.InputExpr
 typeDefType []       = VC.Type0
 typeDefType (b : bs) = VC.Pi (prov b) b (typeDefType bs)
 
--- |Elaborate a builtin argument to an application Arg
-exprToArg :: MonadElab m => VF.InputExpr -> m VC.InputArg
-exprToArg e = VC.Arg (VF.annotation e) Explicit <$> elab e
+-- |Apply a function to an argument
+app :: VF.InputAnn -> VC.InputExpr -> VC.InputExpr -> VC.InputExpr
+app ann fun arg = VC.App ann fun (VC.Arg (VC.annotation arg) Explicit arg)
 
 -- |Elaborate any builtin token to an expression.
 op0 :: MonadElab m => VC.Builtin -> VF.InputAnn -> m VC.InputExpr
@@ -180,12 +181,25 @@ op0 b ann = return $ VC.Builtin ann b
 
 -- |Elaborate a unary function symbol with its argument to an expression.
 op1 :: MonadElab m => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> m VC.InputExpr
-op1 b ann e1 = VC.App ann <$> op0 b ann <*> exprToArg e1
+op1 b ann e1 = app ann <$> op0 b ann <*> elab e1
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
 op2 :: MonadElab m => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
-op2 b ann e1 e2 = VC.App ann <$> op1 b ann e1 <*> exprToArg e2
+op2 b ann e1 e2 = app ann <$> op1 b ann e1 <*> elab e2
 
 -- |Elaborate a binary function symbol with its arguments to an expression.
 op3 :: MonadElab m => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
-op3 b ann e1 e2 e3 = VC.App ann <$> op2 b ann e1 e2 <*> exprToArg e3
+op3 b ann e1 e2 e3 = app ann <$> op2 b ann e1 e2 <*> elab e3
+
+-- |Elaborate quantification over the members of a container type.
+-- Expands e.g. `every x in list . y` to `fold and true (map (\x -> y) list)`
+quantIn :: MonadElab m => VC.InputAnn -> Quantifier -> VF.InputBinder -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
+quantIn ann q n container body = do
+  let (op, unit) = quantImplementation q
+  lam <- VC.Lam ann <$> elab n <*> elab body
+  mappedContainer <- app ann (app ann (VC.Builtin ann VC.Map) lam) <$> elab container
+  return $ app ann (app ann (app ann (VC.Builtin ann VC.Fold) (VC.Builtin ann op)) (VC.Literal ann unit)) mappedContainer
+
+quantImplementation :: Quantifier -> (VC.Builtin, Literal)
+quantImplementation All = (VC.And, LBool True)
+quantImplementation Any = (VC.Or,  LBool False)

@@ -68,6 +68,10 @@ instance Compile Literal where
     LRat  v -> pretty v
     LBool v -> pretty v
 
+instance Compile Quantifier  where
+  compile Any = "some"
+  compile All = "every"
+
 instance Compile (WithProvenance Identifier) where
   compile (WithProvenance _p n) = pretty n
 
@@ -126,8 +130,8 @@ instance Compile (Expr ann) where
     AndF     _ann e1 e2    -> compileInfixOp2 5 "and" e1 e2
     OrF      _ann e1 e2    -> compileInfixOp2 6 "or"  e1 e2
     NotF     _ann e        -> compileApp1     "not" e
-    AllF     _ann b e      -> "every" <+> compile b <+> "." <+> e
-    AnyF     _ann b e      -> "some"  <+> compile b <+> "." <+> e
+    QuantF   _ann q b e    -> compile q <+> compile b <+> "." <+> e
+    QuantInF _ann q b e1 e2-> compile q <+> compile b <+> "in" <+> e1 <+> "." <+> e2
     EqF      _ann e1 e2    -> compileInfixOp2 8 "==" e1 e2
     NeqF     _ann e1 e2    -> compileInfixOp2 8 "!=" e1 e2
     LeF      _ann e1 e2    -> compileInfixOp2 8 "<=" e1 e2

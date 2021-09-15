@@ -196,9 +196,11 @@ instance Convert B.Expr V.InputExpr where
     B.Neg tk e                -> op1 V.Neg    (tkProv tk) (conv e)
     B.Cons e1 tk e2           -> op2 V.Cons   (tkProv tk) (conv e1) (conv e2)
     B.At e1 tk e2             -> op2 V.At     (tkProv tk) (conv e1) (conv e2)
-    B.All tk1 n tk2 e         -> op2 V.All    (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
-    B.Any tk1 n tk2 e         -> op2 V.Any    (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
-    B.Seq tk1 es tk2          -> op1 V.Seq    (tkProv tk1 <> tkProv tk2) (traverse conv es)
+    B.Every tk1 n tk2 e       -> op2 (flip V.Quant All) (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
+    B.Some  tk1 n tk2 e       -> op2 (flip V.Quant Any) (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
+    B.EveryIn tk1 n e1 tk2 e2 -> op3 (flip V.QuantIn All) (tkProv tk1 <> tkProv tk2) (conv n) (conv e1) (conv e2)
+    B.SomeIn tk1 n e1 tk2 e2  -> op3 (flip V.QuantIn Any) (tkProv tk1 <> tkProv tk2) (conv n) (conv e1) (conv e2)
+    B.Seq tk1 es tk2          -> op1 V.Seq     (tkProv tk1 <> tkProv tk2) (traverse conv es)
     B.Literal l               -> conv l
     B.TypeC   tc              -> conv tc
 

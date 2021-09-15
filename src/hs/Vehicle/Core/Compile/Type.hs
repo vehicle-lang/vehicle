@@ -587,9 +587,10 @@ typeOfBuiltin p b = fromDSL $ case b of
   Neg  -> typeOfNumOp1 (isIntegral p)
 
   At   -> typeOfAtOp p
+  Map  -> typeOfMapOp p
+  Fold -> typeOfFoldOp p
 
-  All  -> typeOfQuantifierOp
-  Any  -> typeOfQuantifierOp
+  Quant _ -> typeOfQuantifierOp
 
 typeOfIf :: DSLExpr
 typeOfIf =
@@ -643,3 +644,16 @@ typeOfAtOp p =
   forall type0 $ \tCont ->
     forall type0 $ \tElem ->
       isContainer p tCont tElem ~~> tCont ~> tNat ~> tElem
+
+-- TODO generalise these to tensors etc.
+typeOfMapOp :: Provenance -> DSLExpr
+typeOfMapOp p =
+  forall type0 $ \tFrom ->
+    forall type0 $ \tTo ->
+      (tFrom ~> tTo) ~> tList tFrom ~> tList tTo
+
+typeOfFoldOp :: Provenance -> DSLExpr
+typeOfFoldOp p =
+  forall type0 $ \tFrom ->
+    forall type0 $ \tTo ->
+      (tFrom ~> tTo ~> tTo) ~> tTo ~> tList tFrom ~> tTo

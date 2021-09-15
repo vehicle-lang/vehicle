@@ -174,8 +174,9 @@ delabBuiltin ann = let p = prov ann in \case
   VC.Sub            -> VF.Sub          ann <$> hole p <*> hole p
   VC.Neg            -> VF.Neg          ann <$> hole p
   VC.At             -> VF.At           ann <$> hole p <*> hole p
-  VC.All            -> developerError "`All` should have been caught earlier!"
-  VC.Any            -> developerError "`Any` should have been caught earlier!"
+  VC.Quant _        -> developerError "Quantifiers should have been caught earlier!"
+  VC.Map            -> developerError "Delaborating `map` not yet implemented!"
+  VC.Fold           -> developerError "Delaborating `fold` not yet implemented!"
 
 class DelaborateWithHoles a b where
   delabH :: MonadDelabHoles m => a -> m b
@@ -195,10 +196,8 @@ instance DelaborateWithHoles VC.OutputExpr VF.OutputExpr where
     VC.Literal ann z                 -> VF.Literal <$> delab ann <*> pure z
     VC.Seq     ann es                -> VF.Seq     <$> delab ann <*> traverse delabH es
 
-    VC.App ann (VC.Builtin _ VC.All) (VC.Arg _ _ (VC.Lam _ b body)) ->
-      VF.All <$> delab ann <*> delab b <*> delab body
-    VC.App ann (VC.Builtin _ VC.Any) (VC.Arg _ _ (VC.Lam _ b body)) ->
-      VF.Any <$> delab ann <*> delab b <*> delab body
+    VC.App ann (VC.Builtin _ (VC.Quant q)) (VC.Arg _ _ (VC.Lam _ b body)) ->
+      flip VF.Quant q <$> delab ann <*> delab b <*> delab body
 
     VC.App     ann fun arg           -> VF.App     <$> delab ann <*> delabH fun <*> delabH arg
 

@@ -53,8 +53,9 @@ data Builtin
   | Neg
   | Cons
   | At
-  | All
-  | Any
+  | Map
+  | Fold
+  | Quant Quantifier
   deriving (Eq, Ord, Show, Generic, NFData)
 
 builtinSymbols :: [(Symbol, Builtin)]
@@ -96,8 +97,10 @@ builtinSymbols =
   , "~"            |-> Neg -- Negation is changed from "-" to "~" during elaboration.
   , "!"            |-> At
   , "::"           |-> Cons
-  , "all"          |-> All
-  , "any"          |-> Any
+  , "every"        |-> Quant All
+  , "some"         |-> Quant Any
+  , "map"          |-> Map
+  , "fold"         |-> Fold
   ]
 
 builtinFromSymbol :: Symbol -> Maybe Builtin

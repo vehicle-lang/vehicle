@@ -107,8 +107,8 @@ annotation = \case
   Neg     ann _e          -> ann
   Cons    ann _e1 _e2     -> ann
   At      ann _e1 _e2     -> ann
-  All     ann _n _e       -> ann
-  Any     ann _n _e       -> ann
+  Quant   ann _q _n _e    -> ann
+  QuantIn ann _q _n _ _   -> ann
   Seq     ann _es         -> ann
 
 -- | Extracts the type of the term from the term's annotation.

@@ -6,7 +6,7 @@ comment "(*" "*)";
 
 position token BuiltinToken
   ( {"Constraint"}
-  | {"all"} | {"any"}
+  | {"every"} | {"some"}
   | {"=>"} | {"and"} | {"or"} | {"not"}
   | {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
   | {"*"} | {"/"} | {"+"} | {"-"} | {"~"}

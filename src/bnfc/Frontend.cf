@@ -24,8 +24,8 @@ position token TokInt       {"Int"};
 position token TokBool      {"Bool"};
 position token TokProp      {"Prop"};
 
-position token TokAll       {"every"};
-position token TokAny       {"some"};
+position token TokEvery     {"every"};
+position token TokSome      {"some"};
 position token TokImpl      {"=>"};
 position token TokAnd       {"and"};
 position token TokOr        {"or"};
@@ -165,9 +165,10 @@ At.      Expr11 ::= Expr11 TokAt Expr12;
 Seq.     Expr14 ::= TokSeqOpen [Expr] TokSeqClose;
 
 -- Quantification
-All.     Expr3 ::= TokAll Binder TokDot Expr4;
-Any.     Expr3 ::= TokAny Binder TokDot Expr4;
-
+Every.     Expr3 ::= TokEvery Binder TokDot Expr4;
+Some.      Expr3 ::= TokSome  Binder TokDot Expr4;
+EveryIn.   Expr3 ::= TokEvery Binder "inn" Expr4 TokDot Expr4;
+SomeIn.    Expr3 ::= TokSome  Binder "inn" Expr4 TokDot Expr4;
 
 coercions Expr 14;
 separator Expr ",";

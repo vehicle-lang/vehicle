@@ -4,9 +4,9 @@ module Vehicle.Prelude.Language where
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Numeric.Natural (Natural)
-import Prettyprinter (Pretty(..), Doc, braces)
+import Prettyprinter (Pretty(..))
 
-import Vehicle.Prelude.Provenance (HasProvenance(..), Provenance, expandProvenance)
+import Vehicle.Prelude.Provenance (HasProvenance(..), Provenance)
 import Vehicle.Prelude.Token (Symbol)
 
 newtype Identifier = Identifier Symbol
@@ -36,3 +36,10 @@ data Literal
   | LRat  Double
   | LBool Bool
   deriving (Eq, Ord, Show, Generic, NFData)
+
+-- | Property-level quantifiers supported
+data Quantifier
+  = All
+  | Any
+  deriving (Eq, Ord, Show, Generic, NFData)
+
