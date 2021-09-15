@@ -10,6 +10,7 @@ import Control.Monad (when)
 import Control.Monad.Except (MonadError(..), Except, withExcept)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
 import Control.Monad.State (MonadState(..), StateT(..), modify, runStateT)
+import Control.DeepSeq (deepseq)
 import Debug.Trace (trace)
 import Data.Text (Text)
 import Data.Foldable (toList, foldrM)
@@ -188,6 +189,9 @@ modifyMetaCtx f = modify (first f)
 putMetaCtx :: TCM m => MetaCtx -> m ()
 putMetaCtx ctx = modifyMetaCtx (const ctx)
 
+getCallDepth :: TCM m => m Int
+getCallDepth = get <&> snd
+
 modifyCallDepth :: TCM m => (CallDepth -> CallDepth) -> m CallDepth
 modifyCallDepth f = do
   (c, d) <- get
@@ -198,11 +202,55 @@ addUnificationConstraints :: TCM m => [UnificationConstraint] -> m ()
 addUnificationConstraints cs = modifyMetaCtx $ \ MetaCtx {..} ->
   MetaCtx { unificationConstraints = cs <> unificationConstraints, ..}
 
+--------------------------------------------------------------------------------
+-- Debug functions
+
+showCheckEntry :: TCM m => CheckedExpr -> UncheckedExpr -> m (CheckedExpr, UncheckedExpr)
+showCheckEntry t e = do
+  d <- modifyCallDepth (+1)
+  return $ trace (duplicate " " d <> "check-entry " <> showCore e <> " <- " <> showCore t) (t,e)
+
+showCheckExit :: TCM m => m CheckedExpr -> m CheckedExpr
+showCheckExit m = do
+  e <- m
+  d <- modifyCallDepth (\x->x-1)
+  trace (duplicate " " (d-1) <> "check-exit  " <> showCore e) (return e)
+
+showInferEntry :: TCM m => UncheckedExpr -> m UncheckedExpr
+showInferEntry e = do
+  d <- modifyCallDepth (+1)
+  return $ trace (duplicate " " d <> "infer-entry " <> showCore e) e
+
+showInferExit :: TCM m => m (CheckedExpr, CheckedExpr) -> m (CheckedExpr, CheckedExpr)
+showInferExit m = do
+  (e, t) <- m
+  d <- modifyCallDepth (\x -> x-1)
+  trace (duplicate " " (d-1) <> "infer-exit  " <> showCore e <> " -> " <> showCore t) (return (e,t))
+
+showInsertImplicit :: TCM m => CheckedExpr -> m CheckedExpr
+showInsertImplicit t = do
+  d <- getCallDepth
+  return $ trace (duplicate " " d <> "insert-implict " <> showCore t) t
+
+showUnify :: TCM m => UnificationConstraint -> m UnificationConstraint
+showUnify c = do
+  d <- getCallDepth
+  return $ trace (duplicate " " d <> "add-constraint " <> layoutAsString (pretty c)) c
+
+--------------------------------------------------------------------------------
+-- Utility functions
+
+assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
+assertIsType _ (Type _) = return ()
+assertIsType p e        = throwError $ Mismatch p e type0 -- TODO: add a new TypingError 'ExpectedAType'
+
 unify :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m CheckedExpr
 unify p e1 e2 = do
   ctx <- getBoundCtx
   -- TODO calculate the context (currently breaks the printing of unification constraints)
-  addUnificationConstraints [makeConstraint p ctx e1 e2]
+  constr <- showUnify $ makeConstraint p ctx e1 e2
+
+  addUnificationConstraints [constr]
   -- TODO calculate the most general unifier
   return e1
 
@@ -210,14 +258,6 @@ addTypeClassConstraints :: TCM m => [TypeClassConstraint] -> m ()
 addTypeClassConstraints ts = modifyMetaCtx $ \ MetaCtx {..} ->
   MetaCtx { typeClassConstraints = ts <> typeClassConstraints, ..}
 
-{-
-getMetaType :: Meta -> TCM CheckedExpr
-getMetaType i = do
-  ctx <- getMetaCtx;
-  case IntMap.lookup i (metaVariableTypes ctx) of
-    Just typ -> return typ
-    Nothing  -> developerError ("Meta variable ?" <> pretty i <+> "not found in context")
--}
 freshMetaName :: TCM m => m Meta
 freshMetaName = do
   MetaCtx {..} <- getMetaCtx;
@@ -261,20 +301,29 @@ freshMeta p resultType = do
   let meta = foldl' cApp (Meta (RecAnn metaType p) metaName) boundEnv
   return (metaName, meta, metaType)
 
+-- Generate new metavariables for any implicit arguments
+insertImplicits :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m (CheckedExpr, CheckedExpr)
+insertImplicits p fun' (Pi _ (Binder _ Implicit _ tArg') tRes') = do
+  tArg' <- showInsertImplicit tArg'
+
+  (meta, metaArg, metaType) <- freshMeta p tArg'
+
+  -- Substitute meta-variable in tRes
+  let tResSubst' = metaArg `substInto` tRes'
+
+  -- TODO Wen is worried about interactions between the Pi abstractions over
+  -- the context and the type-class search later on.
+
+  -- Check if the implicit argument is a type-class
+  when (isConstraint tArg') $
+    addTypeClassConstraints [meta `Has` metaType]
+
+  insertImplicits p (App (RecAnn tResSubst' mempty) fun' (Arg mempty Implicit metaArg)) tResSubst'
+insertImplicits _ fun' typ' =
+  return (fun', typ')
 
 --------------------------------------------------------------------------------
 -- Type-checking of expressions
-
-showCheckEntry :: TCM m => CheckedExpr -> UncheckedExpr -> m (CheckedExpr, UncheckedExpr)
-showCheckEntry t e = do
-  d <- modifyCallDepth (+1)
-  return $ trace (duplicate " " d <> "check-entry " <> showCore e <> " <= " <> showCore t) (t,e)
-
-showCheckExit :: TCM m => m CheckedExpr -> m CheckedExpr
-showCheckExit m = do
-  e <- m
-  d <- modifyCallDepth (\x->x-1)
-  trace (duplicate " " (d-1) <> "check-exit  " <> showCore e) (return e)
 
 check :: TCM m
       => CheckedExpr   -- Type we're checking against
@@ -325,26 +374,6 @@ check expectedType expr = showCheckExit $ do
     (_, e@(Seq     p _))     -> viaInfer p      expectedType e
     (_, e@(Ann     p _ _))   -> viaInfer p      expectedType e
 
--- Generate new metavariables for any implicit arguments
-insertImplicits :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m (CheckedExpr, CheckedExpr)
-insertImplicits p fun' (Pi _ (Binder _ Implicit _ tArg') tRes') = do
-  (meta, metaArg, metaType) <- freshMeta p tArg'
-
-  -- Substitute meta-variable in tRes
-  let tResSubst' = metaArg `substInto` tRes'
-
-  -- TODO Wen is worried about interactions between the Pi abstractions over
-  -- the context and the type-class search later on.
-
-  -- Check if the implicit argument is a type-class
-  when (isConstraint tArg') $
-    addTypeClassConstraints [meta `Has` metaType]
-
-  insertImplicits p (App (RecAnn tResSubst' mempty) fun' (Arg mempty Implicit metaArg)) tResSubst'
-insertImplicits _ fun' typ' =
-  return (fun', typ')
-
-
 inferApp :: TCM m
          => Provenance
          -> UncheckedArg
@@ -367,18 +396,6 @@ inferApp p (Arg pArg vArg eArg) fun' = \case
   tFun' -> do
     let expected = unnamedPi vArg (tHole "a") (const $ tHole "b")
     throwError $ Mismatch p tFun' expected
-
-
-showInferEntry :: TCM m => UncheckedExpr -> m UncheckedExpr
-showInferEntry e = do
-  d <- modifyCallDepth (+1)
-  return $ trace (duplicate " " d <> "infer-entry " <> showCore e) e
-
-showInferExit :: TCM m => m (CheckedExpr, CheckedExpr) -> m (CheckedExpr, CheckedExpr)
-showInferExit m = do
-  (e, t) <- m
-  d <- modifyCallDepth (\x -> x-1)
-  trace (duplicate " " (d-1) <> "infer-exit  " <> showCore e <> " => " <> showCore t) (return (e,t))
 
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
@@ -409,7 +426,9 @@ infer e = showInferExit $ do
       -- Infer the type of the function.
       (fun', tFun') <- infer fun
       -- if this is an explicit argument, then insert implicits before proceeding
-      (fun', tFun') <- if vArg == Explicit then insertImplicits p fun' tFun' else return (fun', tFun')
+      (fun', tFun') <- if vArg == Explicit
+        then insertImplicits p fun' tFun'
+        else return (fun', tFun')
       inferApp p arg fun' tFun'
 
     Pi p (Binder pBound vis name arg) res -> do
@@ -485,28 +504,24 @@ infer e = showInferExit $ do
 
       return (Seq (RecAnn tCont' p) es' , tCont')
 
-assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
-assertIsType _ (Type _) = return ()
-assertIsType p e        = throwError $ Mismatch p e type0 -- TODO: add a new TypingError 'ExpectedAType'
-
 -- TODO: unify DeclNetw and DeclData
-checkDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
-checkDecls [] = return []
-checkDecls (DeclNetw p ident t : decls) = do
+inferDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
+inferDecls [] = return []
+inferDecls (DeclNetw p ident t : decls) = do
     (t', ty') <- infer t
     assertIsType p ty'
 
     decls' <- addToDeclCtx (deProv ident) t' $ do
-      checkDecls decls
+      inferDecls decls
     return $ DeclNetw p ident t' : decls'
-checkDecls (DeclData p ident t : decls) = do
+inferDecls (DeclData p ident t : decls) = do
     (t', ty') <- infer t
     assertIsType p ty'
 
     decls' <- addToDeclCtx (deProv ident) t' $ do
-      checkDecls decls
+      inferDecls decls
     return $ DeclData p ident t' : decls'
-checkDecls (DefFun p ident t body : decls) = do
+inferDecls (DefFun p ident t body : decls) = do
     let _ = trace ("check-fun-entry" <> layoutAsString (pretty ident))
     (t', ty') <- infer t
     assertIsType p ty'
@@ -514,25 +529,26 @@ checkDecls (DefFun p ident t body : decls) = do
     body' <- check t' body
 
     decls' <- addToDeclCtx (deProv ident) t' $ do
-      checkDecls decls
+      inferDecls decls
 
     let _ = trace ("check-fun-exit" <> layoutAsString (pretty ident))
     return $ DefFun p ident t' body' : decls'
 
 inferProg :: TCM m => UncheckedProg -> m CheckedProg
-inferProg (Main ds) = Main <$> checkDecls ds
+inferProg (Main ds) = Main <$> inferDecls ds
 
 viaInfer :: TCM m => Provenance -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
 viaInfer p expectedType e = do
   -- TODO may need to change the term when unifying to insert a type application.
   (e', actualType) <- infer e
   (e'', actualType') <- insertImplicits p e' actualType
-  _t' <- unify p expectedType actualType'
-  return e''
+  t' <- unify p expectedType actualType'
+  return $ t' `deepseq` e''
 
 --------------------------------------------------------------------------------
--- Typing of literals
+-- Typing of literals and builtins
 
+-- | Return the type of the provided literal,
 typeOfLiteral :: Provenance -> Literal -> CheckedExpr
 typeOfLiteral p l = fromDSL $ case l of
   LNat  _ -> forall type0 $ \t -> isNatural  p t ~~> t
@@ -540,10 +556,7 @@ typeOfLiteral p l = fromDSL $ case l of
   LRat  _ -> forall type0 $ \t -> isReal     p t ~~> t
   LBool _ -> forall type0 $ \t -> isTruth    p t ~~> t
 
---------------------------------------------------------------------------------
--- Typing of builtins
-
--- |Return the kind for builtin exprs.
+-- | Return the type of the provided builtin.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedExpr
 typeOfBuiltin p b = fromDSL $ case b of
   Bool            -> type0
@@ -587,8 +600,8 @@ typeOfBuiltin p b = fromDSL $ case b of
   Neg  -> typeOfNumOp1 (isIntegral p)
 
   At   -> typeOfAtOp p
-  Map  -> typeOfMapOp p
-  Fold -> typeOfFoldOp p
+  Map  -> typeOfMapOp
+  Fold -> typeOfFoldOp
 
   Quant _ -> typeOfQuantifierOp
 
@@ -646,14 +659,14 @@ typeOfAtOp p =
       isContainer p tCont tElem ~~> tCont ~> tNat ~> tElem
 
 -- TODO generalise these to tensors etc.
-typeOfMapOp :: Provenance -> DSLExpr
-typeOfMapOp p =
+typeOfMapOp :: DSLExpr
+typeOfMapOp =
   forall type0 $ \tFrom ->
     forall type0 $ \tTo ->
       (tFrom ~> tTo) ~> tList tFrom ~> tList tTo
 
-typeOfFoldOp :: Provenance -> DSLExpr
-typeOfFoldOp p =
+typeOfFoldOp :: DSLExpr
+typeOfFoldOp =
   forall type0 $ \tFrom ->
     forall type0 $ \tTo ->
       (tFrom ~> tTo ~> tTo) ~> tTo ~> tList tFrom ~> tTo
