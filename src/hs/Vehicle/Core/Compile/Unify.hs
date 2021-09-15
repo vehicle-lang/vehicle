@@ -257,6 +257,16 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
       else
         traverse (solveArg constraint) (zip args1 args2)
 
+    -- Simple flex-flex case, when one meta-variable has no arguments you can simply
+    -- use the other meta-variable as its definition.
+    (Meta ann i, []) :~: (Meta _ _j, _args) ->
+      metaSolved (p <> prov ann) i whnfE2
+
+    -- TODO can this case be absorbed into a general symmetry case as it should already
+    -- be covered by the case above
+    (Meta _ _i, _args) :~: (Meta ann j, []) ->
+      metaSolved (p <> prov ann) j whnfE1
+
     (Meta _ _i, _args1) :~: (Meta _ _j, _args2) ->
       -- TODO: flex-flex unification:
       --  we could try to solve by trying each direction as a definition, if the metavariables are not equal.

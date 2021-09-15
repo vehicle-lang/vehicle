@@ -22,7 +22,6 @@ import System.Environment (getArgs)
 import System.Exit (exitSuccess, exitFailure)
 import System.Console.GetOpt
 import Debug.Trace (traceShow)
-import Colog ()
 
 import Vehicle.Prelude
 import Vehicle.Core.AST qualified as VC
@@ -141,7 +140,7 @@ run _opts@Options{..} = do
   contents <- readFileOrStdin inputFile
   coreProg <- parseAndElab inputLang contents
 
-  T.putStrLn (VC.printCore coreProg)
+  T.putStrLn (VC.prettyCore coreProg)
 
   -- Scope check, type check etc.
   compCoreProg <- fromEitherIO $ VC.compile coreProg
@@ -170,7 +169,7 @@ run _opts@Options{..} = do
           fromEitherIO $ compileToAgda itpOptions compFrontProg
       -}
     Just (Vehicle Core) ->
-      return $ VC.printCore compCoreProg
+      return $ VC.prettyCore compCoreProg
 
     Just (Vehicle Frontend) -> do
       compFrontProg :: VF.OutputProg <- fromEitherIO $ VF.runDelab compCoreProg

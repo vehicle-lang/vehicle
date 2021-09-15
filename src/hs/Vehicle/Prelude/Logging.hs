@@ -2,47 +2,48 @@
 
 module Vehicle.Prelude.Logging where
 
-import Colog (Msg, WithLog)
-import Colog qualified (log)
-import Control.Monad.Reader (ask)
+import Control.Monad.Writer (MonadWriter(..), WriterT(..))
 import Data.Text (Text)
-import Data.Set (Set, member)
+import Data.Text qualified as T
+import System.Console.ANSI
 
 data Severity
   = Error
   | Warning
-  | Debug DebugLevel
+  | Info
+  | Debug
 
-data DebugLevel
-  = Light
-  | Medium
-  | Detailed
-  deriving (Eq, Ord)
+setColor :: Severity -> String
+setColor Error   = setSGRCode [SetColor Foreground Vivid Red]
+setColor Warning = setSGRCode [SetColor Foreground Vivid Yellow]
+setColor Info    = setSGRCode [SetColor Foreground Vivid Blue]
+setColor Debug   = setSGRCode [SetColor Foreground Vivid Green]
 
-data CompilerPhase
-  = Elaborate
-  | ScopeCheck
-  | TypeCheck
-  | DescopeCheck
-  | Delaborate
-  deriving (Eq, Ord)
-
-data LoggingSettings = LoggingSettings
-  { phases     :: Set CompilerPhase
-  , debugLevel :: DebugLevel
+data Message = Message
+  { severity :: Severity
+  , text :: Text
   }
 
-type MonadLog m = WithLog LoggingSettings (Msg Severity) m
+type MonadLog m = MonadWriter [Message] m
+type LoggerT m a = WriterT [Message] m a
 
 logError :: MonadLog m => Text -> m ()
-logError = Colog.log Error
+logError text = tell [Message Error text]
 
 logWarning :: MonadLog m => Text -> m ()
-logWarning = Colog.log Warning
+logWarning text = tell [Message Warning text]
 
-logDebug :: MonadLog m => CompilerPhase -> DebugLevel -> Text -> m ()
-logDebug phase level txt = do
-  LoggingSettings{..} <- ask
-  if debugLevel < level && member phase phases
-    then return ()
-    else Colog.log (Debug level) txt
+logInfo :: MonadLog m => Text -> m ()
+logInfo text = tell [Message Info text]
+
+logDebug :: MonadLog m => Text -> m ()
+logDebug text = tell [Message Debug text]
+
+runLoggerT :: LoggerT m a -> m (a, [Message])
+runLoggerT = runWriterT
+
+resetColor :: String
+resetColor = setSGRCode []
+
+instance Show Message where
+  show (Message s t) = setColor s <> T.unpack t <> resetColor

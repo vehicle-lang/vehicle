@@ -6,13 +6,13 @@ module Vehicle.Core.Compile.Type
   ) where
 
 import Prelude hiding (pi)
-import Control.Monad (when)
+import Control.Monad (when, forM_)
 import Control.Monad.Except (MonadError(..), Except, withExcept)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
 import Control.Monad.State (MonadState(..), StateT(..), modify, runStateT)
-import Control.DeepSeq (deepseq)
 import Debug.Trace (trace)
 import Data.Text (Text)
+import Data.Text qualified as T (replicate, unpack)
 import Data.Foldable (toList, foldrM)
 import Data.List (foldl')
 import Data.Map (Map)
@@ -22,14 +22,14 @@ import Data.IntMap qualified as IntMap
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Functor ((<&>))
-import Data.Bifunctor (first, second)
+import Data.Bifunctor (first)
 import Prettyprinter ((<+>), Pretty(..), line)
 
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.DSL
 import Vehicle.Core.Compile.Unify
 import Vehicle.Core.Compile.Metas
-import Vehicle.Core.Print.Core (showCore)
+import Vehicle.Core.Print.Core (prettyCore)
 import Vehicle.Prelude
 
 -- TODO:
@@ -39,9 +39,15 @@ import Vehicle.Prelude
 runTypeChecking :: UncheckedProg -> Except TypingError CheckedProg
 runTypeChecking prog = do
   let prog1 = inferProg prog
-  let prog3 = runReaderT prog1 emptyVariableCtx
-  let prog4 = runStateT  prog3 (emptyMetaCtx, 0)
-  (checkedProg, (metaCtx, _)) <- prog4
+  let prog2 = runLoggerT prog1
+  let prog3 = runReaderT prog2 emptyVariableCtx
+  let prog4 = runStateT prog3 (emptyMetaCtx, 0)
+  ((checkedProg, msgs), (metaCtx, _)) <- prog4
+
+  forM_ msgs $ \msg ->
+    trace (show msg) (return ())
+  --appEndo (mconcat [ Endo (trace (T.unpack (prettyMessage msg))) | msg <- msgs ]) $ return ()
+
   trace (layoutAsString $ pretty metaCtx) (return ())
   let constraints = unificationConstraints metaCtx
   (unsolvedConstraints, metaSubst) <- withExcept UnificationError (solve (constraints, mempty))
@@ -116,6 +122,7 @@ type TCM m =
   ( MonadError  TypingError          m
   , MonadState  (MetaCtx, CallDepth) m
   , MonadReader VariableCtx          m
+  , MonadLog                         m
   )
 
 data VariableCtx = VariableCtx
@@ -192,11 +199,16 @@ putMetaCtx ctx = modifyMetaCtx (const ctx)
 getCallDepth :: TCM m => m Int
 getCallDepth = get <&> snd
 
-modifyCallDepth :: TCM m => (CallDepth -> CallDepth) -> m CallDepth
+modifyCallDepth :: TCM m => (CallDepth -> CallDepth) -> m ()
 modifyCallDepth f = do
   (c, d) <- get
   put (c, f d)
-  return d
+
+increaseCallDepth :: TCM m => m ()
+increaseCallDepth = modifyCallDepth (+1)
+
+decreaseCallDepth :: TCM m => m ()
+decreaseCallDepth = modifyCallDepth (\x -> x-1)
 
 addUnificationConstraints :: TCM m => [UnificationConstraint] -> m ()
 addUnificationConstraints cs = modifyMetaCtx $ \ MetaCtx {..} ->
@@ -205,37 +217,46 @@ addUnificationConstraints cs = modifyMetaCtx $ \ MetaCtx {..} ->
 --------------------------------------------------------------------------------
 -- Debug functions
 
+debug :: TCM m => Text -> m ()
+debug text = do
+  depth <- getCallDepth
+  logDebug (T.replicate depth " " <> text)
+
 showCheckEntry :: TCM m => CheckedExpr -> UncheckedExpr -> m (CheckedExpr, UncheckedExpr)
 showCheckEntry t e = do
-  d <- modifyCallDepth (+1)
-  return $ trace (duplicate " " d <> "check-entry " <> showCore e <> " <- " <> showCore t) (t,e)
+  debug ("check-entry " <> prettyCore e <> " <- " <> prettyCore t)
+  increaseCallDepth
+  return (t,e)
 
 showCheckExit :: TCM m => m CheckedExpr -> m CheckedExpr
 showCheckExit m = do
   e <- m
-  d <- modifyCallDepth (\x->x-1)
-  trace (duplicate " " (d-1) <> "check-exit  " <> showCore e) (return e)
+  decreaseCallDepth
+  debug ("check-exit  " <> prettyCore e)
+  return e
 
 showInferEntry :: TCM m => UncheckedExpr -> m UncheckedExpr
 showInferEntry e = do
-  d <- modifyCallDepth (+1)
-  return $ trace (duplicate " " d <> "infer-entry " <> showCore e) e
+  debug ("infer-entry " <> prettyCore e)
+  increaseCallDepth
+  return e
 
 showInferExit :: TCM m => m (CheckedExpr, CheckedExpr) -> m (CheckedExpr, CheckedExpr)
 showInferExit m = do
   (e, t) <- m
-  d <- modifyCallDepth (\x -> x-1)
-  trace (duplicate " " (d-1) <> "infer-exit  " <> showCore e <> " -> " <> showCore t) (return (e,t))
+  decreaseCallDepth
+  debug ("infer-exit  " <> prettyCore e <> " -> " <> prettyCore t)
+  return (e,t)
 
 showInsertImplicit :: TCM m => CheckedExpr -> m CheckedExpr
 showInsertImplicit t = do
-  d <- getCallDepth
-  return $ trace (duplicate " " d <> "insert-implict " <> showCore t) t
+  debug ("insert-implict " <> prettyCore t)
+  return t
 
 showUnify :: TCM m => UnificationConstraint -> m UnificationConstraint
 showUnify c = do
-  d <- getCallDepth
-  return $ trace (duplicate " " d <> "add-constraint " <> layoutAsString (pretty c)) c
+  debug ("add-constraint " <> layoutAsText (pretty c))
+  return c
 
 --------------------------------------------------------------------------------
 -- Utility functions
@@ -263,8 +284,6 @@ freshMetaName = do
   MetaCtx {..} <- getMetaCtx;
   putMetaCtx $ MetaCtx { nextMeta = succ nextMeta , ..}
   return nextMeta
-
--- TODO unify these functions in a pleasing way
 
 -- | Creates a fresh meta variable. Meta variables need to remember what was
 -- in the current context when they were created. We do this by creating a
@@ -542,8 +561,8 @@ viaInfer p expectedType e = do
   -- TODO may need to change the term when unifying to insert a type application.
   (e', actualType) <- infer e
   (e'', actualType') <- insertImplicits p e' actualType
-  t' <- unify p expectedType actualType'
-  return $ t' `deepseq` e''
+  _t <- unify p expectedType actualType'
+  return e''
 
 --------------------------------------------------------------------------------
 -- Typing of literals and builtins

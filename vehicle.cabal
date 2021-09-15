@@ -91,7 +91,7 @@ library
                       , prettyprinter        >=1.7 && <2
                       , data-fix             >=0.2 && <1
                       , deepseq              >=1.4 && <2
-                      , co-log               >=0.4 && <1
+                      , ansi-terminal        >=0.6 && <1
   build-tool-depends:   alex:alex
                       , happy:happy
   ghc-options:          -Wall -fprint-potential-instances

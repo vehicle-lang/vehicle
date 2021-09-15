@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Core.Print.Core
-  ( printCore
+  ( prettyCore
   , showCore
   ) where
 
@@ -15,8 +15,8 @@ import Vehicle.Prelude
 --------------------------------------------------------------------------------
 -- Printing to Core language
 
-printCore :: Pretty a => a -> Text
-printCore = layoutAsText . pretty
+prettyCore :: Pretty a => a -> Text
+prettyCore = layoutAsText . pretty
 
 showCore :: Pretty a => a -> String
 showCore = layoutAsString . pretty
