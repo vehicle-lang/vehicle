@@ -39,6 +39,9 @@ class MetaSubstitutable a where
   substMetas :: MetaSubstitution -> a -> a
   substMetas s e = runReader (substM e) s
 
+  substMeta :: Meta -> CheckedExpr -> a -> a
+  substMeta m e = substMetas (IntMap.singleton m e)
+
   substMetasLiftLocal :: a -> Reader MetaSubstitution a
   substMetasLiftLocal e = local (IntMap.map (liftDBIndices 1)) (substM e)
 

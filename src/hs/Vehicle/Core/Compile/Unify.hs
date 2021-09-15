@@ -334,14 +334,21 @@ metaSolved :: MonadUnify m
 metaSolved p m e = do
   -- trace (layoutAsString $ "solving " <+> pretty m <+> " as " <+> pretty e) $ return ()
 
-    -- Update the substitution, throwing an error if the meta-variable is already present
+  -- Update the substitution,
+  modify (\subst -> let
+    -- Insert the new variable throwing an error if the meta-variable is already present
     -- (should have been substituted out)
-  modify (\subst -> IntMap.insertWith (unexpectedMeta p m) m e subst)
+    subst' = IntMap.insertWith (unexpectedMeta p m) m e subst
+    -- Substitute into the existing subsitutions
+    subst'' = IntMap.map (substMeta m e) subst'
+    in subst'')
 
-    -- Insert the meta-variable into t   he list of metas solved in this pass
+
+
+  -- Insert the meta-variable into the list of metas solved in this pass
   tell $ IntSet.singleton m
 
-    -- Return an empty list of constraints
+  -- Return an empty list of constraints
   return []
 
 solveEq :: (MonadUnify m, Eq a)

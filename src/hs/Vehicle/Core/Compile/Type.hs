@@ -10,9 +10,9 @@ import Control.Monad (when, forM_)
 import Control.Monad.Except (MonadError(..), Except, withExcept)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
 import Control.Monad.State (MonadState(..), StateT(..), modify, runStateT)
-import Debug.Trace (trace)
+import Debug.Trace (trace, traceShow)
 import Data.Text (Text)
-import Data.Text qualified as T (replicate, unpack)
+import Data.Text qualified as T (replicate)
 import Data.Foldable (toList, foldrM)
 import Data.List (foldl')
 import Data.Map (Map)
@@ -38,6 +38,8 @@ import Vehicle.Prelude
 
 runTypeChecking :: UncheckedProg -> Except TypingError CheckedProg
 runTypeChecking prog = do
+  trace (show (Message Debug "Beginning type checking")) (return ())
+
   let prog1 = inferProg prog
   let prog2 = runLoggerT prog1
   let prog3 = runReaderT prog2 emptyVariableCtx
@@ -45,13 +47,18 @@ runTypeChecking prog = do
   ((checkedProg, msgs), (metaCtx, _)) <- prog4
 
   forM_ msgs $ \msg ->
-    trace (show msg) (return ())
-  --appEndo (mconcat [ Endo (trace (T.unpack (prettyMessage msg))) | msg <- msgs ]) $ return ()
+    traceShow msg (return ())
+  trace "" (return ())
 
-  trace (layoutAsString $ pretty metaCtx) (return ())
+  traceShow (Message Debug "Beginning unification") (return ())
+  traceShow (Message Debug (layoutAsText $ "Meta variables:" <+> pretty metaCtx)) (return ())
+
   let constraints = unificationConstraints metaCtx
   (unsolvedConstraints, metaSubst) <- withExcept UnificationError (solve (constraints, mempty))
-  trace (layoutAsString $ prettyMetaSubst metaSubst) (return ())
+
+  traceShow (Message Debug (layoutAsText $ "Solution:" <> prettyMetaSubst metaSubst)) (return ())
+  trace "" (return ())
+
   case unsolvedConstraints of
     []     -> return $ substMetas metaSubst checkedProg
     c : cs -> throwError $ UnsolvedConstraints (c :| cs)
