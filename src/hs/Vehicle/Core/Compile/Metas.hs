@@ -51,6 +51,9 @@ instance MetaSubstitutable a => MetaSubstitutable (a, a) where
     e2' <- substM e2
     return (e1', e2')
 
+instance MetaSubstitutable a => MetaSubstitutable [a] where
+  substM = traverse substM
+
 instance MetaSubstitutable CheckedArg where
   substM (Arg p v e) = Arg p v <$> substM e
 

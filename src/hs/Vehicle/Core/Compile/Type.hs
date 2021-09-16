@@ -54,11 +54,10 @@ runTypeChecking prog = do
   logDebug (layoutAsText $ "Solution:" <+> prettyMetaSubst metaSubst)
   logDebug "Ending unification\n"
 
-  let tClassConstraints = typeClassConstraints metaCtx
+  let tClassConstraints = substMetas metaSubst $ typeClassConstraints metaCtx
 
   logDebug "Beginning type-class resolution"
   logDebug (layoutAsText $ "Type-class constraints" <+> pretty tClassConstraints)
-
   logDebug "Type-class resolution not yet implemented\n"
 
   return prog5
