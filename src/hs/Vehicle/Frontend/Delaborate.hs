@@ -5,23 +5,27 @@ module Vehicle.Frontend.Delaborate
   ) where
 
 import Control.Monad.State (MonadState(..), evalStateT, modify)
-import Control.Monad.Except (MonadError(..), runExcept)
+import Control.Monad.Except (MonadError(..), ExceptT)
 import Data.List.NonEmpty (NonEmpty(..), (<|))
 import Data.List.NonEmpty qualified as NonEmpty (reverse)
 import Data.Text (pack)
 import Prettyprinter (pretty, (<+>))
-import Debug.Trace (trace)
 
 import Vehicle.Core.AST qualified as VC hiding (Name(..))
-import Vehicle.Core.Print.Core (showCore)
+import Vehicle.Core.Print.Core (prettyCore)
+import Vehicle.Frontend.Print (prettyFrontend)
 import Vehicle.Frontend.AST qualified as VF
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Delaboration converts a program in the Core language to the Frontend language
 
-runDelab :: Delaborate a b => a -> Either DelabError b
-runDelab e = runExcept $! delab e
+runDelab :: Delaborate a b => a -> ExceptT DelabError Logger b
+runDelab x = do
+  logDebug "Beginning delaboration"
+  let result = delab x
+  logDebug "Ending delaboration\n"
+  result
 
 data DelabError
   = UnsolvedMeta Provenance VC.Meta
@@ -65,8 +69,9 @@ instance MeaningfulError DelabError where
 --     @(+ 1 5)@ is rewritten to @1 + 5@
 --
 --------------------------------------------------------------------------------
+-- Delaboration monad
 
-type MonadDelab      m = MonadError DelabError m
+type MonadDelab      m = (MonadError DelabError m, MonadLogger m)
 type MonadDelabHoles m = (MonadDelab m, MonadState [VF.OutputExpr] m)
 
 hole :: MonadDelabHoles m => Provenance -> m VF.OutputExpr
@@ -80,6 +85,56 @@ addArg x = modify (x :)
 -- | Tests if a binder is from a forall or a function.
 isFunBinder :: VC.OutputBinder -> Bool
 isFunBinder (VC.Binder _ vis _ _) = vis == Explicit
+
+--------------------------------------------------------------------------------
+-- Debug functions
+
+showEntry :: MonadDelabHoles m => VC.OutputExpr -> m VC.OutputExpr
+showEntry e = do
+  logDebug ("delab-entry " <> prettyCore e)
+  incrCallDepth
+  return e
+
+showExit :: MonadDelabHoles m => m VF.OutputExpr -> m VF.OutputExpr
+showExit m = do
+  e <- m
+  decrCallDepth
+  logDebug ("delab-exit  " <> prettyFrontend e)
+  return e
+
+--------------------------------------------------------------------------------
+-- Delaboration algorithm
+
+class DelaborateWithHoles a b where
+  delabH :: MonadDelabHoles m => a -> m b
+
+instance DelaborateWithHoles VC.OutputExpr VF.OutputExpr where
+  delabH e = showExit $ do
+    r <- showEntry e
+    case r of
+      VC.Type l                        -> return (VF.Type l)
+      VC.Constraint                    -> return VF.Constraint
+      VC.Hole    p n                   -> return $ VF.Hole p n
+      VC.Meta    ann i                 -> return $ VF.Hole (prov ann) (pack $ "?" <> show i)
+      VC.Pi      ann       binder body -> delabPi  ann       binder body
+      VC.Let     ann bound binder body -> delabLet ann bound binder body
+      VC.Lam     ann       binder body -> delabLam ann       binder body
+      VC.Builtin ann op                -> do ann' <- delab ann; delabBuiltin ann' op
+      VC.Ann     ann e1 t              -> VF.Ann     <$> delab ann <*> delabH e1 <*> delabH t
+      VC.Var     ann n                 -> VF.Var     <$> delab ann <*> pure n
+      VC.Literal ann z                 -> VF.Literal <$> delab ann <*> pure z
+      VC.Seq     ann es                -> VF.Seq     <$> delab ann <*> traverse delabH es
+
+      VC.App ann (VC.Builtin _ (VC.Quant q)) (VC.Arg _ _ (VC.Lam _ b body)) ->
+        flip VF.Quant q <$> delab ann <*> delab b <*> delab body
+
+      VC.App     ann fun arg           -> VF.App     <$> delab ann <*> delabH fun <*> delabH arg
+
+instance DelaborateWithHoles VC.OutputArg VF.OutputArg where
+  delabH (VC.Arg p v e) = do
+    e' <- delabH e
+    addArg e'
+    return $ VF.Arg p v e'
 
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
 delabPi :: MonadDelabHoles m => VC.OutputAnn -> VC.OutputBinder -> VC.OutputExpr -> m VF.OutputExpr
@@ -177,36 +232,6 @@ delabBuiltin ann = let p = prov ann in \case
   VC.Quant _        -> developerError "Quantifiers should have been caught earlier!"
   VC.Map            -> developerError "Delaborating `map` not yet implemented!"
   VC.Fold           -> developerError "Delaborating `fold` not yet implemented!"
-
-class DelaborateWithHoles a b where
-  delabH :: MonadDelabHoles m => a -> m b
-
-instance DelaborateWithHoles VC.OutputExpr VF.OutputExpr where
-  delabH e = trace ("delab-exit: " <> showCore e) $ case e of
-    VC.Type l                        -> return (VF.Type l)
-    VC.Constraint                    -> return VF.Constraint
-    VC.Hole    p n                   -> return $ VF.Hole p n
-    VC.Meta    ann i                 -> return $ VF.Hole (prov ann) (pack $ "?" <> show i)
-    VC.Pi      ann       binder body -> delabPi  ann       binder body
-    VC.Let     ann bound binder body -> delabLet ann bound binder body
-    VC.Lam     ann       binder body -> delabLam ann       binder body
-    VC.Builtin ann op                -> do ann' <- delab ann; delabBuiltin ann' op
-    VC.Ann     ann e1 t              -> VF.Ann     <$> delab ann <*> delabH e1 <*> delabH t
-    VC.Var     ann n                 -> VF.Var     <$> delab ann <*> pure n
-    VC.Literal ann z                 -> VF.Literal <$> delab ann <*> pure z
-    VC.Seq     ann es                -> VF.Seq     <$> delab ann <*> traverse delabH es
-
-    VC.App ann (VC.Builtin _ (VC.Quant q)) (VC.Arg _ _ (VC.Lam _ b body)) ->
-      flip VF.Quant q <$> delab ann <*> delab b <*> delab body
-
-    VC.App     ann fun arg           -> VF.App     <$> delab ann <*> delabH fun <*> delabH arg
-
-instance DelaborateWithHoles VC.OutputArg VF.OutputArg where
-  delabH (VC.Arg p v e) = do
-    e' <- delabH e
-    addArg e'
-    return $ VF.Arg p v e'
-
 
 class Delaborate a b where
   delab :: MonadDelab m => a -> m b

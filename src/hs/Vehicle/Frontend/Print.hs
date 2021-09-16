@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Frontend.Print
-  ( printTree
+  ( prettyFrontend
   ) where
 
 import Data.Text (Text)
@@ -10,6 +10,9 @@ import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 
 import Vehicle.Frontend.AST
 import Vehicle.Prelude
+
+prettyFrontend :: Compile a => a -> Text
+prettyFrontend = layoutAsText . compile
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
@@ -158,9 +161,6 @@ instance Compile (Decl ann) where
 
 instance Compile (Prog ann) where
   compile (Main ds) = vsep2 (fmap compile ds)
-
-printTree :: Compile a => a -> Text
-printTree = layoutAsText . compile
 
 instance Pretty (Expr ann) where
   pretty = unAnnotate . compile

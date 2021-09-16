@@ -173,8 +173,8 @@ run _opts@Options{..} = do
       return $ VC.prettyCore compCoreProg
 
     Just (Vehicle Frontend) -> do
-      compFrontProg :: VF.OutputProg <- fromEitherIO $ VF.runDelab compCoreProg
-      return $ VF.printTree $ compFrontProg
+      compFrontProg :: VF.OutputProg <- fromLoggedEitherIO $ VF.runDelab compCoreProg
+      return $ VF.prettyFrontend compFrontProg
 
   -- Output the result to either the command line or the specified output file
   case outputFile of

@@ -6,12 +6,11 @@ module Vehicle.Core.Compile.Type
   ) where
 
 import Prelude hiding (pi)
-import Control.Monad (when, forM_)
-import Control.Monad.Identity (runIdentity)
-import Control.Monad.Except (MonadError(..), Except, ExceptT, withExcept, runExcept, mapExceptT, lift)
+import Control.Monad (when)
+import Control.Monad.Except (MonadError(..), ExceptT, withExcept)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
 import Control.Monad.State (MonadState(..), StateT(..), modify, runStateT)
-import Debug.Trace (trace, traceShow)
+import Debug.Trace (trace)
 import Data.Text (Text)
 import Data.Foldable (toList, foldrM)
 import Data.List (foldl')
@@ -79,7 +78,7 @@ data TypingError
   | Mismatch
     Provenance              -- The location of the mismatch.
     CheckedExpr             -- The possible inferred types.
-    DSLExpr             -- The expected type.
+    DSLExpr                 -- The expected type.
   | UnsupportedOperation
     Provenance              -- The location of the unsupported operation.
     Text                    -- A description of the unsupported operation.
