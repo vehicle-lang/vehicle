@@ -10,6 +10,7 @@ module Vehicle.Prelude
   ) where
 
 import Data.Range
+import Control.Monad.Except (MonadError, Except, runExcept, throwError)
 
 import Vehicle.Prelude.Token as X
 import Vehicle.Prelude.Sort as X

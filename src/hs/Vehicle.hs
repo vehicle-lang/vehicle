@@ -15,6 +15,7 @@ module Vehicle
 import Paths_vehicle (version)
 
 import Control.Monad (when)
+import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Text (Text)
 import Data.Char (toLower)
 import Data.Text.IO qualified as T
@@ -143,7 +144,7 @@ run _opts@Options{..} = do
   T.putStrLn (VC.prettyCore coreProg)
 
   -- Scope check, type check etc.
-  compCoreProg <- fromEitherIO $ VC.compile coreProg
+  compCoreProg <- fromLoggedEitherIO $ VC.compile coreProg
 
   -- Compile to requested backend
   outputText <- case outputTarget of
@@ -191,6 +192,9 @@ parseAndElab Core contents =
 fromEitherIO :: MeaningfulError e => Either e a -> IO a
 fromEitherIO (Left err) = do print $ details err; exitFailure
 fromEitherIO (Right x)  = return x
+
+fromLoggedEitherIO :: MeaningfulError e => ExceptT e Logger a -> IO a
+fromLoggedEitherIO x = fromEitherIO =<< flushLogs (runExceptT x)
 
 readFileOrStdin :: Maybe FilePath -> IO Text
 readFileOrStdin (Just file) = T.readFile file

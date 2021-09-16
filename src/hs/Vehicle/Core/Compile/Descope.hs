@@ -10,11 +10,9 @@ import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.Text (pack)
 import GHC.Stack (HasCallStack)
 import Prettyprinter ((<+>), Pretty(pretty))
-import Debug.Trace (trace)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
-import Vehicle.Core.Print.Core (showCore)
 
 runDescope :: Descope a b => a -> b
 runDescope = runDescopeWithCtx emptyCtx
@@ -72,7 +70,7 @@ showScopeExit :: MonadDescope m => m OutputExpr -> m OutputExpr
 showScopeExit m = do
   e <- m
   {-trace ("descope-exit  " <> showCore e)-}
-  (return e)
+  return e
 
 instance Descope CheckedExpr OutputExpr where
   descope e = showScopeExit $ case showScopeEntry e of

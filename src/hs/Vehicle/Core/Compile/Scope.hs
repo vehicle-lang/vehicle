@@ -1,7 +1,7 @@
 
 module Vehicle.Core.Compile.Scope
   ( ScopeError(..)
-  , scopeProg
+  , runScopeCheck
   ) where
 
 import Control.Monad.Except
@@ -16,8 +16,8 @@ import Vehicle.Core.AST
 import Vehicle.Prelude
 
 
-runScopeCheck :: InputProg -> Except ScopeError UncheckedProg
-runScopeCheck p = do p <- scopeProg p; return $! p
+runScopeCheck :: InputProg -> ExceptT ScopeError Logger UncheckedProg
+runScopeCheck p = liftExceptWithLogging $ scopeProg p
 
 -- * Errors.
 

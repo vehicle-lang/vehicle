@@ -12,7 +12,6 @@ import Control.Monad.Writer (MonadWriter(..), runWriterT)
 import Control.Monad.State  (MonadState(..), modify, runStateT)
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Control.Monad (foldM)
-import Data.Maybe (fromJust)
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Prettyprinter ( (<+>), Pretty(pretty), Doc )
@@ -24,13 +23,14 @@ import Vehicle.Core.AST
 import Vehicle.Core.Compile.DSL (piType)
 import Vehicle.Core.Compile.Metas
 
-import Debug.Trace
-
 data TypeClassConstraint = Meta `Has` CheckedExpr
   deriving (Show)
 
 instance Pretty TypeClassConstraint where
   pretty (m `Has` e) = "?" <> pretty m <+> "~" <+> pretty e
+
+instance MetaSubstitutable TypeClassConstraint where
+  substM (m `Has` e) = (m `Has`) <$> substM e
 
 --------------------------------------------------------------------------------
 -- Definitions
