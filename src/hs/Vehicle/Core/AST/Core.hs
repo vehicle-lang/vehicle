@@ -50,9 +50,6 @@ data Expr binder var ann
   -- | The type of types. The type @Type l@ has type @Type (l+1)@.
   = Type Level
 
-  -- | The type of type-class constraints. It has type @Type 1@.
-  | Constraint
-
   -- | User annotation
   | Ann
     ann

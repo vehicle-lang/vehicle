@@ -103,7 +103,6 @@ instance Elab VF.InputExpr VC.InputExpr where
 
     -- Kinds.
     VF.Type l            -> return (VC.Type l)
-    VF.Constraint        -> return VC.Constraint
 
     -- Types.
     VF.Bool    ann        -> op0 VC.Bool   ann

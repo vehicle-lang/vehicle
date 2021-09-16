@@ -7,7 +7,9 @@ module Vehicle.Core.Print.Core
 
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Prettyprinter (Pretty(..), Doc, braces, parens, (<+>), line)
+import Data.IntSet qualified as IntSet ( toList )
+import Data.IntMap qualified as IntMap ( toAscList )
+import Prettyprinter (Pretty(..), Doc, braces, concatWith, softline, group, align, parens, (<+>), line)
 
 import Vehicle.Core.AST
 import Vehicle.Prelude
@@ -22,8 +24,19 @@ showCore :: Pretty a => a -> String
 showCore = layoutAsString . pretty
 
 brackets :: Visibility -> (Doc a -> Doc a)
-brackets Implicit = braces
-brackets Explicit = parens
+brackets Implicit  = braces
+brackets Explicit  = parens
+brackets Constraint = braces . braces
+
+instance Pretty MetaSubstitution where
+  pretty msubst =
+    "{" <+> align (group
+      (concatWith (\x y -> x <> ";" <> line <> y)
+        (fmap (\(i, t') -> "?" <> pretty i <+> ":=" <+> pretty t') (IntMap.toAscList msubst))
+       <> softline <> "}"))
+
+instance Pretty MetaSet where
+  pretty = pretty . IntSet.toList
 
 instance Pretty Name where
   pretty Machine       = "_"
@@ -63,7 +76,6 @@ instance ( Pretty binder
          ) => Pretty (Expr binder var ann) where
   pretty = \case
     Type l                      -> "Type" <> pretty l
-    Constraint                  -> "Constraint"
     Hole    _p   name           -> "h?" <> pretty name
     Meta    _p   m              -> "?" <> pretty m
     Ann     _ann term typ       -> parens (pretty term <+> ":type" <+> pretty typ)
@@ -87,4 +99,4 @@ instance ( Pretty name
 instance ( Pretty name
          , Pretty binder
          ) => Pretty (Prog name binder ann) where
-  pretty (Main ds) = vsep (map pretty ds)
+  pretty (Main ds) = vsep (fmap pretty ds)

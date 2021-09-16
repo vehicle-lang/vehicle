@@ -163,7 +163,6 @@ instance Convert B.TypeClass V.InputExpr where
 instance Convert B.Expr V.InputExpr where
   conv = \case
     B.Type l                  -> return (V.Type (naturalFromInteger l))
-    B.Constraint              -> return V.Constraint
     B.Var  n                  -> return $ V.Var  (tkProv n) (tkSymbol n)
     B.Hole n                  -> return $ V.Hole (tkProv n) (tkSymbol n)
     B.Ann e tk t              -> op2 V.Ann    (tkProv tk) (conv e) (conv t)

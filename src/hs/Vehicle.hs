@@ -47,9 +47,13 @@ data VehicleLang = Frontend | Core
 data ITP = Agda
   deriving (Show)
 
+data Verifier = VNNLib
+  deriving (Show)
+
 data OutputTarget
   = ITP ITP
   | Vehicle VehicleLang
+  | Verifier Verifier
   deriving (Show)
 
 data Options = Options
@@ -169,6 +173,8 @@ run _opts@Options{..} = do
                 }
           fromEitherIO $ compileToAgda itpOptions compFrontProg
       -}
+
+
     Just (Vehicle Core) ->
       return $ VC.prettyCore compCoreProg
 

@@ -4,7 +4,6 @@ module Vehicle.Core.Compile.DSL
   , DSLExpr
   , fromDSL
   , type0
-  , constraint
   , tBool
   , tProp
   , tNat
@@ -116,9 +115,6 @@ cApp x y = unDSL (toDSL x `app` toDSL y) 0
 
 tMax :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 tMax (Type l1)  (Type l2)  = Type (l1 `max` l2)
-tMax (Type l1)  Constraint = Type l1
-tMax Constraint (Type l2)  = Type l2
-tMax Constraint Constraint = Type 1
 tMax t1         t2         = developerError $
   "Expected arguments of type Type. Found" <+> pretty t1 <+> "and" <+> pretty t2 <> "."
 
@@ -129,9 +125,6 @@ con b t = DSL $ \i -> Builtin (typeAnn (unDSL t i)) b
 
 type0 :: DSLExpr
 type0 = toDSL Type0
-
-constraint :: DSLExpr
-constraint = toDSL Constraint
 
 tBool, tProp, tNat, tInt, tReal :: DSLExpr
 tBool = con Bool type0
@@ -155,28 +148,28 @@ typeClass :: Provenance -> Builtin -> DSLExpr -> DSLExpr
 typeClass p op t = DSL $ \i -> Builtin (RecAnn (unDSL t i) p) op
 
 hasEq :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-hasEq p tArg tRes = typeClass p HasEq (type0 ~> type0 ~> constraint) `app` tArg `app` tRes
+hasEq p tArg tRes = typeClass p HasEq (type0 ~> type0 ~> type0) `app` tArg `app` tRes
 
 hasOrd :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-hasOrd p tArg tRes = typeClass p HasOrd (type0 ~> type0 ~> constraint) `app` tArg `app` tRes
+hasOrd p tArg tRes = typeClass p HasOrd (type0 ~> type0 ~> type0) `app` tArg `app` tRes
 
 isTruth :: Provenance -> DSLExpr -> DSLExpr
-isTruth p t = typeClass p IsTruth (type0 ~> constraint) `app` t
+isTruth p t = typeClass p IsTruth (type0 ~> type0) `app` t
 
 isNatural :: Provenance -> DSLExpr -> DSLExpr
-isNatural p t = typeClass p IsNatural (type0 ~> constraint) `app` t
+isNatural p t = typeClass p IsNatural (type0 ~> type0) `app` t
 
 isIntegral :: Provenance -> DSLExpr -> DSLExpr
-isIntegral p t = typeClass p IsIntegral (type0 ~> constraint) `app` t
+isIntegral p t = typeClass p IsIntegral (type0 ~> type0) `app` t
 
 isRational :: Provenance -> DSLExpr -> DSLExpr
-isRational p t = typeClass p IsRational (type0 ~> constraint) `app` t
+isRational p t = typeClass p IsRational (type0 ~> type0) `app` t
 
 isReal :: Provenance -> DSLExpr -> DSLExpr
-isReal p t = typeClass p IsReal (type0 ~> constraint) `app` t
+isReal p t = typeClass p IsReal (type0 ~> type0) `app` t
 
 isContainer :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-isContainer p tCont tElem = typeClass p IsContainer (type0 ~> type0 ~> constraint) `app` tCont `app` tElem
+isContainer p tCont tElem = typeClass p IsContainer (type0 ~> type0 ~> type0) `app` tCont `app` tElem
 
 isQuantifiable :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-isQuantifiable p tDom tTruth = typeClass p IsQuantifiable (type0 ~> type0 ~> constraint) `app` tDom `app` tTruth
+isQuantifiable p tDom tTruth = typeClass p IsQuantifiable (type0 ~> type0 ~> type0) `app` tDom `app` tTruth

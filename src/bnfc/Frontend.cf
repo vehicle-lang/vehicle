@@ -8,8 +8,8 @@ comment "{-" "-}";
 -- NOTE: Token rules are tried IN ORDER, so the order matters!
 
 position token TokArrow     {"->"};
+position token TokHas       {"=>"};
 position token TokForall    {"forall"};
-position token TokExists    {"exists"};
 position token TokIf        {"if"};
 position token TokThen      {"then"};
 position token TokElse      {"else"};
@@ -26,7 +26,7 @@ position token TokProp      {"Prop"};
 
 position token TokEvery     {"every"};
 position token TokSome      {"some"};
-position token TokImpl      {"=>"};
+position token TokImpl      {"implies"};
 position token TokAnd       {"and"};
 position token TokOr        {"or"};
 position token TokNot       {"not"};
@@ -117,7 +117,6 @@ TCReal.  TypeClass ::= TokTCReal      Expr14;
 
 -- Kinds.
 Type.       Expr14 ::= "Type" Integer;
-Constraint. Expr14 ::= "Constraint";
 
 -- Core structure.
 Forall.  Expr   ::= TokForall [Binder] TokDot Expr;
@@ -126,6 +125,7 @@ Let.     Expr1  ::= "let" "{" [LetDecl] "}" "in" Expr1;
 Lam.     Expr2  ::= TokLambda [Binder] TokArrow Expr2;
 App.     Expr12 ::= Expr12 Arg;
 Fun.     Expr10 ::= Expr12 TokArrow Expr10;
+Has.     Expr10 ::= Expr12 TokHas Expr10;
 Var.     Expr14 ::= Name;
 Literal. Expr14 ::= Lit;
 TypeC.   Expr12 ::= TypeClass;

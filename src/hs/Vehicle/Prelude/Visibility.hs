@@ -10,16 +10,18 @@ import Vehicle.Prelude.Provenance
 -- Definitions
 
 -- | Visibility of function arguments
-data Visibility = Explicit | Implicit
+data Visibility = Explicit | Implicit | Constraint
   deriving (Eq, Ord, Show, Generic, NFData)
 
 visBrackets :: Visibility -> Doc a -> Doc a
-visBrackets Explicit = id
-visBrackets Implicit = braces
+visBrackets Explicit   = id
+visBrackets Implicit   = braces
+visBrackets Constraint = braces . braces
 
 visProv :: Visibility -> Provenance -> Provenance
-visProv Explicit = id
-visProv Implicit = expandProvenance (1,1)
+visProv Explicit   = id
+visProv Implicit   = expandProvenance (1,1)
+visProv Constraint = expandProvenance (2,2)
 
 --------------------------------------------------------------------------------
 -- Type-classes

@@ -5,8 +5,7 @@ comment "(*" "*)";
 -- * Tokens
 
 position token BuiltinToken
-  ( {"Constraint"}
-  | {"every"} | {"some"}
+  ( {"every"} | {"some"}
   | {"=>"} | {"and"} | {"or"} | {"not"}
   | {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
   | {"*"} | {"/"} | {"+"} | {"-"} | {"~"}
@@ -23,15 +22,18 @@ position token TypeToken ({"Type"} digit+);
 
 -- * Binders
 
-ExplicitNameAndType. Binder ::= "(" NameToken ":type" Expr ")";
-ImplicitNameAndType. Binder ::= "{" NameToken ":type" Expr "}";
-ExplicitName.        Binder ::= NameToken;
-ImplicitName.        Binder ::= "{" NameToken "}";
+ExplicitNameAndType.   Binder ::= "(" NameToken ":type" Expr ")";
+ImplicitNameAndType.   Binder ::= "{" NameToken ":type" Expr "}";
+ConstraintNameAndType. Binder ::= "{{" NameToken ":type" Expr "}}";
+ExplicitName.          Binder ::= NameToken;
+ImplicitName.          Binder ::= "{" NameToken "}";
+ConstraintName.        Binder ::= "{{" NameToken "}}";
 
 -- * Function arguments
 
-ExplicitArg. Arg ::= Expr1;
-ImplicitArg. Arg ::= "{" Expr "}";
+ExplicitArg.   Arg ::= Expr1;
+ImplicitArg.   Arg ::= "{" Expr "}";
+ConstraintArg. Arg ::= "{{" Expr "}}";
 
 -- * Literals
 

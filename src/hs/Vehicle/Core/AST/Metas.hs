@@ -1,8 +1,6 @@
 
-module Vehicle.Core.Compile.Metas
+module Vehicle.Core.AST.Metas
   ( MetaSet
-  , prettyMetas
-  , prettyMetaSubst
   , MetaSubstitution
   , MetaSubstitutable(..)
   ) where
@@ -12,25 +10,14 @@ import Control.Monad.Reader (Reader, runReader, ask, local)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import Data.IntSet (IntSet)
-import Data.IntSet qualified as IntSet
-import Prettyprinter (Doc, Pretty(..), (<+>), concatWith, softline, group, align, line)
 
-import Vehicle.Core.AST
-import Vehicle.Core.Print.Core ()
+import Vehicle.Core.AST.Core
+import Vehicle.Core.AST.Utils
+import Vehicle.Core.AST.DeBruijn
 
 type MetaSet = IntSet
 
-prettyMetas :: MetaSet -> Doc a
-prettyMetas = pretty . IntSet.toList
-
 type MetaSubstitution = IntMap CheckedExpr
-
-prettyMetaSubst :: MetaSubstitution -> Doc a
-prettyMetaSubst msubst =
-  "{" <+> align (group
-    (concatWith (\x y -> x <> ";" <> line <> y)
-      (map (\(i, t') -> "?" <> pretty i <+> ":=" <+> pretty t') (IntMap.toAscList msubst))
-     <> softline <> "}"))
 
 class MetaSubstitutable a where
   -- TODO change name away from M
@@ -66,7 +53,6 @@ instance MetaSubstitutable CheckedAnn where
 instance MetaSubstitutable CheckedExpr where
   substM = \case
     Type l                   -> return (Type l)
-    Constraint               -> return Constraint
     Hole p name              -> return (Hole p name)
     Builtin ann op           -> Builtin <$> substM ann <*> pure op
     Literal ann l            -> Literal <$> substM ann <*> pure l

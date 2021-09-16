@@ -1,7 +1,8 @@
 
 module Vehicle.Prelude.Error where
 
-import Data.Text (Text)
+import Control.Exception (Exception, throw, handle)
+import Data.Text (Text, unpack)
 import Data.Void (Void)
 import GHC.Stack (HasCallStack)
 import Prettyprinter (Doc, Pretty(..), (<+>), squotes, line, unAnnotate)
@@ -12,11 +13,25 @@ import Vehicle.Prelude.Prettyprinter
 --------------------------------------------------------------------------------
 -- Developer errors
 
+newtype DeveloperError = DeveloperError Text
+
+instance Show DeveloperError where
+  show (DeveloperError text) = unpack text
+
+instance Exception DeveloperError
+
 developerError :: HasCallStack => Doc a -> b
-developerError message = error $ layoutAsString $
+developerError message = throw $ DeveloperError $ layoutAsText $
   "Something went wrong internally. Please report the error" <+>
   "shown below to `https://github.com/wenkokke/vehicle/issues`." <> line <>
   "Error:" <+> message
+{-
+handleDeveloperError :: IO () -> IO ()
+handleDeveloperError = handle f
+  where
+    f :: DeveloperError -> IO ()
+    f = print
+-}
 
 --------------------------------------------------------------------------------
 -- User errors

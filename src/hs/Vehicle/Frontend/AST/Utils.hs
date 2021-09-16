@@ -66,7 +66,6 @@ annotation = \case
 
   -- Kinds
   Type _     -> developerError "Should not be requesting an annotation from Type"
-  Constraint -> developerError "Should not be requesting an annotation from Constraint"
 
   -- Types
   Bool        ann         -> ann
@@ -114,7 +113,6 @@ annotation = \case
 -- | Extracts the type of the term from the term's annotation.
 getType :: Expr (RecAnn ann) -> Expr (RecAnn ann)
 getType (Type l)   = Type (l + 1)
-getType Constraint = Type 1
 getType e          = let RecAnn t _ = annotation e in t
 
 --------------------------------------------------------------------------------

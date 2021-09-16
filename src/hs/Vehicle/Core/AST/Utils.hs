@@ -111,7 +111,6 @@ argExpr (Arg _ _ e) = e
 annotation :: Expr name binder ann -> ann
 annotation = \case
   Type     _         -> developerError "Should not be requesting an annotation from Type"
-  Constraint         -> developerError "Should not be requesting an annotation from Constraint"
   Hole     _   _     -> developerError "Should not be requesting an annotation from Hole"
   Meta     ann _     -> ann
   Ann      ann _ _   -> ann
@@ -128,10 +127,4 @@ annotation = \case
 -- | Extracts the type of the term from the term's annotation.
 getType :: Expr binder var (RecAnn binder var ann) -> Expr binder var (RecAnn binder var ann)
 getType (Type l)   = Type (l + 1)
-getType Constraint = Type1
 getType e          = let RecAnn t _ = annotation e in t
-
-isConstraint :: CheckedExpr -> Bool
-isConstraint e = case getType e of
-  Constraint -> True
-  _          -> False

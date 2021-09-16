@@ -51,7 +51,6 @@ data Expr ann
 
   -- Kinds
   | Type Level
-  | Constraint
 
   -- Types
   | Bool     ann

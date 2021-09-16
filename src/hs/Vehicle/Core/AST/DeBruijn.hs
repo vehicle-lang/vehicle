@@ -97,7 +97,6 @@ instance MutableAnn ann => Mutable ann (Expr Name Var) where
       underB    = underBinder body
     in \case
       Type l                   -> return (Type l)
-      Constraint               -> return Constraint
       Meta p m                 -> return (Meta p m)
       Hole p name              -> return (Hole p name)
       Builtin ann op           -> Builtin <$> altAnn ann <*> pure op

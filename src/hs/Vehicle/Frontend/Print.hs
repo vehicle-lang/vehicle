@@ -84,8 +84,9 @@ instance Compile (Binder ann) where
     in  visBrackets vis (pretty n <> typAnn)
 
 instance Compile (Arg ann) where
-  compile (Arg _p Explicit  e) = compile e
-  compile (Arg _p Implicit _e) = ""
+  compile (Arg _p Explicit    e) = compile e
+  compile (Arg _p Implicit   _e) = ""
+  compile (Arg _p Constraint _e) = ""
 
 instance Compile (LetDecl ann) where
   compile (LetDecl _p n e) = compile n <+> compile e
@@ -105,7 +106,6 @@ instance Compile (Expr ann) where
 
     -- Kinds
     TypeF l                -> "Type" <+> pretty l
-    ConstraintF            -> "Constraint"
 
     -- Types
     PropF    _ann          -> compileConstant "Prop"
@@ -129,7 +129,7 @@ instance Compile (Expr ann) where
 
     -- Terms
     IfF      _ann e1 e2 e3 -> "if" <+> e1 <+> "then" <+> e2 <+> "else" <+> e3
-    ImplF    _ann e1 e2    -> compileInfixOp2 4 "=>"  e1 e2
+    ImplF    _ann e1 e2    -> compileInfixOp2 4 "implies" e1 e2
     AndF     _ann e1 e2    -> compileInfixOp2 5 "and" e1 e2
     OrF      _ann e1 e2    -> compileInfixOp2 6 "or"  e1 e2
     NotF     _ann e        -> compileApp1     "not" e

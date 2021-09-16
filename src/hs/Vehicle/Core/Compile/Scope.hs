@@ -91,7 +91,6 @@ instance ScopeCheck InputArg UncheckedArg where
 instance ScopeCheck InputExpr UncheckedExpr where
   scope = \case
     Type l                         -> return $ Type l
-    Constraint                     -> return Constraint
     Meta p i                       -> return $ Meta p i
     Hole     ann n                 -> return $ Hole ann n
     Ann      ann e t               -> Ann ann <$> scope e <*> scope t

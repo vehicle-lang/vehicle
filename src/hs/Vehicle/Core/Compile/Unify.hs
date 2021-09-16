@@ -21,7 +21,6 @@ import Vehicle.Core.Print.Core ()
 import Vehicle.Core.Print.Frontend (prettyFrontend)
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.DSL (piType)
-import Vehicle.Core.Compile.Metas
 
 data TypeClassConstraint = Meta `Has` CheckedExpr
   deriving (Show)
@@ -69,7 +68,7 @@ instance HasProvenance UnificationConstraint where
 
 instance Pretty UnificationConstraint where
   pretty (Unify _ _ _ metas (e1, e2)) =
-    prettyMetas metas <+> prettyFrontend e1 <+> "~" <+> prettyFrontend e2
+    pretty metas <+> prettyFrontend e1 <+> "~" <+> prettyFrontend e2
 
 instance MetaSubstitutable UnificationConstraint where
   substM (Unify p ctx metas history es) =
@@ -204,7 +203,6 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
     _           :~: (Hole{}, _) -> unexpectedCase p "Holes"
 
     -- Rigid-rigid
-    (Constraint, [])   :~: (Constraint, [])   -> return mempty
     (Type    l1, [])   :~: (Type    l2, [])   -> do solveEq constraint l1  l2; return []
 {-
 (Ann _ e1 t1, Ann _ e2 t2) -> return

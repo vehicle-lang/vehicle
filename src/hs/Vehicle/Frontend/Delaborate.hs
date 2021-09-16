@@ -113,7 +113,6 @@ instance DelaborateWithHoles VC.OutputExpr VF.OutputExpr where
     r <- showEntry e
     case r of
       VC.Type l                        -> return (VF.Type l)
-      VC.Constraint                    -> return VF.Constraint
       VC.Hole    p n                   -> return $ VF.Hole p n
       VC.Meta    ann i                 -> return $ VF.Hole (prov ann) (pack $ "?" <> show i)
       VC.Pi      ann       binder body -> delabPi  ann       binder body

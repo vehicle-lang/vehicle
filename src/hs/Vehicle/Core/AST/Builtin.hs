@@ -80,7 +80,7 @@ builtinSymbols =
   , "IsQuantify"   |-> IsQuantifiable
   -- Operations
   , "if"           |-> If
-  , "=>"           |-> Impl
+  , "implies"      |-> Impl
   , "and"          |-> And
   , "or"           |-> Or
   , "not"          |-> Not

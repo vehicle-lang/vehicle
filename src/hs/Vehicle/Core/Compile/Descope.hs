@@ -75,7 +75,6 @@ showScopeExit m = do
 instance Descope CheckedExpr OutputExpr where
   descope e = showScopeExit $ case showScopeEntry e of
     Type     l                     -> return (Type l)
-    Constraint                     -> return Constraint
     Hole     p name                -> return (Hole p name)
     Meta     ann i                 -> Meta    <$> descope ann <*> pure i
     Var      ann v                 -> Var     <$> descope ann <*> lookupVar (prov ann) v

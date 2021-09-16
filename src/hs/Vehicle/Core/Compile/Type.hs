@@ -25,7 +25,6 @@ import Prettyprinter ((<+>), Pretty(..), line)
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.DSL
 import Vehicle.Core.Compile.Unify
-import Vehicle.Core.Compile.Metas
 import Vehicle.Core.Print.Core (prettyCore)
 import Vehicle.Prelude
 
@@ -50,7 +49,7 @@ runTypeChecking prog = do
     []     -> return $ substMetas metaSubst checkedProg
     c : cs -> throwError $ UnsolvedConstraints (c :| cs)
 
-  logDebug (layoutAsText $ "Solution:" <+> prettyMetaSubst metaSubst)
+  logDebug (layoutAsText $ "Solution:" <+> pretty metaSubst)
   logDebug "Ending unification\n"
 
   let tClassConstraints = substMetas metaSubst $ typeClassConstraints metaCtx
@@ -231,9 +230,9 @@ showInferExit m = do
   logDebug ("infer-exit  " <> prettyCore e <> " -> " <> prettyCore t)
   return (e,t)
 
-showInsertImplicit :: TCM m => CheckedExpr -> m CheckedExpr
-showInsertImplicit t = do
-  logDebug ("insert-implict " <> prettyCore t)
+showInsertArg :: TCM m => CheckedExpr -> m CheckedExpr
+showInsertArg t = do
+  logDebug ("insert-arg " <> prettyCore t)
   return t
 
 showUnify :: TCM m => UnificationConstraint -> m UnificationConstraint
@@ -303,10 +302,11 @@ freshMeta p resultType = do
   let meta = foldl' cApp (Meta (RecAnn metaType p) metaName) boundEnv
   return (metaName, meta, metaType)
 
--- Generate new metavariables for any implicit arguments
-insertImplicits :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m (CheckedExpr, CheckedExpr)
-insertImplicits p fun' (Pi _ (Binder _ Implicit _ tArg') tRes') = do
-  tArg' <- showInsertImplicit tArg'
+-- Generate new metavariables for any implicit/constraint arguments
+insertArgs :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m (CheckedExpr, CheckedExpr)
+insertArgs p fun' (Pi _ (Binder _ vArg _ tArg') tRes')
+  | vArg /= Explicit = do
+  tArg' <- showInsertArg tArg'
 
   (meta, metaArg, metaType) <- freshMeta p tArg'
 
@@ -316,12 +316,12 @@ insertImplicits p fun' (Pi _ (Binder _ Implicit _ tArg') tRes') = do
   -- TODO Wen is worried about interactions between the Pi abstractions over
   -- the context and the type-class search later on.
 
-  -- Check if the implicit argument is a type-class
-  when (isConstraint tArg') $
+  -- Check if the required argument is a type-class
+  when (vArg == Constraint) $
     addTypeClassConstraints [meta `Has` metaType]
 
-  insertImplicits p (App (RecAnn tResSubst' mempty) fun' (Arg mempty Implicit metaArg)) tResSubst'
-insertImplicits _ fun' typ' =
+  insertArgs p (App (RecAnn tResSubst' mempty) fun' (Arg mempty vArg metaArg)) tResSubst'
+insertArgs _ fun' typ' =
   return (fun', typ')
 
 --------------------------------------------------------------------------------
@@ -365,7 +365,6 @@ check expectedType expr = showCheckExit $ do
       return meta
 
     (_, e@(Type _))          -> viaInfer mempty expectedType e
-    (_, e@Constraint)        -> viaInfer mempty expectedType e
     (_, e@(Meta _ _))        -> viaInfer mempty expectedType e
     (_, e@(App     p _ _))   -> viaInfer p      expectedType e
     (_, e@(Pi      p _ _))   -> viaInfer p      expectedType e
@@ -410,9 +409,6 @@ infer e = showInferExit $ do
     Type l ->
       return (Type l , Type (l + 1))
 
-    Constraint ->
-      return (Constraint , Type 1)
-
     Meta _ m -> developerError $ "Trying to infer the type of a meta-variable" <+> pretty m
 
     Hole ann s ->
@@ -429,7 +425,7 @@ infer e = showInferExit $ do
       (fun', tFun') <- infer fun
       -- if this is an explicit argument, then insert implicits before proceeding
       (fun', tFun') <- if vArg == Explicit
-        then insertImplicits p fun' tFun'
+        then insertArgs p fun' tFun'
         else return (fun', tFun')
       inferApp p arg fun' tFun'
 
@@ -543,7 +539,7 @@ viaInfer :: TCM m => Provenance -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
 viaInfer p expectedType e = do
   -- TODO may need to change the term when unifying to insert a type application.
   (e', actualType) <- infer e
-  (e'', actualType') <- insertImplicits p e' actualType
+  (e'', actualType') <- insertArgs p e' actualType
   _t <- unify p expectedType actualType'
   return e''
 
@@ -569,15 +565,15 @@ typeOfBuiltin p b = fromDSL $ case b of
   List            -> type0 ~> type0
   Tensor          -> type0 ~> tList tNat ~> type0
 
-  HasEq           -> type0 ~> type0 ~> constraint
-  HasOrd          -> type0 ~> type0 ~> constraint
-  IsTruth         -> type0 ~> constraint
-  IsNatural       -> type0 ~> constraint
-  IsIntegral      -> type0 ~> constraint
-  IsRational      -> type0 ~> constraint
-  IsReal          -> type0 ~> constraint
-  IsContainer     -> type0 ~> constraint
-  IsQuantifiable  -> type0 ~> type0 ~> constraint
+  HasEq           -> type0 ~> type0 ~> type0
+  HasOrd          -> type0 ~> type0 ~> type0
+  IsTruth         -> type0 ~> type0
+  IsNatural       -> type0 ~> type0
+  IsIntegral      -> type0 ~> type0
+  IsRational      -> type0 ~> type0
+  IsReal          -> type0 ~> type0
+  IsContainer     -> type0 ~> type0
+  IsQuantifiable  -> type0 ~> type0 ~> type0
 
   If   -> typeOfIf
   Cons -> typeOfCons
