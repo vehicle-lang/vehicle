@@ -97,23 +97,20 @@ lookupBuiltin (BuiltinToken tk) = case builtinFromSymbol (tkSymbol tk) of
     Nothing -> throwError $ UnknownBuiltin $ toToken tk
     Just v  -> return v
 
-hole :: MonadParse m => Provenance -> m V.InputExpr
-hole p = return $ V.Hole p "_"
-
 instance Convert B.Binder V.InputBinder where
   conv = \case
-    B.ExplicitNameAndType n e -> convBinder n Explicit (conv e)
-    B.ImplicitNameAndType n e -> convBinder n Implicit (conv e)
-    B.ExplicitName        n   -> convBinder n Explicit (hole (tkProvenance n))
-    B.ImplicitName        n   -> convBinder n Implicit (hole (tkProvenance n))
+    B.ExplicitNameAndType n e   -> mkBinder n Explicit e
+    B.ImplicitNameAndType n e   -> mkBinder n Implicit e
+    B.ConstraintNameAndType n e -> mkBinder n Constraint e
+    where
+      mkBinder :: MonadParse m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
+      mkBinder n v e = V.Binder (tkProvenance n) v (User (tkSymbol n)) <$> conv e
 
 instance Convert B.Arg V.InputArg where
   conv = \case
     B.ExplicitArg e -> do ce <- conv e; return $ V.Arg (annotation ce) Explicit ce
-    B.ImplicitArg e -> do
-      ce <- conv e
-      let p = expandProvenance (1, 1) (V.annotation ce)
-      return $ V.Arg p Implicit ce
+    B.ImplicitArg e -> do ce <- conv e; return $ V.Arg (expandProvenance (1, 1) (V.annotation ce)) Implicit ce
+    B.ConstraintArg e -> do ce <- conv e; return $ V.Arg (expandProvenance (2, 2) (V.annotation ce)) Constraint ce
 
 instance Convert B.Lit Literal where
   conv = \case
@@ -133,7 +130,7 @@ instance Convert B.Expr V.InputExpr where
     B.Seq es           -> op1 V.Seq <$> traverse conv es
     B.Builtin c        -> V.Builtin (tkProvenance c) <$> lookupBuiltin c
     B.Literal v        -> V.Literal mempty <$> conv v
-    B.Var n            -> return $ V.Var (tkProvenance n) (tkSymbol n)
+    B.Var n            -> return $ V.Var (tkProvenance n) (User (tkSymbol n))
 
 instance Convert B.NameToken (WithProvenance Identifier) where
   conv n = return $ WithProvenance (tkProvenance n) (Identifier (tkSymbol n))
@@ -161,9 +158,6 @@ op3 :: (HasProvenance a, HasProvenance b, HasProvenance c)
     => (Provenance -> a -> b -> c -> d)
     -> a -> b -> c -> d
 op3 mk t1 t2 t3 = mk (prov t1 <> prov t2 <> prov t3) t1 t2 t3
-
-convBinder :: MonadParse m => B.NameToken -> Visibility -> m V.InputExpr -> m V.InputBinder
-convBinder n v t =  V.Binder (tkProvenance n) v (tkSymbol n) <$> t
 
 -- | Converts the type token into a Type expression.
 -- Doesn't run in the monad as if something goes wrong with this, we've got

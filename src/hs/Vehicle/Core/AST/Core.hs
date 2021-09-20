@@ -12,28 +12,51 @@ import Vehicle.Core.AST.Builtin (Builtin)
 -- | Meta-variables
 type Meta = Int
 
--- | Binder for Pi types
-data Binder binder var ann
+-- |Variable names
+data Name
+  = User Symbol
+  | Machine
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData Name
+
+-- | Binder for lambda and let expressions
+--
+-- The binder stores the optional type annotation in order to ensure
+-- reversibility during delaboration, and that as the type annotation was
+-- manually provided by the user it never needs to be updated after unification
+-- and type-class resolution.
+data Binder var ann
   = Binder
     Provenance
-    Visibility             -- Whether binding is explicit or inferred
-    binder                 -- The name of the bound variable
-    (Expr binder var ann)  -- The type of the bound variable
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic, NFData)
+    Visibility      -- Whether binding is explicit or inferred
+    Name            -- The name of the bound variable
+    (Expr var ann)  -- The (optional) type of the bound variable
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
-instance HasProvenance (Binder binder var ann) where
+instance (NFData var, NFData ann) => NFData (Binder var ann)
+
+instance HasProvenance (Binder var ann) where
   prov (Binder p _ _ _) = p
 
+instance HasVisibility (Binder var ann) where
+  vis (Binder _ v _ _) = v
+
 -- | Function arguments
-data Arg binder var ann
+data Arg var ann
   = Arg
     Provenance
-    Visibility
-    (Expr binder var ann)
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic, NFData)
+    Visibility              -- Is the argument implicit or explicit?
+    (Expr var ann)   -- The argument expression
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
-instance HasProvenance (Arg binder var ann) where
+instance (NFData var, NFData ann) => NFData (Arg var ann)
+
+instance HasProvenance (Arg var ann) where
   prov (Arg p _ _) = p
+
+instance HasVisibility (Arg var ann) where
+  vis (Arg _ v _) = v
 
 -- * Abstract syntax tree for Vehicle Core
 
@@ -45,7 +68,7 @@ instance HasProvenance (Arg binder var ann) where
 --
 -- Names are parameterised over so that they can store
 -- either the user assigned names or deBruijn indices.
-data Expr binder var ann
+data Expr var ann
 
   -- | The type of types. The type @Type l@ has type @Type (l+1)@.
   = Type Level
@@ -53,40 +76,40 @@ data Expr binder var ann
   -- | User annotation
   | Ann
     ann
-    (Expr binder var ann)    -- The term
-    (Expr binder var ann)    -- The type of the term
+    (Expr var ann)    -- The term
+    (Expr var ann)    -- The type of the term
 
   -- | Application of one term to another.
   | App
-    ann                      -- Annotation.
-    (Expr binder var ann)    -- Function.
-    (Arg  binder var ann)    -- Argument.
+    ann               -- Annotation.
+    (Expr var ann)    -- Function.
+    (Arg  var ann)    -- Argument.
 
   -- | Dependent product (subsumes both functions and universal quantification).
   | Pi
-    ann                      -- Annotation.
-    (Binder binder var ann)  -- The bound name
-    (Expr   binder var ann)  -- (Dependent) result type.
+    ann               -- Annotation.
+    (Binder var ann)  -- The bound name
+    (Expr   var ann)  -- (Dependent) result type.
 
   -- | Terms consisting of constants that are built into the language.
   | Builtin
-    ann                      -- Annotation.
-    Builtin                  -- Builtin name.
+    ann              -- Annotation.
+    Builtin          -- Builtin name.
 
   -- | Variables that are bound by other expressions
   | Var
-    ann                      -- Annotation.
-    var                      -- Variable name.
+    ann              -- Annotation.
+    var              -- Variable name.
 
   -- | A hole in the program.
   | Hole
-    Provenance               -- Source of the meta-variable
-    Symbol                   -- Hole name.
+    Provenance       -- Source of the meta-variable
+    Symbol           -- Hole name.
 
   -- | Unsolved meta variables.
   | Meta
-    ann                      -- Annotation.
-    Meta                     -- Meta variable number.
+    ann              -- Annotation.
+    Meta             -- Meta variable number.
 
   -- | Let expressions.
   --
@@ -94,59 +117,61 @@ data Expr binder var ann
   -- to better mimic the flow of the context, which makes writing monadic
   -- operations concisely much easier.
   | Let
-    ann                      -- Annotation.
-    (Expr   binder var ann)  -- Bound expression body.
-    (Binder binder var ann)  -- Bound expression name.
-    (Expr   binder var ann)  -- Expression body.
+    ann               -- Annotation.
+    (Expr   var ann)  -- Bound expression body.
+    (Binder var ann)  -- Bound expression name.
+    (Expr   var ann)  -- Expression body.
 
   -- | Lambda expressions (i.e. anonymous functions).
   | Lam
-    ann                      -- Annotation.
-    (Binder binder var ann)  -- Bound expression name.
-    (Expr   binder var ann)  -- Expression body.
+    ann               -- Annotation.
+    (Binder var ann)  -- Bound expression name.
+    (Expr   var ann)  -- Expression body.
 
   -- | Built-in literal values e.g. numbers/booleans.
   | Literal
-    ann                      -- Annotation.
-    Literal                  -- Value.
+    ann               -- Annotation.
+    Literal           -- Value.
 
   -- | A sequence of terms for e.g. list literals.
   | Seq
-    ann                      -- Annotation.
-    [Expr binder var ann]    -- List of expressions.
+    ann               -- Annotation.
+    [Expr var ann]    -- List of expressions.
 
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic, NFData)
+  -- | A placeholder for a dictionary of builtin type-classes.
+  -- At the moment doesn't carry around any meaningful information
+  -- as we don't currently have user-defined type-classes. Later
+  -- on they will carry around user definitions.
+  | PrimDict (Expr var ann)
+
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
+
+instance (NFData var, NFData ann) => NFData (Expr var ann)
 
 makeBaseFunctor ''Expr
 
 -- | Type of top-level declarations.
-data Decl binder var ann
+data Decl var ann
   = DeclNetw
     Provenance                    -- Location in source file.
     (WithProvenance Identifier)   -- Network name.
-    (Expr   binder var ann)       -- Network type.
+    (Expr   var ann)              -- Network type.
   | DeclData
     Provenance                    -- Location in source file.
     (WithProvenance Identifier)   -- Dataset name.
-    (Expr   binder var ann)       -- Dataset type.
+    (Expr   var ann)              -- Dataset type.
   | DefFun
     Provenance                    -- Location in source file.
     (WithProvenance Identifier)   -- Bound function name.
-    (Expr binder var ann)         -- Bound function type.
-    (Expr binder var ann)         -- Bound function body.
-  deriving (Eq, Show, Functor, Foldable, Traversable, Generic, NFData)
+    (Expr var ann)                -- Bound function type.
+    (Expr var ann)                -- Bound function body.
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+
+instance (NFData var, NFData ann) => NFData (Decl var ann)
 
 -- | Type of Vehicle Core programs.
-newtype Prog binder var ann
-  = Main [Decl binder var ann] -- ^ List of declarations.
-  deriving (Eq, Show, Functor, Foldable, Traversable, Generic, NFData)
+newtype Prog var ann
+  = Main [Decl var ann] -- ^ List of declarations.
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
--- TODO make this nicer and differentiate why we're calling it (debug vs user error messages)
-
--- | An annotation that stores both the type of the expression and some other arbitrary annotations.
--- Used post-type checking. Avoids unrestricted type-level recursion.
-data RecAnn binder var ann = RecAnn (Expr binder var (RecAnn binder var ann)) ann
-  deriving (Show, Generic, NFData)
-
-instance HasProvenance ann => HasProvenance (RecAnn binder var ann) where
-  prov (RecAnn _ ann) = prov ann
+instance (NFData var, NFData ann) => NFData (Prog var ann)

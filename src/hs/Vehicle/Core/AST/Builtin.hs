@@ -56,7 +56,9 @@ data Builtin
   | Map
   | Fold
   | Quant Quantifier
-  deriving (Eq, Ord, Show, Generic, NFData)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData Builtin
 
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols =

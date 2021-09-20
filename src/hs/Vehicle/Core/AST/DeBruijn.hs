@@ -4,7 +4,6 @@ module Vehicle.Core.AST.DeBruijn
   ( Name(..)
   , Var(..)
   , Index
-  , DeBruijnAnn
   , DeBruijnExpr
   , DeBruijnDecl
   , DeBruijnProg
@@ -31,27 +30,22 @@ import qualified Data.IntMap as IM
 --------------------------------------------------------------------------------
 -- Definitions
 
--- |The type of data DeBruijn indices store at binding sites
-data Name
-  = User Symbol
-  | Machine
-  deriving (Eq, Ord, Show, Generic, NFData)
-
 type Index = Int
 
 -- |The type of data DeBruijn indices store at name sites
 data Var
   = Free Identifier
   | Bound Index
-  deriving (Eq, Ord, Show, Generic, NFData)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData Var
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type DeBruijnBinder    ann = Binder Name Var ann
-type DeBruijnArg       ann = Arg    Name Var ann
-type DeBruijnExpr      ann = Expr   Name Var ann
-type DeBruijnDecl      ann = Decl   Name Var ann
-type DeBruijnProg      ann = Prog   Name Var ann
-type DeBruijnAnn       ann = RecAnn Name Var ann
+type DeBruijnBinder ann = Binder Var ann
+type DeBruijnArg    ann = Arg    Var ann
+type DeBruijnExpr   ann = Expr   Var ann
+type DeBruijnDecl   ann = Decl   Var ann
+type DeBruijnProg   ann = Prog   Var ann
 
 --------------------------------------------------------------------------------
 -- A framework for writing generic operations on DeBruijn variables
@@ -71,46 +65,37 @@ type UpdateVariable m state ann
 -- when traversing across a binder.
 type TraverseBinder state ann = state -> state
 
-class MutableAnn ann where
-  alterAnn
-    :: (MonadReader (BindingDepth, state) m)
-    => TraverseBinder state ann
-    -> UpdateVariable m state ann
-    -> ann
-    -> m ann
-
-class Mutable ann (a :: * -> *) where
+class DeBruijnFunctor ann (a :: * -> *) where
   alter
-    :: (MutableAnn ann, MonadReader (BindingDepth, state) m)
+    :: (MonadReader (BindingDepth, state) m)
     => TraverseBinder state ann
     -> UpdateVariable m state ann
     -> a ann
     -> m (a ann)
 
-instance MutableAnn ann => Mutable ann (Expr Name Var) where
+instance DeBruijnFunctor ann (Expr Var) where
   alter body var =
     let
-      altAnn    = alterAnn body var
-      altBinder = alter    body var
-      altArg    = alter    body var
-      altExpr   = alter    body var
-      underB    = underBinder body
+      altPiBinder  = alter    body var
+      altLamBinder = alter    body var
+      altArg       = alter    body var
+      altExpr      = alter    body var
+      underB       = underBinder body
     in \case
       Type l                   -> return (Type l)
       Meta p m                 -> return (Meta p m)
       Hole p name              -> return (Hole p name)
-      Builtin ann op           -> Builtin <$> altAnn ann <*> pure op
-      Literal ann l            -> Literal <$> altAnn ann <*> pure l
-      Seq     ann es           -> Seq     <$> altAnn ann <*> traverse altExpr es
-      Ann     ann term typ     -> Ann     <$> altAnn ann <*> altExpr   term   <*> altExpr typ
-      App     ann fun arg      -> App     <$> altAnn ann <*> altExpr   fun    <*> altArg arg
-      Pi      ann binder res   -> Pi      <$> altAnn ann <*> altBinder binder <*> underB (altExpr res)
-      Let     ann e1 binder e2 -> Let     <$> altAnn ann <*> altExpr e1 <*> altBinder binder <*> underB (altExpr e2)
-      Lam     ann binder e     -> Lam     <$> altAnn ann <*> altBinder binder <*> underB (altExpr e)
-      Var     ann (Free i)     -> Var     <$> altAnn ann <*> pure (Free i)
-      Var     ann (Bound i)    -> do ann' <- altAnn ann
-                                     st   <- ask
-                                     var i ann' st
+      Builtin ann op           -> return (Builtin ann op)
+      Literal ann l            -> return (Literal ann l)
+      PrimDict e               -> return (PrimDict e)
+      Seq     ann es           -> Seq     ann <$> traverse altExpr es
+      Ann     ann term typ     -> Ann     ann <$> altExpr   term   <*> altExpr typ
+      App     ann fun arg      -> App     ann <$> altExpr   fun    <*> altArg arg
+      Pi      ann binder res   -> Pi      ann <$> altPiBinder binder <*> underB (altExpr res)
+      Let     ann e1 binder e2 -> Let     ann <$> altExpr e1 <*> altLamBinder binder <*> underB (altExpr e2)
+      Lam     ann binder e     -> Lam     ann <$> altLamBinder binder <*> underB (altExpr e)
+      Var     ann (Free i)     -> return (Var ann (Free i))
+      Var     ann (Bound i)    -> var i ann =<< ask
 
 -- Temporarily go under a binder, increasing the binding depth by one
 -- and shifting the current state.
@@ -118,18 +103,11 @@ underBinder :: MonadReader (BindingDepth, state) m =>
                TraverseBinder state ann -> m a -> m a
 underBinder body = local (\(d, s) -> (d+1, body s))
 
+instance DeBruijnFunctor ann (Arg Var) where
+  alter body var (Arg p v e) = Arg p v <$> alter body var e
 
-instance Mutable ann (Arg Name Var) where
-  alter body var (Arg p vis e) = Arg p vis <$> alter body var e
-
-instance Mutable ann (Binder Name Var) where
+instance DeBruijnFunctor ann (Binder Var) where
   alter body var (Binder p v b e) = Binder p v b <$> alter body var e
-
-instance MutableAnn (DeBruijnAnn ann) where
-  alterAnn body var (RecAnn expr ann) = RecAnn <$> alter body var expr <*> pure ann
-
-instance MutableAnn Provenance where
-  alterAnn _ _ ann = return ann
 
 --------------------------------------------------------------------------------
 -- Concrete operations
@@ -138,8 +116,7 @@ instance MutableAnn Provenance where
 -- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
 
 -- | Lift all deBruin indices that refer to environment variables by the provided depth.
-liftDBIndices :: MutableAnn ann
-              => BindingDepth
+liftDBIndices :: BindingDepth
               -> DeBruijnExpr ann  -- ^ expression to lift
               -> DeBruijnExpr ann  -- ^ the result of the lifting
 liftDBIndices j e = runReader (alter id alterVar e) (0 , ())
@@ -151,8 +128,7 @@ liftDBIndices j e = runReader (alter id alterVar e) (0 , ())
            | otherwise = i     -- Index is locally bound so no need to increment
 
 -- | De Bruijn aware substitution of one expression into another
-substInto :: MutableAnn ann
-          => DeBruijnExpr ann -- ^ expression to substitute
+substInto :: DeBruijnExpr ann -- ^ expression to substitute
           -> DeBruijnExpr ann -- ^ term to substitute into
           -> DeBruijnExpr ann -- ^ the result of the substitution
 substInto sub e = runReader (alter binderUpdate alterVar e) (0 , sub)
@@ -168,7 +144,7 @@ substInto sub e = runReader (alter binderUpdate alterVar e) (0 , sub)
 
     -- Whenever we go underneath the binder we must lift
     -- all the indices in the substituted expression
-    binderUpdate sub = liftDBIndices 1 sub
+    binderUpdate = liftDBIndices 1
 
 type Substitution ann = IntMap (DeBruijnExpr ann)
 
@@ -186,8 +162,7 @@ patternOfArgs args = go (length args - 1) IM.empty args
             go (i-1) (IM.insert j (Var ann (Bound i)) revMap) restArgs
         go _ _ _ = Nothing
 
-substAll :: MutableAnn ann
-         => Substitution ann
+substAll :: Substitution ann
          -> DeBruijnExpr ann
          -> Maybe (DeBruijnExpr ann)
 substAll sub e = runReaderT (alter binderUpdate alterVar e) (0, sub)

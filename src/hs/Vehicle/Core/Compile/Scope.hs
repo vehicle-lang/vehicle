@@ -56,25 +56,27 @@ emptyCtx = Ctx mempty mempty
 addDeclToCtx :: WithProvenance Identifier -> Ctx -> Ctx
 addDeclToCtx (WithProvenance _ ident) Ctx {..} = Ctx (Set.insert ident declCtx) exprCtx
 
-addBinderToCtx :: Symbol -> Ctx -> Ctx
-addBinderToCtx name Ctx {..} = Ctx declCtx (name : exprCtx)
+addBinderToCtx :: Name -> Ctx -> Ctx
+addBinderToCtx Machine       ctx     = ctx
+addBinderToCtx (User symbol) Ctx{..} = Ctx declCtx (symbol : exprCtx)
 
 -- |Find the index for a given name of a given sort.
-getVar :: InputAnn -> Symbol -> ExprSCM Var
-getVar ann name = do
+getVar :: InputAnn -> Name -> ExprSCM Var
+getVar ann Machine       = developerError $ "Machine names should not be in use " <+> pretty ann
+getVar ann (User symbol) = do
   Ctx declCtx exprCtx <- ask
-  case elemIndex name exprCtx of
+  case elemIndex symbol exprCtx of
     Just i -> return $ Bound i
     Nothing ->
-      if Set.member (Identifier name) declCtx
-        then return $ Free (Identifier name)
-        else unboundNameError name (prov ann)
+      if Set.member (Identifier symbol) declCtx
+        then return $ Free (Identifier symbol)
+        else unboundNameError symbol (prov ann)
 
 bindVar :: InputBinder -> (UncheckedBinder -> ExprSCM UncheckedExpr) -> ExprSCM UncheckedExpr
-bindVar (Binder p v name t) update = do
+bindVar (Binder p v n t) update = do
   t' <- scope t
-  let binder' = Binder p v (User name) t'
-  local (addBinderToCtx name) (update binder')
+  let binder' = Binder p v n t'
+  local (addBinderToCtx n) (update binder')
 
 flow :: ExprSCM a -> DeclSCM a
 flow r = do

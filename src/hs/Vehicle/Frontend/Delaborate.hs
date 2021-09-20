@@ -4,6 +4,7 @@ module Vehicle.Frontend.Delaborate
   , DelabError(..)
   ) where
 
+import Control.Monad (liftM)
 import Control.Monad.State (MonadState(..), evalStateT, modify)
 import Control.Monad.Except (MonadError(..), ExceptT)
 import Data.List.NonEmpty (NonEmpty(..), (<|))
@@ -11,7 +12,7 @@ import Data.List.NonEmpty qualified as NonEmpty (reverse)
 import Data.Text (pack)
 import Prettyprinter (pretty, (<+>))
 
-import Vehicle.Core.AST qualified as VC hiding (Name(..))
+import Vehicle.Core.AST qualified as VC
 import Vehicle.Core.Print.Core (prettyCore)
 import Vehicle.Frontend.Print (prettyFrontend)
 import Vehicle.Frontend.AST qualified as VF
@@ -22,8 +23,10 @@ import Vehicle.Prelude
 
 runDelab :: Delaborate a b => a -> ExceptT DelabError Logger b
 runDelab x = do
+  -- TODO filter out free variables from the expression in the supply monad
   logDebug "Beginning delaboration"
-  let result = delab x
+  let freshNames = [ "_x" <> pack (show i) | i <- [0::Int ..]]
+  let result = runSupplyT (delab x) freshNames
   logDebug "Ending delaboration\n"
   result
 
@@ -71,7 +74,7 @@ instance MeaningfulError DelabError where
 --------------------------------------------------------------------------------
 -- Delaboration monad
 
-type MonadDelab      m = (MonadError DelabError m, MonadLogger m)
+type MonadDelab      m = (MonadError DelabError m, MonadLogger m, MonadSupply Symbol m)
 type MonadDelabHoles m = (MonadDelab m, MonadState [VF.OutputExpr] m)
 
 hole :: MonadDelabHoles m => Provenance -> m VF.OutputExpr
@@ -84,7 +87,7 @@ addArg x = modify (x :)
 
 -- | Tests if a binder is from a forall or a function.
 isFunBinder :: VC.OutputBinder -> Bool
-isFunBinder (VC.Binder _ vis _ _) = vis == Explicit
+isFunBinder (VC.Binder _ v _ _) = v == Explicit
 
 --------------------------------------------------------------------------------
 -- Debug functions
@@ -118,11 +121,12 @@ instance DelaborateWithHoles VC.OutputExpr VF.OutputExpr where
       VC.Pi      ann       binder body -> delabPi  ann       binder body
       VC.Let     ann bound binder body -> delabLet ann bound binder body
       VC.Lam     ann       binder body -> delabLam ann       binder body
-      VC.Builtin ann op                -> do ann' <- delab ann; delabBuiltin ann' op
+      VC.Builtin ann op                -> delabBuiltin ann op
       VC.Ann     ann e1 t              -> VF.Ann     <$> delab ann <*> delabH e1 <*> delabH t
-      VC.Var     ann n                 -> VF.Var     <$> delab ann <*> pure n
+      VC.Var     ann n                 -> VF.Var     <$> delab ann <*> delab n
       VC.Literal ann z                 -> VF.Literal <$> delab ann <*> pure z
       VC.Seq     ann es                -> VF.Seq     <$> delab ann <*> traverse delabH es
+      VC.PrimDict tc                   -> VF.PrimDict <$> delab tc
 
       VC.App ann (VC.Builtin _ (VC.Quant q)) (VC.Arg _ _ (VC.Lam _ b body)) ->
         flip VF.Quant q <$> delab ann <*> delab b <*> delab body
@@ -190,7 +194,7 @@ delabFun p n typ body = do
 
 
 delabBuiltin :: MonadDelabHoles m
-             => VF.OutputAnn
+             => VC.OutputAnn
              -> VC.Builtin
              -> m VF.OutputExpr
 delabBuiltin ann = let p = prov ann in \case
@@ -235,11 +239,15 @@ delabBuiltin ann = let p = prov ann in \case
 class Delaborate a b where
   delab :: MonadDelab m => a -> m b
 
+instance Delaborate VC.Name Symbol where
+  delab (VC.User name) = return name
+  delab VC.Machine     = demand
+
 instance Delaborate VC.OutputAnn VF.OutputAnn where
-  delab (VC.RecAnn e ann) = VF.RecAnn <$> delab e <*> pure ann
+  delab ann = return ann
 
 instance Delaborate VC.OutputBinder VF.OutputBinder where
-  delab (VC.Binder p v n t) = VF.Binder p v n . Just <$> delab t
+  delab (VC.Binder p v n t) = VF.Binder p v <$> delab n <*> liftM Just (delab t)
 
 instance Delaborate VC.OutputExpr VF.OutputExpr where
   delab e = evalStateT (delabH e) []

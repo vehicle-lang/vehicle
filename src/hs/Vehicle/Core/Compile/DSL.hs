@@ -23,7 +23,6 @@ module Vehicle.Core.Compile.DSL
   , tMax
   , tHole
   , cApp
-  , appType
   , piType
   ) where
 
@@ -45,7 +44,7 @@ class DSL expr where
   pi  :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
 
   unnamedPi :: Visibility -> expr -> (expr -> expr) -> expr
-  unnamedPi vis = pi mempty vis Machine
+  unnamedPi v = pi mempty v Machine
 
   (~>) :: expr -> expr -> expr
   x ~> y = unnamedPi Explicit x (const y)
@@ -66,8 +65,8 @@ fromDSL = flip unDSL 0
 toDSL :: CheckedExpr -> DSLExpr
 toDSL e = DSL $ \i -> liftDBIndices i e
 
-boundVar :: CheckedExpr -> BindingDepth -> DSLExpr
-boundVar t i = DSL $ \j -> Var (typeAnn t) (Bound (j - (i + 1)))
+boundVar :: BindingDepth -> DSLExpr
+boundVar i = DSL $ \j -> Var mempty (Bound (j - (i + 1)))
 
 instance DSL DSLExpr where
   {-
@@ -80,35 +79,32 @@ instance DSL DSLExpr where
 -}
   pi p v n argType bodyFn = DSL $ \i ->
     let varType = unDSL argType i
-        var     = boundVar varType i
+        var     = boundVar i
         binder  = Binder p v n varType
         body    = unDSL (bodyFn var) (i + 1)
-    in Pi (typeAnn $ piType (getType varType) (getType (getType body))) binder body
+    in Pi mempty binder body
 
   app fun arg = DSL $ \i ->
     let fun' = unDSL fun i
         arg' = unDSL arg i
-    in App (typeAnn $ appType fun' arg') fun' (Arg (prov arg') Explicit arg')
+    in App mempty fun' (Arg (prov arg') Explicit arg')
 
-typeAnn :: CheckedExpr -> CheckedAnn
-typeAnn t = RecAnn t mempty
-
-lamType :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
-lamType p v n varType bodyType = fromDSL (pi p v n (toDSL varType) (const (toDSL bodyType)))
+--lamType :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
+--lamType p v n varType bodyType = fromDSL (pi p v n (toDSL varType) (const (toDSL bodyType)))
 
 piType :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 piType t1 t2 = t1 `tMax` t2
 
-appType :: CheckedExpr -> CheckedExpr -> CheckedExpr
-appType fun arg = arg `substInto` getFunResultType (getType fun)
+--appType :: CheckedExpr -> CheckedExpr -> CheckedExpr
+--appType fun arg = arg `substInto` getFunResultType (getType fun)
 
 -- TODO think whether we need to recurse in the case of an implicit binder
 -- TODO the provided type might not be in beta-normal form, so we'd have to reduce it
 -- TODO the provided type might contain defined identifiers, which need to be expanded
 -- TODO (alternative) make sure this is only called on types in beta-normal form
-getFunResultType :: CheckedExpr -> CheckedExpr
-getFunResultType (Pi _ann _binder res) = res
-getFunResultType t = developerError $ "Expecting a Pi type. Found" <+> pretty t <> "."
+-- getFunResultType :: CheckedExpr -> CheckedExpr
+-- getFunResultType (Pi _ann _binder res) = res
+-- getFunResultType t = developerError $ "Expecting a Pi type. Found" <+> pretty t <> "."
 
 cApp :: CheckedExpr -> CheckedExpr -> CheckedExpr
 cApp x y = unDSL (toDSL x `app` toDSL y) 0
@@ -118,8 +114,8 @@ tMax (Type l1)  (Type l2)  = Type (l1 `max` l2)
 tMax t1         t2         = developerError $
   "Expected arguments of type Type. Found" <+> pretty t1 <+> "and" <+> pretty t2 <> "."
 
-con :: Builtin -> DSLExpr -> DSLExpr
-con b t = DSL $ \i -> Builtin (typeAnn (unDSL t i)) b
+con :: Builtin -> DSLExpr
+con b = DSL $ \_ -> Builtin mempty b
 
 -- * Types
 
@@ -127,49 +123,49 @@ type0 :: DSLExpr
 type0 = toDSL Type0
 
 tBool, tProp, tNat, tInt, tReal :: DSLExpr
-tBool = con Bool type0
-tProp = con Prop type0
-tNat  = con Nat  type0
-tInt  = con Int  type0
-tReal = con Real type0
+tBool = con Bool
+tProp = con Prop
+tNat  = con Nat
+tInt  = con Int
+tReal = con Real
 
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
-tTensor tElem dims = con Tensor (type0 ~> tList tNat ~> type0) `app` tElem `app` dims
+tTensor tElem dims = con Tensor `app` tElem `app` dims
 
 tList :: DSLExpr -> DSLExpr
-tList tElem = con List (type0 ~> type0) `app` tElem
+tList tElem = con List `app` tElem
 
 tHole :: Symbol -> DSLExpr
 tHole name = toDSL $ Hole mempty name
 
 -- * TypeClass
 
-typeClass :: Provenance -> Builtin -> DSLExpr -> DSLExpr
-typeClass p op t = DSL $ \i -> Builtin (RecAnn (unDSL t i) p) op
+typeClass :: Provenance -> Builtin -> DSLExpr
+typeClass p op = DSL $ \_ -> Builtin p op
 
 hasEq :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-hasEq p tArg tRes = typeClass p HasEq (type0 ~> type0 ~> type0) `app` tArg `app` tRes
+hasEq p tArg tRes = typeClass p HasEq `app` tArg `app` tRes
 
 hasOrd :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-hasOrd p tArg tRes = typeClass p HasOrd (type0 ~> type0 ~> type0) `app` tArg `app` tRes
+hasOrd p tArg tRes = typeClass p HasOrd `app` tArg `app` tRes
 
 isTruth :: Provenance -> DSLExpr -> DSLExpr
-isTruth p t = typeClass p IsTruth (type0 ~> type0) `app` t
+isTruth p t = typeClass p IsTruth `app` t
 
 isNatural :: Provenance -> DSLExpr -> DSLExpr
-isNatural p t = typeClass p IsNatural (type0 ~> type0) `app` t
+isNatural p t = typeClass p IsNatural `app` t
 
 isIntegral :: Provenance -> DSLExpr -> DSLExpr
-isIntegral p t = typeClass p IsIntegral (type0 ~> type0) `app` t
+isIntegral p t = typeClass p IsIntegral `app` t
 
 isRational :: Provenance -> DSLExpr -> DSLExpr
-isRational p t = typeClass p IsRational (type0 ~> type0) `app` t
+isRational p t = typeClass p IsRational `app` t
 
 isReal :: Provenance -> DSLExpr -> DSLExpr
-isReal p t = typeClass p IsReal (type0 ~> type0) `app` t
+isReal p t = typeClass p IsReal `app` t
 
 isContainer :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-isContainer p tCont tElem = typeClass p IsContainer (type0 ~> type0 ~> type0) `app` tCont `app` tElem
+isContainer p tCont tElem = typeClass p IsContainer `app` tCont `app` tElem
 
 isQuantifiable :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-isQuantifiable p tDom tTruth = typeClass p IsQuantifiable (type0 ~> type0 ~> type0) `app` tDom `app` tTruth
+isQuantifiable p tDom tTruth = typeClass p IsQuantifiable `app` tDom `app` tTruth

@@ -61,19 +61,15 @@ instance Pretty Builtin where
 instance Pretty (WithProvenance Identifier) where
   pretty (WithProvenance _ann n) = pretty n
 
-instance ( Pretty binder
-         , Pretty var
-         ) => Pretty (Arg binder var name) where
-  pretty (Arg _p vis expr) = visBrackets vis $ pretty expr
+instance Pretty var => Pretty (Arg var name) where
+  pretty (Arg _p v expr) = visBrackets v $ pretty expr
 
-instance ( Pretty binder
-         , Pretty var
-         ) => Pretty (Binder binder var ann) where
-  pretty (Binder _ann vis name typ) = brackets vis (pretty name <+> ":type" <+> pretty typ)
+instance (  Pretty var
+         ) => Pretty (Binder var ann) where
+  pretty (Binder _ann v Machine     typ) = brackets v (pretty typ)
+  pretty (Binder _ann v (User name) typ) = brackets v (pretty name <+> ":type" <+> pretty typ)
 
-instance ( Pretty binder
-         , Pretty var
-         ) => Pretty (Expr binder var ann) where
+instance Pretty var => Pretty (Expr var ann) where
   pretty = \case
     Type l                      -> "Type" <> pretty l
     Hole    _p   name           -> "h?" <> pretty name
@@ -87,16 +83,13 @@ instance ( Pretty binder
     Literal _ann l              -> pretty l
     Seq     _ann es             -> "[" <> hsep (fmap pretty es) <> "]"
     Var     _ann v              -> pretty v
+    PrimDict e                  -> "primDict" <+> pretty e
 
-instance ( Pretty name
-         , Pretty binder
-         ) => Pretty (Decl name binder ann) where
+instance Pretty var => Pretty (Decl var ann) where
   pretty = \case
     DeclNetw _ann n t    -> parens ("declare-network" <+> pretty n <+> ":" <+> pretty t) <+> line
     DeclData _ann n t    -> parens ("declare-dataset" <+> pretty n <+> ":" <+> pretty t) <+> line
     DefFun   _ann n t e  -> parens ("define-fun" <+> pretty n <+> pretty t <+> pretty e) <+> line
 
-instance ( Pretty name
-         , Pretty binder
-         ) => Pretty (Prog name binder ann) where
+instance Pretty var => Pretty (Prog var ann) where
   pretty (Main ds) = vsep (fmap pretty ds)

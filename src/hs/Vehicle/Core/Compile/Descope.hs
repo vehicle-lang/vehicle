@@ -4,10 +4,7 @@ module Vehicle.Core.Compile.Descope
   , runDescopeWithCtx
   ) where
 
-import Control.Monad.Supply (MonadSupply, demand, runSupply, withSupply)
-import Control.Monad.Identity (Identity)
-import Control.Monad.Reader (MonadReader(..), runReaderT)
-import Data.Text (pack)
+import Control.Monad.Reader (MonadReader(..), runReader)
 import GHC.Stack (HasCallStack)
 import Prettyprinter ((<+>), Pretty(pretty))
 
@@ -18,17 +15,17 @@ runDescope :: Descope a b => a -> b
 runDescope = runDescopeWithCtx emptyCtx
 
 runDescopeWithCtx :: Descope a b => Ctx -> a -> b
-runDescopeWithCtx ctx e = runSupply (withSupply (\i -> "v" <> pack (show i)) (runReaderT (descope e) ctx)) (+ 1) (0 :: Integer)
+runDescopeWithCtx ctx e = runReader (descope e) ctx
 
-newtype Ctx = Ctx [Symbol]
+newtype Ctx = Ctx [Name]
 
 emptyCtx :: Ctx
 emptyCtx = Ctx mempty
 
-addToCtx :: OutputBinder -> Ctx -> Ctx
-addToCtx (Binder _ _ name _) (Ctx ctx) = Ctx (name : ctx)
+addBinderToCtx :: OutputBinder -> Ctx -> Ctx
+addBinderToCtx (Binder _ _ name _) (Ctx ctx) = Ctx (name : ctx)
 
-type MonadDescope m = (MonadSupply Symbol Identity m, MonadReader Ctx m)
+type MonadDescope m = MonadReader Ctx m
 
 -- |Throw an |IndexOutOfBounds| error using an arbitrary index.
 indexOutOfBounds :: HasCallStack => Index -> Int -> Provenance -> a
@@ -39,7 +36,7 @@ indexOutOfBounds index ctxSize p = developerError $
 
 lookupVar :: (HasCallStack, MonadDescope m) => Provenance -> CheckedVar -> m OutputVar
 lookupVar p = \case
-  Free (Identifier name) -> return name
+  Free (Identifier name) -> return $ User name
   Bound i -> do
     Ctx ctx <- ask
     case ctx !!? i of
@@ -50,15 +47,8 @@ lookupVar p = \case
 class Descope a b where
   descope :: MonadDescope m => a -> m b
 
-instance Descope CheckedAnn OutputAnn where
-  descope (RecAnn e p) = RecAnn <$> descope e <*> pure p
-
-instance Descope CheckedBind OutputBind where
-  descope (User name) = return name
-  descope Machine     = demand
-
 instance Descope CheckedBinder OutputBinder where
-  descope (Binder p v n e) = Binder p v <$> descope n <*> descope e
+  descope (Binder p v n e) = Binder p v n <$> descope e
 
 instance Descope CheckedArg OutputArg where
   descope (Arg p v e) = Arg p v <$> descope e
@@ -76,33 +66,30 @@ instance Descope CheckedExpr OutputExpr where
   descope e = showScopeExit $ case showScopeEntry e of
     Type     l                     -> return (Type l)
     Hole     p name                -> return (Hole p name)
-    Meta     ann i                 -> Meta    <$> descope ann <*> pure i
-    Var      ann v                 -> Var     <$> descope ann <*> lookupVar (prov ann) v
-    Ann      ann e t               -> Ann     <$> descope ann <*> descope e <*> descope t
-    App      ann fun arg           -> App     <$> descope ann <*> descope fun <*> descope arg
-    Builtin  ann op                -> Builtin <$> descope ann <*> pure op
-    Literal  ann l                 -> Literal <$> descope ann <*> pure l
-    Seq      ann es                -> Seq     <$> descope ann <*> traverse descope es
+    Meta     ann i                 -> return (Meta    ann i)
+    Builtin  ann op                -> return (Builtin ann op)
+    Literal  ann l                 -> return (Literal ann l)
+    Var      ann v                 -> Var ann <$> lookupVar (prov ann) v
+    Ann      ann e1 t              -> Ann ann <$> descope e1 <*> descope t
+    App      ann fun arg           -> App ann <$> descope fun <*> descope arg
+    Seq      ann es                -> Seq ann <$> traverse descope es
 
 
     Let ann bound binder body -> do
-      ann'    <- descope ann
       bound'  <- descope bound
       binder' <- descope binder
-      body'   <- local (addToCtx binder') (descope body)
-      return $ Let ann' bound' binder' body'
+      body'   <- local (addBinderToCtx binder') (descope body)
+      return $ Let ann bound' binder' body'
 
     Lam ann binder body -> do
-      ann'    <- descope ann
       binder' <- descope binder
-      body'   <- local (addToCtx binder') (descope body)
-      return $ Lam ann' binder' body'
+      body'   <- local (addBinderToCtx binder') (descope body)
+      return $ Lam ann binder' body'
 
     Pi ann binder body -> do
-      ann'    <- descope ann
       binder' <- descope binder
-      body'   <- local (addToCtx binder') (descope body)
-      return $ Pi ann' binder' body'
+      body'   <- local (addBinderToCtx binder') (descope body)
+      return $ Pi ann binder' body'
 
 -- No need to add the declaration identifiers to the ctx, as they
 -- are untouched during conversion back from de Bruijn indice's.

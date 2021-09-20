@@ -39,7 +39,7 @@ type InputProg    = Prog    InputAnn
 -- * Type of annotations attached to the Frontend AST that are output by
 -- the compiler
 
-type OutputAnn     = RecAnn Provenance
+type OutputAnn     = Provenance
 type OutputArg     = Arg     OutputAnn
 type OutputBinder  = Binder  OutputAnn
 type OutputLetDecl = LetDecl OutputAnn
@@ -130,12 +130,3 @@ instance HasProvenance (LetDecl ann) where
 
 instance HasProvenance (Arg ann) where
   prov (Arg p _ _) = p
-
-instance HasProvenance OutputAnn where
-  prov (RecAnn _ p) = p
-
-instance HasVisibility (Binder ann) where
-  visibility (Binder _ v _ _) = v
-
-instance HasVisibility (Arg ann) where
-  visibility (Arg _ v _) = v

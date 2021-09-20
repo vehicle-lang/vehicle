@@ -7,7 +7,3 @@ allow-newer: true
 packages:
 - .
 
-extra-deps:
-- git: https://github.com/wenkokke/transformers-supply.git
-  commit: 0568f61af6bdea86380fe9212fed7cd9804ba23c
-

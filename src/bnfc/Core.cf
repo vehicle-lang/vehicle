@@ -25,9 +25,6 @@ position token TypeToken ({"Type"} digit+);
 ExplicitNameAndType.   Binder ::= "(" NameToken ":type" Expr ")";
 ImplicitNameAndType.   Binder ::= "{" NameToken ":type" Expr "}";
 ConstraintNameAndType. Binder ::= "{{" NameToken ":type" Expr "}}";
-ExplicitName.          Binder ::= NameToken;
-ImplicitName.          Binder ::= "{" NameToken "}";
-ConstraintName.        Binder ::= "{{" NameToken "}}";
 
 -- * Function arguments
 

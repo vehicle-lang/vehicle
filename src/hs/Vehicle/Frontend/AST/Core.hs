@@ -19,6 +19,9 @@ data Binder ann
     (Maybe (Expr ann)) -- Variable typing annotation (optional)
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
+instance HasVisibility (Binder ann) where
+  vis (Binder _ v _ _) = v
+
 -- | Arguments to function applications
 data Arg ann
   = Arg
@@ -26,6 +29,9 @@ data Arg ann
     Visibility         -- Argument visibility
     (Expr ann)         -- Argument expression
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+instance HasVisibility (Arg ann) where
+  vis (Arg _ v _) = v
 
 -- | An individual let declaration
 data LetDecl ann
@@ -48,6 +54,7 @@ data Expr ann
   | Var      ann Symbol
   | Literal  ann Literal
   | Hole     Provenance Symbol
+  | PrimDict (Expr ann)
 
   -- Kinds
   | Type Level

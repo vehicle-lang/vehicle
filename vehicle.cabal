@@ -37,6 +37,7 @@ library
                       , Vehicle.Prelude.Token
                       , Vehicle.Prelude.Visibility
                       , Vehicle.Prelude.Logging
+                      , Vehicle.Prelude.Supply
                       , Vehicle.Frontend.AST
                       , Vehicle.Frontend.AST.Core
                       , Vehicle.Frontend.AST.Utils
@@ -53,17 +54,17 @@ library
                       , Vehicle.Core.Compile
                       , Vehicle.Core.Compile.DSL
                       , Vehicle.Core.Compile.Scope
-                      , Vehicle.Core.Compile.Unify
                       , Vehicle.Core.Compile.Type
+                      , Vehicle.Core.Compile.Type.Unify
+                      , Vehicle.Core.Compile.Type.TypeClass
                       , Vehicle.Core.Compile.Descope
                       , Vehicle.Core.Compile.Normalise
-                      -- , Vehicle.Core.Compile.Normalise.Core
                       -- , Vehicle.Core.Compile.Normalise.Quantifier
                       , Vehicle.Core.Parse
                       , Vehicle.Core.Print.Core
                       , Vehicle.Core.Print.Frontend
                       --, Vehicle.Backend.ITP.Agda
-                      , Vehicle.Backend.ITP.Core
+                      --, Vehicle.Backend.ITP.Core
                       -- Files generated from Core.cf
                       , Vehicle.Core.Abs
                       , Vehicle.Core.ErrM
@@ -81,8 +82,6 @@ library
                       , gen/hs
   build-depends:        array                >=0.5 && <1
                       , hashable             >=1.3 && <2
-                      -- TODO can we eliminate this
-                      , transformers-supply  >=0.2 && <1
                       , transformers         >=0.4 && <0.6
                       , mtl                  >=2.2 && <3
                       , recursion-schemes    >=5.2 && <6
@@ -122,7 +121,6 @@ library
                       , DeriveFoldable
                       , DeriveTraversable
                       , DeriveGeneric
-                      , DeriveAnyClass
 
 executable vehicle
   import:             common-base

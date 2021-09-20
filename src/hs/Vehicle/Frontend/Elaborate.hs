@@ -5,12 +5,10 @@ module Vehicle.Frontend.Elaborate
 import Control.Monad.Identity (runIdentity)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Debug.Trace (trace)
 
 import Vehicle.Prelude
-import Vehicle.Core.AST qualified as VC hiding (Name(..))
+import Vehicle.Core.AST qualified as VC
 import Vehicle.Frontend.AST qualified as VF
-import Vehicle.Core.Print.Core (showCore)
 
 --------------------------------------------------------------------------------
 -- $sugar
@@ -80,29 +78,28 @@ elabBinders :: MonadElab m => (VC.InputBinder -> VC.InputExpr -> VC.InputExpr) -
 elabBinders f bs body = fst <$> elabAndReturnBinders f bs body
 
 elabFunInputType :: MonadElab m => VF.InputExpr -> m VC.InputBinder
-elabFunInputType t = VC.Binder (VF.annotation t) Explicit "_" <$> elab t
+elabFunInputType t = VC.Binder (VF.annotation t) Explicit VC.Machine <$> elab t
 
 instance Elab VF.InputBinder VC.InputBinder where
-  elab (VF.Binder ann vis name t) = VC.Binder ann vis name <$> maybe (hole (prov ann)) elab t
+  elab (VF.Binder ann v n t) = VC.Binder ann v (VC.User n) <$> maybe (hole (prov ann)) elab t
 
 instance Elab VF.InputArg VC.InputArg where
-  elab (VF.Arg ann vis e) = VC.Arg ann vis <$> elab e
+  elab (VF.Arg ann v e) = VC.Arg ann v <$> elab e
 
 instance Elab VF.InputExpr VC.InputExpr where
   elab = \case
     -- Core.
+    VF.Type l             -> return (VC.Type l)
     VF.Forall  ann ns t   -> elabBinders (VC.Pi ann) (NonEmpty.toList ns) t
     VF.Fun     ann t1 t2  -> VC.Pi ann <$> elabFunInputType t1 <*> elab t2
     VF.Ann     ann e t    -> VC.Ann ann <$> elab e <*> elab t
     VF.Let    _ann ds e   -> elabLetDecls e (NonEmpty.toList ds)
     VF.Lam     ann ns e   -> elabBinders (VC.Lam ann) (NonEmpty.toList ns) e
     VF.App     ann e1 e2  -> VC.App ann <$> elab e1 <*> elab e2
-    VF.Var     ann n      -> return $ VC.Var ann n
+    VF.Var     ann n      -> return $ VC.Var ann (VC.User n)
     VF.Literal ann l      -> return $ VC.Literal ann l
     VF.Hole    ann name   -> return $ VC.Hole ann name
-
-    -- Kinds.
-    VF.Type l            -> return (VC.Type l)
+    VF.PrimDict _e        -> developerError "PrimDict not supported during elaboration"
 
     -- Types.
     VF.Bool    ann        -> op0 VC.Bool   ann

@@ -7,12 +7,11 @@ module Vehicle.Core.Compile.Type
 
 import Prelude hiding (pi)
 import Control.Monad (when)
-import Control.Monad.Except (MonadError(..), ExceptT, withExcept)
+import Control.Monad.Except (MonadError(..), ExceptT, withExcept, withExceptT)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
 import Control.Monad.State (MonadState(..), StateT(..), modify, runStateT)
-import Debug.Trace (trace)
+import Data.Foldable (foldrM)
 import Data.Text (Text)
-import Data.Foldable (toList, foldrM)
 import Data.List (foldl')
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -24,7 +23,8 @@ import Prettyprinter ((<+>), Pretty(..), line)
 
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.DSL
-import Vehicle.Core.Compile.Unify
+import Vehicle.Core.Compile.Type.Unify
+import Vehicle.Core.Compile.Type.TypeClass
 import Vehicle.Core.Print.Core (prettyCore)
 import Vehicle.Prelude
 
@@ -43,22 +43,27 @@ runTypeChecking prog = do
   logDebug "Beginning unification"
   logDebug (layoutAsText $ "Constraints:" <+> pretty uniConstraints)
 
-  let solveConstraints = withExcept UnificationError $ solve (uniConstraints, mempty)
-  (unsolvedConstraints, metaSubst) <- liftExceptWithLogging solveConstraints
-  prog5 <- case unsolvedConstraints of
-    []     -> return $ substMetas metaSubst checkedProg
-    c : cs -> throwError $ UnsolvedConstraints (c :| cs)
+  let solveConstraints = withExcept UnificationError $ solveUnificationConstraints (uniConstraints, mempty)
+  (unsolvedUnificationConstraints, unificationMetaSubst) <- liftExceptWithLogging solveConstraints
+  prog5 <- case unsolvedUnificationConstraints of
+    []     -> return $ substMetas unificationMetaSubst checkedProg
+    c : cs -> throwError $ UnsolvedUnificationConstraints (c :| cs)
 
-  logDebug (layoutAsText $ "Solution:" <+> pretty metaSubst)
+  logDebug (layoutAsText $ "Solution:" <+> pretty unificationMetaSubst)
   logDebug "Ending unification\n"
 
-  let tClassConstraints = substMetas metaSubst $ typeClassConstraints metaCtx
+  let tClassConstraints = substMetas unificationMetaSubst $ typeClassConstraints metaCtx
 
-  logDebug "Beginning type-class resolution"
-  logDebug (layoutAsText $ "Type-class constraints" <+> pretty tClassConstraints)
-  logDebug "Type-class resolution not yet implemented\n"
+  -- Solve type-class constraints and substitute through
+  let typeClassConstraints = solveTypeClassConstraints tClassConstraints
+  (typeClassMetaSubst, unsolvedTypeClassConstraints) <- withExceptT TypeClassResolutionError typeClassConstraints
+  prog6 <- case unsolvedTypeClassConstraints of
+    []     -> return $ substMetas typeClassMetaSubst prog5
+    c : cs -> throwError $ UnsolvedTypeClassConstraints (c :| cs)
 
-  return prog5
+  -- Return the result
+  return prog6
+
 
 -- To solve / synthesise typeClassConstraints :
 --  1. Normalise each one in the current metactxt
@@ -81,10 +86,14 @@ data TypingError
   | UnsupportedOperation
     Provenance              -- The location of the unsupported operation.
     Text                    -- A description of the unsupported operation.
-  | UnsolvedConstraints
-    (NonEmpty UnificationConstraint) -- The constraints that could not be solved
   | UnificationError
     UnificationError
+  | UnsolvedUnificationConstraints
+    (NonEmpty UnificationConstraint)
+  | TypeClassResolutionError
+    TypeClassResolutionError
+  | UnsolvedTypeClassConstraints
+    (NonEmpty TypeClassConstraint)
 
 instance MeaningfulError TypingError where
   details (Mismatch p candidate expected) = UError $ UserError
@@ -106,7 +115,14 @@ instance MeaningfulError TypingError where
     , fix        = "unknown"
     }
 
-  details (UnsolvedConstraints cs) = let firstConstraint = NonEmpty.head cs in
+  details (UnsolvedUnificationConstraints cs) = let firstConstraint = NonEmpty.head cs in
+    UError $ UserError
+    { provenance = prov firstConstraint
+    , problem    = "unsolved constraint " <+> pretty firstConstraint
+    , fix        = "unknown"
+    }
+
+  details (UnsolvedTypeClassConstraints cs) = let firstConstraint = NonEmpty.head cs in
     UError $ UserError
     { provenance = prov firstConstraint
     , problem    = "unsolved constraint " <+> pretty firstConstraint
@@ -114,6 +130,8 @@ instance MeaningfulError TypingError where
     }
 
   details (UnificationError e) = details e
+
+  details (TypeClassResolutionError e) = details e
 
 --------------------------------------------------------------------------------
 -- Contexts
@@ -283,7 +301,7 @@ freshMeta p resultType = do
   boundCtx <- getBoundCtx
   let metaType =
         foldr (\(name, t) resTy ->
-                  Pi (RecAnn (piType (getType t) (getType resTy)) mempty)
+                  Pi mempty
                      (Binder mempty Explicit name t)
                      resTy)
           resultType
@@ -294,12 +312,10 @@ freshMeta p resultType = do
     MetaCtx { metaVariableTypes = IntMap.insert metaName metaType metaVariableTypes , ..}
 
   -- Create bound variables for everything in the context
-  let boundEnv =
-        reverse [ Var (RecAnn varType mempty) (Bound varIndex)
-                | (varIndex , (_ , varType)) <- zip [0..] (toList boundCtx) ]
+  let boundEnv = reverse [ Var mempty (Bound varIndex) | varIndex <- [0..length boundCtx] ]
 
   -- Returns a meta applied to every bound variable in the context
-  let meta = foldl' cApp (Meta (RecAnn metaType p) metaName) boundEnv
+  let meta = foldl' cApp (Meta p metaName) boundEnv
   return (metaName, meta, metaType)
 
 -- Generate new metavariables for any implicit/constraint arguments
@@ -320,7 +336,7 @@ insertArgs p fun' (Pi _ (Binder _ vArg _ tArg') tRes')
   when (vArg == Constraint) $
     addTypeClassConstraints [meta `Has` metaType]
 
-  insertArgs p (App (RecAnn tResSubst' mempty) fun' (Arg mempty vArg metaArg)) tResSubst'
+  insertArgs p (App mempty fun' (Arg mempty vArg metaArg)) tResSubst'
 insertArgs _ fun' typ' =
   return (fun', typ')
 
@@ -340,7 +356,7 @@ check expectedType expr = showCheckExit $ do
 
         addToBoundCtx nBound tBound' $ do
           body' <- check tRes body
-          return $ Lam (RecAnn expectedType p) (Binder pBound Implicit nBound tBound') body'
+          return $ Lam p (Binder pBound Implicit nBound tBound') body'
 
     (Pi _ (Binder _ Implicit name tBound2) tRes, e) ->
       -- Add the implict argument to the context
@@ -352,7 +368,7 @@ check expectedType expr = showCheckExit $ do
         let newBinder = Binder mempty Implicit name tBound2
 
         -- Prepend a new lambda to the expression with the implicit binder
-        return $ Lam (RecAnn expectedType mempty) newBinder e'
+        return $ Lam mempty newBinder e'
 
     (_, Lam p (Binder _ vBound _ _) _) -> do
           let expected = unnamedPi vBound (tHole "a") (const (tHole "b"))
@@ -374,6 +390,7 @@ check expectedType expr = showCheckExit $ do
     (_, e@(Literal p _))     -> viaInfer p      expectedType e
     (_, e@(Seq     p _))     -> viaInfer p      expectedType e
     (_, e@(Ann     p _ _))   -> viaInfer p      expectedType e
+    (_, PrimDict{})          -> developerError "PrimDict should never be type-checked"
 
 inferApp :: TCM m
          => Provenance
@@ -392,7 +409,7 @@ inferApp p (Arg pArg vArg eArg) fun' = \case
       let tResSubst' = eArg' `substInto` tRes'
 
       -- Return the appropriately annotated type with its inferred kind.
-      return (App (RecAnn tResSubst' p) fun' (Arg pArg vArg eArg') , tResSubst')
+      return (App p fun' (Arg pArg vArg eArg') , tResSubst')
 
   tFun' -> do
     let expected = unnamedPi vArg (tHole "a") (const $ tHole "b")
@@ -417,8 +434,7 @@ infer e = showInferExit $ do
     Ann ann expr t   -> do
       (t', _) <- infer t
       expr' <- check t' expr
-      let ann' = RecAnn t' ann
-      return (Ann ann' expr' t' , t')
+      return (Ann ann expr' t' , t')
 
     App p fun arg@(Arg _ vArg _) -> do
       -- Infer the type of the function.
@@ -429,17 +445,17 @@ infer e = showInferExit $ do
         else return (fun', tFun')
       inferApp p arg fun' tFun'
 
-    Pi p (Binder pBound vis name arg) res -> do
+    Pi p (Binder pBound v name arg) res -> do
       (arg', tArg') <- infer arg
 
       addToBoundCtx name arg' $ do
         (res', tRes') <- infer res
         let t' = tArg' `tMax` tRes'
-        return (Pi (RecAnn t' p) (Binder pBound vis name arg') res' , t')
+        return (Pi p (Binder pBound v name arg') res' , t')
 
     Builtin p op -> do
       let t' = typeOfBuiltin p op
-      return (Builtin (RecAnn t' p) op, t')
+      return (Builtin p op, t')
 
     Var p (Bound i) -> do
       -- Lookup the type of the variable in the context.
@@ -447,7 +463,7 @@ infer e = showInferExit $ do
       case ctx !!? i of
         Just (_, t') -> do
           let t'' = liftDBIndices (i+1) t'
-          return (Var (RecAnn t'' p) (Bound i), t'')
+          return (Var p (Bound i), t'')
         Nothing      -> developerError $
           "Index" <+> pretty i <+> "out of bounds when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 
@@ -455,12 +471,12 @@ infer e = showInferExit $ do
       -- Lookup the type of the declaration variable in the context.
       ctx <- getDeclCtx
       case Map.lookup ident ctx of
-        Just t' -> return (Var (RecAnn t' p) (Free ident), t')
+        Just t' -> return (Var p (Free ident), t')
         -- This should have been caught during scope checking
         Nothing -> developerError $
           "Declaration'" <+> pretty ident <+> "'not found when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 
-    Let p bound (Binder pBound vis name tBound)  body -> do
+    Let p bound (Binder pBound v name tBound)  body -> do
       -- Infer the type of the let arg from the annotation on the binder
       (tBound', _) <- infer tBound
 
@@ -471,21 +487,21 @@ infer e = showInferExit $ do
       addToBoundCtx name tBound' $ do
         -- Infer the type of the body
         (body' , tBody') <- infer body
-        return (Let (RecAnn tBody' p) bound' (Binder pBound vis name tBound') body' , tBody')
+        return (Let p bound' (Binder pBound v name tBound') body' , tBody')
 
-    Lam p (Binder pBound vis name tBound) body -> do
+    Lam p (Binder pBound v name tBound) body -> do
       -- Infer the type of the bound variable from the binder
       (tBound', _) <- infer tBound
 
       -- Update the context with the bound variable
       addToBoundCtx name tBound' $ do
         (body' , tBody') <- infer body
-        let t' = Pi (RecAnn (piType tBound' tBody') p) (Binder pBound vis name tBound') tBody'
-        return (Lam (RecAnn t' p) (Binder pBound vis name tBound') body' , t')
+        let t' = Pi p (Binder pBound v name tBound') tBody'
+        return (Lam p (Binder pBound v name tBound') body' , t')
 
     Literal p l -> do
       let t' = typeOfLiteral p l
-      return (Literal (RecAnn t' p) l, t')
+      return (Literal p l, t')
 
     Seq p es -> do
       (es', ts') <- unzip <$> traverse infer es
@@ -500,7 +516,9 @@ infer e = showInferExit $ do
       (meta, tCont', _) <- freshMeta p Type0
       -- addTypeClassConstraints [meta `Has` unembed (isContainer p (embed tCont') (embed tElem'))]
 
-      return (Seq (RecAnn tCont' p) es' , tCont')
+      return (Seq p es' , tCont')
+
+    PrimDict{} -> developerError "PrimDict should never be type-checked"
 
 -- TODO: unify DeclNetw and DeclData
 inferDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
@@ -520,7 +538,6 @@ inferDecls (DeclData p ident t : decls) = do
       inferDecls decls
     return $ DeclData p ident t' : decls'
 inferDecls (DefFun p ident t body : decls) = do
-    let _ = trace ("check-fun-entry" <> layoutAsString (pretty ident))
     (t', ty') <- infer t
     assertIsType p ty'
 
@@ -529,7 +546,6 @@ inferDecls (DefFun p ident t body : decls) = do
     decls' <- addToDeclCtx (deProv ident) t' $ do
       inferDecls decls
 
-    let _ = trace ("check-fun-exit" <> layoutAsString (pretty ident))
     return $ DefFun p ident t' body' : decls'
 
 inferProg :: TCM m => UncheckedProg -> m CheckedProg

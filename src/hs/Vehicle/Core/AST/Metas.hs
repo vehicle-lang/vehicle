@@ -47,28 +47,25 @@ instance MetaSubstitutable CheckedArg where
 instance MetaSubstitutable CheckedBinder where
   substM (Binder p v n t) = Binder p v n <$> substM t
 
-instance MetaSubstitutable CheckedAnn where
-  substM (RecAnn e ann) = RecAnn <$> substM e <*> pure ann
-
 instance MetaSubstitutable CheckedExpr where
   substM = \case
     Type l                   -> return (Type l)
     Hole p name              -> return (Hole p name)
-    Builtin ann op           -> Builtin <$> substM ann <*> pure op
-    Literal ann l            -> Literal <$> substM ann <*> pure l
-    Seq     ann es           -> Seq     <$> substM ann <*> traverse substM es
-    Ann     ann term typ     -> Ann     <$> substM ann <*> substM term   <*> substM typ
-    App     ann fun arg      -> App     <$> substM ann <*> substM fun    <*> substM arg
-    Pi      ann binder res   -> Pi      <$> substM ann <*> substM binder <*> substMetasLiftLocal res
-    Let     ann e1 binder e2 -> Let     <$> substM ann <*> substM e1     <*> substM binder <*> substMetasLiftLocal e2
-    Lam     ann binder e     -> Lam     <$> substM ann <*> substM binder <*> substMetasLiftLocal e
-    Var     ann v            -> Var     <$> substM ann <*> pure v
+    Builtin ann op           -> return (Builtin ann op)
+    Literal ann l            -> return (Literal ann l)
+    Var     ann v            -> return (Var     ann v)
+    Seq     ann es           -> Seq     ann <$> traverse substM es
+    Ann     ann term typ     -> Ann     ann <$> substM term   <*> substM typ
+    App     ann fun arg      -> App     ann <$> substM fun    <*> substM arg
+    Pi      ann binder res   -> Pi      ann <$> substM binder <*> substMetasLiftLocal res
+    Let     ann e1 binder e2 -> Let     ann <$> substM e1     <*> substM binder <*> substMetasLiftLocal e2
+    Lam     ann binder e     -> Lam     ann <$> substM binder <*> substMetasLiftLocal e
 
     Meta    ann m -> do
       subst <- ask
-      case IntMap.lookup m subst of
-        Nothing -> Meta <$> substM ann <*> pure m
-        Just e  -> return e
+      return $ case IntMap.lookup m subst of
+        Nothing -> Meta ann m
+        Just e  -> e
 
 instance MetaSubstitutable CheckedDecl where
   substM = \case

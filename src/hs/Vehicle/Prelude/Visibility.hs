@@ -11,7 +11,9 @@ import Vehicle.Prelude.Provenance
 
 -- | Visibility of function arguments
 data Visibility = Explicit | Implicit | Constraint
-  deriving (Eq, Ord, Show, Generic, NFData)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData Visibility
 
 visBrackets :: Visibility -> Doc a -> Doc a
 visBrackets Explicit   = id
@@ -29,4 +31,4 @@ visProv Constraint = expandProvenance (2,2)
 -- | Type class for types which have provenance information
 
 class HasVisibility a where
-  visibility :: a -> Visibility
+  vis :: a -> Visibility

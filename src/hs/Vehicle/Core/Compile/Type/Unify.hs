@@ -1,9 +1,8 @@
 
-module Vehicle.Core.Compile.Unify
+module Vehicle.Core.Compile.Type.Unify
   ( UnificationConstraint(..)
   , UnificationError(..)
-  , TypeClassConstraint(..)
-  , solve
+  , solveUnificationConstraints
   , makeConstraint
   ) where
 
@@ -20,17 +19,7 @@ import Vehicle.Prelude
 import Vehicle.Core.Print.Core ()
 import Vehicle.Core.Print.Frontend (prettyFrontend)
 import Vehicle.Core.AST
-import Vehicle.Core.Compile.DSL (piType)
 import Vehicle.Core.Compile.Normalise (whnf)
-
-data TypeClassConstraint = Meta `Has` CheckedExpr
-  deriving (Show)
-
-instance Pretty TypeClassConstraint where
-  pretty (m `Has` e) = "?" <> pretty m <+> "~" <+> pretty e
-
-instance MetaSubstitutable TypeClassConstraint where
-  substM (m `Has` e) = (m `Has`) <$> substM e
 
 --------------------------------------------------------------------------------
 -- Definitions
@@ -41,10 +30,13 @@ data UnificationContext = UnificationContext
   , splitContext :: [(Name, Name)] -- The context after unification.
   } deriving (Show)
 
-addToCtx :: CheckedBinder -> CheckedBinder -> UnificationContext -> UnificationContext
-addToCtx b1 b2 UnificationContext{..} = UnificationContext
+addBinderToCtx :: CheckedBinder -> CheckedBinder -> UnificationContext -> UnificationContext
+addBinderToCtx b1 b2 = addNameToCtx (binderName b1) (binderName b2)
+
+addNameToCtx :: Name -> Name -> UnificationContext -> UnificationContext
+addNameToCtx n1 n2 UnificationContext{..} = UnificationContext
   { sharedContext = sharedContext
-  , splitContext = (binderName b1, binderName b2) : splitContext
+  , splitContext = (n1, n2) : splitContext
   }
 
 -- | A pair of expressions should be equal
@@ -88,7 +80,7 @@ newtype UnificationError
 instance MeaningfulError UnificationError where
   details (UnificationFailure constraint) = UError $ UserError
     { provenance = prov constraint
-    , problem    = "Could not solve the constraint:" <+> pretty constraint
+    , problem    = "Could not solve the unification constraint:" <+> pretty constraint
     , fix        = "Try adding more type annotations"
     }
 
@@ -130,8 +122,8 @@ isBlocked (Just solvedMetas) (Unify _ _ _ blockingMetas _) =
   -- and none of the metas it is blocking on have been solved in the last pass.
   not (IntSet.null blockingMetas) && IntSet.disjoint solvedMetas blockingMetas
 
-solve :: UnificationProblem -> Except UnificationError UnificationProblem
-solve problem = fst <$> go (problem, Nothing)
+solveUnificationConstraints :: UnificationProblem -> Except UnificationError UnificationProblem
+solveUnificationConstraints problem = fst <$> go (problem, Nothing)
   where
     go :: (UnificationProblem, Maybe MetaSet)
         -> Except UnificationError (UnificationProblem, Maybe MetaSet)
@@ -194,9 +186,9 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
     -- We ASSUME that all terms here are in normal form, so there
     -- will never be an unreduced redex.
     ((Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, []))
-      | visibility binder1 /= visibility binder2 -> throwError $ UnificationFailure constraint
+      | vis binder1 /= vis binder2 -> throwError $ UnificationFailure constraint
       | otherwise -> return
-        [ Unify p (addToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2) ]
+        [ Unify p (addBinderToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2) ]
 
     (Seq _ es1, []) :~: (Seq _ es2, [])
       -- TODO more informative error message
@@ -206,13 +198,13 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
                                     zipWith (curry (Unify p ctx (exprs : history) mempty)) es1 es2
 
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
-      | visibility binder1 /= visibility binder2 -> throwError $ UnificationFailure constraint
+      | vis binder1 /= vis binder2 -> throwError $ UnificationFailure constraint
       | otherwise -> do
           -- !!TODO!! Block until binders are solved
           -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
           -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
           blocked1 <- solveConstraint (Unify p ctx (exprs : history) mempty (binderType binder1, binderType binder2))
-          blocked2 <- solveConstraint (Unify p (addToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2))
+          blocked2 <- solveConstraint (Unify p (addBinderToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2))
           return (blocked1 ++ blocked2)
 
     (Builtin _ op1, args1) :~: (Builtin _ op2, args2) -> do
@@ -283,15 +275,7 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
                 -- BUG: using 'DSL' here doesn't work because it cannot handle open terms
                 solution = -- fromDSL (foldr foldFn (toDSL defnBody) args)
                     foldr (\(Arg _ v argE) body ->
-                             let argType = {- fromJust $ substAll subst -} (getType argE)
-                                 bodyType = getType body
-                             -- TODO: 'getType argE' needs to be
-                             -- renamed to be in the implicit context
-                             -- being generated here.
-                                 ann = {- trace ("Type: " ++ show (getType argE) ++ " : " ++ show (getType (getType argE)) ++ " --> " ++ show argType ++ " : " ++ show (getType argType)) $ -} RecAnn (piType (getType argType) (getType bodyType)) mempty
-                             in
-                             Lam (RecAnn (Pi ann (Binder mempty v Machine argType) bodyType) mempty)
-                                 (Binder mempty v Machine argType) body)
+                             Lam mempty (Binder mempty v Machine argE) body)
                       defnBody
                       args
               in
@@ -344,10 +328,5 @@ solveArg :: MonadUnify m
          -> (CheckedArg, CheckedArg)
          -> m UnificationConstraint
 solveArg c@(Unify p ctx history _metas es) (arg1, arg2)
-  | visibility arg1 /= visibility arg2 = throwError $ UnificationFailure c
+  | vis arg1 /= vis arg2 = throwError $ UnificationFailure c
   | otherwise = return $ Unify p ctx (es : history) mempty (argExpr arg1 , argExpr arg2)
-
-decomposeApp :: CheckedExpr -> (CheckedExpr, [CheckedArg])
-decomposeApp = go []
-  where go args (App _ann fun arg) = go (arg:args) fun
-        go args e                  = (e, args)

@@ -1,4 +1,4 @@
-
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
 module Vehicle.Prelude.Logging
   ( Severity(..)
@@ -20,11 +20,13 @@ import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.State (StateT(..), get, modify, evalStateT)
 import Control.Monad.Writer (WriterT, tell, runWriterT)
 import Control.Monad.Identity (Identity, runIdentity)
-import Control.Monad.Except (Except, ExceptT, mapExceptT)
+import Control.Monad.Except (MonadError(..), Except, ExceptT, mapExceptT)
 import Control.Monad.Reader (ReaderT)
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.Console.ANSI
+
+import Vehicle.Prelude.Supply (SupplyT)
 
 data Severity
   = Error
@@ -50,20 +52,9 @@ class Monad m => MonadLogger m where
 
 newtype LoggerT m a = LoggerT
   { unloggerT :: WriterT [Message] (StateT Int m) a
-  }
+  } deriving (Functor, Applicative, Monad)
 
 type Logger = LoggerT Identity
-
-instance Functor m => Functor (LoggerT m) where
-  fmap f = LoggerT . fmap f . unloggerT
-
--- TODO why do I need `Monad` here and not `Applicative`???
-instance Monad m => Applicative (LoggerT m) where
-  pure x = LoggerT (pure x)
-  f <*> x = LoggerT (unloggerT f <*> unloggerT x)
-
-instance Monad m => Monad (LoggerT m) where
-  x >>= f = LoggerT (unloggerT x >>= unloggerT . f)
 
 instance Monad m => MonadLogger (LoggerT m) where
   getCallDepth  = LoggerT get
@@ -95,13 +86,18 @@ instance (MonadLogger m) => MonadLogger (ExceptT e m) where
   decrCallDepth = lift decrCallDepth
   logMessage    = lift . logMessage
 
+instance MonadLogger m => MonadLogger (SupplyT s m) where
+  getCallDepth  = lift getCallDepth
+  incrCallDepth = lift incrCallDepth
+  decrCallDepth = lift decrCallDepth
+  logMessage    = lift . logMessage
+
 instance MonadTrans LoggerT where
   lift = LoggerT . lift . lift
-{-
+
 instance MonadError e m => MonadError e (LoggerT m) where
-  throwError e   = lift (throwError e)
-  catchError e f = _
--}
+  throwError     = lift . throwError
+  catchError m f = LoggerT (catchError (unloggerT m) (unloggerT . f))
 
 runLoggerT :: Monad m => LoggerT m a -> m (a, [Message])
 runLoggerT (LoggerT logger) = evalStateT (runWriterT logger) 0
