@@ -16,7 +16,8 @@ import Vehicle.Prelude
 import Vehicle.Core.Print.Core ()
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Type.Core
-import Vehicle.Core.Compile.Type.Meta
+import Vehicle.Core.Compile.Type.Meta hiding (metaSolved)
+import Vehicle.Core.Compile.Type.Meta qualified as Meta (metaSolved)
 import Vehicle.Core.Compile.Type.WHNF (whnf)
 
 
@@ -57,7 +58,9 @@ solveUnificationConstraints = do
 
       -- Exit if we have not succeeded in solving any metas in the last pass
       (constraints, Just metasSolved)
-        | IntSet.null metasSolved -> return (constraints, Nothing)
+        | IntSet.null metasSolved -> do
+          logDebug "Unable to make progress"
+          return (constraints, Nothing)
 
       -- Otherwise make another pass
       (constraints, metasSolved) -> do
@@ -295,3 +298,12 @@ positionalIntersection _ []       = []
 positionalIntersection (x : xs) (y : ys)
  | x == y    = x : positionalIntersection xs ys
  | otherwise = positionalIntersection xs ys
+
+metaSolved :: MonadUnifyPass m
+           => Provenance
+           -> Meta
+           -> CheckedExpr
+           -> m ()
+metaSolved p m e = do
+  tell (IntSet.singleton m)
+  Meta.metaSolved p m e
