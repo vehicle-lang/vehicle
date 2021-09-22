@@ -2,21 +2,22 @@
 module Vehicle.Core.Compile.Normalise where
 
 import Control.Monad.Except (MonadError, ExceptT)
-import Control.Monad.State (MonadState(..))
-import Data.IntMap qualified as IntMap
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
 
 -- |Run a function in 'MonadNorm'.
-runNorm :: a -> ExceptT NormError Logger a
+runNorm :: Norm a => a -> ExceptT NormError Logger a
 runNorm = nf
 
 --------------------------------------------------------------------------------
 -- Setup
 
 -- |Constraint for the monad stack used by the normaliser.
-type MonadNorm m = (MonadError NormError m, MonadLogger m)
+type MonadNorm m =
+  ( MonadError NormError m
+  , MonadLogger m
+  )
 
 -- |Errors thrown during normalisation
 newtype NormError
@@ -68,6 +69,9 @@ instance Norm CheckedExpr where
       normalisedFn  <- nf fn
       normApp (App ann normalisedFn normalisedArg)
 
+instance Norm CheckedArg where
+  nf (Arg p v e) = Arg p v <$> nf e
+
 instance Norm CheckedDecl where
   nf = \case
     DeclNetw ann arg typ    -> DeclNetw ann arg <$> nf typ
@@ -82,76 +86,76 @@ normApp e = case decomposeApp e of
   (Lam _ _ funcBody, Arg _ _ arg : _) -> nf (substInto arg funcBody)
   (Builtin _ op, args) -> let ann = annotation e in case (op, map argExpr args) of
     -- Equality
-    (Eq, (_, _, _, ETrue  _, e2))         -> return e2
-    (Eq, (_, _, _, EFalse _, e2))         -> normApp $ _ --Op1 ENot e2 ann ann1 pos
-    (Eq, (_, _, _, EInt  _ i, EInt  _ j)) -> return $ mkBool (i == j) ann
-    (Eq, (_, _, _, EReal _ x, EReal _ y)) -> return $ mkBool (x == y) ann
+    (Eq, [_, _, _, ETrue  _, e2])         -> return e2
+    --(Eq, [_, _, _, EFalse _, e2])         -> normApp $ _ --Op1 ENot e2 ann ann1 pos
+    (Eq, [_, _, _, EInt  _ i, EInt  _ j]) -> return $ mkBool (i == j) ann
+    (Eq, [_, _, _, EReal _ x, EReal _ y]) -> return $ mkBool (x == y) ann
     -- TODO implement reflexive rules?
 
     -- Not
-    (Not, (_, _, ETrue  _)) -> return $ EFalse ann
-    (Not, (_, _, EFalse _)) -> return $ ETrue  ann
+    (Not, [_, _, ETrue  _]) -> return $ EFalse ann
+    (Not, [_, _, EFalse _]) -> return $ ETrue  ann
     -- TODO implement idempotence rules?
 
     -- And
-    (And, (_, _, ETrue  _  , e2))     -> return e2
-    (And, (_, _, e1,       ETrue  _)) -> return e1
-    (And, (_, _, EFalse _, _))        -> return $ EFalse ann
-    (And, (_, _, _,        EFalse _)) -> return $ EFalse ann
+    (And, [_, _, ETrue  _  , e2])     -> return e2
+    (And, [_, _, e1,       ETrue  _]) -> return e1
+    (And, [_, _, EFalse _, _])        -> return $ EFalse ann
+    (And, [_, _, _,        EFalse _]) -> return $ EFalse ann
     -- TODO implement associativity rules?
 
     -- Or
-    (Or, (_, _, ETrue  _, _))        -> return $ ETrue ann
-    (Or, (_, _, EFalse _,   e2))     -> return e2
-    (Or, (_, _, _,        ETrue  _)) -> return $ ETrue ann
-    (Or, (_, _, e1,       EFalse _)) -> return e1
+    (Or, [_, _, ETrue  _, _])        -> return $ ETrue ann
+    (Or, [_, _, EFalse _,   e2])     -> return e2
+    (Or, [_, _, _,        ETrue  _]) -> return $ ETrue ann
+    (Or, [_, _, e1,       EFalse _]) -> return e1
     -- See https://github.com/wenkokke/vehicle/issues/2
 
     -- If
-    (If, (_, _, ETrue  _, e2, _)) -> return e2
-    (If, (_, _, EFalse _, _, e3)) -> return e3
+    (If, [_, _, ETrue  _, e2, _]) -> return e2
+    (If, [_, _, EFalse _, _, e3]) -> return e3
 
     -- Le
-    (Le, (_, _, _, EInt  _ i, EInt  _ j)) -> return $ mkBool (i <= j) ann
-    (Le, (_, _, _, EReal _ x, EReal _ y)) -> return $ mkBool (x <= y) ann
+    (Le, [_, _, _, EInt  _ i, EInt  _ j]) -> return $ mkBool (i <= j) ann
+    (Le, [_, _, _, EReal _ x, EReal _ y]) -> return $ mkBool (x <= y) ann
 
     -- Lt
-    (Lt, (_, _, _, EInt  _ i, EInt  _ j)) -> return $ mkBool (i < j) ann
-    (Lt, (_, _, _, EReal _ x, EReal _ y)) -> return $ mkBool (x < y) ann
+    (Lt, [_, _, _, EInt  _ i, EInt  _ j]) -> return $ mkBool (i < j) ann
+    (Lt, [_, _, _, EReal _ x, EReal _ y]) -> return $ mkBool (x < y) ann
 
     -- Addition
-    (Add, (_, _, EInt  _ i, EInt  _ j)) -> return $ EInt  ann (i + j)
-    (Add, (_, _, EReal _ x, EReal _ y)) -> return $ EReal ann (x + y)
+    (Add, [_, _, EInt  _ i, EInt  _ j]) -> return $ EInt  ann (i + j)
+    (Add, [_, _, EReal _ x, EReal _ y]) -> return $ EReal ann (x + y)
     -- TODO implement identity/associativity rules?
 
     -- Subtraction
-    (Sub, (_, _, EInt  _ i, EInt  _ j)) -> return $ EInt  ann (i - j)
-    (Sub, (_, _, EReal _ x, EReal _ y)) -> return $ EReal ann (x - y)
+    (Sub, [_, _, EInt  _ i, EInt  _ j]) -> return $ EInt  ann (i - j)
+    (Sub, [_, _, EReal _ x, EReal _ y]) -> return $ EReal ann (x - y)
     -- TODO implement identity/associativity rules?
 
     -- Multiplication
-    (Mul, (_, _, EInt  _ i, EInt  _ j)) -> return $ EInt  ann (i * j)
-    (Mul, (_, _, EReal _ x, EReal _ y)) -> return $ EReal ann (x * y)
+    (Mul, [_, _, EInt  _ i, EInt  _ j]) -> return $ EInt  ann (i * j)
+    (Mul, [_, _, EReal _ x, EReal _ y]) -> return $ EReal ann (x * y)
     -- TODO implement zero/identity/associativity rules?
 
     -- Division
-    (Div, (_, _, EReal _ x, EReal _ y)) -> return $ EReal ann (x / y)
+    (Div, [_, _, EReal _ x, EReal _ y]) -> return $ EReal ann (x / y)
 
     -- Negation
-    (Neg, (_, _, EReal _ x)) -> return $ EReal ann (- x)
+    (Neg, [_, _, EReal _ x]) -> return $ EReal ann (- x)
 
     -- Cons
-    (Cons, (_, _, _, e, Seq _ es)) -> return $ Seq ann (e : es)
+    (Cons, [_, _, _, x, Seq _ xs]) -> return $ Seq ann (x : xs)
 
     -- Lookup
-    (At, (_, _, _, Seq _ es, EInt _ i)) -> return $ es !! fromIntegral i
-    (At, (_, _, _, xs, i)) -> case (xs, i) of
-      (Cons, (_, _, _, x, xs'), EInt _ 0) -> xs'
-      (Cons, (_, _, _, x, xs'), EInt _ i) -> Op2 EAt es (EInt ann3 (i - 1)) ann ann1 ann2 pos
-      _                                   -> return e
+    (At, [_, _, _, Seq _ es, EInt _ i]) -> return $ es !! fromIntegral i
+    (At, [_, _, _, xs, i]) -> case (decomposeApp xs, i) of
+      ((Builtin _ Cons, [_, _, _, x, _]), EInt _ 0) -> return $ argExpr x
+      --((Builtin _ Cons, [_, _, _, x, xs']), EInt _ i) -> Op2 EAt es (EInt ann3 (i - 1)) ann ann1 ann2 pos
+      _                                     -> return e
 
     -- Quantifier builtins
-    (Quant q, (_, _, e1, e2)) -> normQuantifier q e1 e2 ann ann1 ann2 pos >>= norm
+    --(Quant q, [_, _, e1, e2]) -> normQuantifier q e1 e2 ann ann1 ann2 pos >>= norm
 
     -- Fall-through case
     _ -> return e
