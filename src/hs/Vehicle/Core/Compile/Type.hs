@@ -345,18 +345,24 @@ infer e = showInferExit $ do
     Seq p es -> do
       (es', ts') <- unzip <$> traverse infer es
 
-      -- Generate a fresh meta variable for the case where the list is empty
-      (_, tElem) <- freshMeta p
+      -- Generate a fresh meta variable for the type of elements in the list, e.g. Int
+      (_, tElem') <- freshMeta p
+      -- Generate a fresh meta-variable for the container function, e.g. List
+      (_, tCont') <- freshMeta p
+      -- Generate a meta-variable for the applied container type, e.g. List Int
+      (meta, tAppCont') <- freshMeta p
 
-      -- Unify the types of all the elements in the list
-      tElem' <- foldrM (unify p) tElem ts'
+      -- Unify the types of all the elements in the sequence
+      _ <- foldrM (unify p) tElem' ts'
 
-      -- Generate a meta-variable for the type of the container
-      (meta, tCont') <- freshMeta p
-      let constraint = isContainer' p tCont' tElem'
-      addTypeClassConstraint (meta `Has` constraint)
+      -- Unify the applied container type with the application of the container
+      -- type to the element type
+      _ <- unify p tAppCont' (App p tCont' (Arg p Explicit tElem'))
 
-      return (Seq p es' , tCont')
+      -- Enforce that the applied container type must be a container
+      addTypeClassConstraint (meta `Has` isContainer' p tCont' tElem')
+
+      return (Seq p es' , tAppCont')
 
     PrimDict{} -> developerError "PrimDict should never be type-checked"
 

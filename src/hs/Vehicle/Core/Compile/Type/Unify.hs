@@ -277,7 +277,9 @@ solveEq :: (MonadUnify m, Eq a)
         -> m ()
 solveEq c v1 v2
   | v1 /= v2  = throwError $ UnificationFailure c
-  | otherwise = return ()
+  | otherwise = do
+    logDebug "solved-trivially"
+    return ()
 
 solveArg :: MonadUnify m
          => UnificationConstraint

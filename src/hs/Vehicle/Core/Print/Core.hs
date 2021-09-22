@@ -7,9 +7,7 @@ module Vehicle.Core.Print.Core
 
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.IntSet qualified as IntSet ( toList )
-import Data.IntMap qualified as IntMap ( toAscList )
-import Prettyprinter (Pretty(..), Doc, braces, concatWith, softline, group, align, parens, (<+>), line)
+import Prettyprinter (Pretty(..), Doc, braces, parens, (<+>), line)
 
 import Vehicle.Core.AST
 import Vehicle.Prelude
