@@ -1,134 +1,132 @@
 
 
 module Vehicle.Core.Compile.Type.TypeClass
-  ( TypeClassConstraint(..)
-  , TypeClassResolutionError
-  , solveTypeClassConstraints
+  ( solveTypeClassConstraints
   )
   where
 
-import Control.Monad (foldM)
-import Control.Monad.Except (MonadError, ExceptT)
-import Control.Monad.Writer (MonadWriter(..), runWriterT)
-import Data.IntMap as IntMap ( singleton, union )
+import Control.Monad ( when )
 import Prettyprinter ( (<+>), Pretty(pretty) )
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
+import Vehicle.Core.Compile.Type.Core
+import Vehicle.Core.Compile.Type.Meta
+import Vehicle.Core.Compile.Type.WHNF ( whnf )
 import Vehicle.Core.Print.Core ()
-
---------------------------------------------------------------------------------
--- Constraint definition
-
-data TypeClassConstraint = Meta `Has` CheckedExpr
-  deriving (Show)
-
-instance Pretty TypeClassConstraint where
-  pretty (m `Has` e) = "?" <> pretty m <+> "~" <+> pretty e
-
-instance MetaSubstitutable TypeClassConstraint where
-  substM (m `Has` e) = (m `Has`) <$> substM e
-
-instance HasProvenance TypeClassConstraint where
-  prov (_m `Has` e) = prov e
-
---------------------------------------------------------------------------------
--- Error messages
-
--- I'm sure there will be some errors once everything is fleshed out
--- so not going to remove it just yet
-data TypeClassResolutionError
-
-instance MeaningfulError TypeClassResolutionError where
-  -- TODO what is the absurd pattern match in Haskell?
-  details _e = developerError "No TypeClassResolutionError exists"
 
 --------------------------------------------------------------------------------
 -- Solution
 
+-- To solve / synthesise typeClassConstraints :
+--  1. Normalise each one in the current metactxt
+--  2. Insert lambdas for each Pi type
+--  3. Match against (a) the list of built-in instances; then (b) against elements in the context
+--  4. If the constraint is a Z3 one, then ask Z3 to solve it (after normalisation)
+
 type MonadTypeClassResolution m =
-  ( MonadError TypeClassResolutionError m
-  , MonadLogger m
-  , MonadWriter [TypeClassConstraint] m -- Unsolved constraints
+  ( MonadLogger m
+  , MonadMeta m
   )
 
 -- | Tries to solve the provided list of constraints, returning the resulting
 -- substitution for the solved constraints and a list of unsolved constraints if
 -- any.
-solveTypeClassConstraints :: [TypeClassConstraint] ->
-                             ExceptT TypeClassResolutionError Logger
-                              (MetaSubstitution, [TypeClassConstraint])
-solveTypeClassConstraints constraints = do
+solveTypeClassConstraints :: MonadTypeClassResolution m => m ()
+solveTypeClassConstraints = do
   logDebug "Beginning type-class resolution"
-  logDebug (layoutAsText $ "Type-class constraints" <+> pretty constraints)
-  let result = runWriterT $ foldM (\t c -> IntMap.union t <$> solveConstraint c) mempty constraints
-  logDebug (layoutAsText $ "Solution:" <+> pretty constraints)
-  result
+  constraints <- getTypeClassConstraints
+
+  logDebug $ "constraints:" <+> pretty constraints
+  unsolvedConstraints <- solveConstraints constraints
+  logDebug $ "solution:" <+> pretty constraints
+
+  setTypeClassConstraints unsolvedConstraints
+  logDebug "Ending type-class resolution\n"
+
+solveConstraints :: MonadTypeClassResolution m
+                 => [TypeClassConstraint]
+                 -> m [TypeClassConstraint]
+solveConstraints [] = return []
+solveConstraints (c : cs) = do
+  unsolvedConstraints <- solveConstraints cs
+  solved <- solveConstraint c
+  return $ if solved then unsolvedConstraints else c : unsolvedConstraints
 
 solveConstraint :: MonadTypeClassResolution m
                 => TypeClassConstraint
-                -> m MetaSubstitution
-solveConstraint c@(m `Has` e)
-  | hasDict e  = return $ IntMap.singleton m (PrimDict e)
-  | otherwise = do tell [c]; return mempty
+                -> m Bool
+solveConstraint (m `Has` e) = do
+  validTypeClass <- isValidTypeClass e
+  when validTypeClass $
+    metaSolved (prov e) m e
+  return validTypeClass
 
-hasDict :: CheckedExpr -> Bool
-hasDict e = case decomposeApp e of
-  (Builtin _ HasEq,          [t1, t2]) -> solveHasEq t1 t2
-  (Builtin _ HasOrd,         [t1, t2]) -> solveHasOrd t1 t2
-  (Builtin _ IsTruth,        [t])      -> solveIsTruth t
-  (Builtin _ IsContainer,    [t1, t2]) -> solveIsContainer t1 t2
-  (Builtin _ IsNatural,      [t])      -> solveIsNatural t
-  (Builtin _ IsIntegral,     [t])      -> solveIsIntegral t
-  (Builtin _ IsRational,     [t])      -> solveIsRational t
-  (Builtin _ IsReal,         [t])      -> solveIsReal t
-  (Builtin _ IsQuantifiable, [t1, t2]) -> solveIsQuantifiable t1 t2
-  _                                    -> False
+isValidTypeClass :: MonadTypeClassResolution m => CheckedExpr -> m Bool
+isValidTypeClass e = case decomposeApp e of
+  (Builtin _ tc, args) -> do
+    whnfArgs <- traverse extractAndNormaliseArg args
+    return $ case (tc, whnfArgs) of
+      (HasEq,          [t1, t2]) -> solveHasEq t1 t2
+      (HasOrd,         [t1, t2]) -> solveHasOrd t1 t2
+      (IsTruth,        [t])      -> solveIsTruth t
+      (IsContainer,    [t1, t2]) -> solveIsContainer t1 t2
+      (IsNatural,      [t])      -> solveIsNatural t
+      (IsIntegral,     [t])      -> solveIsIntegral t
+      (IsRational,     [t])      -> solveIsRational t
+      (IsReal,         [t])      -> solveIsReal t
+      (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable t1 t2
+      _                          -> False
+  _                    -> return False
+
+extractAndNormaliseArg :: MonadTypeClassResolution m => CheckedArg -> m CheckedExpr
+extractAndNormaliseArg (Arg _ Explicit e) = whnf e
+extractAndNormaliseArg _ = developerError "Not expecting type-classes with non-explicit arguments"
 
 -- TODO insert Bool classes
 
-solveHasEq :: CheckedArg -> CheckedArg -> Bool
-solveHasEq (Arg _ Explicit (Builtin _ Bool))  (Arg _ Explicit (Builtin _ Prop)) = True
-solveHasEq (Arg _ Explicit (Builtin _ Prop))  (Arg _ Explicit (Builtin _ Prop)) = True
-solveHasEq (Arg _ Explicit (Builtin _ Nat))   (Arg _ Explicit (Builtin _ Prop)) = True
-solveHasEq (Arg _ Explicit (Builtin _ Int))   (Arg _ Explicit (Builtin _ Prop)) = True
-solveHasEq (Arg _ Explicit (Builtin _ Real))  (Arg _ Explicit (Builtin _ Prop)) = True
+solveHasEq :: CheckedExpr -> CheckedExpr -> Bool
+solveHasEq (Builtin _ Bool)  (Builtin _ Prop) = True
+solveHasEq (Builtin _ Prop)  (Builtin _ Prop) = True
+solveHasEq (Builtin _ Nat)   (Builtin _ Prop) = True
+solveHasEq (Builtin _ Int)   (Builtin _ Prop) = True
+solveHasEq (Builtin _ Real)  (Builtin _ Prop) = True
 solveHasEq _ _ = False
 
-solveHasOrd :: CheckedArg -> CheckedArg -> Bool
-solveHasOrd (Arg _ Explicit (Builtin _ Nat))   (Arg _ Explicit (Builtin _ Prop)) = True
-solveHasOrd (Arg _ Explicit (Builtin _ Int))   (Arg _ Explicit (Builtin _ Prop)) = True
-solveHasOrd (Arg _ Explicit (Builtin _ Real))  (Arg _ Explicit (Builtin _ Prop)) = True
+solveHasOrd :: CheckedExpr -> CheckedExpr -> Bool
+solveHasOrd (Builtin _ Nat)   (Builtin _ Prop) = True
+solveHasOrd (Builtin _ Int)   (Builtin _ Prop) = True
+solveHasOrd (Builtin _ Real)  (Builtin _ Prop) = True
 solveHasOrd _ _ = False
 
-solveIsTruth :: CheckedArg -> Bool
-solveIsTruth (Arg _ Explicit (Builtin _ Bool)) = True
-solveIsTruth (Arg _ Explicit (Builtin _ Prop)) = True
+solveIsTruth :: CheckedExpr -> Bool
+solveIsTruth (Builtin _ Bool) = True
+solveIsTruth (Builtin _ Prop) = True
 solveIsTruth _ = False
 
 -- TODO
-solveIsContainer :: CheckedArg -> CheckedArg -> Bool
+solveIsContainer :: CheckedExpr -> CheckedExpr -> Bool
 solveIsContainer _ _ = False
 
-solveIsNatural :: CheckedArg -> Bool
-solveIsNatural (Arg _ Explicit (Builtin _ Nat))  = True
-solveIsNatural (Arg _ Explicit (Builtin _ Int))  = True
-solveIsNatural (Arg _ Explicit (Builtin _ Real)) = True
+solveIsNatural :: CheckedExpr -> Bool
+solveIsNatural (Builtin _ Nat)  = True
+solveIsNatural (Builtin _ Int)  = True
+solveIsNatural (Builtin _ Real) = True
 solveIsNatural _ = False
 
-solveIsIntegral :: CheckedArg -> Bool
-solveIsIntegral (Arg _ Explicit (Builtin _ Int))  = True
-solveIsIntegral (Arg _ Explicit (Builtin _ Real)) = True
+solveIsIntegral :: CheckedExpr -> Bool
+solveIsIntegral (Builtin _ Int)  = True
+solveIsIntegral (Builtin _ Real) = True
 solveIsIntegral _ = False
 
-solveIsRational :: CheckedArg -> Bool
-solveIsRational (Arg _ Explicit (Builtin _ Real)) = True
+solveIsRational :: CheckedExpr -> Bool
+solveIsRational (Builtin _ Real) = True
 solveIsRational _ = False
 
-solveIsReal :: CheckedArg -> Bool
-solveIsReal (Arg _ Explicit (Builtin _ Real)) = True
+solveIsReal :: CheckedExpr -> Bool
+solveIsReal (Builtin _ Real) = True
 solveIsReal _ = False
 
 -- TODO
-solveIsQuantifiable :: CheckedArg -> CheckedArg -> Bool
+solveIsQuantifiable :: CheckedExpr -> CheckedExpr -> Bool
 solveIsQuantifiable _ _ = False

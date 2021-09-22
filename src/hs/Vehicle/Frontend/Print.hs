@@ -4,15 +4,14 @@ module Vehicle.Frontend.Print
   ( prettyFrontend
   ) where
 
-import Data.Text (Text)
 import Data.Functor.Foldable (Recursive(..))
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 
 import Vehicle.Frontend.AST
 import Vehicle.Prelude
 
-prettyFrontend :: Compile a => a -> Text
-prettyFrontend = layoutAsText . compile
+prettyFrontend :: Compile a => a -> Doc Precedence
+prettyFrontend = compile
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation

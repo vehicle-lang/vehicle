@@ -13,7 +13,7 @@ import GHC.Natural (naturalFromInteger)
 import Data.List.NonEmpty qualified as NonEmpty (groupBy1, head, toList)
 import Data.Text (Text, pack)
 import Data.Text.IO qualified as T
-import Prettyprinter ( (<+>), line )
+import Prettyprinter ( Pretty(..), (<+>), line, squotes )
 import System.Exit (exitFailure)
 
 
@@ -62,7 +62,7 @@ data ParseError
 
 instance MeaningfulError ParseError where
   details (MissingDefFunType name p) = UError $ UserError
-    { problem    = "missing type for the declaration" <+> squotes name
+    { problem    = "missing type for the declaration" <+> squotes (pretty name)
     , provenance = p
     , fix        = "add a type for the declaration, e.g."
                    <> line <> line
@@ -71,7 +71,7 @@ instance MeaningfulError ParseError where
     }
 
   details (MissingDefFunExpr name p) = UError $ UserError
-    { problem    = "missing definition for the declaration" <+> squotes name
+    { problem    = "missing definition for the declaration" <+> squotes (pretty name)
     , provenance = p
     , fix        = "add a definition for the declaration, e.g."
                    <> line <> line
@@ -80,15 +80,15 @@ instance MeaningfulError ParseError where
     }
 
   details (DuplicateName name p) = UError $ UserError
-    { problem    = "multiple definitions found with the name" <+> squotes name
+    { problem    = "multiple definitions found with the name" <+> squotes (pretty name)
     , provenance = fold p
     , fix        = "remove or rename the duplicate definitions"
     }
 
   details (MissingVariables symbol p) = UError $ UserError
-    { problem    = "expected at least one name after" <+> squotes symbol
+    { problem    = "expected at least one name after" <+> squotes (pretty symbol)
     , provenance = p
-    , fix        = "add one or more names after" <+> squotes symbol
+    , fix        = "add one or more names after" <+> squotes (pretty symbol)
     }
 
   -- TODO need to revamp this error, BNFC must provide some more

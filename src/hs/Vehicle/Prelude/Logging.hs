@@ -25,7 +25,9 @@ import Control.Monad.Reader (ReaderT)
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.Console.ANSI
+import Prettyprinter (Doc, Pretty(..))
 
+import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
 
 data Severity
@@ -105,19 +107,19 @@ runLoggerT (LoggerT logger) = evalStateT (runWriterT logger) 0
 runLogger :: Logger a -> (a, [Message])
 runLogger = runIdentity . runLoggerT
 
-logError :: MonadLogger m => Text -> m ()
-logError text = logMessage $ Message Error text
+logError :: MonadLogger m => Doc a -> m ()
+logError text = logMessage $ Message Error (layoutAsText text)
 
-logWarning :: MonadLogger m => Text -> m ()
-logWarning text = logMessage $ Message Warning text
+logWarning :: MonadLogger m => Doc a -> m ()
+logWarning text = logMessage $ Message Warning (layoutAsText text)
 
-logInfo :: MonadLogger m => Text -> m ()
-logInfo text = logMessage $ Message Info text
+logInfo :: MonadLogger m => Doc a -> m ()
+logInfo text = logMessage $ Message Info (layoutAsText text)
 
-logDebug :: MonadLogger m => Text -> m ()
+logDebug :: MonadLogger m => Doc a -> m ()
 logDebug text = do
   depth <- getCallDepth
-  logMessage $ Message Debug (T.replicate depth " " <> text)
+  logMessage $ Message Debug (T.replicate depth " " <> layoutAsText text)
 
 resetColor :: String
 resetColor = setSGRCode []

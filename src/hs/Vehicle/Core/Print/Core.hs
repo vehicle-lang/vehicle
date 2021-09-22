@@ -24,19 +24,9 @@ showCore :: Pretty a => a -> String
 showCore = layoutAsString . pretty
 
 brackets :: Visibility -> (Doc a -> Doc a)
-brackets Implicit  = braces
-brackets Explicit  = parens
+brackets Explicit   = parens
+brackets Implicit   = braces
 brackets Constraint = braces . braces
-
-instance Pretty MetaSubstitution where
-  pretty msubst =
-    "{" <+> align (group
-      (concatWith (\x y -> x <> ";" <> line <> y)
-        (fmap (\(i, t') -> "?" <> pretty i <+> ":=" <+> pretty t') (IntMap.toAscList msubst))
-       <> softline <> "}"))
-
-instance Pretty MetaSet where
-  pretty = pretty . IntSet.toList
 
 instance Pretty Name where
   pretty Machine       = "_"
@@ -64,10 +54,8 @@ instance Pretty (WithProvenance Identifier) where
 instance Pretty var => Pretty (Arg var name) where
   pretty (Arg _p v expr) = visBrackets v $ pretty expr
 
-instance (  Pretty var
-         ) => Pretty (Binder var ann) where
-  pretty (Binder _ann v Machine     typ) = brackets v (pretty typ)
-  pretty (Binder _ann v (User name) typ) = brackets v (pretty name <+> ":type" <+> pretty typ)
+instance Pretty var => Pretty (Binder var ann) where
+  pretty (Binder _ann v n t) = brackets v (pretty n <+> ":type" <+> pretty t)
 
 instance Pretty var => Pretty (Expr var ann) where
   pretty = \case

@@ -26,9 +26,9 @@ runDelab x = do
   -- TODO filter out free variables from the expression in the supply monad
   logDebug "Beginning delaboration"
   let freshNames = [ "_x" <> pack (show i) | i <- [0::Int ..]]
-  let result = runSupplyT (delab x) freshNames
+  result <- runSupplyT (delab x) freshNames
   logDebug "Ending delaboration\n"
-  result
+  return result
 
 data DelabError
   = UnsolvedMeta Provenance VC.Meta
@@ -94,7 +94,7 @@ isFunBinder (VC.Binder _ v _ _) = v == Explicit
 
 showEntry :: MonadDelabHoles m => VC.OutputExpr -> m VC.OutputExpr
 showEntry e = do
-  logDebug ("delab-entry " <> prettyCore e)
+  logDebug ("delab-entry " <> pretty e)
   incrCallDepth
   return e
 

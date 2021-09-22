@@ -2,7 +2,7 @@ module Vehicle.Prelude.Visibility where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
-import Prettyprinter (Doc, braces)
+import Prettyprinter (Pretty(..), Doc, braces)
 
 import Vehicle.Prelude.Provenance
 
@@ -14,6 +14,12 @@ data Visibility = Explicit | Implicit | Constraint
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData Visibility
+
+instance Pretty Visibility where
+  pretty = \case
+    Explicit -> "Explicit"
+    Implicit -> "Implicit"
+    Constraint -> "Constraint"
 
 visBrackets :: Visibility -> Doc a -> Doc a
 visBrackets Explicit   = id

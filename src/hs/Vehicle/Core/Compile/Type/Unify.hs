@@ -1,108 +1,82 @@
 
 module Vehicle.Core.Compile.Type.Unify
-  ( UnificationConstraint(..)
-  , UnificationError(..)
-  , solveUnificationConstraints
-  , makeConstraint
+  ( solveUnificationConstraints
   ) where
 
-import Control.Monad.Except (MonadError(..), Except, throwError)
+import Control.Monad (when, foldM)
+import Control.Monad.Except (MonadError(..), throwError)
 import Control.Monad.Writer (MonadWriter(..), runWriterT)
-import Control.Monad.State  (MonadState(..), modify, runStateT)
+import Control.Monad.State  (gets)
 import Control.Monad.Reader (MonadReader(..), runReaderT)
-import Control.Monad (foldM)
-import Data.IntMap qualified as IntMap
+import Data.List (intersect)
 import Data.IntSet qualified as IntSet
 import Prettyprinter ( (<+>), Pretty(pretty), Doc )
 
 import Vehicle.Prelude
 import Vehicle.Core.Print.Core ()
-import Vehicle.Core.Print.Frontend (prettyFrontend)
 import Vehicle.Core.AST
-import Vehicle.Core.Compile.Normalise (whnf)
+import Vehicle.Core.Compile.Type.Core
+import Vehicle.Core.Compile.Type.Meta
+import Vehicle.Core.Compile.Type.WHNF (whnf)
 
---------------------------------------------------------------------------------
--- Definitions
-
--- The context in which a unification occurs.
-data UnificationContext = UnificationContext
-  { sharedContext :: [Name]        -- The context before any unification starts
-  , splitContext :: [(Name, Name)] -- The context after unification.
-  } deriving (Show)
-
-addBinderToCtx :: CheckedBinder -> CheckedBinder -> UnificationContext -> UnificationContext
-addBinderToCtx b1 b2 = addNameToCtx (binderName b1) (binderName b2)
-
-addNameToCtx :: Name -> Name -> UnificationContext -> UnificationContext
-addNameToCtx n1 n2 UnificationContext{..} = UnificationContext
-  { sharedContext = sharedContext
-  , splitContext = (n1, n2) : splitContext
-  }
-
--- | A pair of expressions should be equal
-type UnificationPair = (CheckedExpr, CheckedExpr)
-
--- | A sequence of attempts at unification
-type UnificationHistory = [UnificationPair]
-
--- | Represents that the two contained expressions should be equal.
-data UnificationConstraint
-  = Unify
-    { unifyProv     :: Provenance         -- The location of the code that gave rise to the constraint
-    , unifyCtxt     :: UnificationContext -- The context of the constraint is being solved in
-    , unifHistory   :: UnificationHistory -- The history, i.e. unification path that has lead to this.
-    , unifBlockedOn :: MetaSet            -- The meta-variables that the constraint is blocked on
-    , unifExprs     :: UnificationPair    -- The expressions to unify
-    }
-  deriving Show
-
-instance HasProvenance UnificationConstraint where
-  prov (Unify p _ _ _ _) = p
-
-instance Pretty UnificationConstraint where
-  pretty (Unify _ _ _ metas (e1, e2)) =
-    pretty metas <+> prettyFrontend e1 <+> "~" <+> prettyFrontend e2
-
-instance MetaSubstitutable UnificationConstraint where
-  substM (Unify p ctx metas history es) =
-    Unify p ctx metas history <$> substM es
-
-makeConstraint :: Provenance -> [(Name, CheckedExpr)] -> CheckedExpr -> CheckedExpr -> UnificationConstraint
-makeConstraint p ctx e1 e2 = Unify p (UnificationContext (map fst ctx) []) [] mempty (e1, e2)
 
 --------------------------------------------------------------------------------
 -- Error handling
-
--- | Errors thrown during unification
-newtype UnificationError
-  = UnificationFailure UnificationConstraint
-
-instance MeaningfulError UnificationError where
-  details (UnificationFailure constraint) = UError $ UserError
-    { provenance = prov constraint
-    , problem    = "Could not solve the unification constraint:" <+> pretty constraint
-    , fix        = "Try adding more type annotations"
-    }
 
 unexpectedCase :: Provenance -> Doc ann -> a
 unexpectedCase p expr = developerError $
   expr <+> "should not exist during unification" <+> pretty p
 
-unexpectedMeta :: Provenance -> Meta -> CheckedExpr -> CheckedExpr -> a
-unexpectedMeta p i new old = developerError $
-  "meta-variable" <+> pretty i <+> "already assigned" <+> pretty old <+>
-  "and should have been substituted out but it is still present and" <+>
-  "was assigned again to" <+> pretty new <+>
-  pretty p
-
 --------------------------------------------------------------------------------
 -- Unification algorithm
 
 type MonadUnify m =
+  -- The current meta context
+  ( MonadMeta m
   -- The error thrown
-  ( MonadError UnificationError m
-  -- The current meta substitution
-  , MonadState MetaSubstitution m
+  , MonadError TypingError m
+  -- Allows logging during unification
+  , MonadLogger m
+  )
+
+solveUnificationConstraints :: MonadUnify m => m ()
+solveUnificationConstraints = do
+  logDebug "Beginning unification"
+  constraints <- getUnificationConstraints
+  (unsolvedConstraints, _) <- loop (constraints, Nothing)
+  setUnificationConstraints unsolvedConstraints
+  logDebug "Ending unification\n"
+  return ()
+  where
+    loop :: MonadUnify m
+         => ([UnificationConstraint], Maybe MetaSet)
+         -> m ([UnificationConstraint], Maybe MetaSet)
+    -- Exit if we have solved all constraints
+    loop = \case
+      ([], _) -> return ([], Nothing)
+
+      -- Exit if we have not succeeded in solving any metas in the last pass
+      (constraints, Just metasSolved)
+        | IntSet.null metasSolved -> return (constraints, Nothing)
+
+      -- Otherwise make another pass
+      (constraints, metasSolved) -> do
+        logDebug "Starting new pass"
+        logDebug $ "current-constraints:" <+> pretty constraints
+
+        let constraints1 = foldM examineConstraint [] constraints
+        let constraints2 = runReaderT constraints1 metasSolved
+        (unsolvedConstraints, newMetasSolved) <- runWriterT constraints2
+
+        metaSubst <- getMetaSubstitution
+        logDebug $ "current-solution:" <+> pretty metaSubst <> "\n"
+
+        loop (unsolvedConstraints, Just newMetasSolved)
+
+
+
+type MonadUnifyPass m =
+  ( MonadUnify m
   -- The list of metas that we have made progess on so far in this pass
   , MonadWriter MetaSet m
   -- The list of metas that were made progress on in the previous pass.
@@ -111,50 +85,16 @@ type MonadUnify m =
   , MonadReader (Maybe MetaSet) m
   )
 
-type UnificationProblem = ([UnificationConstraint], MetaSubstitution)
-
-isBlocked :: Maybe MetaSet          -- Set of metas solved in the last pass
-          -> UnificationConstraint  -- Unification constraint
-          -> Bool
-isBlocked Nothing            _                             = False
-isBlocked (Just solvedMetas) (Unify _ _ _ blockingMetas _) =
-  -- A constraint is blocked if it is blocking on at least one meta
-  -- and none of the metas it is blocking on have been solved in the last pass.
-  not (IntSet.null blockingMetas) && IntSet.disjoint solvedMetas blockingMetas
-
-solveUnificationConstraints :: UnificationProblem -> Except UnificationError UnificationProblem
-solveUnificationConstraints problem = fst <$> go (problem, Nothing)
-  where
-    go :: (UnificationProblem, Maybe MetaSet)
-        -> Except UnificationError (UnificationProblem, Maybe MetaSet)
-    -- Exit if we have solved all constraints
-    go input@(([], _), _) =
-      return input
-
-    -- Exit if we have not succeeded in solving any metas in the last pass
-    go input@((_, _), Just metasSolvedLastPass)
-      | IntSet.null metasSolvedLastPass = return input
-
-    -- Otherwise make another pass
-    go ((constraints, metaSubst), metasSolvedLastPass) = do
-      let z = foldM solvePass [] constraints
-      let y = runStateT z metaSubst
-      let x = runReaderT y metasSolvedLastPass
-      let w = runWriterT x
-      ((unsolvedConstraints, newMetaSubst), metasSolved) <- w
-      go ((unsolvedConstraints, newMetaSubst), Just metasSolved)
-
-
-solvePass :: MonadUnify m
-          => [UnificationConstraint]
-          -> UnificationConstraint
-          -> m [UnificationConstraint]
-solvePass queue constraint = do
+examineConstraint :: MonadUnifyPass m
+                  => [UnificationConstraint]
+                  -> UnificationConstraint
+                  -> m [UnificationConstraint]
+examineConstraint queue constraint = do
   progressedMetas <- ask
   if isBlocked progressedMetas constraint
     then return (constraint : queue)
     else do
-      subst <- get
+      subst <- gets currentSubstitution
       let updatedConstraint = substMetas subst constraint
       newConstraints <- solveConstraint updatedConstraint
       return (newConstraints <> queue)
@@ -162,27 +102,33 @@ solvePass queue constraint = do
 pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
 
-solveConstraint :: MonadUnify m => UnificationConstraint -> m [UnificationConstraint]
+solveConstraint :: MonadUnifyPass m => UnificationConstraint -> m [UnificationConstraint]
 -- Errors
 solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
   whnfE1 <- whnf e1
   whnfE2 <- whnf e2
-  -- trace (layoutAsString $ "UNIFY: " <+> pretty whnfE1 <+> " ~ " <+> pretty whnfE2) $ return ()
+  logDebug $ "trying" <+> pretty whnfE1 <+> "~" <+> pretty whnfE2
+
   case (decomposeApp whnfE1, decomposeApp whnfE2) of
+    ----------------------
+    -- Impossible cases --
+    ----------------------
     (Let{}, _) :~: _           -> unexpectedCase p "Let bindings"
     _          :~: (Let{}, _)  -> unexpectedCase p "Let bindings"
 
     (Hole{}, _) :~: _           -> unexpectedCase p "Holes"
     _           :~: (Hole{}, _) -> unexpectedCase p "Holes"
 
-    -- Rigid-rigid
+    -----------------------
+    -- Rigid-rigid cases --
+    -----------------------
     (Type    l1, [])   :~: (Type    l2, [])   -> do solveEq constraint l1  l2; return []
-{-
-(Ann _ e1 t1, Ann _ e2 t2) -> return
-    [ Unify p ctx (exprs : history) mempty (e1, e2)
-    , Unify p ctx (exprs : history) mempty (t1, t2)
-    ]
--}
+    {-
+    (Ann _ e1 t1, Ann _ e2 t2) -> return
+        [ Unify p ctx (exprs : history) mempty (e1, e2)
+        , Unify p ctx (exprs : history) mempty (t1, t2)
+        ]
+    -}
     -- We ASSUME that all terms here are in normal form, so there
     -- will never be an unreduced redex.
     ((Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, []))
@@ -228,21 +174,55 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
       else
         traverse (solveArg constraint) (zip args1 args2)
 
-    -- Simple flex-flex case, when one meta-variable has no arguments you can simply
-    -- use the other meta-variable as its definition.
-    (Meta ann i, []) :~: (Meta _ _j, _args) ->
-      metaSolved (p <> prov ann) i whnfE2
+    ---------------------
+    -- Flex-flex cases --
+    ---------------------
+    (Meta _ i, args1) :~: (Meta _ j, args2)
+      -- If the expressions are exactly equal then simply discard the constraint
+      -- as it doesn't tell us anything.
+      | i == j && args1 == args2 ->
+        return []
 
-    -- TODO can this case be absorbed into a general symmetry case as it should already
-    -- be covered by the case above
-    (Meta _ _i, _args) :~: (Meta ann j, []) ->
-      metaSolved (p <> prov ann) j whnfE1
+      -- If the meta-variables are equal but their arguments are not
+      -- then the meta-variables can only depend on the set of arguments
+      -- that are shared in the same position by both of them. Calculate
+      -- this set of arguments and create new meta-variable that only
+      -- depends on these, and set the old meta-variable to equal that one.
+      | i == j && args1 /= args2 -> do
+        when (length args1 /= length args2) $
+          developerError "Identical meta variables have different numbers of arguments"
 
-    (Meta _ _i, _args1) :~: (Meta _ _j, _args2) ->
-      -- TODO: flex-flex unification:
-      --  we could try to solve by trying each direction as a definition, if the metavariables are not equal.
-      --  if the heads are equal, then succeed if the argument lists are identical, otherwise postpone
-      throwError $ UnificationFailure constraint
+        let sharedArgs = positionalIntersection args1 args2
+        let sharedArgsCtx = map (\(Arg _ _ e) -> (Machine, e)) sharedArgs
+        (_metaName, meta) <- freshMetaWith sharedArgsCtx p
+
+        let abstractedMeta = abstractOver args1 meta
+        metaSolved p i abstractedMeta
+
+        return []
+
+      -- Finally if the meta-variables are different then we have much more
+      -- flexibility as to how the arguments can relate to each other. In
+      -- particular they can be re-arranged, and therefore we calculate the
+      -- non-positional intersection of their arguments. Then proceed as above
+      -- for each of the meta-variables in turn.
+      | otherwise -> do
+        let sharedArgs = args1 `intersect` args2
+        let sharedArgsCtx = map (\(Arg _ _ e) -> (Machine, e)) sharedArgs
+
+        (_metaName, meta) <- freshMetaWith sharedArgsCtx p
+
+        let abstractedMeta1 = abstractOver args1 meta
+        metaSolved p i abstractedMeta1
+
+        let abstractedMeta2 = abstractOver args2 meta
+        metaSolved p j abstractedMeta2
+
+        return []
+
+    ----------------------
+    -- Flex-rigid cases --
+    ----------------------
 
     -- ?X e1 e2 e3 =?= ?Y x y z
 
@@ -262,24 +242,10 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
           case substAll subst e2 of
             Nothing ->
               return [constraint]
-            Just defnBody ->
+            Just defnBody -> do
               -- TODO: fail if 'Meta _ i' occurs in 'e2'
-              let{-
-                foldFn :: CheckedArg -> DSLExpr -> DSLExpr
-                foldFn (Arg argP argV argE) body =
-                  -- TODO: 'getType argE' needs to be renamed
-                  -- to be in the implicit context being
-                  -- generated here.
-                  lam argP argV Machine (toDSL $ getType argE) (const body) -}
-
-                -- BUG: using 'DSL' here doesn't work because it cannot handle open terms
-                solution = -- fromDSL (foldr foldFn (toDSL defnBody) args)
-                    foldr (\(Arg _ v argE) body ->
-                             Lam mempty (Binder mempty v Machine argE) body)
-                      defnBody
-                      args
-              in
-              metaSolved p i solution
+              metaSolved p i (abstractOver args defnBody)
+              return []
 
     _t :~: (Meta _ _i, _args) ->
       -- this is the mirror image of the previous case, so just swap the
@@ -289,30 +255,20 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
     -- Catch-all
     _ -> throwError $ UnificationFailure (constraint { unifExprs = (whnfE1, whnfE2) })
 
-metaSolved :: MonadUnify m
-           => Provenance
-           -> Meta
-           -> CheckedExpr
-           -> m [UnificationConstraint]
-metaSolved p m e = do
-  -- trace (layoutAsString $ "solving " <+> pretty m <+> " as " <+> pretty e) $ return ()
+abstractOver :: [CheckedArg] -> CheckedExpr -> CheckedExpr
+abstractOver args body = foldr argToLam body args
+  where
+    argToLam :: CheckedArg -> CheckedExpr -> CheckedExpr
+    argToLam (Arg _ v argE) = Lam mempty (Binder mempty v Machine argE)
 
-  -- Update the substitution,
-  modify (\subst -> let
-    -- Insert the new variable throwing an error if the meta-variable is already present
-    -- (should have been substituted out)
-    subst' = IntMap.insertWith (unexpectedMeta p m) m e subst
-    -- Substitute into the existing subsitutions
-    subst'' = IntMap.map (substMeta m e) subst'
-    in subst'')
-
-
-
-  -- Insert the meta-variable into the list of metas solved in this pass
-  tell $ IntSet.singleton m
-
-  -- Return an empty list of constraints
-  return []
+isBlocked :: Maybe MetaSet          -- Set of metas solved in the last pass
+          -> UnificationConstraint  -- Unification constraint
+          -> Bool
+isBlocked Nothing            _                             = False
+isBlocked (Just solvedMetas) (Unify _ _ _ blockingMetas _) =
+  -- A constraint is blocked if it is blocking on at least one meta
+  -- and none of the metas it is blocking on have been solved in the last pass.
+  not (IntSet.null blockingMetas) && IntSet.disjoint solvedMetas blockingMetas
 
 solveEq :: (MonadUnify m, Eq a)
         => UnificationConstraint
@@ -330,3 +286,10 @@ solveArg :: MonadUnify m
 solveArg c@(Unify p ctx history _metas es) (arg1, arg2)
   | vis arg1 /= vis arg2 = throwError $ UnificationFailure c
   | otherwise = return $ Unify p ctx (es : history) mempty (argExpr arg1 , argExpr arg2)
+
+positionalIntersection :: Eq a => [a] -> [a] -> [a]
+positionalIntersection [] _       = []
+positionalIntersection _ []       = []
+positionalIntersection (x : xs) (y : ys)
+ | x == y    = x : positionalIntersection xs ys
+ | otherwise = positionalIntersection xs ys

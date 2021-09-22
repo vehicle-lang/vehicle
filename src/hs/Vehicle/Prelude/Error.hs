@@ -71,5 +71,5 @@ appendProvenance doc p = doc <+> "(" <> pretty p <> ")"
 fixText :: Doc ann -> Doc ann
 fixText t = "Fix:" <+> t
 
-squotes :: Text -> Doc ann
-squotes t = Prettyprinter.squotes (pretty t)
+--squotes :: Text -> Doc ann
+--squotes t = Prettyprinter.squotes (pretty t)

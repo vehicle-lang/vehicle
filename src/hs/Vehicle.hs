@@ -22,7 +22,7 @@ import Data.Text.IO qualified as T
 import System.Environment (getArgs)
 import System.Exit (exitSuccess, exitFailure)
 import System.Console.GetOpt
-import Debug.Trace (traceShow)
+import Prettyprinter (Pretty(..))
 
 import Vehicle.Prelude
 import Vehicle.Core.AST qualified as VC
@@ -180,7 +180,7 @@ run _opts@Options{..} = do
 
     Just (Vehicle Frontend) -> do
       compFrontProg :: VF.OutputProg <- fromLoggedEitherIO $ VF.runDelab compCoreProg
-      return $ VF.prettyFrontend compFrontProg
+      return $ layoutAsText $ VF.prettyFrontend compFrontProg
 
   -- Output the result to either the command line or the specified output file
   case outputFile of

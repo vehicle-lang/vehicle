@@ -66,7 +66,6 @@ instance Descope CheckedExpr OutputExpr where
   descope e = showScopeExit $ case showScopeEntry e of
     Type     l                     -> return (Type l)
     Hole     p name                -> return (Hole p name)
-    Meta     ann i                 -> return (Meta    ann i)
     Builtin  ann op                -> return (Builtin ann op)
     Literal  ann l                 -> return (Literal ann l)
     Var      ann v                 -> Var ann <$> lookupVar (prov ann) v
@@ -90,6 +89,8 @@ instance Descope CheckedExpr OutputExpr where
       binder' <- descope binder
       body'   <- local (addBinderToCtx binder') (descope body)
       return $ Pi ann binder' body'
+
+    Meta ann i -> developerError "Unsolved metas should have been caught before descoping"
 
 -- No need to add the declaration identifiers to the ctx, as they
 -- are untouched during conversion back from de Bruijn indice's.

@@ -10,7 +10,7 @@ import Control.Monad.Reader (ReaderT, MonadReader(..), runReaderT)
 import Data.List (elemIndex)
 import Data.Set (Set,)
 import Data.Set qualified as Set (member, insert)
-import Prettyprinter (pretty, (<+>))
+import Prettyprinter (Pretty(..), (<+>), squotes)
 
 import Vehicle.Core.AST
 import Vehicle.Prelude
@@ -28,7 +28,7 @@ data ScopeError
 
 instance MeaningfulError ScopeError where
   details  (UnboundName name p) = UError $ UserError
-    { problem    = "The name" <+> squotes name <+> "is not in scope"
+    { problem    = "The name" <+> squotes (pretty name) <+> "is not in scope"
     , provenance = p
     -- TODO can use Levenschtein distance to search contexts/builtins
     , fix        = pretty ("Unknown" :: String)

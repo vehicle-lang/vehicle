@@ -7,131 +7,55 @@ module Vehicle.Core.Compile.Type
 
 import Prelude hiding (pi)
 import Control.Monad (when)
-import Control.Monad.Except (MonadError(..), ExceptT, withExcept, withExceptT)
+import Control.Monad.Except (MonadError(..), ExceptT)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
-import Control.Monad.State (MonadState(..), StateT(..), modify, runStateT)
+import Control.Monad.State (MonadState(..), runStateT, evalStateT)
 import Data.Foldable (foldrM)
-import Data.Text (Text)
-import Data.List (foldl')
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.IntMap (IntMap)
-import Data.IntMap qualified as IntMap
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.List.NonEmpty qualified as NonEmpty
-import Prettyprinter ((<+>), Pretty(..), line)
+import Prettyprinter ((<+>), Pretty(..))
 
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.DSL
+import Vehicle.Core.Compile.Type.Core
 import Vehicle.Core.Compile.Type.Unify
+import Vehicle.Core.Compile.Type.Meta
 import Vehicle.Core.Compile.Type.TypeClass
 import Vehicle.Core.Print.Core (prettyCore)
 import Vehicle.Prelude
 
 runTypeChecking :: UncheckedProg -> ExceptT TypingError Logger CheckedProg
 runTypeChecking prog = do
-  logDebug "Beginning type checking"
-
-  let prog1 = inferProg prog
+  let prog1 = runAll prog
   let prog2 = runReaderT prog1 emptyVariableCtx
-  let prog3 = runStateT prog2 emptyMetaCtx
-  (checkedProg, metaCtx) <- prog3
+  prog3 <- evalStateT prog2 emptyMetaCtx
+  logDebug $ "Program:" <+> pretty prog3
+  return prog3
 
-  let uniConstraints = unificationConstraints metaCtx
+runAll :: TCM m => UncheckedProg -> m CheckedProg
+runAll prog = do
+  prog2 <- inferProg prog
+  runUnification
+  runTypeClassResolution
+  prog3 <- substMetas <$> getMetaSubstitution <*> pure prog2
+  return prog3
 
-  logDebug ""
-  logDebug "Beginning unification"
-  logDebug (layoutAsText $ "Constraints:" <+> pretty uniConstraints)
-
-  let solveConstraints = withExcept UnificationError $ solveUnificationConstraints (uniConstraints, mempty)
-  (unsolvedUnificationConstraints, unificationMetaSubst) <- liftExceptWithLogging solveConstraints
-  prog5 <- case unsolvedUnificationConstraints of
-    []     -> return $ substMetas unificationMetaSubst checkedProg
+runUnification :: TCM m => m ()
+runUnification = do
+  solveUnificationConstraints
+  unsolvedConstraints <- getUnificationConstraints
+  case unsolvedConstraints of
+    []     -> return ()
     c : cs -> throwError $ UnsolvedUnificationConstraints (c :| cs)
 
-  logDebug (layoutAsText $ "Solution:" <+> pretty unificationMetaSubst)
-  logDebug "Ending unification\n"
-
-  let tClassConstraints = substMetas unificationMetaSubst $ typeClassConstraints metaCtx
-
-  -- Solve type-class constraints and substitute through
-  let typeClassConstraints = solveTypeClassConstraints tClassConstraints
-  (typeClassMetaSubst, unsolvedTypeClassConstraints) <- withExceptT TypeClassResolutionError typeClassConstraints
-  prog6 <- case unsolvedTypeClassConstraints of
-    []     -> return $ substMetas typeClassMetaSubst prog5
+runTypeClassResolution :: TCM m => m ()
+runTypeClassResolution = do
+  solveTypeClassConstraints
+  unsolvedTypeClassConstraints <- getTypeClassConstraints
+  case unsolvedTypeClassConstraints of
+    []     -> return ()
     c : cs -> throwError $ UnsolvedTypeClassConstraints (c :| cs)
-
-  -- Return the result
-  return prog6
-
-
--- To solve / synthesise typeClassConstraints :
---  1. Normalise each one in the current metactxt
---  2. Insert lambdas for each Pi type
---  3. Match against (a) the list of built-in instances; then (b) against elements in the context
---  4. If the constraint is a Z3 one, then ask Z3 to solve it (after normalisation)
-
---------------------------------------------------------------------------------
--- Errors
-
--- | Errors thrown during type checking
-data TypingError
-  = UnresolvedHole
-    Provenance              -- The location of the hole
-    Symbol                  -- The name of the hole
-  | Mismatch
-    Provenance              -- The location of the mismatch.
-    CheckedExpr             -- The possible inferred types.
-    DSLExpr                 -- The expected type.
-  | UnsupportedOperation
-    Provenance              -- The location of the unsupported operation.
-    Text                    -- A description of the unsupported operation.
-  | UnificationError
-    UnificationError
-  | UnsolvedUnificationConstraints
-    (NonEmpty UnificationConstraint)
-  | TypeClassResolutionError
-    TypeClassResolutionError
-  | UnsolvedTypeClassConstraints
-    (NonEmpty TypeClassConstraint)
-
-instance MeaningfulError TypingError where
-  details (Mismatch p candidate expected) = UError $ UserError
-    { provenance = p
-    , problem    = "expected something of type" <+> pretty (fromDSL expected) <+>
-                   "but inferred type" <+> pretty candidate
-    , fix        = "unknown"
-    }
-
-  details (UnsupportedOperation p t) = UError $ UserError
-    { provenance = p
-    , problem    = "type-checking of" <+> squotes t <+> "not currently supported"
-    , fix        = "unknown"
-    }
-
-  details (UnresolvedHole p name) = UError $ UserError
-    { provenance = p
-    , problem    = "the type of" <+> squotes name <+> "could not be resolved"
-    , fix        = "unknown"
-    }
-
-  details (UnsolvedUnificationConstraints cs) = let firstConstraint = NonEmpty.head cs in
-    UError $ UserError
-    { provenance = prov firstConstraint
-    , problem    = "unsolved constraint " <+> pretty firstConstraint
-    , fix        = "unknown"
-    }
-
-  details (UnsolvedTypeClassConstraints cs) = let firstConstraint = NonEmpty.head cs in
-    UError $ UserError
-    { provenance = prov firstConstraint
-    , problem    = "unsolved constraint " <+> pretty firstConstraint
-    , fix        = "unknown"
-    }
-
-  details (UnificationError e) = details e
-
-  details (TypeClassResolutionError e) = details e
 
 --------------------------------------------------------------------------------
 -- Contexts
@@ -167,10 +91,6 @@ addToDeclCtx n e = local add
     add :: VariableCtx -> VariableCtx
     add VariableCtx{..} = VariableCtx{declCtx = Map.insert n e declCtx, ..}
 
--- | The names and types of the expression variables that are in currently in scope,
--- indexed into via De Bruijn expressions.
-type BoundCtx = [(Name, CheckedExpr)]
-
 getBoundCtx :: TCM m => m BoundCtx
 getBoundCtx = asks boundCtx
 
@@ -180,51 +100,12 @@ addToBoundCtx n e = local add
     add :: VariableCtx -> VariableCtx
     add VariableCtx{..} = VariableCtx{boundCtx = (n, e) : boundCtx, ..}
 
--- TODO ask Bob whether we need to store metaVariableTypes explicitly in the ctx
--- Will we get in trouble storing the type on the meta?
-
--- | The meta-variables and constraints relating the variables currently in scope.
-data MetaCtx  = MetaCtx
-  { nextMeta               :: Meta
-  , metaVariableTypes      :: IntMap CheckedExpr
-  , unificationConstraints :: [UnificationConstraint]
-  , typeClassConstraints   :: [TypeClassConstraint]
-  }
-
-instance Pretty MetaCtx where
-  pretty MetaCtx{..} = "{" <> line <>
-    "nextMeta" <+> "=" <+> pretty nextMeta <> line <>
-    "unificationConstraints" <+> "=" <+> pretty unificationConstraints <> line <>
-    "typeClassConstraints" <+> "=" <+> pretty typeClassConstraints <> line <>
-    "}"
-
-emptyMetaCtx :: MetaCtx
-emptyMetaCtx = MetaCtx
-  { nextMeta               = 0
-  , metaVariableTypes      = mempty
-  , unificationConstraints = mempty
-  , typeClassConstraints   = mempty
-  }
-
-getMetaCtx :: TCM m => m MetaCtx
-getMetaCtx = get
-
-modifyMetaCtx :: TCM m => (MetaCtx -> MetaCtx) -> m ()
-modifyMetaCtx = modify
-
-putMetaCtx :: TCM m => MetaCtx -> m ()
-putMetaCtx ctx = modifyMetaCtx (const ctx)
-
-addUnificationConstraints :: TCM m => [UnificationConstraint] -> m ()
-addUnificationConstraints cs = modifyMetaCtx $ \ MetaCtx {..} ->
-  MetaCtx { unificationConstraints = cs <> unificationConstraints, ..}
-
 --------------------------------------------------------------------------------
 -- Debug functions
 
 showCheckEntry :: TCM m => CheckedExpr -> UncheckedExpr -> m (CheckedExpr, UncheckedExpr)
 showCheckEntry t e = do
-  logDebug ("check-entry " <> prettyCore e <> " <- " <> prettyCore t)
+  logDebug ("check-entry" <+> pretty e <+> "<-" <+> pretty t)
   incrCallDepth
   return (t,e)
 
@@ -232,12 +113,12 @@ showCheckExit :: TCM m => m CheckedExpr -> m CheckedExpr
 showCheckExit m = do
   e <- m
   decrCallDepth
-  logDebug ("check-exit  " <> prettyCore e)
+  logDebug ("check-exit " <+> pretty e)
   return e
 
 showInferEntry :: TCM m => UncheckedExpr -> m UncheckedExpr
 showInferEntry e = do
-  logDebug ("infer-entry " <> prettyCore e)
+  logDebug ("infer-entry" <+> pretty e)
   incrCallDepth
   return e
 
@@ -245,86 +126,45 @@ showInferExit :: TCM m => m (CheckedExpr, CheckedExpr) -> m (CheckedExpr, Checke
 showInferExit m = do
   (e, t) <- m
   decrCallDepth
-  logDebug ("infer-exit  " <> prettyCore e <> " -> " <> prettyCore t)
+  logDebug ("infer-exit " <+> pretty e <+> "->" <+> pretty t)
   return (e,t)
 
-showInsertArg :: TCM m => CheckedExpr -> m CheckedExpr
-showInsertArg t = do
-  logDebug ("insert-arg " <> prettyCore t)
+showInsertArg :: TCM m => Visibility -> CheckedExpr -> m CheckedExpr
+showInsertArg v t = do
+  logDebug ("insert-arg" <+> pretty v <+> pretty t)
   return t
 
-showUnify :: TCM m => UnificationConstraint -> m UnificationConstraint
-showUnify c = do
-  logDebug ("add-constraint " <> layoutAsText (pretty c))
-  return c
-
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Utility functions
 
 assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
 assertIsType _ (Type _) = return ()
-assertIsType p e        = throwError $ Mismatch p e type0 -- TODO: add a new TypingError 'ExpectedAType'
+-- TODO: add a new TypingError 'ExpectedAType'
+assertIsType p e        = throwError $ Mismatch p e (Type 0)
 
 unify :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m CheckedExpr
 unify p e1 e2 = do
   ctx <- getBoundCtx
-  -- TODO calculate the context (currently breaks the printing of unification constraints)
-  constr <- showUnify $ makeConstraint p ctx e1 e2
-
-  addUnificationConstraints [constr]
+  addUnificationConstraint $ makeConstraint p ctx e1 e2
   -- TODO calculate the most general unifier
   return e1
 
-addTypeClassConstraints :: TCM m => [TypeClassConstraint] -> m ()
-addTypeClassConstraints ts = modifyMetaCtx $ \ MetaCtx {..} ->
-  MetaCtx { typeClassConstraints = ts <> typeClassConstraints, ..}
-
-freshMetaName :: TCM m => m Meta
-freshMetaName = do
-  MetaCtx {..} <- getMetaCtx;
-  putMetaCtx $ MetaCtx { nextMeta = succ nextMeta , ..}
-  return nextMeta
-
--- | Creates a fresh meta variable. Meta variables need to remember what was
--- in the current context when they were created. We do this by creating a
--- meta-variable that takes everything in the current context as an argument
--- and then which is immediately applied to everything in the current context.
--- Post unification, any unneeded context arguments will be normalised away.
--- It returns the name of the meta and the expression of it applied to every
--- variable in the context.
-freshMeta :: TCM m => Provenance -> CheckedExpr -> m (Meta, CheckedExpr, CheckedExpr)
-freshMeta p resultType = do
-  -- Create a fresh name
-  metaName <- freshMetaName
-
-  -- Create a Pi type that abstracts over all bound variables
-  boundCtx <- getBoundCtx
-  let metaType =
-        foldr (\(name, t) resTy ->
-                  Pi mempty
-                     (Binder mempty Explicit name t)
-                     resTy)
-          resultType
-          (reverse boundCtx)
-
-  -- Stores type in meta-context
-  modifyMetaCtx $ \MetaCtx {..} ->
-    MetaCtx { metaVariableTypes = IntMap.insert metaName metaType metaVariableTypes , ..}
-
-  -- Create bound variables for everything in the context
-  let boundEnv = reverse [ Var mempty (Bound varIndex) | varIndex <- [0..length boundCtx] ]
-
-  -- Returns a meta applied to every bound variable in the context
-  let meta = foldl' cApp (Meta p metaName) boundEnv
-  return (metaName, meta, metaType)
+freshMeta :: TCM m
+          => Provenance
+          -> m (Meta, CheckedExpr)
+freshMeta p = do
+  ctx <- getBoundCtx
+  freshMetaWith ctx p
 
 -- Generate new metavariables for any implicit/constraint arguments
 insertArgs :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m (CheckedExpr, CheckedExpr)
 insertArgs p fun' (Pi _ (Binder _ vArg _ tArg') tRes')
   | vArg /= Explicit = do
-  tArg' <- showInsertArg tArg'
+  tArg'' <- showInsertArg vArg tArg'
 
-  (meta, metaArg, metaType) <- freshMeta p tArg'
+  ctx <- getBoundCtx
+  (meta, metaArg) <- freshMetaWith ctx p
+  let metaType = makeMetaType ctx p tArg''
 
   -- Substitute meta-variable in tRes
   let tResSubst' = metaArg `substInto` tRes'
@@ -334,7 +174,7 @@ insertArgs p fun' (Pi _ (Binder _ vArg _ tArg') tRes')
 
   -- Check if the required argument is a type-class
   when (vArg == Constraint) $
-    addTypeClassConstraints [meta `Has` metaType]
+    addTypeClassConstraint (meta `Has` metaType)
 
   insertArgs p (App mempty fun' (Arg mempty vArg metaArg)) tResSubst'
 insertArgs _ fun' typ' =
@@ -371,13 +211,13 @@ check expectedType expr = showCheckExit $ do
         return $ Lam mempty newBinder e'
 
     (_, Lam p (Binder _ vBound _ _) _) -> do
-          let expected = unnamedPi vBound (tHole "a") (const (tHole "b"))
+          let expected = fromDSL $ unnamedPi vBound (tHole "a") (const (tHole "b"))
           throwError $ Mismatch p expectedType expected
 
     (_, Hole p _name) -> do
       -- Replace the hole with meta-variable of the expected type.
       -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
-      (_, meta, _) <- freshMeta p expectedType
+      (_, meta) <- freshMeta p
       return meta
 
     (_, e@(Type _))          -> viaInfer mempty expectedType e
@@ -412,7 +252,7 @@ inferApp p (Arg pArg vArg eArg) fun' = \case
       return (App p fun' (Arg pArg vArg eArg') , tResSubst')
 
   tFun' -> do
-    let expected = unnamedPi vArg (tHole "a") (const $ tHole "b")
+    let expected = fromDSL $ unnamedPi vArg (tHole "a") (const $ tHole "b")
     throwError $ Mismatch p tFun' expected
 
 -- | Takes in an unchecked expression and attempts to infer it's type.
@@ -440,10 +280,10 @@ infer e = showInferExit $ do
       -- Infer the type of the function.
       (fun', tFun') <- infer fun
       -- if this is an explicit argument, then insert implicits before proceeding
-      (fun', tFun') <- if vArg == Explicit
+      (fun'', tFun'') <- if vArg == Explicit
         then insertArgs p fun' tFun'
         else return (fun', tFun')
-      inferApp p arg fun' tFun'
+      inferApp p arg fun'' tFun''
 
     Pi p (Binder pBound v name arg) res -> do
       (arg', tArg') <- infer arg
@@ -507,14 +347,15 @@ infer e = showInferExit $ do
       (es', ts') <- unzip <$> traverse infer es
 
       -- Generate a fresh meta variable for the case where the list is empty
-      (_, tElem, _) <- freshMeta p Type0
+      (_, tElem) <- freshMeta p
 
       -- Unify the types of all the elements in the list
       tElem' <- foldrM (unify p) tElem ts'
 
       -- Generate a meta-variable for the type of the container
-      (meta, tCont', _) <- freshMeta p Type0
-      -- addTypeClassConstraints [meta `Has` unembed (isContainer p (embed tCont') (embed tElem'))]
+      (meta, tCont') <- freshMeta p
+      let constraint = isContainer' p tCont' tElem'
+      addTypeClassConstraint (meta `Has` constraint)
 
       return (Seq p es' , tCont')
 
@@ -549,7 +390,11 @@ inferDecls (DefFun p ident t body : decls) = do
     return $ DefFun p ident t' body' : decls'
 
 inferProg :: TCM m => UncheckedProg -> m CheckedProg
-inferProg (Main ds) = Main <$> inferDecls ds
+inferProg (Main ds) = do
+  logDebug "Beginning initial type-checking pass"
+  result <- Main <$> inferDecls ds
+  logDebug "Ending initial type-checking pass\n"
+  return result
 
 viaInfer :: TCM m => Provenance -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
 viaInfer p expectedType e = do
@@ -565,10 +410,10 @@ viaInfer p expectedType e = do
 -- | Return the type of the provided literal,
 typeOfLiteral :: Provenance -> Literal -> CheckedExpr
 typeOfLiteral p l = fromDSL $ case l of
-  LNat  _ -> forall type0 $ \t -> isNatural  p t ~~> t
-  LInt  _ -> forall type0 $ \t -> isIntegral p t ~~> t
-  LRat  _ -> forall type0 $ \t -> isReal     p t ~~> t
-  LBool _ -> forall type0 $ \t -> isTruth    p t ~~> t
+  LNat  _ -> forall type0 $ \t -> isNatural  p t ~~~> t
+  LInt  _ -> forall type0 $ \t -> isIntegral p t ~~~> t
+  LRat  _ -> forall type0 $ \t -> isReal     p t ~~~> t
+  LBool _ -> forall type0 $ \t -> isTruth    p t ~~~> t
 
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedExpr
@@ -633,33 +478,33 @@ typeOfEqualityOp :: Provenance -> DSLExpr
 typeOfEqualityOp p =
   forall type0 $ \t ->
     forall type0 $ \r ->
-      hasEq p t r ~~> t ~> t ~> r
+      hasEq p t r ~~~> t ~> t ~> r
 
 typeOfComparisonOp :: Provenance -> DSLExpr
 typeOfComparisonOp p =
   forall type0 $ \t ->
     forall type0 $ \r ->
-      hasOrd p t r ~~> t ~> t ~> r
+      hasOrd p t r ~~~> t ~> t ~> r
 
 typeOfBoolOp2 :: Provenance -> DSLExpr
 typeOfBoolOp2 p =
   forall type0 $ \t ->
-    isTruth p t ~~> t ~> t ~> t
+    isTruth p t ~~~> t ~> t ~> t
 
 typeOfBoolOp1 :: Provenance -> DSLExpr
 typeOfBoolOp1 p =
   forall type0 $ \t ->
-    isTruth p t ~~> t ~> t
+    isTruth p t ~~~> t ~> t
 
 typeOfNumOp2 :: (DSLExpr -> DSLExpr) -> DSLExpr
 typeOfNumOp2 numConstraint =
   forall type0 $ \t ->
-    numConstraint t ~~> t ~> t ~> t
+    numConstraint t ~~~> t ~> t ~> t
 
 typeOfNumOp1 :: (DSLExpr -> DSLExpr) -> DSLExpr
 typeOfNumOp1 numConstraint =
   forall type0 $ \t ->
-    numConstraint t ~~> t ~> t
+    numConstraint t ~~~> t ~> t
 
 typeOfQuantifierOp :: DSLExpr
 typeOfQuantifierOp =
@@ -670,7 +515,7 @@ typeOfAtOp :: Provenance -> DSLExpr
 typeOfAtOp p =
   forall type0 $ \tCont ->
     forall type0 $ \tElem ->
-      isContainer p tCont tElem ~~> tCont ~> tNat ~> tElem
+      isContainer p tCont tElem ~~~> tCont ~> tNat ~> tElem
 
 -- TODO generalise these to tensors etc.
 typeOfMapOp :: DSLExpr

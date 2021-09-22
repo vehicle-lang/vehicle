@@ -19,10 +19,10 @@ module Vehicle.Core.Compile.DSL
   , isRational
   , isReal
   , isContainer
+  , isContainer'
   , isQuantifiable
   , tMax
   , tHole
-  , cApp
   , piType
   ) where
 
@@ -38,6 +38,7 @@ class DSL expr where
   infixl 4 `app`
   infixr 4 ~>
   infixr 4 ~~>
+  infixr 4 ~~~>
 
   app :: expr -> expr -> expr
   -- lam :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
@@ -52,6 +53,9 @@ class DSL expr where
   (~~>) :: expr -> expr -> expr
   x ~~> y = unnamedPi Implicit x (const y)
 
+  (~~~>) :: expr -> expr -> expr
+  x ~~~> y = unnamedPi Constraint x (const y)
+
   forall :: expr -> (expr -> expr) -> expr
   forall = unnamedPi Implicit
 
@@ -63,7 +67,7 @@ fromDSL :: DSLExpr -> CheckedExpr
 fromDSL = flip unDSL 0
 
 toDSL :: CheckedExpr -> DSLExpr
-toDSL e = DSL $ \i -> liftDBIndices i e
+toDSL e = DSL $ const e
 
 boundVar :: BindingDepth -> DSLExpr
 boundVar i = DSL $ \j -> Var mempty (Bound (j - (i + 1)))
@@ -95,20 +99,6 @@ instance DSL DSLExpr where
 piType :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 piType t1 t2 = t1 `tMax` t2
 
---appType :: CheckedExpr -> CheckedExpr -> CheckedExpr
---appType fun arg = arg `substInto` getFunResultType (getType fun)
-
--- TODO think whether we need to recurse in the case of an implicit binder
--- TODO the provided type might not be in beta-normal form, so we'd have to reduce it
--- TODO the provided type might contain defined identifiers, which need to be expanded
--- TODO (alternative) make sure this is only called on types in beta-normal form
--- getFunResultType :: CheckedExpr -> CheckedExpr
--- getFunResultType (Pi _ann _binder res) = res
--- getFunResultType t = developerError $ "Expecting a Pi type. Found" <+> pretty t <> "."
-
-cApp :: CheckedExpr -> CheckedExpr -> CheckedExpr
-cApp x y = unDSL (toDSL x `app` toDSL y) 0
-
 tMax :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 tMax (Type l1)  (Type l2)  = Type (l1 `max` l2)
 tMax t1         t2         = developerError $
@@ -120,7 +110,7 @@ con b = DSL $ \_ -> Builtin mempty b
 -- * Types
 
 type0 :: DSLExpr
-type0 = toDSL Type0
+type0 = DSL $ const Type0
 
 tBool, tProp, tNat, tInt, tReal :: DSLExpr
 tBool = con Bool
@@ -136,7 +126,7 @@ tList :: DSLExpr -> DSLExpr
 tList tElem = con List `app` tElem
 
 tHole :: Symbol -> DSLExpr
-tHole name = toDSL $ Hole mempty name
+tHole name = DSL $ const $ Hole mempty name
 
 -- * TypeClass
 
@@ -166,6 +156,9 @@ isReal p t = typeClass p IsReal `app` t
 
 isContainer :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
 isContainer p tCont tElem = typeClass p IsContainer `app` tCont `app` tElem
+
+isContainer' :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
+isContainer' p contType elemType = fromDSL $ isContainer p (toDSL contType) (toDSL elemType)
 
 isQuantifiable :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
 isQuantifiable p tDom tTruth = typeClass p IsQuantifiable `app` tDom `app` tTruth
