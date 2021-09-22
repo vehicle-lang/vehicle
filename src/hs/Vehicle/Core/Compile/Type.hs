@@ -35,26 +35,24 @@ runTypeChecking prog = do
 runAll :: TCM m => UncheckedProg -> m CheckedProg
 runAll prog = do
   prog2 <- inferProg prog
-  runUnification
-  runTypeClassResolution
+  solveMetas
   prog3 <- substMetas <$> getMetaSubstitution <*> pure prog2
   return prog3
 
-runUnification :: TCM m => m ()
-runUnification = do
-  solveUnificationConstraints
-  unsolvedConstraints <- getUnificationConstraints
-  case unsolvedConstraints of
-    []     -> return ()
-    c : cs -> throwError $ UnsolvedUnificationConstraints (c :| cs)
+solveMetas :: TCM m => m ()
+solveMetas = do
+  unificationProgress <- solveUnificationConstraints
+  tcResolutionProgress <- solveTypeClassConstraints
 
-runTypeClassResolution :: TCM m => m ()
-runTypeClassResolution = do
-  solveTypeClassConstraints
+  let progress = unificationProgress || tcResolutionProgress
+  unsolvedUnificationConstraints <- getUnificationConstraints
   unsolvedTypeClassConstraints <- getTypeClassConstraints
-  case unsolvedTypeClassConstraints of
-    []     -> return ()
-    c : cs -> throwError $ UnsolvedTypeClassConstraints (c :| cs)
+
+  case (unsolvedUnificationConstraints, unsolvedTypeClassConstraints, progress) of
+    ([], [], _)        -> return ()
+    (_, _, True)       -> solveMetas
+    (c : cs, _, False) -> throwError $ UnsolvedUnificationConstraints (c :| cs)
+    (_, c : cs, False) -> throwError $ UnsolvedTypeClassConstraints (c :| cs)
 
 --------------------------------------------------------------------------------
 -- Contexts
@@ -347,22 +345,18 @@ infer e = showInferExit $ do
 
       -- Generate a fresh meta variable for the type of elements in the list, e.g. Int
       (_, tElem') <- freshMeta p
-      -- Generate a fresh meta-variable for the container function, e.g. List
-      (_, tCont') <- freshMeta p
       -- Generate a meta-variable for the applied container type, e.g. List Int
-      (meta, tAppCont') <- freshMeta p
+      (_, tCont') <- freshMeta p
 
       -- Unify the types of all the elements in the sequence
       _ <- foldrM (unify p) tElem' ts'
 
-      -- Unify the applied container type with the application of the container
-      -- type to the element type
-      _ <- unify p tAppCont' (App p tCont' (Arg p Explicit tElem'))
-
       -- Enforce that the applied container type must be a container
+      -- Generate a fresh meta-variable for the container function, e.g. List
+      (meta, _) <- freshMeta p
       addTypeClassConstraint (meta `Has` isContainer' p tCont' tElem')
 
-      return (Seq p es' , tAppCont')
+      return (Seq p es' , tCont')
 
     PrimDict{} -> developerError "PrimDict should never be type-checked"
 

@@ -40,14 +40,16 @@ type MonadUnify m =
   , MonadLogger m
   )
 
-solveUnificationConstraints :: MonadUnify m => m ()
+-- | Tries to solve the current set of unification constraints
+-- returning whether or not it makes any progress.
+solveUnificationConstraints :: MonadUnify m => m Bool
 solveUnificationConstraints = do
   logDebug "Beginning unification"
   constraints <- getUnificationConstraints
   (unsolvedConstraints, _) <- loop (constraints, Nothing)
   setUnificationConstraints unsolvedConstraints
   logDebug "Ending unification\n"
-  return ()
+  return $ length unsolvedConstraints < length constraints
   where
     loop :: MonadUnify m
          => ([UnificationConstraint], Maybe MetaSet)
@@ -143,8 +145,7 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
       -- TODO more informative error message
       | length es1 /= length es2 -> throwError $ UnificationFailure constraint
       -- TODO need to try and unify `Seq` with `Cons`s.
-      | otherwise                -> return $
-                                    zipWith (curry (Unify p ctx (exprs : history) mempty)) es1 es2
+      | otherwise -> return $ zipWith (curry (Unify p ctx (exprs : history) mempty)) es1 es2
 
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
       | vis binder1 /= vis binder2 -> throwError $ UnificationFailure constraint
@@ -231,7 +232,7 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
 
     -- ==> ?Y := \x. \y. \z. ?X e1 e2 e3
 
-    (Meta _ i, args) :~: _ ->
+    (Meta _ i, args) :~: _ -> do
       -- Check that 'args' is a pattern
       case patternOfArgs args of
         Nothing ->
@@ -239,10 +240,10 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
           -- it for now and hope that another constraint allows us to
           -- progress.
           return [constraint]
-        Just subst ->
+        Just subst -> do
           -- 'subst' is a renaming that renames the variables in 'e2' to
           -- ones bound by the metavariable
-          case substAll subst e2 of
+          case substAll subst whnfE2 of
             Nothing ->
               return [constraint]
             Just defnBody -> do

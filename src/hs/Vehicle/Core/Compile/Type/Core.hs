@@ -63,7 +63,6 @@ instance Pretty UnificationConstraint where
   pretty (Unify _ _ _ metas (e1, e2)) =
     pretty metas <+> prettyFrontend e1 <+> "~" <+> prettyFrontend e2
 
-
 makeConstraint :: Provenance -> [(Name, CheckedExpr)] -> CheckedExpr -> CheckedExpr -> UnificationConstraint
 makeConstraint p ctx e1 e2 = Unify p constraintCtx [] mempty (e1, e2)
   where constraintCtx = UnificationContext (map fst ctx) []
@@ -79,7 +78,6 @@ instance Pretty TypeClassConstraint where
 
 instance HasProvenance TypeClassConstraint where
   prov (_m `Has` e) = prov e
-
 
 --------------------------------------------------------------------------------
 -- Meta-variable definitions
