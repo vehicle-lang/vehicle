@@ -72,7 +72,7 @@ instance Descope CheckedExpr OutputExpr where
     Ann      ann e1 t              -> Ann ann <$> descope e1 <*> descope t
     App      ann fun arg           -> App ann <$> descope fun <*> descope arg
     Seq      ann es                -> Seq ann <$> traverse descope es
-
+    PrimDict tc                    -> PrimDict <$> descope tc
 
     Let ann bound binder body -> do
       bound'  <- descope bound
@@ -90,7 +90,7 @@ instance Descope CheckedExpr OutputExpr where
       body'   <- local (addBinderToCtx binder') (descope body)
       return $ Pi ann binder' body'
 
-    Meta ann i -> developerError "Unsolved metas should have been caught before descoping"
+    Meta _ann _i -> developerError "Unsolved metas should have been caught before descoping"
 
 -- No need to add the declaration identifiers to the ctx, as they
 -- are untouched during conversion back from de Bruijn indice's.

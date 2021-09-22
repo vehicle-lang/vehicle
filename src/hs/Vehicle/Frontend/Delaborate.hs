@@ -13,7 +13,7 @@ import Data.Text (pack)
 import Prettyprinter (pretty, (<+>))
 
 import Vehicle.Core.AST qualified as VC
-import Vehicle.Core.Print.Core (prettyCore)
+import Vehicle.Core.Print.Core ()
 import Vehicle.Frontend.Print (prettyFrontend)
 import Vehicle.Frontend.AST qualified as VF
 import Vehicle.Prelude

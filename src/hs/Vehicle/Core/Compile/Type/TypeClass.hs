@@ -59,7 +59,7 @@ solveConstraint :: MonadTypeClassResolution m
 solveConstraint (m `Has` e) = do
   validTypeClass <- isValidTypeClass e
   when validTypeClass $
-    metaSolved (prov e) m e
+    metaSolved (prov e) m (PrimDict e)
   return validTypeClass
 
 isValidTypeClass :: MonadTypeClassResolution m => CheckedExpr -> m Bool

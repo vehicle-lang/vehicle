@@ -9,7 +9,7 @@ import Prelude hiding (pi)
 import Control.Monad (when)
 import Control.Monad.Except (MonadError(..), ExceptT)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
-import Control.Monad.State (MonadState(..), runStateT, evalStateT)
+import Control.Monad.State (MonadState, evalStateT)
 import Data.Foldable (foldrM)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -22,7 +22,6 @@ import Vehicle.Core.Compile.Type.Core
 import Vehicle.Core.Compile.Type.Unify
 import Vehicle.Core.Compile.Type.Meta
 import Vehicle.Core.Compile.Type.TypeClass
-import Vehicle.Core.Print.Core (prettyCore)
 import Vehicle.Prelude
 
 runTypeChecking :: UncheckedProg -> ExceptT TypingError Logger CheckedProg

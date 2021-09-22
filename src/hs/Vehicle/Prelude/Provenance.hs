@@ -121,7 +121,7 @@ instance NFData Provenance where
   rnf _ = ()
 
 instance Eq Provenance where
-  x == y = True
+  _x == _y = True
 
 -- |Get the provenance for a single token.
 tkProvenance :: IsToken a => a -> Provenance

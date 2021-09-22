@@ -78,9 +78,9 @@ instance Compile (WithProvenance Identifier) where
   compile (WithProvenance _p n) = pretty n
 
 instance Compile (Binder ann) where
-  compile (Binder _p vis n typeAnn) =
+  compile (Binder _p v n typeAnn) =
     let typAnn = maybe "" (\t -> " :" <+> compile t) typeAnn
-    in  visBrackets vis (pretty n <> typAnn)
+    in  visBrackets v (pretty n <> typAnn)
 
 instance Compile (Arg ann) where
   compile (Arg _p Explicit    e) = compile e
@@ -93,6 +93,7 @@ instance Compile (LetDecl ann) where
 instance Compile (Expr ann) where
   compile = cata $ \case
      -- Core
+    TypeF l                -> "Type" <+> pretty l
     ForallF  _ann ns t     -> "forall" <+> hsep (fmap compile ns) <+> t
     FunF     _ann t1 t2    -> compileInfixOp2 2 "->"  t1 t2
     AnnF     _ann e t      -> parens (e <+> ":" <+> t)
@@ -102,9 +103,7 @@ instance Compile (Expr ann) where
     AppF     _ann e1 e2    -> e1 <+> parens (compile e2)
     VarF     _ann n        -> pretty n
     HoleF    _ann n        -> pretty n
-
-    -- Kinds
-    TypeF l                -> "Type" <+> pretty l
+    PrimDictF tc           -> "primDict" <+> tc
 
     -- Types
     PropF    _ann          -> compileConstant "Prop"

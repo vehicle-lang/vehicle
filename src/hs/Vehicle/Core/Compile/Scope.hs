@@ -112,6 +112,7 @@ instance ScopeCheck InputExpr UncheckedExpr where
       bound' <- scope bound
       bindVar binder $ \binder' -> Let ann bound' binder' <$> scope body
 
+    PrimDict _tc -> developerError "Found PrimDict during scope checking."
 
 scopeDecl :: InputDecl -> StateT Ctx SCM UncheckedDecl
 scopeDecl = \case
