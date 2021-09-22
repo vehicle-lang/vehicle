@@ -44,11 +44,9 @@ type MonadUnify m =
 -- returning whether or not it makes any progress.
 solveUnificationConstraints :: MonadUnify m => m Bool
 solveUnificationConstraints = do
-  logDebug "Beginning unification"
   constraints <- getUnificationConstraints
   (unsolvedConstraints, _) <- loop (constraints, Nothing)
   setUnificationConstraints unsolvedConstraints
-  logDebug "Ending unification\n"
   return $ length unsolvedConstraints < length constraints
   where
     loop :: MonadUnify m
@@ -66,7 +64,7 @@ solveUnificationConstraints = do
 
       -- Otherwise make another pass
       (constraints, metasSolved) -> do
-        logDebug "Starting new pass"
+        logDebug "Starting new unification pass"
         logDebug $ "current-constraints:" <+> pretty constraints
 
         let constraints1 = foldM examineConstraint [] constraints

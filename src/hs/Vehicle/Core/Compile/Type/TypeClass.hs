@@ -33,7 +33,7 @@ type MonadTCResolution m =
 -- whether or not any progress was made.
 solveTypeClassConstraints :: MonadTCResolution m => m Bool
 solveTypeClassConstraints = do
-  logDebug "Beginning type-class resolution"
+  logDebug "Starting new type-class resolution pass"
   constraints <- getTypeClassConstraints
   constraints' <- substMetas <$> getMetaSubstitution <*> pure constraints
 
@@ -42,7 +42,9 @@ solveTypeClassConstraints = do
   --logDebug $ "solution:" <+> pretty constraints'
 
   setTypeClassConstraints unsolvedConstraints
-  logDebug "Ending type-class resolution\n"
+
+  subst <- getMetaSubstitution
+  logDebug $ "current-solution:" <+> pretty subst <+> "\n"
 
   return $ length unsolvedConstraints < length constraints
 
