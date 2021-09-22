@@ -25,7 +25,7 @@ import Control.Monad.Reader (ReaderT)
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.Console.ANSI
-import Prettyprinter (Doc, Pretty(..))
+import Prettyprinter (Doc)
 
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)

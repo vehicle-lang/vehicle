@@ -60,7 +60,7 @@ library
                       , Vehicle.Core.Compile.Type.Meta
                       , Vehicle.Core.Compile.Type.WHNF
                       , Vehicle.Core.Compile.Descope
-                      , Vehicle.Core.Compile.Normalise
+                      -- , Vehicle.Core.Compile.Normalise
                       -- , Vehicle.Core.Compile.Normalise.Quantifier
                       , Vehicle.Core.Parse
                       , Vehicle.Core.Print.Core

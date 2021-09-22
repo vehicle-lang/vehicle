@@ -1,11 +1,11 @@
 
 module Vehicle.Prelude.Error where
 
-import Control.Exception (Exception, throw, handle)
+import Control.Exception (Exception, throw)
 import Data.Text (Text, unpack)
 import Data.Void (Void)
 import GHC.Stack (HasCallStack)
-import Prettyprinter (Doc, Pretty(..), (<+>), squotes, line, unAnnotate)
+import Prettyprinter (Doc, Pretty(..), (<+>), line, unAnnotate)
 
 import Vehicle.Prelude.Provenance (Provenance)
 import Vehicle.Prelude.Prettyprinter
