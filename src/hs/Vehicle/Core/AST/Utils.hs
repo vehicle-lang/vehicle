@@ -2,8 +2,6 @@
 
 module Vehicle.Core.AST.Utils where
 
-import Numeric.Natural (Natural)
-
 import Vehicle.Prelude
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
@@ -17,7 +15,7 @@ pattern Type0 = Type 0
 pattern Type1 :: Expr var ann
 pattern Type1 = Type 1
 
-pattern LitNat :: ann -> Natural -> Expr var ann
+pattern LitNat :: ann -> Int -> Expr var ann
 pattern LitNat ann n = Literal ann (LNat n)
 
 pattern LitInt :: ann -> Int -> Expr var ann

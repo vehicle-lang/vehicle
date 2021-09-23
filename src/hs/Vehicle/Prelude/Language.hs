@@ -34,7 +34,7 @@ type Level = Natural
 
 -- | Literals in the language
 data Literal
-  = LNat  Natural
+  = LNat  Int
   | LInt  Int
   | LRat  Double
   | LBool Bool

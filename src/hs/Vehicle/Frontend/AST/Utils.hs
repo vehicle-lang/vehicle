@@ -2,15 +2,13 @@
 
 module Vehicle.Frontend.AST.Utils where
 
-import Numeric.Natural (Natural)
-
 import Vehicle.Prelude
 import Vehicle.Frontend.AST.Core
 
 --------------------------------------------------------------------------------
 -- Type synonyms for literals
 
-pattern LitNat :: ann -> Natural -> Expr ann
+pattern LitNat :: ann -> Int -> Expr ann
 pattern LitNat ann n = Literal ann (LNat n)
 
 pattern LitInt :: ann -> Int -> Expr ann
@@ -62,7 +60,8 @@ annotation = \case
   Lam         ann _ns _e  -> ann
   Literal     ann _l      -> ann
   Var         ann _n      -> ann
-  Hole _ _   -> developerError "Should not be requesting an annotation from Hole"
+  Hole _ _    -> developerError "Should not be requesting an annotation from Hole"
+  PrimDict tc -> annotation tc
 
   -- Kinds
   Type _     -> developerError "Should not be requesting an annotation from Type"

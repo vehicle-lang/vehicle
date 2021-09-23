@@ -86,7 +86,7 @@ separator LetDecl ",";
 
 -- * Literals
 
-LitNat.   Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
+LitInt.   Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
 LitReal.  Lit ::= Double;
 LitTrue.  Lit ::= TokTrue;
 LitFalse. Lit ::= TokFalse;

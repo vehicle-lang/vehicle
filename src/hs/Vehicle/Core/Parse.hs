@@ -114,9 +114,11 @@ instance Convert B.Arg V.InputArg where
 
 instance Convert B.Lit Literal where
   conv = \case
-    B.LitNat  n -> return $ LInt (fromIntegral n)
-    B.LitReal r -> return $ LRat r
     B.LitBool b -> return $ LBool (read (unpack $ tkSymbol b))
+    B.LitReal r -> return $ LRat r
+    B.LitNat  n -> return $ if n >= 0
+      then LNat (fromIntegral n)
+      else LInt (fromIntegral n)
 
 instance Convert B.Expr V.InputExpr where
   conv = \case

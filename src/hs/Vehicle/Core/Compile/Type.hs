@@ -34,6 +34,7 @@ runTypeChecking prog = do
 
 runAll :: TCM m => UncheckedProg -> m CheckedProg
 runAll prog = do
+  logDebug $ pretty prog
   prog2 <- inferProg prog
   solveMetas
   prog3 <- substMetas <$> getMetaSubstitution <*> pure prog2
@@ -154,7 +155,11 @@ freshMeta p = do
   freshMetaWith ctx p
 
 -- Generate new metavariables for any implicit/constraint arguments
-insertArgs :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m (CheckedExpr, CheckedExpr)
+insertArgs :: TCM m
+           => Provenance
+           -> CheckedExpr -- The function
+           -> CheckedExpr -- The supposed type
+           -> m (CheckedExpr, CheckedExpr)
 insertArgs p fun' (Pi _ (Binder _ vArg _ tArg') tRes')
   | vArg /= Explicit = do
   tArg'' <- showInsertArg vArg tArg'
@@ -338,7 +343,8 @@ infer e = showInferExit $ do
 
     Literal p l -> do
       let t' = typeOfLiteral p l
-      return (Literal p l, t')
+      (expr', type') <- insertArgs p (Literal p l) t'
+      return (expr', type')
 
     Seq p es -> do
       (es', ts') <- unzip <$> traverse infer es

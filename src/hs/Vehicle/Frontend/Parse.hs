@@ -143,10 +143,12 @@ instance Convert B.Binder V.InputBinder where
 
 instance Convert B.Lit V.InputExpr where
   conv = \case
-    B.LitNat   v -> return $ V.LitInt  mempty (fromIntegral v)
-    B.LitReal  v -> return $ V.LitRat mempty v
     B.LitTrue  p -> return $ V.LitBool (tkProv p) True
     B.LitFalse p -> return $ V.LitBool (tkProv p) False
+    B.LitReal  x -> return $ V.LitRat mempty x
+    B.LitInt   n -> return $ if n >= 0
+      then V.LitNat mempty (fromIntegral n)
+      else V.LitInt mempty (fromIntegral n)
 
 instance Convert B.TypeClass V.InputExpr where
   conv = \case
