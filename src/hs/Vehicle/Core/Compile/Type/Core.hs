@@ -136,6 +136,8 @@ data TypingError
     Text                    -- A description of the unsupported operation.
   | UnificationFailure
     UnificationConstraint
+  | TypeClassResolutionFailure
+    TypeClassConstraint
   | UnsolvedUnificationConstraints
     (NonEmpty UnificationConstraint)
   | UnsolvedTypeClassConstraints
@@ -165,6 +167,12 @@ instance MeaningfulError TypingError where
     { provenance = prov constraint
     , problem    = "Could not solve the unification constraint:" <+> pretty constraint
     , fix        = "Try adding more type annotations"
+    }
+
+  details (TypeClassResolutionFailure (_ `Has` e)) = UError $ UserError
+    { provenance = prov e
+    , problem    = "No instance found for " <+> prettyFrontend e
+    , fix        = "Try checking your types?"
     }
 
   details (UnsolvedUnificationConstraints cs) = let firstConstraint = NonEmpty.head cs in

@@ -5,7 +5,7 @@ module Vehicle.Core.Compile.Type.TypeClass
   where
 
 import Data.Functor ((<&>))
-import Control.Monad ( when )
+import Control.Monad.Except ( MonadError, throwError )
 import Prettyprinter ( (<+>), Pretty(pretty), squotes )
 
 import Vehicle.Prelude
@@ -27,6 +27,7 @@ import Vehicle.Core.Print.Core ()
 type MonadTCResolution m =
   ( MonadLogger m
   , MonadMeta m
+  , MonadError TypingError m
   )
 
 -- | Tries to solve the provided list of constraints, returning
@@ -53,9 +54,9 @@ solveConstraint :: MonadTCResolution m
                 => TypeClassConstraint
                 -> m Progress
 solveConstraint constraint@(m `Has` e) = do
-  logDebug $ "trying" <+> pretty m <> "?" <+> "~" <+> pretty e
+  logDebug $ "trying" <+> pretty constraint
   incrCallDepth
-  result <- findInstance m e
+  result <- findInstance constraint e
   case result of
     Solved _ -> metaSolved (prov e) m (PrimDict e)
     _        -> addTypeClassConstraint constraint
@@ -68,23 +69,22 @@ getNonInferableArgs :: Builtin -> [CheckedExpr] -> [CheckedExpr]
 getNonInferableArgs IsContainer [tCont, _tElem] = [tCont]
 getNonInferableArgs _           args            = args
 
-findInstance :: MonadTCResolution m => Meta -> CheckedExpr -> m Progress
-findInstance m e = do
+findInstance :: MonadTCResolution m => TypeClassConstraint -> CheckedExpr -> m Progress
+findInstance c e = do
   eWHNF <- whnf e
   case decomposeApp eWHNF of
     (Builtin _ tc, args) -> do
       argsWHNF <- traverse extractAndNormaliseArg args
-      let block = blockOnMetas tc argsWHNF
-      case (tc, argsWHNF) of
-          (IsContainer,    [t1, t2]) -> block $ solveIsContainer m (prov e) t1 t2
-          (HasEq,          [t1, t2]) -> block $ return $ solveHasEq m t1 t2
-          (HasOrd,         [t1, t2]) -> block $ return $ solveHasOrd m t1 t2
-          (IsTruth,        [t])      -> block $ return $ solveIsTruth m t
-          (IsNatural,      [t])      -> block $ return $ solveIsNatural m t
-          (IsIntegral,     [t])      -> block $ return $ solveIsIntegral m t
-          (IsRational,     [t])      -> block $ return $ solveIsRational m t
-          (IsReal,         [t])      -> block $ return $ solveIsReal m t
-          (IsQuantifiable, [t1, t2]) -> block $ return $ solveIsQuantifiable m t1 t2
+      blockOnMetas tc argsWHNF $ case (tc, argsWHNF) of
+          (IsContainer,    [t1, t2]) -> solveIsContainer    c t1 t2
+          (HasEq,          [t1, t2]) -> solveHasEq          c t1 t2
+          (HasOrd,         [t1, t2]) -> solveHasOrd         c t1 t2
+          (IsTruth,        [t])      -> solveIsTruth        c t
+          (IsNatural,      [t])      -> solveIsNatural      c t
+          (IsIntegral,     [t])      -> solveIsIntegral     c t
+          (IsRational,     [t])      -> solveIsRational     c t
+          (IsReal,         [t])      -> solveIsReal         c t
+          (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable c t1 t2
           _                          -> developerError $ "Unknown type-class" <+> squotes (pretty tc) <+> "args" <+> pretty argsWHNF
     _ -> developerError $ "Unknown type-class" <+> squotes (pretty eWHNF)
 
@@ -110,34 +110,52 @@ isMeta e = case decomposeApp e of
 
 -- TODO insert Bool classes
 
-solveHasEq :: Meta -> CheckedExpr -> CheckedExpr -> Progress
-solveHasEq m (Builtin _ Bool)  (Builtin _ Prop) = solved m
-solveHasEq m (Builtin _ Prop)  (Builtin _ Prop) = solved m
-solveHasEq m (Builtin _ Nat)   (Builtin _ Prop) = solved m
-solveHasEq m (Builtin _ Int)   (Builtin _ Prop) = solved m
-solveHasEq m (Builtin _ Real)  (Builtin _ Prop) = solved m
-solveHasEq _ _ _                                = Stuck
+solveHasEq :: MonadTCResolution m
+           => TypeClassConstraint
+           -> CheckedExpr
+           -> CheckedExpr
+           -> m Progress
+solveHasEq (m `Has` _) (Builtin _ Bool)  (Builtin _ Prop) = return $ solved m
+solveHasEq (m `Has` _) (Builtin _ Prop)  (Builtin _ Prop) = return $ solved m
+solveHasEq (m `Has` _) (Builtin _ Nat)   (Builtin _ Prop) = return $ solved m
+solveHasEq (m `Has` _) (Builtin _ Int)   (Builtin _ Prop) = return $ solved m
+solveHasEq (m `Has` _) (Builtin _ Real)  (Builtin _ Prop) = return $ solved m
+solveHasEq constraint _ _                       =
+  throwError $ TypeClassResolutionFailure constraint
 
-solveHasOrd :: Meta -> CheckedExpr -> CheckedExpr -> Progress
-solveHasOrd m (Builtin _ Nat)   (Builtin _ Prop) = solved m
-solveHasOrd m (Builtin _ Int)   (Builtin _ Prop) = solved m
-solveHasOrd m (Builtin _ Real)  (Builtin _ Prop) = solved m
-solveHasOrd _ _ _                                = Stuck
+solveHasOrd :: MonadTCResolution m
+            => TypeClassConstraint
+            -> CheckedExpr
+            -> CheckedExpr
+            -> m Progress
+solveHasOrd (m `Has` _) (Builtin _ Nat)   (Builtin _ Prop) = return $ solved m
+solveHasOrd (m `Has` _) (Builtin _ Int)   (Builtin _ Prop) = return $ solved m
+solveHasOrd (m `Has` _) (Builtin _ Real)  (Builtin _ Prop) = return $ solved m
+solveHasOrd constraint  _                 _                =
+  throwError $ TypeClassResolutionFailure constraint
 
-solveIsTruth :: Meta -> CheckedExpr -> Progress
-solveIsTruth m (Builtin _ Bool) = solved m
-solveIsTruth m (Builtin _ Prop) = solved m
-solveIsTruth _ _                = Stuck
+solveIsTruth :: MonadTCResolution m
+             => TypeClassConstraint
+             -> CheckedExpr
+             -> m Progress
+solveIsTruth (m `Has` _) (Builtin _ Bool) = return $ solved m
+solveIsTruth (m `Has` _) (Builtin _ Prop) = return $ solved m
+solveIsTruth constraint  _                =
+  throwError $ TypeClassResolutionFailure constraint
 
-solveIsContainer :: MonadTCResolution m => Meta -> Provenance -> CheckedExpr -> CheckedExpr -> m Progress
-solveIsContainer m p tCont tElem = do
+solveIsContainer :: MonadTCResolution m
+                 => TypeClassConstraint
+                 -> CheckedExpr
+                 -> CheckedExpr
+                 -> m Progress
+solveIsContainer constraint@(m `Has` _) tCont tElem = do
   tContElem <- getContainerElem tCont
   case tContElem of
     Nothing -> return Stuck
     Just t  -> if t == tElem
       then return $ solved m
       else do
-        addUnificationConstraint $ makeConstraint p [] tElem t
+        addUnificationConstraint $ makeConstraint (prov constraint) [] tElem t
         return $ PartiallySolved mempty
   where
     getContainerElem :: MonadTCResolution m => CheckedExpr -> m (Maybe CheckedExpr)
@@ -146,25 +164,46 @@ solveIsContainer m p tCont tElem = do
       (Builtin _ Tensor, [tElem', _]) -> whnf (argExpr tElem') <&> Just
       _                               -> return Nothing
 
-solveIsNatural :: Meta -> CheckedExpr -> Progress
-solveIsNatural m (Builtin _ Nat)  = solved m
-solveIsNatural m (Builtin _ Int)  = solved m
-solveIsNatural m (Builtin _ Real) = solved m
-solveIsNatural _ _                = Stuck
+solveIsNatural :: MonadTCResolution m
+             => TypeClassConstraint
+             -> CheckedExpr
+             -> m Progress
+solveIsNatural (m `Has` _) (Builtin _ Nat)  = return $ solved m
+solveIsNatural (m `Has` _) (Builtin _ Int)  = return $ solved m
+solveIsNatural (m `Has` _) (Builtin _ Real) = return $ solved m
+solveIsNatural constraint _       =
+  throwError $ TypeClassResolutionFailure constraint
 
-solveIsIntegral :: Meta -> CheckedExpr -> Progress
-solveIsIntegral m (Builtin _ Int)  = solved m
-solveIsIntegral m (Builtin _ Real) = solved m
-solveIsIntegral _ _                = Stuck
+solveIsIntegral :: MonadTCResolution m
+             => TypeClassConstraint
+             -> CheckedExpr
+             -> m Progress
+solveIsIntegral (m `Has` _) (Builtin _ Int)  = return $ solved m
+solveIsIntegral (m `Has` _) (Builtin _ Real) = return $ solved m
+solveIsIntegral constraint _                 =
+  throwError $ TypeClassResolutionFailure constraint
 
-solveIsRational :: Meta -> CheckedExpr -> Progress
-solveIsRational m (Builtin _ Real) = solved m
-solveIsRational _ _                = Stuck
+solveIsRational :: MonadTCResolution m
+             => TypeClassConstraint
+             -> CheckedExpr
+             -> m Progress
+solveIsRational (m `Has` _) (Builtin _ Real) = return $ solved m
+solveIsRational constraint _                 =
+  throwError $ TypeClassResolutionFailure constraint
 
-solveIsReal :: Meta -> CheckedExpr -> Progress
-solveIsReal m (Builtin _ Real) = solved m
-solveIsReal _ _                = Stuck
+solveIsReal :: MonadTCResolution m
+             => TypeClassConstraint
+             -> CheckedExpr
+             -> m Progress
+solveIsReal (m `Has` _) (Builtin _ Real) = return $ solved m
+solveIsReal constraint _                 =
+  throwError $ TypeClassResolutionFailure constraint
 
 -- TODO
-solveIsQuantifiable :: Meta -> CheckedExpr -> CheckedExpr -> Progress
-solveIsQuantifiable _ _ _ = Stuck
+solveIsQuantifiable :: MonadTCResolution m
+                    => TypeClassConstraint
+                    -> CheckedExpr
+                    -> CheckedExpr
+                    -> m Progress
+solveIsQuantifiable constraint _ _ =
+  throwError $ TypeClassResolutionFailure constraint
