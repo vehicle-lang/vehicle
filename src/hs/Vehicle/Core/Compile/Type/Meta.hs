@@ -117,10 +117,10 @@ addUnificationConstraint :: (MonadMeta m, MonadLogger m) => UnificationConstrain
 addUnificationConstraint c = addUnificationConstraints [c]
 
 addUnificationConstraints :: (MonadMeta m, MonadLogger m) => [UnificationConstraint] -> m ()
-addUnificationConstraints constraint = do
-  logDebug ("add-unification-constraint " <> pretty constraint)
+addUnificationConstraints constraints = do
+  logDebug ("add-unification-constraints " <> pretty constraints)
   modifyMetaCtx $ \ MetaCtx {..} ->
-    MetaCtx { unificationConstraints = constraint ++ unificationConstraints, ..}
+    MetaCtx { unificationConstraints = constraints ++ unificationConstraints, ..}
 
 setUnificationConstraints :: MonadMeta m => [UnificationConstraint] -> m ()
 setUnificationConstraints constraints = modifyMetaCtx $ \ MetaCtx {..} ->

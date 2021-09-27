@@ -164,32 +164,14 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
           addUnificationConstraints [binderConstraint, bodyConstraint]
           return True
 
-    (Builtin _ op1, args1) :~: (Builtin _ op2, args2) -> do
-      solveEq constraint op1 op2
-      if length args1 /= length args2 then
-        throwError $ UnificationFailure constraint
-      else do
-        constraints <- traverse (solveArg constraint) (zip args1 args2)
-        addUnificationConstraints constraints
-        return True
+    (Builtin _ op1, args1) :~: (Builtin _ op2, args2) ->
+      solveSimpleApplication constraint op1 op2 args1 args2
 
-    (Var _ v1, args1) :~: (Var _ v2, args2) -> do
-      solveEq constraint v1 v2
-      if length args1 /= length args2 then
-        throwError $ UnificationFailure constraint
-      else do
-        constraints <- traverse (solveArg constraint) (zip args1 args2)
-        addUnificationConstraints constraints
-        return True
+    (Var _ v1, args1) :~: (Var _ v2, args2) ->
+      solveSimpleApplication constraint v1 v2 args1 args2
 
-    (Literal _ l1, args1) :~: (Literal _ l2, args2) -> do
-      solveEq constraint l1 l2
-      if length args1 /= length args2 then
-        throwError $ UnificationFailure constraint
-      else do
-        constraints <- traverse (solveArg constraint) (zip args1 args2)
-        addUnificationConstraints constraints
-        return True
+    (Literal _ l1, args1) :~: (Literal _ l2, args2) ->
+      solveSimpleApplication constraint l1 l2 args1 args2
 
     ---------------------
     -- Flex-flex cases --
@@ -326,6 +308,23 @@ solveArg :: MonadUnify m
 solveArg c@(Unify p ctx history _metas es) (arg1, arg2)
   | vis arg1 /= vis arg2 = throwError $ UnificationFailure c
   | otherwise = return $ Unify p ctx (es : history) mempty (argExpr arg1 , argExpr arg2)
+
+solveSimpleApplication :: (MonadUnify m, Eq a)
+                       => UnificationConstraint
+                       -> a -> a
+                       -> [CheckedArg] -> [CheckedArg]
+                       -> m Bool
+solveSimpleApplication constraint fun1 fun2 args1 args2 = do
+  solveEq constraint fun1 fun2
+  if length args1 /= length args2 then
+    throwError $ UnificationFailure constraint
+  else if null args1 then do
+    logDebug "solved-trivially"
+    return True
+  else do
+    constraints <- traverse (solveArg constraint) (zip args1 args2)
+    addUnificationConstraints constraints
+    return True
 
 positionalIntersection :: Eq a => [a] -> [a] -> [a]
 positionalIntersection [] _       = []

@@ -4,6 +4,7 @@ module Vehicle.Core.Compile.Type.TypeClass
   )
   where
 
+import Data.Functor ((<&>))
 import Control.Monad ( when )
 import Prettyprinter ( (<+>), Pretty(pretty), squotes )
 
@@ -52,10 +53,13 @@ solveConstraint :: MonadTCResolution m
                 => TypeClassConstraint
                 -> m Progress
 solveConstraint constraint@(m `Has` e) = do
+  logDebug $ "trying" <+> pretty m <> "?" <+> "~" <+> pretty e
+  incrCallDepth
   result <- findInstance m e
   case result of
     Solved _ -> metaSolved (prov e) m (PrimDict e)
     _        -> addTypeClassConstraint constraint
+  decrCallDepth
   return result
 
 -- Takes in the type-class and the list of arguments and returns the list of those
@@ -91,11 +95,18 @@ extractAndNormaliseArg _ = developerError "Not expecting type-classes with non-e
 blockOnMetas :: MonadTCResolution m => Builtin -> [CheckedExpr] -> m Progress -> m Progress
 blockOnMetas tc args action = do
   let metas = filter isMeta (getNonInferableArgs tc args)
+  logDebug $ pretty (getNonInferableArgs tc args)
+  logDebug $ pretty metas
   if null metas
     then action
     else do
-      logDebug $ "Blocked on metas: " <+> pretty metas
+      logDebug $ "Blocked on non-inferable metas:" <+> pretty metas
       return Stuck
+
+isMeta :: CheckedExpr -> Bool
+isMeta e = case decomposeApp e of
+  (Meta _ _, _) -> True
+  _             -> False
 
 -- TODO insert Bool classes
 
@@ -119,19 +130,21 @@ solveIsTruth m (Builtin _ Prop) = solved m
 solveIsTruth _ _                = Stuck
 
 solveIsContainer :: MonadTCResolution m => Meta -> Provenance -> CheckedExpr -> CheckedExpr -> m Progress
-solveIsContainer m p tCont tElem = case tContElem of
-  Nothing -> return Stuck
-  Just t  -> if t == tElem
-    then return $ solved m
-    else do
-      addUnificationConstraint $ makeConstraint p [] tElem t
-      return $ PartiallySolved mempty
+solveIsContainer m p tCont tElem = do
+  tContElem <- getContainerElem tCont
+  case tContElem of
+    Nothing -> return Stuck
+    Just t  -> if t == tElem
+      then return $ solved m
+      else do
+        addUnificationConstraint $ makeConstraint p [] tElem t
+        return $ PartiallySolved mempty
   where
-    tContElem :: Maybe CheckedExpr
-    tContElem = case decomposeApp tCont of
-      (Builtin _ List,   [tElem'])    -> Just $ argExpr tElem'
-      (Builtin _ Tensor, [tElem', _]) -> Just $ argExpr tElem'
-      _                               -> Nothing
+    getContainerElem :: MonadTCResolution m => CheckedExpr -> m (Maybe CheckedExpr)
+    getContainerElem t = case decomposeApp t of
+      (Builtin _ List,   [tElem'])    -> whnf (argExpr tElem') <&> Just
+      (Builtin _ Tensor, [tElem', _]) -> whnf (argExpr tElem') <&> Just
+      _                               -> return Nothing
 
 solveIsNatural :: Meta -> CheckedExpr -> Progress
 solveIsNatural m (Builtin _ Nat)  = solved m

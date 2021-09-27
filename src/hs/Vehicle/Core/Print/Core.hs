@@ -58,18 +58,18 @@ instance Pretty var => Pretty (Binder var ann) where
 instance Pretty var => Pretty (Expr var ann) where
   pretty = \case
     Type l                      -> "Type" <> pretty l
-    Hole    _p   name           -> "h?" <> pretty name
-    Meta    _p   m              -> "?" <> pretty m
+    Hole    _p   name           -> "h?"   <> pretty name
+    Meta    _p   m              -> "?"    <> pretty m
+    Builtin _ann op             -> pretty op
+    Literal _ann l              -> pretty l
+    Var     _ann v              -> pretty v
+    Seq     _ann es             -> "[" <> hsep (fmap pretty es) <> "]"
     Ann     _ann term typ       -> parens (pretty term <+> ":type" <+> pretty typ)
     App     _ann fun arg        -> parens (pretty fun <+> pretty arg)
     Pi      _ann binder res     -> parens ("pi" <+> pretty binder <+> pretty res)
     Let     _ann e1 binder e2   -> parens ("let" <+> pretty binder <+> pretty e1 <+> pretty e2)
     Lam     _ann binder e       -> parens ("lambda" <+> pretty binder <+> pretty e)
-    Builtin _ann op             -> pretty op
-    Literal _ann l              -> pretty l
-    Seq     _ann es             -> "[" <> hsep (fmap pretty es) <> "]"
-    Var     _ann v              -> pretty v
-    PrimDict e                  -> "primDict" <+> pretty e
+    PrimDict e                  -> parens $ "PrimDict" <+> pretty e
 
 instance Pretty var => Pretty (Decl var ann) where
   pretty = \case

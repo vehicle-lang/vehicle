@@ -59,8 +59,8 @@ instance HasProvenance UnificationConstraint where
   prov (Unify p _ _ _ _) = p
 
 instance Pretty UnificationConstraint where
-  pretty (Unify _ _ _ metas (e1, e2)) =
-    pretty metas <+> prettyFrontend e1 <+> "~" <+> prettyFrontend e2
+  pretty (Unify _ _ _ _ (e1, e2)) =
+    prettyFrontend e1 <+> "~" <+> prettyFrontend e2
 
 makeConstraint :: Provenance -> [(Name, CheckedExpr)] -> CheckedExpr -> CheckedExpr -> UnificationConstraint
 makeConstraint p ctx e1 e2 = Unify p constraintCtx [] mempty (e1, e2)
