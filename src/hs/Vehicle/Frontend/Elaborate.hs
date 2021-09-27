@@ -142,11 +142,13 @@ instance Elab VF.InputExpr VC.InputExpr where
     VF.Neg     ann e     -> op1 VC.Neg ann e
 
     -- Lists and tensors.
+    VF.Seq     ann es        -> VC.Seq ann <$> traverse elab es
     VF.Cons    ann e1 e2     -> op2 VC.Cons ann e1 e2
     VF.At      ann e1 e2     -> op2 VC.At   ann e1 e2
+    VF.Map     ann e1 e2     -> op2 VC.Map  ann e1 e2
+    VF.Fold    ann e1 e2 e3  -> op3 VC.Fold ann e1 e2 e3
     VF.Quant   ann q n e     -> op1 (VC.Quant q) ann (VF.Lam ann (n :| []) e)
     VF.QuantIn ann q n e1 e2 -> quantIn ann q n e1 e2
-    VF.Seq     ann es        -> VC.Seq ann <$> traverse elab es
 
 -- |Elaborate declarations.
 instance Elab VF.InputDecl VC.InputDecl where

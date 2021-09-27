@@ -111,8 +111,9 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
   whnfE1 <- whnf e1
   whnfE2 <- whnf e2
   logDebug $ "trying" <+> pretty whnfE1 <+> "~" <+> pretty whnfE2
+  incrCallDepth
 
-  case (decomposeApp whnfE1, decomposeApp whnfE2) of
+  result <- case (decomposeApp whnfE1, decomposeApp whnfE2) of
     ----------------------
     -- Impossible cases --
     ----------------------
@@ -125,7 +126,9 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
     -----------------------
     -- Rigid-rigid cases --
     -----------------------
-    (Type    l1, [])   :~: (Type    l2, [])   -> do solveEq constraint l1  l2; return []
+    (Type l1, [])   :~: (Type l2, []) -> do
+      solveEq constraint l1  l2;
+      return []
     {-
     (Ann _ e1 t1, Ann _ e2 t2) -> return
         [ Unify p ctx (exprs : history) mempty (e1, e2)
@@ -179,6 +182,7 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
     ---------------------
     -- Flex-flex cases --
     ---------------------
+
     (Meta _ i, args1) :~: (Meta _ j, args2)
       -- If the expressions are exactly equal then simply discard the constraint
       -- as it doesn't tell us anything.
@@ -201,6 +205,21 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
         let abstractedMeta = abstractOver args1 meta
         metaSolved p i abstractedMeta
 
+        return []
+
+      -- Then the metas are not equal.
+      -- If the first meta has no arguments then simply set equal to the second meta.
+      --
+      -- Note: this case and the one below it are not strictly necessary as the
+      -- final case handles it, but short-circuiting here avoids 1) generating new metas
+      -- 2) performing extra unification passes and 3) often makes the process more understandable.
+      | null args1 -> do
+        metaSolved p i whnfE2
+        return []
+
+      -- Likewise if the second meta has no arguments then simply set equal to the first meta.
+      | null args2 -> do
+        metaSolved p j whnfE1
         return []
 
       -- Finally if the meta-variables are different then we have much more
@@ -257,6 +276,10 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
     -- Catch-all
     _ -> throwError $ UnificationFailure (constraint { unifExprs = (whnfE1, whnfE2) })
 
+  decrCallDepth
+  return result
+
+
 abstractOver :: [CheckedArg] -> CheckedExpr -> CheckedExpr
 abstractOver args body = foldr argToLam body args
   where
@@ -280,7 +303,6 @@ solveEq :: (MonadUnify m, Eq a)
 solveEq c v1 v2
   | v1 /= v2  = throwError $ UnificationFailure c
   | otherwise = do
-    logDebug "solved-trivially"
     return ()
 
 solveArg :: MonadUnify m

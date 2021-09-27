@@ -5,6 +5,7 @@
 module Vehicle
   ( VehicleLang(..)
   , ITP(..)
+  , Verifier(..)
   , OutputTarget(..)
   , Options(..)
   , defaultOptions
@@ -14,8 +15,8 @@ module Vehicle
 
 import Paths_vehicle (version)
 
-import Control.Monad (when)
-import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad (when,)
+import Control.Monad.Except (ExceptT, runExceptT, liftIO)
 import Data.Text (Text)
 import Data.Char (toLower)
 import Data.Text.IO qualified as T
@@ -28,12 +29,17 @@ import Vehicle.Prelude
 import Vehicle.Core.AST qualified as VC
 import Vehicle.Core.Parse qualified as VC
 import Vehicle.Core.Print.Core qualified as VC
-import Vehicle.Core.Compile qualified as VC
+import Vehicle.Core.Compile.Scope qualified as VC
+import Vehicle.Core.Compile.Type qualified as VC
+import Vehicle.Core.Compile.Descope qualified as VC
+import Vehicle.Core.Compile.Normalise (normalise)
 import Vehicle.Frontend.AST qualified as VF
 import Vehicle.Frontend.Print qualified as VF
 import Vehicle.Frontend.Elaborate qualified as VF
 import Vehicle.Frontend.Delaborate qualified as VF
 import Vehicle.Frontend.Parse qualified as VF
+
+
 --import Vehicle.Backend.ITP.Core (ITPOptions(..))
 --import Vehicle.Backend.ITP.Agda (AgdaOptions(..), compileToAgda)
 
@@ -44,7 +50,9 @@ import Vehicle.Frontend.Parse qualified as VF
 data VehicleLang = Frontend | Core
   deriving (Show)
 
-data ITP = Agda
+data ITP
+  = Agda
+  | Vehicle VehicleLang
   deriving (Show)
 
 data Verifier = VNNLib
@@ -52,7 +60,6 @@ data Verifier = VNNLib
 
 data OutputTarget
   = ITP ITP
-  | Vehicle VehicleLang
   | Verifier Verifier
   deriving (Show)
 
@@ -118,9 +125,10 @@ parseOutputTarget :: String -> Maybe OutputTarget
 parseOutputTarget s = outputTargets !? map toLower s
   where
     outputTargets =
-      [ "agda"         |-> ITP Agda
-      , "vehicle-core" |-> Vehicle Core
-      , "vehicle"      |-> Vehicle Frontend
+      [ "vnnlib"       |-> Verifier VNNLib
+      , "agda"         |-> ITP Agda
+      , "vehicle-core" |-> ITP (Vehicle Core)
+      , "vehicle"      |-> ITP (Vehicle Frontend)
       ]
 
 --------------------------------------------------------------------------------
@@ -148,7 +156,8 @@ run _opts@Options{..} = do
   T.putStrLn (VC.prettyCore coreProg)
 
   -- Scope check, type check etc.
-  compCoreProg <- fromLoggedEitherIO $ VC.compile coreProg
+  scopedCoreProg <- fromLoggedEitherIO $ VC.scopeCheck coreProg
+  typedCoreProg <- fromLoggedEitherIO $ VC.typeCheck scopedCoreProg
 
   -- Compile to requested backend
   outputText <- case outputTarget of
@@ -157,30 +166,37 @@ run _opts@Options{..} = do
       exitFailure
 
     Just (ITP itp) -> do
-      developerError "Agda not current supported"
-      {-
-      compFrontProg <- fromEitherIO $ VF.runDelab compCoreProg
-
+      let descopedCoreProg :: VC.OutputProg = VC.descopeCheck typedCoreProg
       case itp of
+        (Vehicle Core) ->
+          return $ VC.prettyCore descopedCoreProg
+
+        (Vehicle Frontend) -> do
+          compFrontProg :: VF.OutputProg <- fromLoggedEitherIO $ VF.runDelab descopedCoreProg
+          return $ layoutAsText $ VF.prettyFrontend compFrontProg
+
         Agda -> do
-          let itpOptions = ITPOptions
-                { vehicleUIDs  = mempty
-                , aisecVersion = version
-                , backendOpts  = AgdaOptions
-                  { useProp    = False
-                  , modulePath = ["Testing"]
-                  }
-                }
-          fromEitherIO $ compileToAgda itpOptions compFrontProg
-      -}
+          developerError "Agda not current supported"
+        {-
+          compFrontProg <- fromEitherIO $ VF.runDelab compCoreProg
+
+          case itp of
+            Agda -> do
+              let itpOptions = ITPOptions
+                    { vehicleUIDs  = mempty
+                    , aisecVersion = version
+                    , backendOpts  = AgdaOptions
+                      { useProp    = False
+                      , modulePath = ["Testing"]
+                      }
+                    }
+              fromEitherIO $ compileToAgda itpOptions compFrontProg
+          -}
+    Just (Verifier VNNLib) -> do
+      normProg <- fromLoggedEitherIO $ normalise typedCoreProg
+      return $ layoutAsText $ pretty normProg
 
 
-    Just (Vehicle Core) ->
-      return $ VC.prettyCore compCoreProg
-
-    Just (Vehicle Frontend) -> do
-      compFrontProg :: VF.OutputProg <- fromLoggedEitherIO $ VF.runDelab compCoreProg
-      return $ layoutAsText $ VF.prettyFrontend compFrontProg
 
   -- Output the result to either the command line or the specified output file
   case outputFile of

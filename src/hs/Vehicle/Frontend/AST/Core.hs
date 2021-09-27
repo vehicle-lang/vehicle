@@ -98,6 +98,8 @@ data Expr ann
   | Neg      ann (Expr ann)
   | Cons     ann (Expr ann) (Expr ann)
   | At       ann (Expr ann) (Expr ann)
+  | Map      ann (Expr ann) (Expr ann)
+  | Fold     ann (Expr ann) (Expr ann) (Expr ann)
   | Quant    ann Quantifier (Binder ann) (Expr ann)
   | QuantIn  ann Quantifier (Binder ann) (Expr ann) (Expr ann)
   | Seq      ann [Expr ann]

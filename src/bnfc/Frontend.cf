@@ -40,11 +40,14 @@ position token TokMul       {"*"};
 position token TokDiv       {"/"};
 position token TokAdd       {"+"};
 position token TokSub       {"-"};
-position token TokAt        {"!"};
 
 position token TokSeqOpen   {"["};
 position token TokSeqClose  {"]"};
 position token TokCons      {"::"};
+position token TokAt        {"!"};
+position token TokMap       {"map"};
+position token TokFold      {"fold"};
+
 position token TokTrue      {"True"};
 position token TokFalse     {"False"};
 
@@ -160,9 +163,11 @@ Sub.     Expr9  ::= Expr9 TokSub Expr10;
 Neg.     Expr10 ::= TokSub Expr10;
 
 -- Lists and tensors.
+Seq.     Expr14 ::= TokSeqOpen [Expr] TokSeqClose;
 Cons.    Expr3  ::= Expr4 TokCons Expr3;
 At.      Expr11 ::= Expr11 TokAt Expr12;
-Seq.     Expr14 ::= TokSeqOpen [Expr] TokSeqClose;
+Map.     Expr11 ::= TokMap Expr12 Expr13;
+Fold.    Expr11 ::= TokFold Expr12 Expr13 Expr14;
 
 -- Quantification
 Every.     Expr3 ::= TokEvery Binder TokDot Expr4;

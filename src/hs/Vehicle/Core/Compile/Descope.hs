@@ -1,6 +1,6 @@
 
 module Vehicle.Core.Compile.Descope
-  ( runDescope
+  ( descopeCheck
   , runDescopeWithCtx
   ) where
 
@@ -11,8 +11,8 @@ import Prettyprinter ((<+>), Pretty(pretty))
 import Vehicle.Prelude
 import Vehicle.Core.AST
 
-runDescope :: Descope a b => a -> b
-runDescope = runDescopeWithCtx emptyCtx
+descopeCheck :: Descope a b => a -> b
+descopeCheck = runDescopeWithCtx emptyCtx
 
 runDescopeWithCtx :: Descope a b => Ctx -> a -> b
 runDescopeWithCtx ctx e = runReader (descope e) ctx

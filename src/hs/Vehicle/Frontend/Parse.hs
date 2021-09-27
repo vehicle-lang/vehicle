@@ -195,15 +195,20 @@ instance Convert B.Expr V.InputExpr where
     B.Add e1 tk e2            -> op2 V.Add    (tkProv tk) (conv e1) (conv e2)
     B.Sub e1 tk e2            -> op2 V.Sub    (tkProv tk) (conv e1) (conv e2)
     B.Neg tk e                -> op1 V.Neg    (tkProv tk) (conv e)
-    B.Cons e1 tk e2           -> op2 V.Cons   (tkProv tk) (conv e1) (conv e2)
-    B.At e1 tk e2             -> op2 V.At     (tkProv tk) (conv e1) (conv e2)
+
+    B.Seq tk1 es tk2          -> op1 V.Seq     (tkProv tk1 <> tkProv tk2) (traverse conv es)
+    B.Cons e1 tk e2           -> op2 V.Cons    (tkProv tk) (conv e1) (conv e2)
+    B.At e1 tk e2             -> op2 V.At      (tkProv tk) (conv e1) (conv e2)
+    B.Map tk e1 e2            -> op2 V.Map     (tkProv tk) (conv e1) (conv e2)
+    B.Fold tk e1 e2 e3        -> op3 V.Fold    (tkProv tk) (conv e1) (conv e2) (conv e3)
+
     B.Every tk1 n tk2 e       -> op2 (flip V.Quant All) (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
     B.Some  tk1 n tk2 e       -> op2 (flip V.Quant Any) (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
     B.EveryIn tk1 n e1 tk2 e2 -> op3 (flip V.QuantIn All) (tkProv tk1 <> tkProv tk2) (conv n) (conv e1) (conv e2)
     B.SomeIn tk1 n e1 tk2 e2  -> op3 (flip V.QuantIn Any) (tkProv tk1 <> tkProv tk2) (conv n) (conv e1) (conv e2)
-    B.Seq tk1 es tk2          -> op1 V.Seq     (tkProv tk1 <> tkProv tk2) (traverse conv es)
     B.Literal l               -> conv l
     B.TypeC   tc              -> conv tc
+    B.Has _tk _e1 _e2            -> developerError "User specificed type classes not yet supported"
 
 -- |Elaborate declarations.
 instance Convert (NonEmpty B.Decl) V.InputDecl where

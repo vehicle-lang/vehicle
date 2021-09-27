@@ -7,7 +7,7 @@ import Prettyprinter (Doc, pretty, line)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST as VC ( CheckedExpr, OutputExpr )
-import Vehicle.Core.Compile.Descope ( runDescope )
+import Vehicle.Core.Compile.Descope ( descopeCheck )
 import Vehicle.Core.Print.Core ()
 import Vehicle.Frontend.AST as VF ( OutputExpr )
 import Vehicle.Frontend.Delaborate ( DelabError, runDelab )

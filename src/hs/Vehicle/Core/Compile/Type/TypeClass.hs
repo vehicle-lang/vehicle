@@ -54,8 +54,10 @@ solveConstraints :: MonadTCResolution m
 solveConstraints [] = return []
 solveConstraints (c : cs) = do
   unsolvedConstraints <- solveConstraints cs
-  solved <- solveConstraint c
-  return $ if solved then unsolvedConstraints else c : unsolvedConstraints
+  madeProgress <- solveConstraint c
+  return $ if madeProgress
+    then unsolvedConstraints
+    else c : unsolvedConstraints
 
 solveConstraint :: MonadTCResolution m
                 => TypeClassConstraint
@@ -115,7 +117,7 @@ solveIsContainer p tCont tElem = case tContElem of
     then return True
     else do
       addUnificationConstraint $ makeConstraint p [] tElem t
-      return False
+      return True
   where
     tContElem :: Maybe CheckedExpr
     tContElem = case decomposeApp tCont of

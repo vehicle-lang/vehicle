@@ -53,8 +53,7 @@ data UnificationConstraint = Unify
   , unifHistory   :: UnificationHistory -- The history, i.e. unification path that has lead to this.
   , unifBlockedOn :: MetaSet            -- The meta-variables that the constraint is blocked on
   , unifExprs     :: UnificationPair    -- The expressions to unify
-  }
-  deriving Show
+  } deriving Show
 
 instance HasProvenance UnificationConstraint where
   prov (Unify p _ _ _ _) = p

@@ -50,7 +50,6 @@ library
                       , Vehicle.Core.AST.Core
                       , Vehicle.Core.AST.DeBruijn
                       , Vehicle.Core.AST.Utils
-                      , Vehicle.Core.Compile
                       , Vehicle.Core.Compile.DSL
                       , Vehicle.Core.Compile.Scope
                       , Vehicle.Core.Compile.Type
@@ -60,7 +59,7 @@ library
                       , Vehicle.Core.Compile.Type.Meta
                       , Vehicle.Core.Compile.Type.WHNF
                       , Vehicle.Core.Compile.Descope
-                      -- , Vehicle.Core.Compile.Normalise
+                      , Vehicle.Core.Compile.Normalise
                       -- , Vehicle.Core.Compile.Normalise.Quantifier
                       , Vehicle.Core.Parse
                       , Vehicle.Core.Print.Core

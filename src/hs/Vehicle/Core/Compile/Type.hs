@@ -2,7 +2,7 @@
 
 module Vehicle.Core.Compile.Type
   ( TypingError(..)
-  , runTypeChecking
+  , typeCheck
   ) where
 
 import Prelude hiding (pi)
@@ -24,8 +24,8 @@ import Vehicle.Core.Compile.Type.Meta
 import Vehicle.Core.Compile.Type.TypeClass
 import Vehicle.Prelude
 
-runTypeChecking :: UncheckedProg -> ExceptT TypingError Logger CheckedProg
-runTypeChecking prog = do
+typeCheck :: UncheckedProg -> ExceptT TypingError Logger CheckedProg
+typeCheck prog = do
   let prog1 = runAll prog
   let prog2 = runReaderT prog1 emptyVariableCtx
   prog3 <- evalStateT prog2 emptyMetaCtx
@@ -36,11 +36,10 @@ runAll :: TCM m => UncheckedProg -> m CheckedProg
 runAll prog = do
   logDebug $ pretty prog
   prog2 <- inferProg prog
-  solveMetas
-  prog3 <- substMetas <$> getMetaSubstitution <*> pure prog2
-  return prog3
+  metaSubstitution <- solveMetas
+  return $ substMetas metaSubstitution prog2
 
-solveMetas :: TCM m => m ()
+solveMetas :: TCM m => m MetaSubstitution
 solveMetas = do
   unificationProgress <- solveUnificationConstraints
   tcResolutionProgress <- solveTypeClassConstraints
@@ -50,7 +49,7 @@ solveMetas = do
   unsolvedTypeClassConstraints <- getTypeClassConstraints
 
   case (unsolvedUnificationConstraints, unsolvedTypeClassConstraints, progress) of
-    ([], [], _)        -> return ()
+    ([], [], _)        -> getMetaSubstitution
     (_, _, True)       -> solveMetas
     (c : cs, _, False) -> throwError $ UnsolvedUnificationConstraints (c :| cs)
     (_, c : cs, False) -> throwError $ UnsolvedTypeClassConstraints (c :| cs)
@@ -166,7 +165,6 @@ insertArgs p fun' (Pi _ (Binder _ vArg _ tArg') tRes')
 
   ctx <- getBoundCtx
   (meta, metaArg) <- freshMetaWith ctx p
-  let metaType = makeMetaType ctx p tArg''
 
   -- Substitute meta-variable in tRes
   let tResSubst' = metaArg `substInto` tRes'
@@ -176,7 +174,7 @@ insertArgs p fun' (Pi _ (Binder _ vArg _ tArg') tRes')
 
   -- Check if the required argument is a type-class
   when (vArg == Constraint) $
-    addTypeClassConstraint (meta `Has` metaType)
+    addTypeClassConstraint (meta `Has` tArg'')
 
   insertArgs p (App mempty fun' (Arg mempty vArg metaArg)) tResSubst'
 insertArgs _ fun' typ' =
@@ -220,7 +218,7 @@ check expectedType expr = showCheckExit $ do
       -- Replace the hole with meta-variable of the expected type.
       -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
       (_, meta) <- freshMeta p
-      return meta
+      unify p meta expectedType
 
     (_, e@(Type _))          -> viaInfer mempty expectedType e
     (_, e@(Meta _ _))        -> viaInfer mempty expectedType e
@@ -295,10 +293,6 @@ infer e = showInferExit $ do
         let t' = tArg' `tMax` tRes'
         return (Pi p (Binder pBound v name arg') res' , t')
 
-    Builtin p op -> do
-      let t' = typeOfBuiltin p op
-      return (Builtin p op, t')
-
     Var p (Bound i) -> do
       -- Lookup the type of the variable in the context.
       ctx <- getBoundCtx
@@ -345,6 +339,10 @@ infer e = showInferExit $ do
       let t' = typeOfLiteral p l
       (expr', type') <- insertArgs p (Literal p l) t'
       return (expr', type')
+
+    Builtin p op -> do
+      let t' = typeOfBuiltin p op
+      return (Builtin p op, t')
 
     Seq p es -> do
       (es', ts') <- unzip <$> traverse infer es
@@ -465,7 +463,7 @@ typeOfBuiltin p b = fromDSL $ case b of
 
   At   -> typeOfAtOp p
   Map  -> typeOfMapOp
-  Fold -> typeOfFoldOp
+  Fold -> typeOfFoldOp p
 
   Quant _ -> typeOfQuantifierOp
 
@@ -529,8 +527,9 @@ typeOfMapOp =
     forall type0 $ \tTo ->
       (tFrom ~> tTo) ~> tList tFrom ~> tList tTo
 
-typeOfFoldOp :: DSLExpr
-typeOfFoldOp =
-  forall type0 $ \tFrom ->
-    forall type0 $ \tTo ->
-      (tFrom ~> tTo ~> tTo) ~> tTo ~> tList tFrom ~> tTo
+typeOfFoldOp :: Provenance -> DSLExpr
+typeOfFoldOp p =
+  forall type0 $ \tCont ->
+    forall type0 $ \tElem ->
+      forall type0 $ \tRes ->
+        isContainer p tCont tElem ~~~> (tElem ~> tRes ~> tRes) ~> tRes ~> tCont ~> tRes

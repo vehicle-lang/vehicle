@@ -116,3 +116,11 @@ decomposeApp :: CheckedExpr -> (CheckedExpr, [CheckedArg])
 decomposeApp = go []
   where go args (App _ann fun arg) = go (arg:args) fun
         go args e                  = (e, args)
+
+decomposeExplicitApp :: CheckedExpr -> (CheckedExpr, [CheckedArg])
+decomposeExplicitApp = go []
+  where
+    go args = \case
+      (App _ann fun arg@(Arg _ Explicit _)) -> go (arg : args) fun
+      (App _ann fun _arg)                   -> go args fun
+      e                                     -> (e, args)

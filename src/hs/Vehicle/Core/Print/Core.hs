@@ -23,8 +23,8 @@ showCore = layoutAsString . pretty
 
 brackets :: Visibility -> (Doc a -> Doc a)
 brackets Explicit   = parens
-brackets Implicit   = braces
-brackets Constraint = braces . braces
+brackets Implicit   = const "" --braces
+brackets Constraint = const "" -- braces . braces
 
 instance Pretty Name where
   pretty Machine       = "_"
@@ -50,7 +50,7 @@ instance Pretty (WithProvenance Identifier) where
   pretty (WithProvenance _ann n) = pretty n
 
 instance Pretty var => Pretty (Arg var name) where
-  pretty (Arg _p v expr) = visBrackets v $ pretty expr
+  pretty (Arg _p v expr) = brackets v $ pretty expr
 
 instance Pretty var => Pretty (Binder var ann) where
   pretty (Binder _ann v n t) = brackets v (pretty n <+> ":type" <+> pretty t)
