@@ -8,6 +8,7 @@ module Vehicle.Core.Compile.Type.Meta
   , metaSolved
   , makeMetaType
   , addUnificationConstraint
+  , addUnificationConstraints
   , getUnificationConstraints
   , setUnificationConstraints
   , getTypeClassConstraints
@@ -15,17 +16,26 @@ module Vehicle.Core.Compile.Type.Meta
   , setTypeClassConstraints
   , getMetaSubstitution
   , modifyMetaSubstitution
+  , Progress(..)
+  , pattern Solved
+  , pattern PartiallySolved
+  , solved
+  , solvedTrivial
+  , partiallySolved
+  , isStuck
   ) where
 
 import Control.Monad.Reader (Reader, runReader, ask, local)
 import Control.Monad.State (MonadState(..), modify, gets)
 import Data.List (foldl')
 import Data.IntMap qualified as IntMap
+import Data.IntSet qualified as IntSet (singleton)
 import Prettyprinter (Pretty(..), (<+>))
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Type.Core
+
 
 class MetaSubstitutable a where
   -- TODO change name away from M
@@ -104,10 +114,13 @@ getUnificationConstraints :: MonadMeta m => m [UnificationConstraint]
 getUnificationConstraints = gets unificationConstraints
 
 addUnificationConstraint :: (MonadMeta m, MonadLogger m) => UnificationConstraint -> m ()
-addUnificationConstraint constraint = do
+addUnificationConstraint c = addUnificationConstraints [c]
+
+addUnificationConstraints :: (MonadMeta m, MonadLogger m) => [UnificationConstraint] -> m ()
+addUnificationConstraints constraint = do
   logDebug ("add-unification-constraint " <> pretty constraint)
   modifyMetaCtx $ \ MetaCtx {..} ->
-    MetaCtx { unificationConstraints = constraint : unificationConstraints, ..}
+    MetaCtx { unificationConstraints = constraint ++ unificationConstraints, ..}
 
 setUnificationConstraints :: MonadMeta m => [UnificationConstraint] -> m ()
 setUnificationConstraints constraints = modifyMetaCtx $ \ MetaCtx {..} ->
@@ -191,3 +204,37 @@ metaSolved p m e = do
       "and should have been substituted out but it is still present and" <+>
       "was assigned again to" <+> pretty new <+>
       pretty p
+
+data Progress
+  = Stuck
+  | Progress
+    { newConstraints :: Bool
+    , solvedMetas    :: MetaSet
+    }
+
+isStuck :: Progress -> Bool
+isStuck Stuck = True
+isStuck _     = False
+
+instance Semigroup Progress where
+  Stuck <> x = x
+  x <> Stuck = x
+  Progress n1 ms1 <> Progress n2 ms2 = Progress (n1 || n2) (ms1 <> ms2)
+
+instance Monoid Progress where
+  mempty = Stuck
+
+pattern Solved :: MetaSet -> Progress
+pattern Solved ms = Progress False ms
+
+solved :: Meta -> Progress
+solved m = Solved (IntSet.singleton m)
+
+solvedTrivial :: Progress
+solvedTrivial = Solved mempty
+
+pattern PartiallySolved :: MetaSet -> Progress
+pattern PartiallySolved ms = Progress True ms
+
+partiallySolved :: Meta -> Progress
+partiallySolved m = PartiallySolved (IntSet.singleton m)

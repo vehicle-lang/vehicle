@@ -1,12 +1,11 @@
 
-
 module Vehicle.Core.Compile.Type.TypeClass
   ( solveTypeClassConstraints
   )
   where
 
 import Control.Monad ( when )
-import Prettyprinter ( (<+>), Pretty(pretty) )
+import Prettyprinter ( (<+>), Pretty(pretty), squotes )
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
@@ -34,116 +33,125 @@ type MonadTCResolution m =
 solveTypeClassConstraints :: MonadTCResolution m => m Bool
 solveTypeClassConstraints = do
   logDebug "Starting new type-class resolution pass"
+
   constraints <- getTypeClassConstraints
+  setTypeClassConstraints []
+
   constraints' <- substMetas <$> getMetaSubstitution <*> pure constraints
 
   logDebug $ "constraints:" <+> pretty constraints'
-  unsolvedConstraints <- solveConstraints constraints'
-  --logDebug $ "solution:" <+> pretty constraints'
 
-  setTypeClassConstraints unsolvedConstraints
+  progress <- mconcat `fmap` traverse solveConstraint constraints'
 
   subst <- getMetaSubstitution
   logDebug $ "current-solution:" <+> pretty subst <+> "\n"
 
-  return $ length unsolvedConstraints < length constraints
-
-solveConstraints :: MonadTCResolution m
-                 => [TypeClassConstraint]
-                 -> m [TypeClassConstraint]
-solveConstraints [] = return []
-solveConstraints (c : cs) = do
-  unsolvedConstraints <- solveConstraints cs
-  madeProgress <- solveConstraint c
-  return $ if madeProgress
-    then unsolvedConstraints
-    else c : unsolvedConstraints
+  return $ not (isStuck progress)
 
 solveConstraint :: MonadTCResolution m
                 => TypeClassConstraint
-                -> m Bool
-solveConstraint (m `Has` e) = do
-  validTypeClass <- isValidTypeClass e
-  when validTypeClass $
-    metaSolved (prov e) m (PrimDict e)
-  return validTypeClass
+                -> m Progress
+solveConstraint constraint@(m `Has` e) = do
+  result <- findInstance m e
+  case result of
+    Solved _ -> metaSolved (prov e) m (PrimDict e)
+    _        -> addTypeClassConstraint constraint
+  return result
 
-isValidTypeClass :: MonadTCResolution m => CheckedExpr -> m Bool
-isValidTypeClass e = case decomposeApp e of
-  (Builtin _ tc, args) -> do
-    whnfArgs <- traverse extractAndNormaliseArg args
-    case (tc, whnfArgs) of
-      (IsContainer,    [t1, t2]) -> solveIsContainer (prov e) t1 t2
-      (HasEq,          [t1, t2]) -> return $ solveHasEq t1 t2
-      (HasOrd,         [t1, t2]) -> return $ solveHasOrd t1 t2
-      (IsTruth,        [t])      -> return $ solveIsTruth t
-      (IsNatural,      [t])      -> return $ solveIsNatural t
-      (IsIntegral,     [t])      -> return $ solveIsIntegral t
-      (IsRational,     [t])      -> return $ solveIsRational t
-      (IsReal,         [t])      -> return $ solveIsReal t
-      (IsQuantifiable, [t1, t2]) -> return $ solveIsQuantifiable t1 t2
-      _                          -> return False
-  _                    -> return False
+-- Takes in the type-class and the list of arguments and returns the list of those
+-- that cannot be inferred from the others.
+getNonInferableArgs :: Builtin -> [CheckedExpr] -> [CheckedExpr]
+getNonInferableArgs IsContainer [tCont, _tElem] = [tCont]
+getNonInferableArgs _           args            = args
+
+findInstance :: MonadTCResolution m => Meta -> CheckedExpr -> m Progress
+findInstance m e = do
+  eWHNF <- whnf e
+  case decomposeApp eWHNF of
+    (Builtin _ tc, args) -> do
+      argsWHNF <- traverse extractAndNormaliseArg args
+      let block = blockOnMetas tc argsWHNF
+      case (tc, argsWHNF) of
+          (IsContainer,    [t1, t2]) -> block $ solveIsContainer m (prov e) t1 t2
+          (HasEq,          [t1, t2]) -> block $ return $ solveHasEq m t1 t2
+          (HasOrd,         [t1, t2]) -> block $ return $ solveHasOrd m t1 t2
+          (IsTruth,        [t])      -> block $ return $ solveIsTruth m t
+          (IsNatural,      [t])      -> block $ return $ solveIsNatural m t
+          (IsIntegral,     [t])      -> block $ return $ solveIsIntegral m t
+          (IsRational,     [t])      -> block $ return $ solveIsRational m t
+          (IsReal,         [t])      -> block $ return $ solveIsReal m t
+          (IsQuantifiable, [t1, t2]) -> block $ return $ solveIsQuantifiable m t1 t2
+          _                          -> developerError $ "Unknown type-class" <+> squotes (pretty tc) <+> "args" <+> pretty argsWHNF
+    _ -> developerError $ "Unknown type-class" <+> squotes (pretty eWHNF)
 
 extractAndNormaliseArg :: MonadTCResolution m => CheckedArg -> m CheckedExpr
 extractAndNormaliseArg (Arg _ Explicit e) = whnf e
 extractAndNormaliseArg _ = developerError "Not expecting type-classes with non-explicit arguments"
 
+blockOnMetas :: MonadTCResolution m => Builtin -> [CheckedExpr] -> m Progress -> m Progress
+blockOnMetas tc args action = do
+  let metas = filter isMeta (getNonInferableArgs tc args)
+  if null metas
+    then action
+    else do
+      logDebug $ "Blocked on metas: " <+> pretty metas
+      return Stuck
+
 -- TODO insert Bool classes
 
-solveHasEq :: CheckedExpr -> CheckedExpr -> Bool
-solveHasEq (Builtin _ Bool)  (Builtin _ Prop) = True
-solveHasEq (Builtin _ Prop)  (Builtin _ Prop) = True
-solveHasEq (Builtin _ Nat)   (Builtin _ Prop) = True
-solveHasEq (Builtin _ Int)   (Builtin _ Prop) = True
-solveHasEq (Builtin _ Real)  (Builtin _ Prop) = True
-solveHasEq _ _ = False
+solveHasEq :: Meta -> CheckedExpr -> CheckedExpr -> Progress
+solveHasEq m (Builtin _ Bool)  (Builtin _ Prop) = solved m
+solveHasEq m (Builtin _ Prop)  (Builtin _ Prop) = solved m
+solveHasEq m (Builtin _ Nat)   (Builtin _ Prop) = solved m
+solveHasEq m (Builtin _ Int)   (Builtin _ Prop) = solved m
+solveHasEq m (Builtin _ Real)  (Builtin _ Prop) = solved m
+solveHasEq _ _ _                                = Stuck
 
-solveHasOrd :: CheckedExpr -> CheckedExpr -> Bool
-solveHasOrd (Builtin _ Nat)   (Builtin _ Prop) = True
-solveHasOrd (Builtin _ Int)   (Builtin _ Prop) = True
-solveHasOrd (Builtin _ Real)  (Builtin _ Prop) = True
-solveHasOrd _ _ = False
+solveHasOrd :: Meta -> CheckedExpr -> CheckedExpr -> Progress
+solveHasOrd m (Builtin _ Nat)   (Builtin _ Prop) = solved m
+solveHasOrd m (Builtin _ Int)   (Builtin _ Prop) = solved m
+solveHasOrd m (Builtin _ Real)  (Builtin _ Prop) = solved m
+solveHasOrd _ _ _                                = Stuck
 
-solveIsTruth :: CheckedExpr -> Bool
-solveIsTruth (Builtin _ Bool) = True
-solveIsTruth (Builtin _ Prop) = True
-solveIsTruth _ = False
+solveIsTruth :: Meta -> CheckedExpr -> Progress
+solveIsTruth m (Builtin _ Bool) = solved m
+solveIsTruth m (Builtin _ Prop) = solved m
+solveIsTruth _ _                = Stuck
 
-solveIsContainer :: MonadTCResolution m => Provenance -> CheckedExpr -> CheckedExpr -> m Bool
-solveIsContainer p tCont tElem = case tContElem of
-  Nothing -> return False
+solveIsContainer :: MonadTCResolution m => Meta -> Provenance -> CheckedExpr -> CheckedExpr -> m Progress
+solveIsContainer m p tCont tElem = case tContElem of
+  Nothing -> return Stuck
   Just t  -> if t == tElem
-    then return True
+    then return $ solved m
     else do
       addUnificationConstraint $ makeConstraint p [] tElem t
-      return True
+      return $ PartiallySolved mempty
   where
     tContElem :: Maybe CheckedExpr
     tContElem = case decomposeApp tCont of
       (Builtin _ List,   [tElem'])    -> Just $ argExpr tElem'
       (Builtin _ Tensor, [tElem', _]) -> Just $ argExpr tElem'
-      _ -> Nothing
+      _                               -> Nothing
 
-solveIsNatural :: CheckedExpr -> Bool
-solveIsNatural (Builtin _ Nat)  = True
-solveIsNatural (Builtin _ Int)  = True
-solveIsNatural (Builtin _ Real) = True
-solveIsNatural _ = False
+solveIsNatural :: Meta -> CheckedExpr -> Progress
+solveIsNatural m (Builtin _ Nat)  = solved m
+solveIsNatural m (Builtin _ Int)  = solved m
+solveIsNatural m (Builtin _ Real) = solved m
+solveIsNatural _ _                = Stuck
 
-solveIsIntegral :: CheckedExpr -> Bool
-solveIsIntegral (Builtin _ Int)  = True
-solveIsIntegral (Builtin _ Real) = True
-solveIsIntegral _ = False
+solveIsIntegral :: Meta -> CheckedExpr -> Progress
+solveIsIntegral m (Builtin _ Int)  = solved m
+solveIsIntegral m (Builtin _ Real) = solved m
+solveIsIntegral _ _                = Stuck
 
-solveIsRational :: CheckedExpr -> Bool
-solveIsRational (Builtin _ Real) = True
-solveIsRational _ = False
+solveIsRational :: Meta -> CheckedExpr -> Progress
+solveIsRational m (Builtin _ Real) = solved m
+solveIsRational _ _                = Stuck
 
-solveIsReal :: CheckedExpr -> Bool
-solveIsReal (Builtin _ Real) = True
-solveIsReal _ = False
+solveIsReal :: Meta -> CheckedExpr -> Progress
+solveIsReal m (Builtin _ Real) = solved m
+solveIsReal _ _                = Stuck
 
 -- TODO
-solveIsQuantifiable :: CheckedExpr -> CheckedExpr -> Bool
-solveIsQuantifiable _ _ = False
+solveIsQuantifiable :: Meta -> CheckedExpr -> CheckedExpr -> Progress
+solveIsQuantifiable _ _ _ = Stuck

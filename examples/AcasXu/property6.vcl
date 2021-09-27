@@ -36,20 +36,15 @@ clearOfConflictScore x = acasXu x ! 0
 
 intruderFarAway : InputVector -> Prop
 intruderFarAway x =
-  --(- pi <= angleToIntruder x <= -0.7 or 0.7 <= angleToIntruder x <= pi)
-  --and 12000 <= distanceToIntruder x <= 62000
-  --and -pi   <= intruderHeading    x <= -pi + 0.005
-  --and 100   <= speed              x <= 1200
-  --and
-  0 <= intruderSpeed x -- <= 1200
+  (- pi <= angleToIntruder x <= -0.7 or 0.7 <= angleToIntruder x <= pi)
+  and 12000 <= distanceToIntruder x <= 62000
+  and -pi   <= intruderHeading    x <= -pi + 0.005
+  and 100   <= speed              x <= 1200
+  and 0     <= intruderSpeed      x <= 1200
 
 advisesClearOfConflict : InputVector -> Prop
-advisesClearOfConflict x = every (i : Int) . -- [1..5]
+advisesClearOfConflict x = every i inn [1..5].
   clearOfConflictScore x <= acasXu x ! i
 
 property6 : Prop
 property6 = every x. intruderFarAway x => advisesClearOfConflict x
-
--- every (const True) (\x -> intruderFarAway x => advisesClearOfConflict x)
-
--- every x : intruderFarAway . advisesClearOfConflict x

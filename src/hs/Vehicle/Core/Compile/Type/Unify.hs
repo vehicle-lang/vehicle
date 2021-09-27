@@ -43,38 +43,40 @@ type MonadUnify m =
 -- | Tries to solve the current set of unification constraints
 -- returning whether or not it makes any progress.
 solveUnificationConstraints :: MonadUnify m => m Bool
-solveUnificationConstraints = do
-  constraints <- getUnificationConstraints
-  (unsolvedConstraints, _) <- loop (constraints, Nothing)
-  setUnificationConstraints unsolvedConstraints
-  return $ length unsolvedConstraints < length constraints
+solveUnificationConstraints = loop Nothing
   where
     loop :: MonadUnify m
-         => ([UnificationConstraint], Maybe MetaSet)
-         -> m ([UnificationConstraint], Maybe MetaSet)
-    -- Exit if we have solved all constraints
-    loop = \case
-      ([], _) -> return ([], Nothing)
+         => Maybe MetaSet
+         -> m Bool
+    loop metasSolvedLastPass = do
+      constraints <- getUnificationConstraints
+      setUnificationConstraints []
 
-      -- Exit if we have not succeeded in solving any metas in the last pass
-      (constraints, Just metasSolved)
-        | IntSet.null metasSolved -> do
-          logDebug "Unable to make progress"
-          return (constraints, Nothing)
+      case (constraints, metasSolvedLastPass) of
+        -- Exit if we have solved all constraints
+        ([], _) -> return True
 
-      -- Otherwise make another pass
-      (constraints, metasSolved) -> do
-        logDebug "Starting new unification pass"
-        logDebug $ "current-constraints:" <+> pretty constraints
+        -- Exit if we have not succeeded in solving any metas in the last pass
+        (_, Just metasSolved)
+          | IntSet.null metasSolved -> do
+            logDebug "Unable to make progress"
+            return False
 
-        let constraints1 = foldM examineConstraint [] constraints
-        let constraints2 = runReaderT constraints1 metasSolved
-        (unsolvedConstraints, newMetasSolved) <- runWriterT constraints2
+        -- Otherwise make another pass
+        (_, metasSolved) -> do
+          logDebug "Starting new unification pass"
+          logDebug $ "current-constraints:" <+> pretty constraints
 
-        metaSubst <- getMetaSubstitution
-        logDebug $ "current-solution:" <+> pretty metaSubst <> "\n"
+          let comp1 = traverse examineConstraint constraints
+          let comp2 = runReaderT comp1 metasSolved
+          (progresses, newMetasSolved) <- runWriterT comp2
+          let progress = and progresses
 
-        loop (unsolvedConstraints, Just newMetasSolved)
+          metaSubst <- getMetaSubstitution
+          logDebug $ "current-solution:" <+> pretty metaSubst <> "\n"
+
+          _ <- loop (Just newMetasSolved)
+          return progress
 
 
 
@@ -89,23 +91,21 @@ type MonadUnifyPass m =
   )
 
 examineConstraint :: MonadUnifyPass m
-                  => [UnificationConstraint]
-                  -> UnificationConstraint
-                  -> m [UnificationConstraint]
-examineConstraint queue constraint = do
+                  => UnificationConstraint
+                  -> m Bool
+examineConstraint constraint = do
   progressedMetas <- ask
   if isBlocked progressedMetas constraint
-    then return (constraint : queue)
+    then return False
     else do
       subst <- gets currentSubstitution
       let updatedConstraint = substMetas subst constraint
-      newConstraints <- solveConstraint updatedConstraint
-      return (newConstraints <> queue)
+      solveConstraint updatedConstraint
 
 pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
 
-solveConstraint :: MonadUnifyPass m => UnificationConstraint -> m [UnificationConstraint]
+solveConstraint :: MonadUnifyPass m => UnificationConstraint -> m Bool
 -- Errors
 solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
   whnfE1 <- whnf e1
@@ -113,7 +113,7 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
   logDebug $ "trying" <+> pretty whnfE1 <+> "~" <+> pretty whnfE2
   incrCallDepth
 
-  result <- case (decomposeApp whnfE1, decomposeApp whnfE2) of
+  progress <- case (decomposeApp whnfE1, decomposeApp whnfE2) of
     ----------------------
     -- Impossible cases --
     ----------------------
@@ -128,7 +128,7 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
     -----------------------
     (Type l1, [])   :~: (Type l2, []) -> do
       solveEq constraint l1  l2;
-      return []
+      return True
     {-
     (Ann _ e1 t1, Ann _ e2 t2) -> return
         [ Unify p ctx (exprs : history) mempty (e1, e2)
@@ -139,14 +139,19 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
     -- will never be an unreduced redex.
     ((Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, []))
       | vis binder1 /= vis binder2 -> throwError $ UnificationFailure constraint
-      | otherwise -> return
-        [ Unify p (addBinderToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2) ]
+      | otherwise -> do
+        let constraints = [ Unify p (addBinderToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2) ]
+        addUnificationConstraints constraints
+        return True
 
     (Seq _ es1, []) :~: (Seq _ es2, [])
       -- TODO more informative error message
       | length es1 /= length es2 -> throwError $ UnificationFailure constraint
       -- TODO need to try and unify `Seq` with `Cons`s.
-      | otherwise -> return $ zipWith (curry (Unify p ctx (exprs : history) mempty)) es1 es2
+      | otherwise -> do
+        let constraints = zipWith (curry (Unify p ctx (exprs : history) mempty)) es1 es2
+        addUnificationConstraints constraints
+        return True
 
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
       | vis binder1 /= vis binder2 -> throwError $ UnificationFailure constraint
@@ -154,30 +159,37 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
           -- !!TODO!! Block until binders are solved
           -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
           -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
-          blocked1 <- solveConstraint (Unify p ctx (exprs : history) mempty (binderType binder1, binderType binder2))
-          blocked2 <- solveConstraint (Unify p (addBinderToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2))
-          return (blocked1 ++ blocked2)
+          let binderConstraint = Unify p ctx (exprs : history) mempty (binderType binder1, binderType binder2)
+          let bodyConstraint   = Unify p (addBinderToCtx binder1 binder2 ctx) (exprs : history) mempty (body1, body2)
+          addUnificationConstraints [binderConstraint, bodyConstraint]
+          return True
 
     (Builtin _ op1, args1) :~: (Builtin _ op2, args2) -> do
       solveEq constraint op1 op2
       if length args1 /= length args2 then
         throwError $ UnificationFailure constraint
-      else
-        traverse (solveArg constraint) (zip args1 args2)
+      else do
+        constraints <- traverse (solveArg constraint) (zip args1 args2)
+        addUnificationConstraints constraints
+        return True
 
     (Var _ v1, args1) :~: (Var _ v2, args2) -> do
       solveEq constraint v1 v2
       if length args1 /= length args2 then
         throwError $ UnificationFailure constraint
-      else
-        traverse (solveArg constraint) (zip args1 args2)
+      else do
+        constraints <- traverse (solveArg constraint) (zip args1 args2)
+        addUnificationConstraints constraints
+        return True
 
     (Literal _ l1, args1) :~: (Literal _ l2, args2) -> do
       solveEq constraint l1 l2
       if length args1 /= length args2 then
         throwError $ UnificationFailure constraint
-      else
-        traverse (solveArg constraint) (zip args1 args2)
+      else do
+        constraints <- traverse (solveArg constraint) (zip args1 args2)
+        addUnificationConstraints constraints
+        return True
 
     ---------------------
     -- Flex-flex cases --
@@ -187,7 +199,7 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
       -- If the expressions are exactly equal then simply discard the constraint
       -- as it doesn't tell us anything.
       | i == j && args1 == args2 ->
-        return []
+        return True
 
       -- If the meta-variables are equal but their arguments are not
       -- then the meta-variables can only depend on the set of arguments
@@ -205,7 +217,7 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
         let abstractedMeta = abstractOver args1 meta
         metaSolved p i abstractedMeta
 
-        return []
+        return True
 
       -- Then the metas are not equal.
       -- If the first meta has no arguments then simply set equal to the second meta.
@@ -215,12 +227,12 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
       -- 2) performing extra unification passes and 3) often makes the process more understandable.
       | null args1 -> do
         metaSolved p i whnfE2
-        return []
+        return True
 
       -- Likewise if the second meta has no arguments then simply set equal to the first meta.
       | null args2 -> do
         metaSolved p j whnfE1
-        return []
+        return True
 
       -- Finally if the meta-variables are different then we have much more
       -- flexibility as to how the arguments can relate to each other. In
@@ -239,7 +251,7 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
         let abstractedMeta2 = abstractOver args2 meta
         metaSolved p j abstractedMeta2
 
-        return []
+        return True
 
     ----------------------
     -- Flex-rigid cases --
@@ -252,21 +264,23 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
     (Meta _ i, args) :~: _ -> do
       -- Check that 'args' is a pattern
       case patternOfArgs args of
-        Nothing ->
+        Nothing -> do
           -- This constraint is stuck because it is not pattern; shelve
           -- it for now and hope that another constraint allows us to
           -- progress.
-          return [constraint]
+          addUnificationConstraint constraint
+          return False
         Just subst -> do
           -- 'subst' is a renaming that renames the variables in 'e2' to
           -- ones bound by the metavariable
           case substAll subst whnfE2 of
-            Nothing ->
-              return [constraint]
+            Nothing -> do
+              addUnificationConstraint constraint
+              return False
             Just defnBody -> do
               -- TODO: fail if 'Meta _ i' occurs in 'e2'
               metaSolved p i (abstractOver args defnBody)
-              return []
+              return True
 
     _t :~: (Meta _ _i, _args) ->
       -- this is the mirror image of the previous case, so just swap the
@@ -277,7 +291,7 @@ solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
     _ -> throwError $ UnificationFailure (constraint { unifExprs = (whnfE1, whnfE2) })
 
   decrCallDepth
-  return result
+  return progress
 
 
 abstractOver :: [CheckedArg] -> CheckedExpr -> CheckedExpr

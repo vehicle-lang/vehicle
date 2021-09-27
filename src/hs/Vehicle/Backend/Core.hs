@@ -1,5 +1,5 @@
 
-module Vehicle.Backend.ITP.Core where
+module Vehicle.Backend.Core where
 
 import Control.Monad.Except (MonadError(..), Except)
 import Control.Monad.Reader (MonadReader, MonadReader(..), ReaderT(..))
@@ -50,7 +50,7 @@ fileHeader options commentToken = intercalate "\n" $
 -- Control
 
 -- |Constraint for the monad stack used by the Compiler.
-type MonadCompile m options =
+type MonadCompile options m =
   (MonadError CompileError m, MonadReader (ITPOptions options) m)
 
 type Compile a options = ReaderT (ITPOptions options) (Except CompileError) a

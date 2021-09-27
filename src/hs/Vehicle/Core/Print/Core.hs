@@ -23,8 +23,8 @@ showCore = layoutAsString . pretty
 
 brackets :: Visibility -> (Doc a -> Doc a)
 brackets Explicit   = parens
-brackets Implicit   = const "" --braces
-brackets Constraint = const "" -- braces . braces
+brackets Implicit   = braces
+brackets Constraint = braces . braces
 
 instance Pretty Name where
   pretty Machine       = "_"

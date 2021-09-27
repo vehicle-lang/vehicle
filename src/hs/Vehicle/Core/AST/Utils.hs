@@ -124,3 +124,7 @@ decomposeExplicitApp = go []
       (App _ann fun arg@(Arg _ Explicit _)) -> go (arg : args) fun
       (App _ann fun _arg)                   -> go args fun
       e                                     -> (e, args)
+
+isMeta :: CheckedExpr -> Bool
+isMeta (Meta _ _) = True
+isMeta _          = False
