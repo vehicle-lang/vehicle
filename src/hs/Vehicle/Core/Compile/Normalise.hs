@@ -9,11 +9,10 @@ import Control.Monad.State (MonadState(..), evalStateT, gets, modify)
 import Control.Monad.Except (MonadError, ExceptT)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
-import Prettyprinter (Pretty(..), (<+>))
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
-import Vehicle.Core.Print.Core ()
+import Vehicle.Core.Print (prettySimple)
 
 -- |Run a function in 'MonadNorm'.
 normalise :: Norm a => a -> ExceptT NormError Logger a
@@ -59,7 +58,7 @@ pattern EReal ann d = Literal ann (LRat d)
 
 showEntry :: MonadNorm m => CheckedExpr -> m CheckedExpr
 showEntry e = do
-  logDebug ("norm-entry " <> pretty e)
+  logDebug ("norm-entry " <> prettySimple e)
   incrCallDepth
   return e
 
@@ -68,8 +67,8 @@ showExit old mNew = do
   new <- mNew
   decrCallDepth
   when (old /= new) $
-    logDebug ("normalising" <+> pretty old)
-  logDebug ("norm-exit" <+> pretty new)
+    logDebug ("normalising" <+> prettySimple old)
+  logDebug ("norm-exit" <+> prettySimple new)
   return new
 
 --------------------------------------------------------------------------------

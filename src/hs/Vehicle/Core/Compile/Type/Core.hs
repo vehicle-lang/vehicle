@@ -1,19 +1,19 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Vehicle.Core.Compile.Type.Core where
 
-import Data.IntMap (IntMap)
-import Data.IntMap qualified as IntMap
-import Data.IntSet (IntSet)
-import Data.IntSet qualified as IntSet
 import Prelude hiding (pi)
-import Data.Text (Text)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Prettyprinter
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
+import Vehicle.Core.Print (prettyVerbose)
 import Vehicle.Core.Print.Frontend (prettyFrontend)
+import Vehicle.Core.MetaSet
+import Vehicle.Core.MetaSubstitution hiding (map)
 
 --------------------------------------------------------------------------------
 -- Context definitions
@@ -53,7 +53,7 @@ data UnificationConstraint = Unify
   , unifHistory   :: UnificationHistory -- The history, i.e. unification path that has lead to this.
   , unifBlockedOn :: MetaSet            -- The meta-variables that the constraint is blocked on
   , unifExprs     :: UnificationPair    -- The expressions to unify
-  } deriving Show
+  }
 
 instance HasProvenance UnificationConstraint where
   prov (Unify p _ _ _ _) = p
@@ -73,7 +73,7 @@ data TypeClassConstraint = Meta `Has` CheckedExpr
   deriving Show
 
 instance Pretty TypeClassConstraint where
-  pretty (m `Has` e) = "?" <> pretty m <+> "~" <+> pretty e
+  pretty (m `Has` e) = pretty m <+> "~" <+> prettyVerbose e
 
 instance HasProvenance TypeClassConstraint where
   prov (_m `Has` e) = prov e
@@ -81,24 +81,9 @@ instance HasProvenance TypeClassConstraint where
 --------------------------------------------------------------------------------
 -- Meta-variable definitions
 
-type MetaSet = IntSet
-
-type MetaSubstitution = IntMap CheckedExpr
-
-instance Pretty MetaSubstitution where
-  pretty msubst =
-    "{" <+> align (group
-      (concatWith (\x y -> x <> ";" <> line <> y)
-        (fmap (\(i, t') -> "?" <> pretty i <+> ":=" <+> pretty t') (IntMap.toAscList msubst))
-       <> softline <> "}"))
-
-instance Pretty MetaSet where
-  pretty = pretty . IntSet.toList
-
-
 -- | The meta-variables and constraints relating the variables currently in scope.
 data MetaCtx = MetaCtx
-  { nextMeta               :: Meta
+  { nextMeta               :: Int
   , currentSubstitution    :: MetaSubstitution
   , unificationConstraints :: [UnificationConstraint]
   , typeClassConstraints   :: [TypeClassConstraint]
@@ -131,9 +116,6 @@ data TypingError
     Provenance              -- The location of the mismatch.
     CheckedExpr             -- The possible inferred types.
     CheckedExpr             -- The expected type.
-  | UnsupportedOperation
-    Provenance              -- The location of the unsupported operation.
-    Text                    -- A description of the unsupported operation.
   | UnificationFailure
     UnificationConstraint
   | TypeClassResolutionFailure
@@ -146,14 +128,8 @@ data TypingError
 instance MeaningfulError TypingError where
   details (Mismatch p candidate expected) = UError $ UserError
     { provenance = p
-    , problem    = "expected something of type" <+> pretty expected <+>
-                   "but inferred type" <+> pretty candidate
-    , fix        = "unknown"
-    }
-
-  details (UnsupportedOperation p t) = UError $ UserError
-    { provenance = p
-    , problem    = "type-checking of" <+> squotes (pretty t) <+> "not currently supported"
+    , problem    = "expected something of type" <+> prettyFrontend expected <+>
+                   "but inferred type" <+> prettyFrontend candidate
     , fix        = "unknown"
     }
 

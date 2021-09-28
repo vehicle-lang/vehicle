@@ -1,5 +1,9 @@
 
-module Vehicle.Prelude.Prettyprinter where
+module Vehicle.Prelude.Prettyprinter
+  ( module CommonPrettyprinter
+  , module Vehicle.Prelude.Prettyprinter
+  )
+  where
 
 import Data.Text (Text)
 
@@ -7,6 +11,16 @@ import Prettyprinter ( Doc, (<+>), concatWith, line, line', layoutPretty, (<+>),
 import Prettyprinter.Internal (Doc(Annotated))
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
+
+import Prettyprinter as CommonPrettyprinter
+  ( Pretty(..)
+  , Doc
+  , (<+>)
+  , parens
+  , braces
+  , line
+  , squotes
+  )
 
 -- * Additions to the prettyprinter library
 

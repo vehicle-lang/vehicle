@@ -5,7 +5,7 @@ import Control.Exception (Exception, throw)
 import Data.Text (Text, unpack)
 import Data.Void (Void)
 import GHC.Stack (HasCallStack)
-import Prettyprinter (Doc, Pretty(..), (<+>), line, unAnnotate)
+import Prettyprinter (unAnnotate)
 
 import Vehicle.Prelude.Provenance (Provenance)
 import Vehicle.Prelude.Prettyprinter

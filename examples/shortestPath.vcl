@@ -1,13 +1,13 @@
 -- Tensors with 1 dimensional inputs should automatically get collapsed,
 -- i.e., `Tensor [1] Int` should be equivalent to `Int`.
 
---network shortestPath : Int -> Int
+network shortestPath : Int -> Int
 
 validInputs : List Int
-validInputs = [0] --0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]
+validInputs = [] --,1,2,3,4,5,6,7,8,9,10,11,12,13,14]
 
--- extendsSomePath : Int -> Prop
--- extendsSomePath i = some j inn validInputs . shortestPath i == shortestPath (j + 1)
+extendsSomePath : Int -> Bool
+extendsSomePath i = some j inn validInputs . shortestPath i == shortestPath (j + 1)
 
 -- usesShortestPath : Int -> Prop
 -- usesShortestPath i = every j inn validInputs . shortestPath i <= shortestPath (j + 1)

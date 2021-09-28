@@ -57,12 +57,14 @@ library
                       , Vehicle.Core.Compile.Type.Unify
                       , Vehicle.Core.Compile.Type.TypeClass
                       , Vehicle.Core.Compile.Type.Meta
-                      , Vehicle.Core.Compile.Type.WHNF
+                      , Vehicle.Core.Compile.Type.Normalise
                       , Vehicle.Core.Compile.Descope
                       , Vehicle.Core.Compile.Normalise
                       -- , Vehicle.Core.Compile.Normalise.Quantifier
                       , Vehicle.Core.Parse
-                      , Vehicle.Core.Print.Core
+                      , Vehicle.Core.Print
+                      , Vehicle.Core.MetaSet
+                      , Vehicle.Core.MetaSubstitution
                       , Vehicle.Core.Print.Frontend
                       --, Vehicle.Backend.ITP.Agda
                       --, Vehicle.Backend.ITP.Core
@@ -92,6 +94,7 @@ library
                       , data-fix             >=0.2 && <1
                       , deepseq              >=1.4 && <2
                       , ansi-terminal        >=0.6 && <1
+                      , data-default-class
   build-tool-depends:   alex:alex
                       , happy:happy
   ghc-options:          -Wall -fprint-potential-instances

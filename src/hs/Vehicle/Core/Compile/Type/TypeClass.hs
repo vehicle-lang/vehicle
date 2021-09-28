@@ -1,19 +1,16 @@
 
 module Vehicle.Core.Compile.Type.TypeClass
   ( solveTypeClassConstraints
-  )
-  where
+  ) where
 
-import Data.Functor ((<&>))
 import Control.Monad.Except ( MonadError, throwError )
-import Prettyprinter ( (<+>), Pretty(pretty), squotes )
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Type.Core
 import Vehicle.Core.Compile.Type.Meta
-import Vehicle.Core.Compile.Type.WHNF ( whnf )
-import Vehicle.Core.Print.Core ()
+import Vehicle.Core.Compile.Type.Normalise ( nf, normaliseTypeClassConstraints )
+import Vehicle.Core.Print (prettyVerbose)
 
 --------------------------------------------------------------------------------
 -- Solution
@@ -36,6 +33,7 @@ solveTypeClassConstraints :: MonadTCResolution m => m Bool
 solveTypeClassConstraints = do
   logDebug "Starting new type-class resolution pass"
 
+  normaliseTypeClassConstraints
   constraints <- getTypeClassConstraints
   setTypeClassConstraints []
 
@@ -46,7 +44,7 @@ solveTypeClassConstraints = do
   progress <- mconcat `fmap` traverse solveConstraint constraints'
 
   subst <- getMetaSubstitution
-  logDebug $ "current-solution:" <+> pretty subst <+> "\n"
+  logDebug $ "current-solution:" <+> prettyVerbose subst <+> "\n"
 
   return $ not (isStuck progress)
 
@@ -54,6 +52,7 @@ solveConstraint :: MonadTCResolution m
                 => TypeClassConstraint
                 -> m Progress
 solveConstraint constraint@(m `Has` e) = do
+  -- Normalise the expression
   logDebug $ "trying" <+> pretty constraint
   incrCallDepth
   result <- findInstance constraint e
@@ -70,37 +69,34 @@ getNonInferableArgs IsContainer [tCont, _tElem] = [tCont]
 getNonInferableArgs _           args            = args
 
 findInstance :: MonadTCResolution m => TypeClassConstraint -> CheckedExpr -> m Progress
-findInstance c e = do
-  eWHNF <- whnf e
-  case decomposeApp eWHNF of
-    (Builtin _ tc, args) -> do
-      argsWHNF <- traverse extractAndNormaliseArg args
-      blockOnMetas tc argsWHNF $ case (tc, argsWHNF) of
-          (IsContainer,    [t1, t2]) -> solveIsContainer    c t1 t2
-          (HasEq,          [t1, t2]) -> solveHasEq          c t1 t2
-          (HasOrd,         [t1, t2]) -> solveHasOrd         c t1 t2
-          (IsTruth,        [t])      -> solveIsTruth        c t
-          (IsNatural,      [t])      -> solveIsNatural      c t
-          (IsIntegral,     [t])      -> solveIsIntegral     c t
-          (IsRational,     [t])      -> solveIsRational     c t
-          (IsReal,         [t])      -> solveIsReal         c t
-          (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable c t1 t2
-          _                          -> developerError $ "Unknown type-class" <+> squotes (pretty tc) <+> "args" <+> pretty argsWHNF
-    _ -> developerError $ "Unknown type-class" <+> squotes (pretty eWHNF)
+findInstance c e = case decomposeApp e of
+  (Builtin _ tc, args) -> do
+    let argsNF = extractArg <$> args
+    blockOnMetas tc argsNF $ case (tc, argsNF) of
+        (IsContainer,    [t1, t2]) -> solveIsContainer    c t1 t2
+        (HasEq,          [t1, t2]) -> solveHasEq          c t1 t2
+        (HasOrd,         [t1, t2]) -> solveHasOrd         c t1 t2
+        (IsTruth,        [t])      -> solveIsTruth        c t
+        (IsNatural,      [t])      -> solveIsNatural      c t
+        (IsIntegral,     [t])      -> solveIsIntegral     c t
+        (IsRational,     [t])      -> solveIsRational     c t
+        (IsReal,         [t])      -> solveIsReal         c t
+        (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable c t1 t2
+        _                          -> developerError $
+          "Unknown type-class" <+> squotes (pretty tc) <+> "args" <+> prettyVerbose argsNF
+  _ -> developerError $ "Unknown type-class" <+> squotes (prettyVerbose e)
 
-extractAndNormaliseArg :: MonadTCResolution m => CheckedArg -> m CheckedExpr
-extractAndNormaliseArg (Arg _ Explicit e) = whnf e
-extractAndNormaliseArg _ = developerError "Not expecting type-classes with non-explicit arguments"
+extractArg :: CheckedArg -> CheckedExpr
+extractArg (Arg _ Explicit e) = e
+extractArg _ = developerError "Not expecting type-classes with non-explicit arguments"
 
 blockOnMetas :: MonadTCResolution m => Builtin -> [CheckedExpr] -> m Progress -> m Progress
 blockOnMetas tc args action = do
   let metas = filter isMeta (getNonInferableArgs tc args)
-  logDebug $ pretty (getNonInferableArgs tc args)
-  logDebug $ pretty metas
   if null metas
     then action
     else do
-      logDebug $ "Blocked on non-inferable metas:" <+> pretty metas
+      logDebug $ "Blocked on non-inferable metas:" <+> prettyVerbose metas
       return Stuck
 
 isMeta :: CheckedExpr -> Bool
@@ -160,8 +156,8 @@ solveIsContainer constraint@(m `Has` _) tCont tElem = do
   where
     getContainerElem :: MonadTCResolution m => CheckedExpr -> m (Maybe CheckedExpr)
     getContainerElem t = case decomposeApp t of
-      (Builtin _ List,   [tElem'])    -> whnf (argExpr tElem') <&> Just
-      (Builtin _ Tensor, [tElem', _]) -> whnf (argExpr tElem') <&> Just
+      (Builtin _ List,   [tElem'])    -> return $ Just $ argExpr tElem'
+      (Builtin _ Tensor, [tElem', _]) -> return $ Just $ argExpr tElem'
       _                               -> return Nothing
 
 solveIsNatural :: MonadTCResolution m

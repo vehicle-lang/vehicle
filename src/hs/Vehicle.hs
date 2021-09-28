@@ -16,23 +16,24 @@ module Vehicle
 import Paths_vehicle (version)
 
 import Control.Monad (when,)
-import Control.Monad.Except (ExceptT, runExceptT, liftIO)
+import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Text (Text)
 import Data.Char (toLower)
 import Data.Text.IO qualified as T
 import System.Environment (getArgs)
 import System.Exit (exitSuccess, exitFailure)
 import System.Console.GetOpt
-import Prettyprinter (Pretty(..))
 
 import Vehicle.Prelude
+
 import Vehicle.Core.AST qualified as VC
 import Vehicle.Core.Parse qualified as VC
-import Vehicle.Core.Print.Core qualified as VC
+import Vehicle.Core.Print qualified as VC
 import Vehicle.Core.Compile.Scope qualified as VC
 import Vehicle.Core.Compile.Type qualified as VC
 import Vehicle.Core.Compile.Descope qualified as VC
-import Vehicle.Core.Compile.Normalise (normalise)
+import Vehicle.Core.Compile.Normalise qualified as VC (normalise)
+
 import Vehicle.Frontend.AST qualified as VF
 import Vehicle.Frontend.Print qualified as VF
 import Vehicle.Frontend.Elaborate qualified as VF
@@ -153,14 +154,14 @@ run _opts@Options{..} = do
   contents <- readFileOrStdin inputFile
   coreProg <- parseAndElab inputLang contents
 
-  T.putStrLn (VC.prettyCore coreProg)
+  T.putStrLn (layoutAsText $ VC.prettyVerbose coreProg)
 
   -- Scope check, type check etc.
   scopedCoreProg <- fromLoggedEitherIO $ VC.scopeCheck coreProg
   typedCoreProg <- fromLoggedEitherIO $ VC.typeCheck scopedCoreProg
 
   -- Compile to requested backend
-  outputText <- case outputTarget of
+  outputText :: Text <- case outputTarget of
     Nothing -> do
       putStrLn "Please specify an output target with -t or --target"
       exitFailure
@@ -169,7 +170,7 @@ run _opts@Options{..} = do
       let descopedCoreProg :: VC.OutputProg = VC.descopeCheck typedCoreProg
       case itp of
         (Vehicle Core) ->
-          return $ VC.prettyCore descopedCoreProg
+          return $ layoutAsText $ VC.prettyVerbose descopedCoreProg
 
         (Vehicle Frontend) -> do
           compFrontProg :: VF.OutputProg <- fromLoggedEitherIO $ VF.runDelab descopedCoreProg
@@ -193,8 +194,8 @@ run _opts@Options{..} = do
               fromEitherIO $ compileToAgda itpOptions compFrontProg
           -}
     Just (Verifier VNNLib) -> do
-      normProg <- fromLoggedEitherIO $ normalise typedCoreProg
-      return $ layoutAsText $ pretty normProg
+      normProg <- fromLoggedEitherIO $ VC.normalise typedCoreProg
+      return $ layoutAsText $ VC.prettyVerbose normProg
 
 
 

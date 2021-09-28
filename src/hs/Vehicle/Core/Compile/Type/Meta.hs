@@ -28,14 +28,16 @@ module Vehicle.Core.Compile.Type.Meta
 import Control.Monad.Reader (Reader, runReader, ask, local)
 import Control.Monad.State (MonadState(..), modify, gets)
 import Data.List (foldl')
-import Data.IntMap qualified as IntMap
-import Data.IntSet qualified as IntSet (singleton)
-import Prettyprinter (Pretty(..), (<+>))
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Type.Core
-
+import Vehicle.Core.Print (prettyVerbose)
+import Vehicle.Core.MetaSubstitution ( MetaSubstitution )
+import Vehicle.Core.MetaSubstitution qualified as MetaSubst (singleton, map, lookup, insertWith)
+import Vehicle.Core.MetaSet (MetaSet)
+import Vehicle.Core.MetaSet qualified as MetaSet (singleton)
+import Vehicle.Core.Compile.Type.Core (MetaCtx(typeClassConstraints))
 
 class MetaSubstitutable a where
   -- TODO change name away from M
@@ -45,10 +47,10 @@ class MetaSubstitutable a where
   substMetas s e = runReader (substM e) s
 
   substMeta :: Meta -> CheckedExpr -> a -> a
-  substMeta m e = substMetas (IntMap.singleton m e)
+  substMeta m e = substMetas (MetaSubst.singleton m e)
 
   substMetasLiftLocal :: a -> Reader MetaSubstitution a
-  substMetasLiftLocal e = local (IntMap.map (liftDBIndices 1)) (substM e)
+  substMetasLiftLocal e = local (MetaSubst.map (liftDBIndices 1)) (substM e)
 
 instance MetaSubstitutable a => MetaSubstitutable (a, a) where
   substM (e1, e2) = do
@@ -82,7 +84,7 @@ instance MetaSubstitutable CheckedExpr where
 
     Meta    ann m -> do
       subst <- ask
-      case IntMap.lookup m subst of
+      case MetaSubst.lookup m subst of
         Nothing -> return $ Meta ann m
         Just e  -> substM e
 
@@ -150,7 +152,7 @@ freshMetaName :: MonadMeta m => m Meta
 freshMetaName = do
   MetaCtx {..} <- get;
   put $ MetaCtx { nextMeta = succ nextMeta , ..}
-  return nextMeta
+  return (MetaVar nextMeta)
 
 -- | Creates a fresh meta variable. Meta variables need to remember what was
 -- in the current context when they were created. We do this by creating a
@@ -173,7 +175,7 @@ freshMetaWith boundCtx p = do
   -- Returns a meta applied to every bound variable in the context
   let meta = foldl' (\fun arg -> App p fun (Arg p Explicit arg)) (Meta p metaName) boundEnv
 
-  logDebug $ "fresh-meta" <+> "?" <> pretty metaName
+  logDebug $ "fresh-meta" <+> pretty metaName
   return (metaName, meta)
 
 -- |Creates a Pi type that abstracts over all bound variables
@@ -192,17 +194,17 @@ metaSolved :: (MonadMeta m, MonadLogger m)
            -> CheckedExpr
            -> m ()
 metaSolved p m e = do
-  logDebug $ "solved" <+> "?" <> pretty m <+> "as" <+> pretty e
+  logDebug $ "solved" <+> pretty m <+> "as" <+> prettyVerbose e
 
   -- Insert the new variable throwing an error if the meta-variable is already present
   -- (should have been substituted out)
-  modifyMetaSubstitution (IntMap.insertWith duplicateMetaError m e)
+  modifyMetaSubstitution (MetaSubst.insertWith duplicateMetaError m e)
   where
     duplicateMetaError :: CheckedExpr -> CheckedExpr -> a
     duplicateMetaError new old = developerError $
-      "meta-variable" <+> pretty m <+> "already assigned" <+> pretty old <+>
+      "meta-variable" <+> pretty m <+> "already assigned" <+> prettyVerbose old <+>
       "and should have been substituted out but it is still present and" <+>
-      "was assigned again to" <+> pretty new <+>
+      "was assigned again to" <+> prettyVerbose new <+>
       pretty p
 
 data Progress
@@ -228,7 +230,7 @@ pattern Solved :: MetaSet -> Progress
 pattern Solved ms = Progress False ms
 
 solved :: Meta -> Progress
-solved m = Solved (IntSet.singleton m)
+solved m = Solved (MetaSet.singleton m)
 
 solvedTrivial :: Progress
 solvedTrivial = Solved mempty
@@ -237,4 +239,4 @@ pattern PartiallySolved :: MetaSet -> Progress
 pattern PartiallySolved ms = Progress True ms
 
 partiallySolved :: Meta -> Progress
-partiallySolved m = PartiallySolved (IntSet.singleton m)
+partiallySolved m = PartiallySolved (MetaSet.singleton m)

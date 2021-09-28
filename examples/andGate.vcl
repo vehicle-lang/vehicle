@@ -9,7 +9,7 @@ falsey : Real -> Prop
 falsey x = x <= 0.5
 
 validInput : Tensor Real [2] -> Prop
-validInput x = every i in [0..2] . 0 <= x ! i and x ! i <= 1
+validInput x = every i inn [0..2] . 0 <= x ! i and x ! i <= 1
 
 correctOutput : Tensor Real [2] -> Prop
 correctOutput x =

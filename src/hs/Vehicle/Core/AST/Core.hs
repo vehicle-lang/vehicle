@@ -10,7 +10,10 @@ import Vehicle.Prelude
 import Vehicle.Core.AST.Builtin (Builtin)
 
 -- | Meta-variables
-type Meta = Int
+newtype Meta = MetaVar Int
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData Meta
 
 -- |Variable names
 data Name

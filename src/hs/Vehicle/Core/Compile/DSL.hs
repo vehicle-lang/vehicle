@@ -27,12 +27,11 @@ module Vehicle.Core.Compile.DSL
   ) where
 
 import Prelude hiding (pi)
-import Prettyprinter ((<+>), Pretty(pretty))
 import GHC.Stack (HasCallStack)
 
 import Vehicle.Core.AST
 import Vehicle.Prelude
-import Vehicle.Core.Print.Core ()
+import Vehicle.Core.Print (prettyVerbose)
 
 class DSL expr where
   infixl 4 `app`
@@ -102,7 +101,7 @@ piType t1 t2 = t1 `tMax` t2
 tMax :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 tMax (Type l1)  (Type l2)  = Type (l1 `max` l2)
 tMax t1         t2         = developerError $
-  "Expected arguments of type Type. Found" <+> pretty t1 <+> "and" <+> pretty t2 <> "."
+  "Expected arguments of type Type. Found" <+> prettyVerbose t1 <+> "and" <+> prettyVerbose t2 <> "."
 
 con :: Builtin -> DSLExpr
 con b = DSL $ \_ -> Builtin mempty b

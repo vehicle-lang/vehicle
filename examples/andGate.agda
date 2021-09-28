@@ -1,7 +1,6 @@
 -- Correctness conditions for the boolean AND gate
 
-f : Tensor Real [2] -> Tensor Real [1]
-f = evaluate _ _
+network f : Tensor Real [2] -> Tensor Real [1]
 
 truthy : Real -> Set
 truthy x = x >= 0.5

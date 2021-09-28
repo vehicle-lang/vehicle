@@ -9,13 +9,12 @@ module Vehicle.Core.Parse
 import Control.Monad.Except (MonadError(..), runExcept)
 import Data.Text (Text, pack, unpack)
 import Data.Text.IO qualified as T
-import Prettyprinter ( (<+>), pretty )
 import System.Exit (exitFailure)
 
 import Vehicle.Core.Abs as B
 import Vehicle.Core.Par (pProg, myLexer)
 import Vehicle.Core.AST as V hiding (Name)
-import Vehicle.Core.Print.Core ()
+import Vehicle.Core.Print (prettyVerbose)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -59,7 +58,7 @@ instance MeaningfulError ParseError where
     }
 
   details (MalformedLamBinder expr) = UError $ UserError
-    { problem    = "Malformed binder for Lambda, expected a name but only found an expression" <+> pretty expr
+    { problem    = "Malformed binder for Lambda, expected a name but only found an expression" <+> prettyVerbose expr
     , provenance = annotation expr
     , fix        = "Unknown"
     }

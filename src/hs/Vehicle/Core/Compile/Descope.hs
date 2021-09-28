@@ -6,7 +6,6 @@ module Vehicle.Core.Compile.Descope
 
 import Control.Monad.Reader (MonadReader(..), runReader)
 import GHC.Stack (HasCallStack)
-import Prettyprinter ((<+>), Pretty(pretty))
 
 import Vehicle.Prelude
 import Vehicle.Core.AST

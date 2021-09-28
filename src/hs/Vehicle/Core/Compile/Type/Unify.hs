@@ -3,22 +3,21 @@ module Vehicle.Core.Compile.Type.Unify
   ( solveUnificationConstraints
   ) where
 
-import Control.Monad (when, foldM)
+import Control.Monad (when)
 import Control.Monad.Except (MonadError(..), throwError)
 import Control.Monad.Writer (MonadWriter(..), runWriterT)
 import Control.Monad.State  (gets)
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.List (intersect)
-import Data.IntSet qualified as IntSet
-import Prettyprinter ( (<+>), Pretty(pretty), Doc )
 
 import Vehicle.Prelude
-import Vehicle.Core.Print.Core ()
+import Vehicle.Core.Print (prettyVerbose)
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Type.Core
 import Vehicle.Core.Compile.Type.Meta hiding (metaSolved)
 import Vehicle.Core.Compile.Type.Meta qualified as Meta (metaSolved)
-import Vehicle.Core.Compile.Type.WHNF (whnf)
+import Vehicle.Core.Compile.Type.Normalise (whnf)
+import Vehicle.Core.MetaSet qualified as MetaSet (singleton, null, disjoint)
 
 
 --------------------------------------------------------------------------------
@@ -58,7 +57,7 @@ solveUnificationConstraints = loop Nothing
 
         -- Exit if we have not succeeded in solving any metas in the last pass
         (_, Just metasSolved)
-          | IntSet.null metasSolved -> do
+          | MetaSet.null metasSolved -> do
             logDebug "Unable to make progress"
             return False
 
@@ -73,7 +72,7 @@ solveUnificationConstraints = loop Nothing
           let progress = and progresses
 
           metaSubst <- getMetaSubstitution
-          logDebug $ "current-solution:" <+> pretty metaSubst <> "\n"
+          logDebug $ "current-solution:" <+> prettyVerbose metaSubst <> "\n"
 
           _ <- loop (Just newMetasSolved)
           return progress
@@ -110,7 +109,7 @@ solveConstraint :: MonadUnifyPass m => UnificationConstraint -> m Bool
 solveConstraint constraint@(Unify p ctx history _ exprs@(e1, e2)) = do
   whnfE1 <- whnf e1
   whnfE2 <- whnf e2
-  logDebug $ "trying" <+> pretty whnfE1 <+> "~" <+> pretty whnfE2
+  logDebug $ "trying" <+> prettyVerbose whnfE1 <+> "~" <+> prettyVerbose whnfE2
   incrCallDepth
 
   progress <- case (decomposeApp whnfE1, decomposeApp whnfE2) of
@@ -289,7 +288,7 @@ isBlocked Nothing            _                             = False
 isBlocked (Just solvedMetas) (Unify _ _ _ blockingMetas _) =
   -- A constraint is blocked if it is blocking on at least one meta
   -- and none of the metas it is blocking on have been solved in the last pass.
-  not (IntSet.null blockingMetas) && IntSet.disjoint solvedMetas blockingMetas
+  not (MetaSet.null blockingMetas) && MetaSet.disjoint solvedMetas blockingMetas
 
 solveEq :: (MonadUnify m, Eq a)
         => UnificationConstraint
@@ -339,5 +338,5 @@ metaSolved :: MonadUnifyPass m
            -> CheckedExpr
            -> m ()
 metaSolved p m e = do
-  tell (IntSet.singleton m)
+  tell (MetaSet.singleton m)
   Meta.metaSolved p m e

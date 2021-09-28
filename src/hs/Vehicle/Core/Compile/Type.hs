@@ -14,27 +14,27 @@ import Data.Foldable (foldrM)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.List.NonEmpty (NonEmpty(..))
-import Prettyprinter ((<+>), Pretty(..))
 
+import Vehicle.Prelude
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.DSL
 import Vehicle.Core.Compile.Type.Core
 import Vehicle.Core.Compile.Type.Unify
 import Vehicle.Core.Compile.Type.Meta
 import Vehicle.Core.Compile.Type.TypeClass
-import Vehicle.Prelude
+import Vehicle.Core.Print (prettyVerbose)
 
 typeCheck :: UncheckedProg -> ExceptT TypingError Logger CheckedProg
 typeCheck prog = do
   let prog1 = runAll prog
   let prog2 = runReaderT prog1 emptyVariableCtx
   prog3 <- evalStateT prog2 emptyMetaCtx
-  logDebug $ "Program:" <+> pretty prog3
+  logDebug $ "Program:" <+> prettyVerbose prog3
   return prog3
 
 runAll :: TCM m => UncheckedProg -> m CheckedProg
 runAll prog = do
-  logDebug $ pretty prog
+  logDebug $ prettyVerbose prog
   prog2 <- inferProg prog
   metaSubstitution <- solveMetas
   return $ substMetas metaSubstitution prog2
@@ -102,7 +102,7 @@ addToBoundCtx n e = local add
 
 showCheckEntry :: TCM m => CheckedExpr -> UncheckedExpr -> m (CheckedExpr, UncheckedExpr)
 showCheckEntry t e = do
-  logDebug ("check-entry" <+> pretty e <+> "<-" <+> pretty t)
+  logDebug ("check-entry" <+> prettyVerbose e <+> "<-" <+> prettyVerbose t)
   incrCallDepth
   return (t,e)
 
@@ -110,12 +110,12 @@ showCheckExit :: TCM m => m CheckedExpr -> m CheckedExpr
 showCheckExit m = do
   e <- m
   decrCallDepth
-  logDebug ("check-exit " <+> pretty e)
+  logDebug ("check-exit " <+> prettyVerbose e)
   return e
 
 showInferEntry :: TCM m => UncheckedExpr -> m UncheckedExpr
 showInferEntry e = do
-  logDebug ("infer-entry" <+> pretty e)
+  logDebug ("infer-entry" <+> prettyVerbose e)
   incrCallDepth
   return e
 
@@ -123,12 +123,12 @@ showInferExit :: TCM m => m (CheckedExpr, CheckedExpr) -> m (CheckedExpr, Checke
 showInferExit m = do
   (e, t) <- m
   decrCallDepth
-  logDebug ("infer-exit " <+> pretty e <+> "->" <+> pretty t)
+  logDebug ("infer-exit " <+> prettyVerbose e <+> "->" <+> prettyVerbose t)
   return (e,t)
 
 showInsertArg :: TCM m => Visibility -> CheckedExpr -> m CheckedExpr
 showInsertArg v t = do
-  logDebug ("insert-arg" <+> pretty v <+> pretty t)
+  logDebug ("insert-arg" <+> pretty v <+> prettyVerbose t)
   return t
 
 -------------------------------------------------------------------------------
@@ -301,7 +301,8 @@ infer e = showInferExit $ do
           let t'' = liftDBIndices (i+1) t'
           return (Var p (Bound i), t'')
         Nothing      -> developerError $
-          "Index" <+> pretty i <+> "out of bounds when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
+          "Index" <+> pretty i <+> "out of bounds when looking" <+>
+          "up variable in context" <+> prettyVerbose ctx <+> "at" <+> pretty p
 
     Var p (Free ident) -> do
       -- Lookup the type of the declaration variable in the context.
@@ -310,7 +311,8 @@ infer e = showInferExit $ do
         Just t' -> return (Var p (Free ident), t')
         -- This should have been caught during scope checking
         Nothing -> developerError $
-          "Declaration'" <+> pretty ident <+> "'not found when looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
+          "Declaration'" <+> pretty ident <+> "'not found when" <+>
+          "looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 
     Let p bound (Binder pBound v name tBound)  body -> do
       -- Infer the type of the let arg from the annotation on the binder

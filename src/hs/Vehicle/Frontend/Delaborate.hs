@@ -10,10 +10,9 @@ import Control.Monad.Except (MonadError(..), ExceptT)
 import Data.List.NonEmpty (NonEmpty(..), (<|))
 import Data.List.NonEmpty qualified as NonEmpty (reverse)
 import Data.Text (pack)
-import Prettyprinter (pretty, (<+>))
 
 import Vehicle.Core.AST qualified as VC
-import Vehicle.Core.Print.Core ()
+import Vehicle.Core.Print qualified as VC (prettyVerbose)
 import Vehicle.Frontend.Print (prettyFrontend)
 import Vehicle.Frontend.AST qualified as VF
 import Vehicle.Prelude
@@ -94,7 +93,7 @@ isFunBinder (VC.Binder _ v _ _) = v == Explicit
 
 showEntry :: MonadDelabHoles m => VC.OutputExpr -> m VC.OutputExpr
 showEntry e = do
-  logDebug ("delab-entry " <> pretty e)
+  logDebug ("delab-entry " <> VC.prettyVerbose e)
   incrCallDepth
   return e
 
@@ -117,7 +116,7 @@ instance DelaborateWithHoles VC.OutputExpr VF.OutputExpr where
     case r of
       VC.Type l                        -> return (VF.Type l)
       VC.Hole    p n                   -> return $ VF.Hole p n
-      VC.Meta    ann i                 -> return $ VF.Hole (prov ann) (pack $ "?" <> show i)
+      VC.Meta    ann i                 -> return $ VF.Hole (prov ann) (layoutAsText $ pretty i)
       VC.Pi      ann       binder body -> delabPi  ann       binder body
       VC.Let     ann bound binder body -> delabLet ann bound binder body
       VC.Lam     ann       binder body -> delabLam ann       binder body
