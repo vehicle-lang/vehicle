@@ -117,6 +117,9 @@ decomposeApp = go []
   where go args (App _ann fun arg) = go (arg:args) fun
         go args e                  = (e, args)
 
+composeApp :: CheckedAnn -> (CheckedExpr, [CheckedArg]) -> CheckedExpr
+composeApp ann (fun, args) = foldr (flip $ App ann) fun args
+
 decomposeExplicitApp :: CheckedExpr -> (CheckedExpr, [CheckedArg])
 decomposeExplicitApp = go []
   where

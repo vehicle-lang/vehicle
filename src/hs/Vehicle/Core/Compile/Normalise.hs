@@ -12,7 +12,7 @@ import Data.Maybe (fromMaybe)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
-import Vehicle.Core.Print (prettySimple)
+import Vehicle.Core.Print (prettySimple, prettyVerbose)
 
 -- |Run a function in 'MonadNorm'.
 normalise :: Norm a => a -> ExceptT NormError Logger a
@@ -46,6 +46,9 @@ pattern ETrue ann = Literal ann (LBool True)
 
 pattern EFalse :: ann -> Expr var ann
 pattern EFalse ann = Literal ann (LBool False)
+
+pattern ENat :: ann -> Int -> Expr var ann
+pattern ENat ann i = Literal ann (LNat i)
 
 pattern EInt :: ann -> Int -> Expr var ann
 pattern EInt ann i = Literal ann (LInt i)
@@ -129,91 +132,133 @@ instance Norm CheckedArg where
 
 
 normApp :: MonadNorm m => CheckedExpr -> m CheckedExpr
-normApp e = case decomposeExplicitApp e of
+normApp e = case decomposeApp e of
   (Lam _ _ funcBody, Arg _ _ arg : _) -> nf (substInto arg funcBody)
-  (Builtin _ op, args) -> let ann = annotation e in case (op, map argExpr args) of
+  (Builtin _ op, args) -> let ann = annotation e in case (op, args) of
     -- Equality
-    (Eq, [ETrue  _, e2])         -> return e2
-    --(Eq, [EFalse _, e2])         -> normApp $ _ --Op1 ENot e2 ann ann1 pos
-    (Eq, [EInt  _ i, EInt  _ j]) -> return $ mkBool (i == j) ann
-    (Eq, [EReal _ x, EReal _ y]) -> return $ mkBool (x == y) ann
+    (Eq, [_tElem, _tRes, _tc, arg1, arg2]) -> case (argExpr arg1, argExpr arg2) of
+      --(EFalse _,  _)         -> normApp $ composeApp ann (Builtin ann op, [tElem, _, e2])
+      (ENat  _ m, EInt  _ n) -> return  $ mkBool (m == n) ann
+      (EInt  _ i, EInt  _ j) -> return  $ mkBool (i == j) ann
+      (EReal _ x, EReal _ y) -> return  $ mkBool (x == y) ann
+      _                      -> return e
     -- TODO implement reflexive rules?
 
+    -- Inequality
+    (Neq, [_t1, _t2, _tc, arg1, arg2]) -> case (argExpr arg1, argExpr arg2) of
+      --(ETrue  _, e2)         -> _ --normApp $ _ --Op1 ENot e2 ann ann1 pos
+      (EFalse _, e2)         -> return e2
+      (ENat  _ m, ENat  _ n) -> return $ mkBool (m /= n) ann
+      (EInt  _ i, EInt  _ j) -> return $ mkBool (i /= j) ann
+      (EReal _ x, EReal _ y) -> return $ mkBool (x /= y) ann
+      _                      -> return e
+
     -- Not
-    (Not, [ETrue  _]) -> return $ mkBool False ann
-    (Not, [EFalse _]) -> return $ mkBool True ann
+    (Not, [_t, _tc, arg1]) -> case argExpr arg1 of
+      ETrue  _ -> return $ mkBool False ann
+      EFalse _ -> return $ mkBool True ann
+      _        -> return e
     -- TODO implement idempotence rules?
 
     -- And
-    (And, [ETrue  _  , e2])     -> return e2
-    (And, [e1,       ETrue  _]) -> return e1
-    (And, [EFalse _, _])        -> return $ EFalse ann
-    (And, [_,        EFalse _]) -> return $ EFalse ann
+    (And, [_t, _tc, arg1, arg2]) -> case (argExpr arg1, argExpr arg2) of
+      (ETrue  _  , e2)     -> return e2
+      (e1,       ETrue  _) -> return e1
+      (EFalse _, _)        -> return $ EFalse ann
+      (_,        EFalse _) -> return $ EFalse ann
+      _        -> return e
     -- TODO implement associativity rules?
 
     -- Or
-    (Or, [ETrue  _, _])        -> return $ ETrue ann
-    (Or, [EFalse _,   e2])     -> return e2
-    (Or, [_,        ETrue  _]) -> return $ ETrue ann
-    (Or, [e1,       EFalse _]) -> return e1
+    (Or, [_t, _tc, arg1, arg2]) -> case (argExpr arg1, argExpr arg2) of
+      (ETrue  _, _)        -> return $ ETrue ann
+      (EFalse _, e2)       -> return e2
+      (_,        ETrue  _) -> return $ ETrue ann
+      (e1,       EFalse _) -> return e1
+      _                    -> return e
     -- See https://github.com/wenkokke/vehicle/issues/2
 
     -- If
-    (If, [ETrue  _, e2, _]) -> return e2
-    (If, [EFalse _, _, e3]) -> return e3
+    (If, [_tRes, arg1, arg2, arg3]) -> case argExpr arg1 of
+      ETrue  _ -> return $ argExpr arg2
+      EFalse _ -> return $ argExpr arg3
+      _        -> return e
 
     -- Le
-    (Le, [EInt  _ i, EInt  _ j]) -> return $ mkBool (i <= j) ann
-    (Le, [EReal _ x, EReal _ y]) -> return $ mkBool (x <= y) ann
+    (Le, [_t1, _t2, _tc, arg1, arg2]) -> case (argExpr arg1, argExpr arg2) of
+      (EInt  _ i, EInt  _ j) -> return $ mkBool (i <= j) ann
+      (EReal _ x, EReal _ y) -> return $ mkBool (x <= y) ann
+      _                      -> return e
 
     -- Lt
-    (Lt, [EInt  _ i, EInt  _ j]) -> return $ mkBool (i < j) ann
-    (Lt, [EReal _ x, EReal _ y]) -> return $ mkBool (x < y) ann
+    (Lt, [_t1, _t2, _tc, arg1, arg2]) -> case (argExpr arg1, argExpr arg2) of
+      (EInt  _ i, EInt  _ j) -> return $ mkBool (i < j) ann
+      (EReal _ x, EReal _ y) -> return $ mkBool (x < y) ann
+      _                      -> return e
 
     -- Addition
-    (Add, [EInt  _ i, EInt  _ j]) -> return $ EInt  ann (i + j)
-    (Add, [EReal _ x, EReal _ y]) -> return $ EReal ann (x + y)
+    (Add, [_t, _tc, arg1, arg2]) -> case (argExpr arg1, argExpr arg2) of
+      (ENat  _ m, ENat  _ n) -> return $ EInt  ann (m + n)
+      (EInt  _ i, EInt  _ j) -> return $ EInt  ann (i + j)
+      (EReal _ x, EReal _ y) -> return $ EReal ann (x + y)
+      _                      -> return e
     -- TODO implement identity/associativity rules?
 
     -- Subtraction
-    (Sub, [EInt  _ i, EInt  _ j]) -> return $ EInt  ann (i - j)
-    (Sub, [EReal _ x, EReal _ y]) -> return $ EReal ann (x - y)
+    (Sub, [_t, _tc, arg1, arg2]) -> case (argExpr arg1, argExpr arg2) of
+      (EInt  _ i, EInt  _ j) -> return $ EInt  ann (i - j)
+      (EReal _ x, EReal _ y) -> return $ EReal ann (x - y)
+      _                      -> return e
     -- TODO implement identity/associativity rules?
 
     -- Multiplication
-    (Mul, [EInt  _ i, EInt  _ j]) -> return $ EInt  ann (i * j)
-    (Mul, [EReal _ x, EReal _ y]) -> return $ EReal ann (x * y)
+    (Mul, [_t, _tc, arg1, arg2]) -> case (argExpr arg1, argExpr arg2) of
+      (EInt  _ i, EInt  _ j) -> return $ EInt  ann (i * j)
+      (EReal _ x, EReal _ y) -> return $ EReal ann (x * y)
+      _                      -> return e
     -- TODO implement zero/identity/associativity rules?
 
     -- Division
-    (Div, [EReal _ x, EReal _ y]) -> return $ EReal ann (x / y)
+    (Div, [_t, _tc, arg1, arg2]) -> case (argExpr arg1, argExpr arg2) of
+      (EReal _ x, EReal _ y) -> return $ EReal ann (x / y)
+      _                      -> return e
 
     -- Negation
-    (Neg, [EReal _ x]) -> return $ EReal ann (- x)
+    (Neg, [_t, _tc, arg]) -> case argExpr arg of
+      (EInt  _ x) -> return $ EInt  ann (- x)
+      (EReal _ x) -> return $ EReal ann (- x)
+      _           -> return e
 
     -- Cons
-    (Cons, [x, Seq _ xs]) -> return $ Seq ann (x : xs)
+    (Cons, [_tCont, _tElem, _tc, item, cont]) -> case argExpr cont of
+      Seq _ xs -> return $ Seq ann (argExpr item : xs)
+      _        -> return e
 
     -- Lookup
-    (At, [Seq _ es, EInt _ i]) -> return $ es !! fromIntegral i
-    (At, [xs, i]) -> case (decomposeExplicitApp xs, i) of
-      ((Builtin _ Cons, [x, _]), EInt _ 0) -> return $ argExpr x
-      --((Builtin _ Cons, [_, _, _, x, xs']), EInt _ i) -> Op2 EAt es (EInt ann3 (i - 1)) ann ann1 ann2 pos
-      _                                     -> return e
+    (At, [_tCont, _tElem, _tc, cont, index]) -> case (argExpr cont, argExpr index) of
+      (Seq _ es, EInt _ i) -> return $ es !! fromIntegral i
+      (xs      , i) -> case (decomposeExplicitApp xs, i) of
+        --((Builtin _ Cons, [x, _]), EInt _ 0) -> return $ argExpr x
+        --((Builtin _ Cons, [_, _, _, x, xs']), EInt _ i) -> Op2 EAt es (EInt ann3 (i - 1)) ann ann1 ann2 pos
+        _                                     -> return e
 
     -- Map
-    (Map, [f , Seq _ xs]) ->
-      Seq ann <$> traverse (nf . App ann f . Arg ann Explicit) xs
+    (Map, [_tCont, _tElem, _tc, fun, cont]) -> case argExpr cont of
+        Seq _ xs -> Seq ann <$> traverse (nf . App ann (argExpr fun) . Arg ann Explicit) xs
+        _        -> return e
 
     -- Fold
-    (Fold, [fop, bc, Seq _ xs]) ->
-      nf $ foldr (\x body -> App ann (App ann fop (Arg ann Explicit x)) (Arg ann Explicit body)) bc xs
+    (Fold, [_tElem, _tRes, foldOp, unit, cont]) -> case argExpr cont of
+      Seq _ xs -> nf $ foldr (\x body -> App ann (App ann (argExpr foldOp) (Arg ann Explicit x)) (Arg ann Explicit body)) (argExpr unit) xs
+      _        -> return e
 
     -- Quantifier builtins
     --(Quant q, [_, _, e1, e2]) -> normQuantifier q e1 e2 ann ann1 ann2 pos >>= norm
 
     -- Fall-through case
-    _ -> return e
+    _ -> developerError $ "Unrecognised builtin-pattern during normalisation" <+>
+            squotes (pretty op) <+> prettyVerbose args
+
   _ -> return e
 
 mkBool :: Bool -> CheckedAnn -> CheckedExpr
