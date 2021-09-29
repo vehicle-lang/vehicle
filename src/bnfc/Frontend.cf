@@ -8,7 +8,6 @@ comment "{-" "-}";
 -- NOTE: Token rules are tried IN ORDER, so the order matters!
 
 position token TokArrow     {"->"};
-position token TokHas       {"=>"};
 position token TokForall    {"forall"};
 position token TokIf        {"if"};
 position token TokThen      {"then"};
@@ -26,7 +25,7 @@ position token TokProp      {"Prop"};
 
 position token TokEvery     {"every"};
 position token TokSome      {"some"};
-position token TokImpl      {"implies"};
+position token TokImpl      {"=>"};
 position token TokAnd       {"and"};
 position token TokOr        {"or"};
 position token TokNot       {"not"};
@@ -78,8 +77,9 @@ separator Binder "";
 
 -- * Arguments
 
-ExplicitArg. Arg ::= Expr14;
-ImplicitArg. Arg ::= "{" Expr14 "}";
+ExplicitArg.   Arg ::= Expr14;
+ImplicitArg.   Arg ::= "{" Expr14 "}";
+ConstraintArg. Arg ::= "{{" Expr14 "}}";
 
 -- * Individual let declarations
 
@@ -128,7 +128,6 @@ Let.     Expr1  ::= "let" "{" [LetDecl] "}" "in" Expr1;
 Lam.     Expr2  ::= TokLambda [Binder] TokArrow Expr2;
 App.     Expr12 ::= Expr12 Arg;
 Fun.     Expr10 ::= Expr12 TokArrow Expr10;
-Has.     Expr10 ::= Expr12 TokHas Expr10;
 Var.     Expr14 ::= Name;
 Literal. Expr14 ::= Lit;
 TypeC.   Expr12 ::= TypeClass;

@@ -19,10 +19,10 @@ main = runTestTT . TestList $
 
 fileTests :: [FilePath]
 fileTests =
-  [ "examples/simple.vcl"
+  [ --"examples/mnist.vcl"
   -- , "examples/andGate.vcl"
   -- , "examples/mnist.vcl"
-  --, "examples/shortestPath.vcl"
+  "examples/shortestPath.vcl"
   ]
 {-
 parserTests :: Test
@@ -53,6 +53,6 @@ compileToAgda filePath = run $ Options
   , showVersion  = False
   , inputLang    = Frontend
   , inputFile    = Just filePath
-  , outputTarget = Just $ Vehicle Frontend
+  , outputTarget = Just $ Verifier VNNLib
   , outputFile   = Nothing
   }

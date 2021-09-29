@@ -104,7 +104,6 @@ isMeta e = case decomposeApp e of
   (Meta _ _, _) -> True
   _             -> False
 
--- TODO insert Bool classes
 
 solveHasEq :: MonadTCResolution m
            => TypeClassConstraint
@@ -116,6 +115,12 @@ solveHasEq (m `Has` _) (Builtin _ Prop)  (Builtin _ Prop) = return $ solved m
 solveHasEq (m `Has` _) (Builtin _ Nat)   (Builtin _ Prop) = return $ solved m
 solveHasEq (m `Has` _) (Builtin _ Int)   (Builtin _ Prop) = return $ solved m
 solveHasEq (m `Has` _) (Builtin _ Real)  (Builtin _ Prop) = return $ solved m
+solveHasEq (m `Has` _) (Builtin _ Bool)  (Builtin _ Bool) = return $ solved m
+solveHasEq (m `Has` _) (Builtin _ Prop)  (Builtin _ Bool) = return $ solved m
+solveHasEq (m `Has` _) (Builtin _ Nat)   (Builtin _ Bool) = return $ solved m
+solveHasEq (m `Has` _) (Builtin _ Int)   (Builtin _ Bool) = return $ solved m
+solveHasEq (m `Has` _) (Builtin _ Real)  (Builtin _ Bool) = return $ solved m
+-- TODO insert Container classes
 solveHasEq constraint _ _                       =
   throwError $ TypeClassResolutionFailure constraint
 

@@ -37,7 +37,6 @@ import Vehicle.Core.MetaSubstitution ( MetaSubstitution )
 import Vehicle.Core.MetaSubstitution qualified as MetaSubst (singleton, map, lookup, insertWith)
 import Vehicle.Core.MetaSet (MetaSet)
 import Vehicle.Core.MetaSet qualified as MetaSet (singleton)
-import Vehicle.Core.Compile.Type.Core (MetaCtx(typeClassConstraints))
 
 class MetaSubstitutable a where
   -- TODO change name away from M

@@ -2,8 +2,6 @@ resolver: lts-17.2
 compiler: ghc-8.10.3
 compiler-check: match-exact
 
-allow-newer: true
-
 packages:
 - .
 

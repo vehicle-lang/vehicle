@@ -79,6 +79,18 @@ showExit old mNew = do
 class Norm vf where
   nf :: MonadNorm m => vf -> m vf
 
+instance Norm CheckedProg where
+  nf (Main decls)= Main <$> traverse nf decls
+
+instance Norm CheckedDecl where
+  nf = \case
+    DeclNetw ann arg   typ      -> DeclNetw ann arg <$> nf typ
+    DeclData ann arg   typ      -> DeclData ann arg <$> nf typ
+    DefFun   ann ident typ expr -> do
+      expr' <- nf expr
+      modify (M.insert (deProv ident) expr')
+      return $ DefFun ann ident typ expr'
+
 instance Norm CheckedExpr where
   nf e = showExit e $ do
     e' <- showEntry e
@@ -88,8 +100,8 @@ instance Norm CheckedExpr where
       Literal{}   -> return e
       Builtin{}   -> return e
       Meta{}      -> return e
-      PrimDict tc -> nf tc
 
+      PrimDict tc         -> nf tc
       Seq ann exprs       -> Seq ann <$> traverse nf exprs
       Lam ann binder expr -> Lam ann binder <$> nf expr
       Pi ann binder body  -> Pi ann binder <$> nf body
@@ -104,26 +116,17 @@ instance Norm CheckedExpr where
         let letBodyWithSubstitution = substInto normalisedLetValue letBody
         nf letBodyWithSubstitution
 
-      App ann fn arg -> do
-        normalisedArg <- nf arg
-        normalisedFn  <- nf fn
-        normApp (App ann normalisedFn normalisedArg)
+      App ann fn arg -> if vis arg /= Explicit
+        then nf fn -- Assumes implicit/constraints args hold no computational content
+        else do
+          normalisedArg <- nf arg
+          normalisedFn  <- nf fn
+          normApp (App ann normalisedFn normalisedArg)
 
 instance Norm CheckedArg where
   nf (Arg p Explicit e) = Arg p Explicit <$> nf e
   nf arg@Arg{}          = return arg
 
-instance Norm CheckedDecl where
-  nf = \case
-    DeclNetw ann arg typ    -> DeclNetw ann arg <$> nf typ
-    DeclData ann arg typ    -> DeclData ann arg <$> nf typ
-    DefFun ann ident typ expr -> do
-      expr' <- nf expr
-      modify (M.insert (deProv ident) expr')
-      return $ DefFun ann ident typ expr'
-
-instance Norm CheckedProg where
-  nf (Main decls)= Main <$> traverse nf decls
 
 normApp :: MonadNorm m => CheckedExpr -> m CheckedExpr
 normApp e = case decomposeExplicitApp e of

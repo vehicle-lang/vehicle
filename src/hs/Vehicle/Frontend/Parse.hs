@@ -127,6 +127,7 @@ instance Convert B.Arg V.InputArg where
     ce <- conv e;
     let p = expandProvenance (1, 1) (V.annotation ce)
     return $ V.Arg p Implicit ce
+  conv (B.ConstraintArg _e) = developerError "User specified type classes not yet supported"
 
 instance Convert B.Name (WithProvenance Identifier) where
   conv n = return $ WithProvenance (tkProv n) (Identifier (tkSymbol n))
@@ -208,7 +209,6 @@ instance Convert B.Expr V.InputExpr where
     B.SomeIn tk1 n e1 tk2 e2  -> op3 (flip V.QuantIn Any) (tkProv tk1 <> tkProv tk2) (conv n) (conv e1) (conv e2)
     B.Literal l               -> conv l
     B.TypeC   tc              -> conv tc
-    B.Has _tk _e1 _e2            -> developerError "User specificed type classes not yet supported"
 
 -- |Elaborate declarations.
 instance Convert (NonEmpty B.Decl) V.InputDecl where
