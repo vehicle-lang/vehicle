@@ -9,7 +9,7 @@ import Vehicle.Prelude
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Type.Core
 import Vehicle.Core.Compile.Type.Meta
-import Vehicle.Core.Compile.Type.Normalise ( nf, normaliseTypeClassConstraints )
+import Vehicle.Core.Compile.Type.Normalise ( whnf )
 import Vehicle.Core.Print (prettyVerbose)
 
 --------------------------------------------------------------------------------
@@ -33,7 +33,6 @@ solveTypeClassConstraints :: MonadTCResolution m => m Bool
 solveTypeClassConstraints = do
   logDebug "Starting new type-class resolution pass"
 
-  normaliseTypeClassConstraints
   constraints <- getTypeClassConstraints
   setTypeClassConstraints []
 
@@ -69,22 +68,24 @@ getNonInferableArgs IsContainer [tCont, _tElem] = [tCont]
 getNonInferableArgs _           args            = args
 
 findInstance :: MonadTCResolution m => TypeClassConstraint -> CheckedExpr -> m Progress
-findInstance c e = case decomposeApp e of
-  (Builtin _ tc, args) -> do
-    let argsNF = extractArg <$> args
-    blockOnMetas tc argsNF $ case (tc, argsNF) of
-        (IsContainer,    [t1, t2]) -> solveIsContainer    c t1 t2
-        (HasEq,          [t1, t2]) -> solveHasEq          c t1 t2
-        (HasOrd,         [t1, t2]) -> solveHasOrd         c t1 t2
-        (IsTruth,        [t])      -> solveIsTruth        c t
-        (IsNatural,      [t])      -> solveIsNatural      c t
-        (IsIntegral,     [t])      -> solveIsIntegral     c t
-        (IsRational,     [t])      -> solveIsRational     c t
-        (IsReal,         [t])      -> solveIsReal         c t
-        (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable c t1 t2
-        _                          -> developerError $
-          "Unknown type-class" <+> squotes (pretty tc) <+> "args" <+> prettyVerbose argsNF
-  _ -> developerError $ "Unknown type-class" <+> squotes (prettyVerbose e)
+findInstance c e = do
+  eWHNF <- whnf e
+  case decomposeApp eWHNF of
+    (Builtin _ tc, args) -> do
+      let argsNF = extractArg <$> args
+      blockOnMetas tc argsNF $ case (tc, argsNF) of
+          (IsContainer,    [t1, t2]) -> solveIsContainer    c t1 t2
+          (HasEq,          [t1, t2]) -> solveHasEq          c t1 t2
+          (HasOrd,         [t1, t2]) -> solveHasOrd         c t1 t2
+          (IsTruth,        [t])      -> solveIsTruth        c t
+          (IsNatural,      [t])      -> solveIsNatural      c t
+          (IsIntegral,     [t])      -> solveIsIntegral     c t
+          (IsRational,     [t])      -> solveIsRational     c t
+          (IsReal,         [t])      -> solveIsReal         c t
+          (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable c t1 t2
+          _                          -> developerError $
+            "Unknown type-class" <+> squotes (pretty tc) <+> "args" <+> prettyVerbose argsNF
+    _ -> developerError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
 
 extractArg :: CheckedArg -> CheckedExpr
 extractArg (Arg _ Explicit e) = e

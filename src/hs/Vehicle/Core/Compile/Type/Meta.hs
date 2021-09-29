@@ -75,17 +75,29 @@ instance MetaSubstitutable CheckedExpr where
     Var     ann v            -> return (Var     ann v)
     Seq     ann es           -> Seq     ann <$> traverse substM es
     Ann     ann term typ     -> Ann     ann <$> substM term   <*> substM typ
-    App     ann fun arg      -> App     ann <$> substM fun    <*> substM arg
     Pi      ann binder res   -> Pi      ann <$> substM binder <*> substMetasLiftLocal res
     Let     ann e1 binder e2 -> Let     ann <$> substM e1     <*> substM binder <*> substMetasLiftLocal e2
     Lam     ann binder e     -> Lam     ann <$> substM binder <*> substMetasLiftLocal e
     PrimDict tc              -> PrimDict <$> substM tc
 
-    Meta    ann m -> do
-      subst <- ask
-      case MetaSubst.lookup m subst of
-        Nothing -> return $ Meta ann m
-        Just e  -> substM e
+    e@(Meta ann _)  -> substMApp ann (e, [])
+    e@(App ann _ _) -> substMApp ann (decomposeApp e)
+
+-- | We really don't want un-normalised lambda applications from solved meta-variables
+-- clogging up our program so this function detects meta applications and normalises
+-- them as it substitutes the meta in.
+substMApp :: CheckedAnn -> (CheckedExpr, [CheckedArg]) -> Reader MetaSubstitution CheckedExpr
+substMApp ann (fun@(Meta _ m), mArgs) = do
+  subst <- ask
+  case MetaSubst.lookup m subst of
+    Just eRes -> substM $ normApp eRes mArgs
+    Nothing   -> composeApp ann fun <$> substM mArgs
+  where
+    normApp :: CheckedExpr -> [CheckedArg] -> CheckedExpr
+    normApp (Lam _ _ body) (arg : args) = normApp (argExpr arg `substInto` body) args
+    normApp Lam{}          []           = developerError "Meta variable does not appear to be applied to every variable in the context"
+    normApp e              args         = composeApp ann e args
+substMApp ann (fun, args) = composeApp ann <$> substM fun <*> substM args
 
 instance MetaSubstitutable CheckedDecl where
   substM = \case

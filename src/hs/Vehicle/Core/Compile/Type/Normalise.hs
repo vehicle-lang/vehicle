@@ -20,17 +20,15 @@ import Vehicle.Core.MetaSubstitution qualified as MetaSubst (lookup)
 -- `Vehicle.Core.Compile.Normalisation` module.
 
 data Strategy
-  = Weak
+  = WeakHead
   | Strong
 
 whnf :: (MonadMeta m) => CheckedExpr -> m CheckedExpr
-whnf e = runReaderT (norm e) Weak
+whnf e = runReaderT (norm e) WeakHead
 
 nf :: (MonadMeta m) => CheckedExpr -> m CheckedExpr
 nf e = runReaderT (norm e) Strong
 
--- TODO: move this to elsewhere, we need to normalise types in the
--- typechecker when checking against them too.
 norm :: (MonadMeta m, MonadReader Strategy m) => CheckedExpr -> m CheckedExpr
 norm (App ann fun arg@(Arg p v argE)) = do
   normFun <- norm fun
@@ -38,8 +36,8 @@ norm (App ann fun arg@(Arg p v argE)) = do
   case normFun of
     Lam _ _ body -> norm (argE `substInto` body)
     _            -> case strategy of
-      Weak   -> return (App ann normFun arg)
-      Strong -> App ann normFun . Arg p v <$> norm argE
+      WeakHead -> return (App ann normFun arg)
+      Strong   -> App ann normFun . Arg p v <$> norm argE
 norm (Meta p n) = do
   subst <- getMetaSubstitution
   case MetaSubst.lookup n subst of

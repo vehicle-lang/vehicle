@@ -102,7 +102,7 @@ instance Norm CheckedExpr where
       Hole{}      -> return e
       Literal{}   -> return e
       Builtin{}   -> return e
-      Meta{}      -> return e
+      Meta{}      -> developerError "All metas should have been solved before normalisation"
 
       PrimDict tc         -> nf tc
       Seq ann exprs       -> Seq ann <$> traverse nf exprs
