@@ -10,7 +10,6 @@ import Control.Monad.Reader (ReaderT, MonadReader(..), runReaderT)
 import Data.List (elemIndex)
 import Data.Set (Set,)
 import Data.Set qualified as Set (member, insert)
-import Prettyprinter (Pretty(..), (<+>), squotes)
 
 import Vehicle.Core.AST
 import Vehicle.Prelude

@@ -195,7 +195,7 @@ run _opts@Options{..} = do
           -}
     Just (Verifier VNNLib) -> do
       normProg <- fromLoggedEitherIO $ VC.normalise typedCoreProg
-      return $ layoutAsText $ VC.prettyVerbose normProg
+      return $ layoutAsText $ VC.prettySimple normProg
 
 
 

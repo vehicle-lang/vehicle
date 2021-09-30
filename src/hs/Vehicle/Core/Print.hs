@@ -111,7 +111,7 @@ instance Pretty var => PrettyWithConfig (Expr var ann) where
 
     Seq _ann es -> do
       es' <- traverse pretty' es
-      return $ "[" <> hsep es' <> "]"
+      return $ list es'
 
     Ann _ann term typ -> do
       term' <- pretty' term

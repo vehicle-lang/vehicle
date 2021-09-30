@@ -146,7 +146,9 @@ instance Compile (Expr ann) where
     NegF     _ann e        -> compileApp1 "-" e
     SeqF     _ann es       -> compileSeq es
     ConsF    _ann e1 e2    -> compileInfixOp2 3 "::" e1 e2
-    AtF      _ann  e1 e2   -> compileInfixOp2 11 "!" e1 e2
+    AtF      _ann e1 e2    -> compileInfixOp2 11 "!" e1 e2
+    MapF     _ann e1 e2    -> compileApp2 "map" e1 e2
+    --FoldF    _ann e1 e2 e3 -> _ -- compileApp3 "fold" e1 e2 e3
 
 instance Compile (Decl ann) where
   compile = \case
