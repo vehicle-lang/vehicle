@@ -40,7 +40,7 @@ type MonadUnify m =
   )
 
 -- | Tries to solve the current set of unification constraints
--- returning whether or not it makes any progress.
+-- returning whether if it has made progress.
 solveUnificationConstraints :: MonadUnify m => m Bool
 solveUnificationConstraints = loop Nothing
   where
@@ -53,7 +53,7 @@ solveUnificationConstraints = loop Nothing
 
       case (constraints, metasSolvedLastPass) of
         -- Exit if we have solved all constraints
-        ([], _) -> return True
+        ([], _) -> return False
 
         -- Exit if we have not succeeded in solving any metas in the last pass
         (_, Just metasSolved)

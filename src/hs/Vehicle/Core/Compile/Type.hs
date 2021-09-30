@@ -41,12 +41,12 @@ runAll prog = do
 
 solveMetas :: TCM m => m MetaSubstitution
 solveMetas = do
-  unificationProgress <- solveUnificationConstraints
+  unificationProgress  <- solveUnificationConstraints
   tcResolutionProgress <- solveTypeClassConstraints
 
   let progress = unificationProgress || tcResolutionProgress
   unsolvedUnificationConstraints <- getUnificationConstraints
-  unsolvedTypeClassConstraints <- getTypeClassConstraints
+  unsolvedTypeClassConstraints   <- getTypeClassConstraints
 
   case (unsolvedUnificationConstraints, unsolvedTypeClassConstraints, progress) of
     ([], [], _)        -> getMetaSubstitution

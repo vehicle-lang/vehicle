@@ -225,6 +225,10 @@ data Progress
     , solvedMetas    :: MetaSet
     }
 
+instance Pretty Progress where
+  pretty Stuck                        = "Stuck"
+  pretty (Progress constraints metas) = "Progress" <+> pretty constraints <+> prettyVerbose metas
+
 isStuck :: Progress -> Bool
 isStuck Stuck = True
 isStuck _     = False
