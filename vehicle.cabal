@@ -65,7 +65,7 @@ library
                       , Vehicle.Core.Print
                       , Vehicle.Core.MetaSet
                       , Vehicle.Core.MetaSubstitution
-                      , Vehicle.Core.Print.Frontend
+                      , Vehicle.Core.Print.Friendly
                       --, Vehicle.Backend.ITP.Agda
                       --, Vehicle.Backend.ITP.Core
                       -- Files generated from Core.cf

@@ -1,11 +1,9 @@
 module Vehicle.Core.Compile.Type.Normalise
   ( nf
   , whnf
-  , normaliseTypeClassConstraints
   ) where
 
-import Control.Monad.State (MonadState(..))
-import Control.Monad.Reader (MonadReader(..), runReaderT)
+import Control.Monad.Reader (MonadReader(..), asks, runReaderT)
 
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Type.Core
@@ -23,16 +21,16 @@ data Strategy
   = WeakHead
   | Strong
 
-whnf :: (MonadMeta m) => CheckedExpr -> m CheckedExpr
-whnf e = runReaderT (norm e) WeakHead
+whnf :: (MonadMeta m) => DeclCtx -> CheckedExpr -> m CheckedExpr
+whnf ctx e = runReaderT (norm e) (WeakHead, ctx)
 
-nf :: (MonadMeta m) => CheckedExpr -> m CheckedExpr
-nf e = runReaderT (norm e) Strong
+nf :: (MonadMeta m) => DeclCtx -> CheckedExpr -> m CheckedExpr
+nf ctx e = runReaderT (norm e) (Strong, ctx)
 
-norm :: (MonadMeta m, MonadReader Strategy m) => CheckedExpr -> m CheckedExpr
+norm :: (MonadMeta m, MonadReader (Strategy, DeclCtx) m) => CheckedExpr -> m CheckedExpr
 norm (App ann fun arg@(Arg p v argE)) = do
   normFun <- norm fun
-  strategy <- ask
+  strategy <- asks fst
   case normFun of
     Lam _ _ body -> norm (argE `substInto` body)
     _            -> case strategy of
@@ -48,9 +46,10 @@ norm (Meta p n) = do
 norm (Let _ bound _ body) = norm (bound `substInto` body)
 norm (Ann _ body _)       = norm body
 norm e                    = return e
-
+{-
 normaliseTypeClassConstraints :: MonadMeta m => m ()
 normaliseTypeClassConstraints = do
   MetaCtx{..} <- get
   normalisedConstraints <- traverse (\(m `Has` e) -> (m `Has`) <$> nf e) typeClassConstraints
   put $ MetaCtx{ typeClassConstraints = normalisedConstraints, ..}
+-}

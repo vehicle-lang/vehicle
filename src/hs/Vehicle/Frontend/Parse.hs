@@ -127,7 +127,7 @@ instance Convert B.Arg V.InputArg where
     ce <- conv e;
     let p = expandProvenance (1, 1) (V.annotation ce)
     return $ V.Arg p Implicit ce
-  conv (B.ConstraintArg _e) = developerError "User specified type classes not yet supported"
+  conv (B.InstanceArg _e) = developerError "User specified type classes not yet supported"
 
 instance Convert B.Name (WithProvenance Identifier) where
   conv n = return $ WithProvenance (tkProv n) (Identifier (tkSymbol n))

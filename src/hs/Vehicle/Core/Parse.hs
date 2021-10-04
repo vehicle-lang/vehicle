@@ -98,9 +98,9 @@ lookupBuiltin (BuiltinToken tk) = case builtinFromSymbol (tkSymbol tk) of
 
 instance Convert B.Binder V.InputBinder where
   conv = \case
-    B.ExplicitNameAndType n e   -> mkBinder n Explicit e
-    B.ImplicitNameAndType n e   -> mkBinder n Implicit e
-    B.ConstraintNameAndType n e -> mkBinder n Constraint e
+    B.ExplicitNameAndType n e -> mkBinder n Explicit e
+    B.ImplicitNameAndType n e -> mkBinder n Implicit e
+    B.InstanceNameAndType n e -> mkBinder n Instance e
     where
       mkBinder :: MonadParse m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
       mkBinder n v e = V.Binder (tkProvenance n) v (User (tkSymbol n)) <$> conv e
@@ -109,7 +109,7 @@ instance Convert B.Arg V.InputArg where
   conv = \case
     B.ExplicitArg e -> do ce <- conv e; return $ V.Arg (annotation ce) Explicit ce
     B.ImplicitArg e -> do ce <- conv e; return $ V.Arg (expandProvenance (1, 1) (V.annotation ce)) Implicit ce
-    B.ConstraintArg e -> do ce <- conv e; return $ V.Arg (expandProvenance (2, 2) (V.annotation ce)) Constraint ce
+    B.InstanceArg e -> do ce <- conv e; return $ V.Arg (expandProvenance (2, 2) (V.annotation ce)) Instance ce
 
 instance Convert B.Lit Literal where
   conv = \case

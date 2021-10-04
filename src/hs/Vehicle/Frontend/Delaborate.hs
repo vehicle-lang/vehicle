@@ -1,12 +1,11 @@
 
 module Vehicle.Frontend.Delaborate
   ( runDelab
-  , DelabError(..)
+  , runDelabWithoutLogging
   ) where
 
 import Control.Monad (liftM)
 import Control.Monad.State (MonadState(..), evalStateT, modify)
-import Control.Monad.Except (MonadError(..), ExceptT)
 import Data.List.NonEmpty (NonEmpty(..), (<|))
 import Data.List.NonEmpty qualified as NonEmpty (reverse)
 import Data.Text (pack)
@@ -20,7 +19,17 @@ import Vehicle.Prelude
 --------------------------------------------------------------------------------
 -- Delaboration converts a program in the Core language to the Frontend language
 
-runDelab :: Delaborate a b => a -> ExceptT DelabError Logger b
+{-
+prettyFrontend :: VC.CheckedExpr -> Doc ann
+prettyFrontend e = prettyVerbose e case runDelab (runDescope e :: VC.OutputExpr) :: Either DelabError VF.OutputExpr of
+  Right expr -> pretty expr
+  Left  err  -> developerError $
+    "The following error:" <> line <> line <>
+    pretty (show (details err)) <> line <> line <>
+    "was encountered while trying to delaborate the following core expression:" <> line <> line <>
+    pretty e -}
+
+runDelab :: Delaborate a b => a -> Logger b
 runDelab x = do
   -- TODO filter out free variables from the expression in the supply monad
   logDebug "Beginning delaboration"
@@ -29,15 +38,10 @@ runDelab x = do
   logDebug "Ending delaboration\n"
   return result
 
-data DelabError
-  = UnsolvedMeta Provenance VC.Meta
-
-instance MeaningfulError DelabError where
-  details (UnsolvedMeta p meta) = UError $ UserError
-    { provenance = p
-    , problem    = "unsolved meta variable" <+> pretty meta
-    , fix        = "try adding a type annotation"
-    }
+-- | Delaborates the program and throws away the logs, should only be used in
+-- user-facing error messages
+runDelabWithoutLogging :: Delaborate a b => a -> b
+runDelabWithoutLogging x = discardLogger $ runDelab x
 
 -- * Delaboration class
 
@@ -73,7 +77,7 @@ instance MeaningfulError DelabError where
 --------------------------------------------------------------------------------
 -- Delaboration monad
 
-type MonadDelab      m = (MonadError DelabError m, MonadLogger m, MonadSupply Symbol m)
+type MonadDelab      m = (MonadLogger m, MonadSupply Symbol m)
 type MonadDelabHoles m = (MonadDelab m, MonadState [VF.OutputExpr] m)
 
 hole :: MonadDelabHoles m => Provenance -> m VF.OutputExpr

@@ -5,13 +5,13 @@ module Vehicle.Frontend.Print
   ) where
 
 import Data.Functor.Foldable (Recursive(..))
-import Prettyprinter hiding (hsep, vsep, hcat, vcat)
+import Prettyprinter (annotate, encloseSep, unAnnotate, hardline)
 
 import Vehicle.Frontend.AST
 import Vehicle.Prelude
 
-prettyFrontend :: Compile a => a -> Doc Precedence
-prettyFrontend = compile
+prettyFrontend :: Compile a => a -> Doc b
+prettyFrontend = unAnnotate . compile
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
@@ -83,9 +83,9 @@ instance Compile (Binder ann) where
     in  visBrackets v (pretty n <> typAnn)
 
 instance Compile (Arg ann) where
-  compile (Arg _p Explicit    e) = compile e
-  compile (Arg _p Implicit   _e) = ""
-  compile (Arg _p Constraint _e) = ""
+  compile (Arg _p Explicit  e) = compile e
+  compile (Arg _p Implicit _e) = ""
+  compile (Arg _p Instance _e) = ""
 
 instance Compile (LetDecl ann) where
   compile (LetDecl _p n e) = compile n <+> compile e

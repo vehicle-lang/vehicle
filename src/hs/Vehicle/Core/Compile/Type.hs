@@ -11,9 +11,9 @@ import Control.Monad.Except (MonadError(..), ExceptT)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
 import Control.Monad.State (MonadState, evalStateT)
 import Data.Foldable (foldrM)
-import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.List.NonEmpty (NonEmpty(..))
+import Prettyprinter (align)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
@@ -23,6 +23,7 @@ import Vehicle.Core.Compile.Type.Unify
 import Vehicle.Core.Compile.Type.Meta
 import Vehicle.Core.Compile.Type.TypeClass
 import Vehicle.Core.Print (prettyVerbose)
+import Vehicle.Core.MetaSet qualified as MetaSet (null)
 
 typeCheck :: UncheckedProg -> ExceptT TypingError Logger CheckedProg
 typeCheck prog = do
@@ -39,20 +40,66 @@ runAll prog = do
   metaSubstitution <- solveMetas
   return $ substMetas metaSubstitution prog2
 
-solveMetas :: TCM m => m MetaSubstitution
+solveMetas :: MonadConstraintSolving m => m MetaSubstitution
 solveMetas = do
-  unificationProgress  <- solveUnificationConstraints
-  tcResolutionProgress <- solveTypeClassConstraints
+  logDebug "Starting constraint solving\n"
+  constraints <- getConstraints
+  solution <- loop $ Progress
+    { newConstraints = constraints
+    , solvedMetas    = mempty
+    }
+  logDebug "Finished constraint solving\n"
+  return solution
+  where
+    loop :: MonadConstraintSolving m
+         => ConstraintProgress
+         -> m MetaSubstitution
+    loop progress = do
+      allConstraints <- getConstraints
+      currentSubstitution <- getMetaSubstitution
 
-  let progress = unificationProgress || tcResolutionProgress
-  unsolvedUnificationConstraints <- getUnificationConstraints
-  unsolvedTypeClassConstraints   <- getTypeClassConstraints
+      -- If there are no constraints to be solved then return the solution
+      if null allConstraints
+        then return currentSubstitution
 
-  case (unsolvedUnificationConstraints, unsolvedTypeClassConstraints, progress) of
-    ([], [], _)        -> getMetaSubstitution
-    (_, _, True)       -> solveMetas
-    (c : cs, _, False) -> throwError $ UnsolvedUnificationConstraints (c :| cs)
-    (_, c : cs, False) -> throwError $ UnsolvedTypeClassConstraints (c :| cs)
+      else case progress of
+        Stuck -> throwError $ UnsolvedConstraints (head allConstraints :| tail allConstraints)
+        Progress newConstraints solvedMetas -> do
+          -- If we have failed to make useful progress last pass then abort
+          if MetaSet.null solvedMetas && null newConstraints then
+            throwError $ UnsolvedConstraints (head allConstraints :| tail allConstraints)
+          -- Otherwise start a new pass
+          else do
+            logDebug "Starting new pass"
+
+            let updatedConstraints = substMetas currentSubstitution allConstraints
+            logDebug $ "current-constraints:" <+> align (prettyVerbose updatedConstraints)
+
+            -- TODO try only the non-blocked metas
+            setConstraints []
+            newProgress <- mconcat `fmap` traverse tryToSolveConstraint updatedConstraints
+
+            metaSubst <- getMetaSubstitution
+            logDebug $ "current-solution:" <+> prettyVerbose metaSubst <> "\n"
+            loop newProgress
+
+    tryToSolveConstraint :: MonadConstraintSolving m
+                        => Constraint
+                        -> m ConstraintProgress
+    tryToSolveConstraint constraint@(Constraint _ baseConstraint) = do
+      logDebug $ "trying" <+> prettyVerbose constraint
+      incrCallDepth
+
+      result <- case baseConstraint of
+        Unify eq  -> solveUnificationConstraint constraint eq
+        m `Has` e -> solveTypeClassConstraint constraint m e
+
+      case result of
+        Progress newConstraints _ -> addConstraints newConstraints
+        Stuck                     -> addConstraints [constraint]
+
+      decrCallDepth
+      return result
 
 --------------------------------------------------------------------------------
 -- Contexts
@@ -65,20 +112,6 @@ type TCM m =
   , MonadLogger             m
   )
 
-data VariableCtx = VariableCtx
-  { boundCtx :: BoundCtx
-  , declCtx  :: DeclCtx
-  }
-
-emptyVariableCtx :: VariableCtx
-emptyVariableCtx = VariableCtx mempty mempty
-
--- | The declarations that are currently in scope, indexed into via their names.
-type DeclCtx = Map Identifier CheckedExpr
-
-instance Pretty DeclCtx where
-  pretty = pretty . show
-
 getDeclCtx :: TCM m => m DeclCtx
 getDeclCtx = asks declCtx
 
@@ -90,6 +123,9 @@ addToDeclCtx n e = local add
 
 getBoundCtx :: TCM m => m BoundCtx
 getBoundCtx = asks boundCtx
+
+getVariableCtx :: TCM m => m VariableCtx
+getVariableCtx = ask
 
 addToBoundCtx :: TCM m => Name -> CheckedExpr -> m a -> m a
 addToBoundCtx n e = local add
@@ -137,12 +173,14 @@ showInsertArg v t = do
 assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
 assertIsType _ (Type _) = return ()
 -- TODO: add a new TypingError 'ExpectedAType'
-assertIsType p e        = throwError $ Mismatch p e (Type 0)
+assertIsType p e        = do
+  ctx <- getBoundCtx
+  throwError $ Mismatch p ctx e (Type 0)
 
 unify :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m CheckedExpr
 unify p e1 e2 = do
-  ctx <- getBoundCtx
-  addUnificationConstraint $ makeConstraint p ctx e1 e2
+  ctx <- getVariableCtx
+  addUnificationConstraint p ctx e1 e2
   -- TODO calculate the most general unifier
   return e1
 
@@ -163,8 +201,8 @@ insertArgs p fun' (Pi _ (Binder _ vArg _ tArg') tRes')
   | vArg /= Explicit = do
   tArg'' <- showInsertArg vArg tArg'
 
-  ctx <- getBoundCtx
-  (meta, metaArg) <- freshMetaWith ctx p
+  ctx <- getVariableCtx
+  (meta, metaArg) <- freshMetaWith (boundCtx ctx) p
 
   -- Substitute meta-variable in tRes
   let tResSubst' = metaArg `substInto` tRes'
@@ -173,8 +211,8 @@ insertArgs p fun' (Pi _ (Binder _ vArg _ tArg') tRes')
   -- the context and the type-class search later on.
 
   -- Check if the required argument is a type-class
-  when (vArg == Constraint) $
-    addTypeClassConstraint (meta `Has` tArg'')
+  when (vArg == Instance) $ do
+    addTypeClassConstraint ctx meta tArg''
 
   insertArgs p (App mempty fun' (Arg mempty vArg metaArg)) tResSubst'
 insertArgs _ fun' typ' =
@@ -211,8 +249,9 @@ check expectedType expr = showCheckExit $ do
         return $ Lam mempty newBinder e'
 
     (_, Lam p (Binder _ vBound _ _) _) -> do
+          ctx <- getBoundCtx
           let expected = fromDSL $ unnamedPi vBound (tHole "a") (const (tHole "b"))
-          throwError $ Mismatch p expectedType expected
+          throwError $ Mismatch p ctx expectedType expected
 
     (_, Hole p _name) -> do
       -- Replace the hole with meta-variable of the expected type.
@@ -252,8 +291,9 @@ inferApp p (Arg pArg vArg eArg) fun' = \case
       return (App p fun' (Arg pArg vArg eArg') , tResSubst')
 
   tFun' -> do
+    ctx <- getBoundCtx
     let expected = fromDSL $ unnamedPi vArg (tHole "a") (const $ tHole "b")
-    throwError $ Mismatch p tFun' expected
+    throwError $ Mismatch p ctx tFun' expected
 
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
@@ -360,7 +400,8 @@ infer e = showInferExit $ do
       -- Enforce that the applied container type must be a container
       -- Generate a fresh meta-variable for the container function, e.g. List
       (meta, tMeta') <- freshMeta p
-      addTypeClassConstraint (meta `Has` isContainer' p tCont' tElem')
+      ctx <- getVariableCtx
+      addTypeClassConstraint ctx meta (isContainer' p tCont' tElem')
 
       -- Add in the type and type-class arguments
       let seqWithTArgs =
@@ -368,7 +409,7 @@ infer e = showInferExit $ do
               (Seq p es')
                 (Arg p Implicit tCont'))
                   (Arg p Implicit tElem'))
-                    (Arg p Constraint tMeta')
+                    (Arg p Instance tMeta')
 
       return (seqWithTArgs , tCont')
 

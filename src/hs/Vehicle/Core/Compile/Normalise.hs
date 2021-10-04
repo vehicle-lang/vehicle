@@ -12,7 +12,7 @@ import Data.Maybe (fromMaybe)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
-import Vehicle.Core.Print (prettySimple, prettyVerbose)
+import Vehicle.Core.Print (prettySimple)
 
 -- |Run a function in 'MonadNorm'.
 normalise :: Norm a => a -> ExceptT NormError Logger a
@@ -271,4 +271,4 @@ normApp ann fun args = return $ composeApp ann fun args
 
 mkBool :: Bool -> CheckedAnn -> CheckedExpr
 mkBool b ann = Literal ann (LBool b)
-  --App ann (App ann (Literal ann (LBool b)) (Arg ann Implicit _)) (Arg ann Constraint _)
+  --App ann (App ann (Literal ann (LBool b)) (Arg ann Implicit _)) (Arg ann Instance _)

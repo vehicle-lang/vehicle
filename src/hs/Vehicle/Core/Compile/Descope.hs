@@ -1,6 +1,6 @@
 
 module Vehicle.Core.Compile.Descope
-  ( descopeCheck
+  ( runDescope
   , runDescopeWithCtx
   ) where
 
@@ -10,16 +10,13 @@ import GHC.Stack (HasCallStack)
 import Vehicle.Prelude
 import Vehicle.Core.AST
 
-descopeCheck :: Descope a b => a -> b
-descopeCheck = runDescopeWithCtx emptyCtx
+runDescope :: Descope a b => a -> b
+runDescope = runDescopeWithCtx mempty
 
-runDescopeWithCtx :: Descope a b => Ctx -> a -> b
-runDescopeWithCtx ctx e = runReader (descope e) ctx
+runDescopeWithCtx :: Descope a b => [Name] -> a -> b
+runDescopeWithCtx ctx e = runReader (descope e) (Ctx ctx)
 
 newtype Ctx = Ctx [Name]
-
-emptyCtx :: Ctx
-emptyCtx = Ctx mempty
 
 addBinderToCtx :: OutputBinder -> Ctx -> Ctx
 addBinderToCtx (Binder _ _ name _) (Ctx ctx) = Ctx (name : ctx)

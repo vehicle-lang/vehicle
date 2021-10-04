@@ -167,13 +167,13 @@ run _opts@Options{..} = do
       exitFailure
 
     Just (ITP itp) -> do
-      let descopedCoreProg :: VC.OutputProg = VC.descopeCheck typedCoreProg
+      let descopedCoreProg :: VC.OutputProg = VC.runDescope typedCoreProg
       case itp of
         (Vehicle Core) ->
           return $ layoutAsText $ VC.prettyVerbose descopedCoreProg
 
         (Vehicle Frontend) -> do
-          compFrontProg :: VF.OutputProg <- fromLoggedEitherIO $ VF.runDelab descopedCoreProg
+          compFrontProg :: VF.OutputProg <- fromLoggedIO $ VF.runDelab descopedCoreProg
           return $ layoutAsText $ VF.prettyFrontend compFrontProg
 
         Agda -> do
@@ -218,6 +218,9 @@ fromEitherIO (Right x)  = return x
 
 fromLoggedEitherIO :: MeaningfulError e => ExceptT e Logger a -> IO a
 fromLoggedEitherIO x = fromEitherIO =<< flushLogs (runExceptT x)
+
+fromLoggedIO :: Logger a -> IO a
+fromLoggedIO = flushLogs
 
 readFileOrStdin :: Maybe FilePath -> IO Text
 readFileOrStdin (Just file) = T.readFile file

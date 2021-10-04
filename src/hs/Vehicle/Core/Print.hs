@@ -1,7 +1,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Core.Print
-  ( prettySimple
+  ( PrettyWithConfig(..)
+  , prettySimple
   , prettyVerbose
   ) where
 
@@ -23,29 +24,29 @@ import Vehicle.Core.MetaSubstitution qualified as MetaSubst
 -- Printing to Core language
 
 data PrettyOptions = PrettyOptions
-  { showImplicitArgs   :: Bool
-  , showConstraintArgs :: Bool
+  { showImplicitArgs :: Bool
+  , showInstanceArgs :: Bool
   }
 
 instance Default PrettyOptions where
   def = PrettyOptions
-    { showImplicitArgs   = True
-    , showConstraintArgs = True
+    { showImplicitArgs = True
+    , showInstanceArgs = True
     }
 
 prettySimple :: PrettyWithConfig a => a -> Doc b
 prettySimple x = runReader (pretty' x) (def
-  { showImplicitArgs   = False
-  , showConstraintArgs = False
+  { showImplicitArgs = False
+  , showInstanceArgs = False
   })
 
 prettyVerbose :: PrettyWithConfig a => a -> Doc b
 prettyVerbose x = runReader (pretty' x) def
 
 brackets :: Visibility -> (Doc a -> Doc a)
-brackets Explicit   = parens
-brackets Implicit   = braces
-brackets Constraint = braces . braces
+brackets Explicit = parens
+brackets Implicit = braces
+brackets Instance = braces . braces
 
 type MonadPrettyConfig m = (MonadReader PrettyOptions m)
 
@@ -104,8 +105,8 @@ instance Pretty var => PrettyWithConfig (Expr var ann) where
       argDoc <- pretty' arg
       let v = vis arg
       let showArg = v == Explicit
-                 || v == Implicit   && showImplicitArgs
-                 || v == Constraint && showConstraintArgs
+                 || v == Implicit && showImplicitArgs
+                 || v == Instance && showInstanceArgs
 
       return $ if showArg then parens (funDoc <+> argDoc) else funDoc
 

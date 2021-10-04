@@ -77,9 +77,9 @@ separator Binder "";
 
 -- * Arguments
 
-ExplicitArg.   Arg ::= Expr14;
-ImplicitArg.   Arg ::= "{" Expr14 "}";
-ConstraintArg. Arg ::= "{{" Expr14 "}}";
+ExplicitArg. Arg ::= Expr14;
+ImplicitArg. Arg ::= "{" Expr14 "}";
+InstanceArg. Arg ::= "{{" Expr14 "}}";
 
 -- * Individual let declarations
 
@@ -165,8 +165,8 @@ Neg.     Expr10 ::= TokSub Expr10;
 Seq.     Expr14 ::= TokSeqOpen [Expr] TokSeqClose;
 Cons.    Expr3  ::= Expr4 TokCons Expr3;
 At.      Expr11 ::= Expr11 TokAt Expr12;
-Map.     Expr11 ::= TokMap Expr12 Expr13;
-Fold.    Expr11 ::= TokFold Expr12 Expr13 Expr14;
+Map.     Expr12 ::= TokMap Expr14 Expr14;
+Fold.    Expr12 ::= TokFold Expr14 Expr14 Expr14;
 
 -- Quantification
 Every.     Expr3 ::= TokEvery Binder TokDot Expr4;

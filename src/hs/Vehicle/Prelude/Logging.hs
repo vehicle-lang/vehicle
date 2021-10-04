@@ -8,6 +8,8 @@ module Vehicle.Prelude.Logging
   , Logger
   , runLoggerT
   , runLogger
+  , discardLoggerT
+  , discardLogger
   , logError
   , logWarning
   , logInfo
@@ -105,6 +107,12 @@ runLoggerT (LoggerT logger) = evalStateT (runWriterT logger) 0
 
 runLogger :: Logger a -> (a, [Message])
 runLogger = runIdentity . runLoggerT
+
+discardLoggerT :: Monad m => LoggerT m a -> m a
+discardLoggerT m = fst <$> runLoggerT m
+
+discardLogger :: Logger a -> a
+discardLogger m = fst $ runLogger m
 
 logError :: MonadLogger m => Doc a -> m ()
 logError text = logMessage $ Message Error (layoutAsText text)

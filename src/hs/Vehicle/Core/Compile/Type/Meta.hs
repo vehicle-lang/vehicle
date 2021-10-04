@@ -8,26 +8,25 @@ module Vehicle.Core.Compile.Type.Meta
   , metaSolved
   , makeMetaType
   , addUnificationConstraint
-  , addUnificationConstraints
-  , getUnificationConstraints
-  , setUnificationConstraints
-  , getTypeClassConstraints
   , addTypeClassConstraint
-  , setTypeClassConstraints
+  , addConstraints
+  , setConstraints
+  , getConstraints
+  , popActivatedConstraints
   , getMetaSubstitution
   , modifyMetaSubstitution
-  , Progress(..)
-  , pattern Solved
-  , pattern PartiallySolved
-  , solved
-  , solvedTrivial
+  , MonadConstraintSolving
+  , ConstraintProgress(..)
+  , nonTriviallySolved
+  , triviallySolved
   , partiallySolved
   , isStuck
   ) where
 
+import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (Reader, runReader, ask, local)
 import Control.Monad.State (MonadState(..), modify, gets)
-import Data.List (foldl')
+import Data.List (foldl', partition)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
@@ -36,7 +35,7 @@ import Vehicle.Core.Print (prettyVerbose)
 import Vehicle.Core.MetaSubstitution ( MetaSubstitution )
 import Vehicle.Core.MetaSubstitution qualified as MetaSubst (singleton, map, lookup, insertWith)
 import Vehicle.Core.MetaSet (MetaSet)
-import Vehicle.Core.MetaSet qualified as MetaSet (singleton)
+import Vehicle.Core.MetaSet qualified as MetaSet (singleton, disjoint, null)
 
 class MetaSubstitutable a where
   -- TODO change name away from M
@@ -108,12 +107,12 @@ instance MetaSubstitutable CheckedDecl where
 instance MetaSubstitutable CheckedProg where
   substM (Main ds) = Main <$> traverse substM ds
 
-instance MetaSubstitutable UnificationConstraint where
-  substM (Unify p ctx metas history es) =
-    Unify p ctx metas history <$> substM es
-
-instance MetaSubstitutable TypeClassConstraint where
+instance MetaSubstitutable BaseConstraint where
+  substM (Unify es)  = Unify <$> substM es
   substM (m `Has` e) = (m `Has`) <$> substM e
+
+instance MetaSubstitutable Constraint where
+  substM (Constraint ctx c) = Constraint ctx <$> substM c
 
 --------------------------------------------------------------------------------
 -- The meta monad
@@ -123,34 +122,40 @@ type MonadMeta m = MonadState MetaCtx m
 modifyMetaCtx :: MonadMeta m => (MetaCtx -> MetaCtx) -> m ()
 modifyMetaCtx = modify
 
-getUnificationConstraints :: MonadMeta m => m [UnificationConstraint]
-getUnificationConstraints = gets unificationConstraints
+getConstraints :: MonadMeta m => m [Constraint]
+getConstraints = gets constraints
 
-addUnificationConstraint :: (MonadMeta m, MonadLogger m) => UnificationConstraint -> m ()
-addUnificationConstraint c = addUnificationConstraints [c]
+addUnificationConstraint :: (MonadMeta m, MonadLogger m)
+                         => Provenance
+                         -> VariableCtx
+                         -> CheckedExpr
+                         -> CheckedExpr
+                         -> m ()
+addUnificationConstraint p ctx e1 e2 = do
+  let context    = ConstraintContext p mempty ctx
+  let constraint = Constraint context $ Unify (e1, e2)
+  addConstraints [constraint]
 
-addUnificationConstraints :: (MonadMeta m, MonadLogger m) => [UnificationConstraint] -> m ()
-addUnificationConstraints constraints = do
-  logDebug ("add-unification-constraints " <> pretty constraints)
+addTypeClassConstraint :: (MonadMeta m, MonadLogger m)
+                       => VariableCtx
+                       -> Meta
+                       -> CheckedExpr
+                       -> m ()
+addTypeClassConstraint ctx meta expr = do
+  let context    = ConstraintContext (prov expr) mempty ctx
+  let constraint = Constraint context (meta `Has` expr)
+  addConstraints [constraint]
+
+addConstraints :: (MonadMeta m, MonadLogger m) => [Constraint] -> m ()
+addConstraints []             = return ()
+addConstraints newConstraints = do
+  logDebug ("add-constraints " <> prettyVerbose newConstraints)
   modifyMetaCtx $ \ MetaCtx {..} ->
-    MetaCtx { unificationConstraints = constraints ++ unificationConstraints, ..}
+    MetaCtx { constraints = constraints ++ newConstraints, ..}
 
-setUnificationConstraints :: MonadMeta m => [UnificationConstraint] -> m ()
-setUnificationConstraints constraints = modifyMetaCtx $ \ MetaCtx {..} ->
-    MetaCtx { unificationConstraints = constraints, ..}
-
-getTypeClassConstraints :: MonadMeta m => m [TypeClassConstraint]
-getTypeClassConstraints = gets typeClassConstraints
-
-addTypeClassConstraint :: (MonadMeta m, MonadLogger m) => TypeClassConstraint -> m ()
-addTypeClassConstraint constraint = do
-  logDebug ("add-type-class-constraint " <> pretty constraint)
-  modifyMetaCtx $ \ MetaCtx {..} ->
-     MetaCtx { typeClassConstraints = constraint : typeClassConstraints, ..}
-
-setTypeClassConstraints :: MonadMeta m => [TypeClassConstraint] -> m ()
-setTypeClassConstraints constraints = modifyMetaCtx $ \ MetaCtx {..} ->
-    MetaCtx { typeClassConstraints = constraints, ..}
+setConstraints :: (MonadMeta m) => [Constraint] -> m ()
+setConstraints newConstraints = modifyMetaCtx $ \MetaCtx{..} ->
+    MetaCtx { constraints = newConstraints, ..}
 
 getMetaSubstitution :: MonadMeta m => m MetaSubstitution
 getMetaSubstitution = gets currentSubstitution
@@ -199,6 +204,24 @@ makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCt
     entryToPi :: (Name, CheckedExpr) -> CheckedExpr -> CheckedExpr
     entryToPi (name, t) resTy = Pi p (Binder p Explicit name t) resTy
 
+-- | Returns any constraints that are activated (i.e. worth retrying) based
+-- on the set of metas that were solved last pass.
+popActivatedConstraints :: MonadMeta m
+                        => MetaSet
+                        -> m [Constraint]
+popActivatedConstraints metasSolved = do
+  allConstraints <- getConstraints
+  let (blockedConstraints, unblockedConstraints) = partition (isBlocked metasSolved) allConstraints
+  setConstraints blockedConstraints
+  return unblockedConstraints
+  where
+    isBlocked :: MetaSet -> Constraint -> Bool
+    isBlocked solvedMetas (Constraint (ConstraintContext _ blockingMetas _) _) =
+      -- A constraint is blocked if it is blocking on at least one meta
+      -- and none of the metas it is blocking on have been solved in the last pass.
+      not (MetaSet.null blockingMetas) && MetaSet.disjoint solvedMetas blockingMetas
+
+
 metaSolved :: (MonadMeta m, MonadLogger m)
            => Provenance
            -> Meta
@@ -218,40 +241,48 @@ metaSolved p m e = do
       "was assigned again to" <+> prettyVerbose new <+>
       pretty p
 
-data Progress
+type MonadConstraintSolving m =
+  ( MonadMeta m
+  , MonadLogger m
+  , MonadError TypingError m
+  )
+
+--------------------------------------------------------------------------------
+-- Progress in solving meta-variable constraints
+
+-- | Reports progress when trying to solve meta-variable constraints
+data ConstraintProgress
   = Stuck
   | Progress
-    { newConstraints :: Bool
+    { newConstraints :: [Constraint]
     , solvedMetas    :: MetaSet
     }
 
-instance Pretty Progress where
+instance Pretty ConstraintProgress where
   pretty Stuck                        = "Stuck"
-  pretty (Progress constraints metas) = "Progress" <+> pretty constraints <+> prettyVerbose metas
+  pretty (Progress constraints metas) =
+    "Progress" <+> prettyVerbose constraints <+> prettyVerbose metas
 
-isStuck :: Progress -> Bool
+isStuck :: ConstraintProgress -> Bool
 isStuck Stuck = True
 isStuck _     = False
 
-instance Semigroup Progress where
+instance Semigroup ConstraintProgress where
   Stuck <> x = x
   x <> Stuck = x
-  Progress n1 ms1 <> Progress n2 ms2 = Progress (n1 || n2) (ms1 <> ms2)
+  Progress n1 ms1 <> Progress n2 ms2 = Progress (n1 <> n2) (ms1 <> ms2)
 
-instance Monoid Progress where
+instance Monoid ConstraintProgress where
   mempty = Stuck
 
-pattern Solved :: MetaSet -> Progress
-pattern Solved ms = Progress False ms
+nonTriviallySolved :: Meta -> ConstraintProgress
+nonTriviallySolved m = Progress mempty (MetaSet.singleton m)
 
-solved :: Meta -> Progress
-solved m = Solved (MetaSet.singleton m)
+triviallySolved :: ConstraintProgress
+triviallySolved = Progress mempty mempty
 
-solvedTrivial :: Progress
-solvedTrivial = Solved mempty
+partiallySolved :: [Constraint] -> ConstraintProgress
+partiallySolved constraints = Progress constraints mempty
 
-pattern PartiallySolved :: MetaSet -> Progress
-pattern PartiallySolved ms = Progress True ms
-
-partiallySolved :: Meta -> Progress
-partiallySolved m = PartiallySolved (MetaSet.singleton m)
+--newConstraints :: Meta -> ConstraintProgress
+--newConstraints = (MetaSet.singleton m)

@@ -22,15 +22,15 @@ position token TypeToken ({"Type"} digit+);
 
 -- * Binders
 
-ExplicitNameAndType.   Binder ::= "(" NameToken ":type" Expr ")";
-ImplicitNameAndType.   Binder ::= "{" NameToken ":type" Expr "}";
-ConstraintNameAndType. Binder ::= "{{" NameToken ":type" Expr "}}";
+ExplicitNameAndType. Binder ::= "("  NameToken ":type" Expr ")";
+ImplicitNameAndType. Binder ::= "{"  NameToken ":type" Expr "}";
+InstanceNameAndType. Binder ::= "{{" NameToken ":type" Expr "}}";
 
 -- * Function arguments
 
-ExplicitArg.   Arg ::= Expr1;
-ImplicitArg.   Arg ::= "{" Expr "}";
-ConstraintArg. Arg ::= "{{" Expr "}}";
+ExplicitArg. Arg ::= Expr1;
+ImplicitArg. Arg ::= "{" Expr "}";
+InstanceArg. Arg ::= "{{" Expr "}}";
 
 -- * Literals
 

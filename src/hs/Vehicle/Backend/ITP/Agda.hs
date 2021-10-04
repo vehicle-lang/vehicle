@@ -195,7 +195,6 @@ instance CompileToAgda Double where
 
 instance CompileToAgda OutputExpr where
   compile = \case
-    Constraint    -> developerError "The `Constraint` type should not appear"
     Hole{}        -> developerError "Holes should have been removed"
 
     e@HasEq{}       -> throwError $ CompilationUnsupported (prov e) "HasEq"

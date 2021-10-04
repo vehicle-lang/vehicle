@@ -53,7 +53,7 @@ class DSL expr where
   x ~~> y = unnamedPi Implicit x (const y)
 
   (~~~>) :: expr -> expr -> expr
-  x ~~~> y = unnamedPi Constraint x (const y)
+  x ~~~> y = unnamedPi Instance x (const y)
 
   forall :: expr -> (expr -> expr) -> expr
   forall = unnamedPi Implicit

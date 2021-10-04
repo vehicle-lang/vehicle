@@ -90,6 +90,12 @@ $(BNFC_TARGETS_CORE): $(SRC_DIR_BNFC)/Core.cf | require-bnfc
 		$(SRC_DIR_BNFC)/Core.cf
 	@rm -f $(BNFC_GARBAGE_CORE)
 
+.PHONY: bnfc-core-info
+bnfc-core-info: $(GEN_DIR_HS)/Vehicle/Core/Par.info
+
+$(GEN_DIR_HS)/Vehicle/Core/Par.info: $(GEN_DIR_HS)/Vehicle/Core/Par.y
+	$(STACK) exec happy -- gen/hs/Vehicle/Core/Par.y --info=gen/hs/Vehicle/Core/Par.info
+
 BNFC_TARGETS_FRONTEND := Abs.hs Lex.x Layout.hs Par.y ErrM.hs
 BNFC_TARGETS_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_TARGETS_FRONTEND))
 
@@ -111,6 +117,11 @@ $(BNFC_TARGETS_FRONTEND): $(SRC_DIR_BNFC)/Frontend.cf | require-bnfc
 		$(SRC_DIR_BNFC)/Frontend.cf
 	@rm -f $(BNFC_GARBAGE_FRONTEND)
 
+.PHONY: bnfc-frontend-info
+bnfc-frontend-info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.info
+
+$(GEN_DIR_HS)/Vehicle/Frontend/Par.info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.y
+	$(STACK) exec happy -- gen/hs/Vehicle/Frontend/Par.y --info=gen/hs/Vehicle/Frontend/Par.info
 
 #################################################################################
 # Build type-checker and compiler for Vehicle
