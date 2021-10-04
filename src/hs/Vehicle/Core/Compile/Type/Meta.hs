@@ -149,7 +149,7 @@ addTypeClassConstraint ctx meta expr = do
 addConstraints :: (MonadMeta m, MonadLogger m) => [Constraint] -> m ()
 addConstraints []             = return ()
 addConstraints newConstraints = do
-  logDebug ("add-constraints " <> prettyVerbose newConstraints)
+  logDebug ("add-constraints " <> align (prettyVerbose newConstraints))
   modifyMetaCtx $ \ MetaCtx {..} ->
     MetaCtx { constraints = constraints ++ newConstraints, ..}
 

@@ -20,6 +20,7 @@ import Prettyprinter as CommonPrettyprinter
   , braces
   , line
   , squotes
+  , align
   )
 
 -- * Additions to the prettyprinter library

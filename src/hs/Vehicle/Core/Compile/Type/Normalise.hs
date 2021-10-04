@@ -4,6 +4,7 @@ module Vehicle.Core.Compile.Type.Normalise
   ) where
 
 import Control.Monad.Reader (MonadReader(..), asks, runReaderT)
+import Data.Map qualified as Map ( lookup )
 
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Type.Core
@@ -41,15 +42,11 @@ norm (Meta p n) = do
   case MetaSubst.lookup n subst of
     Nothing -> return (Meta p n)
     Just tm -> norm tm
--- TODO: expand out declared identifiers once the declCtx stores them
---  norm (Free nm) = ...
+norm e@(Var _ (Free ident)) = do
+  ctx <- asks snd
+  case Map.lookup ident ctx of
+    Just (_, Just res) -> return res
+    _                  -> return e
 norm (Let _ bound _ body) = norm (bound `substInto` body)
 norm (Ann _ body _)       = norm body
 norm e                    = return e
-{-
-normaliseTypeClassConstraints :: MonadMeta m => m ()
-normaliseTypeClassConstraints = do
-  MetaCtx{..} <- get
-  normalisedConstraints <- traverse (\(m `Has` e) -> (m `Has`) <$> nf e) typeClassConstraints
-  put $ MetaCtx{ typeClassConstraints = normalisedConstraints, ..}
--}

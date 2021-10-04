@@ -24,7 +24,9 @@ import Vehicle.Core.MetaSubstitution hiding (map)
 type BoundCtx = [(Name, CheckedExpr)]
 
 -- | The declarations that are currently in scope, indexed into via their names.
-type DeclCtx = Map Identifier CheckedExpr
+-- The first component is the type, and the second one the expression (if not
+-- a postulate-style declaration).
+type DeclCtx = Map Identifier (CheckedExpr, Maybe CheckedExpr)
 
 instance Pretty DeclCtx where
   pretty = pretty . show

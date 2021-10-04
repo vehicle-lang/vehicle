@@ -13,7 +13,6 @@ import Control.Monad.State (MonadState, evalStateT)
 import Data.Foldable (foldrM)
 import Data.Map qualified as Map
 import Data.List.NonEmpty (NonEmpty(..))
-import Prettyprinter (align)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
@@ -115,11 +114,11 @@ type TCM m =
 getDeclCtx :: TCM m => m DeclCtx
 getDeclCtx = asks declCtx
 
-addToDeclCtx :: TCM m => Identifier -> CheckedExpr -> m a -> m a
-addToDeclCtx n e = local add
+addToDeclCtx :: TCM m => Identifier -> CheckedExpr -> Maybe CheckedExpr -> m a -> m a
+addToDeclCtx n t e = local add
   where
     add :: VariableCtx -> VariableCtx
-    add VariableCtx{..} = VariableCtx{declCtx = Map.insert n e declCtx, ..}
+    add VariableCtx{..} = VariableCtx{declCtx = Map.insert n (t, e) declCtx, ..}
 
 getBoundCtx :: TCM m => m BoundCtx
 getBoundCtx = asks boundCtx
@@ -348,7 +347,7 @@ infer e = showInferExit $ do
       -- Lookup the type of the declaration variable in the context.
       ctx <- getDeclCtx
       case Map.lookup ident ctx of
-        Just t' -> return (Var p (Free ident), t')
+        Just (t', _) -> return (Var p (Free ident), t')
         -- This should have been caught during scope checking
         Nothing -> developerError $
           "Declaration'" <+> pretty ident <+> "'not found when" <+>
@@ -422,14 +421,14 @@ inferDecls (DeclNetw p ident t : decls) = do
     (t', ty') <- infer t
     assertIsType p ty'
 
-    decls' <- addToDeclCtx (deProv ident) t' $ do
+    decls' <- addToDeclCtx (deProv ident) t' Nothing $ do
       inferDecls decls
     return $ DeclNetw p ident t' : decls'
 inferDecls (DeclData p ident t : decls) = do
     (t', ty') <- infer t
     assertIsType p ty'
 
-    decls' <- addToDeclCtx (deProv ident) t' $ do
+    decls' <- addToDeclCtx (deProv ident) t' Nothing $ do
       inferDecls decls
     return $ DeclData p ident t' : decls'
 inferDecls (DefFun p ident t body : decls) = do
@@ -438,7 +437,7 @@ inferDecls (DefFun p ident t body : decls) = do
 
     body' <- check t' body
 
-    decls' <- addToDeclCtx (deProv ident) t' $ do
+    decls' <- addToDeclCtx (deProv ident) t' (Just body') $ do
       inferDecls decls
 
     return $ DefFun p ident t' body' : decls'

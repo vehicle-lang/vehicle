@@ -237,8 +237,7 @@ solveEq :: (MonadConstraintSolving m, Eq a)
         -> m ()
 solveEq c v1 v2
   | v1 /= v2  = throwError $ FailedConstraints [c]
-  | otherwise = do
-    return ()
+  | otherwise = logDebug "solved-trivially"
 
 solveArg :: MonadConstraintSolving m
          => Constraint
@@ -256,8 +255,7 @@ solveSimpleApplication :: (MonadConstraintSolving m, Eq a)
                        -> [CheckedArg] -> [CheckedArg]
                        -> m ConstraintProgress
 solveSimpleApplication constraint fun1 fun2 args1 args2 = do
-  solveEq constraint fun1 fun2
-  if length args1 /= length args2 then
+  if fun1 /= fun2 || length args1 /= length args2 then
     throwError $ FailedConstraints [constraint]
   else if null args1 then do
     logDebug "solved-trivially"
