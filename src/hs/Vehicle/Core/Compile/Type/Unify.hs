@@ -58,12 +58,7 @@ solveUnificationConstraint constraint@(Constraint constraintCtx _) (e1, e2) = do
         { newConstraints = mempty
         , solvedMetas    = mempty
         }
-    {-
-    (Ann _ e1 t1, Ann _ e2 t2) -> return
-        [ Unify p ctx (exprs : history) mempty (e1, e2)
-        , Unify p ctx (exprs : history) mempty (t1, t2)
-        ]
-    -}
+
     -- We ASSUME that all terms here are in normal form, so there
     -- will never be an unreduced redex.
     ((Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, []))
@@ -73,14 +68,18 @@ solveUnificationConstraint constraint@(Constraint constraintCtx _) (e1, e2) = do
         , solvedMetas    = mempty
         }
 
-    (Seq _ es1, []) :~: (Seq _ es2, [])
+    (Seq _ es1, args1) :~: (Seq _ es2, args2)
       -- TODO more informative error message
-      | length es1 /= length es2 -> throwError $ FailedConstraints [constraint]
+      | length es1 /= length es2 || length args1 /= length args2 ->
+        throwError $ FailedConstraints [constraint]
       -- TODO need to try and unify `Seq` with `Cons`s.
-      | otherwise -> return Progress
-        { newConstraints = zipWith (curry (Constraint constraintCtx . Unify)) es1 es2
-        , solvedMetas    = mempty
-        }
+      | otherwise -> do
+        argConstraints <- traverse (solveArg constraint) (zip args1 args2)
+        let elemConstraints = zipWith (curry (Constraint constraintCtx . Unify)) es1 es2
+        return Progress
+          { newConstraints = argConstraints <> elemConstraints
+          , solvedMetas    = mempty
+          }
 
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
       | vis binder1 /= vis binder2 -> throwError $ FailedConstraints [constraint]
