@@ -9,6 +9,7 @@ module Vehicle.Core.Parse
 import Control.Monad.Except (MonadError(..), runExcept)
 import Data.Text (Text, pack, unpack)
 import Data.Text.IO qualified as T
+import Data.List.NonEmpty (NonEmpty(..))
 import System.Exit (exitFailure)
 
 import Vehicle.Core.Abs as B
@@ -124,7 +125,6 @@ instance Convert B.Expr V.InputExpr where
     B.Type l           -> return $ convType l
     B.Hole name        -> return $ V.Hole (tkProvenance name) (tkSymbol name)
     B.Ann term typ     -> op2 V.Ann <$> conv term <*> conv typ
-    B.App fun arg      -> op2 V.App <$> conv fun <*> conv arg
     B.Pi  binder expr  -> op2 V.Pi  <$> conv binder <*> conv expr;
     B.Lam binder e     -> op2 V.Lam <$> conv binder <*> conv e
     B.Let binder e1 e2 -> op3 V.Let <$> conv e1 <*> conv binder <*>  conv e2
@@ -132,6 +132,11 @@ instance Convert B.Expr V.InputExpr where
     B.Builtin c        -> V.Builtin (tkProvenance c) <$> lookupBuiltin c
     B.Literal v        -> V.Literal mempty <$> conv v
     B.Var n            -> return $ V.Var (tkProvenance n) (User (tkSymbol n))
+
+    B.App fun arg -> do
+      fun' <- conv fun
+      arg' <- conv arg
+      return $ normApp (prov fun' <> prov arg') fun' (arg' :| [])
 
 instance Convert B.NameToken (WithProvenance Identifier) where
   conv n = return $ WithProvenance (tkProvenance n) (Identifier (tkSymbol n))

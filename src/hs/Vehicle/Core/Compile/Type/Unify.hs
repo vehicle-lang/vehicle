@@ -39,7 +39,7 @@ solveUnificationConstraint constraint@(Constraint constraintCtx _) (e1, e2) = do
   whnfE2 <- whnf (declContext constraint) e2
   let p = prov constraint
 
-  progress <- case (decomposeApp whnfE1, decomposeApp whnfE2) of
+  progress <- case (toHead whnfE1, toHead whnfE2) of
     ----------------------
     -- Impossible cases --
     ----------------------
@@ -61,7 +61,7 @@ solveUnificationConstraint constraint@(Constraint constraintCtx _) (e1, e2) = do
 
     -- We ASSUME that all terms here are in normal form, so there
     -- will never be an unreduced redex.
-    ((Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, []))
+    (Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, [])
       | vis binder1 /= vis binder2 -> throwError $ FailedConstraints [constraint]
       | otherwise -> return Progress
         { newConstraints = [Constraint constraintCtx (Unify (body1, body2))]

@@ -88,66 +88,70 @@ instance Elab VF.InputArg VC.InputArg where
 
 instance Elab VF.InputExpr VC.InputExpr where
   elab = \case
+    VF.PrimDict _e          -> developerError "PrimDict not supported during elaboration"
+
     -- Core.
-    VF.Type l             -> return (VC.Type l)
-    VF.Forall  ann ns t   -> elabBinders (VC.Pi ann) (NonEmpty.toList ns) t
-    VF.Fun     ann t1 t2  -> VC.Pi ann <$> elabFunInputType t1 <*> elab t2
-    VF.Ann     ann e t    -> VC.Ann ann <$> elab e <*> elab t
-    VF.Let    _ann ds e   -> elabLetDecls e (NonEmpty.toList ds)
-    VF.Lam     ann ns e   -> elabBinders (VC.Lam ann) (NonEmpty.toList ns) e
-    VF.App     ann e1 e2  -> VC.App ann <$> elab e1 <*> elab e2
-    VF.Var     ann n      -> return $ VC.Var ann (VC.User n)
-    VF.Literal ann l      -> return $ VC.Literal ann l
-    VF.Hole    ann name   -> return $ VC.Hole ann name
-    VF.PrimDict _e        -> developerError "PrimDict not supported during elaboration"
+    VF.Type l               -> return (VC.Type l)
+    VF.Forall  ann ns t     -> elabBinders (VC.Pi ann) (NonEmpty.toList ns) t
+    VF.Fun     ann t1 t2    -> VC.Pi ann <$> elabFunInputType t1 <*> elab t2
+    VF.Ann     ann e t      -> VC.Ann ann <$> elab e <*> elab t
+    VF.Let    _ann ds e     -> elabLetDecls e (NonEmpty.toList ds)
+    VF.Lam     ann ns e     -> elabBinders (VC.Lam ann) (NonEmpty.toList ns) e
+    VF.Var     ann n        -> return $ VC.Var ann (VC.User n)
+    VF.Literal ann l        -> return $ VC.Literal ann l
+    VF.Hole    ann name     -> return $ VC.Hole ann name
+    VF.App     ann fun arg  -> do
+      fun' <- elab fun
+      arg' <- elab arg
+      return $ VC.normApp ann fun' (arg' :| [])
 
     -- Types.
-    VF.Bool    ann        -> op0 VC.Bool   ann
-    VF.Prop    ann        -> op0 VC.Prop   ann
-    VF.Real    ann        -> op0 VC.Real   ann
-    VF.Int     ann        -> op0 VC.Int    ann
-    VF.Nat     ann        -> op0 VC.Nat    ann
-    VF.List    ann t      -> op1 VC.List   ann t
-    VF.Tensor  ann t1 t2  -> op2 VC.Tensor ann t1 t2
+    VF.Bool    ann        -> op VC.Bool   ann []
+    VF.Prop    ann        -> op VC.Prop   ann []
+    VF.Real    ann        -> op VC.Real   ann []
+    VF.Int     ann        -> op VC.Int    ann []
+    VF.Nat     ann        -> op VC.Nat    ann []
+    VF.List    ann t      -> op VC.List   ann [t]
+    VF.Tensor  ann t1 t2  -> op VC.Tensor ann [t1, t2]
 
     -- Type classes.
-    VF.HasEq       ann e1 e2 -> op2 VC.HasEq          ann e1 e2
-    VF.HasOrd      ann e1 e2 -> op2 VC.HasOrd         ann e1 e2
-    VF.IsContainer ann e1 e2 -> op2 VC.IsContainer    ann e1 e2
-    VF.IsTruth     ann e     -> op1 VC.IsTruth        ann e
-    VF.IsQuant     ann e     -> op1 VC.IsQuantifiable ann e
-    VF.IsNatural   ann e     -> op1 VC.IsNatural      ann e
-    VF.IsIntegral  ann e     -> op1 VC.IsIntegral     ann e
-    VF.IsRational  ann e     -> op1 VC.IsRational     ann e
-    VF.IsReal      ann e     -> op1 VC.IsReal         ann e
+    VF.HasEq       ann e1 e2 -> op VC.HasEq          ann [e1, e2]
+    VF.HasOrd      ann e1 e2 -> op VC.HasOrd         ann [e1, e2]
+    VF.IsContainer ann e1 e2 -> op VC.IsContainer    ann [e1, e2]
+    VF.IsTruth     ann e     -> op VC.IsTruth        ann [e]
+    VF.IsQuant     ann e     -> op VC.IsQuantifiable ann [e]
+    VF.IsNatural   ann e     -> op VC.IsNatural      ann [e]
+    VF.IsIntegral  ann e     -> op VC.IsIntegral     ann [e]
+    VF.IsRational  ann e     -> op VC.IsRational     ann [e]
+    VF.IsReal      ann e     -> op VC.IsReal         ann [e]
 
     -- Conditional expressions.
-    VF.If    ann e1 e2 e3 -> op3 VC.If      ann e1 e2 e3
-    VF.Impl  ann e1 e2    -> op2 VC.Impl    ann e1 e2
-    VF.And   ann e1 e2    -> op2 VC.And     ann e1 e2
-    VF.Or    ann e1 e2    -> op2 VC.Or      ann e1 e2
-    VF.Not   ann e        -> op1 VC.Not     ann e
+    VF.If    ann e1 e2 e3 -> op VC.If      ann [e1, e2, e3]
+    VF.Impl  ann e1 e2    -> op VC.Impl    ann [e1, e2]
+    VF.And   ann e1 e2    -> op VC.And     ann [e1, e2]
+    VF.Or    ann e1 e2    -> op VC.Or      ann [e1, e2]
+    VF.Not   ann e        -> op VC.Not     ann [e]
 
     -- Integers and reals.
-    VF.Eq      ann e1 e2 -> op2 VC.Eq  ann e1 e2
-    VF.Neq     ann e1 e2 -> op2 VC.Neq ann e1 e2
-    VF.Le      ann e1 e2 -> op2 VC.Le  ann e1 e2
-    VF.Lt      ann e1 e2 -> op2 VC.Lt  ann e1 e2
-    VF.Ge      ann e1 e2 -> op2 VC.Ge  ann e1 e2
-    VF.Gt      ann e1 e2 -> op2 VC.Gt  ann e1 e2
-    VF.Mul     ann e1 e2 -> op2 VC.Mul ann e1 e2
-    VF.Div     ann e1 e2 -> op2 VC.Div ann e1 e2
-    VF.Add     ann e1 e2 -> op2 VC.Add ann e1 e2
-    VF.Sub     ann e1 e2 -> op2 VC.Sub ann e1 e2
-    VF.Neg     ann e     -> op1 VC.Neg ann e
+    VF.Eq      ann e1 e2 -> op VC.Eq  ann [e1, e2]
+    VF.Neq     ann e1 e2 -> op VC.Neq ann [e1, e2]
+    VF.Le      ann e1 e2 -> op VC.Le  ann [e1, e2]
+    VF.Lt      ann e1 e2 -> op VC.Lt  ann [e1, e2]
+    VF.Ge      ann e1 e2 -> op VC.Ge  ann [e1, e2]
+    VF.Gt      ann e1 e2 -> op VC.Gt  ann [e1, e2]
+    VF.Mul     ann e1 e2 -> op VC.Mul ann [e1, e2]
+    VF.Div     ann e1 e2 -> op VC.Div ann [e1, e2]
+    VF.Add     ann e1 e2 -> op VC.Add ann [e1, e2]
+    VF.Sub     ann e1 e2 -> op VC.Sub ann [e1, e2]
+    VF.Neg     ann e     -> op VC.Neg ann [e]
 
     -- Lists and tensors.
     VF.Seq     ann es        -> VC.Seq ann <$> traverse elab es
-    VF.Cons    ann e1 e2     -> op2 VC.Cons ann e1 e2
-    VF.At      ann e1 e2     -> op2 VC.At   ann e1 e2
-    VF.Map     ann e1 e2     -> op2 VC.Map  ann e1 e2
-    VF.Fold    ann e1 e2 e3  -> op3 VC.Fold ann e1 e2 e3
-    VF.Quant   ann q n e     -> op1 (VC.Quant q) ann (VF.Lam ann (n :| []) e)
+    VF.Cons    ann e1 e2     -> op VC.Cons ann [e1, e2]
+    VF.At      ann e1 e2     -> op VC.At   ann [e1, e2]
+    VF.Map     ann e1 e2     -> op VC.Map  ann [e1, e2]
+    VF.Fold    ann e1 e2 e3  -> op VC.Fold ann [e1, e2, e3]
+    VF.Quant   ann q n e     -> op (VC.Quant q) ann [VF.Lam ann (n :| []) e]
     VF.QuantIn ann q n e1 e2 -> quantIn ann q n e1 e2
 
 -- |Elaborate declarations.
@@ -166,38 +170,17 @@ instance Elab VF.InputProg VC.InputProg where
 
 -- |Construct the type for a type definition
 typeDefType :: [VC.InputBinder] -> VC.InputExpr
-typeDefType []       = VC.Type0
-typeDefType (b : bs) = VC.Pi (prov b) b (typeDefType bs)
+typeDefType = foldr (\b -> VC.Pi (prov b) b) VC.Type0
 
--- |Apply a function to an argument
-app :: VF.InputAnn -> VC.InputExpr -> VC.InputExpr -> VC.InputExpr
-app ann fun arg = VC.App ann fun (VC.Arg (VC.annotation arg) Explicit arg)
+op :: MonadElab m => VC.Builtin -> VF.InputAnn -> [VF.InputExpr] -> m VC.InputExpr
+op b ann args = opC b ann <$> traverse elab args
 
--- |Elaborate any builtin token to an expression.
-op0 :: MonadElab m => VC.Builtin -> VF.InputAnn -> m VC.InputExpr
-op0 b ann = return $ VC.Builtin ann b
-
--- |Elaborate a unary function symbol with its argument to an expression.
-op1 :: MonadElab m => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> m VC.InputExpr
-op1 b ann e1 = app ann <$> op0 b ann <*> elab e1
-
--- |Elaborate a binary function symbol with its arguments to an expression.
-op2 :: MonadElab m => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
-op2 b ann e1 e2 = app ann <$> op1 b ann e1 <*> elab e2
-
--- |Elaborate a binary function symbol with its arguments to an expression.
-op3 :: MonadElab m => VC.Builtin -> VF.InputAnn -> VF.InputExpr -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
-op3 b ann e1 e2 e3 = app ann <$> op2 b ann e1 e2 <*> elab e3
+opC :: VC.Builtin -> VF.InputAnn -> [VC.InputExpr] -> VC.InputExpr
+opC b ann args = VC.normAppList ann (VC.Builtin ann b) (fmap (VC.Arg ann Explicit) args)
 
 -- |Elaborate quantification over the members of a container type.
 -- Expands e.g. `every x in list . y` to `fold and true (map (\x -> y) list)`
 quantIn :: MonadElab m => VC.InputAnn -> Quantifier -> VF.InputBinder -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
-quantIn ann q n container body = do
-  let (op, unit) = quantImplementation q
-  lam <- VC.Lam ann <$> elab n <*> elab body
-  mappedContainer <- app ann (app ann (VC.Builtin ann VC.Map) lam) <$> elab container
-  return $ app ann (app ann (app ann (VC.Builtin ann VC.Fold) (VC.Builtin ann op)) (VC.Literal ann unit)) mappedContainer
-
-quantImplementation :: Quantifier -> (VC.Builtin, Literal)
-quantImplementation All = (VC.And, LBool True)
-quantImplementation Any = (VC.Or,  LBool False)
+quantIn ann quantifier n container body = do
+  let lam = VF.Lam ann (n :| []) body
+  op (VC.QuantIn quantifier) ann [lam, container]

@@ -18,11 +18,18 @@ main = runTestTT . TestList $
 -- * Test parser for Vehicle Frontend
 
 fileTests :: [FilePath]
-fileTests =
-  [ --"examples/mnist.vcl"
-  -- , "examples/andGate.vcl"
-  -- , "examples/mnist.vcl"
-  "examples/shortestPath.vcl"
+fileTests = fmap ("examples/" <>)
+  [
+  -- "simple/quantifier.vcl"
+  -- "simple/quantifierIn.vcl"
+  -- "simple/int.vcl"
+  --, "simple/real.vcl"
+  -- , "mnist.vcl"
+  -- , "andGate.vcl"
+  -- , "mnist.vcl"
+  -- , "shortestPath.vcl"
+  "AcasXu/property6.vcl"
+  --"simple.vcl"
   ]
 {-
 parserTests :: Test

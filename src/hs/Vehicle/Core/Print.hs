@@ -7,11 +7,13 @@ module Vehicle.Core.Print
   ) where
 
 import Control.Monad.Reader (MonadReader(..), runReader)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes)
 import Data.Map (Map)
 import Data.Map qualified as Map (toAscList)
 import Data.Default.Class (Default(..))
-import Prettyprinter (list, lbrace, rbrace, comma, align, group, softline, concatWith, tupled, encloseSep)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Prettyprinter (list, lbrace, rbrace, comma, group, softline, concatWith, tupled, encloseSep)
 
 import Vehicle.Core.AST
 import Vehicle.Prelude
@@ -90,6 +92,25 @@ instance Pretty var => PrettyWithConfig (Binder var ann) where
     tDoc <- pretty' t
     return $ brackets v (pretty n <+> ":type" <+> tDoc)
 
+prettyArgs :: (Pretty var, MonadPrettyConfig m)
+           => NonEmpty (Arg var ann)
+           -> m [Doc a]
+prettyArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args)
+  where
+    prettyArg :: (Pretty var, MonadPrettyConfig m)
+              => Arg var ann
+              -> m (Maybe (Doc a))
+    prettyArg arg = do
+      PrettyOptions{..} <- ask
+      argDoc <- pretty' arg
+      let v = vis arg
+      let showArg = v == Explicit
+                 || v == Implicit && showImplicitArgs
+                 || v == Instance && showInstanceArgs
+      return $ if showArg
+        then Just argDoc
+        else Nothing
+
 instance Pretty var => PrettyWithConfig (Expr var ann) where
   pretty' = \case
     Type l                      -> return $ "Type" <> pretty l
@@ -99,16 +120,10 @@ instance Pretty var => PrettyWithConfig (Expr var ann) where
     Literal _ann l              -> return $ pretty l
     Var     _ann v              -> return $ pretty v
 
-    App _ann fun arg        -> do
-      PrettyOptions{..} <- ask
+    App _ann fun args -> do
       funDoc <- pretty' fun
-      argDoc <- pretty' arg
-      let v = vis arg
-      let showArg = v == Explicit
-                 || v == Implicit && showImplicitArgs
-                 || v == Instance && showInstanceArgs
-
-      return $ if showArg then parens (funDoc <+> argDoc) else funDoc
+      argDocs <- prettyArgs args
+      return $ if null argDocs then funDoc else parens (funDoc <+> hsep argDocs)
 
     Seq _ann es -> do
       es' <- traverse pretty' es

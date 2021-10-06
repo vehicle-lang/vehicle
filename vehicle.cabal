@@ -112,6 +112,8 @@ library
                       , MultiParamTypeClasses
                       , LambdaCase
                       , OverloadedStrings
+                      -- Cannot add this because the generated BNFC code is not compatible.
+                      -- , OverloadedLists
                       , UndecidableInstances
                       , ScopedTypeVariables
                       , GADTs

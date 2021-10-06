@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 
 module Vehicle.Core.Compile.Normalise
   ( NormError
@@ -119,22 +120,22 @@ instance Norm CheckedExpr where
         let letBodyWithSubstitution = substInto normalisedLetValue letBody
         nf letBodyWithSubstitution
 
-      eApp@(App ann _ _) -> let (fun, args) = decomposeApp eApp in do
+      eApp@(App ann _ _) -> let (fun, args) = toHead eApp in do
         nFun  <- nf fun
         nArgs <- traverse (\arg -> if vis arg == Explicit then nf arg else return arg) args
-        normApp ann nFun nArgs
+        nfApp ann nFun nArgs
 
 instance Norm CheckedArg where
   nf (Arg p Explicit e) = Arg p Explicit <$> nf e
   nf arg@Arg{}          = return arg
 
 argHead :: CheckedArg -> CheckedExpr
-argHead = fst . decomposeApp . argExpr
+argHead = fst . toHead . argExpr
 
-normApp :: MonadNorm m => CheckedAnn -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
-normApp _ann (Lam _ _ funcBody) (Arg _ _ arg : _) = nf (substInto arg funcBody)
-normApp ann  fun@(Builtin _ op) args              = do
-  let e = composeApp ann fun args
+nfApp :: MonadNorm m => CheckedAnn -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
+nfApp _ann (Lam _ _ funcBody) (Arg _ _ arg : _) = nf (substInto arg funcBody)
+nfApp ann  fun@(Builtin _ op) args              = do
+  let e = normAppList ann fun args
   case (op, args) of
     -- Equality
     (Eq, [_tElem, _tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
@@ -184,7 +185,7 @@ normApp ann  fun@(Builtin _ op) args              = do
       (ETrue  _, _)        -> return $ argExpr arg2
       (EFalse _, _)        -> return $ mkBool True ann
       (_,        ETrue  _) -> return $ mkBool True ann
-      (_,        EFalse _) -> return $ composeApp ann (Builtin ann Not) [t, tc, arg2]
+      (_,        EFalse _) -> return $ App ann (Builtin ann Not) [t, tc, arg2]
       _                    -> return e
 
     -- If
@@ -253,12 +254,12 @@ normApp ann  fun@(Builtin _ op) args              = do
 
     -- Map
     (Map, [_tCont, _tElem, fn, cont]) -> case argHead cont of
-        Seq _ xs -> Seq ann <$> traverse (nf . App ann (argExpr fn) . Arg ann Explicit) xs
+        Seq _ xs -> Seq ann <$> traverse (\x -> nf $ App ann (argExpr fn) [Arg ann Explicit x]) xs
         _        -> return e
 
     -- Fold
     (Fold, [_tCont, _tElem, _tRes, _tc, foldOp, unit, cont]) -> case argHead cont of
-      Seq _ xs -> nf $ foldr (\x body -> App ann (App ann (argExpr foldOp) (Arg ann Explicit x)) (Arg ann Explicit body)) (argExpr unit) xs
+      Seq _ xs -> nf $ foldr (\x body -> App ann (argExpr foldOp) [Arg ann Explicit x, Arg ann Explicit body]) (argExpr unit) xs
       _        -> return e
 
     -- Quantifier builtins
@@ -267,8 +268,23 @@ normApp ann  fun@(Builtin _ op) args              = do
     -- Fall-through case
     _ -> return e
 
-normApp ann fun args = return $ composeApp ann fun args
+nfApp ann fun args = return $ normAppList ann fun args
 
 mkBool :: Bool -> CheckedAnn -> CheckedExpr
 mkBool b ann = Literal ann (LBool b)
   --App ann (App ann (Literal ann (LBool b)) (Arg ann Implicit _)) (Arg ann Instance _)
+
+{-
+-- |Elaborate quantification over the members of a container type.
+-- Expands e.g. `every x in list . y` to `fold and true (map (\x -> y) list)`
+quantIn :: MonadElab m => VC.InputAnn -> Quantifier -> VF.InputBinder -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
+quantIn ann quantifier n container body = do
+  let (bop, unit) = quantImplementation quantifier
+  let lam = VF.Lam ann (n :| []) body
+  mappedContainer <- op VC.Map ann [lam, container]
+  return $ opC VC.Fold ann [VC.Builtin ann bop, VC.Literal ann unit, mappedContainer]
+
+quantImplementation :: Quantifier -> (VC.Builtin, Literal)
+quantImplementation All = (VC.And, LBool True)
+quantImplementation Any = (VC.Or,  LBool False)
+-}

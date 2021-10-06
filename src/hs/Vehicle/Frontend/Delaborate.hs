@@ -131,10 +131,11 @@ instance DelaborateWithHoles VC.OutputExpr VF.OutputExpr where
       VC.Seq     ann es                -> VF.Seq     <$> delab ann <*> traverse delabH es
       VC.PrimDict tc                   -> VF.PrimDict <$> delab tc
 
-      VC.App ann (VC.Builtin _ (VC.Quant q)) (VC.Arg _ _ (VC.Lam _ b body)) ->
-        flip VF.Quant q <$> delab ann <*> delab b <*> delab body
-
-      VC.App     ann fun arg           -> VF.App     <$> delab ann <*> delabH fun <*> delabH arg
+      VC.App ann fun args -> do
+        ann'  <- delab ann
+        fun'  <- delabH fun
+        args' <- traverse delabH args
+        return $ foldl (\res arg -> VF.App ann' res arg) fun' args'
 
 instance DelaborateWithHoles VC.OutputArg VF.OutputArg where
   delabH (VC.Arg p v e) = do
@@ -235,7 +236,8 @@ delabBuiltin ann = let p = prov ann in \case
   VC.Sub            -> VF.Sub          ann <$> hole p <*> hole p
   VC.Neg            -> VF.Neg          ann <$> hole p
   VC.At             -> VF.At           ann <$> hole p <*> hole p
-  VC.Quant _        -> developerError "Quantifiers should have been caught earlier!"
+  VC.Quant _        -> developerError "Delaborating `quant` not yet implemented!"
+  VC.QuantIn _      -> developerError "Delaborating `quantIn` not yet implemented!"
   VC.Map            -> developerError "Delaborating `map` not yet implemented!"
   VC.Fold           -> developerError "Delaborating `fold` not yet implemented!"
 

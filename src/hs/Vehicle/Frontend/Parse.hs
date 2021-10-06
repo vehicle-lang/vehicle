@@ -178,6 +178,7 @@ instance Convert B.Expr V.InputExpr where
     B.Prop tk                 -> op0 V.Prop   (tkProv tk)
     B.Real tk                 -> op0 V.Real   (tkProv tk)
     B.Int tk                  -> op0 V.Int    (tkProv tk)
+    B.Nat tk                  -> op0 V.Nat    (tkProv tk)
     B.List tk t               -> op1 V.List   (tkProv tk) (conv t)
     B.Tensor tk t1 t2         -> op2 V.Tensor (tkProv tk) (conv t1) (conv t2)
     B.If tk1 e1 tk2 e2 tk3 e3 -> op3 V.If     (tkProv tk1 <> tkProv tk2 <> tkProv tk3) (conv e1) (conv e2) (conv e3)

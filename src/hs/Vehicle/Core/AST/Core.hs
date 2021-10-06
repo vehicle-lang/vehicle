@@ -5,6 +5,7 @@ module Vehicle.Core.AST.Core where
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Data.Functor.Foldable.TH (makeBaseFunctor)
+import Data.List.NonEmpty (NonEmpty(..))
 
 import Vehicle.Prelude
 import Vehicle.Core.AST.Builtin (Builtin)
@@ -84,9 +85,9 @@ data Expr var ann
 
   -- | Application of one term to another.
   | App
-    ann               -- Annotation.
-    (Expr var ann)    -- Function.
-    (Arg  var ann)    -- Argument.
+    ann                       -- Annotation.
+    (Expr var ann)            -- Function.
+    (NonEmpty (Arg  var ann)) -- Arguments.
 
   -- | Dependent product (subsumes both functions and universal quantification).
   | Pi
@@ -178,3 +179,13 @@ newtype Prog var ann
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData var, NFData ann) => NFData (Prog var ann)
+
+
+-- Preserves invariant that we never have two nested Apps
+normApp :: Semigroup ann => ann -> Expr var ann -> NonEmpty (Arg var ann) -> Expr var ann
+normApp p (App p' fun args') args = App (p' <> p) fun (args' <> args)
+normApp p fun                args = App p fun args
+
+normAppList :: Semigroup ann => ann -> Expr var ann -> [Arg var ann] -> Expr var ann
+normAppList _   fun []           = fun
+normAppList ann fun (arg : args) = normApp ann fun (arg :| args)

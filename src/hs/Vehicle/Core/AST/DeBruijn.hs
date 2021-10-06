@@ -67,7 +67,7 @@ type TraverseBinder state ann = state -> state
 
 class DeBruijnFunctor ann (a :: * -> *) where
   alter
-    :: (MonadReader (BindingDepth, state) m)
+    :: (Semigroup ann, MonadReader (BindingDepth, state) m)
     => TraverseBinder state ann
     -> UpdateVariable m state ann
     -> a ann
@@ -90,7 +90,7 @@ instance DeBruijnFunctor ann (Expr Var) where
       PrimDict e               -> return (PrimDict e)
       Seq     ann es           -> Seq     ann <$> traverse altExpr es
       Ann     ann term typ     -> Ann     ann <$> altExpr   term   <*> altExpr typ
-      App     ann fun arg      -> App     ann <$> altExpr   fun    <*> altArg arg
+      App     ann fun args     -> normApp ann <$> altExpr   fun    <*> traverse altArg args
       Pi      ann binder res   -> Pi      ann <$> altPiBinder binder <*> underB (altExpr res)
       Let     ann e1 binder e2 -> Let     ann <$> altExpr e1 <*> altLamBinder binder <*> underB (altExpr e2)
       Lam     ann binder e     -> Lam     ann <$> altLamBinder binder <*> underB (altExpr e)
@@ -116,7 +116,8 @@ instance DeBruijnFunctor ann (Binder Var) where
 -- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
 
 -- | Lift all deBruin indices that refer to environment variables by the provided depth.
-liftDBIndices :: BindingDepth
+liftDBIndices :: Semigroup ann
+              => BindingDepth
               -> DeBruijnExpr ann  -- ^ expression to lift
               -> DeBruijnExpr ann  -- ^ the result of the lifting
 liftDBIndices j e = runReader (alter id alterVar e) (0 , ())
@@ -128,7 +129,8 @@ liftDBIndices j e = runReader (alter id alterVar e) (0 , ())
            | otherwise = i     -- Index is locally bound so no need to increment
 
 -- | De Bruijn aware substitution of one expression into another
-substInto :: DeBruijnExpr ann -- ^ expression to substitute
+substInto :: Semigroup ann
+          => DeBruijnExpr ann -- ^ expression to substitute
           -> DeBruijnExpr ann -- ^ term to substitute into
           -> DeBruijnExpr ann -- ^ the result of the substitution
 substInto sub e = runReader (alter binderUpdate alterVar e) (0 , sub)
@@ -164,7 +166,8 @@ patternOfArgs args = go (length args - 1) IM.empty args
         go (i-1) (IM.insert j (Var ann (Bound i)) revMap) restArgs
     go _ _ _ = Nothing
 
-substAll :: Substitution ann
+substAll :: Semigroup ann
+         =>  Substitution ann
          -> DeBruijnExpr ann
          -> Maybe (DeBruijnExpr ann)
 substAll sub e = runReaderT (alter binderUpdate alterVar e) (0, sub)

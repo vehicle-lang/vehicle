@@ -2,6 +2,8 @@
 
 module Vehicle.Core.AST.Utils where
 
+import Data.List.NonEmpty qualified as NonEmpty (toList)
+
 import Vehicle.Prelude
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
@@ -112,11 +114,12 @@ annotation = \case
   Literal  ann _     -> ann
   Seq      ann _     -> ann
 
-decomposeApp :: CheckedExpr -> (CheckedExpr, [CheckedArg])
-decomposeApp = go []
-  where go args (App _ann fun arg) = go (arg:args) fun
-        go args e                  = (e, args)
 
+toHead :: CheckedExpr -> (CheckedExpr, [CheckedArg])
+toHead (App _ann fun args ) = (fun, NonEmpty.toList args)
+toHead e                    = (e, [])
+
+{-
 composeApp :: CheckedAnn -> CheckedExpr -> [CheckedArg] -> CheckedExpr
 composeApp ann = foldl (App ann)
 
@@ -127,3 +130,4 @@ decomposeExplicitApp = go []
       (App _ann fun arg@(Arg _ Explicit _)) -> go (arg : args) fun
       (App _ann fun _arg)                   -> go args fun
       e                                     -> (e, args)
+-}

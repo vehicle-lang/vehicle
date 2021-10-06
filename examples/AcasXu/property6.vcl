@@ -43,7 +43,7 @@ intruderFarAway x =
   and 0     <= intruderSpeed      x and intruderSpeed      x <= 1200
 
 advisesClearOfConflict : InputVector -> Prop
-advisesClearOfConflict x = every i inn [1,2,3,4,5] .
+advisesClearOfConflict x = every i inn ([1,2,3,4,5] : List Nat) .
   clearOfConflictScore x <= acasXu x ! i
 
 property6 : Prop

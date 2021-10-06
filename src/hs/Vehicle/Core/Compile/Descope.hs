@@ -66,7 +66,7 @@ instance Descope CheckedExpr OutputExpr where
     Literal  ann l                 -> return (Literal ann l)
     Var      ann v                 -> Var ann <$> lookupVar (prov ann) v
     Ann      ann e1 t              -> Ann ann <$> descope e1 <*> descope t
-    App      ann fun arg           -> App ann <$> descope fun <*> descope arg
+    App      ann fun args          -> App ann <$> descope fun <*> traverse descope args
     Seq      ann es                -> Seq ann <$> traverse descope es
     PrimDict tc                    -> PrimDict <$> descope tc
 

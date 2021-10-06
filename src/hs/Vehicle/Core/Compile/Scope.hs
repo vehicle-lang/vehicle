@@ -95,7 +95,7 @@ instance ScopeCheck InputExpr UncheckedExpr where
     Meta p i                       -> return $ Meta p i
     Hole     ann n                 -> return $ Hole ann n
     Ann      ann e t               -> Ann ann <$> scope e <*> scope t
-    App      ann fun arg           -> App ann <$> scope fun <*> scope arg
+    App      ann fun args          -> App ann <$> scope fun <*> traverse scope args
     Builtin  ann op                -> return $ Builtin ann op
     Var      ann v                 -> Var ann <$> getVar ann v
     Literal  ann l                 -> return $ Literal ann l

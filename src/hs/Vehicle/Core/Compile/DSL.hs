@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 
 module Vehicle.Core.Compile.DSL
   ( DSL(..)
@@ -28,6 +29,7 @@ module Vehicle.Core.Compile.DSL
 
 import Prelude hiding (pi)
 import GHC.Stack (HasCallStack)
+import Data.List.NonEmpty (NonEmpty)
 
 import Vehicle.Core.AST
 import Vehicle.Prelude
@@ -39,7 +41,7 @@ class DSL expr where
   infixr 4 ~~>
   infixr 4 ~~~>
 
-  app :: expr -> expr -> expr
+  app :: expr -> NonEmpty expr -> expr
   -- lam :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
   pi  :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
 
@@ -87,10 +89,10 @@ instance DSL DSLExpr where
         body    = unDSL (bodyFn var) (i + 1)
     in Pi mempty binder body
 
-  app fun arg = DSL $ \i ->
+  app fun args = DSL $ \i ->
     let fun' = unDSL fun i
-        arg' = unDSL arg i
-    in App mempty fun' (Arg (prov arg') Explicit arg')
+        args' = fmap (\e -> Arg mempty Explicit (unDSL e i)) args
+    in App mempty fun' args'
 
 --lamType :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
 --lamType p v n varType bodyType = fromDSL (pi p v n (toDSL varType) (const (toDSL bodyType)))
@@ -119,10 +121,10 @@ tInt  = con Int
 tReal = con Real
 
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
-tTensor tElem dims = con Tensor `app` tElem `app` dims
+tTensor tElem dims = con Tensor `app` [tElem, dims]
 
 tList :: DSLExpr -> DSLExpr
-tList tElem = con List `app` tElem
+tList tElem = con List `app` [tElem]
 
 tHole :: Symbol -> DSLExpr
 tHole name = DSL $ const $ Hole mempty name
@@ -133,31 +135,31 @@ typeClass :: Provenance -> Builtin -> DSLExpr
 typeClass p op = DSL $ \_ -> Builtin p op
 
 hasEq :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-hasEq p tArg tRes = typeClass p HasEq `app` tArg `app` tRes
+hasEq p tArg tRes = typeClass p HasEq `app` [tArg, tRes]
 
 hasOrd :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-hasOrd p tArg tRes = typeClass p HasOrd `app` tArg `app` tRes
+hasOrd p tArg tRes = typeClass p HasOrd `app` [tArg, tRes]
 
 isTruth :: Provenance -> DSLExpr -> DSLExpr
-isTruth p t = typeClass p IsTruth `app` t
+isTruth p t = typeClass p IsTruth `app` [t]
 
 isNatural :: Provenance -> DSLExpr -> DSLExpr
-isNatural p t = typeClass p IsNatural `app` t
+isNatural p t = typeClass p IsNatural `app` [t]
 
 isIntegral :: Provenance -> DSLExpr -> DSLExpr
-isIntegral p t = typeClass p IsIntegral `app` t
+isIntegral p t = typeClass p IsIntegral `app` [t]
 
 isRational :: Provenance -> DSLExpr -> DSLExpr
-isRational p t = typeClass p IsRational `app` t
+isRational p t = typeClass p IsRational `app` [t]
 
 isReal :: Provenance -> DSLExpr -> DSLExpr
-isReal p t = typeClass p IsReal `app` t
+isReal p t = typeClass p IsReal `app` [t]
 
 isContainer :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-isContainer p tCont tElem = typeClass p IsContainer `app` tCont `app` tElem
+isContainer p tCont tElem = typeClass p IsContainer `app` [tCont, tElem]
 
 isContainer' :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
 isContainer' p contType elemType = fromDSL $ isContainer p (toDSL contType) (toDSL elemType)
 
 isQuantifiable :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-isQuantifiable p tDom tTruth = typeClass p IsQuantifiable `app` tDom `app` tTruth
+isQuantifiable p tDom tTruth = typeClass p IsQuantifiable `app` [tDom, tTruth]

@@ -1,3 +1,4 @@
+{-# LANGUAGE ViewPatterns #-}
 
 module Vehicle.Core.Compile.Type.TypeClass
   ( solveTypeClassConstraint
@@ -32,7 +33,7 @@ solveTypeClassConstraint :: MonadConstraintSolving m
                          -> m ConstraintProgress
 solveTypeClassConstraint c m e = do
   eWHNF <- whnf (declContext c) e
-  progress <- case decomposeApp eWHNF of
+  progress <- case toHead eWHNF of
     (Builtin _ tc, args) -> do
       let argsNF = extractArg <$> args
       blockOnMetas tc argsNF $ case (tc, argsNF) of
@@ -74,9 +75,9 @@ blockOnMetas tc args action = do
       return Stuck
 
 isMeta :: CheckedExpr -> Bool
-isMeta e = case decomposeApp e of
-  (Meta _ _, _) -> True
-  _             -> False
+isMeta (Meta _ _)           = True
+isMeta (App _ (Meta _ _) _) = True
+isMeta _                    = False
 
 solveHasEq :: MonadConstraintSolving m
            => Constraint
@@ -132,7 +133,7 @@ solveIsContainer c tCont tElem = do
       }
   where
     getContainerElem :: MonadConstraintSolving m => CheckedExpr -> m (Maybe CheckedExpr)
-    getContainerElem t = case decomposeApp t of
+    getContainerElem t = case toHead t of
       (Builtin _ List,   [tElem'])    -> return $ Just $ argExpr tElem'
       (Builtin _ Tensor, [tElem', _]) -> return $ Just $ argExpr tElem'
       _                               -> return Nothing

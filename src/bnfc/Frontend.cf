@@ -20,6 +20,7 @@ position token TokTensor    {"Tensor"};
 position token TokList      {"List"};
 position token TokReal      {"Real"};
 position token TokInt       {"Int"};
+position token TokNat       {"Nat"};
 position token TokBool      {"Bool"};
 position token TokProp      {"Prop"};
 
@@ -119,7 +120,7 @@ TCReal.  TypeClass ::= TokTCReal      Expr14;
 --   aren't used for `let` and `in`.
 
 -- Kinds.
-Type.       Expr14 ::= "Type" Integer;
+Type.    Expr14 ::= "Type" Integer;
 
 -- Core structure.
 Forall.  Expr   ::= TokForall [Binder] TokDot Expr;
@@ -140,6 +141,7 @@ Bool.    Expr14 ::= TokBool;
 Prop.    Expr14 ::= TokProp;
 Real.    Expr14 ::= TokReal;
 Int.     Expr14 ::= TokInt;
+Nat.     Expr14 ::= TokNat;
 
 -- Boolean expressions.
 If.      Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;

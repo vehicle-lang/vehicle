@@ -56,6 +56,7 @@ data Builtin
   | Map
   | Fold
   | Quant Quantifier
+  | QuantIn Quantifier
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData Builtin
@@ -101,6 +102,8 @@ builtinSymbols =
   , "::"           |-> Cons
   , "every"        |-> Quant All
   , "some"         |-> Quant Any
+  , "everyIn"      |-> QuantIn All
+  , "someIn"       |-> QuantIn Any
   , "map"          |-> Map
   , "fold"         |-> Fold
   ]

@@ -1,10 +1,10 @@
 module Vehicle.Core.Compile.Type.Normalise
-  ( nf
-  , whnf
+  ( whnf
   ) where
 
-import Control.Monad.Reader (MonadReader(..), asks, runReaderT)
+import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.Map qualified as Map ( lookup )
+import Data.List.NonEmpty (NonEmpty(..))
 
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Type.Core
@@ -18,32 +18,24 @@ import Vehicle.Core.MetaSubstitution qualified as MetaSubst (lookup)
 -- type-checking. For full normalisation including builtins see the dedicated
 -- `Vehicle.Core.Compile.Normalisation` module.
 
-data Strategy
-  = WeakHead
-  | Strong
-
 whnf :: (MonadMeta m) => DeclCtx -> CheckedExpr -> m CheckedExpr
-whnf ctx e = runReaderT (norm e) (WeakHead, ctx)
+whnf ctx e = runReaderT (norm e) ctx
 
-nf :: (MonadMeta m) => DeclCtx -> CheckedExpr -> m CheckedExpr
-nf ctx e = runReaderT (norm e) (Strong, ctx)
-
-norm :: (MonadMeta m, MonadReader (Strategy, DeclCtx) m) => CheckedExpr -> m CheckedExpr
-norm (App ann fun arg@(Arg p v argE)) = do
-  normFun <- norm fun
-  strategy <- asks fst
+norm :: (MonadMeta m, MonadReader DeclCtx m) => CheckedExpr -> m CheckedExpr
+norm e@(App _ fun (Arg p _ argE :| args)) = do
+  normFun  <- norm fun
   case normFun of
-    Lam _ _ body -> norm (argE `substInto` body)
-    _            -> case strategy of
-      WeakHead -> return (App ann normFun arg)
-      Strong   -> App ann normFun . Arg p v <$> norm argE
+    Lam _ _ body -> do
+      nfBody <- norm (argE `substInto` body)
+      return $ normAppList p nfBody args
+    _            -> return e
 norm (Meta p n) = do
   subst <- getMetaSubstitution
   case MetaSubst.lookup n subst of
     Nothing -> return (Meta p n)
     Just tm -> norm tm
 norm e@(Var _ (Free ident)) = do
-  ctx <- asks snd
+  ctx <- ask
   case Map.lookup ident ctx of
     Just (_, Just res) -> return res
     _                  -> return e

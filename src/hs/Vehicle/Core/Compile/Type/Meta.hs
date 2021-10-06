@@ -26,7 +26,7 @@ module Vehicle.Core.Compile.Type.Meta
 import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (Reader, runReader, ask, local)
 import Control.Monad.State (MonadState(..), modify, gets)
-import Data.List (foldl', partition)
+import Data.List (partition)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
@@ -80,7 +80,7 @@ instance MetaSubstitutable CheckedExpr where
     PrimDict tc              -> PrimDict <$> substM tc
 
     e@(Meta ann _)  -> substMApp ann (e, [])
-    e@(App ann _ _) -> substMApp ann (decomposeApp e)
+    e@(App ann _ _) -> substMApp ann (toHead e)
 
 -- | We really don't want un-normalised lambda applications from solved meta-variables
 -- clogging up our program so this function detects meta applications and normalises
@@ -89,14 +89,14 @@ substMApp :: CheckedAnn -> (CheckedExpr, [CheckedArg]) -> Reader MetaSubstitutio
 substMApp ann (fun@(Meta _ m), mArgs) = do
   subst <- ask
   case MetaSubst.lookup m subst of
-    Just eRes -> substM $ normApp eRes mArgs
-    Nothing   -> composeApp ann fun <$> substM mArgs
+    Just eRes -> substM $ substMArgs eRes mArgs
+    Nothing   -> normAppList ann fun <$> substM mArgs
   where
-    normApp :: CheckedExpr -> [CheckedArg] -> CheckedExpr
-    normApp (Lam _ _ body) (arg : args) = normApp (argExpr arg `substInto` body) args
-    normApp Lam{}          []           = developerError "Meta variable does not appear to be applied to every variable in the context"
-    normApp e              args         = composeApp ann e args
-substMApp ann (fun, args) = composeApp ann <$> substM fun <*> substM args
+    substMArgs :: CheckedExpr -> [CheckedArg] -> CheckedExpr
+    substMArgs (Lam _ _ body) (arg : args) = substMArgs (argExpr arg `substInto` body) args
+    substMArgs Lam{}          []           = developerError "Meta variable does not appear to be applied to every variable in the context"
+    substMArgs e              args         = normAppList ann e args
+substMApp ann (fun, args) = normAppList ann <$> substM fun <*> substM args
 
 instance MetaSubstitutable CheckedDecl where
   substM = \case
@@ -189,7 +189,7 @@ freshMetaWith boundCtx p = do
   let boundEnv = reverse [ Var p (Bound varIndex) | varIndex <- [0..length boundCtx - 1] ]
 
   -- Returns a meta applied to every bound variable in the context
-  let meta = foldl' (\fun arg -> App p fun (Arg p Explicit arg)) (Meta p metaName) boundEnv
+  let meta = normAppList p (Meta p metaName) (map (Arg p Explicit) boundEnv)
 
   logDebug $ "fresh-meta" <+> pretty metaName
   return (metaName, meta)

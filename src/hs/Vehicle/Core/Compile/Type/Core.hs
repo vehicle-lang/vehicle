@@ -147,6 +147,9 @@ data TypingError
     (NonEmpty Constraint)
   | UnsolvedConstraints
     (NonEmpty Constraint)
+  | MissingExplicitArg
+    UncheckedArg  -- The non-explicit argument
+    CheckedExpr   -- Expected type
 
 instance MeaningfulError TypingError where
   details (Mismatch p ctx candidate expected) = UError $ UserError
