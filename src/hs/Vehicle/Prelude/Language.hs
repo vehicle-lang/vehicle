@@ -8,9 +8,10 @@ import Prettyprinter (Pretty(..))
 import Vehicle.Prelude.Provenance (HasProvenance(..), Provenance)
 import Vehicle.Prelude.Token (Symbol)
 
-data BlackBoxType
+data DeclType
   = Network
   | Dataset
+  | Function
 
 newtype Identifier = Identifier Symbol
   deriving (Eq, Ord, Show, Generic)

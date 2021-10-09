@@ -179,12 +179,15 @@ instance PrettyWithConfig MetaSet where
   pretty' m = return $
     encloseSep lbrace rbrace comma (fmap pretty (MetaSet.toList m))
 
+instance PrettyWithConfig Name where
+  pretty' n = return $ pretty n
+
 --------------------------------------------------------------------------------
 -- Derived instances
 
-instance (Pretty a, PrettyWithConfig b) => PrettyWithConfig (a, b) where
+instance (PrettyWithConfig a, PrettyWithConfig b) => PrettyWithConfig (a, b) where
   pretty' (a, b) = do
-    let a' = pretty a
+    a' <- pretty' a
     b' <- pretty' b
     return $ tupled [a', b']
 

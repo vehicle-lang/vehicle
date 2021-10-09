@@ -12,6 +12,7 @@ module Vehicle.Core.AST.DeBruijn
   , BindingDepth
   , liftDBIndices
   , substInto
+  , substIntoAtLevel
   , patternOfArgs
   , substAll
   ) where
@@ -129,11 +130,12 @@ liftDBIndices j e = runReader (alter id alterVar e) (0 , ())
            | otherwise = i     -- Index is locally bound so no need to increment
 
 -- | De Bruijn aware substitution of one expression into another
-substInto :: Semigroup ann
-          => DeBruijnExpr ann -- ^ expression to substitute
-          -> DeBruijnExpr ann -- ^ term to substitute into
-          -> DeBruijnExpr ann -- ^ the result of the substitution
-substInto sub e = runReader (alter binderUpdate alterVar e) (0 , sub)
+substIntoAtLevel :: Semigroup ann
+                 => Int              -- ^ The current binding depth
+                 -> DeBruijnExpr ann -- ^ expression to substitute
+                 -> DeBruijnExpr ann -- ^ term to substitute into
+                 -> DeBruijnExpr ann -- ^ the result of the substitution
+substIntoAtLevel level sub e = runReader (alter binderUpdate alterVar e) (level , sub)
   where
     alterVar i ann (d, subExpr) = case compare i d of
       -- Index matches the expression we're substituting for
@@ -147,6 +149,13 @@ substInto sub e = runReader (alter binderUpdate alterVar e) (0 , sub)
     -- Whenever we go underneath the binder we must lift
     -- all the indices in the substituted expression
     binderUpdate = liftDBIndices 1
+
+-- | De Bruijn aware substitution of one expression into another
+substInto :: Semigroup ann
+          => DeBruijnExpr ann -- ^ expression to substitute
+          -> DeBruijnExpr ann -- ^ term to substitute into
+          -> DeBruijnExpr ann -- ^ the result of the substitution
+substInto = substIntoAtLevel 0
 
 type Substitution ann = IntMap (DeBruijnExpr ann)
 
