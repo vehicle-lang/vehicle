@@ -20,7 +20,6 @@ module Vehicle.Core.Compile.DSL
   , isRational
   , isReal
   , isContainer
-  , isContainer'
   , isQuantifiable
   , tMax
   , tHole
@@ -157,9 +156,6 @@ isReal p t = typeClass p IsReal `app` [t]
 
 isContainer :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
 isContainer p tCont tElem = typeClass p IsContainer `app` [tCont, tElem]
-
-isContainer' :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
-isContainer' p contType elemType = fromDSL $ isContainer p (toDSL contType) (toDSL elemType)
 
 isQuantifiable :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
 isQuantifiable p tDom tTruth = typeClass p IsQuantifiable `app` [tDom, tTruth]

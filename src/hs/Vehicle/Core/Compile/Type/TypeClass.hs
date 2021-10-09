@@ -58,7 +58,7 @@ solveTypeClassConstraint c m e = do
 -- Takes in the type-class and the list of arguments and returns the list of those
 -- that cannot be inferred from the others.
 getNonInferableArgs :: Builtin -> [CheckedExpr] -> [CheckedExpr]
-getNonInferableArgs IsContainer [tCont, _tElem] = [tCont]
+getNonInferableArgs IsContainer [_tElem, tCont] = [tCont]
 getNonInferableArgs _           args            = args
 
 extractArg :: CheckedArg -> CheckedExpr
@@ -123,7 +123,7 @@ solveIsContainer :: MonadConstraintSolving m
                  -> CheckedExpr
                  -> CheckedExpr
                  -> m ConstraintProgress
-solveIsContainer c tCont tElem = do
+solveIsContainer c tElem tCont = do
   tContElem <- getContainerElem tCont
   return $ case tContElem of
     Nothing -> Stuck

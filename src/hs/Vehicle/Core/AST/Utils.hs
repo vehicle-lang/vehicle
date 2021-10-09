@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE OverloadedLists #-}
 
 module Vehicle.Core.AST.Utils where
 
@@ -7,6 +8,7 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Prelude
 import Vehicle.Core.AST.Core
 import Vehicle.Core.AST.DeBruijn
+import Vehicle.Core.AST.Builtin
 
 --------------------------------------------------------------------------------
 -- Patterns
@@ -114,20 +116,54 @@ annotation = \case
   Literal  ann _     -> ann
   Seq      ann _     -> ann
 
+--------------------------------------------------------------------------------
+-- Destruction functions
 
 toHead :: CheckedExpr -> (CheckedExpr, [CheckedArg])
 toHead (App _ann fun args ) = (fun, NonEmpty.toList args)
 toHead e                    = (e, [])
 
-{-
-composeApp :: CheckedAnn -> CheckedExpr -> [CheckedArg] -> CheckedExpr
-composeApp ann = foldl (App ann)
+--------------------------------------------------------------------------------
+-- Construction functions
 
-decomposeExplicitApp :: CheckedExpr -> (CheckedExpr, [CheckedArg])
-decomposeExplicitApp = go []
-  where
-    go args = \case
-      (App _ann fun arg@(Arg _ Explicit _)) -> go (arg : args) fun
-      (App _ann fun _arg)                   -> go args fun
-      e                                     -> (e, args)
--}
+mkLiteral :: CheckedAnn -> Literal -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkLiteral ann lit t tc = App ann (Literal ann lit)
+  [Arg ann Implicit t, Arg ann Instance (PrimDict tc)]
+
+mkBool :: CheckedAnn -> Bool -> CheckedExpr -> CheckedExpr
+mkBool ann b t = mkLiteral ann (LBool b) t (PrimDict t)
+
+mkNat :: CheckedAnn -> Int -> CheckedExpr
+mkNat ann n = let t = Builtin ann Nat in mkLiteral ann (LNat n) t (PrimDict t)
+
+mkInt :: CheckedAnn -> Int -> CheckedExpr
+mkInt ann i = let t = Builtin ann Int in mkLiteral ann (LInt i) t (PrimDict t)
+
+mkReal :: CheckedAnn -> Double -> CheckedExpr
+mkReal ann r = let t = Builtin ann Real in mkLiteral ann (LRat r) t (PrimDict t)
+
+mkIsContainer :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkIsContainer ann tElem tCont = App ann (Builtin ann IsContainer)
+  [Arg ann Explicit tElem, Arg ann Explicit tCont]
+
+mkSeq :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> [CheckedExpr] -> CheckedExpr
+mkSeq ann tElem tCont tc xs = App ann (Seq ann xs) [tElem, tCont, tc]
+
+mkSeq' :: CheckedAnn -> CheckedExpr -> CheckedExpr -> [Int] -> CheckedExpr
+mkSeq' ann tElem tCont elems = mkSeq ann
+  (Arg ann Implicit tElem)
+  (Arg ann Implicit tCont)
+  (Arg ann Instance (PrimDict (mkIsContainer ann tElem tCont)))
+  (fmap (Literal ann . LNat) elems)
+
+mkAt :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkAt ann tElem tCont tc xs i = App ann (Builtin ann At)
+  [tElem, tCont, tc, Arg ann Explicit xs , Arg ann Explicit i ]
+
+mkListType :: CheckedAnn -> CheckedExpr -> CheckedExpr
+mkListType ann tElem = App ann (Builtin ann List) [Arg ann Explicit tElem]
+
+mkTensorType :: CheckedAnn -> CheckedExpr -> [Int] -> CheckedExpr
+mkTensorType ann tElem dims =
+  let eDims = mkSeq' ann (Builtin ann Nat) (mkListType ann (Builtin ann Nat)) dims in
+  App ann (Builtin ann Tensor) [Arg ann Explicit tElem, Arg ann Explicit eDims]

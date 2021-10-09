@@ -66,12 +66,6 @@ exprHead = fst . toHead
 argHead :: CheckedArg -> CheckedExpr
 argHead = exprHead . argExpr
 
-
-mkBool :: Bool -> CheckedAnn -> CheckedExpr
-mkBool b ann = Literal ann (LBool b)
-  -- TODO deeply dodgy, doesn't recreate implicit and instance arguments
-  --App ann (App ann (Literal ann (LBool b)) (Arg ann Implicit _)) (Arg ann Instance _)
-
 --------------------------------------------------------------------------------
 -- Debug functions
 
@@ -155,44 +149,44 @@ nfApp ann  fun@(Builtin _ op) args              = do
   let e = normAppList ann fun args
   case (op, args) of
     -- Equality
-    (Eq, [_tElem, _tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
+    (Eq, [_tElem, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
       --(EFalse _,  _)         -> normApp $ composeApp ann (Builtin ann op, [tElem, _, e2])
-      (ENat  _ m, EInt  _ n) -> return $ mkBool (m == n) ann
-      (EInt  _ i, EInt  _ j) -> return $ mkBool (i == j) ann
-      (EReal _ x, EReal _ y) -> return $ mkBool (x == y) ann
+      (ENat  _ m, EInt  _ n) -> return $ mkBool ann (m == n) (argExpr tRes)
+      (EInt  _ i, EInt  _ j) -> return $ mkBool ann (i == j) (argExpr tRes)
+      (EReal _ x, EReal _ y) -> return $ mkBool ann (x == y) (argExpr tRes)
       _                      -> return e
     -- TODO implement reflexive rules?
 
     -- Inequality
-    (Neq, [_t1, _t2, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
+    (Neq, [_tElem, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
       --(ETrue  _, _)          -> normApp $ composeApp ann (Builtin ann Not) [_t2, _, arg2]
       (EFalse _, _)          -> return $ argExpr arg2
-      (ENat  _ m, ENat  _ n) -> return $ mkBool (m /= n) ann
-      (EInt  _ i, EInt  _ j) -> return $ mkBool (i /= j) ann
-      (EReal _ x, EReal _ y) -> return $ mkBool (x /= y) ann
+      (ENat  _ m, ENat  _ n) -> return $ mkBool ann (m /= n) (argExpr tRes)
+      (EInt  _ i, EInt  _ j) -> return $ mkBool ann (i /= j) (argExpr tRes)
+      (EReal _ x, EReal _ y) -> return $ mkBool ann (x /= y) (argExpr tRes)
       _                      -> return e
 
     -- Not
-    (Not, [_t, _tc, arg1]) -> case argHead arg1 of
-      ETrue  _ -> return $ mkBool False ann
-      EFalse _ -> return $ mkBool True ann
+    (Not, [t, _tc, arg1]) -> case argHead arg1 of
+      ETrue  _ -> return $ mkBool ann False (argExpr t)
+      EFalse _ -> return $ mkBool ann True  (argExpr t)
       _        -> return e
     -- TODO implement idempotence rules?
 
     -- And
-    (And, [_t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
+    (And, [t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
       (ETrue  _, _)        -> return $ argExpr arg2
       (_,        ETrue  _) -> return $ argExpr arg1
-      (EFalse _, _)        -> return $ mkBool False ann
-      (_,        EFalse _) -> return $ mkBool False ann
+      (EFalse _, _)        -> return $ mkBool ann False (argExpr t)
+      (_,        EFalse _) -> return $ mkBool ann False (argExpr t)
       _                    -> return e
     -- TODO implement associativity rules?
 
     -- Or
-    (Or, [_t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (ETrue  _, _)        -> return $ mkBool True ann
+    (Or, [t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
+      (ETrue  _, _)        -> return $ mkBool ann True (argExpr t)
       (EFalse _, _)        -> return $ argExpr arg2
-      (_,        ETrue  _) -> return $ mkBool True ann
+      (_,        ETrue  _) -> return $ mkBool ann True (argExpr t)
       (_,        EFalse _) -> return $ argExpr arg1
       _                    -> return e
     -- See https://github.com/wenkokke/vehicle/issues/2
@@ -200,8 +194,8 @@ nfApp ann  fun@(Builtin _ op) args              = do
     -- Implication
     (Impl, [t, tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
       (ETrue  _, _)        -> return $ argExpr arg2
-      (EFalse _, _)        -> return $ mkBool True ann
-      (_,        ETrue  _) -> return $ mkBool True ann
+      (EFalse _, _)        -> return $ mkBool ann True (argExpr t)
+      (_,        ETrue  _) -> return $ mkBool ann True (argExpr t)
       (_,        EFalse _) -> return $ App ann (Builtin ann Not) [t, tc, arg2]
       _                    -> return e
 
@@ -212,77 +206,80 @@ nfApp ann  fun@(Builtin _ op) args              = do
       _        -> return e
 
     -- Le
-    (Le, [_t1, _t2, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (EInt  _ i, EInt  _ j) -> return $ mkBool (i <= j) ann
-      (EReal _ x, EReal _ y) -> return $ mkBool (x <= y) ann
+    (Le, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
+      (EInt  _ i, EInt  _ j) -> return $ mkBool ann (i <= j) (argExpr tRes)
+      (EReal _ x, EReal _ y) -> return $ mkBool ann (x <= y) (argExpr tRes)
       _                      -> return e
 
     -- Lt
-    (Lt, [_t1, _t2, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (EInt  _ i, EInt  _ j) -> return $ mkBool (i < j) ann
-      (EReal _ x, EReal _ y) -> return $ mkBool (x < y) ann
+    (Lt, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
+      (EInt  _ i, EInt  _ j) -> return $ mkBool ann (i < j) (argExpr tRes)
+      (EReal _ x, EReal _ y) -> return $ mkBool ann (x < y) (argExpr tRes)
       _                      -> return e
 
     -- Addition
     (Add, [_t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (ENat  _ m, ENat  _ n) -> return $ EInt  ann (m + n)
-      (EInt  _ i, EInt  _ j) -> return $ EInt  ann (i + j)
-      (EReal _ x, EReal _ y) -> return $ EReal ann (x + y)
+      (ENat  _ m, ENat  _ n) -> return $ mkNat  ann (m + n)
+      (EInt  _ i, EInt  _ j) -> return $ mkInt  ann (i + j)
+      (EReal _ x, EReal _ y) -> return $ mkReal ann (x + y)
       _                      -> return e
     -- TODO implement identity/associativity rules?
 
     -- Subtraction
     (Sub, [_t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (EInt  _ i, EInt  _ j) -> return $ EInt  ann (i - j)
-      (EReal _ x, EReal _ y) -> return $ EReal ann (x - y)
+      (EInt  _ i, EInt  _ j) -> return $ mkInt  ann (i - j)
+      (EReal _ x, EReal _ y) -> return $ mkReal ann (x - y)
       _                      -> return e
     -- TODO implement identity/associativity rules?
 
     -- Multiplication
     (Mul, [_t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (EInt  _ i, EInt  _ j) -> return $ EInt  ann (i * j)
-      (EReal _ x, EReal _ y) -> return $ EReal ann (x * y)
+      (EInt  _ i, EInt  _ j) -> return $ mkInt  ann (i * j)
+      (EReal _ x, EReal _ y) -> return $ mkReal ann (x * y)
       _                      -> return e
     -- TODO implement zero/identity/associativity rules?
 
     -- Division
     (Div, [_t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (EReal _ x, EReal _ y) -> return $ EReal ann (x / y)
+      (EReal _ x, EReal _ y) -> return $ mkReal ann (x / y)
       _                      -> return e
 
     -- Negation
     (Neg, [_t, _tc, arg]) -> case argHead arg of
-      (EInt  _ x) -> return $ EInt  ann (- x)
-      (EReal _ x) -> return $ EReal ann (- x)
+      (EInt  _ x) -> return $ mkInt  ann (- x)
+      (EReal _ x) -> return $ mkReal ann (- x)
       _           -> return e
 
     -- Cons
-    (Cons, [_tCont, _tElem, _tc, item, cont]) -> case argHead cont of
-      Seq _ xs -> return $ Seq ann (argExpr item : xs)
+    (Cons, [tElem, tCont, tc, x, cont]) -> case argHead cont of
+      Seq _ xs -> return $ mkSeq ann tElem tCont tc (argExpr x : xs)
       _        -> return e
 
     -- Lookup
-    (At, [_tCont, _tElem, _tc, cont, index]) -> case (argHead cont, argHead index) of
-      (Seq _ es, EInt _ i) -> return $ es !! fromIntegral i
-      _ -> return e --(xs      , i) -> case (decomposeExplicitApp xs, i) of
+    (At, [_tElem, _tCont, _tc, cont, index]) ->
+      case (argHead cont, argHead index) of
+        (Seq _ es, ENat _ i) -> return $ es !! fromIntegral i
+        _ -> return e --(xs      , i) -> case (decomposeExplicitApp xs, i) of
         --((Builtin _ Cons, [x, _]), EInt _ 0) -> return $ argExpr x
         --((Builtin _ Cons, [_, _, _, x, xs']), EInt _ i) -> Op2 EAt es (EInt ann3 (i - 1)) ann ann1 ann2 pos
         --_                                     -> return e
 
     -- Map
-    (Map, [_tCont, _tElem, fn, cont]) -> case argHead cont of
-        Seq _ xs -> Seq ann <$> traverse (\x -> nf $ App ann (argExpr fn) [Arg ann Explicit x]) xs
+    (Map, [tElem, tCont, tc, fn, cont]) -> case argHead cont of
+        Seq _ xs -> mkSeq ann tElem tCont tc <$> traverse (\x -> nf $ App ann (argExpr fn) [Arg ann Explicit x]) xs
         _        -> return e
     -- TODO distribute over cons
 
     -- Fold
-    (Fold, [_tCont, _tElem, _tRes, _tc, foldOp, unit, cont]) -> case argHead cont of
+    (Fold, [_tElem, _tCont, _tRes, _tc, foldOp, unit, cont]) -> case argHead cont of
       Seq _ xs -> nf $ foldr (\x body -> App ann (argExpr foldOp) [Arg ann Explicit x, Arg ann Explicit body]) (argExpr unit) xs
       _        -> return e
     -- TODO distribute over cons
 
     -- Quantifiers
-    (Quant q, [_tElem, lam]) -> return $ fromMaybe e (nfQuantifier ann q lam)
+    (Quant q, [_tElem, lam]) -> case nfQuantifier ann q lam of
+      Nothing  -> return e
+      Just res -> nf res
 
     -- Fall-through case
     _ -> return e
@@ -311,12 +308,12 @@ nfQuantifier ann q lam = case argHead lam of
       -- Use the list monad to create a nested list of all possible indices into the tensor
       let allIndices = traverse (\dim -> [0..dim-1]) dims
       -- Generate the corresponding names from the indices
-      let allNames   = map (makeNameWithIndices n) allIndices
+      let allNames   = map (makeNameWithIndices n) (reverse allIndices)
 
       -- Generate a list of variables, one for each index
       let allExprs   = map (\i -> Var ann (Bound i)) (reverse [0..tensorSize-1])
       -- Construct the corresponding nested tensor expression
-      let tensor     = makeTensor ann dims allExprs
+      let tensor     = makeTensor ann tElem dims allExprs
       -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
       let body1      = liftDBIndices tensorSize body
       -- Substitute throught the tensor expression for the old top-level binder
@@ -332,12 +329,18 @@ makeQuantifier ann q tElem body name =
   App ann (Builtin ann (Quant q))
     [Arg ann Explicit (Lam ann (Binder ann Explicit name tElem) body)]
 
-makeTensor :: CheckedAnn -> [Int] -> [CheckedExpr] -> CheckedExpr
-makeTensor ann dims exprs = assert (product dims == length exprs) (go dims exprs)
+makeTensor :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedExpr
+makeTensor ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)
   where
-    go []       [] = Seq ann []
-    go [_]      es = Seq ann es
-    go (_ : ds) es = Seq ann (map (go ds) (chunksOf (product ds) es))
+    mkTensorSeq :: [Int] -> [CheckedExpr] -> CheckedExpr
+    mkTensorSeq ds xs =
+      let tCont = mkTensorType ann tElem ds in
+      let tc    = mkIsContainer ann tElem tCont in
+      mkSeq ann (Arg ann Implicit tElem) (Arg ann Implicit tCont) (Arg ann Instance tc) xs
+
+    go []       [] = mkTensorSeq []       []
+    go [d]      es = mkTensorSeq [d]      es
+    go (d : ds) es = mkTensorSeq (d : ds) (map (go ds) (chunksOf (product ds) es))
     go []  (_ : _) = developerError "Found inhabitants of the empty dimension! Woo!"
 
 -- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3

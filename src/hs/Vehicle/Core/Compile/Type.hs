@@ -398,11 +398,11 @@ infer e = do
       -- Generate a fresh meta-variable for the container function, e.g. List
       (meta, tMeta') <- freshMeta p
       ctx <- getVariableCtx
-      addTypeClassConstraint ctx meta (isContainer' p tCont' tElem')
+      addTypeClassConstraint ctx meta (mkIsContainer p tElem' tCont')
 
       -- Add in the type and type-class arguments
       let seqWithTArgs = normAppList p (Seq p es')
-            [Arg p Implicit tCont', Arg p Implicit tElem', Arg p Instance tMeta']
+            [Arg p Implicit tElem', Arg p Implicit tCont', Arg p Instance tMeta']
 
       return (seqWithTArgs , tCont')
 
@@ -567,13 +567,13 @@ typeOfQuantifierInOp p =
   forall type0 $ \tElem ->
     forall type0 $ \tCont ->
       forall type0 $ \tRes ->
-        isContainer p tCont tElem ~~~> (tElem ~> tRes) ~> tCont ~> tRes
+        isContainer p tElem tCont ~~~> (tElem ~> tRes) ~> tCont ~> tRes
 
 typeOfAtOp :: Provenance -> DSLExpr
 typeOfAtOp p =
-  forall type0 $ \tCont ->
-    forall type0 $ \tElem ->
-      isContainer p tCont tElem ~~~> tCont ~> tNat ~> tElem
+  forall type0 $ \tElem ->
+    forall type0 $ \tCont ->
+      isContainer p tElem tCont ~~~> tCont ~> tNat ~> tElem
 
 -- TODO generalise these to tensors etc.
 typeOfMapOp :: DSLExpr
@@ -584,7 +584,7 @@ typeOfMapOp =
 
 typeOfFoldOp :: Provenance -> DSLExpr
 typeOfFoldOp p =
-  forall type0 $ \tCont ->
-    forall type0 $ \tElem ->
+  forall type0 $ \tElem ->
+    forall type0 $ \tCont ->
       forall type0 $ \tRes ->
-        isContainer p tCont tElem ~~~> (tElem ~> tRes ~> tRes) ~> tRes ~> tCont ~> tRes
+        isContainer p tElem tCont ~~~> (tElem ~> tRes ~> tRes) ~> tRes ~> tCont ~> tRes
