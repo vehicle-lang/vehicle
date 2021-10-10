@@ -167,10 +167,7 @@ nfApp ann  fun@(Builtin _ op) args              = do
       _                      -> return e
 
     -- Not
-    (Not, [t, _tc, arg1]) -> case argHead arg1 of
-      ETrue  _ -> return $ mkBool ann False (argExpr t)
-      EFalse _ -> return $ mkBool ann True  (argExpr t)
-      _        -> return e
+    (Not, [t, tc, arg]) -> fromMaybe (return e) (nfNot ann t tc arg)
     -- TODO implement idempotence rules?
 
     -- And
@@ -245,10 +242,7 @@ nfApp ann  fun@(Builtin _ op) args              = do
       _                      -> return e
 
     -- Negation
-    (Neg, [_t, _tc, arg]) -> case argHead arg of
-      (EInt  _ x) -> return $ mkInt  ann (- x)
-      (EReal _ x) -> return $ mkReal ann (- x)
-      _           -> return e
+    (Neg, [t, tc, arg]) -> fromMaybe (return e) (nfNeg ann t tc arg)
 
     -- Cons
     (Cons, [tElem, tCont, tc, x, cont]) -> case argHead cont of
@@ -277,9 +271,7 @@ nfApp ann  fun@(Builtin _ op) args              = do
     -- TODO distribute over cons
 
     -- Quantifiers
-    (Quant q, [_tElem, lam]) -> case nfQuantifier ann q lam of
-      Nothing  -> return e
-      Just res -> nf res
+    (Quant q, [_tElem, lam]) -> fromMaybe (return e) (nfQuantifier ann q lam)
 
     -- Fall-through case
     _ -> return e
@@ -289,38 +281,41 @@ nfApp ann fun args = return $ normAppList ann fun args
 --------------------------------------------------------------------------------
 -- Normalising quantification over types
 
-nfQuantifier :: CheckedAnn
+nfQuantifier :: MonadNorm m
+             => CheckedAnn
              -> Quantifier
              -> CheckedArg -- The quantified lambda expression
-             -> Maybe CheckedExpr
+             -> Maybe (m CheckedExpr)
 nfQuantifier ann q lam = case argHead lam of
   Lam _ann (Binder _p _ n t) body -> case toHead t of
     -- If we have a tensor instead quantify over each individual element, and then substitute
     -- in a Seq construct with those elements in.
-    (Builtin _ Tensor, [tElemArg, tDimsArg]) -> do
-      let tElem = argExpr tElemArg
-      let tDims = argHead tDimsArg
+    (Builtin _ Tensor, [tElemArg, tDimsArg]) ->
+      case getDimensions (argHead tDimsArg) of
+        Nothing -> Nothing
+        Just dims -> Just $ do
+          let tElem = argExpr tElemArg
 
-      -- Calculate the dimensions of the tensor
-      dims <- getDimensions tDims
-      let tensorSize = product dims
+          -- Calculate the dimensions of the tensor
+          let tensorSize = product dims
 
-      -- Use the list monad to create a nested list of all possible indices into the tensor
-      let allIndices = traverse (\dim -> [0..dim-1]) dims
-      -- Generate the corresponding names from the indices
-      let allNames   = map (makeNameWithIndices n) (reverse allIndices)
+          -- Use the list monad to create a nested list of all possible indices into the tensor
+          let allIndices = traverse (\dim -> [0..dim-1]) dims
+          -- Generate the corresponding names from the indices
+          let allNames   = map (makeNameWithIndices n) (reverse allIndices)
 
-      -- Generate a list of variables, one for each index
-      let allExprs   = map (\i -> Var ann (Bound i)) (reverse [0..tensorSize-1])
-      -- Construct the corresponding nested tensor expression
-      let tensor     = makeTensor ann tElem dims allExprs
-      -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
-      let body1      = liftDBIndices tensorSize body
-      -- Substitute throught the tensor expression for the old top-level binder
-      let body2      = substIntoAtLevel tensorSize tensor body1
+          -- Generate a list of variables, one for each index
+          let allExprs   = map (\i -> Var ann (Bound i)) (reverse [0..tensorSize-1])
+          -- Construct the corresponding nested tensor expression
+          let tensor     = makeTensor ann tElem dims allExprs
+          -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
+          let body1      = liftDBIndices tensorSize body
+          -- Substitute throught the tensor expression for the old top-level binder
+          body2 <- nf $ substIntoAtLevel tensorSize tensor body1
 
-      -- Generate a expression with `tensorSize` quantifiers
-      return $ foldl (makeQuantifier ann q tElem) body2 allNames
+          -- Generate a expression prepended with `tensorSize` quantifiers
+          return $ foldl (makeQuantifier ann q tElem) body2 allNames
+
     _ -> Nothing
   _ -> Nothing
 
@@ -359,6 +354,9 @@ getDimension e = case exprHead e of
   _                    -> Nothing
 
 {-
+--------------------------------------------------------------------------------
+-- Normalising quantification over lists
+
 -- |Elaborate quantification over the members of a container type.
 -- Expands e.g. `every x in list . y` to `fold and true (map (\x -> y) list)`
 quantIn :: MonadElab m => VC.InputAnn -> Quantifier -> VF.InputBinder -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
@@ -372,3 +370,50 @@ quantImplementation :: Quantifier -> (VC.Builtin, Literal)
 quantImplementation All = (VC.And, LBool True)
 quantImplementation Any = (VC.Or,  LBool False)
 -}
+
+--------------------------------------------------------------------------------
+-- Normalising not
+
+nfNot :: MonadNorm m
+      => CheckedAnn
+      -> CheckedArg
+      -> CheckedArg
+      -> CheckedArg
+      -> Maybe (m CheckedExpr)
+nfNot ann t tc arg = case toHead (argExpr arg) of
+  (ETrue  _, [_, _])           -> Just $ return $ mkBool ann False (argExpr t)
+  (EFalse _, [_, _])           -> Just $ return $ mkBool ann True  (argExpr t)
+  (Builtin _ (Quant q), [lam]) -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
+  _                            -> Nothing
+
+nfNotQuantifier :: MonadNorm m
+                => CheckedAnn
+                -> CheckedArg
+                -> CheckedArg
+                -> Quantifier
+                -> CheckedExpr
+                -> m CheckedExpr
+nfNotQuantifier ann t tc q (Lam lAnn binder body) = do
+  notBody <- nf $ App ann (Builtin ann Not) [t, tc, Arg ann Explicit body]
+  let notLam = Arg ann Explicit (Lam lAnn binder notBody)
+  return $ App ann (Builtin ann (Quant (negateQ q))) [notLam]
+nfNotQuantifier _ _ _ _ e = developerError $
+  "Malformed quantifier, was expecting a Lam but found" <+> prettyVerbose e
+
+negateQ :: Quantifier -> Quantifier
+negateQ Any = All
+negateQ All = Any
+
+-----------------------------------------------------------------------------
+-- Normalising negation
+
+nfNeg :: MonadNorm m
+      => CheckedAnn
+      -> CheckedArg
+      -> CheckedArg
+      -> CheckedArg
+      -> Maybe (m CheckedExpr)
+nfNeg ann _t _tc arg = case argHead arg of
+  (EInt  _ x) -> Just $ return $ mkInt  ann (- x)
+  (EReal _ x) -> Just $ return $ mkReal ann (- x)
+  _           -> Nothing

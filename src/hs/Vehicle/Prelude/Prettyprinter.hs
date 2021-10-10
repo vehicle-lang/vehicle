@@ -21,6 +21,7 @@ import Prettyprinter as CommonPrettyprinter
   , line
   , squotes
   , align
+  , nest
   )
 
 -- * Additions to the prettyprinter library

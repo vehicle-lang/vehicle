@@ -158,11 +158,11 @@ instance Pretty var => PrettyWithConfig (Decl var ann) where
   pretty' = \case
     DeclNetw _ann n t -> do
       t' <- pretty' t
-      return $ parens ("declare-network" <+> pretty n <+> ":" <+> t') <+> line
+      return $ parens ("declare-network" <+> pretty n <+> t') <+> line
 
     DeclData _ann n t -> do
       t' <- pretty' t
-      return $ parens ("declare-dataset" <+> pretty n <+> ":" <+> t') <+> line
+      return $ parens ("declare-dataset" <+> pretty n <+> t') <+> line
 
     DefFun _ann n t e -> do
       t' <- pretty' t
