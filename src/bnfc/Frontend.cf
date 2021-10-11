@@ -69,18 +69,18 @@ separator Name "";
 
 -- * Binders
 
-ExplicitBinderUnann. Binder ::= Name;
-ExplicitBinderAnn.   Binder ::= "(" Name TokElemOf Expr14 ")";
-ImplicitBinderUnann. Binder ::= "{" Name "}";
-ImplicitBinderAnn.   Binder ::= "{" Name TokElemOf Expr14 "}";
+ExplicitBinder.    Binder ::= Name;
+ExplicitBinderAnn. Binder ::= "(" Name TokElemOf Expr1 ")";
+ImplicitBinder.    Binder ::= "{" Name "}";
+ImplicitBinderAnn. Binder ::= "{" Name TokElemOf Expr1 "}";
 
 separator Binder "";
 
 -- * Arguments
 
-ExplicitArg. Arg ::= Expr14;
-ImplicitArg. Arg ::= "{" Expr14 "}";
-InstanceArg. Arg ::= "{{" Expr14 "}}";
+ExplicitArg. Arg ::= Expr15;
+ImplicitArg. Arg ::= "{" Expr1 "}";
+InstanceArg. Arg ::= "{{" Expr1 "}}";
 
 -- * Individual let declarations
 
@@ -97,15 +97,15 @@ LitFalse. Lit ::= TokFalse;
 
 -- * Type classes
 
-TCEq.    TypeClass ::= TokTCEq        Expr14 Expr14;
-TCOrd.   TypeClass ::= TokTCOrd       Expr14 Expr14;
-TCCont.  TypeClass ::= TokTCContainer Expr14 Expr14;
-TCTruth. TypeClass ::= TokTCTruth     Expr14;
-TCQuant. TypeClass ::= TokTCQuantify  Expr14;
-TCNat.   TypeClass ::= TokTCNatural   Expr14;
-TCInt.   TypeClass ::= TokTCIntegral  Expr14;
-TCRat.   TypeClass ::= TokTCRational  Expr14;
-TCReal.  TypeClass ::= TokTCReal      Expr14;
+TCEq.    TypeClass ::= TokTCEq        Expr15 Expr15;
+TCOrd.   TypeClass ::= TokTCOrd       Expr15 Expr15;
+TCCont.  TypeClass ::= TokTCContainer Expr15 Expr15;
+TCTruth. TypeClass ::= TokTCTruth     Expr15;
+TCQuant. TypeClass ::= TokTCQuantify  Expr15;
+TCNat.   TypeClass ::= TokTCNatural   Expr15;
+TCInt.   TypeClass ::= TokTCIntegral  Expr15;
+TCRat.   TypeClass ::= TokTCRational  Expr15;
+TCReal.  TypeClass ::= TokTCReal      Expr15;
 
 -- * Expressions
 
@@ -120,63 +120,63 @@ TCReal.  TypeClass ::= TokTCReal      Expr14;
 --   aren't used for `let` and `in`.
 
 -- Kinds.
-Type.    Expr14 ::= "Type" Integer;
+Type.    Expr15 ::= "Type" Integer;
 
 -- Core structure.
-Forall.  Expr   ::= TokForall [Binder] TokDot Expr;
-Ann.     Expr   ::= Expr1 TokElemOf Expr;
-Let.     Expr1  ::= "let" "{" [LetDecl] "}" "in" Expr1;
-Lam.     Expr2  ::= TokLambda [Binder] TokArrow Expr2;
-App.     Expr12 ::= Expr12 Arg;
-Fun.     Expr10 ::= Expr12 TokArrow Expr10;
-Var.     Expr14 ::= Name;
-Literal. Expr14 ::= Lit;
-TypeC.   Expr12 ::= TypeClass;
-Hole.    Expr14 ::= HoleToken;
+Ann.     Expr   ::= Expr2 TokElemOf Expr1;
+Forall.  Expr1  ::= TokForall [Binder] TokDot Expr1;
+Let.     Expr2  ::= "let" "{" [LetDecl] "}" "in" Expr2;
+Lam.     Expr3  ::= TokLambda [Binder] TokArrow Expr3;
+App.     Expr13 ::= Expr13 Arg;
+Fun.     Expr11 ::= Expr13 TokArrow Expr11;
+Var.     Expr15 ::= Name;
+Literal. Expr15 ::= Lit;
+TypeC.   Expr13 ::= TypeClass;
+Hole.    Expr15 ::= HoleToken;
 
 -- Primitive types.
-List.    Expr13 ::= TokList Expr14;
-Tensor.  Expr13 ::= TokTensor Expr14 Expr14;
-Bool.    Expr14 ::= TokBool;
-Prop.    Expr14 ::= TokProp;
-Real.    Expr14 ::= TokReal;
-Int.     Expr14 ::= TokInt;
-Nat.     Expr14 ::= TokNat;
+List.    Expr14 ::= TokList Expr15;
+Tensor.  Expr14 ::= TokTensor Expr15 Expr15;
+Bool.    Expr15 ::= TokBool;
+Prop.    Expr15 ::= TokProp;
+Real.    Expr15 ::= TokReal;
+Int.     Expr15 ::= TokInt;
+Nat.     Expr15 ::= TokNat;
 
 -- Boolean expressions.
-If.      Expr1  ::= TokIf Expr2 TokThen Expr2 TokElse Expr2;
-Impl.    Expr4  ::= Expr5 TokImpl Expr4;
-And.     Expr5  ::= Expr6 TokAnd Expr5;
-Or.      Expr6  ::= Expr7 TokOr Expr6;
-Eq.      Expr7  ::= Expr8 TokEq  Expr8;
-Neq.     Expr7  ::= Expr8 TokNeq Expr8;
-Not.     Expr10 ::= TokNot Expr10;
+If.      Expr2  ::= TokIf Expr3 TokThen Expr3 TokElse Expr3;
+Impl.    Expr5  ::= Expr6 TokImpl Expr5;
+And.     Expr6  ::= Expr7 TokAnd Expr6;
+Or.      Expr7  ::= Expr8 TokOr Expr7;
+Eq.      Expr8  ::= Expr9 TokEq  Expr9;
+Neq.     Expr8  ::= Expr9 TokNeq Expr9;
+Not.     Expr11 ::= TokNot Expr11;
 
 -- Numeric expressions.
-Le.      Expr7  ::= Expr8 TokLe  Expr8;
-Lt.      Expr7  ::= Expr8 TokLt  Expr8;
-Ge.      Expr7  ::= Expr8 TokGe  Expr8;
-Gt.      Expr7  ::= Expr8 TokGt  Expr8;
-Mul.     Expr8  ::= Expr8 TokMul Expr9;
-Div.     Expr8  ::= Expr8 TokDiv Expr9;
-Add.     Expr9  ::= Expr9 TokAdd Expr10;
-Sub.     Expr9  ::= Expr9 TokSub Expr10;
-Neg.     Expr10 ::= TokSub Expr10;
+Le.      Expr8  ::= Expr9 TokLe  Expr9;
+Lt.      Expr8  ::= Expr9 TokLt  Expr9;
+Ge.      Expr8  ::= Expr9 TokGe  Expr9;
+Gt.      Expr8  ::= Expr9 TokGt  Expr9;
+Mul.     Expr9  ::= Expr9 TokMul Expr10;
+Div.     Expr9  ::= Expr9 TokDiv Expr10;
+Add.     Expr10 ::= Expr10 TokAdd Expr11;
+Sub.     Expr10 ::= Expr10 TokSub Expr11;
+Neg.     Expr11 ::= TokSub Expr11;
 
 -- Lists and tensors.
-Seq.     Expr14 ::= TokSeqOpen [Expr] TokSeqClose;
-Cons.    Expr3  ::= Expr4 TokCons Expr3;
-At.      Expr11 ::= Expr11 TokAt Expr12;
-Map.     Expr12 ::= TokMap Expr14 Expr14;
-Fold.    Expr12 ::= TokFold Expr14 Expr14 Expr14;
+Seq.     Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
+Cons.    Expr4  ::= Expr5 TokCons Expr4;
+At.      Expr12 ::= Expr12 TokAt Expr13;
+Map.     Expr13 ::= TokMap Expr15 Expr15;
+Fold.    Expr13 ::= TokFold Expr15 Expr15 Expr15;
 
 -- Quantification
-Every.     Expr3 ::= TokEvery Binder TokDot Expr4;
-Some.      Expr3 ::= TokSome  Binder TokDot Expr4;
-EveryIn.   Expr3 ::= TokEvery Binder "inn" Expr4 TokDot Expr4;
-SomeIn.    Expr3 ::= TokSome  Binder "inn" Expr4 TokDot Expr4;
+Every.     Expr4 ::= TokEvery Binder TokDot Expr5;
+Some.      Expr4 ::= TokSome  Binder TokDot Expr5;
+EveryIn.   Expr4 ::= TokEvery Binder "inn" Expr5 TokDot Expr5;
+SomeIn.    Expr4 ::= TokSome  Binder "inn" Expr5 TokDot Expr5;
 
-coercions Expr 14;
+coercions Expr 15;
 separator Expr ",";
 
 layout "let";

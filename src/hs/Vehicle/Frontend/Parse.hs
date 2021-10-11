@@ -137,8 +137,8 @@ instance Convert B.LetDecl V.InputLetDecl where
 
 instance Convert B.Binder V.InputBinder where
   conv = \case
-    B.ExplicitBinderUnann name        -> convBinder mempty      name Explicit (return Nothing)
-    B.ImplicitBinderUnann name        -> convBinder mempty      name Implicit (return Nothing)
+    B.ExplicitBinder      name        -> convBinder mempty      name Explicit (return Nothing)
+    B.ImplicitBinder      name        -> convBinder mempty      name Implicit (return Nothing)
     B.ExplicitBinderAnn   name tk typ -> convBinder (tkProv tk) name Explicit (Just <$> conv typ)
     B.ImplicitBinderAnn   name tk typ -> convBinder (tkProv tk) name Implicit (Just <$> conv typ)
 
