@@ -1,182 +1,195 @@
 
-module Vehicle.Backend.Verifier.SMTLib where
+module Vehicle.Backend.Verifier.SMTLib
+  ( compileToSMTLib
+  , PropertyDoc(..)
+  , SMTVar(..)
+  ) where
 
-import Control.Monad.Writer (MonadWriter(..))
 import Control.Monad.Except (MonadError(..))
-import Control.Monad.Reader (MonadReader(..))
-import Data.List.NonEmpty (NonEmpty(..))
+import Data.Maybe (catMaybes)
+import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
+import Vehicle.Core.Normalise (normaliseInternal)
+import Vehicle.Core.Compile.Descope (runDescope)
+import Vehicle.Backend.Verifier.Core
 
-unexpectedExprError :: Doc a -> Doc a
-unexpectedExprError name =
-  "encountered unexpected expression" <+> squotes name <+> "during compilation."
+compileToSMTLib :: (MonadLogger m, MonadError SMTLibError m)
+                => CheckedProg -> m [PropertyDoc]
+compileToSMTLib prog = do
+  logDebug "Beginning compilation to SMT"
+  result <- compileProg prog
+  logDebug "Finished compilation to SMT"
+  return result
 
-typeError :: Doc a -> b
-typeError name = developerError $
-  unexpectedExprError name <+> "We should not be compiling types."
-
-visibilityError :: Doc a -> b
-visibilityError name = developerError $
-  unexpectedExprError name <+> "Should not be present as explicit arguments"
-
-resolutionError :: Doc a -> b
-resolutionError name = developerError $
-  unexpectedExprError name <+> "We should have resolved this during type-checking."
-
-normalisationError :: Doc a -> b
-normalisationError name = developerError $
-  unexpectedExprError name <+> "We should have normalised this out."
+--------------------------------------------------------------------------------
+-- Control
 
 data SMTLibError
+  = UnsupportedDecl (WithProvenance Identifier) DeclType
+  | UnsupportedVariableType Provenance Symbol CheckedExpr
+  | UnnormalisedListOperation Provenance Builtin
+  | UnsupportedQuantifierSequence
+  | NonTopLevelQuantifier Provenance
 
-type DeclCtx = [(DeclType, WithProvenance Identifier)]
-type BoundCtx = [Name]
+data PropertyDoc = PropertyDoc
+  { text    :: Doc ()   -- The problem to feed to the verifier
+  , vars    :: [SMTVar] -- The list of variables in the property
+  , negated :: Bool     -- Did the property contain universal quantifier and is therefore negated?
+  }
+
+data SMTVar = SMTVar
+  { name    :: Symbol  -- Name of the variable
+  , typ     :: SMTType -- Type of the variable
+  }
+
+data SMTType
+  = SReal
+
+--------------------------------------------------------------------------------
+-- Monad
 
 type MonadSMTLib m =
   ( MonadLogger m
   , MonadError SMTLibError m
-  , MonadReader (BoundCtx, DeclCtx)  m -- The current context
-  , MonadWriter [Symbol] m             -- The list of top-level constants (from `Exists` statements)
   )
 
-class CompileSMTLib a where
-  compile :: MonadSMTLib m => a -> m (Doc b)
-
-instance CompileSMTLib CheckedProg where
-  compile (Main ds) = compile ds
-
-instance CompileSMTLib [CheckedDecl] where
-  compile []       = return ""
-  compile (d : ds) = do
-    dDoc  <- case d of
-      DefFun _ _ (Builtin _ Prop) e -> do eDoc <- compile e; return $ eDoc <> line <> line
-      _                             -> return ""
-    dsDoc <- local (\ctx -> getDeclCtxElement d : ctx) (compile ds)
-
-    return $ dDoc <> dsDoc
-
-getDeclCtxElement :: CheckedDecl -> (DeclType, WithProvenance Identifier)
-getDeclCtxElement = \case
-  DeclNetw _ ident _   -> (Network,  ident)
-  DeclData _ ident _   -> (Dataset,  ident)
-  DefFun   _ ident _ _ -> (Function, ident)
-
-instance CompileSMTLib CheckedExpr where
-  compile = \case
-    Type _         -> typeError "Type"
-    Pi   _ann _ _  -> typeError "Pi"
-    Hole _p _      -> resolutionError "Hole"
-    Meta _p _      -> resolutionError "Meta"
-    Ann _ann _ _   -> normalisationError "Ann"
-    Let _ann _ _ _ -> normalisationError "Let"
-    Lam _ann _ _   -> normalisationError "Lam"
-    Seq _ann _     -> normalisationError "Seq"
-    PrimDict _tc   -> visibilityError "PrimDict"
-
-    Builtin _ann op -> compile op
-    Literal _ann l  -> return $ pretty l
-    Var     _ann v  -> return $ pretty v
-
-    App _ann fun args -> do
-      funDoc  <- compile fun
-      argDocs <- compile args
-      return $ parens (funDoc <+> hsep argDocs)
-
-instance CompileSMTLib (NonEmpty CheckedArg) where
-  compile args = _
-
-
-instance CompileSMTLib CheckedVar where
-  compile (Bound _) = _
-  compile (Free  _) = _
-
-{-
---instance PrettyWithConfig a => Pretty a where
---  pretty x = runReader (compile x) False
-
-instance CompileSMTLib Name where
-  compile Machine       = developerError "Should not be translating machine names when compiling to SMTLib"
-  compile (User symbol) = pretty symbol
-
-instance Pretty (WithProvenance Identifier) where
-  pretty (WithProvenance _ann n) = pretty n
-
-instance Pretty Literal where
-  pretty = \case
-    LNat  x -> pretty x
-    LInt  x -> pretty x
-    LRat  x -> pretty x
-    LBool x -> pretty x
-
-instance Pretty Meta where
-  pretty (MetaVar v) = "?" <> pretty v
-
-instance Pretty Builtin where
-  pretty b = pretty $ fromMaybe "" (symbolFromBuiltin b)
-
-instance Pretty var => PrettyWithConfig (Arg var ann) where
-  compile (Arg _p v expr) = brackets v <$> compile expr
-
-instance Pretty var => PrettyWithConfig (Binder var ann) where
-  compile (Binder _ann v n t) = do
-    tDoc <- compile t
-    return $ brackets v (pretty n <+> ":type" <+> tDoc)
-
-prettyArgs :: (Pretty var, MonadPrettyConfig m)
-           => NonEmpty (Arg var ann)
-           -> m [Doc a]
-prettyArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args)
-  where
-    prettyArg :: (Pretty var, MonadPrettyConfig m)
-              => Arg var ann
-              -> m (Maybe (Doc a))
-    prettyArg arg = do
-      PrettyOptions{..} <- ask
-      argDoc <- compile arg
-      let v = vis arg
-      let showArg = v == Explicit
-                 || v == Implicit && showImplicitArgs
-                 || v == Instance && showInstanceArgs
-      return $ if showArg
-        then Just argDoc
-        else Nothing
-
-instance Pretty var => PrettyWithConfig (Expr var ann) where
-
-
-instance PrettyWithConfig MetaSubstitution where
-  compile m = prettyMapList (MetaSubst.toAscList m)
-
-instance PrettyWithConfig MetaSet where
-  compile m = return $
-    encloseSep lbrace rbrace comma (fmap pretty (MetaSet.toList m))
-
 --------------------------------------------------------------------------------
--- Derived instances
+-- Compilation
 
-instance (Pretty a, PrettyWithConfig b) => PrettyWithConfig (a, b) where
-  compile (a, b) = do
-    let a' = pretty a
-    b' <- compile b
-    return $ tupled [a', b']
+compileProg :: MonadSMTLib m => CheckedProg -> m [PropertyDoc]
+compileProg (Main ds) = catMaybes <$> traverse compileDecl ds
 
-instance PrettyWithConfig a => PrettyWithConfig [a] where
-  compile xs = list <$> traverse compile xs
+compileDecl :: MonadSMTLib m => CheckedDecl -> m (Maybe PropertyDoc)
+compileDecl = \case
+  DeclNetw _ ident _ ->
+    throwError $ UnsupportedDecl ident Network
+
+  DeclData _ ident _ ->
+    throwError $ UnsupportedDecl ident Dataset
+
+  DefFun _ ident t e -> if isProperty t
+      then Just <$> compileProp (deProv ident) e
+      else return Nothing
+
+compileProp :: MonadSMTLib m => Identifier -> CheckedExpr -> m PropertyDoc
+compileProp ident expr = do
+  (vars, body, negated) <- stripQuantifiers True expr
+  let body2 = runDescope body
+  bodyDoc <- compileExpr body2
+  return $ PropertyDoc bodyDoc vars negated
+
+stripQuantifiers :: MonadSMTLib m => Bool -> CheckedExpr -> m ([SMTVar], CheckedExpr, Bool)
+stripQuantifiers atTopLevel e = case quantView e of
+  Just (QuantView ann q name t body) -> do
+    (e', negated) <- negatePropertyIfNecessary atTopLevel ann q body
+    let varSymbol = getSymbol name
+    varType <- getType ann varSymbol t
+    let var = SMTVar varSymbol varType
+    (vars, body', _) <- stripQuantifiers False e'
+    return (var : vars, body', negated)
+  Nothing -> return ([], e, False)
+
+negatePropertyIfNecessary :: MonadSMTLib m
+                          => Bool
+                          -> CheckedAnn
+                          -> Quantifier
+                          -> CheckedExpr
+                          -> m (CheckedExpr, Bool)
+negatePropertyIfNecessary _atTopLevel _ann Any body  = return (body, False)
+negatePropertyIfNecessary False       _ann All _body =
+  throwError UnsupportedQuantifierSequence
+negatePropertyIfNecessary True        ann  All body  =
+  return (normaliseInternal $ mkNot ann (Builtin ann Prop) body, False)
 
 
-prettyMapList :: (MonadPrettyConfig m, Pretty a, PrettyWithConfig b) => [(a,b)] -> m (Doc c)
-prettyMapList entries = do
-  let (keys, values) = unzip entries
-  let keys' = fmap pretty keys
-  values' <- traverse compile values
-  let entries' = zipWith (\k v -> k <+> ":=" <+> v) keys' values'
+getSymbol :: Name -> Symbol
+getSymbol (User symbol) = symbol
+getSymbol Machine       = developerError "Should not have quantifiers with machine names?"
 
-  return $ "{" <+> align (group
-    (concatWith (\x y -> x <> ";" <> line <> y) entries')
-    <> softline <> "}")
+getType :: MonadSMTLib m => CheckedAnn -> Symbol -> CheckedExpr -> m SMTType
+getType _   _ (Builtin _ Real) = return SReal
+getType ann s t                =
+  throwError $ UnsupportedVariableType ann s t
 
-instance (Pretty a, PrettyWithConfig b) => PrettyWithConfig (Map a b) where
-  compile m = prettyMapList (Map.toAscList m)
--}
+compileExpr :: MonadSMTLib m => OutputExpr -> m (Doc b)
+compileExpr = \case
+  Type _         -> typeError "Type"
+  Pi   _ann _ _  -> typeError "Pi"
+  Hole _p _      -> resolutionError "Hole"
+  Meta _p _      -> resolutionError "Meta"
+  Ann _ann _ _   -> normalisationError "Ann"
+  Let _ann _ _ _ -> normalisationError "Let"
+  Lam _ann _ _   -> normalisationError "Lam"
+  Seq _ann _     -> normalisationError "Seq"
+  PrimDict _tc   -> visibilityError "PrimDict"
+
+  Builtin ann op -> compileBuiltin ann op
+  Literal _ann l -> return $ compileLiteral l
+  Var     _ann v -> compileVariable v
+
+  App _ann fun args -> do
+    funDoc  <- compileExpr fun
+    argDocs <- catMaybes <$> traverse compileArg (NonEmpty.toList args)
+    return $ parens $ hsep (funDoc : argDocs)
+
+compileBuiltin :: MonadSMTLib m => OutputAnn -> Builtin -> m (Doc b)
+compileBuiltin ann = \case
+  Bool           -> typeError "Bool"
+  Prop           -> typeError "Prop"
+  Nat            -> typeError "Nat"
+  Int            -> typeError "Int"
+  Real           -> typeError "Real"
+  List           -> typeError "List"
+  Tensor         -> typeError "Tensor"
+  HasEq          -> typeError "HasEq"
+  HasOrd         -> typeError "HasOrd"
+  IsTruth        -> typeError "IsTruth"
+  IsNatural      -> typeError "IsNatural"
+  IsIntegral     -> typeError "IsIntegral"
+  IsRational     -> typeError "IsRational"
+  IsReal         -> typeError "IsReal"
+  IsContainer    -> typeError "IsContainer"
+  IsQuantifiable -> typeError "IsQuantifiable"
+
+  QuantIn _      -> normalisationError "QuantIn"
+
+  Cons           -> throwError $ UnnormalisedListOperation ann Cons
+  At             -> throwError $ UnnormalisedListOperation ann At
+  Map            -> throwError $ UnnormalisedListOperation ann Map
+  Fold           -> throwError $ UnnormalisedListOperation ann Fold
+
+  Quant _q       -> throwError $ NonTopLevelQuantifier ann
+
+  If             -> return "ite"
+  Impl           -> return "=>"
+  And            -> return "and"
+  Or             -> return "or"
+  Not            -> return "not"
+  Eq             -> return "=="
+  Neq            -> return "distinct"
+  Le             -> return "<="
+  Lt             -> return "<"
+  Ge             -> return ">"
+  Gt             -> return ">="
+  Mul            -> return "*"
+  Div            -> return "/"
+  Add            -> return "+"
+  Sub            -> return "-"
+  Neg            -> return "-"
+
+compileArg :: MonadSMTLib m => OutputArg -> m (Maybe (Doc a))
+compileArg (Arg _ Explicit e) = Just <$> compileExpr e
+compileArg _                  = return Nothing
+
+compileVariable :: MonadSMTLib m => OutputVar -> m (Doc a)
+compileVariable (User symbol) = return $ pretty symbol
+compileVariable Machine       = developerError "Should be no machine names in expressions."
+
+compileLiteral :: Literal -> Doc a
+compileLiteral (LBool True)  = "true"
+compileLiteral (LBool False) = "false"
+compileLiteral (LNat n)      = pretty n
+compileLiteral (LInt i)      = pretty i
+compileLiteral (LRat x)      = pretty x

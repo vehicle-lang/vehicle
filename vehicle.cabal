@@ -59,15 +59,16 @@ library
                       , Vehicle.Core.Compile.Type.Meta
                       , Vehicle.Core.Compile.Type.Normalise
                       , Vehicle.Core.Compile.Descope
-                      , Vehicle.Core.Compile.Normalise
-                      -- , Vehicle.Core.Compile.Normalise.Quantifier
-                      , Vehicle.Core.Parse
-                      , Vehicle.Core.Print
                       , Vehicle.Core.MetaSet
                       , Vehicle.Core.MetaSubstitution
+                      , Vehicle.Core.Normalise
+                      , Vehicle.Core.Parse
+                      , Vehicle.Core.Print
                       , Vehicle.Core.Print.Friendly
                       --, Vehicle.Backend.ITP.Agda
                       --, Vehicle.Backend.ITP.Core
+                      , Vehicle.Backend.Verifier.Core
+                      , Vehicle.Backend.Verifier.SMTLib
                       -- Files generated from Core.cf
                       , Vehicle.Core.Abs
                       , Vehicle.Core.ErrM

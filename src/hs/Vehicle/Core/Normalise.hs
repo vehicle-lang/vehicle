@@ -1,17 +1,18 @@
 {-# LANGUAGE OverloadedLists #-}
 
-module Vehicle.Core.Compile.Normalise
+module Vehicle.Core.Normalise
   ( NormError
   , normalise
+  , normaliseInternal
   ) where
 
 import Control.Exception (assert)
 import Control.Monad (when)
 import Control.Monad.State (MonadState(..), evalStateT, gets, modify)
-import Control.Monad.Except (MonadError, ExceptT)
+import Control.Monad.Except (MonadError, ExceptT, runExceptT)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
-import Data.Text (pack)
+import Data.Either (fromRight)
 import Data.List.Split (chunksOf)
 
 import Vehicle.Prelude
@@ -21,6 +22,12 @@ import Vehicle.Core.Print
 -- |Run a function in 'MonadNorm'.
 normalise :: Norm a => a -> ExceptT NormError Logger a
 normalise x = evalStateT (nf x) mempty
+
+-- |Should only be run when we know there can be no internal errors
+normaliseInternal :: Norm a => a -> a
+normaliseInternal x = fromRight
+  (developerError "Error whilst performing supposedly safe normalisation")
+  (discardLogger $ runExceptT (normalise x))
 
 --------------------------------------------------------------------------------
 -- Setup
@@ -59,9 +66,6 @@ pattern EInt ann i = Literal ann (LInt i)
 
 pattern EReal :: ann -> Double -> Expr var ann
 pattern EReal ann d = Literal ann (LRat d)
-
-exprHead :: CheckedExpr -> CheckedExpr
-exprHead = fst . toHead
 
 argHead :: CheckedArg -> CheckedExpr
 argHead = exprHead . argExpr
@@ -246,7 +250,7 @@ nfApp ann  fun@(Builtin _ op) args              = do
 
     -- Cons
     (Cons, [tElem, tCont, tc, x, cont]) -> case argHead cont of
-      Seq _ xs -> return $ mkSeq ann tElem tCont tc (argExpr x : xs)
+      Seq _ xs -> return $ mkSeq' ann tElem tCont tc (argExpr x : xs)
       _        -> return e
 
     -- Lookup
@@ -260,7 +264,7 @@ nfApp ann  fun@(Builtin _ op) args              = do
 
     -- Map
     (Map, [tElem, tCont, tc, fn, cont]) -> case argHead cont of
-        Seq _ xs -> mkSeq ann tElem tCont tc <$> traverse (\x -> nf $ App ann (argExpr fn) [Arg ann Explicit x]) xs
+        Seq _ xs -> mkSeq' ann tElem tCont tc <$> traverse (\x -> nf $ App ann (argExpr fn) [Arg ann Explicit x]) xs
         _        -> return e
     -- TODO distribute over cons
 
@@ -302,7 +306,7 @@ nfQuantifier ann q lam = case argHead lam of
           -- Use the list monad to create a nested list of all possible indices into the tensor
           let allIndices = traverse (\dim -> [0..dim-1]) dims
           -- Generate the corresponding names from the indices
-          let allNames   = map (makeNameWithIndices n) (reverse allIndices)
+          let allNames   = map (mkNameWithIndices n) (reverse allIndices)
 
           -- Generate a list of variables, one for each index
           let allExprs   = map (\i -> Var ann (Bound i)) (reverse [0..tensorSize-1])
@@ -328,21 +332,12 @@ makeTensor :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedExpr
 makeTensor ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)
   where
     mkTensorSeq :: [Int] -> [CheckedExpr] -> CheckedExpr
-    mkTensorSeq ds xs =
-      let tCont = mkTensorType ann tElem ds in
-      let tc    = mkIsContainer ann tElem tCont in
-      mkSeq ann (Arg ann Implicit tElem) (Arg ann Implicit tCont) (Arg ann Instance tc) xs
+    mkTensorSeq ds xs = mkSeq ann tElem (mkTensorType ann tElem ds) xs
 
     go []       [] = mkTensorSeq []       []
     go [d]      es = mkTensorSeq [d]      es
     go (d : ds) es = mkTensorSeq (d : ds) (map (go ds) (chunksOf (product ds) es))
     go []  (_ : _) = developerError "Found inhabitants of the empty dimension! Woo!"
-
--- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3
-makeNameWithIndices :: Name -> [Int] -> Name
-makeNameWithIndices Machine  _       = Machine
-makeNameWithIndices (User n) indices = User $
-  mconcat (n : ["_" <> pack (show index) | index <- indices])
 
 getDimensions :: CheckedExpr -> Maybe [Int]
 getDimensions (Seq _ xs) = traverse getDimension xs

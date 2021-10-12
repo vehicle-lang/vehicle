@@ -3,7 +3,9 @@
 
 module Vehicle.Core.AST.Utils where
 
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.Text (pack)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST.Core
@@ -119,12 +121,27 @@ annotation = \case
 --------------------------------------------------------------------------------
 -- Destruction functions
 
-toHead :: CheckedExpr -> (CheckedExpr, [CheckedArg])
+toHead :: Expr var ann -> (Expr var ann, [Arg var ann])
 toHead (App _ann fun args ) = (fun, NonEmpty.toList args)
 toHead e                    = (e, [])
 
+exprHead :: Expr var ann -> Expr var ann
+exprHead = fst . toHead
+
+--------------------------------------------------------------------------------
+-- Views
+
+data QuantView var ann = QuantView ann Quantifier Name (Expr var ann) (Expr var ann)
+
+quantView :: Expr var ann -> Maybe (QuantView var ann)
+quantView (App ann (Builtin _ (Quant q)) (Arg _ Explicit
+  (Lam _ (Binder _ Explicit n t) e) :| [])) = Just (QuantView ann q n t e)
+quantView _ = Nothing
+
 --------------------------------------------------------------------------------
 -- Construction functions
+
+-- Primed versions take `Arg` instead of `Expr`
 
 mkLiteral :: CheckedAnn -> Literal -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkLiteral ann lit t tc = App ann (Literal ann lit)
@@ -142,28 +159,50 @@ mkInt ann i = let t = Builtin ann Int in mkLiteral ann (LInt i) t (PrimDict t)
 mkReal :: CheckedAnn -> Double -> CheckedExpr
 mkReal ann r = let t = Builtin ann Real in mkLiteral ann (LRat r) t (PrimDict t)
 
+mkIsTruth :: CheckedAnn -> CheckedExpr -> CheckedExpr
+mkIsTruth ann t = App ann (Builtin ann IsTruth) [Arg ann Explicit t]
+
 mkIsContainer :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkIsContainer ann tElem tCont = App ann (Builtin ann IsContainer)
   [Arg ann Explicit tElem, Arg ann Explicit tCont]
 
-mkSeq :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> [CheckedExpr] -> CheckedExpr
-mkSeq ann tElem tCont tc xs = App ann (Seq ann xs) [tElem, tCont, tc]
+mkSeq' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> [CheckedExpr] -> CheckedExpr
+mkSeq' ann tElem tCont tc xs = App ann (Seq ann xs) [tElem, tCont, tc]
 
-mkSeq' :: CheckedAnn -> CheckedExpr -> CheckedExpr -> [Int] -> CheckedExpr
-mkSeq' ann tElem tCont elems = mkSeq ann
+mkSeq :: CheckedAnn -> CheckedExpr -> CheckedExpr -> [CheckedExpr] -> CheckedExpr
+mkSeq ann tElem tCont = mkSeq' ann
   (Arg ann Implicit tElem)
   (Arg ann Implicit tCont)
   (Arg ann Instance (PrimDict (mkIsContainer ann tElem tCont)))
-  (fmap (Literal ann . LNat) elems)
 
-mkAt :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkAt ann tElem tCont tc xs i = App ann (Builtin ann At)
+mkNot' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr
+mkNot' ann t tc e = App ann (Builtin ann Not) [t, tc, Arg ann Explicit e]
+
+mkNot :: CheckedAnn -> CheckedExpr -> CheckedExpr  -> CheckedExpr
+mkNot ann t = mkNot' ann
+  (Arg ann Implicit t)
+  (Arg ann Instance (PrimDict (mkIsTruth ann t)))
+
+mkAt' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkAt' ann tElem tCont tc xs i = App ann (Builtin ann At)
   [tElem, tCont, tc, Arg ann Explicit xs , Arg ann Explicit i ]
+
+mkQuantifier :: CheckedAnn -> Quantifier -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkQuantifier ann q n t e =
+  App ann (Builtin ann (Quant q))
+    (Arg ann Explicit (Lam ann (Binder ann Explicit n t) e) :| [])
 
 mkListType :: CheckedAnn -> CheckedExpr -> CheckedExpr
 mkListType ann tElem = App ann (Builtin ann List) [Arg ann Explicit tElem]
 
 mkTensorType :: CheckedAnn -> CheckedExpr -> [Int] -> CheckedExpr
 mkTensorType ann tElem dims =
-  let eDims = mkSeq' ann (Builtin ann Nat) (mkListType ann (Builtin ann Nat)) dims in
-  App ann (Builtin ann Tensor) [Arg ann Explicit tElem, Arg ann Explicit eDims]
+  let dimExprs = fmap (Literal ann . LNat)  dims in
+  let dimList  = mkSeq ann (Builtin ann Nat) (mkListType ann (Builtin ann Nat)) dimExprs in
+  App ann (Builtin ann Tensor) [Arg ann Explicit tElem, Arg ann Explicit dimList]
+
+-- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3
+mkNameWithIndices :: Name -> [Int] -> Name
+mkNameWithIndices Machine  _       = Machine
+mkNameWithIndices (User n) indices = User $
+  mconcat (n : ["_" <> pack (show index) | index <- indices])

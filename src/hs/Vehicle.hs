@@ -32,7 +32,7 @@ import Vehicle.Core.Print qualified as VC
 import Vehicle.Core.Compile.Scope qualified as VC
 import Vehicle.Core.Compile.Type qualified as VC
 import Vehicle.Core.Compile.Descope qualified as VC
-import Vehicle.Core.Compile.Normalise qualified as VC (normalise)
+import Vehicle.Core.Normalise qualified as VC (normalise)
 
 import Vehicle.Frontend.AST qualified as VF
 import Vehicle.Frontend.Print qualified as VF

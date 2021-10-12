@@ -20,15 +20,15 @@ main = runTestTT . TestList $
 fileTests :: [FilePath]
 fileTests = fmap ("examples/" <>)
   [
-  -- "simple/quantifier.vcl"
+  "simple/quantifier.vcl"
   -- "simple/quantifierIn.vcl"
   -- "simple/int.vcl"
-  --, "simple/real.vcl"
+  -- "simple/real.vcl"
   -- , "mnist.vcl"
   -- , "andGate.vcl"
   -- , "mnist.vcl"
   -- , "shortestPath.vcl"
-  "AcasXu/property6.vcl"
+  -- "AcasXu/property6.vcl"
   --"simple.vcl"
   ]
 {-
