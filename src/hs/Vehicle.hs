@@ -25,7 +25,6 @@ import System.Exit (exitSuccess, exitFailure)
 import System.Console.GetOpt
 
 import Vehicle.Prelude
-
 import Vehicle.Core.AST qualified as VC
 import Vehicle.Core.Parse qualified as VC
 import Vehicle.Core.Print qualified as VC
@@ -39,7 +38,6 @@ import Vehicle.Frontend.Print qualified as VF
 import Vehicle.Frontend.Elaborate qualified as VF
 import Vehicle.Frontend.Delaborate qualified as VF
 import Vehicle.Frontend.Parse qualified as VF
-
 
 --import Vehicle.Backend.ITP.Core (ITPOptions(..))
 --import Vehicle.Backend.ITP.Agda (AgdaOptions(..), compileToAgda)
@@ -56,13 +54,19 @@ data ITP
   | Vehicle VehicleLang
   deriving (Show)
 
-data Verifier = VNNLib
+data Verifier
+  = VNNLib
+  | SMTLib
   deriving (Show)
 
 data OutputTarget
   = ITP ITP
   | Verifier Verifier
-  deriving (Show)
+
+instance Show OutputTarget where
+  show = \case
+    ITP      arg -> show arg
+    Verifier arg -> show arg
 
 data Options = Options
   { showHelp     :: Bool
@@ -154,8 +158,6 @@ run _opts@Options{..} = do
   contents <- readFileOrStdin inputFile
   coreProg <- parseAndElab inputLang contents
 
-  T.putStrLn (layoutAsText $ VC.prettyVerbose coreProg)
-
   -- Scope check, type check etc.
   scopedCoreProg <- fromLoggedEitherIO $ VC.scopeCheck coreProg
   typedCoreProg <- fromLoggedEitherIO $ VC.typeCheck scopedCoreProg
@@ -224,4 +226,4 @@ fromLoggedIO = flushLogs
 
 readFileOrStdin :: Maybe FilePath -> IO Text
 readFileOrStdin (Just file) = T.readFile file
-readFileOrStdin Nothing = T.getContents
+readFileOrStdin Nothing     = T.getContents

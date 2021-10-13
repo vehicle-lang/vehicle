@@ -103,7 +103,6 @@ negatePropertyIfNecessary False       _ann All _body =
 negatePropertyIfNecessary True        ann  All body  =
   return (normaliseInternal $ mkNot ann (Builtin ann Prop) body, False)
 
-
 getSymbol :: Name -> Symbol
 getSymbol (User symbol) = symbol
 getSymbol Machine       = developerError "Should not have quantifiers with machine names?"

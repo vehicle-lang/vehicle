@@ -1,0 +1,1 @@
+(define-fun expandedExpr Prop (every ((lambda (x_0 :type Int) (every ((lambda (x_1 :type Int) (== (i1) (i0))))))))) 

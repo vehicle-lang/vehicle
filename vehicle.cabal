@@ -14,7 +14,7 @@ build-type:     Simple
 extra-source-files:
     README.md
     ChangeLog.md
-    examples/*.vcl
+    examples/realistic/*.vcl
 
 source-repository head
   type: git
@@ -139,9 +139,12 @@ executable vehicle
 test-suite vehicle-test
   import:             common-base
   type:               exitcode-stdio-1.0
-  main-is:            Spec.hs
+  main-is:            Test.hs
   hs-source-dirs:     test
-  ghc-options:        -threaded -rtsopts -with-rtsopts=-N
+  other-modules:      Test.Golden
+  ghc-options:        -threaded -rtsopts -with-rtsopts=-N -main-is Test
   build-depends:      filepath >=1.4 && <2
-                    , HUnit    >=1.6 && <2
+                    , directory
+                    , tasty
+                    , tasty-golden
                     , vehicle
