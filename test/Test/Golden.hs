@@ -44,7 +44,7 @@ simpleTestList =
 
 miscTestList :: [GoldenTestSpec]
 miscTestList =
-  [ ("./exasmples/misc/dependent/dependent",
+  [ ("./examples/misc/dependent/dependent",
       [ ITP (Vehicle Frontend)
       ])
   ]
@@ -100,4 +100,5 @@ runTest inputFile outputFile outputTarget = do
     { inputFile    = Just inputFile
     , outputTarget = Just outputTarget
     , outputFile   = Just outputFile
+    , logFile      = Just Nothing
     }

@@ -8,7 +8,7 @@ import Control.Monad.Except
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.List (elemIndex)
 import Data.Set (Set,)
-import Data.Set qualified as Set (member, insert)
+import Data.Set qualified as Set (member, insert, toList)
 
 import Vehicle.Core.AST
 import Vehicle.Core.Print (prettyVerbose)
@@ -50,8 +50,11 @@ type SCM m = (MonadLogger m, MonadError ScopeError m, MonadReader Ctx m)
 -- |Type of scope checking contexts.
 data Ctx = Ctx
   { declCtx :: Set Identifier
-  , exprCtx :: [Symbol]
+  , exprCtx :: [Name]
   }
+
+instance Pretty Ctx where
+  pretty (Ctx declCtx exprCtx) = "Ctx" <+> pretty (Set.toList declCtx) <+> pretty exprCtx
 
 emptyCtx :: Ctx
 emptyCtx = Ctx mempty mempty
@@ -59,12 +62,13 @@ emptyCtx = Ctx mempty mempty
 --------------------------------------------------------------------------------
 -- Debug functions
 
-logScopeEntry :: MonadLogger m => InputExpr -> m ()
+logScopeEntry :: SCM m => InputExpr -> m ()
 logScopeEntry e = do
   incrCallDepth
-  logDebug $ "scope-entry" <+> prettyVerbose e
+  ctx <- ask
+  logDebug $ "scope-entry" <+> prettyVerbose e <+> "in" <+> pretty ctx
 
-logScopeExit :: MonadLogger m => UncheckedExpr -> m ()
+logScopeExit :: SCM m => UncheckedExpr -> m ()
 logScopeExit e = do
   logDebug $ "scope-exit " <+> prettyVerbose e
   decrCallDepth
@@ -138,15 +142,14 @@ bindVar (Binder p v n t) update = do
   local (addBinderToCtx n) (update binder')
     where
       addBinderToCtx :: Name -> Ctx -> Ctx
-      addBinderToCtx Machine       ctx     = ctx
-      addBinderToCtx (User symbol) Ctx{..} = Ctx declCtx (symbol : exprCtx)
+      addBinderToCtx name Ctx{..} = Ctx declCtx (name : exprCtx)
 
 -- |Find the index for a given name of a given sort.
 getVar :: SCM m => InputAnn -> Name -> m Var
 getVar ann Machine       = developerError $ "Machine names should not be in use " <+> pretty ann
 getVar ann (User symbol) = do
   Ctx declCtx exprCtx <- ask
-  case elemIndex symbol exprCtx of
+  case elemIndex (User symbol) exprCtx of
     Just i -> return $ Bound i
     Nothing ->
       if Set.member (Identifier symbol) declCtx
