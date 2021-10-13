@@ -101,6 +101,11 @@ binderType (Binder _ _ _ t) = t
 argExpr :: Arg var ann -> Expr var ann
 argExpr (Arg _ _ e) = e
 
+declIdent :: Decl var ann -> Identifier
+declIdent (DeclNetw _ ident _) = deProv ident
+declIdent (DeclData _ ident _) = deProv ident
+declIdent (DefFun _ ident _ _) = deProv ident
+
 -- |Extract a term's annotation
 annotation :: Expr name ann -> ann
 annotation = \case

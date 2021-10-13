@@ -5,19 +5,24 @@ module Vehicle.Core.Compile.Scope
   ) where
 
 import Control.Monad.Except
-import Control.Monad.State (StateT(..), evalStateT, modify, get)
-import Control.Monad.Reader (ReaderT, MonadReader(..), runReaderT)
+import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.List (elemIndex)
 import Data.Set (Set,)
 import Data.Set qualified as Set (member, insert)
 
 import Vehicle.Core.AST
+import Vehicle.Core.Print (prettyVerbose)
 import Vehicle.Prelude
 
 
-scopeCheck :: InputProg -> ExceptT ScopeError Logger UncheckedProg
-scopeCheck p = liftExceptWithLogging $ scopeProg p
+scopeCheck :: (MonadLogger m, MonadError ScopeError m) => InputProg -> m UncheckedProg
+scopeCheck prog = do
+  logDebug "Beginning scope checking"
+  let result = runReaderT (scope prog) emptyCtx
+  logDebug "Finished scope checking\n"
+  result
 
+--------------------------------------------------------------------------------
 -- * Errors.
 
 -- |Type of errors thrown by scope checking.
@@ -37,11 +42,10 @@ instance MeaningfulError ScopeError where
 unboundNameError :: MonadError ScopeError m => Symbol -> Provenance -> m a
 unboundNameError n p = throwError $ UnboundName n p
 
--- * Scope checking contexts.
+--------------------------------------------------------------------------------
+-- Scope checking monad and context
 
-type SCM = Except ScopeError
-type ExprSCM a = ReaderT Ctx SCM a
-type DeclSCM a = StateT  Ctx SCM a
+type SCM m = (MonadLogger m, MonadError ScopeError m, MonadReader Ctx m)
 
 -- |Type of scope checking contexts.
 data Ctx = Ctx
@@ -52,15 +56,93 @@ data Ctx = Ctx
 emptyCtx :: Ctx
 emptyCtx = Ctx mempty mempty
 
-addDeclToCtx :: WithProvenance Identifier -> Ctx -> Ctx
-addDeclToCtx (WithProvenance _ ident) Ctx {..} = Ctx (Set.insert ident declCtx) exprCtx
+--------------------------------------------------------------------------------
+-- Debug functions
 
-addBinderToCtx :: Name -> Ctx -> Ctx
-addBinderToCtx Machine       ctx     = ctx
-addBinderToCtx (User symbol) Ctx{..} = Ctx declCtx (symbol : exprCtx)
+logScopeEntry :: MonadLogger m => InputExpr -> m ()
+logScopeEntry e = do
+  incrCallDepth
+  logDebug $ "scope-entry" <+> prettyVerbose e
+
+logScopeExit :: MonadLogger m => UncheckedExpr -> m ()
+logScopeExit e = do
+  logDebug $ "scope-exit " <+> prettyVerbose e
+  decrCallDepth
+
+--------------------------------------------------------------------------------
+-- Algorithm
+
+class ScopeCheck a b where
+  scope :: SCM m => a -> m b
+
+instance ScopeCheck InputProg UncheckedProg where
+  scope (Main ds) = Main <$> scope ds
+
+instance ScopeCheck [InputDecl] [UncheckedDecl] where
+  scope :: SCM m => [InputDecl] -> m [UncheckedDecl]
+  scope []       = return []
+  scope (d : ds) = do
+    d' <- scope d
+    ds' <- bindDecl (declIdent d') (scope ds)
+    return (d' : ds')
+
+instance ScopeCheck InputDecl UncheckedDecl where
+  scope = \case
+    DeclNetw ann n t -> DeclNetw ann n <$> scope t
+    DeclData ann n t -> DeclNetw ann n <$> scope t
+    DefFun ann n t e -> DefFun   ann n <$> scope t <*> scope e
+
+instance ScopeCheck InputArg UncheckedArg where
+  scope (Arg p v e) = Arg p v <$> scope e
+
+instance ScopeCheck InputExpr UncheckedExpr where
+  scope e = do
+    logScopeEntry e
+    result <- case e of
+      Type l                         -> return $ Type l
+      Meta p i                       -> return $ Meta p i
+      Hole     ann n                 -> return $ Hole ann n
+      Ann      ann ex t              -> Ann ann <$> scope ex <*> scope t
+      App      ann fun args          -> App ann <$> scope fun <*> traverse scope args
+      Builtin  ann op                -> return $ Builtin ann op
+      Var      ann v                 -> Var ann <$> getVar ann v
+      Literal  ann l                 -> return $ Literal ann l
+      Seq      ann es                -> Seq ann <$> traverse scope es
+
+      Pi  ann binder res -> do
+        bindVar binder $ \binder' -> Pi ann binder' <$> scope res
+
+      Lam ann binder body -> do
+        bindVar binder $ \binder' -> Lam ann binder' <$> scope body
+
+      Let ann bound binder body -> do
+        bound' <- scope bound
+        bindVar binder $ \binder' -> Let ann bound' binder' <$> scope body
+
+      PrimDict _tc -> developerError "Found PrimDict during scope checking."
+
+    logScopeExit result
+    return result
+
+bindDecl :: SCM m => Identifier -> m a -> m a
+bindDecl ident continuation = do
+  local addDeclToCtx continuation
+    where
+      addDeclToCtx :: Ctx -> Ctx
+      addDeclToCtx Ctx {..} = Ctx (Set.insert ident declCtx) exprCtx
+
+bindVar :: SCM m => InputBinder -> (UncheckedBinder -> m UncheckedExpr) -> m UncheckedExpr
+bindVar (Binder p v n t) update = do
+  t' <- scope t
+  let binder' = Binder p v n t'
+  local (addBinderToCtx n) (update binder')
+    where
+      addBinderToCtx :: Name -> Ctx -> Ctx
+      addBinderToCtx Machine       ctx     = ctx
+      addBinderToCtx (User symbol) Ctx{..} = Ctx declCtx (symbol : exprCtx)
 
 -- |Find the index for a given name of a given sort.
-getVar :: InputAnn -> Name -> ExprSCM Var
+getVar :: SCM m => InputAnn -> Name -> m Var
 getVar ann Machine       = developerError $ "Machine names should not be in use " <+> pretty ann
 getVar ann (User symbol) = do
   Ctx declCtx exprCtx <- ask
@@ -70,67 +152,3 @@ getVar ann (User symbol) = do
       if Set.member (Identifier symbol) declCtx
         then return $ Free (Identifier symbol)
         else unboundNameError symbol (prov ann)
-
-bindVar :: InputBinder -> (UncheckedBinder -> ExprSCM UncheckedExpr) -> ExprSCM UncheckedExpr
-bindVar (Binder p v n t) update = do
-  t' <- scope t
-  let binder' = Binder p v n t'
-  local (addBinderToCtx n) (update binder')
-
-flow :: ExprSCM a -> DeclSCM a
-flow r = do
-  ctx <- get
-  let s = local (const ctx) r
-  lift (runReaderT s ctx)
-
-class ScopeCheck a b where
-  scope :: a -> ReaderT Ctx SCM b
-
-instance ScopeCheck InputArg UncheckedArg where
-  scope (Arg p v e) = Arg p v <$> scope e
-
-instance ScopeCheck InputExpr UncheckedExpr where
-  scope = \case
-    Type l                         -> return $ Type l
-    Meta p i                       -> return $ Meta p i
-    Hole     ann n                 -> return $ Hole ann n
-    Ann      ann e t               -> Ann ann <$> scope e <*> scope t
-    App      ann fun args          -> App ann <$> scope fun <*> traverse scope args
-    Builtin  ann op                -> return $ Builtin ann op
-    Var      ann v                 -> Var ann <$> getVar ann v
-    Literal  ann l                 -> return $ Literal ann l
-    Seq      ann es                -> Seq ann <$> traverse scope es
-
-    Pi  ann binder res -> do
-      bindVar binder $ \binder' -> Pi ann binder' <$> scope res
-
-    Lam ann binder body -> do
-      bindVar binder $ \binder' -> Lam ann binder' <$> scope body
-
-    Let ann bound binder body -> do
-      bound' <- scope bound
-      bindVar binder $ \binder' -> Let ann bound' binder' <$> scope body
-
-    PrimDict _tc -> developerError "Found PrimDict during scope checking."
-
-scopeDecl :: InputDecl -> StateT Ctx SCM UncheckedDecl
-scopeDecl = \case
-
-  DeclNetw ann n t -> do
-    t' <- flow $ scope t
-    modify (addDeclToCtx n)
-    return $ DeclNetw ann n t'
-
-  DeclData ann n t -> do
-    t' <- flow $ scope t
-    modify (addDeclToCtx n)
-    return $ DeclNetw ann n t'
-
-  DefFun ann n t e -> do
-    t' <- flow $ scope t
-    e' <- flow $ scope e
-    modify (addDeclToCtx n)
-    return $ DefFun ann n t' e'
-
-scopeProg :: InputProg -> Except ScopeError UncheckedProg
-scopeProg (Main ds) = Main <$> evalStateT (traverse scopeDecl ds) emptyCtx

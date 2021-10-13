@@ -1,7 +1,7 @@
 Architecture
 ============
 
-* Parser for frontend language is generated via BNCF
+* Parser for frontend language is generated via BNCF (version 2.9.0 and above)
 
 * Syntax-driven elaboration to core language
 
