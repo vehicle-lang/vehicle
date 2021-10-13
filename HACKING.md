@@ -1,3 +1,10 @@
+# Testing
+
+* Running `make test` will build Vehicle and run the entire test suite
+
+* Running `stack test --test-arguments "-p quantifier"` will only run tests
+  with `foo` in their name run
+
 # Guide to one-name variable names
 
 ```haskell
