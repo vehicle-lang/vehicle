@@ -71,16 +71,18 @@ instance Show OutputTarget where
 data Options = Options
   { showHelp     :: Bool
   , showVersion  :: Bool
-  , inputLang    :: VehicleLang
+  , logFile      :: Maybe (Maybe FilePath)
   , inputFile    :: Maybe FilePath
-  , outputTarget :: Maybe OutputTarget
+  , inputLang    :: VehicleLang
   , outputFile   :: Maybe FilePath
+  , outputTarget :: Maybe OutputTarget
   }
 
 defaultOptions :: Options
 defaultOptions = Options
   { showHelp     = False
   , showVersion  = False
+  , logFile      = Nothing
   , inputFile    = Nothing
   , inputLang    = Frontend
   , outputTarget = Nothing
@@ -97,6 +99,10 @@ options =
     (NoArg (\opts -> opts { showVersion = True }))
     "Show version information."
 
+  , Option ['l'] ["log-file"]
+    (OptArg (\arg opts -> opts { logFile = Just arg }) "FILE")
+    "Enables logging to the provided file. If no argument is provided will output to stdout."
+
   ,  Option ['i'] ["input-file"]
     (ReqArg (\arg opts -> opts { inputFile = Just arg }) "FILE")
     "Input file."
@@ -110,7 +116,7 @@ options =
     "Compilation target."
 
   , Option ['o'] ["output-file"]
-    (ReqArg (\arg opts -> opts { outputTarget = parseOutputTarget arg}) "FILE")
+    (ReqArg (\arg opts -> opts { outputFile = Just arg}) "FILE")
     "Output file."
   ]
 
@@ -159,8 +165,8 @@ run _opts@Options{..} = do
   coreProg <- parseAndElab inputLang contents
 
   -- Scope check, type check etc.
-  scopedCoreProg <- fromLoggedEitherIO $ VC.scopeCheck coreProg
-  typedCoreProg <- fromLoggedEitherIO $ VC.typeCheck scopedCoreProg
+  scopedCoreProg <- fromLoggedEitherIO logFile $ VC.scopeCheck coreProg
+  typedCoreProg  <- fromLoggedEitherIO logFile $ VC.typeCheck scopedCoreProg
 
   -- Compile to requested backend
   outputText :: Text <- case outputTarget of
@@ -175,7 +181,7 @@ run _opts@Options{..} = do
           return $ layoutAsText $ VC.prettyVerbose descopedCoreProg
 
         (Vehicle Frontend) -> do
-          compFrontProg :: VF.OutputProg <- fromLoggedIO $ VF.runDelab descopedCoreProg
+          compFrontProg :: VF.OutputProg <- fromLoggedIO logFile $ VF.runDelab descopedCoreProg
           return $ layoutAsText $ VF.prettyFrontend compFrontProg
 
         Agda -> do
@@ -195,8 +201,8 @@ run _opts@Options{..} = do
                     }
               fromEitherIO $ compileToAgda itpOptions compFrontProg
           -}
-    Just (Verifier VNNLib) -> do
-      normProg <- fromLoggedEitherIO $ VC.normalise typedCoreProg
+    Just (Verifier _) -> do
+      normProg <- fromLoggedEitherIO logFile $ VC.normalise typedCoreProg
       return $ layoutAsText $ VC.prettySimple normProg
 
 
@@ -218,11 +224,12 @@ fromEitherIO :: MeaningfulError e => Either e a -> IO a
 fromEitherIO (Left err) = do print $ details err; exitFailure
 fromEitherIO (Right x)  = return x
 
-fromLoggedEitherIO :: MeaningfulError e => ExceptT e Logger a -> IO a
-fromLoggedEitherIO x = fromEitherIO =<< flushLogs (runExceptT x)
+fromLoggedEitherIO :: MeaningfulError e => Maybe (Maybe FilePath) -> ExceptT e Logger a -> IO a
+fromLoggedEitherIO logFile x = fromEitherIO =<< fromLoggedIO logFile (runExceptT x)
 
-fromLoggedIO :: Logger a -> IO a
-fromLoggedIO = flushLogs
+fromLoggedIO :: Maybe (Maybe FilePath) -> Logger a -> IO a
+fromLoggedIO Nothing        logger = return $ discardLogger logger
+fromLoggedIO (Just logFile) logger = flushLogs logFile logger
 
 readFileOrStdin :: Maybe FilePath -> IO Text
 readFileOrStdin (Just file) = T.readFile file

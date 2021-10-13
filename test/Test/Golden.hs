@@ -18,14 +18,14 @@ data Result
   = Success
   | Failure
 
-type GoldenTestSpec = (FilePath, [(OutputTarget, Result)])
+type GoldenTestSpec = (FilePath, [OutputTarget])
 
 realisticTestList :: [GoldenTestSpec]
 realisticTestList =
   [ ("./examples/realistic/shortestPath/shortestPath",
       [
-        (Verifier VNNLib, Success)
-        -- (Verifier SMTLib, Failure)
+        Verifier VNNLib
+        -- (Verifier SMTLib)
       ])
 {-
   , ("examples/mnist",
@@ -38,7 +38,14 @@ simpleTestList :: [GoldenTestSpec]
 simpleTestList =
   [ ("./examples/simple/quantifier",
       [
-        (Verifier VNNLib, Success)
+        Verifier VNNLib
+      ])
+  ]
+
+miscTestList :: [GoldenTestSpec]
+miscTestList =
+  [ ("./exasmples/misc/dependent/dependent",
+      [ ITP (Vehicle Frontend)
       ])
   ]
 
@@ -60,6 +67,7 @@ goldenTests :: TestTree
 goldenTests = testGroup "Golden"
   [ testGroup "Realistic" (map makeGoldenTestsFromSpec realisticTestList)
   , testGroup "Simple"    (map makeGoldenTestsFromSpec simpleTestList)
+  , testGroup "Misc"      (map makeGoldenTestsFromSpec miscTestList)
   ]
 
 getFileExt :: OutputTarget -> String
@@ -76,18 +84,18 @@ makeGoldenTestsFromSpec (name, outputTargets) = testGroup testGroupName tests
     tests :: [TestTree]
     tests = map (makeIndividualTest name) outputTargets
 
-makeIndividualTest :: FilePath -> (OutputTarget, Result) -> TestTree
-makeIndividualTest baseFile (target, result) =
+makeIndividualTest :: FilePath -> OutputTarget -> TestTree
+makeIndividualTest baseFile target =
   let name       = show target in
   let extension  = getFileExt target in
   let inputFile  = baseFile <.> ".vcl" in
   let outputFile = baseFile <> "-output" <.> extension in
   let goldenFile = baseFile <.> extension in
-  let action     = runTest inputFile outputFile target result in
+  let action     = runTest inputFile outputFile target in
   goldenVsFile (show target) goldenFile inputFile action
 
-runTest :: FilePath -> FilePath -> OutputTarget -> Result -> IO ()
-runTest inputFile outputFile outputTarget result = do
+runTest :: FilePath -> FilePath -> OutputTarget -> IO ()
+runTest inputFile outputFile outputTarget = do
   run $ defaultOptions
     { inputFile    = Just inputFile
     , outputTarget = Just outputTarget

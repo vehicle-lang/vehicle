@@ -137,8 +137,16 @@ instance Show Message where
 liftExceptWithLogging :: Except e v -> ExceptT e Logger v
 liftExceptWithLogging = mapExceptT (pure . runIdentity)
 
-flushLogs :: Logger a -> IO a
-flushLogs l = do
+flushLogs :: Maybe FilePath -> Logger a -> IO a
+flushLogs logLocation l = do
   let (v, logs) = runLogger l
-  mapM_ print logs
+  case logLocation of
+    Nothing      -> flushLogsToStdout logs
+    Just logFile -> flushLogsToFile logFile logs
   return v
+
+flushLogsToStdout :: [Message] -> IO ()
+flushLogsToStdout = mapM_ print
+
+flushLogsToFile :: FilePath -> [Message] -> IO ()
+flushLogsToFile logFile logs = appendFile (unlines $ map show logs) logFile
