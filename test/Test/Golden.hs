@@ -23,15 +23,12 @@ type GoldenTestSpec = (FilePath, [OutputTarget])
 realisticTestList :: [GoldenTestSpec]
 realisticTestList =
   [ ("./examples/realistic/shortestPath/shortestPath",
-      [
-        Verifier VNNLib
+      [ Verifier VNNLib
         -- (Verifier SMTLib)
       ])
-{-
-  , ("examples/mnist",
-      [ (Verifier VNNLib, Success)
+  , ("examples/realistic/andGate/andGate",
+      [ Verifier VNNLib
       ])
--}
   ]
 
 simpleTestList :: [GoldenTestSpec]
@@ -48,20 +45,6 @@ miscTestList =
       [ ITP (Vehicle Frontend)
       ])
   ]
-
---fileTests :: [FilePath]
---fileTests = fmap ("examples/" <>)
-  --[ "simple/quantifier.vcl"
-  -- "simple/quantifierIn.vcl"
-  -- "simple/int.vcl"
-  -- "simple/real.vcl"
-  -- , "mnist.vcl"
-  -- , "andGate.vcl"
-  -- , "mnist.vcl"
-  -- , "shortestPath.vcl"
-  -- "AcasXu/property6.vcl"
-  --"simple.vcl"
-  --]
 
 goldenTests :: TestTree
 goldenTests = testGroup "Golden"

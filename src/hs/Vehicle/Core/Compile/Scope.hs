@@ -83,7 +83,6 @@ instance ScopeCheck InputProg UncheckedProg where
   scope (Main ds) = Main <$> scope ds
 
 instance ScopeCheck [InputDecl] [UncheckedDecl] where
-  scope :: SCM m => [InputDecl] -> m [UncheckedDecl]
   scope []       = return []
   scope (d : ds) = do
     d' <- scope d
