@@ -35,7 +35,12 @@ simpleTestList :: [GoldenTestSpec]
 simpleTestList =
   [ ("./examples/simple/quantifier",
       [
-        Verifier VNNLib
+        Verifier SMTLib
+      ])
+
+  ,  ("./examples/simple/let",
+      [
+        Verifier SMTLib
       ])
   ]
 

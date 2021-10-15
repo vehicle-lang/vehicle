@@ -13,8 +13,7 @@ validInput x = every i in [0,1] . 0 <= x ! i and x ! i <= 1
 
 correctOutput : Tensor Real [2] -> Prop
 correctOutput x =
-  let y : Real
-      y = f x ! 0
+  let y = f x ! 0
   in (truthy x!0 and falsey x!1 => truthy y) and
      (truthy x!0 and truthy x!1 => truthy y) and
      (falsey x!0 and falsey x!1 => truthy y) and

@@ -101,6 +101,10 @@ binderType (Binder _ _ _ t) = t
 argExpr :: Arg var ann -> Expr var ann
 argExpr (Arg _ _ e) = e
 
+isHole :: Expr var ann -> Bool
+isHole (Hole _ _ ) = True
+isHole _           = False
+
 mapArgExpr :: (Expr var ann -> Expr var ann) -> Arg var ann -> Arg var ann
 mapArgExpr f (Arg ann v e) = Arg ann v $ f e
 

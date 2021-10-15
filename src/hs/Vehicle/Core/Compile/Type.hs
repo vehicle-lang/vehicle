@@ -12,7 +12,7 @@ import Control.Monad.State (MonadState, evalStateT)
 import Data.Foldable (foldrM)
 import Data.Map qualified as Map
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.List.NonEmpty (NonEmpty(..), (<|))
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Monoid (Endo(..), appEndo)
 import Data.Text (pack)
 
@@ -353,11 +353,16 @@ infer e = do
           "looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 
     Let p bound (Binder pBound v name tBound)  body -> do
-      -- Infer the type of the let arg from the annotation on the binder
-      (tBound', _) <- infer tBound
 
-      -- Check the bound expression actually has that type
-      bound' <- check tBound' bound
+      (bound', tBound') <-
+        if isHole tBound then
+          -- No information is provided so infer the type of the bound expression
+          infer bound
+        else do
+          -- Check the type of the bound expression against the provided type
+          (tBound', _) <- infer tBound
+          bound'  <- check tBound' bound
+          return (bound', tBound')
 
       -- Update the context with the bound variable
       addToBoundCtx name tBound' $ do
