@@ -39,13 +39,7 @@ import Vehicle.Backend.Verifier.SMTLib qualified as SMTLib (compileProp)
 -- of a network to a unique input sits in its own let binding underneath a
 -- universal quantifier. (STILL TO DO)
 --
--- 2. We traverse the resulting expression creating a list of such
--- applications and compiling the resulting "meta" network
---
--- 3. We insert universal quantifiers over the inputs X1 ... XN and outputs
--- Y1 ... YN to the network at the top-level of the property.
---
--- 4. We re-traverse the property once again finding all let-bound
+-- 2. We traverse the resulting expression finding all let-bound
 -- applications of the network e.g.
 --
 --   let y = f xs in e
@@ -54,22 +48,28 @@ import Vehicle.Backend.Verifier.SMTLib qualified as SMTLib (compileProp)
 --
 --   (X4 == a and X5 == b && X6 == c) and ([Y2, Y3] `substInto` e)
 --
+-- and add each application to the meta-network.
+--
+-- 3. For every input and output of the meta-network we insert
+-- universal quantifiers over the inputs X1 ... XN and outputs
+-- Y1 ... YN to the network at the top-level of the property.
+--
 -- 5. The property should then be a valid SMTLib expression so we now
 -- compile it to SMTLib as normal.
 --
 -- 6. We return the meta-network composition so that we can actually
 -- perform the required hackery on the network files elsewhere.
---
--- NOTE: Step 4 cannot be combined with Step 2 as we can only calculate
--- the de Bruijn indices needed for the variables once we know the total
--- size of the "meta" network.
 
 -- | Compiles a given program to a VNNLib script.
 -- Assumes the program has already been normalised.
 compileToVNNLib :: (MonadLogger m, MonadError SMTLibError m)
                 => CheckedProg
                 -> m [VNNLibDoc]
-compileToVNNLib prog = runReaderT (compileProg prog) []
+compileToVNNLib prog = do
+  logDebug "Beginning compilation to VNNLib"
+  result <- runReaderT (compileProg prog) []
+  logDebug "Finished compilation to VNNLib"
+  return result
 
 --------------------------------------------------------------------------------
 -- Data
@@ -132,7 +132,13 @@ addToMetaNetwork ident = do
 -- Algorithm
 
 compileProg :: MonadVNNLib m => CheckedProg -> m [VNNLibDoc]
-compileProg (Main ds) = catMaybes <$> compileDecls ds
+compileProg (Main ds) = do
+  results <- catMaybes <$> compileDecls ds
+  if null results then
+    throwError NoPropertiesFound
+  else
+    return results
+
 
 compileDecls :: MonadVNNLib m => [CheckedDecl] -> m [Maybe VNNLibDoc]
 compileDecls []       = return []
@@ -161,6 +167,7 @@ compileDecl d = case d of
       -- of it should have been normalised out by now.
       return (Nothing, alterCtx)
     else do
+      logDebug $ "Beginning compilation of property" <+> squotes (pretty (deProv ident))
       -- TODO Lift all network-bindings to quantifier level
       (dslExpr, metaNetwork) <- runStateT (processNetworkApplications e) []
       if null metaNetwork then
@@ -172,6 +179,7 @@ compileDecl d = case d of
         let quantifiedExpr = quantifyOverMetaNetworkIO metaNetwork normMetworklessExpr
 
         smtDoc <- SMTLib.compileProp (deProv ident) quantifiedExpr
+        logDebug $ "Finished compilation of property" <+> squotes (pretty (deProv ident)) <+> "\n"
         return (Just $ VNNLibDoc smtDoc metaNetwork, alterCtx)
 
 

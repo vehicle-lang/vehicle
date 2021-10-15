@@ -27,7 +27,7 @@ compileToSMTLib :: (MonadLogger m, MonadError SMTLibError m)
 compileToSMTLib prog = do
   logDebug "Beginning compilation to SMT"
   result <- compileProg prog
-  logDebug "Finished compilation to SMT"
+  logDebug "Finished compilation to SMT\n"
   return result
 
 --------------------------------------------------------------------------------
@@ -71,6 +71,7 @@ data SMTLibError
   | UnsupportedVariableType Provenance Identifier Symbol CheckedExpr
   | UnsupportedQuantifierSequence Provenance Identifier
   | NonTopLevelQuantifier Provenance Identifier
+  | NoPropertiesFound
   -- VNNLib
   | UnsupportedNetworkType Provenance Identifier UnsupportedNetworkType CheckedExpr
   | NoNetworkUsedInProperty (WithProvenance Identifier)
@@ -109,6 +110,12 @@ instance MeaningfulError SMTLibError where
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "found a non-top" <+>
                      "level quantifier which is not currently supported when compiling to SMTLib."
       , fix        = "Lift all quantifiers to the top-level"
+      }
+
+    NoPropertiesFound -> UError $ UserError
+      { provenance = mempty
+      , problem    = "No properties found in file."
+      , fix        = "An expression is labelled as a property by giving it type" <+> squotes (pretty Prop) <+> "."
       }
 
     -- VNNLib
@@ -175,7 +182,7 @@ compileDecl = \case
     normalisationError "dataset declarations"
 
   DeclNetw _ ident _ ->
-    throwError $ UnsupportedDecl (prov ident) (deProv ident) Dataset
+    throwError $ UnsupportedDecl (prov ident) (deProv ident) Network
 
   DefFun _ ident t e -> if not $ isProperty t
       then return Nothing

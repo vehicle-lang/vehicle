@@ -227,12 +227,12 @@ writeResultToFile Options{..} outputText =
     Just outputFilePath -> T.writeFile outputFilePath outputText
 
 
-toVNNLib :: Options -> VC.CheckedProg -> IO ()
-toVNNLib opts@Options{..} prog = do
+toSMTLib :: Options -> VC.CheckedProg -> IO ()
+toSMTLib opts@Options{..} prog = do
   propertyDocs <- fromLoggedEitherIO logFile (compileToSMTLib prog)
   mapM_ (\doc -> writeResultToFile opts (layoutAsText (text doc))) propertyDocs
 
-toSMTLib :: Options -> VC.CheckedProg -> IO ()
-toSMTLib opts@Options{..} prog = do
+toVNNLib :: Options -> VC.CheckedProg -> IO ()
+toVNNLib opts@Options{..} prog = do
   propertyDocs <- fromLoggedEitherIO logFile (compileToVNNLib prog)
   mapM_ (\doc -> writeResultToFile opts (layoutAsText (text (smtDoc doc)))) propertyDocs

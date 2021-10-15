@@ -21,7 +21,11 @@ import Vehicle.Core.Print
 
 -- |Run a function in 'MonadNorm'.
 normalise :: Norm a => a -> ExceptT NormError Logger a
-normalise x = evalStateT (nf x) mempty
+normalise x = do
+  logDebug "Beginning normalisation"
+  result <- evalStateT (nf x) mempty
+  logDebug "Finished normalisation\n"
+  return result
 
 -- |Should only be run when we know there can be no internal errors
 normaliseInternal :: Norm a => a -> a
