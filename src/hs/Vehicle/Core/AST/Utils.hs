@@ -53,33 +53,33 @@ type InputProg      = Prog   InputVar InputAnn
 type UncheckedVar    = Var
 type UncheckedAnn    = Provenance
 
-type UncheckedBinder  = DeBruijnBinder UncheckedAnn
-type UncheckedArg     = DeBruijnArg    UncheckedAnn
-type UncheckedExpr    = DeBruijnExpr   UncheckedAnn
-type UncheckedDecl    = DeBruijnDecl   UncheckedAnn
-type UncheckedProg    = DeBruijnProg   UncheckedAnn
+type UncheckedBinder = DeBruijnBinder UncheckedAnn
+type UncheckedArg    = DeBruijnArg    UncheckedAnn
+type UncheckedExpr   = DeBruijnExpr   UncheckedAnn
+type UncheckedDecl   = DeBruijnDecl   UncheckedAnn
+type UncheckedProg   = DeBruijnProg   UncheckedAnn
 
 -- * Types post type-checking
 
 type CheckedVar    = Var
 type CheckedAnn    = Provenance
 
-type CheckedBinder  = DeBruijnBinder  CheckedAnn
-type CheckedArg     = DeBruijnArg     CheckedAnn
-type CheckedExpr    = DeBruijnExpr    CheckedAnn
-type CheckedDecl    = DeBruijnDecl    CheckedAnn
-type CheckedProg    = DeBruijnProg    CheckedAnn
+type CheckedBinder = DeBruijnBinder  CheckedAnn
+type CheckedArg    = DeBruijnArg     CheckedAnn
+type CheckedExpr   = DeBruijnExpr    CheckedAnn
+type CheckedDecl   = DeBruijnDecl    CheckedAnn
+type CheckedProg   = DeBruijnProg    CheckedAnn
 
 -- * Type of annotations attached to the Core AST that are output by the compiler
 
 type OutputVar  = Name
 type OutputAnn  = Provenance
 
-type OutputBinder  = Binder OutputVar OutputAnn
-type OutputArg     = Arg    OutputVar OutputAnn
-type OutputExpr    = Expr   OutputVar OutputAnn
-type OutputDecl    = Decl   OutputVar OutputAnn
-type OutputProg    = Prog   OutputVar OutputAnn
+type OutputBinder = Binder OutputVar OutputAnn
+type OutputArg    = Arg    OutputVar OutputAnn
+type OutputExpr   = Expr   OutputVar OutputAnn
+type OutputDecl   = Decl   OutputVar OutputAnn
+type OutputProg   = Prog   OutputVar OutputAnn
 
 --------------------------------------------------------------------------------
 -- Instances
@@ -100,6 +100,12 @@ binderType (Binder _ _ _ t) = t
 
 argExpr :: Arg var ann -> Expr var ann
 argExpr (Arg _ _ e) = e
+
+mapArgExpr :: (Expr var ann -> Expr var ann) -> Arg var ann -> Arg var ann
+mapArgExpr f (Arg ann v e) = Arg ann v $ f e
+
+traverseArgExpr :: Monad m => (Expr var ann -> m (Expr var ann)) -> Arg var ann -> m (Arg var ann)
+traverseArgExpr f (Arg ann v e) = Arg ann v <$> f e
 
 declIdent :: Decl var ann -> Identifier
 declIdent (DeclNetw _ ident _) = deProv ident
@@ -148,6 +154,26 @@ quantView _ = Nothing
 
 -- Primed versions take `Arg` instead of `Expr`
 
+-- Types
+
+mkListType :: CheckedAnn -> CheckedExpr -> CheckedExpr
+mkListType ann tElem = App ann (Builtin ann List) [Arg ann Explicit tElem]
+
+mkTensorType :: CheckedAnn -> CheckedExpr -> [Int] -> CheckedExpr
+mkTensorType ann tElem dims =
+  let dimExprs = fmap (Literal ann . LNat)  dims in
+  let dimList  = mkSeq ann (Builtin ann Nat) (mkListType ann (Builtin ann Nat)) dimExprs in
+  App ann (Builtin ann Tensor) [Arg ann Explicit tElem, Arg ann Explicit dimList]
+
+mkIsTruth :: CheckedAnn -> CheckedExpr -> CheckedExpr
+mkIsTruth ann t = App ann (Builtin ann IsTruth) [Arg ann Explicit t]
+
+mkIsContainer :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkIsContainer ann tElem tCont = App ann (Builtin ann IsContainer)
+  [Arg ann Explicit tElem, Arg ann Explicit tCont]
+
+-- Expressions
+
 mkLiteral :: CheckedAnn -> Literal -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkLiteral ann lit t tc = App ann (Literal ann lit)
   [Arg ann Implicit t, Arg ann Instance (PrimDict tc)]
@@ -164,13 +190,6 @@ mkInt ann i = let t = Builtin ann Int in mkLiteral ann (LInt i) t (PrimDict t)
 mkReal :: CheckedAnn -> Double -> CheckedExpr
 mkReal ann r = let t = Builtin ann Real in mkLiteral ann (LRat r) t (PrimDict t)
 
-mkIsTruth :: CheckedAnn -> CheckedExpr -> CheckedExpr
-mkIsTruth ann t = App ann (Builtin ann IsTruth) [Arg ann Explicit t]
-
-mkIsContainer :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkIsContainer ann tElem tCont = App ann (Builtin ann IsContainer)
-  [Arg ann Explicit tElem, Arg ann Explicit tCont]
-
 mkSeq' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> [CheckedExpr] -> CheckedExpr
 mkSeq' ann tElem tCont tc xs = App ann (Seq ann xs) [tElem, tCont, tc]
 
@@ -180,11 +199,31 @@ mkSeq ann tElem tCont = mkSeq' ann
   (Arg ann Implicit tCont)
   (Arg ann Instance (PrimDict (mkIsContainer ann tElem tCont)))
 
+-- Expressions
+
+mkEq' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkEq' ann tElem tRes tc e1 e2 = App ann (Builtin ann Eq)
+  [tElem, tRes, tc, Arg ann Explicit e1, Arg ann Explicit e2]
+
+mkEq :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkEq ann tElem tRes = mkEq' ann
+  (Arg ann Implicit tElem)
+  (Arg ann Implicit tRes)
+  (Arg ann Instance (PrimDict (mkIsTruth ann tRes)))
+
 mkNot' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr
 mkNot' ann t tc e = App ann (Builtin ann Not) [t, tc, Arg ann Explicit e]
 
 mkNot :: CheckedAnn -> CheckedExpr -> CheckedExpr  -> CheckedExpr
 mkNot ann t = mkNot' ann
+  (Arg ann Implicit t)
+  (Arg ann Instance (PrimDict (mkIsTruth ann t)))
+
+mkAnd' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkAnd' ann t tc e1 e2 = App ann (Builtin ann And) [t, tc, Arg ann Explicit e1, Arg ann Explicit e2]
+
+mkAnd :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkAnd ann t = mkAnd' ann
   (Arg ann Implicit t)
   (Arg ann Instance (PrimDict (mkIsTruth ann t)))
 
@@ -196,15 +235,6 @@ mkQuantifier :: CheckedAnn -> Quantifier -> Name -> CheckedExpr -> CheckedExpr -
 mkQuantifier ann q n t e =
   App ann (Builtin ann (Quant q))
     (Arg ann Explicit (Lam ann (Binder ann Explicit n t) e) :| [])
-
-mkListType :: CheckedAnn -> CheckedExpr -> CheckedExpr
-mkListType ann tElem = App ann (Builtin ann List) [Arg ann Explicit tElem]
-
-mkTensorType :: CheckedAnn -> CheckedExpr -> [Int] -> CheckedExpr
-mkTensorType ann tElem dims =
-  let dimExprs = fmap (Literal ann . LNat)  dims in
-  let dimList  = mkSeq ann (Builtin ann Nat) (mkListType ann (Builtin ann Nat)) dimExprs in
-  App ann (Builtin ann Tensor) [Arg ann Explicit tElem, Arg ann Explicit dimList]
 
 -- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3
 mkNameWithIndices :: Name -> [Int] -> Name

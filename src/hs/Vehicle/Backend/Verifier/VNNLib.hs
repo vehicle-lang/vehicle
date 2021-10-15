@@ -1,46 +1,83 @@
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
-module Vehicle.Backend.Verifier.VNNLib where
+module Vehicle.Backend.Verifier.VNNLib
+  ( VNNLibDoc(..)
+  , NetworkDetails(..)
+  , compileToVNNLib
+  ) where
 
-import Control.Monad.State (MonadState(..), modify, runStateT)
-import Control.Monad.Reader (MonadReader(..))
+import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Control.Monad.Except (MonadError(..))
+import Control.Monad.State (MonadState(..), runStateT, modify)
 import Data.Map (Map)
-import Data.Map qualified as Map (insert)
-import Data.Maybe (catMaybes)
-import Data.Text (Text)
-import Data.List.NonEmpty (NonEmpty(..))
+import Data.Map qualified as Map (insert, lookup)
+import Data.Maybe (catMaybes, fromMaybe)
 
 import Vehicle.Prelude hiding (Network)
 import Vehicle.Core.AST hiding (Map)
 import Vehicle.Core.Print ()
+import Vehicle.Core.Normalise (normaliseInternal)
 import Vehicle.Backend.Verifier.Core
-import Vehicle.Backend.Verifier.SMTLib (compileToSMTLib)
+import Vehicle.Backend.Verifier.SMTLib (SMTLibError, SMTDoc, SMTLibError(..), InputOrOutput(..), UnsupportedNetworkType(..))
+import Vehicle.Backend.Verifier.SMTLib qualified as SMTLib (compileProp)
+
+--------------------------------------------------------------------------------
+-- Compilation to VNNLib
+--
+-- Okay so this is a wild ride. The VNNLib format has special variable names for
+-- input and output variables, namely X1 ... XN and Y1 ... YM but otherwise has
+-- the standard SMTLib syntax.
+--
+-- This means that in theory you can only reason about a single network applied
+-- to a single input per property. We hack around this restriction by combining
+--  multiple networks, or multiple applications of the same network into a
+-- single "meta" network. Concretely this process goes as follows for each
+-- property we identify in the program.
+--
+-- 1. We perform let-lifting of network applications so that every application
+-- of a network to a unique input sits in its own let binding underneath a
+-- universal quantifier. (STILL TO DO)
+--
+-- 2. We traverse the resulting expression creating a list of such
+-- applications and compiling the resulting "meta" network
+--
+-- 3. We insert universal quantifiers over the inputs X1 ... XN and outputs
+-- Y1 ... YN to the network at the top-level of the property.
+--
+-- 4. We re-traverse the property once again finding all let-bound
+-- applications of the network e.g.
+--
+--   let y = f xs in e
+--
+-- and perform the following substitution for the application:
+--
+--   (X4 == a and X5 == b && X6 == c) and ([Y2, Y3] `substInto` e)
+--
+-- 5. The property should then be a valid SMTLib expression so we now
+-- compile it to SMTLib as normal.
+--
+-- 6. We return the meta-network composition so that we can actually
+-- perform the required hackery on the network files elsewhere.
+--
+-- NOTE: Step 4 cannot be combined with Step 2 as we can only calculate
+-- the de Bruijn indices needed for the variables once we know the total
+-- size of the "meta" network.
 
 -- | Compiles a given program to a VNNLib script.
 -- Assumes the program has already been normalised.
-compileToVNNLib :: CheckedProg -> m []
-compileToVNNLib prog1 = do
-  prog2 <- transformNetworkVars prog1
-  compileToSMTLib prog2
+compileToVNNLib :: (MonadLogger m, MonadError SMTLibError m)
+                => CheckedProg
+                -> m [VNNLibDoc]
+compileToVNNLib prog = runReaderT (compileProg prog) []
 
-data InputOrOutput
-  = Input
-  | Output
+--------------------------------------------------------------------------------
+-- Data
 
--- | Reasons why we might not support the network type.
--- Options with `Bool` type equate
-data UnsupportedNetworkType
-  = NotAFunction
-  | NotATensor             InputOrOutput
-  | MultidimensionalTensor InputOrOutput
-  | VariableSizeTensor     InputOrOutput
-  | WrongTensorType        InputOrOutput
-
-data VNNLibError
-  = UnsupportedNetworkType UnsupportedNetworkType (WithProvenance Identifier) CheckedExpr
-  | NoNetworkUsedInProperty (WithProvenance Identifier)
-  | MultipleNetworksUsedInProperty [WithProvenance Identifier]
+data VNNLibDoc = VNNLibDoc
+  { smtDoc      :: SMTDoc
+  , metaNetwork :: MetaNetwork
+  }
 
 data TensorDetails = TensorDetails
   { size  :: Int
@@ -53,102 +90,214 @@ data NetworkDetails = NetworkDetails
   , outputTensor :: TensorDetails
   }
 
+networkSize :: NetworkDetails -> Int
+networkSize n = size (inputTensor n) + size (outputTensor n)
+
 type NetworkCtx = Map Identifier NetworkDetails
+
+type MetaNetwork = [NetworkDetails]
+
+metaNetworkSize :: MetaNetwork -> Int
+metaNetworkSize = sum . map networkSize
+
+--------------------------------------------------------------------------------
+-- Monad
 
 type MonadVNNLib m =
   ( MonadLogger m
+  , MonadError SMTLibError m
   , MonadReader NetworkCtx m
   )
 
-addNetworkToCtx :: NetworkDetails -> m ()
-addNetworkToCtx d@(NetworkDetails ident _ _) =
-  modify (Map.insert (deProv ident) d)
+getNetworkFromCtx :: MonadVNNLib m => Identifier -> m NetworkDetails
+getNetworkFromCtx ident = asks (fromMaybe outOfScopeError . Map.lookup ident)
+  where
+    outOfScopeError :: a
+    outOfScopeError = developerError $
+      "Network" <+> squotes (pretty ident) <+> "erroneously not in scope"
 
 type MonadVNNLibProp m =
   ( MonadVNNLib m
-  -- The identifier of the network declaration used in the property and
-  -- whether or not we've discharged the equalities at the Prop level.
-  , MonadState  (Maybe (Identifier, Bool, NonEmpty Arg)) m
+  , MonadState MetaNetwork m
   )
 
-compileProg :: MonadVNNLib m => CheckedProg -> m CheckedProg
-compileProg (Main ds) = do
-  ds' <- traverse compileDecl ds
-  return $ Main $ catMaybes ds'
+addToMetaNetwork :: MonadVNNLibProp m => Identifier -> m (NetworkDetails, MetaNetwork)
+addToMetaNetwork ident = do
+  network <- getNetworkFromCtx ident
+  metaNetwork <- get
+  modify (network :)
+  return (network, metaNetwork)
 
-compileDecl :: MonadVNNLib m => CheckedDecl -> m (Maybe CheckedDecl)
+--------------------------------------------------------------------------------
+-- Algorithm
+
+compileProg :: MonadVNNLib m => CheckedProg -> m [VNNLibDoc]
+compileProg (Main ds) = catMaybes <$> compileDecls ds
+
+compileDecls :: MonadVNNLib m => [CheckedDecl] -> m [Maybe VNNLibDoc]
+compileDecls []       = return []
+compileDecls (d : ds) = do
+    (doc, alterCtx) <- compileDecl d
+    docs <- local alterCtx (compileDecls ds)
+    return (doc : docs)
+
+compileDecl :: MonadVNNLib m => CheckedDecl -> m (Maybe VNNLibDoc, NetworkCtx -> NetworkCtx)
 compileDecl d = case d of
   DeclData{} ->
     normalisationError "Dataset declarations"
 
   DeclNetw _ ident t -> do
+    -- Extract the details for the network
     (inputDetails, outputDetails) <- getNetworkDetails ident t
     let networkDetails = NetworkDetails ident inputDetails outputDetails
-    addNetworkToCtx networkDetails
-    return Nothing
+    let alterCtx = Map.insert (deProv ident) networkDetails
+    -- Remove the declaration, as SMTLib does not support it.
+    return (Nothing, alterCtx)
 
-  DefFun ann ident t e ->
+  DefFun _ ident t e ->
+    let alterCtx = id in
     if not $ isProperty t then
-      return Nothing
+      -- If it's not a property then we can discard it as all applications
+      -- of it should have been normalised out by now.
+      return (Nothing, alterCtx)
     else do
-      (updatedDef, maybeNetworkDetails) <- runStateT (alterNetworkApplications e) Nothing
-      case maybeNetworkDetails of
-        Nothing -> throwError $ NoNetworkUsedInProperty ident
-        Just networkDetails -> do
-          let quantifiedExpr = quantifyOverNetwork networkDetails updatedDef
-          return $ Just $ DefFun ann ident t quantifiedExpr
+      -- TODO Lift all network-bindings to quantifier level
+      (dslExpr, metaNetwork) <- runStateT (processNetworkApplications e) []
+      if null metaNetwork then
+        throwError $ NoNetworkUsedInProperty ident
+      else do
+        let initialBindingDepth = metaNetworkSize metaNetwork
+        let networklessExpr = dslExpr initialBindingDepth
+        let normMetworklessExpr = normaliseInternal networklessExpr
+        let quantifiedExpr = quantifyOverMetaNetworkIO metaNetwork normMetworklessExpr
 
-quantifyOverNetwork :: NetworkDetails -> CheckedExpr -> CheckedExpr
-quantifyOverNetwork (NetworkDetails ident inputs outputs) =
-  quantifyOverTensor Input inputs . quantifyOverTensor Output outputs
+        smtDoc <- SMTLib.compileProp (deProv ident) quantifiedExpr
+        return (Just $ VNNLibDoc smtDoc metaNetwork, alterCtx)
+
+
+quantifyOverMetaNetworkIO :: MetaNetwork -> CheckedExpr -> CheckedExpr
+quantifyOverMetaNetworkIO metaNetwork prop = foldr quantifyOverNetworkIO prop metaNetwork
   where
-  quantifyOverTensor :: InputOrOutput -> TensorDetails -> CheckedExpr -> CheckedExpr
-  quantifyOverTensor io (TensorDetails size tElem) body =
+  quantifyOverNetworkIO :: NetworkDetails -> CheckedExpr -> CheckedExpr
+  quantifyOverNetworkIO (NetworkDetails ident inputs outputs) =
+    quantifyOverTensorIO ident Input inputs . quantifyOverTensorIO ident Output outputs
+
+  quantifyOverTensorIO :: WithProvenance Identifier -> InputOrOutput -> TensorDetails -> CheckedExpr -> CheckedExpr
+  quantifyOverTensorIO ident io (TensorDetails size tElem) body =
     let ann = prov ident in
-    let names = [mkNameWithIndices (User (varBaseName io)) [i] | i <- [0 .. size]] in
+    let names = mkMagicVariableNames io [0 .. size] in
     let varType = Builtin ann tElem in
     foldl (\res name -> mkQuantifier ann All name varType res) body names
 
-  varBaseName :: InputOrOutput -> Text
-  varBaseName Input  = "X"
-  varBaseName Output = "Y"
+mkMagicVariableNames :: InputOrOutput -> [Int] -> [Name]
+mkMagicVariableNames io indices = [mkNameWithIndices (User baseName) [i] | i <- indices]
+  where
+    baseName = if io == Input then "X" else "Y"
 
-alterNetworkApplications :: MonadVNNLibProp m => CheckedExpr -> m CheckedExpr
-alterNetworkApplications e = case e of
+processNetworkApplications :: MonadVNNLibProp m
+                           => CheckedExpr
+                           -> m (BindingDepth -> CheckedExpr)
+processNetworkApplications e = case e of
   Type _         -> typeError "Type"
   Pi   _ann _ _  -> typeError "Pi"
   Hole _p _      -> resolutionError "Hole"
   Meta _p _      -> resolutionError "Meta"
-  Ann _ann _ _   -> normalisationError "Ann"
-  Let _ann _ _ _ -> normalisationError "Let"
-  Lam _ann _ _   -> normalisationError "Lam"
-  Seq _ann _     -> normalisationError "Seq"
   PrimDict _tc   -> visibilityError "PrimDict"
+  Ann _ann _ _   -> normalisationError "Ann"
+  Lam _ann _ _   -> normalisationError "Lam"
+  -- There only be seqs inside network applications which we catch explicitly below.
+  Seq _ann _     -> normalisationError "Seq"
 
-  Var{}          -> return e
-  Builtin{}      -> return e
-  Literal{}      -> return e
+  Var{}          -> return $ pure e
+  Builtin{}      -> return $ pure e
+  Literal{}      -> return $ pure e
 
-  App ann (Var ann (Free ident)) args -> alterNetworkApplication ident args
-  _ -> _
+  App ann fun args -> do
+    fun'  <- processNetworkApplications fun
+    args' <- traverse recurseArg args
+    return (\d -> App ann (fun' d) (fmap ($ d) args'))
 
-alterNetworkApplication :: MonadVNNLibProp m
-                        => Identifier
-                        -> NonEmpty CheckedArg
-                        -> m CheckedExpr
-alterNetworkApplication ident args = do
-  -- Lookup and see if this our first network application
-  existingNetworkIdent <- get
-  ident <- case existingNetworkIdent of
-    Nothing     -> set (ident, False)
-    Just (ident, equalitiesCreated, args) -> _
+  Let _ (App _ fun [Arg _ _ arg]) _ body -> case (fun, exprHead arg) of
+    (Var ann (Free ident), currentInput) -> do
+      (networkDetails, currentMetaNetwork) <- addToMetaNetwork ident
+      body' <- processNetworkApplications body
+      return $ processNetworkApplication currentMetaNetwork networkDetails ann currentInput body'
 
+    _ -> normalisationError "Let"
 
-  -- Replace application with vector of output variables
-  details <- getNetworkDetails ident -- Nothing -> developerError "Declaration reference found but either out of scope or not normalised."
-  let outputSize = _
-  let outputVector = [Var _ (Bound _) | i <- [0..outputSize]]
-  return outputVector
+  Let{} -> normalisationError "Let"
+  where
+    recurseArg :: MonadVNNLibProp m => CheckedArg -> m (BindingDepth -> CheckedArg)
+    recurseArg (Arg ann v expr) = do
+      expr' <- processNetworkApplications expr
+      return (\d -> Arg ann v (expr' d))
+
+processNetworkApplication :: MetaNetwork    -- Current metanetwork
+                          -> NetworkDetails -- Current network
+                          -> CheckedAnn
+                          -> CheckedExpr
+                          -> (BindingDepth -> CheckedExpr)
+                          -> BindingDepth
+                          -> CheckedExpr
+processNetworkApplication currentMetaNetwork network ann currentInput body currentBindingDepth = newBody
+  where
+    -- EXAMPLE:
+    --
+    --           (E)              (D)
+    -- |-----------------------|
+    --          (Net1)   (Net2)  (Net3)  (Net4)
+    --
+    -- forall (X0 X1 Y0) (X2 Y1) (X3 Y2) (X4 Y3) . forall x,y,z . ... Net2 x ...
+    -- |                                       |   |          |      |      |
+    -- -----------------------------------------   ------------      |------|
+    --                          (A)                     (B)             (C)
+    --
+    -- (A) Inserted quantifiers over all IO variables for meta-network
+    --
+    -- (B) User quantifiers in the original program
+    --
+    -- (C) The location of the network application in the program, which is pointed
+    -- to by the variable `currentBindingDepth`
+    --
+    -- (D) The location of the current network that's being applied in the quantifiers
+    --
+    -- (E) Inserted quantifiers over the meta-network so far.
+
+    -- Number of quantified variables in region (E)
+    totalNumberOfIOVariablesSoFar = metaNetworkSize currentMetaNetwork
+
+    inputT = inputTensor network
+    inputSize = size inputT
+    inputType = tElem inputT
+
+    outputT = outputTensor network
+    outputSize = size outputT
+    outputType = tElem outputT
+
+    -- In the example points to X3
+    inputStartingDBIndex  = currentBindingDepth - totalNumberOfIOVariablesSoFar
+    -- In the example points to Y2
+    outputStartingDBIndex = inputStartingDBIndex - inputSize
+    -- In the examples points to X4
+    outputEndingDBIndex   = outputStartingDBIndex - outputSize
+
+    inputVarIndices  = reverse [outputStartingDBIndex .. inputStartingDBIndex]
+    outputVarIndices = reverse [outputEndingDBIndex   .. outputStartingDBIndex]
+
+    (inputTensorExpr,  inputTensorType) = mkIOVariableSeq ann inputType  inputVarIndices
+    (outputTensorExpr, _)               = mkIOVariableSeq ann outputType outputVarIndices
+    body'                               = outputTensorExpr `substInto` body currentBindingDepth
+    inputEquality                       = mkEq ann inputTensorType (Builtin ann Prop) inputTensorExpr currentInput
+    newBody                             = mkAnd ann (Builtin ann Prop) body' inputEquality
+
+mkIOVariableSeq :: CheckedAnn -> Builtin -> [Int] -> (CheckedExpr, CheckedExpr)
+mkIOVariableSeq ann tElem indices = (tensorExpr, tensorType)
+  where
+    tensorElemType   = Builtin ann tElem
+    tensorType       = mkTensorType ann tensorElemType [length indices]
+    variables        = map (Var ann . Bound) indices
+    tensorExpr       = mkSeq ann tensorElemType tensorType variables
+
 
 --------------------------------------------------------------------------------
 -- Network type validation
@@ -162,7 +311,7 @@ getNetworkDetails ident (Pi _ (Binder _ _ _ input) output) = do
   outputDetails <- getTensorDetails Output ident output
   return (inputDetails, outputDetails)
 getNetworkDetails ident t                                  =
-  throwError $ UnsupportedNetworkType NotAFunction ident t
+  throwError $ UnsupportedNetworkType (prov ident) (deProv ident) NotAFunction t
 
 getTensorDetails :: MonadVNNLib m
                  => InputOrOutput
@@ -174,7 +323,7 @@ getTensorDetails io ident (App _ (Builtin _ Tensor) [Arg _ _ tElem, Arg _ _ tDim
   size  <- getTensorSize io ident tDims
   return $ TensorDetails size typ
 getTensorDetails io ident t =
-  throwError $ UnsupportedNetworkType (NotATensor io) ident t
+  throwError $ UnsupportedNetworkType (prov ident) (deProv ident) (NotATensor io) t
 
 getTensorType :: MonadVNNLib m
               => InputOrOutput
@@ -183,7 +332,7 @@ getTensorType :: MonadVNNLib m
               -> m Builtin
 getTensorType io ident = \case
   Builtin _ Real  -> return Real
-  t               -> throwError $ UnsupportedNetworkType (WrongTensorType io) ident t
+  t               -> throwError $ UnsupportedNetworkType (prov ident) (deProv ident) (WrongTensorType io) t
 
 getTensorSize :: MonadVNNLib m
               => InputOrOutput
@@ -193,5 +342,5 @@ getTensorSize :: MonadVNNLib m
 getTensorSize io ident tDims = case exprHead tDims of
   (Seq _ [d]) -> case exprHead d of
     (Literal _ (LNat n)) -> return n
-    t                    -> throwError $ UnsupportedNetworkType (VariableSizeTensor io) ident t
-  t           -> throwError $ UnsupportedNetworkType (MultidimensionalTensor io) ident t
+    t                    -> throwError $ UnsupportedNetworkType (prov ident) (deProv ident) (VariableSizeTensor io) t
+  t           -> throwError $ UnsupportedNetworkType (prov ident) (deProv ident) (MultidimensionalTensor io) t

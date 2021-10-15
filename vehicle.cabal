@@ -69,6 +69,7 @@ library
                       --, Vehicle.Backend.ITP.Core
                       , Vehicle.Backend.Verifier.Core
                       , Vehicle.Backend.Verifier.SMTLib
+                      , Vehicle.Backend.Verifier.VNNLib
                       -- Files generated from Core.cf
                       , Vehicle.Core.Abs
                       , Vehicle.Core.ErrM

@@ -2,7 +2,7 @@
 
 module Vehicle.Core.Compile.DSL
   ( DSL(..)
-  , DSLExpr
+  , DSLExpr(..)
   , fromDSL
   , type0
   , tBool

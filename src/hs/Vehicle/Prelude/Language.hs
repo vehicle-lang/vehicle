@@ -11,7 +11,11 @@ import Vehicle.Prelude.Token (Symbol)
 data DeclType
   = Network
   | Dataset
-  | Function
+
+instance Pretty DeclType where
+  pretty = \case
+    Network  -> "network"
+    Dataset  -> "dataset"
 
 newtype Identifier = Identifier Symbol
   deriving (Eq, Ord, Show, Generic)
@@ -55,3 +59,7 @@ data Quantifier
 
 instance NFData Quantifier
 
+instance Pretty Quantifier where
+  pretty = \case
+    All -> "every"
+    Any -> "some"

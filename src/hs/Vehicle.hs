@@ -42,6 +42,8 @@ import Vehicle.Frontend.Parse qualified as VF
 --import Vehicle.Backend.ITP.Core (ITPOptions(..))
 --import Vehicle.Backend.ITP.Agda (AgdaOptions(..), compileToAgda)
 
+import Vehicle.Backend.Verifier.SMTLib (compileToSMTLib, SMTDoc(..))
+import Vehicle.Backend.Verifier.VNNLib (compileToVNNLib, VNNLibDoc(..))
 
 --------------------------------------------------------------------------------
 -- Command-line options
@@ -151,7 +153,7 @@ parseAndRun = do
   run opts
 
 run :: Options -> IO ()
-run _opts@Options{..} = do
+run opts@Options{..} = do
   -- Print usage information and exit
   when (showVersion || showHelp) $ do
     when showVersion $ do
@@ -169,7 +171,7 @@ run _opts@Options{..} = do
   typedCoreProg  <- fromLoggedEitherIO logFile $ VC.typeCheck scopedCoreProg
 
   -- Compile to requested backend
-  outputText :: Text <- case outputTarget of
+  case outputTarget of
     Nothing -> do
       putStrLn "Please specify an output target with -t or --target"
       exitFailure
@@ -178,39 +180,22 @@ run _opts@Options{..} = do
       let descopedCoreProg :: VC.OutputProg = VC.runDescope typedCoreProg
       case itp of
         (Vehicle Core) ->
-          return $ layoutAsText $ VC.prettyVerbose descopedCoreProg
+          writeResultToFile opts $ layoutAsText $ VC.prettyVerbose descopedCoreProg
 
         (Vehicle Frontend) -> do
           compFrontProg :: VF.OutputProg <- fromLoggedIO logFile $ VF.runDelab descopedCoreProg
-          return $ layoutAsText $ VF.prettyFrontend compFrontProg
+          writeResultToFile opts $ layoutAsText $ VF.prettyFrontend compFrontProg
 
         Agda -> do
           developerError "Agda not current supported"
-        {-
-          compFrontProg <- fromEitherIO $ VF.runDelab compCoreProg
 
-          case itp of
-            Agda -> do
-              let itpOptions = ITPOptions
-                    { vehicleUIDs  = mempty
-                    , aisecVersion = version
-                    , backendOpts  = AgdaOptions
-                      { useProp    = False
-                      , modulePath = ["Testing"]
-                      }
-                    }
-              fromEitherIO $ compileToAgda itpOptions compFrontProg
-          -}
-    Just (Verifier _) -> do
+    Just (Verifier verifier) -> do
       normProg <- fromLoggedEitherIO logFile $ VC.normalise typedCoreProg
-      return $ layoutAsText $ VC.prettySimple normProg
+      case verifier of
+        SMTLib -> toSMTLib opts normProg
+        VNNLib -> toVNNLib opts normProg
 
 
-
-  -- Output the result to either the command line or the specified output file
-  case outputFile of
-    Nothing             -> T.putStrLn outputText
-    Just outputFilePath -> T.writeFile outputFilePath outputText
 
 
 parseAndElab :: VehicleLang -> Text -> IO VC.InputProg
@@ -234,3 +219,20 @@ fromLoggedIO (Just logFile) logger = flushLogs logFile logger
 readFileOrStdin :: Maybe FilePath -> IO Text
 readFileOrStdin (Just file) = T.readFile file
 readFileOrStdin Nothing     = T.getContents
+
+writeResultToFile :: Options -> Text -> IO ()
+writeResultToFile Options{..} outputText =
+  case outputFile of
+    Nothing             -> T.putStrLn outputText
+    Just outputFilePath -> T.writeFile outputFilePath outputText
+
+
+toVNNLib :: Options -> VC.CheckedProg -> IO ()
+toVNNLib opts@Options{..} prog = do
+  propertyDocs <- fromLoggedEitherIO logFile (compileToSMTLib prog)
+  mapM_ (\doc -> writeResultToFile opts (layoutAsText (text doc))) propertyDocs
+
+toSMTLib :: Options -> VC.CheckedProg -> IO ()
+toSMTLib opts@Options{..} prog = do
+  propertyDocs <- fromLoggedEitherIO logFile (compileToVNNLib prog)
+  mapM_ (\doc -> writeResultToFile opts (layoutAsText (text (smtDoc doc)))) propertyDocs
