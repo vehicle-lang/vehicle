@@ -27,31 +27,32 @@ import Vehicle.Core.Print (prettyVerbose)
 
 
 solveTypeClassConstraint :: MonadConstraintSolving m
-                         => Constraint
+                         => ConstraintContext
                          -> Meta
                          -> CheckedExpr
                          -> m ConstraintProgress
-solveTypeClassConstraint c m e = do
-  eWHNF <- whnf (declContext c) e
+solveTypeClassConstraint ctx m e = do
+  eWHNF <- whnf (declContext ctx) e
+  let constraint = Constraint ctx (m `Has` eWHNF)
   progress <- case toHead eWHNF of
     (Builtin _ tc, args) -> do
       let argsNF = extractArg <$> args
       blockOnMetas tc argsNF $ case (tc, argsNF) of
-        (IsContainer,    [t1, t2]) -> solveIsContainer    c t1 t2
-        (HasEq,          [t1, t2]) -> solveHasEq          c t1 t2
-        (HasOrd,         [t1, t2]) -> solveHasOrd         c t1 t2
-        (IsTruth,        [t])      -> solveIsTruth        c t
-        (IsNatural,      [t])      -> solveIsNatural      c t
-        (IsIntegral,     [t])      -> solveIsIntegral     c t
-        (IsRational,     [t])      -> solveIsRational     c t
-        (IsReal,         [t])      -> solveIsReal         c t
-        (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable c t1 t2
+        (IsContainer,    [t1, t2]) -> solveIsContainer    constraint t1 t2
+        (HasEq,          [t1, t2]) -> solveHasEq          constraint t1 t2
+        (HasOrd,         [t1, t2]) -> solveHasOrd         constraint t1 t2
+        (IsTruth,        [t])      -> solveIsTruth        constraint t
+        (IsNatural,      [t])      -> solveIsNatural      constraint t
+        (IsIntegral,     [t])      -> solveIsIntegral     constraint t
+        (IsRational,     [t])      -> solveIsRational     constraint t
+        (IsReal,         [t])      -> solveIsReal         constraint t
+        (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable constraint t1 t2
         _                          -> developerError $
           "Unknown type-class" <+> squotes (pretty tc) <+> "args" <+> prettyVerbose argsNF
     _ -> developerError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
 
   unless (isStuck progress) $
-    metaSolved (prov c) m eWHNF
+    metaSolved (prov ctx) m eWHNF
 
   return progress
 

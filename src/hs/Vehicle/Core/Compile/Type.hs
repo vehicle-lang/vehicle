@@ -87,13 +87,13 @@ solveMetas = do
     tryToSolveConstraint :: MonadConstraintSolving m
                         => Constraint
                         -> m ConstraintProgress
-    tryToSolveConstraint constraint@(Constraint _ baseConstraint) = do
+    tryToSolveConstraint constraint@(Constraint ctx baseConstraint) = do
       logDebug $ "trying" <+> prettyVerbose constraint
       incrCallDepth
 
       result <- case baseConstraint of
-        Unify eq  -> solveUnificationConstraint constraint eq
-        m `Has` e -> solveTypeClassConstraint constraint m e
+        Unify eq  -> solveUnificationConstraint ctx eq
+        m `Has` e -> solveTypeClassConstraint ctx m e
 
       case result of
         Progress newConstraints _ -> addConstraints newConstraints

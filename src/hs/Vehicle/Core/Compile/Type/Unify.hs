@@ -30,13 +30,14 @@ pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
 
 solveUnificationConstraint :: MonadConstraintSolving m
-                           => Constraint
+                           => ConstraintContext
                            -> UnificationPair
                            -> m ConstraintProgress
 -- Errors
-solveUnificationConstraint constraint@(Constraint constraintCtx _) (e1, e2) = do
-  whnfE1 <- whnf (declContext constraint) e1
-  whnfE2 <- whnf (declContext constraint) e2
+solveUnificationConstraint ctx (e1, e2) = do
+  whnfE1 <- whnf (declContext ctx) e1
+  whnfE2 <- whnf (declContext ctx) e2
+  let constraint = Constraint ctx (Unify (whnfE1, whnfE2))
   let p = prov constraint
 
   progress <- case (toHead whnfE1, toHead whnfE2) of
@@ -64,7 +65,7 @@ solveUnificationConstraint constraint@(Constraint constraintCtx _) (e1, e2) = do
     (Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, [])
       | vis binder1 /= vis binder2 -> throwError $ FailedConstraints [constraint]
       | otherwise -> return Progress
-        { newConstraints = [Constraint constraintCtx (Unify (body1, body2))]
+        { newConstraints = [Constraint ctx (Unify (body1, body2))]
         , solvedMetas    = mempty
         }
 
@@ -75,7 +76,7 @@ solveUnificationConstraint constraint@(Constraint constraintCtx _) (e1, e2) = do
       -- TODO need to try and unify `Seq` with `Cons`s.
       | otherwise -> do
         argConstraints <- traverse (solveArg constraint) (zip args1 args2)
-        let elemConstraints = zipWith (curry (Constraint constraintCtx . Unify)) es1 es2
+        let elemConstraints = zipWith (curry (Constraint ctx . Unify)) es1 es2
         return Progress
           { newConstraints = argConstraints <> elemConstraints
           , solvedMetas    = mempty
@@ -87,8 +88,8 @@ solveUnificationConstraint constraint@(Constraint constraintCtx _) (e1, e2) = do
           -- !!TODO!! Block until binders are solved
           -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
           -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
-          let binderConstraint = Constraint constraintCtx (Unify (binderType binder1, binderType binder2))
-          let bodyConstraint   = Constraint constraintCtx (Unify (body1, body2))
+          let binderConstraint = Constraint ctx (Unify (binderType binder1, binderType binder2))
+          let bodyConstraint   = Constraint ctx (Unify (body1, body2))
           return Progress
             { newConstraints = [binderConstraint, bodyConstraint]
             , solvedMetas    = mempty
@@ -216,7 +217,7 @@ solveUnificationConstraint constraint@(Constraint constraintCtx _) (e1, e2) = do
     _t :~: (Meta _ _i, _args) ->
       -- this is the mirror image of the previous case, so just swap the
       -- problem over.
-      solveUnificationConstraint constraint (whnfE2, whnfE1)
+      solveUnificationConstraint ctx (whnfE2, whnfE1)
 
     -- Catch-all
     _ -> throwError $ FailedConstraints [constraint]

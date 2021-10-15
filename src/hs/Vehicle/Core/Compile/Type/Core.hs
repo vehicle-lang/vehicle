@@ -91,8 +91,8 @@ data Constraint = Constraint ConstraintContext BaseConstraint
 variableContext :: Constraint -> VariableCtx
 variableContext (Constraint ctx _) = varContext ctx
 
-declContext :: Constraint -> DeclCtx
-declContext = declCtx . variableContext
+declContext :: ConstraintContext -> DeclCtx
+declContext = declCtx . varContext
 
 boundContext :: Constraint -> BoundCtx
 boundContext = boundCtx . variableContext
