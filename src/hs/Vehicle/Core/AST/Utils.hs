@@ -178,9 +178,13 @@ mkIsContainer ann tElem tCont = App ann (Builtin ann IsContainer)
 
 -- Expressions
 
+mkLiteral' :: CheckedAnn -> Literal -> CheckedArg -> CheckedArg -> CheckedExpr
+mkLiteral' ann lit t tc = App ann (Literal ann lit) [t, tc]
+
 mkLiteral :: CheckedAnn -> Literal -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkLiteral ann lit t tc = App ann (Literal ann lit)
-  [Arg ann Implicit t, Arg ann Instance (PrimDict tc)]
+mkLiteral ann lit t tc = mkLiteral' ann lit
+  (Arg ann Implicit t)
+  (Arg ann Instance (PrimDict tc))
 
 mkBool :: CheckedAnn -> Bool -> CheckedExpr -> CheckedExpr
 mkBool ann b t = mkLiteral ann (LBool b) t (PrimDict t)

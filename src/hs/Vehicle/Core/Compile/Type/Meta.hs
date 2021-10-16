@@ -27,7 +27,6 @@ import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (Reader, runReader, ask, local)
 import Control.Monad.State (MonadState(..), modify, gets)
 import Data.List (partition)
-import Debug.Trace (traceShow)
 
 import Vehicle.Prelude
 import Vehicle.Core.AST
@@ -90,9 +89,7 @@ substMApp :: CheckedAnn -> (CheckedExpr, [CheckedArg]) -> Reader MetaSubstitutio
 substMApp ann (fun@(Meta _ m), mArgs) = do
   subst <- ask
   case MetaSubst.lookup m subst of
-    Just eRes -> traceShow
-                  (layoutAsString $ prettyVerbose eRes <+> prettyVerbose mArgs)
-                  (substM $ substMArgs eRes mArgs)
+    Just eRes -> substM $ substMArgs eRes mArgs
     Nothing   -> normAppList ann fun <$> substM mArgs
   where
     substMArgs :: CheckedExpr -> [CheckedArg] -> CheckedExpr

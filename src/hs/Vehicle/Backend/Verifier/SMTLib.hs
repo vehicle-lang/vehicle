@@ -174,7 +174,12 @@ type MonadSMTLibProp m =
 -- Compilation
 
 compileProg :: MonadSMTLib m => CheckedProg -> m [SMTDoc]
-compileProg (Main ds) = catMaybes <$> traverse compileDecl ds
+compileProg (Main ds) = do
+  results <- catMaybes <$> traverse compileDecl ds
+  if null results then
+    throwError NoPropertiesFound
+  else
+    return results
 
 compileDecl :: MonadSMTLib m => CheckedDecl -> m (Maybe SMTDoc)
 compileDecl = \case
@@ -190,7 +195,13 @@ compileDecl = \case
         Just <$> compileProp (deProv ident) e
 
 compileProp :: MonadSMTLib m => Identifier -> CheckedExpr -> m SMTDoc
-compileProp ident expr = runReaderT result ident
+compileProp ident expr = do
+  logDebug $ "Beginning compilation of SMTLib property" <+> squotes (pretty ident)
+  incrCallDepth
+  res <- runReaderT result ident
+  decrCallDepth
+  logDebug $ "Finished compilation of SMTLib property" <+> squotes (pretty ident)
+  return res
   where
     result = do
       (vars, body, negated) <- stripQuantifiers True expr

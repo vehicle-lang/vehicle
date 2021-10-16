@@ -267,14 +267,14 @@ nfApp ann  fun@(Builtin _ op) args              = do
         --_                                     -> return e
 
     -- Map
-    (Map, [tElem, tCont, tc, fn, cont]) -> case argHead cont of
-        Seq _ xs -> mkSeq' ann tElem tCont tc <$> traverse (\x -> nf $ App ann (argExpr fn) [Arg ann Explicit x]) xs
-        _        -> return e
+    (Map, [tElem, tRes, fn, cont]) ->
+      fromMaybe (return e) (nfMap ann tElem tRes fn cont)
+
     -- TODO distribute over cons
 
     -- Fold
     (Fold, [_tElem, _tCont, _tRes, _tc, foldOp, unit, cont]) -> case argHead cont of
-      Seq _ xs -> nf $ foldr (\x body -> App ann (argExpr foldOp) [Arg ann Explicit x, Arg ann Explicit body]) (argExpr unit) xs
+      Seq _ xs -> nf $ foldr (\x body -> normApp ann (argExpr foldOp) [Arg ann Explicit x, Arg ann Explicit body]) (argExpr unit) xs
       _        -> return e
     -- TODO distribute over cons
 
@@ -374,15 +374,18 @@ nfQuantifierIn :: MonadNorm m
                -> Maybe (m CheckedExpr)
 nfQuantifierIn ann q tElem tCont tRes _tc lam container = do
   let (bop, unit) = quantImplementation q
+  let isTruthTC = Arg ann Instance (PrimDict (mkIsTruth ann (argExpr tRes)))
+  let bopExpr = App ann (Builtin ann bop) [tRes, isTruthTC]
+  let unitExpr = mkLiteral' ann (LBool unit) tRes isTruthTC
   let tResCont = mapArgExpr (substContainerType tRes) tCont
   let tResContTC = PrimDict $ mkIsContainer ann (argExpr tRes) (argExpr tResCont)
   let mappedContainer = mkMap' ann tElem tRes lam container
-  let foldedContainer = mkFold' ann tRes tResCont tRes (Arg ann Instance tResContTC) (Builtin ann bop) (Literal ann unit) mappedContainer
-  Just (return foldedContainer)
+  let foldedContainer = mkFold' ann tRes tResCont tRes (Arg ann Instance tResContTC) bopExpr unitExpr mappedContainer
+  Just (nf foldedContainer)
 
-quantImplementation :: Quantifier -> (Builtin, Literal)
-quantImplementation All = (And, LBool True)
-quantImplementation Any = (Or,  LBool False)
+quantImplementation :: Quantifier -> (Builtin, Bool)
+quantImplementation All = (And, True)
+quantImplementation Any = (Or,  False)
 
 --------------------------------------------------------------------------------
 -- Normalising not
@@ -430,3 +433,21 @@ nfNeg ann _t _tc arg = case argHead arg of
   (EInt  _ x) -> Just $ return $ mkInt  ann (- x)
   (EReal _ x) -> Just $ return $ mkReal ann (- x)
   _           -> Nothing
+
+-----------------------------------------------------------------------------
+-- Normalising map
+
+nfMap :: MonadNorm m
+      => CheckedAnn
+      -> CheckedArg
+      -> CheckedArg
+      -> CheckedArg
+      -> CheckedArg
+      -> Maybe (m CheckedExpr)
+nfMap ann _tFrom tTo fun arg = case argHead arg of
+  Seq _ xs -> Just $ do
+    ys <- traverse (\x -> nf $ normApp ann (argExpr fun) [Arg ann Explicit x]) xs
+    let tElem = argExpr tTo
+    let tCont = mkListType ann tElem
+    return $ mkSeq ann tElem tCont ys
+  _        -> Nothing

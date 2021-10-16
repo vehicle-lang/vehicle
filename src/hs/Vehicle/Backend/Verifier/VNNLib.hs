@@ -67,7 +67,9 @@ compileToVNNLib :: (MonadLogger m, MonadError SMTLibError m)
                 -> m [VNNLibDoc]
 compileToVNNLib prog = do
   logDebug "Beginning compilation to VNNLib"
+  incrCallDepth
   result <- runReaderT (compileProg prog) []
+  decrCallDepth
   logDebug "Finished compilation to VNNLib"
   return result
 
@@ -168,6 +170,7 @@ compileDecl d = case d of
       return (Nothing, alterCtx)
     else do
       logDebug $ "Beginning compilation of property" <+> squotes (pretty (deProv ident))
+      incrCallDepth
       -- TODO Lift all network-bindings to quantifier level
       (dslExpr, metaNetwork) <- runStateT (processNetworkApplications e) []
       if null metaNetwork then
@@ -179,6 +182,7 @@ compileDecl d = case d of
         let quantifiedExpr = quantifyOverMetaNetworkIO metaNetwork normMetworklessExpr
 
         smtDoc <- SMTLib.compileProp (deProv ident) quantifiedExpr
+        decrCallDepth
         logDebug $ "Finished compilation of property" <+> squotes (pretty (deProv ident)) <+> "\n"
         return (Just $ VNNLibDoc smtDoc metaNetwork, alterCtx)
 
@@ -212,13 +216,16 @@ processNetworkApplications e = case e of
   Meta _p _      -> resolutionError "Meta"
   PrimDict _tc   -> visibilityError "PrimDict"
   Ann _ann _ _   -> normalisationError "Ann"
-  Lam _ann _ _   -> normalisationError "Lam"
   -- There only be seqs inside network applications which we catch explicitly below.
   Seq _ann _     -> normalisationError "Seq"
 
   Var{}          -> return $ pure e
   Builtin{}      -> return $ pure e
   Literal{}      -> return $ pure e
+
+  Lam ann binder body -> do
+    body' <- processNetworkApplications body
+    return (\d -> Lam ann binder (body' d))
 
   App ann fun args -> do
     fun'  <- processNetworkApplications fun

@@ -9,7 +9,6 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Vehicle.Core.AST
 import Vehicle.Core.Compile.Type.Core
 import Vehicle.Core.Compile.Type.Meta
-import Vehicle.Core.MetaSubstitution qualified as MetaSubst (lookup)
 
 --------------------------------------------------------------------------------
 -- Normalisation
