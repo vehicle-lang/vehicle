@@ -235,6 +235,14 @@ mkAt' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> 
 mkAt' ann tElem tCont tc xs i = App ann (Builtin ann At)
   [tElem, tCont, tc, Arg ann Explicit xs , Arg ann Explicit i ]
 
+mkMap' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr
+mkMap' ann tFrom tTo f xs = App ann (Builtin ann Map)
+  [tFrom, tTo, f, xs]
+
+mkFold' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkFold' ann tElem tCont tRes tc bop unit xs = App ann (Builtin ann Fold)
+  [tElem, tCont, tRes, tc, Arg ann Explicit bop, Arg ann Explicit unit, Arg ann Explicit xs]
+
 mkQuantifier :: CheckedAnn -> Quantifier -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkQuantifier ann q n t e =
   App ann (Builtin ann (Quant q))
@@ -245,3 +253,10 @@ mkNameWithIndices :: Name -> [Int] -> Name
 mkNameWithIndices Machine  _       = Machine
 mkNameWithIndices (User n) indices = User $
   mconcat (n : ["_" <> pack (show index) | index <- indices])
+
+substContainerType :: CheckedArg -> CheckedExpr -> CheckedExpr
+substContainerType newTElem (App ann1 (Builtin ann2 List)   [_tElem]) =
+  App ann1 (Builtin ann2 List) [newTElem]
+substContainerType newTElem (App ann1 (Builtin ann2 Tensor) [_tElem, tDims])  =
+  App ann1 (Builtin ann2 Tensor) [newTElem, tDims]
+substContainerType _ _ = developerError "Provided an invalid container type"

@@ -279,7 +279,12 @@ nfApp ann  fun@(Builtin _ op) args              = do
     -- TODO distribute over cons
 
     -- Quantifiers
-    (Quant q, [_tElem, lam]) -> fromMaybe (return e) (nfQuantifier ann q lam)
+    (Quant q, [_tElem, lam]) ->
+      fromMaybe (return e) (nfQuantifier ann q lam)
+
+    -- Quantifiers over containers
+    (QuantIn q, [tElem, tCont, tRes, tc, lam, cont]) ->
+      fromMaybe (return e) (nfQuantifierIn ann q tElem tCont tRes tc lam cont)
 
     -- Fall-through case
     _ -> return e
@@ -352,23 +357,32 @@ getDimension e = case exprHead e of
   (Literal _ (LNat i)) -> Just i
   _                    -> Nothing
 
-{-
 --------------------------------------------------------------------------------
 -- Normalising quantification over lists
 
 -- |Elaborate quantification over the members of a container type.
 -- Expands e.g. `every x in list . y` to `fold and true (map (\x -> y) list)`
-quantIn :: MonadElab m => VC.InputAnn -> Quantifier -> VF.InputBinder -> VF.InputExpr -> VF.InputExpr -> m VC.InputExpr
-quantIn ann quantifier n container body = do
-  let (bop, unit) = quantImplementation quantifier
-  let lam = VF.Lam ann (n :| []) body
-  mappedContainer <- op VC.Map ann [lam, container]
-  return $ opC VC.Fold ann [VC.Builtin ann bop, VC.Literal ann unit, mappedContainer]
+nfQuantifierIn :: MonadNorm m
+               => CheckedAnn
+               -> Quantifier
+               -> CheckedArg -- tElem
+               -> CheckedArg -- tCont
+               -> CheckedArg -- tRes
+               -> CheckedArg -- IsContainer tElem tCont
+               -> CheckedArg
+               -> CheckedArg
+               -> Maybe (m CheckedExpr)
+nfQuantifierIn ann q tElem tCont tRes _tc lam container = do
+  let (bop, unit) = quantImplementation q
+  let tResCont = mapArgExpr (substContainerType tRes) tCont
+  let tResContTC = PrimDict $ mkIsContainer ann (argExpr tRes) (argExpr tResCont)
+  let mappedContainer = mkMap' ann tElem tRes lam container
+  let foldedContainer = mkFold' ann tRes tResCont tRes (Arg ann Instance tResContTC) (Builtin ann bop) (Literal ann unit) mappedContainer
+  Just (return foldedContainer)
 
-quantImplementation :: Quantifier -> (VC.Builtin, Literal)
-quantImplementation All = (VC.And, LBool True)
-quantImplementation Any = (VC.Or,  LBool False)
--}
+quantImplementation :: Quantifier -> (Builtin, Literal)
+quantImplementation All = (And, LBool True)
+quantImplementation Any = (Or,  LBool False)
 
 --------------------------------------------------------------------------------
 -- Normalising not

@@ -580,7 +580,7 @@ typeOfAtOp p =
     forall type0 $ \tCont ->
       isContainer p tElem tCont ~~~> tCont ~> tNat ~> tElem
 
--- TODO generalise these to tensors etc.
+-- TODO generalise these to tensors etc. (remember to do mkMap' in utils as well)
 typeOfMapOp :: DSLExpr
 typeOfMapOp =
   forall type0 $ \tFrom ->
