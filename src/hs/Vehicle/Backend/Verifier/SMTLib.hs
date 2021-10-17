@@ -10,6 +10,7 @@ module Vehicle.Backend.Verifier.SMTLib
   , UnsupportedNetworkType(..)
   ) where
 
+import Control.Monad (when)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.Maybe (catMaybes)
@@ -19,7 +20,7 @@ import Vehicle.Prelude
 import Vehicle.Core.AST
 import Vehicle.Core.Print.Friendly (prettyFriendly)
 import Vehicle.Core.Normalise (normaliseInternal)
-import Vehicle.Core.Compile.Descope (runDescope)
+import Vehicle.Core.Compile.Descope (runDescope, runDescopeWithCtx)
 import Vehicle.Backend.Verifier.Core
 
 compileToSMTLib :: (MonadLogger m, MonadError SMTLibError m)
@@ -143,7 +144,7 @@ instance MeaningfulError SMTLibError where
 --------------------------------------------------------------------------------
 -- Data
 
-data SMTDoc = PropertyDoc
+data SMTDoc = SMTDoc
   { text    :: Doc ()   -- The problem to feed to the verifier
   , vars    :: [SMTVar] -- The list of variables in the property
   , negated :: Bool     -- Did the property contain universal quantifier and is therefore negated?
@@ -156,6 +157,9 @@ data SMTVar = SMTVar
 
 data SMTType
   = SReal
+
+instance Pretty SMTType where
+  pretty SReal = "Real"
 
 --------------------------------------------------------------------------------
 -- Monad
@@ -192,22 +196,40 @@ compileDecl = \case
   DefFun _ ident t e -> if not $ isProperty t
       then return Nothing
       else do
-        Just <$> compileProp (deProv ident) e
+        let doc = compileProp (deProv ident) e
+        Just <$> doc
 
 compileProp :: MonadSMTLib m => Identifier -> CheckedExpr -> m SMTDoc
-compileProp ident expr = do
-  logDebug $ "Beginning compilation of SMTLib property" <+> squotes (pretty ident)
-  incrCallDepth
-  res <- runReaderT result ident
-  decrCallDepth
-  logDebug $ "Finished compilation of SMTLib property" <+> squotes (pretty ident)
-  return res
+compileProp ident expr = runReaderT propertyDoc ident
   where
-    result = do
-      (vars, body, negated) <- stripQuantifiers True expr
-      let body2 = runDescope body
-      bodyDoc <- compileExpr body2
-      return $ PropertyDoc bodyDoc vars negated
+  propertyDoc :: MonadSMTLibProp m => m SMTDoc
+  propertyDoc = do
+    logDebug $ "Beginning compilation of SMTLib property" <+> squotes (pretty ident)
+    incrCallDepth
+
+    (vars, body, negated) <- stripQuantifiers True expr
+    let ctx = map (User . name) vars
+
+    logDebug $ "Stripped existential quantifiers:" <+> pretty ctx
+
+    let body2 = runDescopeWithCtx ctx body
+    let varDoc = compileVars vars
+    bodyDoc <- compileExpr body2
+    let doc = varDoc <> line <> line <> bodyDoc
+
+    let result = SMTDoc doc vars negated
+    logDebug $ "Output:" <> align (line <> doc)
+
+    decrCallDepth
+    logDebug $ "Finished compilation of SMTLib property" <+> squotes (pretty ident)
+
+    return result
+
+compileVars :: [SMTVar] -> Doc a
+compileVars vars = vsep (map compileVar vars)
+  where
+    compileVar :: SMTVar -> Doc a
+    compileVar (SMTVar name t) = parens ("declare-const" <+> pretty name <+> pretty t)
 
 stripQuantifiers :: MonadSMTLibProp m => Bool -> CheckedExpr -> m ([SMTVar], CheckedExpr, Bool)
 stripQuantifiers atTopLevel e = case quantView e of
@@ -230,7 +252,8 @@ negatePropertyIfNecessary _atTopLevel _ann Any body  = return (body, False)
 negatePropertyIfNecessary False       ann All _body = do
   ident <- ask
   throwError $ UnsupportedQuantifierSequence ann ident
-negatePropertyIfNecessary True        ann  All body  =
+negatePropertyIfNecessary True        ann  All body  = do
+  logDebug "Negating universal quantifier"
   return (normaliseInternal $ mkNot ann (Builtin ann Prop) body, False)
 
 getSymbol :: Name -> Symbol
@@ -262,7 +285,9 @@ compileExpr = \case
   App _ann fun args -> do
     funDoc  <- compileExpr fun
     argDocs <- catMaybes <$> traverse compileArg (NonEmpty.toList args)
-    return $ parens $ hsep (funDoc : argDocs)
+    return $ if null argDocs
+      then funDoc
+      else parens $ hsep (funDoc : argDocs)
 
 compileBuiltin :: MonadSMTLibProp m => OutputAnn -> Builtin -> m (Doc b)
 compileBuiltin ann = \case

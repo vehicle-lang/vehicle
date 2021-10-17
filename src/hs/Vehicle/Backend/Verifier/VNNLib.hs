@@ -172,12 +172,13 @@ compileDecl d = case d of
 
   DefFun _ ident t e ->
     let alterCtx = id in
+    let identDoc = squotes (pretty (deProv ident)) in
     if not $ isProperty t then
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
       return (Nothing, alterCtx)
     else do
-      logDebug $ "Beginning compilation of property" <+> squotes (pretty (deProv ident))
+      logDebug $ "Beginning compilation of VNNLib property" <+> identDoc
       incrCallDepth
       -- TODO Lift all network-bindings to quantifier level
       (dslExpr, metaNetwork) <- runStateT (processNetworkApplications e) []
@@ -190,10 +191,11 @@ compileDecl d = case d of
         let normMetworklessExpr = normaliseInternal networklessExpr
         let quantifiedExpr = quantifyOverMetaNetworkIO metaNetwork normMetworklessExpr
 
-        logDebug $ "Finished conversion to SMTLib:" <+> prettySimple quantifiedExpr
+        logDebug $ "Replaced network applications:" <+> prettySimple quantifiedExpr
 
         smtDoc <- SMTLib.compileProp (deProv ident) quantifiedExpr
         decrCallDepth
+        logDebug $ "Finished compilation of VNNLib property" <+> identDoc
 
         return (Just $ VNNLibDoc smtDoc metaNetwork, alterCtx)
 
