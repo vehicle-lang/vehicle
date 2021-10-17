@@ -9,14 +9,15 @@ module Vehicle.Backend.Verifier.VNNLib
 
 import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Control.Monad.Except (MonadError(..))
-import Control.Monad.State (MonadState(..), runStateT, modify)
+import Control.Monad.State (MonadState(..), runStateT, modify, gets)
 import Data.Map (Map)
 import Data.Map qualified as Map (insert, lookup)
 import Data.Maybe (catMaybes, fromMaybe)
 
 import Vehicle.Prelude hiding (Network)
 import Vehicle.Core.AST hiding (Map)
-import Vehicle.Core.Print ()
+import Vehicle.Core.Print (prettyVerbose, prettySimple)
+import Vehicle.Core.Print.Friendly (prettyFriendly)
 import Vehicle.Core.Normalise (normaliseInternal)
 import Vehicle.Backend.Verifier.Core
 import Vehicle.Backend.Verifier.SMTLib (SMTLibError, SMTDoc, SMTLibError(..), InputOrOutput(..), UnsupportedNetworkType(..))
@@ -86,11 +87,18 @@ data TensorDetails = TensorDetails
   , tElem :: Builtin
   }
 
+instance Pretty TensorDetails where
+  pretty (TensorDetails size tElem) = "Tensor" <+> pretty tElem <+> "[" <> pretty size <> "]"
+
 data NetworkDetails = NetworkDetails
   { ident        :: WithProvenance Identifier
   , inputTensor  :: TensorDetails
   , outputTensor :: TensorDetails
   }
+
+instance Pretty NetworkDetails where
+  pretty (NetworkDetails ident input output) =
+    pretty ident <+> ":" <+> pretty input <+> "->" <+> pretty output
 
 networkSize :: NetworkDetails -> Int
 networkSize n = size (inputTensor n) + size (outputTensor n)
@@ -173,39 +181,57 @@ compileDecl d = case d of
       incrCallDepth
       -- TODO Lift all network-bindings to quantifier level
       (dslExpr, metaNetwork) <- runStateT (processNetworkApplications e) []
+      logDebug $ "Generated meta-network" <+> pretty metaNetwork
       if null metaNetwork then
         throwError $ NoNetworkUsedInProperty ident
       else do
-        let initialBindingDepth = metaNetworkSize metaNetwork
-        let networklessExpr = dslExpr initialBindingDepth
+        let size = metaNetworkSize metaNetwork
+        let networklessExpr = dslExpr size
         let normMetworklessExpr = normaliseInternal networklessExpr
         let quantifiedExpr = quantifyOverMetaNetworkIO metaNetwork normMetworklessExpr
 
+        logDebug $ "Finished conversion to SMTLib:" <+> prettyFriendly mempty quantifiedExpr
+
         smtDoc <- SMTLib.compileProp (deProv ident) quantifiedExpr
         decrCallDepth
-        logDebug $ "Finished compilation of property" <+> squotes (pretty (deProv ident)) <+> "\n"
+
         return (Just $ VNNLibDoc smtDoc metaNetwork, alterCtx)
 
 
 quantifyOverMetaNetworkIO :: MetaNetwork -> CheckedExpr -> CheckedExpr
-quantifyOverMetaNetworkIO metaNetwork prop = foldr quantifyOverNetworkIO prop metaNetwork
+quantifyOverMetaNetworkIO metaNetwork prop = result
   where
-  quantifyOverNetworkIO :: NetworkDetails -> CheckedExpr -> CheckedExpr
-  quantifyOverNetworkIO (NetworkDetails ident inputs outputs) =
-    quantifyOverTensorIO ident Input inputs . quantifyOverTensorIO ident Output outputs
+    (_, _, result) = foldr quantifyOverNetworkIO (0, 0, prop) metaNetwork
 
-  quantifyOverTensorIO :: WithProvenance Identifier -> InputOrOutput -> TensorDetails -> CheckedExpr -> CheckedExpr
-  quantifyOverTensorIO ident io (TensorDetails size tElem) body =
-    let ann = prov ident in
-    let names = mkMagicVariableNames io [0 .. size] in
-    let varType = Builtin ann tElem in
-    foldl (\res name -> mkQuantifier ann All name varType res) body names
+    quantifyOverNetworkIO :: NetworkDetails -> (Int, Int, CheckedExpr) -> (Int, Int, CheckedExpr)
+    quantifyOverNetworkIO (NetworkDetails ident inputs outputs) (inputIndex, outputIndex, body)  =
+      let body' = quantifyOverTensorIO ident Input  inputIndex  inputs $
+                  quantifyOverTensorIO ident Output outputIndex outputs body in
+      (inputIndex + size inputs, outputIndex + size outputs, body')
+
+    quantifyOverTensorIO :: WithProvenance Identifier
+                         -> InputOrOutput
+                         -> Int
+                         -> TensorDetails
+                         -> CheckedExpr
+                         -> CheckedExpr
+    quantifyOverTensorIO ident io startingIndex (TensorDetails size tElem) body =
+      let ann = prov ident in
+      let indices = reverse [startingIndex .. startingIndex + size-1] in
+      let names = mkMagicVariableNames io indices in
+      let varType = Builtin ann tElem in
+      foldl (\res name -> mkQuantifier ann All name varType res) body names
 
 mkMagicVariableNames :: InputOrOutput -> [Int] -> [Name]
 mkMagicVariableNames io indices = [mkNameWithIndices (User baseName) [i] | i <- indices]
   where
     baseName = if io == Input then "X" else "Y"
 
+-- Takes in the expression to process and returns a function
+-- from the current binding depth to the altered expression.
+--
+-- NOTE that we don't need to adjust references to already bound variables
+-- as the quantifiers are all added on the outside.
 processNetworkApplications :: MonadVNNLibProp m
                            => CheckedExpr
                            -> m (BindingDepth -> CheckedExpr)
@@ -216,16 +242,19 @@ processNetworkApplications e = case e of
   Meta _p _      -> resolutionError "Meta"
   PrimDict _tc   -> visibilityError "PrimDict"
   Ann _ann _ _   -> normalisationError "Ann"
-  -- There only be seqs inside network applications which we catch explicitly below.
-  Seq _ann _     -> normalisationError "Seq"
 
-  Var{}          -> return $ pure e
-  Builtin{}      -> return $ pure e
-  Literal{}      -> return $ pure e
+  Builtin{} -> return $ const e
+  Literal{} -> return $ const e
+  Var{}     -> return $ const e
+
+  Seq ann xs     -> do
+    xs' <- traverse processNetworkApplications xs
+    return (\d -> Seq ann (map ($ d) xs'))
 
   Lam ann binder body -> do
     body' <- processNetworkApplications body
-    return (\d -> Lam ann binder (body' d))
+    -- Increase the binding depth by 1
+    return (\d -> Lam ann binder (body' (d + 1)))
 
   App ann fun args -> do
     fun'  <- processNetworkApplications fun
@@ -243,9 +272,10 @@ processNetworkApplications e = case e of
   Let{} -> normalisationError "Let"
   where
     recurseArg :: MonadVNNLibProp m => CheckedArg -> m (BindingDepth -> CheckedArg)
-    recurseArg (Arg ann v expr) = do
+    recurseArg (Arg ann Explicit expr) = do
       expr' <- processNetworkApplications expr
-      return (\d -> Arg ann v (expr' d))
+      return (\d-> Arg ann Explicit (expr' d))
+    recurseArg arg = return $ const arg
 
 processNetworkApplication :: MetaNetwork    -- Current metanetwork
                           -> NetworkDetails -- Current network
@@ -254,7 +284,8 @@ processNetworkApplication :: MetaNetwork    -- Current metanetwork
                           -> (BindingDepth -> CheckedExpr)
                           -> BindingDepth
                           -> CheckedExpr
-processNetworkApplication currentMetaNetwork network ann currentInput body currentBindingDepth = newBody
+processNetworkApplication currentMetaNetwork network ann currentInput body
+  currentBindingDepth = newBody
   where
     -- EXAMPLE:
     --
@@ -267,14 +298,14 @@ processNetworkApplication currentMetaNetwork network ann currentInput body curre
     -- -----------------------------------------   ------------      |------|
     --                          (A)                     (B)             (C)
     --
-    -- (A) Inserted quantifiers over all IO variables for meta-network
+    -- (A) Inserted quantifiers over all IO variables for meta-network.
     --
-    -- (B) User quantifiers in the original program
+    -- (B) User quantifiers in the original program.
     --
     -- (C) The location of the network application in the program, which is pointed
-    -- to by the variable `currentBindingDepth`
+    -- to by the variable `currentBindingDepth`.
     --
-    -- (D) The location of the current network that's being applied in the quantifiers
+    -- (D) The location of the current network that's being applied in the quantifiers.
     --
     -- (E) Inserted quantifiers over the meta-network so far.
 
@@ -296,8 +327,8 @@ processNetworkApplication currentMetaNetwork network ann currentInput body curre
     -- In the examples points to X4
     outputEndingDBIndex   = outputStartingDBIndex - outputSize
 
-    inputVarIndices  = reverse [outputStartingDBIndex .. inputStartingDBIndex]
-    outputVarIndices = reverse [outputEndingDBIndex   .. outputStartingDBIndex]
+    inputVarIndices  = reverse [outputStartingDBIndex .. inputStartingDBIndex-1]
+    outputVarIndices = reverse [outputEndingDBIndex   .. outputStartingDBIndex-1]
 
     (inputTensorExpr,  inputTensorType) = mkIOVariableSeq ann inputType  inputVarIndices
     (outputTensorExpr, _)               = mkIOVariableSeq ann outputType outputVarIndices

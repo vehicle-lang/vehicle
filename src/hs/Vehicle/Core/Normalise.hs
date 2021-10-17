@@ -132,10 +132,15 @@ instance Norm CheckedExpr where
       Var _ (Bound _)     -> return e
       Var _ (Free ident)  -> gets (fromMaybe e . M.lookup ident)
 
-      Let _ letValue _ letBody -> do
-        normalisedLetValue <- nf letValue
-        let letBodyWithSubstitution = substInto normalisedLetValue letBody
+      Let ann letValue binder letBody -> do
+        normLetValue <- nf letValue
+        normLetBody <- nf letBody
+        return $ Let ann normLetValue binder normLetBody
+        -- TODO renable let normalisation once we get left lifting re-enabled
+        {-
+        let letBodyWithSubstitution = substInto normLetValue letBody
         nf letBodyWithSubstitution
+        -}
 
       eApp@(App ann _ _) -> let (fun, args) = toHead eApp in do
         nFun  <- nf fun
