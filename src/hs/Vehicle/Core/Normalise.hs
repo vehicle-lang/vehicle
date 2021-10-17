@@ -162,13 +162,8 @@ nfApp ann  fun@(Builtin _ op) args              = do
   let e = normAppList ann fun args
   case (op, args) of
     -- Equality
-    (Eq, [_tElem, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      --(EFalse _,  _)         -> normApp $ composeApp ann (Builtin ann op, [tElem, _, e2])
-      (ENat  _ m, EInt  _ n) -> return $ mkBool ann (m == n) (argExpr tRes)
-      (EInt  _ i, EInt  _ j) -> return $ mkBool ann (i == j) (argExpr tRes)
-      (EReal _ x, EReal _ y) -> return $ mkBool ann (x == y) (argExpr tRes)
-      _                      -> return e
-    -- TODO implement reflexive rules?
+    (Eq, [tElem, tRes, tc, arg1, arg2]) ->
+      fromMaybe (return e) (nfEq ann tElem tRes tc (argExpr arg1) (argExpr arg2))
 
     -- Inequality
     (Neq, [_tElem, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
@@ -180,8 +175,8 @@ nfApp ann  fun@(Builtin _ op) args              = do
       _                      -> return e
 
     -- Not
-    (Not, [t, tc, arg]) -> fromMaybe (return e) (nfNot ann t tc arg)
-    -- TODO implement idempotence rules?
+    (Not, [t, tc, arg]) ->
+      fromMaybe (return e) (nfNot ann t tc arg)
 
     -- And
     (And, [t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
@@ -297,6 +292,30 @@ nfApp ann  fun@(Builtin _ op) args              = do
 nfApp ann fun args = return $ normAppList ann fun args
 
 --------------------------------------------------------------------------------
+-- Normalising equality
+
+nfEq :: MonadNorm m
+     => CheckedAnn
+     -> CheckedArg
+     -> CheckedArg
+     -> CheckedArg
+     -> CheckedExpr
+     -> CheckedExpr
+     -> Maybe (m CheckedExpr)
+nfEq ann _tEq tRes tc e1 e2 = case (toHead e1, toHead e2) of
+  --(EFalse _,  _)         -> normApp $ composeApp ann (Builtin ann op, [tElem, _, e2])
+  ((ENat  _ m, _),       (EInt  _ n, _))     -> Just $ return $ mkBool ann (m == n) (argExpr tRes)
+  ((EInt  _ i, _),       (EInt  _ j, _))     -> Just $ return $ mkBool ann (i == j) (argExpr tRes)
+  ((EReal _ x, _),       (EReal _ y, _))     -> Just $ return $ mkBool ann (x == y) (argExpr tRes)
+  ((Seq _ xs, [tElem,_,_]), (Seq _ ys, [_,_,_]))  -> Just $
+    if length xs /= length ys then
+      return $ mkBool ann False (argExpr tRes)
+    else
+      nf $ foldr (\(x,y) res -> mkAnd' ann tRes tc (mkEq' ann tElem tRes tc x y) res) (mkBool ann True (argExpr tRes)) (zip xs ys)
+  _                     -> Nothing
+  -- TODO implement reflexive rules?
+
+--------------------------------------------------------------------------------
 -- Normalising quantification over types
 
 nfQuantifier :: MonadNorm m
@@ -395,6 +414,7 @@ quantImplementation Any = (Or,  False)
 --------------------------------------------------------------------------------
 -- Normalising not
 
+-- TODO implement idempotence rules?
 nfNot :: MonadNorm m
       => CheckedAnn
       -> CheckedArg

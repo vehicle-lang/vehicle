@@ -190,7 +190,7 @@ compileDecl d = case d of
         let normMetworklessExpr = normaliseInternal networklessExpr
         let quantifiedExpr = quantifyOverMetaNetworkIO metaNetwork normMetworklessExpr
 
-        logDebug $ "Finished conversion to SMTLib:" <+> prettyFriendly mempty quantifiedExpr
+        logDebug $ "Finished conversion to SMTLib:" <+> prettySimple quantifiedExpr
 
         smtDoc <- SMTLib.compileProp (deProv ident) quantifiedExpr
         decrCallDepth
@@ -261,8 +261,8 @@ processNetworkApplications e = case e of
     args' <- traverse recurseArg args
     return (\d -> App ann (fun' d) (fmap ($ d) args'))
 
-  Let _ (App _ fun [Arg _ _ arg]) _ body -> case (fun, exprHead arg) of
-    (Var ann (Free ident), currentInput) -> do
+  Let _ (App _ fun [Arg _ _ currentInput]) _ body -> case fun of
+    (Var ann (Free ident)) -> do
       (networkDetails, currentMetaNetwork) <- addToMetaNetwork ident
       body' <- processNetworkApplications body
       return $ processNetworkApplication currentMetaNetwork networkDetails ann currentInput body'
@@ -285,7 +285,7 @@ processNetworkApplication :: MetaNetwork    -- Current metanetwork
                           -> BindingDepth
                           -> CheckedExpr
 processNetworkApplication currentMetaNetwork network ann currentInput body
-  currentBindingDepth = newBody
+   currentBindingDepth = newBody
   where
     -- EXAMPLE:
     --
