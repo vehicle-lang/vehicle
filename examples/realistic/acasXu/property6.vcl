@@ -46,7 +46,7 @@ intruderFarAway x =
 advisesClearOfConflict : InputVector -> Prop
 advisesClearOfConflict x = let y = acasXu x in
   every i inn ([0,1,2,3,4] : List Nat) .
-    clearOfConflictScore x <= y ! i
+    y ! 0 <= y ! i
 
 property6 : Prop
 property6 = every x. intruderFarAway x => advisesClearOfConflict x

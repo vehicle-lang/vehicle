@@ -132,9 +132,7 @@ instance Norm CheckedExpr where
       Ann _ann expr _typ  -> nf expr
 
       Var _ (Bound _)     -> return e
-      Var _ (Free ident)  -> do
-        logError $ line <> line <> pretty ident <> line <> line
-        gets (fromMaybe e . M.lookup ident)
+      Var _ (Free ident)  -> gets (fromMaybe e . M.lookup ident)
 
       Let ann letValue binder letBody -> do
         letValue' <- nf letValue
