@@ -29,6 +29,9 @@ realisticTestList =
   , ("examples/realistic/andGate/andGate",
       [ Verifier VNNLib
       ])
+  , ("examples/realistic/acasXu/property6",
+      [ Verifier VNNLib
+      ])
   ]
 
 simpleTestList :: [GoldenTestSpec]
@@ -38,7 +41,17 @@ simpleTestList =
         Verifier SMTLib
       ])
 
+  , ("./examples/simple/quantifierIn",
+      [
+        Verifier SMTLib
+      ])
+
   ,  ("./examples/simple/let",
+      [
+        Verifier SMTLib
+      ])
+
+  ,  ("./examples/simple/bool",
       [
         Verifier SMTLib
       ])

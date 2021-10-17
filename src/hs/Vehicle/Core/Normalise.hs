@@ -105,12 +105,14 @@ instance Norm CheckedProg where
 
 instance Norm CheckedDecl where
   nf = \case
-    DeclNetw ann arg   typ      -> DeclNetw ann arg <$> nf typ
-    DeclData ann arg   typ      -> DeclData ann arg <$> nf typ
+    DeclNetw ann ident typ      -> DeclNetw ann ident <$> nf typ
+    DeclData ann ident typ      -> DeclData ann ident <$> nf typ
+
     DefFun   ann ident typ expr -> do
+      typ'  <- nf typ
       expr' <- nf expr
       modify (M.insert (deProv ident) expr')
-      return $ DefFun ann ident typ expr'
+      return $ DefFun ann ident typ' expr'
 
 instance Norm CheckedExpr where
   nf e = showExit e $ do
@@ -124,21 +126,24 @@ instance Norm CheckedExpr where
 
       PrimDict tc         -> nf tc
       Seq ann exprs       -> Seq ann <$> traverse nf exprs
-      Lam ann binder expr -> Lam ann binder <$> nf expr
-      Pi ann binder body  -> Pi ann binder <$> nf body
+      Lam ann binder expr -> Lam ann <$> nf binder <*> nf expr
+      Pi ann binder body  -> Pi ann <$> nf binder <*> nf body
 
       Ann _ann expr _typ  -> nf expr
 
       Var _ (Bound _)     -> return e
-      Var _ (Free ident)  -> gets (fromMaybe e . M.lookup ident)
+      Var _ (Free ident)  -> do
+        logError $ line <> line <> pretty ident <> line <> line
+        gets (fromMaybe e . M.lookup ident)
 
       Let ann letValue binder letBody -> do
-        normLetValue <- nf letValue
-        normLetBody <- nf letBody
-        return $ Let ann normLetValue binder normLetBody
+        letValue' <- nf letValue
+        binder'  <- nf binder
+        letBody' <- nf letBody
+        return $ Let ann letValue' binder' letBody'
         -- TODO renable let normalisation once we get left lifting re-enabled
         {-
-        let letBodyWithSubstitution = substInto normLetValue letBody
+        let letBodyWithSubstitution = substInto letValue' letBody'
         nf letBodyWithSubstitution
         -}
 
@@ -148,6 +153,9 @@ instance Norm CheckedExpr where
         -- behaviour in implicit/instance arguments
         nArgs <- traverse (\arg -> if vis arg == Explicit then nf arg else return arg) args
         nfApp ann nFun nArgs
+
+instance Norm CheckedBinder where
+  nf (Binder p v n t) = Binder p v n <$> nf t
 
 instance Norm CheckedArg where
   nf (Arg p Explicit e) = Arg p Explicit <$> nf e
