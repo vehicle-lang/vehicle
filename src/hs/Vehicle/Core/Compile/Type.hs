@@ -502,10 +502,7 @@ typeOfBuiltin p b = fromDSL $ case b of
   Eq   -> typeOfEqualityOp p
   Neq  -> typeOfEqualityOp p
 
-  Le   -> typeOfComparisonOp p
-  Lt   -> typeOfComparisonOp p
-  Ge   -> typeOfComparisonOp p
-  Gt   -> typeOfComparisonOp p
+  Order _   -> typeOfComparisonOp p
 
   Add  -> typeOfNumOp2 (isNatural  p)
   Sub  -> typeOfNumOp2 (isIntegral p)

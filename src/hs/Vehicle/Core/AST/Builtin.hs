@@ -42,10 +42,7 @@ data Builtin
   | Not
   | Eq
   | Neq
-  | Le
-  | Lt
-  | Ge
-  | Gt
+  | Order Order
   | Mul
   | Div
   | Add
@@ -89,10 +86,10 @@ builtinSymbols =
   , "not"          |-> Not
   , "=="           |-> Eq
   , "!="           |-> Neq
-  , "<="           |-> Le
-  , "<"            |-> Lt
-  , ">="           |-> Ge
-  , ">"            |-> Gt
+  , "<="           |-> Order Le
+  , "<"            |-> Order Lt
+  , ">="           |-> Order Ge
+  , ">"            |-> Order Gt
   , "+"            |-> Add
   , "*"            |-> Mul
   , "/"            |-> Div

@@ -330,10 +330,7 @@ compileBuiltin ann = \case
   Not            -> return "not"
   Eq             -> return "=="
   Neq            -> return "distinct"
-  Le             -> return "<="
-  Lt             -> return "<"
-  Ge             -> return ">"
-  Gt             -> return ">="
+  Order o        -> return (pretty o)
   Mul            -> return "*"
   Div            -> return "/"
   Add            -> return "+"

@@ -217,13 +217,13 @@ nfApp ann  fun@(Builtin _ op) args              = do
       _        -> return e
 
     -- Le
-    (Le, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
+    (Order Le, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
       (EInt  _ i, EInt  _ j) -> return $ mkBool ann (argExpr tRes) (i <= j)
       (EReal _ x, EReal _ y) -> return $ mkBool ann (argExpr tRes) (x <= y)
       _                      -> return e
 
     -- Lt
-    (Lt, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
+    (Order Lt, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
       (EInt  _ i, EInt  _ j) -> return $ mkBool ann (argExpr tRes) (i < j)
       (EReal _ x, EReal _ y) -> return $ mkBool ann (argExpr tRes) (x < y)
       _                      -> return e
@@ -431,11 +431,14 @@ nfNot ann t tc arg = case toHead (argExpr arg) of
   (ETrue  _, [_, _])            -> Just $ return $ mkBool ann (argExpr t) False
   (EFalse _, [_, _])            -> Just $ return $ mkBool ann (argExpr t) True
   -- Negation juggling
-  (Builtin _ (Quant q), [lam])  -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
-  (Builtin _ Impl, [_,_,e1,e2]) -> Just $ nf $ mkAnd' ann t tc (argExpr e1) (neg (argExpr e2))
-  (Builtin _ And,  [_,_,e1,e2]) -> Just $ nf $ mkOr'  ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
-  (Builtin _ Or,   [_,_,e1,e2]) -> Just $ nf $ mkAnd' ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
-  _                             -> Nothing
+  (Builtin _ (Quant q), [lam])   -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
+  (Builtin _ Impl, [_,_,e1,e2])  -> Just $ nf $ mkAnd' ann t tc (argExpr e1) (neg (argExpr e2))
+  (Builtin _ And,  [_,_,e1,e2])  -> Just $ nf $ mkOr'  ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
+  (Builtin _ Or,   [_,_,e1,e2])  -> Just $ nf $ mkAnd' ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
+  (Builtin ann2 (Order o), args) -> Just $ return $ normAppList ann (Builtin ann2 (Order (negateOrder o))) args
+  (Builtin ann2 Eq,        args) -> Just $ return $ normAppList ann (Builtin ann2 Neq) args
+  (Builtin ann2 Neq,       args) -> Just $ return $ normAppList ann (Builtin ann2 Eq) args
+  _                              -> Nothing
   where
     neg = mkNot' ann t tc
 
@@ -456,6 +459,12 @@ nfNotQuantifier _ _ _ _ e = developerError $
 negateQ :: Quantifier -> Quantifier
 negateQ Any = All
 negateQ All = Any
+
+negateOrder :: Order -> Order
+negateOrder Le = Gt
+negateOrder Lt = Ge
+negateOrder Ge = Lt
+negateOrder Gt = Le
 
 -----------------------------------------------------------------------------
 -- Normalising negation

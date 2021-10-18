@@ -227,10 +227,10 @@ delabBuiltin ann = let p = prov ann in \case
   VC.Not            -> VF.Not          ann <$> hole p
   VC.Eq             -> VF.Eq           ann <$> hole p <*> hole p
   VC.Neq            -> VF.Neq          ann <$> hole p <*> hole p
-  VC.Le             -> VF.Le           ann <$> hole p <*> hole p
-  VC.Lt             -> VF.Lt           ann <$> hole p <*> hole p
-  VC.Ge             -> VF.Ge           ann <$> hole p <*> hole p
-  VC.Gt             -> VF.Gt           ann <$> hole p <*> hole p
+  VC.Order Le       -> VF.Le           ann <$> hole p <*> hole p
+  VC.Order Lt       -> VF.Lt           ann <$> hole p <*> hole p
+  VC.Order Ge       -> VF.Ge           ann <$> hole p <*> hole p
+  VC.Order Gt       -> VF.Gt           ann <$> hole p <*> hole p
   VC.Mul            -> VF.Mul          ann <$> hole p <*> hole p
   VC.Div            -> VF.Div          ann <$> hole p <*> hole p
   VC.Sub            -> VF.Sub          ann <$> hole p <*> hole p

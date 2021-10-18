@@ -63,3 +63,23 @@ instance Pretty Quantifier where
   pretty = \case
     All -> "every"
     Any -> "some"
+
+-- | Numeric orders supported
+data Order
+  = Le
+  | Lt
+  | Ge
+  | Gt
+  deriving (Eq, Ord, Generic)
+
+instance NFData Order
+
+instance Show Order where
+  show = \case
+    Le -> "<="
+    Lt -> "<"
+    Ge -> ">="
+    Gt -> ">"
+
+instance Pretty Order where
+  pretty = pretty . show

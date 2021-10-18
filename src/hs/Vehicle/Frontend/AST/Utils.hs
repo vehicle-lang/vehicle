@@ -2,7 +2,7 @@
 
 module Vehicle.Frontend.AST.Utils where
 
-import Vehicle.Prelude
+import Vehicle.Prelude hiding (Le, Ge, Lt, Gt)
 import Vehicle.Frontend.AST.Core
 
 --------------------------------------------------------------------------------
