@@ -214,7 +214,7 @@ compileProp ident expr = runReaderT propertyDoc ident
 
     let body2 = runDescopeWithCtx ctx body
     let varDoc = compileVars vars
-    bodyDoc <- compileExpr body2
+    bodyDoc <- compileExpr True body2
     let doc = varDoc <> line <> line <> bodyDoc
 
     let result = SMTDoc doc vars negated
@@ -266,8 +266,8 @@ getType ann s t                = do
   ident <- ask
   throwError $ UnsupportedVariableType ann ident s t
 
-compileExpr :: MonadSMTLibProp m => OutputExpr -> m (Doc b)
-compileExpr = \case
+compileExpr :: MonadSMTLibProp m => Bool -> OutputExpr -> m (Doc b)
+compileExpr topLevel = \case
   Type _         -> typeError "Type"
   Pi   _ann _ _  -> typeError "Pi"
   Hole _p _      -> resolutionError "Hole"
@@ -283,11 +283,15 @@ compileExpr = \case
   Var     _ann v -> compileVariable v
 
   App _ann fun args -> do
-    funDoc  <- compileExpr fun
-    argDocs <- catMaybes <$> traverse compileArg (NonEmpty.toList args)
-    return $ if null argDocs
-      then funDoc
-      else parens $ hsep (funDoc : argDocs)
+    if isAnd fun && topLevel then do
+      argDocs <- catMaybes <$> traverse (compileArg True) (NonEmpty.toList args)
+      return $ vsep argDocs
+    else do
+      funDoc  <- compileExpr False fun
+      argDocs <- catMaybes <$> traverse (compileArg False) (NonEmpty.toList args)
+      return $ if null argDocs
+        then funDoc
+        else parens $ hsep (funDoc : argDocs)
 
 compileBuiltin :: MonadSMTLibProp m => OutputAnn -> Builtin -> m (Doc b)
 compileBuiltin ann = \case
@@ -336,9 +340,9 @@ compileBuiltin ann = \case
   Sub            -> return "-"
   Neg            -> return "-"
 
-compileArg :: MonadSMTLibProp m => OutputArg -> m (Maybe (Doc a))
-compileArg (Arg _ Explicit e) = Just <$> compileExpr e
-compileArg _                  = return Nothing
+compileArg :: MonadSMTLibProp m => Bool -> OutputArg -> m (Maybe (Doc a))
+compileArg topLevel (Arg _ Explicit e) = Just <$> compileExpr topLevel e
+compileArg _        _                  = return Nothing
 
 compileVariable :: MonadSMTLibProp m => OutputVar -> m (Doc a)
 compileVariable (User symbol) = return $ pretty symbol

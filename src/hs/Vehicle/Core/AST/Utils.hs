@@ -105,6 +105,10 @@ isHole :: Expr var ann -> Bool
 isHole (Hole _ _ ) = True
 isHole _           = False
 
+isAnd :: Expr var ann -> Bool
+isAnd (Builtin _ And) = True
+isAnd _               = False
+
 mapArgExpr :: (Expr var ann -> Expr var ann) -> Arg var ann -> Arg var ann
 mapArgExpr f (Arg ann v e) = Arg ann v $ f e
 
