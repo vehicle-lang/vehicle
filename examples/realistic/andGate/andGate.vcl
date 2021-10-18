@@ -9,17 +9,16 @@ falsey : Real -> Prop
 falsey x = x <= 0.5
 
 validInput : Tensor Real [2] -> Prop
-validInput x = every i inn [0,1] . 0 <= x ! i and x ! i <= 1
+validInput x = every i inn ([0,1] : List Nat) . 0 <= x ! i and x ! i <= 1
 
 correctOutput : Tensor Real [2] -> Prop
 correctOutput x =
-  let y = andGate x
-  in (truthy x!0 and falsey x!1 => truthy y!0) and
-     (truthy x!0 and truthy x!1 => truthy y!0) and
-     (falsey x!0 and falsey x!1 => truthy y!0) and
-     (falsey x!0 and truthy x!1 => truthy y!0)
+  let y = andGate x in
+    (truthy (x!0) and truthy (x!1) => truthy (y!0)) and
+    (truthy (x!0) and falsey (x!1) => falsey (y!0)) and
+    (falsey (x!0) and truthy (x!1) => falsey (y!0)) and
+    (falsey (x!0) and falsey (x!1) => falsey (y!0))
 
 correct : Prop
 correct = every x . validInput x => correctOutput x
-
 

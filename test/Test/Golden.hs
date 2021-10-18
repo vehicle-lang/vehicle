@@ -32,6 +32,12 @@ realisticTestList =
   , ("examples/realistic/acasXu/property6",
       [ Verifier VNNLib
       ])
+  , ("examples/realistic/monotonicity",
+      [ Verifier VNNLib
+      ])
+  , ("examples/realistic/increasing",
+      [ Verifier VNNLib
+      ])
   ]
 
 simpleTestList :: [GoldenTestSpec]

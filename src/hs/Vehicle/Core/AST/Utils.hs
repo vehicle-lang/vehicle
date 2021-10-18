@@ -3,6 +3,7 @@
 
 module Vehicle.Core.AST.Utils where
 
+import Data.Functor.Foldable (Recursive(..))
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (pack)
@@ -105,20 +106,24 @@ isHole :: Expr var ann -> Bool
 isHole (Hole _ _ ) = True
 isHole _           = False
 
-isAnd :: Expr var ann -> Bool
-isAnd (Builtin _ And) = True
-isAnd _               = False
-
 mapArgExpr :: (Expr var ann -> Expr var ann) -> Arg var ann -> Arg var ann
 mapArgExpr f (Arg ann v e) = Arg ann v $ f e
 
 traverseArgExpr :: Monad m => (Expr var ann -> m (Expr var ann)) -> Arg var ann -> m (Arg var ann)
 traverseArgExpr f (Arg ann v e) = Arg ann v <$> f e
 
+declProvIdent :: Decl var ann -> WithProvenance Identifier
+declProvIdent (DeclNetw _ ident _) = ident
+declProvIdent (DeclData _ ident _) = ident
+declProvIdent (DefFun _ ident _ _) = ident
+
 declIdent :: Decl var ann -> Identifier
-declIdent (DeclNetw _ ident _) = deProv ident
-declIdent (DeclData _ ident _) = deProv ident
-declIdent (DefFun _ ident _ _) = deProv ident
+declIdent = deProv . declProvIdent
+
+declType :: Decl var ann -> Expr var ann
+declType (DeclNetw _ _ t) = t
+declType (DeclData _ _ t) = t
+declType (DefFun _ _ t _) = t
 
 -- |Extract a term's annotation
 annotation :: Expr name ann -> ann
@@ -136,6 +141,23 @@ annotation = \case
   Lam      ann _ _   -> ann
   Literal  ann _     -> ann
   Seq      ann _     -> ann
+
+freeNames :: CheckedExpr -> [Identifier]
+freeNames = cata $ \case
+  TypeF     _                   -> []
+  HoleF     _   _               -> []
+  PrimDictF _                   -> []
+  MetaF     _ _                 -> []
+  LiteralF  _ _                 -> []
+  BuiltinF  _ _                 -> []
+  AnnF      _ e t               -> e <> t
+  AppF      _ fun args          -> fun <> concatMap (freeNames . argExpr) args
+  PiF       _ binder result     -> freeNames (binderType binder) <> result
+  VarF      _ (Free ident)      -> [ident]
+  VarF      _ (Bound _)         -> []
+  LetF      _ bound binder body -> bound <> freeNames (binderType binder) <> body
+  LamF      _ binder body       -> freeNames (binderType binder) <> body
+  SeqF      _ xs                -> concat xs
 
 --------------------------------------------------------------------------------
 -- Destruction functions

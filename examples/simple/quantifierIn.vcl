@@ -2,5 +2,5 @@
 emptyList : List Int
 emptyList = []
 
-empty : Bool
+empty : Prop
 empty = every x inn emptyList . True

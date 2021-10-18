@@ -152,8 +152,6 @@ data Expr var ann
 
 instance (NFData var, NFData ann) => NFData (Expr var ann)
 
-makeBaseFunctor ''Expr
-
 -- | Type of top-level declarations.
 data Decl var ann
   = DeclNetw
@@ -189,3 +187,9 @@ normApp p fun                args = App p fun args
 normAppList :: Semigroup ann => ann -> Expr var ann -> [Arg var ann] -> Expr var ann
 normAppList _   fun []           = fun
 normAppList ann fun (arg : args) = normApp ann fun (arg :| args)
+
+-- Derive recursion principles
+
+makeBaseFunctor ''Arg
+makeBaseFunctor ''Binder
+makeBaseFunctor ''Expr

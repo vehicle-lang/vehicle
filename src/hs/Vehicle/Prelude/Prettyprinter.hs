@@ -7,17 +7,19 @@ module Vehicle.Prelude.Prettyprinter
 
 import Data.Text (Text)
 
-import Prettyprinter ( Doc, (<+>), concatWith, line, line', layoutPretty, (<+>), defaultLayoutOptions)
+import Prettyprinter ( line', layoutPretty, defaultLayoutOptions)
 import Prettyprinter.Internal (Doc(Annotated))
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
 
+-- This stuff we re-export
 import Prettyprinter as CommonPrettyprinter
   ( Pretty(..)
   , Doc
   , (<+>)
   , parens
   , braces
+  , concatWith
   , line
   , squotes
   , align

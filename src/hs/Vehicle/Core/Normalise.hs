@@ -433,11 +433,11 @@ nfNot ann t tc arg = case toHead (argExpr arg) of
   -- Negation juggling
   (Builtin _ (Quant q), [lam])   -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
   (Builtin _ Impl, [_,_,e1,e2])  -> Just $ nf $ mkAnd' ann t tc (argExpr e1) (neg (argExpr e2))
-  (Builtin _ And,  [_,_,e1,e2])  -> Just $ nf $ mkOr'  ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
+  --(Builtin _ And,  [_,_,e1,e2])  -> Just $ nf $ mkOr'  ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
   (Builtin _ Or,   [_,_,e1,e2])  -> Just $ nf $ mkAnd' ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
-  (Builtin ann2 (Order o), args) -> Just $ return $ normAppList ann (Builtin ann2 (Order (negateOrder o))) args
-  (Builtin ann2 Eq,        args) -> Just $ return $ normAppList ann (Builtin ann2 Neq) args
-  (Builtin ann2 Neq,       args) -> Just $ return $ normAppList ann (Builtin ann2 Eq) args
+  --(Builtin ann2 (Order o), args) -> Just $ return $ normAppList ann (Builtin ann2 (Order (negateOrder o))) args
+  --(Builtin ann2 Eq,        args) -> Just $ return $ normAppList ann (Builtin ann2 Neq) args
+  --(Builtin ann2 Neq,       args) -> Just $ return $ normAppList ann (Builtin ann2 Eq) args
   _                              -> Nothing
   where
     neg = mkNot' ann t tc

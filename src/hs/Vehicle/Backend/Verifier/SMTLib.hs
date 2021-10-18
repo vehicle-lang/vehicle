@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 
 module Vehicle.Backend.Verifier.SMTLib
   ( compileToSMTLib
@@ -19,6 +20,7 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Prelude
 import Vehicle.Core.AST
 import Vehicle.Core.Print.Friendly (prettyFriendly)
+import Vehicle.Core.Print (prettySimple)
 import Vehicle.Core.Normalise (normaliseInternal)
 import Vehicle.Core.Compile.Descope (runDescope, runDescopeWithCtx)
 import Vehicle.Backend.Verifier.Core
@@ -74,7 +76,7 @@ data SMTLibError
   | NonTopLevelQuantifier Provenance Identifier
   | NoPropertiesFound
   -- VNNLib
-  | UnsupportedNetworkType Provenance Identifier UnsupportedNetworkType CheckedExpr
+  | UnsupportedNetworkType Provenance Identifier CheckedExpr UnsupportedNetworkType
   | NoNetworkUsedInProperty (WithProvenance Identifier)
 
 instance MeaningfulError SMTLibError where
@@ -120,7 +122,7 @@ instance MeaningfulError SMTLibError where
       }
 
     -- VNNLib
-    UnsupportedNetworkType p ident detailedError t -> UError $ UserError
+    UnsupportedNetworkType p ident t detailedError -> UError $ UserError
       { provenance = p
       , problem    = "Found a" <+> squotes (pretty Network) <+> "declaration" <+> squotes (pretty ident) <+>
                      "whose type" <+> squotes (prettyFriendly mempty t) <+> "is not currently unsupported." <+>
@@ -209,14 +211,19 @@ compileProp ident expr = runReaderT propertyDoc ident
 
     (vars, body, negated) <- stripQuantifiers True expr
     let ctx = map (User . name) vars
-
-    logDebug $ "Stripped existential quantifiers:" <+> pretty ctx
-
-    let body2 = runDescopeWithCtx ctx body
     let varDoc = compileVars vars
-    bodyDoc <- compileExpr True body2
-    let doc = varDoc <> line <> line <> bodyDoc
 
+    logDebug $ "Stripped existential quantifiers:" <+> pretty ctx <> line
+
+    let body2 = runDescopeWithCtx (reverse ctx) body
+
+    logDebug $ "Descoping property" <+> prettySimple body2 <> line
+
+    let assertions = splitTopLevelConjunctions body2
+    assertionDocs <- traverse compileExpr assertions
+    let bodyDoc = vsep (map assertion assertionDocs)
+
+    let doc = varDoc <> line <> line <> bodyDoc
     let result = SMTDoc doc vars negated
     logDebug $ "Output:" <> align (line <> doc)
 
@@ -253,8 +260,14 @@ negatePropertyIfNecessary False       ann All _body = do
   ident <- ask
   throwError $ UnsupportedQuantifierSequence ann ident
 negatePropertyIfNecessary True        ann  All body  = do
-  logDebug "Negating universal quantifier"
-  return (normaliseInternal $ mkNot ann (Builtin ann Prop) body, False)
+  let body' = normaliseInternal $ mkNot ann (Builtin ann Prop) body
+  logDebug $ align $ "Negating universal quantifier:" <+> prettySimple body' <> line
+  return (body', False)
+
+splitTopLevelConjunctions :: OutputExpr -> [OutputExpr]
+splitTopLevelConjunctions (App _ann (Builtin _ And) [_, _, e1, e2]) =
+  splitTopLevelConjunctions (argExpr e1) <> splitTopLevelConjunctions (argExpr e2)
+splitTopLevelConjunctions e = [e]
 
 getSymbol :: Name -> Symbol
 getSymbol (User symbol) = symbol
@@ -266,8 +279,8 @@ getType ann s t                = do
   ident <- ask
   throwError $ UnsupportedVariableType ann ident s t
 
-compileExpr :: MonadSMTLibProp m => Bool -> OutputExpr -> m (Doc b)
-compileExpr topLevel = \case
+compileExpr :: MonadSMTLibProp m => OutputExpr -> m (Doc b)
+compileExpr = \case
   Type _         -> typeError "Type"
   Pi   _ann _ _  -> typeError "Pi"
   Hole _p _      -> resolutionError "Hole"
@@ -283,15 +296,11 @@ compileExpr topLevel = \case
   Var     _ann v -> compileVariable v
 
   App _ann fun args -> do
-    if isAnd fun && topLevel then do
-      argDocs <- catMaybes <$> traverse (compileArg True) (NonEmpty.toList args)
-      return $ vsep argDocs
-    else do
-      funDoc  <- compileExpr False fun
-      argDocs <- catMaybes <$> traverse (compileArg False) (NonEmpty.toList args)
-      return $ if null argDocs
-        then funDoc
-        else parens $ hsep (funDoc : argDocs)
+    funDoc  <- compileExpr fun
+    argDocs <- catMaybes <$> traverse compileArg (NonEmpty.toList args)
+    return $ if null argDocs
+      then funDoc
+      else parens $ hsep (funDoc : argDocs)
 
 compileBuiltin :: MonadSMTLibProp m => OutputAnn -> Builtin -> m (Doc b)
 compileBuiltin ann = \case
@@ -337,9 +346,9 @@ compileBuiltin ann = \case
   Sub            -> return "-"
   Neg            -> return "-"
 
-compileArg :: MonadSMTLibProp m => Bool -> OutputArg -> m (Maybe (Doc a))
-compileArg topLevel (Arg _ Explicit e) = Just <$> compileExpr topLevel e
-compileArg _        _                  = return Nothing
+compileArg :: MonadSMTLibProp m => OutputArg -> m (Maybe (Doc a))
+compileArg (Arg _ Explicit e) = Just <$> compileExpr e
+compileArg _                  = return Nothing
 
 compileVariable :: MonadSMTLibProp m => OutputVar -> m (Doc a)
 compileVariable (User symbol) = return $ pretty symbol
@@ -351,3 +360,6 @@ compileLiteral (LBool False) = "false"
 compileLiteral (LNat n)      = pretty n
 compileLiteral (LInt i)      = pretty i
 compileLiteral (LRat x)      = pretty x
+
+assertion :: Doc a -> Doc a
+assertion p = parens ("assert" <+> p)

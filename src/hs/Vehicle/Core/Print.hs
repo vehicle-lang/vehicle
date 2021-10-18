@@ -46,7 +46,7 @@ prettyVerbose :: PrettyWithConfig a => a -> Doc b
 prettyVerbose x = runReader (pretty' x) def
 
 brackets :: Visibility -> (Doc a -> Doc a)
-brackets Explicit = id
+brackets Explicit = parens
 brackets Implicit = braces
 brackets Instance = braces . braces
 
