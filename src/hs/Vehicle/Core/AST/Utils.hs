@@ -186,8 +186,8 @@ mkLiteral ann lit t tc = mkLiteral' ann lit
   (Arg ann Implicit t)
   (Arg ann Instance (PrimDict tc))
 
-mkBool :: CheckedAnn -> Bool -> CheckedExpr -> CheckedExpr
-mkBool ann b t = mkLiteral ann (LBool b) t (PrimDict t)
+mkBool :: CheckedAnn -> CheckedExpr -> Bool -> CheckedExpr
+mkBool ann t b = mkLiteral ann (LBool b) t (PrimDict t)
 
 mkNat :: CheckedAnn -> Int -> CheckedExpr
 mkNat ann n = let t = Builtin ann Nat in mkLiteral ann (LNat n) t (PrimDict t)
@@ -227,13 +227,32 @@ mkNot ann t = mkNot' ann
   (Arg ann Implicit t)
   (Arg ann Instance (PrimDict (mkIsTruth ann t)))
 
-mkAnd' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkAnd' ann t tc e1 e2 = App ann (Builtin ann And) [t, tc, Arg ann Explicit e1, Arg ann Explicit e2]
+mkBoolOp2' :: Builtin -> CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkBoolOp2' op ann t tc e1 e2 = App ann (Builtin ann op)
+  [t, tc, Arg ann Explicit e1, Arg ann Explicit e2]
 
-mkAnd :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkAnd ann t = mkAnd' ann
+mkBoolOp2 :: Builtin -> CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkBoolOp2 op ann t = mkBoolOp2' op ann
   (Arg ann Implicit t)
   (Arg ann Instance (PrimDict (mkIsTruth ann t)))
+
+mkImplies' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkImplies' = mkBoolOp2' Impl
+
+mkImplies :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkImplies = mkBoolOp2 Impl
+
+mkAnd' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkAnd' = mkBoolOp2' And
+
+mkAnd :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkAnd = mkBoolOp2 And
+
+mkOr' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkOr' = mkBoolOp2' Or
+
+mkOr :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkOr = mkBoolOp2 Or
 
 mkAt' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkAt' ann tElem tCont tc xs i = App ann (Builtin ann At)

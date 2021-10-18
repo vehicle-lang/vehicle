@@ -175,9 +175,9 @@ nfApp ann  fun@(Builtin _ op) args              = do
     (Neq, [_tElem, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
       --(ETrue  _, _)          -> normApp $ composeApp ann (Builtin ann Not) [_t2, _, arg2]
       (EFalse _, _)          -> return $ argExpr arg2
-      (ENat  _ m, ENat  _ n) -> return $ mkBool ann (m /= n) (argExpr tRes)
-      (EInt  _ i, EInt  _ j) -> return $ mkBool ann (i /= j) (argExpr tRes)
-      (EReal _ x, EReal _ y) -> return $ mkBool ann (x /= y) (argExpr tRes)
+      (ENat  _ m, ENat  _ n) -> return $ mkBool ann (argExpr tRes) (m /= n)
+      (EInt  _ i, EInt  _ j) -> return $ mkBool ann (argExpr tRes) (i /= j)
+      (EReal _ x, EReal _ y) -> return $ mkBool ann (argExpr tRes) (x /= y)
       _                      -> return e
 
     -- Not
@@ -188,16 +188,16 @@ nfApp ann  fun@(Builtin _ op) args              = do
     (And, [t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
       (ETrue  _, _)        -> return $ argExpr arg2
       (_,        ETrue  _) -> return $ argExpr arg1
-      (EFalse _, _)        -> return $ mkBool ann False (argExpr t)
-      (_,        EFalse _) -> return $ mkBool ann False (argExpr t)
+      (EFalse _, _)        -> return $ mkBool ann (argExpr t) False
+      (_,        EFalse _) -> return $ mkBool ann (argExpr t) False
       _                    -> return e
     -- TODO implement associativity rules?
 
     -- Or
     (Or, [t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (ETrue  _, _)        -> return $ mkBool ann True (argExpr t)
+      (ETrue  _, _)        -> return $ mkBool ann (argExpr t) True
       (EFalse _, _)        -> return $ argExpr arg2
-      (_,        ETrue  _) -> return $ mkBool ann True (argExpr t)
+      (_,        ETrue  _) -> return $ mkBool ann (argExpr t) True
       (_,        EFalse _) -> return $ argExpr arg1
       _                    -> return e
     -- See https://github.com/wenkokke/vehicle/issues/2
@@ -205,8 +205,8 @@ nfApp ann  fun@(Builtin _ op) args              = do
     -- Implication
     (Impl, [t, tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
       (ETrue  _, _)        -> return $ argExpr arg2
-      (EFalse _, _)        -> return $ mkBool ann True (argExpr t)
-      (_,        ETrue  _) -> return $ mkBool ann True (argExpr t)
+      (EFalse _, _)        -> return $ mkBool ann (argExpr t) True
+      (_,        ETrue  _) -> return $ mkBool ann (argExpr t) True
       (_,        EFalse _) -> return $ App ann (Builtin ann Not) [t, tc, arg2]
       _                    -> return e
 
@@ -218,14 +218,14 @@ nfApp ann  fun@(Builtin _ op) args              = do
 
     -- Le
     (Le, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (EInt  _ i, EInt  _ j) -> return $ mkBool ann (i <= j) (argExpr tRes)
-      (EReal _ x, EReal _ y) -> return $ mkBool ann (x <= y) (argExpr tRes)
+      (EInt  _ i, EInt  _ j) -> return $ mkBool ann (argExpr tRes) (i <= j)
+      (EReal _ x, EReal _ y) -> return $ mkBool ann (argExpr tRes) (x <= y)
       _                      -> return e
 
     -- Lt
     (Lt, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (EInt  _ i, EInt  _ j) -> return $ mkBool ann (i < j) (argExpr tRes)
-      (EReal _ x, EReal _ y) -> return $ mkBool ann (x < y) (argExpr tRes)
+      (EInt  _ i, EInt  _ j) -> return $ mkBool ann (argExpr tRes) (i < j)
+      (EReal _ x, EReal _ y) -> return $ mkBool ann (argExpr tRes) (x < y)
       _                      -> return e
 
     -- Addition
@@ -310,14 +310,14 @@ nfEq :: MonadNorm m
      -> Maybe (m CheckedExpr)
 nfEq ann _tEq tRes tc e1 e2 = case (toHead e1, toHead e2) of
   --(EFalse _,  _)         -> normApp $ composeApp ann (Builtin ann op, [tElem, _, e2])
-  ((ENat  _ m, _),       (EInt  _ n, _))     -> Just $ return $ mkBool ann (m == n) (argExpr tRes)
-  ((EInt  _ i, _),       (EInt  _ j, _))     -> Just $ return $ mkBool ann (i == j) (argExpr tRes)
-  ((EReal _ x, _),       (EReal _ y, _))     -> Just $ return $ mkBool ann (x == y) (argExpr tRes)
+  ((ENat  _ m, _),       (EInt  _ n, _))     -> Just $ return $ mkBool ann (argExpr tRes) (m == n)
+  ((EInt  _ i, _),       (EInt  _ j, _))     -> Just $ return $ mkBool ann (argExpr tRes) (i == j)
+  ((EReal _ x, _),       (EReal _ y, _))     -> Just $ return $ mkBool ann (argExpr tRes) (x == y)
   ((Seq _ xs, [tElem,_,_]), (Seq _ ys, [_,_,_]))  -> Just $
     if length xs /= length ys then
-      return $ mkBool ann False (argExpr tRes)
+      return $ mkBool ann (argExpr tRes) False
     else
-      nf $ foldr (\(x,y) res -> mkAnd' ann tRes tc (mkEq' ann tElem tRes tc x y) res) (mkBool ann True (argExpr tRes)) (zip xs ys)
+      nf $ foldr (\(x,y) res -> mkAnd' ann tRes tc (mkEq' ann tElem tRes tc x y) res) (mkBool ann (argExpr tRes) True) (zip xs ys)
   _                     -> Nothing
   -- TODO implement reflexive rules?
 
@@ -428,10 +428,16 @@ nfNot :: MonadNorm m
       -> CheckedArg
       -> Maybe (m CheckedExpr)
 nfNot ann t tc arg = case toHead (argExpr arg) of
-  (ETrue  _, [_, _])           -> Just $ return $ mkBool ann False (argExpr t)
-  (EFalse _, [_, _])           -> Just $ return $ mkBool ann True  (argExpr t)
-  (Builtin _ (Quant q), [lam]) -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
-  _                            -> Nothing
+  (ETrue  _, [_, _])            -> Just $ return $ mkBool ann (argExpr t) False
+  (EFalse _, [_, _])            -> Just $ return $ mkBool ann (argExpr t) True
+  -- Negation juggling
+  (Builtin _ (Quant q), [lam])  -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
+  (Builtin _ Impl, [_,_,e1,e2]) -> Just $ nf $ mkAnd' ann t tc (argExpr e1) (neg (argExpr e2))
+  (Builtin _ And,  [_,_,e1,e2]) -> Just $ nf $ mkOr'  ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
+  (Builtin _ Or,   [_,_,e1,e2]) -> Just $ nf $ mkAnd' ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
+  _                             -> Nothing
+  where
+    neg = mkNot' ann t tc
 
 nfNotQuantifier :: MonadNorm m
                 => CheckedAnn
