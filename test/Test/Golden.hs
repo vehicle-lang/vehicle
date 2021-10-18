@@ -8,10 +8,11 @@ import Control.Monad (void)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Data.Bifunctor (first)
 import Test.Tasty
 import Test.Tasty.Golden (goldenVsFile)
 import System.Exit (exitFailure)
-import System.FilePath (takeFileName, (<.>))
+import System.FilePath (takeFileName, (<.>), (</>))
 import Vehicle
 
 data Result
@@ -21,51 +22,51 @@ data Result
 type GoldenTestSpec = (FilePath, [OutputTarget])
 
 realisticTestList :: [GoldenTestSpec]
-realisticTestList =
-  [ ("./examples/realistic/shortestPath/shortestPath",
+realisticTestList = map (first ("./examples/network" </>))
+  [ ("shortestPath/shortestPath",
       [ Verifier VNNLib
         -- (Verifier SMTLib)
       ])
-  , ("examples/realistic/andGate/andGate",
+  , ("andGate/andGate",
       [ Verifier VNNLib
       ])
-  , ("examples/realistic/acasXu/property6",
+  , ("acasXu/property6",
       [ Verifier VNNLib
       ])
-  , ("examples/realistic/monotonicity",
+  , ("monotonicity",
       [ Verifier VNNLib
       ])
-  , ("examples/realistic/increasing",
+  , ("increasing",
       [ Verifier VNNLib
       ])
   ]
 
 simpleTestList :: [GoldenTestSpec]
-simpleTestList =
-  [ ("./examples/simple/quantifier",
+simpleTestList = map (first ("./examples/simple" </>))
+  [ ("quantifier",
       [
         Verifier SMTLib
       ])
 
-  , ("./examples/simple/quantifierIn",
+  , ("quantifierIn",
       [
         Verifier SMTLib
       ])
 
-  ,  ("./examples/simple/let",
+  ,  ("let",
       [
         Verifier SMTLib
       ])
 
-  ,  ("./examples/simple/bool",
+  ,  ("bool",
       [
         Verifier SMTLib
       ])
   ]
 
 miscTestList :: [GoldenTestSpec]
-miscTestList =
-  [ ("./examples/misc/dependent/dependent",
+miscTestList = map (first ("./examples/misc" </>))
+  [ ("dependent/dependent",
       [ ITP (Vehicle Frontend)
       ])
   ]
