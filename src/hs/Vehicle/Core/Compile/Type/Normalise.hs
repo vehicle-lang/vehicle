@@ -24,12 +24,12 @@ whnf ctx e = do
   runReaderT (norm e') ctx
 
 norm :: (MonadMeta m, MonadReader DeclCtx m) => CheckedExpr -> m CheckedExpr
-norm e@(App _ fun (Arg p _ argE :| args)) = do
+norm e@(App ann fun (Arg _ argE :| args)) = do
   normFun  <- norm fun
   case normFun of
     Lam _ _ body -> do
       nfBody <- norm (argE `substInto` body)
-      return $ normAppList p nfBody args
+      return $ normAppList ann nfBody args
     _            -> return e
 norm e@(Var _ (Free ident)) = do
   ctx <- ask

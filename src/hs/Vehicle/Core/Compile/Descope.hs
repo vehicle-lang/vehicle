@@ -47,7 +47,7 @@ instance Descope CheckedBinder OutputBinder where
   descope (Binder p v n e) = Binder p v n <$> descope e
 
 instance Descope CheckedArg OutputArg where
-  descope (Arg p v e) = Arg p v <$> descope e
+  descope (Arg v e) = Arg v <$> descope e
 
 showScopeEntry :: CheckedExpr -> CheckedExpr
 showScopeEntry e = {-trace ("descope-entry " <> showCore e)-} e

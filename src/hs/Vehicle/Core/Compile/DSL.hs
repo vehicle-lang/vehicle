@@ -73,14 +73,6 @@ boundVar :: BindingDepth -> DSLExpr
 boundVar i = DSL $ \j -> Var mempty (Bound (j - (i + 1)))
 
 instance DSL DSLExpr where
-  {-
-  lam p v n argType bodyFn = DSL $ \i ->
-    let varType = unDSL argType i
-        var     = boundVar varType i
-        binder  = Binder p v n varType
-        body    = unDSL (bodyFn var) (i + 1)
-    in Lam (typeAnn $ lamType p v n varType (getType body)) binder body
--}
   pi p v n argType bodyFn = DSL $ \i ->
     let varType = unDSL argType i
         var     = boundVar i
@@ -90,7 +82,7 @@ instance DSL DSLExpr where
 
   app fun args = DSL $ \i ->
     let fun' = unDSL fun i
-        args' = fmap (\e -> Arg mempty Explicit (unDSL e i)) args
+        args' = fmap (\e -> Arg Explicit (unDSL e i)) args
     in App mempty fun' args'
 
 --lamType :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr

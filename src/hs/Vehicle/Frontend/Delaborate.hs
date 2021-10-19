@@ -138,10 +138,10 @@ instance DelaborateWithHoles VC.OutputExpr VF.OutputExpr where
         return $ foldl (\res arg -> VF.App ann' res arg) fun' args'
 
 instance DelaborateWithHoles VC.OutputArg VF.OutputArg where
-  delabH (VC.Arg p v e) = do
+  delabH (VC.Arg v e) = do
     e' <- delabH e
     addArg e'
-    return $ VF.Arg p v e'
+    return $ VF.Arg v e'
 
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
 delabPi :: MonadDelabHoles m => VC.OutputAnn -> VC.OutputBinder -> VC.OutputExpr -> m VF.OutputExpr
@@ -186,7 +186,7 @@ delabLam ann binder body = do
     decomposeLam (args, body)                 = do body' <- delab body; return (args , body')
 
 -- TODO this should reconstruct whether it's a type synonym or not
-delabFun :: MonadDelab m => Provenance -> WithProvenance Identifier -> VC.OutputExpr -> VC.OutputExpr -> m VF.OutputDecl
+delabFun :: MonadDelab m => Provenance -> Identifier -> VC.OutputExpr -> VC.OutputExpr -> m VF.OutputDecl
 delabFun p n typ body = do
   typ' <- delab typ
   (args', body') <- decomposeFun ([], body)

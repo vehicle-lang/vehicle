@@ -25,13 +25,12 @@ instance HasVisibility (Binder ann) where
 -- | Arguments to function applications
 data Arg ann
   = Arg
-    Provenance         -- Location in the source file (includes visibility brackets)
     Visibility         -- Argument visibility
     (Expr ann)         -- Argument expression
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 instance HasVisibility (Arg ann) where
-  vis (Arg _ v _) = v
+  vis (Arg v _) = v
 
 -- | An individual let declaration
 data LetDecl ann
@@ -109,26 +108,26 @@ data Expr ann
 data Decl ann
   = DeclNetw
     Provenance
-    (WithProvenance Identifier) -- Name of the declared network.
-    (Expr  ann)                 -- Type of the declared network.
+    Identifier    -- Name of the declared network.
+    (Expr ann)    -- Type of the declared network.
 
   | DeclData
     Provenance
-    (WithProvenance Identifier) -- Name of the declared dataset.
-    (Expr  ann)                 -- Type of the declared dataset.
+    Identifier    -- Name of the declared dataset.
+    (Expr ann)    -- Type of the declared dataset.
 
   | DefType
     Provenance
-    (WithProvenance Identifier) -- Name of the type declaration.
-    [Binder ann]                -- Variables of the type declaration.
-    (Expr   ann)                -- Body of the type declaration.
+    Identifier    -- Name of the type declaration.
+    [Binder ann]  -- Variables of the type declaration.
+    (Expr   ann)  -- Body of the type declaration.
 
   | DefFun
     Provenance
-    (WithProvenance Identifier) -- Name of the function declaration.
-    (Expr   ann)                -- Type of the function declaration.
-    [Binder ann]                -- Variables of the function declaration.
-    (Expr   ann)                -- Body of the function declaration.
+    Identifier    -- Name of the function declaration.
+    (Expr   ann)  -- Type of the function declaration.
+    [Binder ann]  -- Variables of the function declaration.
+    (Expr   ann)  -- Body of the function declaration.
 
   deriving (Eq, Ord, Show)
 

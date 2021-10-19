@@ -127,7 +127,7 @@ solveUnificationConstraint ctx (e1, e2) = do
           developerError "Identical meta variables have different numbers of arguments"
 
         let sharedArgs = positionalIntersection args1 args2
-        let sharedArgsCtx = map (\(Arg _ _ e) -> (Machine, e)) sharedArgs
+        let sharedArgsCtx = map (\arg -> (Machine, argExpr arg)) sharedArgs
         (_metaName, meta) <- freshMetaWith sharedArgsCtx p
 
         let abstractedMeta = abstractOver args1 meta
@@ -166,7 +166,7 @@ solveUnificationConstraint ctx (e1, e2) = do
       -- for each of the meta-variables in turn.
       | otherwise -> do
         let sharedArgs = args1 `intersect` args2
-        let sharedArgsCtx = map (\(Arg _ _ e) -> (Machine, e)) sharedArgs
+        let sharedArgsCtx = map (\arg -> (Machine, argExpr arg)) sharedArgs
 
         (_metaName, meta) <- freshMetaWith sharedArgsCtx p
 
@@ -228,7 +228,7 @@ abstractOver :: [CheckedArg] -> CheckedExpr -> CheckedExpr
 abstractOver args body = foldr argToLam body args
   where
     argToLam :: CheckedArg -> CheckedExpr -> CheckedExpr
-    argToLam (Arg _ v argE) = Lam mempty (Binder mempty v Machine argE)
+    argToLam (Arg v argE) = Lam mempty (Binder mempty v Machine argE)
 
 solveEq :: (MonadConstraintSolving m, Eq a)
         => Constraint

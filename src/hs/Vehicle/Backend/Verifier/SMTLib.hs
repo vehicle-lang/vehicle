@@ -11,7 +11,6 @@ module Vehicle.Backend.Verifier.SMTLib
   , UnsupportedNetworkType(..)
   ) where
 
-import Control.Monad (when)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.Maybe (catMaybes)
@@ -22,7 +21,7 @@ import Vehicle.Core.AST
 import Vehicle.Core.Print.Friendly (prettyFriendly)
 import Vehicle.Core.Print (prettySimple)
 import Vehicle.Core.Normalise (normaliseInternal)
-import Vehicle.Core.Compile.Descope (runDescope, runDescopeWithCtx)
+import Vehicle.Core.Compile.Descope (runDescopeWithCtx)
 import Vehicle.Backend.Verifier.Core
 
 compileToSMTLib :: (MonadLogger m, MonadError SMTLibError m)
@@ -77,11 +76,11 @@ data SMTLibError
   | NoPropertiesFound
   -- VNNLib
   | UnsupportedNetworkType Provenance Identifier CheckedExpr UnsupportedNetworkType
-  | NoNetworkUsedInProperty (WithProvenance Identifier)
+  | NoNetworkUsedInProperty Provenance Identifier
 
 instance MeaningfulError SMTLibError where
   details = \case
-    UnsupportedDecl p ident declType -> let dType = squotes (pretty declType) in UError $ UserError
+    UnsupportedDecl p ident decType -> let dType = squotes (pretty decType) in UError $ UserError
       { provenance = p
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "found" <+>
                      "a" <+> dType <+> "declaration which cannot be compiled to SMTLib."
@@ -132,10 +131,10 @@ instance MeaningfulError SMTLibError where
       , fix        = "Change the network type."
       }
 
-    NoNetworkUsedInProperty ident -> UError $ UserError
-      { provenance = prov ident
+    NoNetworkUsedInProperty p ident -> UError $ UserError
+      { provenance = p
       , problem    = "After normalisation, the property" <+>
-                     squotes (pretty (deProv ident)) <+>
+                     squotes (pretty ident) <+>
                      "does not contain any neural networks and" <+>
                      "therefore VNNLib is the wrong compilation target"
       , fix        = "Choose a different compilation target than VNNLib"
@@ -192,13 +191,13 @@ compileDecl = \case
   DeclData{} ->
     normalisationError "dataset declarations"
 
-  DeclNetw _ ident _ ->
-    throwError $ UnsupportedDecl (prov ident) (deProv ident) Network
+  DeclNetw p ident _ ->
+    throwError $ UnsupportedDecl p ident Network
 
   DefFun _ ident t e -> if not $ isProperty t
       then return Nothing
       else do
-        let doc = compileProp (deProv ident) e
+        let doc = compileProp ident e
         Just <$> doc
 
 compileProp :: MonadSMTLib m => Identifier -> CheckedExpr -> m SMTDoc
@@ -347,8 +346,8 @@ compileBuiltin ann = \case
   Neg            -> return "-"
 
 compileArg :: MonadSMTLibProp m => OutputArg -> m (Maybe (Doc a))
-compileArg (Arg _ Explicit e) = Just <$> compileExpr e
-compileArg _                  = return Nothing
+compileArg (Arg Explicit e) = Just <$> compileExpr e
+compileArg _                = return Nothing
 
 compileVariable :: MonadSMTLibProp m => OutputVar -> m (Doc a)
 compileVariable (User symbol) = return $ pretty symbol

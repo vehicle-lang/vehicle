@@ -49,18 +49,14 @@ instance HasVisibility (Binder var ann) where
 -- | Function arguments
 data Arg var ann
   = Arg
-    Provenance
-    Visibility              -- Is the argument implicit or explicit?
+    Visibility       -- Is the argument implicit or explicit?
     (Expr var ann)   -- The argument expression
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData var, NFData ann) => NFData (Arg var ann)
 
-instance HasProvenance (Arg var ann) where
-  prov (Arg p _ _) = p
-
 instance HasVisibility (Arg var ann) where
-  vis (Arg _ v _) = v
+  vis (Arg v _) = v
 
 -- * Abstract syntax tree for Vehicle Core
 
@@ -155,18 +151,18 @@ instance (NFData var, NFData ann) => NFData (Expr var ann)
 -- | Type of top-level declarations.
 data Decl var ann
   = DeclNetw
-    Provenance                    -- Location in source file.
-    (WithProvenance Identifier)   -- Network name.
-    (Expr   var ann)              -- Network type.
+    Provenance      -- Location in source file.
+    Identifier      -- Network name.
+    (Expr var ann)  -- Network type.
   | DeclData
-    Provenance                    -- Location in source file.
-    (WithProvenance Identifier)   -- Dataset name.
-    (Expr   var ann)              -- Dataset type.
+    Provenance      -- Location in source file.
+    Identifier      -- Dataset name.
+    (Expr var ann)  -- Dataset type.
   | DefFun
-    Provenance                    -- Location in source file.
-    (WithProvenance Identifier)   -- Bound function name.
-    (Expr var ann)                -- Bound function type.
-    (Expr var ann)                -- Bound function body.
+    Provenance      -- Location in source file.
+    Identifier      -- Bound function name.
+    (Expr var ann)  -- Bound function type.
+    (Expr var ann)  -- Bound function body.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData var, NFData ann) => NFData (Decl var ann)

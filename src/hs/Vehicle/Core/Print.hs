@@ -13,7 +13,7 @@ import Data.Map qualified as Map (toAscList)
 import Data.Default.Class (Default(..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Prettyprinter (list, lbrace, rbrace, comma, group, softline, concatWith, tupled, encloseSep)
+import Prettyprinter (list, lbrace, rbrace, comma, group, softline, tupled, encloseSep)
 
 import Vehicle.Core.AST
 import Vehicle.Prelude
@@ -85,7 +85,7 @@ instance Pretty Builtin where
   pretty b = pretty $ fromMaybe "" (symbolFromBuiltin b)
 
 instance Pretty var => PrettyWithConfig (Arg var ann) where
-  pretty' (Arg _p v expr) = brackets v <$> pretty' expr
+  pretty' (Arg v expr) = brackets v <$> pretty' expr
 
 instance Pretty var => PrettyWithConfig (Binder var ann) where
   pretty' (Binder _ann v n t) = do

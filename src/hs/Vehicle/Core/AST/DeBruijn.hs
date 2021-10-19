@@ -105,7 +105,7 @@ underBinder :: MonadReader (BindingDepth, state) m =>
 underBinder body = local (\(d, s) -> (d+1, body s))
 
 instance DeBruijnFunctor ann (Arg Var) where
-  alter body var (Arg p v e) = Arg p v <$> alter body var e
+  alter body var (Arg v e) = Arg v <$> alter body var e
 
 instance DeBruijnFunctor ann (Binder Var) where
   alter body var (Binder p v b e) = Binder p v b <$> alter body var e
@@ -168,7 +168,7 @@ patternOfArgs args = go (length args - 1) IM.empty args
     go :: Int -> IntMap (DeBruijnExpr ann) -> [DeBruijnArg ann] -> Maybe (Substitution ann)
     go _ revMap [] = Just revMap
     -- TODO: we could eta-reduce arguments too, if possible
-    go i revMap (Arg _ _ (Var ann (Bound j)) : restArgs) =
+    go i revMap (Arg _ (Var ann (Bound j)) : restArgs) =
       if IM.member j revMap then
         Nothing -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning; but then we should make sure the solution is well-typed
       else

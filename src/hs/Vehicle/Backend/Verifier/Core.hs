@@ -1,8 +1,6 @@
 
 module Vehicle.Backend.Verifier.Core where
 
-import Data.Text (Text)
-
 import Vehicle.Prelude
 import Vehicle.Core.AST
 

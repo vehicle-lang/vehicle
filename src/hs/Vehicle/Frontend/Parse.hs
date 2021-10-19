@@ -13,7 +13,6 @@ import GHC.Natural (naturalFromInteger)
 import Data.List.NonEmpty qualified as NonEmpty (groupBy1, head, toList)
 import Data.Text (Text, pack)
 import Data.Text.IO qualified as T
-import Prettyprinter ( Pretty(..), (<+>), line, squotes )
 import System.Exit (exitFailure)
 
 
@@ -122,15 +121,12 @@ class Convert vf vc where
   conv :: MonadParse m => vf -> m vc
 
 instance Convert B.Arg V.InputArg where
-  conv (B.ExplicitArg e) = do ce <- conv e; return $ V.Arg (V.annotation ce) Explicit ce
-  conv (B.ImplicitArg e) = do
-    ce <- conv e;
-    let p = expandProvenance (1, 1) (V.annotation ce)
-    return $ V.Arg p Implicit ce
-  conv (B.InstanceArg _e) = developerError "User specified type classes not yet supported"
+  conv (B.ExplicitArg e) = V.Arg Explicit <$> conv e
+  conv (B.ImplicitArg e) = V.Arg Implicit <$> conv e
+  conv (B.InstanceArg _) = developerError "User specified type classes not yet supported"
 
-instance Convert B.Name (WithProvenance Identifier) where
-  conv n = return $ WithProvenance (tkProv n) (Identifier (tkSymbol n))
+instance Convert B.Name Identifier where
+  conv n = return $ Identifier $ tkSymbol n
 
 instance Convert B.LetDecl V.InputLetDecl where
   conv (B.LDecl binder e) = op2 V.LetDecl mempty (conv binder) (conv e)
@@ -204,8 +200,8 @@ instance Convert B.Expr V.InputExpr where
     B.Map tk e1 e2            -> op2 V.Map     (tkProv tk) (conv e1) (conv e2)
     B.Fold tk e1 e2 e3        -> op3 V.Fold    (tkProv tk) (conv e1) (conv e2) (conv e3)
 
-    B.Every tk1 n tk2 e       -> op2 (flip V.Quant All) (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
-    B.Some  tk1 n tk2 e       -> op2 (flip V.Quant Any) (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
+    B.Every tk1 n tk2 e       -> op2 (flip V.Quant   All) (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
+    B.Some  tk1 n tk2 e       -> op2 (flip V.Quant   Any) (tkProv tk1 <> tkProv tk2) (conv n) (conv e)
     B.EveryIn tk1 n e1 tk2 e2 -> op3 (flip V.QuantIn All) (tkProv tk1 <> tkProv tk2) (conv n) (conv e1) (conv e2)
     B.SomeIn tk1 n e1 tk2 e2  -> op3 (flip V.QuantIn Any) (tkProv tk1 <> tkProv tk2) (conv n) (conv e1) (conv e2)
     B.Literal l               -> conv l
@@ -215,17 +211,17 @@ instance Convert B.Expr V.InputExpr where
 instance Convert (NonEmpty B.Decl) V.InputDecl where
   conv = \case
     -- Elaborate a network declaration.
-    (B.DeclNetw n tk t :| []) -> op2 V.DeclNetw (tkProv tk) (conv n) (conv t)
+    (B.DeclNetw n _tk t :| []) -> V.DeclNetw (tkProv n) <$> conv n <*> conv t
 
     -- Elaborate a dataset declaration.
-    (B.DeclData n tk t :| []) -> op2 V.DeclData (tkProv tk) (conv n) (conv t)
+    (B.DeclData n _tk t :| []) -> V.DeclData (tkProv n) <$> conv n <*> conv t
 
     -- Elaborate a type definition.
-    (B.DefType n ns t :| []) -> op3 V.DefType mempty (conv n) (traverse conv ns) (conv t)
+    (B.DefType n ns t :| []) -> V.DefType (tkProv n) <$> conv n <*> traverse conv ns <*> conv t
 
     -- Elaborate a function definition.
-    (B.DefFunType n tk t  :| [B.DefFunExpr n2 ns e]) ->
-      op4 V.DefFun (tkProv tk <> tkProv n2) (conv n) (conv t) (traverse conv ns) (conv e)
+    (B.DefFunType n _tk t  :| [B.DefFunExpr _n ns e]) ->
+      V.DefFun (tkProv n) <$> conv n <*> conv t <*> traverse conv ns <*> conv e
 
     -- Why did you write the signature AFTER the function?
     (e1@B.DefFunExpr {} :| [e2@B.DefFunType {}]) ->
@@ -277,16 +273,6 @@ op3 mk p t1 t2 t3 = do
   ct3 <- t3
   return $ mk (p <> prov ct1 <> prov ct2 <> prov ct3) ct1 ct2 ct3
 
-op4 :: (MonadParse m, HasProvenance a, HasProvenance b, HasProvenance c, HasProvenance d)
-    => (Provenance -> a -> b -> c -> d -> e)
-    -> Provenance -> m a -> m b -> m c -> m d -> m e
-op4 mk p t1 t2 t3 t4 = do
-  ct1 <- t1
-  ct2 <- t2
-  ct3 <- t3
-  ct4 <- t4
-  return $ mk (p <> prov ct1 <> prov ct2 <> prov ct3 <> prov ct4) ct1 ct2 ct3 ct4
-
 -- |Takes a list of declarations, and groups type and expression
 --  declarations by their name.
 groupDecls :: MonadParse m => [B.Decl] -> m [V.InputDecl]
@@ -303,9 +289,9 @@ isDefFun (B.DefFunExpr _ann _name _typ)  = True
 isDefFun _                               = False
 
 convBinder :: MonadParse m => Provenance -> B.Name -> Visibility -> m  (Maybe V.InputExpr) -> m V.InputBinder
-convBinder p name vis mTyp = do
+convBinder p name v mTyp = do
   typ <- mTyp
-  return $ V.Binder (p <> tkProv name <> maybe mempty prov typ) vis (tkSymbol name) typ
+  return $ V.Binder (p <> tkProv name <> maybe mempty prov typ) v (tkSymbol name) typ
 
 -- |Get the name for any declaration.
 declName :: B.Decl -> B.Name

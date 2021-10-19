@@ -127,5 +127,7 @@ instance HasProvenance (Binder ann) where
 instance HasProvenance (LetDecl ann) where
   prov (LetDecl p _ _) = p
 
-instance HasProvenance (Arg ann) where
-  prov (Arg p _ _) = p
+instance HasProvenance ann => HasProvenance (Arg ann) where
+  prov (Arg Explicit e) = prov e
+  prov (Arg Implicit e) = expandProvenance (1, 1) (prov e)
+  prov (Arg Instance e) = expandProvenance (2, 2) (prov e)

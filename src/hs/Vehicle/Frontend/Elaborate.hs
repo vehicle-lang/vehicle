@@ -84,7 +84,7 @@ instance Elab VF.InputBinder VC.InputBinder where
   elab (VF.Binder ann v n t) = VC.Binder ann v (VC.User n) <$> maybe (hole (prov ann)) elab t
 
 instance Elab VF.InputArg VC.InputArg where
-  elab (VF.Arg ann v e) = VC.Arg ann v <$> elab e
+  elab (VF.Arg v e) = VC.Arg v <$> elab e
 
 instance Elab VF.InputExpr VC.InputExpr where
   elab = \case
@@ -176,7 +176,7 @@ op :: MonadElab m => VC.Builtin -> VF.InputAnn -> [VF.InputExpr] -> m VC.InputEx
 op b ann args = opC b ann <$> traverse elab args
 
 opC :: VC.Builtin -> VF.InputAnn -> [VC.InputExpr] -> VC.InputExpr
-opC b ann args = VC.normAppList ann (VC.Builtin ann b) (fmap (VC.Arg ann Explicit) args)
+opC b ann args = VC.normAppList ann (VC.Builtin ann b) (fmap (VC.Arg Explicit) args)
 
 -- |Elaborate quantification over the members of a container type.
 -- Expands e.g. `every x in list . y` to `fold and true (map (\x -> y) list)`

@@ -10,9 +10,8 @@ import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Control.Monad.Except (MonadError(..), runExcept)
 import Control.Monad.State (MonadState(..), evalStateT)
 import Data.Map (Map)
-import Data.Map qualified as Map (insert, lookup, fromList)
+import Data.Map qualified as Map (insert, lookup)
 import Data.Maybe (catMaybes, fromMaybe)
-import Debug.Trace (traceShow)
 
 import Vehicle.Prelude hiding (Network)
 import Vehicle.Core.AST hiding (Map)
@@ -100,7 +99,7 @@ type MonadVNNLib m =
 getNetworkDetailsFromCtx :: MonadVNNLib m => Identifier -> m NetworkDetails
 getNetworkDetailsFromCtx ident = do
   networkDecl <- asks (fromMaybe outOfScopeError . Map.lookup ident)
-  getNetworkDetails (declProvIdent networkDecl) (declType networkDecl)
+  getNetworkDetails (prov networkDecl) (declIdent networkDecl) (declType networkDecl)
   where
     outOfScopeError :: a
     outOfScopeError = developerError $
@@ -131,13 +130,13 @@ compileDecl d = case d of
 
   DeclNetw _ ident _ -> do
     -- Extract the details for the network
-    let alterCtx = Map.insert (deProv ident) d
+    let alterCtx = Map.insert ident d
     -- Remove the declaration, as SMTLib does not support it.
     return (Nothing, alterCtx)
 
-  DefFun _ ident t e ->
+  DefFun p ident t e ->
     let alterCtx = id in
-    let identDoc = squotes (pretty (deProv ident)) in
+    let identDoc = squotes (pretty ident) in
     if not $ isProperty t then
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
@@ -150,7 +149,7 @@ compileDecl d = case d of
       logDebug $ "Generated meta-network" <+> pretty metaNetwork <> line
 
       if null metaNetwork then
-        throwError $ NoNetworkUsedInProperty ident
+        throwError $ NoNetworkUsedInProperty p ident
       else do
         metaNetworkDetails <- traverse getNetworkDetailsFromCtx metaNetwork
         let numberOfMagicVariables = sum (map networkSize metaNetworkDetails)
@@ -161,7 +160,7 @@ compileDecl d = case d of
 
         logDebug $ "Replaced network applications:" <+> prettySimple quantifiedExpr <> line
 
-        smtDoc <- SMTLib.compileProp (deProv ident) quantifiedExpr
+        smtDoc <- SMTLib.compileProp ident quantifiedExpr
         decrCallDepth
         logDebug $ "Finished compilation of VNNLib property" <+> identDoc
 
@@ -231,8 +230,8 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
   let outputEndingDBIndex   = outputStartingDBIndex - outputSize
   let inputVarIndices  = reverse [outputStartingDBIndex .. inputStartingDBIndex-1]
   let outputVarIndices = reverse [outputEndingDBIndex   .. outputStartingDBIndex-1]
-  let (inputsExpr,  inputsExprType) = mkMagicVariableSeq ann inputType  inputVarIndices
-  let (outputsExpr, _)             = mkMagicVariableSeq ann outputType outputVarIndices
+  let (inputsExpr,  inputsExprType) = mkMagicVariableSeq inputType  inputVarIndices
+  let (outputsExpr, _)             = mkMagicVariableSeq outputType outputVarIndices
 
   let body'         = outputsExpr `substInto` letBody
   let inputEquality = mkEq ann inputsExprType (Builtin ann Prop) inputsExpr networkInput
@@ -240,8 +239,8 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
 
   return newBody
   where
-    mkMagicVariableSeq :: CheckedAnn -> Builtin -> [Int] -> (CheckedExpr, CheckedExpr)
-    mkMagicVariableSeq ann tElem indices = (tensorExpr, tensorType)
+    mkMagicVariableSeq :: Builtin -> [Int] -> (CheckedExpr, CheckedExpr)
+    mkMagicVariableSeq tElem indices = (tensorExpr, tensorType)
       where
         tensorElemType   = Builtin ann tElem
         tensorType       = mkTensorType ann tensorElemType [length indices]
@@ -282,7 +281,7 @@ replaceNetworkApplications d e = case e of
     args' <- traverse (traverseArgExpr (replaceNetworkApplications d)) args
     return $ App ann fun' args'
 
-  Let ann (App _ (Var _ (Free ident)) [Arg _ _ input]) _ body -> do
+  Let ann (App _ (Var _ (Free ident)) [Arg _ input]) _ body -> do
     newBody <- replaceNetworkApplication ann ident input body d
     replaceNetworkApplications d newBody
 
@@ -290,12 +289,6 @@ replaceNetworkApplications d e = case e of
     bound' <- replaceNetworkApplications d bound
     body' <- replaceNetworkApplications d body
     return $ Let ann bound' binder body'
-
-type NetworkMagicVariables = CheckedAnn -> BindingDepth ->
-  ( CheckedExpr -- The tensor of input variables
-  , CheckedExpr -- The type of the tensor of input variables
-  , CheckedExpr -- The tensor of output variables
-  )
 
 {-
     -- EXAMPLE:
@@ -340,25 +333,26 @@ data TensorDetails = TensorDetails
   }
 
 getNetworkDetails :: MonadVNNLib m
-                  => WithProvenance Identifier
+                  => Provenance
+                  -> Identifier
                   -> CheckedExpr
                   -> m NetworkDetails
-getNetworkDetails ident t@(Pi _ (Binder _ _ _ input) output) =
+getNetworkDetails p ident t@(Pi _ (Binder _ _ _ input) output) =
   either
-    (throwError . UnsupportedNetworkType (prov ident) (deProv ident) t)
+    (throwError . UnsupportedNetworkType p ident t)
     return
     $ runExcept $ do
       inputDetails  <- getTensorDetails Input  input
       outputDetails <- getTensorDetails Output output
-      return $ NetworkDetails (prov ident) (deProv ident) inputDetails outputDetails
-getNetworkDetails ident t                                  =
-  throwError $ UnsupportedNetworkType (prov ident) (deProv ident) t NotAFunction
+      return $ NetworkDetails p ident inputDetails outputDetails
+getNetworkDetails p ident t                                  =
+  throwError $ UnsupportedNetworkType p ident t NotAFunction
 
 getTensorDetails :: MonadError UnsupportedNetworkType m
                  => InputOrOutput
                  -> CheckedExpr
                  -> m TensorDetails
-getTensorDetails io (App _ (Builtin _ Tensor) [Arg _ _ tElem, Arg _ _ tDims]) = do
+getTensorDetails io (App _ (Builtin _ Tensor) [Arg _ tElem, Arg _ tDims]) = do
   typ   <- getTensorType io tElem
   size  <- getTensorSize io tDims
   return $ TensorDetails size typ

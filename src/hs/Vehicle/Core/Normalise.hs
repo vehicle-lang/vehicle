@@ -111,7 +111,7 @@ instance Norm CheckedDecl where
     DefFun   ann ident typ expr -> do
       typ'  <- nf typ
       expr' <- nf expr
-      modify (M.insert (deProv ident) expr')
+      modify (M.insert ident expr')
       return $ DefFun ann ident typ' expr'
 
 instance Norm CheckedExpr where
@@ -156,15 +156,15 @@ instance Norm CheckedBinder where
   nf (Binder p v n t) = Binder p v n <$> nf t
 
 instance Norm CheckedArg where
-  nf (Arg p Explicit e) = Arg p Explicit <$> nf e
-  nf arg@Arg{}          = return arg
+  nf (Arg Explicit e) = Arg Explicit <$> nf e
+  nf arg@Arg{}        = return arg
 
 --------------------------------------------------------------------------------
 -- Application
 
 nfApp :: MonadNorm m => CheckedAnn -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
-nfApp _ann (Lam _ _ funcBody) (Arg _ _ arg : _) = nf (substInto arg funcBody)
-nfApp ann  fun@(Builtin _ op) args              = do
+nfApp _ann (Lam _ _ funcBody) (Arg _ arg : _) = nf (substInto arg funcBody)
+nfApp ann  fun@(Builtin _ op) args            = do
   let e = normAppList ann fun args
   case (op, args) of
     -- Equality
@@ -280,7 +280,7 @@ nfApp ann  fun@(Builtin _ op) args              = do
 
     -- Fold
     (Fold, [_tElem, _tCont, _tRes, _tc, foldOp, unit, cont]) -> case argHead cont of
-      Seq _ xs -> nf $ foldr (\x body -> normApp ann (argExpr foldOp) [Arg ann Explicit x, Arg ann Explicit body]) (argExpr unit) xs
+      Seq _ xs -> nf $ foldr (\x body -> normApp ann (argExpr foldOp) [Arg Explicit x, Arg Explicit body]) (argExpr unit) xs
       _        -> return e
     -- TODO distribute over cons
 
@@ -365,7 +365,7 @@ nfQuantifier ann q lam = case argHead lam of
 makeQuantifier :: CheckedAnn -> Quantifier -> CheckedExpr -> CheckedExpr -> Name -> CheckedExpr
 makeQuantifier ann q tElem body name =
   App ann (Builtin ann (Quant q))
-    [Arg ann Explicit (Lam ann (Binder ann Explicit name tElem) body)]
+    [Arg Explicit (Lam ann (Binder ann Explicit name tElem) body)]
 
 makeTensor :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedExpr
 makeTensor ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)
@@ -404,13 +404,13 @@ nfQuantifierIn :: MonadNorm m
                -> Maybe (m CheckedExpr)
 nfQuantifierIn ann q tElem tCont tRes _tc lam container = do
   let (bop, unit) = quantImplementation q
-  let isTruthTC = Arg ann Instance (PrimDict (mkIsTruth ann (argExpr tRes)))
+  let isTruthTC = Arg Instance (PrimDict (mkIsTruth ann (argExpr tRes)))
   let bopExpr = App ann (Builtin ann bop) [tRes, isTruthTC]
   let unitExpr = mkLiteral' ann (LBool unit) tRes isTruthTC
   let tResCont = mapArgExpr (substContainerType tRes) tCont
   let tResContTC = PrimDict $ mkIsContainer ann (argExpr tRes) (argExpr tResCont)
   let mappedContainer = mkMap' ann tElem tRes lam container
-  let foldedContainer = mkFold' ann tRes tResCont tRes (Arg ann Instance tResContTC) bopExpr unitExpr mappedContainer
+  let foldedContainer = mkFold' ann tRes tResCont tRes (Arg Instance tResContTC) bopExpr unitExpr mappedContainer
   Just (nf foldedContainer)
 
 quantImplementation :: Quantifier -> (Builtin, Bool)
@@ -450,8 +450,8 @@ nfNotQuantifier :: MonadNorm m
                 -> CheckedExpr
                 -> m CheckedExpr
 nfNotQuantifier ann t tc q (Lam lAnn binder body) = do
-  notBody <- nf $ App ann (Builtin ann Not) [t, tc, Arg ann Explicit body]
-  let notLam = Arg ann Explicit (Lam lAnn binder notBody)
+  notBody <- nf $ App ann (Builtin ann Not) [t, tc, Arg Explicit body]
+  let notLam = Arg Explicit (Lam lAnn binder notBody)
   return $ App ann (Builtin ann (Quant (negateQ q))) [notLam]
 nfNotQuantifier _ _ _ _ e = developerError $
   "Malformed quantifier, was expecting a Lam but found" <+> prettyVerbose e
@@ -492,7 +492,7 @@ nfMap :: MonadNorm m
       -> Maybe (m CheckedExpr)
 nfMap ann _tFrom tTo fun arg = case argHead arg of
   Seq _ xs -> Just $ do
-    ys <- traverse (\x -> nf $ normApp ann (argExpr fun) [Arg ann Explicit x]) xs
+    ys <- traverse (\x -> nf $ normApp ann (argExpr fun) [Arg Explicit x]) xs
     let tElem = argExpr tTo
     let tCont = mkListType ann tElem
     return $ mkSeq ann tElem tCont ys

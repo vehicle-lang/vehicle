@@ -96,7 +96,7 @@ instance ScopeCheck InputDecl UncheckedDecl where
     DefFun ann n t e -> DefFun   ann n <$> scope t <*> scope e
 
 instance ScopeCheck InputArg UncheckedArg where
-  scope (Arg p v e) = Arg p v <$> scope e
+  scope (Arg v e) = Arg v <$> scope e
 
 instance ScopeCheck InputExpr UncheckedExpr where
   scope e = do

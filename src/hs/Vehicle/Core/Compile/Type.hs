@@ -191,7 +191,7 @@ inferArgs :: TCM m
           -> CheckedExpr    -- Type of the function
           -> [UncheckedArg] -- User-provided arguments of the function
           -> m (CheckedExpr, [CheckedArg])
-inferArgs p (Pi _ (Binder _ vBin _ tBin) tRes) (Arg pArg vArg eArg : args)
+inferArgs p (Pi _ (Binder _ vBin _ tBin) tRes) (Arg vArg eArg : args)
   | vBin == vArg = do
     -- Check the type of the argument.
     eArg1 <- check tBin eArg
@@ -200,7 +200,7 @@ inferArgs p (Pi _ (Binder _ vBin _ tBin) tRes) (Arg pArg vArg eArg : args)
     -- Recurse into the list of args
     (tRes2, args1) <- inferArgs p tRes1 args
     -- Return the appropriately annotated type with its inferred kind.
-    return (tRes2, Arg pArg vArg eArg1 : args1)
+    return (tRes2, Arg vArg eArg1 : args1)
 
 inferArgs _ (Pi _ (Binder _ vBin _ tBin) _) (arg : _)
   | vBin /= vis arg && vBin == Explicit =
@@ -221,14 +221,14 @@ inferArgs p (Pi _ (Binder _ vBin _ tBin) tRes) args = do
     let tRes1 = metaExpr `substInto` tRes
 
     (tRes2, args1) <- inferArgs p tRes1 args
-    return (tRes2, Arg p vBin metaExpr : args1)
+    return (tRes2, Arg vBin metaExpr : args1)
 
 inferArgs _p tFun [] = return (tFun, [])
 
 inferArgs p tFun args = do
   ctx <- getBoundCtx
   let mkRes = [Endo $ \tRes -> unnamedPi v (tHole ("arg" <> pack (show i))) (const tRes)
-              | (i, Arg _p v _e) <- zip [0::Int ..] args]
+              | (i, Arg v _e) <- zip [0::Int ..] args]
   let expected = fromDSL (appEndo (mconcat mkRes) (tHole "res"))
   throwError $ Mismatch p ctx tFun expected
 
@@ -407,7 +407,7 @@ infer e = do
 
       -- Add in the type and type-class arguments
       let seqWithTArgs = normAppList p (Seq p es')
-            [Arg p Implicit tElem', Arg p Implicit tCont', Arg p Instance tMeta']
+            [Arg Implicit tElem', Arg Implicit tCont', Arg Instance tMeta']
 
       return (seqWithTArgs , tCont')
 
@@ -423,14 +423,14 @@ inferDecls (DeclNetw p ident t : decls) = do
     (t', ty') <- infer t
     assertIsType p ty'
 
-    decls' <- addToDeclCtx (deProv ident) t' Nothing $ do
+    decls' <- addToDeclCtx ident t' Nothing $ do
       inferDecls decls
     return $ DeclNetw p ident t' : decls'
 inferDecls (DeclData p ident t : decls) = do
     (t', ty') <- infer t
     assertIsType p ty'
 
-    decls' <- addToDeclCtx (deProv ident) t' Nothing $ do
+    decls' <- addToDeclCtx ident t' Nothing $ do
       inferDecls decls
     return $ DeclData p ident t' : decls'
 inferDecls (DefFun p ident t body : decls) = do
@@ -439,7 +439,7 @@ inferDecls (DefFun p ident t body : decls) = do
 
     body' <- check t' body
 
-    decls' <- addToDeclCtx (deProv ident) t' (Just body') $ do
+    decls' <- addToDeclCtx ident t' (Just body') $ do
       inferDecls decls
 
     return $ DefFun p ident t' body' : decls'

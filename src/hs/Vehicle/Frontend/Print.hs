@@ -74,18 +74,15 @@ instance Compile Quantifier  where
   compile Any = "some"
   compile All = "every"
 
-instance Compile (WithProvenance Identifier) where
-  compile (WithProvenance _p n) = pretty n
-
 instance Compile (Binder ann) where
   compile (Binder _p v n typeAnn) =
     let typAnn = maybe "" (\t -> " :" <+> compile t) typeAnn
     in  visBrackets v (pretty n <> typAnn)
 
 instance Compile (Arg ann) where
-  compile (Arg _p Explicit  e) = compile e
-  compile (Arg _p Implicit _e) = ""
-  compile (Arg _p Instance _e) = ""
+  compile (Arg Explicit  e) = compile e
+  compile (Arg Implicit _e) = ""
+  compile (Arg Instance _e) = ""
 
 instance Compile (LetDecl ann) where
   compile (LetDecl _p n e) = compile n <+> compile e
@@ -152,12 +149,12 @@ instance Compile (Expr ann) where
 
 instance Compile (Decl ann) where
   compile = \case
-    DeclData _ann n t      -> "dataset" <+> compile n <+> ":" <+> compile t
-    DeclNetw _ann n t      -> "network" <+> compile n <+> ":" <+> compile t
-    DefType  _ann n ns t   -> "type"    <+> compile n <+> hsep (fmap compile ns) <+> "=" <+> compile t
+    DeclData _ann n t      -> "dataset" <+> pretty n <+> ":" <+> compile t
+    DeclNetw _ann n t      -> "network" <+> pretty n <+> ":" <+> compile t
+    DefType  _ann n ns t   -> "type"    <+> pretty n <+> hsep (fmap compile ns) <+> "=" <+> compile t
     DefFun   _ann n t ns e ->
-      compile n <+> ":" <+> compile t <> hardline <>
-      compile n <+> hsep (fmap compile ns) <+> "=" <+> compile e
+      pretty n <+> ":" <+> compile t <> hardline <>
+      pretty n <+> hsep (fmap compile ns) <+> "=" <+> compile e
 
 instance Compile (Prog ann) where
   compile (Main ds) = vsep2 (fmap compile ds)

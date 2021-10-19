@@ -108,9 +108,9 @@ instance Convert B.Binder V.InputBinder where
 
 instance Convert B.Arg V.InputArg where
   conv = \case
-    B.ExplicitArg e -> do ce <- conv e; return $ V.Arg (annotation ce) Explicit ce
-    B.ImplicitArg e -> do ce <- conv e; return $ V.Arg (expandProvenance (1, 1) (V.annotation ce)) Implicit ce
-    B.InstanceArg e -> do ce <- conv e; return $ V.Arg (expandProvenance (2, 2) (V.annotation ce)) Instance ce
+    B.ExplicitArg e -> V.Arg Explicit <$> conv e
+    B.ImplicitArg e -> V.Arg Implicit <$> conv e
+    B.InstanceArg e -> V.Arg Instance <$> conv e
 
 instance Convert B.Lit Literal where
   conv = \case
@@ -138,14 +138,14 @@ instance Convert B.Expr V.InputExpr where
       arg' <- conv arg
       return $ normApp (prov fun' <> prov arg') fun' (arg' :| [])
 
-instance Convert B.NameToken (WithProvenance Identifier) where
-  conv n = return $ WithProvenance (tkProvenance n) (Identifier (tkSymbol n))
+instance Convert B.NameToken Identifier where
+  conv n = return $ Identifier $ tkSymbol n
 
 instance Convert B.Decl V.InputDecl where
   conv = \case
-    B.DeclNetw n t   -> op2 V.DeclNetw <$> conv n <*> conv t
-    B.DeclData n t   -> op2 V.DeclData <$> conv n <*> conv t
-    B.DefFun   n t e -> op3 V.DefFun   <$> conv n <*> conv t <*> conv e
+    B.DeclNetw n t   -> V.DeclNetw (tkProvenance n) <$> conv n <*> conv t
+    B.DeclData n t   -> V.DeclData (tkProvenance n) <$> conv n <*> conv t
+    B.DefFun   n t e -> V.DefFun   (tkProvenance n) <$> conv n <*> conv t <*> conv e
 
 instance Convert B.Prog V.InputProg where
   conv (B.Main ds) = V.Main <$> traverse conv ds

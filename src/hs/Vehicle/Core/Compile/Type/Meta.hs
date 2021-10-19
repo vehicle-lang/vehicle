@@ -60,10 +60,10 @@ instance MetaSubstitutable a => MetaSubstitutable [a] where
   substM = traverse substM
 
 instance MetaSubstitutable CheckedArg where
-  substM (Arg p v e) = Arg p v <$> substM e
+  substM = traverseArgExpr substM
 
 instance MetaSubstitutable CheckedBinder where
-  substM (Binder p v n t) = Binder p v n <$> substM t
+  substM = traverseBinderExpr substM
 
 instance MetaSubstitutable CheckedExpr where
   substM = \case
@@ -189,7 +189,7 @@ freshMetaWith boundCtx p = do
   let boundEnv = reverse [ Var p (Bound varIndex) | varIndex <- [0..length boundCtx - 1] ]
 
   -- Returns a meta applied to every bound variable in the context
-  let meta = normAppList p (Meta p metaName) (map (Arg p Explicit) boundEnv)
+  let meta = normAppList p (Meta p metaName) (map (Arg Explicit) boundEnv)
 
   logDebug $ "fresh-meta" <+> pretty metaName
   return (metaName, meta)

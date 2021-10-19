@@ -85,9 +85,19 @@ type OutputProg   = Prog   OutputVar OutputAnn
 --------------------------------------------------------------------------------
 -- Instances
 
+instance HasProvenance ann => HasProvenance (Arg var ann) where
+  prov (Arg Explicit e) = prov e
+  prov (Arg Implicit e) = expandProvenance (1, 1) (prov e)
+  prov (Arg Instance e) = expandProvenance (2, 2) (prov e)
+
 instance HasProvenance ann => HasProvenance (Expr var ann) where
   prov (Hole p _) = p
   prov e          = prov (annotation e)
+
+instance HasProvenance ann => HasProvenance (Decl var ann) where
+  prov (DeclNetw p _ _) = p
+  prov (DeclData p _ _) = p
+  prov (DefFun p _ _ _) = p
 
 --------------------------------------------------------------------------------
 -- Utility functions
@@ -100,25 +110,25 @@ binderType :: Binder var ann -> Expr var ann
 binderType (Binder _ _ _ t) = t
 
 argExpr :: Arg var ann -> Expr var ann
-argExpr (Arg _ _ e) = e
+argExpr (Arg _ e) = e
 
 isHole :: Expr var ann -> Bool
 isHole (Hole _ _ ) = True
 isHole _           = False
 
 mapArgExpr :: (Expr var ann -> Expr var ann) -> Arg var ann -> Arg var ann
-mapArgExpr f (Arg ann v e) = Arg ann v $ f e
+mapArgExpr f (Arg v e) = Arg v $ f e
 
 traverseArgExpr :: Monad m => (Expr var ann -> m (Expr var ann)) -> Arg var ann -> m (Arg var ann)
-traverseArgExpr f (Arg ann v e) = Arg ann v <$> f e
+traverseArgExpr f (Arg v e) = Arg v <$> f e
 
-declProvIdent :: Decl var ann -> WithProvenance Identifier
-declProvIdent (DeclNetw _ ident _) = ident
-declProvIdent (DeclData _ ident _) = ident
-declProvIdent (DefFun _ ident _ _) = ident
+traverseBinderExpr :: Monad m => (Expr var ann -> m (Expr var ann)) -> Binder var ann -> m (Binder var ann)
+traverseBinderExpr f (Binder p v n e) = Binder p v n <$> f e
 
 declIdent :: Decl var ann -> Identifier
-declIdent = deProv . declProvIdent
+declIdent (DeclNetw _ ident _) = ident
+declIdent (DeclData _ ident _) = ident
+declIdent (DefFun _ ident _ _) = ident
 
 declType :: Decl var ann -> Expr var ann
 declType (DeclNetw _ _ t) = t
@@ -175,7 +185,7 @@ exprHead = fst . toHead
 data QuantView var ann = QuantView ann Quantifier Name (Expr var ann) (Expr var ann)
 
 quantView :: Expr var ann -> Maybe (QuantView var ann)
-quantView (App ann (Builtin _ (Quant q)) (Arg _ Explicit
+quantView (App ann (Builtin _ (Quant q)) (Arg Explicit
   (Lam _ (Binder _ Explicit n t) e) :| [])) = Just (QuantView ann q n t e)
 quantView _ = Nothing
 
@@ -187,20 +197,20 @@ quantView _ = Nothing
 -- Types
 
 mkListType :: CheckedAnn -> CheckedExpr -> CheckedExpr
-mkListType ann tElem = App ann (Builtin ann List) [Arg ann Explicit tElem]
+mkListType ann tElem = App ann (Builtin ann List) [Arg Explicit tElem]
 
 mkTensorType :: CheckedAnn -> CheckedExpr -> [Int] -> CheckedExpr
 mkTensorType ann tElem dims =
   let dimExprs = fmap (Literal ann . LNat)  dims in
   let dimList  = mkSeq ann (Builtin ann Nat) (mkListType ann (Builtin ann Nat)) dimExprs in
-  App ann (Builtin ann Tensor) [Arg ann Explicit tElem, Arg ann Explicit dimList]
+  App ann (Builtin ann Tensor) [Arg Explicit tElem, Arg Explicit dimList]
 
 mkIsTruth :: CheckedAnn -> CheckedExpr -> CheckedExpr
-mkIsTruth ann t = App ann (Builtin ann IsTruth) [Arg ann Explicit t]
+mkIsTruth ann t = App ann (Builtin ann IsTruth) [Arg Explicit t]
 
 mkIsContainer :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkIsContainer ann tElem tCont = App ann (Builtin ann IsContainer)
-  [Arg ann Explicit tElem, Arg ann Explicit tCont]
+  [Arg Explicit tElem, Arg Explicit tCont]
 
 -- Expressions
 
@@ -209,8 +219,8 @@ mkLiteral' ann lit t tc = App ann (Literal ann lit) [t, tc]
 
 mkLiteral :: CheckedAnn -> Literal -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkLiteral ann lit t tc = mkLiteral' ann lit
-  (Arg ann Implicit t)
-  (Arg ann Instance (PrimDict tc))
+  (Arg Implicit t)
+  (Arg Instance (PrimDict tc))
 
 mkBool :: CheckedAnn -> CheckedExpr -> Bool -> CheckedExpr
 mkBool ann t b = mkLiteral ann (LBool b) t (PrimDict t)
@@ -229,38 +239,38 @@ mkSeq' ann tElem tCont tc xs = App ann (Seq ann xs) [tElem, tCont, tc]
 
 mkSeq :: CheckedAnn -> CheckedExpr -> CheckedExpr -> [CheckedExpr] -> CheckedExpr
 mkSeq ann tElem tCont = mkSeq' ann
-  (Arg ann Implicit tElem)
-  (Arg ann Implicit tCont)
-  (Arg ann Instance (PrimDict (mkIsContainer ann tElem tCont)))
+  (Arg Implicit tElem)
+  (Arg Implicit tCont)
+  (Arg Instance (PrimDict (mkIsContainer ann tElem tCont)))
 
 -- Expressions
 
 mkEq' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkEq' ann tElem tRes tc e1 e2 = App ann (Builtin ann Eq)
-  [tElem, tRes, tc, Arg ann Explicit e1, Arg ann Explicit e2]
+  [tElem, tRes, tc, Arg Explicit e1, Arg Explicit e2]
 
 mkEq :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkEq ann tElem tRes = mkEq' ann
-  (Arg ann Implicit tElem)
-  (Arg ann Implicit tRes)
-  (Arg ann Instance (PrimDict (mkIsTruth ann tRes)))
+  (Arg Implicit tElem)
+  (Arg Implicit tRes)
+  (Arg Instance (PrimDict (mkIsTruth ann tRes)))
 
 mkNot' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr
-mkNot' ann t tc e = App ann (Builtin ann Not) [t, tc, Arg ann Explicit e]
+mkNot' ann t tc e = App ann (Builtin ann Not) [t, tc, Arg Explicit e]
 
 mkNot :: CheckedAnn -> CheckedExpr -> CheckedExpr  -> CheckedExpr
 mkNot ann t = mkNot' ann
-  (Arg ann Implicit t)
-  (Arg ann Instance (PrimDict (mkIsTruth ann t)))
+  (Arg Implicit t)
+  (Arg Instance (PrimDict (mkIsTruth ann t)))
 
 mkBoolOp2' :: Builtin -> CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkBoolOp2' op ann t tc e1 e2 = App ann (Builtin ann op)
-  [t, tc, Arg ann Explicit e1, Arg ann Explicit e2]
+  [t, tc, Arg Explicit e1, Arg Explicit e2]
 
 mkBoolOp2 :: Builtin -> CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkBoolOp2 op ann t = mkBoolOp2' op ann
-  (Arg ann Implicit t)
-  (Arg ann Instance (PrimDict (mkIsTruth ann t)))
+  (Arg Implicit t)
+  (Arg Instance (PrimDict (mkIsTruth ann t)))
 
 mkImplies' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkImplies' = mkBoolOp2' Impl
@@ -282,7 +292,7 @@ mkOr = mkBoolOp2 Or
 
 mkAt' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkAt' ann tElem tCont tc xs i = App ann (Builtin ann At)
-  [tElem, tCont, tc, Arg ann Explicit xs , Arg ann Explicit i ]
+  [tElem, tCont, tc, Arg Explicit xs , Arg Explicit i ]
 
 mkMap' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr
 mkMap' ann tFrom tTo f xs = App ann (Builtin ann Map)
@@ -290,12 +300,12 @@ mkMap' ann tFrom tTo f xs = App ann (Builtin ann Map)
 
 mkFold' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkFold' ann tElem tCont tRes tc bop unit xs = App ann (Builtin ann Fold)
-  [tElem, tCont, tRes, tc, Arg ann Explicit bop, Arg ann Explicit unit, Arg ann Explicit xs]
+  [tElem, tCont, tRes, tc, Arg Explicit bop, Arg Explicit unit, Arg Explicit xs]
 
 mkQuantifier :: CheckedAnn -> Quantifier -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkQuantifier ann q n t e =
   App ann (Builtin ann (Quant q))
-    (Arg ann Explicit (Lam ann (Binder ann Explicit n t) e) :| [])
+    (Arg Explicit (Lam ann (Binder ann Explicit n t) e) :| [])
 
 -- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3
 mkNameWithIndices :: Name -> [Int] -> Name
