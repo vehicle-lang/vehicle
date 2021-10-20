@@ -49,4 +49,4 @@ advisesClearOfConflict x = let y = acasXu x in
     y ! 0 >= y ! i
 
 property6 : Prop
-property6 = every x. intruderFarAway x => advisesClearOfConflict x
+property6 = every x . intruderFarAway x => advisesClearOfConflict x

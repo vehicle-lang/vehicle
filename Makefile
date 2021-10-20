@@ -72,7 +72,7 @@ bnfc: bnfc-core bnfc-frontend
 BNFC_TARGETS_CORE := Lex.x Par.y ErrM.hs
 BNFC_TARGETS_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_TARGETS_CORE))
 
-BNFC_GARBAGE_CORE := Print.hs Test.hs Skel.hs Doc.txt
+BNFC_GARBAGE_CORE := Test.hs Skel.hs Doc.txt
 BNFC_GARBAGE_CORE := $(addprefix $(GEN_DIR_HS)/Vehicle/Core/,$(BNFC_GARBAGE_CORE))
 
 .PHONY: bnfc-core
@@ -99,7 +99,7 @@ $(GEN_DIR_HS)/Vehicle/Core/Par.info: $(GEN_DIR_HS)/Vehicle/Core/Par.y
 BNFC_TARGETS_FRONTEND := Abs.hs Lex.x Layout.hs Par.y ErrM.hs
 BNFC_TARGETS_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_TARGETS_FRONTEND))
 
-BNFC_GARBAGE_FRONTEND := Test.hs Skel.hs Doc.txt Print.hs
+BNFC_GARBAGE_FRONTEND := Test.hs Skel.hs Doc.txt
 BNFC_GARBAGE_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_GARBAGE_FRONTEND))
 
 .PHONY: bnfc-frontend

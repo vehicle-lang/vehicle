@@ -2,7 +2,7 @@
 module Vehicle.Backend.Verifier.Core where
 
 import Vehicle.Prelude
-import Vehicle.Core.AST
+import Vehicle.Language.AST
 
 --------------------------------------------------------------------------------
 -- Errors

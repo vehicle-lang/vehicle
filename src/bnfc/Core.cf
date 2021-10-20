@@ -22,9 +22,9 @@ position token TypeToken ({"Type"} digit+);
 
 -- * Binders
 
-ExplicitNameAndType. Binder ::= "("  NameToken ":type" Expr ")";
-ImplicitNameAndType. Binder ::= "{"  NameToken ":type" Expr "}";
-InstanceNameAndType. Binder ::= "{{" NameToken ":type" Expr "}}";
+ExplicitBinder. Binder ::= "("  NameToken ":type" Expr ")";
+ImplicitBinder. Binder ::= "{"  NameToken ":type" Expr "}";
+InstanceBinder. Binder ::= "{{" NameToken ":type" Expr "}}";
 
 -- * Function arguments
 
@@ -35,16 +35,17 @@ InstanceArg. Arg ::= "{{" Expr "}}";
 -- * Literals
 
 LitNat.  Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
+LitInt.  Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
 LitReal. Lit ::= Double;
 LitBool. Lit ::= BoolToken;
 
 -- * Core structure.
 
 Ann.           Expr  ::= Expr1 ":type" Expr1;
-Pi.            Expr ::= "pi" Binder Expr1;
-Let.           Expr ::= "let" Binder Expr1 Expr1;
-Lam.           Expr ::= "lambda" Binder Expr1;
-App.           Expr ::= Expr1 Arg;
+Pi.            Expr  ::= "pi" Binder Expr1;
+Let.           Expr  ::= "let" Binder Expr1 Expr1;
+Lam.           Expr  ::= "lambda" Binder Expr1;
+App.           Expr  ::= Expr1 Arg;
 Type.          Expr1 ::= TypeToken;
 Seq.           Expr1 ::= "[" [Expr1] "]";
 Builtin.       Expr1 ::= BuiltinToken;

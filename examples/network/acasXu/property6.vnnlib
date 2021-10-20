@@ -1,39 +1,52 @@
-; ACAS Xu property 6
+-- Types
 
-(declare-const X_0 Real)
-(declare-const X_1 Real)
-(declare-const X_2 Real)
-(declare-const X_3 Real)
-(declare-const X_4 Real)
+pi : Real
+pi = 3.141592
 
-(declare-const Y_0 Real)
-(declare-const Y_1 Real)
-(declare-const Y_2 Real)
-(declare-const Y_3 Real)
-(declare-const Y_4 Real)
+type InputVector  = Tensor Real [5]
+type OutputVector = Tensor Real [5]
 
-; Spec 6
-; unsafe if coc is not minimal
-; Unscaled Input 0: (12000, 62000)
-; Unscaled Input 1: (0.7, 3.141592)
-; Unscaled Input 2: (-3.141592, -3.1365920000000003)
-; Unscaled Input 3: (100, 1200)
-; Unscaled Input 4: (0, 1200)
-;;;; or ;;;;
-; Unscaled Input 0: (12000, 62000)
-; Unscaled Input 1: (-3.141592, -0.7)
-; Unscaled Input 2: (-3.141592, -3.1365920000000003)
-; Unscaled Input 3: (100, 1200)
-; Unscaled Input 4: (0, 1200)
-(assert (or
-    (and (<= X_0 0.700434925) (>= X_0 -0.129289109) (<= X_1 0.499999896) (>= X_1 0.11140846) (<= X_2 -0.499204121) (>= X_2 -0.499999896) (<= X_3 0.5) (>= X_3 -0.5) (<= X_4 0.5) (>= X_4 -0.5))
-    (and (<= X_0 0.700434925) (>= X_0 -0.129289109) (<= X_1 -0.11140846) (>= X_1 -0.499999896) (<= X_2 -0.499204121) (>= X_2 -0.499999896) (<= X_3 0.5) (>= X_3 -0.5) (<= X_4 0.5) (>= X_4 -0.5))
-))
+-- The network
 
-; unsafe if coc is not minimal
-(assert (or
-    (and (<= Y_1 Y_0))
-    (and (<= Y_2 Y_0))
-    (and (<= Y_3 Y_0))
-    (and (<= Y_4 Y_0))
-))
+network acasXu : InputVector -> OutputVector
+
+-- Inputs
+
+distanceToIntruder : InputVector -> Real
+distanceToIntruder x = x ! 0
+
+angleToIntruder : InputVector -> Real
+angleToIntruder x = x ! 1
+
+intruderHeading : InputVector -> Real
+intruderHeading x = x ! 2
+
+speed : InputVector -> Real
+speed x = x ! 3
+
+intruderSpeed : InputVector -> Real
+intruderSpeed x = x ! 4
+
+-- Outputs
+
+clearOfConflictScore : InputVector -> Real
+clearOfConflictScore x = acasXu x ! 0
+
+-- Property: If the intruder is sufficiently far away, the network advises COC.
+
+intruderFarAway : InputVector -> Prop
+intruderFarAway x =
+  ((- pi <= angleToIntruder x and angleToIntruder x <= -0.7)
+    or (0.7 <= angleToIntruder x and angleToIntruder x <= pi))
+  and 12000 <= distanceToIntruder x and distanceToIntruder x <= 62000
+  and -pi   <= intruderHeading    x and intruderHeading    x <= -pi + 0.005
+  and 100   <= speed              x and speed              x <= 1200
+  and 0     <= intruderSpeed      x and intruderSpeed      x <= 1200
+
+advisesClearOfConflict : InputVector -> Prop
+advisesClearOfConflict x = let y = acasXu x in
+  every i inn ([0,1,2,3,4] : List Nat) .
+    y ! 0 >= y ! i
+
+property6 : Prop
+property6 = every x. intruderFarAway x => advisesClearOfConflict x

@@ -25,19 +25,14 @@ import System.Exit (exitSuccess, exitFailure)
 import System.Console.GetOpt
 
 import Vehicle.Prelude
-import Vehicle.Core.AST qualified as VC
-import Vehicle.Core.Parse qualified as VC
-import Vehicle.Core.Print qualified as VC
-import Vehicle.Core.Compile.Scope qualified as VC
-import Vehicle.Core.Compile.Type qualified as VC
-import Vehicle.Core.Compile.Descope qualified as VC
-import Vehicle.Core.Normalise qualified as VC (normalise)
-
-import Vehicle.Frontend.AST qualified as VF
-import Vehicle.Frontend.Print qualified as VF
-import Vehicle.Frontend.Elaborate qualified as VF
-import Vehicle.Frontend.Delaborate qualified as VF
-import Vehicle.Frontend.Parse qualified as VF
+import Vehicle.Language.AST qualified as V
+import Vehicle.Language.Parse qualified as V
+import Vehicle.Language.Print qualified as V
+import Vehicle.Language.Elaborate.Core as Core
+import Vehicle.Language.Elaborate.Frontend as Frontend
+import Vehicle.Language.Compile.Scope qualified as V
+import Vehicle.Language.Compile.Type qualified as V
+import Vehicle.Language.Normalise qualified as V (normalise)
 
 --import Vehicle.Backend.ITP.Core (ITPOptions(..))
 --import Vehicle.Backend.ITP.Agda (AgdaOptions(..), compileToAgda)
@@ -164,11 +159,11 @@ run opts@Options{..} = do
 
   -- Read file, parse and elaborate to core if necessary
   contents <- readFileOrStdin inputFile
-  coreProg <- parseAndElab inputLang contents
+  rawProg  <- parseAndElab logFile inputLang contents
 
   -- Scope check, type check etc.
-  scopedCoreProg <- fromLoggedEitherIO logFile $ VC.scopeCheck coreProg
-  typedCoreProg  <- fromLoggedEitherIO logFile $ VC.typeCheck scopedCoreProg
+  scopedCoreProg <- fromLoggedEitherIO logFile $ V.scopeCheck rawProg
+  typedCoreProg  <- fromLoggedEitherIO logFile $ V.typeCheck scopedCoreProg
 
   -- Compile to requested backend
   case outputTarget of
@@ -177,33 +172,29 @@ run opts@Options{..} = do
       exitFailure
 
     Just (ITP itp) -> do
-      let descopedCoreProg :: VC.OutputProg = VC.runDescope typedCoreProg
       case itp of
         (Vehicle Core) ->
-          writeResultToFile opts $ layoutAsText $ VC.prettyVerbose descopedCoreProg
+          writeResultToFile opts $ layoutAsText $ V.prettyVerbose typedCoreProg
 
-        (Vehicle Frontend) -> do
-          compFrontProg :: VF.OutputProg <- fromLoggedIO logFile $ VF.runDelab descopedCoreProg
-          writeResultToFile opts $ layoutAsText $ VF.prettyFrontend compFrontProg
+        (Vehicle Frontend) ->
+          writeResultToFile opts $ layoutAsText $ V.prettyFriendlyTopLevel typedCoreProg
 
         Agda -> do
           developerError "Agda not current supported"
 
     Just (Verifier verifier) -> do
-      normProg <- fromLoggedEitherIO logFile $ VC.normalise typedCoreProg
+      normProg <- fromLoggedEitherIO logFile $ V.normalise typedCoreProg
       case verifier of
         SMTLib -> toSMTLib opts normProg
         VNNLib -> toVNNLib opts normProg
 
-
-
-
-parseAndElab :: VehicleLang -> Text -> IO VC.InputProg
-parseAndElab Frontend contents = do
-  progVF <- fromEitherIO (VF.parseText contents)
-  return $ VF.runElab progVF
-parseAndElab Core contents =
-  fromEitherIO (VC.parseText contents)
+parseAndElab :: Maybe (Maybe FilePath) -> VehicleLang -> Text -> IO V.InputProg
+parseAndElab logFile Frontend contents = do
+  progVF <- fromEitherIO (V.parseFrontendText contents)
+  fromLoggedEitherIO logFile $ Frontend.runElab progVF
+parseAndElab logFile Core contents = do
+  progVC <- fromEitherIO (V.parseCoreText contents)
+  fromLoggedEitherIO logFile $ Core.runElab progVC
 
 fromEitherIO :: MeaningfulError e => Either e a -> IO a
 fromEitherIO (Left err) = do print $ details err; exitFailure
@@ -226,13 +217,12 @@ writeResultToFile Options{..} outputText =
     Nothing             -> T.putStrLn outputText
     Just outputFilePath -> T.writeFile outputFilePath outputText
 
-
-toSMTLib :: Options -> VC.CheckedProg -> IO ()
+toSMTLib :: Options -> V.CheckedProg -> IO ()
 toSMTLib opts@Options{..} prog = do
   propertyDocs <- fromLoggedEitherIO logFile (compileToSMTLib prog)
   mapM_ (\doc -> writeResultToFile opts (layoutAsText (text doc))) propertyDocs
 
-toVNNLib :: Options -> VC.CheckedProg -> IO ()
+toVNNLib :: Options -> V.CheckedProg -> IO ()
 toVNNLib opts@Options{..} prog = do
   propertyDocs <- fromLoggedEitherIO logFile (compileToVNNLib prog)
   mapM_ (\doc -> writeResultToFile opts (layoutAsText (text (smtDoc doc)))) propertyDocs

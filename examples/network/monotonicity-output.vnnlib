@@ -1,0 +1,11 @@
+(declare-const X_0 Real)
+(declare-const Y_0 Real)
+(declare-const X_1 Real)
+(declare-const Y_1 Real)
+(declare-const x1_0 Real)
+(declare-const x2_0 Real)
+
+(assert (== X_0 x1_0))
+(assert (== X_1 x2_0))
+(assert (<= x1_0 x2_0))
+(assert (> Y_0 Y_1))

@@ -9,8 +9,8 @@ import Data.Version (Version, showVersion)
 import Prettyprinter as Pretty ((<+>), Pretty(pretty), line, list)
 
 import Vehicle.Prelude
-import Vehicle.Frontend.AST
-import Vehicle.Frontend.Print ()
+import Vehicle.Language.AST
+import Vehicle.Language.Print ()
 
 -- * Utilities when compiling to an interactive theorem prover backend
 

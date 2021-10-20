@@ -3,18 +3,19 @@ module Vehicle.Prelude.Provenance
   ( Provenance
   , tkProvenance
   , HasProvenance(..)
-  , showProv
   , expandProvenance
+  , fillInProvenance
   ) where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData(..))
 import Data.Range hiding (joinRanges)
+import Data.Maybe (maybeToList)
 import Data.List.NonEmpty (NonEmpty)
+import Data.List (sort)
 import Prettyprinter
 
 import Vehicle.Prelude.Token
-import Vehicle.Prelude.Prettyprinter (layoutAsString)
 
 --------------------------------------------------------------------------------
 -- Position
@@ -66,10 +67,6 @@ instance Pretty (Range Position) where
   -- don't do anything special when showing them.
   pretty r = pretty $ show r
 
--- TODO make instance of PrintfArg
-showProv :: Provenance -> String
-showProv = layoutAsString . pretty
-
 -- | Takes the union of two sets of position ranges and then joins any adjacent
 -- ranges (e.g. r1=[(1,10)-(1,20)] & r2=[(1,21)-(1,25)] gets mapped to
 -- the single range [(1,10)-(1,25)]).
@@ -106,6 +103,17 @@ joinRanges rs1 rs2 = combineRanges $ rs1 `union` rs2
       Just r12 -> combineRanges (r12 : rs)
     combineRanges rs             = rs
 
+fillInRanges :: [Range Position] -> Maybe (Range Position)
+fillInRanges []  = Nothing
+fillInRanges [r] = Just r
+fillInRanges ranges  = let
+  sortedRanges = sort ranges
+  startRange   = head sortedRanges
+  endRange     = last sortedRanges
+  in case (startRange, endRange) of
+    (SpanRange s _, SpanRange _ e) -> Just $ SpanRange s e
+    _                              -> error "Invalid assumption that we only use span ranges"
+
 expandRange :: (Int, Int) -> [Range Position] -> [Range Position]
 expandRange (l , r) [IRange start end] = [IRange (alterColumn (\x -> x - l) start) (alterColumn (+ r) end)]
 expandRange _       rs                 = rs
@@ -132,6 +140,9 @@ tkProvenance tk = Provenance [start +=+ end]
 
 expandProvenance :: (Int, Int) -> Provenance -> Provenance
 expandProvenance w (Provenance rs) = Provenance (expandRange w rs)
+
+fillInProvenance :: [Provenance] -> Provenance
+fillInProvenance ps = Provenance (maybeToList (fillInRanges (concatMap (\(Provenance rs) -> rs) ps)))
 
 instance Semigroup Provenance where
   Provenance r1 <> Provenance r2 = Provenance $ joinRanges r1 r2

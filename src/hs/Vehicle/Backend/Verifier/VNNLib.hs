@@ -14,9 +14,9 @@ import Data.Map qualified as Map (insert, lookup)
 import Data.Maybe (catMaybes, fromMaybe)
 
 import Vehicle.Prelude hiding (Network)
-import Vehicle.Core.AST hiding (Map)
-import Vehicle.Core.Print (prettySimple)
-import Vehicle.Core.Normalise (normaliseInternal)
+import Vehicle.Language.AST hiding (Map)
+import Vehicle.Language.Print (prettySimple)
+import Vehicle.Language.Normalise (normaliseInternal)
 import Vehicle.Backend.Verifier.Core
 import Vehicle.Backend.Verifier.SMTLib (SMTLibError, SMTDoc, SMTLibError(..), InputOrOutput(..), UnsupportedNetworkType(..))
 import Vehicle.Backend.Verifier.SMTLib qualified as SMTLib (compileProp)

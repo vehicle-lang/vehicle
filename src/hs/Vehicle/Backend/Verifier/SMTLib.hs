@@ -17,11 +17,10 @@ import Data.Maybe (catMaybes)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Prelude
-import Vehicle.Core.AST
-import Vehicle.Core.Print.Friendly (prettyFriendly)
-import Vehicle.Core.Print (prettySimple)
-import Vehicle.Core.Normalise (normaliseInternal)
-import Vehicle.Core.Compile.Descope (runDescopeWithCtx)
+import Vehicle.Language.AST
+import Vehicle.Language.Print (prettyFriendlyTopLevel, prettySimple)
+import Vehicle.Language.Normalise (normaliseInternal)
+import Vehicle.Language.Compile.Descope (runDescope)
 import Vehicle.Backend.Verifier.Core
 
 compileToSMTLib :: (MonadLogger m, MonadError SMTLibError m)
@@ -92,7 +91,7 @@ instance MeaningfulError SMTLibError where
       { provenance = p
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "found" <+>
                      "a quantified variable" <+> squotes (pretty name) <+> "of type" <+>
-                     squotes (prettyFriendly mempty t) <+> "which is not currently supported" <+>
+                     squotes (prettyFriendlyTopLevel t) <+> "which is not currently supported" <+>
                      "when compiling to SMTLib."
       , fix        = "Try switching the variable to one of the following supported types:" <+>
                      pretty supportedTypes
@@ -124,7 +123,7 @@ instance MeaningfulError SMTLibError where
     UnsupportedNetworkType p ident t detailedError -> UError $ UserError
       { provenance = p
       , problem    = "Found a" <+> squotes (pretty Network) <+> "declaration" <+> squotes (pretty ident) <+>
-                     "whose type" <+> squotes (prettyFriendly mempty t) <+> "is not currently unsupported." <+>
+                     "whose type" <+> squotes (prettyFriendlyTopLevel t) <+> "is not currently unsupported." <+>
                      "Currently only networks of type" <+> squotes "Tensor A [m] -> Tensor B [n]" <+>
                      "where" <+> squotes "m" <+> "and" <+> squotes "n" <+> "are integer literals are allowed." <+>
                      "In particular" <+> pretty detailedError <+> "."
@@ -214,7 +213,7 @@ compileProp ident expr = runReaderT propertyDoc ident
 
     logDebug $ "Stripped existential quantifiers:" <+> pretty ctx <> line
 
-    let body2 = runDescopeWithCtx (reverse ctx) body
+    let body2 = runDescope (reverse ctx) body
 
     logDebug $ "Descoping property" <+> prettySimple body2 <> line
 
