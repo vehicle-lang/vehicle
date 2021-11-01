@@ -1,6 +1,7 @@
 
 module Vehicle.Language.Compile.Descope
-  ( runDescope
+  ( Descope
+  , runDescope
   , runNaiveDescope
   ) where
 
@@ -10,8 +11,8 @@ import Data.Text (pack)
 import Vehicle.Prelude
 import Vehicle.Language.AST
 
-runDescope :: Descope a b => [Name] -> a -> b
-runDescope ctx e = runReader (descope e) (Ctx ctx, True)
+runDescope :: (IsBoundCtx ctx, Descope a b) => ctx -> a -> b
+runDescope ctx e = runReader (descope e) (Ctx (ctxNames ctx), True)
 
 -- | Converts DeBruijn indices into names naively, e.g. 0 becomes "i0".
 -- Useful for debugging

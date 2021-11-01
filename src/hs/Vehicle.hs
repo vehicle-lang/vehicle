@@ -43,9 +43,6 @@ import Vehicle.Backend.Verifier.VNNLib (compileToVNNLib, VNNLibDoc(..))
 --------------------------------------------------------------------------------
 -- Command-line options
 
-data VehicleLang = Frontend | Core
-  deriving (Show)
-
 data ITP
   = Agda
   | Vehicle VehicleLang
@@ -177,7 +174,7 @@ run opts@Options{..} = do
           writeResultToFile opts $ layoutAsText $ V.prettyVerbose typedCoreProg
 
         (Vehicle Frontend) ->
-          writeResultToFile opts $ layoutAsText $ V.prettyFriendlyTopLevel typedCoreProg
+          writeResultToFile opts $ layoutAsText $ V.prettyFriendly typedCoreProg
 
         Agda -> do
           developerError "Agda not current supported"

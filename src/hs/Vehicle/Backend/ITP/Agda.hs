@@ -14,8 +14,8 @@ import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 import Prettyprinter.Render.Text (renderStrict)
 
-import Vehicle.Backend.ITP.Core
-import Vehicle.Frontend.AST
+import Vehicle.Backend.Core
+import Vehicle.Language.AST
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -186,26 +186,12 @@ instance CompileToAgda OutputBinder where
 instance CompileToAgda OutputArg where
   compile (Arg _p v e) = visBrackets v <$> compile e
 
-instance CompileToAgda OutputLetDecl where
-  compile (LetDecl _p binder bound) =
-    return $ line <> pretty binder <+> "=" <+> pretty bound
-
 instance CompileToAgda Double where
   compile d = _
 
 instance CompileToAgda OutputExpr where
   compile = \case
     Hole{}        -> developerError "Holes should have been removed"
-
-    e@HasEq{}       -> throwError $ CompilationUnsupported (prov e) "HasEq"
-    e@HasOrd{}      -> throwError $ CompilationUnsupported (prov e) "HasOrd"
-    e@IsTruth{}     -> throwError $ CompilationUnsupported (prov e) "IsTruth"
-    e@IsNatural{}   -> throwError $ CompilationUnsupported (prov e) "IsNatural"
-    e@IsIntegral{}  -> throwError $ CompilationUnsupported (prov e) "IsIntegral"
-    e@IsRational{}  -> throwError $ CompilationUnsupported (prov e) "IsRational"
-    e@IsReal{}      -> throwError $ CompilationUnsupported (prov e) "IsReal"
-    e@IsQuant{}     -> throwError $ CompilationUnsupported (prov e) "IsQuant"
-    e@IsContainer{} -> throwError $ CompilationUnsupported (prov e) "IsContainer"
 
     Type l -> return $ annotateConstant ("Set" <+> pretty l)
 
@@ -239,6 +225,16 @@ instance CompileToAgda OutputExpr where
     Var     _ann n  -> return $ pretty n
     Seq     _ann es -> compileSeq <$> traverse compile es
     Literal _ann l  -> compile l
+{-
+    e@HasEq{}       -> throwError $ CompilationUnsupported (prov e) "HasEq"
+    e@HasOrd{}      -> throwError $ CompilationUnsupported (prov e) "HasOrd"
+    e@IsTruth{}     -> throwError $ CompilationUnsupported (prov e) "IsTruth"
+    e@IsNatural{}   -> throwError $ CompilationUnsupported (prov e) "IsNatural"
+    e@IsIntegral{}  -> throwError $ CompilationUnsupported (prov e) "IsIntegral"
+    e@IsRational{}  -> throwError $ CompilationUnsupported (prov e) "IsRational"
+    e@IsReal{}      -> throwError $ CompilationUnsupported (prov e) "IsReal"
+    e@IsQuant{}     -> throwError $ CompilationUnsupported (prov e) "IsQuant"
+    e@IsContainer{} -> throwError $ CompilationUnsupported (prov e) "IsContainer"
 
     Prop   _ann       -> compileProp
     Bool   _ann       -> return $ annotateConstant DataBool "Bool"
@@ -494,3 +490,4 @@ capitaliseTypeName name
   | otherwise =
     let (firstLetter, remainder) = Text.splitAt 1 name in
       Text.toUpper firstLetter <> remainder
+-}

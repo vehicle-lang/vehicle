@@ -13,8 +13,8 @@ import Data.Maybe (catMaybes)
 import Vehicle.Prelude
 import Vehicle.Language.AST
 
-runSimplify :: Simplify a => a -> SimplifyOptions -> a
-runSimplify x = runReader (simplify x)
+runSimplify :: Simplify a => SimplifyOptions -> a -> a
+runSimplify options x = runReader (simplify x) options
 
 data SimplifyOptions = SimplifyOptions
   { removeImplicits   :: Bool

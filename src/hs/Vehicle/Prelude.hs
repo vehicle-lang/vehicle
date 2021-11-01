@@ -1,6 +1,7 @@
 
 module Vehicle.Prelude
   ( module X
+  , VehicleLang(..)
   , (|->)
   , (!?)
   , (!!?)
@@ -20,6 +21,9 @@ import Vehicle.Prelude.Logging as X
 import Vehicle.Prelude.Supply as X
 
 infix 1 |->
+
+data VehicleLang = Frontend | Core
+  deriving (Show)
 
 -- | Useful for writing association lists.
 (|->) :: a -> b -> (a, b)

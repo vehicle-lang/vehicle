@@ -3,4 +3,4 @@
 (declare-const x_0 Real)
 
 (assert (== X_0 x_0))
-(assert (not (<= x_0 Y_0)))
+(assert (> x_0 Y_0))

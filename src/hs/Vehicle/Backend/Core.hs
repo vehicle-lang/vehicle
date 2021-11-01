@@ -6,11 +6,10 @@ import Control.Monad.Reader (MonadReader, MonadReader(..), ReaderT(..))
 import Data.Text as Text (Text, intercalate, pack, append)
 import Data.Map (Map)
 import Data.Version (Version, showVersion)
-import Prettyprinter as Pretty ((<+>), Pretty(pretty), line, list)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST
-import Vehicle.Language.Print ()
+import Vehicle.Language.Print
 
 -- * Utilities when compiling to an interactive theorem prover backend
 
@@ -63,29 +62,34 @@ data CompileError
 instance MeaningfulError CompileError where
   details (CompilationUnsupported p symbol) = UError $ UserError
     { provenance = p
-    , problem    = "compilation of" <+> squotes symbol <+> "is not supported"
+    , problem    = "compilation of" <+> squotes (pretty symbol) <+> "is not supported"
     , fix        = "see user manual for details"
     }
 
   details (TensorIndexOutOfBounds p tensorTyp index) = UError $ UserError
     { provenance = p
-    , problem    = "index" <+> pretty index <+> "is larger than the first dimension of the type" <+> pretty tensorTyp
+    , problem    = "index" <+> pretty index <+> "is larger than the first dimension of the type" <+> prettyFriendly tensorTyp
     , fix        = "check your indexing"
     }
 
 unexpectedTypeError :: OutputExpr -> OutputExpr -> [String] -> a
 unexpectedTypeError expr actualType expectedTypes = developerError $
-  "Unexpected type found for expression" <+> pretty expr <> "." <> line <>
-  "Was expecting one of" <+> list (map pretty expectedTypes) <+>
-  "but found" <+> pretty actualType <+>
+  "Unexpected type found for expression" <+> prettyFriendly expr <> "." <> line <>
+  "Was expecting one of" <+> pretty expectedTypes <+>
+  "but found" <+> prettyFriendly actualType <+>
   "at" <+> pretty (prov expr) <> "."
 
 unexpectedExprError :: Provenance -> OutputExpr -> [OutputExpr] -> a
 unexpectedExprError p actualExpr expectedExprs = developerError $
-  "Was expecting something of the form" <+> list (map pretty expectedExprs) <+>
-  "but found" <+> pretty actualExpr <+>
+  "Was expecting something of the form" <+> prettyFriendly expectedExprs <+>
+  "but found" <+> prettyFriendly actualExpr <+>
   "at" <+> pretty p <> "."
 
+--------------------------------------------------------------------------------
+-- Generic language features
+
+type Precedence = Int
+{-
 --------------------------------------------------------------------------------
 -- Subcategories of types/expressions
 
@@ -163,4 +167,4 @@ data BooleanOp2
   | AndOp
   | OrOp
 
-type Precedence = Int
+-}

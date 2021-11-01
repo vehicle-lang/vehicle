@@ -18,7 +18,7 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST
-import Vehicle.Language.Print (prettyFriendlyTopLevel, prettySimple)
+import Vehicle.Language.Print (prettyFriendly, prettySimple)
 import Vehicle.Language.Normalise (normaliseInternal)
 import Vehicle.Language.Compile.Descope (runDescope)
 import Vehicle.Backend.Verifier.Core
@@ -91,7 +91,7 @@ instance MeaningfulError SMTLibError where
       { provenance = p
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "found" <+>
                      "a quantified variable" <+> squotes (pretty name) <+> "of type" <+>
-                     squotes (prettyFriendlyTopLevel t) <+> "which is not currently supported" <+>
+                     squotes (prettyFriendly t) <+> "which is not currently supported" <+>
                      "when compiling to SMTLib."
       , fix        = "Try switching the variable to one of the following supported types:" <+>
                      pretty supportedTypes
@@ -123,7 +123,7 @@ instance MeaningfulError SMTLibError where
     UnsupportedNetworkType p ident t detailedError -> UError $ UserError
       { provenance = p
       , problem    = "Found a" <+> squotes (pretty Network) <+> "declaration" <+> squotes (pretty ident) <+>
-                     "whose type" <+> squotes (prettyFriendlyTopLevel t) <+> "is not currently unsupported." <+>
+                     "whose type" <+> squotes (prettyFriendly t) <+> "is not currently unsupported." <+>
                      "Currently only networks of type" <+> squotes "Tensor A [m] -> Tensor B [n]" <+>
                      "where" <+> squotes "m" <+> "and" <+> squotes "n" <+> "are integer literals are allowed." <+>
                      "In particular" <+> pretty detailedError <+> "."

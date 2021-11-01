@@ -25,8 +25,7 @@ instance Simplify MetaSubstitution where
   simplify (MetaSubstitution m) = MetaSubstitution <$> traverse simplify m
 
 instance PrettyLang MetaSubstitution where
-  prettyCore         (MetaSubstitution m) = pretty $ fmap prettyCore m
-  prettyFrontend ctx (MetaSubstitution m) = pretty $ fmap (prettyFrontend ctx) m
+  prettyLang target (MetaSubstitution m) = pretty $ fmap (prettyLang target) m
 
 singleton :: Meta -> CheckedExpr -> MetaSubstitution
 singleton m e = coerce (IntMap.singleton (coerce m) e)

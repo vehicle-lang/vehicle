@@ -74,11 +74,12 @@ instance Simplify BaseConstraint where
     return $ m `Has` e'
 
 instance PrettyLang BaseConstraint where
-  prettyCore (Unify (e1, e2)) = prettyCore e1 <+> "~" <+> prettyCore e2
-  prettyCore (m `Has` e)      = pretty m <+> "~" <+> prettyCore e
+  prettyLang target (Unify (e1, e2)) = prettyLang target e1 <+> "~" <+> prettyLang target e2
+  prettyLang target (m `Has` e)      = pretty m <+> "~" <+> prettyLang target e
 
-  prettyFrontend ctx (Unify (e1, e2)) = prettyFrontend ctx e1 <+> "~" <+> prettyFrontend ctx e2
-  prettyFrontend ctx (m `Has` e)      = pretty m <+> "~" <+> prettyFrontend ctx e
+instance PrettyDescopedLang BaseConstraint where
+  prettyDescopedLang target ctx (Unify (e1, e2)) = prettyDescopedLang target ctx e1 <+> "~" <+> prettyDescopedLang target ctx e2
+  prettyDescopedLang target ctx (m `Has` e)      = pretty m <+> "~" <+> prettyDescopedLang target ctx e
 
 data ConstraintContext = ConstraintContext
   { _prov            :: Provenance       -- The origin of the constraint
@@ -107,8 +108,10 @@ instance Simplify Constraint where
   simplify (Constraint ctx c) = Constraint ctx <$> simplify c
 
 instance PrettyLang Constraint where
-  prettyCore         (Constraint _ c) = prettyCore c
-  prettyFrontend ctx (Constraint _ c) = prettyFrontend ctx c
+  prettyLang target (Constraint _ c) = prettyLang target c
+
+instance PrettyDescopedLang Constraint where
+  prettyDescopedLang target ctx (Constraint _ c) = prettyDescopedLang target ctx c
 
 --------------------------------------------------------------------------------
 -- Meta-variable definitions
@@ -158,8 +161,8 @@ data TypingError
 instance MeaningfulError TypingError where
   details (Mismatch p ctx candidate expected) = UError $ UserError
     { provenance = p
-    , problem    = "expected something of type" <+> prettyFriendly ctx expected <+>
-                   "but inferred type" <+> prettyFriendly ctx candidate
+    , problem    = "expected something of type" <+> prettyFriendlyDescope ctx expected <+>
+                   "but inferred type" <+> prettyFriendlyDescope ctx candidate
     , fix        = "unknown"
     }
 
@@ -169,11 +172,11 @@ instance MeaningfulError TypingError where
     , fix        = "unknown"
     }
 
-  details (FailedConstraints cs) = let firstConstraint = NonEmpty.head cs in
+  details (FailedConstraints cs) = let constraint = NonEmpty.head cs in
     UError $ UserError
-    { provenance = prov firstConstraint
+    { provenance = prov constraint
     , problem    = "Could not solve the constraint:" <+>
-                      prettyFriendly (boundContext firstConstraint) firstConstraint
+                      prettyFriendlyDescope (boundContext constraint) constraint
     , fix        = "Check your types"
     }
 
@@ -181,6 +184,6 @@ instance MeaningfulError TypingError where
     UError $ UserError
     { provenance = prov firstConstraint
     , problem    = "unsolved constraint " <+>
-                      prettyFriendly (boundContext firstConstraint) firstConstraint
+                      prettyFriendlyDescope (boundContext firstConstraint) firstConstraint
     , fix        = "Try adding more type annotations"
     }
