@@ -246,14 +246,14 @@ convIf [arg1, arg2, arg3] = B.If tokIf arg1 tokThen arg2 tokElse arg3
 convIf args               = argsError "if" 3 args
 
 convQuant :: V.Quantifier -> [B.Expr] -> B.Expr
-convQuant V.All [B.Lam _ binders _ body] = B.Every tokEvery (head binders) tokDot body
-convQuant V.Any [B.Lam _ binders _ body] = B.Some  tokSome  (head binders) tokDot body
+convQuant V.All [B.Lam _ binders _ body] = B.Every tokEvery binders tokDot body
+convQuant V.Any [B.Lam _ binders _ body] = B.Some  tokSome  binders tokDot body
 convQuant V.All args                     = argsError (tkSymbol tokEvery) 1 args
 convQuant V.Any args                     = argsError (tkSymbol tokSome)  1 args
 
 convQuantIn :: V.Quantifier -> [B.Expr] -> B.Expr
-convQuantIn V.All [B.Lam _ binders _ body, xs] = B.EveryIn tokEvery (head binders) xs tokDot body
-convQuantIn V.Any [B.Lam _ binders _ body, xs] = B.SomeIn  tokSome  (head binders) xs tokDot body
+convQuantIn V.All [B.Lam _ binders _ body, xs] = B.EveryIn tokEvery binders xs tokDot body
+convQuantIn V.Any [B.Lam _ binders _ body, xs] = B.SomeIn  tokSome  binders xs tokDot body
 convQuantIn V.All args                         = argsError (tkSymbol tokEvery) 2 args
 convQuantIn V.Any args                         = argsError (tkSymbol tokSome)  2 args
 

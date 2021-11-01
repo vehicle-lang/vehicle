@@ -171,10 +171,10 @@ Map.     Expr13 ::= TokMap Expr15 Expr15;
 Fold.    Expr13 ::= TokFold Expr15 Expr15 Expr15;
 
 -- Quantification
-Every.     Expr4 ::= TokEvery Binder TokDot Expr5;
-Some.      Expr4 ::= TokSome  Binder TokDot Expr5;
-EveryIn.   Expr4 ::= TokEvery Binder "inn" Expr5 TokDot Expr5;
-SomeIn.    Expr4 ::= TokSome  Binder "inn" Expr5 TokDot Expr5;
+Every.     Expr4 ::= TokEvery [Binder] TokDot Expr5;
+Some.      Expr4 ::= TokSome  [Binder] TokDot Expr5;
+EveryIn.   Expr4 ::= TokEvery [Binder] "inn" Expr5 TokDot Expr5;
+SomeIn.    Expr4 ::= TokSome  [Binder] "inn" Expr5 TokDot Expr5;
 
 coercions Expr 15;
 separator Expr ",";

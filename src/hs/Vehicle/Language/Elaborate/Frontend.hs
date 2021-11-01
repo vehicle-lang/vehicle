@@ -169,10 +169,10 @@ instance Elab B.Expr V.InputExpr where
     B.Map tk e1 e2            -> builtin V.Map  (tkProv tk) [e1, e2]
     B.Fold tk e1 e2 e3        -> builtin V.Fold (tkProv tk) [e1, e2, e3]
 
-    B.Every   tk1 n    _tk2 e  -> do checkNonEmpty tk1 [n]; convQuantifier (tkProv tk1) V.All [n] e
-    B.Some    tk1 n    _tk2 e  -> do checkNonEmpty tk1 [n]; convQuantifier (tkProv tk1) V.Any [n] e
-    B.EveryIn tk1 n e1 _tk2 e2 -> convQuantifierIn (tkProv tk1) V.All [n] e1 e2
-    B.SomeIn  tk1 n e1 _tk2 e2 -> convQuantifierIn (tkProv tk1) V.Any [n] e1 e2
+    B.Every   tk1 ns    _tk2 e  -> do checkNonEmpty tk1 ns; convQuantifier (tkProv tk1) V.All ns e
+    B.Some    tk1 ns    _tk2 e  -> do checkNonEmpty tk1 ns; convQuantifier (tkProv tk1) V.Any ns e
+    B.EveryIn tk1 ns e1 _tk2 e2 -> convQuantifierIn (tkProv tk1) V.All ns e1 e2
+    B.SomeIn  tk1 ns e1 _tk2 e2 -> convQuantifierIn (tkProv tk1) V.Any ns e1 e2
 
 -- |Elaborate declarations.
 instance Elab (NonEmpty B.Decl) V.InputDecl where
@@ -261,15 +261,12 @@ convLetDecls p ds body = do
     elabLetDecl (B.LDecl binder e) res = V.Let p <$> elab e <*> elab binder <*> res
 
 convQuantifier :: MonadElab m => Provenance -> V.Quantifier -> [B.Binder] -> B.Expr -> m V.InputExpr
-convQuantifier p q binders body = do
-  lam <- convBinders p V.Lam binders body
-  return $ builtin' (V.Quant q) p [lam]
+convQuantifier p q = convBinders p (\_ b e -> builtin' (V.Quant q) p [V.Lam p b e])
 
 convQuantifierIn :: MonadElab m => Provenance -> V.Quantifier -> [B.Binder] -> B.Expr -> B.Expr -> m V.InputExpr
 convQuantifierIn p q binders container body = do
-  lam <- convBinders p V.Lam binders body
   container' <- elab container
-  return $ builtin' (V.QuantIn q) p [lam, container']
+  convBinders p (\_ b e -> builtin' (V.QuantIn q) p [V.Lam p b e, container']) binders body
 
 -- |Takes a list of declarations, and groups type and expression
 --  declarations by their name.
