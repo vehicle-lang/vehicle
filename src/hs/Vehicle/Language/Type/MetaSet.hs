@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Language.MetaSet
+module Vehicle.Language.Type.MetaSet
   ( MetaSet
   , toList
   , singleton

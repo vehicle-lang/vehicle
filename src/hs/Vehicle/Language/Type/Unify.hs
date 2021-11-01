@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedLists #-}
 
-module Vehicle.Language.Compile.Type.Unify
+module Vehicle.Language.Type.Unify
   ( solveUnificationConstraint
   ) where
 
@@ -10,10 +10,9 @@ import Data.List (intersect)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST
-import Vehicle.Language.Compile.Type.Core
-import Vehicle.Language.Compile.Type.Meta
-import Vehicle.Language.Compile.Type.Normalise (whnf)
-import Vehicle.Language.MetaSet qualified as MetaSet (singleton)
+import Vehicle.Language.Type.Core
+import Vehicle.Language.Type.Meta
+import Vehicle.Language.Type.MetaSet qualified as MetaSet (singleton)
 
 
 --------------------------------------------------------------------------------

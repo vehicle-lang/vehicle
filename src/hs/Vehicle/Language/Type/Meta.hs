@@ -1,5 +1,5 @@
 
-module Vehicle.Language.Compile.Type.Meta
+module Vehicle.Language.Type.Meta
   ( MetaSet
   , MetaSubstitution
   , MetaSubstitutable(..)
@@ -21,21 +21,24 @@ module Vehicle.Language.Compile.Type.Meta
   , triviallySolved
   , partiallySolved
   , isStuck
+  , whnf
   ) where
 
 import Control.Monad.Except (MonadError)
-import Control.Monad.Reader (Reader, runReader, ask, local)
+import Control.Monad.Reader (MonadReader, Reader, runReader, runReaderT, ask, local)
 import Control.Monad.State (MonadState(..), modify, gets)
 import Data.List (partition)
+import Data.Map qualified as Map ( lookup )
+import Data.List.NonEmpty (NonEmpty(..))
 
 import Vehicle.Prelude
 import Vehicle.Language.AST
-import Vehicle.Language.Compile.Type.Core
 import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Language.MetaSubstitution ( MetaSubstitution )
-import Vehicle.Language.MetaSubstitution qualified as MetaSubst (singleton, map, lookup, insertWith)
-import Vehicle.Language.MetaSet (MetaSet)
-import Vehicle.Language.MetaSet qualified as MetaSet (singleton, disjoint, null)
+import Vehicle.Language.Type.Core
+import Vehicle.Language.Type.MetaSubstitution ( MetaSubstitution )
+import Vehicle.Language.Type.MetaSubstitution qualified as MetaSubst (singleton, map, lookup, insertWith)
+import Vehicle.Language.Type.MetaSet (MetaSet)
+import Vehicle.Language.Type.MetaSet qualified as MetaSet (singleton, disjoint, null)
 
 class MetaSubstitutable a where
   -- TODO change name away from M
@@ -283,3 +286,33 @@ triviallySolved = Progress mempty mempty
 
 partiallySolved :: [Constraint] -> ConstraintProgress
 partiallySolved constraints = Progress constraints mempty
+
+--------------------------------------------------------------------------------
+-- Normalisation
+
+-- This only deals with App and Lam normalisation required during
+-- type-checking. For full normalisation including builtins see the dedicated
+-- `Vehicle.Language.Normalisation` module.
+
+whnf :: (MonadMeta m) => DeclCtx -> CheckedExpr -> m CheckedExpr
+whnf ctx e = do
+  subst <- getMetaSubstitution
+  let e' = substMetas subst e
+  runReaderT (norm e') ctx
+
+norm :: (MonadMeta m, MonadReader DeclCtx m) => CheckedExpr -> m CheckedExpr
+norm e@(App ann fun (Arg _ argE :| args)) = do
+  normFun  <- norm fun
+  case normFun of
+    Lam _ _ body -> do
+      nfBody <- norm (argE `substInto` body)
+      return $ normAppList ann nfBody args
+    _            -> return e
+norm e@(Var _ (Free ident)) = do
+  ctx <- ask
+  case Map.lookup ident ctx of
+    Just (_, Just res) -> return res
+    _                  -> return e
+norm (Let _ bound _ body) = norm (bound `substInto` body)
+norm (Ann _ body _)       = norm body
+norm e                    = return e

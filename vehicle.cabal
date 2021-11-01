@@ -41,25 +41,24 @@ library
                       , Vehicle.Language.AST.Core
                       , Vehicle.Language.AST.DeBruijn
                       , Vehicle.Language.AST.Utils
-                      , Vehicle.Language.Compile.DSL
-                      , Vehicle.Language.Compile.Scope
-                      , Vehicle.Language.Compile.Type
-                      , Vehicle.Language.Compile.Type.Core
-                      , Vehicle.Language.Compile.Type.Unify
-                      , Vehicle.Language.Compile.Type.TypeClass
-                      , Vehicle.Language.Compile.Type.Meta
-                      , Vehicle.Language.Compile.Type.Normalise
-                      , Vehicle.Language.Compile.Descope
-                      , Vehicle.Language.MetaSet
-                      , Vehicle.Language.MetaSubstitution
+                      , Vehicle.Language.DSL
+                      , Vehicle.Language.Descope
+                      , Vehicle.Language.Scope
                       , Vehicle.Language.Normalise
                       , Vehicle.Language.Parse
+                      , Vehicle.Language.Print
+                      , Vehicle.Language.Simplify
+                      , Vehicle.Language.Type
+                      , Vehicle.Language.Type.Core
+                      , Vehicle.Language.Type.Meta
+                      , Vehicle.Language.Type.MetaSet
+                      , Vehicle.Language.Type.MetaSubstitution
+                      , Vehicle.Language.Type.TypeClass
+                      , Vehicle.Language.Type.Unify
                       , Vehicle.Language.Elaborate.Core
                       , Vehicle.Language.Elaborate.Frontend
                       , Vehicle.Language.Delaborate.Core
                       , Vehicle.Language.Delaborate.Frontend
-                      , Vehicle.Language.Print
-                      , Vehicle.Language.Simplify
                       --, Vehicle.Backend.ITP.Agda
                       --, Vehicle.Backend.ITP.Core
                       , Vehicle.Backend.Verifier.Core

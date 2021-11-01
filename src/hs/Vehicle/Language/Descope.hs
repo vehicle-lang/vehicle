@@ -1,5 +1,5 @@
 
-module Vehicle.Language.Compile.Descope
+module Vehicle.Language.Descope
   ( Descope
   , runDescope
   , runNaiveDescope

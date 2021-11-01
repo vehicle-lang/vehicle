@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Language.Compile.Type.Core where
+module Vehicle.Language.Type.Core where
 
 import Prelude hiding (pi)
 import Data.Map (Map)
@@ -12,8 +12,8 @@ import Prettyprinter
 import Vehicle.Prelude
 import Vehicle.Language.AST
 import Vehicle.Language.Print
-import Vehicle.Language.MetaSet
-import Vehicle.Language.MetaSubstitution hiding (map)
+import Vehicle.Language.Type.MetaSet
+import Vehicle.Language.Type.MetaSubstitution hiding (map)
 import Vehicle.Language.Simplify
 
 --------------------------------------------------------------------------------

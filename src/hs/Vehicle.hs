@@ -30,8 +30,8 @@ import Vehicle.Language.Parse qualified as V
 import Vehicle.Language.Print qualified as V
 import Vehicle.Language.Elaborate.Core as Core
 import Vehicle.Language.Elaborate.Frontend as Frontend
-import Vehicle.Language.Compile.Scope qualified as V
-import Vehicle.Language.Compile.Type qualified as V
+import Vehicle.Language.Scope qualified as V
+import Vehicle.Language.Type qualified as V
 import Vehicle.Language.Normalise qualified as V (normalise)
 
 --import Vehicle.Backend.ITP.Core (ITPOptions(..))

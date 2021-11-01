@@ -1,5 +1,5 @@
 
-module Vehicle.Language.Compile.Type
+module Vehicle.Language.Type
   ( TypingError(..)
   , typeCheck
   ) where
@@ -18,13 +18,13 @@ import Data.Text (pack)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST
-import Vehicle.Language.Compile.DSL
-import Vehicle.Language.Compile.Type.Core
-import Vehicle.Language.Compile.Type.Unify
-import Vehicle.Language.Compile.Type.Meta
-import Vehicle.Language.Compile.Type.TypeClass
+import Vehicle.Language.DSL
+import Vehicle.Language.Type.Core
+import Vehicle.Language.Type.Unify
+import Vehicle.Language.Type.Meta
+import Vehicle.Language.Type.TypeClass
 import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Language.MetaSet qualified as MetaSet (null)
+import Vehicle.Language.Type.MetaSet qualified as MetaSet (null)
 
 typeCheck :: UncheckedProg -> ExceptT TypingError Logger CheckedProg
 typeCheck prog = do

@@ -20,7 +20,7 @@ import Vehicle.Prelude
 import Vehicle.Language.AST
 import Vehicle.Language.Print (prettyFriendly, prettySimple)
 import Vehicle.Language.Normalise (normaliseInternal)
-import Vehicle.Language.Compile.Descope (runDescope)
+import Vehicle.Language.Descope (runDescope)
 import Vehicle.Backend.Verifier.Core
 
 compileToSMTLib :: (MonadLogger m, MonadError SMTLibError m)

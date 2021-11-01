@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedLists #-}
 
-module Vehicle.Language.Compile.DSL
+module Vehicle.Language.DSL
   ( DSL(..)
   , DSLExpr(..)
   , fromDSL

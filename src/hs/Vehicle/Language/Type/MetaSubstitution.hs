@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Language.MetaSubstitution
+module Vehicle.Language.Type.MetaSubstitution
   ( MetaSubstitution
   , singleton
   , lookup

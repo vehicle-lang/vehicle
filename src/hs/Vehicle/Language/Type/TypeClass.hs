@@ -1,6 +1,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
-module Vehicle.Language.Compile.Type.TypeClass
+module Vehicle.Language.Type.TypeClass
   ( solveTypeClassConstraint
   ) where
 
@@ -10,9 +10,8 @@ import Control.Monad.Except ( throwError )
 
 import Vehicle.Prelude
 import Vehicle.Language.AST
-import Vehicle.Language.Compile.Type.Core
-import Vehicle.Language.Compile.Type.Meta
-import Vehicle.Language.Compile.Type.Normalise ( whnf )
+import Vehicle.Language.Type.Core
+import Vehicle.Language.Type.Meta
 import Vehicle.Language.Print (prettyVerbose)
 
 --------------------------------------------------------------------------------

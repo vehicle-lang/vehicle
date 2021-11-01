@@ -20,7 +20,7 @@ import Vehicle.Prelude
 import Vehicle.Language.Simplify
 import Vehicle.Language.Delaborate.Core as Core
 import Vehicle.Language.Delaborate.Frontend as Frontend
-import Vehicle.Language.Compile.Descope
+import Vehicle.Language.Descope
 import Vehicle.Language.AST
 
 --------------------------------------------------------------------------------
