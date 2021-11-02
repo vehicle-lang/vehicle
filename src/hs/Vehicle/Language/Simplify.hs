@@ -12,6 +12,9 @@ import Data.Maybe (catMaybes)
 
 import Vehicle.Language.AST
 
+-- | Simplifies the code according to the options provided! Note that
+-- this can be seen as undoing parts of the type-checking, and therefore the
+-- resulting code is not guaranteed to be well-typed.
 runSimplify :: Simplify a => SimplifyOptions -> a -> a
 runSimplify options x = runReader (simplify x) options
 
@@ -68,13 +71,15 @@ simplifyArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args)
               -> m (Maybe (Arg var ann))
     prettyArg arg = do
       SimplifyOptions{..} <- ask
-      let v = vis arg
-      let keepArg = v == Explicit
-                 || v == Implicit && not removeImplicits
-                 || v == Instance && not removeInstances
-      if keepArg
-        then Just <$> simplify arg
-        else return Nothing
+
+      let removeArg =
+            (removeNonUserCode && getOwner arg == TheMachine) ||
+            (vis arg == Implicit && removeImplicits) ||
+            (vis arg == Instance && removeInstances)
+
+      if removeArg
+        then return Nothing
+        else Just <$> simplify arg
 
 --------------------------------------------------------------------------------
 -- Other instances

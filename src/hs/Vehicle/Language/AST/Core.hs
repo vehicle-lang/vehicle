@@ -102,6 +102,9 @@ instance HasProvenance (Binder var ann) where
 instance HasVisibility (Binder var ann) where
   vis (Binder _ _ v _ _) = v
 
+instance HasOwner (Binder var ann) where
+  getOwner (Binder _ owner _ _ _) = owner
+
 -- |Extract the name of the bound variable
 binderName :: Binder var ann -> Name
 binderName (Binder _ _ _ name _) = name
@@ -157,6 +160,9 @@ instance HasProvenance ann => HasProvenance (Arg var ann) where
   prov (Arg _ Explicit e) = prov e
   prov (Arg _ Implicit e) = expandProvenance (1, 1) (prov e)
   prov (Arg _ Instance e) = expandProvenance (2, 2) (prov e)
+
+instance HasOwner (Arg var ann) where
+  getOwner (Arg owner _ _) = owner
 
 argExpr :: Arg var ann -> Expr var ann
 argExpr (Arg _ _ e) = e
