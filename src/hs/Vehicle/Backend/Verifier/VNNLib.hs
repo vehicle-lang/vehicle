@@ -99,7 +99,7 @@ type MonadVNNLib m =
 getNetworkDetailsFromCtx :: MonadVNNLib m => Identifier -> m NetworkDetails
 getNetworkDetailsFromCtx ident = do
   networkDecl <- asks (fromMaybe outOfScopeError . Map.lookup ident)
-  getNetworkDetails (prov networkDecl) (declIdent networkDecl) (declType networkDecl)
+  getNetworkDetails (provenanceOf networkDecl) (declIdent networkDecl) (declType networkDecl)
   where
     outOfScopeError :: a
     outOfScopeError = developerError $
@@ -342,7 +342,7 @@ getNetworkDetails p ident t@(Pi _ inputBinder output) =
     (throwError . UnsupportedNetworkType p ident t)
     return
     $ runExcept $ do
-      inputDetails  <- getTensorDetails Input  (binderType inputBinder)
+      inputDetails  <- getTensorDetails Input  (typeOf inputBinder)
       outputDetails <- getTensorDetails Output output
       return $ NetworkDetails p ident inputDetails outputDetails
 getNetworkDetails p ident t                                  =

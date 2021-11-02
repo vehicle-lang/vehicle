@@ -145,7 +145,7 @@ addTypeClassConstraint :: (MonadMeta m, MonadLogger m)
                        -> CheckedExpr
                        -> m ()
 addTypeClassConstraint ctx meta expr = do
-  let context    = ConstraintContext (prov expr) mempty ctx
+  let context    = ConstraintContext (provenanceOf expr) mempty ctx
   let constraint = Constraint context (meta `Has` expr)
   addConstraints [constraint]
 

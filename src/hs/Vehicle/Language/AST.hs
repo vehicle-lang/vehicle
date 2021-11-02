@@ -3,7 +3,8 @@ module Vehicle.Language.AST
   ) where
 
 import Vehicle.Language.AST.Builtin    as X
-import Vehicle.Language.AST.Visibility as X
 import Vehicle.Language.AST.Core       as X
 import Vehicle.Language.AST.DeBruijn   as X
+import Vehicle.Language.AST.Name       as X
 import Vehicle.Language.AST.Utils      as X
+import Vehicle.Language.AST.Visibility as X

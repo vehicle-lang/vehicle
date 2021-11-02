@@ -39,8 +39,9 @@ library
                       , Vehicle.Language.AST.Builtin
                       , Vehicle.Language.AST.Core
                       , Vehicle.Language.AST.DeBruijn
-                      , Vehicle.Language.AST.Utils
+                      , Vehicle.Language.AST.Name
                       , Vehicle.Language.AST.Visibility
+                      , Vehicle.Language.AST.Utils
                       , Vehicle.Language.DSL
                       , Vehicle.Language.Descope
                       , Vehicle.Language.Scope

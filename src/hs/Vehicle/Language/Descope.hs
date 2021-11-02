@@ -22,7 +22,7 @@ runNaiveDescope e = runReader (descope e) (Ctx mempty, False)
 newtype Ctx = Ctx [Name]
 
 addBinderToCtx :: Binder Name ann -> (Ctx, Bool) -> (Ctx, Bool)
-addBinderToCtx binder (Ctx ctx, r) = (Ctx (binderName binder : ctx), r)
+addBinderToCtx binder (Ctx ctx, r) = (Ctx (nameOf binder : ctx), r)
 
 type MonadDescope m = MonadReader (Ctx, Bool) m
 

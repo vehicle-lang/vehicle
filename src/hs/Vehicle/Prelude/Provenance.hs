@@ -162,13 +162,13 @@ instance Pretty Provenance where
 
 -- | Type class for types which have provenance information
 class HasProvenance a where
-  prov :: a -> Provenance
+  provenanceOf :: a -> Provenance
 
 instance HasProvenance Provenance where
-  prov = id
+  provenanceOf = id
 
 instance HasProvenance a => HasProvenance [a] where
-  prov xs = foldMap prov xs
+  provenanceOf xs = foldMap provenanceOf xs
 
 instance HasProvenance a => HasProvenance (NonEmpty a) where
-  prov xs = foldMap prov xs
+  provenanceOf xs = foldMap provenanceOf xs

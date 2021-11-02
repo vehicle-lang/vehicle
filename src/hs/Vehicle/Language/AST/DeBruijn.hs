@@ -1,8 +1,7 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 
 module Vehicle.Language.AST.DeBruijn
-  ( Name(..)
-  , Var(..)
+  ( Var(..)
   , Index
   , DeBruijnExpr
   , DeBruijnDecl

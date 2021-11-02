@@ -226,15 +226,15 @@ instance CompileToAgda OutputExpr where
     Seq     _ann es -> compileSeq <$> traverse compile es
     Literal _ann l  -> compile l
 {-
-    e@HasEq{}       -> throwError $ CompilationUnsupported (prov e) "HasEq"
-    e@HasOrd{}      -> throwError $ CompilationUnsupported (prov e) "HasOrd"
-    e@IsTruth{}     -> throwError $ CompilationUnsupported (prov e) "IsTruth"
-    e@IsNatural{}   -> throwError $ CompilationUnsupported (prov e) "IsNatural"
-    e@IsIntegral{}  -> throwError $ CompilationUnsupported (prov e) "IsIntegral"
-    e@IsRational{}  -> throwError $ CompilationUnsupported (prov e) "IsRational"
-    e@IsReal{}      -> throwError $ CompilationUnsupported (prov e) "IsReal"
-    e@IsQuant{}     -> throwError $ CompilationUnsupported (prov e) "IsQuant"
-    e@IsContainer{} -> throwError $ CompilationUnsupported (prov e) "IsContainer"
+    e@HasEq{}       -> throwError $ CompilationUnsupported (provenanceOf e) "HasEq"
+    e@HasOrd{}      -> throwError $ CompilationUnsupported (provenanceOf e) "HasOrd"
+    e@IsTruth{}     -> throwError $ CompilationUnsupported (provenanceOf e) "IsTruth"
+    e@IsNatural{}   -> throwError $ CompilationUnsupported (provenanceOf e) "IsNatural"
+    e@IsIntegral{}  -> throwError $ CompilationUnsupported (provenanceOf e) "IsIntegral"
+    e@IsRational{}  -> throwError $ CompilationUnsupported (provenanceOf e) "IsRational"
+    e@IsReal{}      -> throwError $ CompilationUnsupported (provenanceOf e) "IsReal"
+    e@IsQuant{}     -> throwError $ CompilationUnsupported (provenanceOf e) "IsQuant"
+    e@IsContainer{} -> throwError $ CompilationUnsupported (provenanceOf e) "IsContainer"
 
     Prop   _ann       -> compileProp
     Bool   _ann       -> return $ annotateConstant DataBool "Bool"
@@ -277,7 +277,7 @@ instance CompileToAgda OutputExpr where
 
 instance CompileToAgda OutputDecl where
   compile = \case
-    DeclData ann _n _t     -> throwError $ CompilationUnsupported (prov ann) "dataset"
+    DeclData ann _n _t     -> throwError $ CompilationUnsupported (provenanceOf ann) "dataset"
     DeclNetw _ann n t      -> compileNetwork <$> compile n <*> compile t
     DefType  _ann n ns t   -> compileTypeDef <$> compile n <*> traverse compile ns <*> compile t
     DefFun   _ann n t ns e -> compileFunDef  <$> compile n <*> compile t <*> traverse compile ns <*> compile e
@@ -400,16 +400,16 @@ compileLookup e cont (Literal indexAnn (LNat index)) = do
         tensor <- compile cont
         return $ tensor <+> pretty index
       | otherwise            -> throwError $
-        TensorIndexOutOfBounds (prov indexAnn) (getType e) (fromIntegral index)
+        TensorIndexOutOfBounds (provenanceOf indexAnn) (getType e) (fromIntegral index)
     -- Tricky to support lists as we can't guarantee the index is within the length
     -- of the list.
-    TList      -> throwError $ CompilationUnsupported (prov ann) "Lookup in lists"
+    TList      -> throwError $ CompilationUnsupported (provenanceOf ann) "Lookup in lists"
 -- Tricky to support variable indices as we can't guarantee
 -- they're bounded by the length of the list.
 compileLookup e _cont (Var    _ _) = throwError $
-  CompilationUnsupported (prov e) "Lookup of variable indices"
+  CompilationUnsupported (provenanceOf e) "Lookup of variable indices"
 -- Anything else is an error.
-compileLookup e _cont index = unexpectedExprError (prov index) e ["Natural", "Var"]
+compileLookup e _cont index = unexpectedExprError (provenanceOf index) e ["Natural", "Var"]
 
 compileEquality :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> OutputExpr -> m Code
 compileEquality e e1 e2 = case truthType e of
@@ -431,7 +431,7 @@ compileBoolEquality e1 e2 = let t1 = getType e1 in
   case equalityDependencies t1 of
     Left UnexpectedEqualityType      -> unexpectedTypeError e1 t1 expectedTypes
       where expectedTypes = ["Tensor", "Real", "Int", "List"]
-    Left (PolymorphicEqualityType n) -> throwError $ CompilationUnsupported (prov e1) ("Polymorphic equality over '" <> n <> "'")
+    Left (PolymorphicEqualityType n) -> throwError $ CompilationUnsupported (provenanceOf e1) ("Polymorphic equality over '" <> n <> "'")
     Right dependencies ->
       annotateInfixOp2 ([RelNullary] <> dependencies) 4 boolBraces "≟" <$> compile e1 <*> compile e2
 

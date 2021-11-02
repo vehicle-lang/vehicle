@@ -73,9 +73,9 @@ simplifyArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args)
       SimplifyOptions{..} <- ask
 
       let removeArg =
-            (removeNonUserCode && getOwner arg == TheMachine) ||
-            (vis arg == Implicit && removeImplicits) ||
-            (vis arg == Instance && removeInstances)
+            (removeNonUserCode && ownerOf arg == TheMachine) ||
+            (visibilityOf arg == Implicit && removeImplicits) ||
+            (visibilityOf arg == Instance && removeInstances)
 
       if removeArg
         then return Nothing

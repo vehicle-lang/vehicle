@@ -139,7 +139,7 @@ bindDecl ident continuation = do
 bindVar :: SCM m => InputBinder -> (UncheckedBinder -> m UncheckedExpr) -> m UncheckedExpr
 bindVar binder update = do
   binder' <- scope binder
-  local (addBinderToCtx (binderName binder)) (update binder')
+  local (addBinderToCtx (nameOf binder)) (update binder')
     where
       addBinderToCtx :: Name -> Ctx -> Ctx
       addBinderToCtx name Ctx{..} = Ctx declCtx (name : exprCtx)
@@ -154,4 +154,4 @@ getVar ann (User symbol) = do
     Nothing ->
       if Set.member (Identifier symbol) declCtx
         then return $ Free (Identifier symbol)
-        else unboundNameError symbol (prov ann)
+        else unboundNameError symbol (provenanceOf ann)

@@ -113,7 +113,7 @@ instance Elab B.Expr V.InputExpr where
     B.App fun arg -> do
       fun' <- elab fun
       arg' <- elab arg
-      return $ normApp (prov fun' <> prov arg') fun' (arg' :| [])
+      return $ normApp (provenanceOf fun' <> provenanceOf arg') fun' (arg' :| [])
 
 instance Elab B.NameToken Identifier where
   elab n = return $ Identifier $ tkSymbol n
@@ -130,17 +130,17 @@ instance Elab B.Prog V.InputProg where
 op1 :: (HasProvenance a)
     => (Provenance -> a -> b)
     -> a -> b
-op1 mk t = mk (prov t) t
+op1 mk t = mk (provenanceOf t) t
 
 op2 :: (HasProvenance a, HasProvenance b)
     => (Provenance -> a -> b -> c)
     -> a -> b -> c
-op2 mk t1 t2 = mk (prov t1 <> prov t2) t1 t2
+op2 mk t1 t2 = mk (provenanceOf t1 <> provenanceOf t2) t1 t2
 
 op3 :: (HasProvenance a, HasProvenance b, HasProvenance c)
     => (Provenance -> a -> b -> c -> d)
     -> a -> b -> c -> d
-op3 mk t1 t2 t3 = mk (prov t1 <> prov t2 <> prov t3) t1 t2 t3
+op3 mk t1 t2 t3 = mk (provenanceOf t1 <> provenanceOf t2 <> provenanceOf t3) t1 t2 t3
 
 -- | Elabs the type token into a Type expression.
 -- Doesn't run in the monad as if something goes wrong with this, we've got

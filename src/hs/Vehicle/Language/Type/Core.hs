@@ -88,7 +88,7 @@ data ConstraintContext = ConstraintContext
   }
 
 instance HasProvenance ConstraintContext where
-  prov (ConstraintContext p _ _) = p
+  provenanceOf (ConstraintContext p _ _) = p
 
 data Constraint = Constraint ConstraintContext BaseConstraint
 
@@ -102,7 +102,7 @@ boundContext :: Constraint -> BoundCtx
 boundContext = boundCtx . variableContext
 
 instance HasProvenance Constraint where
-  prov (Constraint ctx _) = prov ctx
+  provenanceOf (Constraint ctx _) = provenanceOf ctx
 
 instance Simplify Constraint where
   simplify (Constraint ctx c) = Constraint ctx <$> simplify c
@@ -174,7 +174,7 @@ instance MeaningfulError TypingError where
 
   details (FailedConstraints cs) = let constraint = NonEmpty.head cs in
     UError $ UserError
-    { provenance = prov constraint
+    { provenance = provenanceOf constraint
     , problem    = "Could not solve the constraint:" <+>
                       prettyFriendlyDescope (boundContext constraint) constraint
     , fix        = "Check your types"
@@ -182,7 +182,7 @@ instance MeaningfulError TypingError where
 
   details (UnsolvedConstraints cs) = let firstConstraint = NonEmpty.head cs in
     UError $ UserError
-    { provenance = prov firstConstraint
+    { provenance = provenanceOf firstConstraint
     , problem    = "unsolved constraint " <+>
                       prettyFriendlyDescope (boundContext firstConstraint) firstConstraint
     , fix        = "Try adding more type annotations"

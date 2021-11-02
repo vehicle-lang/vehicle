@@ -25,13 +25,6 @@ developerError message = throw $ DeveloperError $ layoutAsText $
   "Something went wrong internally. Please report the error" <+>
   "shown below to `https://github.com/wenkokke/vehicle/issues`." <> line <>
   "Error:" <+> message
-{-
-handleDeveloperError :: IO () -> IO ()
-handleDeveloperError = handle f
-  where
-    f :: DeveloperError -> IO ()
-    f = print
--}
 
 --------------------------------------------------------------------------------
 -- User errors

@@ -201,9 +201,9 @@ inferArgs :: TCM m
           -> [UncheckedArg] -- User-provided arguments of the function
           -> m (CheckedExpr, [CheckedArg])
 inferArgs p (Pi _ binder tRes) (arg : args)
-  | vis binder == vis arg = do
+  | visibilityOf binder == visibilityOf arg = do
     -- Check the type of the argument.
-    checkedArgExpr <- check (binderType binder) (argExpr arg)
+    checkedArgExpr <- check (typeOf binder) (argExpr arg)
     -- Substitute argument in tRes
     let tRes1 = checkedArgExpr `substInto` tRes
     -- Recurse into the list of args
@@ -212,20 +212,20 @@ inferArgs p (Pi _ binder tRes) (arg : args)
     return (tRes2, replaceArgExpr checkedArgExpr arg : args1)
 
 inferArgs _ (Pi _ binder _) (arg : _)
-  | vis binder /= vis arg && vis binder == Explicit =
-    throwError $ MissingExplicitArg arg (binderType binder)
+  | visibilityOf binder /= visibilityOf arg && visibilityOf binder == Explicit =
+    throwError $ MissingExplicitArg arg (typeOf binder)
 
--- This case handles either vis binder /= vis arg and vis binder /= Explicit or args == []
+-- This case handles either visibilityOf binder /= visibilityOf arg and visibilityOf binder /= Explicit or args == []
 inferArgs p (Pi _ binder tRes) args = do
-    logDebug ("insert-arg" <+> pretty (vis binder) <+> prettyVerbose (binderType binder))
+    logDebug ("insert-arg" <+> pretty (visibilityOf binder) <+> prettyVerbose (typeOf binder))
 
     (meta, metaExpr) <- freshMeta p
 
     -- Check if the required argument is a type-class
-    let binderVis = vis binder
+    let binderVis = visibilityOf binder
     when (binderVis == Instance) $ do
       ctx <- getVariableCtx
-      addTypeClassConstraint ctx meta (binderType binder)
+      addTypeClassConstraint ctx meta (typeOf binder)
 
     -- Substitute meta-variable in tRes
     let tRes1 = metaExpr `substInto` tRes
@@ -237,7 +237,7 @@ inferArgs _p tFun [] = return (tFun, [])
 
 inferArgs p tFun args = do
   ctx <- getBoundCtx
-  let mkRes = [Endo $ \tRes -> unnamedPi (vis arg) (tHole ("arg" <> pack (show i))) (const tRes)
+  let mkRes = [Endo $ \tRes -> unnamedPi (visibilityOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
               | (i, arg) <- zip [0::Int ..] args]
   let expected = fromDSL (appEndo (mconcat mkRes) (tHole "res"))
   throwError $ Mismatch p ctx tFun expected
@@ -249,7 +249,7 @@ inferApp :: TCM m
          -> [UncheckedArg]
          -> m (CheckedExpr, CheckedExpr)
 inferApp p fun tFun args = do
-  (tFun2, args2) <- inferArgs (prov fun) tFun args
+  (tFun2, args2) <- inferArgs (provenanceOf fun) tFun args
   return (normAppList p fun args2, tFun2)
 
 --------------------------------------------------------------------------------
@@ -263,29 +263,29 @@ check expectedType expr = do
   showCheckEntry expectedType expr
   res <- case (expectedType, expr) of
     (Pi _ piBinder tRes, Lam p lamBinder body)
-      | vis piBinder == vis lamBinder -> do
-        checkedLamBinderType <- check (binderType piBinder) (binderType lamBinder)
+      | visibilityOf piBinder == visibilityOf lamBinder -> do
+        checkedLamBinderType <- check (typeOf piBinder) (typeOf lamBinder)
 
-        addToBoundCtx (binderName lamBinder) checkedLamBinderType $ do
+        addToBoundCtx (nameOf lamBinder) checkedLamBinderType $ do
           body' <- check tRes body
           let checkedLamBinder = replaceBinderType checkedLamBinderType lamBinder
           return $ Lam p checkedLamBinder body'
 
     (Pi _ binder tRes, e) ->
       -- Add the implict argument to the context
-      addToBoundCtx Machine (binderType binder) $ do
+      addToBoundCtx Machine (typeOf binder) $ do
         -- Check if the type matches the expected result type.
         e' <- check tRes (liftDBIndices 1 e)
 
         -- Create a new binder mirroring the implicit Pi binder expected
-        let lamBinder = Binder mempty TheMachine Implicit (binderName binder) (binderType binder)
+        let lamBinder = Binder mempty TheMachine Implicit (nameOf binder) (typeOf binder)
 
         -- Prepend a new lambda to the expression with the implicit binder
         return $ Lam mempty lamBinder e'
 
     (_, Lam p binder _) -> do
           ctx <- getBoundCtx
-          let expected = fromDSL $ unnamedPi (vis binder) (tHole "a") (const (tHole "b"))
+          let expected = fromDSL $ unnamedPi (visibilityOf binder) (tHole "a") (const (tHole "b"))
           throwError $ Mismatch p ctx expectedType expected
 
     (_, Hole p _name) -> do
@@ -322,8 +322,8 @@ infer e = do
 
     Meta _ m -> developerError $ "Trying to infer the type of a meta-variable" <+> pretty m
 
-    Hole ann s ->
-      throwError $ UnresolvedHole (prov ann) s
+    Hole p s ->
+      throwError $ UnresolvedHole p s
 
     Ann ann expr t   -> do
       (t', _) <- infer t
@@ -335,9 +335,9 @@ infer e = do
       inferApp p fun' tFun' (NonEmpty.toList args)
 
     Pi p binder res -> do
-      (checkedBinderType, tArg') <- infer (binderType binder)
+      (checkedBinderType, tArg') <- infer (typeOf binder)
 
-      addToBoundCtx (binderName binder) checkedBinderType $ do
+      addToBoundCtx (nameOf binder) checkedBinderType $ do
         (res', tRes') <- infer res
         let t' = tArg' `tMax` tRes'
         return (Pi p (replaceBinderType checkedBinderType binder) res' , t')
@@ -366,17 +366,17 @@ infer e = do
     Let p bound binder body -> do
 
       (bound', tBound') <-
-        if isHole (binderType binder) then
+        if isHole (typeOf binder) then
           -- No information is provided so infer the type of the bound expression
           infer bound
         else do
           -- Check the type of the bound expression against the provided type
-          (tBound', _) <- infer (binderType binder)
+          (tBound', _) <- infer (typeOf binder)
           bound'  <- check tBound' bound
           return (bound', tBound')
 
       -- Update the context with the bound variable
-      addToBoundCtx (binderName binder) tBound' $ do
+      addToBoundCtx (nameOf binder) tBound' $ do
         -- Infer the type of the body
         (checkedBody , tBody') <- infer body
         let checkedBinder = replaceBinderType tBound' binder
@@ -384,10 +384,10 @@ infer e = do
 
     Lam p binder body -> do
       -- Infer the type of the bound variable from the binder
-      (tBound', _) <- infer (binderType binder)
+      (tBound', _) <- infer (typeOf binder)
 
       -- Update the context with the bound variable
-      addToBoundCtx (binderName binder) tBound' $ do
+      addToBoundCtx (nameOf binder) tBound' $ do
         (body' , tBody') <- infer body
         let checkedBinder = replaceBinderType tBody' binder
         let t' = Pi p checkedBinder tBody'

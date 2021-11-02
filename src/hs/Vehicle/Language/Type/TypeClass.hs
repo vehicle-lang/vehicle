@@ -51,7 +51,7 @@ solveTypeClassConstraint ctx m e = do
     _ -> developerError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
 
   unless (isStuck progress) $
-    metaSolved (prov ctx) m eWHNF
+    metaSolved (provenanceOf ctx) m eWHNF
 
   return progress
 
@@ -62,7 +62,7 @@ getNonInferableArgs IsContainer [_tElem, tCont] = [tCont]
 getNonInferableArgs _           args            = args
 
 extractArg :: CheckedArg -> CheckedExpr
-extractArg arg = if vis arg == Explicit
+extractArg arg = if visibilityOf arg == Explicit
   then argExpr arg
   else developerError "Not expecting type-classes with non-explicit arguments"
 
@@ -129,7 +129,7 @@ solveIsContainer c tElem tCont = do
   return $ case tContElem of
     Nothing -> Stuck
     Just t  -> Progress
-      { newConstraints = [Constraint (ConstraintContext (prov c) mempty (variableContext c)) (Unify (tElem, t))]
+      { newConstraints = [Constraint (ConstraintContext (provenanceOf c) mempty (variableContext c)) (Unify (tElem, t))]
       , solvedMetas    = mempty
       }
   where

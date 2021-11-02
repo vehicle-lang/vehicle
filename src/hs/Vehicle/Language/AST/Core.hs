@@ -10,6 +10,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Vehicle.Prelude
 import Vehicle.Language.AST.Builtin (Builtin)
 import Vehicle.Language.AST.Visibility
+import Vehicle.Language.AST.Name
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -26,20 +27,6 @@ instance NFData Meta
 
 instance Pretty Meta where
   pretty (MetaVar m) = "?" <> pretty m
-
---------------------------------------------------------------------------------
--- Variable names
-
-data Name
-  = User Symbol  -- User-generated name
-  | Machine      -- Automatically generated name
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData Name
-
-instance Pretty Name where
-  pretty (User symbol) = pretty symbol
-  pretty Machine       = "Machine"
 
 --------------------------------------------------------------------------------
 -- Literals
@@ -97,21 +84,16 @@ pattern MachineInstanceBinder p n t = Binder p TheMachine Instance n t
 instance (NFData var, NFData ann) => NFData (Binder var ann)
 
 instance HasProvenance (Binder var ann) where
-  prov (Binder p _ _ _ _) = p
+  provenanceOf (Binder provenance _ _ _ _) = provenance
 
 instance HasVisibility (Binder var ann) where
-  vis (Binder _ _ v _ _) = v
+  visibilityOf (Binder _ _ visibility _ _) = visibility
 
 instance HasOwner (Binder var ann) where
-  getOwner (Binder _ owner _ _ _) = owner
+  ownerOf (Binder _ owner _ _ _) = owner
 
--- |Extract the name of the bound variable
-binderName :: Binder var ann -> Name
-binderName (Binder _ _ _ name _) = name
-
--- |Extract the type of the bound variable
-binderType :: Binder var ann -> Expr var ann
-binderType (Binder _ _ _ _ t) = t
+instance HasName (Binder var ann) where
+  nameOf (Binder _ _ _ name _) = name
 
 mapBinderType :: (Expr var1 ann1 -> Expr var2 ann2) -> Binder var1 ann1 -> Binder var2 ann2
 mapBinderType f (Binder p i v n e) = Binder p i v n $ f e
@@ -154,15 +136,15 @@ pattern MachineInstanceArg e = Arg TheMachine Instance e
 instance (NFData var, NFData ann) => NFData (Arg var ann)
 
 instance HasVisibility (Arg var ann) where
-  vis (Arg _ v _) = v
+  visibilityOf (Arg _ v _) = v
 
 instance HasProvenance ann => HasProvenance (Arg var ann) where
-  prov (Arg _ Explicit e) = prov e
-  prov (Arg _ Implicit e) = expandProvenance (1, 1) (prov e)
-  prov (Arg _ Instance e) = expandProvenance (2, 2) (prov e)
+  provenanceOf (Arg _ Explicit e) = provenanceOf e
+  provenanceOf (Arg _ Implicit e) = expandProvenance (1, 1) (provenanceOf e)
+  provenanceOf (Arg _ Instance e) = expandProvenance (2, 2) (provenanceOf e)
 
 instance HasOwner (Arg var ann) where
-  getOwner (Arg owner _ _) = owner
+  ownerOf (Arg owner _ _) = owner
 
 argExpr :: Arg var ann -> Expr var ann
 argExpr (Arg _ _ e) = e
@@ -270,8 +252,8 @@ data Expr var ann
 instance (NFData var, NFData ann) => NFData (Expr var ann)
 
 instance HasProvenance ann => HasProvenance (Expr var ann) where
-  prov (Hole p _) = p
-  prov e          = prov (annotation e)
+  provenanceOf (Hole p _) = p
+  provenanceOf e          = provenanceOf (annotation e)
 
 -- |Extract a term's annotation
 annotation :: Expr name ann -> ann
@@ -329,6 +311,12 @@ data Decl var ann
 
 instance (NFData var, NFData ann) => NFData (Decl var ann)
 
+instance HasProvenance ann => HasProvenance (Decl var ann) where
+  provenanceOf = \case
+    DeclNetw p _ _ -> p
+    DeclData p _ _ -> p
+    DefFun p _ _ _ -> p
+
 --------------------------------------------------------------------------------
 -- Programs
 
@@ -338,6 +326,28 @@ newtype Prog var ann
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData var, NFData ann) => NFData (Prog var ann)
+
+--------------------------------------------------------------------------------
+-- Recursion principles
+
+makeBaseFunctor ''Arg
+makeBaseFunctor ''Binder
+makeBaseFunctor ''Expr
+
+--------------------------------------------------------------------------------
+-- Type-classes
+
+class HasType a where
+  typeOf :: a var ann -> Expr var ann
+
+instance HasType Binder where
+  typeOf (Binder _ _ _ _ t) = t
+
+instance HasType Decl where
+  typeOf = \case
+    DeclNetw _ _ t -> t
+    DeclData _ _ t -> t
+    DefFun _ _ t _ -> t
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -350,9 +360,3 @@ normApp p fun                args = App p fun args
 normAppList :: Semigroup ann => ann -> Expr var ann -> [Arg var ann] -> Expr var ann
 normAppList _   fun []           = fun
 normAppList ann fun (arg : args) = normApp ann fun (arg :| args)
-
--- Derive recursion principles
-
-makeBaseFunctor ''Arg
-makeBaseFunctor ''Binder
-makeBaseFunctor ''Expr

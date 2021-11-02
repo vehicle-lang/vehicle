@@ -77,7 +77,7 @@ unexpectedTypeError expr actualType expectedTypes = developerError $
   "Unexpected type found for expression" <+> prettyFriendly expr <> "." <> line <>
   "Was expecting one of" <+> pretty expectedTypes <+>
   "but found" <+> prettyFriendly actualType <+>
-  "at" <+> pretty (prov expr) <> "."
+  "at" <+> pretty (provenanceOf expr) <> "."
 
 unexpectedExprError :: Provenance -> OutputExpr -> [OutputExpr] -> a
 unexpectedExprError p actualExpr expectedExprs = developerError $

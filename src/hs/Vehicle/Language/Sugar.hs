@@ -30,7 +30,7 @@ unfoldForall :: ann -> BindersAndBody name ann -> Expr name ann
 unfoldForall ann = unfoldBinders ann Pi
 
 unfoldFun :: HasProvenance ann => ann -> Expr name ann -> Expr name ann -> Expr name ann
-unfoldFun ann dom = Pi ann (ExplicitBinder (prov ann) Machine dom)
+unfoldFun ann dom = Pi ann (ExplicitBinder (provenanceOf ann) Machine dom)
 
 -- | Collapses pi expressions into either a sequence of forall bindings or a
 -- a function input/output type pair.
@@ -38,7 +38,7 @@ foldPi :: ann -> Binder name ann -> Expr name ann ->
           Either (BindersAndBody name ann) (Expr name ann, Expr name ann)
 foldPi ann binder result = if isFunBinder binder
   then Left  (foldForall (Pi ann binder result))
-  else Right (binderType binder, result)
+  else Right (typeOf binder, result)
 
 -- | Folds consecutative forall expressions into a list of binders
 foldForall :: Expr name ann -> BindersAndBody name ann
@@ -50,7 +50,7 @@ foldForall expr = first reverse (decomposeForall ([], expr))
 
 -- | Tests if a binder is from a forall or a function.
 isFunBinder :: Binder name ann -> Bool
-isFunBinder binder = vis binder == Explicit
+isFunBinder binder = visibilityOf binder == Explicit
 
 --------------------------------------------------------------------------------
 -- Lambdas
@@ -116,7 +116,7 @@ unfoldDefFun :: HasProvenance ann
              -> [Binder name ann]
              -> Expr name ann
              -> Decl name ann
-unfoldDefFun ann ident t bs e = DefFun (prov ann) ident t (unfoldLam ann (bs, e))
+unfoldDefFun ann ident t bs e = DefFun (provenanceOf ann) ident t (unfoldLam ann (bs, e))
 
 unfoldDefType :: HasProvenance ann
               => ann -> Identifier

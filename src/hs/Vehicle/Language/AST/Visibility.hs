@@ -2,9 +2,8 @@ module Vehicle.Language.AST.Visibility where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
-import Prettyprinter (Pretty(..), Doc, braces)
 
-import Vehicle.Prelude.Provenance
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Definitions
@@ -34,7 +33,7 @@ visProv Instance = expandProvenance (2,2)
 -- | Type class for types which have provenance information
 
 class HasVisibility a where
-  vis :: a -> Visibility
+  visibilityOf :: a -> Visibility
 
 --------------------------------------------------------------------------------
 -- Ownership
@@ -47,4 +46,4 @@ data Owner
 instance NFData Owner
 
 class HasOwner a where
-  getOwner :: a -> Owner
+  ownerOf :: a -> Owner

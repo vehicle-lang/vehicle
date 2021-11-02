@@ -345,7 +345,7 @@ compileBuiltin ann = \case
   Neg            -> return "-"
 
 compileArg :: MonadSMTLibProp m => OutputArg -> m (Maybe (Doc a))
-compileArg arg = if vis arg == Explicit
+compileArg arg = if visibilityOf arg == Explicit
   then Just <$> compileExpr (argExpr arg)
   else return Nothing
 

@@ -37,7 +37,7 @@ solveUnificationConstraint ctx (e1, e2) = do
   whnfE1 <- whnf (declContext ctx) e1
   whnfE2 <- whnf (declContext ctx) e2
   let constraint = Constraint ctx (Unify (whnfE1, whnfE2))
-  let p = prov constraint
+  let p = provenanceOf constraint
 
   progress <- case (toHead whnfE1, toHead whnfE2) of
     ----------------------
@@ -62,7 +62,7 @@ solveUnificationConstraint ctx (e1, e2) = do
     -- We ASSUME that all terms here are in normal form, so there
     -- will never be an unreduced redex.
     (Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, [])
-      | vis binder1 /= vis binder2 -> throwError $ FailedConstraints [constraint]
+      | visibilityOf binder1 /= visibilityOf binder2 -> throwError $ FailedConstraints [constraint]
       | otherwise -> return Progress
         { newConstraints = [Constraint ctx (Unify (body1, body2))]
         , solvedMetas    = mempty
@@ -82,12 +82,12 @@ solveUnificationConstraint ctx (e1, e2) = do
           }
 
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
-      | vis binder1 /= vis binder2 -> throwError $ FailedConstraints [constraint]
+      | visibilityOf binder1 /= visibilityOf binder2 -> throwError $ FailedConstraints [constraint]
       | otherwise -> do
           -- !!TODO!! Block until binders are solved
           -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
           -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
-          let binderConstraint = Constraint ctx (Unify (binderType binder1, binderType binder2))
+          let binderConstraint = Constraint ctx (Unify (typeOf binder1, typeOf binder2))
           let bodyConstraint   = Constraint ctx (Unify (body1, body2))
           return Progress
             { newConstraints = [binderConstraint, bodyConstraint]
@@ -243,9 +243,9 @@ solveArg :: MonadConstraintSolving m
          -> (CheckedArg, CheckedArg)
          -> m Constraint
 solveArg c (arg1, arg2)
-  | vis arg1 /= vis arg2 = throwError $ FailedConstraints [c]
+  | visibilityOf arg1 /= visibilityOf arg2 = throwError $ FailedConstraints [c]
   | otherwise = return $ Constraint
-    (ConstraintContext (prov c) mempty (variableContext c))
+    (ConstraintContext (provenanceOf c) mempty (variableContext c))
     (Unify (argExpr arg1 , argExpr arg2))
 
 solveSimpleApplication :: (MonadConstraintSolving m, Eq a)

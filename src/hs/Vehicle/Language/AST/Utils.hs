@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE OverloadedLists #-}
 
 module Vehicle.Language.AST.Utils where
@@ -13,6 +12,7 @@ import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.DeBruijn
 import Vehicle.Language.AST.Builtin
 import Vehicle.Language.AST.Visibility (Visibility(..))
+import Vehicle.Language.AST.Name (Name(..))
 
 --------------------------------------------------------------------------------
 -- Patterns
@@ -93,16 +93,6 @@ instance IsBoundCtx [Name] where
   ctxNames = id
 
 --------------------------------------------------------------------------------
--- Instances
-
-
-
-instance HasProvenance ann => HasProvenance (Decl var ann) where
-  prov (DeclNetw p _ _) = p
-  prov (DeclData p _ _) = p
-  prov (DefFun p _ _ _) = p
-
---------------------------------------------------------------------------------
 -- Utility functions
 
 isHole :: Expr var ann -> Bool
@@ -129,11 +119,11 @@ freeNames = cata $ \case
   BuiltinF  _ _                 -> []
   AnnF      _ e t               -> e <> t
   AppF      _ fun args          -> fun <> concatMap (freeNames . argExpr) args
-  PiF       _ binder result     -> freeNames (binderType binder) <> result
+  PiF       _ binder result     -> freeNames (typeOf binder) <> result
   VarF      _ (Free ident)      -> [ident]
   VarF      _ (Bound _)         -> []
-  LetF      _ bound binder body -> bound <> freeNames (binderType binder) <> body
-  LamF      _ binder body       -> freeNames (binderType binder) <> body
+  LetF      _ bound binder body -> bound <> freeNames (typeOf binder) <> body
+  LamF      _ binder body       -> freeNames (typeOf binder) <> body
   SeqF      _ xs                -> concat xs
 
 --------------------------------------------------------------------------------

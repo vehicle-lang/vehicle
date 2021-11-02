@@ -222,7 +222,7 @@ op1 :: (MonadElab m, HasProvenance a)
     -> Provenance -> m a -> m b
 op1 mk p t = do
   ct <- t
-  return $ mk (p <> prov ct) ct
+  return $ mk (p <> provenanceOf ct) ct
 
 op2 :: (MonadElab m, HasProvenance a, HasProvenance b)
     => (Provenance -> a -> b -> c)
@@ -230,25 +230,25 @@ op2 :: (MonadElab m, HasProvenance a, HasProvenance b)
 op2 mk p t1 t2 = do
   ct1 <- t1
   ct2 <- t2
-  return $ mk (p <> prov ct1 <> prov ct2) ct1 ct2
+  return $ mk (p <> provenanceOf ct1 <> provenanceOf ct2) ct1 ct2
 
 builtin :: MonadElab m => V.Builtin -> Provenance -> [B.Expr] -> m V.InputExpr
 builtin b ann args = builtin' b ann <$> traverse elab args
 
 builtin' :: V.Builtin -> Provenance -> [V.InputExpr] -> V.InputExpr
 builtin' b p args = V.normAppList p' (V.Builtin p b) (fmap V.ExplicitArg args)
-  where p' = fillInProvenance (p : map prov args)
+  where p' = fillInProvenance (p : map provenanceOf args)
 
 elabFunInputType :: MonadElab m => B.Expr -> m V.InputBinder
 elabFunInputType t = do
   t' <- elab t
-  return $ V.ExplicitBinder (prov t') V.Machine t'
+  return $ V.ExplicitBinder (provenanceOf t') V.Machine t'
 
 elabApp :: MonadElab m => B.Expr -> B.Arg -> m V.InputExpr
 elabApp fun arg = do
   fun' <- elab fun
   arg' <- elab arg
-  let p = fillInProvenance [prov fun', prov arg']
+  let p = fillInProvenance [provenanceOf fun', provenanceOf arg']
   return $ V.normAppList p fun' [arg']
 
 elabBindersAndBody :: MonadElab m => [B.Binder] -> B.Expr -> m ([V.InputBinder], V.InputExpr)

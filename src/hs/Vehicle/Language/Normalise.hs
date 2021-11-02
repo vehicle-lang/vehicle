@@ -140,7 +140,7 @@ instance Norm CheckedExpr where
         nFun  <- nf fun
         -- TODO temporary hack please remove in future once we actually have computational
         -- behaviour in implicit/instance arguments
-        nArgs <- traverse (\arg -> if vis arg == Explicit then nf arg else return arg) args
+        nArgs <- traverse (\arg -> if visibilityOf arg == Explicit then nf arg else return arg) args
         nfApp ann nFun nArgs
 
 instance Norm CheckedBinder where
@@ -321,7 +321,7 @@ nfQuantifier :: MonadNorm m
              -> CheckedArg -- The quantified lambda expression
              -> Maybe (m CheckedExpr)
 nfQuantifier ann q lam = case argHead lam of
-  Lam _ann binder body -> case toHead (binderType binder) of
+  Lam _ann binder body -> case toHead (typeOf binder) of
     -- If we have a tensor instead quantify over each individual element, and then substitute
     -- in a Seq construct with those elements in.
     (Builtin _ Tensor, [tElemArg, tDimsArg]) ->
@@ -336,7 +336,7 @@ nfQuantifier ann q lam = case argHead lam of
           -- Use the list monad to create a nested list of all possible indices into the tensor
           let allIndices = traverse (\dim -> [0..dim-1]) dims
           -- Generate the corresponding names from the indices
-          let allNames   = map (mkNameWithIndices (binderName binder)) (reverse allIndices)
+          let allNames   = map (mkNameWithIndices (nameOf binder)) (reverse allIndices)
 
           -- Generate a list of variables, one for each index
           let allExprs   = map (\i -> Var ann (Bound i)) (reverse [0..tensorSize-1])
