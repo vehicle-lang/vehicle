@@ -34,9 +34,6 @@ import Vehicle.Language.Scope qualified as V
 import Vehicle.Language.Type qualified as V
 import Vehicle.Language.Normalise qualified as V (normalise)
 
---import Vehicle.Backend.ITP.Core (ITPOptions(..))
---import Vehicle.Backend.ITP.Agda (AgdaOptions(..), compileToAgda)
-
 import Vehicle.Backend.Verifier.SMTLib (compileToSMTLib, SMTDoc(..))
 import Vehicle.Backend.Verifier.VNNLib (compileToVNNLib, VNNLibDoc(..))
 

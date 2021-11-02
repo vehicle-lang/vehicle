@@ -62,8 +62,9 @@ getNonInferableArgs IsContainer [_tElem, tCont] = [tCont]
 getNonInferableArgs _           args            = args
 
 extractArg :: CheckedArg -> CheckedExpr
-extractArg (Arg Explicit e) = e
-extractArg _                = developerError "Not expecting type-classes with non-explicit arguments"
+extractArg arg = if vis arg == Explicit
+  then argExpr arg
+  else developerError "Not expecting type-classes with non-explicit arguments"
 
 blockOnMetas :: MonadConstraintSolving m => Builtin -> [CheckedExpr] -> m ConstraintProgress -> m ConstraintProgress
 blockOnMetas tc args action = do

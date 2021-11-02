@@ -178,21 +178,20 @@ instance Elab B.Expr V.InputExpr where
     B.Map tk e1 e2            -> builtin V.Map  (tkProv tk) [e1, e2]
     B.Fold tk e1 e2 e3        -> builtin V.Fold (tkProv tk) [e1, e2, e3]
 
-
 instance Elab B.Arg V.InputArg where
-  elab (B.ExplicitArg e) = V.Arg Explicit <$> elab e
-  elab (B.ImplicitArg e) = V.Arg Implicit <$> elab e
-  elab (B.InstanceArg _) = developerError "User specified type classes not yet supported"
+  elab (B.ExplicitArg e) = V.ExplicitArg <$> elab e
+  elab (B.ImplicitArg e) = V.UserImplicitArg <$> elab e
+  elab (B.InstanceArg e) = V.UserInstanceArg <$> elab e
 
 instance Elab B.Name V.Identifier where
   elab n = return $ V.Identifier $ tkSymbol n
 
 instance Elab B.Binder V.InputBinder where
   elab = let name = V.User . tkSymbol in \case
-    B.ExplicitBinder    n         -> return $ V.Binder (tkProv n) Explicit (name n) (V.Hole (tkProv n) "_")
-    B.ImplicitBinder    n         -> return $ V.Binder (tkProv n) Implicit (name n) (V.Hole (tkProv n) "_")
-    B.ExplicitBinderAnn n _tk typ -> V.Binder (tkProv n) Explicit (name n) <$> elab typ
-    B.ImplicitBinderAnn n _tk typ -> V.Binder (tkProv n) Implicit (name n) <$> elab typ
+    B.ExplicitBinder    n         -> return $ V.ExplicitBinder     (tkProv n) (name n) (V.Hole (tkProv n) "_")
+    B.ImplicitBinder    n         -> return $ V.UserImplicitBinder (tkProv n) (name n) (V.Hole (tkProv n) "_")
+    B.ExplicitBinderAnn n _tk typ -> V.ExplicitBinder     (tkProv n) (name n) <$> elab typ
+    B.ImplicitBinderAnn n _tk typ -> V.UserImplicitBinder (tkProv n) (name n) <$> elab typ
 
 instance Elab B.LetDecl (V.InputBinder, V.InputExpr) where
   elab (B.LDecl b e) = bitraverse elab elab (b,e)
@@ -237,13 +236,13 @@ builtin :: MonadElab m => V.Builtin -> Provenance -> [B.Expr] -> m V.InputExpr
 builtin b ann args = builtin' b ann <$> traverse elab args
 
 builtin' :: V.Builtin -> Provenance -> [V.InputExpr] -> V.InputExpr
-builtin' b p args = V.normAppList p' (V.Builtin p b) (fmap (V.Arg Explicit) args)
+builtin' b p args = V.normAppList p' (V.Builtin p b) (fmap V.ExplicitArg args)
   where p' = fillInProvenance (p : map prov args)
 
 elabFunInputType :: MonadElab m => B.Expr -> m V.InputBinder
 elabFunInputType t = do
   t' <- elab t
-  return $ V.Binder (prov t') Explicit V.Machine t'
+  return $ V.ExplicitBinder (prov t') V.Machine t'
 
 elabApp :: MonadElab m => B.Expr -> B.Arg -> m V.InputExpr
 elabApp fun arg = do

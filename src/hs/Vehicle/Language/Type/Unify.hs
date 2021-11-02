@@ -227,7 +227,7 @@ abstractOver :: [CheckedArg] -> CheckedExpr -> CheckedExpr
 abstractOver args body = foldr argToLam body args
   where
     argToLam :: CheckedArg -> CheckedExpr -> CheckedExpr
-    argToLam (Arg v argE) = Lam mempty (Binder mempty v Machine argE)
+    argToLam (Arg i v argE) = Lam mempty (Binder mempty i v Machine argE)
 
 solveEq :: (MonadConstraintSolving m, Eq a)
         => Constraint

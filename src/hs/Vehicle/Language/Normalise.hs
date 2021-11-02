@@ -144,18 +144,18 @@ instance Norm CheckedExpr where
         nfApp ann nFun nArgs
 
 instance Norm CheckedBinder where
-  nf (Binder p v n t) = Binder p v n <$> nf t
+  nf = traverseBinderType nf
 
 instance Norm CheckedArg where
-  nf (Arg Explicit e) = Arg Explicit <$> nf e
-  nf arg@Arg{}        = return arg
+  nf (Arg _ Explicit e) = ExplicitArg <$> nf e
+  nf arg@Arg{}          = return arg
 
 --------------------------------------------------------------------------------
 -- Application
 
 nfApp :: MonadNorm m => CheckedAnn -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
-nfApp _ann (Lam _ _ funcBody) (Arg _ arg : _) = nf (substInto arg funcBody)
-nfApp ann  fun@(Builtin _ op) args            = do
+nfApp _ann (Lam _ _ funcBody) (arg : _) = nf (substInto (argExpr arg) funcBody)
+nfApp ann  fun@(Builtin _ op) args      = do
   let e = normAppList ann fun args
   case (op, args) of
     -- Equality
@@ -271,7 +271,7 @@ nfApp ann  fun@(Builtin _ op) args            = do
 
     -- Fold
     (Fold, [_tElem, _tCont, _tRes, _tc, foldOp, unit, cont]) -> case argHead cont of
-      Seq _ xs -> nf $ foldr (\x body -> normApp ann (argExpr foldOp) [Arg Explicit x, Arg Explicit body]) (argExpr unit) xs
+      Seq _ xs -> nf $ foldr (\x body -> normApp ann (argExpr foldOp) [ExplicitArg x, ExplicitArg body]) (argExpr unit) xs
       _        -> return e
     -- TODO distribute over cons
 
@@ -321,7 +321,7 @@ nfQuantifier :: MonadNorm m
              -> CheckedArg -- The quantified lambda expression
              -> Maybe (m CheckedExpr)
 nfQuantifier ann q lam = case argHead lam of
-  Lam _ann (Binder _p _ n t) body -> case toHead t of
+  Lam _ann binder body -> case toHead (binderType binder) of
     -- If we have a tensor instead quantify over each individual element, and then substitute
     -- in a Seq construct with those elements in.
     (Builtin _ Tensor, [tElemArg, tDimsArg]) ->
@@ -336,7 +336,7 @@ nfQuantifier ann q lam = case argHead lam of
           -- Use the list monad to create a nested list of all possible indices into the tensor
           let allIndices = traverse (\dim -> [0..dim-1]) dims
           -- Generate the corresponding names from the indices
-          let allNames   = map (mkNameWithIndices n) (reverse allIndices)
+          let allNames   = map (mkNameWithIndices (binderName binder)) (reverse allIndices)
 
           -- Generate a list of variables, one for each index
           let allExprs   = map (\i -> Var ann (Bound i)) (reverse [0..tensorSize-1])
@@ -356,7 +356,7 @@ nfQuantifier ann q lam = case argHead lam of
 makeQuantifier :: CheckedAnn -> Quantifier -> CheckedExpr -> CheckedExpr -> Name -> CheckedExpr
 makeQuantifier ann q tElem body name =
   App ann (Builtin ann (Quant q))
-    [Arg Explicit (Lam ann (Binder ann Explicit name tElem) body)]
+    [ExplicitArg (Lam ann (ExplicitBinder ann name tElem) body)]
 
 makeTensor :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedExpr
 makeTensor ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)
@@ -395,13 +395,13 @@ nfQuantifierIn :: MonadNorm m
                -> Maybe (m CheckedExpr)
 nfQuantifierIn ann q tElem tCont tRes _tc lam container = do
   let (bop, unit) = quantImplementation q
-  let isTruthTC = Arg Instance (PrimDict (mkIsTruth ann (argExpr tRes)))
+  let isTruthTC = MachineInstanceArg (PrimDict (mkIsTruth ann (argExpr tRes)))
   let bopExpr = App ann (Builtin ann bop) [tRes, isTruthTC]
   let unitExpr = mkLiteral' ann (LBool unit) tRes isTruthTC
   let tResCont = mapArgExpr (substContainerType tRes) tCont
   let tResContTC = PrimDict $ mkIsContainer ann (argExpr tRes) (argExpr tResCont)
   let mappedContainer = mkMap' ann tElem tRes lam container
-  let foldedContainer = mkFold' ann tRes tResCont tRes (Arg Instance tResContTC) bopExpr unitExpr mappedContainer
+  let foldedContainer = mkFold' ann tRes tResCont tRes (MachineInstanceArg tResContTC) bopExpr unitExpr mappedContainer
   Just (nf foldedContainer)
 
 quantImplementation :: Quantifier -> (Builtin, Bool)
@@ -442,8 +442,8 @@ nfNotQuantifier :: MonadNorm m
                 -> CheckedExpr
                 -> m CheckedExpr
 nfNotQuantifier ann t tc q (Lam lAnn binder body) = do
-  notBody <- nf $ App ann (Builtin ann Not) [t, tc, Arg Explicit body]
-  let notLam = Arg Explicit (Lam lAnn binder notBody)
+  notBody <- nf $ App ann (Builtin ann Not) [t, tc, ExplicitArg body]
+  let notLam = ExplicitArg (Lam lAnn binder notBody)
   return $ App ann (Builtin ann (Quant (negateQ q))) [notLam]
 nfNotQuantifier _ _ _ _ e = developerError $
   "Malformed quantifier, was expecting a Lam but found" <+> prettyVerbose e
@@ -484,7 +484,7 @@ nfMap :: MonadNorm m
       -> Maybe (m CheckedExpr)
 nfMap ann _tFrom tTo fun arg = case argHead arg of
   Seq _ xs -> Just $ do
-    ys <- traverse (\x -> nf $ normApp ann (argExpr fun) [Arg Explicit x]) xs
+    ys <- traverse (\x -> nf $ normApp ann (argExpr fun) [ExplicitArg x]) xs
     let tElem = argExpr tTo
     let tCont = mkListType ann tElem
     return $ mkSeq ann tElem tCont ys

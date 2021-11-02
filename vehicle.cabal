@@ -33,7 +33,6 @@ library
                       , Vehicle.Prelude.Prettyprinter
                       , Vehicle.Prelude.Provenance
                       , Vehicle.Prelude.Token
-                      , Vehicle.Prelude.Visibility
                       , Vehicle.Prelude.Logging
                       , Vehicle.Prelude.Supply
                       , Vehicle.Language.AST
@@ -41,6 +40,7 @@ library
                       , Vehicle.Language.AST.Core
                       , Vehicle.Language.AST.DeBruijn
                       , Vehicle.Language.AST.Utils
+                      , Vehicle.Language.AST.Visibility
                       , Vehicle.Language.DSL
                       , Vehicle.Language.Descope
                       , Vehicle.Language.Scope

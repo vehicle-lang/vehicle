@@ -73,13 +73,13 @@ instance DSL DSLExpr where
   pi p v n argType bodyFn = DSL $ \i ->
     let varType = unDSL argType i
         var     = boundVar i
-        binder  = Binder p v n varType
+        binder  = Binder p TheMachine v n varType
         body    = unDSL (bodyFn var) (i + 1)
     in Pi mempty binder body
 
   app fun args = DSL $ \i ->
     let fun' = unDSL fun i
-        args' = fmap (\e -> Arg Explicit (unDSL e i)) args
+        args' = fmap (\e -> ExplicitArg (unDSL e i)) args
     in App mempty fun' args'
 
 --lamType :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr

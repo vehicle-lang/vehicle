@@ -82,21 +82,20 @@ instance Elab B.Binder V.InputBinder where
     B.InstanceBinder n e -> mkBinder n Instance e
     where
       mkBinder :: MonadElab m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
-      mkBinder n v e = V.Binder (tkProvenance n) v (User (tkSymbol n)) <$> elab e
+      mkBinder n v e = V.Binder (tkProvenance n) V.TheUser v (User (tkSymbol n)) <$> elab e
 
 instance Elab B.Arg V.InputArg where
   elab = \case
-    B.ExplicitArg e -> V.Arg Explicit <$> elab e
-    B.ImplicitArg e -> V.Arg Implicit <$> elab e
-    B.InstanceArg e -> V.Arg Instance <$> elab e
+    B.ExplicitArg e -> V.ExplicitArg     <$> elab e
+    B.ImplicitArg e -> V.UserImplicitArg <$> elab e
+    B.InstanceArg e -> V.UserInstanceArg <$> elab e
 
 instance Elab B.Lit Literal where
   elab = \case
     B.LitBool b -> return $ LBool (read (unpack $ tkSymbol b))
     B.LitReal r -> return $ LRat r
-    B.LitNat  n -> return $ if n >= 0
-      then LNat (fromIntegral n)
-      else LInt (fromIntegral n)
+    B.LitInt  n -> return $ LInt (fromIntegral n)
+    B.LitNat  n -> return $ LNat (fromIntegral n)
 
 instance Elab B.Expr V.InputExpr where
   elab = \case

@@ -71,9 +71,10 @@ instance Delaborate (V.Expr V.Name ann) B.Expr where
     V.Builtin _ op   -> B.Builtin <$> delab op
 
 instance Delaborate (V.Arg V.Name ann) B.Arg where
-  delab (V.Arg Explicit e) = B.ExplicitArg <$> delab e
-  delab (V.Arg Implicit e) = B.ImplicitArg <$> delab e
-  delab (V.Arg Instance e) = B.InstanceArg <$> delab e
+  delab (V.Arg _i v e) = case v of
+    V.Explicit -> B.ExplicitArg <$> delab e
+    V.Implicit -> B.ImplicitArg <$> delab e
+    V.Instance -> B.InstanceArg <$> delab e
 
 instance Delaborate V.Name B.NameToken where
   delab (V.User s) = return $ mkToken B.NameToken s
@@ -86,11 +87,11 @@ instance Delaborate V.Builtin B.BuiltinToken where
   delab op = return $ mkToken B.BuiltinToken $ V.symbolFromBuiltin op
 
 instance Delaborate (V.Binder V.Name ann) B.Binder where
-  delab (V.Binder _p v n t) = case v of
+  delab (V.Binder _p _i v n t) = case v of
     -- TODO track whether type was provided manually and so use ExplicitBinderAnn
-    Explicit -> B.ExplicitBinder <$> delab n <*> delab t
-    Implicit -> B.ImplicitBinder <$> delab n <*> delab t
-    Instance -> B.InstanceBinder <$> delab n <*> delab t
+    V.Explicit -> B.ExplicitBinder <$> delab n <*> delab t
+    V.Implicit -> B.ImplicitBinder <$> delab n <*> delab t
+    V.Instance -> B.InstanceBinder <$> delab n <*> delab t
 
 instance Delaborate V.Literal B.Lit where
   delab l = return $ case l of

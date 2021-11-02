@@ -13,7 +13,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map (insert, lookup)
 import Data.Maybe (catMaybes, fromMaybe)
 
-import Vehicle.Prelude hiding (Network)
+import Vehicle.Prelude
 import Vehicle.Language.AST hiding (Map)
 import Vehicle.Language.Print (prettySimple)
 import Vehicle.Language.Normalise (normaliseInternal)
@@ -281,8 +281,8 @@ replaceNetworkApplications d e = case e of
     args' <- traverse (traverseArgExpr (replaceNetworkApplications d)) args
     return $ App ann fun' args'
 
-  Let ann (App _ (Var _ (Free ident)) [Arg _ input]) _ body -> do
-    newBody <- replaceNetworkApplication ann ident input body d
+  Let ann (App _ (Var _ (Free ident)) [inputArg]) _ body -> do
+    newBody <- replaceNetworkApplication ann ident (argExpr inputArg) body d
     replaceNetworkApplications d newBody
 
   Let ann bound binder body -> do
@@ -337,12 +337,12 @@ getNetworkDetails :: MonadVNNLib m
                   -> Identifier
                   -> CheckedExpr
                   -> m NetworkDetails
-getNetworkDetails p ident t@(Pi _ (Binder _ _ _ input) output) =
+getNetworkDetails p ident t@(Pi _ inputBinder output) =
   either
     (throwError . UnsupportedNetworkType p ident t)
     return
     $ runExcept $ do
-      inputDetails  <- getTensorDetails Input  input
+      inputDetails  <- getTensorDetails Input  (binderType inputBinder)
       outputDetails <- getTensorDetails Output output
       return $ NetworkDetails p ident inputDetails outputDetails
 getNetworkDetails p ident t                                  =
@@ -352,9 +352,9 @@ getTensorDetails :: MonadError UnsupportedNetworkType m
                  => InputOrOutput
                  -> CheckedExpr
                  -> m TensorDetails
-getTensorDetails io (App _ (Builtin _ Tensor) [Arg _ tElem, Arg _ tDims]) = do
-  typ   <- getTensorType io tElem
-  size  <- getTensorSize io tDims
+getTensorDetails io (App _ (Builtin _ Tensor) [tElemArg, tDimsArg]) = do
+  typ   <- getTensorType io (argExpr tElemArg)
+  size  <- getTensorSize io (argExpr tDimsArg)
   return $ TensorDetails size typ
 getTensorDetails io _ = throwError $ NotATensor io
 

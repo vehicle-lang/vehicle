@@ -345,8 +345,9 @@ compileBuiltin ann = \case
   Neg            -> return "-"
 
 compileArg :: MonadSMTLibProp m => OutputArg -> m (Maybe (Doc a))
-compileArg (Arg Explicit e) = Just <$> compileExpr e
-compileArg _                = return Nothing
+compileArg arg = if vis arg == Explicit
+  then Just <$> compileExpr (argExpr arg)
+  else return Nothing
 
 compileVariable :: MonadSMTLibProp m => OutputVar -> m (Doc a)
 compileVariable (User symbol) = return $ pretty symbol

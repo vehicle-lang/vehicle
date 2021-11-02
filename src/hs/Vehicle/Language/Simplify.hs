@@ -10,7 +10,6 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (catMaybes)
 
-import Vehicle.Prelude
 import Vehicle.Language.AST
 
 runSimplify :: Simplify a => SimplifyOptions -> a -> a
@@ -54,10 +53,10 @@ instance Semigroup ann => Simplify (Expr var ann) where
     PrimDict tc               -> PrimDict <$> simplify tc
 
 instance Semigroup ann => Simplify (Binder var ann) where
-  simplify (Binder ann v n t) = Binder ann v n <$> simplify t
+  simplify = traverseBinderType simplify
 
 instance Semigroup ann => Simplify (Arg var ann) where
-  simplify (Arg v t) = Arg v <$> simplify t
+  simplify = traverseArgExpr simplify
 
 simplifyArgs :: (Semigroup ann, MonadSimplify m)
            => NonEmpty (Arg var ann)
@@ -76,30 +75,6 @@ simplifyArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args)
       if keepArg
         then Just <$> simplify arg
         else return Nothing
-
-{-
-instance Simplify MetaSubstitution where
-  simplify m = _
-
-instance PrettyWithConfig MetaSet where
-  simplify m = return $
-    encloseSep lbrace rbrace comma (fmap pretty (MetaSet.toList m))
-
-instance PrettyWithConfig Name where
-  simplify n = return $ pretty n
-
-
-instance (PrettyWithConfig a, PrettyWithConfig b) => PrettyWithConfig (a, b) where
-  simplify (a, b) = do
-    a' <- simplify a
-    b' <- simplify b
-    return $ tupled [a', b']
-
-
-
-instance (Pretty a, PrettyWithConfig b) => PrettyWithConfig (Map a b) where
-  simplify m = prettyMapList (Map.toAscList m)
-  -}
 
 --------------------------------------------------------------------------------
 -- Other instances

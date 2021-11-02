@@ -200,44 +200,45 @@ inferArgs :: TCM m
           -> CheckedExpr    -- Type of the function
           -> [UncheckedArg] -- User-provided arguments of the function
           -> m (CheckedExpr, [CheckedArg])
-inferArgs p (Pi _ (Binder _ vBin _ tBin) tRes) (Arg vArg eArg : args)
-  | vBin == vArg = do
+inferArgs p (Pi _ binder tRes) (arg : args)
+  | vis binder == vis arg = do
     -- Check the type of the argument.
-    eArg1 <- check tBin eArg
+    checkedArgExpr <- check (binderType binder) (argExpr arg)
     -- Substitute argument in tRes
-    let tRes1 = eArg1 `substInto` tRes
+    let tRes1 = checkedArgExpr `substInto` tRes
     -- Recurse into the list of args
     (tRes2, args1) <- inferArgs p tRes1 args
     -- Return the appropriately annotated type with its inferred kind.
-    return (tRes2, Arg vArg eArg1 : args1)
+    return (tRes2, replaceArgExpr checkedArgExpr arg : args1)
 
-inferArgs _ (Pi _ (Binder _ vBin _ tBin) _) (arg : _)
-  | vBin /= vis arg && vBin == Explicit =
-    throwError $ MissingExplicitArg arg tBin
+inferArgs _ (Pi _ binder _) (arg : _)
+  | vis binder /= vis arg && vis binder == Explicit =
+    throwError $ MissingExplicitArg arg (binderType binder)
 
--- This case handles either vBin /= vArg and vBin /= Explicit or args == []
-inferArgs p (Pi _ (Binder _ vBin _ tBin) tRes) args = do
-    logDebug ("insert-arg" <+> pretty vBin <+> prettyVerbose tBin)
+-- This case handles either vis binder /= vis arg and vis binder /= Explicit or args == []
+inferArgs p (Pi _ binder tRes) args = do
+    logDebug ("insert-arg" <+> pretty (vis binder) <+> prettyVerbose (binderType binder))
 
     (meta, metaExpr) <- freshMeta p
 
     -- Check if the required argument is a type-class
-    when (vBin == Instance) $ do
+    let binderVis = vis binder
+    when (binderVis == Instance) $ do
       ctx <- getVariableCtx
-      addTypeClassConstraint ctx meta tBin
+      addTypeClassConstraint ctx meta (binderType binder)
 
     -- Substitute meta-variable in tRes
     let tRes1 = metaExpr `substInto` tRes
 
     (tRes2, args1) <- inferArgs p tRes1 args
-    return (tRes2, Arg vBin metaExpr : args1)
+    return (tRes2, Arg TheMachine binderVis metaExpr : args1)
 
 inferArgs _p tFun [] = return (tFun, [])
 
 inferArgs p tFun args = do
   ctx <- getBoundCtx
-  let mkRes = [Endo $ \tRes -> unnamedPi v (tHole ("arg" <> pack (show i))) (const tRes)
-              | (i, Arg v _e) <- zip [0::Int ..] args]
+  let mkRes = [Endo $ \tRes -> unnamedPi (vis arg) (tHole ("arg" <> pack (show i))) (const tRes)
+              | (i, arg) <- zip [0::Int ..] args]
   let expected = fromDSL (appEndo (mconcat mkRes) (tHole "res"))
   throwError $ Mismatch p ctx tFun expected
 
@@ -261,29 +262,30 @@ check :: TCM m
 check expectedType expr = do
   showCheckEntry expectedType expr
   res <- case (expectedType, expr) of
-    (Pi _ (Binder _ vFun _ tBound2) tRes, Lam p (Binder pBound vBound nBound tBound1) body)
-      | vFun == vBound -> do
-        tBound' <- check tBound2 tBound1
+    (Pi _ piBinder tRes, Lam p lamBinder body)
+      | vis piBinder == vis lamBinder -> do
+        checkedLamBinderType <- check (binderType piBinder) (binderType lamBinder)
 
-        addToBoundCtx nBound tBound' $ do
+        addToBoundCtx (binderName lamBinder) checkedLamBinderType $ do
           body' <- check tRes body
-          return $ Lam p (Binder pBound Implicit nBound tBound') body'
+          let checkedLamBinder = replaceBinderType checkedLamBinderType lamBinder
+          return $ Lam p checkedLamBinder body'
 
-    (Pi _ (Binder _ Implicit name tBound2) tRes, e) ->
+    (Pi _ binder tRes, e) ->
       -- Add the implict argument to the context
-      addToBoundCtx Machine tBound2 $ do
+      addToBoundCtx Machine (binderType binder) $ do
         -- Check if the type matches the expected result type.
         e' <- check tRes (liftDBIndices 1 e)
 
         -- Create a new binder mirroring the implicit Pi binder expected
-        let newBinder = Binder mempty Implicit name tBound2
+        let lamBinder = Binder mempty TheMachine Implicit (binderName binder) (binderType binder)
 
         -- Prepend a new lambda to the expression with the implicit binder
-        return $ Lam mempty newBinder e'
+        return $ Lam mempty lamBinder e'
 
-    (_, Lam p (Binder _ vBound _ _) _) -> do
+    (_, Lam p binder _) -> do
           ctx <- getBoundCtx
-          let expected = fromDSL $ unnamedPi vBound (tHole "a") (const (tHole "b"))
+          let expected = fromDSL $ unnamedPi (vis binder) (tHole "a") (const (tHole "b"))
           throwError $ Mismatch p ctx expectedType expected
 
     (_, Hole p _name) -> do
@@ -332,13 +334,13 @@ infer e = do
       (fun', tFun') <- infer fun
       inferApp p fun' tFun' (NonEmpty.toList args)
 
-    Pi p (Binder pBound v name arg) res -> do
-      (arg', tArg') <- infer arg
+    Pi p binder res -> do
+      (checkedBinderType, tArg') <- infer (binderType binder)
 
-      addToBoundCtx name arg' $ do
+      addToBoundCtx (binderName binder) checkedBinderType $ do
         (res', tRes') <- infer res
         let t' = tArg' `tMax` tRes'
-        return (Pi p (Binder pBound v name arg') res' , t')
+        return (Pi p (replaceBinderType checkedBinderType binder) res' , t')
 
     Var p (Bound i) -> do
       -- Lookup the type of the variable in the context.
@@ -361,33 +363,35 @@ infer e = do
           "Declaration'" <+> pretty ident <+> "'not found when" <+>
           "looking up variable in context" <+> pretty ctx <+> "at" <+> pretty p
 
-    Let p bound (Binder pBound v name tBound)  body -> do
+    Let p bound binder body -> do
 
       (bound', tBound') <-
-        if isHole tBound then
+        if isHole (binderType binder) then
           -- No information is provided so infer the type of the bound expression
           infer bound
         else do
           -- Check the type of the bound expression against the provided type
-          (tBound', _) <- infer tBound
+          (tBound', _) <- infer (binderType binder)
           bound'  <- check tBound' bound
           return (bound', tBound')
 
       -- Update the context with the bound variable
-      addToBoundCtx name tBound' $ do
+      addToBoundCtx (binderName binder) tBound' $ do
         -- Infer the type of the body
-        (body' , tBody') <- infer body
-        return (Let p bound' (Binder pBound v name tBound') body' , tBody')
+        (checkedBody , tBody') <- infer body
+        let checkedBinder = replaceBinderType tBound' binder
+        return (Let p bound' checkedBinder checkedBody , tBody')
 
-    Lam p (Binder pBound v name tBound) body -> do
+    Lam p binder body -> do
       -- Infer the type of the bound variable from the binder
-      (tBound', _) <- infer tBound
+      (tBound', _) <- infer (binderType binder)
 
       -- Update the context with the bound variable
-      addToBoundCtx name tBound' $ do
+      addToBoundCtx (binderName binder) tBound' $ do
         (body' , tBody') <- infer body
-        let t' = Pi p (Binder pBound v name tBound') tBody'
-        return (Lam p (Binder pBound v name tBound') body' , t')
+        let checkedBinder = replaceBinderType tBody' binder
+        let t' = Pi p checkedBinder tBody'
+        return (Lam p checkedBinder body' , t')
 
     Literal p l -> do
       let t' = typeOfLiteral p l
@@ -416,7 +420,7 @@ infer e = do
 
       -- Add in the type and type-class arguments
       let seqWithTArgs = normAppList p (Seq p es')
-            [Arg Implicit tElem', Arg Implicit tCont', Arg Instance tMeta']
+            [MachineImplicitArg tElem', MachineImplicitArg tCont', MachineInstanceArg tMeta']
 
       return (seqWithTArgs , tCont')
 

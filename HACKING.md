@@ -5,6 +5,12 @@
 * Running `stack test --test-arguments "-p quantifier"` will only run tests
   with `foo` in their name.
 
+# Using `Arg` and `Binder`
+
+* In order to maintain flexibility in adding extra annotations to arguments and binders
+  one should avoid pattern-matching on them whenever possible, and instead use suitable
+  mapping, traversing and projection functions.
+
 # Guide to one-name variable names
 
 ```haskell

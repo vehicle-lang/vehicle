@@ -132,9 +132,10 @@ instance Delaborate (V.Expr V.Name ann) B.Expr where
     V.Builtin _ op               -> return $ delabBuiltin op []
 
 instance Delaborate (V.Arg V.Name ann) B.Arg where
-  delab (V.Arg Explicit e) = B.ExplicitArg <$> delab e
-  delab (V.Arg Implicit e) = B.ImplicitArg <$> delab e
-  delab (V.Arg Instance _) = developerError "User specified type classes not yet supported"
+  delab (V.Arg _i v e) = case v of
+    V.Explicit -> B.ExplicitArg <$> delab e
+    V.Implicit -> B.ImplicitArg <$> delab e
+    V.Instance -> B.InstanceArg <$> delab e
 
 instance Delaborate V.Name B.Name where
   delab (V.User s) = return $ mkToken B.Name s
@@ -147,11 +148,11 @@ instance Delaborate (V.Binder V.Name ann, V.Expr V.Name ann) B.LetDecl where
   delab (binder, bound) = B.LDecl <$> delab binder <*> delab bound
 
 instance Delaborate (V.Binder V.Name name) B.Binder where
-  delab (V.Binder _p v n _t) = case v of
+  delab (V.Binder _i _p v n _t) = case v of
     -- TODO track whether type was provided manually and so use ExplicitBinderAnn
-    Explicit -> B.ExplicitBinder <$> delab n
-    Implicit -> B.ImplicitBinder <$> delab n
-    Instance -> developerError "User specified instance arguments not yet supported"
+    V.Explicit -> B.ExplicitBinder <$> delab n
+    V.Implicit -> B.ImplicitBinder <$> delab n
+    V.Instance -> developerError "User specified instance arguments not yet supported"
 
 instance Delaborate V.Literal B.Lit where
   delab l = return $ case l of

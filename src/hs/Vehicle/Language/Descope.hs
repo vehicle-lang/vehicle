@@ -22,7 +22,7 @@ runNaiveDescope e = runReader (descope e) (Ctx mempty, False)
 newtype Ctx = Ctx [Name]
 
 addBinderToCtx :: Binder Name ann -> (Ctx, Bool) -> (Ctx, Bool)
-addBinderToCtx (Binder _ _ name _) (Ctx ctx, r) = (Ctx (name : ctx), r)
+addBinderToCtx binder (Ctx ctx, r) = (Ctx (binderName binder : ctx), r)
 
 type MonadDescope m = MonadReader (Ctx, Bool) m
 
@@ -48,10 +48,10 @@ class Descope a b where
   descope :: MonadDescope m => a -> m b
 
 instance Descope (Binder Var ann) (Binder Name ann) where
-  descope (Binder p v n e) = Binder p v n <$> descope e
+  descope = traverseBinderType descope
 
 instance Descope (Arg Var ann) (Arg Name ann) where
-  descope (Arg v e) = Arg v <$> descope e
+  descope = traverseArgExpr descope
 
 showScopeEntry :: Expr Var ann -> Expr Var ann
 showScopeEntry e = {-trace ("descope-entry " <> showCore e)-} e

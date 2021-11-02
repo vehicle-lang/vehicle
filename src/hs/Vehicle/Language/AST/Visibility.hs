@@ -1,4 +1,4 @@
-module Vehicle.Prelude.Visibility where
+module Vehicle.Language.AST.Visibility where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
@@ -9,7 +9,7 @@ import Vehicle.Prelude.Provenance
 --------------------------------------------------------------------------------
 -- Definitions
 
--- | Visibility of function arguments
+-- | Visibility of function arguments.
 data Visibility = Explicit | Implicit | Instance
   deriving (Eq, Ord, Show, Generic)
 
@@ -31,10 +31,20 @@ visProv Explicit = id
 visProv Implicit = expandProvenance (1,1)
 visProv Instance = expandProvenance (2,2)
 
---------------------------------------------------------------------------------
--- Type-classes
-
 -- | Type class for types which have provenance information
 
 class HasVisibility a where
   vis :: a -> Visibility
+
+--------------------------------------------------------------------------------
+-- Ownership
+
+data Owner
+  = TheUser
+  | TheMachine
+  deriving (Eq, Show, Ord, Generic)
+
+instance NFData Owner
+
+class HasOwner a where
+  getOwner :: a -> Owner

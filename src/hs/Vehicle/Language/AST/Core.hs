@@ -9,6 +9,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Builtin (Builtin)
+import Vehicle.Language.AST.Visibility
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -71,58 +72,106 @@ instance Pretty Literal where
 data Binder var ann
   = Binder
     Provenance
-    Visibility      -- Whether binding is explicit or inferred
+    Owner           -- Has the binder been auto-inserted by the type-checker?
+    Visibility      -- The visibility of the binder
     Name            -- The name of the bound variable
     (Expr var ann)  -- The (optional) type of the bound variable
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
+-- At the moment explicit binders can only ever be provided by the user.
+pattern ExplicitBinder :: Provenance -> Name -> Expr var ann -> Binder var ann
+pattern ExplicitBinder p n t = Binder p TheUser Explicit n t
+
+pattern UserImplicitBinder :: Provenance -> Name -> Expr var ann -> Binder var ann
+pattern UserImplicitBinder p n t = Binder p TheUser Implicit n t
+
+pattern MachineImplicitBinder :: Provenance -> Name -> Expr var ann -> Binder var ann
+pattern MachineImplicitBinder p n t = Binder p TheMachine Implicit n t
+
+pattern UserInstanceBinder :: Provenance -> Name -> Expr var ann -> Binder var ann
+pattern UserInstanceBinder p n t = Binder p TheUser Instance n t
+
+pattern MachineInstanceBinder :: Provenance -> Name -> Expr var ann -> Binder var ann
+pattern MachineInstanceBinder p n t = Binder p TheMachine Instance n t
+
 instance (NFData var, NFData ann) => NFData (Binder var ann)
 
 instance HasProvenance (Binder var ann) where
-  prov (Binder p _ _ _) = p
+  prov (Binder p _ _ _ _) = p
 
 instance HasVisibility (Binder var ann) where
-  vis (Binder _ v _ _) = v
+  vis (Binder _ _ v _ _) = v
 
 -- |Extract the name of the bound variable
 binderName :: Binder var ann -> Name
-binderName (Binder _ _ name _) = name
+binderName (Binder _ _ _ name _) = name
 
 -- |Extract the type of the bound variable
 binderType :: Binder var ann -> Expr var ann
-binderType (Binder _ _ _ t) = t
+binderType (Binder _ _ _ _ t) = t
 
-traverseBinderExpr :: Monad m
-                   => (Expr var ann -> m (Expr var ann))
-                   -> Binder var ann
-                   -> m (Binder var ann)
-traverseBinderExpr f (Binder p v n e) = Binder p v n <$> f e
+mapBinderType :: (Expr var1 ann1 -> Expr var2 ann2) -> Binder var1 ann1 -> Binder var2 ann2
+mapBinderType f (Binder p i v n e) = Binder p i v n $ f e
+
+replaceBinderType :: Expr var1 ann1 -> Binder var2 ann2 -> Binder var1 ann1
+replaceBinderType e = mapBinderType (const e)
+
+traverseBinderType :: Monad m
+                   => (Expr var1 ann1 -> m (Expr var2 ann2))
+                   -> Binder var1 ann1
+                   -> m (Binder var2 ann2)
+traverseBinderType f (Binder p i v n e) = Binder p i v n <$> f e
 
 --------------------------------------------------------------------------------
 -- Function arguments
 
 data Arg var ann
   = Arg
-    Visibility       -- Is the argument implicit or explicit?
-    (Expr var ann)   -- The argument expression
+    Owner           -- Has the argument been auto-inserted by the type-checker?
+    Visibility      -- The visibility of the argument
+    (Expr var ann)  -- The argument expression
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
+
+-- At the moment explicit arguments can only ever be provided by the user.
+pattern ExplicitArg :: Expr var ann -> Arg var ann
+pattern ExplicitArg e = Arg TheUser Explicit e
+
+pattern UserImplicitArg :: Expr var ann -> Arg var ann
+pattern UserImplicitArg e = Arg TheUser Implicit e
+
+pattern MachineImplicitArg :: Expr var ann -> Arg var ann
+pattern MachineImplicitArg e = Arg TheMachine Implicit e
+
+pattern UserInstanceArg :: Expr var ann -> Arg var ann
+pattern UserInstanceArg e = Arg TheUser Instance e
+
+pattern MachineInstanceArg :: Expr var ann -> Arg var ann
+pattern MachineInstanceArg e = Arg TheMachine Instance e
 
 instance (NFData var, NFData ann) => NFData (Arg var ann)
 
 instance HasVisibility (Arg var ann) where
-  vis (Arg v _) = v
+  vis (Arg _ v _) = v
+
+instance HasProvenance ann => HasProvenance (Arg var ann) where
+  prov (Arg _ Explicit e) = prov e
+  prov (Arg _ Implicit e) = expandProvenance (1, 1) (prov e)
+  prov (Arg _ Instance e) = expandProvenance (2, 2) (prov e)
 
 argExpr :: Arg var ann -> Expr var ann
-argExpr (Arg _ e) = e
+argExpr (Arg _ _ e) = e
 
-mapArgExpr :: (Expr var ann -> Expr var ann) -> Arg var ann -> Arg var ann
-mapArgExpr f (Arg v e) = Arg v $ f e
+mapArgExpr :: (Expr var1 ann1 -> Expr var2 ann2) -> Arg var1 ann1 -> Arg var2 ann2
+mapArgExpr f (Arg i v e) = Arg i v $ f e
+
+replaceArgExpr :: Expr var1 ann1 -> Arg var2 ann2 -> Arg var1 ann1
+replaceArgExpr e = mapArgExpr (const e)
 
 traverseArgExpr :: Monad m
-                => (Expr var ann -> m (Expr var ann))
-                -> Arg var ann
-                -> m (Arg var ann)
-traverseArgExpr f (Arg v e) = Arg v <$> f e
+                => (Expr var1 ann1 -> m (Expr var2 ann2))
+                -> Arg var1 ann1
+                -> m (Arg var2 ann2)
+traverseArgExpr f (Arg i v e) = Arg i v <$> f e
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -213,6 +262,27 @@ data Expr var ann
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData var, NFData ann) => NFData (Expr var ann)
+
+instance HasProvenance ann => HasProvenance (Expr var ann) where
+  prov (Hole p _) = p
+  prov e          = prov (annotation e)
+
+-- |Extract a term's annotation
+annotation :: Expr name ann -> ann
+annotation = \case
+  Type     _         -> developerError "Should not be requesting an annotation from Type"
+  Hole     _   _     -> developerError "Should not be requesting an annotation from Hole"
+  PrimDict _         -> developerError "Should not be requesting an annotation from PrimitiveDict"
+  Meta     ann _     -> ann
+  Ann      ann _ _   -> ann
+  App      ann _ _   -> ann
+  Pi       ann _ _   -> ann
+  Builtin  ann _     -> ann
+  Var      ann _     -> ann
+  Let      ann _ _ _ -> ann
+  Lam      ann _ _   -> ann
+  Literal  ann _     -> ann
+  Seq      ann _     -> ann
 
 --------------------------------------------------------------------------------
 -- Declarations

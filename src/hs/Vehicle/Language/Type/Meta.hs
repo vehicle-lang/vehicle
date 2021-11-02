@@ -66,7 +66,7 @@ instance MetaSubstitutable CheckedArg where
   substM = traverseArgExpr substM
 
 instance MetaSubstitutable CheckedBinder where
-  substM = traverseBinderExpr substM
+  substM = traverseBinderType substM
 
 instance MetaSubstitutable CheckedExpr where
   substM = \case
@@ -192,7 +192,7 @@ freshMetaWith boundCtx p = do
   let boundEnv = reverse [ Var p (Bound varIndex) | varIndex <- [0..length boundCtx - 1] ]
 
   -- Returns a meta applied to every bound variable in the context
-  let meta = normAppList p (Meta p metaName) (map (Arg Explicit) boundEnv)
+  let meta = normAppList p (Meta p metaName) (map ExplicitArg boundEnv)
 
   logDebug $ "fresh-meta" <+> pretty metaName
   return (metaName, meta)
@@ -205,7 +205,7 @@ makeMetaType :: BoundCtx
 makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCtx)
   where
     entryToPi :: (Name, CheckedExpr) -> CheckedExpr -> CheckedExpr
-    entryToPi (name, t) resTy = Pi p (Binder p Explicit name t) resTy
+    entryToPi (name, t) resTy = Pi p (ExplicitBinder p name t) resTy
 
 -- | Returns any constraints that are activated (i.e. worth retrying) based
 -- on the set of metas that were solved last pass.
@@ -301,11 +301,11 @@ whnf ctx e = do
   runReaderT (norm e') ctx
 
 norm :: (MonadMeta m, MonadReader DeclCtx m) => CheckedExpr -> m CheckedExpr
-norm e@(App ann fun (Arg _ argE :| args)) = do
+norm e@(App ann fun (arg :| args)) = do
   normFun  <- norm fun
   case normFun of
     Lam _ _ body -> do
-      nfBody <- norm (argE `substInto` body)
+      nfBody <- norm (argExpr arg `substInto` body)
       return $ normAppList ann nfBody args
     _            -> return e
 norm e@(Var _ (Free ident)) = do

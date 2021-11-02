@@ -95,7 +95,10 @@ instance ScopeCheck InputDecl UncheckedDecl where
     DefFun ann n t e -> DefFun   ann n <$> scope t <*> scope e
 
 instance ScopeCheck InputArg UncheckedArg where
-  scope (Arg v e) = Arg v <$> scope e
+  scope = traverseArgExpr scope
+
+instance ScopeCheck InputBinder UncheckedBinder where
+  scope = traverseBinderType scope
 
 instance ScopeCheck InputExpr UncheckedExpr where
   scope e = do
@@ -134,10 +137,9 @@ bindDecl ident continuation = do
       addDeclToCtx Ctx {..} = Ctx (Set.insert ident declCtx) exprCtx
 
 bindVar :: SCM m => InputBinder -> (UncheckedBinder -> m UncheckedExpr) -> m UncheckedExpr
-bindVar (Binder p v n t) update = do
-  t' <- scope t
-  let binder' = Binder p v n t'
-  local (addBinderToCtx n) (update binder')
+bindVar binder update = do
+  binder' <- scope binder
+  local (addBinderToCtx (binderName binder)) (update binder')
     where
       addBinderToCtx :: Name -> Ctx -> Ctx
       addBinderToCtx name Ctx{..} = Ctx declCtx (name : exprCtx)
