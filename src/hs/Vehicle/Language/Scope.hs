@@ -1,5 +1,5 @@
 
-module Vehicle.Language.Compile.Scope
+module Vehicle.Language.Scope
   ( ScopeError(..)
   , scopeCheck
   ) where

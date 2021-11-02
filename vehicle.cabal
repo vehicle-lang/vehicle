@@ -48,6 +48,7 @@ library
                       , Vehicle.Language.Parse
                       , Vehicle.Language.Print
                       , Vehicle.Language.Simplify
+                      , Vehicle.Language.Sugar
                       , Vehicle.Language.Type
                       , Vehicle.Language.Type.Core
                       , Vehicle.Language.Type.Meta

@@ -111,28 +111,9 @@ instance HasProvenance ann => HasProvenance (Decl var ann) where
 --------------------------------------------------------------------------------
 -- Utility functions
 
--- |Extract a binder's name
-binderName :: Binder var ann -> Name
-binderName (Binder _ _ name _) = name
-
-binderType :: Binder var ann -> Expr var ann
-binderType (Binder _ _ _ t) = t
-
-argExpr :: Arg var ann -> Expr var ann
-argExpr (Arg _ e) = e
-
 isHole :: Expr var ann -> Bool
 isHole (Hole _ _ ) = True
 isHole _           = False
-
-mapArgExpr :: (Expr var ann -> Expr var ann) -> Arg var ann -> Arg var ann
-mapArgExpr f (Arg v e) = Arg v $ f e
-
-traverseArgExpr :: Monad m => (Expr var ann -> m (Expr var ann)) -> Arg var ann -> m (Arg var ann)
-traverseArgExpr f (Arg v e) = Arg v <$> f e
-
-traverseBinderExpr :: Monad m => (Expr var ann -> m (Expr var ann)) -> Binder var ann -> m (Binder var ann)
-traverseBinderExpr f (Binder p v n e) = Binder p v n <$> f e
 
 declIdent :: Decl var ann -> Identifier
 declIdent (DeclNetw _ ident _) = ident

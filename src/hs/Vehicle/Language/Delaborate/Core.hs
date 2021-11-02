@@ -7,7 +7,6 @@ module Vehicle.Language.Delaborate.Core
   , runDelabWithoutLogging
   ) where
 
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (pack)
 
@@ -35,14 +34,6 @@ runDelabWithoutLogging x = discardLogger $ runDelab x
 
 -- | Constraint for the monad stack used by the elaborator.
 type MonadDelab m = (MonadLogger m, MonadSupply Symbol m)
-
--- * Provenance
-
-type TokenConstructor a = ((Int, Int), Symbol) -> a
-
--- | A slightly shorter name for `tkProvenance`
-mkToken :: TokenConstructor a -> Symbol -> a
-mkToken mk s = mk ((0,0), s)
 
 -- * Conversion
 
@@ -76,7 +67,7 @@ instance Delaborate (V.Expr V.Name ann) B.Expr where
     V.Meta _ m     -> return $ B.Hole (mkToken B.HoleToken (layoutAsText (pretty m)))
     V.PrimDict _   -> developerError "Instance arguments not currently in grammar"
 
-    V.App _ fun args -> delabApp <$> delab fun <*> traverse delab (reverse (filterUserArgs args))
+    V.App _ fun args -> delabApp <$> delab fun <*> traverse delab (reverse (NonEmpty.toList args))
     V.Builtin _ op   -> B.Builtin <$> delab op
 
 instance Delaborate (V.Arg V.Name ann) B.Arg where
@@ -107,12 +98,6 @@ instance Delaborate V.Literal B.Lit where
     V.LNat n  -> B.LitNat   (fromIntegral n)
     V.LInt i  -> B.LitInt   (fromIntegral i)
     V.LRat r  -> B.LitReal  r
-
-filterUserArgs :: NonEmpty (V.Arg var ann) -> [V.Arg var ann]
-filterUserArgs args = filter isUserProvidedArg (NonEmpty.toList args)
-  where
-    isUserProvidedArg :: V.Arg var ann -> Bool
-    isUserProvidedArg arg = vis arg == Explicit
 
 delabApp :: B.Expr -> [B.Arg] -> B.Expr
 delabApp fun []           = fun

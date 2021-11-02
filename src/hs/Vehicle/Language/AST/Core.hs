@@ -84,6 +84,20 @@ instance HasProvenance (Binder var ann) where
 instance HasVisibility (Binder var ann) where
   vis (Binder _ v _ _) = v
 
+-- |Extract the name of the bound variable
+binderName :: Binder var ann -> Name
+binderName (Binder _ _ name _) = name
+
+-- |Extract the type of the bound variable
+binderType :: Binder var ann -> Expr var ann
+binderType (Binder _ _ _ t) = t
+
+traverseBinderExpr :: Monad m
+                   => (Expr var ann -> m (Expr var ann))
+                   -> Binder var ann
+                   -> m (Binder var ann)
+traverseBinderExpr f (Binder p v n e) = Binder p v n <$> f e
+
 --------------------------------------------------------------------------------
 -- Function arguments
 
@@ -97,6 +111,18 @@ instance (NFData var, NFData ann) => NFData (Arg var ann)
 
 instance HasVisibility (Arg var ann) where
   vis (Arg v _) = v
+
+argExpr :: Arg var ann -> Expr var ann
+argExpr (Arg _ e) = e
+
+mapArgExpr :: (Expr var ann -> Expr var ann) -> Arg var ann -> Arg var ann
+mapArgExpr f (Arg v e) = Arg v $ f e
+
+traverseArgExpr :: Monad m
+                => (Expr var ann -> m (Expr var ann))
+                -> Arg var ann
+                -> m (Arg var ann)
+traverseArgExpr f (Arg v e) = Arg v <$> f e
 
 --------------------------------------------------------------------------------
 -- Expressions
