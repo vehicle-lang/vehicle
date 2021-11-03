@@ -518,15 +518,15 @@ typeOfBuiltin p b = fromDSL $ case b of
   List            -> type0 ~> type0
   Tensor          -> type0 ~> tList tNat ~> type0
 
-  HasEq           -> type0 ~> type0 ~> type0
-  HasOrd          -> type0 ~> type0 ~> type0
-  IsTruth         -> type0 ~> type0
-  IsNatural       -> type0 ~> type0
-  IsIntegral      -> type0 ~> type0
-  IsRational      -> type0 ~> type0
-  IsReal          -> type0 ~> type0
-  IsContainer     -> type0 ~> type0
-  IsQuantifiable  -> type0 ~> type0 ~> type0
+  TypeClass HasEq           -> type0 ~> type0 ~> type0
+  TypeClass HasOrd          -> type0 ~> type0 ~> type0
+  TypeClass IsTruth         -> type0 ~> type0
+  TypeClass IsNatural       -> type0 ~> type0
+  TypeClass IsIntegral      -> type0 ~> type0
+  TypeClass IsRational      -> type0 ~> type0
+  TypeClass IsReal          -> type0 ~> type0
+  TypeClass IsContainer     -> type0 ~> type0
+  TypeClass IsQuantifiable  -> type0 ~> type0 ~> type0
 
   If   -> typeOfIf
   Cons -> typeOfCons

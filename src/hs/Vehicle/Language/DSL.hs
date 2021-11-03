@@ -123,28 +123,28 @@ typeClass :: Provenance -> Builtin -> DSLExpr
 typeClass p op = DSL $ \_ -> Builtin p op
 
 hasEq :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-hasEq p tArg tRes = typeClass p HasEq `app` [tArg, tRes]
+hasEq p tArg tRes = typeClass p (TypeClass HasEq) `app` [tArg, tRes]
 
 hasOrd :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-hasOrd p tArg tRes = typeClass p HasOrd `app` [tArg, tRes]
+hasOrd p tArg tRes = typeClass p (TypeClass HasOrd) `app` [tArg, tRes]
 
 isTruth :: Provenance -> DSLExpr -> DSLExpr
-isTruth p t = typeClass p IsTruth `app` [t]
+isTruth p t = typeClass p (TypeClass IsTruth) `app` [t]
 
 isNatural :: Provenance -> DSLExpr -> DSLExpr
-isNatural p t = typeClass p IsNatural `app` [t]
+isNatural p t = typeClass p (TypeClass IsNatural) `app` [t]
 
 isIntegral :: Provenance -> DSLExpr -> DSLExpr
-isIntegral p t = typeClass p IsIntegral `app` [t]
+isIntegral p t = typeClass p (TypeClass IsIntegral) `app` [t]
 
 isRational :: Provenance -> DSLExpr -> DSLExpr
-isRational p t = typeClass p IsRational `app` [t]
+isRational p t = typeClass p (TypeClass IsRational) `app` [t]
 
 isReal :: Provenance -> DSLExpr -> DSLExpr
-isReal p t = typeClass p IsReal `app` [t]
+isReal p t = typeClass p (TypeClass IsReal) `app` [t]
 
 isContainer :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-isContainer p tCont tElem = typeClass p IsContainer `app` [tCont, tElem]
+isContainer p tCont tElem = typeClass p (TypeClass IsContainer) `app` [tCont, tElem]
 
 isQuantifiable :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
-isQuantifiable p tDom tTruth = typeClass p IsQuantifiable `app` [tDom, tTruth]
+isQuantifiable p tDom tTruth = typeClass p (TypeClass IsQuantifiable) `app` [tDom, tTruth]

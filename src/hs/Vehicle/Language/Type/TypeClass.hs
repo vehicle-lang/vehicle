@@ -34,7 +34,7 @@ solveTypeClassConstraint ctx m e = do
   eWHNF <- whnf (declContext ctx) e
   let constraint = Constraint ctx (m `Has` eWHNF)
   progress <- case toHead eWHNF of
-    (Builtin _ tc, args) -> do
+    (Builtin _ (TypeClass tc), args) -> do
       let argsNF = extractArg <$> args
       blockOnMetas tc argsNF $ case (tc, argsNF) of
         (IsContainer,    [t1, t2]) -> solveIsContainer    constraint t1 t2
@@ -47,7 +47,7 @@ solveTypeClassConstraint ctx m e = do
         (IsReal,         [t])      -> solveIsReal         constraint t
         (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable constraint t1 t2
         _                          -> developerError $
-          "Unknown type-class" <+> squotes (pretty tc) <+> "args" <+> prettyVerbose argsNF
+          "Unknown type-class" <+> squotes (pretty (show tc)) <+> "args" <+> prettyVerbose argsNF
     _ -> developerError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
 
   unless (isStuck progress) $
@@ -57,7 +57,7 @@ solveTypeClassConstraint ctx m e = do
 
 -- Takes in the type-class and the list of arguments and returns the list of those
 -- that cannot be inferred from the others.
-getNonInferableArgs :: Builtin -> [CheckedExpr] -> [CheckedExpr]
+getNonInferableArgs :: TypeClass -> [CheckedExpr] -> [CheckedExpr]
 getNonInferableArgs IsContainer [_tElem, tCont] = [tCont]
 getNonInferableArgs _           args            = args
 
@@ -66,7 +66,7 @@ extractArg arg = if visibilityOf arg == Explicit
   then argExpr arg
   else developerError "Not expecting type-classes with non-explicit arguments"
 
-blockOnMetas :: MonadConstraintSolving m => Builtin -> [CheckedExpr] -> m ConstraintProgress -> m ConstraintProgress
+blockOnMetas :: MonadConstraintSolving m => TypeClass -> [CheckedExpr] -> m ConstraintProgress -> m ConstraintProgress
 blockOnMetas tc args action = do
   let metas = filter isMeta (getNonInferableArgs tc args)
   if null metas

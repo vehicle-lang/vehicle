@@ -207,15 +207,15 @@ instance Elab B.Lit V.InputExpr where
 
 instance Elab B.TypeClass V.InputExpr where
   elab = \case
-    B.TCEq    tk e1 e2 -> builtin V.HasEq          (tkProv tk) [e1, e2]
-    B.TCOrd   tk e1 e2 -> builtin V.HasOrd         (tkProv tk) [e1, e2]
-    B.TCCont  tk e1 e2 -> builtin V.IsContainer    (tkProv tk) [e1, e2]
-    B.TCTruth tk e     -> builtin V.IsTruth        (tkProv tk) [e]
-    B.TCQuant tk e     -> builtin V.IsQuantifiable (tkProv tk) [e]
-    B.TCNat   tk e     -> builtin V.IsNatural      (tkProv tk) [e]
-    B.TCInt   tk e     -> builtin V.IsIntegral     (tkProv tk) [e]
-    B.TCRat   tk e     -> builtin V.IsRational     (tkProv tk) [e]
-    B.TCReal  tk e     -> builtin V.IsReal         (tkProv tk) [e]
+    B.TCEq    tk e1 e2 -> builtin (V.TypeClass V.HasEq)          (tkProv tk) [e1, e2]
+    B.TCOrd   tk e1 e2 -> builtin (V.TypeClass V.HasOrd)         (tkProv tk) [e1, e2]
+    B.TCCont  tk e1 e2 -> builtin (V.TypeClass V.IsContainer)    (tkProv tk) [e1, e2]
+    B.TCTruth tk e     -> builtin (V.TypeClass V.IsTruth)        (tkProv tk) [e]
+    B.TCQuant tk e     -> builtin (V.TypeClass V.IsQuantifiable) (tkProv tk) [e]
+    B.TCNat   tk e     -> builtin (V.TypeClass V.IsNatural)      (tkProv tk) [e]
+    B.TCInt   tk e     -> builtin (V.TypeClass V.IsIntegral)     (tkProv tk) [e]
+    B.TCRat   tk e     -> builtin (V.TypeClass V.IsRational)     (tkProv tk) [e]
+    B.TCReal  tk e     -> builtin (V.TypeClass V.IsReal)         (tkProv tk) [e]
 
 op1 :: (MonadElab m, HasProvenance a)
     => (Provenance -> a -> b)

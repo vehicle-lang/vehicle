@@ -4,31 +4,26 @@ module Vehicle.Language.AST.Builtin
   ( Builtin(..)
   , Quantifier(..)
   , Order(..)
+  , TypeClass(..)
   , builtinFromSymbol
   , symbolFromBuiltin
   ) where
 
-
+import Data.Bifunctor (first)
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
+import Data.Text (pack)
 
 import Vehicle.Prelude
 
---------------------------------------------------------------------------------
--- Standard builtins
+-- TODO all the show instances should really be obtainable from the grammar
+-- somehow.
 
--- |Builtins to the Vehicle language
-data Builtin
-  -- Types
-  = Bool
-  | Prop
-  | Nat
-  | Int
-  | Real
-  | List
-  | Tensor
-  -- Type classes
-  | HasEq
+--------------------------------------------------------------------------------
+-- Type classes
+
+data TypeClass
+  = HasEq
   | HasOrd
   | IsTruth
   | IsNatural
@@ -37,34 +32,25 @@ data Builtin
   | IsReal
   | IsContainer
   | IsQuantifiable
-  -- Expressions
-  | If
-  | Impl
-  | And
-  | Or
-  | Not
-  | Eq
-  | Neq
-  | Order Order
-  | Mul
-  | Div
-  | Add
-  | Sub
-  | Neg
-  | Cons
-  | At
-  | Map
-  | Fold
-  | Quant Quantifier
-  | QuantIn Quantifier
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Generic)
 
-instance NFData Builtin
+instance NFData TypeClass
 
-instance Pretty Builtin where
-  pretty b = pretty $ symbolFromBuiltin b
+instance Show TypeClass where
+  show = \case
+    HasEq          -> "HasEq"
+    HasOrd         -> "HasOrd"
+    IsTruth        -> "IsTruth"
+    IsContainer    -> "IsContainer"
+    IsNatural      -> "IsNatural"
+    IsIntegral     -> "IsIntegral"
+    IsRational     -> "IsRational"
+    IsReal         -> "IsReal"
+    IsQuantifiable -> "IsQuantify"
 
--- | Property-level quantifiers supported
+--------------------------------------------------------------------------------
+-- Quantifiers
+
 data Quantifier
   = All
   | Any
@@ -77,7 +63,9 @@ instance Pretty Quantifier where
     All -> "every"
     Any -> "some"
 
--- | Numeric orders supported
+--------------------------------------------------------------------------------
+-- Orders
+
 data Order
   = Le
   | Lt
@@ -98,66 +86,118 @@ instance Pretty Order where
   pretty = pretty . show
 
 --------------------------------------------------------------------------------
+-- Standard builtins
+
+-- |Builtins to the Vehicle language
+data Builtin
+  -- Types
+  = Bool
+  | Prop
+  | Nat
+  | Int
+  | Real
+  | List
+  | Tensor
+  -- Expressions
+  | If
+  | Impl
+  | And
+  | Or
+  | Not
+  | Eq
+  | Neq
+  | Mul
+  | Div
+  | Add
+  | Sub
+  | Neg
+  | Cons
+  | At
+  | Map
+  | Fold
+  | Order     Order
+  | TypeClass TypeClass
+  | Quant     Quantifier
+  | QuantIn   Quantifier
+  deriving (Eq, Ord, Generic)
+
+instance NFData Builtin
+
+instance Pretty Builtin where
+  pretty b = pretty $ symbolFromBuiltin b
+
+--------------------------------------------------------------------------------
 -- Conversion to symbols
 
+instance Show Builtin where
+  show = \case
+    Bool         -> "Bool"
+    Prop         -> "Prop"
+    Nat          -> "Nat"
+    Int          -> "Int"
+    Real         -> "Real"
+    List         -> "List"
+    Tensor       -> "Tensor"
+    If           -> "if"
+    Impl         -> "implies"
+    And          -> "and"
+    Or           -> "or"
+    Not          -> "not"
+    Eq           -> "=="
+    Neq          -> "!="
+    Add          -> "+"
+    Mul          -> "*"
+    Div          -> "/"
+    Sub          -> "-"
+    Neg          -> "~"
+    At           -> "!"
+    Cons         -> "::"
+    Order o      -> show o
+    TypeClass tc -> show tc
+    Map          -> "map"
+    Fold         -> "fold"
+    Quant All    -> "every"
+    Quant Any    -> "some"
+    QuantIn All  -> "everyIn"
+    QuantIn Any  -> "someIn"
+
 builtinSymbols :: [(Symbol, Builtin)]
-builtinSymbols =
-  -- Types
-  [ "Bool"         |-> Bool
-  , "Prop"         |-> Prop
-  , "Nat"          |-> Nat
-  , "Int"          |-> Int
-  , "Real"         |-> Real
-  , "List"         |-> List
-  , "Tensor"       |-> Tensor
-  -- Type classes
-  , "HasEq"        |-> HasEq
-  , "HasOrd"       |-> HasOrd
-  , "IsTruth"      |-> IsTruth
-  , "IsContainer"  |-> IsContainer
-  , "IsNatural"    |-> IsNatural
-  , "IsIntegral"   |-> IsIntegral
-  , "IsRational"   |-> IsRational
-  , "IsReal"       |-> IsReal
-  , "IsQuantify"   |-> IsQuantifiable
-  -- Operations
-  , "if"           |-> If
-  , "implies"      |-> Impl
-  , "and"          |-> And
-  , "or"           |-> Or
-  , "not"          |-> Not
-  , "=="           |-> Eq
-  , "!="           |-> Neq
-  , "<="           |-> Order Le
-  , "<"            |-> Order Lt
-  , ">="           |-> Order Ge
-  , ">"            |-> Order Gt
-  , "+"            |-> Add
-  , "*"            |-> Mul
-  , "/"            |-> Div
-  , "-"            |-> Sub
-  , "~"            |-> Neg -- Negation is changed from "-" to "~" during elaboration.
-  , "!"            |-> At
-  , "::"           |-> Cons
-  , "every"        |-> Quant All
-  , "some"         |-> Quant Any
-  , "everyIn"      |-> QuantIn All
-  , "someIn"       |-> QuantIn Any
-  , "map"          |-> Map
-  , "fold"         |-> Fold
+builtinSymbols = map (first pack)
+  [ show Bool          |-> Bool
+  , show Prop          |-> Prop
+  , show Nat           |-> Nat
+  , show Int           |-> Int
+  , show Real          |-> Real
+  , show List          |-> List
+  , show Tensor        |-> Tensor
+  , show If            |-> If
+  , show Impl          |-> Impl
+  , show And           |-> And
+  , show Or            |-> Or
+  , show Not           |-> Not
+  , show Eq            |-> Eq
+  , show Neq           |-> Neq
+  , show (Order Le)    |-> Order Le
+  , show (Order Lt)    |-> Order Lt
+  , show (Order Ge)    |-> Order Ge
+  , show (Order Gt)    |-> Order Gt
+  , show Add           |-> Add
+  , show Mul           |-> Mul
+  , show Div           |-> Div
+  , show Sub           |-> Sub
+  , show Neg           |-> Neg
+  , show At            |-> At
+  , show Cons          |-> Cons
+  , show (Quant All)   |-> Quant All
+  , show (Quant Any)   |-> Quant Any
+  , show (QuantIn All) |-> QuantIn All
+  , show (QuantIn Any) |-> QuantIn Any
+  , show Map           |-> Map
+  , show Fold          |-> Fold
   ]
 
 builtinFromSymbol :: Symbol -> Maybe Builtin
 builtinFromSymbol symbol = lookup symbol builtinSymbols
 
 symbolFromBuiltin :: Builtin -> Symbol
-symbolFromBuiltin builtin =
-  case lookup' builtin builtinSymbols of
-    Nothing -> developerError $ "Missing symbol for builtin" <+> pretty (show builtin)
-    Just s  -> s
-
-lookup' :: (Eq b) => b -> [(a,b)] -> Maybe a
-lookup' _ [] =  Nothing
-lookup' key ((x,y):xys)
-  | key == y  =  Just x
-  | otherwise =  lookup' key xys
+symbolFromBuiltin builtin = pack $ show builtin

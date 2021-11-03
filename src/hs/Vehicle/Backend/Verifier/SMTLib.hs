@@ -309,15 +309,8 @@ compileBuiltin ann = \case
   Real           -> typeError "Real"
   List           -> typeError "List"
   Tensor         -> typeError "Tensor"
-  HasEq          -> typeError "HasEq"
-  HasOrd         -> typeError "HasOrd"
-  IsTruth        -> typeError "IsTruth"
-  IsNatural      -> typeError "IsNatural"
-  IsIntegral     -> typeError "IsIntegral"
-  IsRational     -> typeError "IsRational"
-  IsReal         -> typeError "IsReal"
-  IsContainer    -> typeError "IsContainer"
-  IsQuantifiable -> typeError "IsQuantifiable"
+
+  TypeClass tc   -> typeError "HasEq"
 
   QuantIn _      -> normalisationError "QuantIn"
 

@@ -99,6 +99,10 @@ isHole :: Expr var ann -> Bool
 isHole (Hole _ _ ) = True
 isHole _           = False
 
+isProperty :: Expr var ann -> Bool
+isProperty (Builtin _ Prop) = True
+isProperty _                = False
+
 freeNames :: CheckedExpr -> [Identifier]
 freeNames = cata $ \case
   TypeF     _                   -> []
@@ -153,10 +157,10 @@ mkTensorType ann tElem dims =
   App ann (Builtin ann Tensor) [ExplicitArg tElem, ExplicitArg dimList]
 
 mkIsTruth :: CheckedAnn -> CheckedExpr -> CheckedExpr
-mkIsTruth ann t = App ann (Builtin ann IsTruth) [ExplicitArg t]
+mkIsTruth ann t = App ann (Builtin ann (TypeClass IsTruth)) [ExplicitArg t]
 
 mkIsContainer :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkIsContainer ann tElem tCont = App ann (Builtin ann IsContainer)
+mkIsContainer ann tElem tCont = App ann (Builtin ann (TypeClass IsContainer))
   [ExplicitArg tElem, ExplicitArg tCont]
 
 -- Expressions

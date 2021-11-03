@@ -26,10 +26,3 @@ resolutionError name = developerError $
 normalisationError :: Doc a -> b
 normalisationError name = developerError $
   unexpectedExprError name <+> "We should have normalised this out."
-
---------------------------------------------------------------------------------
--- Results
-
-isProperty :: CheckedExpr -> Bool
-isProperty (Builtin _ Prop) = True
-isProperty _                = False
