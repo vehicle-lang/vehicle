@@ -218,8 +218,9 @@ inferArgs p (Pi _ binder resultType) (arg : args)
     return (typeAfterApplication, checkedArg : checkedArgs)
 
 inferArgs _ (Pi _ binder _) (arg : _)
-  | visibilityOf binder /= visibilityOf arg && visibilityOf binder == Explicit =
-    throwError $ MissingExplicitArg arg (typeOf binder)
+  | visibilityOf binder /= visibilityOf arg && visibilityOf binder == Explicit = do
+    ctx <- getBoundCtx
+    throwError $ MissingExplicitArg ctx arg (typeOf binder)
 
 -- This case handles either
 -- (`visibilityOf binder /= visibilityOf arg` and `visibilityOf binder /= Explicit`)

@@ -155,8 +155,9 @@ data TypingError
   | UnsolvedConstraints
     (NonEmpty Constraint)
   | MissingExplicitArg
-    UncheckedArg  -- The non-explicit argument
-    CheckedExpr   -- Expected type
+    BoundCtx                -- The context at the time of the failure
+    UncheckedArg            -- The non-explicit argument
+    CheckedExpr             -- Expected type of the argument
 
 instance MeaningfulError TypingError where
   details (Mismatch p ctx candidate expected) = UError $ UserError
@@ -187,3 +188,11 @@ instance MeaningfulError TypingError where
                       prettyFriendlyDescope (boundContext firstConstraint) firstConstraint
     , fix        = "Try adding more type annotations"
     }
+
+  details (MissingExplicitArg ctx arg argType) = UError $ UserError
+    { provenance = provenanceOf arg
+    , problem    = "expected an" <+> pretty Explicit <+> "argument of type" <+>
+                   argTypeDoc <+> "but instead found" <+>
+                   pretty (visibilityOf arg) <+> "argument" <+> squotes (prettyFriendlyDescope ctx (argExpr arg))
+    , fix        = "Try inserting an argument of type" <+> argTypeDoc
+    } where argTypeDoc = prettyFriendlyDescope ctx argType
