@@ -85,7 +85,7 @@ instance ScopeCheck [InputDecl] [UncheckedDecl] where
   scope []       = return []
   scope (d : ds) = do
     d' <- scope d
-    ds' <- bindDecl (declIdent d') (scope ds)
+    ds' <- bindDecl (identifierOf d') (scope ds)
     return (d' : ds')
 
 instance ScopeCheck InputDecl UncheckedDecl where

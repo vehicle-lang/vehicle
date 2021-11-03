@@ -28,7 +28,7 @@ import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (MonadReader, Reader, runReader, runReaderT, ask, local)
 import Control.Monad.State (MonadState(..), modify, gets)
 import Data.List (partition)
-import Data.Map qualified as Map ( lookup )
+import Data.Map qualified as Map (lookup)
 import Data.List.NonEmpty (NonEmpty(..))
 
 import Vehicle.Prelude

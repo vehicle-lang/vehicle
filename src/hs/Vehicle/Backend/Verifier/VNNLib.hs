@@ -99,7 +99,7 @@ type MonadVNNLib m =
 getNetworkDetailsFromCtx :: MonadVNNLib m => Identifier -> m NetworkDetails
 getNetworkDetailsFromCtx ident = do
   networkDecl <- asks (fromMaybe outOfScopeError . Map.lookup ident)
-  getNetworkDetails (provenanceOf networkDecl) (declIdent networkDecl) (declType networkDecl)
+  getNetworkDetails (provenanceOf networkDecl) (identifierOf networkDecl) (typeOf networkDecl)
   where
     outOfScopeError :: a
     outOfScopeError = developerError $

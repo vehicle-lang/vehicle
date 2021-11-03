@@ -22,6 +22,7 @@ import Control.Monad.Reader (MonadReader, Reader, ask, runReader, runReaderT, lo
 import Control.Monad.Trans (lift)
 
 import Vehicle.Language.AST.Core
+import Vehicle.Language.AST.Name
 
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IM

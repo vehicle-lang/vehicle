@@ -284,14 +284,6 @@ instance Pretty DeclType where
     Network  -> "network"
     Dataset  -> "dataset"
 
-newtype Identifier = Identifier Symbol
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty Identifier where
-  pretty (Identifier s) = pretty s
-
-instance NFData Identifier
-
 -- | Type of top-level declarations.
 data Decl var ann
   = DeclNetw
@@ -316,6 +308,12 @@ instance HasProvenance ann => HasProvenance (Decl var ann) where
     DeclNetw p _ _ -> p
     DeclData p _ _ -> p
     DefFun p _ _ _ -> p
+
+instance HasIdentifier (Decl var ann) where
+  identifierOf = \case
+    DeclNetw _ i _ -> i
+    DeclData _ i _ -> i
+    DefFun _ i _ _ -> i
 
 --------------------------------------------------------------------------------
 -- Programs

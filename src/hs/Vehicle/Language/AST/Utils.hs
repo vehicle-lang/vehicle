@@ -12,7 +12,7 @@ import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.DeBruijn
 import Vehicle.Language.AST.Builtin
 import Vehicle.Language.AST.Visibility (Visibility(..))
-import Vehicle.Language.AST.Name (Name(..))
+import Vehicle.Language.AST.Name (Name(..), Identifier)
 
 --------------------------------------------------------------------------------
 -- Patterns
@@ -98,16 +98,6 @@ instance IsBoundCtx [Name] where
 isHole :: Expr var ann -> Bool
 isHole (Hole _ _ ) = True
 isHole _           = False
-
-declIdent :: Decl var ann -> Identifier
-declIdent (DeclNetw _ ident _) = ident
-declIdent (DeclData _ ident _) = ident
-declIdent (DefFun _ ident _ _) = ident
-
-declType :: Decl var ann -> Expr var ann
-declType (DeclNetw _ _ t) = t
-declType (DeclData _ _ t) = t
-declType (DefFun _ _ t _) = t
 
 freeNames :: CheckedExpr -> [Identifier]
 freeNames = cata $ \case
