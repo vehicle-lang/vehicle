@@ -19,8 +19,7 @@ runDelab :: Delaborate a b => a -> Logger b
 runDelab x = do
   -- TODO filter out free variables from the expression in the supply monad
   logDebug "Beginning delaboration"
-  let freshNames = [ "_x" <> pack (show i) | i <- [0::Int ..]]
-  result <- runSupplyT (delab x) freshNames
+  result <- runSupplyT (delab x) V.freshNames
   logDebug "Ending delaboration\n"
   return result
 

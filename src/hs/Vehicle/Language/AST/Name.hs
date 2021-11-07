@@ -2,6 +2,7 @@ module Vehicle.Language.AST.Name where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
+import Data.Text (pack)
 
 import Vehicle.Prelude
 
@@ -21,6 +22,9 @@ instance Pretty Name where
 
 class HasName a where
   nameOf :: a -> Name
+
+freshNames :: [Symbol]
+freshNames = [ "_x" <> pack (show i) | i <- [0::Int ..]]
 
 --------------------------------------------------------------------------------
 -- Identifiers

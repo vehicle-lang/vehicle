@@ -11,6 +11,7 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet (toAscList)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (toAscList)
+import Data.Version (Version, showVersion)
 
 import Prettyprinter ( line', unAnnotate, layoutPretty, defaultLayoutOptions)
 import Prettyprinter.Internal (Doc(Annotated))
@@ -86,3 +87,6 @@ instance Pretty (IntMap (Doc b)) where
       result = unAnnotate $ "{" <+> align (group
         (concatWith (\x y -> x <> ";" <> line <> y) entries')
         <> softline <> "}")
+
+instance Pretty Version where
+  pretty = pretty . showVersion

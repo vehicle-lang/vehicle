@@ -102,11 +102,11 @@ type0 :: DSLExpr
 type0 = DSL $ const Type0
 
 tBool, tProp, tNat, tInt, tReal :: DSLExpr
-tBool = con Bool
-tProp = con Prop
-tNat  = con Nat
-tInt  = con Int
-tReal = con Real
+tBool = con (BooleanType Bool)
+tProp = con (BooleanType Prop)
+tNat  = con (NumericType Nat)
+tInt  = con (NumericType Int)
+tReal = con (NumericType Real)
 
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
 tTensor tElem dims = con Tensor `app` [tElem, dims]

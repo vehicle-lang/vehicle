@@ -35,6 +35,21 @@ pattern LitReal ann n = Literal ann (LRat n)
 pattern LitBool :: ann -> Bool -> Expr var ann
 pattern LitBool ann n = Literal ann (LBool n)
 
+pattern BuiltinNumericType :: ann -> NumericType -> Expr var ann
+pattern BuiltinNumericType ann op = Builtin ann (NumericType op)
+
+pattern BuiltinBooleanType :: ann -> BooleanType -> Expr var ann
+pattern BuiltinBooleanType ann op = Builtin ann (BooleanType op)
+
+pattern BuiltinTypeClass :: ann -> TypeClass -> Expr var ann
+pattern BuiltinTypeClass ann tc = Builtin ann (TypeClass tc)
+
+pattern BuiltinOrder :: ann -> Order -> Expr var ann
+pattern BuiltinOrder ann order = Builtin ann (Order order)
+
+pattern BuiltinEquality :: ann -> Equality -> Expr var ann
+pattern BuiltinEquality ann eq = Builtin ann (Equality eq)
+
 --------------------------------------------------------------------------------
 -- Type synonyms
 
@@ -100,8 +115,8 @@ isHole (Hole _ _ ) = True
 isHole _           = False
 
 isProperty :: Expr var ann -> Bool
-isProperty (Builtin _ Prop) = True
-isProperty _                = False
+isProperty (Builtin _ (BooleanType Prop)) = True
+isProperty _                              = False
 
 freeNames :: CheckedExpr -> [Identifier]
 freeNames = cata $ \case
@@ -152,8 +167,9 @@ mkListType ann tElem = App ann (Builtin ann List) [ExplicitArg tElem]
 
 mkTensorType :: CheckedAnn -> CheckedExpr -> [Int] -> CheckedExpr
 mkTensorType ann tElem dims =
+  let listType = mkListType ann (Builtin ann (NumericType Nat)) in
   let dimExprs = fmap (Literal ann . LNat) dims in
-  let dimList  = mkSeq ann (Builtin ann Nat) (mkListType ann (Builtin ann Nat)) dimExprs in
+  let dimList  = mkSeq ann (Builtin ann (NumericType Nat)) listType dimExprs in
   App ann (Builtin ann Tensor) [ExplicitArg tElem, ExplicitArg dimList]
 
 mkIsTruth :: CheckedAnn -> CheckedExpr -> CheckedExpr
@@ -177,13 +193,13 @@ mkBool :: CheckedAnn -> CheckedExpr -> Bool -> CheckedExpr
 mkBool ann t b = mkLiteral ann (LBool b) t (PrimDict t)
 
 mkNat :: CheckedAnn -> Int -> CheckedExpr
-mkNat ann n = let t = Builtin ann Nat in mkLiteral ann (LNat n) t (PrimDict t)
+mkNat ann n  = let t = Builtin ann (NumericType Nat) in mkLiteral ann (LNat n) t (PrimDict t)
 
 mkInt :: CheckedAnn -> Int -> CheckedExpr
-mkInt ann i = let t = Builtin ann Int in mkLiteral ann (LInt i) t (PrimDict t)
+mkInt ann i  = let t = Builtin ann (NumericType Int) in mkLiteral ann (LInt i) t (PrimDict t)
 
 mkReal :: CheckedAnn -> Double -> CheckedExpr
-mkReal ann r = let t = Builtin ann Real in mkLiteral ann (LRat r) t (PrimDict t)
+mkReal ann r = let t = Builtin ann (NumericType Real) in mkLiteral ann (LRat r) t (PrimDict t)
 
 mkSeq' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> [CheckedExpr] -> CheckedExpr
 mkSeq' ann tElem tCont tc xs = App ann (Seq ann xs) [tElem, tCont, tc]
@@ -197,7 +213,7 @@ mkSeq ann tElem tCont = mkSeq' ann
 -- Expressions
 
 mkEq' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkEq' ann tElem tRes tc e1 e2 = App ann (Builtin ann Eq)
+mkEq' ann tElem tRes tc e1 e2 = App ann (Builtin ann (Equality Eq))
   [tElem, tRes, tc, ExplicitArg e1, ExplicitArg e2]
 
 mkEq :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
@@ -214,32 +230,14 @@ mkNot ann t = mkNot' ann
   (MachineImplicitArg t)
   (MachineInstanceArg (PrimDict (mkIsTruth ann t)))
 
-mkBoolOp2' :: Builtin -> CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkBoolOp2' op ann t tc e1 e2 = App ann (Builtin ann op)
+mkBoolOp2' :: BooleanOp2 -> CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkBoolOp2' op ann t tc e1 e2 = App ann (Builtin ann (BooleanOp2 op))
   [t, tc, ExplicitArg e1, ExplicitArg e2]
 
-mkBoolOp2 :: Builtin -> CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkBoolOp2 :: BooleanOp2 -> CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkBoolOp2 op ann t = mkBoolOp2' op ann
   (MachineImplicitArg t)
   (MachineInstanceArg (PrimDict (mkIsTruth ann t)))
-
-mkImplies' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkImplies' = mkBoolOp2' Impl
-
-mkImplies :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkImplies = mkBoolOp2 Impl
-
-mkAnd' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkAnd' = mkBoolOp2' And
-
-mkAnd :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkAnd = mkBoolOp2 And
-
-mkOr' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkOr' = mkBoolOp2' Or
-
-mkOr :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkOr = mkBoolOp2 Or
 
 mkAt' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkAt' ann tElem tCont tc xs i = App ann (Builtin ann At)

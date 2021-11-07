@@ -510,13 +510,10 @@ typeOfLiteral p l = fromDSL $ case l of
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedExpr
 typeOfBuiltin p b = fromDSL $ case b of
-  Bool            -> type0
-  Prop            -> type0
-  Nat             -> type0
-  Int             -> type0
-  Real            -> type0
-  List            -> type0 ~> type0
-  Tensor          -> type0 ~> tList tNat ~> type0
+  BooleanType _ -> type0
+  NumericType _ -> type0
+  List          -> type0 ~> type0
+  Tensor        -> type0 ~> tList tNat ~> type0
 
   TypeClass HasEq           -> type0 ~> type0 ~> type0
   TypeClass HasOrd          -> type0 ~> type0 ~> type0
@@ -529,24 +526,15 @@ typeOfBuiltin p b = fromDSL $ case b of
   TypeClass IsQuantifiable  -> type0 ~> type0 ~> type0
 
   If   -> typeOfIf
+  Not          -> typeOfBoolOp1 p
+  BooleanOp2 _ -> typeOfBoolOp2 p
+  Neg          -> typeOfNumOp1 (isIntegral p)
+  NumericOp2 _ -> typeOfNumOp2 (isNatural  p)
+
+  Equality _ -> typeOfEqualityOp p
+  Order    _ -> typeOfComparisonOp p
+
   Cons -> typeOfCons
-
-  Impl -> typeOfBoolOp2 p
-  And  -> typeOfBoolOp2 p
-  Or   -> typeOfBoolOp2 p
-  Not  -> typeOfBoolOp1 p
-
-  Eq   -> typeOfEqualityOp p
-  Neq  -> typeOfEqualityOp p
-
-  Order _ -> typeOfComparisonOp p
-
-  Add  -> typeOfNumOp2 (isNatural  p)
-  Sub  -> typeOfNumOp2 (isIntegral p)
-  Mul  -> typeOfNumOp2 (isNatural  p)
-  Div  -> typeOfNumOp2 (isRational p)
-  Neg  -> typeOfNumOp1 (isIntegral p)
-
   At   -> typeOfAtOp p
   Map  -> typeOfMapOp
   Fold -> typeOfFoldOp p

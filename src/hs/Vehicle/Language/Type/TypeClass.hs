@@ -86,38 +86,24 @@ solveHasEq :: MonadConstraintSolving m
            -> CheckedExpr
            -> m ConstraintProgress
 -- TODO insert Container classes
-solveHasEq _          (Builtin _ Bool)  (Builtin _ Prop) = return simplySolved
-solveHasEq _          (Builtin _ Prop)  (Builtin _ Prop) = return simplySolved
-solveHasEq _          (Builtin _ Nat)   (Builtin _ Prop) = return simplySolved
-solveHasEq _          (Builtin _ Int)   (Builtin _ Prop) = return simplySolved
-solveHasEq _          (Builtin _ Real)  (Builtin _ Prop) = return simplySolved
-solveHasEq _          (Builtin _ Bool)  (Builtin _ Bool) = return simplySolved
-solveHasEq _          (Builtin _ Prop)  (Builtin _ Bool) = return simplySolved
-solveHasEq _          (Builtin _ Nat)   (Builtin _ Bool) = return simplySolved
-solveHasEq _          (Builtin _ Int)   (Builtin _ Bool) = return simplySolved
-solveHasEq _          (Builtin _ Real)  (Builtin _ Bool) = return simplySolved
-solveHasEq constraint _                 _                =
-  throwError $ FailedConstraints (constraint :| [])
+solveHasEq _ (BuiltinBooleanType _ _)  (BuiltinBooleanType _ _) = return simplySolved
+solveHasEq _ (BuiltinNumericType _ _)  (BuiltinBooleanType _ _) = return simplySolved
+solveHasEq constraint _ _ = throwError $ FailedConstraints (constraint :| [])
 
 solveHasOrd :: MonadConstraintSolving m
             => Constraint
             -> CheckedExpr
             -> CheckedExpr
             -> m ConstraintProgress
-solveHasOrd _          (Builtin _ Nat)  (Builtin _ Prop) = return simplySolved
-solveHasOrd _          (Builtin _ Int)  (Builtin _ Prop) = return simplySolved
-solveHasOrd _          (Builtin _ Real) (Builtin _ Prop) = return simplySolved
-solveHasOrd constraint _                _                =
-  throwError $ FailedConstraints (constraint :| [])
+solveHasOrd _ (BuiltinNumericType _ _) (BuiltinBooleanType _ Prop) = return simplySolved
+solveHasOrd constraint _ _ = throwError $ FailedConstraints (constraint :| [])
 
 solveIsTruth :: MonadConstraintSolving m
              => Constraint
              -> CheckedExpr
              -> m ConstraintProgress
-solveIsTruth _          (Builtin _ Bool) = return simplySolved
-solveIsTruth _          (Builtin _ Prop) = return simplySolved
-solveIsTruth constraint _                =
-  throwError $ FailedConstraints (constraint :| [])
+solveIsTruth _ (BuiltinBooleanType _ _) = return simplySolved
+solveIsTruth constraint _ = throwError $ FailedConstraints (constraint :| [])
 
 solveIsContainer :: MonadConstraintSolving m
                  => Constraint
@@ -143,36 +129,32 @@ solveIsNatural :: MonadConstraintSolving m
                => Constraint
                -> CheckedExpr
                -> m ConstraintProgress
-solveIsNatural _          (Builtin _ Nat)  = return simplySolved
-solveIsNatural _          (Builtin _ Int)  = return simplySolved
-solveIsNatural _          (Builtin _ Real) = return simplySolved
-solveIsNatural constraint _                =
-  throwError $ FailedConstraints (constraint :| [])
+solveIsNatural _ (BuiltinNumericType _ Nat)  = return simplySolved
+solveIsNatural _ (BuiltinNumericType _ Int)  = return simplySolved
+solveIsNatural _ (BuiltinNumericType _ Real) = return simplySolved
+solveIsNatural constraint _ = throwError $ FailedConstraints (constraint :| [])
 
 solveIsIntegral :: MonadConstraintSolving m
              => Constraint
              -> CheckedExpr
              -> m ConstraintProgress
-solveIsIntegral _          (Builtin _ Int)  = return simplySolved
-solveIsIntegral _          (Builtin _ Real) = return simplySolved
-solveIsIntegral constraint  _               =
-  throwError $ FailedConstraints (constraint :| [])
+solveIsIntegral _ (BuiltinNumericType _ Int)  = return simplySolved
+solveIsIntegral _ (BuiltinNumericType _ Real) = return simplySolved
+solveIsIntegral constraint _ = throwError $ FailedConstraints (constraint :| [])
 
 solveIsRational :: MonadConstraintSolving m
              => Constraint
              -> CheckedExpr
              -> m ConstraintProgress
-solveIsRational _          (Builtin _ Real) = return simplySolved
-solveIsRational constraint _                =
-  throwError $ FailedConstraints (constraint :| [])
+solveIsRational _ (BuiltinNumericType _ Real) = return simplySolved
+solveIsRational constraint _ = throwError $ FailedConstraints (constraint :| [])
 
 solveIsReal :: MonadConstraintSolving m
             => Constraint
             -> CheckedExpr
             -> m ConstraintProgress
-solveIsReal _          (Builtin _ Real) = return simplySolved
-solveIsReal constraint _                =
-  throwError $ FailedConstraints (constraint :| [])
+solveIsReal _ (BuiltinNumericType _ Real) = return simplySolved
+solveIsReal constraint _ = throwError $ FailedConstraints (constraint :| [])
 
 solveIsQuantifiable :: MonadConstraintSolving m
                     => Constraint

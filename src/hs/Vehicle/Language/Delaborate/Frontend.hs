@@ -7,7 +7,6 @@ module Vehicle.Language.Delaborate.Frontend
   ) where
 
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Text (pack)
 
 import Vehicle.Frontend.Abs qualified as B
 
@@ -19,8 +18,7 @@ runDelab :: Delaborate a b => a -> Logger b
 runDelab x = do
   -- TODO filter out free variables from the expression in the supply monad
   logDebug "Beginning delaboration"
-  let freshNames = [ "_x" <> pack (show i) | i <- [0::Int ..]]
-  result <- runSupplyT (delab x) freshNames
+  result <- runSupplyT (delab x) V.freshNames
   logDebug "Ending delaboration\n"
   return result
 
@@ -168,11 +166,11 @@ delabApp fun (arg : args) = B.App (delabApp fun args) arg
 
 delabBuiltin :: V.Builtin -> [B.Expr] -> B.Expr
 delabBuiltin fun args = case fun of
-  V.Bool   -> B.Bool tokBool
-  V.Prop   -> B.Prop tokProp
-  V.Nat    -> B.Nat  tokNat
-  V.Int    -> B.Int  tokInt
-  V.Real   -> B.Real tokReal
+  V.BooleanType V.Bool   -> B.Bool tokBool
+  V.BooleanType V.Prop   -> B.Prop tokProp
+  V.NumericType V.Nat    -> B.Nat  tokNat
+  V.NumericType V.Int    -> B.Int  tokInt
+  V.NumericType V.Real   -> B.Real tokReal
   V.List   -> delabOp1 B.List   tokList   args
   V.Tensor -> delabOp2 B.Tensor tokTensor args
 
@@ -186,25 +184,25 @@ delabBuiltin fun args = case fun of
   V.TypeClass V.HasOrd         -> delabOp2 (\tk e1 e2 -> B.TypeC (B.TCOrd  tk e1 e2)) tokTCOrd       args
   V.TypeClass V.IsContainer    -> delabOp2 (\tk e1 e2 -> B.TypeC (B.TCCont tk e1 e2)) tokTCContainer args
 
-  V.Eq  -> delabInfixOp2 B.Eq  tokEq args
-  V.Neq -> delabInfixOp2 B.Neq tokNeq args
+  V.Equality V.Eq  -> delabInfixOp2 B.Eq  tokEq args
+  V.Equality V.Neq -> delabInfixOp2 B.Neq tokNeq args
 
   V.If   -> delabIf args
+  V.BooleanOp2 V.And  -> delabInfixOp2 B.And  tokAnd  args
+  V.BooleanOp2 V.Or   -> delabInfixOp2 B.Or   tokOr   args
+  V.BooleanOp2 V.Impl -> delabInfixOp2 B.Impl tokImpl args
   V.Not  -> delabOp1 B.Not tokNot args
-  V.And  -> delabInfixOp2 B.And  tokAnd  args
-  V.Or   -> delabInfixOp2 B.Or   tokOr   args
-  V.Impl -> delabInfixOp2 B.Impl tokImpl args
 
   V.Order V.Le -> delabInfixOp2 B.Le tokLe args
   V.Order V.Lt -> delabInfixOp2 B.Lt tokLt args
   V.Order V.Ge -> delabInfixOp2 B.Ge tokGe args
   V.Order V.Gt -> delabInfixOp2 B.Gt tokGt args
 
+  V.NumericOp2 V.Add -> delabInfixOp2 B.Add tokAdd args
+  V.NumericOp2 V.Sub -> delabInfixOp2 B.Sub tokSub args
+  V.NumericOp2 V.Mul -> delabInfixOp2 B.Mul tokMul args
+  V.NumericOp2 V.Div -> delabInfixOp2 B.Div tokDiv args
   V.Neg -> delabOp1      B.Neg tokSub args
-  V.Add -> delabInfixOp2 B.Add tokAdd args
-  V.Sub -> delabInfixOp2 B.Sub tokSub args
-  V.Mul -> delabInfixOp2 B.Mul tokMul args
-  V.Div -> delabInfixOp2 B.Div tokDiv args
 
   V.Cons -> delabInfixOp2 B.Cons tokCons args
   V.At   -> delabInfixOp2 B.At   tokAt   args

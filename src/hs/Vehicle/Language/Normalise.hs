@@ -159,47 +159,41 @@ nfApp ann  fun@(Builtin _ op) args      = do
   let e = normAppList ann fun args
   case (op, args) of
     -- Equality
-    (Eq, [tElem, tRes, tc, arg1, arg2]) ->
-      fromMaybe (return e) (nfEq ann tElem tRes tc (argExpr arg1) (argExpr arg2))
-
-    -- Inequality
-    (Neq, [_tElem, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      --(ETrue  _, _)          -> normApp $ composeApp ann (Builtin ann Not) [_t2, _, arg2]
-      (EFalse _, _)              -> return $ argExpr arg2
-      (LitNat  _ m, LitNat  _ n) -> return $ mkBool ann (argExpr tRes) (m /= n)
-      (LitInt  _ i, LitInt  _ j) -> return $ mkBool ann (argExpr tRes) (i /= j)
-      (LitReal _ x, LitReal _ y) -> return $ mkBool ann (argExpr tRes) (x /= y)
-      _                          -> return e
+    (Equality eq, [tElem, tRes, tc, arg1, arg2]) ->
+      case eq of
+        Eq  -> fromMaybe (return e) (nfEq ann tElem tRes tc (argExpr arg1) (argExpr arg2))
+        Neq -> case (argHead arg1, argHead arg2) of
+          --(ETrue  _, _)          -> normApp $ composeApp ann (Builtin ann Not) [_t2, _, arg2]
+          (EFalse _, _)              -> return $ argExpr arg2
+          (LitNat  _ m, LitNat  _ n) -> return $ mkBool ann (argExpr tRes) (m /= n)
+          (LitInt  _ i, LitInt  _ j) -> return $ mkBool ann (argExpr tRes) (i /= j)
+          (LitReal _ x, LitReal _ y) -> return $ mkBool ann (argExpr tRes) (x /= y)
+          _                          -> return e
 
     -- Not
     (Not, [t, tc, arg]) ->
       fromMaybe (return e) (nfNot ann t tc arg)
 
-    -- And
-    (And, [t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (ETrue  _, _)        -> return $ argExpr arg2
-      (_,        ETrue  _) -> return $ argExpr arg1
-      (EFalse _, _)        -> return $ mkBool ann (argExpr t) False
-      (_,        EFalse _) -> return $ mkBool ann (argExpr t) False
-      _                    -> return e
-    -- TODO implement associativity rules?
+    -- Binary boolean operations
+    (BooleanOp2 op2, [t, tc, arg1, arg2]) -> case (op2, argHead arg1, argHead arg2) of
+      -- TODO implement associativity rules?
+      -- See https://github.com/wenkokke/vehicle/issues/2
+      (And, ETrue  _, _)        -> return $ argExpr arg2
+      (And, _,        ETrue  _) -> return $ argExpr arg1
+      (And, EFalse _, _)        -> return $ mkBool ann (argExpr t) False
+      (And, _,        EFalse _) -> return $ mkBool ann (argExpr t) False
 
-    -- Or
-    (Or, [t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (ETrue  _, _)        -> return $ mkBool ann (argExpr t) True
-      (EFalse _, _)        -> return $ argExpr arg2
-      (_,        ETrue  _) -> return $ mkBool ann (argExpr t) True
-      (_,        EFalse _) -> return $ argExpr arg1
-      _                    -> return e
-    -- See https://github.com/wenkokke/vehicle/issues/2
+      (Or, ETrue  _, _)        -> return $ mkBool ann (argExpr t) True
+      (Or, EFalse _, _)        -> return $ argExpr arg2
+      (Or, _,        ETrue  _) -> return $ mkBool ann (argExpr t) True
+      (Or, _,        EFalse _) -> return $ argExpr arg1
 
-    -- Implication
-    (Impl, [t, tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (ETrue  _, _)        -> return $ argExpr arg2
-      (EFalse _, _)        -> return $ mkBool ann (argExpr t) True
-      (_,        ETrue  _) -> return $ mkBool ann (argExpr t) True
-      (_,        EFalse _) -> return $ App ann (Builtin ann Not) [t, tc, arg2]
-      _                    -> return e
+      (Impl, ETrue  _, _)        -> return $ argExpr arg2
+      (Impl, EFalse _, _)        -> return $ mkBool ann (argExpr t) True
+      (Impl, _,        ETrue  _) -> return $ mkBool ann (argExpr t) True
+      (Impl, _,        EFalse _) -> return $ App ann (Builtin ann Not) [t, tc, arg2]
+
+      _ -> return e
 
     -- If
     (If, [_tRes, arg1, arg2, arg3]) -> case argHead arg1 of
@@ -219,32 +213,22 @@ nfApp ann  fun@(Builtin _ op) args      = do
       (LitReal _ x, LitReal _ y) -> return $ mkBool ann (argExpr tRes) (x < y)
       _                          -> return e
 
-    -- Addition
-    (Add, [_t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (LitNat  _ m, LitNat  _ n) -> return $ mkNat  ann (m + n)
-      (LitInt  _ i, LitInt  _ j) -> return $ mkInt  ann (i + j)
-      (LitReal _ x, LitReal _ y) -> return $ mkReal ann (x + y)
+    -- Binary numeric ops
+    (NumericOp2 op2, [_t, _tc, arg1, arg2]) -> case (op2, argHead arg1, argHead arg2) of
+      -- TODO implement zero/identity/associativity rules?
+      (Add, LitNat  _ m, LitNat  _ n) -> return $ mkNat  ann (m + n)
+      (Add, LitInt  _ i, LitInt  _ j) -> return $ mkInt  ann (i + j)
+      (Add, LitReal _ x, LitReal _ y) -> return $ mkReal ann (x + y)
+
+      (Sub, LitInt  _ i, LitInt  _ j) -> return $ mkInt  ann (i - j)
+      (Sub, LitReal _ x, LitReal _ y) -> return $ mkReal ann (x - y)
+
+      (Mul, LitInt  _ i, LitInt  _ j) -> return $ mkInt  ann (i * j)
+      (Mul, LitReal _ x, LitReal _ y) -> return $ mkReal ann (x * y)
+
+      (Div, LitReal _ x, LitReal _ y) -> return $ mkReal ann (x / y)
+
       _                          -> return e
-    -- TODO implement identity/associativity rules?
-
-    -- Subtraction
-    (Sub, [_t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (LitInt  _ i, LitInt  _ j) -> return $ mkInt  ann (i - j)
-      (LitReal _ x, LitReal _ y) -> return $ mkReal ann (x - y)
-      _                      -> return e
-    -- TODO implement identity/associativity rules?
-
-    -- Multiplication
-    (Mul, [_t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (LitInt  _ i, LitInt  _ j) -> return $ mkInt  ann (i * j)
-      (LitReal _ x, LitReal _ y) -> return $ mkReal ann (x * y)
-      _                      -> return e
-    -- TODO implement zero/identity/associativity rules?
-
-    -- Division
-    (Div, [_t, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (LitReal _ x, LitReal _ y) -> return $ mkReal ann (x / y)
-      _                      -> return e
 
     -- Negation
     (Neg, [t, tc, arg]) -> fromMaybe (return e) (nfNeg ann t tc arg)
@@ -308,7 +292,7 @@ nfEq ann _tEq tRes tc e1 e2 = case (toHead e1, toHead e2) of
     if length xs /= length ys then
       return $ mkBool ann (argExpr tRes) False
     else
-      nf $ foldr (\(x,y) res -> mkAnd' ann tRes tc (mkEq' ann tElem tRes tc x y) res) (mkBool ann (argExpr tRes) True) (zip xs ys)
+      nf $ foldr (\(x,y) res -> mkBoolOp2' And ann tRes tc (mkEq' ann tElem tRes tc x y) res) (mkBool ann (argExpr tRes) True) (zip xs ys)
   _                     -> Nothing
   -- TODO implement reflexive rules?
 
@@ -396,7 +380,7 @@ nfQuantifierIn :: MonadNorm m
 nfQuantifierIn ann q tElem tCont tRes _tc lam container = do
   let (bop, unit) = quantImplementation q
   let isTruthTC = MachineInstanceArg (PrimDict (mkIsTruth ann (argExpr tRes)))
-  let bopExpr = App ann (Builtin ann bop) [tRes, isTruthTC]
+  let bopExpr = App ann (Builtin ann (BooleanOp2 bop)) [tRes, isTruthTC]
   let unitExpr = mkLiteral' ann (LBool unit) tRes isTruthTC
   let tResCont = mapArgExpr (substContainerType tRes) tCont
   let tResContTC = PrimDict $ mkIsContainer ann (argExpr tRes) (argExpr tResCont)
@@ -404,7 +388,7 @@ nfQuantifierIn ann q tElem tCont tRes _tc lam container = do
   let foldedContainer = mkFold' ann tRes tResCont tRes (MachineInstanceArg tResContTC) bopExpr unitExpr mappedContainer
   Just (nf foldedContainer)
 
-quantImplementation :: Quantifier -> (Builtin, Bool)
+quantImplementation :: Quantifier -> (BooleanOp2, Bool)
 quantImplementation All = (And, True)
 quantImplementation Any = (Or,  False)
 
@@ -423,14 +407,13 @@ nfNot ann t tc arg = case toHead (argExpr arg) of
   (EFalse _, [_, _])            -> Just $ return $ mkBool ann (argExpr t) True
 
   -- Negation juggling
-  (Builtin _ (Quant q), [lam])   -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
-  (Builtin _ Impl, [_,_,e1,e2])  -> Just $ nf $ mkAnd' ann t tc (argExpr e1) (neg (argExpr e2))
+  (Builtin _ (Quant q),         [lam])        -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
+  (Builtin _ (BooleanOp2 Impl), [_,_,e1,e2])  -> Just $ nf $ mkBoolOp2' And ann t tc (argExpr e1) (neg (argExpr e2))
   --(Builtin _ And,  [_,_,e1,e2])  -> Just $ nf $ mkOr'  ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
-  (Builtin _ Or,   [_,_,e1,e2])  -> Just $ nf $ mkAnd' ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
-  (Builtin ann2 (Order o), args) -> Just $ return $ normAppList ann (Builtin ann2 (Order (negateOrder o))) args
-  (Builtin ann2 Eq,        args) -> Just $ return $ normAppList ann (Builtin ann2 Neq) args
-  (Builtin ann2 Neq,       args) -> Just $ return $ normAppList ann (Builtin ann2 Eq) args
-  _                              -> Nothing
+  (Builtin _ (BooleanOp2 Or),   [_,_,e1,e2])  -> Just $ nf $ mkBoolOp2' And ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
+  (BuiltinOrder    ann2 o,      args)         -> Just $ return $ normAppList ann (BuiltinOrder    ann2 (negateOrder o)) args
+  (BuiltinEquality ann2 eq,     args)         -> Just $ return $ normAppList ann (BuiltinEquality ann2 (negateEquality eq)) args
+  _                                           -> Nothing
   where
     neg = mkNot' ann t tc
 
@@ -457,6 +440,10 @@ negateOrder Le = Gt
 negateOrder Lt = Ge
 negateOrder Ge = Lt
 negateOrder Gt = Le
+
+negateEquality :: Equality -> Equality
+negateEquality Eq = Neq
+negateEquality Neq = Eq
 
 -----------------------------------------------------------------------------
 -- Normalising negation

@@ -234,8 +234,8 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
   let (outputsExpr, _)             = mkMagicVariableSeq outputType outputVarIndices
 
   let body'         = outputsExpr `substInto` letBody
-  let inputEquality = mkEq ann inputsExprType (Builtin ann Prop) inputsExpr networkInput
-  let newBody       = mkImplies ann (Builtin ann Prop) inputEquality body'
+  let inputEquality = mkEq ann inputsExprType (BuiltinBooleanType ann Prop) inputsExpr networkInput
+  let newBody       = mkBoolOp2 Impl ann (BuiltinBooleanType ann Prop) inputEquality body'
 
   return newBody
   where
@@ -362,8 +362,8 @@ getTensorType :: MonadError UnsupportedNetworkType m
               => InputOrOutput
               -> CheckedExpr
               -> m Builtin
-getTensorType _  (Builtin _ Real) = return Real
-getTensorType io _                = throwError $ WrongTensorType io
+getTensorType _  (BuiltinNumericType _ Real) = return (NumericType Real)
+getTensorType io _                           = throwError $ WrongTensorType io
 
 getTensorSize :: MonadError UnsupportedNetworkType m
               => InputOrOutput

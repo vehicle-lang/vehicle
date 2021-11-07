@@ -46,7 +46,7 @@ instance Pretty InputOrOutput where
 
 supportedTypes :: [Builtin]
 supportedTypes =
-  [ Real
+  [ NumericType Real
   ]
 
 -- | Reasons why we might not support the network type.
@@ -102,7 +102,7 @@ instance MeaningfulError SMTLibError where
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "found a mixed" <+>
                      "sequence of quantifiers which is not currently supported when compiling" <+>
                      "to SMTLib. All properties must either be a sequence of" <+>
-                     squotes (pretty All) <+> "s or" <+> squotes (pretty Any) <+> "s"
+                     squotes (pretty (Quant All)) <+> "s or" <+> squotes (pretty (Quant Any)) <+> "s"
       , fix        = "If possible try removing some quantifiers."
       }
 
@@ -258,12 +258,12 @@ negatePropertyIfNecessary False       ann All _body = do
   ident <- ask
   throwError $ UnsupportedQuantifierSequence ann ident
 negatePropertyIfNecessary True        ann  All body  = do
-  let body' = normaliseInternal $ mkNot ann (Builtin ann Prop) body
+  let body' = normaliseInternal $ mkNot ann (Builtin ann (BooleanType Prop)) body
   logDebug $ align $ "Negating universal quantifier:" <+> prettySimple body' <> line
   return (body', False)
 
 splitTopLevelConjunctions :: OutputExpr -> [OutputExpr]
-splitTopLevelConjunctions (App _ann (Builtin _ And) [_, _, e1, e2]) =
+splitTopLevelConjunctions (App _ann (Builtin _ (BooleanOp2 And)) [_, _, e1, e2]) =
   splitTopLevelConjunctions (argExpr e1) <> splitTopLevelConjunctions (argExpr e2)
 splitTopLevelConjunctions e = [e]
 
@@ -272,8 +272,8 @@ getSymbol (User symbol) = symbol
 getSymbol Machine       = developerError "Should not have quantifiers with machine names?"
 
 getType :: MonadSMTLibProp m => CheckedAnn -> Symbol -> CheckedExpr -> m SMTType
-getType _   _ (Builtin _ Real) = return SReal
-getType ann s t                = do
+getType _   _ (Builtin _ (NumericType Real)) = return SReal
+getType ann s t                              = do
   ident <- ask
   throwError $ UnsupportedVariableType ann ident s t
 
@@ -302,40 +302,35 @@ compileExpr = \case
 
 compileBuiltin :: MonadSMTLibProp m => OutputAnn -> Builtin -> m (Doc b)
 compileBuiltin ann = \case
-  Bool           -> typeError "Bool"
-  Prop           -> typeError "Prop"
-  Nat            -> typeError "Nat"
-  Int            -> typeError "Int"
-  Real           -> typeError "Real"
-  List           -> typeError "List"
-  Tensor         -> typeError "Tensor"
-
-  TypeClass tc   -> typeError "HasEq"
+  BooleanType t  -> typeError $ pretty t
+  NumericType t  -> typeError $ pretty t
+  TypeClass tc   -> typeError $ pretty tc
+  List           -> typeError $ pretty List
+  Tensor         -> typeError $ pretty Tensor
 
   QuantIn _      -> normalisationError "QuantIn"
-
-  Cons           -> normalisationError ":"
-  At             -> normalisationError "!"
-  Map            -> normalisationError "map"
-  Fold           -> normalisationError "fold"
+  Cons           -> normalisationError $ pretty Cons
+  At             -> normalisationError $ pretty At
+  Map            -> normalisationError $ pretty Map
+  Fold           -> normalisationError $ pretty Fold
 
   Quant _q       -> do
     ident <- ask
     throwError $ NonTopLevelQuantifier ann ident
 
-  If             -> return "ite"
-  Impl           -> return "=>"
-  And            -> return "and"
-  Or             -> return "or"
-  Not            -> return "not"
-  Eq             -> return "=="
-  Neq            -> return "distinct"
-  Order o        -> return (pretty o)
-  Mul            -> return "*"
-  Div            -> return "/"
-  Add            -> return "+"
-  Sub            -> return "-"
-  Neg            -> return "-"
+  If              -> return "ite"
+  BooleanOp2 Impl -> return "=>"
+  BooleanOp2 And  -> return "and"
+  BooleanOp2 Or   -> return "or"
+  Not             -> return "not"
+  Equality Eq     -> return "=="
+  Equality Neq    -> return "distinct"
+  Order o         -> return $ pretty o
+  NumericOp2 Mul  -> return "*"
+  NumericOp2 Div  -> return "/"
+  NumericOp2 Add  -> return "+"
+  NumericOp2 Sub  -> return "-"
+  Neg             -> return "-"
 
 compileArg :: MonadSMTLibProp m => OutputArg -> m (Maybe (Doc a))
 compileArg arg = if visibilityOf arg == Explicit
