@@ -302,17 +302,16 @@ compileExpr = \case
 
 compileBuiltin :: MonadSMTLibProp m => OutputAnn -> Builtin -> m (Doc b)
 compileBuiltin ann = \case
-  BooleanType t  -> typeError $ pretty t
-  NumericType t  -> typeError $ pretty t
-  TypeClass tc   -> typeError $ pretty tc
-  List           -> typeError $ pretty List
-  Tensor         -> typeError $ pretty Tensor
+  BooleanType   t -> typeError $ pretty t
+  NumericType   t -> typeError $ pretty t
+  ContainerType t -> typeError $ pretty t
+  TypeClass tc    -> typeError $ pretty tc
 
-  QuantIn _      -> normalisationError "QuantIn"
-  Cons           -> normalisationError $ pretty Cons
-  At             -> normalisationError $ pretty At
-  Map            -> normalisationError $ pretty Map
-  Fold           -> normalisationError $ pretty Fold
+  QuantIn _ -> normalisationError "QuantIn"
+  Cons      -> normalisationError $ pretty Cons
+  At        -> normalisationError $ pretty At
+  Map       -> normalisationError $ pretty Map
+  Fold      -> normalisationError $ pretty Fold
 
   Quant _q       -> do
     ident <- ask

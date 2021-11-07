@@ -8,9 +8,12 @@ module Vehicle.Prelude
   , rangeStart
   , repeatN
   , duplicate
+  , capitaliseFirstLetter
   ) where
 
 import Data.Range
+import Data.Text (Text)
+import Data.Text qualified as Text
 
 import Vehicle.Prelude.Token as X
 import Vehicle.Prelude.Provenance as X
@@ -58,3 +61,10 @@ repeatN f n = f . repeatN f (n-1)
 
 duplicate :: String -> Int -> String
 duplicate string n = concat $ replicate n string
+
+capitaliseFirstLetter :: Text -> Text
+capitaliseFirstLetter name
+  | Text.null name = name
+  | otherwise =
+    let (firstLetter, remainder) = Text.splitAt 1 name in
+      Text.toUpper firstLetter <> remainder

@@ -166,13 +166,13 @@ delabApp fun (arg : args) = B.App (delabApp fun args) arg
 
 delabBuiltin :: V.Builtin -> [B.Expr] -> B.Expr
 delabBuiltin fun args = case fun of
-  V.BooleanType V.Bool   -> B.Bool tokBool
-  V.BooleanType V.Prop   -> B.Prop tokProp
-  V.NumericType V.Nat    -> B.Nat  tokNat
-  V.NumericType V.Int    -> B.Int  tokInt
-  V.NumericType V.Real   -> B.Real tokReal
-  V.List   -> delabOp1 B.List   tokList   args
-  V.Tensor -> delabOp2 B.Tensor tokTensor args
+  V.BooleanType   V.Bool   -> B.Bool tokBool
+  V.BooleanType   V.Prop   -> B.Prop tokProp
+  V.NumericType   V.Nat    -> B.Nat  tokNat
+  V.NumericType   V.Int    -> B.Int  tokInt
+  V.NumericType   V.Real   -> B.Real tokReal
+  V.ContainerType V.List   -> delabOp1 B.List   tokList   args
+  V.ContainerType V.Tensor -> delabOp2 B.Tensor tokTensor args
 
   V.TypeClass V.IsTruth        -> delabOp1 (\tk e -> B.TypeC (B.TCTruth tk e)) tokTCTruth    args
   V.TypeClass V.IsNatural      -> delabOp1 (\tk e -> B.TypeC (B.TCNat   tk e)) tokTCNatural  args

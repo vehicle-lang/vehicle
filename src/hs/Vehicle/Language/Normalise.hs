@@ -308,7 +308,7 @@ nfQuantifier ann q lam = case argHead lam of
   Lam _ann binder body -> case toHead (typeOf binder) of
     -- If we have a tensor instead quantify over each individual element, and then substitute
     -- in a Seq construct with those elements in.
-    (Builtin _ Tensor, [tElemArg, tDimsArg]) ->
+    (BuiltinContainerType _ Tensor, [tElemArg, tDimsArg]) ->
       case getDimensions (argHead tDimsArg) of
         Nothing -> Nothing
         Just dims -> Just $ do

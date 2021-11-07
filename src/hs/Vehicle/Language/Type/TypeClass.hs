@@ -110,20 +110,19 @@ solveIsContainer :: MonadConstraintSolving m
                  -> CheckedExpr
                  -> CheckedExpr
                  -> m ConstraintProgress
-solveIsContainer c tElem tCont = do
-  tContElem <- getContainerElem tCont
-  return $ case tContElem of
+solveIsContainer c tElem tCont =
+  return $ case getContainerElem tCont of
     Nothing -> Stuck
     Just t  -> Progress
       { newConstraints = [Constraint (ConstraintContext (provenanceOf c) mempty (variableContext c)) (Unify (tElem, t))]
       , solvedMetas    = mempty
       }
   where
-    getContainerElem :: MonadConstraintSolving m => CheckedExpr -> m (Maybe CheckedExpr)
+    getContainerElem :: CheckedExpr -> Maybe CheckedExpr
     getContainerElem t = case toHead t of
-      (Builtin _ List,   [tElem'])    -> return $ Just $ argExpr tElem'
-      (Builtin _ Tensor, [tElem', _]) -> return $ Just $ argExpr tElem'
-      _                               -> return Nothing
+      (BuiltinContainerType _ List,   [tElem'])    -> Just $ argExpr tElem'
+      (BuiltinContainerType _ Tensor, [tElem', _]) -> Just $ argExpr tElem'
+      _ -> Nothing
 
 solveIsNatural :: MonadConstraintSolving m
                => Constraint

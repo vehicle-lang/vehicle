@@ -146,14 +146,13 @@ instance Elab B.Expr V.InputExpr where
     B.EveryIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.All ns e1 e2
     B.SomeIn  tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Any ns e1 e2
 
-    B.Bool tk                 -> builtin (V.BooleanType V.Bool)  (tkProv tk) []
-    B.Prop tk                 -> builtin (V.BooleanType V.Prop)  (tkProv tk) []
-    B.Real tk                 -> builtin (V.NumericType V.Real)  (tkProv tk) []
-    B.Int tk                  -> builtin (V.NumericType V.Int)   (tkProv tk) []
-    B.Nat tk                  -> builtin (V.NumericType V.Nat)   (tkProv tk) []
-
-    B.List tk t               -> builtin V.List   (tkProv tk) [t]
-    B.Tensor tk t1 t2         -> builtin V.Tensor (tkProv tk) [t1, t2]
+    B.Bool tk                 -> builtin (V.BooleanType   V.Bool)   (tkProv tk) []
+    B.Prop tk                 -> builtin (V.BooleanType   V.Prop)   (tkProv tk) []
+    B.Real tk                 -> builtin (V.NumericType   V.Real)   (tkProv tk) []
+    B.Int tk                  -> builtin (V.NumericType   V.Int)    (tkProv tk) []
+    B.Nat tk                  -> builtin (V.NumericType   V.Nat)    (tkProv tk) []
+    B.List tk t               -> builtin (V.ContainerType V.List)   (tkProv tk) [t]
+    B.Tensor tk t1 t2         -> builtin (V.ContainerType V.Tensor) (tkProv tk) [t1, t2]
 
     B.If tk1 e1 _ e2 _ e3     -> builtin V.If   (tkProv tk1) [e1, e2, e3]
     B.Not tk e                -> builtin V.Not  (tkProv tk)  [e]

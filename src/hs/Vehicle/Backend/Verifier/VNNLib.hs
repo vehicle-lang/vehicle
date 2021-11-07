@@ -352,7 +352,7 @@ getTensorDetails :: MonadError UnsupportedNetworkType m
                  => InputOrOutput
                  -> CheckedExpr
                  -> m TensorDetails
-getTensorDetails io (App _ (Builtin _ Tensor) [tElemArg, tDimsArg]) = do
+getTensorDetails io (App _ (BuiltinContainerType _ Tensor) [tElemArg, tDimsArg]) = do
   typ   <- getTensorType io (argExpr tElemArg)
   size  <- getTensorSize io (argExpr tDimsArg)
   return $ TensorDetails size typ

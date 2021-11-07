@@ -109,10 +109,10 @@ tInt  = con (NumericType Int)
 tReal = con (NumericType Real)
 
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
-tTensor tElem dims = con Tensor `app` [tElem, dims]
+tTensor tElem dims = con (ContainerType Tensor) `app` [tElem, dims]
 
 tList :: DSLExpr -> DSLExpr
-tList tElem = con List `app` [tElem]
+tList tElem = con (ContainerType List) `app` [tElem]
 
 tHole :: Symbol -> DSLExpr
 tHole name = DSL $ const $ Hole mempty name

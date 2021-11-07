@@ -41,6 +41,9 @@ pattern BuiltinNumericType ann op = Builtin ann (NumericType op)
 pattern BuiltinBooleanType :: ann -> BooleanType -> Expr var ann
 pattern BuiltinBooleanType ann op = Builtin ann (BooleanType op)
 
+pattern BuiltinContainerType :: ann -> ContainerType -> Expr var ann
+pattern BuiltinContainerType ann op = Builtin ann (ContainerType op)
+
 pattern BuiltinTypeClass :: ann -> TypeClass -> Expr var ann
 pattern BuiltinTypeClass ann tc = Builtin ann (TypeClass tc)
 
@@ -155,6 +158,10 @@ quantView (App ann (Builtin _ (Quant q))
   (Arg _ Explicit (Lam _ (Binder _ _ Explicit n t) e) :| [])) = Just (QuantView ann q n t e)
 quantView _ = Nothing
 
+containerType :: Expr var ann -> Maybe ContainerType
+containerType (App _ (BuiltinContainerType _ t) _) = Just t
+containerType _                                    = Nothing
+
 --------------------------------------------------------------------------------
 -- Construction functions
 
@@ -163,14 +170,14 @@ quantView _ = Nothing
 -- Types
 
 mkListType :: CheckedAnn -> CheckedExpr -> CheckedExpr
-mkListType ann tElem = App ann (Builtin ann List) [ExplicitArg tElem]
+mkListType ann tElem = App ann (BuiltinContainerType ann List) [ExplicitArg tElem]
 
 mkTensorType :: CheckedAnn -> CheckedExpr -> [Int] -> CheckedExpr
 mkTensorType ann tElem dims =
   let listType = mkListType ann (Builtin ann (NumericType Nat)) in
   let dimExprs = fmap (Literal ann . LNat) dims in
   let dimList  = mkSeq ann (Builtin ann (NumericType Nat)) listType dimExprs in
-  App ann (Builtin ann Tensor) [ExplicitArg tElem, ExplicitArg dimList]
+  App ann (BuiltinContainerType ann Tensor) [ExplicitArg tElem, ExplicitArg dimList]
 
 mkIsTruth :: CheckedAnn -> CheckedExpr -> CheckedExpr
 mkIsTruth ann t = App ann (Builtin ann (TypeClass IsTruth)) [ExplicitArg t]
@@ -263,8 +270,8 @@ mkNameWithIndices (User n) indices = User $
   mconcat (n : ["_" <> pack (show index) | index <- indices])
 
 substContainerType :: CheckedArg -> CheckedExpr -> CheckedExpr
-substContainerType newTElem (App ann1 (Builtin ann2 List)   [_tElem]) =
-  App ann1 (Builtin ann2 List) [newTElem]
-substContainerType newTElem (App ann1 (Builtin ann2 Tensor) [_tElem, tDims])  =
-  App ann1 (Builtin ann2 Tensor) [newTElem, tDims]
+substContainerType newTElem (App ann1 (BuiltinContainerType ann2 List)   [_tElem]) =
+  App ann1 (BuiltinContainerType ann2 List) [newTElem]
+substContainerType newTElem (App ann1 (BuiltinContainerType ann2 Tensor) [_tElem, tDims])  =
+  App ann1 (BuiltinContainerType ann2 Tensor) [newTElem, tDims]
 substContainerType _ _ = developerError "Provided an invalid container type"

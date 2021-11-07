@@ -510,10 +510,10 @@ typeOfLiteral p l = fromDSL $ case l of
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedExpr
 typeOfBuiltin p b = fromDSL $ case b of
-  BooleanType _ -> type0
-  NumericType _ -> type0
-  List          -> type0 ~> type0
-  Tensor        -> type0 ~> tList tNat ~> type0
+  BooleanType   _           -> type0
+  NumericType   _           -> type0
+  ContainerType List        -> type0 ~> type0
+  ContainerType Tensor      -> type0 ~> tList tNat ~> type0
 
   TypeClass HasEq           -> type0 ~> type0 ~> type0
   TypeClass HasOrd          -> type0 ~> type0 ~> type0
@@ -534,7 +534,7 @@ typeOfBuiltin p b = fromDSL $ case b of
   Equality _ -> typeOfEqualityOp p
   Order    _ -> typeOfComparisonOp p
 
-  Cons -> typeOfCons
+  Cons -> typeOfCons p
   At   -> typeOfAtOp p
   Map  -> typeOfMapOp
   Fold -> typeOfFoldOp p
@@ -546,11 +546,6 @@ typeOfIf :: DSLExpr
 typeOfIf =
   forall type0 $ \t ->
     tProp ~> t ~> t
-
-typeOfCons :: DSLExpr
-typeOfCons =
-  forall type0 $ \t ->
-    t ~> tList t ~> tList t
 
 typeOfEqualityOp :: Provenance -> DSLExpr
 typeOfEqualityOp p =
@@ -595,6 +590,12 @@ typeOfQuantifierInOp p =
     forall type0 $ \tCont ->
       forall type0 $ \tRes ->
         isContainer p tElem tCont ~~~> (tElem ~> tRes) ~> tCont ~> tRes
+
+typeOfCons :: Provenance -> DSLExpr
+typeOfCons p =
+  forall type0 $ \tElem ->
+    forall type0 $ \tCont ->
+      isContainer p tElem tCont ~~~> tElem ~> tCont ~> tCont
 
 typeOfAtOp :: Provenance -> DSLExpr
 typeOfAtOp p =
