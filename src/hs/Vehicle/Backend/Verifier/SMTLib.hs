@@ -209,7 +209,6 @@ compileProp ident expr = runReaderT propertyDoc ident
 
     (vars, body, negated) <- stripQuantifiers True expr
     let ctx = map (User . name) vars
-    let varDoc = compileVars vars
 
     logDebug $ "Stripped existential quantifiers:" <+> pretty ctx <> line
 
@@ -221,7 +220,7 @@ compileProp ident expr = runReaderT propertyDoc ident
     assertionDocs <- traverse compileExpr assertions
     let bodyDoc = vsep (map assertion assertionDocs)
 
-    let doc = varDoc <> line <> line <> bodyDoc
+    let doc = if null vars then bodyDoc else compileVars vars <> line <> line <> bodyDoc
     let result = SMTDoc doc vars negated
     logDebug $ "Output:" <> align (line <> doc)
 

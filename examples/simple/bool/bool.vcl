@@ -1,5 +1,3 @@
--- Reals
-
 -- true : Bool
 -- true = True
 

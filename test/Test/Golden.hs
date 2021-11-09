@@ -19,71 +19,48 @@ import Control.Exception ( catch, throwIO )
 
 import Vehicle
 
+--------------------------------------------------------------------------------
+-- Tests
+
 goldenTests :: TestTree
 goldenTests = testGroup "Golden"
-  [ testGroup "Realistic" (map makeGoldenTestsFromSpec realisticTestList)
-  , testGroup "Simple"    (map makeGoldenTestsFromSpec simpleTestList)
-  , testGroup "Misc"      (map makeGoldenTestsFromSpec miscTestList)
+  [ testGroup "Networks" (map makeGoldenTestsFromSpec realisticTestList)
+  , testGroup "Simple"   (map makeGoldenTestsFromSpec simpleTestList)
+  , testGroup "Misc"     (map makeGoldenTestsFromSpec miscTestList)
   ]
+
+realisticTestList :: [GoldenTestSpec]
+realisticTestList = map (addTestDirectory "./examples/network") [
+  --("shortestPath",     [Verifier VNNLib]),
+  ("andGate",          [Verifier VNNLib]),
+  ("acasXu/property6", [Verifier VNNLib]),
+  ("monotonicity",     [Verifier VNNLib]),
+  ("increasing",       [Verifier VNNLib])
+  ]
+
+simpleTestList :: [GoldenTestSpec]
+simpleTestList = map (addTestDirectory "./examples/simple")
+  [
+    --("quantifier",     [Verifier SMTLib])
+    ("quantifierIn",   [Verifier SMTLib])
+  ]
+
+miscTestList :: [GoldenTestSpec]
+miscTestList = map (addTestDirectory "./examples/misc")
+  [ --("dependent", [ITP (Vehicle Frontend)])
+  ]
+
+--------------------------------------------------------------------------------
+-- Test infrastructure
 
 type GoldenTestSpec = (FilePath, FilePath, [OutputTarget])
 
 addTestDirectory :: FilePath -> (FilePath, [OutputTarget]) -> GoldenTestSpec
 addTestDirectory folderPath (subfolder, targets) =
   ( folderPath </> subfolder
-  , head (splitPath subfolder)
+  , last (splitPath subfolder)
   , targets
   )
-
-realisticTestList :: [GoldenTestSpec]
-realisticTestList = map (addTestDirectory "./examples/network")
-  [ ("shortestPath",
-      [ Verifier VNNLib
-        -- (Verifier SMTLib)
-      ])
-  , ("andGate",
-      [ Verifier VNNLib
-      ])
-  , ("acasXu/property6",
-      [ Verifier VNNLib
-      ])
-  , ("monotonicity",
-      [ Verifier VNNLib
-      ])
-  , ("increasing",
-      [ Verifier VNNLib
-      ])
-  ]
-
-simpleTestList :: [GoldenTestSpec]
-simpleTestList = map (addTestDirectory "./examples/simple")
-  [ ("quantifier",
-      [ Verifier SMTLib
-      ])
-
-  , ("quantifierIn",
-      [ Verifier SMTLib
-      ])
-
-  ,  ("let",
-      [ Verifier SMTLib
-      ])
-
-  ,  ("bool",
-      [ Verifier SMTLib
-      ])
-  ]
-
-miscTestList :: [GoldenTestSpec]
-miscTestList = map (addTestDirectory "./examples/misc")
-  [ ("dependent",
-      [ ITP (Vehicle Frontend)
-      ])
-  ]
-
-data Result
-  = Success
-  | Failure
 
 getFileExt :: OutputTarget -> String
 getFileExt (Verifier VNNLib) = ".vnnlib"

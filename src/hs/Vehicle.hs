@@ -225,7 +225,7 @@ readFileOrStdin Nothing     = T.getContents
 writeResultToFile :: Options -> OutputTarget -> Doc a -> IO ()
 writeResultToFile Options{..} target doc = do
   let fileHeader = makefileHeader version target
-  let outputText = layoutAsText (fileHeader <> doc)
+  let outputText = layoutAsText (fileHeader <> line <> line <> doc)
   case outputFile of
     Nothing             -> T.putStrLn outputText
     Just outputFilePath -> T.writeFile outputFilePath outputText
