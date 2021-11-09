@@ -70,7 +70,7 @@ type InputProg      = NamedProg   InputAnn
 
 -- * Types pre type-checking
 
-type UncheckedVar    = Var
+type UncheckedVar    = LocallyNamelessVar
 type UncheckedAnn    = Provenance
 
 type UncheckedBinder = DeBruijnBinder UncheckedAnn
@@ -81,7 +81,7 @@ type UncheckedProg   = DeBruijnProg   UncheckedAnn
 
 -- * Types post type-checking
 
-type CheckedVar    = Var
+type CheckedVar    = LocallyNamelessVar
 type CheckedAnn    = Provenance
 
 type CheckedBinder = DeBruijnBinder  CheckedAnn

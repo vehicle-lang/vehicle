@@ -1,7 +1,7 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 
 module Vehicle.Language.AST.DeBruijn
-  ( Var(..)
+  ( LocallyNamelessVar(..)
   , Index
   , DeBruijnExpr
   , DeBruijnDecl
@@ -33,19 +33,19 @@ import qualified Data.IntMap as IM
 type Index = Int
 
 -- |The type of data DeBruijn indices store at name sites
-data Var
+data LocallyNamelessVar
   = Free Identifier
   | Bound Index
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData Var
+instance NFData LocallyNamelessVar
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type DeBruijnBinder ann = Binder Name Var ann
-type DeBruijnArg    ann = Arg    Name Var ann
-type DeBruijnExpr   ann = Expr   Name Var ann
-type DeBruijnDecl   ann = Decl   Name Var ann
-type DeBruijnProg   ann = Prog   Name Var ann
+type DeBruijnBinder ann = Binder Name LocallyNamelessVar ann
+type DeBruijnArg    ann = Arg    Name LocallyNamelessVar ann
+type DeBruijnExpr   ann = Expr   Name LocallyNamelessVar ann
+type DeBruijnDecl   ann = Decl   Name LocallyNamelessVar ann
+type DeBruijnProg   ann = Prog   Name LocallyNamelessVar ann
 
 --------------------------------------------------------------------------------
 -- A framework for writing generic operations on DeBruijn variables
@@ -73,7 +73,7 @@ class DeBruijnFunctor ann (a :: * -> *) where
     -> a ann
     -> m (a ann)
 
-instance DeBruijnFunctor ann (Expr Name Var) where
+instance DeBruijnFunctor ann (Expr Name LocallyNamelessVar) where
   alter body var =
     let
       altPiBinder  = alter    body var
@@ -103,10 +103,10 @@ underBinder :: MonadReader (BindingDepth, state) m =>
                TraverseBinder state ann -> m a -> m a
 underBinder body = local (\(d, s) -> (d+1, body s))
 
-instance DeBruijnFunctor ann (Arg Name Var) where
+instance DeBruijnFunctor ann (Arg Name LocallyNamelessVar) where
   alter body var = traverseArgExpr (alter body var)
 
-instance DeBruijnFunctor ann (Binder Name Var) where
+instance DeBruijnFunctor ann (Binder Name LocallyNamelessVar) where
   alter body var = traverseBinderType (alter body var)
 
 --------------------------------------------------------------------------------

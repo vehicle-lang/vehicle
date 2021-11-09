@@ -6,7 +6,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Functor.Foldable (Recursive(..))
 
 import Vehicle.Prelude
-import Vehicle.Language.AST (Name, HasVisibility(..), HasType(..), ExprF(..), Expr, Binder, Arg, Var, DeBruijnExpr, Literal, Builtin, Visibility, UniverseLevel, argExpr)
+import Vehicle.Language.AST (Name, HasVisibility(..), HasType(..), ExprF(..), Expr, Binder, Arg, LocallyNamelessVar, DeBruijnExpr, Literal, Builtin, Visibility, UniverseLevel, argExpr)
 
 alphaEq :: HasProvenance ann => DeBruijnExpr ann -> DeBruijnExpr ann -> Bool
 alphaEq e1 e2 = toAlpha e1 == toAlpha e2
@@ -23,7 +23,7 @@ data AlphaExpr
   | App AlphaExpr (NonEmpty AlphaArg)
   | Pi AlphaBinder AlphaExpr
   | Builtin Builtin
-  | Var Var
+  | Var LocallyNamelessVar
   | Let AlphaExpr AlphaBinder AlphaExpr
   | Lam AlphaBinder AlphaExpr
   | Literal Literal
@@ -35,16 +35,16 @@ class ToAlpha a where
   type Alpha a
   toAlpha :: HasProvenance ann => a ann -> Alpha a
 
-instance ToAlpha (Binder Name Var) where
-  type Alpha (Binder Name Var) = AlphaBinder
+instance ToAlpha (Binder Name LocallyNamelessVar) where
+  type Alpha (Binder Name LocallyNamelessVar) = AlphaBinder
   toAlpha b = Binder (visibilityOf b) (toAlpha (typeOf b))
 
-instance ToAlpha (Arg Name Var) where
-  type Alpha (Arg Name Var) = AlphaArg
+instance ToAlpha (Arg Name LocallyNamelessVar) where
+  type Alpha (Arg Name LocallyNamelessVar) = AlphaArg
   toAlpha a = Arg (visibilityOf a) (toAlpha (argExpr a))
 
-instance ToAlpha (Expr Name Var) where
-  type Alpha (Expr Name Var) = AlphaExpr
+instance ToAlpha (Expr Name LocallyNamelessVar) where
+  type Alpha (Expr Name LocallyNamelessVar) = AlphaExpr
   toAlpha = cata $ \case
     TypeF     l                   -> Type l
     HoleF     p _                 -> incompleteTermError p

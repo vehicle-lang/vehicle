@@ -145,7 +145,7 @@ bindVar binder update = do
       addBinderToCtx name Ctx{..} = Ctx declCtx (name : exprCtx)
 
 -- |Find the index for a given name of a given sort.
-getVar :: SCM m => InputAnn -> Name -> m Var
+getVar :: SCM m => InputAnn -> Name -> m LocallyNamelessVar
 getVar ann Machine       = developerError $ "Machine names should not be in use " <+> pretty ann
 getVar ann (User symbol) = do
   Ctx declCtx exprCtx <- ask
