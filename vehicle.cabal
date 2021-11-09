@@ -42,6 +42,7 @@ library
                       , Vehicle.Language.AST.Name
                       , Vehicle.Language.AST.Visibility
                       , Vehicle.Language.AST.Utils
+                      , Vehicle.Language.AlphaEquivalence
                       , Vehicle.Language.DSL
                       , Vehicle.Language.Descope
                       , Vehicle.Language.Scope
