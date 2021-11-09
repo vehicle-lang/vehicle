@@ -40,17 +40,17 @@ class Delaborate vf vc where
   delab :: MonadDelab m => vf -> m vc
 
 -- |Elaborate programs.
-instance Delaborate (V.Prog V.Name ann) B.Prog where
+instance Delaborate (V.NamedProg ann) B.Prog where
   delab (V.Main decls) = B.Main <$> traverse delab decls
 
 -- |Elaborate declarations.
-instance Delaborate (V.Decl V.Name ann) B.Decl where
+instance Delaborate (V.NamedDecl ann) B.Decl where
   delab = \case
     V.DeclNetw _ n t -> B.DeclNetw <$> delab n <*> delab t
     V.DeclData _ n t -> B.DeclData <$> delab n <*> delab t
     V.DefFun _ n t e -> B.DefFun   <$> delab n <*> delab t <*> delab e
 
-instance Delaborate (V.Expr V.Name ann) B.Expr where
+instance Delaborate (V.NamedExpr ann) B.Expr where
   delab expr = case expr of
     V.Type l       -> return $ B.Type (mkToken B.TypeToken (pack $ "Type" <> show l))
     V.Var _ n      -> B.Var  <$> delab n
@@ -69,7 +69,7 @@ instance Delaborate (V.Expr V.Name ann) B.Expr where
     V.App _ fun args -> delabApp <$> delab fun <*> traverse delab (reverse (NonEmpty.toList args))
     V.Builtin _ op   -> B.Builtin <$> delab op
 
-instance Delaborate (V.Arg V.Name ann) B.Arg where
+instance Delaborate (V.NamedArg ann) B.Arg where
   delab (V.Arg _i v e) = case v of
     V.Explicit -> B.ExplicitArg <$> delab e
     V.Implicit -> B.ImplicitArg <$> delab e
@@ -85,7 +85,7 @@ instance Delaborate V.Identifier B.NameToken where
 instance Delaborate V.Builtin B.BuiltinToken where
   delab op = return $ mkToken B.BuiltinToken $ V.symbolFromBuiltin op
 
-instance Delaborate (V.Binder V.Name ann) B.Binder where
+instance Delaborate (V.NamedBinder ann) B.Binder where
   delab (V.Binder _p _i v n t) = case v of
     -- TODO track whether type was provided manually and so use ExplicitBinderAnn
     V.Explicit -> B.ExplicitBinder <$> delab n <*> delab t

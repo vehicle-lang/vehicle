@@ -5,6 +5,7 @@ import Control.DeepSeq (NFData)
 import Data.Text (pack)
 
 import Vehicle.Prelude
+import Vehicle.Language.AST.Core
 
 --------------------------------------------------------------------------------
 -- Names
@@ -20,22 +21,24 @@ instance Pretty Name where
   pretty (User symbol) = pretty symbol
   pretty Machine       = "Machine"
 
+--------------------------------------------------------------------------------
+-- Type class
+
 class HasName a where
   nameOf :: a -> Name
 
 freshNames :: [Symbol]
 freshNames = [ "_x" <> pack (show i) | i <- [0::Int ..]]
 
+instance HasName (Binder Name var ann) where
+  nameOf (Binder _ _ _ name _) = name
+
 --------------------------------------------------------------------------------
--- Identifiers
+-- Names
 
-newtype Identifier = Identifier Symbol
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty Identifier where
-  pretty (Identifier s) = pretty s
-
-instance NFData Identifier
-
-class HasIdentifier a where
-  identifierOf :: a -> Identifier
+-- An expression that uses named variables for both binders and variables.
+type NamedBinder ann = Binder Name Name ann
+type NamedArg    ann = Arg    Name Name ann
+type NamedExpr   ann = Expr   Name Name ann
+type NamedDecl   ann = Decl   Name Name ann
+type NamedProg   ann = Prog   Name Name ann

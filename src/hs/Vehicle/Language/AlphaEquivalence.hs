@@ -6,7 +6,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Functor.Foldable (Recursive(..))
 
 import Vehicle.Prelude
-import Vehicle.Language.AST (HasVisibility(..), HasType(..), ExprF(..), Expr, Binder, Arg, Var, DeBruijnExpr, Literal, Builtin, Visibility, UniverseLevel, argExpr)
+import Vehicle.Language.AST (Name, HasVisibility(..), HasType(..), ExprF(..), Expr, Binder, Arg, Var, DeBruijnExpr, Literal, Builtin, Visibility, UniverseLevel, argExpr)
 
 alphaEq :: HasProvenance ann => DeBruijnExpr ann -> DeBruijnExpr ann -> Bool
 alphaEq e1 e2 = toAlpha e1 == toAlpha e2
@@ -35,16 +35,16 @@ class ToAlpha a where
   type Alpha a
   toAlpha :: HasProvenance ann => a ann -> Alpha a
 
-instance ToAlpha (Binder Var) where
-  type Alpha (Binder Var) = AlphaBinder
+instance ToAlpha (Binder Name Var) where
+  type Alpha (Binder Name Var) = AlphaBinder
   toAlpha b = Binder (visibilityOf b) (toAlpha (typeOf b))
 
-instance ToAlpha (Arg Var) where
-  type Alpha (Arg Var) = AlphaArg
+instance ToAlpha (Arg Name Var) where
+  type Alpha (Arg Name Var) = AlphaArg
   toAlpha a = Arg (visibilityOf a) (toAlpha (argExpr a))
 
-instance ToAlpha (Expr Var) where
-  type Alpha (Expr Var) = AlphaExpr
+instance ToAlpha (Expr Name Var) where
+  type Alpha (Expr Name Var) = AlphaExpr
   toAlpha = cata $ \case
     TypeF     l                   -> Type l
     HoleF     p _                 -> incompleteTermError p

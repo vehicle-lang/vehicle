@@ -56,10 +56,10 @@ instance MeaningfulError NormError where
     , fix        = "Check your definition of the domain"
     }
 
-pattern ETrue :: ann -> Expr var ann
+pattern ETrue :: ann -> Expr binder var ann
 pattern ETrue ann = Literal ann (LBool True)
 
-pattern EFalse :: ann -> Expr var ann
+pattern EFalse :: ann -> Expr binder var ann
 pattern EFalse ann = Literal ann (LBool False)
 
 argHead :: CheckedArg -> CheckedExpr

@@ -47,13 +47,13 @@ lookupVar = \case
 class Descope a b where
   descope :: MonadDescope m => a -> m b
 
-instance Descope (Binder Var ann) (Binder Name ann) where
+instance Descope (DeBruijnBinder ann) (Binder Name ann) where
   descope = traverseBinderType descope
 
-instance Descope (Arg Var ann) (Arg Name ann) where
+instance Descope (DeBruijnArg ann) (Arg Name ann) where
   descope = traverseArgExpr descope
 
-showScopeEntry :: Expr Var ann -> Expr Var ann
+showScopeEntry :: DeBruijnExpr ann -> DeBruijnExpr ann
 showScopeEntry e = {-trace ("descope-entry " <> showCore e)-} e
 
 showScopeExit :: MonadDescope m => m (Expr Name ann) -> m (Expr Name ann)
@@ -62,7 +62,7 @@ showScopeExit m = do
   {-trace ("descope-exit  " <> showCore e)-}
   return e
 
-instance Descope (Expr Var ann) (Expr Name ann) where
+instance Descope (DeBruijnExpr ann) (Expr Name ann) where
   descope e = showScopeExit $ case showScopeEntry e of
     Type     l                     -> return (Type l)
     Hole     p name                -> return (Hole p name)
@@ -95,11 +95,11 @@ instance Descope (Expr Var ann) (Expr Name ann) where
 -- are untouched during conversion back from de Bruijn indice's.
 -- Therefore the following are not in the state monad.
 
-instance Descope (Decl Var ann) (Decl Name ann) where
+instance Descope (DeBruijnDecl ann) (Decl Name ann) where
   descope = \case
     DeclNetw p n t   -> DeclNetw p n <$> descope t
     DeclData p n t   -> DeclData p n <$> descope t
     DefFun   p n t e -> DefFun   p n <$> descope t <*> descope e
 
-instance Descope (Prog Var ann) (Prog Name ann) where
+instance Descope (DeBruijnProg ann) (Prog Name ann) where
   descope (Main ds) = Main <$> traverse descope ds

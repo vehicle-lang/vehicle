@@ -10,7 +10,6 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Vehicle.Prelude
 import Vehicle.Language.AST.Builtin (Builtin)
 import Vehicle.Language.AST.Visibility
-import Vehicle.Language.AST.Name
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -56,109 +55,110 @@ instance Pretty Literal where
 -- reversibility during delaboration, and that as the type annotation was
 -- manually provided by the user it never needs to be updated after unification
 -- and type-class resolution.
-data Binder var ann
+data Binder binder var ann
   = Binder
     Provenance
-    Owner           -- Has the binder been auto-inserted by the type-checker?
-    Visibility      -- The visibility of the binder
-    Name            -- The name of the bound variable
-    (Expr var ann)  -- The (optional) type of the bound variable
+    Owner                 -- Has the binder been auto-inserted by the type-checker?
+    Visibility            -- The visibility of the binder
+    binder                -- The representation of the bound variable
+    (Expr binder var ann) -- The (optional) type of the bound variable
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 -- At the moment explicit binders can only ever be provided by the user.
-pattern ExplicitBinder :: Provenance -> Name -> Expr var ann -> Binder var ann
+pattern ExplicitBinder :: Provenance -> binder -> Expr binder var ann -> Binder binder var ann
 pattern ExplicitBinder p n t = Binder p TheUser Explicit n t
 
-pattern UserImplicitBinder :: Provenance -> Name -> Expr var ann -> Binder var ann
+pattern UserImplicitBinder :: Provenance -> binder -> Expr binder var ann -> Binder binder var ann
 pattern UserImplicitBinder p n t = Binder p TheUser Implicit n t
 
-pattern MachineImplicitBinder :: Provenance -> Name -> Expr var ann -> Binder var ann
+pattern MachineImplicitBinder :: Provenance -> binder -> Expr binder var ann -> Binder binder var ann
 pattern MachineImplicitBinder p n t = Binder p TheMachine Implicit n t
 
-pattern UserInstanceBinder :: Provenance -> Name -> Expr var ann -> Binder var ann
+pattern UserInstanceBinder :: Provenance -> binder -> Expr binder var ann -> Binder binder var ann
 pattern UserInstanceBinder p n t = Binder p TheUser Instance n t
 
-pattern MachineInstanceBinder :: Provenance -> Name -> Expr var ann -> Binder var ann
+pattern MachineInstanceBinder :: Provenance -> binder -> Expr binder var ann -> Binder binder var ann
 pattern MachineInstanceBinder p n t = Binder p TheMachine Instance n t
 
-instance (NFData var, NFData ann) => NFData (Binder var ann)
+instance (NFData binder, NFData var, NFData ann) => NFData (Binder binder var ann)
 
-instance HasProvenance (Binder var ann) where
+instance HasProvenance (Binder binder var ann) where
   provenanceOf (Binder provenance _ _ _ _) = provenance
 
-instance HasVisibility (Binder var ann) where
+instance HasVisibility (Binder binder var ann) where
   visibilityOf (Binder _ _ visibility _ _) = visibility
 
-instance HasOwner (Binder var ann) where
+instance HasOwner (Binder binder var ann) where
   ownerOf (Binder _ owner _ _ _) = owner
 
-instance HasName (Binder var ann) where
-  nameOf (Binder _ _ _ name _) = name
-
-mapBinderType :: (Expr var1 ann1 -> Expr var2 ann2) -> Binder var1 ann1 -> Binder var2 ann2
+mapBinderType :: (Expr binder var1 ann1 -> Expr binder var2 ann2)
+              -> Binder binder var1 ann1 -> Binder binder var2 ann2
 mapBinderType f (Binder p i v n e) = Binder p i v n $ f e
 
-replaceBinderType :: Expr var1 ann1 -> Binder var2 ann2 -> Binder var1 ann1
+replaceBinderType :: Expr binder var1 ann1
+                  -> Binder binder var2 ann2
+                  -> Binder binder var1 ann1
 replaceBinderType e = mapBinderType (const e)
 
 traverseBinderType :: Monad m
-                   => (Expr var1 ann1 -> m (Expr var2 ann2))
-                   -> Binder var1 ann1
-                   -> m (Binder var2 ann2)
+                   => (Expr binder var1 ann1 -> m (Expr binder var2 ann2))
+                   -> Binder binder var1 ann1
+                   -> m (Binder binder var2 ann2)
 traverseBinderType f (Binder p i v n e) = Binder p i v n <$> f e
 
 --------------------------------------------------------------------------------
 -- Function arguments
 
-data Arg var ann
+data Arg binder var ann
   = Arg
     Owner           -- Has the argument been auto-inserted by the type-checker?
     Visibility      -- The visibility of the argument
-    (Expr var ann)  -- The argument expression
+    (Expr binder var ann)  -- The argument expression
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 -- At the moment explicit arguments can only ever be provided by the user.
-pattern ExplicitArg :: Expr var ann -> Arg var ann
+pattern ExplicitArg :: Expr binder var ann -> Arg binder var ann
 pattern ExplicitArg e = Arg TheUser Explicit e
 
-pattern UserImplicitArg :: Expr var ann -> Arg var ann
+pattern UserImplicitArg :: Expr binder var ann -> Arg binder var ann
 pattern UserImplicitArg e = Arg TheUser Implicit e
 
-pattern MachineImplicitArg :: Expr var ann -> Arg var ann
+pattern MachineImplicitArg :: Expr binder var ann -> Arg binder var ann
 pattern MachineImplicitArg e = Arg TheMachine Implicit e
 
-pattern UserInstanceArg :: Expr var ann -> Arg var ann
+pattern UserInstanceArg :: Expr binder var ann -> Arg binder var ann
 pattern UserInstanceArg e = Arg TheUser Instance e
 
-pattern MachineInstanceArg :: Expr var ann -> Arg var ann
+pattern MachineInstanceArg :: Expr binder var ann -> Arg binder var ann
 pattern MachineInstanceArg e = Arg TheMachine Instance e
 
-instance (NFData var, NFData ann) => NFData (Arg var ann)
+instance (NFData binder, NFData var, NFData ann) => NFData (Arg binder var ann)
 
-instance HasVisibility (Arg var ann) where
+instance HasVisibility (Arg binder var ann) where
   visibilityOf (Arg _ v _) = v
 
-instance HasProvenance ann => HasProvenance (Arg var ann) where
+instance HasProvenance ann => HasProvenance (Arg binder var ann) where
   provenanceOf (Arg _ Explicit e) = provenanceOf e
   provenanceOf (Arg _ Implicit e) = expandProvenance (1, 1) (provenanceOf e)
   provenanceOf (Arg _ Instance e) = expandProvenance (2, 2) (provenanceOf e)
 
-instance HasOwner (Arg var ann) where
+instance HasOwner (Arg binder var ann) where
   ownerOf (Arg owner _ _) = owner
 
-argExpr :: Arg var ann -> Expr var ann
+argExpr :: Arg binder var ann -> Expr binder var ann
 argExpr (Arg _ _ e) = e
 
-mapArgExpr :: (Expr var1 ann1 -> Expr var2 ann2) -> Arg var1 ann1 -> Arg var2 ann2
+mapArgExpr :: (Expr binder1 var1 ann1 -> Expr binder2 var2 ann2)
+           -> Arg binder1 var1 ann1 -> Arg binder2 var2 ann2
 mapArgExpr f (Arg i v e) = Arg i v $ f e
 
-replaceArgExpr :: Expr var1 ann1 -> Arg var2 ann2 -> Arg var1 ann1
+replaceArgExpr :: Expr binder1 var1 ann1 -> Arg binder2 var2 ann2 -> Arg binder1 var1 ann1
 replaceArgExpr e = mapArgExpr (const e)
 
 traverseArgExpr :: Monad m
-                => (Expr var1 ann1 -> m (Expr var2 ann2))
-                -> Arg var1 ann1
-                -> m (Arg var2 ann2)
+                => (Expr binder1 var1 ann1 -> m (Expr binder2 var2 ann2))
+                -> Arg binder1 var1 ann1
+                -> m (Arg binder2 var2 ann2)
 traverseArgExpr f (Arg i v e) = Arg i v <$> f e
 
 --------------------------------------------------------------------------------
@@ -171,7 +171,7 @@ traverseArgExpr f (Arg i v e) = Arg i v <$> f e
 --
 -- Names are parameterised over so that they can store
 -- either the user assigned names or deBruijn indices.
-data Expr var ann
+data Expr binder var ann
 
   -- | The type of types. The type @Type l@ has type @Type (l+1)@.
   = Type UniverseLevel
@@ -179,20 +179,20 @@ data Expr var ann
   -- | User annotation
   | Ann
     ann
-    (Expr var ann)    -- The term
-    (Expr var ann)    -- The type of the term
+    (Expr binder var ann)    -- The term
+    (Expr binder var ann)    -- The type of the term
 
   -- | Application of one term to another.
   | App
-    ann                       -- Annotation.
-    (Expr var ann)            -- Function.
-    (NonEmpty (Arg  var ann)) -- Arguments.
+    ann                              -- Annotation.
+    (Expr binder var ann)            -- Function.
+    (NonEmpty (Arg binder var ann)) -- Arguments.
 
   -- | Dependent product (subsumes both functions and universal quantification).
   | Pi
-    ann               -- Annotation.
-    (Binder var ann)  -- The bound name
-    (Expr   var ann)  -- (Dependent) result type.
+    ann                      -- Annotation.
+    (Binder binder var ann)  -- The bound name
+    (Expr   binder var ann)  -- (Dependent) result type.
 
   -- | Terms consisting of constants that are built into the language.
   | Builtin
@@ -220,16 +220,16 @@ data Expr var ann
   -- to better mimic the flow of the context, which makes writing monadic
   -- operations concisely much easier.
   | Let
-    ann               -- Annotation.
-    (Expr   var ann)  -- Bound expression body.
-    (Binder var ann)  -- Bound expression name.
-    (Expr   var ann)  -- Expression body.
+    ann                      -- Annotation.
+    (Expr   binder var ann)  -- Bound expression body.
+    (Binder binder var ann)  -- Bound expression name.
+    (Expr   binder var ann)  -- Expression body.
 
   -- | Lambda expressions (i.e. anonymous functions).
   | Lam
-    ann               -- Annotation.
-    (Binder var ann)  -- Bound expression name.
-    (Expr   var ann)  -- Expression body.
+    ann                      -- Annotation.
+    (Binder binder var ann)  -- Bound expression name.
+    (Expr   binder var ann)  -- Expression body.
 
   -- | Built-in literal values e.g. numbers/booleans.
   | Literal
@@ -239,24 +239,24 @@ data Expr var ann
   -- | A sequence of terms for e.g. list literals.
   | Seq
     ann               -- Annotation.
-    [Expr var ann]    -- List of expressions.
+    [Expr binder var ann]    -- List of expressions.
 
   -- | A placeholder for a dictionary of builtin type-classes.
   -- At the moment doesn't carry around any meaningful information
   -- as we don't currently have user-defined type-classes. Later
   -- on they will carry around user definitions.
-  | PrimDict (Expr var ann)
+  | PrimDict (Expr binder var ann)
 
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
-instance (NFData var, NFData ann) => NFData (Expr var ann)
+instance (NFData binder, NFData var, NFData ann) => NFData (Expr binder var ann)
 
-instance HasProvenance ann => HasProvenance (Expr var ann) where
+instance HasProvenance ann => HasProvenance (Expr binder var ann) where
   provenanceOf (Hole p _) = p
   provenanceOf e          = provenanceOf (annotation e)
 
 -- |Extract a term's annotation
-annotation :: Expr name ann -> ann
+annotation :: Expr binder var ann -> ann
 annotation = \case
   Type     _         -> developerError "Should not be requesting an annotation from Type"
   Hole     _   _     -> developerError "Should not be requesting an annotation from Hole"
@@ -273,6 +273,20 @@ annotation = \case
   Seq      ann _     -> ann
 
 --------------------------------------------------------------------------------
+-- Identifiers
+
+newtype Identifier = Identifier Symbol
+  deriving (Eq, Ord, Show, Generic)
+
+instance Pretty Identifier where
+  pretty (Identifier s) = pretty s
+
+instance NFData Identifier
+
+class HasIdentifier a where
+  identifierOf :: a -> Identifier
+
+--------------------------------------------------------------------------------
 -- Declarations
 
 data DeclType
@@ -285,31 +299,31 @@ instance Pretty DeclType where
     Dataset  -> "dataset"
 
 -- | Type of top-level declarations.
-data Decl var ann
+data Decl binder var ann
   = DeclNetw
     Provenance      -- Location in source file.
     Identifier      -- Network name.
-    (Expr var ann)  -- Network type.
+    (Expr binder var ann)  -- Network type.
   | DeclData
     Provenance      -- Location in source file.
     Identifier      -- Dataset name.
-    (Expr var ann)  -- Dataset type.
+    (Expr binder var ann)  -- Dataset type.
   | DefFun
     Provenance      -- Location in source file.
     Identifier      -- Bound function name.
-    (Expr var ann)  -- Bound function type.
-    (Expr var ann)  -- Bound function body.
+    (Expr binder var ann)  -- Bound function type.
+    (Expr binder var ann)  -- Bound function body.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance (NFData var, NFData ann) => NFData (Decl var ann)
+instance (NFData binder, NFData var, NFData ann) => NFData (Decl binder var ann)
 
-instance HasProvenance ann => HasProvenance (Decl var ann) where
+instance HasProvenance ann => HasProvenance (Decl binder var ann) where
   provenanceOf = \case
     DeclNetw p _ _ -> p
     DeclData p _ _ -> p
     DefFun p _ _ _ -> p
 
-instance HasIdentifier (Decl var ann) where
+instance HasIdentifier (Decl binder var ann) where
   identifierOf = \case
     DeclNetw _ i _ -> i
     DeclData _ i _ -> i
@@ -319,11 +333,11 @@ instance HasIdentifier (Decl var ann) where
 -- Programs
 
 -- | Type of Vehicle Core programs.
-newtype Prog var ann
-  = Main [Decl var ann] -- ^ List of declarations.
+newtype Prog binder var ann
+  = Main [Decl binder var ann] -- ^ List of declarations.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance (NFData var, NFData ann) => NFData (Prog var ann)
+instance (NFData binder, NFData var, NFData ann) => NFData (Prog binder var ann)
 
 --------------------------------------------------------------------------------
 -- Recursion principles
@@ -336,7 +350,7 @@ makeBaseFunctor ''Expr
 -- Type-classes
 
 class HasType a where
-  typeOf :: a var ann -> Expr var ann
+  typeOf :: a binder var ann -> Expr binder var ann
 
 instance HasType Binder where
   typeOf (Binder _ _ _ _ t) = t
@@ -351,10 +365,10 @@ instance HasType Decl where
 -- Utilities
 
 -- Preserves invariant that we never have two nested Apps
-normApp :: Semigroup ann => ann -> Expr var ann -> NonEmpty (Arg var ann) -> Expr var ann
+normApp :: Semigroup ann => ann -> Expr binder var ann -> NonEmpty (Arg binder var ann) -> Expr binder var ann
 normApp p (App p' fun args') args = App (p' <> p) fun (args' <> args)
 normApp p fun                args = App p fun args
 
-normAppList :: Semigroup ann => ann -> Expr var ann -> [Arg var ann] -> Expr var ann
+normAppList :: Semigroup ann => ann -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
 normAppList _   fun []           = fun
 normAppList ann fun (arg : args) = normApp ann fun (arg :| args)

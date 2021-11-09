@@ -12,45 +12,45 @@ import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.DeBruijn
 import Vehicle.Language.AST.Builtin
 import Vehicle.Language.AST.Visibility (Visibility(..))
-import Vehicle.Language.AST.Name (Name(..), Identifier)
+import Vehicle.Language.AST.Name
 
 --------------------------------------------------------------------------------
 -- Patterns
 
-pattern Type0 :: Expr var ann
+pattern Type0 :: Expr binder var ann
 pattern Type0 = Type 0
 
-pattern Type1 :: Expr var ann
+pattern Type1 :: Expr binder var ann
 pattern Type1 = Type 1
 
-pattern LitNat :: ann -> Int -> Expr var ann
+pattern LitNat :: ann -> Int -> Expr binder var ann
 pattern LitNat ann n = Literal ann (LNat n)
 
-pattern LitInt :: ann -> Int -> Expr var ann
+pattern LitInt :: ann -> Int -> Expr binder var ann
 pattern LitInt ann n = Literal ann (LInt n)
 
-pattern LitReal :: ann -> Double -> Expr var ann
+pattern LitReal :: ann -> Double -> Expr binder var ann
 pattern LitReal ann n = Literal ann (LRat n)
 
-pattern LitBool :: ann -> Bool -> Expr var ann
+pattern LitBool :: ann -> Bool -> Expr binder var ann
 pattern LitBool ann n = Literal ann (LBool n)
 
-pattern BuiltinNumericType :: ann -> NumericType -> Expr var ann
+pattern BuiltinNumericType :: ann -> NumericType -> Expr binder var ann
 pattern BuiltinNumericType ann op = Builtin ann (NumericType op)
 
-pattern BuiltinBooleanType :: ann -> BooleanType -> Expr var ann
+pattern BuiltinBooleanType :: ann -> BooleanType -> Expr binder var ann
 pattern BuiltinBooleanType ann op = Builtin ann (BooleanType op)
 
-pattern BuiltinContainerType :: ann -> ContainerType -> Expr var ann
+pattern BuiltinContainerType :: ann -> ContainerType -> Expr binder var ann
 pattern BuiltinContainerType ann op = Builtin ann (ContainerType op)
 
-pattern BuiltinTypeClass :: ann -> TypeClass -> Expr var ann
+pattern BuiltinTypeClass :: ann -> TypeClass -> Expr binder var ann
 pattern BuiltinTypeClass ann tc = Builtin ann (TypeClass tc)
 
-pattern BuiltinOrder :: ann -> Order -> Expr var ann
+pattern BuiltinOrder :: ann -> Order -> Expr binder var ann
 pattern BuiltinOrder ann order = Builtin ann (Order order)
 
-pattern BuiltinEquality :: ann -> Equality -> Expr var ann
+pattern BuiltinEquality :: ann -> Equality -> Expr binder var ann
 pattern BuiltinEquality ann eq = Builtin ann (Equality eq)
 
 --------------------------------------------------------------------------------
@@ -62,11 +62,11 @@ pattern BuiltinEquality ann eq = Builtin ann (Equality eq)
 type InputVar  = Name
 type InputAnn  = Provenance
 
-type InputArg       = Arg    InputVar InputAnn
-type InputBinder    = Binder InputVar InputAnn
-type InputExpr      = Expr   InputVar InputAnn
-type InputDecl      = Decl   InputVar InputAnn
-type InputProg      = Prog   InputVar InputAnn
+type InputArg       = NamedArg    InputAnn
+type InputBinder    = NamedBinder InputAnn
+type InputExpr      = NamedExpr   InputAnn
+type InputDecl      = NamedDecl   InputAnn
+type InputProg      = NamedProg   InputAnn
 
 -- * Types pre type-checking
 
@@ -95,11 +95,11 @@ type CheckedProg   = DeBruijnProg    CheckedAnn
 type OutputVar  = Name
 type OutputAnn  = Provenance
 
-type OutputBinder = Binder OutputVar OutputAnn
-type OutputArg    = Arg    OutputVar OutputAnn
-type OutputExpr   = Expr   OutputVar OutputAnn
-type OutputDecl   = Decl   OutputVar OutputAnn
-type OutputProg   = Prog   OutputVar OutputAnn
+type OutputBinder = NamedBinder OutputAnn
+type OutputArg    = NamedArg    OutputAnn
+type OutputExpr   = NamedExpr   OutputAnn
+type OutputDecl   = NamedDecl   OutputAnn
+type OutputProg   = NamedProg   OutputAnn
 
 --------------------------------------------------------------------------------
 -- Classes
@@ -113,11 +113,11 @@ instance IsBoundCtx [Name] where
 --------------------------------------------------------------------------------
 -- Utility functions
 
-isHole :: Expr var ann -> Bool
+isHole :: Expr binder var ann -> Bool
 isHole (Hole _ _ ) = True
 isHole _           = False
 
-isProperty :: Expr var ann -> Bool
+isProperty :: Expr binder var ann -> Bool
 isProperty (Builtin _ (BooleanType Prop)) = True
 isProperty _                              = False
 
@@ -141,19 +141,20 @@ freeNames = cata $ \case
 --------------------------------------------------------------------------------
 -- Destruction functions
 
-toHead :: Expr var ann -> (Expr var ann, [Arg var ann])
+toHead :: Expr binder var ann -> (Expr binder var ann, [Arg binder var ann])
 toHead (App _ann fun args ) = (fun, NonEmpty.toList args)
 toHead e                    = (e, [])
 
-exprHead :: Expr var ann -> Expr var ann
+exprHead :: Expr binder var ann -> Expr binder var ann
 exprHead = fst . toHead
 
 --------------------------------------------------------------------------------
 -- Views
 
-data QuantView var ann = QuantView ann Quantifier Name (Expr var ann) (Expr var ann)
+data QuantView binder var ann =
+  QuantView ann Quantifier binder (Expr binder var ann) (Expr binder var ann)
 
-quantView :: Expr var ann -> Maybe (QuantView var ann)
+quantView :: Expr binder var ann -> Maybe (QuantView binder var ann)
 quantView (App ann (Builtin _ (Quant q))
   (Arg _ Explicit (Lam _ (Binder _ _ Explicit n t) e) :| [])) = Just (QuantView ann q n t e)
 quantView _ = Nothing

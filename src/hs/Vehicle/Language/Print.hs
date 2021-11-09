@@ -74,19 +74,19 @@ prettyFriendlyDescope ctx = prettyDescopedLang Frontend (ctxNames ctx) . runSimp
 class PrettyLang a where
   prettyLang :: VehicleLang -> a -> Doc b
 
-instance PrettyLang (Arg Name ann) where
+instance PrettyLang (NamedArg ann) where
   prettyLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Arg)
   prettyLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Arg)
 
-instance PrettyLang (Expr Name ann) where
+instance PrettyLang (NamedExpr ann) where
   prettyLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Expr)
   prettyLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Expr)
 
-instance PrettyLang (Decl Name ann) where
+instance PrettyLang (NamedDecl ann) where
   prettyLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Decl)
   prettyLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: [BF.Decl])
 
-instance PrettyLang (Prog Name ann) where
+instance PrettyLang (NamedProg ann) where
   prettyLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Prog)
   prettyLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Prog)
 
@@ -97,17 +97,17 @@ instance (Pretty a, PrettyLang b) => PrettyLang (a, b) where
   prettyLang target (x, y) = tupled [pretty x, prettyLang target y]
 
 -- These just naively translate DeBruijn indices to the corresponding strings, i.e. 0 -> "i0"
-instance PrettyLang (Arg Var ann) where
-  prettyLang target e = prettyLang target (runNaiveDescope e :: Arg Name ann)
+instance PrettyLang (DeBruijnArg ann) where
+  prettyLang target e = prettyLang target (runNaiveDescope e :: NamedArg ann)
 
-instance PrettyLang (Expr Var ann) where
-  prettyLang target e = prettyLang target (runNaiveDescope e :: Expr Name ann)
+instance PrettyLang (DeBruijnExpr ann) where
+  prettyLang target e = prettyLang target (runNaiveDescope e :: NamedExpr ann)
 
-instance PrettyLang (Decl Var ann) where
-  prettyLang target e = prettyLang target (runNaiveDescope e :: Decl Name ann)
+instance PrettyLang (DeBruijnDecl ann) where
+  prettyLang target e = prettyLang target (runNaiveDescope e :: NamedDecl ann)
 
-instance PrettyLang (Prog Var ann) where
-  prettyLang target e = prettyLang target (runNaiveDescope e :: Prog Name ann)
+instance PrettyLang (DeBruijnProg ann) where
+  prettyLang target e = prettyLang target (runNaiveDescope e :: NamedProg ann)
 
 --------------------------------------------------------------------------------
 -- Printing when using DeBruijn indices
@@ -117,14 +117,14 @@ type Ctx = [Name]
 class PrettyDescopedLang a where
   prettyDescopedLang :: VehicleLang -> Ctx -> a -> Doc b
 
-instance PrettyDescopedLang (Arg Var ann) where
-  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: Arg Name ann)
+instance PrettyDescopedLang (DeBruijnArg ann) where
+  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: NamedArg ann)
 
-instance PrettyDescopedLang (Expr Var ann) where
-  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: Expr Name ann)
+instance PrettyDescopedLang (DeBruijnExpr ann) where
+  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: NamedExpr ann)
 
-instance PrettyDescopedLang (Decl Var ann) where
-  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: Decl Name ann)
+instance PrettyDescopedLang (DeBruijnDecl ann) where
+  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: NamedDecl ann)
 
-instance PrettyDescopedLang (Prog Var ann) where
-  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: Prog Name ann)
+instance PrettyDescopedLang (DeBruijnProg ann) where
+  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: NamedProg ann)

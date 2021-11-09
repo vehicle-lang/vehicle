@@ -88,11 +88,11 @@ class Delaborate vf vc where
   delab :: MonadDelab m => vf -> m vc
 
 -- |Elaborate programs.
-instance Delaborate (V.Prog V.Name ann) B.Prog where
+instance Delaborate (V.NamedProg ann) B.Prog where
   delab (V.Main decls) = B.Main . concat <$> traverse delab decls
 
 -- |Elaborate declarations.
-instance Delaborate (V.Decl V.Name ann) [B.Decl] where
+instance Delaborate (V.NamedDecl ann) [B.Decl] where
   delab = \case
     -- Elaborate a network declaration.
     (V.DeclNetw _ n t) -> do
@@ -109,7 +109,7 @@ instance Delaborate (V.Decl V.Name ann) [B.Decl] where
     -- Elaborate a type definition.
     (V.DefFun _ n t e) -> delabFun n t e
 
-instance Delaborate (V.Expr V.Name ann) B.Expr where
+instance Delaborate (V.NamedExpr ann) B.Expr where
   delab expr = case expr of
     V.Type l        -> return $ B.Type (fromIntegral l)
     V.Var _ n       -> B.Var  <$> delab n
@@ -129,7 +129,7 @@ instance Delaborate (V.Expr V.Name ann) B.Expr where
     V.App _ fun args             -> delabApp <$> delab fun <*> traverse delab (reverse (NonEmpty.toList args))
     V.Builtin _ op               -> return $ delabBuiltin op []
 
-instance Delaborate (V.Arg V.Name ann) B.Arg where
+instance Delaborate (V.NamedArg ann) B.Arg where
   delab (V.Arg _i v e) = case v of
     V.Explicit -> B.ExplicitArg <$> delab e
     V.Implicit -> B.ImplicitArg <$> delab e
@@ -142,10 +142,10 @@ instance Delaborate V.Name B.Name where
 instance Delaborate V.Identifier B.Name where
   delab (V.Identifier n) = return $ mkToken B.Name n
 
-instance Delaborate (V.Binder V.Name ann, V.Expr V.Name ann) B.LetDecl where
+instance Delaborate (V.NamedBinder ann, V.NamedExpr ann) B.LetDecl where
   delab (binder, bound) = B.LDecl <$> delab binder <*> delab bound
 
-instance Delaborate (V.Binder V.Name name) B.Binder where
+instance Delaborate (V.NamedBinder name) B.Binder where
   delab (V.Binder _i _p v n _t) = case v of
     -- TODO track whether type was provided manually and so use ExplicitBinderAnn
     V.Explicit -> B.ExplicitBinder <$> delab n
@@ -250,22 +250,22 @@ argsError s n args = developerError $
   "but found" <+> pretty (length args) <+> squotes (pretty (show args))
 
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
-delabPi :: MonadDelab m => ann -> V.Binder V.Name ann -> V.Expr V.Name ann -> m B.Expr
+delabPi :: MonadDelab m => ann -> V.NamedBinder ann -> V.NamedExpr ann -> m B.Expr
 delabPi ann input result = case foldPi ann input result of
   Left  (binders, body)    -> B.Forall tokForall <$> traverse delab binders <*> pure tokDot <*> delab body
   Right (domain, codomain) -> B.Fun <$> delab domain <*> pure tokArrow <*> delab codomain
 
 -- | Collapses let expressions into a sequence of let declarations
-delabLet :: MonadDelab m => V.Expr V.Name ann -> m B.Expr
+delabLet :: MonadDelab m => V.NamedExpr ann -> m B.Expr
 delabLet expr = let (boundExprs, body) = foldLet expr in
   B.Let <$> traverse delab boundExprs <*> delab body
 
 -- | Collapses consecutative lambda expressions into a sequence of binders
-delabLam :: MonadDelab m => V.Expr V.Name ann -> m B.Expr
+delabLam :: MonadDelab m => V.NamedExpr ann -> m B.Expr
 delabLam expr = let (binders, body) = foldLam expr in
   B.Lam tokLambda <$> traverse delab binders <*> pure tokArrow <*> delab body
 
-delabFun :: MonadDelab m => V.Identifier -> V.Expr V.Name ann -> V.Expr V.Name ann -> m [B.Decl]
+delabFun :: MonadDelab m => V.Identifier -> V.NamedExpr ann -> V.NamedExpr ann -> m [B.Decl]
 delabFun n typ expr = do
   n' <- delab n
   case foldDefFun typ expr of
