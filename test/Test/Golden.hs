@@ -14,6 +14,9 @@ import Test.Tasty.Golden (goldenVsFileDiff)
 import System.Exit (exitFailure)
 import System.FilePath (takeFileName, splitPath, (<.>), (</>))
 import System.Directory (removeFile)
+import System.IO.Error (isDoesNotExistError)
+import Control.Exception ( catch, throwIO )
+
 import Vehicle
 
 goldenTests :: TestTree
@@ -109,10 +112,19 @@ makeIndividualTest folderPath name target = testWithCleanup
   action     = runTest inputFile outputFile target
 
   test = goldenVsFileDiff testName diffCommand goldenFile outputFile action
-  testWithCleanup = withResource (return ()) (const $ removeFile outputFile) (const test)
+  testWithCleanup = cleanupTestFile outputFile test
 
 diffCommand :: FilePath -> FilePath -> [String]
 diffCommand ref new = ["diff", "--color=always", ref, new]
+
+cleanupTestFile :: FilePath -> TestTree -> TestTree
+cleanupTestFile testFile test = withResource (return ()) (const cleanup) (const test)
+  where
+    cleanup = removeFile testFile `catch` handleExists
+
+    handleExists e
+      | isDoesNotExistError e = return ()
+      | otherwise = throwIO e
 
 runTest :: FilePath -> FilePath -> OutputTarget -> IO ()
 runTest inputFile outputFile outputTarget = do
