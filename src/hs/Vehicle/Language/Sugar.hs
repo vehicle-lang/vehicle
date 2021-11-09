@@ -13,8 +13,8 @@ import Vehicle.Language.AST
 -- be 100% reversible.
 
 type BindersAndBody     name ann = ([Binder name ann], Expr name ann)
-type LetBinding         name ann = (Binder name ann, Expr name ann)
-type LetBindingsAndBody name ann = ([LetBinding name ann], Expr name ann)
+type LetBinder          name ann = (Binder name ann, Expr name ann)
+type LetBindingsAndBody name ann = ([LetBinder name ann], Expr name ann)
 
 unfoldBinders :: ann
               -> (ann -> Binder name ann -> Expr name ann -> Expr name ann)
@@ -96,7 +96,7 @@ unfoldQuantifierIn ann q container = unfoldBinders ann (\ann1 binder body ->
 unfoldLet :: forall name ann. ann -> LetBindingsAndBody name ann -> Expr name ann
 unfoldLet ann (binders, body) = foldr insertLet body binders
   where
-    insertLet :: LetBinding name ann -> Expr name ann -> Expr name ann
+    insertLet :: LetBinder name ann -> Expr name ann -> Expr name ann
     insertLet (binder, bound) res = Let ann bound binder res
 
 -- | Collapses consecutative let expressions into a list of let declarations

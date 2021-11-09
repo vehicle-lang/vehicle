@@ -1,41 +1,44 @@
-module Vehicle.Backend.ITP.Agda
-  (AgdaOptions(..), compileToAgda) where
+{-# LANGUAGE OverloadedLists #-}
 
-import Data.List.NonEmpty (NonEmpty)
-import Data.Text (Text)
-import Data.Text qualified as Text (intercalate, unwords, null, pack, toUpper, splitAt)
-import Data.Foldable (fold)
-import Data.List.NonEmpty qualified as NonEmpty
-import Data.Set (Set)
-import Data.Set qualified as Set
+module Vehicle.Backend.ITP.Agda
+  ( AgdaOptions(..)
+  , compileToAgda
+  ) where
+
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT)
-
+import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.Text (Text)
+import Data.Foldable (fold)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
-import Prettyprinter.Render.Text (renderStrict)
 
-import Vehicle.Backend.Core
-import Vehicle.Language.AST
 import Vehicle.Prelude
+import Vehicle.Language.AST
+import Vehicle.Language.Print
+import Vehicle.Language.Sugar
+import Vehicle.Backend.ITP.Core
 
 --------------------------------------------------------------------------------
 -- Agda-specific options
 
-data AgdaOptions = AgdaOptions
-  { useProp    :: Bool
-  , modulePath :: [Text]
+newtype AgdaOptions = AgdaOptions
+  { modulePath :: [Text]
   }
 
 --------------------------------------------------------------------------------
 -- Modules
 
--- |The type of all possible Agda modules the program may depend on.
+-- |All possible Agda modules the program may depend on.
 data Dependency
   -- AISEC agda library
   = AISECCore
   | AISECUtils
   | DataTensor
   | DataTensorInstances
+  | DataTensorAll
+  | DataTensorAny
   -- Standard library
   | DataUnit
   | DataEmpty
@@ -49,88 +52,121 @@ data Dependency
   | DataIntDivMod
   | DataRat
   | DataRatInstances
+  | DataReal
   | DataBool
   | DataBoolInstances
   | DataList
   | DataListInstances
+  | DataListAll
+  | DataListAny
   | PropEquality
   | RelNullary
   deriving (Eq, Ord)
 
-instance Show Dependency where
-  show AISECCore           = "AISEC.Core"
-  show AISECUtils          = "AISEC.Utils"
-  show DataTensor          = "AISEC.Data.Tensor"
-  show DataTensorInstances = "AISEC.Data.Tensor.Instances"
-  show DataUnit            = "Data.Unit"
-  show DataEmpty           = "Data.Empty"
-  show DataProduct         = "Data.Product"
-  show DataSum             = "Data.Sum"
-  show DataNat             = "Data.Nat as ℕ"
-  show DataNatInstances    = "Data.Nat.Instances"
-  show DataNatDivMod       = "Data.Nat.DivMod as ℕ"
-  show DataInt             = "Data.Int as ℤ"
-  show DataIntInstances    = "Data.Int.Instances"
-  show DataIntDivMod       = "Data.Int.DivMod as ℤ"
-  show DataRat             = "Data.Rational as ℚ"
-  show DataRatInstances    = "Data.Rational.Instances"
-  show DataBool            = "Data.Bool as 𝔹"
-  show DataBoolInstances   = "Data.Bool.Instances"
-  show DataList            = "Data.List"
-  show DataListInstances   = "Data.List.Instances"
-  show PropEquality        = "Relation.Binary.PropositionalEquality"
-  show RelNullary          = "Relation.Nullary"
+instance Pretty Dependency where
+  pretty = \case
+    AISECCore           -> "AISEC.Core"
+    AISECUtils          -> "AISEC.Utils"
+    DataTensor          -> "AISEC.Data.Tensor"
+    DataTensorInstances -> "AISEC.Data.Tensor.Instances"
+    DataTensorAll       -> "AISEC.Data.Tensor.Relation.Unary.All"
+    DataTensorAny       -> "AISEC.Data.Tensor.Relation.Unary.Any"
+    DataUnit            -> "Data.Unit"
+    DataEmpty           -> "Data.Empty"
+    DataProduct         -> "Data.Product"
+    DataSum             -> "Data.Sum"
+    DataNat             -> "Data.Nat as" <+> numericQualifier Nat
+    DataNatInstances    -> "Data.Nat.Instances"
+    DataNatDivMod       -> "Data.Nat.DivMod as" <+> numericQualifier Nat
+    DataInt             -> "Data.Int as" <+> numericQualifier Int
+    DataIntInstances    -> "Data.Int.Instances"
+    DataIntDivMod       -> "Data.Int.DivMod as" <+> numericQualifier Int
+    DataRat             -> "Data.Rational as" <+> numericQualifier Rat
+    DataRatInstances    -> "Data.Rational.Instances"
+    DataReal            -> "Data.Real as" <+> numericQualifier Real
+    DataBool            -> "Data.Bool as 𝔹"
+    DataBoolInstances   -> "Data.Bool.Instances"
+    DataList            -> "Data.List"
+    DataListInstances   -> "Data.List.Instances"
+    DataListAll         -> "Data.List.Relation.Unary.All"
+    DataListAny         -> "Data.List.Relation.Unary.Any"
+    PropEquality        -> "Relation.Binary.PropositionalEquality"
+    RelNullary          -> "Relation.Nullary"
 
-importStatement :: Dependency -> Text
-importStatement dep = "open import " <> Text.pack (show dep)
+importStatement :: Dependency -> Doc a
+importStatement dep = "open import" <+> pretty dep
 
-importStatements :: Set Dependency -> Text
-importStatements deps = Text.unwords $ map importStatement $ Set.toList deps
+importStatements :: Set Dependency -> Doc a
+importStatements deps = vsep $ map importStatement $ Set.toList deps
 
 type ModulePath = [Text]
 
-moduleHeader :: ModulePath -> Text
-moduleHeader path = "module " <> Text.intercalate "." path <> " where"
+moduleHeader :: ModulePath -> Doc a
+moduleHeader path = "module" <+> concatWith (surround ".") (map pretty path) <+> "where"
 
+numericQualifier :: NumericType -> Doc a
+numericQualifier = \case
+  Nat  -> "ℕ"
+  Int  -> "ℤ"
+  Rat  -> "ℚ"
+  Real -> "ℝ"
+
+numericDependencies :: NumericType -> [Dependency]
+numericDependencies = \case
+  Nat  -> [DataNat]
+  Int  -> [DataInt]
+  Rat  -> [DataRat]
+  Real -> [DataReal]
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
 
 type Code = Doc (Set Dependency, Precedence)
 
-annotateConstant :: Dependency -> Text -> Code
-annotateConstant d t = annotate (Set.singleton d, maxBound :: Int) (pretty t)
+annotateConstant :: [Dependency] -> Code -> Code
+annotateConstant dependencies = annotate (Set.fromList dependencies, -1000)
 
-annotateOp1 :: [Dependency] -> Precedence -> Symbol -> Code -> Code
-annotateOp1 ds opPrecedence op arg =
-  let bArg = bracketIfRequired opPrecedence arg in
-  annotate (Set.fromList ds, opPrecedence) (pretty op <+> bArg)
+annotateApp :: [Dependency] -> Code -> [Code] -> Code
+annotateApp dependencies fun args =
+  let precedence = 20 in
+  let bracketedArgs = map (bracketIfRequired 20) args in
+  annotate (Set.fromList dependencies, precedence) (hsep (fun : bracketedArgs))
 
-annotateOp2 :: [Dependency]
-            -> Bool
-            -> Precedence
-            -> (Code -> Code)
-            -> Symbol
-            -> Code -> Code -> Code
-annotateOp2 ds isInfix opPrecedence opBraces op arg1 arg2 =
-  let bArg1 = bracketIfRequired opPrecedence arg1 in
-  let bArg2 = bracketIfRequired opPrecedence arg2 in
-  annotate (Set.fromList ds, opPrecedence) (opBraces (if isInfix
-    then bArg1 <+> pretty op <+> bArg2
-    else pretty op <+> bArg1 <+> bArg2))
+annotateInfixOp1 :: [Dependency]
+                 -> Precedence
+                 -> Maybe Code
+                 -> Code
+                 -> [Code]
+                 -> Code
+annotateInfixOp1 dependencies precedence qualifier op args = result
+  where
+    bracketedArgs = map (bracketIfRequired precedence) args
+    qualifierDoc  = maybe "" (<> ".") qualifier
+    doc = case bracketedArgs of
+      []       -> qualifierDoc <> op <> "_"
+      [e1]     -> qualifierDoc <> op <+> e1
+      _        -> developerError $ "was expecting no more than 1 argument for" <+> op <+>
+                                   "but found the following arguments:" <+> list args
+    result = annotate (Set.fromList dependencies, precedence) doc
 
 annotateInfixOp2 :: [Dependency]
                  -> Precedence
                  -> (Code -> Code)
-                 -> Symbol
-                 -> Code -> Code -> Code
-annotateInfixOp2 ds = annotateOp2 ds True
-
-annotateApp1 :: [Dependency] -> Symbol -> Code -> Code
-annotateApp1 ds = annotateOp1 ds 20
-
-annotateApp2 :: [Dependency] -> Symbol -> Code -> Code -> Code
-annotateApp2 ds = annotateOp2 ds False 20 id
+                 -> Maybe Code
+                 -> Code
+                 -> [Code]
+                 -> Code
+annotateInfixOp2 dependencies precedence opBraces qualifier op args = result
+  where
+    bracketedArgs = map (bracketIfRequired precedence) args
+    qualifierDoc  = maybe "" (<> ".") qualifier
+    doc = case bracketedArgs of
+      []       -> qualifierDoc <> "_" <> op <> "_"
+      [e1]     -> e1 <+> qualifierDoc <> op <> "_"
+      [e1, e2] -> e1 <+> qualifierDoc <> op <+> e2
+      _        -> developerError $ "was expecting no more than 2 arguments for" <+> op <+>
+                                   "but found the following arguments:" <+> list args
+    result = annotate (Set.fromList dependencies, precedence) (opBraces doc)
 
 bracketIfRequired :: Precedence -> Code -> Code
 bracketIfRequired parentPrecedence expr = case docAnn expr of
@@ -148,24 +184,22 @@ boolBraces c = "⌊" <+> c <+> "⌋"
 compileToAgda :: ITPOptions AgdaOptions -> OutputProg -> Either CompileError Text
 compileToAgda options prog = runReaderT (compileProgramToAgda prog) options
 
-type MonadAgdaCompile m = MonadCompile m AgdaOptions
+type MonadAgdaCompile m = MonadCompile AgdaOptions m
 
-compileProgramToAgda
-  :: MonadAgdaCompile m
-  => OutputProg
-  -> m Text
+compileProgramToAgda :: MonadAgdaCompile m
+                     => OutputProg
+                     -> m Text
 compileProgramToAgda program = do
   programDoc <- compile program
   let programStream = layoutPretty defaultLayoutOptions programDoc
   -- Collects dependencies by first discarding precedence info and then folding using Set Monoid
   let progamDependencies = fold (reAnnotateS fst programStream)
-  let programText = renderStrict programStream
   options <- ask
-  return $ Text.intercalate "\n\n"
+  return $ layoutAsText $ (vsep2 :: [Code] -> Code)
     [ fileHeader options "--"
     , importStatements progamDependencies
     , moduleHeader (modulePath (backendOpts options))
-    , programText
+    , programDoc
     ]
 
 class CompileToAgda a where
@@ -175,319 +209,353 @@ class CompileToAgda a where
     -> m Code
 
 --------------------------------------------------------------------------------
--- Compilation of program tree
+-- Compilation of programs
 
-instance CompileToAgda OutputBinder where
-  compile (Binder _p v n Nothing)  = return $ visBrackets v (pretty n)
-  compile (Binder _p v n (Just t)) = do
-    t' <- compile t
-    return $ visBrackets v (pretty n <+> ":" <+> t')
+instance CompileToAgda OutputProg where
+  compile (Main ds) = do
+    cds <- traverse compile ds
+    return $ vsep2 cds
 
-instance CompileToAgda OutputArg where
-  compile (Arg _p v e) = visBrackets v <$> compile e
+instance CompileToAgda OutputDecl where
+  compile = \case
+    DeclData ann _ _    -> throwError $ CompilationUnsupported (provenanceOf ann) "dataset"
 
-instance CompileToAgda Double where
-  compile d = _
+    DeclNetw _ann n t   -> compileNetwork (pretty n) <$> compile t
+
+    DefFun _ann n t e -> do
+      let (binders, body) = foldLam e
+      if isProperty t
+        then compileProperty (pretty n) <$> compile e
+        else compileFunDef   (pretty n) <$> compile t <*> traverse compile binders <*> compile body
 
 instance CompileToAgda OutputExpr where
-  compile = \case
-    Hole{}        -> developerError "Holes should have been removed"
+  compile expr = case expr of
+    Hole{}     -> developerError "Holes should have been removed during type-checking"
+    Meta{}     -> developerError "Meta-variables should have been removed during type-checking"
+    PrimDict{} -> developerError "Primitive dictionaries should never be compiled"
 
-    Type l -> return $ annotateConstant ("Set" <+> pretty l)
+    Var _ann n  -> return $ pretty n
 
-    Forall _ann ns t  -> do
-      cns <- traverse compile ns
-      ct  <- compile t
-      return $ "∀" <+> hsep cns <+> ct
+    Type l -> return $ annotateApp [] "Set" [pretty l]
 
-    Fun _ann t1 t2 -> annotateInfixOp2 [] 20 id "→" <$> compile t1 <*> compile t2
+    Pi ann binder result -> case foldPi ann binder result of
+      Left (binders, body)  -> compileTypeLevelQuantifier All binders body
+      Right (input, output) ->
+        annotateInfixOp2 [] 20 id Nothing "→" <$> traverse compile [input, output]
 
     Ann _ann e t -> do
       ce <- compile e
       ct <- compile t
       return $ ce <+> ":" <+> ct
 
-    Let _ann ds e -> do
-      cds <- traverse compile ds
-      ce  <- compile e
-      return $ "let" <+> vsep cds <+> "in" <+> ce
+    Let{} -> do
+      let (boundExprs, body) = foldLet expr
+      cBoundExprs <- traverse compile boundExprs
+      cBody       <- compile body
+      return $ "let" <+> vsep cBoundExprs <+> "in" <+> cBody
 
-    Lam _ann ns e -> do
-      cns <- traverse compile ns
-      ce  <- compile e
-      return $ "λ" <+> vsep cns <+> "→" <+> ce
+    Lam{} -> do
+      let (binders, body) = foldLam expr
+      cBinders <- traverse compile binders
+      cBody    <- compile body
+      return $ "λ" <+> hsep cBinders <+> "→" <+> cBody
 
-    App _ann e1 e2 -> do
-      ce1 <- compile e1
-      ce2 <- compile e2
-      return $ ce1 <+> parens ce2
+    Builtin ann op -> compileBuiltin ann op []
+    Literal ann op -> compileLiteral ann op []
 
-    Var     _ann n  -> return $ pretty n
-    Seq     _ann es -> compileSeq <$> traverse compile es
-    Literal _ann l  -> compile l
-{-
-    e@HasEq{}       -> throwError $ CompilationUnsupported (provenanceOf e) "HasEq"
-    e@HasOrd{}      -> throwError $ CompilationUnsupported (provenanceOf e) "HasOrd"
-    e@IsTruth{}     -> throwError $ CompilationUnsupported (provenanceOf e) "IsTruth"
-    e@IsNatural{}   -> throwError $ CompilationUnsupported (provenanceOf e) "IsNatural"
-    e@IsIntegral{}  -> throwError $ CompilationUnsupported (provenanceOf e) "IsIntegral"
-    e@IsRational{}  -> throwError $ CompilationUnsupported (provenanceOf e) "IsRational"
-    e@IsReal{}      -> throwError $ CompilationUnsupported (provenanceOf e) "IsReal"
-    e@IsQuant{}     -> throwError $ CompilationUnsupported (provenanceOf e) "IsQuant"
-    e@IsContainer{} -> throwError $ CompilationUnsupported (provenanceOf e) "IsContainer"
+    App ann fun args -> case fun of
+      Builtin _ op -> compileBuiltin ann op (fmap argExpr (NonEmpty.toList args))
+      Literal _ op -> compileLiteral ann op (fmap argExpr (NonEmpty.toList args))
+      Seq _     xs -> compileSeq     ann xs (fmap argExpr (NonEmpty.toList args))
+      _            -> do
+        cFun   <- compile fun
+        cArgs  <- traverse compile args
+        return $ cFun <+> hsep cArgs
 
-    Prop   _ann       -> compileProp
-    Bool   _ann       -> return $ annotateConstant DataBool "Bool"
-    Nat    _ann       -> return $ annotateConstant DataNat "ℕ"
-    Int    _ann       -> return $ annotateConstant DataInt "ℤ"
-    Real   _ann       -> return $ annotateConstant DataRat "ℚ"
-    List   _ann t     -> annotateApp1 [DataList]   "List"   <$> compile t
-    Tensor _ann t1 t2 -> annotateApp2 [AISECUtils] "Tensor" <$> compile t1 <*> compile t2
+    Seq _ _ -> developerError "when compiling to Agda, Seqs should have been caught in App case"
 
-    If _ann e1 e2 e3 -> do
-      ce1 <- compile e1
-      ce2 <- compile e2
-      ce3 <- compile e3
-      return $ "if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3
+instance CompileToAgda (LetBinder OutputVar OutputAnn) where
+  compile (binder, expr) = do
+    let binderName = pretty $ nameOf binder
+    cExpr <- compile expr
+    return $ binderName <+> "=" <+> cExpr
 
-    e@(Impl    _ann e1 e2) -> compileBoolOp2 ImplOp (truthType e) <$> compile e1 <*> compile e2
-    e@(And     _ann e1 e2) -> compileBoolOp2 AndOp  (truthType e) <$> compile e1 <*> compile e2
-    e@(Or      _ann e1 e2) -> compileBoolOp2 OrOp   (truthType e) <$> compile e1 <*> compile e2
-    e@(Not     _ann e1)    -> compileBoolOp1 NotOp  (truthType e) <$> compile e1
+instance CompileToAgda OutputBinder where
+  compile binder = do
+    binderType <- compile (typeOf binder)
+    let binderName     = pretty (nameOf binder)
+    let binderBrackets = visBrackets (visibilityOf binder)
+    return $ binderBrackets (binderName <+> ":" <+> binderType)
 
-    All     _ann           -> return $ pretty ("∀" :: Text)
-    Any     _ann           -> return $ pretty ("∃" :: Text)
-    e@(Eq   _ann e1 e2)    -> compileEquality e e1 e2
-    e@(Neq  _ann e1 e2)    -> compileBoolOp1 NotOp Prop <$> compileEquality e e1 e2
+instance CompileToAgda OutputArg where
+  compile arg = visBrackets (visibilityOf arg) <$> compile (argExpr arg)
 
-    e@(Le   _ann e1 e2)    -> compileNumOrder' LeqOp e e1 e2
-    e@(Lt   _ann e1 e2)    -> compileNumOrder' LtOp  e e1 e2
-    e@(Ge   _ann e1 e2)    -> compileNumOrder' GeqOp e e1 e2
-    e@(Gt   _ann e1 e2)    -> compileNumOrder' GtOp  e e1 e2
+instance CompileToAgda BooleanType where
+  compile e = return $ case e of
+    Prop -> annotateConstant []         "Set"
+    Bool -> annotateConstant [DataBool] "Bool"
 
-    e@(Mul  _ann e1 e2)    -> compileNumOp2 MulOp (numericType e) <$> compile e1 <*> compile e2
-    e@(Div  _ann e1 e2)    -> compileNumOp2 DivOp (numericType e) <$> compile e1 <*> compile e2
-    e@(Add  _ann e1 e2)    -> compileNumOp2 AddOp (numericType e) <$> compile e1 <*> compile e2
-    e@(Sub  _ann e1 e2)    -> compileNumOp2 SubOp (numericType e) <$> compile e1 <*> compile e2
-    e@(Neg  _ann e1)       -> compileNumOp1 NegOp (numericType e) <$> compile e1
+instance CompileToAgda NumericType where
+  compile = return . numericQualifier
 
-    Cons    _ann e1 e2     -> compileCons <$> compile e1 <*> compile e2
-    e@(At   _ann e1 e2)    -> compileLookup e e1 e2
+compileBuiltin :: MonadAgdaCompile m => OutputAnn -> Builtin -> [OutputExpr] -> m Code
+compileBuiltin ann op args = case (op, args) of
+  (TypeClass  tc, []) -> throwError $ CompilationUnsupported ann (pretty tc)
+  (BooleanType t, []) -> compile t
+  (NumericType t, []) -> compile t
 
+  (ContainerType List,   opArgs) -> annotateApp [DataList]   "List"   <$> traverse compile opArgs
+  (ContainerType Tensor, opArgs) -> annotateApp [AISECUtils] "Tensor" <$> traverse compile opArgs
 
-instance CompileToAgda OutputDecl where
-  compile = \case
-    DeclData ann _n _t     -> throwError $ CompilationUnsupported (provenanceOf ann) "dataset"
-    DeclNetw _ann n t      -> compileNetwork <$> compile n <*> compile t
-    DefType  _ann n ns t   -> compileTypeDef <$> compile n <*> traverse compile ns <*> compile t
-    DefFun   _ann n t ns e -> compileFunDef  <$> compile n <*> compile t <*> traverse compile ns <*> compile e
+  (If, [_t, e1, e2, e3]) -> do
+    ce1 <- compile e1
+    ce2 <- compile e2
+    ce3 <- compile e3
+    return $ "if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3
 
-  -- Programs
-instance CompileToAgda OutputProg where
-  compile (Main ds) = do
-    cds <- traverse compile ds
-    return $ vsep2 cds
+  (BooleanOp2 op2, t : _tc : opArgs) -> compileBoolOp2 op2 (booleanType t)   <$> traverse compile opArgs
+  (Not,            t : _tc : opArgs) -> compileNot         (booleanType t)   <$> traverse compile opArgs
+  (NumericOp2 op2, t : _tc : opArgs) -> compileNumOp2  op2 <$> numType ann t <*> traverse compile opArgs
+  (Neg,            t : _tc : opArgs) -> compileNeg         <$> numType ann t <*> traverse compile opArgs
 
--- |Compiling sequences
-compileSeq :: [Code] -> Code
-compileSeq ls = annotate ann (encloseSep "[ " " ]" " , " ls)
-  where ann = (Set.singleton AISECUtils , maxBound :: Int)
+  (Quant   q, tRes                        : opArgs) -> compileQuant   ann   q (booleanType tRes) opArgs
+  (QuantIn q, _tElem : tCont : tRes : _tc : opArgs) -> compileQuantIn tCont q (booleanType tRes) opArgs
+
+  (Order order,  t1 : t2 : _tc : opArgs) -> compileNumOrder order <$> numType ann t1 <*> pure (booleanType t2) <*> traverse compile opArgs
+  (Equality Eq,  t1 : t2 : _tc : opArgs) -> compileEquality   t1 (booleanType t2) =<< traverse compile opArgs
+  (Equality Neq, t1 : t2 : _tc : opArgs) -> compileInequality t1 (booleanType t2) =<< traverse compile opArgs
+
+  (Cons, tElem : opArgs)                -> compileCons tElem <$> traverse compile opArgs
+  (At  , _tElem : tCont : _tc : opArgs) -> compileAt tCont opArgs
+
+  (Map , _) -> throwError $ CompilationUnsupported (provenanceOf ann) (pretty Map)
+  (Fold, _) -> throwError $ CompilationUnsupported (provenanceOf ann) (pretty Fold)
+
+  _ -> developerError $ "unexpected application of builtin found during compilation to Agda:" <+>
+                        squotes (pretty op) <+> "applied to" <+> prettyFriendly args
+
+compileTypeLevelQuantifier :: MonadAgdaCompile m => Quantifier -> [OutputBinder] -> OutputExpr -> m Code
+compileTypeLevelQuantifier q binders body = do
+  cBinders  <- traverse compile binders
+  cBody     <- compile body
+  let quant = if q == All then "∀" else "∃"
+  return $ quant <+> hsep cBinders <+> cBody
+
+compileContainerTypeLevelQuantifier :: MonadAgdaCompile m => OutputExpr -> Quantifier -> [OutputExpr] -> m Code
+compileContainerTypeLevelQuantifier tCont q args = do
+  let deps  = containerDependencies tCont
+  let quant = containerModifier tCont <> "." <> (if q == All then "All" else "Any")
+  annotateApp deps quant <$> traverse compile args
+
+compileContainerExprLevelQuantifier :: MonadAgdaCompile m => OutputExpr -> Quantifier -> [OutputExpr] -> m Code
+compileContainerExprLevelQuantifier tCont q args = do
+  let quant = containerModifier tCont <> "." <> (if q == All then "all" else "any")
+  let deps  = containerDependencies tCont
+  annotateApp deps quant <$> traverse compile args
+
+compileQuant :: MonadAgdaCompile m => OutputAnn -> Quantifier -> BooleanType -> [OutputExpr] -> m Code
+compileQuant ann q Bool _                   = throwError $ NoDecisionProcedureAvailable ann q
+compileQuant _   q Prop [Lam _ binder body] = compileTypeLevelQuantifier q [binder] body
+compileQuant _   _ _    args                = developerError $ "malformed quantifier args" <+> prettyFriendly args
+
+compileQuantIn :: MonadAgdaCompile m => OutputExpr -> Quantifier -> BooleanType -> [OutputExpr] -> m Code
+compileQuantIn tCont q Bool args = compileContainerExprLevelQuantifier tCont q args
+compileQuantIn tCont q Prop args = compileContainerTypeLevelQuantifier tCont q args
+
+compileLiteral :: MonadAgdaCompile m => OutputAnn -> Literal -> [OutputExpr] -> m Code
+compileLiteral _ann lit args = return $ case (lit, args) of
+  (LNat  n,     _)                             -> pretty n
+  (LInt  i,     _)                             -> pretty i
+  (LRat  _p,    _)                             -> developerError "Compilation of rational literals not yet supported"
+  (LBool True,  [BuiltinBooleanType _ t, _tc]) -> compileBoolOp0 True t
+  (LBool False, [BuiltinBooleanType _ t, _tc]) -> compileBoolOp0 False t
+  _ -> developerError $ "unexpected application of literal found during compilation to Agda:" <+>
+                        squotes (pretty lit) <+> "applied to" <+> prettyFriendly args
+
+-- |Compiling sequences. No sequences in Agda so have to go via cons.
+compileSeq :: MonadAgdaCompile m => OutputAnn -> [OutputExpr] -> [OutputExpr] -> m Code
+compileSeq _ args [_, tCont, _] = go args
+  where
+    go :: MonadAgdaCompile m => [OutputExpr] -> m Code
+    go []       = return $ annotateConstant (containerDependencies tCont) "[]"
+    go (x : xs) = do
+      cx  <- compile x
+      cxs <- go xs
+      return $ annotateInfixOp2 [] 5 id Nothing "∷" [cx , cxs]
+compileSeq ann xs args = unexpectedArgsError (Seq ann xs) args ["tElem", "tCont", "tc"]
+
 
 -- |Compiling cons operator
-compileCons :: Code -> Code -> Code
-compileCons = annotateInfixOp2 [DataList] 5 id "∷"
-
-instance CompileToAgda Literal where
-  compile = \case
-    LNat  n -> return $ pretty n
-    LInt  i -> return $ pretty i
-    LRat  r -> compile r
-    LBool b -> _
-    {-
-    e@(True    _ann)       -> compileBoolOp0 True  <$> booleanType e
-    e@(False   _ann)       -> compileBoolOp0 False <$> booleanType e
-    LitInt  _ann i         -> return $ pretty i
-    LitReal _ann d         -> return $ pretty d
-    -}
+compileCons :: OutputExpr -> [Code] -> Code
+compileCons tCont = annotateInfixOp2 deps 5 id (Just modifier) "∷"
+  where
+    modifier = containerModifier tCont
+    deps     = containerDependencies tCont
 
 -- |Compiling boolean constants
-compileBoolOp0 :: Bool -> TruthType -> Code
-compileBoolOp0 True  TBool = annotateConstant DataBool  "true"
-compileBoolOp0 False TBool = annotateConstant DataBool  "false"
-compileBoolOp0 True  TProp = annotateConstant DataUnit  "⊤"
-compileBoolOp0 False TProp = annotateConstant DataEmpty "⊥"
+compileBoolOp0 :: Bool -> BooleanType -> Code
+compileBoolOp0 True  Bool = annotateConstant [DataBool]  "true"
+compileBoolOp0 False Bool = annotateConstant [DataBool]  "false"
+compileBoolOp0 True  Prop = annotateConstant [DataUnit]  "⊤"
+compileBoolOp0 False Prop = annotateConstant [DataEmpty] "⊥"
 
--- |Compiling boolean unary operations
--- Only negation at the moment
-compileBoolOp1 :: BooleanOp1 -> TruthType -> Code -> Code
-compileBoolOp1 NotOp TBool = annotateOp1 [DataBool]   20 "not"
-compileBoolOp1 NotOp TProp = annotateOp1 [RelNullary] 3  "¬"
+-- |Compiling boolean negation
+compileNot :: BooleanType -> [Code] -> Code
+compileNot Bool = annotateApp      [DataBool] "not"
+compileNot Prop = annotateInfixOp1 [RelNullary] 3 Nothing "¬"
 
 -- |Compiling boolean binary operations
-compileBoolOp2 :: BooleanOp2 -> TruthType -> Code -> Code -> Code
-compileBoolOp2 ImplOp TBool = annotateInfixOp2 [AISECUtils]  4  id "⇒"
-compileBoolOp2 AndOp  TBool = annotateInfixOp2 [DataBool]    6  id "∧"
-compileBoolOp2 OrOp   TBool = annotateInfixOp2 [DataBool]    5  id "∨"
-compileBoolOp2 ImplOp TProp = annotateInfixOp2 mempty        20 id "→"
-compileBoolOp2 AndOp  TProp = annotateInfixOp2 [DataProduct] 2  id "×"
-compileBoolOp2 OrOp   TProp = annotateInfixOp2 [DataSum]     1  id "⊎"
+compileBoolOp2 :: BooleanOp2 -> BooleanType -> [Code] -> Code
+compileBoolOp2 op2 t = annotateInfixOp2 dependencies precedence id Nothing opDoc
+  where
+    (opDoc, precedence, dependencies) = case (op2, t) of
+      (Impl, Bool) -> ("⇒", 4,  [AISECUtils])
+      (And , Bool) -> ("∧", 6,  [DataBool])
+      (Or  , Bool) -> ("∨", 5,  [DataBool])
+      (Impl, Prop) -> ("→", 20, [])
+      (And , Prop) -> ("×", 2,  [DataProduct])
+      (Or  , Prop) -> ("⊎", 1,  [DataSum])
 
 -- |Compiling numeric unary operations
--- Only negation at the moment
-compileNumOp1 :: NumericOp1 -> NumericType -> Code -> Code
-compileNumOp1 NegOp TNat  = developerError "Negation is not supported for naturals"
-compileNumOp1 NegOp TInt  = annotateOp1 [DataInt] 8 "ℕ.-"
-compileNumOp1 NegOp TReal = annotateOp1 [DataInt] 8 "ℚ.-"
+compileNeg :: NumericType -> [Code] -> Code
+compileNeg Nat = developerError "Negation is not supported for naturals"
+compileNeg t   = annotateInfixOp1 (numericDependencies t) 8 (Just (numericQualifier Int)) "-"
 
 -- |Compiling numeric binary operations
-compileNumOp2 :: NumericOp2 -> NumericType -> Code -> Code -> Code
-compileNumOp2 MulOp TNat  = annotateInfixOp2 [DataNat]       7 id "ℕ.*"
-compileNumOp2 DivOp TNat  = annotateInfixOp2 [DataNatDivMod] 7 id "ℕ./"
-compileNumOp2 AddOp TNat  = annotateInfixOp2 [DataNat]       6 id "ℕ.+"
-compileNumOp2 SubOp TNat  = annotateInfixOp2 [DataNat]       6 id "ℕ.-"
-compileNumOp2 MulOp TInt  = annotateInfixOp2 [DataInt]       7 id "ℤ.*"
-compileNumOp2 DivOp TInt  = annotateInfixOp2 [DataIntDivMod] 7 id "ℤ./"
-compileNumOp2 AddOp TInt  = annotateInfixOp2 [DataInt]       6 id "ℤ.+"
-compileNumOp2 SubOp TInt  = annotateInfixOp2 [DataInt]       6 id "ℤ.-"
-compileNumOp2 MulOp TReal = annotateInfixOp2 [DataRat]       7 id "ℚ.*"
-compileNumOp2 DivOp TReal = annotateInfixOp2 [DataRat]       7 id "ℚ./"
-compileNumOp2 AddOp TReal = annotateInfixOp2 [DataRat]       6 id "ℚ.+"
-compileNumOp2 SubOp TReal = annotateInfixOp2 [DataRat]       6 id "ℚ.-"
+compileNumOp2 :: NumericOp2 -> NumericType -> [Code] -> Code
+compileNumOp2 op2 t = annotateInfixOp2 dependencies precedence id qualifier opDoc
+  where
+    precedence = if op2 == Mul || op2 == Div then 7 else 6
+    qualifier  = Just (numericQualifier t)
+    (opDoc, dependencies) = case (op2, t) of
+      (Add, _)    -> ("+", numericDependencies t)
+      (Mul, _)    -> ("*", numericDependencies t)
+      (Sub, Nat)  -> ("∸", numericDependencies t)
+      (Sub, _)    -> ("-", numericDependencies t)
+      (Div, Nat)  -> ("/", [DataNatDivMod])
+      (Div, Int)  -> ("/", [DataIntDivMod])
+      (Div, Rat)  -> ("÷", [DataRat])
+      (Div, Real) -> ("÷", [DataReal])
 
--- |Compiling numeric orders
-compileNumOrder' :: MonadAgdaCompile m
-                 => OrderType
-                 -> OutputExpr
-                 -> OutputExpr
-                 -> OutputExpr
-                 -> m Code
-compileNumOrder' orderType e e1 e2 =
-  compileNumOrder orderType (numericType e1) (truthType e) <$> compile e1 <*> compile e2
+compileNumOrder :: Order -> NumericType -> BooleanType -> [Code] -> Code
+compileNumOrder order nt bt = annotateInfixOp2 dependencies 4 opBraces qualifier opDoc
+  where
+    qualifier = Just $ numericQualifier nt
+    numDeps   = numericDependencies nt
+    (boolDecDoc, boolDeps) = booleanModifierDocAndDeps bt
+    orderDoc = case order of
+      Le -> "≤"
+      Lt -> "<"
+      Ge -> "≥"
+      Gt -> ">"
 
-compileNumOrder :: OrderType -> NumericType -> TruthType -> Code -> Code -> Code
-compileNumOrder LeqOp TNat  TBool = annotateInfixOp2 [DataNat, RelNullary] 4 boolBraces "ℕ.≤?"
-compileNumOrder LtOp  TNat  TBool = annotateInfixOp2 [DataNat, RelNullary] 4 boolBraces "ℕ.<?"
-compileNumOrder GeqOp TNat  TBool = annotateInfixOp2 [DataNat, RelNullary] 4 boolBraces "ℕ.≥?"
-compileNumOrder GtOp  TNat  TBool = annotateInfixOp2 [DataNat, RelNullary] 4 boolBraces "ℕ.>?"
-compileNumOrder LeqOp TNat  TProp = annotateInfixOp2 [DataNat]             4 id         "ℕ.≤"
-compileNumOrder LtOp  TNat  TProp = annotateInfixOp2 [DataNat]             4 id         "ℕ.≤"
-compileNumOrder GeqOp TNat  TProp = annotateInfixOp2 [DataNat]             4 id         "ℕ.≤"
-compileNumOrder GtOp  TNat  TProp = annotateInfixOp2 [DataNat]             4 id         "ℕ.≤"
-compileNumOrder LeqOp TInt  TBool = annotateInfixOp2 [DataInt, RelNullary] 4 boolBraces "ℤ.≤?"
-compileNumOrder LtOp  TInt  TBool = annotateInfixOp2 [DataInt, RelNullary] 4 boolBraces "ℤ.<?"
-compileNumOrder GeqOp TInt  TBool = annotateInfixOp2 [DataInt, RelNullary] 4 boolBraces "ℤ.≥?"
-compileNumOrder GtOp  TInt  TBool = annotateInfixOp2 [DataInt, RelNullary] 4 boolBraces "ℤ.>?"
-compileNumOrder LeqOp TInt  TProp = annotateInfixOp2 [DataInt]             4 id         "ℤ.≤"
-compileNumOrder LtOp  TInt  TProp = annotateInfixOp2 [DataInt]             4 id         "ℤ.≤"
-compileNumOrder GeqOp TInt  TProp = annotateInfixOp2 [DataInt]             4 id         "ℤ.≤"
-compileNumOrder GtOp  TInt  TProp = annotateInfixOp2 [DataInt]             4 id         "ℤ.≤"
-compileNumOrder LeqOp TReal TBool = annotateInfixOp2 [DataRat, RelNullary] 4 boolBraces "ℚ.≤?"
-compileNumOrder LtOp  TReal TBool = annotateInfixOp2 [DataRat, RelNullary] 4 boolBraces "ℚ.<?"
-compileNumOrder GeqOp TReal TBool = annotateInfixOp2 [DataRat, RelNullary] 4 boolBraces "ℚ.≥?"
-compileNumOrder GtOp  TReal TBool = annotateInfixOp2 [DataRat, RelNullary] 4 boolBraces "ℚ.>?"
-compileNumOrder LeqOp TReal TProp = annotateInfixOp2 [DataRat]             4 id         "ℚ.≤"
-compileNumOrder LtOp  TReal TProp = annotateInfixOp2 [DataRat]             4 id         "ℚ.<"
-compileNumOrder GeqOp TReal TProp = annotateInfixOp2 [DataRat]             4 id         "ℚ.≥"
-compileNumOrder GtOp  TReal TProp = annotateInfixOp2 [DataRat]             4 id         "ℚ.>"
+    opBraces     = if bt == Bool then boolBraces else id
+    dependencies = numDeps <> boolDeps
+    opDoc        = orderDoc <> boolDecDoc
 
 -- TODO implement this via proof by reflection
-compileLookup :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> OutputExpr -> m Code
-compileLookup e cont (Literal indexAnn (LNat index)) = do
-  let ann = annotation e
-  case containerType e of
-    TTensor ns
-      | index < NonEmpty.head ns -> do
-        tensor <- compile cont
-        return $ tensor <+> pretty index
-      | otherwise            -> throwError $
-        TensorIndexOutOfBounds (provenanceOf indexAnn) (getType e) (fromIntegral index)
-    -- Tricky to support lists as we can't guarantee the index is within the length
-    -- of the list.
-    TList      -> throwError $ CompilationUnsupported (provenanceOf ann) "Lookup in lists"
--- Tricky to support variable indices as we can't guarantee
--- they're bounded by the length of the list.
-compileLookup e _cont (Var    _ _) = throwError $
-  CompilationUnsupported (provenanceOf e) "Lookup of variable indices"
--- Anything else is an error.
-compileLookup e _cont index = unexpectedExprError (provenanceOf index) e ["Natural", "Var"]
+compileAt :: MonadAgdaCompile m => OutputExpr -> [OutputExpr] -> m Code
+compileAt tCont [cont, Literal indexAnn (LNat index)] = do
+  case containerSize tCont cont of
+    Left err -> throwError $ ContainerDimensionError (provenanceOf indexAnn) err
+    Right size ->
+      if index >= size
+        then throwError $ ContainerDimensionError (provenanceOf indexAnn) $
+          ContainerIndexOutOfBounds (containerType tCont) index size
+        else do
+          tensor <- compile cont
+          return $ tensor <+> pretty index
+compileAt tCont [_cont, Var _ _] = throwError $
+  -- Tricky to support variable indices as we can't guarantee
+  -- they're bounded by the length of the list.
+  CompilationUnsupported (provenanceOf tCont) "lookup of variable indices"
+compileAt tCont [_cont, index] =
+  -- Anything else is an error.
+  unexpectedExprError (provenanceOf index) tCont [show Nat, "Var"]
+compileAt tCont args = do
+  let deps     = containerDependencies tCont
+  let modifier = containerModifier tCont
+  annotateApp deps (modifier <> "." <> "lookup") <$> traverse compile args
 
-compileEquality :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> OutputExpr -> m Code
-compileEquality e e1 e2 = case truthType e of
-  TProp -> compilePropEquality e1 e2
-  TBool -> compileBoolEquality e1 e2
-
--- Equality in properties is simply compiled to propositional equality
-compilePropEquality :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> m Code
-compilePropEquality e1 e2 = annotateInfixOp2 [PropEquality] 4 id "≡" <$> compile e1 <*> compile e2
-
-data EqualityTypeError
-  = UnexpectedEqualityType
-  | PolymorphicEqualityType Symbol
-
--- Equality in boolean functions is more complicated as we need an actual decision procedure.
--- We handle this using instance arguments
-compileBoolEquality :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> m Code
-compileBoolEquality e1 e2 = let t1 = getType e1 in
-  case equalityDependencies t1 of
-    Left UnexpectedEqualityType      -> unexpectedTypeError e1 t1 expectedTypes
-      where expectedTypes = ["Tensor", "Real", "Int", "List"]
-    Left (PolymorphicEqualityType n) -> throwError $ CompilationUnsupported (provenanceOf e1) ("Polymorphic equality over '" <> n <> "'")
+compileEquality :: MonadAgdaCompile m => OutputExpr -> BooleanType -> [Code] -> m Code
+compileEquality _tElem Prop args = return $ annotateInfixOp2 [PropEquality] 4 id Nothing "≡" args
+compileEquality tElem  Bool args =
+  -- Boolean function equality is more complicated as we need an actual decision procedure.
+  -- We handle this using instance arguments
+  case equalityDependencies tElem of
+    Left  UnexpectedEqualityType ->
+      unexpectedTypeError tElem ["Tensor", "Real", "Int", "List"]
+    Left (PolymorphicEqualityType n) ->
+      throwError $ CompilationUnsupported (provenanceOf tElem) ("polymorphic equality over" <+> squotes (pretty n) <> "'")
     Right dependencies ->
-      annotateInfixOp2 ([RelNullary] <> dependencies) 4 boolBraces "≟" <$> compile e1 <*> compile e2
+      return $ annotateInfixOp2 ([RelNullary] <> dependencies) 4 boolBraces Nothing "≟" args
 
--- Calculates the dependencies needed for equality over the provided type
-equalityDependencies :: OutputExpr -> Either EqualityTypeError [Dependency]
-equalityDependencies = \case
-  Nat    _ann        -> return [DataNatInstances]
-  Int    _ann        -> return [DataIntInstances]
-  Real   _ann        -> return [DataRatInstances]
-  Bool   _ann        -> return [DataBoolInstances]
-  List   _ann t1     -> do
-    deps <- equalityDependencies t1
-    return $ [DataListInstances] <> deps
-  Tensor _ann t1 _t2 -> do
-    deps <- equalityDependencies t1
-    return $ [DataTensorInstances] <> deps
-  Var    _ann  n     -> throwError (PolymorphicEqualityType n)
-  _                  -> throwError UnexpectedEqualityType
-
-compileProp :: MonadAgdaCompile m => m Code
-compileProp = do
-  options <- ask
-  return $ if useProp (backendOpts options)
-    then "Prop"
-    else "Set"
-
--- |Compile a declaration using the `network` keyword
-compileNetwork :: Code -> Code -> Code
-compileNetwork eArg eType =
-  eArg <+> ":" <+> eType             <> hardline <>
-  eArg <+> "= evaluate record"       <> hardline <>
-    "{ databasePath = DATABASE_PATH" <> hardline <>
-    "; networkUUID = NETWORK_UUID"   <> hardline <>
-    "}"
-
-compileTypeDef :: Code -> [Code] -> Code -> Code
-compileTypeDef n args t = "pattern" <+> n <+> hsep args <+> "=" <+> t
+compileInequality :: MonadAgdaCompile m => OutputExpr -> BooleanType -> [Code] -> m Code
+compileInequality _tElem Prop args = return $ annotateInfixOp2 [PropEquality] 4 id Nothing "≢" args
+compileInequality tElem  Bool args = do
+  eq <- compileEquality tElem Bool args
+  return $ compileNot (booleanType tElem) [eq]
 
 compileFunDef :: Code -> Code -> [Code] -> Code -> Code
 compileFunDef n t ns e =
   n <+> ":" <+> t <> hardline <>
   n <+> (if null ns then mempty else hsep ns <> " ") <> "=" <+> e
 
+-- |Compile a `network` declaration
+compileNetwork :: Code -> Code -> Code
+compileNetwork networkName networkType =
+  networkName <+> ":" <+> networkType       <> hardline <>
+  networkName <+> "= evaluate record"       <> hardline <>
+    "{ databasePath = DATABASE_PATH" <> hardline <>
+    "; networkUUID  = NETWORK_UUID"  <> hardline <>
+    "}"
+
 compileProperty :: Code -> Code -> Code
-compileProperty eArg expr =
-  eArg <+> ":" <+> expr              <> hardline <>
-  eArg <+> "= checkProperty record"  <> hardline <>
+compileProperty propertyName propertyBody =
+  propertyName <+> ":" <+> propertyBody      <> hardline <>
+  propertyName <+> "= checkProperty record"  <> hardline <>
     "{ databasePath = DATABASE_PATH" <> hardline <>
     "; networkUUID  = NETWORK_UUID"  <> hardline <>
     "; propertyUUID = ????"          <> hardline <>
     "}"
 
-capitaliseTypeName :: Text -> Text
-capitaliseTypeName name
-  | Text.null name = name
-  | otherwise =
-    let (firstLetter, remainder) = Text.splitAt 1 name in
-      Text.toUpper firstLetter <> remainder
--}
+numType :: MonadAgdaCompile m => OutputAnn -> OutputExpr -> m NumericType
+numType ann t = case numericType t of
+  Real -> throwError $ CompilationUnsupported (provenanceOf ann) "real numbers"
+  nt   -> return nt
+
+
+containerDependencies :: OutputExpr -> [Dependency]
+containerDependencies tCont = case containerType tCont of
+  List   -> [DataList]
+  Tensor -> [AISECUtils]
+
+containerModifier :: OutputExpr -> Code
+containerModifier tCont = case containerType tCont of
+  List   -> "List"
+  Tensor -> "Tensor"
+
+booleanModifierDocAndDeps :: BooleanType -> (Code, [Dependency])
+booleanModifierDocAndDeps = \case
+  Bool -> ("?", [RelNullary])
+  Prop -> ("" , [])
+
+data EqualityTypeError
+  = UnexpectedEqualityType
+  | PolymorphicEqualityType Name
+
+-- Calculates the dependencies needed for equality over the provided type
+equalityDependencies :: OutputExpr -> Either EqualityTypeError [Dependency]
+equalityDependencies = \case
+  BuiltinNumericType _ Nat  -> return [DataNatInstances]
+  BuiltinNumericType _ Int  -> return [DataIntInstances]
+  BuiltinNumericType _ Real -> return [DataRatInstances]
+  BuiltinBooleanType _ Bool -> return [DataBoolInstances]
+  App _ (BuiltinContainerType _ List)   [tElem] -> do
+    deps <- equalityDependencies (argExpr tElem)
+    return $ [DataListInstances] <> deps
+  App _ (BuiltinContainerType _ Tensor) [tElem, _tDims] -> do
+    deps <- equalityDependencies (argExpr tElem)
+    return $ [DataTensorInstances] <> deps
+  Var _ann n -> throwError $ PolymorphicEqualityType n
+  _          -> throwError UnexpectedEqualityType

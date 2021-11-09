@@ -158,10 +158,6 @@ quantView (App ann (Builtin _ (Quant q))
   (Arg _ Explicit (Lam _ (Binder _ _ Explicit n t) e) :| [])) = Just (QuantView ann q n t e)
 quantView _ = Nothing
 
-containerType :: Expr var ann -> Maybe ContainerType
-containerType (App _ (BuiltinContainerType _ t) _) = Just t
-containerType _                                    = Nothing
-
 --------------------------------------------------------------------------------
 -- Construction functions
 

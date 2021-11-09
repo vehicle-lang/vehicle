@@ -175,7 +175,7 @@ patternOfArgs args = go (length args - 1) IM.empty args
     go _ _ _ = Nothing
 
 substAll :: Semigroup ann
-         =>  Substitution ann
+         => Substitution ann
          -> DeBruijnExpr ann
          -> Maybe (DeBruijnExpr ann)
 substAll sub e = runReaderT (alter binderUpdate alterVar e) (0, sub)
