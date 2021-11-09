@@ -1,4 +1,4 @@
-module Vehicle.Language.ToAlpha
+module Vehicle.Language.AlphaEquivalence
   ( alphaEq
   ) where
 
