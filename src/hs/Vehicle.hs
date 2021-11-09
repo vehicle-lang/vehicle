@@ -32,11 +32,13 @@ import Vehicle.Language.Print qualified as V
 import Vehicle.Language.Elaborate.Core as Core
 import Vehicle.Language.Elaborate.Frontend as Frontend
 import Vehicle.Language.Scope qualified as V
+import Vehicle.Language.Descope qualified as V
 import Vehicle.Language.Type qualified as V
 import Vehicle.Language.Normalise qualified as V (normalise)
 
 import Vehicle.Backend.Verifier.SMTLib (compileToSMTLib, SMTDoc(..))
 import Vehicle.Backend.Verifier.VNNLib (compileToVNNLib, VNNLibDoc(..))
+import Vehicle.Backend.ITP.Agda (compileToAgda, AgdaOptions(..))
 
 --------------------------------------------------------------------------------
 -- Command-line options
@@ -191,7 +193,10 @@ run opts@Options{..} = do
           writeResultToFile opts target $ V.prettyFriendly typedCoreProg
 
         Agda -> do
-          developerError "Agda not current supported"
+          let descopedProg = V.runDescopeProg typedCoreProg
+          let agdaOptions = AgdaOptions ["MyTestModule"] mempty
+          agdaDoc <- fromEitherIO $ compileToAgda agdaOptions descopedProg
+          writeResultToFile opts target agdaDoc
 
     Just (Verifier verifier) -> do
       normProg <- fromLoggedEitherIO logFile $ V.normalise typedCoreProg

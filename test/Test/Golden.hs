@@ -42,7 +42,7 @@ simpleTestList :: [GoldenTestSpec]
 simpleTestList = map (addTestDirectory "./examples/simple")
   [
     --("quantifier",     [Verifier SMTLib])
-    ("quantifierIn",   [Verifier SMTLib])
+    ("quantifierIn",   [Verifier SMTLib, ITP Agda])
   ]
 
 miscTestList :: [GoldenTestSpec]

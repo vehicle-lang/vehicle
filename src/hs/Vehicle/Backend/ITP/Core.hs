@@ -4,9 +4,6 @@ module Vehicle.Backend.ITP.Core where
 
 import Control.Monad.Except (MonadError(..), Except, runExcept)
 import Control.Monad.Reader (MonadReader, MonadReader(..), ReaderT(..))
-import Data.Text (Text)
-import Data.Map (Map)
-import Data.Version (Version)
 import Data.Void (Void)
 
 import Vehicle.Prelude
@@ -27,22 +24,14 @@ instance Pretty Backend where
 --------------------------------------------------------------------------------
 -- Options
 
--- |The options that are specificable by the user when compiling to an ITP
--- backend
-data ITPOptions backendOpts = ITPOptions
-  { vehicleUIDs  :: Map Text Text
-  , aisecVersion :: Version
-  , backendOpts  :: backendOpts
-  }
-
 --------------------------------------------------------------------------------
 -- Control
 
 -- |Constraint for the monad stack used by the Compiler.
 type MonadCompile options m =
-  (MonadError CompileError m, MonadReader (ITPOptions options) m)
+  (MonadError CompileError m, MonadReader options m)
 
-type Compile a options = ReaderT (ITPOptions options) (Except CompileError) a
+type Compile a options = ReaderT options (Except CompileError) a
 
 -- * Type of errors that can be thrown during compilation
 data CompileError
@@ -63,7 +52,7 @@ instance MeaningfulError CompileError where
     , fix        = "see user manual for details"
     }
       where
-        problem = case err of
+        problem = ""
 
           -- VariableTensorType expr ->
           --   "type of the tensor" <+> squotes (prettyFriendly expr) <+> "is not of the form `Tensor A [...]`"
@@ -116,7 +105,7 @@ booleanType (BuiltinBooleanType _ t) = t
 booleanType t = unexpectedTypeError t (map show [Bool, Prop])
 
 containerType :: OutputExpr -> ContainerType
-containerType (BuiltinContainerType _ t) = t
+containerType (App _ (BuiltinContainerType _ t) _) = t
 containerType t = unexpectedTypeError t (map show [List, Tensor])
 
 data ContainerDimensionError

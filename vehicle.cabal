@@ -61,8 +61,8 @@ library
                       , Vehicle.Language.Elaborate.Frontend
                       , Vehicle.Language.Delaborate.Core
                       , Vehicle.Language.Delaborate.Frontend
-                      --, Vehicle.Backend.ITP.Agda
-                      --, Vehicle.Backend.ITP.Core
+                      , Vehicle.Backend.ITP.Agda
+                      , Vehicle.Backend.ITP.Core
                       , Vehicle.Backend.Verifier.Core
                       , Vehicle.Backend.Verifier.SMTLib
                       , Vehicle.Backend.Verifier.VNNLib

@@ -12,6 +12,7 @@ import Data.Text (Text)
 import Data.Foldable (fold)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Map as Map (Map)
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 
 import Vehicle.Prelude
@@ -20,11 +21,15 @@ import Vehicle.Language.Print
 import Vehicle.Language.Sugar
 import Vehicle.Backend.ITP.Core
 
+compileToAgda :: AgdaOptions -> OutputProg -> Either CompileError (Doc a)
+compileToAgda options prog = runReaderT (compileProgramToAgda prog) options
+
 --------------------------------------------------------------------------------
 -- Agda-specific options
 
-newtype AgdaOptions = AgdaOptions
-  { modulePath :: [Text]
+data AgdaOptions = AgdaOptions
+  { modulePath  :: [Text]
+  , vehicleUIDs :: Map.Map Identifier Text
   }
 
 --------------------------------------------------------------------------------
@@ -69,8 +74,8 @@ instance Pretty Dependency where
     AISECUtils          -> "AISEC.Utils"
     DataTensor          -> "AISEC.Data.Tensor"
     DataTensorInstances -> "AISEC.Data.Tensor.Instances"
-    DataTensorAll       -> "AISEC.Data.Tensor.Relation.Unary.All"
-    DataTensorAny       -> "AISEC.Data.Tensor.Relation.Unary.Any"
+    DataTensorAll       -> "AISEC.Data.Tensor.Relation.Unary.All as" <+> containerQualifier Tensor
+    DataTensorAny       -> "AISEC.Data.Tensor.Relation.Unary.Any as" <+> containerQualifier Tensor
     DataUnit            -> "Data.Unit"
     DataEmpty           -> "Data.Empty"
     DataProduct         -> "Data.Product"
@@ -88,8 +93,8 @@ instance Pretty Dependency where
     DataBoolInstances   -> "Data.Bool.Instances"
     DataList            -> "Data.List"
     DataListInstances   -> "Data.List.Instances"
-    DataListAll         -> "Data.List.Relation.Unary.All"
-    DataListAny         -> "Data.List.Relation.Unary.Any"
+    DataListAll         -> "Data.List.Relation.Unary.All as" <+> containerQualifier List
+    DataListAny         -> "Data.List.Relation.Unary.Any as" <+> containerQualifier List
     PropEquality        -> "Relation.Binary.PropositionalEquality"
     RelNullary          -> "Relation.Nullary"
 
@@ -110,6 +115,9 @@ numericQualifier = \case
   Int  -> "ℤ"
   Rat  -> "ℚ"
   Real -> "ℝ"
+
+containerQualifier :: ContainerType -> Doc a
+containerQualifier = pretty . show
 
 numericDependencies :: NumericType -> [Dependency]
 numericDependencies = \case
@@ -181,26 +189,22 @@ boolBraces c = "⌊" <+> c <+> "⌋"
 -- Compilation --
 -----------------
 
-compileToAgda :: ITPOptions AgdaOptions -> OutputProg -> Either CompileError Text
-compileToAgda options prog = runReaderT (compileProgramToAgda prog) options
-
 type MonadAgdaCompile m = MonadCompile AgdaOptions m
 
 compileProgramToAgda :: MonadAgdaCompile m
                      => OutputProg
-                     -> m Text
+                     -> m (Doc a)
 compileProgramToAgda program = do
   programDoc <- compile program
   let programStream = layoutPretty defaultLayoutOptions programDoc
   -- Collects dependencies by first discarding precedence info and then folding using Set Monoid
   let progamDependencies = fold (reAnnotateS fst programStream)
   options <- ask
-  return $ layoutAsText $ (vsep2 :: [Code] -> Code)
-    [ fileHeader options "--"
-    , importStatements progamDependencies
-    , moduleHeader (modulePath (backendOpts options))
+  return $ unAnnotate ((vsep2 :: [Code] -> Code)
+    [ importStatements progamDependencies
+    , moduleHeader (modulePath options)
     , programDoc
-    ]
+    ])
 
 class CompileToAgda a where
   compile
@@ -246,7 +250,7 @@ instance CompileToAgda OutputExpr where
     Ann _ann e t -> do
       ce <- compile e
       ct <- compile t
-      return $ ce <+> ":" <+> ct
+      return $ annotate (mempty, -1000) (ce <+> ":" <+> ct)
 
     Let{} -> do
       let (boundExprs, body) = foldLet expr
@@ -258,7 +262,7 @@ instance CompileToAgda OutputExpr where
       let (binders, body) = foldLam expr
       cBinders <- traverse compile binders
       cBody    <- compile body
-      return $ "λ" <+> hsep cBinders <+> "→" <+> cBody
+      return $ annotate (mempty, -1000) ("λ" <+> hsep cBinders <+> "→" <+> cBody)
 
     Builtin ann op -> compileBuiltin ann op []
     Literal ann op -> compileLiteral ann op []
@@ -274,7 +278,7 @@ instance CompileToAgda OutputExpr where
 
     Seq _ _ -> developerError "when compiling to Agda, Seqs should have been caught in App case"
 
-instance CompileToAgda (LetBinder OutputVar OutputAnn) where
+instance CompileToAgda (LetBinder OutputBinding OutputVar OutputAnn) where
   compile (binder, expr) = do
     let binderName = pretty $ nameOf binder
     cExpr <- compile expr
@@ -343,14 +347,16 @@ compileTypeLevelQuantifier q binders body = do
 
 compileContainerTypeLevelQuantifier :: MonadAgdaCompile m => OutputExpr -> Quantifier -> [OutputExpr] -> m Code
 compileContainerTypeLevelQuantifier tCont q args = do
-  let deps  = containerDependencies tCont
-  let quant = containerModifier tCont <> "." <> (if q == All then "All" else "Any")
+  let contType = containerType tCont
+  let deps     = containerQuantifierDependencies q (containerType tCont)
+  let quant    = containerQualifier contType <> "." <> (if q == All then "All" else "Any")
   annotateApp deps quant <$> traverse compile args
 
 compileContainerExprLevelQuantifier :: MonadAgdaCompile m => OutputExpr -> Quantifier -> [OutputExpr] -> m Code
 compileContainerExprLevelQuantifier tCont q args = do
-  let quant = containerModifier tCont <> "." <> (if q == All then "all" else "any")
-  let deps  = containerDependencies tCont
+  let contType = containerType tCont
+  let quant    = containerQualifier contType <> "." <> (if q == All then "all" else "any")
+  let deps     = containerDependencies contType
   annotateApp deps quant <$> traverse compile args
 
 compileQuant :: MonadAgdaCompile m => OutputAnn -> Quantifier -> BooleanType -> [OutputExpr] -> m Code
@@ -377,7 +383,7 @@ compileSeq :: MonadAgdaCompile m => OutputAnn -> [OutputExpr] -> [OutputExpr] ->
 compileSeq _ args [_, tCont, _] = go args
   where
     go :: MonadAgdaCompile m => [OutputExpr] -> m Code
-    go []       = return $ annotateConstant (containerDependencies tCont) "[]"
+    go []       = return $ annotateConstant (containerDependencies (containerType tCont)) "[]"
     go (x : xs) = do
       cx  <- compile x
       cxs <- go xs
@@ -387,10 +393,11 @@ compileSeq ann xs args = unexpectedArgsError (Seq ann xs) args ["tElem", "tCont"
 
 -- |Compiling cons operator
 compileCons :: OutputExpr -> [Code] -> Code
-compileCons tCont = annotateInfixOp2 deps 5 id (Just modifier) "∷"
+compileCons tCont = annotateInfixOp2 deps 5 id (Just qualifier) "∷"
   where
-    modifier = containerModifier tCont
-    deps     = containerDependencies tCont
+    contType  = containerType tCont
+    qualifier = containerQualifier contType
+    deps      = containerDependencies contType
 
 -- |Compiling boolean constants
 compileBoolOp0 :: Bool -> BooleanType -> Code
@@ -473,8 +480,9 @@ compileAt tCont [_cont, index] =
   -- Anything else is an error.
   unexpectedExprError (provenanceOf index) tCont [show Nat, "Var"]
 compileAt tCont args = do
-  let deps     = containerDependencies tCont
-  let modifier = containerModifier tCont
+  let contType = containerType tCont
+  let deps     = containerDependencies contType
+  let modifier = containerQualifier contType
   annotateApp deps (modifier <> "." <> "lookup") <$> traverse compile args
 
 compileEquality :: MonadAgdaCompile m => OutputExpr -> BooleanType -> [Code] -> m Code
@@ -506,34 +514,35 @@ compileNetwork :: Code -> Code -> Code
 compileNetwork networkName networkType =
   networkName <+> ":" <+> networkType       <> hardline <>
   networkName <+> "= evaluate record"       <> hardline <>
+    indent 2 (
     "{ databasePath = DATABASE_PATH" <> hardline <>
     "; networkUUID  = NETWORK_UUID"  <> hardline <>
-    "}"
+    "}")
 
 compileProperty :: Code -> Code -> Code
 compileProperty propertyName propertyBody =
   propertyName <+> ":" <+> propertyBody      <> hardline <>
   propertyName <+> "= checkProperty record"  <> hardline <>
+    indent 2 (
     "{ databasePath = DATABASE_PATH" <> hardline <>
-    "; networkUUID  = NETWORK_UUID"  <> hardline <>
     "; propertyUUID = ????"          <> hardline <>
-    "}"
+    "}")
 
 numType :: MonadAgdaCompile m => OutputAnn -> OutputExpr -> m NumericType
 numType ann t = case numericType t of
   Real -> throwError $ CompilationUnsupported (provenanceOf ann) "real numbers"
   nt   -> return nt
 
-
-containerDependencies :: OutputExpr -> [Dependency]
-containerDependencies tCont = case containerType tCont of
+containerDependencies :: ContainerType -> [Dependency]
+containerDependencies = \case
   List   -> [DataList]
   Tensor -> [AISECUtils]
 
-containerModifier :: OutputExpr -> Code
-containerModifier tCont = case containerType tCont of
-  List   -> "List"
-  Tensor -> "Tensor"
+containerQuantifierDependencies :: Quantifier -> ContainerType -> [Dependency]
+containerQuantifierDependencies All List   = [DataListAll]
+containerQuantifierDependencies Any List   = [DataListAny]
+containerQuantifierDependencies All Tensor = [DataTensorAll]
+containerQuantifierDependencies Any Tensor = [DataTensorAny]
 
 booleanModifierDocAndDeps :: BooleanType -> (Code, [Dependency])
 booleanModifierDocAndDeps = \case

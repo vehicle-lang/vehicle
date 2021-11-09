@@ -92,8 +92,9 @@ type CheckedProg   = DeBruijnProg    CheckedAnn
 
 -- * Type of annotations attached to the Core AST that are output by the compiler
 
-type OutputVar  = Name
-type OutputAnn  = Provenance
+type OutputBinding = Name
+type OutputVar     = Name
+type OutputAnn     = Provenance
 
 type OutputBinder = NamedBinder OutputAnn
 type OutputArg    = NamedArg    OutputAnn

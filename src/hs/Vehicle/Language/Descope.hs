@@ -2,6 +2,7 @@
 module Vehicle.Language.Descope
   ( Descope
   , runDescope
+  , runDescopeProg
   , runNaiveDescope
   ) where
 
@@ -13,6 +14,9 @@ import Vehicle.Language.AST
 
 runDescope :: (IsBoundCtx ctx, Descope a b) => ctx -> a -> b
 runDescope ctx e = runReader (descope e) (Ctx (ctxNames ctx), True)
+
+runDescopeProg :: DeBruijnProg ann -> NamedProg ann
+runDescopeProg = runDescope (mempty :: [Name])
 
 -- | Converts DeBruijn indices into names naively, e.g. 0 becomes "i0".
 -- Useful for debugging
