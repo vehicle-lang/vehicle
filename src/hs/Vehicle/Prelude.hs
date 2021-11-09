@@ -8,6 +8,7 @@ module Vehicle.Prelude
   , rangeStart
   , repeatN
   , duplicate
+  , oneHot
   , capitaliseFirstLetter
   ) where
 
@@ -68,3 +69,9 @@ capitaliseFirstLetter name
   | otherwise =
     let (firstLetter, remainder) = Text.splitAt 1 name in
       Text.toUpper firstLetter <> remainder
+
+oneHot :: Int -> Int -> a -> [Maybe a]
+oneHot i l x
+  | i < 0 || l < i = developerError $ "Invalid arguments" <+> squotes (pretty i) <+> squotes (pretty l) <+> "to `oneHot`"
+  | i == 0         = Just x  : replicate l Nothing
+  | otherwise      = Nothing : oneHot (i-1) (l-1) x

@@ -10,24 +10,35 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Bifunctor (first)
 import Test.Tasty
-import Test.Tasty.Golden (goldenVsFile)
+import Test.Tasty.Golden (goldenVsFileDiff)
 import System.Exit (exitFailure)
-import System.FilePath (takeFileName, (<.>), (</>))
+import System.FilePath (takeFileName, splitPath, (<.>), (</>))
+import System.Directory (removeFile)
 import Vehicle
 
-data Result
-  = Success
-  | Failure
+goldenTests :: TestTree
+goldenTests = testGroup "Golden"
+  [ testGroup "Realistic" (map makeGoldenTestsFromSpec realisticTestList)
+  , testGroup "Simple"    (map makeGoldenTestsFromSpec simpleTestList)
+  , testGroup "Misc"      (map makeGoldenTestsFromSpec miscTestList)
+  ]
 
-type GoldenTestSpec = (FilePath, [OutputTarget])
+type GoldenTestSpec = (FilePath, FilePath, [OutputTarget])
+
+addTestDirectory :: FilePath -> (FilePath, [OutputTarget]) -> GoldenTestSpec
+addTestDirectory folderPath (subfolder, targets) =
+  ( folderPath </> subfolder
+  , head (splitPath subfolder)
+  , targets
+  )
 
 realisticTestList :: [GoldenTestSpec]
-realisticTestList = map (first ("./examples/network" </>))
-  [ ("shortestPath/shortestPath",
+realisticTestList = map (addTestDirectory "./examples/network")
+  [ ("shortestPath",
       [ Verifier VNNLib
         -- (Verifier SMTLib)
       ])
-  , ("andGate/andGate",
+  , ("andGate",
       [ Verifier VNNLib
       ])
   , ("acasXu/property6",
@@ -42,65 +53,66 @@ realisticTestList = map (first ("./examples/network" </>))
   ]
 
 simpleTestList :: [GoldenTestSpec]
-simpleTestList = map (first ("./examples/simple" </>))
+simpleTestList = map (addTestDirectory "./examples/simple")
   [ ("quantifier",
-      [
-        Verifier SMTLib
+      [ Verifier SMTLib
       ])
 
   , ("quantifierIn",
-      [
-        Verifier SMTLib
+      [ Verifier SMTLib
       ])
 
   ,  ("let",
-      [
-        Verifier SMTLib
+      [ Verifier SMTLib
       ])
 
   ,  ("bool",
-      [
-        Verifier SMTLib
+      [ Verifier SMTLib
       ])
   ]
 
 miscTestList :: [GoldenTestSpec]
-miscTestList = map (first ("./examples/misc" </>))
-  [ ("dependent/dependent",
+miscTestList = map (addTestDirectory "./examples/misc")
+  [ ("dependent",
       [ ITP (Vehicle Frontend)
       ])
   ]
 
-goldenTests :: TestTree
-goldenTests = testGroup "Golden"
-  [ testGroup "Realistic" (map makeGoldenTestsFromSpec realisticTestList)
-  , testGroup "Simple"    (map makeGoldenTestsFromSpec simpleTestList)
-  , testGroup "Misc"      (map makeGoldenTestsFromSpec miscTestList)
-  ]
+data Result
+  = Success
+  | Failure
 
 getFileExt :: OutputTarget -> String
 getFileExt (Verifier VNNLib) = ".vnnlib"
 getFileExt (Verifier SMTLib) = ".smtlib"
 getFileExt (ITP Agda)        = ".agda"
+getFileExt (ITP (Vehicle _)) = error "Vehicle targets not yet supported"
 
 makeGoldenTestsFromSpec :: GoldenTestSpec -> TestTree
-makeGoldenTestsFromSpec (name, outputTargets) = testGroup testGroupName tests
+makeGoldenTestsFromSpec (folderPath, testName, outputTargets) = testGroup testGroupName tests
   where
     testGroupName :: String
-    testGroupName = takeFileName name
+    testGroupName = takeFileName testName
 
     tests :: [TestTree]
-    tests = map (makeIndividualTest name) outputTargets
+    tests = map (makeIndividualTest folderPath testName) outputTargets
 
-makeIndividualTest :: FilePath -> OutputTarget -> TestTree
-makeIndividualTest baseFile target =
-  let name       = show target in
-  let extension  = getFileExt target in
-  let inputFile  = baseFile <.> ".vcl" in
-  let outputFile = baseFile <> "-output" <.> extension in
-  let goldenFile = baseFile <.> extension in
-  let action     = runTest inputFile outputFile target in
-  goldenVsFile (show target) goldenFile inputFile action
+makeIndividualTest :: FilePath -> FilePath -> OutputTarget -> TestTree
+makeIndividualTest folderPath name target = testWithCleanup
+  where
+  testName   = name <> "-" <> show target
+  extension  = getFileExt target
+  basePath   = folderPath </> name
+  inputFile  = basePath <.> ".vcl"
+  outputFile = basePath <> "-temp-output" <.> extension
+  goldenFile = basePath <> "-output" <.> extension
+  action     = runTest inputFile outputFile target
+
+  test = goldenVsFileDiff testName diffCommand goldenFile outputFile action
+  testWithCleanup = withResource (return ()) (const $ removeFile outputFile) (const test)
+
+diffCommand :: FilePath -> FilePath -> [String]
+diffCommand ref new = ["diff", "--color=always", ref, new]
 
 runTest :: FilePath -> FilePath -> OutputTarget -> IO ()
 runTest inputFile outputFile outputTarget = do
@@ -108,5 +120,5 @@ runTest inputFile outputFile outputTarget = do
     { inputFile    = Just inputFile
     , outputTarget = Just outputTarget
     , outputFile   = Just outputFile
-    , logFile      = Just Nothing
+    , logFile      = Nothing --Just Nothing
     }

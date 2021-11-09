@@ -29,16 +29,16 @@ type MonadSimplify m = MonadReader SimplifyOptions m
 class Simplify a where
   simplify :: MonadSimplify m => a -> m a
 
-instance Semigroup ann => Simplify (Prog var ann) where
+instance Semigroup ann => Simplify (Prog binder var ann) where
   simplify (Main ds) = Main <$> traverse simplify ds
 
-instance Semigroup ann => Simplify (Decl var ann) where
+instance Semigroup ann => Simplify (Decl binder var ann) where
   simplify = \case
     DeclNetw ann n t -> DeclNetw ann n <$> simplify t
     DeclData ann n t -> DeclData ann n <$> simplify t
     DefFun ann n t e -> DefFun ann n <$> simplify t <*> simplify e
 
-instance Semigroup ann => Simplify (Expr var ann) where
+instance Semigroup ann => Simplify (Expr binder var ann) where
   simplify expr = case expr of
     Type{}    -> return expr
     Hole{}    -> return expr
@@ -55,20 +55,20 @@ instance Semigroup ann => Simplify (Expr var ann) where
     Lam ann binder body       -> Lam ann <$> simplify binder <*> simplify body
     PrimDict tc               -> PrimDict <$> simplify tc
 
-instance Semigroup ann => Simplify (Binder var ann) where
+instance Semigroup ann => Simplify (Binder binder var ann) where
   simplify = traverseBinderType simplify
 
-instance Semigroup ann => Simplify (Arg var ann) where
+instance Semigroup ann => Simplify (Arg binder var ann) where
   simplify = traverseArgExpr simplify
 
 simplifyArgs :: (Semigroup ann, MonadSimplify m)
-           => NonEmpty (Arg var ann)
-           -> m [Arg var ann]
+           => NonEmpty (Arg binder var ann)
+           -> m [Arg binder var ann]
 simplifyArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args)
   where
     prettyArg :: (Semigroup ann, MonadSimplify m)
-              => Arg var ann
-              -> m (Maybe (Arg var ann))
+              => Arg binder var ann
+              -> m (Maybe (Arg binder var ann))
     prettyArg arg = do
       SimplifyOptions{..} <- ask
 

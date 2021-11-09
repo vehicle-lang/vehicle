@@ -21,7 +21,7 @@ runNaiveDescope e = runReader (descope e) (Ctx mempty, False)
 
 newtype Ctx = Ctx [Name]
 
-addBinderToCtx :: Binder Name ann -> (Ctx, Bool) -> (Ctx, Bool)
+addBinderToCtx :: NamedBinder ann -> (Ctx, Bool) -> (Ctx, Bool)
 addBinderToCtx binder (Ctx ctx, r) = (Ctx (nameOf binder : ctx), r)
 
 type MonadDescope m = MonadReader (Ctx, Bool) m
@@ -47,22 +47,22 @@ lookupVar = \case
 class Descope a b where
   descope :: MonadDescope m => a -> m b
 
-instance Descope (DeBruijnBinder ann) (Binder Name ann) where
+instance Descope (DeBruijnBinder ann) (NamedBinder ann) where
   descope = traverseBinderType descope
 
-instance Descope (DeBruijnArg ann) (Arg Name ann) where
+instance Descope (DeBruijnArg ann) (NamedArg ann) where
   descope = traverseArgExpr descope
 
 showScopeEntry :: DeBruijnExpr ann -> DeBruijnExpr ann
 showScopeEntry e = {-trace ("descope-entry " <> showCore e)-} e
 
-showScopeExit :: MonadDescope m => m (Expr Name ann) -> m (Expr Name ann)
+showScopeExit :: MonadDescope m => m (NamedExpr ann) -> m (NamedExpr ann)
 showScopeExit m = do
   e <- m
   {-trace ("descope-exit  " <> showCore e)-}
   return e
 
-instance Descope (DeBruijnExpr ann) (Expr Name ann) where
+instance Descope (DeBruijnExpr ann) (NamedExpr ann) where
   descope e = showScopeExit $ case showScopeEntry e of
     Type     l                     -> return (Type l)
     Hole     p name                -> return (Hole p name)
@@ -95,11 +95,11 @@ instance Descope (DeBruijnExpr ann) (Expr Name ann) where
 -- are untouched during conversion back from de Bruijn indice's.
 -- Therefore the following are not in the state monad.
 
-instance Descope (DeBruijnDecl ann) (Decl Name ann) where
+instance Descope (DeBruijnDecl ann) (NamedDecl ann) where
   descope = \case
     DeclNetw p n t   -> DeclNetw p n <$> descope t
     DeclData p n t   -> DeclData p n <$> descope t
     DefFun   p n t e -> DefFun   p n <$> descope t <*> descope e
 
-instance Descope (DeBruijnProg ann) (Prog Name ann) where
+instance Descope (DeBruijnProg ann) (NamedProg ann) where
   descope (Main ds) = Main <$> traverse descope ds

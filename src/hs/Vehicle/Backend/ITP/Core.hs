@@ -35,18 +35,6 @@ data ITPOptions backendOpts = ITPOptions
   , backendOpts  :: backendOpts
   }
 
--- |Generate the file header given the token used to start comments in the
--- target language
-fileHeader :: ITPOptions backendOpts -> Doc a -> Doc a
-fileHeader options commentToken = vsep $
-  map (commentToken <+>)
-    [ "This file was generated automatically by Vehicle"
-    , "and should not be modified manually!"
-    , "Metadata"
-    , " - AISEC version:" <+> pretty (aisecVersion options)
-    , " - Date generated: ???"
-    ]
-
 --------------------------------------------------------------------------------
 -- Control
 
