@@ -342,7 +342,7 @@ compileBuiltin ann op args = case (op, args) of
   (NumericOp2 op2, t : _tc : opArgs) -> compileNumOp2  op2 <$> numType ann t <*> traverse compile opArgs
   (Neg,            t : _tc : opArgs) -> compileNeg         <$> numType ann t <*> traverse compile opArgs
 
-  (Quant   q, tRes                        : opArgs) -> compileQuant   ann   q (booleanType tRes) opArgs
+  (Quant   q, _tElem                      : opArgs) -> compileQuant   ann   q Prop opArgs
   (QuantIn q, _tElem : tCont : tRes : _tc : opArgs) -> compileQuantIn tCont q (booleanType tRes) opArgs
 
   (Order order,  t1 : t2 : _tc : opArgs) -> compileNumOrder order <$> numType ann t1 <*> pure (booleanType t2) <*> traverse compile opArgs
