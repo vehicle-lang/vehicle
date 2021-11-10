@@ -14,7 +14,7 @@ module MyTestModule where
 emptyList : List ℤ
 emptyList = []
 
-empty : List.All (λ x : ℤ → ⊤) emptyList
+empty : List.All (λ (x : ℤ) → ⊤) emptyList
 empty = checkProperty record
   { databasePath = DATABASE_PATH
   ; propertyUUID = ????

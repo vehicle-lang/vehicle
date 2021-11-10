@@ -21,7 +21,7 @@ instance Pretty Visibility where
     Instance -> "Instance"
 
 visBrackets :: Visibility -> Doc a -> Doc a
-visBrackets Explicit = id
+visBrackets Explicit = parens
 visBrackets Implicit = braces
 visBrackets Instance = braces . braces
 

@@ -37,7 +37,6 @@ type Compile a options = ReaderT options (Except CompileError) a
 data CompileError
   = CompilationUnsupported  Provenance (Doc Void)
   | ContainerDimensionError Provenance ContainerDimensionError
-  | NoDecisionProcedureAvailable Provenance Quantifier
 
 instance MeaningfulError CompileError where
   details (CompilationUnsupported p operation) = UError $ UserError
@@ -52,19 +51,19 @@ instance MeaningfulError CompileError where
     , fix        = "see user manual for details"
     }
       where
-        problem = ""
+        problem = case err of
+          VariableTensorTypeDimensions ex ->
+            "cannot compile a tensor with the variable dimensions" <+> prettyFriendly ex
 
-          -- VariableTensorType expr ->
-          --   "type of the tensor" <+> squotes (prettyFriendly expr) <+> "is not of the form `Tensor A [...]`"
+          VariableTensorTypeDimension ex ->
+            "cannot compile a tensor with the variable first dimension" <+> prettyFriendly ex
 
-          -- UnableToInferListSize -> _
-          -- VariableTensorTypeDimensions -> _
-          -- VariableTensorTypeDimension OutputExpr
-          -- EmptyTensorSize
+          EmptyTensorSize ->
+            "cannot compile a zero-dimensional tensor"
 
-          --ContainerIndexOutOfBounds index size tCont ->
-          --  "index" <+> pretty index <+> "is larger than the first dimension" <+> squoutes index <+>
-          --  "of the type" <+> prettyFriendly tCont
+          TensorIndexOutOfBounds size index ->
+            "index" <+> pretty index <+> "is larger than the first dimension" <+> pretty size <+>
+            "when trying to compile" <+> pretty At
 
 
 
@@ -119,7 +118,7 @@ tensorSize tDims = runExcept (getTensorSize (exprHead tDims))
   where
     getTensorSize :: OutputExpr -> Except ContainerDimensionError Int
     getTensorSize (Seq _ [])       = throwError EmptyTensorSize
-    getTensorSize (Seq _ (x : _))  = getDimension x
+    getTensorSize (Seq _ (x : _))  = getDimension (exprHead x)
     getTensorSize t                = throwError $ VariableTensorTypeDimensions t
 
     getDimension :: OutputExpr -> Except ContainerDimensionError Int

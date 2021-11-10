@@ -107,5 +107,5 @@ runTest inputFile outputFile outputTarget = do
     { inputFile    = Just inputFile
     , outputTarget = Just outputTarget
     , outputFile   = Just outputFile
-    , logFile      = Nothing -- Just Nothing -- Nothing
+    , logFile      = Just Nothing -- Nothing
     }

@@ -283,11 +283,10 @@ instance CompileToAgda OutputExpr where
       Builtin ann op -> compileBuiltin ann op []
       Literal ann op -> compileLiteral ann op []
 
-      App ann fun args ->
-          case fun of
-        Builtin _ op -> compileBuiltin ann op (fmap argExpr (NonEmpty.toList args))
-        Literal _ op -> compileLiteral ann op (fmap argExpr (NonEmpty.toList args))
-        Seq _     xs -> compileSeq     ann xs (fmap argExpr (NonEmpty.toList args))
+      App ann fun args -> case fun of
+        Builtin _ op -> do logDebug "Hi1"; compileBuiltin ann op (fmap argExpr (NonEmpty.toList args))
+        Literal _ op -> do logDebug "Hi2"; compileLiteral ann op (fmap argExpr (NonEmpty.toList args))
+        Seq _     xs -> do logDebug "Hi3"; compileSeq     ann xs (fmap argExpr (NonEmpty.toList args))
         _            -> do
           cFun   <- compile fun
           cArgs  <- traverse compile args
@@ -342,15 +341,15 @@ compileBuiltin ann op args = case (op, args) of
   (NumericOp2 op2, t : _tc : opArgs) -> compileNumOp2  op2 <$> numType ann t <*> traverse compile opArgs
   (Neg,            t : _tc : opArgs) -> compileNeg         <$> numType ann t <*> traverse compile opArgs
 
-  (Quant   q, _tElem                      : opArgs) -> compileQuant   ann   q Prop opArgs
+  (Quant   q, _tElem                      : opArgs) -> compileQuant   ann   q opArgs
   (QuantIn q, _tElem : tCont : tRes : _tc : opArgs) -> compileQuantIn tCont q (booleanType tRes) opArgs
 
   (Order order,  t1 : t2 : _tc : opArgs) -> compileNumOrder order <$> numType ann t1 <*> pure (booleanType t2) <*> traverse compile opArgs
   (Equality Eq,  t1 : t2 : _tc : opArgs) -> compileEquality   t1 (booleanType t2) =<< traverse compile opArgs
   (Equality Neq, t1 : t2 : _tc : opArgs) -> compileInequality t1 (booleanType t2) =<< traverse compile opArgs
 
-  (Cons, tElem  : opArgs)               -> compileCons tElem <$> traverse compile opArgs
-  (At  , _tElem : tDims : _tc : opArgs) -> compileAt tDims opArgs
+  (Cons, tElem  : opArgs)         -> compileCons tElem <$> traverse compile opArgs
+  (At  , _tElem : tDims : opArgs) -> do logDebug "Hi4"; compileAt tDims opArgs
 
   (Map , _) -> throwError $ CompilationUnsupported (provenanceOf ann) (pretty Map)
   (Fold, _) -> throwError $ CompilationUnsupported (provenanceOf ann) (pretty Fold)
@@ -363,7 +362,7 @@ compileTypeLevelQuantifier q binders body = do
   cBinders  <- traverse compile binders
   cBody     <- compile body
   let quant = if q == All then "∀" else "∃"
-  return $ quant <+> hsep cBinders <+> cBody
+  return $ quant <+> hsep cBinders <+> "→" <+> cBody
 
 compileContainerTypeLevelQuantifier :: MonadAgdaCompile m => OutputExpr -> Quantifier -> [OutputExpr] -> m Code
 compileContainerTypeLevelQuantifier tCont q args = do
@@ -379,10 +378,9 @@ compileContainerExprLevelQuantifier tCont q args = do
   let deps     = containerDependencies contType
   annotateApp deps quant <$> traverse compile args
 
-compileQuant :: MonadAgdaCompile m => OutputAnn -> Quantifier -> BooleanType -> [OutputExpr] -> m Code
-compileQuant ann q Bool _                   = throwError $ NoDecisionProcedureAvailable (provenanceOf ann) q
-compileQuant _   q Prop [Lam _ binder body] = compileTypeLevelQuantifier q [binder] body
-compileQuant _   _ _    args                = developerError $ "malformed quantifier args" <+> prettyFriendly args
+compileQuant :: MonadAgdaCompile m => OutputAnn -> Quantifier  -> [OutputExpr] -> m Code
+compileQuant _   q [Lam _ binder body] = compileTypeLevelQuantifier q [binder] body
+compileQuant _   _ args                = developerError $ "malformed quantifier args" <+> prettyFriendly args
 
 compileQuantIn :: MonadAgdaCompile m => OutputExpr -> Quantifier -> BooleanType -> [OutputExpr] -> m Code
 compileQuantIn tCont q Bool args = compileContainerExprLevelQuantifier tCont q args
@@ -482,28 +480,21 @@ compileNumOrder order nt bt = annotateInfixOp2 dependencies 4 opBraces qualifier
 
 -- TODO implement this via proof by reflection
 compileAt :: MonadAgdaCompile m => OutputExpr -> [OutputExpr] -> m Code
-compileAt tDims [tensor, Literal indexAnn (LNat index)] = do
-  case tensorSize tDims of
+compileAt tDims args@[tensorExpr, indexExpr] = case exprHead indexExpr of
+  Literal indexAnn (LNat index) -> case tensorSize tDims of
     Left err -> throwError $ ContainerDimensionError (provenanceOf indexAnn) err
     Right size ->
       if index >= size
         then throwError $ ContainerDimensionError (provenanceOf indexAnn) $
           TensorIndexOutOfBounds index size
         else do
-          tensorDoc <- compile tensor
+          tensorDoc <- compile tensorExpr
           return $ tensorDoc <+> pretty index
-compileAt tCont [_cont, Var _ _] = throwError $
-  -- Tricky to support variable indices as we can't guarantee
-  -- they're bounded by the length of the list.
-  CompilationUnsupported (provenanceOf tCont) "lookup of variable indices"
-compileAt tCont [_cont, index] =
-  -- Anything else is an error.
-  unexpectedExprError (provenanceOf index) tCont [show Nat, "Var"]
-compileAt tCont args = do
-  let contType = containerType tCont
-  let deps     = containerDependencies contType
-  let modifier = containerQualifier contType
-  annotateApp deps (modifier <> "." <> "lookup") <$> traverse compile args
+  _ -> do
+    let deps     = containerDependencies Tensor
+    let modifier = containerQualifier Tensor
+    annotateApp deps (modifier <> "." <> "lookup") <$> traverse compile args
+compileAt _tDims args = unexpectedArgsError (Builtin emptyUserAnn At) args ["tensor", "index"]
 
 compileEquality :: MonadAgdaCompile m => OutputExpr -> BooleanType -> [Code] -> m Code
 compileEquality _tElem Prop args = return $ annotateInfixOp2 [PropEquality] 4 id Nothing "≡" args
