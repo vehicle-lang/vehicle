@@ -47,3 +47,14 @@ instance NFData Owner
 
 class HasOwner a where
   ownerOf :: a -> Owner
+
+instance Semigroup Owner where
+  TheUser    <> _          = TheUser
+  _          <> TheUser    = TheUser
+  TheMachine <> TheMachine = TheMachine
+
+instance HasOwner Owner where
+  ownerOf = id
+
+instance HasOwner b => HasOwner (a,b) where
+  ownerOf = ownerOf . snd

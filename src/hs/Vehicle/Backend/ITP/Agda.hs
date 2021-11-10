@@ -326,7 +326,7 @@ instance CompileToAgda NumericType where
 
 compileBuiltin :: MonadAgdaCompile m => OutputAnn -> Builtin -> [OutputExpr] -> m Code
 compileBuiltin ann op args = case (op, args) of
-  (TypeClass  tc, []) -> throwError $ CompilationUnsupported ann (pretty tc)
+  (TypeClass  tc, []) -> throwError $ CompilationUnsupported (provenanceOf ann) (pretty tc)
   (BooleanType t, []) -> compile t
   (NumericType t, []) -> compile t
 
@@ -382,7 +382,7 @@ compileContainerExprLevelQuantifier tCont q args = do
   annotateApp deps quant <$> traverse compile args
 
 compileQuant :: MonadAgdaCompile m => OutputAnn -> Quantifier -> BooleanType -> [OutputExpr] -> m Code
-compileQuant ann q Bool _                   = throwError $ NoDecisionProcedureAvailable ann q
+compileQuant ann q Bool _                   = throwError $ NoDecisionProcedureAvailable (provenanceOf ann) q
 compileQuant _   q Prop [Lam _ binder body] = compileTypeLevelQuantifier q [binder] body
 compileQuant _   _ _    args                = developerError $ "malformed quantifier args" <+> prettyFriendly args
 

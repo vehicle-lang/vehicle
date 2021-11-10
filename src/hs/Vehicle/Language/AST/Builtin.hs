@@ -19,6 +19,7 @@ import Data.Bifunctor (first)
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Data.Text (pack)
+import Data.Hashable (Hashable)
 
 import Vehicle.Prelude
 
@@ -35,7 +36,8 @@ data NumericType
   | Real
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData NumericType
+instance NFData   NumericType
+instance Hashable NumericType
 
 instance Pretty NumericType where
   pretty = pretty . show
@@ -48,7 +50,8 @@ data BooleanType
   | Prop
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData BooleanType
+instance NFData   BooleanType
+instance Hashable BooleanType
 
 instance Pretty BooleanType where
   pretty = pretty . show
@@ -61,7 +64,8 @@ data ContainerType
   | Tensor
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData ContainerType
+instance NFData   ContainerType
+instance Hashable ContainerType
 
 instance Pretty ContainerType where
   pretty = pretty . show
@@ -81,7 +85,8 @@ data TypeClass
   | IsQuantifiable
   deriving (Eq, Ord, Generic)
 
-instance NFData TypeClass
+instance NFData   TypeClass
+instance Hashable TypeClass
 
 instance Show TypeClass where
   show = \case
@@ -106,7 +111,8 @@ data Quantifier
   | Any
   deriving (Eq, Ord, Generic)
 
-instance NFData Quantifier
+instance NFData   Quantifier
+instance Hashable Quantifier
 
 --------------------------------------------------------------------------------
 -- Equality
@@ -116,7 +122,8 @@ data Equality
   | Neq
   deriving (Eq, Ord, Generic)
 
-instance NFData Equality
+instance NFData   Equality
+instance Hashable Equality
 
 instance Show Equality where
   show = \case
@@ -136,7 +143,8 @@ data Order
   | Gt
   deriving (Eq, Ord, Generic)
 
-instance NFData Order
+instance NFData   Order
+instance Hashable Order
 
 instance Show Order where
   show = \case
@@ -157,7 +165,8 @@ data BooleanOp2
   | Or
   deriving (Eq, Ord, Generic)
 
-instance NFData BooleanOp2
+instance NFData   BooleanOp2
+instance Hashable BooleanOp2
 
 instance Show BooleanOp2 where
   show = \case
@@ -178,7 +187,8 @@ data NumericOp2
   | Sub
   deriving (Eq, Ord, Generic)
 
-instance NFData NumericOp2
+instance NFData   NumericOp2
+instance Hashable NumericOp2
 
 instance Show NumericOp2 where
   show = \case
@@ -216,7 +226,8 @@ data Builtin
   | QuantIn   Quantifier
   deriving (Eq, Ord, Generic)
 
-instance NFData Builtin
+instance NFData   Builtin
+instance Hashable Builtin
 
 instance Pretty Builtin where
   pretty = pretty . show

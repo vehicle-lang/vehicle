@@ -1,4 +1,4 @@
-{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE OverloadedLists #-}
 
 module Vehicle.Language.AST.CoDeBruijn
   ( CodebruijnExpr
@@ -9,10 +9,11 @@ module Vehicle.Language.AST.CoDeBruijn
 
 import Data.Functor.Foldable (Recursive(..))
 import Data.Bifunctor (first, bimap)
-
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (unzip, toList)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (unionWith, singleton, updateLookupWithKey, mapKeysMonotonic)
+import Data.Hashable (Hashable)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Core
@@ -24,14 +25,32 @@ import Vehicle.Language.AST.DeBruijn qualified as DB (LocallyNamelessVar(..))
 -- Definitions
 
 data PositionTree
-  = Here
-  | There [Maybe PositionTree]
+  = Leaf
+  | Node PositionList
+
+data PositionList
+  = Here  PositionTree
+  | There PositionList
+  | Both  PositionTree PositionList
 
 instance Semigroup PositionTree where
-  Here     <> Here     = Here
-  Here     <> There _  = error _
-  There _  <> Here     = error _
-  There xs <> There ys = There $ zipWith (<>) xs ys
+  Leaf    <> Leaf    = Leaf
+  Node l1 <> Node l2 = Node (l1 <> l2)
+  _x      <> _y      = developerError "Trying to combine incompatible position trees"
+
+instance Semigroup PositionList where
+  Here  t1    <> Here  t2    = Here (t1 <> t2)
+  There    l1 <> There    l2 = There (l1 <> l2)
+  Both  t1 l1 <> Both  t2 l2 = Both (t1 <> t2) (l1 <> l2)
+
+  Here  t1    <> There    l2 = Both t1 l2
+  There    l1 <> Here  t2    = Both t2 l1
+  Here  t1    <> Both  t2 l2 = Both (t1 <> t2) l2
+  Both  t1 l1 <> Here  t2    = Both (t1 <> t2) l1
+  There    l1 <> Both  t2 l2 = Both t2 (l1 <> l2)
+  Both  t1 l1 <> There    l2 = Both t1 (l1 <> l2)
+
+
 
 
 data CodebruijnBinding = CodebruijnBinding Name (Maybe PositionTree)
@@ -48,38 +67,36 @@ type CodebruijnBinder ann = Binder CodebruijnBinding CodebruijnVar ann
 type CodebruijnArg    ann = Arg    CodebruijnBinding CodebruijnVar ann
 type CodebruijnExpr   ann = Expr   CodebruijnBinding CodebruijnVar ann
 
-
 --------------------------------------------------------------------------------
 -- Conversion
 
-newtype BoundVarMap = BoundVarMap (IntMap PositionTree)
+type BoundVarMap = IntMap PositionTree
 
-instance Semigroup BoundVarMap where
-  BoundVarMap m1 <> BoundVarMap m2 = BoundVarMap $ IntMap.unionWith (<>) m1 m2
-
-instance Monoid BoundVarMap where
-  mempty = BoundVarMap mempty
-
-popBoundVarMap :: BoundVarMap -> (Maybe PositionTree, BoundVarMap)
-popBoundVarMap (BoundVarMap m1) = (b, BoundVarMap m3)
+pop :: BoundVarMap -> (Maybe PositionTree, BoundVarMap)
+pop bvm1 = (mt, bvm3)
   where
-    (b, m2) = IntMap.updateLookupWithKey (\_k _v -> Nothing) 0 m1
-    m3      = IntMap.mapKeysMonotonic (\x -> x - 1) m2
+    (mt, bvm2) = IntMap.updateLookupWithKey (\_k _v -> Nothing) 0 bvm1
+    bvm3       = IntMap.mapKeysMonotonic (\x -> x - 1) bvm2
 
-mergeBoundVarMaps :: [BoundVarMap] -> BoundVarMap
-mergeBoundVarMaps ms = BoundVarMap $ mconcat
-  [fmap (There . oneHot i l) m | let l = length ms, (i, BoundVarMap m) <- zip [0..] ms]
+node :: [BoundVarMap] -> BoundVarMap
+node []   = mempty
+node bvms = fmap Node (foldr1 merge $ fmap (fmap Here) bvms)
+  where
+    merge :: IntMap PositionList -> IntMap PositionList -> IntMap PositionList
+    merge xs ys = IntMap.unionWith (<>) xs (fmap There ys)
 
+leaf :: Index -> BoundVarMap
+leaf i = IntMap.singleton i Leaf
 
 class Codebruijn f where
   toCodebruijn   :: f Name LocallyNamelessVar ann -> (f CodebruijnBinding CodebruijnVar ann, BoundVarMap)
   --fromCoDeBruijn :: (f CodebruijnBinding CodebruijnVar ann, VarMap) -> f Name LocallyNamelessVar ann
 
 instance Codebruijn Binder where
-  toCodebruijn (Binder p o v n t) = (Binder p o v (CodebruijnBinding n b) t', bvm')
+  toCodebruijn (Binder ann v n t) = (Binder ann v (CodebruijnBinding n mt) t', bvm')
     where
       (t', bvm)  = toCodebruijn t
-      (b,  bvm') = popBoundVarMap bvm
+      (mt, bvm') = pop bvm
 
 instance Codebruijn Arg where
   toCodebruijn (Arg o v e) = first (Arg o v) (toCodebruijn e)
@@ -92,32 +109,35 @@ instance Codebruijn Expr where
     BuiltinF ann op -> (Builtin ann op, mempty)
     LiteralF ann l  -> (Literal ann l,  mempty)
 
-    PrimDictF (e, vm) -> (PrimDict e, vm)
-    SeqF ann xs       -> bimap (Seq ann) mergeBoundVarMaps (unzip xs)
+    PrimDictF (e, bvm) -> (PrimDict e, bvm)
+    SeqF ann xs        -> bimap (Seq ann) node (unzip xs)
 
     VarF ann v -> case v of
       DB.Free  ident -> (Var ann (Free ident), mempty)
-      DB.Bound i    -> (Var ann Bound, BoundVarMap (IntMap.singleton i Here))
+      DB.Bound i     -> (Var ann Bound, leaf i)
 
-    AnnF ann (e, vm1) (t, vm2) ->
-      (Ann ann e t, mergeBoundVarMaps [vm1, vm2])
+    AnnF ann (e, bvm1) (t, bvm2) ->
+      (Ann ann e t, node [bvm1, bvm2])
 
-    AppF ann (fun', vm1) args      ->
-      let (args', vms) = NonEmpty.unzip (fmap toCodebruijn args) in
-      (App ann fun' args', mergeBoundVarMaps (vm1 : NonEmpty.toList vms))
+    AppF ann (fun', bvm1) args ->
+      let (args', bvms) = NonEmpty.unzip (fmap toCodebruijn args) in
+      (App ann fun' args', node (bvm1 : NonEmpty.toList bvms))
 
     PiF  ann binder result ->
-      let (binder', vm1) = toCodebruijn binder in
-      let (result', vm2) = result in
-      (Pi ann binder' result', mergeBoundVarMaps [vm1, vm2])
+      let (binder', bvm1) = toCodebruijn binder in
+      let (result', bvm2) = result in
+      (Pi ann binder' result', node [bvm1, bvm2])
 
     LetF ann bound binder body ->
-      let (bound',  vm1) = bound in
-      let (binder', vm2) = toCodebruijn binder in
-      let (body',   vm3) = body in
-      (Let ann bound' binder' body', mergeBoundVarMaps [vm1, vm2, vm3])
+      let (bound',  bvm1) = bound in
+      let (binder', bvm2) = toCodebruijn binder in
+      let (body',   bvm3) = body in
+      (Let ann bound' binder' body', node [bvm1, bvm2, bvm3])
 
     LamF ann binder body ->
-      let (binder', vm1) = toCodebruijn binder in
-      let (body', vm2) = body in
-      (Lam ann binder' body', mergeBoundVarMaps [vm1, vm2])
+      let (binder', bvm1) = toCodebruijn binder in
+      let (body', bvm2)   = body in
+      (Lam ann binder' body', node [bvm1, bvm2])
+
+--------------------------------------------------------------------------------
+-- Hashing

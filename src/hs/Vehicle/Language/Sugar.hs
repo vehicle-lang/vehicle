@@ -29,8 +29,8 @@ unfoldBinders ann fn (binders, body) = foldr (fn ann) body binders
 unfoldForall :: ann -> BindersAndBody binder var ann -> Expr binder var ann
 unfoldForall ann = unfoldBinders ann Pi
 
-unfoldFun :: HasProvenance ann => ann -> Expr Name var ann -> Expr Name var ann -> Expr Name var ann
-unfoldFun ann dom = Pi ann (ExplicitBinder (provenanceOf ann) Machine dom)
+unfoldFun :: ann -> Expr Name var ann -> Expr Name var ann -> Expr Name var ann
+unfoldFun ann dom = Pi ann (ExplicitBinder ann Machine dom)
 
 -- | Collapses pi expressions into either a sequence of forall bindings or a
 -- a function input/output type pair.
@@ -76,7 +76,7 @@ unfoldQuantifier :: forall binder var ann. Semigroup ann
                  -> Expr binder var ann
 unfoldQuantifier ann q = unfoldBinders ann (\ann1 binder body ->
   normAppList ann1 (Builtin ann1 (Quant q))
-    [ExplicitArg (Lam ann1 binder body)])
+    [ExplicitArg ann1 (Lam ann1 binder body)])
 
 unfoldQuantifierIn :: forall binder var ann. Semigroup ann
                    => ann
@@ -86,8 +86,8 @@ unfoldQuantifierIn :: forall binder var ann. Semigroup ann
                    -> Expr binder var ann
 unfoldQuantifierIn ann q container = unfoldBinders ann (\ann1 binder body ->
   normAppList ann1 (Builtin ann1 (QuantIn q))
-    [ ExplicitArg (Lam ann1 binder body)
-    , ExplicitArg container
+    [ ExplicitArg ann1 (Lam ann1 binder body)
+    , ExplicitArg ann1 container
     ])
 
 --------------------------------------------------------------------------------

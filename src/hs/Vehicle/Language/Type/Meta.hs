@@ -185,27 +185,29 @@ freshMetaWith :: (MonadMeta m, MonadLogger m)
               -> Provenance
               -> m (Meta, CheckedExpr)
 freshMetaWith boundCtx p = do
+  let ann = (p, TheMachine)
+
   -- Create a fresh name
   metaName <- freshMetaName
 
   -- Create bound variables for everything in the context
-  let boundEnv = reverse [ Var p (Bound varIndex) | varIndex <- [0..length boundCtx - 1] ]
+  let boundEnv = reverse [ Var ann (Bound varIndex) | varIndex <- [0..length boundCtx - 1] ]
 
   -- Returns a meta applied to every bound variable in the context
-  let meta = normAppList p (Meta p metaName) (map ExplicitArg boundEnv)
+  let meta = normAppList ann (Meta ann metaName) (map (ExplicitArg ann) boundEnv)
 
   logDebug $ "fresh-meta" <+> pretty metaName
   return (metaName, meta)
 
 -- |Creates a Pi type that abstracts over all bound variables
 makeMetaType :: BoundCtx
-             -> Provenance
+             -> CheckedAnn
              -> CheckedExpr
              -> CheckedExpr
-makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCtx)
+makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
   where
     entryToPi :: (Name, CheckedExpr) -> CheckedExpr -> CheckedExpr
-    entryToPi (name, t) resTy = Pi p (ExplicitBinder p name t) resTy
+    entryToPi (name, t) resTy = Pi ann (ExplicitBinder ann name t) resTy
 
 -- | Returns any constraints that are activated (i.e. worth retrying) based
 -- on the set of metas that were solved last pass.

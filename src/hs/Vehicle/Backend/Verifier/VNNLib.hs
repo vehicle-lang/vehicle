@@ -99,7 +99,7 @@ type MonadVNNLib m =
 getNetworkDetailsFromCtx :: MonadVNNLib m => Identifier -> m NetworkDetails
 getNetworkDetailsFromCtx ident = do
   networkDecl <- asks (fromMaybe outOfScopeError . Map.lookup ident)
-  getNetworkDetails (provenanceOf networkDecl) (identifierOf networkDecl) (typeOf networkDecl)
+  getNetworkDetails (provenanceOf networkDecl, TheUser) (identifierOf networkDecl) (typeOf networkDecl)
   where
     outOfScopeError :: a
     outOfScopeError = developerError $
@@ -149,7 +149,7 @@ compileDecl d = case d of
       logDebug $ "Generated meta-network" <+> pretty metaNetwork <> line
 
       if null metaNetwork then
-        throwError $ NoNetworkUsedInProperty p ident
+        throwError $ NoNetworkUsedInProperty (p, TheUser) ident
       else do
         metaNetworkDetails <- traverse getNetworkDetailsFromCtx metaNetwork
         let numberOfMagicVariables = sum (map networkSize metaNetworkDetails)
@@ -318,7 +318,7 @@ replaceNetworkApplications d e = case e of
 -- Network type validation
 
 data NetworkDetails = NetworkDetails
-  { provenance   :: Provenance
+  { annotation   :: CheckedAnn
   , ident        :: Identifier
   , inputTensor  :: TensorDetails
   , outputTensor :: TensorDetails
@@ -333,20 +333,20 @@ data TensorDetails = TensorDetails
   }
 
 getNetworkDetails :: MonadVNNLib m
-                  => Provenance
+                  => CheckedAnn
                   -> Identifier
                   -> CheckedExpr
                   -> m NetworkDetails
-getNetworkDetails p ident t@(Pi _ inputBinder output) =
+getNetworkDetails ann ident t@(Pi _ inputBinder output) =
   either
-    (throwError . UnsupportedNetworkType p ident t)
+    (throwError . UnsupportedNetworkType ann ident t)
     return
     $ runExcept $ do
       inputDetails  <- getTensorDetails Input  (typeOf inputBinder)
       outputDetails <- getTensorDetails Output output
-      return $ NetworkDetails p ident inputDetails outputDetails
-getNetworkDetails p ident t                                  =
-  throwError $ UnsupportedNetworkType p ident t NotAFunction
+      return $ NetworkDetails ann ident inputDetails outputDetails
+getNetworkDetails ann ident t                                  =
+  throwError $ UnsupportedNetworkType ann ident t NotAFunction
 
 getTensorDetails :: MonadError UnsupportedNetworkType m
                  => InputOrOutput

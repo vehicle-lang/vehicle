@@ -6,6 +6,7 @@ import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Hashable (Hashable)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Builtin (Builtin)
@@ -22,7 +23,8 @@ type UniverseLevel = Int
 newtype Meta = MetaVar Int
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData Meta
+instance NFData   Meta
+instance Hashable Meta
 
 instance Pretty Meta where
   pretty (MetaVar m) = "?" <> pretty m
@@ -37,7 +39,8 @@ data Literal
   | LBool Bool
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData Literal
+instance NFData   Literal
+instance Hashable Literal
 
 instance Pretty Literal where
   pretty = \case
@@ -57,80 +60,66 @@ instance Pretty Literal where
 -- and type-class resolution.
 data Binder binder var ann
   = Binder
-    Provenance
-    Owner                 -- Has the binder been auto-inserted by the type-checker?
+    ann
     Visibility            -- The visibility of the binder
     binder                -- The representation of the bound variable
     (Expr binder var ann) -- The (optional) type of the bound variable
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
--- At the moment explicit binders can only ever be provided by the user.
-pattern ExplicitBinder :: Provenance -> binder -> Expr binder var ann -> Binder binder var ann
-pattern ExplicitBinder p n t = Binder p TheUser Explicit n t
+pattern ExplicitBinder :: ann -> binder -> Expr binder var ann -> Binder binder var ann
+pattern ExplicitBinder p n t = Binder p Explicit n t
 
-pattern UserImplicitBinder :: Provenance -> binder -> Expr binder var ann -> Binder binder var ann
-pattern UserImplicitBinder p n t = Binder p TheUser Implicit n t
+pattern ImplicitBinder :: ann -> binder -> Expr binder var ann -> Binder binder var ann
+pattern ImplicitBinder p n t = Binder p Implicit n t
 
-pattern MachineImplicitBinder :: Provenance -> binder -> Expr binder var ann -> Binder binder var ann
-pattern MachineImplicitBinder p n t = Binder p TheMachine Implicit n t
-
-pattern UserInstanceBinder :: Provenance -> binder -> Expr binder var ann -> Binder binder var ann
-pattern UserInstanceBinder p n t = Binder p TheUser Instance n t
-
-pattern MachineInstanceBinder :: Provenance -> binder -> Expr binder var ann -> Binder binder var ann
-pattern MachineInstanceBinder p n t = Binder p TheMachine Instance n t
+pattern InstanceBinder :: ann -> binder -> Expr binder var ann -> Binder binder var ann
+pattern InstanceBinder p n t = Binder p Instance n t
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Binder binder var ann)
 
-instance HasProvenance (Binder binder var ann) where
-  provenanceOf (Binder provenance _ _ _ _) = provenance
+instance HasProvenance ann => HasProvenance (Binder binder var ann) where
+  provenanceOf (Binder ann _ _ _) = provenanceOf ann
+
+instance HasOwner ann => HasOwner (Binder binder var ann) where
+  ownerOf (Binder ann _ _ _) = ownerOf ann
 
 instance HasVisibility (Binder binder var ann) where
-  visibilityOf (Binder _ _ visibility _ _) = visibility
+  visibilityOf (Binder _ visibility _ _) = visibility
 
-instance HasOwner (Binder binder var ann) where
-  ownerOf (Binder _ owner _ _ _) = owner
+mapBinderType :: (Expr binder var1 ann -> Expr binder var2 ann)
+              -> Binder binder var1 ann -> Binder binder var2 ann
+mapBinderType f (Binder ann v n e) = Binder ann v n $ f e
 
-mapBinderType :: (Expr binder var1 ann1 -> Expr binder var2 ann2)
-              -> Binder binder var1 ann1 -> Binder binder var2 ann2
-mapBinderType f (Binder p i v n e) = Binder p i v n $ f e
-
-replaceBinderType :: Expr binder var1 ann1
-                  -> Binder binder var2 ann2
-                  -> Binder binder var1 ann1
+replaceBinderType :: Expr binder var1 ann
+                  -> Binder binder var2 ann
+                  -> Binder binder var1 ann
 replaceBinderType e = mapBinderType (const e)
 
 traverseBinderType :: Monad m
-                   => (Expr binder var1 ann1 -> m (Expr binder var2 ann2))
-                   -> Binder binder var1 ann1
-                   -> m (Binder binder var2 ann2)
-traverseBinderType f (Binder p i v n e) = Binder p i v n <$> f e
+                   => (Expr binder var1 ann -> m (Expr binder var2 ann))
+                   -> Binder binder var1 ann
+                   -> m (Binder binder var2 ann)
+traverseBinderType f (Binder ann v n e) = Binder ann v n <$> f e
 
 --------------------------------------------------------------------------------
 -- Function arguments
 
 data Arg binder var ann
   = Arg
-    Owner           -- Has the argument been auto-inserted by the type-checker?
-    Visibility      -- The visibility of the argument
+    ann                    -- Has the argument been auto-inserted by the type-checker?
+    Visibility             -- The visibility of the argument
     (Expr binder var ann)  -- The argument expression
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 -- At the moment explicit arguments can only ever be provided by the user.
-pattern ExplicitArg :: Expr binder var ann -> Arg binder var ann
-pattern ExplicitArg e = Arg TheUser Explicit e
+pattern ExplicitArg :: ann -> Expr binder var ann -> Arg binder var ann
+pattern ExplicitArg ann e = Arg ann Explicit e
 
-pattern UserImplicitArg :: Expr binder var ann -> Arg binder var ann
-pattern UserImplicitArg e = Arg TheUser Implicit e
+pattern ImplicitArg :: ann -> Expr binder var ann -> Arg binder var ann
+pattern ImplicitArg ann e = Arg ann Implicit e
 
-pattern MachineImplicitArg :: Expr binder var ann -> Arg binder var ann
-pattern MachineImplicitArg e = Arg TheMachine Implicit e
-
-pattern UserInstanceArg :: Expr binder var ann -> Arg binder var ann
-pattern UserInstanceArg e = Arg TheUser Instance e
-
-pattern MachineInstanceArg :: Expr binder var ann -> Arg binder var ann
-pattern MachineInstanceArg e = Arg TheMachine Instance e
+pattern InstanceArg :: ann -> Expr binder var ann -> Arg binder var ann
+pattern InstanceArg ann e = Arg ann Instance e
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Arg binder var ann)
 
@@ -142,23 +131,23 @@ instance HasProvenance ann => HasProvenance (Arg binder var ann) where
   provenanceOf (Arg _ Implicit e) = expandProvenance (1, 1) (provenanceOf e)
   provenanceOf (Arg _ Instance e) = expandProvenance (2, 2) (provenanceOf e)
 
-instance HasOwner (Arg binder var ann) where
-  ownerOf (Arg owner _ _) = owner
+instance HasOwner ann => HasOwner (Arg binder var ann) where
+  ownerOf (Arg ann _ _) = ownerOf ann
 
 argExpr :: Arg binder var ann -> Expr binder var ann
 argExpr (Arg _ _ e) = e
 
-mapArgExpr :: (Expr binder1 var1 ann1 -> Expr binder2 var2 ann2)
-           -> Arg binder1 var1 ann1 -> Arg binder2 var2 ann2
-mapArgExpr f (Arg i v e) = Arg i v $ f e
+mapArgExpr :: (Expr binder1 var1 ann -> Expr binder2 var2 ann)
+           -> Arg binder1 var1 ann -> Arg binder2 var2 ann
+mapArgExpr f (Arg ann v e) = Arg ann v $ f e
 
-replaceArgExpr :: Expr binder1 var1 ann1 -> Arg binder2 var2 ann2 -> Arg binder1 var1 ann1
+replaceArgExpr :: Expr binder1 var1 ann -> Arg binder2 var2 ann -> Arg binder1 var1 ann
 replaceArgExpr e = mapArgExpr (const e)
 
 traverseArgExpr :: Monad m
-                => (Expr binder1 var1 ann1 -> m (Expr binder2 var2 ann2))
-                -> Arg binder1 var1 ann1
-                -> m (Arg binder2 var2 ann2)
+                => (Expr binder1 var1 ann -> m (Expr binder2 var2 ann))
+                -> Arg binder1 var1 ann
+                -> m (Arg binder2 var2 ann)
 traverseArgExpr f (Arg i v e) = Arg i v <$> f e
 
 --------------------------------------------------------------------------------
@@ -281,7 +270,8 @@ newtype Identifier = Identifier Symbol
 instance Pretty Identifier where
   pretty (Identifier s) = pretty s
 
-instance NFData Identifier
+instance NFData   Identifier
+instance Hashable Identifier
 
 class HasIdentifier a where
   identifierOf :: a -> Identifier
@@ -353,7 +343,7 @@ class HasType a where
   typeOf :: a binder var ann -> Expr binder var ann
 
 instance HasType Binder where
-  typeOf (Binder _ _ _ _ t) = t
+  typeOf (Binder _ _ _ t) = t
 
 instance HasType Decl where
   typeOf = \case

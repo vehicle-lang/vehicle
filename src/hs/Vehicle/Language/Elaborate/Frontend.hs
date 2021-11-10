@@ -76,9 +76,8 @@ type MonadElab m = MonadError ElabError m
 
 -- * Provenance
 
--- | A slightly shorter name for `tkProvenance`
-tkProv :: IsToken a => a -> Provenance
-tkProv = tkProvenance
+mkAnn :: IsToken a => a -> V.InputAnn
+mkAnn t = (tkProvenance t, V.TheUser)
 
 -- * Elaboration
 
@@ -92,18 +91,18 @@ instance Elab B.Prog V.InputProg where
 instance Elab (NonEmpty B.Decl) V.InputDecl where
   elab = \case
     -- Elaborate a network declaration.
-    (B.DeclNetw n _tk t :| []) -> V.DeclNetw (tkProv n) <$> elab n <*> elab t
+    (B.DeclNetw n _tk t :| []) -> V.DeclNetw (tkProvenance n) <$> elab n <*> elab t
 
     -- Elaborate a dataset declaration.
-    (B.DeclData n _tk t :| []) -> V.DeclData (tkProv n) <$> elab n <*> elab t
+    (B.DeclData n _tk t :| []) -> V.DeclData (tkProvenance n) <$> elab n <*> elab t
 
     -- Elaborate a type definition.
     (B.DefType n bs e :| []) -> do
-      unfoldDefType (tkProv n) <$> elab n <*> traverse elab bs <*> elab e
+      unfoldDefType (mkAnn n) <$> elab n <*> traverse elab bs <*> elab e
 
     -- Elaborate a function definition.
     (B.DefFunType n1 _tk t  :| [B.DefFunExpr _n2 bs e]) ->
-      unfoldDefFun (tkProv n1) <$> elab n1 <*> elab t <*> traverse elab bs <*> elab e
+      unfoldDefFun (mkAnn n1) <$> elab n1 <*> elab t <*> traverse elab bs <*> elab e
 
     -- Why did you write the signature AFTER the function?
     (e1@B.DefFunExpr {} :| [e2@B.DefFunType {}]) ->
@@ -111,145 +110,159 @@ instance Elab (NonEmpty B.Decl) V.InputDecl where
 
     -- Missing type or expression declaration.
     (B.DefFunType n _tk _t :| []) ->
-      throwError $ MissingDefFunExpr (tkProv n) (tkSymbol n)
+      throwError $ MissingDefFunExpr (tkProvenance n) (tkSymbol n)
 
     (B.DefFunExpr n _ns _e :| []) ->
-      throwError $ MissingDefFunType (tkProv n) (tkSymbol n)
+      throwError $ MissingDefFunType (tkProvenance n) (tkSymbol n)
 
     -- Multiple type of expression declarations with the same n.
     ds ->
       throwError $ DuplicateName provs symbol
         where
           symbol = tkSymbol $ declName $ NonEmpty.head ds
-          provs  = fmap (tkProv . declName) ds
+          provs  = fmap (tkProvenance . declName) ds
 
 instance Elab B.Expr V.InputExpr where
   elab = \case
     B.Type l                  -> return $ V.Type (fromIntegral l)
-    B.Var  n                  -> return $ V.Var  (tkProv n) (V.User $ tkSymbol n)
-    B.Hole n                  -> return $ V.Hole (tkProv n) (tkSymbol n)
+    B.Var  n                  -> return $ V.Var  (mkAnn n) (V.User $ tkSymbol n)
+    B.Hole n                  -> return $ V.Hole (tkProvenance n) (tkSymbol n)
     B.Literal l               -> elab l
     B.TypeC   tc              -> elab tc
 
-    B.Ann e tk t              -> op2 V.Ann (tkProv tk) (elab e) (elab t)
-    B.Fun t1 tk t2            -> op2 V.Pi  (tkProv tk) (elabFunInputType t1) (elab t2)
-    B.Seq tk1 es _tk2         -> op1 V.Seq (tkProv tk1) (traverse elab es)
+    B.Ann e tk t              -> op2 V.Ann tk  (elab e) (elab t)
+    B.Fun t1 tk t2            -> op2 V.Pi  tk  (elabFunInputType t1) (elab t2)
+    B.Seq tk1 es _tk2         -> op1 V.Seq tk1 (traverse elab es)
 
     B.App e1 e2               -> elabApp e1 e2
     -- It is really bad not to have provenance for let tokens here, see issue #6
-    B.Let ds e                -> unfoldLet mempty <$> bitraverse (traverse elab) elab (ds, e)
-    B.Forall tk1 ns _tk2 t    -> do checkNonEmpty tk1 ns; unfoldForall (tkProv tk1) <$> elabBindersAndBody ns t
-    B.Lam tk1 ns _tk2 e       -> do checkNonEmpty tk1 ns; unfoldLam    (tkProv tk1) <$> elabBindersAndBody ns e
+    B.Let ds e                -> unfoldLet V.emptyUserAnn <$> bitraverse (traverse elab) elab (ds, e)
+    B.Forall tk1 ns _tk2 t    -> do checkNonEmpty tk1 ns; unfoldForall (mkAnn tk1) <$> elabBindersAndBody ns t
+    B.Lam tk1 ns _tk2 e       -> do checkNonEmpty tk1 ns; unfoldLam    (mkAnn tk1) <$> elabBindersAndBody ns e
 
     B.Every   tk1 ns    _tk2 e  -> elabQuantifier   tk1 V.All ns e
     B.Some    tk1 ns    _tk2 e  -> elabQuantifier   tk1 V.Any ns e
     B.EveryIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.All ns e1 e2
     B.SomeIn  tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Any ns e1 e2
 
-    B.Bool tk                 -> builtin (V.BooleanType   V.Bool)   (tkProv tk) []
-    B.Prop tk                 -> builtin (V.BooleanType   V.Prop)   (tkProv tk) []
-    B.Real tk                 -> builtin (V.NumericType   V.Real)   (tkProv tk) []
-    B.Int tk                  -> builtin (V.NumericType   V.Int)    (tkProv tk) []
-    B.Nat tk                  -> builtin (V.NumericType   V.Nat)    (tkProv tk) []
-    B.List tk t               -> builtin (V.ContainerType V.List)   (tkProv tk) [t]
-    B.Tensor tk t1 t2         -> builtin (V.ContainerType V.Tensor) (tkProv tk) [t1, t2]
+    B.Bool tk                 -> builtin (V.BooleanType   V.Bool)   tk []
+    B.Prop tk                 -> builtin (V.BooleanType   V.Prop)   tk []
+    B.Real tk                 -> builtin (V.NumericType   V.Real)   tk []
+    B.Int tk                  -> builtin (V.NumericType   V.Int)    tk []
+    B.Nat tk                  -> builtin (V.NumericType   V.Nat)    tk []
+    B.List tk t               -> builtin (V.ContainerType V.List)   tk [t]
+    B.Tensor tk t1 t2         -> builtin (V.ContainerType V.Tensor) tk [t1, t2]
 
-    B.If tk1 e1 _ e2 _ e3     -> builtin V.If   (tkProv tk1) [e1, e2, e3]
-    B.Not tk e                -> builtin V.Not  (tkProv tk)  [e]
-    B.Impl e1 tk e2           -> builtin (V.BooleanOp2 V.Impl) (tkProv tk) [e1, e2]
-    B.And e1 tk e2            -> builtin (V.BooleanOp2 V.And)  (tkProv tk) [e1, e2]
-    B.Or e1 tk e2             -> builtin (V.BooleanOp2 V.Or)   (tkProv tk) [e1, e2]
+    B.If tk1 e1 _ e2 _ e3     -> builtin V.If                  tk1 [e1, e2, e3]
+    B.Not tk e                -> builtin V.Not                 tk  [e]
+    B.Impl e1 tk e2           -> builtin (V.BooleanOp2 V.Impl) tk  [e1, e2]
+    B.And e1 tk e2            -> builtin (V.BooleanOp2 V.And)  tk  [e1, e2]
+    B.Or e1 tk e2             -> builtin (V.BooleanOp2 V.Or)   tk  [e1, e2]
 
-    B.Eq e1 tk e2             -> builtin (V.Equality V.Eq)  (tkProv tk) [e1, e2]
-    B.Neq e1 tk e2            -> builtin (V.Equality V.Neq) (tkProv tk) [e1, e2]
-    B.Le e1 tk e2             -> builtin (V.Order    V.Le)  (tkProv tk) [e1, e2]
-    B.Lt e1 tk e2             -> builtin (V.Order    V.Lt)  (tkProv tk) [e1, e2]
-    B.Ge e1 tk e2             -> builtin (V.Order    V.Ge)  (tkProv tk) [e1, e2]
-    B.Gt e1 tk e2             -> builtin (V.Order    V.Gt)  (tkProv tk) [e1, e2]
+    B.Eq e1 tk e2             -> builtin (V.Equality V.Eq)  tk [e1, e2]
+    B.Neq e1 tk e2            -> builtin (V.Equality V.Neq) tk [e1, e2]
+    B.Le e1 tk e2             -> builtin (V.Order    V.Le)  tk [e1, e2]
+    B.Lt e1 tk e2             -> builtin (V.Order    V.Lt)  tk [e1, e2]
+    B.Ge e1 tk e2             -> builtin (V.Order    V.Ge)  tk [e1, e2]
+    B.Gt e1 tk e2             -> builtin (V.Order    V.Gt)  tk [e1, e2]
 
-    B.Mul e1 tk e2            -> builtin (V.NumericOp2 V.Mul) (tkProv tk) [e1, e2]
-    B.Div e1 tk e2            -> builtin (V.NumericOp2 V.Div) (tkProv tk) [e1, e2]
-    B.Add e1 tk e2            -> builtin (V.NumericOp2 V.Add) (tkProv tk) [e1, e2]
-    B.Sub e1 tk e2            -> builtin (V.NumericOp2 V.Sub) (tkProv tk) [e1, e2]
-    B.Neg tk e                -> builtin V.Neg (tkProv tk) [e]
+    B.Mul e1 tk e2            -> builtin (V.NumericOp2 V.Mul) tk [e1, e2]
+    B.Div e1 tk e2            -> builtin (V.NumericOp2 V.Div) tk [e1, e2]
+    B.Add e1 tk e2            -> builtin (V.NumericOp2 V.Add) tk [e1, e2]
+    B.Sub e1 tk e2            -> builtin (V.NumericOp2 V.Sub) tk [e1, e2]
+    B.Neg tk e                -> builtin V.Neg tk [e]
 
-    B.Cons e1 tk e2           -> builtin V.Cons (tkProv tk) [e1, e2]
-    B.At e1 tk e2             -> builtin V.At   (tkProv tk) [e1, e2]
-    B.Map tk e1 e2            -> builtin V.Map  (tkProv tk) [e1, e2]
-    B.Fold tk e1 e2 e3        -> builtin V.Fold (tkProv tk) [e1, e2, e3]
+    B.Cons e1 tk e2           -> builtin V.Cons tk [e1, e2]
+    B.At e1 tk e2             -> builtin V.At   tk [e1, e2]
+    B.Map tk e1 e2            -> builtin V.Map  tk [e1, e2]
+    B.Fold tk e1 e2 e3        -> builtin V.Fold tk [e1, e2, e3]
 
 instance Elab B.Arg V.InputArg where
-  elab (B.ExplicitArg e) = V.ExplicitArg <$> elab e
-  elab (B.ImplicitArg e) = V.UserImplicitArg <$> elab e
-  elab (B.InstanceArg e) = V.UserInstanceArg <$> elab e
+  elab (B.ExplicitArg e) = mkArg V.Explicit <$> elab e
+  elab (B.ImplicitArg e) = mkArg V.Implicit <$> elab e
+  elab (B.InstanceArg e) = mkArg V.Instance <$> elab e
+
+mkArg :: V.Visibility -> V.InputExpr -> V.InputArg
+mkArg v e = V.Arg (V.visProv v (provenanceOf e), V.TheUser) v e
 
 instance Elab B.Name V.Identifier where
   elab n = return $ V.Identifier $ tkSymbol n
 
 instance Elab B.Binder V.InputBinder where
-  elab = let name = V.User . tkSymbol in \case
-    B.ExplicitBinder    n         -> return $ V.ExplicitBinder     (tkProv n) (name n) (V.Hole (tkProv n) "_")
-    B.ImplicitBinder    n         -> return $ V.UserImplicitBinder (tkProv n) (name n) (V.Hole (tkProv n) "_")
-    B.ExplicitBinderAnn n _tk typ -> V.ExplicitBinder     (tkProv n) (name n) <$> elab typ
-    B.ImplicitBinderAnn n _tk typ -> V.UserImplicitBinder (tkProv n) (name n) <$> elab typ
+  elab (B.ExplicitBinder    n)         = return $ mkBinder n V.Explicit Nothing
+  elab (B.ImplicitBinder    n)         = return $ mkBinder n V.Implicit Nothing
+  elab (B.ExplicitBinderAnn n _tk typ) = mkBinder n V.Explicit . Just <$> elab typ
+  elab (B.ImplicitBinderAnn n _tk typ) = mkBinder n V.Implicit . Just <$> elab typ
+
+mkBinder :: B.Name -> V.Visibility -> Maybe V.InputExpr -> V.InputBinder
+mkBinder n v e = V.Binder (V.visProv v p, V.TheUser) v (V.User (tkSymbol n)) t
+  where
+    (p, t) = case e of
+      Nothing -> (tkProvenance n, V.Hole (tkProvenance n) "_")
+      Just t1  -> (fillInProvenance [tkProvenance n, provenanceOf t1], t1)
 
 instance Elab B.LetDecl (V.InputBinder, V.InputExpr) where
   elab (B.LDecl b e) = bitraverse elab elab (b,e)
 
 instance Elab B.Lit V.InputExpr where
   elab = \case
-    B.LitTrue  p -> return $ V.LitBool (tkProv p) True
-    B.LitFalse p -> return $ V.LitBool (tkProv p) False
-    B.LitReal  x -> return $ V.LitReal mempty x
+    B.LitTrue  t -> return $ V.LitBool (mkAnn t) True
+    B.LitFalse t -> return $ V.LitBool (mkAnn t) False
+    B.LitReal  x -> return $ V.LitReal V.emptyUserAnn x
     B.LitInt   n -> return $ if n >= 0
-      then V.LitNat mempty (fromIntegral n)
-      else V.LitInt mempty (fromIntegral n)
+      then V.LitNat V.emptyUserAnn (fromIntegral n)
+      else V.LitInt V.emptyUserAnn (fromIntegral n)
 
 instance Elab B.TypeClass V.InputExpr where
   elab = \case
-    B.TCEq    tk e1 e2 -> builtin (V.TypeClass V.HasEq)          (tkProv tk) [e1, e2]
-    B.TCOrd   tk e1 e2 -> builtin (V.TypeClass V.HasOrd)         (tkProv tk) [e1, e2]
-    B.TCCont  tk e1 e2 -> builtin (V.TypeClass V.IsContainer)    (tkProv tk) [e1, e2]
-    B.TCTruth tk e     -> builtin (V.TypeClass V.IsTruth)        (tkProv tk) [e]
-    B.TCQuant tk e     -> builtin (V.TypeClass V.IsQuantifiable) (tkProv tk) [e]
-    B.TCNat   tk e     -> builtin (V.TypeClass V.IsNatural)      (tkProv tk) [e]
-    B.TCInt   tk e     -> builtin (V.TypeClass V.IsIntegral)     (tkProv tk) [e]
-    B.TCRat   tk e     -> builtin (V.TypeClass V.IsRational)     (tkProv tk) [e]
-    B.TCReal  tk e     -> builtin (V.TypeClass V.IsReal)         (tkProv tk) [e]
+    B.TCEq    tk e1 e2 -> builtin (V.TypeClass V.HasEq)          tk [e1, e2]
+    B.TCOrd   tk e1 e2 -> builtin (V.TypeClass V.HasOrd)         tk [e1, e2]
+    B.TCCont  tk e1 e2 -> builtin (V.TypeClass V.IsContainer)    tk [e1, e2]
+    B.TCTruth tk e     -> builtin (V.TypeClass V.IsTruth)        tk [e]
+    B.TCQuant tk e     -> builtin (V.TypeClass V.IsQuantifiable) tk [e]
+    B.TCNat   tk e     -> builtin (V.TypeClass V.IsNatural)      tk [e]
+    B.TCInt   tk e     -> builtin (V.TypeClass V.IsIntegral)     tk [e]
+    B.TCRat   tk e     -> builtin (V.TypeClass V.IsRational)     tk [e]
+    B.TCReal  tk e     -> builtin (V.TypeClass V.IsReal)         tk [e]
 
-op1 :: (MonadElab m, HasProvenance a)
-    => (Provenance -> a -> b)
-    -> Provenance -> m a -> m b
-op1 mk p t = do
-  ct <- t
-  return $ mk (p <> provenanceOf ct) ct
+op1 :: (MonadElab m, HasProvenance a, IsToken token)
+    => (V.InputAnn -> a -> b)
+    -> token -> m a -> m b
+op1 mk t e = do
+  ce <- e
+  let p = fillInProvenance [tkProvenance t, provenanceOf ce]
+  return $ mk (p, V.TheUser) ce
 
-op2 :: (MonadElab m, HasProvenance a, HasProvenance b)
-    => (Provenance -> a -> b -> c)
-    -> Provenance -> m a -> m b -> m c
-op2 mk p t1 t2 = do
-  ct1 <- t1
-  ct2 <- t2
-  return $ mk (p <> provenanceOf ct1 <> provenanceOf ct2) ct1 ct2
+op2 :: (MonadElab m, HasProvenance a, HasProvenance b, IsToken token)
+    => (V.InputAnn -> a -> b -> c)
+    -> token -> m a -> m b -> m c
+op2 mk t e1 e2 = do
+  ce1 <- e1
+  ce2 <- e2
+  let p = fillInProvenance [tkProvenance t, provenanceOf ce1, provenanceOf ce2]
+  return $ mk (p, V.TheUser) ce1 ce2
 
-builtin :: MonadElab m => V.Builtin -> Provenance -> [B.Expr] -> m V.InputExpr
-builtin b ann args = builtin' b ann <$> traverse elab args
+builtin :: (MonadElab m, IsToken token) => V.Builtin -> token -> [B.Expr] -> m V.InputExpr
+builtin b t args = builtin' b t <$> traverse elab args
 
-builtin' :: V.Builtin -> Provenance -> [V.InputExpr] -> V.InputExpr
-builtin' b p args = V.normAppList p' (V.Builtin p b) (fmap V.ExplicitArg args)
-  where p' = fillInProvenance (p : map provenanceOf args)
+builtin' :: IsToken token => V.Builtin -> token -> [V.InputExpr] -> V.InputExpr
+builtin' b t argExprs = V.normAppList (p', V.TheUser) (V.Builtin (p, V.TheUser) b) args
+  where
+    p    = tkProvenance t
+    p'   = fillInProvenance (p : map provenanceOf args)
+    args = fmap (mkArg V.Explicit) argExprs
 
 elabFunInputType :: MonadElab m => B.Expr -> m V.InputBinder
 elabFunInputType t = do
   t' <- elab t
-  return $ V.ExplicitBinder (provenanceOf t') V.Machine t'
+  return $ V.ExplicitBinder (provenanceOf t', V.TheUser) V.Machine t'
 
 elabApp :: MonadElab m => B.Expr -> B.Arg -> m V.InputExpr
 elabApp fun arg = do
   fun' <- elab fun
   arg' <- elab arg
   let p = fillInProvenance [provenanceOf fun', provenanceOf arg']
-  return $ V.normAppList p fun' [arg']
+  return $ V.normAppList (p, V.TheUser) fun' [arg']
 
 elabBindersAndBody :: MonadElab m => [B.Binder] -> B.Expr -> m ([V.InputBinder], V.InputExpr)
 elabBindersAndBody bs body = bitraverse (traverse elab) elab (bs, body)
@@ -257,12 +270,12 @@ elabBindersAndBody bs body = bitraverse (traverse elab) elab (bs, body)
 elabQuantifier :: (MonadElab m, IsToken token) => token -> V.Quantifier -> [B.Binder] -> B.Expr -> m V.InputExpr
 elabQuantifier t q bs body = do
   checkNonEmpty t bs
-  unfoldQuantifier (tkProvenance t) q <$> elabBindersAndBody bs body
+  unfoldQuantifier (mkAnn t) q <$> elabBindersAndBody bs body
 
 elabQuantifierIn :: (MonadElab m, IsToken token) => token -> V.Quantifier -> [B.Binder] -> B.Expr -> B.Expr -> m V.InputExpr
 elabQuantifierIn t q bs container body = do
   checkNonEmpty t bs
-  unfoldQuantifierIn (tkProvenance t) q <$> elab container <*> elabBindersAndBody bs body
+  unfoldQuantifierIn (mkAnn t) q <$> elab container <*> elabBindersAndBody bs body
 
 -- |Takes a list of declarations, and groups type and expression
 --  declarations by their name.
@@ -287,7 +300,7 @@ declName (B.DefFunType n _ _) = n
 declName (B.DefFunExpr n _ _) = n
 
 checkNonEmpty :: (MonadElab m, IsToken token) => token -> [a] -> m ()
-checkNonEmpty tk = checkNonEmpty' (tkProv tk) (tkSymbol tk)
+checkNonEmpty tk = checkNonEmpty' (tkProvenance tk) (tkSymbol tk)
 
 checkNonEmpty' :: (MonadElab m) => Provenance -> Symbol -> [a] -> m ()
 checkNonEmpty' p s []      = throwError $ MissingVariables p s

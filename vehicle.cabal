@@ -99,6 +99,7 @@ library
                       , data-fix             >=0.2 && <1
                       , deepseq              >=1.4 && <2
                       , ansi-terminal        >=0.6 && <1
+                      , hashable
                       , split
                       , data-default-class
   build-tool-depends:   alex:alex

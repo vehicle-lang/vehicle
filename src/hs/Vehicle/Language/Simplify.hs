@@ -25,20 +25,21 @@ data SimplifyOptions = SimplifyOptions
   }
 
 type MonadSimplify m = MonadReader SimplifyOptions m
+type WellFormedAnn ann = (HasOwner ann, Semigroup ann)
 
 class Simplify a where
   simplify :: MonadSimplify m => a -> m a
 
-instance Semigroup ann => Simplify (Prog binder var ann) where
+instance WellFormedAnn ann => Simplify (Prog binder var ann) where
   simplify (Main ds) = Main <$> traverse simplify ds
 
-instance Semigroup ann => Simplify (Decl binder var ann) where
+instance WellFormedAnn ann => Simplify (Decl binder var ann) where
   simplify = \case
     DeclNetw ann n t -> DeclNetw ann n <$> simplify t
     DeclData ann n t -> DeclData ann n <$> simplify t
     DefFun ann n t e -> DefFun ann n <$> simplify t <*> simplify e
 
-instance Semigroup ann => Simplify (Expr binder var ann) where
+instance WellFormedAnn ann => Simplify (Expr binder var ann) where
   simplify expr = case expr of
     Type{}    -> return expr
     Hole{}    -> return expr
@@ -55,18 +56,18 @@ instance Semigroup ann => Simplify (Expr binder var ann) where
     Lam ann binder body       -> Lam ann <$> simplify binder <*> simplify body
     PrimDict tc               -> PrimDict <$> simplify tc
 
-instance Semigroup ann => Simplify (Binder binder var ann) where
+instance WellFormedAnn ann => Simplify (Binder binder var ann) where
   simplify = traverseBinderType simplify
 
-instance Semigroup ann => Simplify (Arg binder var ann) where
+instance WellFormedAnn ann => Simplify (Arg binder var ann) where
   simplify = traverseArgExpr simplify
 
-simplifyArgs :: (Semigroup ann, MonadSimplify m)
+simplifyArgs :: (WellFormedAnn ann, MonadSimplify m)
            => NonEmpty (Arg binder var ann)
            -> m [Arg binder var ann]
 simplifyArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args)
   where
-    prettyArg :: (Semigroup ann, MonadSimplify m)
+    prettyArg :: (WellFormedAnn ann, MonadSimplify m)
               => Arg binder var ann
               -> m (Maybe (Arg binder var ann))
     prettyArg arg = do

@@ -11,7 +11,7 @@ import Vehicle.Prelude
 import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.DeBruijn
 import Vehicle.Language.AST.Builtin
-import Vehicle.Language.AST.Visibility (Visibility(..))
+import Vehicle.Language.AST.Visibility (Visibility(..), Owner(..))
 import Vehicle.Language.AST.Name
 
 --------------------------------------------------------------------------------
@@ -60,7 +60,7 @@ pattern BuiltinEquality ann eq = Builtin ann (Equality eq)
 -- before being analysed by the compiler
 
 type InputVar  = Name
-type InputAnn  = Provenance
+type InputAnn  = (Provenance, Owner)
 
 type InputArg       = NamedArg    InputAnn
 type InputBinder    = NamedBinder InputAnn
@@ -71,7 +71,7 @@ type InputProg      = NamedProg   InputAnn
 -- * Types pre type-checking
 
 type UncheckedVar    = LocallyNamelessVar
-type UncheckedAnn    = Provenance
+type UncheckedAnn    = (Provenance, Owner)
 
 type UncheckedBinder = DeBruijnBinder UncheckedAnn
 type UncheckedArg    = DeBruijnArg    UncheckedAnn
@@ -82,7 +82,7 @@ type UncheckedProg   = DeBruijnProg   UncheckedAnn
 -- * Types post type-checking
 
 type CheckedVar    = LocallyNamelessVar
-type CheckedAnn    = Provenance
+type CheckedAnn    = (Provenance, Owner)
 
 type CheckedBinder = DeBruijnBinder  CheckedAnn
 type CheckedArg    = DeBruijnArg     CheckedAnn
@@ -94,13 +94,19 @@ type CheckedProg   = DeBruijnProg    CheckedAnn
 
 type OutputBinding = Name
 type OutputVar     = Name
-type OutputAnn     = Provenance
+type OutputAnn     = (Provenance, Owner)
 
 type OutputBinder = NamedBinder OutputAnn
 type OutputArg    = NamedArg    OutputAnn
 type OutputExpr   = NamedExpr   OutputAnn
 type OutputDecl   = NamedDecl   OutputAnn
 type OutputProg   = NamedProg   OutputAnn
+
+emptyUserAnn :: InputAnn
+emptyUserAnn = (mempty, TheUser)
+
+emptyMachineAnn :: InputAnn
+emptyMachineAnn = (mempty, TheMachine)
 
 --------------------------------------------------------------------------------
 -- Classes
@@ -157,7 +163,7 @@ data QuantView binder var ann =
 
 quantView :: Expr binder var ann -> Maybe (QuantView binder var ann)
 quantView (App ann (Builtin _ (Quant q))
-  (Arg _ Explicit (Lam _ (Binder _ _ Explicit n t) e) :| [])) = Just (QuantView ann q n t e)
+  (Arg _ Explicit (Lam _ (ExplicitBinder _  n t) e) :| [])) = Just (QuantView ann q n t e)
 quantView _ = Nothing
 
 --------------------------------------------------------------------------------
@@ -168,21 +174,21 @@ quantView _ = Nothing
 -- Types
 
 mkListType :: CheckedAnn -> CheckedExpr -> CheckedExpr
-mkListType ann tElem = App ann (BuiltinContainerType ann List) [ExplicitArg tElem]
+mkListType ann tElem = App ann (BuiltinContainerType ann List) [ExplicitArg ann tElem]
 
 mkTensorType :: CheckedAnn -> CheckedExpr -> [Int] -> CheckedExpr
 mkTensorType ann tElem dims =
   let listType = mkListType ann (Builtin ann (NumericType Nat)) in
   let dimExprs = fmap (Literal ann . LNat) dims in
   let dimList  = mkSeq ann (Builtin ann (NumericType Nat)) listType dimExprs in
-  App ann (BuiltinContainerType ann Tensor) [ExplicitArg tElem, ExplicitArg dimList]
+  App ann (BuiltinContainerType ann Tensor) [ExplicitArg ann tElem, ExplicitArg ann dimList]
 
 mkIsTruth :: CheckedAnn -> CheckedExpr -> CheckedExpr
-mkIsTruth ann t = App ann (Builtin ann (TypeClass IsTruth)) [ExplicitArg t]
+mkIsTruth ann t = App ann (Builtin ann (TypeClass IsTruth)) [ExplicitArg ann t]
 
 mkIsContainer :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkIsContainer ann tElem tCont = App ann (Builtin ann (TypeClass IsContainer))
-  [ExplicitArg tElem, ExplicitArg tCont]
+  [ExplicitArg ann tElem, ExplicitArg ann tCont]
 
 -- Expressions
 
@@ -191,8 +197,8 @@ mkLiteral' ann lit t tc = App ann (Literal ann lit) [t, tc]
 
 mkLiteral :: CheckedAnn -> Literal -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkLiteral ann lit t tc = mkLiteral' ann lit
-  (MachineImplicitArg t)
-  (MachineImplicitArg (PrimDict tc))
+  (ImplicitArg ann t)
+  (ImplicitArg ann (PrimDict tc))
 
 mkBool :: CheckedAnn -> CheckedExpr -> Bool -> CheckedExpr
 mkBool ann t b = mkLiteral ann (LBool b) t (PrimDict t)
@@ -211,42 +217,42 @@ mkSeq' ann tElem tCont tc xs = App ann (Seq ann xs) [tElem, tCont, tc]
 
 mkSeq :: CheckedAnn -> CheckedExpr -> CheckedExpr -> [CheckedExpr] -> CheckedExpr
 mkSeq ann tElem tCont = mkSeq' ann
-  (MachineImplicitArg tElem)
-  (MachineImplicitArg tCont)
-  (MachineInstanceArg (PrimDict (mkIsContainer ann tElem tCont)))
+  (ImplicitArg ann tElem)
+  (ImplicitArg ann tCont)
+  (InstanceArg ann (PrimDict (mkIsContainer ann tElem tCont)))
 
 -- Expressions
 
 mkEq' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkEq' ann tElem tRes tc e1 e2 = App ann (Builtin ann (Equality Eq))
-  [tElem, tRes, tc, ExplicitArg e1, ExplicitArg e2]
+  [tElem, tRes, tc, ExplicitArg ann e1, ExplicitArg ann e2]
 
 mkEq :: CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkEq ann tElem tRes = mkEq' ann
-  (MachineImplicitArg tElem)
-  (MachineImplicitArg tRes)
-  (MachineInstanceArg (PrimDict (mkIsTruth ann tRes)))
+  (ImplicitArg ann tElem)
+  (ImplicitArg ann tRes)
+  (InstanceArg ann (PrimDict (mkIsTruth ann tRes)))
 
 mkNot' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr
-mkNot' ann t tc e = App ann (Builtin ann Not) [t, tc, ExplicitArg e]
+mkNot' ann t tc e = App ann (Builtin ann Not) [t, tc, ExplicitArg ann e]
 
 mkNot :: CheckedAnn -> CheckedExpr -> CheckedExpr  -> CheckedExpr
 mkNot ann t = mkNot' ann
-  (MachineImplicitArg t)
-  (MachineInstanceArg (PrimDict (mkIsTruth ann t)))
+  (ImplicitArg ann t)
+  (InstanceArg ann (PrimDict (mkIsTruth ann t)))
 
 mkBoolOp2' :: BooleanOp2 -> CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkBoolOp2' op ann t tc e1 e2 = App ann (Builtin ann (BooleanOp2 op))
-  [t, tc, ExplicitArg e1, ExplicitArg e2]
+  [t, tc, ExplicitArg ann e1, ExplicitArg ann e2]
 
 mkBoolOp2 :: BooleanOp2 -> CheckedAnn -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkBoolOp2 op ann t = mkBoolOp2' op ann
-  (MachineImplicitArg t)
-  (MachineInstanceArg (PrimDict (mkIsTruth ann t)))
+  (ImplicitArg ann t)
+  (InstanceArg ann (PrimDict (mkIsTruth ann t)))
 
 mkAt' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkAt' ann tElem tCont tc xs i = App ann (Builtin ann At)
-  [tElem, tCont, tc, ExplicitArg xs , ExplicitArg i ]
+  [tElem, tCont, tc, ExplicitArg ann xs , ExplicitArg ann i ]
 
 mkMap' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr
 mkMap' ann tFrom tTo f xs = App ann (Builtin ann Map)
@@ -254,12 +260,12 @@ mkMap' ann tFrom tTo f xs = App ann (Builtin ann Map)
 
 mkFold' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkFold' ann tElem tCont tRes tc bop unit xs = App ann (Builtin ann Fold)
-  [tElem, tCont, tRes, tc, ExplicitArg bop, ExplicitArg unit, ExplicitArg xs]
+  [tElem, tCont, tRes, tc, ExplicitArg ann bop, ExplicitArg ann unit, ExplicitArg ann xs]
 
 mkQuantifier :: CheckedAnn -> Quantifier -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkQuantifier ann q n t e =
   App ann (Builtin ann (Quant q))
-    (ExplicitArg (Lam ann (ExplicitBinder ann n t) e) :| [])
+    (ExplicitArg ann (Lam ann (ExplicitBinder ann n t) e) :| [])
 
 -- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3
 mkNameWithIndices :: Name -> [Int] -> Name

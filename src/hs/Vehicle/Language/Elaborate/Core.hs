@@ -41,7 +41,7 @@ instance MeaningfulError ElabError where
 
   details (MalformedLamBinder expr) = UError $ UserError
     { problem    = "Malformed binder for Lambda, expected a name but only found an expression" <+> prettyVerbose expr
-    , provenance = annotation expr
+    , provenance = provenanceOf expr
     , fix        = "Unknown"
     }
 
@@ -82,13 +82,16 @@ instance Elab B.Binder V.InputBinder where
     B.InstanceBinder n e -> mkBinder n Instance e
     where
       mkBinder :: MonadElab m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
-      mkBinder n v e = V.Binder (tkProvenance n) V.TheUser v (User (tkSymbol n)) <$> elab e
+      mkBinder n v e = V.Binder (mkAnn n) v (User (tkSymbol n)) <$> elab e
 
 instance Elab B.Arg V.InputArg where
   elab = \case
-    B.ExplicitArg e -> V.ExplicitArg     <$> elab e
-    B.ImplicitArg e -> V.UserImplicitArg <$> elab e
-    B.InstanceArg e -> V.UserInstanceArg <$> elab e
+    B.ExplicitArg e -> mkArg Explicit <$> elab e
+    B.ImplicitArg e -> mkArg Implicit <$> elab e
+    B.InstanceArg e -> mkArg Instance <$> elab e
+    where
+      mkArg :: Visibility -> V.InputExpr -> V.InputArg
+      mkArg v e = V.Arg (visProv v (provenanceOf e), TheUser) v e
 
 instance Elab B.Lit Literal where
   elab = \case
@@ -106,14 +109,15 @@ instance Elab B.Expr V.InputExpr where
     B.Lam binder e     -> op2 V.Lam <$> elab binder <*> elab e
     B.Let binder e1 e2 -> op3 V.Let <$> elab e1 <*> elab binder <*>  elab e2
     B.Seq es           -> op1 V.Seq <$> traverse elab es
-    B.Builtin c        -> V.Builtin (tkProvenance c) <$> lookupBuiltin c
-    B.Literal v        -> V.Literal mempty <$> elab v
-    B.Var n            -> return $ V.Var (tkProvenance n) (User (tkSymbol n))
+    B.Builtin c        -> V.Builtin (mkAnn c) <$> lookupBuiltin c
+    B.Literal v        -> V.Literal V.emptyUserAnn <$> elab v
+    B.Var n            -> return $ V.Var (mkAnn n) (User (tkSymbol n))
 
     B.App fun arg -> do
       fun' <- elab fun
       arg' <- elab arg
-      return $ normApp (provenanceOf fun' <> provenanceOf arg') fun' (arg' :| [])
+      let p = fillInProvenance [provenanceOf fun', provenanceOf arg']
+      return $ normApp (p, TheUser) fun' (arg' :| [])
 
 instance Elab B.NameToken Identifier where
   elab n = return $ Identifier $ tkSymbol n
@@ -127,20 +131,23 @@ instance Elab B.Decl V.InputDecl where
 instance Elab B.Prog V.InputProg where
   elab (B.Main ds) = V.Main <$> traverse elab ds
 
+mkAnn :: IsToken a => a -> InputAnn
+mkAnn x = (tkProvenance x, TheUser)
+
 op1 :: (HasProvenance a)
-    => (Provenance -> a -> b)
+    => (InputAnn -> a -> b)
     -> a -> b
-op1 mk t = mk (provenanceOf t) t
+op1 mk t = mk (provenanceOf t, TheUser) t
 
 op2 :: (HasProvenance a, HasProvenance b)
-    => (Provenance -> a -> b -> c)
+    => (InputAnn -> a -> b -> c)
     -> a -> b -> c
-op2 mk t1 t2 = mk (provenanceOf t1 <> provenanceOf t2) t1 t2
+op2 mk t1 t2 = mk (provenanceOf t1 <> provenanceOf t2, TheUser) t1 t2
 
 op3 :: (HasProvenance a, HasProvenance b, HasProvenance c)
-    => (Provenance -> a -> b -> c -> d)
+    => (InputAnn -> a -> b -> c -> d)
     -> a -> b -> c -> d
-op3 mk t1 t2 t3 = mk (provenanceOf t1 <> provenanceOf t2 <> provenanceOf t3) t1 t2 t3
+op3 mk t1 t2 t3 = mk (provenanceOf t1 <> provenanceOf t2 <> provenanceOf t3, TheUser) t1 t2 t3
 
 -- | Elabs the type token into a Type expression.
 -- Doesn't run in the monad as if something goes wrong with this, we've got

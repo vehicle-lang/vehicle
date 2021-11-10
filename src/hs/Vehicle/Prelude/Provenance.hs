@@ -172,3 +172,6 @@ instance HasProvenance a => HasProvenance [a] where
 
 instance HasProvenance a => HasProvenance (NonEmpty a) where
   provenanceOf xs = foldMap provenanceOf xs
+
+instance HasProvenance a => HasProvenance (a, b) where
+  provenanceOf = provenanceOf . fst

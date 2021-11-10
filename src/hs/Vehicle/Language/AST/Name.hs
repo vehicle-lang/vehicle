@@ -31,7 +31,7 @@ freshNames :: [Symbol]
 freshNames = [ "_x" <> pack (show i) | i <- [0::Int ..]]
 
 instance HasName (Binder Name var ann) where
-  nameOf (Binder _ _ _ name _) = name
+  nameOf (Binder _ _ name _) = name
 
 --------------------------------------------------------------------------------
 -- Names

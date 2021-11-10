@@ -1,5 +1,3 @@
-{-# LANGUAGE ImportQualifiedPost #-}
-
 module Test.Golden
   ( goldenTests
   ) where
@@ -40,8 +38,7 @@ realisticTestList = map (addTestDirectory "./examples/network") [
 
 simpleTestList :: [GoldenTestSpec]
 simpleTestList = map (addTestDirectory "./examples/simple")
-  [
-    --("quantifier",     [Verifier SMTLib])
+  [ --("quantifier",     [Verifier SMTLib])
     ("quantifierIn",   [Verifier SMTLib, ITP Agda])
   ]
 
@@ -109,5 +106,5 @@ runTest inputFile outputFile outputTarget = do
     { inputFile    = Just inputFile
     , outputTarget = Just outputTarget
     , outputFile   = Just outputFile
-    , logFile      = Nothing --Just Nothing
+    , logFile      = Nothing -- Just Nothing
     }

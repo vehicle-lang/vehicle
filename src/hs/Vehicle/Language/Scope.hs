@@ -146,7 +146,7 @@ bindVar binder update = do
 
 -- |Find the index for a given name of a given sort.
 getVar :: SCM m => InputAnn -> Name -> m LocallyNamelessVar
-getVar ann Machine       = developerError $ "Machine names should not be in use " <+> pretty ann
+getVar ann Machine       = developerError $ "Machine names should not be in use (at" <+> pretty (provenanceOf ann) <> ")"
 getVar ann (User symbol) = do
   Ctx declCtx exprCtx <- ask
   case elemIndex (User symbol) exprCtx of

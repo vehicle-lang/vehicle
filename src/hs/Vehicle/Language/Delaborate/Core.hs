@@ -86,7 +86,7 @@ instance Delaborate V.Builtin B.BuiltinToken where
   delab op = return $ mkToken B.BuiltinToken $ V.symbolFromBuiltin op
 
 instance Delaborate (V.NamedBinder ann) B.Binder where
-  delab (V.Binder _p _i v n t) = case v of
+  delab (V.Binder _ann v n t) = case v of
     -- TODO track whether type was provided manually and so use ExplicitBinderAnn
     V.Explicit -> B.ExplicitBinder <$> delab n <*> delab t
     V.Implicit -> B.ImplicitBinder <$> delab n <*> delab t

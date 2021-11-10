@@ -67,20 +67,20 @@ fromDSL :: DSLExpr -> CheckedExpr
 fromDSL = flip unDSL 0
 
 boundVar :: BindingDepth -> DSLExpr
-boundVar i = DSL $ \j -> Var mempty (Bound (j - (i + 1)))
+boundVar i = DSL $ \j -> Var emptyMachineAnn (Bound (j - (i + 1)))
 
 instance DSL DSLExpr where
   pi p v n argType bodyFn = DSL $ \i ->
     let varType = unDSL argType i
         var     = boundVar i
-        binder  = Binder p TheMachine v n varType
+        binder  = Binder (p, TheMachine) v n varType
         body    = unDSL (bodyFn var) (i + 1)
-    in Pi mempty binder body
+    in Pi emptyMachineAnn binder body
 
   app fun args = DSL $ \i ->
     let fun' = unDSL fun i
-        args' = fmap (\e -> ExplicitArg (unDSL e i)) args
-    in App mempty fun' args'
+        args' = fmap (\e -> ExplicitArg emptyMachineAnn (unDSL e i)) args
+    in App emptyMachineAnn fun' args'
 
 --lamType :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
 --lamType p v n varType bodyType = fromDSL (pi p v n (toDSL varType) (const (toDSL bodyType)))
@@ -94,7 +94,7 @@ tMax t1         t2         = developerError $
   "Expected arguments of type Type. Found" <+> prettyVerbose t1 <+> "and" <+> prettyVerbose t2 <> "."
 
 con :: Builtin -> DSLExpr
-con b = DSL $ \_ -> Builtin mempty b
+con b = DSL $ \_ -> Builtin emptyMachineAnn b
 
 -- * Types
 
@@ -119,32 +119,32 @@ tHole name = DSL $ const $ Hole mempty name
 
 -- * TypeClass
 
-typeClass :: Provenance -> Builtin -> DSLExpr
+typeClass :: CheckedAnn -> Builtin -> DSLExpr
 typeClass p op = DSL $ \_ -> Builtin p op
 
-hasEq :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
+hasEq :: CheckedAnn -> DSLExpr -> DSLExpr -> DSLExpr
 hasEq p tArg tRes = typeClass p (TypeClass HasEq) `app` [tArg, tRes]
 
-hasOrd :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
+hasOrd :: CheckedAnn -> DSLExpr -> DSLExpr -> DSLExpr
 hasOrd p tArg tRes = typeClass p (TypeClass HasOrd) `app` [tArg, tRes]
 
-isTruth :: Provenance -> DSLExpr -> DSLExpr
+isTruth :: CheckedAnn -> DSLExpr -> DSLExpr
 isTruth p t = typeClass p (TypeClass IsTruth) `app` [t]
 
-isNatural :: Provenance -> DSLExpr -> DSLExpr
+isNatural :: CheckedAnn -> DSLExpr -> DSLExpr
 isNatural p t = typeClass p (TypeClass IsNatural) `app` [t]
 
-isIntegral :: Provenance -> DSLExpr -> DSLExpr
+isIntegral :: CheckedAnn -> DSLExpr -> DSLExpr
 isIntegral p t = typeClass p (TypeClass IsIntegral) `app` [t]
 
-isRational :: Provenance -> DSLExpr -> DSLExpr
+isRational :: CheckedAnn -> DSLExpr -> DSLExpr
 isRational p t = typeClass p (TypeClass IsRational) `app` [t]
 
-isReal :: Provenance -> DSLExpr -> DSLExpr
+isReal :: CheckedAnn -> DSLExpr -> DSLExpr
 isReal p t = typeClass p (TypeClass IsReal) `app` [t]
 
-isContainer :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
+isContainer :: CheckedAnn -> DSLExpr -> DSLExpr -> DSLExpr
 isContainer p tCont tElem = typeClass p (TypeClass IsContainer) `app` [tCont, tElem]
 
-isQuantifiable :: Provenance -> DSLExpr -> DSLExpr -> DSLExpr
+isQuantifiable :: CheckedAnn -> DSLExpr -> DSLExpr -> DSLExpr
 isQuantifiable p tDom tTruth = typeClass p (TypeClass IsQuantifiable) `app` [tDom, tTruth]

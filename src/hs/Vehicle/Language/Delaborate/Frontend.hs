@@ -146,7 +146,7 @@ instance Delaborate (V.NamedBinder ann, V.NamedExpr ann) B.LetDecl where
   delab (binder, bound) = B.LDecl <$> delab binder <*> delab bound
 
 instance Delaborate (V.NamedBinder name) B.Binder where
-  delab (V.Binder _i _p v n _t) = case v of
+  delab (V.Binder _ann v n _t) = case v of
     -- TODO track whether type was provided manually and so use ExplicitBinderAnn
     V.Explicit -> B.ExplicitBinder <$> delab n
     V.Implicit -> B.ImplicitBinder <$> delab n

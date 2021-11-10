@@ -68,27 +68,27 @@ instance Pretty UnsupportedNetworkType where
 
 
 data SMTLibError
-  = UnsupportedDecl Provenance Identifier DeclType
-  | UnsupportedVariableType Provenance Identifier Symbol CheckedExpr
-  | UnsupportedQuantifierSequence Provenance Identifier
-  | NonTopLevelQuantifier Provenance Identifier
+  = UnsupportedDecl               Provenance Identifier DeclType
+  | UnsupportedVariableType       CheckedAnn Identifier Symbol CheckedExpr
+  | UnsupportedQuantifierSequence CheckedAnn Identifier
+  | NonTopLevelQuantifier         CheckedAnn Identifier
   | NoPropertiesFound
   -- VNNLib
-  | UnsupportedNetworkType Provenance Identifier CheckedExpr UnsupportedNetworkType
-  | NoNetworkUsedInProperty Provenance Identifier
+  | UnsupportedNetworkType        CheckedAnn Identifier CheckedExpr UnsupportedNetworkType
+  | NoNetworkUsedInProperty       CheckedAnn Identifier
 
 instance MeaningfulError SMTLibError where
   details = \case
-    UnsupportedDecl p ident decType -> let dType = squotes (pretty decType) in UError $ UserError
-      { provenance = p
+    UnsupportedDecl ann ident decType -> let dType = squotes (pretty decType) in UError $ UserError
+      { provenance = provenanceOf ann
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "found" <+>
                      "a" <+> dType <+> "declaration which cannot be compiled to SMTLib."
       , fix        = "Remove all" <+> dType <+> "declarations or switch to a" <+>
                      "different compilation target."
       }
 
-    UnsupportedVariableType p ident name t -> UError $ UserError
-      { provenance = p
+    UnsupportedVariableType ann ident name t -> UError $ UserError
+      { provenance = provenanceOf ann
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "found" <+>
                      "a quantified variable" <+> squotes (pretty name) <+> "of type" <+>
                      squotes (prettyFriendly t) <+> "which is not currently supported" <+>
@@ -97,8 +97,8 @@ instance MeaningfulError SMTLibError where
                      pretty supportedTypes
       }
 
-    UnsupportedQuantifierSequence p ident -> UError $ UserError
-      { provenance = p
+    UnsupportedQuantifierSequence ann ident -> UError $ UserError
+      { provenance = provenanceOf ann
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "found a mixed" <+>
                      "sequence of quantifiers which is not currently supported when compiling" <+>
                      "to SMTLib. All properties must either be a sequence of" <+>
@@ -106,8 +106,8 @@ instance MeaningfulError SMTLibError where
       , fix        = "If possible try removing some quantifiers."
       }
 
-    NonTopLevelQuantifier p ident -> UError $ UserError
-      { provenance = p
+    NonTopLevelQuantifier ann ident -> UError $ UserError
+      { provenance = provenanceOf ann
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "found a non-top" <+>
                      "level quantifier which is not currently supported when compiling to SMTLib."
       , fix        = "Lift all quantifiers to the top-level"
@@ -120,8 +120,8 @@ instance MeaningfulError SMTLibError where
       }
 
     -- VNNLib
-    UnsupportedNetworkType p ident t detailedError -> UError $ UserError
-      { provenance = p
+    UnsupportedNetworkType ann ident t detailedError -> UError $ UserError
+      { provenance = provenanceOf ann
       , problem    = "Found a" <+> squotes (pretty Network) <+> "declaration" <+> squotes (pretty ident) <+>
                      "whose type" <+> squotes (prettyFriendly t) <+> "is not currently unsupported." <+>
                      "Currently only networks of type" <+> squotes "Tensor A [m] -> Tensor B [n]" <+>
@@ -130,8 +130,8 @@ instance MeaningfulError SMTLibError where
       , fix        = "Change the network type."
       }
 
-    NoNetworkUsedInProperty p ident -> UError $ UserError
-      { provenance = p
+    NoNetworkUsedInProperty ann ident -> UError $ UserError
+      { provenance = provenanceOf ann
       , problem    = "After normalisation, the property" <+>
                      squotes (pretty ident) <+>
                      "does not contain any neural networks and" <+>
@@ -190,8 +190,8 @@ compileDecl = \case
   DeclData{} ->
     normalisationError "dataset declarations"
 
-  DeclNetw p ident _ ->
-    throwError $ UnsupportedDecl p ident Network
+  DeclNetw ann ident _ ->
+    throwError $ UnsupportedDecl ann ident Network
 
   DefFun _ ident t e -> if not $ isProperty t
       then return Nothing
