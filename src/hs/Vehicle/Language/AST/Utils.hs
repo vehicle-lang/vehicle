@@ -250,9 +250,9 @@ mkBoolOp2 op ann t = mkBoolOp2' op ann
   (ImplicitArg ann t)
   (InstanceArg ann (PrimDict (mkIsTruth ann t)))
 
-mkAt' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
-mkAt' ann tElem tCont tc xs i = App ann (Builtin ann At)
-  [tElem, tCont, tc, ExplicitArg ann xs , ExplicitArg ann i ]
+mkAt' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkAt' ann tElem tDims xs i = App ann (Builtin ann At)
+  [tElem, tDims, ExplicitArg ann xs , ExplicitArg ann i ]
 
 mkMap' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr
 mkMap' ann tFrom tTo f xs = App ann (Builtin ann Map)

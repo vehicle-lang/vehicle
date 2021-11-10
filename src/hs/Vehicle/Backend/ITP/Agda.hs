@@ -349,8 +349,8 @@ compileBuiltin ann op args = case (op, args) of
   (Equality Eq,  t1 : t2 : _tc : opArgs) -> compileEquality   t1 (booleanType t2) =<< traverse compile opArgs
   (Equality Neq, t1 : t2 : _tc : opArgs) -> compileInequality t1 (booleanType t2) =<< traverse compile opArgs
 
-  (Cons, tElem : opArgs)                -> compileCons tElem <$> traverse compile opArgs
-  (At  , _tElem : tCont : _tc : opArgs) -> compileAt tCont opArgs
+  (Cons, tElem  : opArgs)               -> compileCons tElem <$> traverse compile opArgs
+  (At  , _tElem : tDims : _tc : opArgs) -> compileAt tDims opArgs
 
   (Map , _) -> throwError $ CompilationUnsupported (provenanceOf ann) (pretty Map)
   (Fold, _) -> throwError $ CompilationUnsupported (provenanceOf ann) (pretty Fold)
@@ -482,16 +482,16 @@ compileNumOrder order nt bt = annotateInfixOp2 dependencies 4 opBraces qualifier
 
 -- TODO implement this via proof by reflection
 compileAt :: MonadAgdaCompile m => OutputExpr -> [OutputExpr] -> m Code
-compileAt tCont [cont, Literal indexAnn (LNat index)] = do
-  case containerSize tCont cont of
+compileAt tDims [tensor, Literal indexAnn (LNat index)] = do
+  case tensorSize tDims of
     Left err -> throwError $ ContainerDimensionError (provenanceOf indexAnn) err
     Right size ->
       if index >= size
         then throwError $ ContainerDimensionError (provenanceOf indexAnn) $
-          ContainerIndexOutOfBounds (containerType tCont) index size
+          TensorIndexOutOfBounds index size
         else do
-          tensor <- compile cont
-          return $ tensor <+> pretty index
+          tensorDoc <- compile tensor
+          return $ tensorDoc <+> pretty index
 compileAt tCont [_cont, Var _ _] = throwError $
   -- Tricky to support variable indices as we can't guarantee
   -- they're bounded by the length of the list.

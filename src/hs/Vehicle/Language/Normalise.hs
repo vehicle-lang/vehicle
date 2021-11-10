@@ -234,12 +234,12 @@ nfApp ann  fun@(Builtin _ op) args      = do
     (Neg, [t, tc, arg]) -> fromMaybe (return e) (nfNeg ann t tc arg)
 
     -- Cons
-    (Cons, [tElem, tCont, tc, x, cont]) -> case argHead cont of
-      Seq _ xs -> return $ mkSeq' ann tElem tCont tc (argExpr x : xs)
+    (Cons, [tElem, x, cont]) -> case argHead cont of
+      Seq _ xs -> return $ mkSeq ann (argExpr tElem) (mkListType ann (argExpr tElem)) (argExpr x : xs)
       _        -> return e
 
     -- Lookup
-    (At, [_tElem, _tCont, _tc, cont, index]) ->
+    (At, [_tElem, _tDims, cont, index]) ->
       case (argHead cont, argHead index) of
         (Seq _ es, LitNat _ i) -> return $ es !! fromIntegral i
         _ -> return e --(xs      , i) -> case (decomposeExplicitApp xs, i) of

@@ -194,7 +194,6 @@ run opts@Options{..} = do
 
         Agda -> do
           let descopedProg = V.runDescopeProg typedCoreProg
-          putStrLn $ layoutAsString $ V.prettyVerbose descopedProg
           let agdaOptions = AgdaOptions ["MyTestModule"] mempty
           agdaDoc <- fromLoggedEitherIO logFile $ compileToAgda agdaOptions descopedProg
           writeResultToFile opts target agdaDoc

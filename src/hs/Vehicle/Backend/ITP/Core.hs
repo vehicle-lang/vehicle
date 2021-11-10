@@ -109,27 +109,14 @@ containerType (App _ (BuiltinContainerType _ t) _) = t
 containerType t = unexpectedTypeError t (map show [List, Tensor])
 
 data ContainerDimensionError
-  = UnableToInferListSize
-  | VariableTensorType OutputExpr
-  | VariableTensorTypeDimensions OutputExpr
+  = VariableTensorTypeDimensions OutputExpr
   | VariableTensorTypeDimension OutputExpr
   | EmptyTensorSize
-  | ContainerIndexOutOfBounds ContainerType Int Int
+  | TensorIndexOutOfBounds Int Int
 
-containerSize :: OutputExpr -> OutputExpr -> Either ContainerDimensionError Int
-containerSize container contType = runExcept result
+tensorSize :: OutputExpr -> Either ContainerDimensionError Int
+tensorSize tDims = runExcept (getTensorSize (exprHead tDims))
   where
-    result :: Except ContainerDimensionError Int
-    result = case contType of
-      (App _ (BuiltinContainerType _ List)   _)          -> getListSize container
-      (App _ (BuiltinContainerType _ Tensor) [_, tDims]) -> getTensorSize (argExpr tDims)
-      _                                                  -> throwError $ VariableTensorType contType
-
-    getListSize :: OutputExpr -> Except ContainerDimensionError Int
-    getListSize (App _ (Seq _ xs) _args)              = return $ length xs
-    getListSize (App _ (Builtin _ Cons) [_t, _x, xs]) = fmap (1 +) (getListSize (argExpr xs))
-    getListSize _                                     = throwError UnableToInferListSize
-
     getTensorSize :: OutputExpr -> Except ContainerDimensionError Int
     getTensorSize (Seq _ [])       = throwError EmptyTensorSize
     getTensorSize (Seq _ (x : _))  = getDimension x

@@ -40,7 +40,7 @@ simpleTestList :: [GoldenTestSpec]
 simpleTestList = map (addTestDirectory "./examples/simple")
   [ --("quantifier",     [Verifier SMTLib])
     ("quantifierIn",   [Verifier SMTLib, ITP Agda])
-  , ("let", [Verifier SMTLib])
+  , ("let",            [Verifier SMTLib, ITP Agda])
   ]
 
 miscTestList :: [GoldenTestSpec]
@@ -107,5 +107,5 @@ runTest inputFile outputFile outputTarget = do
     { inputFile    = Just inputFile
     , outputTarget = Just outputTarget
     , outputFile   = Just outputFile
-    , logFile      = Just Nothing -- Nothing
+    , logFile      = Nothing -- Just Nothing -- Nothing
     }

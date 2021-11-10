@@ -599,16 +599,15 @@ typeOfQuantifierInOp ann =
         isContainer ann tElem tCont ~~~> (tElem ~> tRes) ~> tCont ~> tRes
 
 typeOfCons :: CheckedAnn -> DSLExpr
-typeOfCons ann =
+typeOfCons _ann =
   forall type0 $ \tElem ->
-    forall type0 $ \tCont ->
-      isContainer ann tElem tCont ~~~> tElem ~> tCont ~> tCont
+      tElem ~> tList tElem ~> tList tElem
 
 typeOfAtOp :: CheckedAnn -> DSLExpr
-typeOfAtOp ann =
+typeOfAtOp _ann =
   forall type0 $ \tElem ->
-    forall type0 $ \tCont ->
-      isContainer ann tElem tCont ~~~> tCont ~> tNat ~> tElem
+    forall type0 $ \tDims ->
+      tTensor tElem tDims ~> tNat ~> tElem
 
 -- TODO generalise these to tensors etc. (remember to do mkMap' in utils as well)
 typeOfMapOp :: DSLExpr
