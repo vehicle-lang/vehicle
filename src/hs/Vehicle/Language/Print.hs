@@ -29,11 +29,13 @@ import Vehicle.Language.AST
 -- |Prints to the core language removing all implicit/instance arguments and
 -- automatically inserted code. Does not convert DeBruijn indices back to names.
 prettySimple :: (PrettyLang a, Simplify a) => a -> Doc b
-prettySimple = prettyLang Core . runSimplify (SimplifyOptions
-  { removeImplicits   = True
-  , removeInstances   = True
-  , removeNonUserCode = True
-  })
+prettySimple = prettyLang Core . runSimplify options
+  where
+    options = SimplifyOptions
+      { removeImplicits   = True
+      , removeInstances   = True
+      , removeNonUserCode = True
+      }
 
 -- |Prints to the core language in all it's gory detail. Does not convert DeBruijn
 -- indices back to names. Useful for debugging.
@@ -52,9 +54,9 @@ prettyFriendly :: (PrettyLang a, Simplify a) => a -> Doc b
 prettyFriendly = prettyLang Frontend . runSimplify options
   where
     options = SimplifyOptions
-      { removeImplicits   = False
-      , removeInstances   = False
-      , removeNonUserCode = True
+      { removeImplicits   = True
+      , removeInstances   = True
+      , removeNonUserCode = False
       }
 
 -- |Prints to the frontend language for things that need to be displayed to
@@ -63,9 +65,9 @@ prettyFriendlyDescope :: (PrettyDescopedLang a, Simplify a, IsBoundCtx ctx) => c
 prettyFriendlyDescope ctx = prettyDescopedLang Frontend (ctxNames ctx) . runSimplify options
   where
     options = SimplifyOptions
-      { removeImplicits   = False
-      , removeInstances   = False
-      , removeNonUserCode = True
+      { removeImplicits   = True
+      , removeInstances   = True
+      , removeNonUserCode = False
       }
 
 --------------------------------------------------------------------------------

@@ -57,31 +57,30 @@ solveMetas = do
     loop progress = do
       allConstraints <- getConstraints
       currentSubstitution <- getMetaSubstitution
+      case allConstraints of
+        -- If there are no constraints to be solved then return the solution
+        []       -> return currentSubstitution
+        -- Otherwise see if we made progress
+        (c : cs) -> case progress of
+          Stuck -> throwError $ UnsolvedConstraints (c :| cs)
+          Progress newConstraints solvedMetas -> do
+            -- If we have failed to make useful progress last pass then abort
+            if MetaSet.null solvedMetas && null newConstraints then
+              throwError $ UnsolvedConstraints (c :| cs)
+            -- Otherwise start a new pass
+            else do
+              logDebug "Starting new pass"
 
-      -- If there are no constraints to be solved then return the solution
-      if null allConstraints
-        then return currentSubstitution
+              let updatedConstraints = substMetas currentSubstitution allConstraints
+              logDebug $ "current-constraints:" <+> align (prettyVerbose updatedConstraints)
 
-      else case progress of
-        Stuck -> throwError $ UnsolvedConstraints (head allConstraints :| tail allConstraints)
-        Progress newConstraints solvedMetas -> do
-          -- If we have failed to make useful progress last pass then abort
-          if MetaSet.null solvedMetas && null newConstraints then
-            throwError $ UnsolvedConstraints (head allConstraints :| tail allConstraints)
-          -- Otherwise start a new pass
-          else do
-            logDebug "Starting new pass"
+              -- TODO try only the non-blocked metas
+              setConstraints []
+              newProgress <- mconcat `fmap` traverse tryToSolveConstraint updatedConstraints
 
-            let updatedConstraints = substMetas currentSubstitution allConstraints
-            logDebug $ "current-constraints:" <+> align (prettyVerbose updatedConstraints)
-
-            -- TODO try only the non-blocked metas
-            setConstraints []
-            newProgress <- mconcat `fmap` traverse tryToSolveConstraint updatedConstraints
-
-            metaSubst <- getMetaSubstitution
-            logDebug $ "current-solution:" <+> prettyVerbose metaSubst <> "\n"
-            loop newProgress
+              metaSubst <- getMetaSubstitution
+              logDebug $ "current-solution:" <+> prettyVerbose metaSubst <> "\n"
+              loop newProgress
 
     tryToSolveConstraint :: MonadConstraintSolving m
                         => Constraint
@@ -280,14 +279,18 @@ check :: TCM m
 check expectedType expr = do
   showCheckEntry expectedType expr
   res <- case (expectedType, expr) of
-    (Pi _ piBinder resultType, Lam p lamBinder body)
+    (Pi _ piBinder resultType, Lam ann lamBinder body)
       | visibilityOf piBinder == visibilityOf lamBinder -> do
-        checkedLamBinderType <- check (typeOf piBinder) (typeOf lamBinder)
+        checkedLamBinderType <- check Type0 (typeOf lamBinder)
 
+        -- Unify the result with the type of the pi binder.
+        _ <- unify (provenanceOf ann) (typeOf piBinder) checkedLamBinderType
+
+        -- Add bound variable to context
         addToBoundCtx (nameOf lamBinder) checkedLamBinderType $ do
           body' <- check resultType body
           let checkedLamBinder = replaceBinderType checkedLamBinderType lamBinder
-          return $ Lam p checkedLamBinder body'
+          return $ Lam ann checkedLamBinder body'
 
     (Pi _ binder resultType, e) ->
       -- Add the binder to the context
@@ -312,7 +315,7 @@ check expectedType expr = do
       -- Replace the hole with meta-variable of the expected type.
       -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
       (_, meta) <- freshMeta p
-      unify p meta expectedType
+      return meta
 
     (_, e@(Type _))            -> viaInfer emptyMachineAnn  expectedType e
     (_, e@(Meta _ _))          -> viaInfer emptyMachineAnn  expectedType e

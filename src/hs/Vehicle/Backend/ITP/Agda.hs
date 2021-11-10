@@ -21,8 +21,6 @@ import Vehicle.Language.Print
 import Vehicle.Language.Sugar
 import Vehicle.Backend.ITP.Core
 
-import Debug.Trace (traceShow)
-
 compileToAgda :: (MonadLogger m, MonadError CompileError m)
               => AgdaOptions -> OutputProg -> m (Doc a)
 compileToAgda options prog = runReaderT (compileProgramToAgda prog) options
@@ -245,8 +243,8 @@ instance CompileToAgda OutputDecl where
     DefFun _ann n t e -> do
       let (binders, body) = foldLam e
       if isProperty t
-        then compileProperty (pretty n) <$> compile e
-        else compileFunDef   (pretty n) <$> compile t <*> traverse compile binders <*> compile body
+        then do compileProperty (pretty n) <$> compile e
+        else do compileFunDef   (pretty n) <$> compile t <*> traverse compile binders <*> compile body
 
 instance CompileToAgda OutputExpr where
   compile expr = do

@@ -62,6 +62,7 @@ data BaseConstraint
   = Unify UnificationPair
   -- | Represents that the provided type must have the required functionality
   | Meta `Has` CheckedExpr
+  deriving Show
 
 instance Simplify BaseConstraint where
   simplify (Unify (e1, e2)) = do
@@ -91,6 +92,9 @@ instance HasProvenance ConstraintContext where
   provenanceOf (ConstraintContext p _ _) = p
 
 data Constraint = Constraint ConstraintContext BaseConstraint
+
+instance Show Constraint where
+  show (Constraint _ c) = show c
 
 variableContext :: Constraint -> VariableCtx
 variableContext (Constraint ctx _) = varContext ctx
