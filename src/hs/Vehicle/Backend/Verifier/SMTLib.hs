@@ -283,7 +283,6 @@ compileExpr = \case
   Hole _p _      -> resolutionError "Hole"
   Meta _p _      -> resolutionError "Meta"
   Ann _ann _ _   -> normalisationError "Ann"
-  Let _ann _ _ _ -> normalisationError "Let"
   Lam _ann _ _   -> normalisationError "Lam"
   Seq _ann _     -> normalisationError "Seq"
   PrimDict _tc   -> visibilityError "PrimDict"
@@ -298,6 +297,12 @@ compileExpr = \case
     return $ if null argDocs
       then funDoc
       else parens $ hsep (funDoc : argDocs)
+
+  Let _ann bound binder body -> do
+    let binderDoc = pretty (nameOf binder)
+    boundDoc <- compileExpr bound
+    bodyDoc  <- compileExpr body
+    return $ parens $ "let" <+> parens (parens (binderDoc <+> boundDoc)) <+> bodyDoc
 
 compileBuiltin :: MonadSMTLibProp m => OutputAnn -> Builtin -> m (Doc b)
 compileBuiltin ann = \case

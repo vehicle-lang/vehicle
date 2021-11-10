@@ -1,4 +1,4 @@
 
-e1 : Int
-e1 = let x = 0 in x
+e1 : Prop
+e1 = let x = True in x
 
