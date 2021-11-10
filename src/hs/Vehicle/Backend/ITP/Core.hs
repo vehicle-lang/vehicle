@@ -29,7 +29,7 @@ instance Pretty Backend where
 
 -- |Constraint for the monad stack used by the Compiler.
 type MonadCompile options m =
-  (MonadError CompileError m, MonadReader options m)
+  (MonadLogger m, MonadError CompileError m, MonadReader options m)
 
 type Compile a options = ReaderT options (Except CompileError) a
 

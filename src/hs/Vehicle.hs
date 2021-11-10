@@ -195,7 +195,7 @@ run opts@Options{..} = do
         Agda -> do
           let descopedProg = V.runDescopeProg typedCoreProg
           let agdaOptions = AgdaOptions ["MyTestModule"] mempty
-          agdaDoc <- fromEitherIO $ compileToAgda agdaOptions descopedProg
+          agdaDoc <- fromLoggedEitherIO logFile $ compileToAgda agdaOptions descopedProg
           writeResultToFile opts target agdaDoc
 
     Just (Verifier verifier) -> do

@@ -21,7 +21,10 @@ import Vehicle.Language.Print
 import Vehicle.Language.Sugar
 import Vehicle.Backend.ITP.Core
 
-compileToAgda :: AgdaOptions -> OutputProg -> Either CompileError (Doc a)
+import Debug.Trace (traceShow)
+
+compileToAgda :: (MonadLogger m, MonadError CompileError m)
+              => AgdaOptions -> OutputProg -> m (Doc a)
 compileToAgda options prog = runReaderT (compileProgramToAgda prog) options
 
 --------------------------------------------------------------------------------
@@ -213,6 +216,19 @@ class CompileToAgda a where
     -> m Code
 
 --------------------------------------------------------------------------------
+-- Debug functions
+
+logEntry :: MonadAgdaCompile m => OutputExpr -> m ()
+logEntry e = do
+  incrCallDepth
+  logDebug $ "compile-entry" <+> prettyVerbose e
+
+logExit :: MonadAgdaCompile m => Code -> m ()
+logExit e = do
+  logDebug $ "compile-exit " <+> e
+  decrCallDepth
+
+--------------------------------------------------------------------------------
 -- Compilation of programs
 
 instance CompileToAgda OutputProg where
@@ -233,50 +249,56 @@ instance CompileToAgda OutputDecl where
         else compileFunDef   (pretty n) <$> compile t <*> traverse compile binders <*> compile body
 
 instance CompileToAgda OutputExpr where
-  compile expr = case expr of
-    Hole{}     -> developerError "Holes should have been removed during type-checking"
-    Meta{}     -> developerError "Meta-variables should have been removed during type-checking"
-    PrimDict{} -> developerError "Primitive dictionaries should never be compiled"
+  compile expr = do
+    logEntry expr
+    result <- case expr of
+      Hole{}     -> developerError "Holes should have been removed during type-checking"
+      Meta{}     -> developerError "Meta-variables should have been removed during type-checking"
+      PrimDict{} -> developerError "Primitive dictionaries should never be compiled"
 
-    Var _ann n  -> return $ pretty n
+      Var _ann n  -> return $ pretty n
 
-    Type l -> return $ annotateApp [] "Set" [pretty l]
+      Type l -> return $ annotateApp [] "Set" [pretty l]
 
-    Pi ann binder result -> case foldPi ann binder result of
-      Left (binders, body)  -> compileTypeLevelQuantifier All binders body
-      Right (input, output) ->
-        annotateInfixOp2 [] 20 id Nothing "→" <$> traverse compile [input, output]
+      Pi ann binder result -> case foldPi ann binder result of
+        Left (binders, body)  -> compileTypeLevelQuantifier All binders body
+        Right (input, output) ->
+          annotateInfixOp2 [] 20 id Nothing "→" <$> traverse compile [input, output]
 
-    Ann _ann e t -> do
-      ce <- compile e
-      ct <- compile t
-      return $ annotate (mempty, -1000) (ce <+> ":" <+> ct)
+      Ann _ann e t -> do
+        ce <- compile e
+        ct <- compile t
+        return $ annotate (mempty, -1000) (ce <+> ":" <+> ct)
 
-    Let{} -> do
-      let (boundExprs, body) = foldLet expr
-      cBoundExprs <- traverse compile boundExprs
-      cBody       <- compile body
-      return $ "let" <+> vsep cBoundExprs <+> "in" <+> cBody
+      Let{} -> do
+        let (boundExprs, body) = foldLet expr
+        cBoundExprs <- traverse compile boundExprs
+        cBody       <- compile body
+        return $ "let" <+> vsep cBoundExprs <+> "in" <+> cBody
 
-    Lam{} -> do
-      let (binders, body) = foldLam expr
-      cBinders <- traverse compile binders
-      cBody    <- compile body
-      return $ annotate (mempty, -1000) ("λ" <+> hsep cBinders <+> "→" <+> cBody)
+      Lam{} -> do
+        let (binders, body) = foldLam expr
+        cBinders <- traverse compile binders
+        cBody    <- compile body
+        return $ annotate (mempty, -1000) ("λ" <+> hsep cBinders <+> "→" <+> cBody)
 
-    Builtin ann op -> compileBuiltin ann op []
-    Literal ann op -> compileLiteral ann op []
+      Builtin ann op -> compileBuiltin ann op []
+      Literal ann op -> compileLiteral ann op []
 
-    App ann fun args -> case fun of
-      Builtin _ op -> compileBuiltin ann op (fmap argExpr (NonEmpty.toList args))
-      Literal _ op -> compileLiteral ann op (fmap argExpr (NonEmpty.toList args))
-      Seq _     xs -> compileSeq     ann xs (fmap argExpr (NonEmpty.toList args))
-      _            -> do
-        cFun   <- compile fun
-        cArgs  <- traverse compile args
-        return $ cFun <+> hsep cArgs
+      App ann fun args ->
+          case fun of
+        Builtin _ op -> compileBuiltin ann op (fmap argExpr (NonEmpty.toList args))
+        Literal _ op -> compileLiteral ann op (fmap argExpr (NonEmpty.toList args))
+        Seq _     xs -> compileSeq     ann xs (fmap argExpr (NonEmpty.toList args))
+        _            -> do
+          cFun   <- compile fun
+          cArgs  <- traverse compile args
+          return $ cFun <+> hsep cArgs
 
-    Seq _ _ -> developerError "when compiling to Agda, Seqs should have been caught in App case"
+      Seq _ _ -> developerError "when compiling to Agda, Seqs should have been caught in App case"
+
+    logExit result
+    return result
 
 instance CompileToAgda (LetBinder OutputBinding OutputVar OutputAnn) where
   compile (binder, expr) = do

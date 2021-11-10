@@ -37,8 +37,8 @@ unfoldFun ann dom = Pi ann (ExplicitBinder (provenanceOf ann) Machine dom)
 foldPi :: ann -> Binder binder var ann -> Expr binder var ann ->
           Either (BindersAndBody binder var ann) (Expr binder var ann, Expr binder var ann)
 foldPi ann binder result = if isFunBinder binder
-  then Left  (foldForall (Pi ann binder result))
-  else Right (typeOf binder, result)
+  then Right (typeOf binder, result)
+  else Left  (foldForall (Pi ann binder result))
 
 -- | Folds consecutative forall expressions into a list of binders
 foldForall :: Expr binder var ann -> BindersAndBody binder var ann

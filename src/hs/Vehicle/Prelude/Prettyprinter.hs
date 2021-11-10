@@ -32,6 +32,7 @@ import Prettyprinter as CommonPrettyprinter
   , squotes
   , align
   , nest
+  , indent
   )
 
 -- * Additions to the prettyprinter library

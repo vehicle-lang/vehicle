@@ -126,7 +126,7 @@ logInfo text = logMessage $ Message Info (layoutAsText text)
 logDebug :: MonadLogger m => Doc a -> m ()
 logDebug text = do
   depth <- getCallDepth
-  logMessage $ Message Debug (T.replicate depth " " <> layoutAsText text)
+  logMessage $ Message Debug (layoutAsText (indent depth text))
 
 resetColor :: String
 resetColor = setSGRCode []
