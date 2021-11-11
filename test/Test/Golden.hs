@@ -32,8 +32,8 @@ realisticTestList = map (addTestDirectory "./examples/network") [
   --("shortestPath",     [Verifier VNNLib]),
   ("andGate",          [Verifier VNNLib]),
   ("acasXu/property6", [Verifier VNNLib]),
-  ("monotonicity",     [Verifier VNNLib])
-  -- ("increasing",       [Verifier VNNLib, ITP Agda])
+  ("monotonicity",     [Verifier VNNLib]),
+  ("increasing",       [Verifier VNNLib, ITP Agda])
   ]
 
 simpleTestList :: [GoldenTestSpec]
@@ -107,5 +107,5 @@ runTest inputFile outputFile outputTarget = do
     { inputFile    = Just inputFile
     , outputTarget = Just outputTarget
     , outputFile   = Just outputFile
-    , logFile      = Just Nothing -- Nothing
+    , logFile      = Nothing -- Just Nothing -- Nothing
     }

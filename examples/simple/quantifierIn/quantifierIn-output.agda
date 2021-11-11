@@ -6,6 +6,7 @@
 --  - Time generated: ???
 
 open import Data.Unit
+open import Data.Int as ℤ using (ℤ)
 open import Data.List
 open import Data.List.Relation.Unary.All as List
 

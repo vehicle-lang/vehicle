@@ -81,16 +81,16 @@ instance Pretty Dependency where
     DataEmpty           -> "Data.Empty"
     DataProduct         -> "Data.Product"
     DataSum             -> "Data.Sum"
-    DataNat             -> "Data.Nat as" <+> numericQualifier Nat
+    DataNat             -> "Data.Nat as" <+> numericQualifier Nat <+> "using" <+> parens "ℕ"
     DataNatInstances    -> "Data.Nat.Instances"
     DataNatDivMod       -> "Data.Nat.DivMod as" <+> numericQualifier Nat
-    DataInt             -> "Data.Int as" <+> numericQualifier Int
+    DataInt             -> "Data.Int as" <+> numericQualifier Int <+> "using" <+> parens "ℤ"
     DataIntInstances    -> "Data.Int.Instances"
     DataIntDivMod       -> "Data.Int.DivMod as" <+> numericQualifier Int
-    DataRat             -> "Data.Rational as" <+> numericQualifier Rat
+    DataRat             -> "Data.Rational as" <+> numericQualifier Rat <+> "using" <+> parens "ℚ"
     DataRatInstances    -> "Data.Rational.Instances"
-    DataReal            -> "Data.Real as" <+> numericQualifier Real
-    DataBool            -> "Data.Bool as 𝔹"
+    DataReal            -> "Data.Real as" <+> numericQualifier Real <+> "using" <+> parens "ℝ"
+    DataBool            -> "Data.Bool as 𝔹" <+> "using" <+> parens "Bool; true; false"
     DataBoolInstances   -> "Data.Bool.Instances"
     DataList            -> "Data.List"
     DataListInstances   -> "Data.List.Instances"
@@ -133,7 +133,7 @@ numericDependencies = \case
 type Code = Doc (Set Dependency, Precedence)
 
 annotateConstant :: [Dependency] -> Code -> Code
-annotateConstant dependencies = annotate (Set.fromList dependencies, -1000)
+annotateConstant dependencies = annotate (Set.fromList dependencies, 1000)
 
 annotateApp :: [Dependency] -> Code -> [Code] -> Code
 annotateApp dependencies fun args =
@@ -284,9 +284,9 @@ instance CompileToAgda OutputExpr where
       Literal ann op -> compileLiteral ann op []
 
       App ann fun args -> case fun of
-        Builtin _ op -> do logDebug "Hi1"; compileBuiltin ann op (fmap argExpr (NonEmpty.toList args))
-        Literal _ op -> do logDebug "Hi2"; compileLiteral ann op (fmap argExpr (NonEmpty.toList args))
-        Seq _     xs -> do logDebug "Hi3"; compileSeq     ann xs (fmap argExpr (NonEmpty.toList args))
+        Builtin _ op -> compileBuiltin ann op (fmap argExpr (NonEmpty.toList args))
+        Literal _ op -> compileLiteral ann op (fmap argExpr (NonEmpty.toList args))
+        Seq _     xs -> compileSeq     ann xs (fmap argExpr (NonEmpty.toList args))
         _            -> do
           cFun   <- compile fun
           cArgs  <- traverse compile args
@@ -314,12 +314,12 @@ instance CompileToAgda OutputArg where
   compile arg = visBrackets (visibilityOf arg) <$> compile (argExpr arg)
 
 instance CompileToAgda BooleanType where
-  compile e = return $ case e of
+  compile t = return $ case t of
     Prop -> annotateConstant []         "Set"
     Bool -> annotateConstant [DataBool] "Bool"
 
 instance CompileToAgda NumericType where
-  compile = return . numericQualifier
+  compile t = return $ annotateConstant (numericDependencies t) (numericQualifier t)
 
 compileBuiltin :: MonadAgdaCompile m => OutputAnn -> Builtin -> [OutputExpr] -> m Code
 compileBuiltin ann op args = case (op, args) of
@@ -336,20 +336,20 @@ compileBuiltin ann op args = case (op, args) of
     ce3 <- compile e3
     return $ "if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3
 
-  (BooleanOp2 op2, t : _tc : opArgs) -> compileBoolOp2 op2 (booleanType t)   <$> traverse compile opArgs
-  (Not,            t : _tc : opArgs) -> compileNot         (booleanType t)   <$> traverse compile opArgs
-  (NumericOp2 op2, t : _tc : opArgs) -> compileNumOp2  op2 <$> numType ann t <*> traverse compile opArgs
-  (Neg,            t : _tc : opArgs) -> compileNeg         <$> numType ann t <*> traverse compile opArgs
+  (BooleanOp2 op2, t : _tc : opArgs) -> compileBoolOp2 op2 (booleanType t) <$> traverse compile opArgs
+  (Not,            t : _tc : opArgs) -> compileNot         (booleanType t) <$> traverse compile opArgs
+  (NumericOp2 op2, t : _tc : opArgs) -> compileNumOp2  op2 (numericType t) <$> traverse compile opArgs
+  (Neg,            t : _tc : opArgs) -> compileNeg         (numericType t) <$> traverse compile opArgs
 
   (Quant   q, _tElem                      : opArgs) -> compileQuant   ann   q opArgs
   (QuantIn q, _tElem : tCont : tRes : _tc : opArgs) -> compileQuantIn tCont q (booleanType tRes) opArgs
 
-  (Order order,  t1 : t2 : _tc : opArgs) -> compileNumOrder order <$> numType ann t1 <*> pure (booleanType t2) <*> traverse compile opArgs
+  (Order order,  t1 : t2 : _tc : opArgs) -> compileNumOrder order (numericType t1) (booleanType t2) <$> traverse compile opArgs
   (Equality Eq,  t1 : t2 : _tc : opArgs) -> compileEquality   t1 (booleanType t2) =<< traverse compile opArgs
   (Equality Neq, t1 : t2 : _tc : opArgs) -> compileInequality t1 (booleanType t2) =<< traverse compile opArgs
 
   (Cons, tElem  : opArgs)         -> compileCons tElem <$> traverse compile opArgs
-  (At  , _tElem : tDims : opArgs) -> do logDebug "Hi4"; compileAt tDims opArgs
+  (At  , _tElem : tDims : opArgs) -> compileAt tDims opArgs
 
   (Map , _) -> throwError $ CompilationUnsupported (provenanceOf ann) (pretty Map)
   (Fold, _) -> throwError $ CompilationUnsupported (provenanceOf ann) (pretty Fold)
@@ -538,11 +538,6 @@ compileProperty propertyName propertyBody =
     "{ databasePath = DATABASE_PATH" <> hardline <>
     "; propertyUUID = ????"          <> hardline <>
     "}")
-
-numType :: MonadAgdaCompile m => OutputAnn -> OutputExpr -> m NumericType
-numType ann t = case numericType t of
-  Real -> throwError $ CompilationUnsupported (provenanceOf ann) "real numbers"
-  nt   -> return nt
 
 containerDependencies :: ContainerType -> [Dependency]
 containerDependencies = \case
