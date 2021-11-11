@@ -32,7 +32,7 @@ realisticTestList = map (addTestDirectory "./examples/network") [
   --("shortestPath",     [Verifier VNNLib]),
   ("andGate",          [Verifier VNNLib]),
   ("acasXu/property6", [Verifier VNNLib]),
-  ("monotonicity",     [Verifier VNNLib]),
+  ("monotonicity",     [Verifier VNNLib, ITP Agda]),
   ("increasing",       [Verifier VNNLib, ITP Agda])
   ]
 

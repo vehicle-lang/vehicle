@@ -132,13 +132,19 @@ numericDependencies = \case
 
 type Code = Doc (Set Dependency, Precedence)
 
+minPrecedence :: Precedence
+minPrecedence = -1000
+
+maxPrecedence :: Precedence
+maxPrecedence = 1000
+
 annotateConstant :: [Dependency] -> Code -> Code
-annotateConstant dependencies = annotate (Set.fromList dependencies, 1000)
+annotateConstant dependencies = annotate (Set.fromList dependencies, maxPrecedence)
 
 annotateApp :: [Dependency] -> Code -> [Code] -> Code
 annotateApp dependencies fun args =
   let precedence = 20 in
-  let bracketedArgs = map (bracketIfRequired 20) args in
+  let bracketedArgs = map (bracketIfRequired precedence) args in
   annotate (Set.fromList dependencies, precedence) (hsep (fun : bracketedArgs))
 
 annotateInfixOp1 :: [Dependency]
@@ -254,19 +260,17 @@ instance CompileToAgda OutputExpr where
       Meta{}     -> developerError "Meta-variables should have been removed during type-checking"
       PrimDict{} -> developerError "Primitive dictionaries should never be compiled"
 
-      Var _ann n  -> return $ pretty n
+      Var _ann n  -> return $ annotateConstant [] (pretty n)
 
       Type l -> return $ annotateApp [] "Set" [pretty l]
 
       Pi ann binder result -> case foldPi ann binder result of
         Left (binders, body)  -> compileTypeLevelQuantifier All binders body
         Right (input, output) ->
-          annotateInfixOp2 [] 20 id Nothing "→" <$> traverse compile [input, output]
+          annotateInfixOp2 [] minPrecedence id Nothing "→" <$> traverse compile [input, output]
 
       Ann _ann e t -> do
-        ce <- compile e
-        ct <- compile t
-        return $ annotate (mempty, -1000) (ce <+> ":" <+> ct)
+        annotateInfixOp2 [] minPrecedence id Nothing ":" <$> traverse compile [e, t]
 
       Let{} -> do
         let (boundExprs, body) = foldLet expr
@@ -278,7 +282,7 @@ instance CompileToAgda OutputExpr where
         let (binders, body) = foldLam expr
         cBinders <- traverse compile binders
         cBody    <- compile body
-        return $ annotate (mempty, -1000) ("λ" <+> hsep cBinders <+> "→" <+> cBody)
+        return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> "→" <+> cBody)
 
       Builtin ann op -> compileBuiltin ann op []
       Literal ann op -> compileLiteral ann op []
@@ -437,7 +441,7 @@ compileBoolOp2 op2 t = annotateInfixOp2 dependencies precedence id Nothing opDoc
       (Impl, Bool) -> ("⇒", 4,  [AISECUtils])
       (And , Bool) -> ("∧", 6,  [DataBool])
       (Or  , Bool) -> ("∨", 5,  [DataBool])
-      (Impl, Prop) -> ("→", 20, [])
+      (Impl, Prop) -> ("→", minPrecedence, [])
       (And , Prop) -> ("×", 2,  [DataProduct])
       (Or  , Prop) -> ("⊎", 1,  [DataSum])
 
