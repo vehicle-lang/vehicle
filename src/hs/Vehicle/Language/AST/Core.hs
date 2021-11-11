@@ -38,10 +38,10 @@ instance Pretty Meta where
 -- - There is no Real literal as Rationals already cover everything that is
 -- expressible
 data Literal
-  = LNat  Int
+  = LBool Bool
+  | LNat  Int
   | LInt  Int
-  | LRat  Double
-  | LBool Bool
+  | LRat  Rational
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData   Literal

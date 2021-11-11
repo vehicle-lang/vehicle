@@ -20,6 +20,8 @@ position token BoolToken ({"True"} | {"False"}) ;
 position token HoleToken ({"?"} (letter | digit | '_')*);
 position token TypeToken ({"Type"} digit+);
 
+position token Rational (digit+ '.' digit+);
+
 -- * Binders
 
 ExplicitBinder. Binder ::= "("  NameToken ":type" Expr ")";
@@ -35,7 +37,7 @@ InstanceArg. Arg ::= "{{" Expr "}}";
 -- * Literals
 
 LitInt.  Lit ::= Integer;
-LitRat.  Lit ::= Double;
+LitRat.  Lit ::= Rational;
 LitBool. Lit ::= BoolToken;
 
 -- * Core structure.

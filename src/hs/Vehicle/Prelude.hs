@@ -7,6 +7,7 @@ module Vehicle.Prelude
   , (!!?)
   , rangeStart
   , repeatN
+  , readRat
   , duplicate
   , oneHot
   , capitaliseFirstLetter
@@ -15,6 +16,7 @@ module Vehicle.Prelude
 import Data.Range
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Numeric
 
 import Vehicle.Prelude.Token as X
 import Vehicle.Prelude.Provenance as X
@@ -75,3 +77,8 @@ oneHot i l x
   | i < 0 || l < i = developerError $ "Invalid arguments" <+> squotes (pretty i) <+> squotes (pretty l) <+> "to `oneHot`"
   | i == 0         = Just x  : replicate l Nothing
   | otherwise      = Nothing : oneHot (i-1) (l-1) x
+
+readRat :: Text -> Rational
+readRat str = case readFloat (Text.unpack str) of
+  ((n, []) : _) -> n
+  _             -> error "Invalid number"

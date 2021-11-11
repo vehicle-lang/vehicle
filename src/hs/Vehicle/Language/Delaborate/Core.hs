@@ -100,7 +100,7 @@ instance Delaborate V.Literal B.Lit where
     V.LBool b -> B.LitBool  (mkToken B.BoolToken (if b then "True" else "False"))
     V.LNat n  -> B.LitInt   (fromIntegral n)
     V.LInt i  -> B.LitInt   (fromIntegral i)
-    V.LRat r  -> B.LitRat   r
+    V.LRat r  -> B.LitRat   (mkToken B.Rational (pack $ show (fromRational r :: Double)))
 
 delabApp :: B.Expr -> [B.Arg] -> B.Expr
 delabApp fun []           = fun

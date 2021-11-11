@@ -6,6 +6,8 @@ module Vehicle.Prelude.Prettyprinter
   )
   where
 
+import GHC.Real ( numerator, denominator )
+
 import Data.Text (Text)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet (toAscList)
@@ -73,6 +75,10 @@ layoutAsText = renderStrict . layoutPretty defaultLayoutOptions
 
 --------------------------------------------------------------------------------
 -- Pretty printing of datatypes
+
+instance Pretty Rational where
+  pretty p = pretty (fromRational p :: Double)
+  --pretty (numerator p) <> "/" <> pretty (denominator p)
 
 instance Pretty IntSet where
   pretty m = pretty (IntSet.toAscList m)

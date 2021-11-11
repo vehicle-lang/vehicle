@@ -9,6 +9,7 @@ module Vehicle.Language.Delaborate.Frontend
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.Text (pack)
 
 import Vehicle.Frontend.Abs qualified as B
 
@@ -162,7 +163,7 @@ instance Delaborate V.Literal B.Lit where
     V.LBool False -> B.LitFalse tokFalse
     V.LNat n      -> B.LitInt   (fromIntegral n)
     V.LInt i      -> B.LitInt   (fromIntegral i)
-    V.LRat r      -> B.LitRat   r
+    V.LRat r      -> B.LitRat   (mkToken B.Rational (pack $ show (fromRational r :: Double)))
 
 delabApp :: B.Expr -> [B.Arg] -> B.Expr
 delabApp fun []           = fun

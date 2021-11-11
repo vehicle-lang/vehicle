@@ -37,7 +37,7 @@ The easiest way is:
 
 * Running `make test` will build Vehicle and run the entire test suite.
 
-* Running `stack test --test-arguments "-p X"` will only run tests
+* Running `cabal test --test-option="-p /X/"` will only run tests
   with `X` in their name. If you only want to run a test for a particular backend `Y`
   change the `X` to `X-Y`, e.g. `quantifier-Agda`.
 

@@ -3,7 +3,8 @@ module Test.Golden
   ) where
 
 import Control.Monad (void)
-import Data.Algorithm.Diff (Diff, PolyDiff(..), getDiff)
+import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiff)
+import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -15,6 +16,7 @@ import System.FilePath (takeFileName, splitPath, (<.>), (</>))
 import System.Directory (removeFile)
 import System.IO.Error (isDoesNotExistError)
 import Control.Exception ( catch, throwIO )
+import Debug.Trace (traceShowId)
 
 import Vehicle
 
@@ -89,24 +91,21 @@ makeIndividualTest folderPath name target = testWithCleanup
   readOutput = do runTest inputFile outputFile target; T.readFile outputFile
   updateGolden = T.writeFile goldenFile
 
-
   test = goldenTest testName readGolden readOutput diffCommand updateGolden
   testWithCleanup = cleanupOutputFile outputFile test
 
 diffCommand :: Text -> Text -> IO (Maybe String)
 diffCommand golden output = do
-  let goldenLines = T.lines golden
-  let outputLines = T.lines output
-  let diff = getDiff goldenLines outputLines 
-  if all isBoth diff
-    then return Nothing 
-    else return (Just "output differs")
-  
-
-isBoth :: Diff a -> Bool 
-isBoth (Both a b) = True 
-isBoth _ = False 
-
+  let goldenLines = map T.unpack $ T.lines golden
+  let outputLines = map T.unpack $ T.lines output
+  let diff = getGroupedDiff goldenLines outputLines
+  return $ if all isBoth diff
+    then Nothing
+    else Just $ "Output differs:" <> ppDiff diff
+  where
+    isBoth :: Diff a -> Bool
+    isBoth (Both a b) = True
+    isBoth _ = False
 
 cleanupOutputFile :: FilePath -> TestTree -> TestTree
 cleanupOutputFile testFile test = withResource (return ()) (const cleanup) (const test)

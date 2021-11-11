@@ -96,7 +96,7 @@ instance Elab B.Arg V.InputArg where
 instance Elab B.Lit Literal where
   elab = \case
     B.LitBool b -> return $ LBool (read (unpack $ tkSymbol b))
-    B.LitRat  r -> return $ LRat r
+    B.LitRat  r -> return $ LRat  (readRat (tkSymbol r))
     B.LitInt  n -> return $ if n >= 0
       then LNat (fromIntegral n)
       else LInt (fromIntegral n)

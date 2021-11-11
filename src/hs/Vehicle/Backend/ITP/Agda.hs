@@ -5,6 +5,7 @@ module Vehicle.Backend.ITP.Agda
   , compileToAgda
   ) where
 
+import GHC.Real (numerator, denominator)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
@@ -394,7 +395,8 @@ compileLiteral :: MonadAgdaCompile m => OutputAnn -> Literal -> [OutputExpr] -> 
 compileLiteral _ann lit args = return $ case (lit, args) of
   (LNat  n,     _)                             -> pretty n
   (LInt  i,     _)                             -> pretty i
-  (LRat  _p,    _)                             -> developerError "Compilation of rational literals not yet supported"
+  (LRat  p,    _)                              -> annotateInfixOp2 [DataRat] 7 id (Just $ numericQualifier Rat) "/"
+                                                    [pretty (numerator p), pretty (denominator p) ]
   (LBool True,  [BuiltinBooleanType _ t, _tc]) -> compileBoolOp0 True t
   (LBool False, [BuiltinBooleanType _ t, _tc]) -> compileBoolOp0 False t
   _ -> developerError $ "unexpected application of literal found during compilation to Agda:" <+>

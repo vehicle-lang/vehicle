@@ -127,10 +127,10 @@ mkIntLit ann i = mkLiteral ann (LInt i) t (PrimDict t)
 --------------------------------------------------------------------------------
 -- Rat
 
-pattern LitRat :: ann -> Double -> Expr binder var ann
+pattern LitRat :: ann -> Rational -> Expr binder var ann
 pattern LitRat ann n = Literal ann (LRat n)
 
-mkRatLit :: ann -> Double -> Expr binder var ann
+mkRatLit :: ann -> Rational -> Expr binder var ann
 mkRatLit ann r = mkLiteral ann (LRat r) t (PrimDict t)
   where t = Builtin ann (NumericType Rat)
 
