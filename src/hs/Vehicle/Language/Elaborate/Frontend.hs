@@ -208,7 +208,7 @@ instance Elab B.Lit V.InputExpr where
   elab = \case
     B.LitTrue  t -> return $ V.LitBool (mkAnn t) True
     B.LitFalse t -> return $ V.LitBool (mkAnn t) False
-    B.LitReal  x -> return $ V.LitReal V.emptyUserAnn x
+    B.LitRat   x -> return $ V.LitRat V.emptyUserAnn x
     B.LitInt   n -> return $ if n >= 0
       then V.LitNat V.emptyUserAnn (fromIntegral n)
       else V.LitInt V.emptyUserAnn (fromIntegral n)

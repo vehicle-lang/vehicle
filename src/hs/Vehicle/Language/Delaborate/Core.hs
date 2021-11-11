@@ -95,9 +95,9 @@ instance Delaborate (V.NamedBinder ann) B.Binder where
 instance Delaborate V.Literal B.Lit where
   delab l = return $ case l of
     V.LBool b -> B.LitBool  (mkToken B.BoolToken (if b then "True" else "False"))
-    V.LNat n  -> B.LitNat   (fromIntegral n)
+    V.LNat n  -> B.LitInt   (fromIntegral n)
     V.LInt i  -> B.LitInt   (fromIntegral i)
-    V.LRat r  -> B.LitReal  r
+    V.LRat r  -> B.LitRat   r
 
 delabApp :: B.Expr -> [B.Arg] -> B.Expr
 delabApp fun []           = fun

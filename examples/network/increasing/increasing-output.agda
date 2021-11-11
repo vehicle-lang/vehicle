@@ -11,7 +11,7 @@ open import Data.List
 
 module MyTestModule where
 
-f : (Tensor ℝ (1 ∷ [])) → (Tensor ℝ (1 ∷ []))
+f : Tensor ℝ (1 ∷ []) → Tensor ℝ (1 ∷ [])
 f = evaluate record
   { databasePath = DATABASE_PATH
   ; networkUUID  = NETWORK_UUID

@@ -165,9 +165,9 @@ nfApp ann  fun@(Builtin _ op) args      = do
         Neq -> case (argHead arg1, argHead arg2) of
           --(ETrue  _, _)          -> normApp $ composeApp ann (Builtin ann Not) [_t2, _, arg2]
           (EFalse _, _)              -> return $ argExpr arg2
-          (LitNat  _ m, LitNat  _ n) -> return $ mkBool ann (argExpr tRes) (m /= n)
-          (LitInt  _ i, LitInt  _ j) -> return $ mkBool ann (argExpr tRes) (i /= j)
-          (LitReal _ x, LitReal _ y) -> return $ mkBool ann (argExpr tRes) (x /= y)
+          (LitNat _ m, LitNat _ n) -> return $ mkBool ann (argExpr tRes) (m /= n)
+          (LitInt _ i, LitInt _ j) -> return $ mkBool ann (argExpr tRes) (i /= j)
+          (LitRat _ x, LitRat _ y) -> return $ mkBool ann (argExpr tRes) (x /= y)
           _                          -> return e
 
     -- Not
@@ -203,30 +203,30 @@ nfApp ann  fun@(Builtin _ op) args      = do
 
     -- Le
     (Order Le, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (LitInt  _ i, LitInt  _ j) -> return $ mkBool ann (argExpr tRes) (i <= j)
-      (LitReal _ x, LitReal _ y) -> return $ mkBool ann (argExpr tRes) (x <= y)
+      (LitInt _ i, LitInt _ j) -> return $ mkBool ann (argExpr tRes) (i <= j)
+      (LitRat _ x, LitRat _ y) -> return $ mkBool ann (argExpr tRes) (x <= y)
       _                          -> return e
 
     -- Lt
     (Order Lt, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (LitInt  _ i, LitInt  _ j) -> return $ mkBool ann (argExpr tRes) (i < j)
-      (LitReal _ x, LitReal _ y) -> return $ mkBool ann (argExpr tRes) (x < y)
+      (LitInt _ i, LitInt _ j) -> return $ mkBool ann (argExpr tRes) (i < j)
+      (LitRat _ x, LitRat _ y) -> return $ mkBool ann (argExpr tRes) (x < y)
       _                          -> return e
 
     -- Binary numeric ops
     (NumericOp2 op2, [_t, _tc, arg1, arg2]) -> case (op2, argHead arg1, argHead arg2) of
       -- TODO implement zero/identity/associativity rules?
-      (Add, LitNat  _ m, LitNat  _ n) -> return $ mkNat  ann (m + n)
-      (Add, LitInt  _ i, LitInt  _ j) -> return $ mkInt  ann (i + j)
-      (Add, LitReal _ x, LitReal _ y) -> return $ mkReal ann (x + y)
+      (Add, LitNat _ m, LitNat _ n) -> return $ mkNat ann (m + n)
+      (Add, LitInt _ i, LitInt _ j) -> return $ mkInt ann (i + j)
+      (Add, LitRat _ x, LitRat _ y) -> return $ mkRat ann (x + y)
 
-      (Sub, LitInt  _ i, LitInt  _ j) -> return $ mkInt  ann (i - j)
-      (Sub, LitReal _ x, LitReal _ y) -> return $ mkReal ann (x - y)
+      (Sub, LitInt _ i, LitInt _ j) -> return $ mkInt ann (i - j)
+      (Sub, LitRat _ x, LitRat _ y) -> return $ mkRat ann (x - y)
 
-      (Mul, LitInt  _ i, LitInt  _ j) -> return $ mkInt  ann (i * j)
-      (Mul, LitReal _ x, LitReal _ y) -> return $ mkReal ann (x * y)
+      (Mul, LitInt _ i, LitInt _ j) -> return $ mkInt ann (i * j)
+      (Mul, LitRat _ x, LitRat _ y) -> return $ mkRat ann (x * y)
 
-      (Div, LitReal _ x, LitReal _ y) -> return $ mkReal ann (x / y)
+      (Div, LitRat _ x, LitRat _ y) -> return $ mkRat ann (x / y)
 
       _                          -> return e
 
@@ -285,10 +285,10 @@ nfEq :: MonadNorm m
      -> Maybe (m CheckedExpr)
 nfEq ann _tEq tRes tc e1 e2 = case (toHead e1, toHead e2) of
   --(EFalse _,  _)         -> normApp $ composeApp ann (Builtin ann op, [tElem, _, e2])
-  ((LitNat  _ m, _),        (LitInt  _ n, _))     -> Just $ return $ mkBool ann (argExpr tRes) (m == n)
-  ((LitInt  _ i, _),        (LitInt  _ j, _))     -> Just $ return $ mkBool ann (argExpr tRes) (i == j)
-  ((LitReal _ x, _),        (LitReal _ y, _))     -> Just $ return $ mkBool ann (argExpr tRes) (x == y)
-  ((Seq _ xs, [tElem,_,_]), (Seq _ ys, [_,_,_]))  -> Just $
+  ((LitNat _ m, _),         (LitInt _ n, _))     -> Just $ return $ mkBool ann (argExpr tRes) (m == n)
+  ((LitInt _ i, _),         (LitInt _ j, _))     -> Just $ return $ mkBool ann (argExpr tRes) (i == j)
+  ((LitRat _ x, _),         (LitRat _ y, _))     -> Just $ return $ mkBool ann (argExpr tRes) (x == y)
+  ((Seq _ xs, [tElem,_,_]), (Seq _ ys, [_,_,_])) -> Just $
     if length xs /= length ys then
       return $ mkBool ann (argExpr tRes) False
     else
@@ -455,9 +455,9 @@ nfNeg :: MonadNorm m
       -> CheckedArg
       -> Maybe (m CheckedExpr)
 nfNeg ann _t _tc arg = case argHead arg of
-  (LitInt  _ x) -> Just $ return $ mkInt  ann (- x)
-  (LitReal _ x) -> Just $ return $ mkReal ann (- x)
-  _           -> Nothing
+  (LitInt _ x) -> Just $ return $ mkInt ann (- x)
+  (LitRat _ x) -> Just $ return $ mkRat ann (- x)
+  _            -> Nothing
 
 -----------------------------------------------------------------------------
 -- Normalising map

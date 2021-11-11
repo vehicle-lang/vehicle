@@ -29,8 +29,8 @@ pattern LitNat ann n = Literal ann (LNat n)
 pattern LitInt :: ann -> Int -> Expr binder var ann
 pattern LitInt ann n = Literal ann (LInt n)
 
-pattern LitReal :: ann -> Double -> Expr binder var ann
-pattern LitReal ann n = Literal ann (LRat n)
+pattern LitRat :: ann -> Double -> Expr binder var ann
+pattern LitRat ann n = Literal ann (LRat n)
 
 pattern LitBool :: ann -> Bool -> Expr binder var ann
 pattern LitBool ann n = Literal ann (LBool n)
@@ -204,13 +204,13 @@ mkBool :: CheckedAnn -> CheckedExpr -> Bool -> CheckedExpr
 mkBool ann t b = mkLiteral ann (LBool b) t (PrimDict t)
 
 mkNat :: CheckedAnn -> Int -> CheckedExpr
-mkNat ann n  = let t = Builtin ann (NumericType Nat) in mkLiteral ann (LNat n) t (PrimDict t)
+mkNat ann n = let t = Builtin ann (NumericType Nat) in mkLiteral ann (LNat n) t (PrimDict t)
 
 mkInt :: CheckedAnn -> Int -> CheckedExpr
-mkInt ann i  = let t = Builtin ann (NumericType Int) in mkLiteral ann (LInt i) t (PrimDict t)
+mkInt ann i = let t = Builtin ann (NumericType Int) in mkLiteral ann (LInt i) t (PrimDict t)
 
-mkReal :: CheckedAnn -> Double -> CheckedExpr
-mkReal ann r = let t = Builtin ann (NumericType Real) in mkLiteral ann (LRat r) t (PrimDict t)
+mkRat :: CheckedAnn -> Double -> CheckedExpr
+mkRat ann r = let t = Builtin ann (NumericType Rat) in mkLiteral ann (LRat r) t (PrimDict t)
 
 mkSeq' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> [CheckedExpr] -> CheckedExpr
 mkSeq' ann tElem tCont tc xs = App ann (Seq ann xs) [tElem, tCont, tc]

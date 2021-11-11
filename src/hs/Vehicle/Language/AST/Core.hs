@@ -32,6 +32,11 @@ instance Pretty Meta where
 --------------------------------------------------------------------------------
 -- Literals
 
+-- | Type of literals.
+-- - The rational literals should `Ratio`, not `Double`
+-- - There should be a family of `Float` literals, but we haven't got there yet.
+-- - There is no Real literal as Rationals already cover everything that is
+-- expressible
 data Literal
   = LNat  Int
   | LInt  Int

@@ -158,7 +158,7 @@ instance Delaborate V.Literal B.Lit where
     V.LBool False -> B.LitFalse tokFalse
     V.LNat n      -> B.LitInt   (fromIntegral n)
     V.LInt i      -> B.LitInt   (fromIntegral i)
-    V.LRat r      -> B.LitReal  r
+    V.LRat r      -> B.LitRat   r
 
 delabApp :: B.Expr -> [B.Arg] -> B.Expr
 delabApp fun []           = fun

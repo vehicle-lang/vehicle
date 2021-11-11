@@ -34,9 +34,8 @@ InstanceArg. Arg ::= "{{" Expr "}}";
 
 -- * Literals
 
-LitNat.  Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
-LitInt.  Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
-LitReal. Lit ::= Double;
+LitInt.  Lit ::= Integer;
+LitRat.  Lit ::= Double;
 LitBool. Lit ::= BoolToken;
 
 -- * Core structure.
