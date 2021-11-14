@@ -33,6 +33,7 @@ import Vehicle.Language.Elaborate.Core as Core
 import Vehicle.Language.Elaborate.Frontend as Frontend
 import Vehicle.Language.Scope qualified as V
 import Vehicle.Language.Descope qualified as V
+import Vehicle.Language.SupplyNames qualified as V
 import Vehicle.Language.Type qualified as V
 import Vehicle.Language.Normalise qualified as V (normalise)
 
@@ -190,10 +191,11 @@ run opts@Options{..} = do
           writeResultToFile opts target $ V.prettyVerbose typedCoreProg
 
         (Vehicle Frontend) ->
-          writeResultToFile opts target $ V.prettyFriendly typedCoreProg
+          writeResultToFile opts target $ V.prettyFriendlyDBClosed typedCoreProg
 
         Agda -> do
-          let descopedProg = V.runDescopeProg typedCoreProg
+          let namedProg    = V.runSupplyNames typedCoreProg
+          let descopedProg = V.runDescopeProg namedProg
           let agdaOptions = AgdaOptions ["MyTestModule"] mempty
           agdaDoc <- fromLoggedEitherIO logFile $ compileToAgda agdaOptions descopedProg
           writeResultToFile opts target agdaDoc

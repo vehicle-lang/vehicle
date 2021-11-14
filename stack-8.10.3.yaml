@@ -5,3 +5,8 @@ compiler-check: match-exact
 packages:
 - .
 
+extra-deps:
+- lazy-search-0.1.2.1@sha256:c942a01e4a64881f89c72eaef5e3a78eba8750759cd66996c6746a2a7cabe703,1199
+- size-based-0.1.2.0@sha256:1b33da89d270189661dbbda49a88b0c21d2fc2f7a407e7a2b1933e2faf0f5d4d,1258
+- testing-feat-1.1.0.0@sha256:7c7629c5014edf06aefbf30a061d1ee64c6ee15f438d868e34749fb22208ab0b,2466
+

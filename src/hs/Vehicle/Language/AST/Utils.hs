@@ -59,14 +59,15 @@ pattern BuiltinEquality ann eq = Builtin ann (Equality eq)
 -- * Type of annotations attached to the Frontend AST after parsing
 -- before being analysed by the compiler
 
-type InputVar  = Name
-type InputAnn  = (Provenance, Owner)
+type InputBinding = (Maybe Symbol)
+type InputVar     = Symbol
+type InputAnn     = (Provenance, Owner)
 
-type InputArg       = NamedArg    InputAnn
-type InputBinder    = NamedBinder InputAnn
-type InputExpr      = NamedExpr   InputAnn
-type InputDecl      = NamedDecl   InputAnn
-type InputProg      = NamedProg   InputAnn
+type InputArg       = Arg    InputBinding InputVar InputAnn
+type InputBinder    = Binder InputBinding InputVar InputAnn
+type InputExpr      = Expr   InputBinding InputVar InputAnn
+type InputDecl      = Decl   InputBinding InputVar InputAnn
+type InputProg      = Prog   InputBinding InputVar InputAnn
 
 -- * Types pre type-checking
 
@@ -92,15 +93,15 @@ type CheckedProg   = DeBruijnProg    CheckedAnn
 
 -- * Type of annotations attached to the Core AST that are output by the compiler
 
-type OutputBinding = Name
-type OutputVar     = Name
+type OutputBinding = Symbol
+type OutputVar     = Symbol
 type OutputAnn     = (Provenance, Owner)
 
-type OutputBinder = NamedBinder OutputAnn
-type OutputArg    = NamedArg    OutputAnn
-type OutputExpr   = NamedExpr   OutputAnn
-type OutputDecl   = NamedDecl   OutputAnn
-type OutputProg   = NamedProg   OutputAnn
+type OutputBinder = Binder OutputBinding OutputVar OutputAnn
+type OutputArg    = Arg    OutputBinding OutputVar OutputAnn
+type OutputExpr   = Expr   OutputBinding OutputVar OutputAnn
+type OutputDecl   = Decl   OutputBinding OutputVar OutputAnn
+type OutputProg   = Prog   OutputBinding OutputVar OutputAnn
 
 emptyUserAnn :: InputAnn
 emptyUserAnn = (mempty, TheUser)
@@ -112,10 +113,13 @@ emptyMachineAnn = (mempty, TheMachine)
 -- Classes
 
 class IsBoundCtx a where
-  ctxNames :: a -> [Name]
+  ctxNames :: a -> [Maybe Symbol]
 
-instance IsBoundCtx [Name] where
+instance IsBoundCtx [Maybe Symbol] where
   ctxNames = id
+
+instance IsBoundCtx [Symbol] where
+  ctxNames = map Just
 
 --------------------------------------------------------------------------------
 -- Utility functions
@@ -165,6 +169,10 @@ quantView :: Expr binder var ann -> Maybe (QuantView binder var ann)
 quantView (App ann (Builtin _ (Quant q))
   (Arg _ Explicit (Lam _ (ExplicitBinder _  n t) e) :| [])) = Just (QuantView ann q n t e)
 quantView _ = Nothing
+
+getQuantifierSymbol :: Maybe Symbol -> Symbol
+getQuantifierSymbol (Just symbol) = symbol
+getQuantifierSymbol Nothing       = developerError "Should not have quantifiers with machine names?"
 
 --------------------------------------------------------------------------------
 -- Construction functions
@@ -262,16 +270,14 @@ mkFold' :: CheckedAnn -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedArg ->
 mkFold' ann tElem tCont tRes tc bop unit xs = App ann (Builtin ann Fold)
   [tElem, tCont, tRes, tc, ExplicitArg ann bop, ExplicitArg ann unit, ExplicitArg ann xs]
 
-mkQuantifier :: CheckedAnn -> Quantifier -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkQuantifier :: CheckedAnn -> Quantifier -> Symbol -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkQuantifier ann q n t e =
   App ann (Builtin ann (Quant q))
-    (ExplicitArg ann (Lam ann (ExplicitBinder ann n t) e) :| [])
+    (ExplicitArg ann (Lam ann (ExplicitBinder ann (Just n) t) e) :| [])
 
 -- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3
-mkNameWithIndices :: Name -> [Int] -> Name
-mkNameWithIndices Machine  _       = Machine
-mkNameWithIndices (User n) indices = User $
-  mconcat (n : ["_" <> pack (show index) | index <- indices])
+mkNameWithIndices :: Symbol -> [Int] -> Symbol
+mkNameWithIndices n indices = mconcat (n : ["_" <> pack (show index) | index <- indices])
 
 substContainerType :: CheckedArg -> CheckedExpr -> CheckedExpr
 substContainerType newTElem (App ann1 (BuiltinContainerType ann2 List)   [_tElem]) =

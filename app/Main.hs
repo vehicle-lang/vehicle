@@ -2,7 +2,7 @@
 
 module Main where
 
-import Vehicle qualified as Vehicle
+import Vehicle qualified
 
 --------------------------------------------------------------------------------
 -- Main function

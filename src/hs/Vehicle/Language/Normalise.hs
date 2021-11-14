@@ -320,7 +320,7 @@ nfQuantifier ann q lam = case argHead lam of
           -- Use the list monad to create a nested list of all possible indices into the tensor
           let allIndices = traverse (\dim -> [0..dim-1]) dims
           -- Generate the corresponding names from the indices
-          let allNames   = map (mkNameWithIndices (nameOf binder)) (reverse allIndices)
+          let allNames   = map (mkNameWithIndices (getQuantifierSymbol (nameOf binder))) (reverse allIndices)
 
           -- Generate a list of variables, one for each index
           let allExprs   = map (\i -> Var ann (Bound i)) (reverse [0..tensorSize-1])
@@ -332,15 +332,10 @@ nfQuantifier ann q lam = case argHead lam of
           body2 <- nf $ substIntoAtLevel tensorSize tensor body1
 
           -- Generate a expression prepended with `tensorSize` quantifiers
-          return $ foldl (makeQuantifier ann q tElem) body2 allNames
-
+          return $ foldl (\e name -> mkQuantifier ann q name tElem e) body2 allNames
+          -- ()
     _ -> Nothing
   _ -> Nothing
-
-makeQuantifier :: CheckedAnn -> Quantifier -> CheckedExpr -> CheckedExpr -> Name -> CheckedExpr
-makeQuantifier ann q tElem body name =
-  App ann (Builtin ann (Quant q))
-    [ExplicitArg ann (Lam ann (ExplicitBinder ann name tElem) body)]
 
 makeTensor :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedExpr
 makeTensor ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)

@@ -53,6 +53,9 @@ instance Semigroup Owner where
   _          <> TheUser    = TheUser
   TheMachine <> TheMachine = TheMachine
 
+instance Monoid Owner where
+  mempty = TheMachine
+
 instance HasOwner Owner where
   ownerOf = id
 

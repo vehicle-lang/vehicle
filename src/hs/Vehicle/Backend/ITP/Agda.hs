@@ -303,14 +303,14 @@ instance CompileToAgda OutputExpr where
 
 instance CompileToAgda (LetBinder OutputBinding OutputVar OutputAnn) where
   compile (binder, expr) = do
-    let binderName = pretty $ nameOf binder
+    let binderName = pretty (nameOf binder :: OutputBinding)
     cExpr <- compile expr
     return $ binderName <+> "=" <+> cExpr
 
 instance CompileToAgda OutputBinder where
   compile binder = do
     binderType <- compile (typeOf binder)
-    let binderName     = pretty (nameOf binder)
+    let binderName     = pretty (nameOf binder :: OutputBinding)
     let binderBrackets = visBrackets (visibilityOf binder)
     return $ binderBrackets (binderName <+> ":" <+> binderType)
 
@@ -561,7 +561,7 @@ booleanModifierDocAndDeps = \case
 
 data EqualityTypeError
   = UnexpectedEqualityType
-  | PolymorphicEqualityType Name
+  | PolymorphicEqualityType Symbol
 
 -- Calculates the dependencies needed for equality over the provided type
 equalityDependencies :: OutputExpr -> Either EqualityTypeError [Dependency]

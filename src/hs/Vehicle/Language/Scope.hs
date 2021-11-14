@@ -50,7 +50,7 @@ type SCM m = (MonadLogger m, MonadError ScopeError m, MonadReader Ctx m)
 -- |Type of scope checking contexts.
 data Ctx = Ctx
   { declCtx :: Set Identifier
-  , exprCtx :: [Name]
+  , exprCtx :: [Maybe Symbol]
   }
 
 instance Pretty Ctx where
@@ -141,15 +141,14 @@ bindVar binder update = do
   binder' <- scope binder
   local (addBinderToCtx (nameOf binder)) (update binder')
     where
-      addBinderToCtx :: Name -> Ctx -> Ctx
+      addBinderToCtx :: Maybe Symbol -> Ctx -> Ctx
       addBinderToCtx name Ctx{..} = Ctx declCtx (name : exprCtx)
 
 -- |Find the index for a given name of a given sort.
-getVar :: SCM m => InputAnn -> Name -> m LocallyNamelessVar
-getVar ann Machine       = developerError $ "Machine names should not be in use (at" <+> pretty (provenanceOf ann) <> ")"
-getVar ann (User symbol) = do
+getVar :: SCM m => InputAnn -> Symbol -> m LocallyNamelessVar
+getVar ann symbol = do
   Ctx declCtx exprCtx <- ask
-  case elemIndex (User symbol) exprCtx of
+  case elemIndex (Just symbol) exprCtx of
     Just i -> return $ Bound i
     Nothing ->
       if Set.member (Identifier symbol) declCtx

@@ -6,7 +6,8 @@ module Vehicle.Language.Print
   , prettySimple
   , prettyVerbose
   , prettyFriendly
-  , prettyFriendlyDescope
+  , prettyFriendlyDB
+  , prettyFriendlyDBClosed
   ) where
 
 import Prettyprinter (list, tupled)
@@ -21,6 +22,7 @@ import Vehicle.Language.Simplify
 import Vehicle.Language.Delaborate.Core as Core
 import Vehicle.Language.Delaborate.Frontend as Frontend
 import Vehicle.Language.Descope
+import Vehicle.Language.SupplyNames (SupplyNames, runSupplyNamesWithCtx, runSupplyNames)
 import Vehicle.Language.AST
 
 --------------------------------------------------------------------------------
@@ -61,8 +63,12 @@ prettyFriendly = prettyLang Frontend . runSimplify options
 
 -- |Prints to the frontend language for things that need to be displayed to
 -- the user. Use this when the expression is using DeBruijn indices
-prettyFriendlyDescope :: (PrettyDescopedLang a, Simplify a, IsBoundCtx ctx) => ctx -> a -> Doc b
-prettyFriendlyDescope ctx = prettyDescopedLang Frontend (ctxNames ctx) . runSimplify options
+prettyFriendlyDB :: ( PrettyDescopedLang t binder var ann
+                  , Simplify (t binder var ann))
+                 => [binder]
+                 -> t binder var ann
+                 -> Doc b
+prettyFriendlyDB ctx = prettyDescopeLang Frontend ctx . runSimplify options
   where
     options = SimplifyOptions
       { removeImplicits   = True
@@ -70,27 +76,18 @@ prettyFriendlyDescope ctx = prettyDescopedLang Frontend (ctxNames ctx) . runSimp
       , removeNonUserCode = False
       }
 
+-- |Use for closed terms using DeBruijn indices
+prettyFriendlyDBClosed :: (PrettyDescopedLang t binder var ann
+                        , Simplify (t binder var ann))
+                     => t binder var ann
+                     -> Doc b
+prettyFriendlyDBClosed = prettyFriendlyDB mempty
+
 --------------------------------------------------------------------------------
 -- Printing when using names rather than DeBruijn indices
 
 class PrettyLang a where
   prettyLang :: VehicleLang -> a -> Doc b
-
-instance PrettyLang (NamedArg ann) where
-  prettyLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Arg)
-  prettyLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Arg)
-
-instance PrettyLang (NamedExpr ann) where
-  prettyLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Expr)
-  prettyLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Expr)
-
-instance PrettyLang (NamedDecl ann) where
-  prettyLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Decl)
-  prettyLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: [BF.Decl])
-
-instance PrettyLang (NamedProg ann) where
-  prettyLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Prog)
-  prettyLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Prog)
 
 instance PrettyLang a => PrettyLang [a] where
   prettyLang target xs = list (fmap (prettyLang target) xs)
@@ -98,35 +95,62 @@ instance PrettyLang a => PrettyLang [a] where
 instance (Pretty a, PrettyLang b) => PrettyLang (a, b) where
   prettyLang target (x, y) = tupled [pretty x, prettyLang target y]
 
--- These just naively translate DeBruijn indices to the corresponding strings, i.e. 0 -> "i0"
-instance PrettyLang (DeBruijnArg ann) where
-  prettyLang target e = prettyLang target (runNaiveDescope e :: NamedArg ann)
+instance PrettyNamedLang t binder var ann => PrettyLang (t binder var ann) where
+  prettyLang = prettyNamedLang
 
-instance PrettyLang (DeBruijnExpr ann) where
-  prettyLang target e = prettyLang target (runNaiveDescope e :: NamedExpr ann)
+--------------------------------------------------------------------------------
+-- Printing when using names
 
-instance PrettyLang (DeBruijnDecl ann) where
-  prettyLang target e = prettyLang target (runNaiveDescope e :: NamedDecl ann)
+class PrettyNamedLang t binder var ann where
+  prettyNamedLang :: VehicleLang -> t binder var ann -> Doc b
 
-instance PrettyLang (DeBruijnProg ann) where
-  prettyLang target e = prettyLang target (runNaiveDescope e :: NamedProg ann)
+instance PrettyNamedLang Arg  Symbol Symbol ann where
+  prettyNamedLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Arg)
+  prettyNamedLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Arg)
+
+instance PrettyNamedLang Expr Symbol Symbol ann where
+  prettyNamedLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Expr)
+  prettyNamedLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Expr)
+
+instance PrettyNamedLang Decl Symbol Symbol ann where
+  prettyNamedLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Decl)
+  prettyNamedLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: [BF.Decl])
+
+instance PrettyNamedLang Prog Symbol Symbol ann where
+  prettyNamedLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Prog)
+  prettyNamedLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Prog)
+
+instance ( SupplyNames t
+         , PrettyNamedLang t Symbol var ann
+         ) => PrettyNamedLang t (Maybe Symbol) var ann where
+  prettyNamedLang target e = prettyNamedLang target (runSupplyNames e)
+
+-- A hack to that simply converts DeBruijn indices into their corresponding
+-- counterpart, i.e. 0 -> "i0"
+instance ( Descope t
+         , PrettyNamedLang t Symbol Symbol ann
+         ) => PrettyNamedLang t Symbol LocallyNamelessVar ann where
+  prettyNamedLang target e = prettyLang target (runNaiveDescope e)
 
 --------------------------------------------------------------------------------
 -- Printing when using DeBruijn indices
 
-type Ctx = [Name]
+class PrettyDescopedLang t binder var ann where
+  prettyDescopeLang :: VehicleLang -> [binder] -> t binder var ann -> Doc b
 
-class PrettyDescopedLang a where
-  prettyDescopedLang :: VehicleLang -> Ctx -> a -> Doc b
+-- DeBruijn indices with machine names
+instance ( SupplyNames t
+         , Descope t
+         , PrettyNamedLang t Symbol Symbol ann )
+         => PrettyDescopedLang t (Maybe Symbol) LocallyNamelessVar ann where
+  prettyDescopeLang target ctx e = prettyDescopeLang target ctx' e'
+    where (ctx', e') = runSupplyNamesWithCtx (ctx, e)
 
-instance PrettyDescopedLang (DeBruijnArg ann) where
-  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: NamedArg ann)
+instance PrettyNamedLang t Symbol Symbol ann
+      => PrettyDescopedLang t Symbol Symbol ann where
+  prettyDescopeLang target _ctx = prettyNamedLang target
 
-instance PrettyDescopedLang (DeBruijnExpr ann) where
-  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: NamedExpr ann)
-
-instance PrettyDescopedLang (DeBruijnDecl ann) where
-  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: NamedDecl ann)
-
-instance PrettyDescopedLang (DeBruijnProg ann) where
-  prettyDescopedLang target ctx e = prettyLang target (runDescope ctx e :: NamedProg ann)
+-- DeBruijn indices without machine names
+instance (PrettyNamedLang t Symbol Symbol ann, Descope t)
+      => PrettyDescopedLang t Symbol LocallyNamelessVar ann where
+  prettyDescopeLang target ctx e = prettyDescopeLang target ctx (runDescope ctx e)

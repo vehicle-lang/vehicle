@@ -42,10 +42,10 @@ class DSL expr where
 
   app :: expr -> NonEmpty expr -> expr
   -- lam :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
-  pi  :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
+  pi  :: Provenance -> Visibility -> expr -> (expr -> expr) -> expr
 
   unnamedPi :: Visibility -> expr -> (expr -> expr) -> expr
-  unnamedPi v = pi mempty v Machine
+  unnamedPi v = pi mempty v
 
   (~>) :: expr -> expr -> expr
   x ~> y = unnamedPi Explicit x (const y)
@@ -70,10 +70,10 @@ boundVar :: BindingDepth -> DSLExpr
 boundVar i = DSL $ \j -> Var emptyMachineAnn (Bound (j - (i + 1)))
 
 instance DSL DSLExpr where
-  pi p v n argType bodyFn = DSL $ \i ->
+  pi p v argType bodyFn = DSL $ \i ->
     let varType = unDSL argType i
         var     = boundVar i
-        binder  = Binder (p, TheMachine) v n varType
+        binder  = Binder (p, TheMachine) v Nothing varType
         body    = unDSL (bodyFn var) (i + 1)
     in Pi emptyMachineAnn binder body
 

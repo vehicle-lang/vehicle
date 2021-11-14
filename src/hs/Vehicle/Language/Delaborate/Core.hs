@@ -7,8 +7,9 @@ module Vehicle.Language.Delaborate.Core
   , runDelabWithoutLogging
   ) where
 
+import Data.Maybe (fromMaybe)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Text (pack)
+import Data.Text (Text, pack)
 
 import Vehicle.Core.Abs qualified as B
 
@@ -32,7 +33,7 @@ runDelabWithoutLogging x = discardLogger $ runDelab x
 -- Conversion to BNFC AST
 
 -- | Constraint for the monad stack used by the elaborator.
-type MonadDelab m = (MonadLogger m, MonadSupply Symbol m)
+type MonadDelab m = MonadLogger m
 
 -- * Conversion
 
@@ -75,9 +76,11 @@ instance Delaborate (V.NamedArg ann) B.Arg where
     V.Implicit -> B.ImplicitArg <$> delab e
     V.Instance -> B.InstanceArg <$> delab e
 
-instance Delaborate V.Name B.NameToken where
-  delab (V.User s) = return $ mkToken B.NameToken s
-  delab V.Machine  = mkToken B.NameToken <$> demand
+instance Delaborate Symbol B.NameToken where
+  delab s = return $ mkToken B.NameToken s
+
+instance Delaborate (Maybe Symbol) B.NameToken where
+  delab s  = delab (fromMaybe ("Machine" :: Text) s)
 
 instance Delaborate V.Identifier B.NameToken where
   delab (V.Identifier n) = return $ mkToken B.NameToken n

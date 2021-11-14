@@ -82,7 +82,7 @@ instance Elab B.Binder V.InputBinder where
     B.InstanceBinder n e -> mkBinder n Instance e
     where
       mkBinder :: MonadElab m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
-      mkBinder n v e = V.Binder (mkAnn n) v (User (tkSymbol n)) <$> elab e
+      mkBinder n v e = V.Binder (mkAnn n) v (Just (tkSymbol n)) <$> elab e
 
 instance Elab B.Arg V.InputArg where
   elab = \case
@@ -112,7 +112,7 @@ instance Elab B.Expr V.InputExpr where
     B.Seq es           -> op1 V.Seq <$> traverse elab es
     B.Builtin c        -> V.Builtin (mkAnn c) <$> lookupBuiltin c
     B.Literal v        -> V.Literal V.emptyUserAnn <$> elab v
-    B.Var n            -> return $ V.Var (mkAnn n) (User (tkSymbol n))
+    B.Var n            -> return $ V.Var (mkAnn n) (tkSymbol n)
 
     B.App fun arg -> do
       fun' <- elab fun

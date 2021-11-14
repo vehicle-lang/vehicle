@@ -12,6 +12,7 @@ module Vehicle.Prelude
   , capitaliseFirstLetter
   ) where
 
+import Control.Monad.Reader (MonadReader(..), local)
 import Data.Range
 import Data.Text (Text)
 import Data.Text qualified as Text

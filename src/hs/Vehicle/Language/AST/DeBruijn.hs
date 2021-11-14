@@ -21,8 +21,8 @@ import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader, Reader, ask, runReader, runReaderT, local)
 import Control.Monad.Trans (lift)
 
+import Vehicle.Prelude
 import Vehicle.Language.AST.Core
-import Vehicle.Language.AST.Name
 
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IM
@@ -41,11 +41,11 @@ data LocallyNamelessVar
 instance NFData LocallyNamelessVar
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type DeBruijnBinder ann = Binder Name LocallyNamelessVar ann
-type DeBruijnArg    ann = Arg    Name LocallyNamelessVar ann
-type DeBruijnExpr   ann = Expr   Name LocallyNamelessVar ann
-type DeBruijnDecl   ann = Decl   Name LocallyNamelessVar ann
-type DeBruijnProg   ann = Prog   Name LocallyNamelessVar ann
+type DeBruijnBinder ann = Binder (Maybe Symbol) LocallyNamelessVar ann
+type DeBruijnArg    ann = Arg    (Maybe Symbol) LocallyNamelessVar ann
+type DeBruijnExpr   ann = Expr   (Maybe Symbol) LocallyNamelessVar ann
+type DeBruijnDecl   ann = Decl   (Maybe Symbol) LocallyNamelessVar ann
+type DeBruijnProg   ann = Prog   (Maybe Symbol) LocallyNamelessVar ann
 
 --------------------------------------------------------------------------------
 -- A framework for writing generic operations on DeBruijn variables
@@ -73,7 +73,7 @@ class DeBruijnFunctor ann (a :: * -> *) where
     -> a ann
     -> m (a ann)
 
-instance DeBruijnFunctor ann (Expr Name LocallyNamelessVar) where
+instance DeBruijnFunctor ann (Expr (Maybe Symbol) LocallyNamelessVar) where
   alter body var =
     let
       altPiBinder  = alter    body var
@@ -103,10 +103,10 @@ underBinder :: MonadReader (BindingDepth, state) m =>
                TraverseBinder state ann -> m a -> m a
 underBinder body = local (\(d, s) -> (d+1, body s))
 
-instance DeBruijnFunctor ann (Arg Name LocallyNamelessVar) where
+instance DeBruijnFunctor ann (Arg (Maybe Symbol) LocallyNamelessVar) where
   alter body var = traverseArgExpr (alter body var)
 
-instance DeBruijnFunctor ann (Binder Name LocallyNamelessVar) where
+instance DeBruijnFunctor ann (Binder (Maybe Symbol) LocallyNamelessVar) where
   alter body var = traverseBinderType (alter body var)
 
 --------------------------------------------------------------------------------

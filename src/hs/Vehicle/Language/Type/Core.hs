@@ -21,7 +21,7 @@ import Vehicle.Language.Simplify
 
 -- | The names and types of the expression variables that are in currently in scope,
 -- indexed into via De Bruijn expressions.
-type BoundCtx = [(Name, CheckedExpr)]
+type BoundCtx = [(Maybe Symbol, CheckedExpr)]
 
 instance IsBoundCtx BoundCtx where
   ctxNames b = map fst b
@@ -77,11 +77,11 @@ instance Simplify BaseConstraint where
 instance PrettyLang BaseConstraint where
   prettyLang target (Unify (e1, e2)) = prettyLang target e1 <+> "~" <+> prettyLang target e2
   prettyLang target (m `Has` e)      = pretty m <+> "~" <+> prettyLang target e
-
+{-
 instance PrettyDescopedLang BaseConstraint where
   prettyDescopedLang target ctx (Unify (e1, e2)) = prettyDescopedLang target ctx e1 <+> "~" <+> prettyDescopedLang target ctx e2
   prettyDescopedLang target ctx (m `Has` e)      = pretty m <+> "~" <+> prettyDescopedLang target ctx e
-
+-}
 data ConstraintContext = ConstraintContext
   { _prov            :: Provenance       -- The origin of the constraint
   , blockingMetas    :: BlockingMetas    -- The set of metas blocking progress on this constraint, if known
@@ -113,10 +113,10 @@ instance Simplify Constraint where
 
 instance PrettyLang Constraint where
   prettyLang target (Constraint _ c) = prettyLang target c
-
+{-
 instance PrettyDescopedLang Constraint where
   prettyDescopedLang target ctx (Constraint _ c) = prettyDescopedLang target ctx c
-
+-}
 --------------------------------------------------------------------------------
 -- Meta-variable definitions
 
@@ -166,10 +166,10 @@ data TypingError
 instance MeaningfulError TypingError where
   details (Mismatch p ctx candidate expected) = UError $ UserError
     { provenance = p
-    , problem    = "expected something of type" <+> prettyFriendlyDescope ctx expected <+>
-                   "but inferred type" <+> prettyFriendlyDescope ctx candidate
+    , problem    = "expected something of type" <+> prettyFriendlyDB nameCtx expected <+>
+                   "but inferred type" <+> prettyFriendlyDB nameCtx candidate
     , fix        = "unknown"
-    }
+    } where nameCtx = map fst ctx
 
   details (UnresolvedHole p name) = UError $ UserError
     { provenance = p
@@ -180,16 +180,14 @@ instance MeaningfulError TypingError where
   details (FailedConstraints cs) = let constraint = NonEmpty.head cs in
     UError $ UserError
     { provenance = provenanceOf constraint
-    , problem    = "Could not solve the constraint:" <+>
-                      prettyFriendlyDescope (boundContext constraint) constraint
+    , problem    = "Could not solve the constraint:" <+> prettyFriendly constraint
     , fix        = "Check your types"
     }
 
   details (UnsolvedConstraints cs) = let firstConstraint = NonEmpty.head cs in
     UError $ UserError
     { provenance = provenanceOf firstConstraint
-    , problem    = "unsolved constraint " <+>
-                      prettyFriendlyDescope (boundContext firstConstraint) firstConstraint
+    , problem    = "unsolved constraint " <+> prettyFriendly firstConstraint
     , fix        = "Try adding more type annotations"
     }
 
@@ -197,6 +195,10 @@ instance MeaningfulError TypingError where
     { provenance = provenanceOf arg
     , problem    = "expected an" <+> pretty Explicit <+> "argument of type" <+>
                    argTypeDoc <+> "but instead found" <+>
-                   pretty (visibilityOf arg) <+> "argument" <+> squotes (prettyFriendlyDescope ctx (argExpr arg))
+                   pretty (visibilityOf arg) <+> "argument" <+> squotes argExprDoc
     , fix        = "Try inserting an argument of type" <+> argTypeDoc
-    } where argTypeDoc = prettyFriendlyDescope ctx argType
+    }
+    where
+      nameCtx    = map fst ctx
+      argExprDoc = prettyFriendlyDB nameCtx (argExpr arg)
+      argTypeDoc = prettyFriendlyDB nameCtx argType

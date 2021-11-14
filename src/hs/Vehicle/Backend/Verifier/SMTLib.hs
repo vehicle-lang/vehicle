@@ -18,8 +18,9 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST
-import Vehicle.Language.Print (prettyFriendly, prettySimple)
+import Vehicle.Language.Print (prettyFriendlyDBClosed, prettySimple)
 import Vehicle.Language.Normalise (normaliseInternal)
+import Vehicle.Language.SupplyNames (runSupplyNames)
 import Vehicle.Language.Descope (runDescope)
 import Vehicle.Backend.Verifier.Core
 
@@ -91,7 +92,7 @@ instance MeaningfulError SMTLibError where
       { provenance = provenanceOf ann
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "found" <+>
                      "a quantified variable" <+> squotes (pretty name) <+> "of type" <+>
-                     squotes (prettyFriendly t) <+> "which is not currently supported" <+>
+                     squotes (prettyFriendlyDBClosed t) <+> "which is not currently supported" <+>
                      "when compiling to SMTLib."
       , fix        = "Try switching the variable to one of the following supported types:" <+>
                      pretty supportedTypes
@@ -123,7 +124,7 @@ instance MeaningfulError SMTLibError where
     UnsupportedNetworkType ann ident t detailedError -> UError $ UserError
       { provenance = provenanceOf ann
       , problem    = "Found a" <+> squotes (pretty Network) <+> "declaration" <+> squotes (pretty ident) <+>
-                     "whose type" <+> squotes (prettyFriendly t) <+> "is not currently unsupported." <+>
+                     "whose type" <+> squotes (prettyFriendlyDBClosed t) <+> "is not currently unsupported." <+>
                      "Currently only networks of type" <+> squotes "Tensor A [m] -> Tensor B [n]" <+>
                      "where" <+> squotes "m" <+> "and" <+> squotes "n" <+> "are integer literals are allowed." <+>
                      "In particular" <+> pretty detailedError <+> "."
@@ -208,11 +209,11 @@ compileProp ident expr = runReaderT propertyDoc ident
     incrCallDepth
 
     (vars, body, negated) <- stripQuantifiers True expr
-    let ctx = map (User . name) vars
+    let ctx = map name vars
 
     logDebug $ "Stripped existential quantifiers:" <+> pretty ctx <> line
 
-    let body2 = runDescope (reverse ctx) body
+    let body2 = runDescope (reverse ctx) (runSupplyNames body)
 
     logDebug $ "Descoping property" <+> prettySimple body2 <> line
 
@@ -239,7 +240,7 @@ stripQuantifiers :: MonadSMTLibProp m => Bool -> CheckedExpr -> m ([SMTVar], Che
 stripQuantifiers atTopLevel e = case quantView e of
   Just (QuantView ann q name t body) -> do
     (e', negated) <- negatePropertyIfNecessary atTopLevel ann q body
-    let varSymbol = getSymbol name
+    let varSymbol = getQuantifierSymbol name
     varType <- getType ann varSymbol t
     let var = SMTVar varSymbol varType
     (vars, body', _) <- stripQuantifiers False e'
@@ -265,10 +266,6 @@ splitTopLevelConjunctions :: OutputExpr -> [OutputExpr]
 splitTopLevelConjunctions (App _ann (Builtin _ (BooleanOp2 And)) [_, _, e1, e2]) =
   splitTopLevelConjunctions (argExpr e1) <> splitTopLevelConjunctions (argExpr e2)
 splitTopLevelConjunctions e = [e]
-
-getSymbol :: Name -> Symbol
-getSymbol (User symbol) = symbol
-getSymbol Machine       = developerError "Should not have quantifiers with machine names?"
 
 getType :: MonadSMTLibProp m => CheckedAnn -> Symbol -> CheckedExpr -> m SMTType
 getType _   _ (Builtin _ (NumericType Real)) = return SReal
@@ -299,7 +296,7 @@ compileExpr = \case
       else parens $ hsep (funDoc : argDocs)
 
   Let _ann bound binder body -> do
-    let binderDoc = pretty (nameOf binder)
+    let binderDoc = pretty (nameOf binder :: OutputBinding)
     boundDoc <- compileExpr bound
     bodyDoc  <- compileExpr body
     return $ parens $ "let" <+> parens (parens (binderDoc <+> boundDoc)) <+> bodyDoc
@@ -341,8 +338,7 @@ compileArg arg = if visibilityOf arg == Explicit
   else return Nothing
 
 compileVariable :: MonadSMTLibProp m => OutputVar -> m (Doc a)
-compileVariable (User symbol) = return $ pretty symbol
-compileVariable Machine       = developerError "Should be no machine names in expressions."
+compileVariable symbol = return $ pretty symbol
 
 compileLiteral :: Literal -> Doc a
 compileLiteral (LBool True)  = "true"

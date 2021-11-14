@@ -199,8 +199,8 @@ quantifyOverMagicVariables metaNetwork prop =
       let varType = Builtin ann tElem in
       foldl (\res name -> mkQuantifier ann All name varType res) body names
 
-    mkMagicVariableNames :: InputOrOutput -> [Int] -> [Name]
-    mkMagicVariableNames io indices = [mkNameWithIndices (User baseName) [i] | i <- indices]
+    mkMagicVariableNames :: InputOrOutput -> [Int] -> [Symbol]
+    mkMagicVariableNames io indices = [mkNameWithIndices baseName [i] | i <- indices]
       where baseName = if io == Input then "X" else "Y"
 
 replaceNetworkApplication :: (MonadVNNLib m, MonadState (Int, Int) m)

@@ -126,7 +126,7 @@ getBoundCtx = asks boundCtx
 getVariableCtx :: TCM m => m VariableCtx
 getVariableCtx = ask
 
-addToBoundCtx :: TCM m => Name -> CheckedExpr -> m a -> m a
+addToBoundCtx :: TCM m => Maybe Symbol -> CheckedExpr -> m a -> m a
 addToBoundCtx n e = local add
   where
     add :: VariableCtx -> VariableCtx
@@ -294,7 +294,7 @@ check expectedType expr = do
 
     (Pi _ binder resultType, e) ->
       -- Add the binder to the context
-      addToBoundCtx Machine (typeOf binder) $ do
+      addToBoundCtx Nothing (typeOf binder) $ do
         let ann = (provenanceOf binder, TheMachine)
 
         -- Check if the type of the expression matches the expected result type.

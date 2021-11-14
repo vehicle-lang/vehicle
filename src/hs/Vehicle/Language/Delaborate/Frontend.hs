@@ -6,6 +6,8 @@ module Vehicle.Language.Delaborate.Frontend
   , runDelabWithoutLogging
   ) where
 
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Frontend.Abs qualified as B
@@ -18,7 +20,7 @@ runDelab :: Delaborate a b => a -> Logger b
 runDelab x = do
   -- TODO filter out free variables from the expression in the supply monad
   logDebug "Beginning delaboration"
-  result <- runSupplyT (delab x) V.freshNames
+  result <- delab x
   logDebug "Ending delaboration\n"
   return result
 
@@ -31,7 +33,7 @@ runDelabWithoutLogging x = discardLogger $ runDelab x
 -- Conversion to BNFC AST
 
 -- | Constraint for the monad stack used by the elaborator.
-type MonadDelab m = (MonadLogger m, MonadSupply Symbol m)
+type MonadDelab m = MonadLogger m
 
 tokArrow = mkToken B.TokArrow "->"
 tokForall = mkToken B.TokForall "forall"
@@ -135,9 +137,11 @@ instance Delaborate (V.NamedArg ann) B.Arg where
     V.Implicit -> B.ImplicitArg <$> delab e
     V.Instance -> B.InstanceArg <$> delab e
 
-instance Delaborate V.Name B.Name where
-  delab (V.User s) = return $ mkToken B.Name s
-  delab V.Machine  = mkToken B.Name <$> demand
+instance Delaborate Symbol B.Name where
+  delab s = return $ mkToken B.Name s
+
+instance Delaborate (Maybe Symbol) B.Name where
+  delab s  = delab (fromMaybe ("Machine" :: Text) s)
 
 instance Delaborate V.Identifier B.Name where
   delab (V.Identifier n) = return $ mkToken B.Name n

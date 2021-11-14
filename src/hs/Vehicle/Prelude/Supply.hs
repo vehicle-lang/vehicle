@@ -4,8 +4,11 @@ module Vehicle.Prelude.Supply
   ( MonadSupply(..)
   , SupplyT
   , runSupplyT
+  , Supply
+  , runSupply
   ) where
 
+import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.State (MonadState(..), StateT, evalStateT)
 import Control.Monad.Reader (ReaderT)
 import Control.Monad.Writer (WriterT)
@@ -23,6 +26,11 @@ newtype SupplyT s m a = SupplyT
 
 runSupplyT :: Monad m => SupplyT s m a -> [s] -> m a
 runSupplyT (SupplyT m) = evalStateT m
+
+type Supply s a = SupplyT s Identity a
+
+runSupply :: Supply s a -> [s] -> a
+runSupply m s = runIdentity $ runSupplyT m s
 
 instance Monad m => MonadSupply s (SupplyT s m) where
   demand = SupplyT $ do

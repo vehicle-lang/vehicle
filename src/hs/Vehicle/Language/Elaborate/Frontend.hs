@@ -125,7 +125,7 @@ instance Elab (NonEmpty B.Decl) V.InputDecl where
 instance Elab B.Expr V.InputExpr where
   elab = \case
     B.Type l                  -> return $ V.Type (fromIntegral l)
-    B.Var  n                  -> return $ V.Var  (mkAnn n) (V.User $ tkSymbol n)
+    B.Var  n                  -> return $ V.Var  (mkAnn n) (tkSymbol n)
     B.Hole n                  -> return $ V.Hole (tkProvenance n) (tkSymbol n)
     B.Literal l               -> elab l
     B.TypeC   tc              -> elab tc
@@ -195,7 +195,7 @@ instance Elab B.Binder V.InputBinder where
   elab (B.ImplicitBinderAnn n _tk typ) = mkBinder n V.Implicit . Just <$> elab typ
 
 mkBinder :: B.Name -> V.Visibility -> Maybe V.InputExpr -> V.InputBinder
-mkBinder n v e = V.Binder (V.visProv v p, V.TheUser) v (V.User (tkSymbol n)) t
+mkBinder n v e = V.Binder (V.visProv v p, V.TheUser) v (Just (tkSymbol n)) t
   where
     (p, t) = case e of
       Nothing -> (tkProvenance n, V.Hole (tkProvenance n) "_")
@@ -255,7 +255,7 @@ builtin' b t argExprs = V.normAppList (p', V.TheUser) (V.Builtin (p, V.TheUser) 
 elabFunInputType :: MonadElab m => B.Expr -> m V.InputBinder
 elabFunInputType t = do
   t' <- elab t
-  return $ V.ExplicitBinder (provenanceOf t', V.TheUser) V.Machine t'
+  return $ V.ExplicitBinder (provenanceOf t', V.TheUser) Nothing t'
 
 elabApp :: MonadElab m => B.Expr -> B.Arg -> m V.InputExpr
 elabApp fun arg = do
