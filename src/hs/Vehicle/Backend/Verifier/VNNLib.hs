@@ -15,7 +15,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST hiding (Map)
-import Vehicle.Language.Print (prettySimple)
+import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Language.Normalise (normaliseInternal)
 import Vehicle.Backend.Verifier.Core
 import Vehicle.Backend.Verifier.SMTLib (SMTLibError, SMTDoc, SMTLibError(..), InputOrOutput(..), UnsupportedNetworkType(..))
@@ -29,8 +29,8 @@ import Vehicle.Backend.Verifier.SMTLib qualified as SMTLib (compileProp)
 -- the standard SMTLib syntax.
 --
 -- This means that in theory you can only reason about a single network applied
--- to a single input per property. We hack around this restriction by combining
---  multiple networks, or multiple applications of the same network into a
+-- to a single input per property. We get around this restriction by combining
+-- multiple networks, or multiple applications of the same network into a
 -- single "meta" network. Concretely this process goes as follows for each
 -- property we identify in the program.
 --
@@ -107,6 +107,7 @@ getNetworkDetailsFromCtx ident = do
 
 --------------------------------------------------------------------------------
 -- Algorithm
+--------------------------------------------------------------------------------
 
 compileProg :: MonadVNNLib m => CheckedProg -> m [VNNLibDoc]
 compileProg (Main ds) = do
@@ -129,7 +130,7 @@ compileDecl d = case d of
     normalisationError "Dataset declarations"
 
   DeclNetw _ ident _ -> do
-    -- Extract the details for the network
+    -- Insert the network into the context
     let alterCtx = Map.insert ident d
     -- Remove the declaration, as SMTLib does not support it.
     return (Nothing, alterCtx)
@@ -152,56 +153,30 @@ compileDecl d = case d of
         throwError $ NoNetworkUsedInProperty (p, TheUser) ident
       else do
         metaNetworkDetails <- traverse getNetworkDetailsFromCtx metaNetwork
+
+        -- Replace all applications of neural networks with the magic VNNLib variables
         let numberOfMagicVariables = sum (map networkSize metaNetworkDetails)
-
         networklessExpr <- evalStateT (replaceNetworkApplications numberOfMagicVariables e) (0,0)
-        let normNetworklessExpr = normaliseInternal networklessExpr
-        let quantifiedExpr = quantifyOverMagicVariables metaNetworkDetails normNetworklessExpr
 
+        -- Calculate and eliminate
+
+        -- Normalise the resulting expression
+        let normNetworklessExpr = normaliseInternal networklessExpr
+
+        -- Append quantifiers over the magic variables so that it becomes a valid SMTLib expression
+        let quantifiedExpr = quantifyOverMagicVariables metaNetworkDetails normNetworklessExpr
         logDebug $ "Replaced network applications:" <+> prettySimple quantifiedExpr <> line
 
+        -- Compile to SMTLib
         smtDoc <- SMTLib.compileProp ident quantifiedExpr
+
         decrCallDepth
         logDebug $ "Finished compilation of VNNLib property" <+> identDoc
 
         return (Just $ VNNLibDoc smtDoc metaNetwork, alterCtx)
 
-
-
 --------------------------------------------------------------------------------
--- Pass 2: instanstiating network applications
-
-quantifyOverMagicVariables :: [NetworkDetails] -> CheckedExpr -> CheckedExpr
-quantifyOverMagicVariables metaNetwork prop =
-  let totalInputs  = sum (map (size . inputTensor)  metaNetwork) in
-  let totalOutputs = sum (map (size . outputTensor) metaNetwork) in
-  let (_, _, result) = foldl forNetwork (totalInputs, totalOutputs, prop) metaNetwork in result
-  where
-
-
-    forNetwork :: (Int, Int, CheckedExpr) -> NetworkDetails -> (Int, Int, CheckedExpr)
-    forNetwork (inputIndex, outputIndex, body) (NetworkDetails p _ inputs outputs)  =
-      let startingInputIndex = inputIndex - size inputs in
-      let startingOutputIndex = outputIndex - size outputs in
-      let body' = forTensor p Input  startingInputIndex  inputs $
-                  forTensor p Output startingOutputIndex outputs body in
-      (startingInputIndex, startingOutputIndex, body')
-
-    forTensor :: CheckedAnn
-              -> InputOrOutput
-              -> Int
-              -> TensorDetails
-              -> CheckedExpr
-              -> CheckedExpr
-    forTensor ann io startingIndex (TensorDetails size tElem) body =
-      let indices = reverse [startingIndex .. startingIndex + size-1] in
-      let names = mkMagicVariableNames io indices in
-      let varType = Builtin ann tElem in
-      foldl (\res name -> mkQuantifier ann All name varType res) body names
-
-    mkMagicVariableNames :: InputOrOutput -> [Int] -> [Symbol]
-    mkMagicVariableNames io indices = [mkNameWithIndices baseName [i] | i <- indices]
-      where baseName = if io == Input then "X" else "Y"
+-- Pass 1: instantiating network applications
 
 replaceNetworkApplication :: (MonadVNNLib m, MonadState (Int, Int) m)
                           => CheckedAnn
@@ -227,14 +202,14 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
   -- In the example points to Y2
   let outputStartingDBIndex = inputStartingDBIndex - inputSize
   -- In the examples points to X4
-  let outputEndingDBIndex   = outputStartingDBIndex - outputSize
-  let inputVarIndices  = reverse [outputStartingDBIndex .. inputStartingDBIndex-1]
-  let outputVarIndices = reverse [outputEndingDBIndex   .. outputStartingDBIndex-1]
-  let (inputsExpr,  inputsExprType) = mkMagicVariableSeq inputType  inputVarIndices
-  let (outputsExpr, _)             = mkMagicVariableSeq outputType outputVarIndices
+  let outputEndingDBIndex       = outputStartingDBIndex - outputSize
+  let inputVarIndices           = reverse [outputStartingDBIndex .. inputStartingDBIndex-1]
+  let outputVarIndices          = reverse [outputEndingDBIndex   .. outputStartingDBIndex-1]
+  let (inputsExpr,  inputsType) = mkMagicVariableSeq inputType  inputVarIndices
+  let (outputsExpr, _)          = mkMagicVariableSeq outputType outputVarIndices
 
   let body'         = outputsExpr `substInto` letBody
-  let inputEquality = mkEq ann inputsExprType (BuiltinBooleanType ann Prop) inputsExpr networkInput
+  let inputEquality = mkEq ann inputsType (BuiltinBooleanType ann Prop) inputsExpr networkInput
   let newBody       = mkBoolOp2 Impl ann (BuiltinBooleanType ann Prop) inputEquality body'
 
   return newBody
@@ -247,7 +222,6 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
         variables        = map (Var ann . Bound) indices
         tensorExpr       = mkSeq ann tensorElemType tensorType variables
 
-
 -- Takes in the expression to process and returns a function
 -- from the current binding depth to the altered expression.
 --
@@ -257,38 +231,41 @@ replaceNetworkApplications :: (MonadVNNLib m, MonadState (Int, Int) m)
                            => BindingDepth
                            -> CheckedExpr
                            -> m CheckedExpr
-replaceNetworkApplications d e = case e of
-  Hole _p _      -> resolutionError "Hole"
-  Meta _p _      -> resolutionError "Meta"
-  Ann _ann _ _   -> normalisationError "Ann"
+replaceNetworkApplications d e =
+  case e of
+    Hole _p _      -> resolutionError "Hole"
+    Meta _p _      -> resolutionError "Meta"
+    Ann _ann _ _   -> normalisationError "Ann"
+    Lam _ann _ _   -> normalisationError "Non-quantified Lam"
 
-  Type{}     -> return e
-  Pi{}       -> return e
-  PrimDict{} -> return e
-  Builtin{}  -> return e
-  Literal{}  -> return e
-  Var{}      -> return e
+    Type{}     -> return e
+    Pi{}       -> return e
+    PrimDict{} -> return e
+    Builtin{}  -> return e
+    Literal{}  -> return e
+    Var{}      -> return e
 
-  Seq ann xs ->
-    Seq ann <$> traverse (replaceNetworkApplications d) xs
+    Seq ann xs ->
+      Seq ann <$> traverse (replaceNetworkApplications d) xs
 
-  Lam ann binder body -> do
-    -- Increase the binding depth by 1
-    Lam ann binder <$> replaceNetworkApplications (d + 1) body
+    App ann1 fun@(BuiltinQuantifier _ _) [tElem, Arg ann3 v (Lam ann4 binder body)] -> do
+      body' <- replaceNetworkApplications (d + 1) body
+      -- Increase the binding depth by 1
+      return $ App ann1 fun [tElem, Arg ann3 v (Lam ann4 binder body')]
 
-  App ann fun args -> do
-    fun'  <- replaceNetworkApplications d fun
-    args' <- traverse (traverseArgExpr (replaceNetworkApplications d)) args
-    return $ App ann fun' args'
+    App ann fun args -> do
+      fun'  <- replaceNetworkApplications d fun
+      args' <- traverse (traverseArgExpr (replaceNetworkApplications d)) args
+      return $ App ann fun' args'
 
-  Let ann (App _ (Var _ (Free ident)) [inputArg]) _ body -> do
-    newBody <- replaceNetworkApplication ann ident (argExpr inputArg) body d
-    replaceNetworkApplications d newBody
+    Let ann (App _ (Var _ (Free ident)) [inputArg]) _ body -> do
+      newBody <- replaceNetworkApplication ann ident (argExpr inputArg) body d
+      replaceNetworkApplications d newBody
 
-  Let ann bound binder body -> do
-    bound' <- replaceNetworkApplications d bound
-    body' <- replaceNetworkApplications d body
-    return $ Let ann bound' binder body'
+    Let ann bound binder body -> do
+      bound' <- replaceNetworkApplications d bound
+      body'  <- replaceNetworkApplications d body
+      return $ Let ann bound' binder body'
 
 {-
     -- EXAMPLE:
@@ -313,6 +290,39 @@ replaceNetworkApplications d e = case e of
     --
     -- (E) Inserted quantifiers over the meta-network so far.
 -}
+
+--------------------------------------------------------------------------------
+-- Pass 2: quantification over magic variables
+
+quantifyOverMagicVariables :: [NetworkDetails] -> CheckedExpr -> CheckedExpr
+quantifyOverMagicVariables metaNetwork prop =
+  let totalInputs  = sum (map (size . inputTensor)  metaNetwork) in
+  let totalOutputs = sum (map (size . outputTensor) metaNetwork) in
+  let (_, _, result) = foldl forNetwork (totalInputs, totalOutputs, prop) metaNetwork in result
+  where
+    forNetwork :: (Int, Int, CheckedExpr) -> NetworkDetails -> (Int, Int, CheckedExpr)
+    forNetwork (inputIndex, outputIndex, body) (NetworkDetails p _ inputs outputs)  =
+      let startingInputIndex = inputIndex - size inputs in
+      let startingOutputIndex = outputIndex - size outputs in
+      let body' = forTensor p Input  startingInputIndex  inputs $
+                  forTensor p Output startingOutputIndex outputs body in
+      (startingInputIndex, startingOutputIndex, body')
+
+    forTensor :: CheckedAnn
+              -> InputOrOutput
+              -> Int
+              -> TensorDetails
+              -> CheckedExpr
+              -> CheckedExpr
+    forTensor ann io startingIndex (TensorDetails size tElem) body =
+      let indices = reverse [startingIndex .. startingIndex + size-1] in
+      let names = mkMagicVariableNames io indices in
+      let varType = Builtin ann tElem in
+      foldl (\res name -> mkQuantifier ann All name varType res) body names
+
+    mkMagicVariableNames :: InputOrOutput -> [Int] -> [Symbol]
+    mkMagicVariableNames io indices = [mkNameWithIndices baseName [i] | i <- indices]
+      where baseName = if io == Input then "X" else "Y"
 
 --------------------------------------------------------------------------------
 -- Network type validation

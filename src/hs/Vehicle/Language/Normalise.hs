@@ -402,9 +402,9 @@ nfNot ann t tc arg = case toHead (argExpr arg) of
   (EFalse _, [_, _])            -> Just $ return $ mkBool ann (argExpr t) True
 
   -- Negation juggling
-  (Builtin _ (Quant q),         [lam])        -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
+  (BuiltinQuantifier _ q,       [_,lam])      -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
   (Builtin _ (BooleanOp2 Impl), [_,_,e1,e2])  -> Just $ nf $ mkBoolOp2' And ann t tc (argExpr e1) (neg (argExpr e2))
-  --(Builtin _ And,  [_,_,e1,e2])  -> Just $ nf $ mkOr'  ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
+  --(Builtin _(BooleanOp2 And), [_,_,e1,e2])  -> Just $ nf $ mkOr'  ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
   (Builtin _ (BooleanOp2 Or),   [_,_,e1,e2])  -> Just $ nf $ mkBoolOp2' And ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
   (BuiltinOrder    ann2 o,      args)         -> Just $ return $ normAppList ann (BuiltinOrder    ann2 (negateOrder o)) args
   (BuiltinEquality ann2 eq,     args)         -> Just $ return $ normAppList ann (BuiltinEquality ann2 (negateEquality eq)) args
@@ -421,8 +421,7 @@ nfNotQuantifier :: MonadNorm m
                 -> m CheckedExpr
 nfNotQuantifier ann t tc q (Lam lAnn binder body) = do
   notBody <- nf $ App ann (Builtin ann Not) [t, tc, ExplicitArg lAnn body]
-  let notLam = ExplicitArg ann (Lam lAnn binder notBody)
-  return $ App ann (Builtin ann (Quant (negateQ q))) [notLam]
+  return $ mkQuantifier ann (negateQ q) (getQuantifierSymbol (nameOf binder)) (typeOf binder) notBody
 nfNotQuantifier _ _ _ _ e = developerError $
   "Malformed quantifier, was expecting a Lam but found" <+> prettyVerbose e
 

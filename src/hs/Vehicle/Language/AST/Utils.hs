@@ -3,7 +3,6 @@
 module Vehicle.Language.AST.Utils where
 
 import Data.Functor.Foldable (Recursive(..))
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (pack)
 
@@ -11,8 +10,7 @@ import Vehicle.Prelude
 import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.DeBruijn
 import Vehicle.Language.AST.Builtin
-import Vehicle.Language.AST.Visibility (Visibility(..), Owner(..))
-import Vehicle.Language.AST.Name
+import Vehicle.Language.AST.Visibility (Owner(..))
 
 --------------------------------------------------------------------------------
 -- Patterns
@@ -52,6 +50,9 @@ pattern BuiltinOrder ann order = Builtin ann (Order order)
 
 pattern BuiltinEquality :: ann -> Equality -> Expr binder var ann
 pattern BuiltinEquality ann eq = Builtin ann (Equality eq)
+
+pattern BuiltinQuantifier :: ann -> Quantifier -> Expr binder var ann
+pattern BuiltinQuantifier ann q = Builtin ann (Quant q)
 
 --------------------------------------------------------------------------------
 -- Type synonyms
@@ -162,13 +163,17 @@ exprHead = fst . toHead
 --------------------------------------------------------------------------------
 -- Views
 
-data QuantView binder var ann =
-  QuantView ann Quantifier binder (Expr binder var ann) (Expr binder var ann)
-
-quantView :: Expr binder var ann -> Maybe (QuantView binder var ann)
-quantView (App ann (Builtin _ (Quant q))
-  (Arg _ Explicit (Lam _ (ExplicitBinder _  n t) e) :| [])) = Just (QuantView ann q n t e)
-quantView _ = Nothing
+pattern QuantiferView :: ann
+                      -> Quantifier
+                      -> binder
+                      -> Expr binder var ann
+                      -> Expr binder var ann
+                      -> Expr binder var ann
+pattern QuantiferView ann q n t e <-
+  App ann (BuiltinQuantifier _ q)
+    [ ImplicitArg _ _
+    , ExplicitArg _ (Lam _ (ExplicitBinder _  n t) e)
+    ]
 
 getQuantifierSymbol :: Maybe Symbol -> Symbol
 getQuantifierSymbol (Just symbol) = symbol
@@ -273,7 +278,9 @@ mkFold' ann tElem tCont tRes tc bop unit xs = App ann (Builtin ann Fold)
 mkQuantifier :: CheckedAnn -> Quantifier -> Symbol -> CheckedExpr -> CheckedExpr -> CheckedExpr
 mkQuantifier ann q n t e =
   App ann (Builtin ann (Quant q))
-    (ExplicitArg ann (Lam ann (ExplicitBinder ann (Just n) t) e) :| [])
+    [ ImplicitArg ann t
+    , ExplicitArg ann (Lam ann (ExplicitBinder ann (Just n) t) e)
+    ]
 
 -- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3
 mkNameWithIndices :: Symbol -> [Int] -> Symbol

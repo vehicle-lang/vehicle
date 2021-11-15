@@ -72,7 +72,7 @@ data SMTLibError
   = UnsupportedDecl               Provenance Identifier DeclType
   | UnsupportedVariableType       CheckedAnn Identifier Symbol CheckedExpr
   | UnsupportedQuantifierSequence CheckedAnn Identifier
-  | NonTopLevelQuantifier         CheckedAnn Identifier
+  | NonTopLevelQuantifier         CheckedAnn Identifier Quantifier Symbol
   | NoPropertiesFound
   -- VNNLib
   | UnsupportedNetworkType        CheckedAnn Identifier CheckedExpr UnsupportedNetworkType
@@ -107,10 +107,11 @@ instance MeaningfulError SMTLibError where
       , fix        = "If possible try removing some quantifiers."
       }
 
-    NonTopLevelQuantifier ann ident -> UError $ UserError
+    NonTopLevelQuantifier ann ident q n -> UError $ UserError
       { provenance = provenanceOf ann
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "found a non-top" <+>
-                     "level quantifier which is not currently supported when compiling to SMTLib."
+                     "level quantifier" <+> squotes (pretty (Quant q) <+> pretty n) <+>
+                     "which is not currently supported when compiling to SMTLib."
       , fix        = "Lift all quantifiers to the top-level"
       }
 
@@ -237,15 +238,14 @@ compileVars vars = vsep (map compileVar vars)
     compileVar (SMTVar name t) = parens ("declare-const" <+> pretty name <+> pretty t)
 
 stripQuantifiers :: MonadSMTLibProp m => Bool -> CheckedExpr -> m ([SMTVar], CheckedExpr, Bool)
-stripQuantifiers atTopLevel e = case quantView e of
-  Just (QuantView ann q name t body) -> do
-    (e', negated) <- negatePropertyIfNecessary atTopLevel ann q body
-    let varSymbol = getQuantifierSymbol name
-    varType <- getType ann varSymbol t
-    let var = SMTVar varSymbol varType
-    (vars, body', _) <- stripQuantifiers False e'
-    return (var : vars, body', negated)
-  Nothing -> return ([], e, False)
+stripQuantifiers atTopLevel (QuantiferView ann q name t body) = do
+  (e', negated) <- negatePropertyIfNecessary atTopLevel ann q body
+  let varSymbol = getQuantifierSymbol name
+  varType <- getType ann varSymbol t
+  let var = SMTVar varSymbol varType
+  (vars, body', _) <- stripQuantifiers False e'
+  return (var : vars, body', negated)
+stripQuantifiers _atTopLevel e = return ([], e, False)
 
 negatePropertyIfNecessary :: MonadSMTLibProp m
                           => Bool
@@ -284,9 +284,13 @@ compileExpr = \case
   Seq _ann _     -> normalisationError "Seq"
   PrimDict _tc   -> visibilityError "PrimDict"
 
-  Builtin ann op -> compileBuiltin ann op
-  Literal _ann l -> return $ compileLiteral l
-  Var     _ann v -> compileVariable v
+  Builtin _ann op -> compileBuiltin op
+  Literal _ann l  -> return $ compileLiteral l
+  Var     _ann v  -> compileVariable v
+
+  QuantiferView ann q name _ _ -> do
+    ident <- ask
+    throwError $ NonTopLevelQuantifier ann ident q name
 
   App _ann fun args -> do
     funDoc  <- compileExpr fun
@@ -301,8 +305,8 @@ compileExpr = \case
     bodyDoc  <- compileExpr body
     return $ parens $ "let" <+> parens (parens (binderDoc <+> boundDoc)) <+> bodyDoc
 
-compileBuiltin :: MonadSMTLibProp m => OutputAnn -> Builtin -> m (Doc b)
-compileBuiltin ann = \case
+compileBuiltin :: MonadSMTLibProp m => Builtin -> m (Doc b)
+compileBuiltin = \case
   BooleanType   t -> typeError $ pretty t
   NumericType   t -> typeError $ pretty t
   ContainerType t -> typeError $ pretty t
@@ -313,10 +317,7 @@ compileBuiltin ann = \case
   At        -> normalisationError $ pretty At
   Map       -> normalisationError $ pretty Map
   Fold      -> normalisationError $ pretty Fold
-
-  Quant _q       -> do
-    ident <- ask
-    throwError $ NonTopLevelQuantifier ann ident
+  Quant q   -> normalisationError $ pretty (Quant q)
 
   If              -> return "ite"
   BooleanOp2 Impl -> return "=>"
