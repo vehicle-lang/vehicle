@@ -1,4 +1,3 @@
-[![Tests](https://github.com/wenkokke/vehicle/actions/workflows/vehicle-tests.yml/badge.svg)](https://github.com/wenkokke/vehicle/actions/workflows/vehicle-tests.yml)
 
 # Vehicle
 
@@ -8,36 +7,35 @@
 
 
 ## Dependencies
-
-    - stack
-    - bnfc >2.9
-        - if ubuntu:
-            - download binary and add to path from https://bnfc.digitalgrammars.com/download/
-            - add `allow-newer: true` to stack.yaml file (not sure if this is the way to go please correct me)
+   - stack
+   - bnfc >2.9
+       - `stack update`
+       - `stack install BNFC`
+   - if ubuntu
+       - add `allow-newer: true` to stack.yaml file (not sure if this is the way to go please correct me)
 
 ## Installation
-
-    - stack upgrade
-    - make tests
+   - `stack upgrade`
+   - `make tests`
 
 ## Add files
 
-        - Create a new file examples/misc/X/X.vcl where X is the name of your file
+   - Create a new file examples/misc/X/X.vcl where X is the name of your file
 
-        - Add a new test in Test.Golden - test/Test/Golden.hs#L48
+   - Add a new test in Test.Golden - test/Test/Golden.hs#L48
 
-        ```
-            miscTestList :: [GoldenTestSpec]
-            miscTestList = map (addTestDirectory "./examples/misc")
-            [ ("testing", [Verifier SMTLib, ITP Agda])
-            ]
-        ```
+   ```
+       miscTestList :: [GoldenTestSpec]
+       miscTestList = map (addTestDirectory "./examples/misc")
+       [ ("testing", [Verifier SMTLib, ITP Agda])
+       ]
+   ```
 
-        Run `stack test --test-arguments "--accept -p testing"` as described in HACKING.md
+   Run `stack test --test-arguments "--accept -p testing"` as described in HACKING.md
 
-        or
+   or
 
-        `.stack-work/dist/x86_64-linux-tinfo6/Cabal-3.2.1.0/build/vehicle/vehicle --help`
+   `.stack-work/dist/x86_64-linux-tinfo6/Cabal-3.2.1.0/build/vehicle/vehicle --help`
 
 
 the grammar itself can be found here:
