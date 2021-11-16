@@ -5,11 +5,11 @@
 SRC_DIR_BNFC := src/bnfc
 GEN_DIR_HS   := gen/hs
 
-GHC_VERSION := 8.10.3
+GHC_VERSION  := 8.10.3
 
 STACK  ?= stack
-ORMOLU ?= ormolu
-BNFC   ?= bnfc
+ORMOLU ?= stack exec ormolu --
+BNFC   ?= stack exec bnfc --
 
 
 # Add profiling flags if STACK_PROFILE is set:
@@ -33,12 +33,16 @@ default: build
 #################################################################################
 
 .PHONY: init
-init: stack.yaml
+init: require-all stack.yaml setup-git-hooks
 
 stack.yaml: stack-$(GHC_VERSION).yaml
 	@echo "Using stack configuration for GHC $(GHC_VERSION)"
 	@cp stack-$(GHC_VERSION).yaml stack.yaml
 
+.PHONY: setup-git-hooks
+setup-git-hooks:
+	@git config --local core.hooksPath hooks/
+	@chmod +x hooks/*
 
 #################################################################################
 # Format code within project
@@ -154,26 +158,37 @@ clean:
 # Dependencies with reasonable error messages
 #################################################################################
 
+.PHONY: require-all
+require-all: require-stack require-bnfc require-ormolu
+
+# Stack - a Haskell build tool
 .PHONY: require-stack
 require-stack:
 ifeq (,$(wildcard $(shell which stack)))
-	@echo "The command you called requires the Haskell Tool Stack"
+	@echo "Vehicle requires the Haskell Tool Stack"
 	@echo "See: https://docs.haskellstack.org/en/stable/README/"
 	@exit 1
 endif
 
+# BNFC - a generator for parsers and printers
 .PHONY: require-bnfc
 require-bnfc:
 ifeq (,$(wildcard $(shell which bnfc)))
-	@echo "The command you called requires the BNF Converter"
+	@echo "Vehicle requires the BNF Converter"
 	@echo "See: https://bnfc.digitalgrammars.com/"
-	@exit 1
+	@echo ""
+	@echo -n "Would you like to install BNFC? [y/N] " \
+		&& read ans && [ $${ans:-N} = y ] && $(STACK) install BNFC
 endif
 
+# Ormolu - a Haskell formatter
 .PHONY: require-ormolu
 require-ormolu:
 ifeq (,$(wildcard $(shell which ormolu)))
-	@echo "The command you called requires the ormolu Haskel formatter"
+	@echo "Vehicle requires the Ormolu Haskell formatter"
 	@echo "See: https://github.com/tweag/ormolu"
-	@exit 1
+	@echo ""
+	@echo -n "Would you like to install Ormolu? [y/N] " \
+		&& read ans && [ $${ans:-N} = y ] && $(STACK) install ormolu
 endif
+
