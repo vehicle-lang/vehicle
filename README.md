@@ -11,8 +11,6 @@
    - bnfc >2.9
        - `stack update`
        - `stack install BNFC`
-   - if ubuntu
-       - add `allow-newer: true` to stack.yaml file (not sure if this is the way to go please correct me)
 
 ## Installation
    - `stack upgrade`
