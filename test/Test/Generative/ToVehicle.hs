@@ -85,9 +85,10 @@ convertTerm' b (TmApp x y (Normal a)) =
   expApp <$> convertTerm' (a :-> b) x <*> convertTerm' a y
 convertTerm' (TyForall k a) (TMLAM x) =
   withReader (bimap extendIndices raiseIndices) $ do
+    let k' = convertKind k
     a' <- withReader fst (convertType' k a)
     x' <- convertTerm' a x
-    return $ impLam a' x'
+    return $ impLam k' x'
 convertTerm' _c (TMAPP x (Normal a) (Normal b) k) =
   impApp <$> convertTerm' (TyForall k a) x <*> withReader fst (convertType' k b)
 convertTerm' _ _ = error "Malformed type-term combo"

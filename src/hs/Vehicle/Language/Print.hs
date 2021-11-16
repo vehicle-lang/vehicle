@@ -12,6 +12,9 @@ module Vehicle.Language.Print
 
 import Prettyprinter (list, tupled)
 
+import Data.Text
+import Data.Text.ICU.Replace
+
 import Vehicle.Core.Print as Core (printTree)
 import Vehicle.Frontend.Print as Frontend (printTree)
 import Vehicle.Core.Abs qualified as BC
@@ -56,8 +59,8 @@ prettyFriendly :: (PrettyLang a, Simplify a) => a -> Doc b
 prettyFriendly = prettyLang Frontend . runSimplify options
   where
     options = SimplifyOptions
-      { removeImplicits   = True
-      , removeInstances   = True
+      { removeImplicits   = False
+      , removeInstances   = False
       , removeNonUserCode = False
       }
 
@@ -105,20 +108,20 @@ class PrettyNamedLang t binder var ann where
   prettyNamedLang :: VehicleLang -> t binder var ann -> Doc b
 
 instance PrettyNamedLang Arg  Symbol Symbol ann where
-  prettyNamedLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Arg)
-  prettyNamedLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Arg)
+  prettyNamedLang Core     e = pretty $ bnfcPrintHack $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Arg)
+  prettyNamedLang Frontend e = pretty $ bnfcPrintHack $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Arg)
 
 instance PrettyNamedLang Expr Symbol Symbol ann where
-  prettyNamedLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Expr)
-  prettyNamedLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Expr)
+  prettyNamedLang Core     e = pretty $ bnfcPrintHack $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Expr)
+  prettyNamedLang Frontend e = pretty $ bnfcPrintHack $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Expr)
 
 instance PrettyNamedLang Decl Symbol Symbol ann where
-  prettyNamedLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Decl)
-  prettyNamedLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: [BF.Decl])
+  prettyNamedLang Core     e = pretty $ bnfcPrintHack $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Decl)
+  prettyNamedLang Frontend e = pretty $ bnfcPrintHack $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: [BF.Decl])
 
 instance PrettyNamedLang Prog Symbol Symbol ann where
-  prettyNamedLang Core     e = pretty $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Prog)
-  prettyNamedLang Frontend e = pretty $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Prog)
+  prettyNamedLang Core     e = pretty $ bnfcPrintHack $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Prog)
+  prettyNamedLang Frontend e = pretty $ bnfcPrintHack $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Prog)
 
 instance ( SupplyNames t
          , PrettyNamedLang t Symbol var ann
@@ -154,3 +157,13 @@ instance PrettyNamedLang t Symbol Symbol ann
 instance (PrettyNamedLang t Symbol Symbol ann, Descope t)
       => PrettyDescopedLang t Symbol LocallyNamelessVar ann where
   prettyDescopeLang target ctx e = prettyDescopeLang target ctx (runDescope ctx e)
+
+--------------------------------------------------------------------------------
+-- Other
+
+-- BNFC printer treats the braces for implicit arguments as layout braces and
+-- therefore adds a ton of newlines everywhere. This hack attempts to undo this.
+bnfcPrintHack :: String -> Text
+bnfcPrintHack s = replaceAll "\\{\\s*" "{" $
+                  replaceAll "\\s*\\}\\s*" "} " $
+                  pack s

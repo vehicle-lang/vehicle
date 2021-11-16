@@ -9,11 +9,9 @@ module Vehicle.Language.AST.CoDeBruijn
 
 import Data.Functor.Foldable (Recursive(..))
 import Data.Bifunctor (first, bimap)
-import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (unzip, toList)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (unionWith, singleton, updateLookupWithKey, mapKeysMonotonic)
-import Data.Hashable (Hashable)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Core

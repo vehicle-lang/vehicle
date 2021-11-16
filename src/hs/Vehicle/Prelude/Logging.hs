@@ -16,6 +16,7 @@ module Vehicle.Prelude.Logging
   , logDebug
   , liftExceptWithLogging
   , flushLogs
+  , showMessages
   ) where
 
 import Control.Monad.Trans.Class (MonadTrans, lift)
@@ -134,6 +135,9 @@ resetColor = setSGRCode []
 instance Show Message where
   show (Message s t) = setColor s <> T.unpack t <> resetColor
 
+showMessages :: [Message] -> String
+showMessages logs = unlines $ map show logs
+
 liftExceptWithLogging :: Except e v -> ExceptT e Logger v
 liftExceptWithLogging = mapExceptT (pure . runIdentity)
 
@@ -149,4 +153,4 @@ flushLogsToStdout :: [Message] -> IO ()
 flushLogsToStdout = mapM_ print
 
 flushLogsToFile :: FilePath -> [Message] -> IO ()
-flushLogsToFile logFile logs = appendFile (unlines $ map show logs) logFile
+flushLogsToFile logFile logs = appendFile (showMessages logs) logFile
