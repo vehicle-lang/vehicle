@@ -17,7 +17,7 @@ import Data.List.Split (chunksOf)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST
-import Vehicle.Language.Print (prettySimple, prettyVerbose)
+import Vehicle.Language.Print (prettySimple)
 
 -- |Run a function in 'MonadNorm'.
 normalise :: Norm a => a -> ExceptT NormError Logger a
@@ -165,14 +165,14 @@ nfApp ann  fun@(Builtin _ op) args      = do
         Neq -> case (argHead arg1, argHead arg2) of
           --(ETrue  _, _)          -> normApp $ composeApp ann (Builtin ann Not) [_t2, _, arg2]
           (EFalse _, _)              -> return $ argExpr arg2
-          (LitNat _ m, LitNat _ n) -> return $ mkBoolLit ann (argExpr tRes) (m /= n)
-          (LitInt _ i, LitInt _ j) -> return $ mkBoolLit ann (argExpr tRes) (i /= j)
-          (LitRat _ x, LitRat _ y) -> return $ mkBoolLit ann (argExpr tRes) (x /= y)
+          (LitNat _ m, LitNat _ n) -> return $ BoolLiteralExpr ann (argExpr tRes) (m /= n)
+          (LitInt _ i, LitInt _ j) -> return $ BoolLiteralExpr ann (argExpr tRes) (i /= j)
+          (LitRat _ x, LitRat _ y) -> return $ BoolLiteralExpr ann (argExpr tRes) (x /= y)
           _                          -> return e
 
     -- Not
     (Not, [t, tc, arg]) ->
-      fromMaybe (return e) (nfNot ann t tc arg)
+      fromMaybe (return e) (nfNot ann (argExpr t) (argExpr tc) arg)
 
     -- Binary boolean operations
     (BooleanOp2 op2, [t, tc, arg1, arg2]) -> case (op2, argHead arg1, argHead arg2) of
@@ -180,17 +180,17 @@ nfApp ann  fun@(Builtin _ op) args      = do
       -- See https://github.com/wenkokke/vehicle/issues/2
       (And, ETrue  _, _)        -> return $ argExpr arg2
       (And, _,        ETrue  _) -> return $ argExpr arg1
-      (And, EFalse _, _)        -> return $ mkBoolLit ann (argExpr t) False
-      (And, _,        EFalse _) -> return $ mkBoolLit ann (argExpr t) False
+      (And, EFalse _, _)        -> return $ BoolLiteralExpr ann (argExpr t) False
+      (And, _,        EFalse _) -> return $ BoolLiteralExpr ann (argExpr t) False
 
-      (Or, ETrue  _, _)        -> return $ mkBoolLit ann (argExpr t) True
+      (Or, ETrue  _, _)        -> return $ BoolLiteralExpr ann (argExpr t) True
       (Or, EFalse _, _)        -> return $ argExpr arg2
-      (Or, _,        ETrue  _) -> return $ mkBoolLit ann (argExpr t) True
+      (Or, _,        ETrue  _) -> return $ BoolLiteralExpr ann (argExpr t) True
       (Or, _,        EFalse _) -> return $ argExpr arg1
 
       (Impl, ETrue  _, _)        -> return $ argExpr arg2
-      (Impl, EFalse _, _)        -> return $ mkBoolLit ann (argExpr t) True
-      (Impl, _,        ETrue  _) -> return $ mkBoolLit ann (argExpr t) True
+      (Impl, EFalse _, _)        -> return $ BoolLiteralExpr ann (argExpr t) True
+      (Impl, _,        ETrue  _) -> return $ BoolLiteralExpr ann (argExpr t) True
       (Impl, _,        EFalse _) -> return $ App ann (Builtin ann Not) [t, tc, arg2]
 
       _ -> return e
@@ -203,30 +203,30 @@ nfApp ann  fun@(Builtin _ op) args      = do
 
     -- Le
     (Order Le, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (LitInt _ i, LitInt _ j) -> return $ mkBoolLit ann (argExpr tRes) (i <= j)
-      (LitRat _ x, LitRat _ y) -> return $ mkBoolLit ann (argExpr tRes) (x <= y)
+      (LitInt _ i, LitInt _ j) -> return $ BoolLiteralExpr ann (argExpr tRes) (i <= j)
+      (LitRat _ x, LitRat _ y) -> return $ BoolLiteralExpr ann (argExpr tRes) (x <= y)
       _                          -> return e
 
     -- Lt
     (Order Lt, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (LitInt _ i, LitInt _ j) -> return $ mkBoolLit ann (argExpr tRes) (i < j)
-      (LitRat _ x, LitRat _ y) -> return $ mkBoolLit ann (argExpr tRes) (x < y)
+      (LitInt _ i, LitInt _ j) -> return $ BoolLiteralExpr ann (argExpr tRes) (i < j)
+      (LitRat _ x, LitRat _ y) -> return $ BoolLiteralExpr ann (argExpr tRes) (x < y)
       _                          -> return e
 
     -- Binary numeric ops
-    (NumericOp2 op2, [_t, _tc, arg1, arg2]) -> case (op2, argHead arg1, argHead arg2) of
+    (NumericOp2 op2, [t, _tc, arg1, arg2]) -> case (op2, argHead arg1, argHead arg2) of
       -- TODO implement zero/identity/associativity rules?
-      (Add, LitNat _ m, LitNat _ n) -> return $ mkNatLit ann (m + n)
-      (Add, LitInt _ i, LitInt _ j) -> return $ mkIntLit ann (i + j)
-      (Add, LitRat _ x, LitRat _ y) -> return $ mkRatLit ann (x + y)
+      (Add, LitNat _ m, LitNat _ n) -> return $ NatLiteralExpr ann (argExpr t) (m + n)
+      (Add, LitInt _ i, LitInt _ j) -> return $ IntLiteralExpr ann (argExpr t) (i + j)
+      (Add, LitRat _ x, LitRat _ y) -> return $ RatLiteralExpr ann (argExpr t) (x + y)
 
-      (Sub, LitInt _ i, LitInt _ j) -> return $ mkIntLit ann (i - j)
-      (Sub, LitRat _ x, LitRat _ y) -> return $ mkRatLit ann (x - y)
+      (Sub, LitInt _ i, LitInt _ j) -> return $ IntLiteralExpr ann (argExpr t) (i - j)
+      (Sub, LitRat _ x, LitRat _ y) -> return $ RatLiteralExpr ann (argExpr t) (x - y)
 
-      (Mul, LitInt _ i, LitInt _ j) -> return $ mkIntLit ann (i * j)
-      (Mul, LitRat _ x, LitRat _ y) -> return $ mkRatLit ann (x * y)
+      (Mul, LitInt _ i, LitInt _ j) -> return $ IntLiteralExpr ann (argExpr t) (i * j)
+      (Mul, LitRat _ x, LitRat _ y) -> return $ RatLiteralExpr ann (argExpr t) (x * y)
 
-      (Div, LitRat _ x, LitRat _ y) -> return $ mkRatLit ann (x / y)
+      (Div, LitRat _ x, LitRat _ y) -> return $ RatLiteralExpr ann (argExpr t) (x / y)
 
       _                          -> return e
 
@@ -283,17 +283,18 @@ nfEq :: MonadNorm m
      -> CheckedExpr
      -> CheckedExpr
      -> Maybe (m CheckedExpr)
-nfEq ann _tEq tRes tc e1 e2 = case (toHead e1, toHead e2) of
+nfEq ann _tEq tRes _tc e1 e2 = case (toHead e1, toHead e2) of
   --(EFalse _,  _)         -> normApp $ composeApp ann (Builtin ann op, [tElem, _, e2])
-  ((LitNat _ m, _),         (LitInt _ n, _))     -> Just $ return $ mkBoolLit ann (argExpr tRes) (m == n)
-  ((LitInt _ i, _),         (LitInt _ j, _))     -> Just $ return $ mkBoolLit ann (argExpr tRes) (i == j)
-  ((LitRat _ x, _),         (LitRat _ y, _))     -> Just $ return $ mkBoolLit ann (argExpr tRes) (x == y)
+  ((LitNat _ m, _),         (LitInt _ n, _))     -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (m == n)
+  ((LitInt _ i, _),         (LitInt _ j, _))     -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (i == j)
+  ((LitRat _ x, _),         (LitRat _ y, _))     -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (x == y)
   ((Seq _ xs, [tElem,_,_]), (Seq _ ys, [_,_,_])) -> Just $
     if length xs /= length ys then
-      return $ mkBoolLit ann (argExpr tRes) False
+      return $ BoolLiteralExpr ann (argExpr tRes) False
     else
-      nf $ foldr (\(x,y) res -> mkBoolOp2' And ann tRes tc [mkEq' Eq ann tElem tRes tc [x,y], res]) (mkBoolLit ann (argExpr tRes) True) (zip xs ys)
-  _                     -> Nothing
+      let equalities = zipWith (\x y -> EqualityExpr Eq ann (argExpr tElem) (argExpr tRes) (map (ExplicitArg ann) [x,y])) xs ys in
+      nf $ booleanBigOp And ann (argExpr tRes) equalities
+  _ -> Nothing
   -- TODO implement reflexive rules?
 
 --------------------------------------------------------------------------------
@@ -400,51 +401,26 @@ quantImplementation Any = (Or,  False)
 -- TODO implement idempotence rules?
 nfNot :: MonadNorm m
       => CheckedAnn
-      -> CheckedArg
-      -> CheckedArg
+      -> CheckedExpr
+      -> CheckedExpr
       -> CheckedArg
       -> Maybe (m CheckedExpr)
-nfNot ann t tc arg = case toHead (argExpr arg) of
-  (ETrue  _, [_, _])            -> Just $ return $ mkBoolLit ann (argExpr t) False
-  (EFalse _, [_, _])            -> Just $ return $ mkBoolLit ann (argExpr t) True
+nfNot ann t _tc arg = case argExpr arg of
+  -- Literal normalisation
+  BoolLiteralExpr _ann tBool b -> Just $ return $ BoolLiteralExpr ann tBool (not b)
 
   -- Negation juggling
-  (BuiltinQuantifier _ q,       [_,lam])      -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
-  (Builtin _ (BooleanOp2 Impl), [_,_,e1,e2])  -> Just $ nf $ mkBoolOp2' And ann t tc [argExpr e1, neg (argExpr e2)]
-  --(Builtin _(BooleanOp2 And), [_,_,e1,e2])  -> Just $ nf $ mkOr'  ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
-  (Builtin _ (BooleanOp2 Or),   [_,_,e1,e2])  -> Just $ nf $ mkBoolOp2' And ann t tc [neg $ argExpr e1, neg $ argExpr e2]
-  (BuiltinOrder    ann2 o,      args)         -> Just $ return $ normAppList ann (BuiltinOrder    ann2 (negateOrder o)) args
-  (BuiltinEquality ann2 eq,     args)         -> Just $ return $ normAppList ann (BuiltinEquality ann2 (negateEquality eq)) args
-  _                                           -> Nothing
+  (QuantifierExpr q   _ann binder body) -> Just $ QuantifierExpr (neg q) ann binder <$> nf (NotExpr ann t [ExplicitArg ann body])
+  (OrderExpr      o   _ann t1 t2 args)  -> Just $ return $ OrderExpr    (neg o)     ann t1 t2 args
+  (EqualityExpr   eq  _ann t1 t2 args)  -> Just $ return $ EqualityExpr (neg eq) ann t1 t2 args
+  (BooleanOp2Expr op2 _ann _t [e1,e2])  -> case op2 of
+    Impl -> Just $ nf $ BooleanOp2Expr And ann t [e1, negateExpr e2]
+    Or   -> Just $ nf $ BooleanOp2Expr And ann t [negateExpr e1, negateExpr e2]
+    And  -> Nothing -- Just $ nf $ mkOr'  ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
+  _                                -> Nothing
   where
-    neg = mkNot' ann t tc
-
-nfNotQuantifier :: MonadNorm m
-                => CheckedAnn
-                -> CheckedArg
-                -> CheckedArg
-                -> Quantifier
-                -> CheckedExpr
-                -> m CheckedExpr
-nfNotQuantifier ann t tc q (Lam lAnn binder body) = do
-  notBody <- nf $ App ann (Builtin ann Not) [t, tc, ExplicitArg lAnn body]
-  return $ mkQuantifier (negateQ q) ann binder notBody
-nfNotQuantifier _ _ _ _ e = developerError $
-  "Malformed quantifier, was expecting a Lam but found" <+> prettyVerbose e
-
-negateQ :: Quantifier -> Quantifier
-negateQ Any = All
-negateQ All = Any
-
-negateOrder :: Order -> Order
-negateOrder Le = Gt
-negateOrder Lt = Ge
-negateOrder Ge = Lt
-negateOrder Gt = Le
-
-negateEquality :: Equality -> Equality
-negateEquality Eq = Neq
-negateEquality Neq = Eq
+    negateExpr :: CheckedArg -> CheckedArg
+    negateExpr a = ExplicitArg ann (NotExpr ann t [a])
 
 -----------------------------------------------------------------------------
 -- Normalising negation
@@ -455,9 +431,9 @@ nfNeg :: MonadNorm m
       -> CheckedArg
       -> CheckedArg
       -> Maybe (m CheckedExpr)
-nfNeg ann _t _tc arg = case argHead arg of
-  (LitInt _ x) -> Just $ return $ mkIntLit ann (- x)
-  (LitRat _ x) -> Just $ return $ mkRatLit ann (- x)
+nfNeg ann t _tc arg = case argHead arg of
+  (LitInt _ x) -> Just $ return $ IntLiteralExpr ann (argExpr t) (- x)
+  (LitRat _ x) -> Just $ return $ RatLiteralExpr ann (argExpr t) (- x)
   _            -> Nothing
 
 -----------------------------------------------------------------------------

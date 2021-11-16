@@ -6,8 +6,6 @@ module Vehicle.Prelude.Prettyprinter
   )
   where
 
-import GHC.Real ( numerator, denominator )
-
 import Data.Text (Text)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet (toAscList)

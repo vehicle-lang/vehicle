@@ -238,7 +238,7 @@ compileVars vars = vsep (map compileVar vars)
     compileVar (SMTVar name t) = parens ("declare-const" <+> pretty name <+> pretty t)
 
 stripQuantifiers :: MonadSMTLibProp m => Bool -> CheckedExpr -> m ([SMTVar], CheckedExpr, Bool)
-stripQuantifiers atTopLevel (QuantifierView q ann binder body) = do
+stripQuantifiers atTopLevel (QuantifierExpr q ann binder body) = do
   (e', negated) <- negatePropertyIfNecessary atTopLevel ann q body
   let varSymbol = getQuantifierSymbol binder
   varType <- getType ann varSymbol (typeOf binder)
@@ -258,7 +258,7 @@ negatePropertyIfNecessary False       ann All _body = do
   ident <- ask
   throwError $ UnsupportedQuantifierSequence ann ident
 negatePropertyIfNecessary True        ann  All body  = do
-  let body' = normaliseInternal $ mkNot ann (Builtin ann (BooleanType Prop)) body
+  let body' = normaliseInternal $ NotExpr ann (Builtin ann (BooleanType Prop)) [ExplicitArg ann body]
   logDebug $ align $ "Negating universal quantifier:" <+> prettySimple body' <> line
   return (body', False)
 
@@ -288,7 +288,7 @@ compileExpr = \case
   Literal _ann l  -> return $ compileLiteral l
   Var     _ann v  -> compileVariable v
 
-  QuantifierView q ann binder _ -> do
+  QuantifierExpr q ann binder _ -> do
     ident <- ask
     throwError $ NonTopLevelQuantifier ann ident q (nameOf binder)
 

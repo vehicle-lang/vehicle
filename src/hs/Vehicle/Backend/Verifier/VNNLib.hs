@@ -187,8 +187,8 @@ replaceNetworkApplication :: (MonadVNNLib m, MonadState (Int, Int) m)
                           -> m CheckedExpr
 replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
   (NetworkDetails _ _ inputs outputs) <- getNetworkDetailsFromCtx ident
-  let inputSize = size inputs
-  let inputType = tElem outputs
+  let inputSize  = size inputs
+  let inputType  = tElem outputs
   let outputSize = size inputs
   let outputType = tElem outputs
 
@@ -209,8 +209,8 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
   let (outputsExpr, _)          = mkMagicVariableSeq outputType outputVarIndices
 
   let body'         = outputsExpr `substInto` letBody
-  let inputEquality = mkEq Eq ann inputsType (BuiltinBooleanType ann Prop) [inputsExpr, networkInput]
-  let newBody       = mkBoolOp2 Impl ann (BuiltinBooleanType ann Prop) [inputEquality, body']
+  let inputEquality = EqualityExpr Eq ann inputsType (BuiltinBooleanType ann Prop) (map (ExplicitArg ann) [inputsExpr, networkInput])
+  let newBody       = BooleanOp2Expr Impl ann (BuiltinBooleanType ann Prop) (map (ExplicitArg ann) [inputEquality, body'])
 
   return newBody
   where
@@ -248,10 +248,10 @@ replaceNetworkApplications d e =
     Seq ann xs ->
       Seq ann <$> traverse (replaceNetworkApplications d) xs
 
-    App ann1 fun@(BuiltinQuantifier _ _) [tElem, Arg ann3 v (Lam ann4 binder body)] -> do
+    QuantifierExpr ann q binder body -> do
       body' <- replaceNetworkApplications (d + 1) body
       -- Increase the binding depth by 1
-      return $ App ann1 fun [tElem, Arg ann3 v (Lam ann4 binder body')]
+      return $ QuantifierExpr ann q binder body'
 
     App ann fun args -> do
       fun'  <- replaceNetworkApplications d fun

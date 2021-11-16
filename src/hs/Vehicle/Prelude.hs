@@ -2,6 +2,7 @@
 module Vehicle.Prelude
   ( module X
   , VehicleLang(..)
+  , Negatable(..)
   , (|->)
   , (!?)
   , (!!?)
@@ -82,3 +83,6 @@ readRat :: Text -> Rational
 readRat str = case readFloat (Text.unpack str) of
   ((n, []) : _) -> n
   _             -> error "Invalid number"
+
+class Negatable a where
+  neg :: a -> a

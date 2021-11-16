@@ -114,6 +114,10 @@ data Quantifier
 instance NFData   Quantifier
 instance Hashable Quantifier
 
+instance Negatable Quantifier where
+  neg Any = All
+  neg All = Any
+
 --------------------------------------------------------------------------------
 -- Equality
 
@@ -132,6 +136,10 @@ instance Show Equality where
 
 instance Pretty Equality where
   pretty = pretty . show
+
+instance Negatable Equality where
+  neg Eq = Neq
+  neg Neq = Eq
 
 --------------------------------------------------------------------------------
 -- Orders
@@ -155,6 +163,12 @@ instance Show Order where
 
 instance Pretty Order where
   pretty = pretty . show
+
+instance Negatable Order where
+  neg Le = Gt
+  neg Lt = Ge
+  neg Ge = Lt
+  neg Gt = Le
 
 --------------------------------------------------------------------------------
 -- Boolean operations

@@ -52,14 +52,13 @@ instance Semigroup PositionList where
 
 
 
-
-data CodebruijnBinding = CodebruijnBinding Name (Maybe PositionTree)
+data CodebruijnBinding = CodebruijnBinding (Maybe Symbol) (Maybe PositionTree)
 
 data CodebruijnVar
   = Free Identifier
   | Bound
 
-instance HasName CodebruijnBinding where
+instance HasName CodebruijnBinding (Maybe Symbol) where
   nameOf (CodebruijnBinding name _) = name
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
@@ -89,7 +88,7 @@ leaf :: Index -> BoundVarMap
 leaf i = IntMap.singleton i Leaf
 
 class Codebruijn f where
-  toCodebruijn   :: f Name LocallyNamelessVar ann -> (f CodebruijnBinding CodebruijnVar ann, BoundVarMap)
+  toCodebruijn   :: f (Maybe Symbol) LocallyNamelessVar ann -> (f CodebruijnBinding CodebruijnVar ann, BoundVarMap)
   --fromCoDeBruijn :: (f CodebruijnBinding CodebruijnVar ann, VarMap) -> f Name LocallyNamelessVar ann
 
 instance Codebruijn Binder where

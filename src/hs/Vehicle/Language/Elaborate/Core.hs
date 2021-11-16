@@ -11,7 +11,7 @@ import Data.Text (unpack)
 import Vehicle.Core.Abs as B
 
 import Vehicle.Prelude
-import Vehicle.Language.AST as V hiding (Name)
+import Vehicle.Language.AST as V
 import Vehicle.Language.Print (prettyVerbose)
 
 runElab :: (MonadLogger m, MonadError ElabError m) => B.Prog -> m V.InputProg
