@@ -5,7 +5,7 @@ module Test where
 import Test.Tasty
 
 import Test.Golden (goldenTests)
-import Test.Generative (generativeTests)
+-- import Test.Generative (generativeTests)
 
 main :: IO ()
 main = defaultMain tests

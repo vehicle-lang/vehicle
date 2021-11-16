@@ -5,20 +5,14 @@
 SRC_DIR_BNFC := src/bnfc
 GEN_DIR_HS   := gen/hs
 
-GHC_VERSION  := 8.10.3
+GHC_VERSION    := 9.0.1
+BNFC_VERSION   := 2.9.3
+ORMOLU_VERSION := 0.3.1.0
 
-STACK  ?= stack
-ORMOLU ?= stack exec ormolu --
-BNFC   ?= stack exec bnfc --
-
-
-# Add profiling flags if STACK_PROFILE is set:
-ifneq (,$(wildcard $(STACK_PROFILE)))
-# To profile code with Template Haskell, you must to pass -fexternal-interpreter.
-# For details, see:
-# https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/exts/template_haskell.html#using-template-haskell-with-profiling
-STACK := $(STACK) --profile --ghc-options="-fexternal-interpreter"
-endif
+CABAL  ?= cabal
+HAPPY  ?= happy
+ORMOLU ?= ormolu
+BNFC   ?= bnfc
 
 
 #################################################################################
@@ -28,21 +22,18 @@ endif
 .PHONY: default
 default: build
 
+
 #################################################################################
 # Initialise project
 #################################################################################
 
 .PHONY: init
-init: require-all stack.yaml setup-git-hooks
-
-stack.yaml: stack-$(GHC_VERSION).yaml
-	@echo "Using stack configuration for GHC $(GHC_VERSION)"
-	@cp stack-$(GHC_VERSION).yaml stack.yaml
+init: require-all setup-git-hooks
 
 .PHONY: setup-git-hooks
 setup-git-hooks:
 	@git config --local core.hooksPath hooks/
-	@chmod +x hooks/*
+
 
 #################################################################################
 # Format code within project
@@ -57,6 +48,7 @@ format: require-ormolu
 format-check: require-ormolu
 	@echo "Check Haskell code using Ormolu"
 	@$(ORMOLU) --mode check --cabal-default-extensions $(shell git ls-files '*.hs')
+
 
 #################################################################################
 # Build parsers for Frontend and Core languages using BNFC
@@ -98,7 +90,7 @@ $(BNFC_TARGETS_CORE): $(SRC_DIR_BNFC)/Core.cf | require-bnfc
 bnfc-core-info: $(GEN_DIR_HS)/Vehicle/Core/Par.info
 
 $(GEN_DIR_HS)/Vehicle/Core/Par.info: $(GEN_DIR_HS)/Vehicle/Core/Par.y
-	$(STACK) exec happy -- gen/hs/Vehicle/Core/Par.y --info=gen/hs/Vehicle/Core/Par.info
+	$(HAPPY) gen/hs/Vehicle/Core/Par.y --info=gen/hs/Vehicle/Core/Par.info
 
 BNFC_TARGETS_FRONTEND := Abs.hs Lex.x Layout.hs Par.y ErrM.hs
 BNFC_TARGETS_FRONTEND := $(addprefix $(GEN_DIR_HS)/Vehicle/Frontend/,$(BNFC_TARGETS_FRONTEND))
@@ -125,15 +117,16 @@ $(BNFC_TARGETS_FRONTEND): $(SRC_DIR_BNFC)/Frontend.cf | require-bnfc
 bnfc-frontend-info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.info
 
 $(GEN_DIR_HS)/Vehicle/Frontend/Par.info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.y
-	$(STACK) exec happy -- gen/hs/Vehicle/Frontend/Par.y --info=gen/hs/Vehicle/Frontend/Par.info
+	$(HAPPY) gen/hs/Vehicle/Frontend/Par.y --info=gen/hs/Vehicle/Frontend/Par.info
+
 
 #################################################################################
 # Build type-checker and compiler for Vehicle
 #################################################################################
 
 .PHONY: build
-build: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND) stack.yaml | require-stack
-	@$(STACK) build
+build: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND) | require-haskell
+	@$(CABAL) build
 
 
 #################################################################################
@@ -141,8 +134,8 @@ build: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND) stack.yaml | require-stack
 #################################################################################
 
 .PHONY: test
-test: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND) stack.yaml | require-stack
-	@$(STACK) test
+test: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND) | require-haskell
+	@$(CABAL) test
 
 
 #################################################################################
@@ -159,14 +152,19 @@ clean:
 #################################################################################
 
 .PHONY: require-all
-require-all: require-stack require-bnfc require-ormolu
+require-all: require-haskell require-bnfc require-ormolu
 
-# Stack - a Haskell build tool
-.PHONY: require-stack
-require-stack:
-ifeq (,$(wildcard $(shell which stack)))
-	@echo "Vehicle requires the Haskell Tool Stack"
-	@echo "See: https://docs.haskellstack.org/en/stable/README/"
+# Haskell
+.PHONY: require-haskell
+require-haskell:
+ifeq (,$(wildcard $(shell which ghc)))
+	@echo "Vehicle requires GHC"
+	@echo "See: https://www.haskell.org/ghcup/"
+	@exit 1
+endif
+ifeq (,$(wildcard $(shell which cabal)))
+	@echo "Vehicle requires Cabal"
+	@echo "See: https://www.haskell.org/ghcup/"
 	@exit 1
 endif
 
@@ -178,7 +176,8 @@ ifeq (,$(wildcard $(shell which bnfc)))
 	@echo "See: https://bnfc.digitalgrammars.com/"
 	@echo ""
 	@echo -n "Would you like to install BNFC? [y/N] " \
-		&& read ans && [ $${ans:-N} = y ] && $(STACK) install BNFC
+		&& read ans && [ $${ans:-N} = y ] \
+		&& $(CABAL) v2-install --ignore-project BNFC-$(BNFC_VERSION)
 endif
 
 # Ormolu - a Haskell formatter
@@ -189,6 +188,7 @@ ifeq (,$(wildcard $(shell which ormolu)))
 	@echo "See: https://github.com/tweag/ormolu"
 	@echo ""
 	@echo -n "Would you like to install Ormolu? [y/N] " \
-		&& read ans && [ $${ans:-N} = y ] && $(STACK) install ormolu
+		&& read ans && [ $${ans:-N} = y ] \
+		&& $(CABAL) v2-install --ignore-project ormolu-$(ORMOLU_VERSION)
 endif
 

@@ -153,21 +153,21 @@ test-suite vehicle-test
   main-is:            Test.hs
   hs-source-dirs:     test
   other-modules:      Test.Golden
-                    , Test.Generative
-                    , Test.Generative.Generator
-                    , Test.Generative.ToVehicle
+                    -- , Test.Generative
+                    -- , Test.Generative.Generator
+                    -- , Test.Generative.ToVehicle
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -main-is Test
   default-extensions: ImportQualifiedPost
   build-depends:      filepath >=1.4 && <2
                     , directory
                     , tasty
                     , tasty-golden
-                    , tasty-hunit
+                    -- , tasty-hunit
                     , vehicle
                     -- For generation of terms
-                    , lazy-search
-                    , size-based
-                    , testing-feat
-                    , bifunctors
-                    , mtl
+                    -- , lazy-search
+                    -- , size-based
+                    -- , testing-feat
+                    -- , bifunctors
+                    -- , mtl
 
