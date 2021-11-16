@@ -165,9 +165,9 @@ nfApp ann  fun@(Builtin _ op) args      = do
         Neq -> case (argHead arg1, argHead arg2) of
           --(ETrue  _, _)          -> normApp $ composeApp ann (Builtin ann Not) [_t2, _, arg2]
           (EFalse _, _)              -> return $ argExpr arg2
-          (LitNat _ m, LitNat _ n) -> return $ mkBool ann (argExpr tRes) (m /= n)
-          (LitInt _ i, LitInt _ j) -> return $ mkBool ann (argExpr tRes) (i /= j)
-          (LitRat _ x, LitRat _ y) -> return $ mkBool ann (argExpr tRes) (x /= y)
+          (LitNat _ m, LitNat _ n) -> return $ mkBoolLit ann (argExpr tRes) (m /= n)
+          (LitInt _ i, LitInt _ j) -> return $ mkBoolLit ann (argExpr tRes) (i /= j)
+          (LitRat _ x, LitRat _ y) -> return $ mkBoolLit ann (argExpr tRes) (x /= y)
           _                          -> return e
 
     -- Not
@@ -180,17 +180,17 @@ nfApp ann  fun@(Builtin _ op) args      = do
       -- See https://github.com/wenkokke/vehicle/issues/2
       (And, ETrue  _, _)        -> return $ argExpr arg2
       (And, _,        ETrue  _) -> return $ argExpr arg1
-      (And, EFalse _, _)        -> return $ mkBool ann (argExpr t) False
-      (And, _,        EFalse _) -> return $ mkBool ann (argExpr t) False
+      (And, EFalse _, _)        -> return $ mkBoolLit ann (argExpr t) False
+      (And, _,        EFalse _) -> return $ mkBoolLit ann (argExpr t) False
 
-      (Or, ETrue  _, _)        -> return $ mkBool ann (argExpr t) True
+      (Or, ETrue  _, _)        -> return $ mkBoolLit ann (argExpr t) True
       (Or, EFalse _, _)        -> return $ argExpr arg2
-      (Or, _,        ETrue  _) -> return $ mkBool ann (argExpr t) True
+      (Or, _,        ETrue  _) -> return $ mkBoolLit ann (argExpr t) True
       (Or, _,        EFalse _) -> return $ argExpr arg1
 
       (Impl, ETrue  _, _)        -> return $ argExpr arg2
-      (Impl, EFalse _, _)        -> return $ mkBool ann (argExpr t) True
-      (Impl, _,        ETrue  _) -> return $ mkBool ann (argExpr t) True
+      (Impl, EFalse _, _)        -> return $ mkBoolLit ann (argExpr t) True
+      (Impl, _,        ETrue  _) -> return $ mkBoolLit ann (argExpr t) True
       (Impl, _,        EFalse _) -> return $ App ann (Builtin ann Not) [t, tc, arg2]
 
       _ -> return e
@@ -203,30 +203,30 @@ nfApp ann  fun@(Builtin _ op) args      = do
 
     -- Le
     (Order Le, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (LitInt _ i, LitInt _ j) -> return $ mkBool ann (argExpr tRes) (i <= j)
-      (LitRat _ x, LitRat _ y) -> return $ mkBool ann (argExpr tRes) (x <= y)
+      (LitInt _ i, LitInt _ j) -> return $ mkBoolLit ann (argExpr tRes) (i <= j)
+      (LitRat _ x, LitRat _ y) -> return $ mkBoolLit ann (argExpr tRes) (x <= y)
       _                          -> return e
 
     -- Lt
     (Order Lt, [_t1, tRes, _tc, arg1, arg2]) -> case (argHead arg1, argHead arg2) of
-      (LitInt _ i, LitInt _ j) -> return $ mkBool ann (argExpr tRes) (i < j)
-      (LitRat _ x, LitRat _ y) -> return $ mkBool ann (argExpr tRes) (x < y)
+      (LitInt _ i, LitInt _ j) -> return $ mkBoolLit ann (argExpr tRes) (i < j)
+      (LitRat _ x, LitRat _ y) -> return $ mkBoolLit ann (argExpr tRes) (x < y)
       _                          -> return e
 
     -- Binary numeric ops
     (NumericOp2 op2, [_t, _tc, arg1, arg2]) -> case (op2, argHead arg1, argHead arg2) of
       -- TODO implement zero/identity/associativity rules?
-      (Add, LitNat _ m, LitNat _ n) -> return $ mkNat ann (m + n)
-      (Add, LitInt _ i, LitInt _ j) -> return $ mkInt ann (i + j)
-      (Add, LitRat _ x, LitRat _ y) -> return $ mkRat ann (x + y)
+      (Add, LitNat _ m, LitNat _ n) -> return $ mkNatLit ann (m + n)
+      (Add, LitInt _ i, LitInt _ j) -> return $ mkIntLit ann (i + j)
+      (Add, LitRat _ x, LitRat _ y) -> return $ mkRatLit ann (x + y)
 
-      (Sub, LitInt _ i, LitInt _ j) -> return $ mkInt ann (i - j)
-      (Sub, LitRat _ x, LitRat _ y) -> return $ mkRat ann (x - y)
+      (Sub, LitInt _ i, LitInt _ j) -> return $ mkIntLit ann (i - j)
+      (Sub, LitRat _ x, LitRat _ y) -> return $ mkRatLit ann (x - y)
 
-      (Mul, LitInt _ i, LitInt _ j) -> return $ mkInt ann (i * j)
-      (Mul, LitRat _ x, LitRat _ y) -> return $ mkRat ann (x * y)
+      (Mul, LitInt _ i, LitInt _ j) -> return $ mkIntLit ann (i * j)
+      (Mul, LitRat _ x, LitRat _ y) -> return $ mkRatLit ann (x * y)
 
-      (Div, LitRat _ x, LitRat _ y) -> return $ mkRat ann (x / y)
+      (Div, LitRat _ x, LitRat _ y) -> return $ mkRatLit ann (x / y)
 
       _                          -> return e
 
@@ -285,14 +285,14 @@ nfEq :: MonadNorm m
      -> Maybe (m CheckedExpr)
 nfEq ann _tEq tRes tc e1 e2 = case (toHead e1, toHead e2) of
   --(EFalse _,  _)         -> normApp $ composeApp ann (Builtin ann op, [tElem, _, e2])
-  ((LitNat _ m, _),         (LitInt _ n, _))     -> Just $ return $ mkBool ann (argExpr tRes) (m == n)
-  ((LitInt _ i, _),         (LitInt _ j, _))     -> Just $ return $ mkBool ann (argExpr tRes) (i == j)
-  ((LitRat _ x, _),         (LitRat _ y, _))     -> Just $ return $ mkBool ann (argExpr tRes) (x == y)
+  ((LitNat _ m, _),         (LitInt _ n, _))     -> Just $ return $ mkBoolLit ann (argExpr tRes) (m == n)
+  ((LitInt _ i, _),         (LitInt _ j, _))     -> Just $ return $ mkBoolLit ann (argExpr tRes) (i == j)
+  ((LitRat _ x, _),         (LitRat _ y, _))     -> Just $ return $ mkBoolLit ann (argExpr tRes) (x == y)
   ((Seq _ xs, [tElem,_,_]), (Seq _ ys, [_,_,_])) -> Just $
     if length xs /= length ys then
-      return $ mkBool ann (argExpr tRes) False
+      return $ mkBoolLit ann (argExpr tRes) False
     else
-      nf $ foldr (\(x,y) res -> mkBoolOp2' And ann tRes tc (mkEq' ann tElem tRes tc x y) res) (mkBool ann (argExpr tRes) True) (zip xs ys)
+      nf $ foldr (\(x,y) res -> mkBoolOp2' And ann tRes tc [mkEq' Eq ann tElem tRes tc [x,y], res]) (mkBoolLit ann (argExpr tRes) True) (zip xs ys)
   _                     -> Nothing
   -- TODO implement reflexive rules?
 
@@ -320,28 +320,28 @@ nfQuantifier ann q lam = case argHead lam of
           -- Use the list monad to create a nested list of all possible indices into the tensor
           let allIndices = traverse (\dim -> [0..dim-1]) dims
           -- Generate the corresponding names from the indices
-          let allNames   = map (mkNameWithIndices (getQuantifierSymbol (nameOf binder))) (reverse allIndices)
+          let allNames   = map (mkNameWithIndices (getQuantifierSymbol binder)) (reverse allIndices)
 
           -- Generate a list of variables, one for each index
           let allExprs   = map (\i -> Var ann (Bound i)) (reverse [0..tensorSize-1])
           -- Construct the corresponding nested tensor expression
-          let tensor     = makeTensor ann tElem dims allExprs
+          let tensor     = makeTensorLit ann tElem dims allExprs
           -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
           let body1      = liftDBIndices tensorSize body
           -- Substitute throught the tensor expression for the old top-level binder
           body2 <- nf $ substIntoAtLevel tensorSize tensor body1
 
           -- Generate a expression prepended with `tensorSize` quantifiers
-          return $ foldl (\e name -> mkQuantifier ann q name tElem e) body2 allNames
+          return $ mkQuantifierSeq q ann (map Just allNames) tElem body2
           -- ()
     _ -> Nothing
   _ -> Nothing
 
-makeTensor :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedExpr
-makeTensor ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)
+makeTensorLit :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedExpr
+makeTensorLit ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)
   where
     mkTensorSeq :: [Int] -> [CheckedExpr] -> CheckedExpr
-    mkTensorSeq ds xs = mkSeq ann tElem (mkTensorType ann tElem ds) xs
+    mkTensorSeq ds xs = mkSeq ann tElem (mkTensor ann tElem ds) xs
 
     go []       [] = mkTensorSeq []       []
     go [d]      es = mkTensorSeq [d]      es
@@ -379,9 +379,16 @@ nfQuantifierIn ann q tElem tCont tRes _tc lam container = do
   let unitExpr = mkLiteral' ann (LBool unit) tRes isTruthTC
   let tResCont = mapArgExpr (substContainerType tRes) tCont
   let tResContTC = PrimDict $ mkIsContainer ann (argExpr tRes) (argExpr tResCont)
-  let mappedContainer = mkMap' ann tElem tRes lam container
-  let foldedContainer = mkFold' ann tRes tResCont tRes (InstanceArg ann tResContTC) bopExpr unitExpr mappedContainer
+  let mappedContainer = mkMap' ann tElem tRes [argExpr lam, argExpr container]
+  let foldedContainer = mkFold' ann tRes tResCont tRes (InstanceArg ann tResContTC) [bopExpr, unitExpr, mappedContainer]
   Just (nf foldedContainer)
+
+substContainerType :: CheckedArg -> CheckedExpr -> CheckedExpr
+substContainerType newTElem (App ann1 (BuiltinContainerType ann2 List)   [_tElem]) =
+  App ann1 (BuiltinContainerType ann2 List) [newTElem]
+substContainerType newTElem (App ann1 (BuiltinContainerType ann2 Tensor) [_tElem, tDims])  =
+  App ann1 (BuiltinContainerType ann2 Tensor) [newTElem, tDims]
+substContainerType _ _ = developerError "Provided an invalid container type"
 
 quantImplementation :: Quantifier -> (BooleanOp2, Bool)
 quantImplementation All = (And, True)
@@ -398,14 +405,14 @@ nfNot :: MonadNorm m
       -> CheckedArg
       -> Maybe (m CheckedExpr)
 nfNot ann t tc arg = case toHead (argExpr arg) of
-  (ETrue  _, [_, _])            -> Just $ return $ mkBool ann (argExpr t) False
-  (EFalse _, [_, _])            -> Just $ return $ mkBool ann (argExpr t) True
+  (ETrue  _, [_, _])            -> Just $ return $ mkBoolLit ann (argExpr t) False
+  (EFalse _, [_, _])            -> Just $ return $ mkBoolLit ann (argExpr t) True
 
   -- Negation juggling
   (BuiltinQuantifier _ q,       [_,lam])      -> Just $ nfNotQuantifier ann t tc q (argExpr lam)
-  (Builtin _ (BooleanOp2 Impl), [_,_,e1,e2])  -> Just $ nf $ mkBoolOp2' And ann t tc (argExpr e1) (neg (argExpr e2))
+  (Builtin _ (BooleanOp2 Impl), [_,_,e1,e2])  -> Just $ nf $ mkBoolOp2' And ann t tc [argExpr e1, neg (argExpr e2)]
   --(Builtin _(BooleanOp2 And), [_,_,e1,e2])  -> Just $ nf $ mkOr'  ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
-  (Builtin _ (BooleanOp2 Or),   [_,_,e1,e2])  -> Just $ nf $ mkBoolOp2' And ann t tc (neg $ argExpr e1) (neg $ argExpr e2)
+  (Builtin _ (BooleanOp2 Or),   [_,_,e1,e2])  -> Just $ nf $ mkBoolOp2' And ann t tc [neg $ argExpr e1, neg $ argExpr e2]
   (BuiltinOrder    ann2 o,      args)         -> Just $ return $ normAppList ann (BuiltinOrder    ann2 (negateOrder o)) args
   (BuiltinEquality ann2 eq,     args)         -> Just $ return $ normAppList ann (BuiltinEquality ann2 (negateEquality eq)) args
   _                                           -> Nothing
@@ -421,7 +428,7 @@ nfNotQuantifier :: MonadNorm m
                 -> m CheckedExpr
 nfNotQuantifier ann t tc q (Lam lAnn binder body) = do
   notBody <- nf $ App ann (Builtin ann Not) [t, tc, ExplicitArg lAnn body]
-  return $ mkQuantifier ann (negateQ q) (getQuantifierSymbol (nameOf binder)) (typeOf binder) notBody
+  return $ mkQuantifier (negateQ q) ann binder notBody
 nfNotQuantifier _ _ _ _ e = developerError $
   "Malformed quantifier, was expecting a Lam but found" <+> prettyVerbose e
 
@@ -449,8 +456,8 @@ nfNeg :: MonadNorm m
       -> CheckedArg
       -> Maybe (m CheckedExpr)
 nfNeg ann _t _tc arg = case argHead arg of
-  (LitInt _ x) -> Just $ return $ mkInt ann (- x)
-  (LitRat _ x) -> Just $ return $ mkRat ann (- x)
+  (LitInt _ x) -> Just $ return $ mkIntLit ann (- x)
+  (LitRat _ x) -> Just $ return $ mkRatLit ann (- x)
   _            -> Nothing
 
 -----------------------------------------------------------------------------

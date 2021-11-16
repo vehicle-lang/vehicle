@@ -61,6 +61,7 @@ library
                       , Vehicle.Prelude.Supply
 
                       , Vehicle.Language.AST.Builtin
+                      , Vehicle.Language.AST.BuiltinPatterns
                       , Vehicle.Language.AST.Core
                       , Vehicle.Language.AST.DeBruijn
                       , Vehicle.Language.AST.Name

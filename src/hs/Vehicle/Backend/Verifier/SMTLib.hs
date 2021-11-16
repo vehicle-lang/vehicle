@@ -238,10 +238,10 @@ compileVars vars = vsep (map compileVar vars)
     compileVar (SMTVar name t) = parens ("declare-const" <+> pretty name <+> pretty t)
 
 stripQuantifiers :: MonadSMTLibProp m => Bool -> CheckedExpr -> m ([SMTVar], CheckedExpr, Bool)
-stripQuantifiers atTopLevel (QuantiferView ann q name t body) = do
+stripQuantifiers atTopLevel (QuantifierView q ann binder body) = do
   (e', negated) <- negatePropertyIfNecessary atTopLevel ann q body
-  let varSymbol = getQuantifierSymbol name
-  varType <- getType ann varSymbol t
+  let varSymbol = getQuantifierSymbol binder
+  varType <- getType ann varSymbol (typeOf binder)
   let var = SMTVar varSymbol varType
   (vars, body', _) <- stripQuantifiers False e'
   return (var : vars, body', negated)
@@ -288,9 +288,9 @@ compileExpr = \case
   Literal _ann l  -> return $ compileLiteral l
   Var     _ann v  -> compileVariable v
 
-  QuantiferView ann q name _ _ -> do
+  QuantifierView q ann binder _ -> do
     ident <- ask
-    throwError $ NonTopLevelQuantifier ann ident q name
+    throwError $ NonTopLevelQuantifier ann ident q (nameOf binder)
 
   App _ann fun args -> do
     funDoc  <- compileExpr fun

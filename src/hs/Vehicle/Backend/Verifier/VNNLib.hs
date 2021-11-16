@@ -15,7 +15,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST hiding (Map)
-import Vehicle.Language.Print (prettySimple, prettyVerbose)
+import Vehicle.Language.Print (prettySimple)
 import Vehicle.Language.Normalise (normaliseInternal)
 import Vehicle.Backend.Verifier.Core
 import Vehicle.Backend.Verifier.SMTLib (SMTLibError, SMTDoc, SMTLibError(..), InputOrOutput(..), UnsupportedNetworkType(..))
@@ -209,8 +209,8 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
   let (outputsExpr, _)          = mkMagicVariableSeq outputType outputVarIndices
 
   let body'         = outputsExpr `substInto` letBody
-  let inputEquality = mkEq ann inputsType (BuiltinBooleanType ann Prop) inputsExpr networkInput
-  let newBody       = mkBoolOp2 Impl ann (BuiltinBooleanType ann Prop) inputEquality body'
+  let inputEquality = mkEq Eq ann inputsType (BuiltinBooleanType ann Prop) [inputsExpr, networkInput]
+  let newBody       = mkBoolOp2 Impl ann (BuiltinBooleanType ann Prop) [inputEquality, body']
 
   return newBody
   where
@@ -218,7 +218,7 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
     mkMagicVariableSeq tElem indices = (tensorExpr, tensorType)
       where
         tensorElemType   = Builtin ann tElem
-        tensorType       = mkTensorType ann tensorElemType [length indices]
+        tensorType       = mkTensor ann tensorElemType [length indices]
         variables        = map (Var ann . Bound) indices
         tensorExpr       = mkSeq ann tensorElemType tensorType variables
 
@@ -316,9 +316,9 @@ quantifyOverMagicVariables metaNetwork prop =
               -> CheckedExpr
     forTensor ann io startingIndex (TensorDetails size tElem) body =
       let indices = reverse [startingIndex .. startingIndex + size-1] in
-      let names = mkMagicVariableNames io indices in
+      let names   = mkMagicVariableNames io indices in
       let varType = Builtin ann tElem in
-      foldl (\res name -> mkQuantifier ann All name varType res) body names
+      mkQuantifierSeq All ann (map Just names) varType body
 
     mkMagicVariableNames :: InputOrOutput -> [Int] -> [Symbol]
     mkMagicVariableNames io indices = [mkNameWithIndices baseName [i] | i <- indices]
