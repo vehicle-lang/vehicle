@@ -3,12 +3,13 @@ module Test.Golden
   ) where
 
 import Control.Monad (void)
+import Data.Algorithm.Diff (Diff, PolyDiff(..), getDiff)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Bifunctor (first)
 import Test.Tasty
-import Test.Tasty.Golden (goldenVsFileDiff)
+import Test.Tasty.Golden.Advanced (goldenTest)
 import System.Exit (exitFailure)
 import System.FilePath (takeFileName, splitPath, (<.>), (</>))
 import System.Directory (removeFile)
@@ -28,23 +29,23 @@ goldenTests = testGroup "Golden"
   ]
 
 realisticTestList :: [GoldenTestSpec]
-realisticTestList = map (addTestDirectory "./examples/network") [
+realisticTestList = map (addTestDirectory ("examples" </> "network")) [
   --("shortestPath",     [Verifier VNNLib]),
-  ("andGate",          [Verifier VNNLib]),
-  ("acasXu/property6", [Verifier VNNLib]),
-  ("monotonicity",     [Verifier VNNLib, ITP Agda]),
-  ("increasing",       [Verifier VNNLib, ITP Agda])
+  ("andGate",                [Verifier VNNLib]),
+  ("acasXu" </> "property6", [Verifier VNNLib]),
+  ("monotonicity",           [Verifier VNNLib, ITP Agda]),
+  ("increasing",             [Verifier VNNLib, ITP Agda])
   ]
 
 simpleTestList :: [GoldenTestSpec]
-simpleTestList = map (addTestDirectory "./examples/simple")
+simpleTestList = map (addTestDirectory ("examples" </> "simple"))
   [ --("quantifier",     [Verifier SMTLib])
     ("quantifierIn",   [Verifier SMTLib, ITP Agda])
   , ("let",            [Verifier SMTLib, ITP Agda])
   ]
 
 miscTestList :: [GoldenTestSpec]
-miscTestList = map (addTestDirectory "./examples/misc")
+miscTestList = map (addTestDirectory ("examples" </> "misc"))
   [ --("dependent", [ITP (Vehicle Frontend)])
   ]
 
@@ -84,16 +85,31 @@ makeIndividualTest folderPath name target = testWithCleanup
   inputFile  = basePath <.> ".vcl"
   outputFile = basePath <> "-temp-output" <.> extension
   goldenFile = basePath <> "-output" <.> extension
-  action     = runTest inputFile outputFile target
+  readGolden = T.readFile goldenFile
+  readOutput = do runTest inputFile outputFile target; T.readFile outputFile
+  updateGolden = T.writeFile goldenFile
 
-  test = goldenVsFileDiff testName diffCommand goldenFile outputFile action
-  testWithCleanup = cleanupTestFile outputFile test
 
-diffCommand :: FilePath -> FilePath -> [String]
-diffCommand ref new = ["diff", "--color=always", ref, new]
+  test = goldenTest testName readGolden readOutput diffCommand updateGolden
+  testWithCleanup = cleanupOutputFile outputFile test
 
-cleanupTestFile :: FilePath -> TestTree -> TestTree
-cleanupTestFile testFile test = withResource (return ()) (const cleanup) (const test)
+diffCommand :: Text -> Text -> IO (Maybe String)
+diffCommand golden output = do
+  let goldenLines = T.lines golden
+  let outputLines = T.lines output
+  let diff = getDiff goldenLines outputLines 
+  if all isBoth diff
+    then return Nothing 
+    else return (Just "output differs")
+  
+
+isBoth :: Diff a -> Bool 
+isBoth (Both a b) = True 
+isBoth _ = False 
+
+
+cleanupOutputFile :: FilePath -> TestTree -> TestTree
+cleanupOutputFile testFile test = withResource (return ()) (const cleanup) (const test)
   where
     cleanup = removeFile testFile `catch` handleExists
 

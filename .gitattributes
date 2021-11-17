@@ -1,0 +1,2 @@
+#Automatically converts line endings to those for your system when you check out and converts them to Linux line endings when you commit
+* text=auto
