@@ -28,7 +28,7 @@ falsey : ℝ → Set
 falsey x = x ℝ.≤ 1 ℚ./ 2
 
 validInput : Tensor ℝ (2 ∷ []) → Set
-validInput x = List.All (λ (i : ℕ) → 0 ℝ.≤ Tensor.lookup x i × Tensor.lookup x i ℝ.≤ 1) (0 ∷ (1 ∷ []) : List ℕ)
+validInput x = List.All (λ (i : ℕ) → 0 ℝ.≤ x i × x i ℝ.≤ 1) (0 ∷ (1 ∷ []) : List ℕ)
 
 correctOutput : Tensor ℝ (2 ∷ []) → Set
 correctOutput x = let y = andGate x in (truthy x 0 × truthy x 1 → truthy y 0) × ((truthy x 0 × falsey x 1 → falsey y 0) × ((falsey x 0 × truthy x 1 → falsey y 0) × (falsey x 0 × falsey x 1 → falsey y 0)))

@@ -502,7 +502,7 @@ compileNumOrder order nt bt = annotateInfixOp2 dependencies 4 opBraces qualifier
 
 -- TODO implement this via proof by reflection
 compileAt :: MonadAgdaCompile m => OutputExpr -> [OutputExpr] -> m Code
-compileAt tDims args@[tensorExpr, indexExpr] = case exprHead indexExpr of
+compileAt tDims [tensorExpr, indexExpr] = case exprHead indexExpr of
   Literal indexAnn (LNat index) -> case tensorSize tDims of
     Left err -> throwError $ ContainerDimensionError (provenanceOf indexAnn) err
     Right size ->
@@ -514,8 +514,7 @@ compileAt tDims args@[tensorExpr, indexExpr] = case exprHead indexExpr of
           return $ tensorDoc <+> pretty index
   _ -> do
     let deps     = containerDependencies Tensor
-    let modifier = containerQualifier Tensor
-    annotateApp deps (modifier <> "." <> "lookup") <$> traverse compile args
+    annotateApp deps <$> compile tensorExpr <*> traverse compile [indexExpr]
 compileAt _tDims args = unexpectedArgsError (Builtin emptyUserAnn At) args ["tensor", "index"]
 
 compileEquality :: MonadAgdaCompile m => OutputExpr -> BooleanType -> [Code] -> m Code
