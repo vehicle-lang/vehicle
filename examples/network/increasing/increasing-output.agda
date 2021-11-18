@@ -17,7 +17,7 @@ f = evaluate record
   ; networkUUID  = NETWORK_UUID
   }
 
-increasing : ∀ (x : Tensor ℝ (1 ∷ [])) → let y = f (x) in x 0 ℝ.≤ y 0
+increasing : ∀ (x : Tensor ℝ (1 ∷ [])) → let y = f x in x 0 ℝ.≤ y 0
 increasing = checkProperty record
   { databasePath = DATABASE_PATH
   ; propertyUUID = ????

@@ -135,8 +135,11 @@ build: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND) | require-haskell
 
 .PHONY: test
 test: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND) | require-haskell
-	@$(CABAL) test
+	@$(CABAL) test --test-show-details=always --test-options="--color=always"
 
+.PHONY: test-accept
+test-accept: $(BNFC_TARGETS_CORE) $(BNFC_TARGETS_FRONTEND) | require-haskell
+	@$(CABAL) test --test-show-details=always --test-options="--accept --color=always"
 
 #################################################################################
 # Test Vehicle

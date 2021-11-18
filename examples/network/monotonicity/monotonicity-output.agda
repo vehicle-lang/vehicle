@@ -17,8 +17,8 @@ f = evaluate record
   ; networkUUID  = NETWORK_UUID
   }
 
-monotonic : ∀ (x1 : Tensor ℝ (1 ∷ [])) → ∀ (x2 : Tensor ℝ (1 ∷ [])) → let y1 = f (x1)
-y2 = f (x2) in x1 0 ℝ.≤ x2 0 → y1 0 ℝ.≤ y2 0
+monotonic : ∀ (x1 : Tensor ℝ (1 ∷ [])) → ∀ (x2 : Tensor ℝ (1 ∷ [])) → let y1 = f x1
+y2 = f x2 in x1 0 ℝ.≤ x2 0 → y1 0 ℝ.≤ y2 0
 monotonic = checkProperty record
   { databasePath = DATABASE_PATH
   ; propertyUUID = ????

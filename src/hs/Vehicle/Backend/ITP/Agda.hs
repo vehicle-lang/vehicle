@@ -190,6 +190,16 @@ bracketIfRequired parentPrecedence expr = case docAnn expr of
     | exprPrecedence <= parentPrecedence -> parens expr
   _                                      -> expr
 
+argBrackets :: Visibility -> Code -> Code
+argBrackets Explicit = id
+argBrackets Implicit = braces
+argBrackets Instance = braces . braces
+
+binderBrackets :: Visibility -> Code -> Code
+binderBrackets Explicit = parens
+binderBrackets Implicit = braces
+binderBrackets Instance = braces . braces
+
 boolBraces :: Code -> Code
 boolBraces c = "⌊" <+> c <+> "⌋"
 
@@ -250,8 +260,10 @@ instance CompileToAgda OutputDecl where
     DefFun _ann n t e -> do
       let (binders, body) = foldLam e
       if isProperty t
-        then do compileProperty (pretty n) <$> compile e
-        else do compileFunDef   (pretty n) <$> compile t <*> traverse compile binders <*> compile body
+        then compileProperty (pretty n) <$> compile e
+        else do
+          let binders' = traverse (compileBinder True) binders
+          compileFunDef (pretty n) <$> compile t <*> binders' <*> compile body
 
 instance CompileToAgda OutputExpr where
   compile expr = do
@@ -270,8 +282,7 @@ instance CompileToAgda OutputExpr where
         Right (input, output) ->
           annotateInfixOp2 [] minPrecedence id Nothing "→" <$> traverse compile [input, output]
 
-      Ann _ann e t -> do
-        annotateInfixOp2 [] minPrecedence id Nothing ":" <$> traverse compile [e, t]
+      Ann _ann e t -> compileAnn <$> compile e <*> compile t
 
       Let{} -> do
         let (boundExprs, body) = foldLet expr
@@ -281,7 +292,7 @@ instance CompileToAgda OutputExpr where
 
       Lam{} -> do
         let (binders, body) = foldLam expr
-        cBinders <- traverse compile binders
+        cBinders <- traverse (compileBinder False) binders
         cBody    <- compile body
         return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> "→" <+> cBody)
 
@@ -295,7 +306,7 @@ instance CompileToAgda OutputExpr where
         _            -> do
           cFun   <- compile fun
           cArgs  <- traverse compile args
-          return $ cFun <+> hsep cArgs
+          return $ annotateApp [] cFun (NonEmpty.toList cArgs)
 
       Seq _ _ -> developerError "when compiling to Agda, Seqs should have been caught in App case"
 
@@ -308,15 +319,8 @@ instance CompileToAgda (LetBinder OutputBinding OutputVar OutputAnn) where
     cExpr <- compile expr
     return $ binderName <+> "=" <+> cExpr
 
-instance CompileToAgda OutputBinder where
-  compile binder = do
-    binderType <- compile (typeOf binder)
-    let binderName     = pretty (nameOf binder :: OutputBinding)
-    let binderBrackets = visBrackets (visibilityOf binder)
-    return $ binderBrackets (binderName <+> ":" <+> binderType)
-
 instance CompileToAgda OutputArg where
-  compile arg = visBrackets (visibilityOf arg) <$> compile (argExpr arg)
+  compile arg = argBrackets (visibilityOf arg) <$> compile (argExpr arg)
 
 instance CompileToAgda BooleanType where
   compile t = return $ case t of
@@ -325,6 +329,15 @@ instance CompileToAgda BooleanType where
 
 instance CompileToAgda NumericType where
   compile t = return $ annotateConstant (numericDependencies t) (numericQualifier t)
+
+compileBinder :: MonadAgdaCompile m => Bool -> OutputBinder -> m Code
+compileBinder topLevel binder = do
+    let binderName     = pretty (nameOf binder :: OutputBinding)
+    if topLevel
+      then return binderName
+      else do
+        binderType <- compile (typeOf binder)
+        return $ binderBrackets (visibilityOf binder) (compileAnn binderName binderType)
 
 compileBuiltin :: MonadAgdaCompile m => OutputAnn -> Builtin -> [OutputExpr] -> m Code
 compileBuiltin ann op args = case (op, args) of
@@ -362,9 +375,12 @@ compileBuiltin ann op args = case (op, args) of
   _ -> developerError $ "unexpected application of builtin found during compilation to Agda:" <+>
                         squotes (pretty op) <+> "applied to" <+> prettyFriendly args
 
+compileAnn :: Code -> Code -> Code
+compileAnn e t = annotateInfixOp2 [] minPrecedence id Nothing ":" [e, t]
+
 compileTypeLevelQuantifier :: MonadAgdaCompile m => Quantifier -> [OutputBinder] -> OutputExpr -> m Code
 compileTypeLevelQuantifier q binders body = do
-  cBinders  <- traverse compile binders
+  cBinders  <- traverse (compileBinder False) binders
   cBody     <- compile body
   let quant = if q == All then "∀" else "∃"
   return $ quant <+> hsep cBinders <+> "→" <+> cBody

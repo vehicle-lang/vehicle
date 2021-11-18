@@ -20,11 +20,6 @@ instance Pretty Visibility where
     Implicit -> "Implicit"
     Instance -> "Instance"
 
-visBrackets :: Visibility -> Doc a -> Doc a
-visBrackets Explicit = parens
-visBrackets Implicit = braces
-visBrackets Instance = braces . braces
-
 visProv :: Visibility -> Provenance -> Provenance
 visProv Explicit = id
 visProv Implicit = expandProvenance (1,1)

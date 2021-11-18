@@ -35,7 +35,10 @@ The easiest way is:
 
 * We currently have two types of tests for Vehicle.
 
-* Running `make test` will build Vehicle and run the entire test suite.
+* Running `make test` will run the entire test suite.
+
+* Running `make test-accept` will run the entire test suite adn accept all of the changed output files.
+  *Warning*: Only run this if you are okay with the changes to the output!
 
 * Running `cabal test --test-option="-p /X/"` will only run tests
   with `X` in their name. If you only want to run a test for a particular backend `Y`

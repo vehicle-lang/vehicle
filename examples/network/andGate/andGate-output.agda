@@ -22,18 +22,18 @@ andGate = evaluate record
   }
 
 truthy : ℝ → Set
-truthy (x : ℝ) = x ℝ.≥ 1 ℚ./ 2
+truthy x = x ℝ.≥ 1 ℚ./ 2
 
 falsey : ℝ → Set
-falsey (x : ℝ) = x ℝ.≤ 1 ℚ./ 2
+falsey x = x ℝ.≤ 1 ℚ./ 2
 
 validInput : Tensor ℝ (2 ∷ []) → Set
-validInput (x : Tensor ℝ (2 ∷ [])) = List.All (λ (i : ℕ) → 0 ℝ.≤ Tensor.lookup x i × Tensor.lookup x i ℝ.≤ 1) (0 ∷ (1 ∷ []) : List ℕ)
+validInput x = List.All (λ (i : ℕ) → 0 ℝ.≤ Tensor.lookup x i × Tensor.lookup x i ℝ.≤ 1) (0 ∷ (1 ∷ []) : List ℕ)
 
 correctOutput : Tensor ℝ (2 ∷ []) → Set
-correctOutput (x : Tensor ℝ (2 ∷ [])) = let y = andGate (x) in (truthy (x 0) × truthy (x 1) → truthy (y 0)) × ((truthy (x 0) × falsey (x 1) → falsey (y 0)) × ((falsey (x 0) × truthy (x 1) → falsey (y 0)) × (falsey (x 0) × falsey (x 1) → falsey (y 0))))
+correctOutput x = let y = andGate x in (truthy x 0 × truthy x 1 → truthy y 0) × ((truthy x 0 × falsey x 1 → falsey y 0) × ((falsey x 0 × truthy x 1 → falsey y 0) × (falsey x 0 × falsey x 1 → falsey y 0)))
 
-correct : ∀ (x : Tensor ℝ (2 ∷ [])) → validInput (x) → correctOutput (x)
+correct : ∀ (x : Tensor ℝ (2 ∷ [])) → validInput x → correctOutput x
 correct = checkProperty record
   { databasePath = DATABASE_PATH
   ; propertyUUID = ????
