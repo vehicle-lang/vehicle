@@ -273,9 +273,8 @@ instance CompileToAgda OutputExpr where
       Meta{}     -> developerError "Meta-variables should have been removed during type-checking"
       PrimDict{} -> developerError "Primitive dictionaries should never be compiled"
 
+      Type l      -> return $ compileType l
       Var _ann n  -> return $ annotateConstant [] (pretty n)
-
-      Type l -> return $ annotateApp [] "Set" [pretty l]
 
       Pi ann binder result -> case foldPi ann binder result of
         Left (binders, body)  -> compileTypeLevelQuantifier All binders body
@@ -324,11 +323,15 @@ instance CompileToAgda OutputArg where
 
 instance CompileToAgda BooleanType where
   compile t = return $ case t of
-    Prop -> annotateConstant []         "Set"
+    Prop -> compileType 0
     Bool -> annotateConstant [DataBool] "Bool"
 
 instance CompileToAgda NumericType where
   compile t = return $ annotateConstant (numericDependencies t) (numericQualifier t)
+
+compileType :: UniverseLevel -> Code
+compileType 0 = "Set"
+compileType l = annotateApp [] "Set" [pretty l]
 
 compileBinder :: MonadAgdaCompile m => Bool -> OutputBinder -> m Code
 compileBinder topLevel binder = do

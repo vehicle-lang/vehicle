@@ -34,7 +34,7 @@ realisticTestList :: [GoldenTestSpec]
 realisticTestList = map (addTestDirectory ("examples" </> "network")) [
   --("shortestPath",     [Verifier VNNLib]),
   ("andGate",                [Verifier VNNLib, ITP Agda]),
-  ("acasXu" </> "property6", [Verifier VNNLib]),
+  ("acasXu" </> "property6", [Verifier VNNLib, ITP Agda]),
   ("monotonicity",           [Verifier VNNLib, ITP Agda]),
   ("increasing",             [Verifier VNNLib, ITP Agda])
   ]
