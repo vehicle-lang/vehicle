@@ -11,14 +11,18 @@ open import Data.List
 
 module MyTestModule where
 
+private
+  VEHICLE_PROJECT_FILE = TODO/vehicle/path
+
 f : Tensor ℝ (1 ∷ []) → Tensor ℝ (1 ∷ [])
 f = evaluate record
-  { databasePath = DATABASE_PATH
-  ; networkUUID  = NETWORK_UUID
+  { projectFile = VEHICLE_PROJECT_FILE
+  ; networkUUID = NETWORK_UUID
   }
 
-increasing : ∀ (x : Tensor ℝ (1 ∷ [])) → let y = f x in x 0 ℝ.≤ y 0
-increasing = checkProperty record
-  { databasePath = DATABASE_PATH
-  ; propertyUUID = ????
-  }
+abstract
+  increasing : ∀ (x : Tensor ℝ (1 ∷ [])) → let y = f x in x 0 ℝ.≤ y 0
+  increasing = checkProperty record
+    { projectFile  = VEHICLE_PROJECT_FILE
+    ; propertyUUID = ????
+    }

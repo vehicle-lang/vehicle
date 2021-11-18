@@ -12,11 +12,15 @@ open import Data.List.Relation.Unary.All as List
 
 module MyTestModule where
 
+private
+  VEHICLE_PROJECT_FILE = TODO/vehicle/path
+
 emptyList : List ℤ
 emptyList = []
 
-empty : List.All (λ (x : ℤ) → ⊤) emptyList
-empty = checkProperty record
-  { databasePath = DATABASE_PATH
-  ; propertyUUID = ????
-  }
+abstract
+  empty : List.All (λ (x : ℤ) → ⊤) emptyList
+  empty = checkProperty record
+    { projectFile  = VEHICLE_PROJECT_FILE
+    ; propertyUUID = ????
+    }

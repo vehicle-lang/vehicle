@@ -15,10 +15,13 @@ open import Data.List.Relation.Unary.All as List
 
 module MyTestModule where
 
+private
+  VEHICLE_PROJECT_FILE = TODO/vehicle/path
+
 andGate : Tensor ℝ (2 ∷ []) → Tensor ℝ (1 ∷ [])
 andGate = evaluate record
-  { databasePath = DATABASE_PATH
-  ; networkUUID  = NETWORK_UUID
+  { projectFile = VEHICLE_PROJECT_FILE
+  ; networkUUID = NETWORK_UUID
   }
 
 truthy : ℝ → Set
@@ -33,8 +36,9 @@ validInput x = List.All (λ (i : ℕ) → 0 ℝ.≤ x i × x i ℝ.≤ 1) (0 ∷
 correctOutput : Tensor ℝ (2 ∷ []) → Set
 correctOutput x = let y = andGate x in (truthy x 0 × truthy x 1 → truthy y 0) × ((truthy x 0 × falsey x 1 → falsey y 0) × ((falsey x 0 × truthy x 1 → falsey y 0) × (falsey x 0 × falsey x 1 → falsey y 0)))
 
-correct : ∀ (x : Tensor ℝ (2 ∷ [])) → validInput x → correctOutput x
-correct = checkProperty record
-  { databasePath = DATABASE_PATH
-  ; propertyUUID = ????
-  }
+abstract
+  correct : ∀ (x : Tensor ℝ (2 ∷ [])) → validInput x → correctOutput x
+  correct = checkProperty record
+    { projectFile  = VEHICLE_PROJECT_FILE
+    ; propertyUUID = ????
+    }

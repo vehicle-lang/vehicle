@@ -16,6 +16,9 @@ open import Data.List.Relation.Unary.All as List
 
 module MyTestModule where
 
+private
+  VEHICLE_PROJECT_FILE = TODO/vehicle/path
+
 pi : ℝ
 pi = 392699 ℚ./ 125000
 
@@ -27,8 +30,8 @@ OutputVector = Tensor ℝ (5 ∷ [])
 
 acasXu : InputVector → OutputVector
 acasXu = evaluate record
-  { databasePath = DATABASE_PATH
-  ; networkUUID  = NETWORK_UUID
+  { projectFile = VEHICLE_PROJECT_FILE
+  ; networkUUID = NETWORK_UUID
   }
 
 distanceToIntruder : InputVector → ℝ
@@ -55,8 +58,9 @@ intruderFarAway x = (ℤ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ
 advisesClearOfConflict : InputVector → Set
 advisesClearOfConflict x = let y = acasXu x in List.All (λ (i : ℕ) → y 0 ℝ.≥ y i) (0 ∷ (1 ∷ (2 ∷ (3 ∷ (4 ∷ [])))) : List ℕ)
 
-property6 : ∀ (x : Tensor ℝ (5 ∷ [])) → intruderFarAway x → advisesClearOfConflict x
-property6 = checkProperty record
-  { databasePath = DATABASE_PATH
-  ; propertyUUID = ????
-  }
+abstract
+  property6 : ∀ (x : Tensor ℝ (5 ∷ [])) → intruderFarAway x → advisesClearOfConflict x
+  property6 = checkProperty record
+    { projectFile  = VEHICLE_PROJECT_FILE
+    ; propertyUUID = ????
+    }

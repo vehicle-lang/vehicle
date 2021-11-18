@@ -7,7 +7,7 @@ module Vehicle.Backend.ITP.Agda
 
 import GHC.Real (numerator, denominator)
 import Control.Monad.Except (MonadError(..))
-import Control.Monad.Reader (MonadReader(..), runReaderT)
+import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (Text)
 import Data.Foldable (fold)
@@ -26,13 +26,44 @@ compileToAgda :: (MonadLogger m, MonadError CompileError m)
               => AgdaOptions -> OutputProg -> m (Doc a)
 compileToAgda options prog = runReaderT (compileProgramToAgda prog) options
 
+compileProgramToAgda :: MonadAgdaCompile m
+                     => OutputProg
+                     -> m (Doc a)
+compileProgramToAgda program = do
+  programDoc <- compile program
+  let programStream = layoutPretty defaultLayoutOptions programDoc
+  -- Collects dependencies by first discarding precedence info and then folding using Set Monoid
+  let progamDependencies = fold (reAnnotateS fst programStream)
+  projectFile <- compileProjectFile
+  options <- ask
+  return $ unAnnotate ((vsep2 :: [Code] -> Code)
+    [ importStatements progamDependencies
+    , moduleHeader (modulePath options)
+    , projectFile
+    , programDoc
+    ])
+
 --------------------------------------------------------------------------------
 -- Agda-specific options
 
 data AgdaOptions = AgdaOptions
-  { modulePath  :: [Text]
-  , vehicleUIDs :: Map.Map Identifier Text
+  { vehicleProjectFile :: FilePath
+  , modulePath         :: [Text]
+  , vehicleUIDs        :: Map.Map Identifier Text
   }
+
+--------------------------------------------------------------------------------
+-- Debug functions
+
+logEntry :: MonadAgdaCompile m => OutputExpr -> m ()
+logEntry e = do
+  incrCallDepth
+  logDebug $ "compile-entry" <+> prettyVerbose e
+
+logExit :: MonadAgdaCompile m => Code -> m ()
+logExit e = do
+  logDebug $ "compile-exit " <+> e
+  decrCallDepth
 
 --------------------------------------------------------------------------------
 -- Modules
@@ -128,6 +159,24 @@ numericDependencies = \case
   Rat  -> [DataRat]
   Real -> [DataReal]
 
+indentCode :: Code -> Code
+indentCode = indent 2
+
+scopeCode :: Code -> Code -> Code
+scopeCode keyword code = keyword <> line <> indentCode code
+
+--------------------------------------------------------------------------------
+-- Vehicle meta-code
+
+projectFileVariable :: Code
+projectFileVariable = "VEHICLE_PROJECT_FILE"
+
+compileProjectFile :: MonadAgdaCompile m => m Code
+compileProjectFile = do
+  projectFile <- asks vehicleProjectFile
+  return $ scopeCode "private" $
+    projectFileVariable <+> "=" <+> pretty projectFile
+
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
 
@@ -203,48 +252,20 @@ binderBrackets Instance = braces . braces
 boolBraces :: Code -> Code
 boolBraces c = "⌊" <+> c <+> "⌋"
 
------------------
--- Compilation --
------------------
+arrow :: Code
+arrow = "→" -- <> softline'
+
+-------------------------
+-- Program Compilation --
+-------------------------
 
 type MonadAgdaCompile m = MonadCompile AgdaOptions m
-
-compileProgramToAgda :: MonadAgdaCompile m
-                     => OutputProg
-                     -> m (Doc a)
-compileProgramToAgda program = do
-  programDoc <- compile program
-  let programStream = layoutPretty defaultLayoutOptions programDoc
-  -- Collects dependencies by first discarding precedence info and then folding using Set Monoid
-  let progamDependencies = fold (reAnnotateS fst programStream)
-  options <- ask
-  return $ unAnnotate ((vsep2 :: [Code] -> Code)
-    [ importStatements progamDependencies
-    , moduleHeader (modulePath options)
-    , programDoc
-    ])
 
 class CompileToAgda a where
   compile
     :: MonadAgdaCompile m
     => a
     -> m Code
-
---------------------------------------------------------------------------------
--- Debug functions
-
-logEntry :: MonadAgdaCompile m => OutputExpr -> m ()
-logEntry e = do
-  incrCallDepth
-  logDebug $ "compile-entry" <+> prettyVerbose e
-
-logExit :: MonadAgdaCompile m => Code -> m ()
-logExit e = do
-  logDebug $ "compile-exit " <+> e
-  decrCallDepth
-
---------------------------------------------------------------------------------
--- Compilation of programs
 
 instance CompileToAgda OutputProg where
   compile (Main ds) = do
@@ -279,7 +300,7 @@ instance CompileToAgda OutputExpr where
       Pi ann binder result -> case foldPi ann binder result of
         Left (binders, body)  -> compileTypeLevelQuantifier All binders body
         Right (input, output) ->
-          annotateInfixOp2 [] minPrecedence id Nothing "→" <$> traverse compile [input, output]
+          annotateInfixOp2 [] minPrecedence id Nothing arrow <$> traverse compile [input, output]
 
       Ann _ann e t -> compileAnn <$> compile e <*> compile t
 
@@ -287,13 +308,13 @@ instance CompileToAgda OutputExpr where
         let (boundExprs, body) = foldLet expr
         cBoundExprs <- traverse compile boundExprs
         cBody       <- compile body
-        return $ "let" <+> vsep cBoundExprs <+> "in" <+> cBody
+        return $ "let" <+> vsep (punctuate ";" cBoundExprs) <+> "in" <+> cBody
 
       Lam{} -> do
         let (binders, body) = foldLam expr
         cBinders <- traverse (compileBinder False) binders
         cBody    <- compile body
-        return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> "→" <+> cBody)
+        return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> arrow <+> cBody)
 
       Builtin ann op -> compileBuiltin ann op []
       Literal ann op -> compileLiteral ann op []
@@ -386,7 +407,7 @@ compileTypeLevelQuantifier q binders body = do
   cBinders  <- traverse (compileBinder False) binders
   cBody     <- compile body
   let quant = if q == All then "∀" else "∃"
-  return $ quant <+> hsep cBinders <+> "→" <+> cBody
+  return $ quant <+> hsep cBinders <+> arrow <+> cBody
 
 compileContainerTypeLevelQuantifier :: MonadAgdaCompile m => OutputExpr -> Quantifier -> [OutputExpr] -> m Code
 compileContainerTypeLevelQuantifier tCont q args = do
@@ -459,12 +480,12 @@ compileBoolOp2 :: BooleanOp2 -> BooleanType -> [Code] -> Code
 compileBoolOp2 op2 t = annotateInfixOp2 dependencies precedence id Nothing opDoc
   where
     (opDoc, precedence, dependencies) = case (op2, t) of
-      (Impl, Bool) -> ("⇒", 4,  [AISECUtils])
       (And , Bool) -> ("∧", 6,  [DataBool])
       (Or  , Bool) -> ("∨", 5,  [DataBool])
-      (Impl, Prop) -> ("→", minPrecedence, [])
+      (Impl, Bool) -> ("⇒", 4,  [AISECUtils])
       (And , Prop) -> ("×", 2,  [DataProduct])
       (Or  , Prop) -> ("⊎", 1,  [DataSum])
+      (Impl, Prop) -> (arrow, minPrecedence, [])
 
 -- |Compiling numeric unary operations
 compileNeg :: NumericType -> [Code] -> Code
@@ -541,26 +562,26 @@ compileInequality tElem  Bool args = do
 
 compileFunDef :: Code -> Code -> [Code] -> Code -> Code
 compileFunDef n t ns e =
-  n <+> ":" <+> t <> hardline <>
+  n <+> ":" <+> align t <> line <>
   n <+> (if null ns then mempty else hsep ns <> " ") <> "=" <+> e
 
 -- |Compile a `network` declaration
 compileNetwork :: Code -> Code -> Code
 compileNetwork networkName networkType =
-  networkName <+> ":" <+> networkType       <> hardline <>
-  networkName <+> "= evaluate record"       <> hardline <>
-    indent 2 (
-    "{ databasePath = DATABASE_PATH" <> hardline <>
-    "; networkUUID  = NETWORK_UUID"  <> hardline <>
+  networkName <+> ":" <+> align networkType   <> line <>
+  networkName <+> "= evaluate record"         <> line <>
+    indentCode (
+    "{ projectFile =" <+> projectFileVariable <> line <>
+    "; networkUUID = NETWORK_UUID"            <> line <>
     "}")
 
 compileProperty :: Code -> Code -> Code
-compileProperty propertyName propertyBody =
-  propertyName <+> ":" <+> propertyBody      <> hardline <>
-  propertyName <+> "= checkProperty record"  <> hardline <>
-    indent 2 (
-    "{ databasePath = DATABASE_PATH" <> hardline <>
-    "; propertyUUID = ????"          <> hardline <>
+compileProperty propertyName propertyBody = scopeCode "abstract" $
+  propertyName <+> ":" <+> align propertyBody  <> line <>
+  propertyName <+> "= checkProperty record"    <> line <>
+    indentCode (
+    "{ projectFile  =" <+> projectFileVariable <> line <>
+    "; propertyUUID = ????"                    <> line <>
     "}")
 
 containerDependencies :: ContainerType -> [Dependency]

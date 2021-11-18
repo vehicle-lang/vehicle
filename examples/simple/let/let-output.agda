@@ -9,8 +9,12 @@ open import Data.Unit
 
 module MyTestModule where
 
-e1 : let x = ⊤ in x
-e1 = checkProperty record
-  { databasePath = DATABASE_PATH
-  ; propertyUUID = ????
-  }
+private
+  VEHICLE_PROJECT_FILE = TODO/vehicle/path
+
+abstract
+  e1 : let x = ⊤ in x
+  e1 = checkProperty record
+    { projectFile  = VEHICLE_PROJECT_FILE
+    ; propertyUUID = ????
+    }

@@ -196,7 +196,7 @@ run opts@Options{..} = do
         Agda -> do
           let namedProg    = V.runSupplyNames typedCoreProg
           let descopedProg = V.runDescopeProg namedProg
-          let agdaOptions = AgdaOptions ["MyTestModule"] mempty
+          let agdaOptions = AgdaOptions "TODO/vehicle/path" ["MyTestModule"] mempty
           agdaDoc <- fromLoggedEitherIO logFile $ compileToAgda agdaOptions descopedProg
           writeResultToFile opts target agdaDoc
 
