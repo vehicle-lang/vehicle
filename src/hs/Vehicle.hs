@@ -11,6 +11,7 @@ module Vehicle
   , defaultOptions
   , parseAndRun
   , run
+  , readFileOrStdin
   ) where
 
 import Paths_vehicle (version)
@@ -20,7 +21,9 @@ import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Char (toLower)
 import Data.Text (Text)
 import Data.Text.IO qualified as T
+import Data.ByteString qualified as B
 import Data.Version (Version, makeVersion)
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import System.Environment (getArgs)
 import System.Exit (exitSuccess, exitFailure)
 import System.Console.GetOpt
@@ -222,7 +225,7 @@ fromLoggedIO Nothing        logger = return $ discardLogger logger
 fromLoggedIO (Just logFile) logger = flushLogs logFile logger
 
 readFileOrStdin :: Maybe FilePath -> IO Text
-readFileOrStdin (Just file) = T.readFile file
+readFileOrStdin (Just file) = decodeUtf8 <$> B.readFile file
 readFileOrStdin Nothing     = T.getContents
 
 writeResultToFile :: Options -> OutputTarget -> Doc a -> IO ()
@@ -231,7 +234,7 @@ writeResultToFile Options{..} target doc = do
   let outputText = layoutAsText (fileHeader <> line <> line <> doc)
   case outputFile of
     Nothing             -> T.putStrLn outputText
-    Just outputFilePath -> T.writeFile outputFilePath outputText
+    Just outputFilePath -> B.writeFile outputFilePath (encodeUtf8 outputText)
 
 toSMTLib :: Options -> V.CheckedProg -> IO ()
 toSMTLib opts@Options{..} prog = do

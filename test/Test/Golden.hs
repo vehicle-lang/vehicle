@@ -87,8 +87,8 @@ makeIndividualTest folderPath name target = testWithCleanup
   inputFile  = basePath <.> ".vcl"
   outputFile = basePath <> "-temp-output" <.> extension
   goldenFile = basePath <> "-output" <.> extension
-  readGolden = T.readFile goldenFile
-  readOutput = do runTest inputFile outputFile target; T.readFile outputFile
+  readGolden = readFileOrStdin (Just goldenFile)
+  readOutput = do runTest inputFile outputFile target; readFileOrStdin (Just outputFile)
   updateGolden = T.writeFile goldenFile
 
   test = goldenTest testName readGolden readOutput diffCommand updateGolden
