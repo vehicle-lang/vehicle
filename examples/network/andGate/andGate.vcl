@@ -19,6 +19,6 @@ correctOutput x =
     (falsey (x!0) and truthy (x!1) => falsey (y!0)) and
     (falsey (x!0) and falsey (x!1) => falsey (y!0))
 
-correct : Prop
-correct = every x . validInput x => correctOutput x
+andGateCorrect : Prop
+andGateCorrect = every x . validInput x => correctOutput x
 

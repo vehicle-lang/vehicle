@@ -14,6 +14,7 @@ import Data.Foldable (fold)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Map as Map (Map)
+import Data.Maybe (fromMaybe)
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 
 import Vehicle.Prelude
@@ -190,6 +191,9 @@ minPrecedence = -1000
 maxPrecedence :: Precedence
 maxPrecedence = 1000
 
+getPrecedence :: Code -> Precedence
+getPrecedence e = fromMaybe maxPrecedence (fmap snd (docAnn e))
+
 annotateConstant :: [Dependency] -> Code -> Code
 annotateConstant dependencies = annotate (Set.fromList dependencies, maxPrecedence)
 
@@ -235,11 +239,12 @@ annotateInfixOp2 dependencies precedence opBraces qualifier op args = result
                                    "but found the following arguments:" <+> list args
     result = annotate (Set.fromList dependencies, precedence) (opBraces doc)
 
+
 bracketIfRequired :: Precedence -> Code -> Code
-bracketIfRequired parentPrecedence expr = case docAnn expr of
-  Just (_ , exprPrecedence)
-    | exprPrecedence <= parentPrecedence -> parens expr
-  _                                      -> expr
+bracketIfRequired parentPrecedence expr =
+  if getPrecedence expr <= parentPrecedence
+    then parens expr
+    else expr
 
 argBrackets :: Visibility -> Code -> Code
 argBrackets Explicit = id
@@ -542,10 +547,9 @@ compileAt tDims [tensorExpr, indexExpr] = case exprHead indexExpr of
           TensorIndexOutOfBounds index size
         else do
           tensorDoc <- compile tensorExpr
-          return $ tensorDoc <+> pretty index
+          return $ annotateApp [] tensorDoc [pretty index]
   _ -> do
-    let deps     = containerDependencies Tensor
-    annotateApp deps <$> compile tensorExpr <*> traverse compile [indexExpr]
+    annotateApp [] <$> compile tensorExpr <*> traverse compile [indexExpr]
 compileAt _tDims args = unexpectedArgsError (Builtin emptyUserAnn At) args ["tensor", "index"]
 
 compileEquality :: MonadAgdaCompile m => OutputExpr -> BooleanType -> [Code] -> m Code
