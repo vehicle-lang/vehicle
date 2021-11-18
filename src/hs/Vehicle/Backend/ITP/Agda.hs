@@ -331,7 +331,7 @@ instance CompileToAgda NumericType where
 
 compileType :: UniverseLevel -> Code
 compileType 0 = "Set"
-compileType l = annotateApp [] "Set" [pretty l]
+compileType l = annotateConstant [] ("Set" <> pretty l)
 
 compileBinder :: MonadAgdaCompile m => Bool -> OutputBinder -> m Code
 compileBinder topLevel binder = do

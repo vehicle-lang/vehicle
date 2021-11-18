@@ -175,6 +175,7 @@ endif
 .PHONY: require-bnfc
 require-bnfc:
 ifeq (,$(wildcard $(shell which bnfc)))
+	@echo ""
 	@echo "Vehicle requires the BNF Converter"
 	@echo "See: https://bnfc.digitalgrammars.com/"
 	@echo ""
@@ -187,6 +188,7 @@ endif
 .PHONY: require-ormolu
 require-ormolu:
 ifeq (,$(wildcard $(shell which ormolu)))
+	@echo ""
 	@echo "Vehicle requires the Ormolu Haskell formatter"
 	@echo "See: https://github.com/tweag/ormolu"
 	@echo ""

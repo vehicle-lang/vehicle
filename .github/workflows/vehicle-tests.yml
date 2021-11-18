@@ -9,7 +9,7 @@ on:
       - dev
 
 env:
-  GHC_VERSION: 8.10.3
+  GHC_VERSION: 9.0.1
 
 jobs:
   install:
