@@ -3,7 +3,6 @@
 module Vehicle.Backend.ITP.Core where
 
 import Control.Monad.Except (MonadError(..), Except, runExcept)
-import Control.Monad.Reader (MonadReader, MonadReader(..), ReaderT(..))
 import Data.Void (Void)
 
 import Vehicle.Prelude
@@ -28,10 +27,10 @@ instance Pretty Backend where
 -- Control
 
 -- |Constraint for the monad stack used by the Compiler.
-type MonadCompile options m =
-  (MonadLogger m, MonadError CompileError m, MonadReader options m)
-
-type Compile a options = ReaderT options (Except CompileError) a
+type MonadCompile m =
+  ( MonadLogger m
+  , MonadError CompileError m
+  )
 
 -- * Type of errors that can be thrown during compilation
 data CompileError

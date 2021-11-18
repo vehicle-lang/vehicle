@@ -76,6 +76,7 @@ library
                       , Vehicle.Language.Type.Unify
 
                       , Vehicle.Backend.ITP.Core
+                      , Vehicle.Backend.ITP.Agda.Preprocess
                       , Vehicle.Backend.Verifier.Core
 
                       -- Generated files, would be nice to split these out

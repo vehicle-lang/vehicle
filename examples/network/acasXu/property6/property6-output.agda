@@ -52,14 +52,14 @@ intruderSpeed x = x 4
 clearOfConflictScore : InputVector → ℝ
 clearOfConflictScore x = acasXu x 0
 
-intruderFarAway : InputVector → Set
-intruderFarAway x = (ℤ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ ℤ.- (7 ℚ./ 10) ⊎ 7 ℚ./ 10 ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ pi) × (12000 ℝ.≤ distanceToIntruder x × (distanceToIntruder x ℝ.≤ 62000 × (ℤ.- pi ℝ.≤ intruderHeading x × (intruderHeading x ℝ.≤ ℤ.- pi ℝ.+ 1 ℚ./ 200 × (100 ℝ.≤ speed x × (speed x ℝ.≤ 1200 × (0 ℝ.≤ intruderSpeed x × intruderSpeed x ℝ.≤ 1200)))))))
+IntruderFarAway : InputVector → Set
+IntruderFarAway x = (ℤ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ ℤ.- (7 ℚ./ 10) ⊎ 7 ℚ./ 10 ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ pi) × (12000 ℝ.≤ distanceToIntruder x × (distanceToIntruder x ℝ.≤ 62000 × (ℤ.- pi ℝ.≤ intruderHeading x × (intruderHeading x ℝ.≤ ℤ.- pi ℝ.+ 1 ℚ./ 200 × (100 ℝ.≤ speed x × (speed x ℝ.≤ 1200 × (0 ℝ.≤ intruderSpeed x × intruderSpeed x ℝ.≤ 1200)))))))
 
-advisesClearOfConflict : InputVector → Set
-advisesClearOfConflict x = let y = acasXu x in List.All (λ (i : ℕ) → y 0 ℝ.≥ y i) (0 ∷ (1 ∷ (2 ∷ (3 ∷ (4 ∷ [])))) : List ℕ)
+AdvisesClearOfConflict : InputVector → Set
+AdvisesClearOfConflict x = let y = acasXu x in List.All (λ (i : ℕ) → y 0 ℝ.≥ y i) (0 ∷ (1 ∷ (2 ∷ (3 ∷ (4 ∷ [])))) : List ℕ)
 
 abstract
-  property6 : ∀ (x : Tensor ℝ (5 ∷ [])) → intruderFarAway x → advisesClearOfConflict x
+  property6 : ∀ (x : Tensor ℝ (5 ∷ [])) → IntruderFarAway x → AdvisesClearOfConflict x
   property6 = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = ????

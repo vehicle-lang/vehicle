@@ -21,16 +21,18 @@ import Vehicle.Language.AST
 import Vehicle.Language.Print
 import Vehicle.Language.Sugar
 import Vehicle.Backend.ITP.Core
+import Vehicle.Backend.ITP.Agda.Preprocess (preprocess)
 
 compileToAgda :: (MonadLogger m, MonadError CompileError m)
-              => AgdaOptions -> OutputProg -> m (Doc a)
+              => AgdaOptions -> CheckedProg -> m (Doc a)
 compileToAgda options prog = runReaderT (compileProgramToAgda prog) options
 
 compileProgramToAgda :: MonadAgdaCompile m
-                     => OutputProg
+                     => CheckedProg
                      -> m (Doc a)
 compileProgramToAgda program = do
-  programDoc <- compile program
+  let preprocessedProgram = preprocess program
+  programDoc <- compile preprocessedProgram
   let programStream = layoutPretty defaultLayoutOptions programDoc
   -- Collects dependencies by first discarding precedence info and then folding using Set Monoid
   let progamDependencies = fold (reAnnotateS fst programStream)
@@ -255,11 +257,13 @@ boolBraces c = "⌊" <+> c <+> "⌋"
 arrow :: Code
 arrow = "→" -- <> softline'
 
--------------------------
--- Program Compilation --
--------------------------
+--------------------------------------------------------------------------------
+-- Program Compilation
 
-type MonadAgdaCompile m = MonadCompile AgdaOptions m
+type MonadAgdaCompile m =
+  ( MonadCompile m
+  , MonadReader AgdaOptions m
+  )
 
 class CompileToAgda a where
   compile
@@ -276,15 +280,15 @@ instance CompileToAgda OutputDecl where
   compile = \case
     DeclData ann _ _    -> throwError $ CompilationUnsupported (provenanceOf ann) "dataset"
 
-    DeclNetw _ann n t   -> compileNetwork (pretty n) <$> compile t
+    DeclNetw _ann n t   -> compileNetwork <$> compile n <*> compile t
 
     DefFun _ann n t e -> do
       let (binders, body) = foldLam e
       if isProperty t
-        then compileProperty (pretty n) <$> compile e
+        then compileProperty <$> compile n <*> compile e
         else do
           let binders' = traverse (compileBinder True) binders
-          compileFunDef (pretty n) <$> compile t <*> binders' <*> compile body
+          compileFunDef <$> compile n <*> compile t <*> binders' <*> compile body
 
 instance CompileToAgda OutputExpr where
   compile expr = do
@@ -349,6 +353,9 @@ instance CompileToAgda BooleanType where
 
 instance CompileToAgda NumericType where
   compile t = return $ annotateConstant (numericDependencies t) (numericQualifier t)
+
+instance CompileToAgda Identifier where
+  compile (Identifier s) = return $ pretty s
 
 compileType :: UniverseLevel -> Code
 compileType 0 = "Set"

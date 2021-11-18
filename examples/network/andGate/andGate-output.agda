@@ -24,20 +24,20 @@ andGate = evaluate record
   ; networkUUID = NETWORK_UUID
   }
 
-truthy : ℝ → Set
-truthy x = x ℝ.≥ 1 ℚ./ 2
+Truthy : ℝ → Set
+Truthy x = x ℝ.≥ 1 ℚ./ 2
 
-falsey : ℝ → Set
-falsey x = x ℝ.≤ 1 ℚ./ 2
+Falsey : ℝ → Set
+Falsey x = x ℝ.≤ 1 ℚ./ 2
 
-validInput : Tensor ℝ (2 ∷ []) → Set
-validInput x = List.All (λ (i : ℕ) → 0 ℝ.≤ x i × x i ℝ.≤ 1) (0 ∷ (1 ∷ []) : List ℕ)
+ValidInput : Tensor ℝ (2 ∷ []) → Set
+ValidInput x = List.All (λ (i : ℕ) → 0 ℝ.≤ x i × x i ℝ.≤ 1) (0 ∷ (1 ∷ []) : List ℕ)
 
-correctOutput : Tensor ℝ (2 ∷ []) → Set
-correctOutput x = let y = andGate x in (truthy x 0 × truthy x 1 → truthy y 0) × ((truthy x 0 × falsey x 1 → falsey y 0) × ((falsey x 0 × truthy x 1 → falsey y 0) × (falsey x 0 × falsey x 1 → falsey y 0)))
+CorrectOutput : Tensor ℝ (2 ∷ []) → Set
+CorrectOutput x = let y = andGate x in (Truthy x 0 × Truthy x 1 → Truthy y 0) × ((Truthy x 0 × Falsey x 1 → Falsey y 0) × ((Falsey x 0 × Truthy x 1 → Falsey y 0) × (Falsey x 0 × Falsey x 1 → Falsey y 0)))
 
 abstract
-  correct : ∀ (x : Tensor ℝ (2 ∷ [])) → validInput x → correctOutput x
+  correct : ∀ (x : Tensor ℝ (2 ∷ [])) → ValidInput x → CorrectOutput x
   correct = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = ????

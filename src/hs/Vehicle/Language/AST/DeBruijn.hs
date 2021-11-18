@@ -20,6 +20,7 @@ import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader, Reader, ask, runReader, runReaderT, local)
 import Control.Monad.Trans (lift)
+import Data.Kind as Kind ( Type )
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Core
@@ -65,7 +66,7 @@ type UpdateVariable m state ann
 -- when traversing across a binder.
 type TraverseBinder state ann = state -> state
 
-class DeBruijnFunctor ann (a :: * -> *) where
+class DeBruijnFunctor ann (a :: Kind.Type -> Kind.Type) where
   alter
     :: (Semigroup ann, MonadReader (BindingDepth, state) m)
     => TraverseBinder state ann
