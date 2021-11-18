@@ -34,11 +34,11 @@ ValidInput : Tensor ℝ (2 ∷ []) → Set
 ValidInput x = List.All (λ (i : ℕ) → 0 ℝ.≤ x i × x i ℝ.≤ 1) (0 ∷ (1 ∷ []) : List ℕ)
 
 CorrectOutput : Tensor ℝ (2 ∷ []) → Set
-CorrectOutput x = let y = andGate x in (Truthy x 0 × Truthy x 1 → Truthy y 0) × ((Truthy x 0 × Falsey x 1 → Falsey y 0) × ((Falsey x 0 × Truthy x 1 → Falsey y 0) × (Falsey x 0 × Falsey x 1 → Falsey y 0)))
+CorrectOutput x = let y = andGate x in (Truthy (x 0) × Truthy (x 1) → Truthy (y 0)) × ((Truthy (x 0) × Falsey (x 1) → Falsey (y 0)) × ((Falsey (x 0) × Truthy (x 1) → Falsey (y 0)) × (Falsey (x 0) × Falsey (x 1) → Falsey (y 0))))
 
 abstract
-  correct : ∀ (x : Tensor ℝ (2 ∷ [])) → ValidInput x → CorrectOutput x
-  correct = checkProperty record
+  andGateCorrect : ∀ (x : Tensor ℝ (2 ∷ [])) → ValidInput x → CorrectOutput x
+  andGateCorrect = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = ????
     }
