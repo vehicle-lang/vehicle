@@ -21,7 +21,6 @@ source-repository head
 
 common common-base
   build-depends:      base >=4.10 && <5
-                    , text >=1.2  && <2
   default-language:   Haskell2010
 
 library
@@ -95,18 +94,18 @@ library
                       , Vehicle.Frontend.Print
   hs-source-dirs:       src/hs
                       , gen/hs
-  build-depends:        array                >=0.5  && <1
-                      , hashable             >=1.3  && <2
-                      , transformers         >=0.4  && <0.6
-                      , mtl                  >=2.2  && <3
-                      , recursion-schemes    >=5.2  && <6
-                      , range                >=0.3  && <1
-                      , containers           >=0.5  && <1
-                      , prettyprinter        >=1.7  && <2
-                      , data-fix             >=0.2  && <1
-                      , deepseq              >=1.4  && <2
-                      , ansi-terminal        >=0.6  && <1
-                      , bytestring           >=0.10 && <1
+  build-depends:        array                >=0.5 && <1
+                      , text                 >=1.2 && <2
+                      , hashable             >=1.3 && <2
+                      , transformers         >=0.4 && <0.6
+                      , mtl                  >=2.2 && <3
+                      , recursion-schemes    >=5.2 && <6
+                      , range                >=0.3 && <1
+                      , containers           >=0.5 && <1
+                      , prettyprinter        >=1.7 && <2
+                      , data-fix             >=0.2 && <1
+                      , deepseq              >=1.4 && <2
+                      , ansi-terminal        >=0.6 && <1
                       , hashable
                       , split
                       , data-default-class
@@ -149,6 +148,12 @@ executable vehicle
   hs-source-dirs:     app
   build-depends:      vehicle
 
+executable build
+  import:             common-base
+  main-is:            build.hs
+  build-depends:      shake
+                    , directory
+
 test-suite vehicle-test
   import:             common-base
   type:               exitcode-stdio-1.0
@@ -161,6 +166,7 @@ test-suite vehicle-test
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -main-is Test
   default-extensions: ImportQualifiedPost
   build-depends:      filepath >=1.4 && <2
+                    , text     >=1.2 && <2
                     , Diff
                     , directory
                     , tasty

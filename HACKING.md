@@ -10,10 +10,9 @@
 
 * Clone the github repository to your local computer and navigate to the directory.
 
-* Run `make init` to initialise the project and install any dependencies that are needed for
-building the project.
+* Run `cabal run build init` to initialise the project and install any dependencies that are needed for building the project.
 
-* Run `make test` to try to build the project and run the test suite.
+* Run `cabal run build test` to try to build the project and run the test suite.
 
 ## Windows 10
 
@@ -38,9 +37,9 @@ Go to https://github.com/microsoft/vcpkg#quick-start-windows and follow the inst
 
 * We currently have two types of tests for Vehicle.
 
-* Running `make test` will run the entire test suite.
+* Running `cabal run build test` will run the entire test suite.
 
-* Running `make test-accept` will run the entire test suite adn accept all of the changed output files.
+* Running `cabal run build test-accept` will run the entire test suite and accept all of the changed output files.
   *Warning*: Only run this if you are okay with the changes to the output!
 
 * Running `cabal test --test-option="-p /X/"` will only run tests
