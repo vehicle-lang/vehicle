@@ -104,7 +104,7 @@ requireBNFC = do
 
     askConsent "Would you like to install BNFC? [y/N]"
     command_ [] "cabal"
-      [ "v2-install"
+      [ "v1-install"
       , "--ignore-project"
       , "BNFC-" <> showVersion bnfcVersion
       ]
