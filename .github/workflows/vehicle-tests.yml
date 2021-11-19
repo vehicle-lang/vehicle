@@ -36,7 +36,7 @@ jobs:
           cabal-version: 'latest'
 
       - name: Initialise project
-        run: yes | make init
+        run: yes | cabal run build init
 
       - name: Run test suite
-        run: make test
+        run: cabal run build test
