@@ -13,7 +13,6 @@ module Vehicle.Language.Print
 import Prettyprinter (list, tupled)
 
 import Data.Text
-import Data.Text.ICU.Replace
 
 import Vehicle.Core.Print as Core (printTree)
 import Vehicle.Frontend.Print as Frontend (printTree)
@@ -164,6 +163,6 @@ instance (PrettyNamedLang t Symbol Symbol ann, Descope t)
 -- BNFC printer treats the braces for implicit arguments as layout braces and
 -- therefore adds a ton of newlines everywhere. This hack attempts to undo this.
 bnfcPrintHack :: String -> Text
-bnfcPrintHack s = replaceAll "\\{\\s*" "{" $
-                  replaceAll "\\s*\\}\\s*" "} " $
+bnfcPrintHack s = -- replaceAll "\\{\\s*" "{" $
+                  -- replaceAll "\\s*\\}\\s*" "} " $
                   pack s

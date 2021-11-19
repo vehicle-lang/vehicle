@@ -31,6 +31,9 @@ The easiest way is:
 
 * If you have problems with the WSL check if you're using the latest version.
 
+* If you get the error: Missing (or bad) C libraries: icuuc, icuin, icudt
+Go to https://github.com/microsoft/vcpkg#quick-start-windows and follow the instructions.
+
 # Testing Vehicle
 
 * We currently have two types of tests for Vehicle.
