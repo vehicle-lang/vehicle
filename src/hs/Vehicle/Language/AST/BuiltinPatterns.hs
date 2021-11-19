@@ -4,29 +4,45 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Vehicle.Language.AST.Builtin
 import Vehicle.Language.AST.Core
 
--- Primed versions take `Arg` instead of `Expr`
-
 --------------------------------------------------------------------------------
 -- Types
 --------------------------------------------------------------------------------
 -- List
 
-mkListType :: ann
-           -> Expr binder var ann
-           -> Expr binder var ann
-mkListType ann tElem = App ann (BuiltinContainerType ann List) [ExplicitArg ann tElem]
+pattern ListType :: ann
+                 -> Expr binder var ann
+                 -> Expr binder var ann
+pattern
+  ListType ann tElem <- App ann (BuiltinContainerType _   List) [ExplicitArg _ tElem]
+  where
+  ListType ann tElem =  App ann (BuiltinContainerType ann List) [ExplicitArg ann tElem]
 
 --------------------------------------------------------------------------------
 -- Tensor
+
+pattern TensorType :: ann
+                   -> Expr binder var ann
+                   -> Expr binder var ann
+                   -> Expr binder var ann
+pattern
+  TensorType ann tElem tDims <-
+    App ann (BuiltinContainerType _   List)
+      [ ExplicitArg _ tElem
+      , ExplicitArg _ tDims ]
+  where
+  TensorType ann tElem tDims =
+    App ann (BuiltinContainerType ann List)
+      [ ExplicitArg ann tElem
+      , ExplicitArg ann tDims ]
 
 mkTensor :: ann
          -> Expr binder var ann
          -> [Int]
          -> Expr binder var ann
 mkTensor ann tElem dims =
-  let listType = mkListType ann (Builtin ann (NumericType Nat)) in
+  let listType = ListType ann (Builtin ann (NumericType Nat)) in
   let dimExprs = fmap (Literal ann . LNat) dims in
-  let dimList  = mkSeq ann (Builtin ann (NumericType Nat)) listType dimExprs in
+  let dimList  = SeqExpr ann (Builtin ann (NumericType Nat)) listType dimExprs in
   App ann (BuiltinContainerType ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
 
 --------------------------------------------------------------------------------
@@ -133,22 +149,6 @@ pattern
       [ ImplicitArg ann litType
       , InstanceArg ann (PrimDict litType)
       ]
-
-mkLiteral' :: ann
-           -> Literal
-           -> Arg  binder var ann
-           -> Arg  binder var ann
-           -> Expr binder var ann
-mkLiteral' ann lit t tc = App ann (Literal ann lit) [t, tc]
-
-mkLiteral :: ann
-          -> Literal
-          -> Expr binder var ann
-          -> Expr binder var ann
-          -> Expr binder var ann
-mkLiteral ann lit t tc = mkLiteral' ann lit
-  (ImplicitArg ann t)
-  (ImplicitArg ann (PrimDict tc))
 
 --------------------------------------------------------------------------------
 -- Bool
@@ -359,55 +359,96 @@ pattern
 --------------------------------------------------------------------------------
 -- Sequence
 
-mkSeq' :: ann
-       -> Arg binder var ann
-       -> Arg binder var ann
-       -> Arg binder var ann
-       -> [Expr binder var ann]
-       -> Expr binder var ann
-mkSeq' ann tElem tCont tc xs = App ann (Seq ann xs) [tElem, tCont, tc]
-
-mkSeq :: ann
-      -> Expr binder var ann
-      -> Expr binder var ann
-      -> [Expr binder var ann]
-      -> Expr binder var ann
-mkSeq ann tElem tCont = mkSeq' ann
-  (ImplicitArg ann tElem)
-  (ImplicitArg ann tCont)
-  (InstanceArg ann (PrimDict (mkIsContainer ann tElem tCont)))
+pattern SeqExpr :: ann
+                -> Expr  binder var ann
+                -> Expr  binder var ann
+                -> [Expr binder var ann]
+                -> Expr  binder var ann
+pattern
+  SeqExpr ann tElem tCont xs <-
+    App ann (Seq _ xs)
+      (  ImplicitArg _ tElem
+      :| ImplicitArg _ tCont
+      :  [InstanceArg _ _]
+      )
+  where
+  SeqExpr ann tElem tCont xs =
+    App ann (Seq ann xs)
+      (  ImplicitArg ann tElem
+      :| ImplicitArg ann tCont
+      :  [InstanceArg ann (PrimDict (mkIsContainer ann tElem tCont))]
+      )
 
 --------------------------------------------------------------------------------
 -- At
 
-mkAt' :: ann
-      -> Arg  binder var ann
-      -> Arg  binder var ann
-      -> [Expr binder var ann]
-      -> Expr binder var ann
-mkAt' ann tElem tDims args = App ann (Builtin ann At)
-  (tElem :| tDims : map (ExplicitArg ann) args)
+pattern AtExpr :: ann
+                -> Expr  binder var ann
+                -> Expr  binder var ann
+                -> [Arg binder var ann]
+                -> Expr  binder var ann
+pattern
+  AtExpr ann tElem tDims explicitArgs <-
+    App ann (Builtin _ At)
+      (  ImplicitArg _ tElem
+      :| ImplicitArg _ tDims
+      :  explicitArgs
+      )
+  where
+  AtExpr ann tElem tDims explicitArgs =
+    App ann (Builtin ann At)
+      (  ImplicitArg ann tElem
+      :| ImplicitArg ann tDims
+      :  explicitArgs
+      )
 
 --------------------------------------------------------------------------------
 -- Sequence
 
-mkMap' :: ann
-       -> Arg  binder var ann
-       -> Arg  binder var ann
-       -> [Expr binder var ann]
-       -> Expr binder var ann
-mkMap' ann tFrom tTo args = App ann (Builtin ann Map)
-  (tFrom :| tTo : map (ExplicitArg ann) args)
+pattern MapExpr :: ann
+                -> Expr  binder var ann
+                -> Expr  binder var ann
+                -> [Arg  binder var ann]
+                -> Expr  binder var ann
+pattern
+  MapExpr ann tTo tFrom explicitArgs <-
+    App ann (Builtin _ Map)
+      (  ImplicitArg _ tTo
+      :| ImplicitArg _ tFrom
+      :  explicitArgs
+      )
+  where
+  MapExpr ann tTo tFrom explicitArgs =
+    App ann (Builtin ann Map)
+      (  ImplicitArg ann tTo
+      :| ImplicitArg ann tFrom
+      :  explicitArgs
+      )
 
 --------------------------------------------------------------------------------
 -- Sequence
 
-mkFold' :: ann
-        -> Arg  binder var ann
-        -> Arg  binder var ann
-        -> Arg  binder var ann
-        -> Arg  binder var ann
-        -> [Expr binder var ann]
-        -> Expr binder var ann
-mkFold' ann tElem tCont tRes tc args = App ann (Builtin ann Fold)
-  (tElem :| tCont : tRes : tc : fmap (ExplicitArg ann) args)
+pattern FoldExpr :: ann
+                 -> Expr  binder var ann
+                 -> Expr  binder var ann
+                 -> Expr  binder var ann
+                 -> [Arg  binder var ann]
+                 -> Expr  binder var ann
+pattern
+  FoldExpr ann tElem tCont tRes explicitArgs <-
+    App ann (Builtin _ Fold)
+      (  ImplicitArg _ tElem
+      :| ImplicitArg _ tCont
+      :  ImplicitArg _ tRes
+      :  InstanceArg _ _
+      :  explicitArgs
+      )
+  where
+  FoldExpr ann tElem tCont tRes explicitArgs =
+    App ann (Builtin ann Fold)
+      (  ImplicitArg ann tElem
+      :| ImplicitArg ann tCont
+      :  ImplicitArg ann tRes
+      :  InstanceArg ann (PrimDict (mkIsContainer ann tElem tCont))
+      :  explicitArgs
+      )

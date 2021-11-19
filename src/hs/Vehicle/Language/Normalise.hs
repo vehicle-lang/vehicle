@@ -158,15 +158,7 @@ nfApp ann  fun@(Builtin _ op) args      = do
   case (op, args) of
     -- Equality
     (Equality eq, [tElem, tRes, tc, arg1, arg2]) ->
-      case eq of
-        Eq  -> fromMaybe (return e) (nfEq ann tElem tRes tc (argExpr arg1) (argExpr arg2))
-        Neq -> case (argHead arg1, argHead arg2) of
-          --(ETrue  _, _)          -> normApp $ composeApp ann (Builtin ann Not) [_t2, _, arg2]
-          (EFalse _, _)              -> return $ argExpr arg2
-          (LitNat _ m, LitNat _ n) -> return $ BoolLiteralExpr ann (argExpr tRes) (m /= n)
-          (LitInt _ i, LitInt _ j) -> return $ BoolLiteralExpr ann (argExpr tRes) (i /= j)
-          (LitRat _ x, LitRat _ y) -> return $ BoolLiteralExpr ann (argExpr tRes) (x /= y)
-          _                          -> return e
+      fromMaybe (return e) (nfEq eq ann tElem tRes tc (argExpr arg1) (argExpr arg2))
 
     -- Not
     (Not, [t, tc, arg]) ->
@@ -233,7 +225,7 @@ nfApp ann  fun@(Builtin _ op) args      = do
 
     -- Cons
     (Cons, [tElem, x, cont]) -> case argHead cont of
-      Seq _ xs -> return $ mkSeq ann (argExpr tElem) (mkListType ann (argExpr tElem)) (argExpr x : xs)
+      Seq _ xs -> return $ SeqExpr ann (argExpr tElem) (ListType ann (argExpr tElem)) (argExpr x : xs)
       _        -> return e
 
     -- Lookup
@@ -274,25 +266,34 @@ nfApp ann fun args = return $ normAppList ann fun args
 -- Normalising equality
 
 nfEq :: MonadNorm m
-     => CheckedAnn
+     => Equality
+     -> CheckedAnn
      -> CheckedArg
      -> CheckedArg
      -> CheckedArg
      -> CheckedExpr
      -> CheckedExpr
      -> Maybe (m CheckedExpr)
-nfEq ann _tEq tRes _tc e1 e2 = case (toHead e1, toHead e2) of
-  --(EFalse _,  _)         -> normApp $ composeApp ann (Builtin ann op, [tElem, _, e2])
-  ((LitNat _ m, _),         (LitInt _ n, _))     -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (m == n)
-  ((LitInt _ i, _),         (LitInt _ j, _))     -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (i == j)
-  ((LitRat _ x, _),         (LitRat _ y, _))     -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (x == y)
-  ((Seq _ xs, [tElem,_,_]), (Seq _ ys, [_,_,_])) -> Just $
+nfEq eq ann _tEq tRes _tc e1 e2 = case (e1, e2) of
+  (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (eqOp eq m n)
+  (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (eqOp eq i j)
+  (RatLiteralExpr _ _ p, RatLiteralExpr _ _ q) -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (eqOp eq p q)
+  (SeqExpr _ tElem _ xs, SeqExpr _ _ _ ys)     -> Just $
     if length xs /= length ys then
       return $ BoolLiteralExpr ann (argExpr tRes) False
     else
-      let equalities = zipWith (\x y -> EqualityExpr Eq ann (argExpr tElem) (argExpr tRes) (map (ExplicitArg ann) [x,y])) xs ys in
-      nf $ booleanBigOp And ann (argExpr tRes) equalities
+      let equalities = zipWith (\x y -> EqualityExpr eq ann tElem (argExpr tRes) (map (ExplicitArg ann) [x,y])) xs ys in
+      nf $ booleanBigOp (logicOp eq) ann (argExpr tRes) equalities
   _ -> Nothing
+  where
+    eqOp :: Eq a => Equality -> (a -> a -> Bool)
+    eqOp Eq  = (==)
+    eqOp Neq = (/=)
+
+    logicOp :: Equality -> BooleanOp2
+    logicOp Eq  = And
+    logicOp Neq = Or
+
   -- TODO implement reflexive rules?
 
 --------------------------------------------------------------------------------
@@ -304,15 +305,13 @@ nfQuantifier :: MonadNorm m
              -> CheckedArg -- The quantified lambda expression
              -> Maybe (m CheckedExpr)
 nfQuantifier ann q lam = case argHead lam of
-  Lam _ann binder body -> case toHead (typeOf binder) of
+  Lam _ann binder body -> case typeOf binder of
     -- If we have a tensor instead quantify over each individual element, and then substitute
     -- in a Seq construct with those elements in.
-    (BuiltinContainerType _ Tensor, [tElemArg, tDimsArg]) ->
-      case getDimensions (argHead tDimsArg) of
+    (TensorType _ tElem tDims) ->
+      case getDimensions (exprHead tDims) of
         Nothing -> Nothing
         Just dims -> Just $ do
-          let tElem = argExpr tElemArg
-
           -- Calculate the dimensions of the tensor
           let tensorSize = product dims
 
@@ -332,7 +331,7 @@ nfQuantifier ann q lam = case argHead lam of
 
           -- Generate a expression prepended with `tensorSize` quantifiers
           return $ mkQuantifierSeq q ann (map Just allNames) tElem body2
-          -- ()
+
     _ -> Nothing
   _ -> Nothing
 
@@ -340,7 +339,7 @@ makeTensorLit :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedE
 makeTensorLit ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)
   where
     mkTensorSeq :: [Int] -> [CheckedExpr] -> CheckedExpr
-    mkTensorSeq ds xs = mkSeq ann tElem (mkTensor ann tElem ds) xs
+    mkTensorSeq ds = SeqExpr ann tElem (mkTensor ann tElem ds)
 
     go []       [] = mkTensorSeq []       []
     go [d]      es = mkTensorSeq [d]      es
@@ -375,11 +374,10 @@ nfQuantifierIn ann q tElem tCont tRes _tc lam container = do
   let (bop, unit) = quantImplementation q
   let isTruthTC = InstanceArg ann (PrimDict (mkIsTruth ann (argExpr tRes)))
   let bopExpr = App ann (Builtin ann (BooleanOp2 bop)) [tRes, isTruthTC]
-  let unitExpr = mkLiteral' ann (LBool unit) tRes isTruthTC
-  let tResCont = mapArgExpr (substContainerType tRes) tCont
-  let tResContTC = PrimDict $ mkIsContainer ann (argExpr tRes) (argExpr tResCont)
-  let mappedContainer = mkMap' ann tElem tRes [argExpr lam, argExpr container]
-  let foldedContainer = mkFold' ann tRes tResCont tRes (InstanceArg ann tResContTC) [bopExpr, unitExpr, mappedContainer]
+  let unitExpr = BoolLiteralExpr ann (argExpr tRes) unit
+  let tResCont = substContainerType tRes (argExpr tCont)
+  let mappedContainer = MapExpr  ann (argExpr tElem) (argExpr tRes) [lam, container]
+  let foldedContainer = FoldExpr ann (argExpr tRes) tResCont (argExpr tRes) (fmap (ExplicitArg ann) [bopExpr, unitExpr, mappedContainer])
   Just (nf foldedContainer)
 
 substContainerType :: CheckedArg -> CheckedExpr -> CheckedExpr
@@ -448,6 +446,6 @@ nfMap ann _tFrom tTo fun arg = case argHead arg of
   Seq _ xs -> Just $ do
     ys <- traverse (\x -> nf $ normApp ann (argExpr fun) [ExplicitArg ann x]) xs
     let tElem = argExpr tTo
-    let tCont = mkListType ann tElem
-    return $ mkSeq ann tElem tCont ys
+    let tCont = ListType ann tElem
+    return $ SeqExpr ann tElem tCont ys
   _        -> Nothing

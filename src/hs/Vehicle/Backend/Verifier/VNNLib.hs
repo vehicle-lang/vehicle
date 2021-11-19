@@ -217,7 +217,7 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
         tensorElemType   = Builtin ann tElem
         tensorType       = mkTensor ann tensorElemType [length indices]
         variables        = map (Var ann . Bound) indices
-        tensorExpr       = mkSeq ann tensorElemType tensorType variables
+        tensorExpr       = SeqExpr ann tensorElemType tensorType variables
 
 -- Takes in the expression to process and returns a function
 -- from the current binding depth to the altered expression.
