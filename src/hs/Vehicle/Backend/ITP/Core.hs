@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
-
 module Vehicle.Backend.ITP.Core where
 
 import Control.Monad.Except (MonadError(..), Except, runExcept)

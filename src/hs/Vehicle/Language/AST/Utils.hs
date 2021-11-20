@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
-
 module Vehicle.Language.AST.Utils where
 
 import Data.Functor.Foldable (Recursive(..))

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
-
 module Vehicle.Language.AST.BuiltinPatterns where
 
 import Data.List.NonEmpty (NonEmpty(..))

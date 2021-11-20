@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
-
 module Vehicle.Language.Normalise
   ( NormError
   , normalise

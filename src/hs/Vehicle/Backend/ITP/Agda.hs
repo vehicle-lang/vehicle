@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
-
 module Vehicle.Backend.ITP.Agda
   ( AgdaOptions(..)
   , compileToAgda

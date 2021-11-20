@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
-
 module Vehicle.Backend.Verifier.SMTLib
   ( compileToSMTLib
   , compileProp

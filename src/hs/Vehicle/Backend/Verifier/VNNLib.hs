@@ -1,6 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE GeneralisedNewtypeDeriving #-}
-
 module Vehicle.Backend.Verifier.VNNLib
   ( VNNLibDoc(..)
   , compileToVNNLib

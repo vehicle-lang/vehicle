@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
-
 module Vehicle.Language.DSL
   ( DSL(..)
   , DSLExpr(..)

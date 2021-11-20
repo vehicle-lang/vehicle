@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
-
 module Vehicle.Language.AST.CoDeBruijn
   ( CodebruijnExpr
   , CodebruijnArg
