@@ -108,7 +108,7 @@ diffCommand golden output = do
     isBoth _ = False
 
 cleanupOutputFile :: FilePath -> TestTree -> TestTree
-cleanupOutputFile testFile test = withResource (return ()) (const cleanup) (const test)
+cleanupOutputFile testFile test = test --withResource (return ()) (const cleanup) (const test)
   where
     cleanup = removeFile testFile `catch` handleExists
 

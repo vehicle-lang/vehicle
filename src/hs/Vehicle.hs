@@ -19,8 +19,8 @@ import Paths_vehicle (version)
 import Control.Monad (when,)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Char (toLower)
-import Data.Text (Text)
-import Data.Text.IO qualified as T
+import Data.Text as T (Text, replace)
+import Data.Text.IO qualified as TIO
 import Data.ByteString qualified as B
 import Data.Version (Version, makeVersion)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
@@ -41,6 +41,7 @@ import Vehicle.Language.Normalise qualified as V (normalise)
 import Vehicle.Backend.Verifier.SMTLib (compileToSMTLib, SMTDoc(..))
 import Vehicle.Backend.Verifier.VNNLib (compileToVNNLib, VNNLibDoc(..))
 import Vehicle.Backend.ITP.Agda (compileToAgda, AgdaOptions(..))
+import System.Info (os)
 
 --------------------------------------------------------------------------------
 -- Command-line options
@@ -226,15 +227,16 @@ fromLoggedIO (Just logFile) logger = flushLogs logFile logger
 
 readFileOrStdin :: Maybe FilePath -> IO Text
 readFileOrStdin (Just file) = decodeUtf8 <$> B.readFile file
-readFileOrStdin Nothing     = T.getContents
+readFileOrStdin Nothing     = TIO.getContents
 
 writeResultToFile :: Options -> OutputTarget -> Doc a -> IO ()
 writeResultToFile Options{..} target doc = do
   let fileHeader = makefileHeader version target
   let outputText = layoutAsText (fileHeader <> line <> line <> doc)
+  let outputText2 = if os == "mingw32" then replace "\n" "\r\n" outputText else outputText
   case outputFile of
-    Nothing             -> T.putStrLn outputText
-    Just outputFilePath -> B.writeFile outputFilePath (encodeUtf8 outputText)
+    Nothing             -> TIO.putStrLn outputText2
+    Just outputFilePath -> B.writeFile outputFilePath (encodeUtf8 outputText2)
 
 toSMTLib :: Options -> V.CheckedProg -> IO ()
 toSMTLib opts@Options{..} prog = do
