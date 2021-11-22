@@ -42,7 +42,7 @@ Go to https://github.com/microsoft/vcpkg#quick-start-windows and follow the inst
 * Running `cabal run build test-accept` will run the entire test suite and accept all of the changed output files.
   *Warning*: Only run this if you are okay with the changes to the output!
 
-* Running `cabal test --test-option="-p /X/"` will only run tests
+* Running `cabal test --test-show-details=always --test-option="-p /X/"` will only run tests
   with `X` in their name. If you only want to run a test for a particular backend `Y`
   change the `X` to `X-Y`, e.g. `quantifier-Agda`.
 

@@ -26,12 +26,12 @@ pattern TensorType :: ann
                    -> Expr binder var ann
 pattern
   TensorType ann tElem tDims <-
-    App ann (BuiltinContainerType _   List)
+    App ann (BuiltinContainerType _   Tensor)
       [ ExplicitArg _ tElem
       , ExplicitArg _ tDims ]
   where
   TensorType ann tElem tDims =
-    App ann (BuiltinContainerType ann List)
+    App ann (BuiltinContainerType ann Tensor)
       [ ExplicitArg ann tElem
       , ExplicitArg ann tDims ]
 

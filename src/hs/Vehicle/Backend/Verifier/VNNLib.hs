@@ -5,14 +5,19 @@ module Vehicle.Backend.Verifier.VNNLib
 
 import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Control.Monad.Except (MonadError(..), runExcept)
-import Control.Monad.State (MonadState(..), evalStateT)
+import Control.Monad.State (MonadState(..), runStateT, gets)
 import Data.Map (Map)
 import Data.Map qualified as Map (insert, lookup)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Maybe (catMaybes, fromMaybe)
+import Data.IntMap (IntMap)
+import Data.IntMap qualified as IntMap
+import Debug.Trace
 
 import Vehicle.Prelude
 import Vehicle.Language.AST hiding (Map)
-import Vehicle.Language.Print (prettySimple)
+import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Language.Normalise (normaliseInternal)
 import Vehicle.Backend.Verifier.Core
 import Vehicle.Backend.Verifier.SMTLib (SMTLibError, SMTDoc, SMTLibError(..), InputOrOutput(..), UnsupportedNetworkType(..))
@@ -153,11 +158,10 @@ compileDecl d = case d of
 
         -- Replace all applications of neural networks with the magic VNNLib variables
         let numberOfMagicVariables = sum (map networkSize metaNetworkDetails)
-        networklessExpr <- evalStateT (replaceNetworkApplications numberOfMagicVariables e) (0,0)
+        (networklessExpr, _) <- runNetworkApplicationReplacement numberOfMagicVariables e
 
-        -- Calculate and eliminate
-
-        -- Normalise the resulting expression
+        -- Normalise the resulting expression now that we've replaced the network
+        -- applications with tensors of output variables.
         let normNetworklessExpr = normaliseInternal networklessExpr
 
         -- Append quantifiers over the magic variables so that it becomes a valid SMTLib expression
@@ -175,56 +179,99 @@ compileDecl d = case d of
 --------------------------------------------------------------------------------
 -- Pass 1: instantiating network applications
 
-replaceNetworkApplication :: (MonadVNNLib m, MonadState (Int, Int) m)
-                          => CheckedAnn
-                          -> Identifier
-                          -> CheckedExpr
-                          -> CheckedExpr
-                          -> BindingDepth
-                          -> m CheckedExpr
-replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
-  (NetworkDetails _ _ inputs outputs) <- getNetworkDetailsFromCtx ident
-  let inputSize  = size inputs
-  let inputType  = tElem outputs
-  let outputSize = size inputs
-  let outputType = tElem outputs
+-- |The state propagated downwards during the pass replacing neural network
+-- applications with magic variables.
+data DownwardsReplacementState = DownwardsReplacementState
+  { magicInputVarCount  :: Int
+  , magicOutputVarCount :: Int
+  -- This shouldn't really live in the state monad, but we're already within
+  -- a reader monad so tough.
+  , numberOfMagicVariables :: Int
+  }
 
-  (inputStartingIndex, outputStartingIndex) <- get
-  put (inputStartingIndex + size inputs, outputStartingIndex + size outputs)
+-- |The state propagated upwards during the pass replacing neural network
+-- applications with magic variables.
+data UpwardsReplacementState = UpwardsReplacementState
+  { replacableBoundVars  :: IntMap Int
+  , quantifiers          :: Set Quantifier
+  }
 
-  let totalNumberOfMagicVariablesSoFar = inputStartingIndex + outputStartingIndex
+type ReplacementState = (DownwardsReplacementState, UpwardsReplacementState)
 
-  -- In the example points to X3
-  let inputStartingDBIndex  = bindingDepth - totalNumberOfMagicVariablesSoFar
-  -- In the example points to Y2
-  let outputStartingDBIndex = inputStartingDBIndex - inputSize
-  -- In the examples points to X4
-  let outputEndingDBIndex       = outputStartingDBIndex - outputSize
-  let inputVarIndices           = reverse [outputStartingDBIndex .. inputStartingDBIndex-1]
-  let outputVarIndices          = reverse [outputEndingDBIndex   .. outputStartingDBIndex-1]
-  let (inputsExpr,  inputsType) = mkMagicVariableSeq inputType  inputVarIndices
-  let (outputsExpr, _)          = mkMagicVariableSeq outputType outputVarIndices
+type MonadReplacement m = (MonadVNNLib m, MonadState ReplacementState m)
 
-  let body'         = outputsExpr `substInto` letBody
-  let inputEquality = EqualityExpr Eq ann inputsType (BuiltinBooleanType ann Prop) (map (ExplicitArg ann) [inputsExpr, networkInput])
-  let newBody       = BooleanOp2Expr Impl ann (BuiltinBooleanType ann Prop) (map (ExplicitArg ann) [inputEquality, body'])
+runNetworkApplicationReplacement :: MonadVNNLib m => Int -> CheckedExpr -> m (CheckedExpr, UpwardsReplacementState)
+runNetworkApplicationReplacement numberOfMagicVariables e = do
+  let result = replaceNetworkApplications 0 e
+  let initialState =
+        ( DownwardsReplacementState 0 0 numberOfMagicVariables
+        , UpwardsReplacementState mempty mempty
+        )
+  (x, (_down, up)) <- runStateT result initialState
+  return (x, up)
 
-  return newBody
-  where
-    mkMagicVariableSeq :: Builtin -> [Int] -> (CheckedExpr, CheckedExpr)
-    mkMagicVariableSeq tElem indices = (tensorExpr, tensorType)
-      where
-        tensorElemType   = Builtin ann tElem
-        tensorType       = mkTensor ann tensorElemType [length indices]
-        variables        = map (Var ann . Bound) indices
-        tensorExpr       = SeqExpr ann tensorElemType tensorType variables
+-- |Called at the site of an application of a neural network.
+-- It updates the number of magic variables used and identifies any
+-- locally bound variables that can be replaced with magic variables.
+processNetworkApplication :: MonadReplacement m => NetworkDetails -> CheckedExpr -> m (Int, Int)
+processNetworkApplication network input = do
+  (DownwardsReplacementState{..}, UpwardsReplacementState{..}) <- get
+
+  let magicVarCount = magicInputVarCount + magicOutputVarCount
+  let localReplacableBoundVars = case input of
+          SeqExpr _ _ _ xs -> getReplacableBoundVars magicVarCount xs
+          _                -> developerError $
+            "It is assumed that no non-Seq literals exist after normalisation." <+>
+            "However, found the expression" <+> squotes (prettyVerbose input)
+
+  let down = DownwardsReplacementState
+        { magicInputVarCount  = magicInputVarCount + size (inputTensor network)
+        , magicOutputVarCount = magicInputVarCount + size (inputTensor network)
+        , ..
+        }
+
+  let up = UpwardsReplacementState
+        { replacableBoundVars = replacableBoundVars <> localReplacableBoundVars
+        , ..
+        }
+
+  put (down, up)
+  return (magicInputVarCount, magicOutputVarCount)
+    where
+      getReplacableBoundVars :: Int -> [CheckedExpr] -> IntMap Int
+      getReplacableBoundVars _             []       = mempty
+      getReplacableBoundVars magicVarIndex (x : xs) =
+        let recRes = getReplacableBoundVars (magicVarIndex + 1) xs in
+          case x of
+            Var _ (Bound i) -> IntMap.insert i magicVarIndex recRes
+            _               -> recRes
+
+processQuantifierBinding :: MonadReplacement m => Quantifier -> m (Maybe Int)
+processQuantifierBinding q = do
+  (down, UpwardsReplacementState{..}) <- get
+  logDebug $ "qb" <+> pretty (show replacableBoundVars)
+
+  let (magicVarUsingBinder, newMapping) = IntMap.updateLookupWithKey (\_ _ -> Nothing) 0 replacableBoundVars
+  let newQuantifiers = Set.insert q quantifiers
+  put (down, UpwardsReplacementState newMapping newQuantifiers)
+  return magicVarUsingBinder
+
+traverseUpOverBinder :: MonadReplacement m => m ()
+traverseUpOverBinder = do
+  (down, UpwardsReplacementState{..}) <- get
+  logDebug "tb"
+  put (down, UpwardsReplacementState
+    { replacableBoundVars = IntMap.mapKeysMonotonic (\x -> x-1) replacableBoundVars
+    , ..
+    })
+
+getNumberOfMagicVariables :: MonadReplacement m => m Int
+getNumberOfMagicVariables = gets (numberOfMagicVariables . fst)
+
 
 -- Takes in the expression to process and returns a function
 -- from the current binding depth to the altered expression.
---
--- NOTE that we don't need to adjust references to already bound variables
--- as the quantifiers are all added on the outside.
-replaceNetworkApplications :: (MonadVNNLib m, MonadState (Int, Int) m)
+replaceNetworkApplications :: MonadReplacement m
                            => BindingDepth
                            -> CheckedExpr
                            -> m CheckedExpr
@@ -242,27 +289,53 @@ replaceNetworkApplications d e =
     Literal{}  -> return e
     Var{}      -> return e
 
-    Seq ann xs ->
-      Seq ann <$> traverse (replaceNetworkApplications d) xs
+    Seq ann xs -> Seq ann <$> traverse (replaceNetworkApplications d) xs
 
-    QuantifierExpr ann q binder body -> do
+    Let ann (App _ (Var _ (Free ident)) [inputArg]) _ body -> do
+      newBody  <- replaceNetworkApplication ann ident (argExpr inputArg) body d
+      newBody' <- replaceNetworkApplications d newBody
+      return newBody'
+
+    Let ann bound binder body -> do
+      bound' <- replaceNetworkApplications d bound
+      body'  <- replaceNetworkApplications d body
+      traverseUpOverBinder
+      return $ Let ann bound' binder body'
+
+    QuantifierExpr q ann binder body -> do
+      -- Recurse, increasing the binding depth by 1
       body' <- replaceNetworkApplications (d + 1) body
-      -- Increase the binding depth by 1
-      return $ QuantifierExpr ann q binder body'
+
+      magicVariableToSubstitute <- processQuantifierBinding q
+
+      case magicVariableToSubstitute of
+        -- Then this bound variable is not equal to one of the magic variables so retain
+        -- the quantifier.
+        Nothing -> do
+          traverseUpOverBinder
+          return $ QuantifierExpr q ann binder body'
+
+        -- Then this bound variable is equal to one of the magic variables so this variable
+        -- is redundant and we can substitute through.
+        Just magicVarIndex -> do
+          totalNumberOfMagicVariables <- getNumberOfMagicVariables
+          let index = (totalNumberOfMagicVariables - 1 - magicVarIndex) + d
+          let magicVar = Var ann (Bound index)
+          let result = magicVar `substInto` body'
+          logDebug "Replacement"
+          logDebug $ pretty totalNumberOfMagicVariables
+          logDebug $ pretty magicVarIndex
+          logDebug $ pretty d
+          logDebug $ pretty index
+          logDebug $ prettySimple body'
+          logDebug $ prettySimple result
+          traverseUpOverBinder
+          return result
 
     App ann fun args -> do
       fun'  <- replaceNetworkApplications d fun
       args' <- traverse (traverseArgExpr (replaceNetworkApplications d)) args
       return $ App ann fun' args'
-
-    Let ann (App _ (Var _ (Free ident)) [inputArg]) _ body -> do
-      newBody <- replaceNetworkApplication ann ident (argExpr inputArg) body d
-      replaceNetworkApplications d newBody
-
-    Let ann bound binder body -> do
-      bound' <- replaceNetworkApplications d bound
-      body'  <- replaceNetworkApplications d body
-      return $ Let ann bound' binder body'
 
 {-
     -- EXAMPLE:
@@ -287,6 +360,49 @@ replaceNetworkApplications d e =
     --
     -- (E) Inserted quantifiers over the meta-network so far.
 -}
+replaceNetworkApplication :: MonadReplacement m
+                          => CheckedAnn
+                          -> Identifier
+                          -> CheckedExpr
+                          -> CheckedExpr
+                          -> BindingDepth
+                          -> m CheckedExpr
+replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
+  network@(NetworkDetails _ _ inputs outputs) <- getNetworkDetailsFromCtx ident
+  let inputSize  = size inputs
+  let inputType  = tElem outputs
+  let outputSize = size inputs
+  let outputType = tElem outputs
+
+  totalNumberOfMagicVariables <- getNumberOfMagicVariables
+  (inputStartingIndex, outputStartingIndex) <- processNetworkApplication network networkInput
+  let totalNumberOfMagicVariablesSoFar = inputStartingIndex + outputStartingIndex
+
+  -- In the example points to X3
+  let inputStartingDBIndex  = totalNumberOfMagicVariables + bindingDepth - totalNumberOfMagicVariablesSoFar
+  -- In the example points to Y2
+  let outputStartingDBIndex = inputStartingDBIndex - inputSize
+  -- In the examples points to X4
+  let outputEndingDBIndex       = outputStartingDBIndex - outputSize
+  let inputVarIndices           = reverse [outputStartingDBIndex .. inputStartingDBIndex-1]
+  let outputVarIndices          = reverse [outputEndingDBIndex   .. outputStartingDBIndex-1]
+  let (inputsExpr,  inputsType) = mkMagicVariableSeq inputType  inputVarIndices
+  let (outputsExpr, _)          = mkMagicVariableSeq outputType outputVarIndices
+
+  let prop          = BuiltinBooleanType ann Prop
+  let body'         = outputsExpr `substInto` letBody
+  let inputEquality = EqualityExpr Eq ann inputsType prop (map (ExplicitArg ann) [inputsExpr, networkInput])
+  let newBody       = BooleanOp2Expr Impl ann prop (map (ExplicitArg ann) [inputEquality, body'])
+
+  return newBody
+  where
+    mkMagicVariableSeq :: Builtin -> [Int] -> (CheckedExpr, CheckedExpr)
+    mkMagicVariableSeq tElem indices = (tensorExpr, tensorType)
+      where
+        tensorElemType   = Builtin ann tElem
+        tensorType       = mkTensor ann tensorElemType [length indices]
+        variables        = map (Var ann . Bound) indices
+        tensorExpr       = SeqExpr ann tensorElemType tensorType variables
 
 --------------------------------------------------------------------------------
 -- Pass 2: quantification over magic variables
@@ -325,8 +441,8 @@ quantifyOverMagicVariables metaNetwork prop =
 -- Network type validation
 
 data NetworkDetails = NetworkDetails
-  { annotation   :: CheckedAnn
-  , ident        :: Identifier
+  { _annotation   :: CheckedAnn
+  , _ident        :: Identifier
   , inputTensor  :: TensorDetails
   , outputTensor :: TensorDetails
   }

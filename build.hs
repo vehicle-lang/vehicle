@@ -254,6 +254,6 @@ $(GEN_DIR_HS)/Vehicle/Frontend/Par.info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.y
     command_ [] "cabal"
       [ "test"
       , "--test-show-details=always"
-      , "--test-options=\"--color=always --accept\""
+      , "--test-options=\"--accept\""
       ]
 
