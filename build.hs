@@ -12,11 +12,18 @@ import System.Directory
 import System.IO
 import System.Exit
 
+ghcVersion :: Version
+ghcVersion = [9,0,1]
+
+alexVersion :: Version
+alexVersion = [3,2,6]
+
+happyVersion :: Version
+happyVersion = [1,20,0]
+
 bnfcVersion :: Version
 bnfcVersion = [2,9,3]
 
-ghcVersion :: Version
-ghcVersion = [9,0,1]
 {-
 ORMOLU_VERSION = 0.3.1.0
 
@@ -80,9 +87,24 @@ askConsent message = do
     when (c `notElem` "yY") exitSuccess
     hSetBuffering stdin oldBufferMode
 
+installIfMissing :: String -> String -> String -> Version -> Action ()
+installIfMissing executable packageName link version = do
+  missing <- not <$> hasExecutable executable
+  when missing $ do
+    putInfo $ "Vehicle requires " <> packageName
+    putInfo $ "See: " <> link
+
+    askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
+    command_ [] "cabal"
+      [ "v1-install"
+      , packageName <> "-" <> showVersion version
+      ]
+
 requireAll :: Action ()
 requireAll = do
   requireHaskell
+  requireAlex
+  requireHappy
   requireBNFC
   -- require-ormolu
 
@@ -96,17 +118,13 @@ requireHaskell = do
 
 -- BNFC -- a generator for parsers and printers
 requireBNFC :: Action ()
-requireBNFC = do
-  missingBNFC <- not <$> hasExecutable "bnfc"
-  when missingBNFC $ do
-    putInfo "Vehicle requires the BNF Converter"
-    putInfo "See: https://bnfc.digitalgrammars.com/\n"
+requireBNFC = installIfMissing "bnfc" "BNFC" "https://bnfc.digitalgrammars.com/" bnfcVersion
 
-    askConsent "Would you like to install BNFC? [y/N]"
-    command_ [] "cabal"
-      [ "v1-install"
-      , "BNFC-" <> showVersion bnfcVersion
-      ]
+requireAlex :: Action ()
+requireAlex = installIfMissing "alex" "alex" "https://hackage.haskell.org/package/alex" alexVersion
+
+requireHappy :: Action ()
+requireHappy = installIfMissing "happy" "happy" "https://hackage.haskell.org/package/happy" happyVersion
 
   {-
 	-- Ormolu -- a Haskell formatter
