@@ -101,6 +101,9 @@ installIfMissing executable packageName link version = do
       , packageName <> "-" <> showVersion version
       ]
 
+    p <- liftIO (findExecutable executable)
+    putInfo $ "Exec: " <> show p
+
 requireAll :: Action ()
 requireAll = do
   requireHaskell
