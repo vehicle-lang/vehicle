@@ -84,7 +84,7 @@ askConsent message = do
     oldBufferMode <- hGetBuffering stdin
     hSetBuffering stdin NoBuffering
     c <- getChar
-    putStrLn $ "Input: " <> c
+    putStrLn $ "Input: " <> [c]
     when (c `notElem` "yY") exitSuccess
     hSetBuffering stdin oldBufferMode
 
