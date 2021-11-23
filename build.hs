@@ -95,7 +95,7 @@ installIfMissing executable packageName link version = do
     putInfo $ "Vehicle requires " <> packageName
     putInfo $ "See: " <> link
 
-    askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
+    -- askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
     command_ [] "cabal"
       [ "v1-install"
       , packageName <> "-" <> showVersion version
