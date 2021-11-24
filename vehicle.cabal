@@ -46,9 +46,6 @@ library vehicle-bnfc
                       , Vehicle.Frontend.Par
                       , Vehicle.Frontend.Abs
                       , Vehicle.Frontend.Print
-  build-tool-depends:   alex:alex            >=3.2.6  && <4
-                      , happy:happy          >=1.20.0 && <2
-                      , BNFC:bnfc            >=2.9.0  && <3
   build-depends:        array                >=0.5    && <1
 
 -- The main Vehicle library
