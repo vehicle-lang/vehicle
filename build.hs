@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedLists #-}
 
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Data.Maybe (isJust, isNothing)
 import Data.Version
 import System.Directory
@@ -80,12 +80,12 @@ hasExecutable prog = isJust <$> liftIO (findExecutable prog)
 
 isRunningOnCI :: Action Bool
 isRunningOnCI = liftIO $
-  maybe False (== "true") <$> lookupEnv "CI"
+  (Just "true" ==) <$> lookupEnv "CI"
 
 askConsent :: String -> Action ()
 askConsent message = do
   ci <- isRunningOnCI
-  when not ci $ do
+  unless ci $ do
     putInfo message;
     liftIO $ do
       oldBufferMode <- hGetBuffering stdin
