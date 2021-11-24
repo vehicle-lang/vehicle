@@ -27,8 +27,9 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: 'latest'
-        run: |
-          echo "${HOME}/.cabal/bin" >> $GITHUB_PATH
+
+      - name: Add Cabal bin to path
+        run: echo "${HOME}/.cabal/bin" >> $GITHUB_PATH
 
       - name: Cache Cabal packages
         uses: actions/cache@v2
