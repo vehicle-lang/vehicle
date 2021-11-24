@@ -27,6 +27,8 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: 'latest'
+        run: |
+          echo "${HOME}/.cabal/bin" >> $GITHUB_PATH
 
       - name: Cache Cabal packages
         uses: actions/cache@v2
@@ -36,19 +38,9 @@ jobs:
             ~/.cabal
           key: ${{ matrix.os }}-ghc-${{ matrix.ghc }}
 
-      - uses: pCYSl5EDgo/cat@master
-        id: hello
-        with:
-          path: $GITHUB_PATH
-
-      - run: echo $TEXT
-        env:
-          TEXT: ${{ steps.hello.outputs.text }}
-
       - name: Install bnfc
         run: |
-          echo $GITHUB_PATH
-          cabal install BNFC-2.9.3 --ignore-project --installdir=${{ steps.haskell.outputs.cabal-path }}
+          cabal install BNFC-2.9.3 --ignore-project
 
       - name: Check bnfc
         run: bnfc --version
