@@ -23,21 +23,22 @@ jobs:
 
       - name: Install Haskell
         uses: haskell/actions/setup@v1
-        id: haskell
+        id: install-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: 'latest'
 
-      - name: Add Cabal bin to path
-        run: echo "${HOME}/.cabal/bin" >> $GITHUB_PATH
-
-      - name: Cache Cabal packages
+      - name: Cache Haskell
         uses: actions/cache@v2
-        id: cache-cabal-packages
+        id: cache-haskell
         with:
           path: |
+            ~/.ghcup
             ~/.cabal
           key: ${{ matrix.os }}-ghc-${{ matrix.ghc }}
+
+      - name: Add Cabal bin to path
+        run: echo "${HOME}/.cabal/bin" >> $GITHUB_PATH
 
       #- name: Install bnfc
       #  run: |
