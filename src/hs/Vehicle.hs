@@ -19,11 +19,9 @@ import Paths_vehicle (version)
 import Control.Monad (when,)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Char (toLower)
-import Data.Text as T (Text, replace)
+import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
-import Data.ByteString qualified as B
 import Data.Version (Version, makeVersion)
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import System.Environment (getArgs)
 import System.Exit (exitSuccess, exitFailure)
 import System.Console.GetOpt
@@ -41,7 +39,6 @@ import Vehicle.Language.Normalise qualified as V (normalise)
 import Vehicle.Backend.Verifier.SMTLib (compileToSMTLib, SMTDoc(..))
 import Vehicle.Backend.Verifier.VNNLib (compileToVNNLib, VNNLibDoc(..))
 import Vehicle.Backend.ITP.Agda (compileToAgda, AgdaOptions(..))
-import System.Info (os)
 
 --------------------------------------------------------------------------------
 -- Command-line options

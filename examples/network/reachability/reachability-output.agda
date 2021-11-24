@@ -22,7 +22,7 @@ f = evaluate record
   }
 
 abstract
-  reachable : ∃ (x : Tensor ℝ (2 ∷ [])) → f x 0 ≡ 0
+  reachable : ∃ (x : Tensor ℝ (2 ∷ [])) → let y = f x in y 0 ≡ 0
   reachable = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = ????
