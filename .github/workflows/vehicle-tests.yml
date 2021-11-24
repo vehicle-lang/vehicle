@@ -36,9 +36,10 @@ jobs:
           ghc-version: ${{ env.GHC_VERSION }}
           cabal-version: 'latest'
 
+      # run: echo "${HOME}/.local/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Initialise project
         run: |
-          echo "${{ steps.haskell.outputs.cabal-path }}" >> $GITHUB_PATH
+          echo "~/.cabal/bin" >> $GITHUB_PATH
           cabal run build init
 
       - name: Run test suite
