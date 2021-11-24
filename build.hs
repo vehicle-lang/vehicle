@@ -97,7 +97,9 @@ installIfMissing executable packageName link version = do
 
     -- askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
     command_ [] "cabal"
-      [ "v1-install"
+      [ "install"
+      , "-v"
+      , "--ignore-local-project"
       , packageName <> "-" <> showVersion version
       ]
 

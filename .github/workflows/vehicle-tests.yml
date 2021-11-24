@@ -15,6 +15,7 @@ jobs:
   install:
     name: Install Vehicle and run test suite
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout out code
         uses: actions/checkout@v2
@@ -41,6 +42,7 @@ jobs:
         run: |
           echo "~/.cabal/bin" >> $GITHUB_PATH
           cabal run build init
+          echo $GITHUB_PATH
 
       - name: Run test suite
         run: cabal run build test
