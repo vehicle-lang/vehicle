@@ -3,9 +3,12 @@
 module Main where
 
 import Vehicle qualified
+import GHC.IO.Encoding
 
 --------------------------------------------------------------------------------
 -- Main function
 
 main :: IO ()
-main = Vehicle.parseAndRun
+main = do
+  setLocaleEncoding utf8
+  Vehicle.parseAndRun

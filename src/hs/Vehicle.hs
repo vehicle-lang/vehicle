@@ -226,17 +226,16 @@ fromLoggedIO Nothing        logger = return $ discardLogger logger
 fromLoggedIO (Just logFile) logger = flushLogs logFile logger
 
 readFileOrStdin :: Maybe FilePath -> IO Text
-readFileOrStdin (Just file) = decodeUtf8 <$> B.readFile file
+readFileOrStdin (Just file) = TIO.readFile file
 readFileOrStdin Nothing     = TIO.getContents
 
 writeResultToFile :: Options -> OutputTarget -> Doc a -> IO ()
 writeResultToFile Options{..} target doc = do
   let fileHeader = makefileHeader version target
   let outputText = layoutAsText (fileHeader <> line <> line <> doc)
-  let outputText2 = if os == "mingw32" then replace "\n" "\r\n" outputText else outputText
   case outputFile of
-    Nothing             -> TIO.putStrLn outputText2
-    Just outputFilePath -> B.writeFile outputFilePath (encodeUtf8 outputText2)
+    Nothing             -> TIO.putStrLn outputText
+    Just outputFilePath -> TIO.writeFile outputFilePath outputText
 
 toSMTLib :: Options -> V.CheckedProg -> IO ()
 toSMTLib opts@Options{..} prog = do
