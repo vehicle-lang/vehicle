@@ -38,7 +38,7 @@ jobs:
 
       - name: Install bnfc
         run: |
-          cabal install exe:BNFC-2.9.3 --install-dir=${{ steps.haskell.outputs.cabal-path }}
+          cabal install exe:BNFC-2.9.3 --installdir=${{ steps.haskell.outputs.cabal-path }}
 
       - name: Check bnfc
         run: bnfc --version
