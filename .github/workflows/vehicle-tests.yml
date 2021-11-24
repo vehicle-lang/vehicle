@@ -38,8 +38,8 @@ jobs:
 
       - name: Install bnfc
         run: |
-          cat $GITHUB_PATH
-          cabal install BNFC-2.9.3:exe:bnfc --ignore-project --installdir=${{ steps.haskell.outputs.cabal-path }}
+          echo $GITHUB_PATH
+          cabal install BNFC-2.9.3 --ignore-project --installdir=${{ steps.haskell.outputs.cabal-path }}
 
       - name: Check bnfc
         run: bnfc --version
