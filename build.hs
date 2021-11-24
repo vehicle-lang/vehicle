@@ -108,8 +108,8 @@ requireAll :: Action ()
 requireAll = do
   requireHaskell
   requireAlex
-  requireHappy
-  requireBNFC
+  -- requireHappy
+  -- requireBNFC
   -- require-ormolu
 
 requireHaskell :: Action ()
