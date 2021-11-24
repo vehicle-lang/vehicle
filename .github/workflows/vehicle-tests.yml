@@ -40,13 +40,6 @@ jobs:
       - name: Add Cabal bin to path
         run: echo "${HOME}/.cabal/bin" >> $GITHUB_PATH
 
-      #- name: Install bnfc
-      #  run: |
-      #    cabal install BNFC-2.9.3 --ignore-project
-#
-      #- name: Check bnfc
-      #  run: bnfc --version
-
       - name: Initialise project
         run: |
           cabal run build init
@@ -54,5 +47,5 @@ jobs:
           happy --version
           bnfc  --version
 
-      # - name: Run test suite
-      #   run: cabal run build test
+      - name: Run test suite
+        run: cabal run build test

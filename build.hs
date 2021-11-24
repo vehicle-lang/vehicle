@@ -1,16 +1,17 @@
 {-# LANGUAGE OverloadedLists #-}
 
-import Development.Shake
-import Development.Shake.Command
-import Development.Shake.FilePath
-import Development.Shake.Util
-
 import Control.Monad (when)
 import Data.Maybe (isJust, isNothing)
 import Data.Version
 import System.Directory
 import System.IO
 import System.Exit
+import System.Environment (lookupEnv)
+
+import Development.Shake
+import Development.Shake.Command
+import Development.Shake.FilePath
+import Development.Shake.Util
 
 ghcVersion :: Version
 ghcVersion = [9,0,1]
@@ -77,16 +78,22 @@ bnfcFrontendGarbage =
 hasExecutable :: String -> Action Bool
 hasExecutable prog = isJust <$> liftIO (findExecutable prog)
 
+isRunningOnCI :: Action Bool
+isRunningOnCI = liftIO $
+  maybe False (== "true") <$> lookupEnv "CI"
+
 askConsent :: String -> Action ()
 askConsent message = do
-  putInfo message;
-  liftIO $ do
-    oldBufferMode <- hGetBuffering stdin
-    hSetBuffering stdin NoBuffering
-    c <- getChar
-    putStrLn $ "Input: " <> [c]
-    when (c `notElem` "yY") exitSuccess
-    hSetBuffering stdin oldBufferMode
+  ci <- isRunningOnCI
+  when not ci $ do
+    putInfo message;
+    liftIO $ do
+      oldBufferMode <- hGetBuffering stdin
+      hSetBuffering stdin NoBuffering
+      c <- getChar
+      putStrLn $ "Input: " <> [c]
+      when (c `notElem` "yY") exitSuccess
+      hSetBuffering stdin oldBufferMode
 
 installIfMissing :: String -> String -> String -> Version -> Action ()
 installIfMissing executable packageName link version = do
@@ -95,10 +102,10 @@ installIfMissing executable packageName link version = do
     putInfo $ "Vehicle requires " <> packageName
     putInfo $ "See: " <> link
 
-    -- askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
+    askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
+
     command_ [] "cabal"
       [ "install"
-      , "-v"
       , "--ignore-project"
       , packageName <> "-" <> showVersion version
       ]
