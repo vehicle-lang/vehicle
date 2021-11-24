@@ -1,22 +1,30 @@
 {-# LANGUAGE OverloadedLists #-}
 
-import Development.Shake
-import Development.Shake.Command
-import Development.Shake.FilePath
-import Development.Shake.Util
-
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Data.Maybe (isJust, isNothing)
 import Data.Version
 import System.Directory
 import System.IO
 import System.Exit
+import System.Environment (lookupEnv)
+
+import Development.Shake
+import Development.Shake.Command
+import Development.Shake.FilePath
+import Development.Shake.Util
+
+ghcVersion :: Version
+ghcVersion = [9,0,1]
+
+alexVersion :: Version
+alexVersion = [3,2,6]
+
+happyVersion :: Version
+happyVersion = [1,20,0]
 
 bnfcVersion :: Version
 bnfcVersion = [2,9,3]
 
-ghcVersion :: Version
-ghcVersion = [9,0,1]
 {-
 ORMOLU_VERSION = 0.3.1.0
 
@@ -70,19 +78,46 @@ bnfcFrontendGarbage =
 hasExecutable :: String -> Action Bool
 hasExecutable prog = isJust <$> liftIO (findExecutable prog)
 
+isRunningOnCI :: Action Bool
+isRunningOnCI = liftIO $
+  (Just "true" ==) <$> lookupEnv "CI"
+
 askConsent :: String -> Action ()
 askConsent message = do
-  putInfo message;
-  liftIO $ do
-    oldBufferMode <- hGetBuffering stdin
-    hSetBuffering stdin NoBuffering
-    c <- getChar
-    when (c `notElem` "yY") exitSuccess
-    hSetBuffering stdin oldBufferMode
+  ci <- isRunningOnCI
+  unless ci $ do
+    putInfo message;
+    liftIO $ do
+      oldBufferMode <- hGetBuffering stdin
+      hSetBuffering stdin NoBuffering
+      c <- getChar
+      putStrLn $ "Input: " <> [c]
+      when (c `notElem` "yY") exitSuccess
+      hSetBuffering stdin oldBufferMode
+
+installIfMissing :: String -> String -> String -> Version -> Action ()
+installIfMissing executable packageName link version = do
+  missing <- not <$> hasExecutable executable
+  when missing $ do
+    putInfo $ "Vehicle requires " <> packageName
+    putInfo $ "See: " <> link
+
+    askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
+
+    command_ [] "cabal"
+      [ "install"
+      , "--ignore-project"
+      , packageName <> "-" <> showVersion version
+      ]
+
+    p <- liftIO (findExecutable executable)
+    putInfo $ "Exec: " <> show p
 
 requireAll :: Action ()
 requireAll = do
   requireHaskell
+  requireAlex
+  requireHappy
   requireBNFC
   -- require-ormolu
 
@@ -96,18 +131,13 @@ requireHaskell = do
 
 -- BNFC -- a generator for parsers and printers
 requireBNFC :: Action ()
-requireBNFC = do
-  missingBNFC <- not <$> hasExecutable "bnfc"
-  when missingBNFC $ do
-    putInfo "Vehicle requires the BNF Converter"
-    putInfo "See: https://bnfc.digitalgrammars.com/\n"
+requireBNFC = installIfMissing "bnfc" "BNFC" "https://bnfc.digitalgrammars.com/" bnfcVersion
 
-    askConsent "Would you like to install BNFC? [y/N]"
-    command_ [] "cabal"
-      [ "v1-install"
-      , "--ignore-project"
-      , "BNFC-" <> showVersion bnfcVersion
-      ]
+requireAlex :: Action ()
+requireAlex = installIfMissing "alex" "alex" "https://hackage.haskell.org/package/alex" alexVersion
+
+requireHappy :: Action ()
+requireHappy = installIfMissing "happy" "happy" "https://hackage.haskell.org/package/happy" happyVersion
 
   {-
 	-- Ormolu -- a Haskell formatter

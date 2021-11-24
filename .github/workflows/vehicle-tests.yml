@@ -8,35 +8,42 @@ on:
     branches:
       - dev
 
-env:
-  GHC_VERSION: 9.0.1
-
 jobs:
-  install:
+  build:
     name: Install Vehicle and run test suite
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        ghc: ['9.0.1']
+
     steps:
       - name: Checkout out code
         uses: actions/checkout@v2
 
-      - name: Cache Haskell packages
+      - name: Cache Haskell
         uses: actions/cache@v2
-        id: cache-cabal
+        id: cache-haskell
         with:
           path: |
-            ~/.cabal/packages
-            ~/.cabal/store
+            ~/.ghcup
+            ~/.cabal
             dist-newstyle
-          key: ${{ runner.os }}-${{ env.GHC_VERSION }}
+          key: ${{ matrix.os }}-ghc-${{ matrix.ghc }}
 
       - name: Install Haskell
+        if: steps.cache-haskell.outputs.cache-hit != 'true'
         uses: haskell/actions/setup@v1
+        id: install-haskell
         with:
-          ghc-version: ${{ env.GHC_VERSION }}
+          ghc-version: ${{ matrix.ghc }}
           cabal-version: 'latest'
 
+      - name: Add Cabal bin to path
+        run: echo "${HOME}/.cabal/bin" >> $GITHUB_PATH
+
       - name: Initialise project
-        run: yes | cabal run build init
+        run: cabal run build init
 
       - name: Run test suite
         run: cabal run build test
