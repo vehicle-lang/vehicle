@@ -28,6 +28,7 @@ jobs:
           path: |
             ~/.ghcup
             ~/.cabal
+            dist-newstyle
           key: ${{ matrix.os }}-ghc-${{ matrix.ghc }}
 
       - name: Install Haskell
