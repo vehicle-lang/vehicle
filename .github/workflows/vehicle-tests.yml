@@ -36,6 +36,15 @@ jobs:
             ~/.cabal
           key: ${{ matrix.os }}-ghc-${{ matrix.ghc }}
 
+      - uses: pCYSl5EDgo/cat@master
+        id: hello
+        with:
+          path: $GITHUB_PATH
+
+      - run: echo $TEXT
+        env:
+          TEXT: ${{ steps.hello.outputs.text }}
+
       - name: Install bnfc
         run: |
           echo $GITHUB_PATH
