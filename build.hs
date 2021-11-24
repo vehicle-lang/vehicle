@@ -99,7 +99,7 @@ installIfMissing executable packageName link version = do
     command_ [] "cabal"
       [ "install"
       , "-v"
-      , "--ignore-local-project"
+      , "--ignore-project"
       , packageName <> "-" <> showVersion version
       ]
 
