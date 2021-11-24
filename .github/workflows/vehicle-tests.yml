@@ -36,12 +36,19 @@ jobs:
             ~/.cabal
           key: ${{ matrix.os }}-ghc-${{ matrix.ghc }}
 
-      # run: echo "${HOME}/.local/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Initialise project
+      - name: Install bnfc
         run: |
-          export GITHUB_PATH="~/.cabal/bin:$GITHUB_PATH"
-          cabal run build init
-          echo $GITHUB_PATH
+          cabal install exe:BNFC-2.9.3 --install-dir=${{ steps.haskell.outputs.cabal-path }}
 
-      - name: Run test suite
-        run: cabal run build test
+      - name: Check bnfc
+        run: bnfc --version
+
+      # run: echo "${HOME}/.local/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      # - name: Initialise project
+      #   run: |
+      #     export GITHUB_PATH="~/.cabal/bin:$GITHUB_PATH"
+      #     cabal run build init
+      #     echo $GITHUB_PATH
+#
+      # - name: Run test suite
+      #   run: cabal run build test
