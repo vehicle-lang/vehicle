@@ -12,7 +12,6 @@ import Data.Foldable (fold)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Map as Map (Map)
-import Data.Maybe (fromMaybe)
 import Data.List (sort)
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 
@@ -123,7 +122,9 @@ instance Pretty Dependency where
     DataIntDivMod       -> "Data.Int.DivMod as" <+> numericQualifier Int
     DataRat             -> "Data.Rational as" <+> numericQualifier Rat <+> "using" <+> parens "ℚ"
     DataRatInstances    -> "Data.Rational.Instances"
-    DataReal            -> "Data.Real as" <+> numericQualifier Real <+> "using" <+> parens "ℝ"
+    -- HACK: At the moment redirect to rationals
+    DataReal            -> "Data.Rational as" <+> numericQualifier Real <+> "using" <+> parens "" <+> "renaming (ℚ to ℝ)"
+      -- "Data.Real as" <+> numericQualifier Real <+> "using" <+> parens "ℝ"
     DataBool            -> "Data.Bool as 𝔹" <+> "using" <+> parens "Bool; true; false"
     DataBoolInstances   -> "Data.Bool.Instances"
     DataList            -> "Data.List"
@@ -178,7 +179,7 @@ compileProjectFile :: MonadAgdaCompile m => m Code
 compileProjectFile = do
   projectFile <- asks vehicleProjectFile
   return $ scopeCode "private" $
-    projectFileVariable <+> "=" <+> pretty projectFile
+    projectFileVariable <+> "=" <+> dquotes (pretty projectFile)
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
@@ -192,7 +193,7 @@ maxPrecedence :: Precedence
 maxPrecedence = 1000
 
 getPrecedence :: Code -> Precedence
-getPrecedence e = fromMaybe maxPrecedence (fmap snd (docAnn e))
+getPrecedence e = maybe maxPrecedence snd (docAnn e)
 
 annotateConstant :: [Dependency] -> Code -> Code
 annotateConstant dependencies = annotate (Set.fromList dependencies, maxPrecedence)
@@ -579,20 +580,20 @@ compileFunDef n t ns e =
 -- |Compile a `network` declaration
 compileNetwork :: Code -> Code -> Code
 compileNetwork networkName networkType =
-  networkName <+> ":" <+> align networkType   <> line <>
-  networkName <+> "= evaluate record"         <> line <>
+  networkName <+> ":" <+> align networkType          <> line <>
+  networkName <+> "= evaluate record"                <> line <>
     indentCode (
-    "{ projectFile =" <+> projectFileVariable <> line <>
-    "; networkUUID = NETWORK_UUID"            <> line <>
+    "{ projectFile =" <+> projectFileVariable        <> line <>
+    "; networkUUID =" <+> dquotes "TODO_networkUUID" <> line <>
     "}")
 
 compileProperty :: Code -> Code -> Code
 compileProperty propertyName propertyBody = scopeCode "abstract" $
-  propertyName <+> ":" <+> align propertyBody  <> line <>
-  propertyName <+> "= checkProperty record"    <> line <>
+  propertyName <+> ":" <+> align propertyBody          <> line <>
+  propertyName <+> "= checkProperty record"            <> line <>
     indentCode (
-    "{ projectFile  =" <+> projectFileVariable <> line <>
-    "; propertyUUID = ????"                    <> line <>
+    "{ projectFile  =" <+> projectFileVariable         <> line <>
+    "; propertyUUID =" <+> dquotes "TODO_propertyUUID" <> line <>
     "}")
 
 containerDependencies :: ContainerType -> [Dependency]

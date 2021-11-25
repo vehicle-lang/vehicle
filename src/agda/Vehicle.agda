@@ -5,7 +5,7 @@ open import Data.String using (String; _++_; lines)
 open import Data.Nat.Base using (ℕ)
 open import Data.Vec.Base using (Vec)
 open import Data.Float.Base using (Float; _≤ᵇ_)
-open import Data.List.Base using ([]; _∷_)
+open import Data.List.Base using (List; []; _∷_)
 open import Data.Unit.Base using (⊤; tt)
 open import Relation.Nullary using (does)
 open import Relation.Binary.Core using (Rel)
@@ -34,20 +34,21 @@ VEHICLE_COMMAND = "vehicle"
 
 record EvaluateArgs : Set where
   field
-    databasePath : String
+    projectFile : String
     networkUUID  : String
 
 evaluateCmd : EvaluateArgs → CmdSpec
 evaluateCmd args = cmdSpec VEHICLE_COMMAND
   ( "evaluate"
-  ∷ databasePath
+  ∷ projectFile
   ∷ networkUUID
   ∷ []) ""
   where open EvaluateArgs args
 
 -- TODO
-postulate evaluate : EvaluateArgs → ∀ {m n : ℕ} → Vec Float m → Vec Float n
-
+postulate evaluate : EvaluateArgs →
+                    ∀ {a b} {A : Set a} {B : Set b} →
+                    A → B
 
 ------------------------------------------------------------------------
 -- Checking
@@ -55,15 +56,13 @@ postulate evaluate : EvaluateArgs → ∀ {m n : ℕ} → Vec Float m → Vec Fl
 
 record CheckArgs : Set where
   field
-    databasePath : String
-    networkUUID  : String
+    projectFile  : String
     propertyUUID : String
 
 checkCmd : CheckArgs → CmdSpec
 checkCmd checkArgs = cmdSpec VEHICLE_COMMAND
   ( "check"
-  ∷ databasePath
-  ∷ networkUUID
+  ∷ projectFile
   ∷ propertyUUID
   ∷ []) ""
   where open CheckArgs checkArgs

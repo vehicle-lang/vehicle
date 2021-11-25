@@ -11,14 +11,14 @@ open import Data.Product
 open import Data.Sum
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Rational as ℚ using (ℚ)
-open import Data.Real as ℝ using (ℝ)
+open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
 open import Data.List
 open import Data.List.Relation.Unary.All as List
 
 module property6-output where
 
 private
-  VEHICLE_PROJECT_FILE = TODO/vehicle/path
+  VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
 pi : ℝ
 pi = 392699 ℚ./ 125000
@@ -32,7 +32,7 @@ OutputVector = Tensor ℝ (5 ∷ [])
 acasXu : InputVector → OutputVector
 acasXu = evaluate record
   { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = NETWORK_UUID
+  ; networkUUID = "TODO_networkUUID"
   }
 
 distanceToIntruder : InputVector → ℝ
@@ -63,5 +63,5 @@ abstract
   property6 : ∀ (x : Tensor ℝ (5 ∷ [])) → IntruderFarAway x → AdvisesClearOfConflict x
   property6 = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
-    ; propertyUUID = ????
+    ; propertyUUID = "TODO_propertyUUID"
     }

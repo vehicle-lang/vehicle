@@ -163,7 +163,7 @@ compile logFile opts@CompileOptions{..} = do
     target@(ITP itp) -> do
       case itp of
         Agda -> do
-          let agdaOptions = AgdaOptions "TODO/vehicle/path" [T.pack moduleName] mempty
+          let agdaOptions = AgdaOptions "TODO_projectFile" [T.pack moduleName] mempty
           agdaDoc <- fromLoggedEitherIO logFile $ compileToAgda agdaOptions typedCoreProg
           writeResultToFile opts target agdaDoc
 
