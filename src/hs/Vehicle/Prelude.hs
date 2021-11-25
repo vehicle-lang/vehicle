@@ -2,6 +2,9 @@
 module Vehicle.Prelude
   ( module X
   , VehicleLang(..)
+  , ITP(..)
+  , Verifier(..)
+  , OutputTarget(..)
   , Negatable(..)
   , (|->)
   , (!?)
@@ -17,6 +20,7 @@ module Vehicle.Prelude
 import Data.Range
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Bifunctor
 import Numeric
 
 import Vehicle.Prelude.Token as X
@@ -26,11 +30,36 @@ import Vehicle.Prelude.Prettyprinter as X
 import Vehicle.Prelude.Logging as X
 import Vehicle.Prelude.Supply as X
 
-infix 1 |->
-
 data VehicleLang = Frontend | Core
   deriving (Show)
 
+data ITP
+  = Agda
+  deriving (Show, Read)
+
+data Verifier
+  = VNNLib
+  | SMTLib
+  deriving (Show, Read)
+
+data OutputTarget
+  = ITP ITP
+  | Verifier Verifier
+
+instance Show OutputTarget where
+  show = \case
+    ITP      arg -> show arg
+    Verifier arg -> show arg
+
+instance Read OutputTarget where
+  readsPrec d x =
+    case readsPrec d x of
+      [] -> case readsPrec d x of
+        []  -> []
+        res -> fmap (first Verifier) res
+      res -> fmap (first ITP) res
+
+infix 1 |->
 -- | Useful for writing association lists.
 (|->) :: a -> b -> (a, b)
 (|->) = (,)

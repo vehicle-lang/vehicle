@@ -10,15 +10,6 @@ import Vehicle.Language.Print
 -- * Utilities when compiling to an interactive theorem prover backend
 
 --------------------------------------------------------------------------------
--- Backends
-
-data Backend
-  = Agda
-
-instance Pretty Backend where
-  pretty Agda = "Agda"
-
---------------------------------------------------------------------------------
 -- Options
 
 --------------------------------------------------------------------------------
