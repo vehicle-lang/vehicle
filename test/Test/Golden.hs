@@ -85,11 +85,12 @@ makeIndividualTest folderPath name target = testWithCleanup
   testName   = name <> "-" <> show target
   extension  = getFileExt target
   basePath   = folderPath </> name
+  moduleName = name <> "-output"
   inputFile  = basePath <.> ".vcl"
   outputFile = basePath <> "-temp-output" <.> extension
   goldenFile = basePath <> "-output" <.> extension
   readGolden = T.readFile goldenFile
-  readOutput = do runTest inputFile outputFile target; T.readFile outputFile
+  readOutput = do runTest inputFile outputFile moduleName target; T.readFile outputFile
   updateGolden = T.writeFile goldenFile
 
   test = goldenTest testName readGolden readOutput diffCommand updateGolden
@@ -117,8 +118,8 @@ cleanupOutputFile testFile test = withResource (return ()) (const cleanup) (cons
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
 
-runTest :: FilePath -> FilePath -> OutputTarget -> IO ()
-runTest inputFile outputFile outputTarget = do
+runTest :: FilePath -> FilePath -> String -> OutputTarget -> IO ()
+runTest inputFile outputFile modulePath outputTarget = do
   runWithOptions $ Options
     { version       = False
     , logFile       = Nothing -- Just Nothing
@@ -126,5 +127,6 @@ runTest inputFile outputFile outputTarget = do
       { inputFile    = inputFile
       , outputFile   = Just outputFile
       , outputTarget = outputTarget
+      , moduleName   = modulePath
       }
     }

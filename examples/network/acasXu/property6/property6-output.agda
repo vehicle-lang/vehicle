@@ -15,7 +15,7 @@ open import Data.Real as ℝ using (ℝ)
 open import Data.List
 open import Data.List.Relation.Unary.All as List
 
-module MyTestModule where
+module property6-output where
 
 private
   VEHICLE_PROJECT_FILE = TODO/vehicle/path

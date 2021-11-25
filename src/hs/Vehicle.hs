@@ -15,7 +15,7 @@ import Paths_vehicle qualified as VehiclePath (version)
 
 import Control.Monad (when,)
 import Control.Monad.Except (ExceptT, runExceptT)
-import Data.Text as T (Text)
+import Data.Text as T (Text, pack)
 import Data.Text.IO qualified as TIO
 import Data.Version (Version, makeVersion)
 import System.Exit (exitSuccess, exitFailure)
@@ -94,6 +94,7 @@ data CompileOptions = CompileOptions
   { inputFile      :: FilePath
   , outputFile     :: Maybe FilePath
   , outputTarget   :: OutputTarget
+  , moduleName     :: String
   } deriving (Show)
 
 compileDescription :: InfoMod Command
@@ -116,6 +117,11 @@ compileParser = CompileOptions
      <> short 't'
      <> help "Compilation target."
      <> metavar "TARGET" )
+  <*> option auto
+      ( long "moduleName"
+     <> short 'm'
+     <> help "The name of the module."
+     <> metavar "MODULENAME" )
 
 data CheckOptions = CheckOptions
   { databaseFile :: FilePath
@@ -157,7 +163,7 @@ compile logFile opts@CompileOptions{..} = do
     target@(ITP itp) -> do
       case itp of
         Agda -> do
-          let agdaOptions = AgdaOptions "TODO/vehicle/path" ["MyTestModule"] mempty
+          let agdaOptions = AgdaOptions "TODO/vehicle/path" [T.pack moduleName] mempty
           agdaDoc <- fromLoggedEitherIO logFile $ compileToAgda agdaOptions typedCoreProg
           writeResultToFile opts target agdaDoc
 

@@ -11,7 +11,7 @@ open import Data.Real as ℝ using (ℝ)
 open import Data.List
 open import Relation.Binary.PropositionalEquality
 
-module MyTestModule where
+module reachability-output where
 
 private
   VEHICLE_PROJECT_FILE = TODO/vehicle/path

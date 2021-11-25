@@ -8,7 +8,7 @@
 open import Vehicle
 open import Data.Unit
 
-module MyTestModule where
+module let-output where
 
 private
   VEHICLE_PROJECT_FILE = TODO/vehicle/path

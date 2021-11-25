@@ -10,7 +10,7 @@ open import Vehicle.Data.Tensor
 open import Data.Real as ℝ using (ℝ)
 open import Data.List
 
-module MyTestModule where
+module increasing-output where
 
 private
   VEHICLE_PROJECT_FILE = TODO/vehicle/path

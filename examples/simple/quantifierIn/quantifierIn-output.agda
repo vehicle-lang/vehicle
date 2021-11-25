@@ -11,7 +11,7 @@ open import Data.Int as ℤ using (ℤ)
 open import Data.List
 open import Data.List.Relation.Unary.All as List
 
-module MyTestModule where
+module quantifierIn-output where
 
 private
   VEHICLE_PROJECT_FILE = TODO/vehicle/path
