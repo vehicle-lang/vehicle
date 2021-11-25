@@ -13,18 +13,6 @@ import Development.Shake.Command
 import Development.Shake.FilePath
 import Development.Shake.Util
 
-ghcVersion :: Version
-ghcVersion = [9,0,1]
-
-alexVersion :: Version
-alexVersion = [3,2,6]
-
-happyVersion :: Version
-happyVersion = [1,20,0]
-
-bnfcVersion :: Version
-bnfcVersion = [2,9,3]
-
 {-
 ORMOLU_VERSION = 0.3.1.0
 
@@ -37,6 +25,18 @@ BNFC   ?= bnfc
 ---------------------------------------------------------------------------------
 --- Configuration
 ---------------------------------------------------------------------------------
+
+ghcVersion :: Version
+ghcVersion = [9,0,1]
+
+alexVersion :: Version
+alexVersion = [3,2,6]
+
+happyVersion :: Version
+happyVersion = [1,20,0]
+
+bnfcVersion :: Version
+bnfcVersion = [2,9,3]
 
 srcDirBNFC :: FilePath
 srcDirBNFC = "src" </> "bnfc"
@@ -75,46 +75,8 @@ bnfcFrontendGarbage =
 -- Dependencies with reasonable error messages
 ---------------------------------------------------------------------------------
 
-hasExecutable :: String -> Action Bool
-hasExecutable prog = isJust <$> liftIO (findExecutable prog)
-
-isRunningOnCI :: Action Bool
-isRunningOnCI = liftIO $
-  (Just "true" ==) <$> lookupEnv "CI"
-
-askConsent :: String -> Action ()
-askConsent message = do
-  ci <- isRunningOnCI
-  unless ci $ do
-    putInfo message;
-    liftIO $ do
-      oldBufferMode <- hGetBuffering stdin
-      hSetBuffering stdin NoBuffering
-      c <- getChar
-      putStrLn $ "Input: " <> [c]
-      when (c `notElem` "yY") exitSuccess
-      hSetBuffering stdin oldBufferMode
-
-installIfMissing :: String -> String -> String -> Version -> Action ()
-installIfMissing executable packageName link version = do
-  missing <- not <$> hasExecutable executable
-  when missing $ do
-    putInfo $ "Vehicle requires " <> packageName
-    putInfo $ "See: " <> link
-
-    askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
-
-    command_ [] "cabal"
-      [ "install"
-      , "--ignore-project"
-      , packageName <> "-" <> showVersion version
-      ]
-
-    p <- liftIO (findExecutable executable)
-    putInfo $ "Exec: " <> show p
-
-requireAll :: Action ()
-requireAll = do
+requireCore :: Action ()
+requireCore = do
   requireHaskell
   requireAlex
   requireHappy
@@ -139,6 +101,11 @@ requireAlex = installIfMissing "alex" "alex" "https://hackage.haskell.org/packag
 requireHappy :: Action ()
 requireHappy = installIfMissing "happy" "happy" "https://hackage.haskell.org/package/happy" happyVersion
 
+requireAgda :: Action ()
+requireAgda = do
+  missingAgda <- not <$> hasExecutable "agda"
+  when missingAgda $ do
+    fail "Agda not installed"
   {-
 	-- Ormolu -- a Haskell formatter
 	.PHONY: require-ormolu
@@ -174,11 +141,33 @@ main = shakeArgs shakeOptions $ do
         ]
 
   phony "init" $ do
-    requireAll
+    requireCore
     --setupGitHooks
 
   phony "clean" $ do
     liftIO $ removeDirectoryRecursive genDirHS
+
+  phony "init-agda" $ do
+    requireAgda
+
+    putInfo ""
+    putInfo "Setting up Agda libraries for Vehicle"
+
+    -- Locate the home directory
+    homeDirectory <- liftIO getHomeDirectory
+    let agdaDirectory = homeDirectory </> ".agda"
+
+    -- Install the Vehicle agda-lib
+    agdaLibrariesFile <- liftIO $ makeAbsolute $ agdaDirectory </> "libraries"
+    vehicleAgdaLib <- liftIO $ makeAbsolute "./src/agda/vehicle.agda-lib"
+    addedLibrary <- addLineToFileIfNotPresent agdaLibrariesFile vehicleAgdaLib
+
+    -- Install the Vehicle executable
+
+    -- let vehicleExecutable = "unknown"
+    -- addedExecutable <- addLineToFileIfNotPresent agdaExecutablesFile vehicleExecutable
+
+    return ()
 
 {-
 ---------------------------------------------------------------------------------
@@ -287,3 +276,58 @@ $(GEN_DIR_HS)/Vehicle/Frontend/Par.info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.y
       , "--test-options=\"--accept\""
       ]
 
+---------------------------------------------------------------------------------
+-- Utility functions
+---------------------------------------------------------------------------------
+
+hasExecutable :: String -> Action Bool
+hasExecutable prog = isJust <$> liftIO (findExecutable prog)
+
+isRunningOnCI :: Action Bool
+isRunningOnCI = liftIO $
+  (Just "true" ==) <$> lookupEnv "CI"
+
+askConsent :: String -> Action ()
+askConsent message = do
+  ci <- isRunningOnCI
+  unless ci $ do
+    putInfo message;
+    liftIO $ do
+      oldBufferMode <- hGetBuffering stdin
+      hSetBuffering stdin NoBuffering
+      c <- getChar
+      putStrLn $ "Input: " <> [c]
+      when (c `notElem` "yY") exitSuccess
+      hSetBuffering stdin oldBufferMode
+
+installIfMissing :: String -> String -> String -> Version -> Action ()
+installIfMissing executable packageName link version = do
+  missing <- not <$> hasExecutable executable
+  when missing $ do
+    putInfo $ "Vehicle requires " <> packageName
+    putInfo $ "See: " <> link
+
+    askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
+
+    command_ [] "cabal"
+      [ "install"
+      , "--ignore-project"
+      , packageName <> "-" <> showVersion version
+      ]
+
+    p <- liftIO (findExecutable executable)
+    putInfo $ "Exec: " <> show p
+
+addLineToFileIfNotPresent :: FilePath -> String -> Action Bool
+addLineToFileIfNotPresent filePath line = do
+  fileLines <- liftIO $ lines <$> readFile filePath
+  let entryInfo = "entry '" <> line <> "' in " <> filePath
+
+  if line `elem` fileLines
+    then do
+      putInfo $ "Found existing " <> entryInfo
+      return False
+    else do
+      putInfo $ "Adding " <> entryInfo
+      liftIO $ writeFile filePath (unlines (fileLines ++ [line]))
+      return True

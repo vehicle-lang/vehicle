@@ -5,7 +5,8 @@
 --  - AISEC version: 0.1.0.1
 --  - Time generated: ???
 
-open import AISEC.Utils
+open import Vehicle
+open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Sum
 open import Data.Nat as ℕ using (ℕ)

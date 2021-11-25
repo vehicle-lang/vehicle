@@ -13,6 +13,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Map as Map (Map)
 import Data.Maybe (fromMaybe)
+import Data.List (sort)
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 
 import Vehicle.Prelude
@@ -71,9 +72,9 @@ logExit e = do
 
 -- |All possible Agda modules the program may depend on.
 data Dependency
-  -- AISEC agda library
-  = AISECCore
-  | AISECUtils
+  -- Vehicle Agda library (hopefully will migrate these with time)
+  = VehicleCore
+  | VehicleUtils
   | DataTensor
   | DataTensorInstances
   | DataTensorAll
@@ -104,12 +105,12 @@ data Dependency
 
 instance Pretty Dependency where
   pretty = \case
-    AISECCore           -> "AISEC.Core"
-    AISECUtils          -> "AISEC.Utils"
-    DataTensor          -> "AISEC.Data.Tensor"
-    DataTensorInstances -> "AISEC.Data.Tensor.Instances"
-    DataTensorAll       -> "AISEC.Data.Tensor.Relation.Unary.All as" <+> containerQualifier Tensor
-    DataTensorAny       -> "AISEC.Data.Tensor.Relation.Unary.Any as" <+> containerQualifier Tensor
+    VehicleCore         -> "Vehicle"
+    VehicleUtils        -> "Vehicle.Utils"
+    DataTensor          -> "Vehicle.Data.Tensor"
+    DataTensorInstances -> "Vehicle.Data.Tensor.Instances"
+    DataTensorAll       -> "Vehicle.Data.Tensor.Relation.Unary.All as" <+> containerQualifier Tensor
+    DataTensorAny       -> "Vehicle.Data.Tensor.Relation.Unary.Any as" <+> containerQualifier Tensor
     DataUnit            -> "Data.Unit"
     DataEmpty           -> "Data.Empty"
     DataProduct         -> "Data.Product"
@@ -136,7 +137,8 @@ importStatement :: Dependency -> Doc a
 importStatement dep = "open import" <+> pretty dep
 
 importStatements :: Set Dependency -> Doc a
-importStatements deps = vsep $ map importStatement $ Set.toList deps
+importStatements deps = vsep $ map importStatement dependencies
+  where dependencies = sort (VehicleCore : Set.toList deps)
 
 type ModulePath = [Text]
 
@@ -380,7 +382,7 @@ compileBuiltin ann op args = case (op, args) of
   (NumericType t, []) -> compile t
 
   (ContainerType List,   opArgs) -> annotateApp [DataList]   "List"   <$> traverse compile opArgs
-  (ContainerType Tensor, opArgs) -> annotateApp [AISECUtils] "Tensor" <$> traverse compile opArgs
+  (ContainerType Tensor, opArgs) -> annotateApp [DataTensor] "Tensor" <$> traverse compile opArgs
 
   (If, [_t, e1, e2, e3]) -> do
     ce1 <- compile e1
@@ -492,7 +494,7 @@ compileBoolOp2 op2 t = annotateInfixOp2 dependencies precedence id Nothing opDoc
     (opDoc, precedence, dependencies) = case (op2, t) of
       (And , Bool) -> ("∧", 6,  [DataBool])
       (Or  , Bool) -> ("∨", 5,  [DataBool])
-      (Impl, Bool) -> ("⇒", 4,  [AISECUtils])
+      (Impl, Bool) -> ("⇒", 4,  [VehicleUtils])
       (And , Prop) -> ("×", 2,  [DataProduct])
       (Or  , Prop) -> ("⊎", 1,  [DataSum])
       (Impl, Prop) -> (arrow, minPrecedence, [])
@@ -596,7 +598,7 @@ compileProperty propertyName propertyBody = scopeCode "abstract" $
 containerDependencies :: ContainerType -> [Dependency]
 containerDependencies = \case
   List   -> [DataList]
-  Tensor -> [AISECUtils]
+  Tensor -> [DataTensor]
 
 containerQuantifierDependencies :: Quantifier -> ContainerType -> [Dependency]
 containerQuantifierDependencies All List   = [DataListAll]

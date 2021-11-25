@@ -35,3 +35,9 @@ package-lock.json
 # VSCode
 .vscode/
 *.code-workspace
+
+# Agda
+*.agdai
+
+# Emacs
+MAlonzo/**

@@ -5,6 +5,7 @@
 --  - AISEC version: 0.1.0.1
 --  - Time generated: ???
 
+open import Vehicle
 open import Data.Unit
 
 module MyTestModule where
