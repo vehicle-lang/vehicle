@@ -148,7 +148,6 @@ data AgdaError
 -- SMTLib errors
 
 -- | Reasons why we might not support the network type.
--- Options with `Bool` type equate
 data UnsupportedNetworkType
   = NotAFunction
   | NotATensor             InputOrOutput
