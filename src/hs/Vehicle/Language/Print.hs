@@ -20,12 +20,14 @@ import Vehicle.Core.Abs qualified as BC
 import Vehicle.Frontend.Abs qualified as BF
 
 import Vehicle.Prelude
-import Vehicle.Language.Simplify
-import Vehicle.Language.Delaborate.Core as Core
-import Vehicle.Language.Delaborate.Frontend as Frontend
-import Vehicle.Language.Descope
-import Vehicle.Language.SupplyNames (SupplyNames, runSupplyNamesWithCtx, runSupplyNames)
 import Vehicle.Language.AST
+import Vehicle.Compile.Simplify
+import Vehicle.Compile.Delaborate.Core as Core
+import Vehicle.Compile.Delaborate.Frontend as Frontend
+import Vehicle.Compile.Descope
+import Vehicle.Compile.SupplyNames (SupplyNames, runSupplyNamesWithCtx, runSupplyNames)
+import Vehicle.Compile.Type.MetaSubstitution
+import Vehicle.Compile.Type.Constraint
 
 --------------------------------------------------------------------------------
 -- Top-level interface for printing Vehicle expressions/programs
@@ -163,6 +165,16 @@ instance (PrettyNamedLang t Symbol Symbol ann, Descope t)
 -- BNFC printer treats the braces for implicit arguments as layout braces and
 -- therefore adds a ton of newlines everywhere. This hack attempts to undo this.
 bnfcPrintHack :: String -> Text
-bnfcPrintHack s = -- replaceAll "\\{\\s*" "{" $
-                  -- replaceAll "\\s*\\}\\s*" "} " $
-                  pack s
+bnfcPrintHack = pack
+  -- replaceAll "\\{\\s*" "{" $
+  -- replaceAll "\\s*\\}\\s*" "} " $
+
+instance PrettyLang MetaSubstitution where
+  prettyLang target (MetaSubstitution m) = pretty $ fmap (prettyLang target) m
+
+instance PrettyLang BaseConstraint where
+  prettyLang target (Unify (e1, e2)) = prettyLang target e1 <+> "~" <+> prettyLang target e2
+  prettyLang target (m `Has` e)      = pretty m <+> "~" <+> prettyLang target e
+
+instance PrettyLang Constraint where
+  prettyLang target (Constraint _ c) = prettyLang target c

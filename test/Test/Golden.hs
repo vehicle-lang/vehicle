@@ -20,6 +20,7 @@ import Debug.Trace (traceShowId)
 
 import Vehicle
 import Vehicle.Prelude
+import Vehicle.Compile
 
 --------------------------------------------------------------------------------
 -- Tests
@@ -120,7 +121,7 @@ cleanupOutputFile testFile test = withResource (return ()) (const cleanup) (cons
 
 runTest :: FilePath -> FilePath -> String -> OutputTarget -> IO ()
 runTest inputFile outputFile modulePath outputTarget = do
-  runWithOptions $ Options
+  run $ Options
     { version       = False
     , logFile       = Nothing -- Just Nothing
     , commandOption = Compile $ CompileOptions

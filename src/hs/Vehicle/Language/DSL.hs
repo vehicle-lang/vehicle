@@ -28,8 +28,8 @@ import Prelude hiding (pi)
 import GHC.Stack (HasCallStack)
 import Data.List.NonEmpty (NonEmpty)
 
-import Vehicle.Language.AST
 import Vehicle.Prelude
+import Vehicle.Language.AST
 import Vehicle.Language.Print (prettyVerbose)
 
 class DSL expr where

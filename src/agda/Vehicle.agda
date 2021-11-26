@@ -1,8 +1,13 @@
 {-# OPTIONS --allow-exec #-}
 
+open import Agda.Builtin.FromNat
+
 open import Data.Bool.Base using (T; Bool; if_then_else_)
 open import Data.String using (String; _++_; lines)
 open import Data.Nat.Base using (ℕ)
+open import Data.Fin using (Fin)
+import Data.Fin.Literals as Fin
+import Data.Nat.Literals as Nat
 open import Data.Vec.Base using (Vec)
 open import Data.Float.Base using (Float; _≤ᵇ_)
 open import Data.List.Base using (List; []; _∷_)
@@ -87,3 +92,14 @@ checkPropertyMacro args hole = do
 macro
   checkProperty : CheckArgs → Term → TC ⊤
   checkProperty = checkPropertyMacro
+
+------------------------------------------------------------------------
+-- Other
+------------------------------------------------------------------------
+
+instance
+  finNumber : ∀ {n} -> Number (Fin n)
+  finNumber {n} = Fin.number n
+
+  natNumber : Number ℕ
+  natNumber = Nat.number

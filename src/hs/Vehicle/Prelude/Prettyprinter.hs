@@ -33,6 +33,7 @@ import Prettyprinter as CommonPrettyprinter
   , align
   , nest
   , indent
+  , unAnnotate
   )
 
 -- * Additions to the prettyprinter library
