@@ -13,15 +13,6 @@ import Development.Shake.Command
 import Development.Shake.FilePath
 import Development.Shake.Util
 
-{-
-ORMOLU_VERSION = 0.3.1.0
-
-CABAL  ?= cabal
-HAPPY  ?= happy
-ORMOLU ?= ormolu
-BNFC   ?= bnfc
--}
-
 ---------------------------------------------------------------------------------
 --- Configuration
 ---------------------------------------------------------------------------------
@@ -75,14 +66,6 @@ bnfcFrontendGarbage =
 -- Dependencies with reasonable error messages
 ---------------------------------------------------------------------------------
 
-requireCore :: Action ()
-requireCore = do
-  requireHaskell
-  requireAlex
-  requireHappy
-  requireBNFC
-  -- require-ormolu
-
 requireHaskell :: Action ()
 requireHaskell = do
   missingGHC   <- not <$> hasExecutable "ghc"
@@ -106,20 +89,7 @@ requireAgda = do
   missingAgda <- not <$> hasExecutable "agda"
   when missingAgda $ do
     fail "Agda not installed"
-  {-
-	-- Ormolu -- a Haskell formatter
-	.PHONY: require-ormolu
-	require-ormolu:
-	ifeq (,$(wildcard $(shell which ormolu)))
-		@echo ""
-		@echo "Vehicle requires the Ormolu Haskell formatter"
-		@echo "See: https://github.com/tweag/ormolu"
-		@echo ""
-		@echo -n "Would you like to install Ormolu? [y/N] " \
-			&& read ans && [ $${ans:-N} = y ] \
-			&& $(CABAL) v2-install --ignore-project ormolu-$(ORMOLU_VERSION)
-	endif
-	-}
+
 
 ---------------------------------------------------------------------------------
 -- Test Vehicle
@@ -141,8 +111,10 @@ main = shakeArgs shakeOptions $ do
         ]
 
   phony "init" $ do
-    requireCore
-    --setupGitHooks
+    requireHaskell
+    requireAlex
+    requireHappy
+    requireBNFC
 
   phony "clean" $ do
     liftIO $ removeDirectoryRecursive genDirHS
@@ -168,22 +140,6 @@ main = shakeArgs shakeOptions $ do
     -- addedExecutable <- addLineToFileIfNotPresent agdaExecutablesFile vehicleExecutable
 
     return ()
-
-{-
----------------------------------------------------------------------------------
--- Format code within project
----------------------------------------------------------------------------------
-
-.PHONY: format
-format: require-ormolu
-	@echo "Format Haskell code using Ormolu"
-	@$(ORMOLU) --mode inplace --cabal-default-extensions $(shell git ls-files '*.hs')
-
-.PHONY: format-check
-format-check: require-ormolu
-	@echo "Check Haskell code using Ormolu"
-	@$(ORMOLU) --mode check --cabal-default-extensions $(shell git ls-files '*.hs')
--}
 
   -------------------------------------------------------------------------------
   -- Build parsers for Frontend and Core languages using BNFC
@@ -312,6 +268,7 @@ installIfMissing executable packageName link version = do
     command_ [] "cabal"
       [ "install"
       , "--ignore-project"
+      , "--overwrite-policy=always"
       , packageName <> "-" <> showVersion version
       ]
 
