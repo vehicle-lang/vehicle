@@ -1,12 +1,13 @@
-name: Test
+name: CI
 
 on:
   push:
     branches:
       - dev
   pull_request:
-    branches:
-      - dev
+    types:
+      - opened
+      - synchronize
 
 jobs:
   build:
@@ -14,14 +15,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os:
-          - macOS-latest
-          - ubuntu-latest
-          - windows-latest
-        ghc:
-          - '9.0.1'
-        cabal:
-          - 'latest'
+        os: [macOS-latest, ubuntu-latest, windows-latest]
+        ghc: ["9.0.1"]
+        cabal: ["3.4"]
 
     steps:
       - name: Checkout
@@ -34,14 +30,17 @@ jobs:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
 
-      - name: Cabal Freeze
-        run: cabal freeze
+      - run: cabal v2-update
+      - run: cabal v2-freeze --enable-tests --enable-benchmarks
 
-      - name: Cache ~/.cabal/store
+      - name: Cache ~/.cabal/store and dist-newstyle
         uses: actions/cache@v2
         with:
-          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-newstyle
           key: ${{ matrix.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
+          restore-keys: ${{ matrix.os }}-${{ matrix.ghc }}-
 
       - name: Add Cabal installdir to path (Unix)
         if: runner.os == 'Linux' || runner.os == 'macOS'
@@ -54,10 +53,10 @@ jobs:
         shell: powershell
 
       - name: Build shakefile
-        run: cabal build exe:build
+        run: cabal v2-build exe:build
 
       - name: Install dependencies
-        run: cabal run build init
+        run: cabal v2-run build init
 
       - name: Run tests
-        run: cabal run build test
+        run: cabal v2-run build test

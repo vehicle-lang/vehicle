@@ -208,7 +208,7 @@ $(GEN_DIR_HS)/Vehicle/Frontend/Par.info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.y
   phony "build" $ do
     requireHaskell
     need bnfcTargets
-    command_ [] "cabal" ["build"]
+    command_ [] "cabal" ["v2-build"]
 
   -------------------------------------------------------------------------------
   -- Test Vehicle
@@ -218,7 +218,7 @@ $(GEN_DIR_HS)/Vehicle/Frontend/Par.info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.y
     requireHaskell
     need bnfcTargets
     command_ [] "cabal"
-      [ "test"
+      [ "v2-test"
       , "--test-show-details=always"
       , "--test-options=\"--color=always\""
       ]
@@ -227,7 +227,7 @@ $(GEN_DIR_HS)/Vehicle/Frontend/Par.info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.y
     requireHaskell
     need bnfcTargets
     command_ [] "cabal"
-      [ "test"
+      [ "v2-test"
       , "--test-show-details=always"
       , "--test-options=\"--accept\""
       ]
@@ -266,7 +266,7 @@ installIfMissing executable packageName link version = do
     askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
 
     command_ [] "cabal"
-      [ "install"
+      [ "v2-install"
       , "--ignore-project"
       , "--overwrite-policy=always"
       , packageName <> "-" <> showVersion version
