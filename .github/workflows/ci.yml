@@ -30,8 +30,10 @@ jobs:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
 
-      - run: cabal v2-update
-      - run: cabal v2-freeze --enable-tests --enable-benchmarks
+      - name: Cabal freeze
+        run: |
+          cabal v2-update
+          cabal v2-freeze --enable-tests --enable-benchmarks
 
       - name: Cache ~/.cabal/store and dist-newstyle
         uses: actions/cache@v2
