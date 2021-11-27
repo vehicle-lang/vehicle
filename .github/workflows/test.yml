@@ -1,0 +1,63 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  build:
+    name: ${{ matrix.os }} / GHC ${{ matrix.ghc }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macOS-latest
+          - ubuntu-latest
+          - windows-latest]
+        ghc:
+          - '9.0.1'
+        cabal:
+          - 'latest'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Haskell
+        uses: haskell/actions/setup@v1
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: ${{ matrix.cabal }}
+
+      - name: Cabal Freeze
+        run: cabal freeze
+
+      - name: Cache ~/.cabal/store
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ matrix.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
+
+      - name: Add Cabal installdir to path (Unix)
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        run: echo "${HOME}/.cabal/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Add Cabal installdir to path (Windows)
+        if: runner.os == 'Windows'
+        run: echo "$env:APPDATA\cabal\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: powershell
+
+      - name: Build shakefile
+        run: cabal build exe:build
+
+      - name: Install dependencies
+        run: cabal run build init
+
+      - name: Run tests
+        run: cabal run build test
