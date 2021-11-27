@@ -40,8 +40,12 @@ jobs:
           cabal-version: 'latest'
 
       - name: Add Cabal install directory to path
+        if: runner.os == 'Linux' || runner.os == 'macOS'
         run: echo "${HOME}/.cabal/bin" >> $GITHUB_PATH
-        shell: bash
+
+      - name: Add Cabal install directory to path
+        if: runner.os == 'Windows'
+        run: echo "%APPDATA%\cabal\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Initialise project
         run: cabal run build init
