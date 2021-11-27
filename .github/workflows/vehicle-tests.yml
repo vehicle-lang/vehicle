@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Install Vehicle and run test suite
+    name: Build and Test Vehicle
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
