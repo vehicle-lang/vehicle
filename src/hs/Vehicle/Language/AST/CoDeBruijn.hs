@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Vehicle.Language.AST.CoDeBruijn
   ( CodebruijnExpr
   , CodebruijnArg
@@ -6,16 +8,17 @@ module Vehicle.Language.AST.CoDeBruijn
   ) where
 
 import Data.Functor.Foldable (Recursive(..))
-import Data.Bifunctor (first, bimap)
-import Data.List.NonEmpty qualified as NonEmpty (unzip, toList)
+import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (unionWith, singleton, updateLookupWithKey, mapKeysMonotonic)
+import Data.Hashable
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.Name
 import Vehicle.Language.AST.DeBruijn hiding (Free, Bound)
 import Vehicle.Language.AST.DeBruijn qualified as DB (LocallyNamelessVar(..))
+import GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
 -- Definitions
@@ -23,11 +26,17 @@ import Vehicle.Language.AST.DeBruijn qualified as DB (LocallyNamelessVar(..))
 data PositionTree
   = Leaf
   | Node PositionList
+  deriving (Eq, Generic)
+
+instance Hashable PositionTree
 
 data PositionList
   = Here  PositionTree
   | There PositionList
   | Both  PositionTree PositionList
+  deriving (Eq, Generic)
+
+instance Hashable PositionList
 
 instance Semigroup PositionTree where
   Leaf    <> Leaf    = Leaf
@@ -48,14 +57,21 @@ instance Semigroup PositionList where
 
 
 
-data CodebruijnBinding = CodebruijnBinding (Maybe Symbol) (Maybe PositionTree)
+data CodebruijnBinding
+  = CodebruijnBinding (Maybe Symbol) (Maybe PositionTree)
+  deriving (Eq, Generic)
+
+instance Hashable CodebruijnBinding
+
+instance HasName CodebruijnBinding (Maybe Symbol) where
+  nameOf (CodebruijnBinding name _) = name
 
 data CodebruijnVar
   = Free Identifier
   | Bound
+  deriving (Eq, Generic)
 
-instance HasName CodebruijnBinding (Maybe Symbol) where
-  nameOf (CodebruijnBinding name _) = name
+instance Hashable CodebruijnVar
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
 type CodebruijnBinder ann = Binder CodebruijnBinding CodebruijnVar ann
@@ -83,56 +99,63 @@ node bvms = fmap Node (foldr1 merge $ fmap (fmap Here) bvms)
 leaf :: Index -> BoundVarMap
 leaf i = IntMap.singleton i Leaf
 
+-- TODO once we have #41 done then collapse these into one function
+varmapOf :: HasAnnotation e (BoundVarMap, ann) => e -> BoundVarMap
+varmapOf = fst . annotationOf
+
 class Codebruijn f where
-  toCodebruijn   :: f (Maybe Symbol) LocallyNamelessVar ann -> (f CodebruijnBinding CodebruijnVar ann, BoundVarMap)
+  toCodebruijn :: f (Maybe Symbol) LocallyNamelessVar ann
+               -> f CodebruijnBinding CodebruijnVar (BoundVarMap, ann)
   --fromCoDeBruijn :: (f CodebruijnBinding CodebruijnVar ann, VarMap) -> f Name LocallyNamelessVar ann
 
 instance Codebruijn Binder where
-  toCodebruijn (Binder ann v n t) = (Binder ann v (CodebruijnBinding n mt) t', bvm')
+  toCodebruijn (Binder ann v n t) = Binder (bvm', ann) v (CodebruijnBinding n mt) t'
     where
-      (t', bvm)  = toCodebruijn t
-      (mt, bvm') = pop bvm
+      t'         = toCodebruijn t
+      (mt, bvm') = pop (varmapOf t')
 
 instance Codebruijn Arg where
-  toCodebruijn (Arg o v e) = first (Arg o v) (toCodebruijn e)
+  toCodebruijn (Arg ann v e) = Arg (varmapOf e', ann) v e'
+    where e' = toCodebruijn e
 
 instance Codebruijn Expr where
   toCodebruijn = cata $ \case
-    TypeF l         -> (Type l,         mempty)
-    MetaF    ann m  -> (Meta ann m,     mempty)
-    HoleF    ann n  -> (Hole ann n,     mempty)
-    BuiltinF ann op -> (Builtin ann op, mempty)
-    LiteralF ann l  -> (Literal ann l,  mempty)
+    TypeF l         -> Type l
+    HoleF    ann n  -> Hole    (mempty, ann) n
+    MetaF    ann m  -> Meta    (mempty, ann) m
+    BuiltinF ann op -> Builtin (mempty, ann) op
+    LiteralF ann l  -> Literal (mempty, ann) l
 
-    PrimDictF (e, bvm) -> (PrimDict e, bvm)
-    SeqF ann xs        -> bimap (Seq ann) node (unzip xs)
+    PrimDictF e     -> PrimDict e
+    SeqF ann xs     -> Seq (node (map varmapOf xs), ann) xs
 
     VarF ann v -> case v of
-      DB.Free  ident -> (Var ann (Free ident), mempty)
-      DB.Bound i     -> (Var ann Bound, leaf i)
+      DB.Free  ident -> Var (mempty, ann) (Free ident)
+      DB.Bound i     -> Var (leaf i, ann) Bound
 
-    AnnF ann (e, bvm1) (t, bvm2) ->
-      (Ann ann e t, node [bvm1, bvm2])
+    AnnF ann e t -> Ann (node [varmapOf e, varmapOf t], ann) e t
 
-    AppF ann (fun', bvm1) args ->
-      let (args', bvms) = NonEmpty.unzip (fmap toCodebruijn args) in
-      (App ann fun' args', node (bvm1 : NonEmpty.toList bvms))
+    AppF ann fun' args ->
+      let args' = fmap toCodebruijn args in
+      App (node (varmapOf fun' : fmap varmapOf (NonEmpty.toList args')), ann) fun' args'
 
-    PiF  ann binder result ->
-      let (binder', bvm1) = toCodebruijn binder in
-      let (result', bvm2) = result in
-      (Pi ann binder' result', node [bvm1, bvm2])
+    PiF  ann binder result' ->
+      let binder' = toCodebruijn binder in
+      Pi (node [varmapOf binder', varmapOf result'], ann) binder' result'
 
-    LetF ann bound binder body ->
-      let (bound',  bvm1) = bound in
-      let (binder', bvm2) = toCodebruijn binder in
-      let (body',   bvm3) = body in
-      (Let ann bound' binder' body', node [bvm1, bvm2, bvm3])
+    LetF ann bound' binder body' ->
+      let binder' = toCodebruijn binder in
+      Let (node [varmapOf bound', varmapOf binder', varmapOf body'], ann) bound' binder' body'
 
-    LamF ann binder body ->
-      let (binder', bvm1) = toCodebruijn binder in
-      let (body', bvm2)   = body in
-      (Lam ann binder' body', node [bvm1, bvm2])
+    LamF ann binder body' ->
+      let binder' = toCodebruijn binder in
+      Lam (node [varmapOf binder', varmapOf body'], ann) binder' body'
 
 --------------------------------------------------------------------------------
 -- Hashing
+
+instance Hashable (CodebruijnBinder BoundVarMap)
+
+instance Hashable (CodebruijnArg BoundVarMap)
+
+instance Hashable (CodebruijnExpr BoundVarMap)

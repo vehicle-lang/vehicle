@@ -13,6 +13,12 @@ import Vehicle.Language.AST.Builtin (Builtin)
 import Vehicle.Language.AST.Visibility
 
 --------------------------------------------------------------------------------
+-- Annotations
+
+class HasAnnotation a ann | a -> ann where
+  annotationOf :: a -> ann
+
+--------------------------------------------------------------------------------
 -- Universes
 
 type UniverseLevel = Int
@@ -82,6 +88,9 @@ pattern InstanceBinder p n t = Binder p Instance n t
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Binder binder var ann)
 
+instance HasAnnotation (Binder binder var ann) ann where
+  annotationOf (Binder ann _ _ _) = ann
+
 instance HasProvenance ann => HasProvenance (Binder binder var ann) where
   provenanceOf (Binder ann _ _ _) = provenanceOf ann
 
@@ -127,6 +136,9 @@ pattern InstanceArg :: ann -> Expr binder var ann -> Arg binder var ann
 pattern InstanceArg ann e = Arg ann Instance e
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Arg binder var ann)
+
+instance HasAnnotation (Arg binder var ann) ann where
+  annotationOf (Arg ann _ _) = ann
 
 instance HasVisibility (Arg binder var ann) where
   visibilityOf (Arg _ v _) = v
@@ -200,7 +212,7 @@ data Expr binder var ann
 
   -- | A hole in the program.
   | Hole
-    Provenance       -- Source of the meta-variable
+    ann              -- Annotation.
     Symbol           -- Hole name.
 
   -- | Unsolved meta variables.
@@ -245,26 +257,24 @@ data Expr binder var ann
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Expr binder var ann)
 
-instance HasProvenance ann => HasProvenance (Expr binder var ann) where
-  provenanceOf (Hole p _) = p
-  provenanceOf e          = provenanceOf (annotation e)
+instance HasAnnotation (Expr binder var ann) ann where
+  annotationOf = \case
+    Type     _         -> developerError "Should not be requesting an annotation from Type"
+    PrimDict _         -> developerError "Should not be requesting an annotation from PrimitiveDict"
+    Hole     ann _     -> ann
+    Meta     ann _     -> ann
+    Ann      ann _ _   -> ann
+    App      ann _ _   -> ann
+    Pi       ann _ _   -> ann
+    Builtin  ann _     -> ann
+    Var      ann _     -> ann
+    Let      ann _ _ _ -> ann
+    Lam      ann _ _   -> ann
+    Literal  ann _     -> ann
+    Seq      ann _     -> ann
 
--- |Extract a term's annotation
-annotation :: Expr binder var ann -> ann
-annotation = \case
-  Type     _         -> developerError "Should not be requesting an annotation from Type"
-  Hole     _   _     -> developerError "Should not be requesting an annotation from Hole"
-  PrimDict _         -> developerError "Should not be requesting an annotation from PrimitiveDict"
-  Meta     ann _     -> ann
-  Ann      ann _ _   -> ann
-  App      ann _ _   -> ann
-  Pi       ann _ _   -> ann
-  Builtin  ann _     -> ann
-  Var      ann _     -> ann
-  Let      ann _ _ _ -> ann
-  Lam      ann _ _   -> ann
-  Literal  ann _     -> ann
-  Seq      ann _     -> ann
+instance HasProvenance ann => HasProvenance (Expr binder var ann) where
+  provenanceOf e          = provenanceOf (annotationOf e :: ann)
 
 --------------------------------------------------------------------------------
 -- Identifiers

@@ -86,7 +86,7 @@ instance Elab B.Expr V.InputExpr where
   elab = \case
     B.Type l                  -> return $ V.Type (fromIntegral l)
     B.Var  n                  -> return $ V.Var  (mkAnn n) (tkSymbol n)
-    B.Hole n                  -> return $ V.Hole (tkProvenance n) (tkSymbol n)
+    B.Hole n                  -> return $ V.Hole (tkProvenance n, V.TheUser) (tkSymbol n)
     B.Literal l               -> elab l
     B.TypeC   tc              -> elab tc
 
@@ -158,7 +158,7 @@ mkBinder :: B.Name -> V.Visibility -> Maybe V.InputExpr -> V.InputBinder
 mkBinder n v e = V.Binder (V.visProv v p, V.TheUser) v (Just (tkSymbol n)) t
   where
     (p, t) = case e of
-      Nothing -> (tkProvenance n, V.Hole (tkProvenance n) "_")
+      Nothing -> (tkProvenance n, V.Hole (tkProvenance n, V.TheUser) "_")
       Just t1  -> (fillInProvenance [tkProvenance n, provenanceOf t1], t1)
 
 instance Elab B.LetDecl (V.InputBinder, V.InputExpr) where

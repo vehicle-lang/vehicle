@@ -313,10 +313,10 @@ check expectedType expr = do
           let expected = fromDSL $ unnamedPi (visibilityOf binder) (tHole "a") (const (tHole "b"))
           throwError $ Mismatch (provenanceOf ann) ctx expectedType expected
 
-    (_, Hole p _name) -> do
+    (_, Hole ann _name) -> do
       -- Replace the hole with meta-variable of the expected type.
       -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
-      (_, meta) <- freshMeta p
+      (_, meta) <- freshMeta (provenanceOf ann)
       return meta
 
     (_, e@(Type _))            -> viaInfer emptyMachineAnn  expectedType e
@@ -347,8 +347,8 @@ infer e = do
 
     Meta _ m -> developerError $ "Trying to infer the type of a meta-variable" <+> pretty m
 
-    Hole p s ->
-      throwError $ UnresolvedHole p s
+    Hole ann s ->
+      throwError $ UnresolvedHole (provenanceOf ann) s
 
     Ann ann expr exprType   -> do
       (checkedExprType, _) <- infer exprType

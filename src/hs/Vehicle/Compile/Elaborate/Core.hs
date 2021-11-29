@@ -75,7 +75,7 @@ instance Elab B.Lit Literal where
 instance Elab B.Expr V.InputExpr where
   elab = \case
     B.Type l           -> return $ convType l
-    B.Hole name        -> return $ V.Hole (tkProvenance name) (tkSymbol name)
+    B.Hole name        -> return $ V.Hole (tkProvenance name, TheUser) (tkSymbol name)
     B.Ann term typ     -> op2 V.Ann <$> elab term <*> elab typ
     B.Pi  binder expr  -> op2 V.Pi  <$> elab binder <*> elab expr;
     B.Lam binder e     -> op2 V.Lam <$> elab binder <*> elab e

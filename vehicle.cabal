@@ -88,6 +88,7 @@ library
                       , Vehicle.Language.AST.BuiltinPatterns
                       , Vehicle.Language.AST.Core
                       , Vehicle.Language.AST.DeBruijn
+                      , Vehicle.Language.AST.CoDeBruijn
                       , Vehicle.Language.AST.Name
                       , Vehicle.Language.AST.Visibility
                       , Vehicle.Language.AST.Utils
@@ -152,6 +153,7 @@ library
                       , DeriveFoldable
                       , DeriveTraversable
                       , DeriveGeneric
+                      , FunctionalDependencies
 
 executable vehicle
   import:             common-base
