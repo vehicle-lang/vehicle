@@ -14,7 +14,7 @@ import Vehicle.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Language.AST as V
 
-runElab :: (MonadLogger m, MonadError CoreElabError m) => B.Prog -> m V.InputProg
+runElab :: MonadElab e m => B.Prog -> m V.InputProg
 runElab = elab
 
 --------------------------------------------------------------------------------
@@ -33,44 +33,22 @@ runElab = elab
 
 -- * Conversion
 
-class Elab vf vc where
-  elab :: MonadElab m => vf -> m vc
+type MonadElab e m = (AsCoreElabError e, MonadError e m, MonadLogger m)
 
-type MonadElab m = MonadError CoreElabError m
+class Elab vf vc where
+  elab :: MonadElab e m => vf -> m vc
 
 --------------------------------------------------------------------------------
 -- AST conversion
 
-lookupBuiltin :: MonadElab m => B.BuiltinToken -> m V.Builtin
-lookupBuiltin (BuiltinToken tk) = case builtinFromSymbol (tkSymbol tk) of
-    Nothing -> throwError $ UnknownBuiltin $ toToken tk
-    Just v  -> return v
+instance Elab B.Prog V.InputProg where
+  elab (B.Main ds) = V.Main <$> traverse elab ds
 
-instance Elab B.Binder V.InputBinder where
+instance Elab B.Decl V.InputDecl where
   elab = \case
-    B.ExplicitBinder n e -> mkBinder n Explicit e
-    B.ImplicitBinder n e -> mkBinder n Implicit e
-    B.InstanceBinder n e -> mkBinder n Instance e
-    where
-      mkBinder :: MonadElab m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
-      mkBinder n v e = V.Binder (mkAnn n) v (Just (tkSymbol n)) <$> elab e
-
-instance Elab B.Arg V.InputArg where
-  elab = \case
-    B.ExplicitArg e -> mkArg Explicit <$> elab e
-    B.ImplicitArg e -> mkArg Implicit <$> elab e
-    B.InstanceArg e -> mkArg Instance <$> elab e
-    where
-      mkArg :: Visibility -> V.InputExpr -> V.InputArg
-      mkArg v e = V.Arg (visProv v (provenanceOf e), TheUser) v e
-
-instance Elab B.Lit Literal where
-  elab = \case
-    B.LitBool b -> return $ LBool (read (unpack $ tkSymbol b))
-    B.LitRat  r -> return $ LRat  (readRat (tkSymbol r))
-    B.LitInt  n -> return $ if n >= 0
-      then LNat (fromIntegral n)
-      else LInt (fromIntegral n)
+    B.DeclNetw n t   -> V.DeclNetw (tkProvenance n) <$> elab n <*> elab t
+    B.DeclData n t   -> V.DeclData (tkProvenance n) <$> elab n <*> elab t
+    B.DefFun   n t e -> V.DefFun   (tkProvenance n) <$> elab n <*> elab t <*> elab e
 
 instance Elab B.Expr V.InputExpr where
   elab = \case
@@ -91,17 +69,39 @@ instance Elab B.Expr V.InputExpr where
       let p = fillInProvenance [provenanceOf fun', provenanceOf arg']
       return $ normApp (p, TheUser) fun' (arg' :| [])
 
+instance Elab B.Binder V.InputBinder where
+  elab = \case
+    B.ExplicitBinder n e -> mkBinder n Explicit e
+    B.ImplicitBinder n e -> mkBinder n Implicit e
+    B.InstanceBinder n e -> mkBinder n Instance e
+    where
+      mkBinder :: MonadElab e m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
+      mkBinder n v e = V.Binder (mkAnn n) v (Just (tkSymbol n)) <$> elab e
+
+instance Elab B.Arg V.InputArg where
+  elab = \case
+    B.ExplicitArg e -> mkArg Explicit <$> elab e
+    B.ImplicitArg e -> mkArg Implicit <$> elab e
+    B.InstanceArg e -> mkArg Instance <$> elab e
+    where
+      mkArg :: Visibility -> V.InputExpr -> V.InputArg
+      mkArg v e = V.Arg (visProv v (provenanceOf e), TheUser) v e
+
+instance Elab B.Lit Literal where
+  elab = \case
+    B.LitBool b -> return $ LBool (read (unpack $ tkSymbol b))
+    B.LitRat  r -> return $ LRat  (readRat (tkSymbol r))
+    B.LitInt  n -> return $ if n >= 0
+      then LNat (fromIntegral n)
+      else LInt (fromIntegral n)
+
 instance Elab B.NameToken Identifier where
   elab n = return $ Identifier $ tkSymbol n
 
-instance Elab B.Decl V.InputDecl where
-  elab = \case
-    B.DeclNetw n t   -> V.DeclNetw (tkProvenance n) <$> elab n <*> elab t
-    B.DeclData n t   -> V.DeclData (tkProvenance n) <$> elab n <*> elab t
-    B.DefFun   n t e -> V.DefFun   (tkProvenance n) <$> elab n <*> elab t <*> elab e
-
-instance Elab B.Prog V.InputProg where
-  elab (B.Main ds) = V.Main <$> traverse elab ds
+lookupBuiltin :: MonadElab e m => B.BuiltinToken -> m V.Builtin
+lookupBuiltin (BuiltinToken tk) = case builtinFromSymbol (tkSymbol tk) of
+    Nothing -> throwError $ mkUnknownBuiltin $ toToken tk
+    Just v  -> return v
 
 mkAnn :: IsToken a => a -> InputAnn
 mkAnn x = (tkProvenance x, TheUser)

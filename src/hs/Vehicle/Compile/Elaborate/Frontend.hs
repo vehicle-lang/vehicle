@@ -16,7 +16,7 @@ import Vehicle.Compile.Error
 import Vehicle.Language.AST qualified as V
 import Vehicle.Language.Sugar
 
-runElab :: (MonadLogger m, MonadError FrontendElabError m) => B.Prog -> m V.InputProg
+runElab :: MonadElab e m => B.Prog -> m V.InputProg
 runElab = elab
 
 --------------------------------------------------------------------------------
@@ -32,7 +32,11 @@ runElab = elab
 --  2. combine function types and expressions into a single AST node
 
 -- | Constraint for the monad stack used by the elaborator.
-type MonadElab m = MonadError FrontendElabError m
+type MonadElab e m =
+  ( AsFrontendElabError e
+  , MonadError e m
+  , MonadLogger m
+  )
 
 -- * Provenance
 
@@ -42,7 +46,7 @@ mkAnn t = (tkProvenance t, V.TheUser)
 -- * Elaboration
 
 class Elab vf vc where
-  elab :: MonadElab m => vf -> m vc
+  elab :: MonadElab e m => vf -> m vc
 
 instance Elab B.Prog V.InputProg where
   elab (B.Main decls) = V.Main <$> groupDecls decls
@@ -70,14 +74,14 @@ instance Elab (NonEmpty B.Decl) V.InputDecl where
 
     -- Missing type or expression declaration.
     (B.DefFunType n _tk _t :| []) ->
-      throwError $ MissingDefFunExpr (tkProvenance n) (tkSymbol n)
+      throwError $ mkMissingDefFunExpr (tkProvenance n) (tkSymbol n)
 
     (B.DefFunExpr n _ns _e :| []) ->
-      throwError $ MissingDefFunType (tkProvenance n) (tkSymbol n)
+      throwError $ mkMissingDefFunType (tkProvenance n) (tkSymbol n)
 
     -- Multiple type of expression declarations with the same n.
     ds ->
-      throwError $ DuplicateName provs symbol
+      throwError $ mkDuplicateName provs symbol
         where
           symbol = tkSymbol $ declName $ NonEmpty.head ds
           provs  = fmap (tkProvenance . declName) ds
@@ -108,6 +112,7 @@ instance Elab B.Expr V.InputExpr where
     B.Bool tk                 -> builtin (V.BooleanType   V.Bool)   tk []
     B.Prop tk                 -> builtin (V.BooleanType   V.Prop)   tk []
     B.Real tk                 -> builtin (V.NumericType   V.Real)   tk []
+    B.Rat  tk                 -> builtin (V.NumericType   V.Rat)    tk []
     B.Int tk                  -> builtin (V.NumericType   V.Int)    tk []
     B.Nat tk                  -> builtin (V.NumericType   V.Nat)    tk []
     B.List tk t               -> builtin (V.ContainerType V.List)   tk [t]
@@ -185,7 +190,7 @@ instance Elab B.TypeClass V.InputExpr where
     B.TCRat   tk e     -> builtin (V.TypeClass V.IsRational)     tk [e]
     B.TCReal  tk e     -> builtin (V.TypeClass V.IsReal)         tk [e]
 
-op1 :: (MonadElab m, HasProvenance a, IsToken token)
+op1 :: (MonadElab e m, HasProvenance a, IsToken token)
     => (V.InputAnn -> a -> b)
     -> token -> m a -> m b
 op1 mk t e = do
@@ -193,7 +198,7 @@ op1 mk t e = do
   let p = fillInProvenance [tkProvenance t, provenanceOf ce]
   return $ mk (p, V.TheUser) ce
 
-op2 :: (MonadElab m, HasProvenance a, HasProvenance b, IsToken token)
+op2 :: (MonadElab e m, HasProvenance a, HasProvenance b, IsToken token)
     => (V.InputAnn -> a -> b -> c)
     -> token -> m a -> m b -> m c
 op2 mk t e1 e2 = do
@@ -202,7 +207,7 @@ op2 mk t e1 e2 = do
   let p = fillInProvenance [tkProvenance t, provenanceOf ce1, provenanceOf ce2]
   return $ mk (p, V.TheUser) ce1 ce2
 
-builtin :: (MonadElab m, IsToken token) => V.Builtin -> token -> [B.Expr] -> m V.InputExpr
+builtin :: (MonadElab e m, IsToken token) => V.Builtin -> token -> [B.Expr] -> m V.InputExpr
 builtin b t args = builtin' b t <$> traverse elab args
 
 builtin' :: IsToken token => V.Builtin -> token -> [V.InputExpr] -> V.InputExpr
@@ -212,34 +217,34 @@ builtin' b t argExprs = V.normAppList (p', V.TheUser) (V.Builtin (p, V.TheUser) 
     p'   = fillInProvenance (p : map provenanceOf args)
     args = fmap (mkArg V.Explicit) argExprs
 
-elabFunInputType :: MonadElab m => B.Expr -> m V.InputBinder
+elabFunInputType :: MonadElab e m => B.Expr -> m V.InputBinder
 elabFunInputType t = do
   t' <- elab t
   return $ V.ExplicitBinder (provenanceOf t', V.TheUser) Nothing t'
 
-elabApp :: MonadElab m => B.Expr -> B.Arg -> m V.InputExpr
+elabApp :: MonadElab e m => B.Expr -> B.Arg -> m V.InputExpr
 elabApp fun arg = do
   fun' <- elab fun
   arg' <- elab arg
   let p = fillInProvenance [provenanceOf fun', provenanceOf arg']
   return $ V.normAppList (p, V.TheUser) fun' [arg']
 
-elabBindersAndBody :: MonadElab m => [B.Binder] -> B.Expr -> m ([V.InputBinder], V.InputExpr)
+elabBindersAndBody :: MonadElab e m => [B.Binder] -> B.Expr -> m ([V.InputBinder], V.InputExpr)
 elabBindersAndBody bs body = bitraverse (traverse elab) elab (bs, body)
 
-elabQuantifier :: (MonadElab m, IsToken token) => token -> V.Quantifier -> [B.Binder] -> B.Expr -> m V.InputExpr
+elabQuantifier :: (MonadElab e m, IsToken token) => token -> V.Quantifier -> [B.Binder] -> B.Expr -> m V.InputExpr
 elabQuantifier t q bs body = do
   checkNonEmpty t bs
   unfoldQuantifier (mkAnn t) q <$> elabBindersAndBody bs body
 
-elabQuantifierIn :: (MonadElab m, IsToken token) => token -> V.Quantifier -> [B.Binder] -> B.Expr -> B.Expr -> m V.InputExpr
+elabQuantifierIn :: (MonadElab e m, IsToken token) => token -> V.Quantifier -> [B.Binder] -> B.Expr -> B.Expr -> m V.InputExpr
 elabQuantifierIn t q bs container body = do
   checkNonEmpty t bs
   unfoldQuantifierIn (mkAnn t) q <$> elab container <*> elabBindersAndBody bs body
 
 -- |Takes a list of declarations, and groups type and expression
 --  declarations by their name.
-groupDecls :: MonadElab m => [B.Decl] -> m [V.InputDecl]
+groupDecls :: MonadElab e m => [B.Decl] -> m [V.InputDecl]
 groupDecls []       = return []
 groupDecls (d : ds) = NonEmpty.toList <$> traverse elab (NonEmpty.groupBy1 cond (d :| ds))
   where
@@ -259,9 +264,9 @@ declName (B.DefType    n _ _) = n
 declName (B.DefFunType n _ _) = n
 declName (B.DefFunExpr n _ _) = n
 
-checkNonEmpty :: (MonadElab m, IsToken token) => token -> [a] -> m ()
+checkNonEmpty :: (MonadElab e m, IsToken token) => token -> [a] -> m ()
 checkNonEmpty tk = checkNonEmpty' (tkProvenance tk) (tkSymbol tk)
 
-checkNonEmpty' :: (MonadElab m) => Provenance -> Symbol -> [a] -> m ()
-checkNonEmpty' p s []      = throwError $ MissingVariables p s
+checkNonEmpty' :: (MonadElab e m) => Provenance -> Symbol -> [a] -> m ()
+checkNonEmpty' p s []      = throwError $ mkMissingVariables p s
 checkNonEmpty' _ _ (_ : _) = return ()

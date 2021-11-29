@@ -103,3 +103,6 @@ instance
 
   natNumber : Number ℕ
   natNumber = Nat.number
+
+ze : Fin 5
+ze = 0

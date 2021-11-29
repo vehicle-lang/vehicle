@@ -92,7 +92,7 @@ import Vehicle.Compile.Backend.SMTLib qualified as SMTLib (compileProp)
 
 -- | Compiles a given program to a VNNLib script.
 -- Assumes the program has already been normalised.
-compileToVNNLib :: (MonadLogger m, MonadError SMTLibError m)
+compileToVNNLib :: (AsSMTLibError e, MonadLogger m, MonadError e m)
                 => CheckedProg
                 -> m [VNNLibDoc]
 compileToVNNLib prog = do
@@ -122,13 +122,14 @@ type MetaNetwork = [Identifier]
 --------------------------------------------------------------------------------
 -- Monad
 
-type MonadVNNLib m =
-  ( MonadLogger m
-  , MonadError SMTLibError m
+type MonadVNNLib e m =
+  ( AsSMTLibError e
+  , MonadLogger m
+  , MonadError e m
   , MonadReader NetworkCtx m
   )
 
-getNetworkDetailsFromCtx :: MonadVNNLib m => Identifier -> m NetworkDetails
+getNetworkDetailsFromCtx :: MonadVNNLib e m => Identifier -> m NetworkDetails
 getNetworkDetailsFromCtx ident = do
   networkDecl <- asks (fromMaybe outOfScopeError . Map.lookup ident)
   getNetworkDetails (provenanceOf networkDecl, TheUser) (identifierOf networkDecl) (typeOf networkDecl)
@@ -141,22 +142,22 @@ getNetworkDetailsFromCtx ident = do
 -- Algorithm
 --------------------------------------------------------------------------------
 
-compileProg :: MonadVNNLib m => CheckedProg -> m [VNNLibDoc]
+compileProg :: MonadVNNLib e m => CheckedProg -> m [VNNLibDoc]
 compileProg (Main ds) = do
   results <- catMaybes <$> compileDecls ds
   if null results then
-    throwError NoPropertiesFound
+    throwError mkNoPropertiesFound
   else
     return results
 
-compileDecls :: MonadVNNLib m => [CheckedDecl] -> m [Maybe VNNLibDoc]
+compileDecls :: MonadVNNLib e m => [CheckedDecl] -> m [Maybe VNNLibDoc]
 compileDecls []       = return []
 compileDecls (d : ds) = do
     (doc, alterCtx) <- compileDecl d
     docs <- local alterCtx (compileDecls ds)
     return (doc : docs)
 
-compileDecl :: MonadVNNLib m => CheckedDecl -> m (Maybe VNNLibDoc, NetworkCtx -> NetworkCtx)
+compileDecl :: MonadVNNLib e m => CheckedDecl -> m (Maybe VNNLibDoc, NetworkCtx -> NetworkCtx)
 compileDecl d = case d of
   DeclData{} ->
     normalisationError "Dataset declarations"
@@ -182,7 +183,7 @@ compileDecl d = case d of
       logDebug $ "Generated meta-network" <+> pretty metaNetwork <> line
 
       if null metaNetwork then
-        throwError $ NoNetworkUsedInProperty (p, TheUser) ident
+        throwError $ mkNoNetworkUsedInProperty (p, TheUser) ident
       else do
         metaNetworkDetails <- traverse getNetworkDetailsFromCtx metaNetwork
 
@@ -196,7 +197,7 @@ compileDecl d = case d of
           else if Set.null quantifiers then
             return All
           else
-            throwError $ UnsupportedQuantifierSequence (p, TheUser) ident
+            throwError $ mkUnsupportedQuantifierSequence (p, TheUser) ident
 
         -- Normalise the resulting expression now that we've replaced the network
         -- applications with tensors of output variables.
@@ -244,9 +245,9 @@ data UpwardsReplacementState = UpwardsReplacementState
 
 type ReplacementState = (DownwardsReplacementState, UpwardsReplacementState)
 
-type MonadReplacement m = (MonadVNNLib m, MonadState ReplacementState m)
+type MonadReplacement e m = (MonadVNNLib e m, MonadState ReplacementState m)
 
-runNetworkApplicationReplacement :: MonadVNNLib m => Int -> CheckedExpr -> m (CheckedExpr, Set Quantifier)
+runNetworkApplicationReplacement :: MonadVNNLib e m => Int -> CheckedExpr -> m (CheckedExpr, Set Quantifier)
 runNetworkApplicationReplacement numberOfMagicVariables e = do
   let result = replaceNetworkApplications 0 e
   let initialState =
@@ -260,7 +261,7 @@ runNetworkApplicationReplacement numberOfMagicVariables e = do
 -- |Called at the site of an application of a neural network.
 -- It updates the number of magic variables used and identifies any
 -- locally bound variables that can be replaced with magic variables.
-processNetworkApplication :: MonadReplacement m => NetworkDetails -> CheckedExpr -> m (Int, Int)
+processNetworkApplication :: MonadReplacement e m => NetworkDetails -> CheckedExpr -> m (Int, Int)
 processNetworkApplication network input = do
   (DownwardsReplacementState{..}, UpwardsReplacementState{..}) <- get
 
@@ -293,7 +294,7 @@ processNetworkApplication network input = do
             Var _ (Bound i) -> IntMap.insert i magicVarIndex recRes
             _               -> recRes
 
-processQuantifierBinding :: MonadReplacement m => Quantifier -> m (Maybe Int)
+processQuantifierBinding :: MonadReplacement e m => Quantifier -> m (Maybe Int)
 processQuantifierBinding q = do
   (down, UpwardsReplacementState{..}) <- get
   logDebug $ "qb" <+> pretty (show replacableBoundVars)
@@ -303,7 +304,7 @@ processQuantifierBinding q = do
   put (down, UpwardsReplacementState newMapping newQuantifiers)
   return magicVarUsingBinder
 
-traverseUpOverBinder :: MonadReplacement m => m ()
+traverseUpOverBinder :: MonadReplacement e m => m ()
 traverseUpOverBinder = do
   (down, UpwardsReplacementState{..}) <- get
   logDebug "tb"
@@ -312,13 +313,13 @@ traverseUpOverBinder = do
     , ..
     })
 
-getNumberOfMagicVariables :: MonadReplacement m => m Int
+getNumberOfMagicVariables :: MonadReplacement e m => m Int
 getNumberOfMagicVariables = gets (numberOfMagicVariables . fst)
 
 
 -- Takes in the expression to process and returns a function
 -- from the current binding depth to the altered expression.
-replaceNetworkApplications :: MonadReplacement m
+replaceNetworkApplications :: MonadReplacement e m
                            => BindingDepth
                            -> CheckedExpr
                            -> m CheckedExpr
@@ -407,7 +408,7 @@ replaceNetworkApplications d e =
     --
     -- (E) Inserted quantifiers over the meta-network so far.
 -}
-replaceNetworkApplication :: MonadReplacement m
+replaceNetworkApplication :: MonadReplacement e m
                           => CheckedAnn
                           -> Identifier
                           -> CheckedExpr
@@ -502,21 +503,21 @@ data TensorDetails = TensorDetails
   , tElem :: Builtin
   }
 
-getNetworkDetails :: MonadVNNLib m
+getNetworkDetails :: MonadVNNLib e m
                   => CheckedAnn
                   -> Identifier
                   -> CheckedExpr
                   -> m NetworkDetails
 getNetworkDetails ann ident t@(Pi _ inputBinder output) =
   either
-    (throwError . UnsupportedNetworkType ann ident t)
+    (throwError . mkUnsupportedNetworkType ann ident t)
     return
     $ runExcept $ do
       inputDetails  <- getTensorDetails Input  (typeOf inputBinder)
       outputDetails <- getTensorDetails Output output
       return $ NetworkDetails ann ident inputDetails outputDetails
 getNetworkDetails ann ident t                                  =
-  throwError $ UnsupportedNetworkType ann ident t NotAFunction
+  throwError $ mkUnsupportedNetworkType ann ident t NotAFunction
 
 getTensorDetails :: MonadError UnsupportedNetworkType m
                  => InputOrOutput

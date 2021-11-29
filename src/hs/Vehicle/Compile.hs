@@ -5,20 +5,21 @@ module Vehicle.Compile
 
 import Paths_vehicle qualified as VehiclePath (version)
 
-import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
 import Data.Text as T (Text, pack)
 import Data.Text.IO qualified as TIO
 import Data.Version (Version, makeVersion)
 import System.Exit (exitFailure)
 
 import Vehicle.Prelude
-import Vehicle.Language.AST qualified as V
+import Vehicle.Language.AST
+import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Meaningful
-import Vehicle.Compile.Parse qualified as V
-import Vehicle.Compile.Elaborate.Frontend as Frontend
-import Vehicle.Compile.Scope qualified as V
-import Vehicle.Compile.Type qualified as V
-import Vehicle.Compile.Normalise qualified as V (normalise)
+import Vehicle.Compile.Parse
+import Vehicle.Compile.Elaborate.Frontend as Frontend (runElab)
+import Vehicle.Compile.Scope (scopeCheck)
+import Vehicle.Compile.Type (typeCheck)
+import Vehicle.Compile.Normalise (normalise)
 
 import Vehicle.Compile.Backend.SMTLib (compileToSMTLib, SMTDoc(..))
 import Vehicle.Compile.Backend.VNNLib (compileToVNNLib, VNNLibDoc(..))
@@ -33,14 +34,8 @@ data CompileOptions = CompileOptions
 
 compile :: LogFilePath -> CompileOptions -> IO ()
 compile logFile opts@CompileOptions{..} = do
-
-  -- Read file, parse and elaborate to core if necessary
-  contents <- TIO.readFile inputFile
-  rawProg  <- parseAndElab logFile contents
-
-  -- Scope check, type check etc.
-  scopedCoreProg <- fromLoggedEitherIO logFile $ V.scopeCheck rawProg
-  typedCoreProg  <- fromLoggedEitherIO logFile $ V.typeCheck scopedCoreProg
+  contents  <- TIO.readFile inputFile
+  typedProg <- fromLoggedEitherIO logFile (runTypeCheck contents)
 
   -- Compile to requested backend
   case outputTarget of
@@ -48,25 +43,29 @@ compile logFile opts@CompileOptions{..} = do
       case itp of
         Agda -> do
           let agdaOptions = AgdaOptions "TODO_projectFile" [T.pack moduleName] mempty
-          agdaDoc <- fromLoggedEitherIO logFile $ compileToAgda agdaOptions typedCoreProg
+          agdaDoc <- fromLoggedEitherIO logFile $ compileToAgda agdaOptions typedProg
           writeResultToFile opts target agdaDoc
 
     (Verifier verifier) -> do
-      normProg <- fromLoggedEitherIO logFile $ V.normalise typedCoreProg
+      normProg <- fromLoggedEitherIO logFile $ normalise typedProg
       case verifier of
         SMTLib -> toSMTLib logFile opts normProg
         VNNLib -> toVNNLib logFile opts normProg
 
-parseAndElab :: LogFilePath -> Text -> IO V.InputProg
-parseAndElab logFile contents = do
-  progVF <- fromEitherIO (V.parseVehicle contents)
-  fromLoggedEitherIO logFile $ Frontend.runElab progVF
+runTypeCheck :: (MonadLogger m, MonadError CompileError m)
+             => Text -> m CheckedProg
+runTypeCheck txt = do
+  bnfcProg    <- parseVehicle txt
+  vehicleProg <- runElab bnfcProg
+  scopedProg  <- scopeCheck vehicleProg
+  typedProg   <- typeCheck scopedProg
+  return typedProg
 
-fromEitherIO :: MeaningfulError e => Either e a -> IO a
+fromEitherIO :: Either CompileError a -> IO a
 fromEitherIO (Left err) = do print $ details err; exitFailure
 fromEitherIO (Right x)  = return x
 
-fromLoggedEitherIO :: MeaningfulError e => LogFilePath -> ExceptT e Logger a -> IO a
+fromLoggedEitherIO :: LogFilePath -> ExceptT CompileError Logger a -> IO a
 fromLoggedEitherIO logFile x = fromEitherIO =<< fromLoggedIO logFile (runExceptT x)
 
 fromLoggedIO :: LogFilePath -> Logger a -> IO a
@@ -81,12 +80,12 @@ writeResultToFile CompileOptions{..} target doc = do
     Nothing             -> TIO.putStrLn outputText
     Just outputFilePath -> TIO.writeFile outputFilePath outputText
 
-toSMTLib :: LogFilePath -> CompileOptions -> V.CheckedProg -> IO ()
+toSMTLib :: LogFilePath -> CompileOptions -> CheckedProg -> IO ()
 toSMTLib logFile options prog = do
   propertyDocs <- fromLoggedEitherIO logFile (compileToSMTLib prog)
   mapM_ (\doc -> writeResultToFile options (Verifier SMTLib) (text doc)) propertyDocs
 
-toVNNLib :: LogFilePath -> CompileOptions -> V.CheckedProg -> IO ()
+toVNNLib :: LogFilePath -> CompileOptions -> CheckedProg -> IO ()
 toVNNLib logFile options prog = do
   propertyDocs <- fromLoggedEitherIO logFile (compileToVNNLib prog)
   mapM_ (\doc -> writeResultToFile options (Verifier VNNLib) (text (smtDoc doc))) propertyDocs

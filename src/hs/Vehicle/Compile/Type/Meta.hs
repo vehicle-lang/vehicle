@@ -277,10 +277,11 @@ metaSolved p m e = do
       "was assigned again to" <+> prettyVerbose new <+>
       pretty p
 
-type MonadConstraintSolving m =
-  ( MonadMeta m
+type MonadConstraintSolving e m =
+  ( AsTypeError e
+  , MonadMeta m
   , MonadLogger m
-  , MonadError TypingError m
+  , MonadError e m
   )
 
 --------------------------------------------------------------------------------

@@ -4,6 +4,7 @@ module Vehicle.Compile.Parse
   , parseVehicleFile
   ) where
 
+import Control.Monad.Except (MonadError(..), liftEither)
 import Data.Text (Text)
 import Data.Text.IO qualified as T
 import Data.Bifunctor (first)
@@ -22,19 +23,22 @@ import Vehicle.Compile.Error
 -- Parsing
 
 class ParseVehicle a where
-  parseVehicle :: Text -> Either ParseError a
+  parseVehicle :: (AsParseError e, MonadError e m) => Text -> m a
 
 instance ParseVehicle Core.Prog where
-  parseVehicle txt = first BNFCParseError $ Core.pProg (Core.myLexer txt)
+  parseVehicle txt = castError $ Core.pProg (Core.myLexer txt)
 
 instance ParseVehicle Core.Expr where
-  parseVehicle txt = first BNFCParseError $ Core.pExpr (Core.myLexer txt)
+  parseVehicle txt = castError $ Core.pExpr (Core.myLexer txt)
 
 instance ParseVehicle Frontend.Prog where
-  parseVehicle txt = first BNFCParseError $ runFrontendParser True Frontend.pProg txt
+  parseVehicle txt = castError $ runFrontendParser True Frontend.pProg txt
 
 instance ParseVehicle Frontend.Expr where
-  parseVehicle txt = first BNFCParseError $ runFrontendParser True Frontend.pExpr txt
+  parseVehicle txt = castError $ runFrontendParser True Frontend.pExpr txt
+
+castError :: (AsParseError e, MonadError e m) => Either String a -> m a
+castError = liftEither . first mkBNFCParseError
 
 type FrontendParser a = [Frontend.Token] -> Either String a
 

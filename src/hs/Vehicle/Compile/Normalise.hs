@@ -19,7 +19,7 @@ import Vehicle.Language.AST
 import Vehicle.Language.Print (prettySimple)
 
 -- |Run a function in 'MonadNorm'.
-normalise :: Norm a => a -> ExceptT NormError Logger a
+normalise :: (AsNormError e, Norm a) => a -> ExceptT e Logger a
 normalise x = do
   logDebug "Beginning normalisation"
   result <- evalStateT (nf x) mempty
@@ -27,10 +27,10 @@ normalise x = do
   return result
 
 -- |Should only be run when we know there can be no internal errors
-normaliseInternal :: Norm a => a -> a
+normaliseInternal :: forall a . Norm a => a -> a
 normaliseInternal x = fromRight
   (developerError "Error whilst performing supposedly safe normalisation")
-  (discardLogger $ runExceptT (normalise x))
+  (discardLogger $ runExceptT (normalise x :: ExceptT CompileError Logger a))
 
 --------------------------------------------------------------------------------
 -- Setup
@@ -38,8 +38,9 @@ normaliseInternal x = fromRight
 type DeclCtx = M.Map Identifier CheckedExpr
 
 -- |Constraint for the monad stack used by the normaliser.
-type MonadNorm m =
-  ( MonadError NormError m
+type MonadNorm e m =
+  ( AsNormError e
+  , MonadError e m
   , MonadLogger m
   , MonadState DeclCtx m
   )
@@ -56,13 +57,13 @@ argHead = exprHead . argExpr
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showEntry :: MonadNorm m => CheckedExpr -> m CheckedExpr
+showEntry :: MonadNorm e m => CheckedExpr -> m CheckedExpr
 showEntry e = do
   logDebug ("norm-entry " <> prettySimple e)
   incrCallDepth
   return e
 
-showExit :: MonadNorm m => CheckedExpr -> m CheckedExpr -> m CheckedExpr
+showExit :: MonadNorm e m => CheckedExpr -> m CheckedExpr -> m CheckedExpr
 showExit old mNew = do
   new <- mNew
   decrCallDepth
@@ -77,7 +78,7 @@ showExit old mNew = do
 -- |Class for the various normalisation functions.
 -- Invariant is that everything in the context is fully normalised
 class Norm vf where
-  nf :: MonadNorm m => vf -> m vf
+  nf :: MonadNorm e m => vf -> m vf
 
 instance Norm CheckedProg where
   nf (Main decls)= Main <$> traverse nf decls
@@ -141,7 +142,7 @@ instance Norm CheckedArg where
 --------------------------------------------------------------------------------
 -- Application
 
-nfApp :: MonadNorm m => CheckedAnn -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
+nfApp :: MonadNorm e m => CheckedAnn -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
 nfApp _ann (Lam _ _ funcBody) (arg : _) = nf (substInto (argExpr arg) funcBody)
 nfApp ann  fun@(Builtin _ op) args      = do
   let e = normAppList ann fun args
@@ -255,7 +256,7 @@ nfApp ann fun args = return $ normAppList ann fun args
 --------------------------------------------------------------------------------
 -- Normalising equality
 
-nfEq :: MonadNorm m
+nfEq :: MonadNorm e m
      => Equality
      -> CheckedAnn
      -> CheckedArg
@@ -289,7 +290,7 @@ nfEq eq ann _tEq tRes _tc e1 e2 = case (e1, e2) of
 --------------------------------------------------------------------------------
 -- Normalising quantification over types
 
-nfQuantifier :: MonadNorm m
+nfQuantifier :: MonadNorm e m
              => CheckedAnn
              -> Quantifier
              -> CheckedArg -- The quantified lambda expression
@@ -350,7 +351,7 @@ getDimension e = case exprHead e of
 
 -- |Elaborate quantification over the members of a container type.
 -- Expands e.g. `every x in list . y` to `fold and true (map (\x -> y) list)`
-nfQuantifierIn :: MonadNorm m
+nfQuantifierIn :: MonadNorm e m
                => CheckedAnn
                -> Quantifier
                -> CheckedArg -- tElem
@@ -385,7 +386,7 @@ quantImplementation Any = (Or,  False)
 -- Normalising not
 
 -- TODO implement idempotence rules?
-nfNot :: MonadNorm m
+nfNot :: MonadNorm e m
       => CheckedAnn
       -> CheckedExpr
       -> CheckedExpr
@@ -411,7 +412,7 @@ nfNot ann t _tc arg = case argExpr arg of
 -----------------------------------------------------------------------------
 -- Normalising negation
 
-nfNeg :: MonadNorm m
+nfNeg :: MonadNorm e m
       => CheckedAnn
       -> CheckedArg
       -> CheckedArg
@@ -425,7 +426,7 @@ nfNeg ann t _tc arg = case argHead arg of
 -----------------------------------------------------------------------------
 -- Normalising map
 
-nfMap :: MonadNorm m
+nfMap :: MonadNorm e m
       => CheckedAnn
       -> CheckedArg
       -> CheckedArg

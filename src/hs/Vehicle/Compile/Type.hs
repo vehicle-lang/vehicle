@@ -1,12 +1,11 @@
 
 module Vehicle.Compile.Type
-  ( TypingError(..)
-  , typeCheck
+  ( typeCheck
   ) where
 
 import Prelude hiding (pi)
 import Control.Monad (when)
-import Control.Monad.Except (MonadError(..), ExceptT)
+import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
 import Control.Monad.State (MonadState, evalStateT)
 import Data.Foldable (foldrM)
@@ -28,21 +27,22 @@ import Vehicle.Compile.Type.TypeClass
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (null)
 
-typeCheck :: UncheckedProg -> ExceptT TypingError Logger CheckedProg
+typeCheck :: (AsTypeError e, MonadLogger m, MonadError e m)
+          => UncheckedProg -> m CheckedProg
 typeCheck prog = do
   let prog1 = runAll prog
   let prog2 = runReaderT prog1 emptyVariableCtx
   prog3 <- evalStateT prog2 emptyMetaCtx
   return prog3
 
-runAll :: TCM m => UncheckedProg -> m CheckedProg
+runAll :: TCM e m => UncheckedProg -> m CheckedProg
 runAll prog = do
   logDebug $ prettyVerbose prog <> line
   prog2 <- inferProg prog
   metaSubstitution <- solveMetas
   return $ substMetas metaSubstitution prog2
 
-solveMetas :: MonadConstraintSolving m => m MetaSubstitution
+solveMetas :: MonadConstraintSolving e m => m MetaSubstitution
 solveMetas = do
   logDebug "Starting constraint solving\n"
   constraints <- getConstraints
@@ -53,7 +53,7 @@ solveMetas = do
   logDebug "Finished constraint solving\n"
   return solution
   where
-    loop :: MonadConstraintSolving m
+    loop :: MonadConstraintSolving e m
          => ConstraintProgress
          -> m MetaSubstitution
     loop progress = do
@@ -64,11 +64,11 @@ solveMetas = do
         []       -> return currentSubstitution
         -- Otherwise see if we made progress
         (c : cs) -> case progress of
-          Stuck -> throwError $ UnsolvedConstraints (c :| cs)
+          Stuck -> throwError $ mkUnsolvedConstraints (c :| cs)
           Progress newConstraints solvedMetas -> do
             -- If we have failed to make useful progress last pass then abort
             if MetaSet.null solvedMetas && null newConstraints then
-              throwError $ UnsolvedConstraints (c :| cs)
+              throwError $ mkUnsolvedConstraints (c :| cs)
             -- Otherwise start a new pass
             else do
               logDebug "Starting new pass"
@@ -84,9 +84,9 @@ solveMetas = do
               logDebug $ "current-solution:" <+> prettyVerbose metaSubst <> "\n"
               loop newProgress
 
-    tryToSolveConstraint :: MonadConstraintSolving m
-                        => Constraint
-                        -> m ConstraintProgress
+    tryToSolveConstraint :: MonadConstraintSolving e m
+                         => Constraint
+                         -> m ConstraintProgress
     tryToSolveConstraint constraint@(Constraint ctx baseConstraint) = do
       logDebug $ "trying" <+> prettyVerbose constraint
       incrCallDepth
@@ -106,29 +106,30 @@ solveMetas = do
 -- Contexts
 
 -- | The type-checking monad
-type TCM m =
-  ( MonadError  TypingError m
+type TCM e m =
+  ( AsTypeError e
+  , MonadError  e m
   , MonadState  MetaCtx     m
   , MonadReader VariableCtx m
   , MonadLogger             m
   )
 
-getDeclCtx :: TCM m => m DeclCtx
+getDeclCtx :: TCM e m => m DeclCtx
 getDeclCtx = asks declCtx
 
-addToDeclCtx :: TCM m => Identifier -> CheckedExpr -> Maybe CheckedExpr -> m a -> m a
+addToDeclCtx :: TCM e m => Identifier -> CheckedExpr -> Maybe CheckedExpr -> m a -> m a
 addToDeclCtx n t e = local add
   where
     add :: VariableCtx -> VariableCtx
     add VariableCtx{..} = VariableCtx{declCtx = Map.insert n (t, e) declCtx, ..}
 
-getBoundCtx :: TCM m => m BoundCtx
+getBoundCtx :: TCM e m => m BoundCtx
 getBoundCtx = asks boundCtx
 
-getVariableCtx :: TCM m => m VariableCtx
+getVariableCtx :: TCM e m => m VariableCtx
 getVariableCtx = ask
 
-addToBoundCtx :: TCM m => Maybe Symbol -> CheckedExpr -> m a -> m a
+addToBoundCtx :: TCM e m => Maybe Symbol -> CheckedExpr -> m a -> m a
 addToBoundCtx n e = local add
   where
     add :: VariableCtx -> VariableCtx
@@ -137,32 +138,32 @@ addToBoundCtx n e = local add
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showDeclEntry :: TCM m => Identifier -> m ()
+showDeclEntry :: TCM e m => Identifier -> m ()
 showDeclEntry ident = do
   logDebug ("decl-entry" <+> pretty ident)
   incrCallDepth
 
-showDeclExit :: TCM m => Identifier -> m ()
+showDeclExit :: TCM e m => Identifier -> m ()
 showDeclExit ident = do
   decrCallDepth
   logDebug ("decl-exit" <+> pretty ident)
 
-showCheckEntry :: TCM m => CheckedExpr -> UncheckedExpr -> m ()
+showCheckEntry :: TCM e m => CheckedExpr -> UncheckedExpr -> m ()
 showCheckEntry t e = do
   logDebug ("check-entry" <+> prettyVerbose e <+> "<-" <+> prettyVerbose t)
   incrCallDepth
 
-showCheckExit :: TCM m => CheckedExpr -> m ()
+showCheckExit :: TCM e m => CheckedExpr -> m ()
 showCheckExit e = do
   decrCallDepth
   logDebug ("check-exit " <+> prettyVerbose e)
 
-showInferEntry :: TCM m => UncheckedExpr -> m ()
+showInferEntry :: TCM e m => UncheckedExpr -> m ()
 showInferEntry e = do
   logDebug ("infer-entry" <+> prettyVerbose e)
   incrCallDepth
 
-showInferExit :: TCM m => (CheckedExpr, CheckedExpr) -> m ()
+showInferExit :: TCM e m => (CheckedExpr, CheckedExpr) -> m ()
 showInferExit (e, t) = do
   decrCallDepth
   logDebug ("infer-exit " <+> prettyVerbose e <+> "->" <+> prettyVerbose t)
@@ -170,21 +171,21 @@ showInferExit (e, t) = do
 -------------------------------------------------------------------------------
 -- Utility functions
 
-assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
+assertIsType :: TCM e m => Provenance -> CheckedExpr -> m ()
 assertIsType _ (Type _) = return ()
 -- TODO: add a new TypingError 'ExpectedAType'
 assertIsType p e        = do
   ctx <- getBoundCtx
-  throwError $ Mismatch p ctx e (Type 0)
+  throwError $ mkMismatch p ctx e (Type 0)
 
-unify :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m CheckedExpr
+unify :: TCM e m => Provenance -> CheckedExpr -> CheckedExpr -> m CheckedExpr
 unify p e1 e2 = do
   ctx <- getVariableCtx
   addUnificationConstraint p ctx e1 e2
   -- TODO calculate the most general unifier
   return e1
 
-freshMeta :: TCM m
+freshMeta :: TCM e m
           => Provenance
           -> m (Meta, CheckedExpr)
 freshMeta p = do
@@ -196,7 +197,7 @@ freshMeta p = do
 -- matching pi binder and inserting any required implicit/instance arguments.
 -- Returns the type of the function when applied to the full list of arguments
 -- (including inserted arguments) and that list of arguments.
-inferArgs :: TCM m
+inferArgs :: TCM e m
           => Provenance     -- Provenance of the function
           -> CheckedExpr    -- Type of the function
           -> [UncheckedArg] -- User-provided arguments of the function
@@ -221,7 +222,7 @@ inferArgs p (Pi _ binder resultType) (arg : args)
 inferArgs _ (Pi _ binder _) (arg : _)
   | visibilityOf binder /= visibilityOf arg && visibilityOf binder == Explicit = do
     ctx <- getBoundCtx
-    throwError $ MissingExplicitArg ctx arg (typeOf binder)
+    throwError $ mkMissingExplicitArg ctx arg (typeOf binder)
 
 -- This case handles either
 -- (`visibilityOf binder /= visibilityOf arg` and `visibilityOf binder /= Explicit`)
@@ -256,12 +257,12 @@ inferArgs p functionType args = do
   let mkRes = [Endo $ \tRes -> unnamedPi (visibilityOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
               | (i, arg) <- zip [0::Int ..] args]
   let expectedType = fromDSL (appEndo (mconcat mkRes) (tHole "res"))
-  throwError $ Mismatch p ctx functionType expectedType
+  throwError $ mkMismatch p ctx functionType expectedType
 
 -- |Takes a function and its arguments, inserts any needed implicits
 -- or instance arguments and then returns the function applied to the full
 -- list of arguments as well as the result type.
-inferApp :: TCM m
+inferApp :: TCM e m
          => CheckedAnn
          -> CheckedExpr
          -> CheckedExpr
@@ -274,7 +275,7 @@ inferApp ann fun funType args = do
 --------------------------------------------------------------------------------
 -- Type-checking of expressions
 
-check :: TCM m
+check :: TCM e m
       => CheckedExpr   -- Type we're checking against
       -> UncheckedExpr -- Expression being type-checked
       -> m CheckedExpr -- Updated expression
@@ -311,7 +312,7 @@ check expectedType expr = do
     (_, Lam ann binder _) -> do
           ctx <- getBoundCtx
           let expected = fromDSL $ unnamedPi (visibilityOf binder) (tHole "a") (const (tHole "b"))
-          throwError $ Mismatch (provenanceOf ann) ctx expectedType expected
+          throwError $ mkMismatch (provenanceOf ann) ctx expectedType expected
 
     (_, Hole ann _name) -> do
       -- Replace the hole with meta-variable of the expected type.
@@ -336,7 +337,7 @@ check expectedType expr = do
 
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
-infer :: TCM m
+infer :: TCM e m
       => UncheckedExpr
       -> m (CheckedExpr, CheckedExpr)
 infer e = do
@@ -348,7 +349,7 @@ infer e = do
     Meta _ m -> developerError $ "Trying to infer the type of a meta-variable" <+> pretty m
 
     Hole ann s ->
-      throwError $ UnresolvedHole (provenanceOf ann) s
+      throwError $ mkUnresolvedHole (provenanceOf ann) s
 
     Ann ann expr exprType   -> do
       (checkedExprType, _) <- infer exprType
@@ -458,7 +459,7 @@ infer e = do
   return res
 
 -- TODO: unify DeclNetw and DeclData
-inferDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
+inferDecls :: TCM e m => [UncheckedDecl] -> m [CheckedDecl]
 inferDecls [] = return []
 inferDecls (d : ds) = do
   let ident = identifierOf d
@@ -488,14 +489,14 @@ inferDecls (d : ds) = do
   checkedDecls <- addToDeclCtx ident checkedDeclType checkedDeclBody $ inferDecls ds
   return $ checkedDecl : checkedDecls
 
-inferProg :: TCM m => UncheckedProg -> m CheckedProg
+inferProg :: TCM e m => UncheckedProg -> m CheckedProg
 inferProg (Main ds) = do
   logDebug "Beginning initial type-checking pass"
   result <- Main <$> inferDecls ds
   logDebug "Ending initial type-checking pass\n"
   return result
 
-viaInfer :: TCM m => CheckedAnn -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
+viaInfer :: TCM e m => CheckedAnn -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
 viaInfer ann expectedType e = do
   -- Switch to inference mode
   (checkedExpr, actualType) <- infer e

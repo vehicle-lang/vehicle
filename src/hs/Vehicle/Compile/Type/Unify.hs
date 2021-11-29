@@ -29,7 +29,7 @@ unexpectedCase p expr = developerError $
 pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
 
-solveUnificationConstraint :: MonadConstraintSolving m
+solveUnificationConstraint :: MonadConstraintSolving e m
                            => ConstraintContext
                            -> UnificationPair
                            -> m ConstraintProgress
@@ -63,7 +63,8 @@ solveUnificationConstraint ctx (e1, e2) = do
     -- We ASSUME that all terms here are in normal form, so there
     -- will never be an unreduced redex.
     (Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, [])
-      | visibilityOf binder1 /= visibilityOf binder2 -> throwError $ FailedConstraints [constraint]
+      | visibilityOf binder1 /= visibilityOf binder2 ->
+        throwError $ mkFailedConstraints [constraint]
       | otherwise -> return Progress
         { newConstraints = [Constraint ctx (Unify (body1, body2))]
         , solvedMetas    = mempty
@@ -72,7 +73,7 @@ solveUnificationConstraint ctx (e1, e2) = do
     (Seq _ es1, args1) :~: (Seq _ es2, args2)
       -- TODO more informative error message
       | length es1 /= length es2 || length args1 /= length args2 ->
-        throwError $ FailedConstraints [constraint]
+        throwError $ mkFailedConstraints [constraint]
       -- TODO need to try and unify `Seq` with `Cons`s.
       | otherwise -> do
         argConstraints <- traverse (solveArg constraint) (zip args1 args2)
@@ -83,7 +84,8 @@ solveUnificationConstraint ctx (e1, e2) = do
           }
 
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
-      | visibilityOf binder1 /= visibilityOf binder2 -> throwError $ FailedConstraints [constraint]
+      | visibilityOf binder1 /= visibilityOf binder2 ->
+        throwError $ mkFailedConstraints [constraint]
       | otherwise -> do
           -- !!TODO!! Block until binders are solved
           -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
@@ -220,7 +222,7 @@ solveUnificationConstraint ctx (e1, e2) = do
       solveUnificationConstraint ctx (whnfE2, whnfE1)
 
     -- Catch-all
-    _ -> throwError $ FailedConstraints [constraint]
+    _ -> throwError $ mkFailedConstraints [constraint]
 
   return progress
 
@@ -230,33 +232,33 @@ abstractOver args body = foldr argToLam body args
     argToLam :: CheckedArg -> CheckedExpr -> CheckedExpr
     argToLam (Arg ann v argE) = Lam ann (Binder ann v Nothing argE)
 
-solveEq :: (MonadConstraintSolving m, Eq a)
+solveEq :: (MonadConstraintSolving e m, Eq a)
         => Constraint
         -> a
         -> a
         -> m ()
 solveEq c v1 v2
-  | v1 /= v2  = throwError $ FailedConstraints [c]
+  | v1 /= v2  = throwError $ mkFailedConstraints [c]
   | otherwise = logDebug "solved-trivially"
 
-solveArg :: MonadConstraintSolving m
+solveArg :: MonadConstraintSolving e m
          => Constraint
          -> (CheckedArg, CheckedArg)
          -> m Constraint
 solveArg c (arg1, arg2)
-  | visibilityOf arg1 /= visibilityOf arg2 = throwError $ FailedConstraints [c]
+  | visibilityOf arg1 /= visibilityOf arg2 = throwError $ mkFailedConstraints [c]
   | otherwise = return $ Constraint
     (ConstraintContext (provenanceOf c) mempty (variableContext c))
     (Unify (argExpr arg1 , argExpr arg2))
 
-solveSimpleApplication :: (MonadConstraintSolving m, Eq a)
+solveSimpleApplication :: (MonadConstraintSolving e m, Eq a)
                        => Constraint
                        -> a -> a
                        -> [CheckedArg] -> [CheckedArg]
                        -> m ConstraintProgress
 solveSimpleApplication constraint fun1 fun2 args1 args2 = do
   if fun1 /= fun2 || length args1 /= length args2 then
-    throwError $ FailedConstraints [constraint]
+    throwError $ mkFailedConstraints [constraint]
   else if null args1 then do
     logDebug "solved-trivially"
     return Progress
