@@ -2,6 +2,7 @@
 module Vehicle.Compile.Scope
   ( ScopeError(..)
   , scopeCheck
+  , scopeCheckClosedExpr
   ) where
 
 import Control.Monad.Except ( MonadError(..) )
@@ -18,11 +19,15 @@ import Vehicle.Language.Print (prettyVerbose)
 
 scopeCheck :: (AsScopeError e, MonadLogger m, MonadError e m)
            => InputProg -> m UncheckedProg
-scopeCheck prog = do
+scopeCheck e = do
   logDebug "Beginning scope checking"
-  result <- runReaderT (scope prog) emptyCtx
+  result <- runReaderT (scope e) emptyCtx
   logDebug "Finished scope checking\n"
   return result
+
+scopeCheckClosedExpr :: (AsScopeError e, MonadLogger m, MonadError e m)
+                     => InputExpr -> m UncheckedExpr
+scopeCheckClosedExpr e = runReaderT (scope e) emptyCtx
 
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
@@ -106,7 +111,7 @@ instance ScopeCheck InputExpr UncheckedExpr where
         bound' <- scope bound
         bindVar binder $ \binder' -> Let ann bound' binder' <$> scope body
 
-      PrimDict _tc -> developerError "Found PrimDict during scope checking."
+      PrimDict _ _tc -> developerError "Found PrimDict during scope checking."
 
     logScopeExit result
     return result

@@ -35,7 +35,7 @@ instance ParseVehicle Frontend.Prog where
   parseVehicle txt = castError $ runFrontendParser True Frontend.pProg txt
 
 instance ParseVehicle Frontend.Expr where
-  parseVehicle txt = castError $ runFrontendParser True Frontend.pExpr txt
+  parseVehicle txt = castError $ runFrontendParser False Frontend.pExpr txt
 
 castError :: (AsParseError e, MonadError e m) => Either String a -> m a
 castError = liftEither . first mkBNFCParseError

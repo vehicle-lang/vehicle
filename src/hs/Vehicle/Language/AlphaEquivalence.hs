@@ -1,5 +1,6 @@
 module Vehicle.Language.AlphaEquivalence
   ( alphaEq
+  , hashDB
   ) where
 
 import Data.Hashable (Hashable(..))

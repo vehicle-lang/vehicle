@@ -86,9 +86,9 @@ instance DeBruijnFunctor ann (Expr (Maybe Symbol) LocallyNamelessVar) where
       Type l                   -> return (Type l)
       Meta p m                 -> return (Meta p m)
       Hole p name              -> return (Hole p name)
-      Builtin ann op           -> return (Builtin ann op)
-      Literal ann l            -> return (Literal ann l)
-      PrimDict e               -> return (PrimDict e)
+      Builtin  ann op          -> return (Builtin ann op)
+      Literal  ann l           -> return (Literal ann l)
+      PrimDict ann e           -> return (PrimDict ann e)
       Seq     ann es           -> Seq     ann <$> traverse altExpr es
       Ann     ann term typ     -> Ann     ann <$> altExpr   term   <*> altExpr typ
       App     ann fun args     -> normApp ann <$> altExpr   fun    <*> traverse altArg args

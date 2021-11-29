@@ -179,7 +179,7 @@ compileExpr = \case
   Ann _ann _ _   -> normalisationError "Ann"
   Lam _ann _ _   -> normalisationError "Lam"
   Seq _ann _     -> normalisationError "Seq"
-  PrimDict _tc   -> visibilityError "PrimDict"
+  PrimDict _ _tc -> visibilityError "PrimDict"
 
   Builtin _ann op -> compileBuiltin op
   Literal _ann l  -> return $ compileLiteral l

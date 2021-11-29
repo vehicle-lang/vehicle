@@ -16,6 +16,7 @@ import Data.List.Split (chunksOf)
 import Vehicle.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Language.AST
+import Vehicle.Language.AlphaEquivalence ( alphaEq )
 import Vehicle.Language.Print (prettySimple)
 
 -- |Run a function in 'MonadNorm'.
@@ -104,7 +105,7 @@ instance Norm CheckedExpr where
       Builtin{}   -> return e
       Meta{}      -> developerError "All metas should have been solved before normalisation"
 
-      PrimDict tc         -> nf tc
+      PrimDict ann tc     -> PrimDict ann <$> nf tc
       Seq ann exprs       -> Seq ann <$> traverse nf exprs
       Lam ann binder expr -> Lam ann <$> nf binder <*> nf expr
       Pi ann binder body  -> Pi ann <$> nf binder <*> nf body
@@ -265,17 +266,19 @@ nfEq :: MonadNorm e m
      -> CheckedExpr
      -> CheckedExpr
      -> Maybe (m CheckedExpr)
-nfEq eq ann _tEq tRes _tc e1 e2 = case (e1, e2) of
-  (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (eqOp eq m n)
-  (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (eqOp eq i j)
-  (RatLiteralExpr _ _ p, RatLiteralExpr _ _ q) -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (eqOp eq p q)
-  (SeqExpr _ tElem _ xs, SeqExpr _ _ _ ys)     -> Just $
-    if length xs /= length ys then
-      return $ BoolLiteralExpr ann (argExpr tRes) False
-    else
-      let equalities = zipWith (\x y -> EqualityExpr eq ann tElem (argExpr tRes) (map (ExplicitArg ann) [x,y])) xs ys in
-      nf $ booleanBigOp (logicOp eq) ann (argExpr tRes) equalities
-  _ -> Nothing
+nfEq eq ann _tEq tRes _tc e1 e2 = if alphaEq e1 e2
+  then Just $ return $ BoolLiteralExpr ann (argExpr tRes) (eq == Eq)
+  else case (e1, e2) of
+    (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (eqOp eq m n)
+    (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (eqOp eq i j)
+    (RatLiteralExpr _ _ p, RatLiteralExpr _ _ q) -> Just $ return $ BoolLiteralExpr ann (argExpr tRes) (eqOp eq p q)
+    (SeqExpr _ tElem _ xs, SeqExpr _ _ _ ys)     -> Just $
+      if length xs /= length ys then
+        return $ BoolLiteralExpr ann (argExpr tRes) False
+      else
+        let equalities = zipWith (\x y -> EqualityExpr eq ann tElem (argExpr tRes) (map (ExplicitArg ann) [x,y])) xs ys in
+        nf $ booleanBigOp (logicOp eq) ann (argExpr tRes) equalities
+    _ -> Nothing
   where
     eqOp :: Eq a => Equality -> (a -> a -> Bool)
     eqOp Eq  = (==)
@@ -363,7 +366,7 @@ nfQuantifierIn :: MonadNorm e m
                -> Maybe (m CheckedExpr)
 nfQuantifierIn ann q tElem tCont tRes _tc lam container = do
   let (bop, unit) = quantImplementation q
-  let isTruthTC = InstanceArg ann (PrimDict (mkIsTruth ann (argExpr tRes)))
+  let isTruthTC = InstanceArg ann (PrimDict ann (mkIsTruth ann (argExpr tRes)))
   let bopExpr = App ann (Builtin ann (BooleanOp2 bop)) [tRes, isTruthTC]
   let unitExpr = BoolLiteralExpr ann (argExpr tRes) unit
   let tResCont = substContainerType tRes (argExpr tCont)

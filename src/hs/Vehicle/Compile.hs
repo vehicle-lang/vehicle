@@ -1,6 +1,8 @@
 module Vehicle.Compile
   ( CompileOptions(..)
   , compile
+  , typeCheck
+  , typeCheckExpr
   ) where
 
 import Paths_vehicle qualified as VehiclePath (version)
@@ -16,9 +18,9 @@ import Vehicle.Language.AST
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Meaningful
 import Vehicle.Compile.Parse
-import Vehicle.Compile.Elaborate.Frontend as Frontend (runElab)
-import Vehicle.Compile.Scope (scopeCheck)
-import Vehicle.Compile.Type (typeCheck)
+import Vehicle.Compile.Elaborate.Frontend as Frontend (runElab, runElabExpr)
+import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
+import Vehicle.Compile.Type (runTypeCheck)
 import Vehicle.Compile.Normalise (normalise)
 
 import Vehicle.Compile.Backend.SMTLib (compileToSMTLib, SMTDoc(..))
@@ -35,7 +37,7 @@ data CompileOptions = CompileOptions
 compile :: LogFilePath -> CompileOptions -> IO ()
 compile logFile opts@CompileOptions{..} = do
   contents  <- TIO.readFile inputFile
-  typedProg <- fromLoggedEitherIO logFile (runTypeCheck contents)
+  typedProg <- fromLoggedEitherIO logFile (typeCheck contents)
 
   -- Compile to requested backend
   case outputTarget of
@@ -52,13 +54,22 @@ compile logFile opts@CompileOptions{..} = do
         SMTLib -> toSMTLib logFile opts normProg
         VNNLib -> toVNNLib logFile opts normProg
 
-runTypeCheck :: (MonadLogger m, MonadError CompileError m)
+typeCheck :: (MonadLogger m, MonadError CompileError m)
              => Text -> m CheckedProg
-runTypeCheck txt = do
+typeCheck txt = do
   bnfcProg    <- parseVehicle txt
   vehicleProg <- runElab bnfcProg
   scopedProg  <- scopeCheck vehicleProg
-  typedProg   <- typeCheck scopedProg
+  typedProg   <- runTypeCheck scopedProg
+  return typedProg
+
+typeCheckExpr :: (MonadLogger m, MonadError CompileError m)
+             => Text -> m CheckedExpr
+typeCheckExpr txt = do
+  bnfcProg    <- parseVehicle txt
+  vehicleProg <- runElabExpr bnfcProg
+  scopedProg  <- scopeCheckClosedExpr vehicleProg
+  typedProg   <- runTypeCheck scopedProg
   return typedProg
 
 fromEitherIO :: Either CompileError a -> IO a

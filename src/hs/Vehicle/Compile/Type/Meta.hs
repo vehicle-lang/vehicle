@@ -101,17 +101,17 @@ instance MetaSubstitutable CheckedBinder where
 
 instance MetaSubstitutable CheckedExpr where
   substM = \case
-    Type l                   -> return (Type l)
-    Hole p name              -> return (Hole p name)
-    Builtin ann op           -> return (Builtin ann op)
-    Literal ann l            -> return (Literal ann l)
-    Var     ann v            -> return (Var     ann v)
-    Seq     ann es           -> Seq     ann <$> traverse substM es
-    Ann     ann term typ     -> Ann     ann <$> substM term   <*> substM typ
-    Pi      ann binder res   -> Pi      ann <$> substM binder <*> substMetasLiftLocal res
-    Let     ann e1 binder e2 -> Let     ann <$> substM e1     <*> substM binder <*> substMetasLiftLocal e2
-    Lam     ann binder e     -> Lam     ann <$> substM binder <*> substMetasLiftLocal e
-    PrimDict tc              -> PrimDict <$> substM tc
+    Type l                    -> return (Type l)
+    Hole p name               -> return (Hole p name)
+    Builtin  ann op           -> return (Builtin ann op)
+    Literal  ann l            -> return (Literal ann l)
+    Var      ann v            -> return (Var     ann v)
+    Seq      ann es           -> Seq      ann <$> traverse substM es
+    Ann      ann term typ     -> Ann      ann <$> substM term   <*> substM typ
+    Pi       ann binder res   -> Pi       ann <$> substM binder <*> substMetasLiftLocal res
+    Let      ann e1 binder e2 -> Let      ann <$> substM e1     <*> substM binder <*> substMetasLiftLocal e2
+    Lam      ann binder e     -> Lam      ann <$> substM binder <*> substMetasLiftLocal e
+    PrimDict ann tc           -> PrimDict ann <$> substM tc
 
     e@(Meta ann _)  -> substMApp ann (e, [])
     e@(App ann _ _) -> substMApp ann (toHead e)

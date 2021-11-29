@@ -26,7 +26,7 @@ import GHC.Generics (Generic)
 data PositionTree
   = Leaf
   | Node PositionList
-  deriving (Eq, Generic)
+  deriving (Show, Eq, Generic)
 
 instance Hashable PositionTree
 
@@ -34,7 +34,7 @@ data PositionList
   = Here  PositionTree
   | There PositionList
   | Both  PositionTree PositionList
-  deriving (Eq, Generic)
+  deriving (Show, Eq, Generic)
 
 instance Hashable PositionList
 
@@ -59,9 +59,11 @@ instance Semigroup PositionList where
 
 data CodebruijnBinding
   = CodebruijnBinding (Maybe Symbol) (Maybe PositionTree)
-  deriving (Eq, Generic)
+  deriving (Show, Eq, Generic)
 
-instance Hashable CodebruijnBinding
+instance Hashable CodebruijnBinding where
+  -- We deliberately ignore the name stored in the binding
+  hashWithSalt d (CodebruijnBinding _n t) = hashWithSalt d t
 
 instance HasName CodebruijnBinding (Maybe Symbol) where
   nameOf (CodebruijnBinding name _) = name
@@ -69,7 +71,7 @@ instance HasName CodebruijnBinding (Maybe Symbol) where
 data CodebruijnVar
   = Free Identifier
   | Bound
-  deriving (Eq, Generic)
+  deriving (Show, Eq, Generic)
 
 instance Hashable CodebruijnVar
 
@@ -120,13 +122,14 @@ instance Codebruijn Arg where
 
 instance Codebruijn Expr where
   toCodebruijn = cata $ \case
-    TypeF l         -> Type l
-    HoleF    ann n  -> Hole    (mempty, ann) n
-    MetaF    ann m  -> Meta    (mempty, ann) m
-    BuiltinF ann op -> Builtin (mempty, ann) op
-    LiteralF ann l  -> Literal (mempty, ann) l
+    TypeF l          -> Type l
 
-    PrimDictF e     -> PrimDict e
+    HoleF     ann n  -> Hole     (mempty, ann) n
+    MetaF     ann m  -> Meta     (mempty, ann) m
+    BuiltinF  ann op -> Builtin  (mempty, ann) op
+    LiteralF  ann l  -> Literal  (mempty, ann) l
+    PrimDictF ann e  -> PrimDict (mempty, ann) e
+
     SeqF ann xs     -> Seq (node (map varmapOf xs), ann) xs
 
     VarF ann v -> case v of

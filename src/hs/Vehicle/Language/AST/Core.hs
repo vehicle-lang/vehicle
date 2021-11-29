@@ -251,7 +251,9 @@ data Expr binder var ann
   -- At the moment doesn't carry around any meaningful information
   -- as we don't currently have user-defined type-classes. Later
   -- on they will carry around user definitions.
-  | PrimDict (Expr binder var ann)
+  | PrimDict
+    ann
+    (Expr binder var ann)
 
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
@@ -260,7 +262,7 @@ instance (NFData binder, NFData var, NFData ann) => NFData (Expr binder var ann)
 instance HasAnnotation (Expr binder var ann) ann where
   annotationOf = \case
     Type     _         -> developerError "Should not be requesting an annotation from Type"
-    PrimDict _         -> developerError "Should not be requesting an annotation from PrimitiveDict"
+    PrimDict ann _     -> ann
     Hole     ann _     -> ann
     Meta     ann _     -> ann
     Ann      ann _ _   -> ann
@@ -274,7 +276,7 @@ instance HasAnnotation (Expr binder var ann) ann where
     Seq      ann _     -> ann
 
 instance HasProvenance ann => HasProvenance (Expr binder var ann) where
-  provenanceOf e          = provenanceOf (annotationOf e :: ann)
+  provenanceOf e = provenanceOf (annotationOf e :: ann)
 
 --------------------------------------------------------------------------------
 -- Identifiers

@@ -1,6 +1,6 @@
 
 module Vehicle.Compile.Type
-  ( typeCheck
+  ( runTypeCheck
   ) where
 
 import Prelude hiding (pi)
@@ -27,20 +27,23 @@ import Vehicle.Compile.Type.TypeClass
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (null)
 
-typeCheck :: (AsTypeError e, MonadLogger m, MonadError e m)
-          => UncheckedProg -> m CheckedProg
-typeCheck prog = do
-  let prog1 = runAll prog
+runTypeCheck :: (AsTypeError e, MonadLogger m, MonadError e m, TypeCheck f, MetaSubstitutable (f UncheckedBinding UncheckedVar UncheckedAnn))
+             => f UncheckedBinding UncheckedVar UncheckedAnn
+             -> m (f CheckedBinding CheckedVar CheckedAnn)
+runTypeCheck e = do
+  let prog1 = runAll e
   let prog2 = runReaderT prog1 emptyVariableCtx
   prog3 <- evalStateT prog2 emptyMetaCtx
   return prog3
 
-runAll :: TCM e m => UncheckedProg -> m CheckedProg
-runAll prog = do
-  logDebug $ prettyVerbose prog <> line
-  prog2 <- inferProg prog
+runAll :: (TCM e m, TypeCheck f, MetaSubstitutable (f UncheckedBinding UncheckedVar UncheckedAnn))
+       => f UncheckedBinding UncheckedVar UncheckedAnn
+       -> m (f CheckedBinding CheckedVar CheckedAnn)
+runAll e1 = do
+  -- logDebug $ prettyVerbose e1 <> line
+  e2 <- typeCheck e1
   metaSubstitution <- solveMetas
-  return $ substMetas metaSubstitution prog2
+  return $ substMetas metaSubstitution e2
 
 solveMetas :: MonadConstraintSolving e m => m MetaSubstitution
 solveMetas = do
@@ -101,6 +104,17 @@ solveMetas = do
 
       decrCallDepth
       return result
+
+class TypeCheck f where
+  typeCheck :: TCM e m
+            => f UncheckedBinding UncheckedVar UncheckedAnn
+            -> m (f CheckedBinding CheckedVar CheckedAnn)
+
+instance TypeCheck Prog where
+  typeCheck = inferProg
+
+instance TypeCheck Expr where
+  typeCheck e = fst <$> infer e
 
 --------------------------------------------------------------------------------
 -- Contexts

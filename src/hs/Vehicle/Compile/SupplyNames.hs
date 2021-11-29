@@ -61,7 +61,7 @@ instance SupplyNames Expr where
     Ann      ann e1 t     -> Ann ann <$> supplyNames e1 <*> supplyNames t
     App      ann fun args -> App ann <$> supplyNames fun <*> traverse supplyNames args
     Seq      ann es       -> Seq ann <$> traverse supplyNames es
-    PrimDict tc           -> PrimDict <$> supplyNames tc
+    PrimDict ann tc       -> PrimDict ann <$> supplyNames tc
     Meta     ann i        -> return $ Meta ann i
 
     Let ann bound binder body -> Let ann <$> supplyNames bound <*> supplyNames binder <*> supplyNames body
