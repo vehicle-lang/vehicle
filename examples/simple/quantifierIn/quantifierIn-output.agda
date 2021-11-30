@@ -5,6 +5,8 @@
 --  - AISEC version: 0.1.0.1
 --  - Time generated: ???
 
+{-# OPTIONS --allow-exec #-}
+
 open import Vehicle
 open import Data.Unit
 open import Data.Int as ℤ using (ℤ)

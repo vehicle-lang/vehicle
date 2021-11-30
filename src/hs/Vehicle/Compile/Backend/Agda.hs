@@ -39,7 +39,8 @@ compileProgramToAgda program = do
   projectFile <- compileProjectFile
   options <- ask
   return $ unAnnotate ((vsep2 :: [Code] -> Code)
-    [ importStatements progamDependencies
+    [ optionStatements ["allow-exec"]
+    , importStatements progamDependencies
     , moduleHeader (modulePath options)
     , projectFile
     , programDoc
@@ -136,6 +137,12 @@ instance Pretty Dependency where
     DataListAny         -> "Data.List.Relation.Unary.Any as" <+> containerQualifier List
     PropEquality        -> "Relation.Binary.PropositionalEquality"
     RelNullary          -> "Relation.Nullary"
+
+optionStatement :: Text -> Doc a
+optionStatement option = "{-# OPTIONS --" <> pretty option <+> "#-}"
+
+optionStatements :: [Text] -> Doc a
+optionStatements = vsep . map optionStatement
 
 importStatement :: Dependency -> Doc a
 importStatement dep = "open import" <+> pretty dep
