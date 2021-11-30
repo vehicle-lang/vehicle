@@ -5,24 +5,25 @@
 --  - AISEC version: 0.1.0.1
 --  - Time generated: ???
 
-open import AISEC.Utils
-open import Data.Real as ℝ using (ℝ)
+open import Vehicle
+open import Vehicle.Data.Tensor
+open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
 open import Data.List
 
-module MyTestModule where
+module increasing-output where
 
 private
-  VEHICLE_PROJECT_FILE = TODO/vehicle/path
+  VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
 f : Tensor ℝ (1 ∷ []) → Tensor ℝ (1 ∷ [])
 f = evaluate record
   { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = NETWORK_UUID
+  ; networkUUID = "TODO_networkUUID"
   }
 
 abstract
   increasing : ∀ (x : Tensor ℝ (1 ∷ [])) → let y = f x in x 0 ℝ.≤ y 0
   increasing = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
-    ; propertyUUID = ????
+    ; propertyUUID = "TODO_propertyUUID"
     }

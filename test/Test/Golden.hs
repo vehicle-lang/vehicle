@@ -19,6 +19,8 @@ import Control.Exception ( catch, throwIO )
 import Debug.Trace (traceShowId)
 
 import Vehicle
+import Vehicle.Prelude
+import Vehicle.Compile
 
 --------------------------------------------------------------------------------
 -- Tests
@@ -68,7 +70,6 @@ getFileExt :: OutputTarget -> String
 getFileExt (Verifier VNNLib) = ".vnnlib"
 getFileExt (Verifier SMTLib) = ".smtlib"
 getFileExt (ITP Agda)        = ".agda"
-getFileExt (ITP (Vehicle _)) = error "Vehicle targets not yet supported"
 
 makeGoldenTestsFromSpec :: GoldenTestSpec -> TestTree
 makeGoldenTestsFromSpec (folderPath, testName, outputTargets) = testGroup testGroupName tests
@@ -85,11 +86,12 @@ makeIndividualTest folderPath name target = testWithCleanup
   testName   = name <> "-" <> show target
   extension  = getFileExt target
   basePath   = folderPath </> name
+  moduleName = name <> "-output"
   inputFile  = basePath <.> ".vcl"
   outputFile = basePath <> "-temp-output" <.> extension
   goldenFile = basePath <> "-output" <.> extension
-  readGolden = readFileOrStdin (Just goldenFile)
-  readOutput = do runTest inputFile outputFile target; readFileOrStdin (Just outputFile)
+  readGolden = T.readFile goldenFile
+  readOutput = do runTest inputFile outputFile moduleName target; T.readFile outputFile
   updateGolden = T.writeFile goldenFile
 
   test = goldenTest testName readGolden readOutput diffCommand updateGolden
@@ -117,11 +119,15 @@ cleanupOutputFile testFile test = withResource (return ()) (const cleanup) (cons
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
 
-runTest :: FilePath -> FilePath -> OutputTarget -> IO ()
-runTest inputFile outputFile outputTarget = do
-  run $ defaultOptions
-    { inputFile    = Just inputFile
-    , outputTarget = Just outputTarget
-    , outputFile   = Just outputFile
-    , logFile      = Nothing -- Just Nothing -- Nothing
+runTest :: FilePath -> FilePath -> String -> OutputTarget -> IO ()
+runTest inputFile outputFile modulePath outputTarget = do
+  run $ Options
+    { version       = False
+    , logFile       = Nothing -- Just Nothing
+    , commandOption = Compile $ CompileOptions
+      { inputFile    = inputFile
+      , outputFile   = Just outputFile
+      , outputTarget = outputTarget
+      , moduleName   = modulePath
+      }
     }

@@ -5,19 +5,20 @@
 --  - AISEC version: 0.1.0.1
 --  - Time generated: ???
 
-open import AISEC.Utils
-open import Data.Real as ℝ using (ℝ)
+open import Vehicle
+open import Vehicle.Data.Tensor
+open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
 open import Data.List
 
-module MyTestModule where
+module monotonicity-output where
 
 private
-  VEHICLE_PROJECT_FILE = TODO/vehicle/path
+  VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
 f : Tensor ℝ (1 ∷ []) → Tensor ℝ (1 ∷ [])
 f = evaluate record
   { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = NETWORK_UUID
+  ; networkUUID = "TODO_networkUUID"
   }
 
 abstract
@@ -25,5 +26,5 @@ abstract
               y2 = f x2 in x1 0 ℝ.≤ x2 0 → y1 0 ℝ.≤ y2 0
   monotonic = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
-    ; propertyUUID = ????
+    ; propertyUUID = "TODO_propertyUUID"
     }

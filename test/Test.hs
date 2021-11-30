@@ -6,6 +6,7 @@ import Test.Tasty
 import GHC.IO.Encoding
 
 import Test.Golden (goldenTests)
+import Test.Unit (unitTests)
 -- import Test.Generative (generativeTests)
 
 main :: IO ()
@@ -16,5 +17,5 @@ main = do
 tests :: TestTree
 tests = testGroup "Tests"
   [ goldenTests
-  -- , generativeTests
+  , unitTests
   ]

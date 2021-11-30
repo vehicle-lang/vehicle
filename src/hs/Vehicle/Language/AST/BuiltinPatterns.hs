@@ -147,7 +147,7 @@ pattern
   LiteralExpr ann litType lit =
     App ann (Literal ann lit)
       [ ImplicitArg ann litType
-      , InstanceArg ann (PrimDict litType)
+      , InstanceArg ann (PrimDict ann litType)
       ]
 
 --------------------------------------------------------------------------------
@@ -256,7 +256,7 @@ pattern
   BooleanOp2Expr op ann t explicitArgs =
     App ann (Builtin ann (BooleanOp2 op))
       (  ImplicitArg ann t
-      :| InstanceArg ann (PrimDict (mkIsTruth ann t))
+      :| InstanceArg ann (PrimDict ann (mkIsTruth ann t))
       :  explicitArgs
       )
 
@@ -294,7 +294,7 @@ pattern
   NotExpr ann t explicitArgs =
     App ann (Builtin ann Not)
       (  ImplicitArg ann t
-      :| InstanceArg ann (PrimDict (mkIsTruth ann t))
+      :| InstanceArg ann (PrimDict ann (mkIsTruth ann t))
       :  explicitArgs
       )
 
@@ -323,7 +323,7 @@ pattern
     App ann (BuiltinEquality ann eq)
       (  ImplicitArg ann tElem
       :| ImplicitArg ann tRes
-      :  InstanceArg ann (PrimDict (HasEqExpr ann tElem tRes))
+      :  InstanceArg ann (PrimDict ann (HasEqExpr ann tElem tRes))
       :  explicitArgs
       )
 
@@ -352,7 +352,7 @@ pattern
     App ann (BuiltinOrder ann order)
       (  ImplicitArg ann tElem
       :| ImplicitArg ann tRes
-      :  InstanceArg ann (PrimDict (HasOrdExpr ann tElem tRes))
+      :  InstanceArg ann (PrimDict ann (HasOrdExpr ann tElem tRes))
       :  explicitArgs
       )
 
@@ -376,7 +376,7 @@ pattern
     App ann (Seq ann xs)
       (  ImplicitArg ann tElem
       :| ImplicitArg ann tCont
-      :  [InstanceArg ann (PrimDict (mkIsContainer ann tElem tCont))]
+      :  [InstanceArg ann (PrimDict ann (mkIsContainer ann tElem tCont))]
       )
 
 --------------------------------------------------------------------------------
@@ -449,6 +449,6 @@ pattern
       (  ImplicitArg ann tElem
       :| ImplicitArg ann tCont
       :  ImplicitArg ann tRes
-      :  InstanceArg ann (PrimDict (mkIsContainer ann tElem tCont))
+      :  InstanceArg ann (PrimDict ann (mkIsContainer ann tElem tCont))
       :  explicitArgs
       )

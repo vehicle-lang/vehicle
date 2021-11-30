@@ -5,23 +5,24 @@
 --  - AISEC version: 0.1.0.1
 --  - Time generated: ???
 
-open import AISEC.Utils
+open import Vehicle
+open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Rational as ℚ using (ℚ)
-open import Data.Real as ℝ using (ℝ)
+open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
 open import Data.List
 open import Data.List.Relation.Unary.All as List
 
-module MyTestModule where
+module andGate-output where
 
 private
-  VEHICLE_PROJECT_FILE = TODO/vehicle/path
+  VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
 andGate : Tensor ℝ (2 ∷ []) → Tensor ℝ (1 ∷ [])
 andGate = evaluate record
   { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = NETWORK_UUID
+  ; networkUUID = "TODO_networkUUID"
   }
 
 Truthy : ℝ → Set
@@ -40,5 +41,5 @@ abstract
   andGateCorrect : ∀ (x : Tensor ℝ (2 ∷ [])) → ValidInput x → CorrectOutput x
   andGateCorrect = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
-    ; propertyUUID = ????
+    ; propertyUUID = "TODO_propertyUUID"
     }
