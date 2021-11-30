@@ -430,7 +430,7 @@ compileTypeLevelQuantifier :: MonadAgdaCompile e m => Quantifier -> [OutputBinde
 compileTypeLevelQuantifier q binders body = do
   cBinders  <- traverse (compileBinder False) binders
   cBody     <- compile body
-  let quant = if q == All then "∀" else "∃"
+  let quant = if q == All then "∀" else annotateConstant [DataProduct] "∃ λ"
   return $ quant <+> hsep cBinders <+> arrow <+> cBody
 
 compileContainerTypeLevelQuantifier :: MonadAgdaCompile e m => OutputExpr -> Quantifier -> [OutputExpr] -> m Code
