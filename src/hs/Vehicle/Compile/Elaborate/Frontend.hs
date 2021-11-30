@@ -96,7 +96,6 @@ instance Elab B.Expr V.InputExpr where
     B.Var  n                  -> return $ V.Var  (mkAnn n) (tkSymbol n)
     B.Hole n                  -> return $ V.Hole (tkProvenance n, V.TheUser) (tkSymbol n)
     B.Literal l               -> elab l
-    B.TypeC   tc              -> elab tc
 
     B.Ann e tk t              -> op2 V.Ann tk  (elab e) (elab t)
     B.Fun t1 tk t2            -> op2 V.Pi  tk  (elabFunInputType t1) (elab t2)
