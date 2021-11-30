@@ -20,7 +20,7 @@ newtype MetaSubstitution = MetaSubstitution (IntMap CheckedExpr)
   deriving (Semigroup, Monoid)
 
 instance Simplify MetaSubstitution where
-  simplify (MetaSubstitution m) = MetaSubstitution <$> traverse simplify m
+  simplifyReader (MetaSubstitution m) = MetaSubstitution <$> traverse simplifyReader m
 
 singleton :: Meta -> CheckedExpr -> MetaSubstitution
 singleton m e = coerce (IntMap.singleton (coerce m) e)

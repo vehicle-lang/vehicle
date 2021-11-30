@@ -1,6 +1,6 @@
 
 module Vehicle.Compile.Simplify
-  ( Simplify(simplify,simplifyWith)
+  ( Simplify(..)
   , SimplifyOptions(..)
   ) where
 
@@ -32,7 +32,7 @@ type WellFormedAnn ann = (HasOwner ann, Semigroup ann)
 class Simplify a where
 
   -- | Simplifies the code with the default options.
-  simplify :: Simplify a => SimplifyOptions -> a -> a
+  simplify :: Simplify a => a -> a
   simplify = simplifyWith def
 
   -- | Simplifies the code according to the options provided.
