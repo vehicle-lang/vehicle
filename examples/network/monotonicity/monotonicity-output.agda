@@ -8,6 +8,7 @@
 open import Vehicle
 open import Vehicle.Data.Tensor
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
+open import Data.Fin as Fin using (#_)
 open import Data.List
 
 module monotonicity-output where
@@ -23,7 +24,7 @@ f = evaluate record
 
 abstract
   monotonic : ∀ (x1 : Tensor ℝ (1 ∷ [])) → ∀ (x2 : Tensor ℝ (1 ∷ [])) → let y1 = f x1;
-              y2 = f x2 in x1 0 ℝ.≤ x2 0 → y1 0 ℝ.≤ y2 0
+              y2 = f x2 in x1 (# 0) ℝ.≤ x2 (# 0) → y1 (# 0) ℝ.≤ y2 (# 0)
   monotonic = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = "TODO_propertyUUID"

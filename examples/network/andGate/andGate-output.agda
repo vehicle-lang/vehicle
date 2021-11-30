@@ -11,6 +11,7 @@ open import Data.Product
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
+open import Data.Fin as Fin using (#_)
 open import Data.List
 open import Data.List.Relation.Unary.All as List
 
@@ -35,7 +36,7 @@ ValidInput : Tensor ℝ (2 ∷ []) → Set
 ValidInput x = List.All (λ (i : ℕ) → 0 ℝ.≤ x i × x i ℝ.≤ 1) (0 ∷ (1 ∷ []) : List ℕ)
 
 CorrectOutput : Tensor ℝ (2 ∷ []) → Set
-CorrectOutput x = let y = andGate x in (Truthy (x 0) × Truthy (x 1) → Truthy (y 0)) × ((Truthy (x 0) × Falsey (x 1) → Falsey (y 0)) × ((Falsey (x 0) × Truthy (x 1) → Falsey (y 0)) × (Falsey (x 0) × Falsey (x 1) → Falsey (y 0))))
+CorrectOutput x = let y = andGate x in (Truthy (x (# 0)) × Truthy (x (# 1)) → Truthy (y (# 0))) × ((Truthy (x (# 0)) × Falsey (x (# 1)) → Falsey (y (# 0))) × ((Falsey (x (# 0)) × Truthy (x (# 1)) → Falsey (y (# 0))) × (Falsey (x (# 0)) × Falsey (x (# 1)) → Falsey (y (# 0)))))
 
 abstract
   andGateCorrect : ∀ (x : Tensor ℝ (2 ∷ [])) → ValidInput x → CorrectOutput x

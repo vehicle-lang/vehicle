@@ -8,6 +8,7 @@
 open import Vehicle
 open import Vehicle.Data.Tensor
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
+open import Data.Fin as Fin using (#_)
 open import Data.List
 
 module increasing-output where
@@ -22,7 +23,7 @@ f = evaluate record
   }
 
 abstract
-  increasing : ∀ (x : Tensor ℝ (1 ∷ [])) → let y = f x in x 0 ℝ.≤ y 0
+  increasing : ∀ (x : Tensor ℝ (1 ∷ [])) → let y = f x in x (# 0) ℝ.≤ y (# 0)
   increasing = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = "TODO_propertyUUID"

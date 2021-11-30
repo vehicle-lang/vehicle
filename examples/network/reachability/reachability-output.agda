@@ -8,6 +8,7 @@
 open import Vehicle
 open import Vehicle.Data.Tensor
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
+open import Data.Fin as Fin using (#_)
 open import Data.List
 open import Relation.Binary.PropositionalEquality
 
@@ -23,7 +24,7 @@ f = evaluate record
   }
 
 abstract
-  reachable : ∃ (x : Tensor ℝ (2 ∷ [])) → let y = f x in y 0 ≡ 0
+  reachable : ∃ (x : Tensor ℝ (2 ∷ [])) → let y = f x in y (# 0) ≡ 0
   reachable = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = "TODO_propertyUUID"

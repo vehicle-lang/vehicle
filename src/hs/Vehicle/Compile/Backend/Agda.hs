@@ -95,6 +95,7 @@ data Dependency
   | DataReal
   | DataBool
   | DataBoolInstances
+  | DataFin
   | DataList
   | DataListInstances
   | DataListAll
@@ -128,6 +129,7 @@ instance Pretty Dependency where
       -- "Data.Real as" <+> numericQualifier Real <+> "using" <+> parens "ℝ"
     DataBool            -> "Data.Bool as 𝔹" <+> "using" <+> parens "Bool; true; false"
     DataBoolInstances   -> "Data.Bool.Instances"
+    DataFin             -> "Data.Fin as Fin" <+> "using" <+> parens "#_"
     DataList            -> "Data.List"
     DataListInstances   -> "Data.List.Instances"
     DataListAll         -> "Data.List.Relation.Unary.All as" <+> containerQualifier List
@@ -550,7 +552,8 @@ compileAt tDims [tensorExpr, indexExpr] = case exprHead indexExpr of
           TensorIndexOutOfBounds index size
         else do
           tensorDoc <- compile tensorExpr
-          return $ annotateApp [] tensorDoc [pretty index]
+          let indexDoc = annotateInfixOp1 [DataFin] 10 Nothing "#" [pretty index]
+          return $ annotateApp [] tensorDoc [indexDoc]
   _ -> do
     annotateApp [] <$> compile tensorExpr <*> traverse compile [indexExpr]
 compileAt _tDims args = unexpectedArgsError (Builtin emptyUserAnn At) args ["tensor", "index"]
