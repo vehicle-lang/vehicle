@@ -98,17 +98,6 @@ LitRat.   Lit ::= Rational;
 LitTrue.  Lit ::= TokTrue;
 LitFalse. Lit ::= TokFalse;
 
--- * Type classes
-
-TCEq.    TypeClass ::= TokTCEq        Expr15 Expr15;
-TCOrd.   TypeClass ::= TokTCOrd       Expr15 Expr15;
-TCCont.  TypeClass ::= TokTCContainer Expr15 Expr15;
-TCTruth. TypeClass ::= TokTCTruth     Expr15;
-TCQuant. TypeClass ::= TokTCQuantify  Expr15;
-TCNat.   TypeClass ::= TokTCNatural   Expr15;
-TCInt.   TypeClass ::= TokTCIntegral  Expr15;
-TCRat.   TypeClass ::= TokTCRational  Expr15;
-TCReal.  TypeClass ::= TokTCReal      Expr15;
 
 -- * Expressions
 
@@ -134,7 +123,6 @@ App.     Expr13 ::= Expr13 Arg;
 Fun.     Expr11 ::= Expr13 TokArrow Expr11;
 Var.     Expr15 ::= Name;
 Literal. Expr15 ::= Lit;
-TypeC.   Expr13 ::= TypeClass;
 Hole.    Expr15 ::= HoleToken;
 
 -- Primitive types.
@@ -179,6 +167,17 @@ Every.     Expr4 ::= TokEvery [Binder] TokDot Expr5;
 Some.      Expr4 ::= TokSome  [Binder] TokDot Expr5;
 EveryIn.   Expr4 ::= TokEvery [Binder] "inn" Expr5 TokDot Expr5;
 SomeIn.    Expr4 ::= TokSome  [Binder] "inn" Expr5 TokDot Expr5;
+
+-- Type classes
+TCEq.    Expr15 ::= TokTCEq        Expr15 Expr15;
+TCOrd.   Expr15 ::= TokTCOrd       Expr15 Expr15;
+TCCont.  Expr15 ::= TokTCContainer Expr15 Expr15;
+TCTruth. Expr15 ::= TokTCTruth     Expr15;
+TCQuant. Expr15 ::= TokTCQuantify  Expr15;
+TCNat.   Expr15 ::= TokTCNatural   Expr15;
+TCInt.   Expr15 ::= TokTCIntegral  Expr15;
+TCRat.   Expr15 ::= TokTCRational  Expr15;
+TCReal.  Expr15 ::= TokTCReal      Expr15;
 
 coercions Expr 15;
 separator Expr ",";

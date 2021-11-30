@@ -146,6 +146,17 @@ instance Elab B.Expr V.InputExpr where
     B.Map tk e1 e2            -> builtin V.Map  tk [e1, e2]
     B.Fold tk e1 e2 e3        -> builtin V.Fold tk [e1, e2, e3]
 
+    --TypeClass folded into Expressions
+    B.TCEq    tk e1 e2 -> builtin (V.TypeClass V.HasEq)          tk [e1, e2]
+    B.TCOrd   tk e1 e2 -> builtin (V.TypeClass V.HasOrd)         tk [e1, e2]
+    B.TCCont  tk e1 e2 -> builtin (V.TypeClass V.IsContainer)    tk [e1, e2]
+    B.TCTruth tk e     -> builtin (V.TypeClass V.IsTruth)        tk [e]
+    B.TCQuant tk e     -> builtin (V.TypeClass V.IsQuantifiable) tk [e]
+    B.TCNat   tk e     -> builtin (V.TypeClass V.IsNatural)      tk [e]
+    B.TCInt   tk e     -> builtin (V.TypeClass V.IsIntegral)     tk [e]
+    B.TCRat   tk e     -> builtin (V.TypeClass V.IsRational)     tk [e]
+    B.TCReal  tk e     -> builtin (V.TypeClass V.IsReal)         tk [e]
+
 instance Elab B.Arg V.InputArg where
   elab (B.ExplicitArg e) = mkArg V.Explicit <$> elab e
   elab (B.ImplicitArg e) = mkArg V.Implicit <$> elab e
@@ -181,18 +192,6 @@ instance Elab B.Lit V.InputExpr where
     B.LitInt   n -> return $ if n >= 0
       then V.LitNat V.emptyUserAnn (fromIntegral n)
       else V.LitInt V.emptyUserAnn (fromIntegral n)
-
-instance Elab B.TypeClass V.InputExpr where
-  elab = \case
-    B.TCEq    tk e1 e2 -> builtin (V.TypeClass V.HasEq)          tk [e1, e2]
-    B.TCOrd   tk e1 e2 -> builtin (V.TypeClass V.HasOrd)         tk [e1, e2]
-    B.TCCont  tk e1 e2 -> builtin (V.TypeClass V.IsContainer)    tk [e1, e2]
-    B.TCTruth tk e     -> builtin (V.TypeClass V.IsTruth)        tk [e]
-    B.TCQuant tk e     -> builtin (V.TypeClass V.IsQuantifiable) tk [e]
-    B.TCNat   tk e     -> builtin (V.TypeClass V.IsNatural)      tk [e]
-    B.TCInt   tk e     -> builtin (V.TypeClass V.IsIntegral)     tk [e]
-    B.TCRat   tk e     -> builtin (V.TypeClass V.IsRational)     tk [e]
-    B.TCReal  tk e     -> builtin (V.TypeClass V.IsReal)         tk [e]
 
 op1 :: (MonadElab e m, HasProvenance a, IsToken token)
     => (V.InputAnn -> a -> b)
