@@ -325,11 +325,17 @@ instance CompileToAgda OutputExpr where
 
       Ann _ann e t -> compileAnn <$> compile e <*> compile t
 
-      Let{} -> do
+      Let _ann bound binding body -> do
+        cBoundExpr <- compile (binding, bound)
+        cBody      <- compile body
+        return $ "let" <+> cBoundExpr <+> "in" <+> cBody
+        {-
+        -- TODO re-enable let folding - Agda separates by whitespace though so it's complicated.
         let (boundExprs, body) = foldLet expr
         cBoundExprs <- traverse compile boundExprs
         cBody       <- compile body
         return $ "let" <+> vsep (punctuate ";" cBoundExprs) <+> "in" <+> cBody
+        -}
 
       Lam{} -> do
         let (binders, body) = foldLam expr
