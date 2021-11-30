@@ -122,7 +122,6 @@ App.     Expr13 ::= Expr13 Arg;
 Fun.     Expr11 ::= Expr13 TokArrow Expr11;
 Var.     Expr15 ::= Name;
 Literal. Expr15 ::= Lit;
-TypeC.   Expr13 ::= Expr15;
 Hole.    Expr15 ::= HoleToken;
 
 -- Primitive types.
