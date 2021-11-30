@@ -24,7 +24,7 @@ import Vehicle.Compile.SupplyNames (runSupplyNames)
 import Vehicle.Compile.Descope (runDescope)
 import Vehicle.Compile.Backend.Verifier
 
-compileToSMTLib :: (MonadLogger m, MonadError SMTLibError m)
+compileToSMTLib :: (AsSMTLibError e, MonadLogger m, MonadError e m)
                 => CheckedProg -> m [SMTDoc]
 compileToSMTLib prog = do
   logDebug "Beginning compilation to SMT"
@@ -63,33 +63,34 @@ instance Pretty SMTType where
 --------------------------------------------------------------------------------
 -- Monad
 
-type MonadSMTLib m =
-  ( MonadLogger m
-  , MonadError SMTLibError m
+type MonadSMTLib e m =
+  ( AsSMTLibError e
+  , MonadLogger m
+  , MonadError e m
   )
 
-type MonadSMTLibProp m =
-  ( MonadSMTLib m
+type MonadSMTLibProp e m =
+  ( MonadSMTLib e m
   , MonadReader Identifier m
   )
 
 --------------------------------------------------------------------------------
 -- Compilation
 
-compileProg :: MonadSMTLib m => CheckedProg -> m [SMTDoc]
+compileProg :: MonadSMTLib e m => CheckedProg -> m [SMTDoc]
 compileProg (Main ds) = do
   results <- catMaybes <$> traverse compileDecl ds
   if null results
-    then throwError NoPropertiesFound
+    then throwError mkNoPropertiesFound
     else return results
 
-compileDecl :: MonadSMTLib m => CheckedDecl -> m (Maybe SMTDoc)
+compileDecl :: MonadSMTLib e m => CheckedDecl -> m (Maybe SMTDoc)
 compileDecl = \case
   DeclData{} ->
     normalisationError "dataset declarations"
 
   DeclNetw ann ident _ ->
-    throwError $ UnsupportedDecl ann ident Network
+    throwError $ mkUnsupportedDecl ann ident Network
 
   DefFun _ ident t e -> if not $ isProperty t
       then return Nothing
@@ -97,10 +98,10 @@ compileDecl = \case
         let doc = compileProp ident e
         Just <$> doc
 
-compileProp :: MonadSMTLib m => Identifier -> CheckedExpr -> m SMTDoc
+compileProp :: MonadSMTLib e m => Identifier -> CheckedExpr -> m SMTDoc
 compileProp ident expr = runReaderT propertyDoc ident
   where
-  propertyDoc :: MonadSMTLibProp m => m SMTDoc
+  propertyDoc :: MonadSMTLibProp e m => m SMTDoc
   propertyDoc = do
     logDebug $ "Beginning compilation of SMTLib property" <+> squotes (pretty ident)
     incrCallDepth
@@ -133,7 +134,7 @@ compileVars vars = vsep (map compileVar vars)
     compileVar :: SMTVar -> Doc a
     compileVar (SMTVar name t) = parens ("declare-const" <+> pretty name <+> pretty t)
 
-stripQuantifiers :: MonadSMTLibProp m => Bool -> CheckedExpr -> m ([SMTVar], CheckedExpr, Bool)
+stripQuantifiers :: MonadSMTLibProp e m => Bool -> CheckedExpr -> m ([SMTVar], CheckedExpr, Bool)
 stripQuantifiers atTopLevel (QuantifierExpr q ann binder body) = do
   (e', negated) <- negatePropertyIfNecessary atTopLevel ann q body
   let varSymbol = getQuantifierSymbol binder
@@ -143,7 +144,7 @@ stripQuantifiers atTopLevel (QuantifierExpr q ann binder body) = do
   return (var : vars, body', negated)
 stripQuantifiers _atTopLevel e = return ([], e, False)
 
-negatePropertyIfNecessary :: MonadSMTLibProp m
+negatePropertyIfNecessary :: MonadSMTLibProp e m
                           => Bool
                           -> CheckedAnn
                           -> Quantifier
@@ -152,7 +153,7 @@ negatePropertyIfNecessary :: MonadSMTLibProp m
 negatePropertyIfNecessary _atTopLevel _ann Any body  = return (body, False)
 negatePropertyIfNecessary False       ann All _body = do
   ident <- ask
-  throwError $ UnsupportedQuantifierSequence ann ident
+  throwError $ mkUnsupportedQuantifierSequence ann ident
 negatePropertyIfNecessary True        ann  All body  = do
   let body' = normaliseInternal $ NotExpr ann (Builtin ann (BooleanType Prop)) [ExplicitArg ann body]
   logDebug $ align $ "Negating universal quantifier:" <+> prettySimple body' <> line
@@ -163,13 +164,13 @@ splitTopLevelConjunctions (App _ann (Builtin _ (BooleanOp2 And)) [_, _, e1, e2])
   splitTopLevelConjunctions (argExpr e1) <> splitTopLevelConjunctions (argExpr e2)
 splitTopLevelConjunctions e = [e]
 
-getType :: MonadSMTLibProp m => CheckedAnn -> Symbol -> CheckedExpr -> m SMTType
+getType :: MonadSMTLibProp e m => CheckedAnn -> Symbol -> CheckedExpr -> m SMTType
 getType _   _ (Builtin _ (NumericType Real)) = return SReal
 getType ann s t                              = do
   ident <- ask
-  throwError $ UnsupportedVariableType ann ident s t supportedTypes
+  throwError $ mkUnsupportedVariableType ann ident s t supportedTypes
 
-compileExpr :: MonadSMTLibProp m => OutputExpr -> m (Doc b)
+compileExpr :: MonadSMTLibProp e m => OutputExpr -> m (Doc b)
 compileExpr = \case
   Type _         -> typeError "Type"
   Pi   _ann _ _  -> typeError "Pi"
@@ -178,7 +179,7 @@ compileExpr = \case
   Ann _ann _ _   -> normalisationError "Ann"
   Lam _ann _ _   -> normalisationError "Lam"
   Seq _ann _     -> normalisationError "Seq"
-  PrimDict _tc   -> visibilityError "PrimDict"
+  PrimDict _ _tc -> visibilityError "PrimDict"
 
   Builtin _ann op -> compileBuiltin op
   Literal _ann l  -> return $ compileLiteral l
@@ -186,7 +187,7 @@ compileExpr = \case
 
   QuantifierExpr q ann binder _ -> do
     ident <- ask
-    throwError $ NonTopLevelQuantifier ann ident q (nameOf binder)
+    throwError $ mkNonTopLevelQuantifier ann ident q (nameOf binder)
 
   App _ann fun args -> do
     funDoc  <- compileExpr fun
@@ -201,7 +202,7 @@ compileExpr = \case
     bodyDoc  <- compileExpr body
     return $ parens $ "let" <+> parens (parens (binderDoc <+> boundDoc)) <+> bodyDoc
 
-compileBuiltin :: MonadSMTLibProp m => Builtin -> m (Doc b)
+compileBuiltin :: MonadSMTLibProp e m => Builtin -> m (Doc b)
 compileBuiltin = \case
   BooleanType   t -> typeError $ pretty t
   NumericType   t -> typeError $ pretty t
@@ -229,12 +230,12 @@ compileBuiltin = \case
   NumericOp2 Sub  -> return "-"
   Neg             -> return "-"
 
-compileArg :: MonadSMTLibProp m => OutputArg -> m (Maybe (Doc a))
+compileArg :: MonadSMTLibProp e m => OutputArg -> m (Maybe (Doc a))
 compileArg arg = if visibilityOf arg == Explicit
   then Just <$> compileExpr (argExpr arg)
   else return Nothing
 
-compileVariable :: MonadSMTLibProp m => OutputVar -> m (Doc a)
+compileVariable :: MonadSMTLibProp e m => OutputVar -> m (Doc a)
 compileVariable symbol = return $ pretty symbol
 
 compileLiteral :: Literal -> Doc a

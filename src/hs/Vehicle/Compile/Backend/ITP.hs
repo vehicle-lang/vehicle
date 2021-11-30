@@ -16,9 +16,9 @@ import Vehicle.Language.Print
 -- Control
 
 -- |Constraint for the monad stack used by the Compiler.
-type MonadCompile m =
+type MonadCompile e m =
   ( MonadLogger m
-  , MonadError AgdaError m
+  , MonadError e m
   )
 
 unexpectedTypeError :: OutputExpr -> [String] -> a

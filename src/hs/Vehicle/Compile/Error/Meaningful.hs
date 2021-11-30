@@ -53,6 +53,17 @@ fixText t = "Fix:" <+> t
 class MeaningfulError e where
   details :: e -> VehicleError
 
+instance MeaningfulError CompileError where
+  details = \case
+    ParseError        e -> details e
+    CoreElabError     e -> details e
+    FrontendElabError e -> details e
+    ScopeError        e -> details e
+    TypeError         e -> details e
+    NormError         e -> details e
+    AgdaError         e -> details e
+    SMTLibError       e -> details e
+
 instance MeaningfulError ParseError where
   -- TODO need to revamp this error, BNFC must provide some more
   -- information than a simple string surely?
@@ -116,7 +127,7 @@ instance MeaningfulError ScopeError where
     , fix        = pretty ("Unknown" :: String)
     }
 
-instance MeaningfulError TypingError where
+instance MeaningfulError TypeError where
   details (Mismatch p ctx candidate expected) = UError $ UserError
     { provenance = p
     , problem    = "expected something of type" <+> prettyFriendlyDB nameCtx expected <+>

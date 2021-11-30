@@ -45,7 +45,7 @@ record EvaluateArgs : Set where
 evaluateCmd : EvaluateArgs → CmdSpec
 evaluateCmd args = cmdSpec VEHICLE_COMMAND
   ( "evaluate"
-  ∷ projectFile
+  ∷ ("--databaseFile=" ++ projectFile)
   ∷ networkUUID
   ∷ []) ""
   where open EvaluateArgs args
@@ -67,13 +67,13 @@ record CheckArgs : Set where
 checkCmd : CheckArgs → CmdSpec
 checkCmd checkArgs = cmdSpec VEHICLE_COMMAND
   ( "check"
-  ∷ projectFile
-  ∷ propertyUUID
+  ∷ ("--databaseFile=" ++ projectFile)
+  ∷ ("--property=" ++ propertyUUID)
   ∷ []) ""
   where open CheckArgs checkArgs
 
 checkSuccessful : String → Bool
-checkSuccessful output = "Property verified" ⊆ output
+checkSuccessful output = "Valid" ⊆ output
 
 postulate valid : ∀ {a} {A : Set a} → A
 
@@ -103,3 +103,6 @@ instance
 
   natNumber : Number ℕ
   natNumber = Nat.number
+
+ze : Fin 5
+ze = 0

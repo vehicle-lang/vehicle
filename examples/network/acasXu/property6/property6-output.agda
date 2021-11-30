@@ -5,6 +5,8 @@
 --  - AISEC version: 0.1.0.1
 --  - Time generated: ???
 
+{-# OPTIONS --allow-exec #-}
+
 open import Vehicle
 open import Vehicle.Data.Tensor
 open import Data.Product
@@ -12,6 +14,7 @@ open import Data.Sum
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
+open import Data.Fin as Fin using (#_)
 open import Data.List
 open import Data.List.Relation.Unary.All as List
 
@@ -36,28 +39,28 @@ acasXu = evaluate record
   }
 
 distanceToIntruder : InputVector → ℝ
-distanceToIntruder x = x 0
+distanceToIntruder x = x (# 0)
 
 angleToIntruder : InputVector → ℝ
-angleToIntruder x = x 1
+angleToIntruder x = x (# 1)
 
 intruderHeading : InputVector → ℝ
-intruderHeading x = x 2
+intruderHeading x = x (# 2)
 
 speed : InputVector → ℝ
-speed x = x 3
+speed x = x (# 3)
 
 intruderSpeed : InputVector → ℝ
-intruderSpeed x = x 4
+intruderSpeed x = x (# 4)
 
 clearOfConflictScore : InputVector → ℝ
-clearOfConflictScore x = acasXu x 0
+clearOfConflictScore x = acasXu x (# 0)
 
 IntruderFarAway : InputVector → Set
 IntruderFarAway x = (ℤ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ ℤ.- (7 ℚ./ 10) ⊎ 7 ℚ./ 10 ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ pi) × (12000 ℝ.≤ distanceToIntruder x × (distanceToIntruder x ℝ.≤ 62000 × (ℤ.- pi ℝ.≤ intruderHeading x × (intruderHeading x ℝ.≤ ℤ.- pi ℝ.+ 1 ℚ./ 200 × (100 ℝ.≤ speed x × (speed x ℝ.≤ 1200 × (0 ℝ.≤ intruderSpeed x × intruderSpeed x ℝ.≤ 1200)))))))
 
 AdvisesClearOfConflict : InputVector → Set
-AdvisesClearOfConflict x = let y = acasXu x in List.All (λ (i : ℕ) → y 0 ℝ.≥ y i) (0 ∷ (1 ∷ (2 ∷ (3 ∷ (4 ∷ [])))) : List ℕ)
+AdvisesClearOfConflict x = let y = acasXu x in List.All (λ (i : ℕ) → y (# 0) ℝ.≥ y i) (0 ∷ (1 ∷ (2 ∷ (3 ∷ (4 ∷ [])))) : List ℕ)
 
 abstract
   property6 : ∀ (x : Tensor ℝ (5 ∷ [])) → IntruderFarAway x → AdvisesClearOfConflict x

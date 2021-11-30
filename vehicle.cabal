@@ -88,6 +88,7 @@ library
                       , Vehicle.Language.AST.BuiltinPatterns
                       , Vehicle.Language.AST.Core
                       , Vehicle.Language.AST.DeBruijn
+                      , Vehicle.Language.AST.CoDeBruijn
                       , Vehicle.Language.AST.Name
                       , Vehicle.Language.AST.Visibility
                       , Vehicle.Language.AST.Utils
@@ -153,6 +154,7 @@ library
                       , DeriveFoldable
                       , DeriveTraversable
                       , DeriveGeneric
+                      , FunctionalDependencies
 
 executable vehicle
   import:             common-base
@@ -167,12 +169,15 @@ test-suite vehicle-test
   main-is:            Test.hs
   hs-source-dirs:     test
   other-modules:      Test.Golden
+                    , Test.Unit
                     -- , Test.Generative
                     -- , Test.Generative.Generator
                     -- , Test.Generative.ToVehicle
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -main-is Test
   default-extensions: ImportQualifiedPost
   build-depends:      filepath >=1.4 && <2
+                    , mtl      >=2.2 && <3
+                    , hashable
                     , Diff
                     , directory
                     , tasty

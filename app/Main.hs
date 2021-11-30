@@ -48,12 +48,12 @@ compileDescription = progDesc "Compile a .vcl file to an output target"
 
 compileParser :: Parser CompileOptions
 compileParser = CompileOptions
-  <$> option auto
+  <$> strOption
       ( long "inputFile"
      <> short 'i'
      <> help "Input .vcl file."
      <> metavar "FILENAME" )
-  <*> optional (option auto
+  <*> optional (strOption
       ( long "outputFile"
      <> short 'o'
      <> help "Output location for compiled file. Defaults to stdout if not provided."
@@ -63,7 +63,7 @@ compileParser = CompileOptions
      <> short 't'
      <> help "Compilation target."
      <> metavar "TARGET" )
-  <*> option auto
+  <*> strOption
       ( long "moduleName"
      <> short 'm'
      <> help "The name of the module."
@@ -74,12 +74,12 @@ checkDescription = progDesc "Check the verification status of a Vehicle property
 
 checkParser :: Parser CheckOptions
 checkParser = CheckOptions
- <$> option auto
+ <$> strOption
       ( long "databaseFile"
      <> short 'd'
      <> help "The database file for the Vehicle project."
      <> metavar "FILENAME" )
- <*> option auto
+ <*> strOption
       ( long "property"
      <> short 'p'
      <> help "The UUID of the Vehicle property."

@@ -100,7 +100,7 @@ instance Descope Expr where
     Ann      ann e1 t              -> Ann ann <$> descope e1 <*> descope t
     App      ann fun args          -> App ann <$> descope fun <*> traverse descope args
     Seq      ann es                -> Seq ann <$> traverse descope es
-    PrimDict tc                    -> PrimDict <$> descope tc
+    PrimDict ann tc                -> PrimDict ann <$> descope tc
     Meta     ann i                 -> return $ Meta ann i
 
     Let ann bound binder body -> do

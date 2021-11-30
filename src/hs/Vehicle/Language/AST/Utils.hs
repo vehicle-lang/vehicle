@@ -26,7 +26,7 @@ pattern Type1 = Type 1
 -- * Type of annotations attached to the Frontend AST after parsing
 -- before being analysed by the compiler
 
-type InputBinding = (Maybe Symbol)
+type InputBinding = Maybe Symbol
 type InputVar     = Symbol
 type InputAnn     = (Provenance, Owner)
 
@@ -38,8 +38,9 @@ type InputProg      = Prog   InputBinding InputVar InputAnn
 
 -- * Types pre type-checking
 
-type UncheckedVar    = LocallyNamelessVar
-type UncheckedAnn    = (Provenance, Owner)
+type UncheckedBinding = Maybe Symbol
+type UncheckedVar     = LocallyNamelessVar
+type UncheckedAnn     = (Provenance, Owner)
 
 type UncheckedBinder = DeBruijnBinder UncheckedAnn
 type UncheckedArg    = DeBruijnArg    UncheckedAnn
@@ -49,8 +50,9 @@ type UncheckedProg   = DeBruijnProg   UncheckedAnn
 
 -- * Types post type-checking
 
-type CheckedVar    = LocallyNamelessVar
-type CheckedAnn    = (Provenance, Owner)
+type CheckedBinding = Maybe Symbol
+type CheckedVar     = LocallyNamelessVar
+type CheckedAnn     = (Provenance, Owner)
 
 type CheckedBinder = DeBruijnBinder  CheckedAnn
 type CheckedArg    = DeBruijnArg     CheckedAnn
@@ -103,7 +105,7 @@ freeNames :: CheckedExpr -> [Identifier]
 freeNames = cata $ \case
   TypeF     _                   -> []
   HoleF     _   _               -> []
-  PrimDictF _                   -> []
+  PrimDictF _ _                 -> []
   MetaF     _ _                 -> []
   LiteralF  _ _                 -> []
   BuiltinF  _ _                 -> []

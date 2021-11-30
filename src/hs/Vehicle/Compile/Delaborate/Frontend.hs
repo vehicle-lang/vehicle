@@ -126,7 +126,7 @@ instance Delaborate (V.NamedExpr ann) B.Expr where
     V.Let{}         -> delabLet expr
     V.Lam{}         -> delabLam expr
     V.Meta _ m      -> return $ B.Var (mkToken B.Name (layoutAsText (pretty m)))
-    V.PrimDict _    -> developerError "Instance arguments not currently in grammar"
+    V.PrimDict _ _  -> developerError "Instance arguments not currently in grammar"
 
     V.App _ (V.Builtin _ b) args -> delabBuiltin b <$> traverse (delab . V.argExpr) (NonEmpty.toList args)
     V.App _ fun args             -> delabApp <$> delab fun <*> traverse delab (reverse (NonEmpty.toList args))
@@ -180,15 +180,15 @@ delabBuiltin fun args = case fun of
   V.ContainerType V.List   -> delabOp1 B.List   tokList   args
   V.ContainerType V.Tensor -> delabOp2 B.Tensor tokTensor args
 
-  V.TypeClass V.IsTruth        -> delabOp1 (\tk e -> B.TypeC (B.TCTruth tk e)) tokTCTruth    args
-  V.TypeClass V.IsNatural      -> delabOp1 (\tk e -> B.TypeC (B.TCNat   tk e)) tokTCNatural  args
-  V.TypeClass V.IsIntegral     -> delabOp1 (\tk e -> B.TypeC (B.TCInt   tk e)) tokTCIntegral args
-  V.TypeClass V.IsRational     -> delabOp1 (\tk e -> B.TypeC (B.TCRat   tk e)) tokTCRational args
-  V.TypeClass V.IsReal         -> delabOp1 (\tk e -> B.TypeC (B.TCReal  tk e)) tokTCReal     args
-  V.TypeClass V.IsQuantifiable -> delabOp1 (\tk e -> B.TypeC (B.TCQuant tk e)) tokTCQuantify args
-  V.TypeClass V.HasEq          -> delabOp2 (\tk e1 e2 -> B.TypeC (B.TCEq   tk e1 e2)) tokTCEq        args
-  V.TypeClass V.HasOrd         -> delabOp2 (\tk e1 e2 -> B.TypeC (B.TCOrd  tk e1 e2)) tokTCOrd       args
-  V.TypeClass V.IsContainer    -> delabOp2 (\tk e1 e2 -> B.TypeC (B.TCCont tk e1 e2)) tokTCContainer args
+  V.TypeClass V.IsTruth        -> delabOp1 B.TCTruth tokTCTruth    args
+  V.TypeClass V.IsNatural      -> delabOp1 B.TCNat   tokTCNatural  args
+  V.TypeClass V.IsIntegral     -> delabOp1 B.TCInt   tokTCIntegral args
+  V.TypeClass V.IsRational     -> delabOp1 B.TCRat   tokTCRational args
+  V.TypeClass V.IsReal         -> delabOp1 B.TCReal  tokTCReal     args
+  V.TypeClass V.IsQuantifiable -> delabOp1 B.TCQuant tokTCQuantify args
+  V.TypeClass V.HasEq          -> delabOp2 B.TCEq    tokTCEq        args
+  V.TypeClass V.HasOrd         -> delabOp2 B.TCOrd   tokTCOrd       args
+  V.TypeClass V.IsContainer    -> delabOp2 B.TCCont  tokTCContainer args
 
   V.Equality V.Eq  -> delabInfixOp2 B.Eq  tokEq args
   V.Equality V.Neq -> delabInfixOp2 B.Neq tokNeq args

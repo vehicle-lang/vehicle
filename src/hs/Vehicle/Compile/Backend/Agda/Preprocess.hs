@@ -68,7 +68,7 @@ instance CapitaliseTypes CheckedExpr where
     MetaF     ann m                 -> return $ Meta ann m
     LiteralF  ann l                 -> return $ Literal ann l
     BuiltinF  ann op                -> return $ Builtin ann op
-    PrimDictF t                     -> PrimDict <$> t
+    PrimDictF ann t                 -> PrimDict ann <$> t
     AnnF      ann e t               -> Ann ann <$> e <*> t
     AppF      ann fun args          -> App ann <$> fun <*> traverse cap args
     PiF       ann binder result     -> Pi  ann <$> cap binder <*> result

@@ -67,7 +67,7 @@ instance WellFormedAnn ann => Simplify (Expr binder var ann) where
     Pi ann binder result      -> Pi  ann <$> simplifyReader binder <*> simplifyReader result
     Let ann bound binder body -> Let ann <$> simplifyReader bound  <*> simplifyReader binder <*> simplifyReader body
     Lam ann binder body       -> Lam ann <$> simplifyReader binder <*> simplifyReader body
-    PrimDict tc               -> PrimDict <$> simplifyReader tc
+    PrimDict ann tc           -> PrimDict ann <$> simplifyReader tc
 
 instance WellFormedAnn ann => Simplify (Binder binder var ann) where
   simplifyReader = traverseBinderType simplifyReader

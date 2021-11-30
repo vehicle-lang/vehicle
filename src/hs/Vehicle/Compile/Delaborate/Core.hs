@@ -65,7 +65,7 @@ instance Delaborate (V.NamedExpr ann) B.Expr where
     V.Let _ v b e  -> B.Let <$> delab b <*> delab v <*> delab e
     V.Lam _ b e    -> B.Lam <$> delab b <*> delab e
     V.Meta _ m     -> return $ B.Hole (mkToken B.HoleToken (layoutAsText (pretty m)))
-    V.PrimDict _   -> developerError "Instance arguments not currently in grammar"
+    V.PrimDict _ _ -> developerError "Instance arguments not currently in grammar"
 
     V.App _ fun args -> delabApp <$> delab fun <*> traverse delab (reverse (NonEmpty.toList args))
     V.Builtin _ op   -> B.Builtin <$> delab op

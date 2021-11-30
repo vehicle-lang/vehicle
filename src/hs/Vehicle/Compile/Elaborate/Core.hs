@@ -14,7 +14,7 @@ import Vehicle.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Language.AST as V
 
-runElab :: (MonadLogger m, MonadError CoreElabError m) => B.Prog -> m V.InputProg
+runElab :: MonadElab e m => B.Prog -> m V.InputProg
 runElab = elab
 
 --------------------------------------------------------------------------------
@@ -33,18 +33,41 @@ runElab = elab
 
 -- * Conversion
 
-class Elab vf vc where
-  elab :: MonadElab m => vf -> m vc
+type MonadElab e m = (AsCoreElabError e, MonadError e m, MonadLogger m)
 
-type MonadElab m = MonadError CoreElabError m
+class Elab vf vc where
+  elab :: MonadElab e m => vf -> m vc
 
 --------------------------------------------------------------------------------
 -- AST conversion
 
-lookupBuiltin :: MonadElab m => B.BuiltinToken -> m V.Builtin
-lookupBuiltin (BuiltinToken tk) = case builtinFromSymbol (tkSymbol tk) of
-    Nothing -> throwError $ UnknownBuiltin $ toToken tk
-    Just v  -> return v
+instance Elab B.Prog V.InputProg where
+  elab (B.Main ds) = V.Main <$> traverse elab ds
+
+instance Elab B.Decl V.InputDecl where
+  elab = \case
+    B.DeclNetw n t   -> V.DeclNetw (tkProvenance n) <$> elab n <*> elab t
+    B.DeclData n t   -> V.DeclData (tkProvenance n) <$> elab n <*> elab t
+    B.DefFun   n t e -> V.DefFun   (tkProvenance n) <$> elab n <*> elab t <*> elab e
+
+instance Elab B.Expr V.InputExpr where
+  elab = \case
+    B.Type l           -> return $ convType l
+    B.Hole name        -> return $ V.Hole (tkProvenance name, TheUser) (tkSymbol name)
+    B.Ann term typ     -> op2 V.Ann <$> elab term <*> elab typ
+    B.Pi  binder expr  -> op2 V.Pi  <$> elab binder <*> elab expr;
+    B.Lam binder e     -> op2 V.Lam <$> elab binder <*> elab e
+    B.Let binder e1 e2 -> op3 V.Let <$> elab e1 <*> elab binder <*>  elab e2
+    B.Seq es           -> op1 V.Seq <$> traverse elab es
+    B.Builtin c        -> V.Builtin (mkAnn c) <$> lookupBuiltin c
+    B.Literal v        -> V.Literal V.emptyUserAnn <$> elab v
+    B.Var n            -> return $ V.Var (mkAnn n) (tkSymbol n)
+
+    B.App fun arg -> do
+      fun' <- elab fun
+      arg' <- elab arg
+      let p = fillInProvenance [provenanceOf fun', provenanceOf arg']
+      return $ normApp (p, TheUser) fun' (arg' :| [])
 
 instance Elab B.Binder V.InputBinder where
   elab = \case
@@ -52,7 +75,7 @@ instance Elab B.Binder V.InputBinder where
     B.ImplicitBinder n e -> mkBinder n Implicit e
     B.InstanceBinder n e -> mkBinder n Instance e
     where
-      mkBinder :: MonadElab m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
+      mkBinder :: MonadElab e m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
       mkBinder n v e = V.Binder (mkAnn n) v (Just (tkSymbol n)) <$> elab e
 
 instance Elab B.Arg V.InputArg where
@@ -72,36 +95,13 @@ instance Elab B.Lit Literal where
       then LNat (fromIntegral n)
       else LInt (fromIntegral n)
 
-instance Elab B.Expr V.InputExpr where
-  elab = \case
-    B.Type l           -> return $ convType l
-    B.Hole name        -> return $ V.Hole (tkProvenance name) (tkSymbol name)
-    B.Ann term typ     -> op2 V.Ann <$> elab term <*> elab typ
-    B.Pi  binder expr  -> op2 V.Pi  <$> elab binder <*> elab expr;
-    B.Lam binder e     -> op2 V.Lam <$> elab binder <*> elab e
-    B.Let binder e1 e2 -> op3 V.Let <$> elab e1 <*> elab binder <*>  elab e2
-    B.Seq es           -> op1 V.Seq <$> traverse elab es
-    B.Builtin c        -> V.Builtin (mkAnn c) <$> lookupBuiltin c
-    B.Literal v        -> V.Literal V.emptyUserAnn <$> elab v
-    B.Var n            -> return $ V.Var (mkAnn n) (tkSymbol n)
-
-    B.App fun arg -> do
-      fun' <- elab fun
-      arg' <- elab arg
-      let p = fillInProvenance [provenanceOf fun', provenanceOf arg']
-      return $ normApp (p, TheUser) fun' (arg' :| [])
-
 instance Elab B.NameToken Identifier where
   elab n = return $ Identifier $ tkSymbol n
 
-instance Elab B.Decl V.InputDecl where
-  elab = \case
-    B.DeclNetw n t   -> V.DeclNetw (tkProvenance n) <$> elab n <*> elab t
-    B.DeclData n t   -> V.DeclData (tkProvenance n) <$> elab n <*> elab t
-    B.DefFun   n t e -> V.DefFun   (tkProvenance n) <$> elab n <*> elab t <*> elab e
-
-instance Elab B.Prog V.InputProg where
-  elab (B.Main ds) = V.Main <$> traverse elab ds
+lookupBuiltin :: MonadElab e m => B.BuiltinToken -> m V.Builtin
+lookupBuiltin (BuiltinToken tk) = case builtinFromSymbol (tkSymbol tk) of
+    Nothing -> throwError $ mkUnknownBuiltin $ toToken tk
+    Just v  -> return v
 
 mkAnn :: IsToken a => a -> InputAnn
 mkAnn x = (tkProvenance x, TheUser)
