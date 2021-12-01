@@ -120,6 +120,7 @@ class PrettyUsing (strategy :: Strategy) a where
 -- The use of deriving via is necessary to inform the type class resolution of the intermediate BNFC type:
 
 newtype ViaDelaborate a b = ViaDelaborate a
+
 instance (Core.Delaborate a b, Pretty b)
       => PrettyUsing ('ConvertTo 'Core) (ViaDelaborate a b) where
   prettyUsing (ViaDelaborate e) = pretty (Core.runDelabWithoutLogging @a @b e)
@@ -135,6 +136,7 @@ deriving via (ViaDelaborate (NamedExpr ann) BC.Expr) instance PrettyUsing ('Conv
 deriving via (ViaDelaborate (NamedProg ann)  BF.Prog ) instance PrettyUsing ('ConvertTo 'Frontend) (NamedProg ann)
 deriving via (ViaDelaborate (NamedDecl ann) [BF.Decl]) instance PrettyUsing ('ConvertTo 'Frontend) (NamedDecl ann)
 deriving via (ViaDelaborate (NamedExpr ann)  BF.Expr ) instance PrettyUsing ('ConvertTo 'Frontend) (NamedExpr ann)
+
 instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
       => PrettyUsing ('DescopeNaive rest) (t Symbol LocallyNamelessVar ann) where
   prettyUsing e = prettyUsing @rest (runNaiveDescope e)
@@ -182,6 +184,7 @@ instance PrettyUsing rest CheckedExpr
       => PrettyUsing ('Opaque rest) BaseConstraint where
   prettyUsing (Unify (e1, e2)) = prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2
   prettyUsing (m `Has` e)      = pretty m <+> "~" <+> prettyUsing @rest e
+
 instance PrettyUsing rest BaseConstraint
       => PrettyUsing ('Opaque rest) Constraint where
   prettyUsing (Constraint _ c) = prettyUsing @rest c
