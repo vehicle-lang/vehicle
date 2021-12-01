@@ -155,7 +155,7 @@ negatePropertyIfNecessary False       ann All _body = do
   ident <- ask
   throwError $ mkUnsupportedQuantifierSequence ann ident
 negatePropertyIfNecessary True        ann  All body  = do
-  let body' = normaliseInternal $ NotExpr ann (Builtin ann (BooleanType Prop)) [ExplicitArg ann body]
+  let body' = normaliseInternal $ NotExpr ann Prop [ExplicitArg ann body]
   logDebug $ align $ "Negating universal quantifier:" <+> prettySimple body' <> line
   return (body', False)
 

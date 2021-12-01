@@ -437,10 +437,9 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
   let (inputsExpr,  inputsType) = mkMagicVariableSeq inputType  inputVarIndices
   let (outputsExpr, _)          = mkMagicVariableSeq outputType outputVarIndices
 
-  let prop          = BuiltinBooleanType ann Prop
   let body'         = outputsExpr `substInto` letBody
-  let inputEquality = EqualityExpr Eq ann inputsType prop (map (ExplicitArg ann) [inputsExpr, networkInput])
-  let newBody       = BooleanOp2Expr Impl ann prop (map (ExplicitArg ann) [inputEquality, body'])
+  let inputEquality = EqualityExpr Eq ann inputsType Prop (map (ExplicitArg ann) [inputsExpr, networkInput])
+  let newBody       = BooleanOp2Expr Impl ann Prop (map (ExplicitArg ann) [inputEquality, body'])
 
   return newBody
   where

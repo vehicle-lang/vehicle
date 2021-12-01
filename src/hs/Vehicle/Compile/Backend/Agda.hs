@@ -344,11 +344,11 @@ instance CompileToAgda OutputExpr where
         return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> arrow <+> cBody)
 
       Builtin ann op -> compileBuiltin ann op []
-      Literal ann op -> compileLiteral ann op []
+      Literal{} -> compileLiteral expr
 
       App ann fun args -> case fun of
         Builtin _ op -> compileBuiltin ann op (fmap argExpr (NonEmpty.toList args))
-        Literal _ op -> compileLiteral ann op (fmap argExpr (NonEmpty.toList args))
+        Literal{}    -> compileLiteral expr
         Seq _     xs -> compileSeq     ann xs (fmap argExpr (NonEmpty.toList args))
         _            -> do
           cFun   <- compile fun
@@ -461,16 +461,13 @@ compileQuantIn :: MonadAgdaCompile e m => OutputExpr -> Quantifier -> BooleanTyp
 compileQuantIn tCont q Bool args = compileContainerExprLevelQuantifier tCont q args
 compileQuantIn tCont q Prop args = compileContainerTypeLevelQuantifier tCont q args
 
-compileLiteral :: MonadAgdaCompile e m => OutputAnn -> Literal -> [OutputExpr] -> m Code
-compileLiteral _ann lit args = return $ case (lit, args) of
-  (LNat  n,     _)                             -> pretty n
-  (LInt  i,     _)                             -> pretty i
-  (LRat  p,    _)                              -> annotateInfixOp2 [DataRat] 7 id (Just $ numericQualifier Rat) "/"
-                                                    [pretty (numerator p), pretty (denominator p) ]
-  (LBool True,  [BuiltinBooleanType _ t, _tc]) -> compileBoolOp0 True t
-  (LBool False, [BuiltinBooleanType _ t, _tc]) -> compileBoolOp0 False t
-  _ -> developerError $ "unexpected application of literal found during compilation to Agda:" <+>
-                        squotes (pretty lit) <+> "applied to" <+> prettyFriendly args
+compileLiteral :: MonadAgdaCompile e m => OutputExpr -> m Code
+compileLiteral e = return $ case e of
+  NatLiteralExpr  _ann t n -> pretty n
+  IntLiteralExpr  _ann t i -> pretty i
+  RatLiteralExpr  _ann t p -> annotateInfixOp2 [DataRat] 7 id (Just $ numericQualifier Rat) "/" [pretty (numerator p), pretty (denominator p) ]
+  BoolLiteralExpr _ann t b -> compileBoolOp0 b t
+  _ -> developerError $ "unexpected literal found during compilation to Agda:" <+> squotes (prettyVerbose e)
 
 -- |Compiling sequences. No sequences in Agda so have to go via cons.
 compileSeq :: MonadAgdaCompile e m => OutputAnn -> [OutputExpr] -> [OutputExpr] -> m Code
