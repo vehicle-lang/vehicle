@@ -22,13 +22,13 @@ data BaseConstraint
   deriving Show
 
 instance Simplify BaseConstraint where
-  simplify (Unify (e1, e2)) = do
-    e1' <- simplify e1
-    e2' <- simplify e2
+  simplifyReader (Unify (e1, e2)) = do
+    e1' <- simplifyReader e1
+    e2' <- simplifyReader e2
     return $ Unify (e1', e2')
 
-  simplify (m `Has` e) = do
-    e' <- simplify e
+  simplifyReader (m `Has` e) = do
+    e' <- simplifyReader e
     return $ m `Has` e'
 
 -- | A pair of expressions should be equal
@@ -72,4 +72,4 @@ instance HasProvenance Constraint where
   provenanceOf (Constraint ctx _) = provenanceOf ctx
 
 instance Simplify Constraint where
-  simplify (Constraint ctx c) = Constraint ctx <$> simplify c
+  simplifyReader (Constraint ctx c) = Constraint ctx <$> simplifyReader c
