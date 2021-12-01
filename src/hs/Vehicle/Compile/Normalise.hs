@@ -228,7 +228,7 @@ nfApp ann  fun@(Builtin _ _) args      = do
     -- Fold
     (FoldExpr _ _tElem _tCont _tRes [foldOp, unit, cont]) -> case argExpr cont of
       SeqExpr _ _ _ xs -> nf $ foldr (\x body -> normApp ann (argExpr foldOp) [ExplicitArg ann x, ExplicitArg ann body]) (argExpr unit) xs
-      _        -> return e
+      _                -> return e
     -- TODO distribute over cons
 
     -- Quantifiers
@@ -358,7 +358,7 @@ nfQuantifierIn ann q tCont boolType binder body container = do
   let tResCont = substContainerType tRes tCont
   let mappedContainer = MapExpr ann (typeOf binder) tRes (ExplicitArg ann <$> [Lam ann binder body, container])
   let foldedContainer = booleanBigOp (quantOp q) ann boolType tResCont mappedContainer
-  Just (do logDebug "Hi"; nf foldedContainer)
+  Just (nf foldedContainer)
 
 substContainerType :: CheckedExpr -> CheckedExpr -> CheckedExpr
 substContainerType newTElem (ListType   ann _tElem)       = ListType   ann newTElem
@@ -424,17 +424,3 @@ nfMap ann _tFrom tTo fun container = case container of
     let tCont = ListType ann tTo
     return $ SeqExpr ann tTo tCont ys
   _        -> Nothing
-
-{-
-norm-entry
-  App _ (Builtin _ everyIn)
-    (Arg _ Implicit (Builtin _ Int)
-    (Arg _ Implicit
-      (App _ (Builtin _ List) (Arg Explicit (Builtin _ Int) :| []))),
-    (Arg _ Implicit (Builtin _ Prop)),
-    (Arg _ Instance  (App _ (Builtin _ IsContainer)
-      (Arg _ Explicit (Builtin _ Int) :|
-      [Arg _ Explicit (App _ (Builtin _ List) (Arg _ Explicit _ Int) :| []))])),
-    Arg _ Explicit (Lam _ (Binder _ Explicit (Just "x") (Builtin _ Int)) (App _ (Literal _ (LBool True)) (Arg _ Implicit (Builtin _ Prop) :| [Arg _ Instance (App _ (Builtin _ IsTruth) (Arg _ Explicit (Builtin _ Prop) :| [Arg _ Explicit (Var _ (Bound 0))]))]))),
-    Arg _ Explicit (Var _ (Free (Identifier "emptyList")))])
--}

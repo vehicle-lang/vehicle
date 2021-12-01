@@ -343,11 +343,11 @@ instance CompileToAgda OutputExpr where
         cBody    <- compile body
         return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> arrow <+> cBody)
 
-      Builtin ann op -> compileBuiltin ann op []
+      Builtin{} -> compileBuiltin expr
       Literal{} -> compileLiteral expr
 
       App ann fun args -> case fun of
-        Builtin _ op -> compileBuiltin ann op (fmap argExpr (NonEmpty.toList args))
+        Builtin{}    -> compileBuiltin expr
         Literal{}    -> compileLiteral expr
         Seq _     xs -> compileSeq     ann xs (fmap argExpr (NonEmpty.toList args))
         _            -> do
@@ -393,41 +393,41 @@ compileBinder topLevel binder = do
         binderType <- compile (typeOf binder)
         return $ binderBrackets (visibilityOf binder) (compileAnn binderName binderType)
 
-compileBuiltin :: MonadAgdaCompile e m => OutputAnn -> Builtin -> [OutputExpr] -> m Code
-compileBuiltin ann op args = case (op, args) of
-  (TypeClass  tc, []) -> throwError $ mkCompilationUnsupported (provenanceOf ann) (pretty tc)
-  (BooleanType t, []) -> compile t
-  (NumericType t, []) -> compile t
+compileBuiltin :: MonadAgdaCompile e m => OutputExpr -> m Code
+compileBuiltin e = case e of
+  BuiltinTypeClass   _ tc -> throwError $ mkCompilationUnsupported (provenanceOf e) (pretty tc)
+  BuiltinBooleanType _ t  -> compile t
+  BuiltinNumericType _ t  -> compile t
 
-  (ContainerType List,   opArgs) -> annotateApp [DataList]   "List"   <$> traverse compile opArgs
-  (ContainerType Tensor, opArgs) -> annotateApp [DataTensor] "Tensor" <$> traverse compile opArgs
+  ListType   _ tElem       -> annotateApp [DataList]   "List"   <$> traverse compile [tElem]
+  TensorType _ tElem tDims -> annotateApp [DataTensor] "Tensor" <$> traverse compile [tElem, tDims]
 
-  (If, [_t, e1, e2, e3]) -> do
+  IfExpr _ _ e1 e2 e3 -> do
     ce1 <- compile e1
     ce2 <- compile e2
     ce3 <- compile e3
     return $ "if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3
 
-  (BooleanOp2 op2, t : _tc : opArgs) -> compileBoolOp2 op2 (booleanType t) <$> traverse compile opArgs
-  (Not,            t : _tc : opArgs) -> compileNot         (booleanType t) <$> traverse compile opArgs
-  (NumericOp2 op2, t : _tc : opArgs) -> compileNumOp2  op2 (numericType t) <$> traverse compile opArgs
-  (Neg,            t : _tc : opArgs) -> compileNeg         (numericType t) <$> traverse compile opArgs
+  BooleanOp2Expr op2 _ t   args -> compileBoolOp2 op2 t <$> traverse compile args
+  NotExpr            _ t   args -> compileNot         t <$> traverse compile args
+  NumericOp2Expr op2 _ t _ args -> compileNumOp2  op2 t <$> traverse compile args
+  NegExpr            _ t   args -> compileNeg         t <$> traverse compile args
 
-  (Quant   q, _tElem                      : opArgs) -> compileQuant   ann   q opArgs
-  (QuantIn q, _tElem : tCont : tRes : _tc : opArgs) -> compileQuantIn tCont q (booleanType tRes) opArgs
+  (QuantifierExpr   q _              binder body)      -> compileTypeLevelQuantifier q [binder] body
+  (QuantifierInExpr q ann tCont tRes binder body cont) -> compileQuantIn tRes q tCont (Lam ann binder body) cont
 
-  (Order order,  t1 : t2 : _tc : opArgs) -> compileNumOrder order (numericType t1) (booleanType t2) <$> traverse compile opArgs
-  (Equality Eq,  t1 : t2 : _tc : opArgs) -> compileEquality   t1 (booleanType t2) =<< traverse compile opArgs
-  (Equality Neq, t1 : t2 : _tc : opArgs) -> compileInequality t1 (booleanType t2) =<< traverse compile opArgs
+  (OrderExpr order  _ t1 t2 args) -> compileNumOrder order (numericType t1) t2 <$> traverse compile args
+  (EqualityExpr Eq  _ t1 t2 args) -> compileEquality   t1 t2 =<< traverse compile args
+  (EqualityExpr Neq _ t1 t2 args) -> compileInequality t1 t2 =<< traverse compile args
 
-  (Cons, tElem  : opArgs)         -> compileCons tElem <$> traverse compile opArgs
-  (At  , _tElem : tDims : opArgs) -> compileAt tDims opArgs
+  (ConsExpr _ tElem       args) -> compileCons tElem <$> traverse compile args
+  (AtExpr _  _tElem tDims args) -> compileAt tDims (map argExpr args)
 
-  (Map , _) -> throwError $ mkCompilationUnsupported (provenanceOf ann) (pretty Map)
-  (Fold, _) -> throwError $ mkCompilationUnsupported (provenanceOf ann) (pretty Fold)
+  MapExpr{} -> throwError $ mkCompilationUnsupported (provenanceOf e) (pretty Map)
+  FoldExpr{} -> throwError $ mkCompilationUnsupported (provenanceOf e) (pretty Fold)
 
   _ -> developerError $ "unexpected application of builtin found during compilation to Agda:" <+>
-                        squotes (pretty op) <+> "applied to" <+> prettyFriendly args
+                        squotes (prettyVerbose e)
 
 compileAnn :: Code -> Code -> Code
 compileAnn e t = annotateInfixOp2 [] minPrecedence id Nothing ":" [e, t]
@@ -439,27 +439,33 @@ compileTypeLevelQuantifier q binders body = do
   let quant = if q == All then "∀" else annotateConstant [DataProduct] "∃ λ"
   return $ quant <+> hsep cBinders <+> arrow <+> cBody
 
-compileContainerTypeLevelQuantifier :: MonadAgdaCompile e m => OutputExpr -> Quantifier -> [OutputExpr] -> m Code
-compileContainerTypeLevelQuantifier tCont q args = do
+compileContainerTypeLevelQuantifier :: MonadAgdaCompile e m
+                                    => Quantifier
+                                    -> OutputExpr
+                                    -> OutputExpr
+                                    -> OutputExpr
+                                    -> m Code
+compileContainerTypeLevelQuantifier q tCont fn cont = do
   let contType = containerType tCont
   let deps     = containerQuantifierDependencies q (containerType tCont)
   let quant    = containerQualifier contType <> "." <> (if q == All then "All" else "Any")
-  annotateApp deps quant <$> traverse compile args
+  annotateApp deps quant <$> traverse compile [fn, cont]
 
-compileContainerExprLevelQuantifier :: MonadAgdaCompile e m => OutputExpr -> Quantifier -> [OutputExpr] -> m Code
-compileContainerExprLevelQuantifier tCont q args = do
+compileContainerExprLevelQuantifier :: MonadAgdaCompile e m
+                                    => Quantifier
+                                    -> OutputExpr
+                                    -> OutputExpr
+                                    -> OutputExpr
+                                    -> m Code
+compileContainerExprLevelQuantifier q tCont fn cont = do
   let contType = containerType tCont
   let quant    = containerQualifier contType <> "." <> (if q == All then "all" else "any")
   let deps     = containerDependencies contType
-  annotateApp deps quant <$> traverse compile args
+  annotateApp deps quant <$> traverse compile [fn, cont]
 
-compileQuant :: MonadAgdaCompile e m => OutputAnn -> Quantifier  -> [OutputExpr] -> m Code
-compileQuant _   q [Lam _ binder body] = compileTypeLevelQuantifier q [binder] body
-compileQuant _   _ args                = developerError $ "malformed quantifier args" <+> prettyFriendly args
-
-compileQuantIn :: MonadAgdaCompile e m => OutputExpr -> Quantifier -> BooleanType -> [OutputExpr] -> m Code
-compileQuantIn tCont q Bool args = compileContainerExprLevelQuantifier tCont q args
-compileQuantIn tCont q Prop args = compileContainerTypeLevelQuantifier tCont q args
+compileQuantIn :: MonadAgdaCompile e m => BooleanType -> Quantifier -> OutputExpr -> OutputExpr -> OutputExpr -> m Code
+compileQuantIn Bool = compileContainerExprLevelQuantifier
+compileQuantIn Prop = compileContainerTypeLevelQuantifier
 
 compileLiteral :: MonadAgdaCompile e m => OutputExpr -> m Code
 compileLiteral e = return $ case e of
