@@ -569,7 +569,7 @@ typeOfBuiltin ann b = fromDSL $ case b of
 typeOfIf :: DSLExpr
 typeOfIf =
   forall type0 $ \t ->
-    tProp ~> t ~> t
+    tProp ~> t ~> t ~> t
 
 typeOfEqualityOp :: CheckedAnn -> DSLExpr
 typeOfEqualityOp ann =
