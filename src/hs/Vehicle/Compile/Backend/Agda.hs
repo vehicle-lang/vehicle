@@ -523,7 +523,7 @@ compileBoolOp2 op2 t = annotateInfixOp2 dependencies precedence id Nothing opDoc
 -- |Compiling numeric unary operations
 compileNeg :: NumericType -> [Code] -> Code
 compileNeg Nat = developerError "Negation is not supported for naturals"
-compileNeg t   = annotateInfixOp1 (numericDependencies t) 8 (Just (numericQualifier Int)) "-"
+compileNeg t   = annotateInfixOp1 (numericDependencies t) 8 (Just (numericQualifier t)) "-"
 
 -- |Compiling numeric binary operations
 compileNumOp2 :: NumericOp2 -> NumericType -> [Code] -> Code

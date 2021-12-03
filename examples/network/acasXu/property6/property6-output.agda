@@ -57,7 +57,7 @@ clearOfConflictScore : InputVector → ℝ
 clearOfConflictScore x = acasXu x (# 0)
 
 IntruderFarAway : InputVector → Set
-IntruderFarAway x = (ℤ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ ℤ.- (7 ℚ./ 10) ⊎ 7 ℚ./ 10 ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ pi) × (12000 ℝ.≤ distanceToIntruder x × (distanceToIntruder x ℝ.≤ 62000 × (ℤ.- pi ℝ.≤ intruderHeading x × (intruderHeading x ℝ.≤ ℤ.- pi ℝ.+ 1 ℚ./ 200 × (100 ℝ.≤ speed x × (speed x ℝ.≤ 1200 × (0 ℝ.≤ intruderSpeed x × intruderSpeed x ℝ.≤ 1200)))))))
+IntruderFarAway x = (ℝ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ ℝ.- (7 ℚ./ 10) ⊎ 7 ℚ./ 10 ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ pi) × (12000 ℝ.≤ distanceToIntruder x × (distanceToIntruder x ℝ.≤ 62000 × (ℝ.- pi ℝ.≤ intruderHeading x × (intruderHeading x ℝ.≤ ℝ.- pi ℝ.+ 1 ℚ./ 200 × (100 ℝ.≤ speed x × (speed x ℝ.≤ 1200 × (0 ℝ.≤ intruderSpeed x × intruderSpeed x ℝ.≤ 1200)))))))
 
 AdvisesClearOfConflict : InputVector → Set
 AdvisesClearOfConflict x = let y = acasXu x in List.All (λ (i : ℕ) → y (# 0) ℝ.≥ y i) (0 ∷ (1 ∷ (2 ∷ (3 ∷ (4 ∷ [])))) : List ℕ)
