@@ -103,6 +103,7 @@ data Dependency
   | DataListAny
   | PropEquality
   | RelNullary
+  | RelNullaryDecidable
   deriving (Eq, Ord)
 
 instance Pretty Dependency where
@@ -128,7 +129,7 @@ instance Pretty Dependency where
     -- HACK: At the moment redirect to rationals
     DataReal            -> "Data.Rational as" <+> numericQualifier Real <+> "using" <+> parens "" <+> "renaming (ℚ to ℝ)"
       -- "Data.Real as" <+> numericQualifier Real <+> "using" <+> parens "ℝ"
-    DataBool            -> "Data.Bool as 𝔹" <+> "using" <+> parens "Bool; true; false"
+    DataBool            -> "Data.Bool as 𝔹" <+> "using" <+> parens "Bool; true; false; if_then_else_"
     DataBoolInstances   -> "Data.Bool.Instances"
     DataFin             -> "Data.Fin as Fin" <+> "using" <+> parens "#_"
     DataList            -> "Data.List"
@@ -137,6 +138,7 @@ instance Pretty Dependency where
     DataListAny         -> "Data.List.Relation.Unary.Any as" <+> containerQualifier List
     PropEquality        -> "Relation.Binary.PropositionalEquality"
     RelNullary          -> "Relation.Nullary"
+    RelNullaryDecidable -> "Relation.Nullary.Decidable"
 
 optionStatement :: Text -> Doc a
 optionStatement option = "{-# OPTIONS --" <> pretty option <+> "#-}"
@@ -268,7 +270,7 @@ binderBrackets Implicit = braces
 binderBrackets Instance = braces . braces
 
 boolBraces :: Code -> Code
-boolBraces c = "⌊" <+> c <+> "⌋"
+boolBraces c = annotateConstant [RelNullaryDecidable] "⌊" <+> c <+> "⌋"
 
 arrow :: Code
 arrow = "→" -- <> softline'
@@ -406,7 +408,8 @@ compileBuiltin e = case e of
     ce1 <- compile e1
     ce2 <- compile e2
     ce3 <- compile e3
-    return $ "if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3
+    return $ annotate (Set.singleton DataBool, 0)
+      ("if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3)
 
   BooleanOp2Expr op2 _ t   args -> compileBoolOp2 op2 t <$> traverse compile args
   NotExpr            _ t   args -> compileNot         t <$> traverse compile args
