@@ -88,7 +88,9 @@ solveHasEq :: MonadConstraintSolving e m
            -> m ConstraintProgress
 -- TODO insert Container classes
 solveHasEq _ (BuiltinBooleanType _ _)  (BuiltinBooleanType _ _) = return simplySolved
-solveHasEq _ (BuiltinNumericType _ _)  (BuiltinBooleanType _ _) = return simplySolved
+solveHasEq _ (BuiltinNumericType _ _)  (BoolType _)             = return simplySolved
+solveHasEq _ (BuiltinNumericType _ t)  (PropType _)
+  | isDecidable t = return simplySolved
 solveHasEq constraint _ _ = throwError $ mkFailedConstraints (constraint :| [])
 
 solveHasOrd :: MonadConstraintSolving e m
@@ -96,7 +98,9 @@ solveHasOrd :: MonadConstraintSolving e m
             -> CheckedExpr
             -> CheckedExpr
             -> m ConstraintProgress
-solveHasOrd _ (BuiltinNumericType _ _) (BuiltinBooleanType _ Prop) = return simplySolved
+solveHasOrd _ (BuiltinNumericType _ _) (PropType _) = return simplySolved
+solveHasOrd _ (BuiltinNumericType _ t) (BoolType _)
+  | isDecidable t = return simplySolved
 solveHasOrd constraint _ _ = throwError $ mkFailedConstraints (constraint :| [])
 
 solveIsTruth :: MonadConstraintSolving e m
@@ -129,34 +133,34 @@ solveIsNatural :: MonadConstraintSolving e m
                => Constraint
                -> CheckedExpr
                -> m ConstraintProgress
-solveIsNatural _ (BuiltinNumericType _ Nat)  = return simplySolved
-solveIsNatural _ (BuiltinNumericType _ Int)  = return simplySolved
-solveIsNatural _ (BuiltinNumericType _ Rat)  = return simplySolved
-solveIsNatural _ (BuiltinNumericType _ Real) = return simplySolved
+solveIsNatural _ (NatType  _) = return simplySolved
+solveIsNatural _ (IntType  _) = return simplySolved
+solveIsNatural _ (RatType  _) = return simplySolved
+solveIsNatural _ (RealType _) = return simplySolved
 solveIsNatural constraint _ = throwError $ mkFailedConstraints (constraint :| [])
 
 solveIsIntegral :: MonadConstraintSolving e m
              => Constraint
              -> CheckedExpr
              -> m ConstraintProgress
-solveIsIntegral _ (BuiltinNumericType _ Int)  = return simplySolved
-solveIsIntegral _ (BuiltinNumericType _ Rat)  = return simplySolved
-solveIsIntegral _ (BuiltinNumericType _ Real) = return simplySolved
+solveIsIntegral _ (IntType  _) = return simplySolved
+solveIsIntegral _ (RatType  _) = return simplySolved
+solveIsIntegral _ (RealType _) = return simplySolved
 solveIsIntegral constraint _ = throwError $ mkFailedConstraints (constraint :| [])
 
 solveIsRational :: MonadConstraintSolving e m
              => Constraint
              -> CheckedExpr
              -> m ConstraintProgress
-solveIsRational _ (BuiltinNumericType _ Rat)  = return simplySolved
-solveIsRational _ (BuiltinNumericType _ Real) = return simplySolved
+solveIsRational _ (RatType  _) = return simplySolved
+solveIsRational _ (RealType _) = return simplySolved
 solveIsRational constraint _ = throwError $ mkFailedConstraints (constraint :| [])
 
 solveIsReal :: MonadConstraintSolving e m
             => Constraint
             -> CheckedExpr
             -> m ConstraintProgress
-solveIsReal _ (BuiltinNumericType _ Real) = return simplySolved
+solveIsReal _ (RealType _) = return simplySolved
 solveIsReal constraint _ = throwError $ mkFailedConstraints (constraint :| [])
 
 solveIsQuantifiable :: MonadConstraintSolving e m

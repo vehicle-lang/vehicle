@@ -51,11 +51,29 @@ mkTensor ann tElem dims =
 pattern BuiltinNumericType :: ann -> NumericType -> Expr binder var ann
 pattern BuiltinNumericType ann op = Builtin ann (NumericType op)
 
+pattern NatType :: ann -> Expr binder var ann
+pattern NatType ann = BuiltinNumericType ann Nat
+
+pattern IntType :: ann -> Expr binder var ann
+pattern IntType ann = BuiltinNumericType ann Int
+
+pattern RatType :: ann -> Expr binder var ann
+pattern RatType ann = BuiltinNumericType ann Rat
+
+pattern RealType :: ann -> Expr binder var ann
+pattern RealType ann = BuiltinNumericType ann Real
+
 --------------------------------------------------------------------------------
 -- Boolean
 
 pattern BuiltinBooleanType :: ann -> BooleanType -> Expr binder var ann
 pattern BuiltinBooleanType ann op = Builtin ann (BooleanType op)
+
+pattern BoolType :: ann -> Expr binder var ann
+pattern BoolType ann = BuiltinBooleanType ann Bool
+
+pattern PropType :: ann -> Expr binder var ann
+pattern PropType ann = BuiltinBooleanType ann Prop
 
 --------------------------------------------------------------------------------
 -- Container

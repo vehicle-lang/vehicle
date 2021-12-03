@@ -532,7 +532,8 @@ getTensorType :: MonadError UnsupportedNetworkType m
               => InputOrOutput
               -> CheckedExpr
               -> m Builtin
-getTensorType _  (BuiltinNumericType _ Real) = return (NumericType Real)
+getTensorType _  (BuiltinNumericType _ t)
+  | t == Real || t == Rat = return (NumericType t)
 getTensorType io _                           = throwError $ WrongTensorType io
 
 getTensorSize :: MonadError UnsupportedNetworkType m

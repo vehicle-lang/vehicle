@@ -38,6 +38,7 @@ compileToSMTLib prog = do
 supportedTypes :: [Builtin]
 supportedTypes =
   [ NumericType Real
+  , NumericType Rat
   ]
 
 --------------------------------------------------------------------------------
@@ -165,8 +166,9 @@ splitTopLevelConjunctions (App _ann (Builtin _ (BooleanOp2 And)) [_, _, e1, e2])
 splitTopLevelConjunctions e = [e]
 
 getType :: MonadSMTLibProp e m => CheckedAnn -> Symbol -> CheckedExpr -> m SMTType
-getType _   _ (Builtin _ (NumericType Real)) = return SReal
-getType ann s t                              = do
+getType _   _ (RealType _) = return SReal
+getType _   _ (RatType  _) = return SReal -- See Issue #46
+getType ann s t            = do
   ident <- ask
   throwError $ mkUnsupportedVariableType ann ident s t supportedTypes
 

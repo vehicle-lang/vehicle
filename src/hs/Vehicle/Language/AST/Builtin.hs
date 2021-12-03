@@ -13,6 +13,7 @@ module Vehicle.Language.AST.Builtin
   , NumericOp2(..)
   , builtinFromSymbol
   , symbolFromBuiltin
+  , isDecidable
   ) where
 
 import Data.Bifunctor (first)
@@ -41,6 +42,10 @@ instance Hashable NumericType
 
 instance Pretty NumericType where
   pretty = pretty . show
+
+isDecidable :: NumericType -> Bool
+isDecidable Real = False
+isDecidable _    = True
 
 --------------------------------------------------------------------------------
 -- Boolean types
