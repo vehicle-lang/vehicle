@@ -109,7 +109,7 @@ instance Pretty TypeClass where
 data Quantifier
   = All
   | Any
-  deriving (Eq, Ord, Generic)
+  deriving (Show, Eq, Ord, Generic)
 
 instance NFData   Quantifier
 instance Hashable Quantifier

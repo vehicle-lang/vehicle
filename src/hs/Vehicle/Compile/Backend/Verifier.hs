@@ -6,7 +6,7 @@ import Vehicle.Prelude
 data InputOrOutput
   = Input
   | Output
-  deriving (Eq)
+  deriving (Show, Eq)
 
 instance Pretty InputOrOutput where
   pretty = \case

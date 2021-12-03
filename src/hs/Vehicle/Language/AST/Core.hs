@@ -299,6 +299,7 @@ class HasIdentifier a where
 data DeclType
   = Network
   | Dataset
+  deriving (Show)
 
 instance Pretty DeclType where
   pretty = \case

@@ -34,12 +34,14 @@ data CompileError
   | NormError         NormError
   | AgdaError         AgdaError
   | SMTLibError       SMTLibError
+  deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Parse errors
 
 newtype ParseError
   = BNFCParseError String
+  deriving (Show)
 
 class AsParseError e where
   mkBNFCParseError :: String -> e
@@ -58,6 +60,7 @@ data CoreElabError
   = UnknownBuiltin     Token
   | MalformedPiBinder  Token
   | MalformedLamBinder InputExpr
+  deriving (Show)
 
 class AsCoreElabError e where
   mkUnknownBuiltin     :: Token     -> e
@@ -82,6 +85,7 @@ data FrontendElabError
   | MissingDefFunExpr    Provenance Symbol
   | DuplicateName        (NonEmpty Provenance) Symbol
   | MissingVariables     Provenance Symbol
+  deriving (Show)
 
 class AsFrontendElabError e where
   mkMissingDefFunType :: Provenance -> Symbol -> e
@@ -139,6 +143,7 @@ data TypeError
     BoundCtx                -- The context at the time of the failure
     UncheckedArg            -- The non-explicit argument
     CheckedExpr             -- Expected type of the argument
+  deriving (Show)
 
 class AsTypeError e where
   mkUnresolvedHole      :: Provenance -> Symbol -> e
@@ -167,6 +172,7 @@ instance AsTypeError CompileError where
 -- |Errors thrown during normalisation
 newtype NormError
   = EmptyQuantifierDomain Provenance
+  deriving (Show)
 
 class AsNormError e where
   mkEmptyQuantifierDomain :: Provenance -> e
@@ -186,11 +192,13 @@ data ContainerDimensionError
   | VariableTensorTypeDimension OutputExpr
   | EmptyTensorSize
   | TensorIndexOutOfBounds Int Int
+  deriving (Show)
 
 -- * Type of errors that can be thrown during compilation
 data AgdaError
   = CompilationUnsupported  Provenance (Doc Void)
   | ContainerDimensionError Provenance ContainerDimensionError
+  deriving (Show)
 
 class AsAgdaError e where
   mkCompilationUnsupported  :: Provenance -> Doc Void -> e
@@ -214,6 +222,7 @@ data UnsupportedNetworkType
   | MultidimensionalTensor InputOrOutput
   | VariableSizeTensor     InputOrOutput
   | WrongTensorType        InputOrOutput
+  deriving (Show)
 
 instance Pretty UnsupportedNetworkType where
   pretty = \case
@@ -232,6 +241,7 @@ data SMTLibError
   -- VNNLib
   | UnsupportedNetworkType        CheckedAnn Identifier CheckedExpr UnsupportedNetworkType
   | NoNetworkUsedInProperty       CheckedAnn Identifier
+  deriving (Show)
 
 class AsSMTLibError e where
   mkNoPropertiesFound             :: e

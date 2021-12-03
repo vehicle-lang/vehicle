@@ -47,8 +47,8 @@ prettyVerbose = prettyWith @('As 'Core)
 
 -- |Prints to the frontend language for things that need to be displayed to
 -- the user.
-prettyFriendly :: (PrettyWith ('Simple ('Named ('As 'Frontend))) a) => a -> Doc b
-prettyFriendly = prettyWith @('Simple ('Named ('As 'Frontend)))
+prettyFriendly :: (PrettyWith ('Named ('As 'Frontend)) a) => a -> Doc b
+prettyFriendly = prettyWith @('Named ('As 'Frontend))
 
 -- |Prints to the frontend language for things that need to be displayed to
 -- the user. Use this when the expression is using DeBruijn indices and is

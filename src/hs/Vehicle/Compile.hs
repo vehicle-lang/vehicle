@@ -77,7 +77,12 @@ fromEitherIO (Left err) = do print $ details err; exitFailure
 fromEitherIO (Right x)  = return x
 
 fromLoggedEitherIO :: LogFilePath -> ExceptT CompileError Logger a -> IO a
-fromLoggedEitherIO logFile x = fromEitherIO =<< fromLoggedIO logFile (runExceptT x)
+fromLoggedEitherIO logFile x = fromEitherIO =<< fromLoggedIO logFile (do
+  e <- runExceptT x
+  case e of
+    Left err -> logDebug ("Error thrown:" <+> pretty (show err))
+    Right _  -> return ()
+  return e)
 
 fromLoggedIO :: LogFilePath -> Logger a -> IO a
 fromLoggedIO Nothing        logger = return $ discardLogger logger

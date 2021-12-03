@@ -131,6 +131,7 @@ solveIsNatural :: MonadConstraintSolving e m
                -> m ConstraintProgress
 solveIsNatural _ (BuiltinNumericType _ Nat)  = return simplySolved
 solveIsNatural _ (BuiltinNumericType _ Int)  = return simplySolved
+solveIsNatural _ (BuiltinNumericType _ Rat)  = return simplySolved
 solveIsNatural _ (BuiltinNumericType _ Real) = return simplySolved
 solveIsNatural constraint _ = throwError $ mkFailedConstraints (constraint :| [])
 
@@ -139,6 +140,7 @@ solveIsIntegral :: MonadConstraintSolving e m
              -> CheckedExpr
              -> m ConstraintProgress
 solveIsIntegral _ (BuiltinNumericType _ Int)  = return simplySolved
+solveIsIntegral _ (BuiltinNumericType _ Rat)  = return simplySolved
 solveIsIntegral _ (BuiltinNumericType _ Real) = return simplySolved
 solveIsIntegral constraint _ = throwError $ mkFailedConstraints (constraint :| [])
 
@@ -146,6 +148,7 @@ solveIsRational :: MonadConstraintSolving e m
              => Constraint
              -> CheckedExpr
              -> m ConstraintProgress
+solveIsRational _ (BuiltinNumericType _ Rat)  = return simplySolved
 solveIsRational _ (BuiltinNumericType _ Real) = return simplySolved
 solveIsRational constraint _ = throwError $ mkFailedConstraints (constraint :| [])
 
