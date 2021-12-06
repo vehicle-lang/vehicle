@@ -61,7 +61,7 @@ data AgdaOptions = AgdaOptions
 logEntry :: MonadAgdaCompile e m => OutputExpr -> m ()
 logEntry e = do
   incrCallDepth
-  logDebug $ "compile-entry" <+> prettyVerbose e
+  logDebug $ "compile-entry" <+> prettySimple e
 
 logExit :: MonadAgdaCompile e m => Code -> m ()
 logExit e = do
@@ -472,11 +472,36 @@ compileQuantIn Prop = compileContainerTypeLevelQuantifier
 
 compileLiteral :: MonadAgdaCompile e m => OutputExpr -> m Code
 compileLiteral e = return $ case e of
-  NatLiteralExpr  _ann t n -> pretty n
-  IntLiteralExpr  _ann t i -> pretty i
-  RatLiteralExpr  _ann t p -> annotateInfixOp2 [DataRat] 7 id (Just $ numericQualifier Rat) "/" [pretty (numerator p), pretty (denominator p) ]
-  BoolLiteralExpr _ann t b -> compileBoolOp0 b t
-  _ -> developerError $ "unexpected literal found during compilation to Agda:" <+> squotes (prettyVerbose e)
+  NatLiteralExpr  _ann Nat  n -> compileNatLiteral  n
+  NatLiteralExpr  _ann Int  n -> compileIntLiteral  n
+  NatLiteralExpr  _ann Rat  n -> compileRatLiteral  (toRational n)
+  NatLiteralExpr  _ann Real n -> compileRealLiteral (toRational n)
+  IntLiteralExpr  _ann Int  i -> compileIntLiteral  i
+  IntLiteralExpr  _ann Rat  i -> compileRatLiteral  (toRational i)
+  IntLiteralExpr  _ann Real i -> compileRealLiteral (toRational i)
+  RatLiteralExpr  _ann Rat  p -> compileRatLiteral  p
+  RatLiteralExpr  _ann Real p -> compileRealLiteral p
+  BoolLiteralExpr _ann t b    -> compileBoolOp0 b t
+  _                           -> developerError $
+    "unexpected literal" <+> squotes (prettyVerbose e) <+>
+    -- "of type" <+> squotes (pretty t) <+>
+    "found during compilation to Agda"
+
+compileNatLiteral :: Int -> Code
+compileNatLiteral = pretty
+
+compileIntLiteral :: Int -> Code
+compileIntLiteral i
+  | i >= 0    = annotateInfixOp1 [DataInt] 8 (Just (numericQualifier Int)) "+" [pretty i]
+  | otherwise = annotateInfixOp1 [DataInt] 6 (Just (numericQualifier Int)) "-" [compileIntLiteral (- i)]
+
+compileRatLiteral :: Rational -> Code
+compileRatLiteral r = annotateInfixOp2 [DataRat] 7 id
+  (Just $ numericQualifier Rat) "/" [pretty (numerator r), pretty (denominator r) ]
+
+compileRealLiteral :: Rational -> Code
+compileRealLiteral r = annotateInfixOp2 [DataReal] 7 id
+  (Just $ numericQualifier Real) "/" [pretty (numerator r), pretty (denominator r) ]
 
 -- |Compiling sequences. No sequences in Agda so have to go via cons.
 compileSeq :: MonadAgdaCompile e m => OutputAnn -> [OutputExpr] -> [OutputExpr] -> m Code

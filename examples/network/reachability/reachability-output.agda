@@ -27,7 +27,7 @@ f = evaluate record
   }
 
 abstract
-  reachable : ∃ λ (x : Tensor ℚ (2 ∷ [])) → let y = f x in y (# 0) ≡ 0
+  reachable : ∃ λ (x : Tensor ℚ (2 ∷ [])) → let y = f x in y (# 0) ≡ 0 ℚ./ 1
   reachable = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = "TODO_propertyUUID"

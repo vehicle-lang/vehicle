@@ -12,7 +12,6 @@ open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Sum
 open import Data.Nat as ℕ using (ℕ)
-open import Data.Rational as ℚ using (ℚ)
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
 open import Data.Fin as Fin using (#_)
 open import Data.List
@@ -24,7 +23,7 @@ private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
 pi : ℝ
-pi = 392699 ℚ./ 125000
+pi = 392699 ℝ./ 125000
 
 InputVector : Set
 InputVector = Tensor ℝ (5 ∷ [])
@@ -57,7 +56,7 @@ clearOfConflictScore : InputVector → ℝ
 clearOfConflictScore x = acasXu x (# 0)
 
 IntruderFarAway : InputVector → Set
-IntruderFarAway x = (ℝ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ ℝ.- (7 ℚ./ 10) ⊎ 7 ℚ./ 10 ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ pi) × (12000 ℝ.≤ distanceToIntruder x × (distanceToIntruder x ℝ.≤ 62000 × (ℝ.- pi ℝ.≤ intruderHeading x × (intruderHeading x ℝ.≤ ℝ.- pi ℝ.+ 1 ℚ./ 200 × (100 ℝ.≤ speed x × (speed x ℝ.≤ 1200 × (0 ℝ.≤ intruderSpeed x × intruderSpeed x ℝ.≤ 1200)))))))
+IntruderFarAway x = (ℝ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ ℝ.- (7 ℝ./ 10) ⊎ 7 ℝ./ 10 ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ pi) × (12000 ℝ./ 1 ℝ.≤ distanceToIntruder x × (distanceToIntruder x ℝ.≤ 62000 ℝ./ 1 × (ℝ.- pi ℝ.≤ intruderHeading x × (intruderHeading x ℝ.≤ ℝ.- pi ℝ.+ 1 ℝ./ 200 × (100 ℝ./ 1 ℝ.≤ speed x × (speed x ℝ.≤ 1200 ℝ./ 1 × (0 ℝ./ 1 ℝ.≤ intruderSpeed x × intruderSpeed x ℝ.≤ 1200 ℝ./ 1)))))))
 
 AdvisesClearOfConflict : InputVector → Set
 AdvisesClearOfConflict x = let y = acasXu x in List.All (λ (i : ℕ) → y (# 0) ℝ.≥ y i) (0 ∷ (1 ∷ (2 ∷ (3 ∷ (4 ∷ [])))) : List ℕ)
