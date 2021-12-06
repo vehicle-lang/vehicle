@@ -88,9 +88,9 @@ data Dependency
   | DataNat
   | DataNatInstances
   | DataNatDivMod
-  | DataInt
-  | DataIntInstances
-  | DataIntDivMod
+  | DataInteger
+  | DataIntegerInstances
+  | DataIntegerDivMod
   | DataRat
   | DataRatInstances
   | DataReal
@@ -101,6 +101,7 @@ data Dependency
   | DataListInstances
   | DataListAll
   | DataListAny
+  | FunctionBase
   | PropEquality
   | RelNullary
   | RelNullaryDecidable
@@ -108,37 +109,38 @@ data Dependency
 
 instance Pretty Dependency where
   pretty = \case
-    VehicleCore         -> "Vehicle"
-    VehicleUtils        -> "Vehicle.Utils"
-    DataTensor          -> "Vehicle.Data.Tensor"
-    DataTensorInstances -> "Vehicle.Data.Tensor.Instances"
-    DataTensorAll       -> "Vehicle.Data.Tensor.Relation.Unary.All as" <+> containerQualifier Tensor
-    DataTensorAny       -> "Vehicle.Data.Tensor.Relation.Unary.Any as" <+> containerQualifier Tensor
-    DataUnit            -> "Data.Unit"
-    DataEmpty           -> "Data.Empty"
-    DataProduct         -> "Data.Product"
-    DataSum             -> "Data.Sum"
-    DataNat             -> "Data.Nat as" <+> numericQualifier Nat <+> "using" <+> parens "ℕ"
-    DataNatInstances    -> "Data.Nat.Instances"
-    DataNatDivMod       -> "Data.Nat.DivMod as" <+> numericQualifier Nat
-    DataInt             -> "Data.Int as" <+> numericQualifier Int <+> "using" <+> parens "ℤ"
-    DataIntInstances    -> "Data.Int.Instances"
-    DataIntDivMod       -> "Data.Int.DivMod as" <+> numericQualifier Int
-    DataRat             -> "Data.Rational as" <+> numericQualifier Rat <+> "using" <+> parens "ℚ"
-    DataRatInstances    -> "Data.Rational.Instances"
+    VehicleCore          -> "Vehicle"
+    VehicleUtils         -> "Vehicle.Utils"
+    DataTensor           -> "Vehicle.Data.Tensor"
+    DataTensorInstances  -> "Vehicle.Data.Tensor.Instances"
+    DataTensorAll        -> "Vehicle.Data.Tensor.Relation.Unary.All as" <+> containerQualifier Tensor
+    DataTensorAny        -> "Vehicle.Data.Tensor.Relation.Unary.Any as" <+> containerQualifier Tensor
+    DataUnit             -> "Data.Unit"
+    DataEmpty            -> "Data.Empty"
+    DataProduct          -> "Data.Product"
+    DataSum              -> "Data.Sum"
+    DataNat              -> "Data.Nat as" <+> numericQualifier Nat <+> "using" <+> parens "ℕ"
+    DataNatInstances     -> "Data.Nat.Instances"
+    DataNatDivMod        -> "Data.Nat.DivMod as" <+> numericQualifier Nat
+    DataInteger          -> "Data.Integer as" <+> numericQualifier Int <+> "using" <+> parens "ℤ"
+    DataIntegerInstances -> "Data.Integer.Instances"
+    DataIntegerDivMod    -> "Data.Int.DivMod as" <+> numericQualifier Int
+    DataRat              -> "Data.Rational as" <+> numericQualifier Rat <+> "using" <+> parens "ℚ"
+    DataRatInstances     -> "Data.Rational.Instances"
     -- HACK: At the moment redirect to rationals
-    DataReal            -> "Data.Rational as" <+> numericQualifier Real <+> "using" <+> parens "" <+> "renaming (ℚ to ℝ)"
+    DataReal             -> "Data.Rational as" <+> numericQualifier Real <+> "using" <+> parens "" <+> "renaming (ℚ to ℝ)"
       -- "Data.Real as" <+> numericQualifier Real <+> "using" <+> parens "ℝ"
-    DataBool            -> "Data.Bool as 𝔹" <+> "using" <+> parens "Bool; true; false; if_then_else_"
-    DataBoolInstances   -> "Data.Bool.Instances"
-    DataFin             -> "Data.Fin as Fin" <+> "using" <+> parens "#_"
-    DataList            -> "Data.List"
-    DataListInstances   -> "Data.List.Instances"
-    DataListAll         -> "Data.List.Relation.Unary.All as" <+> containerQualifier List
-    DataListAny         -> "Data.List.Relation.Unary.Any as" <+> containerQualifier List
-    PropEquality        -> "Relation.Binary.PropositionalEquality"
-    RelNullary          -> "Relation.Nullary"
-    RelNullaryDecidable -> "Relation.Nullary.Decidable"
+    DataBool             -> "Data.Bool as 𝔹" <+> "using" <+> parens "Bool; true; false; if_then_else_"
+    DataBoolInstances    -> "Data.Bool.Instances"
+    DataFin              -> "Data.Fin as Fin" <+> "using" <+> parens "#_"
+    DataList             -> "Data.List"
+    DataListInstances    -> "Data.List.Instances"
+    DataListAll          -> "Data.List.Relation.Unary.All as" <+> containerQualifier List
+    DataListAny          -> "Data.List.Relation.Unary.Any as" <+> containerQualifier List
+    FunctionBase         -> "Function.Base"
+    PropEquality         -> "Relation.Binary.PropositionalEquality"
+    RelNullary           -> "Relation.Nullary"
+    RelNullaryDecidable  -> "Relation.Nullary.Decidable"
 
 optionStatement :: Text -> Doc a
 optionStatement option = "{-# OPTIONS --" <> pretty option <+> "#-}"
@@ -171,7 +173,7 @@ containerQualifier = pretty . show
 numericDependencies :: NumericType -> [Dependency]
 numericDependencies = \case
   Nat  -> [DataNat]
-  Int  -> [DataInt]
+  Int  -> [DataInteger]
   Rat  -> [DataRat]
   Real -> [DataReal]
 
@@ -388,12 +390,13 @@ compileType l = annotateConstant [] ("Set" <> pretty l)
 
 compileBinder :: MonadAgdaCompile e m => Bool -> OutputBinder -> m Code
 compileBinder topLevel binder = do
-    let binderName     = pretty (nameOf binder :: OutputBinding)
-    if topLevel
-      then return binderName
-      else do
-        binderType <- compile (typeOf binder)
-        return $ binderBrackets (visibilityOf binder) (compileAnn binderName binderType)
+  let binderName = pretty (nameOf binder :: OutputBinding)
+  if topLevel
+    then return binderName
+    else do
+      binderType <- compile (typeOf binder)
+      let annBinder = annotateInfixOp2 [] minPrecedence id Nothing ":" [binderName, binderType]
+      return $ binderBrackets (visibilityOf binder) annBinder
 
 compileBuiltin :: MonadAgdaCompile e m => OutputExpr -> m Code
 compileBuiltin e = case e of
@@ -433,7 +436,7 @@ compileBuiltin e = case e of
                         squotes (prettyVerbose e)
 
 compileAnn :: Code -> Code -> Code
-compileAnn e t = annotateInfixOp2 [] minPrecedence id Nothing ":" [e, t]
+compileAnn e t = annotateInfixOp2 [FunctionBase] 0 id Nothing "∋" [t,e]
 
 compileTypeLevelQuantifier :: MonadAgdaCompile e m => Quantifier -> [OutputBinder] -> OutputExpr -> m Code
 compileTypeLevelQuantifier q binders body = do
@@ -472,11 +475,11 @@ compileQuantIn Prop = compileContainerTypeLevelQuantifier
 
 compileLiteral :: MonadAgdaCompile e m => OutputExpr -> m Code
 compileLiteral e = return $ case e of
-  NatLiteralExpr  _ann Nat  n -> compileNatLiteral  n
-  NatLiteralExpr  _ann Int  n -> compileIntLiteral  n
+  NatLiteralExpr  _ann Nat  n -> compileNatLiteral  (toInteger n)
+  NatLiteralExpr  _ann Int  n -> compileIntLiteral  (toInteger n)
   NatLiteralExpr  _ann Rat  n -> compileRatLiteral  (toRational n)
   NatLiteralExpr  _ann Real n -> compileRealLiteral (toRational n)
-  IntLiteralExpr  _ann Int  i -> compileIntLiteral  i
+  IntLiteralExpr  _ann Int  i -> compileIntLiteral  (toInteger i)
   IntLiteralExpr  _ann Rat  i -> compileRatLiteral  (toRational i)
   IntLiteralExpr  _ann Real i -> compileRealLiteral (toRational i)
   RatLiteralExpr  _ann Rat  p -> compileRatLiteral  p
@@ -487,21 +490,27 @@ compileLiteral e = return $ case e of
     -- "of type" <+> squotes (pretty t) <+>
     "found during compilation to Agda"
 
-compileNatLiteral :: Int -> Code
+compileNatLiteral :: Integer -> Code
 compileNatLiteral = pretty
 
-compileIntLiteral :: Int -> Code
+compileIntLiteral :: Integer -> Code
 compileIntLiteral i
-  | i >= 0    = annotateInfixOp1 [DataInt] 8 (Just (numericQualifier Int)) "+" [pretty i]
-  | otherwise = annotateInfixOp1 [DataInt] 6 (Just (numericQualifier Int)) "-" [compileIntLiteral (- i)]
+  | i >= 0    = annotateInfixOp1 [DataInteger] 8 (Just (numericQualifier Int)) "+" [pretty i]
+  | otherwise = annotateInfixOp1 [DataInteger] 6 (Just (numericQualifier Int)) "-" [compileIntLiteral (- i)]
 
 compileRatLiteral :: Rational -> Code
 compileRatLiteral r = annotateInfixOp2 [DataRat] 7 id
-  (Just $ numericQualifier Rat) "/" [pretty (numerator r), pretty (denominator r) ]
+  (Just $ numericQualifier Rat) "/"
+  [ compileIntLiteral (numerator r)
+  , compileNatLiteral (denominator r)
+  ]
 
 compileRealLiteral :: Rational -> Code
 compileRealLiteral r = annotateInfixOp2 [DataReal] 7 id
-  (Just $ numericQualifier Real) "/" [pretty (numerator r), pretty (denominator r) ]
+  (Just $ numericQualifier Real) "/"
+  [ compileIntLiteral (numerator r)
+  , compileNatLiteral (denominator r)
+  ]
 
 -- |Compiling sequences. No sequences in Agda so have to go via cons.
 compileSeq :: MonadAgdaCompile e m => OutputAnn -> [OutputExpr] -> [OutputExpr] -> m Code
@@ -565,7 +574,7 @@ compileNumOp2 op2 t = annotateInfixOp2 dependencies precedence id qualifier opDo
       (Sub, Nat)  -> ("∸", numericDependencies t)
       (Sub, _)    -> ("-", numericDependencies t)
       (Div, Nat)  -> ("/", [DataNatDivMod])
-      (Div, Int)  -> ("/", [DataIntDivMod])
+      (Div, Int)  -> ("/", [DataIntegerDivMod])
       (Div, Rat)  -> ("÷", [DataRat])
       (Div, Real) -> ("÷", [DataReal])
 
@@ -669,7 +678,7 @@ data EqualityTypeError
 equalityDependencies :: OutputExpr -> Either EqualityTypeError [Dependency]
 equalityDependencies = \case
   BuiltinNumericType _ Nat  -> return [DataNatInstances]
-  BuiltinNumericType _ Int  -> return [DataIntInstances]
+  BuiltinNumericType _ Int  -> return [DataIntegerInstances]
   BuiltinNumericType _ Real -> return [DataRatInstances]
   BuiltinBooleanType _ Bool -> return [DataBoolInstances]
   App _ (BuiltinContainerType _ List)   [tElem] -> do

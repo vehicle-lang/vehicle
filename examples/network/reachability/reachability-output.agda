@@ -10,6 +10,7 @@
 open import Vehicle
 open import Vehicle.Data.Tensor
 open import Data.Product
+open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (#_)
 open import Data.List
@@ -27,7 +28,7 @@ f = evaluate record
   }
 
 abstract
-  reachable : ∃ λ (x : Tensor ℚ (2 ∷ [])) → let y = f x in y (# 0) ≡ 0 ℚ./ 1
+  reachable : ∃ λ (x : Tensor ℚ (2 ∷ [])) → let y = f x in y (# 0) ≡ ℤ.+ 0 ℚ./ 1
   reachable = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = "TODO_propertyUUID"
