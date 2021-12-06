@@ -10,13 +10,10 @@
 open import Vehicle
 open import Vehicle.Data.Tensor
 open import Data.Product
-open import Data.Nat as ℕ using (ℕ)
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
 open import Data.Fin as Fin using (#_)
 open import Data.List
-open import Data.List.Relation.Unary.All as List
-open import Function.Base
 
 module andGate-output where
 
@@ -36,7 +33,7 @@ Falsey : ℝ → Set
 Falsey x = x ℝ.≤ ℤ.+ 1 ℝ./ 2
 
 ValidInput : Tensor ℝ (2 ∷ []) → Set
-ValidInput x = List.All (λ (i : ℕ) → ℤ.+ 0 ℝ./ 1 ℝ.≤ x i × x i ℝ.≤ ℤ.+ 1 ℝ./ 1) (List ℕ ∋ 0 ∷ (1 ∷ []))
+ValidInput x = ℤ.+ 0 ℝ./ 1 ℝ.≤ x (# 0) × (x (# 0) ℝ.≤ ℤ.+ 1 ℝ./ 1 × (ℤ.+ 0 ℝ./ 1 ℝ.≤ x (# 1) × x (# 1) ℝ.≤ ℤ.+ 1 ℝ./ 1))
 
 CorrectOutput : Tensor ℝ (2 ∷ []) → Set
 CorrectOutput x = let y = andGate x in (Truthy (x (# 0)) × Truthy (x (# 1)) → Truthy (y (# 0))) × ((Truthy (x (# 0)) × Falsey (x (# 1)) → Falsey (y (# 0))) × ((Falsey (x (# 0)) × Truthy (x (# 1)) → Falsey (y (# 0))) × (Falsey (x (# 0)) × Falsey (x (# 1)) → Falsey (y (# 0)))))

@@ -25,4 +25,4 @@
 (assert (<= X_3 1200))
 (assert (<= 0 X_4))
 (assert (<= X_4 1200))
-(assert (not (and (>= Y_0 Y_0) (and (>= Y_0 Y_1) (and (>= Y_0 Y_2) (and (>= Y_0 Y_3) (>= Y_0 Y_4)))))))
+(assert (not (and (>= Y_0 Y_1) (and (>= Y_0 Y_2) (and (>= Y_0 Y_3) (>= Y_0 Y_4))))))

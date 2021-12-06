@@ -9,7 +9,9 @@ falsey : Real -> Prop
 falsey x = x <= 0.5
 
 validInput : Tensor Real [2] -> Prop
-validInput x = every i inn ([0,1] : List Nat) . 0 <= x ! i and x ! i <= 1
+validInput x = 0 <= x ! 0 and x ! 0 <= 1 and 0 <= x ! 1 and x ! 1 <= 1
+
+-- validInput x = every i inn ([0,1] : List Nat) . 0 <= x ! i and x ! i <= 1
 
 correctOutput : Tensor Real [2] -> Prop
 correctOutput x =
