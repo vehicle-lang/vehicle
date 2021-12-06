@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Compile.Type.Core where
 
@@ -12,8 +11,8 @@ import Vehicle.Language.AST
 --------------------------------------------------------------------------------
 -- Context definitions
 
--- | The names and types of the expression variables that are in currently in scope,
--- indexed into via De Bruijn expressions.
+-- | The names and types of the expression variables that are in currently in
+-- scope, indexed into via De Bruijn expressions.
 type BoundCtx = [(Maybe Symbol, CheckedExpr)]
 
 instance IsBoundCtx BoundCtx where

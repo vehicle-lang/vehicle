@@ -39,12 +39,6 @@ type UnificationHistory = [UnificationPair]
 
 type BlockingMetas = MetaSet
 
-
-{-
-instance PrettyDescopedLang BaseConstraint where
-  prettyDescopedLang target ctx (Unify (e1, e2)) = prettyDescopedLang target ctx e1 <+> "~" <+> prettyDescopedLang target ctx e2
-  prettyDescopedLang target ctx (m `Has` e)      = pretty m <+> "~" <+> prettyDescopedLang target ctx e
--}
 data ConstraintContext = ConstraintContext
   { _prov            :: Provenance       -- The origin of the constraint
   , blockingMetas    :: BlockingMetas    -- The set of metas blocking progress on this constraint, if known

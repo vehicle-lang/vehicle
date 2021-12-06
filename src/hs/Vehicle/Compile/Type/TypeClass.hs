@@ -14,6 +14,7 @@ import Vehicle.Language.AST
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Type.Core
 
 --------------------------------------------------------------------------------
 -- Solution
@@ -51,8 +52,9 @@ solveTypeClassConstraint ctx m e = do
           "Unknown type-class" <+> squotes (pretty (show tc)) <+> "args" <+> prettyVerbose argsNF
     _ -> developerError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
 
-  unless (isStuck progress) $
-    metaSolved (provenanceOf ctx) m eWHNF
+  unless (isStuck progress) $ do
+    let solution = abstractOver (boundContext constraint) eWHNF
+    metaSolved (provenanceOf ctx) m solution
 
   return progress
 
@@ -174,3 +176,10 @@ solveIsQuantifiable constraint _ _ =
 
 simplySolved :: ConstraintProgress
 simplySolved = Progress mempty mempty
+
+abstractOver :: BoundCtx -> CheckedExpr -> CheckedExpr
+abstractOver ctx body = foldr typeToLam body (fmap snd ctx)
+  where
+    typeToLam :: CheckedExpr -> CheckedExpr -> CheckedExpr
+    typeToLam t = Lam ann (ExplicitBinder ann Nothing t)
+      where ann = annotationOf t

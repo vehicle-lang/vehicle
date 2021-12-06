@@ -5,7 +5,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Vehicle.Language.Print
-  ( prettySimple
+  ( PrettyUsing(..)
+  , PrettyWith
+  , Tags(..)
+  , prettySimple
   , prettyVerbose
   , prettyFriendly
   , prettyFriendlyDB

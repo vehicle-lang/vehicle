@@ -19,7 +19,7 @@ import Vehicle.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Language.AST
 import Vehicle.Language.DSL
-import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Language.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Unify
 import Vehicle.Compile.Type.Meta
@@ -27,23 +27,26 @@ import Vehicle.Compile.Type.TypeClass
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (null)
 
-runTypeCheck :: (AsTypeError e, MonadLogger m, MonadError e m, TypeCheck f, MetaSubstitutable (f UncheckedBinding UncheckedVar UncheckedAnn))
-             => f UncheckedBinding UncheckedVar UncheckedAnn
-             -> m (f CheckedBinding CheckedVar CheckedAnn)
+runTypeCheck :: (AsTypeError e, MonadLogger m, MonadError e m,
+                TypeCheck a b, PrettyWith ('As 'Core) b,
+                MetaSubstitutable b)
+             => a
+             -> m b
 runTypeCheck e = do
   let prog1 = runAll e
   let prog2 = runReaderT prog1 emptyVariableCtx
   prog3 <- evalStateT prog2 emptyMetaCtx
   return prog3
 
-runAll :: (TCM e m, TypeCheck f, MetaSubstitutable (f UncheckedBinding UncheckedVar UncheckedAnn))
-       => f UncheckedBinding UncheckedVar UncheckedAnn
-       -> m (f CheckedBinding CheckedVar CheckedAnn)
+runAll :: (TCM e m, TypeCheck a b, MetaSubstitutable b, PrettyWith ('As 'Core) b)
+       => a
+       -> m b
 runAll e1 = do
-  -- logDebug $ prettyVerbose e1 <> line
   e2 <- typeCheck e1
   metaSubstitution <- solveMetas
-  return $ substMetas metaSubstitution e2
+  let e3 = substMetas metaSubstitution e2
+  logDebug $ prettyVerbose e3 <> line
+  return e3
 
 solveMetas :: MonadConstraintSolving e m => m MetaSubstitution
 solveMetas = do
@@ -105,15 +108,13 @@ solveMetas = do
       decrCallDepth
       return result
 
-class TypeCheck f where
-  typeCheck :: TCM e m
-            => f UncheckedBinding UncheckedVar UncheckedAnn
-            -> m (f CheckedBinding CheckedVar CheckedAnn)
+class TypeCheck a b where
+  typeCheck :: TCM e m => a -> m b
 
-instance TypeCheck Prog where
+instance TypeCheck UncheckedProg CheckedProg where
   typeCheck = inferProg
 
-instance TypeCheck Expr where
+instance TypeCheck UncheckedExpr CheckedExpr where
   typeCheck e = fst <$> infer e
 
 --------------------------------------------------------------------------------
