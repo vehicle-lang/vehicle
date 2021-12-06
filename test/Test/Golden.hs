@@ -39,7 +39,8 @@ realisticTestList = map (addTestDirectory ("examples" </> "network")) [
   ("acasXu" </> "property6", [Verifier VNNLib, ITP Agda]),
   ("monotonicity",           [Verifier VNNLib, ITP Agda]),
   ("increasing",             [Verifier VNNLib, ITP Agda]),
-  ("reachability",           [Verifier VNNLib, ITP Agda])
+  ("reachability",           [Verifier VNNLib, ITP Agda]),
+  ("windController",         [ITP Agda])
   ]
 
 simpleTestList :: [GoldenTestSpec]
