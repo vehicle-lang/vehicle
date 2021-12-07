@@ -15,8 +15,8 @@ import Data.List.Split (chunksOf)
 
 import Vehicle.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.AlphaEquivalence ( alphaEq )
 import Vehicle.Language.AST
-import Vehicle.Language.AlphaEquivalence ( alphaEq )
 import Vehicle.Language.Print (prettySimple)
 
 -- |Run a function in 'MonadNorm'.

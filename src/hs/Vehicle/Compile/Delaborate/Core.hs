@@ -2,32 +2,16 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 module Vehicle.Compile.Delaborate.Core
-  ( Delaborate
-  , runDelab
-  , runDelabWithoutLogging
+  ( Delaborate( delab, delabWithLogging )
   ) where
 
-import Data.Maybe (fromMaybe)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Text (Text, pack)
+import Data.Text (pack)
 
 import Vehicle.Core.Abs qualified as B
 
 import Vehicle.Prelude
 import Vehicle.Language.AST qualified as V
-
-runDelab :: Delaborate a b => a -> Logger b
-runDelab x = do
-  -- TODO filter out free variables from the expression in the supply monad
-  logDebug "Beginning delaboration"
-  result <- runSupplyT (delab x) V.freshNames
-  logDebug "Ending delaboration\n"
-  return result
-
--- | Delaborates the program and throws away the logs, should only be used in
--- user-facing error messages
-runDelabWithoutLogging :: Delaborate a b => a -> b
-runDelabWithoutLogging x = discardLogger $ runDelab x
 
 --------------------------------------------------------------------------------
 -- Conversion to BNFC AST
@@ -37,70 +21,79 @@ type MonadDelab m = MonadLogger m
 
 -- * Conversion
 
-class Delaborate vf vc where
-  delab :: MonadDelab m => vf -> m vc
+class Delaborate t bnfc | t -> bnfc, bnfc -> t where
+  delabM :: MonadDelab m => t ann -> m bnfc
+
+  -- | Delaborates the program and throws away the logs, should only be used in
+  -- user-facing error messages
+  delab :: t ann -> bnfc
+  delab = discardLogger . delabM
+
+  delabWithLogging ::  MonadDelab m => t ann -> m bnfc
+  delabWithLogging x = do
+    logDebug "Beginning delaboration"
+    result <- delabM x
+    logDebug "Ending delaboration\n"
+    return result
 
 -- |Elaborate programs.
-instance Delaborate (V.NamedProg ann) B.Prog where
-  delab (V.Main decls) = B.Main <$> traverse delab decls
+instance Delaborate (V.Prog Symbol Symbol) B.Prog where
+  delabM (V.Main decls) = B.Main <$> traverse delabM decls
 
 -- |Elaborate declarations.
-instance Delaborate (V.NamedDecl ann) B.Decl where
-  delab = \case
-    V.DeclNetw _ n t -> B.DeclNetw <$> delab n <*> delab t
-    V.DeclData _ n t -> B.DeclData <$> delab n <*> delab t
-    V.DefFun _ n t e -> B.DefFun   <$> delab n <*> delab t <*> delab e
+instance Delaborate (V.Decl Symbol Symbol) B.Decl where
+  delabM = \case
+    V.DeclNetw _ n t -> B.DeclNetw (delabIdentifier n) <$> delabM t
+    V.DeclData _ n t -> B.DeclData (delabIdentifier n) <$> delabM t
+    V.DefFun _ n t e -> B.DefFun   (delabIdentifier n) <$> delabM t <*> delabM e
 
-instance Delaborate (V.NamedExpr ann) B.Expr where
-  delab expr = case expr of
+instance Delaborate (V.Expr Symbol Symbol) B.Expr where
+  delabM expr = case expr of
     V.Type l       -> return $ B.Type (mkToken B.TypeToken (pack $ "Type" <> show l))
-    V.Var _ n      -> B.Var  <$> delab n
+    V.Var _ n      -> return $ B.Var  (delabSymbol n)
     V.Hole _ n     -> return $ B.Hole (mkToken B.HoleToken n)
-    V.Literal _ l  -> B.Literal <$> delab l
+    V.Literal _ l  -> return $ B.Literal (delabLiteral l)
+    V.Builtin _ op -> return $ B.Builtin (delabBuiltin op)
 
-    V.Ann _ e t    -> B.Ann <$> delab e <*> delab t
-    V.Pi  _ b t    -> B.Pi  <$> delab b <*> delab t
-    V.Seq _ es     -> B.Seq <$> traverse delab es
+    V.Ann _ e t    -> B.Ann <$> delabM e <*> delabM t
+    V.Pi  _ b t    -> B.Pi  <$> delabM b <*> delabM t
+    V.Seq _ es     -> B.Seq <$> traverse delabM es
 
-    V.Let _ v b e  -> B.Let <$> delab b <*> delab v <*> delab e
-    V.Lam _ b e    -> B.Lam <$> delab b <*> delab e
+    V.Let _ v b e  -> B.Let <$> delabM b <*> delabM v <*> delabM e
+    V.Lam _ b e    -> B.Lam <$> delabM b <*> delabM e
     V.Meta _ m     -> return $ B.Hole (mkToken B.HoleToken (layoutAsText (pretty m)))
     V.PrimDict _ _ -> developerError "Instance arguments not currently in grammar"
 
-    V.App _ fun args -> delabApp <$> delab fun <*> traverse delab (reverse (NonEmpty.toList args))
-    V.Builtin _ op   -> B.Builtin <$> delab op
+    V.App _ fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
 
-instance Delaborate (V.NamedArg ann) B.Arg where
-  delab (V.Arg _i v e) = case v of
-    V.Explicit -> B.ExplicitArg <$> delab e
-    V.Implicit -> B.ImplicitArg <$> delab e
-    V.Instance -> B.InstanceArg <$> delab e
+instance Delaborate (V.Arg Symbol Symbol) B.Arg where
+  delabM (V.Arg _i v e) = case v of
+    V.Explicit -> B.ExplicitArg <$> delabM e
+    V.Implicit -> B.ImplicitArg <$> delabM e
+    V.Instance -> B.InstanceArg <$> delabM e
 
-instance Delaborate Symbol B.NameToken where
-  delab s = return $ mkToken B.NameToken s
-
-instance Delaborate (Maybe Symbol) B.NameToken where
-  delab s  = delab (fromMaybe ("Machine" :: Text) s)
-
-instance Delaborate V.Identifier B.NameToken where
-  delab (V.Identifier n) = return $ mkToken B.NameToken n
-
-instance Delaborate V.Builtin B.BuiltinToken where
-  delab op = return $ mkToken B.BuiltinToken $ V.symbolFromBuiltin op
-
-instance Delaborate (V.NamedBinder ann) B.Binder where
-  delab (V.Binder _ann v n t) = case v of
+instance Delaborate (V.Binder Symbol Symbol) B.Binder where
+  delabM (V.Binder _ann v n t) = case v of
     -- TODO track whether type was provided manually and so use ExplicitBinderAnn
-    V.Explicit -> B.ExplicitBinder <$> delab n <*> delab t
-    V.Implicit -> B.ImplicitBinder <$> delab n <*> delab t
-    V.Instance -> B.InstanceBinder <$> delab n <*> delab t
+    V.Explicit -> B.ExplicitBinder (delabSymbol n) <$> delabM t
+    V.Implicit -> B.ImplicitBinder (delabSymbol n) <$> delabM t
+    V.Instance -> B.InstanceBinder (delabSymbol n) <$> delabM t
 
-instance Delaborate V.Literal B.Lit where
-  delab l = return $ case l of
-    V.LBool b -> B.LitBool  (mkToken B.BoolToken (if b then "True" else "False"))
-    V.LNat n  -> B.LitInt   (fromIntegral n)
-    V.LInt i  -> B.LitInt   (fromIntegral i)
-    V.LRat r  -> B.LitRat   (mkToken B.Rational (pack $ show (fromRational r :: Double)))
+delabLiteral :: V.Literal -> B.Lit
+delabLiteral l = case l of
+  V.LBool b -> B.LitBool  (mkToken B.BoolToken (if b then "True" else "False"))
+  V.LNat n  -> B.LitInt   (fromIntegral n)
+  V.LInt i  -> B.LitInt   (fromIntegral i)
+  V.LRat r  -> B.LitRat   (mkToken B.Rational (pack $ show (fromRational r :: Double)))
+
+delabSymbol :: Symbol -> B.NameToken
+delabSymbol = mkToken B.NameToken
+
+delabIdentifier :: V.Identifier -> B.NameToken
+delabIdentifier (V.Identifier n) = mkToken B.NameToken n
+
+delabBuiltin :: V.Builtin -> B.BuiltinToken
+delabBuiltin op = mkToken B.BuiltinToken $ V.symbolFromBuiltin op
 
 delabApp :: B.Expr -> [B.Arg] -> B.Expr
 delabApp fun []           = fun

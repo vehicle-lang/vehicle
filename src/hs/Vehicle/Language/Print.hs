@@ -18,6 +18,7 @@ module Vehicle.Language.Print
 import GHC.TypeLits (TypeError, ErrorMessage(..))
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Control.Exception (assert)
 import Prettyprinter (list, tupled)
 
 import Vehicle.Core.Print as Core (printTree, Print)
@@ -34,6 +35,8 @@ import Vehicle.Compile.Descope
 import Vehicle.Compile.SupplyNames (SupplyNames, runSupplyNamesWithCtx, runSupplyNames)
 import Vehicle.Compile.Type.Constraint (Constraint (..), BaseConstraint (..))
 import Vehicle.Compile.Type.MetaSubstitution (MetaSubstitution(MetaSubstitution))
+import Vehicle.Compile.CoDeBruijnify (ConvertCodebruijn(fromCodebruijn))
+import Data.IntMap (IntMap)
 
 
 -- The old methods for compatibility:
@@ -58,7 +61,7 @@ prettyFriendly = prettyWith @('Named ('As 'Frontend))
 -- not closed.
 prettyFriendlyDB
     :: (PrettyWith ('Named ('As 'Frontend)) ([Symbol], t Symbol var ann), Simplify (t Symbol var ann), SupplyNames t)
-    => [Maybe Symbol] -> t (Maybe Symbol) var ann -> Doc b
+    => [DBBinding] -> t DBBinding var ann -> Doc b
 prettyFriendlyDB ctx e = prettyWith @('Simple ('Named ('As 'Frontend))) (ctx, e)
 
 -- | This is identical to |prettyFriendly|, but exists for historical reasons.
@@ -82,38 +85,91 @@ prettyWith = prettyUsing @(StrategyFor tags a) @a @b
 
 -- Tags are used to compute a printing strategy:
 data Strategy
-  = ConvertTo VehicleLang
-  | DescopeNaive Strategy
-  | DescopeOpen Strategy
-  | DescopeClosed Strategy
-  | SupplyNamesOpen Strategy
-  | SupplyNamesClosed Strategy
-  | SimplifyWithOptions Strategy
-  | SimplifyDefault Strategy
-  | MapList Strategy
-  | MapTuple Strategy Strategy
-  | Opaque Strategy
+  = ConvertTo            VehicleLang
+  | DBToNamedNaive       Strategy
+  | DBToNamedOpen        Strategy
+  | DBToNamedClosed      Strategy
+  | CoDBToNamedNaive     Strategy
+  | CoDBToDBOpen         Strategy
+  | CoDBToDBClosed       Strategy
+  | SupplyNamesOpen      Strategy
+  | SupplyNamesClosed    Strategy
+  | SimplifyWithOptions  Strategy
+  | SimplifyDefault      Strategy
+  | MapList              Strategy
+  | MapIntMap            Strategy
+  | MapTuple             Strategy Strategy
+  | Opaque               Strategy
   | Pretty
 
 -- | Compute the printing strategy given the tags and the type of the expression.
 type family StrategyFor (tags :: Tags) a :: Strategy where
-  StrategyFor ('As lang)     (t Symbol Symbol ann)                       = 'ConvertTo lang
-  StrategyFor ('As lang)     (t Symbol LocallyNamelessVar ann)           = 'DescopeNaive ('ConvertTo lang)
-  StrategyFor ('Named tags)  ([Symbol], t Symbol LocallyNamelessVar ann) = 'DescopeOpen (StrategyFor tags (t Symbol Symbol ann))
-  StrategyFor ('Named tags)  (t Symbol LocallyNamelessVar ann)           = 'DescopeClosed (StrategyFor tags (t Symbol Symbol ann))
-  StrategyFor ('Named tags)  (t Symbol Symbol ann)                       = StrategyFor tags (t Symbol Symbol ann)
-  StrategyFor tags           ([Maybe Symbol], t (Maybe Symbol) var ann)  = 'SupplyNamesOpen (StrategyFor tags ([Symbol], t Symbol var ann))
-  StrategyFor tags           (t (Maybe Symbol) var ann)                  = 'SupplyNamesClosed (StrategyFor tags (t Symbol var ann))
-  StrategyFor ('Simple tags) (SimplifyOptions, a)                        = 'SimplifyWithOptions (StrategyFor tags a)
-  StrategyFor ('Simple tags) a                                           = 'SimplifyDefault (StrategyFor tags a)
-  StrategyFor tags           Constraint                                  = 'Opaque (StrategyFor tags BaseConstraint)
-  StrategyFor tags           BaseConstraint                              = 'Opaque (StrategyFor tags CheckedExpr)
-  StrategyFor tags           MetaSubstitution                            = 'Opaque (StrategyFor tags CheckedExpr)
-  StrategyFor tags           (Maybe Symbol)                              = 'Pretty
-  StrategyFor tags           [a]                                         = 'MapList (StrategyFor tags a)
-  StrategyFor tags           (a, b)                                      = 'MapTuple (StrategyFor tags a) (StrategyFor tags b)
-  StrategyFor tags           a                                           = TypeError ('Text "Cannot print value of type " ':<>: 'ShowType a ':<>: 'Text "."
-                                                                                ':$$: 'Text "Perhaps you could add support to Vehicle.Language.Print.StrategyFor?")
+  StrategyFor ('As lang) (t Symbol Symbol ann)
+    = 'ConvertTo lang
+
+  StrategyFor ('As lang) (t Symbol DBVar ann)
+    = 'DBToNamedNaive ('ConvertTo lang)
+
+  StrategyFor ('As lang) (t CoDBBinding CoDBVar ann)
+    = 'CoDBToNamedNaive ('ConvertTo lang)
+
+  -- DB to Named
+  StrategyFor ('Named tags) ([Symbol], t Symbol DBVar ann)
+    = 'DBToNamedOpen   (StrategyFor tags (t Symbol Symbol ann))
+
+  StrategyFor ('Named tags) (t Symbol DBVar ann)
+    = 'DBToNamedClosed (StrategyFor tags (t Symbol Symbol ann))
+
+  StrategyFor ('Named tags) (t Symbol Symbol ann)
+    = StrategyFor tags (t Symbol Symbol ann)
+
+  -- CoDB to DB
+  StrategyFor ('Named tags) ([DBBinding], t CoDBBinding CoDBVar ann, BoundVarMap)
+    = 'CoDBToDBOpen (StrategyFor ('Named tags) ([DBBinding], t DBBinding DBVar ann))
+
+  StrategyFor ('Named tags) (t CoDBBinding CoDBVar ann, BoundVarMap)
+    = 'CoDBToDBClosed (StrategyFor tags (t DBBinding DBVar ann))
+
+  -- Supplying names
+  StrategyFor tags ([DBBinding], t DBBinding var ann)
+    = 'SupplyNamesOpen (StrategyFor tags ([Symbol], t Symbol var ann))
+
+  StrategyFor tags (t DBBinding var ann)
+    = 'SupplyNamesClosed (StrategyFor tags (t Symbol var ann))
+
+  StrategyFor ('Simple tags) (SimplifyOptions, a)
+    = 'SimplifyWithOptions (StrategyFor tags a)
+
+  StrategyFor ('Simple tags) a
+    = 'SimplifyDefault (StrategyFor tags a)
+
+  StrategyFor tags Constraint
+    = 'Opaque (StrategyFor tags BaseConstraint)
+
+  StrategyFor tags BaseConstraint
+    = 'Opaque (StrategyFor tags CheckedExpr)
+
+  StrategyFor tags MetaSubstitution
+    = 'Opaque (StrategyFor tags CheckedExpr)
+
+  StrategyFor tags DBBinding
+    = 'Pretty
+
+  StrategyFor tags PositionTree
+    = 'Pretty
+
+  StrategyFor tags [a]
+    = 'MapList (StrategyFor tags a)
+
+  StrategyFor tags (IntMap a)
+    = 'MapIntMap (StrategyFor tags a)
+
+  StrategyFor tags (a, b)
+    = 'MapTuple (StrategyFor tags a) (StrategyFor tags b)
+
+  StrategyFor tags a
+    = TypeError ('Text "Cannot print value of type " ':<>: 'ShowType a ':<>: 'Text "."
+           ':$$: 'Text "Perhaps you could add support to Vehicle.Language.Print.StrategyFor?")
 
 
 -- The printing strategy guides the type class resolution:
@@ -121,45 +177,44 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
 class PrettyUsing (strategy :: Strategy) a where
   prettyUsing :: a -> Doc b
 
+instance (Core.Delaborate t bnfc, Pretty bnfc)
+      => PrettyUsing ('ConvertTo 'Core) (t ann) where
+  prettyUsing e = pretty (Core.delab @t @bnfc e)
 
--- The use of deriving via is necessary to inform the type class resolution of the intermediate BNFC type:
-
-newtype ViaDelaborate a b = ViaDelaborate a
-
-instance (Core.Delaborate a b, Pretty b)
-      => PrettyUsing ('ConvertTo 'Core) (ViaDelaborate a b) where
-  prettyUsing (ViaDelaborate e) = pretty (Core.runDelabWithoutLogging @a @b e)
-
-instance (Frontend.Delaborate a b, Pretty b)
-      => PrettyUsing ('ConvertTo 'Frontend) (ViaDelaborate a b) where
-  prettyUsing (ViaDelaborate e) = pretty (Frontend.runDelabWithoutLogging @a @b e)
-
-deriving via (ViaDelaborate (NamedProg ann) BC.Prog) instance PrettyUsing ('ConvertTo 'Core) (NamedProg ann)
-deriving via (ViaDelaborate (NamedDecl ann) BC.Decl) instance PrettyUsing ('ConvertTo 'Core) (NamedDecl ann)
-deriving via (ViaDelaborate (NamedExpr ann) BC.Expr) instance PrettyUsing ('ConvertTo 'Core) (NamedExpr ann)
-
-deriving via (ViaDelaborate (NamedProg ann)  BF.Prog ) instance PrettyUsing ('ConvertTo 'Frontend) (NamedProg ann)
-deriving via (ViaDelaborate (NamedDecl ann) [BF.Decl]) instance PrettyUsing ('ConvertTo 'Frontend) (NamedDecl ann)
-deriving via (ViaDelaborate (NamedExpr ann)  BF.Expr ) instance PrettyUsing ('ConvertTo 'Frontend) (NamedExpr ann)
+instance (Frontend.Delaborate t bnfc, Pretty bnfc)
+      => PrettyUsing ('ConvertTo 'Frontend) (t ann) where
+  prettyUsing e = pretty (Frontend.delab @t @bnfc e)
 
 instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
-      => PrettyUsing ('DescopeNaive rest) (t Symbol LocallyNamelessVar ann) where
+      => PrettyUsing ('DBToNamedNaive rest) (t Symbol DBVar ann) where
   prettyUsing e = prettyUsing @rest (runNaiveDescope e)
 
 instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
-      => PrettyUsing ('DescopeOpen rest) ([Symbol], t Symbol LocallyNamelessVar ann) where
+      => PrettyUsing ('CoDBToNamedNaive rest) (t Symbol DBVar ann) where
+  prettyUsing e = prettyUsing @rest (runNaiveDescope e)
+
+instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
+      => PrettyUsing ('DBToNamedOpen rest) ([Symbol], t Symbol DBVar ann) where
   prettyUsing (ctx, e) = prettyUsing @rest (runDescope ctx e)
 
 instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
-      => PrettyUsing ('DescopeClosed rest) (t Symbol LocallyNamelessVar ann) where
+      => PrettyUsing ('DBToNamedClosed rest) (t Symbol DBVar ann) where
   prettyUsing e = prettyUsing @rest (runDescope mempty e)
 
+instance (ConvertCodebruijn t, PrettyUsing rest ([DBBinding], t DBBinding DBVar ann))
+      => PrettyUsing ('CoDBToDBOpen rest) ([DBBinding], t CoDBBinding CoDBVar ann, BoundVarMap) where
+  prettyUsing (ctx, e, bvm) = prettyUsing @rest (ctx , fromCodebruijn (e, bvm))
+
+instance (ConvertCodebruijn t, PrettyUsing rest (t DBBinding DBVar ann))
+      => PrettyUsing ('CoDBToDBClosed rest) (t CoDBBinding CoDBVar ann, BoundVarMap) where
+  prettyUsing (e, bvm) = assert (null bvm) $ prettyUsing @rest (fromCodebruijn (e, bvm))
+
 instance (SupplyNames t, PrettyUsing rest ([Symbol], t Symbol var ann))
-      => PrettyUsing ('SupplyNamesOpen rest) ([Maybe Symbol], t (Maybe Symbol) var ann) where
+      => PrettyUsing ('SupplyNamesOpen rest) ([DBBinding], t DBBinding var ann) where
   prettyUsing p = prettyUsing @rest (runSupplyNamesWithCtx p)
 
 instance (SupplyNames t, PrettyUsing rest (t Symbol var ann))
-      => PrettyUsing ('SupplyNamesClosed rest) (t (Maybe Symbol) var ann) where
+      => PrettyUsing ('SupplyNamesClosed rest) (t DBBinding var ann) where
   prettyUsing e = prettyUsing @rest (runSupplyNames e)
 
 instance (Simplify a, PrettyUsing rest a)
@@ -173,6 +228,10 @@ instance (Simplify a, PrettyUsing rest a)
 instance PrettyUsing rest a
       => PrettyUsing ('MapList rest) [a] where
   prettyUsing es = list (prettyUsing @rest <$> es)
+
+instance PrettyUsing rest a
+      => PrettyUsing ('MapIntMap rest) (IntMap a) where
+  prettyUsing es = prettyIntMap (prettyUsing @rest <$> es)
 
 instance (PrettyUsing resta a, PrettyUsing restb b)
       => PrettyUsing ('MapTuple resta restb) (a, b) where
@@ -196,7 +255,7 @@ instance PrettyUsing rest BaseConstraint
 
 instance PrettyUsing rest CheckedExpr
       => PrettyUsing ('Opaque rest) MetaSubstitution where
-  prettyUsing (MetaSubstitution m) = pretty (prettyUsing @rest <$> m)
+  prettyUsing (MetaSubstitution m) = prettyIntMap (prettyUsing @rest <$> m)
 
 -- Pretty instances for the BNFC data types
 

@@ -13,7 +13,7 @@ import Vehicle.Language.AST
 
 -- | The names and types of the expression variables that are in currently in
 -- scope, indexed into via De Bruijn expressions.
-type BoundCtx = [(Maybe Symbol, CheckedExpr)]
+type BoundCtx = [(DBBinding, CheckedExpr)]
 
 instance IsBoundCtx BoundCtx where
   ctxNames b = map fst b

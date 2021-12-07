@@ -297,7 +297,6 @@ processNetworkApplication network input = do
 processQuantifierBinding :: MonadReplacement e m => Quantifier -> m (Maybe Int)
 processQuantifierBinding q = do
   (down, UpwardsReplacementState{..}) <- get
-  logDebug $ "qb" <+> pretty (show replacableBoundVars)
 
   let (magicVarUsingBinder, newMapping) = IntMap.updateLookupWithKey (\_ _ -> Nothing) 0 replacableBoundVars
   let newQuantifiers = Set.insert q quantifiers
@@ -307,7 +306,6 @@ processQuantifierBinding q = do
 traverseUpOverBinder :: MonadReplacement e m => m ()
 traverseUpOverBinder = do
   (down, UpwardsReplacementState{..}) <- get
-  logDebug "tb"
   put (down, UpwardsReplacementState
     { replacableBoundVars = IntMap.mapKeysMonotonic (\x -> x-1) replacableBoundVars
     , ..
@@ -370,13 +368,6 @@ replaceNetworkApplications d e =
           let index = (totalNumberOfMagicVariables - 1 - magicVarIndex) + d
           let magicVar = Var ann (Bound index)
           let result = magicVar `substInto` body'
-          logDebug "Replacement"
-          logDebug $ pretty totalNumberOfMagicVariables
-          logDebug $ pretty magicVarIndex
-          logDebug $ pretty d
-          logDebug $ pretty index
-          logDebug $ prettySimple body'
-          logDebug $ prettySimple result
           traverseUpOverBinder
           return result
 

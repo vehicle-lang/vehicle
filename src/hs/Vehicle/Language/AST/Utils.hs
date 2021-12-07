@@ -1,5 +1,6 @@
 module Vehicle.Language.AST.Utils where
 
+import Control.Monad (void)
 import Data.Functor.Foldable (Recursive(..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (pack)
@@ -26,7 +27,7 @@ pattern Type1 = Type 1
 -- * Type of annotations attached to the Frontend AST after parsing
 -- before being analysed by the compiler
 
-type InputBinding = Maybe Symbol
+type InputBinding = DBBinding
 type InputVar     = Symbol
 type InputAnn     = (Provenance, Owner)
 
@@ -38,27 +39,27 @@ type InputProg      = Prog   InputBinding InputVar InputAnn
 
 -- * Types pre type-checking
 
-type UncheckedBinding = Maybe Symbol
-type UncheckedVar     = LocallyNamelessVar
+type UncheckedBinding = DBBinding
+type UncheckedVar     = DBVar
 type UncheckedAnn     = (Provenance, Owner)
 
-type UncheckedBinder = DeBruijnBinder UncheckedAnn
-type UncheckedArg    = DeBruijnArg    UncheckedAnn
-type UncheckedExpr   = DeBruijnExpr   UncheckedAnn
-type UncheckedDecl   = DeBruijnDecl   UncheckedAnn
-type UncheckedProg   = DeBruijnProg   UncheckedAnn
+type UncheckedBinder = DBBinder UncheckedAnn
+type UncheckedArg    = DBArg    UncheckedAnn
+type UncheckedExpr   = DBExpr   UncheckedAnn
+type UncheckedDecl   = DBDecl   UncheckedAnn
+type UncheckedProg   = DBProg   UncheckedAnn
 
 -- * Types post type-checking
 
-type CheckedBinding = Maybe Symbol
-type CheckedVar     = LocallyNamelessVar
+type CheckedBinding = DBBinding
+type CheckedVar     = DBVar
 type CheckedAnn     = (Provenance, Owner)
 
-type CheckedBinder = DeBruijnBinder  CheckedAnn
-type CheckedArg    = DeBruijnArg     CheckedAnn
-type CheckedExpr   = DeBruijnExpr    CheckedAnn
-type CheckedDecl   = DeBruijnDecl    CheckedAnn
-type CheckedProg   = DeBruijnProg    CheckedAnn
+type CheckedBinder = DBBinder  CheckedAnn
+type CheckedArg    = DBArg     CheckedAnn
+type CheckedExpr   = DBExpr    CheckedAnn
+type CheckedDecl   = DBDecl    CheckedAnn
+type CheckedProg   = DBProg    CheckedAnn
 
 -- * Type of annotations attached to the Core AST that are output by the compiler
 
@@ -82,9 +83,9 @@ emptyMachineAnn = (mempty, TheMachine)
 -- Classes
 
 class IsBoundCtx a where
-  ctxNames :: a -> [Maybe Symbol]
+  ctxNames :: a -> [DBBinding]
 
-instance IsBoundCtx [Maybe Symbol] where
+instance IsBoundCtx [DBBinding] where
   ctxNames = id
 
 instance IsBoundCtx [Symbol] where
@@ -131,7 +132,7 @@ exprHead = fst . toHead
 --------------------------------------------------------------------------------
 -- Views
 
-getQuantifierSymbol :: Binder (Maybe Symbol) var ann -> Symbol
+getQuantifierSymbol :: Binder DBBinding var ann -> Symbol
 getQuantifierSymbol binder = case nameOf binder of
   Just symbol -> symbol
   Nothing     -> developerError "Should not have quantifiers with machine names?"
@@ -142,3 +143,6 @@ getQuantifierSymbol binder = case nameOf binder of
 -- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3
 mkNameWithIndices :: Symbol -> [Int] -> Symbol
 mkNameWithIndices n indices = mconcat (n : ["_" <> pack (show index) | index <- indices])
+
+removeAnnotations :: Functor (t binder var) => t binder var ann -> t binder var ()
+removeAnnotations = void

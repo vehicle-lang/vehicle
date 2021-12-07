@@ -37,7 +37,7 @@ type SCM e m = (AsScopeError e, MonadLogger m, MonadError e m, MonadReader Ctx m
 -- |Type of scope checking contexts.
 data Ctx = Ctx
   { declCtx :: Set Identifier
-  , exprCtx :: [Maybe Symbol]
+  , exprCtx :: [DBBinding]
   }
 
 instance Pretty Ctx where
@@ -131,11 +131,11 @@ bindVar binder update = do
   binder' <- scope binder
   local (addBinderToCtx (nameOf binder)) (update binder')
     where
-      addBinderToCtx :: Maybe Symbol -> Ctx -> Ctx
+      addBinderToCtx :: DBBinding -> Ctx -> Ctx
       addBinderToCtx name Ctx{..} = Ctx declCtx (name : exprCtx)
 
 -- |Find the index for a given name of a given sort.
-getVar :: SCM e m => InputAnn -> Symbol -> m LocallyNamelessVar
+getVar :: SCM e m => InputAnn -> Symbol -> m DBVar
 getVar ann symbol = do
   Ctx declCtx exprCtx <- ask
   case elemIndex (Just symbol) exprCtx of

@@ -19,20 +19,20 @@ import Vehicle.Language.AST
 -- provided context.
 runDescope :: Descope t
            => [Symbol]
-           -> t Symbol LocallyNamelessVar ann
+           -> t Symbol DBVar ann
            -> t Symbol Symbol             ann
 runDescope ctx = performDescoping ctx True
 
 -- |Converts DeBruijn variables back into named variables with no context.
-runDescopeProg :: Prog Symbol LocallyNamelessVar ann
+runDescopeProg :: Prog Symbol DBVar ann
                -> Prog Symbol Symbol             ann
 runDescopeProg = performDescoping mempty True
 
 -- |Converts DeBruijn indices into names naively, e.g. 0 becomes "i0".
 -- Useful for debugging
 runNaiveDescope :: Descope t
-                => t Symbol LocallyNamelessVar ann
-                -> t Symbol Symbol             ann
+                => t Symbol DBVar ann
+                -> t Symbol Symbol ann
 runNaiveDescope = performDescoping mempty False
 
 --------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ runNaiveDescope = performDescoping mempty False
 performDescoping :: Descope t
                  => [Symbol]
                  -> Bool
-                 -> t Symbol LocallyNamelessVar ann
+                 -> t Symbol DBVar ann
                  -> t Symbol Symbol             ann
 performDescoping ctx translateDeBruijn e =
   runReader (descope e) (Ctx ctx, translateDeBruijn)
@@ -54,7 +54,7 @@ addBinderToCtx binder (Ctx ctx, r) = (Ctx (nameOf binder : ctx), r)
 type MonadDescope m = MonadReader (Ctx, Bool) m
 
 -- |Throw an |IndexOutOfBounds| error using an arbitrary index.
-indexOutOfBounds :: Index -> Int -> a
+indexOutOfBounds :: DBIndex -> Int -> a
 indexOutOfBounds index ctxSize = developerError $
   "DeBruijn index" <+> pretty index <+>
   "greater than current context size" <+> pretty ctxSize
@@ -72,7 +72,7 @@ lookupVar = \case
 
 class Descope t where
   descope :: MonadDescope m
-          => t Symbol LocallyNamelessVar ann
+          => t Symbol DBVar ann
           -> m (t Symbol Symbol ann)
 
 instance Descope Binder where
@@ -81,7 +81,7 @@ instance Descope Binder where
 instance Descope Arg where
   descope = traverseArgExpr descope
 
-showScopeEntry :: Expr Symbol LocallyNamelessVar ann -> Expr Symbol LocallyNamelessVar ann
+showScopeEntry :: Expr Symbol DBVar ann -> Expr Symbol DBVar ann
 showScopeEntry e = {-trace ("descope-entry " <> showCore e)-} e
 
 showScopeExit :: MonadDescope m => m (Expr Symbol Symbol ann) -> m (Expr Symbol Symbol ann)

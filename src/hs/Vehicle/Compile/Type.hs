@@ -144,7 +144,7 @@ getBoundCtx = asks boundCtx
 getVariableCtx :: TCM e m => m VariableCtx
 getVariableCtx = ask
 
-addToBoundCtx :: TCM e m => Maybe Symbol -> CheckedExpr -> m a -> m a
+addToBoundCtx :: TCM e m => DBBinding -> CheckedExpr -> m a -> m a
 addToBoundCtx n e = local add
   where
     add :: VariableCtx -> VariableCtx
@@ -392,7 +392,7 @@ infer e = do
           let liftedCheckedType = liftDBIndices (i+1) checkedType
           return (Var ann (Bound i), liftedCheckedType)
         Nothing      -> developerError $
-          "Index" <+> pretty i <+> "out of bounds when looking" <+>
+          "DBIndex" <+> pretty i <+> "out of bounds when looking" <+>
           "up variable in context" <+> prettyVerbose ctx <+> "at" <+> pretty (provenanceOf ann)
 
     Var ann (Free ident) -> do

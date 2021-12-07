@@ -21,7 +21,7 @@ import Vehicle.Language.Print (prettyFriendly, prettyVerbose, prettyFriendlyDBCl
 maxDepth :: Int
 maxDepth = 15
 
-annotate :: DeBruijnExpr () -> UncheckedExpr
+annotate :: DBExpr () -> UncheckedExpr
 annotate = fmap (const (mempty, TheMachine))
 
 isWellTyped :: UncheckedExpr -> UncheckedExpr -> (Bool, [Message])

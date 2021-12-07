@@ -2,7 +2,6 @@ module Test.Golden
   ( goldenTests
   ) where
 
-import Control.Monad (void)
 import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiff)
 import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Text (Text)

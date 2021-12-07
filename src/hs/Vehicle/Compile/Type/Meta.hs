@@ -237,7 +237,7 @@ makeMetaType :: BoundCtx
              -> CheckedExpr
 makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
   where
-    entryToPi :: (Maybe Symbol, CheckedExpr) -> CheckedExpr -> CheckedExpr
+    entryToPi :: (DBBinding, CheckedExpr) -> CheckedExpr -> CheckedExpr
     entryToPi (name, t) resTy = Pi ann (ExplicitBinder ann name t) resTy
 
 -- | Returns any constraints that are activated (i.e. worth retrying) based

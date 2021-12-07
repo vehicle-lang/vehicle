@@ -55,22 +55,24 @@ library
   exposed-modules:      Vehicle
                       , Vehicle.Prelude
                       , Vehicle.Language.AST
-                      , Vehicle.Language.AlphaEquivalence
                       , Vehicle.Language.DSL
                       , Vehicle.Language.Print
                       , Vehicle.Language.Sugar
                       , Vehicle.Compile
+                      , Vehicle.Compile.AlphaEquivalence
                       , Vehicle.Compile.Error
                       , Vehicle.Compile.Error.Meaningful
                       , Vehicle.Compile.Parse
-                      , Vehicle.Compile.Simplify
-                      , Vehicle.Compile.Descope
-                      , Vehicle.Compile.Scope
-                      , Vehicle.Compile.SupplyNames
-                      , Vehicle.Compile.Normalise
-                      , Vehicle.Compile.Type
                       , Vehicle.Compile.Elaborate.Core
                       , Vehicle.Compile.Elaborate.Frontend
+                      , Vehicle.Compile.Scope
+                      , Vehicle.Compile.Type
+                      , Vehicle.Compile.CoDeBruijnify
+                      , Vehicle.Compile.Normalise
+                      , Vehicle.Compile.Lift.Lets
+                      , Vehicle.Compile.Simplify
+                      , Vehicle.Compile.SupplyNames
+                      , Vehicle.Compile.Descope
                       , Vehicle.Compile.Delaborate.Core
                       , Vehicle.Compile.Delaborate.Frontend
                       , Vehicle.Compile.Backend.Agda

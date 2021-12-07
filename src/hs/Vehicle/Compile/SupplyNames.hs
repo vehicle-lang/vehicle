@@ -12,12 +12,12 @@ import Vehicle.Language.AST
 -- Public interface
 
 runSupplyNames :: forall t var ann . SupplyNames t
-               => t (Maybe Symbol) var ann
+               => t DBBinding var ann
                -> t Symbol         var ann
 runSupplyNames e = snd (runSupplyNamesWithCtx (mempty, e))
 
 runSupplyNamesWithCtx :: forall t var ann . SupplyNames t
-                      => ([Maybe Symbol], t (Maybe Symbol) var ann)
+                      => ([DBBinding], t DBBinding var ann)
                       -> ([Symbol],       t Symbol         var ann)
 runSupplyNamesWithCtx (ctx, e) = runSupply supplyAction freshNames
   where
@@ -29,17 +29,17 @@ runSupplyNamesWithCtx (ctx, e) = runSupply supplyAction freshNames
 --------------------------------------------------------------------------------
 -- Core operation
 
-getName :: MonadSupply Symbol m => Maybe Symbol -> m Symbol
+getName :: MonadSupply Symbol m => DBBinding -> m Symbol
 getName = maybe demand return
 
-supplyNamesToCtx :: MonadSupply Symbol m => [Maybe Symbol] -> m [Symbol]
+supplyNamesToCtx :: MonadSupply Symbol m => [DBBinding] -> m [Symbol]
 supplyNamesToCtx = mapM getName
 
 type MonadSupplyNames m = MonadSupply Symbol m
 
 class SupplyNames t where
   supplyNames :: MonadSupplyNames m
-              => t (Maybe Symbol) var ann
+              => t DBBinding var ann
               -> m (t Symbol var ann)
 
 instance SupplyNames Binder where

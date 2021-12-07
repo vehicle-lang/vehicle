@@ -75,6 +75,17 @@ layoutAsText = renderStrict . layoutPretty defaultLayoutOptions
 --------------------------------------------------------------------------------
 -- Pretty printing of datatypes
 
+prettyIntMap :: IntMap (Doc a) -> Doc a
+prettyIntMap m = result
+  where
+  entries = IntMap.toAscList m
+  (keys, values) = unzip entries
+  keys' = fmap pretty keys
+  entries' = zipWith (\k v -> k <+> ":=" <+> v) keys' values
+  result = unAnnotate $ "{" <+> align (group
+    (concatWith (\x y -> x <> ";" <> line <> y) entries')
+    <> softline <> "}")
+
 instance Pretty Rational where
   pretty p = pretty (fromRational p :: Double)
   --pretty (numerator p) <> "/" <> pretty (denominator p)
@@ -82,17 +93,8 @@ instance Pretty Rational where
 instance Pretty IntSet where
   pretty m = pretty (IntSet.toAscList m)
 
-instance Pretty (IntMap (Doc b)) where
-  pretty m = result
-    where
-      entries = IntMap.toAscList m
-      (keys, values) = unzip entries
-      keys' = fmap pretty keys
-      entries' = zipWith (\k v -> k <+> ":=" <+> v) keys' values
-
-      result = unAnnotate $ "{" <+> align (group
-        (concatWith (\x y -> x <> ";" <> line <> y) entries')
-        <> softline <> "}")
+instance Pretty a => Pretty (IntMap a) where
+  pretty = prettyIntMap . fmap pretty
 
 instance Pretty Version where
   pretty = pretty . showVersion

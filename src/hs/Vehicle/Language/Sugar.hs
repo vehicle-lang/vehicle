@@ -29,7 +29,7 @@ unfoldBinders ann fn (binders, body) = foldr (fn ann) body binders
 unfoldForall :: ann -> BindersAndBody binder var ann -> Expr binder var ann
 unfoldForall ann = unfoldBinders ann Pi
 
-unfoldFun :: ann -> Expr (Maybe Symbol) var ann -> Expr (Maybe Symbol) var ann -> Expr (Maybe Symbol) var ann
+unfoldFun :: ann -> Expr DBBinding var ann -> Expr DBBinding var ann -> Expr DBBinding var ann
 unfoldFun ann dom = Pi ann (ExplicitBinder ann Nothing dom)
 
 -- | Collapses pi expressions into either a sequence of forall bindings or a
