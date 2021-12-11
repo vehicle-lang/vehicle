@@ -16,7 +16,6 @@ import Vehicle.Compile.Error
 import Vehicle.Language.AST
 import Vehicle.Language.Print (prettyVerbose)
 
-
 scopeCheck :: (AsScopeError e, MonadLogger m, MonadError e m)
            => InputProg -> m UncheckedProg
 scopeCheck e = do
@@ -135,7 +134,7 @@ bindVar binder update = do
       addBinderToCtx name Ctx{..} = Ctx declCtx (name : exprCtx)
 
 -- |Find the index for a given name of a given sort.
-getVar :: SCM e m => InputAnn -> Symbol -> m DBVar
+getVar :: SCM e m => InputAnn -> NamedVar -> m DBVar
 getVar ann symbol = do
   Ctx declCtx exprCtx <- ask
   case elemIndex (Just symbol) exprCtx of

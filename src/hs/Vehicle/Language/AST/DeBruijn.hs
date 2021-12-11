@@ -62,10 +62,10 @@ type BindingDepth = Int
 
 -- | A type-synonym for the function that is used to update a bound variable
 type UpdateVariable m state ann
-  =  DBIndex                 -- The old deBruijn index of the variable
+  =  DBIndex               -- The old deBruijn index of the variable
   -> ann                   -- The annotation of the variable
   -> (BindingDepth, state) -- How many binders the variable is under & the current state
-  -> m (DBExpr ann)  -- The resulting expression
+  -> m (DBExpr ann)        -- The resulting expression
 
 -- | A type-synonym for the function that is used to update the operation's state
 -- when traversing across a binder.

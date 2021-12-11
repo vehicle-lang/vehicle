@@ -1,8 +1,10 @@
 
 module Vehicle.Compile.SupplyNames
   ( SupplyNames
-  , runSupplyNames
-  , runSupplyNamesWithCtx
+  , supplyDBNames
+  , supplyDBNamesWithCtx
+  , supplyCoDBNames
+  , supplyCoDBNamesWithCtx
   ) where
 
 import Vehicle.Prelude
@@ -11,68 +13,93 @@ import Vehicle.Language.AST
 --------------------------------------------------------------------------------
 -- Public interface
 
-runSupplyNames :: forall t var ann . SupplyNames t
-               => t DBBinding var ann
-               -> t Symbol         var ann
-runSupplyNames e = snd (runSupplyNamesWithCtx (mempty, e))
+supplyDBNames :: SupplyNames t
+              => t DBBinding    var ann
+              -> t NamedBinding var ann
+supplyDBNames e = snd (supplyDBNamesWithCtx (mempty, e))
 
-runSupplyNamesWithCtx :: forall t var ann . SupplyNames t
-                      => ([DBBinding], t DBBinding var ann)
-                      -> ([Symbol],       t Symbol         var ann)
-runSupplyNamesWithCtx (ctx, e) = runSupply supplyAction freshNames
+supplyDBNamesWithCtx :: SupplyNames t
+                     => ([DBBinding],    t DBBinding    var ann)
+                     -> ([NamedBinding], t NamedBinding var ann)
+supplyDBNamesWithCtx = supplyNamesWithCtx' getName
+
+supplyCoDBNames :: SupplyNames t
+                => t CoDBBinding var ann
+                -> t (Symbol, Maybe PositionTree) var ann
+supplyCoDBNames e = snd (supplyCoDBNamesWithCtx (mempty, e))
+
+supplyCoDBNamesWithCtx :: SupplyNames t
+                       => ([DBBinding], t CoDBBinding var ann)
+                       -> ([NamedBinding], t (Symbol, Maybe PositionTree) var ann)
+supplyCoDBNamesWithCtx = supplyNamesWithCtx' convertBinding
   where
-    supplyAction = do
-      ctx' <- supplyNamesToCtx ctx
-      e'   <- supplyNames e
-      return (ctx', e')
+    convertBinding :: CoDBBinding -> Supply Symbol (Symbol, Maybe PositionTree)
+    convertBinding (CoDBBinding n pt) = do n' <- getName n; return (n', pt)
 
 --------------------------------------------------------------------------------
 -- Core operation
 
+supplyNamesWithCtx' :: (SupplyNames t)
+             => (binding1 -> Supply Symbol binding2)
+             -> ([DBBinding],    t binding1 var ann)
+             -> ([NamedBinding], t binding2 var ann)
+supplyNamesWithCtx' f v = runSupply (supplyNamesWithCtx f v) freshNames
+
+supplyNamesToCtx :: MonadSupply Symbol m => [DBBinding] -> m [NamedBinding]
+supplyNamesToCtx = mapM getName
+
 getName :: MonadSupply Symbol m => DBBinding -> m Symbol
 getName = maybe demand return
-
-supplyNamesToCtx :: MonadSupply Symbol m => [DBBinding] -> m [Symbol]
-supplyNamesToCtx = mapM getName
 
 type MonadSupplyNames m = MonadSupply Symbol m
 
 class SupplyNames t where
   supplyNames :: MonadSupplyNames m
-              => t DBBinding var ann
-              -> m (t Symbol var ann)
+              => (binding1 -> m binding2)
+              -> t binding1 var ann
+              -> m (t binding2 var ann)
 
-instance SupplyNames Binder where
-  supplyNames (Binder ann v n e) = do
-    n' <- getName n
-    e' <- supplyNames e
-    return $ Binder ann v n' e'
+  supplyNamesWithCtx :: MonadSupplyNames m
+                     => (binding1 -> m binding2)
+                     -> ([DBBinding], t binding1 var ann)
+                     -> m ([Symbol], t binding2 var ann)
+  supplyNamesWithCtx f (ctx, e) = do
+    ctx' <- supplyNamesToCtx ctx
+    e'   <- supplyNames f e
+    return (ctx', e')
 
-instance SupplyNames Arg where
-  supplyNames = traverseArgExpr supplyNames
+instance SupplyNames Prog where
+  supplyNames f (Main ds) = Main <$> traverse (supplyNames f) ds
+
+instance SupplyNames Decl where
+  supplyNames f = \case
+    DeclNetw p n t   -> DeclNetw p n <$> supplyNames f t
+    DeclData p n t   -> DeclData p n <$> supplyNames f t
+    DefFun   p n t e -> DefFun   p n <$> supplyNames f t <*> supplyNames f e
 
 instance SupplyNames Expr where
-  supplyNames e = case e of
+  supplyNames f e = case e of
     Type     l            -> return (Type l)
     Hole     p name       -> return (Hole p name)
     Builtin  ann op       -> return (Builtin ann op)
     Literal  ann l        -> return (Literal ann l)
     Var      ann v        -> return $ Var ann v
-    Ann      ann e1 t     -> Ann ann <$> supplyNames e1 <*> supplyNames t
-    App      ann fun args -> App ann <$> supplyNames fun <*> traverse supplyNames args
-    Seq      ann es       -> Seq ann <$> traverse supplyNames es
-    PrimDict ann tc       -> PrimDict ann <$> supplyNames tc
+    Ann      ann e1 t     -> Ann ann <$> supplyNames f e1 <*> supplyNames f t
+    App      ann fun args -> App ann <$> supplyNames f fun <*> traverse (supplyNames f) args
+    Seq      ann es       -> Seq ann <$> traverse (supplyNames f) es
+    PrimDict ann tc       -> PrimDict ann <$> supplyNames f tc
     Meta     ann i        -> return $ Meta ann i
 
-    Let ann bound binder body -> Let ann <$> supplyNames bound <*> supplyNames binder <*> supplyNames body
-    Lam ann binder body       -> Lam ann <$> supplyNames binder <*> supplyNames body
-    Pi  ann binder body       -> Pi  ann <$> supplyNames binder <*> supplyNames body
+    Let ann bound binder body -> Let ann <$> supplyNames f bound <*> supplyNames f binder <*> supplyNames f body
+    Lam ann binder body       -> Lam ann <$> supplyNames f binder <*> supplyNames f body
+    Pi  ann binder body       -> Pi  ann <$> supplyNames f binder <*> supplyNames f body
 
-instance SupplyNames Decl where
-  supplyNames = \case
-    DeclNetw p n t   -> DeclNetw p n <$> supplyNames t
-    DeclData p n t   -> DeclData p n <$> supplyNames t
-    DefFun   p n t e -> DefFun   p n <$> supplyNames t <*> supplyNames e
+instance SupplyNames Binder where
+  supplyNames f (Binder ann v n e) = do
+    n' <- f n
+    e' <- supplyNames f e
+    return $ Binder ann v n' e'
 
-instance SupplyNames Prog where
-  supplyNames (Main ds) = Main <$> traverse supplyNames ds
+instance SupplyNames Arg where
+  supplyNames f = traverseArgExpr (supplyNames f)
+

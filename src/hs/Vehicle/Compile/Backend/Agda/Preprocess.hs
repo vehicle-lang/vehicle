@@ -11,7 +11,7 @@ import Data.Functor.Foldable (Recursive(..))
 import Vehicle.Prelude
 import Vehicle.Language.AST
 import Vehicle.Compile.Descope (runDescopeProg)
-import Vehicle.Compile.SupplyNames (runSupplyNames)
+import Vehicle.Compile.SupplyNames (supplyDBNames)
 
 --------------------------------------------------------------------------------
 -- Agda compilation proprocessing step
@@ -20,7 +20,7 @@ preprocess :: CheckedProg -> OutputProg
 preprocess prog1 = prog4
   where
     prog2 = capitaliseTypeNames prog1
-    prog3 = runSupplyNames prog2
+    prog3 = supplyDBNames prog2
     prog4 = runDescopeProg prog3
 
 --------------------------------------------------------------------------------

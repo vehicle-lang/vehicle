@@ -5,11 +5,11 @@ module Vehicle.Compile.AlphaEquivalence
 
 import Data.Hashable (Hashable(..))
 
-import Vehicle.Language.AST
-import Vehicle.Compile.CoDeBruijnify
+import Vehicle.Language.AST ( DBExpr )
+import Vehicle.Compile.CoDeBruijnify ( toHashableCoDBExpr )
 
 hashDB :: DBExpr ann -> Int
-hashDB e = hash $ toHashableCodebruijn e
+hashDB e = hash $ toHashableCoDBExpr e
 
 alphaEq :: DBExpr ann -> DBExpr ann -> Bool
 alphaEq e1 e2 = hashDB e1 == hashDB e2

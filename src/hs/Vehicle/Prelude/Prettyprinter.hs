@@ -11,6 +11,8 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet (toAscList)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (toAscList)
+import Data.Map (Map)
+import Data.Map qualified as Map (toAscList)
 import Data.Version (Version, showVersion)
 
 import Prettyprinter ( line', unAnnotate, layoutPretty, defaultLayoutOptions)
@@ -76,13 +78,18 @@ layoutAsText = renderStrict . layoutPretty defaultLayoutOptions
 -- Pretty printing of datatypes
 
 prettyIntMap :: IntMap (Doc a) -> Doc a
-prettyIntMap m = result
+prettyIntMap = prettyMapEntries . IntMap.toAscList
+
+prettyMap :: (Pretty key, Pretty value) => Map key value -> Doc a
+prettyMap = prettyMapEntries . Map.toAscList . fmap pretty
+
+prettyMapEntries :: Pretty key => [(key, Doc a)] -> Doc a
+prettyMapEntries entries = result
   where
-  entries = IntMap.toAscList m
   (keys, values) = unzip entries
   keys' = fmap pretty keys
   entries' = zipWith (\k v -> k <+> ":=" <+> v) keys' values
-  result = unAnnotate $ "{" <+> align (group
+  result = "{" <+> align (group
     (concatWith (\x y -> x <> ";" <> line <> y) entries')
     <> softline <> "}")
 

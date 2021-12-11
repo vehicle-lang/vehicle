@@ -168,10 +168,10 @@ instance HasProvenance Provenance where
   provenanceOf = id
 
 instance HasProvenance a => HasProvenance [a] where
-  provenanceOf xs = foldMap provenanceOf xs
+  provenanceOf = foldMap provenanceOf
 
 instance HasProvenance a => HasProvenance (NonEmpty a) where
-  provenanceOf xs = foldMap provenanceOf xs
+  provenanceOf = foldMap provenanceOf
 
 instance HasProvenance a => HasProvenance (a, b) where
   provenanceOf = provenanceOf . fst

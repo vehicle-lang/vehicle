@@ -6,29 +6,23 @@ module Vehicle.Language.AST.CoDeBruijn
   , CoDBBinder
   , CoDBBinding(..)
   , CoDBVar(..)
-  , BoundVarMap
-  , PositionTree(..)
-  , PositionList(..)
+  , ExtractPositionTrees(..)
   , BinderC(..)
   , ArgC(..)
   , ExprC(..)
   , RecCoDB(..)
-  , leaf
-  , unleaf
-  , node
-  , unnode
-  , pop
-  , unpop
   , mkHashable
   ) where
 
 import Control.Exception (assert)
 import Data.Bifunctor (first)
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.List.NonEmpty qualified as NonEmpty (length, zip)
-import Data.IntMap (IntMap)
-import Data.IntMap qualified as IntMap
-import Data.Hashable
+import Data.List.NonEmpty qualified as NonEmpty (unzip, zip, toList)
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Hashable (Hashable(..))
+import Data.Functor.Foldable (Recursive(..))
+import GHC.Generics (Generic)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Core
@@ -38,104 +32,7 @@ import Vehicle.Language.AST.DeBruijn qualified as DB (DBVar(..))
 import Vehicle.Language.AST.Visibility
 import Vehicle.Language.AST.Builtin (Builtin)
 import Vehicle.Language.AST.Utils ( removeAnnotations )
-import GHC.Generics (Generic)
-import Data.Maybe (catMaybes)
-
---------------------------------------------------------------------------------
--- Core definitions
-
-data PositionTree
-  = Leaf
-  | Node PositionList
-  deriving (Show, Eq, Generic)
-
-instance Pretty PositionTree where
-  pretty = pretty . show
-
-instance Hashable PositionTree
-
-data PositionList
-  = Here  PositionTree
-  | There PositionList
-  | Both  PositionTree PositionList
-  deriving (Show, Eq, Generic)
-
-instance Pretty PositionList where
-  pretty = pretty . show
-
-instance Hashable PositionList
-
-instance Semigroup PositionTree where
-  Leaf    <> Leaf    = Leaf
-  Node l1 <> Node l2 = Node (l1 <> l2)
-  _x      <> _y      = developerError "Trying to combine incompatible position trees"
-
-instance Semigroup PositionList where
-  Here  t1    <> Here  t2    = Here (t1 <> t2)
-  There    l1 <> There    l2 = There (l1 <> l2)
-  Both  t1 l1 <> Both  t2 l2 = Both (t1 <> t2) (l1 <> l2)
-
-  Here  t1    <> There    l2 = Both t1 l2
-  There    l1 <> Here  t2    = Both t2 l1
-  Here  t1    <> Both  t2 l2 = Both (t1 <> t2) l2
-  Both  t1 l1 <> Here  t2    = Both (t1 <> t2) l1
-  There    l1 <> Both  t2 l2 = Both t2 (l1 <> l2)
-  Both  t1 l1 <> There    l2 = Both t1 (l1 <> l2)
-
--- |Bound variable maps - maps DeBruijn indices to the location that they are used
--- in an expression. If not used, then there is no entry in the map.
-type BoundVarMap = IntMap PositionTree
-
-pop :: BoundVarMap -> (Maybe PositionTree, BoundVarMap)
-pop bvm1 = (mt, bvm3)
-  where
-    (mt, bvm2) = IntMap.updateLookupWithKey (\_k _v -> Nothing) 0 bvm1
-    bvm3       = IntMap.mapKeysMonotonic (\x -> x - 1) bvm2
-
-unpop :: (Maybe PositionTree, BoundVarMap) -> BoundVarMap
-unpop (mt, bvm1) = bvm3
-  where
-    bvm2 = IntMap.mapKeysMonotonic (+ 1) bvm1
-    bvm3 = case mt of
-      Nothing -> bvm2
-      Just t  -> IntMap.insert 0 t bvm2
-
-node :: [BoundVarMap] -> BoundVarMap
-node []   = mempty
-node bvms = fmap Node (foldr1 merge $ fmap (fmap Here) bvms)
-  where
-    merge :: IntMap PositionList -> IntMap PositionList -> IntMap PositionList
-    merge xs ys = IntMap.unionWith (<>) xs (fmap There ys)
-
-unnode :: BoundVarMap -> [BoundVarMap]
-unnode bvm = mapM goTree bvm
-  where
-    goTree :: PositionTree -> [PositionTree]
-    goTree Leaf     = developerError "Found Leaf when expected Node during traversal of CoDBExpr"
-    goTree (Node l) = goList l
-
-    goList :: PositionList -> [PositionTree]
-    goList l = catMaybes (unhere l : traverse goList (unthere l))
-
-    unhere :: PositionList -> Maybe PositionTree
-    unhere (Here t)   = Just t
-    unhere (There _)  = Nothing
-    unhere (Both t _) = Just t
-
-    unthere :: PositionList -> Maybe PositionList
-    unthere (Here _)   = Nothing
-    unthere (There l)  = Just l
-    unthere (Both _ l) = Just l
-
-leaf :: DBIndex -> BoundVarMap
-leaf i = IntMap.singleton i Leaf
-
-unleaf :: BoundVarMap -> DBIndex
-unleaf bvm = case IntMap.minViewWithKey bvm of
-  Just ((i, Leaf), bvm')
-    | null bvm' -> i
-  _ -> developerError $ "Expecting a singleton BoundVarMap with a leaf node" <+>
-                        "for Var but found" <+> pretty (show bvm)
+import Vehicle.Language.AST.Position
 
 --------------------------------------------------------------------------------
 -- AST Definitions
@@ -175,6 +72,67 @@ mkHashable :: CoDBExpr ann -> CoDBExpr ()
 mkHashable = first removeAnnotations
 
 --------------------------------------------------------------------------------
+-- Extract binder positionTrees
+
+-- This operation is only used to print CoDBExprs in a vaguely reasonable form.
+
+type NamedPTMap = Map NamedBinding (Maybe PositionTree)
+
+class ExtractPositionTrees t where
+  extractPTs :: t (Symbol, Maybe PositionTree) CoDBVar ann ->
+                (t Symbol CoDBVar ann, NamedPTMap)
+
+instance ExtractPositionTrees Expr where
+  extractPTs = cata $ \case
+    TypeF l          -> (Type    l,      mempty)
+    HoleF     ann n  -> (Hole    ann n,  mempty)
+    MetaF     ann m  -> (Meta    ann m,  mempty)
+    BuiltinF  ann op -> (Builtin ann op, mempty)
+    LiteralF  ann l  -> (Literal ann l,  mempty)
+    VarF      ann v  -> (Var ann v,      mempty)
+
+    PrimDictF ann (e, mpts)        -> (PrimDict ann e, mpts)
+    AnnF ann (e, mpts1) (t, mpts2) -> (Ann ann e t, mergePTs [mpts1, mpts2])
+
+    SeqF ann xs ->
+      let (xs', mpts) = unzip xs in
+      (Seq ann xs', mergePTs mpts)
+
+    AppF ann (fun, mpt) args ->
+      let (args', mpts) = NonEmpty.unzip (fmap extractPTs args) in
+      (App ann fun args', mergePTs (mpt : NonEmpty.toList mpts))
+
+    PiF  ann binder (result', mpt2) ->
+      let (binder', mpt1) = extractPTs binder in
+      (Pi ann binder' result', mergePTs [mpt1, mpt2])
+
+    LetF ann (bound', mpt1) binder (body', mpt3) ->
+      let (binder', mpt2) = extractPTs binder in
+      (Let ann bound' binder' body', mergePTs [mpt1, mpt2, mpt3])
+
+    LamF ann binder (body', mpt2) ->
+      let (binder', mpt1) = extractPTs binder in
+      (Lam ann binder' body', mergePTs [mpt1, mpt2])
+
+instance ExtractPositionTrees Binder where
+  extractPTs (Binder ann v (n, mpt) t) =
+    let (t', mpts) = extractPTs t in
+    let pts' = mergePTs [Map.singleton n mpt, mpts] in
+    (Binder ann v n t', pts')
+
+instance ExtractPositionTrees Arg where
+  extractPTs (Arg ann v e) =
+    let (e', mpts) = extractPTs e in
+    (Arg ann v e', mpts)
+
+mergePTPair :: NamedPTMap -> NamedPTMap -> NamedPTMap
+mergePTPair = Map.unionWith (\_ _ -> developerError
+  "Printing of CoDeBruijn expressions with shadowed variables not yet supported")
+
+mergePTs :: [NamedPTMap] -> NamedPTMap
+mergePTs = foldr mergePTPair mempty
+
+--------------------------------------------------------------------------------
 -- Intermediate state
 
 -- Recursing over a `CoDBExpr` is very difficult as you have to decompose
@@ -207,64 +165,48 @@ data ExprC ann
   | PrimDictC ann (CoDBExpr ann)
   deriving (Show)
 
-
 class RecCoDB a b where
   recCoDB :: a -> b
 
 instance RecCoDB (CoDBExpr ann) (ExprC ann) where
-  recCoDB (expr, bvm) = case expr of
-    Type l          -> assert (null bvm) (TypeC         l)
-    Hole     ann n  -> assert (null bvm) (HoleC     ann n)
-    Meta     ann m  -> assert (null bvm) (MetaC     ann m)
-    Builtin  ann op -> assert (null bvm) (BuiltinC  ann op)
-    Literal  ann l  -> assert (null bvm) (LiteralC  ann l)
+  recCoDB (expr, bvm) = case (expr, unnodeBVM bvm) of
+    (Type l         , _) -> TypeC         l
+    (Hole     ann n , _) -> HoleC     ann n
+    (Meta     ann m , _) -> MetaC     ann m
+    (Builtin  ann op, _) -> BuiltinC  ann op
+    (Literal  ann l , _) -> LiteralC  ann l
 
-    PrimDict ann e -> PrimDictC ann (e, bvm)
+    (PrimDict ann e, bvm1 : _) -> PrimDictC ann (e, bvm1)
 
-    Seq ann xs ->
-      let bvms = unnode bvm in
-      let xs'  = assert (length xs == length bvms) (zip xs bvms) in
-      SeqC ann xs'
+    (Seq ann xs, bvms) -> SeqC ann (zip xs bvms)
 
-    Var ann v -> case v of
+    (Var ann v, _) -> case v of
       CoDBFree  ident -> assert (null bvm) (VarC ann (DB.Free ident))
-      CoDBBound       -> VarC ann (DB.Bound (unleaf bvm))
+      CoDBBound       -> VarC ann (DB.Bound (unleafBVM bvm))
 
-    Ann ann e t -> case unnode bvm of
-      [bvm1, bvm2] -> AnnC ann (e, bvm1) (t, bvm2)
-      bvms         -> lengthError "Ann" 2 bvms
+    (Ann ann e t, bvm1 : bvm2 : _) -> AnnC ann (e, bvm1) (t, bvm2)
 
-    App ann fun args -> case unnode bvm of
-      (bvm1 : bvms) -> AppC ann (fun, bvm1) (zipArgs args bvms)
-      bvms          -> lengthError "App" 1 bvms
+    (App ann fun args, bvm1 : bvm2 : bvms) ->
+      AppC ann (fun, bvm1) (NonEmpty.zip args (bvm2 :| bvms))
 
-    Pi ann binder result -> case unnode bvm of
-      [bvm1, bvm2] -> PiC ann (binder, bvm1) (result, bvm2)
-      bvms         -> lengthError "Pi" 2 bvms
+    (Pi ann binder result, bvm1 : bvm2 : _) ->
+      PiC ann (binder, bvm1) (result, unpop (positionTreeOf binder) bvm2)
 
-    Let ann bound binder body -> case unnode bvm of
-      [bvm1, bvm2, bvm3] -> LetC ann (bound, bvm1) (binder, bvm2) (body, bvm3)
-      bvms               -> lengthError "Let" 3 bvms
+    (Let ann bound binder body, bvm1 : bvm2 : bvm3 : _) ->
+      LetC ann (bound, bvm1) (binder, bvm2) (body, unpop (positionTreeOf binder) bvm3)
 
-    Lam ann binder body -> case unnode bvm of
-      [bvm1, bvm2] -> LamC ann (binder, bvm1) (body, bvm2)
-      bvms         -> lengthError "Lam" 2 bvms
+    (Lam ann binder body, bvm1 : bvm2 : _) ->
+      LamC ann (binder, bvm1) (body, unpop (positionTreeOf binder) bvm2)
+
+    (_, bvms) -> developerError $
+      "Expected the same number of BoundVarMaps as args but found" <+> pretty (length bvms)
 
 instance RecCoDB (CoDBBinder ann) (BinderC ann) where
-  recCoDB (Binder ann v (CoDBBinding n mpt) t, bvm) =
-    let bvm' = unpop (mpt, bvm) in
-    BinderC ann v (CoDBBinding n mpt) (t, bvm')
+  recCoDB (Binder ann v n t, bvm) = BinderC ann v n (t, bvm)
+
 instance RecCoDB (CoDBArg ann) (ArgC ann) where
   recCoDB (Arg ann v e, bvm) = ArgC ann v (e, bvm)
 
-lengthError :: Doc b -> Int -> [BoundVarMap] -> a
-lengthError constructor numberOfArgs bvms = developerError $
-  "Expected the same number of BoundVarMaps as args to" <+> constructor <+>
-  "but found" <+> pretty (length bvms) <+> "vs" <+> pretty numberOfArgs
-
-zipArgs :: NonEmpty (PartialCoDBArg ann) -> [BoundVarMap] -> NonEmpty (CoDBArg ann)
-zipArgs args bvms@(b : bs)
-  | length bvms == NonEmpty.length args = NonEmpty.zip args (b :| bs)
-zipArgs args bvms = developerError $
-  lengthError "App" (NonEmpty.length args) bvms
-
+positionTreeOf :: PartialCoDBBinder ann -> Maybe PositionTree
+positionTreeOf b = case nameOf b of
+  CoDBBinding _ pt -> pt

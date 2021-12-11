@@ -18,6 +18,7 @@ module Vehicle.Language.Print
 import GHC.TypeLits (TypeError, ErrorMessage(..))
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.IntMap (IntMap)
 import Control.Exception (assert)
 import Prettyprinter (list, tupled)
 
@@ -32,21 +33,20 @@ import Vehicle.Compile.Simplify
 import Vehicle.Compile.Delaborate.Core as Core
 import Vehicle.Compile.Delaborate.Frontend as Frontend
 import Vehicle.Compile.Descope
-import Vehicle.Compile.SupplyNames (SupplyNames, runSupplyNamesWithCtx, runSupplyNames)
+import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint (Constraint (..), BaseConstraint (..))
 import Vehicle.Compile.Type.MetaSubstitution (MetaSubstitution(MetaSubstitution))
-import Vehicle.Compile.CoDeBruijnify (ConvertCodebruijn(fromCodebruijn))
-import Data.IntMap (IntMap)
+import Vehicle.Compile.CoDeBruijnify (ConvertCodebruijn(..))
 
 
 -- The old methods for compatibility:
 
 -- |Prints to the core language removing all implicit/instance arguments and
--- automatically inserted code. Does not convert DeBruijn indices back to names.
+-- automatically inserted code. Does not convert (Co)DeBruijn indices back to names.
 prettySimple :: (PrettyWith ('Simple ('As 'Core)) a) => a -> Doc b
 prettySimple = prettyWith @('Simple ('As 'Core))
 
--- |Prints to the core language in all it's gory detail. Does not convert DeBruijn
+-- |Prints to the core language in all it's gory detail. Does not convert (Co)DeBruijn
 -- indices back to names. Useful for debugging.
 prettyVerbose :: (PrettyWith ('As 'Core) a) => a -> Doc b
 prettyVerbose = prettyWith @('As 'Core)
@@ -104,26 +104,25 @@ data Strategy
 
 -- | Compute the printing strategy given the tags and the type of the expression.
 type family StrategyFor (tags :: Tags) a :: Strategy where
-  StrategyFor ('As lang) (t Symbol Symbol ann)
+  StrategyFor ('As lang) (t NamedBinding NamedVar ann)
     = 'ConvertTo lang
 
-  StrategyFor ('As lang) (t Symbol DBVar ann)
+  StrategyFor ('As lang) (t NamedBinding DBVar ann)
     = 'DBToNamedNaive ('ConvertTo lang)
 
-  StrategyFor ('As lang) (t CoDBBinding CoDBVar ann)
+  StrategyFor ('As lang) (t (NamedBinding, Maybe PositionTree) CoDBVar ann)
     = 'CoDBToNamedNaive ('ConvertTo lang)
 
-  -- DB to Named
-  StrategyFor ('Named tags) ([Symbol], t Symbol DBVar ann)
-    = 'DBToNamedOpen   (StrategyFor tags (t Symbol Symbol ann))
+  -- Conversion to Named AST
+  StrategyFor ('Named tags) (t NamedBinding NamedVar ann)
+    = StrategyFor tags (t NamedBinding NamedVar ann)
 
-  StrategyFor ('Named tags) (t Symbol DBVar ann)
-    = 'DBToNamedClosed (StrategyFor tags (t Symbol Symbol ann))
+  StrategyFor ('Named tags) ([NamedBinding], t NamedBinding DBVar ann)
+    = 'DBToNamedOpen (StrategyFor tags (t NamedBinding NamedVar ann))
 
-  StrategyFor ('Named tags) (t Symbol Symbol ann)
-    = StrategyFor tags (t Symbol Symbol ann)
+  StrategyFor ('Named tags) (t NamedBinding DBVar ann)
+    = 'DBToNamedClosed (StrategyFor tags (t NamedBinding NamedVar ann))
 
-  -- CoDB to DB
   StrategyFor ('Named tags) ([DBBinding], t CoDBBinding CoDBVar ann, BoundVarMap)
     = 'CoDBToDBOpen (StrategyFor ('Named tags) ([DBBinding], t DBBinding DBVar ann))
 
@@ -132,17 +131,25 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
 
   -- Supplying names
   StrategyFor tags ([DBBinding], t DBBinding var ann)
-    = 'SupplyNamesOpen (StrategyFor tags ([Symbol], t Symbol var ann))
+    = 'SupplyNamesOpen (StrategyFor tags ([Symbol], t NamedBinding var ann))
 
   StrategyFor tags (t DBBinding var ann)
-    = 'SupplyNamesClosed (StrategyFor tags (t Symbol var ann))
+    = 'SupplyNamesClosed (StrategyFor tags (t NamedBinding var ann))
 
+  StrategyFor tags ([DBBinding], t CoDBBinding var ann)
+    = 'SupplyNamesOpen (StrategyFor tags ([DBBinding], t (Symbol, Maybe PositionTree) var ann))
+
+  StrategyFor tags (t CoDBBinding var ann)
+    = 'SupplyNamesClosed (StrategyFor tags (t (NamedBinding, Maybe PositionTree) var ann))
+
+  -- Simplification
   StrategyFor ('Simple tags) (SimplifyOptions, a)
     = 'SimplifyWithOptions (StrategyFor tags a)
 
   StrategyFor ('Simple tags) a
     = 'SimplifyDefault (StrategyFor tags a)
 
+  -- Other
   StrategyFor tags Constraint
     = 'Opaque (StrategyFor tags BaseConstraint)
 
@@ -187,11 +194,13 @@ instance (Frontend.Delaborate t bnfc, Pretty bnfc)
 
 instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
       => PrettyUsing ('DBToNamedNaive rest) (t Symbol DBVar ann) where
-  prettyUsing e = prettyUsing @rest (runNaiveDescope e)
+  prettyUsing e = prettyUsing @rest (runNaiveDBDescope e)
 
-instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
-      => PrettyUsing ('CoDBToNamedNaive rest) (t Symbol DBVar ann) where
-  prettyUsing e = prettyUsing @rest (runNaiveDescope e)
+instance (Descope t, ExtractPositionTrees t, PrettyUsing rest (t Symbol Symbol ann))
+      => PrettyUsing ('CoDBToNamedNaive rest) (t (Symbol, Maybe PositionTree) CoDBVar ann) where
+  prettyUsing e = let (e', pts) = runNaiveCoDBDescope e in
+    prettyUsing @rest e' <> line <>
+    "Inner vars:" <+> prettyMap pts
 
 instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
       => PrettyUsing ('DBToNamedOpen rest) ([Symbol], t Symbol DBVar ann) where
@@ -203,19 +212,27 @@ instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
 
 instance (ConvertCodebruijn t, PrettyUsing rest ([DBBinding], t DBBinding DBVar ann))
       => PrettyUsing ('CoDBToDBOpen rest) ([DBBinding], t CoDBBinding CoDBVar ann, BoundVarMap) where
-  prettyUsing (ctx, e, bvm) = prettyUsing @rest (ctx , fromCodebruijn (e, bvm))
+  prettyUsing (ctx, e, bvm) = prettyUsing @rest (ctx , fromCoDB (e, bvm))
 
 instance (ConvertCodebruijn t, PrettyUsing rest (t DBBinding DBVar ann))
       => PrettyUsing ('CoDBToDBClosed rest) (t CoDBBinding CoDBVar ann, BoundVarMap) where
-  prettyUsing (e, bvm) = assert (null bvm) $ prettyUsing @rest (fromCodebruijn (e, bvm))
+  prettyUsing (e, bvm) = assert (null bvm) $ prettyUsing @rest (fromCoDB (e, bvm))
 
 instance (SupplyNames t, PrettyUsing rest ([Symbol], t Symbol var ann))
       => PrettyUsing ('SupplyNamesOpen rest) ([DBBinding], t DBBinding var ann) where
-  prettyUsing p = prettyUsing @rest (runSupplyNamesWithCtx p)
+  prettyUsing p = prettyUsing @rest (supplyDBNamesWithCtx p)
 
 instance (SupplyNames t, PrettyUsing rest (t Symbol var ann))
       => PrettyUsing ('SupplyNamesClosed rest) (t DBBinding var ann) where
-  prettyUsing e = prettyUsing @rest (runSupplyNames e)
+  prettyUsing e = prettyUsing @rest (supplyDBNames e)
+
+instance (SupplyNames t, PrettyUsing rest ([Symbol], t (Symbol, Maybe PositionTree) var ann))
+      => PrettyUsing ('SupplyNamesOpen rest) ([DBBinding], t CoDBBinding var ann) where
+  prettyUsing p = prettyUsing @rest (supplyCoDBNamesWithCtx p)
+
+instance (SupplyNames t, PrettyUsing rest (t (Symbol, Maybe PositionTree) var ann))
+      => PrettyUsing ('SupplyNamesClosed rest) (t CoDBBinding var ann) where
+  prettyUsing e = prettyUsing @rest (supplyCoDBNames e)
 
 instance (Simplify a, PrettyUsing rest a)
       => PrettyUsing ('SimplifyWithOptions rest) (SimplifyOptions, a) where

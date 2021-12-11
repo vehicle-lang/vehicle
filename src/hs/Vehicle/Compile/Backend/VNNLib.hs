@@ -19,7 +19,6 @@ import Vehicle.Language.AST hiding (Map)
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Compile.Normalise (normaliseInternal)
 import Vehicle.Compile.StandardiseNetworks
-import Vehicle.Compile.Backend.Verifier
 import Vehicle.Compile.Backend.SMTLib (SMTDoc)
 import Vehicle.Compile.Backend.SMTLib qualified as SMTLib (compileProp)
 

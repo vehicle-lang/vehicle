@@ -20,7 +20,6 @@ import Vehicle.Language.AST
 import Vehicle.Language.Print
 import Vehicle.Compile.Error
 import Vehicle.Compile.AlphaEquivalence (alphaEq)
-import Vehicle.Language.Print (prettyVerbose)
 
 --------------------------------------------------------------------------------
 -- Network standardisation

@@ -9,7 +9,7 @@ import Vehicle.Prelude
 import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.DeBruijn
 import Vehicle.Language.AST.Builtin
-import Vehicle.Language.AST.Name (HasName(..))
+import Vehicle.Language.AST.Name
 import Vehicle.Language.AST.Visibility (Owner(..))
 
 --------------------------------------------------------------------------------
@@ -27,8 +27,8 @@ pattern Type1 = Type 1
 -- * Type of annotations attached to the Frontend AST after parsing
 -- before being analysed by the compiler
 
-type InputBinding = DBBinding
-type InputVar     = Symbol
+type InputBinding = Maybe NamedBinding
+type InputVar     = NamedVar
 type InputAnn     = (Provenance, Owner)
 
 type InputArg       = Arg    InputBinding InputVar InputAnn
@@ -63,8 +63,8 @@ type CheckedProg   = DBProg    CheckedAnn
 
 -- * Type of annotations attached to the Core AST that are output by the compiler
 
-type OutputBinding = Symbol
-type OutputVar     = Symbol
+type OutputBinding = NamedBinding
+type OutputVar     = NamedVar
 type OutputAnn     = (Provenance, Owner)
 
 type OutputBinder = Binder OutputBinding OutputVar OutputAnn

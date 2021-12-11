@@ -20,9 +20,8 @@ import Vehicle.Compile.Error
 import Vehicle.Language.AST
 import Vehicle.Language.Print (prettySimple)
 import Vehicle.Compile.Normalise (normaliseInternal)
-import Vehicle.Compile.SupplyNames (runSupplyNames)
+import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Compile.Descope (runDescope)
-import Vehicle.Compile.Backend.Verifier
 
 compileToSMTLib :: (AsSMTLibError e, MonadLogger m, MonadError e m)
                 => CheckedProg -> m [SMTDoc]
@@ -112,7 +111,7 @@ compileProp ident expr = runReaderT propertyDoc ident
 
     logDebug $ "Stripped existential quantifiers:" <+> pretty ctx <> line
 
-    let body2 = runDescope (reverse ctx) (runSupplyNames body)
+    let body2 = runDescope (reverse ctx) (supplyDBNames body)
 
     logDebug $ "Descoping property" <+> prettySimple body2 <> line
 

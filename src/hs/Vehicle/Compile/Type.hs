@@ -193,6 +193,9 @@ assertIsType p e        = do
   ctx <- getBoundCtx
   throwError $ mkMismatch p ctx e (Type 0)
 
+removeBinderName :: CheckedBinder -> CheckedBinder
+removeBinderName (Binder ann v _n t) = Binder ann v Nothing t
+
 unify :: TCM e m => Provenance -> CheckedExpr -> CheckedExpr -> m CheckedExpr
 unify p e1 e2 = do
   ctx <- getVariableCtx
@@ -325,9 +328,9 @@ check expectedType expr = do
         return $ Lam ann lamBinder checkedExpr
 
     (_, Lam ann binder _) -> do
-          ctx <- getBoundCtx
-          let expected = fromDSL $ unnamedPi (visibilityOf binder) (tHole "a") (const (tHole "b"))
-          throwError $ mkMismatch (provenanceOf ann) ctx expectedType expected
+      ctx <- getBoundCtx
+      let expected = fromDSL $ unnamedPi (visibilityOf binder) (tHole "a") (const (tHole "b"))
+      throwError $ mkMismatch (provenanceOf ann) ctx expectedType expected
 
     (_, Hole ann _name) -> do
       -- Replace the hole with meta-variable of the expected type.
@@ -432,7 +435,7 @@ infer e = do
       addToBoundCtx (nameOf binder) typeOfBinder $ do
         (checkedBody , typeOfBody) <- infer body
         let checkedBinder = replaceBinderType typeOfBody binder
-        let t' = Pi p checkedBinder typeOfBody
+        let t' = Pi p (removeBinderName checkedBinder) typeOfBody
         return (Lam p checkedBinder checkedBody , t')
 
     Literal p l ->

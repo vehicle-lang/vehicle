@@ -1,5 +1,7 @@
 module Test.Golden
-  ( goldenTests
+  ( GoldenTestSpec
+  , goldenTests
+  , goldenTestList
   ) where
 
 import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiff)
@@ -30,6 +32,9 @@ goldenTests = testGroup "Golden"
   , testGroup "Simple"   (map makeGoldenTestsFromSpec simpleTestList)
   , testGroup "Misc"     (map makeGoldenTestsFromSpec miscTestList)
   ]
+
+goldenTestList :: [GoldenTestSpec]
+goldenTestList = realisticTestList <> simpleTestList <> miscTestList
 
 realisticTestList :: [GoldenTestSpec]
 realisticTestList = map (addTestDirectory ("examples" </> "network")) [

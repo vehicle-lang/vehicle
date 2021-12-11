@@ -10,3 +10,4 @@ import Vehicle.Language.AST.CoDeBruijn      as X
 import Vehicle.Language.AST.Name            as X
 import Vehicle.Language.AST.Utils           as X
 import Vehicle.Language.AST.Visibility      as X
+import Vehicle.Language.AST.Position        as X

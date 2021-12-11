@@ -2,7 +2,8 @@
 
 module Vehicle.Compile.CoDeBruijnify
   ( ConvertCodebruijn(..)
-  , toHashableCodebruijn
+  , toCoDBExpr
+  , toHashableCoDBExpr
   ) where
 
 import Data.Functor.Foldable (Recursive(..))
@@ -12,84 +13,92 @@ import Vehicle.Language.AST
 import Vehicle.Language.AST.DeBruijn as DB
 
 --------------------------------------------------------------------------------
--- Conversion
+-- Conversion between DeBruijn and CoDeBruijn expressions
+--------------------------------------------------------------------------------
+-- Forwards direction
+
+toCoDBExpr :: Expr DBBinding DBVar ann -> (Expr CoDBBinding CoDBVar ann, BoundVarMap)
+toCoDBExpr = cata $ \case
+  TypeF l                -> (Type l,          mempty)
+  HoleF     ann n        -> (Hole     ann n,  mempty)
+  MetaF     ann m        -> (Meta     ann m,  mempty)
+  BuiltinF  ann op       -> (Builtin  ann op, mempty)
+  LiteralF  ann l        -> (Literal  ann l,  mempty)
+
+  PrimDictF ann (e, bvm) -> (PrimDict ann e, bvm)
+
+  SeqF ann xs -> let (xs', bvms) = unzip xs in (Seq ann xs', nodeBVM bvms)
+
+  VarF ann v -> case v of
+    DB.Free  ident -> (Var ann (CoDBFree ident), mempty)
+    DB.Bound i     -> (Var ann CoDBBound,        leafBVM i)
+
+  AnnF ann (e', bvm1) (t', bvm2) ->
+    (Ann ann e' t', nodeBVM [bvm1, bvm2])
+
+  AppF ann (fun', bvm) args ->
+    let (args', bvms) = NonEmpty.unzip $ fmap toCoDBArg args in
+    (App ann fun' args', nodeBVM (bvm : NonEmpty.toList bvms))
+
+  PiF  ann binder (result', bvm2) ->
+    let (positionTree, bvm2') = pop bvm2 in
+    let (binder', bvm1) = toCoDBBinder binder positionTree in
+    (Pi ann binder' result', nodeBVM [bvm1, bvm2'])
+
+  LetF ann (bound', bvm1) binder (body', bvm3) ->
+    let (positionTree, bvm3') = pop bvm3 in
+    let (binder', bvm2) = toCoDBBinder binder positionTree in
+    (Let ann bound' binder' body', nodeBVM [bvm1, bvm2, bvm3'])
+
+  LamF ann binder (body', bvm2) ->
+    let (positionTree, bvm2') = pop bvm2 in
+    let (binder', bvm1) = toCoDBBinder binder positionTree in
+    (Lam ann binder' body', nodeBVM [bvm1, bvm2'])
+
+toCoDBBinder :: DBBinder ann -> Maybe PositionTree -> CoDBBinder ann
+toCoDBBinder (Binder ann v n t) mpt =
+  let (t', bvm) = toCoDBExpr t in
+  (Binder ann v (CoDBBinding n mpt) t', bvm)
+
+toCoDBArg :: DBArg ann -> CoDBArg ann
+toCoDBArg (Arg ann v e) =
+  let (e', bvm) = toCoDBExpr e in
+  (Arg ann v e', bvm)
+
+-- CoDeBruijn expressions are almost always hashed so this a utility method
+-- removes the annotations so they are immediately hashable
+toHashableCoDBExpr :: DBExpr ann -> CoDBExpr ()
+toHashableCoDBExpr e = mkHashable (toCoDBExpr e)
+
+--------------------------------------------------------------------------------
+-- Backwards
 
 class ConvertCodebruijn t where
-  toCodebruijn   :: t DBBinding DBVar ann -> (t CoDBBinding CoDBVar ann, BoundVarMap)
-  fromCodebruijn :: (t CoDBBinding CoDBVar ann, BoundVarMap) -> t DBBinding DBVar ann
-
-instance ConvertCodebruijn Binder where
-  toCodebruijn (Binder ann v n t) =
-    let (t', bvm) = toCodebruijn t in
-    let (positionTree, bvm') = pop bvm in
-    (Binder ann v (CoDBBinding n positionTree) t', bvm')
-
-  fromCodebruijn binder = case recCoDB binder of
-    BinderC ann v (CoDBBinding n _) t -> Binder ann v n $ fromCodebruijn t
-
-instance ConvertCodebruijn Arg where
-  toCodebruijn (Arg ann v e) =
-    let (e', bvm) = toCodebruijn e in
-    (Arg ann v e', bvm)
-
-  fromCodebruijn arg = case recCoDB arg of
-    ArgC ann v e -> Arg ann v $ fromCodebruijn e
+  fromCoDB :: (t CoDBBinding CoDBVar ann, BoundVarMap) -> t DBBinding DBVar ann
 
 instance ConvertCodebruijn Expr where
-  toCodebruijn = cata $ \case
-    TypeF l                -> (Type l,          mempty)
-    HoleF     ann n        -> (Hole     ann n,  mempty)
-    MetaF     ann m        -> (Meta     ann m,  mempty)
-    BuiltinF  ann op       -> (Builtin  ann op, mempty)
-    LiteralF  ann l        -> (Literal  ann l,  mempty)
-
-    PrimDictF ann (e, bvm) -> (PrimDict ann e, bvm)
-
-    SeqF ann xs -> let (xs', bvms) = unzip xs in (Seq ann xs', node bvms)
-
-    VarF ann v -> case v of
-      DB.Free  ident -> (Var ann (CoDBFree ident), mempty)
-      DB.Bound i     -> (Var ann CoDBBound,        leaf i)
-
-    AnnF ann (e', bvm1) (t', bvm2) ->
-      (Ann ann e' t', node [bvm1, bvm2])
-
-    AppF ann (fun', bvm) args ->
-      let (args', bvms) = NonEmpty.unzip $ fmap toCodebruijn args in
-      (App ann fun' args', node (bvm : NonEmpty.toList bvms))
-
-    PiF  ann binder (result', bvm2) ->
-      let (binder', bvm1) = toCodebruijn binder in
-      (Pi ann binder' result', node [bvm1, bvm2])
-
-    LetF ann (bound', bvm1) binder (body', bvm3) ->
-      let (binder', bvm2) = toCodebruijn binder in
-      (Let ann bound' binder' body', node [bvm1, bvm2, bvm3])
-
-    LamF ann binder (body', bvm2) ->
-      let (binder', bvm1) = toCodebruijn binder in
-      (Lam ann binder' body', node [bvm1, bvm2])
-
-
-  fromCodebruijn expr = case recCoDB expr of
+  fromCoDB expr = case recCoDB expr of
     TypeC l          -> Type l
     HoleC     ann n  -> Hole     ann n
     MetaC     ann m  -> Meta     ann m
     BuiltinC  ann op -> Builtin  ann op
     LiteralC  ann l  -> Literal  ann l
 
-    PrimDictC ann e -> PrimDict ann $ fromCodebruijn e
-    SeqC ann xs     -> Seq ann (fmap fromCodebruijn xs)
+    SeqC ann xs     -> Seq ann (fmap fromCoDB xs)
     VarC ann v      -> Var ann v
 
-    AnnC ann e t               -> Ann ann (fromCodebruijn e) (fromCodebruijn t)
-    AppC ann fun args          -> App ann (fromCodebruijn fun) (fmap fromCodebruijn args)
-    PiC  ann binder result     -> Pi  ann (fromCodebruijn binder) (fromCodebruijn result)
-    LetC ann bound binder body -> Let ann (fromCodebruijn bound) (fromCodebruijn binder) (fromCodebruijn body)
-    LamC ann binder body       -> Lam ann (fromCodebruijn binder) (fromCodebruijn body)
+    AnnC ann e t               -> Ann ann (fromCoDB e) (fromCoDB t)
+    AppC ann fun args          -> App ann (fromCoDB fun) (fmap fromCoDB args)
+    PiC  ann binder result     -> Pi  ann (fromCoDB binder) (fromCoDB result)
+    LetC ann bound binder body -> Let ann (fromCoDB bound) (fromCoDB binder) (fromCoDB body)
+    LamC ann binder body       -> Lam ann (fromCoDB binder) (fromCoDB body)
 
---------------------------------------------------------------------------------
--- Hashing
+    PrimDictC ann e -> PrimDict ann $ fromCoDB e
 
-toHashableCodebruijn :: forall ann. DBExpr ann -> CoDBExpr ()
-toHashableCodebruijn e = mkHashable (toCodebruijn e :: CoDBExpr ann)
+instance ConvertCodebruijn Binder where
+  fromCoDB binder = case recCoDB binder of
+    BinderC ann v (CoDBBinding n _) t -> Binder ann v n $ fromCoDB t
+
+instance ConvertCodebruijn Arg where
+  fromCoDB arg = case recCoDB arg of
+    ArgC ann v e -> Arg ann v $ fromCoDB e
