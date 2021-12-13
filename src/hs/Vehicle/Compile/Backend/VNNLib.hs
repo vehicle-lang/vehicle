@@ -4,10 +4,9 @@ module Vehicle.Compile.Backend.VNNLib
   ) where
 
 import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
-import Control.Monad.Except (MonadError(..), runExcept)
+import Control.Monad.Except (MonadError(..))
 import Control.Monad.State (MonadState(..), runStateT, gets)
-import Data.Map (Map)
-import Data.Map qualified as Map (insert, lookup)
+import Data.Map qualified as Map (lookup)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Maybe (catMaybes, fromMaybe)
@@ -19,6 +18,7 @@ import Vehicle.Compile.Error
 import Vehicle.Language.AST hiding (Map)
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Compile.Normalise (normaliseInternal)
+import Vehicle.Compile.StandardiseNetworks
 import Vehicle.Compile.Backend.Verifier
 import Vehicle.Compile.Backend.SMTLib (SMTDoc)
 import Vehicle.Compile.Backend.SMTLib qualified as SMTLib (compileProp)
@@ -93,12 +93,13 @@ import Vehicle.Compile.Backend.SMTLib qualified as SMTLib (compileProp)
 -- | Compiles a given program to a VNNLib script.
 -- Assumes the program has already been normalised.
 compileToVNNLib :: (AsSMTLibError e, MonadLogger m, MonadError e m)
-                => CheckedProg
+                => NetworkMap
+                -> CheckedProg
                 -> m [VNNLibDoc]
-compileToVNNLib prog = do
+compileToVNNLib networkMap prog = do
   logDebug "Beginning compilation to VNNLib"
   incrCallDepth
-  result <- runReaderT (compileProg prog) []
+  result <- runReaderT (compileProg prog) networkMap
   decrCallDepth
   logDebug "Finished compilation to VNNLib"
   return result
@@ -111,12 +112,6 @@ data VNNLibDoc = VNNLibDoc
   , metaNetwork :: MetaNetwork
   }
 
-instance Pretty TensorDetails where
-  pretty (TensorDetails size tElem) =
-    "Tensor" <+> pretty tElem <+> "[" <> pretty size <> "]"
-
-type NetworkCtx = Map Identifier CheckedDecl
-
 type MetaNetwork = [Identifier]
 
 --------------------------------------------------------------------------------
@@ -126,13 +121,11 @@ type MonadVNNLib e m =
   ( AsSMTLibError e
   , MonadLogger m
   , MonadError e m
-  , MonadReader NetworkCtx m
+  , MonadReader NetworkMap m
   )
 
 getNetworkDetailsFromCtx :: MonadVNNLib e m => Identifier -> m NetworkDetails
-getNetworkDetailsFromCtx ident = do
-  networkDecl <- asks (fromMaybe outOfScopeError . Map.lookup ident)
-  getNetworkDetails (provenanceOf networkDecl, TheUser) (identifierOf networkDecl) (typeOf networkDecl)
+getNetworkDetailsFromCtx ident = asks (fromMaybe outOfScopeError . Map.lookup ident)
   where
     outOfScopeError :: a
     outOfScopeError = developerError $
@@ -144,37 +137,26 @@ getNetworkDetailsFromCtx ident = do
 
 compileProg :: MonadVNNLib e m => CheckedProg -> m [VNNLibDoc]
 compileProg (Main ds) = do
-  results <- catMaybes <$> compileDecls ds
+  results <- catMaybes <$> traverse compileDecl ds
   if null results then
     throwError mkNoPropertiesFound
   else
     return results
 
-compileDecls :: MonadVNNLib e m => [CheckedDecl] -> m [Maybe VNNLibDoc]
-compileDecls []       = return []
-compileDecls (d : ds) = do
-    (doc, alterCtx) <- compileDecl d
-    docs <- local alterCtx (compileDecls ds)
-    return (doc : docs)
-
-compileDecl :: MonadVNNLib e m => CheckedDecl -> m (Maybe VNNLibDoc, NetworkCtx -> NetworkCtx)
+compileDecl :: MonadVNNLib e m => CheckedDecl -> m (Maybe VNNLibDoc)
 compileDecl d = case d of
   DeclData{} ->
     normalisationError "Dataset declarations"
 
-  DeclNetw _ ident _ -> do
-    -- Insert the network into the context
-    let alterCtx = Map.insert ident d
-    -- Remove the declaration, as SMTLib does not support it.
-    return (Nothing, alterCtx)
+  DeclNetw{} -> do
+    normalisationError "Network declarations"
 
   DefFun p ident t e ->
-    let alterCtx = id in
     let identDoc = squotes (pretty ident) in
     if not $ isProperty t then
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
-      return (Nothing, alterCtx)
+      return Nothing
     else do
       logDebug $ "Beginning compilation of VNNLib property" <+> identDoc
       incrCallDepth
@@ -213,7 +195,7 @@ compileDecl d = case d of
         decrCallDepth
         logDebug $ "Finished compilation of VNNLib property" <+> identDoc
 
-        return (Just $ VNNLibDoc smtDoc metaNetwork, alterCtx)
+        return $ Just $ VNNLibDoc smtDoc metaNetwork
 
 --------------------------------------------------------------------------------
 -- Step 2: Generate the meta-network
@@ -407,7 +389,7 @@ replaceNetworkApplication :: MonadReplacement e m
                           -> BindingDepth
                           -> m CheckedExpr
 replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
-  network@(NetworkDetails _ _ inputs outputs) <- getNetworkDetailsFromCtx ident
+  network@(NetworkDetails inputs outputs) <- getNetworkDetailsFromCtx ident
   let inputSize  = size inputs
   let inputType  = tElem outputs
   let outputSize = size inputs
@@ -438,7 +420,7 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
     mkMagicVariableSeq tElem indices = (tensorExpr, tensorType)
       where
         tensorElemType   = Builtin ann tElem
-        tensorType       = mkTensor ann tensorElemType [length indices]
+        tensorType       = mkTensorType ann tensorElemType [length indices]
         variables        = map (Var ann . Bound) indices
         tensorExpr       = SeqExpr ann tensorElemType tensorType variables
 
@@ -452,11 +434,11 @@ quantifyOverMagicVariables q metaNetwork prop =
   let (_, _, result) = foldl forNetwork (totalInputs, totalOutputs, prop) metaNetwork in result
   where
     forNetwork :: (Int, Int, CheckedExpr) -> NetworkDetails -> (Int, Int, CheckedExpr)
-    forNetwork (inputIndex, outputIndex, body) (NetworkDetails p _ inputs outputs)  =
+    forNetwork (inputIndex, outputIndex, body) (NetworkDetails inputs outputs)  =
       let startingInputIndex = inputIndex - size inputs in
       let startingOutputIndex = outputIndex - size outputs in
-      let body' = forTensor p Input  startingInputIndex  inputs $
-                  forTensor p Output startingOutputIndex outputs body in
+      let body' = forTensor mempty Input  startingInputIndex  inputs $
+                  forTensor mempty Output startingOutputIndex outputs body in
       (startingInputIndex, startingOutputIndex, body')
 
     forTensor :: CheckedAnn
@@ -474,65 +456,3 @@ quantifyOverMagicVariables q metaNetwork prop =
     mkMagicVariableNames :: InputOrOutput -> [Int] -> [Symbol]
     mkMagicVariableNames io indices = [mkNameWithIndices baseName [i] | i <- indices]
       where baseName = if io == Input then "X" else "Y"
-
---------------------------------------------------------------------------------
--- Network type validation
-
-data NetworkDetails = NetworkDetails
-  { _annotation   :: CheckedAnn
-  , _ident        :: Identifier
-  , inputTensor  :: TensorDetails
-  , outputTensor :: TensorDetails
-  }
-
-networkSize :: NetworkDetails -> Int
-networkSize network = size (inputTensor network) + size (outputTensor network)
-
-data TensorDetails = TensorDetails
-  { size  :: Int
-  , tElem :: Builtin
-  }
-
-getNetworkDetails :: MonadVNNLib e m
-                  => CheckedAnn
-                  -> Identifier
-                  -> CheckedExpr
-                  -> m NetworkDetails
-getNetworkDetails ann ident t@(Pi _ inputBinder output) =
-  either
-    (throwError . mkUnsupportedNetworkType ann ident t)
-    return
-    $ runExcept $ do
-      inputDetails  <- getTensorDetails Input  (typeOf inputBinder)
-      outputDetails <- getTensorDetails Output output
-      return $ NetworkDetails ann ident inputDetails outputDetails
-getNetworkDetails ann ident t                                  =
-  throwError $ mkUnsupportedNetworkType ann ident t NotAFunction
-
-getTensorDetails :: MonadError UnsupportedNetworkType m
-                 => InputOrOutput
-                 -> CheckedExpr
-                 -> m TensorDetails
-getTensorDetails io (App _ (BuiltinContainerType _ Tensor) [tElemArg, tDimsArg]) = do
-  typ   <- getTensorType io (argExpr tElemArg)
-  size  <- getTensorSize io (argExpr tDimsArg)
-  return $ TensorDetails size typ
-getTensorDetails io _ = throwError $ NotATensor io
-
-getTensorType :: MonadError UnsupportedNetworkType m
-              => InputOrOutput
-              -> CheckedExpr
-              -> m Builtin
-getTensorType _  (BuiltinNumericType _ t)
-  | t == Real || t == Rat = return (NumericType t)
-getTensorType io _                           = throwError $ WrongTensorType io
-
-getTensorSize :: MonadError UnsupportedNetworkType m
-              => InputOrOutput
-              -> CheckedExpr
-              -> m Int
-getTensorSize io tDims = case exprHead tDims of
-  (Seq _ [d]) -> case exprHead d of
-    (Literal _ (LNat n)) -> return n
-    _                    -> throwError $ VariableSizeTensor io
-  _           -> throwError $ MultidimensionalTensor io

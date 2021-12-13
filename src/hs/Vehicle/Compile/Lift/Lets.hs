@@ -2,14 +2,11 @@ module Vehicle.Compile.Lift.Lets
   ( letLift
   ) where
 
-import Data.Maybe (mapMaybe)
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.List (find)
 import Data.IntMap qualified as IntMap
 import Data.IntMap (IntMap)
 import Data.Hashable (Hashable(..))
-import Data.Bifunctor (Bifunctor(..))
 
 import Vehicle.Prelude
 import Vehicle.Language.AST

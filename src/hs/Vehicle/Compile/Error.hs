@@ -8,7 +8,6 @@ import Vehicle.Prelude
 import Vehicle.Language.AST
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Backend.Verifier
 
 --------------------------------------------------------------------------------
 -- Compilation errors
@@ -26,14 +25,15 @@ import Vehicle.Compile.Backend.Verifier
 -- prisms from the `lens` package.
 
 data CompileError
-  = ParseError        ParseError
-  | CoreElabError     CoreElabError
-  | FrontendElabError FrontendElabError
-  | ScopeError        ScopeError
-  | TypeError         TypeError
-  | NormError         NormError
-  | AgdaError         AgdaError
-  | SMTLibError       SMTLibError
+  = ParseError                  ParseError
+  | CoreElabError               CoreElabError
+  | FrontendElabError           FrontendElabError
+  | ScopeError                  ScopeError
+  | TypeError                   TypeError
+  | NormError                   NormError
+  | NetworkStandardisationError NetworkStandardisationError
+  | AgdaError                   AgdaError
+  | SMTLibError                 SMTLibError
   deriving (Show)
 
 --------------------------------------------------------------------------------
@@ -213,24 +213,40 @@ instance AsAgdaError CompileError where
   mkContainerDimensionError p e   = AgdaError $ ContainerDimensionError p e
 
 --------------------------------------------------------------------------------
--- SMTLib errors
+-- Network standardisation error
+
+data InputOrOutput
+  = Input
+  | Output
+  deriving (Show, Eq)
 
 -- | Reasons why we might not support the network type.
 data UnsupportedNetworkType
   = NotAFunction
+  | NonExplicitArguments   CheckedBinder
+  | NonEqualArguments      CheckedExpr CheckedExpr
   | NotATensor             InputOrOutput
   | MultidimensionalTensor InputOrOutput
   | VariableSizeTensor     InputOrOutput
   | WrongTensorType        InputOrOutput
   deriving (Show)
 
-instance Pretty UnsupportedNetworkType where
-  pretty = \case
-    NotAFunction              -> "the network type is not a function"
-    NotATensor io             -> "the" <+> pretty io <+> "of the network is not a tensor"
-    MultidimensionalTensor io -> "the" <+> pretty io <+> "of the network is not a 1D tensor"
-    VariableSizeTensor io     -> "the" <+> pretty io <+> "of the network is a tensor with a non-fixed dimension"
-    WrongTensorType io        -> "the type of the" <+> pretty io <+> "tensor of the network is not supported"
+data NetworkStandardisationError
+  = UnsupportedNetworkType  CheckedAnn Identifier CheckedExpr [Builtin] UnsupportedNetworkType
+  deriving (Show)
+
+class AsNetworkStandardisationError e where
+  mkUnsupportedNetworkType  :: CheckedAnn -> Identifier -> CheckedExpr -> [Builtin] -> UnsupportedNetworkType -> e
+
+instance AsNetworkStandardisationError NetworkStandardisationError where
+  mkUnsupportedNetworkType  = UnsupportedNetworkType
+
+instance AsNetworkStandardisationError CompileError where
+  mkUnsupportedNetworkType ann ident e allowed err =
+    NetworkStandardisationError $ UnsupportedNetworkType ann ident e allowed err
+
+--------------------------------------------------------------------------------
+-- SMTLib errors
 
 data SMTLibError
   = NoPropertiesFound
@@ -239,7 +255,6 @@ data SMTLibError
   | UnsupportedQuantifierSequence CheckedAnn Identifier
   | NonTopLevelQuantifier         CheckedAnn Identifier Quantifier Symbol
   -- VNNLib
-  | UnsupportedNetworkType        CheckedAnn Identifier CheckedExpr UnsupportedNetworkType
   | NoNetworkUsedInProperty       CheckedAnn Identifier
   deriving (Show)
 
@@ -249,7 +264,6 @@ class AsSMTLibError e where
   mkUnsupportedVariableType       :: CheckedAnn -> Identifier -> Symbol -> CheckedExpr -> [Builtin] -> e
   mkUnsupportedQuantifierSequence :: CheckedAnn -> Identifier ->  e
   mkNonTopLevelQuantifier         :: CheckedAnn -> Identifier -> Quantifier -> Symbol -> e
-  mkUnsupportedNetworkType        :: CheckedAnn -> Identifier -> CheckedExpr -> UnsupportedNetworkType -> e
   mkNoNetworkUsedInProperty       :: CheckedAnn -> Identifier -> e
 
 instance AsSMTLibError SMTLibError where
@@ -258,7 +272,6 @@ instance AsSMTLibError SMTLibError where
   mkUnsupportedVariableType       = UnsupportedVariableType
   mkUnsupportedQuantifierSequence = UnsupportedQuantifierSequence
   mkNonTopLevelQuantifier         = NonTopLevelQuantifier
-  mkUnsupportedNetworkType        = UnsupportedNetworkType
   mkNoNetworkUsedInProperty       = NoNetworkUsedInProperty
 
 instance AsSMTLibError CompileError where
@@ -267,5 +280,15 @@ instance AsSMTLibError CompileError where
   mkUnsupportedVariableType ann ident s e bs  = SMTLibError $ UnsupportedVariableType ann ident s e bs
   mkUnsupportedQuantifierSequence ann ident   = SMTLibError $ UnsupportedQuantifierSequence ann ident
   mkNonTopLevelQuantifier ann ident q s       = SMTLibError $ NonTopLevelQuantifier ann ident q s
-  mkUnsupportedNetworkType ann ident e err    = SMTLibError $ UnsupportedNetworkType ann ident e err
   mkNoNetworkUsedInProperty ann ident         = SMTLibError $ NoNetworkUsedInProperty ann ident
+
+--------------------------------------------------------------------------------
+-- Some useful developer errors
+
+unexpectedExprError :: Doc a -> Doc a
+unexpectedExprError name =
+  "encountered unexpected expression" <+> squotes name <+> "during compilation."
+
+normalisationError :: Doc a -> b
+normalisationError name = developerError $
+  unexpectedExprError name <+> "We should have normalised this out."

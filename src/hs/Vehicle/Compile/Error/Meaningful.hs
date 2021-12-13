@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 
 module Vehicle.Compile.Error.Meaningful where
@@ -55,14 +56,15 @@ class MeaningfulError e where
 
 instance MeaningfulError CompileError where
   details = \case
-    ParseError        e -> details e
-    CoreElabError     e -> details e
-    FrontendElabError e -> details e
-    ScopeError        e -> details e
-    TypeError         e -> details e
-    NormError         e -> details e
-    AgdaError         e -> details e
-    SMTLibError       e -> details e
+    ParseError                  e -> details e
+    CoreElabError               e -> details e
+    FrontendElabError           e -> details e
+    ScopeError                  e -> details e
+    TypeError                   e -> details e
+    NetworkStandardisationError e -> details e
+    NormError                   e -> details e
+    AgdaError                   e -> details e
+    SMTLibError                 e -> details e
 
 instance MeaningfulError ParseError where
   -- TODO need to revamp this error, BNFC must provide some more
@@ -201,6 +203,38 @@ instance MeaningfulError AgdaError where
             "index" <+> pretty index <+> "is larger than the first dimension" <+> pretty size <+>
             "when trying to compile" <+> pretty At
 
+instance Pretty InputOrOutput where
+  pretty = \case
+    Input  -> "input"
+    Output -> "output"
+
+instance Pretty UnsupportedNetworkType where
+  pretty = \case
+    NonExplicitArguments binder -> "found a non-explicit argument" <+> squotes (prettyFriendly binder)
+    NonEqualArguments t1 t2     -> "found two non-equal input types" <+> squotes (prettyFriendly t1)
+                                    <+> "and" <+> squotes (prettyFriendly t2)
+    NotAFunction                -> "the network type is not a function"
+    NotATensor io               -> "the" <+> pretty io <+> "of the network is not a tensor"
+    MultidimensionalTensor io   -> "the" <+> pretty io <+> "of the network is not a 1D tensor"
+    VariableSizeTensor io       -> "the" <+> pretty io <+> "of the network is a tensor with a non-fixed dimension"
+    WrongTensorType io          -> "the type of the" <+> pretty io <+> "tensor of the network is not supported"
+
+instance MeaningfulError NetworkStandardisationError where
+  details = \case
+    UnsupportedNetworkType ann ident t allowedElementTypes detailedError -> UError $ UserError
+      { provenance = provenanceOf ann
+      , problem    = "Found a" <+> squotes (pretty Network) <+> "declaration" <+> squotes (pretty ident) <+>
+                     "whose type" <+> squotes (prettyFriendlyDBClosed t) <+> "is not currently unsupported." <+>
+                     "Currently only networks of types:" <> indent 2 (
+                        "1." <+> squotes "Tensor A [m] -> Tensor B [n]" <> line <>
+                        "2." <+> squotes "A -> ... -> A -> B" <> line) <>
+                     "are allowed, where A and B are one of" <+> pretty allowedElementTypes <+>
+                     "and" <+> squotes "m" <+> "and" <+> squotes "n" <+> "are literals." <+>
+                     "In particular" <+> pretty detailedError <+> "."
+      , fix        = "Change the network type."
+      }
+
+
 instance MeaningfulError SMTLibError where
   details = \case
     UnsupportedDecl ann ident decType -> let dType = squotes (pretty decType) in UError $ UserError
@@ -244,17 +278,6 @@ instance MeaningfulError SMTLibError where
       , fix        = "An expression is labelled as a property by giving it type" <+> squotes (pretty Prop) <+> "."
       }
 
-    -- VNNLib
-    UnsupportedNetworkType ann ident t detailedError -> UError $ UserError
-      { provenance = provenanceOf ann
-      , problem    = "Found a" <+> squotes (pretty Network) <+> "declaration" <+> squotes (pretty ident) <+>
-                     "whose type" <+> squotes (prettyFriendlyDBClosed t) <+> "is not currently unsupported." <+>
-                     "Currently only networks of type" <+> squotes "Tensor A [m] -> Tensor B [n]" <+>
-                     "where" <+> squotes "m" <+> "and" <+> squotes "n" <+> "are integer literals are allowed." <+>
-                     "In particular" <+> pretty detailedError <+> "."
-      , fix        = "Change the network type."
-      }
-
     NoNetworkUsedInProperty ann ident -> UError $ UserError
       { provenance = provenanceOf ann
       , problem    = "After normalisation, the property" <+>
@@ -263,4 +286,3 @@ instance MeaningfulError SMTLibError where
                      "therefore VNNLib is the wrong compilation target"
       , fix        = "Choose a different compilation target than VNNLib"
       }
-

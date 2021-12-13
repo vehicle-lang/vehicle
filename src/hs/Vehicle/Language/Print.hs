@@ -273,9 +273,11 @@ newtype ViaBnfcFrontend a = ViaBnfcFrontend a
 instance Frontend.Print a => Pretty (ViaBnfcFrontend a) where
   pretty (ViaBnfcFrontend e) = pretty $ bnfcPrintHack (Frontend.printTree e)
 
-deriving via (ViaBnfcFrontend BF.Prog) instance Pretty BF.Prog
-deriving via (ViaBnfcFrontend BF.Decl) instance Pretty BF.Decl
-deriving via (ViaBnfcFrontend BF.Expr) instance Pretty BF.Expr
+deriving via (ViaBnfcFrontend BF.Prog)   instance Pretty BF.Prog
+deriving via (ViaBnfcFrontend BF.Decl)   instance Pretty BF.Decl
+deriving via (ViaBnfcFrontend BF.Expr)   instance Pretty BF.Expr
+deriving via (ViaBnfcFrontend BF.Binder) instance Pretty BF.Binder
+deriving via (ViaBnfcFrontend BF.Arg)    instance Pretty BF.Arg
 
 -- BNFC printer treats the braces for implicit arguments as layout braces and
 -- therefore adds a ton of newlines everywhere. This hack attempts to undo this.

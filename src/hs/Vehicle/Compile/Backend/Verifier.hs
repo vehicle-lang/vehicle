@@ -2,23 +2,10 @@
 module Vehicle.Compile.Backend.Verifier where
 
 import Vehicle.Prelude
-
-data InputOrOutput
-  = Input
-  | Output
-  deriving (Show, Eq)
-
-instance Pretty InputOrOutput where
-  pretty = \case
-    Input  -> "input"
-    Output -> "output"
+import Vehicle.Compile.Error
 
 --------------------------------------------------------------------------------
 -- Errors
-
-unexpectedExprError :: Doc a -> Doc a
-unexpectedExprError name =
-  "encountered unexpected expression" <+> squotes name <+> "during compilation."
 
 typeError :: Doc a -> b
 typeError name = developerError $
@@ -31,7 +18,3 @@ visibilityError name = developerError $
 resolutionError :: Doc a -> b
 resolutionError name = developerError $
   unexpectedExprError name <+> "We should have resolved this during type-checking."
-
-normalisationError :: Doc a -> b
-normalisationError name = developerError $
-  unexpectedExprError name <+> "We should have normalised this out."

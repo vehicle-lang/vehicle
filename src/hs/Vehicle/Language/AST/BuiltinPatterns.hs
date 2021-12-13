@@ -35,14 +35,21 @@ pattern
       [ ExplicitArg ann tElem
       , ExplicitArg ann tDims ]
 
-mkTensor :: ann
-         -> Expr binder var ann
-         -> [Int]
-         -> Expr binder var ann
-mkTensor ann tElem dims =
-  let listType = ListType ann (Builtin ann (NumericType Nat)) in
+mkTensorDims :: ann
+             -> [Int]
+             -> Expr binder var ann
+mkTensorDims ann dims =
+  let listType = ListType ann (NatType ann) in
   let dimExprs = fmap (Literal ann . LNat) dims in
-  let dimList  = SeqExpr ann (Builtin ann (NumericType Nat)) listType dimExprs in
+  let dimList  = SeqExpr ann (NatType ann) listType dimExprs in
+  dimList
+
+mkTensorType :: ann
+             -> Expr binder var ann
+             -> [Int]
+             -> Expr binder var ann
+mkTensorType ann tElem dims =
+  let dimList = mkTensorDims ann dims in
   App ann (BuiltinContainerType ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
 
 --------------------------------------------------------------------------------

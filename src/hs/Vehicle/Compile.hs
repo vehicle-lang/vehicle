@@ -26,6 +26,7 @@ import Vehicle.Compile.Normalise (normalise)
 import Vehicle.Compile.Backend.SMTLib (compileToSMTLib, SMTDoc(..))
 import Vehicle.Compile.Backend.VNNLib (compileToVNNLib, VNNLibDoc(..))
 import Vehicle.Compile.Backend.Agda (compileToAgda, AgdaOptions(..))
+import Vehicle.Compile.StandardiseNetworks (standardiseNetworks)
 
 data CompileOptions = CompileOptions
   { inputFile      :: FilePath
@@ -102,8 +103,9 @@ toSMTLib logFile options prog = do
   mapM_ (\doc -> writeResultToFile options (Verifier SMTLib) (text doc)) propertyDocs
 
 toVNNLib :: LogFilePath -> CompileOptions -> CheckedProg -> IO ()
-toVNNLib logFile options prog = do
-  propertyDocs <- fromLoggedEitherIO logFile (compileToVNNLib prog)
+toVNNLib logFile options prog1 = do
+  (networkMap, prog2) <- fromLoggedEitherIO logFile $ standardiseNetworks prog1
+  propertyDocs <- fromLoggedEitherIO logFile (compileToVNNLib networkMap prog2)
   mapM_ (\doc -> writeResultToFile options (Verifier VNNLib) (text (smtDoc doc))) propertyDocs
 
 -- |Generate the file header given the token used to start comments in the

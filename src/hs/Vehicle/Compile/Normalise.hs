@@ -323,7 +323,7 @@ makeTensorLit :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedE
 makeTensorLit ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)
   where
     mkTensorSeq :: [Int] -> [CheckedExpr] -> CheckedExpr
-    mkTensorSeq ds = SeqExpr ann tElem (mkTensor ann tElem ds)
+    mkTensorSeq ds = SeqExpr ann tElem (mkTensorType ann tElem ds)
 
     go []       [] = mkTensorSeq []       []
     go [d]      es = mkTensorSeq [d]      es

@@ -71,6 +71,7 @@ library
                       , Vehicle.Compile.Normalise
                       , Vehicle.Compile.Lift.Lets
                       , Vehicle.Compile.Simplify
+                      , Vehicle.Compile.StandardiseNetworks
                       , Vehicle.Compile.SupplyNames
                       , Vehicle.Compile.Descope
                       , Vehicle.Compile.Delaborate.Core

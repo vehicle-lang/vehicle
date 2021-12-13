@@ -309,16 +309,16 @@ instance Pretty DeclType where
 -- | Type of top-level declarations.
 data Decl binder var ann
   = DeclNetw
-    Provenance      -- Location in source file.
-    Identifier      -- Network name.
+    Provenance             -- Location in source file.
+    Identifier             -- Network name.
     (Expr binder var ann)  -- Network type.
   | DeclData
-    Provenance      -- Location in source file.
-    Identifier      -- Dataset name.
+    Provenance             -- Location in source file.
+    Identifier             -- Dataset name.
     (Expr binder var ann)  -- Dataset type.
   | DefFun
-    Provenance      -- Location in source file.
-    Identifier      -- Bound function name.
+    Provenance             -- Location in source file.
+    Identifier             -- Bound function name.
     (Expr binder var ann)  -- Bound function type.
     (Expr binder var ann)  -- Bound function body.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
