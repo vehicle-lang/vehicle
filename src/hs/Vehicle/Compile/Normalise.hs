@@ -60,7 +60,8 @@ showExit old mNew = do
   new <- mNew
   decrCallDepth
   when (old /= new) $
-    logDebug ("normalising" <+> prettySimple old)
+    logDebug "Hit"
+  logDebug ("normalising" <+> prettySimple old)
   logDebug ("norm-exit " <+> prettySimple new)
   return new
 
@@ -310,7 +311,7 @@ nfQuantifier ann q binder body = case typeOf binder of
         -- Construct the corresponding nested tensor expression
         let tensor     = makeTensorLit ann tElem dims allExprs
         -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
-        let body1      = liftDBIndices tensorSize body
+        let body1      = liftFreeDBIndices tensorSize body
         -- Substitute throught the tensor expression for the old top-level binder
         body2 <- nf $ substIntoAtLevel tensorSize tensor body1
 

@@ -10,7 +10,7 @@ module Vehicle.Language.AST.DeBruijn
   , DBArg
   , DBBinder
   , BindingDepth
-  , liftDBIndices
+  , liftFreeDBIndices
   , substInto
   , substIntoAtLevel
   , patternOfArgs
@@ -122,11 +122,11 @@ instance DeBruijnFunctor ann (Binder DBBinding DBVar) where
 -- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
 
 -- | Lift all deBruin indices that refer to environment variables by the provided depth.
-liftDBIndices :: Semigroup ann
-              => BindingDepth
-              -> DBExpr ann  -- ^ expression to lift
-              -> DBExpr ann  -- ^ the result of the lifting
-liftDBIndices j e = runReader (alter id alterVar e) (0 , ())
+liftFreeDBIndices :: Semigroup ann
+                  => BindingDepth
+                  -> DBExpr ann  -- ^ expression to lift
+                  -> DBExpr ann  -- ^ the result of the lifting
+liftFreeDBIndices j e = runReader (alter id alterVar e) (0 , ())
   where
     alterVar :: UpdateVariable (Reader (BindingDepth, ())) () ann
     alterVar i ann (d, _) = return (Var ann (Bound i'))
@@ -136,10 +136,10 @@ liftDBIndices j e = runReader (alter id alterVar e) (0 , ())
 
 -- | De Bruijn aware substitution of one expression into another
 substIntoAtLevel :: Semigroup ann
-                 => Int              -- ^ The current binding depth
-                 -> DBExpr ann -- ^ expression to substitute
-                 -> DBExpr ann -- ^ term to substitute into
-                 -> DBExpr ann -- ^ the result of the substitution
+                 => BindingDepth -- ^ The current binding depth
+                 -> DBExpr ann   -- ^ expression to substitute
+                 -> DBExpr ann   -- ^ term to substitute into
+                 -> DBExpr ann   -- ^ the result of the substitution
 substIntoAtLevel level sub e = runReader (alter binderUpdate alterVar e) (level , sub)
   where
     alterVar i ann (d, subExpr) = case compare i d of
@@ -153,7 +153,7 @@ substIntoAtLevel level sub e = runReader (alter binderUpdate alterVar e) (level 
 
     -- Whenever we go underneath the binder we must lift
     -- all the indices in the substituted expression
-    binderUpdate = liftDBIndices 1
+    binderUpdate = liftFreeDBIndices 1
 
 -- | De Bruijn aware substitution of one expression into another
 substInto :: Semigroup ann
@@ -192,4 +192,4 @@ substAll sub e = runReaderT (alter binderUpdate alterVar e) (0, sub)
       else
         return $ Var ann (Bound i)
 
-    binderUpdate = IM.map (liftDBIndices 1)
+    binderUpdate = IM.map (liftFreeDBIndices 1)

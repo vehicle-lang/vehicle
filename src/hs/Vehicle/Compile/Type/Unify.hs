@@ -60,6 +60,13 @@ solveUnificationConstraint ctx (e1, e2) = do
         , solvedMetas    = mempty
         }
 
+    (PrimDict _ t1, []) :~: (PrimDict _ t2, []) -> do
+      let tConstraint = Constraint ctx (Unify (t1, t2))
+      return Progress
+        { newConstraints = [tConstraint]
+        , solvedMetas    = mempty
+        }
+
     -- We ASSUME that all terms here are in normal form, so there
     -- will never be an unreduced redex.
     (Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, [])

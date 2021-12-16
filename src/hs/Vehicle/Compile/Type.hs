@@ -319,7 +319,7 @@ check expectedType expr = do
         let ann = (provenanceOf binder, TheMachine)
 
         -- Check if the type of the expression matches the expected result type.
-        checkedExpr <- check resultType (liftDBIndices 1 e)
+        checkedExpr <- check resultType (liftFreeDBIndices 1 e)
 
         -- Create a new binder mirroring the implicit Pi binder expected
         let lamBinder = Binder ann Implicit (nameOf binder) (typeOf binder)
@@ -348,7 +348,7 @@ check expectedType expr = do
     (_, e@(Literal ann _))     -> viaInfer ann              expectedType e
     (_, e@(Seq     ann _))     -> viaInfer ann              expectedType e
     (_, e@(Ann     ann _ _))   -> viaInfer ann              expectedType e
-    (_, PrimDict{})            -> developerError "PrimDict should never be type-checked"
+    (_, e@(PrimDict ann _))    -> viaInfer ann              expectedType e
 
   showCheckExit res
   return res
@@ -374,10 +374,6 @@ infer e = do
       checkedExpr <- check checkedExprType expr
       return (Ann ann checkedExpr checkedExprType , checkedExprType)
 
-    App p fun args -> do
-      (checkedFun, checkedFunType) <- infer fun
-      inferApp p checkedFun checkedFunType (NonEmpty.toList args)
-
     Pi p binder resultType -> do
       (checkedBinderType, typeOfBinderType) <- infer (typeOf binder)
 
@@ -387,12 +383,33 @@ infer e = do
         let checkedBinder = replaceBinderType checkedBinderType binder
         return (Pi p checkedBinder checkedResultType , maxResultType)
 
+    -- Literals are slightly tricky to type-check, as by default they
+    -- probably are standalone, i.e. not wrapped in an `App`, in which
+    -- case we need to insert an `App` around them. However, if the
+    -- user has provided an implicit argument to them or we are type
+    -- checking a second time, then the `App` will already be present.
+    -- One approach might be to pass a boolean flag through `infer`
+    -- which signals whether the parent node is an `App`, however
+    -- for now it's simplier to split into the following two cases:
+    App p (Literal p' l) args -> do
+      let (checkedLit, checkedLitType) = inferLiteral p' l
+      inferApp p checkedLit checkedLitType (NonEmpty.toList args)
+
+    Literal p l -> do
+      let (checkedLit, checkedLitType) = inferLiteral p l
+      inferApp p checkedLit checkedLitType []
+
+
+    App p fun args -> do
+      (checkedFun, checkedFunType) <- infer fun
+      inferApp p checkedFun checkedFunType (NonEmpty.toList args)
+
     Var ann (Bound i) -> do
       -- Lookup the type of the variable in the context.
       ctx <- getBoundCtx
       case ctx !!? i of
         Just (_, checkedType) -> do
-          let liftedCheckedType = liftDBIndices (i+1) checkedType
+          let liftedCheckedType = liftFreeDBIndices (i+1) checkedType
           return (Var ann (Bound i), liftedCheckedType)
         Nothing      -> developerError $
           "DBIndex" <+> pretty i <+> "out of bounds when looking" <+>
@@ -438,9 +455,6 @@ infer e = do
         let t' = Pi p (removeBinderName checkedBinder) typeOfBody
         return (Lam p checkedBinder checkedBody , t')
 
-    Literal p l ->
-      inferApp p (Literal p l) (typeOfLiteral p l) []
-
     Builtin p op -> do
       return (Builtin p op, typeOfBuiltin p op)
 
@@ -471,10 +485,15 @@ infer e = do
 
       return (checkedSeq , typeOfContainer)
 
-    PrimDict{} -> developerError "PrimDict should never be type-checked"
+    PrimDict ann t -> do
+      (t', _) <- infer t
+      return (PrimDict ann t, t')
 
   showInferExit res
   return res
+
+inferLiteral :: UncheckedAnn -> Literal -> (CheckedExpr, CheckedExpr)
+inferLiteral p l = (Literal p l, typeOfLiteral p l)
 
 -- TODO: unify DeclNetw and DeclData
 inferDecls :: TCM e m => [UncheckedDecl] -> m [CheckedDecl]

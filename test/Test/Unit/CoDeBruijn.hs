@@ -25,7 +25,7 @@ import Test.Utils
 -- Alpha equivalence tests
 
 coDeBruijnTests :: TestTree
-coDeBruijnTests = testGroup "CoDeBruijn indices"
+coDeBruijnTests = testGroup "CoDeBruijnIndices"
   [ testCase "type"      $ toFromCoDB "Nat"
   , testCase "typeFun"   $ toFromCoDB "Nat -> Nat"
   , testCase "lam"       $ toFromCoDB "\\(x : Nat) -> x"

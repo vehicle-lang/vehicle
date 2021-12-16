@@ -170,8 +170,10 @@ instance Elab B.Name V.Identifier where
 instance Elab B.Binder V.InputBinder where
   elab (B.ExplicitBinder    n)         = return $ mkBinder n V.Explicit Nothing
   elab (B.ImplicitBinder    n)         = return $ mkBinder n V.Implicit Nothing
+  elab (B.InstanceBinder    n)         = return $ mkBinder n V.Instance Nothing
   elab (B.ExplicitBinderAnn n _tk typ) = mkBinder n V.Explicit . Just <$> elab typ
   elab (B.ImplicitBinderAnn n _tk typ) = mkBinder n V.Implicit . Just <$> elab typ
+  elab (B.InstanceBinderAnn n _tk typ) = mkBinder n V.Instance . Just <$> elab typ
 
 mkBinder :: B.Name -> V.Visibility -> Maybe V.InputExpr -> V.InputBinder
 mkBinder n v e = V.Binder (V.visProv v p, V.TheUser) v (Just (tkSymbol n)) t

@@ -124,11 +124,14 @@ instance Delaborate (V.Expr Symbol Symbol) B.Expr where
     V.Let{}         -> delabLet expr
     V.Lam{}         -> delabLam expr
     V.Meta _ m      -> return $ B.Var (mkToken B.Name (layoutAsText (pretty m)))
-    V.PrimDict _ _  -> developerError "Instance arguments not currently in grammar"
 
     V.App _ (V.Builtin _ b) args -> delabBuiltin b <$> traverse (delabM . V.argExpr) (NonEmpty.toList args)
     V.App _ fun args             -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
     V.Builtin _ op               -> return $ delabBuiltin op []
+
+    -- This is a hack to get printing of PrimDicts to work without explicitly including
+    -- them in the grammar
+    V.PrimDict _ t  -> B.App (B.Var (mkToken B.Name "PrimDict")) . B.ExplicitArg <$> delabM t
 
 instance Delaborate (V.Arg Symbol Symbol) B.Arg where
   delabM (V.Arg _i v e) = case v of
@@ -141,7 +144,7 @@ instance Delaborate (V.Binder Symbol Symbol) B.Binder where
     -- TODO track whether type was provided manually and so use ExplicitBinderAnn
     V.Explicit -> return $ B.ExplicitBinder $ delabSymbol n
     V.Implicit -> return $ B.ImplicitBinder $ delabSymbol n
-    V.Instance -> developerError "User specified instance arguments not yet supported"
+    V.Instance -> return $ B.InstanceBinder $ delabSymbol n
 
 delabLetBinding :: MonadDelab m => (V.NamedBinder ann, V.NamedExpr ann) -> m B.LetDecl
 delabLetBinding (binder, bound) = B.LDecl <$> delabM binder <*> delabM bound

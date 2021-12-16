@@ -1,5 +1,5 @@
-module Vehicle.Compile.Lift.LetExpr
-  ( letLift
+module Vehicle.Compile.LetInsertion
+  ( insertLets
   ) where
 
 import Control.Monad (zipWithM, join)
@@ -8,7 +8,6 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.IntMap qualified as IntMap
 import Data.IntMap (IntMap)
-import Data.Hashable (Hashable(..))
 import Data.Bifunctor (Bifunctor(..))
 import Data.Maybe (mapMaybe)
 
@@ -16,10 +15,11 @@ import Vehicle.Prelude
 import Vehicle.Language.AST
 import Vehicle.Language.Print
 import Vehicle.Compile.CoDeBruijnify
+import Vehicle.Compile.AlphaEquivalence
 
-letLift :: MonadLogger m => (CheckedCoDBExpr -> Bool) -> CheckedExpr -> m CheckedExpr
-letLift exprFilter dbExpr = do
-  logDebug $ line <> "Beginning common subexpression analysis"
+insertLets :: MonadLogger m => (CheckedCoDBExpr -> Bool) -> CheckedExpr -> m CheckedExpr
+insertLets exprFilter dbExpr = do
+  logDebug $ line <> "Beginning let insertion"
   incrCallDepth
 
   let cdbExpr :: CoDBExpr CheckedAnn = toCoDBExpr dbExpr
@@ -28,13 +28,14 @@ letLift exprFilter dbExpr = do
   logDebug $ line <> "Subexpressions found:" <+> pretty (show csMap)
 
   let cses = mapMaybe convertCSItem (IntMap.elems csMap)
+  let sortedCSEs = partialSort (\a b -> prefixOrd (snd a) (snd b)) cses
 
-  logDebug $ line <> "Subexpressions to remove:" <+> prettySimple cses
+  logDebug $ line <> "Let expressions to insert:" <+> prettySimple cses <> line
 
-  result <- elimCSE cses dbExpr
+  result <- elimCSE sortedCSEs dbExpr
 
   decrCallDepth
-  logDebug $ line <> "Finished common subexpression analysis"
+  logDebug $ line <> "Finished let insertion"
   return result
 
 
@@ -54,7 +55,7 @@ instance Show a => Show (CSIItem a) where
 
 instance Semigroup a => Semigroup (CSIItem a) where
   (CSItem e1 m ps) <> (CSItem e2 n qs)
-    | e1 == e2  = CSItem e1 (m + n) (ps <> qs)
+    | alphaEq e1 e2  = CSItem e1 (m + n) (ps <> qs)
     | otherwise = developerError $
       "Merging non-identical subexpressions during let lifting:" <> line <>
       indent 2 (pretty (show e1) <> line <> pretty (show e2))
@@ -63,19 +64,16 @@ instance Functor CSIItem where
   fmap f (CSItem e m ps) = CSItem e m (f ps)
 
 -- | Common sub-expression map from hashes to expressions
-type CSIMap a = IntMap (CSIItem a)
-
-merge :: CSIMap PositionList -> CSIMap PositionList -> CSIMap PositionList
-merge xs ys = IntMap.unionWith (<>) xs (fmap (fmap There) ys)
+type CSIMap = IntMap (CSIItem PositionTree)
 
 type MonadCSIdent m = (MonadLogger m, MonadReader (CheckedCoDBExpr -> Bool) m)
 
 class CommonSubexpressionIdentification a where
-  findCSs :: MonadCSIdent m => a -> m (CSIMap PositionTree)
+  findCSs :: MonadCSIdent m => a -> m CSIMap
 
 instance CommonSubexpressionIdentification CheckedCoDBExpr where
   findCSs expr = do
-    showEntry expr
+    showIdentEntry expr
     res <- case (recCoDB expr :: ExprC CheckedAnn) of
       TypeC{}                       -> mkLeaf
       VarC{}                        -> mkLeaf
@@ -90,99 +88,111 @@ instance CommonSubexpressionIdentification CheckedCoDBExpr where
       LamC      _ binder body       -> mkNode expr [findCSs binder, findCSs body]
       SeqC      _ xs                -> mkNode expr (fmap findCSs xs)
       PrimDictC _ e                 -> mkNode expr [findCSs e]
-    showExit res
+    showIdentExit res
     return res
 
 instance CommonSubexpressionIdentification (CoDBBinder CheckedAnn) where
-  findCSs binder = case (recCoDB binder :: BinderC CheckedAnn) of
-    (BinderC _ _ _ t) -> findCSs t
+  findCSs binder = if visibilityOf (fst binder) /= Explicit
+    then return mempty
+    else case (recCoDB binder :: BinderC CheckedAnn) of
+      (BinderC _ _ _ t) -> findCSs t
 
 instance CommonSubexpressionIdentification (CoDBArg CheckedAnn) where
-  findCSs arg = case (recCoDB arg :: ArgC CheckedAnn) of
+  findCSs arg = if visibilityOf (fst arg) /= Explicit
+    then return mempty
+    else case (recCoDB arg :: ArgC CheckedAnn) of
     (ArgC _ _ e) -> findCSs e
 
-mkLeaf :: MonadCSIdent m => m (CSIMap PositionTree)
+mkLeaf :: MonadCSIdent m => m CSIMap
 mkLeaf = return mempty
 
-mkNode :: MonadCSIdent m => CoDBExpr CheckedAnn -> [m (CSIMap PositionTree)] -> m (CSIMap PositionTree)
-mkNode e maps1 = do
-  logDebug ("node: " <> prettyFriendly e)
+mkNode :: MonadCSIdent m => CoDBExpr CheckedAnn -> [m CSIMap] -> m CSIMap
+mkNode e mCSIMaps = do
+  logDebug ("node: " <> align (prettyVerbose e))
 
   -- Update the maps
-  csMaps' <- sequence maps1
-  let maps2 = fmap (fmap (fmap Here)) csMaps'
-  let maps3 = foldr1 merge maps2
-  let maps4 = fmap (fmap Node) maps3
+  csiMaps <- sequence mCSIMaps
+  let mergedCSIMap = nodeCSIMap csiMaps
 
-  -- Check if we should inser the current expression
+  -- Check if we should insert the current expression
   exprFilter <- ask
-  let maps5 = if exprFilter e
-      then IntMap.insertWith (duplicateError e csMaps') (hash (mkHashable e)) (CSItem e 1 Leaf) maps4
-      else maps4
+  let maps5 = if not (exprFilter e)
+      then mergedCSIMap
+      else
+        let eHash = hashCoDBExpr e in
+        let item  = CSItem e 1 Leaf in
+        IntMap.insertWith (duplicateError e csiMaps) eHash item mergedCSIMap
 
   -- Return the result
   return maps5
 
+nodeCSIMap :: [CSIMap] -> CSIMap
+nodeCSIMap []   = mempty
+nodeCSIMap csis = fmap (fmap Node) (foldr1 merge $ fmap (fmap (fmap Here)) csis)
+  where
+    merge :: IntMap (CSIItem PositionList)
+          -> IntMap (CSIItem PositionList)
+          -> IntMap (CSIItem PositionList)
+    merge xs ys = IntMap.unionWith (<>) xs (fmap (fmap There) ys)
+
 duplicateError :: CoDBExpr ann
-               -> [CSIMap PositionTree]
+               -> [CSIMap]
                -> CSIItem PositionTree
                -> CSIItem PositionTree
                -> CSIItem PositionTree
-duplicateError e maps _ _ = let e' = mkHashable e in developerError $
-  "During let-lifting found duplicate sub-expression" <+> squotes (pretty (show e')) <+>
+duplicateError e maps _ _ = developerError $
+  "During let-lifting found duplicate sub-expression" <+> squotes (prettyVerbose e) <+>
   "containing itself..." <> line <>
-  "Hash code =" <+> pretty (hash e') <> line <>
+  "Hash code =" <+> pretty (hashCoDBExpr e) <> line <>
   "Maps = " <+> pretty (show maps)
 
-showEntry :: MonadCSIdent m => CheckedCoDBExpr -> m ()
-showEntry e = do
-  logDebug ("cs-ident-entry " <> prettyVerbose e)
+showIdentEntry :: MonadCSIdent m => CheckedCoDBExpr -> m ()
+showIdentEntry e = do
+  logDebug ("cs-ident-entry " <> align (prettySimple e))
   incrCallDepth
 
-showExit :: MonadCSIdent m => CSIMap PositionTree -> m ()
-showExit _maps = do
+showIdentExit :: MonadCSIdent m => CSIMap -> m ()
+showIdentExit maps = do
   decrCallDepth
-  logDebug "cs-ident--exit "
+  logDebug ("cs-ident-exit " <> align (prettySimple (fmap csItemToPair (IntMap.elems maps))))
 
 --------------------------------------------------------------------------------
 -- Common subexpression lifting
 
-type CommonSubExprs = [(PositionTree, CheckedExpr)]
+type CommonSubExprs = [(CheckedExpr, PositionTree)]
 
-convertCSItem :: CSIItem PositionTree -> Maybe (PositionTree, CheckedExpr)
+csItemToPair :: CSIItem PositionTree -> (CheckedExpr, PositionTree)
+csItemToPair item = (fromCoDB (expr item), positions item)
+
+convertCSItem :: CSIItem PositionTree -> Maybe (CheckedExpr, PositionTree)
 convertCSItem item
   | quantity item <= 1 = Nothing
-  | otherwise          = Just (positions item, fromCoDB (expr item))
-
-removePrefix :: PositionTree -> PositionTree -> PositionTree
-removePrefix _remove p = p -- TODO
-
-unnodeCSEs :: CommonSubExprs -> [CommonSubExprs]
-unnodeCSEs cses
-  | null cses = repeat mempty
-  | otherwise = distrib $ fmap (first unnode) cses
-  where
-    distrib :: [([Maybe PositionTree], CheckedExpr)] -> [CommonSubExprs]
-    distrib x = [ mapMaybe (\(xs,e) -> fmap (,e) (join (xs !!? i))) x | i <- [0..]]
-
+  | otherwise          = Just (csItemToPair item)
 
 -- CSE (x + y) x y
 
 -- ((x + y) / (x + y)) + y
 
--- let y = ... in let x = ... in let z = x + y in z / z + y
+-- let y = ... in (let x = ... in let z = x + y in z / z) + y
 
-insertLets :: CommonSubExprs -> CommonSubExprs -> CheckedExpr
-           -> (CommonSubExprs, CheckedExpr, CheckedExpr -> CheckedExpr)
-insertLets acc []              e = (acc, e, id)
-insertLets acc ((p, v) : cses) e
-  | not (isBoth p) = insertLets ((p, v) : acc) cses e
+insertRelevantLets :: CommonSubExprs -> CommonSubExprs -> CheckedExpr
+                   -> (CommonSubExprs, CheckedExpr, CheckedExpr -> CheckedExpr)
+insertRelevantLets acc []              e = (acc, e, id)
+insertRelevantLets acc ((v, p) : cses) e
+  | not (isBoth p) = insertRelevantLets ((v, p) : acc) cses e
   | otherwise      =
     let ann   = annotationOf v in
     let e'    = substPos (Var ann (Bound 0)) (Just p) e in
-    let acc'  = fmap (first (removePrefix p)) acc in
-    let cses' = fmap (first (removePrefix p)) cses in
-    let (cses'', e'', appendLets) = insertLets acc' cses' e' in
+
+    -- Find every other subexpression e' and accompanying position tree p'
+    -- if p is a prefix of p' then there exists a series of paths p''
+    -- which are
+    -- Get list of position trees ps' = removePrefix p p'
+    -- For element p'' in ps',
+    let acc'  = fmap (second (removePrefix p)) acc in
+    let cses' = fmap (second (removePrefix p)) cses in
+
+    let (cses'', e'', appendLets) = insertRelevantLets acc' cses' e' in
     -- This is a hack. May have to call the type-checker here?
     let t = Hole ann "?" in
     let appendLets' = appendLets . Let ann v (ExplicitBinder ann Nothing t) in
@@ -191,9 +201,10 @@ insertLets acc ((p, v) : cses) e
 elimCSE :: MonadLogger m => CommonSubExprs -> CheckedExpr -> m CheckedExpr
 elimCSE []   expr = return expr
 elimCSE cses expr = do
-  let (cses', expr', prependLets) = insertLets [] cses expr
+  showElimEntry cses expr
+  let (cses', expr', prependLets) = insertRelevantLets [] cses expr
 
-  result <- case (expr', unnodeCSEs cses') of
+  expr'' <- case (expr', unnodeCSEs cses') of
     (Type{}   , _) -> return expr
     (Var{}    , _) -> return expr
     (Literal{}, _) -> return expr
@@ -223,7 +234,9 @@ elimCSE cses expr = do
     (_, cse) -> developerError $
       "Expected the same number of CommonSubExprs as args but found" <+> pretty (length cse)
 
-  return $ prependLets result
+  let exprWithLets = prependLets expr''
+  showElimExit exprWithLets
+  return exprWithLets
 
 elimCSEBinder :: MonadLogger m => CommonSubExprs -> CheckedBinder -> m CheckedBinder
 elimCSEBinder emap = traverseBinderType (elimCSE emap)
@@ -232,4 +245,25 @@ elimCSEArg :: MonadLogger m => CommonSubExprs -> CheckedArg -> m CheckedArg
 elimCSEArg emap = traverseArgExpr (elimCSE emap)
 
 liftOverBinder :: CommonSubExprs -> CommonSubExprs
-liftOverBinder = fmap $ second $ liftDBIndices 1
+liftOverBinder = id -- fmap $ second $ liftFreeDBIndices 1
+
+removePrefix :: PositionTree -> PositionTree -> PositionTree
+removePrefix _remove p = p -- TODO
+
+unnodeCSEs :: CommonSubExprs -> [CommonSubExprs]
+unnodeCSEs cses
+  | null cses = repeat mempty
+  | otherwise = distrib $ fmap (second unnode) cses
+  where
+    distrib :: [(CheckedExpr, [Maybe PositionTree])] -> [CommonSubExprs]
+    distrib x = [ mapMaybe (\(e,xs) -> fmap (e,) (join (xs !!? i))) x | i <- [0..]]
+
+showElimEntry :: MonadLogger m => CommonSubExprs -> CheckedExpr -> m ()
+showElimEntry cses e = do
+  logDebug ("cs-elim-entry " <> prettySimple e <+> "||||" <+> prettySimple cses)
+  incrCallDepth
+
+showElimExit :: MonadLogger m => CheckedExpr -> m ()
+showElimExit e = do
+  decrCallDepth
+  logDebug ("cs-ident--exit " <> prettySimple e)

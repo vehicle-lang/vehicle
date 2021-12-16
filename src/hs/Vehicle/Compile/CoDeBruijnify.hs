@@ -3,7 +3,6 @@
 module Vehicle.Compile.CoDeBruijnify
   ( ConvertCodebruijn(..)
   , toCoDBExpr
-  , toHashableCoDBExpr
   ) where
 
 import Data.Functor.Foldable (Recursive(..))
@@ -64,11 +63,6 @@ toCoDBArg :: DBArg ann -> CoDBArg ann
 toCoDBArg (Arg ann v e) =
   let (e', bvm) = toCoDBExpr e in
   (Arg ann v e', bvm)
-
--- CoDeBruijn expressions are almost always hashed so this a utility method
--- removes the annotations so they are immediately hashable
-toHashableCoDBExpr :: DBExpr ann -> CoDBExpr ()
-toHashableCoDBExpr e = mkHashable (toCoDBExpr e)
 
 --------------------------------------------------------------------------------
 -- Backwards

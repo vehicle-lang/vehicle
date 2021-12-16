@@ -82,7 +82,7 @@ class MetaSubstitutable a where
   substMeta m e = substMetas (MetaSubst.singleton m e)
 
   substMetasLiftLocal :: a -> Reader MetaSubstitution a
-  substMetasLiftLocal e = local (MetaSubst.map (liftDBIndices 1)) (substM e)
+  substMetasLiftLocal e = local (MetaSubst.map (liftFreeDBIndices 1)) (substM e)
 
 instance MetaSubstitutable a => MetaSubstitutable (a, a) where
   substM (e1, e2) = do

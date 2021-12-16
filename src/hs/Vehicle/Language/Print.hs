@@ -20,7 +20,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.IntMap (IntMap)
 import Control.Exception (assert)
-import Prettyprinter (list, tupled)
+import Prettyprinter (list)
 
 import Vehicle.Core.Print as Core (printTree, Print)
 import Vehicle.Frontend.Print as Frontend (printTree, Print)
@@ -59,9 +59,10 @@ prettyFriendly = prettyWith @('Named ('As 'Frontend))
 -- |Prints to the frontend language for things that need to be displayed to
 -- the user. Use this when the expression is using DeBruijn indices and is
 -- not closed.
-prettyFriendlyDB
-    :: (PrettyWith ('Named ('As 'Frontend)) ([Symbol], t Symbol var ann), Simplify (t Symbol var ann), SupplyNames t)
-    => [DBBinding] -> t DBBinding var ann -> Doc b
+prettyFriendlyDB :: (PrettyWith ('Named ('As 'Frontend)) ([Symbol], t Symbol var ann),
+                     Simplify (t Symbol var ann),
+                     SupplyNames t)
+                 => [DBBinding] -> t DBBinding var ann -> Doc b
 prettyFriendlyDB ctx e = prettyWith @('Simple ('Named ('As 'Frontend))) (ctx, e)
 
 -- | This is identical to |prettyFriendly|, but exists for historical reasons.
@@ -199,8 +200,7 @@ instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
 instance (Descope t, ExtractPositionTrees t, PrettyUsing rest (t Symbol Symbol ann))
       => PrettyUsing ('CoDBToNamedNaive rest) (t (Symbol, Maybe PositionTree) CoDBVar ann) where
   prettyUsing e = let (e', pts) = runNaiveCoDBDescope e in
-    prettyUsing @rest e' <> line <>
-    "Inner vars:" <+> prettyMap pts
+    prettyUsing @rest e' <+> prettyMap pts
 
 instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
       => PrettyUsing ('DBToNamedOpen rest) ([Symbol], t Symbol DBVar ann) where
@@ -252,7 +252,7 @@ instance PrettyUsing rest a
 
 instance (PrettyUsing resta a, PrettyUsing restb b)
       => PrettyUsing ('MapTuple resta restb) (a, b) where
-  prettyUsing (e1, e2) = tupled [prettyUsing @resta e1, prettyUsing @restb e2]
+  prettyUsing (e1, e2) = "(" <> prettyUsing @resta e1 <> "," <+> prettyUsing @restb e2 <> ")"
 
 -- instances which defer to primitive pretty instances
 

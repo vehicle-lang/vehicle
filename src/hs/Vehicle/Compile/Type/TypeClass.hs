@@ -53,7 +53,8 @@ solveTypeClassConstraint ctx m e = do
     _ -> developerError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
 
   unless (isStuck progress) $ do
-    let solution = abstractOver (boundContext constraint) eWHNF
+    let primDict = PrimDict (annotationOf eWHNF) eWHNF
+    let solution = abstractOver (boundContext constraint) primDict
     metaSolved (provenanceOf ctx) m solution
 
   return progress

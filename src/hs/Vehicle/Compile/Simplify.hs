@@ -9,6 +9,8 @@ import Data.Default (Default (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (catMaybes)
+import Data.IntMap ( IntMap )
+import Data.Text ( Text )
 
 import Vehicle.Language.AST
 
@@ -102,5 +104,17 @@ simplifyReaderArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args
 instance Simplify a => Simplify [a] where
   simplifyReader = traverse simplifyReader
 
-instance Simplify b => Simplify (a, b) where
-  simplifyReader (x, y) = do y' <- simplifyReader y; return (x, y')
+instance (Simplify a, Simplify b) => Simplify (a, b) where
+  simplifyReader (x, y) = do
+    x' <- simplifyReader x;
+    y' <- simplifyReader y;
+    return (x', y')
+
+instance Simplify a => Simplify (IntMap a) where
+  simplifyReader = traverse simplifyReader
+
+instance Simplify PositionTree where
+  simplifyReader = return
+
+instance Simplify Text where
+  simplifyReader = return

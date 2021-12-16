@@ -71,6 +71,7 @@ instance Hashable (PartialCoDBBinder ()) where
 mkHashable :: CoDBExpr ann -> CoDBExpr ()
 mkHashable = first removeAnnotations
 
+
 --------------------------------------------------------------------------------
 -- Extract binder positionTrees
 

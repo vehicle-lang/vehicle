@@ -12,6 +12,8 @@ module Vehicle.Language.AST.Position
   , pop
   , unpop
   , substPos
+  , prefixTree
+  , prefixOrd
   ) where
 
 import Control.Monad (join)
@@ -77,12 +79,40 @@ instance Semigroup PositionList where
   Both  t1 l1 <> There    l2 = Both t1 (l1 <> l2)
 
 isBoth :: PositionTree -> Bool
-isBoth (Node (Both _ _)) = True
-isBoth _                 = False
+isBoth Leaf     = False
+isBoth (Node l) = go l
+  where
+    go :: PositionList -> Bool
+    go (There l1) = go l1
+    go Both{}     = True
+    go Here{}     = False
 
 -- | A map from DeBruijn indices to the location that they are used
 -- in an expression. If not used, then there is no entry in the map.
 type BoundVarMap = IntMap PositionTree
+
+--------------------------------------------------------------------------------
+-- Computing prefixes
+
+prefixTree :: PositionTree -> PositionTree -> Maybe PositionTree
+prefixTree Leaf      t         = Just t
+prefixTree (Node _)  Leaf      = Nothing
+prefixTree (Node l1) (Node l2) = prefixList l1 l2
+
+prefixList :: PositionList -> PositionList -> Maybe PositionTree
+prefixList (Here  t1)    (Here t2)     = prefixTree t1 t2
+prefixList (There l1)    (There l2)    = prefixList l1 l2
+prefixList (Here  t1)    (Both t2 _l2) = prefixTree t1 t2
+prefixList (There l1)    (Both _t2 l2) = prefixList l1 l2
+prefixList (Both  t1 l1) (Both t2 l2)  = prefixTree t1 t2 <> prefixList l1 l2
+prefixList _             _             = Nothing
+
+prefixOrd :: PositionTree -> PositionTree -> Maybe Ordering
+prefixOrd t1 t2 = case (prefixTree t1 t2, prefixTree t2 t1) of
+  (Nothing, Nothing) -> Nothing
+  (Just _ , Nothing) -> Just GT
+  (Nothing, Just _)  -> Just LT
+  (Just _ , Just _)  -> Just EQ
 
 --------------------------------------------------------------------------------
 -- Operations
@@ -159,13 +189,13 @@ substPos v (Just (Node l)) expr = case (expr, unlist l) of
     App ann (substPos v p1 fun) (NonEmpty.zipWith (substPosArg v) (p2 :| ps) args)
 
   (Pi  ann binder result, p1 : p2 : _) ->
-    Pi ann (substPosBinder v p1 binder) (substPos (liftDBIndices 1 v) p2 result)
+    Pi ann (substPosBinder v p1 binder) (substPos (liftFreeDBIndices 1 v) p2 result)
 
   (Let ann bound binder body, p1 : p2 : p3 : _) ->
-    Let ann (substPos v p1 bound) (substPosBinder v p2 binder) (substPos (liftDBIndices 1 v) p3 body)
+    Let ann (substPos v p1 bound) (substPosBinder v p2 binder) (substPos (liftFreeDBIndices 1 v) p3 body)
 
   (Lam ann binder body, p1 : p2 : _) ->
-    Lam ann (substPosBinder v p1 binder) (substPos (liftDBIndices 1 v) p2 body)
+    Lam ann (substPosBinder v p1 binder) (substPos (liftFreeDBIndices 1 v) p2 body)
 
   (_, ps) -> developerError $
     "Expected the same number of PositionTrees as args but found" <+> pretty (length ps)

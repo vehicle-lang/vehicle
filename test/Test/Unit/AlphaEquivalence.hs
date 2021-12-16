@@ -24,7 +24,7 @@ import Test.Utils
 -- Alpha equivalence tests
 
 alphaEquivalenceTests :: TestTree
-alphaEquivalenceTests = testGroup "Alpha equivalence"
+alphaEquivalenceTests = testGroup "AlphaEquivalence"
   [ testCase "natEq"      $ equalUpToAlpha True  "1 : Nat" "1 : Nat"
   , testCase "natNeq"     $ equalUpToAlpha False "1 : Nat" "2 : Nat"
   , testCase "lambdaEq"   $ equalUpToAlpha True  "\\(x : Nat) -> x" "\\(y : Nat) -> y"
@@ -38,8 +38,6 @@ equalUpToAlpha :: Bool -> Text -> Text -> Assertion
 equalUpToAlpha shouldBeEqual t1 t2  = do
   let e1 = textToCheckedExpr t1
   let e2 = textToCheckedExpr t2
-  let ce1 = toHashableCoDBExpr e1
-  let ce2 = toHashableCoDBExpr e2
   let errorMessage = layoutAsString $
         "Expected:" <+> line <> indent 2 (
           squotes (pretty t1)  <> line <>
@@ -48,12 +46,12 @@ equalUpToAlpha shouldBeEqual t1 t2  = do
         "be equal up to alpha equivalence" <>
         "\n\n" <>
         "CoDB parses:" <+> line <> indent 2 (
-          squotes (pretty $ show ce1) <> line <>
-          squotes (pretty $ show ce2)) <>
+          squotes (prettyVerbose (toCoDBExpr e1)) <> line <>
+          squotes (prettyVerbose (toCoDBExpr e2))) <>
         "\n\n" <>
         "Hashes:" <> line <> indent 2 (
-          squotes (pretty $ hashDB e1) <> line <>
-          squotes (pretty $ hashDB e2))
+          squotes (pretty $ hashDBExpr e1) <> line <>
+          squotes (pretty $ hashDBExpr e2))
 
   let result = alphaEq e1 e2
   assertBool errorMessage (result == shouldBeEqual)

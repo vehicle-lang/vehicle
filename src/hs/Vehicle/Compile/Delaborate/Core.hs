@@ -62,9 +62,12 @@ instance Delaborate (V.Expr Symbol Symbol) B.Expr where
     V.Let _ v b e  -> B.Let <$> delabM b <*> delabM v <*> delabM e
     V.Lam _ b e    -> B.Lam <$> delabM b <*> delabM e
     V.Meta _ m     -> return $ B.Hole (mkToken B.HoleToken (layoutAsText (pretty m)))
-    V.PrimDict _ _ -> developerError "Instance arguments not currently in grammar"
 
     V.App _ fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
+
+    -- This is a hack to get printing of PrimDicts to work without explicitly
+    -- including them in the grammar
+    V.PrimDict _ e -> B.App (B.Var (delabSymbol "PrimDict")) . B.ExplicitArg <$> delabM e
 
 instance Delaborate (V.Arg Symbol Symbol) B.Arg where
   delabM (V.Arg _i v e) = case v of

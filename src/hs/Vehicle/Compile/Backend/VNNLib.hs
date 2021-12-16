@@ -102,6 +102,7 @@ compileToVNNLib networkMap prog = do
   decrCallDepth
   logDebug "Finished compilation to VNNLib"
   return result
+  --return []
 
 --------------------------------------------------------------------------------
 -- Data

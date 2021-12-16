@@ -85,7 +85,7 @@ convertDBVarNaive (Bound i)                = return $ pack ("i" <> show i)
 
 convertCoDBVarNaive :: MonadDescope m => CoDBVar -> m NamedVar
 convertCoDBVarNaive (CoDBFree (Identifier name)) = return name
-convertCoDBVarNaive CoDBBound                    = return "Var"
+convertCoDBVarNaive CoDBBound                    = return "CoDBVar"
 
 class Descope t where
   descope :: MonadDescope m

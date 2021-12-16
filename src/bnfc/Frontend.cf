@@ -76,6 +76,8 @@ ExplicitBinder.    Binder ::= Name;
 ExplicitBinderAnn. Binder ::= "(" Name TokElemOf Expr1 ")";
 ImplicitBinder.    Binder ::= "{" Name "}";
 ImplicitBinderAnn. Binder ::= "{" Name TokElemOf Expr1 "}";
+InstanceBinder.    Binder ::= "{{" Name "}}";
+InstanceBinderAnn. Binder ::= "{{" Name TokElemOf Expr1 "}}";
 
 separator Binder "";
 
