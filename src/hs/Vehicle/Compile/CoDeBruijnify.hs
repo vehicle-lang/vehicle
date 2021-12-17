@@ -26,7 +26,8 @@ toCoDBExpr = cata $ \case
 
   PrimDictF ann (e, bvm) -> (PrimDict ann e, bvm)
 
-  SeqF ann xs -> let (xs', bvms) = unzip xs in (Seq ann xs', nodeBVM bvms)
+  LSeqF ann (dict, bvm) xs ->
+    let (xs', bvms) = unzip xs in (LSeq ann dict xs', nodeBVM (bvm : bvms))
 
   VarF ann v -> case v of
     DB.Free  ident -> (Var ann (CoDBFree ident), mempty)
@@ -78,8 +79,8 @@ instance ConvertCodebruijn Expr where
     BuiltinC  ann op -> Builtin  ann op
     LiteralC  ann l  -> Literal  ann l
 
-    SeqC ann xs     -> Seq ann (fmap fromCoDB xs)
-    VarC ann v      -> Var ann v
+    SeqC ann dict xs -> LSeq ann (fromCoDB dict) (fmap fromCoDB xs)
+    VarC ann v       -> Var ann v
 
     AnnC ann e t               -> Ann ann (fromCoDB e) (fromCoDB t)
     AppC ann fun args          -> App ann (fromCoDB fun) (fmap fromCoDB args)

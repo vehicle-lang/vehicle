@@ -74,7 +74,7 @@ instance CapitaliseTypes CheckedExpr where
     PiF       ann binder result     -> Pi  ann <$> cap binder <*> result
     LetF      ann bound binder body -> Let ann <$> bound <*> cap binder <*> body
     LamF      ann binder body       -> Lam ann <$> cap binder <*> body
-    SeqF      ann xs                -> Seq ann <$> sequence xs
+    LSeqF     ann dict xs           -> LSeq ann <$> dict <*> sequence xs
     VarF      ann v@(Bound _)       -> return $ Var ann v
     VarF      ann (Free ident)      -> Var ann . Free <$> cap ident
 

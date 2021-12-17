@@ -333,7 +333,7 @@ check expectedType expr = do
       throwError $ mkMismatch (provenanceOf ann) ctx expectedType expected
 
     (_, Hole ann _name) -> do
-      -- Replace the hole with meta-variable of the expected type.
+      -- Replace the hole with meta-variable. Throws away the expected type. Can we use it somehow?
       -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
       (_, meta) <- freshMeta (provenanceOf ann)
       return meta
@@ -346,7 +346,7 @@ check expectedType expr = do
     (_, e@(Var     ann _))     -> viaInfer ann              expectedType e
     (_, e@(Let     ann _ _ _)) -> viaInfer ann              expectedType e
     (_, e@(Literal ann _))     -> viaInfer ann              expectedType e
-    (_, e@(Seq     ann _))     -> viaInfer ann              expectedType e
+    (_, e@(LSeq    ann _ _))   -> viaInfer ann              expectedType e
     (_, e@(Ann     ann _ _))   -> viaInfer ann              expectedType e
     (_, e@(PrimDict ann _))    -> viaInfer ann              expectedType e
 
@@ -366,8 +366,12 @@ infer e = do
 
     Meta _ m -> developerError $ "Trying to infer the type of a meta-variable" <+> pretty m
 
-    Hole ann s ->
-      throwError $ mkUnresolvedHole (provenanceOf ann) s
+    Hole ann _s -> do
+      -- Replace the hole with meta-variable.
+      -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
+      (_, exprMeta) <- freshMeta (provenanceOf ann)
+      (_, typeMeta) <- freshMeta (provenanceOf ann)
+      return (exprMeta, typeMeta)
 
     Ann ann expr exprType   -> do
       (checkedExprType, _) <- infer exprType
@@ -458,32 +462,32 @@ infer e = do
     Builtin p op -> do
       return (Builtin p op, typeOfBuiltin p op)
 
-    Seq ann elems -> do
+    LSeq ann dict elems -> do
       let p = provenanceOf ann
+      ctx <- getVariableCtx
+
+      -- Infer the type for each element in the list
       (checkedElems, typesOfElems) <- unzip <$> traverse infer elems
 
-      -- Generate a meta-variable for the applied container type, e.g. List Int
-      (_, typeOfContainer) <- freshMeta p
       -- Generate a fresh meta variable for the type of elements in the list, e.g. Int
       (_, typeOfElems) <- freshMeta p
-
       -- Unify the types of all the elements in the sequence
       _ <- foldrM (unify p) typeOfElems typesOfElems
 
-      -- Enforce that the applied container type must be a container
-      -- Generate a fresh meta-variable for the container function, e.g. List
-      (meta, typeOfMeta) <- freshMeta p
-      ctx <- getVariableCtx
-      addTypeClassConstraint ctx meta (mkIsContainer ann typeOfElems typeOfContainer)
+      -- Generate a meta-variable for the applied container type, e.g. List Int
+      (_, typeOfContainer) <- freshMeta p
+      let typeOfDict = IsContainerExpr ann typeOfElems typeOfContainer
 
-      -- Add in the type and type-class arguments
-      let checkedSeq = normAppList ann (Seq ann checkedElems)
-            [ ImplicitArg ann typeOfElems
-            , ImplicitArg ann typeOfContainer
-            , InstanceArg ann typeOfMeta
-            ]
+      -- Check the type of the dict
+      checkedDict <- if not (isHole dict)
+        then check typeOfDict dict
+        else do
+          (meta, checkedDict) <- freshMeta p
+          addTypeClassConstraint ctx meta typeOfDict
+          return checkedDict
 
-      return (checkedSeq , typeOfContainer)
+      -- Return the result
+      return (LSeq ann checkedDict checkedElems, typeOfContainer)
 
     PrimDict ann t -> do
       (t', _) <- infer t

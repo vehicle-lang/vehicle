@@ -107,12 +107,23 @@ mkIsTruth ann t = App ann (BuiltinTypeClass ann IsTruth)
 --------------------------------------------------------------------------------
 -- IsContainer
 
-mkIsContainer :: ann
-              -> Expr binder var ann
-              -> Expr binder var ann
-              -> Expr binder var ann
-mkIsContainer ann tElem tCont = App ann (BuiltinTypeClass ann IsContainer)
-  (fmap (ExplicitArg ann) [tElem, tCont])
+pattern IsContainerExpr :: ann
+                        -> Expr binder var ann
+                        -> Expr binder var ann
+                        -> Expr binder var ann
+pattern
+  IsContainerExpr ann tElem tCont <-
+    App ann (BuiltinTypeClass _ IsContainer)
+      [ ExplicitArg _ tElem
+      , ExplicitArg _ tCont
+      ]
+  where
+  IsContainerExpr ann tElem tCont =
+    App ann (BuiltinTypeClass ann IsContainer)
+      [ ExplicitArg ann tElem
+      , ExplicitArg ann tCont
+      ]
+
 
 --------------------------------------------------------------------------------
 -- IsIntegral
@@ -327,7 +338,7 @@ pattern
       [ ImplicitArg ann (typeOf binder)
       , ImplicitArg ann tCont
       , ImplicitArg ann (BuiltinBooleanType ann tRes)
-      , InstanceArg ann (mkIsContainer ann (typeOf binder) tCont)
+      , InstanceArg ann (IsContainerExpr ann (typeOf binder) tCont)
       , ExplicitArg ann (Lam ann binder body)
       , ExplicitArg ann container
       ]
@@ -540,18 +551,10 @@ pattern SeqExpr :: ann
                 -> Expr  binder var ann
 pattern
   SeqExpr ann tElem tCont xs <-
-    App ann (Seq _ xs)
-      (  ImplicitArg _ tElem
-      :| ImplicitArg _ tCont
-      :  [InstanceArg _ _]
-      )
+    LSeq ann (PrimDict _ (IsContainerExpr _ tElem tCont)) xs
   where
   SeqExpr ann tElem tCont xs =
-    App ann (Seq ann xs)
-      (  ImplicitArg ann tElem
-      :| ImplicitArg ann tCont
-      :  [InstanceArg ann (PrimDict ann (mkIsContainer ann tElem tCont))]
-      )
+    LSeq ann (PrimDict ann (IsContainerExpr ann tElem tCont)) xs
 
 --------------------------------------------------------------------------------
 -- Cons
@@ -643,6 +646,6 @@ pattern
       (  ImplicitArg ann tElem
       :| ImplicitArg ann tCont
       :  ImplicitArg ann tRes
-      :  InstanceArg ann (PrimDict ann (mkIsContainer ann tElem tCont))
+      :  InstanceArg ann (PrimDict ann (IsContainerExpr ann tElem tCont))
       :  explicitArgs
       )

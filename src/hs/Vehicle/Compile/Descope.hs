@@ -117,7 +117,7 @@ instance Descope Expr where
     Var      ann v                 -> Var ann <$> f v
     Ann      ann e1 t              -> Ann ann <$> descope f e1 <*> descope f t
     App      ann fun args          -> App ann <$> descope f fun <*> traverse (descope f) args
-    Seq      ann es                -> Seq ann <$> traverse (descope f) es
+    LSeq     ann dict es           -> LSeq ann <$> descope f dict <*> traverse (descope f) es
     PrimDict ann tc                -> PrimDict ann <$> descope f tc
     Meta     ann i                 -> return $ Meta ann i
 

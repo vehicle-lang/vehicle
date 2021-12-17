@@ -86,7 +86,7 @@ instance SupplyNames Expr where
     Var      ann v        -> return $ Var ann v
     Ann      ann e1 t     -> Ann ann <$> supplyNames f e1 <*> supplyNames f t
     App      ann fun args -> App ann <$> supplyNames f fun <*> traverse (supplyNames f) args
-    Seq      ann es       -> Seq ann <$> traverse (supplyNames f) es
+    LSeq     ann dict es  -> LSeq ann <$> supplyNames f dict <*> traverse (supplyNames f) es
     PrimDict ann tc       -> PrimDict ann <$> supplyNames f tc
     Meta     ann i        -> return $ Meta ann i
 

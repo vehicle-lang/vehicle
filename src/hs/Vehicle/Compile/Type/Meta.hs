@@ -106,7 +106,7 @@ instance MetaSubstitutable CheckedExpr where
     Builtin  ann op           -> return (Builtin ann op)
     Literal  ann l            -> return (Literal ann l)
     Var      ann v            -> return (Var     ann v)
-    Seq      ann es           -> Seq      ann <$> traverse substM es
+    LSeq     ann dict es      -> LSeq     ann <$> substM dict   <*> traverse substM es
     Ann      ann term typ     -> Ann      ann <$> substM term   <*> substM typ
     Pi       ann binder res   -> Pi       ann <$> substM binder <*> substMetasLiftLocal res
     Let      ann e1 binder e2 -> Let      ann <$> substM e1     <*> substM binder <*> substMetasLiftLocal e2

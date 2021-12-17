@@ -251,7 +251,7 @@ processNetworkApplication network input = do
   let localReplacableBoundVars = case input of
           SeqExpr _ _ _ xs -> getReplacableBoundVars magicVarCount xs
           _                -> developerError $
-            "It is assumed that no non-Seq literals exist after normalisation." <+>
+            "It is assumed that no non-LSeq literals exist after normalisation." <+>
             "However, found the expression" <+> squotes (prettyVerbose input)
 
   let down = DownwardsReplacementState
@@ -317,7 +317,10 @@ replaceNetworkApplications d e =
     Literal{}  -> return e
     Var{}      -> return e
 
-    Seq ann xs -> Seq ann <$> traverse (replaceNetworkApplications d) xs
+    LSeq ann dict xs -> do
+      dict' <- replaceNetworkApplications d dict
+      xs'   <- traverse (replaceNetworkApplications d) xs
+      return $ LSeq ann dict' xs'
 
     Let ann (App _ (Var _ (Free ident)) [inputArg]) _ body -> do
       newBody  <- replaceNetworkApplication ann ident (argExpr inputArg) body d

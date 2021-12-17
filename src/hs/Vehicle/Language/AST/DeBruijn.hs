@@ -88,20 +88,20 @@ instance DeBruijnFunctor ann (Expr DBBinding DBVar) where
       altExpr      = alter    body var
       underB       = underBinder body
     in \case
-      Type l                   -> return (Type l)
-      Meta p m                 -> return (Meta p m)
-      Hole p name              -> return (Hole p name)
-      Builtin  ann op          -> return (Builtin ann op)
-      Literal  ann l           -> return (Literal ann l)
-      PrimDict ann e           -> return (PrimDict ann e)
-      Seq     ann es           -> Seq     ann <$> traverse altExpr es
-      Ann     ann term typ     -> Ann     ann <$> altExpr   term   <*> altExpr typ
-      App     ann fun args     -> normApp ann <$> altExpr   fun    <*> traverse altArg args
-      Pi      ann binder res   -> Pi      ann <$> altPiBinder binder <*> underB (altExpr res)
-      Let     ann e1 binder e2 -> Let     ann <$> altExpr e1 <*> altLamBinder binder <*> underB (altExpr e2)
-      Lam     ann binder e     -> Lam     ann <$> altLamBinder binder <*> underB (altExpr e)
-      Var     ann (Free i)     -> return (Var ann (Free i))
-      Var     ann (Bound i)    -> var i ann =<< ask
+      Type l                    -> return (Type l)
+      Meta p m                  -> return (Meta p m)
+      Hole p name               -> return (Hole p name)
+      Builtin  ann op           -> return (Builtin ann op)
+      Literal  ann l            -> return (Literal ann l)
+      PrimDict ann e            -> return (PrimDict ann e)
+      LSeq     ann dict es      -> LSeq    ann <$> altExpr dict <*> traverse altExpr es
+      Ann      ann term typ     -> Ann     ann <$> altExpr   term   <*> altExpr typ
+      App      ann fun args     -> normApp ann <$> altExpr   fun    <*> traverse altArg args
+      Pi       ann binder res   -> Pi      ann <$> altPiBinder binder <*> underB (altExpr res)
+      Let      ann e1 binder e2 -> Let     ann <$> altExpr e1 <*> altLamBinder binder <*> underB (altExpr e2)
+      Lam      ann binder e     -> Lam     ann <$> altLamBinder binder <*> underB (altExpr e)
+      Var      ann (Free i)     -> return (Var ann (Free i))
+      Var      ann (Bound i)    -> var i ann =<< ask
 
 -- Temporarily go under a binder, increasing the binding depth by one
 -- and shifting the current state.

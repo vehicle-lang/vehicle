@@ -77,16 +77,16 @@ solveUnificationConstraint ctx (e1, e2) = do
         , solvedMetas    = mempty
         }
 
-    (Seq _ es1, args1) :~: (Seq _ es2, args2)
+    (LSeq _ dict1 es1, []) :~: (LSeq _ dict2 es2, [])
       -- TODO more informative error message
-      | length es1 /= length es2 || length args1 /= length args2 ->
+      | length es1 /= length es2 ->
         throwError $ mkFailedConstraints [constraint]
-      -- TODO need to try and unify `Seq` with `Cons`s.
+      -- TODO need to try and unify `LSeq` with `Cons`s.
       | otherwise -> do
-        argConstraints <- traverse (solveArg constraint) (zip args1 args2)
+        let dictConstraint  = Constraint ctx (Unify (dict1, dict2))
         let elemConstraints = zipWith (curry (Constraint ctx . Unify)) es1 es2
         return Progress
-          { newConstraints = argConstraints <> elemConstraints
+          { newConstraints = dictConstraint : elemConstraints
           , solvedMetas    = mempty
           }
 

@@ -104,7 +104,7 @@ instance Standardise Expr where
     Literal  ann l        -> return $ Literal ann l
 
     Ann      ann e t      -> Ann ann <$> standardise e <*> standardise t
-    Seq      ann es       -> Seq ann <$> traverse standardise es
+    LSeq     ann dict es  -> LSeq ann <$> standardise dict <*> traverse standardise es
     PrimDict ann tc       -> PrimDict ann <$> standardise tc
 
     Pi  ann binder res        -> Pi ann <$> standardise binder <*> standardise res
@@ -233,7 +233,7 @@ getTensorSize :: MonadError UnsupportedNetworkType m
               -> CheckedExpr
               -> m Int
 getTensorSize io tDims = case exprHead tDims of
-  (Seq _ [d]) -> case exprHead d of
+  (LSeq _ _ [d]) -> case exprHead d of
     (Literal _ (LNat n)) -> return n
     _                    -> throwError $ VariableSizeTensor io
   _           -> throwError $ MultidimensionalTensor io

@@ -264,7 +264,7 @@ instance Pretty a => PrettyUsing 'Pretty a where
 instance PrettyUsing rest CheckedExpr
       => PrettyUsing ('Opaque rest) BaseConstraint where
   prettyUsing (Unify (e1, e2)) = prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2
-  prettyUsing (m `Has` e)      = pretty m <+> "~" <+> prettyUsing @rest e
+  prettyUsing (m `Has` e)      = pretty m <+> "<=" <+> prettyUsing @rest e
 
 instance PrettyUsing rest BaseConstraint
       => PrettyUsing ('Opaque rest) Constraint where

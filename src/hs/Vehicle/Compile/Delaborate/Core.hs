@@ -57,7 +57,7 @@ instance Delaborate (V.Expr Symbol Symbol) B.Expr where
 
     V.Ann _ e t    -> B.Ann <$> delabM e <*> delabM t
     V.Pi  _ b t    -> B.Pi  <$> delabM b <*> delabM t
-    V.Seq _ es     -> B.Seq <$> traverse delabM es
+    V.LSeq _ _ es  -> B.LSeq <$> traverse delabM es
 
     V.Let _ v b e  -> B.Let <$> delabM b <*> delabM v <*> delabM e
     V.Lam _ b e    -> B.Lam <$> delabM b <*> delabM e

@@ -64,7 +64,7 @@ instance WellFormedAnn ann => Simplify (Expr binder var ann) where
     Var{}     -> return expr
 
     App ann fun args          -> normAppList ann <$> simplifyReader fun <*> simplifyReaderArgs args
-    Seq ann xs                -> Seq ann <$> traverse simplifyReader xs
+    LSeq ann dict xs          -> LSeq ann <$> simplifyReader dict <*> traverse simplifyReader xs
     Ann ann e t               -> Ann ann <$> simplifyReader e <*> simplifyReader t
     Pi ann binder result      -> Pi  ann <$> simplifyReader binder <*> simplifyReader result
     Let ann bound binder body -> Let ann <$> simplifyReader bound  <*> simplifyReader binder <*> simplifyReader body

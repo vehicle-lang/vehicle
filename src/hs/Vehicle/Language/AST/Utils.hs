@@ -117,7 +117,7 @@ freeNames = cata $ \case
   VarF      _ (Bound _)         -> []
   LetF      _ bound binder body -> bound <> freeNames (typeOf binder) <> body
   LamF      _ binder body       -> freeNames (typeOf binder) <> body
-  SeqF      _ xs                -> concat xs
+  LSeqF     _ _ xs              -> concat xs
 
 --------------------------------------------------------------------------------
 -- Destruction functions

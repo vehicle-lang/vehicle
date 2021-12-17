@@ -95,9 +95,9 @@ instance ExtractPositionTrees Expr where
     PrimDictF ann (e, mpts)        -> (PrimDict ann e, mpts)
     AnnF ann (e, mpts1) (t, mpts2) -> (Ann ann e t, mergePTs [mpts1, mpts2])
 
-    SeqF ann xs ->
+    LSeqF ann (dict, mpt) xs ->
       let (xs', mpts) = unzip xs in
-      (Seq ann xs', mergePTs mpts)
+      (LSeq ann dict xs', mergePTs (mpt : mpts))
 
     AppF ann (fun, mpt) args ->
       let (args', mpts) = NonEmpty.unzip (fmap extractPTs args) in
@@ -162,7 +162,7 @@ data ExprC ann
   | LetC      ann (CoDBExpr ann) (CoDBBinder ann) (CoDBExpr ann)
   | LamC      ann (CoDBBinder ann) (CoDBExpr ann)
   | LiteralC  ann Literal
-  | SeqC      ann [CoDBExpr ann]
+  | SeqC      ann (CoDBExpr ann) [CoDBExpr ann]
   | PrimDictC ann (CoDBExpr ann)
   deriving (Show)
 
@@ -179,7 +179,7 @@ instance RecCoDB (CoDBExpr ann) (ExprC ann) where
 
     (PrimDict ann e, bvm1 : _) -> PrimDictC ann (e, bvm1)
 
-    (Seq ann xs, bvms) -> SeqC ann (zip xs bvms)
+    (LSeq ann dict xs, bvm1 : bvms) -> SeqC ann (dict, bvm1) (zip xs bvms)
 
     (Var ann v, _) -> case v of
       CoDBFree  ident -> assert (null bvm) (VarC ann (DB.Free ident))

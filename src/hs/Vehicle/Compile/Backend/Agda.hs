@@ -350,16 +350,15 @@ instance CompileToAgda OutputExpr where
       Builtin{} -> compileBuiltin expr
       Literal{} -> compileLiteral expr
 
-      App ann fun args -> case fun of
+      App _ fun args -> case fun of
         Builtin{}    -> compileBuiltin expr
         Literal{}    -> compileLiteral expr
-        Seq _     xs -> compileSeq     ann xs (fmap argExpr (NonEmpty.toList args))
         _            -> do
           cFun   <- compile fun
           cArgs  <- traverse compile args
           return $ annotateApp [] cFun (NonEmpty.toList cArgs)
 
-      Seq _ _ -> developerError "when compiling to Agda, Seqs should have been caught in App case"
+      LSeq ann dict xs -> compileSeq ann dict xs
 
     logExit result
     return result
@@ -513,8 +512,8 @@ compileRealLiteral r = annotateInfixOp2 [DataReal] 7 id
   ]
 
 -- |Compiling sequences. No sequences in Agda so have to go via cons.
-compileSeq :: MonadAgdaCompile e m => OutputAnn -> [OutputExpr] -> [OutputExpr] -> m Code
-compileSeq _ args [_, tCont, _] = go args
+compileSeq :: MonadAgdaCompile e m => OutputAnn -> OutputExpr -> [OutputExpr] -> m Code
+compileSeq _ (PrimDict _ (IsContainerExpr _ _ tCont)) elems = go elems
   where
     go :: MonadAgdaCompile e m => [OutputExpr] -> m Code
     go []       = return $ annotateConstant (containerDependencies (containerType tCont)) "[]"
@@ -522,7 +521,7 @@ compileSeq _ args [_, tCont, _] = go args
       cx  <- compile x
       cxs <- go xs
       return $ annotateInfixOp2 [] 5 id Nothing "∷" [cx , cxs]
-compileSeq ann xs args = unexpectedArgsError (Seq ann xs) args ["tElem", "tCont", "tc"]
+compileSeq ann dict elems = unexpectedArgsError (LSeq ann dict elems) elems ["tElem", "tCont", "tc"]
 
 
 -- |Compiling cons operator

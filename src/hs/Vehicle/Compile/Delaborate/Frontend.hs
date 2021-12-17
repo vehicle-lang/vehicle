@@ -118,7 +118,7 @@ instance Delaborate (V.Expr Symbol Symbol) B.Expr where
     V.Literal _ l   -> return $ B.Literal (delabLiteral l)
 
     V.Ann _ e t     -> B.Ann <$> delabM e <*> pure tokElemOf <*> delabM t
-    V.Seq _ es      -> B.Seq tokSeqOpen <$> traverse delabM es <*> pure tokSeqClose
+    V.LSeq _ _ es   -> B.LSeq tokSeqOpen <$> traverse delabM es <*> pure tokSeqClose
 
     V.Pi  ann t1 t2 -> delabPi ann t1 t2
     V.Let{}         -> delabLet expr

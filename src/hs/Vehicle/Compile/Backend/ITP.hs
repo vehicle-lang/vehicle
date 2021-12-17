@@ -65,9 +65,9 @@ tensorSize :: OutputExpr -> Either ContainerDimensionError Int
 tensorSize tDims = runExcept (getTensorSize (exprHead tDims))
   where
     getTensorSize :: OutputExpr -> Except ContainerDimensionError Int
-    getTensorSize (Seq _ [])       = throwError EmptyTensorSize
-    getTensorSize (Seq _ (x : _))  = getDimension (exprHead x)
-    getTensorSize t                = throwError $ VariableTensorTypeDimensions t
+    getTensorSize (LSeq _ _ [])       = throwError EmptyTensorSize
+    getTensorSize (LSeq _ _ (x : _))  = getDimension (exprHead x)
+    getTensorSize t                   = throwError $ VariableTensorTypeDimensions t
 
     getDimension :: OutputExpr -> Except ContainerDimensionError Int
     getDimension (LitNat _ i) = return i

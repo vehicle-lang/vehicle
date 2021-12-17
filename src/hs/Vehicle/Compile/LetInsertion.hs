@@ -86,7 +86,7 @@ instance CommonSubexpressionIdentification CheckedCoDBExpr where
       PiC       _ binder res        -> mkNode expr [findCSs binder, findCSs res]
       LetC      _ bound binder body -> mkNode expr [findCSs bound, findCSs binder, findCSs body]
       LamC      _ binder body       -> mkNode expr [findCSs binder, findCSs body]
-      SeqC      _ xs                -> mkNode expr (fmap findCSs xs)
+      SeqC      _ dict xs           -> mkNode expr (findCSs dict : fmap findCSs xs)
       PrimDictC _ e                 -> mkNode expr [findCSs e]
     showIdentExit res
     return res
@@ -212,8 +212,8 @@ elimCSE cses expr = do
     (Hole{}   , _) -> return expr
     (Meta{}   , _) -> return expr
 
-    (Seq ann xs, cse)          -> Seq ann <$> zipWithM elimCSE cse xs
-    (PrimDict ann e, cse1 : _) -> PrimDict ann <$> elimCSE cse1 e
+    (LSeq ann dict xs, cse1 : cse) -> LSeq ann <$> elimCSE cse1 dict <*> zipWithM elimCSE cse xs
+    (PrimDict ann e, cse1 : _)     -> PrimDict ann <$> elimCSE cse1 e
 
     (Ann ann e t, cse1 : cse2 : _) ->
       Ann ann <$> elimCSE cse1 e <*> elimCSE cse2 t

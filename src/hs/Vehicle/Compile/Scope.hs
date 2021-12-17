@@ -98,7 +98,7 @@ instance ScopeCheck InputExpr UncheckedExpr where
       Builtin  ann op                -> return $ Builtin ann op
       Var      ann v                 -> Var ann <$> getVar ann v
       Literal  ann l                 -> return $ Literal ann l
-      Seq      ann es                -> Seq ann <$> traverse scope es
+      LSeq     ann dict es           -> LSeq ann <$> scope dict <*> traverse scope es
 
       Pi  ann binder res -> do
         bindVar binder $ \binder' -> Pi ann binder' <$> scope res

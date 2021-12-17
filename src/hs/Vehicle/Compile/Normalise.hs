@@ -98,7 +98,7 @@ instance Norm CheckedExpr where
       Meta{}      -> developerError "All metas should have been solved before normalisation"
 
       PrimDict ann tc     -> PrimDict ann <$> nf tc
-      Seq ann exprs       -> Seq ann <$> traverse nf exprs
+      LSeq ann dict exprs -> LSeq ann dict <$> traverse nf exprs
       Lam ann binder expr -> Lam ann <$> nf binder <*> nf expr
       Pi ann binder body  -> Pi ann <$> nf binder <*> nf body
 
@@ -293,7 +293,7 @@ nfQuantifier :: MonadNorm e m
              -> Maybe (m CheckedExpr)
 nfQuantifier ann q binder body = case typeOf binder of
   -- If we have a tensor instead quantify over each individual element, and then substitute
-  -- in a Seq construct with those elements in.
+  -- in a LSeq construct with those elements in.
   (TensorType _ tElem tDims) ->
     case getDimensions (exprHead tDims) of
       Nothing -> Nothing
@@ -332,8 +332,8 @@ makeTensorLit ann tElem dims exprs = assert (product dims == length exprs) (go d
     go []  (_ : _) = developerError "Found inhabitants of the empty dimension! Woo!"
 
 getDimensions :: CheckedExpr -> Maybe [Int]
-getDimensions (Seq _ xs) = traverse getDimension xs
-getDimensions _          = Nothing
+getDimensions (LSeq _ _ xs) = traverse getDimension xs
+getDimensions _             = Nothing
 
 getDimension :: CheckedExpr -> Maybe Int
 getDimension e = case exprHead e of

@@ -37,9 +37,6 @@ letInsertionTests = testGroup "LetInsertion"
   , testCase "liftLam" $ letInsertionTest
       "(\\(x : Nat) -> x) ((\\(y : Nat) -> y) 1)"
       "let id = (\\(z : Nat) -> z) in id (id 1)"
-  -- , testCase "lambdaEq"   $ equalUpToAlpha True  "\\(x : Nat) -> x" "\\(y : Nat) -> y"
-  -- , testCase "lambda2Neq" $ equalUpToAlpha False "\\(x : Nat) -> \\(y : Nat) -> x" "\\(x : Nat) -> \\(y : Nat) -> y"
-  -- , testCase "appEq"      $ equalUpToAlpha True  "(\\(x : Nat) -> x) 1" "(\\(y : Nat) -> y) 1"
   ]
 
 letInsertionTest :: Text -> Text -> Assertion

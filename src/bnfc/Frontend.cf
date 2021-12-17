@@ -158,7 +158,7 @@ Sub.     Expr10 ::= Expr10 TokSub Expr11;
 Neg.     Expr11 ::= TokSub Expr11;
 
 -- Lists and tensors.
-Seq.     Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
+LSeq.    Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
 Cons.    Expr4  ::= Expr5 TokCons Expr4;
 At.      Expr12 ::= Expr12 TokAt Expr13;
 Map.     Expr13 ::= TokMap Expr15 Expr15;

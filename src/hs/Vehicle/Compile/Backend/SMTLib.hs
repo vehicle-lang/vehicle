@@ -179,7 +179,7 @@ compileExpr = \case
   Meta _p _      -> resolutionError "Meta"
   Ann _ann _ _   -> normalisationError "Ann"
   Lam _ann _ _   -> normalisationError "Lam"
-  Seq _ann _     -> normalisationError "Seq"
+  LSeq _ann _ _  -> normalisationError "LSeq"
   PrimDict _ _tc -> visibilityError "PrimDict"
 
   Builtin _ann op -> compileBuiltin op

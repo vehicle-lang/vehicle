@@ -182,8 +182,8 @@ substPos v (Just (Node l)) expr = case (expr, unlist l) of
   (Builtin{} , _) -> invalidPositionTreeError l
   (Var{}     , _) -> invalidPositionTreeError l
 
-  (Ann ann e t, p1 : p2 : _) -> Ann ann (substPos v p1 e) (substPos v p2 t)
-  (Seq ann xs, ps) -> Seq ann (zipWith (substPos v) ps xs)
+  (Ann  ann e t, p1 : p2 : _) -> Ann ann (substPos v p1 e) (substPos v p2 t)
+  (LSeq ann dict xs, p : ps)  -> LSeq ann (substPos v p dict) (zipWith (substPos v) ps xs)
 
   (App ann fun args, p1 : p2 : ps) ->
     App ann (substPos v p1 fun) (NonEmpty.zipWith (substPosArg v) (p2 :| ps) args)

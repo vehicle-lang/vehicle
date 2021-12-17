@@ -239,12 +239,13 @@ data Expr binder var ann
 
   -- | Built-in literal values e.g. numbers/booleans.
   | Literal
-    ann               -- Annotation.
-    Literal           -- Value.
+    ann                      -- Annotation.
+    Literal                  -- Value.
 
   -- | A sequence of terms for e.g. list literals.
-  | Seq
-    ann               -- Annotation.
+  | LSeq
+    ann                      -- Annotation.
+    (Expr binder var ann)    -- Type-class dictionary.
     [Expr binder var ann]    -- List of expressions.
 
   -- | A placeholder for a dictionary of builtin type-classes.
@@ -273,7 +274,7 @@ instance HasAnnotation (Expr binder var ann) ann where
     Let      ann _ _ _ -> ann
     Lam      ann _ _   -> ann
     Literal  ann _     -> ann
-    Seq      ann _     -> ann
+    LSeq     ann _ _   -> ann
 
 instance HasProvenance ann => HasProvenance (Expr binder var ann) where
   provenanceOf e = provenanceOf (annotationOf e :: ann)

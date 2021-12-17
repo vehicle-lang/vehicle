@@ -94,12 +94,12 @@ instance Elab B.Expr V.InputExpr where
   elab = \case
     B.Type l                  -> return $ V.Type (fromIntegral l)
     B.Var  n                  -> return $ V.Var  (mkAnn n) (tkSymbol n)
-    B.Hole n                  -> return $ V.Hole (tkProvenance n, V.TheUser) (tkSymbol n)
+    B.Hole n                  -> return $ mkHole (tkProvenance n) (tkSymbol n)
     B.Literal l               -> elab l
 
     B.Ann e tk t              -> op2 V.Ann tk  (elab e) (elab t)
     B.Fun t1 tk t2            -> op2 V.Pi  tk  (elabFunInputType t1) (elab t2)
-    B.Seq tk1 es _tk2         -> op1 V.Seq tk1 (traverse elab es)
+    B.LSeq tk1 es _tk2        -> op1 (\ann -> V.LSeq ann (mkHole (tkProvenance tk1) "IsContainerDict")) tk1 (traverse elab es)
 
     B.App e1 e2               -> elabApp e1 e2
     -- It is really bad not to have provenance for let tokens here, see issue #6
@@ -175,11 +175,14 @@ instance Elab B.Binder V.InputBinder where
   elab (B.ImplicitBinderAnn n _tk typ) = mkBinder n V.Implicit . Just <$> elab typ
   elab (B.InstanceBinderAnn n _tk typ) = mkBinder n V.Instance . Just <$> elab typ
 
+mkHole :: Provenance -> Symbol -> V.InputExpr
+mkHole p s = V.Hole (p, V.TheUser) ("_" <> s)
+
 mkBinder :: B.Name -> V.Visibility -> Maybe V.InputExpr -> V.InputBinder
 mkBinder n v e = V.Binder (V.visProv v p, V.TheUser) v (Just (tkSymbol n)) t
   where
     (p, t) = case e of
-      Nothing -> (tkProvenance n, V.Hole (tkProvenance n, V.TheUser) "_")
+      Nothing  -> (tkProvenance n, mkHole (tkProvenance n) (tkSymbol n))
       Just t1  -> (fillInProvenance [tkProvenance n, provenanceOf t1], t1)
 
 instance Elab B.LetDecl (V.InputBinder, V.InputExpr) where
