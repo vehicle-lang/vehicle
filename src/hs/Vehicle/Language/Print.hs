@@ -34,8 +34,9 @@ import Vehicle.Compile.Delaborate.Core as Core
 import Vehicle.Compile.Delaborate.Frontend as Frontend
 import Vehicle.Compile.Descope
 import Vehicle.Compile.SupplyNames
-import Vehicle.Compile.Type.Constraint (Constraint (..), BaseConstraint (..))
+import Vehicle.Compile.Type.Constraint (Constraint (..), BaseConstraint (..), boundContext)
 import Vehicle.Compile.Type.MetaSubstitution (MetaSubstitution(MetaSubstitution))
+import Vehicle.Compile.Type.Core ()
 import Vehicle.Compile.CoDeBruijnify (ConvertCodebruijn(..))
 
 
@@ -59,11 +60,9 @@ prettyFriendly = prettyWith @('Named ('As 'Frontend))
 -- |Prints to the frontend language for things that need to be displayed to
 -- the user. Use this when the expression is using DeBruijn indices and is
 -- not closed.
-prettyFriendlyDB :: (PrettyWith ('Named ('As 'Frontend)) ([Symbol], t Symbol var ann),
-                     Simplify (t Symbol var ann),
-                     SupplyNames t)
-                 => [DBBinding] -> t DBBinding var ann -> Doc b
-prettyFriendlyDB ctx e = prettyWith @('Simple ('Named ('As 'Frontend))) (ctx, e)
+prettyFriendlyDB :: (PrettyWith ('Named ('As 'Frontend)) ([DBBinding], a))
+                 => [DBBinding] -> a -> Doc b
+prettyFriendlyDB ctx e = prettyWith @('Named ('As 'Frontend)) (ctx, e)
 
 -- | This is identical to |prettyFriendly|, but exists for historical reasons.
 prettyFriendlyDBClosed :: (PrettyWith ('Simple ('Named ('As 'Frontend))) a) => a -> Doc b
@@ -268,7 +267,8 @@ instance PrettyUsing rest CheckedExpr
 
 instance PrettyUsing rest BaseConstraint
       => PrettyUsing ('Opaque rest) Constraint where
-  prettyUsing (Constraint _ c) = prettyUsing @rest c
+  prettyUsing con@(Constraint _ c) = prettyUsing @rest c <+>
+    "<boundCtx=" <> pretty (ctxNames (boundContext con)) <> ">"
 
 instance PrettyUsing rest CheckedExpr
       => PrettyUsing ('Opaque rest) MetaSubstitution where

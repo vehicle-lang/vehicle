@@ -144,11 +144,11 @@ getBoundCtx = asks boundCtx
 getVariableCtx :: TCM e m => m VariableCtx
 getVariableCtx = ask
 
-addToBoundCtx :: TCM e m => DBBinding -> CheckedExpr -> m a -> m a
-addToBoundCtx n e = local add
+addToBoundCtx :: TCM e m => DBBinding -> CheckedExpr -> Maybe CheckedExpr -> m a -> m a
+addToBoundCtx n t e = local add
   where
     add :: VariableCtx -> VariableCtx
-    add VariableCtx{..} = VariableCtx{boundCtx = (n, e) : boundCtx, ..}
+    add VariableCtx{..} = VariableCtx{ boundCtx = (n, t, e) : boundCtx, ..}
 
 --------------------------------------------------------------------------------
 -- Debug functions
@@ -308,24 +308,26 @@ check expectedType expr = do
         _ <- unify (provenanceOf ann) (typeOf piBinder) checkedLamBinderType
 
         -- Add bound variable to context
-        addToBoundCtx (nameOf lamBinder) checkedLamBinderType $ do
-          body' <- check resultType body
-          let checkedLamBinder = replaceBinderType checkedLamBinderType lamBinder
-          return $ Lam ann checkedLamBinder body'
+        checkedBody <- addToBoundCtx (nameOf lamBinder) checkedLamBinderType Nothing $ do
+          -- Check if the type of the expression matches the expected result type.
+          check resultType body
 
-    (Pi _ binder resultType, e) ->
+        let checkedLamBinder = replaceBinderType checkedLamBinderType lamBinder
+        return $ Lam ann checkedLamBinder checkedBody
+
+    (Pi _ binder resultType, e) -> do
+      let ann = (provenanceOf binder, TheMachine)
+
       -- Add the binder to the context
-      addToBoundCtx Nothing (typeOf binder) $ do
-        let ann = (provenanceOf binder, TheMachine)
-
+      checkedExpr <- addToBoundCtx Nothing (typeOf binder) Nothing $
         -- Check if the type of the expression matches the expected result type.
-        checkedExpr <- check resultType (liftFreeDBIndices 1 e)
+        check resultType (liftFreeDBIndices 1 e)
 
-        -- Create a new binder mirroring the implicit Pi binder expected
-        let lamBinder = Binder ann Implicit (nameOf binder) (typeOf binder)
+      -- Create a new binder mirroring the implicit Pi binder expected
+      let lamBinder = Binder ann Implicit (nameOf binder) (typeOf binder)
 
-        -- Prepend a new lambda to the expression with the implicit binder
-        return $ Lam ann lamBinder checkedExpr
+      -- Prepend a new lambda to the expression with the implicit binder
+      return $ Lam ann lamBinder checkedExpr
 
     (_, Lam ann binder _) -> do
       ctx <- getBoundCtx
@@ -373,7 +375,7 @@ infer e = do
       (_, typeMeta) <- freshMeta (provenanceOf ann)
       return (exprMeta, typeMeta)
 
-    Ann ann expr exprType   -> do
+    Ann ann expr exprType -> do
       (checkedExprType, _) <- infer exprType
       checkedExpr <- check checkedExprType expr
       return (Ann ann checkedExpr checkedExprType , checkedExprType)
@@ -381,11 +383,12 @@ infer e = do
     Pi p binder resultType -> do
       (checkedBinderType, typeOfBinderType) <- infer (typeOf binder)
 
-      addToBoundCtx (nameOf binder) checkedBinderType $ do
-        (checkedResultType, typeOfResultType) <- infer resultType
-        let maxResultType = typeOfBinderType `tMax` typeOfResultType
-        let checkedBinder = replaceBinderType checkedBinderType binder
-        return (Pi p checkedBinder checkedResultType , maxResultType)
+      (checkedResultType, typeOfResultType) <-
+        addToBoundCtx (nameOf binder) checkedBinderType Nothing $ infer resultType
+
+      let maxResultType = typeOfBinderType `tMax` typeOfResultType
+      let checkedBinder = replaceBinderType checkedBinderType binder
+      return (Pi p checkedBinder checkedResultType , maxResultType)
 
     -- Literals are slightly tricky to type-check, as by default they
     -- probably are standalone, i.e. not wrapped in an `App`, in which
@@ -412,12 +415,12 @@ infer e = do
       -- Lookup the type of the variable in the context.
       ctx <- getBoundCtx
       case ctx !!? i of
-        Just (_, checkedType) -> do
+        Just (_, checkedType, _) -> do
           let liftedCheckedType = liftFreeDBIndices (i+1) checkedType
           return (Var ann (Bound i), liftedCheckedType)
         Nothing      -> developerError $
           "DBIndex" <+> pretty i <+> "out of bounds when looking" <+>
-          "up variable in context" <+> prettyVerbose ctx <+> "at" <+> pretty (provenanceOf ann)
+          "up variable in context" <+> prettyVerbose (ctxNames ctx) <+> "at" <+> pretty (provenanceOf ann)
 
     Var ann (Free ident) -> do
       -- Lookup the type of the declaration variable in the context.
@@ -441,23 +444,35 @@ infer e = do
           checkedBoundExpr  <- check typeOfBoundExpr boundExpr
           return (checkedBoundExpr, typeOfBoundExpr)
 
-      -- Update the context with the bound variable
-      addToBoundCtx (nameOf binder) typeOfBoundExpr $ do
-        -- Infer the type of the body
-        (checkedBody , typeOfBody) <- infer body
-        let checkedBinder = replaceBinderType typeOfBoundExpr binder
-        return (Let p checkedBoundExpr checkedBinder checkedBody , typeOfBody)
+      let checkedBinder = replaceBinderType typeOfBoundExpr binder
+
+      (checkedBody, typeOfBody) <-
+        addToBoundCtx (nameOf binder) typeOfBoundExpr (Just checkedBoundExpr) $ infer body
+
+      -- It's possible for the type of the body to depend on the let bound variable,
+      -- e.g. `let y = Nat in (2 : y)` so in order to avoid the DeBruijn index escaping
+      -- it's context we need to substitute the bound expression into the type.
+      normTypeOfBody <- if isMeta typeOfBody
+        then return typeOfBody
+        else do
+          let normTypeOfBody = checkedBoundExpr `substInto` typeOfBody
+          when (normTypeOfBody /= typeOfBody) $
+            logDebug $ "normalising" <+> prettyVerbose typeOfBody <+> "to" <+> prettyVerbose normTypeOfBody
+          return normTypeOfBody
+
+      return (Let p checkedBoundExpr checkedBinder checkedBody , normTypeOfBody)
 
     Lam p binder body -> do
       -- Infer the type of the bound variable from the binder
       (typeOfBinder, _) <- infer (typeOf binder)
 
       -- Update the context with the bound variable
-      addToBoundCtx (nameOf binder) typeOfBinder $ do
-        (checkedBody , typeOfBody) <- infer body
-        let checkedBinder = replaceBinderType typeOfBody binder
-        let t' = Pi p (removeBinderName checkedBinder) typeOfBody
-        return (Lam p checkedBinder checkedBody , t')
+      (checkedBody , typeOfBody) <-
+        addToBoundCtx (nameOf binder) typeOfBinder Nothing $ infer body
+
+      let checkedBinder = replaceBinderType typeOfBody binder
+      let t' = Pi p (removeBinderName checkedBinder) typeOfBody
+      return (Lam p checkedBinder checkedBody , t')
 
     Builtin p op -> do
       return (Builtin p op, typeOfBuiltin p op)
@@ -573,7 +588,7 @@ typeOfBuiltin ann b = fromDSL $ case b of
   TypeClass IsIntegral      -> type0 ~> type0
   TypeClass IsRational      -> type0 ~> type0
   TypeClass IsReal          -> type0 ~> type0
-  TypeClass IsContainer     -> type0 ~> type0
+  TypeClass IsContainer     -> type0 ~> type0 ~> type0
   TypeClass IsQuantifiable  -> type0 ~> type0 ~> type0
 
   If   -> typeOfIf

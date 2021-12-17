@@ -348,26 +348,20 @@ pattern
 
 pattern IfExpr :: ann
                -> Expr binder var ann
-               -> Expr binder var ann
-               -> Expr binder var ann
-               -> Expr binder var ann
+               -> [Arg binder var ann]
                -> Expr binder var ann
 pattern
-  IfExpr ann tRes cond e1 e2 <-
+  IfExpr ann tRes args <-
     App ann (Builtin _ If)
-      [ ImplicitArg _ tRes
-      , ExplicitArg _ cond
-      , ExplicitArg _ e1
-      , ExplicitArg _ e2
-      ]
+      (  ImplicitArg _ tRes
+      :| args
+      )
   where
-  IfExpr ann tRes cond e1 e2 =
+  IfExpr ann tRes args =
     App ann (Builtin ann If)
-      [ ImplicitArg ann tRes
-      , ExplicitArg ann cond
-      , ExplicitArg ann e1
-      , ExplicitArg ann e2
-      ]
+      (  ImplicitArg ann tRes
+      :| args
+      )
 
 --------------------------------------------------------------------------------
 -- BooleanOp2

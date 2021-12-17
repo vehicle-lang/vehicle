@@ -12,6 +12,7 @@ import Vehicle.Frontend.Abs qualified as B
 import Vehicle.Prelude
 import Vehicle.Language.AST qualified as V
 import Vehicle.Language.Sugar
+import Vehicle.Language.AST.Visibility (HasVisibility(visibilityOf))
 
 --------------------------------------------------------------------------------
 -- Conversion to BNFC AST
@@ -125,7 +126,8 @@ instance Delaborate (V.Expr Symbol Symbol) B.Expr where
     V.Lam{}         -> delabLam expr
     V.Meta _ m      -> return $ B.Var (mkToken B.Name (layoutAsText (pretty m)))
 
-    V.App _ (V.Builtin _ b) args -> delabBuiltin b <$> traverse (delabM . V.argExpr) (NonEmpty.toList args)
+    V.App _ (V.Builtin _ b)  args -> delabBuiltin b <$> traverse (delabM . V.argExpr) (removeNonExplicitArgs $ NonEmpty.toList args)
+    V.App _ (V.Literal _ l) _args -> return $ B.Literal (delabLiteral l)
     V.App _ fun args             -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
     V.Builtin _ op               -> return $ delabBuiltin op []
 
@@ -191,11 +193,11 @@ delabBuiltin fun args = case fun of
   V.Equality V.Eq  -> delabInfixOp2 B.Eq  tokEq args
   V.Equality V.Neq -> delabInfixOp2 B.Neq tokNeq args
 
-  V.If   -> delabIf args
+  V.If                -> delabIf args
   V.BooleanOp2 V.And  -> delabInfixOp2 B.And  tokAnd  args
   V.BooleanOp2 V.Or   -> delabInfixOp2 B.Or   tokOr   args
   V.BooleanOp2 V.Impl -> delabInfixOp2 B.Impl tokImpl args
-  V.Not  -> delabOp1 B.Not tokNot args
+  V.Not               -> delabOp1 B.Not tokNot args
 
   V.Order V.Le -> delabInfixOp2 B.Le tokLe args
   V.Order V.Lt -> delabInfixOp2 B.Lt tokLt args
@@ -206,7 +208,7 @@ delabBuiltin fun args = case fun of
   V.NumericOp2 V.Sub -> delabInfixOp2 B.Sub tokSub args
   V.NumericOp2 V.Mul -> delabInfixOp2 B.Mul tokMul args
   V.NumericOp2 V.Div -> delabInfixOp2 B.Div tokDiv args
-  V.Neg -> delabOp1      B.Neg tokSub args
+  V.Neg              -> delabOp1      B.Neg tokSub args
 
   V.Cons -> delabInfixOp2 B.Cons tokCons args
   V.At   -> delabInfixOp2 B.At   tokAt   args
@@ -280,3 +282,6 @@ delabFun n typ expr = do
     Right (binders, body)      -> do
       defType <- B.DefType n' <$> traverse delabM binders <*> delabM body
       return [defType]
+
+removeNonExplicitArgs :: [V.NamedArg ann] -> [V.NamedArg ann]
+removeNonExplicitArgs = filter (\arg -> visibilityOf arg == V.Explicit)

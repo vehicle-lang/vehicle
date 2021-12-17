@@ -12,6 +12,7 @@ import Vehicle.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Language.AST
 import Vehicle.Language.Print
+import Vehicle.Compile.Type.Constraint (boundContext)
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -135,7 +136,7 @@ instance MeaningfulError TypeError where
     , problem    = "expected something of type" <+> prettyFriendlyDB nameCtx expected <+>
                    "but inferred type" <+> prettyFriendlyDB nameCtx candidate
     , fix        = "unknown"
-    } where nameCtx = fmap fst ctx
+    } where nameCtx = ctxNames ctx
 
   details (UnresolvedHole p name) = UError $ UserError
     { provenance = p
@@ -143,12 +144,15 @@ instance MeaningfulError TypeError where
     , fix        = "unknown"
     }
 
-  details (FailedConstraints cs) = let constraint = NonEmpty.head cs in
+  details (FailedConstraints cs) = let  in
     UError $ UserError
     { provenance = provenanceOf constraint
-    , problem    = "Could not solve the constraint:" <+> prettyFriendly constraint
+    , problem    = "Could not solve the constraint:" <+> prettyFriendlyDB nameCtx constraint
     , fix        = "Check your types"
     }
+    where
+      constraint = NonEmpty.head cs
+      nameCtx = ctxNames (boundContext constraint)
 
   details (UnsolvedConstraints cs) = let firstConstraint = NonEmpty.head cs in
     UError $ UserError
@@ -165,7 +169,7 @@ instance MeaningfulError TypeError where
     , fix        = "Try inserting an argument of type" <+> argTypeDoc
     }
     where
-      nameCtx    = fmap fst ctx
+      nameCtx    = ctxNames ctx
       argExprDoc = prettyFriendlyDB nameCtx (argExpr arg)
       argTypeDoc = prettyFriendlyDB nameCtx argType
 

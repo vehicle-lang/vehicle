@@ -170,9 +170,9 @@ nfApp ann  fun@(Builtin _ _) args      = do
       _ -> return e
 
     -- If
-    (IfExpr _ _tRes cond e1 e2) -> case cond of
-      BoolLiteralExpr _ _ True  -> return e1
-      BoolLiteralExpr _ _ False -> return e2
+    (IfExpr _ _tRes [cond, e1, e2]) -> case argExpr cond of
+      BoolLiteralExpr _ _ True  -> return $ argExpr e1
+      BoolLiteralExpr _ _ False -> return $ argExpr e2
       _                         -> return e
 
     -- Le

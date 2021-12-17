@@ -60,8 +60,8 @@ instance Elab B.Expr V.InputExpr where
     B.Let binder e1 e2 -> op3 V.Let <$> elab e1 <*> elab binder <*>  elab e2
     B.LSeq es          -> op1 (\ann -> V.LSeq ann (V.Hole (mempty, TheUser) "_")) <$> traverse elab es
     B.Builtin c        -> V.Builtin (mkAnn c) <$> lookupBuiltin c
-    B.Literal v        -> V.Literal V.emptyUserAnn <$> elab v
     B.Var n            -> return $ V.Var (mkAnn n) (tkSymbol n)
+    B.Literal v        -> V.Literal V.emptyUserAnn <$> elab v
 
     B.App fun arg -> do
       fun' <- elab fun

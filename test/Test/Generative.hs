@@ -16,7 +16,7 @@ import Test.Tasty.HUnit
 
 import Test.Generative.Generator
 import Test.Generative.ToVehicle
-import Vehicle.Language.Print (prettyFriendly, prettyVerbose, prettyFriendlyDBClosed)
+import Vehicle.Language.Print (prettyFriendly, prettyVerbose)
 
 maxDepth :: Int
 maxDepth = 15

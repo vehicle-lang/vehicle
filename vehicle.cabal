@@ -70,6 +70,7 @@ library
                       , Vehicle.Compile.CoDeBruijnify
                       , Vehicle.Compile.Normalise
                       , Vehicle.Compile.LetInsertion
+                      , Vehicle.Compile.LiftToProp
                       , Vehicle.Compile.Simplify
                       , Vehicle.Compile.StandardiseNetworks
                       , Vehicle.Compile.SupplyNames
@@ -177,6 +178,7 @@ test-suite vehicle-test
                     , Test.Unit.CoDeBruijn
                     , Test.Unit.LetInsertion
                     , Test.Unit.PositionTree
+                    , Test.Unit.LiftToProp
                     -- , Test.Generative
                     -- , Test.Generative.Generator
                     -- , Test.Generative.ToVehicle

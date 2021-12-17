@@ -56,8 +56,8 @@ instance Show Constraint where
 variableContext :: Constraint -> VariableCtx
 variableContext (Constraint ctx _) = varContext ctx
 
-declContext :: ConstraintContext -> DeclCtx
-declContext = declCtx . varContext
+declContext :: Constraint -> DeclCtx
+declContext = declCtx . variableContext
 
 boundContext :: Constraint -> BoundCtx
 boundContext = boundCtx . variableContext

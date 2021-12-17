@@ -35,8 +35,8 @@ solveUnificationConstraint :: MonadConstraintSolving e m
                            -> m ConstraintProgress
 -- Errors
 solveUnificationConstraint ctx (e1, e2) = do
-  whnfE1 <- whnf (declContext ctx) e1
-  whnfE2 <- whnf (declContext ctx) e2
+  whnfE1 <- whnf (varContext ctx) e1
+  whnfE2 <- whnf (varContext ctx) e2
   let constraint = Constraint ctx (Unify (whnfE1, whnfE2))
   let p = provenanceOf constraint
 
@@ -136,7 +136,7 @@ solveUnificationConstraint ctx (e1, e2) = do
           developerError "Identical meta variables have different numbers of arguments"
 
         let sharedArgs = positionalIntersection args1 args2
-        let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg)) sharedArgs
+        let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
         (_metaName, meta) <- freshMetaWith sharedArgsCtx p
 
         let abstractedMeta = abstractOver args1 meta
@@ -175,7 +175,7 @@ solveUnificationConstraint ctx (e1, e2) = do
       -- for each of the meta-variables in turn.
       | otherwise -> do
         let sharedArgs = args1 `intersect` args2
-        let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg)) sharedArgs
+        let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
 
         (_metaName, meta) <- freshMetaWith sharedArgsCtx p
 
@@ -229,7 +229,9 @@ solveUnificationConstraint ctx (e1, e2) = do
       solveUnificationConstraint ctx (whnfE2, whnfE1)
 
     -- Catch-all
-    _ -> throwError $ mkFailedConstraints [constraint]
+    _ -> do
+      logDebug $ pretty (show $ boundContext constraint)
+      throwError $ mkFailedConstraints [constraint]
 
   return progress
 

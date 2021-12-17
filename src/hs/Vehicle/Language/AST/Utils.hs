@@ -98,6 +98,15 @@ isHole :: Expr binder var ann -> Bool
 isHole (Hole _ _ ) = True
 isHole _           = False
 
+isType :: Expr binder var ann -> Bool
+isType (Type _) = True
+isType _        = False
+
+isMeta :: Expr binder var ann -> Bool
+isMeta (Meta _ _)           = True
+isMeta (App _ (Meta _ _) _) = True
+isMeta _                    = False
+
 isProperty :: Expr binder var ann -> Bool
 isProperty (Builtin _ (BooleanType Prop)) = True
 isProperty _                              = False

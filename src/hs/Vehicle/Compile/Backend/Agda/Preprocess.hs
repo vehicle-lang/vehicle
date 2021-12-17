@@ -34,8 +34,8 @@ preprocess prog1 = prog4
 capitaliseTypeNames :: CheckedProg -> CheckedProg
 capitaliseTypeNames prog = evalState (cap prog) mempty
 
-isType :: CheckedExpr -> Bool
-isType t = case t of
+isTypeDef :: CheckedExpr -> Bool
+isTypeDef t = case t of
   -- We don't capitalise things of type `Prop` because they will be lifted
   -- to the type level, only things of type `X -> Prop`.
   Pi _ _ result -> go result
@@ -57,7 +57,7 @@ instance CapitaliseTypes CheckedDecl where
     DeclData p ident t -> DeclData p <$> cap ident <*> cap t
     DeclNetw p ident t -> DeclNetw p <$> cap ident <*> cap t
     DefFun p ident t e -> do
-      when (isType t) $
+      when (isTypeDef t) $
         modify (insert ident)
       DefFun p <$> cap ident <*> cap t <*> cap e
 

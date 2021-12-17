@@ -33,7 +33,7 @@ solveTypeClassConstraint :: MonadConstraintSolving e m
                          -> CheckedExpr
                          -> m ConstraintProgress
 solveTypeClassConstraint ctx m e = do
-  eWHNF <- whnf (declContext ctx) e
+  eWHNF <- whnf (varContext ctx) e
   let constraint = Constraint ctx (m `Has` eWHNF)
   progress <- case toHead eWHNF of
     (Builtin _ (TypeClass tc), args) -> do
@@ -78,11 +78,6 @@ blockOnMetas tc args action = do
     else do
       logDebug $ "stuck-on metas" <+> prettyVerbose metas
       return Stuck
-
-isMeta :: CheckedExpr -> Bool
-isMeta (Meta _ _)           = True
-isMeta (App _ (Meta _ _) _) = True
-isMeta _                    = False
 
 solveHasEq :: MonadConstraintSolving e m
            => Constraint
@@ -179,7 +174,7 @@ simplySolved :: ConstraintProgress
 simplySolved = Progress mempty mempty
 
 abstractOver :: BoundCtx -> CheckedExpr -> CheckedExpr
-abstractOver ctx body = foldr typeToLam body (fmap snd ctx)
+abstractOver ctx body = foldr typeToLam body (fmap (\(_, t, _) -> t) ctx)
   where
     typeToLam :: CheckedExpr -> CheckedExpr -> CheckedExpr
     typeToLam t = Lam ann (ExplicitBinder ann Nothing t)

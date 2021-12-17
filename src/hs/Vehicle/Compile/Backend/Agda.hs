@@ -406,7 +406,7 @@ compileBuiltin e = case e of
   ListType   _ tElem       -> annotateApp [DataList]   "List"   <$> traverse compile [tElem]
   TensorType _ tElem tDims -> annotateApp [DataTensor] "Tensor" <$> traverse compile [tElem, tDims]
 
-  IfExpr _ _ e1 e2 e3 -> do
+  IfExpr _ _ [e1, e2, e3] -> do
     ce1 <- compile e1
     ce2 <- compile e2
     ce3 <- compile e3

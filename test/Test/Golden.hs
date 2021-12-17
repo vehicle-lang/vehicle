@@ -27,7 +27,7 @@ import Vehicle.Compile
 -- Tests
 
 goldenTests :: TestTree
-goldenTests = testGroup "Golden"
+goldenTests = testGroup "GoldenTests"
   [ testGroup "Networks" (map makeGoldenTestsFromSpec realisticTestList)
   , testGroup "Simple"   (map makeGoldenTestsFromSpec simpleTestList)
   , testGroup "Misc"     (map makeGoldenTestsFromSpec miscTestList)

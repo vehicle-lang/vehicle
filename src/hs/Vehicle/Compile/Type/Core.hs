@@ -11,12 +11,12 @@ import Vehicle.Language.AST
 --------------------------------------------------------------------------------
 -- Context definitions
 
--- | The names and types of the expression variables that are in currently in
--- scope, indexed into via De Bruijn expressions.
-type BoundCtx = [(DBBinding, CheckedExpr)]
+-- | The names, types and values if known of the variables that are in
+-- currently in scope, indexed into via De Bruijn expressions.
+type BoundCtx = [(DBBinding, CheckedExpr, Maybe CheckedExpr)]
 
 instance IsBoundCtx BoundCtx where
-  ctxNames b = map fst b
+  ctxNames = map (\(n, _, _) -> n)
 
 -- | The declarations that are currently in scope, indexed into via their names.
 -- The first component is the type, and the second one the expression (if not

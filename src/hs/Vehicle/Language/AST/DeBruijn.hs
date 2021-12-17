@@ -126,6 +126,7 @@ liftFreeDBIndices :: Semigroup ann
                   => BindingDepth
                   -> DBExpr ann  -- ^ expression to lift
                   -> DBExpr ann  -- ^ the result of the lifting
+liftFreeDBIndices 0 e = e
 liftFreeDBIndices j e = runReader (alter id alterVar e) (0 , ())
   where
     alterVar :: UpdateVariable (Reader (BindingDepth, ())) () ann

@@ -3,7 +3,6 @@ module Vehicle.Compile.Type.Meta
   ( MetaSet
   , MetaSubstitution
   , MetaSubstitutable(..)
-  , MonadMeta
   , freshMetaWith
   , metaSolved
   , makeMetaType
@@ -22,6 +21,7 @@ module Vehicle.Compile.Type.Meta
   , partiallySolved
   , isStuck
   , whnf
+  , norm
   , MetaCtx(..)
   , emptyMetaCtx
   ) where
@@ -39,7 +39,7 @@ import Vehicle.Language.AST
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.MetaSubstitution ( MetaSubstitution )
-import Vehicle.Compile.Type.MetaSubstitution qualified as MetaSubst (singleton, map, lookup, insertWith)
+import Vehicle.Compile.Type.MetaSubstitution qualified as MetaSubst (map, lookup, insertWith)
 import Vehicle.Compile.Type.MetaSet (MetaSet)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton, disjoint, null)
 import Vehicle.Compile.Type.Constraint
@@ -71,18 +71,15 @@ emptyMetaCtx = MetaCtx
 --------------------------------------------------------------------------------
 -- Meta substitutions
 
+liftSubstitution :: MetaSubstitution -> MetaSubstitution
+liftSubstitution = MetaSubst.map (liftFreeDBIndices 1)
+
 class MetaSubstitutable a where
   -- TODO change name away from M
   substM :: a -> Reader MetaSubstitution a
 
   substMetas :: MetaSubstitution -> a -> a
   substMetas s e = runReader (substM e) s
-
-  substMeta :: Meta -> CheckedExpr -> a -> a
-  substMeta m e = substMetas (MetaSubst.singleton m e)
-
-  substMetasLiftLocal :: a -> Reader MetaSubstitution a
-  substMetasLiftLocal e = local (MetaSubst.map (liftFreeDBIndices 1)) (substM e)
 
 instance MetaSubstitutable a => MetaSubstitutable (a, a) where
   substM (e1, e2) = do
@@ -108,13 +105,14 @@ instance MetaSubstitutable CheckedExpr where
     Var      ann v            -> return (Var     ann v)
     LSeq     ann dict es      -> LSeq     ann <$> substM dict   <*> traverse substM es
     Ann      ann term typ     -> Ann      ann <$> substM term   <*> substM typ
-    Pi       ann binder res   -> Pi       ann <$> substM binder <*> substMetasLiftLocal res
-    Let      ann e1 binder e2 -> Let      ann <$> substM e1     <*> substM binder <*> substMetasLiftLocal e2
-    Lam      ann binder e     -> Lam      ann <$> substM binder <*> substMetasLiftLocal e
+    Pi       ann binder res   -> Pi       ann <$> substM binder <*> local liftSubstitution (substM res)
+    Let      ann e1 binder e2 -> Let      ann <$> substM e1     <*> substM binder <*> local liftSubstitution (substM e2)
+    Lam      ann binder e     -> Lam      ann <$> substM binder <*> local liftSubstitution (substM e)
     PrimDict ann tc           -> PrimDict ann <$> substM tc
 
     e@(Meta ann _)  -> substMApp ann (e, [])
     e@(App ann _ _) -> substMApp ann (toHead e)
+
 
 -- | We really don't want un-normalised lambda applications from solved meta-variables
 -- clogging up our program so this function detects meta applications and normalises
@@ -151,15 +149,13 @@ instance MetaSubstitutable Constraint where
 --------------------------------------------------------------------------------
 -- The meta monad
 
-type MonadMeta m = (MonadState MetaCtx m, MonadLogger m)
-
-modifyMetaCtx :: MonadMeta m => (MetaCtx -> MetaCtx) -> m ()
+modifyMetaCtx :: MonadState MetaCtx m => (MetaCtx -> MetaCtx) -> m ()
 modifyMetaCtx = modify
 
-getConstraints :: MonadMeta m => m [Constraint]
+getConstraints :: MonadState MetaCtx m => m [Constraint]
 getConstraints = gets constraints
 
-addUnificationConstraint :: (MonadMeta m, MonadLogger m)
+addUnificationConstraint :: (MonadState MetaCtx m, MonadLogger m)
                          => Provenance
                          -> VariableCtx
                          -> CheckedExpr
@@ -170,7 +166,7 @@ addUnificationConstraint p ctx e1 e2 = do
   let constraint = Constraint context $ Unify (e1, e2)
   addConstraints [constraint]
 
-addTypeClassConstraint :: (MonadMeta m, MonadLogger m)
+addTypeClassConstraint :: (MonadState MetaCtx m, MonadLogger m)
                        => VariableCtx
                        -> Meta
                        -> CheckedExpr
@@ -180,25 +176,25 @@ addTypeClassConstraint ctx meta expr = do
   let constraint = Constraint context (meta `Has` expr)
   addConstraints [constraint]
 
-addConstraints :: (MonadMeta m, MonadLogger m) => [Constraint] -> m ()
+addConstraints :: (MonadState MetaCtx m, MonadLogger m) => [Constraint] -> m ()
 addConstraints []             = return ()
 addConstraints newConstraints = do
   logDebug ("add-constraints " <> align (prettyVerbose newConstraints))
   modifyMetaCtx $ \ MetaCtx {..} ->
     MetaCtx { constraints = constraints ++ newConstraints, ..}
 
-setConstraints :: (MonadMeta m) => [Constraint] -> m ()
+setConstraints :: (MonadState MetaCtx m) => [Constraint] -> m ()
 setConstraints newConstraints = modifyMetaCtx $ \MetaCtx{..} ->
     MetaCtx { constraints = newConstraints, ..}
 
-getMetaSubstitution :: MonadMeta m => m MetaSubstitution
+getMetaSubstitution :: MonadState MetaCtx m => m MetaSubstitution
 getMetaSubstitution = gets currentSubstitution
 
-modifyMetaSubstitution :: MonadMeta m => (MetaSubstitution -> MetaSubstitution) -> m ()
+modifyMetaSubstitution :: MonadState MetaCtx m => (MetaSubstitution -> MetaSubstitution) -> m ()
 modifyMetaSubstitution f = modifyMetaCtx $ \ MetaCtx {..} ->
   MetaCtx { currentSubstitution = f currentSubstitution, ..}
 
-freshMetaName :: MonadMeta m => m Meta
+freshMetaName :: MonadState MetaCtx m => m Meta
 freshMetaName = do
   MetaCtx {..} <- get;
   put $ MetaCtx { nextMeta = succ nextMeta , ..}
@@ -211,7 +207,7 @@ freshMetaName = do
 -- Post unification, any unneeded context arguments will be normalised away.
 -- It returns the name of the meta and the expression of it applied to every
 -- variable in the context.
-freshMetaWith :: (MonadMeta m, MonadLogger m)
+freshMetaWith :: (MonadState MetaCtx m, MonadLogger m)
               => BoundCtx
               -> Provenance
               -> m (Meta, CheckedExpr)
@@ -237,12 +233,12 @@ makeMetaType :: BoundCtx
              -> CheckedExpr
 makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
   where
-    entryToPi :: (DBBinding, CheckedExpr) -> CheckedExpr -> CheckedExpr
-    entryToPi (name, t) resTy = Pi ann (ExplicitBinder ann name t) resTy
+    entryToPi :: (DBBinding, CheckedExpr, Maybe CheckedExpr) -> CheckedExpr -> CheckedExpr
+    entryToPi (name, t, _) = Pi ann (ExplicitBinder ann name t)
 
 -- | Returns any constraints that are activated (i.e. worth retrying) based
 -- on the set of metas that were solved last pass.
-popActivatedConstraints :: MonadMeta m
+popActivatedConstraints :: MonadState MetaCtx m
                         => MetaSet
                         -> m [Constraint]
 popActivatedConstraints metasSolved = do
@@ -258,7 +254,7 @@ popActivatedConstraints metasSolved = do
       not (MetaSet.null blockingMetas) && MetaSet.disjoint solvedMetas blockingMetas
 
 
-metaSolved :: (MonadMeta m, MonadLogger m)
+metaSolved :: (MonadState MetaCtx m, MonadLogger m)
            => Provenance
            -> Meta
            -> CheckedExpr
@@ -279,7 +275,7 @@ metaSolved p m e = do
 
 type MonadConstraintSolving e m =
   ( AsTypeError e
-  , MonadMeta m
+  , MonadState MetaCtx m
   , MonadLogger m
   , MonadError e m
   )
@@ -328,13 +324,13 @@ partiallySolved constraints = Progress constraints mempty
 -- type-checking. For full normalisation including builtins see the dedicated
 -- `Vehicle.Language.Normalisation` module.
 
-whnf :: (MonadMeta m) => DeclCtx -> CheckedExpr -> m CheckedExpr
+whnf :: (MonadState MetaCtx m) => VariableCtx -> CheckedExpr -> m CheckedExpr
 whnf ctx e = do
   subst <- getMetaSubstitution
   let e' = substMetas subst e
   runReaderT (norm e') ctx
 
-norm :: (MonadMeta m, MonadReader DeclCtx m) => CheckedExpr -> m CheckedExpr
+norm :: (MonadReader VariableCtx m) => CheckedExpr -> m CheckedExpr
 norm e@(App ann fun (arg :| args)) = do
   normFun  <- norm fun
   case normFun of
@@ -342,11 +338,16 @@ norm e@(App ann fun (arg :| args)) = do
       nfBody <- norm (argExpr arg `substInto` body)
       return $ normAppList ann nfBody args
     _            -> return e
-norm e@(Var _ (Free ident)) = do
-  ctx <- ask
-  case Map.lookup ident ctx of
-    Just (_, Just res) -> return res
-    _                  -> return e
+norm e@(Var _ v) = do
+  VariableCtx{..} <- ask
+  case v of
+    Free ident -> case Map.lookup ident declCtx of
+      Just (_, Just res) -> return res
+      _                  -> return e
+    Bound index -> case boundCtx !!? index of
+      Just (_, _, Just res) -> return res
+      _                     -> return e
+
 norm (Let _ bound _ body) = norm (bound `substInto` body)
 norm (Ann _ body _)       = norm body
 norm e                    = return e

@@ -50,7 +50,7 @@ runNaiveCoDBDescope e1 =
 --------------------------------------------------------------------------------
 -- Core operation
 
-performDescoping :: Descope t
+performDescoping :: (Descope t, Show var)
                  => [NamedBinding]
                  -> (var -> Reader Ctx NamedVar)
                  -> t NamedBinding var      ann
@@ -68,7 +68,7 @@ type MonadDescope m = MonadReader Ctx m
 -- |Throw an |IndexOutOfBounds| error using an arbitrary index.
 indexOutOfBounds :: DBIndex -> Int -> a
 indexOutOfBounds index ctxSize = developerError $
-  "DeBruijn index" <+> pretty index <+>
+  "During descoping found DeBruijn index" <+> pretty index <+>
   "greater than current context size" <+> pretty ctxSize
 
 convertDBVar :: MonadDescope m => DBVar -> m NamedVar
@@ -88,7 +88,7 @@ convertCoDBVarNaive (CoDBFree (Identifier name)) = return name
 convertCoDBVarNaive CoDBBound                    = return "CoDBVar"
 
 class Descope t where
-  descope :: MonadDescope m
+  descope :: (MonadDescope m, Show var)
           => (var -> m NamedVar)
           -> t NamedBinding var ann
           -> m (t NamedBinding NamedVar ann)
@@ -99,13 +99,15 @@ instance Descope Binder where
 instance Descope Arg where
   descope f = traverseArgExpr (descope f)
 
-showScopeEntry :: Expr NamedBinding var ann -> Expr NamedBinding var ann
-showScopeEntry e = {-trace ("descope-entry " <> showCore e)-} e
+showScopeEntry :: Show var => Expr NamedBinding var ann -> Expr NamedBinding var ann
+showScopeEntry e =
+  --trace ("descope-entry " <> show (removeAnnotations e))
+  e
 
 showScopeExit :: MonadDescope m => m (NamedExpr ann) -> m (NamedExpr ann)
 showScopeExit m = do
   e <- m
-  {-trace ("descope-exit  " <> showCore e)-}
+  --trace ("descope-exit  " <> showCore e)
   return e
 
 instance Descope Expr where
