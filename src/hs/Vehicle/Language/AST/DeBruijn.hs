@@ -121,7 +121,7 @@ instance DeBruijnFunctor ann (Binder DBBinding DBVar) where
 -- Code loosely based off of:
 -- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
 
--- | Lift all deBruin indices that refer to environment variables by the provided depth.
+-- | Lift all DeBruijn indices that refer to environment variables by the provided depth.
 liftFreeDBIndices :: Semigroup ann
                   => BindingDepth
                   -> DBExpr ann  -- ^ expression to lift

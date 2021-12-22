@@ -5,7 +5,6 @@ module Vehicle.Compile.LiftToProp
   ) where
 
 import Data.List.NonEmpty as NonEmpty
-import Debug.Trace
 
 import Vehicle.Prelude
 import Vehicle.Language.AST

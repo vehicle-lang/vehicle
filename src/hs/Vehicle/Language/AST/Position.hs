@@ -4,30 +4,28 @@ module Vehicle.Language.AST.Position
   , PositionList(..)
   , BoundVarMap
   , isBoth
+  , mergeBoth
   , unnode
+  , unlist
   , leafBVM
   , unleafBVM
   , nodeBVM
   , unnodeBVM
-  , pop
-  , unpop
-  , substPos
-  , prefixTree
+  , liftBVM
+  , lowerBVM
+  , stripPrefix
   , prefixOrd
   ) where
 
 import Control.Monad (join)
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.List.NonEmpty qualified as NonEmpty (zipWith)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import Data.Hashable (Hashable(..))
+import Data.Bifunctor (Bifunctor(..))
 import GHC.Generics (Generic)
 
 import Vehicle.Prelude
-import Vehicle.Language.AST.Core
-import Vehicle.Language.AST.DeBruijn hiding (Free, Bound)
-import Vehicle.Language.AST.Utils
+import Vehicle.Language.AST.DeBruijn ( DBIndex )
 
 
 --------------------------------------------------------------------------------
@@ -91,29 +89,47 @@ isBoth (Node l) = go l
 -- in an expression. If not used, then there is no entry in the map.
 type BoundVarMap = IntMap PositionTree
 
+mergeBoth :: Maybe PositionTree -> Maybe PositionList -> Maybe PositionList
+mergeBoth Nothing  Nothing  = Nothing
+mergeBoth (Just t) Nothing  = Just $ Here t
+mergeBoth Nothing  (Just l) = Just $ There l
+mergeBoth (Just t) (Just l) = Just $ Both t l
+
 --------------------------------------------------------------------------------
 -- Computing prefixes
 
-prefixTree :: PositionTree -> PositionTree -> Maybe PositionTree
-prefixTree Leaf      t         = Just t
-prefixTree (Node _)  Leaf      = Nothing
-prefixTree (Node l1) (Node l2) = prefixList l1 l2
+-- | Strips the first PositionTree from the second PositionTree. Returns a
+-- pair containing@
+--   1) the second tree with the positions in the first removed,
+--   2) a list of the suffixes in depth-first order removed from the second
+--      after that point.
+stripPrefix :: PositionTree -> PositionTree -> (Maybe PositionTree, [PositionTree])
+stripPrefix Leaf      t         = (Nothing,   [t])
+stripPrefix (Node _)  Leaf      = (Just Leaf, [])
+stripPrefix (Node l1) (Node l2) = first (Node <$>) (stripPrefixList l1 l2)
 
-prefixList :: PositionList -> PositionList -> Maybe PositionTree
-prefixList (Here  t1)    (Here t2)     = prefixTree t1 t2
-prefixList (There l1)    (There l2)    = prefixList l1 l2
-prefixList (Here  t1)    (Both t2 _l2) = prefixTree t1 t2
-prefixList (There l1)    (Both _t2 l2) = prefixList l1 l2
-prefixList (Both  t1 l1) (Both t2 l2)  = prefixTree t1 t2 <> prefixList l1 l2
-prefixList _             _             = Nothing
+stripPrefixList :: PositionList -> PositionList -> (Maybe PositionList, [PositionTree])
+stripPrefixList (Here t1)     (Here t2)     = first (Here <$>) (stripPrefix t1 t2)
+stripPrefixList (Here _)      (There l2)    = (Just (There l2), [])
+stripPrefixList (Here t1)     (Both t2 l2)  = mergeStrip (stripPrefix t1 t2) (Just l2, [])
+stripPrefixList (There _)     (Here t2)     = (Just (Here t2), [])
+stripPrefixList (There l1)    (There l2)    = first (There <$>) (stripPrefixList l1 l2)
+stripPrefixList (There l1)    (Both t2 l2)  = mergeStrip (Just t2, []) (stripPrefixList l1 l2)
+stripPrefixList (Both t1 _)   (Here t2)     = first (Here <$>) (stripPrefix t1 t2)
+stripPrefixList (Both _ l1)   (There l2)    = first (There <$>) (stripPrefixList l1 l2)
+stripPrefixList (Both  t1 l1) (Both t2 l2)  = mergeStrip (stripPrefix t1 t2) (stripPrefixList l1 l2)
+
+mergeStrip :: (Maybe PositionTree, [PositionTree])
+           -> (Maybe PositionList, [PositionTree])
+           -> (Maybe PositionList, [PositionTree])
+mergeStrip (mt, xs) (ml, ys) = (mergeBoth mt ml, xs <> ys)
 
 prefixOrd :: PositionTree -> PositionTree -> Maybe Ordering
-prefixOrd t1 t2 = case (prefixTree t1 t2, prefixTree t2 t1) of
-  (Nothing, Nothing) -> Nothing
-  (Just _ , Nothing) -> Just GT
-  (Nothing, Just _)  -> Just LT
-  (Just _ , Just _)  -> Just EQ
-
+prefixOrd t1 t2 = case (snd (stripPrefix t1 t2), snd (stripPrefix t2 t1)) of
+  ([], []) -> Nothing
+  (_ , []) -> Just LT
+  ([], _)  -> Just GT
+  (_ , _)  -> Just EQ
 --------------------------------------------------------------------------------
 -- Operations
 
@@ -126,19 +142,24 @@ unnode :: PositionTree -> [Maybe PositionTree]
 unnode Leaf     = developerError "Found Leaf when expected Node during traversal of CoDBExpr"
 unnode (Node l) = unlist l
 
-pop :: BoundVarMap -> (Maybe PositionTree, BoundVarMap)
-pop bvm1 = (mt, bvm3)
+-- | Lifts a `BoundVarMap` over a binder, removing the position tree
+-- for the bound variable.
+liftBVM :: BoundVarMap -> (Maybe PositionTree, BoundVarMap)
+liftBVM bvm1 = (mt, bvm3)
   where
     (mt, bvm2) = IntMap.updateLookupWithKey (\_k _v -> Nothing) 0 bvm1
     bvm3       = IntMap.mapKeysMonotonic (\x -> x - 1) bvm2
 
-unpop :: Maybe PositionTree -> BoundVarMap -> BoundVarMap
-unpop mt bvm1 = bvm3
+-- | Lowers a `BoundVarMap` over a binder, add the position tree for the
+-- bound variable.
+lowerBVM :: Maybe PositionTree -> BoundVarMap -> BoundVarMap
+lowerBVM mt bvm1 = bvm3
   where
     bvm2 = IntMap.mapKeysMonotonic (+ 1) bvm1
     bvm3 = case mt of
       Nothing -> bvm2
       Just t  -> IntMap.insert 0 t bvm2
+
 
 nodeBVM :: [BoundVarMap] -> BoundVarMap
 nodeBVM []   = mempty
@@ -166,47 +187,3 @@ unleafBVM bvm = case IntMap.minViewWithKey bvm of
     | null bvm' -> i
   _ -> developerError $ "Expecting a singleton BoundVarMap with a leaf node" <+>
                         "for Var but found" <+> pretty (show bvm)
-
---------------------------------------------------------------------------------
--- Substitution
-
-substPos :: CheckedExpr -> Maybe PositionTree -> CheckedExpr -> CheckedExpr
-substPos _ Nothing         expr = expr
-substPos v (Just Leaf)     _    = v
-substPos v (Just (Node l)) expr = case (expr, unlist l) of
-  (Type{}    , _) -> invalidPositionTreeError l
-  (Hole{}    , _) -> invalidPositionTreeError l
-  (PrimDict{}, _) -> invalidPositionTreeError l
-  (Meta{}    , _) -> invalidPositionTreeError l
-  (Literal{} , _) -> invalidPositionTreeError l
-  (Builtin{} , _) -> invalidPositionTreeError l
-  (Var{}     , _) -> invalidPositionTreeError l
-
-  (Ann  ann e t, p1 : p2 : _) -> Ann ann (substPos v p1 e) (substPos v p2 t)
-  (LSeq ann dict xs, p : ps)  -> LSeq ann (substPos v p dict) (zipWith (substPos v) ps xs)
-
-  (App ann fun args, p1 : p2 : ps) ->
-    App ann (substPos v p1 fun) (NonEmpty.zipWith (substPosArg v) (p2 :| ps) args)
-
-  (Pi  ann binder result, p1 : p2 : _) ->
-    Pi ann (substPosBinder v p1 binder) (substPos (liftFreeDBIndices 1 v) p2 result)
-
-  (Let ann bound binder body, p1 : p2 : p3 : _) ->
-    Let ann (substPos v p1 bound) (substPosBinder v p2 binder) (substPos (liftFreeDBIndices 1 v) p3 body)
-
-  (Lam ann binder body, p1 : p2 : _) ->
-    Lam ann (substPosBinder v p1 binder) (substPos (liftFreeDBIndices 1 v) p2 body)
-
-  (_, ps) -> developerError $
-    "Expected the same number of PositionTrees as args but found" <+> pretty (length ps)
-
-substPosArg :: CheckedExpr -> Maybe PositionTree -> CheckedArg -> CheckedArg
-substPosArg v p = mapArgExpr (substPos v p)
-
-substPosBinder :: CheckedExpr -> Maybe PositionTree -> CheckedBinder -> CheckedBinder
-substPosBinder v p = mapBinderType (substPos v p)
-
-invalidPositionTreeError :: PositionList -> a
-invalidPositionTreeError l = developerError $
-  "Whilst performing a positional substitution expected a Leaf" <+>
-  "but found" <+> squotes (pretty l)

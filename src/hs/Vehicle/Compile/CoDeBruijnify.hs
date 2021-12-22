@@ -41,17 +41,17 @@ toCoDBExpr = cata $ \case
     (App ann fun' args', nodeBVM (bvm : NonEmpty.toList bvms))
 
   PiF  ann binder (result', bvm2) ->
-    let (positionTree, bvm2') = pop bvm2 in
+    let (positionTree, bvm2') = liftBVM bvm2 in
     let (binder', bvm1) = toCoDBBinder binder positionTree in
     (Pi ann binder' result', nodeBVM [bvm1, bvm2'])
 
   LetF ann (bound', bvm1) binder (body', bvm3) ->
-    let (positionTree, bvm3') = pop bvm3 in
+    let (positionTree, bvm3') = liftBVM bvm3 in
     let (binder', bvm2) = toCoDBBinder binder positionTree in
     (Let ann bound' binder' body', nodeBVM [bvm1, bvm2, bvm3'])
 
   LamF ann binder (body', bvm2) ->
-    let (positionTree, bvm2') = pop bvm2 in
+    let (positionTree, bvm2') = liftBVM bvm2 in
     let (binder', bvm1) = toCoDBBinder binder positionTree in
     (Lam ann binder' body', nodeBVM [bvm1, bvm2'])
 
@@ -79,7 +79,7 @@ instance ConvertCodebruijn Expr where
     BuiltinC  ann op -> Builtin  ann op
     LiteralC  ann l  -> Literal  ann l
 
-    SeqC ann dict xs -> LSeq ann (fromCoDB dict) (fmap fromCoDB xs)
+    LSeqC ann dict xs -> LSeq ann (fromCoDB dict) (fmap fromCoDB xs)
     VarC ann v       -> Var ann v
 
     AnnC ann e t               -> Ann ann (fromCoDB e) (fromCoDB t)

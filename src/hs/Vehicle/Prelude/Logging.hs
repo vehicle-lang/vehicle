@@ -17,6 +17,8 @@ module Vehicle.Prelude.Logging
   , liftExceptWithLogging
   , flushLogs
   , showMessages
+  , setTextColour
+  , setBackgroundColour
   ) where
 
 import Control.Monad.Trans.Class (MonadTrans, lift)
@@ -38,11 +40,24 @@ data Severity
   | Info
   | Debug
 
-setColor :: Severity -> String
-setColor Error   = setSGRCode [SetColor Foreground Vivid Red]
-setColor Warning = setSGRCode [SetColor Foreground Vivid Yellow]
-setColor Info    = setSGRCode [SetColor Foreground Vivid Blue]
-setColor Debug   = setSGRCode [SetColor Foreground Vivid Green]
+setTextColour :: Color -> String -> String
+setTextColour c s =
+  setSGRCode [SetColor Foreground Vivid c] <>
+  s <>
+  setSGRCode [SetColor Foreground Vivid White]
+
+setBackgroundColour :: Color -> String -> String
+setBackgroundColour c s =
+  setSGRCode [SetColor Background Vivid c] <>
+  s <>
+  setSGRCode [SetColor Background Vivid Black]
+
+severityColour :: Severity -> Color
+severityColour = \case
+  Error   -> Red
+  Warning -> Yellow
+  Info    -> Blue
+  Debug   -> Green
 
 type CallDepth = Int
 
@@ -129,11 +144,8 @@ logDebug text = do
   depth <- getCallDepth
   logMessage $ Message Debug (layoutAsText (indent depth text))
 
-resetColor :: String
-resetColor = setSGRCode []
-
 instance Show Message where
-  show (Message s t) = setColor s <> T.unpack t <> resetColor
+  show (Message s t) = setTextColour (severityColour s) (T.unpack t)
 
 showMessages :: [Message] -> String
 showMessages logs = unlines $ map show logs

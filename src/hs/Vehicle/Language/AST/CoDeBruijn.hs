@@ -6,20 +6,28 @@ module Vehicle.Language.AST.CoDeBruijn
   , CoDBBinder
   , CoDBBinding(..)
   , CoDBVar(..)
+  , CheckedCoDBExpr
+  , CheckedCoDBArg
+  , CheckedCoDBBinder
   , ExtractPositionTrees(..)
   , BinderC(..)
   , ArgC(..)
   , ExprC(..)
   , RecCoDB(..)
+  , PositionsInExpr(..)
   , mkHashable
+  , substPos
+  , liftFreeCoDBIndices
+  , lowerFreeCoDBIndices
   ) where
 
 import Control.Exception (assert)
 import Data.Bifunctor (first)
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.List.NonEmpty qualified as NonEmpty (unzip, zip, toList)
+import Data.List.NonEmpty qualified as NonEmpty (unzip, zip, zipWith, toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.IntMap qualified as IntMap
 import Data.Hashable (Hashable(..))
 import Data.Functor.Foldable (Recursive(..))
 import GHC.Generics (Generic)
@@ -31,7 +39,7 @@ import Vehicle.Language.AST.DeBruijn hiding (Free, Bound)
 import Vehicle.Language.AST.DeBruijn qualified as DB (DBVar(..))
 import Vehicle.Language.AST.Visibility
 import Vehicle.Language.AST.Builtin (Builtin)
-import Vehicle.Language.AST.Utils ( removeAnnotations )
+import Vehicle.Language.AST.Utils
 import Vehicle.Language.AST.Position
 
 --------------------------------------------------------------------------------
@@ -64,6 +72,10 @@ type CoDBBinder ann = (PartialCoDBBinder ann, BoundVarMap)
 type CoDBArg    ann = (PartialCoDBArg    ann, BoundVarMap)
 type CoDBExpr   ann = (PartialCoDBExpr   ann, BoundVarMap)
 
+type CheckedCoDBExpr   = CoDBExpr CheckedAnn
+type CheckedCoDBArg    = CoDBArg CheckedAnn
+type CheckedCoDBBinder = CoDBBinder CheckedAnn
+
 instance Hashable (PartialCoDBExpr   ()) where
 instance Hashable (PartialCoDBArg    ()) where
 instance Hashable (PartialCoDBBinder ()) where
@@ -71,6 +83,9 @@ instance Hashable (PartialCoDBBinder ()) where
 mkHashable :: CoDBExpr ann -> CoDBExpr ()
 mkHashable = first removeAnnotations
 
+-- | An expression paired with a position tree represting positions within it.
+-- Currently used mainly for pretty printing position trees.
+data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
 
 --------------------------------------------------------------------------------
 -- Extract binder positionTrees
@@ -162,7 +177,7 @@ data ExprC ann
   | LetC      ann (CoDBExpr ann) (CoDBBinder ann) (CoDBExpr ann)
   | LamC      ann (CoDBBinder ann) (CoDBExpr ann)
   | LiteralC  ann Literal
-  | SeqC      ann (CoDBExpr ann) [CoDBExpr ann]
+  | LSeqC      ann (CoDBExpr ann) [CoDBExpr ann]
   | PrimDictC ann (CoDBExpr ann)
   deriving (Show)
 
@@ -179,7 +194,7 @@ instance RecCoDB (CoDBExpr ann) (ExprC ann) where
 
     (PrimDict ann e, bvm1 : _) -> PrimDictC ann (e, bvm1)
 
-    (LSeq ann dict xs, bvm1 : bvms) -> SeqC ann (dict, bvm1) (zip xs bvms)
+    (LSeq ann dict xs, bvm1 : bvms) -> LSeqC ann (dict, bvm1) (zip xs bvms)
 
     (Var ann v, _) -> case v of
       CoDBFree  ident -> assert (null bvm) (VarC ann (DB.Free ident))
@@ -191,13 +206,13 @@ instance RecCoDB (CoDBExpr ann) (ExprC ann) where
       AppC ann (fun, bvm1) (NonEmpty.zip args (bvm2 :| bvms))
 
     (Pi ann binder result, bvm1 : bvm2 : _) ->
-      PiC ann (binder, bvm1) (result, unpop (positionTreeOf binder) bvm2)
+      PiC ann (binder, bvm1) (result, lowerBVM (positionTreeOf binder) bvm2)
 
     (Let ann bound binder body, bvm1 : bvm2 : bvm3 : _) ->
-      LetC ann (bound, bvm1) (binder, bvm2) (body, unpop (positionTreeOf binder) bvm3)
+      LetC ann (bound, bvm1) (binder, bvm2) (body, lowerBVM (positionTreeOf binder) bvm3)
 
     (Lam ann binder body, bvm1 : bvm2 : _) ->
-      LamC ann (binder, bvm1) (body, unpop (positionTreeOf binder) bvm2)
+      LamC ann (binder, bvm1) (body, lowerBVM (positionTreeOf binder) bvm2)
 
     (_, bvms) -> developerError $
       "Expected the same number of BoundVarMaps as args but found" <+> pretty (length bvms)
@@ -211,3 +226,88 @@ instance RecCoDB (CoDBArg ann) (ArgC ann) where
 positionTreeOf :: PartialCoDBBinder ann -> Maybe PositionTree
 positionTreeOf b = case nameOf b of
   CoDBBinding _ pt -> pt
+
+--------------------------------------------------------------------------------
+-- Substitution
+
+-- | Position-based substitution of expressions. Note that it needs to be used
+-- with care as unlike DeBruijn based substitution it does not only target
+-- variables but arbitrary expressions. Assumes that all the variables in the
+-- value `v` being substituted are free in the expression being substituted into.
+substPos :: CheckedCoDBExpr -> Maybe PositionTree -> CheckedCoDBExpr -> CheckedCoDBExpr
+substPos _ Nothing         expr = expr
+substPos v (Just Leaf)     _    = v
+substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
+  (TypeC{}    , _) -> invalidPositionTreeError l
+  (HoleC{}    , _) -> invalidPositionTreeError l
+  (PrimDictC{}, _) -> invalidPositionTreeError l
+  (MetaC{}    , _) -> invalidPositionTreeError l
+  (LiteralC{} , _) -> invalidPositionTreeError l
+  (BuiltinC{} , _) -> invalidPositionTreeError l
+  (VarC{}     , _) -> invalidPositionTreeError l
+
+  (AnnC ann e t, p1 : p2 : _) ->
+    let (e', bvm1) = substPos v p1 e in
+    let (t', bvm2) = substPos v p2 t in
+    (Ann ann e' t', nodeBVM [bvm1, bvm2])
+
+  (LSeqC ann dict xs, p : ps) ->
+    let (dict', bvm1) = substPos v p dict in
+    let (xs', bvms) = unzip (zipWith (substPos v) ps xs) in
+    (LSeq ann dict' xs', nodeBVM (bvm1 : bvms))
+
+  (AppC ann fun args, p1 : p2 : ps) ->
+    let (fun',  bvm1) = substPos v p1 fun in
+    let (args', bvms) = NonEmpty.unzip $ NonEmpty.zipWith (substPosArg v) (p2 :| ps) args in
+    (App ann fun' args', nodeBVM (bvm1 : NonEmpty.toList bvms))
+
+  (PiC ann binder result, p1 : p2 : _) ->
+    let (result', bvm2)       = substPos (lowerValue v) p2 result in
+    let (positionTree, bvm2') = liftBVM bvm2 in
+    let (binder', bvm1)       = substPosBinder v p1 binder positionTree in
+    (Pi ann binder' result', nodeBVM [bvm1, bvm2'])
+
+  (LetC ann bound binder body, p1 : p2 : p3 : _) ->
+    let (body', bvm3)         = substPos (lowerValue v) p3 body in
+    let (positionTree, bvm3') = liftBVM bvm3 in
+    let (binder', bvm2)       = substPosBinder v p2 binder positionTree in
+    let (bound', bvm1)        = substPos v p1 bound in
+    (Let ann bound' binder' body', nodeBVM [bvm1, bvm2, bvm3'])
+
+  (LamC ann binder body, p1 : p2 : _) ->
+    let (body', bvm2)         = substPos (lowerValue v) p2 body in
+    let (positionTree, bvm2') = liftBVM bvm2 in
+    let (binder', bvm1)       = substPosBinder v p1 binder positionTree in
+    (Lam ann binder' body', nodeBVM [bvm1, bvm2'])
+
+  (_, ps) -> developerError $
+    "Expected the same number of PositionTrees as args but found" <+> pretty (length ps)
+  where
+    lowerValue :: CheckedCoDBExpr -> CheckedCoDBExpr
+    lowerValue (e, bvm) = (e, lowerBVM Nothing bvm)
+
+substPosArg :: CheckedCoDBExpr -> Maybe PositionTree -> CheckedCoDBArg -> CheckedCoDBArg
+substPosArg v p arg = case recCoDB arg of
+  (ArgC ann vis e) ->
+    let (e', bvm) = substPos v p e in
+    (Arg ann vis e', bvm)
+
+substPosBinder :: CheckedCoDBExpr -> Maybe PositionTree -> CheckedCoDBBinder -> Maybe PositionTree -> CheckedCoDBBinder
+substPosBinder v p binder boundPositions = case recCoDB binder of
+  (BinderC ann vis (CoDBBinding n _) t) ->
+    let (t', bvm) = substPos v p t in
+    (Binder ann vis (CoDBBinding n boundPositions) t', bvm)
+
+invalidPositionTreeError :: PositionList -> a
+invalidPositionTreeError l = developerError $
+  "Whilst performing a positional substitution expected a Leaf" <+>
+  "but found" <+> squotes (pretty l)
+
+--------------------------------------------------------------------------------
+-- Lifting
+
+liftFreeCoDBIndices :: CheckedCoDBExpr -> CheckedCoDBExpr
+liftFreeCoDBIndices (e, bvm) = (e, IntMap.mapKeysMonotonic (\x -> x - 1) bvm)
+
+lowerFreeCoDBIndices :: CheckedCoDBExpr -> CheckedCoDBExpr
+lowerFreeCoDBIndices (e, bvm) = (e, IntMap.mapKeysMonotonic (+ 1) bvm)

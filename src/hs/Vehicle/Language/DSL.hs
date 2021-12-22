@@ -43,7 +43,7 @@ class DSL expr where
   pi  :: Provenance -> Visibility -> expr -> (expr -> expr) -> expr
 
   unnamedPi :: Visibility -> expr -> (expr -> expr) -> expr
-  unnamedPi v = pi mempty v
+  unnamedPi = pi mempty
 
   (~>) :: expr -> expr -> expr
   x ~> y = unnamedPi Explicit x (const y)
@@ -86,10 +86,14 @@ instance DSL DSLExpr where
 piType :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 piType t1 t2 = t1 `tMax` t2
 
+universeLevel :: CheckedExpr -> UniverseLevel
+universeLevel (Type l)   = l
+universeLevel (Meta _ _) = 0 -- This is probably going to bite us, apologies.
+universeLevel t          = developerError $
+  "Expected argument of type Type. Found" <+> prettyVerbose t <> "."
+
 tMax :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
-tMax (Type l1)  (Type l2)  = Type (l1 `max` l2)
-tMax t1         t2         = developerError $
-  "Expected arguments of type Type. Found" <+> prettyVerbose t1 <+> "and" <+> prettyVerbose t2 <> "."
+tMax t1 t2  = Type (universeLevel t1 `max` universeLevel t2)
 
 con :: Builtin -> DSLExpr
 con b = DSL $ \_ -> Builtin emptyMachineAnn b

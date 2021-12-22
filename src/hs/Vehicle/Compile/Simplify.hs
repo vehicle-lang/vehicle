@@ -110,11 +110,25 @@ instance (Simplify a, Simplify b) => Simplify (a, b) where
     y' <- simplifyReader y;
     return (x', y')
 
+instance (Simplify a, Simplify b, Simplify c) => Simplify (a, b, c) where
+  simplifyReader (x, y, z) = do
+    x' <- simplifyReader x;
+    y' <- simplifyReader y;
+    z' <- simplifyReader z;
+    return (x', y', z')
+
 instance Simplify a => Simplify (IntMap a) where
   simplifyReader = traverse simplifyReader
 
 instance Simplify PositionTree where
   simplifyReader = return
 
+instance Simplify PositionsInExpr where
+  simplifyReader (PositionsInExpr e t) = return $ PositionsInExpr e t
+    --PositionsInExpr <$> simplifyReader e <*> simplifyReader t
+
 instance Simplify Text where
+  simplifyReader = return
+
+instance Simplify Int where
   simplifyReader = return

@@ -34,7 +34,7 @@ import Vehicle.Compile.Delaborate.Core as Core
 import Vehicle.Compile.Delaborate.Frontend as Frontend
 import Vehicle.Compile.Descope
 import Vehicle.Compile.SupplyNames
-import Vehicle.Compile.Type.Constraint (Constraint (..), BaseConstraint (..), boundContext)
+import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.MetaSubstitution (MetaSubstitution(MetaSubstitution))
 import Vehicle.Compile.Type.Core ()
 import Vehicle.Compile.CoDeBruijnify (ConvertCodebruijn(..))
@@ -98,7 +98,8 @@ data Strategy
   | SimplifyDefault      Strategy
   | MapList              Strategy
   | MapIntMap            Strategy
-  | MapTuple             Strategy Strategy
+  | MapTuple2            Strategy Strategy
+  | MapTuple3            Strategy Strategy Strategy
   | Opaque               Strategy
   | Pretty
 
@@ -142,6 +143,9 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (t CoDBBinding var ann)
     = 'SupplyNamesClosed (StrategyFor tags (t (NamedBinding, Maybe PositionTree) var ann))
 
+  StrategyFor tags PositionsInExpr
+    = 'Opaque (StrategyFor tags CheckedExpr)
+
   -- Simplification
   StrategyFor ('Simple tags) (SimplifyOptions, a)
     = 'SimplifyWithOptions (StrategyFor tags a)
@@ -165,6 +169,9 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags PositionTree
     = 'Pretty
 
+  StrategyFor tags Int
+    = 'Pretty
+
   StrategyFor tags [a]
     = 'MapList (StrategyFor tags a)
 
@@ -172,7 +179,10 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
     = 'MapIntMap (StrategyFor tags a)
 
   StrategyFor tags (a, b)
-    = 'MapTuple (StrategyFor tags a) (StrategyFor tags b)
+    = 'MapTuple2 (StrategyFor tags a) (StrategyFor tags b)
+
+  StrategyFor tags (a, b, c)
+    = 'MapTuple3 (StrategyFor tags a) (StrategyFor tags b) (StrategyFor tags c)
 
   StrategyFor tags a
     = TypeError ('Text "Cannot print value of type " ':<>: 'ShowType a ':<>: 'Text "."
@@ -250,8 +260,16 @@ instance PrettyUsing rest a
   prettyUsing es = prettyIntMap (prettyUsing @rest <$> es)
 
 instance (PrettyUsing resta a, PrettyUsing restb b)
-      => PrettyUsing ('MapTuple resta restb) (a, b) where
+      => PrettyUsing ('MapTuple2 resta restb) (a, b) where
   prettyUsing (e1, e2) = "(" <> prettyUsing @resta e1 <> "," <+> prettyUsing @restb e2 <> ")"
+
+instance (PrettyUsing resta a, PrettyUsing restb b, PrettyUsing restc c)
+      => PrettyUsing ('MapTuple3 resta restb restc) (a, b, c) where
+  prettyUsing (e1, e2, e3) =
+    "(" <>  prettyUsing @resta e1 <>
+    "," <+> prettyUsing @restb e2 <>
+    "," <+> prettyUsing @restc e3 <>
+    ")"
 
 -- instances which defer to primitive pretty instances
 
@@ -267,12 +285,17 @@ instance PrettyUsing rest CheckedExpr
 
 instance PrettyUsing rest BaseConstraint
       => PrettyUsing ('Opaque rest) Constraint where
-  prettyUsing con@(Constraint _ c) = prettyUsing @rest c <+>
-    "<boundCtx=" <> pretty (ctxNames (boundContext con)) <> ">"
+  prettyUsing c = prettyUsing @rest (baseConstraint c)
+    -- <+> "<boundCtx=" <> pretty (ctxNames (boundContext c)) <> ">"
 
 instance PrettyUsing rest CheckedExpr
       => PrettyUsing ('Opaque rest) MetaSubstitution where
   prettyUsing (MetaSubstitution m) = prettyIntMap (prettyUsing @rest <$> m)
+
+instance (PrettyUsing rest CheckedExpr)
+      => PrettyUsing ('Opaque rest) PositionsInExpr where
+  prettyUsing (PositionsInExpr e p) = prettyUsing @rest (fromCoDB (substPos hole (Just p) e))
+    where hole = (Hole mempty $ Text.pack "@", mempty)
 
 -- Pretty instances for the BNFC data types
 

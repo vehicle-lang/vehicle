@@ -3,6 +3,7 @@ module Vehicle.Compile
   , compile
   , typeCheck
   , typeCheckExpr
+  , logCompileError
   ) where
 
 import Paths_vehicle qualified as VehiclePath (version)
@@ -78,12 +79,15 @@ fromEitherIO (Left err) = do print $ details err; exitFailure
 fromEitherIO (Right x)  = return x
 
 fromLoggedEitherIO :: LogFilePath -> ExceptT CompileError Logger a -> IO a
-fromLoggedEitherIO logFile x = fromEitherIO =<< fromLoggedIO logFile (do
-  e <- runExceptT x
-  case e of
+fromLoggedEitherIO logFile x = fromEitherIO =<< fromLoggedIO logFile (logCompileError x)
+
+logCompileError :: ExceptT CompileError Logger a -> Logger (Either CompileError a)
+logCompileError x = do
+  e' <- runExceptT x
+  case e' of
     Left err -> logDebug ("Error thrown:" <+> pretty (show err))
     Right _  -> return ()
-  return e)
+  return e'
 
 fromLoggedIO :: LogFilePath -> Logger a -> IO a
 fromLoggedIO Nothing        logger = return $ discardLogger logger

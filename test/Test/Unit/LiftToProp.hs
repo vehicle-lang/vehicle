@@ -57,6 +57,10 @@ liftAndElimTests = testGroup "LiftAndElim"
   , testCase "liftLetAnn" $ liftLetsTest
       "(let y = False in y) : Bool"
       "let y = False in (y : Bool)"
+
+  -- , testCase "liftLetSeq2" $ liftLetsTest
+  --     "[let (x : Nat) = 1 in x]" -- , let (y : Nat) = 2 in y
+  --     "let (x : Nat) = 1 in [x]" --(let (y : Nat) = 2 in [x, y])"
   ]
 
 liftAndEliminateIfsTest :: Text -> Text -> Assertion

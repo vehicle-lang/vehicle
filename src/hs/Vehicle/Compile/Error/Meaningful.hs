@@ -154,12 +154,15 @@ instance MeaningfulError TypeError where
       constraint = NonEmpty.head cs
       nameCtx = ctxNames (boundContext constraint)
 
-  details (UnsolvedConstraints cs) = let firstConstraint = NonEmpty.head cs in
+  details (UnsolvedConstraints cs) =
     UError $ UserError
-    { provenance = provenanceOf firstConstraint
-    , problem    = "unsolved constraint " <+> prettyFriendly firstConstraint
+    { provenance = provenanceOf constraint
+    , problem    = "unsolved constraint " <+> prettyFriendlyDB nameCtx constraint
     , fix        = "Try adding more type annotations"
     }
+    where
+      constraint = NonEmpty.head cs
+      nameCtx    = ctxNames (boundContext constraint)
 
   details (MissingExplicitArg ctx arg argType) = UError $ UserError
     { provenance = provenanceOf arg

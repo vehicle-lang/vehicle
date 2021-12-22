@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 module Vehicle.Compile.Type.Constraint where
 
 import Prelude hiding (pi)
@@ -50,8 +47,11 @@ instance HasProvenance ConstraintContext where
 
 data Constraint = Constraint ConstraintContext BaseConstraint
 
+baseConstraint :: Constraint -> BaseConstraint
+baseConstraint (Constraint _ c) = c
+
 instance Show Constraint where
-  show (Constraint _ c) = show c
+  show c = show (baseConstraint c)
 
 variableContext :: Constraint -> VariableCtx
 variableContext (Constraint ctx _) = varContext ctx
