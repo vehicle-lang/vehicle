@@ -196,7 +196,7 @@ letBindSubexpressions remainingSM subexprsToInsert expr = do
   let filteredSubexprs = filter (filterItem exprFilter) subexprsToInsert
 
   -- Sort the subexpressions by prefix order so we insert the "larger" ones first.
-  let sortedSubexprs = reverse $ partialSort subexprPrefixOrder filteredSubexprs
+  let sortedSubexprs = partialSort subexprPrefixOrder filteredSubexprs
 
   logDebug "begin-insertion"
   incrCallDepth

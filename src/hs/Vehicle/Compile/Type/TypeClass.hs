@@ -85,10 +85,12 @@ solveHasEq :: MonadConstraintSolving e m
            -> CheckedExpr
            -> m ConstraintProgress
 -- TODO insert Container classes
-solveHasEq _ (BuiltinBooleanType _ _)  (BuiltinBooleanType _ _) = return simplySolved
-solveHasEq _ (BuiltinNumericType _ _)  (BoolType _)             = return simplySolved
-solveHasEq _ (BuiltinNumericType _ t)  (PropType _)
+solveHasEq _ (BuiltinBooleanType _ _)    (BuiltinBooleanType _ _) = return simplySolved
+solveHasEq _ (BuiltinNumericType _ _)    (BoolType _)             = return simplySolved
+solveHasEq _ (BuiltinNumericType _ t)    (PropType _)
   | isDecidable t = return simplySolved
+solveHasEq c (TensorType _ tElem _tDims) tRes = solveHasEq c tElem tRes
+solveHasEq c (ListType _ tElem)          tRes = solveHasEq c tElem tRes
 solveHasEq constraint _ _ = throwError $ mkFailedConstraints (constraint :| [])
 
 solveHasOrd :: MonadConstraintSolving e m
@@ -122,10 +124,9 @@ solveIsContainer c tElem tCont =
       }
   where
     getContainerElem :: CheckedExpr -> Maybe CheckedExpr
-    getContainerElem t = case toHead t of
-      (BuiltinContainerType _ List,   [tElem'])    -> Just $ argExpr tElem'
-      (BuiltinContainerType _ Tensor, [tElem', _]) -> Just $ argExpr tElem'
-      _ -> Nothing
+    getContainerElem (ListType   _ t)   = Just t
+    getContainerElem (TensorType _ t _) = Just t
+    getContainerElem _                  = Nothing
 
 solveIsNatural :: MonadConstraintSolving e m
                => Constraint

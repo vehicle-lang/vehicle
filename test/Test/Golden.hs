@@ -44,6 +44,7 @@ realisticTestList = map (addTestDirectory ("examples" </> "network")) [
   ("monotonicity",           [Verifier VNNLib, ITP Agda]),
   ("increasing",             [Verifier VNNLib, ITP Agda]),
   ("reachability",           [Verifier VNNLib, ITP Agda]),
+  ("autoencoderError",       [Verifier VNNLib, ITP Agda]),
   ("windController",         [ITP Agda])
   ]
 
