@@ -1,7 +1,6 @@
 
-module Vehicle.Compile.LiftToProp
+module Vehicle.Compile.IfElimination
   ( liftAndEliminateIfs
-  , liftLets
   ) where
 
 import Data.List.NonEmpty as NonEmpty
@@ -30,14 +29,15 @@ liftAndEliminateIfs e = do
   logDebug "Finished if lifting elimination"
   return result
 
-liftIf :: (BindingDepth -> CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
+liftIf :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
 liftIf f (IfExpr ann _t [cond, e1, e2]) = IfExpr ann
-  (Hole ann "?") -- Can't reconstruct the result type of `f` here, so have to insert a hole.
+  -- Can't reconstruct the result type of `f` here, so have to insert a hole.
+  (Hole ann "?")
   [ cond
   , mapArgExpr (liftIf f) e1
   , mapArgExpr (liftIf f) e2
   ]
-liftIf f e = f 0 e
+liftIf f e = f e
 
 -- | Recursively removes all top-level `if` statements in the current
 -- provided expression.
@@ -55,27 +55,9 @@ elimIf (IfExpr ann _ [cond, e1, e2]) = argExpr $
 elimIf e = e
 
 --------------------------------------------------------------------------------
--- Let operations
-
-liftLets :: MonadLogger m => CheckedExpr -> m CheckedExpr
-liftLets e = do
-  logDebug "Beginning let lifting to Prop level"
-  incrCallDepth
-  result <- liftAndElim liftLet id e
-
-  logDebug $ prettySimple result
-  decrCallDepth
-  logDebug "Finished let lifting to Prop level"
-  return result
-
-liftLet :: (BindingDepth -> CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
-liftLet f (Let ann bound binder body) = Let ann bound binder (liftLet (\d -> f (d + 1)) body)
-liftLet f e                           = f 0 e
-
---------------------------------------------------------------------------------
 -- General operations
 
-type LiftingOp = (BindingDepth -> CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
+type LiftingOp = (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
 type EliminationOp = CheckedExpr -> CheckedExpr
 
 liftAndElim :: MonadLogger m => LiftingOp -> EliminationOp -> CheckedExpr -> m CheckedExpr
@@ -103,35 +85,31 @@ liftAndElim liftOp elimOp expr =
     App ann fun args -> do
       fun'  <- recCall fun
       args' <- traverse (traverseArgExpr recCall) args
-      return $ liftOp (\m v -> liftArgs liftOp (\n vs ->
-        App ann (liftFreeDBIndices n v) (fmap (mapArgExpr (liftFreeDBIndices m)) vs)) args') fun'
+      return $ liftOp (\v -> liftArgs liftOp (\vs -> App ann v vs) args') fun'
 
     Ann ann e t -> do
       e' <- recCall e
       t' <- recCall t
-      return $ liftOp (\m e'' -> liftOp (\n t'' ->
-        Ann ann (liftFreeDBIndices n e'') (liftFreeDBIndices m t'')) t') e'
+      return $ liftOp (\e'' -> liftOp (\t'' -> Ann ann e'' t'') t') e'
 
     LSeq ann dict es -> do
       dict' <- recCall dict
       es'   <- traverse recCall es
-      return $ liftOp (\m dict'' -> liftSeq liftOp (\n es'' ->
-        LSeq ann (liftFreeDBIndices n dict'') (fmap (liftFreeDBIndices m) es'')) es') dict'
+      return $ liftOp (\dict'' -> liftSeq liftOp (\es'' -> LSeq ann dict'' es'') es') dict'
 
     -- Quantified lambdas should have been caught before now.
     Lam{} -> normalisationError "Non-quantified Lam"
 
-liftArg :: LiftingOp -> (BindingDepth -> CheckedArg -> CheckedExpr) -> CheckedArg -> CheckedExpr
-liftArg liftOp f (Arg ann v e) = liftOp (\n -> f n . Arg ann v) e
+liftArg :: LiftingOp -> (CheckedArg -> CheckedExpr) -> CheckedArg -> CheckedExpr
+liftArg liftOp f (Arg ann v e) = liftOp (f . Arg ann v) e
 
-liftSeq :: LiftingOp -> (BindingDepth -> [CheckedExpr] -> CheckedExpr) -> [CheckedExpr] -> CheckedExpr
-liftSeq _      f []       = f 0 []
-liftSeq liftOp f (x : xs) = liftOp (\m v -> liftSeq liftOp (\n ys ->
-  f (m + n) (liftFreeDBIndices n v : fmap (liftFreeDBIndices m) ys)) xs) x
+liftSeq :: LiftingOp -> ([CheckedExpr] -> CheckedExpr) -> [CheckedExpr] -> CheckedExpr
+liftSeq _      f []       = f []
+liftSeq liftOp f (x : xs) = liftOp (\v -> liftSeq liftOp (\ys -> f (v : ys)) xs) x
 
 -- I feel this should be definable in terms of `liftIfs`, but I can't find it.
-liftArgs :: LiftingOp -> (BindingDepth -> NonEmpty CheckedArg -> CheckedExpr) -> NonEmpty CheckedArg -> CheckedExpr
-liftArgs liftOp f (x :| [])       = liftArg liftOp (\n x' -> f n (x' :| [])) x
+liftArgs :: LiftingOp -> (NonEmpty CheckedArg -> CheckedExpr) -> NonEmpty CheckedArg -> CheckedExpr
+liftArgs liftOp f (x :| [])       = liftArg liftOp (\x' -> f (x' :| [])) x
 liftArgs liftOp f (arg :| y : xs) = if visibilityOf arg == Explicit
-  then liftArg liftOp (\m arg' -> liftArgs liftOp (\n as -> f (m + n) (arg' <| as)) (y :| xs)) arg
-  else                            liftArgs liftOp (\n as -> f n       (arg  <| as)) (y :| xs)
+  then liftArg liftOp (\arg' -> liftArgs liftOp (\as -> f (arg' <| as)) (y :| xs)) arg
+  else                          liftArgs liftOp (\as -> f (arg  <| as)) (y :| xs)

@@ -45,7 +45,7 @@ realisticTestList = map (addTestDirectory ("examples" </> "network")) [
   ("increasing",             [Verifier VNNLib, ITP Agda]),
   ("reachability",           [Verifier VNNLib, ITP Agda]),
   ("autoencoderError",       [Verifier VNNLib, ITP Agda]),
-  ("windController",         [ITP Agda])
+  ("windController",         [Verifier VNNLib, ITP Agda])
   ]
 
 simpleTestList :: [GoldenTestSpec]
@@ -129,7 +129,7 @@ runTest :: FilePath -> FilePath -> String -> OutputTarget -> IO ()
 runTest inputFile outputFile modulePath outputTarget = do
   run $ Options
     { version       = False
-    , logFile       = Just Nothing
+    , logFile       = Nothing --Just Nothing
     , commandOption = Compile $ CompileOptions
       { inputFile    = inputFile
       , outputFile   = Just outputFile

@@ -7,7 +7,7 @@ import Test.Unit.AlphaEquivalence ( alphaEquivalenceTests )
 import Test.Unit.PositionTree ( positionTreeTests )
 import Test.Unit.LetInsertion ( letInsertionTests )
 import Test.Unit.CoDeBruijn ( coDeBruijnTests )
-import Test.Unit.LiftToProp ( liftAndElimTests )
+import Test.Unit.IfElimination ( ifEliminationTests )
 
 
 unitTests :: TestTree
@@ -16,5 +16,5 @@ unitTests = testGroup "UnitTests"
   , coDeBruijnTests
   , positionTreeTests
   , letInsertionTests
-  , liftAndElimTests
+  , ifEliminationTests
   ]

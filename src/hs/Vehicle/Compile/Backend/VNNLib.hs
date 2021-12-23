@@ -22,6 +22,7 @@ import Vehicle.Compile.StandardiseNetworks
 import Vehicle.Compile.Backend.SMTLib (SMTDoc)
 import Vehicle.Compile.Backend.SMTLib qualified as SMTLib (compileProp)
 import Vehicle.Compile.LetInsertion (insertLets)
+import Vehicle.Compile.IfElimination (liftAndEliminateIfs)
 
 --------------------------------------------------------------------------------
 -- Compilation to VNNLib
@@ -192,8 +193,12 @@ compileDecl d = case d of
         let quantifiedExpr = quantifyOverMagicVariables quantifier metaNetworkDetails normNetworklessExpr
         logDebug $ "Replaced network applications:" <+> prettySimple quantifiedExpr <> line
 
+        -- Eliminate any if-expressions
+        ifFreeExpr <- liftAndEliminateIfs quantifiedExpr
+        logDebug $ "Eliminated ifs:" <+> prettySimple ifFreeExpr <> line
+
         -- Compile to SMTLib
-        smtDoc <- SMTLib.compileProp ident quantifiedExpr
+        smtDoc <- SMTLib.compileProp ident ifFreeExpr
 
         decrCallDepth
         logDebug $ "Finished compilation of VNNLib property" <+> identDoc
