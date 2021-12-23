@@ -8,24 +8,21 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Data.Tensor
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
-open import Data.Fin as Fin using (#_)
-open import Data.List
 
 module increasing-output where
 
 private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
-f : Tensor ℝ (1 ∷ []) → Tensor ℝ (1 ∷ [])
+f : ℝ → ℝ
 f = evaluate record
   { projectFile = VEHICLE_PROJECT_FILE
   ; networkUUID = "TODO_networkUUID"
   }
 
 abstract
-  increasing : ∀ (x : Tensor ℝ (1 ∷ [])) → x (# 0) ℝ.≤ f x (# 0)
+  increasing : ∀ (x : ℝ) → x ℝ.≤ f x
   increasing = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = "TODO_propertyUUID"

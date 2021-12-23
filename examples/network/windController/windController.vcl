@@ -1,7 +1,6 @@
-type InputVector  = Tensor Rat [2]
-type OutputVector = Tensor Rat [1]
+type InputVector = Tensor Rat [2]
 
-network controller : InputVector -> OutputVector
+network deltaV : InputVector -> Rat
 
 abs : Rat -> Rat
 abs x = if x < 0 then - x else x
@@ -11,9 +10,6 @@ currentPosition x = x ! 0
 
 prevPosition : InputVector -> Rat
 prevPosition x = x ! 1
-
-deltaV : InputVector -> Rat
-deltaV x = controller x ! 0
 
 safeInput : InputVector -> Prop
 safeInput x = abs (currentPosition x) <= 3

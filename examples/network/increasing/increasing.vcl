@@ -1,4 +1,4 @@
-network f : Tensor Real [1] -> Tensor Real [1]
+network f : Real -> Real
 
 increasing : Prop
-increasing = every x . x ! 0 <= f x ! 0
+increasing = every x . x <= f x

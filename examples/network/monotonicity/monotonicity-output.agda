@@ -8,24 +8,21 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Data.Tensor
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
-open import Data.Fin as Fin using (#_)
-open import Data.List
 
 module monotonicity-output where
 
 private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
-f : Tensor ℝ (1 ∷ []) → Tensor ℝ (1 ∷ [])
+f : ℝ → ℝ
 f = evaluate record
   { projectFile = VEHICLE_PROJECT_FILE
   ; networkUUID = "TODO_networkUUID"
   }
 
 abstract
-  monotonic : ∀ (x1 : Tensor ℝ (1 ∷ [])) → ∀ (x2 : Tensor ℝ (1 ∷ [])) → x1 (# 0) ℝ.≤ x2 (# 0) → f x1 (# 0) ℝ.≤ f x2 (# 0)
+  monotonic : ∀ (x1 : ℝ) → ∀ (x2 : ℝ) → x1 ℝ.≤ x2 → f x1 ℝ.≤ f x2
   monotonic = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = "TODO_propertyUUID"

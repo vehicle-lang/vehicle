@@ -1,4 +1,4 @@
-network f : Tensor Real [1] -> Tensor Real [1]
+network f : Real -> Real
 
 monotonic : Prop
-monotonic = every x1 x2 . (x1 ! 0 <= x2 ! 0) => (f x1 ! 0 <= f x2 ! 0)
+monotonic = every x1 x2 . (x1 <= x2) => (f x1 <= f x2)

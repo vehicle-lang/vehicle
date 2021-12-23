@@ -12,6 +12,7 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Either (fromRight)
 import Data.List.Split (chunksOf)
+import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Prelude
 import Vehicle.Compile.Error
@@ -112,12 +113,12 @@ instance Norm CheckedExpr where
         let letBodyWithSubstitution = substInto letValue' letBody'
         nf letBodyWithSubstitution
 
-      eApp@(App ann _ _) -> let (fun, args) = toHead eApp in do
+      App ann fun args -> do
         nFun  <- nf fun
         -- TODO temporary hack please remove in future once we actually have computational
         -- behaviour in implicit/instance arguments
-        nArgs <- traverse (\arg -> if visibilityOf arg == Explicit then nf arg else return arg) args
-        nfApp ann nFun nArgs
+        nArgs <- traverse (traverseExplicitArgExpr nf) args
+        nfApp ann nFun (NonEmpty.toList nArgs)
 
 instance Norm CheckedBinder where
   nf = traverseBinderType nf
@@ -130,8 +131,8 @@ instance Norm CheckedArg where
 -- Application
 
 nfApp :: MonadNorm e m => CheckedAnn -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
-nfApp _ann (Lam _ _ funcBody) (arg : _) = nf (substInto (argExpr arg) funcBody)
-nfApp ann  fun@(Builtin _ _) args      = do
+nfApp ann fun@Lam{} args = nfAppLam ann fun args
+nfApp ann fun       args = do
   let e = normAppList ann fun args
   case e of
     -- Equality
@@ -237,7 +238,9 @@ nfApp ann  fun@(Builtin _ _) args      = do
     -- Fall-through case
     _ -> return e
 
-nfApp ann fun args = return $ normAppList ann fun args
+nfAppLam :: MonadNorm e m => CheckedAnn -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
+nfAppLam ann (Lam _ _ body) (arg : args) = nfAppLam ann (substInto (argExpr arg) body) args
+nfAppLam ann fun              args       = nf (normAppList ann fun args)
 
 --------------------------------------------------------------------------------
 -- Normalising equality

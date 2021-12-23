@@ -25,11 +25,8 @@ private
 InputVector : Set
 InputVector = Tensor ℚ (2 ∷ [])
 
-OutputVector : Set
-OutputVector = Tensor ℚ (1 ∷ [])
-
-controller : InputVector → OutputVector
-controller = evaluate record
+deltaV : InputVector → ℚ
+deltaV = evaluate record
   { projectFile = VEHICLE_PROJECT_FILE
   ; networkUUID = "TODO_networkUUID"
   }
@@ -42,9 +39,6 @@ currentPosition x = x (# 0)
 
 prevPosition : InputVector → ℚ
 prevPosition x = x (# 1)
-
-deltaV : InputVector → ℚ
-deltaV x = controller x (# 0)
 
 SafeInput : InputVector → Set
 SafeInput x = abs (currentPosition x) ℚ.≤ ℤ.+ 3 ℚ./ 1

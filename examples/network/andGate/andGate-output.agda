@@ -8,19 +8,16 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
-open import Data.Fin as Fin using (#_)
-open import Data.List
 
 module andGate-output where
 
 private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
-andGate : Tensor ℝ (2 ∷ []) → Tensor ℝ (1 ∷ [])
+andGate : ℝ → (ℝ → ℝ)
 andGate = evaluate record
   { projectFile = VEHICLE_PROJECT_FILE
   ; networkUUID = "TODO_networkUUID"
@@ -32,14 +29,14 @@ Truthy x = x ℝ.≥ ℤ.+ 1 ℝ./ 2
 Falsey : ℝ → Set
 Falsey x = x ℝ.≤ ℤ.+ 1 ℝ./ 2
 
-ValidInput : Tensor ℝ (2 ∷ []) → Set
-ValidInput x = ℤ.+ 0 ℝ./ 1 ℝ.≤ x (# 0) × (x (# 0) ℝ.≤ ℤ.+ 1 ℝ./ 1 × (ℤ.+ 0 ℝ./ 1 ℝ.≤ x (# 1) × x (# 1) ℝ.≤ ℤ.+ 1 ℝ./ 1))
+ValidInput : ℝ → Set
+ValidInput x = ℤ.+ 0 ℝ./ 1 ℝ.≤ x × x ℝ.≤ ℤ.+ 1 ℝ./ 1
 
-CorrectOutput : Tensor ℝ (2 ∷ []) → Set
-CorrectOutput x = let y = andGate x in (Truthy (x (# 0)) × Truthy (x (# 1)) → Truthy (y (# 0))) × ((Truthy (x (# 0)) × Falsey (x (# 1)) → Falsey (y (# 0))) × ((Falsey (x (# 0)) × Truthy (x (# 1)) → Falsey (y (# 0))) × (Falsey (x (# 0)) × Falsey (x (# 1)) → Falsey (y (# 0)))))
+CorrectOutput : ℝ → (ℝ → Set)
+CorrectOutput x1 x2 = let y = andGate x1 x2 in (Truthy x1 × Truthy x2 → Truthy y) × ((Truthy x1 × Falsey x2 → Falsey y) × ((Falsey x1 × Truthy x2 → Falsey y) × (Falsey x1 × Falsey x2 → Falsey y)))
 
 abstract
-  andGateCorrect : ∀ (x : Tensor ℝ (2 ∷ [])) → ValidInput x → CorrectOutput x
+  andGateCorrect : ∀ (x1 : ℝ) → ∀ (x2 : ℝ) → ValidInput x1 × ValidInput x2 → CorrectOutput x1 x2
   andGateCorrect = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = "TODO_propertyUUID"

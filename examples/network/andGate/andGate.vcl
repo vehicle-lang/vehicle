@@ -1,6 +1,6 @@
 -- Correctness conditions for the Boolean AND gate
 
-network andGate : Tensor Real [2] -> Tensor Real [1]
+network andGate : Real -> Real -> Real
 
 truthy : Real -> Prop
 truthy x = x >= 0.5
@@ -8,19 +8,16 @@ truthy x = x >= 0.5
 falsey : Real -> Prop
 falsey x = x <= 0.5
 
-validInput : Tensor Real [2] -> Prop
-validInput x = 0 <= x ! 0 and x ! 0 <= 1 and 0 <= x ! 1 and x ! 1 <= 1
+validInput : Real -> Prop
+validInput x = 0 <= x and x <= 1
 
--- validInput x = every i inn ([0,1] : List Nat) . 0 <= x ! i and x ! i <= 1
-
-correctOutput : Tensor Real [2] -> Prop
-correctOutput x =
-  let y = andGate x in
-    (truthy (x!0) and truthy (x!1) => truthy (y!0)) and
-    (truthy (x!0) and falsey (x!1) => falsey (y!0)) and
-    (falsey (x!0) and truthy (x!1) => falsey (y!0)) and
-    (falsey (x!0) and falsey (x!1) => falsey (y!0))
+correctOutput : Real -> Real -> Prop
+correctOutput x1 x2 =
+  let y = andGate x1 x2 in
+    (truthy x1 and truthy x2 => truthy y) and
+    (truthy x1 and falsey x2 => falsey y) and
+    (falsey x1 and truthy x2 => falsey y) and
+    (falsey x1 and falsey x2 => falsey y)
 
 andGateCorrect : Prop
-andGateCorrect = every x . validInput x => correctOutput x
-
+andGateCorrect = every x1 x2 . (((validInput x1) and (validInput x2)) => (correctOutput x1 x2))

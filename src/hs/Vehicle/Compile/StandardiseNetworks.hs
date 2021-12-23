@@ -35,6 +35,7 @@ standardiseNetworks prog1 = do
   let networkMap = fmap (\(x,_,_) -> x) internalNetworkMap
 
   logDebug $ prettySimple prog2
+  logDebug $ prettyMap networkMap
 
   decrCallDepth
   logDebug $ "Finished standardising networks" <> line
@@ -50,6 +51,10 @@ data NetworkDetails = NetworkDetails
   { inputTensor  :: TensorDetails
   , outputTensor :: TensorDetails
   }
+
+instance Pretty NetworkDetails where
+  pretty (NetworkDetails input output) =
+    "[input =" <+> pretty input <+> "output =" <+> pretty output <> "]"
 
 data TensorDetails = TensorDetails
   { size  :: Int
@@ -183,9 +188,9 @@ analyseNetworkInputTypes []                         = throwError NotAFunction
 analyseNetworkInputTypes [TensorType _ tElem tDims] = do
   tensorDetails <- getTensorDetails Input tElem tDims
   return (tensorDetails, id)
-analyseNetworkInputTypes (x : _) = do
+analyseNetworkInputTypes inputTypes@(x : _) = do
   builtinType <- getTensorType Input x
-  let tensorDetails = TensorDetails 1 builtinType
+  let tensorDetails = TensorDetails (length inputTypes) builtinType
   return (tensorDetails, transformInputNumericToTensor x)
 
 analyseNetworkOutputType :: MonadError UnsupportedNetworkType m
