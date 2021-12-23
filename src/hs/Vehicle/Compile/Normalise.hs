@@ -60,8 +60,7 @@ showExit old mNew = do
   new <- mNew
   decrCallDepth
   when (old /= new) $
-    logDebug "Hit"
-  logDebug ("normalising" <+> prettySimple old)
+    logDebug ("normalising" <+> prettySimple old)
   logDebug ("norm-exit " <+> prettySimple new)
   return new
 
@@ -107,16 +106,11 @@ instance Norm CheckedExpr where
       Var _ (Bound _)     -> return e
       Var _ (Free ident)  -> gets (fromMaybe e . M.lookup ident)
 
-      Let ann letValue binder letBody -> do
+      Let _ann letValue _binder letBody -> do
         letValue' <- nf letValue
-        binder'   <- nf binder
         letBody'  <- nf letBody
-        return $ Let ann letValue' binder' letBody'
-        -- TODO renable let normalisation once we get left lifting re-enabled
-        {-
         let letBodyWithSubstitution = substInto letValue' letBody'
         nf letBodyWithSubstitution
-        -}
 
       eApp@(App ann _ _) -> let (fun, args) = toHead eApp in do
         nFun  <- nf fun

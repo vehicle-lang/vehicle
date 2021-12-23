@@ -167,6 +167,13 @@ traverseArgExpr :: Monad m
                 -> m (Arg binder2 var2 ann)
 traverseArgExpr f (Arg i v e) = Arg i v <$> f e
 
+traverseExplicitArgExpr :: Monad m
+                        => (Expr binder var ann -> m (Expr binder var ann))
+                        -> Arg binder var ann
+                        -> m (Arg binder var ann)
+traverseExplicitArgExpr f (ExplicitArg i e) = ExplicitArg i <$> f e
+traverseExplicitArgExpr _ arg               = return arg
+
 --------------------------------------------------------------------------------
 -- Expressions
 

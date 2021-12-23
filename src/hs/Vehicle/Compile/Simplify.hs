@@ -25,7 +25,7 @@ instance Default SimplifyOptions where
   def = SimplifyOptions
       { removeImplicits   = True
       , removeInstances   = True
-      , removeNonUserCode = True
+      , removeNonUserCode = False
       }
 
 type MonadSimplify m = MonadReader SimplifyOptions m

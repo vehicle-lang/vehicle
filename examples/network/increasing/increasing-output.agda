@@ -25,7 +25,7 @@ f = evaluate record
   }
 
 abstract
-  increasing : ∀ (x : Tensor ℝ (1 ∷ [])) → let y = f x in x (# 0) ℝ.≤ y (# 0)
+  increasing : ∀ (x : Tensor ℝ (1 ∷ [])) → x (# 0) ℝ.≤ f x (# 0)
   increasing = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = "TODO_propertyUUID"

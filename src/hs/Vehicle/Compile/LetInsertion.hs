@@ -293,15 +293,15 @@ duplicateError e maps _ _ = developerError $
 
 showIdentEntry :: MonadLetInsert m => CheckedCoDBExpr -> m ()
 showIdentEntry e = do
-  logDebug ("let-letInsert-entry " <> align (prettySimple (fromCoDB e)))
+  logDebug ("letInsert-entry " <> align (prettySimple (fromCoDB e)))
   incrCallDepth
 
 showIdentExit :: MonadLetInsert m => CheckedCoDBExpr -> SubexpressionMap -> m ()
 showIdentExit expr sm = do
   decrCallDepth
   subexprFilter <- ask
-  logDebug ("let-letInsert-exit " <+> align (
-      prettySimple (fromCoDB expr) <+> "=" <> softline <>
+  logDebug ("letInsert-exit " <+> align (
+      prettySimple (fromCoDB expr) <+> " |=" <> softline <>
       prettySM expr subexprFilter sm))
 
 prettyEntry :: CheckedCoDBExpr
