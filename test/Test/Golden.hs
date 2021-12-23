@@ -129,7 +129,7 @@ runTest :: FilePath -> FilePath -> String -> OutputTarget -> IO ()
 runTest inputFile outputFile modulePath outputTarget = do
   run $ Options
     { version       = False
-    , logFile       = Nothing -- Just Nothing
+    , logFile       = Just Nothing
     , commandOption = Compile $ CompileOptions
       { inputFile    = inputFile
       , outputFile   = Just outputFile

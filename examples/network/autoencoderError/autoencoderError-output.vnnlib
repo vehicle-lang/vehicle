@@ -6,9 +6,20 @@
 ;  - Time generated: ???
 
 (declare-const X_0 Real)
-(declare-const Y_0 Real)
 (declare-const X_1 Real)
+(declare-const X_2 Real)
+(declare-const X_3 Real)
+(declare-const X_4 Real)
+(declare-const Y_0 Real)
 (declare-const Y_1 Real)
+(declare-const X_5 Real)
+(declare-const X_6 Real)
+(declare-const Y_2 Real)
+(declare-const Y_3 Real)
+(declare-const Y_4 Real)
+(declare-const Y_5 Real)
+(declare-const Y_6 Real)
 
-(assert (== X_1 Y_0))
-(assert (distinct Y_1 X_0))
+(assert (== X_5 Y_0))
+(assert (== X_6 Y_1))
+(assert (not (and (== Y_2 X_0) (and (== Y_3 X_1) (and (== Y_4 X_2) (and (== Y_5 X_3) (== Y_6 X_4)))))))

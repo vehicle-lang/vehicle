@@ -18,20 +18,20 @@ module autoencoderError-output where
 private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
-encode : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
+encode : Tensor ℚ (5 ∷ []) → Tensor ℚ (2 ∷ [])
 encode = evaluate record
   { projectFile = VEHICLE_PROJECT_FILE
   ; networkUUID = "TODO_networkUUID"
   }
 
-decode : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
+decode : Tensor ℚ (2 ∷ []) → Tensor ℚ (5 ∷ [])
 decode = evaluate record
   { projectFile = VEHICLE_PROJECT_FILE
   ; networkUUID = "TODO_networkUUID"
   }
 
 abstract
-  identity : ∀ (x : Tensor ℚ (1 ∷ [])) → decode (encode x) ≡ x
+  identity : ∀ (x : Tensor ℚ (5 ∷ [])) → decode (encode x) ≡ x
   identity = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = "TODO_propertyUUID"

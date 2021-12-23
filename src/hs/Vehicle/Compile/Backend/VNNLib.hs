@@ -300,20 +300,18 @@ replaceNetworkApplications d e = do
       body' <- replaceNetworkApplications (d + 1) body
 
       magicVariableToSubstitute <- processQuantifierBinding q
+      traverseUpOverBinder
 
       case magicVariableToSubstitute of
         -- Then this bound variable is not equal to one of the magic variables so retain
         -- the quantifier.
-        Nothing -> do
-          traverseUpOverBinder
-          return $ QuantifierExpr q ann binder body'
+        Nothing -> return $ QuantifierExpr q ann binder body'
 
         -- Then this bound variable is equal to one of the magic variables so this variable
         -- is redundant and we can substitute through.
         Just magicVarIndex -> do
           let magicVar = Var ann (Bound (magicVarIndex-1))
           let result = magicVar `substInto` body'
-          traverseUpOverBinder
           return result
 
     App ann fun args -> do
@@ -379,7 +377,7 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
 
   logDebug $ pretty (replicate bindingDepth ("." :: String) <> replicate totalNumberOfMagicVariables "_")
   logDebug $ pretty totalNumberOfMagicVariablesSoFar <+> pretty bindingDepth
-  logDebug $ pretty outputSize <+> pretty inputSize
+  logDebug $ pretty inputSize <+> pretty outputSize
   logDebug $ pretty outputEndingDBIndex <+> pretty outputStartingDBIndex <+> pretty inputStartingDBIndex
   logDebug $ pretty inputVarIndices <+> pretty outputVarIndices
 
@@ -495,10 +493,10 @@ quantifyOverMagicVariables :: Quantifier -> [NetworkDetails] -> CheckedExpr -> C
 quantifyOverMagicVariables q metaNetwork prop =
   let totalInputs  = sum (map (size . inputTensor)  metaNetwork) in
   let totalOutputs = sum (map (size . outputTensor) metaNetwork) in
-  let (_, _, result) = foldl forNetwork (totalInputs, totalOutputs, prop) metaNetwork in result
+  let (_, _, result) = foldr forNetwork (totalInputs, totalOutputs, prop) metaNetwork in result
   where
-    forNetwork :: (Int, Int, CheckedExpr) -> NetworkDetails -> (Int, Int, CheckedExpr)
-    forNetwork (inputIndex, outputIndex, body) (NetworkDetails inputs outputs)  =
+    forNetwork :: NetworkDetails -> (Int, Int, CheckedExpr) -> (Int, Int, CheckedExpr)
+    forNetwork (NetworkDetails inputs outputs) (inputIndex, outputIndex, body) =
       let startingInputIndex = inputIndex - size inputs in
       let startingOutputIndex = outputIndex - size outputs in
       let body' = forTensor mempty Input  startingInputIndex  inputs $
@@ -520,28 +518,3 @@ quantifyOverMagicVariables q metaNetwork prop =
     mkMagicVariableNames :: InputOrOutput -> [Int] -> [Symbol]
     mkMagicVariableNames io indices = [mkNameWithIndices baseName [i] | i <- indices]
       where baseName = if io == Input then "X" else "Y"
-
-
-      {-
-    replace-exit:
-                    (implies ((<= i3) i1)) ((<= ((! i2) 0)) ((! i0) 0))
-                    (replacableBoundVars = [])
-    replacing-application (implies ((<= i3) i1)) ((<= ((! i2) 0)) ((! i0) 0))
-    replace-exit:
-
-    replace-exit:  [y2,x2,y1,x1,Y1,X1,Y0,X0]
-                    (implies ((<= i3) i1)) ((<= ((! i2) 0)) ((! i0) 0))
-                    (replacableBoundVars = [])
-    replacing-application 3 f [i0]
-    replace-exit:  [x2,y1,x1,Y1,X1,Y0,X0]
-                  (implies ((== [i6]) [i0])) ((implies ((<= i2) i0)) ((<= ((! i1) 0)) ((! [i5]) 0)))
-                  (replacableBoundVars = [(0, 0)])
-  replace-exit:  (implies ((== [i5]) [i5])) ((implies ((<= i1) i5)) ((<= ((! i0) 0)) ((! [i4]) 0)))
-                  (replacableBoundVars = [])
-  replacing-application 1 f [i0]
-  replace-exit:  (implies ((== [i2]) [i0])) ((implies ((== [i4]) [i4])) ((implies ((<= i0) i4)) ((<= ((! [i1]) 0)) ((! [i3]) 0))))
-                (replacableBoundVars = [(0, 2)])
-replace-exit:  (implies ((== [i1]) [i1])) ((implies ((== [i3]) [i3])) ((implies ((<= i1) i3)) ((<= ((! [i0]) 0)) ((! [i2]) 0))))
-                (replacableBoundVars = [])
-Replaced network applications: every (lambda (X_0 :type Real) (every (lambda (Y_0 :type Real) (every (lambda (X_1 :type Real) (every (lambda (Y_1 :type Real) ((implies ((<= i1) i3)) ((<= i0) i2)))))))))
-      -}
