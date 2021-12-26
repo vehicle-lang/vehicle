@@ -160,7 +160,7 @@ negatePropertyIfNecessary True        ann  All body  = do
   return (body', False)
 
 splitTopLevelConjunctions :: OutputExpr -> [OutputExpr]
-splitTopLevelConjunctions (App _ann (Builtin _ (BooleanOp2 And)) [_, _, e1, e2]) =
+splitTopLevelConjunctions (AndExpr _ann _t [e1, e2]) =
   splitTopLevelConjunctions (argExpr e1) <> splitTopLevelConjunctions (argExpr e2)
 splitTopLevelConjunctions e = [e]
 

@@ -409,6 +409,18 @@ booleanBigOp op ann t containerType container =
     boolType :: Expr binder var ann
     boolType = BuiltinBooleanType ann t
 
+pattern AndExpr :: ann -> BooleanType -> [Arg binder var ann] -> Expr binder var ann
+pattern AndExpr ann t explicitArgs <- BooleanOp2Expr And ann t explicitArgs
+  where AndExpr ann t explicitArgs = BooleanOp2Expr And ann t explicitArgs
+
+pattern OrExpr :: ann -> BooleanType -> [Arg binder var ann] -> Expr binder var ann
+pattern OrExpr ann t explicitArgs <- BooleanOp2Expr Or ann t explicitArgs
+  where OrExpr ann t explicitArgs = BooleanOp2Expr Or ann t explicitArgs
+
+pattern ImplExpr :: ann -> BooleanType -> [Arg binder var ann] -> Expr binder var ann
+pattern ImplExpr ann t explicitArgs <- BooleanOp2Expr Impl ann t explicitArgs
+  where ImplExpr ann t explicitArgs = BooleanOp2Expr Impl ann t explicitArgs
+
 --------------------------------------------------------------------------------
 -- Not
 

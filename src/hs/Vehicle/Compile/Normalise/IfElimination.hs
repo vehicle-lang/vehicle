@@ -1,5 +1,5 @@
 
-module Vehicle.Compile.IfElimination
+module Vehicle.Compile.Normalise.IfElimination
   ( liftAndEliminateIfs
   ) where
 

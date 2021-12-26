@@ -15,7 +15,7 @@ import Vehicle.Compile (typeCheckExpr)
 import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error.Meaningful
 import Vehicle.Compile.Error
-import Vehicle.Compile.IfElimination
+import Vehicle.Compile.Normalise.IfElimination
 import Vehicle.Compile.CoDeBruijnify
 import Vehicle.Compile.Type (runTypeCheck)
 

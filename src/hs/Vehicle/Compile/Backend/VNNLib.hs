@@ -22,7 +22,7 @@ import Vehicle.Compile.StandardiseNetworks
 import Vehicle.Compile.Backend.SMTLib (SMTDoc)
 import Vehicle.Compile.Backend.SMTLib qualified as SMTLib (compileProp)
 import Vehicle.Compile.LetInsertion (insertLets)
-import Vehicle.Compile.IfElimination (liftAndEliminateIfs)
+import Vehicle.Compile.Normalise.IfElimination (liftAndEliminateIfs)
 
 --------------------------------------------------------------------------------
 -- Compilation to VNNLib
@@ -388,7 +388,7 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
 
   let body'         = outputsExpr `substInto` letBody
   let inputEquality = EqualityExpr Eq ann inputsType Prop (map (ExplicitArg ann) [inputsExpr, networkInput])
-  let newBody       = BooleanOp2Expr Impl ann Prop (map (ExplicitArg ann) [inputEquality, body'])
+  let newBody       = ImplExpr ann Prop (map (ExplicitArg ann) [inputEquality, body'])
 
   return (newBody, replaceableBoundVars)
   where
