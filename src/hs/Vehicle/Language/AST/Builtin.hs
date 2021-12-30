@@ -11,9 +11,11 @@ module Vehicle.Language.AST.Builtin
   , TypeClass(..)
   , BooleanOp2(..)
   , NumericOp2(..)
+  , quantifierAdverb
   , builtinFromSymbol
   , symbolFromBuiltin
   , isDecidable
+  , counterpart
   ) where
 
 import Data.Bifunctor (first)
@@ -123,6 +125,10 @@ instance Negatable Quantifier where
   neg Any = All
   neg All = Any
 
+quantifierAdverb :: Quantifier -> Doc a
+quantifierAdverb All = "universally"
+quantifierAdverb Any = "existentially"
+
 --------------------------------------------------------------------------------
 -- Equality
 
@@ -170,10 +176,18 @@ instance Pretty Order where
   pretty = pretty . show
 
 instance Negatable Order where
-  neg Le = Gt
-  neg Lt = Ge
-  neg Ge = Lt
-  neg Gt = Le
+  neg = \case
+    Le -> Gt
+    Lt -> Ge
+    Ge -> Lt
+    Gt -> Le
+
+counterpart :: Order -> Order
+counterpart = \case
+  Le -> Lt
+  Lt -> Le
+  Ge -> Gt
+  Gt -> Ge
 
 --------------------------------------------------------------------------------
 -- Boolean operations

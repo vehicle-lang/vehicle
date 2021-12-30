@@ -315,13 +315,28 @@ instance MeaningfulError CompileError where
                      "Vehicle issue tracker."
       }
 
-    UnsupportedRelation target p builtin -> UError $ UserError
+    UnsupportedOrder target p quantifier order -> UError $ UserError
       { provenance = p
-      , problem    = "The use of" <+> squotes (pretty builtin) <+>
-                     "is not currently supported when compiling to" <+> pretty target
-      , fix        = "Try avoiding it, otherwise please open an issue on the" <+>
-                     "Vehicle issue tracker."
-      }
+      , problem    = "The use of" <+> squotes (pretty actualOrder) <+> "inside of an" <+>
+                     quantifierAdverb quantifier <+> "quantifier property" <+>
+                     "is not currently supported by" <+> pretty target
+      , fix        = "You can use" <+> squotes (pretty (counterpart actualOrder)) <+>
+                     "instead, otherwise please open an issue on the" <+> pretty target <+>
+                     "issue tracker to ask for support."
+      } where actualOrder = if quantifier == All then counterpart order else order
+
+    UnsupportedEquality target p quantifier eq -> UError $ UserError
+      { provenance = p
+      , problem    = "The use of" <+> squotes (pretty actualEq) <+> "inside of an" <+>
+                     quantifierAdverb quantifier <+> "quantifier property" <+>
+                     "is not currently supported by" <+> pretty target
+      , fix        = "Instead of an equality you can try bounding the region using" <+>
+                     squotes (pretty less) <+> "and" <+>  squotes (pretty greater) <+>
+                     "instead, otherwise please open an issue on the" <+> pretty target <+>
+                     "issue tracker to ask for support."
+      } where
+          actualEq = if quantifier == All then neg eq else eq
+          (less, greater) = if quantifier == All then (Lt, Gt) else (Le, Ge)
 
     UnsupportedPolymorphicEquality target p typeName -> UError $ UserError
       { provenance = p

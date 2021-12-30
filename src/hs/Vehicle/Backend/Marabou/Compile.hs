@@ -126,7 +126,7 @@ compileQuery ident networkMap quantifier expr = do
   -- Descope the expression, converting from DeBruijn indices to names
   let descopedExpr = runDescope [] (supplyDBNames normExpr)
 
-  (vars, assertionDocs) <- compileAssertions ident descopedExpr
+  (vars, assertionDocs) <- compileAssertions ident quantifier descopedExpr
   let doc = vsep assertionDocs
 
   logDebug $ "Output:" <> align (line <> doc)
@@ -138,9 +138,10 @@ compileQuery ident networkMap quantifier expr = do
 
 compileAssertions :: MonadCompile m
                   => Identifier
+                  -> Quantifier
                   -> OutputExpr
                   -> m ([MarabouVar], [Doc a])
-compileAssertions ident expr = case expr of
+compileAssertions ident quantifier expr = case expr of
   Type{}     -> typeError          currentPass "Type"
   Pi{}       -> typeError          currentPass "Pi"
   Hole{}     -> resolutionError    currentPass "Hole"
@@ -160,24 +161,24 @@ compileAssertions ident expr = case expr of
 
   QuantifierExpr _ _ binder body -> do
     var <- compileBinder ident binder
-    (vars, docs) <- compileAssertions ident body
+    (vars, docs) <- compileAssertions ident quantifier body
     return (var : vars, docs)
 
   AndExpr _ _ [e1, e2] -> do
-    (vars1, docs1) <- compileAssertions ident (argExpr e1)
-    (vars2, docs2) <- compileAssertions ident (argExpr e2)
+    (vars1, docs1) <- compileAssertions ident quantifier (argExpr e1)
+    (vars2, docs2) <- compileAssertions ident quantifier (argExpr e2)
     return (vars1 <> vars2, docs1 <> docs2)
 
   OrderExpr order ann _ _ [lhs, rhs]
     | order == Lt || order == Gt -> do
-      throwError $ UnsupportedRelation MarabouBackend (provenanceOf ann) (Order order)
+      throwError $ UnsupportedOrder MarabouBackend (provenanceOf ann) quantifier order
     | otherwise                  -> do
       assertion <- compileAssertion ident (pretty order) (argExpr lhs) (argExpr rhs)
       return ([], [assertion])
 
   EqualityExpr eq ann _ _ [lhs, rhs]
     | eq == Neq ->
-      throwError $ UnsupportedRelation MarabouBackend (provenanceOf ann) (Equality eq)
+      throwError $ UnsupportedEquality MarabouBackend (provenanceOf ann) quantifier eq
     | otherwise -> do
       assertion <- compileAssertion ident (pretty eq) (argExpr lhs) (argExpr rhs)
       return ([], [assertion])
