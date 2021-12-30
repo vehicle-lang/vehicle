@@ -86,10 +86,13 @@ compileProperty ident networkMap expr = do
 
   -- Eliminate any if-expressions
   ifFreeExpr <- liftAndEliminateIfs normExpr
-  logDebug $ "Eliminated ifs:" <+> prettySimple ifFreeExpr <> line
+
+  logDebug $ line <> prettySimple ifFreeExpr
 
   -- Convert to disjunctive normal form
-  dnfExpr <- convertToDNF possiblyNegatedExpr
+  dnfExpr <- convertToDNF ifFreeExpr
+
+  logDebug $ line <> prettySimple dnfExpr
 
   -- Split up into the individual queries needed for Marabou.
   let queryExprs = splitDisjunctions dnfExpr
@@ -112,8 +115,16 @@ compileQuery ident networkMap quantifier expr = do
   -- Convert all applications of networks into magic variables
   (networklessExpr, metaNetwork) <- convertNetworkAppsToMagicVars networkMap quantifier expr
 
+  -- Normalise the expression to remove any implications, push the negations through
+  -- and expand out any multiplication.
+  normExpr <- normalise (Options
+    { implicationsToDisjunctions = True
+    , subtractionToAddition      = True
+    , expandOutPolynomials       = True
+    }) networklessExpr
+
   -- Descope the expression, converting from DeBruijn indices to names
-  let descopedExpr = runDescope [] (supplyDBNames networklessExpr)
+  let descopedExpr = runDescope [] (supplyDBNames normExpr)
 
   (vars, assertionDocs) <- compileAssertions ident descopedExpr
   let doc = vsep assertionDocs
@@ -171,7 +182,7 @@ compileAssertions ident expr = case expr of
       assertion <- compileAssertion ident (pretty eq) (argExpr lhs) (argExpr rhs)
       return ([], [assertion])
 
-  App{} -> developerError $ unexpectedExprError currentPass "App"
+  App{} -> developerError $ unexpectedExprError currentPass (prettySimple expr)
 
 compileBinder :: MonadCompile m => Identifier -> OutputBinder -> m MarabouVar
 compileBinder ident binder =

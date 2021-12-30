@@ -5,7 +5,6 @@ module Vehicle.Compile.Normalise.IfElimination
 
 import Data.List.NonEmpty as NonEmpty
 
-import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 
@@ -22,8 +21,6 @@ liftAndEliminateIfs e = do
   logDebug "Beginning if lifting and elimination"
   incrCallDepth
   result <- liftAndElim liftIf elimIf e
-
-  logDebug $ prettySimple result
   decrCallDepth
   logDebug "Finished if lifting elimination"
   return result
@@ -59,7 +56,11 @@ elimIf e = e
 type LiftingOp = (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
 type EliminationOp = CheckedExpr -> CheckedExpr
 
-liftAndElim :: MonadLogger m => LiftingOp -> EliminationOp -> CheckedExpr -> m CheckedExpr
+liftAndElim :: MonadLogger m
+            => LiftingOp
+            -> EliminationOp
+            -> CheckedExpr
+            -> m CheckedExpr
 liftAndElim liftOp elimOp expr =
   let recCall = liftAndElim liftOp elimOp in
   case expr of
@@ -107,7 +108,10 @@ liftSeq _      f []       = f []
 liftSeq liftOp f (x : xs) = liftOp (\v -> liftSeq liftOp (\ys -> f (v : ys)) xs) x
 
 -- I feel this should be definable in terms of `liftIfs`, but I can't find it.
-liftArgs :: LiftingOp -> (NonEmpty CheckedArg -> CheckedExpr) -> NonEmpty CheckedArg -> CheckedExpr
+liftArgs :: LiftingOp
+         -> (NonEmpty CheckedArg -> CheckedExpr)
+         -> NonEmpty CheckedArg
+         -> CheckedExpr
 liftArgs liftOp f (x :| [])       = liftArg liftOp (\x' -> f (x' :| [])) x
 liftArgs liftOp f (arg :| y : xs) = if visibilityOf arg == Explicit
   then liftArg liftOp (\arg' -> liftArgs liftOp (\as -> f (arg' <| as)) (y :| xs)) arg
