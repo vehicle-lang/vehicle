@@ -8,7 +8,7 @@ import Data.Map (Map)
 
 import Vehicle.Prelude as X
 import Vehicle.Language.AST as X
-import Vehicle.Backend.Prelude (OutputTarget)
+import Vehicle.Backend.Prelude (Backend)
 
 --------------------------------------------------------------------------------
 -- Compilation
@@ -16,7 +16,7 @@ import Vehicle.Backend.Prelude (OutputTarget)
 data CompileOptions = CompileOptions
   { inputFile      :: FilePath
   , outputFile     :: Maybe FilePath
-  , outputTarget   :: OutputTarget
+  , outputTarget   :: Backend
   , moduleName     :: String
   } deriving (Show)
 

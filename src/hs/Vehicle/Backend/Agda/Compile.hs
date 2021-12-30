@@ -290,7 +290,7 @@ compileProg (Main ds) = vsep2 <$> traverse compileDecl ds
 compileDecl :: MonadAgdaCompile m => OutputDecl -> m Code
 compileDecl = \case
   DeclData ann ident _ ->
-    throwError $ UnsupportedDecl (ITP Agda) (provenanceOf ann) ident Dataset
+    throwError $ UnsupportedDecl AgdaBackend (provenanceOf ann) ident Dataset
 
   DeclNetw _ann n t -> compileNetwork (compileIdentifier n) <$> compileExpr t
 
@@ -420,9 +420,9 @@ compileBuiltin e = case e of
   (ConsExpr _ tElem       args)  -> compileCons tElem <$> traverse compileArg args
   (AtExpr ann _tElem tDims args) -> compileAt ann tDims (map argExpr args)
 
-  MapExpr{}             -> throwError $ UnsupportedBuiltin (ITP Agda) (provenanceOf e) Map
-  FoldExpr{}            -> throwError $ UnsupportedBuiltin (ITP Agda) (provenanceOf e) Fold
-  BuiltinTypeClass _ tc -> throwError $ UnsupportedBuiltin (ITP Agda) (provenanceOf e) (TypeClass tc)
+  MapExpr{}             -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Map
+  FoldExpr{}            -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Fold
+  BuiltinTypeClass _ tc -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) (TypeClass tc)
 
   _ -> developerError $ "unexpected application of builtin found during compilation to Agda:" <+>
                         squotes (prettyVerbose e)
@@ -668,7 +668,7 @@ equalityDependencies = \case
   App _ (BuiltinContainerType _ Tensor) [tElem, _tDims] -> do
     deps <- equalityDependencies (argExpr tElem)
     return $ [DataTensorInstances] <> deps
-  Var ann n -> throwError $ UnsupportedPolymorphicEquality (ITP Agda) (provenanceOf ann) n
+  Var ann n -> throwError $ UnsupportedPolymorphicEquality AgdaBackend (provenanceOf ann) n
   t         -> unexpectedTypeError t ["Tensor", "Real", "Int", "List"]
 
 numericType :: OutputExpr -> NumericType
@@ -689,14 +689,14 @@ tensorSize p tDims = getTensorSize (exprHead tDims)
     getTensorSize :: MonadCompile m => OutputExpr -> m Int
     getTensorSize (LSeq _ _ (x : _))  = getDimension (exprHead x)
     getTensorSize (LSeq _ _ [])       =
-      throwError $ LookupInEmptyTensor (ITP Agda) p
+      throwError $ LookupInEmptyTensor AgdaBackend p
     getTensorSize t                   =
-      throwError $ LookupInVariableDimTensor (ITP Agda) p t
+      throwError $ LookupInVariableDimTensor AgdaBackend p t
 
     getDimension :: MonadCompile m =>  OutputExpr -> m Int
     getDimension (LitNat _ i) = return i
     getDimension t            = throwError $
-      LookupInVariableDimTensor (ITP Agda) (provenanceOf t) t
+      LookupInVariableDimTensor AgdaBackend (provenanceOf t) t
 
 
 unexpectedTypeError :: OutputExpr -> [String] -> a

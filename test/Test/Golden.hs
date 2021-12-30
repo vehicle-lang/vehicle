@@ -39,20 +39,20 @@ goldenTestList = realisticTestList <> simpleTestList <> miscTestList
 
 realisticTestList :: [GoldenTestSpec]
 realisticTestList = map (addTestDirectory ("examples" </> "network")) [
-  --("shortestPath",     [Verifier VNNLib]),
-  ("andGate",                [Verifier VNNLib, ITP Agda]),
-  ("acasXu" </> "property6", [Verifier VNNLib, ITP Agda]),
-  ("monotonicity",           [Verifier VNNLib, ITP Agda]),
-  ("increasing",             [Verifier VNNLib, ITP Agda]),
-  ("reachability",           [Verifier VNNLib, ITP Agda]),
-  ("autoencoderError",       [Verifier VNNLib, ITP Agda]),
-  ("windController",         [Verifier VNNLib, ITP Agda])
+  --("shortestPath",     [VNNLibBackend]),
+  ("andGate",                [VNNLibBackend, AgdaBackend]),
+  ("acasXu" </> "property6", [VNNLibBackend, AgdaBackend]),
+  ("monotonicity",           [VNNLibBackend, AgdaBackend]),
+  ("increasing",             [VNNLibBackend, AgdaBackend]),
+  ("reachability",           [VNNLibBackend, AgdaBackend]),
+  ("autoencoderError",       [VNNLibBackend, AgdaBackend]),
+  ("windController",         [VNNLibBackend, AgdaBackend])
   ]
 
 simpleTestList :: [GoldenTestSpec]
 simpleTestList = map (addTestDirectory ("examples" </> "simple"))
-  [ ("quantifierIn",   [ITP Agda])
-  , ("let",            [ITP Agda])
+  [ ("quantifierIn",   [AgdaBackend])
+  , ("let",            [AgdaBackend])
   ]
 
 miscTestList :: [GoldenTestSpec]
@@ -63,19 +63,19 @@ miscTestList = map (addTestDirectory ("examples" </> "misc"))
 --------------------------------------------------------------------------------
 -- Test infrastructure
 
-type GoldenTestSpec = (FilePath, FilePath, [OutputTarget])
+type GoldenTestSpec = (FilePath, FilePath, [Backend])
 
-addTestDirectory :: FilePath -> (FilePath, [OutputTarget]) -> GoldenTestSpec
+addTestDirectory :: FilePath -> (FilePath, [Backend]) -> GoldenTestSpec
 addTestDirectory folderPath (subfolder, targets) =
   ( folderPath </> subfolder
   , last (splitPath subfolder)
   , targets
   )
 
-getFileExt :: OutputTarget -> String
-getFileExt (Verifier Marabou) = ".txt"
-getFileExt (Verifier VNNLib)  = ".vnnlib"
-getFileExt (ITP Agda)         = ".agda"
+getFileExt :: Backend -> String
+getFileExt MarabouBackend = ".txt"
+getFileExt VNNLibBackend  = ".vnnlib"
+getFileExt AgdaBackend         = ".agda"
 
 makeGoldenTestsFromSpec :: GoldenTestSpec -> TestTree
 makeGoldenTestsFromSpec (folderPath, testName, outputTargets) = testGroup testGroupName tests
@@ -86,7 +86,7 @@ makeGoldenTestsFromSpec (folderPath, testName, outputTargets) = testGroup testGr
     tests :: [TestTree]
     tests = map (makeIndividualTest folderPath testName) outputTargets
 
-makeIndividualTest :: FilePath -> FilePath -> OutputTarget -> TestTree
+makeIndividualTest :: FilePath -> FilePath -> Backend -> TestTree
 makeIndividualTest folderPath name target = testWithCleanup
   where
   testName   = name <> "-" <> show target
@@ -125,7 +125,7 @@ cleanupOutputFile testFile test = withResource (return ()) (const cleanup) (cons
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
 
-runTest :: FilePath -> FilePath -> String -> OutputTarget -> IO ()
+runTest :: FilePath -> FilePath -> String -> Backend -> IO ()
 runTest inputFile outputFile modulePath outputTarget = do
   run $ Options
     { version       = False

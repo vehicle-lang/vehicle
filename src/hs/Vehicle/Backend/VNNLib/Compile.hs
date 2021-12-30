@@ -57,7 +57,7 @@ compileDecl networkMap = \case
     normalisationError currentPass "dataset declarations"
 
   DeclNetw ann ident _ ->
-    throwError $ UnsupportedDecl (Verifier VNNLib) ann ident Network
+    throwError $ UnsupportedDecl VNNLibBackend ann ident Network
 
   DefFun _ ident t e -> if not $ isProperty t
       then return Nothing
@@ -72,7 +72,7 @@ compileProperty networkMap ident expr = flip runReaderT ident $ do
   let ann = annotationOf expr
 
   -- Check that we only have one type of quantifier in the property
-  quantifier <- checkQuantifiersAreHomogeneous (Verifier VNNLib) ident expr
+  quantifier <- checkQuantifiersAreHomogeneous VNNLibBackend ident expr
 
   -- If the property is universally quantified then we need to negate the expression
   let (isPropertyNegated, possiblyNegatedExpr) =
@@ -141,7 +141,7 @@ compileAssertion = \case
 
   QuantifierExpr q ann binder _ -> do
     ident <- ask
-    throwError $ UnsupportedQuantifierPosition (Verifier VNNLib) (provenanceOf ann) ident q (nameOf binder)
+    throwError $ UnsupportedQuantifierPosition VNNLibBackend (provenanceOf ann) ident q (nameOf binder)
 
   App _ann fun args -> do
     funDoc  <- compileAssertion fun
@@ -212,7 +212,7 @@ getVarType _   _ (RealType _) = return VReal
 getVarType _   _ (RatType  _) = return VReal -- See Issue #46
 getVarType ann s t            = do
   ident <- ask
-  throwError $ UnsupportedVariableType (Verifier VNNLib) (provenanceOf ann) ident s t supportedTypes
+  throwError $ UnsupportedVariableType VNNLibBackend (provenanceOf ann) ident s t supportedTypes
 
 
 assertion :: Doc a -> Doc a

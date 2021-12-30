@@ -7,13 +7,13 @@ import Control.Monad.Except (MonadError(throwError))
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Backend.Prelude (OutputTarget)
+import Vehicle.Backend.Prelude (Backend)
 
 -- | Checks that the quantifiers within the expression are homogeneous,
 -- returning the quantifier. Defaults to returning `All` if the expression
 -- contains no quantifiers.
 checkQuantifiersAreHomogeneous :: MonadCompile m
-                               => OutputTarget
+                               => Backend
                                -> Identifier
                                -> CheckedExpr
                                -> m Quantifier

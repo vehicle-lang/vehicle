@@ -7,7 +7,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Prettyprinter (list)
 
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Backend.Prelude (OutputTarget)
+import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Compile.Prelude
 
 --------------------------------------------------------------------------------
@@ -67,17 +67,17 @@ data CompileError
 
   -- Backend errors
   | NoPropertiesFound
-  | UnsupportedDecl                OutputTarget Provenance Identifier DeclType
-  | UnsupportedQuantifierSequence  OutputTarget Provenance Identifier Quantifier
-  | UnsupportedQuantifierPosition  OutputTarget Provenance Identifier Quantifier Symbol
-  | UnsupportedVariableType        OutputTarget Provenance Identifier Symbol OutputExpr [Builtin]
-  | UnsupportedRelation            OutputTarget Provenance Builtin
-  | UnsupportedPolymorphicEquality OutputTarget Provenance Symbol
-  | UnsupportedBuiltin             OutputTarget Provenance Builtin
-  | NonLinearConstraint            OutputTarget Provenance Identifier OutputExpr OutputExpr
-  | NoNetworkUsedInProperty        OutputTarget Provenance Identifier
-  | LookupInVariableDimTensor      OutputTarget Provenance OutputExpr
-  | LookupInEmptyTensor            OutputTarget Provenance
+  | UnsupportedDecl                Backend Provenance Identifier DeclType
+  | UnsupportedQuantifierSequence  Backend Provenance Identifier Quantifier
+  | UnsupportedQuantifierPosition  Backend Provenance Identifier Quantifier Symbol
+  | UnsupportedVariableType        Backend Provenance Identifier Symbol OutputExpr [Builtin]
+  | UnsupportedRelation            Backend Provenance Builtin
+  | UnsupportedPolymorphicEquality Backend Provenance Symbol
+  | UnsupportedBuiltin             Backend Provenance Builtin
+  | NonLinearConstraint            Backend Provenance Identifier OutputExpr OutputExpr
+  | NoNetworkUsedInProperty        Backend Provenance Identifier
+  | LookupInVariableDimTensor      Backend Provenance OutputExpr
+  | LookupInEmptyTensor            Backend Provenance
   | TensorIndexOutOfBounds         Provenance Int Int
   deriving (Show)
 

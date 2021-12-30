@@ -7,7 +7,7 @@ import Data.Version (Version, makeVersion)
 import Vehicle.Prelude
 import Paths_vehicle qualified as VehiclePath
 
-data OutputTarget
+data Backend
   = ITP ITP
   | Verifier Verifier
 
@@ -20,16 +20,25 @@ data Verifier
   | Marabou
   deriving (Show, Read)
 
-instance Pretty OutputTarget where
+pattern AgdaBackend :: Backend
+pattern AgdaBackend = ITP Agda
+
+pattern MarabouBackend :: Backend
+pattern MarabouBackend = Verifier Marabou
+
+pattern VNNLibBackend :: Backend
+pattern VNNLibBackend = Verifier VNNLib
+
+instance Pretty Backend where
   pretty (ITP x)      = pretty $ show x
   pretty (Verifier x) = pretty $ show x
 
-instance Show OutputTarget where
+instance Show Backend where
   show = \case
     ITP      arg -> show arg
     Verifier arg -> show arg
 
-instance Read OutputTarget where
+instance Read Backend where
   readsPrec d x =
     case readsPrec d x of
       [] -> case readsPrec d x of
@@ -37,21 +46,21 @@ instance Read OutputTarget where
         res -> fmap (first Verifier) res
       res -> fmap (first ITP) res
 
-commentTokenOf :: OutputTarget -> Maybe (Doc a)
+commentTokenOf :: Backend -> Maybe (Doc a)
 commentTokenOf = \case
-  Verifier Marabou       -> Nothing
-  Verifier VNNLib        -> Just ";"
-  ITP Agda               -> Just "--"
+  Verifier Marabou -> Nothing
+  Verifier VNNLib  -> Just ";"
+  ITP Agda         -> Just "--"
 
-versionOf :: OutputTarget -> Maybe Version
+versionOf :: Backend -> Maybe Version
 versionOf target = case target of
-  Verifier VNNLib        -> Nothing
-  Verifier Marabou       -> Nothing
-  ITP Agda               -> Just $ makeVersion [2,6,2]
+  Verifier Marabou -> Nothing
+  Verifier VNNLib  -> Nothing
+  ITP Agda         -> Just $ makeVersion [2,6,2]
 
 -- |Generate the file header given the token used to start comments in the
 -- target language
-makefileHeader :: OutputTarget -> Doc a
+makefileHeader :: Backend -> Doc a
 makefileHeader target = case commentTokenOf target of
   Nothing           -> ""
   Just commentToken -> vsep $ map (commentToken <+>)
@@ -64,7 +73,7 @@ makefileHeader target = case commentTokenOf target of
     ]
   where targetVersion = maybe "N/A" pretty (versionOf target)
 
-writeResultToFile :: OutputTarget -> Maybe FilePath -> Doc a -> IO ()
+writeResultToFile :: Backend -> Maybe FilePath -> Doc a -> IO ()
 writeResultToFile target filepath doc = do
   let fileHeader = makefileHeader target
   let text = layoutAsText (fileHeader <> line <> line <> doc)

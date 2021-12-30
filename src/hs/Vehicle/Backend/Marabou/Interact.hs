@@ -21,4 +21,4 @@ writeOutProperty filepath property = do
 writeQueryToFile :: Maybe FilePath -> (Int, MarabouQuery) -> IO ()
 writeQueryToFile filepath (queryID, query) = do
   let queryFilepath = fmap (</> "query" <> show queryID <.> "txt") filepath
-  writeResultToFile (Verifier Marabou) queryFilepath (doc query)
+  writeResultToFile MarabouBackend queryFilepath (doc query)

@@ -68,7 +68,7 @@ compileProperty ident networkMap expr = do
   incrCallDepth
 
   -- Check that we only have one type of quantifier in the property
-  quantifier <- checkQuantifiersAreHomogeneous (Verifier Marabou) ident expr
+  quantifier <- checkQuantifiersAreHomogeneous MarabouBackend ident expr
 
   -- If the property is universally quantified then we need to negate the expression
   let (isPropertyNegated, possiblyNegatedExpr) =
@@ -159,14 +159,14 @@ compileAssertions ident expr = case expr of
 
   OrderExpr order ann _ _ [lhs, rhs]
     | order == Lt || order == Gt -> do
-      throwError $ UnsupportedRelation (Verifier Marabou) (provenanceOf ann) (Order order)
+      throwError $ UnsupportedRelation MarabouBackend (provenanceOf ann) (Order order)
     | otherwise                  -> do
       assertion <- compileAssertion ident (pretty order) (argExpr lhs) (argExpr rhs)
       return ([], [assertion])
 
   EqualityExpr eq ann _ _ [lhs, rhs]
     | eq == Neq ->
-      throwError $ UnsupportedRelation (Verifier Marabou) (provenanceOf ann) (Equality eq)
+      throwError $ UnsupportedRelation MarabouBackend (provenanceOf ann) (Equality eq)
     | otherwise -> do
       assertion <- compileAssertion ident (pretty eq) (argExpr lhs) (argExpr rhs)
       return ([], [assertion])
@@ -181,7 +181,7 @@ compileBinder ident binder =
   case typeOf binder of
     RatType  _ -> return $ MarabouVar n MReal
     RealType _ -> return $ MarabouVar n MReal
-    _ -> throwError $ UnsupportedVariableType (Verifier Marabou) p ident n t supportedTypes
+    _ -> throwError $ UnsupportedVariableType MarabouBackend p ident n t supportedTypes
 
 compileAssertion :: MonadCompile m => Identifier -> Doc a -> OutputExpr -> OutputExpr -> m (Doc a)
 compileAssertion ident rel lhs rhs = do
@@ -202,7 +202,7 @@ compileAssertion ident rel lhs rhs = do
       MulExpr ann _ _ [arg1, arg2] -> case (argExpr arg1, argExpr arg2) of
         (Literal _ l, Var _ v) -> return ([(compileLiteral l, v)],[])
         (Var _ v, Literal _ l) -> return ([(compileLiteral l, v)],[])
-        (e1, e2)-> throwError $ NonLinearConstraint (Verifier Marabou) (provenanceOf ann) ident e1 e2
+        (e1, e2)-> throwError $ NonLinearConstraint MarabouBackend (provenanceOf ann) ident e1 e2
       e -> developerError $ unexpectedExprError currentPass $ prettySimple e
 
     compileLiteral :: Literal -> Double

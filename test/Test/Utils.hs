@@ -21,7 +21,6 @@ discardState e = case discardLogger $ logCompileError e of
   Left  x -> error (show (details x))
   Right y -> y
 
-
 traceLogger :: Logger a -> a
 traceLogger m =
   let (v, logs) = runLogger m in
