@@ -33,6 +33,9 @@ visProv Instance = expandProvenance (2,2)
 class HasVisibility a where
   visibilityOf :: a -> Visibility
 
+isExplicit :: HasVisibility a => a -> Bool
+isExplicit x = visibilityOf x == Explicit
+
 --------------------------------------------------------------------------------
 -- Ownership
 

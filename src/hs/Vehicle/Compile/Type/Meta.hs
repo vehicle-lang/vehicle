@@ -33,11 +33,9 @@ import Data.List (partition)
 import Data.Map qualified as Map (lookup)
 import Data.List.NonEmpty (NonEmpty(..))
 
-import Vehicle.Prelude
-import Vehicle.Compile.Error
-import Vehicle.Language.AST
 import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Error
 import Vehicle.Compile.Type.MetaSubstitution ( MetaSubstitution )
 import Vehicle.Compile.Type.MetaSubstitution qualified as MetaSubst (map, lookup, insertWith)
 import Vehicle.Compile.Type.MetaSet (MetaSet)
@@ -53,14 +51,7 @@ data MetaCtx = MetaCtx
   , currentSubstitution :: MetaSubstitution
   , constraints         :: [Constraint]
   }
-{-
-instance Pretty MetaCtx where
-  pretty MetaCtx{..} = "{" <> line <>
-    "nextMeta"            <+> "=" <+> pretty nextMeta                   <> line <>
-    "currentSubstitution" <+> "=" <+> prettyVerbose currentSubstitution <> line <>
-    "constraints"         <+> "=" <+> prettyVerbose constraints         <> line <>
-    "}"
--}
+
 emptyMetaCtx :: MetaCtx
 emptyMetaCtx = MetaCtx
   { nextMeta               = 0
@@ -273,11 +264,10 @@ metaSolved p m e = do
       "was assigned again to" <+> prettyVerbose new <+>
       pretty p
 
-type MonadConstraintSolving e m =
-  ( AsTypeError e
-  , MonadState MetaCtx m
+type MonadConstraintSolving m =
+  ( MonadState MetaCtx m
   , MonadLogger m
-  , MonadError e m
+  , MonadError CompileError m
   )
 
 --------------------------------------------------------------------------------

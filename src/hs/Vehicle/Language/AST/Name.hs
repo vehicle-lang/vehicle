@@ -31,3 +31,6 @@ freshNames = [ "_x" <> pack (show i) | i <- [0::Int ..]]
 
 instance HasName (Binder binder var ann) binder where
   nameOf (Binder _ _ name _) = name
+
+instance HasName Identifier Symbol where
+  nameOf (Identifier name) = name

@@ -28,9 +28,8 @@ import Prelude hiding (pi)
 import GHC.Stack (HasCallStack)
 import Data.List.NonEmpty (NonEmpty)
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
 import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Prelude
 
 class DSL expr where
   infixl 4 `app`

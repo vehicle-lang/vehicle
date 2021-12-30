@@ -3,38 +3,22 @@ module Vehicle.Compile
   , compile
   , typeCheck
   , typeCheckExpr
-  , logCompileError
   ) where
 
-import Paths_vehicle qualified as VehiclePath (version)
-
-import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
-import Data.Text as T (Text, pack)
+import Control.Monad.Except (MonadError(..))
+import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
-import Data.Version (Version, makeVersion)
-import System.Exit (exitFailure)
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
+import Vehicle.Backend
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Error.Meaningful
+import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Parse
 import Vehicle.Compile.Elaborate.Frontend as Frontend (runElab, runElabExpr)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (runTypeCheck)
-import Vehicle.Compile.Normalise (normalise)
-
-import Vehicle.Compile.Backend.SMTLib (compileToSMTLib, SMTDoc(..))
-import Vehicle.Compile.Backend.VNNLib (compileToVNNLib, VNNLibDoc(..))
-import Vehicle.Compile.Backend.Agda (compileToAgda, AgdaOptions(..))
-import Vehicle.Compile.StandardiseNetworks (standardiseNetworks)
-
-data CompileOptions = CompileOptions
-  { inputFile      :: FilePath
-  , outputFile     :: Maybe FilePath
-  , outputTarget   :: OutputTarget
-  , moduleName     :: String
-  } deriving (Show)
+import Vehicle.Compile.Normalise (normalise, defaultNormalisationOptions)
+import Vehicle.Compile.Normalise.NetworkTypes (normaliseNetworkTypes)
 
 compile :: LogFilePath -> CompileOptions -> IO ()
 compile logFile opts@CompileOptions{..} = do
@@ -43,21 +27,19 @@ compile logFile opts@CompileOptions{..} = do
 
   -- Compile to requested backend
   case outputTarget of
-    target@(ITP itp) -> do
+    ITP itp ->
       case itp of
-        Agda -> do
-          let agdaOptions = AgdaOptions "TODO_projectFile" [T.pack moduleName] mempty
-          agdaDoc <- fromLoggedEitherIO logFile $ compileToAgda agdaOptions typedProg
-          writeResultToFile opts target agdaDoc
+        Agda -> toAgda logFile opts typedProg
 
     (Verifier verifier) -> do
-      normProg <- fromLoggedEitherIO logFile $ normalise typedProg
+      normProg <- fromLoggedEitherIO logFile $ normalise defaultNormalisationOptions typedProg
+      (networkMap, networkedProg) <- fromLoggedEitherIO logFile $ normaliseNetworkTypes normProg
       case verifier of
-        SMTLib -> toSMTLib logFile opts normProg
-        VNNLib -> toVNNLib logFile opts normProg
+        VNNLib  -> toVNNLib  logFile opts networkMap networkedProg
+        Marabou -> toMarabou logFile opts networkMap networkedProg
 
 typeCheck :: (MonadLogger m, MonadError CompileError m)
-             => Text -> m CheckedProg
+          => Text -> m CheckedProg
 typeCheck txt = do
   bnfcProg    <- parseVehicle txt
   vehicleProg <- runElab bnfcProg
@@ -66,7 +48,7 @@ typeCheck txt = do
   return typedProg
 
 typeCheckExpr :: (MonadLogger m, MonadError CompileError m)
-             => Text -> m CheckedExpr
+              => Text -> m CheckedExpr
 typeCheckExpr txt = do
   bnfcProg    <- parseVehicle txt
   vehicleProg <- runElabExpr bnfcProg
@@ -74,66 +56,3 @@ typeCheckExpr txt = do
   typedProg   <- runTypeCheck scopedProg
   return typedProg
 
-fromEitherIO :: Either CompileError a -> IO a
-fromEitherIO (Left err) = do print $ details err; exitFailure
-fromEitherIO (Right x)  = return x
-
-fromLoggedEitherIO :: LogFilePath -> ExceptT CompileError Logger a -> IO a
-fromLoggedEitherIO logFile x = fromEitherIO =<< fromLoggedIO logFile (logCompileError x)
-
-logCompileError :: ExceptT CompileError Logger a -> Logger (Either CompileError a)
-logCompileError x = do
-  e' <- runExceptT x
-  case e' of
-    Left err -> logDebug ("Error thrown:" <+> pretty (show err))
-    Right _  -> return ()
-  return e'
-
-fromLoggedIO :: LogFilePath -> Logger a -> IO a
-fromLoggedIO Nothing        logger = return $ discardLogger logger
-fromLoggedIO (Just logFile) logger = flushLogs logFile logger
-
-writeResultToFile :: CompileOptions -> OutputTarget -> Doc a -> IO ()
-writeResultToFile CompileOptions{..} target doc = do
-  let fileHeader = makefileHeader target
-  let outputText = layoutAsText (fileHeader <> line <> line <> doc)
-  case outputFile of
-    Nothing             -> TIO.putStrLn outputText
-    Just outputFilePath -> TIO.writeFile outputFilePath outputText
-
-toSMTLib :: LogFilePath -> CompileOptions -> CheckedProg -> IO ()
-toSMTLib logFile options prog = do
-  propertyDocs <- fromLoggedEitherIO logFile (compileToSMTLib prog)
-  mapM_ (\doc -> writeResultToFile options (Verifier SMTLib) (text doc)) propertyDocs
-
-toVNNLib :: LogFilePath -> CompileOptions -> CheckedProg -> IO ()
-toVNNLib logFile options prog1 = do
-  (networkMap, prog2) <- fromLoggedEitherIO logFile $ standardiseNetworks prog1
-  propertyDocs <- fromLoggedEitherIO logFile (compileToVNNLib networkMap prog2)
-  mapM_ (\doc -> writeResultToFile options (Verifier VNNLib) (text (smtDoc doc))) propertyDocs
-
--- |Generate the file header given the token used to start comments in the
--- target language
-makefileHeader :: OutputTarget -> Doc a
-makefileHeader target = vsep $
-  map (commentTokenOf target <+>)
-    [ "WARNING: This file was generated automatically by Vehicle"
-    , "and should not be modified manually!"
-    , "Metadata"
-    , " -" <+> pretty (show target) <> " version:" <+> targetVersion
-    , " - AISEC version:" <+> pretty VehiclePath.version
-    , " - Time generated: ???"
-    ]
-  where targetVersion = maybe "N/A" pretty (versionOf target)
-
-versionOf :: OutputTarget -> Maybe Version
-versionOf target = case target of
-  Verifier VNNLib        -> Nothing
-  Verifier SMTLib        -> Nothing
-  ITP Agda               -> Just $ makeVersion [2,6,2]
-
-commentTokenOf :: OutputTarget -> Doc a
-commentTokenOf = \case
-  Verifier VNNLib        -> ";"
-  Verifier SMTLib        -> ";"
-  ITP Agda               -> "--"

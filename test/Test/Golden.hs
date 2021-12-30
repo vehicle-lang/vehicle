@@ -22,6 +22,7 @@ import Debug.Trace (traceShowId)
 import Vehicle
 import Vehicle.Prelude
 import Vehicle.Compile
+import Vehicle.Backend
 
 --------------------------------------------------------------------------------
 -- Tests
@@ -50,9 +51,8 @@ realisticTestList = map (addTestDirectory ("examples" </> "network")) [
 
 simpleTestList :: [GoldenTestSpec]
 simpleTestList = map (addTestDirectory ("examples" </> "simple"))
-  [ --("quantifier",     [Verifier SMTLib])
-    ("quantifierIn",   [Verifier SMTLib, ITP Agda])
-  , ("let",            [Verifier SMTLib, ITP Agda])
+  [ ("quantifierIn",   [ITP Agda])
+  , ("let",            [ITP Agda])
   ]
 
 miscTestList :: [GoldenTestSpec]
@@ -73,9 +73,9 @@ addTestDirectory folderPath (subfolder, targets) =
   )
 
 getFileExt :: OutputTarget -> String
-getFileExt (Verifier VNNLib) = ".vnnlib"
-getFileExt (Verifier SMTLib) = ".smtlib"
-getFileExt (ITP Agda)        = ".agda"
+getFileExt (Verifier Marabou) = ".txt"
+getFileExt (Verifier VNNLib)  = ".vnnlib"
+getFileExt (ITP Agda)         = ".agda"
 
 makeGoldenTestsFromSpec :: GoldenTestSpec -> TestTree
 makeGoldenTestsFromSpec (folderPath, testName, outputTargets) = testGroup testGroupName tests

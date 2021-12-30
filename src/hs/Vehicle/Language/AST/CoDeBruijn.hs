@@ -6,15 +6,11 @@ module Vehicle.Language.AST.CoDeBruijn
   , CoDBBinder
   , CoDBBinding(..)
   , CoDBVar(..)
-  , CheckedCoDBExpr
-  , CheckedCoDBArg
-  , CheckedCoDBBinder
   , ExtractPositionTrees(..)
   , BinderC(..)
   , ArgC(..)
   , ExprC(..)
   , RecCoDB(..)
-  , PositionsInExpr(..)
   , mkHashable
   , substPos
   , liftFreeCoDBIndices
@@ -72,20 +68,12 @@ type CoDBBinder ann = (PartialCoDBBinder ann, BoundVarMap)
 type CoDBArg    ann = (PartialCoDBArg    ann, BoundVarMap)
 type CoDBExpr   ann = (PartialCoDBExpr   ann, BoundVarMap)
 
-type CheckedCoDBExpr   = CoDBExpr CheckedAnn
-type CheckedCoDBArg    = CoDBArg CheckedAnn
-type CheckedCoDBBinder = CoDBBinder CheckedAnn
-
 instance Hashable (PartialCoDBExpr   ()) where
 instance Hashable (PartialCoDBArg    ()) where
 instance Hashable (PartialCoDBBinder ()) where
 
 mkHashable :: CoDBExpr ann -> CoDBExpr ()
 mkHashable = first removeAnnotations
-
--- | An expression paired with a position tree represting positions within it.
--- Currently used mainly for pretty printing position trees.
-data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
 
 --------------------------------------------------------------------------------
 -- Extract binder positionTrees
@@ -234,7 +222,7 @@ positionTreeOf b = case nameOf b of
 -- with care as unlike DeBruijn based substitution it does not only target
 -- variables but arbitrary expressions. Assumes that all the variables in the
 -- value `v` being substituted are free in the expression being substituted into.
-substPos :: CheckedCoDBExpr -> Maybe PositionTree -> CheckedCoDBExpr -> CheckedCoDBExpr
+substPos :: CoDBExpr ann -> Maybe PositionTree -> CoDBExpr ann -> CoDBExpr ann
 substPos _ Nothing         expr = expr
 substPos v (Just Leaf)     _    = v
 substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
@@ -283,16 +271,20 @@ substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
   (_, ps) -> developerError $
     "Expected the same number of PositionTrees as args but found" <+> pretty (length ps)
   where
-    lowerValue :: CheckedCoDBExpr -> CheckedCoDBExpr
+    lowerValue :: CoDBExpr ann -> CoDBExpr ann
     lowerValue (e, bvm) = (e, lowerBVM Nothing bvm)
 
-substPosArg :: CheckedCoDBExpr -> Maybe PositionTree -> CheckedCoDBArg -> CheckedCoDBArg
+substPosArg :: CoDBExpr ann -> Maybe PositionTree -> CoDBArg ann -> CoDBArg ann
 substPosArg v p arg = case recCoDB arg of
   (ArgC ann vis e) ->
     let (e', bvm) = substPos v p e in
     (Arg ann vis e', bvm)
 
-substPosBinder :: CheckedCoDBExpr -> Maybe PositionTree -> CheckedCoDBBinder -> Maybe PositionTree -> CheckedCoDBBinder
+substPosBinder :: CoDBExpr ann
+               -> Maybe PositionTree
+               -> CoDBBinder ann
+               -> Maybe PositionTree
+               -> CoDBBinder ann
 substPosBinder v p binder boundPositions = case recCoDB binder of
   (BinderC ann vis (CoDBBinding n _) t) ->
     let (t', bvm) = substPos v p t in
@@ -306,8 +298,8 @@ invalidPositionTreeError l = developerError $
 --------------------------------------------------------------------------------
 -- Lifting
 
-liftFreeCoDBIndices :: CheckedCoDBExpr -> CheckedCoDBExpr
+liftFreeCoDBIndices :: CoDBExpr ann -> CoDBExpr ann
 liftFreeCoDBIndices (e, bvm) = (e, IntMap.mapKeysMonotonic (\x -> x - 1) bvm)
 
-lowerFreeCoDBIndices :: CheckedCoDBExpr -> CheckedCoDBExpr
+lowerFreeCoDBIndices :: CoDBExpr ann -> CoDBExpr ann
 lowerFreeCoDBIndices (e, bvm) = (e, IntMap.mapKeysMonotonic (+ 1) bvm)

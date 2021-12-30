@@ -36,8 +36,8 @@ import Vehicle.Compile.Descope
 import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.MetaSubstitution (MetaSubstitution(MetaSubstitution))
-import Vehicle.Compile.Type.Core ()
 import Vehicle.Compile.CoDeBruijnify (ConvertCodebruijn(..))
+import Vehicle.Compile.Prelude
 
 
 -- The old methods for compatibility:

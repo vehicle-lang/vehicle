@@ -11,8 +11,7 @@ import Control.Monad.Reader (MonadReader(..), Reader, runReader)
 import Data.Text (pack)
 import Data.Map (Map)
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
+import Vehicle.Compile.Prelude
 
 --------------------------------------------------------------------------------
 -- Public interface

@@ -8,7 +8,7 @@ module Vehicle.Compile.CoDeBruijnify
 import Data.Functor.Foldable (Recursive(..))
 import Data.List.NonEmpty qualified as NonEmpty (toList, unzip)
 
-import Vehicle.Language.AST
+import Vehicle.Compile.Prelude
 import Vehicle.Language.AST.DeBruijn as DB
 
 --------------------------------------------------------------------------------

@@ -22,4 +22,4 @@
 
 (assert (== X_5 Y_0))
 (assert (== X_6 Y_1))
-(assert (not (and (== Y_2 X_0) (and (== Y_3 X_1) (and (== Y_4 X_2) (and (== Y_5 X_3) (== Y_6 X_4)))))))
+(assert (or (distinct Y_2 X_0) (or (distinct Y_3 X_1) (or (distinct Y_4 X_2) (or (distinct Y_5 X_3) (distinct Y_6 X_4))))))

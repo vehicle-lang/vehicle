@@ -8,12 +8,10 @@ import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
 import Data.Text
 import Data.Hashable
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
 import Vehicle.Language.Print
+import Vehicle.Compile.Prelude
 import Vehicle.Compile (typeCheckExpr)
 import Vehicle.Compile.AlphaEquivalence
-import Vehicle.Compile.Error.Meaningful
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.IfElimination
 import Vehicle.Compile.CoDeBruijnify

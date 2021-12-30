@@ -307,9 +307,7 @@ mkQuantifierSeq q ann names t body =
   foldl (\e name -> QuantifierExpr q ann (ExplicitBinder ann name t) e) body names
 
 --------------------------------------------------------------------------------
--- Expressions
---------------------------------------------------------------------------------
--- Quantifier
+-- QuantifierIn
 
 pattern BuiltinQuantifierIn :: ann -> Quantifier -> Expr binder var ann
 pattern BuiltinQuantifierIn ann q = Builtin ann (QuantIn q)
@@ -466,6 +464,22 @@ pattern
       :| InstanceArg ann tc
       :  explicitArgs
       )
+
+pattern AddExpr :: ann -> NumericType -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern AddExpr ann t tc explicitArgs <- NumericOp2Expr Add ann t tc explicitArgs
+  where AddExpr ann t tc explicitArgs =  NumericOp2Expr Add ann t tc explicitArgs
+
+pattern SubExpr :: ann -> NumericType -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern SubExpr ann t tc explicitArgs <- NumericOp2Expr Sub ann t tc explicitArgs
+  where SubExpr ann t tc explicitArgs =  NumericOp2Expr Sub ann t tc explicitArgs
+
+pattern MulExpr :: ann -> NumericType -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern MulExpr ann t tc explicitArgs <- NumericOp2Expr Mul ann t tc explicitArgs
+  where MulExpr ann t tc explicitArgs =  NumericOp2Expr Mul ann t tc explicitArgs
+
+pattern DivExpr :: ann -> NumericType -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern DivExpr ann t tc explicitArgs <- NumericOp2Expr Div ann t tc explicitArgs
+  where DivExpr ann t tc explicitArgs =  NumericOp2Expr Div ann t tc explicitArgs
 
 --------------------------------------------------------------------------------
 -- Not

@@ -10,7 +10,6 @@ import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.DeBruijn
 import Vehicle.Language.AST.Builtin
 import Vehicle.Language.AST.Name
-import Vehicle.Language.AST.Visibility (Owner(..))
 
 --------------------------------------------------------------------------------
 -- Patterns
@@ -20,76 +19,6 @@ pattern Type0 = Type 0
 
 pattern Type1 :: Expr binder var ann
 pattern Type1 = Type 1
-
---------------------------------------------------------------------------------
--- Type synonyms
-
--- * Type of annotations attached to the Frontend AST after parsing
--- before being analysed by the compiler
-
-type InputBinding = Maybe NamedBinding
-type InputVar     = NamedVar
-type InputAnn     = (Provenance, Owner)
-
-type InputArg       = Arg    InputBinding InputVar InputAnn
-type InputBinder    = Binder InputBinding InputVar InputAnn
-type InputExpr      = Expr   InputBinding InputVar InputAnn
-type InputDecl      = Decl   InputBinding InputVar InputAnn
-type InputProg      = Prog   InputBinding InputVar InputAnn
-
--- * Types pre type-checking
-
-type UncheckedBinding = DBBinding
-type UncheckedVar     = DBVar
-type UncheckedAnn     = (Provenance, Owner)
-
-type UncheckedBinder = DBBinder UncheckedAnn
-type UncheckedArg    = DBArg    UncheckedAnn
-type UncheckedExpr   = DBExpr   UncheckedAnn
-type UncheckedDecl   = DBDecl   UncheckedAnn
-type UncheckedProg   = DBProg   UncheckedAnn
-
--- * Types post type-checking
-
-type CheckedBinding = DBBinding
-type CheckedVar     = DBVar
-type CheckedAnn     = (Provenance, Owner)
-
-type CheckedBinder = DBBinder  CheckedAnn
-type CheckedArg    = DBArg     CheckedAnn
-type CheckedExpr   = DBExpr    CheckedAnn
-type CheckedDecl   = DBDecl    CheckedAnn
-type CheckedProg   = DBProg    CheckedAnn
-
--- * Type of annotations attached to the Core AST that are output by the compiler
-
-type OutputBinding = NamedBinding
-type OutputVar     = NamedVar
-type OutputAnn     = (Provenance, Owner)
-
-type OutputBinder = Binder OutputBinding OutputVar OutputAnn
-type OutputArg    = Arg    OutputBinding OutputVar OutputAnn
-type OutputExpr   = Expr   OutputBinding OutputVar OutputAnn
-type OutputDecl   = Decl   OutputBinding OutputVar OutputAnn
-type OutputProg   = Prog   OutputBinding OutputVar OutputAnn
-
-emptyUserAnn :: InputAnn
-emptyUserAnn = (mempty, TheUser)
-
-emptyMachineAnn :: InputAnn
-emptyMachineAnn = (mempty, TheMachine)
-
---------------------------------------------------------------------------------
--- Classes
-
-class IsBoundCtx a where
-  ctxNames :: a -> [DBBinding]
-
-instance IsBoundCtx [DBBinding] where
-  ctxNames = id
-
-instance IsBoundCtx [Symbol] where
-  ctxNames = map Just
 
 --------------------------------------------------------------------------------
 -- Utility functions
@@ -111,7 +40,7 @@ isProperty :: Expr binder var ann -> Bool
 isProperty (Builtin _ (BooleanType Prop)) = True
 isProperty _                              = False
 
-freeNames :: CheckedExpr -> [Identifier]
+freeNames :: Expr binder DBVar ann -> [Identifier]
 freeNames = cata $ \case
   TypeF     _                   -> []
   HoleF     _   _               -> []

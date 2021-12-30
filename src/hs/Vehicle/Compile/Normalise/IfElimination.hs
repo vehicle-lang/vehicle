@@ -5,10 +5,9 @@ module Vehicle.Compile.Normalise.IfElimination
 
 import Data.List.NonEmpty as NonEmpty
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
-import Vehicle.Compile.Error
 import Vehicle.Language.Print
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Error
 
 --------------------------------------------------------------------------------
 -- If operations
@@ -72,7 +71,7 @@ liftAndElim liftOp elimOp expr =
     Hole{}     -> return expr
     Meta{}     -> return expr
 
-    Pi{}       -> typeError "Pi"
+    Pi{}       -> typeError currentPass "Pi"
 
     QuantifierExpr q  ann binder body -> QuantifierExpr q ann binder . elimOp <$> recCall body
     NotExpr           ann t args      -> NotExpr           ann t <$> traverse (traverseArgExpr (fmap elimOp . recCall)) args
@@ -98,7 +97,7 @@ liftAndElim liftOp elimOp expr =
       return $ liftOp (\dict'' -> liftSeq liftOp (\es'' -> LSeq ann dict'' es'') es') dict'
 
     -- Quantified lambdas should have been caught before now.
-    Lam{} -> normalisationError "Non-quantified Lam"
+    Lam{} -> normalisationError currentPass "Non-quantified Lam"
 
 liftArg :: LiftingOp -> (CheckedArg -> CheckedExpr) -> CheckedArg -> CheckedExpr
 liftArg liftOp f (Arg ann v e) = liftOp (f . Arg ann v) e
@@ -113,3 +112,6 @@ liftArgs liftOp f (x :| [])       = liftArg liftOp (\x' -> f (x' :| [])) x
 liftArgs liftOp f (arg :| y : xs) = if visibilityOf arg == Explicit
   then liftArg liftOp (\arg' -> liftArgs liftOp (\as -> f (arg' <| as)) (y :| xs)) arg
   else                          liftArgs liftOp (\as -> f (arg  <| as)) (y :| xs)
+
+currentPass :: Doc a
+currentPass = "if elimination"

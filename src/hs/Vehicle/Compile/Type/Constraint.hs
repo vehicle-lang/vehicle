@@ -2,11 +2,8 @@ module Vehicle.Compile.Type.Constraint where
 
 import Prelude hiding (pi)
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
-import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.MetaSet
-import Vehicle.Compile.Simplify
 
 --------------------------------------------------------------------------------
 -- Unification definitions
@@ -18,15 +15,6 @@ data BaseConstraint
   | Meta `Has` CheckedExpr
   deriving Show
 
-instance Simplify BaseConstraint where
-  simplifyReader (Unify (e1, e2)) = do
-    e1' <- simplifyReader e1
-    e2' <- simplifyReader e2
-    return $ Unify (e1', e2')
-
-  simplifyReader (m `Has` e) = do
-    e' <- simplifyReader e
-    return $ m `Has` e'
 
 -- | A pair of expressions should be equal
 type UnificationPair = (CheckedExpr, CheckedExpr)
@@ -64,6 +52,3 @@ boundContext = boundCtx . variableContext
 
 instance HasProvenance Constraint where
   provenanceOf (Constraint ctx _) = provenanceOf ctx
-
-instance Simplify Constraint where
-  simplifyReader (Constraint ctx c) = Constraint ctx <$> simplifyReader c

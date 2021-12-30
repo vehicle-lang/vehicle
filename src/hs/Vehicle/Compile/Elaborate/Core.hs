@@ -1,21 +1,16 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
-
 module Vehicle.Compile.Elaborate.Core
-  ( runElab
+  ( elab
   ) where
 
 import Control.Monad.Except (MonadError(..))
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Text (unpack)
 
-import Vehicle.Core.Abs as B
-
 import Vehicle.Prelude
+import Vehicle.Core.Abs as B
+import Vehicle.Compile.Prelude qualified as V
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Language.AST as V
-
-runElab :: MonadElab e m => B.Prog -> m V.InputProg
-runElab = elab
 
 --------------------------------------------------------------------------------
 -- Conversion from BNFC AST
@@ -33,10 +28,8 @@ runElab = elab
 
 -- * Conversion
 
-type MonadElab e m = (AsCoreElabError e, MonadError e m, MonadLogger m)
-
 class Elab vf vc where
-  elab :: MonadElab e m => vf -> m vc
+  elab :: MonadCompile m => vf -> m vc
 
 --------------------------------------------------------------------------------
 -- AST conversion
@@ -75,7 +68,7 @@ instance Elab B.Binder V.InputBinder where
     B.ImplicitBinder n e -> mkBinder n Implicit e
     B.InstanceBinder n e -> mkBinder n Instance e
     where
-      mkBinder :: MonadElab e m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
+      mkBinder :: MonadCompile m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
       mkBinder n v e = V.Binder (mkAnn n) v (Just (tkSymbol n)) <$> elab e
 
 instance Elab B.Arg V.InputArg where
@@ -98,26 +91,26 @@ instance Elab B.Lit Literal where
 instance Elab B.NameToken Identifier where
   elab n = return $ Identifier $ tkSymbol n
 
-lookupBuiltin :: MonadElab e m => B.BuiltinToken -> m V.Builtin
+lookupBuiltin :: MonadCompile m => B.BuiltinToken -> m V.Builtin
 lookupBuiltin (BuiltinToken tk) = case builtinFromSymbol (tkSymbol tk) of
-    Nothing -> throwError $ mkUnknownBuiltin $ toToken tk
+    Nothing -> throwError $ UnknownBuiltin $ toToken tk
     Just v  -> return v
 
-mkAnn :: IsToken a => a -> InputAnn
+mkAnn :: IsToken a => a -> V.InputAnn
 mkAnn x = (tkProvenance x, TheUser)
 
 op1 :: (HasProvenance a)
-    => (InputAnn -> a -> b)
+    => (V.InputAnn -> a -> b)
     -> a -> b
 op1 mk t = mk (provenanceOf t, TheUser) t
 
 op2 :: (HasProvenance a, HasProvenance b)
-    => (InputAnn -> a -> b -> c)
+    => (V.InputAnn -> a -> b -> c)
     -> a -> b -> c
 op2 mk t1 t2 = mk (provenanceOf t1 <> provenanceOf t2, TheUser) t1 t2
 
 op3 :: (HasProvenance a, HasProvenance b, HasProvenance c)
-    => (InputAnn -> a -> b -> c -> d)
+    => (V.InputAnn -> a -> b -> c -> d)
     -> a -> b -> c -> d
 op3 mk t1 t2 t3 = mk (provenanceOf t1 <> provenanceOf t2 <> provenanceOf t3, TheUser) t1 t2 t3
 

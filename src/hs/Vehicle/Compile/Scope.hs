@@ -1,7 +1,6 @@
 
 module Vehicle.Compile.Scope
-  ( ScopeError(..)
-  , scopeCheck
+  ( scopeCheck
   , scopeCheckClosedExpr
   ) where
 
@@ -11,12 +10,11 @@ import Data.List (elemIndex)
 import Data.Set (Set,)
 import Data.Set qualified as Set (member, insert, toList)
 
-import Vehicle.Prelude
-import Vehicle.Compile.Error
-import Vehicle.Language.AST
 import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Error
 
-scopeCheck :: (AsScopeError e, MonadLogger m, MonadError e m)
+scopeCheck :: (MonadLogger m, MonadError CompileError m)
            => InputProg -> m UncheckedProg
 scopeCheck e = do
   logDebug "Beginning scope checking"
@@ -24,14 +22,14 @@ scopeCheck e = do
   logDebug "Finished scope checking\n"
   return result
 
-scopeCheckClosedExpr :: (AsScopeError e, MonadLogger m, MonadError e m)
+scopeCheckClosedExpr :: (MonadLogger m, MonadError CompileError m)
                      => InputExpr -> m UncheckedExpr
 scopeCheckClosedExpr e = runReaderT (scope e) emptyCtx
 
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
 
-type SCM e m = (AsScopeError e, MonadLogger m, MonadError e m, MonadReader Ctx m)
+type SCM m = (MonadLogger m, MonadError CompileError m, MonadReader Ctx m)
 
 -- |Type of scope checking contexts.
 data Ctx = Ctx
@@ -48,12 +46,12 @@ emptyCtx = Ctx mempty mempty
 --------------------------------------------------------------------------------
 -- Debug functions
 
-logScopeEntry :: SCM e m => InputExpr -> m ()
+logScopeEntry :: SCM m => InputExpr -> m ()
 logScopeEntry e = do
   incrCallDepth
   logDebug $ "scope-entry" <+> prettyVerbose e -- <+> "in" <+> pretty ctx
 
-logScopeExit :: SCM e m => UncheckedExpr -> m ()
+logScopeExit :: SCM m => UncheckedExpr -> m ()
 logScopeExit e = do
   logDebug $ "scope-exit " <+> prettyVerbose e
   decrCallDepth
@@ -62,7 +60,7 @@ logScopeExit e = do
 -- Algorithm
 
 class ScopeCheck a b where
-  scope :: SCM e m => a -> m b
+  scope :: SCM m => a -> m b
 
 instance ScopeCheck InputProg UncheckedProg where
   scope (Main ds) = Main <$> scope ds
@@ -115,14 +113,14 @@ instance ScopeCheck InputExpr UncheckedExpr where
     logScopeExit result
     return result
 
-bindDecl :: SCM e m => Identifier -> m a -> m a
+bindDecl :: SCM m => Identifier -> m a -> m a
 bindDecl ident continuation = do
   local addDeclToCtx continuation
     where
       addDeclToCtx :: Ctx -> Ctx
       addDeclToCtx Ctx {..} = Ctx (Set.insert ident declCtx) exprCtx
 
-bindVar :: SCM e m
+bindVar :: SCM m
         => InputBinder
         -> (UncheckedBinder -> m UncheckedExpr)
         -> m UncheckedExpr
@@ -134,7 +132,7 @@ bindVar binder update = do
       addBinderToCtx name Ctx{..} = Ctx declCtx (name : exprCtx)
 
 -- |Find the index for a given name of a given sort.
-getVar :: SCM e m => InputAnn -> NamedVar -> m DBVar
+getVar :: SCM m => InputAnn -> NamedVar -> m DBVar
 getVar ann symbol = do
   Ctx declCtx exprCtx <- ask
   case elemIndex (Just symbol) exprCtx of
@@ -142,4 +140,4 @@ getVar ann symbol = do
     Nothing ->
       if Set.member (Identifier symbol) declCtx
         then return $ Free (Identifier symbol)
-        else throwError $ mkUnboundName symbol (provenanceOf ann)
+        else throwError $ UnboundName symbol (provenanceOf ann)

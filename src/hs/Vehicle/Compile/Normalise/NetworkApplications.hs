@@ -1,32 +1,23 @@
-module Vehicle.Compile.Backend.VNNLib
-  ( VNNLibDoc(..)
-  , compileToVNNLib
+module Vehicle.Compile.Normalise.NetworkApplications
+  ( MetaNetwork
+  , convertNetworkAppsToMagicVars
   ) where
 
 import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
-import Control.Monad.Except (MonadError(..))
-import Control.Monad.State (MonadState(..), runStateT, gets)
+import Control.Monad.State (MonadState(..), runStateT, gets, modify)
 import Data.Map qualified as Map (lookup)
-import Data.Set (Set)
-import Data.Set qualified as Set
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (fromMaybe)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
+import Data.Bifunctor(Bifunctor(..))
 
 import Vehicle.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Language.AST hiding (Map)
+import Vehicle.Compile.Prelude
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
-import Vehicle.Compile.Normalise (normaliseInternal)
-import Vehicle.Compile.StandardiseNetworks
-import Vehicle.Compile.Backend.SMTLib (SMTDoc)
-import Vehicle.Compile.Backend.SMTLib qualified as SMTLib (compileProp)
 import Vehicle.Compile.LetInsertion (insertLets)
-import Vehicle.Compile.Normalise.IfElimination (liftAndEliminateIfs)
 
 --------------------------------------------------------------------------------
--- Compilation to VNNLib
---
 -- Okay so this is a wild ride. The VNNLib format has special variable names for
 -- input and output variables, namely X1 ... XN and Y1 ... YM but otherwise has
 -- the standard SMTLib syntax. We refer to these variables as "magic variables".
@@ -84,48 +75,45 @@ import Vehicle.Compile.Normalise.IfElimination (liftAndEliminateIfs)
 -- 6. Finally we quantify over the magic inputs and outputs to get
 --
 -- forall X0 Y0 X1 Y1 . X0 <= X1 => Y0 <= Y1
---
--- 7. The property should then be a valid SMTLib expression so we now
--- compile it to SMTLib as normal.
---
--- 8. We return the meta-network composition so that we can actually
--- perform the required hackery on the network files elsewhere.
 
 -- | Compiles a given program to a VNNLib script.
--- Assumes the program has already been normalised.
-compileToVNNLib :: (AsSMTLibError e, MonadLogger m, MonadError e m)
-                => NetworkMap
-                -> CheckedProg
-                -> m [VNNLibDoc]
-compileToVNNLib networkMap prog = do
-  logDebug "Beginning compilation to VNNLib"
+-- Assumes the program has already been normalised and that it only
+-- contains quantifiers of the provided type.
+convertNetworkAppsToMagicVars :: MonadLogger m
+                              => NetworkMap
+                              -> Quantifier
+                              -> CheckedExpr
+                              -> m (CheckedExpr, MetaNetwork)
+convertNetworkAppsToMagicVars networkMap quantifier expr = do
+  logDebug "Beginning conversion of network applications to magic variables"
   incrCallDepth
-  result <- runReaderT (compileProg prog) networkMap
+
+  networkAppLiftedExpr <- liftNetworkApplications expr
+  let metaNetwork = generateMetaNetwork networkAppLiftedExpr
+  logDebug $ "Generated meta-network" <+> pretty metaNetwork <> line
+
+  finalExpr <- if null metaNetwork
+    then return networkAppLiftedExpr
+    else runReaderT (normExpr metaNetwork quantifier networkAppLiftedExpr) networkMap
+
   decrCallDepth
   logDebug "Finished compilation to VNNLib"
-  return result
+  return (finalExpr, metaNetwork)
 
 --------------------------------------------------------------------------------
 -- Data
-
-data VNNLibDoc = VNNLibDoc
-  { smtDoc      :: SMTDoc
-  , metaNetwork :: MetaNetwork
-  }
 
 type MetaNetwork = [Identifier]
 
 --------------------------------------------------------------------------------
 -- Monad
 
-type MonadVNNLib e m =
-  ( AsSMTLibError e
-  , MonadLogger m
-  , MonadError e m
+type MonadNetworkApp m =
+  ( MonadLogger m
   , MonadReader NetworkMap m
   )
 
-getNetworkDetailsFromCtx :: MonadVNNLib e m => Identifier -> m NetworkDetails
+getNetworkDetailsFromCtx :: MonadNetworkApp m => Identifier -> m NetworkDetails
 getNetworkDetailsFromCtx ident = asks (fromMaybe outOfScopeError . Map.lookup ident)
   where
     outOfScopeError :: a
@@ -136,74 +124,21 @@ getNetworkDetailsFromCtx ident = asks (fromMaybe outOfScopeError . Map.lookup id
 -- Algorithm
 --------------------------------------------------------------------------------
 
-compileProg :: MonadVNNLib e m => CheckedProg -> m [VNNLibDoc]
-compileProg (Main ds) = do
-  results <- catMaybes <$> traverse compileDecl ds
-  if null results then
-    throwError mkNoPropertiesFound
-  else
-    return results
+normExpr :: MonadNetworkApp m => MetaNetwork -> Quantifier -> CheckedExpr -> m CheckedExpr
+normExpr metaNetwork quantifier expr = do
+  metaNetworkDetails <- traverse getNetworkDetailsFromCtx metaNetwork
 
-compileDecl :: MonadVNNLib e m => CheckedDecl -> m (Maybe VNNLibDoc)
-compileDecl d = case d of
-  DeclData{} ->
-    normalisationError "Dataset declarations"
+  -- Replace all applications of neural networks with the magic VNNLib variables
+  let numberOfMagicVariables = sum (map networkSize metaNetworkDetails)
 
-  DeclNetw{} -> do
-    normalisationError "Network declarations"
+  let initialDownwardsState = DownwardsReplacementState 0 0 numberOfMagicVariables
+  let initialState = (initialDownwardsState, mempty)
+  (updatedExpr, (_down, _up)) <- runStateT (replaceNetworkApplications 0 expr) initialState
 
-  DefFun p ident t expr ->
-    let identDoc = squotes (pretty ident) in
-    if not $ isProperty t then
-      -- If it's not a property then we can discard it as all applications
-      -- of it should have been normalised out by now.
-      return Nothing
-    else do
-      logDebug $ "Beginning compilation of VNNLib property" <+> identDoc
-      incrCallDepth
-
-      logDebug "Lifting network applications"
-      networkAppLiftedExpr <- liftNetworkApplications expr
-
-      let metaNetwork = generateMetaNetwork networkAppLiftedExpr
-      logDebug $ "Generated meta-network" <+> pretty metaNetwork <> line
-
-      if null metaNetwork then
-        throwError $ mkNoNetworkUsedInProperty (p, TheUser) ident
-      else do
-        metaNetworkDetails <- traverse getNetworkDetailsFromCtx metaNetwork
-
-        -- Replace all applications of neural networks with the magic VNNLib variables
-        let numberOfMagicVariables = sum (map networkSize metaNetworkDetails)
-        (networklessExpr, quantifiers) <- runNetworkApplicationReplacement numberOfMagicVariables networkAppLiftedExpr
-
-        quantifier <-
-          if Set.size quantifiers == 1 then
-            return $ Set.findMin quantifiers
-          else if Set.null quantifiers then
-            return All
-          else
-            throwError $ mkUnsupportedQuantifierSequence (p, TheUser) ident
-
-        -- Normalise the resulting expression now that we've replaced the network
-        -- applications with tensors of output variables.
-        let normNetworklessExpr = normaliseInternal networklessExpr
-
-        -- Append quantifiers over the magic variables so that it becomes a valid SMTLib expression
-        let quantifiedExpr = quantifyOverMagicVariables quantifier metaNetworkDetails normNetworklessExpr
-        logDebug $ "Replaced network applications:" <+> prettySimple quantifiedExpr <> line
-
-        -- Eliminate any if-expressions
-        ifFreeExpr <- liftAndEliminateIfs quantifiedExpr
-        logDebug $ "Eliminated ifs:" <+> prettySimple ifFreeExpr <> line
-
-        -- Compile to SMTLib
-        smtDoc <- SMTLib.compileProp ident ifFreeExpr
-
-        decrCallDepth
-        logDebug $ "Finished compilation of VNNLib property" <+> identDoc
-
-        return $ Just $ VNNLibDoc smtDoc metaNetwork
+  -- Append quantifiers over the magic variables so that it becomes a valid SMTLib expression
+  let quantifiedExpr = quantifyOverMagicVariables quantifier metaNetworkDetails updatedExpr
+  logDebug $ "Replaced network applications:" <+> prettySimple quantifiedExpr <> line
+  return quantifiedExpr
 
 --------------------------------------------------------------------------------
 -- Step 1: Lift and combine network applications
@@ -241,39 +176,25 @@ data DownwardsReplacementState = DownwardsReplacementState
 
 -- |The state propagated upwards during the pass replacing neural network
 -- applications with magic variables.
-data UpwardsReplacementState = UpwardsReplacementState
-  { replacableBoundVars  :: IntMap Int
-  , quantifiers          :: Set Quantifier
-  }
+type UpwardsReplacementState = IntMap Int
 
 type ReplacementState = (DownwardsReplacementState, UpwardsReplacementState)
 
-type MonadReplacement e m = (MonadVNNLib e m, MonadState ReplacementState m)
-
-runNetworkApplicationReplacement :: MonadVNNLib e m => Int -> CheckedExpr -> m (CheckedExpr, Set Quantifier)
-runNetworkApplicationReplacement numberOfMagicVariables e = do
-  let result = replaceNetworkApplications 0 e
-  let initialState =
-        ( DownwardsReplacementState 0 0 numberOfMagicVariables
-        , UpwardsReplacementState mempty mempty
-        )
-  (x, (_down, UpwardsReplacementState{..})) <- runStateT result initialState
-
-  return (x, quantifiers)
+type MonadReplacement m = (MonadNetworkApp m, MonadState ReplacementState m)
 
 -- Takes in the expression to process and returns a function
 -- from the current binding depth to the altered expression.
-replaceNetworkApplications :: MonadReplacement e m
+replaceNetworkApplications :: MonadReplacement m
                            => BindingDepth
                            -> CheckedExpr
                            -> m CheckedExpr
 replaceNetworkApplications d e = do
   showEntry d e
   result <- case e of
-    Hole _p _      -> resolutionError "Hole"
-    Meta _p _      -> resolutionError "Meta"
-    Ann _ann _ _   -> normalisationError "Ann"
-    Lam _ann _ _   -> normalisationError "Non-quantified Lam"
+    Hole _p _      -> resolutionError    currentPass "Hole"
+    Meta _p _      -> resolutionError    currentPass "Meta"
+    Ann _ann _ _   -> normalisationError currentPass "Ann"
+    Lam _ann _ _   -> normalisationError currentPass "Non-quantified Lam"
 
     Type{}     -> return e
     Pi{}       -> return e
@@ -304,7 +225,7 @@ replaceNetworkApplications d e = do
       -- Recurse, increasing the binding depth by 1
       body' <- replaceNetworkApplications (d + 1) body
 
-      magicVariableToSubstitute <- processQuantifierBinding q
+      magicVariableToSubstitute <- processQuantifierBinding
       traverseUpOverBinder
 
       case magicVariableToSubstitute of
@@ -327,30 +248,7 @@ replaceNetworkApplications d e = do
   showExit result
   return result
 
-{-
-    -- EXAMPLE:
-    --
-    --           (E)              (D)
-    -- |-----------------------|
-    --          (Net1)   (Net2)  (Net3)  (Net4)
-    --
-    -- forall (X0 X1 Y0) (X2 Y1) (X3 Y2) (X4 Y3) . forall x,y,z . ... Net2 x ...
-    -- |                                       |   |          |      |      |
-    -- -----------------------------------------   ------------      |------|
-    --                          (A)                     (B)             (C)
-    --
-    -- (A) Inserted quantifiers over all Magic variables for meta-network.
-    --
-    -- (B) User quantifiers in the original program.
-    --
-    -- (C) The location of the network application in the program, which is pointed
-    -- to by the variable `currentBindingDepth`.
-    --
-    -- (D) The location of the current network that's being applied in the quantifiers.
-    --
-    -- (E) Inserted quantifiers over the meta-network so far.
--}
-replaceNetworkApplication :: MonadReplacement e m
+replaceNetworkApplication :: MonadReplacement m
                           => CheckedAnn
                           -> Identifier
                           -> CheckedExpr
@@ -403,7 +301,7 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
 -- |Called at the site of an application of a neural network.
 -- It updates the number of magic variables used and identifies any
 -- locally bound variables that can be replaced with magic variables.
-processNetworkApplication :: MonadReplacement e m
+processNetworkApplication :: MonadReplacement m
                           => BindingDepth
                           -> NetworkDetails
                           -> CheckedExpr
@@ -421,9 +319,7 @@ processNetworkApplication d network input = do
   logDebug $ prettyVerbose input
   let localReplacableBoundVars = case input of
           SeqExpr _ _ _ xs -> getReplacableBoundVars magicInputVarStartingIndex xs
-          _                -> developerError $
-            "It is assumed that no non-LSeq literals exist after normalisation." <+>
-            "However, found the expression" <+> squotes (prettyVerbose input)
+          _                -> normalisationError currentPass "LSeq"
 
   let down = DownwardsReplacementState
         { magicInputVarCount  = newMagicInputVarCount
@@ -442,36 +338,27 @@ processNetworkApplication d network input = do
             Var _ (Bound i) -> IntMap.insert i magicVarIndex recRes
             _               -> recRes
 
-processQuantifierBinding :: MonadReplacement e m => Quantifier -> m (Maybe Int)
-processQuantifierBinding q = do
-  (down, UpwardsReplacementState{..}) <- get
-
+processQuantifierBinding :: MonadReplacement m => m (Maybe Int)
+processQuantifierBinding = do
+  (down, replacableBoundVars) <- get
   let (magicVarUsingBinder, newMapping) = IntMap.updateLookupWithKey (\_ _ -> Nothing) 0 replacableBoundVars
-  let newQuantifiers = Set.insert q quantifiers
-  put (down, UpwardsReplacementState newMapping newQuantifiers)
+  put (down, newMapping)
   return magicVarUsingBinder
 
-addReplacableBoundVars :: MonadReplacement e m => IntMap Int -> m ()
-addReplacableBoundVars vars = do
-  (down, UpwardsReplacementState{..}) <- get
-  put (down, UpwardsReplacementState
-    { replacableBoundVars = vars <> replacableBoundVars
-    , ..
-    })
+addReplacableBoundVars :: MonadReplacement m => IntMap Int -> m ()
+addReplacableBoundVars vars = modify (second (vars <>))
 
-traverseUpOverBinder :: MonadReplacement e m => m ()
-traverseUpOverBinder = do
-  (down, UpwardsReplacementState{..}) <- get
-  put (down, UpwardsReplacementState
-    { replacableBoundVars = (\x -> x-1) <$> IntMap.mapKeysMonotonic (\x -> x-1) replacableBoundVars
-    , ..
-    })
+traverseUpOverBinder :: MonadReplacement m => m ()
+traverseUpOverBinder = modify (second (incrementKeys . incrementValues))
+  where
+    incrementKeys   = ((\x -> x-1) <$>)
+    incrementValues = IntMap.mapKeysMonotonic (\x -> x-1)
 
-getNumberOfMagicVariables :: MonadReplacement e m => m Int
+getNumberOfMagicVariables :: MonadReplacement m => m Int
 getNumberOfMagicVariables = gets (numberOfMagicVariables . fst)
 
 
-showEntry :: MonadReplacement e m
+showEntry :: MonadReplacement m
           => BindingDepth
           -> CheckedExpr
           -> m ()
@@ -479,11 +366,11 @@ showEntry d e = do
   logDebug $ "replace-entry:" <+> pretty d <+> prettySimple e
   incrCallDepth
 
-showExit :: MonadReplacement e m
+showExit :: MonadReplacement m
          => CheckedExpr
          -> m ()
 showExit e = do
-  (_, UpwardsReplacementState{..}) <- get
+  (_, replacableBoundVars) <- get
 
   decrCallDepth
   logDebug $ "replace-exit: " <+> align (
@@ -523,3 +410,6 @@ quantifyOverMagicVariables q metaNetwork prop =
     mkMagicVariableNames :: InputOrOutput -> [Int] -> [Symbol]
     mkMagicVariableNames io indices = [mkNameWithIndices baseName [i] | i <- indices]
       where baseName = if io == Input then "X" else "Y"
+
+currentPass :: Doc a
+currentPass = "insertion of magic network variables"

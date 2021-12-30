@@ -1,13 +1,10 @@
-module Vehicle.Compile.StandardiseNetworks
-  ( standardiseNetworks
-  , NetworkMap
-  , NetworkDetails(..)
-  , TensorDetails(..)
-  , networkSize
+module Vehicle.Compile.Normalise.NetworkTypes
+  ( normaliseNetworkTypes
   ) where
 
 import Control.Monad.State (MonadState(..), runStateT, modify, gets)
-import Control.Monad.Except (MonadError(..), runExcept)
+import Control.Monad.Except (MonadError(..))
+import Control.Monad.Reader (MonadReader(..), ReaderT (runReaderT))
 import Data.Bifunctor (Bifunctor(..), first)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty
@@ -15,20 +12,21 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes)
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
 import Vehicle.Language.Print
-import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.AlphaEquivalence (alphaEq)
+import Vehicle.Compile.Error
 
 --------------------------------------------------------------------------------
 -- Network standardisation
 
--- |This module
-standardiseNetworks :: (AsNetworkStandardisationError e, MonadLogger m, MonadError e m)
-                    => CheckedProg -> m (NetworkMap, CheckedProg)
-standardiseNetworks prog1 = do
-  logDebug "Beginning standardisation of networks"
+-- | This function normalises all network types into the standard form
+-- `Tensor A [m] -> Tensor B [n]`.
+normaliseNetworkTypes :: MonadCompile m
+                      => CheckedProg
+                      -> m (NetworkMap, CheckedProg)
+normaliseNetworkTypes prog1 = do
+  logDebug "Beginning normalisation of network types"
   incrCallDepth
 
   (prog2, internalNetworkMap) <- runStateT (standardise prog1) mempty
@@ -38,57 +36,33 @@ standardiseNetworks prog1 = do
   logDebug $ prettyMap networkMap
 
   decrCallDepth
-  logDebug $ "Finished standardising networks" <> line
+  logDebug $ "Finished normalisation of network types" <> line
   return (networkMap, prog2)
 
 --------------------------------------------------------------------------------
 -- Types
 
-type NetworkMap = Map Identifier NetworkDetails
 type InternalNetworkMap = Map Identifier (NetworkDetails, TransformInput, TransformOutput)
-
-data NetworkDetails = NetworkDetails
-  { inputTensor  :: TensorDetails
-  , outputTensor :: TensorDetails
-  }
-
-instance Pretty NetworkDetails where
-  pretty (NetworkDetails input output) =
-    "[input =" <+> pretty input <+> "output =" <+> pretty output <> "]"
-
-data TensorDetails = TensorDetails
-  { size  :: Int
-  , tElem :: Builtin
-  }
-
-instance Pretty TensorDetails where
-  pretty (TensorDetails size tElem) =
-    "Tensor" <+> pretty tElem <+> "[" <> pretty size <> "]"
-
-networkSize :: NetworkDetails -> Int
-networkSize network = size (inputTensor network) + size (outputTensor network)
 
 --------------------------------------------------------------------------------
 -- Main
 
-type MonadNetwork e m =
-  ( AsNetworkStandardisationError e
-  , MonadLogger m
-  , MonadError e m
+type MonadNetwork m =
+  ( MonadCompile m
   , MonadState InternalNetworkMap m
   )
 
 class Standardise t where
-  standardise :: MonadNetwork e m
+  standardise :: MonadNetwork m
               => t CheckedBinding CheckedVar CheckedAnn
               -> m (t CheckedBinding CheckedVar CheckedAnn)
 
 instance Standardise Prog where
   standardise (Main ds) = Main . catMaybes <$> traverse standariseDecl ds
 
-standariseDecl :: MonadNetwork e m => CheckedDecl -> m (Maybe CheckedDecl)
+standariseDecl :: MonadNetwork m => CheckedDecl -> m (Maybe CheckedDecl)
 standariseDecl d = case d of
-  DeclData{} -> normalisationError "Dataset declarations"
+  DeclData{} -> normalisationError currentPass "Dataset declarations"
 
   DeclNetw ann ident t -> do
     entry <- analyseNetworkType (ann, TheUser) ident t
@@ -139,68 +113,74 @@ instance Standardise Arg where
 type TransformInput  = NonEmpty CheckedArg -> NonEmpty CheckedArg
 type TransformOutput = CheckedExpr -> CheckedExpr
 
-allowedNetworkElementTypes :: [Builtin]
-allowedNetworkElementTypes =
-  [ BooleanType Bool
-  , NumericType Nat
-  , NumericType Int
-  , NumericType Rat
-  , NumericType Real
-  ]
+type MonadNetworkTypeAnalysis m =
+  ( MonadCompile m
+  , MonadState InternalNetworkMap m
+  , MonadReader (Identifier, CheckedExpr) m
+  )
 
-analyseNetworkType :: MonadNetwork e m
+analyseNetworkType :: MonadNetwork m
                    => CheckedAnn
                    -> Identifier
                    -> CheckedExpr
                    -> m (NetworkDetails, TransformInput, TransformOutput)
-analyseNetworkType ann ident t = either
-  (throwError . mkUnsupportedNetworkType ann ident t allowedNetworkElementTypes)
-  return $ runExcept $ do
-    (inputs, output)                 <- decomposeNetworkType Nothing t
-    (inputDetails,  transformInput)  <- analyseNetworkInputTypes inputs
-    (outputDetails, transformOutput) <- analyseNetworkOutputType output
-    let networkDetails = NetworkDetails inputDetails outputDetails
-    return (networkDetails, transformInput, transformOutput)
+analyseNetworkType _ ident t = flip runReaderT (ident, t) $ do
+  (inputs, output)                 <- decomposeNetworkType Nothing t
+  (inputDetails,  transformInput)  <- analyseNetworkInputTypes inputs
+  (outputDetails, transformOutput) <- analyseNetworkOutputType output
+  let networkDetails = NetworkDetails inputDetails outputDetails
+  return (networkDetails, transformInput, transformOutput)
 
--- |Decomposes the Pis in a network type signature, checking that the
+-- |Decomposes the Pi types in a network type signature, checking that the
 -- binders are explicit and their types are equal.
-decomposeNetworkType :: MonadError UnsupportedNetworkType m
-                     => Maybe CheckedExpr -> CheckedExpr -> m ([CheckedExpr], CheckedExpr)
+decomposeNetworkType :: MonadNetworkTypeAnalysis m
+                     => Maybe CheckedExpr
+                     -> CheckedExpr
+                     -> m ([CheckedExpr], CheckedExpr)
 decomposeNetworkType prevType networkType = case networkType of
   Pi _ binder result
-    | visibilityOf binder /= Explicit -> throwError $ NonExplicitArguments binder
-    | otherwise                       -> do
+    | visibilityOf binder /= Explicit -> do
+      (ident, _) <- ask
+      throwError $ NetworkTypeWithNonExplicitArguments ident networkType binder
+    | otherwise  -> do
       t <- checkTypesEqual prevType (typeOf binder)
       first (t :) <$> decomposeNetworkType (Just t) result
   _ -> return ([], networkType)
   where
-    checkTypesEqual :: MonadError UnsupportedNetworkType m
-                    => Maybe CheckedExpr -> CheckedExpr -> m CheckedExpr
-    checkTypesEqual Nothing      binderType = return binderType
-    checkTypesEqual (Just pType) binderType =
-      if alphaEq binderType pType
+    checkTypesEqual :: MonadNetworkTypeAnalysis m
+                    => Maybe CheckedExpr
+                    -> CheckedExpr
+                    -> m CheckedExpr
+    checkTypesEqual Nothing  binderType = return binderType
+    checkTypesEqual (Just t) binderType =
+      if alphaEq binderType t
         then return binderType
-        else throwError $ NonEqualArguments pType binderType
+        else do
+        (ident, _) <- ask
+        throwError $ NetworkTypeWithHeterogeneousInputTypes ident networkType t binderType
 
-analyseNetworkInputTypes :: MonadError UnsupportedNetworkType m
-                         => [CheckedExpr] -> m (TensorDetails, TransformInput)
-analyseNetworkInputTypes []                         = throwError NotAFunction
+analyseNetworkInputTypes :: MonadNetworkTypeAnalysis m
+                         => [CheckedExpr]
+                         -> m (TensorDetails, TransformInput)
+analyseNetworkInputTypes [] = do
+  (ident, networkType) <- ask
+  throwError $ NetworkTypeIsNotAFunction ident networkType
 analyseNetworkInputTypes [TensorType _ tElem tDims] = do
   tensorDetails <- getTensorDetails Input tElem tDims
   return (tensorDetails, id)
 analyseNetworkInputTypes inputTypes@(x : _) = do
-  builtinType <- getTensorType Input x
-  let tensorDetails = TensorDetails (length inputTypes) builtinType
+  elementType <- getElementType Input x
+  let tensorDetails = TensorDetails (length inputTypes) elementType
   return (tensorDetails, transformInputNumericToTensor x)
 
-analyseNetworkOutputType :: MonadError UnsupportedNetworkType m
+analyseNetworkOutputType :: MonadNetworkTypeAnalysis m
                          => CheckedExpr -> m (TensorDetails, TransformOutput)
 analyseNetworkOutputType (TensorType _ tElem tDims) = do
   tensorDetails <- getTensorDetails Output tElem tDims
   return (tensorDetails, id)
 analyseNetworkOutputType t = do
-  builtinType <- getTensorType Output t
-  let tensorDetails = TensorDetails 1 builtinType
+  elementType <- getElementType Output t
+  let tensorDetails = TensorDetails 1 elementType
   let transformOutput = transformOutputNumericToTensor t
   return (tensorDetails, transformOutput)
 
@@ -218,27 +198,35 @@ transformOutputNumericToTensor tElem e =
   let atArgs = fmap (ExplicitArg ann) [e, NatLiteralExpr ann Nat 0] in
   AtExpr ann tElem tDims atArgs
 
-getTensorDetails :: MonadError UnsupportedNetworkType m
+getTensorDetails :: MonadNetworkTypeAnalysis m
                  => InputOrOutput
                  -> CheckedExpr
                  -> CheckedExpr
                  -> m TensorDetails
 getTensorDetails io tElem tDims = do
-  typ   <- getTensorType io tElem
+  typ   <- getElementType io tElem
   size  <- getTensorSize io tDims
   return $ TensorDetails size typ
 
-getTensorType :: MonadError UnsupportedNetworkType m => InputOrOutput -> CheckedExpr -> m Builtin
-getTensorType _  (Builtin _ t)
+getElementType :: MonadNetworkTypeAnalysis m => InputOrOutput -> CheckedExpr -> m Builtin
+getElementType _  (Builtin _ t)
   | t `elem` allowedNetworkElementTypes = return t
-getTensorType io _ = throwError $ WrongTensorType io
+getElementType io t = do
+  (ident, networkType) <- ask
+  throwError $ NetworkTypeUnsupportedElementType ident networkType t io
 
-getTensorSize :: MonadError UnsupportedNetworkType m
+getTensorSize :: MonadNetworkTypeAnalysis m
               => InputOrOutput
               -> CheckedExpr
               -> m Int
-getTensorSize io tDims = case exprHead tDims of
-  (LSeq _ _ [d]) -> case exprHead d of
-    (Literal _ (LNat n)) -> return n
-    _                    -> throwError $ VariableSizeTensor io
-  _           -> throwError $ MultidimensionalTensor io
+getTensorSize io (SeqExpr _ _ _ [d]) = case d of
+  NatLiteralExpr _ _ n -> return n
+  t                    -> do
+    (ident, networkType) <- ask
+    throwError $ NetworkTypeHasVariableSizeTensor ident networkType t io
+getTensorSize io t = do
+  (ident, networkType) <- ask
+  throwError $ NetworkTypeHasMultidimensionalTensor ident networkType t io
+
+currentPass :: Doc a
+currentPass = "analysis of network types"

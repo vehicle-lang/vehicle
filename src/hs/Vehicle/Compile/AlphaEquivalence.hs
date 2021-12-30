@@ -6,7 +6,7 @@ module Vehicle.Compile.AlphaEquivalence
 
 import Data.Hashable (Hashable(..))
 
-import Vehicle.Language.AST
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.CoDeBruijnify
 
 hashCoDBExpr :: CoDBExpr ann -> Int

@@ -1,6 +1,5 @@
 module Vehicle.Compile.Parse
-  ( ParseError(..)
-  , ParseVehicle(..)
+  ( ParseVehicle(..)
   , parseVehicleFile
   ) where
 
@@ -23,7 +22,7 @@ import Vehicle.Compile.Error
 -- Parsing
 
 class ParseVehicle a where
-  parseVehicle :: (AsParseError e, MonadError e m) => Text -> m a
+  parseVehicle :: MonadError CompileError m => Text -> m a
 
 instance ParseVehicle Core.Prog where
   parseVehicle txt = castError $ Core.pProg (Core.myLexer txt)
@@ -37,8 +36,8 @@ instance ParseVehicle Frontend.Prog where
 instance ParseVehicle Frontend.Expr where
   parseVehicle txt = castError $ runFrontendParser False Frontend.pExpr txt
 
-castError :: (AsParseError e, MonadError e m) => Either String a -> m a
-castError = liftEither . first mkBNFCParseError
+castError :: MonadError CompileError m => Either String a -> m a
+castError = liftEither . first BNFCParseError
 
 type FrontendParser a = [Frontend.Token] -> Either String a
 
@@ -49,7 +48,7 @@ runFrontendLexer :: Bool -> Text -> [Frontend.Token]
 runFrontendLexer topLevel = Frontend.resolveLayout topLevel . Frontend.myLexer
 
 -- Used in both application and testing which is why it lives here.
-parseVehicleFile :: ParseVehicle a => FilePath -> IO (Either ParseError a)
+parseVehicleFile :: ParseVehicle a => FilePath -> IO (Either CompileError a)
 parseVehicleFile file = do
   contents <- T.readFile file
   return $ parseVehicle contents

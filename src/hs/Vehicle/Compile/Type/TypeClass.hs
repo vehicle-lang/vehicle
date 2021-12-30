@@ -8,13 +8,11 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Control.Monad (unless)
 import Control.Monad.Except ( throwError )
 
-import Vehicle.Prelude
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Language.AST
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Type.Core
 
 --------------------------------------------------------------------------------
 -- Solution
@@ -27,7 +25,7 @@ import Vehicle.Compile.Type.Core
 --  4. If the constraint is a Z3 one, then ask Z3 to solve it (after normalisation)
 
 
-solveTypeClassConstraint :: MonadConstraintSolving e m
+solveTypeClassConstraint :: MonadConstraintSolving m
                          => ConstraintContext
                          -> Meta
                          -> CheckedExpr
@@ -70,7 +68,7 @@ extractArg arg = if visibilityOf arg == Explicit
   then argExpr arg
   else developerError "Not expecting type-classes with non-explicit arguments"
 
-blockOnMetas :: MonadConstraintSolving e m => TypeClass -> [CheckedExpr] -> m ConstraintProgress -> m ConstraintProgress
+blockOnMetas :: MonadConstraintSolving m => TypeClass -> [CheckedExpr] -> m ConstraintProgress -> m ConstraintProgress
 blockOnMetas tc args action = do
   let metas = filter isMeta (getNonInferableArgs tc args)
   if null metas
@@ -79,7 +77,7 @@ blockOnMetas tc args action = do
       logDebug $ "stuck-on metas" <+> prettyVerbose metas
       return Stuck
 
-solveHasEq :: MonadConstraintSolving e m
+solveHasEq :: MonadConstraintSolving m
            => Constraint
            -> CheckedExpr
            -> CheckedExpr
@@ -91,9 +89,9 @@ solveHasEq _ (BuiltinNumericType _ t)    (PropType _)
   | isDecidable t = return simplySolved
 solveHasEq c (TensorType _ tElem _tDims) tRes = solveHasEq c tElem tRes
 solveHasEq c (ListType _ tElem)          tRes = solveHasEq c tElem tRes
-solveHasEq constraint _ _ = throwError $ mkFailedConstraints (constraint :| [])
+solveHasEq constraint _ _ = throwError $ FailedConstraints (constraint :| [])
 
-solveHasOrd :: MonadConstraintSolving e m
+solveHasOrd :: MonadConstraintSolving m
             => Constraint
             -> CheckedExpr
             -> CheckedExpr
@@ -101,16 +99,16 @@ solveHasOrd :: MonadConstraintSolving e m
 solveHasOrd _ (BuiltinNumericType _ _) (PropType _) = return simplySolved
 solveHasOrd _ (BuiltinNumericType _ t) (BoolType _)
   | isDecidable t = return simplySolved
-solveHasOrd constraint _ _ = throwError $ mkFailedConstraints (constraint :| [])
+solveHasOrd constraint _ _ = throwError $ FailedConstraints (constraint :| [])
 
-solveIsTruth :: MonadConstraintSolving e m
+solveIsTruth :: MonadConstraintSolving m
              => Constraint
              -> CheckedExpr
              -> m ConstraintProgress
 solveIsTruth _ (BuiltinBooleanType _ _) = return simplySolved
-solveIsTruth constraint _ = throwError $ mkFailedConstraints (constraint :| [])
+solveIsTruth constraint _ = throwError $ FailedConstraints (constraint :| [])
 
-solveIsContainer :: MonadConstraintSolving e m
+solveIsContainer :: MonadConstraintSolving m
                  => Constraint
                  -> CheckedExpr
                  -> CheckedExpr
@@ -128,7 +126,7 @@ solveIsContainer c tElem tCont =
     getContainerElem (TensorType _ t _) = Just t
     getContainerElem _                  = Nothing
 
-solveIsNatural :: MonadConstraintSolving e m
+solveIsNatural :: MonadConstraintSolving m
                => Constraint
                -> CheckedExpr
                -> m ConstraintProgress
@@ -136,40 +134,40 @@ solveIsNatural _ (NatType  _) = return simplySolved
 solveIsNatural _ (IntType  _) = return simplySolved
 solveIsNatural _ (RatType  _) = return simplySolved
 solveIsNatural _ (RealType _) = return simplySolved
-solveIsNatural constraint _ = throwError $ mkFailedConstraints (constraint :| [])
+solveIsNatural constraint _ = throwError $ FailedConstraints (constraint :| [])
 
-solveIsIntegral :: MonadConstraintSolving e m
+solveIsIntegral :: MonadConstraintSolving m
              => Constraint
              -> CheckedExpr
              -> m ConstraintProgress
 solveIsIntegral _ (IntType  _) = return simplySolved
 solveIsIntegral _ (RatType  _) = return simplySolved
 solveIsIntegral _ (RealType _) = return simplySolved
-solveIsIntegral constraint _ = throwError $ mkFailedConstraints (constraint :| [])
+solveIsIntegral constraint _ = throwError $ FailedConstraints (constraint :| [])
 
-solveIsRational :: MonadConstraintSolving e m
+solveIsRational :: MonadConstraintSolving m
              => Constraint
              -> CheckedExpr
              -> m ConstraintProgress
 solveIsRational _ (RatType  _) = return simplySolved
 solveIsRational _ (RealType _) = return simplySolved
-solveIsRational constraint _ = throwError $ mkFailedConstraints (constraint :| [])
+solveIsRational constraint _ = throwError $ FailedConstraints (constraint :| [])
 
-solveIsReal :: MonadConstraintSolving e m
+solveIsReal :: MonadConstraintSolving m
             => Constraint
             -> CheckedExpr
             -> m ConstraintProgress
 solveIsReal _ (RealType _) = return simplySolved
-solveIsReal constraint _ = throwError $ mkFailedConstraints (constraint :| [])
+solveIsReal constraint _ = throwError $ FailedConstraints (constraint :| [])
 
-solveIsQuantifiable :: MonadConstraintSolving e m
+solveIsQuantifiable :: MonadConstraintSolving m
                     => Constraint
                     -> CheckedExpr
                     -> CheckedExpr
                     -> m ConstraintProgress
 -- TODO
 solveIsQuantifiable constraint _ _ =
-  throwError $ mkFailedConstraints (constraint :| [])
+  throwError $ FailedConstraints (constraint :| [])
 
 simplySolved :: ConstraintProgress
 simplySolved = Progress mempty mempty

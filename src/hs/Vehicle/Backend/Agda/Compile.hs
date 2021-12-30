@@ -1,6 +1,6 @@
-module Vehicle.Compile.Backend.Agda
+module Vehicle.Backend.Agda.Compile
   ( AgdaOptions(..)
-  , compileToAgda
+  , compile
   ) where
 
 import GHC.Real (numerator, denominator)
@@ -15,29 +15,26 @@ import Data.Map as Map (Map)
 import Data.List (sort)
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 
-import Vehicle.Prelude
-import Vehicle.Compile.Error
-import Vehicle.Language.AST
 import Vehicle.Language.Print
 import Vehicle.Language.Sugar
-import Vehicle.Compile.Backend.ITP
-import Vehicle.Compile.Backend.Agda.Preprocess (preprocess)
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Error
+import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
+import Vehicle.Compile.SupplyNames (supplyDBNames)
+import Vehicle.Compile.Descope (runDescopeProg)
+import Vehicle.Backend.Prelude
 
-compileToAgda :: (AsAgdaError e, MonadLogger m, MonadError e m)
-              => AgdaOptions -> CheckedProg -> m (Doc a)
-compileToAgda options prog = runReaderT (compileProgramToAgda prog) options
-
-compileProgramToAgda :: MonadAgdaCompile e m
-                     => CheckedProg
-                     -> m (Doc a)
-compileProgramToAgda program = do
-  let preprocessedProgram = preprocess program
-  programDoc <- compile preprocessedProgram
+compile :: MonadCompile m => AgdaOptions -> CheckedProg -> m (Doc a)
+compile options prog1 = flip runReaderT options $ do
+  let prog2 = capitaliseTypeNames prog1
+  let prog3 = supplyDBNames prog2
+  let prog4 = runDescopeProg prog3
+  programDoc <- compileProg prog4
   let programStream = layoutPretty defaultLayoutOptions programDoc
-  -- Collects dependencies by first discarding precedence info and then folding using Set Monoid
+  -- Collects dependencies by first discarding precedence info and then
+  -- folding using Set Monoid
   let progamDependencies = fold (reAnnotateS fst programStream)
   projectFile <- compileProjectFile
-  options <- ask
   return $ unAnnotate ((vsep2 :: [Code] -> Code)
     [ optionStatements ["allow-exec"]
     , importStatements progamDependencies
@@ -55,15 +52,17 @@ data AgdaOptions = AgdaOptions
   , vehicleUIDs        :: Map.Map Identifier Text
   }
 
+type Precedence = Int
+
 --------------------------------------------------------------------------------
 -- Debug functions
 
-logEntry :: MonadAgdaCompile e m => OutputExpr -> m ()
+logEntry :: MonadAgdaCompile m => OutputExpr -> m ()
 logEntry e = do
   incrCallDepth
   logDebug $ "compile-entry" <+> prettySimple e
 
-logExit :: MonadAgdaCompile e m => Code -> m ()
+logExit :: MonadAgdaCompile m => Code -> m ()
 logExit e = do
   logDebug $ "compile-exit " <+> e
   decrCallDepth
@@ -189,7 +188,7 @@ scopeCode keyword code = keyword <> line <> indentCode code
 projectFileVariable :: Code
 projectFileVariable = "VEHICLE_PROJECT_FILE"
 
-compileProjectFile :: MonadAgdaCompile e m => m Code
+compileProjectFile :: MonadAgdaCompile m => m Code
 compileProjectFile = do
   projectFile <- asks vehicleProjectFile
   return $ scopeCode "private" $
@@ -280,156 +279,150 @@ arrow = "→" -- <> softline'
 --------------------------------------------------------------------------------
 -- Program Compilation
 
-type MonadAgdaCompile e m =
-  ( AsAgdaError e
-  , MonadCompile e m
+type MonadAgdaCompile m =
+  ( MonadCompile m
   , MonadReader AgdaOptions m
   )
 
-class CompileToAgda a where
-  compile
-    :: MonadAgdaCompile e m
-    => a
-    -> m Code
+compileProg :: MonadAgdaCompile m => OutputProg -> m Code
+compileProg (Main ds) = vsep2 <$> traverse compileDecl ds
 
-instance CompileToAgda OutputProg where
-  compile (Main ds) = do
-    cds <- traverse compile ds
-    return $ vsep2 cds
+compileDecl :: MonadAgdaCompile m => OutputDecl -> m Code
+compileDecl = \case
+  DeclData ann ident _ ->
+    throwError $ UnsupportedDecl (ITP Agda) (provenanceOf ann) ident Dataset
 
-instance CompileToAgda OutputDecl where
-  compile = \case
-    DeclData ann _ _    -> throwError $ mkCompilationUnsupported (provenanceOf ann) "dataset"
+  DeclNetw _ann n t -> compileNetwork (compileIdentifier n) <$> compileExpr t
 
-    DeclNetw _ann n t   -> compileNetwork <$> compile n <*> compile t
+  DefFun _ann n t e -> do
+    let (binders, body) = foldLam e
+    if isProperty t
+      then compileProperty (compileIdentifier n) <$> compileExpr e
+      else do
+        let binders' = traverse (compileBinder True) binders
+        compileFunDef (compileIdentifier n) <$> compileExpr t <*> binders' <*> compileExpr body
 
-    DefFun _ann n t e -> do
-      let (binders, body) = foldLam e
-      if isProperty t
-        then compileProperty <$> compile n <*> compile e
-        else do
-          let binders' = traverse (compileBinder True) binders
-          compileFunDef <$> compile n <*> compile t <*> binders' <*> compile body
+compileExpr :: MonadAgdaCompile m => OutputExpr -> m Code
+compileExpr expr = do
+  logEntry expr
+  result <- case expr of
+    Hole{}     -> developerError "Holes should have been removed during type-checking"
+    Meta{}     -> developerError "Meta-variables should have been removed during type-checking"
+    PrimDict{} -> developerError "Primitive dictionaries should never be compiled"
 
-instance CompileToAgda OutputExpr where
-  compile expr = do
-    logEntry expr
-    result <- case expr of
-      Hole{}     -> developerError "Holes should have been removed during type-checking"
-      Meta{}     -> developerError "Meta-variables should have been removed during type-checking"
-      PrimDict{} -> developerError "Primitive dictionaries should never be compiled"
+    Type l      -> return $ compileType l
+    Var _ann n  -> return $ annotateConstant [] (pretty n)
 
-      Type l      -> return $ compileType l
-      Var _ann n  -> return $ annotateConstant [] (pretty n)
+    Pi ann binder result -> case foldPi ann binder result of
+      Left (binders, body)  -> compileTypeLevelQuantifier All binders body
+      Right (input, output) ->
+        annotateInfixOp2 [] minPrecedence id Nothing arrow <$> traverse compileExpr [input, output]
 
-      Pi ann binder result -> case foldPi ann binder result of
-        Left (binders, body)  -> compileTypeLevelQuantifier All binders body
-        Right (input, output) ->
-          annotateInfixOp2 [] minPrecedence id Nothing arrow <$> traverse compile [input, output]
+    Ann _ann e t -> compileAnn <$> compileExpr e <*> compileExpr t
 
-      Ann _ann e t -> compileAnn <$> compile e <*> compile t
+    Let _ann bound binding body -> do
+      cBoundExpr <- compileLetBinder (binding, bound)
+      cBody      <- compileExpr body
+      return $ "let" <+> cBoundExpr <+> "in" <+> cBody
+      {-
+      -- TODO re-enable let folding - Agda separates by whitespace though so it's complicated.
+      let (boundExprs, body) = foldLet expr
+      cBoundExprs <- traverse compile boundExprs
+      cBody       <- compile body
+      return $ "let" <+> vsep (punctuate ";" cBoundExprs) <+> "in" <+> cBody
+      -}
 
-      Let _ann bound binding body -> do
-        cBoundExpr <- compile (binding, bound)
-        cBody      <- compile body
-        return $ "let" <+> cBoundExpr <+> "in" <+> cBody
-        {-
-        -- TODO re-enable let folding - Agda separates by whitespace though so it's complicated.
-        let (boundExprs, body) = foldLet expr
-        cBoundExprs <- traverse compile boundExprs
-        cBody       <- compile body
-        return $ "let" <+> vsep (punctuate ";" cBoundExprs) <+> "in" <+> cBody
-        -}
+    Lam{} -> do
+      let (binders, body) = foldLam expr
+      cBinders <- traverse (compileBinder False) binders
+      cBody    <- compileExpr body
+      return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> arrow <+> cBody)
 
-      Lam{} -> do
-        let (binders, body) = foldLam expr
-        cBinders <- traverse (compileBinder False) binders
-        cBody    <- compile body
-        return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> arrow <+> cBody)
+    Builtin{} -> compileBuiltin expr
+    Literal{} -> compileLiteral expr
 
-      Builtin{} -> compileBuiltin expr
-      Literal{} -> compileLiteral expr
+    App _ fun args -> case fun of
+      Builtin{}    -> compileBuiltin expr
+      Literal{}    -> compileLiteral expr
+      _            -> do
+        cFun   <- compileExpr fun
+        cArgs  <- traverse compileArg args
+        return $ annotateApp [] cFun (NonEmpty.toList cArgs)
 
-      App _ fun args -> case fun of
-        Builtin{}    -> compileBuiltin expr
-        Literal{}    -> compileLiteral expr
-        _            -> do
-          cFun   <- compile fun
-          cArgs  <- traverse compile args
-          return $ annotateApp [] cFun (NonEmpty.toList cArgs)
+    LSeq ann dict xs -> compileSeq ann dict xs
 
-      LSeq ann dict xs -> compileSeq ann dict xs
+  logExit result
+  return result
 
-    logExit result
-    return result
+compileLetBinder :: MonadAgdaCompile m
+                 => LetBinder OutputBinding OutputVar OutputAnn
+                 -> m Code
+compileLetBinder (binder, expr) = do
+  let binderName = pretty (nameOf binder :: OutputBinding)
+  cExpr <- compileExpr expr
+  return $ binderName <+> "=" <+> cExpr
 
-instance CompileToAgda (LetBinder OutputBinding OutputVar OutputAnn) where
-  compile (binder, expr) = do
-    let binderName = pretty (nameOf binder :: OutputBinding)
-    cExpr <- compile expr
-    return $ binderName <+> "=" <+> cExpr
+compileArg :: MonadAgdaCompile m => OutputArg -> m Code
+compileArg arg = argBrackets (visibilityOf arg) <$> compileExpr (argExpr arg)
 
-instance CompileToAgda OutputArg where
-  compile arg = argBrackets (visibilityOf arg) <$> compile (argExpr arg)
-
-instance CompileToAgda BooleanType where
-  compile t = return $ case t of
+compileBooleanType :: BooleanType -> Code
+compileBooleanType t = case t of
     Prop -> compileType 0
     Bool -> annotateConstant [DataBool] "Bool"
 
-instance CompileToAgda NumericType where
-  compile t = return $ annotateConstant (numericDependencies t) (numericQualifier t)
+compileNumericType :: NumericType -> Code
+compileNumericType t = annotateConstant (numericDependencies t) (numericQualifier t)
 
-instance CompileToAgda Identifier where
-  compile (Identifier s) = return $ pretty s
+compileIdentifier :: Identifier -> Code
+compileIdentifier ident = pretty (nameOf ident :: Symbol)
 
 compileType :: UniverseLevel -> Code
 compileType 0 = "Set"
 compileType l = annotateConstant [] ("Set" <> pretty l)
 
-compileBinder :: MonadAgdaCompile e m => Bool -> OutputBinder -> m Code
+compileBinder :: MonadAgdaCompile m => Bool -> OutputBinder -> m Code
 compileBinder topLevel binder = do
   let binderName = pretty (nameOf binder :: OutputBinding)
   if topLevel
     then return binderName
     else do
-      binderType <- compile (typeOf binder)
+      binderType <- compileExpr (typeOf binder)
       let annBinder = annotateInfixOp2 [] minPrecedence id Nothing ":" [binderName, binderType]
       return $ binderBrackets (visibilityOf binder) annBinder
 
-compileBuiltin :: MonadAgdaCompile e m => OutputExpr -> m Code
+compileBuiltin :: MonadAgdaCompile m => OutputExpr -> m Code
 compileBuiltin e = case e of
-  BuiltinTypeClass   _ tc -> throwError $ mkCompilationUnsupported (provenanceOf e) (pretty tc)
-  BuiltinBooleanType _ t  -> compile t
-  BuiltinNumericType _ t  -> compile t
+  BuiltinBooleanType _ t  -> return $ compileBooleanType t
+  BuiltinNumericType _ t  -> return $ compileNumericType t
 
-  ListType   _ tElem       -> annotateApp [DataList]   "List"   <$> traverse compile [tElem]
-  TensorType _ tElem tDims -> annotateApp [DataTensor] "Tensor" <$> traverse compile [tElem, tDims]
+  ListType   _ tElem       -> annotateApp [DataList]   "List"   <$> traverse compileExpr [tElem]
+  TensorType _ tElem tDims -> annotateApp [DataTensor] "Tensor" <$> traverse compileExpr [tElem, tDims]
 
   IfExpr _ _ [e1, e2, e3] -> do
-    ce1 <- compile e1
-    ce2 <- compile e2
-    ce3 <- compile e3
+    ce1 <- compileArg e1
+    ce2 <- compileArg e2
+    ce3 <- compileArg e3
     return $ annotate (Set.singleton DataBool, 0)
       ("if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3)
 
-  BooleanOp2Expr op2 _ t   args -> compileBoolOp2 op2 t <$> traverse compile args
-  NotExpr            _ t   args -> compileNot         t <$> traverse compile args
-  NumericOp2Expr op2 _ t _ args -> compileNumOp2  op2 t <$> traverse compile args
-  NegExpr            _ t   args -> compileNeg         t <$> traverse compile args
+  BooleanOp2Expr op2 _ t   args -> compileBoolOp2 op2 t <$> traverse compileArg args
+  NotExpr            _ t   args -> compileNot         t <$> traverse compileArg args
+  NumericOp2Expr op2 _ t _ args -> compileNumOp2  op2 t <$> traverse compileArg args
+  NegExpr            _ t   args -> compileNeg         t <$> traverse compileArg args
 
   (QuantifierExpr   q _              binder body)      -> compileTypeLevelQuantifier q [binder] body
   (QuantifierInExpr q ann tCont tRes binder body cont) -> compileQuantIn tRes q tCont (Lam ann binder body) cont
 
-  (OrderExpr order  _ t1 t2 args) -> compileNumOrder order (numericType t1) t2 <$> traverse compile args
-  (EqualityExpr Eq  _ t1 t2 args) -> compileEquality   t1 t2 =<< traverse compile args
-  (EqualityExpr Neq _ t1 t2 args) -> compileInequality t1 t2 =<< traverse compile args
+  (OrderExpr order  _ t1 t2 args) -> compileNumOrder order (numericType t1) t2 <$> traverse compileArg args
+  (EqualityExpr Eq  _ t1 t2 args) -> compileEquality   t1 t2 =<< traverse compileArg args
+  (EqualityExpr Neq _ t1 t2 args) -> compileInequality t1 t2 =<< traverse compileArg args
 
-  (ConsExpr _ tElem       args) -> compileCons tElem <$> traverse compile args
-  (AtExpr _  _tElem tDims args) -> compileAt tDims (map argExpr args)
+  (ConsExpr _ tElem       args)  -> compileCons tElem <$> traverse compileArg args
+  (AtExpr ann _tElem tDims args) -> compileAt ann tDims (map argExpr args)
 
-  MapExpr{} -> throwError $ mkCompilationUnsupported (provenanceOf e) (pretty Map)
-  FoldExpr{} -> throwError $ mkCompilationUnsupported (provenanceOf e) (pretty Fold)
+  MapExpr{}             -> throwError $ UnsupportedBuiltin (ITP Agda) (provenanceOf e) Map
+  FoldExpr{}            -> throwError $ UnsupportedBuiltin (ITP Agda) (provenanceOf e) Fold
+  BuiltinTypeClass _ tc -> throwError $ UnsupportedBuiltin (ITP Agda) (provenanceOf e) (TypeClass tc)
 
   _ -> developerError $ "unexpected application of builtin found during compilation to Agda:" <+>
                         squotes (prettyVerbose e)
@@ -437,14 +430,14 @@ compileBuiltin e = case e of
 compileAnn :: Code -> Code -> Code
 compileAnn e t = annotateInfixOp2 [FunctionBase] 0 id Nothing "∋" [t,e]
 
-compileTypeLevelQuantifier :: MonadAgdaCompile e m => Quantifier -> [OutputBinder] -> OutputExpr -> m Code
+compileTypeLevelQuantifier :: MonadAgdaCompile m => Quantifier -> [OutputBinder] -> OutputExpr -> m Code
 compileTypeLevelQuantifier q binders body = do
   cBinders  <- traverse (compileBinder False) binders
-  cBody     <- compile body
+  cBody     <- compileExpr body
   let quant = if q == All then "∀" else annotateConstant [DataProduct] "∃ λ"
   return $ quant <+> hsep cBinders <+> arrow <+> cBody
 
-compileContainerTypeLevelQuantifier :: MonadAgdaCompile e m
+compileContainerTypeLevelQuantifier :: MonadAgdaCompile m
                                     => Quantifier
                                     -> OutputExpr
                                     -> OutputExpr
@@ -454,9 +447,9 @@ compileContainerTypeLevelQuantifier q tCont fn cont = do
   let contType = containerType tCont
   let deps     = containerQuantifierDependencies q (containerType tCont)
   let quant    = containerQualifier contType <> "." <> (if q == All then "All" else "Any")
-  annotateApp deps quant <$> traverse compile [fn, cont]
+  annotateApp deps quant <$> traverse compileExpr [fn, cont]
 
-compileContainerExprLevelQuantifier :: MonadAgdaCompile e m
+compileContainerExprLevelQuantifier :: MonadAgdaCompile m
                                     => Quantifier
                                     -> OutputExpr
                                     -> OutputExpr
@@ -466,13 +459,13 @@ compileContainerExprLevelQuantifier q tCont fn cont = do
   let contType = containerType tCont
   let quant    = containerQualifier contType <> "." <> (if q == All then "all" else "any")
   let deps     = containerDependencies contType
-  annotateApp deps quant <$> traverse compile [fn, cont]
+  annotateApp deps quant <$> traverse compileExpr [fn, cont]
 
-compileQuantIn :: MonadAgdaCompile e m => BooleanType -> Quantifier -> OutputExpr -> OutputExpr -> OutputExpr -> m Code
+compileQuantIn :: MonadAgdaCompile m => BooleanType -> Quantifier -> OutputExpr -> OutputExpr -> OutputExpr -> m Code
 compileQuantIn Bool = compileContainerExprLevelQuantifier
 compileQuantIn Prop = compileContainerTypeLevelQuantifier
 
-compileLiteral :: MonadAgdaCompile e m => OutputExpr -> m Code
+compileLiteral :: MonadAgdaCompile m => OutputExpr -> m Code
 compileLiteral e = return $ case e of
   NatLiteralExpr  _ann Nat  n -> compileNatLiteral  (toInteger n)
   NatLiteralExpr  _ann Int  n -> compileIntLiteral  (toInteger n)
@@ -512,13 +505,13 @@ compileRealLiteral r = annotateInfixOp2 [DataReal] 7 id
   ]
 
 -- |Compiling sequences. No sequences in Agda so have to go via cons.
-compileSeq :: MonadAgdaCompile e m => OutputAnn -> OutputExpr -> [OutputExpr] -> m Code
+compileSeq :: MonadAgdaCompile m => OutputAnn -> OutputExpr -> [OutputExpr] -> m Code
 compileSeq _ (PrimDict _ (IsContainerExpr _ _ tCont)) elems = go elems
   where
-    go :: MonadAgdaCompile e m => [OutputExpr] -> m Code
+    go :: MonadAgdaCompile m => [OutputExpr] -> m Code
     go []       = return $ annotateConstant (containerDependencies (containerType tCont)) "[]"
     go (x : xs) = do
-      cx  <- compile x
+      cx  <- compileExpr x
       cxs <- go xs
       return $ annotateInfixOp2 [] 5 id Nothing "∷" [cx , cxs]
 compileSeq ann dict elems = unexpectedArgsError (LSeq ann dict elems) elems ["tElem", "tCont", "tc"]
@@ -594,36 +587,29 @@ compileNumOrder order nt bt = annotateInfixOp2 dependencies 4 opBraces qualifier
     opDoc        = orderDoc <> boolDecDoc
 
 -- TODO implement this via proof by reflection
-compileAt :: MonadAgdaCompile e m => OutputExpr -> [OutputExpr] -> m Code
-compileAt tDims [tensorExpr, indexExpr] = case exprHead indexExpr of
-  Literal indexAnn (LNat index) -> case tensorSize tDims of
-    Left err -> throwError $ mkContainerDimensionError (provenanceOf indexAnn) err
-    Right size ->
-      if index >= size
-        then throwError $ mkContainerDimensionError (provenanceOf indexAnn) $
-          TensorIndexOutOfBounds index size
-        else do
-          tensorDoc <- compile tensorExpr
-          let indexDoc = annotateInfixOp1 [DataFin] 10 Nothing "#" [pretty index]
-          return $ annotateApp [] tensorDoc [indexDoc]
-  _ -> do
-    annotateApp [] <$> compile tensorExpr <*> traverse compile [indexExpr]
-compileAt _tDims args = unexpectedArgsError (Builtin emptyUserAnn At) args ["tensor", "index"]
+compileAt :: MonadAgdaCompile m => CheckedAnn -> OutputExpr -> [OutputExpr] -> m Code
+compileAt ann tDims [tensorExpr, indexExpr] = case exprHead indexExpr of
+  Literal indexAnn (LNat index) -> do
+    size <- tensorSize (provenanceOf ann) tDims
+    if index >= size
+      then throwError $ TensorIndexOutOfBounds (provenanceOf indexAnn) index size
+      else do
+        tensorDoc <- compileExpr tensorExpr
+        let indexDoc = annotateInfixOp1 [DataFin] 10 Nothing "#" [pretty index]
+        return $ annotateApp [] tensorDoc [indexDoc]
+  _ -> annotateApp [] <$> compileExpr tensorExpr <*> traverse compileExpr [indexExpr]
+compileAt _ _ args =
+  unexpectedArgsError (Builtin emptyUserAnn At) args ["tensor", "index"]
 
-compileEquality :: MonadAgdaCompile e m => OutputExpr -> BooleanType -> [Code] -> m Code
+compileEquality :: MonadAgdaCompile m => OutputExpr -> BooleanType -> [Code] -> m Code
 compileEquality _tElem Prop args = return $ annotateInfixOp2 [PropEquality] 4 id Nothing "≡" args
-compileEquality tElem  Bool args =
+compileEquality tElem  Bool args = do
   -- Boolean function equality is more complicated as we need an actual decision procedure.
   -- We handle this using instance arguments
-  case equalityDependencies tElem of
-    Left  UnexpectedEqualityType ->
-      unexpectedTypeError tElem ["Tensor", "Real", "Int", "List"]
-    Left (PolymorphicEqualityType n) ->
-      throwError $ mkCompilationUnsupported (provenanceOf tElem) ("polymorphic equality over" <+> squotes (pretty n) <> "'")
-    Right dependencies ->
-      return $ annotateInfixOp2 ([RelNullary] <> dependencies) 4 boolBraces Nothing "≟" args
+  instanceArgDependencies <- equalityDependencies tElem
+  return $ annotateInfixOp2 ([RelNullary] <> instanceArgDependencies) 4 boolBraces Nothing "≟" args
 
-compileInequality :: MonadAgdaCompile e m => OutputExpr -> BooleanType -> [Code] -> m Code
+compileInequality :: MonadAgdaCompile m => OutputExpr -> BooleanType -> [Code] -> m Code
 compileInequality _tElem Prop args = return $ annotateInfixOp2 [PropEquality] 4 id Nothing "≢" args
 compileInequality tElem  Bool args = do
   eq <- compileEquality tElem Bool args
@@ -669,12 +655,8 @@ booleanModifierDocAndDeps = \case
   Bool -> ("?", [RelNullary])
   Prop -> ("" , [])
 
-data EqualityTypeError
-  = UnexpectedEqualityType
-  | PolymorphicEqualityType Symbol
-
 -- Calculates the dependencies needed for equality over the provided type
-equalityDependencies :: OutputExpr -> Either EqualityTypeError [Dependency]
+equalityDependencies :: MonadAgdaCompile m => OutputExpr -> m [Dependency]
 equalityDependencies = \case
   BuiltinNumericType _ Nat  -> return [DataNatInstances]
   BuiltinNumericType _ Int  -> return [DataIntegerInstances]
@@ -686,5 +668,47 @@ equalityDependencies = \case
   App _ (BuiltinContainerType _ Tensor) [tElem, _tDims] -> do
     deps <- equalityDependencies (argExpr tElem)
     return $ [DataTensorInstances] <> deps
-  Var _ann n -> throwError $ PolymorphicEqualityType n
-  _          -> throwError UnexpectedEqualityType
+  Var ann n -> throwError $ UnsupportedPolymorphicEquality (ITP Agda) (provenanceOf ann) n
+  t         -> unexpectedTypeError t ["Tensor", "Real", "Int", "List"]
+
+numericType :: OutputExpr -> NumericType
+numericType (Builtin _ (NumericType t)) = t
+numericType t = unexpectedTypeError t (map show [Nat, Int, Rat, Real])
+
+booleanType :: OutputExpr -> BooleanType
+booleanType (Builtin _ (BooleanType t)) = t
+booleanType t = unexpectedTypeError t (map show [Bool, Prop])
+
+containerType :: OutputExpr -> ContainerType
+containerType (App _ (Builtin _ (ContainerType t)) _) = t
+containerType t = unexpectedTypeError t (map show [List, Tensor])
+
+tensorSize :: MonadCompile m => Provenance -> OutputExpr -> m Int
+tensorSize p tDims = getTensorSize (exprHead tDims)
+  where
+    getTensorSize :: MonadCompile m => OutputExpr -> m Int
+    getTensorSize (LSeq _ _ (x : _))  = getDimension (exprHead x)
+    getTensorSize (LSeq _ _ [])       =
+      throwError $ LookupInEmptyTensor (ITP Agda) p
+    getTensorSize t                   =
+      throwError $ LookupInVariableDimTensor (ITP Agda) p t
+
+    getDimension :: MonadCompile m =>  OutputExpr -> m Int
+    getDimension (LitNat _ i) = return i
+    getDimension t            = throwError $
+      LookupInVariableDimTensor (ITP Agda) (provenanceOf t) t
+
+
+unexpectedTypeError :: OutputExpr -> [String] -> a
+unexpectedTypeError actualType expectedTypes = developerError $
+  "Unexpected type found." <+>
+  "Was expecting one of" <+> pretty expectedTypes <+>
+  "but found" <+> prettyFriendly actualType <+>
+  "at" <+> pretty (provenanceOf actualType) <> "."
+
+unexpectedArgsError :: OutputExpr -> [OutputExpr] -> [String] -> a
+unexpectedArgsError fun actualArgs expectedArgs = developerError $
+  "The function" <+> prettyFriendly fun <+> "was expected to have arguments" <+>
+  "of the following form" <+> squotes (pretty expectedArgs) <+> "but found" <+>
+  "the following" <+> squotes (prettyFriendly actualArgs) <+>
+  "at" <+> pretty (provenanceOf fun) <> "."

@@ -7,8 +7,7 @@ module Vehicle.Compile.SupplyNames
   , supplyCoDBNamesWithCtx
   ) where
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
+import Vehicle.Compile.Prelude
 
 --------------------------------------------------------------------------------
 -- Public interface

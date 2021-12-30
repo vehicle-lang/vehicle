@@ -9,11 +9,10 @@ import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
 import Data.Text
 import Debug.Trace
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
-import Vehicle.Compile (typeCheckExpr, logCompileError)
-import Vehicle.Compile.Error.Meaningful
+import Vehicle.Compile (typeCheckExpr)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Type (runTypeCheck)
 
 -- If you want to see the logs for tests, change `discardLogger` to `traceLogger` here.

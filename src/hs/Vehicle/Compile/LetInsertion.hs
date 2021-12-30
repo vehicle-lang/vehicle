@@ -10,9 +10,8 @@ import Data.Bifunctor (Bifunctor(..))
 import Data.Maybe (mapMaybe, listToMaybe)
 import Prettyprinter (list)
 
-import Vehicle.Prelude hiding (hsep)
-import Vehicle.Language.AST
 import Vehicle.Language.Print
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.CoDeBruijnify
 import Vehicle.Compile.AlphaEquivalence
 

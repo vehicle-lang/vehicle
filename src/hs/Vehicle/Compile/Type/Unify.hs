@@ -8,9 +8,9 @@ import Control.Monad (when)
 import Control.Monad.Except (MonadError(..), throwError)
 import Data.List (intersect)
 
-import Vehicle.Prelude
-import Vehicle.Compile.Error
 import Vehicle.Language.AST
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Error
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
@@ -29,7 +29,7 @@ unexpectedCase p expr = developerError $
 pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
 
-solveUnificationConstraint :: MonadConstraintSolving e m
+solveUnificationConstraint :: MonadConstraintSolving m
                            => ConstraintContext
                            -> UnificationPair
                            -> m ConstraintProgress
@@ -71,7 +71,7 @@ solveUnificationConstraint ctx (e1, e2) = do
     -- will never be an unreduced redex.
     (Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, [])
       | visibilityOf binder1 /= visibilityOf binder2 ->
-        throwError $ mkFailedConstraints [constraint]
+        throwError $ FailedConstraints [constraint]
       | otherwise -> return Progress
         { newConstraints = [Constraint ctx (Unify (body1, body2))]
         , solvedMetas    = mempty
@@ -80,7 +80,7 @@ solveUnificationConstraint ctx (e1, e2) = do
     (LSeq _ dict1 es1, []) :~: (LSeq _ dict2 es2, [])
       -- TODO more informative error message
       | length es1 /= length es2 ->
-        throwError $ mkFailedConstraints [constraint]
+        throwError $ FailedConstraints [constraint]
       -- TODO need to try and unify `LSeq` with `Cons`s.
       | otherwise -> do
         let dictConstraint  = Constraint ctx (Unify (dict1, dict2))
@@ -92,7 +92,7 @@ solveUnificationConstraint ctx (e1, e2) = do
 
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
       | visibilityOf binder1 /= visibilityOf binder2 ->
-        throwError $ mkFailedConstraints [constraint]
+        throwError $ FailedConstraints [constraint]
       | otherwise -> do
           -- !!TODO!! Block until binders are solved
           -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
@@ -231,7 +231,7 @@ solveUnificationConstraint ctx (e1, e2) = do
     -- Catch-all
     _ -> do
       logDebug $ pretty (show $ boundContext constraint)
-      throwError $ mkFailedConstraints [constraint]
+      throwError $ FailedConstraints [constraint]
 
   return progress
 
@@ -241,33 +241,33 @@ abstractOver args body = foldr argToLam body args
     argToLam :: CheckedArg -> CheckedExpr -> CheckedExpr
     argToLam (Arg ann v argE) = Lam ann (Binder ann v Nothing argE)
 
-solveEq :: (MonadConstraintSolving e m, Eq a)
+solveEq :: (MonadConstraintSolving m, Eq a)
         => Constraint
         -> a
         -> a
         -> m ()
 solveEq c v1 v2
-  | v1 /= v2  = throwError $ mkFailedConstraints [c]
+  | v1 /= v2  = throwError $ FailedConstraints [c]
   | otherwise = logDebug "solved-trivially"
 
-solveArg :: MonadConstraintSolving e m
+solveArg :: MonadConstraintSolving m
          => Constraint
          -> (CheckedArg, CheckedArg)
          -> m Constraint
 solveArg c (arg1, arg2)
-  | visibilityOf arg1 /= visibilityOf arg2 = throwError $ mkFailedConstraints [c]
+  | visibilityOf arg1 /= visibilityOf arg2 = throwError $ FailedConstraints [c]
   | otherwise = return $ Constraint
     (ConstraintContext (provenanceOf c) mempty (variableContext c))
     (Unify (argExpr arg1 , argExpr arg2))
 
-solveSimpleApplication :: (MonadConstraintSolving e m, Eq a)
+solveSimpleApplication :: (MonadConstraintSolving m, Eq a)
                        => Constraint
                        -> a -> a
                        -> [CheckedArg] -> [CheckedArg]
                        -> m ConstraintProgress
 solveSimpleApplication constraint fun1 fun2 args1 args2 = do
   if fun1 /= fun2 || length args1 /= length args2 then
-    throwError $ mkFailedConstraints [constraint]
+    throwError $ FailedConstraints [constraint]
   else if null args1 then do
     logDebug "solved-trivially"
     return Progress

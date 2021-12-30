@@ -10,12 +10,10 @@ import Data.Text
 import Data.Hashable
 import Data.IntMap qualified as IntMap
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
 import Vehicle.Language.Print
+import Vehicle.Compile.Prelude
 import Vehicle.Compile (typeCheckExpr)
 import Vehicle.Compile.AlphaEquivalence
-import Vehicle.Compile.Error.Meaningful
 import Vehicle.Compile.Error
 import Vehicle.Compile.CoDeBruijnify
 

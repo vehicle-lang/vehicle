@@ -13,14 +13,10 @@ import Data.Coerce (coerce)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 
-import Vehicle.Language.AST
-import Vehicle.Compile.Simplify
+import Vehicle.Compile.Prelude
 
 newtype MetaSubstitution = MetaSubstitution (IntMap CheckedExpr)
   deriving (Semigroup, Monoid)
-
-instance Simplify MetaSubstitution where
-  simplifyReader (MetaSubstitution m) = MetaSubstitution <$> traverse simplifyReader m
 
 singleton :: Meta -> CheckedExpr -> MetaSubstitution
 singleton m e = coerce (IntMap.singleton (coerce m) e)

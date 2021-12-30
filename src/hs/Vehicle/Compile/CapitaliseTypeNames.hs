@@ -1,27 +1,12 @@
-
-
-module Vehicle.Compile.Backend.Agda.Preprocess
-  ( preprocess
+module Vehicle.Compile.CapitaliseTypeNames
+  ( capitaliseTypeNames
   ) where
 
 import Control.Monad.State ( MonadState(..), when, modify, evalState )
 import Data.Set ( Set, insert, member )
 import Data.Functor.Foldable (Recursive(..))
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
-import Vehicle.Compile.Descope (runDescopeProg)
-import Vehicle.Compile.SupplyNames (supplyDBNames)
-
---------------------------------------------------------------------------------
--- Agda compilation proprocessing step
-
-preprocess :: CheckedProg -> OutputProg
-preprocess prog1 = prog4
-  where
-    prog2 = capitaliseTypeNames prog1
-    prog3 = supplyDBNames prog2
-    prog4 = runDescopeProg prog3
+import Vehicle.Compile.Prelude
 
 --------------------------------------------------------------------------------
 -- Capitalise type names

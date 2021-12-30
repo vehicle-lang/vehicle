@@ -12,7 +12,9 @@ import Data.Maybe (catMaybes)
 import Data.IntMap ( IntMap )
 import Data.Text ( Text )
 
-import Vehicle.Language.AST
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.MetaSubstitution
 
 
 data SimplifyOptions = SimplifyOptions
@@ -125,10 +127,25 @@ instance Simplify PositionTree where
 
 instance Simplify PositionsInExpr where
   simplifyReader (PositionsInExpr e t) = return $ PositionsInExpr e t
-    --PositionsInExpr <$> simplifyReader e <*> simplifyReader t
 
 instance Simplify Text where
   simplifyReader = return
 
 instance Simplify Int where
   simplifyReader = return
+
+instance Simplify BaseConstraint where
+  simplifyReader (Unify (e1, e2)) = do
+    e1' <- simplifyReader e1
+    e2' <- simplifyReader e2
+    return $ Unify (e1', e2')
+
+  simplifyReader (m `Has` e) = do
+    e' <- simplifyReader e
+    return $ m `Has` e'
+
+instance Simplify Constraint where
+  simplifyReader (Constraint ctx c) = Constraint ctx <$> simplifyReader c
+
+instance Simplify MetaSubstitution where
+  simplifyReader (MetaSubstitution m) = MetaSubstitution <$> traverse simplifyReader m
