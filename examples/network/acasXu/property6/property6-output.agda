@@ -55,7 +55,7 @@ clearOfConflictScore : InputVector → ℝ
 clearOfConflictScore x = acasXu x (# 0)
 
 IntruderFarAway : InputVector → Set
-IntruderFarAway x = (ℝ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ ℝ.- (ℤ.+ 7 ℝ./ 10) ⊎ ℤ.+ 7 ℝ./ 10 ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ pi) × (ℤ.+ 12000 ℝ./ 1 ℝ.≤ distanceToIntruder x × (distanceToIntruder x ℝ.≤ ℤ.+ 62000 ℝ./ 1 × (ℝ.- pi ℝ.≤ intruderHeading x × (intruderHeading x ℝ.≤ ℝ.- pi ℝ.+ ℤ.+ 1 ℝ./ 200 × (ℤ.+ 100 ℝ./ 1 ℝ.≤ speed x × (speed x ℝ.≤ ℤ.+ 1200 ℝ./ 1 × (ℤ.+ 0 ℝ./ 1 ℝ.≤ intruderSpeed x × intruderSpeed x ℝ.≤ ℤ.+ 1200 ℝ./ 1)))))))
+IntruderFarAway x = (ℝ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ ℝ.- (ℤ.+ 7 ℝ./ 10) ⊎ ℤ.+ 7 ℝ./ 10 ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ pi) × ((ℤ.+ 12000 ℝ./ 1 ℝ.≤ distanceToIntruder x × distanceToIntruder x ℝ.≤ ℤ.+ 62000 ℝ./ 1) × ((ℝ.- pi ℝ.≤ intruderHeading x × intruderHeading x ℝ.≤ ℝ.- pi ℝ.+ ℤ.+ 1 ℝ./ 200) × ((ℤ.+ 100 ℝ./ 1 ℝ.≤ speed x × speed x ℝ.≤ ℤ.+ 1200 ℝ./ 1) × (ℤ.+ 0 ℝ./ 1 ℝ.≤ intruderSpeed x × intruderSpeed x ℝ.≤ ℤ.+ 1200 ℝ./ 1))))
 
 AdvisesClearOfConflict : InputVector → Set
 AdvisesClearOfConflict x = let y = acasXu x in y (# 0) ℝ.> y (# 1) × (y (# 0) ℝ.> y (# 2) × (y (# 0) ℝ.> y (# 3) × y (# 0) ℝ.> y (# 4)))
