@@ -24,13 +24,13 @@ import Vehicle.Backend.Prelude
 -- | Compiles the provided program to Marabou queries.
 compile :: MonadCompile m => NetworkMap -> CheckedProg -> m [MarabouProperty]
 compile networkMap prog = do
-  logDebug "Beginning compilation to VNNLib"
+  logDebug "Beginning compilation to Marabou"
   incrCallDepth
 
   result <- compileProg networkMap prog
 
   decrCallDepth
-  logDebug "Finished compilation to VNNLib"
+  logDebug "Finished compilation to Marabou"
   return result
 
 --------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ compileProperty :: MonadCompile m
 compileProperty ident networkMap expr = do
   let identDoc = squotes (pretty ident)
   let ann = annotationOf expr
-  logDebug $ "Beginning compilation of VNNLib property" <+> identDoc
+  logDebug $ "Beginning compilation of property" <+> identDoc
   incrCallDepth
 
   -- Check that we only have one type of quantifier in the property
@@ -101,7 +101,7 @@ compileProperty ident networkMap expr = do
   queries <- traverse (compileQuery ident networkMap quantifier) queryExprs
 
   decrCallDepth
-  logDebug $ "Finished compilation of VNNLib property" <+> identDoc
+  logDebug $ "Finished compilation of property" <+> identDoc
 
   return $ MarabouProperty (nameOf ident) isPropertyNegated queries
 
@@ -180,7 +180,7 @@ compileAssertions ident quantifier expr = case expr of
     | eq == Neq ->
       throwError $ UnsupportedEquality MarabouBackend (provenanceOf ann) quantifier eq
     | otherwise -> do
-      assertion <- compileAssertion ident (pretty eq) (argExpr lhs) (argExpr rhs)
+      assertion <- compileAssertion ident "=" (argExpr lhs) (argExpr rhs)
       return ([], [assertion])
 
   App{} -> developerError $ unexpectedExprError currentPass (prettySimple expr)
@@ -205,8 +205,9 @@ compileAssertion ident rel lhs rhs = do
   where
     compileSide :: MonadCompile m => OutputExpr -> m ([(Double, Symbol)], [Double])
     compileSide = \case
-      Literal _ l                           -> return ([], [compileLiteral l])
+      Var     _ v                           -> return ([(1, v)], [])
       NegExpr _ _ [ExplicitArg _ (Var _ v)] -> return ([(-1, v)], [])
+      LiteralExpr _ _ l                     -> return ([], [compileLiteral l])
       AddExpr _ _ _ [arg1, arg2]            -> do
         xs <- compileSide (argExpr arg1)
         ys <- compileSide (argExpr arg2)

@@ -191,6 +191,7 @@ test-suite vehicle-test
   main-is:            Test.hs
   hs-source-dirs:     test
   other-modules:      Test.Golden
+                    , Test.Golden.Utils
                     , Test.Unit
                     , Test.Unit.AlphaEquivalence
                     , Test.Unit.CoDeBruijn
