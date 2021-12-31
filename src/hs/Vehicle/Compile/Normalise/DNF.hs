@@ -35,6 +35,10 @@ convertToDNF expr = do
     NotExpr{}  -> normalisationError currentPass "Not"
     ImplExpr{} -> normalisationError currentPass "Impl"
 
+    QuantifierExpr ann t binder body -> do
+      body' <- convertToDNF body
+      return $ liftOr (QuantifierExpr ann t binder) body'
+
     AndExpr ann t [ExplicitArg ann1 e1, ExplicitArg ann2 e2] -> do
       e1' <- convertToDNF e1
       e2' <- convertToDNF e2

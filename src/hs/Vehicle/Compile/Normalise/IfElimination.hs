@@ -39,9 +39,9 @@ liftIf f e = f e
 -- provided expression.
 elimIf :: CheckedExpr -> CheckedExpr
 elimIf (IfExpr ann _ [cond, e1, e2]) = argExpr $
-  op2 And
-    (op2 Impl cond         (mapArgExpr elimIf e1))
-    (op2 Impl (notOp cond) (mapArgExpr elimIf e2))
+  op2 Or
+    (op2 And cond         (mapArgExpr elimIf e1))
+    (op2 And (notOp cond) (mapArgExpr elimIf e2))
   where
     op2 :: BooleanOp2 -> CheckedArg -> CheckedArg -> CheckedArg
     op2 op arg1 arg2 = ExplicitArg ann (BooleanOp2Expr op ann Bool [arg1, arg2])

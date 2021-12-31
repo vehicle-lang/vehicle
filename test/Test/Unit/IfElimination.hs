@@ -42,11 +42,11 @@ ifEliminationTests = testGroup "LiftAndElim"
 
   , testCase "elimIfNot" $ liftAndEliminateIfsTest
       "not (if True then False else (True : Bool))"
-      "not ((True => False) and (not True => (True : Bool)))"
+      "not ((True and False) or (not True and (True : Bool)))"
 
   , testCase "elimIfIf" $ liftAndEliminateIfsTest
       "if (if True then False else True) then False else (True : Bool)"
-      "if ((True => False) and (not True => True)) then False else (True : Bool)"
+      "if ((True and False) or (not True and True)) then False else (True : Bool)"
   ]
 
 liftAndEliminateIfsTest :: Text -> Text -> Assertion

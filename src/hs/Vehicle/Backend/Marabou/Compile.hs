@@ -70,11 +70,18 @@ compileProperty ident networkMap expr = do
   -- Check that we only have one type of quantifier in the property
   quantifier <- checkQuantifiersAreHomogeneous MarabouBackend ident expr
 
+  logDebug $ line <> "Quantifier: " <> pretty (Quant quantifier)
+
   -- If the property is universally quantified then we need to negate the expression
   let (isPropertyNegated, possiblyNegatedExpr) =
         if quantifier == Any
           then (False, expr)
           else (True,  NotExpr ann Prop [ExplicitArg ann expr])
+
+  -- Eliminate any if-expressions
+  ifFreeExpr <- liftAndEliminateIfs possiblyNegatedExpr
+
+  logDebug $ line <> "After if-elimination: " <> prettySimple ifFreeExpr
 
   -- Normalise the expression to remove any implications, push the negations through
   -- and expand out any multiplication.
@@ -82,17 +89,12 @@ compileProperty ident networkMap expr = do
     { implicationsToDisjunctions = True
     , subtractionToAddition      = True
     , expandOutPolynomials       = True
-    }) possiblyNegatedExpr
-
-  -- Eliminate any if-expressions
-  ifFreeExpr <- liftAndEliminateIfs normExpr
-
-  logDebug $ line <> prettySimple ifFreeExpr
+    }) ifFreeExpr
 
   -- Convert to disjunctive normal form
-  dnfExpr <- convertToDNF ifFreeExpr
+  dnfExpr <- convertToDNF normExpr
 
-  logDebug $ line <> prettySimple dnfExpr
+  logDebug $ line <> "After conversion to DNF: " <> prettySimple dnfExpr
 
   -- Split up into the individual queries needed for Marabou.
   let queryExprs = splitDisjunctions dnfExpr
@@ -111,9 +113,9 @@ compileQuery :: MonadCompile m
              -> Quantifier
              -> CheckedExpr
              -> m MarabouQuery
-compileQuery ident networkMap quantifier expr = do
+compileQuery ident networkMap originalQuantifier expr = do
   -- Convert all applications of networks into magic variables
-  (networklessExpr, metaNetwork) <- convertNetworkAppsToMagicVars Marabou networkMap quantifier expr
+  (networklessExpr, metaNetwork) <- convertNetworkAppsToMagicVars Marabou networkMap Any expr
 
   -- Normalise the expression to remove any implications, push the negations through
   -- and expand out any multiplication.
@@ -126,7 +128,7 @@ compileQuery ident networkMap quantifier expr = do
   -- Descope the expression, converting from DeBruijn indices to names
   let descopedExpr = runDescope [] (supplyDBNames normExpr)
 
-  (vars, assertionDocs) <- compileAssertions ident quantifier descopedExpr
+  (vars, assertionDocs) <- compileAssertions ident originalQuantifier descopedExpr
   let doc = vsep assertionDocs
 
   logDebug $ "Output:" <> align (line <> doc)
@@ -236,4 +238,4 @@ supportedTypes =
   ]
 
 currentPass :: Doc a
-currentPass = "Marabou compilation"
+currentPass = "compilation to Marabou"
