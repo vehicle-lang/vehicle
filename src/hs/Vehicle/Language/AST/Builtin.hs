@@ -6,6 +6,7 @@ module Vehicle.Language.AST.Builtin
   , BooleanType(..)
   , ContainerType(..)
   , Quantifier(..)
+  , Relation(..)
   , Order(..)
   , Equality(..)
   , TypeClass(..)
@@ -16,6 +17,8 @@ module Vehicle.Language.AST.Builtin
   , symbolFromBuiltin
   , isDecidable
   , counterpart
+  , flipOrder
+  , flipRel
   ) where
 
 import Data.Bifunctor (first)
@@ -188,6 +191,25 @@ counterpart = \case
   Lt -> Le
   Ge -> Gt
   Gt -> Ge
+
+flipOrder :: Order -> Order
+flipOrder = \case
+  Le -> Ge
+  Lt -> Gt
+  Ge -> Le
+  Gt -> Lt
+
+--------------------------------------------------------------------------------
+-- Relation
+
+data Relation
+  = OrderRel Order
+  | EqualityRel Equality
+  deriving (Eq, Ord)
+
+flipRel :: Relation -> Relation
+flipRel (OrderRel order) = OrderRel (flipOrder order)
+flipRel (EqualityRel eq) = EqualityRel eq
 
 --------------------------------------------------------------------------------
 -- Boolean operations

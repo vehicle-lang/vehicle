@@ -40,7 +40,7 @@ realisticTestList :: [GoldenTestSpec]
 realisticTestList = map (addTestDirectory ("examples" </> "network")) [
   --("shortestPath",     [VNNLibBackend]),
   ("andGate",                [VNNLibBackend, AgdaBackend]),
-  ("acasXu" </> "property6", [VNNLibBackend, AgdaBackend]),
+  ("acasXu" </> "property6", [VNNLibBackend, AgdaBackend, MarabouBackend]),
   ("monotonicity",           [VNNLibBackend, AgdaBackend]),
   ("increasing",             [VNNLibBackend, AgdaBackend]),
   ("reachability",           [VNNLibBackend, AgdaBackend, MarabouBackend]),
@@ -106,7 +106,7 @@ runTest :: FilePath -> FilePath -> String -> Backend -> IO ()
 runTest inputFile outputFile modulePath backend = do
   run $ Options
     { version       = False
-    , logFile       = Nothing --  Just Nothing
+    , logFile       = Just Nothing
     , commandOption = Compile $ CompileOptions
       { inputFile    = inputFile
       , outputFile   = Just outputFile

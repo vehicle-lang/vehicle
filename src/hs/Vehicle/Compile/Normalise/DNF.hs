@@ -68,7 +68,7 @@ splitConjunctions e = [e]
 
 splitDisjunctions :: Expr binder var ann -> [Expr binder var ann]
 splitDisjunctions (OrExpr _ann _t [e1, e2]) =
-  splitConjunctions (argExpr e1) <> splitDisjunctions (argExpr e2)
+  splitDisjunctions (argExpr e1) <> splitDisjunctions (argExpr e2)
 splitDisjunctions e = [e]
 
 currentPass :: Doc a

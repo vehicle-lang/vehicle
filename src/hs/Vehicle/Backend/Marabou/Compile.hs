@@ -4,19 +4,20 @@ module Vehicle.Backend.Marabou.Compile
 
 import Control.Monad.Except (MonadError(..))
 import Data.Maybe (catMaybes)
+import Data.Bifunctor (Bifunctor(first))
 
+import Vehicle.Language.Print (prettySimple)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Language.Print (prettySimple)
 import Vehicle.Compile.Normalise (normalise, NormalisationOptions(..))
 import Vehicle.Compile.Normalise.NetworkApplications
 import Vehicle.Compile.Normalise.IfElimination (liftAndEliminateIfs)
 import Vehicle.Compile.Normalise.DNF (convertToDNF, splitDisjunctions)
 import Vehicle.Compile.Descope (runDescope)
 import Vehicle.Compile.SupplyNames (supplyDBNames)
-import Vehicle.Backend.Marabou.Core
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAreHomogeneous)
 import Vehicle.Backend.Prelude
+import Vehicle.Backend.Marabou.Core
 
 --------------------------------------------------------------------------------
 -- Compilation to Marabou
@@ -175,14 +176,14 @@ compileAssertions ident quantifier expr = case expr of
     | order == Lt || order == Gt -> do
       throwError $ UnsupportedOrder MarabouBackend (provenanceOf ann) quantifier order
     | otherwise                  -> do
-      assertion <- compileAssertion ident (pretty order) (argExpr lhs) (argExpr rhs)
+      assertion <- compileAssertion ident (OrderRel order) (argExpr lhs) (argExpr rhs)
       return ([], [assertion])
 
   EqualityExpr eq ann _ _ [lhs, rhs]
     | eq == Neq ->
       throwError $ UnsupportedEquality MarabouBackend (provenanceOf ann) quantifier eq
     | otherwise -> do
-      assertion <- compileAssertion ident "=" (argExpr lhs) (argExpr rhs)
+      assertion <- compileAssertion ident (EqualityRel eq) (argExpr lhs) (argExpr rhs)
       return ([], [assertion])
 
   App{} -> developerError $ unexpectedExprError currentPass (prettySimple expr)
@@ -197,14 +198,27 @@ compileBinder ident binder =
     RealType _ -> return $ MarabouVar n MReal
     _ -> throwError $ UnsupportedVariableType MarabouBackend p ident n t supportedTypes
 
-compileAssertion :: MonadCompile m => Identifier -> Doc a -> OutputExpr -> OutputExpr -> m (Doc a)
+compileAssertion :: MonadCompile m => Identifier -> Relation -> OutputExpr -> OutputExpr -> m (Doc a)
 compileAssertion ident rel lhs rhs = do
   (lhsVars, lhsConstants) <- compileSide lhs
   (rhsVars, rhsConstants) <- compileSide rhs
-  let vars = lhsVars <> rhsVars
-  let constant = sum (lhsConstants <> rhsConstants)
-  return $ hsep (fmap prettyVar vars) <+> rel <+> pretty constant
+  let vars = lhsVars <> flipVars rhsVars
+  let constant = sum (flipConstants lhsConstants <> rhsConstants)
+
+  -- Make the properties a tiny bit nicer by checking if all the vars are
+  -- negative and if so negating everything.
+  let (finalVars, finalConstant, finalRel) = if all (\x -> fst x < 0) vars
+        then (flipVars vars, -1 * constant, flipRel rel)
+        else (vars, constant, rel)
+
+  return $ hsep (fmap compileVar finalVars) <+> compileRel finalRel <+> pretty finalConstant
   where
+    flipConstants :: [Double] -> [Double]
+    flipConstants = fmap ((-1) *)
+
+    flipVars :: [(Double, Symbol)] -> [(Double, Symbol)]
+    flipVars = fmap (first ((-1) *))
+
     compileSide :: MonadCompile m => OutputExpr -> m ([(Double, Symbol)], [Double])
     compileSide = \case
       Var     _ v                           -> return ([(1, v)], [])
@@ -226,10 +240,15 @@ compileAssertion ident rel lhs rhs = do
     compileLiteral (LInt  i) = fromIntegral i
     compileLiteral (LRat  q) = fromRational q
 
-    prettyVar :: (Double, Symbol) -> Doc a
-    prettyVar (-1,          var) = "-" <> pretty var
-    prettyVar (1,           var) = "+" <> pretty var
-    prettyVar (coefficient, var) = pretty coefficient <> pretty var
+    compileRel :: Relation -> Doc a
+    compileRel (OrderRel order)  = pretty order
+    compileRel (EqualityRel Eq)  = "="
+    compileRel (EqualityRel Neq) = "!="
+
+    compileVar :: (Double, Symbol) -> Doc a
+    compileVar (-1,          var) = "-" <> pretty var
+    compileVar (1,           var) = "+" <> pretty var
+    compileVar (coefficient, var) = pretty coefficient <> pretty var
 
 supportedTypes :: [Builtin]
 supportedTypes =

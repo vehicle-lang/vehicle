@@ -12,7 +12,7 @@ Some examples of Vehicle files are as follows:
 
 1. Property 6 of the ACASXu unmanned aerial vehicle collision avoidance system ([paper](https://arxiv.org/abs/1702.01135)):
   - [Vehicle code](https://github.com/wenkokke/vehicle/blob/dev/examples/network/acasXu/property6/property6.vcl)
-  - Generated Marabou queries (coming soon)
+  - [Generated Marabou queries](https://github.com/wenkokke/vehicle/blob/dev/examples/network/acasXu/property6/property6-output-marabou)
   - [Generated Agda code](https://github.com/wenkokke/vehicle/blob/dev/examples/network/acasXu/property6/property6-output.agda)
 
 2. The safety of a simple car controller that uses a neural-network ([paper](https://www.cs.utexas.edu/~boyer/controller.pdf)):
