@@ -12,10 +12,10 @@ prevPosition : InputVector -> Rat
 prevPosition x = x ! 1
 
 safeInput : InputVector -> Prop
-safeInput x = abs (currentPosition x) <= 3
+safeInput x = abs (currentPosition x) < 3
 
 safeOutput : InputVector -> Prop
-safeOutput x = abs (deltaV x + (2 * currentPosition x) - prevPosition x) <= 2
+safeOutput x = abs (deltaV x + (2 * currentPosition x) - prevPosition x) < 2
 
 safe : Prop
 safe = every x . safeInput x => safeOutput x

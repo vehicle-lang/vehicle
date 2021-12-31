@@ -7,8 +7,8 @@ open import Data.List
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Rational
 open import Data.Rational.Properties
-open import Data.Nat using (z≤n)
-open import Data.Integer using (+≤+; +_)
+open import Data.Nat using (z≤n; s≤s)
+open import Data.Integer using (+≤+; +<+; +_)
 open import Data.Vec using (_∷_)
 open import Level using (0ℓ)
 open import Relation.Binary.PropositionalEquality
@@ -53,7 +53,7 @@ open import Algebra.Properties.CommutativeSemigroup +-commutativeSemigroup
 
 postulate controller : ℚ → ℚ → ℚ
 
-postulate controller-lem : ∀ x y → ∣ x ∣ ≤ 3ℚ → ∣ controller x y + 2ℚ * x - y ∣ ≤ 2ℚ
+postulate controller-lem : ∀ x y → ∣ x ∣ < 3ℚ → ∣ controller x y + 2ℚ * x - y ∣ < 2ℚ
 
 ------------------------------------------------------------------------
 -- The model
@@ -94,10 +94,10 @@ stateSum : State → ℚ
 stateSum s = position s + velocity s + windSpeed s
 
 Safe : State → Set
-Safe s = ∣ position s ∣ ≤ 3ℚ
+Safe s = ∣ position s ∣ < 3ℚ
 
 Good : State → Set
-Good s = ∣ stateSum s ∣ ≤ 2ℚ
+Good s = ∣ stateSum s ∣ < 2ℚ
 
 LowWind : ℚ → Set
 LowWind x = ∣ x ∣ ≤ 1ℚ
@@ -105,20 +105,21 @@ LowWind x = ∣ x ∣ ≤ 1ℚ
 -- A state being good will imply the next state is safe
 
 good⇒nextSafe : ∀ dw → ∣ dw ∣ ≤ 1ℚ → ∀ s → Good s → Safe (nextState dw s)
-good⇒nextSafe dw ∣dw∣<1 s ∣Σ∣≤2 =  begin
+good⇒nextSafe dw ∣dw∣≤1 s ∣Σ∣<2 =  begin-strict
   ∣ (position s + velocity s) + (windSpeed s + dw) ∣ ≡˘⟨ cong ∣_∣ (+-assoc (position s + velocity s) (windSpeed s) dw) ⟩
   ∣ (position s + velocity s) + windSpeed s + dw   ∣ ≤⟨ ∣p+q∣≤∣p∣+∣q∣ (stateSum s) dw ⟩
-  ∣ position s + velocity s + windSpeed s ∣ + ∣ dw ∣ ≤⟨ +-mono-≤ ∣Σ∣≤2 ∣dw∣<1 ⟩
+  ∣ position s + velocity s + windSpeed s ∣ + ∣ dw ∣ <⟨ +-monoˡ-< ∣ dw ∣ ∣Σ∣<2 ⟩
+  2ℚ + ∣ dw ∣                                        ≤⟨ +-monoʳ-≤ 2ℚ ∣dw∣≤1 ⟩
   2ℚ + 1ℚ                                            ≡⟨⟩
   3ℚ                                                 ∎
 
 -- Initial state is both safe and good
 
 initialState-safe : Safe initialState
-initialState-safe = *≤* (+≤+ z≤n)
+initialState-safe = *<* (+<+ (s≤s z≤n))
 
 initialState-good : Good initialState
-initialState-good = *≤* (+≤+ z≤n)
+initialState-good = *<* (+<+ (s≤s z≤n))
 
 good⇒nextGood : ∀ dw → ∣ dw ∣ ≤ 1ℚ → ∀ s → Good s → Good (nextState dw s)
 good⇒nextGood dw ∣dw∣≤1 s Σ≤2 =
@@ -127,7 +128,7 @@ good⇒nextGood dw ∣dw∣≤1 s Σ≤2 =
     dv = controller (position s') (position s)
     s'-safe = good⇒nextSafe dw ∣dw∣≤1 s Σ≤2
   in
-  begin
+  begin-strict
     ∣ position s' + velocity s' + windSpeed s' ∣                                 ≡⟨⟩
     ∣ position s' + (velocity s + dv) + windSpeed s' ∣                           ≡⟨ cong (λ v → ∣ v + windSpeed s' ∣) (x∙yz≈zx∙y (position s') (velocity s) dv) ⟩
     ∣ dv + position s' + velocity s + windSpeed s'   ∣                           ≡⟨ cong ∣_∣ (sym (p+q-q≡p (dv + position s' + velocity s + windSpeed s') (position s))) ⟩
@@ -137,7 +138,7 @@ good⇒nextGood dw ∣dw∣≤1 s Σ≤2 =
     ∣ dv + position s' + (position s + velocity s + windSpeed s') - position s ∣ ≡⟨⟩
     ∣ dv + position s' + position s' - position s ∣                              ≡⟨ cong (λ v → ∣ v - position s ∣) (+-assoc dv (position s') (position s')) ⟩
     ∣ dv + (position s' + position s') - position s ∣                            ≡⟨ cong (λ v → ∣ dv + v - position s ∣) (sym (2*x≡x+x (position s'))) ⟩
-    ∣ dv + 2ℚ * position s' - position s ∣                                       ≤⟨ controller-lem (position s') (position s) s'-safe ⟩
+    ∣ dv + 2ℚ * position s' - position s ∣                                       <⟨ controller-lem (position s') (position s) s'-safe ⟩
     2ℚ                                                                           ∎
 
 finalState-good : ∀ xs → All LowWind xs → Good (finalState xs)
