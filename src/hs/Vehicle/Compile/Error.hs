@@ -35,6 +35,7 @@ data CompileError
   | MissingDefFunExpr    Provenance Symbol
   | DuplicateName        (NonEmpty Provenance) Symbol
   | MissingVariables     Provenance Symbol
+  | UnchainableOrders    Provenance Order Order
 
   -- Errors thrown by scope checking.
   | UnboundName Symbol Provenance

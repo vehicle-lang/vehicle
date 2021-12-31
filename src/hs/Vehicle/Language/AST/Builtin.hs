@@ -19,6 +19,7 @@ module Vehicle.Language.AST.Builtin
   , counterpart
   , flipOrder
   , flipRel
+  , chainable
   ) where
 
 import Data.Bifunctor (first)
@@ -198,6 +199,9 @@ flipOrder = \case
   Lt -> Gt
   Ge -> Le
   Gt -> Lt
+
+chainable :: Order -> Order -> Bool
+chainable e1 e2 = e1 == e2 || e1 == counterpart e2
 
 --------------------------------------------------------------------------------
 -- Relation

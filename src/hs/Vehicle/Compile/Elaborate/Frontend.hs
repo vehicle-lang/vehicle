@@ -122,10 +122,10 @@ instance Elab B.Expr V.InputExpr where
 
     B.Eq e1 tk e2             -> builtin (V.Equality V.Eq)  tk [e1, e2]
     B.Neq e1 tk e2            -> builtin (V.Equality V.Neq) tk [e1, e2]
-    B.Le e1 tk e2             -> builtin (V.Order    V.Le)  tk [e1, e2]
-    B.Lt e1 tk e2             -> builtin (V.Order    V.Lt)  tk [e1, e2]
-    B.Ge e1 tk e2             -> builtin (V.Order    V.Ge)  tk [e1, e2]
-    B.Gt e1 tk e2             -> builtin (V.Order    V.Gt)  tk [e1, e2]
+    B.Le e1 tk e2             -> elabOrder V.Le tk e1 e2
+    B.Lt e1 tk e2             -> elabOrder V.Lt tk e1 e2
+    B.Ge e1 tk e2             -> elabOrder V.Ge tk e1 e2
+    B.Gt e1 tk e2             -> elabOrder V.Gt tk e1 e2
 
     B.Mul e1 tk e2            -> builtin (V.NumericOp2 V.Mul) tk [e1, e2]
     B.Div e1 tk e2            -> builtin (V.NumericOp2 V.Div) tk [e1, e2]
@@ -241,6 +241,27 @@ elabQuantifierIn :: (MonadCompile m, IsToken token) => token -> V.Quantifier -> 
 elabQuantifierIn t q bs container body = do
   checkNonEmpty t bs
   unfoldQuantifierIn (mkAnn t) q <$> elab container <*> elabBindersAndBody bs body
+
+elabOrder :: (MonadCompile m, IsToken token) => V.Order -> token -> B.Expr -> B.Expr -> m V.InputExpr
+elabOrder order tk e1 e2 = do
+  let Tk tkDetails@(tkPos, _) = toToken tk
+  let chainedOrder = case e1 of
+        B.Le _ _ e -> Just (V.Le, e)
+        B.Lt _ _ e -> Just (V.Lt, e)
+        B.Ge _ _ e -> Just (V.Ge, e)
+        B.Gt _ _ e -> Just (V.Gt, e)
+        _          -> Nothing
+
+  case chainedOrder of
+    Nothing -> builtin (V.Order order) tk [e1, e2]
+    Just (prevOrder, e)
+      | not (V.chainable prevOrder order) ->
+        throwError $ UnchainableOrders (tkProvenance tk) prevOrder order
+      | otherwise -> elab $ B.And e1 (B.TokAnd (tkPos, "and")) $ case order of
+        V.Le -> B.Le e (B.TokLe tkDetails) e2
+        V.Lt -> B.Lt e (B.TokLt tkDetails) e2
+        V.Ge -> B.Ge e (B.TokGe tkDetails) e2
+        V.Gt -> B.Gt e (B.TokGt tkDetails) e2
 
 -- |Takes a list of declarations, and groups type and expression
 --  declarations by their name.

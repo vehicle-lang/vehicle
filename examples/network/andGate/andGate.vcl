@@ -9,7 +9,7 @@ falsey : Real -> Prop
 falsey x = x <= 0.5
 
 validInput : Real -> Prop
-validInput x = 0 <= x and x <= 1
+validInput x = 0 <= x <= 1
 
 correctOutput : Real -> Real -> Prop
 correctOutput x1 x2 =

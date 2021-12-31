@@ -36,12 +36,11 @@ clearOfConflictScore x = acasXu x ! 0
 
 intruderFarAway : InputVector -> Prop
 intruderFarAway x =
-  ((- pi <= angleToIntruder x and angleToIntruder x <= -0.7)
-    or (0.7 <= angleToIntruder x and angleToIntruder x <= pi))
-  and 12000 <= distanceToIntruder x and distanceToIntruder x <= 62000
-  and -pi   <= intruderHeading    x and intruderHeading    x <= -pi + 0.005
-  and 100   <= speed              x and speed              x <= 1200
-  and 0     <= intruderSpeed      x and intruderSpeed      x <= 1200
+  (- pi <= angleToIntruder x <= -0.7 or 0.7 <= angleToIntruder x <= pi)
+  and 12000 <= distanceToIntruder x <= 62000
+  and -pi   <= intruderHeading    x <= -pi + 0.005
+  and 100   <= speed              x <= 1200
+  and 0     <= intruderSpeed      x <= 1200
 
 advisesClearOfConflict : InputVector -> Prop
 advisesClearOfConflict x = let y = acasXu x in

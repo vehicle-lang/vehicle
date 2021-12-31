@@ -88,28 +88,28 @@ instance MeaningfulError CompileError where
     -- Elaboration Core
 
     UnknownBuiltin tk -> UError $ UserError
-      { problem    = "Unknown symbol" <+> pretty (tkSymbol tk)
-      , provenance = tkProvenance tk
+      { provenance = tkProvenance tk
+      , problem    = "Unknown symbol" <+> pretty (tkSymbol tk)
       , fix        = "Please consult the documentation for a description of Vehicle syntax"
       }
 
     MalformedPiBinder tk -> UError $ UserError
-      { problem    = "Malformed binder for Pi, expected a type but only found name" <+> pretty (tkSymbol tk)
-      , provenance = tkProvenance tk
+      { provenance = tkProvenance tk
+      , problem    = "Malformed binder for Pi, expected a type but only found name" <+> pretty (tkSymbol tk)
       , fix        = "Unknown"
       }
 
     MalformedLamBinder expr -> UError $ UserError
-      { problem    = "Malformed binder for Lambda, expected a name but only found an expression" <+> prettyVerbose expr
-      , provenance = provenanceOf expr
+      { provenance = provenanceOf expr
+      , problem    = "Malformed binder for Lambda, expected a name but only found an expression" <+> prettyVerbose expr
       , fix        = "Unknown"
       }
 
     -- Elaboration Frontend
 
     MissingDefFunType p name -> UError $ UserError
-      { problem    = "missing type for the declaration" <+> squotes (pretty name)
-      , provenance = p
+      { provenance = p
+      , problem    = "missing type for the declaration" <+> squotes (pretty name)
       , fix        = "add a type for the declaration, e.g."
                     <> line <> line
                     <> "addOne :: Int -> Int    <-----   type declaration" <> line
@@ -117,8 +117,8 @@ instance MeaningfulError CompileError where
       }
 
     MissingDefFunExpr p name -> UError $ UserError
-      { problem    = "missing definition for the declaration" <+> squotes (pretty name)
-      , provenance = p
+      { provenance = p
+      , problem    = "missing definition for the declaration" <+> squotes (pretty name)
       , fix        = "add a definition for the declaration, e.g."
                     <> line <> line
                     <> "addOne :: Int -> Int" <> line
@@ -126,23 +126,30 @@ instance MeaningfulError CompileError where
       }
 
     DuplicateName p name -> UError $ UserError
-      { problem    = "multiple definitions found with the name" <+> squotes (pretty name)
-      , provenance = fold p
+      { provenance = fold p
+      , problem    = "multiple definitions found with the name" <+> squotes (pretty name)
       , fix        = "remove or rename the duplicate definitions"
       }
 
     MissingVariables p symbol -> UError $ UserError
-      { problem    = "expected at least one variable name after" <+> squotes (pretty symbol)
-      , provenance = p
+      { provenance = p
+      , problem    = "expected at least one variable name after" <+> squotes (pretty symbol)
       , fix        = "add one or more names after" <+> squotes (pretty symbol)
+      }
+
+    UnchainableOrders p prevOrder currentOrder -> UError $ UserError
+      { provenance = p
+      , problem    = "cannot chain" <+> squotes (pretty prevOrder) <+>
+                     "and" <+> squotes (pretty currentOrder)
+      , fix        = "split chained orders into a conjunction"
       }
 
     -- Scoping
 
     UnboundName name p -> UError $ UserError
-      { problem    = "The name" <+> squotes (pretty name) <+> "is not in scope"
-      , provenance = p
+      { provenance = p
       -- TODO can use Levenschtein distance to search contexts/builtins
+      , problem    = "The name" <+> squotes (pretty name) <+> "is not in scope"
       , fix        = pretty ("Unknown" :: String)
       }
 

@@ -106,7 +106,7 @@ runTest :: FilePath -> FilePath -> String -> Backend -> IO ()
 runTest inputFile outputFile modulePath backend = do
   run $ Options
     { version       = False
-    , logFile       = Just Nothing
+    , logFile       = Nothing --Just Nothing
     , commandOption = Compile $ CompileOptions
       { inputFile    = inputFile
       , outputFile   = Just outputFile
