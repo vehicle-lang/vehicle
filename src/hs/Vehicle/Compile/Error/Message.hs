@@ -343,7 +343,16 @@ instance MeaningfulError CompileError where
       , problem    = "The use of equality over the unknown type" <+>
                      squotes (pretty typeName) <+> "is not currently supported" <+>
                      "when compiling to" <+> pretty target
-      , fix        = "Try avoiding it, otherwise please open an issue on the" <+>
+      , fix        = "Try avoiding it, otherwise open an issue on the" <+>
+                     "Vehicle issue tracker."
+      }
+
+    UnsupportedNonMagicVariable target p name -> UError $ UserError
+      { provenance = p
+      , problem    = "The variable" <+> squotes (pretty name) <+> "is not used as" <+>
+                     "an input to a network, which is not currently supported" <+>
+                     "by" <+> pretty target
+      , fix        = "Try reformulating the property, or else open an issue on the" <+>
                      "Vehicle issue tracker."
       }
 

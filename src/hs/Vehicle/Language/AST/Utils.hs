@@ -80,7 +80,7 @@ getQuantifierSymbol binder = case nameOf binder of
 
 -- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3
 mkNameWithIndices :: Symbol -> [Int] -> Symbol
-mkNameWithIndices n indices = mconcat (n : ["_" <> pack (show index) | index <- indices])
+mkNameWithIndices n indices = mconcat (n : [pack (show index) | index <- indices])
 
 removeAnnotations :: Functor (t binder var) => t binder var ann -> t binder var ()
 removeAnnotations = void

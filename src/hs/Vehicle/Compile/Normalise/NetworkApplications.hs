@@ -3,6 +3,7 @@ module Vehicle.Compile.Normalise.NetworkApplications
   , convertNetworkAppsToMagicVars
   ) where
 
+import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Control.Monad.State (MonadState(..), runStateT, gets, modify)
 import Data.Map qualified as Map (lookup)
@@ -11,11 +12,12 @@ import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import Data.Bifunctor(Bifunctor(..))
 
-import Vehicle.Prelude
+import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Compile.LetInsertion (insertLets)
+import Data.Text (Text)
 
 --------------------------------------------------------------------------------
 -- Okay so this is a wild ride. The VNNLib format has special variable names for
@@ -79,12 +81,13 @@ import Vehicle.Compile.LetInsertion (insertLets)
 -- | Compiles a given program to a VNNLib script.
 -- Assumes the program has already been normalised and that it only
 -- contains quantifiers of the provided type.
-convertNetworkAppsToMagicVars :: MonadLogger m
-                              => NetworkMap
+convertNetworkAppsToMagicVars :: MonadCompile m
+                              => Verifier
+                              -> NetworkMap
                               -> Quantifier
                               -> CheckedExpr
                               -> m (CheckedExpr, MetaNetwork)
-convertNetworkAppsToMagicVars networkMap quantifier expr = do
+convertNetworkAppsToMagicVars verifier networkMap quantifier expr = do
   logDebug "Beginning conversion of network applications to magic variables"
   incrCallDepth
 
@@ -94,7 +97,9 @@ convertNetworkAppsToMagicVars networkMap quantifier expr = do
 
   finalExpr <- if null metaNetwork
     then return networkAppLiftedExpr
-    else runReaderT (normExpr metaNetwork quantifier networkAppLiftedExpr) networkMap
+    else do
+      let e = normExpr metaNetwork quantifier networkAppLiftedExpr
+      runReaderT e (networkMap, verifier)
 
   decrCallDepth
   logDebug "Finished compilation to VNNLib"
@@ -109,12 +114,14 @@ type MetaNetwork = [Identifier]
 -- Monad
 
 type MonadNetworkApp m =
-  ( MonadLogger m
-  , MonadReader NetworkMap m
+  ( MonadCompile m
+  , MonadReader (NetworkMap, Verifier) m
   )
 
 getNetworkDetailsFromCtx :: MonadNetworkApp m => Identifier -> m NetworkDetails
-getNetworkDetailsFromCtx ident = asks (fromMaybe outOfScopeError . Map.lookup ident)
+getNetworkDetailsFromCtx ident = do
+  networkMap <- asks fst
+  return $ fromMaybe outOfScopeError (Map.lookup ident networkMap)
   where
     outOfScopeError :: a
     outOfScopeError = developerError $
@@ -124,7 +131,11 @@ getNetworkDetailsFromCtx ident = asks (fromMaybe outOfScopeError . Map.lookup id
 -- Algorithm
 --------------------------------------------------------------------------------
 
-normExpr :: MonadNetworkApp m => MetaNetwork -> Quantifier -> CheckedExpr -> m CheckedExpr
+normExpr :: MonadNetworkApp m
+         => MetaNetwork
+         -> Quantifier
+         -> CheckedExpr
+         -> m CheckedExpr
 normExpr metaNetwork quantifier expr = do
   metaNetworkDetails <- traverse getNetworkDetailsFromCtx metaNetwork
 
@@ -136,7 +147,7 @@ normExpr metaNetwork quantifier expr = do
   (updatedExpr, (_down, _up)) <- runStateT (replaceNetworkApplications 0 expr) initialState
 
   -- Append quantifiers over the magic variables so that it becomes a valid SMTLib expression
-  let quantifiedExpr = quantifyOverMagicVariables quantifier metaNetworkDetails updatedExpr
+  quantifiedExpr <- quantifyOverMagicVariables quantifier metaNetworkDetails updatedExpr
   logDebug $ "Replaced network applications:" <+> prettySimple quantifiedExpr <> line
   return quantifiedExpr
 
@@ -221,7 +232,7 @@ replaceNetworkApplications d e = do
       traverseUpOverBinder
       return $ Let ann bound' binder body'
 
-    QuantifierExpr q ann binder body -> do
+    QuantifierExpr _q ann binder body -> do
       -- Recurse, increasing the binding depth by 1
       body' <- replaceNetworkApplications (d + 1) body
 
@@ -229,9 +240,12 @@ replaceNetworkApplications d e = do
       traverseUpOverBinder
 
       case magicVariableToSubstitute of
-        -- Then this bound variable is not equal to one of the magic variables so retain
-        -- the quantifier.
-        Nothing -> return $ QuantifierExpr q ann binder body'
+        -- Then this bound variable is not equal to one of the magic variables,
+        -- which is not currently supported.
+        Nothing -> do
+          verifier <- asks (Verifier . snd)
+          let symbol = getQuantifierSymbol binder
+          throwError $ UnsupportedNonMagicVariable verifier (provenanceOf ann) symbol
 
         -- Then this bound variable is equal to one of the magic variables so this variable
         -- is redundant and we can substitute through.
@@ -381,35 +395,41 @@ showExit e = do
 --------------------------------------------------------------------------------
 -- Step 6: quantification over magic variables
 
-quantifyOverMagicVariables :: Quantifier -> [NetworkDetails] -> CheckedExpr -> CheckedExpr
-quantifyOverMagicVariables q metaNetwork prop =
-  let totalInputs  = sum (map (size . inputTensor)  metaNetwork) in
-  let totalOutputs = sum (map (size . outputTensor) metaNetwork) in
-  let (_, _, result) = foldr forNetwork (totalInputs, totalOutputs, prop) metaNetwork in result
+quantifyOverMagicVariables :: MonadNetworkApp m
+                           => Quantifier
+                           -> [NetworkDetails]
+                           -> CheckedExpr
+                           -> m CheckedExpr
+quantifyOverMagicVariables q metaNetwork prop = do
+  verifier <- asks snd
+  let totalInputs  = sum (map (size . inputTensor)  metaNetwork)
+  let totalOutputs = sum (map (size . outputTensor) metaNetwork)
+  let (_, _, result) = foldr (forNetwork verifier) (totalInputs, totalOutputs, prop) metaNetwork
+  return result
   where
-    forNetwork :: NetworkDetails -> (Int, Int, CheckedExpr) -> (Int, Int, CheckedExpr)
-    forNetwork (NetworkDetails inputs outputs) (inputIndex, outputIndex, body) =
+    forNetwork :: Verifier -> NetworkDetails -> (Int, Int, CheckedExpr) -> (Int, Int, CheckedExpr)
+    forNetwork verifier (NetworkDetails inputs outputs) (inputIndex, outputIndex, body) =
+      let (inputPrefix, outputPrefix) = magicVariablePrefixes verifier in
       let startingInputIndex = inputIndex - size inputs in
       let startingOutputIndex = outputIndex - size outputs in
-      let body' = forTensor mempty Input  startingInputIndex  inputs $
-                  forTensor mempty Output startingOutputIndex outputs body in
+      let body' = forTensor mempty inputPrefix  startingInputIndex  inputs $
+                  forTensor mempty outputPrefix startingOutputIndex outputs body in
       (startingInputIndex, startingOutputIndex, body')
 
     forTensor :: CheckedAnn
-              -> InputOrOutput
+              -> Text
               -> Int
               -> TensorDetails
               -> CheckedExpr
               -> CheckedExpr
-    forTensor ann io startingIndex (TensorDetails size tElem) body =
+    forTensor ann prefix startingIndex (TensorDetails size tElem) body =
       let indices = reverse [startingIndex .. startingIndex + size-1] in
-      let names   = mkMagicVariableNames io indices in
+      let names   = mkMagicVariableNames prefix indices in
       let varType = Builtin ann tElem in
       mkQuantifierSeq q ann (map Just names) varType body
 
-    mkMagicVariableNames :: InputOrOutput -> [Int] -> [Symbol]
-    mkMagicVariableNames io indices = [mkNameWithIndices baseName [i] | i <- indices]
-      where baseName = if io == Input then "X" else "Y"
+    mkMagicVariableNames :: Text -> [Int] -> [Symbol]
+    mkMagicVariableNames prefix indices = [mkNameWithIndices prefix [i] | i <- indices]
 
 currentPass :: Doc a
 currentPass = "insertion of magic network variables"

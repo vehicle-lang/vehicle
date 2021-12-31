@@ -41,10 +41,10 @@ prevPosition : InputVector → ℚ
 prevPosition x = x (# 1)
 
 SafeInput : InputVector → Set
-SafeInput x = abs (currentPosition x) ℚ.≤ ℤ.+ 3 ℚ./ 1
+SafeInput x = abs (currentPosition x) ℚ.< ℤ.+ 3 ℚ./ 1
 
 SafeOutput : InputVector → Set
-SafeOutput x = abs ((deltaV x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currentPosition x) ℚ.- prevPosition x) ℚ.≤ ℤ.+ 2 ℚ./ 1
+SafeOutput x = abs ((deltaV x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currentPosition x) ℚ.- prevPosition x) ℚ.< ℤ.+ 2 ℚ./ 1
 
 abstract
   safe : ∀ (x : Tensor ℚ (2 ∷ [])) → SafeInput x → SafeOutput x

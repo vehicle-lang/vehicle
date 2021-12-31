@@ -75,6 +75,7 @@ data CompileError
   | UnsupportedOrder               Backend Provenance Quantifier Order
   | UnsupportedPolymorphicEquality Backend Provenance Symbol
   | UnsupportedBuiltin             Backend Provenance Builtin
+  | UnsupportedNonMagicVariable    Backend Provenance Symbol
   | NonLinearConstraint            Backend Provenance Identifier OutputExpr OutputExpr
   | NoNetworkUsedInProperty        Backend Provenance Identifier
   | LookupInVariableDimTensor      Backend Provenance OutputExpr

@@ -1,5 +1,6 @@
 module Vehicle.Backend.Prelude where
 
+import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Data.Bifunctor (Bifunctor(first))
 import Data.Version (Version, makeVersion)
@@ -20,6 +21,10 @@ data Verifier
   = VNNLib
   | Marabou
   deriving (Eq, Show, Read)
+
+magicVariablePrefixes :: Verifier -> (Text, Text)
+magicVariablePrefixes VNNLib  = ("X_", "Y_")
+magicVariablePrefixes Marabou = ("x", "y")
 
 pattern AgdaBackend :: Backend
 pattern AgdaBackend = ITP Agda

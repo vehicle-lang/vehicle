@@ -82,7 +82,7 @@ compileProperty networkMap ident expr = flip runReaderT ident $ do
 
   -- Convert all applications of networks into magic variables
   (networklessExpr, metaNetwork) <-
-    convertNetworkAppsToMagicVars networkMap quantifier possiblyNegatedExpr
+    convertNetworkAppsToMagicVars VNNLib networkMap quantifier possiblyNegatedExpr
 
   -- Normalise the expression to remove any implications, push the negations through
   -- and expand out any multiplication.
