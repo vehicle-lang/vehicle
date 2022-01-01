@@ -76,13 +76,13 @@ requireHaskell = do
 
 -- BNFC -- a generator for parsers and printers
 requireBNFC :: Action ()
-requireBNFC = installIfMissing "bnfc" "BNFC" "https://bnfc.digitalgrammars.com/" bnfcVersion
+requireBNFC = cabalInstallIfMissing "bnfc" "BNFC" "https://bnfc.digitalgrammars.com/" bnfcVersion
 
 requireAlex :: Action ()
-requireAlex = installIfMissing "alex" "alex" "https://hackage.haskell.org/package/alex" alexVersion
+requireAlex = cabalInstallIfMissing "alex" "alex" "https://hackage.haskell.org/package/alex" alexVersion
 
 requireHappy :: Action ()
-requireHappy = installIfMissing "happy" "happy" "https://hackage.haskell.org/package/happy" happyVersion
+requireHappy = cabalInstallIfMissing "happy" "happy" "https://hackage.haskell.org/package/happy" happyVersion
 
 requireAgda :: Action ()
 requireAgda = do
@@ -256,8 +256,8 @@ askConsent message = do
       when (c `notElem` "yY") exitSuccess
       hSetBuffering stdin oldBufferMode
 
-installIfMissing :: String -> String -> String -> Version -> Action ()
-installIfMissing executable packageName link version = do
+cabalInstallIfMissing :: String -> String -> String -> Version -> Action ()
+cabalInstallIfMissing executable packageName link version = do
   missing <- not <$> hasExecutable executable
   when missing $ do
     putInfo $ "Vehicle requires " <> packageName

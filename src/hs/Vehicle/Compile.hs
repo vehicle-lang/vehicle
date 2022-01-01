@@ -1,5 +1,6 @@
 module Vehicle.Compile
-  ( CompileOptions(..)
+  ( module CompilePrelude
+  , CompileOptions(..)
   , compile
   , typeCheck
   , typeCheckExpr
@@ -10,7 +11,7 @@ import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
 
 import Vehicle.Backend
-import Vehicle.Compile.Prelude
+import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Parse

@@ -6,7 +6,7 @@ import GHC.IO.Encoding (utf8, setLocaleEncoding)
 import Options.Applicative
 
 import Vehicle (run, Command(..), Options(Options))
-import Vehicle.Compile (CompileOptions(..))
+import Vehicle.Compile (CompileOptions(..), NetworkLocation(..))
 import Vehicle.Check (CheckOptions(..))
 
 --------------------------------------------------------------------------------
@@ -68,6 +68,20 @@ compileParser = CompileOptions
      <> short 'm'
      <> help "The name of the module."
      <> metavar "MODULENAME" )
+  <*> networkOptions
+       ( long "network"
+      <> short 'n'
+      <> help "The name (as used in the Vehicle code) and path to a neural network."
+      <> metavar "NETWORK" )
+
+networkOptions :: Mod OptionFields NetworkLocation -> Parser [NetworkLocation]
+networkOptions desc = some (option (maybeReader readNL) desc)
+  where
+    readNL :: String -> Maybe NetworkLocation
+    readNL s = case words s of
+      [name, filepath] -> Just $ NetworkLocation name filepath
+      _                -> Nothing
+
 
 checkDescription :: InfoMod Command
 checkDescription = progDesc "Check the verification status of a Vehicle property."

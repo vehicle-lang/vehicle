@@ -18,10 +18,14 @@ data CompileOptions = CompileOptions
   , outputFile     :: Maybe FilePath
   , outputTarget   :: Backend
   , moduleName     :: String
+  , networks       :: [NetworkLocation]
   } deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Neural networks
+
+data NetworkLocation = NetworkLocation String FilePath
+  deriving (Show)
 
 type NetworkMap = Map Identifier NetworkDetails
 
