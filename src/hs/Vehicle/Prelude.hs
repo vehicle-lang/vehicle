@@ -3,7 +3,9 @@ module Vehicle.Prelude
   ( module X
   , VehicleLang(..)
   , Negatable(..)
+  , OutputFilePaths
   , LogFilePath
+  , ErrorFilePath
   , (|->)
   , (!?)
   , (!!?)
@@ -110,6 +112,8 @@ class Negatable a where
   neg :: a -> a
 
 type LogFilePath = Maybe (Maybe FilePath)
+type ErrorFilePath = Maybe FilePath
+type OutputFilePaths = (ErrorFilePath, LogFilePath)
 
 --------------------------------------------------------------------------------
 -- Developer errors

@@ -6,8 +6,9 @@ import GHC.IO.Encoding (utf8, setLocaleEncoding)
 import Options.Applicative
 
 import Vehicle (run, Command(..), Options(Options))
-import Vehicle.Compile (CompileOptions(..), NetworkLocation(..))
 import Vehicle.Check (CheckOptions(..))
+import Vehicle.Compile (CompileOptions(..))
+import Vehicle.NeuralNetwork (NetworkLocation(..))
 
 --------------------------------------------------------------------------------
 -- Main function
@@ -32,6 +33,12 @@ optionsParser = Options
   <*> option auto
       ( long "log-file"
      <> help "Enables logging to the provided file. If no argument is provided will output to stdout."
+     <> showDefault
+     <> value Nothing
+     <> metavar "FILENAME" )
+  <*> option auto
+      ( long "error-file"
+     <> help "Redirects error to the provided file. If no argument is provided will output to stderr."
      <> showDefault
      <> value Nothing
      <> metavar "FILENAME" )
@@ -81,7 +88,6 @@ networkOptions desc = some (option (maybeReader readNL) desc)
     readNL s = case words s of
       [name, filepath] -> Just $ NetworkLocation name filepath
       _                -> Nothing
-
 
 checkDescription :: InfoMod Command
 checkDescription = progDesc "Check the verification status of a Vehicle property."

@@ -21,23 +21,23 @@ import Vehicle.Compile.Type (runTypeCheck)
 import Vehicle.Compile.Normalise (normalise, defaultNormalisationOptions)
 import Vehicle.Compile.Normalise.NetworkTypes (normaliseNetworkTypes)
 
-compile :: LogFilePath -> CompileOptions -> IO ()
-compile logFile opts@CompileOptions{..} = do
+compile :: OutputFilePaths -> CompileOptions -> IO ()
+compile outputFiles opts@CompileOptions{..} = do
   contents  <- TIO.readFile inputFile
-  typedProg <- fromLoggedEitherIO logFile (typeCheck contents)
+  typedProg <- fromLoggedEitherIO outputFiles (typeCheck contents)
 
   -- Compile to requested backend
   case outputTarget of
     ITP itp ->
       case itp of
-        Agda -> toAgda logFile opts typedProg
+        Agda -> toAgda outputFiles opts typedProg
 
     (Verifier verifier) -> do
-      normProg <- fromLoggedEitherIO logFile $ normalise defaultNormalisationOptions typedProg
-      (networkMap, networkedProg) <- fromLoggedEitherIO logFile $ normaliseNetworkTypes normProg
+      normProg <- fromLoggedEitherIO outputFiles $ normalise defaultNormalisationOptions typedProg
+      (networkMap, networkedProg) <- fromLoggedEitherIO outputFiles $ normaliseNetworkTypes normProg
       case verifier of
-        VNNLib  -> toVNNLib  logFile opts networkMap networkedProg
-        Marabou -> toMarabou logFile opts networkMap networkedProg
+        VNNLib  -> toVNNLib  outputFiles opts networkMap networkedProg
+        Marabou -> toMarabou outputFiles opts networkMap networkedProg
 
 typeCheck :: (MonadLogger m, MonadError CompileError m)
           => Text -> m CheckedProg

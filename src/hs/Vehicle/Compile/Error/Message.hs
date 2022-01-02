@@ -50,15 +50,18 @@ fixText t = "Fix:" <+> t
 --------------------------------------------------------------------------------
 -- IO
 
-fromEitherIO :: Either CompileError a -> IO a
-fromEitherIO (Right x)  = return x
-fromEitherIO (Left err) = do
+fromEitherIO :: ErrorFilePath -> Either CompileError a -> IO a
+fromEitherIO _           (Right x)  = return x
+fromEitherIO errorFile (Left err) = do
   let errStr = layoutAsString $ pretty $ details err
-  hPutStrLn stderr errStr
+  case errorFile of
+    Nothing   -> hPutStrLn stderr errStr
+    Just file -> appendFile file errStr
   exitFailure
 
-fromLoggedEitherIO :: LogFilePath -> ExceptT CompileError Logger a -> IO a
-fromLoggedEitherIO logFile x = fromEitherIO =<< fromLoggedIO logFile (logCompileError x)
+fromLoggedEitherIO :: OutputFilePaths -> ExceptT CompileError Logger a -> IO a
+fromLoggedEitherIO (errorFile, logFile) x =
+  fromEitherIO errorFile =<< fromLoggedIO logFile (logCompileError x)
 
 logCompileError :: ExceptT CompileError Logger a -> Logger (Either CompileError a)
 logCompileError x = do

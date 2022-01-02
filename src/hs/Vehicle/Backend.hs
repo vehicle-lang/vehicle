@@ -19,18 +19,18 @@ import Vehicle.Backend.Agda (AgdaOptions(..))
 import Vehicle.Compile.Error.Message
 import Vehicle.NeuralNetwork
 
-toAgda :: LogFilePath -> CompileOptions -> CheckedProg -> IO ()
-toAgda logFile CompileOptions{..} prog = do
+toAgda :: OutputFilePaths -> CompileOptions -> CheckedProg -> IO ()
+toAgda outputFiles CompileOptions{..} prog = do
   let agdaOptions = AgdaOptions "TODO_projectFile" [pack moduleName] mempty
-  agdaDoc <- fromLoggedEitherIO logFile $ Agda.compile agdaOptions prog
+  agdaDoc <- fromLoggedEitherIO outputFiles $ Agda.compile agdaOptions prog
   Agda.writeOutProperty outputFile agdaDoc
 
-toVNNLib :: LogFilePath -> CompileOptions -> NetworkMap -> CheckedProg -> IO ()
-toVNNLib logFile CompileOptions{..} networkMap prog = do
-  properties <- fromLoggedEitherIO logFile (VNNLib.compile networkMap prog)
+toVNNLib :: OutputFilePaths -> CompileOptions -> NetworkMap -> CheckedProg -> IO ()
+toVNNLib outputFiles CompileOptions{..} networkMap prog = do
+  properties <- fromLoggedEitherIO outputFiles (VNNLib.compile networkMap prog)
   forM_ properties $ VNNLib.writeOutProperty outputFile
 
-toMarabou :: LogFilePath -> CompileOptions -> NetworkMap -> CheckedProg -> IO ()
-toMarabou logFile CompileOptions{..} networkMap prog = do
-  properties <- fromLoggedEitherIO logFile (Marabou.compile networkMap prog)
+toMarabou :: OutputFilePaths -> CompileOptions -> NetworkMap -> CheckedProg -> IO ()
+toMarabou outputFiles CompileOptions{..} networkMap prog = do
+  properties <- fromLoggedEitherIO outputFiles (Marabou.compile networkMap prog)
   forM_ properties $ Marabou.writeOutProperty outputFile

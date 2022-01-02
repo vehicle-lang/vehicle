@@ -10,7 +10,6 @@ import System.Exit (exitFailure)
 import System.FilePath (takeFileName, splitPath, (<.>), (</>), takeBaseName)
 import System.Directory (removeFile, removeDirectory)
 import System.IO.Error (isDoesNotExistError)
-import System.IO.Silently
 import System.IO (stderr)
 import Control.Exception ( catch, throwIO, SomeException, Exception )
 import Data.Maybe (fromMaybe)
@@ -59,12 +58,12 @@ failTest filepath backend = test
 
 runTest :: FilePath -> FilePath -> Backend -> IO ()
 runTest inputFile outputFile backend = do
-  output <- hCapture_ [stderr] (run options `catch` handleExitCode)
-  writeFile outputFile output
+  run options `catch` handleExitCode
   where
     options = Options
       { version       = False
       , logFile       = Nothing
+      , errFile       = Just outputFile
       , commandOption = Compile $ CompileOptions
         { inputFile    = inputFile
         , outputFile   = Nothing

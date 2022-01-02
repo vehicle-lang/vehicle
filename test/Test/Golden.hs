@@ -107,6 +107,7 @@ runTest inputFile outputFile modulePath backend = do
   run $ Options
     { version       = False
     , logFile       = Nothing --Just Nothing
+    , errFile       = Nothing
     , commandOption = Compile $ CompileOptions
       { inputFile    = inputFile
       , outputFile   = Just outputFile

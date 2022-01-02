@@ -20,13 +20,15 @@ run Options{..} = do
     print version
     exitSuccess
 
+  let outputFiles = (errFile, logFile)
   case commandOption of
-    Compile options -> compile logFile options
-    Check   options -> check   logFile options
+    Compile options -> compile outputFiles options
+    Check   options -> check   outputFiles options
 
 data Options = Options
   { version       :: Bool
   , logFile       :: LogFilePath
+  , errFile       :: ErrorFilePath
   , commandOption :: Command
   } deriving (Show)
 

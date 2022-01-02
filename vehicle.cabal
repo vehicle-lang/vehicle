@@ -218,7 +218,6 @@ test-suite vehicle-test
                     , tasty-hunit
                     , vehicle
                     , containers >=0.5  && <1
-                    , silently
                     -- For generation of terms
                     -- , lazy-search
                     -- , size-based

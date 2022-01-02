@@ -14,6 +14,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Type (runTypeCheck)
+import Test.Tasty ( TestName, testGroup, after, DependencyType )
+import Test.Tasty.Runners (TestTree(..))
 
 -- If you want to see the logs for tests, change `discardLogger` to `traceLogger` here.
 discardState :: ExceptT CompileError Logger a -> a

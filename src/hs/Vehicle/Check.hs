@@ -13,7 +13,7 @@ data CheckOptions = CheckOptions
   , propertyUUID :: String
   } deriving (Show)
 
-check :: LogFilePath -> CheckOptions -> IO ()
+check :: OutputFilePaths -> CheckOptions -> IO ()
 check _logFile _checkOptions = do
   print ("Valid" :: String)
   return ()
