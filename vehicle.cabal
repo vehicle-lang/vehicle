@@ -90,6 +90,8 @@ library
 
                       , Vehicle.Check
 
+                      , Vehicle.NeuralNetwork
+
   other-modules:        Vehicle.Prelude.Prettyprinter
                       , Vehicle.Prelude.Provenance
                       , Vehicle.Prelude.Token
@@ -190,7 +192,8 @@ test-suite vehicle-test
   type:               exitcode-stdio-1.0
   main-is:            Test.hs
   hs-source-dirs:     test
-  other-modules:      Test.Golden
+  other-modules:      Test.Fail
+                    , Test.Golden
                     , Test.Golden.Utils
                     , Test.Unit
                     , Test.Unit.AlphaEquivalence
@@ -215,6 +218,7 @@ test-suite vehicle-test
                     , tasty-hunit
                     , vehicle
                     , containers >=0.5  && <1
+                    , silently
                     -- For generation of terms
                     -- , lazy-search
                     -- , size-based

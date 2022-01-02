@@ -17,6 +17,7 @@ import Vehicle.Backend.Marabou qualified as Marabou (compile, writeOutProperty)
 import Vehicle.Backend.Agda qualified as Agda (compile, writeOutProperty)
 import Vehicle.Backend.Agda (AgdaOptions(..))
 import Vehicle.Compile.Error.Message
+import Vehicle.NeuralNetwork
 
 toAgda :: LogFilePath -> CompileOptions -> CheckedProg -> IO ()
 toAgda logFile CompileOptions{..} prog = do

@@ -20,6 +20,7 @@ import Vehicle.Backend.VNNLib.Core
 import Vehicle.Compile.Normalise.NetworkApplications (convertNetworkAppsToMagicVars)
 import Vehicle.Compile.Normalise.DNF (splitConjunctions)
 import Vehicle.Backend.Prelude
+import Vehicle.NeuralNetwork
 
 compile :: MonadCompile m => NetworkMap -> CheckedProg -> m [VNNLibProperty]
 compile networkMap prog = do

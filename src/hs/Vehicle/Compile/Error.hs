@@ -6,9 +6,10 @@ import Control.Monad.Except ( MonadError )
 import Data.List.NonEmpty (NonEmpty)
 import Prettyprinter (list)
 
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Backend.Prelude (Backend)
-import Vehicle.Compile.Prelude
+import Vehicle.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -62,9 +63,9 @@ data CompileError
   | NetworkTypeIsNotAFunction              Identifier CheckedExpr
   | NetworkTypeWithNonExplicitArguments    Identifier CheckedExpr CheckedBinder
   | NetworkTypeWithHeterogeneousInputTypes Identifier CheckedExpr CheckedExpr CheckedExpr
-  | NetworkTypeHasMultidimensionalTensor   Identifier CheckedExpr CheckedExpr InputOrOutput
-  | NetworkTypeHasVariableSizeTensor       Identifier CheckedExpr CheckedExpr InputOrOutput
-  | NetworkTypeUnsupportedElementType      Identifier CheckedExpr CheckedExpr InputOrOutput
+  | NetworkTypeHasMultidimensionalTensor   Identifier CheckedExpr InputOrOutput
+  | NetworkTypeHasVariableSizeTensor       Identifier CheckedExpr InputOrOutput
+  | NetworkTypeUnsupportedElementType      Identifier CheckedExpr InputOrOutput
 
   -- Backend errors
   | NoPropertiesFound

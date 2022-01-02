@@ -15,7 +15,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map (toAscList)
 import Data.Version (Version, showVersion)
 
-import Prettyprinter ( line', unAnnotate, layoutPretty, defaultLayoutOptions)
+import Prettyprinter ( line', unAnnotate, layoutPretty, defaultLayoutOptions, surround)
 import Prettyprinter.Internal (Doc(Annotated))
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
@@ -57,6 +57,9 @@ hcat = concatWith (<>)
 
 vcat :: Foldable t => t (Doc ann) -> Doc ann
 vcat = concatWith (\x y -> x <> line' <> y)
+
+prettyFlatList :: Pretty a => [a] -> Doc ann
+prettyFlatList xs = "[" <+> concatWith (surround ", ") (pretty <$> xs) <+> "]"
 
 --------------------------------------------------------------------------------
 -- Useful utility functions

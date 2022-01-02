@@ -18,7 +18,7 @@ import Vehicle.Compile.Type (runTypeCheck)
 -- If you want to see the logs for tests, change `discardLogger` to `traceLogger` here.
 discardState :: ExceptT CompileError Logger a -> a
 discardState e = case discardLogger $ logCompileError e of
-  Left  x -> error (show (details x))
+  Left  x -> developerError $ pretty $ details x
   Right y -> y
 
 traceLogger :: Logger a -> a

@@ -16,6 +16,7 @@ import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.AlphaEquivalence (alphaEq)
 import Vehicle.Compile.Error
+import Vehicle.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- Network standardisation
@@ -165,8 +166,8 @@ analyseNetworkInputTypes :: MonadNetworkTypeAnalysis m
 analyseNetworkInputTypes [] = do
   (ident, networkType) <- ask
   throwError $ NetworkTypeIsNotAFunction ident networkType
-analyseNetworkInputTypes [TensorType _ tElem tDims] = do
-  tensorDetails <- getTensorDetails Input tElem tDims
+analyseNetworkInputTypes [tTensor@(TensorType _ tElem tDims)] = do
+  tensorDetails <- getTensorDetails Input tTensor tElem tDims
   return (tensorDetails, id)
 analyseNetworkInputTypes inputTypes@(x : _) = do
   elementType <- getElementType Input x
@@ -175,8 +176,8 @@ analyseNetworkInputTypes inputTypes@(x : _) = do
 
 analyseNetworkOutputType :: MonadNetworkTypeAnalysis m
                          => CheckedExpr -> m (TensorDetails, TransformOutput)
-analyseNetworkOutputType (TensorType _ tElem tDims) = do
-  tensorDetails <- getTensorDetails Output tElem tDims
+analyseNetworkOutputType tTensor@(TensorType _ tElem tDims) = do
+  tensorDetails <- getTensorDetails Output tTensor tElem tDims
   return (tensorDetails, id)
 analyseNetworkOutputType t = do
   elementType <- getElementType Output t
@@ -202,31 +203,33 @@ getTensorDetails :: MonadNetworkTypeAnalysis m
                  => InputOrOutput
                  -> CheckedExpr
                  -> CheckedExpr
+                 -> CheckedExpr
                  -> m TensorDetails
-getTensorDetails io tElem tDims = do
+getTensorDetails io tTensor tElem tDims = do
   typ   <- getElementType io tElem
-  size  <- getTensorSize io tDims
+  size  <- getTensorSize io tTensor tDims
   return $ TensorDetails size typ
 
 getElementType :: MonadNetworkTypeAnalysis m => InputOrOutput -> CheckedExpr -> m Builtin
 getElementType _  (Builtin _ t)
   | t `elem` allowedNetworkElementTypes = return t
 getElementType io t = do
-  (ident, networkType) <- ask
-  throwError $ NetworkTypeUnsupportedElementType ident networkType t io
+  (ident, _) <- ask
+  throwError $ NetworkTypeUnsupportedElementType ident t io
 
 getTensorSize :: MonadNetworkTypeAnalysis m
               => InputOrOutput
               -> CheckedExpr
+              -> CheckedExpr
               -> m Int
-getTensorSize io (SeqExpr _ _ _ [d]) = case d of
+getTensorSize io tTensor (SeqExpr _ _ _ [d]) = case d of
   NatLiteralExpr _ _ n -> return n
-  t                    -> do
-    (ident, networkType) <- ask
-    throwError $ NetworkTypeHasVariableSizeTensor ident networkType t io
-getTensorSize io t = do
-  (ident, networkType) <- ask
-  throwError $ NetworkTypeHasMultidimensionalTensor ident networkType t io
+  _                    -> do
+    (ident, _) <- ask
+    throwError $ NetworkTypeHasVariableSizeTensor ident tTensor io
+getTensorSize io tTensor _ = do
+  (ident, _) <- ask
+  throwError $ NetworkTypeHasMultidimensionalTensor ident tTensor io
 
 currentPass :: Doc a
 currentPass = "analysis of network types"

@@ -165,4 +165,4 @@ flushLogsToStdout :: [Message] -> IO ()
 flushLogsToStdout = mapM_ print
 
 flushLogsToFile :: FilePath -> [Message] -> IO ()
-flushLogsToFile logFile logs = appendFile (showMessages logs) logFile
+flushLogsToFile logFile logs = appendFile logFile (showMessages logs)

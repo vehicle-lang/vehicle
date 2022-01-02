@@ -90,11 +90,33 @@ requireAgda = do
   when missingAgda $ do
     fail "Agda not installed"
 
+requireMarabou :: Action ()
+requireMarabou = do
+  missingMarabou <- not <$> hasExecutable "Marabou"
+  when missingMarabou $ do
+    let buildFolder        = "build"
+    let marabouFolder      = buildFolder </> "marabou"
+    let marabouBuildFolder = marabouFolder </> "build"
+
+    -- See https://github.com/dlshriver/DNNV/blob/main/scripts/install_marabou.sh
+    liftIO $ createDirectoryIfMissing False buildFolder
+
+    let marabouRepoURL = "https://github.com/NeuralNetworkVerification/Marabou"
+    command_ [] "git" [ "clone", marabouRepoURL, marabouFolder]
+    command_ [] "git" [ "-C", marabouFolder, "checkout", "ffd353b"]
+
+    liftIO $ createDirectoryIfMissing False marabouBuildFolder
+    command_ [] "cmake" [ marabouFolder]
+    command_ [] "cmake" [ "--build", marabouBuildFolder]
+
+    liftIO $ createDirectoryIfMissing False "bin"
+    liftIO $ renameFile (marabouBuildFolder </> "Marabou") ("bin" </> "Marabou")
+
+    -- cp $PROJECT_DIR/tools/verifier_runners/marabou.py $PROJECT_DIR/bin/marabou.py
 
 ---------------------------------------------------------------------------------
 -- Test Vehicle
 ---------------------------------------------------------------------------------
-
 
 main :: IO ()
 main = shakeArgs shakeOptions $ do
@@ -217,24 +239,27 @@ $(GEN_DIR_HS)/Vehicle/Frontend/Par.info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.y
   phony "test" $ do
     requireHaskell
     need bnfcTargets
-    command_ [] "cabal"
-      [ "v2-test"
-      , "--test-show-details=always"
-      , "--test-options=\"--color=always\""
-      ]
+    command_ [] "cabal"$
+      [ "v2-test" ] <>
+      testOptions
 
   phony "test-accept" $ do
     requireHaskell
     need bnfcTargets
-    command_ [] "cabal"
-      [ "v2-test"
-      , "--test-show-details=always"
-      , "--test-options=\"--accept\""
-      ]
+    command_ [] "cabal" $
+      [ "v2-test" ] <>
+      testOptions   <>
+      [ "--test-option=--accept" ]
 
 ---------------------------------------------------------------------------------
 -- Utility functions
 ---------------------------------------------------------------------------------
+
+testOptions :: [String]
+testOptions =
+  [ "--test-show-details=always"
+  , "--test-option=--color=always"
+  ]
 
 hasExecutable :: String -> Action Bool
 hasExecutable prog = isJust <$> liftIO (findExecutable prog)

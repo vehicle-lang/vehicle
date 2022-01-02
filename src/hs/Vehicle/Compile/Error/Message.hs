@@ -1,18 +1,20 @@
 module Vehicle.Compile.Error.Message where
 
+import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Void ( Void )
 import Data.Text ( Text, pack )
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Foldable (fold)
+import System.Exit (exitFailure)
+import System.IO (hPutStrLn, stderr)
+
 
 import Vehicle.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Constraint (boundContext)
-import Control.Monad.Except (ExceptT, runExceptT)
-import System.Exit (exitFailure)
-
+import Vehicle.NeuralNetwork
 --------------------------------------------------------------------------------
 -- User errors
 
@@ -39,9 +41,6 @@ instance Pretty VehicleError where
   pretty (EError (ExternalError text)) =
     pretty text
 
-instance Show VehicleError where
-  show = layoutAsString . pretty
-
 appendProvenance :: Doc ann -> Provenance -> Doc ann
 appendProvenance doc p = doc <+> "(" <> pretty p <> ")"
 
@@ -52,8 +51,11 @@ fixText t = "Fix:" <+> t
 -- IO
 
 fromEitherIO :: Either CompileError a -> IO a
-fromEitherIO (Left err) = do print $ details err; exitFailure
 fromEitherIO (Right x)  = return x
+fromEitherIO (Left err) = do
+  let errStr = layoutAsString $ pretty $ details err
+  hPutStrLn stderr errStr
+  exitFailure
 
 fromLoggedEitherIO :: LogFilePath -> ExceptT CompileError Logger a -> IO a
 fromLoggedEitherIO logFile x = fromEitherIO =<< fromLoggedIO logFile (logCompileError x)
@@ -62,7 +64,7 @@ logCompileError :: ExceptT CompileError Logger a -> Logger (Either CompileError 
 logCompileError x = do
   e' <- runExceptT x
   case e' of
-    Left err -> logDebug ("Error thrown:" <+> pretty (show err))
+    Left err -> logDebug (pretty (details err))
     Right _  -> return ()
   return e'
 
@@ -202,55 +204,61 @@ instance MeaningfulError CompileError where
 
     NetworkTypeIsNotAFunction ident networkType -> UError $ UserError
       { provenance = provenanceOf networkType
-      , problem    = unsupportedNetworkTypeDescription ident networkType <+> "as" <+>
-                     "it is not a function type." <+> supportedNetworkTypeDescrption
-      , fix        = "Provide both an input type and output type for your network."
+      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
+                     squotes (prettyFriendly networkType) <+> "is not a function."
+      , fix        = supportedNetworkTypeDescription <+>
+                     "Provide both an input type and output type for your network."
       }
 
     NetworkTypeWithNonExplicitArguments ident networkType binder -> UError $ UserError
       { provenance = provenanceOf binder
-      , problem    = unsupportedNetworkTypeDescription ident networkType <+> "as" <+>
-                     "it contains a non-explicit argument" <+>
-                     squotes (prettyFriendly binder) <> "." <+>
-                     supportedNetworkTypeDescrption
-      , fix        = "Remove the non-explicit argument."
+      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
+                     squotes (prettyFriendly networkType) <+>
+                     "contains a non-explicit argument" <+>
+                     squotes (prettyFriendly binder) <> "."
+      , fix        = supportedNetworkTypeDescription <+>
+                     "Remove the non-explicit argument."
       }
 
     NetworkTypeWithHeterogeneousInputTypes ident networkType t1 t2 -> UError $ UserError
       { provenance = provenanceOf t1 <> provenanceOf t2
-      , problem    = unsupportedNetworkTypeDescription ident networkType <+> "as" <+>
-                     "it contains heterogeneous input types" <+>
+      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
+                     squotes (prettyFriendly networkType) <+>
+                     "contains heterogeneous input types" <+>
                      squotes (prettyFriendly t1) <+> "and" <+>
-                     squotes (prettyFriendly t2) <+> "." <+>
-                     supportedNetworkTypeDescrption
-      , fix        = "Ensure that all the inputs to" <+> squotes (pretty ident) <+>
+                     squotes (prettyFriendly t2) <+> "."
+      , fix        = supportedNetworkTypeDescription <+>
+                     "Ensure that all the inputs to" <+> squotes (pretty ident) <+>
                      "are the same type."
       }
 
-    NetworkTypeUnsupportedElementType ident networkType elementType io -> UError $ UserError
+    NetworkTypeUnsupportedElementType ident elementType io -> UError $ UserError
       { provenance = provenanceOf elementType
-      , problem    = unsupportedNetworkTypeDescription ident networkType <+> "as" <+>
-                     "the" <+> pretty io <+> "type" <+>
+      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
+                     pretty io <+> "s of type" <+>
                      squotes (prettyFriendly elementType) <+>
-                     "is not currently supported." <+>
-                     supportedNetworkTypeDescrption
-      , fix        = "Ensure that the network" <+> pretty io <+> "is a 1D tensor."
+                     "are not currently supported."
+      , fix        = supportedNetworkTypeDescription <+>
+                     "Ensure that the network" <+> pretty io <+> "uses" <+>
+                     "supported types."
       }
 
-    NetworkTypeHasMultidimensionalTensor ident networkType t io -> UError $ UserError
+    NetworkTypeHasMultidimensionalTensor ident t io -> UError $ UserError
       { provenance = provenanceOf t
-      , problem    = unsupportedNetworkTypeDescription ident networkType <+> "as" <+>
-                     "the" <+> pretty io <+> "of the network is not a 1D tensor." <+>
-                     supportedNetworkTypeDescrption
-      , fix        = "Ensure that the network" <+> pretty io <+> "is a 1D tensor."
+      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
+                     "the" <+> pretty io <+>
+                     squotes (prettyFriendly t) <+> "is not a 1D tensor."
+      , fix        = supportedNetworkTypeDescription <+>
+                     "Ensure that the network" <+> pretty io <+> "is a 1D tensor."
       }
 
-    NetworkTypeHasVariableSizeTensor ident networkType tDim io -> UError $ UserError
+    NetworkTypeHasVariableSizeTensor ident tDim io -> UError $ UserError
       { provenance = provenanceOf tDim
-      , problem    = unsupportedNetworkTypeDescription ident networkType <+> "as" <+>
-                     squotes (pretty $ show tDim) <+> "is not a constant." <+>
-                     supportedNetworkTypeDescrption
-      , fix        = "Ensure that the size of the" <+> pretty io <+> "tensor is constant."
+      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
+                     "the size of the" <+> pretty io <+> "tensor" <+>
+                     squotes (pretty $ show tDim) <+> "is not a constant."
+      , fix        = supportedNetworkTypeDescription <+>
+                     "Ensure that the size of the" <+> pretty io <+> "tensor is constant."
       }
 
     -- Backend errors
@@ -389,15 +397,15 @@ instance MeaningfulError CompileError where
       , fix        = "Choose a different compilation target than VNNLib"
       }
 
-unsupportedNetworkTypeDescription :: Identifier -> CheckedExpr -> Doc a
-unsupportedNetworkTypeDescription ident t =
-  "The type" <+> squotes (prettyFriendly t) <+> "of" <+> pretty Network <+>
+unsupportedNetworkTypeDescription :: Identifier -> Doc a
+unsupportedNetworkTypeDescription ident =
+  "The type of" <+> pretty Network <+>
   squotes (pretty ident) <+> "is not currently supported"
 
-supportedNetworkTypeDescrption :: Doc a
-supportedNetworkTypeDescrption =
+supportedNetworkTypeDescription :: Doc a
+supportedNetworkTypeDescription =
   "Only networks of type:" <> line <> indent 2 (
-     "1." <+> squotes "Tensor A [m] -> Tensor B [n]" <> line <>
-     "2." <+> squotes "A -> ... -> A -> B") <> line <>
-  "are allowed, where A and B are one of" <+> pretty allowedNetworkElementTypes <+>
+     "1." <+> "Tensor A [m] -> Tensor B [n]" <> line <>
+     "2." <+> "A -> ... -> A -> B") <> line <>
+  "are allowed, where A and B are one of" <+> prettyFlatList allowedNetworkElementTypes <+>
   "and" <+> squotes "m" <+> "and" <+> squotes "n" <+> "are constants."

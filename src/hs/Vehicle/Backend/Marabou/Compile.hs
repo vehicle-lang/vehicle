@@ -18,6 +18,7 @@ import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAreHomogeneous)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Marabou.Core
+import Vehicle.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- Compilation to Marabou
