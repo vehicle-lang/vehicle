@@ -15,6 +15,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Constraint (boundContext)
 import Vehicle.NeuralNetwork
+
 --------------------------------------------------------------------------------
 -- User errors
 
@@ -72,7 +73,7 @@ logCompileError x = do
   return e'
 
 fromLoggedIO :: LogFilePath -> Logger a -> IO a
-fromLoggedIO Nothing        logger = return $ discardLogger logger
+fromLoggedIO Nothing        logger = outputWarningsAndDiscardLogs logger
 fromLoggedIO (Just logFile) logger = flushLogs logFile logger
 
 --------------------------------------------------------------------------------
@@ -338,10 +339,10 @@ instance MeaningfulError CompileError where
       , problem    = "The use of" <+> squotes (pretty actualOrder) <+> "inside of an" <+>
                      quantifierAdverb quantifier <+> "quantifier property" <+>
                      "is not currently supported by" <+> pretty target
-      , fix        = "You can use" <+> squotes (pretty (counterpart actualOrder)) <+>
+      , fix        = "You can use" <+> squotes (pretty (flipStrictness actualOrder)) <+>
                      "instead, otherwise please open an issue on the" <+> pretty target <+>
                      "issue tracker to ask for support."
-      } where actualOrder = if quantifier == All then counterpart order else order
+      } where actualOrder = if quantifier == All then flipStrictness order else order
 
     UnsupportedEquality target p quantifier eq -> UError $ UserError
       { provenance = p

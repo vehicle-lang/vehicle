@@ -16,7 +16,8 @@ module Vehicle.Language.AST.Builtin
   , builtinFromSymbol
   , symbolFromBuiltin
   , isDecidable
-  , counterpart
+  , isStrict
+  , flipStrictness
   , flipOrder
   , flipRel
   , chainable
@@ -186,8 +187,11 @@ instance Negatable Order where
     Ge -> Lt
     Gt -> Le
 
-counterpart :: Order -> Order
-counterpart = \case
+isStrict :: Order -> Bool
+isStrict order = order == Lt || order == Gt
+
+flipStrictness :: Order -> Order
+flipStrictness = \case
   Le -> Lt
   Lt -> Le
   Ge -> Gt
@@ -201,7 +205,7 @@ flipOrder = \case
   Gt -> Lt
 
 chainable :: Order -> Order -> Bool
-chainable e1 e2 = e1 == e2 || e1 == counterpart e2
+chainable e1 e2 = e1 == e2 || e1 == flipStrictness e2
 
 --------------------------------------------------------------------------------
 -- Relation

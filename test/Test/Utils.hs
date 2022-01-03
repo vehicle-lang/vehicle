@@ -17,9 +17,10 @@ import Vehicle.Compile.Type (runTypeCheck)
 import Test.Tasty ( TestName, testGroup, after, DependencyType )
 import Test.Tasty.Runners (TestTree(..))
 
--- If you want to see the logs for tests, change `discardLogger` to `traceLogger` here.
+-- If you want to see the logs for tests, change `discardWarningsAndLogs` to
+-- `traceLogger` here.
 discardState :: ExceptT CompileError Logger a -> a
-discardState e = case discardLogger $ logCompileError e of
+discardState e = case discardWarningsAndLogs $ logCompileError e of
   Left  x -> developerError $ pretty $ details x
   Right y -> y
 

@@ -6,7 +6,7 @@ import Control.Monad.Except (MonadError(..))
 import Data.Maybe (catMaybes)
 import Data.Bifunctor (Bifunctor(first))
 
-import Vehicle.Language.Print (prettySimple)
+import Vehicle.Language.Print (prettySimple, prettyFriendly)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise (normalise, NormalisationOptions(..))
@@ -72,7 +72,7 @@ compileProperty ident networkMap expr = do
   -- Check that we only have one type of quantifier in the property
   quantifier <- checkQuantifiersAreHomogeneous MarabouBackend ident expr
 
-  logDebug $ line <> "Quantifier: " <> pretty (Quant quantifier)
+  logDebug $ line <> "Quantifier type: " <> pretty (Quant quantifier)
 
   -- If the property is universally quantified then we need to negate the expression
   let (isPropertyNegated, possiblyNegatedExpr) =
@@ -83,7 +83,7 @@ compileProperty ident networkMap expr = do
   -- Eliminate any if-expressions
   ifFreeExpr <- liftAndEliminateIfs possiblyNegatedExpr
 
-  logDebug $ line <> "After if-elimination: " <> prettySimple ifFreeExpr
+  logDebug $ line <> "After if-elimination: " <> prettyFriendly ifFreeExpr
 
   -- Normalise the expression to remove any implications, push the negations through
   -- and expand out any multiplication.
@@ -96,7 +96,7 @@ compileProperty ident networkMap expr = do
   -- Convert to disjunctive normal form
   dnfExpr <- convertToDNF normExpr
 
-  logDebug $ line <> "After conversion to DNF: " <> prettySimple dnfExpr
+  logDebug $ line <> "After conversion to DNF: " <> prettyFriendly dnfExpr
 
   -- Split up into the individual queries needed for Marabou.
   let queryExprs = splitDisjunctions dnfExpr
@@ -173,19 +173,13 @@ compileAssertions ident quantifier expr = case expr of
     (vars2, docs2) <- compileAssertions ident quantifier (argExpr e2)
     return (vars1 <> vars2, docs1 <> docs2)
 
-  OrderExpr order ann _ _ [lhs, rhs]
-    | order == Lt || order == Gt -> do
-      throwError $ UnsupportedOrder MarabouBackend (provenanceOf ann) quantifier order
-    | otherwise                  -> do
-      assertion <- compileAssertion ident (OrderRel order) (argExpr lhs) (argExpr rhs)
-      return ([], [assertion])
+  OrderExpr order ann _ _ [lhs, rhs] -> do
+    assertion <- compileAssertion ann ident quantifier (OrderRel order) (argExpr lhs) (argExpr rhs)
+    return ([], [assertion])
 
-  EqualityExpr eq ann _ _ [lhs, rhs]
-    | eq == Neq ->
-      throwError $ UnsupportedEquality MarabouBackend (provenanceOf ann) quantifier eq
-    | otherwise -> do
-      assertion <- compileAssertion ident (EqualityRel eq) (argExpr lhs) (argExpr rhs)
-      return ([], [assertion])
+  EqualityExpr eq ann _ _ [lhs, rhs] -> do
+    assertion <- compileAssertion ann ident quantifier (EqualityRel eq) (argExpr lhs) (argExpr rhs)
+    return ([], [assertion])
 
   App{} -> developerError $ unexpectedExprError currentPass (prettySimple expr)
 
@@ -199,8 +193,15 @@ compileBinder ident binder =
     RealType _ -> return $ MarabouVar n MReal
     _ -> throwError $ UnsupportedVariableType MarabouBackend p ident n t supportedTypes
 
-compileAssertion :: MonadCompile m => Identifier -> Relation -> OutputExpr -> OutputExpr -> m (Doc a)
-compileAssertion ident rel lhs rhs = do
+compileAssertion :: MonadCompile m
+                 => CheckedAnn
+                 -> Identifier
+                 -> Quantifier
+                 -> Relation
+                 -> OutputExpr
+                 -> OutputExpr
+                 -> m (Doc a)
+compileAssertion ann ident quantifier rel lhs rhs = do
   (lhsVars, lhsConstants) <- compileSide lhs
   (rhsVars, rhsConstants) <- compileSide rhs
   let vars = lhsVars <> flipVars rhsVars
@@ -212,7 +213,8 @@ compileAssertion ident rel lhs rhs = do
         then (flipVars vars, -1 * constant, flipRel rel)
         else (vars, constant, rel)
 
-  return $ hsep (fmap compileVar finalVars) <+> compileRel finalRel <+> pretty finalConstant
+  compiledRel <- compileRel finalRel
+  return $ hsep (fmap compileVar finalVars) <+> compiledRel <+> pretty finalConstant
   where
     flipConstants :: [Double] -> [Double]
     flipConstants = fmap ((-1) *)
@@ -229,10 +231,10 @@ compileAssertion ident rel lhs rhs = do
         xs <- compileSide (argExpr arg1)
         ys <- compileSide (argExpr arg2)
         return (xs <> ys)
-      MulExpr ann _ _ [arg1, arg2] -> case (argExpr arg1, argExpr arg2) of
-        (Literal _ l, Var _ v) -> return ([(compileLiteral l, v)],[])
-        (Var _ v, Literal _ l) -> return ([(compileLiteral l, v)],[])
-        (e1, e2)-> throwError $ NonLinearConstraint MarabouBackend (provenanceOf ann) ident e1 e2
+      MulExpr ann1 _ _ [arg1, arg2] -> case (argExpr arg1, argExpr arg2) of
+        (LiteralExpr _ _ l, Var _ v) -> return ([(compileLiteral l, v)],[])
+        (Var _ v, LiteralExpr _ _ l) -> return ([(compileLiteral l, v)],[])
+        (e1, e2) -> throwError $ NonLinearConstraint MarabouBackend (provenanceOf ann1) ident e1 e2
       e -> developerError $ unexpectedExprError currentPass $ prettySimple e
 
     compileLiteral :: Literal -> Double
@@ -241,10 +243,22 @@ compileAssertion ident rel lhs rhs = do
     compileLiteral (LInt  i) = fromIntegral i
     compileLiteral (LRat  q) = fromRational q
 
-    compileRel :: Relation -> Doc a
-    compileRel (OrderRel order)  = pretty order
-    compileRel (EqualityRel Eq)  = "="
-    compileRel (EqualityRel Neq) = "!="
+    compileRel :: MonadCompile m => Relation -> m (Doc a)
+    compileRel (EqualityRel Eq)  = return "="
+    compileRel (EqualityRel Neq) =
+      throwError $ UnsupportedEquality MarabouBackend (provenanceOf ann) quantifier Neq
+    compileRel (OrderRel order)
+      | isStrict order = do
+        throwError $ UnsupportedOrder MarabouBackend (provenanceOf ann) quantifier order
+        {-
+        let nonStrictOrder = flipStrictness order
+        logWarning $
+          "Performed possibly unsound conversion of" <+> squotes (pretty order) <+>
+          "to" <+> squotes (pretty nonStrictOrder) <> " in order to ensure Marabou" <+>
+          "support."
+        compileRel $ OrderRel nonStrictOrder
+        -}
+      | otherwise = return $ pretty order
 
     compileVar :: (Double, Symbol) -> Doc a
     compileVar (-1,          var) = "-" <> pretty var

@@ -156,7 +156,7 @@ nfApp ann fun       args = let e = App ann fun args in do
     (SubExpr _ t tc [arg1, arg2]) -> nfSub ann t tc arg1 arg2 subtractionToAddition
     (MulExpr _ t tc [arg1, arg2]) -> nfMul ann t tc arg1 arg2 expandOutPolynomials
     (DivExpr _ t _  [arg1, arg2]) -> nfDiv ann t arg1 arg2
-    (NegExpr  _ t [arg]) -> nfNeg ann t arg
+    (NegExpr _ t    [arg])        -> nfNeg ann t arg expandOutPolynomials
 
     -- Containers
     (ConsExpr _ _ [x, xs])              -> nfCons ann x xs
@@ -490,11 +490,21 @@ nfNeg :: MonadNorm m
       => CheckedAnn
       -> NumericType
       -> CheckedArg
+      -> Bool
       -> Maybe (m CheckedExpr)
-nfNeg ann t e = case argExpr e of
-  (IntLiteralExpr _ _ x) -> Just $ return $ IntLiteralExpr ann t (- x)
-  (RatLiteralExpr _ _ x) -> Just $ return $ RatLiteralExpr ann t (- x)
-  _                      -> Nothing
+nfNeg _ann _t e expandOut = case argExpr e of
+  NatLiteralExpr ann t x                -> Just $ return $ IntLiteralExpr ann t (- x)
+  IntLiteralExpr ann t x                -> Just $ return $ IntLiteralExpr ann t (- x)
+  RatLiteralExpr ann t x                -> Just $ return $ RatLiteralExpr ann t (- x)
+  NegExpr _ _ [e']                      -> Just $ return $ argExpr e'
+  AddExpr ann t tc [e1, e2] | expandOut -> Just $ do
+    ne1 <- negArg t e1
+    ne2 <- negArg t e2
+    nf $ AddExpr ann t tc [ne1, ne2]
+  MulExpr ann t tc [e1, e2] | expandOut -> Just $ do
+    ne1 <- negArg t e1
+    nf $ AddExpr ann t tc [ne1, e2]
+  _                           -> Nothing
 
 -----------------------------------------------------------------------------
 -- Normalising container operations

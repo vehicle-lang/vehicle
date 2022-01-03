@@ -45,7 +45,7 @@ realisticTestList = map (addTestDirectory ("examples" </> "network")) [
   ("increasing",             [VNNLibBackend, AgdaBackend]),
   ("reachability",           [VNNLibBackend, AgdaBackend, MarabouBackend]),
   ("autoencoderError",       [VNNLibBackend, AgdaBackend]),
-  ("windController",         [VNNLibBackend, AgdaBackend])
+  ("windController",         [VNNLibBackend, AgdaBackend, MarabouBackend])
   ]
 
 simpleTestList :: [GoldenTestSpec]

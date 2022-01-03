@@ -9,13 +9,11 @@
 
 open import Vehicle
 open import Vehicle.Data.Tensor
+open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
-open import Data.Bool as 𝔹 using (Bool; true; false; if_then_else_)
 open import Data.Fin as Fin using (#_)
 open import Data.List
-open import Relation.Nullary
-open import Relation.Nullary.Decidable
 
 module windController-output where
 
@@ -31,9 +29,6 @@ deltaV = evaluate record
   ; networkUUID = "TODO_networkUUID"
   }
 
-abs : ℚ → ℚ
-abs x = if ⌊ x ℚ.<? ℤ.+ 0 ℚ./ 1 ⌋ then ℚ.- x else x
-
 currentPosition : InputVector → ℚ
 currentPosition x = x (# 0)
 
@@ -41,10 +36,10 @@ prevPosition : InputVector → ℚ
 prevPosition x = x (# 1)
 
 SafeInput : InputVector → Set
-SafeInput x = abs (currentPosition x) ℚ.< ℤ.+ 3 ℚ./ 1
+SafeInput x = ℚ.- (ℤ.+ 3 ℚ./ 1) ℚ.≤ currentPosition x × currentPosition x ℚ.≤ ℤ.+ 3 ℚ./ 1
 
 SafeOutput : InputVector → Set
-SafeOutput x = abs ((deltaV x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currentPosition x) ℚ.- prevPosition x) ℚ.< ℤ.+ 2 ℚ./ 1
+SafeOutput x = ℚ.- (ℤ.+ 2 ℚ./ 1) ℚ.< (deltaV x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currentPosition x) ℚ.- prevPosition x × (deltaV x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currentPosition x) ℚ.- prevPosition x ℚ.< ℤ.+ 2 ℚ./ 1
 
 abstract
   safe : ∀ (x : Tensor ℚ (2 ∷ [])) → SafeInput x → SafeOutput x

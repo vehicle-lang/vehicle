@@ -27,7 +27,7 @@ class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   -- | Delaborates the program and throws away the logs, should only be used in
   -- user-facing error messages
   delab :: t ann -> bnfc
-  delab = discardLogger . delabM
+  delab = discardWarningsAndLogs . delabM
 
   delabWithLogging ::  MonadDelab m => t ann -> m bnfc
   delabWithLogging x = do
