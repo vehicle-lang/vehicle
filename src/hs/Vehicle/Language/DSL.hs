@@ -133,7 +133,7 @@ isNatural :: DSLExpr -> DSLExpr
 isNatural t = typeClass (TypeClass IsNatural) `app` [t]
 
 isIntegral :: DSLExpr -> DSLExpr
-isIntegral t = typeClass (TypeClass IsIntegral) `app` [t]
+isIntegral t = typeClass (TypeClass IsInteger) `app` [t]
 
 isRational :: DSLExpr -> DSLExpr
 isRational t = typeClass (TypeClass IsRational) `app` [t]

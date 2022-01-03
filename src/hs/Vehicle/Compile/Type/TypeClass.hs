@@ -42,7 +42,7 @@ solveTypeClassConstraint ctx m e = do
         (HasOrd,         [t1, t2]) -> solveHasOrd         constraint t1 t2
         (IsTruth,        [t])      -> solveIsTruth        constraint t
         (IsNatural,      [t])      -> solveIsNatural      constraint t
-        (IsIntegral,     [t])      -> solveIsIntegral     constraint t
+        (IsInteger,     [t])      -> solveIsInteger     constraint t
         (IsRational,     [t])      -> solveIsRational     constraint t
         (IsReal,         [t])      -> solveIsReal         constraint t
         (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable constraint t1 t2
@@ -136,14 +136,14 @@ solveIsNatural _ (RatType  _) = return simplySolved
 solveIsNatural _ (RealType _) = return simplySolved
 solveIsNatural constraint _ = throwError $ FailedConstraints (constraint :| [])
 
-solveIsIntegral :: MonadConstraintSolving m
+solveIsInteger :: MonadConstraintSolving m
              => Constraint
              -> CheckedExpr
              -> m ConstraintProgress
-solveIsIntegral _ (IntType  _) = return simplySolved
-solveIsIntegral _ (RatType  _) = return simplySolved
-solveIsIntegral _ (RealType _) = return simplySolved
-solveIsIntegral constraint _ = throwError $ FailedConstraints (constraint :| [])
+solveIsInteger _ (IntType  _) = return simplySolved
+solveIsInteger _ (RatType  _) = return simplySolved
+solveIsInteger _ (RealType _) = return simplySolved
+solveIsInteger constraint _ = throwError $ FailedConstraints (constraint :| [])
 
 solveIsRational :: MonadConstraintSolving m
              => Constraint

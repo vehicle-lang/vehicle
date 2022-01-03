@@ -66,7 +66,7 @@ tokTCContainer = mkToken B.TokTCContainer "IsContainer"
 tokTCTruth = mkToken B.TokTCTruth "IsTruth"
 tokTCQuantify = mkToken B.TokTCQuantify "IsQuantify"
 tokTCNatural = mkToken B.TokTCNatural "IsNatural"
-tokTCIntegral = mkToken B.TokTCIntegral "IsIntegral"
+tokTCIntegral = mkToken B.TokTCIntegral "IsInteger"
 tokTCRational = mkToken B.TokTCRational "IsRational"
 tokTCReal = mkToken B.TokTCReal "IsReal"
 
@@ -182,7 +182,7 @@ delabBuiltin fun args = case fun of
 
   V.TypeClass V.IsTruth        -> delabOp1 B.TCTruth tokTCTruth    args
   V.TypeClass V.IsNatural      -> delabOp1 B.TCNat   tokTCNatural  args
-  V.TypeClass V.IsIntegral     -> delabOp1 B.TCInt   tokTCIntegral args
+  V.TypeClass V.IsInteger     -> delabOp1 B.TCInt   tokTCIntegral args
   V.TypeClass V.IsRational     -> delabOp1 B.TCRat   tokTCRational args
   V.TypeClass V.IsReal         -> delabOp1 B.TCReal  tokTCReal     args
   V.TypeClass V.IsQuantifiable -> delabOp1 B.TCQuant tokTCQuantify args

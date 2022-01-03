@@ -583,7 +583,7 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
   TypeClass HasOrd          -> type0 ~> type0 ~> type0
   TypeClass IsTruth         -> type0 ~> type0
   TypeClass IsNatural       -> type0 ~> type0
-  TypeClass IsIntegral      -> type0 ~> type0
+  TypeClass IsInteger       -> type0 ~> type0
   TypeClass IsRational      -> type0 ~> type0
   TypeClass IsReal          -> type0 ~> type0
   TypeClass IsContainer     -> type0 ~> type0 ~> type0

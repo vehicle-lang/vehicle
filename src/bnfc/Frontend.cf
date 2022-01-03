@@ -58,7 +58,7 @@ position token TokTCContainer {"IsContainer"};
 position token TokTCTruth     {"IsTruth"};
 position token TokTCQuantify  {"IsQuantify"};
 position token TokTCNatural   {"IsNatural"};
-position token TokTCIntegral  {"IsIntegral"};
+position token TokTCIntegral  {"IsInteger"};
 position token TokTCRational  {"IsRational"};
 position token TokTCReal      {"IsReal"};
 

@@ -13,7 +13,7 @@ import Vehicle.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
-import Vehicle.Compile.Type.Constraint (boundContext)
+import Vehicle.Compile.Type.Constraint
 import Vehicle.NeuralNetwork
 
 --------------------------------------------------------------------------------
@@ -176,7 +176,7 @@ instance MeaningfulError CompileError where
 
     FailedConstraints cs -> UError $ UserError
       { provenance = provenanceOf constraint
-      , problem    = "Could not solve the constraint:" <+> prettyFriendlyDB nameCtx constraint
+      , problem    = failedConstraintError constraint nameCtx
       , fix        = "Check your types"
       }
       where
@@ -185,7 +185,7 @@ instance MeaningfulError CompileError where
 
     UnsolvedConstraints cs -> UError $ UserError
       { provenance = provenanceOf constraint
-      , problem    = "unsolved constraint " <+> prettyFriendlyDB nameCtx constraint
+      , problem    = unsolvedConstraintError constraint nameCtx
       , fix        = "Try adding more type annotations"
       }
       where
@@ -413,3 +413,14 @@ supportedNetworkTypeDescription =
      "2." <+> "A -> ... -> A -> B") <> line <>
   "are allowed, where A and B are one of" <+> prettyFlatList allowedNetworkElementTypes <+>
   "and" <+> squotes "m" <+> "and" <+> squotes "n" <+> "are constants."
+
+unsolvedConstraintError :: Constraint -> [DBBinding] -> Doc a
+unsolvedConstraintError constraint ctx ="Typing error: not enough information to solve constraint" <+>
+  case baseConstraint constraint of
+    Unify _   ->  prettyFriendlyDB ctx constraint
+    _ `Has` t ->  prettyFriendlyDB ctx t
+
+failedConstraintError :: Constraint -> [DBBinding] -> Doc a
+failedConstraintError constraint ctx = "Type error:" <+> case baseConstraint constraint of
+  Unify (t1, t2) -> prettyFriendlyDB ctx t1 <+> "!=" <+> prettyFriendlyDB ctx t2
+  _ `Has` t      -> "Could not satisfy" <+> squotes (prettyFriendlyDB ctx t)

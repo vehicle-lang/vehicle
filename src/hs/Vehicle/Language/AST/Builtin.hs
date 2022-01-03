@@ -90,7 +90,7 @@ data TypeClass
   | HasOrd
   | IsTruth
   | IsNatural
-  | IsIntegral
+  | IsInteger
   | IsRational
   | IsReal
   | IsContainer
@@ -107,7 +107,7 @@ instance Show TypeClass where
     IsTruth        -> "IsTruth"
     IsContainer    -> "IsContainer"
     IsNatural      -> "IsNatural"
-    IsIntegral     -> "IsIntegral"
+    IsInteger     -> "IsInteger"
     IsRational     -> "IsRational"
     IsReal         -> "IsReal"
     IsQuantifiable -> "IsQuantify"

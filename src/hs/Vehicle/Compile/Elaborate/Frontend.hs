@@ -145,7 +145,7 @@ instance Elab B.Expr V.InputExpr where
     B.TCTruth tk e     -> builtin (V.TypeClass V.IsTruth)        tk [e]
     B.TCQuant tk e     -> builtin (V.TypeClass V.IsQuantifiable) tk [e]
     B.TCNat   tk e     -> builtin (V.TypeClass V.IsNatural)      tk [e]
-    B.TCInt   tk e     -> builtin (V.TypeClass V.IsIntegral)     tk [e]
+    B.TCInt   tk e     -> builtin (V.TypeClass V.IsInteger)     tk [e]
     B.TCRat   tk e     -> builtin (V.TypeClass V.IsRational)     tk [e]
     B.TCReal  tk e     -> builtin (V.TypeClass V.IsReal)         tk [e]
 
