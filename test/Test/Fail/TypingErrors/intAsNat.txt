@@ -1,0 +1,2 @@
+Error: Could not solve the constraint: ([  ], ?1 <= IsIntegral Nat) (Line 2, Columns 7-8)
+Fix: Check your types

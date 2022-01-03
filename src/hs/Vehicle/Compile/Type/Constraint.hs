@@ -33,10 +33,10 @@ data ConstraintContext = ConstraintContext
 instance HasProvenance ConstraintContext where
   provenanceOf (ConstraintContext p _ _) = p
 
-data Constraint = Constraint ConstraintContext BaseConstraint
-
-baseConstraint :: Constraint -> BaseConstraint
-baseConstraint (Constraint _ c) = c
+data Constraint = Constraint
+  { constraintCtx  :: ConstraintContext
+  , baseConstraint :: BaseConstraint
+  }
 
 instance Show Constraint where
   show c = show (baseConstraint c)

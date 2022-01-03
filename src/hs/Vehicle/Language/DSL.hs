@@ -38,46 +38,43 @@ class DSL expr where
   infixr 4 ~~~>
 
   app :: expr -> NonEmpty expr -> expr
-  -- lam :: Provenance -> Visibility -> Name -> expr -> (expr -> expr) -> expr
-  pi  :: Provenance -> Visibility -> expr -> (expr -> expr) -> expr
-
-  unnamedPi :: Visibility -> expr -> (expr -> expr) -> expr
-  unnamedPi = pi mempty
+  -- lam :: Visibility -> Name -> expr -> (expr -> expr) -> expr
+  pi  :: Visibility -> expr -> (expr -> expr) -> expr
 
   (~>) :: expr -> expr -> expr
-  x ~> y = unnamedPi Explicit x (const y)
+  x ~> y = pi Explicit x (const y)
 
   (~~>) :: expr -> expr -> expr
-  x ~~> y = unnamedPi Implicit x (const y)
+  x ~~> y = pi Implicit x (const y)
 
   (~~~>) :: expr -> expr -> expr
-  x ~~~> y = unnamedPi Instance x (const y)
+  x ~~~> y = pi Instance x (const y)
 
   forall :: expr -> (expr -> expr) -> expr
-  forall = unnamedPi Implicit
+  forall = pi Implicit
 
 newtype DSLExpr = DSL
-  { unDSL :: BindingDepth -> CheckedExpr
+  { unDSL :: CheckedAnn -> BindingDepth -> CheckedExpr
   }
 
-fromDSL :: DSLExpr -> CheckedExpr
-fromDSL = flip unDSL 0
+fromDSL :: CheckedAnn -> DSLExpr -> CheckedExpr
+fromDSL ann e = unDSL e ann 0
 
 boundVar :: BindingDepth -> DSLExpr
-boundVar i = DSL $ \j -> Var emptyMachineAnn (Bound (j - (i + 1)))
+boundVar i = DSL $ \ann j -> Var ann (Bound (j - (i + 1)))
 
 instance DSL DSLExpr where
-  pi p v argType bodyFn = DSL $ \i ->
-    let varType = unDSL argType i
+  pi v argType bodyFn = DSL $ \ann i ->
+    let varType = unDSL argType ann i
         var     = boundVar i
-        binder  = Binder (p, TheMachine) v Nothing varType
-        body    = unDSL (bodyFn var) (i + 1)
-    in Pi emptyMachineAnn binder body
+        binder  = Binder ann v Nothing varType
+        body    = unDSL (bodyFn var) ann (i + 1)
+    in Pi ann binder body
 
-  app fun args = DSL $ \i ->
-    let fun' = unDSL fun i
-        args' = fmap (\e -> ExplicitArg emptyMachineAnn (unDSL e i)) args
-    in App emptyMachineAnn fun' args'
+  app fun args = DSL $ \ann i ->
+    let fun' = unDSL fun ann i
+        args' = fmap (\e -> ExplicitArg ann (unDSL e ann i)) args
+    in App ann fun' args'
 
 --lamType :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
 --lamType p v n varType bodyType = fromDSL (pi p v n (toDSL varType) (const (toDSL bodyType)))
@@ -95,12 +92,12 @@ tMax :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 tMax t1 t2  = Type (universeLevel t1 `max` universeLevel t2)
 
 con :: Builtin -> DSLExpr
-con b = DSL $ \_ -> Builtin emptyMachineAnn b
+con b = DSL $ \ann _ -> Builtin ann b
 
 -- * Types
 
 type0 :: DSLExpr
-type0 = DSL $ const Type0
+type0 = DSL $ const $ const Type0
 
 tBool, tProp, tNat, tInt, tReal :: DSLExpr
 tBool = con (BooleanType Bool)
@@ -116,36 +113,36 @@ tList :: DSLExpr -> DSLExpr
 tList tElem = con (ContainerType List) `app` [tElem]
 
 tHole :: Symbol -> DSLExpr
-tHole name = DSL $ const $ Hole mempty name
+tHole name = DSL $ \ann _ -> Hole ann name
 
 -- * TypeClass
 
-typeClass :: CheckedAnn -> Builtin -> DSLExpr
-typeClass p op = DSL $ \_ -> Builtin p op
+typeClass :: Builtin -> DSLExpr
+typeClass op = DSL $ \ann _ -> Builtin ann op
 
-hasEq :: CheckedAnn -> DSLExpr -> DSLExpr -> DSLExpr
-hasEq p tArg tRes = typeClass p (TypeClass HasEq) `app` [tArg, tRes]
+hasEq :: DSLExpr -> DSLExpr -> DSLExpr
+hasEq tArg tRes = typeClass (TypeClass HasEq) `app` [tArg, tRes]
 
-hasOrd :: CheckedAnn -> DSLExpr -> DSLExpr -> DSLExpr
-hasOrd p tArg tRes = typeClass p (TypeClass HasOrd) `app` [tArg, tRes]
+hasOrd :: DSLExpr -> DSLExpr -> DSLExpr
+hasOrd tArg tRes = typeClass (TypeClass HasOrd) `app` [tArg, tRes]
 
-isTruth :: CheckedAnn -> DSLExpr -> DSLExpr
-isTruth p t = typeClass p (TypeClass IsTruth) `app` [t]
+isTruth :: DSLExpr -> DSLExpr
+isTruth t = typeClass (TypeClass IsTruth) `app` [t]
 
-isNatural :: CheckedAnn -> DSLExpr -> DSLExpr
-isNatural p t = typeClass p (TypeClass IsNatural) `app` [t]
+isNatural :: DSLExpr -> DSLExpr
+isNatural t = typeClass (TypeClass IsNatural) `app` [t]
 
-isIntegral :: CheckedAnn -> DSLExpr -> DSLExpr
-isIntegral p t = typeClass p (TypeClass IsIntegral) `app` [t]
+isIntegral :: DSLExpr -> DSLExpr
+isIntegral t = typeClass (TypeClass IsIntegral) `app` [t]
 
-isRational :: CheckedAnn -> DSLExpr -> DSLExpr
-isRational p t = typeClass p (TypeClass IsRational) `app` [t]
+isRational :: DSLExpr -> DSLExpr
+isRational t = typeClass (TypeClass IsRational) `app` [t]
 
-isReal :: CheckedAnn -> DSLExpr -> DSLExpr
-isReal p t = typeClass p (TypeClass IsReal) `app` [t]
+isReal :: DSLExpr -> DSLExpr
+isReal t = typeClass (TypeClass IsReal) `app` [t]
 
-isContainer :: CheckedAnn -> DSLExpr -> DSLExpr -> DSLExpr
-isContainer p tCont tElem = typeClass p (TypeClass IsContainer) `app` [tCont, tElem]
+isContainer :: DSLExpr -> DSLExpr -> DSLExpr
+isContainer tCont tElem = typeClass (TypeClass IsContainer) `app` [tCont, tElem]
 
-isQuantifiable :: CheckedAnn -> DSLExpr -> DSLExpr -> DSLExpr
-isQuantifiable p tDom tTruth = typeClass p (TypeClass IsQuantifiable) `app` [tDom, tTruth]
+isQuantifiable :: DSLExpr -> DSLExpr -> DSLExpr
+isQuantifiable tDom tTruth = typeClass (TypeClass IsQuantifiable) `app` [tDom, tTruth]

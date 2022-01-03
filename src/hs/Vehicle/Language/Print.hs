@@ -287,6 +287,7 @@ instance PrettyUsing rest BaseConstraint
       => PrettyUsing ('Opaque rest) Constraint where
   prettyUsing c = prettyUsing @rest (baseConstraint c)
     -- <+> "<boundCtx=" <> pretty (ctxNames (boundContext c)) <> ">"
+    -- <+> parens (pretty (provenanceOf c))
 
 instance PrettyUsing rest CheckedExpr
       => PrettyUsing ('Opaque rest) MetaSubstitution where
@@ -302,7 +303,7 @@ instance (PrettyUsing rest CheckedExpr)
 newtype ViaBnfcCore a = ViaBnfcCore a
 
 instance Core.Print a => Pretty (ViaBnfcCore a) where
-  pretty (ViaBnfcCore e) = pretty $ bnfcPrintHack (Core.printTree e)
+  pretty (ViaBnfcCore e) = pretty (bnfcPrintHack (Core.printTree e))
 
 deriving via (ViaBnfcCore BC.Prog) instance Pretty BC.Prog
 deriving via (ViaBnfcCore BC.Decl) instance Pretty BC.Decl

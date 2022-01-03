@@ -29,12 +29,18 @@ import Test.Golden.Utils
 failTests :: TestTree
 failTests = testGroup "FailTests"
   [ networkFailTests
+  , typeCheckingFailTests
   ]
 
 networkFailTests :: TestTree
 networkFailTests = failTestGroup "NetworkTypeErrors"
   [ ("notAFunction", Nothing)
   , ("multidimInputTensor", Nothing)
+  ]
+
+typeCheckingFailTests :: TestTree
+typeCheckingFailTests = failTestGroup "TypingErrors"
+  [ ("intAsNat", Nothing)
   ]
 
 failTestGroup :: FilePath -> [(FilePath, Maybe Backend)] -> TestTree
@@ -62,7 +68,7 @@ runTest inputFile outputFile backend = do
   where
     options = Options
       { version       = False
-      , logFile       = Nothing
+      , logFile       = Just Nothing
       , errFile       = Just outputFile
       , commandOption = Compile $ CompileOptions
         { inputFile    = inputFile
