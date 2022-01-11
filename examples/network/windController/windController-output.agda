@@ -29,17 +29,17 @@ deltaV = evaluate record
   ; networkUUID = "TODO_networkUUID"
   }
 
-currentPosition : InputVector → ℚ
-currentPosition x = x (# 0)
+currPosition : InputVector → ℚ
+currPosition x = x (# 0)
 
 prevPosition : InputVector → ℚ
 prevPosition x = x (# 1)
 
 SafeInput : InputVector → Set
-SafeInput x = ℚ.- (ℤ.+ 3 ℚ./ 1) ℚ.≤ currentPosition x × currentPosition x ℚ.≤ ℤ.+ 3 ℚ./ 1
+SafeInput x = (ℚ.- (ℤ.+ 13 ℚ./ 4) ℚ.≤ currPosition x × currPosition x ℚ.≤ ℤ.+ 13 ℚ./ 4) × (ℚ.- (ℤ.+ 13 ℚ./ 4) ℚ.≤ prevPosition x × prevPosition x ℚ.≤ ℤ.+ 13 ℚ./ 4)
 
 SafeOutput : InputVector → Set
-SafeOutput x = ℚ.- (ℤ.+ 2 ℚ./ 1) ℚ.< (deltaV x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currentPosition x) ℚ.- prevPosition x × (deltaV x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currentPosition x) ℚ.- prevPosition x ℚ.< ℤ.+ 2 ℚ./ 1
+SafeOutput x = ℚ.- (ℤ.+ 5 ℚ./ 4) ℚ.< (deltaV x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currPosition x) ℚ.- prevPosition x × (deltaV x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currPosition x) ℚ.- prevPosition x ℚ.< ℤ.+ 5 ℚ./ 4
 
 abstract
   safe : ∀ (x : Tensor ℚ (2 ∷ [])) → SafeInput x → SafeOutput x
