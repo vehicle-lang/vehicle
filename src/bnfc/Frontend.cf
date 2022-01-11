@@ -147,14 +147,14 @@ Neq.     Expr8  ::= Expr9 TokNeq Expr9;
 Not.     Expr11 ::= TokNot Expr11;
 
 -- Numeric expressions.
-Le.      Expr8  ::= Expr8 TokLe  Expr9;
-Lt.      Expr8  ::= Expr8 TokLt  Expr9;
-Ge.      Expr8  ::= Expr8 TokGe  Expr9;
-Gt.      Expr8  ::= Expr8 TokGt  Expr9;
-Mul.     Expr9  ::= Expr9 TokMul Expr10;
-Div.     Expr9  ::= Expr9 TokDiv Expr10;
-Add.     Expr10 ::= Expr10 TokAdd Expr11;
-Sub.     Expr10 ::= Expr10 TokSub Expr11;
+Le.      Expr8  ::= Expr8  TokLe  Expr9;
+Lt.      Expr8  ::= Expr8  TokLt  Expr9;
+Ge.      Expr8  ::= Expr8  TokGe  Expr9;
+Gt.      Expr8  ::= Expr8  TokGt  Expr9;
+Add.     Expr9  ::= Expr9  TokAdd Expr10;
+Sub.     Expr9  ::= Expr9  TokSub Expr10;
+Mul.     Expr10 ::= Expr10 TokMul Expr11;
+Div.     Expr10 ::= Expr10 TokDiv Expr11;
 Neg.     Expr11 ::= TokSub Expr11;
 
 -- Lists and tensors.
