@@ -153,7 +153,7 @@ updateGoldenDirectory goldenDirectory (Just newContents) = do
       let (sharedFiles, missingFiles, extraFiles) =
             getContentsDiff newContents oldContents
 
-      if Map.size sharedFiles /= 0 || Map.size extraFiles /= 0 then do
+      if Map.size missingFiles /= 0 || Map.size extraFiles /= 0 then do
         -- If the files themselves are not equal then add/remove the
         -- appropriate files but *do not* update the shared files contents
         -- as directory tests use a 2 phase acceptance model.
