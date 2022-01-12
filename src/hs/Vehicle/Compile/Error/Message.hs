@@ -52,7 +52,7 @@ fixText t = "Fix:" <+> t
 -- IO
 
 fromEitherIO :: ErrorFilePath -> Either CompileError a -> IO a
-fromEitherIO _           (Right x)  = return x
+fromEitherIO _         (Right x)  = return x
 fromEitherIO errorFile (Left err) = do
   let errStr = layoutAsString $ pretty $ details err
   case errorFile of

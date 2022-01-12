@@ -25,7 +25,7 @@ import Vehicle.Compile.Type.TypeClass
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (null)
 
-runTypeCheck :: (MonadLogger m, MonadError CompileError m,
+runTypeCheck :: (MonadCompile m,
                 TypeCheck a b, PrettyWith ('As 'Core) b,
                 MetaSubstitutable b)
              => a
@@ -568,7 +568,7 @@ typeOfLiteral :: CheckedAnn -> Literal -> CheckedExpr
 typeOfLiteral ann l = fromDSL ann $ case l of
   LNat  _ -> forall type0 $ \t -> isNatural  t ~~~> t
   LInt  _ -> forall type0 $ \t -> isIntegral t ~~~> t
-  LRat  _ -> forall type0 $ \t -> isReal     t ~~~> t
+  LRat  _ -> forall type0 $ \t -> isRational t ~~~> t
   LBool _ -> forall type0 $ \t -> isTruth    t ~~~> t
 
 -- | Return the type of the provided builtin.

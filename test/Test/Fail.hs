@@ -68,7 +68,7 @@ runTest inputFile outputFile backend = do
   where
     options = Options
       { version       = False
-      , logFile       = Just Nothing
+      , logFile       = Nothing --Just Nothing
       , errFile       = Just outputFile
       , commandOption = Compile $ CompileOptions
         { inputFile    = inputFile
