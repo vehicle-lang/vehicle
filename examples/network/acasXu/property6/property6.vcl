@@ -36,17 +36,15 @@ clearOfConflictScore x = acasXu x ! 0
 
 intruderFarAway : InputVector -> Prop
 intruderFarAway x =
-  ((- pi <= angleToIntruder x and angleToIntruder x <= -0.7)
-    or (0.7 <= angleToIntruder x and angleToIntruder x <= pi))
-  and 12000 <= distanceToIntruder x and distanceToIntruder x <= 62000
-  and -pi   <= intruderHeading    x and intruderHeading    x <= -pi + 0.005
-  and 100   <= speed              x and speed              x <= 1200
-  and 0     <= intruderSpeed      x and intruderSpeed      x <= 1200
+  (- pi <= angleToIntruder x <= -0.7 or 0.7 <= angleToIntruder x <= pi)
+  and 12000 <= distanceToIntruder x <= 62000
+  and -pi   <= intruderHeading    x <= -pi + 0.005
+  and 100   <= speed              x <= 1200
+  and 0     <= intruderSpeed      x <= 1200
 
 advisesClearOfConflict : InputVector -> Prop
 advisesClearOfConflict x = let y = acasXu x in
-  every i inn ([0,1,2,3,4] : List Nat) .
-    y ! 0 >= y ! i
+  y ! 0 > y ! 1 and y ! 0 > y ! 2 and y ! 0 > y ! 3 and y ! 0 > y ! 4
 
 property6 : Prop
 property6 = every x . intruderFarAway x => advisesClearOfConflict x

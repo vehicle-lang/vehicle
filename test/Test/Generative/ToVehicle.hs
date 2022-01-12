@@ -30,7 +30,7 @@ convertType k t = runReader (convertType' k t) (const 0)
 convertTerm :: (Fin ty, Fin tm) => Type ty -> Term ty tm -> Expr
 convertTerm t e = runReader (convertTerm' t e) (const 0, const 0)
 
-type Expr = DeBruijnExpr ()
+type Expr = DBExpr ()
 
 arrow :: Expr -> Expr -> Expr
 arrow e1 = Pi () (Binder () Explicit Nothing e1)
@@ -50,13 +50,13 @@ impApp e1 e2 = App () e1 [ImplicitArg () e2]
 forall :: Expr -> Expr -> Expr
 forall e1 = Pi () (ImplicitBinder () Nothing e1)
 
-raiseIndices :: (n -> Index) -> (n -> Index)
+raiseIndices :: (n -> DBIndex) -> (n -> DBIndex)
 raiseIndices = fmap (+1)
 
-extendIndices :: (n -> Index) -> (S n -> Index)
+extendIndices :: (n -> DBIndex) -> (S n -> DBIndex)
 extendIndices = fromS 0 . raiseIndices
 
-convertType' :: Fin ty => Kind -> Type ty -> Reader (ty -> Index) Expr
+convertType' :: Fin ty => Kind -> Type ty -> Reader (ty -> DBIndex) Expr
 convertType' Star TyNat =
   return $ BuiltinNumericType () Nat
 convertType' Star (a :-> b) =
@@ -73,7 +73,7 @@ convertType' k' (TyApp a b k) =
 convertType' _ _ = error "Malformed kind-type combo"
 
 convertTerm' :: forall ty tm. (Fin ty, Fin tm)
-             => Type ty -> Term ty tm -> Reader (ty -> Index, tm -> Index) Expr
+             => Type ty -> Term ty tm -> Reader (ty -> DBIndex, tm -> DBIndex) Expr
 convertTerm' a (TmVar n) = do
   (_, termIndices) <- ask
   return $ Var () (Bound (termIndices n))

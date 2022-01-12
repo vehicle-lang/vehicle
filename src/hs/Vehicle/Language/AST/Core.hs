@@ -13,6 +13,12 @@ import Vehicle.Language.AST.Builtin (Builtin)
 import Vehicle.Language.AST.Visibility
 
 --------------------------------------------------------------------------------
+-- Annotations
+
+class HasAnnotation a ann | a -> ann where
+  annotationOf :: a -> ann
+
+--------------------------------------------------------------------------------
 -- Universes
 
 type UniverseLevel = Int
@@ -82,6 +88,9 @@ pattern InstanceBinder p n t = Binder p Instance n t
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Binder binder var ann)
 
+instance HasAnnotation (Binder binder var ann) ann where
+  annotationOf (Binder ann _ _ _) = ann
+
 instance HasProvenance ann => HasProvenance (Binder binder var ann) where
   provenanceOf (Binder ann _ _ _) = provenanceOf ann
 
@@ -128,6 +137,9 @@ pattern InstanceArg ann e = Arg ann Instance e
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Arg binder var ann)
 
+instance HasAnnotation (Arg binder var ann) ann where
+  annotationOf (Arg ann _ _) = ann
+
 instance HasVisibility (Arg binder var ann) where
   visibilityOf (Arg _ v _) = v
 
@@ -154,6 +166,13 @@ traverseArgExpr :: Monad m
                 -> Arg binder1 var1 ann
                 -> m (Arg binder2 var2 ann)
 traverseArgExpr f (Arg i v e) = Arg i v <$> f e
+
+traverseExplicitArgExpr :: Monad m
+                        => (Expr binder var ann -> m (Expr binder var ann))
+                        -> Arg binder var ann
+                        -> m (Arg binder var ann)
+traverseExplicitArgExpr f (ExplicitArg i e) = ExplicitArg i <$> f e
+traverseExplicitArgExpr _ arg               = return arg
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -200,7 +219,7 @@ data Expr binder var ann
 
   -- | A hole in the program.
   | Hole
-    Provenance       -- Source of the meta-variable
+    ann              -- Annotation.
     Symbol           -- Hole name.
 
   -- | Unsolved meta variables.
@@ -227,44 +246,45 @@ data Expr binder var ann
 
   -- | Built-in literal values e.g. numbers/booleans.
   | Literal
-    ann               -- Annotation.
-    Literal           -- Value.
+    ann                      -- Annotation.
+    Literal                  -- Value.
 
   -- | A sequence of terms for e.g. list literals.
-  | Seq
-    ann               -- Annotation.
+  | LSeq
+    ann                      -- Annotation.
+    (Expr binder var ann)    -- Type-class dictionary.
     [Expr binder var ann]    -- List of expressions.
 
   -- | A placeholder for a dictionary of builtin type-classes.
   -- At the moment doesn't carry around any meaningful information
   -- as we don't currently have user-defined type-classes. Later
   -- on they will carry around user definitions.
-  | PrimDict (Expr binder var ann)
+  | PrimDict
+    ann
+    (Expr binder var ann)
 
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Expr binder var ann)
 
-instance HasProvenance ann => HasProvenance (Expr binder var ann) where
-  provenanceOf (Hole p _) = p
-  provenanceOf e          = provenanceOf (annotation e)
+instance HasAnnotation (Expr binder var ann) ann where
+  annotationOf = \case
+    Type     _         -> developerError "Should not be requesting an annotation from Type"
+    PrimDict ann _     -> ann
+    Hole     ann _     -> ann
+    Meta     ann _     -> ann
+    Ann      ann _ _   -> ann
+    App      ann _ _   -> ann
+    Pi       ann _ _   -> ann
+    Builtin  ann _     -> ann
+    Var      ann _     -> ann
+    Let      ann _ _ _ -> ann
+    Lam      ann _ _   -> ann
+    Literal  ann _     -> ann
+    LSeq     ann _ _   -> ann
 
--- |Extract a term's annotation
-annotation :: Expr binder var ann -> ann
-annotation = \case
-  Type     _         -> developerError "Should not be requesting an annotation from Type"
-  Hole     _   _     -> developerError "Should not be requesting an annotation from Hole"
-  PrimDict _         -> developerError "Should not be requesting an annotation from PrimitiveDict"
-  Meta     ann _     -> ann
-  Ann      ann _ _   -> ann
-  App      ann _ _   -> ann
-  Pi       ann _ _   -> ann
-  Builtin  ann _     -> ann
-  Var      ann _     -> ann
-  Let      ann _ _ _ -> ann
-  Lam      ann _ _   -> ann
-  Literal  ann _     -> ann
-  Seq      ann _     -> ann
+instance HasProvenance ann => HasProvenance (Expr binder var ann) where
+  provenanceOf e = provenanceOf (annotationOf e :: ann)
 
 --------------------------------------------------------------------------------
 -- Identifiers
@@ -287,6 +307,7 @@ class HasIdentifier a where
 data DeclType
   = Network
   | Dataset
+  deriving (Show)
 
 instance Pretty DeclType where
   pretty = \case
@@ -296,16 +317,16 @@ instance Pretty DeclType where
 -- | Type of top-level declarations.
 data Decl binder var ann
   = DeclNetw
-    Provenance      -- Location in source file.
-    Identifier      -- Network name.
+    Provenance             -- Location in source file.
+    Identifier             -- Network name.
     (Expr binder var ann)  -- Network type.
   | DeclData
-    Provenance      -- Location in source file.
-    Identifier      -- Dataset name.
+    Provenance             -- Location in source file.
+    Identifier             -- Dataset name.
     (Expr binder var ann)  -- Dataset type.
   | DefFun
-    Provenance      -- Location in source file.
-    Identifier      -- Bound function name.
+    Provenance             -- Location in source file.
+    Identifier             -- Bound function name.
     (Expr binder var ann)  -- Bound function type.
     (Expr binder var ann)  -- Bound function body.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)

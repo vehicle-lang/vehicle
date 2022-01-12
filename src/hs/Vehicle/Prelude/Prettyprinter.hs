@@ -11,9 +11,11 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet (toAscList)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (toAscList)
+import Data.Map (Map)
+import Data.Map qualified as Map (toAscList)
 import Data.Version (Version, showVersion)
 
-import Prettyprinter ( line', unAnnotate, layoutPretty, defaultLayoutOptions)
+import Prettyprinter ( line', unAnnotate, layoutPretty, defaultLayoutOptions, surround)
 import Prettyprinter.Internal (Doc(Annotated))
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
@@ -33,6 +35,7 @@ import Prettyprinter as CommonPrettyprinter
   , align
   , nest
   , indent
+  , unAnnotate
   )
 
 -- * Additions to the prettyprinter library
@@ -55,6 +58,9 @@ hcat = concatWith (<>)
 vcat :: Foldable t => t (Doc ann) -> Doc ann
 vcat = concatWith (\x y -> x <> line' <> y)
 
+prettyFlatList :: Pretty a => [a] -> Doc ann
+prettyFlatList xs = "[" <+> concatWith (surround ", ") (pretty <$> xs) <+> "]"
+
 --------------------------------------------------------------------------------
 -- Useful utility functions
 
@@ -74,6 +80,22 @@ layoutAsText = renderStrict . layoutPretty defaultLayoutOptions
 --------------------------------------------------------------------------------
 -- Pretty printing of datatypes
 
+prettyIntMap :: IntMap (Doc a) -> Doc a
+prettyIntMap = prettyMapEntries . IntMap.toAscList
+
+prettyMap :: (Pretty key, Pretty value) => Map key value -> Doc a
+prettyMap = prettyMapEntries . Map.toAscList . fmap pretty
+
+prettyMapEntries :: Pretty key => [(key, Doc a)] -> Doc a
+prettyMapEntries entries = result
+  where
+  (keys, values) = unzip entries
+  keys' = fmap pretty keys
+  entries' = zipWith (\k v -> k <+> ":=" <+> v) keys' values
+  result = "{" <+> align (group
+    (concatWith (\x y -> x <> ";" <> line <> y) entries')
+    <> softline <> "}")
+
 instance Pretty Rational where
   pretty p = pretty (fromRational p :: Double)
   --pretty (numerator p) <> "/" <> pretty (denominator p)
@@ -81,17 +103,8 @@ instance Pretty Rational where
 instance Pretty IntSet where
   pretty m = pretty (IntSet.toAscList m)
 
-instance Pretty (IntMap (Doc b)) where
-  pretty m = result
-    where
-      entries = IntMap.toAscList m
-      (keys, values) = unzip entries
-      keys' = fmap pretty keys
-      entries' = zipWith (\k v -> k <+> ":=" <+> v) keys' values
-
-      result = unAnnotate $ "{" <+> align (group
-        (concatWith (\x y -> x <> ";" <> line <> y) entries')
-        <> softline <> "}")
+instance Pretty a => Pretty (IntMap a) where
+  pretty = prettyIntMap . fmap pretty
 
 instance Pretty Version where
   pretty = pretty . showVersion

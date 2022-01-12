@@ -5,4 +5,4 @@
 ;  - AISEC version: 0.1.0.1
 ;  - Time generated: ???
 
-(assert (let ((x true)) x))
+(assert true)

@@ -6,13 +6,21 @@ module Vehicle.Language.AST.Builtin
   , BooleanType(..)
   , ContainerType(..)
   , Quantifier(..)
+  , Relation(..)
   , Order(..)
   , Equality(..)
   , TypeClass(..)
   , BooleanOp2(..)
   , NumericOp2(..)
+  , quantifierAdverb
   , builtinFromSymbol
   , symbolFromBuiltin
+  , isDecidable
+  , isStrict
+  , flipStrictness
+  , flipOrder
+  , flipRel
+  , chainable
   ) where
 
 import Data.Bifunctor (first)
@@ -41,6 +49,10 @@ instance Hashable NumericType
 
 instance Pretty NumericType where
   pretty = pretty . show
+
+isDecidable :: NumericType -> Bool
+isDecidable Real = False
+isDecidable _    = True
 
 --------------------------------------------------------------------------------
 -- Boolean types
@@ -78,7 +90,7 @@ data TypeClass
   | HasOrd
   | IsTruth
   | IsNatural
-  | IsIntegral
+  | IsInteger
   | IsRational
   | IsReal
   | IsContainer
@@ -95,7 +107,7 @@ instance Show TypeClass where
     IsTruth        -> "IsTruth"
     IsContainer    -> "IsContainer"
     IsNatural      -> "IsNatural"
-    IsIntegral     -> "IsIntegral"
+    IsInteger     -> "IsInteger"
     IsRational     -> "IsRational"
     IsReal         -> "IsReal"
     IsQuantifiable -> "IsQuantify"
@@ -109,7 +121,7 @@ instance Pretty TypeClass where
 data Quantifier
   = All
   | Any
-  deriving (Eq, Ord, Generic)
+  deriving (Show, Eq, Ord, Generic)
 
 instance NFData   Quantifier
 instance Hashable Quantifier
@@ -117,6 +129,10 @@ instance Hashable Quantifier
 instance Negatable Quantifier where
   neg Any = All
   neg All = Any
+
+quantifierAdverb :: Quantifier -> Doc a
+quantifierAdverb All = "universally"
+quantifierAdverb Any = "existentially"
 
 --------------------------------------------------------------------------------
 -- Equality
@@ -165,10 +181,43 @@ instance Pretty Order where
   pretty = pretty . show
 
 instance Negatable Order where
-  neg Le = Gt
-  neg Lt = Ge
-  neg Ge = Lt
-  neg Gt = Le
+  neg = \case
+    Le -> Gt
+    Lt -> Ge
+    Ge -> Lt
+    Gt -> Le
+
+isStrict :: Order -> Bool
+isStrict order = order == Lt || order == Gt
+
+flipStrictness :: Order -> Order
+flipStrictness = \case
+  Le -> Lt
+  Lt -> Le
+  Ge -> Gt
+  Gt -> Ge
+
+flipOrder :: Order -> Order
+flipOrder = \case
+  Le -> Ge
+  Lt -> Gt
+  Ge -> Le
+  Gt -> Lt
+
+chainable :: Order -> Order -> Bool
+chainable e1 e2 = e1 == e2 || e1 == flipStrictness e2
+
+--------------------------------------------------------------------------------
+-- Relation
+
+data Relation
+  = OrderRel Order
+  | EqualityRel Equality
+  deriving (Eq, Ord)
+
+flipRel :: Relation -> Relation
+flipRel (OrderRel order) = OrderRel (flipOrder order)
+flipRel (EqualityRel eq) = EqualityRel eq
 
 --------------------------------------------------------------------------------
 -- Boolean operations

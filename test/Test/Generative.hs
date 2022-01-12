@@ -16,12 +16,12 @@ import Test.Tasty.HUnit
 
 import Test.Generative.Generator
 import Test.Generative.ToVehicle
-import Vehicle.Language.Print (prettyFriendly, prettyVerbose, prettyFriendlyDBClosed)
+import Vehicle.Language.Print (prettyFriendly, prettyVerbose)
 
 maxDepth :: Int
 maxDepth = 15
 
-annotate :: DeBruijnExpr () -> UncheckedExpr
+annotate :: DBExpr () -> UncheckedExpr
 annotate = fmap (const (mempty, TheMachine))
 
 isWellTyped :: UncheckedExpr -> UncheckedExpr -> (Bool, [Message])

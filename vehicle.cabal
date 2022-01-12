@@ -1,4 +1,4 @@
-cabal-version: 2.4
+cabal-version: 3.0
 
 name:           vehicle
 version:        0.1.0.1
@@ -54,28 +54,45 @@ library
   hs-source-dirs:       src/hs
   exposed-modules:      Vehicle
                       , Vehicle.Prelude
-                      , Vehicle.Language.AST
-                      , Vehicle.Language.AlphaEquivalence
-                      , Vehicle.Language.DSL
-                      , Vehicle.Language.Descope
-                      , Vehicle.Language.Scope
-                      , Vehicle.Language.SupplyNames
-                      , Vehicle.Language.Normalise
-                      , Vehicle.Language.Parse
-                      , Vehicle.Language.Print
-                      , Vehicle.Language.Simplify
-                      , Vehicle.Language.Sugar
-                      , Vehicle.Language.Type
-                      , Vehicle.Language.Elaborate.Core
-                      , Vehicle.Language.Elaborate.Frontend
-                      , Vehicle.Language.Delaborate.Core
-                      , Vehicle.Language.Delaborate.Frontend
-                      , Vehicle.Backend.ITP.Agda
-                      , Vehicle.Backend.Verifier.SMTLib
-                      , Vehicle.Backend.Verifier.VNNLib
 
-  other-modules:        Vehicle.Prelude.Error
-                      , Vehicle.Prelude.Prettyprinter
+                      , Vehicle.Language.AST
+                      , Vehicle.Language.DSL
+                      , Vehicle.Language.Print
+                      , Vehicle.Language.Sugar
+
+                      , Vehicle.Compile
+                      , Vehicle.Compile.Prelude
+                      , Vehicle.Compile.AlphaEquivalence
+                      , Vehicle.Compile.Error
+                      , Vehicle.Compile.Error.Message
+                      , Vehicle.Compile.Parse
+                      , Vehicle.Compile.Elaborate.Core
+                      , Vehicle.Compile.Elaborate.Frontend
+                      , Vehicle.Compile.Scope
+                      , Vehicle.Compile.Type
+                      , Vehicle.Compile.CoDeBruijnify
+                      , Vehicle.Compile.Normalise
+                      , Vehicle.Compile.Normalise.IfElimination
+                      , Vehicle.Compile.Normalise.DNF
+                      , Vehicle.Compile.Normalise.NetworkTypes
+                      , Vehicle.Compile.Normalise.NetworkApplications
+                      , Vehicle.Compile.LetInsertion
+                      , Vehicle.Compile.Simplify
+                      , Vehicle.Compile.SupplyNames
+                      , Vehicle.Compile.Descope
+                      , Vehicle.Compile.Delaborate.Core
+                      , Vehicle.Compile.Delaborate.Frontend
+
+                      , Vehicle.Backend
+                      , Vehicle.Backend.Agda
+                      , Vehicle.Backend.VNNLib
+                      , Vehicle.Backend.Marabou
+
+                      , Vehicle.Check
+
+                      , Vehicle.NeuralNetwork
+
+  other-modules:        Vehicle.Prelude.Prettyprinter
                       , Vehicle.Prelude.Provenance
                       , Vehicle.Prelude.Token
                       , Vehicle.Prelude.Logging
@@ -85,36 +102,49 @@ library
                       , Vehicle.Language.AST.BuiltinPatterns
                       , Vehicle.Language.AST.Core
                       , Vehicle.Language.AST.DeBruijn
+                      , Vehicle.Language.AST.CoDeBruijn
                       , Vehicle.Language.AST.Name
                       , Vehicle.Language.AST.Visibility
                       , Vehicle.Language.AST.Utils
+                      , Vehicle.Language.AST.Position
 
-                      , Vehicle.Language.Type.Core
-                      , Vehicle.Language.Type.Meta
-                      , Vehicle.Language.Type.MetaSet
-                      , Vehicle.Language.Type.MetaSubstitution
-                      , Vehicle.Language.Type.TypeClass
-                      , Vehicle.Language.Type.Unify
+                      , Vehicle.Compile.Type.Meta
+                      , Vehicle.Compile.Type.MetaSet
+                      , Vehicle.Compile.Type.MetaSubstitution
+                      , Vehicle.Compile.Type.Constraint
+                      , Vehicle.Compile.Type.TypeClass
+                      , Vehicle.Compile.Type.Unify
+                      , Vehicle.Compile.CapitaliseTypeNames
+                      , Vehicle.Compile.QuantifierAnalysis
 
-                      , Vehicle.Backend.ITP.Core
-                      , Vehicle.Backend.ITP.Agda.Preprocess
-                      , Vehicle.Backend.Verifier.Core
+                      , Vehicle.Backend.Prelude
+                      , Vehicle.Backend.Agda.Compile
+                      , Vehicle.Backend.Agda.Interact
+                      , Vehicle.Backend.Marabou.Core
+                      , Vehicle.Backend.Marabou.Compile
+                      , Vehicle.Backend.Marabou.Interact
+                      , Vehicle.Backend.VNNLib.Core
+                      , Vehicle.Backend.VNNLib.Compile
+                      , Vehicle.Backend.VNNLib.Interact
 
                       -- Files generated by Cabal
-                      Paths_vehicle
+                      , Paths_vehicle
 
   build-depends:        vehicle-bnfc
-                      , hashable             >=1.3 && <2
-                      , transformers         >=0.4 && <0.6
-                      , mtl                  >=2.2 && <3
-                      , recursion-schemes    >=5.2 && <6
-                      , range                >=0.3 && <1
-                      , containers           >=0.5 && <1
-                      , prettyprinter        >=1.7 && <2
-                      , data-fix             >=0.2 && <1
-                      , deepseq              >=1.4 && <2
-                      , ansi-terminal        >=0.6 && <1
+                      , hashable             >=1.3  && <2
+                      , transformers         >=0.4  && <0.6
+                      , mtl                  >=2.2  && <3
+                      , recursion-schemes    >=5.2  && <6
+                      , range                >=0.3  && <1
+                      , containers           >=0.5  && <1
+                      , data-default         >=0.7  && <1
+                      , prettyprinter        >=1.7  && <2
+                      , data-fix             >=0.2  && <1
+                      , deepseq              >=1.4  && <2
+                      , ansi-terminal        >=0.6  && <1
                       , bytestring
+                      , filepath
+                      , directory
                       , hashable
                       , split
                       , data-default-class
@@ -148,31 +178,46 @@ library
                       , DeriveFoldable
                       , DeriveTraversable
                       , DeriveGeneric
+                      , FunctionalDependencies
 
 executable vehicle
   import:             common-base
   main-is:            Main.hs
   hs-source-dirs:     app
   build-depends:      vehicle
+                    , optparse-applicative >=0.16 && <1
 
 test-suite vehicle-test
   import:             common-base
   type:               exitcode-stdio-1.0
   main-is:            Test.hs
   hs-source-dirs:     test
-  other-modules:      Test.Golden
+  other-modules:      Test.Fail
+                    , Test.Golden
+                    , Test.Golden.Utils
+                    , Test.Unit
+                    , Test.Unit.AlphaEquivalence
+                    , Test.Unit.CoDeBruijn
+                    , Test.Unit.LetInsertion
+                    , Test.Unit.PositionTree
+                    , Test.Unit.IfElimination
                     -- , Test.Generative
                     -- , Test.Generative.Generator
                     -- , Test.Generative.ToVehicle
+                    , Test.Utils
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -main-is Test
   default-extensions: ImportQualifiedPost
+                    , OverloadedStrings
   build-depends:      filepath >=1.4 && <2
+                    , mtl      >=2.2 && <3
+                    , hashable
                     , Diff
                     , directory
                     , tasty
                     , tasty-golden
-                    -- , tasty-hunit
+                    , tasty-hunit
                     , vehicle
+                    , containers >=0.5  && <1
                     -- For generation of terms
                     -- , lazy-search
                     -- , size-based

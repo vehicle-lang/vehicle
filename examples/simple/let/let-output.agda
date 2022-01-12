@@ -5,16 +5,19 @@
 --  - AISEC version: 0.1.0.1
 --  - Time generated: ???
 
+{-# OPTIONS --allow-exec #-}
+
+open import Vehicle
 open import Data.Unit
 
-module MyTestModule where
+module let-output where
 
 private
-  VEHICLE_PROJECT_FILE = TODO/vehicle/path
+  VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
 abstract
   e1 : let x = ⊤ in x
   e1 = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
-    ; propertyUUID = ????
+    ; propertyUUID = "TODO_propertyUUID"
     }

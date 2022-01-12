@@ -2,6 +2,7 @@ module Vehicle.Language.AST.Visibility where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
+import Data.Hashable (Hashable)
 
 import Vehicle.Prelude
 
@@ -20,6 +21,8 @@ instance Pretty Visibility where
     Implicit -> "Implicit"
     Instance -> "Instance"
 
+instance Hashable Visibility
+
 visProv :: Visibility -> Provenance -> Provenance
 visProv Explicit = id
 visProv Implicit = expandProvenance (1,1)
@@ -29,6 +32,9 @@ visProv Instance = expandProvenance (2,2)
 
 class HasVisibility a where
   visibilityOf :: a -> Visibility
+
+isExplicit :: HasVisibility a => a -> Bool
+isExplicit x = visibilityOf x == Explicit
 
 --------------------------------------------------------------------------------
 -- Ownership

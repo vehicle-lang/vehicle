@@ -19,6 +19,7 @@ position token TokLambda    {"\\"};
 position token TokTensor    {"Tensor"};
 position token TokList      {"List"};
 position token TokReal      {"Real"};
+position token TokRat       {"Rat"};
 position token TokInt       {"Int"};
 position token TokNat       {"Nat"};
 position token TokBool      {"Bool"};
@@ -57,7 +58,7 @@ position token TokTCContainer {"IsContainer"};
 position token TokTCTruth     {"IsTruth"};
 position token TokTCQuantify  {"IsQuantify"};
 position token TokTCNatural   {"IsNatural"};
-position token TokTCIntegral  {"IsIntegral"};
+position token TokTCIntegral  {"IsInteger"};
 position token TokTCRational  {"IsRational"};
 position token TokTCReal      {"IsReal"};
 
@@ -75,6 +76,8 @@ ExplicitBinder.    Binder ::= Name;
 ExplicitBinderAnn. Binder ::= "(" Name TokElemOf Expr1 ")";
 ImplicitBinder.    Binder ::= "{" Name "}";
 ImplicitBinderAnn. Binder ::= "{" Name TokElemOf Expr1 "}";
+InstanceBinder.    Binder ::= "{{" Name "}}";
+InstanceBinderAnn. Binder ::= "{{" Name TokElemOf Expr1 "}}";
 
 separator Binder "";
 
@@ -130,6 +133,7 @@ Tensor.  Expr14 ::= TokTensor Expr15 Expr15;
 Bool.    Expr15 ::= TokBool;
 Prop.    Expr15 ::= TokProp;
 Real.    Expr15 ::= TokReal;
+Rat.     Expr15 ::= TokRat;
 Int.     Expr15 ::= TokInt;
 Nat.     Expr15 ::= TokNat;
 
@@ -143,10 +147,10 @@ Neq.     Expr8  ::= Expr9 TokNeq Expr9;
 Not.     Expr11 ::= TokNot Expr11;
 
 -- Numeric expressions.
-Le.      Expr8  ::= Expr9 TokLe  Expr9;
-Lt.      Expr8  ::= Expr9 TokLt  Expr9;
-Ge.      Expr8  ::= Expr9 TokGe  Expr9;
-Gt.      Expr8  ::= Expr9 TokGt  Expr9;
+Le.      Expr8  ::= Expr8 TokLe  Expr9;
+Lt.      Expr8  ::= Expr8 TokLt  Expr9;
+Ge.      Expr8  ::= Expr8 TokGe  Expr9;
+Gt.      Expr8  ::= Expr8 TokGt  Expr9;
 Mul.     Expr9  ::= Expr9 TokMul Expr10;
 Div.     Expr9  ::= Expr9 TokDiv Expr10;
 Add.     Expr10 ::= Expr10 TokAdd Expr11;
@@ -154,7 +158,7 @@ Sub.     Expr10 ::= Expr10 TokSub Expr11;
 Neg.     Expr11 ::= TokSub Expr11;
 
 -- Lists and tensors.
-Seq.     Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
+LSeq.    Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
 Cons.    Expr4  ::= Expr5 TokCons Expr4;
 At.      Expr12 ::= Expr12 TokAt Expr13;
 Map.     Expr13 ::= TokMap Expr15 Expr15;

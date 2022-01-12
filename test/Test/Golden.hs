@@ -1,10 +1,9 @@
 module Test.Golden
-  ( goldenTests
+  ( GoldenTestSpec
+  , goldenTests
+  , goldenTestList
   ) where
 
-import Control.Monad (void)
-import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiff)
-import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -13,38 +12,46 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import System.Exit (exitFailure)
 import System.FilePath (takeFileName, splitPath, (<.>), (</>))
-import System.Directory (removeFile)
+import System.Directory (removeFile, removeDirectory)
 import System.IO.Error (isDoesNotExistError)
 import Control.Exception ( catch, throwIO )
 import Debug.Trace (traceShowId)
 
 import Vehicle
+import Vehicle.Prelude
+import Vehicle.Compile
+import Vehicle.Backend
+import Test.Golden.Utils
 
 --------------------------------------------------------------------------------
 -- Tests
 
 goldenTests :: TestTree
-goldenTests = testGroup "Golden"
+goldenTests = testGroup "GoldenTests"
   [ testGroup "Networks" (map makeGoldenTestsFromSpec realisticTestList)
   , testGroup "Simple"   (map makeGoldenTestsFromSpec simpleTestList)
   , testGroup "Misc"     (map makeGoldenTestsFromSpec miscTestList)
   ]
 
+goldenTestList :: [GoldenTestSpec]
+goldenTestList = realisticTestList <> simpleTestList <> miscTestList
+
 realisticTestList :: [GoldenTestSpec]
 realisticTestList = map (addTestDirectory ("examples" </> "network")) [
-  --("shortestPath",     [Verifier VNNLib]),
-  ("andGate",                [Verifier VNNLib, ITP Agda]),
-  ("acasXu" </> "property6", [Verifier VNNLib, ITP Agda]),
-  ("monotonicity",           [Verifier VNNLib, ITP Agda]),
-  ("increasing",             [Verifier VNNLib, ITP Agda]),
-  ("reachability",           [Verifier VNNLib, ITP Agda])
+  --("shortestPath",     [VNNLibBackend]),
+  ("andGate",                [VNNLibBackend, AgdaBackend]),
+  ("acasXu" </> "property6", [VNNLibBackend, AgdaBackend, MarabouBackend]),
+  ("monotonicity",           [VNNLibBackend, AgdaBackend]),
+  ("increasing",             [VNNLibBackend, AgdaBackend]),
+  ("reachability",           [VNNLibBackend, AgdaBackend, MarabouBackend]),
+  ("autoencoderError",       [VNNLibBackend, AgdaBackend]),
+  ("windController",         [VNNLibBackend, AgdaBackend, MarabouBackend])
   ]
 
 simpleTestList :: [GoldenTestSpec]
 simpleTestList = map (addTestDirectory ("examples" </> "simple"))
-  [ --("quantifier",     [Verifier SMTLib])
-    ("quantifierIn",   [Verifier SMTLib, ITP Agda])
-  , ("let",            [Verifier SMTLib, ITP Agda])
+  [ ("quantifierIn",   [AgdaBackend])
+  , ("let",            [AgdaBackend])
   ]
 
 miscTestList :: [GoldenTestSpec]
@@ -55,20 +62,19 @@ miscTestList = map (addTestDirectory ("examples" </> "misc"))
 --------------------------------------------------------------------------------
 -- Test infrastructure
 
-type GoldenTestSpec = (FilePath, FilePath, [OutputTarget])
+type GoldenTestSpec = (FilePath, FilePath, [Backend])
 
-addTestDirectory :: FilePath -> (FilePath, [OutputTarget]) -> GoldenTestSpec
+addTestDirectory :: FilePath -> (FilePath, [Backend]) -> GoldenTestSpec
 addTestDirectory folderPath (subfolder, targets) =
   ( folderPath </> subfolder
   , last (splitPath subfolder)
   , targets
   )
 
-getFileExt :: OutputTarget -> String
-getFileExt (Verifier VNNLib) = ".vnnlib"
-getFileExt (Verifier SMTLib) = ".smtlib"
-getFileExt (ITP Agda)        = ".agda"
-getFileExt (ITP (Vehicle _)) = error "Vehicle targets not yet supported"
+getGoldenFilepathSuffix :: Backend -> String
+getGoldenFilepathSuffix (Verifier Marabou) = "-marabou"
+getGoldenFilepathSuffix (Verifier VNNLib)  = ".vnnlib"
+getGoldenFilepathSuffix (ITP Agda)         = ".agda"
 
 makeGoldenTestsFromSpec :: GoldenTestSpec -> TestTree
 makeGoldenTestsFromSpec (folderPath, testName, outputTargets) = testGroup testGroupName tests
@@ -79,49 +85,34 @@ makeGoldenTestsFromSpec (folderPath, testName, outputTargets) = testGroup testGr
     tests :: [TestTree]
     tests = map (makeIndividualTest folderPath testName) outputTargets
 
-makeIndividualTest :: FilePath -> FilePath -> OutputTarget -> TestTree
-makeIndividualTest folderPath name target = testWithCleanup
+makeIndividualTest :: FilePath -> FilePath -> Backend -> TestTree
+makeIndividualTest folderPath name backend = test
   where
-  testName   = name <> "-" <> show target
-  extension  = getFileExt target
-  basePath   = folderPath </> name
-  inputFile  = basePath <.> ".vcl"
-  outputFile = basePath <> "-temp-output" <.> extension
-  goldenFile = basePath <> "-output" <.> extension
-  readGolden = readFileOrStdin (Just goldenFile)
-  readOutput = do runTest inputFile outputFile target; readFileOrStdin (Just outputFile)
-  updateGolden = T.writeFile goldenFile
+  testName       = name <> "-" <> show backend
+  filePathSuffix = getGoldenFilepathSuffix backend
+  basePath       = folderPath </> name
+  moduleName     = name <> "-output"
+  inputFile      = basePath <.> ".vcl"
+  isFolderOutput = backend == MarabouBackend
+  outputFile     = basePath <> "-temp-output" <> filePathSuffix
+  goldenFile     = basePath <> "-output"      <> filePathSuffix
+  run            = runTest inputFile outputFile moduleName backend
 
-  test = goldenTest testName readGolden readOutput diffCommand updateGolden
-  testWithCleanup = cleanupOutputFile outputFile test
+  test = if backend == MarabouBackend
+    then goldenDirectoryTest testName run goldenFile outputFile
+    else goldenFileTest      testName run goldenFile outputFile
 
-diffCommand :: Text -> Text -> IO (Maybe String)
-diffCommand golden output = do
-  let goldenLines = map T.unpack $ T.lines golden
-  let outputLines = map T.unpack $ T.lines output
-  let diff = getGroupedDiff goldenLines outputLines
-  return $ if all isBoth diff
-    then Nothing
-    else Just $ "Output differs:" <> ppDiff diff
-  where
-    isBoth :: Diff a -> Bool
-    isBoth (Both a b) = True
-    isBoth _ = False
-
-cleanupOutputFile :: FilePath -> TestTree -> TestTree
-cleanupOutputFile testFile test = withResource (return ()) (const cleanup) (const test)
-  where
-    cleanup = removeFile testFile `catch` handleExists
-
-    handleExists e
-      | isDoesNotExistError e = return ()
-      | otherwise = throwIO e
-
-runTest :: FilePath -> FilePath -> OutputTarget -> IO ()
-runTest inputFile outputFile outputTarget = do
-  run $ defaultOptions
-    { inputFile    = Just inputFile
-    , outputTarget = Just outputTarget
-    , outputFile   = Just outputFile
-    , logFile      = Nothing -- Just Nothing -- Nothing
+runTest :: FilePath -> FilePath -> String -> Backend -> IO ()
+runTest inputFile outputFile modulePath backend = do
+  run $ Options
+    { version       = False
+    , logFile       = Nothing --Just Nothing
+    , errFile       = Nothing
+    , commandOption = Compile $ CompileOptions
+      { inputFile    = inputFile
+      , outputFile   = Just outputFile
+      , outputTarget = backend
+      , moduleName   = modulePath
+      , networks     = []
+      }
     }

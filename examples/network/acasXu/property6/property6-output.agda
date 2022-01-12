@@ -5,22 +5,24 @@
 --  - AISEC version: 0.1.0.1
 --  - Time generated: ???
 
-open import AISEC.Utils
+{-# OPTIONS --allow-exec #-}
+
+open import Vehicle
+open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Sum
-open import Data.Nat as ℕ using (ℕ)
-open import Data.Rational as ℚ using (ℚ)
-open import Data.Real as ℝ using (ℝ)
+open import Data.Integer as ℤ using (ℤ)
+open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
+open import Data.Fin as Fin using (#_)
 open import Data.List
-open import Data.List.Relation.Unary.All as List
 
-module MyTestModule where
+module property6-output where
 
 private
-  VEHICLE_PROJECT_FILE = TODO/vehicle/path
+  VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
 pi : ℝ
-pi = 392699 ℚ./ 125000
+pi = ℤ.+ 392699 ℝ./ 125000
 
 InputVector : Set
 InputVector = Tensor ℝ (5 ∷ [])
@@ -31,36 +33,36 @@ OutputVector = Tensor ℝ (5 ∷ [])
 acasXu : InputVector → OutputVector
 acasXu = evaluate record
   { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = NETWORK_UUID
+  ; networkUUID = "TODO_networkUUID"
   }
 
 distanceToIntruder : InputVector → ℝ
-distanceToIntruder x = x 0
+distanceToIntruder x = x (# 0)
 
 angleToIntruder : InputVector → ℝ
-angleToIntruder x = x 1
+angleToIntruder x = x (# 1)
 
 intruderHeading : InputVector → ℝ
-intruderHeading x = x 2
+intruderHeading x = x (# 2)
 
 speed : InputVector → ℝ
-speed x = x 3
+speed x = x (# 3)
 
 intruderSpeed : InputVector → ℝ
-intruderSpeed x = x 4
+intruderSpeed x = x (# 4)
 
 clearOfConflictScore : InputVector → ℝ
-clearOfConflictScore x = acasXu x 0
+clearOfConflictScore x = acasXu x (# 0)
 
 IntruderFarAway : InputVector → Set
-IntruderFarAway x = (ℤ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ ℤ.- (7 ℚ./ 10) ⊎ 7 ℚ./ 10 ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ pi) × (12000 ℝ.≤ distanceToIntruder x × (distanceToIntruder x ℝ.≤ 62000 × (ℤ.- pi ℝ.≤ intruderHeading x × (intruderHeading x ℝ.≤ ℤ.- pi ℝ.+ 1 ℚ./ 200 × (100 ℝ.≤ speed x × (speed x ℝ.≤ 1200 × (0 ℝ.≤ intruderSpeed x × intruderSpeed x ℝ.≤ 1200)))))))
+IntruderFarAway x = (ℝ.- pi ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ ℝ.- (ℤ.+ 7 ℝ./ 10) ⊎ ℤ.+ 7 ℝ./ 10 ℝ.≤ angleToIntruder x × angleToIntruder x ℝ.≤ pi) × ((ℤ.+ 12000 ℝ./ 1 ℝ.≤ distanceToIntruder x × distanceToIntruder x ℝ.≤ ℤ.+ 62000 ℝ./ 1) × ((ℝ.- pi ℝ.≤ intruderHeading x × intruderHeading x ℝ.≤ ℝ.- pi ℝ.+ ℤ.+ 1 ℝ./ 200) × ((ℤ.+ 100 ℝ./ 1 ℝ.≤ speed x × speed x ℝ.≤ ℤ.+ 1200 ℝ./ 1) × (ℤ.+ 0 ℝ./ 1 ℝ.≤ intruderSpeed x × intruderSpeed x ℝ.≤ ℤ.+ 1200 ℝ./ 1))))
 
 AdvisesClearOfConflict : InputVector → Set
-AdvisesClearOfConflict x = let y = acasXu x in List.All (λ (i : ℕ) → y 0 ℝ.≥ y i) (0 ∷ (1 ∷ (2 ∷ (3 ∷ (4 ∷ [])))) : List ℕ)
+AdvisesClearOfConflict x = let y = acasXu x in y (# 0) ℝ.> y (# 1) × (y (# 0) ℝ.> y (# 2) × (y (# 0) ℝ.> y (# 3) × y (# 0) ℝ.> y (# 4)))
 
 abstract
   property6 : ∀ (x : Tensor ℝ (5 ∷ [])) → IntruderFarAway x → AdvisesClearOfConflict x
   property6 = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
-    ; propertyUUID = ????
+    ; propertyUUID = "TODO_propertyUUID"
     }

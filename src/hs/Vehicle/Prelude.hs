@@ -3,6 +3,9 @@ module Vehicle.Prelude
   ( module X
   , VehicleLang(..)
   , Negatable(..)
+  , OutputFilePaths
+  , LogFilePath
+  , ErrorFilePath
   , (|->)
   , (!?)
   , (!!?)
@@ -11,26 +14,29 @@ module Vehicle.Prelude
   , readRat
   , duplicate
   , oneHot
+  , partialSort
   , capitaliseFirstLetter
+  , developerError
   ) where
 
 import Data.Range
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import Data.Text qualified as Text
+import Data.Graph
 import Numeric
+import Control.Exception (Exception, throw)
+import GHC.Stack (HasCallStack)
 
 import Vehicle.Prelude.Token as X
 import Vehicle.Prelude.Provenance as X
-import Vehicle.Prelude.Error as X
 import Vehicle.Prelude.Prettyprinter as X
 import Vehicle.Prelude.Logging as X
 import Vehicle.Prelude.Supply as X
 
-infix 1 |->
-
 data VehicleLang = Frontend | Core
   deriving (Show)
 
+infix 1 |->
 -- | Useful for writing association lists.
 (|->) :: a -> b -> (a, b)
 (|->) = (,)
@@ -75,7 +81,7 @@ capitaliseFirstLetter name
 
 oneHot :: Int -> Int -> a -> [Maybe a]
 oneHot i l x
-  | i < 0 || l < i = developerError $ "Invalid arguments" <+> squotes (pretty i) <+> squotes (pretty l) <+> "to `oneHot`"
+  | i < 0 || l < i = error $ "Invalid arguments '" <> show i <> "' '" <> show l <> "'to `oneHot`"
   | i == 0         = Just x  : replicate l Nothing
   | otherwise      = Nothing : oneHot (i-1) (l-1) x
 
@@ -84,5 +90,43 @@ readRat str = case readFloat (Text.unpack str) of
   ((n, []) : _) -> n
   _             -> error "Invalid number"
 
+partialSort :: forall a. (a -> a -> Maybe Ordering) -> [a] -> [a]
+partialSort partialCompare xs = sortedNodes
+  where
+    edgesBetween :: (Vertex, a) -> (Vertex, a) -> [Edge]
+    edgesBetween (k1, v1) (k2, v2) = case partialCompare v1 v2 of
+      Nothing -> []
+      Just LT -> [(k1, k2)]
+      Just EQ -> [(k1, k2), (k2, k1)]
+      Just GT -> [(k2, k1)]
+
+    edgesFor :: [(Vertex, a)] -> [Edge]
+    edgesFor []       = mempty
+    edgesFor (v : vs) = concatMap (edgesBetween v) vs <> edgesFor vs
+
+    graph = buildG (0, length xs - 1) (edgesFor (zip [0..] xs))
+    sortedIndices = topSort graph
+    sortedNodes   = map (xs !!) sortedIndices
+
 class Negatable a where
   neg :: a -> a
+
+type LogFilePath = Maybe (Maybe FilePath)
+type ErrorFilePath = Maybe FilePath
+type OutputFilePaths = (ErrorFilePath, LogFilePath)
+
+--------------------------------------------------------------------------------
+-- Developer errors
+
+newtype DeveloperError = DeveloperError Text
+
+instance Show DeveloperError where
+  show (DeveloperError text) = unpack text
+
+instance Exception DeveloperError
+
+developerError :: HasCallStack => Doc a -> b
+developerError message = throw $ DeveloperError $ layoutAsText $
+  "Something went wrong internally. Please report the error" <+>
+  "shown below to `https://github.com/wenkokke/vehicle/issues`." <> line <>
+  "Error:" <+> message

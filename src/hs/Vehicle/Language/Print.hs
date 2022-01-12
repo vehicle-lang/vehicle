@@ -1,8 +1,13 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Vehicle.Language.Print
-  ( PrettyLang(..)
-  , PrettyDescopedLang(..)
+  ( PrettyUsing(..)
+  , PrettyWith
+  , Tags(..)
   , prettySimple
   , prettyVerbose
   , prettyFriendly
@@ -10,159 +15,315 @@ module Vehicle.Language.Print
   , prettyFriendlyDBClosed
   ) where
 
-import Prettyprinter (list, tupled)
+import GHC.TypeLits (TypeError, ErrorMessage(..))
+import Data.Text (Text)
+import Data.Text qualified as Text
+import Data.IntMap (IntMap)
+import Control.Exception (assert)
+import Prettyprinter (list)
 
-import Data.Text
-
-import Vehicle.Core.Print as Core (printTree)
-import Vehicle.Frontend.Print as Frontend (printTree)
+import Vehicle.Core.Print as Core (printTree, Print)
+import Vehicle.Frontend.Print as Frontend (printTree, Print)
 import Vehicle.Core.Abs qualified as BC
 import Vehicle.Frontend.Abs qualified as BF
 
 import Vehicle.Prelude
-import Vehicle.Language.Simplify
-import Vehicle.Language.Delaborate.Core as Core
-import Vehicle.Language.Delaborate.Frontend as Frontend
-import Vehicle.Language.Descope
-import Vehicle.Language.SupplyNames (SupplyNames, runSupplyNamesWithCtx, runSupplyNames)
 import Vehicle.Language.AST
+import Vehicle.Compile.Simplify
+import Vehicle.Compile.Delaborate.Core as Core
+import Vehicle.Compile.Delaborate.Frontend as Frontend
+import Vehicle.Compile.Descope
+import Vehicle.Compile.SupplyNames
+import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.MetaSubstitution (MetaSubstitution(MetaSubstitution))
+import Vehicle.Compile.CoDeBruijnify (ConvertCodebruijn(..))
+import Vehicle.Compile.Prelude
 
---------------------------------------------------------------------------------
--- Top-level interface for printing Vehicle expressions/programs
+
+-- The old methods for compatibility:
 
 -- |Prints to the core language removing all implicit/instance arguments and
--- automatically inserted code. Does not convert DeBruijn indices back to names.
-prettySimple :: (PrettyLang a, Simplify a) => a -> Doc b
-prettySimple = prettyLang Core . runSimplify options
-  where
-    options = SimplifyOptions
-      { removeImplicits   = True
-      , removeInstances   = True
-      , removeNonUserCode = True
-      }
+-- automatically inserted code. Does not convert (Co)DeBruijn indices back to names.
+prettySimple :: (PrettyWith ('Simple ('As 'Core)) a) => a -> Doc b
+prettySimple = prettyWith @('Simple ('As 'Core))
 
--- |Prints to the core language in all it's gory detail. Does not convert DeBruijn
+-- |Prints to the core language in all it's gory detail. Does not convert (Co)DeBruijn
 -- indices back to names. Useful for debugging.
-prettyVerbose :: (PrettyLang a, Simplify a) => a -> Doc b
-prettyVerbose = prettyLang Core . runSimplify options
-  where
-    options = SimplifyOptions
-      { removeImplicits   = False
-      , removeInstances   = False
-      , removeNonUserCode = False
-      }
+prettyVerbose :: (PrettyWith ('As 'Core) a) => a -> Doc b
+prettyVerbose = prettyWith @('As 'Core)
 
 -- |Prints to the frontend language for things that need to be displayed to
--- the user. Use this when not using DeBruijn indices.
-prettyFriendly :: (PrettyLang a, Simplify a) => a -> Doc b
-prettyFriendly = prettyLang Frontend . runSimplify options
-  where
-    options = SimplifyOptions
-      { removeImplicits   = False
-      , removeInstances   = False
-      , removeNonUserCode = False
-      }
+-- the user.
+prettyFriendly :: (PrettyWith ('Named ('As 'Frontend)) a) => a -> Doc b
+prettyFriendly = prettyWith @('Named ('As 'Frontend))
 
 -- |Prints to the frontend language for things that need to be displayed to
--- the user. Use this when the expression is using DeBruijn indices
-prettyFriendlyDB :: ( PrettyDescopedLang t binder var ann
-                  , Simplify (t binder var ann))
-                 => [binder]
-                 -> t binder var ann
-                 -> Doc b
-prettyFriendlyDB ctx = prettyDescopeLang Frontend ctx . runSimplify options
-  where
-    options = SimplifyOptions
-      { removeImplicits   = True
-      , removeInstances   = True
-      , removeNonUserCode = False
-      }
+-- the user. Use this when the expression is using DeBruijn indices and is
+-- not closed.
+prettyFriendlyDB :: (PrettyWith ('Named ('As 'Frontend)) ([DBBinding], a))
+                 => [DBBinding] -> a -> Doc b
+prettyFriendlyDB ctx e = prettyWith @('Named ('As 'Frontend)) (ctx, e)
 
--- |Use for closed terms using DeBruijn indices
-prettyFriendlyDBClosed :: (PrettyDescopedLang t binder var ann
-                        , Simplify (t binder var ann))
-                     => t binder var ann
-                     -> Doc b
-prettyFriendlyDBClosed = prettyFriendlyDB mempty
+-- | This is identical to |prettyFriendly|, but exists for historical reasons.
+prettyFriendlyDBClosed :: (PrettyWith ('Simple ('Named ('As 'Frontend))) a) => a -> Doc b
+prettyFriendlyDBClosed = prettyWith @('Simple ('Named ('As 'Frontend)))
 
---------------------------------------------------------------------------------
--- Printing when using names rather than DeBruijn indices
 
-class PrettyLang a where
-  prettyLang :: VehicleLang -> a -> Doc b
 
-instance PrettyLang a => PrettyLang [a] where
-  prettyLang target xs = list (fmap (prettyLang target) xs)
+-- The new methods are defined in terms of tags:
 
-instance (Pretty a, PrettyLang b) => PrettyLang (a, b) where
-  prettyLang target (x, y) = tupled [pretty x, prettyLang target y]
+type PrettyWith (tags :: Tags) a = PrettyUsing (StrategyFor tags a) a
 
-instance PrettyNamedLang t binder var ann => PrettyLang (t binder var ann) where
-  prettyLang = prettyNamedLang
+data Tags
+  = As VehicleLang -- ^ The final tag denotes which output grammar should be used
+  | Named Tags     -- ^ The named tag ensures that the term is converted back to using named binders
+  | Simple Tags    -- ^ The simple tag ensures that superfluous information is erased
 
---------------------------------------------------------------------------------
--- Printing when using names
+prettyWith :: forall tags a b. PrettyWith tags a => a -> Doc b
+prettyWith = prettyUsing @(StrategyFor tags a) @a @b
 
-class PrettyNamedLang t binder var ann where
-  prettyNamedLang :: VehicleLang -> t binder var ann -> Doc b
 
-instance PrettyNamedLang Arg  Symbol Symbol ann where
-  prettyNamedLang Core     e = pretty $ bnfcPrintHack $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Arg)
-  prettyNamedLang Frontend e = pretty $ bnfcPrintHack $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Arg)
+-- Tags are used to compute a printing strategy:
+data Strategy
+  = ConvertTo            VehicleLang
+  | DBToNamedNaive       Strategy
+  | DBToNamedOpen        Strategy
+  | DBToNamedClosed      Strategy
+  | CoDBToNamedNaive     Strategy
+  | CoDBToDBOpen         Strategy
+  | CoDBToDBClosed       Strategy
+  | SupplyNamesOpen      Strategy
+  | SupplyNamesClosed    Strategy
+  | SimplifyWithOptions  Strategy
+  | SimplifyDefault      Strategy
+  | MapList              Strategy
+  | MapIntMap            Strategy
+  | MapTuple2            Strategy Strategy
+  | MapTuple3            Strategy Strategy Strategy
+  | Opaque               Strategy
+  | Pretty
 
-instance PrettyNamedLang Expr Symbol Symbol ann where
-  prettyNamedLang Core     e = pretty $ bnfcPrintHack $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Expr)
-  prettyNamedLang Frontend e = pretty $ bnfcPrintHack $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Expr)
+-- | Compute the printing strategy given the tags and the type of the expression.
+type family StrategyFor (tags :: Tags) a :: Strategy where
+  StrategyFor ('As lang) (t NamedBinding NamedVar ann)
+    = 'ConvertTo lang
 
-instance PrettyNamedLang Decl Symbol Symbol ann where
-  prettyNamedLang Core     e = pretty $ bnfcPrintHack $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Decl)
-  prettyNamedLang Frontend e = pretty $ bnfcPrintHack $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: [BF.Decl])
+  StrategyFor ('As lang) (t NamedBinding DBVar ann)
+    = 'DBToNamedNaive ('ConvertTo lang)
 
-instance PrettyNamedLang Prog Symbol Symbol ann where
-  prettyNamedLang Core     e = pretty $ bnfcPrintHack $ Core.printTree (Core.runDelabWithoutLogging e :: BC.Prog)
-  prettyNamedLang Frontend e = pretty $ bnfcPrintHack $ Frontend.printTree (Frontend.runDelabWithoutLogging e :: BF.Prog)
+  StrategyFor ('As lang) (t (NamedBinding, Maybe PositionTree) CoDBVar ann)
+    = 'CoDBToNamedNaive ('ConvertTo lang)
 
-instance ( SupplyNames t
-         , PrettyNamedLang t Symbol var ann
-         ) => PrettyNamedLang t (Maybe Symbol) var ann where
-  prettyNamedLang target e = prettyNamedLang target (runSupplyNames e)
+  -- Conversion to Named AST
+  StrategyFor ('Named tags) (t NamedBinding NamedVar ann)
+    = StrategyFor tags (t NamedBinding NamedVar ann)
 
--- A hack to that simply converts DeBruijn indices into their corresponding
--- counterpart, i.e. 0 -> "i0"
-instance ( Descope t
-         , PrettyNamedLang t Symbol Symbol ann
-         ) => PrettyNamedLang t Symbol LocallyNamelessVar ann where
-  prettyNamedLang target e = prettyLang target (runNaiveDescope e)
+  StrategyFor ('Named tags) ([NamedBinding], t NamedBinding DBVar ann)
+    = 'DBToNamedOpen (StrategyFor tags (t NamedBinding NamedVar ann))
 
---------------------------------------------------------------------------------
--- Printing when using DeBruijn indices
+  StrategyFor ('Named tags) (t NamedBinding DBVar ann)
+    = 'DBToNamedClosed (StrategyFor tags (t NamedBinding NamedVar ann))
 
-class PrettyDescopedLang t binder var ann where
-  prettyDescopeLang :: VehicleLang -> [binder] -> t binder var ann -> Doc b
+  StrategyFor ('Named tags) ([DBBinding], t CoDBBinding CoDBVar ann, BoundVarMap)
+    = 'CoDBToDBOpen (StrategyFor ('Named tags) ([DBBinding], t DBBinding DBVar ann))
 
--- DeBruijn indices with machine names
-instance ( SupplyNames t
-         , Descope t
-         , PrettyNamedLang t Symbol Symbol ann )
-         => PrettyDescopedLang t (Maybe Symbol) LocallyNamelessVar ann where
-  prettyDescopeLang target ctx e = prettyDescopeLang target ctx' e'
-    where (ctx', e') = runSupplyNamesWithCtx (ctx, e)
+  StrategyFor ('Named tags) (t CoDBBinding CoDBVar ann, BoundVarMap)
+    = 'CoDBToDBClosed (StrategyFor tags (t DBBinding DBVar ann))
 
-instance PrettyNamedLang t Symbol Symbol ann
-      => PrettyDescopedLang t Symbol Symbol ann where
-  prettyDescopeLang target _ctx = prettyNamedLang target
+  -- Supplying names
+  StrategyFor tags ([DBBinding], t DBBinding var ann)
+    = 'SupplyNamesOpen (StrategyFor tags ([Symbol], t NamedBinding var ann))
 
--- DeBruijn indices without machine names
-instance (PrettyNamedLang t Symbol Symbol ann, Descope t)
-      => PrettyDescopedLang t Symbol LocallyNamelessVar ann where
-  prettyDescopeLang target ctx e = prettyDescopeLang target ctx (runDescope ctx e)
+  StrategyFor tags (t DBBinding var ann)
+    = 'SupplyNamesClosed (StrategyFor tags (t NamedBinding var ann))
 
---------------------------------------------------------------------------------
--- Other
+  StrategyFor tags ([DBBinding], t CoDBBinding var ann)
+    = 'SupplyNamesOpen (StrategyFor tags ([DBBinding], t (Symbol, Maybe PositionTree) var ann))
+
+  StrategyFor tags (t CoDBBinding var ann)
+    = 'SupplyNamesClosed (StrategyFor tags (t (NamedBinding, Maybe PositionTree) var ann))
+
+  StrategyFor tags PositionsInExpr
+    = 'Opaque (StrategyFor tags CheckedExpr)
+
+  -- Simplification
+  StrategyFor ('Simple tags) (SimplifyOptions, a)
+    = 'SimplifyWithOptions (StrategyFor tags a)
+
+  StrategyFor ('Simple tags) a
+    = 'SimplifyDefault (StrategyFor tags a)
+
+  -- Other
+  StrategyFor tags Constraint
+    = 'Opaque (StrategyFor tags BaseConstraint)
+
+  StrategyFor tags BaseConstraint
+    = 'Opaque (StrategyFor tags CheckedExpr)
+
+  StrategyFor tags MetaSubstitution
+    = 'Opaque (StrategyFor tags CheckedExpr)
+
+  StrategyFor tags DBBinding
+    = 'Pretty
+
+  StrategyFor tags PositionTree
+    = 'Pretty
+
+  StrategyFor tags Int
+    = 'Pretty
+
+  StrategyFor tags [a]
+    = 'MapList (StrategyFor tags a)
+
+  StrategyFor tags (IntMap a)
+    = 'MapIntMap (StrategyFor tags a)
+
+  StrategyFor tags (a, b)
+    = 'MapTuple2 (StrategyFor tags a) (StrategyFor tags b)
+
+  StrategyFor tags (a, b, c)
+    = 'MapTuple3 (StrategyFor tags a) (StrategyFor tags b) (StrategyFor tags c)
+
+  StrategyFor tags a
+    = TypeError ('Text "Cannot print value of type " ':<>: 'ShowType a ':<>: 'Text "."
+           ':$$: 'Text "Perhaps you could add support to Vehicle.Language.Print.StrategyFor?")
+
+
+-- The printing strategy guides the type class resolution:
+
+class PrettyUsing (strategy :: Strategy) a where
+  prettyUsing :: a -> Doc b
+
+instance (Core.Delaborate t bnfc, Pretty bnfc)
+      => PrettyUsing ('ConvertTo 'Core) (t ann) where
+  prettyUsing e = pretty (Core.delab @t @bnfc e)
+
+instance (Frontend.Delaborate t bnfc, Pretty bnfc)
+      => PrettyUsing ('ConvertTo 'Frontend) (t ann) where
+  prettyUsing e = pretty (Frontend.delab @t @bnfc e)
+
+instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
+      => PrettyUsing ('DBToNamedNaive rest) (t Symbol DBVar ann) where
+  prettyUsing e = prettyUsing @rest (runNaiveDBDescope e)
+
+instance (Descope t, ExtractPositionTrees t, PrettyUsing rest (t Symbol Symbol ann))
+      => PrettyUsing ('CoDBToNamedNaive rest) (t (Symbol, Maybe PositionTree) CoDBVar ann) where
+  prettyUsing e = let (e', pts) = runNaiveCoDBDescope e in
+    prettyUsing @rest e' <+> prettyMap pts
+
+instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
+      => PrettyUsing ('DBToNamedOpen rest) ([Symbol], t Symbol DBVar ann) where
+  prettyUsing (ctx, e) = prettyUsing @rest (runDescope ctx e)
+
+instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
+      => PrettyUsing ('DBToNamedClosed rest) (t Symbol DBVar ann) where
+  prettyUsing e = prettyUsing @rest (runDescope mempty e)
+
+instance (ConvertCodebruijn t, PrettyUsing rest ([DBBinding], t DBBinding DBVar ann))
+      => PrettyUsing ('CoDBToDBOpen rest) ([DBBinding], t CoDBBinding CoDBVar ann, BoundVarMap) where
+  prettyUsing (ctx, e, bvm) = prettyUsing @rest (ctx , fromCoDB (e, bvm))
+
+instance (ConvertCodebruijn t, PrettyUsing rest (t DBBinding DBVar ann))
+      => PrettyUsing ('CoDBToDBClosed rest) (t CoDBBinding CoDBVar ann, BoundVarMap) where
+  prettyUsing (e, bvm) = assert (null bvm) $ prettyUsing @rest (fromCoDB (e, bvm))
+
+instance (SupplyNames t, PrettyUsing rest ([Symbol], t Symbol var ann))
+      => PrettyUsing ('SupplyNamesOpen rest) ([DBBinding], t DBBinding var ann) where
+  prettyUsing p = prettyUsing @rest (supplyDBNamesWithCtx p)
+
+instance (SupplyNames t, PrettyUsing rest (t Symbol var ann))
+      => PrettyUsing ('SupplyNamesClosed rest) (t DBBinding var ann) where
+  prettyUsing e = prettyUsing @rest (supplyDBNames e)
+
+instance (SupplyNames t, PrettyUsing rest ([Symbol], t (Symbol, Maybe PositionTree) var ann))
+      => PrettyUsing ('SupplyNamesOpen rest) ([DBBinding], t CoDBBinding var ann) where
+  prettyUsing p = prettyUsing @rest (supplyCoDBNamesWithCtx p)
+
+instance (SupplyNames t, PrettyUsing rest (t (Symbol, Maybe PositionTree) var ann))
+      => PrettyUsing ('SupplyNamesClosed rest) (t CoDBBinding var ann) where
+  prettyUsing e = prettyUsing @rest (supplyCoDBNames e)
+
+instance (Simplify a, PrettyUsing rest a)
+      => PrettyUsing ('SimplifyWithOptions rest) (SimplifyOptions, a) where
+  prettyUsing (options, e) = prettyUsing @rest (simplifyWith options e)
+
+instance (Simplify a, PrettyUsing rest a)
+      => PrettyUsing ('SimplifyDefault rest) a where
+  prettyUsing e = prettyUsing @rest (simplify e)
+
+instance PrettyUsing rest a
+      => PrettyUsing ('MapList rest) [a] where
+  prettyUsing es = list (prettyUsing @rest <$> es)
+
+instance PrettyUsing rest a
+      => PrettyUsing ('MapIntMap rest) (IntMap a) where
+  prettyUsing es = prettyIntMap (prettyUsing @rest <$> es)
+
+instance (PrettyUsing resta a, PrettyUsing restb b)
+      => PrettyUsing ('MapTuple2 resta restb) (a, b) where
+  prettyUsing (e1, e2) = "(" <> prettyUsing @resta e1 <> "," <+> prettyUsing @restb e2 <> ")"
+
+instance (PrettyUsing resta a, PrettyUsing restb b, PrettyUsing restc c)
+      => PrettyUsing ('MapTuple3 resta restb restc) (a, b, c) where
+  prettyUsing (e1, e2, e3) =
+    "(" <>  prettyUsing @resta e1 <>
+    "," <+> prettyUsing @restb e2 <>
+    "," <+> prettyUsing @restc e3 <>
+    ")"
+
+-- instances which defer to primitive pretty instances
+
+instance Pretty a => PrettyUsing 'Pretty a where
+  prettyUsing = pretty
+
+-- instances for opaque types BaseConstraint, Constraint, and MetaSubstitution
+
+instance PrettyUsing rest CheckedExpr
+      => PrettyUsing ('Opaque rest) BaseConstraint where
+  prettyUsing (Unify (e1, e2)) = prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2
+  prettyUsing (m `Has` e)      = pretty m <+> "<=" <+> prettyUsing @rest e
+
+instance PrettyUsing rest BaseConstraint
+      => PrettyUsing ('Opaque rest) Constraint where
+  prettyUsing c = prettyUsing @rest (baseConstraint c)
+    -- <+> "<boundCtx=" <> pretty (ctxNames (boundContext c)) <> ">"
+    -- <+> parens (pretty (provenanceOf c))
+
+instance PrettyUsing rest CheckedExpr
+      => PrettyUsing ('Opaque rest) MetaSubstitution where
+  prettyUsing (MetaSubstitution m) = prettyIntMap (prettyUsing @rest <$> m)
+
+instance (PrettyUsing rest CheckedExpr)
+      => PrettyUsing ('Opaque rest) PositionsInExpr where
+  prettyUsing (PositionsInExpr e p) = prettyUsing @rest (fromCoDB (substPos hole (Just p) e))
+    where hole = (Hole mempty $ Text.pack "@", mempty)
+
+-- Pretty instances for the BNFC data types
+
+newtype ViaBnfcCore a = ViaBnfcCore a
+
+instance Core.Print a => Pretty (ViaBnfcCore a) where
+  pretty (ViaBnfcCore e) = pretty (bnfcPrintHack (Core.printTree e))
+
+deriving via (ViaBnfcCore BC.Prog) instance Pretty BC.Prog
+deriving via (ViaBnfcCore BC.Decl) instance Pretty BC.Decl
+deriving via (ViaBnfcCore BC.Expr) instance Pretty BC.Expr
+
+newtype ViaBnfcFrontend a = ViaBnfcFrontend a
+
+instance Frontend.Print a => Pretty (ViaBnfcFrontend a) where
+  pretty (ViaBnfcFrontend e) = pretty $ bnfcPrintHack (Frontend.printTree e)
+
+deriving via (ViaBnfcFrontend BF.Prog)   instance Pretty BF.Prog
+deriving via (ViaBnfcFrontend BF.Decl)   instance Pretty BF.Decl
+deriving via (ViaBnfcFrontend BF.Expr)   instance Pretty BF.Expr
+deriving via (ViaBnfcFrontend BF.Binder) instance Pretty BF.Binder
+deriving via (ViaBnfcFrontend BF.Arg)    instance Pretty BF.Arg
 
 -- BNFC printer treats the braces for implicit arguments as layout braces and
 -- therefore adds a ton of newlines everywhere. This hack attempts to undo this.
 bnfcPrintHack :: String -> Text
-bnfcPrintHack s = -- replaceAll "\\{\\s*" "{" $
-                  -- replaceAll "\\s*\\}\\s*" "} " $
-                  pack s
+bnfcPrintHack =
+  Text.replace "{\n" "{" .
+  Text.replace "\n}\n" "} " .
+  Text.pack

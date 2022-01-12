@@ -8,15 +8,16 @@ module Vehicle.Prelude.Logging
   , Logger
   , runLoggerT
   , runLogger
-  , discardLoggerT
-  , discardLogger
-  , logError
+  , discardWarningsAndLogs
+  , outputWarningsAndDiscardLogs
   , logWarning
   , logInfo
   , logDebug
   , liftExceptWithLogging
   , flushLogs
   , showMessages
+  , setTextColour
+  , setBackgroundColour
   ) where
 
 import Control.Monad.Trans.Class (MonadTrans, lift)
@@ -33,20 +34,40 @@ import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
 
 data Severity
-  = Error
-  | Warning
+  = Debug
   | Info
-  | Debug
+  | Warning
+  deriving (Eq, Ord)
 
-setColor :: Severity -> String
-setColor Error   = setSGRCode [SetColor Foreground Vivid Red]
-setColor Warning = setSGRCode [SetColor Foreground Vivid Yellow]
-setColor Info    = setSGRCode [SetColor Foreground Vivid Blue]
-setColor Debug   = setSGRCode [SetColor Foreground Vivid Green]
+setTextColour :: Color -> String -> String
+setTextColour c s =
+  setSGRCode [SetColor Foreground Vivid c] <>
+  s <>
+  setSGRCode [SetColor Foreground Vivid White]
+
+setBackgroundColour :: Color -> String -> String
+setBackgroundColour c s =
+  setSGRCode [SetColor Background Vivid c] <>
+  s <>
+  setSGRCode [SetColor Background Vivid Black]
+
+severityColour :: Severity -> Color
+severityColour = \case
+  Warning -> Yellow
+  Info    -> Blue
+  Debug   -> Green
+
+severityPrefix :: Severity -> Text
+severityPrefix Warning = "Warning: "
+severityPrefix Info    = "Info: "
+severityPrefix Debug   = ""
 
 type CallDepth = Int
 
-data Message = Message Severity Text
+data Message = Message
+  { severityOf :: Severity
+  , textOf     :: Text
+  }
 
 class Monad m => MonadLogger m where
   getCallDepth  :: m CallDepth
@@ -109,14 +130,15 @@ runLoggerT (LoggerT logger) = evalStateT (runWriterT logger) 0
 runLogger :: Logger a -> (a, [Message])
 runLogger = runIdentity . runLoggerT
 
-discardLoggerT :: Monad m => LoggerT m a -> m a
-discardLoggerT m = fst <$> runLoggerT m
+discardWarningsAndLogs :: Logger a -> a
+discardWarningsAndLogs m = fst $ runLogger m
 
-discardLogger :: Logger a -> a
-discardLogger m = fst $ runLogger m
-
-logError :: MonadLogger m => Doc a -> m ()
-logError text = logMessage $ Message Error (layoutAsText text)
+outputWarningsAndDiscardLogs :: Logger a -> IO a
+outputWarningsAndDiscardLogs logger = do
+  let (value, messages) = runLogger logger
+  let warnings = filter (\msg -> severityOf msg == Warning) messages
+  printMessagesToStdout warnings
+  return value
 
 logWarning :: MonadLogger m => Doc a -> m ()
 logWarning text = logMessage $ Message Warning (layoutAsText text)
@@ -129,11 +151,10 @@ logDebug text = do
   depth <- getCallDepth
   logMessage $ Message Debug (layoutAsText (indent depth text))
 
-resetColor :: String
-resetColor = setSGRCode []
-
 instance Show Message where
-  show (Message s t) = setColor s <> T.unpack t <> resetColor
+  show (Message s t) =
+    setTextColour (severityColour s) $
+      T.unpack (severityPrefix s <> t)
 
 showMessages :: [Message] -> String
 showMessages logs = unlines $ map show logs
@@ -143,14 +164,14 @@ liftExceptWithLogging = mapExceptT (pure . runIdentity)
 
 flushLogs :: Maybe FilePath -> Logger a -> IO a
 flushLogs logLocation l = do
-  let (v, logs) = runLogger l
+  let (v, messages) = runLogger l
   case logLocation of
-    Nothing      -> flushLogsToStdout logs
-    Just logFile -> flushLogsToFile logFile logs
+    Nothing      -> printMessagesToStdout messages
+    Just logFile -> writeMessageToFile logFile messages
   return v
 
-flushLogsToStdout :: [Message] -> IO ()
-flushLogsToStdout = mapM_ print
+printMessagesToStdout :: [Message] -> IO ()
+printMessagesToStdout = mapM_ print
 
-flushLogsToFile :: FilePath -> [Message] -> IO ()
-flushLogsToFile logFile logs = appendFile (showMessages logs) logFile
+writeMessageToFile :: FilePath -> [Message] -> IO ()
+writeMessageToFile logFile logs = appendFile logFile (showMessages logs)

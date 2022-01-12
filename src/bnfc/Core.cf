@@ -48,10 +48,10 @@ Let.           Expr  ::= "let" Binder Expr1 Expr1;
 Lam.           Expr  ::= "lambda" Binder Expr1;
 App.           Expr  ::= Expr1 Arg;
 Type.          Expr1 ::= TypeToken;
-Seq.           Expr1 ::= "[" [Expr1] "]";
 Builtin.       Expr1 ::= BuiltinToken;
 Var.           Expr1 ::= NameToken;
 Literal.       Expr1 ::= Lit;
+LSeq.          Expr1 ::= "[" [Expr1] "]";
 Hole.          Expr1 ::= HoleToken;
 
 coercions Expr 1;

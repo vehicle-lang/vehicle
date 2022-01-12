@@ -1,0 +1,21 @@
+cradle:
+  multi:
+  # ignore generative tests
+  - path: "./test/Test/Generative.hs"
+    config: { cradle: { none: } }
+  - path: "./test/Test/Generative"
+    config: { cradle: { none: } }
+  - path: "./"
+    config:
+      cradle:
+        cabal:
+          - path: "./build.hs"
+            component: "exe:build"
+          - path: "./app/Main.hs"
+            component: "exe:vehicle"
+          - path: "./src/hs"
+            component: "lib:vehicle"
+          - path: "./gen/hs"
+            component: "lib:vehicle-bnfc"
+          - path: "./test"
+            component: "test:vehicle-test"

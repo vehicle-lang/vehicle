@@ -1,4 +1,4 @@
-network f : Tensor Real [2] -> Tensor Real [1]
+network f : Tensor Rat [2] -> Rat
 
 reachable : Prop
-reachable = some x . (let y = f x in y ! 0 == 0)
+reachable = some x . f x == 0
