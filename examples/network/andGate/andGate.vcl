@@ -20,4 +20,4 @@ correctOutput x1 x2 =
     (falsey x1 and falsey x2 => falsey y)
 
 andGateCorrect : Prop
-andGateCorrect = every x1 x2 . (((validInput x1) and (validInput x2)) => (correctOutput x1 x2))
+andGateCorrect = forall x1 x2 . (((validInput x1) and (validInput x2)) => (correctOutput x1 x2))

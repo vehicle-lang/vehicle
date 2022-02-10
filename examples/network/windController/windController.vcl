@@ -15,4 +15,4 @@ safeOutput : InputVector -> Prop
 safeOutput x = -1.25 < deltaV x + 2 * currPosition x - prevPosition x < 1.25
 
 safe : Prop
-safe = every x . safeInput x => safeOutput x
+safe = forall x . safeInput x => safeOutput x

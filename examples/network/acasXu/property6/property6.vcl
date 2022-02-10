@@ -47,4 +47,4 @@ advisesClearOfConflict x = let y = acasXu x in
   y ! 0 > y ! 1 and y ! 0 > y ! 2 and y ! 0 > y ! 3 and y ! 0 > y ! 4
 
 property6 : Prop
-property6 = every x . intruderFarAway x => advisesClearOfConflict x
+property6 = forall x . intruderFarAway x => advisesClearOfConflict x

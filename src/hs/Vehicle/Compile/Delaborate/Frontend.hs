@@ -21,7 +21,7 @@ import Vehicle.Language.AST.Visibility (HasVisibility(visibilityOf))
 type MonadDelab m = MonadLogger m
 
 tokArrow = mkToken B.TokArrow "->"
-tokForall = mkToken B.TokForall "forall"
+tokForallT = mkToken B.TokForallT "forall"
 tokIf = mkToken B.TokIf "if"
 tokThen = mkToken B.TokThen "then"
 tokElse = mkToken B.TokElse "else"
@@ -36,8 +36,8 @@ tokInt = mkToken B.TokInt "Int"
 tokNat = mkToken B.TokNat "Nat"
 tokBool = mkToken B.TokBool "Bool"
 tokProp = mkToken B.TokProp "Prop"
-tokEvery = mkToken B.TokEvery "every"
-tokSome = mkToken B.TokSome "some"
+tokForall = mkToken B.TokForall "forall"
+tokExists = mkToken B.TokExists "exists"
 tokImpl = mkToken B.TokImpl "=>"
 tokAnd = mkToken B.TokAnd "and"
 tokOr = mkToken B.TokOr "or"
@@ -239,16 +239,16 @@ delabIf [arg1, arg2, arg3] = B.If tokIf arg1 tokThen arg2 tokElse arg3
 delabIf args               = argsError "if" 3 args
 
 delabQuant :: V.Quantifier -> [B.Expr] -> B.Expr
-delabQuant V.All [B.Lam _ binders _ body] = B.Every tokEvery binders tokDot body
-delabQuant V.Any [B.Lam _ binders _ body] = B.Some  tokSome  binders tokDot body
-delabQuant V.All args                     = argsError (tkSymbol tokEvery) 1 args
-delabQuant V.Any args                     = argsError (tkSymbol tokSome)  1 args
+delabQuant V.All [B.Lam _ binders _ body] = B.Forall tokForall binders tokDot body
+delabQuant V.Any [B.Lam _ binders _ body] = B.Exists  tokExists  binders tokDot body
+delabQuant V.All args                     = argsError (tkSymbol tokForall) 1 args
+delabQuant V.Any args                     = argsError (tkSymbol tokExists)  1 args
 
 delabQuantIn :: V.Quantifier -> [B.Expr] -> B.Expr
-delabQuantIn V.All [B.Lam _ binders _ body, xs] = B.EveryIn tokEvery binders xs tokDot body
-delabQuantIn V.Any [B.Lam _ binders _ body, xs] = B.SomeIn  tokSome  binders xs tokDot body
-delabQuantIn V.All args                         = argsError (tkSymbol tokEvery) 2 args
-delabQuantIn V.Any args                         = argsError (tkSymbol tokSome)  2 args
+delabQuantIn V.All [B.Lam _ binders _ body, xs] = B.ForallIn tokForall binders xs tokDot body
+delabQuantIn V.Any [B.Lam _ binders _ body, xs] = B.ExistsIn  tokExists  binders xs tokDot body
+delabQuantIn V.All args                         = argsError (tkSymbol tokForall) 2 args
+delabQuantIn V.Any args                         = argsError (tkSymbol tokExists)  2 args
 
 argsError :: Symbol -> Int -> [B.Expr] -> a
 argsError s n args = developerError $
@@ -258,7 +258,7 @@ argsError s n args = developerError $
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
 delabPi :: MonadDelab m => ann -> V.NamedBinder ann -> V.NamedExpr ann -> m B.Expr
 delabPi ann input result = case foldPi ann input result of
-  Left  (binders, body)    -> B.Forall tokForall <$> traverse delabM binders <*> pure tokDot <*> delabM body
+  Left  (binders, body)    -> B.ForallT tokForallT <$> traverse delabM binders <*> pure tokDot <*> delabM body
   Right (domain, codomain) -> B.Fun <$> delabM domain <*> pure tokArrow <*> delabM codomain
 
 -- | Collapses let expressions into a sequence of let declarations

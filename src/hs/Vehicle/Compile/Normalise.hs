@@ -300,7 +300,7 @@ getDimension e = case exprHead e of
 -- Normalising quantification over lists
 
 -- |Elaborate quantification over the members of a container type.
--- Expands e.g. `every x in list . y` to `fold and true (map (\x -> y) list)`
+-- Expands e.g. `forall x in list . y` to `fold and true (map (\x -> y) list)`
 nfQuantifierIn :: MonadNorm m
                => CheckedAnn
                -> Quantifier

@@ -8,7 +8,7 @@ comment "{-" "-}";
 -- NOTE: Token rules are tried IN ORDER, so the order matters!
 
 position token TokArrow     {"->"};
-position token TokForall    {"forall"};
+position token TokForallT   {"forallT"};
 position token TokIf        {"if"};
 position token TokThen      {"then"};
 position token TokElse      {"else"};
@@ -25,8 +25,8 @@ position token TokNat       {"Nat"};
 position token TokBool      {"Bool"};
 position token TokProp      {"Prop"};
 
-position token TokEvery     {"every"};
-position token TokSome      {"some"};
+position token TokForall    {"forall"};
+position token TokExists    {"exists"};
 position token TokImpl      {"=>"};
 position token TokAnd       {"and"};
 position token TokOr        {"or"};
@@ -118,7 +118,7 @@ Type.    Expr15 ::= "Type" Integer;
 
 -- Core structure.
 Ann.     Expr   ::= Expr2 TokElemOf Expr1;
-Forall.  Expr1  ::= TokForall [Binder] TokDot Expr1;
+ForallT. Expr1  ::= TokForallT [Binder] TokDot Expr1;
 Let.     Expr2  ::= "let" "{" [LetDecl] "}" "in" Expr2;
 Lam.     Expr3  ::= TokLambda [Binder] TokArrow Expr3;
 App.     Expr13 ::= Expr13 Arg;
@@ -165,10 +165,10 @@ Map.     Expr13 ::= TokMap Expr15 Expr15;
 Fold.    Expr13 ::= TokFold Expr15 Expr15 Expr15;
 
 -- Quantification
-Every.     Expr4 ::= TokEvery [Binder] TokDot Expr5;
-Some.      Expr4 ::= TokSome  [Binder] TokDot Expr5;
-EveryIn.   Expr4 ::= TokEvery [Binder] "inn" Expr5 TokDot Expr5;
-SomeIn.    Expr4 ::= TokSome  [Binder] "inn" Expr5 TokDot Expr5;
+Forall.    Expr4 ::= TokForall [Binder] TokDot Expr5;
+Exists.    Expr4 ::= TokExists [Binder] TokDot Expr5;
+ForallIn.  Expr4 ::= TokForall [Binder] "inn" Expr5 TokDot Expr5;
+ExistsIn.  Expr4 ::= TokExists [Binder] "inn" Expr5 TokDot Expr5;
 
 -- Type classes
 TCEq.    Expr15 ::= TokTCEq        Expr15 Expr15;
