@@ -20,7 +20,7 @@ import Test.Tasty.Golden.Advanced (goldenTest)
 import Vehicle
 import Vehicle.Prelude
 import Vehicle.Compile
-import Vehicle.Backend
+import Vehicle.Backend.Prelude
 import Test.Golden.Utils
 
 --------------------------------------------------------------------------------

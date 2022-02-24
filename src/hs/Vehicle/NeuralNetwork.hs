@@ -2,15 +2,20 @@
 module Vehicle.NeuralNetwork where
 
 import Data.Map (Map)
+import Data.Text(Text)
+import Data.Hashable(Hashable(hash))
 
 import Vehicle.Language.AST
 import Vehicle.Prelude
+import qualified Data.ByteString as ByteString
 
 --------------------------------------------------------------------------------
 -- Neural networks
 
-data NetworkLocation = NetworkLocation String FilePath
-  deriving (Show)
+data NetworkLocation = NetworkLocation
+  { networkName     :: Text
+  , networkLocation :: FilePath
+  } deriving (Show)
 
 type NetworkMap = Map Identifier NetworkDetails
 
@@ -53,3 +58,8 @@ allowedNetworkElementTypes =
   , NumericType Rat
   , NumericType Real
   ]
+
+hashNetwork :: FilePath -> IO Int
+hashNetwork network = do
+  contents <- ByteString.readFile network
+  return $ hash contents

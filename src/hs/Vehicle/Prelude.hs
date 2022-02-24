@@ -3,9 +3,10 @@ module Vehicle.Prelude
   ( module X
   , VehicleLang(..)
   , Negatable(..)
-  , OutputFilePaths
+  , LoggingOptions(..)
   , LogFilePath
   , ErrorFilePath
+  , vehicleVersion
   , (|->)
   , (!?)
   , (!!?)
@@ -32,6 +33,12 @@ import Vehicle.Prelude.Provenance as X
 import Vehicle.Prelude.Prettyprinter as X
 import Vehicle.Prelude.Logging as X
 import Vehicle.Prelude.Supply as X
+
+import Paths_vehicle qualified as Cabal (version)
+import Data.Version (Version)
+
+vehicleVersion :: Version
+vehicleVersion = Cabal.version
 
 data VehicleLang = Frontend | Core
   deriving (Show)
@@ -113,7 +120,11 @@ class Negatable a where
 
 type LogFilePath = Maybe (Maybe FilePath)
 type ErrorFilePath = Maybe FilePath
-type OutputFilePaths = (ErrorFilePath, LogFilePath)
+
+data LoggingOptions = LoggingOptions
+  { errorLocation :: ErrorFilePath
+  , logLocation   :: LogFilePath
+  }
 
 --------------------------------------------------------------------------------
 -- Developer errors

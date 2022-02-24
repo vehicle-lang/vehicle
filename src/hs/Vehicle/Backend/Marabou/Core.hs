@@ -3,6 +3,8 @@ module Vehicle.Backend.Marabou.Core where
 import Vehicle.Prelude
 import Vehicle.Compile.Normalise.NetworkApplications (MetaNetwork)
 
+type MarabouSpec = [MarabouProperty]
+
 data MarabouProperty = MarabouProperty
   { name    :: Symbol
   -- Did the property contain universal quantifier and is therefore negated?

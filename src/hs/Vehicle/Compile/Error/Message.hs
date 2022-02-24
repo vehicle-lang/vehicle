@@ -60,9 +60,9 @@ fromEitherIO errorFile (Left err) = do
     Just file -> appendFile file errStr
   exitFailure
 
-fromLoggedEitherIO :: OutputFilePaths -> ExceptT CompileError Logger a -> IO a
-fromLoggedEitherIO (errorFile, logFile) x =
-  fromEitherIO errorFile =<< fromLoggedIO logFile (logCompileError x)
+fromLoggedEitherIO :: LoggingOptions -> ExceptT CompileError Logger a -> IO a
+fromLoggedEitherIO LoggingOptions{..} x =
+  fromEitherIO errorLocation =<< fromLoggedIO logLocation (logCompileError x)
 
 logCompileError :: ExceptT CompileError Logger a -> Logger (Either CompileError a)
 logCompileError x = do

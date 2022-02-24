@@ -83,10 +83,13 @@ library
                       , Vehicle.Compile.Delaborate.Core
                       , Vehicle.Compile.Delaborate.Frontend
 
-                      , Vehicle.Backend
+                      , Vehicle.Verify
+                      , Vehicle.Verify.VerificationStatus
+
                       , Vehicle.Backend.Agda
                       , Vehicle.Backend.VNNLib
                       , Vehicle.Backend.Marabou
+                      , Vehicle.Backend.Prelude
 
                       , Vehicle.Check
 
@@ -117,7 +120,6 @@ library
                       , Vehicle.Compile.CapitaliseTypeNames
                       , Vehicle.Compile.QuantifierAnalysis
 
-                      , Vehicle.Backend.Prelude
                       , Vehicle.Backend.Agda.Compile
                       , Vehicle.Backend.Agda.Interact
                       , Vehicle.Backend.Marabou.Core
@@ -148,6 +150,7 @@ library
                       , hashable
                       , split
                       , data-default-class
+                      , aeson
 
   ghc-options:          -Wall -fprint-potential-instances
   default-extensions:   ImportQualifiedPost

@@ -20,7 +20,7 @@ import Debug.Trace (traceShowId)
 import Vehicle
 import Vehicle.Prelude
 import Vehicle.Compile
-import Vehicle.Backend
+import Vehicle.Backend.Prelude
 import Test.Golden.Utils
 
 --------------------------------------------------------------------------------
