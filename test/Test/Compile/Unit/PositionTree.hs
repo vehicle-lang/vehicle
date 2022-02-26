@@ -1,4 +1,4 @@
-module Test.Unit.PositionTree
+module Test.Compile.Unit.PositionTree
   ( positionTreeTests
   ) where
 
@@ -15,7 +15,7 @@ import Vehicle.Compile (typeCheckExpr)
 import Vehicle.Compile.CoDeBruijnify ( toCoDBExpr )
 import Vehicle.Language.Print
 
-import Test.Utils
+import Test.Compile.Utils
 
 --------------------------------------------------------------------------------
 -- Let lifting tests

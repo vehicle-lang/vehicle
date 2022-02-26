@@ -1,4 +1,4 @@
-module Test.Unit.CoDeBruijn
+module Test.Compile.Unit.CoDeBruijn
   ( coDeBruijnTests ) where
 
 import Test.Tasty
@@ -17,7 +17,7 @@ import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
 import Vehicle.Compile.CoDeBruijnify
 
-import Test.Utils
+import Test.Compile.Utils
 
 --------------------------------------------------------------------------------
 -- Alpha equivalence tests

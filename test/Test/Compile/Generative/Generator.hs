@@ -14,7 +14,7 @@
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Test.Generative.Generator where
+module Test.Compile.Generative.Generator where
 
 import Control.Enumerable
 import Control.Search

@@ -1,4 +1,4 @@
-module Test.Unit.LetInsertion where
+module Test.Compile.Unit.LetInsertion where
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -17,7 +17,7 @@ import Vehicle.Compile.LetInsertion
 import Vehicle.Compile.CoDeBruijnify
 import Vehicle.Compile.Type (runTypeCheck)
 
-import Test.Utils
+import Test.Compile.Utils
 
 --------------------------------------------------------------------------------
 -- Let lifting tests

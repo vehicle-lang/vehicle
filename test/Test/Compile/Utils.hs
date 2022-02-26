@@ -1,6 +1,6 @@
 
 
-module Test.Utils
+module Test.Compile.Utils
   ( textToCheckedExpr
   , retypeCheckExpr
   ) where
@@ -9,13 +9,14 @@ import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
 import Data.Text
 import Debug.Trace
 
+import Test.Tasty ( TestName, testGroup, after, DependencyType )
+import Test.Tasty.Runners (TestTree(..))
+
 import Vehicle.Compile (typeCheckExpr)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Type (runTypeCheck)
-import Test.Tasty ( TestName, testGroup, after, DependencyType )
-import Test.Tasty.Runners (TestTree(..))
 
 -- If you want to see the logs for tests, change `discardWarningsAndLogs` to
 -- `traceLogger` here.

@@ -1,4 +1,4 @@
-module Test.Golden
+module Test.Compile.Golden
   ( GoldenTestSpec
   , goldenTests
   , goldenTestList
@@ -21,7 +21,8 @@ import Vehicle
 import Vehicle.Prelude
 import Vehicle.Compile
 import Vehicle.Backend.Prelude
-import Test.Golden.Utils
+
+import Test.Compile.Golden.Utils
 
 --------------------------------------------------------------------------------
 -- Tests

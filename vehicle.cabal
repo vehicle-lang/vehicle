@@ -195,19 +195,19 @@ test-suite vehicle-test
   type:               exitcode-stdio-1.0
   main-is:            Test.hs
   hs-source-dirs:     test
-  other-modules:      Test.Fail
-                    , Test.Golden
-                    , Test.Golden.Utils
-                    , Test.Unit
-                    , Test.Unit.AlphaEquivalence
-                    , Test.Unit.CoDeBruijn
-                    , Test.Unit.LetInsertion
-                    , Test.Unit.PositionTree
-                    , Test.Unit.IfElimination
-                    -- , Test.Generative
-                    -- , Test.Generative.Generator
-                    -- , Test.Generative.ToVehicle
-                    , Test.Utils
+  other-modules:      Test.Compile.Fail
+                    , Test.Compile.Golden
+                    , Test.Compile.Golden.Utils
+                    , Test.Compile.Unit
+                    , Test.Compile.Unit.AlphaEquivalence
+                    , Test.Compile.Unit.CoDeBruijn
+                    , Test.Compile.Unit.LetInsertion
+                    , Test.Compile.Unit.PositionTree
+                    , Test.Compile.Unit.IfElimination
+                    -- , Test.Compile.Generative
+                    -- , Test.Compile.Generative.Generator
+                    -- , Test.Compile.Generative.ToVehicle
+                    , Test.Compile.Utils
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -main-is Test
   default-extensions: ImportQualifiedPost
                     , OverloadedStrings

@@ -5,9 +5,9 @@ module Test where
 import Test.Tasty
 import GHC.IO.Encoding
 
-import Test.Golden (goldenTests)
-import Test.Unit (unitTests)
-import Test.Fail (failTests)
+import Test.Compile.Golden (goldenTests)
+import Test.Compile.Unit (unitTests)
+import Test.Compile.Fail (failTests)
 -- import Test.Generative (generativeTests)
 
 main :: IO ()
