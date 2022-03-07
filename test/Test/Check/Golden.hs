@@ -22,7 +22,7 @@ goldenTests = testGroup "GoldenTests"
   ]
 
 testDir :: FilePath
-testDir = "test/Test/Check/Golden"
+testDir = "test" </> "Test" </> "Check" </> "Golden"
 
 successTest :: TestTree
 successTest = createTest "success" alterNetwork
