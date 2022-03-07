@@ -13,6 +13,7 @@ import Vehicle.Prelude
 import Vehicle.NeuralNetwork ( hashNetwork )
 
 import Test.GoldenUtils ( goldenFileTest )
+import System.Info (os)
 
 goldenTests :: TestTree
 goldenTests = testGroup "GoldenTests"
@@ -78,3 +79,13 @@ runTest name alterNetwork = do
 
   removeFile databaseFile
   removeFileIfExists networkFile
+
+  -- Update file paths in error messages if the tests are running on Windows
+  when (os == "mingw32") $
+    fixWindowsFilePaths outputFile
+
+fixWindowsFilePaths :: FilePath -> IO ()
+fixWindowsFilePaths outputFile = do
+  contents <- readFile outputFile
+  let newContents = fmap (\c -> if c == '\\' then '/' else c) contents
+  writeFile outputFile newContents
