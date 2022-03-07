@@ -43,7 +43,7 @@ testWellTyped depth ty = do
             --   x)
     let (wellTyped, logs) = isWellTyped t e
 
-    let errorMessage = (showMessages logs) <> "\n" <> (layoutAsString $
+    let errorMessage = showMessages logs <> "\n" <> layoutAsString (
           "The expression" <+> squotes (prettyFriendly e) <+>
           "does not have type" <+> squotes (prettyFriendly t))
 

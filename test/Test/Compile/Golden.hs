@@ -22,7 +22,7 @@ import Vehicle.Prelude
 import Vehicle.Compile
 import Vehicle.Backend.Prelude
 
-import Test.Compile.Golden.Utils
+import Test.GoldenUtils
 
 --------------------------------------------------------------------------------
 -- Tests

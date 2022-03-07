@@ -197,7 +197,6 @@ test-suite vehicle-test
   hs-source-dirs:     test
   other-modules:      Test.Compile.Fail
                     , Test.Compile.Golden
-                    , Test.Compile.Golden.Utils
                     , Test.Compile.Unit
                     , Test.Compile.Unit.AlphaEquivalence
                     , Test.Compile.Unit.CoDeBruijn
@@ -208,6 +207,11 @@ test-suite vehicle-test
                     -- , Test.Compile.Generative.Generator
                     -- , Test.Compile.Generative.ToVehicle
                     , Test.Compile.Utils
+
+                    , Test.Check.Golden
+
+                    , Test.GoldenUtils
+
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -main-is Test
   default-extensions: ImportQualifiedPost
                     , OverloadedStrings

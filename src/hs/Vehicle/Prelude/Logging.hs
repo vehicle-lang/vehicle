@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
 module Vehicle.Prelude.Logging
-  ( Severity(..)
+  ( Severity
   , Message(..)
   , MonadLogger(incrCallDepth, decrCallDepth, logMessage)
   , LoggerT
@@ -13,8 +13,9 @@ module Vehicle.Prelude.Logging
   , logWarning
   , logInfo
   , logDebug
+  , logOutput
   , liftExceptWithLogging
-  , flushLogs
+  , flushLogger
   , showMessages
   , setTextColour
   , setBackgroundColour
@@ -37,6 +38,7 @@ data Severity
   = Debug
   | Info
   | Warning
+  | ProgramOutput
   deriving (Eq, Ord)
 
 setTextColour :: Color -> String -> String
@@ -51,16 +53,18 @@ setBackgroundColour c s =
   s <>
   setSGRCode [SetColor Background Vivid Black]
 
-severityColour :: Severity -> Color
+severityColour :: Severity -> Maybe Color
 severityColour = \case
-  Warning -> Yellow
-  Info    -> Blue
-  Debug   -> Green
+  Warning        -> Just Yellow
+  Info           -> Just Blue
+  Debug          -> Just Green
+  ProgramOutput  -> Nothing
 
 severityPrefix :: Severity -> Text
-severityPrefix Warning = "Warning: "
-severityPrefix Info    = "Info: "
-severityPrefix Debug   = ""
+severityPrefix Warning        = "Warning: "
+severityPrefix Info           = "Info: "
+severityPrefix Debug          = ""
+severityPrefix ProgramOutput  = ""
 
 type CallDepth = Int
 
@@ -140,6 +144,9 @@ outputWarningsAndDiscardLogs logger = do
   printMessagesToStdout warnings
   return value
 
+logOutput :: MonadLogger m => Doc a -> m ()
+logOutput text = logMessage $ Message ProgramOutput (layoutAsText text)
+
 logWarning :: MonadLogger m => Doc a -> m ()
 logWarning text = logMessage $ Message Warning (layoutAsText text)
 
@@ -153,8 +160,8 @@ logDebug text = do
 
 instance Show Message where
   show (Message s t) =
-    setTextColour (severityColour s) $
-      T.unpack (severityPrefix s <> t)
+    let txt = T.unpack (severityPrefix s <> t) in
+    maybe txt (`setTextColour` txt) (severityColour s)
 
 showMessages :: [Message] -> String
 showMessages logs = unlines $ map show logs
@@ -162,13 +169,15 @@ showMessages logs = unlines $ map show logs
 liftExceptWithLogging :: Except e v -> ExceptT e Logger v
 liftExceptWithLogging = mapExceptT (pure . runIdentity)
 
-flushLogs :: Maybe FilePath -> Logger a -> IO a
-flushLogs logLocation l = do
+flushLogger :: Maybe FilePath -> Logger a -> IO a
+flushLogger logLocation l = do
   let (v, messages) = runLogger l
-  case logLocation of
-    Nothing      -> printMessagesToStdout messages
-    Just logFile -> writeMessageToFile logFile messages
+  flushLogs logLocation messages
   return v
+
+flushLogs :: Maybe FilePath -> [Message] -> IO ()
+flushLogs Nothing        = printMessagesToStdout
+flushLogs (Just logFile) = writeMessageToFile logFile
 
 printMessagesToStdout :: [Message] -> IO ()
 printMessagesToStdout = mapM_ print

@@ -74,7 +74,7 @@ logCompileError x = do
 
 fromLoggedIO :: LogFilePath -> Logger a -> IO a
 fromLoggedIO Nothing        logger = outputWarningsAndDiscardLogs logger
-fromLoggedIO (Just logFile) logger = flushLogs logFile logger
+fromLoggedIO (Just logFile) logger = flushLogger logFile logger
 
 --------------------------------------------------------------------------------
 -- Meaningful error classes

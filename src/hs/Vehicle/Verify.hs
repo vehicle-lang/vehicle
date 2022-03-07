@@ -32,7 +32,7 @@ verify loggingOptions VerifyOptions{..} = do
   networkInfo <- hashNetworks networks
 
   writeSpecificationStatus outputFile $ SpecificationStatus
-    { version      = vehicleVersion
+    { specVersion  = vehicleVersion
     , status       = status
     , originalSpec = spec
     , networkInfo  = networkInfo

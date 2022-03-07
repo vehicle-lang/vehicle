@@ -70,15 +70,19 @@ instance Pretty VerificationStatus where
 
   pretty (NetworksMissing missingNetworks) =
     "Verification status is currently unknown as the following networks" <+>
-    "cannot not be found on disk:" <+> pretty missingNetworks <> line <>
-    "To fix this problem, either return the missing network files or use" <+>
-    "Vehicle to rerun verification with the new locations."
+    "cannot not be found:" <> line <> line <>
+    indent 2 (vsep (fmap pretty missingNetworks)) <> line <> line <>
+    "To fix this problem, either move the missing files back to" <+>
+    "the" <+> locations <+> "above or use Vehicle to reverify the specification" <+>
+    "with the new" <+> locations <> "."
+    where
+      locations = "location" <> if length missingNetworks == 1 then "" else "s"
 
   pretty (NetworksAltered alteredNetworks) =
     "Verification status is currently unknown as the following networks" <+>
-    "have been altered since verification was last run:" <+>
-    pretty alteredNetworks <> line <>
-    "To fix this problem, use Vehicle to rerun verification."
+    "have been altered since verification was last run:" <> line <> line <>
+    indent 2 (vsep (fmap pretty alteredNetworks)) <> line <> line <>
+    "To fix this problem, use Vehicle to reverify the specification."
 
   pretty (FailedVerification propertyName counterexample) =
     "Verification was unsuccessful. In particular property" <+>
@@ -91,7 +95,7 @@ instance Pretty VerificationStatus where
 -- Overall status of the specification
 
 data SpecificationStatus = SpecificationStatus
-  { version      :: Version
+  { specVersion  :: Version
   , status       :: VerificationStatus
   , networkInfo  :: [NetworkVerificationInfo]
   , originalSpec :: Text
