@@ -23,23 +23,19 @@ private
 InputVector : Set
 InputVector = Tensor ℚ (2 ∷ [])
 
-controller : InputVector → ℚ
-controller = evaluate record
-  { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = "TODO_networkUUID"
-  }
+postulate controller : InputVector → ℚ
 
-currentPosition : InputVector → ℚ
-currentPosition x = x (# 0)
+currentSensor : InputVector → ℚ
+currentSensor x = x (# 0)
 
-previousPosition : InputVector → ℚ
-previousPosition x = x (# 1)
+previousSensor : InputVector → ℚ
+previousSensor x = x (# 1)
 
 SafeInput : InputVector → Set
-SafeInput x = (ℚ.- (ℤ.+ 13 ℚ./ 4) ℚ.≤ currentPosition x × currentPosition x ℚ.≤ ℤ.+ 13 ℚ./ 4) × (ℚ.- (ℤ.+ 13 ℚ./ 4) ℚ.≤ previousPosition x × previousPosition x ℚ.≤ ℤ.+ 13 ℚ./ 4)
+SafeInput x = (ℚ.- (ℤ.+ 13 ℚ./ 4) ℚ.≤ currentSensor x × currentSensor x ℚ.≤ ℤ.+ 13 ℚ./ 4) × (ℚ.- (ℤ.+ 13 ℚ./ 4) ℚ.≤ previousSensor x × previousSensor x ℚ.≤ ℤ.+ 13 ℚ./ 4)
 
 SafeOutput : InputVector → Set
-SafeOutput x = ℚ.- (ℤ.+ 5 ℚ./ 4) ℚ.< (controller x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currentPosition x) ℚ.- previousPosition x × (controller x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currentPosition x) ℚ.- previousPosition x ℚ.< ℤ.+ 5 ℚ./ 4
+SafeOutput x = ℚ.- (ℤ.+ 5 ℚ./ 4) ℚ.< (controller x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currentSensor x) ℚ.- previousSensor x × (controller x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* currentSensor x) ℚ.- previousSensor x ℚ.< ℤ.+ 5 ℚ./ 4
 
 abstract
   safe : ∀ (x : Tensor ℚ (2 ∷ [])) → SafeInput x → SafeOutput x

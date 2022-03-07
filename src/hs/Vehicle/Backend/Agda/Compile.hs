@@ -623,12 +623,15 @@ compileFunDef n t ns e =
 -- |Compile a `network` declaration
 compileNetwork :: Code -> Code -> Code
 compileNetwork networkName networkType =
-  networkName <+> ":" <+> align networkType          <> line <>
+  "postulate" <+> networkName <+> ":" <+> align networkType
+  {-
+   <> line <>
   networkName <+> "= evaluate record"                <> line <>
     indentCode (
     "{ projectFile =" <+> projectFileVariable        <> line <>
     "; networkUUID =" <+> dquotes "TODO_networkUUID" <> line <>
     "}")
+  -}
 
 compileProperty :: Code -> Code -> Code
 compileProperty propertyName propertyBody = scopeCode "abstract" $

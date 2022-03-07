@@ -15,11 +15,7 @@ module monotonicity-output where
 private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
-f : ℝ → ℝ
-f = evaluate record
-  { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = "TODO_networkUUID"
-  }
+postulate f : ℝ → ℝ
 
 abstract
   monotonic : ∀ (x1 : ℝ) → ∀ (x2 : ℝ) → x1 ℝ.≤ x2 → f x1 ℝ.≤ f x2

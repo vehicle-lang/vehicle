@@ -15,11 +15,7 @@ module increasing-output where
 private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
-f : ℝ → ℝ
-f = evaluate record
-  { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = "TODO_networkUUID"
-  }
+postulate f : ℝ → ℝ
 
 abstract
   increasing : ∀ (x : ℝ) → x ℝ.≤ f x

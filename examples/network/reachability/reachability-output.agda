@@ -20,11 +20,7 @@ module reachability-output where
 private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
-f : Tensor ℚ (2 ∷ []) → ℚ
-f = evaluate record
-  { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = "TODO_networkUUID"
-  }
+postulate f : Tensor ℚ (2 ∷ []) → ℚ
 
 abstract
   reachable : ∃ λ (x : Tensor ℚ (2 ∷ [])) → f x ≡ ℤ.+ 0 ℚ./ 1
