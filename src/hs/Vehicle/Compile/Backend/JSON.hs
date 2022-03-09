@@ -1,14 +1,18 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Vehicle.Language.AST.JSON where
-import Data.Aeson 
 import Vehicle.Prelude
 import Vehicle.Language.AST qualified as V
+import Data.Aeson
 
 import GHC.Generics (Generic)
 import Data.List.NonEmpty qualified as NonEmpty (map)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe ( fromMaybe )
+import qualified Vehicle.Compile.Prelude as X
+import qualified Vehicle.Core.Abs as X
+import Data.ByteString.Lazy (ByteString)
+
 
 
 --add aeson to vehicle.cabal, lib:vehicle 
@@ -33,12 +37,13 @@ data JBuiltin
   | Order     V.Order
   deriving (Eq, Ord, Generic)
 
+
 data JExpr 
   = Builtin JBuiltin
   | Literal V.Literal
   | App JExpr (NonEmpty JExpr)
   | Network Symbol
-  | Var V.Index
+  | Var V.DBIndex
   | Quant V.Quantifier Symbol JExpr JExpr
   deriving (Generic)
 
@@ -67,16 +72,16 @@ toJBuiltin e =
 
 
 
-argToJExpr :: V.CheckedArg -> JExpr
+argToJExpr :: X.CheckedArg -> JExpr
 argToJExpr (V.Arg _ _ t) = toJExpr t
 
-binderToJExpr :: V.CheckedBinder -> JExpr
+binderToJExpr :: X.CheckedBinder -> JExpr
 binderToJExpr (V.Binder _ _ _ t) = toJExpr t
 
-binderToSymbol :: V.CheckedBinder -> Symbol
+binderToSymbol :: X.CheckedBinder -> Symbol
 binderToSymbol (V.Binder _ _ b _) = fromMaybe (developerError "Complex type") b 
 
-toJExpr :: V.CheckedExpr  -> JExpr
+toJExpr :: X.CheckedExpr  -> JExpr
 toJExpr e = 
   case e of
     V.Builtin _ t                     -> Builtin (toJBuiltin t)
@@ -91,17 +96,43 @@ toJExpr e =
     V.Ann{}                           -> developerError "Ann"
     V.Let{}                           -> developerError "Let"
     V.Lam{}                           -> developerError "Lam"
-    V.Seq{}                           -> developerError "Seq"
+    V.LSeq{}                           -> developerError "Seq"
     V.PrimDict{}                      -> developerError "PrimDict"
     V.Pi{}                            -> developerError "Pi"
     V.Type{}                          -> developerError "Type"
 
+
+--newtype NewOrder = NewOrder X.Order
+--  deriving (Eq, Ord, Generic)
+
+instance FromJSON X.Order
+instance ToJSON X.Order
+instance FromJSON X.NumericOp2 
+instance ToJSON X.NumericOp2
+instance FromJSON X.NumericType 
+instance ToJSON X.NumericType
+instance FromJSON X.BooleanOp2 
+instance ToJSON X.BooleanOp2
+instance FromJSON X.Equality
+instance ToJSON X.Equality
+
+  
 instance FromJSON JBuiltin
 instance ToJSON JBuiltin where
-  
+  toEncoding = genericToEncoding defaultOptions
+
+
+instance FromJSON X.Literal
+instance ToJSON X.Literal
+instance FromJSON X.Quantifier 
+instance ToJSON X.Quantifier 
 
 instance FromJSON JExpr
-instance ToJSON JExpr
+instance ToJSON JExpr where
+  toEncoding = genericToEncoding defaultOptions
+
+toJSON :: X.CheckedExpr -> ByteString
+toJSON e = encode (toJExpr e)
     
 
 

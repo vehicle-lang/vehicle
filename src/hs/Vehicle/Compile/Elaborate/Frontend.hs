@@ -145,11 +145,7 @@ instance Elab B.Expr V.InputExpr where
     B.TCTruth tk e     -> builtin (V.TypeClass V.IsTruth)        tk [e]
     B.TCQuant tk e     -> builtin (V.TypeClass V.IsQuantifiable) tk [e]
     B.TCNat   tk e     -> builtin (V.TypeClass V.IsNatural)      tk [e]
-<<<<<<< HEAD:src/hs/Vehicle/Language/Elaborate/Frontend.hs
-    B.TCInt   tk e     -> builtin (V.TypeClass V.IsIntegral)     tk [e]
-=======
     B.TCInt   tk e     -> builtin (V.TypeClass V.IsInteger)     tk [e]
->>>>>>> bce9583dce0d3a19fa5086c5058330e81d6130de:src/hs/Vehicle/Compile/Elaborate/Frontend.hs
     B.TCRat   tk e     -> builtin (V.TypeClass V.IsRational)     tk [e]
     B.TCReal  tk e     -> builtin (V.TypeClass V.IsReal)         tk [e]
 
@@ -194,11 +190,7 @@ instance Elab B.Lit V.InputExpr where
       then V.LitNat V.emptyUserAnn (fromIntegral n)
       else V.LitInt V.emptyUserAnn (fromIntegral n)
 
-<<<<<<< HEAD:src/hs/Vehicle/Language/Elaborate/Frontend.hs
-op1 :: (MonadElab m, HasProvenance a, IsToken token)
-=======
 op1 :: (MonadCompile m, HasProvenance a, IsToken token)
->>>>>>> bce9583dce0d3a19fa5086c5058330e81d6130de:src/hs/Vehicle/Compile/Elaborate/Frontend.hs
     => (V.InputAnn -> a -> b)
     -> token -> m a -> m b
 op1 mk t e = do
