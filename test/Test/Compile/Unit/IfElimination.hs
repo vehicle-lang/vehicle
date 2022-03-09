@@ -1,4 +1,4 @@
-module Test.Unit.IfElimination where
+module Test.Compile.Unit.IfElimination where
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -17,7 +17,7 @@ import Vehicle.Compile.Normalise.IfElimination
 import Vehicle.Compile.CoDeBruijnify
 import Vehicle.Compile.Type (runTypeCheck)
 
-import Test.Utils
+import Test.Compile.Utils
 
 --------------------------------------------------------------------------------
 -- Let lifting tests

@@ -1,6 +1,6 @@
 
 bool : Prop
-bool = every (x : Int) . True
+bool = forall (x : Int) . True
 
 expandedExpr : Prop
-expandedExpr = every (x : Tensor Int [2]) . x ! 0 == x ! 1
+expandedExpr = forall (x : Tensor Int [2]) . x ! 0 == x ! 1

@@ -1,4 +1,4 @@
-module Test.Fail
+module Test.Compile.Fail
   ( failTests
   ) where
 
@@ -20,8 +20,9 @@ import Test.Tasty.Golden.Advanced (goldenTest)
 import Vehicle
 import Vehicle.Prelude
 import Vehicle.Compile
-import Vehicle.Backend
-import Test.Golden.Utils
+import Vehicle.Backend.Prelude
+
+import Test.GoldenUtils
 
 --------------------------------------------------------------------------------
 -- Tests
@@ -54,7 +55,7 @@ failTest :: FilePath -> Maybe Backend -> TestTree
 failTest filepath backend = test
   where
   testName       = takeBaseName filepath <> maybe "" (\x -> "-" <> show x) backend
-  basePath       = "test" </> "Test" </> "Fail" </> filepath
+  basePath       = "test" </> "Test" </> "Compile" </> "Fail" </> filepath
   inputFile      = basePath <.> ".vcl"
   logFile        = basePath <> "-temp" <.> "txt"
   goldenFile     = basePath <.> "txt"

@@ -1,9 +1,9 @@
 module Vehicle.Backend.Agda.Interact
-  ( writeOutProperty
+  ( writeAgdaFile
   ) where
 
 import Vehicle.Prelude
 import Vehicle.Backend.Prelude
 
-writeOutProperty :: Maybe FilePath -> Doc a -> IO ()
-writeOutProperty = writeResultToFile AgdaBackend
+writeAgdaFile :: Maybe FilePath -> Doc a -> IO ()
+writeAgdaFile = writeResultToFile AgdaBackend

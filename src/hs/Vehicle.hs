@@ -17,13 +17,17 @@ import Vehicle.Check (CheckOptions(..), check)
 run :: Options -> IO ()
 run Options{..} = do
   when version $ do
-    print version
+    print vehicleVersion
     exitSuccess
 
-  let outputFiles = (errFile, logFile)
+  let loggingSettings = LoggingOptions
+        { errorLocation = errFile
+        , logLocation   = logFile
+        }
+
   case commandOption of
-    Compile options -> compile outputFiles options
-    Check   options -> check   outputFiles options
+    Compile options -> compile loggingSettings options
+    Check   options -> check   loggingSettings options
 
 data Options = Options
   { version       :: Bool

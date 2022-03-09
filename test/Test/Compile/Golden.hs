@@ -1,4 +1,4 @@
-module Test.Golden
+module Test.Compile.Golden
   ( GoldenTestSpec
   , goldenTests
   , goldenTestList
@@ -20,8 +20,9 @@ import Debug.Trace (traceShowId)
 import Vehicle
 import Vehicle.Prelude
 import Vehicle.Compile
-import Vehicle.Backend
-import Test.Golden.Utils
+import Vehicle.Backend.Prelude
+
+import Test.GoldenUtils
 
 --------------------------------------------------------------------------------
 -- Tests

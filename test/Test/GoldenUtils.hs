@@ -1,4 +1,4 @@
-module Test.Golden.Utils
+module Test.GoldenUtils
   ( goldenDirectoryTest
   , goldenFileTest
   ) where

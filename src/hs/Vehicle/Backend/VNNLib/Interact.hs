@@ -1,10 +1,11 @@
 module Vehicle.Backend.VNNLib.Interact
-  ( writeOutProperty
+  ( writeVNNLibQueryFiles
   ) where
 
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.VNNLib.Core
+import Control.Monad (forM_)
 
-writeOutProperty :: Maybe FilePath -> VNNLibProperty -> IO ()
-writeOutProperty filepath property =
+writeVNNLibQueryFiles :: Maybe FilePath -> [VNNLibProperty] -> IO ()
+writeVNNLibQueryFiles filepath properties = forM_ properties $ \property -> do
   writeResultToFile VNNLibBackend filepath (doc property)

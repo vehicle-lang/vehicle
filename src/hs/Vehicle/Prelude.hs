@@ -3,9 +3,10 @@ module Vehicle.Prelude
   ( module X
   , VehicleLang(..)
   , Negatable(..)
-  , OutputFilePaths
+  , LoggingOptions(..)
   , LogFilePath
   , ErrorFilePath
+  , vehicleVersion
   , (|->)
   , (!?)
   , (!!?)
@@ -17,6 +18,7 @@ module Vehicle.Prelude
   , partialSort
   , capitaliseFirstLetter
   , developerError
+  , removeFileIfExists
   ) where
 
 import Data.Range
@@ -24,7 +26,7 @@ import Data.Text (Text, unpack)
 import Data.Text qualified as Text
 import Data.Graph
 import Numeric
-import Control.Exception (Exception, throw)
+import Control.Exception (Exception, throw, catch, throwIO)
 import GHC.Stack (HasCallStack)
 
 import Vehicle.Prelude.Token as X
@@ -32,6 +34,14 @@ import Vehicle.Prelude.Provenance as X
 import Vehicle.Prelude.Prettyprinter as X
 import Vehicle.Prelude.Logging as X
 import Vehicle.Prelude.Supply as X
+
+import Paths_vehicle qualified as Cabal (version)
+import Data.Version (Version)
+import System.Directory (removeFile)
+import System.IO.Error (isDoesNotExistError)
+
+vehicleVersion :: Version
+vehicleVersion = Cabal.version
 
 data VehicleLang = Frontend | Core
   deriving (Show)
@@ -113,7 +123,11 @@ class Negatable a where
 
 type LogFilePath = Maybe (Maybe FilePath)
 type ErrorFilePath = Maybe FilePath
-type OutputFilePaths = (ErrorFilePath, LogFilePath)
+
+data LoggingOptions = LoggingOptions
+  { errorLocation :: ErrorFilePath
+  , logLocation   :: LogFilePath
+  }
 
 --------------------------------------------------------------------------------
 -- Developer errors
@@ -130,3 +144,14 @@ developerError message = throw $ DeveloperError $ layoutAsText $
   "Something went wrong internally. Please report the error" <+>
   "shown below to `https://github.com/wenkokke/vehicle/issues`." <> line <>
   "Error:" <+> message
+
+
+--------------------------------------------------------------------------------
+-- IO operations
+
+removeFileIfExists :: FilePath -> IO ()
+removeFileIfExists fileName = removeFile fileName `catch` handleExists
+  where
+    handleExists e
+      | isDoesNotExistError e = return ()
+      | otherwise = throwIO e

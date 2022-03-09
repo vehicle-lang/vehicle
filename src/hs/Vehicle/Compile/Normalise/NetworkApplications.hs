@@ -38,15 +38,15 @@ import Data.Text (Text)
 --
 -- Consider the example property
 --
---   every x1 x2 . x1 <= x2 => f x1 <= f x2
+--   forall x1 x2 . x1 <= x2 => f x1 <= f x2
 --
 -- Compilation therefore proceeds as follows:
 --
--- 1. We perform let-lifting of network applications so that every application
+-- 1. We perform let-lifting of network applications so that forall application
 -- of a network to a unique input sits in its own let binding underneath a
 -- universal quantifier.
 --
---  every x1 . let z1 = f x1 in every x2 . let z2 = f x2 in x1 <= x2 => z1 <= z2
+--  forall x1 . let z1 = f x1 in forall x2 . let z2 = f x2 in x1 <= x2 => z1 <= z2
 --
 -- 2. We traverse the expression compiling a list of all network applications,
 -- which we refer to as the "meta-network". From this we can generate a list
@@ -61,7 +61,7 @@ import Data.Text (Text)
 -- variables into the body of the let expression. For example after
 -- processing both let expressions we get:
 --
---  every x1 . X0 == x1 => every x2 . X1 == x2 => x1 <= x2 => Y0 <= Y1
+--  forall x1 . X0 == x1 => forall x2 . X1 == x2 => x1 <= x2 => Y0 <= Y1
 --
 -- 4. During the process of replacing an application we make note
 -- of any locally bound variables that are equated directly to

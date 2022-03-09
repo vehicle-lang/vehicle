@@ -6,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Test.Generative.ToVehicle
+module Test.Compile.Generative.ToVehicle
   ( convertKind
   , convertType
   , convertTerm
@@ -15,7 +15,7 @@ module Test.Generative.ToVehicle
 import Data.Bifunctor (Bifunctor(..))
 import Control.Monad.Reader (Reader(..), ask, runReader, withReader, local)
 
-import Test.Generative.Generator
+import Test.Compile.Generative.Generator
 
 import Vehicle.Language.AST hiding (Expr)
 

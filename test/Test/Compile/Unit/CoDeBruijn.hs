@@ -1,4 +1,4 @@
-module Test.Unit.CoDeBruijn
+module Test.Compile.Unit.CoDeBruijn
   ( coDeBruijnTests ) where
 
 import Test.Tasty
@@ -17,7 +17,7 @@ import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
 import Vehicle.Compile.CoDeBruijnify
 
-import Test.Utils
+import Test.Compile.Utils
 
 --------------------------------------------------------------------------------
 -- Alpha equivalence tests
@@ -28,7 +28,7 @@ coDeBruijnTests = testGroup "CoDeBruijnIndices"
   , testCase "typeFun"   $ toFromCoDB "Nat -> Nat"
   , testCase "lam"       $ toFromCoDB "\\(x : Nat) -> x"
   , testCase "lam2"      $ toFromCoDB "\\(f : Nat -> Nat) (x : Nat) -> f x"
-  , testCase "pi"        $ toFromCoDB "forall (n : Nat) . Tensor Nat [n]"
+  , testCase "pi"        $ toFromCoDB "forallT (n : Nat) . Tensor Nat [n]"
   , testCase "neg"       $ toFromCoDB "\\(x : Int) -> - x"
   ]
 

@@ -1,13 +1,12 @@
-{-# LANGUAGE ImportQualifiedPost #-}
-
 module Test where
 
 import Test.Tasty
 import GHC.IO.Encoding
 
-import Test.Golden (goldenTests)
-import Test.Unit (unitTests)
-import Test.Fail (failTests)
+import Test.Compile.Golden as Compile (goldenTests)
+import Test.Compile.Unit as Compile (unitTests)
+import Test.Compile.Fail as Compile (failTests)
+import Test.Check.Golden as Check (goldenTests)
 -- import Test.Generative (generativeTests)
 
 main :: IO ()
@@ -17,7 +16,18 @@ main = do
 
 tests :: TestTree
 tests = testGroup "Tests"
-  [ goldenTests
-  , unitTests
-  , failTests
+  [ compileTests
+  , checkTests
+  ]
+
+compileTests :: TestTree
+compileTests = testGroup "Compile"
+  [ Compile.goldenTests
+  , Compile.unitTests
+  , Compile.failTests
+  ]
+
+checkTests :: TestTree
+checkTests = testGroup "Check"
+  [ Check.goldenTests
   ]

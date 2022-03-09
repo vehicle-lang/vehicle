@@ -5,7 +5,7 @@ comment "(*" "*)";
 -- * Tokens
 
 position token BuiltinToken
-  ( {"every"} | {"some"}
+  ( {"forall"} | {"exists"}
   | {"=>"} | {"and"} | {"or"} | {"not"}
   | {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
   | {"*"} | {"/"} | {"+"} | {"-"} | {"~"}

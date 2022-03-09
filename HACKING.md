@@ -2,7 +2,7 @@
 
 ## Linux
 
-* Install `GHCUp` following the instructions from https://www.haskell.org/ghcup/.
+* Install `GHCUp` following the instructions from https://www.haskell.org/ghcup/. (Options: add to path, install language server, but no need to install stack). 
 
 * Close and reopen your terminal.
 

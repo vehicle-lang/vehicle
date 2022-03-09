@@ -1,6 +1,6 @@
 module Vehicle.Backend.Agda.Compile
   ( AgdaOptions(..)
-  , compile
+  , compileProgToAgda
   ) where
 
 import GHC.Real (numerator, denominator)
@@ -24,8 +24,8 @@ import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Compile.Descope (runDescopeProg)
 import Vehicle.Backend.Prelude
 
-compile :: MonadCompile m => AgdaOptions -> CheckedProg -> m (Doc a)
-compile options prog1 = flip runReaderT options $ do
+compileProgToAgda :: MonadCompile m => AgdaOptions -> CheckedProg -> m (Doc a)
+compileProgToAgda options prog1 = flip runReaderT options $ do
   let prog2 = capitaliseTypeNames prog1
   let prog3 = supplyDBNames prog2
   let prog4 = runDescopeProg prog3
@@ -623,12 +623,15 @@ compileFunDef n t ns e =
 -- |Compile a `network` declaration
 compileNetwork :: Code -> Code -> Code
 compileNetwork networkName networkType =
-  networkName <+> ":" <+> align networkType          <> line <>
+  "postulate" <+> networkName <+> ":" <+> align networkType
+  {-
+   <> line <>
   networkName <+> "= evaluate record"                <> line <>
     indentCode (
     "{ projectFile =" <+> projectFileVariable        <> line <>
     "; networkUUID =" <+> dquotes "TODO_networkUUID" <> line <>
     "}")
+  -}
 
 compileProperty :: Code -> Code -> Code
 compileProperty propertyName propertyBody = scopeCode "abstract" $

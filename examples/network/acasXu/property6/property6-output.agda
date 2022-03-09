@@ -30,11 +30,7 @@ InputVector = Tensor ℝ (5 ∷ [])
 OutputVector : Set
 OutputVector = Tensor ℝ (5 ∷ [])
 
-acasXu : InputVector → OutputVector
-acasXu = evaluate record
-  { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = "TODO_networkUUID"
-  }
+postulate acasXu : InputVector → OutputVector
 
 distanceToIntruder : InputVector → ℝ
 distanceToIntruder x = x (# 0)

@@ -18,17 +18,9 @@ module autoencoderError-output where
 private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
-encode : Tensor ℚ (5 ∷ []) → Tensor ℚ (2 ∷ [])
-encode = evaluate record
-  { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = "TODO_networkUUID"
-  }
+postulate encode : Tensor ℚ (5 ∷ []) → Tensor ℚ (2 ∷ [])
 
-decode : Tensor ℚ (2 ∷ []) → Tensor ℚ (5 ∷ [])
-decode = evaluate record
-  { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = "TODO_networkUUID"
-  }
+postulate decode : Tensor ℚ (2 ∷ []) → Tensor ℚ (5 ∷ [])
 
 abstract
   identity : ∀ (x : Tensor ℚ (5 ∷ [])) → decode (encode x) ≡ x

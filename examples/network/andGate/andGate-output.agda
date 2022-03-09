@@ -17,11 +17,7 @@ module andGate-output where
 private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
-andGate : ℝ → (ℝ → ℝ)
-andGate = evaluate record
-  { projectFile = VEHICLE_PROJECT_FILE
-  ; networkUUID = "TODO_networkUUID"
-  }
+postulate andGate : ℝ → (ℝ → ℝ)
 
 Truthy : ℝ → Set
 Truthy x = x ℝ.≥ ℤ.+ 1 ℝ./ 2

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Test.Generative where
+module Test.Compile.Generative where
 
 import Control.Monad (forM_)
 import Control.Monad.Except (runExceptT)
@@ -14,8 +14,8 @@ import Vehicle.Language.Type (typeCheck)
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Test.Generative.Generator
-import Test.Generative.ToVehicle
+import Test.Compile.Generative.Generator
+import Test.Compile.Generative.ToVehicle
 import Vehicle.Language.Print (prettyFriendly, prettyVerbose)
 
 maxDepth :: Int
@@ -43,7 +43,7 @@ testWellTyped depth ty = do
             --   x)
     let (wellTyped, logs) = isWellTyped t e
 
-    let errorMessage = (showMessages logs) <> "\n" <> (layoutAsString $
+    let errorMessage = showMessages logs <> "\n" <> layoutAsString (
           "The expression" <+> squotes (prettyFriendly e) <+>
           "does not have type" <+> squotes (prettyFriendly t))
 

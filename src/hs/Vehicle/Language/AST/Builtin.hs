@@ -315,10 +315,10 @@ instance Show Builtin where
     TypeClass tc    -> show tc
     Map             -> "map"
     Fold            -> "fold"
-    Quant   All     -> "every"
-    Quant   Any     -> "some"
-    QuantIn All     -> "everyIn"
-    QuantIn Any     -> "someIn"
+    Quant   All     -> "forall"
+    Quant   Any     -> "exists"
+    QuantIn All     -> "forallIn"
+    QuantIn Any     -> "existsIn"
 
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols = map (first pack)

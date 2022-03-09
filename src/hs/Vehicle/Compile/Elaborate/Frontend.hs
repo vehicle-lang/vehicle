@@ -97,13 +97,13 @@ instance Elab B.Expr V.InputExpr where
     B.App e1 e2               -> elabApp e1 e2
     -- It is really bad not to have provenance for let tokens here, see issue #6
     B.Let ds e                -> unfoldLet V.emptyUserAnn <$> bitraverse (traverse elab) elab (ds, e)
-    B.Forall tk1 ns _tk2 t    -> do checkNonEmpty tk1 ns; unfoldForall (mkAnn tk1) <$> elabBindersAndBody ns t
+    B.ForallT tk1 ns _tk2 t   -> do checkNonEmpty tk1 ns; unfoldForall (mkAnn tk1) <$> elabBindersAndBody ns t
     B.Lam tk1 ns _tk2 e       -> do checkNonEmpty tk1 ns; unfoldLam    (mkAnn tk1) <$> elabBindersAndBody ns e
 
-    B.Every   tk1 ns    _tk2 e  -> elabQuantifier   tk1 V.All ns e
-    B.Some    tk1 ns    _tk2 e  -> elabQuantifier   tk1 V.Any ns e
-    B.EveryIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.All ns e1 e2
-    B.SomeIn  tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Any ns e1 e2
+    B.Forall   tk1 ns    _tk2 e  -> elabQuantifier   tk1 V.All ns e
+    B.Exists   tk1 ns    _tk2 e  -> elabQuantifier   tk1 V.Any ns e
+    B.ForallIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.All ns e1 e2
+    B.ExistsIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Any ns e1 e2
 
     B.Bool tk                 -> builtin (V.BooleanType   V.Bool)   tk []
     B.Prop tk                 -> builtin (V.BooleanType   V.Prop)   tk []
