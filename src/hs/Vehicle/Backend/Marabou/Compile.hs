@@ -214,7 +214,9 @@ compileAssertion ann ident quantifier rel lhs rhs = do
         else (vars, constant, rel)
 
   compiledRel <- compileRel finalRel
-  return $ hsep (fmap compileVar finalVars) <+> compiledRel <+> pretty finalConstant
+  let compiledLHS = hsep (fmap (compileVar (length finalVars > 1)) finalVars)
+  let compiledRHS = pretty finalConstant
+  return $ compiledLHS <+> compiledRel <+> compiledRHS
   where
     flipConstants :: [Double] -> [Double]
     flipConstants = fmap ((-1) *)
@@ -260,10 +262,11 @@ compileAssertion ann ident quantifier rel lhs rhs = do
         -}
       | otherwise = return $ pretty order
 
-    compileVar :: (Double, Symbol) -> Doc a
-    compileVar (-1,          var) = "-" <> pretty var
-    compileVar (1,           var) = "+" <> pretty var
-    compileVar (coefficient, var) = pretty coefficient <> pretty var
+    compileVar :: Bool -> (Double, Symbol) -> Doc a
+    compileVar False (1,           var) = pretty var
+    compileVar True  (1,           var) = "+" <> pretty var
+    compileVar _     (-1,          var) = "-" <> pretty var
+    compileVar _     (coefficient, var) = pretty coefficient <> pretty var
 
 supportedTypes :: [Builtin]
 supportedTypes =
