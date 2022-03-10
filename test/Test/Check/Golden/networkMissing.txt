@@ -1,4 +1,6 @@
-Verification status is currently unknown as the following networks cannot not be found:
+Status: unknown
+
+The following networks cannot not be found:
 
   myNetwork (test/Test/Check/Golden/networkMissingNetwork.onnx)
 

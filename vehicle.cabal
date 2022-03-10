@@ -151,6 +151,8 @@ library
                       , split
                       , data-default-class
                       , aeson
+                      , temporary
+                      , process
 
   ghc-options:          -Wall -fprint-potential-instances
   default-extensions:   ImportQualifiedPost

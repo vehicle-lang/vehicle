@@ -44,3 +44,7 @@ package-lock.json
 
 # Emacs
 MAlonzo/**
+
+# Vehicle build system
+build/
+bin/

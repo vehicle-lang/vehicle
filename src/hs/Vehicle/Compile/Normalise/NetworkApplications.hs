@@ -107,11 +107,6 @@ convertNetworkAppsToMagicVars verifier networkMap quantifier expr = do
   return (finalExpr, metaNetwork)
 
 --------------------------------------------------------------------------------
--- Data
-
-type MetaNetwork = [Identifier]
-
---------------------------------------------------------------------------------
 -- Monad
 
 type MonadNetworkApp m =

@@ -6,7 +6,7 @@ import System.Exit (exitFailure)
 
 import Vehicle.NeuralNetwork
 import Vehicle.Backend.Prelude
-import Vehicle.Backend.Marabou as Marabou (run)
+import Vehicle.Backend.Marabou as Marabou (verifySpec)
 import Vehicle.Compile
 import Vehicle.Verify.VerificationStatus
 import Control.Monad (forM)
@@ -24,14 +24,14 @@ verify loggingOptions VerifyOptions{..} = do
   status <- case verifier of
     Marabou -> do
       marabouSpec <- compileToMarabou loggingOptions inputFile
-      Marabou.run marabouSpec
+      Marabou.verifySpec Nothing marabouSpec
     VNNLib  -> do
       hPutStrLn stderr "VNNLib is not currently a valid output target"
       exitFailure
 
   networkInfo <- hashNetworks networks
 
-  writeSpecificationStatus outputFile $ SpecificationStatus
+  writeProofCache outputFile $ ProofCache
     { specVersion  = vehicleVersion
     , status       = status
     , originalSpec = spec

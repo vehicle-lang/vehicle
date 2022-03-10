@@ -24,7 +24,7 @@ import Vehicle.Compile.Normalise (normalise, defaultNormalisationOptions)
 import Vehicle.Compile.Normalise.NetworkTypes (normaliseNetworkTypes)
 import Vehicle.NeuralNetwork (NetworkMap)
 import Vehicle.Backend.Marabou qualified as Marabou
-import Vehicle.Backend.Marabou (MarabouProperty, writeMarabouQueryFiles)
+import Vehicle.Backend.Marabou (MarabouProperty)
 import Vehicle.Backend.VNNLib qualified as VNNLib
 import Vehicle.Backend.VNNLib (VNNLibProperty, writeVNNLibQueryFiles)
 import Vehicle.Backend.Agda
@@ -38,7 +38,7 @@ compile loggingOptions CompileOptions{..} = case outputTarget of
 
   Verifier Marabou -> do
     marabouProperties <- compileToMarabou loggingOptions inputFile
-    writeMarabouQueryFiles outputFile marabouProperties
+    Marabou.writeSpecFiles outputFile marabouProperties
 
   Verifier VNNLib -> do
     vnnlibProperties <- compileToVNNLib loggingOptions inputFile

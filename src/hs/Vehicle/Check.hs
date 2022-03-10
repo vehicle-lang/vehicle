@@ -4,12 +4,13 @@ module Vehicle.Check
   ) where
 
 import Data.List.NonEmpty (NonEmpty(..))
-
-import Vehicle.Prelude
-import Vehicle.Verify.VerificationStatus
-import Vehicle.NeuralNetwork
 import Data.Maybe (fromMaybe)
 import Control.Exception (catch, IOException)
+
+import Vehicle.Prelude
+import Vehicle.Verify.VerificationStatus (readProofCache, isSpecVerified, ProofCache(..), NetworkVerificationInfo(..))
+import Vehicle.NeuralNetwork
+import Data.Text (Text)
 
 --------------------------------------------------------------------------------
 -- Checking
@@ -26,19 +27,15 @@ check loggingOptions checkOptions = do
   status <- checkStatus loggingOptions checkOptions
   flushLogger logFile $ logOutput $ pretty status
 
-checkStatus :: LoggingOptions -> CheckOptions -> IO VerificationStatus
+checkStatus :: LoggingOptions -> CheckOptions -> IO CheckResult
 checkStatus _loggingOptions CheckOptions{..} = do
-  SpecificationStatus{..} <- readSpecificationStatus databaseFile
-  case status of
-    Verified -> do
-      (missingNetworks, alteredNetworks) <- checkIntegrityOfNetworks networkInfo
-      return $ case missingNetworks of
-        x : xs -> NetworksMissing (x :| xs)
-        []     -> case alteredNetworks of
-          x : xs -> NetworksAltered (x :| xs)
-          []     -> Verified
-
-    _ -> return status
+  ProofCache{..} <- readProofCache databaseFile
+  (missingNetworks, alteredNetworks) <- checkIntegrityOfNetworks networkInfo
+  return $ case (missingNetworks, alteredNetworks, isSpecVerified status) of
+    (x : xs, _, _)  -> NetworksMissing (x :| xs)
+    ([], x : xs, _) -> NetworksAltered (x :| xs)
+    ([], [], False) -> Unverified
+    ([], [], True)  -> Verified
 
 checkIntegrityOfNetworks :: [NetworkVerificationInfo]
                          -> IO ([MissingNetwork], [AlteredNetwork])
@@ -61,3 +58,50 @@ checkIntegrityOfNetworks (NetworkVerificationInfo{..} : xs) = do
             return Nothing
           else
             return $ Just $ Right $ AlteredNetwork name location
+
+data CheckResult
+  = Verified
+  | Unverified
+  | NetworksMissing (NonEmpty MissingNetwork)
+  | NetworksAltered (NonEmpty AlteredNetwork)
+
+instance Pretty CheckResult where
+  pretty Verified = "Status: verified"
+
+  pretty Unverified = "Status: unverified"
+
+  pretty (NetworksMissing missingNetworks) =
+    "Status: unknown" <> line <> line <>
+    "The following networks cannot not be found:" <> line <> line <>
+      indent 2 (vsep (fmap pretty missingNetworks)) <> line <> line <>
+    "To fix this problem, either move the missing files back to" <+>
+    "the" <+> locations <+> "above or use Vehicle to reverify the" <+>
+    "specification with the new" <+> locations <> "."
+    where
+      locations = "location" <> if length missingNetworks == 1 then "" else "s"
+
+  pretty (NetworksAltered alteredNetworks) =
+    "Status: unknown" <> line <> line <>
+    "The following networks have been altered since verification was" <+>
+    "last run:" <> line <> line <>
+    indent 2 (vsep (fmap pretty alteredNetworks)) <> line <> line <>
+    "To fix this problem, use Vehicle to reverify the specification."
+
+
+--------------------------------------------------------------------------------
+-- Missing networks
+
+data MissingNetwork = MissingNetwork Text FilePath
+
+instance Pretty MissingNetwork where
+  pretty (MissingNetwork name filepath) =
+    pretty name <+> parens (pretty filepath)
+
+--------------------------------------------------------------------------------
+-- Altered networks
+
+data AlteredNetwork = AlteredNetwork Text FilePath
+
+instance Pretty AlteredNetwork where
+  pretty (AlteredNetwork name filepath) =
+    pretty name <+> parens (pretty filepath)

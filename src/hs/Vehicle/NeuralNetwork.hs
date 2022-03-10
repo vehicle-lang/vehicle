@@ -63,3 +63,6 @@ hashNetwork :: FilePath -> IO Int
 hashNetwork network = do
   contents <- ByteString.readFile network
   return $ hash contents
+
+
+type MetaNetwork = [Identifier]

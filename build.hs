@@ -1,3 +1,10 @@
+---------------------------------------------------------------------------------
+-- Build script
+--
+-- This is the Shake build script for Vehicle. It installs all the necessary
+-- subcomponents and programs that Vehicle relies on.
+---------------------------------------------------------------------------------
+
 {-# LANGUAGE OverloadedLists #-}
 
 import Control.Monad (when, unless)
@@ -16,6 +23,12 @@ import Development.Shake.Util
 ---------------------------------------------------------------------------------
 --- Configuration
 ---------------------------------------------------------------------------------
+
+buildFolder :: FilePath
+buildFolder = "build"
+
+binFolder :: FilePath
+binFolder = "bin"
 
 ghcVersion :: Version
 ghcVersion = [9,0,1]
@@ -92,27 +105,31 @@ requireAgda = do
 
 requireMarabou :: Action ()
 requireMarabou = do
-  missingMarabou <- not <$> hasExecutable "Marabou"
+  missingMarabou <- not <$> hasLocalExecutable "Marabou"
   when missingMarabou $ do
-    let buildFolder        = "build"
     let marabouFolder      = buildFolder </> "marabou"
     let marabouBuildFolder = marabouFolder </> "build"
 
-    -- See https://github.com/dlshriver/DNNV/blob/main/scripts/install_marabou.sh
     liftIO $ createDirectoryIfMissing False buildFolder
 
+    -- At the moment we have to use our own branch that supports Onnx files
+    -- from the command line. See https://github.com/NeuralNetworkVerification/Marabou/issues/498
+    -- for details. Uncomment the code below when this is merged into mainline
+    -- Marabou.
+    -- let marabouRepoURL = "https://github.com/MatthewDaggitt/Marabou"
+    -- command_ [] "git" [ "clone", marabouRepoURL, marabouFolder]
+    -- command_ [] "git" [ "-C", marabouFolder, "checkout", "onnx-support"]
+{-
     let marabouRepoURL = "https://github.com/NeuralNetworkVerification/Marabou"
     command_ [] "git" [ "clone", marabouRepoURL, marabouFolder]
     command_ [] "git" [ "-C", marabouFolder, "checkout", "ffd353b"]
-
+-}
     liftIO $ createDirectoryIfMissing False marabouBuildFolder
-    command_ [] "cmake" [ marabouFolder]
+    command_ [] "cmake" [ marabouFolder, "-B", marabouBuildFolder ]
     command_ [] "cmake" [ "--build", marabouBuildFolder]
 
-    liftIO $ createDirectoryIfMissing False "bin"
-    liftIO $ renameFile (marabouBuildFolder </> "Marabou") ("bin" </> "Marabou")
-
-    -- cp $PROJECT_DIR/tools/verifier_runners/marabou.py $PROJECT_DIR/bin/marabou.py
+    liftIO $ createDirectoryIfMissing False binFolder
+    liftIO $ renameFile (marabouBuildFolder </> "Marabou") (binFolder </> "Marabou")
 
 ---------------------------------------------------------------------------------
 -- Test Vehicle
@@ -140,6 +157,9 @@ main = shakeArgs shakeOptions $ do
 
   phony "clean" $ do
     liftIO $ removeDirectoryRecursive genDirHS
+
+  phony "init-marabou" $ do
+    requireMarabou
 
   phony "init-agda" $ do
     requireAgda
@@ -263,6 +283,9 @@ testOptions =
 
 hasExecutable :: String -> Action Bool
 hasExecutable prog = isJust <$> liftIO (findExecutable prog)
+
+hasLocalExecutable :: String -> Action Bool
+hasLocalExecutable prog = liftIO (System.Directory.doesFileExist (binFolder </> prog))
 
 isRunningOnCI :: Action Bool
 isRunningOnCI = liftIO $

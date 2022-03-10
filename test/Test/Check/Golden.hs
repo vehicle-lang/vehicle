@@ -1,6 +1,8 @@
 module Test.Check.Golden where
 
 import Control.Monad (when)
+import Data.Map qualified as Map ( fromList )
+import Data.Text (Text)
 import System.Directory (removeFile, doesFileExist)
 import System.FilePath ((</>), (<.>))
 
@@ -26,29 +28,32 @@ testDir :: FilePath
 testDir = "test" </> "Test" </> "Check" </> "Golden"
 
 successTest :: TestTree
-successTest = createTest "success" alterNetwork
+successTest = createTest "success" status alterNetwork
   where
+  status = mkStatus [("network1", Verified Nothing)]
   alterNetwork = const $ return ()
 
 networkChangedTest :: TestTree
-networkChangedTest = createTest "networkChanged" alterNetwork
+networkChangedTest = createTest "networkChanged" status alterNetwork
   where
+  status = mkStatus [("network1", Verified Nothing)]
   alterNetwork f = writeFile f "alteredContents"
 
 networkMissingTest :: TestTree
-networkMissingTest = createTest "networkMissing" alterNetwork
+networkMissingTest = createTest "networkMissing" status alterNetwork
   where
+  status = mkStatus [("network1", Verified Nothing)]
   alterNetwork = removeFile
 
-createTest :: String -> (FilePath -> IO ()) -> TestTree
-createTest name alterNetwork = goldenFileTest name run goldenFile outputFile
+createTest :: String -> SpecificationStatus -> (FilePath -> IO ()) -> TestTree
+createTest name status alterNetwork = goldenFileTest name run goldenFile outputFile
   where
   goldenFile   = testDir </> name <.> "txt"
   outputFile   = testDir </> name <> "-output.txt"
-  run = runTest name alterNetwork
+  run = runTest name status alterNetwork
 
-runTest :: String -> (FilePath -> IO ()) -> IO ()
-runTest name alterNetwork = do
+runTest :: String -> SpecificationStatus -> (FilePath -> IO ()) -> IO ()
+runTest name status alterNetwork = do
   let outputFile   = testDir </> name <> "-output.txt"
   let databaseFile = testDir </> name <> "-proofFile"
   let networkFile  = testDir </> name <> "Network.onnx"
@@ -59,9 +64,9 @@ runTest name alterNetwork = do
         [ NetworkVerificationInfo "myNetwork" networkFile networkHash
         ]
 
-  writeSpecificationStatus databaseFile $ SpecificationStatus
+  writeProofCache databaseFile $ ProofCache
     { specVersion  = vehicleVersion
-    , status       = Verified
+    , status       = status
     , networkInfo  = networkInfo
     , originalSpec = ""
     }
@@ -89,3 +94,6 @@ fixWindowsFilePaths outputFile = do
   contents <- readFile outputFile
   let newContents = fmap (\c -> if c == '\\' then '/' else c) contents
   writeFile outputFile newContents
+
+mkStatus :: [(Text, PropertyStatus)] -> SpecificationStatus
+mkStatus = SpecificationStatus . Map.fromList
