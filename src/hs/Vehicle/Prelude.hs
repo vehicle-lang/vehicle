@@ -3,9 +3,6 @@ module Vehicle.Prelude
   ( module X
   , VehicleLang(..)
   , Negatable(..)
-  , LoggingOptions(..)
-  , LogFilePath
-  , ErrorFilePath
   , vehicleVersion
   , (|->)
   , (!?)
@@ -19,15 +16,23 @@ module Vehicle.Prelude
   , capitaliseFirstLetter
   , developerError
   , removeFileIfExists
+  , fatalError
+  , programOutput
   ) where
 
+import Control.Monad.IO.Class
 import Data.Range
 import Data.Text (Text, unpack)
 import Data.Text qualified as Text
 import Data.Graph
+import Data.Version (Version)
 import Numeric
 import Control.Exception (Exception, throw, catch, throwIO)
 import GHC.Stack (HasCallStack)
+import System.Directory (removeFile)
+import System.IO.Error (isDoesNotExistError)
+import System.IO
+import System.Exit
 
 import Vehicle.Prelude.Token as X
 import Vehicle.Prelude.Provenance as X
@@ -36,9 +41,6 @@ import Vehicle.Prelude.Logging as X
 import Vehicle.Prelude.Supply as X
 
 import Paths_vehicle qualified as Cabal (version)
-import Data.Version (Version)
-import System.Directory (removeFile)
-import System.IO.Error (isDoesNotExistError)
 
 vehicleVersion :: Version
 vehicleVersion = Cabal.version
@@ -121,14 +123,6 @@ partialSort partialCompare xs = sortedNodes
 class Negatable a where
   neg :: a -> a
 
-type LogFilePath = Maybe (Maybe FilePath)
-type ErrorFilePath = Maybe FilePath
-
-data LoggingOptions = LoggingOptions
-  { errorLocation :: ErrorFilePath
-  , logLocation   :: LogFilePath
-  }
-
 --------------------------------------------------------------------------------
 -- Developer errors
 
@@ -155,3 +149,11 @@ removeFileIfExists fileName = removeFile fileName `catch` handleExists
     handleExists e
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
+
+fatalError :: MonadIO m => LoggingOptions -> Doc a -> m b
+fatalError LoggingOptions{..} message = liftIO $ do
+  hPrint errorHandle message
+  exitFailure
+
+programOutput :: MonadIO m => LoggingOptions -> Doc a -> m ()
+programOutput LoggingOptions{..} message = liftIO $ hPrint outputHandle message

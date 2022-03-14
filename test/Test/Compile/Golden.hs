@@ -114,6 +114,6 @@ runTest inputFile outputFile modulePath backend = do
       , outputFile   = Just outputFile
       , outputTarget = backend
       , moduleName   = modulePath
-      , networks     = []
+      , networks     = mempty
       }
     }

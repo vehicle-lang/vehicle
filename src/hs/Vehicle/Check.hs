@@ -4,32 +4,31 @@ module Vehicle.Check
   ) where
 
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import Control.Exception (catch, IOException)
+import Control.Monad.Trans (MonadIO(liftIO))
 
 import Vehicle.Prelude
 import Vehicle.Verify.VerificationStatus (readProofCache, isSpecVerified, ProofCache(..), NetworkVerificationInfo(..))
 import Vehicle.NeuralNetwork
-import Data.Text (Text)
 
 --------------------------------------------------------------------------------
 -- Checking
 
 newtype CheckOptions = CheckOptions
-  { databaseFile :: FilePath
+  { proofCache :: FilePath
   } deriving (Show)
 
 check :: LoggingOptions -> CheckOptions -> IO ()
-check loggingOptions checkOptions = do
+check loggingOptions checkOptions = fromLoggerTIO loggingOptions $ do
   -- If the user has specificed no logging target for check mode then
   -- default to command-line.
-  let logFile = fromMaybe Nothing (logLocation loggingOptions)
   status <- checkStatus loggingOptions checkOptions
-  flushLogger logFile $ logOutput $ pretty status
+  programOutput loggingOptions $ pretty status
 
-checkStatus :: LoggingOptions -> CheckOptions -> IO CheckResult
+checkStatus :: LoggingOptions -> CheckOptions -> LoggerT IO CheckResult
 checkStatus _loggingOptions CheckOptions{..} = do
-  ProofCache{..} <- readProofCache databaseFile
+  ProofCache{..} <- liftIO $ readProofCache proofCache
   (missingNetworks, alteredNetworks) <- checkIntegrityOfNetworks networkInfo
   return $ case (missingNetworks, alteredNetworks, isSpecVerified status) of
     (x : xs, _, _)  -> NetworksMissing (x :| xs)
@@ -38,11 +37,11 @@ checkStatus _loggingOptions CheckOptions{..} = do
     ([], [], True)  -> Verified
 
 checkIntegrityOfNetworks :: [NetworkVerificationInfo]
-                         -> IO ([MissingNetwork], [AlteredNetwork])
+                         -> LoggerT IO ([MissingNetwork], [AlteredNetwork])
 checkIntegrityOfNetworks [] = return ([], [])
 checkIntegrityOfNetworks (NetworkVerificationInfo{..} : xs) = do
   (missing, altered) <- checkIntegrityOfNetworks xs
-  networkStatus <- getNetworkStatus
+  networkStatus <- liftIO getNetworkStatus
   return $ case networkStatus of
     Nothing        -> (missing, altered)
     Just (Left m)  -> (m : missing, altered)

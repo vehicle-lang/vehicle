@@ -55,7 +55,7 @@ createTest name status alterNetwork = goldenFileTest name run goldenFile outputF
 runTest :: String -> SpecificationStatus -> (FilePath -> IO ()) -> IO ()
 runTest name status alterNetwork = do
   let outputFile   = testDir </> name <> "-output.txt"
-  let databaseFile = testDir </> name <> "-proofFile"
+  let proofCache   = testDir </> name <> "-proofFile"
   let networkFile  = testDir </> name <> "Network.onnx"
 
   writeFile networkFile "networkContents"
@@ -64,7 +64,7 @@ runTest name status alterNetwork = do
         [ NetworkVerificationInfo "myNetwork" networkFile networkHash
         ]
 
-  writeProofCache databaseFile $ ProofCache
+  writeProofCache proofCache $ ProofCache
     { specVersion  = vehicleVersion
     , status       = status
     , networkInfo  = networkInfo
@@ -78,11 +78,11 @@ runTest name status alterNetwork = do
     , logFile       = Just $ Just outputFile
     , errFile       = Nothing
     , commandOption = Check $ CheckOptions
-      { databaseFile = databaseFile
+      { proofCache = proofCache
       }
     }
 
-  removeFile databaseFile
+  removeFile proofCache
   removeFileIfExists networkFile
 
   -- Update file paths in error messages if the tests are running on Windows

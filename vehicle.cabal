@@ -191,6 +191,7 @@ executable vehicle
   hs-source-dirs:     app
   build-depends:      vehicle
                     , optparse-applicative >=0.16 && <1
+                    , containers
 
 test-suite vehicle-test
   import:             common-base
@@ -211,6 +212,7 @@ test-suite vehicle-test
                     , Test.Compile.Utils
 
                     , Test.Check.Golden
+                    , Test.Verify.Golden
 
                     , Test.GoldenUtils
 

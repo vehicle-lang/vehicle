@@ -19,7 +19,7 @@ data CompileOptions = CompileOptions
   , outputFile     :: Maybe FilePath
   , outputTarget   :: Backend
   , moduleName     :: String
-  , networks       :: [NetworkLocation]
+  , networks       :: NetworkLocations
   } deriving (Show)
 
 --------------------------------------------------------------------------------

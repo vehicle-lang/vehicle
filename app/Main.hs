@@ -4,11 +4,15 @@ module Main where
 
 import GHC.IO.Encoding (utf8, setLocaleEncoding)
 import Options.Applicative
+import Data.Text (Text)
+import Data.Text qualified as Text
+import Data.Map qualified as Map (fromList)
 
 import Vehicle (run, Command(..), Options(Options))
+import Vehicle.NeuralNetwork (NetworkLocations)
 import Vehicle.Check (CheckOptions(..))
 import Vehicle.Compile (CompileOptions(..))
-import Vehicle.NeuralNetwork (NetworkLocation(..))
+import Vehicle.Verify (VerifyOptions(..))
 
 --------------------------------------------------------------------------------
 -- Main function
@@ -18,6 +22,9 @@ main = do
   setLocaleEncoding utf8
   options <- execParser optionsParserInfo
   run options
+
+--------------------------------------------------------------------------------
+-- Options common to all modes
 
 optionsParserInfo :: ParserInfo Options
 optionsParserInfo = info (optionsParser <**> helper)
@@ -47,8 +54,12 @@ optionsParser = Options
 commandParser :: Parser Command
 commandParser = hsubparser
     ( command "compile" (info (Compile <$> compileParser) compileDescription)
+   <> command "verify"  (info (Verify  <$> verifyParser)  verifyDescription)
    <> command "check"   (info (Check   <$> checkParser)   checkDescription)
     )
+
+--------------------------------------------------------------------------------
+-- Compile mode
 
 compileDescription :: InfoMod Command
 compileDescription = progDesc "Compile a .vcl file to an output target"
@@ -59,12 +70,12 @@ compileParser = CompileOptions
       ( long "inputFile"
      <> short 'i'
      <> help "Input .vcl file."
-     <> metavar "FILENAME" )
+     <> metavar "FILE" )
   <*> optional (strOption
       ( long "outputFile"
      <> short 'o'
      <> help "Output location for compiled file. Defaults to stdout if not provided."
-     <> metavar "FILENAME" ))
+     <> metavar "FILE" ))
   <*> option auto
       ( long "target"
      <> short 't'
@@ -79,15 +90,48 @@ compileParser = CompileOptions
        ( long "network"
       <> short 'n'
       <> help "The name (as used in the Vehicle code) and path to a neural network."
-      <> metavar "NETWORK" )
+      <> metavar "NAME:FILE" )
 
-networkOptions :: Mod OptionFields NetworkLocation -> Parser [NetworkLocation]
-networkOptions desc = some (option (maybeReader readNL) desc)
+networkOptions :: Mod OptionFields (Text, FilePath) -> Parser NetworkLocations
+networkOptions desc = Map.fromList <$> many (option (maybeReader readNL) desc)
   where
-    readNL :: String -> Maybe NetworkLocation
-    readNL s = case words s of
-      [name, filepath] -> Just $ NetworkLocation name filepath
+    readNL :: String -> Maybe (Text, FilePath)
+    readNL s = case Text.splitOn (Text.pack ":") (Text.pack s) of
+      [name, filepath] -> Just (name, Text.unpack filepath)
       _                -> Nothing
+
+--------------------------------------------------------------------------------
+-- Verify mode
+
+verifyDescription :: InfoMod Command
+verifyDescription = progDesc ("Verify the status of a Vehicle property," <>
+                              "and write out the result to a proof cache.")
+
+verifyParser :: Parser VerifyOptions
+verifyParser = VerifyOptions
+  <$> strOption
+      ( long "inputFile"
+     <> short 'i'
+     <> help "Input .vcl file."
+     <> metavar "FILE" )
+  <*> option auto
+      ( long "verifier"
+     <> short 'v'
+     <> help "Verifier to use."
+     <> metavar "TARGET" )
+  <*> networkOptions
+      ( long "network"
+     <> short 'n'
+     <> help "The name (as used in the Vehicle code) and path to a neural network."
+     <> metavar "NETWORK" )
+  <*> optional (strOption
+      ( long "proofCache"
+     <> short 'p'
+     <> help "The proof cache file for the Vehicle project."
+     <> metavar "FILE" ))
+
+--------------------------------------------------------------------------------
+-- Check mode
 
 checkDescription :: InfoMod Command
 checkDescription = progDesc "Check the verification status of a Vehicle property."
@@ -95,12 +139,7 @@ checkDescription = progDesc "Check the verification status of a Vehicle property
 checkParser :: Parser CheckOptions
 checkParser = CheckOptions
  <$> strOption
-      ( long "databaseFile"
-     <> short 'd'
-     <> help "The database file for the Vehicle project."
-     <> metavar "FILENAME" )
- <*> strOption
-      ( long "property"
+      ( long "proofCache"
      <> short 'p'
-     <> help "The UUID of the Vehicle property."
-     <> metavar "UUID" )
+     <> help "The proof cache file for the Vehicle project."
+     <> metavar "FILE" )

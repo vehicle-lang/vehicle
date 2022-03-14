@@ -1,13 +1,16 @@
-module Vehicle.Compile.Error.Message where
+module Vehicle.Compile.Error.Message
+  ( UserError(..)
+  , VehicleError(..)
+  , MeaningfulError(..)
+  , fromLoggedEitherIO
+  , logCompileError
+  ) where
 
 import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Void ( Void )
 import Data.Text ( Text, pack )
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Foldable (fold)
-import System.Exit (exitFailure)
-import System.IO (hPutStrLn, stderr)
-
 
 import Vehicle.Prelude
 import Vehicle.Compile.Error
@@ -51,18 +54,14 @@ fixText t = "Fix:" <+> t
 --------------------------------------------------------------------------------
 -- IO
 
-fromEitherIO :: ErrorFilePath -> Either CompileError a -> IO a
-fromEitherIO _         (Right x)  = return x
-fromEitherIO errorFile (Left err) = do
-  let errStr = layoutAsString $ pretty $ details err
-  case errorFile of
-    Nothing   -> hPutStrLn stderr errStr
-    Just file -> appendFile file errStr
-  exitFailure
+fromEitherIO :: LoggingOptions -> Either CompileError a -> IO a
+fromEitherIO _              (Right x)  = return x
+fromEitherIO loggingOptions (Left err) =
+  fatalError loggingOptions $ pretty $ details err
 
 fromLoggedEitherIO :: LoggingOptions -> ExceptT CompileError Logger a -> IO a
-fromLoggedEitherIO LoggingOptions{..} x =
-  fromEitherIO errorLocation =<< fromLoggedIO logLocation (logCompileError x)
+fromLoggedEitherIO loggingOptions x = do
+  fromEitherIO loggingOptions =<< fromLoggedIO loggingOptions (logCompileError x)
 
 logCompileError :: ExceptT CompileError Logger a -> Logger (Either CompileError a)
 logCompileError x = do
@@ -71,10 +70,6 @@ logCompileError x = do
     Left err -> logDebug (pretty (details err))
     Right _  -> return ()
   return e'
-
-fromLoggedIO :: LogFilePath -> Logger a -> IO a
-fromLoggedIO Nothing        logger = outputWarningsAndDiscardLogs logger
-fromLoggedIO (Just logFile) logger = flushLogger logFile logger
 
 --------------------------------------------------------------------------------
 -- Meaningful error classes

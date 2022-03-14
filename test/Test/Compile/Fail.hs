@@ -76,7 +76,7 @@ runTest inputFile outputFile backend = do
         , outputFile   = Nothing
         , outputTarget = backend
         , moduleName   = "N/A"
-        , networks     = []
+        , networks     = mempty
         }
       }
 

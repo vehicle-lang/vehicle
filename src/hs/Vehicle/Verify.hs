@@ -1,5 +1,7 @@
 module Vehicle.Verify where
 
+import Control.Monad.Trans (MonadIO, liftIO)
+import Data.Map ( assocs )
 import Data.Text.IO as TIO (readFile)
 import System.IO (hPutStrLn, stderr)
 import System.Exit (exitFailure)
@@ -13,34 +15,38 @@ import Control.Monad (forM)
 
 data VerifyOptions = VerifyOptions
   { inputFile      :: FilePath
-  , outputFile     :: FilePath
   , verifier       :: Verifier
-  , networks       :: [NetworkLocation]
+  , networks       :: NetworkLocations
+  , proofCache     :: Maybe FilePath
   } deriving (Show)
 
 verify :: LoggingOptions -> VerifyOptions -> IO ()
-verify loggingOptions VerifyOptions{..} = do
-  spec  <- TIO.readFile inputFile
+verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
+  spec  <- liftIO $ TIO.readFile inputFile
+
   status <- case verifier of
     Marabou -> do
-      marabouSpec <- compileToMarabou loggingOptions inputFile
-      Marabou.verifySpec Nothing marabouSpec
+      marabouSpec <- liftIO $ compileToMarabou loggingOptions inputFile
+      liftIO $ Marabou.verifySpec Nothing marabouSpec networks
     VNNLib  -> do
-      hPutStrLn stderr "VNNLib is not currently a valid output target"
-      exitFailure
+      liftIO $ hPutStrLn stderr "VNNLib is not currently a valid output target"
+      liftIO exitFailure
 
-  networkInfo <- hashNetworks networks
+  programOutput loggingOptions $ pretty status
 
-  writeProofCache outputFile $ ProofCache
-    { specVersion  = vehicleVersion
-    , status       = status
-    , originalSpec = spec
-    , networkInfo  = networkInfo
-    }
+  networkInfo <- liftIO $ hashNetworks networks
+  case proofCache of
+    Nothing -> return ()
+    Just proofCachePath -> writeProofCache proofCachePath $ ProofCache
+      { specVersion  = vehicleVersion
+      , status       = status
+      , originalSpec = spec
+      , networkInfo  = networkInfo
+      }
 
-hashNetworks :: [NetworkLocation] -> IO [NetworkVerificationInfo]
-hashNetworks locations = forM locations $ \NetworkLocation{..} -> do
-  networkHash <- hashNetwork networkLocation
+hashNetworks :: MonadIO m => NetworkLocations -> m [NetworkVerificationInfo]
+hashNetworks locations = forM (assocs locations) $ \(networkName, networkLocation) -> do
+  networkHash <- liftIO $ hashNetwork networkLocation
   return $ NetworkVerificationInfo
     { name        = networkName
     , location    = networkLocation

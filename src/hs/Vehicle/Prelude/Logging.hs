@@ -1,7 +1,8 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
 module Vehicle.Prelude.Logging
-  ( Severity
+  ( LoggingOptions(..)
+  , Severity
   , Message(..)
   , MonadLogger(incrCallDepth, decrCallDepth, logMessage)
   , LoggerT
@@ -9,36 +10,40 @@ module Vehicle.Prelude.Logging
   , runLoggerT
   , runLogger
   , discardWarningsAndLogs
-  , outputWarningsAndDiscardLogs
   , logWarning
-  , logInfo
   , logDebug
-  , logOutput
   , liftExceptWithLogging
-  , flushLogger
   , showMessages
   , setTextColour
   , setBackgroundColour
+  , fromLoggedIO
+  , fromLoggerTIO
   ) where
 
-import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.State (StateT(..), get, modify, evalStateT)
-import Control.Monad.Writer (WriterT, tell, runWriterT)
+import Control.Monad.Writer (WriterT (WriterT), tell, runWriterT)
 import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.Except (MonadError(..), Except, ExceptT, mapExceptT)
 import Control.Monad.Reader (ReaderT)
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.Console.ANSI
+import System.IO
 
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
+import Control.Monad (forM_)
+import Control.Monad.Trans
+
+data LoggingOptions = LoggingOptions
+  { errorHandle  :: Handle
+  , outputHandle :: Handle
+  , logHandle    :: Maybe Handle
+  }
 
 data Severity
   = Debug
-  | Info
   | Warning
-  | ProgramOutput
   deriving (Eq, Ord)
 
 setTextColour :: Color -> String -> String
@@ -56,15 +61,11 @@ setBackgroundColour c s =
 severityColour :: Severity -> Maybe Color
 severityColour = \case
   Warning        -> Just Yellow
-  Info           -> Just Blue
   Debug          -> Just Green
-  ProgramOutput  -> Nothing
 
 severityPrefix :: Severity -> Text
 severityPrefix Warning        = "Warning: "
-severityPrefix Info           = "Info: "
 severityPrefix Debug          = ""
-severityPrefix ProgramOutput  = ""
 
 type CallDepth = Int
 
@@ -128,30 +129,17 @@ instance MonadError e m => MonadError e (LoggerT m) where
   throwError     = lift . throwError
   catchError m f = LoggerT (catchError (unloggerT m) (unloggerT . f))
 
+instance MonadIO m => MonadIO (LoggerT m) where
+  liftIO = lift . liftIO
+
 runLoggerT :: Monad m => LoggerT m a -> m (a, [Message])
 runLoggerT (LoggerT logger) = evalStateT (runWriterT logger) 0
 
 runLogger :: Logger a -> (a, [Message])
 runLogger = runIdentity . runLoggerT
 
-discardWarningsAndLogs :: Logger a -> a
-discardWarningsAndLogs m = fst $ runLogger m
-
-outputWarningsAndDiscardLogs :: Logger a -> IO a
-outputWarningsAndDiscardLogs logger = do
-  let (value, messages) = runLogger logger
-  let warnings = filter (\msg -> severityOf msg == Warning) messages
-  printMessagesToStdout warnings
-  return value
-
-logOutput :: MonadLogger m => Doc a -> m ()
-logOutput text = logMessage $ Message ProgramOutput (layoutAsText text)
-
 logWarning :: MonadLogger m => Doc a -> m ()
 logWarning text = logMessage $ Message Warning (layoutAsText text)
-
-logInfo :: MonadLogger m => Doc a -> m ()
-logInfo text = logMessage $ Message Info (layoutAsText text)
 
 logDebug :: MonadLogger m => Doc a -> m ()
 logDebug text = do
@@ -169,18 +157,26 @@ showMessages logs = unlines $ map show logs
 liftExceptWithLogging :: Except e v -> ExceptT e Logger v
 liftExceptWithLogging = mapExceptT (pure . runIdentity)
 
-flushLogger :: Maybe FilePath -> Logger a -> IO a
-flushLogger logLocation l = do
+discardWarningsAndLogs :: Logger a -> a
+discardWarningsAndLogs m = fst $ runLogger m
+
+flushLogger :: Handle -> Logger a -> IO a
+flushLogger logHandle l = do
   let (v, messages) = runLogger l
-  flushLogs logLocation messages
+  flushLogs logHandle messages
   return v
 
-flushLogs :: Maybe FilePath -> [Message] -> IO ()
-flushLogs Nothing        = printMessagesToStdout
-flushLogs (Just logFile) = writeMessageToFile logFile
+flushLogs :: Handle -> [Message] -> IO ()
+flushLogs logHandle = mapM_ (hPrint logHandle)
 
-printMessagesToStdout :: [Message] -> IO ()
-printMessagesToStdout = mapM_ print
+fromLoggedIO :: LoggingOptions -> Logger a -> IO a
+fromLoggedIO LoggingOptions{..} logger = case logHandle of
+  Nothing       -> return $ discardWarningsAndLogs logger
+  (Just handle) -> flushLogger handle logger
 
-writeMessageToFile :: FilePath -> [Message] -> IO ()
-writeMessageToFile logFile logs = appendFile logFile (showMessages logs)
+fromLoggerTIO :: LoggingOptions -> LoggerT IO a -> IO a
+fromLoggerTIO loggingOptions logger = do
+  (v, messages) <- runLoggerT logger
+  fromLoggedIO loggingOptions $ do
+    forM_ messages logMessage
+    return v

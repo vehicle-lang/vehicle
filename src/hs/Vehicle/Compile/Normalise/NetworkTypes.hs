@@ -43,7 +43,7 @@ normaliseNetworkTypes prog1 = do
 --------------------------------------------------------------------------------
 -- Types
 
-type InternalNetworkMap = Map Identifier (NetworkDetails, TransformInput, TransformOutput)
+type InternalNetworkMap = Map Symbol (NetworkDetails, TransformInput, TransformOutput)
 
 --------------------------------------------------------------------------------
 -- Main
@@ -68,7 +68,7 @@ standariseDecl d = case d of
   DeclNetw ann ident t -> do
     entry <- analyseNetworkType (ann, TheUser) ident t
     -- Insert the network into the context
-    modify (Map.insert ident entry)
+    modify (Map.insert (nameOf ident) entry)
     -- Remove the declaration.
     return Nothing
 
@@ -93,7 +93,7 @@ instance Standardise Expr where
 
     App ann fun args -> case fun of
       (Var _ (Free ident)) -> do
-        result <- gets (Map.lookup ident)
+        result <- gets (Map.lookup (nameOf ident))
         case result of
           Nothing                      -> App ann <$> standardise fun <*> traverse standardise args
           Just (_, inputFn, outputFn)  -> do

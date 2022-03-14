@@ -1,6 +1,7 @@
 
 module Vehicle.NeuralNetwork where
 
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Map (Map)
 import Data.Text(Text)
 import Data.Hashable(Hashable(hash))
@@ -12,12 +13,9 @@ import qualified Data.ByteString as ByteString
 --------------------------------------------------------------------------------
 -- Neural networks
 
-data NetworkLocation = NetworkLocation
-  { networkName     :: Text
-  , networkLocation :: FilePath
-  } deriving (Show)
+type NetworkLocations = Map Text FilePath
 
-type NetworkMap = Map Identifier NetworkDetails
+type NetworkMap = Map Symbol NetworkDetails
 
 data NetworkDetails = NetworkDetails
   { inputTensor  :: TensorDetails
@@ -59,10 +57,10 @@ allowedNetworkElementTypes =
   , NumericType Real
   ]
 
-hashNetwork :: FilePath -> IO Int
+hashNetwork :: MonadIO m => FilePath -> m Int
 hashNetwork network = do
-  contents <- ByteString.readFile network
+  contents <- liftIO $ ByteString.readFile network
   return $ hash contents
 
 
-type MetaNetwork = [Identifier]
+type MetaNetwork = [Symbol]

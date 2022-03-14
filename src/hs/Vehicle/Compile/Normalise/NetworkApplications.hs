@@ -114,14 +114,14 @@ type MonadNetworkApp m =
   , MonadReader (NetworkMap, Verifier) m
   )
 
-getNetworkDetailsFromCtx :: MonadNetworkApp m => Identifier -> m NetworkDetails
-getNetworkDetailsFromCtx ident = do
+getNetworkDetailsFromCtx :: MonadNetworkApp m => Symbol -> m NetworkDetails
+getNetworkDetailsFromCtx name = do
   networkMap <- asks fst
-  return $ fromMaybe outOfScopeError (Map.lookup ident networkMap)
+  return $ fromMaybe outOfScopeError (Map.lookup name networkMap)
   where
     outOfScopeError :: a
     outOfScopeError = developerError $
-      "Either" <+> squotes (pretty ident) <+> "is not a network or it is not in scope"
+      "Either" <+> squotes (pretty name) <+> "is not a network or it is not in scope"
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -165,8 +165,8 @@ liftNetworkApplications = insertLets isNetworkApplication
 
 -- |As we've normalised out all function applications and dataset declarations,
 -- the only free names left should be network applications.
-generateMetaNetwork :: CheckedExpr -> [Identifier]
-generateMetaNetwork = freeNames
+generateMetaNetwork :: CheckedExpr -> MetaNetwork
+generateMetaNetwork e = fmap nameOf (freeNames e)
 
 --------------------------------------------------------------------------------
 -- Steps 3 & 4: instantiating network applications
@@ -216,7 +216,7 @@ replaceNetworkApplications d e = do
       return $ LSeq ann dict' xs'
 
     Let ann (App _ (Var _ (Free ident)) [inputArg]) _ body -> do
-      (newBody, replaceableBoundVars)  <- replaceNetworkApplication ann ident (argExpr inputArg) body d
+      (newBody, replaceableBoundVars)  <- replaceNetworkApplication ann (nameOf ident) (argExpr inputArg) body d
       -- Don't increment binding depth when we recurse as we've removed the let
       newBody' <- replaceNetworkApplications d newBody
       addReplacableBoundVars replaceableBoundVars
@@ -260,15 +260,15 @@ replaceNetworkApplications d e = do
 
 replaceNetworkApplication :: MonadReplacement m
                           => CheckedAnn
-                          -> Identifier
+                          -> Symbol
                           -> CheckedExpr
                           -> CheckedExpr
                           -> BindingDepth
                           -> m (CheckedExpr, IntMap Int)
-replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
-  logDebug $ "replacing-application" <+> pretty bindingDepth <+> pretty ident <+> prettySimple networkInput
+replaceNetworkApplication ann name networkInput letBody bindingDepth  = do
+  logDebug $ "replacing-application" <+> pretty bindingDepth <+> pretty name <+> prettySimple networkInput
 
-  network@(NetworkDetails inputs outputs) <- getNetworkDetailsFromCtx ident
+  network@(NetworkDetails inputs outputs) <- getNetworkDetailsFromCtx name
   let inputSize  = size inputs
   let inputType  = tElem inputs
   let outputSize = size outputs
