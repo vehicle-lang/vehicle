@@ -22,5 +22,4 @@ abstract
   empty : List.All (λ (x : ℤ) → ⊤) emptyList
   empty = checkProperty record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    ; propertyUUID = "TODO_propertyUUID"
     }

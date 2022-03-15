@@ -23,5 +23,4 @@ abstract
   identity : ∀ (x : Tensor ℚ (5 ∷ [])) → decode (encode x) ≡ x
   identity = checkProperty record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    ; propertyUUID = "TODO_propertyUUID"
     }

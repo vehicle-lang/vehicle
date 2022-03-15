@@ -38,5 +38,4 @@ abstract
   safe : ∀ (x : Tensor ℚ (2 ∷ [])) → SafeInput x → SafeOutput x
   safe = checkProperty record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    ; propertyUUID = "TODO_propertyUUID"
     }

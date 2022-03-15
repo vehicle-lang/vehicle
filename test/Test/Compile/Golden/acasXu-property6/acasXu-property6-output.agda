@@ -57,5 +57,4 @@ abstract
   property6 : ∀ (x : Tensor ℝ (5 ∷ [])) → IntruderFarAway x → AdvisesClearOfConflict x
   property6 = checkProperty record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    ; propertyUUID = "TODO_propertyUUID"
     }

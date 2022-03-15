@@ -23,5 +23,4 @@ abstract
   reachable : ∃ λ (x : Tensor ℚ (2 ∷ [])) → f x ≡ ℤ.+ 0 ℚ./ 1
   reachable = checkProperty record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    ; propertyUUID = "TODO_propertyUUID"
     }

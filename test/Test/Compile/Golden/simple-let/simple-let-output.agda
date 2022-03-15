@@ -16,5 +16,4 @@ abstract
   e1 : let x = ⊤ in x
   e1 = checkProperty record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    ; propertyUUID = "TODO_propertyUUID"
     }

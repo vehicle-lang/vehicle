@@ -34,41 +34,17 @@ VEHICLE_COMMAND : String
 VEHICLE_COMMAND = "vehicle"
 
 ------------------------------------------------------------------------
--- Execution
-------------------------------------------------------------------------
-
-record EvaluateArgs : Set where
-  field
-    proofCache   : String
-    networkUUID  : String
-
-evaluateCmd : EvaluateArgs → CmdSpec
-evaluateCmd args = cmdSpec VEHICLE_COMMAND
-  ( "evaluate"
-  ∷ ("--databaseFile=" ++ projectFile)
-  ∷ networkUUID
-  ∷ []) ""
-  where open EvaluateArgs args
-
--- TODO
-postulate evaluate : EvaluateArgs →
-                    ∀ {a b} {A : Set a} {B : Set b} →
-                    A → B
-
-------------------------------------------------------------------------
 -- Checking
 ------------------------------------------------------------------------
 
 record CheckArgs : Set where
   field
-    proofCache   : String
-    propertyUUID : String
+    proofCache : String
 
 checkCmd : CheckArgs → CmdSpec
 checkCmd checkArgs = cmdSpec VEHICLE_COMMAND
   ( "check"
   ∷ ("--proofCache=" ++ projectFile)
-  ∷ ("--property=" ++ propertyUUID)
   ∷ []) ""
   where open CheckArgs checkArgs
 
@@ -80,8 +56,8 @@ postulate valid : ∀ {a} {A : Set a} → A
 `valid : Term
 `valid = def (quote valid) (hArg unknown ∷ [])
 
-checkPropertyMacro : CheckArgs → Term → TC ⊤
-checkPropertyMacro args hole = do
+checkSpecificationMacro : CheckArgs → Term → TC ⊤
+checkSpecificationMacro args hole = do
   goal   ← inferType hole
   -- (showTerm goal)
   output ← runCmdTC (checkCmd args)
@@ -90,8 +66,8 @@ checkPropertyMacro args hole = do
     else typeError (strErr ("Error: " ++ output) ∷ [])
 
 macro
-  checkProperty : CheckArgs → Term → TC ⊤
-  checkProperty = checkPropertyMacro
+  checkSpecification : CheckArgs → Term → TC ⊤
+  checkSpecification = checkSpecificationMacro
 
 ------------------------------------------------------------------------
 -- Other
@@ -103,6 +79,3 @@ instance
 
   natNumber : Number ℕ
   natNumber = Nat.number
-
-ze : Fin 5
-ze = 0

@@ -18,5 +18,4 @@ abstract
   increasing : ∀ (x : ℝ) → x ℝ.≤ f x
   increasing = checkProperty record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    ; propertyUUID = "TODO_propertyUUID"
     }

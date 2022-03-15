@@ -32,5 +32,4 @@ abstract
   andGateCorrect : ∀ (x1 : ℝ) → ∀ (x2 : ℝ) → ValidInput x1 × ValidInput x2 → CorrectOutput x1 x2
   andGateCorrect = checkProperty record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    ; propertyUUID = "TODO_propertyUUID"
     }

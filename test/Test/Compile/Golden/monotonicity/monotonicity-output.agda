@@ -18,5 +18,4 @@ abstract
   monotonic : ∀ (x1 : ℝ) → ∀ (x2 : ℝ) → x1 ℝ.≤ x2 → f x1 ℝ.≤ f x2
   monotonic = checkProperty record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    ; propertyUUID = "TODO_propertyUUID"
     }

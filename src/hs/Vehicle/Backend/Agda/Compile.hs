@@ -608,14 +608,6 @@ compileFunDef n t ns e =
 compileNetwork :: Code -> Code -> Code
 compileNetwork networkName networkType =
   "postulate" <+> networkName <+> ":" <+> align networkType
-  {-
-   <> line <>
-  networkName <+> "= evaluate record"                <> line <>
-    indentCode (
-    "{ projectFile =" <+> projectFileVariable        <> line <>
-    "; networkUUID =" <+> dquotes "TODO_networkUUID" <> line <>
-    "}")
-  -}
 
 compileProperty :: MonadAgdaCompile m => Code -> Code -> m Code
 compileProperty propertyName propertyBody = do
@@ -626,7 +618,6 @@ compileProperty propertyName propertyBody = do
       propertyName <+> "= checkProperty record"            <> line <>
         indentCode (
         "{ proofCache   =" <+> dquotes (pretty proofCache) <> line <>
-        "; propertyUUID =" <+> dquotes "TODO_propertyUUID" <> line <>
         "}")
 
 containerDependencies :: ContainerType -> [Dependency]
