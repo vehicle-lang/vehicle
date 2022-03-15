@@ -16,10 +16,7 @@ open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
 open import Data.Fin as Fin using (#_)
 open import Data.List
 
-module acasXu-property6-output where
-
-private
-  VEHICLE_PROJECT_FILE = "TODO_projectFile"
+module acasXu-property6-temp-output where
 
 pi : ℝ
 pi = ℤ.+ 392699 ℝ./ 125000
@@ -59,6 +56,6 @@ AdvisesClearOfConflict x = let y = acasXu x in y (# 0) ℝ.> y (# 1) × (y (# 0)
 abstract
   property6 : ∀ (x : Tensor ℝ (5 ∷ [])) → IntruderFarAway x → AdvisesClearOfConflict x
   property6 = checkProperty record
-    { projectFile  = VEHICLE_PROJECT_FILE
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     ; propertyUUID = "TODO_propertyUUID"
     }

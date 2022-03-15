@@ -77,8 +77,9 @@ runTest inputFile outputFile backend = do
         { target       = backend
         , inputFile    = inputFile
         , outputFile   = Nothing
-        , moduleName   = "N/A"
         , networks     = mempty
+        , modulePrefix = Nothing
+        , proofCache   = Just "proofcache.vclp"
         }
       }
 

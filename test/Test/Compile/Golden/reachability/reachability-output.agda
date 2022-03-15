@@ -15,16 +15,13 @@ open import Data.Rational as ℚ using (ℚ)
 open import Data.List
 open import Relation.Binary.PropositionalEquality
 
-module reachability-output where
-
-private
-  VEHICLE_PROJECT_FILE = "TODO_projectFile"
+module reachability-temp-output where
 
 postulate f : Tensor ℚ (2 ∷ []) → ℚ
 
 abstract
   reachable : ∃ λ (x : Tensor ℚ (2 ∷ [])) → f x ≡ ℤ.+ 0 ℚ./ 1
   reachable = checkProperty record
-    { projectFile  = VEHICLE_PROJECT_FILE
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     ; propertyUUID = "TODO_propertyUUID"
     }

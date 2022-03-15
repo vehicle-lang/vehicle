@@ -10,14 +10,11 @@
 open import Vehicle
 open import Data.Unit
 
-module simple-let-output where
-
-private
-  VEHICLE_PROJECT_FILE = "TODO_projectFile"
+module simple-let-temp-output where
 
 abstract
   e1 : let x = ⊤ in x
   e1 = checkProperty record
-    { projectFile  = VEHICLE_PROJECT_FILE
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     ; propertyUUID = "TODO_propertyUUID"
     }

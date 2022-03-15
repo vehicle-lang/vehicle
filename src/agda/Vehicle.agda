@@ -39,7 +39,7 @@ VEHICLE_COMMAND = "vehicle"
 
 record EvaluateArgs : Set where
   field
-    projectFile : String
+    proofCache   : String
     networkUUID  : String
 
 evaluateCmd : EvaluateArgs → CmdSpec
@@ -61,13 +61,13 @@ postulate evaluate : EvaluateArgs →
 
 record CheckArgs : Set where
   field
-    projectFile  : String
+    proofCache   : String
     propertyUUID : String
 
 checkCmd : CheckArgs → CmdSpec
 checkCmd checkArgs = cmdSpec VEHICLE_COMMAND
   ( "check"
-  ∷ ("--databaseFile=" ++ projectFile)
+  ∷ ("--proofCache=" ++ projectFile)
   ∷ ("--property=" ++ propertyUUID)
   ∷ []) ""
   where open CheckArgs checkArgs

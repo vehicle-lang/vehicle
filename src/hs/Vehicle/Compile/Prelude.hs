@@ -18,8 +18,9 @@ data CompileOptions = CompileOptions
   { target         :: Backend
   , inputFile      :: FilePath
   , outputFile     :: Maybe FilePath
-  , moduleName     :: String
   , networks       :: NetworkLocations
+  , modulePrefix   :: Maybe String
+  , proofCache     :: Maybe FilePath
   } deriving (Show)
 
 --------------------------------------------------------------------------------

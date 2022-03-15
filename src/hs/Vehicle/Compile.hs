@@ -11,6 +11,7 @@ module Vehicle.Compile
 import Control.Monad.Except (MonadError(..))
 import Data.Text as T (Text, pack)
 import Data.Text.IO qualified as TIO
+import System.FilePath (takeBaseName)
 
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude as CompilePrelude
@@ -28,11 +29,14 @@ import Vehicle.Backend.Marabou (MarabouProperty)
 import Vehicle.Backend.VNNLib qualified as VNNLib
 import Vehicle.Backend.VNNLib (VNNLibProperty, writeVNNLibQueryFiles)
 import Vehicle.Backend.Agda
+import Vehicle.Verify.VerificationStatus ( getProofCacheLocation )
 
 compile :: LoggingOptions -> CompileOptions -> IO ()
 compile loggingOptions CompileOptions{..} = case target of
   ITP Agda -> do
-    let agdaOptions = AgdaOptions "TODO_projectFile" [T.pack moduleName] mempty
+    let moduleName = pack $ maybe "" (<> ".") modulePrefix <> maybe "Spec" takeBaseName outputFile
+    proofCacheLocation <- getProofCacheLocation loggingOptions proofCache
+    let agdaOptions = AgdaOptions proofCacheLocation moduleName mempty
     agdaCode <- compileToAgda loggingOptions agdaOptions inputFile
     writeAgdaFile outputFile agdaCode
 

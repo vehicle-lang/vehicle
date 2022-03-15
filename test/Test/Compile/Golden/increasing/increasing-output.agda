@@ -10,16 +10,13 @@
 open import Vehicle
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
 
-module increasing-output where
-
-private
-  VEHICLE_PROJECT_FILE = "TODO_projectFile"
+module increasing-temp-output where
 
 postulate f : ℝ → ℝ
 
 abstract
   increasing : ∀ (x : ℝ) → x ℝ.≤ f x
   increasing = checkProperty record
-    { projectFile  = VEHICLE_PROJECT_FILE
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     ; propertyUUID = "TODO_propertyUUID"
     }

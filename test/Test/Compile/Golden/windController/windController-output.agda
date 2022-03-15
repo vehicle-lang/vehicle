@@ -15,10 +15,7 @@ open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (#_)
 open import Data.List
 
-module windController-output where
-
-private
-  VEHICLE_PROJECT_FILE = "TODO_projectFile"
+module windController-temp-output where
 
 InputVector : Set
 InputVector = Tensor ℚ (2 ∷ [])
@@ -40,6 +37,6 @@ SafeOutput x = ℚ.- (ℤ.+ 5 ℚ./ 4) ℚ.< (controller x ℚ.+ (ℤ.+ 2 ℚ./ 
 abstract
   safe : ∀ (x : Tensor ℚ (2 ∷ [])) → SafeInput x → SafeOutput x
   safe = checkProperty record
-    { projectFile  = VEHICLE_PROJECT_FILE
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     ; propertyUUID = "TODO_propertyUUID"
     }

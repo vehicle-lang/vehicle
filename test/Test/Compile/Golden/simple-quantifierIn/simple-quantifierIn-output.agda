@@ -13,10 +13,7 @@ open import Data.Integer as ℤ using (ℤ)
 open import Data.List
 open import Data.List.Relation.Unary.All as List
 
-module simple-quantifierIn-output where
-
-private
-  VEHICLE_PROJECT_FILE = "TODO_projectFile"
+module simple-quantifierIn-temp-output where
 
 emptyList : List ℤ
 emptyList = []
@@ -24,6 +21,6 @@ emptyList = []
 abstract
   empty : List.All (λ (x : ℤ) → ⊤) emptyList
   empty = checkProperty record
-    { projectFile  = VEHICLE_PROJECT_FILE
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     ; propertyUUID = "TODO_propertyUUID"
     }

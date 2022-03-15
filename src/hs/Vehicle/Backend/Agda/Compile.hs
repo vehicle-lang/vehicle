@@ -34,12 +34,10 @@ compileProgToAgda options prog1 = flip runReaderT options $ do
   -- Collects dependencies by first discarding precedence info and then
   -- folding using Set Monoid
   let progamDependencies = fold (reAnnotateS fst programStream)
-  projectFile <- compileProjectFile
   return $ unAnnotate ((vsep2 :: [Code] -> Code)
     [ optionStatements ["allow-exec"]
     , importStatements progamDependencies
-    , moduleHeader (modulePath options)
-    , projectFile
+    , moduleHeader (moduleName options)
     , programDoc
     ])
 
@@ -47,9 +45,9 @@ compileProgToAgda options prog1 = flip runReaderT options $ do
 -- Agda-specific options
 
 data AgdaOptions = AgdaOptions
-  { vehicleProjectFile :: FilePath
-  , modulePath         :: [Text]
-  , vehicleUIDs        :: Map.Map Identifier Text
+  { proofCacheLocation  :: FilePath
+  , moduleName          :: Text
+  , vehicleUIDs         :: Map.Map Identifier Text
   }
 
 type Precedence = Int
@@ -154,10 +152,8 @@ importStatements :: Set Dependency -> Doc a
 importStatements deps = vsep $ map importStatement dependencies
   where dependencies = sort (VehicleCore : Set.toList deps)
 
-type ModulePath = [Text]
-
-moduleHeader :: ModulePath -> Doc a
-moduleHeader path = "module" <+> concatWith (surround ".") (map pretty path) <+> "where"
+moduleHeader :: Text -> Doc a
+moduleHeader moduleName = "module" <+> pretty moduleName <+> "where"
 
 numericQualifier :: NumericType -> Doc a
 numericQualifier = \case
@@ -181,18 +177,6 @@ indentCode = indent 2
 
 scopeCode :: Code -> Code -> Code
 scopeCode keyword code = keyword <> line <> indentCode code
-
---------------------------------------------------------------------------------
--- Vehicle meta-code
-
-projectFileVariable :: Code
-projectFileVariable = "VEHICLE_PROJECT_FILE"
-
-compileProjectFile :: MonadAgdaCompile m => m Code
-compileProjectFile = do
-  projectFile <- asks vehicleProjectFile
-  return $ scopeCode "private" $
-    projectFileVariable <+> "=" <+> dquotes (pretty projectFile)
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
@@ -297,7 +281,7 @@ compileDecl = \case
   DefFun _ann n t e -> do
     let (binders, body) = foldLam e
     if isProperty t
-      then compileProperty (compileIdentifier n) <$> compileExpr e
+      then compileProperty (compileIdentifier n) =<< compileExpr e
       else do
         let binders' = traverse (compileBinder True) binders
         compileFunDef (compileIdentifier n) <$> compileExpr t <*> binders' <*> compileExpr body
@@ -633,14 +617,17 @@ compileNetwork networkName networkType =
     "}")
   -}
 
-compileProperty :: Code -> Code -> Code
-compileProperty propertyName propertyBody = scopeCode "abstract" $
-  propertyName <+> ":" <+> align propertyBody          <> line <>
-  propertyName <+> "= checkProperty record"            <> line <>
-    indentCode (
-    "{ projectFile  =" <+> projectFileVariable         <> line <>
-    "; propertyUUID =" <+> dquotes "TODO_propertyUUID" <> line <>
-    "}")
+compileProperty :: MonadAgdaCompile m => Code -> Code -> m Code
+compileProperty propertyName propertyBody = do
+  proofCache <- asks proofCacheLocation
+  return $
+    scopeCode "abstract" $
+      propertyName <+> ":" <+> align propertyBody          <> line <>
+      propertyName <+> "= checkProperty record"            <> line <>
+        indentCode (
+        "{ proofCache   =" <+> dquotes (pretty proofCache) <> line <>
+        "; propertyUUID =" <+> dquotes "TODO_propertyUUID" <> line <>
+        "}")
 
 containerDependencies :: ContainerType -> [Dependency]
 containerDependencies = \case

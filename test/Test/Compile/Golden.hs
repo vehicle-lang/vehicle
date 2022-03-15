@@ -73,7 +73,9 @@ makeIndividualTest name backend = test
   goldenFile     = goldenDir </> name </> name <> "-output"      <> filePathSuffix
   isFolderOutput = backend == MarabouBackend
   run            = runTest inputFile outputFile moduleName backend
-  ignoreList     = []
+  -- The proofCache field is a filepath and therefore does not transfer across
+  -- systems, therefore ignore it when comparing the files.
+  ignoreList     = ["proofCache" | backend == AgdaBackend]
 
   testFn = if isFolderOutput then goldenDirectoryTest else goldenFileTest
   test = testFn testName run ignoreList goldenFile outputFile
@@ -90,6 +92,7 @@ runTest inputFile outputFile modulePath backend = do
       , inputFile    = inputFile
       , outputFile   = Just outputFile
       , networks     = mempty
-      , moduleName   = modulePath
+      , modulePrefix = Nothing
+      , proofCache   = Just "proofcache.vclp"
       }
     }

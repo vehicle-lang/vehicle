@@ -12,10 +12,7 @@ open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
 
-module andGate-output where
-
-private
-  VEHICLE_PROJECT_FILE = "TODO_projectFile"
+module andGate-temp-output where
 
 postulate andGate : ℝ → (ℝ → ℝ)
 
@@ -34,6 +31,6 @@ CorrectOutput x1 x2 = let y = andGate x1 x2 in (Truthy x1 × Truthy x2 → Truth
 abstract
   andGateCorrect : ∀ (x1 : ℝ) → ∀ (x2 : ℝ) → ValidInput x1 × ValidInput x2 → CorrectOutput x1 x2
   andGateCorrect = checkProperty record
-    { projectFile  = VEHICLE_PROJECT_FILE
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     ; propertyUUID = "TODO_propertyUUID"
     }

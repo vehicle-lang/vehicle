@@ -87,16 +87,26 @@ compileParser = CompileOptions
      <> short 'o'
      <> help "Output location for compiled file. Defaults to stdout if not provided."
      <> metavar "FILE" ))
-  <*> strOption
-      ( long "moduleName"
-     <> short 'm'
-     <> help "The name of the module."
-     <> metavar "MODULENAME" )
   <*> networkOptions
        ( long "network"
       <> short 'n'
       <> help "The name (as used in the Vehicle code) and path to a neural network."
-      <> metavar "NAME:FILE" )
+      <> metavar "NAME:FILE")
+  <*> optional (strOption
+      ( long "modulePrefix"
+     <> short 'm'
+     <> help "Sometimes needed when compiling to ITP code. For example, compiling to \
+              \ 'Baz.agda' with a prefix of `Foo.Bar` will result in the Agda module \
+              \ with the name `Foo.Bar.Baz`."
+     <> metavar "MODULENAME" ))
+  <*> optional (strOption
+      ( long "proofCache"
+     <> short 'p'
+     <> help "Only needed when compiling to ITP code. The location of the proof cache \
+              \ that the generated ITP code should use to check the verification status \
+              \ of the specifcation. The proof cache can be generated via the \
+              \ `vehicle verify` command."
+     <> metavar "FILE" ))
 
 networkOptions :: Mod OptionFields (Text, FilePath) -> Parser NetworkLocations
 networkOptions desc = Map.fromList <$> many (option (maybeReader readNL) desc)
