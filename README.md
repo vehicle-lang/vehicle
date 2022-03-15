@@ -11,14 +11,12 @@ This allows the user to maintain the abstraction of the neural network as a blac
 Some examples of Vehicle projects with end-to-end integration with Agda are as follows:
 
 1. A simple car controller that keeps the car on the road in the face of noisy sensor data and an unpredicatable cross-wind (from Section 2.1 of the [Vehicle paper](https://arxiv.org/pdf/2202.05207v1.pdf)):
-  - [Folder](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/)
-  - [Vehicle spec](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/windController.vcl)
-  - [Proof of overall correctness in Agda](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/agdaProof/SafetyProof.agda)
+  - [Folder](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/) / [Vehicle spec](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/windController.vcl) / [Generated Marabou queries](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden/windController/windController-output-marabou) / [Generated Agda code](https://github.com/vehicle-lang/vehicle/blob/dev/test/Test/Compile/Golden/windController/windController-output.agda) / [Overall proof of correctness in Agda](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/agdaProof/SafetyProof.agda)
 
 We also have several non-ITP integrated specifications. Notable ones include:
 
 1. Property 6 of the ACASXu collision avoidance system ([paper](https://arxiv.org/abs/1702.01135))
-- [Vehicle spec](https://github.com/vehicle-lang/vehicle/blob/dev/test/specs/acasXu-property6/acasXu-property6.vcl) / [Marabou queries](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden/acasXu-property6/acasXu-property6-output-marabou) / [Agda code](https://github.com/vehicle-lang/vehicle/blob/dev/test/Test/Compile/Golden/acasXu-property6/acasXu-property6-output.agda)
+- [Vehicle spec](https://github.com/vehicle-lang/vehicle/blob/dev/test/specs/acasXu-property6/acasXu-property6.vcl) / [Generated Marabou queries](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden/acasXu-property6/acasXu-property6-output-marabou) / [Generated Agda code](https://github.com/vehicle-lang/vehicle/blob/dev/test/Test/Compile/Golden/acasXu-property6/acasXu-property6-output.agda)
 
 The full list of example specifications can be found [here](https://github.com/vehicle-lang/vehicle/tree/dev/test/specs) and the corresponding output of the Vehicle compiler [here](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden).
 
