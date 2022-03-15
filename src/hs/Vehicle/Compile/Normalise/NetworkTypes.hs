@@ -195,9 +195,10 @@ transformInputNumericToTensor tElem args =
 transformOutputNumericToTensor :: CheckedExpr -> CheckedExpr -> CheckedExpr
 transformOutputNumericToTensor tElem e =
   let ann = annotationOf e in
-  let tDims = mkTensorDims ann [1] in
-  let atArgs = fmap (ExplicitArg ann) [e, NatLiteralExpr ann Nat 0] in
-  AtExpr ann tElem tDims atArgs
+  let tDim  = NatLiteralExpr ann (NatType ann) 1 in
+  let tDims = mkTensorDims ann [] in
+  let atArgs = fmap (ExplicitArg ann) [e, NatLiteralExpr ann (NatType ann) 0] in
+  AtExpr ann tElem tDim tDims atArgs
 
 getTensorDetails :: MonadNetworkTypeAnalysis m
                  => InputOrOutput

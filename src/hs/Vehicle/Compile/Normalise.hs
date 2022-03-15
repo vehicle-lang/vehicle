@@ -161,7 +161,7 @@ nfApp ann fun       args = let e = App ann fun args in do
     -- Containers
     (ConsExpr _ _ [x, xs])              -> nfCons ann x xs
     (MapExpr _ tElem tRes [fn, cont])   -> nfMap  ann tElem tRes (argExpr fn) (argExpr cont)
-    (AtExpr _ _ _ [tensor, index])      -> nfAt   tensor index
+    (AtExpr _ _ _ _ [tensor, index])    -> nfAt   tensor index
     (FoldExpr _ _ _ _ [op, unit, cont]) -> nfFold ann op unit cont
     (QuantifierInExpr q _ tCont tRes binder body container) ->
       nfQuantifierIn ann q tCont tRes binder body container
@@ -248,8 +248,8 @@ nfQuantifier :: MonadNorm m
              -> CheckedExpr
              -> Maybe (m CheckedExpr)
 nfQuantifier ann q binder body = case typeOf binder of
-  -- If we have a tensor instead quantify over each individual element, and then substitute
-  -- in a LSeq construct with those elements in.
+  -- If we're quantifing over a tensor, instead quantify over each individual
+  -- element,  and then substitute in a LSeq construct with those elements in.
   (TensorType _ tElem tDims) ->
     case getDimensions (exprHead tDims) of
       Nothing -> Nothing
@@ -273,6 +273,17 @@ nfQuantifier ann q binder body = case typeOf binder of
 
         -- Generate a expression prepended with `tensorSize` quantifiers
         return $ mkQuantifierSeq q ann (map Just allNames) tElem body2
+
+  -- If we're quantifying over a finite index type then expand out to a list
+  -- of indices up to the max value.
+  t@(FinType _ size) ->
+    case getDimension size of
+      Nothing -> Nothing
+      Just n  -> do
+        let tCont = ListType ann t
+        let cont  = SeqExpr ann t tCont (fmap (NatLiteralExpr ann t) [0 .. n-1])
+        let e = QuantifierInExpr q ann tCont Prop binder body cont
+        Just $ nf e
 
   _ -> Nothing
 
@@ -428,7 +439,7 @@ nfAdd :: MonadNorm m
       -> Maybe (m CheckedExpr)
 nfAdd ann t arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   -- TODO implement zero/identity/associativity rules?
-  (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ NatLiteralExpr ann t (m + n)
+  (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ NatLiteralExpr ann (BuiltinNumericType ann t) (m + n)
   (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ IntLiteralExpr ann t (i + j)
   (RatLiteralExpr _ _ x, RatLiteralExpr _ _ y) -> Just $ return $ RatLiteralExpr ann t (x + y)
   _                                            -> Nothing
@@ -492,16 +503,16 @@ nfNeg :: MonadNorm m
       -> CheckedArg
       -> Bool
       -> Maybe (m CheckedExpr)
-nfNeg _ann _t e expandOut = case argExpr e of
-  NatLiteralExpr ann t x                -> Just $ return $ IntLiteralExpr ann t (- x)
-  IntLiteralExpr ann t x                -> Just $ return $ IntLiteralExpr ann t (- x)
-  RatLiteralExpr ann t x                -> Just $ return $ RatLiteralExpr ann t (- x)
+nfNeg _ann t e expandOut = case argExpr e of
+  NatLiteralExpr ann _ x                -> Just $ return $ IntLiteralExpr ann t (- x)
+  IntLiteralExpr ann _ x                -> Just $ return $ IntLiteralExpr ann t (- x)
+  RatLiteralExpr ann _ x                -> Just $ return $ RatLiteralExpr ann t (- x)
   NegExpr _ _ [e']                      -> Just $ return $ argExpr e'
-  AddExpr ann t tc [e1, e2] | expandOut -> Just $ do
+  AddExpr ann _ tc [e1, e2] | expandOut -> Just $ do
     ne1 <- negArg t e1
     ne2 <- negArg t e2
     nf $ AddExpr ann t tc [ne1, ne2]
-  MulExpr ann t tc [e1, e2] | expandOut -> Just $ do
+  MulExpr ann _ tc [e1, e2] | expandOut -> Just $ do
     ne1 <- negArg t e1
     nf $ AddExpr ann t tc [ne1, e2]
   _                           -> Nothing

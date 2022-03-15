@@ -9,7 +9,7 @@ position token BuiltinToken
   | {"=>"} | {"and"} | {"or"} | {"not"}
   | {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
   | {"*"} | {"/"} | {"+"} | {"-"} | {"~"}
-  | {"Nat"} | {"Int"} | {"Real"}
+  | {"Nat"} | {"Int"} | {"Real"} | {"Fin"}
   | {"Prop"} | {"Bool"}
   | {"Tensor"} | {"List"} | {"::"} | {"!"}
   | {"Eq"} | {"Ord"} | {"Container"} | {"Truth"} | {"Quantify"}

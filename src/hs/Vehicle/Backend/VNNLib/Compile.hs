@@ -162,6 +162,7 @@ compileBuiltin = \case
   BooleanType   t -> typeError currentPass $ pretty t
   NumericType   t -> typeError currentPass $ pretty t
   ContainerType t -> typeError currentPass $ pretty t
+  Fin             -> typeError currentPass "Fin"
   TypeClass tc    -> typeError currentPass $ pretty tc
 
   QuantIn _ -> normalisationError currentPass "QuantIn"

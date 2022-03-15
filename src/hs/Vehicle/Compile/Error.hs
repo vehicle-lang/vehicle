@@ -81,8 +81,6 @@ data CompileError
   | NonLinearConstraint            Backend Provenance Identifier OutputExpr OutputExpr
   | NoNetworkUsedInProperty        Backend Provenance Identifier
   | LookupInVariableDimTensor      Backend Provenance OutputExpr
-  | LookupInEmptyTensor            Backend Provenance
-  | TensorIndexOutOfBounds         Provenance Int Int
   deriving (Show)
 
 --------------------------------------------------------------------------------

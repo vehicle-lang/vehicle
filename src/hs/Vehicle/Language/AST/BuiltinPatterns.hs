@@ -53,6 +53,21 @@ mkTensorType ann tElem dims =
   App ann (BuiltinContainerType ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
 
 --------------------------------------------------------------------------------
+-- Tensor
+
+pattern FinType :: ann
+                -> Expr binder var ann
+                -> Expr binder var ann
+pattern
+  FinType ann tSize <-
+    App ann (Builtin _ Fin)
+      [ ExplicitArg _ tSize ]
+  where
+  FinType ann tSize =
+    App ann (Builtin ann Fin)
+      [ ExplicitArg ann tSize ]
+
+--------------------------------------------------------------------------------
 -- Numeric
 
 pattern BuiltinNumericType :: ann -> NumericType -> Expr binder var ann
@@ -126,7 +141,25 @@ pattern
 
 
 --------------------------------------------------------------------------------
--- IsInteger
+-- Integer type classes
+
+pattern HasNatLitsUpToExpr :: ann
+                           -> Int
+                           -> Expr binder var ann
+                           -> Expr binder var ann
+pattern
+  HasNatLitsUpToExpr ann n t <-
+    App ann (BuiltinTypeClass _ (HasNatLitsUpTo n))
+      [ ExplicitArg _ t
+      ]
+  where
+  HasNatLitsUpToExpr ann n t =
+    App ann (BuiltinTypeClass ann (HasNatLitsUpTo n))
+      [ ExplicitArg ann t
+      ]
+
+--------------------------------------------------------------------------------
+-- Integer type classes
 
 pattern HasIntOpsExpr :: ann
                        -> NumericType
@@ -227,15 +260,15 @@ pattern LitNat :: ann -> Int -> Expr binder var ann
 pattern LitNat ann n = Literal ann (LNat n)
 
 pattern NatLiteralExpr :: ann
-                       -> NumericType
+                       -> Expr binder var ann
                        -> Int
                        -> Expr binder var ann
 pattern
   NatLiteralExpr ann t n <-
-    LiteralExpr ann (BuiltinNumericType _ t) (LNat n)
+    LiteralExpr ann t (LNat n)
   where
   NatLiteralExpr ann t n =
-    LiteralExpr ann (BuiltinNumericType ann t) (LNat n)
+    LiteralExpr ann t (LNat n)
 
 --------------------------------------------------------------------------------
 -- Int
@@ -602,20 +635,23 @@ pattern
 pattern AtExpr :: ann
                 -> Expr  binder var ann
                 -> Expr  binder var ann
+                -> Expr  binder var ann
                 -> [Arg binder var ann]
                 -> Expr  binder var ann
 pattern
-  AtExpr ann tElem tDims explicitArgs <-
+  AtExpr ann tElem tDim tDims explicitArgs <-
     App ann (Builtin _ At)
       (  ImplicitArg _ tElem
-      :| ImplicitArg _ tDims
+      :| ImplicitArg _ tDim
+      :  ImplicitArg _ tDims
       :  explicitArgs
       )
   where
-  AtExpr ann tElem tDims explicitArgs =
+  AtExpr ann tElem tDim tDims explicitArgs =
     App ann (Builtin ann At)
       (  ImplicitArg ann tElem
-      :| ImplicitArg ann tDims
+      :| ImplicitArg ann tDim
+      :  ImplicitArg ann tDims
       :  explicitArgs
       )
 
