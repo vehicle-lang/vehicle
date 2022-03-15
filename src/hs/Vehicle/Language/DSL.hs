@@ -37,9 +37,12 @@ class DSL expr where
   infixr 4 ~~>
   infixr 4 ~~~>
 
-  app :: expr -> NonEmpty expr -> expr
+  app :: expr -> NonEmpty (Visibility, expr) -> expr
   -- lam :: Visibility -> Name -> expr -> (expr -> expr) -> expr
   pi  :: Visibility -> expr -> (expr -> expr) -> expr
+
+  eApp :: expr -> NonEmpty expr -> expr
+  eApp f args = app f (fmap (Explicit,) args)
 
   (~>) :: expr -> expr -> expr
   x ~> y = pi Explicit x (const y)
@@ -73,7 +76,7 @@ instance DSL DSLExpr where
 
   app fun args = DSL $ \ann i ->
     let fun' = unDSL fun ann i
-        args' = fmap (\e -> ExplicitArg ann (unDSL e ann i)) args
+        args' = fmap (\(v, e) -> Arg ann v (unDSL e ann i)) args
     in App ann fun' args'
 
 --lamType :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
@@ -107,10 +110,10 @@ tInt  = con (NumericType Int)
 tReal = con (NumericType Real)
 
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
-tTensor tElem dims = con (ContainerType Tensor) `app` [tElem, dims]
+tTensor tElem dims = con (ContainerType Tensor) `eApp` [tElem, dims]
 
 tList :: DSLExpr -> DSLExpr
-tList tElem = con (ContainerType List) `app` [tElem]
+tList tElem = con (ContainerType List) `eApp` [tElem]
 
 tHole :: Symbol -> DSLExpr
 tHole name = DSL $ \ann _ -> Hole ann name
@@ -121,28 +124,28 @@ typeClass :: Builtin -> DSLExpr
 typeClass op = DSL $ \ann _ -> Builtin ann op
 
 hasEq :: DSLExpr -> DSLExpr -> DSLExpr
-hasEq tArg tRes = typeClass (TypeClass HasEq) `app` [tArg, tRes]
+hasEq tArg tRes = typeClass (TypeClass HasEq) `eApp` [tArg, tRes]
 
 hasOrd :: DSLExpr -> DSLExpr -> DSLExpr
-hasOrd tArg tRes = typeClass (TypeClass HasOrd) `app` [tArg, tRes]
+hasOrd tArg tRes = typeClass (TypeClass HasOrd) `eApp` [tArg, tRes]
 
 isTruth :: DSLExpr -> DSLExpr
-isTruth t = typeClass (TypeClass IsTruth) `app` [t]
+isTruth t = typeClass (TypeClass IsTruth) `eApp` [t]
 
 isNatural :: DSLExpr -> DSLExpr
-isNatural t = typeClass (TypeClass IsNatural) `app` [t]
+isNatural t = typeClass (TypeClass IsNatural) `eApp` [t]
 
 isIntegral :: DSLExpr -> DSLExpr
-isIntegral t = typeClass (TypeClass IsInteger) `app` [t]
+isIntegral t = typeClass (TypeClass IsInteger) `eApp` [t]
 
 isRational :: DSLExpr -> DSLExpr
-isRational t = typeClass (TypeClass IsRational) `app` [t]
+isRational t = typeClass (TypeClass IsRational) `eApp` [t]
 
 isReal :: DSLExpr -> DSLExpr
-isReal t = typeClass (TypeClass IsReal) `app` [t]
+isReal t = typeClass (TypeClass IsReal) `eApp` [t]
 
 isContainer :: DSLExpr -> DSLExpr -> DSLExpr
-isContainer tCont tElem = typeClass (TypeClass IsContainer) `app` [tCont, tElem]
+isContainer tCont tElem = typeClass (TypeClass IsContainer) `eApp` [tCont, tElem]
 
 isQuantifiable :: DSLExpr -> DSLExpr -> DSLExpr
-isQuantifiable tDom tTruth = typeClass (TypeClass IsQuantifiable) `app` [tDom, tTruth]
+isQuantifiable tDom tTruth = typeClass (TypeClass IsQuantifiable) `eApp` [tDom, tTruth]
