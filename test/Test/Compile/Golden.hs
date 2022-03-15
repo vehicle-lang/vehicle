@@ -73,19 +73,20 @@ makeIndividualTest name backend = test
   goldenFile     = goldenDir </> name </> name <> "-output"      <> filePathSuffix
   isFolderOutput = backend == MarabouBackend
   run            = runTest inputFile outputFile moduleName backend
+  ignoreList     = []
 
-  test = if isFolderOutput
-    then goldenDirectoryTest testName run goldenFile outputFile
-    else goldenFileTest      testName run goldenFile outputFile
+  testFn = if isFolderOutput then goldenDirectoryTest else goldenFileTest
+  test = testFn testName run ignoreList goldenFile outputFile
 
 runTest :: FilePath -> FilePath -> String -> Backend -> IO ()
 runTest inputFile outputFile modulePath backend = do
   run $ Options
     { version       = False
-    , logFile       = Nothing --Just Nothing
+    , outFile       = Nothing
     , errFile       = Nothing
+    , logFile       = Nothing --Just Nothing
     , commandOption = Compile $ CompileOptions
-      { target = backend
+      { target       = backend
       , inputFile    = inputFile
       , outputFile   = Just outputFile
       , networks     = mempty

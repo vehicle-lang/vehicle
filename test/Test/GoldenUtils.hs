@@ -12,12 +12,12 @@ import Data.Map (Map, (\\))
 import Data.Map qualified as Map (toAscList, fromList, keysSet, size, lookup, intersectionWith, keys)
 import Data.Set qualified as Set
 
-import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiff)
+import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
 
 import System.Directory (listDirectory, removeFile, createDirectory, removeDirectoryRecursive)
 import System.FilePath (takeFileName, (</>))
-import Data.List (intercalate)
+import Data.List (intercalate, isInfixOf)
 import System.IO.Error
 import Control.Exception (catch, throwIO)
 import Data.Bifunctor (Bifunctor(second, first))
@@ -25,11 +25,12 @@ import Data.Bifunctor (Bifunctor(second, first))
 --------------------------------------------------------------------------------
 -- General utilities
 
-diffText :: Text -> Text -> Maybe String
-diffText golden output = do
-  let goldenLines = map T.unpack $ T.lines golden
-  let outputLines = map T.unpack $ T.lines output
-  let diff = getGroupedDiff goldenLines outputLines
+diffText :: [Text] -> Text -> Text -> Maybe String
+diffText ignoreList golden output = do
+  let goldenLines  = map T.unpack $ T.lines golden
+  let outputLines  = map T.unpack $ T.lines output
+  let equalityTest = diffEqualityTestWithIgnore (fmap T.unpack ignoreList)
+  let diff = getGroupedDiffBy equalityTest goldenLines outputLines
   if all isBoth diff
     then Nothing
     else Just $ "Output differs:" <> ppDiff diff
@@ -37,6 +38,13 @@ diffText golden output = do
     isBoth :: Diff a -> Bool
     isBoth (Both a b) = True
     isBoth _          = False
+
+diffEqualityTestWithIgnore :: [String] -> String -> String -> Bool
+diffEqualityTestWithIgnore ignoreList x y =
+  x == y || any (bothContain x y) ignoreList
+  where
+    bothContain :: String -> String -> String -> Bool
+    bothContain x y e = e `isInfixOf` x && e `isInfixOf` y
 
 cleanupGoldenTestOutput :: Bool -> FilePath -> TestTree -> TestTree
 cleanupGoldenTestOutput isFile testFile test =
@@ -54,28 +62,30 @@ cleanupGoldenTestOutput isFile testFile test =
 --------------------------------------------------------------------------------
 -- Single file golden tests
 
-goldenFileTest :: TestName -> IO () -> FilePath -> FilePath -> TestTree
-goldenFileTest testName generateOutput goldenFile outputFile = testWithCleanup
+goldenFileTest :: TestName -> IO () -> [Text] -> FilePath -> FilePath -> TestTree
+goldenFileTest testName generateOutput ignoreList goldenFile outputFile = testWithCleanup
   where
   readGolden = TIO.readFile goldenFile
   readOutput = do generateOutput; TIO.readFile outputFile
   updateGolden = TIO.writeFile goldenFile
-  test = goldenTest testName readGolden readOutput diffTextCommand updateGolden
+  diffCommand  = diffTextCommand ignoreList
+  test = goldenTest testName readGolden readOutput diffCommand updateGolden
   testWithCleanup = cleanupGoldenTestOutput True outputFile test
 
-diffTextCommand :: Text -> Text -> IO (Maybe String)
-diffTextCommand golden output = return $ diffText golden output
+diffTextCommand :: [Text] -> Text -> Text -> IO (Maybe String)
+diffTextCommand ignoreList golden output = return $ diffText ignoreList golden output
 
 --------------------------------------------------------------------------------
 -- Directory golden tests
 
-goldenDirectoryTest :: TestName -> IO () -> FilePath -> FilePath -> TestTree
-goldenDirectoryTest testName generateOutput goldenDir outputDir = testWithCleanup
+goldenDirectoryTest :: TestName -> IO () -> [Text] -> FilePath -> FilePath -> TestTree
+goldenDirectoryTest testName generateOutput ignoreList goldenDir outputDir = testWithCleanup
   where
     readGolden = readDirectory goldenDir
     readOutput = do generateOutput; readDirectory outputDir
     updateGolden = updateGoldenDirectory goldenDir
-    test = goldenTest testName readGolden readOutput compareDirectoryContents updateGolden
+    diffCommand  = compareDirectoryContents ignoreList
+    test = goldenTest testName readGolden readOutput diffCommand updateGolden
     testWithCleanup = cleanupGoldenTestOutput False outputDir test
 
 readDirectory :: FilePath -> IO (Maybe (Map FilePath Text))
@@ -93,14 +103,15 @@ readDirectory directory = do
       contents <- mapM TIO.readFile filePaths
       return $ Just $ Map.fromList $ zip files contents
 
-compareDirectoryContents :: Maybe (Map FilePath Text)
+compareDirectoryContents :: [Text]
+                         -> Maybe (Map FilePath Text)
                          -> Maybe (Map FilePath Text)
                          -> IO (Maybe String)
-compareDirectoryContents _ Nothing =
+compareDirectoryContents _ _ Nothing =
   return $ Just "No output directory was created by the test"
-compareDirectoryContents Nothing _ =
+compareDirectoryContents _ Nothing _ =
   return $ Just "No golden directory was found for the test. Accept the test to create it."
-compareDirectoryContents (Just goldenContents) (Just outputContents) = do
+compareDirectoryContents ignoreList (Just goldenContents) (Just outputContents) = do
   let (sharedFiles, missingFiles, extraFiles) =
         getContentsDiff goldenContents outputContents
 
@@ -123,7 +134,7 @@ compareDirectoryContents (Just goldenContents) (Just outputContents) = do
     where
       getDiff :: (FilePath, (Text, Text)) -> Maybe String
       getDiff (file, (goldenText, outputText)) =
-        let diff = diffText goldenText outputText in
+        let diff = diffText ignoreList goldenText outputText in
         fmap (\x -> "File '" <> file <> "' " <> x) diff
 
 getContentsDiff :: Map FilePath Text

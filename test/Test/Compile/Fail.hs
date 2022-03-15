@@ -60,8 +60,9 @@ failTest filepath backend = test
   logFile        = basePath <> "-temp" <.> "txt"
   goldenFile     = basePath <.> "txt"
   run            = runTest inputFile logFile (fromMaybe VNNLibBackend backend)
+  ignoreList     = []
 
-  test = goldenFileTest testName run goldenFile logFile
+  test = goldenFileTest testName run ignoreList goldenFile logFile
 
 runTest :: FilePath -> FilePath -> Backend -> IO ()
 runTest inputFile outputFile backend = do
@@ -69,8 +70,9 @@ runTest inputFile outputFile backend = do
   where
     options = Options
       { version       = False
-      , logFile       = Nothing --Just Nothing
+      , outFile       = Nothing
       , errFile       = Just outputFile
+      , logFile       = Nothing --Just Nothing
       , commandOption = Compile $ CompileOptions
         { target       = backend
         , inputFile    = inputFile

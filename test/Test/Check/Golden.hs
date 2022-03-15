@@ -46,11 +46,15 @@ networkMissingTest = createTest "networkMissing" status alterNetwork
   alterNetwork = removeFile
 
 createTest :: String -> SpecificationStatus -> (FilePath -> IO ()) -> TestTree
-createTest name status alterNetwork = goldenFileTest name run goldenFile outputFile
+createTest name status alterNetwork =
+  goldenFileTest name run ignoreList goldenFile outputFile
   where
+  run = runTest name status alterNetwork
+  -- Exclude any lines that contain ".onnx" as that signifies the line contains
+  -- a filepath which won't be preserved across file systems.
+  ignoreList   = [".onnx"]
   goldenFile   = testDir </> name <.> "txt"
   outputFile   = testDir </> name <> "-output.txt"
-  run = runTest name status alterNetwork
 
 runTest :: String -> SpecificationStatus -> (FilePath -> IO ()) -> IO ()
 runTest name status alterNetwork = do
@@ -75,8 +79,9 @@ runTest name status alterNetwork = do
 
   run $ Options
     { version       = False
-    , logFile       = Just $ Just outputFile
+    , outFile       = Just outputFile
     , errFile       = Nothing
+    , logFile       = Nothing
     , commandOption = Check $ CheckOptions
       { proofCache = proofCache
       }
@@ -84,16 +89,6 @@ runTest name status alterNetwork = do
 
   removeFile proofCache
   removeFileIfExists networkFile
-
-  -- Update file paths in error messages if the tests are running on Windows
-  when (os == "mingw32") $
-    fixWindowsFilePaths outputFile
-
-fixWindowsFilePaths :: FilePath -> IO ()
-fixWindowsFilePaths outputFile = do
-  contents <- readFile outputFile
-  let newContents = fmap (\c -> if c == '\\' then '/' else c) contents
-  writeFile outputFile newContents
 
 mkStatus :: [(Text, PropertyStatus)] -> SpecificationStatus
 mkStatus = SpecificationStatus . Map.fromList

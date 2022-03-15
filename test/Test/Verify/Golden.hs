@@ -41,11 +41,13 @@ testDir :: FilePath
 testDir = "test" </> "Test" </> "Verify" </> "Golden"
 
 createTest :: String -> String -> [(Text, FilePath)] -> TestTree
-createTest name inputFile networks = goldenFileTest name run goldenFile outputFile
+createTest name inputFile networks =
+  goldenFileTest name run ignoreList goldenFile outputFile
   where
+  run = runTest name inputFile networks
+  ignoreList = []
   goldenFile = testDir </> name <.> "txt"
   outputFile = testDir </> name <> "-output.txt"
-  run = runTest name inputFile networks
 
 runTest :: String -> String -> [(Text, FilePath)] -> IO ()
 runTest name inputFile networks = do
@@ -53,8 +55,9 @@ runTest name inputFile networks = do
 
   run $ Options
     { version       = False
-    , logFile       = Nothing
+    , outFile       = Nothing
     , errFile       = Nothing
+    , logFile       = Nothing
     , commandOption = Verify $ VerifyOptions
       { verifier   = Marabou
       , inputFile  = inputFile

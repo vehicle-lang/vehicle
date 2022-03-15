@@ -23,8 +23,8 @@ run Options{..} = do
     print vehicleVersion
     exitSuccess
 
-  let acquireOutputHandles = openHandles (errFile, logFile)
-  let releaseOutputHandles = closeHandles (errFile, logFile)
+  let acquireOutputHandles = openHandles  (outFile, errFile, logFile)
+  let releaseOutputHandles = closeHandles (outFile, errFile, logFile)
 
   bracket acquireOutputHandles releaseOutputHandles $ \loggingSettings ->
     case commandOption of
@@ -33,14 +33,16 @@ run Options{..} = do
       Check   options -> check   loggingSettings options
 
 
-openHandles :: (Maybe FilePath, Maybe (Maybe FilePath))
+openHandles :: (Maybe FilePath, Maybe FilePath, Maybe (Maybe FilePath))
             -> IO LoggingOptions
-openHandles (errFile, logFile) = do
+openHandles (outFile, errFile, logFile) = do
+  outputHandle <- case outFile of
+    Nothing -> return stdout
+    Just x  -> openFile x AppendMode
+
   errorHandle <- case errFile of
     Nothing -> return stderr
     Just x  -> openFile x AppendMode
-
-  let outputHandle = stdout
 
   logHandle <- case logFile of
     Nothing       -> return Nothing
@@ -53,10 +55,14 @@ openHandles (errFile, logFile) = do
     , logHandle    = logHandle
     }
 
-closeHandles :: (Maybe FilePath, Maybe (Maybe FilePath))
+closeHandles :: (Maybe FilePath, Maybe FilePath, Maybe (Maybe FilePath))
              -> LoggingOptions
              -> IO ()
-closeHandles (errFile, logFile) LoggingOptions{..} = do
+closeHandles (outFile, errFile, logFile) LoggingOptions{..} = do
+  case outFile of
+    Nothing -> return ()
+    Just _  -> hClose outputHandle
+
   case errFile of
     Nothing -> return ()
     Just _  -> hClose errorHandle
@@ -68,8 +74,9 @@ closeHandles (errFile, logFile) LoggingOptions{..} = do
 
 data Options = Options
   { version       :: Bool
-  , logFile       :: Maybe (Maybe FilePath)
+  , outFile       :: Maybe FilePath
   , errFile       :: Maybe FilePath
+  , logFile       :: Maybe (Maybe FilePath)
   , commandOption :: Command
   } deriving (Show)
 

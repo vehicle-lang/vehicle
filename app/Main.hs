@@ -38,14 +38,20 @@ optionsParser = Options
      <> short 'V'
      <> help "Show version information." )
   <*> option auto
-      ( long "log-file"
-     <> help "Enables logging to the provided file. If no argument is provided will output to stdout."
+      ( long "output"
+     <> help "Redirects output to the provided file. If no argument is provided will default to stdout."
      <> showDefault
      <> value Nothing
      <> metavar "FILENAME" )
   <*> option auto
-      ( long "error-file"
-     <> help "Redirects error to the provided file. If no argument is provided will output to stderr."
+      ( long "error"
+     <> help "Redirects error to the provided file. If no argument is provided will default to stderr."
+     <> showDefault
+     <> value Nothing
+     <> metavar "FILENAME" )
+  <*> option auto
+      ( long "log"
+     <> help "Enables logging to the provided file. If no argument is provided will default to stdout."
      <> showDefault
      <> value Nothing
      <> metavar "FILENAME" )

@@ -18,7 +18,7 @@ main = do
 tests :: TestTree
 tests = testGroup "Tests"
   [ compileTests
-  -- , checkTests
+  , checkTests
   -- , verifyTests
   ]
 
