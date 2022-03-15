@@ -14,8 +14,8 @@ import Vehicle.Verify.VerificationStatus
 import Control.Monad (forM)
 
 data VerifyOptions = VerifyOptions
-  { inputFile      :: FilePath
-  , verifier       :: Verifier
+  { verifier       :: Verifier
+  , inputFile      :: FilePath
   , networks       :: NetworkLocations
   , proofCache     :: Maybe FilePath
   } deriving (Show)

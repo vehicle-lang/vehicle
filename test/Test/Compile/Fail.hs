@@ -72,9 +72,9 @@ runTest inputFile outputFile backend = do
       , logFile       = Nothing --Just Nothing
       , errFile       = Just outputFile
       , commandOption = Compile $ CompileOptions
-        { inputFile    = inputFile
+        { target       = backend
+        , inputFile    = inputFile
         , outputFile   = Nothing
-        , outputTarget = backend
         , moduleName   = "N/A"
         , networks     = mempty
         }

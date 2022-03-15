@@ -30,7 +30,7 @@ import Vehicle.Backend.VNNLib (VNNLibProperty, writeVNNLibQueryFiles)
 import Vehicle.Backend.Agda
 
 compile :: LoggingOptions -> CompileOptions -> IO ()
-compile loggingOptions CompileOptions{..} = case outputTarget of
+compile loggingOptions CompileOptions{..} = case target of
   ITP Agda -> do
     let agdaOptions = AgdaOptions "TODO_projectFile" [T.pack moduleName] mempty
     agdaCode <- compileToAgda loggingOptions agdaOptions inputFile

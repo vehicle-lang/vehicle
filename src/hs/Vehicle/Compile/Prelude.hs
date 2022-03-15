@@ -15,9 +15,9 @@ import Vehicle.NeuralNetwork
 -- Compilation
 
 data CompileOptions = CompileOptions
-  { inputFile      :: FilePath
+  { target         :: Backend
+  , inputFile      :: FilePath
   , outputFile     :: Maybe FilePath
-  , outputTarget   :: Backend
   , moduleName     :: String
   , networks       :: NetworkLocations
   } deriving (Show)

@@ -9,8 +9,8 @@ Verifying using Marabou
 The controller can be verified against the specification by running the following command:
 ```bash
 vehicle verify \
-  --inputFile examples/windController/windController.vcl \
   --verifier Marabou \
+  --inputFile examples/windController/windController.vcl \
   --network controller:examples/windController/controller.onnx \
   --proofCache examples/windController/windController.vclp
 ```
@@ -21,12 +21,12 @@ then be used by Agda in the next step.
 run the following command:
 ```bash
 vehicle compile \
+  --target Marabou \
   --inputFile examples/windController/windController.vcl \
   --outputFile examples/windController/windController-queries \
-  --target Marabou \
   --network controller:examples/windController/controller.onnx
 ```
-which will put them in `windController-queries`
+which will put them in the `windController-queries` folder.
 
 Compiling to specification to Agda
 ----------------------------------
@@ -34,9 +34,9 @@ Compiling to specification to Agda
 The (verified) specification may then be compiled to Agda by running the command:
 ```bash
 vehicle compile \
+  --target Agda \
   --inputFile examples/windController/windController.vcl \
   --outputFile examples/windController/agdaProof/WindControllerSpec.agda \
-  --target Agda \
   --moduleName WindControllerSpec \
   --proofCache examples/windController/windController.vclp
 ```

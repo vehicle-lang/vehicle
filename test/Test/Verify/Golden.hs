@@ -31,7 +31,7 @@ goldenTests = testGroup "GoldenTests"
 successTest :: TestTree
 successTest = createTest "Marabou-success" inputFile networks
   where
-  inputFile = "examples/network/windController/windController.vcl"
+  inputFile = "test/network/windController/windController.vcl"
   networks  = [("controller", "examples/network/windController/controller.onnx")]
 
 --------------------------------------------------------------------------------
@@ -56,9 +56,9 @@ runTest name inputFile networks = do
     , logFile       = Nothing
     , errFile       = Nothing
     , commandOption = Verify $ VerifyOptions
-      { inputFile  = inputFile
+      { verifier   = Marabou
+      , inputFile  = inputFile
       , networks   = Map.fromList networks
-      , verifier   = Marabou
       , proofCache = Nothing
       }
     }
