@@ -18,7 +18,7 @@ open import Relation.Nullary using (yes; no)
 
 open import Vehicle.Data.Tensor
 open import AbstractRationals
-import windController-output as Vehicle
+import WindControllerSpec as Vehicle
 
 open ≤-Reasoning
 

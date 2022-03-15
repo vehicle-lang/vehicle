@@ -9,15 +9,21 @@
 
 open import Vehicle
 open import Data.Unit
+open import Data.Integer as ℤ using (ℤ)
+open import Data.List
+open import Data.List.Relation.Unary.All as List
 
-module let-output where
+module simple-quantifierIn-output where
 
 private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
 
+emptyList : List ℤ
+emptyList = []
+
 abstract
-  e1 : let x = ⊤ in x
-  e1 = checkProperty record
+  empty : List.All (λ (x : ℤ) → ⊤) emptyList
+  empty = checkProperty record
     { projectFile  = VEHICLE_PROJECT_FILE
     ; propertyUUID = "TODO_propertyUUID"
     }

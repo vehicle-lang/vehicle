@@ -48,3 +48,6 @@ MAlonzo/**
 # Vehicle build system
 build/
 bin/
+
+# Examples folder
+examples/**/*.vclp

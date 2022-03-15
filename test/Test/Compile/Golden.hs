@@ -1,7 +1,5 @@
 module Test.Compile.Golden
-  ( GoldenTestSpec
-  , goldenTests
-  , goldenTestList
+  ( goldenTests
   ) where
 
 import Data.Text (Text)
@@ -28,78 +26,55 @@ import Test.GoldenUtils
 -- Tests
 
 goldenTests :: TestTree
-goldenTests = testGroup "GoldenTests"
-  [ testGroup "Networks" (map makeGoldenTestsFromSpec realisticTestList)
-  , testGroup "Simple"   (map makeGoldenTestsFromSpec simpleTestList)
-  , testGroup "Misc"     (map makeGoldenTestsFromSpec miscTestList)
-  ]
+goldenTests = testGroup "GoldenTests" $
+  map makeGoldenTests [
+    -- Realistic tests
+    ("acasXu-property6",       [VNNLibBackend, AgdaBackend, MarabouBackend]),
+    ("andGate",                [VNNLibBackend, AgdaBackend]),
+    ("autoencoderError",       [VNNLibBackend, AgdaBackend]),
+    ("increasing",             [VNNLibBackend, AgdaBackend]),
+    ("monotonicity",           [VNNLibBackend, AgdaBackend]),
+    ("reachability",           [VNNLibBackend, AgdaBackend, MarabouBackend]),
+    ("windController",         [VNNLibBackend, AgdaBackend, MarabouBackend]),
 
-goldenTestList :: [GoldenTestSpec]
-goldenTestList = realisticTestList <> simpleTestList <> miscTestList
-
-realisticTestList :: [GoldenTestSpec]
-realisticTestList = map (addTestDirectory ("examples" </> "network")) [
-  --("shortestPath",     [VNNLibBackend]),
-  ("andGate",                [VNNLibBackend, AgdaBackend]),
-  ("acasXu" </> "property6", [VNNLibBackend, AgdaBackend, MarabouBackend]),
-  ("monotonicity",           [VNNLibBackend, AgdaBackend]),
-  ("increasing",             [VNNLibBackend, AgdaBackend]),
-  ("reachability",           [VNNLibBackend, AgdaBackend, MarabouBackend]),
-  ("autoencoderError",       [VNNLibBackend, AgdaBackend]),
-  ("windController",         [VNNLibBackend, AgdaBackend, MarabouBackend])
-  ]
-
-simpleTestList :: [GoldenTestSpec]
-simpleTestList = map (addTestDirectory ("examples" </> "simple"))
-  [ ("quantifierIn",   [AgdaBackend])
-  , ("let",            [AgdaBackend])
-  ]
-
-miscTestList :: [GoldenTestSpec]
-miscTestList = map (addTestDirectory ("examples" </> "misc"))
-  [ --("dependent", [ITP (Vehicle Frontend)])
-  ]
+    -- Simple tests of Vehicle syntax
+    ("simple-quantifierIn",    [AgdaBackend]),
+    ("simple-let",             [AgdaBackend])
+    ]
 
 --------------------------------------------------------------------------------
 -- Test infrastructure
 
-type GoldenTestSpec = (FilePath, FilePath, [Backend])
+specDir :: FilePath
+specDir = "test" </> "specs"
 
-addTestDirectory :: FilePath -> (FilePath, [Backend]) -> GoldenTestSpec
-addTestDirectory folderPath (subfolder, targets) =
-  ( folderPath </> subfolder
-  , last (splitPath subfolder)
-  , targets
-  )
+goldenDir :: FilePath
+goldenDir = "test" </> "Test" </> "Compile" </> "Golden"
 
 getGoldenFilepathSuffix :: Backend -> String
 getGoldenFilepathSuffix (Verifier Marabou) = "-marabou"
 getGoldenFilepathSuffix (Verifier VNNLib)  = ".vnnlib"
 getGoldenFilepathSuffix (ITP Agda)         = ".agda"
 
-makeGoldenTestsFromSpec :: GoldenTestSpec -> TestTree
-makeGoldenTestsFromSpec (folderPath, testName, outputTargets) = testGroup testGroupName tests
+makeGoldenTests :: (String, [Backend]) -> TestTree
+makeGoldenTests (name, outputTargets) = testGroup name tests
   where
-    testGroupName :: String
-    testGroupName = takeFileName testName
-
     tests :: [TestTree]
-    tests = map (makeIndividualTest folderPath testName) outputTargets
+    tests = map (makeIndividualTest name) outputTargets
 
-makeIndividualTest :: FilePath -> FilePath -> Backend -> TestTree
-makeIndividualTest folderPath name backend = test
+makeIndividualTest :: String -> Backend -> TestTree
+makeIndividualTest name backend = test
   where
   testName       = name <> "-" <> show backend
   filePathSuffix = getGoldenFilepathSuffix backend
-  basePath       = folderPath </> name
   moduleName     = name <> "-output"
-  inputFile      = basePath <.> ".vcl"
+  inputFile      = specDir </> name </> name <.> ".vcl"
+  outputFile     = goldenDir </> name </> name <> "-temp-output" <> filePathSuffix
+  goldenFile     = goldenDir </> name </> name <> "-output"      <> filePathSuffix
   isFolderOutput = backend == MarabouBackend
-  outputFile     = basePath <> "-temp-output" <> filePathSuffix
-  goldenFile     = basePath <> "-output"      <> filePathSuffix
   run            = runTest inputFile outputFile moduleName backend
 
-  test = if backend == MarabouBackend
+  test = if isFolderOutput
     then goldenDirectoryTest testName run goldenFile outputFile
     else goldenFileTest      testName run goldenFile outputFile
 

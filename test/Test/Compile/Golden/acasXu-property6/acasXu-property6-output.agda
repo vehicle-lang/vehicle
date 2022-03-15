@@ -16,7 +16,7 @@ open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
 open import Data.Fin as Fin using (#_)
 open import Data.List
 
-module property6-output where
+module acasXu-property6-output where
 
 private
   VEHICLE_PROJECT_FILE = "TODO_projectFile"
