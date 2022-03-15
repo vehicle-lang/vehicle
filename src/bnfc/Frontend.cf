@@ -57,9 +57,12 @@ position token TokTCOrd       {"HasOrd"};
 position token TokTCContainer {"IsContainer"};
 position token TokTCTruth     {"IsTruth"};
 position token TokTCQuantify  {"IsQuantify"};
-position token TokTCNatural   {"IsNatural"};
-position token TokTCIntegral  {"IsInteger"};
-position token TokTCRational  {"IsRational"};
+position token TokTCNatOps    {"HasNatOperations"};
+position token TokTCIntOps    {"HasIntOperations"};
+position token TokTCRatOps    {"HasRatOperations"};
+position token TokTCNatLits   {"HasNatLiterals"};
+position token TokTCIntLits   {"HasIntLiterals"};
+position token TokTCRatLits   {"HasRatLiterals"};
 position token TokTCReal      {"IsReal"};
 
 position token Name        (letter (letter | digit | '_')*) ;
@@ -171,15 +174,17 @@ ForallIn.  Expr4 ::= TokForall [Binder] "inn" Expr5 TokDot Expr5;
 ExistsIn.  Expr4 ::= TokExists [Binder] "inn" Expr5 TokDot Expr5;
 
 -- Type classes
-TCEq.    Expr15 ::= TokTCEq        Expr15 Expr15;
-TCOrd.   Expr15 ::= TokTCOrd       Expr15 Expr15;
-TCCont.  Expr15 ::= TokTCContainer Expr15 Expr15;
-TCTruth. Expr15 ::= TokTCTruth     Expr15;
-TCQuant. Expr15 ::= TokTCQuantify  Expr15;
-TCNat.   Expr15 ::= TokTCNatural   Expr15;
-TCInt.   Expr15 ::= TokTCIntegral  Expr15;
-TCRat.   Expr15 ::= TokTCRational  Expr15;
-TCReal.  Expr15 ::= TokTCReal      Expr15;
+TCEq.      Expr15 ::= TokTCEq        Expr15 Expr15;
+TCOrd.     Expr15 ::= TokTCOrd       Expr15 Expr15;
+TCCont.    Expr15 ::= TokTCContainer Expr15 Expr15;
+TCTruth.   Expr15 ::= TokTCTruth     Expr15;
+TCQuant.   Expr15 ::= TokTCQuantify  Expr15;
+TCNatOps.  Expr15 ::= TokTCNatOps    Expr15;
+TCIntOps.  Expr15 ::= TokTCIntOps    Expr15;
+TCRatOps.  Expr15 ::= TokTCRatOps    Expr15;
+TCNatLits. Expr15 ::= TokTCNatLits   Expr15;
+TCIntLits. Expr15 ::= TokTCIntLits   Expr15;
+TCRatLits. Expr15 ::= TokTCRatLits   Expr15;
 
 coercions Expr 15;
 separator Expr ",";

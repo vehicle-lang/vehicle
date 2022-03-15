@@ -1,5 +1,3 @@
-{-# LANGUAGE ViewPatterns #-}
-
 module Vehicle.Compile.Type.TypeClass
   ( solveTypeClassConstraint
   ) where
@@ -41,10 +39,12 @@ solveTypeClassConstraint ctx m e = do
         (HasEq,          [t1, t2]) -> solveHasEq          constraint t1 t2
         (HasOrd,         [t1, t2]) -> solveHasOrd         constraint t1 t2
         (IsTruth,        [t])      -> solveIsTruth        constraint t
-        (IsNatural,      [t])      -> solveIsNatural      constraint t
-        (IsInteger,     [t])      -> solveIsInteger     constraint t
-        (IsRational,     [t])      -> solveIsRational     constraint t
-        (IsReal,         [t])      -> solveIsReal         constraint t
+        (HasNatOps,      [t])      -> solveHasNatOps      constraint t
+        (HasIntOps,      [t])      -> solveHasIntOps      constraint t
+        (HasRatOps,      [t])      -> solveHasRatOps      constraint t
+        (HasNatLits,     [t])      -> solveHasNatLits     constraint t
+        (HasIntLits,     [t])      -> solveHasIntLits     constraint t
+        (HasRatLits,     [t])      -> solveHasRatLits     constraint t
         (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable constraint t1 t2
         _                          -> developerError $
           "Unknown type-class" <+> squotes (pretty (show tc)) <+> "args" <+> prettyVerbose argsNF
@@ -126,39 +126,59 @@ solveIsContainer c tElem tCont =
     getContainerElem (TensorType _ t _) = Just t
     getContainerElem _                  = Nothing
 
-solveIsNatural :: MonadConstraintSolving m
+solveHasNatLits :: MonadConstraintSolving m
                => Constraint
                -> CheckedExpr
                -> m ConstraintProgress
-solveIsNatural _ (NatType  _) = return simplySolved
-solveIsNatural _ (IntType  _) = return simplySolved
-solveIsNatural _ (RatType  _) = return simplySolved
-solveIsNatural _ (RealType _) = return simplySolved
-solveIsNatural constraint _ = throwError $ FailedConstraints (constraint :| [])
+solveHasNatLits _ (NatType  _) = return simplySolved
+solveHasNatLits _ (IntType  _) = return simplySolved
+solveHasNatLits _ (RatType  _) = return simplySolved
+solveHasNatLits _ (RealType _) = return simplySolved
+solveHasNatLits constraint _   = throwError $ FailedConstraints (constraint :| [])
 
-solveIsInteger :: MonadConstraintSolving m
-             => Constraint
-             -> CheckedExpr
-             -> m ConstraintProgress
-solveIsInteger _ (IntType  _) = return simplySolved
-solveIsInteger _ (RatType  _) = return simplySolved
-solveIsInteger _ (RealType _) = return simplySolved
-solveIsInteger constraint _ = throwError $ FailedConstraints (constraint :| [])
+solveHasIntLits :: MonadConstraintSolving m
+               => Constraint
+               -> CheckedExpr
+               -> m ConstraintProgress
+solveHasIntLits _ (IntType  _) = return simplySolved
+solveHasIntLits _ (RatType  _) = return simplySolved
+solveHasIntLits _ (RealType _) = return simplySolved
+solveHasIntLits constraint _   = throwError $ FailedConstraints (constraint :| [])
 
-solveIsRational :: MonadConstraintSolving m
-             => Constraint
-             -> CheckedExpr
-             -> m ConstraintProgress
-solveIsRational _ (RatType  _) = return simplySolved
-solveIsRational _ (RealType _) = return simplySolved
-solveIsRational constraint _ = throwError $ FailedConstraints (constraint :| [])
+solveHasRatLits :: MonadConstraintSolving m
+               => Constraint
+               -> CheckedExpr
+               -> m ConstraintProgress
+solveHasRatLits _ (RatType  _) = return simplySolved
+solveHasRatLits _ (RealType _) = return simplySolved
+solveHasRatLits constraint _   = throwError $ FailedConstraints (constraint :| [])
 
-solveIsReal :: MonadConstraintSolving m
-            => Constraint
-            -> CheckedExpr
-            -> m ConstraintProgress
-solveIsReal _ (RealType _) = return simplySolved
-solveIsReal constraint _ = throwError $ FailedConstraints (constraint :| [])
+solveHasNatOps :: MonadConstraintSolving m
+               => Constraint
+               -> CheckedExpr
+               -> m ConstraintProgress
+solveHasNatOps _ (NatType  _) = return simplySolved
+solveHasNatOps _ (IntType  _) = return simplySolved
+solveHasNatOps _ (RatType  _) = return simplySolved
+solveHasNatOps _ (RealType _) = return simplySolved
+solveHasNatOps constraint _ = throwError $ FailedConstraints (constraint :| [])
+
+solveHasIntOps :: MonadConstraintSolving m
+               => Constraint
+               -> CheckedExpr
+               -> m ConstraintProgress
+solveHasIntOps _ (IntType  _) = return simplySolved
+solveHasIntOps _ (RatType  _) = return simplySolved
+solveHasIntOps _ (RealType _) = return simplySolved
+solveHasIntOps constraint _ = throwError $ FailedConstraints (constraint :| [])
+
+solveHasRatOps :: MonadConstraintSolving m
+               => Constraint
+               -> CheckedExpr
+               -> m ConstraintProgress
+solveHasRatOps _ (RatType  _) = return simplySolved
+solveHasRatOps _ (RealType _) = return simplySolved
+solveHasRatOps constraint _ = throwError $ FailedConstraints (constraint :| [])
 
 solveIsQuantifiable :: MonadConstraintSolving m
                     => Constraint

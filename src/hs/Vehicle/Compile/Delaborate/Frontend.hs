@@ -65,10 +65,12 @@ tokTCOrd = mkToken B.TokTCOrd "HasOrd"
 tokTCContainer = mkToken B.TokTCContainer "IsContainer"
 tokTCTruth = mkToken B.TokTCTruth "IsTruth"
 tokTCQuantify = mkToken B.TokTCQuantify "IsQuantify"
-tokTCNatural = mkToken B.TokTCNatural "IsNatural"
-tokTCIntegral = mkToken B.TokTCIntegral "IsInteger"
-tokTCRational = mkToken B.TokTCRational "IsRational"
-tokTCReal = mkToken B.TokTCReal "IsReal"
+tokTCNatOps  = mkToken B.TokTCNatOps "HasNatOperations"
+tokTCIntOps  = mkToken B.TokTCIntOps "HasIntOperations"
+tokTCRatOps  = mkToken B.TokTCRatOps "HasRatOperations"
+tokTCNatLits = mkToken B.TokTCNatLits "HasNatLiterals"
+tokTCIntLits = mkToken B.TokTCIntLits "HasIntLiterals"
+tokTCRatLits = mkToken B.TokTCRatLits "HasRatLiterals"
 
 -- * Conversion
 
@@ -181,10 +183,12 @@ delabBuiltin fun args = case fun of
   V.ContainerType V.Tensor -> delabOp2 B.Tensor tokTensor args
 
   V.TypeClass V.IsTruth        -> delabOp1 B.TCTruth tokTCTruth    args
-  V.TypeClass V.IsNatural      -> delabOp1 B.TCNat   tokTCNatural  args
-  V.TypeClass V.IsInteger     -> delabOp1 B.TCInt   tokTCIntegral args
-  V.TypeClass V.IsRational     -> delabOp1 B.TCRat   tokTCRational args
-  V.TypeClass V.IsReal         -> delabOp1 B.TCReal  tokTCReal     args
+  V.TypeClass V.HasNatOps      -> delabOp1 B.TCNatOps  tokTCNatOps   args
+  V.TypeClass V.HasIntOps      -> delabOp1 B.TCIntOps  tokTCIntOps   args
+  V.TypeClass V.HasRatOps      -> delabOp1 B.TCRatOps  tokTCRatOps   args
+  V.TypeClass V.HasNatLits     -> delabOp1 B.TCNatLits tokTCNatLits   args
+  V.TypeClass V.HasIntLits     -> delabOp1 B.TCIntLits tokTCIntLits   args
+  V.TypeClass V.HasRatLits     -> delabOp1 B.TCRatLits tokTCRatLits   args
   V.TypeClass V.IsQuantifiable -> delabOp1 B.TCQuant tokTCQuantify args
   V.TypeClass V.HasEq          -> delabOp2 B.TCEq    tokTCEq        args
   V.TypeClass V.HasOrd         -> delabOp2 B.TCOrd   tokTCOrd       args

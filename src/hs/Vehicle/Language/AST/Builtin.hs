@@ -89,10 +89,12 @@ data TypeClass
   = HasEq
   | HasOrd
   | IsTruth
-  | IsNatural
-  | IsInteger
-  | IsRational
-  | IsReal
+  | HasNatOps
+  | HasIntOps
+  | HasRatOps
+  | HasNatLits
+  | HasIntLits
+  | HasRatLits
   | IsContainer
   | IsQuantifiable
   deriving (Eq, Ord, Generic)
@@ -106,10 +108,12 @@ instance Show TypeClass where
     HasOrd         -> "HasOrd"
     IsTruth        -> "IsTruth"
     IsContainer    -> "IsContainer"
-    IsNatural      -> "IsNatural"
-    IsInteger     -> "IsInteger"
-    IsRational     -> "IsRational"
-    IsReal         -> "IsReal"
+    HasNatOps      -> "HasNatOperations"
+    HasIntOps      -> "HasIntOperations"
+    HasRatOps      -> "HasRatOperations"
+    HasNatLits     -> "HasNatLiterals"
+    HasIntLits     -> "HasIntLiterals"
+    HasRatLits     -> "HasRatLiterals"
     IsQuantifiable -> "IsQuantify"
 
 instance Pretty TypeClass where

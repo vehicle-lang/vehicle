@@ -139,15 +139,17 @@ instance Elab B.Expr V.InputExpr where
     B.Fold tk e1 e2 e3        -> builtin V.Fold tk [e1, e2, e3]
 
     --TypeClass folded into Expressions
-    B.TCEq    tk e1 e2 -> builtin (V.TypeClass V.HasEq)          tk [e1, e2]
-    B.TCOrd   tk e1 e2 -> builtin (V.TypeClass V.HasOrd)         tk [e1, e2]
-    B.TCCont  tk e1 e2 -> builtin (V.TypeClass V.IsContainer)    tk [e1, e2]
-    B.TCTruth tk e     -> builtin (V.TypeClass V.IsTruth)        tk [e]
-    B.TCQuant tk e     -> builtin (V.TypeClass V.IsQuantifiable) tk [e]
-    B.TCNat   tk e     -> builtin (V.TypeClass V.IsNatural)      tk [e]
-    B.TCInt   tk e     -> builtin (V.TypeClass V.IsInteger)     tk [e]
-    B.TCRat   tk e     -> builtin (V.TypeClass V.IsRational)     tk [e]
-    B.TCReal  tk e     -> builtin (V.TypeClass V.IsReal)         tk [e]
+    B.TCEq      tk e1 e2 -> builtin (V.TypeClass V.HasEq)          tk [e1, e2]
+    B.TCOrd     tk e1 e2 -> builtin (V.TypeClass V.HasOrd)         tk [e1, e2]
+    B.TCCont    tk e1 e2 -> builtin (V.TypeClass V.IsContainer)    tk [e1, e2]
+    B.TCTruth   tk e     -> builtin (V.TypeClass V.IsTruth)        tk [e]
+    B.TCQuant   tk e     -> builtin (V.TypeClass V.IsQuantifiable) tk [e]
+    B.TCNatOps  tk e     -> builtin (V.TypeClass V.HasNatOps)      tk [e]
+    B.TCIntOps  tk e     -> builtin (V.TypeClass V.HasIntOps)      tk [e]
+    B.TCRatOps  tk e     -> builtin (V.TypeClass V.HasRatOps)      tk [e]
+    B.TCNatLits tk e     -> builtin (V.TypeClass V.HasNatLits)     tk [e]
+    B.TCIntLits tk e     -> builtin (V.TypeClass V.HasIntLits)     tk [e]
+    B.TCRatLits tk e     -> builtin (V.TypeClass V.HasRatLits)     tk [e]
 
 instance Elab B.Arg V.InputArg where
   elab (B.ExplicitArg e) = mkArg V.Explicit <$> elab e

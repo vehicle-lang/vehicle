@@ -13,10 +13,12 @@ module Vehicle.Language.DSL
   , hasEq
   , hasOrd
   , isTruth
-  , isNatural
-  , isIntegral
-  , isRational
-  , isReal
+  , hasNatOps
+  , hasIntOps
+  , hasRatOps
+  , hasNatLits
+  , hasIntLits
+  , hasRatLits
   , isContainer
   , isQuantifiable
   , tMax
@@ -132,17 +134,23 @@ hasOrd tArg tRes = typeClass (TypeClass HasOrd) `eApp` [tArg, tRes]
 isTruth :: DSLExpr -> DSLExpr
 isTruth t = typeClass (TypeClass IsTruth) `eApp` [t]
 
-isNatural :: DSLExpr -> DSLExpr
-isNatural t = typeClass (TypeClass IsNatural) `eApp` [t]
+hasNatOps :: DSLExpr -> DSLExpr
+hasNatOps t = typeClass (TypeClass HasNatOps) `eApp` [t]
 
-isIntegral :: DSLExpr -> DSLExpr
-isIntegral t = typeClass (TypeClass IsInteger) `eApp` [t]
+hasIntOps :: DSLExpr -> DSLExpr
+hasIntOps t = typeClass (TypeClass HasIntOps) `eApp` [t]
 
-isRational :: DSLExpr -> DSLExpr
-isRational t = typeClass (TypeClass IsRational) `eApp` [t]
+hasRatOps :: DSLExpr -> DSLExpr
+hasRatOps t = typeClass (TypeClass HasRatOps) `eApp` [t]
 
-isReal :: DSLExpr -> DSLExpr
-isReal t = typeClass (TypeClass IsReal) `eApp` [t]
+hasNatLits :: DSLExpr -> DSLExpr
+hasNatLits t = typeClass (TypeClass HasNatLits) `eApp` [t]
+
+hasIntLits :: DSLExpr -> DSLExpr
+hasIntLits t = typeClass (TypeClass HasIntLits) `eApp` [t]
+
+hasRatLits :: DSLExpr -> DSLExpr
+hasRatLits t = typeClass (TypeClass HasRatLits) `eApp` [t]
 
 isContainer :: DSLExpr -> DSLExpr -> DSLExpr
 isContainer tCont tElem = typeClass (TypeClass IsContainer) `eApp` [tCont, tElem]

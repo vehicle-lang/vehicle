@@ -128,17 +128,17 @@ pattern
 --------------------------------------------------------------------------------
 -- IsInteger
 
-pattern IsIntegerExpr :: ann
+pattern HasIntOpsExpr :: ann
                        -> NumericType
                        -> Expr binder var ann
 pattern
-  IsIntegerExpr ann t <-
-    App ann (BuiltinTypeClass _ IsInteger)
+  HasIntOpsExpr ann t <-
+    App ann (BuiltinTypeClass _ HasIntOps)
       [ ExplicitArg _ (BuiltinNumericType _ t)
       ]
   where
-  IsIntegerExpr ann t =
-    App ann (BuiltinTypeClass ann IsInteger)
+  HasIntOpsExpr ann t =
+    App ann (BuiltinTypeClass ann HasIntOps)
       [ ExplicitArg ann (BuiltinNumericType ann t)
       ]
 
@@ -499,7 +499,7 @@ pattern
   NegExpr ann t explicitArgs =
     App ann (Builtin ann Neg)
       (  ImplicitArg ann (BuiltinNumericType ann t)
-      :| InstanceArg ann (PrimDict ann (IsIntegerExpr ann t))
+      :| InstanceArg ann (PrimDict ann (HasIntOpsExpr ann t))
       :  explicitArgs
       )
 

@@ -566,9 +566,9 @@ viaInfer ann expectedType e = do
 -- | Return the type of the provided literal,
 typeOfLiteral :: CheckedAnn -> Literal -> CheckedExpr
 typeOfLiteral ann l = fromDSL ann $ case l of
-  LNat  _ -> forall type0 $ \t -> isNatural  t ~~~> t
-  LInt  _ -> forall type0 $ \t -> isIntegral t ~~~> t
-  LRat  _ -> forall type0 $ \t -> isRational t ~~~> t
+  LNat  _ -> forall type0 $ \t -> hasNatLits t ~~~> t
+  LInt  _ -> forall type0 $ \t -> hasIntLits t ~~~> t
+  LRat  _ -> forall type0 $ \t -> hasRatLits t ~~~> t
   LBool _ -> forall type0 $ \t -> isTruth    t ~~~> t
 
 -- | Return the type of the provided builtin.
@@ -582,18 +582,20 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
   TypeClass HasEq           -> type0 ~> type0 ~> type0
   TypeClass HasOrd          -> type0 ~> type0 ~> type0
   TypeClass IsTruth         -> type0 ~> type0
-  TypeClass IsNatural       -> type0 ~> type0
-  TypeClass IsInteger       -> type0 ~> type0
-  TypeClass IsRational      -> type0 ~> type0
-  TypeClass IsReal          -> type0 ~> type0
+  TypeClass HasNatOps       -> type0 ~> type0
+  TypeClass HasIntOps       -> type0 ~> type0
+  TypeClass HasRatOps       -> type0 ~> type0
+  TypeClass HasNatLits      -> type0 ~> type0
+  TypeClass HasIntLits      -> type0 ~> type0
+  TypeClass HasRatLits      -> type0 ~> type0
   TypeClass IsContainer     -> type0 ~> type0 ~> type0
   TypeClass IsQuantifiable  -> type0 ~> type0 ~> type0
 
   If           -> typeOfIf
   Not          -> typeOfBoolOp1
   BooleanOp2 _ -> typeOfBoolOp2
-  Neg          -> typeOfNumOp1 isIntegral
-  NumericOp2 _ -> typeOfNumOp2 isNatural
+  Neg          -> typeOfNumOp1 hasIntOps
+  NumericOp2 _ -> typeOfNumOp2 hasNatOps
 
   Equality _ -> typeOfEqualityOp
   Order    _ -> typeOfComparisonOp

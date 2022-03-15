@@ -13,7 +13,7 @@ position token BuiltinToken
   | {"Prop"} | {"Bool"}
   | {"Tensor"} | {"List"} | {"::"} | {"!"}
   | {"Eq"} | {"Ord"} | {"Container"} | {"Truth"} | {"Quantify"}
-  | {"Natural"} | {"Integral"} | {"Rational"} | {"Real"}
+  | {"NatOps"} | {"IntOps"} | {"RatOps"}
   );
 position token NameToken (lower (letter | digit | '_')*) ;
 position token BoolToken ({"True"} | {"False"}) ;
