@@ -18,7 +18,7 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Parse
-import Vehicle.Compile.Elaborate.Frontend as Frontend (runElab, runElabExpr)
+import Vehicle.Compile.Elaborate.External as External (runElab, runElabExpr)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (runTypeCheck)
 import Vehicle.Compile.Normalise (normalise, defaultNormalisationOptions)

@@ -1,13 +1,13 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
-module Vehicle.Compile.Delaborate.Frontend
+module Vehicle.Compile.Delaborate.External
   ( Delaborate (delab, delabWithLogging)
   ) where
 
 import Data.Text ( pack )
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 
-import Vehicle.Frontend.Abs qualified as B
+import Vehicle.External.Abs qualified as B
 
 import Vehicle.Prelude
 import Vehicle.Language.AST qualified as V

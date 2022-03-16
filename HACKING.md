@@ -98,7 +98,7 @@ ops  :: [Builtin sort]
 
 Let's say you want to add a builtin operator for exponentials. Here's what you need to do:
 
-Add frontend syntax in `src/bnfc/Frontend.cf`:
+Add external syntax in `src/bnfc/External.cf`:
 
 ```diff
   position token TokGe       {">="};
@@ -123,7 +123,7 @@ Add frontend syntax in `src/bnfc/Frontend.cf`:
 
 Make sure to adjust the indices where necessary to get the appropriate fixity and associativity. For instance, we'd like the fixity level for exponentials to be *between* that of comparisons and multiplication/division, so we assign it level 8, and must increment the index for any level above 8. We must also update the *coercions* declaration, which generates coercions between all the various levels.
 
-Add core syntax in `src/bnfc/Core.cf`:
+Add internal syntax in `src/bnfc/Internal.cf`:
 
 ```diff
   position token Builtin
@@ -140,7 +140,7 @@ Add core syntax in `src/bnfc/Core.cf`:
 
 ```
 
-Add a case to the frontend AST in `src/hs/Vehicle/Frontend/AST/Core.hs`:
+Add a case to the external AST in `src/hs/Vehicle/External/AST/Core.hs`:
 ```diff
   | EGe      (ann 'EXPR) (Expr ann) (Expr ann)
   | EGt      (ann 'EXPR) (Expr ann) (Expr ann)
@@ -149,9 +149,9 @@ Add a case to the frontend AST in `src/hs/Vehicle/Frontend/AST/Core.hs`:
   | EDiv     (ann 'EXPR) (Expr ann) (Expr ann)
 ```
 
-Add cases to the recursive folds over the AST in `src/hs/Vehicle/Frontend/AST/Recursive.hs`.
+Add cases to the recursive folds over the AST in `src/hs/Vehicle/External/AST/Recursive.hs`.
 
-Add a case to elaboration in `src/hs/Vehicle/Frontend/Elaborate.hs`:
+Add a case to elaboration in `src/hs/Vehicle/External/Elaborate.hs`:
 
 ```diff
   VF.EGeF e1 tk e2               -> eOp2 tk e1 e2
@@ -161,7 +161,7 @@ Add a case to elaboration in `src/hs/Vehicle/Frontend/Elaborate.hs`:
   VF.EDivF e1 tk e2              -> eOp2 tk e1 e2
 ```
 
-Add a builtin operator to `src/hs/Vehicle/Core/AST/Builtin.hs`:
+Add a builtin operator to `src/hs/Vehicle/Internal/AST/Builtin.hs`:
 
 ```diff
   EGe     :: BuiltinOp 'EXPR
@@ -171,7 +171,7 @@ Add a builtin operator to `src/hs/Vehicle/Core/AST/Builtin.hs`:
   EDiv    :: BuiltinOp 'EXPR
 ```
 
-Add a case to the builtin checking in `src/hs/Vehicle/Core/Parse.hs`:
+Add a case to the builtin checking in `src/hs/Vehicle/Internal/Parse.hs`:
 
 ```diff
   , ">="    |-> EGe

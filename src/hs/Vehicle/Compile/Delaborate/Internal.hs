@@ -1,14 +1,14 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
-module Vehicle.Compile.Delaborate.Core
+module Vehicle.Compile.Delaborate.Internal
   ( Delaborate( delab, delabWithLogging )
   ) where
 
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (pack)
 
-import Vehicle.Core.Abs qualified as B
+import Vehicle.Internal.Abs qualified as B
 
 import Vehicle.Prelude
 import Vehicle.Language.AST qualified as V

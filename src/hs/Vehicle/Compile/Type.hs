@@ -26,7 +26,7 @@ import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (null)
 
 runTypeCheck :: (MonadCompile m,
-                TypeCheck a b, PrettyWith ('As 'Core) b,
+                TypeCheck a b, PrettyWith ('As 'Internal) b,
                 MetaSubstitutable b)
              => a
              -> m b
@@ -36,7 +36,7 @@ runTypeCheck e = do
   prog3 <- evalStateT prog2 emptyMetaCtx
   return prog3
 
-runAll :: (TCM m, TypeCheck a b, MetaSubstitutable b, PrettyWith ('As 'Core) b)
+runAll :: (TCM m, TypeCheck a b, MetaSubstitutable b, PrettyWith ('As 'Internal) b)
        => a
        -> m b
 runAll e1 = do

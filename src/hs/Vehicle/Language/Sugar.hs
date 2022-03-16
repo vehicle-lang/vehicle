@@ -9,7 +9,7 @@ import Vehicle.Language.AST
 -- General definitions
 
 -- This module deals with all the unfolding and folding of syntactic
--- sugar in the frontend language. The unfolding is designed so that it should
+-- sugar in the external language. The unfolding is designed so that it should
 -- be 100% reversible.
 
 type BindersAndBody     binder var ann = ([Binder binder var ann], Expr binder var ann)

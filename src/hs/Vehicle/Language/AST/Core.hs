@@ -177,7 +177,7 @@ traverseExplicitArgExpr _ arg               = return arg
 --------------------------------------------------------------------------------
 -- Expressions
 
--- | Type of Vehicle Core expressions.
+-- | Type of Vehicle internal expressions.
 --
 -- Annotations are parameterised over so that they can
 -- store arbitrary information used in e.g. type-checking.
@@ -348,7 +348,7 @@ instance HasIdentifier (Decl binder var ann) where
 --------------------------------------------------------------------------------
 -- Programs
 
--- | Type of Vehicle Core programs.
+-- | Type of Vehicle internal programs.
 newtype Prog binder var ann
   = Main [Decl binder var ann] -- ^ List of declarations.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)

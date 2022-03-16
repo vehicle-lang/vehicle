@@ -35,17 +35,17 @@ executable build
 library vehicle-bnfc
   import:               common-base
   hs-source-dirs:       gen/hs
-  exposed-modules:      Vehicle.Core.Abs
-                      , Vehicle.Core.ErrM
-                      , Vehicle.Core.Lex
-                      , Vehicle.Core.Par
-                      , Vehicle.Core.Print
-                      , Vehicle.Frontend.ErrM
-                      , Vehicle.Frontend.Layout
-                      , Vehicle.Frontend.Lex
-                      , Vehicle.Frontend.Par
-                      , Vehicle.Frontend.Abs
-                      , Vehicle.Frontend.Print
+  exposed-modules:      Vehicle.Internal.Abs
+                      , Vehicle.Internal.ErrM
+                      , Vehicle.Internal.Lex
+                      , Vehicle.Internal.Par
+                      , Vehicle.Internal.Print
+                      , Vehicle.External.ErrM
+                      , Vehicle.External.Layout
+                      , Vehicle.External.Lex
+                      , Vehicle.External.Par
+                      , Vehicle.External.Abs
+                      , Vehicle.External.Print
   build-depends:        array                >=0.5    && <1
 
 -- The main Vehicle library
@@ -66,8 +66,8 @@ library
                       , Vehicle.Compile.Error
                       , Vehicle.Compile.Error.Message
                       , Vehicle.Compile.Parse
-                      , Vehicle.Compile.Elaborate.Core
-                      , Vehicle.Compile.Elaborate.Frontend
+                      , Vehicle.Compile.Elaborate.Internal
+                      , Vehicle.Compile.Elaborate.External
                       , Vehicle.Compile.Scope
                       , Vehicle.Compile.Type
                       , Vehicle.Compile.CoDeBruijnify
@@ -80,8 +80,8 @@ library
                       , Vehicle.Compile.Simplify
                       , Vehicle.Compile.SupplyNames
                       , Vehicle.Compile.Descope
-                      , Vehicle.Compile.Delaborate.Core
-                      , Vehicle.Compile.Delaborate.Frontend
+                      , Vehicle.Compile.Delaborate.Internal
+                      , Vehicle.Compile.Delaborate.External
 
                       , Vehicle.Verify
                       , Vehicle.Verify.VerificationStatus

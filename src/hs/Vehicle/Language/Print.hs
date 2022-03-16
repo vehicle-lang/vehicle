@@ -22,16 +22,16 @@ import Data.IntMap (IntMap)
 import Control.Exception (assert)
 import Prettyprinter (list)
 
-import Vehicle.Core.Print as Core (printTree, Print)
-import Vehicle.Frontend.Print as Frontend (printTree, Print)
-import Vehicle.Core.Abs qualified as BC
-import Vehicle.Frontend.Abs qualified as BF
+import Vehicle.Internal.Print as Internal (printTree, Print)
+import Vehicle.External.Print as External (printTree, Print)
+import Vehicle.Internal.Abs qualified as BC
+import Vehicle.External.Abs qualified as BF
 
 import Vehicle.Prelude
 import Vehicle.Language.AST
 import Vehicle.Compile.Simplify
-import Vehicle.Compile.Delaborate.Core as Core
-import Vehicle.Compile.Delaborate.Frontend as Frontend
+import Vehicle.Compile.Delaborate.Internal as Internal
+import Vehicle.Compile.Delaborate.External as External
 import Vehicle.Compile.Descope
 import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
@@ -42,31 +42,31 @@ import Vehicle.Compile.Prelude
 
 -- The old methods for compatibility:
 
--- |Prints to the core language removing all implicit/instance arguments and
+-- |Prints to the internal language removing all implicit/instance arguments and
 -- automatically inserted code. Does not convert (Co)DeBruijn indices back to names.
-prettySimple :: (PrettyWith ('Simple ('As 'Core)) a) => a -> Doc b
-prettySimple = prettyWith @('Simple ('As 'Core))
+prettySimple :: (PrettyWith ('Simple ('As 'Internal)) a) => a -> Doc b
+prettySimple = prettyWith @('Simple ('As 'Internal))
 
--- |Prints to the core language in all it's gory detail. Does not convert (Co)DeBruijn
+-- |Prints to the internal language in all it's gory detail. Does not convert (Co)DeBruijn
 -- indices back to names. Useful for debugging.
-prettyVerbose :: (PrettyWith ('As 'Core) a) => a -> Doc b
-prettyVerbose = prettyWith @('As 'Core)
+prettyVerbose :: (PrettyWith ('As 'Internal) a) => a -> Doc b
+prettyVerbose = prettyWith @('As 'Internal)
 
--- |Prints to the frontend language for things that need to be displayed to
+-- |Prints to the external language for things that need to be displayed to
 -- the user.
-prettyFriendly :: (PrettyWith ('Named ('As 'Frontend)) a) => a -> Doc b
-prettyFriendly = prettyWith @('Named ('As 'Frontend))
+prettyFriendly :: (PrettyWith ('Named ('As 'External)) a) => a -> Doc b
+prettyFriendly = prettyWith @('Named ('As 'External))
 
--- |Prints to the frontend language for things that need to be displayed to
+-- |Prints to the external language for things that need to be displayed to
 -- the user. Use this when the expression is using DeBruijn indices and is
 -- not closed.
-prettyFriendlyDB :: (PrettyWith ('Named ('As 'Frontend)) ([DBBinding], a))
+prettyFriendlyDB :: (PrettyWith ('Named ('As 'External)) ([DBBinding], a))
                  => [DBBinding] -> a -> Doc b
-prettyFriendlyDB ctx e = prettyWith @('Named ('As 'Frontend)) (ctx, e)
+prettyFriendlyDB ctx e = prettyWith @('Named ('As 'External)) (ctx, e)
 
 -- | This is identical to |prettyFriendly|, but exists for historical reasons.
-prettyFriendlyDBClosed :: (PrettyWith ('Simple ('Named ('As 'Frontend))) a) => a -> Doc b
-prettyFriendlyDBClosed = prettyWith @('Simple ('Named ('As 'Frontend)))
+prettyFriendlyDBClosed :: (PrettyWith ('Simple ('Named ('As 'External))) a) => a -> Doc b
+prettyFriendlyDBClosed = prettyWith @('Simple ('Named ('As 'External)))
 
 
 
@@ -194,13 +194,13 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
 class PrettyUsing (strategy :: Strategy) a where
   prettyUsing :: a -> Doc b
 
-instance (Core.Delaborate t bnfc, Pretty bnfc)
-      => PrettyUsing ('ConvertTo 'Core) (t ann) where
-  prettyUsing e = pretty (Core.delab @t @bnfc e)
+instance (Internal.Delaborate t bnfc, Pretty bnfc)
+      => PrettyUsing ('ConvertTo 'Internal) (t ann) where
+  prettyUsing e = pretty (Internal.delab @t @bnfc e)
 
-instance (Frontend.Delaborate t bnfc, Pretty bnfc)
-      => PrettyUsing ('ConvertTo 'Frontend) (t ann) where
-  prettyUsing e = pretty (Frontend.delab @t @bnfc e)
+instance (External.Delaborate t bnfc, Pretty bnfc)
+      => PrettyUsing ('ConvertTo 'External) (t ann) where
+  prettyUsing e = pretty (External.delab @t @bnfc e)
 
 instance (Descope t, PrettyUsing rest (t Symbol Symbol ann))
       => PrettyUsing ('DBToNamedNaive rest) (t Symbol DBVar ann) where
@@ -300,25 +300,25 @@ instance (PrettyUsing rest CheckedExpr)
 
 -- Pretty instances for the BNFC data types
 
-newtype ViaBnfcCore a = ViaBnfcCore a
+newtype ViaBnfcInternal a = ViaBnfcInternal a
 
-instance Core.Print a => Pretty (ViaBnfcCore a) where
-  pretty (ViaBnfcCore e) = pretty (bnfcPrintHack (Core.printTree e))
+instance Internal.Print a => Pretty (ViaBnfcInternal a) where
+  pretty (ViaBnfcInternal e) = pretty (bnfcPrintHack (Internal.printTree e))
 
-deriving via (ViaBnfcCore BC.Prog) instance Pretty BC.Prog
-deriving via (ViaBnfcCore BC.Decl) instance Pretty BC.Decl
-deriving via (ViaBnfcCore BC.Expr) instance Pretty BC.Expr
+deriving via (ViaBnfcInternal BC.Prog) instance Pretty BC.Prog
+deriving via (ViaBnfcInternal BC.Decl) instance Pretty BC.Decl
+deriving via (ViaBnfcInternal BC.Expr) instance Pretty BC.Expr
 
-newtype ViaBnfcFrontend a = ViaBnfcFrontend a
+newtype ViaBnfcExternal a = ViaBnfcExternal a
 
-instance Frontend.Print a => Pretty (ViaBnfcFrontend a) where
-  pretty (ViaBnfcFrontend e) = pretty $ bnfcPrintHack (Frontend.printTree e)
+instance External.Print a => Pretty (ViaBnfcExternal a) where
+  pretty (ViaBnfcExternal e) = pretty $ bnfcPrintHack (External.printTree e)
 
-deriving via (ViaBnfcFrontend BF.Prog)   instance Pretty BF.Prog
-deriving via (ViaBnfcFrontend BF.Decl)   instance Pretty BF.Decl
-deriving via (ViaBnfcFrontend BF.Expr)   instance Pretty BF.Expr
-deriving via (ViaBnfcFrontend BF.Binder) instance Pretty BF.Binder
-deriving via (ViaBnfcFrontend BF.Arg)    instance Pretty BF.Arg
+deriving via (ViaBnfcExternal BF.Prog)   instance Pretty BF.Prog
+deriving via (ViaBnfcExternal BF.Decl)   instance Pretty BF.Decl
+deriving via (ViaBnfcExternal BF.Expr)   instance Pretty BF.Expr
+deriving via (ViaBnfcExternal BF.Binder) instance Pretty BF.Binder
+deriving via (ViaBnfcExternal BF.Arg)    instance Pretty BF.Arg
 
 -- BNFC printer treats the braces for implicit arguments as layout braces and
 -- therefore adds a ton of newlines everywhere. This hack attempts to undo this.

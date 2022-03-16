@@ -26,12 +26,12 @@ data CompileError
   -- Parse errors
   = BNFCParseError String
 
-  -- Errors thrown when elaborating from Core
+  -- Errors thrown when elaborating from the BNFC internal language
   | UnknownBuiltin     Token
   | MalformedPiBinder  Token
   | MalformedLamBinder InputExpr
 
-  -- Errors thrown when elaborating from Frontend
+  -- Errors thrown when elaborating from the BNFC external language
   | MissingDefFunType    Provenance Symbol
   | MissingDefFunExpr    Provenance Symbol
   | DuplicateName        (NonEmpty Provenance) Symbol

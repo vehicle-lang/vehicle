@@ -1,4 +1,4 @@
-module Vehicle.Compile.Elaborate.Core
+module Vehicle.Compile.Elaborate.Internal
   ( elab
   ) where
 
@@ -7,7 +7,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Text (unpack)
 
 import Vehicle.Prelude
-import Vehicle.Core.Abs as B
+import Vehicle.Internal.Abs as B
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error

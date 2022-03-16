@@ -49,29 +49,29 @@ genDirHS :: FilePath
 genDirHS   = "gen" </> "hs"
 
 bnfcTargets :: [FilePath]
-bnfcTargets = bnfcCoreTargets <> bnfcFrontendTargets
+bnfcTargets = bnfcInternalTargets <> bnfcExternalTargets
 
-bnfcCoreTargets :: [FilePath]
-bnfcCoreTargets =
-  [ genDirHS </> "Vehicle" </> "Core" </> file
+bnfcInternalTargets :: [FilePath]
+bnfcInternalTargets =
+  [ genDirHS </> "Vehicle" </> "Internal" </> file
   | file <- ["Lex.x", "Par.y", "ErrM.hs"]
   ]
 
-bnfcCoreGarbage :: [FilePath]
-bnfcCoreGarbage =
-  [ genDirHS </> "Vehicle" </> "Core" </> file
+bnfcInternalGarbage :: [FilePath]
+bnfcInternalGarbage =
+  [ genDirHS </> "Vehicle" </> "Internal" </> file
   | file <- ["Test.hs", "Skel.hs", "Doc.txt"]
   ]
 
-bnfcFrontendTargets :: [FilePath]
-bnfcFrontendTargets =
-  [ genDirHS </> "Vehicle" </> "Frontend" </> file
+bnfcExternalTargets :: [FilePath]
+bnfcExternalTargets =
+  [ genDirHS </> "Vehicle" </> "External" </> file
   | file <- ["Abs.hs", "Lex.x", "Layout.hs", "Par.y", "ErrM.hs"]
   ]
 
-bnfcFrontendGarbage :: [FilePath]
-bnfcFrontendGarbage =
-  [ genDirHS </> "Vehicle" </> "Frontend" </> file
+bnfcExternalGarbage :: [FilePath]
+bnfcExternalGarbage =
+  [ genDirHS </> "Vehicle" </> "External" </> file
   | file <- ["Test.hs", "Skel.hs", "Doc.txt"]
   ]
 
@@ -184,23 +184,23 @@ main = shakeArgs shakeOptions $ do
     return ()
 
   -------------------------------------------------------------------------------
-  -- Build parsers for Frontend and Core languages using BNFC
+  -- Build parsers for External and Internal languages using BNFC
   -------------------------------------------------------------------------------
   --
   -- NOTE:
   --
   -- The call to BNFC creates multiple files, so we're using a multi-target task.
-  -- To keep things readable, we first compute the targets for the Frontend and
-  -- the Core languages, and then define a task for each. The phony bnfc task
+  -- To keep things readable, we first compute the targets for the External and
+  -- the Internal languages, and then define a task for each. The phony bnfc task
   -- builds all parsers.
 
   phony "bnfc" $ do
-    need bnfcCoreTargets
-    need bnfcFrontendTargets
+    need bnfcInternalTargets
+    need bnfcExternalTargets
 
-  bnfcCoreTargets &%> \_ -> do
+  bnfcInternalTargets &%> \_ -> do
     requireBNFC
-    need [ srcDirBNFC </> "Core.cf" ]
+    need [ srcDirBNFC </> "Internal.cf" ]
     liftIO $ createDirectoryIfMissing True genDirHS
     command_ [] "bnfc"
       [ "-d"
@@ -209,13 +209,13 @@ main = shakeArgs shakeOptions $ do
       , "--text-token"
       , "--name-space=Vehicle"
       , "--outputdir=" <> genDirHS
-      , srcDirBNFC </> "Core.cf"
+      , srcDirBNFC </> "Internal.cf"
       ]
-    removeFilesAfter "." bnfcCoreGarbage
+    removeFilesAfter "." bnfcInternalGarbage
 
-  bnfcFrontendTargets &%> \_ -> do
+  bnfcExternalTargets &%> \_ -> do
     requireBNFC
-    need [ srcDirBNFC </> "Frontend.cf" ]
+    need [ srcDirBNFC </> "External.cf" ]
     liftIO $ createDirectoryIfMissing True genDirHS
     command_ [] "bnfc"
       [ "-d"
@@ -224,24 +224,24 @@ main = shakeArgs shakeOptions $ do
       , "--text-token"
       , "--name-space=Vehicle"
       , "--outputdir=" <> genDirHS
-      , srcDirBNFC </> "Frontend.cf"
+      , srcDirBNFC </> "External.cf"
       ]
-    removeFilesAfter "." bnfcFrontendGarbage
+    removeFilesAfter "." bnfcExternalGarbage
 
 {-
-.PHONY: bnfc-core-info
-bnfc-core-info: $(GEN_DIR_HS)/Vehicle/Core/Par.info
+.PHONY: bnfc-internal-info
+bnfc-internal-info: $(GEN_DIR_HS)/Vehicle/Internal/Par.info
 
-$(GEN_DIR_HS)/Vehicle/Core/Par.info: $(GEN_DIR_HS)/Vehicle/Core/Par.y
-	$(HAPPY) gen/hs/Vehicle/Core/Par.y --info=gen/hs/Vehicle/Core/Par.info
+$(GEN_DIR_HS)/Vehicle/Internal/Par.info: $(GEN_DIR_HS)/Vehicle/Internal/Par.y
+	$(HAPPY) gen/hs/Vehicle/Internal/Par.y --info=gen/hs/Vehicle/Internal/Par.info
 -}
 
 {-
-.PHONY: bnfc-frontend-info
-bnfc-frontend-info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.info
+.PHONY: bnfc-external-info
+bnfc-external-info: $(GEN_DIR_HS)/Vehicle/External/Par.info
 
-$(GEN_DIR_HS)/Vehicle/Frontend/Par.info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.y
-	$(HAPPY) gen/hs/Vehicle/Frontend/Par.y --info=gen/hs/Vehicle/Frontend/Par.info
+$(GEN_DIR_HS)/Vehicle/External/Par.info: $(GEN_DIR_HS)/Vehicle/External/Par.y
+	$(HAPPY) gen/hs/Vehicle/External/Par.y --info=gen/hs/Vehicle/External/Par.info
 -}
   -------------------------------------------------------------------------------
   -- Build type-checker and compiler for Vehicle

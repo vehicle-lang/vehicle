@@ -45,7 +45,7 @@ import Paths_vehicle qualified as Cabal (version)
 vehicleVersion :: Version
 vehicleVersion = Cabal.version
 
-data VehicleLang = Frontend | Core
+data VehicleLang = External | Internal
   deriving (Show)
 
 infix 1 |->

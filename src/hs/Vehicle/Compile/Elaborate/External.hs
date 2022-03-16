@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Compile.Elaborate.Frontend
+module Vehicle.Compile.Elaborate.External
   ( runElab
   , runElabExpr
   ) where
@@ -10,7 +10,7 @@ import Data.Bitraversable (bitraverse)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty (groupBy1, head, toList)
 
-import Vehicle.Frontend.Abs qualified as B
+import Vehicle.External.Abs qualified as B
 
 import Vehicle.Prelude
 import Vehicle.Language.Sugar

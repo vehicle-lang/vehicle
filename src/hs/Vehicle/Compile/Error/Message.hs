@@ -86,7 +86,7 @@ instance MeaningfulError CompileError where
       -- information than a simple string surely?
       (pack text)
 
-    -- Elaboration Core
+    -- Elaboration internal
 
     UnknownBuiltin tk -> UError $ UserError
       { provenance = tkProvenance tk
@@ -106,7 +106,7 @@ instance MeaningfulError CompileError where
       , fix        = "Unknown"
       }
 
-    -- Elaboration Frontend
+    -- Elaboration external
 
     MissingDefFunType p name -> UError $ UserError
       { provenance = p

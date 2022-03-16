@@ -1,4 +1,4 @@
--- Grammar of Vehicle Core
+-- Grammar of the Vehicle Internal language
 
 comment "(*" "*)";
 

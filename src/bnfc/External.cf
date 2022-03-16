@@ -1,4 +1,4 @@
--- Grammar of Vehicle
+-- Grammar of the Vehicle External language
 
 comment "--";
 comment "{-" "-}";

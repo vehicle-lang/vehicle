@@ -26,7 +26,7 @@ data CompileOptions = CompileOptions
 --------------------------------------------------------------------------------
 -- Type synonyms
 
--- * Type of annotations attached to the Frontend AST after parsing
+-- * Type of annotations attached to the AST after parsing
 -- before being analysed by the compiler
 
 type InputBinding = Maybe NamedBinding
@@ -63,7 +63,7 @@ type CheckedExpr   = DBExpr    CheckedAnn
 type CheckedDecl   = DBDecl    CheckedAnn
 type CheckedProg   = DBProg    CheckedAnn
 
--- * Type of annotations attached to the Core AST that are output by the compiler
+-- * Type of annotations attached to the AST that are output by the compiler
 
 type OutputBinding = NamedBinding
 type OutputVar     = NamedVar
