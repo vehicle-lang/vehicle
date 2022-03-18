@@ -46,8 +46,10 @@ realisticTestList = map (addTestDirectory ("examples" </> "network")) [
   ("increasing",             [VNNLibBackend, AgdaBackend]),
   ("reachability",           [VNNLibBackend, AgdaBackend, MarabouBackend]),
   ("autoencoderError",       [VNNLibBackend, AgdaBackend]),
-  ("windController",         [VNNLibBackend, AgdaBackend, MarabouBackend])
+  ("windController",         [VNNLibBackend, AgdaBackend, MarabouBackend]),
+  ("lossFunction",           [LossFunction])
   ]
+
 
 simpleTestList :: [GoldenTestSpec]
 simpleTestList = map (addTestDirectory ("examples" </> "simple"))
@@ -76,6 +78,7 @@ getGoldenFilepathSuffix :: Backend -> String
 getGoldenFilepathSuffix (Verifier Marabou) = "-marabou"
 getGoldenFilepathSuffix (Verifier VNNLib)  = ".vnnlib"
 getGoldenFilepathSuffix (ITP Agda)         = ".agda"
+getGoldenFilepathSuffix LossFunction       = ".json"
 
 makeGoldenTestsFromSpec :: GoldenTestSpec -> TestTree
 makeGoldenTestsFromSpec (folderPath, testName, outputTargets) = testGroup testGroupName tests

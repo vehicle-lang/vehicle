@@ -28,6 +28,9 @@ import Vehicle.Backend.Marabou (MarabouProperty, writeMarabouQueryFiles)
 import Vehicle.Backend.VNNLib qualified as VNNLib
 import Vehicle.Backend.VNNLib (VNNLibProperty, writeVNNLibQueryFiles)
 import Vehicle.Backend.Agda
+import Vehicle.Backend.LossFunction qualified as LossFunction
+import Vehicle.Backend.LossFunction ( LExpr, writeLossFunctionFiles)
+
 
 compile :: LoggingOptions -> CompileOptions -> IO ()
 compile loggingOptions CompileOptions{..} = case outputTarget of
@@ -43,6 +46,10 @@ compile loggingOptions CompileOptions{..} = case outputTarget of
   Verifier VNNLib -> do
     vnnlibProperties <- compileToVNNLib loggingOptions inputFile
     writeVNNLibQueryFiles outputFile vnnlibProperties
+
+  LossFunction -> do
+    lossFunction <- compileToLossFunction loggingOptions inputFile
+    writeLossFunctionFiles outputFile lossFunction
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
@@ -67,6 +74,13 @@ compileToAgda loggingOptions agdaOptions inputFile = do
   fromLoggedEitherIO loggingOptions $ do
     prog <- typeCheck contents
     compileProgToAgda agdaOptions prog
+
+compileToLossFunction :: LoggingOptions -> FilePath -> IO [LExpr]
+compileToLossFunction loggingOptions inputFile = do
+  contents  <- TIO.readFile inputFile
+  fromLoggedEitherIO loggingOptions $ do
+    (networkCtx, prog) <- typeCheckAndExtractNetwork contents
+    LossFunction.compile networkCtx prog
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply multiple compiler passes

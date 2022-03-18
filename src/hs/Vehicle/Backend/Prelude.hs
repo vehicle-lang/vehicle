@@ -11,6 +11,7 @@ import Paths_vehicle qualified as VehiclePath
 data Backend
   = ITP ITP
   | Verifier Verifier
+  | LossFunction
   deriving (Eq)
 
 data ITP
@@ -38,11 +39,13 @@ pattern VNNLibBackend = Verifier VNNLib
 instance Pretty Backend where
   pretty (ITP x)      = pretty $ show x
   pretty (Verifier x) = pretty $ show x
+  pretty LossFunction = "LossFunction"
 
 instance Show Backend where
   show = \case
     ITP      arg -> show arg
     Verifier arg -> show arg
+    LossFunction -> "LossFunction"
 
 instance Read Backend where
   readsPrec d x =
@@ -57,12 +60,14 @@ commentTokenOf = \case
   Verifier Marabou -> Nothing
   Verifier VNNLib  -> Just ";"
   ITP Agda         -> Just "--"
+  LossFunction     -> Nothing
 
 versionOf :: Backend -> Maybe Version
 versionOf target = case target of
   Verifier Marabou -> Nothing
   Verifier VNNLib  -> Nothing
   ITP Agda         -> Just $ makeVersion [2,6,2]
+  LossFunction     -> Nothing
 
 -- |Generate the file header given the token used to start comments in the
 -- target language
