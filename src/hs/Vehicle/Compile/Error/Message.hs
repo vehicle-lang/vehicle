@@ -268,20 +268,6 @@ instance MeaningfulError CompileError where
       , fix        = "see user manual for details"
       }
 
-    LookupInEmptyTensor target p -> UError $ UserError
-      { provenance = p
-      , problem    = "When targeting" <+> pretty target <+> ", cannot lookup a value in" <+>
-                     "a zero-dimensional tensor."
-      , fix        = "see user manual for details"
-      }
-
-    TensorIndexOutOfBounds p size index -> UError $ UserError
-      { provenance = p
-      , problem    = "Looking up index" <+> pretty index <+>
-                     "in a tensor whose first dimension is of size" <+> pretty size
-      , fix        = "see user manual for details"
-      }
-
     UnsupportedDecl target ann ident decType ->
       let dType = squotes (pretty decType) in UError $ UserError
       { provenance = provenanceOf ann
@@ -417,5 +403,13 @@ unsolvedConstraintError constraint ctx ="Typing error: not enough information to
 
 failedConstraintError :: Constraint -> [DBBinding] -> Doc a
 failedConstraintError constraint ctx = "Type error:" <+> case baseConstraint constraint of
-  Unify (t1, t2) -> prettyFriendlyDB ctx t1 <+> "!=" <+> prettyFriendlyDB ctx t2
-  _ `Has` t      -> "Could not satisfy" <+> squotes (prettyFriendlyDB ctx t)
+  Unify (t1, t2) ->
+    prettyFriendlyDB ctx t1 <+> "!=" <+> prettyFriendlyDB ctx t2
+
+  _ `Has` (HasNatLitsUpToExpr _ n (FinType _ (LiteralExpr _ _ v))) ->
+    "Index" <+> pretty n <+> "is out of bounds when looking up value in tensor of size" <+> pretty v
+
+  _ `Has` (HasNatLitsUpToExpr _ n (FinType _ v)) ->
+    "Unknown if index" <+> pretty n <+> "is in bounds when looking up value in tensor of size" <+> prettyFriendlyDB ctx v
+
+  _ `Has` t -> "Could not satisfy" <+> squotes (prettyFriendlyDB ctx t)

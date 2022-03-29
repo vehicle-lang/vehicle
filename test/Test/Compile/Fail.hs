@@ -42,6 +42,8 @@ networkFailTests = failTestGroup "NetworkTypeErrors"
 typeCheckingFailTests :: TestTree
 typeCheckingFailTests = failTestGroup "TypingErrors"
   [ ("intAsNat", Nothing)
+  , ("indexOutOfBounds", Nothing)
+  , ("indexOutOfBoundsUnknown", Nothing)
   ]
 
 failTestGroup :: FilePath -> [(FilePath, Maybe Backend)] -> TestTree
@@ -72,7 +74,7 @@ runTest inputFile outputFile backend = do
       { version       = False
       , outFile       = Nothing
       , errFile       = Just outputFile
-      , logFile       = Nothing --Just Nothing
+      , logFile       = Nothing -- Just Nothing
       , commandOption = Compile $ CompileOptions
         { target       = backend
         , inputFile    = inputFile

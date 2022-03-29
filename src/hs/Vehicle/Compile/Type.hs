@@ -566,7 +566,7 @@ viaInfer ann expectedType e = do
 -- | Return the type of the provided literal,
 typeOfLiteral :: CheckedAnn -> Literal -> CheckedExpr
 typeOfLiteral ann l = fromDSL ann $ case l of
-  LNat  _ -> forall type0 $ \t -> hasNatLits t ~~~> t
+  LNat  n -> forall type0 $ \t -> hasNatLitsUpTo n t ~~~> t
   LInt  _ -> forall type0 $ \t -> hasIntLits t ~~~> t
   LRat  _ -> forall type0 $ \t -> hasRatLits t ~~~> t
   LBool _ -> forall type0 $ \t -> isTruth    t ~~~> t
@@ -578,18 +578,19 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
   NumericType   _           -> type0
   ContainerType List        -> type0 ~> type0
   ContainerType Tensor      -> type0 ~> tList tNat ~> type0
+  Fin                       -> tNat ~> type0
 
-  TypeClass HasEq           -> type0 ~> type0 ~> type0
-  TypeClass HasOrd          -> type0 ~> type0 ~> type0
-  TypeClass IsTruth         -> type0 ~> type0
-  TypeClass HasNatOps       -> type0 ~> type0
-  TypeClass HasIntOps       -> type0 ~> type0
-  TypeClass HasRatOps       -> type0 ~> type0
-  TypeClass HasNatLits      -> type0 ~> type0
-  TypeClass HasIntLits      -> type0 ~> type0
-  TypeClass HasRatLits      -> type0 ~> type0
-  TypeClass IsContainer     -> type0 ~> type0 ~> type0
-  TypeClass IsQuantifiable  -> type0 ~> type0 ~> type0
+  TypeClass HasEq               -> type0 ~> type0 ~> type0
+  TypeClass HasOrd              -> type0 ~> type0 ~> type0
+  TypeClass IsTruth             -> type0 ~> type0
+  TypeClass HasNatOps           -> type0 ~> type0
+  TypeClass HasIntOps           -> type0 ~> type0
+  TypeClass HasRatOps           -> type0 ~> type0
+  TypeClass (HasNatLitsUpTo _)  -> type0 ~> type0
+  TypeClass HasIntLits          -> type0 ~> type0
+  TypeClass HasRatLits          -> type0 ~> type0
+  TypeClass IsContainer         -> type0 ~> type0 ~> type0
+  TypeClass IsQuantifiable      -> type0 ~> type0 ~> type0
 
   If           -> typeOfIf
   Not          -> typeOfBoolOp1
@@ -665,8 +666,9 @@ typeOfCons =
 typeOfAtOp :: DSLExpr
 typeOfAtOp =
   forall type0 $ \tElem ->
-    forall type0 $ \tDims ->
-      tTensor tElem tDims ~> tNat ~> tElem
+    forall type0 $ \tDim ->
+      forall type0 $ \tDims ->
+        tTensor tElem (cons tDim tDims) ~> tFin tDim ~> tElem
 
 -- TODO generalise these to tensors etc. (remember to do mkMap' in utils as well)
 typeOfMapOp :: DSLExpr

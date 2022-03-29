@@ -43,8 +43,7 @@ intruderFarAway x =
   and 0     <= intruderSpeed      x <= 1200
 
 advisesClearOfConflict : InputVector -> Prop
-advisesClearOfConflict x = let y = acasXu x in
-  y ! 0 > y ! 1 and y ! 0 > y ! 2 and y ! 0 > y ! 3 and y ! 0 > y ! 4
+advisesClearOfConflict x = forall i . i != 0 => acasXu x ! 0 > acasXu x ! i
 
 property6 : Prop
 property6 = forall x . intruderFarAway x => advisesClearOfConflict x

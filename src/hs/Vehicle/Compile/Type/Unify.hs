@@ -90,6 +90,24 @@ solveUnificationConstraint ctx (e1, e2) = do
           , solvedMetas    = mempty
           }
 
+    -- Try to unify with LSeq and Cons
+    (LSeq ann dict1 es, []) :~: (Builtin _ Cons, args2) ->
+      case (dict1, es, args2) of
+        (PrimDict _ (IsContainerExpr _ t1 _), x1 : xs1, [t2, x2, xs2]) -> do
+          let typeConstraint = Constraint ctx (Unify (t1, argExpr t2))
+          let headConstraint = Constraint ctx (Unify (x1, argExpr x2))
+          let tailConstraint = Constraint ctx (Unify (LSeq ann dict1 xs1, argExpr xs2))
+          return Progress
+            { newConstraints = [typeConstraint, headConstraint, tailConstraint]
+            , solvedMetas    = mempty
+            }
+        _ -> throwError $ FailedConstraints [constraint]
+
+    (Builtin _ Cons, _) :~: (LSeq{}, []) ->
+      -- mirror image of the previous case, so just swap the problem over.
+      solveUnificationConstraint ctx (whnfE2, whnfE1)
+
+
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
       | visibilityOf binder1 /= visibilityOf binder2 ->
         throwError $ FailedConstraints [constraint]

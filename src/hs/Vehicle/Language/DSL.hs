@@ -10,13 +10,14 @@ module Vehicle.Language.DSL
   , tReal
   , tList
   , tTensor
+  , tFin
   , hasEq
   , hasOrd
   , isTruth
   , hasNatOps
   , hasIntOps
   , hasRatOps
-  , hasNatLits
+  , hasNatLitsUpTo
   , hasIntLits
   , hasRatLits
   , isContainer
@@ -24,6 +25,7 @@ module Vehicle.Language.DSL
   , tMax
   , tHole
   , piType
+  , cons
   ) where
 
 import Prelude hiding (pi)
@@ -33,6 +35,9 @@ import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Prelude
 
+--------------------------------------------------------------------------------
+-- Definition
+
 class DSL expr where
   infixl 4 `app`
   infixr 4 ~>
@@ -40,7 +45,6 @@ class DSL expr where
   infixr 4 ~~~>
 
   app :: expr -> NonEmpty (Visibility, expr) -> expr
-  -- lam :: Visibility -> Name -> expr -> (expr -> expr) -> expr
   pi  :: Visibility -> expr -> (expr -> expr) -> expr
 
   eApp :: expr -> NonEmpty expr -> expr
@@ -81,9 +85,6 @@ instance DSL DSLExpr where
         args' = fmap (\(v, e) -> Arg ann v (unDSL e ann i)) args
     in App ann fun' args'
 
---lamType :: Provenance -> Visibility -> Name -> CheckedExpr -> CheckedExpr -> CheckedExpr
---lamType p v n varType bodyType = fromDSL (pi p v n (toDSL varType) (const (toDSL bodyType)))
-
 piType :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 piType t1 t2 = t1 `tMax` t2
 
@@ -99,7 +100,8 @@ tMax t1 t2  = Type (universeLevel t1 `max` universeLevel t2)
 con :: Builtin -> DSLExpr
 con b = DSL $ \ann _ -> Builtin ann b
 
--- * Types
+--------------------------------------------------------------------------------
+-- Types
 
 type0 :: DSLExpr
 type0 = DSL $ const $ const Type0
@@ -117,10 +119,14 @@ tTensor tElem dims = con (ContainerType Tensor) `eApp` [tElem, dims]
 tList :: DSLExpr -> DSLExpr
 tList tElem = con (ContainerType List) `eApp` [tElem]
 
+tFin :: DSLExpr -> DSLExpr
+tFin n = con Fin `eApp` [n]
+
 tHole :: Symbol -> DSLExpr
 tHole name = DSL $ \ann _ -> Hole ann name
 
--- * TypeClass
+--------------------------------------------------------------------------------
+-- TypeClass
 
 typeClass :: Builtin -> DSLExpr
 typeClass op = DSL $ \ann _ -> Builtin ann op
@@ -143,8 +149,8 @@ hasIntOps t = typeClass (TypeClass HasIntOps) `eApp` [t]
 hasRatOps :: DSLExpr -> DSLExpr
 hasRatOps t = typeClass (TypeClass HasRatOps) `eApp` [t]
 
-hasNatLits :: DSLExpr -> DSLExpr
-hasNatLits t = typeClass (TypeClass HasNatLits) `eApp` [t]
+hasNatLitsUpTo :: Int -> DSLExpr -> DSLExpr
+hasNatLitsUpTo n t = typeClass (TypeClass (HasNatLitsUpTo n)) `eApp` [t]
 
 hasIntLits :: DSLExpr -> DSLExpr
 hasIntLits t = typeClass (TypeClass HasIntLits) `eApp` [t]
@@ -157,3 +163,9 @@ isContainer tCont tElem = typeClass (TypeClass IsContainer) `eApp` [tCont, tElem
 
 isQuantifiable :: DSLExpr -> DSLExpr -> DSLExpr
 isQuantifiable tDom tTruth = typeClass (TypeClass IsQuantifiable) `eApp` [tDom, tTruth]
+
+--------------------------------------------------------------------------------
+-- Operations
+
+cons :: DSLExpr -> DSLExpr -> DSLExpr
+cons x xs = app (con Cons) [(Implicit, tNat), (Explicit, x), (Explicit, xs)]

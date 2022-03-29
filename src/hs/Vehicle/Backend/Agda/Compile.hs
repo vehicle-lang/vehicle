@@ -157,20 +157,20 @@ moduleHeader moduleName = "module" <+> pretty moduleName <+> "where"
 
 numericQualifier :: NumericType -> Doc a
 numericQualifier = \case
-  Nat  -> "ℕ"
-  Int  -> "ℤ"
-  Rat  -> "ℚ"
-  Real -> "ℝ"
+  Nat   -> "ℕ"
+  Int   -> "ℤ"
+  Rat   -> "ℚ"
+  Real  -> "ℝ"
 
 containerQualifier :: ContainerType -> Doc a
 containerQualifier = pretty . show
 
 numericDependencies :: NumericType -> [Dependency]
 numericDependencies = \case
-  Nat  -> [DataNat]
-  Int  -> [DataInteger]
-  Rat  -> [DataRat]
-  Real -> [DataReal]
+  Nat   -> [DataNat]
+  Int   -> [DataInteger]
+  Rat   -> [DataRat]
+  Real  -> [DataReal]
 
 indentCode :: Code -> Code
 indentCode = indent 2
@@ -381,6 +381,7 @@ compileBuiltin e = case e of
 
   ListType   _ tElem       -> annotateApp [DataList]   "List"   <$> traverse compileExpr [tElem]
   TensorType _ tElem tDims -> annotateApp [DataTensor] "Tensor" <$> traverse compileExpr [tElem, tDims]
+  FinType    _ size        -> annotateApp [DataFin]    "Fin"    <$> traverse compileExpr [size]
 
   IfExpr _ _ [e1, e2, e3] -> do
     ce1 <- compileArg e1
@@ -401,8 +402,8 @@ compileBuiltin e = case e of
   (EqualityExpr Eq  _ t1 t2 args) -> compileEquality   t1 t2 =<< traverse compileArg args
   (EqualityExpr Neq _ t1 t2 args) -> compileInequality t1 t2 =<< traverse compileArg args
 
-  (ConsExpr _ tElem       args)  -> compileCons tElem <$> traverse compileArg args
-  (AtExpr ann _tElem tDims args) -> compileAt ann tDims (map argExpr args)
+  (ConsExpr _ tElem               args) -> compileCons tElem <$> traverse compileArg args
+  (AtExpr ann _tElem _tDim _tDims args) -> compileAt ann (map argExpr args)
 
   MapExpr{}             -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Map
   FoldExpr{}            -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Fold
@@ -451,10 +452,11 @@ compileQuantIn Prop = compileContainerTypeLevelQuantifier
 
 compileLiteral :: MonadAgdaCompile m => OutputExpr -> m Code
 compileLiteral e = return $ case e of
-  NatLiteralExpr  _ann Nat  n -> compileNatLiteral  (toInteger n)
-  NatLiteralExpr  _ann Int  n -> compileIntLiteral  (toInteger n)
-  NatLiteralExpr  _ann Rat  n -> compileRatLiteral  (toRational n)
-  NatLiteralExpr  _ann Real n -> compileRealLiteral (toRational n)
+  NatLiteralExpr  _ann FinType{}  n -> compileFinLiteral  (toInteger n)
+  NatLiteralExpr  _ann NatType{}  n -> compileNatLiteral  (toInteger n)
+  NatLiteralExpr  _ann IntType{}  n -> compileIntLiteral  (toInteger n)
+  NatLiteralExpr  _ann RatType{}  n -> compileRatLiteral  (toRational n)
+  NatLiteralExpr  _ann RealType{} n -> compileRealLiteral (toRational n)
   IntLiteralExpr  _ann Int  i -> compileIntLiteral  (toInteger i)
   IntLiteralExpr  _ann Rat  i -> compileRatLiteral  (toRational i)
   IntLiteralExpr  _ann Real i -> compileRealLiteral (toRational i)
@@ -465,6 +467,9 @@ compileLiteral e = return $ case e of
     "unexpected literal" <+> squotes (prettyVerbose e) <+>
     -- "of type" <+> squotes (pretty t) <+>
     "found during compilation to Agda"
+
+compileFinLiteral :: Integer -> Code
+compileFinLiteral i = annotateInfixOp1 [DataFin] 10 Nothing "#" [pretty i]
 
 compileNatLiteral :: Integer -> Code
 compileNatLiteral = pretty
@@ -545,14 +550,14 @@ compileNumOp2 op2 t = annotateInfixOp2 dependencies precedence id qualifier opDo
     precedence = if op2 == Mul || op2 == Div then 7 else 6
     qualifier  = Just (numericQualifier t)
     (opDoc, dependencies) = case (op2, t) of
-      (Add, _)    -> ("+", numericDependencies t)
-      (Mul, _)    -> ("*", numericDependencies t)
-      (Sub, Nat)  -> ("∸", numericDependencies t)
-      (Sub, _)    -> ("-", numericDependencies t)
-      (Div, Nat)  -> ("/", [DataNatDivMod])
-      (Div, Int)  -> ("/", [DataIntegerDivMod])
-      (Div, Rat)  -> ("÷", [DataRat])
-      (Div, Real) -> ("÷", [DataReal])
+      (Add, _)     -> ("+", numericDependencies t)
+      (Mul, _)     -> ("*", numericDependencies t)
+      (Sub, Nat)   -> ("∸", numericDependencies t)
+      (Sub, _)     -> ("-", numericDependencies t)
+      (Div, Nat)   -> ("/", [DataNatDivMod])
+      (Div, Int)   -> ("/", [DataIntegerDivMod])
+      (Div, Rat)   -> ("÷", [DataRat])
+      (Div, Real)  -> ("÷", [DataReal])
 
 compileNumOrder :: Order -> NumericType -> BooleanType -> [Code] -> Code
 compileNumOrder order nt bt = annotateInfixOp2 dependencies 4 opBraces qualifier opDoc
@@ -570,19 +575,10 @@ compileNumOrder order nt bt = annotateInfixOp2 dependencies 4 opBraces qualifier
     dependencies = numDeps <> boolDeps
     opDoc        = orderDoc <> boolDecDoc
 
--- TODO implement this via proof by reflection
-compileAt :: MonadAgdaCompile m => CheckedAnn -> OutputExpr -> [OutputExpr] -> m Code
-compileAt ann tDims [tensorExpr, indexExpr] = case exprHead indexExpr of
-  Literal indexAnn (LNat index) -> do
-    size <- tensorSize (provenanceOf ann) tDims
-    if index >= size
-      then throwError $ TensorIndexOutOfBounds (provenanceOf indexAnn) index size
-      else do
-        tensorDoc <- compileExpr tensorExpr
-        let indexDoc = annotateInfixOp1 [DataFin] 10 Nothing "#" [pretty index]
-        return $ annotateApp [] tensorDoc [indexDoc]
-  _ -> annotateApp [] <$> compileExpr tensorExpr <*> traverse compileExpr [indexExpr]
-compileAt _ _ args =
+compileAt :: MonadAgdaCompile m => CheckedAnn -> [OutputExpr] -> m Code
+compileAt _ [tensorExpr, indexExpr] =
+  annotateApp [] <$> compileExpr tensorExpr <*> traverse compileExpr [indexExpr]
+compileAt _ args =
   unexpectedArgsError (Builtin emptyUserAnn At) args ["tensor", "index"]
 
 compileEquality :: MonadAgdaCompile m => OutputExpr -> BooleanType -> [Code] -> m Code
@@ -663,22 +659,6 @@ booleanType t = unexpectedTypeError t (map show [Bool, Prop])
 containerType :: OutputExpr -> ContainerType
 containerType (App _ (Builtin _ (ContainerType t)) _) = t
 containerType t = unexpectedTypeError t (map show [List, Tensor])
-
-tensorSize :: MonadCompile m => Provenance -> OutputExpr -> m Int
-tensorSize p tDims = getTensorSize (exprHead tDims)
-  where
-    getTensorSize :: MonadCompile m => OutputExpr -> m Int
-    getTensorSize (LSeq _ _ (x : _))  = getDimension (exprHead x)
-    getTensorSize (LSeq _ _ [])       =
-      throwError $ LookupInEmptyTensor AgdaBackend p
-    getTensorSize t                   =
-      throwError $ LookupInVariableDimTensor AgdaBackend p t
-
-    getDimension :: MonadCompile m =>  OutputExpr -> m Int
-    getDimension (LitNat _ i) = return i
-    getDimension t            = throwError $
-      LookupInVariableDimTensor AgdaBackend (provenanceOf t) t
-
 
 unexpectedTypeError :: OutputExpr -> [String] -> a
 unexpectedTypeError actualType expectedTypes = developerError $

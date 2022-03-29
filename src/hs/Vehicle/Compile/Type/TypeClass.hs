@@ -2,6 +2,7 @@ module Vehicle.Compile.Type.TypeClass
   ( solveTypeClassConstraint
   ) where
 
+import Data.Maybe (mapMaybe)
 import Data.List.NonEmpty (NonEmpty(..))
 import Control.Monad (unless)
 import Control.Monad.Except ( throwError )
@@ -31,21 +32,21 @@ solveTypeClassConstraint :: MonadConstraintSolving m
 solveTypeClassConstraint ctx m e = do
   eWHNF <- whnf (varContext ctx) e
   let constraint = Constraint ctx (m `Has` eWHNF)
-  progress <- case toHead eWHNF of
+  progress <- blockOnMetas eWHNF $ case toHead eWHNF of
     (Builtin _ (TypeClass tc), args) -> do
-      let argsNF = extractArg <$> args
-      blockOnMetas tc argsNF $ case (tc, argsNF) of
-        (IsContainer,    [t1, t2]) -> solveIsContainer    constraint t1 t2
-        (HasEq,          [t1, t2]) -> solveHasEq          constraint t1 t2
-        (HasOrd,         [t1, t2]) -> solveHasOrd         constraint t1 t2
-        (IsTruth,        [t])      -> solveIsTruth        constraint t
-        (HasNatOps,      [t])      -> solveHasNatOps      constraint t
-        (HasIntOps,      [t])      -> solveHasIntOps      constraint t
-        (HasRatOps,      [t])      -> solveHasRatOps      constraint t
-        (HasNatLits,     [t])      -> solveHasNatLits     constraint t
-        (HasIntLits,     [t])      -> solveHasIntLits     constraint t
-        (HasRatLits,     [t])      -> solveHasRatLits     constraint t
-        (IsQuantifiable, [t1, t2]) -> solveIsQuantifiable constraint t1 t2
+      let argsNF = mapMaybe getVisibleArg args
+      case (tc, argsNF) of
+        (IsContainer,      [t1, t2]) -> solveIsContainer    constraint t1 t2
+        (HasEq,            [t1, t2]) -> solveHasEq          constraint t1 t2
+        (HasOrd,           [t1, t2]) -> solveHasOrd         constraint t1 t2
+        (IsTruth,          [t])      -> solveIsTruth        constraint t
+        (HasNatOps,        [t])      -> solveHasNatOps      constraint t
+        (HasIntOps,        [t])      -> solveHasIntOps      constraint t
+        (HasRatOps,        [t])      -> solveHasRatOps      constraint t
+        (HasNatLitsUpTo n, [t])      -> solveHasNatLits     constraint n t
+        (HasIntLits,       [t])      -> solveHasIntLits     constraint t
+        (HasRatLits,       [t])      -> solveHasRatLits     constraint t
+        (IsQuantifiable,   [t1, t2]) -> solveIsQuantifiable constraint t1 t2
         _                          -> developerError $
           "Unknown type-class" <+> squotes (pretty (show tc)) <+> "args" <+> prettyVerbose argsNF
     _ -> developerError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
@@ -57,20 +58,23 @@ solveTypeClassConstraint ctx m e = do
 
   return progress
 
--- Takes in the type-class and the list of arguments and returns the list of those
--- that cannot be inferred from the others.
-getNonInferableArgs :: TypeClass -> [CheckedExpr] -> [CheckedExpr]
-getNonInferableArgs IsContainer [_tElem, tCont] = [tCont]
-getNonInferableArgs _           args            = args
+-- Takes in an expression and returns the list of non-inferable
+-- meta variables contained within it.
+getNonInferableMetas :: CheckedExpr -> [CheckedExpr]
+getNonInferableMetas e =
+  let recurse v = maybe [] getNonInferableMetas (getVisibleArg v) in
+  case toHead e of
+    (f@Meta{} , _)                                       -> [f]
+    (Builtin _ (TypeClass IsContainer), [_tElem, tCont]) -> recurse tCont
+    (_, args)                                            -> concatMap recurse args
 
-extractArg :: CheckedArg -> CheckedExpr
-extractArg arg = if visibilityOf arg == Explicit
-  then argExpr arg
-  else developerError "Not expecting type-classes with non-explicit arguments"
+getVisibleArg :: CheckedArg -> Maybe CheckedExpr
+getVisibleArg (ExplicitArg _ arg) = Just arg
+getVisibleArg _                   = Nothing
 
-blockOnMetas :: MonadConstraintSolving m => TypeClass -> [CheckedExpr] -> m ConstraintProgress -> m ConstraintProgress
-blockOnMetas tc args action = do
-  let metas = filter isMeta (getNonInferableArgs tc args)
+blockOnMetas :: MonadConstraintSolving m => CheckedExpr -> m ConstraintProgress -> m ConstraintProgress
+blockOnMetas e action = do
+  let metas = getNonInferableMetas e
   if null metas
     then action
     else do
@@ -82,11 +86,11 @@ solveHasEq :: MonadConstraintSolving m
            -> CheckedExpr
            -> CheckedExpr
            -> m ConstraintProgress
--- TODO insert Container classes
 solveHasEq _ (BuiltinBooleanType _ _)    (BuiltinBooleanType _ _) = return simplySolved
 solveHasEq _ (BuiltinNumericType _ _)    (BoolType _)             = return simplySolved
 solveHasEq _ (BuiltinNumericType _ t)    (PropType _)
   | isDecidable t = return simplySolved
+solveHasEq _ (FinType _ _)               _    = return simplySolved
 solveHasEq c (TensorType _ tElem _tDims) tRes = solveHasEq c tElem tRes
 solveHasEq c (ListType _ tElem)          tRes = solveHasEq c tElem tRes
 solveHasEq constraint _ _ = throwError $ FailedConstraints (constraint :| [])
@@ -96,6 +100,7 @@ solveHasOrd :: MonadConstraintSolving m
             -> CheckedExpr
             -> CheckedExpr
             -> m ConstraintProgress
+solveHasOrd _ (FinType _ _)            _            = return simplySolved
 solveHasOrd _ (BuiltinNumericType _ _) (PropType _) = return simplySolved
 solveHasOrd _ (BuiltinNumericType _ t) (BoolType _)
   | isDecidable t = return simplySolved
@@ -127,14 +132,17 @@ solveIsContainer c tElem tCont =
     getContainerElem _                  = Nothing
 
 solveHasNatLits :: MonadConstraintSolving m
-               => Constraint
-               -> CheckedExpr
-               -> m ConstraintProgress
-solveHasNatLits _ (NatType  _) = return simplySolved
-solveHasNatLits _ (IntType  _) = return simplySolved
-solveHasNatLits _ (RatType  _) = return simplySolved
-solveHasNatLits _ (RealType _) = return simplySolved
-solveHasNatLits constraint _   = throwError $ FailedConstraints (constraint :| [])
+                => Constraint
+                -> Int
+                -> CheckedExpr
+                -> m ConstraintProgress
+solveHasNatLits _ value (FinType _ (NatLiteralExpr _ _ n))
+  | value < n = return simplySolved
+solveHasNatLits _ _   (NatType  _)  = return simplySolved
+solveHasNatLits _ _   (IntType  _)  = return simplySolved
+solveHasNatLits _ _   (RatType  _)  = return simplySolved
+solveHasNatLits _ _   (RealType _)  = return simplySolved
+solveHasNatLits constraint _ _    = throwError $ FailedConstraints (constraint :| [])
 
 solveHasIntLits :: MonadConstraintSolving m
                => Constraint

@@ -24,6 +24,7 @@ position token TokInt       {"Int"};
 position token TokNat       {"Nat"};
 position token TokBool      {"Bool"};
 position token TokProp      {"Prop"};
+position token TokFin       {"Fin"};
 
 position token TokForall    {"forall"};
 position token TokExists    {"exists"};
@@ -60,7 +61,7 @@ position token TokTCQuantify  {"IsQuantify"};
 position token TokTCNatOps    {"HasNatOperations"};
 position token TokTCIntOps    {"HasIntOperations"};
 position token TokTCRatOps    {"HasRatOperations"};
-position token TokTCNatLits   {"HasNatLiterals"};
+position token TokTCNatLits   {"HasNatLiteralsUpTo"};
 position token TokTCIntLits   {"HasIntLiterals"};
 position token TokTCRatLits   {"HasRatLiterals"};
 position token TokTCReal      {"IsReal"};
@@ -133,6 +134,7 @@ Hole.    Expr15 ::= HoleToken;
 -- Primitive types.
 List.    Expr14 ::= TokList Expr15;
 Tensor.  Expr14 ::= TokTensor Expr15 Expr15;
+Fin.     Expr14 ::= TokFin Expr15;
 Bool.    Expr15 ::= TokBool;
 Prop.    Expr15 ::= TokProp;
 Real.    Expr15 ::= TokReal;
@@ -182,9 +184,11 @@ TCQuant.   Expr15 ::= TokTCQuantify  Expr15;
 TCNatOps.  Expr15 ::= TokTCNatOps    Expr15;
 TCIntOps.  Expr15 ::= TokTCIntOps    Expr15;
 TCRatOps.  Expr15 ::= TokTCRatOps    Expr15;
-TCNatLits. Expr15 ::= TokTCNatLits   Expr15;
 TCIntLits. Expr15 ::= TokTCIntLits   Expr15;
 TCRatLits. Expr15 ::= TokTCRatLits   Expr15;
+-- Natural literals type-class also stores the value
+-- which needs to be expressed (used for finite index types).
+TCNatLits. Expr15 ::= TokTCNatLits Integer Expr15;
 
 coercions Expr 15;
 separator Expr ",";
