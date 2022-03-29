@@ -15,7 +15,7 @@ import Vehicle.Compile (typeCheckExpr)
 import Vehicle.Compile.CoDeBruijnify ( toCoDBExpr )
 import Vehicle.Language.Print
 
-import Test.Compile.Utils
+import Test.Utils
 
 --------------------------------------------------------------------------------
 -- Let lifting tests

@@ -17,7 +17,7 @@ import Vehicle.Compile.LetInsertion
 import Vehicle.Compile.CoDeBruijnify
 import Vehicle.Compile.Type (runTypeCheck)
 
-import Test.Compile.Utils
+import Test.Utils
 
 --------------------------------------------------------------------------------
 -- Let lifting tests

@@ -2,6 +2,7 @@ module Test.Compile.Golden
   ( goldenTests
   ) where
 
+import Control.Exception ( catch, throwIO )
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -12,14 +13,13 @@ import System.Exit (exitFailure)
 import System.FilePath (takeFileName, splitPath, (<.>), (</>))
 import System.Directory (removeFile, removeDirectory)
 import System.IO.Error (isDoesNotExistError)
-import Control.Exception ( catch, throwIO )
-import Debug.Trace (traceShowId)
 
 import Vehicle
 import Vehicle.Prelude
 import Vehicle.Compile
 import Vehicle.Backend.Prelude
 
+import Test.Utils
 import Test.GoldenUtils
 
 --------------------------------------------------------------------------------
@@ -28,25 +28,24 @@ import Test.GoldenUtils
 goldenTests :: TestTree
 goldenTests = testGroup "GoldenTests" $
   map makeGoldenTests [
+    -- Examples
+    (Examples, "windController",      [VNNLibBackend, AgdaBackend, MarabouBackend]),
+
     -- Realistic tests
-    ("acasXu-property6",       [VNNLibBackend, AgdaBackend, MarabouBackend]),
-    ("andGate",                [VNNLibBackend, AgdaBackend]),
-    ("autoencoderError",       [VNNLibBackend, AgdaBackend]),
-    ("increasing",             [VNNLibBackend, AgdaBackend]),
-    ("monotonicity",           [VNNLibBackend, AgdaBackend]),
-    ("reachability",           [VNNLibBackend, AgdaBackend, MarabouBackend]),
-    ("windController",         [VNNLibBackend, AgdaBackend, MarabouBackend]),
+    (Tests,    "acasXu-property6",    [VNNLibBackend, AgdaBackend, MarabouBackend]),
+    (Tests,    "andGate",             [VNNLibBackend, AgdaBackend]),
+    (Tests,    "autoencoderError",    [VNNLibBackend, AgdaBackend]),
+    (Tests,    "increasing",          [VNNLibBackend, AgdaBackend]),
+    (Tests,    "monotonicity",        [VNNLibBackend, AgdaBackend]),
+    (Tests,    "reachability",        [VNNLibBackend, AgdaBackend, MarabouBackend]),
 
     -- Simple tests of Vehicle syntax
-    ("simple-quantifierIn",    [AgdaBackend]),
-    ("simple-let",             [AgdaBackend])
+    (Tests,    "simple-quantifierIn", [AgdaBackend]),
+    (Tests,    "simple-let",          [AgdaBackend])
     ]
 
 --------------------------------------------------------------------------------
 -- Test infrastructure
-
-specDir :: FilePath
-specDir = "test" </> "specs"
 
 goldenDir :: FilePath
 goldenDir = "test" </> "Test" </> "Compile" </> "Golden"
@@ -56,19 +55,19 @@ getGoldenFilepathSuffix (Verifier Marabou) = "-marabou"
 getGoldenFilepathSuffix (Verifier VNNLib)  = ".vnnlib"
 getGoldenFilepathSuffix (ITP Agda)         = ".agda"
 
-makeGoldenTests :: (String, [Backend]) -> TestTree
-makeGoldenTests (name, outputTargets) = testGroup name tests
+makeGoldenTests :: (SpecLocation, String, [Backend]) -> TestTree
+makeGoldenTests (location, name, outputTargets) = testGroup name tests
   where
     tests :: [TestTree]
-    tests = map (makeIndividualTest name) outputTargets
+    tests = map (makeIndividualTest location name) outputTargets
 
-makeIndividualTest :: String -> Backend -> TestTree
-makeIndividualTest name backend = test
+makeIndividualTest :: SpecLocation -> String -> Backend -> TestTree
+makeIndividualTest location name backend = test
   where
   testName       = name <> "-" <> show backend
   filePathSuffix = getGoldenFilepathSuffix backend
   moduleName     = name <> "-output"
-  inputFile      = specDir </> name </> name <.> ".vcl"
+  inputFile      = locationDir location </> name </> name <.> ".vcl"
   outputFile     = goldenDir </> name </> name <> "-temp-output" <> filePathSuffix
   goldenFile     = goldenDir </> name </> name <> "-output"      <> filePathSuffix
   isFolderOutput = backend == MarabouBackend

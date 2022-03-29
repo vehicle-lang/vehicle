@@ -209,11 +209,11 @@ test-suite vehicle-test
                     -- , Test.Compile.Generative
                     -- , Test.Compile.Generative.Generator
                     -- , Test.Compile.Generative.ToVehicle
-                    , Test.Compile.Utils
 
                     , Test.Check.Golden
                     , Test.Verify.Golden
 
+                    , Test.Utils
                     , Test.GoldenUtils
 
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -main-is Test

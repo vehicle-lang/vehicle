@@ -10,13 +10,13 @@ import Debug.Trace (traceShow, trace, traceShowId)
 import Vehicle.Prelude
 import Vehicle.Language.AST
 import Vehicle.Language.Type (typeCheck)
+import Vehicle.Language.Print (prettyFriendly, prettyVerbose)
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
 import Test.Compile.Generative.Generator
 import Test.Compile.Generative.ToVehicle
-import Vehicle.Language.Print (prettyFriendly, prettyVerbose)
 
 maxDepth :: Int
 maxDepth = 15
