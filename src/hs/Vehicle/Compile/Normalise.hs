@@ -226,10 +226,11 @@ nfOrder :: MonadNorm m
         -> CheckedArg
         -> CheckedArg
         -> Maybe (m CheckedExpr)
-nfOrder order ann _tElem tRes e1 e2 = case (argExpr e1, argExpr e2) of
+nfOrder order ann _tElem tRes arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ BoolLiteralExpr ann tRes (op order m n)
   (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ BoolLiteralExpr ann tRes (op order i j)
   (RatLiteralExpr _ _ x, RatLiteralExpr _ _ y) -> Just $ return $ BoolLiteralExpr ann tRes (op order x y)
+  (e1 , e2) | alphaEq e1 e2                    -> Just $ return $ BoolLiteralExpr ann tRes (not (isStrict order))
   _                                            -> Nothing
   where
     op :: Ord a => Order -> (a -> a -> Bool)
