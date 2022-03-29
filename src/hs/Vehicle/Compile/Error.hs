@@ -32,7 +32,6 @@ data CompileError
   | MalformedLamBinder InputExpr
 
   -- Errors thrown when elaborating from the BNFC external language
-  | MissingDefFunType    Provenance Symbol
   | MissingDefFunExpr    Provenance Symbol
   | DuplicateName        (NonEmpty Provenance) Symbol
   | MissingVariables     Provenance Symbol

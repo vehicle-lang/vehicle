@@ -48,6 +48,21 @@ class Elab vf vc where
 instance Elab B.Prog V.InputProg where
   elab (B.Main decls) = V.Main <$> groupDecls decls
 
+-- |Takes a list of declarations, and groups type and expression
+--  declarations by their name.
+groupDecls :: MonadCompile m => [B.Decl] -> m [V.InputDecl]
+groupDecls []       = return []
+groupDecls (d : ds) = NonEmpty.toList <$> traverse elab (NonEmpty.groupBy1 cond (d :| ds))
+  where
+    cond :: B.Decl -> B.Decl -> Bool
+    cond d1 d2 = isDefFun d1 && isDefFun d2 &&
+                 tkSymbol (declName d1) == tkSymbol (declName d2)
+
+    isDefFun :: B.Decl -> Bool
+    isDefFun (B.DefFunType _name _args _exp) = True
+    isDefFun (B.DefFunExpr _ann _name _typ)  = True
+    isDefFun _                               = False
+
 -- |Elaborate declarations.
 instance Elab (NonEmpty B.Decl) V.InputDecl where
   elab = \case
@@ -61,9 +76,15 @@ instance Elab (NonEmpty B.Decl) V.InputDecl where
     (B.DefType n bs e :| []) -> do
       unfoldDefType (mkAnn n) <$> elab n <*> traverse elab bs <*> elab e
 
-    -- Elaborate a function definition.
+    -- Elaborate a function and type definition pair.
     (B.DefFunType n1 _tk t  :| [B.DefFunExpr _n2 bs e]) ->
       unfoldDefFun (mkAnn n1) <$> elab n1 <*> elab t <*> traverse elab bs <*> elab e
+
+    -- Elaborate a function without a type definition.
+    (B.DefFunExpr n bs e :| []) -> do
+      binders <- traverse elab bs
+      let unknownType = constructUnknownDefType n binders
+      unfoldDefFun (mkAnn n) <$> elab n <*> pure unknownType <*> pure binders <*> elab e
 
     -- Why did you write the signature AFTER the function?
     (e1@B.DefFunExpr {} :| [e2@B.DefFunType {}]) ->
@@ -72,9 +93,6 @@ instance Elab (NonEmpty B.Decl) V.InputDecl where
     -- Missing type or expression declaration.
     (B.DefFunType n _tk _t :| []) ->
       throwError $ MissingDefFunExpr (tkProvenance n) (tkSymbol n)
-
-    (B.DefFunExpr n _ns _e :| []) ->
-      throwError $ MissingDefFunType (tkProvenance n) (tkSymbol n)
 
     -- Multiple type of expression declarations with the same n.
     ds ->
@@ -266,20 +284,6 @@ elabOrder order tk e1 e2 = do
         V.Ge -> B.Ge e (B.TokGe tkDetails) e2
         V.Gt -> B.Gt e (B.TokGt tkDetails) e2
 
--- |Takes a list of declarations, and groups type and expression
---  declarations by their name.
-groupDecls :: MonadCompile m => [B.Decl] -> m [V.InputDecl]
-groupDecls []       = return []
-groupDecls (d : ds) = NonEmpty.toList <$> traverse elab (NonEmpty.groupBy1 cond (d :| ds))
-  where
-    cond :: B.Decl -> B.Decl -> Bool
-    cond d1 d2 = isDefFun d1 && isDefFun d2 && tkSymbol (declName d1) == tkSymbol (declName d2)
-
-    isDefFun :: B.Decl -> Bool
-    isDefFun (B.DefFunType _name _args _exp) = True
-    isDefFun (B.DefFunExpr _ann _name _typ)  = True
-    isDefFun _                               = False
-
 -- |Get the name for any declaration.
 declName :: B.Decl -> B.Name
 declName (B.DeclNetw   n _ _) = n
@@ -294,3 +298,23 @@ checkNonEmpty tk = checkNonEmpty' (tkProvenance tk) (tkSymbol tk)
 checkNonEmpty' :: (MonadCompile m) => Provenance -> Symbol -> [a] -> m ()
 checkNonEmpty' p s []      = throwError $ MissingVariables p s
 checkNonEmpty' _ _ (_ : _) = return ()
+
+-- |Constructs a pi type filled with an appropriate number of holes for
+-- a definition which has no accompanying type.
+constructUnknownDefType :: B.Name -> [V.InputBinder] -> V.InputExpr
+constructUnknownDefType n = foldr addArg returnType
+  where
+  returnType :: V.InputExpr
+  returnType = mkHole (tkProvenance n) (typifyName (tkSymbol n))
+
+  addArg :: V.InputBinder -> V.InputExpr -> V.InputExpr
+  addArg b = V.Pi (V.annotationOf b) (binderToHole b)
+
+  binderToHole :: V.InputBinder -> V.InputBinder
+  binderToHole b = V.Binder ann (V.visibilityOf b) (Just name) (V.Hole ann name)
+    where
+    ann  = V.annotationOf b
+    name = typifyName (V.getBinderSymbol b)
+
+  typifyName :: Symbol -> Symbol
+  typifyName x = "typeOf_" <> x

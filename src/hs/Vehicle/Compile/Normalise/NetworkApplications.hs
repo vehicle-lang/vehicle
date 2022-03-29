@@ -240,7 +240,7 @@ replaceNetworkApplications d e = do
         -- which is not currently supported.
         Nothing -> do
           verifier <- asks (Verifier . snd)
-          let symbol = getQuantifierSymbol binder
+          let symbol = getBinderSymbol binder
           throwError $ UnsupportedNonMagicVariable verifier (provenanceOf ann) symbol
 
         -- Then this bound variable is equal to one of the magic variables so this variable

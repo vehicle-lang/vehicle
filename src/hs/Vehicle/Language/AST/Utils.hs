@@ -70,10 +70,10 @@ exprHead = fst . toHead
 --------------------------------------------------------------------------------
 -- Views
 
-getQuantifierSymbol :: Binder DBBinding var ann -> Symbol
-getQuantifierSymbol binder = case nameOf binder of
+getBinderSymbol :: Binder DBBinding var ann -> Symbol
+getBinderSymbol binder = case nameOf binder of
   Just symbol -> symbol
-  Nothing     -> developerError "Should not have quantifiers with machine names?"
+  Nothing     -> developerError "Binder unexpectedly does not appear to have a name"
 
 --------------------------------------------------------------------------------
 -- Construction functions

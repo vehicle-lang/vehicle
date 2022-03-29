@@ -108,15 +108,6 @@ instance MeaningfulError CompileError where
 
     -- Elaboration external
 
-    MissingDefFunType p name -> UError $ UserError
-      { provenance = p
-      , problem    = "missing type for the declaration" <+> squotes (pretty name)
-      , fix        = "add a type for the declaration, e.g."
-                    <> line <> line
-                    <> "addOne :: Int -> Int    <-----   type declaration" <> line
-                    <> "addOne x = x + 1"
-      }
-
     MissingDefFunExpr p name -> UError $ UserError
       { provenance = p
       , problem    = "missing definition for the declaration" <+> squotes (pretty name)

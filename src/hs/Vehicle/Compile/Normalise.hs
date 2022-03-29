@@ -261,7 +261,7 @@ nfQuantifier ann q binder body = case typeOf binder of
         -- Use the list monad to create a nested list of all possible indices into the tensor
         let allIndices = traverse (\dim -> [0..dim-1]) dims
         -- Generate the corresponding names from the indices
-        let allNames   = map (mkNameWithIndices (getQuantifierSymbol binder)) (reverse allIndices)
+        let allNames   = map (mkNameWithIndices (getBinderSymbol binder)) (reverse allIndices)
 
         -- Generate a list of variables, one for each index
         let allExprs   = map (\i -> Var ann (Bound i)) (reverse [0..tensorSize-1])

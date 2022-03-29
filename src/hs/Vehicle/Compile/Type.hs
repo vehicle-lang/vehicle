@@ -184,11 +184,14 @@ showInferExit (e, t) = do
 -- Utility functions
 
 assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
+-- This is a bit of a hack to get around having to have a solver for universe
+-- levels. As type definitions will always have an annotated Type 0 inserted
+-- by delaboration, we can match on it here. Anything else will be unified
+-- with type 0.
 assertIsType _ (Type _) = return ()
--- TODO: add a new TypingError 'ExpectedAType'
-assertIsType p e        = do
-  ctx <- getBoundCtx
-  throwError $ TypeMismatch p ctx e (Type 0)
+assertIsType p t        = do
+  _ <- unify p t (Type 0)
+  return ()
 
 removeBinderName :: CheckedBinder -> CheckedBinder
 removeBinderName (Binder ann v _n t) = Binder ann v Nothing t
