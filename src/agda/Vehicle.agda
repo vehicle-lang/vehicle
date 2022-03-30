@@ -44,12 +44,12 @@ record CheckArgs : Set where
 checkCmd : CheckArgs → CmdSpec
 checkCmd checkArgs = cmdSpec VEHICLE_COMMAND
   ( "check"
-  ∷ ("--proofCache=" ++ projectFile)
+  ∷ ("--proofCache=" ++ proofCache)
   ∷ []) ""
   where open CheckArgs checkArgs
 
 checkSuccessful : String → Bool
-checkSuccessful output = "Valid" ⊆ output
+checkSuccessful output = "verified" ⊆ output
 
 postulate valid : ∀ {a} {A : Set a} → A
 

@@ -16,6 +16,6 @@ postulate f : ℝ → ℝ
 
 abstract
   monotonic : ∀ (x1 : ℝ) → ∀ (x2 : ℝ) → x1 ℝ.≤ x2 → f x1 ℝ.≤ f x2
-  monotonic = checkProperty record
+  monotonic = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

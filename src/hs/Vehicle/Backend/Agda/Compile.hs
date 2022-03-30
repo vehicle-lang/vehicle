@@ -129,7 +129,7 @@ instance Pretty Dependency where
       -- "Data.Real as" <+> numericQualifier Real <+> "using" <+> parens "ℝ"
     DataBool             -> "Data.Bool as 𝔹" <+> "using" <+> parens "Bool; true; false; if_then_else_"
     DataBoolInstances    -> "Data.Bool.Instances"
-    DataFin              -> "Data.Fin as Fin" <+> "using" <+> parens "#_"
+    DataFin              -> "Data.Fin as Fin" <+> "using" <+> parens "Fin; #_"
     DataList             -> "Data.List"
     DataListInstances    -> "Data.List.Instances"
     DataListAll          -> "Data.List.Relation.Unary.All as" <+> containerQualifier List
@@ -611,7 +611,7 @@ compileProperty propertyName propertyBody = do
   return $
     scopeCode "abstract" $
       propertyName <+> ":" <+> align propertyBody          <> line <>
-      propertyName <+> "= checkProperty record"            <> line <>
+      propertyName <+> "= checkSpecification record"            <> line <>
         indentCode (
         "{ proofCache   =" <+> dquotes (pretty proofCache) <> line <>
         "}")

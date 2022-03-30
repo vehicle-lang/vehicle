@@ -30,6 +30,6 @@ CorrectOutput x1 x2 = let y = andGate x1 x2 in (Truthy x1 × Truthy x2 → Truth
 
 abstract
   andGateCorrect : ∀ (x1 : ℝ) → ∀ (x2 : ℝ) → ValidInput x1 × ValidInput x2 → CorrectOutput x1 x2
-  andGateCorrect = checkProperty record
+  andGateCorrect = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

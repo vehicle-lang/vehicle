@@ -5,6 +5,7 @@ import Data.Map ( assocs )
 import Data.Text.IO as TIO (readFile)
 import System.IO (hPutStrLn, stderr)
 import System.Exit (exitFailure)
+import System.Directory (makeAbsolute)
 
 import Vehicle.NeuralNetwork
 import Vehicle.Backend.Prelude
@@ -23,18 +24,19 @@ data VerifyOptions = VerifyOptions
 verify :: LoggingOptions -> VerifyOptions -> IO ()
 verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
   spec  <- liftIO $ TIO.readFile inputFile
+  networks' <- convertResourcesPathsToAbsolute networks
 
   status <- case verifier of
     Marabou -> do
       marabouSpec <- liftIO $ compileToMarabou loggingOptions inputFile
-      liftIO $ Marabou.verifySpec Nothing marabouSpec networks
+      liftIO $ Marabou.verifySpec Nothing marabouSpec networks'
     VNNLib  -> do
       liftIO $ hPutStrLn stderr "VNNLib is not currently a valid output target"
       liftIO exitFailure
 
   programOutput loggingOptions $ pretty status
 
-  networkInfo <- liftIO $ hashNetworks networks
+  networkInfo <- liftIO $ hashNetworks networks'
   case proofCache of
     Nothing -> return ()
     Just proofCachePath -> writeProofCache proofCachePath $ ProofCache
@@ -52,3 +54,7 @@ hashNetworks locations = forM (assocs locations) $ \(networkName, networkLocatio
     , location    = networkLocation
     , networkHash = networkHash
     }
+
+convertResourcesPathsToAbsolute :: MonadIO m => NetworkLocations -> m NetworkLocations
+convertResourcesPathsToAbsolute locations = forM locations $
+  \v -> liftIO $ makeAbsolute v

@@ -16,6 +16,6 @@ postulate f : ℝ → ℝ
 
 abstract
   increasing : ∀ (x : ℝ) → x ℝ.≤ f x
-  increasing = checkProperty record
+  increasing = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

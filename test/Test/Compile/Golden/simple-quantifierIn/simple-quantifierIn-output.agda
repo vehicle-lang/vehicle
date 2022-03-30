@@ -20,6 +20,6 @@ emptyList = []
 
 abstract
   empty : List.All (λ (x : ℤ) → ⊤) emptyList
-  empty = checkProperty record
+  empty = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

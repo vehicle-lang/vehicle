@@ -12,7 +12,7 @@ open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
-open import Data.Fin as Fin using (#_)
+open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
 
 module windController-temp-output where
@@ -36,6 +36,6 @@ SafeOutput x = ℚ.- (ℤ.+ 5 ℚ./ 4) ℚ.< (controller x ℚ.+ (ℤ.+ 2 ℚ./ 
 
 abstract
   safe : ∀ (x : Tensor ℚ (2 ∷ [])) → SafeInput x → SafeOutput x
-  safe = checkProperty record
+  safe = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

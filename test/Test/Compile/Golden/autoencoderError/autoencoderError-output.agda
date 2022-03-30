@@ -21,6 +21,6 @@ postulate decode : Tensor ℚ (2 ∷ []) → Tensor ℚ (5 ∷ [])
 
 abstract
   identity : ∀ (x : Tensor ℚ (5 ∷ [])) → decode (encode x) ≡ x
-  identity = checkProperty record
+  identity = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

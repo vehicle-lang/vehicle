@@ -13,7 +13,7 @@ open import Data.Product
 open import Data.Sum
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
-open import Data.Fin as Fin using (#_)
+open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
 open import Relation.Binary.PropositionalEquality
 
@@ -56,6 +56,6 @@ AdvisesClearOfConflict x = ∀ (i : Fin 5) → i ≢ # 0 → acasXu x (# 0) ℝ.
 
 abstract
   property6 : ∀ (x : Tensor ℝ (5 ∷ [])) → IntruderFarAway x → AdvisesClearOfConflict x
-  property6 = checkProperty record
+  property6 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

@@ -6,6 +6,7 @@ open import Algebra
 import Algebra.Properties.CommutativeSemigroup as CommutativeSemigroupProperties
 open import Data.List
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.Fin.Patterns using (0F; 1F)
 open import Data.Nat using (z≤n; s≤s)
 open import Data.Integer using (+≤+; +<+; +_)
 open import Data.Vec using (_∷_)
@@ -79,7 +80,7 @@ initialState = record
   }
 
 controller : ℚ → ℚ → ℚ
-controller x y = Vehicle.deltaV (toTensor x y)
+controller x y = Vehicle.controller (toTensor x y)
 
 nextState : Observation → State → State
 nextState o s = record
@@ -155,11 +156,11 @@ controller-lem : ∀ x y →
                  ∣ x ∣ ≤ roadWidth + maxSensorError →
                  ∣ y ∣ ≤ roadWidth + maxSensorError →
                  ∣ controller x y + 2ℚ * x - y ∣ < roadWidth - maxWindShift - 3ℚ * maxSensorError
-controller-lem x y ∣x∣≤rw+εₘₐₓ ∣y∣≤rw+εₘₐₓ rewrite +-eq | *-eq | neg-eq = result
-  where
-  -1·25≤∣x∣≤1·25 = ∣p∣≤q⇒-q≤p≤q x ∣x∣≤rw+εₘₐₓ
-  -1·25≤∣y∣≤1·25 = ∣p∣≤q⇒-q≤p≤q y ∣y∣≤rw+εₘₐₓ
-  result         = uncurry -p<q<p⇒∣q∣<p (Vehicle.safe (toTensor x y) (-1·25≤∣x∣≤1·25 , -1·25≤∣y∣≤1·25))
+controller-lem x y ∣x∣≤rw+εₘₐₓ ∣y∣≤rw+εₘₐₓ rewrite +-eq | *-eq | neg-eq =
+  uncurry -p<q<p⇒∣q∣<p (Vehicle.safe (toTensor x y) (λ
+    { 0F → ∣p∣≤q⇒-q≤p≤q x ∣x∣≤rw+εₘₐₓ
+    ; 1F → ∣p∣≤q⇒-q≤p≤q y ∣y∣≤rw+εₘₐₓ
+    }))
 
 valid⇒nextState-accurateSensor : ∀ o → ValidObservation o → ∀ s →
                                  AccurateSensorReading (nextState o s)
