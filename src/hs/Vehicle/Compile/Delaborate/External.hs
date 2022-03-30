@@ -119,7 +119,7 @@ instance Delaborate (V.Expr Symbol Symbol) B.Expr where
     V.Type l        -> return $ B.Type (fromIntegral l)
     V.Var _ n       -> return $ B.Var  (delabSymbol n)
     V.Hole _ n      -> return $ B.Hole (mkToken B.HoleToken n)
-    V.Literal _ l   -> return $ B.Literal (delabLiteral l)
+    V.Literal _ l   -> return $ delabLiteral l
 
     V.Ann _ e t     -> B.Ann <$> delabM e <*> pure tokElemOf <*> delabM t
     V.LSeq _ _ es   -> B.LSeq tokSeqOpen <$> traverse delabM es <*> pure tokSeqClose
@@ -130,7 +130,7 @@ instance Delaborate (V.Expr Symbol Symbol) B.Expr where
     V.Meta _ m      -> return $ B.Var (mkToken B.Name (layoutAsText (pretty m)))
 
     V.App _ (V.Builtin _ b)  args -> delabBuiltin b <$> traverse (delabM . V.argExpr) (removeNonExplicitArgs $ NonEmpty.toList args)
-    V.App _ (V.Literal _ l) _args -> return $ B.Literal (delabLiteral l)
+    V.App _ (V.Literal _ l) _args -> return $ delabLiteral l
     V.App _ fun args             -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
     V.Builtin _ op               -> return $ delabBuiltin op []
 
@@ -154,13 +154,24 @@ instance Delaborate (V.Binder Symbol Symbol) B.Binder where
 delabLetBinding :: MonadDelab m => (V.NamedBinder ann, V.NamedExpr ann) -> m B.LetDecl
 delabLetBinding (binder, bound) = B.LDecl <$> delabM binder <*> delabM bound
 
-delabLiteral :: V.Literal -> B.Lit
+delabLiteral :: V.Literal -> B.Expr
 delabLiteral l = case l of
-  V.LBool True  -> B.LitTrue  tokTrue
-  V.LBool False -> B.LitFalse tokFalse
-  V.LNat n      -> B.LitInt   (fromIntegral n)
-  V.LInt i      -> B.LitInt   (fromIntegral i)
-  V.LRat r      -> B.LitRat   (mkToken B.Rational (pack $ show (fromRational r :: Double)))
+  V.LBool b  -> delabBoolLit b
+  V.LNat n   -> delabNatLit n
+  V.LInt i   -> if i >= 0
+    then delabNatLit i
+    else B.Neg tokSub (delabNatLit (-i))
+  V.LRat r      -> delabRatLit r
+
+delabBoolLit :: Bool -> B.Expr
+delabBoolLit True = B.Literal $ B.LitTrue  tokTrue
+delabBoolLit False = B.Literal $ B.LitFalse tokFalse
+
+delabNatLit :: Int -> B.Expr
+delabNatLit n = B.Literal $ B.LitNat (mkToken B.Natural (pack $ show n))
+
+delabRatLit :: Rational -> B.Expr
+delabRatLit r = B.Literal $ B.LitRat (mkToken B.Rational (pack $ show (fromRational r :: Double)))
 
 delabSymbol :: Symbol -> B.Name
 delabSymbol = mkToken B.Name

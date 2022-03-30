@@ -84,9 +84,7 @@ instance Elab B.Lit Literal where
   elab = \case
     B.LitBool b -> return $ LBool (read (unpack $ tkSymbol b))
     B.LitRat  r -> return $ LRat  (readRat (tkSymbol r))
-    B.LitInt  n -> return $ if n >= 0
-      then LNat (fromIntegral n)
-      else LInt (fromIntegral n)
+    B.LitNat  n -> return $ LNat  (readNat (tkSymbol n))
 
 instance Elab B.NameToken Identifier where
   elab n = return $ Identifier $ tkSymbol n

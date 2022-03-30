@@ -9,6 +9,7 @@ module Vehicle.Prelude
   , (!!?)
   , rangeStart
   , repeatN
+  , readNat
   , readRat
   , duplicate
   , oneHot
@@ -96,6 +97,9 @@ oneHot i l x
   | i < 0 || l < i = error $ "Invalid arguments '" <> show i <> "' '" <> show l <> "'to `oneHot`"
   | i == 0         = Just x  : replicate l Nothing
   | otherwise      = Nothing : oneHot (i-1) (l-1) x
+
+readNat :: Text -> Int
+readNat = read . Text.unpack
 
 readRat :: Text -> Rational
 readRat str = case readFloat (Text.unpack str) of

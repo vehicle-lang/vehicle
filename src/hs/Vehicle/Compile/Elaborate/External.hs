@@ -206,10 +206,8 @@ instance Elab B.Lit V.InputExpr where
   elab = \case
     B.LitTrue  t -> return $ V.LitBool (mkAnn t) True
     B.LitFalse t -> return $ V.LitBool (mkAnn t) False
+    B.LitNat   t -> return $ V.LitNat  (mkAnn t) (readNat (tkSymbol t))
     B.LitRat   t -> return $ V.LitRat  (mkAnn t) (readRat (tkSymbol t))
-    B.LitInt   n -> return $ if n >= 0
-      then V.LitNat V.emptyUserAnn (fromIntegral n)
-      else V.LitInt V.emptyUserAnn (fromIntegral n)
 
 op1 :: (MonadCompile m, HasProvenance a, IsToken token)
     => (V.InputAnn -> a -> b)

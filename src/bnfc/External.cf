@@ -69,6 +69,7 @@ position token TokTCReal      {"IsReal"};
 position token Name        (letter (letter | digit | '_')*) ;
 position token HoleToken   ({"?"} (letter | digit | '_')*);
 
+position token Natural  (digit+);
 position token Rational (digit+ '.' digit+);
 
 separator Name "";
@@ -99,7 +100,7 @@ separator LetDecl ",";
 
 -- * Literals
 
-LitInt.   Lit ::= Integer; -- NOTE: `Integer` parses natural numbers (not integers)
+LitNat.   Lit ::= Natural;
 LitRat.   Lit ::= Rational;
 LitTrue.  Lit ::= TokTrue;
 LitFalse. Lit ::= TokFalse;

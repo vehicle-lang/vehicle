@@ -20,6 +20,7 @@ position token BoolToken ({"True"} | {"False"}) ;
 position token HoleToken ({"?"} (letter | digit | '_')*);
 position token TypeToken ({"Type"} digit+);
 
+position token Natural (digit+ '.' digit+);
 position token Rational (digit+ '.' digit+);
 
 -- * Binders
@@ -36,7 +37,7 @@ InstanceArg. Arg ::= "{{" Expr "}}";
 
 -- * Literals
 
-LitInt.  Lit ::= Integer;
+LitNat.  Lit ::= Natural;
 LitRat.  Lit ::= Rational;
 LitBool. Lit ::= BoolToken;
 

@@ -1,4 +1,4 @@
-Error: The type of network 'f' is not currently supported as the input 'Tensor Real [1, 2]' is not a 1D tensor. (Line 1, Columns 13-26)
+Error: The type of network 'f' is not currently supported as the input 'Tensor Real [1, 2]' is not a 1D tensor. (Line 1, Columns 13-30)
 Fix: Only networks of type:
   1. Tensor A [m] -> Tensor B [n]
   2. A -> ... -> A -> B
