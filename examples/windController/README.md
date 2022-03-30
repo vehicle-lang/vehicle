@@ -37,7 +37,6 @@ vehicle compile \
   --target Agda \
   --inputFile examples/windController/windController.vcl \
   --outputFile examples/windController/agdaProof/WindControllerSpec.agda \
-  --moduleName WindControllerSpec \
   --proofCache examples/windController/windController.vclp
 ```
 
