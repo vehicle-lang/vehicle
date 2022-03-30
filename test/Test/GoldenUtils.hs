@@ -15,8 +15,8 @@ import Data.Set qualified as Set
 import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
 
-import System.Directory (listDirectory, removeFile, createDirectory, removeDirectoryRecursive)
-import System.FilePath (takeFileName, (</>))
+import System.Directory (listDirectory, removeFile, createDirectory, removeDirectoryRecursive, createDirectoryIfMissing)
+import System.FilePath (takeFileName, (</>), takeDirectory)
 import Data.List (intercalate, isInfixOf)
 import System.IO.Error
 import Control.Exception (catch, throwIO)
@@ -67,13 +67,18 @@ goldenFileTest testName generateOutput ignoreList goldenFile outputFile = testWi
   where
   readGolden = TIO.readFile goldenFile
   readOutput = do generateOutput; TIO.readFile outputFile
-  updateGolden = TIO.writeFile goldenFile
+  updateGolden = updateGoldenFile goldenFile
   diffCommand  = diffTextCommand ignoreList
   test = goldenTest testName readGolden readOutput diffCommand updateGolden
   testWithCleanup = cleanupGoldenTestOutput True outputFile test
 
 diffTextCommand :: [Text] -> Text -> Text -> IO (Maybe String)
 diffTextCommand ignoreList golden output = return $ diffText ignoreList golden output
+
+updateGoldenFile :: FilePath -> Text -> IO ()
+updateGoldenFile path contents = do
+  createDirectoryIfMissing False (takeDirectory path)
+  TIO.writeFile path contents
 
 --------------------------------------------------------------------------------
 -- Directory golden tests

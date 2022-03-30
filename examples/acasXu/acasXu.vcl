@@ -2,14 +2,14 @@
 -- Full specification of the ACAS XU networks
 
 -- Taken from Appendix VI of "Reluplex: An Efficient SMT Solver for Verifying
-Deep Neural Networks" at https://arxiv.org/pdf/1702.01135.pdf
+-- Deep Neural Networks" at https://arxiv.org/pdf/1702.01135.pdf
 
 -- Comments describing the properties are taken directly from the text.
 
 --------------------------------------------------------------------------------
 -- Inputs and outputs
 
-type InputVector = Tensor Real [5]
+type InputVector = Tensor Rat [5]
 
 distanceToIntruder = 0
 angleToIntruder    = 1
@@ -17,11 +17,11 @@ intruderHeading    = 2
 speed              = 3
 intruderSpeed      = 4
 
-type OutputVector = Tensor Real [5]
+type OutputVector = Tensor Rat [5]
 
 clearOfConflict = 0
 weakLeft        = 1
-weakRight       = 2
+-- weakRight    = 2  (not used, so currently type-checker complains)
 strongLeft      = 3
 strongRight     = 4
 
@@ -33,10 +33,10 @@ network acasXu : InputVector -> OutputVector
 --------------------------------------------------------------------------------
 -- Utilities
 
-pi : Real
+pi : Rat
 pi = 3.141592
 
-advises : Fin 5 -> Tensor A [5] -> Prop
+advises : Fin 5 -> Tensor Rat [5] -> Prop
 advises i x = forall j . i != j => acasXu x ! i < acasXu x ! j
 
 --------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ property1 = forall x . intruderDistantAndSlower x =>
 
 property2 : Prop
 property2 = forall x . intruderDistantAndSlower x =>
-  exists j . (acasXu x ! j) > (acasXu x ! clearOfConflict)
+  (exists j . (acasXu x ! j) > (acasXu x ! clearOfConflict))
 
 --------------------------------------------------------------------------------
 -- Property 3
@@ -81,7 +81,7 @@ property2 = forall x . intruderDistantAndSlower x =>
 directlyAhead : InputVector -> Prop
 directlyAhead x =
   1500  <= x ! distanceToIntruder <= 1800 and
-  −0.06 <= x ! angleToIntruder    <= 0.06
+  -0.06 <= x ! angleToIntruder    <= 0.06
 
 movingTowards : InputVector -> Prop
 movingTowards x =
@@ -121,7 +121,7 @@ property4 = forall x . directlyAhead x and movingAway x =>
 -- Tested on: N_{1,1}.
 
 nearAndApproachingFromLeft : InputVector -> Prop
-nearAndApproachingFromLeft =
+nearAndApproachingFromLeft x =
   250 <= x ! distanceToIntruder <= 400         and
   0.2 <= x ! angleToIntruder    <= 0.4         and
   -pi <= x ! intruderHeading    <= -pi + 0.005 and
