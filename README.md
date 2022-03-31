@@ -8,16 +8,15 @@ This allows the user to maintain the abstraction of the neural network as a blac
 
 ## Some examples
 
-#### ACAS Xu spec
+#### ACAS Xu
 
-The complete specification of the ACAS Xu collision avoidance system from the ([Reluplex paper](https://arxiv.org/abs/1702.01135))
+The complete specification of the ACAS Xu collision avoidance system from the [Reluplex paper](https://arxiv.org/abs/1702.01135) in a single file:
 - [Specification](https://github.com/vehicle-lang/vehicle/blob/dev/examples/acasXu/acasXu.vcl)
 - [Automatically generated Marabou queries](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden/acasXu/acasXu-output-marabou)
 
-#### Simple car controller verified never to leave the road
+#### Simple car controller
 
-A simple car controller that keeps the car on the road in the face of noisy sensor data and an unpredicatable cross-wind. Neural network spec is verified in Marabou and then
-connected to Agda to prove the desired safety property (from Section 2.1 of the [Vehicle paper](https://arxiv.org/pdf/2202.05207v1.pdf)):
+A simple car controller that is formally proven to always keep the car on the road in the face of noisy sensor data and an unpredictable cross-wind. Neural network spec is verified in Marabou and then this result is connected to Agda to prove the desired safety property (from Section 2.1 of the [Vehicle paper](https://arxiv.org/pdf/2202.05207v1.pdf)):
   - [Folder](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/)
   - [Specification](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/windController.vcl)
   - [Automatically generated Marabou queries](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden/windController/windController-output-marabou)
