@@ -9,6 +9,15 @@
 --------------------------------------------------------------------------------
 -- Inputs and outputs
 
+-- We first define the types of the input & output of the network and add
+-- meaningful names for the indices.
+
+-- Vehicle is dependently typed so we can specify the dimensions of the tensor,
+-- as well as the type of data stored within it. This means that it impossible
+-- to mess up indexing into tensors, e.g. if you changed
+-- `distanceToIntruder = 0` to `distanceToIntruder = 5` the specification would
+-- fail to type-check.
+
 type InputVector = Tensor Rat [5]
 
 distanceToIntruder = 0
@@ -28,15 +37,23 @@ strongRight     = 4
 --------------------------------------------------------------------------------
 -- The network
 
+-- Next we use the `network` keyword to declare the name and the type of the
+-- neural network we are verifying. The implementation is passed to the compiler
+-- via a reference to the ONNX file at compile time.
+
 network acasXu : InputVector -> OutputVector
 
 --------------------------------------------------------------------------------
 -- Utilities
 
+-- The value of the constant `pi`
 pi : Rat
 pi = 3.141592
 
-advises : Fin 5 -> Tensor Rat [5] -> Prop
+-- A constraint that says the network chooses output `i` when given the
+-- input `x`. We must necessarily provide a finite index that is less than 5
+-- (i.e. of type Fin 5). The `a ! b` operator lookups index `b` in tensor `a`.
+advises : Fin 5 -> InputVector -> Prop
 advises i x = forall j . i != j => acasXu x ! i < acasXu x ! j
 
 --------------------------------------------------------------------------------

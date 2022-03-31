@@ -30,10 +30,9 @@ goldenTests = testGroup "GoldenTests" $
   map makeGoldenTests [
     -- Examples
     (Examples, "windController",      [VNNLibBackend, AgdaBackend, MarabouBackend]),
-    (Examples, "acasXu",              [AgdaBackend]),
+    (Examples, "acasXu",              [AgdaBackend, MarabouBackend]),
 
     -- Realistic tests
-    (Tests,    "acasXu-property6",    [VNNLibBackend, AgdaBackend, MarabouBackend]),
     (Tests,    "andGate",             [VNNLibBackend, AgdaBackend]),
     (Tests,    "autoencoderError",    [VNNLibBackend, AgdaBackend]),
     (Tests,    "increasing",          [VNNLibBackend, AgdaBackend]),

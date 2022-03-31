@@ -11,16 +11,18 @@ import Data.Text.IO qualified as TIO
 import Data.Map (Map, (\\))
 import Data.Map qualified as Map (toAscList, fromList, keysSet, size, lookup, intersectionWith, keys)
 import Data.Set qualified as Set
-
-import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiffBy)
-import Data.Algorithm.DiffOutput (ppDiff)
-
 import System.Directory (listDirectory, removeFile, createDirectory, removeDirectoryRecursive, createDirectoryIfMissing)
 import System.FilePath (takeFileName, (</>), takeDirectory)
 import Data.List (intercalate, isInfixOf)
 import System.IO.Error
 import Control.Exception (catch, throwIO)
 import Data.Bifunctor (Bifunctor(second, first))
+import Data.Maybe (catMaybes, listToMaybe)
+import Debug.Trace
+
+import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiffBy)
+import Data.Algorithm.DiffOutput (ppDiff)
+
 
 --------------------------------------------------------------------------------
 -- General utilities
@@ -81,12 +83,12 @@ diffTextCommand ignoreList golden output = return $ diffText ignoreList golden o
 goldenDirectoryTest :: TestName -> IO () -> [Text] -> FilePath -> FilePath -> TestTree
 goldenDirectoryTest testName generateOutput ignoreList goldenDir outputDir = testWithCleanup
   where
-    readGolden = readDirectory goldenDir
-    readOutput = do generateOutput; readDirectory outputDir
-    updateGolden = updateGoldenDirectory goldenDir
-    diffCommand  = compareDirectoryContents ignoreList
-    test = goldenTest testName readGolden readOutput diffCommand updateGolden
-    testWithCleanup = cleanupGoldenTestOutput False outputDir test
+  readGolden = readDirectory goldenDir
+  readOutput = do generateOutput; readDirectory outputDir
+  updateGolden = updateGoldenDirectory goldenDir
+  diffCommand  = compareDirectoryContents ignoreList
+  test = goldenTest testName readGolden readOutput diffCommand updateGolden
+  testWithCleanup = cleanupGoldenTestOutput False outputDir test
 
 readDirectory :: FilePath -> IO (Maybe (Map FilePath Text))
 readDirectory directory = do
@@ -130,7 +132,8 @@ compareDirectoryContents ignoreList (Just goldenContents) (Just outputContents) 
     return $ Just errorMessage2
   else do
     let diffs = map getDiff (Map.toAscList sharedFiles)
-    return $ intercalate "\n" <$> sequence diffs
+    let diff = intercalate "\n" (catMaybes diffs)
+    return (if null diff then Nothing else Just diff)
     where
       getDiff :: (FilePath, (Text, Text)) -> Maybe String
       getDiff (file, (goldenText, outputText)) =

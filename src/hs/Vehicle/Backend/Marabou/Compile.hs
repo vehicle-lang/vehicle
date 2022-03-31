@@ -250,17 +250,9 @@ compileAssertion ann ident quantifier rel lhs rhs = do
     compileRel (EqualityRel Neq) =
       throwError $ UnsupportedEquality MarabouBackend (provenanceOf ann) quantifier Neq
     compileRel (OrderRel order)
-      | isStrict order = do
-        throwError $ UnsupportedOrder MarabouBackend (provenanceOf ann) quantifier order
-        {-
-        let nonStrictOrder = flipStrictness order
-        logWarning $
-          "Performed possibly unsound conversion of" <+> squotes (pretty order) <+>
-          "to" <+> squotes (pretty nonStrictOrder) <> " in order to ensure Marabou" <+>
-          "support."
-        compileRel $ OrderRel nonStrictOrder
-        -}
-      | otherwise = return $ pretty order
+      -- Suboptimal. See https://github.com/vehicle-lang/vehicle/issues/74 for details.
+      | isStrict order = return (pretty $ flipStrictness order)
+      | otherwise      = return (pretty order)
 
     compileVar :: Bool -> (Double, Symbol) -> Doc a
     compileVar False (1,           var) = pretty var

@@ -61,7 +61,7 @@ postulate acasXu : InputVector → OutputVector
 pi : ℚ
 pi = ℤ.+ 392699 ℚ./ 125000
 
-Advises : Fin 5 → (Tensor ℚ (5 ∷ []) → Set)
+Advises : Fin 5 → (InputVector → Set)
 Advises i x = ∀ (j : Fin 5) → i ≢ j → acasXu x i ℚ.< acasXu x j
 
 IntruderDistantAndSlower : InputVector → Set
