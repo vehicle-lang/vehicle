@@ -42,7 +42,10 @@ goldenTests = testGroup "GoldenTests" $
 
     -- Simple tests of Vehicle syntax
     (Tests,    "simple-quantifierIn", [AgdaBackend]),
-    (Tests,    "simple-let",          [AgdaBackend])
+    (Tests,    "simple-let",          [AgdaBackend]),
+    (Tests,    "simple-defaultFin",   [AgdaBackend]),
+    (Tests,    "simple-defaultInt",   [AgdaBackend]),
+    (Tests,    "simple-defaultRat",   [AgdaBackend])
     ]
 
 --------------------------------------------------------------------------------
@@ -86,7 +89,7 @@ runTest inputFile outputFile modulePath backend = do
     { version       = False
     , outFile       = Nothing
     , errFile       = Nothing
-    , logFile       = Nothing -- Just Nothing
+    , logFile       = Nothing --Just Nothing
     , commandOption = Compile $ CompileOptions
       { target       = backend
       , inputFile    = inputFile

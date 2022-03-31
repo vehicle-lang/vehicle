@@ -65,7 +65,6 @@ tokTCEq = mkToken B.TokTCEq "HasEq"
 tokTCOrd = mkToken B.TokTCOrd "HasOrd"
 tokTCContainer = mkToken B.TokTCContainer "IsContainer"
 tokTCTruth = mkToken B.TokTCTruth "IsTruth"
-tokTCQuantify = mkToken B.TokTCQuantify "IsQuantify"
 tokTCNatOps  = mkToken B.TokTCNatOps "HasNatOperations"
 tokTCIntOps  = mkToken B.TokTCIntOps "HasIntOperations"
 tokTCRatOps  = mkToken B.TokTCRatOps "HasRatOperations"
@@ -202,7 +201,6 @@ delabBuiltin fun args = case fun of
   V.TypeClass (V.HasNatLitsUpTo n) -> delabOp1 (\tk -> B.TCNatLits tk (toInteger n)) tokTCNatLits args
   V.TypeClass V.HasIntLits         -> delabOp1 B.TCIntLits tokTCIntLits args
   V.TypeClass V.HasRatLits         -> delabOp1 B.TCRatLits tokTCRatLits args
-  V.TypeClass V.IsQuantifiable     -> delabOp1 B.TCQuant tokTCQuantify  args
   V.TypeClass V.HasEq              -> delabOp2 B.TCEq    tokTCEq        args
   V.TypeClass V.HasOrd             -> delabOp2 B.TCOrd   tokTCOrd       args
   V.TypeClass V.IsContainer        -> delabOp2 B.TCCont  tokTCContainer args

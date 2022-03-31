@@ -67,18 +67,13 @@ goldenFileTest testName generateOutput ignoreList goldenFile outputFile = testWi
   where
   readGolden = TIO.readFile goldenFile
   readOutput = do generateOutput; TIO.readFile outputFile
-  updateGolden = updateGoldenFile goldenFile
+  updateGolden = TIO.writeFile goldenFile
   diffCommand  = diffTextCommand ignoreList
   test = goldenTest testName readGolden readOutput diffCommand updateGolden
   testWithCleanup = cleanupGoldenTestOutput True outputFile test
 
 diffTextCommand :: [Text] -> Text -> Text -> IO (Maybe String)
 diffTextCommand ignoreList golden output = return $ diffText ignoreList golden output
-
-updateGoldenFile :: FilePath -> Text -> IO ()
-updateGoldenFile path contents = do
-  createDirectoryIfMissing False (takeDirectory path)
-  TIO.writeFile path contents
 
 --------------------------------------------------------------------------------
 -- Directory golden tests

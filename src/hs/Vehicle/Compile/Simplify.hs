@@ -134,18 +134,20 @@ instance Simplify Text where
 instance Simplify Int where
   simplifyReader = return
 
-instance Simplify BaseConstraint where
+instance Simplify UnificationConstraint where
   simplifyReader (Unify (e1, e2)) = do
     e1' <- simplifyReader e1
     e2' <- simplifyReader e2
     return $ Unify (e1', e2')
 
+instance Simplify TypeClassConstraint where
   simplifyReader (m `Has` e) = do
     e' <- simplifyReader e
     return $ m `Has` e'
 
 instance Simplify Constraint where
-  simplifyReader (Constraint ctx c) = Constraint ctx <$> simplifyReader c
+  simplifyReader (TC ctx c) = TC ctx <$> simplifyReader c
+  simplifyReader (UC ctx c) = UC ctx <$> simplifyReader c
 
 instance Simplify MetaSubstitution where
   simplifyReader (MetaSubstitution m) = MetaSubstitution <$> traverse simplifyReader m

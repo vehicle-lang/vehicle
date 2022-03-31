@@ -21,7 +21,6 @@ module Vehicle.Language.DSL
   , hasIntLits
   , hasRatLits
   , isContainer
-  , isQuantifiable
   , tMax
   , tHole
   , piType
@@ -160,9 +159,6 @@ hasRatLits t = typeClass (TypeClass HasRatLits) `eApp` [t]
 
 isContainer :: DSLExpr -> DSLExpr -> DSLExpr
 isContainer tCont tElem = typeClass (TypeClass IsContainer) `eApp` [tCont, tElem]
-
-isQuantifiable :: DSLExpr -> DSLExpr -> DSLExpr
-isQuantifiable tDom tTruth = typeClass (TypeClass IsQuantifiable) `eApp` [tDom, tTruth]
 
 --------------------------------------------------------------------------------
 -- Operations

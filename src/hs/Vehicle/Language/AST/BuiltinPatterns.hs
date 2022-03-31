@@ -139,9 +139,25 @@ pattern
       , ExplicitArg ann tCont
       ]
 
+--------------------------------------------------------------------------------
+-- Boolean type classes
+
+pattern IsTruthExpr :: ann
+                      -> Expr binder var ann
+                      -> Expr binder var ann
+pattern
+  IsTruthExpr ann t <-
+    App ann (BuiltinTypeClass _ IsTruth)
+      [ ExplicitArg _ t
+      ]
+  where
+  IsTruthExpr ann t =
+    App ann (BuiltinTypeClass ann IsTruth)
+      [ ExplicitArg ann t
+      ]
 
 --------------------------------------------------------------------------------
--- Integer type classes
+-- Natural type classes
 
 pattern HasNatLitsUpToExpr :: ann
                            -> Int
@@ -158,21 +174,80 @@ pattern
       [ ExplicitArg ann t
       ]
 
+pattern HasNatOpsExpr :: ann
+                      -> Expr binder var ann
+                      -> Expr binder var ann
+pattern
+  HasNatOpsExpr ann t <-
+    App ann (BuiltinTypeClass _ HasNatOps)
+      [ ExplicitArg _ t
+      ]
+  where
+  HasNatOpsExpr ann t =
+    App ann (BuiltinTypeClass ann HasNatOps)
+      [ ExplicitArg ann t
+      ]
+
 --------------------------------------------------------------------------------
 -- Integer type classes
 
-pattern HasIntOpsExpr :: ann
-                       -> NumericType
+pattern HasIntLitsExpr :: ann
                        -> Expr binder var ann
+                       -> Expr binder var ann
+pattern
+  HasIntLitsExpr ann t <-
+    App ann (BuiltinTypeClass _ HasIntLits)
+      [ ExplicitArg _ t
+      ]
+  where
+  HasIntLitsExpr ann t =
+    App ann (BuiltinTypeClass ann HasIntLits)
+      [ ExplicitArg ann t
+      ]
+
+pattern HasIntOpsExpr :: ann
+                      -> Expr binder var ann
+                      -> Expr binder var ann
 pattern
   HasIntOpsExpr ann t <-
     App ann (BuiltinTypeClass _ HasIntOps)
-      [ ExplicitArg _ (BuiltinNumericType _ t)
+      [ ExplicitArg _ t
       ]
   where
   HasIntOpsExpr ann t =
     App ann (BuiltinTypeClass ann HasIntOps)
-      [ ExplicitArg ann (BuiltinNumericType ann t)
+      [ ExplicitArg ann t
+      ]
+
+--------------------------------------------------------------------------------
+-- Rational type classes
+
+pattern HasRatLitsExpr :: ann
+                      -> Expr binder var ann
+                      -> Expr binder var ann
+pattern
+  HasRatLitsExpr ann t <-
+    App ann (BuiltinTypeClass _ HasRatLits)
+      [ ExplicitArg _ t
+      ]
+  where
+  HasRatLitsExpr ann t =
+    App ann (BuiltinTypeClass ann HasRatLits)
+      [ ExplicitArg ann t
+      ]
+
+pattern HasRatOpsExpr :: ann
+                       -> Expr binder var ann
+                       -> Expr binder var ann
+pattern
+  HasRatOpsExpr ann t <-
+    App ann (BuiltinTypeClass _ HasRatOps)
+      [ ExplicitArg _ t
+      ]
+  where
+  HasRatOpsExpr ann t =
+    App ann (BuiltinTypeClass ann HasRatOps)
+      [ ExplicitArg ann t
       ]
 
 --------------------------------------------------------------------------------
@@ -532,7 +607,7 @@ pattern
   NegExpr ann t explicitArgs =
     App ann (Builtin ann Neg)
       (  ImplicitArg ann (BuiltinNumericType ann t)
-      :| InstanceArg ann (PrimDict ann (HasIntOpsExpr ann t))
+      :| InstanceArg ann (PrimDict ann (HasIntOpsExpr ann (BuiltinNumericType ann t)))
       :  explicitArgs
       )
 

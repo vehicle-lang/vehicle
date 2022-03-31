@@ -388,19 +388,19 @@ supportedNetworkTypeDescription =
 
 unsolvedConstraintError :: Constraint -> [DBBinding] -> Doc a
 unsolvedConstraintError constraint ctx ="Typing error: not enough information to solve constraint" <+>
-  case baseConstraint constraint of
-    Unify _   ->  prettyFriendlyDB ctx constraint
-    _ `Has` t ->  prettyFriendlyDB ctx t
+  case constraint of
+    UC _ (Unify _)   ->  prettyFriendlyDB ctx constraint
+    TC _ (_ `Has` t) ->  prettyFriendlyDB ctx t
 
 failedConstraintError :: Constraint -> [DBBinding] -> Doc a
-failedConstraintError constraint ctx = "Type error:" <+> case baseConstraint constraint of
-  Unify (t1, t2) ->
+failedConstraintError constraint ctx = "Type error:" <+> case constraint of
+  UC _ (Unify (t1, t2)) ->
     prettyFriendlyDB ctx t1 <+> "!=" <+> prettyFriendlyDB ctx t2
 
-  _ `Has` (HasNatLitsUpToExpr _ n (FinType _ (LiteralExpr _ _ v))) ->
+  TC _ (_ `Has` (HasNatLitsUpToExpr _ n (FinType _ (LiteralExpr _ _ v)))) ->
     "Index" <+> pretty n <+> "is out of bounds when looking up value in tensor of size" <+> pretty v
 
-  _ `Has` (HasNatLitsUpToExpr _ n (FinType _ v)) ->
+  TC _ (_ `Has` (HasNatLitsUpToExpr _ n (FinType _ v))) ->
     "Unknown if index" <+> pretty n <+> "is in bounds when looking up value in tensor of size" <+> prettyFriendlyDB ctx v
 
-  _ `Has` t -> "Could not satisfy" <+> squotes (prettyFriendlyDB ctx t)
+  TC _ (_ `Has` t) -> "Could not satisfy" <+> squotes (prettyFriendlyDB ctx t)

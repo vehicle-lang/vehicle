@@ -47,6 +47,9 @@ clearOfConflict = # 0
 weakLeft : Fin 5
 weakLeft = # 1
 
+weakRight : Fin 3
+weakRight = # 2
+
 strongLeft : Fin 5
 strongLeft = # 3
 

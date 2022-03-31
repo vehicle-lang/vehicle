@@ -9,6 +9,7 @@ import Vehicle.Prelude
 import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.DeBruijn
 import Vehicle.Language.AST.Builtin
+import Vehicle.Language.AST.BuiltinPatterns
 import Vehicle.Language.AST.Name
 
 --------------------------------------------------------------------------------
@@ -74,6 +75,11 @@ getBinderSymbol :: Binder DBBinding var ann -> Symbol
 getBinderSymbol binder = case nameOf binder of
   Just symbol -> symbol
   Nothing     -> developerError "Binder unexpectedly does not appear to have a name"
+
+getContainerElem :: Expr binder var ann -> Maybe (Expr binder var ann)
+getContainerElem (ListType   _ t)   = Just t
+getContainerElem (TensorType _ t _) = Just t
+getContainerElem _                  = Nothing
 
 --------------------------------------------------------------------------------
 -- Construction functions

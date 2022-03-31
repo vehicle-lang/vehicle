@@ -155,9 +155,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
 
   -- Other
   StrategyFor tags Constraint
-    = 'Opaque (StrategyFor tags BaseConstraint)
-
-  StrategyFor tags BaseConstraint
     = 'Opaque (StrategyFor tags CheckedExpr)
 
   StrategyFor tags MetaSubstitution
@@ -276,16 +273,12 @@ instance (PrettyUsing resta a, PrettyUsing restb b, PrettyUsing restc c)
 instance Pretty a => PrettyUsing 'Pretty a where
   prettyUsing = pretty
 
--- instances for opaque types BaseConstraint, Constraint, and MetaSubstitution
+-- instances for opaque types Constraint
 
-instance PrettyUsing rest CheckedExpr
-      => PrettyUsing ('Opaque rest) BaseConstraint where
-  prettyUsing (Unify (e1, e2)) = prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2
-  prettyUsing (m `Has` e)      = pretty m <+> "<=" <+> prettyUsing @rest e
-
-instance PrettyUsing rest BaseConstraint
+instance (PrettyUsing rest CheckedExpr)
       => PrettyUsing ('Opaque rest) Constraint where
-  prettyUsing c = prettyUsing @rest (baseConstraint c)
+  prettyUsing (UC _ (Unify (e1, e2))) = prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2
+  prettyUsing (TC _ (m `Has` e))      = pretty m <+> "<=" <+> prettyUsing @rest e
     -- <+> "<boundCtx=" <> pretty (ctxNames (boundContext c)) <> ">"
     -- <+> parens (pretty (provenanceOf c))
 

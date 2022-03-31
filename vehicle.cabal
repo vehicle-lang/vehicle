@@ -111,6 +111,7 @@ library
                       , Vehicle.Language.AST.Utils
                       , Vehicle.Language.AST.Position
 
+                      , Vehicle.Compile.Type.Bidirectional
                       , Vehicle.Compile.Type.Meta
                       , Vehicle.Compile.Type.MetaSet
                       , Vehicle.Compile.Type.MetaSubstitution

@@ -96,7 +96,6 @@ data TypeClass
   | HasIntLits
   | HasRatLits
   | IsContainer
-  | IsQuantifiable
   deriving (Eq, Ord, Generic)
 
 instance NFData   TypeClass
@@ -114,7 +113,6 @@ instance Show TypeClass where
     HasNatLitsUpTo n -> "HasNatLiteralsUpTo " <> show n
     HasIntLits       -> "HasIntLiterals"
     HasRatLits       -> "HasRatLiterals"
-    IsQuantifiable   -> "IsQuantify"
 
 instance Pretty TypeClass where
   pretty = pretty . show

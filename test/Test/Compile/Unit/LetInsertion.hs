@@ -15,7 +15,6 @@ import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
 import Vehicle.Compile.LetInsertion
 import Vehicle.Compile.CoDeBruijnify
-import Vehicle.Compile.Type (runTypeCheck)
 
 import Test.Utils
 

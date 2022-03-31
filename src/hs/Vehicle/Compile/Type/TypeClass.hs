@@ -1,10 +1,12 @@
 module Vehicle.Compile.Type.TypeClass
   ( solveTypeClassConstraint
+  , solveDefaultTypeClassConstraints
   ) where
 
-import Data.Maybe (mapMaybe)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.List.NonEmpty (NonEmpty(..))
-import Control.Monad (unless)
+import Control.Monad (unless, forM)
 import Control.Monad.Except ( throwError )
 
 import Vehicle.Compile.Prelude
@@ -16,39 +18,24 @@ import Vehicle.Language.Print (prettyVerbose)
 --------------------------------------------------------------------------------
 -- Solution
 
--- To solve / synthesise typeClassConstraints :
---  1. Normalise each one in the current metactxt
---  2. Insert lambdas for each Pi type
---  3. Match against (a) the list of built-in instances; then (b) against
---     elements in the context
---  4. If the constraint is a Z3 one, then ask Z3 to solve it (after normalisation)
-
-
 solveTypeClassConstraint :: MonadConstraintSolving m
                          => ConstraintContext
-                         -> Meta
-                         -> CheckedExpr
+                         -> TypeClassConstraint
                          -> m ConstraintProgress
-solveTypeClassConstraint ctx m e = do
+solveTypeClassConstraint ctx (m `Has` e) = do
   eWHNF <- whnf (varContext ctx) e
-  let constraint = Constraint ctx (m `Has` eWHNF)
-  progress <- blockOnMetas eWHNF $ case toHead eWHNF of
-    (Builtin _ (TypeClass tc), args) -> do
-      let argsNF = mapMaybe getVisibleArg args
-      case (tc, argsNF) of
-        (IsContainer,      [t1, t2]) -> solveIsContainer    constraint t1 t2
-        (HasEq,            [t1, t2]) -> solveHasEq          constraint t1 t2
-        (HasOrd,           [t1, t2]) -> solveHasOrd         constraint t1 t2
-        (IsTruth,          [t])      -> solveIsTruth        constraint t
-        (HasNatOps,        [t])      -> solveHasNatOps      constraint t
-        (HasIntOps,        [t])      -> solveHasIntOps      constraint t
-        (HasRatOps,        [t])      -> solveHasRatOps      constraint t
-        (HasNatLitsUpTo n, [t])      -> solveHasNatLits     constraint n t
-        (HasIntLits,       [t])      -> solveHasIntLits     constraint t
-        (HasRatLits,       [t])      -> solveHasRatLits     constraint t
-        (IsQuantifiable,   [t1, t2]) -> solveIsQuantifiable constraint t1 t2
-        _                          -> developerError $
-          "Unknown type-class" <+> squotes (pretty (show tc)) <+> "args" <+> prettyVerbose argsNF
+  let constraint = TC ctx (m `Has` eWHNF)
+  progress <- blockOnMetas eWHNF $ case eWHNF of
+    IsContainerExpr      _ t1 t2 -> solveIsContainer    constraint t1 t2
+    IsTruthExpr          _ t     -> solveIsTruth        constraint t
+    HasEqExpr            _ t1 t2 -> solveHasEq          constraint t1 t2
+    HasOrdExpr           _ t1 t2 -> solveHasOrd         constraint t1 t2
+    HasNatOpsExpr        _ t     -> solveHasNatOps      constraint t
+    HasIntOpsExpr        _ t     -> solveHasIntOps      constraint t
+    HasRatOpsExpr        _ t     -> solveHasRatOps      constraint t
+    HasNatLitsUpToExpr   _ n t   -> solveHasNatLits     constraint n t
+    HasIntLitsExpr       _ t     -> solveHasIntLits     constraint t
+    HasRatLitsExpr       _ t     -> solveHasRatLits     constraint t
     _ -> developerError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
 
   unless (isStuck progress) $ do
@@ -122,14 +109,11 @@ solveIsContainer c tElem tCont =
   return $ case getContainerElem tCont of
     Nothing -> Stuck
     Just t  -> Progress
-      { newConstraints = [Constraint (ConstraintContext (provenanceOf c) mempty (variableContext c)) (Unify (tElem, t))]
+      { newConstraints = [UC ctx (Unify (tElem, t))]
       , solvedMetas    = mempty
       }
-  where
-    getContainerElem :: CheckedExpr -> Maybe CheckedExpr
-    getContainerElem (ListType   _ t)   = Just t
-    getContainerElem (TensorType _ t _) = Just t
-    getContainerElem _                  = Nothing
+  where ctx = ConstraintContext (provenanceOf c) mempty (variableContext c)
+
 
 solveHasNatLits :: MonadConstraintSolving m
                 => Constraint
@@ -188,15 +172,6 @@ solveHasRatOps _ (RatType  _) = return simplySolved
 solveHasRatOps _ (RealType _) = return simplySolved
 solveHasRatOps constraint _ = throwError $ FailedConstraints (constraint :| [])
 
-solveIsQuantifiable :: MonadConstraintSolving m
-                    => Constraint
-                    -> CheckedExpr
-                    -> CheckedExpr
-                    -> m ConstraintProgress
--- TODO
-solveIsQuantifiable constraint _ _ =
-  throwError $ FailedConstraints (constraint :| [])
-
 simplySolved :: ConstraintProgress
 simplySolved = Progress mempty mempty
 
@@ -206,3 +181,78 @@ abstractOver ctx body = foldr typeToLam body (fmap (\(_, t, _) -> t) ctx)
     typeToLam :: CheckedExpr -> CheckedExpr -> CheckedExpr
     typeToLam t = Lam ann (ExplicitBinder ann Nothing t)
       where ann = annotationOf t
+
+
+--------------------------------------------------------------------------------
+-- Default solutions
+
+-- This is some pretty ugly code. There must be a way of making this process
+-- more elegant....
+
+type Ctx = ConstraintContext
+
+solveDefaultTypeClassConstraints :: MonadConstraintSolving m
+                                 => [(TypeClassConstraint, Ctx)]
+                                 -> m ConstraintProgress
+solveDefaultTypeClassConstraints constraints = do
+  -- First group by common meta-variables
+  let constraintsByMeta = Map.mapMaybe id $ groupByMetas constraints
+  newConstraints <- forM (Map.assocs constraintsByMeta) $ \(meta, (tc, ctx)) -> do
+    logDebug $ "Using default for" <+> pretty meta <+> "=" <+> pretty tc
+    let ann = (provenanceOf ctx, TheMachine)
+    let solution = defaultSolution ann tc
+    return $ UC ctx (Unify (Meta ann meta, solution))
+
+  return $ if null newConstraints
+    then Stuck
+    else Progress newConstraints mempty
+
+groupByMetas :: [(TypeClassConstraint, Ctx)]
+             -> Map Meta (Maybe (TypeClass, Ctx))
+groupByMetas []       = mempty
+groupByMetas ((x, ctx) : xs) = case getDefaultCandidate x of
+  Nothing      -> groupByMetas xs
+  Just (m, tc) -> Map.insertWith merge m (Just (tc, ctx)) (groupByMetas xs)
+  where
+    merge :: Maybe (TypeClass, Ctx) -> Maybe (TypeClass, Ctx) -> Maybe (TypeClass, Ctx)
+    merge (Just tc1) (Just tc2) = strongest tc1 tc2
+    merge _          _          = Nothing
+
+strongest :: (TypeClass, Ctx) -> (TypeClass, Ctx) -> Maybe (TypeClass, Ctx)
+strongest x@(tc1, _) y@(tc2, _) = case (numType tc1, numType tc2) of
+  (Just (t1, isOp1), Just (t2, isOp2))
+    | t1 < t2       -> Just y
+    | t2 < t1       -> Just x
+    | isOp1 < isOp2 -> Just y
+    | otherwise     -> Just x
+  _ -> Nothing
+  where
+  numType :: TypeClass -> Maybe (NumericType, Bool)
+  numType HasNatOps        = Just (Nat, True)
+  numType HasIntOps        = Just (Int, True)
+  numType HasRatOps        = Just (Rat, True)
+  numType HasNatLitsUpTo{} = Just (Nat, False)
+  numType HasIntLits       = Just (Int, False)
+  numType HasRatLits       = Just (Rat, False)
+  numType _                = Nothing
+
+defaultSolution :: CheckedAnn -> TypeClass -> CheckedExpr
+defaultSolution ann HasNatOps          = NatType ann
+defaultSolution ann HasIntOps          = IntType ann
+defaultSolution ann HasRatOps          = RatType ann
+defaultSolution ann (HasNatLitsUpTo n) = FinType ann (NatLiteralExpr ann (NatType ann) (n + 1))
+defaultSolution ann HasIntLits         = IntType ann
+defaultSolution ann HasRatLits         = RatType ann
+defaultSolution _   tc                 =
+  developerError $ "TypeClass" <+> pretty (show tc) <+> "should have already been eliminated"
+
+getDefaultCandidate :: TypeClassConstraint -> Maybe (Meta, TypeClass)
+getDefaultCandidate (_ `Has` e) = case e of
+  (HasNatLitsUpToExpr _ n (Meta _ m)) -> Just (m , HasNatLitsUpTo n)
+  (HasIntLitsExpr     _   (Meta _ m)) -> Just (m , HasIntLits)
+  (HasRatLitsExpr     _   (Meta _ m)) -> Just (m , HasRatLits)
+  (HasNatOpsExpr      _   (Meta _ m)) -> Just (m , HasNatOps)
+  (HasIntOpsExpr      _   (Meta _ m)) -> Just (m , HasIntOps)
+  (HasRatOpsExpr      _   (Meta _ m)) -> Just (m , HasRatOps)
+  _                                   -> Nothing
+

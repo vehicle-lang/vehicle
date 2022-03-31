@@ -162,7 +162,6 @@ instance Elab B.Expr V.InputExpr where
     B.TCOrd     tk e1 e2 -> builtin (V.TypeClass V.HasOrd)             tk [e1, e2]
     B.TCCont    tk e1 e2 -> builtin (V.TypeClass V.IsContainer)        tk [e1, e2]
     B.TCTruth   tk e     -> builtin (V.TypeClass V.IsTruth)            tk [e]
-    B.TCQuant   tk e     -> builtin (V.TypeClass V.IsQuantifiable)     tk [e]
     B.TCNatOps  tk e     -> builtin (V.TypeClass V.HasNatOps)          tk [e]
     B.TCIntOps  tk e     -> builtin (V.TypeClass V.HasIntOps)          tk [e]
     B.TCRatOps  tk e     -> builtin (V.TypeClass V.HasRatOps)          tk [e]

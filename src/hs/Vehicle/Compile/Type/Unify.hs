@@ -31,13 +31,13 @@ pattern x :~: y = (x,y)
 
 solveUnificationConstraint :: MonadConstraintSolving m
                            => ConstraintContext
-                           -> UnificationPair
+                           -> UnificationConstraint
                            -> m ConstraintProgress
 -- Errors
-solveUnificationConstraint ctx (e1, e2) = do
+solveUnificationConstraint ctx (Unify (e1, e2)) = do
   whnfE1 <- whnf (varContext ctx) e1
   whnfE2 <- whnf (varContext ctx) e2
-  let constraint = Constraint ctx (Unify (whnfE1, whnfE2))
+  let constraint = UC ctx (Unify (whnfE1, whnfE2))
   let p = provenanceOf constraint
 
   progress <- case (toHead whnfE1, toHead whnfE2) of
@@ -61,9 +61,9 @@ solveUnificationConstraint ctx (e1, e2) = do
         }
 
     (PrimDict _ t1, []) :~: (PrimDict _ t2, []) -> do
-      let tConstraint = Constraint ctx (Unify (t1, t2))
+      let newConstraint = UC ctx (Unify (t1, t2))
       return Progress
-        { newConstraints = [tConstraint]
+        { newConstraints = [newConstraint]
         , solvedMetas    = mempty
         }
 
@@ -73,7 +73,7 @@ solveUnificationConstraint ctx (e1, e2) = do
       | visibilityOf binder1 /= visibilityOf binder2 ->
         throwError $ FailedConstraints [constraint]
       | otherwise -> return Progress
-        { newConstraints = [Constraint ctx (Unify (body1, body2))]
+        { newConstraints = [UC ctx (Unify (body1, body2))]
         , solvedMetas    = mempty
         }
 
@@ -83,8 +83,8 @@ solveUnificationConstraint ctx (e1, e2) = do
         throwError $ FailedConstraints [constraint]
       -- TODO need to try and unify `LSeq` with `Cons`s.
       | otherwise -> do
-        let dictConstraint  = Constraint ctx (Unify (dict1, dict2))
-        let elemConstraints = zipWith (curry (Constraint ctx . Unify)) es1 es2
+        let dictConstraint  = UC ctx (Unify (dict1, dict2))
+        let elemConstraints = zipWith (curry (UC ctx . Unify)) es1 es2
         return Progress
           { newConstraints = dictConstraint : elemConstraints
           , solvedMetas    = mempty
@@ -94,9 +94,9 @@ solveUnificationConstraint ctx (e1, e2) = do
     (LSeq ann dict1 es, []) :~: (Builtin _ Cons, args2) ->
       case (dict1, es, args2) of
         (PrimDict _ (IsContainerExpr _ t1 _), x1 : xs1, [t2, x2, xs2]) -> do
-          let typeConstraint = Constraint ctx (Unify (t1, argExpr t2))
-          let headConstraint = Constraint ctx (Unify (x1, argExpr x2))
-          let tailConstraint = Constraint ctx (Unify (LSeq ann dict1 xs1, argExpr xs2))
+          let typeConstraint = UC ctx (Unify (t1, argExpr t2))
+          let headConstraint = UC ctx (Unify (x1, argExpr x2))
+          let tailConstraint = UC ctx (Unify (LSeq ann dict1 xs1, argExpr xs2))
           return Progress
             { newConstraints = [typeConstraint, headConstraint, tailConstraint]
             , solvedMetas    = mempty
@@ -105,7 +105,7 @@ solveUnificationConstraint ctx (e1, e2) = do
 
     (Builtin _ Cons, _) :~: (LSeq{}, []) ->
       -- mirror image of the previous case, so just swap the problem over.
-      solveUnificationConstraint ctx (whnfE2, whnfE1)
+      solveUnificationConstraint ctx (Unify (whnfE2, whnfE1))
 
 
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
@@ -115,8 +115,8 @@ solveUnificationConstraint ctx (e1, e2) = do
           -- !!TODO!! Block until binders are solved
           -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
           -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
-          let binderConstraint = Constraint ctx (Unify (typeOf binder1, typeOf binder2))
-          let bodyConstraint   = Constraint ctx (Unify (body1, body2))
+          let binderConstraint = UC ctx (Unify (typeOf binder1, typeOf binder2))
+          let bodyConstraint   = UC ctx (Unify (body1, body2))
           return Progress
             { newConstraints = [binderConstraint, bodyConstraint]
             , solvedMetas    = mempty
@@ -244,7 +244,7 @@ solveUnificationConstraint ctx (e1, e2) = do
     _t :~: (Meta _ _i, _args) ->
       -- this is the mirror image of the previous case, so just swap the
       -- problem over.
-      solveUnificationConstraint ctx (whnfE2, whnfE1)
+      solveUnificationConstraint ctx (Unify (whnfE2, whnfE1))
 
     -- Catch-all
     _ -> do
@@ -274,7 +274,7 @@ solveArg :: MonadConstraintSolving m
          -> m Constraint
 solveArg c (arg1, arg2)
   | visibilityOf arg1 /= visibilityOf arg2 = throwError $ FailedConstraints [c]
-  | otherwise = return $ Constraint
+  | otherwise = return $ UC
     (ConstraintContext (provenanceOf c) mempty (variableContext c))
     (Unify (argExpr arg1 , argExpr arg2))
 

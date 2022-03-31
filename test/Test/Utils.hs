@@ -17,7 +17,7 @@ import Vehicle.Compile (typeCheckExpr)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
-import Vehicle.Compile.Type (runTypeCheck)
+import Vehicle.Compile.Type (typeCheck)
 
 
 data SpecLocation
@@ -45,4 +45,4 @@ textToCheckedExpr :: Text -> CheckedExpr
 textToCheckedExpr = discardState . typeCheckExpr
 
 retypeCheckExpr :: CheckedExpr -> CheckedExpr
-retypeCheckExpr = discardState . runTypeCheck
+retypeCheckExpr = discardState . typeCheck

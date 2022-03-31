@@ -21,7 +21,7 @@ type OutputVector = Tensor Rat [5]
 
 clearOfConflict = 0
 weakLeft        = 1
--- weakRight    = 2  (not used, so currently type-checker complains)
+weakRight       = 2
 strongLeft      = 3
 strongRight     = 4
 

@@ -12,7 +12,7 @@ position token BuiltinToken
   | {"Nat"} | {"Int"} | {"Real"} | {"Fin"}
   | {"Prop"} | {"Bool"}
   | {"Tensor"} | {"List"} | {"::"} | {"!"}
-  | {"Eq"} | {"Ord"} | {"Container"} | {"Truth"} | {"Quantify"}
+  | {"Eq"} | {"Ord"} | {"Container"} | {"Truth"}
   | {"NatOps"} | {"IntOps"} | {"RatOps"}
   );
 position token NameToken (lower (letter | digit | '_')*) ;
