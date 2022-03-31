@@ -8,8 +8,6 @@ This allows the user to maintain the abstraction of the neural network as a blac
 
 ## Some examples
 
-Some examples of Vehicle projects with end-to-end integration with Agda are as follows:
-
 #### ACAS Xu spec
 
 The complete specification of the ACAS Xu collision avoidance system from the ([Reluplex paper](https://arxiv.org/abs/1702.01135))
@@ -20,9 +18,10 @@ The complete specification of the ACAS Xu collision avoidance system from the ([
 
 A simple car controller that keeps the car on the road in the face of noisy sensor data and an unpredicatable cross-wind. Neural network spec is verified in Marabou and then
 connected to Agda to prove the desired safety property (from Section 2.1 of the [Vehicle paper](https://arxiv.org/pdf/2202.05207v1.pdf)):
-  - [Folder](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/) - [Specification](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/windController.vcl)
-  - [Generated Marabou queries](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden/windController/windController-output-marabou)
-  - [Generated Agda code](https://github.com/vehicle-lang/vehicle/blob/dev/test/Test/Compile/Golden/windController/windController-output.agda)
+  - [Folder](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/)
+  - [Specification](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/windController.vcl)
+  - [Automatically generated Marabou queries](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden/windController/windController-output-marabou)
+  - [Automatically generated Agda code](https://github.com/vehicle-lang/vehicle/blob/dev/test/Test/Compile/Golden/windController/windController-output.agda)
   - [Overall proof of correctness in Agda](https://github.com/vehicle-lang/vehicle/blob/dev/examples/windController/agdaProof/SafetyProof.agda)
 
 #### Other
