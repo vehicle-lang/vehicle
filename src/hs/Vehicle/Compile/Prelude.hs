@@ -5,12 +5,14 @@ module Vehicle.Compile.Prelude
   ) where
 
 import Data.Map (Map)
+import Data.Map qualified as Map
 
 import Vehicle.Prelude as X
 import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Language.AST as X
 import Vehicle.Resource as X
 import Vehicle.Language.Provenance as X
+import Control.Monad.Reader
 
 --------------------------------------------------------------------------------
 -- Compilation
@@ -119,6 +121,27 @@ instance IsBoundCtx [DBBinding] where
 
 instance IsBoundCtx [Symbol] where
   ctxNames = map Just
+
+getDeclCtx :: MonadReader VariableCtx m => m DeclCtx
+getDeclCtx = asks declCtx
+
+addToDeclCtx :: MonadReader VariableCtx m => Identifier -> CheckedExpr -> Maybe CheckedExpr -> m a -> m a
+addToDeclCtx n t e = local add
+  where
+    add :: VariableCtx -> VariableCtx
+    add VariableCtx{..} = VariableCtx{declCtx = Map.insert n (t, e) declCtx, ..}
+
+getBoundCtx :: MonadReader VariableCtx m => m BoundCtx
+getBoundCtx = asks boundCtx
+
+getVariableCtx :: MonadReader VariableCtx m => m VariableCtx
+getVariableCtx = ask
+
+addToBoundCtx :: MonadReader VariableCtx m => DBBinding -> CheckedExpr -> Maybe CheckedExpr -> m a -> m a
+addToBoundCtx n t e = local add
+  where
+    add :: VariableCtx -> VariableCtx
+    add VariableCtx{..} = VariableCtx{ boundCtx = (n, t, e) : boundCtx, ..}
 
 --------------------------------------------------------------------------------
 -- Logging

@@ -145,6 +145,7 @@ nfApp ann fun       args = do
   fromMaybe (return e) $ case e of
     -- Types
     TensorType _ tElem (NilExpr _ _) -> Just $ return tElem
+    TensorType _ tElem (SeqExpr _ _ _ []) -> Just $ return tElem
 
     -- Binary relations
     EqualityExpr eq _ tElem tRes [arg1, arg2] -> nfEq eq ann tElem tRes arg1 arg2

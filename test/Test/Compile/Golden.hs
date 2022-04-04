@@ -134,6 +134,12 @@ goldenTests = testGroup "GoldenTests" <$>
       , testLocation   = Tests
       , testTargets    = [AgdaBackend]
       }
+
+    , testSpec
+      { testName       = "simple-matrix"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend]
+      }
     -- , testSpec
     --   { testName       = "simple-vectorType"
     --   , testLocation   = Tests

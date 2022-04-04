@@ -122,6 +122,7 @@ library
                       , Vehicle.Compile.Type.MetaSubstitution
                       , Vehicle.Compile.Type.Constraint
                       , Vehicle.Compile.Type.TypeClass
+                      , Vehicle.Compile.Type.WeakHeadNormalForm
                       , Vehicle.Compile.Type.Unify
                       , Vehicle.Compile.Resource.Dataset.IDX
                       , Vehicle.Compile.CapitaliseTypeNames

@@ -7,7 +7,7 @@ module Vehicle.Compile.Type.Bidirectional
 import Prelude hiding (pi)
 import Control.Monad (when)
 import Control.Monad.Except (MonadError(..))
-import Control.Monad.Reader (MonadReader(..), asks)
+import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State (MonadState)
 import Data.Foldable (foldrM)
 import Data.Map qualified as Map
@@ -20,6 +20,7 @@ import Vehicle.Compile.Error
 import Vehicle.Language.DSL
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.WeakHeadNormalForm
 
 --------------------------------------------------------------------------------
 -- Bidirectional phase of type-checking
@@ -40,7 +41,7 @@ instance Inferrable UncheckedExpr CheckedExpr where
   infer e = fst <$> inferExpr e
 
 --------------------------------------------------------------------------------
--- Contexts
+-- The type-checking monad
 
 -- | The type-checking monad
 type TCM m =
@@ -50,56 +51,35 @@ type TCM m =
   , MonadReader VariableCtx  m
   )
 
-getDeclCtx :: TCM m => m DeclCtx
-getDeclCtx = asks declCtx
-
-addToDeclCtx :: TCM m => Identifier -> CheckedExpr -> Maybe CheckedExpr -> m a -> m a
-addToDeclCtx n t e = local add
-  where
-    add :: VariableCtx -> VariableCtx
-    add VariableCtx{..} = VariableCtx{declCtx = Map.insert n (t, e) declCtx, ..}
-
-getBoundCtx :: TCM m => m BoundCtx
-getBoundCtx = asks boundCtx
-
-getVariableCtx :: TCM m => m VariableCtx
-getVariableCtx = ask
-
-addToBoundCtx :: TCM m => DBBinding -> CheckedExpr -> Maybe CheckedExpr -> m a -> m a
-addToBoundCtx n t e = local add
-  where
-    add :: VariableCtx -> VariableCtx
-    add VariableCtx{..} = VariableCtx{ boundCtx = (n, t, e) : boundCtx, ..}
-
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showDeclEntry :: TCM m => Identifier -> m ()
+showDeclEntry :: MonadLogger m => Identifier -> m ()
 showDeclEntry ident = do
   logDebug MaxDetail ("decl-entry" <+> pretty ident)
   incrCallDepth
 
-showDeclExit :: TCM m => Identifier -> m ()
+showDeclExit :: MonadLogger m => Identifier -> m ()
 showDeclExit ident = do
   decrCallDepth
   logDebug MaxDetail ("decl-exit" <+> pretty ident)
 
-showCheckEntry :: TCM m => CheckedExpr -> UncheckedExpr -> m ()
+showCheckEntry :: MonadLogger m => CheckedExpr -> UncheckedExpr -> m ()
 showCheckEntry t e = do
   logDebug MaxDetail ("check-entry" <+> prettyVerbose e <+> "<-" <+> prettyVerbose t)
   incrCallDepth
 
-showCheckExit :: TCM m => CheckedExpr -> m ()
+showCheckExit :: MonadLogger m => CheckedExpr -> m ()
 showCheckExit e = do
   decrCallDepth
   logDebug MaxDetail ("check-exit " <+> prettyVerbose e)
 
-showInferEntry :: TCM m => UncheckedExpr -> m ()
+showInferEntry :: MonadLogger m => UncheckedExpr -> m ()
 showInferEntry e = do
   logDebug MaxDetail ("infer-entry" <+> prettyVerbose e)
   incrCallDepth
 
-showInferExit :: TCM m => (CheckedExpr, CheckedExpr) -> m ()
+showInferExit :: MonadLogger m => (CheckedExpr, CheckedExpr) -> m ()
 showInferExit (e, t) = do
   decrCallDepth
   logDebug MaxDetail ("infer-exit " <+> prettyVerbose e <+> "->" <+> prettyVerbose t)
@@ -130,90 +110,8 @@ unify p e1 e2 = do
 freshMeta :: TCM m => Provenance -> m (Meta, CheckedExpr)
 freshMeta p = freshMetaWith p =<< getBoundCtx
 
--- Takes the expected type of a function and the user-provided arguments
--- and traverses through checking each argument type against the type of the
--- matching pi binder and inserting any required implicit/instance arguments.
--- Returns the type of the function when applied to the full list of arguments
--- (including inserted arguments) and that list of arguments.
-inferArgs :: TCM m
-          => Provenance     -- Provenance of the function
-          -> CheckedExpr    -- Type of the function
-          -> [UncheckedArg] -- User-provided arguments of the function
-          -> m (CheckedExpr, [CheckedArg])
-inferArgs p (Pi _ binder resultType) (arg : args)
-  | visibilityOf binder == visibilityOf arg = do
-    -- Check the type of the argument.
-    checkedArgExpr <- checkExpr (typeOf binder) (argExpr arg)
-
-    -- Generate the new checked arg
-    let checkedArg = replaceArgExpr checkedArgExpr arg
-
-    -- Substitute argument in `resultType`
-    let updatedResultType = checkedArgExpr `substInto` resultType
-
-    -- Recurse into the list of args
-    (typeAfterApplication, checkedArgs) <- inferArgs p updatedResultType args
-
-    -- Return the appropriately annotated type with its inferred kind.
-    return (typeAfterApplication, checkedArg : checkedArgs)
-
-  | visibilityOf binder == Explicit = do
-    -- Then we're expecting an explicit arg but have a non-explicit arg
-    -- so panic
-    ctx <- getBoundCtx
-    throwError $ MissingExplicitArg ctx arg (typeOf binder)
-
--- This case handles either
--- `visibilityOf binder /= Explicit` and (`visibilityOf binder /= visibilityOf arg` or args == [])
-inferArgs p (Pi _ binder resultType) args
-  | visibilityOf binder /= Explicit = do
-    logDebug MaxDetail ("insert-arg" <+> pretty (visibilityOf binder) <+> prettyVerbose (typeOf binder))
-    let binderVis = visibilityOf binder
-    let ann = inserted $ provenanceOf binder
-
-    -- Generate a new meta-variable for the argument
-    (meta, metaExpr) <- freshMeta p
-    let metaArg = Arg ann binderVis metaExpr
-
-    -- Check if the required argument is a type-class
-    when (binderVis == Instance) $ do
-      ctx <- getVariableCtx
-      addTypeClassConstraint ctx meta (typeOf binder)
-
-    -- Substitute meta-variable in tRes
-    let updatedResultType = metaExpr `substInto` resultType
-
-    -- Recurse into the list of args
-    (typeAfterApplication, checkedArgs) <- inferArgs p updatedResultType args
-
-    -- Return the appropriately annotated type with its inferred kind.
-    return (typeAfterApplication, metaArg : checkedArgs)
-
-inferArgs _p functionType [] = return (functionType, [])
-
-inferArgs p functionType args = do
-  ctx <- getBoundCtx
-  let ann = inserted p
-  let mkRes = [Endo $ \tRes -> pi (visibilityOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
-              | (i, arg) <- zip [0::Int ..] args]
-  let expectedType = fromDSL ann (appEndo (mconcat mkRes) (tHole "res"))
-  throwError $ TypeMismatch p ctx functionType expectedType
-
--- |Takes a function and its arguments, inserts any needed implicits
--- or instance arguments and then returns the function applied to the full
--- list of arguments as well as the result type.
-inferApp :: TCM m
-         => CheckedAnn
-         -> CheckedExpr
-         -> CheckedExpr
-         -> [UncheckedArg]
-         -> m (CheckedExpr, CheckedExpr)
-inferApp ann fun funType args = do
-  (appliedFunType, checkedArgs) <- inferArgs (provenanceOf fun) funType args
-  return (normAppList ann fun checkedArgs, appliedFunType)
-
 --------------------------------------------------------------------------------
--- Type-checking of expressions
+-- Checking
 
 checkExpr :: TCM m
           => CheckedExpr   -- Type we're checking against
@@ -280,6 +178,50 @@ checkExpr expectedType expr = do
   showCheckExit res
   return res
 
+viaInfer :: TCM m => CheckedAnn -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
+viaInfer ann expectedType e = do
+  -- Switch to inference mode
+  (checkedExpr, actualType) <- inferExpr e
+  -- Insert any needed implicit or instance arguments
+  (appliedCheckedExpr, resultType) <- inferApp ann checkedExpr actualType []
+  -- Assert the expected and the actual types are equal
+  _t <- unify (provenanceOf ann) expectedType resultType
+  return appliedCheckedExpr
+
+--------------------------------------------------------------------------------
+-- Inference
+
+inferProg :: TCM m => UncheckedProg -> m CheckedProg
+inferProg (Main ds) = do
+  logDebug MaxDetail "Beginning initial type-checking pass"
+  result <- Main <$> inferDecls ds
+  logDebug MaxDetail "Ending initial type-checking pass\n"
+  return result
+
+inferDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
+inferDecls [] = return []
+inferDecls (d : ds) = do
+  let ident = identifierOf d
+  showDeclEntry ident
+
+  (checkedDecl, checkedDeclBody, checkedDeclType) <- case d of
+    DefResource p r _ t -> do
+      (checkedType, typeOfType) <- inferExpr t
+      assertIsType p typeOfType
+      let checkedDecl = DefResource p r ident checkedType
+      return (checkedDecl, Nothing, checkedType)
+
+    DefFunction p _ t body -> do
+      (checkedType, typeOfType) <- inferExpr t
+      assertIsType p typeOfType
+      checkedBody <- checkExpr checkedType body
+      let checkedDecl = DefFunction p ident checkedType checkedBody
+      return (checkedDecl, Just checkedBody, checkedType)
+
+  showDeclExit ident
+  checkedDecls <- addToDeclCtx ident checkedDeclType checkedDeclBody $ inferDecls ds
+  return $ checkedDecl : checkedDecls
+
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
 inferExpr :: TCM m
@@ -307,7 +249,7 @@ inferExpr e = do
       checkedExpr <- checkExpr checkedExprType expr
       return (Ann ann checkedExpr checkedExprType , checkedExprType)
 
-    Pi p binder resultType -> do
+    Pi ann binder resultType -> do
       (checkedBinderType, typeOfBinderType) <- inferExpr (typeOf binder)
 
       (checkedResultType, typeOfResultType) <-
@@ -315,7 +257,7 @@ inferExpr e = do
 
       let maxResultType = typeOfBinderType `tMax` typeOfResultType
       let checkedBinder = replaceBinderType checkedBinderType binder
-      return (Pi p checkedBinder checkedResultType , maxResultType)
+      return (Pi ann checkedBinder checkedResultType , maxResultType)
 
     -- Literals are slightly tricky to type-check, as by default they
     -- probably are standalone, i.e. not wrapped in an `App`, in which
@@ -325,18 +267,18 @@ inferExpr e = do
     -- One approach might be to pass a boolean flag through `infer`
     -- which signals whether the parent node is an `App`, however
     -- for now it's simplier to split into the following two cases:
-    App p (Literal p' l) args -> do
-      let (checkedLit, checkedLitType) = inferLiteral p' l
-      inferApp p checkedLit checkedLitType (NonEmpty.toList args)
+    App ann (Literal ann' l) args -> do
+      let (checkedLit, checkedLitType) = inferLiteral ann' l
+      inferApp ann checkedLit checkedLitType (NonEmpty.toList args)
 
-    Literal p l -> do
-      let (checkedLit, checkedLitType) = inferLiteral p l
-      inferApp p checkedLit checkedLitType []
+    Literal ann l -> do
+      let (checkedLit, checkedLitType) = inferLiteral ann l
+      inferApp ann checkedLit checkedLitType []
 
 
-    App p fun args -> do
+    App ann fun args -> do
       (checkedFun, checkedFunType) <- inferExpr fun
-      inferApp p checkedFun checkedFunType (NonEmpty.toList args)
+      inferApp ann checkedFun checkedFunType (NonEmpty.toList args)
 
     Var ann (Bound i) -> do
       -- Lookup the type of the variable in the context.
@@ -439,47 +381,90 @@ inferExpr e = do
 inferLiteral :: UncheckedAnn -> Literal -> (CheckedExpr, CheckedExpr)
 inferLiteral p l = (Literal p l, typeOfLiteral p l)
 
--- TODO: unify DeclNetw and DeclData
-inferDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
-inferDecls [] = return []
-inferDecls (d : ds) = do
-  let ident = identifierOf d
-  showDeclEntry ident
 
-  (checkedDecl, checkedDeclBody, checkedDeclType) <- case d of
-    DefResource p r _ t -> do
-      (checkedType, typeOfType) <- inferExpr t
-      assertIsType p typeOfType
-      let checkedDecl = DefResource p r ident checkedType
-      return (checkedDecl, Nothing, checkedType)
+-- Takes the expected type of a function and the user-provided arguments
+-- and traverses through checking each argument type against the type of the
+-- matching pi binder and inserting any required implicit/instance arguments.
+-- Returns the type of the function when applied to the full list of arguments
+-- (including inserted arguments) and that list of arguments.
+inferArgs :: TCM m
+          => Provenance     -- Provenance of the function
+          -> CheckedExpr    -- Type of the function
+          -> [UncheckedArg] -- User-provided arguments of the function
+          -> m (CheckedExpr, [CheckedArg])
+inferArgs p (Pi _ binder resultType) (arg : args)
+  | visibilityOf binder == visibilityOf arg = do
+    -- Check the type of the argument.
+    checkedArgExpr <- checkExpr (typeOf binder) (argExpr arg)
 
-    DefFunction p _ t body -> do
-      (checkedType, typeOfType) <- inferExpr t
-      assertIsType p typeOfType
-      checkedBody <- checkExpr checkedType body
-      let checkedDecl = DefFunction p ident checkedType checkedBody
-      return (checkedDecl, Just checkedBody, checkedType)
+    -- Generate the new checked arg
+    let checkedArg = replaceArgExpr checkedArgExpr arg
 
-  showDeclExit ident
-  checkedDecls <- addToDeclCtx ident checkedDeclType checkedDeclBody $ inferDecls ds
-  return $ checkedDecl : checkedDecls
+    -- Substitute argument in `resultType`
+    let updatedResultType = checkedArgExpr `substInto` resultType
 
-inferProg :: TCM m => UncheckedProg -> m CheckedProg
-inferProg (Main ds) = do
-  logDebug MaxDetail "Beginning initial type-checking pass"
-  result <- Main <$> inferDecls ds
-  logDebug MaxDetail "Ending initial type-checking pass\n"
-  return result
+    -- Recurse into the list of args
+    (typeAfterApplication, checkedArgs) <- inferArgs p updatedResultType args
 
-viaInfer :: TCM m => CheckedAnn -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
-viaInfer ann expectedType e = do
-  -- Switch to inference mode
-  (checkedExpr, actualType) <- inferExpr e
-  -- Insert any needed implicit or instance arguments
-  (appliedCheckedExpr, resultType) <- inferApp ann checkedExpr actualType []
-  -- Assert the expected and the actual types are equal
-  _t <- unify (provenanceOf ann) expectedType resultType
-  return appliedCheckedExpr
+    -- Return the appropriately annotated type with its inferred kind.
+    return (typeAfterApplication, checkedArg : checkedArgs)
+
+  | visibilityOf binder == Explicit = do
+    -- Then we're expecting an explicit arg but have a non-explicit arg
+    -- so panic
+    ctx <- getBoundCtx
+    throwError $ MissingExplicitArg ctx arg (typeOf binder)
+
+-- This case handles either
+-- `visibilityOf binder /= Explicit` and (`visibilityOf binder /= visibilityOf arg` or args == [])
+inferArgs p (Pi _ binder resultType) args
+  | visibilityOf binder /= Explicit = do
+    logDebug MaxDetail ("insert-arg" <+> pretty (visibilityOf binder) <+> prettyVerbose (typeOf binder))
+    let binderVis = visibilityOf binder
+    let ann = inserted $ provenanceOf binder
+
+    -- Generate a new meta-variable for the argument
+    (meta, metaExpr) <- freshMeta p
+    let metaArg = Arg ann binderVis metaExpr
+
+    -- Check if the required argument is a type-class
+    when (binderVis == Instance) $ do
+      ctx <- getVariableCtx
+      addTypeClassConstraint ctx meta (typeOf binder)
+
+    -- Substitute meta-variable in tRes
+    let updatedResultType = metaExpr `substInto` resultType
+
+    -- Recurse into the list of args
+    (typeAfterApplication, checkedArgs) <- inferArgs p updatedResultType args
+
+    -- Return the appropriately annotated type with its inferred kind.
+    return (typeAfterApplication, metaArg : checkedArgs)
+
+inferArgs _p functionType [] = return (functionType, [])
+
+inferArgs p functionType args = do
+  ctx <- getBoundCtx
+  let ann = inserted p
+  let mkRes = [Endo $ \tRes -> pi (visibilityOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
+              | (i, arg) <- zip [0::Int ..] args]
+  let expectedType = fromDSL ann (appEndo (mconcat mkRes) (tHole "res"))
+  throwError $ TypeMismatch p ctx functionType expectedType
+
+-- |Takes a function and its arguments, inserts any needed implicits
+-- or instance arguments and then returns the function applied to the full
+-- list of arguments as well as the result type.
+inferApp :: TCM m
+         => CheckedAnn
+         -> CheckedExpr
+         -> CheckedExpr
+         -> [UncheckedArg]
+         -> m (CheckedExpr, CheckedExpr)
+inferApp ann fun funType args = do
+  (appliedFunType, checkedArgs) <- inferArgs (provenanceOf fun) funType args
+  varCtx <- getVariableCtx
+  normAppliedFunType <- whnfWithMetas varCtx appliedFunType
+  return (normAppList ann fun checkedArgs, normAppliedFunType)
 
 --------------------------------------------------------------------------------
 -- Typing of literals and builtins
@@ -581,14 +566,14 @@ typeOfQuantifierInOp =
 typeOfCons :: DSLExpr
 typeOfCons =
   forall type0 $ \tElem ->
-      tElem ~> tList tElem ~> tList tElem
+    tElem ~> tList tElem ~> tList tElem
 
 typeOfAtOp :: DSLExpr
 typeOfAtOp =
   forall type0 $ \tElem ->
     forall type0 $ \tDim ->
       forall type0 $ \tDims ->
-        tTensor tElem (cons tDim tDims) ~> tIndex tDim ~> tElem
+        tTensor tElem (cons tDim tDims) ~> tIndex tDim ~> tTensor tElem tDims
 
 -- TODO generalise these to tensors etc. (remember to do mkMap' in utils as well)
 typeOfMapOp :: DSLExpr

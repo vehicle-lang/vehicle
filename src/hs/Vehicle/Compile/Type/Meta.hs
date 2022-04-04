@@ -22,18 +22,14 @@ module Vehicle.Compile.Type.Meta
   , triviallySolved
   , partiallySolved
   , isStuck
-  , whnf
-  , norm
   , MetaCtx(..)
   , emptyMetaCtx
   ) where
 
 import Control.Monad.Except (MonadError)
-import Control.Monad.Reader (MonadReader, Reader, runReader, runReaderT, ask, local)
+import Control.Monad.Reader (Reader, runReader, ask, local)
 import Control.Monad.State (MonadState(..), modify, gets)
 import Data.List (partition)
-import Data.Map qualified as Map (lookup)
-import Data.List.NonEmpty (NonEmpty(..))
 
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Prelude
@@ -326,37 +322,3 @@ triviallySolved = Progress mempty mempty
 partiallySolved :: [Constraint] -> ConstraintProgress
 partiallySolved constraints = Progress constraints mempty
 
---------------------------------------------------------------------------------
--- Normalisation
-
--- This only deals with App and Lam normalisation required during
--- type-checking. For full normalisation including builtins see the dedicated
--- `Vehicle.Language.Normalisation` module.
-
-whnf :: (MonadState MetaCtx m) => VariableCtx -> CheckedExpr -> m CheckedExpr
-whnf ctx e = do
-  subst <- getMetaSubstitution
-  let e' = substMetas subst e
-  runReaderT (norm e') ctx
-
-norm :: (MonadReader VariableCtx m) => CheckedExpr -> m CheckedExpr
-norm e@(App ann fun (arg :| args)) = do
-  normFun  <- norm fun
-  case normFun of
-    Lam _ _ body -> do
-      nfBody <- norm (argExpr arg `substInto` body)
-      return $ normAppList ann nfBody args
-    _            -> return e
-norm e@(Var _ v) = do
-  VariableCtx{..} <- ask
-  case v of
-    Free ident -> case Map.lookup ident declCtx of
-      Just (_, Just res) -> return res
-      _                  -> return e
-    Bound index -> case boundCtx !!? index of
-      Just (_, _, Just res) -> return res
-      _                     -> return e
-
-norm (Let _ bound _ body) = norm (bound `substInto` body)
-norm (Ann _ body _)       = norm body
-norm e                    = return e

@@ -14,6 +14,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
+import Vehicle.Compile.Type.WeakHeadNormalForm
 
 
 --------------------------------------------------------------------------------
@@ -35,8 +36,8 @@ solveUnificationConstraint :: MonadConstraintSolving m
                            -> m ConstraintProgress
 -- Errors
 solveUnificationConstraint ctx (Unify (e1, e2)) = do
-  whnfE1 <- whnf (varContext ctx) e1
-  whnfE2 <- whnf (varContext ctx) e2
+  whnfE1 <- whnfWithMetas (varContext ctx) e1
+  whnfE2 <- whnfWithMetas (varContext ctx) e2
   let constraint = UC ctx (Unify (whnfE1, whnfE2))
   let p = provenanceOf constraint
 
@@ -52,9 +53,9 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
     (Hole{}, _) :~: _           -> unexpectedCase p "Holes"
     _           :~: (Hole{}, _) -> unexpectedCase p "Holes"
 
-    ----------------------
-    -- Conversion cases --
-    ----------------------
+    -------------------
+    -- Special cases --
+    -------------------
 
     -- Try to unify with LSeq and Cons
     (LSeq ann dict1 es, []) :~: (Builtin _ Cons, args2) ->
@@ -69,9 +70,25 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
             }
         _ -> throwError $ FailedConstraints [constraint]
 
+    -- mirror image of the previous case, so just swap the problem over.
     (Builtin _ Cons, _) :~: (LSeq{}, []) ->
-      -- mirror image of the previous case, so just swap the problem over.
       solveUnificationConstraint ctx (Unify (whnfE2, whnfE1))
+
+    -- If a tensor is unified with a non-tensor then it must be a 0 dimensional
+    -- tensor.
+    (Builtin _ (ContainerType Tensor), [tElem, tDims]) :~: (Builtin _ op, _)
+      | op /= ContainerType Tensor -> do
+          let emptyDims = mkTensorDims (inserted (annotationOf tDims)) []
+          let elemConstraint = UC ctx (Unify (argExpr tElem, whnfE2))
+          let dimsConstraint = UC ctx (Unify (argExpr tDims, emptyDims))
+          return Progress
+            { newConstraints = [elemConstraint, dimsConstraint]
+            , solvedMetas    = mempty
+            }
+
+    -- Mirror image of the previous case, so just swap the problem over.
+    (Builtin _ op, _) :~: (Builtin _ (ContainerType Tensor), [_tElem, _tDims])
+      | op /= ContainerType Tensor -> solveUnificationConstraint ctx (Unify (whnfE2, whnfE1))
 
     -----------------------
     -- Rigid-rigid cases --

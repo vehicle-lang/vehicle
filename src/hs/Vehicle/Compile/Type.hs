@@ -21,15 +21,17 @@ import Vehicle.Compile.Type.TypeClass
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.MetaSubstitution (metasIn)
+import Vehicle.Compile.Type.WeakHeadNormalForm
 
 -------------------------------------------------------------------------------
 -- Algorithm
 
 typeCheck :: ( MonadCompile m
              , Inferrable a b
+             , MetaSubstitutable b
+             , WHNFable b
              , PrettyWith ('As 'Internal) b
-             , MetaSubstitutable b )
-          => a -> m b
+             ) => a -> m b
 typeCheck e = logCompilerPass "type checking" $ do
   let prog1 = runAll e
   let prog2 = runReaderT prog1 emptyVariableCtx
@@ -39,12 +41,14 @@ typeCheck e = logCompilerPass "type checking" $ do
 runAll :: ( TCM m
           , Inferrable a b
           , MetaSubstitutable b
-          , PrettyWith ('As 'Internal) b)
-       => a -> m b
+          , WHNFable b
+          , PrettyWith ('As 'Internal) b
+          ) => a -> m b
 runAll expr = do
   inferredExpr     <- infer expr
   metaSubstitution <- solveMetas
-  let finalExpr = substMetas metaSubstitution inferredExpr
+  let metaFreeExpr = substMetas metaSubstitution inferredExpr
+  finalExpr <- convertImplicitArgsToWHNF metaFreeExpr
   return finalExpr
 
 solveMetas :: MonadConstraintSolving m => m MetaSubstitution

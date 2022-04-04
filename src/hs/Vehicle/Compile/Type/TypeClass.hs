@@ -6,13 +6,14 @@ module Vehicle.Compile.Type.TypeClass
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.List.NonEmpty (NonEmpty(..))
-import Control.Monad (unless, forM, when)
+import Control.Monad (unless, forM)
 import Control.Monad.Except ( throwError )
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.WeakHeadNormalForm
 import Vehicle.Language.Print (prettyVerbose)
 
 --------------------------------------------------------------------------------
@@ -22,12 +23,12 @@ solveTypeClassConstraint :: MonadConstraintSolving m
                          => ConstraintContext
                          -> TypeClassConstraint
                          -> m ConstraintProgress
-solveTypeClassConstraint ctx (m `Has` e) = do
-  eWHNF <- whnf (varContext ctx) e
-  when (e /= eWHNF) $
-    logDebug MaxDetail ("normalising to" <+> prettyVerbose eWHNF)
-
+solveTypeClassConstraint ctx (m `Has` (App ann tc@(BuiltinTypeClass{}) args)) = do
+  -- We first normalise the type-class args to weak-head normal form
+  eWHNF <- App ann tc <$> traverse (traverseArgExpr (whnfWithMetas (varContext ctx))) args
   let constraint = TC ctx (m `Has` eWHNF)
+
+  -- Then check which sort of type-class it is:
   progress <- blockOnMetas eWHNF $ case eWHNF of
     IsContainerExpr      _ t1 t2 -> solveIsContainer    constraint t1 t2
     IsTruthExpr          _ t     -> solveIsTruth        constraint t
@@ -47,6 +48,9 @@ solveTypeClassConstraint ctx (m `Has` e) = do
     metaSolved (provenanceOf ctx) m solution
 
   return progress
+
+solveTypeClassConstraint _ (_ `Has` e) =
+  compilerDeveloperError $ "Unknown type-class application" <+> squotes (prettyVerbose e)
 
 -- Takes in an expression and returns the list of non-inferable
 -- meta variables contained within it.
