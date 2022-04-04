@@ -41,18 +41,42 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
   let p = provenanceOf constraint
 
   progress <- case (toHead whnfE1, toHead whnfE2) of
+
     ----------------------
     -- Impossible cases --
     ----------------------
+
     (Let{}, _) :~: _           -> unexpectedCase p "Let bindings"
     _          :~: (Let{}, _)  -> unexpectedCase p "Let bindings"
 
     (Hole{}, _) :~: _           -> unexpectedCase p "Holes"
     _           :~: (Hole{}, _) -> unexpectedCase p "Holes"
 
+    ----------------------
+    -- Conversion cases --
+    ----------------------
+
+    -- Try to unify with LSeq and Cons
+    (LSeq ann dict1 es, []) :~: (Builtin _ Cons, args2) ->
+      case (dict1, es, args2) of
+        (PrimDict _ (IsContainerExpr _ t1 _), x1 : xs1, [t2, x2, xs2]) -> do
+          let typeConstraint = UC ctx (Unify (t1, argExpr t2))
+          let headConstraint = UC ctx (Unify (x1, argExpr x2))
+          let tailConstraint = UC ctx (Unify (LSeq ann dict1 xs1, argExpr xs2))
+          return Progress
+            { newConstraints = [typeConstraint, headConstraint, tailConstraint]
+            , solvedMetas    = mempty
+            }
+        _ -> throwError $ FailedConstraints [constraint]
+
+    (Builtin _ Cons, _) :~: (LSeq{}, []) ->
+      -- mirror image of the previous case, so just swap the problem over.
+      solveUnificationConstraint ctx (Unify (whnfE2, whnfE1))
+
     -----------------------
     -- Rigid-rigid cases --
     -----------------------
+
     (Type l1, [])   :~: (Type l2, []) -> do
       solveEq constraint l1  l2;
       return Progress
@@ -89,23 +113,6 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
           { newConstraints = dictConstraint : elemConstraints
           , solvedMetas    = mempty
           }
-
-    -- Try to unify with LSeq and Cons
-    (LSeq ann dict1 es, []) :~: (Builtin _ Cons, args2) ->
-      case (dict1, es, args2) of
-        (PrimDict _ (IsContainerExpr _ t1 _), x1 : xs1, [t2, x2, xs2]) -> do
-          let typeConstraint = UC ctx (Unify (t1, argExpr t2))
-          let headConstraint = UC ctx (Unify (x1, argExpr x2))
-          let tailConstraint = UC ctx (Unify (LSeq ann dict1 xs1, argExpr xs2))
-          return Progress
-            { newConstraints = [typeConstraint, headConstraint, tailConstraint]
-            , solvedMetas    = mempty
-            }
-        _ -> throwError $ FailedConstraints [constraint]
-
-    (Builtin _ Cons, _) :~: (LSeq{}, []) ->
-      -- mirror image of the previous case, so just swap the problem over.
-      solveUnificationConstraint ctx (Unify (whnfE2, whnfE1))
 
 
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])

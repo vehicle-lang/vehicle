@@ -136,34 +136,38 @@ instance Norm CheckedArg where
 
 nfApp :: MonadNorm m => CheckedAnn -> CheckedExpr -> NonEmpty CheckedArg -> m CheckedExpr
 nfApp ann fun@Lam{} args = nfAppLam ann fun (NonEmpty.toList args)
-nfApp ann fun       args = let e = App ann fun args in do
+nfApp ann fun       args = do
+  let e = App ann fun args
   Options{..} <- ask
   fromMaybe (return e) $ case e of
+    -- Types
+    TensorType _ tElem (LSeq _ _ []) -> Just $ return tElem
+
     -- Binary relations
-    (EqualityExpr eq _ tElem tRes [arg1, arg2]) -> nfEq eq ann tElem tRes arg1 arg2
-    (OrderExpr order _ tElem tRes [arg1, arg2]) -> nfOrder order ann tElem tRes arg1 arg2
+    EqualityExpr eq _ tElem tRes [arg1, arg2] -> nfEq eq ann tElem tRes arg1 arg2
+    OrderExpr order _ tElem tRes [arg1, arg2] -> nfOrder order ann tElem tRes arg1 arg2
 
     -- Boolean operations
-    (NotExpr  _ t [arg])             -> nfNot     ann t arg
-    (AndExpr  _ t [arg1, arg2])      -> nfAnd     ann t arg1 arg2
-    (OrExpr   _ t [arg1, arg2])      -> nfOr      ann t arg1 arg2
-    (ImplExpr _ t [arg1, arg2])      -> nfImplies ann t arg1 arg2 implicationsToDisjunctions
-    (IfExpr _ _ [cond, e1, e2])      -> nfIf cond e1 e2
-    (QuantifierExpr q _ binder body) -> nfQuantifier ann q binder body
+    NotExpr  _ t [arg]             -> nfNot     ann t arg
+    AndExpr  _ t [arg1, arg2]      -> nfAnd     ann t arg1 arg2
+    OrExpr   _ t [arg1, arg2]      -> nfOr      ann t arg1 arg2
+    ImplExpr _ t [arg1, arg2]      -> nfImplies ann t arg1 arg2 implicationsToDisjunctions
+    IfExpr _ _ [cond, e1, e2]      -> nfIf cond e1 e2
+    QuantifierExpr q _ binder body -> nfQuantifier ann q binder body
 
     -- Binary numeric ops
-    (AddExpr _ t _  [arg1, arg2]) -> nfAdd ann t arg1 arg2
-    (SubExpr _ t tc [arg1, arg2]) -> nfSub ann t tc arg1 arg2 subtractionToAddition
-    (MulExpr _ t tc [arg1, arg2]) -> nfMul ann t tc arg1 arg2 expandOutPolynomials
-    (DivExpr _ t _  [arg1, arg2]) -> nfDiv ann t arg1 arg2
-    (NegExpr _ t    [arg])        -> nfNeg ann t arg expandOutPolynomials
+    AddExpr _ t _  [arg1, arg2] -> nfAdd ann t arg1 arg2
+    SubExpr _ t tc [arg1, arg2] -> nfSub ann t tc arg1 arg2 subtractionToAddition
+    MulExpr _ t tc [arg1, arg2] -> nfMul ann t tc arg1 arg2 expandOutPolynomials
+    DivExpr _ t _  [arg1, arg2] -> nfDiv ann t arg1 arg2
+    NegExpr _ t    [arg]        -> nfNeg ann t arg expandOutPolynomials
 
     -- Containers
-    (ConsExpr _ _ [x, xs])              -> nfCons ann x xs
-    (MapExpr _ tElem tRes [fn, cont])   -> nfMap  ann tElem tRes (argExpr fn) (argExpr cont)
-    (AtExpr _ _ _ _ [tensor, index])    -> nfAt   tensor index
-    (FoldExpr _ _ _ _ [op, unit, cont]) -> nfFold ann op unit cont
-    (QuantifierInExpr q _ tCont tRes binder body container) ->
+    ConsExpr _ _ [x, xs]              -> nfCons ann x xs
+    MapExpr _ tElem tRes [fn, cont]   -> nfMap  ann tElem tRes (argExpr fn) (argExpr cont)
+    AtExpr _ _ _ _ [tensor, index]    -> nfAt   tensor index
+    FoldExpr _ _ _ _ [op, unit, cont] -> nfFold ann op unit cont
+    QuantifierInExpr q _ tCont tRes binder body container ->
       nfQuantifierIn ann q tCont tRes binder body container
 
     -- Fall-through case
