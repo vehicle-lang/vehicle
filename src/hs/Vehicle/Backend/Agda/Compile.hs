@@ -273,12 +273,10 @@ compileProg (Main ds) = vsep2 <$> traverse compileDecl ds
 
 compileDecl :: MonadAgdaCompile m => OutputDecl -> m Code
 compileDecl = \case
-  DeclData ann ident _ ->
-    throwError $ UnsupportedDecl AgdaBackend (provenanceOf ann) ident Dataset
+  DefResource _ _ n t ->
+    compileResource (compileIdentifier n) <$> compileExpr t
 
-  DeclNetw _ann n t -> compileNetwork (compileIdentifier n) <$> compileExpr t
-
-  DefFun _ann n t e -> do
+  DefFunction _ann n t e -> do
     let (binders, body) = foldLam e
     if isProperty t
       then compileProperty (compileIdentifier n) =<< compileExpr e
@@ -601,9 +599,9 @@ compileFunDef n t ns e =
   n <+> (if null ns then mempty else hsep ns <> " ") <> "=" <+> e
 
 -- |Compile a `network` declaration
-compileNetwork :: Code -> Code -> Code
-compileNetwork networkName networkType =
-  "postulate" <+> networkName <+> ":" <+> align networkType
+compileResource :: Code -> Code -> Code
+compileResource name t =
+  "postulate" <+> name <+> ":" <+> align t
 
 compileProperty :: MonadAgdaCompile m => Code -> Code -> m Code
 compileProperty propertyName propertyBody = do

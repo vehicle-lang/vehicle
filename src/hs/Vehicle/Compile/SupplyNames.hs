@@ -71,10 +71,7 @@ instance SupplyNames Prog where
   supplyNames f (Main ds) = Main <$> traverse (supplyNames f) ds
 
 instance SupplyNames Decl where
-  supplyNames f = \case
-    DeclNetw p n t   -> DeclNetw p n <$> supplyNames f t
-    DeclData p n t   -> DeclData p n <$> supplyNames f t
-    DefFun   p n t e -> DefFun   p n <$> supplyNames f t <*> supplyNames f e
+  supplyNames f = traverseDeclExprs (supplyNames f)
 
 instance SupplyNames Expr where
   supplyNames f e = case e of

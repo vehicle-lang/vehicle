@@ -18,7 +18,7 @@ import GHC.IO.StdHandles
 import Vehicle.Backend.Marabou.Core
 import Vehicle.Backend.Prelude
 import Vehicle.Verify.VerificationStatus
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- Writing out query files

@@ -13,7 +13,7 @@ import Vehicle
 import Vehicle.Verify
 import Vehicle.Verify.VerificationStatus hiding (version)
 import Vehicle.Prelude
-import Vehicle.NeuralNetwork ( hashNetwork )
+import Vehicle.Resource.NeuralNetwork ( hashNetwork )
 import Vehicle.Backend.Prelude
 
 

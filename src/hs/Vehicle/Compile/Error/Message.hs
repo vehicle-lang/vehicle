@@ -17,7 +17,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Constraint
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -259,8 +259,8 @@ instance MeaningfulError CompileError where
       , fix        = "see user manual for details"
       }
 
-    UnsupportedDecl target ann ident decType ->
-      let dType = squotes (pretty decType) in UError $ UserError
+    UnsupportedResource target ann ident resource ->
+      let dType = squotes (pretty resource) in UError $ UserError
       { provenance = provenanceOf ann
       , problem    = "While compiling property" <+> squotes (pretty ident) <+> "to" <+>
                      pretty target <+> "found a" <+> dType <+> "declaration which" <+>

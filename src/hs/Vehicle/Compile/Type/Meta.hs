@@ -122,10 +122,7 @@ substMApp ann (fun@(Meta _ m), mArgs) = do
 substMApp ann (fun, args) = normAppList ann <$> substM fun <*> substM args
 
 instance MetaSubstitutable CheckedDecl where
-  substM = \case
-    DeclNetw p ident t   -> DeclNetw p ident <$> substM t
-    DeclData p ident t   -> DeclData p ident <$> substM t
-    DefFun   p ident t e -> DefFun   p ident <$> substM t <*> substM e
+  substM = traverseDeclExprs substM
 
 instance MetaSubstitutable CheckedProg where
   substM (Main ds) = Main <$> traverse substM ds

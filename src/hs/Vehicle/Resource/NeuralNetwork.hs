@@ -1,5 +1,5 @@
 
-module Vehicle.NeuralNetwork where
+module Vehicle.Resource.NeuralNetwork where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Map (Map)

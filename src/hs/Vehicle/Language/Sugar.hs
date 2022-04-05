@@ -116,7 +116,7 @@ unfoldDefFun :: HasProvenance ann
              -> [Binder binder var ann]
              -> Expr binder var ann
              -> Decl binder var ann
-unfoldDefFun ann ident t bs e = DefFun (provenanceOf ann) ident t (unfoldLam ann (bs, e))
+unfoldDefFun ann ident t bs e = DefFunction (provenanceOf ann) ident t (unfoldLam ann (bs, e))
 
 unfoldDefType :: HasProvenance ann
               => ann -> Identifier

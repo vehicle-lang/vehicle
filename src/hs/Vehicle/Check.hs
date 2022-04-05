@@ -10,7 +10,7 @@ import Control.Monad.Trans (MonadIO(liftIO))
 
 import Vehicle.Prelude
 import Vehicle.Verify.VerificationStatus (readProofCache, isSpecVerified, ProofCache(..), NetworkVerificationInfo(..))
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- Checking

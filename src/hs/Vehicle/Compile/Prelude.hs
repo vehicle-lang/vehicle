@@ -9,7 +9,8 @@ import Data.Map (Map)
 import Vehicle.Prelude as X
 import Vehicle.Language.AST as X
 import Vehicle.Backend.Prelude (Backend)
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.Core as X ( ResourceType(..) )
+import Vehicle.Resource.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- Compilation

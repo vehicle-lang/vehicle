@@ -23,13 +23,13 @@ import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck)
 import Vehicle.Compile.Normalise (normalise, defaultNormalisationOptions)
 import Vehicle.Compile.Normalise.NetworkTypes (normaliseNetworkTypes)
-import Vehicle.NeuralNetwork (NetworkMap)
 import Vehicle.Backend.Marabou qualified as Marabou
 import Vehicle.Backend.Marabou (MarabouProperty)
 import Vehicle.Backend.VNNLib qualified as VNNLib
 import Vehicle.Backend.VNNLib (VNNLibProperty, writeVNNLibQueryFiles)
 import Vehicle.Backend.Agda
 import Vehicle.Verify.VerificationStatus ( getProofCacheLocation )
+import Vehicle.Resource.NeuralNetwork (NetworkMap)
 
 compile :: LoggingOptions -> CompileOptions -> IO ()
 compile loggingOptions CompileOptions{..} = case target of

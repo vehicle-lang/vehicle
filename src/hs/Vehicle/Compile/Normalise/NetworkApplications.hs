@@ -17,7 +17,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Compile.LetInsertion (insertLets)
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.NeuralNetwork
 import Data.Text (Text)
 
 --------------------------------------------------------------------------------

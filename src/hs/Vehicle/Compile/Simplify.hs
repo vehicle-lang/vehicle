@@ -51,10 +51,7 @@ instance WellFormedAnn ann => Simplify (Prog binder var ann) where
   simplifyReader (Main ds) = Main <$> traverse simplifyReader ds
 
 instance WellFormedAnn ann => Simplify (Decl binder var ann) where
-  simplifyReader = \case
-    DeclNetw ann n t -> DeclNetw ann n <$> simplifyReader t
-    DeclData ann n t -> DeclData ann n <$> simplifyReader t
-    DefFun ann n t e -> DefFun ann n <$> simplifyReader t <*> simplifyReader e
+  simplifyReader = traverseDeclExprs simplifyReader
 
 instance WellFormedAnn ann => Simplify (Expr binder var ann) where
   simplifyReader expr = case expr of

@@ -9,7 +9,7 @@ import Prettyprinter (list)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Backend.Prelude (Backend)
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -68,7 +68,7 @@ data CompileError
 
   -- Backend errors
   | NoPropertiesFound
-  | UnsupportedDecl                Backend Provenance Identifier DeclType
+  | UnsupportedResource            Backend Provenance Identifier ResourceType
   | UnsupportedQuantifierSequence  Backend Provenance Identifier Quantifier
   | UnsupportedQuantifierPosition  Backend Provenance Identifier Quantifier Symbol
   | UnsupportedVariableType        Backend Provenance Identifier Symbol OutputExpr [Builtin]

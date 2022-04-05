@@ -18,7 +18,7 @@ import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAreHomogeneous)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Marabou.Core
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- Compilation to Marabou
@@ -48,10 +48,9 @@ compileProg networkMap (Main ds) = do
 
 compileDecl :: MonadCompile m => NetworkMap -> CheckedDecl -> m (Maybe MarabouProperty)
 compileDecl networkMap d = case d of
-  DeclData{} -> normalisationError currentPass "Dataset declarations"
-  DeclNetw{} -> normalisationError currentPass "Network declarations"
+  DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
 
-  DefFun _p ident t expr ->
+  DefFunction _p ident t expr ->
     if not $ isProperty t
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.

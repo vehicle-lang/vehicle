@@ -9,10 +9,9 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.External.Abs qualified as B
 
-import Vehicle.Prelude
 import Vehicle.Language.AST qualified as V
 import Vehicle.Language.Sugar
-import Vehicle.Language.AST.Visibility (HasVisibility(visibilityOf))
+import Vehicle.Compile.Prelude
 
 --------------------------------------------------------------------------------
 -- Conversion to BNFC AST
@@ -99,19 +98,15 @@ instance Delaborate (V.Prog Symbol Symbol) B.Prog where
 instance Delaborate (V.Decl Symbol Symbol) [B.Decl] where
   delabM = \case
     -- Elaborate a network declaration.
-    (V.DeclNetw _ n t) -> do
+    (V.DefResource _ r n t) -> do
       let n' = delabIdentifier n
       t' <- delabM t
-      return [B.DeclNetw n' tokElemOf t']
-
-    -- Elaborate a dataset declaration.
-    (V.DeclData _ n t) -> do
-      let n' = delabIdentifier n
-      t' <- delabM t
-      return [B.DeclData n' tokElemOf t']
+      return $ case r of
+        Network -> [B.DeclNetw n' tokElemOf t']
+        Dataset -> [B.DeclData n' tokElemOf t']
 
     -- Elaborate a type definition.
-    (V.DefFun _ n t e) -> delabFun n t e
+    (V.DefFunction _ n t e) -> delabFun n t e
 
 instance Delaborate (V.Expr Symbol Symbol) B.Expr where
   delabM expr = case expr of

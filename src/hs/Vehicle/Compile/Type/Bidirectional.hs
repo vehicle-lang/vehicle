@@ -447,23 +447,17 @@ inferDecls (d : ds) = do
   showDeclEntry ident
 
   (checkedDecl, checkedDeclBody, checkedDeclType) <- case d of
-    DeclNetw p _ t -> do
+    DefResource p r _ t -> do
       (checkedType, typeOfType) <- inferExpr t
       assertIsType p typeOfType
-      let checkedDecl = DeclNetw p ident checkedType
+      let checkedDecl = DefResource p r ident checkedType
       return (checkedDecl, Nothing, checkedType)
 
-    DeclData p _ t -> do
-      (checkedType, typeOfType) <- inferExpr t
-      assertIsType p typeOfType
-      let checkedDecl = DeclData p ident checkedType
-      return (checkedDecl, Nothing, checkedType)
-
-    DefFun p _ t body -> do
+    DefFunction p _ t body -> do
       (checkedType, typeOfType) <- inferExpr t
       assertIsType p typeOfType
       checkedBody <- checkExpr checkedType body
-      let checkedDecl = DefFun p ident checkedType checkedBody
+      let checkedDecl = DefFunction p ident checkedType checkedBody
       return (checkedDecl, Just checkedBody, checkedType)
 
   showDeclExit ident

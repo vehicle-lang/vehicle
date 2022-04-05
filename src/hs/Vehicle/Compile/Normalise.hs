@@ -82,14 +82,14 @@ instance Norm CheckedProg where
 
 instance Norm CheckedDecl where
   nf = \case
-    DeclNetw ann ident typ      -> DeclNetw ann ident <$> nf typ
-    DeclData ann ident typ      -> DeclData ann ident <$> nf typ
+    DefResource ann r ident typ ->
+      DefResource ann r ident <$> nf typ
 
-    DefFun   ann ident typ expr -> do
+    DefFunction ann ident typ expr -> do
       typ'  <- nf typ
       expr' <- nf expr
       modify (M.insert ident expr')
-      return $ DefFun ann ident typ' expr'
+      return $ DefFunction ann ident typ' expr'
 
 instance Norm CheckedExpr where
   nf e = showExit e $ do

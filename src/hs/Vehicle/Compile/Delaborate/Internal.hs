@@ -10,7 +10,7 @@ import Data.Text (pack)
 
 import Vehicle.Internal.Abs qualified as B
 
-import Vehicle.Prelude
+import Vehicle.Compile.Prelude
 import Vehicle.Language.AST qualified as V
 
 --------------------------------------------------------------------------------
@@ -43,9 +43,9 @@ instance Delaborate (V.Prog Symbol Symbol) B.Prog where
 -- |Elaborate declarations.
 instance Delaborate (V.Decl Symbol Symbol) B.Decl where
   delabM = \case
-    V.DeclNetw _ n t -> B.DeclNetw (delabIdentifier n) <$> delabM t
-    V.DeclData _ n t -> B.DeclData (delabIdentifier n) <$> delabM t
-    V.DefFun _ n t e -> B.DefFun   (delabIdentifier n) <$> delabM t <*> delabM e
+    V.DefResource _ Network n t -> B.DeclNetw (delabIdentifier n) <$> delabM t
+    V.DefResource _ Dataset n t -> B.DeclData (delabIdentifier n) <$> delabM t
+    V.DefFunction _ n t e       -> B.DefFun   (delabIdentifier n) <$> delabM t <*> delabM e
 
 instance Delaborate (V.Expr Symbol Symbol) B.Expr where
   delabM expr = case expr of

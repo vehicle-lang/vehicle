@@ -20,7 +20,7 @@ import Vehicle.Backend.VNNLib.Core
 import Vehicle.Compile.Normalise.NetworkApplications (convertNetworkAppsToMagicVars)
 import Vehicle.Compile.Normalise.DNF (splitConjunctions)
 import Vehicle.Backend.Prelude
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.NeuralNetwork
 
 compile :: MonadCompile m => NetworkMap -> CheckedProg -> m [VNNLibProperty]
 compile networkMap prog = do
@@ -54,13 +54,13 @@ compileProg networkMap (Main ds) = do
 
 compileDecl :: MonadCompile m => NetworkMap -> CheckedDecl -> m (Maybe VNNLibProperty)
 compileDecl networkMap = \case
-  DeclData{} ->
+  DefResource _ Dataset _ _ ->
     normalisationError currentPass "dataset declarations"
 
-  DeclNetw ann ident _ ->
-    throwError $ UnsupportedDecl VNNLibBackend ann ident Network
+  DefResource ann Network ident _ ->
+    throwError $ UnsupportedResource VNNLibBackend ann ident Network
 
-  DefFun _ ident t e -> if not $ isProperty t
+  DefFunction _ ident t e -> if not $ isProperty t
       then return Nothing
       else do
         let doc = compileProperty networkMap ident e

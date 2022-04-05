@@ -12,7 +12,7 @@ import Vehicle
 import Vehicle.Check
 import Vehicle.Verify.VerificationStatus hiding (version)
 import Vehicle.Prelude
-import Vehicle.NeuralNetwork ( hashNetwork )
+import Vehicle.Resource.NeuralNetwork ( hashNetwork )
 
 import Test.GoldenUtils ( goldenFileTest )
 import System.Info (os)

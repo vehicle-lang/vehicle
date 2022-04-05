@@ -67,10 +67,10 @@ groupDecls (d : ds) = NonEmpty.toList <$> traverse elab (NonEmpty.groupBy1 cond 
 instance Elab (NonEmpty B.Decl) V.InputDecl where
   elab = \case
     -- Elaborate a network declaration.
-    (B.DeclNetw n _tk t :| []) -> V.DeclNetw (tkProvenance n) <$> elab n <*> elab t
+    (B.DeclNetw n _tk t :| []) -> V.DefResource (tkProvenance n) V.Network <$> elab n <*> elab t
 
     -- Elaborate a dataset declaration.
-    (B.DeclData n _tk t :| []) -> V.DeclData (tkProvenance n) <$> elab n <*> elab t
+    (B.DeclData n _tk t :| []) -> V.DefResource (tkProvenance n) V.Dataset <$> elab n <*> elab t
 
     -- Elaborate a type definition.
     (B.DefType n bs e :| []) -> do

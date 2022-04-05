@@ -16,7 +16,7 @@ import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.AlphaEquivalence (alphaEq)
 import Vehicle.Compile.Error
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- Network standardisation
@@ -63,16 +63,17 @@ instance Standardise Prog where
 
 standariseDecl :: MonadNetwork m => CheckedDecl -> m (Maybe CheckedDecl)
 standariseDecl d = case d of
-  DeclData{} -> normalisationError currentPass "Dataset declarations"
+  DefResource _ Dataset _ _ ->
+    normalisationError currentPass "Dataset declarations"
 
-  DeclNetw ann ident t -> do
+  DefResource ann Network ident t -> do
     entry <- analyseNetworkType (ann, TheUser) ident t
     -- Insert the network into the context
     modify (Map.insert (nameOf ident) entry)
     -- Remove the declaration.
     return Nothing
 
-  DefFun p ident t e -> Just . DefFun p ident t <$> standardise e
+  DefFunction p ident t e -> Just . DefFunction p ident t <$> standardise e
 
 instance Standardise Expr where
   standardise = \case

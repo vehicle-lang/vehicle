@@ -39,12 +39,11 @@ instance CapitaliseTypes CheckedProg where
 
 instance CapitaliseTypes CheckedDecl where
   cap d = case d of
-    DeclData p ident t -> DeclData p <$> cap ident <*> cap t
-    DeclNetw p ident t -> DeclNetw p <$> cap ident <*> cap t
-    DefFun p ident t e -> do
+    DefResource p r ident t -> DefResource p r <$> cap ident <*> cap t
+    DefFunction p ident t e -> do
       when (isTypeDef t) $
         modify (insert ident)
-      DefFun p <$> cap ident <*> cap t <*> cap e
+      DefFunction p <$> cap ident <*> cap t <*> cap e
 
 instance CapitaliseTypes CheckedExpr where
   cap = cata $ \case

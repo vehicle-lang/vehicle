@@ -39,9 +39,9 @@ instance Elab B.Prog V.InputProg where
 
 instance Elab B.Decl V.InputDecl where
   elab = \case
-    B.DeclNetw n t   -> V.DeclNetw (tkProvenance n) <$> elab n <*> elab t
-    B.DeclData n t   -> V.DeclData (tkProvenance n) <$> elab n <*> elab t
-    B.DefFun   n t e -> V.DefFun   (tkProvenance n) <$> elab n <*> elab t <*> elab e
+    B.DeclNetw n t   -> V.DefResource (tkProvenance n) Network <$> elab n <*> elab t
+    B.DeclData n t   -> V.DefResource (tkProvenance n) Dataset <$> elab n <*> elab t
+    B.DefFun   n t e -> V.DefFunction (tkProvenance n) <$> elab n <*> elab t <*> elab e
 
 instance Elab B.Expr V.InputExpr where
   elab = \case

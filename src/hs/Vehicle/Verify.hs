@@ -7,7 +7,7 @@ import System.IO (hPutStrLn, stderr)
 import System.Exit (exitFailure)
 import System.Directory (makeAbsolute)
 
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.NeuralNetwork
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Marabou as Marabou (verifySpec)
 import Vehicle.Compile
