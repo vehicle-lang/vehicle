@@ -81,6 +81,10 @@ goldenTests = testGroup "GoldenTests" $
         [AgdaBackend],
         [])
 
+    -- , (Tests, "simple-constant-input",
+    --     [MarabouBackend],
+    --     [])
+
     -- , (Tests, "simple-dataset",
     --     [MarabouBackend],
     --     [("d", "dataset-nat-4.idx")])

@@ -14,7 +14,7 @@ validImage x = forall i . 0 <= x ! i <= 1
 --------------------------------------------------------------------------------
 -- Network
 
-network mnist : Input -> Tensor Rat [10]
+network mnist : Image -> Tensor Rat [10]
 
 epsilon = 0.1
 delta   = 0.1
@@ -32,8 +32,8 @@ robustAround x = forall z .
 
 -- We then ask for the dataset
 
-dataset trainingImages : List Image
-dataset trainingLabels : List Int
+dataset trainingImages : Tensor Image [n]
+dataset trainingLabels : Tensor (List (Fin 10)) [n]
 
 robustness : Bool
-robustness = forall x in trainingData . robustAround x
+robustness = forall seperate i . robustAround (trainingData ! i) (trainingLabels ! i)
