@@ -23,6 +23,7 @@ import Data.Maybe (catMaybes, listToMaybe)
 
 import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
+import Debug.Trace (traceShowId)
 
 --------------------------------------------------------------------------------
 -- General utilities
@@ -69,7 +70,7 @@ diffText failTransformation golden output = do
 
 diffEqualityTestWithIgnore :: DiffException -> String -> String -> Bool
 diffEqualityTestWithIgnore failTransformation golden output =
-  golden == output || golden == failTransformation output
+  golden == output || traceShowId golden == traceShowId (failTransformation (traceShowId output))
 
 cleanupGoldenTestOutput :: Bool -> FilePath -> TestTree -> TestTree
 cleanupGoldenTestOutput isFile testFile test =

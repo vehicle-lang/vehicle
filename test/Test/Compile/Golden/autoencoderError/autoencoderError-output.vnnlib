@@ -20,6 +20,4 @@
 (declare-const Y_5 Real)
 (declare-const Y_6 Real)
 
-(assert (== X_5 Y_0))
-(assert (== X_6 Y_1))
-(assert (or (distinct Y_2 X_0) (or (distinct Y_3 X_1) (or (distinct Y_4 X_2) (or (distinct Y_5 X_3) (distinct Y_6 X_4))))))
+(assert (or (or (distinct X_5 Y_0) (distinct X_6 Y_1)) (or (distinct Y_2 X_0) (or (distinct Y_3 X_1) (or (distinct Y_4 X_2) (or (distinct Y_5 X_3) (distinct Y_6 X_4)))))))

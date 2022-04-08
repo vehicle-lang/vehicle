@@ -299,7 +299,7 @@ replaceNetworkApplication ann name networkInput letBody bindingDepth  = do
 
   let body'         = outputsExpr `substInto` letBody
   let inputEquality = EqualityExpr Eq ann inputsType Prop (map (ExplicitArg ann) [inputsExpr, networkInput])
-  let newBody       = ImplExpr ann Prop (map (ExplicitArg ann) [inputEquality, body'])
+  let newBody       = AndExpr ann Prop (map (ExplicitArg ann) [inputEquality, body'])
 
   return (newBody, replaceableBoundVars)
   where
