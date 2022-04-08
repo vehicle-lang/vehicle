@@ -123,12 +123,9 @@ makeIndividualTest location name datasets backend = test
   goldenFile     = goldenDir </> name </> name <> "-output"      <> filePathSuffix
   isFolderOutput = backend == MarabouBackend
   run            = runTest inputFile outputFile moduleName backend datasets
-  -- The proofCache field is a filepath and therefore does not transfer across
-  -- systems, therefore ignore it when comparing the files.
-  ignoreList     = ["proofCache" | backend == AgdaBackend]
 
   testFn = if isFolderOutput then goldenDirectoryTest else goldenFileTest
-  test = testFn testName run ignoreList goldenFile outputFile
+  test = testFn testName run windowsFilepathException goldenFile outputFile
 
 runTest :: FilePath -> FilePath -> String -> Backend -> Map Text FilePath -> IO ()
 runTest inputFile outputFile modulePath backend datasets = do

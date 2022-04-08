@@ -1,7 +1,7 @@
 Status: unknown
 
-The following networks have been altered since verification was last run:
+The following have been altered since verification was last run:
 
-  myNetwork (test/Test/Check/Golden/networkChangedNetwork.onnx)
+  network myNetwork (test/Test/Check/Golden/networkChangedNetwork.onnx)
 
 To fix this problem, use Vehicle to reverify the specification.

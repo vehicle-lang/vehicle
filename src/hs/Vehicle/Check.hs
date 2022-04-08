@@ -73,7 +73,7 @@ instance Pretty CheckResult where
 
   pretty (MissingResources missingNetworks) =
     "Status: unknown" <> line <> line <>
-    "The following networks cannot not be found:" <> line <> line <>
+    "The following cannot not be found:" <> line <> line <>
       indent 2 (vsep (fmap prettyResource missingNetworks)) <> line <> line <>
     "To fix this problem, either move the missing files back to" <+>
     "the" <+> locations <+> "above or use Vehicle to reverify the" <+>
@@ -83,7 +83,7 @@ instance Pretty CheckResult where
 
   pretty (AlteredResources alteredNetworks) =
     "Status: unknown" <> line <> line <>
-    "The following networks have been altered since verification was" <+>
+    "The following have been altered since verification was" <+>
     "last run:" <> line <> line <>
     indent 2 (vsep (fmap prettyResource alteredNetworks)) <> line <> line <>
     "To fix this problem, use Vehicle to reverify the specification."

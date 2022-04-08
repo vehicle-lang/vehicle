@@ -14,8 +14,7 @@ import Vehicle.Verify.VerificationStatus hiding (version)
 import Vehicle.Prelude
 import Vehicle.Resource
 
-import Test.GoldenUtils ( goldenFileTest )
-import System.Info (os)
+import Test.GoldenUtils ( goldenFileTest, windowsFilepathException )
 
 goldenTests :: TestTree
 goldenTests = testGroup "GoldenTests"
@@ -47,12 +46,9 @@ networkMissingTest = createTest "networkMissing" status alterNetwork
 
 createTest :: String -> SpecificationStatus -> (FilePath -> IO ()) -> TestTree
 createTest name status alterNetwork =
-  goldenFileTest name run ignoreList goldenFile outputFile
+  goldenFileTest name run windowsFilepathException goldenFile outputFile
   where
   run = runTest name status alterNetwork
-  -- Exclude any lines that contain ".onnx" as that signifies the line contains
-  -- a filepath which won't be preserved across file systems.
-  ignoreList   = [".onnx"]
   goldenFile   = testDir </> name <.> "txt"
   outputFile   = testDir </> name <> "-output.txt"
 
