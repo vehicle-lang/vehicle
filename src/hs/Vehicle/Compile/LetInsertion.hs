@@ -279,7 +279,7 @@ nodeSM e sms =
           -> IntMap (GenericSubexpression PositionList)
     merge xs ys = IntMap.unionWith (<>) xs (fmap (fmap There) ys)
 
-duplicateError :: CoDBExpr ann
+duplicateError :: Show ann => CoDBExpr ann
                -> [SubexpressionMap]
                -> Subexpression
                -> Subexpression

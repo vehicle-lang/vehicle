@@ -13,19 +13,7 @@ import System.Console.ANSI (Color(..))
 import System.Directory (makeAbsolute)
 
 import Vehicle.Prelude
-
---------------------------------------------------------------------------------
--- Network verification information
-
-data NetworkVerificationInfo = NetworkVerificationInfo
-  { name        :: Text
-  , location    :: FilePath
-  , networkHash :: Int
-  } deriving (Generic)
-
-instance FromJSON NetworkVerificationInfo
-instance ToJSON NetworkVerificationInfo
-
+import Vehicle.Resource
 
 --------------------------------------------------------------------------------
 -- Verification status of a single property
@@ -91,7 +79,7 @@ instance Pretty SpecificationStatus where
 data ProofCache = ProofCache
   { specVersion  :: Version
   , status       :: SpecificationStatus
-  , networkInfo  :: [NetworkVerificationInfo]
+  , resources    :: [Resource]
   , originalSpec :: Text
   } deriving (Generic)
 

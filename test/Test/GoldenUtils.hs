@@ -18,7 +18,6 @@ import System.IO.Error
 import Control.Exception (catch, throwIO)
 import Data.Bifunctor (Bifunctor(second, first))
 import Data.Maybe (catMaybes, listToMaybe)
-import Debug.Trace
 
 import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)

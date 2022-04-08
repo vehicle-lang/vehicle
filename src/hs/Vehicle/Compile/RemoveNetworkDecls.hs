@@ -1,5 +1,5 @@
-module Vehicle.Compile.Normalise.NetworkTypes
-  ( normaliseNetworkTypes
+module Vehicle.Compile.RemoveNetworkDecls
+  ( removeNetworkDecls
   ) where
 
 import Control.Monad.State (MonadState(..), runStateT, modify, gets)
@@ -21,12 +21,13 @@ import Vehicle.Resource.NeuralNetwork
 --------------------------------------------------------------------------------
 -- Network standardisation
 
--- | This function normalises all network types into the standard form
--- `Tensor A [m] -> Tensor B [n]`.
-normaliseNetworkTypes :: MonadCompile m
+-- | This function removes all network declarations from the program and extracts
+-- their types into the NetworkCtx. It also normalises all network types into
+-- the standard form `Tensor A [m] -> Tensor B [n]`.
+removeNetworkDecls :: MonadCompile m
                       => CheckedProg
                       -> m (NetworkMap, CheckedProg)
-normaliseNetworkTypes prog1 = do
+removeNetworkDecls prog1 = do
   logDebug "Beginning normalisation of network types"
   incrCallDepth
 
@@ -63,9 +64,6 @@ instance Standardise Prog where
 
 standariseDecl :: MonadNetwork m => CheckedDecl -> m (Maybe CheckedDecl)
 standariseDecl d = case d of
-  DefResource _ Dataset _ _ ->
-    normalisationError currentPass "Dataset declarations"
-
   DefResource ann Network ident t -> do
     entry <- analyseNetworkType (ann, TheUser) ident t
     -- Insert the network into the context
@@ -73,7 +71,11 @@ standariseDecl d = case d of
     -- Remove the declaration.
     return Nothing
 
-  DefFunction p ident t e -> Just . DefFunction p ident t <$> standardise e
+  DefResource p Dataset ident t ->
+    Just . DefResource p Dataset ident <$> standardise t
+
+  DefFunction p ident t e ->
+    Just . DefFunction p ident t <$> standardise e
 
 instance Standardise Expr where
   standardise = \case
@@ -143,7 +145,7 @@ decomposeNetworkType prevType networkType = case networkType of
   Pi _ binder result
     | visibilityOf binder /= Explicit -> do
       (ident, _) <- ask
-      throwError $ NetworkTypeWithNonExplicitArguments ident networkType binder
+      throwError $ NetworkTypeHasNonExplicitArguments ident networkType binder
     | otherwise  -> do
       t <- checkTypesEqual prevType (typeOf binder)
       first (t :) <$> decomposeNetworkType (Just t) result
@@ -159,7 +161,7 @@ decomposeNetworkType prevType networkType = case networkType of
         then return binderType
         else do
         (ident, _) <- ask
-        throwError $ NetworkTypeWithHeterogeneousInputTypes ident networkType t binderType
+        throwError $ NetworkTypeHasHeterogeneousInputTypes ident networkType t binderType
 
 analyseNetworkInputTypes :: MonadNetworkTypeAnalysis m
                          => [CheckedExpr]
@@ -217,7 +219,7 @@ getElementType _  (Builtin _ t)
   | t `elem` allowedNetworkElementTypes = return t
 getElementType io t = do
   (ident, _) <- ask
-  throwError $ NetworkTypeUnsupportedElementType ident t io
+  throwError $ NetworkTypeHasUnsupportedElementType ident t io
 
 getTensorSize :: MonadNetworkTypeAnalysis m
               => InputOrOutput
@@ -232,6 +234,3 @@ getTensorSize io tTensor (SeqExpr _ _ _ [d]) = case d of
 getTensorSize io tTensor _ = do
   (ident, _) <- ask
   throwError $ NetworkTypeHasMultidimensionalTensor ident tTensor io
-
-currentPass :: Doc a
-currentPass = "analysis of network types"

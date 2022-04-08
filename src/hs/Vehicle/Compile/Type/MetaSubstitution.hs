@@ -16,7 +16,7 @@ import Data.IntMap qualified as IntMap
 import Vehicle.Compile.Prelude
 
 newtype MetaSubstitution = MetaSubstitution (IntMap CheckedExpr)
-  deriving (Semigroup, Monoid)
+  deriving (Show, Semigroup, Monoid)
 
 singleton :: Meta -> CheckedExpr -> MetaSubstitution
 singleton m e = coerce (IntMap.singleton (coerce m) e)

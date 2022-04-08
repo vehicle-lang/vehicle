@@ -9,10 +9,10 @@ import Data.Text qualified as Text
 import Data.Map qualified as Map (fromList)
 
 import Vehicle (run, Command(..), Options(Options))
-import Vehicle.NeuralNetwork (NetworkLocations)
 import Vehicle.Check (CheckOptions(..))
 import Vehicle.Compile (CompileOptions(..))
 import Vehicle.Verify (VerifyOptions(..))
+import Data.Map (Map)
 
 --------------------------------------------------------------------------------
 -- Main function
@@ -87,11 +87,16 @@ compileParser = CompileOptions
      <> short 'o'
      <> help "Output location for compiled file. Defaults to stdout if not provided."
      <> metavar "FILE" ))
-  <*> networkOptions
-       ( long "network"
-      <> short 'n'
-      <> help "The name (as used in the Vehicle code) and path to a neural network."
-      <> metavar "NAME:FILE")
+  <*> resourceOptions
+      ( long "network"
+     <> short 'n'
+     <> help "The name (as used in the Vehicle code) and path to a neural network."
+     <> metavar "NAME:FILE")
+  <*> resourceOptions
+      ( long "dataset"
+     <> short 'd'
+     <> help "The name (as used in the Vehicle code) and path to a dataset."
+     <> metavar "NAME:FILE")
   <*> optional (strOption
       ( long "modulePrefix"
      <> short 'm'
@@ -102,14 +107,14 @@ compileParser = CompileOptions
   <*> optional (strOption
       ( long "proofCache"
      <> short 'p'
-     <> help "Only needed when compiling to ITP code. The location of the proof cache \
-              \ that the generated ITP code should use to check the verification status \
+     <> help "The location of the proof cache \
+              \ that can be used to check the verification status \
               \ of the specifcation. The proof cache can be generated via the \
               \ `vehicle verify` command."
      <> metavar "FILE" ))
 
-networkOptions :: Mod OptionFields (Text, FilePath) -> Parser NetworkLocations
-networkOptions desc = Map.fromList <$> many (option (maybeReader readNL) desc)
+resourceOptions :: Mod OptionFields (Text, FilePath) -> Parser (Map Text FilePath)
+resourceOptions desc = Map.fromList <$> many (option (maybeReader readNL) desc)
   where
     readNL :: String -> Maybe (Text, FilePath)
     readNL s = case Text.splitOn (Text.pack ":") (Text.pack s) of
@@ -135,11 +140,16 @@ verifyParser = VerifyOptions
      <> short 'i'
      <> help "Input .vcl file."
      <> metavar "FILE" )
-  <*> networkOptions
+  <*> resourceOptions
       ( long "network"
      <> short 'n'
      <> help "The name (as used in the Vehicle code) and path to a neural network."
-     <> metavar "NETWORK" )
+     <> metavar "NAME:FILE" )
+  <*> resourceOptions
+      ( long "dataset"
+    <> short 'd'
+    <> help "The name (as used in the Vehicle code) and path to a dataset."
+    <> metavar "NAME:FILE")
   <*> optional (strOption
       ( long "proofCache"
      <> short 'p'

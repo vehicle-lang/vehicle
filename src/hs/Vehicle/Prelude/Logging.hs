@@ -9,7 +9,8 @@ module Vehicle.Prelude.Logging
   , Logger
   , runLoggerT
   , runLogger
-  , discardWarningsAndLogs
+  , discardLoggerT
+  , discardLogger
   , logWarning
   , logDebug
   , liftExceptWithLogging
@@ -157,21 +158,24 @@ showMessages logs = unlines $ map show logs
 liftExceptWithLogging :: Except e v -> ExceptT e Logger v
 liftExceptWithLogging = mapExceptT (pure . runIdentity)
 
-discardWarningsAndLogs :: Logger a -> a
-discardWarningsAndLogs m = fst $ runLogger m
+discardLoggerT :: Monad m => LoggerT m a -> m a
+discardLoggerT m = fst <$> runLoggerT m
 
-flushLogger :: Handle -> Logger a -> IO a
+discardLogger :: Logger a -> a
+discardLogger m = fst $ runLogger m
+
+flushLogger :: MonadIO m => Handle -> LoggerT m a -> m a
 flushLogger logHandle l = do
-  let (v, messages) = runLogger l
+  (v, messages) <- runLoggerT l
   flushLogs logHandle messages
   return v
 
-flushLogs :: Handle -> [Message] -> IO ()
-flushLogs logHandle = mapM_ (hPrint logHandle)
+flushLogs :: MonadIO m => Handle -> [Message] -> m ()
+flushLogs logHandle messages = liftIO $ mapM_ (hPrint logHandle) messages
 
-fromLoggedIO :: LoggingOptions -> Logger a -> IO a
+fromLoggedIO :: MonadIO m => LoggingOptions -> LoggerT m a -> m a
 fromLoggedIO LoggingOptions{..} logger = case logHandle of
-  Nothing       -> return $ discardWarningsAndLogs logger
+  Nothing       -> discardLoggerT logger
   (Just handle) -> flushLogger handle logger
 
 fromLoggerTIO :: LoggingOptions -> LoggerT IO a -> IO a

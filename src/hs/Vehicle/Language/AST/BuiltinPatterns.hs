@@ -17,6 +17,13 @@ pattern
   where
   ListType ann tElem =  App ann (BuiltinContainerType ann List) [ExplicitArg ann tElem]
 
+mkList :: ann
+       -> Expr binder var ann
+       -> [Expr binder var ann]
+       -> Expr binder var ann
+mkList ann tElem = foldr cons (NilExpr ann tElem)
+  where cons x xs = ConsExpr ann tElem $ fmap (ExplicitArg ann) [x, xs]
+
 --------------------------------------------------------------------------------
 -- Tensor
 
@@ -685,7 +692,17 @@ pattern
     LSeq ann (PrimDict ann (IsContainerExpr ann tElem tCont)) xs
 
 --------------------------------------------------------------------------------
--- Cons
+-- Nil and cons
+
+pattern NilExpr :: ann
+                -> Expr binder var ann
+                -> Expr binder var ann
+pattern
+  NilExpr ann tElem <-
+    LSeq ann tElem []
+  where
+  NilExpr ann tElem =
+    LSeq ann tElem []
 
 pattern ConsExpr :: ann
                  -> Expr  binder var ann

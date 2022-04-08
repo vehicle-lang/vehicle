@@ -6,6 +6,7 @@ module Vehicle.Compile.Error.Message
   , logCompileError
   ) where
 
+import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Void ( Void )
 import Data.Text ( Text, pack )
@@ -26,7 +27,7 @@ import Vehicle.Resource.NeuralNetwork
 data UserError = UserError
   { provenance :: Provenance
   , problem    :: Doc Void
-  , fix        :: Doc Void
+  , fix        :: Maybe (Doc Void)
   }
 
 -- |Errors from external code that we have no control over.
@@ -40,7 +41,8 @@ data VehicleError
 
 instance Pretty VehicleError where
   pretty (UError (UserError p prob probFix)) =
-    unAnnotate $ "Error:" <+> appendProvenance prob p <> line <> fixText probFix
+    unAnnotate $ "Error:" <+> appendProvenance prob p <>
+      maybe "" (\fix -> line <> fixText fix) probFix
 
   pretty (EError (ExternalError text)) =
     pretty text
@@ -54,16 +56,21 @@ fixText t = "Fix:" <+> t
 --------------------------------------------------------------------------------
 -- IO
 
-fromEitherIO :: LoggingOptions -> Either CompileError a -> IO a
+fromEitherIO :: MonadIO m => LoggingOptions -> Either CompileError a -> m a
 fromEitherIO _              (Right x)  = return x
 fromEitherIO loggingOptions (Left err) =
   fatalError loggingOptions $ pretty $ details err
 
-fromLoggedEitherIO :: LoggingOptions -> ExceptT CompileError Logger a -> IO a
+fromLoggedEitherIO :: MonadIO m
+                   => LoggingOptions
+                   -> ExceptT CompileError (LoggerT m) a
+                   -> m a
 fromLoggedEitherIO loggingOptions x = do
   fromEitherIO loggingOptions =<< fromLoggedIO loggingOptions (logCompileError x)
 
-logCompileError :: ExceptT CompileError Logger a -> Logger (Either CompileError a)
+logCompileError :: Monad m
+                => ExceptT CompileError (LoggerT m) a
+                -> LoggerT m (Either CompileError a)
 logCompileError x = do
   e' <- runExceptT x
   case e' of
@@ -79,7 +86,9 @@ class MeaningfulError e where
 
 instance MeaningfulError CompileError where
   details = \case
-    -- Parsing
+    -------------
+    -- Parsing --
+    -------------
 
     BNFCParseError text -> EError $ ExternalError
       -- TODO need to revamp this error, BNFC must provide some more
@@ -91,19 +100,19 @@ instance MeaningfulError CompileError where
     UnknownBuiltin tk -> UError $ UserError
       { provenance = tkProvenance tk
       , problem    = "Unknown symbol" <+> pretty (tkSymbol tk)
-      , fix        = "Please consult the documentation for a description of Vehicle syntax"
+      , fix        = Just "Please consult the documentation for a description of Vehicle syntax"
       }
 
     MalformedPiBinder tk -> UError $ UserError
       { provenance = tkProvenance tk
       , problem    = "Malformed binder for Pi, expected a type but only found name" <+> pretty (tkSymbol tk)
-      , fix        = "Unknown"
+      , fix        = Nothing
       }
 
     MalformedLamBinder expr -> UError $ UserError
       { provenance = provenanceOf expr
       , problem    = "Malformed binder for Lambda, expected a name but only found an expression" <+> prettyVerbose expr
-      , fix        = "Unknown"
+      , fix        = Nothing
       }
 
     -- Elaboration external
@@ -111,7 +120,7 @@ instance MeaningfulError CompileError where
     MissingDefFunExpr p name -> UError $ UserError
       { provenance = p
       , problem    = "missing definition for the declaration" <+> squotes (pretty name)
-      , fix        = "add a definition for the declaration, e.g."
+      , fix        = Just $ "add a definition for the declaration, e.g."
                     <> line <> line
                     <> "addOne :: Int -> Int" <> line
                     <> "addOne x = x + 1     <-----   declaration definition"
@@ -120,20 +129,20 @@ instance MeaningfulError CompileError where
     DuplicateName p name -> UError $ UserError
       { provenance = fold p
       , problem    = "multiple definitions found with the name" <+> squotes (pretty name)
-      , fix        = "remove or rename the duplicate definitions"
+      , fix        = Just "remove or rename the duplicate definitions"
       }
 
     MissingVariables p symbol -> UError $ UserError
       { provenance = p
       , problem    = "expected at least one variable name after" <+> squotes (pretty symbol)
-      , fix        = "add one or more names after" <+> squotes (pretty symbol)
+      , fix        = Just $ "add one or more names after" <+> squotes (pretty symbol)
       }
 
     UnchainableOrders p prevOrder currentOrder -> UError $ UserError
       { provenance = p
       , problem    = "cannot chain" <+> squotes (pretty prevOrder) <+>
                      "and" <+> squotes (pretty currentOrder)
-      , fix        = "split chained orders into a conjunction"
+      , fix        = Just "split chained orders into a conjunction"
       }
 
     -- Scoping
@@ -142,7 +151,7 @@ instance MeaningfulError CompileError where
       { provenance = p
       -- TODO can use Levenschtein distance to search contexts/builtins
       , problem    = "The name" <+> squotes (pretty name) <+> "is not in scope"
-      , fix        = pretty ("Unknown" :: String)
+      , fix        = Nothing
       }
 
     -- Typing
@@ -151,19 +160,19 @@ instance MeaningfulError CompileError where
       { provenance = p
       , problem    = "expected something of type" <+> prettyFriendlyDB nameCtx expected <+>
                     "but inferred type" <+> prettyFriendlyDB nameCtx candidate
-      , fix        = "unknown"
+      , fix        = Nothing
       } where nameCtx = ctxNames ctx
 
     UnresolvedHole p name -> UError $ UserError
       { provenance = p
       , problem    = "the type of" <+> squotes (pretty name) <+> "could not be resolved"
-      , fix        = "unknown"
+      , fix        = Nothing
       }
 
     FailedConstraints cs -> UError $ UserError
       { provenance = provenanceOf constraint
       , problem    = failedConstraintError constraint nameCtx
-      , fix        = "Check your types"
+      , fix        = Just "check your types"
       }
       where
         constraint = NonEmpty.head cs
@@ -172,7 +181,7 @@ instance MeaningfulError CompileError where
     UnsolvedConstraints cs -> UError $ UserError
       { provenance = provenanceOf constraint
       , problem    = unsolvedConstraintError constraint nameCtx
-      , fix        = "Try adding more type annotations"
+      , fix        = Just "try adding more type annotations"
       }
       where
         constraint = NonEmpty.head cs
@@ -183,12 +192,105 @@ instance MeaningfulError CompileError where
       , problem    = "expected an" <+> pretty Explicit <+> "argument of type" <+>
                     argTypeDoc <+> "but instead found" <+>
                     pretty (visibilityOf arg) <+> "argument" <+> squotes argExprDoc
-      , fix        = "Try inserting an argument of type" <+> argTypeDoc
+      , fix        = Just $ "try inserting an argument of type" <+> argTypeDoc
       }
       where
         nameCtx    = ctxNames ctx
         argExprDoc = prettyFriendlyDB nameCtx (argExpr arg)
         argTypeDoc = prettyFriendlyDB nameCtx argType
+
+    ---------------
+    -- Resources --
+    ---------------
+
+    ResourceNotProvided ident p resourceType -> UError $ UserError
+      { provenance = p
+      , problem    = "No file was provided for the" <+> prettyResource resourceType ident <> "."
+      , fix        = Just $ "provide it via the command line using" <+>
+                      squotes ("--" <> pretty resourceType <+> pretty ident <> ":FILEPATH")
+      }
+
+    UnsupportedResourceFormat ident p resourceType fileExtension -> UError $ UserError
+      { provenance = p
+      , problem    = "The file provided for the" <+> prettyResource resourceType ident <+>
+                     "is in a format (" <> pretty fileExtension <> ") not currently" <+>
+                     "supported by Vehicle."
+      , fix        = Just $ "use one of the supported formats" <+> pretty (supportedFileFormats resourceType) <+>
+                     ", or open an issue on Github to discuss adding support."
+      }
+
+    ResourceIOError ident p resourceType ioException -> UError $ UserError
+      { provenance = p
+      , problem    = "The following exception occured when trying to read the file" <+>
+                     "provided for" <+> prettyResource resourceType ident <> ":" <>
+                     line <> indent 2 (pretty (show ioException))
+      , fix        = Nothing
+      }
+
+    UnableToParseResourceFile ident p resourceType file -> UError $ UserError
+      { provenance = p
+      , problem    = "Unable to parse the file" <+> squotes (pretty file) <+>
+                     "provided for the" <+> prettyResource resourceType ident
+      , fix        = Nothing
+      }
+
+    DatasetInvalidContainerType ident p tCont -> UError $ UserError
+      { provenance = p
+      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
+                     "for the" <+> prettyResource Dataset ident <> "."
+      , fix        = Just $ "change the type of" <+> squotes (pretty ident) <+>
+                     "to either a" <+> squotes (pretty List) <+> "or" <+>
+                     squotes (pretty Tensor) <> "."
+      }
+
+    DatasetInvalidElementType ident p tCont -> UError $ UserError
+      { provenance = p
+      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
+                     "for the elements of the" <+> prettyResource Dataset ident <> "."
+      , fix        = Just $ "change the type to one of" <+> elementTypes <> "."
+      } where elementTypes = pretty @[Builtin] ([Fin] <> fmap NumericType [Nat, Int, Rat])
+
+    DatasetVariableSizeTensor ident p tCont -> UError $ UserError
+      { provenance = p
+      , problem    = "A tensor with variable dimensions" <+> squotes (prettyFriendly tCont) <+>
+                     "is not a supported type for the" <+> prettyResource Dataset ident <> "."
+      , fix        = Just "make sure the dimensions of the dataset are all constants."
+      }
+
+    DatasetInvalidNat ident p v -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected elements of type" <+> squotes (prettyFriendly nat) <+>
+                     "but found value" <+> squotes (pretty v)
+      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
+                     "update the type of the dataset in the Vehicle specification."
+      } where (nat :: CheckedExpr) = NatType mempty
+
+    DatasetInvalidFin ident p v n -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected elements of type" <+> squotes (prettyFriendly fin) <+>
+                     "but found value" <+> squotes (pretty v)
+      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
+                     "update the type of the dataset in the Vehicle specification."
+      }
+      where (fin :: CheckedExpr) = FinType mempty (NatLiteralExpr mempty (NatType mempty) n)
+
+    DatasetDimensionMismatch ident p expectedDims actualDims -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected dimensions to be" <+> pretty expectedDims <+>
+                     "but found dimensions" <+> pretty actualDims
+      , fix        = Just "correct the dataset dimensions in the Vehicle specification."
+      }
+
+    DatasetTypeMismatch ident p expectedType actualType -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected dataset elements to be of type" <+> prettyFriendly expectedType <+>
+                     "but found elements of type" <+> pretty actualType
+      , fix        = Just "correct the dataset type in the Vehicle specification."
+      }
 
     -- Network type errors
 
@@ -196,39 +298,39 @@ instance MeaningfulError CompileError where
       { provenance = provenanceOf networkType
       , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
                      squotes (prettyFriendly networkType) <+> "is not a function."
-      , fix        = supportedNetworkTypeDescription <+>
+      , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Provide both an input type and output type for your network."
       }
 
-    NetworkTypeWithNonExplicitArguments ident networkType binder -> UError $ UserError
+    NetworkTypeHasNonExplicitArguments ident networkType binder -> UError $ UserError
       { provenance = provenanceOf binder
       , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
                      squotes (prettyFriendly networkType) <+>
                      "contains a non-explicit argument" <+>
                      squotes (prettyFriendly binder) <> "."
-      , fix        = supportedNetworkTypeDescription <+>
+      , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Remove the non-explicit argument."
       }
 
-    NetworkTypeWithHeterogeneousInputTypes ident networkType t1 t2 -> UError $ UserError
+    NetworkTypeHasHeterogeneousInputTypes ident networkType t1 t2 -> UError $ UserError
       { provenance = provenanceOf t1 <> provenanceOf t2
       , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
                      squotes (prettyFriendly networkType) <+>
                      "contains heterogeneous input types" <+>
                      squotes (prettyFriendly t1) <+> "and" <+>
                      squotes (prettyFriendly t2) <+> "."
-      , fix        = supportedNetworkTypeDescription <+>
+      , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Ensure that all the inputs to" <+> squotes (pretty ident) <+>
                      "are the same type."
       }
 
-    NetworkTypeUnsupportedElementType ident elementType io -> UError $ UserError
+    NetworkTypeHasUnsupportedElementType ident elementType io -> UError $ UserError
       { provenance = provenanceOf elementType
       , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
                      pretty io <+> "s of type" <+>
                      squotes (prettyFriendly elementType) <+>
                      "are not currently supported."
-      , fix        = supportedNetworkTypeDescription <+>
+      , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Ensure that the network" <+> pretty io <+> "uses" <+>
                      "supported types."
       }
@@ -238,7 +340,7 @@ instance MeaningfulError CompileError where
       , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
                      "the" <+> pretty io <+>
                      squotes (prettyFriendly t) <+> "is not a 1D tensor."
-      , fix        = supportedNetworkTypeDescription <+>
+      , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Ensure that the network" <+> pretty io <+> "is a 1D tensor."
       }
 
@@ -247,25 +349,18 @@ instance MeaningfulError CompileError where
       , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
                      "the size of the" <+> pretty io <+> "tensor" <+>
                      squotes (pretty $ show tDim) <+> "is not a constant."
-      , fix        = supportedNetworkTypeDescription <+>
+      , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Ensure that the size of the" <+> pretty io <+> "tensor is constant."
       }
 
     -- Backend errors
-    LookupInVariableDimTensor target p dims -> UError $ UserError
-      { provenance = p
-      , problem    = "When targeting" <+> pretty target <+> ", cannot lookup a value in" <+>
-                     "a tensor with the variable dimensions" <+> prettyFriendly dims
-      , fix        = "see user manual for details"
-      }
-
     UnsupportedResource target ann ident resource ->
       let dType = squotes (pretty resource) in UError $ UserError
       { provenance = provenanceOf ann
       , problem    = "While compiling property" <+> squotes (pretty ident) <+> "to" <+>
                      pretty target <+> "found a" <+> dType <+> "declaration which" <+>
                      "cannot be compiled."
-      , fix        = "Remove all" <+> dType <+> "declarations or switch to a" <+>
+      , fix        = Just $ "remove all" <+> dType <+> "declarations or switch to a" <+>
                      "different compilation target."
       }
 
@@ -276,7 +371,7 @@ instance MeaningfulError CompileError where
                      prettyQuant (neg q) <+> "quantifier. Only homogeneous sequences of" <+>
                      prettyQuant All <+> "s or" <+> prettyQuant Any <+>
                      "quantifiers are currently supported."
-      , fix        = "If possible try reformulating your property in terms of a single quantifier type."
+      , fix        = Just "if possible try reformulating your property in terms of a single quantifier type."
       } where prettyQuant quant = squotes (pretty (Quant quant))
 
     UnsupportedQuantifierPosition target p ident quantifier name -> UError $ UserError
@@ -285,7 +380,7 @@ instance MeaningfulError CompileError where
                      pretty target <+> "found a non top-level quantifier" <+>
                      squotes (prettyQuant quantifier <+> pretty name) <+> "which is not" <+>
                      "currently supported when compiling to" <+> pretty target <> "."
-      , fix        = "Refactor your property to lift the quantifier to the top-level."
+      , fix        = Just "refactor your property to lift the quantifier to the top-level."
       } where prettyQuant quant = squotes (pretty (Quant quant))
 
     UnsupportedVariableType target ann ident name t supportedTypes -> UError $ UserError
@@ -294,7 +389,7 @@ instance MeaningfulError CompileError where
                      pretty target <+> "found a quantified variable" <+> squotes (pretty name) <+> "of type" <+>
                      squotes (prettyFriendlyDBClosed t) <+> "which is not currently supported" <+>
                      "when compiling to" <+> pretty target <> "."
-      , fix        = "Try switching the variable to one of the following supported types:" <+>
+      , fix        = Just $ "try switching the variable to one of the following supported types:" <+>
                      pretty supportedTypes
       }
 
@@ -302,7 +397,7 @@ instance MeaningfulError CompileError where
       { provenance = p
       , problem    = "Compilation of" <+> squotes (pretty builtin) <+> "to" <+>
                      pretty target <+> "is not currently supported."
-      , fix        = "Try avoiding it, otherwise please open an issue on the" <+>
+      , fix        = Just $ "Try avoiding it, otherwise please open an issue on the" <+>
                      "Vehicle issue tracker."
       }
 
@@ -311,7 +406,7 @@ instance MeaningfulError CompileError where
       , problem    = "The use of" <+> squotes (pretty actualOrder) <+> "inside of an" <+>
                      quantifierAdverb quantifier <+> "quantifier property" <+>
                      "is not currently supported by" <+> pretty target
-      , fix        = "You can use" <+> squotes (pretty (flipStrictness actualOrder)) <+>
+      , fix        = Just $ "use" <+> squotes (pretty (flipStrictness actualOrder)) <+>
                      "instead, otherwise please open an issue on the" <+> pretty target <+>
                      "issue tracker to ask for support."
       } where actualOrder = if quantifier == All then flipStrictness order else order
@@ -321,7 +416,7 @@ instance MeaningfulError CompileError where
       , problem    = "The use of" <+> squotes (pretty actualEq) <+> "inside of an" <+>
                      quantifierAdverb quantifier <+> "quantifier property" <+>
                      "is not currently supported by" <+> pretty target
-      , fix        = "Instead of an equality you can try bounding the region using" <+>
+      , fix        = Just $ "instead of an equality, try bounding the region using" <+>
                      squotes (pretty less) <+> "and" <+>  squotes (pretty greater) <+>
                      "instead, otherwise please open an issue on the" <+> pretty target <+>
                      "issue tracker to ask for support."
@@ -334,8 +429,8 @@ instance MeaningfulError CompileError where
       , problem    = "The use of equality over the unknown type" <+>
                      squotes (pretty typeName) <+> "is not currently supported" <+>
                      "when compiling to" <+> pretty target
-      , fix        = "Try avoiding it, otherwise open an issue on the" <+>
-                     "Vehicle issue tracker."
+      , fix        = Just $ "try avoiding it, otherwise open an issue on the" <+>
+                     "Vehicle issue tracker describing the use case."
       }
 
     UnsupportedNonMagicVariable target p name -> UError $ UserError
@@ -343,8 +438,8 @@ instance MeaningfulError CompileError where
       , problem    = "The variable" <+> squotes (pretty name) <+> "is not used as" <+>
                      "an input to a network, which is not currently supported" <+>
                      "by" <+> pretty target
-      , fix        = "Try reformulating the property, or else open an issue on the" <+>
-                     "Vehicle issue tracker."
+      , fix        = Just $ "try reformulating the property, or else open an issue on the" <+>
+                     "Vehicle issue tracker describing the use-case."
       }
 
     NonLinearConstraint target p ident v1 v2 -> UError $ UserError
@@ -353,7 +448,7 @@ instance MeaningfulError CompileError where
                      "constraint (in particular constraint contains" <+>
                      squotes (prettyFriendly v1 <> "*" <> prettyFriendly v2) <+>
                      "which is not currently supported by" <+> pretty target
-      , fix        = "Try avoiding it, otherwise please open an issue on the" <+>
+      , fix        = Just $ "try avoiding it, otherwise please open an issue on the" <+>
                      "Vehicle issue tracker."
       }
 
@@ -361,7 +456,7 @@ instance MeaningfulError CompileError where
     NoPropertiesFound -> UError $ UserError
       { provenance = mempty
       , problem    = "No properties found in file."
-      , fix        = "An expression is labelled as a property by giving it type" <+> squotes (pretty Prop) <+> "."
+      , fix        = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty Prop) <+> "."
       }
 
     NoNetworkUsedInProperty target ann ident -> UError $ UserError
@@ -370,7 +465,7 @@ instance MeaningfulError CompileError where
                      squotes (pretty ident) <+>
                      "does not contain any neural networks and" <+>
                      "therefore" <+> pretty target <+> "is the wrong compilation target"
-      , fix        = "Choose a different compilation target than VNNLib"
+      , fix        = Just "choose a different compilation target than VNNLib"
       }
 
 unsupportedNetworkTypeDescription :: Identifier -> Doc a
@@ -404,3 +499,6 @@ failedConstraintError constraint ctx = "Type error:" <+> case constraint of
     "Unknown if index" <+> pretty n <+> "is in bounds when looking up value in tensor of size" <+> prettyFriendlyDB ctx v
 
   TC _ (_ `Has` t) -> "Could not satisfy" <+> squotes (prettyFriendlyDB ctx t)
+
+prettyResource :: ResourceType -> Identifier -> Doc a
+prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)

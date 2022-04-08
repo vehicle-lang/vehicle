@@ -18,6 +18,7 @@ import GHC.IO.StdHandles
 import Vehicle.Backend.Marabou.Core
 import Vehicle.Backend.Prelude
 import Vehicle.Verify.VerificationStatus
+import Vehicle.Resource.Core
 import Vehicle.Resource.NeuralNetwork
 
 --------------------------------------------------------------------------------
@@ -52,7 +53,7 @@ queryFilePath propertyName queryID directory =
 -- not prevent the verification of the other properties.
 verifySpec :: Maybe FilePath
            -> MarabouSpec
-           -> NetworkLocations
+           -> ResourceLocations
            -> IO SpecificationStatus
 verifySpec maybeMarabouExecutable spec networkLocations = do
   marabouExecutable <- verifyExecutable maybeMarabouExecutable
@@ -63,7 +64,7 @@ verifySpec maybeMarabouExecutable spec networkLocations = do
 
 verifyProperty :: FilePath
                -> FilePath
-               -> NetworkLocations
+               -> ResourceLocations
                -> MarabouProperty
                -> IO (Text, PropertyStatus)
 verifyProperty executable queryDirectory networkLocations (MarabouProperty propertyName negated queries) = do
@@ -79,7 +80,7 @@ verifyProperty executable queryDirectory networkLocations (MarabouProperty prope
         then verifyQueries queryIDs
         else return result
 
-verifyQuery :: FilePath -> FilePath -> NetworkLocations -> Bool -> MarabouQuery -> IO PropertyStatus
+verifyQuery :: FilePath -> FilePath -> ResourceLocations -> Bool -> MarabouQuery -> IO PropertyStatus
 verifyQuery marabouExecutable queryFile networkLocations negated query = do
   networkArg <- prepareNetworkArg networkLocations (metaNetwork query)
   marabouOutput <- readProcessWithExitCode marabouExecutable [networkArg, queryFile] ""
@@ -102,15 +103,15 @@ verifyExecutable maybeLocation = do
           else "")
       exitFailure
 
-prepareNetworkArg :: NetworkLocations -> MetaNetwork -> IO String
+prepareNetworkArg :: ResourceLocations -> MetaNetwork -> IO String
 prepareNetworkArg networkLocations [name] =
   case Map.lookup name networkLocations of
-    Nothing -> do
+    Just (Network, path) -> return path
+    _ -> do
       hPutStrLn stderr $
         "No file provided for neural network '" <> name <> "'. " <>
         "Please provide it via the '--network' command line option."
       exitFailure
-    Just path -> return path
 prepareNetworkArg _ _ = do
   hPutStrLn stderr $
     "Marabou currently doesn't support properties that involve" <>

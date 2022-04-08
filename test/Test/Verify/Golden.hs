@@ -13,9 +13,8 @@ import Vehicle
 import Vehicle.Verify
 import Vehicle.Verify.VerificationStatus hiding (version)
 import Vehicle.Prelude
-import Vehicle.Resource.NeuralNetwork ( hashNetwork )
+import Vehicle.Resource
 import Vehicle.Backend.Prelude
-
 
 import Test.GoldenUtils ( goldenFileTest )
 
@@ -61,6 +60,7 @@ runTest name inputFile networks = do
     , commandOption = Verify $ VerifyOptions
       { verifier   = Marabou
       , inputFile  = inputFile
+      , datasets   = mempty
       , networks   = Map.fromList networks
       , proofCache = Nothing
       }

@@ -21,9 +21,12 @@ import Vehicle.Resource.NeuralNetwork
 import Data.Text (Text)
 
 --------------------------------------------------------------------------------
--- Okay so this is a wild ride. The VNNLib format has special variable names for
--- input and output variables, namely X1 ... XN and Y1 ... YM but otherwise has
--- the standard SMTLib syntax. We refer to these variables as "magic variables".
+-- Removing network applications
+--
+-- Okay so this is a wild ride. The Marabou query format has special variable
+-- names for input and output variables, namely X1 ... XN and Y1 ... YM but
+-- otherwise has the standard SMTLib syntax. We refer to these variables as
+-- "magic variables".
 --
 -- This means that in theory you can only reason about a single network applied
 -- to a single input per property. We get around this restriction by combining

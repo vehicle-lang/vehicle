@@ -2,6 +2,7 @@
 
 module Vehicle.Compile.Error where
 
+import Control.Exception (IOException)
 import Control.Monad.Except ( MonadError )
 import Data.List.NonEmpty (NonEmpty)
 import Prettyprinter (list)
@@ -58,13 +59,26 @@ data CompileError
     UncheckedArg            -- The non-explicit argument
     CheckedExpr             -- Expected type of the argument
 
-  -- Network typing errors
+  -- Resource typing errors
+  | ResourceNotProvided       Identifier Provenance ResourceType
+  | ResourceIOError           Identifier Provenance ResourceType IOException
+  | UnsupportedResourceFormat Identifier Provenance ResourceType String
+  | UnableToParseResourceFile Identifier Provenance ResourceType FilePath
+
   | NetworkTypeIsNotAFunction              Identifier CheckedExpr
-  | NetworkTypeWithNonExplicitArguments    Identifier CheckedExpr CheckedBinder
-  | NetworkTypeWithHeterogeneousInputTypes Identifier CheckedExpr CheckedExpr CheckedExpr
+  | NetworkTypeHasNonExplicitArguments     Identifier CheckedExpr CheckedBinder
+  | NetworkTypeHasHeterogeneousInputTypes  Identifier CheckedExpr CheckedExpr CheckedExpr
   | NetworkTypeHasMultidimensionalTensor   Identifier CheckedExpr InputOrOutput
   | NetworkTypeHasVariableSizeTensor       Identifier CheckedExpr InputOrOutput
-  | NetworkTypeUnsupportedElementType      Identifier CheckedExpr InputOrOutput
+  | NetworkTypeHasUnsupportedElementType   Identifier CheckedExpr InputOrOutput
+
+  | DatasetInvalidContainerType Identifier Provenance CheckedExpr
+  | DatasetInvalidElementType   Identifier Provenance CheckedExpr
+  | DatasetVariableSizeTensor   Identifier Provenance CheckedExpr
+  | DatasetDimensionMismatch    Identifier Provenance [Int] [Int]
+  | DatasetTypeMismatch         Identifier Provenance CheckedExpr NumericType
+  | DatasetInvalidNat           Identifier Provenance Int
+  | DatasetInvalidFin           Identifier Provenance Int Int
 
   -- Backend errors
   | NoPropertiesFound
@@ -79,7 +93,6 @@ data CompileError
   | UnsupportedNonMagicVariable    Backend Provenance Symbol
   | NonLinearConstraint            Backend Provenance Identifier OutputExpr OutputExpr
   | NoNetworkUsedInProperty        Backend Provenance Identifier
-  | LookupInVariableDimTensor      Backend Provenance OutputExpr
   deriving (Show)
 
 --------------------------------------------------------------------------------

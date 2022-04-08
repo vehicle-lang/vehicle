@@ -141,7 +141,7 @@ nfApp ann fun       args = do
   Options{..} <- ask
   fromMaybe (return e) $ case e of
     -- Types
-    TensorType _ tElem (LSeq _ _ []) -> Just $ return tElem
+    TensorType _ tElem (NilExpr _ _) -> Just $ return tElem
 
     -- Binary relations
     EqualityExpr eq _ tElem tRes [arg1, arg2] -> nfEq eq ann tElem tRes arg1 arg2
@@ -302,15 +302,6 @@ makeTensorLit ann tElem dims exprs = assert (product dims == length exprs) (go d
     go [d]      es = mkTensorSeq [d]      es
     go (d : ds) es = mkTensorSeq (d : ds) (map (go ds) (chunksOf (product ds) es))
     go []  (_ : _) = developerError "Found inhabitants of the empty dimension! Woo!"
-
-getDimensions :: CheckedExpr -> Maybe [Int]
-getDimensions (LSeq _ _ xs) = traverse getDimension xs
-getDimensions _             = Nothing
-
-getDimension :: CheckedExpr -> Maybe Int
-getDimension e = case exprHead e of
-  (Literal _ (LNat i)) -> Just i
-  _                    -> Nothing
 
 --------------------------------------------------------------------------------
 -- Normalising quantification over lists

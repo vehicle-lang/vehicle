@@ -9,8 +9,8 @@ import Data.Map (Map)
 import Vehicle.Prelude as X
 import Vehicle.Language.AST as X
 import Vehicle.Backend.Prelude (Backend)
-import Vehicle.Resource.Core as X ( ResourceType(..) )
-import Vehicle.Resource.NeuralNetwork
+import Vehicle.Resource.Core as X
+import Data.Text (Text)
 
 --------------------------------------------------------------------------------
 -- Compilation
@@ -19,7 +19,8 @@ data CompileOptions = CompileOptions
   { target         :: Backend
   , inputFile      :: FilePath
   , outputFile     :: Maybe FilePath
-  , networks       :: NetworkLocations
+  , networks       :: Map Text FilePath
+  , datasets       :: Map Text FilePath
   , modulePrefix   :: Maybe String
   , proofCache     :: Maybe FilePath
   } deriving (Show)
@@ -83,6 +84,7 @@ type CheckedCoDBBinder = CoDBBinder CheckedAnn
 -- | An expression paired with a position tree represting positions within it.
 -- Currently used mainly for pretty printing position trees.
 data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
+  deriving Show
 
 --------------------------------------------------------------------------------
 -- Annotations

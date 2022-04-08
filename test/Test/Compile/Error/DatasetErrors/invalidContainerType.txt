@@ -1,0 +1,2 @@
+Error: 'Nat' is not a valid type for the dataset 'trainingDataset'. (Line 1, Columns 9-24)
+Fix: change the type of 'trainingDataset' to either a 'List' or 'Tensor'.

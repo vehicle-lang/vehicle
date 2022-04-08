@@ -12,7 +12,7 @@ import Vehicle
 import Vehicle.Check
 import Vehicle.Verify.VerificationStatus hiding (version)
 import Vehicle.Prelude
-import Vehicle.Resource.NeuralNetwork ( hashNetwork )
+import Vehicle.Resource
 
 import Test.GoldenUtils ( goldenFileTest )
 import System.Info (os)
@@ -63,15 +63,15 @@ runTest name status alterNetwork = do
   let networkFile  = testDir </> name <> "Network.onnx"
 
   writeFile networkFile "networkContents"
-  networkHash <- hashNetwork networkFile
-  let networkInfo =
-        [ NetworkVerificationInfo "myNetwork" networkFile networkHash
+  networkHash <- hashResource networkFile
+  let resources =
+        [ Resource "myNetwork" networkFile networkHash Network
         ]
 
   writeProofCache proofCache $ ProofCache
     { specVersion  = vehicleVersion
     , status       = status
-    , networkInfo  = networkInfo
+    , resources    = resources
     , originalSpec = ""
     }
 

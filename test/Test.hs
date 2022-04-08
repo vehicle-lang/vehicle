@@ -5,7 +5,7 @@ import GHC.IO.Encoding
 
 import Test.Compile.Golden as Compile (goldenTests)
 import Test.Compile.Unit as Compile (unitTests)
-import Test.Compile.Fail as Compile (failTests)
+import Test.Compile.Error as Compile (errorTests)
 import Test.Check.Golden as Check (goldenTests)
 import Test.Verify.Golden as Verify (goldenTests)
 -- import Test.Generative (generativeTests)
@@ -26,7 +26,7 @@ compileTests :: TestTree
 compileTests = testGroup "Compile"
   [ Compile.goldenTests
   , Compile.unitTests
-  , Compile.failTests
+  , Compile.errorTests
   ]
 
 verifyTests :: TestTree

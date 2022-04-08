@@ -81,6 +81,14 @@ getContainerElem (ListType   _ t)   = Just t
 getContainerElem (TensorType _ t _) = Just t
 getContainerElem _                  = Nothing
 
+getDimension :: Expr binder var ann -> Maybe Int
+getDimension (NatLiteralExpr _ _ n) = return n
+getDimension _                      = Nothing
+
+getDimensions :: Expr binder var ann -> Maybe [Int]
+getDimensions (SeqExpr _ _ _ es) = traverse getDimension es
+getDimensions _                  = Nothing
+
 --------------------------------------------------------------------------------
 -- Construction functions
 

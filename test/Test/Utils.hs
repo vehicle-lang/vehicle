@@ -29,10 +29,10 @@ locationDir Tests    = "test" </> "specs"
 locationDir Examples = "examples"
 
 
--- If you want to see the logs for tests, change `discardWarningsAndLogs` to
+-- If you want to see the logs for tests, change `discardLogger` to
 -- `traceLogger` here.
 discardState :: ExceptT CompileError Logger a -> a
-discardState e = case discardWarningsAndLogs $ logCompileError e of
+discardState e = case discardLogger $ logCompileError e of
   Left  x -> developerError $ pretty $ details x
   Right y -> y
 
