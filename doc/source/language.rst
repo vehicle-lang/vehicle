@@ -1,7 +1,7 @@
-API
-===
+Language
+========
 
 .. autosummary::
    :toctree: generated
 
-   lumache
+   Vehicle
