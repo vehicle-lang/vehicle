@@ -1,9 +1,6 @@
 Specification language
 ======================
 
-Contents
---------
-
 .. toctree::
   :maxdepth: 2
 

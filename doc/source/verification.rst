@@ -1,8 +1,6 @@
 Verification
 ============
 
-.. _installation:
-
 Verify mode
 -----------
 
