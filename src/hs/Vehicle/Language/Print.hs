@@ -16,6 +16,7 @@ module Vehicle.Language.Print
   ) where
 
 import GHC.TypeLits (TypeError, ErrorMessage(..))
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.IntMap (IntMap)
 import Control.Exception (assert)
@@ -295,7 +296,7 @@ instance (PrettyUsing rest CheckedExpr)
 newtype ViaBnfcInternal a = ViaBnfcInternal a
 
 instance Internal.Print a => Pretty (ViaBnfcInternal a) where
-  pretty (ViaBnfcInternal e) = pretty $ Internal.printTree e
+  pretty (ViaBnfcInternal e) = pretty $ bnfcPrintHack $ Internal.printTree e
 
 deriving via (ViaBnfcInternal BC.Prog) instance Pretty BC.Prog
 deriving via (ViaBnfcInternal BC.Decl) instance Pretty BC.Decl
@@ -304,10 +305,18 @@ deriving via (ViaBnfcInternal BC.Expr) instance Pretty BC.Expr
 newtype ViaBnfcExternal a = ViaBnfcExternal a
 
 instance External.Print a => Pretty (ViaBnfcExternal a) where
-  pretty (ViaBnfcExternal e) = pretty $ External.printTree e
+  pretty (ViaBnfcExternal e) = pretty $ bnfcPrintHack $ External.printTree e
 
 deriving via (ViaBnfcExternal BF.Prog)   instance Pretty BF.Prog
 deriving via (ViaBnfcExternal BF.Decl)   instance Pretty BF.Decl
 deriving via (ViaBnfcExternal BF.Expr)   instance Pretty BF.Expr
 deriving via (ViaBnfcExternal BF.Binder) instance Pretty BF.Binder
 deriving via (ViaBnfcExternal BF.Arg)    instance Pretty BF.Arg
+
+-- BNFC printer treats the braces for implicit arguments as layout braces and
+-- therefore adds a ton of newlines everywhere. This hack attempts to undo this.
+bnfcPrintHack :: String -> Text
+bnfcPrintHack =
+  Text.replace "{\n" "{" .
+  Text.replace "\n}\n" "} " .
+  Text.pack
