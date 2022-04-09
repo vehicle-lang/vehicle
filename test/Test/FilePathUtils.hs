@@ -18,8 +18,9 @@ removeFilePaths x =
   foldr sliceOut x matches
 
 filepathRegex :: String
-filepathRegex = folders <> fileName
+filepathRegex = drive <> folders <> fileName
   where
+    drive      = "([A-Z]:)?"
     folder     = "([a-zA-Z\\d]+[\\//])"
     folders    = "[\\//]?" <> folder <> "+" <> "[a-zA-Z\\d]*"
     fileName   = "(\\.[a-zA-Z\\d]+)?"
@@ -48,6 +49,10 @@ filepathTests = testGroup "FilepathRemovalTests"
   , removeTest "multiFolder"
       "missing files: 'x/y/z' and 'y/z/d.idx'"
       "missing files: '' and ''"
+
+  , removeTest "drive"
+      "missing files: 'D:/x/y/z'"
+      "missing files: ''"
 
   , removeTest "division"
       "invalid operator / in"
