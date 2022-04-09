@@ -1,2 +1,2 @@
-Error: Type error: Unknown if index 1 is in bounds when looking up value in tensor of size _x0 (Line 2, Columns 21-22)
+Error: Type error: Unknown if index 1 is in bounds when looking up value in tensor of size n (Line 2, Columns 21-22)
 Fix: check your types

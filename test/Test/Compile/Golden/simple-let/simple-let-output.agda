@@ -9,11 +9,13 @@
 
 open import Vehicle
 open import Data.Unit
+open import Data.Empty
+open import Data.Product
 
 module simple-let-temp-output where
 
 abstract
-  e1 : let x = ⊤ in x
+  e1 : let x = ⊤ in let y = ⊥ in x × y
   e1 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

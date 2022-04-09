@@ -6,7 +6,7 @@ module Vehicle.Compile.Type.TypeClass
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.List.NonEmpty (NonEmpty(..))
-import Control.Monad (unless, forM)
+import Control.Monad (unless, forM, when)
 import Control.Monad.Except ( throwError )
 
 import Vehicle.Compile.Prelude
@@ -24,6 +24,9 @@ solveTypeClassConstraint :: MonadConstraintSolving m
                          -> m ConstraintProgress
 solveTypeClassConstraint ctx (m `Has` e) = do
   eWHNF <- whnf (varContext ctx) e
+  when (e /= eWHNF) $
+    logDebug ("normalising to" <+> prettyVerbose eWHNF)
+
   let constraint = TC ctx (m `Has` eWHNF)
   progress <- blockOnMetas eWHNF $ case eWHNF of
     IsContainerExpr      _ t1 t2 -> solveIsContainer    constraint t1 t2

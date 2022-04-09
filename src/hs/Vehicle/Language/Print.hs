@@ -169,6 +169,9 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags Int
     = 'Pretty
 
+  StrategyFor tags Text
+    = 'Pretty
+
   StrategyFor tags [a]
     = 'MapList (StrategyFor tags a)
 

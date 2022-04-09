@@ -247,7 +247,7 @@ checkExpr expectedType expr = do
       let ann = (provenanceOf binder, TheMachine)
 
       -- Add the binder to the context
-      checkedExpr <- addToBoundCtx Nothing (typeOf binder) Nothing $
+      checkedExpr <- addToBoundCtx (nameOf binder) (typeOf binder) Nothing $
         -- Check if the type of the expression matches the expected result type.
         checkExpr resultType (liftFreeDBIndices 1 e)
 
