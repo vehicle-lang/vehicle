@@ -24,6 +24,7 @@ tokForallT = mkToken B.TokForallT "forall"
 tokIf = mkToken B.TokIf "if"
 tokThen = mkToken B.TokThen "then"
 tokElse = mkToken B.TokElse "else"
+tokLet = mkToken B.TokLet "let"
 tokDot = mkToken B.TokDot "."
 tokElemOf = mkToken B.TokElemOf ":"
 tokLambda = mkToken B.TokLambda "\\"
@@ -274,7 +275,7 @@ delabPi ann input result = case foldPi ann input result of
 -- | Collapses let expressions into a sequence of let declarations
 delabLet :: MonadDelab m => V.NamedExpr ann -> m B.Expr
 delabLet expr = let (boundExprs, body) = foldLet expr in
-  B.Let <$> traverse delabLetBinding boundExprs <*> delabM body
+  B.Let tokLet <$> traverse delabLetBinding boundExprs <*> delabM body
 
 -- | Collapses consecutative lambda expressions into a sequence of binders
 delabLam :: MonadDelab m => V.NamedExpr ann -> m B.Expr

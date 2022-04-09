@@ -113,8 +113,7 @@ instance Elab B.Expr V.InputExpr where
     B.LSeq tk1 es _tk2        -> op1 (\ann -> V.LSeq ann (mkHole (tkProvenance tk1) "IsContainerDict")) tk1 (traverse elab es)
 
     B.App e1 e2               -> elabApp e1 e2
-    -- It is really bad not to have provenance for let tokens here, see issue #6
-    B.Let ds e                -> unfoldLet V.emptyUserAnn <$> bitraverse (traverse elab) elab (ds, e)
+    B.Let tk1 ds e            -> unfoldLet (mkAnn tk1) <$> bitraverse (traverse elab) elab (ds, e)
     B.ForallT tk1 ns _tk2 t   -> do checkNonEmpty tk1 ns; unfoldForall (mkAnn tk1) <$> elabBindersAndBody ns t
     B.Lam tk1 ns _tk2 e       -> do checkNonEmpty tk1 ns; unfoldLam    (mkAnn tk1) <$> elabBindersAndBody ns e
 
