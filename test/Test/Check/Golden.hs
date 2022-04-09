@@ -14,7 +14,7 @@ import Vehicle.Verify.VerificationStatus hiding (version)
 import Vehicle.Prelude
 import Vehicle.Resource
 
-import Test.GoldenUtils ( goldenFileTest, windowsFilepathException )
+import Test.GoldenUtils ( goldenFileTest, omitFilePaths )
 
 goldenTests :: TestTree
 goldenTests = testGroup "GoldenTests"
@@ -46,7 +46,7 @@ networkMissingTest = createTest "networkMissing" status alterNetwork
 
 createTest :: String -> SpecificationStatus -> (FilePath -> IO ()) -> TestTree
 createTest name status alterNetwork =
-  goldenFileTest name run windowsFilepathException goldenFile outputFile
+  goldenFileTest name run omitFilePaths goldenFile outputFile
   where
   run = runTest name status alterNetwork
   goldenFile   = testDir </> name <.> "txt"

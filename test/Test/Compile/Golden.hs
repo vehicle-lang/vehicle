@@ -125,7 +125,7 @@ makeIndividualTest location name datasets backend = test
   run            = runTest inputFile outputFile moduleName backend datasets
 
   testFn = if isFolderOutput then goldenDirectoryTest else goldenFileTest
-  test = testFn testName run windowsFilepathException goldenFile outputFile
+  test = testFn testName run omitFilePaths goldenFile outputFile
 
 runTest :: FilePath -> FilePath -> String -> Backend -> Map Text FilePath -> IO ()
 runTest inputFile outputFile modulePath backend datasets = do

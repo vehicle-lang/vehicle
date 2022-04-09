@@ -8,6 +8,7 @@ import Test.Compile.Unit as Compile (unitTests)
 import Test.Compile.Error as Compile (errorTests)
 import Test.Check.Golden as Check (goldenTests)
 import Test.Verify.Golden as Verify (goldenTests)
+import Test.FilePathUtils (filepathTests)
 -- import Test.Generative (generativeTests)
 
 main :: IO ()
@@ -20,6 +21,7 @@ tests = testGroup "Tests"
   [ compileTests
   , checkTests
   -- , verifyTests
+  , miscTests
   ]
 
 compileTests :: TestTree
@@ -37,4 +39,9 @@ verifyTests = testGroup "Verify"
 checkTests :: TestTree
 checkTests = testGroup "Check"
   [ Check.goldenTests
+  ]
+
+miscTests :: TestTree
+miscTests = testGroup "Misc"
+  [ filepathTests
   ]

@@ -2,7 +2,7 @@ module Test.GoldenUtils
   ( goldenDirectoryTest
   , goldenFileTest
   , noException
-  , windowsFilepathException
+  , omitFilePaths
   ) where
 
 import Test.Tasty
@@ -23,7 +23,7 @@ import Data.Maybe (catMaybes, listToMaybe)
 
 import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
-import Debug.Trace (traceShowId)
+import Test.FilePathUtils (removeFilePaths)
 
 --------------------------------------------------------------------------------
 -- General utilities
@@ -31,28 +31,13 @@ import Debug.Trace (traceShowId)
 -- | Exceptions for diffing a list of text. At the moment this is implemented as
 -- a function that is applied upon the failure of two lines, upon which the
 -- diff is then reperformed.
-type DiffException = String -> String
+type DiffException = String -> String -> Bool
 
 noException :: DiffException
-noException = id
+noException _ _ = False
 
-windowsFilepathException :: DiffException
-windowsFilepathException = map (\a -> if a == '\\' then '/' else a)
-{-
-  import Text.Regex.TDFA
-  let regex = "" :: String in
-  let matches = (getAllMatches (x =~ regex) :: [(Int, Int)]) in
-  foldr _ x matches
-  where
-    slice :: Int -> Int -> String -> String
-    slice from to xs = take (to - from + 1) (drop from xs)
-
-    replace :: String -> String
-    replace = map (\a -> if a == '\\' then '/' else a)
-
-    insert :: Int -> Int -> String -> String -> String
-    insert (x,y) = _
--}
+omitFilePaths :: DiffException
+omitFilePaths x y = removeFilePaths x == removeFilePaths y
 
 diffText :: DiffException -> Text -> Text -> Maybe String
 diffText failTransformation golden output = do
@@ -69,8 +54,8 @@ diffText failTransformation golden output = do
     isBoth _          = False
 
 diffEqualityTestWithIgnore :: DiffException -> String -> String -> Bool
-diffEqualityTestWithIgnore failTransformation golden output =
-  golden == output || traceShowId golden == traceShowId (failTransformation (traceShowId output))
+diffEqualityTestWithIgnore exceptionTest golden output =
+  golden == output || exceptionTest golden output
 
 cleanupGoldenTestOutput :: Bool -> FilePath -> TestTree -> TestTree
 cleanupGoldenTestOutput isFile testFile test =

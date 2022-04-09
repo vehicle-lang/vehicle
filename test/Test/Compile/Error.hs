@@ -95,7 +95,7 @@ failTest filepath backend datasets = test
   goldenFile     = basePath <.> "txt"
   run            = runTest inputFile logFile backend datasets
 
-  test = goldenFileTest testName run windowsFilepathException goldenFile logFile
+  test = goldenFileTest testName run omitFilePaths goldenFile logFile
 
 runTest :: FilePath -> FilePath -> Backend -> Map Text FilePath -> IO ()
 runTest inputFile outputFile backend datasets = do

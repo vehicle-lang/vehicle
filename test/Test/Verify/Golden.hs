@@ -16,7 +16,7 @@ import Vehicle.Prelude
 import Vehicle.Resource
 import Vehicle.Backend.Prelude
 
-import Test.GoldenUtils ( goldenFileTest, windowsFilepathException )
+import Test.GoldenUtils ( goldenFileTest, omitFilePaths )
 
 
 --------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ testDir = "test" </> "Test" </> "Verify" </> "Golden"
 
 createTest :: String -> String -> [(Text, FilePath)] -> TestTree
 createTest name inputFile networks =
-  goldenFileTest name run windowsFilepathException goldenFile outputFile
+  goldenFileTest name run omitFilePaths goldenFile outputFile
   where
   run = runTest name inputFile networks
   ignoreList = []
