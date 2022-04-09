@@ -27,6 +27,7 @@ Logic
 
 Vehicle contains the following logical operators
 
+- `Bool`
 - `true`
 - `false`
 - `if then else`
@@ -35,6 +36,25 @@ Vehicle contains the following logical operators
 - `=>`
 - `not`
 - `==`
+
+
+Quantifiers
+-----------
+
+Vehicle supports both universal and existential quantifiers. For example:
+
+.. code-block:: agda
+
+   forall x y . x and y == y and x
+   exists x . f x >= 0.0
+
+One constraint of both the training and verification tools is that you may not mix
+quantifiers within the same property. For example the following is not allowed:
+
+.. code-block:: agda
+
+   forall x . exists y. f x == y
+
 
 Lists
 -----
@@ -61,23 +81,6 @@ Lambdas
 -------
 
 Anonymous lambda functions can be written using the `\` symbol.
-
-Quantifiers
------------
-
-Vehicle supports both universal and existential quantifiers. For example:
-
-.. code-block:: agda
-
-   forall x y . x and y == y and x
-   exists x .
-
-One constraint of both the training and verification tools is that you may not mix
-quantifiers within the same property. For example the following is not allowed:
-
-.. code-block:: agda
-
-   forall x . exists y. f x == y
 
 Network declarations
 --------------------
@@ -112,11 +115,14 @@ The following are not currently allowed:
 
 .. code-block:: agda
 
-   -- Boolean inputs not current allowed (although)
+   -- Reason: boolean inputs are not current allowed
+   -- Justification: lack of support for verifiers or training methods
    network myNetwork : Tensor Bool [4] -> Tensor Rat [1]
 
-   network myNetwork : Tensor Nat [4] -> Tensor Nat [4] ->
+   -- Reason:
+   network myNetwork : Nat -> Rat
 
+   --
    network myNetwork : Nat -> Nat -> Nat -> Nat -> Rat
 
    network myNetwork : Nat -> Nat -> Nat -> Nat -> Tensor Rat [1]
