@@ -40,7 +40,7 @@ happyVersion :: Version
 happyVersion = [1,20,0]
 
 bnfcVersion :: Version
-bnfcVersion = [2,9,3]
+bnfcVersion = [2,9,4]
 
 srcDirBNFC :: FilePath
 srcDirBNFC = "src" </> "bnfc"
