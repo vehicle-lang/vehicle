@@ -13,7 +13,7 @@ open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.List
 
-module simple-constant-input-temp-output where
+module simple-constantInput-temp-output where
 
 postulate f : Tensor ℚ (2 ∷ []) → ℚ
 

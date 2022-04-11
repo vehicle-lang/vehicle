@@ -9,6 +9,7 @@ Specification language
   logic
   lists
   tensors
+  type-declarations
   network-declarations
   dataset-declarations
   parameter-declarations

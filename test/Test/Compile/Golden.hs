@@ -112,9 +112,15 @@ goldenTests = testGroup "GoldenTests" $
       }
 
     , testSpec
-      { testName       = "simple-constant-input"
+      { testName       = "simple-constantInput"
       , testLocation   = Tests
       , testTargets    = [AgdaBackend, MarabouBackend]
+      }
+
+    , testSpec
+      { testName       = "simple-vectorType"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend]
       }
     ]
 
