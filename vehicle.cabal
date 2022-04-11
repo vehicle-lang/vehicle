@@ -233,6 +233,7 @@ test-suite vehicle-test
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -main-is Test
   default-extensions: ImportQualifiedPost
                     , OverloadedStrings
+                    , RecordWildCards
   build-depends:      filepath >=1.4 && <2
                     , mtl      >=2.2 && <3
                     , hashable
