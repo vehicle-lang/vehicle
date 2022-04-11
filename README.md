@@ -1,10 +1,18 @@
 [![Tests](https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml/badge.svg)](https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml)
 
+[![Documentation](https://readthedocs.org/projects/vehicle-lang/badge/?version=latest)](https://vehicle-lang.readthedocs.io/en/latest/)
+
+
 # Vehicle
 
 Vehicle is a high-level dependently-typed domain-specific language for enforcing logical specifications for neural networks. As well as providing a much higher-level interface for writing properties than the input formats of neural network verifiers such as Marabou or Eran, it also seamlessly connects the results of these verification tools with interactive theorem provers (ITPs) such as Agda.
 
 This allows the user to maintain the abstraction of the neural network as a black-box component within their ITP code. This then facilitates the formal verification of the correctness of larger systems that include neural network components.
+
+
+## Documentation
+
+- [User manual](https://vehicle-lang.readthedocs.io/en/latest/) - currently a work in progress.
 
 ## Some examples
 
