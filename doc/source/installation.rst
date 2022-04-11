@@ -3,4 +3,4 @@ Installation
 
 .. _installation:
 
-TODO
+We eventually want to
