@@ -22,11 +22,11 @@ import Vehicle.Compile.Normalise.DNF (splitConjunctions)
 import Vehicle.Backend.Prelude
 import Vehicle.Resource.NeuralNetwork
 
-compile :: MonadCompile m => NetworkMap -> CheckedProg -> m [VNNLibProperty]
-compile networkMap prog = do
+compile :: MonadCompile m => NetworkCtx -> CheckedProg -> m [VNNLibProperty]
+compile networkCtx prog = do
   logDebug "Beginning compilation to SMT"
   incrCallDepth
-  result <- compileProg networkMap prog
+  result <- compileProg networkCtx prog
   decrCallDepth
   logDebug "Finished compilation to SMT\n"
   return result
@@ -45,29 +45,26 @@ type MonadVNNLibProp m =
   , MonadReader Identifier m
   )
 
-compileProg :: MonadCompile m => NetworkMap -> CheckedProg -> m [VNNLibProperty]
-compileProg networkMap (Main ds) = do
-  results <- catMaybes <$> traverse (compileDecl networkMap) ds
+compileProg :: MonadCompile m => NetworkCtx -> CheckedProg -> m [VNNLibProperty]
+compileProg networkCtx (Main ds) = do
+  results <- catMaybes <$> traverse (compileDecl networkCtx) ds
   if null results
     then throwError NoPropertiesFound
     else return results
 
-compileDecl :: MonadCompile m => NetworkMap -> CheckedDecl -> m (Maybe VNNLibProperty)
-compileDecl networkMap = \case
-  DefResource _ Dataset _ _ ->
-    normalisationError currentPass "dataset declarations"
-
-  DefResource ann Network ident _ ->
-    throwError $ UnsupportedResource VNNLibBackend ann ident Network
-
+compileDecl :: MonadCompile m => NetworkCtx -> CheckedDecl -> m (Maybe VNNLibProperty)
+compileDecl networkCtx = \case
   DefFunction _ ident t e -> if not $ isProperty t
       then return Nothing
       else do
-        let doc = compileProperty networkMap ident e
+        let doc = compileProperty networkCtx ident e
         Just <$> doc
 
-compileProperty :: MonadCompile m => NetworkMap -> Identifier -> CheckedExpr -> m VNNLibProperty
-compileProperty networkMap ident expr = flip runReaderT ident $ do
+  DefResource _ r _ _ ->
+    normalisationError currentPass (pretty r <+> "declarations")
+
+compileProperty :: MonadCompile m => NetworkCtx -> Identifier -> CheckedExpr -> m VNNLibProperty
+compileProperty networkCtx ident expr = flip runReaderT ident $ do
   logDebug $ "Beginning compilation of SMTLib property" <+> squotes (pretty ident)
   incrCallDepth
   let ann = annotationOf expr
@@ -83,7 +80,7 @@ compileProperty networkMap ident expr = flip runReaderT ident $ do
 
   -- Convert all applications of networks into magic variables
   (networklessExpr, metaNetwork) <-
-    convertNetworkAppsToMagicVars VNNLib networkMap quantifier possiblyNegatedExpr
+    convertNetworkAppsToMagicVars VNNLib networkCtx quantifier possiblyNegatedExpr
 
   -- Normalise the expression to remove any implications, push the negations through
   -- and expand out any multiplication.

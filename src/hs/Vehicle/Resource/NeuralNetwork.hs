@@ -9,7 +9,7 @@ import Vehicle.Prelude
 --------------------------------------------------------------------------------
 -- Neural networks
 
-type NetworkMap = Map Symbol NetworkDetails
+type NetworkCtx = Map Symbol NetworkDetails
 
 data NetworkDetails = NetworkDetails
   { inputTensor  :: TensorDetails

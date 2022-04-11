@@ -35,8 +35,8 @@ checkStatus _loggingOptions CheckOptions{..} = do
     ([], [], False) -> Unverified
     ([], [], True)  -> Verified
 
-getResourceStatus :: Resource -> IO ResourceStatus
-getResourceStatus Resource{..}= do
+getResourceStatus :: ResourceSummary -> IO ResourceStatus
+getResourceStatus ResourceSummary{..}= do
   maybeNewHash <- catch @IOException (Just <$> hashResource location) (const $ return Nothing)
   return $ case maybeNewHash of
     Nothing -> Missing
@@ -44,7 +44,7 @@ getResourceStatus Resource{..}= do
       | fileHash /= newHash -> Altered
       | otherwise           -> Unchanged
 
-checkResourceIntegrity :: [Resource] -> LoggerT IO ([Resource], [Resource])
+checkResourceIntegrity :: [ResourceSummary] -> LoggerT IO ([ResourceSummary], [ResourceSummary])
 checkResourceIntegrity []       = return ([], [])
 checkResourceIntegrity (r : rs) = do
   (missing, altered) <- checkResourceIntegrity rs
@@ -63,8 +63,8 @@ data ResourceStatus
 data CheckResult
   = Verified
   | Unverified
-  | MissingResources (NonEmpty Resource)
-  | AlteredResources (NonEmpty Resource)
+  | MissingResources (NonEmpty ResourceSummary)
+  | AlteredResources (NonEmpty ResourceSummary)
 
 instance Pretty CheckResult where
   pretty Verified = "Status: verified"
@@ -88,6 +88,6 @@ instance Pretty CheckResult where
     indent 2 (vsep (fmap prettyResource alteredNetworks)) <> line <> line <>
     "To fix this problem, use Vehicle to reverify the specification."
 
-prettyResource :: Resource -> Doc ann
-prettyResource Resource{..} =
+prettyResource :: ResourceSummary -> Doc ann
+prettyResource ResourceSummary{..} =
     pretty resType <+> pretty name <+> parens (pretty location)

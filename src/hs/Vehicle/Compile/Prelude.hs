@@ -16,13 +16,14 @@ import Data.Text (Text)
 -- Compilation
 
 data CompileOptions = CompileOptions
-  { target         :: Backend
-  , inputFile      :: FilePath
-  , outputFile     :: Maybe FilePath
-  , networks       :: Map Text FilePath
-  , datasets       :: Map Text FilePath
-  , modulePrefix   :: Maybe String
-  , proofCache     :: Maybe FilePath
+  { target           :: Backend
+  , inputFile        :: FilePath
+  , outputFile       :: Maybe FilePath
+  , networkLocations :: Map Text FilePath
+  , datasetLocations :: Map Text FilePath
+  , parameterValues  :: Map Text Text
+  , modulePrefix     :: Maybe String
+  , proofCache       :: Maybe FilePath
   } deriving (Show)
 
 --------------------------------------------------------------------------------

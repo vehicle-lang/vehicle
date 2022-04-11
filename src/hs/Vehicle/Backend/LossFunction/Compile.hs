@@ -55,7 +55,7 @@ instance ToJSON LExpr where
 --------------------------------------------------------------------------------
 -- Compilation
 
-compile :: MonadCompile m => NetworkMap -> V.CheckedProg -> m [LExpr]
+compile :: MonadCompile m => NetworkCtx -> V.CheckedProg -> m [LExpr]
 compile _ (V.Main ds) = catMaybes <$> traverse compileDecl ds
 
 compileDecl :: MonadCompile m => V.CheckedDecl -> m (Maybe LExpr)

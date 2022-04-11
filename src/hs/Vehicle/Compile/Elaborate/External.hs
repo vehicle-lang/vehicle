@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Compile.Elaborate.External
-  ( runElab
-  , runElabExpr
+  ( elabProg
+  , elabExpr
   ) where
 
 import Control.Monad.Except (throwError)
@@ -17,11 +17,11 @@ import Vehicle.Language.Sugar
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Error
 
-runElab :: MonadCompile m => B.Prog -> m V.InputProg
-runElab = elab
+elabProg :: MonadCompile m => B.Prog -> m V.InputProg
+elabProg = elab
 
-runElabExpr :: MonadCompile m => B.Expr -> m V.InputExpr
-runElabExpr = elab
+elabExpr :: MonadCompile m => B.Expr -> m V.InputExpr
+elabExpr = elab
 
 --------------------------------------------------------------------------------
 -- Conversion from BNFC AST
@@ -66,11 +66,10 @@ groupDecls (d : ds) = NonEmpty.toList <$> traverse elab (NonEmpty.groupBy1 cond 
 -- |Elaborate declarations.
 instance Elab (NonEmpty B.Decl) V.InputDecl where
   elab = \case
-    -- Elaborate a network declaration.
-    (B.DeclNetw n _tk t :| []) -> V.DefResource (tkProvenance n) V.Network <$> elab n <*> elab t
-
-    -- Elaborate a dataset declaration.
-    (B.DeclData n _tk t :| []) -> V.DefResource (tkProvenance n) V.Dataset <$> elab n <*> elab t
+    -- Elaborate resources.
+    (B.DeclNetw  n _tk t :| []) -> elabResource V.Network   n t
+    (B.DeclData  n _tk t :| []) -> elabResource V.Dataset   n t
+    (B.DeclParam n _tk t :| []) -> elabResource V.Parameter n t
 
     -- Elaborate a type definition.
     (B.DefType n bs e :| []) -> do
@@ -172,6 +171,9 @@ instance Elab B.Arg V.InputArg where
   elab (B.ExplicitArg e) = mkArg V.Explicit <$> elab e
   elab (B.ImplicitArg e) = mkArg V.Implicit <$> elab e
   elab (B.InstanceArg e) = mkArg V.Instance <$> elab e
+
+elabResource :: MonadCompile m => V.ResourceType -> B.Name -> B.Expr -> m V.InputDecl
+elabResource r n t = V.DefResource (tkProvenance n) r <$> elab n <*> elab t
 
 mkArg :: V.Visibility -> V.InputExpr -> V.InputArg
 mkArg v e = V.Arg (V.visProv v (provenanceOf e), V.TheUser) v e
@@ -285,6 +287,7 @@ elabOrder order tk e1 e2 = do
 declName :: B.Decl -> B.Name
 declName (B.DeclNetw   n _ _) = n
 declName (B.DeclData   n _ _) = n
+declName (B.DeclParam  n _ _) = n
 declName (B.DefType    n _ _) = n
 declName (B.DefFunType n _ _) = n
 declName (B.DefFunExpr n _ _) = n

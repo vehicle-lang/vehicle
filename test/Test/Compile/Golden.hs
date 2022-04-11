@@ -21,7 +21,7 @@ import Vehicle.Prelude
 import Vehicle.Compile
 import Vehicle.Backend.Prelude
 
-import Test.Utils
+import Test.Compile.Utils
 import Test.GoldenUtils
 
 --------------------------------------------------------------------------------
@@ -31,116 +31,95 @@ goldenTests :: TestTree
 goldenTests = testGroup "GoldenTests" $
   map makeGoldenTests
     -- Worked examples
-    [ TestSpec
-      { testName     = "windController"
-      , testLocation = Examples
-      , testTargets  = [VNNLibBackend, AgdaBackend, MarabouBackend]
-      , testDatasets = []
+    [ testSpec
+      { testName       = "windController"
+      , testLocation   = Examples
+      , testTargets    = [VNNLibBackend, AgdaBackend, MarabouBackend]
       }
 
-    , TestSpec
-      { testName     = "acasXu"
-      , testLocation = Examples
-      , testTargets  = [AgdaBackend, MarabouBackend]
-      , testDatasets = []
+    , testSpec
+      { testName       = "acasXu"
+      , testLocation   = Examples
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
     -- Realistic tests
-    , TestSpec
-      { testName     = "andGate"
-      , testLocation = Tests
-      , testTargets  = [VNNLibBackend, AgdaBackend]
-      , testDatasets = []
+    , testSpec
+      { testName       = "andGate"
+      , testLocation   = Tests
+      , testTargets    = [VNNLibBackend, AgdaBackend]
       }
 
-    , TestSpec
-      { testName     = "autoencoderError"
-      , testLocation = Tests
-      , testTargets  = [VNNLibBackend, AgdaBackend]
-      , testDatasets = []
+    , testSpec
+      { testName       = "autoencoderError"
+      , testLocation   = Tests
+      , testTargets    = [VNNLibBackend, AgdaBackend]
       }
 
-    , TestSpec
-      { testName     = "increasing"
-      , testLocation = Tests
-      , testTargets  = [VNNLibBackend, AgdaBackend]
-      , testDatasets = []
+    , testSpec
+      { testName       = "increasing"
+      , testLocation   = Tests
+      , testTargets    = [VNNLibBackend, AgdaBackend]
       }
 
-    , TestSpec
-      { testName     = "monotonicity"
-      , testLocation = Tests
-      , testTargets  = [VNNLibBackend, AgdaBackend]
-      , testDatasets = []
+    , testSpec
+      { testName       = "monotonicity"
+      , testLocation   = Tests
+      , testTargets    = [VNNLibBackend, AgdaBackend]
       }
 
-    , TestSpec
-      { testName     = "reachability"
-      , testLocation = Tests
-      , testTargets  = [VNNLibBackend, AgdaBackend, MarabouBackend]
-      , testDatasets = []
+    , testSpec
+      { testName       = "reachability"
+      , testLocation   = Tests
+      , testTargets    = [VNNLibBackend, AgdaBackend, MarabouBackend]
+      }
+
+    , testSpec
+      { testName       = "bounded"
+      , testLocation   = Tests
+      , testTargets    = [LossFunction]
       }
 
     -- Simple tests of Vehicle syntax
-    , TestSpec
-      { testName     = "simple-quantifierIn"
-      , testLocation = Tests
-      , testTargets  = [AgdaBackend]
-      , testDatasets = []
+    , testSpec
+      { testName       = "simple-quantifierIn"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend]
       }
 
-    , TestSpec
-      { testName     = "simple-let"
-      , testLocation = Tests
-      , testTargets  = [AgdaBackend]
-      , testDatasets = []
+    , testSpec
+      { testName       = "simple-let"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend]
       }
 
-    , TestSpec
-      { testName     = "simple-defaultFin"
-      , testLocation = Tests
-      , testTargets  = [AgdaBackend]
-      , testDatasets = []
+    , testSpec
+      { testName       = "simple-defaultFin"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend]
       }
 
-    , TestSpec
-      { testName     = "simple-defaultInt"
-      , testLocation = Tests
-      , testTargets  = [AgdaBackend]
-      , testDatasets = []
+    , testSpec
+      { testName       = "simple-defaultInt"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend]
       }
 
-    , TestSpec
-      { testName     = "simple-defaultRat"
-      , testLocation = Tests
-      , testTargets  = [AgdaBackend]
-      , testDatasets = []
+    , testSpec
+      { testName       = "simple-defaultRat"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend]
       }
 
-    , TestSpec
-      { testName     = "simple-constant-input"
-      , testLocation = Tests
-      , testTargets  = [AgdaBackend, MarabouBackend]
-      , testDatasets = []
-      }
-
-    , TestSpec
-      { testName     = "bounded"
-      , testLocation = Tests
-      , testTargets  = [LossFunction]
-      , testDatasets = []
+    , testSpec
+      { testName       = "simple-constant-input"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
     ]
 
 --------------------------------------------------------------------------------
 -- Test infrastructure
-
-data TestSpec = TestSpec
-    { testName      :: String
-    , testLocation  :: SpecLocation
-    , testTargets   :: [Backend]
-    , testDatasets  :: [(Text, FilePath)]
-    }
 
 goldenDir :: FilePath
 goldenDir = "test" </> "Test" </> "Compile" </> "Golden"
@@ -152,15 +131,14 @@ getGoldenFilepathSuffix (ITP Agda)         = ".agda"
 getGoldenFilepathSuffix LossFunction       = ".json"
 
 makeGoldenTests :: TestSpec -> TestTree
-makeGoldenTests TestSpec{..} =
-  let datasetMap = Map.fromList testDatasets in
-  let datasets = fmap ((locationDir testLocation </> testName) </>) datasetMap in
-  let makeTest = makeIndividualTest testLocation testName datasets in
+makeGoldenTests spec@TestSpec{..} =
+  let resources = testResources spec in
+  let makeTest = makeIndividualTest testLocation testName resources in
   testGroup testName (map makeTest testTargets)
 
-makeIndividualTest :: SpecLocation
+makeIndividualTest :: TestLocation
                    -> String
-                   -> Map Text FilePath
+                   -> Resources
                    -> Backend
                    -> TestTree
 makeIndividualTest location name datasets backend = test
@@ -177,20 +155,21 @@ makeIndividualTest location name datasets backend = test
   testFn = if isFolderOutput then goldenDirectoryTest else goldenFileTest
   test = testFn testName run omitFilePaths goldenFile outputFile
 
-runTest :: FilePath -> FilePath -> String -> Backend -> Map Text FilePath -> IO ()
-runTest inputFile outputFile modulePath backend datasets = do
+runTest :: FilePath -> FilePath -> String -> Backend -> Resources -> IO ()
+runTest inputFile outputFile modulePath backend Resources{..} = do
   run $ Options
     { version       = False
     , outFile       = Nothing
     , errFile       = Nothing
     , logFile       = Nothing -- Just Nothing
     , commandOption = Compile $ CompileOptions
-      { target       = backend
-      , inputFile    = inputFile
-      , outputFile   = Just outputFile
-      , networks     = mempty
-      , datasets     = datasets
-      , modulePrefix = Nothing
-      , proofCache   = Just "proofcache.vclp"
+      { target           = backend
+      , inputFile        = inputFile
+      , outputFile       = Just outputFile
+      , networkLocations = networks
+      , datasetLocations = datasets
+      , parameterValues  = parameters
+      , modulePrefix     = Nothing
+      , proofCache       = Just "proofcache.vclp"
       }
     }

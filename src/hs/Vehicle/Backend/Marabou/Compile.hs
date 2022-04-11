@@ -24,12 +24,12 @@ import Vehicle.Resource.NeuralNetwork
 -- Compilation to Marabou
 
 -- | Compiles the provided program to Marabou queries.
-compile :: MonadCompile m => NetworkMap -> CheckedProg -> m [MarabouProperty]
-compile networkMap prog = do
+compile :: MonadCompile m => NetworkCtx -> CheckedProg -> m [MarabouProperty]
+compile networkCtx prog = do
   logDebug "Beginning compilation to Marabou"
   incrCallDepth
 
-  result <- compileProg networkMap prog
+  result <- compileProg networkCtx prog
 
   decrCallDepth
   logDebug "Finished compilation to Marabou"
@@ -38,16 +38,16 @@ compile networkMap prog = do
 --------------------------------------------------------------------------------
 -- Algorithm
 
-compileProg :: MonadCompile m => NetworkMap -> CheckedProg -> m [MarabouProperty]
-compileProg networkMap (Main ds) = do
-  results <- catMaybes <$> traverse (compileDecl networkMap) ds
+compileProg :: MonadCompile m => NetworkCtx -> CheckedProg -> m [MarabouProperty]
+compileProg networkCtx (Main ds) = do
+  results <- catMaybes <$> traverse (compileDecl networkCtx) ds
   if null results then
     throwError NoPropertiesFound
   else
     return results
 
-compileDecl :: MonadCompile m => NetworkMap -> CheckedDecl -> m (Maybe MarabouProperty)
-compileDecl networkMap d = case d of
+compileDecl :: MonadCompile m => NetworkCtx -> CheckedDecl -> m (Maybe MarabouProperty)
+compileDecl networkCtx d = case d of
   DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
 
   DefFunction _p ident t expr ->
@@ -55,14 +55,14 @@ compileDecl networkMap d = case d of
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
       then return Nothing
-      else Just <$> compileProperty ident networkMap expr
+      else Just <$> compileProperty ident networkCtx expr
 
 compileProperty :: MonadCompile m
                 => Identifier
-                -> NetworkMap
+                -> NetworkCtx
                 -> CheckedExpr
                 -> m MarabouProperty
-compileProperty ident networkMap expr = do
+compileProperty ident networkCtx expr = do
   let identDoc = squotes (pretty ident)
   let ann = annotationOf expr
   logDebug $ "Beginning compilation of property" <+> identDoc
@@ -101,7 +101,7 @@ compileProperty ident networkMap expr = do
   let queryExprs = splitDisjunctions dnfExpr
 
   -- Compile the individual queries
-  queries <- traverse (compileQuery ident networkMap quantifier) queryExprs
+  queries <- traverse (compileQuery ident networkCtx quantifier) queryExprs
 
   decrCallDepth
   logDebug $ "Finished compilation of property" <+> identDoc
@@ -110,13 +110,13 @@ compileProperty ident networkMap expr = do
 
 compileQuery :: MonadCompile m
              => Identifier
-             -> NetworkMap
+             -> NetworkCtx
              -> Quantifier
              -> CheckedExpr
              -> m MarabouQuery
-compileQuery ident networkMap originalQuantifier expr = do
+compileQuery ident networkCtx originalQuantifier expr = do
   -- Convert all applications of networks into magic variables
-  (networklessExpr, metaNetwork) <- convertNetworkAppsToMagicVars Marabou networkMap Any expr
+  (networklessExpr, metaNetwork) <- convertNetworkAppsToMagicVars Marabou networkCtx Any expr
 
   -- Normalise the expression to remove any implications, push the negations through
   -- and expand out any multiplication.

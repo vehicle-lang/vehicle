@@ -58,11 +58,12 @@ runTest name inputFile networks = do
     , errFile       = Nothing
     , logFile       = Nothing
     , commandOption = Verify $ VerifyOptions
-      { verifier   = Marabou
-      , inputFile  = inputFile
-      , datasets   = mempty
-      , networks   = Map.fromList networks
-      , proofCache = Nothing
+      { verifier         = Marabou
+      , inputFile        = inputFile
+      , networkLocations = Map.fromList networks
+      , datasetLocations = mempty
+      , parameterValues  = mempty
+      , proofCache       = Nothing
       }
     }
 

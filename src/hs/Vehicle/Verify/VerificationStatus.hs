@@ -79,7 +79,7 @@ instance Pretty SpecificationStatus where
 data ProofCache = ProofCache
   { specVersion  :: Version
   , status       :: SpecificationStatus
-  , resources    :: [Resource]
+  , resources    :: [ResourceSummary]
   , originalSpec :: Text
   } deriving (Generic)
 

@@ -61,7 +61,7 @@ runTest name status alterNetwork = do
   writeFile networkFile "networkContents"
   networkHash <- hashResource networkFile
   let resources =
-        [ Resource "myNetwork" networkFile networkHash Network
+        [ ResourceSummary "myNetwork" networkFile networkHash Network
         ]
 
   writeProofCache proofCache $ ProofCache

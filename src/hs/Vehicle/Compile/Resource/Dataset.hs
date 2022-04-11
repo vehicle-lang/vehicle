@@ -1,4 +1,4 @@
-module Vehicle.Compile.RemoveDatasetDecls
+module Vehicle.Compile.Resource.Dataset
   ( removeDatasetDecls
   ) where
 
@@ -16,7 +16,7 @@ import Vehicle.Resource (readDataset)
 -- | This function replaces all dataset declarations from the program with the
 -- contents of the provided dataset.
 removeDatasetDecls :: (MonadIO m, MonadCompile m)
-                   => ResourceLocations
+                   => DatasetLocations
                    -> CheckedProg
                    -> m CheckedProg
 removeDatasetDecls resources prog1 = do
@@ -36,7 +36,7 @@ removeDatasetDecls resources prog1 = do
 type MonadDataset m =
   ( MonadIO m
   , MonadCompile m
-  , MonadReader ResourceLocations m
+  , MonadReader DatasetLocations m
   )
 
 expandProg :: MonadDataset m => CheckedProg -> m CheckedProg

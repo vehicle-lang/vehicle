@@ -87,11 +87,11 @@ import Data.Text (Text)
 -- contains quantifiers of the provided type.
 convertNetworkAppsToMagicVars :: MonadCompile m
                               => Verifier
-                              -> NetworkMap
+                              -> NetworkCtx
                               -> Quantifier
                               -> CheckedExpr
                               -> m (CheckedExpr, MetaNetwork)
-convertNetworkAppsToMagicVars verifier networkMap quantifier expr = do
+convertNetworkAppsToMagicVars verifier networkCtx quantifier expr = do
   logDebug "Beginning conversion of network applications to magic variables"
   incrCallDepth
 
@@ -103,7 +103,7 @@ convertNetworkAppsToMagicVars verifier networkMap quantifier expr = do
     then return networkAppLiftedExpr
     else do
       let e = normExpr metaNetwork quantifier networkAppLiftedExpr
-      runReaderT e (networkMap, verifier)
+      runReaderT e (networkCtx, verifier)
 
   decrCallDepth
   logDebug "Finished compilation to VNNLib"
@@ -114,13 +114,13 @@ convertNetworkAppsToMagicVars verifier networkMap quantifier expr = do
 
 type MonadNetworkApp m =
   ( MonadCompile m
-  , MonadReader (NetworkMap, Verifier) m
+  , MonadReader (NetworkCtx, Verifier) m
   )
 
 getNetworkDetailsFromCtx :: MonadNetworkApp m => Symbol -> m NetworkDetails
 getNetworkDetailsFromCtx name = do
-  networkMap <- asks fst
-  return $ fromMaybe outOfScopeError (Map.lookup name networkMap)
+  networkCtx <- asks fst
+  return $ fromMaybe outOfScopeError (Map.lookup name networkCtx)
   where
     outOfScopeError :: a
     outOfScopeError = developerError $

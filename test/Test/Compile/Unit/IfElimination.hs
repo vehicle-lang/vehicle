@@ -16,7 +16,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.IfElimination
 import Vehicle.Compile.CoDeBruijnify
 
-import Test.Utils
+import Test.Compile.Utils
 
 --------------------------------------------------------------------------------
 -- Let lifting tests

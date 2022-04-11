@@ -74,8 +74,9 @@ library
                       , Vehicle.Compile.Normalise
                       , Vehicle.Compile.Normalise.IfElimination
                       , Vehicle.Compile.Normalise.DNF
-                      , Vehicle.Compile.RemoveNetworkDecls
-                      , Vehicle.Compile.RemoveDatasetDecls
+                      , Vehicle.Compile.Resource.Network
+                      , Vehicle.Compile.Resource.Dataset
+                      , Vehicle.Compile.Resource.Parameter
                       , Vehicle.Compile.Normalise.NetworkApplications
                       , Vehicle.Compile.LetInsertion
                       , Vehicle.Compile.Simplify
@@ -219,6 +220,7 @@ test-suite vehicle-test
                     , Test.Compile.Unit.LetInsertion
                     , Test.Compile.Unit.PositionTree
                     , Test.Compile.Unit.IfElimination
+                    , Test.Compile.Utils
                     -- , Test.Compile.Generative
                     -- , Test.Compile.Generative.Generator
                     -- , Test.Compile.Generative.ToVehicle
@@ -226,7 +228,6 @@ test-suite vehicle-test
                     , Test.Check.Golden
                     , Test.Verify.Golden
 
-                    , Test.Utils
                     , Test.GoldenUtils
                     , Test.FilePathUtils
 

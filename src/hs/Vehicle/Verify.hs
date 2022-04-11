@@ -14,41 +14,42 @@ import Vehicle.Compile
 import Vehicle.Verify.VerificationStatus
 
 data VerifyOptions = VerifyOptions
-  { verifier       :: Verifier
-  , inputFile      :: FilePath
-  , networks       :: Map Text FilePath
-  , datasets       :: Map Text FilePath
-  , proofCache     :: Maybe FilePath
+  { verifier         :: Verifier
+  , inputFile        :: FilePath
+  , networkLocations :: Map Text FilePath
+  , datasetLocations :: Map Text FilePath
+  , parameterValues  :: Map Text Text
+  , proofCache       :: Maybe FilePath
   } deriving (Show)
 
 verify :: LoggingOptions -> VerifyOptions -> IO ()
 verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
   spec <- readInputFile loggingOptions inputFile
-  let resourceLocations = collateResourceLocations networks datasets
-  absoluteResourceLocations <- convertPathsToAbsolute resourceLocations
+  resources <- convertPathsToAbsolute $
+    Resources networkLocations datasetLocations parameterValues
 
   status <- case verifier of
     Marabou -> do
-      marabouSpec <- liftIO $ compileToMarabou loggingOptions spec absoluteResourceLocations
-      liftIO $ Marabou.verifySpec Nothing marabouSpec resourceLocations
+      marabouSpec <- liftIO $ compileToMarabou loggingOptions resources spec
+      liftIO $ Marabou.verifySpec Nothing marabouSpec (networks resources)
     VNNLib  -> do
       liftIO $ hPutStrLn stderr "VNNLib is not currently a valid output target"
       liftIO exitFailure
 
   programOutput loggingOptions $ pretty status
 
-  resources <- liftIO $ hashResources resourceLocations
+  resourceSummaries <- liftIO $ hashResources resources
   case proofCache of
     Nothing -> return ()
     Just proofCachePath -> writeProofCache proofCachePath $ ProofCache
       { specVersion  = vehicleVersion
       , status       = status
       , originalSpec = spec
-      , resources    = resources
+      , resources    = resourceSummaries
       }
 
-convertPathsToAbsolute :: MonadIO m => ResourceLocations -> m ResourceLocations
-convertPathsToAbsolute resources =
-  forM resources $ \(t, v) -> do
-    v' <- liftIO $ makeAbsolute v
-    return (t, v')
+convertPathsToAbsolute :: MonadIO m => Resources -> m Resources
+convertPathsToAbsolute Resources{..} = do
+  absNetworks <- forM networks (liftIO . makeAbsolute)
+  absDatasets <- forM datasets (liftIO . makeAbsolute)
+  return $ Resources absNetworks absDatasets parameters

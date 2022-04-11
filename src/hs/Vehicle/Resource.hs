@@ -19,14 +19,14 @@ import Vehicle.Resource.Dataset.IDX
 -- Monad
 
 readDataset :: (MonadIO m, MonadCompile m)
-            => ResourceLocations
+            => DatasetLocations
             -> Identifier
             -> Provenance
             -> CheckedExpr
             -> m CheckedExpr
 readDataset resources ident prov expectedType =
   case Map.lookup (nameOf ident) resources of
-    Just (Dataset, file) -> case takeExtension file of
+    Just file -> case takeExtension file of
       ".idx" -> readIDX file ident prov expectedType
       ext    -> throwError $ UnsupportedResourceFormat ident prov Dataset ext
     _ -> throwError $ ResourceNotProvided ident prov Dataset

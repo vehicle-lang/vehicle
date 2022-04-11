@@ -63,7 +63,7 @@ data CompileError
   | ResourceNotProvided       Identifier Provenance ResourceType
   | ResourceIOError           Identifier Provenance ResourceType IOException
   | UnsupportedResourceFormat Identifier Provenance ResourceType String
-  | UnableToParseResourceFile Identifier Provenance ResourceType FilePath
+  | UnableToParseResource     Identifier Provenance ResourceType String
 
   | NetworkTypeIsNotAFunction              Identifier CheckedExpr
   | NetworkTypeHasNonExplicitArguments     Identifier CheckedExpr CheckedBinder

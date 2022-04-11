@@ -26,6 +26,7 @@ import Vehicle.Compile
 import Vehicle.Backend.Prelude
 
 import Test.GoldenUtils
+import Test.Compile.Utils
 
 --------------------------------------------------------------------------------
 -- Tests
@@ -36,38 +37,142 @@ errorTests = testGroup "ErrorTests"
   , typeCheckingErrors
   , networkErrors
   , datasetErrors
+  , parameterErrors
   ]
 
 argumentErrors :: TestTree
 argumentErrors = failTestGroup "ArgumentErrors"
-  [ ("missingInputFile",        Nothing, [])
+  [ testSpec
+    { testName     = "missingInputFile"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    }
   ]
 
 typeCheckingErrors :: TestTree
 typeCheckingErrors = failTestGroup "TypingErrors"
-  [ ("intAsNat",                Nothing, [])
-  , ("indexOutOfBounds",        Nothing, [])
-  , ("indexOutOfBoundsUnknown", Nothing, [])
+  [ testSpec
+    { testName     = "intAsNat"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    }
+
+  , testSpec
+    { testName     = "indexOutOfBounds"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    }
+
+  , testSpec
+    { testName     = "indexOutOfBoundsUnknown"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    }
   ]
 
 networkErrors :: TestTree
 networkErrors = failTestGroup "NetworkErrors"
-  [ ("notAFunction",        Nothing, [])
-  , ("multidimInputTensor", Nothing, [])
+  [ testSpec
+    { testName     = "notAFunction"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    }
+
+  , testSpec
+    { testName     = "multidimInputTensor"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    }
   ]
 
 datasetErrors :: TestTree
 datasetErrors = failTestGroup "DatasetErrors"
-  [ ("notProvided",          Nothing, [])
-  , ("missing",              Nothing, [("trainingDataset", "non-existent.idx")])
-  , ("unsupportedFormat",    Nothing, [("trainingDataset", "non-existent.fgt")])
-  , ("invalidContainerType", Nothing, [("trainingDataset", "dataset-nat-4.idx")])
-  , ("invalidElementType",   Nothing, [("trainingDataset", "dataset-nat-4.idx")])
-  , ("variableDimensions",   Nothing, [("trainingDataset", "dataset-nat-4.idx")])
-  , ("mismatchedDimensions", Nothing, [("trainingDataset", "dataset-nat-4.idx")])
-  , ("mismatchedType",       Nothing, [("trainingDataset", "dataset-rat-4.idx")])
-  , ("tooBigFin",            Nothing, [("trainingDataset", "dataset-nat-4.idx")])
-  , ("negativeNat",          Nothing, [("trainingDataset", "dataset-int-4.idx")])
+  [ testSpec
+    { testName     = "notProvided"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    , testDatasets = []
+    }
+
+  , testSpec
+    { testName     = "missing"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    , testDatasets = [("trainingDataset", "non-existent.idx")]
+    }
+
+  , testSpec
+    { testName     = "unsupportedFormat"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    , testDatasets = [("trainingDataset", "non-existent.fgt")]
+    }
+
+  , testSpec
+    { testName     = "invalidContainerType"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
+    }
+
+  , testSpec
+    { testName     = "invalidElementType"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
+    }
+
+  , testSpec
+    { testName     = "variableDimensions"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
+    }
+
+  , testSpec
+    { testName     = "mismatchedDimensions"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
+    }
+
+  , testSpec
+    { testName     = "mismatchedType"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    , testDatasets = [("trainingDataset", "dataset-rat-4.idx")]
+    }
+
+  , testSpec
+    { testName     = "tooBigFin"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
+    }
+
+  , testSpec
+    { testName     = "negativeNat"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    , testDatasets = [("trainingDataset", "dataset-int-4.idx")]
+    }
+  ]
+
+parameterErrors :: TestTree
+parameterErrors = failTestGroup "ParameterErrors"
+  [ testSpec
+    { testName       = "notProvided"
+    , testLocation   = Tests
+    , testTargets    = [VNNLibBackend]
+    , testParameters = []
+    }
+
+  , testSpec
+    { testName       = "unparseable"
+    , testLocation   = Tests
+    , testTargets    = [VNNLibBackend]
+    , testParameters = [("n", "~`")]
+    }
   ]
 
 --------------------------------------------------------------------------------
@@ -77,45 +182,44 @@ testDir :: FilePath
 testDir = "test" </> "Test" </> "Compile" </> "Error"
 
 failTestGroup :: FilePath
-              -> [(FilePath, Maybe Backend, [(Text, FilePath)])]
+              -> [TestSpec]
               -> TestTree
-failTestGroup folder tests = testGroup folder (tests <&>
-  \(name, maybeBackend, datasetList) ->
-    let datasets = fmap ((testDir </> folder) </>) (Map.fromList datasetList) in
-    let backend = fromMaybe VNNLibBackend maybeBackend in
-    failTest (folder </> name) backend datasets)
+failTestGroup folder tests = testGroup folder (tests <&> \spec@TestSpec{..} ->
+  let resources = testResources spec in
+  failTest (folder </> testName) (head testTargets) resources)
 
-failTest :: FilePath -> Backend -> Map Text FilePath -> TestTree
-failTest filepath backend datasets = test
+failTest :: FilePath -> Backend -> Resources -> TestTree
+failTest filepath backend resources = test
   where
   testName       = takeBaseName filepath
   basePath       = testDir </> filepath
   inputFile      = basePath <.> ".vcl"
   logFile        = basePath <> "-temp" <.> "txt"
   goldenFile     = basePath <.> "txt"
-  run            = runTest inputFile logFile backend datasets
+  run            = runTest inputFile logFile backend resources
 
   test = goldenFileTest testName run omitFilePaths goldenFile logFile
 
-runTest :: FilePath -> FilePath -> Backend -> Map Text FilePath -> IO ()
-runTest inputFile outputFile backend datasets = do
+runTest :: FilePath -> FilePath -> Backend -> Resources -> IO ()
+runTest inputFile outputFile backend Resources{..} = do
   run options `catch` handleExitCode
   where
-    options = Options
-      { version       = False
-      , outFile       = Nothing
-      , errFile       = Just outputFile
-      , logFile       = Nothing -- Just Nothing
-      , commandOption = Compile $ CompileOptions
-        { target       = backend
-        , inputFile    = inputFile
-        , outputFile   = Nothing
-        , networks     = mempty
-        , datasets     = datasets
-        , modulePrefix = Nothing
-        , proofCache   = Nothing
-        }
+  options = Options
+    { version       = False
+    , outFile       = Nothing
+    , errFile       = Just outputFile
+    , logFile       = Just Nothing
+    , commandOption = Compile $ CompileOptions
+      { target           = backend
+      , inputFile        = inputFile
+      , outputFile       = Nothing
+      , networkLocations = networks
+      , datasetLocations = datasets
+      , parameterValues  = parameters
+      , modulePrefix     = Nothing
+      , proofCache       = Nothing
       }
+    }
 
 handleExitCode :: ExitCode -> IO ()
 handleExitCode e = return ()

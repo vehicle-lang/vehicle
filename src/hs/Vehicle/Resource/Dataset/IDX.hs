@@ -26,7 +26,7 @@ readIDX file ident prov expectedType =
   flip runReaderT (ident, prov) $ do
     contents <- readIDXFile file
     case contents of
-      Nothing      -> throwError $ UnableToParseResourceFile ident prov Dataset file
+      Nothing      -> throwError $ UnableToParseResource ident prov Dataset file
       Just idxData -> parseIDX idxData (idxDimensions idxData) expectedType
 
 type MonadDataset m = (MonadReader (Identifier, Provenance) m, MonadCompile m)

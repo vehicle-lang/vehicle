@@ -86,6 +86,7 @@ class MeaningfulError e where
 
 instance MeaningfulError CompileError where
   details = \case
+
     -------------
     -- Parsing --
     -------------
@@ -95,7 +96,9 @@ instance MeaningfulError CompileError where
       -- information than a simple string surely?
       (pack text)
 
-    -- Elaboration internal
+    --------------------------
+    -- Elaboration internal --
+    --------------------------
 
     UnknownBuiltin tk -> UError $ UserError
       { provenance = tkProvenance tk
@@ -115,7 +118,9 @@ instance MeaningfulError CompileError where
       , fix        = Nothing
       }
 
-    -- Elaboration external
+    --------------------------
+    -- Elaboration external --
+    --------------------------
 
     MissingDefFunExpr p name -> UError $ UserError
       { provenance = p
@@ -145,7 +150,9 @@ instance MeaningfulError CompileError where
       , fix        = Just "split chained orders into a conjunction"
       }
 
-    -- Scoping
+    -------------
+    -- Scoping --
+    -------------
 
     UnboundName name p -> UError $ UserError
       { provenance = p
@@ -154,7 +161,9 @@ instance MeaningfulError CompileError where
       , fix        = Nothing
       }
 
-    -- Typing
+    ------------
+    -- Typing --
+    ------------
 
     TypeMismatch p ctx candidate expected -> UError $ UserError
       { provenance = p
@@ -205,10 +214,16 @@ instance MeaningfulError CompileError where
 
     ResourceNotProvided ident p resourceType -> UError $ UserError
       { provenance = p
-      , problem    = "No file was provided for the" <+> prettyResource resourceType ident <> "."
+      , problem    = "No" <+> entity <+> "was provided for the" <+>
+                     prettyResource resourceType ident <> "."
       , fix        = Just $ "provide it via the command line using" <+>
-                      squotes ("--" <> pretty resourceType <+> pretty ident <> ":FILEPATH")
+                     squotes ("--" <> pretty resourceType <+> pretty ident <>
+                     ":" <> var)
       }
+      where
+      (entity, var) = case resourceType of
+        Parameter -> ("value", "VALUE")
+        _         -> ("file", "FILEPATH")
 
     UnsupportedResourceFormat ident p resourceType fileExtension -> UError $ UserError
       { provenance = p
@@ -227,12 +242,14 @@ instance MeaningfulError CompileError where
       , fix        = Nothing
       }
 
-    UnableToParseResourceFile ident p resourceType file -> UError $ UserError
+    UnableToParseResource ident p resourceType value -> UError $ UserError
       { provenance = p
-      , problem    = "Unable to parse the file" <+> squotes (pretty file) <+>
+      , problem    = "Unable to parse the" <+> entity <+> squotes (pretty value) <+>
                      "provided for the" <+> prettyResource resourceType ident
       , fix        = Nothing
-      }
+      } where entity = if resourceType == Parameter then "value" else "file"
+
+    -- Dataset
 
     DatasetInvalidContainerType ident p tCont -> UError $ UserError
       { provenance = p
@@ -350,10 +367,14 @@ instance MeaningfulError CompileError where
                      "the size of the" <+> pretty io <+> "tensor" <+>
                      squotes (pretty $ show tDim) <+> "is not a constant."
       , fix        = Just $ supportedNetworkTypeDescription <+>
-                     "Ensure that the size of the" <+> pretty io <+> "tensor is constant."
+                     "ensure that the size of the" <+> pretty io <+>
+                     "tensor is constant."
       }
 
-    -- Backend errors
+    --------------------
+    -- Backend errors --
+    --------------------
+
     UnsupportedResource target ann ident resource ->
       let dType = squotes (pretty resource) in UError $ UserError
       { provenance = provenanceOf ann

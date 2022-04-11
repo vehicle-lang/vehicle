@@ -53,21 +53,21 @@ queryFilePath propertyName queryID directory =
 -- not prevent the verification of the other properties.
 verifySpec :: Maybe FilePath
            -> MarabouSpec
-           -> ResourceLocations
+           -> NetworkLocations
            -> IO SpecificationStatus
-verifySpec maybeMarabouExecutable spec networkLocations = do
+verifySpec maybeMarabouExecutable spec networks = do
   marabouExecutable <- verifyExecutable maybeMarabouExecutable
   withSystemTempDirectory "marabouSpec" $ \tempDir -> do
     writeSpecFiles (Just tempDir) spec
-    results <- forM spec (verifyProperty marabouExecutable tempDir networkLocations)
+    results <- forM spec (verifyProperty marabouExecutable tempDir networks)
     return $ SpecificationStatus (Map.fromList results)
 
 verifyProperty :: FilePath
                -> FilePath
-               -> ResourceLocations
+               -> NetworkLocations
                -> MarabouProperty
                -> IO (Text, PropertyStatus)
-verifyProperty executable queryDirectory networkLocations (MarabouProperty propertyName negated queries) = do
+verifyProperty executable queryDirectory networks (MarabouProperty propertyName negated queries) = do
   status <- verifyQueries (zip [1..] queries)
   return (propertyName, status)
   where
@@ -75,14 +75,14 @@ verifyProperty executable queryDirectory networkLocations (MarabouProperty prope
     verifyQueries [] = return (Verified Nothing)
     verifyQueries ((queryID, query) : queryIDs) = do
       let queryFile = queryFilePath propertyName queryID queryDirectory
-      result <- verifyQuery executable queryFile networkLocations negated query
+      result <- verifyQuery executable queryFile networks negated query
       if isVerified result
         then verifyQueries queryIDs
         else return result
 
-verifyQuery :: FilePath -> FilePath -> ResourceLocations -> Bool -> MarabouQuery -> IO PropertyStatus
-verifyQuery marabouExecutable queryFile networkLocations negated query = do
-  networkArg <- prepareNetworkArg networkLocations (metaNetwork query)
+verifyQuery :: FilePath -> FilePath -> NetworkLocations -> Bool -> MarabouQuery -> IO PropertyStatus
+verifyQuery marabouExecutable queryFile networks negated query = do
+  networkArg <- prepareNetworkArg networks (metaNetwork query)
   marabouOutput <- readProcessWithExitCode marabouExecutable [networkArg, queryFile] ""
   result <- parseMarabouOutput marabouOutput
   return $ if negated
@@ -103,10 +103,10 @@ verifyExecutable maybeLocation = do
           else "")
       exitFailure
 
-prepareNetworkArg :: ResourceLocations -> MetaNetwork -> IO String
+prepareNetworkArg :: NetworkLocations -> MetaNetwork -> IO String
 prepareNetworkArg networkLocations [name] =
   case Map.lookup name networkLocations of
-    Just (Network, path) -> return path
+    Just path -> return path
     _ -> do
       hPutStrLn stderr $
         "No file provided for neural network '" <> name <> "'. " <>

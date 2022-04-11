@@ -11,6 +11,7 @@ Specification language
   tensors
   network-declarations
   dataset-declarations
+  parameter-declarations
   properties
   idioms
   advanced

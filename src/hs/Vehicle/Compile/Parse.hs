@@ -1,6 +1,7 @@
 module Vehicle.Compile.Parse
   ( ParseVehicle(..)
   , parseVehicleFile
+  , parseExternalExpr
   ) where
 
 import Control.Monad.Except (MonadError(..), liftEither)
@@ -25,21 +26,33 @@ class ParseVehicle a where
   parseVehicle :: MonadError CompileError m => Text -> m a
 
 instance ParseVehicle Internal.Prog where
-  parseVehicle txt = castError $ Internal.pProg (Internal.myLexer txt)
+  parseVehicle = castError . parseInternalProg
 
 instance ParseVehicle Internal.Expr where
-  parseVehicle txt = castError $ Internal.pExpr (Internal.myLexer txt)
+  parseVehicle = castError . parseInternalExpr
 
 instance ParseVehicle External.Prog where
-  parseVehicle txt = castError $ runExternalParser True External.pProg txt
+  parseVehicle = castError . parseExternalProg
 
 instance ParseVehicle External.Expr where
-  parseVehicle txt = castError $ runExternalParser False External.pExpr txt
+  parseVehicle = castError . parseExternalExpr
 
 castError :: MonadError CompileError m => Either String a -> m a
 castError = liftEither . first BNFCParseError
 
 type ExternalParser a = [External.Token] -> Either String a
+
+parseExternalExpr :: Text -> Either String External.Expr
+parseExternalExpr = runExternalParser False External.pExpr
+
+parseExternalProg :: Text -> Either String External.Prog
+parseExternalProg = runExternalParser True External.pProg
+
+parseInternalExpr :: Text -> Either String Internal.Expr
+parseInternalExpr = Internal.pExpr . Internal.myLexer
+
+parseInternalProg :: Text -> Either String Internal.Prog
+parseInternalProg = Internal.pProg . Internal.myLexer
 
 runExternalParser :: Bool -> ExternalParser a -> Text -> Either String a
 runExternalParser topLevel p t = p (runExternalLexer topLevel t)

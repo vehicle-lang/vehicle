@@ -1,4 +1,4 @@
-module Vehicle.Compile.RemoveNetworkDecls
+module Vehicle.Compile.Resource.Network
   ( removeNetworkDecls
   ) where
 
@@ -25,21 +25,21 @@ import Vehicle.Resource.NeuralNetwork
 -- their types into the NetworkCtx. It also normalises all network types into
 -- the standard form `Tensor A [m] -> Tensor B [n]`.
 removeNetworkDecls :: MonadCompile m
-                      => CheckedProg
-                      -> m (NetworkMap, CheckedProg)
+                   => CheckedProg
+                   -> m (NetworkCtx, CheckedProg)
 removeNetworkDecls prog1 = do
   logDebug "Beginning normalisation of network types"
   incrCallDepth
 
   (prog2, internalNetworkMap) <- runStateT (standardise prog1) mempty
-  let networkMap = fmap (\(x,_,_) -> x) internalNetworkMap
+  let networkCtx = fmap (\(x,_,_) -> x) internalNetworkMap
 
   logDebug $ prettySimple prog2
-  logDebug $ prettyMap networkMap
+  logDebug $ prettyMap networkCtx
 
   decrCallDepth
   logDebug $ "Finished normalisation of network types" <> line
-  return (networkMap, prog2)
+  return (networkCtx, prog2)
 
 --------------------------------------------------------------------------------
 -- Types
@@ -71,8 +71,8 @@ standariseDecl d = case d of
     -- Remove the declaration.
     return Nothing
 
-  DefResource p Dataset ident t ->
-    Just . DefResource p Dataset ident <$> standardise t
+  DefResource p r ident t ->
+    Just . DefResource p r ident <$> standardise t
 
   DefFunction p ident t e ->
     Just . DefFunction p ident t <$> standardise e

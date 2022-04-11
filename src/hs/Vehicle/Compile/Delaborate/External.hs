@@ -103,8 +103,9 @@ instance Delaborate (V.Decl Symbol Symbol) [B.Decl] where
       let n' = delabIdentifier n
       t' <- delabM t
       return $ case r of
-        Network -> [B.DeclNetw n' tokElemOf t']
-        Dataset -> [B.DeclData n' tokElemOf t']
+        Network   -> [B.DeclNetw  n' tokElemOf t']
+        Dataset   -> [B.DeclData  n' tokElemOf t']
+        Parameter -> [B.DeclParam n' tokElemOf t']
 
     -- Elaborate a type definition.
     (V.DefFunction _ n t e) -> delabFun n t e
