@@ -1,6 +1,8 @@
 module Test.GoldenUtils
   ( goldenDirectoryTest
   , goldenFileTest
+  , noException
+  , omitFilePaths
   ) where
 
 import Test.Tasty
@@ -11,25 +13,38 @@ import Data.Text.IO qualified as TIO
 import Data.Map (Map, (\\))
 import Data.Map qualified as Map (toAscList, fromList, keysSet, size, lookup, intersectionWith, keys)
 import Data.Set qualified as Set
-
-import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiff)
-import Data.Algorithm.DiffOutput (ppDiff)
-
-import System.Directory (listDirectory, removeFile, createDirectory, removeDirectoryRecursive)
-import System.FilePath (takeFileName, (</>))
-import Data.List (intercalate)
+import System.Directory (listDirectory, removeFile, createDirectory, removeDirectoryRecursive, createDirectoryIfMissing)
+import System.FilePath (takeFileName, (</>), takeDirectory)
+import Data.List (intercalate, isInfixOf)
 import System.IO.Error
 import Control.Exception (catch, throwIO)
 import Data.Bifunctor (Bifunctor(second, first))
+import Data.Maybe (catMaybes, listToMaybe)
+
+import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiffBy)
+import Data.Algorithm.DiffOutput (ppDiff)
+import Test.FilePathUtils (removeFilePaths)
 
 --------------------------------------------------------------------------------
 -- General utilities
 
-diffText :: Text -> Text -> Maybe String
-diffText golden output = do
-  let goldenLines = map T.unpack $ T.lines golden
-  let outputLines = map T.unpack $ T.lines output
-  let diff = getGroupedDiff goldenLines outputLines
+-- | Exceptions for diffing a list of text. At the moment this is implemented as
+-- a function that is applied upon the failure of two lines, upon which the
+-- diff is then reperformed.
+type DiffException = String -> String -> Bool
+
+noException :: DiffException
+noException _ _ = False
+
+omitFilePaths :: DiffException
+omitFilePaths x y = removeFilePaths x == removeFilePaths y
+
+diffText :: DiffException -> Text -> Text -> Maybe String
+diffText failTransformation golden output = do
+  let goldenLines  = map T.unpack $ T.lines golden
+  let outputLines  = map T.unpack $ T.lines output
+  let equalityTest = diffEqualityTestWithIgnore failTransformation
+  let diff = getGroupedDiffBy equalityTest goldenLines outputLines
   if all isBoth diff
     then Nothing
     else Just $ "Output differs:" <> ppDiff diff
@@ -37,6 +52,10 @@ diffText golden output = do
     isBoth :: Diff a -> Bool
     isBoth (Both a b) = True
     isBoth _          = False
+
+diffEqualityTestWithIgnore :: DiffException -> String -> String -> Bool
+diffEqualityTestWithIgnore exceptionTest golden output =
+  golden == output || exceptionTest golden output
 
 cleanupGoldenTestOutput :: Bool -> FilePath -> TestTree -> TestTree
 cleanupGoldenTestOutput isFile testFile test =
@@ -54,29 +73,31 @@ cleanupGoldenTestOutput isFile testFile test =
 --------------------------------------------------------------------------------
 -- Single file golden tests
 
-goldenFileTest :: TestName -> IO () -> FilePath -> FilePath -> TestTree
-goldenFileTest testName generateOutput goldenFile outputFile = testWithCleanup
+goldenFileTest :: TestName -> IO () -> DiffException -> FilePath -> FilePath -> TestTree
+goldenFileTest testName generateOutput diffException goldenFile outputFile = testWithCleanup
   where
   readGolden = TIO.readFile goldenFile
   readOutput = do generateOutput; TIO.readFile outputFile
   updateGolden = TIO.writeFile goldenFile
-  test = goldenTest testName readGolden readOutput diffTextCommand updateGolden
+  diffCommand  = diffTextCommand diffException
+  test = goldenTest testName readGolden readOutput diffCommand updateGolden
   testWithCleanup = cleanupGoldenTestOutput True outputFile test
 
-diffTextCommand :: Text -> Text -> IO (Maybe String)
-diffTextCommand golden output = return $ diffText golden output
+diffTextCommand :: DiffException -> Text -> Text -> IO (Maybe String)
+diffTextCommand diffException golden output = return $ diffText diffException golden output
 
 --------------------------------------------------------------------------------
 -- Directory golden tests
 
-goldenDirectoryTest :: TestName -> IO () -> FilePath -> FilePath -> TestTree
-goldenDirectoryTest testName generateOutput goldenDir outputDir = testWithCleanup
+goldenDirectoryTest :: TestName -> IO () -> DiffException -> FilePath -> FilePath -> TestTree
+goldenDirectoryTest testName generateOutput diffException goldenDir outputDir = testWithCleanup
   where
-    readGolden = readDirectory goldenDir
-    readOutput = do generateOutput; readDirectory outputDir
-    updateGolden = updateGoldenDirectory goldenDir
-    test = goldenTest testName readGolden readOutput compareDirectoryContents updateGolden
-    testWithCleanup = cleanupGoldenTestOutput False outputDir test
+  readGolden = readDirectory goldenDir
+  readOutput = do generateOutput; readDirectory outputDir
+  updateGolden = updateGoldenDirectory goldenDir
+  diffCommand  = compareDirectoryContents diffException
+  test = goldenTest testName readGolden readOutput diffCommand updateGolden
+  testWithCleanup = cleanupGoldenTestOutput False outputDir test
 
 readDirectory :: FilePath -> IO (Maybe (Map FilePath Text))
 readDirectory directory = do
@@ -93,14 +114,15 @@ readDirectory directory = do
       contents <- mapM TIO.readFile filePaths
       return $ Just $ Map.fromList $ zip files contents
 
-compareDirectoryContents :: Maybe (Map FilePath Text)
+compareDirectoryContents :: DiffException
+                         -> Maybe (Map FilePath Text)
                          -> Maybe (Map FilePath Text)
                          -> IO (Maybe String)
-compareDirectoryContents _ Nothing =
+compareDirectoryContents _ _ Nothing =
   return $ Just "No output directory was created by the test"
-compareDirectoryContents Nothing _ =
+compareDirectoryContents _ Nothing _ =
   return $ Just "No golden directory was found for the test. Accept the test to create it."
-compareDirectoryContents (Just goldenContents) (Just outputContents) = do
+compareDirectoryContents diffException (Just goldenContents) (Just outputContents) = do
   let (sharedFiles, missingFiles, extraFiles) =
         getContentsDiff goldenContents outputContents
 
@@ -119,11 +141,12 @@ compareDirectoryContents (Just goldenContents) (Just outputContents) = do
     return $ Just errorMessage2
   else do
     let diffs = map getDiff (Map.toAscList sharedFiles)
-    return $ intercalate "\n" <$> sequence diffs
+    let diff = intercalate "\n" (catMaybes diffs)
+    return (if null diff then Nothing else Just diff)
     where
       getDiff :: (FilePath, (Text, Text)) -> Maybe String
       getDiff (file, (goldenText, outputText)) =
-        let diff = diffText goldenText outputText in
+        let diff = diffText diffException goldenText outputText in
         fmap (\x -> "File '" <> file <> "' " <> x) diff
 
 getContentsDiff :: Map FilePath Text

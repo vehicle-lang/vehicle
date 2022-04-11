@@ -1,2 +1,0 @@
-Error: Type error: Could not satisfy 'IsInteger Nat' (Line 2, Columns 7-8)
-Fix: Check your types

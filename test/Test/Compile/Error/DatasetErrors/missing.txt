@@ -1,0 +1,2 @@
+Error: The following exception occured when trying to read the file provided for dataset 'trainingDataset':
+  test/Test/Compile/Error/DatasetErrors/non-existent.idx: openBinaryFile: does not exist (No such file or directory) (Line 2, Columns 9-24)

@@ -18,7 +18,7 @@ import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAreHomogeneous)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Marabou.Core
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- Compilation to Marabou
@@ -48,10 +48,9 @@ compileProg networkMap (Main ds) = do
 
 compileDecl :: MonadCompile m => NetworkMap -> CheckedDecl -> m (Maybe MarabouProperty)
 compileDecl networkMap d = case d of
-  DeclData{} -> normalisationError currentPass "Dataset declarations"
-  DeclNetw{} -> normalisationError currentPass "Network declarations"
+  DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
 
-  DefFun _p ident t expr ->
+  DefFunction _p ident t expr ->
     if not $ isProperty t
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
@@ -214,7 +213,9 @@ compileAssertion ann ident quantifier rel lhs rhs = do
         else (vars, constant, rel)
 
   compiledRel <- compileRel finalRel
-  return $ hsep (fmap compileVar finalVars) <+> compiledRel <+> pretty finalConstant
+  let compiledLHS = hsep (fmap (compileVar (length finalVars > 1)) finalVars)
+  let compiledRHS = pretty finalConstant
+  return $ compiledLHS <+> compiledRel <+> compiledRHS
   where
     flipConstants :: [Double] -> [Double]
     flipConstants = fmap ((-1) *)
@@ -248,22 +249,15 @@ compileAssertion ann ident quantifier rel lhs rhs = do
     compileRel (EqualityRel Neq) =
       throwError $ UnsupportedEquality MarabouBackend (provenanceOf ann) quantifier Neq
     compileRel (OrderRel order)
-      | isStrict order = do
-        throwError $ UnsupportedOrder MarabouBackend (provenanceOf ann) quantifier order
-        {-
-        let nonStrictOrder = flipStrictness order
-        logWarning $
-          "Performed possibly unsound conversion of" <+> squotes (pretty order) <+>
-          "to" <+> squotes (pretty nonStrictOrder) <> " in order to ensure Marabou" <+>
-          "support."
-        compileRel $ OrderRel nonStrictOrder
-        -}
-      | otherwise = return $ pretty order
+      -- Suboptimal. See https://github.com/vehicle-lang/vehicle/issues/74 for details.
+      | isStrict order = return (pretty $ flipStrictness order)
+      | otherwise      = return (pretty order)
 
-    compileVar :: (Double, Symbol) -> Doc a
-    compileVar (-1,          var) = "-" <> pretty var
-    compileVar (1,           var) = "+" <> pretty var
-    compileVar (coefficient, var) = pretty coefficient <> pretty var
+    compileVar :: Bool -> (Double, Symbol) -> Doc a
+    compileVar False (1,           var) = pretty var
+    compileVar True  (1,           var) = "+" <> pretty var
+    compileVar _     (-1,          var) = "-" <> pretty var
+    compileVar _     (coefficient, var) = pretty coefficient <> pretty var
 
 supportedTypes :: [Builtin]
 supportedTypes =

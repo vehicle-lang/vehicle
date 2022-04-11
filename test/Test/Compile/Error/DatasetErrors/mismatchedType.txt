@@ -1,0 +1,1 @@
+Error: Unable to parse the file 'test/Test/Compile/Error/DatasetErrors/dataset-rat-4.idx' provided for the dataset 'trainingDataset' (Line 2, Columns 9-24)

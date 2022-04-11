@@ -4,6 +4,8 @@ import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Data.Bifunctor (Bifunctor(first))
 import Data.Version (Version, makeVersion)
+import System.FilePath (takeDirectory)
+import System.Directory (createDirectoryIfMissing)
 
 import Vehicle.Prelude
 import Paths_vehicle qualified as VehiclePath
@@ -88,5 +90,7 @@ writeResultToFile :: Backend -> Maybe FilePath -> Doc a -> IO ()
 writeResultToFile target filepath doc = do
   let text = layoutAsText $ prependfileHeader doc target
   case filepath of
-    Nothing               -> TIO.putStrLn text
-    (Just outputFilePath) -> TIO.writeFile outputFilePath text
+    Nothing             -> TIO.putStrLn text
+    Just outputFilePath -> do
+      createDirectoryIfMissing True (takeDirectory outputFilePath)
+      TIO.writeFile outputFilePath text

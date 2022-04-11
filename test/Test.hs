@@ -5,8 +5,10 @@ import GHC.IO.Encoding
 
 import Test.Compile.Golden as Compile (goldenTests)
 import Test.Compile.Unit as Compile (unitTests)
-import Test.Compile.Fail as Compile (failTests)
+import Test.Compile.Error as Compile (errorTests)
 import Test.Check.Golden as Check (goldenTests)
+import Test.Verify.Golden as Verify (goldenTests)
+import Test.FilePathUtils (filepathTests)
 -- import Test.Generative (generativeTests)
 
 main :: IO ()
@@ -17,17 +19,29 @@ main = do
 tests :: TestTree
 tests = testGroup "Tests"
   [ compileTests
-  --, checkTests
+  , checkTests
+  -- , verifyTests
+  , miscTests
   ]
 
 compileTests :: TestTree
 compileTests = testGroup "Compile"
   [ Compile.goldenTests
   , Compile.unitTests
-  , Compile.failTests
+  , Compile.errorTests
+  ]
+
+verifyTests :: TestTree
+verifyTests = testGroup "Verify"
+  [ Verify.goldenTests
   ]
 
 checkTests :: TestTree
 checkTests = testGroup "Check"
   [ Check.goldenTests
+  ]
+
+miscTests :: TestTree
+miscTests = testGroup "Misc"
+  [ filepathTests
   ]

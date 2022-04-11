@@ -1,48 +1,54 @@
 module Vehicle.Verify where
 
-import Data.Text.IO as TIO (readFile)
+import Control.Monad (forM)
+import Control.Monad.Trans (MonadIO, liftIO)
+import Data.Map ( Map )
+import Data.Text (Text)
 import System.IO (hPutStrLn, stderr)
 import System.Exit (exitFailure)
+import System.Directory (makeAbsolute)
 
-import Vehicle.NeuralNetwork
 import Vehicle.Backend.Prelude
-import Vehicle.Backend.Marabou as Marabou (run)
+import Vehicle.Backend.Marabou as Marabou (verifySpec)
 import Vehicle.Compile
 import Vehicle.Verify.VerificationStatus
-import Control.Monad (forM)
 
 data VerifyOptions = VerifyOptions
-  { inputFile      :: FilePath
-  , outputFile     :: FilePath
-  , verifier       :: Verifier
-  , networks       :: [NetworkLocation]
+  { verifier       :: Verifier
+  , inputFile      :: FilePath
+  , networks       :: Map Text FilePath
+  , datasets       :: Map Text FilePath
+  , proofCache     :: Maybe FilePath
   } deriving (Show)
 
 verify :: LoggingOptions -> VerifyOptions -> IO ()
-verify loggingOptions VerifyOptions{..} = do
-  spec  <- TIO.readFile inputFile
+verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
+  spec <- readInputFile loggingOptions inputFile
+  let resourceLocations = collateResourceLocations networks datasets
+  absoluteResourceLocations <- convertPathsToAbsolute resourceLocations
+
   status <- case verifier of
     Marabou -> do
-      marabouSpec <- compileToMarabou loggingOptions inputFile
-      Marabou.run marabouSpec
+      marabouSpec <- liftIO $ compileToMarabou loggingOptions spec absoluteResourceLocations
+      liftIO $ Marabou.verifySpec Nothing marabouSpec resourceLocations
     VNNLib  -> do
-      hPutStrLn stderr "VNNLib is not currently a valid output target"
-      exitFailure
+      liftIO $ hPutStrLn stderr "VNNLib is not currently a valid output target"
+      liftIO exitFailure
 
-  networkInfo <- hashNetworks networks
+  programOutput loggingOptions $ pretty status
 
-  writeSpecificationStatus outputFile $ SpecificationStatus
-    { specVersion  = vehicleVersion
-    , status       = status
-    , originalSpec = spec
-    , networkInfo  = networkInfo
-    }
+  resources <- liftIO $ hashResources resourceLocations
+  case proofCache of
+    Nothing -> return ()
+    Just proofCachePath -> writeProofCache proofCachePath $ ProofCache
+      { specVersion  = vehicleVersion
+      , status       = status
+      , originalSpec = spec
+      , resources    = resources
+      }
 
-hashNetworks :: [NetworkLocation] -> IO [NetworkVerificationInfo]
-hashNetworks locations = forM locations $ \NetworkLocation{..} -> do
-  networkHash <- hashNetwork networkLocation
-  return $ NetworkVerificationInfo
-    { name        = networkName
-    , location    = networkLocation
-    , networkHash = networkHash
-    }
+convertPathsToAbsolute :: MonadIO m => ResourceLocations -> m ResourceLocations
+convertPathsToAbsolute resources =
+  forM resources $ \(t, v) -> do
+    v' <- liftIO $ makeAbsolute v
+    return (t, v')

@@ -17,13 +17,16 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Compile.LetInsertion (insertLets)
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.NeuralNetwork
 import Data.Text (Text)
 
 --------------------------------------------------------------------------------
--- Okay so this is a wild ride. The VNNLib format has special variable names for
--- input and output variables, namely X1 ... XN and Y1 ... YM but otherwise has
--- the standard SMTLib syntax. We refer to these variables as "magic variables".
+-- Removing network applications
+--
+-- Okay so this is a wild ride. The Marabou query format has special variable
+-- names for input and output variables, namely X1 ... XN and Y1 ... YM but
+-- otherwise has the standard SMTLib syntax. We refer to these variables as
+-- "magic variables".
 --
 -- This means that in theory you can only reason about a single network applied
 -- to a single input per property. We get around this restriction by combining
@@ -107,11 +110,6 @@ convertNetworkAppsToMagicVars verifier networkMap quantifier expr = do
   return (finalExpr, metaNetwork)
 
 --------------------------------------------------------------------------------
--- Data
-
-type MetaNetwork = [Identifier]
-
---------------------------------------------------------------------------------
 -- Monad
 
 type MonadNetworkApp m =
@@ -119,14 +117,14 @@ type MonadNetworkApp m =
   , MonadReader (NetworkMap, Verifier) m
   )
 
-getNetworkDetailsFromCtx :: MonadNetworkApp m => Identifier -> m NetworkDetails
-getNetworkDetailsFromCtx ident = do
+getNetworkDetailsFromCtx :: MonadNetworkApp m => Symbol -> m NetworkDetails
+getNetworkDetailsFromCtx name = do
   networkMap <- asks fst
-  return $ fromMaybe outOfScopeError (Map.lookup ident networkMap)
+  return $ fromMaybe outOfScopeError (Map.lookup name networkMap)
   where
     outOfScopeError :: a
     outOfScopeError = developerError $
-      "Either" <+> squotes (pretty ident) <+> "is not a network or it is not in scope"
+      "Either" <+> squotes (pretty name) <+> "is not a network or it is not in scope"
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -170,8 +168,8 @@ liftNetworkApplications = insertLets isNetworkApplication
 
 -- |As we've normalised out all function applications and dataset declarations,
 -- the only free names left should be network applications.
-generateMetaNetwork :: CheckedExpr -> [Identifier]
-generateMetaNetwork = freeNames
+generateMetaNetwork :: CheckedExpr -> MetaNetwork
+generateMetaNetwork e = fmap nameOf (freeNames e)
 
 --------------------------------------------------------------------------------
 -- Steps 3 & 4: instantiating network applications
@@ -221,7 +219,7 @@ replaceNetworkApplications d e = do
       return $ LSeq ann dict' xs'
 
     Let ann (App _ (Var _ (Free ident)) [inputArg]) _ body -> do
-      (newBody, replaceableBoundVars)  <- replaceNetworkApplication ann ident (argExpr inputArg) body d
+      (newBody, replaceableBoundVars)  <- replaceNetworkApplication ann (nameOf ident) (argExpr inputArg) body d
       -- Don't increment binding depth when we recurse as we've removed the let
       newBody' <- replaceNetworkApplications d newBody
       addReplacableBoundVars replaceableBoundVars
@@ -245,7 +243,7 @@ replaceNetworkApplications d e = do
         -- which is not currently supported.
         Nothing -> do
           verifier <- asks (Verifier . snd)
-          let symbol = getQuantifierSymbol binder
+          let symbol = getBinderSymbol binder
           throwError $ UnsupportedNonMagicVariable verifier (provenanceOf ann) symbol
 
         -- Then this bound variable is equal to one of the magic variables so this variable
@@ -265,15 +263,15 @@ replaceNetworkApplications d e = do
 
 replaceNetworkApplication :: MonadReplacement m
                           => CheckedAnn
-                          -> Identifier
+                          -> Symbol
                           -> CheckedExpr
                           -> CheckedExpr
                           -> BindingDepth
                           -> m (CheckedExpr, IntMap Int)
-replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
-  logDebug $ "replacing-application" <+> pretty bindingDepth <+> pretty ident <+> prettySimple networkInput
+replaceNetworkApplication ann name networkInput letBody bindingDepth  = do
+  logDebug $ "replacing-application" <+> pretty bindingDepth <+> pretty name <+> prettySimple networkInput
 
-  network@(NetworkDetails inputs outputs) <- getNetworkDetailsFromCtx ident
+  network@(NetworkDetails inputs outputs) <- getNetworkDetailsFromCtx name
   let inputSize  = size inputs
   let inputType  = tElem inputs
   let outputSize = size outputs
@@ -301,7 +299,7 @@ replaceNetworkApplication ann ident networkInput letBody bindingDepth  = do
 
   let body'         = outputsExpr `substInto` letBody
   let inputEquality = EqualityExpr Eq ann inputsType Prop (map (ExplicitArg ann) [inputsExpr, networkInput])
-  let newBody       = ImplExpr ann Prop (map (ExplicitArg ann) [inputEquality, body'])
+  let newBody       = AndExpr ann Prop (map (ExplicitArg ann) [inputEquality, body'])
 
   return (newBody, replaceableBoundVars)
   where

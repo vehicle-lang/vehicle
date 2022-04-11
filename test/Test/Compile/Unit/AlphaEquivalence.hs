@@ -16,7 +16,7 @@ import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
 import Vehicle.Compile.CoDeBruijnify
 
-import Test.Compile.Utils
+import Test.Utils
 
 --------------------------------------------------------------------------------
 -- Alpha equivalence tests

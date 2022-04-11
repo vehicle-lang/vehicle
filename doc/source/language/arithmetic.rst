@@ -1,0 +1,5 @@
+Arithmetic
+==========
+
+.. autosummary::
+   :toctree: generated

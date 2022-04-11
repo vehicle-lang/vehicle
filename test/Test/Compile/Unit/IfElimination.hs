@@ -15,9 +15,8 @@ import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.IfElimination
 import Vehicle.Compile.CoDeBruijnify
-import Vehicle.Compile.Type (runTypeCheck)
 
-import Test.Compile.Utils
+import Test.Utils
 
 --------------------------------------------------------------------------------
 -- Let lifting tests
@@ -54,7 +53,7 @@ liftAndEliminateIfsTest input expected = do
   let inputExpr    = textToCheckedExpr input
   let expectedExpr = textToCheckedExpr expected
 
-  let result = discardWarningsAndLogs (liftAndEliminateIfs inputExpr)
+  let result = discardLogger (liftAndEliminateIfs inputExpr)
   --result <- flushLogs Nothing (liftAndEliminateIfs inputExpr)
 
   -- Need to re-typecheck the result as lifting may put a `Hole` for

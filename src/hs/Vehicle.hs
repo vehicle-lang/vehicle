@@ -4,12 +4,15 @@ module Vehicle
   , Command(..)
   ) where
 
+import Control.Exception (bracket)
 import Control.Monad (when,)
 import System.Exit (exitSuccess)
+import System.IO
 
 import Vehicle.Prelude
 import Vehicle.Compile (CompileOptions(..), compile)
 import Vehicle.Check (CheckOptions(..), check)
+import Vehicle.Verify (VerifyOptions(..), verify)
 
 --------------------------------------------------------------------------------
 -- Main command
@@ -20,23 +23,65 @@ run Options{..} = do
     print vehicleVersion
     exitSuccess
 
-  let loggingSettings = LoggingOptions
-        { errorLocation = errFile
-        , logLocation   = logFile
-        }
+  let acquireOutputHandles = openHandles  (outFile, errFile, logFile)
+  let releaseOutputHandles = closeHandles (outFile, errFile, logFile)
 
-  case commandOption of
-    Compile options -> compile loggingSettings options
-    Check   options -> check   loggingSettings options
+  bracket acquireOutputHandles releaseOutputHandles $ \loggingSettings ->
+    case commandOption of
+      Compile options -> compile loggingSettings options
+      Verify  options -> verify  loggingSettings options
+      Check   options -> check   loggingSettings options
+
+
+openHandles :: (Maybe FilePath, Maybe FilePath, Maybe (Maybe FilePath))
+            -> IO LoggingOptions
+openHandles (outFile, errFile, logFile) = do
+  outputHandle <- case outFile of
+    Nothing -> return stdout
+    Just x  -> openFile x AppendMode
+
+  errorHandle <- case errFile of
+    Nothing -> return stderr
+    Just x  -> openFile x AppendMode
+
+  logHandle <- case logFile of
+    Nothing       -> return Nothing
+    Just Nothing  -> return (Just stdout)
+    Just (Just x) -> Just <$> openFile x AppendMode
+
+  return LoggingOptions
+    { errorHandle  = errorHandle
+    , outputHandle = outputHandle
+    , logHandle    = logHandle
+    }
+
+closeHandles :: (Maybe FilePath, Maybe FilePath, Maybe (Maybe FilePath))
+             -> LoggingOptions
+             -> IO ()
+closeHandles (outFile, errFile, logFile) LoggingOptions{..} = do
+  case outFile of
+    Nothing -> return ()
+    Just _  -> hClose outputHandle
+
+  case errFile of
+    Nothing -> return ()
+    Just _  -> hClose errorHandle
+
+  case (logFile, logHandle) of
+    (Just (Just _), Just logH) -> hClose logH
+    _                          -> return ()
+
 
 data Options = Options
   { version       :: Bool
-  , logFile       :: LogFilePath
-  , errFile       :: ErrorFilePath
+  , outFile       :: Maybe FilePath
+  , errFile       :: Maybe FilePath
+  , logFile       :: Maybe (Maybe FilePath)
   , commandOption :: Command
   } deriving (Show)
 
 data Command
   = Compile CompileOptions
+  | Verify  VerifyOptions
   | Check   CheckOptions
    deriving (Show)

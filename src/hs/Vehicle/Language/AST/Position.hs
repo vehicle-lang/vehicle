@@ -29,7 +29,7 @@ import Vehicle.Language.AST.DeBruijn ( DBIndex )
 
 
 --------------------------------------------------------------------------------
--- Core definitions
+-- Data
 
 -- | A position tree points to a series of locations within an expression. A
 -- leaf represents the current expression while a node indicates the locations

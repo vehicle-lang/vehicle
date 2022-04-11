@@ -1,3 +1,10 @@
+---------------------------------------------------------------------------------
+-- Build script
+--
+-- This is the Shake build script for Vehicle. It installs all the necessary
+-- subcomponents and programs that Vehicle relies on.
+---------------------------------------------------------------------------------
+
 {-# LANGUAGE OverloadedLists #-}
 
 import Control.Monad (when, unless)
@@ -17,6 +24,12 @@ import Development.Shake.Util
 --- Configuration
 ---------------------------------------------------------------------------------
 
+buildFolder :: FilePath
+buildFolder = "build"
+
+binFolder :: FilePath
+binFolder = "bin"
+
 ghcVersion :: Version
 ghcVersion = [9,0,1]
 
@@ -27,7 +40,7 @@ happyVersion :: Version
 happyVersion = [1,20,0]
 
 bnfcVersion :: Version
-bnfcVersion = [2,9,3]
+bnfcVersion = [2,9,4]
 
 srcDirBNFC :: FilePath
 srcDirBNFC = "src" </> "bnfc"
@@ -36,29 +49,29 @@ genDirHS :: FilePath
 genDirHS   = "gen" </> "hs"
 
 bnfcTargets :: [FilePath]
-bnfcTargets = bnfcCoreTargets <> bnfcFrontendTargets
+bnfcTargets = bnfcInternalTargets <> bnfcExternalTargets
 
-bnfcCoreTargets :: [FilePath]
-bnfcCoreTargets =
-  [ genDirHS </> "Vehicle" </> "Core" </> file
+bnfcInternalTargets :: [FilePath]
+bnfcInternalTargets =
+  [ genDirHS </> "Vehicle" </> "Internal" </> file
   | file <- ["Lex.x", "Par.y", "ErrM.hs"]
   ]
 
-bnfcCoreGarbage :: [FilePath]
-bnfcCoreGarbage =
-  [ genDirHS </> "Vehicle" </> "Core" </> file
+bnfcInternalGarbage :: [FilePath]
+bnfcInternalGarbage =
+  [ genDirHS </> "Vehicle" </> "Internal" </> file
   | file <- ["Test.hs", "Skel.hs", "Doc.txt"]
   ]
 
-bnfcFrontendTargets :: [FilePath]
-bnfcFrontendTargets =
-  [ genDirHS </> "Vehicle" </> "Frontend" </> file
+bnfcExternalTargets :: [FilePath]
+bnfcExternalTargets =
+  [ genDirHS </> "Vehicle" </> "External" </> file
   | file <- ["Abs.hs", "Lex.x", "Layout.hs", "Par.y", "ErrM.hs"]
   ]
 
-bnfcFrontendGarbage :: [FilePath]
-bnfcFrontendGarbage =
-  [ genDirHS </> "Vehicle" </> "Frontend" </> file
+bnfcExternalGarbage :: [FilePath]
+bnfcExternalGarbage =
+  [ genDirHS </> "Vehicle" </> "External" </> file
   | file <- ["Test.hs", "Skel.hs", "Doc.txt"]
   ]
 
@@ -92,27 +105,31 @@ requireAgda = do
 
 requireMarabou :: Action ()
 requireMarabou = do
-  missingMarabou <- not <$> hasExecutable "Marabou"
+  missingMarabou <- not <$> hasLocalExecutable "Marabou"
   when missingMarabou $ do
-    let buildFolder        = "build"
     let marabouFolder      = buildFolder </> "marabou"
     let marabouBuildFolder = marabouFolder </> "build"
 
-    -- See https://github.com/dlshriver/DNNV/blob/main/scripts/install_marabou.sh
     liftIO $ createDirectoryIfMissing False buildFolder
 
+    -- At the moment we have to use our own branch that supports Onnx files
+    -- from the command line. See https://github.com/NeuralNetworkVerification/Marabou/issues/498
+    -- for details. Uncomment the code below when this is merged into mainline
+    -- Marabou.
+    -- let marabouRepoURL = "https://github.com/MatthewDaggitt/Marabou"
+    -- command_ [] "git" [ "clone", marabouRepoURL, marabouFolder]
+    -- command_ [] "git" [ "-C", marabouFolder, "checkout", "onnx-support"]
+{-
     let marabouRepoURL = "https://github.com/NeuralNetworkVerification/Marabou"
     command_ [] "git" [ "clone", marabouRepoURL, marabouFolder]
     command_ [] "git" [ "-C", marabouFolder, "checkout", "ffd353b"]
-
+-}
     liftIO $ createDirectoryIfMissing False marabouBuildFolder
-    command_ [] "cmake" [ marabouFolder]
+    command_ [] "cmake" [ marabouFolder, "-B", marabouBuildFolder ]
     command_ [] "cmake" [ "--build", marabouBuildFolder]
 
-    liftIO $ createDirectoryIfMissing False "bin"
-    liftIO $ renameFile (marabouBuildFolder </> "Marabou") ("bin" </> "Marabou")
-
-    -- cp $PROJECT_DIR/tools/verifier_runners/marabou.py $PROJECT_DIR/bin/marabou.py
+    liftIO $ createDirectoryIfMissing False binFolder
+    liftIO $ renameFile (marabouBuildFolder </> "Marabou") (binFolder </> "Marabou")
 
 ---------------------------------------------------------------------------------
 -- Test Vehicle
@@ -141,6 +158,9 @@ main = shakeArgs shakeOptions $ do
   phony "clean" $ do
     liftIO $ removeDirectoryRecursive genDirHS
 
+  phony "init-marabou" $ do
+    requireMarabou
+
   phony "init-agda" $ do
     requireAgda
 
@@ -164,23 +184,23 @@ main = shakeArgs shakeOptions $ do
     return ()
 
   -------------------------------------------------------------------------------
-  -- Build parsers for Frontend and Core languages using BNFC
+  -- Build parsers for External and Internal languages using BNFC
   -------------------------------------------------------------------------------
   --
   -- NOTE:
   --
   -- The call to BNFC creates multiple files, so we're using a multi-target task.
-  -- To keep things readable, we first compute the targets for the Frontend and
-  -- the Core languages, and then define a task for each. The phony bnfc task
+  -- To keep things readable, we first compute the targets for the External and
+  -- the Internal languages, and then define a task for each. The phony bnfc task
   -- builds all parsers.
 
   phony "bnfc" $ do
-    need bnfcCoreTargets
-    need bnfcFrontendTargets
+    need bnfcInternalTargets
+    need bnfcExternalTargets
 
-  bnfcCoreTargets &%> \_ -> do
+  bnfcInternalTargets &%> \_ -> do
     requireBNFC
-    need [ srcDirBNFC </> "Core.cf" ]
+    need [ srcDirBNFC </> "Internal.cf" ]
     liftIO $ createDirectoryIfMissing True genDirHS
     command_ [] "bnfc"
       [ "-d"
@@ -189,13 +209,13 @@ main = shakeArgs shakeOptions $ do
       , "--text-token"
       , "--name-space=Vehicle"
       , "--outputdir=" <> genDirHS
-      , srcDirBNFC </> "Core.cf"
+      , srcDirBNFC </> "Internal.cf"
       ]
-    removeFilesAfter "." bnfcCoreGarbage
+    removeFilesAfter "." bnfcInternalGarbage
 
-  bnfcFrontendTargets &%> \_ -> do
+  bnfcExternalTargets &%> \_ -> do
     requireBNFC
-    need [ srcDirBNFC </> "Frontend.cf" ]
+    need [ srcDirBNFC </> "External.cf" ]
     liftIO $ createDirectoryIfMissing True genDirHS
     command_ [] "bnfc"
       [ "-d"
@@ -204,24 +224,24 @@ main = shakeArgs shakeOptions $ do
       , "--text-token"
       , "--name-space=Vehicle"
       , "--outputdir=" <> genDirHS
-      , srcDirBNFC </> "Frontend.cf"
+      , srcDirBNFC </> "External.cf"
       ]
-    removeFilesAfter "." bnfcFrontendGarbage
+    removeFilesAfter "." bnfcExternalGarbage
 
 {-
-.PHONY: bnfc-core-info
-bnfc-core-info: $(GEN_DIR_HS)/Vehicle/Core/Par.info
+.PHONY: bnfc-internal-info
+bnfc-internal-info: $(GEN_DIR_HS)/Vehicle/Internal/Par.info
 
-$(GEN_DIR_HS)/Vehicle/Core/Par.info: $(GEN_DIR_HS)/Vehicle/Core/Par.y
-	$(HAPPY) gen/hs/Vehicle/Core/Par.y --info=gen/hs/Vehicle/Core/Par.info
+$(GEN_DIR_HS)/Vehicle/Internal/Par.info: $(GEN_DIR_HS)/Vehicle/Internal/Par.y
+	$(HAPPY) gen/hs/Vehicle/Internal/Par.y --info=gen/hs/Vehicle/Internal/Par.info
 -}
 
 {-
-.PHONY: bnfc-frontend-info
-bnfc-frontend-info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.info
+.PHONY: bnfc-external-info
+bnfc-external-info: $(GEN_DIR_HS)/Vehicle/External/Par.info
 
-$(GEN_DIR_HS)/Vehicle/Frontend/Par.info: $(GEN_DIR_HS)/Vehicle/Frontend/Par.y
-	$(HAPPY) gen/hs/Vehicle/Frontend/Par.y --info=gen/hs/Vehicle/Frontend/Par.info
+$(GEN_DIR_HS)/Vehicle/External/Par.info: $(GEN_DIR_HS)/Vehicle/External/Par.y
+	$(HAPPY) gen/hs/Vehicle/External/Par.y --info=gen/hs/Vehicle/External/Par.info
 -}
   -------------------------------------------------------------------------------
   -- Build type-checker and compiler for Vehicle
@@ -263,6 +283,9 @@ testOptions =
 
 hasExecutable :: String -> Action Bool
 hasExecutable prog = isJust <$> liftIO (findExecutable prog)
+
+hasLocalExecutable :: String -> Action Bool
+hasLocalExecutable prog = liftIO (System.Directory.doesFileExist (binFolder </> prog))
 
 isRunningOnCI :: Action Bool
 isRunningOnCI = liftIO $

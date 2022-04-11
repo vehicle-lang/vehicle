@@ -1,6 +1,8 @@
 module Test.Check.Golden where
 
 import Control.Monad (when)
+import Data.Map qualified as Map ( fromList )
+import Data.Text (Text)
 import System.Directory (removeFile, doesFileExist)
 import System.FilePath ((</>), (<.>))
 
@@ -10,10 +12,9 @@ import Vehicle
 import Vehicle.Check
 import Vehicle.Verify.VerificationStatus hiding (version)
 import Vehicle.Prelude
-import Vehicle.NeuralNetwork ( hashNetwork )
+import Vehicle.Resource
 
-import Test.GoldenUtils ( goldenFileTest )
-import System.Info (os)
+import Test.GoldenUtils ( goldenFileTest, omitFilePaths )
 
 goldenTests :: TestTree
 goldenTests = testGroup "GoldenTests"
@@ -26,43 +27,47 @@ testDir :: FilePath
 testDir = "test" </> "Test" </> "Check" </> "Golden"
 
 successTest :: TestTree
-successTest = createTest "success" alterNetwork
+successTest = createTest "success" status alterNetwork
   where
+  status = mkStatus [("network1", Verified Nothing)]
   alterNetwork = const $ return ()
 
 networkChangedTest :: TestTree
-networkChangedTest = createTest "networkChanged" alterNetwork
+networkChangedTest = createTest "networkChanged" status alterNetwork
   where
+  status = mkStatus [("network1", Verified Nothing)]
   alterNetwork f = writeFile f "alteredContents"
 
 networkMissingTest :: TestTree
-networkMissingTest = createTest "networkMissing" alterNetwork
+networkMissingTest = createTest "networkMissing" status alterNetwork
   where
+  status = mkStatus [("network1", Verified Nothing)]
   alterNetwork = removeFile
 
-createTest :: String -> (FilePath -> IO ()) -> TestTree
-createTest name alterNetwork = goldenFileTest name run goldenFile outputFile
+createTest :: String -> SpecificationStatus -> (FilePath -> IO ()) -> TestTree
+createTest name status alterNetwork =
+  goldenFileTest name run omitFilePaths goldenFile outputFile
   where
+  run = runTest name status alterNetwork
   goldenFile   = testDir </> name <.> "txt"
   outputFile   = testDir </> name <> "-output.txt"
-  run = runTest name alterNetwork
 
-runTest :: String -> (FilePath -> IO ()) -> IO ()
-runTest name alterNetwork = do
+runTest :: String -> SpecificationStatus -> (FilePath -> IO ()) -> IO ()
+runTest name status alterNetwork = do
   let outputFile   = testDir </> name <> "-output.txt"
-  let databaseFile = testDir </> name <> "-proofFile"
+  let proofCache   = testDir </> name <> "-proofFile"
   let networkFile  = testDir </> name <> "Network.onnx"
 
   writeFile networkFile "networkContents"
-  networkHash <- hashNetwork networkFile
-  let networkInfo =
-        [ NetworkVerificationInfo "myNetwork" networkFile networkHash
+  networkHash <- hashResource networkFile
+  let resources =
+        [ Resource "myNetwork" networkFile networkHash Network
         ]
 
-  writeSpecificationStatus databaseFile $ SpecificationStatus
+  writeProofCache proofCache $ ProofCache
     { specVersion  = vehicleVersion
-    , status       = Verified
-    , networkInfo  = networkInfo
+    , status       = status
+    , resources    = resources
     , originalSpec = ""
     }
 
@@ -70,22 +75,16 @@ runTest name alterNetwork = do
 
   run $ Options
     { version       = False
-    , logFile       = Just $ Just outputFile
+    , outFile       = Just outputFile
     , errFile       = Nothing
+    , logFile       = Nothing
     , commandOption = Check $ CheckOptions
-      { databaseFile = databaseFile
+      { proofCache = proofCache
       }
     }
 
-  removeFile databaseFile
+  removeFile proofCache
   removeFileIfExists networkFile
 
-  -- Update file paths in error messages if the tests are running on Windows
-  when (os == "mingw32") $
-    fixWindowsFilePaths outputFile
-
-fixWindowsFilePaths :: FilePath -> IO ()
-fixWindowsFilePaths outputFile = do
-  contents <- readFile outputFile
-  let newContents = fmap (\c -> if c == '\\' then '/' else c) contents
-  writeFile outputFile newContents
+mkStatus :: [(Text, PropertyStatus)] -> SpecificationStatus
+mkStatus = SpecificationStatus . Map.fromList

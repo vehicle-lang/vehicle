@@ -35,17 +35,17 @@ executable build
 library vehicle-bnfc
   import:               common-base
   hs-source-dirs:       gen/hs
-  exposed-modules:      Vehicle.Core.Abs
-                      , Vehicle.Core.ErrM
-                      , Vehicle.Core.Lex
-                      , Vehicle.Core.Par
-                      , Vehicle.Core.Print
-                      , Vehicle.Frontend.ErrM
-                      , Vehicle.Frontend.Layout
-                      , Vehicle.Frontend.Lex
-                      , Vehicle.Frontend.Par
-                      , Vehicle.Frontend.Abs
-                      , Vehicle.Frontend.Print
+  exposed-modules:      Vehicle.Internal.Abs
+                      , Vehicle.Internal.ErrM
+                      , Vehicle.Internal.Lex
+                      , Vehicle.Internal.Par
+                      , Vehicle.Internal.Print
+                      , Vehicle.External.ErrM
+                      , Vehicle.External.Layout
+                      , Vehicle.External.Lex
+                      , Vehicle.External.Par
+                      , Vehicle.External.Abs
+                      , Vehicle.External.Print
   build-depends:        array                >=0.5    && <1
 
 -- The main Vehicle library
@@ -66,22 +66,23 @@ library
                       , Vehicle.Compile.Error
                       , Vehicle.Compile.Error.Message
                       , Vehicle.Compile.Parse
-                      , Vehicle.Compile.Elaborate.Core
-                      , Vehicle.Compile.Elaborate.Frontend
+                      , Vehicle.Compile.Elaborate.Internal
+                      , Vehicle.Compile.Elaborate.External
                       , Vehicle.Compile.Scope
                       , Vehicle.Compile.Type
                       , Vehicle.Compile.CoDeBruijnify
                       , Vehicle.Compile.Normalise
                       , Vehicle.Compile.Normalise.IfElimination
                       , Vehicle.Compile.Normalise.DNF
-                      , Vehicle.Compile.Normalise.NetworkTypes
+                      , Vehicle.Compile.RemoveNetworkDecls
+                      , Vehicle.Compile.RemoveDatasetDecls
                       , Vehicle.Compile.Normalise.NetworkApplications
                       , Vehicle.Compile.LetInsertion
                       , Vehicle.Compile.Simplify
                       , Vehicle.Compile.SupplyNames
                       , Vehicle.Compile.Descope
-                      , Vehicle.Compile.Delaborate.Core
-                      , Vehicle.Compile.Delaborate.Frontend
+                      , Vehicle.Compile.Delaborate.Internal
+                      , Vehicle.Compile.Delaborate.External
 
                       , Vehicle.Verify
                       , Vehicle.Verify.VerificationStatus
@@ -94,7 +95,10 @@ library
 
                       , Vehicle.Check
 
-                      , Vehicle.NeuralNetwork
+                      , Vehicle.Resource
+                      , Vehicle.Resource.Core
+                      , Vehicle.Resource.NeuralNetwork
+                      , Vehicle.Resource.Dataset.IDX
 
   other-modules:        Vehicle.Prelude.Prettyprinter
                       , Vehicle.Prelude.Provenance
@@ -112,6 +116,7 @@ library
                       , Vehicle.Language.AST.Utils
                       , Vehicle.Language.AST.Position
 
+                      , Vehicle.Compile.Type.Bidirectional
                       , Vehicle.Compile.Type.Meta
                       , Vehicle.Compile.Type.MetaSet
                       , Vehicle.Compile.Type.MetaSubstitution
@@ -154,6 +159,13 @@ library
                       , split
                       , data-default-class
                       , aeson
+                      , aeson-pretty
+                      , temporary
+                      , process
+
+                      -- Used for parsing IDX format
+                      , mnist-idx
+                      , vector
 
   ghc-options:          -Wall -fprint-potential-instances
   default-extensions:   ImportQualifiedPost
@@ -192,13 +204,14 @@ executable vehicle
   hs-source-dirs:     app
   build-depends:      vehicle
                     , optparse-applicative >=0.16 && <1
+                    , containers
 
 test-suite vehicle-test
   import:             common-base
   type:               exitcode-stdio-1.0
   main-is:            Test.hs
   hs-source-dirs:     test
-  other-modules:      Test.Compile.Fail
+  other-modules:      Test.Compile.Error
                     , Test.Compile.Golden
                     , Test.Compile.Unit
                     , Test.Compile.Unit.AlphaEquivalence
@@ -209,11 +222,13 @@ test-suite vehicle-test
                     -- , Test.Compile.Generative
                     -- , Test.Compile.Generative.Generator
                     -- , Test.Compile.Generative.ToVehicle
-                    , Test.Compile.Utils
 
                     , Test.Check.Golden
+                    , Test.Verify.Golden
 
+                    , Test.Utils
                     , Test.GoldenUtils
+                    , Test.FilePathUtils
 
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -main-is Test
   default-extensions: ImportQualifiedPost
@@ -228,6 +243,7 @@ test-suite vehicle-test
                     , tasty-hunit
                     , vehicle
                     , containers >=0.5  && <1
+                    , regex-tdfa
                     -- For generation of terms
                     -- , lazy-search
                     -- , size-based

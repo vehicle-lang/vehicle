@@ -1,5 +1,7 @@
-Verification status is currently unknown as the following networks cannot not be found:
+Status: unknown
 
-  myNetwork (test/Test/Check/Golden/networkMissingNetwork.onnx)
+The following cannot not be found:
+
+  network myNetwork (test/Test/Check/Golden/networkMissingNetwork.onnx)
 
 To fix this problem, either move the missing files back to the location above or use Vehicle to reverify the specification with the new location.

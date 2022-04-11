@@ -143,10 +143,7 @@ instance Descope Expr where
 -- Therefore the following are not in the state monad.
 
 instance Descope Decl where
-  descope f = \case
-    DeclNetw p n t   -> DeclNetw p n <$> descope f t
-    DeclData p n t   -> DeclData p n <$> descope f t
-    DefFun   p n t e -> DefFun   p n <$> descope f t <*> descope f e
+  descope f = traverseDeclExprs (descope f)
 
 instance Descope Prog where
   descope f (Main ds) = Main <$> traverse (descope f) ds

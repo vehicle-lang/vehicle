@@ -1,0 +1,2 @@
+Error: Type error: Could not satisfy 'HasIntOperations Nat' (Line 2, Columns 7-8)
+Fix: check your types

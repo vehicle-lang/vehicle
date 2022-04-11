@@ -73,10 +73,7 @@ instance ScopeCheck [InputDecl] [UncheckedDecl] where
     return (d' : ds')
 
 instance ScopeCheck InputDecl UncheckedDecl where
-  scope = \case
-    DeclNetw ann n t -> DeclNetw ann n <$> scope t
-    DeclData ann n t -> DeclNetw ann n <$> scope t
-    DefFun ann n t e -> DefFun   ann n <$> scope t <*> scope e
+  scope = traverseDeclExprs scope
 
 instance ScopeCheck InputArg UncheckedArg where
   scope = traverseArgExpr scope

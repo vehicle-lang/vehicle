@@ -122,20 +122,20 @@ substMApp ann (fun@(Meta _ m), mArgs) = do
 substMApp ann (fun, args) = normAppList ann <$> substM fun <*> substM args
 
 instance MetaSubstitutable CheckedDecl where
-  substM = \case
-    DeclNetw p ident t   -> DeclNetw p ident <$> substM t
-    DeclData p ident t   -> DeclData p ident <$> substM t
-    DefFun   p ident t e -> DefFun   p ident <$> substM t <*> substM e
+  substM = traverseDeclExprs substM
 
 instance MetaSubstitutable CheckedProg where
   substM (Main ds) = Main <$> traverse substM ds
 
-instance MetaSubstitutable BaseConstraint where
-  substM (Unify es)  = Unify <$> substM es
+instance MetaSubstitutable TypeClassConstraint where
   substM (m `Has` e) = (m `Has`) <$> substM e
 
+instance MetaSubstitutable UnificationConstraint where
+  substM (Unify es) = Unify <$> substM es
+
 instance MetaSubstitutable Constraint where
-  substM (Constraint ctx c) = Constraint ctx <$> substM c
+  substM (UC ctx c) = UC ctx <$> substM c
+  substM (TC ctx c) = TC ctx <$> substM c
 
 --------------------------------------------------------------------------------
 -- The meta monad
@@ -154,7 +154,7 @@ addUnificationConstraint :: (MonadState MetaCtx m, MonadLogger m)
                          -> m ()
 addUnificationConstraint p ctx e1 e2 = do
   let context    = ConstraintContext p mempty ctx
-  let constraint = Constraint context $ Unify (e1, e2)
+  let constraint = UC context $ Unify (e1, e2)
   addConstraints [constraint]
 
 addTypeClassConstraint :: (MonadState MetaCtx m, MonadLogger m)
@@ -164,7 +164,7 @@ addTypeClassConstraint :: (MonadState MetaCtx m, MonadLogger m)
                        -> m ()
 addTypeClassConstraint ctx meta expr = do
   let context    = ConstraintContext (provenanceOf expr) mempty ctx
-  let constraint = Constraint context (meta `Has` expr)
+  let constraint = TC context (meta `Has` expr)
   addConstraints [constraint]
 
 addConstraints :: (MonadState MetaCtx m, MonadLogger m) => [Constraint] -> m ()
@@ -239,7 +239,8 @@ popActivatedConstraints metasSolved = do
   return unblockedConstraints
   where
     isBlocked :: MetaSet -> Constraint -> Bool
-    isBlocked solvedMetas (Constraint (ConstraintContext _ blockingMetas _) _) =
+    isBlocked solvedMetas constraint =
+      let blockingMetas = blockedBy $ constraintContext constraint in
       -- A constraint is blocked if it is blocking on at least one meta
       -- and none of the metas it is blocking on have been solved in the last pass.
       not (MetaSet.null blockingMetas) && MetaSet.disjoint solvedMetas blockingMetas
@@ -274,11 +275,14 @@ type MonadConstraintSolving m =
 -- Progress in solving meta-variable constraints
 
 -- | Reports progress when trying to solve meta-variable constraints
+-- Progress may be made if
+--  a) constraints are solved (may or may not result in metas being solved)
+--  b) new constraints are added
 data ConstraintProgress
   = Stuck
   | Progress
-    { newConstraints :: [Constraint]
-    , solvedMetas    :: MetaSet
+    { newConstraints  :: [Constraint]
+    , solvedMetas     :: MetaSet
     }
 
 instance Pretty ConstraintProgress where

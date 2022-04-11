@@ -1,0 +1,2 @@
+Error: Type error: Index 1 is out of bounds when looking up value in tensor of size 1 (Line 2, Columns 21-22)
+Fix: check your types

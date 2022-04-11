@@ -89,12 +89,13 @@ data TypeClass
   = HasEq
   | HasOrd
   | IsTruth
-  | IsNatural
-  | IsInteger
-  | IsRational
-  | IsReal
+  | HasNatOps
+  | HasIntOps
+  | HasRatOps
+  | HasNatLitsUpTo Int -- ^ Represents the maximum literal value (needed for Fin).
+  | HasIntLits
+  | HasRatLits
   | IsContainer
-  | IsQuantifiable
   deriving (Eq, Ord, Generic)
 
 instance NFData   TypeClass
@@ -102,15 +103,16 @@ instance Hashable TypeClass
 
 instance Show TypeClass where
   show = \case
-    HasEq          -> "HasEq"
-    HasOrd         -> "HasOrd"
-    IsTruth        -> "IsTruth"
-    IsContainer    -> "IsContainer"
-    IsNatural      -> "IsNatural"
-    IsInteger     -> "IsInteger"
-    IsRational     -> "IsRational"
-    IsReal         -> "IsReal"
-    IsQuantifiable -> "IsQuantify"
+    HasEq            -> "HasEq"
+    HasOrd           -> "HasOrd"
+    IsTruth          -> "IsTruth"
+    IsContainer      -> "IsContainer"
+    HasNatOps        -> "HasNatOperations"
+    HasIntOps        -> "HasIntOperations"
+    HasRatOps        -> "HasRatOperations"
+    HasNatLitsUpTo n -> "HasNatLiteralsUpTo " <> show n
+    HasIntLits       -> "HasIntLiterals"
+    HasRatLits       -> "HasRatLiterals"
 
 instance Pretty TypeClass where
   pretty = pretty . show
@@ -272,6 +274,7 @@ data Builtin
   = BooleanType   BooleanType
   | NumericType   NumericType
   | ContainerType ContainerType
+  | Fin
   -- Expressions
   | If
   | Not
@@ -303,6 +306,7 @@ instance Show Builtin where
     BooleanType   t -> show t
     NumericType   t -> show t
     ContainerType t -> show t
+    Fin             -> "Fin"
     BooleanOp2 op   -> show op
     Not             -> "not"
     NumericOp2 op   -> show op

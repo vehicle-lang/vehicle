@@ -9,6 +9,7 @@ import Vehicle.Prelude
 import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.DeBruijn
 import Vehicle.Language.AST.Builtin
+import Vehicle.Language.AST.BuiltinPatterns
 import Vehicle.Language.AST.Name
 
 --------------------------------------------------------------------------------
@@ -70,10 +71,23 @@ exprHead = fst . toHead
 --------------------------------------------------------------------------------
 -- Views
 
-getQuantifierSymbol :: Binder DBBinding var ann -> Symbol
-getQuantifierSymbol binder = case nameOf binder of
+getBinderSymbol :: Binder DBBinding var ann -> Symbol
+getBinderSymbol binder = case nameOf binder of
   Just symbol -> symbol
-  Nothing     -> developerError "Should not have quantifiers with machine names?"
+  Nothing     -> developerError "Binder unexpectedly does not appear to have a name"
+
+getContainerElem :: Expr binder var ann -> Maybe (Expr binder var ann)
+getContainerElem (ListType   _ t)   = Just t
+getContainerElem (TensorType _ t _) = Just t
+getContainerElem _                  = Nothing
+
+getDimension :: Expr binder var ann -> Maybe Int
+getDimension (NatLiteralExpr _ _ n) = return n
+getDimension _                      = Nothing
+
+getDimensions :: Expr binder var ann -> Maybe [Int]
+getDimensions (SeqExpr _ _ _ es) = traverse getDimension es
+getDimensions _                  = Nothing
 
 --------------------------------------------------------------------------------
 -- Construction functions

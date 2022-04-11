@@ -4,60 +4,90 @@ module Vehicle.Check
   ) where
 
 import Data.List.NonEmpty (NonEmpty(..))
+import Control.Exception (catch, IOException)
+import Control.Monad.Trans (MonadIO(liftIO))
 
 import Vehicle.Prelude
-import Vehicle.Verify.VerificationStatus
-import Vehicle.NeuralNetwork
-import Data.Maybe (fromMaybe)
-import Control.Exception (catch, IOException)
+import Vehicle.Verify.VerificationStatus (readProofCache, isSpecVerified, ProofCache(..))
+import Vehicle.Resource
 
 --------------------------------------------------------------------------------
 -- Checking
 
 newtype CheckOptions = CheckOptions
-  { databaseFile :: FilePath
+  { proofCache :: FilePath
   } deriving (Show)
 
 check :: LoggingOptions -> CheckOptions -> IO ()
-check loggingOptions checkOptions = do
+check loggingOptions checkOptions = fromLoggerTIO loggingOptions $ do
   -- If the user has specificed no logging target for check mode then
   -- default to command-line.
-  let logFile = fromMaybe Nothing (logLocation loggingOptions)
   status <- checkStatus loggingOptions checkOptions
-  flushLogger logFile $ logOutput $ pretty status
+  programOutput loggingOptions $ pretty status
 
-checkStatus :: LoggingOptions -> CheckOptions -> IO VerificationStatus
+checkStatus :: LoggingOptions -> CheckOptions -> LoggerT IO CheckResult
 checkStatus _loggingOptions CheckOptions{..} = do
-  SpecificationStatus{..} <- readSpecificationStatus databaseFile
-  case status of
-    Verified -> do
-      (missingNetworks, alteredNetworks) <- checkIntegrityOfNetworks networkInfo
-      return $ case missingNetworks of
-        x : xs -> NetworksMissing (x :| xs)
-        []     -> case alteredNetworks of
-          x : xs -> NetworksAltered (x :| xs)
-          []     -> Verified
+  ProofCache{..} <- liftIO $ readProofCache proofCache
+  (missingNetworks, alteredNetworks) <- checkResourceIntegrity resources
+  return $ case (missingNetworks, alteredNetworks, isSpecVerified status) of
+    (x : xs, _, _)  -> MissingResources (x :| xs)
+    ([], x : xs, _) -> AlteredResources (x :| xs)
+    ([], [], False) -> Unverified
+    ([], [], True)  -> Verified
 
-    _ -> return status
+getResourceStatus :: Resource -> IO ResourceStatus
+getResourceStatus Resource{..}= do
+  maybeNewHash <- catch @IOException (Just <$> hashResource location) (const $ return Nothing)
+  return $ case maybeNewHash of
+    Nothing -> Missing
+    Just newHash
+      | fileHash /= newHash -> Altered
+      | otherwise           -> Unchanged
 
-checkIntegrityOfNetworks :: [NetworkVerificationInfo]
-                         -> IO ([MissingNetwork], [AlteredNetwork])
-checkIntegrityOfNetworks [] = return ([], [])
-checkIntegrityOfNetworks (NetworkVerificationInfo{..} : xs) = do
-  (missing, altered) <- checkIntegrityOfNetworks xs
-  networkStatus <- getNetworkStatus
-  return $ case networkStatus of
-    Nothing        -> (missing, altered)
-    Just (Left m)  -> (m : missing, altered)
-    Just (Right a) -> (missing, a : altered)
-  where
-    getNetworkStatus :: IO (Maybe (Either MissingNetwork AlteredNetwork))
-    getNetworkStatus = do
-      maybeNewHash <- catch @IOException (Just <$> hashNetwork location) (const $ return Nothing)
-      case maybeNewHash of
-        Nothing -> return $ Just $ Left $ MissingNetwork name location
-        Just newHash ->
-          if networkHash == newHash then
-            return Nothing
-          else
-            return $ Just $ Right $ AlteredNetwork name location
+checkResourceIntegrity :: [Resource] -> LoggerT IO ([Resource], [Resource])
+checkResourceIntegrity []       = return ([], [])
+checkResourceIntegrity (r : rs) = do
+  (missing, altered) <- checkResourceIntegrity rs
+  resourceStatus <- liftIO (getResourceStatus r)
+  return $ case resourceStatus of
+    Unchanged -> (missing, altered)
+    Altered   -> (missing, r : altered)
+    Missing   -> (r : missing, altered)
+
+
+data ResourceStatus
+  = Unchanged
+  | Altered
+  | Missing
+
+data CheckResult
+  = Verified
+  | Unverified
+  | MissingResources (NonEmpty Resource)
+  | AlteredResources (NonEmpty Resource)
+
+instance Pretty CheckResult where
+  pretty Verified = "Status: verified"
+
+  pretty Unverified = "Status: unverified"
+
+  pretty (MissingResources missingNetworks) =
+    "Status: unknown" <> line <> line <>
+    "The following cannot not be found:" <> line <> line <>
+      indent 2 (vsep (fmap prettyResource missingNetworks)) <> line <> line <>
+    "To fix this problem, either move the missing files back to" <+>
+    "the" <+> locations <+> "above or use Vehicle to reverify the" <+>
+    "specification with the new" <+> locations <> "."
+    where
+      locations = "location" <> if length missingNetworks == 1 then "" else "s"
+
+  pretty (AlteredResources alteredNetworks) =
+    "Status: unknown" <> line <> line <>
+    "The following have been altered since verification was" <+>
+    "last run:" <> line <> line <>
+    indent 2 (vsep (fmap prettyResource alteredNetworks)) <> line <> line <>
+    "To fix this problem, use Vehicle to reverify the specification."
+
+prettyResource :: Resource -> Doc ann
+prettyResource Resource{..} =
+    pretty resType <+> pretty name <+> parens (pretty location)

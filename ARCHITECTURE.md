@@ -1,9 +1,9 @@
 Architecture
 ============
 
-* Parser for frontend language is generated via BNCF (version 2.9.0 and above)
+* Parser for external language is generated via BNCF (version 2.9.0 and above)
 
-* Syntax-driven elaboration to core language
+* Syntax-driven elaboration to internal language
 
 * Scope checking
 

@@ -11,6 +11,7 @@ import Data.Hashable (Hashable)
 import Vehicle.Prelude
 import Vehicle.Language.AST.Builtin (Builtin)
 import Vehicle.Language.AST.Visibility
+import Vehicle.Resource.Core (ResourceType)
 
 --------------------------------------------------------------------------------
 -- Annotations
@@ -177,7 +178,7 @@ traverseExplicitArgExpr _ arg               = return arg
 --------------------------------------------------------------------------------
 -- Expressions
 
--- | Type of Vehicle Core expressions.
+-- | Type of Vehicle internal expressions.
 --
 -- Annotations are parameterised over so that they can
 -- store arbitrary information used in e.g. type-checking.
@@ -304,27 +305,14 @@ class HasIdentifier a where
 --------------------------------------------------------------------------------
 -- Declarations
 
-data DeclType
-  = Network
-  | Dataset
-  deriving (Show)
-
-instance Pretty DeclType where
-  pretty = \case
-    Network  -> "network"
-    Dataset  -> "dataset"
-
 -- | Type of top-level declarations.
 data Decl binder var ann
-  = DeclNetw
+  = DefResource
     Provenance             -- Location in source file.
-    Identifier             -- Network name.
-    (Expr binder var ann)  -- Network type.
-  | DeclData
-    Provenance             -- Location in source file.
-    Identifier             -- Dataset name.
-    (Expr binder var ann)  -- Dataset type.
-  | DefFun
+    ResourceType           -- Type of resource.
+    Identifier             -- Name of resource.
+    (Expr binder var ann)  -- Vehicle type of the resource.
+  | DefFunction
     Provenance             -- Location in source file.
     Identifier             -- Bound function name.
     (Expr binder var ann)  -- Bound function type.
@@ -335,20 +323,25 @@ instance (NFData binder, NFData var, NFData ann) => NFData (Decl binder var ann)
 
 instance HasProvenance ann => HasProvenance (Decl binder var ann) where
   provenanceOf = \case
-    DeclNetw p _ _ -> p
-    DeclData p _ _ -> p
-    DefFun p _ _ _ -> p
+    DefResource p _ _ _ -> p
+    DefFunction p _ _ _ -> p
 
 instance HasIdentifier (Decl binder var ann) where
   identifierOf = \case
-    DeclNetw _ i _ -> i
-    DeclData _ i _ -> i
-    DefFun _ i _ _ -> i
+    DefResource _ _ i _ -> i
+    DefFunction _ i _ _ -> i
+
+traverseDeclExprs :: Monad m
+                  => (Expr binder1 var1 ann1 -> m (Expr binder2 var2 ann2))
+                  -> Decl binder1 var1 ann1
+                  -> m (Decl binder2 var2 ann2)
+traverseDeclExprs f (DefResource ann r n t) = DefResource ann r n <$> f t
+traverseDeclExprs f (DefFunction ann n t e) = DefFunction ann n <$> f t <*> f e
 
 --------------------------------------------------------------------------------
 -- Programs
 
--- | Type of Vehicle Core programs.
+-- | Type of Vehicle internal programs.
 newtype Prog binder var ann
   = Main [Decl binder var ann] -- ^ List of declarations.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
@@ -373,9 +366,8 @@ instance HasType Binder where
 
 instance HasType Decl where
   typeOf = \case
-    DeclNetw _ _ t -> t
-    DeclData _ _ t -> t
-    DefFun _ _ t _ -> t
+    DefResource _ _ _ t -> t
+    DefFunction _ _ t _ -> t
 
 --------------------------------------------------------------------------------
 -- Utilities

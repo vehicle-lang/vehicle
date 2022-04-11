@@ -9,23 +9,26 @@ import Data.Map (Map)
 import Vehicle.Prelude as X
 import Vehicle.Language.AST as X
 import Vehicle.Backend.Prelude (Backend)
-import Vehicle.NeuralNetwork
+import Vehicle.Resource.Core as X
+import Data.Text (Text)
 
 --------------------------------------------------------------------------------
 -- Compilation
 
 data CompileOptions = CompileOptions
-  { inputFile      :: FilePath
+  { target         :: Backend
+  , inputFile      :: FilePath
   , outputFile     :: Maybe FilePath
-  , outputTarget   :: Backend
-  , moduleName     :: String
-  , networks       :: [NetworkLocation]
+  , networks       :: Map Text FilePath
+  , datasets       :: Map Text FilePath
+  , modulePrefix   :: Maybe String
+  , proofCache     :: Maybe FilePath
   } deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Type synonyms
 
--- * Type of annotations attached to the Frontend AST after parsing
+-- * Type of annotations attached to the AST after parsing
 -- before being analysed by the compiler
 
 type InputBinding = Maybe NamedBinding
@@ -62,7 +65,7 @@ type CheckedExpr   = DBExpr    CheckedAnn
 type CheckedDecl   = DBDecl    CheckedAnn
 type CheckedProg   = DBProg    CheckedAnn
 
--- * Type of annotations attached to the Core AST that are output by the compiler
+-- * Type of annotations attached to the AST that are output by the compiler
 
 type OutputBinding = NamedBinding
 type OutputVar     = NamedVar
@@ -81,6 +84,7 @@ type CheckedCoDBBinder = CoDBBinder CheckedAnn
 -- | An expression paired with a position tree represting positions within it.
 -- Currently used mainly for pretty printing position trees.
 data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
+  deriving Show
 
 --------------------------------------------------------------------------------
 -- Annotations

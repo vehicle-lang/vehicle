@@ -44,3 +44,11 @@ package-lock.json
 
 # Emacs
 MAlonzo/**
+
+# Vehicle build system
+build/
+bin/
+
+# Examples folder
+examples/**/*.vclp
+examples/windController/agdaProof/WindControllerSpec.agda

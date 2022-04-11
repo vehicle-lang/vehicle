@@ -1,117 +1,104 @@
 module Vehicle.Verify.VerificationStatus where
 
+import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Data.Aeson
 import Data.Text (Text)
 import Data.ByteString.Lazy qualified as ByteString
-import Data.List.NonEmpty (NonEmpty)
+import Data.Map
+import Data.Version (Version)
 import GHC.Generics (Generic)
 import System.IO (hPutStrLn, stderr)
 import System.Exit (exitFailure)
-import Data.Version (Version)
+import System.Console.ANSI (Color(..))
+import System.Directory (makeAbsolute)
 
 import Vehicle.Prelude
+import Vehicle.Resource
 
 --------------------------------------------------------------------------------
--- Network verification information
+-- Verification status of a single property
 
-data NetworkVerificationInfo = NetworkVerificationInfo
-  { name        :: Text
-  , location    :: FilePath
-  , networkHash :: Int
-  } deriving (Generic)
+data PropertyStatus
+  = Verified { witness        :: Maybe Text }
+  | Failed   { counterexample :: Maybe Text }
+  deriving (Show, Generic)
 
-instance FromJSON NetworkVerificationInfo
-instance ToJSON NetworkVerificationInfo
+instance FromJSON PropertyStatus
+instance ToJSON PropertyStatus
 
---------------------------------------------------------------------------------
--- Missing networks
+isVerified :: PropertyStatus -> Bool
+isVerified (Verified _) = True
+isVerified _            = False
 
-data MissingNetwork = MissingNetwork Text FilePath
-  deriving (Generic)
+-- | Negates the status of the property under the assumption that it
+-- represents the status of an existential satisfaction problem.
+negateStatus :: PropertyStatus -> PropertyStatus
+negateStatus (Verified witness) = Failed witness
+negateStatus (Failed   _)       = Verified Nothing
 
-instance FromJSON MissingNetwork
-instance ToJSON MissingNetwork
+exampleOf :: PropertyStatus -> Maybe Text
+exampleOf (Verified e) = e
+exampleOf (Failed   e) = e
 
-instance Pretty MissingNetwork where
-  pretty (MissingNetwork name filepath) =
-    pretty name <+> parens (pretty filepath)
+prettyPropertyStatus :: (Text, PropertyStatus) -> Doc a
+prettyPropertyStatus (name, status) =
+  pretty symbol <+> pretty name <> example
+  where
+  (symbol, exampleText) = if isVerified status
+    then (setTextColour Green "🗸", "Witness")
+    else (setTextColour Red   "✗",  "Counter-example")
 
---------------------------------------------------------------------------------
--- Altered networks
+  example = case exampleOf status of
+    Nothing -> ""
+    Just e  -> line <> indent 2 (exampleText <> ":" <+> pretty e)
 
-data AlteredNetwork = AlteredNetwork Text FilePath
-  deriving (Generic)
-
-instance FromJSON AlteredNetwork
-instance ToJSON AlteredNetwork
-
-instance Pretty AlteredNetwork where
-  pretty (AlteredNetwork name filepath) =
-    pretty name <+> parens (pretty filepath)
 
 --------------------------------------------------------------------------------
 -- Verification status of the specification
 
-data VerificationStatus
-  = Verified
-  | NetworksMissing (NonEmpty MissingNetwork)
-  | NetworksAltered (NonEmpty AlteredNetwork)
-  | FailedVerification
-  { nameOfProperty :: Text
-  , counterexample :: Maybe Text
-  }
+newtype SpecificationStatus = SpecificationStatus (Map Text PropertyStatus)
   deriving (Generic)
-
-instance FromJSON VerificationStatus
-instance ToJSON VerificationStatus
-
-instance Pretty VerificationStatus where
-  pretty Verified = "Verified"
-
-  pretty (NetworksMissing missingNetworks) =
-    "Verification status is currently unknown as the following networks" <+>
-    "cannot not be found:" <> line <> line <>
-    indent 2 (vsep (fmap pretty missingNetworks)) <> line <> line <>
-    "To fix this problem, either move the missing files back to" <+>
-    "the" <+> locations <+> "above or use Vehicle to reverify the specification" <+>
-    "with the new" <+> locations <> "."
-    where
-      locations = "location" <> if length missingNetworks == 1 then "" else "s"
-
-  pretty (NetworksAltered alteredNetworks) =
-    "Verification status is currently unknown as the following networks" <+>
-    "have been altered since verification was last run:" <> line <> line <>
-    indent 2 (vsep (fmap pretty alteredNetworks)) <> line <> line <>
-    "To fix this problem, use Vehicle to reverify the specification."
-
-  pretty (FailedVerification propertyName counterexample) =
-    "Verification was unsuccessful. In particular property" <+>
-    squotes (pretty propertyName) <> "could not be verified." <>
-    case counterexample of
-      Nothing -> ""
-      Just e  -> line <> "Counterexample:" <+> pretty e
-
---------------------------------------------------------------------------------
--- Overall status of the specification
-
-data SpecificationStatus = SpecificationStatus
-  { specVersion  :: Version
-  , status       :: VerificationStatus
-  , networkInfo  :: [NetworkVerificationInfo]
-  , originalSpec :: Text
-  } deriving (Generic)
 
 instance FromJSON SpecificationStatus
 instance ToJSON SpecificationStatus
 
-writeSpecificationStatus :: FilePath -> SpecificationStatus -> IO ()
-writeSpecificationStatus file status = ByteString.writeFile file (encode status)
+isSpecVerified :: SpecificationStatus -> Bool
+isSpecVerified (SpecificationStatus properties) =
+  and (fmap isVerified (elems properties))
 
-readSpecificationStatus :: FilePath -> IO SpecificationStatus
-readSpecificationStatus file = do
+instance Pretty SpecificationStatus where
+  pretty spec@(SpecificationStatus properties) =
+    (if isSpecVerified spec
+      then "Result: verified"
+      else "Result: unverified") <> line <>
+    indent 2 (vsep (fmap prettyPropertyStatus (toList properties)))
+
+--------------------------------------------------------------------------------
+-- Overall status of the specification
+
+data ProofCache = ProofCache
+  { specVersion  :: Version
+  , status       :: SpecificationStatus
+  , resources    :: [Resource]
+  , originalSpec :: Text
+  } deriving (Generic)
+
+instance FromJSON ProofCache
+instance ToJSON ProofCache
+
+writeProofCache :: MonadIO m => FilePath -> ProofCache -> m ()
+writeProofCache file status = liftIO $ ByteString.writeFile file (encode status)
+
+readProofCache :: FilePath -> IO ProofCache
+readProofCache file = do
   errorOrStatus <- eitherDecode <$> ByteString.readFile file
   case errorOrStatus of
     Right status -> return status
     Left  errorMsg  -> do
       hPutStrLn stderr errorMsg
       exitFailure
+
+getProofCacheLocation :: MonadIO m => LoggingOptions -> Maybe FilePath -> m FilePath
+getProofCacheLocation _              (Just location) = liftIO $ makeAbsolute location
+getProofCacheLocation loggingOptions Nothing         =
+  fatalError loggingOptions "You must provide a value for `proofCache` when compiling to Agda"
