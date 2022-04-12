@@ -17,7 +17,7 @@ import Data.Text (Text)
 
 data CompileOptions = CompileOptions
   { target           :: Backend
-  , inputFile        :: FilePath
+  , specification    :: FilePath
   , outputFile       :: Maybe FilePath
   , networkLocations :: Map Text FilePath
   , datasetLocations :: Map Text FilePath

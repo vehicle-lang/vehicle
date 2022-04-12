@@ -43,7 +43,7 @@ import Vehicle.Compile.Resource.Parameter (expandParameters)
 compile :: LoggingOptions -> CompileOptions -> IO ()
 compile loggingOptions CompileOptions{..} = do
   let resources = Resources networkLocations datasetLocations parameterValues
-  spec <- readInputFile loggingOptions inputFile
+  spec <- readInputFile loggingOptions specification
   case target of
     ITP Agda -> do
       let moduleName = pack $ maybe "" (<> ".") modulePrefix <> maybe "Spec" takeBaseName outputFile

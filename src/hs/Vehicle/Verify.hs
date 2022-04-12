@@ -14,17 +14,17 @@ import Vehicle.Compile
 import Vehicle.Verify.VerificationStatus
 
 data VerifyOptions = VerifyOptions
-  { verifier         :: Verifier
-  , inputFile        :: FilePath
+  { specification    :: FilePath
   , networkLocations :: Map Text FilePath
   , datasetLocations :: Map Text FilePath
   , parameterValues  :: Map Text Text
+  , verifier         :: Verifier
   , proofCache       :: Maybe FilePath
   } deriving (Show)
 
 verify :: LoggingOptions -> VerifyOptions -> IO ()
 verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
-  spec <- readInputFile loggingOptions inputFile
+  spec <- readInputFile loggingOptions specification
   resources <- convertPathsToAbsolute $
     Resources networkLocations datasetLocations parameterValues
 

@@ -9,9 +9,9 @@ Verifying using Marabou
 The controller can be verified against the specification by running the following command:
 ```bash
 vehicle verify \
-  --verifier Marabou \
-  --inputFile examples/windController/windController.vcl \
+  --specification examples/windController/windController.vcl \
   --network controller:examples/windController/controller.onnx \
+  --verifier Marabou \
   --proofCache examples/windController/windController.vclp
 ```
 where the last line tells Vehicle where to write out the proof cache which can
@@ -22,7 +22,7 @@ run the following command:
 ```bash
 vehicle compile \
   --target Marabou \
-  --inputFile examples/windController/windController.vcl \
+  --specification examples/windController/windController.vcl \
   --outputFile examples/windController/windController-queries \
   --network controller:examples/windController/controller.onnx
 ```
@@ -35,7 +35,7 @@ The (verified) specification may then be compiled to Agda by running the command
 ```bash
 vehicle compile \
   --target Agda \
-  --inputFile examples/windController/windController.vcl \
+  --specification examples/windController/windController.vcl \
   --outputFile examples/windController/agdaProof/WindControllerSpec.agda \
   --proofCache examples/windController/windController.vclp
 ```

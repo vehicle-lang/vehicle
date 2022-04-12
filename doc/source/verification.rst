@@ -17,7 +17,7 @@ A specification can be verified by using the :code:`vehicle verify` command.
 .. code-block:: bash
 
   vehicle verify \
-    --inputFile my/project/mnist-robustness.vcl \
+    --specification my/project/mnist-robustness.vcl \
     --network classify:my/project/mnist.onnx \
     --dataset trainingImages:my/project/mnist-trainingImages.idx \
     --dataset trainingLabels:my/project/mnist-trainingLabels.idx \

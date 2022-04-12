@@ -65,6 +65,52 @@ commandParser = hsubparser
     )
 
 --------------------------------------------------------------------------------
+-- Some shared option parsers
+
+resourceOptions :: Mod OptionFields (Text, String) -> Parser (Map Text String)
+resourceOptions desc = Map.fromList <$> many (option (maybeReader readNL) desc)
+  where
+  readNL :: String -> Maybe (Text, String)
+  readNL s = case Text.splitOn (Text.pack ":") (Text.pack s) of
+    [name, value] -> Just (name, Text.unpack value)
+    _             -> Nothing
+
+specOption :: Parser FilePath
+specOption = strOption
+  ( long "specification"
+  <> short 's'
+  <> help "The .vcl file containing the specification."
+  <> metavar "FILE" )
+
+networkOption :: Parser (Map Text FilePath)
+networkOption = resourceOptions
+  ( long "network"
+  <> short 'n'
+  <> help "Provide the implementation of a network declared in the \
+          \ specification. Its value should consist of a colon-separated \
+          \ pair of the name of the network in the specification and a file \
+          \ path."
+  <> metavar "NAME:FILE")
+
+datasetOption :: Parser (Map Text FilePath)
+datasetOption = resourceOptions
+  ( long "dataset"
+  <> short 'd'
+  <> help "Provide a dataset declared in the specification. Its value should \
+          \ consist of a colon-separated pair of the name of the dataset in \
+          \ the specification and a file path."
+  <> metavar "NAME:FILE")
+
+parameterOption :: Parser (Map Text Text)
+parameterOption = fmap Text.pack <$> resourceOptions
+  ( long "parameter"
+  <> short 'p'
+  <> help "Provide a parameter referenced in the specification. Its value \
+          \ should consist of a colon-separated pair of the name of the \
+          \ parameter in the specification and its value."
+  <> metavar "NAME:VALUE")
+
+--------------------------------------------------------------------------------
 -- Compile mode
 
 compileDescription :: InfoMod Command
@@ -77,26 +123,15 @@ compileParser = CompileOptions
      <> short 't'
      <> help "Compilation target."
      <> metavar "TARGET" )
-  <*> strOption
-      ( long "inputFile"
-     <> short 'i'
-     <> help "Input .vcl file."
-     <> metavar "FILE" )
+  <*> specOption
   <*> optional (strOption
       ( long "outputFile"
      <> short 'o'
      <> help "Output location for compiled file. Defaults to stdout if not provided."
      <> metavar "FILE" ))
-  <*> resourceOptions
-      ( long "network"
-     <> short 'n'
-     <> help "The name (as used in the Vehicle code) and path to a neural network."
-     <> metavar "NAME:FILE")
-  <*> resourceOptions
-      ( long "dataset"
-     <> short 'd'
-     <> help "The name (as used in the Vehicle code) and path to a dataset."
-     <> metavar "NAME:FILE")
+  <*> networkOption
+  <*> datasetOption
+  <*> parameterOption
   <*> optional (strOption
       ( long "modulePrefix"
      <> short 'm'
@@ -113,14 +148,6 @@ compileParser = CompileOptions
               \ `vehicle verify` command."
      <> metavar "FILE" ))
 
-resourceOptions :: Mod OptionFields (Text, FilePath) -> Parser (Map Text FilePath)
-resourceOptions desc = Map.fromList <$> many (option (maybeReader readNL) desc)
-  where
-    readNL :: String -> Maybe (Text, FilePath)
-    readNL s = case Text.splitOn (Text.pack ":") (Text.pack s) of
-      [name, filepath] -> Just (name, Text.unpack filepath)
-      _                -> Nothing
-
 --------------------------------------------------------------------------------
 -- Verify mode
 
@@ -130,26 +157,15 @@ verifyDescription = progDesc ("Verify the status of a Vehicle property," <>
 
 verifyParser :: Parser VerifyOptions
 verifyParser = VerifyOptions
-  <$> option auto
+  <$> specOption
+  <*> networkOption
+  <*> datasetOption
+  <*> parameterOption
+  <*> option auto
       ( long "verifier"
      <> short 'v'
      <> help "Verifier to use."
      <> metavar "TARGET" )
-  <*> strOption
-      ( long "inputFile"
-     <> short 'i'
-     <> help "Input .vcl file."
-     <> metavar "FILE" )
-  <*> resourceOptions
-      ( long "network"
-     <> short 'n'
-     <> help "The name (as used in the Vehicle code) and path to a neural network."
-     <> metavar "NAME:FILE" )
-  <*> resourceOptions
-      ( long "dataset"
-    <> short 'd'
-    <> help "The name (as used in the Vehicle code) and path to a dataset."
-    <> metavar "NAME:FILE")
   <*> optional (strOption
       ( long "proofCache"
      <> short 'c'
