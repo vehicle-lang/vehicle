@@ -14,5 +14,5 @@ Specification language
   dataset-declarations
   parameter-declarations
   properties
-  idioms
+  tips-and-tricks
   advanced

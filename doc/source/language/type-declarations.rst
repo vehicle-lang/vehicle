@@ -1,15 +1,15 @@
 Type declarations
 =================
 
-Although Vehicle comes with enough builtin types to write a wide range
+Although Vehicle's builtin types are sufficient to write a wide range
 of specifications, specifications can often be made more readable by using
-the :code:`type` keyword to defining synonyms for types that are used repeatedly
-throughout a specification.
+the :code:`type` keyword to defining meaningful synonyms for those that are
+used repeatedly.
 
 For example, when defining a robustness specification for the MNIST dataset
 which contains 24x24 greyscale images, in order to avoid having to repeatedly
 write :code:`Tensor Rat [24, 24]`, you could declare the :code:`Image` type
-as follows:
+and use it as follows:
 
 .. code-block:: agda
 
@@ -23,7 +23,7 @@ as follows:
   robustAround x = ...
 
 Declared types can also have arguments. For example we
-can declare :code:`Vector` as a synonym for 1-dimensional tensors:
+can declare :code:`Vector` as a synonym for 1-dimensional tensors as follows:
 
 .. code-block:: agda
 
