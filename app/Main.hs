@@ -109,7 +109,7 @@ compileParser = CompileOptions
      <> short 'p'
      <> help "The location of the proof cache \
               \ that can be used to check the verification status \
-              \ of the specifcation. The proof cache can be generated via the \
+              \ of the specification. The proof cache can be generated via the \
               \ `vehicle verify` command."
      <> metavar "FILE" ))
 
@@ -152,7 +152,7 @@ verifyParser = VerifyOptions
     <> metavar "NAME:FILE")
   <*> optional (strOption
       ( long "proofCache"
-     <> short 'p'
+     <> short 'c'
      <> help "The proof cache file for the Vehicle project."
      <> metavar "FILE" ))
 
