@@ -63,8 +63,8 @@ a score between :code:`0` and :code:`1`
 
    network classify : Tensor Rat [24, 24] -> Tensor Rat [10]
 
-and wanted to encode that the classifier did not answer confidently
-for an input :code:`x`, e.g. an image that was primarily white noise.
+and wanted to encode that it did not answer confidently
+for some input :code:`x`, e.g. :code:`x` is primarily white noise.
 A "computational" approach to encoding this constraint would be to
 calculate the maximum score and then require it to be less than 0.2:
 
@@ -73,11 +73,11 @@ calculate the maximum score and then require it to be less than 0.2:
    max : Rat -> Rat -> Rat
    max x y = if x <= y then x else y
 
-   maxOf : Tensor Rat [10] -> Rat
-   maxOf xs = fold max 0 xs
+   largestScore : Tensor Rat [10] -> Rat
+   largestScore xs = fold max 0 xs
 
    isUncertainAbout : Tensor Rat [24, 24] -> Bool
-   isUncertainAbout x = maxOf (classify x) <= 0.2
+   isUncertainAbout x = largestScore (classify x) <= 0.2
 
 However, this definition would experience an exponential blow-up when
 compiled down to low-level verification queries, as each branch of the
