@@ -2,6 +2,7 @@ module Vehicle.Verify.VerificationStatus where
 
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Data.Aeson
+import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Text (Text)
 import Data.ByteString.Lazy qualified as ByteString
 import Data.Map
@@ -87,7 +88,7 @@ instance FromJSON ProofCache
 instance ToJSON ProofCache
 
 writeProofCache :: MonadIO m => FilePath -> ProofCache -> m ()
-writeProofCache file status = liftIO $ ByteString.writeFile file (encode status)
+writeProofCache file status = liftIO $ ByteString.writeFile file (encodePretty status)
 
 readProofCache :: FilePath -> IO ProofCache
 readProofCache file = do

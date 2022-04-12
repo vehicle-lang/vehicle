@@ -20,7 +20,7 @@ newtype CheckOptions = CheckOptions
 
 check :: LoggingOptions -> CheckOptions -> IO ()
 check loggingOptions checkOptions = fromLoggerTIO loggingOptions $ do
-  -- If the user has specificed no logging target for check mode then
+  -- If the user has specificied no logging target for check mode then
   -- default to command-line.
   status <- checkStatus loggingOptions checkOptions
   programOutput loggingOptions $ pretty status
