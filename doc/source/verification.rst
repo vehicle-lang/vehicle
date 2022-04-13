@@ -98,9 +98,9 @@ some time after having initially called :code:`verify`:
 
 Unfortunately, depending on the size of the network and the complexity of the
 specification, verification can be a very expensive procedure taking hours or days.
-Therefore it is important to avoid unnecessary reverification.
+Therefore it is important to avoid unnecessary re-verification.
 
-To solve this problem, after successfully verifying a specication
+To solve this problem, after successfully verifying a specification
 Vehicle can write out a *proof cache* file.
 This file contains:
 
@@ -115,10 +115,12 @@ the status of the specification as follows:
 
 .. code-block:: bash
 
-   vehicle check --proofCache /my/project/spec.vclp
+   vehicle check \
+    --proofCache /my/project/spec.vclp
 
 Vehicle will read the proof cache, and use its contents to find and rehash
-the networks and datasets used in the verification of the specification.
+the networks and datasets that were used during the original verification
+of the specification.
 If the new hashes match those stored in the proof cache then the check passes,
 otherwise the check command will exit with an error.
 

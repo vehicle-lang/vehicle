@@ -7,7 +7,7 @@ Network declarations
 Basics
 ------
 
-Networks are declared as follows using the `network` keyword:
+Networks are declared as follows using the :code:`network` keyword:
 
 .. code-block:: agda
 
@@ -16,8 +16,9 @@ Networks are declared as follows using the `network` keyword:
 Note that no implementation is provided in the specification, instead the network
 
 At the moment Vehicle supports networks with a single input and output nodes.
-Therefore expected type is of the form `Tensor A [m] -> Tensor B [n]` where `A` and
-`B` are [numeric types] and `m` and `n` are concrete constants.
+Therefore expected type is of the form :code:`Tensor A [m] -> Tensor B [n]`
+where :code:`A` and :code:`B` are [numeric types] and :code:`m` and :code:`n`
+are known constants.
 
 For example the following are allowed and are all equivalent:
 
@@ -30,8 +31,6 @@ For example the following are allowed and are all equivalent:
    network myNetwork : Nat -> Nat -> Nat -> Nat -> Rat
 
    network myNetwork : Nat -> Nat -> Nat -> Nat -> Tensor Rat [1]
-
-
 
 Supported formats
 -----------------
@@ -46,7 +45,7 @@ Multiple input/outputs
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Although we are aware that common graph representations such as ONNX,
-Tensorflow, Pytorch files can have multiple input and output nodes,
+Tensorflow, and Pytorch files can have multiple input and output nodes,
 these are not currently supported by Vehicle.
 
 For example the following is not a valid type of network:

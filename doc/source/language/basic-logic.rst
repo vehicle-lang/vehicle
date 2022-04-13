@@ -12,8 +12,8 @@ Like many systems Vehicle contains booleans. The type of boolean values is
 
 The following table contains the basic boolean operations:
 
-.. list-table:: Title
-   :widths: 25 15 45 15
+.. list-table::
+   :widths: 25 15 40 20
    :header-rows: 1
 
    * - Operation
@@ -40,7 +40,7 @@ The following table contains the basic boolean operations:
 Conditionals
 ------------
 
-Conditional statements are written as :code:`if then else`
+Conditional statements are written using the syntax :code:`if .. then .. else ..`
 and have type :code:`Bool -> A -> A -> A` for any type :code:`A`.
 For example:
 
@@ -48,9 +48,9 @@ For example:
 
    if f x > 0 then x < 0 else x > 0
 
-Unlike in imperative languages, in a functional language like Vehicle
+In a functional language like Vehicle (and unlike in imperative languages)
 all statements must return a value. Therefore it is not possible to
-omit the :code:`else` branch.
+omit the :code:`else` branch when writing a conditional.
 
 Due to decidability issues, specifications that will be exported to a
 theorem prover may not contain :code:`if then else` statements whose
@@ -70,19 +70,19 @@ domain. For example, the following is not allowed:
 Equality
 --------
 
-Two expressions :code:`x` and :code:`y` of the same type can be declared equal
-or unequal using the :code:`==` and :code:`!=` operators respectively.
+Two expressions of the same type can be declared to be equal
+or not equal using the :code:`==` and :code:`!=` operators respectively.
 
 The type of these operators are :code:`A -> A -> Bool` where :code:`A` can be any
 of the following types:
 
 - :code:`Bool`, :code:`Nat`, :code:`Int`, :code:`Rat`.
 - :code:`Fin n` for any value of :code:`n`.
-- :code:`List A` if type :code:`A` also has equality.
-- :code:`Tensor A dims` if type :code:`A` also has equality.
+- :code:`List A` if type :code:`A` also supports the operators.
+- :code:`Tensor A dims` if type :code:`A` also supports the operators.
 
 For example:
 
 .. code-block:: agda
 
-   forall x . x != 0.0 => f x == 1
+   forall x . x != 0 => f x == 1

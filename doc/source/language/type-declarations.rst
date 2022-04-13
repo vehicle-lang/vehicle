@@ -8,8 +8,8 @@ used repeatedly.
 
 For example, when defining a robustness specification for the MNIST dataset
 which contains 24x24 greyscale images, in order to avoid having to repeatedly
-write :code:`Tensor Rat [24, 24]`, you could declare the :code:`Image` type
-and use it as follows:
+write :code:`Tensor Rat [24, 24]`, one could declare :code:`Image` as a
+synonym for it and use it as follows:
 
 .. code-block:: agda
 

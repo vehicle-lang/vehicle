@@ -8,10 +8,10 @@ Quantifying over infinite domains
 ---------------------------------
 
 One of the main advantages of Vehicle compared to a testing framework is
-that it can be used to state and prove specifications that talk about the
+that it can be used to state and prove specifications that describe the
 network's behaviour over an infinite set of values.
 
-Suppose you have the following network:
+Suppose you have the following network which produces two outputs:
 
 .. code-block:: agda
 
@@ -26,10 +26,11 @@ This can be achieved by using the :code:`forall` quantifier as follows:
    forall x . f x ! 0 > 0
 
 which brings a new variable :code:`x` of type :code:`Tensor Rat [10]` into
-scope which has no assigned value and therefore represents an arbitrary input.
+scope. The variable :code:`x` has no assigned value and therefore represents
+an arbitrary input.
 
-Similarly if trying to state that *there exists at least one input for which
-the network's first output is negative*, the :code:`exists` quantifier can be
+Similarly, if trying to specify that *there exists at least one input for which
+the network's first output is positive*, the :code:`exists` quantifier can be
 used as follows:
 
 .. code-block:: agda
@@ -47,33 +48,19 @@ and multiple variables can be quantified over at once:
 
 .. code-block:: agda
 
-   exists (x : Tensor Rat [10]) (i : Fin 2) . f x ! i > 0
-
-In many cases you don't want the property to hold over *all* the
-values in the domain, but only a (still infinite) subset of them.
-For example, network inputs are frequently normalised to lie
-within the range [0,1]. If you don't also restrict the quantified
-variable's domain to this range, then Vehicle will produce spurious
-counter-examples to your specification.
-
-This can be achieved by combining a quantifier with an implication
-as follows:
-
-.. code-block:: agda
-
-   forall x . 0 <= x <= 1 => f x ! 0 > 0
+   exists x i . f x ! i > 0
 
 Limitations
 ~~~~~~~~~~~
 
-One hard constraint enforced by both the training and
-verification tools is that you may not use both a `forall` and
-an `exists` that quantify over infinite domains within the same property.
+One hard constraint enforced by both training and
+verification tools is that you may not use both a :code:`forall` and
+an :code:`exists` that quantify over infinite domains within the same property.
 For example, the following is not allowed:
 
 .. code-block:: agda
 
-   f : Tensor Rat [2] -> Rat
+   network f : Tensor Rat [2] -> Rat
 
    surjective : Bool
    surjective = forall y . exists x. f x == y
@@ -83,7 +70,7 @@ separate functions. For example, the following is not allowed either:
 
 .. code-block:: agda
 
-   f : Tensor Rat [2] -> Rat
+   network f : Tensor Rat [2] -> Rat
 
    hits : Tensor Rat [2] -> Bool
    hits y = exists x . f x == y
@@ -91,13 +78,13 @@ separate functions. For example, the following is not allowed either:
    surjective : Bool
    surjective = forall y . hits y
 
-However, you can have both within the same specification as long as
-they belong to different properties. For example, the following *is*
-allowed:
+However, you can have both types of quantifiers within the same
+specification as long as they belong to different properties.
+For example, the following *is* allowed:
 
 .. code-block:: agda
 
-   f : Tensor Rat [2] -> Rat
+   network f : Tensor Rat [2] -> Rat
 
    prop1 : Bool
    prop1 y = exists x . f x >= 2
@@ -105,14 +92,30 @@ allowed:
    prop2 : Bool
    prop2 = forall x . 1 <= f x <= 3
 
+Restricting an infinite domain
+------------------------------
+
+In many cases you don't want the property to hold over *all* the
+values in the domain, but only a (still infinite) subset of them.
+For example, network inputs are frequently normalised to lie
+within the range [0,1]. If you don't also restrict the quantified
+variable's domain to this range, then Vehicle will produce spurious
+counter-examples to your specification.
+
+In general such restrictions can be achieved by combining a quantifier
+with an implication as follows:
+
+.. code-block:: agda
+
+   forall x . 0 <= x <= 1 => f x ! 0 > 0
 
 Quantifying over finite domains
 -------------------------------
 
 While most specifications will quantify over at least one variable
-with an infinite domain, sometimes it is also useful to quantify
-over a finite number of values. The most common way to do this to
-modify the quantifier with the :code:`in` keyword to quantify over
+with an infinite domain, sometimes one might also want to quantify
+over a finite set of values. This change be achieved by
+modifying the quantifier with the :code:`in` keyword to quantify over
 all the values contained within a :code:`List` or a :code:`Tensor`:
 
 .. code-block:: agda
@@ -123,13 +126,13 @@ all the values contained within a :code:`List` or a :code:`Tensor`:
    myListInRange : Bool
    myListInRange = forall x in myList . 0 <= f x <= 1
 
-During compilation Vehicle will automatically expand this out internally
-to a sequence of :code:`and` statements:
+During compilation Vehicle will automatically expand this out
+to a sequence of conjunctions as follows:
 
 .. code-block:: agda
 
    myListInRange : Bool
-   myListInRange = 0 <= 0.4 <= 1 and 0 <= f 1.1 <= 1 and 0 <= f 0.2 <= 1
+   myListInRange = 0 <= f 0.4 <= 1 and 0 <= f 1.1 <= 1 and 0 <= f 0.2 <= 1
 
 The one remaining case is quantifying over the indices of a tensor as follows:
 
@@ -149,7 +152,7 @@ The :code:`individual` keyword
 ------------------------------
 
 A common use of the :code:`forall ... in ...` construct is to quantify
-over a dataset, e.g. as follows:
+over a dataset, for example as follows:
 
 .. code-block:: agda
 
@@ -160,9 +163,9 @@ over a dataset, e.g. as follows:
    robust : Bool
    robust = forall x in dataset . robustAround x
 
-The problem with this specification is that Vehicle will report whether
-the network is robust around *all* the elements in the dataset. This is
-unlikely to be true.
+The problem with this formulation of the specification is that Vehicle
+will only report whether the network is robust around *all* the elements
+in the dataset. This is unlikely to be true.
 
 Instead it is possible to modify the quantifier with the :code:`individual`
 keyword, which will result in Vehicle reporting how many and which of the
@@ -170,12 +173,12 @@ elements in the dataset the network is robust around:
 
 .. code-block:: agda
 
-   dataset dataset : List (Tensor Rat [784])
+   dataset trainingDataset : List (Tensor Rat [784])
 
    ...
 
    robust : Bool
-   robust = forall individual x in dataset . robustAround x
+   robust = forall individual x in trainingDataset . robustAround x
 
 The :code:`individual` keyword can be added to any quantified variable
 that ranges over a finite domain.
@@ -203,7 +206,7 @@ but this is not:
    property : Bool
    property = f 0.2 <= 3 or forall individual x in trainingDataset . f x <= 0
 
-Another limitation is that when quantifying over multiple variables
+Another restriction is that when quantifying over multiple variables
 at once with the :code:`individual` keyword, all the variables must have
 finite domains. For example the following is allowed:
 
@@ -219,13 +222,10 @@ but the following is not:
 
 .. code-block:: agda
 
-   tensor : Tensor Rat [3]
-   tensor = [0.1, 0.2, 0.3]
-
    monotonic : Bool
    monotonic = forall individual i x . f x < tensor ! i
 
-and must instead be written as:
+Instead the latter must be written as:
 
 .. code-block:: agda
 

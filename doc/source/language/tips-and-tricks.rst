@@ -64,7 +64,7 @@ a score between :code:`0` and :code:`1`
    network classify : Tensor Rat [24, 24] -> Tensor Rat [10]
 
 and wanted to encode that it did not answer confidently
-for some input :code:`x`, e.g. :code:`x` is primarily white noise.
+for some out-of-distribution input :code:`x`.
 A "computational" approach to encoding this constraint would be to
 calculate the maximum score and then require it to be less than 0.2:
 
@@ -103,19 +103,24 @@ Useful functions
 We will now describe some functions that are useful building blocks when
 writing specifications.
 
-:code:`argmin` and :code:`argmax`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+:code:`argmin`
+~~~~~~~~~~~~~~
 
 .. code-block:: agda
 
    isArgmin : forallT {n} . Fin n -> Tensor A n -> Bool
-   isArgmin i x = forall j . x ! i < x ! j
+   isArgmin i x = forall j . i != j => x ! i < x ! j
+
+:code:`argmin`
+~~~~~~~~~~~~~~
+
+.. code-block:: agda
 
    isArgmax : forallT {n} . Fin n -> Tensor A n -> Bool
-   isArgmax i x = forall j . x ! i > x ! j
+   isArgmax i x = forall j . i != j => x ! i > x ! j
 
 :code:`advises`
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 For a classification task where the network produces a score
 for each class and the class with the lowest score is chosen,
@@ -128,4 +133,4 @@ when applied to input `x`:
    network classify : Tensor Rat [24, 24] -> Tensor Rat [10]
 
    advises : Fin 10 -> Tensor Rat [24, 24] -> Bool
-   advises i x = forall j . classify x ! i < classify x ! j
+   advises i x = forall j . i != j => classify x ! i < classify x ! j
