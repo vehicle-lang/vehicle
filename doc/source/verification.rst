@@ -24,17 +24,6 @@ A specification can be verified by using the :code:`vehicle verify` command.
     --parameter epsilon:0.1 \
     --verifier Marabou \
 
-.. warning::
-
-    The :code:`verify` command is not atomic.
-    Verification involves repeatedly loading the network(s) from disk
-    and Vehicle will not detect changes to the networks that occur
-    while the command is running.
-
-    If such changes do occur, the verification result may not be sound.
-    Unlike networks, datasets are only loaded once and therefore do not suffer
-    from such race conditions.
-
 The table below contains the full list of command line arguments available
 for the :code:`verify` command.
 
@@ -83,6 +72,17 @@ for the :code:`verify` command.
 
     Set the location to write out the proof cache containing the results.
     If this argument is not provided then no proof cache will be generated.
+
+.. warning::
+
+    The :code:`verify` command is not atomic.
+    Verification involves repeatedly loading the network(s) from disk
+    and Vehicle will not detect changes to the networks that occur
+    while the command is running.
+
+    If such changes do occur, the verification result may not be sound.
+    Unlike networks, datasets are only loaded once and therefore do not suffer
+    from such race conditions.
 
 Checking a verification result
 ------------------------------
