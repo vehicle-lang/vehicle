@@ -6,7 +6,8 @@ Specification language
 
   functions
   arithmetic
-  logic
+  basic-logic
+  quantifiers
   lists
   tensors
   type-declarations
