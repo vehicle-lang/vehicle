@@ -1,4 +1,4 @@
-Training
-========
+Training with a specification
+=============================
 
-NOT YET IMPLEMENTED
+Coming soon!

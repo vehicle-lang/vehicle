@@ -1,16 +1,11 @@
-Verification
-============
-
-Given a neural network and a specification, Vehicle can be used to check
-whether the network obeys the specification.
-At the moment, verification can be performed at the command-line.
+Verifying a specification
+=========================
 
 .. autosummary::
    :toctree: generated
 
-
-Verifying a specification
--------------------------
+Given a specification, Vehicle can be used to check whether a given
+neural network obeys the specification.
 
 A specification can be verified by using the :code:`vehicle verify` command.
 
@@ -23,6 +18,9 @@ A specification can be verified by using the :code:`vehicle verify` command.
     --dataset trainingLabels:my/project/mnist-trainingLabels.idx \
     --parameter epsilon:0.1 \
     --verifier Marabou \
+
+Command-line options
+--------------------
 
 The table below contains the full list of command line arguments available
 for the :code:`verify` command.
@@ -131,3 +129,13 @@ otherwise the check command will exit with an error.
 
 Supported backends
 ------------------
+
+Marabou
+~~~~~~~
+
+
+Limitations
+-----------
+
+Linearity
+~~~~~~~~~
