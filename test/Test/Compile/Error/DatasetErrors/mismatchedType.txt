@@ -1,1 +1,2 @@
-Error: Unable to parse the file 'test/Test/Compile/Error/DatasetErrors/dataset-rat-4.idx' provided for the dataset 'trainingDataset' (Line 2, Columns 9-24)
+Error: Error while reading dataset 'trainingDataset'. Expected dataset elements to be of type Int but found elements of type Rat (Line 2, Columns 9-24)
+Fix: correct the dataset type in the Vehicle specification.
