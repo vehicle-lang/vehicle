@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Vehicle.Compile.CoDeBruijnify
   ( ConvertCodebruijn(..)
   , toCoDBExpr
@@ -18,7 +16,7 @@ import Vehicle.Language.AST.DeBruijn as DB
 
 toCoDBExpr :: Expr DBBinding DBVar ann -> (Expr CoDBBinding CoDBVar ann, BoundVarMap)
 toCoDBExpr = cata $ \case
-  TypeF l                -> (Type l,          mempty)
+  TypeF     ann l        -> (Type ann l,      mempty)
   HoleF     ann n        -> (Hole     ann n,  mempty)
   MetaF     ann m        -> (Meta     ann m,  mempty)
   BuiltinF  ann op       -> (Builtin  ann op, mempty)
@@ -73,14 +71,14 @@ class ConvertCodebruijn t where
 
 instance ConvertCodebruijn Expr where
   fromCoDB expr = case recCoDB expr of
-    TypeC l          -> Type l
-    HoleC     ann n  -> Hole     ann n
-    MetaC     ann m  -> Meta     ann m
-    BuiltinC  ann op -> Builtin  ann op
-    LiteralC  ann l  -> Literal  ann l
+    TypeC    ann l  -> Type    ann l
+    HoleC    ann n  -> Hole    ann n
+    MetaC    ann m  -> Meta    ann m
+    BuiltinC ann op -> Builtin ann op
+    LiteralC ann l  -> Literal ann l
 
     LSeqC ann dict xs -> LSeq ann (fromCoDB dict) (fmap fromCoDB xs)
-    VarC ann v       -> Var ann v
+    VarC  ann v       -> Var ann v
 
     AnnC ann e t               -> Ann ann (fromCoDB e) (fromCoDB t)
     AppC ann fun args          -> App ann (fromCoDB fun) (fmap fromCoDB args)

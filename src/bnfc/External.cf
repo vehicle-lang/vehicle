@@ -69,6 +69,7 @@ position token TokLet {"let"};
 
 position token Name        (letter (letter | digit | '_')*) ;
 position token HoleToken   ({"?"} (letter | digit | '_')*);
+position token TypeToken   ({"Type"} digit+);
 
 position token Natural  (digit+);
 position token Rational (digit+ '.' digit+);
@@ -120,7 +121,7 @@ LitFalse. Lit ::= TokFalse;
 --   aren't used for `let` and `in`.
 
 -- Kinds.
-Type.    Expr15 ::= "Type" Integer;
+Type.    Expr15 ::= TypeToken;
 
 -- Core structure.
 Ann.     Expr   ::= Expr2 TokElemOf Expr1;

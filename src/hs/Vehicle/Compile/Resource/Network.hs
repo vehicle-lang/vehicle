@@ -65,7 +65,7 @@ instance Standardise Prog where
 standariseDecl :: MonadNetwork m => CheckedDecl -> m (Maybe CheckedDecl)
 standariseDecl d = case d of
   DefResource ann Network ident t -> do
-    entry <- analyseNetworkType (ann, TheUser) ident t
+    entry <- analyseNetworkType ann ident t
     -- Insert the network into the context
     modify (Map.insert (nameOf ident) entry)
     -- Remove the declaration.
@@ -79,8 +79,8 @@ standariseDecl d = case d of
 
 instance Standardise Expr where
   standardise = \case
-    Type l                -> return $ Type l
-    Meta p i              -> return $ Meta p i
+    Type     ann l        -> return $ Type ann l
+    Meta     ann i        -> return $ Meta ann i
     Hole     ann n        -> return $ Hole ann n
     Builtin  ann op       -> return $ Builtin ann op
     Var      ann v        -> return $ Var ann v

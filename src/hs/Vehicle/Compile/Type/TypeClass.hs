@@ -202,7 +202,7 @@ solveDefaultTypeClassConstraints constraints = do
   let constraintsByMeta = Map.mapMaybe id $ groupByMetas constraints
   newConstraints <- forM (Map.assocs constraintsByMeta) $ \(meta, (tc, ctx)) -> do
     logDebug $ "Using default for" <+> pretty meta <+> "=" <+> pretty tc
-    let ann = (provenanceOf ctx, TheMachine)
+    let ann = inserted $ provenanceOf ctx
     let solution = defaultSolution ann tc
     return $ UC ctx (Unify (Meta ann meta, solution))
 

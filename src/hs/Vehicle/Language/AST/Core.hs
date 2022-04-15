@@ -95,9 +95,6 @@ instance HasAnnotation (Binder binder var ann) ann where
 instance HasProvenance ann => HasProvenance (Binder binder var ann) where
   provenanceOf (Binder ann _ _ _) = provenanceOf ann
 
-instance HasOwner ann => HasOwner (Binder binder var ann) where
-  ownerOf (Binder ann _ _ _) = ownerOf ann
-
 instance HasVisibility (Binder binder var ann) where
   visibilityOf (Binder _ visibility _ _) = visibility
 
@@ -149,9 +146,6 @@ instance HasProvenance ann => HasProvenance (Arg binder var ann) where
   provenanceOf (Arg _ Implicit e) = expandProvenance (1, 1) (provenanceOf e)
   provenanceOf (Arg _ Instance e) = expandProvenance (2, 2) (provenanceOf e)
 
-instance HasOwner ann => HasOwner (Arg binder var ann) where
-  ownerOf (Arg ann _ _) = ownerOf ann
-
 argExpr :: Arg binder var ann -> Expr binder var ann
 argExpr (Arg _ _ e) = e
 
@@ -188,7 +182,9 @@ traverseExplicitArgExpr _ arg               = return arg
 data Expr binder var ann
 
   -- | The type of types. The type @Type l@ has type @Type (l+1)@.
-  = Type UniverseLevel
+  = Type
+    ann
+    UniverseLevel
 
   -- | User annotation
   | Ann
@@ -270,7 +266,7 @@ instance (NFData binder, NFData var, NFData ann) => NFData (Expr binder var ann)
 
 instance HasAnnotation (Expr binder var ann) ann where
   annotationOf = \case
-    Type     _         -> developerError "Should not be requesting an annotation from Type"
+    Type     ann _     -> ann
     PrimDict ann _     -> ann
     Hole     ann _     -> ann
     Meta     ann _     -> ann

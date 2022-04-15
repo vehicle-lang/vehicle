@@ -47,8 +47,8 @@ instance CapitaliseTypes CheckedDecl where
 
 instance CapitaliseTypes CheckedExpr where
   cap = cata $ \case
-    TypeF     l                     -> return $ Type l
-    HoleF     p n                   -> return $ Hole p n
+    TypeF     ann l                 -> return $ Type ann l
+    HoleF     ann n                 -> return $ Hole ann n
     MetaF     ann m                 -> return $ Meta ann m
     LiteralF  ann l                 -> return $ Literal ann l
     BuiltinF  ann op                -> return $ Builtin ann op

@@ -31,7 +31,7 @@ instance Default SimplifyOptions where
       }
 
 type MonadSimplify m = MonadReader SimplifyOptions m
-type WellFormedAnn ann = (HasOwner ann, Semigroup ann)
+type WellFormedAnn ann = (HasProvenance ann, Semigroup ann)
 
 class Simplify a where
 
@@ -89,7 +89,7 @@ simplifyReaderArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args
       SimplifyOptions{..} <- ask
 
       let removeArg =
-            (removeNonUserCode && ownerOf arg == TheMachine) ||
+            (removeNonUserCode && wasInsertedByCompiler arg) ||
             (visibilityOf arg == Implicit && removeImplicits) ||
             (visibilityOf arg == Instance && removeInstances)
 

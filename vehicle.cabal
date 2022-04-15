@@ -106,6 +106,7 @@ library
                       , Vehicle.Prelude.Token
                       , Vehicle.Prelude.Logging
                       , Vehicle.Prelude.Supply
+                      , Vehicle.Prelude.DeveloperError
 
                       , Vehicle.Language.AST.Builtin
                       , Vehicle.Language.AST.BuiltinPatterns

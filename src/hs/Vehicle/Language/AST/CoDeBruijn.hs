@@ -88,7 +88,7 @@ class ExtractPositionTrees t where
 
 instance ExtractPositionTrees Expr where
   extractPTs = cata $ \case
-    TypeF l          -> (Type    l,      mempty)
+    TypeF     ann l  -> (Type    ann l,  mempty)
     HoleF     ann n  -> (Hole    ann n,  mempty)
     MetaF     ann m  -> (Meta    ann m,  mempty)
     BuiltinF  ann op -> (Builtin ann op, mempty)
@@ -154,7 +154,7 @@ data BinderC ann
   deriving (Show)
 
 data ExprC ann
-  = TypeC     UniverseLevel
+  = TypeC     ann UniverseLevel
   | AnnC      ann (CoDBExpr ann) (CoDBExpr ann)
   | AppC      ann (CoDBExpr ann) (NonEmpty (CoDBArg ann))
   | PiC       ann (CoDBBinder ann) (CoDBExpr ann)
@@ -174,7 +174,7 @@ class RecCoDB a b where
 
 instance RecCoDB (CoDBExpr ann) (ExprC ann) where
   recCoDB (expr, bvm) = case (expr, unnodeBVM bvm) of
-    (Type l         , _) -> TypeC         l
+    (Type     ann l , _) -> TypeC     ann l
     (Hole     ann n , _) -> HoleC     ann n
     (Meta     ann m , _) -> MetaC     ann m
     (Builtin  ann op, _) -> BuiltinC  ann op

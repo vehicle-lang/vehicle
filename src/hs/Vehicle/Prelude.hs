@@ -15,21 +15,19 @@ module Vehicle.Prelude
   , oneHot
   , partialSort
   , capitaliseFirstLetter
-  , developerError
   , removeFileIfExists
   , fatalError
   , programOutput
   ) where
 
 import Control.Monad.IO.Class
+import Control.Exception (catch, throwIO)
 import Data.Range
-import Data.Text (Text, unpack)
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Graph
 import Data.Version (Version)
 import Numeric
-import Control.Exception (Exception, throw, catch, throwIO)
-import GHC.Stack (HasCallStack)
 import System.Directory (removeFile)
 import System.IO.Error (isDoesNotExistError)
 import System.IO
@@ -40,6 +38,7 @@ import Vehicle.Prelude.Provenance as X
 import Vehicle.Prelude.Prettyprinter as X
 import Vehicle.Prelude.Logging as X
 import Vehicle.Prelude.Supply as X
+import Vehicle.Prelude.DeveloperError as X
 
 import Paths_vehicle qualified as Cabal (version)
 
@@ -126,23 +125,6 @@ partialSort partialCompare xs = sortedNodes
 
 class Negatable a where
   neg :: a -> a
-
---------------------------------------------------------------------------------
--- Developer errors
-
-newtype DeveloperError = DeveloperError Text
-
-instance Show DeveloperError where
-  show (DeveloperError text) = unpack text
-
-instance Exception DeveloperError
-
-developerError :: HasCallStack => Doc a -> b
-developerError message = throw $ DeveloperError $ layoutAsText $
-  "Something went wrong internally. Please report the error" <+>
-  "shown below to `https://github.com/wenkokke/vehicle/issues`." <> line <>
-  "Error:" <+> message
-
 
 --------------------------------------------------------------------------------
 -- IO operations

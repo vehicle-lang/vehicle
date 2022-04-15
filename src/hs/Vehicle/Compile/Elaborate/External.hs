@@ -6,6 +6,7 @@ module Vehicle.Compile.Elaborate.External
   ) where
 
 import Control.Monad.Except (throwError)
+import Data.Text (unpack)
 import Data.Bitraversable (bitraverse)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty (groupBy1, head, toList)
@@ -38,7 +39,7 @@ elabExpr = elab
 -- * Provenance
 
 mkAnn :: IsToken a => a -> V.InputAnn
-mkAnn t = (tkProvenance t, V.TheUser)
+mkAnn = tkProvenance
 
 -- * Elaboration
 
@@ -102,7 +103,7 @@ instance Elab (NonEmpty B.Decl) V.InputDecl where
 
 instance Elab B.Expr V.InputExpr where
   elab = \case
-    B.Type l                  -> return $ V.Type (fromIntegral l)
+    B.Type t                  -> return $ V.Type (mkAnn t) (parseTypeLevel t)
     B.Var  n                  -> return $ V.Var  (mkAnn n) (tkSymbol n)
     B.Hole n                  -> return $ mkHole (tkProvenance n) (tkSymbol n)
     B.Literal l               -> elab l
@@ -176,7 +177,7 @@ elabResource :: MonadCompile m => V.ResourceType -> B.Name -> B.Expr -> m V.Inpu
 elabResource r n t = V.DefResource (tkProvenance n) r <$> elab n <*> elab t
 
 mkArg :: V.Visibility -> V.InputExpr -> V.InputArg
-mkArg v e = V.Arg (V.visProv v (provenanceOf e), V.TheUser) v e
+mkArg v e = V.Arg (V.visProv v (provenanceOf e)) v e
 
 instance Elab B.Name V.Identifier where
   elab n = return $ V.Identifier $ tkSymbol n
@@ -190,14 +191,14 @@ instance Elab B.Binder V.InputBinder where
   elab (B.InstanceBinderAnn n _tk typ) = mkBinder n V.Instance . Just <$> elab typ
 
 mkHole :: Provenance -> Symbol -> V.InputExpr
-mkHole p s = V.Hole (p, V.TheUser) ("_" <> s)
+mkHole p s = V.Hole p ("_" <> s)
 
 mkBinder :: B.Name -> V.Visibility -> Maybe V.InputExpr -> V.InputBinder
-mkBinder n v e = V.Binder (V.visProv v p, V.TheUser) v (Just (tkSymbol n)) t
+mkBinder n v e = V.Binder (V.visProv v p) v (Just (tkSymbol n)) t
   where
-    (p, t) = case e of
-      Nothing  -> (tkProvenance n, mkHole (tkProvenance n) (tkSymbol n))
-      Just t1  -> (fillInProvenance [tkProvenance n, provenanceOf t1], t1)
+  (p, t) = case e of
+    Nothing  -> (tkProvenance n, mkHole (tkProvenance n) (tkSymbol n))
+    Just t1  -> (fillInProvenance [tkProvenance n, provenanceOf t1], t1)
 
 instance Elab B.LetDecl (V.InputBinder, V.InputExpr) where
   elab (B.LDecl b e) = bitraverse elab elab (b,e)
@@ -209,29 +210,32 @@ instance Elab B.Lit V.InputExpr where
     B.LitNat   t -> return $ V.LitNat  (mkAnn t) (readNat (tkSymbol t))
     B.LitRat   t -> return $ V.LitRat  (mkAnn t) (readRat (tkSymbol t))
 
+parseTypeLevel :: B.TypeToken -> Int
+parseTypeLevel s = read (drop 4 (unpack (tkSymbol s)))
+
 op1 :: (MonadCompile m, HasProvenance a, IsToken token)
     => (V.InputAnn -> a -> b)
     -> token -> m a -> m b
 op1 mk t e = do
   ce <- e
   let p = fillInProvenance [tkProvenance t, provenanceOf ce]
-  return $ mk (p, V.TheUser) ce
+  return $ mk p ce
 
 op2 :: (MonadCompile m, HasProvenance a, HasProvenance b, IsToken token)
     => (V.InputAnn -> a -> b -> c)
     -> token -> m a -> m b -> m c
-    
+
 op2 mk t e1 e2 = do
   ce1 <- e1
   ce2 <- e2
   let p = fillInProvenance [tkProvenance t, provenanceOf ce1, provenanceOf ce2]
-  return $ mk (p, V.TheUser) ce1 ce2
+  return $ mk p ce1 ce2
 
 builtin :: (MonadCompile m, IsToken token) => V.Builtin -> token -> [B.Expr] -> m V.InputExpr
 builtin b t args = builtin' b t <$> traverse elab args
 
 builtin' :: IsToken token => V.Builtin -> token -> [V.InputExpr] -> V.InputExpr
-builtin' b t argExprs = V.normAppList (p', V.TheUser) (V.Builtin (p, V.TheUser) b) args
+builtin' b t argExprs = V.normAppList p' (V.Builtin p b) args
   where
     p    = tkProvenance t
     p'   = fillInProvenance (p : map provenanceOf args)
@@ -240,14 +244,14 @@ builtin' b t argExprs = V.normAppList (p', V.TheUser) (V.Builtin (p, V.TheUser) 
 elabFunInputType :: MonadCompile m => B.Expr -> m V.InputBinder
 elabFunInputType t = do
   t' <- elab t
-  return $ V.ExplicitBinder (provenanceOf t', V.TheUser) Nothing t'
+  return $ V.ExplicitBinder (provenanceOf t') Nothing t'
 
 elabApp :: MonadCompile m => B.Expr -> B.Arg -> m V.InputExpr
 elabApp fun arg = do
   fun' <- elab fun
   arg' <- elab arg
   let p = fillInProvenance [provenanceOf fun', provenanceOf arg']
-  return $ V.normAppList (p, V.TheUser) fun' [arg']
+  return $ V.normAppList p fun' [arg']
 
 elabBindersAndBody :: MonadCompile m => [B.Binder] -> B.Expr -> m ([V.InputBinder], V.InputExpr)
 elabBindersAndBody bs body = bitraverse (traverse elab) elab (bs, body)

@@ -75,8 +75,8 @@ instance SupplyNames Decl where
 
 instance SupplyNames Expr where
   supplyNames f e = case e of
-    Type     l            -> return (Type l)
-    Hole     p name       -> return (Hole p name)
+    Type     ann l        -> return (Type ann l)
+    Hole     ann name     -> return (Hole ann name)
     Builtin  ann op       -> return (Builtin ann op)
     Literal  ann l        -> return (Literal ann l)
     Var      ann v        -> return $ Var ann v

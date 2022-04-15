@@ -111,16 +111,16 @@ showScopeExit m = do
 
 instance Descope Expr where
   descope f e = showScopeExit $ case showScopeEntry e of
-    Type     l                     -> return (Type l)
-    Hole     p name                -> return (Hole p name)
-    Builtin  ann op                -> return (Builtin ann op)
-    Literal  ann l                 -> return (Literal ann l)
-    Var      ann v                 -> Var ann <$> f v
-    Ann      ann e1 t              -> Ann ann <$> descope f e1 <*> descope f t
-    App      ann fun args          -> App ann <$> descope f fun <*> traverse (descope f) args
-    LSeq     ann dict es           -> LSeq ann <$> descope f dict <*> traverse (descope f) es
-    PrimDict ann tc                -> PrimDict ann <$> descope f tc
-    Meta     ann i                 -> return $ Meta ann i
+    Type     ann l        -> return $ Type    ann l
+    Hole     ann name     -> return $ Hole    ann name
+    Builtin  ann op       -> return $ Builtin ann op
+    Literal  ann l        -> return $ Literal ann l
+    Meta     ann i        -> return $ Meta ann i
+    Var      ann v        -> Var ann <$> f v
+    Ann      ann e1 t     -> Ann ann <$> descope f e1 <*> descope f t
+    App      ann fun args -> App ann <$> descope f fun <*> traverse (descope f) args
+    LSeq     ann dict es  -> LSeq ann <$> descope f dict <*> traverse (descope f) es
+    PrimDict ann tc       -> PrimDict ann <$> descope f tc
 
     Let ann bound binder body -> do
       bound'      <- descope f bound

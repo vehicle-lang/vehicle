@@ -97,7 +97,7 @@ unfoldLet :: forall binder var ann. ann -> LetBindingsAndBody binder var ann -> 
 unfoldLet ann (binders, body) = foldr insertLet body binders
   where
     insertLet :: LetBinder binder var ann -> Expr binder var ann -> Expr binder var ann
-    insertLet (binder, bound) res = Let ann bound binder res
+    insertLet (binder, bound) = Let ann bound binder
 
 -- | Collapses consecutative let expressions into a list of let declarations
 foldLet :: Expr binder var ann -> LetBindingsAndBody binder var ann
@@ -116,7 +116,8 @@ unfoldDefFun :: HasProvenance ann
              -> [Binder binder var ann]
              -> Expr binder var ann
              -> Decl binder var ann
-unfoldDefFun ann ident t bs e = DefFunction (provenanceOf ann) ident t (unfoldLam ann (bs, e))
+unfoldDefFun ann ident t bs e =
+  DefFunction (provenanceOf ann) ident t (unfoldLam ann (bs, e))
 
 unfoldDefType :: HasProvenance ann
               => ann -> Identifier
@@ -124,10 +125,11 @@ unfoldDefType :: HasProvenance ann
               -> Expr binder var ann
               -> Decl binder var ann
 unfoldDefType ann ident bs e =
-  let t = foldr (Pi ann) Type0 bs in
+  let t = foldr (Pi ann) (Type ann 0) bs in
   unfoldDefFun ann ident t bs e
 
-foldDefFun :: Expr binder var ann -> Expr binder var ann -> Either
+foldDefFun :: Expr binder var ann -> Expr binder var ann ->
+              Either
                 (Expr binder var ann, ([Binder binder var ann], Expr binder var ann))
                 ([Binder binder var ann], Expr binder var ann)
 foldDefFun t e = if isTypeSynonym t
@@ -135,6 +137,6 @@ foldDefFun t e = if isTypeSynonym t
   else Left  (t, foldLam e)
   where
     isTypeSynonym :: Expr binder var ann -> Bool
-    isTypeSynonym Type0        = True
+    isTypeSynonym (Type _ _)   = True
     isTypeSynonym (Pi _ _ res) = isTypeSynonym res
     isTypeSynonym _            = False

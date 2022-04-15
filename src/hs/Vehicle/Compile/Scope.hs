@@ -85,15 +85,15 @@ instance ScopeCheck InputExpr UncheckedExpr where
   scope e = do
     logScopeEntry e
     result <- case e of
-      Type l                         -> return $ Type l
-      Meta p i                       -> return $ Meta p i
-      Hole     ann n                 -> return $ Hole ann n
-      Ann      ann ex t              -> Ann ann <$> scope ex <*> scope t
-      App      ann fun args          -> App ann <$> scope fun <*> traverse scope args
-      Builtin  ann op                -> return $ Builtin ann op
-      Var      ann v                 -> Var ann <$> getVar ann v
-      Literal  ann l                 -> return $ Literal ann l
-      LSeq     ann dict es           -> LSeq ann <$> scope dict <*> traverse scope es
+      Type     ann l        -> return $ Type ann l
+      Meta     ann i        -> return $ Meta ann i
+      Hole     ann n        -> return $ Hole ann n
+      Ann      ann ex t     -> Ann ann <$> scope ex <*> scope t
+      App      ann fun args -> App ann <$> scope fun <*> traverse scope args
+      Builtin  ann op       -> return $ Builtin ann op
+      Var      ann v        -> Var ann <$> getVar ann v
+      Literal  ann l        -> return $ Literal ann l
+      LSeq     ann dict es  -> LSeq ann <$> scope dict <*> traverse scope es
 
       Pi  ann binder res -> do
         bindVar binder $ \binder' -> Pi ann binder' <$> scope res

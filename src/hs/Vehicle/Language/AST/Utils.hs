@@ -13,15 +13,6 @@ import Vehicle.Language.AST.BuiltinPatterns
 import Vehicle.Language.AST.Name
 
 --------------------------------------------------------------------------------
--- Patterns
-
-pattern Type0 :: Expr binder var ann
-pattern Type0 = Type 0
-
-pattern Type1 :: Expr binder var ann
-pattern Type1 = Type 1
-
---------------------------------------------------------------------------------
 -- Utility functions
 
 isHole :: Expr binder var ann -> Bool
@@ -29,8 +20,8 @@ isHole (Hole _ _ ) = True
 isHole _           = False
 
 isType :: Expr binder var ann -> Bool
-isType (Type _) = True
-isType _        = False
+isType (Type _ _) = True
+isType _          = False
 
 isMeta :: Expr binder var ann -> Bool
 isMeta (Meta _ _)           = True
@@ -43,7 +34,7 @@ isProperty _                              = False
 
 freeNames :: Expr binder DBVar ann -> [Identifier]
 freeNames = cata $ \case
-  TypeF     _                   -> []
+  TypeF     _ _                 -> []
   HoleF     _   _               -> []
   PrimDictF _ _                 -> []
   MetaF     _ _                 -> []

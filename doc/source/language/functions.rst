@@ -14,4 +14,4 @@ Function application is implicit by juxtaposition, i.e. `f x` is the function
 Lambdas
 -------
 
-Anonymous lambda functions can be written using the `\` symbol.
+Anonymous lambda functions can be written using the symbol.

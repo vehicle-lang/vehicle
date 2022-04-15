@@ -112,7 +112,7 @@ instance Delaborate (V.Decl Symbol Symbol) [B.Decl] where
 
 instance Delaborate (V.Expr Symbol Symbol) B.Expr where
   delabM expr = case expr of
-    V.Type l        -> return $ B.Type (fromIntegral l)
+    V.Type _ l      -> return $ B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
     V.Var _ n       -> return $ B.Var  (delabSymbol n)
     V.Hole _ n      -> return $ B.Hole (mkToken B.HoleToken n)
     V.Literal _ l   -> return $ delabLiteral l

@@ -89,11 +89,11 @@ instance MetaSubstitutable CheckedBinder where
 
 instance MetaSubstitutable CheckedExpr where
   substM = \case
-    Type l                    -> return (Type l)
-    Hole p name               -> return (Hole p name)
-    Builtin  ann op           -> return (Builtin ann op)
-    Literal  ann l            -> return (Literal ann l)
-    Var      ann v            -> return (Var     ann v)
+    Type     ann l            -> return $ Type    ann l
+    Hole     ann name         -> return $ Hole    ann name
+    Builtin  ann op           -> return $ Builtin ann op
+    Literal  ann l            -> return $ Literal ann l
+    Var      ann v            -> return $ Var     ann v
     LSeq     ann dict es      -> LSeq     ann <$> substM dict   <*> traverse substM es
     Ann      ann term typ     -> Ann      ann <$> substM term   <*> substM typ
     Pi       ann binder res   -> Pi       ann <$> substM binder <*> local liftSubstitution (substM res)
@@ -203,7 +203,7 @@ freshMetaWith :: (MonadState MetaCtx m, MonadLogger m)
               -> Provenance
               -> m (Meta, CheckedExpr)
 freshMetaWith boundCtx p = do
-  let ann = (p, TheMachine)
+  let ann = inserted p
 
   -- Create a fresh name
   metaName <- freshMetaName

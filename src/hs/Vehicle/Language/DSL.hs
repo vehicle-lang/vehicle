@@ -88,13 +88,13 @@ piType :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
 piType t1 t2 = t1 `tMax` t2
 
 universeLevel :: CheckedExpr -> UniverseLevel
-universeLevel (Type l)   = l
+universeLevel (Type _ l) = l
 universeLevel (Meta _ _) = 0 -- This is probably going to bite us, apologies.
 universeLevel t          = developerError $
   "Expected argument of type Type. Found" <+> prettyVerbose t <> "."
 
 tMax :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
-tMax t1 t2  = Type (universeLevel t1 `max` universeLevel t2)
+tMax t1 t2  = if universeLevel t1 > universeLevel t2 then t1 else t2
 
 con :: Builtin -> DSLExpr
 con b = DSL $ \ann _ -> Builtin ann b
@@ -103,7 +103,7 @@ con b = DSL $ \ann _ -> Builtin ann b
 -- Types
 
 type0 :: DSLExpr
-type0 = DSL $ const $ const Type0
+type0 = DSL $ \ann _ -> Type ann 0
 
 tBool, tProp, tNat, tInt, tReal :: DSLExpr
 tBool = con (BooleanType Bool)

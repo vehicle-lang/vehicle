@@ -77,8 +77,8 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
     -- Rigid-rigid cases --
     -----------------------
 
-    (Type l1, [])   :~: (Type l2, []) -> do
-      solveEq constraint l1  l2;
+    (Type _ l1, [])   :~: (Type _ l2, []) -> do
+      solveEq constraint l1 l2
       return Progress
         { newConstraints = mempty
         , solvedMetas    = mempty

@@ -124,7 +124,7 @@ compileVars vars = vsep (map compileVar vars)
 
 compileAssertion :: MonadVNNLibProp m => OutputExpr -> m (Doc b)
 compileAssertion = \case
-  Type _         -> typeError          currentPass "Type"
+  Type _ _       -> typeError          currentPass "Type"
   Pi   _ann _ _  -> typeError          currentPass "Pi"
   Hole _p _      -> resolutionError    currentPass "Hole"
   Meta _p _      -> resolutionError    currentPass "Meta"

@@ -2,9 +2,13 @@
 module Vehicle.Prelude.Provenance
   ( Provenance
   , tkProvenance
+  , datasetProvenance
+  , parameterProvenance
+  , inserted
   , HasProvenance(..)
   , expandProvenance
   , fillInProvenance
+  , wasInsertedByCompiler
   ) where
 
 import GHC.Generics (Generic)
@@ -16,6 +20,7 @@ import Data.List (sort)
 import Prettyprinter
 
 import Vehicle.Prelude.Token
+import Vehicle.Prelude.DeveloperError
 
 --------------------------------------------------------------------------------
 -- Position
@@ -119,11 +124,58 @@ expandRange (l , r) [IRange start end] = [IRange (alterColumn (\x -> x - l) star
 expandRange _       rs                 = rs
 
 --------------------------------------------------------------------------------
+-- Owner
+
+data Owner
+  = TheMachine
+  | TheUser
+  deriving (Show, Eq, Ord, Generic)
+
+instance Semigroup Owner where
+  TheUser    <> _ = TheUser
+  TheMachine <> r = r
+
+instance Monoid Owner where
+  mempty = TheMachine
+
+--------------------------------------------------------------------------------
+-- Origin
+
+-- |The origin of a piece of code
+data Origin
+  = FromSource [Range Position]
+  -- ^ set of locations in the source file
+  | FromParameter Symbol
+  -- ^ name of the parameter
+  | FromDataset Symbol
+  deriving (Show, Eq, Ord, Generic)
+
+instance Semigroup Origin where
+  FromSource r1     <> FromSource r2    = FromSource (joinRanges r1 r2)
+  p@FromSource{}    <> _                = p
+  _                 <> p@FromSource{}   = p
+  p@FromDataset{}   <> _                = p
+  _                 <> p@FromDataset{}  = p
+  p@FromParameter{} <> _                = p
+
+instance Monoid Origin where
+  mempty = FromSource mempty
+
+instance Pretty Origin where
+  pretty (FromSource ranges) = case ranges of
+    []  -> "no source location"
+    [r] -> pretty r
+    rs  -> concatWith (\u v -> u <> "," <> v) (map pretty rs)
+  pretty (FromParameter name) = "parameter" <> squotes (pretty name)
+  pretty (FromDataset name) = "dataset" <> squotes (pretty name)
+
+--------------------------------------------------------------------------------
 -- Provenance
 
--- |A set of locations in the source file
-newtype Provenance = Provenance [Range Position]
-  deriving (Show, Ord, Generic)
+data Provenance = Provenance
+  { origin :: Origin
+  , owner  :: Owner
+  } deriving (Show)
 
 instance NFData Provenance where
   rnf _ = ()
@@ -133,29 +185,44 @@ instance Eq Provenance where
 
 -- |Get the provenance for a single token.
 tkProvenance :: IsToken a => a -> Provenance
-tkProvenance tk = Provenance [start +=+ end]
+tkProvenance tk = Provenance (FromSource [start +=+ end]) TheUser
   where
     start = tkPosition tk
     end   = Position (posLine start) (posColumn start + tkLength tk)
 
+datasetProvenance :: Symbol -> Provenance
+datasetProvenance name = Provenance (FromDataset name) TheUser
+
+parameterProvenance :: Symbol -> Provenance
+parameterProvenance name = Provenance (FromParameter name) TheUser
+
+-- | Marks the provenance as inserted by the compiler.
+inserted :: Provenance -> Provenance
+inserted (Provenance origin _owner) = Provenance origin TheMachine
+
 expandProvenance :: (Int, Int) -> Provenance -> Provenance
-expandProvenance w (Provenance rs) = Provenance (expandRange w rs)
+expandProvenance w (Provenance (FromSource rs) o) = Provenance (FromSource (expandRange w rs)) o
+expandProvenance _ p                              = p
 
 fillInProvenance :: [Provenance] -> Provenance
-fillInProvenance ps = Provenance (maybeToList (fillInRanges (concatMap (\(Provenance rs) -> rs) ps)))
+fillInProvenance ps = Provenance (FromSource rs) TheUser
+  where
+    getRanges :: Provenance -> [Range Position]
+    getRanges (Provenance (FromSource r) _) = r
+    getRanges _                             = developerError
+      "should not be filling in provenance on non-source file code"
 
-instance Semigroup Provenance where
-  Provenance r1 <> Provenance r2 = Provenance $ joinRanges r1 r2
-
-instance Monoid Provenance where
-  mempty = Provenance []
+    rs = maybeToList $ fillInRanges $ concatMap getRanges ps
 
 instance Pretty Provenance where
-  -- TODO probably need to do something more elegant here.
-  pretty (Provenance ranges) = case ranges of
-    []  -> "[no source location]"
-    [r] -> pretty r
-    rs  -> concatWith (\u v -> u <> "," <> v) (map pretty rs)
+  pretty (Provenance origin _) = pretty origin
+
+instance Semigroup Provenance where
+  Provenance origin1 owner1 <> Provenance origin2 owner2 =
+    Provenance (origin1 <> origin2) (owner1 <> owner2)
+
+instance Monoid Provenance where
+  mempty = Provenance mempty mempty
 
 --------------------------------------------------------------------------------
 -- Type-classes
@@ -175,3 +242,6 @@ instance HasProvenance a => HasProvenance (NonEmpty a) where
 
 instance HasProvenance a => HasProvenance (a, b) where
   provenanceOf = provenanceOf . fst
+
+wasInsertedByCompiler :: HasProvenance a => a -> Bool
+wasInsertedByCompiler x = owner (provenanceOf x) == TheMachine

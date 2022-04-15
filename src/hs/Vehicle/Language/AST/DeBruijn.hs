@@ -88,9 +88,9 @@ instance DeBruijnFunctor ann (Expr DBBinding DBVar) where
       altExpr      = alter    body var
       underB       = underBinder body
     in \case
-      Type l                    -> return (Type l)
-      Meta p m                  -> return (Meta p m)
-      Hole p name               -> return (Hole p name)
+      Type     ann l            -> return (Type ann l)
+      Meta     ann m            -> return (Meta ann m)
+      Hole     ann name         -> return (Hole ann name)
       Builtin  ann op           -> return (Builtin ann op)
       Literal  ann l            -> return (Literal ann l)
       PrimDict ann e            -> return (PrimDict ann e)

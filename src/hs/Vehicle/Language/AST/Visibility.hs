@@ -35,30 +35,3 @@ class HasVisibility a where
 
 isExplicit :: HasVisibility a => a -> Bool
 isExplicit x = visibilityOf x == Explicit
-
---------------------------------------------------------------------------------
--- Ownership
-
-data Owner
-  = TheUser
-  | TheMachine
-  deriving (Eq, Show, Ord, Generic)
-
-instance NFData Owner
-
-class HasOwner a where
-  ownerOf :: a -> Owner
-
-instance Semigroup Owner where
-  TheUser    <> _          = TheUser
-  _          <> TheUser    = TheUser
-  TheMachine <> TheMachine = TheMachine
-
-instance Monoid Owner where
-  mempty = TheMachine
-
-instance HasOwner Owner where
-  ownerOf = id
-
-instance HasOwner b => HasOwner (a,b) where
-  ownerOf = ownerOf . snd

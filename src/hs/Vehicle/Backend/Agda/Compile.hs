@@ -292,8 +292,8 @@ compileExpr expr = do
     Meta{}     -> developerError "Meta-variables should have been removed during type-checking"
     PrimDict{} -> developerError "Primitive dictionaries should never be compiled"
 
-    Type l      -> return $ compileType l
-    Var _ann n  -> return $ annotateConstant [] (pretty n)
+    Type _ l   -> return $ compileType l
+    Var  _ n   -> return $ annotateConstant [] (pretty n)
 
     Pi ann binder result -> case foldPi ann binder result of
       Left (binders, body)  -> compileTypeLevelQuantifier All binders body
@@ -576,8 +576,8 @@ compileNumOrder order nt bt = annotateInfixOp2 dependencies 4 opBraces qualifier
 compileAt :: MonadAgdaCompile m => CheckedAnn -> [OutputExpr] -> m Code
 compileAt _ [tensorExpr, indexExpr] =
   annotateApp [] <$> compileExpr tensorExpr <*> traverse compileExpr [indexExpr]
-compileAt _ args =
-  unexpectedArgsError (Builtin emptyUserAnn At) args ["tensor", "index"]
+compileAt ann args =
+  unexpectedArgsError (Builtin ann At) args ["tensor", "index"]
 
 compileEquality :: MonadAgdaCompile m => OutputExpr -> BooleanType -> [Code] -> m Code
 compileEquality _tElem Prop args = return $ annotateInfixOp2 [PropEquality] 4 id Nothing "≡" args

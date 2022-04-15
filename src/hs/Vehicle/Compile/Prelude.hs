@@ -34,7 +34,7 @@ data CompileOptions = CompileOptions
 
 type InputBinding = Maybe NamedBinding
 type InputVar     = NamedVar
-type InputAnn     = (Provenance, Owner)
+type InputAnn     = Provenance
 
 type InputArg       = Arg    InputBinding InputVar InputAnn
 type InputBinder    = Binder InputBinding InputVar InputAnn
@@ -46,7 +46,7 @@ type InputProg      = Prog   InputBinding InputVar InputAnn
 
 type UncheckedBinding = DBBinding
 type UncheckedVar     = DBVar
-type UncheckedAnn     = (Provenance, Owner)
+type UncheckedAnn     = Provenance
 
 type UncheckedBinder = DBBinder UncheckedAnn
 type UncheckedArg    = DBArg    UncheckedAnn
@@ -58,7 +58,7 @@ type UncheckedProg   = DBProg   UncheckedAnn
 
 type CheckedBinding = DBBinding
 type CheckedVar     = DBVar
-type CheckedAnn     = (Provenance, Owner)
+type CheckedAnn     = Provenance
 
 type CheckedBinder = DBBinder  CheckedAnn
 type CheckedArg    = DBArg     CheckedAnn
@@ -70,7 +70,7 @@ type CheckedProg   = DBProg    CheckedAnn
 
 type OutputBinding = NamedBinding
 type OutputVar     = NamedVar
-type OutputAnn     = (Provenance, Owner)
+type OutputAnn     = Provenance
 
 type OutputBinder = Binder OutputBinding OutputVar OutputAnn
 type OutputArg    = Arg    OutputBinding OutputVar OutputAnn
@@ -86,15 +86,6 @@ type CheckedCoDBBinder = CoDBBinder CheckedAnn
 -- Currently used mainly for pretty printing position trees.
 data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
   deriving Show
-
---------------------------------------------------------------------------------
--- Annotations
-
-emptyUserAnn :: InputAnn
-emptyUserAnn = (mempty, TheUser)
-
-emptyMachineAnn :: InputAnn
-emptyMachineAnn = (mempty, TheMachine)
 
 --------------------------------------------------------------------------------
 -- Contexts

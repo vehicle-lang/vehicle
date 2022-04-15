@@ -112,9 +112,9 @@ assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
 -- levels. As type definitions will always have an annotated Type 0 inserted
 -- by delaboration, we can match on it here. Anything else will be unified
 -- with type 0.
-assertIsType _ (Type _) = return ()
+assertIsType _ (Type _ _) = return ()
 assertIsType p t        = do
-  _ <- unify p t (Type 0)
+  _ <- unify p t (Type (inserted (provenanceOf t)) 0)
   return ()
 
 removeBinderName :: CheckedBinder -> CheckedBinder
@@ -173,7 +173,7 @@ inferArgs p (Pi _ binder resultType) args
   | visibilityOf binder /= Explicit = do
     logDebug ("insert-arg" <+> pretty (visibilityOf binder) <+> prettyVerbose (typeOf binder))
     let binderVis = visibilityOf binder
-    let ann = (provenanceOf binder, TheMachine)
+    let ann = inserted $ provenanceOf binder
 
     -- Generate a new meta-variable for the argument
     (meta, metaExpr) <- freshMeta p
@@ -197,9 +197,10 @@ inferArgs _p functionType [] = return (functionType, [])
 
 inferArgs p functionType args = do
   ctx <- getBoundCtx
+  let ann = inserted p
   let mkRes = [Endo $ \tRes -> pi (visibilityOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
               | (i, arg) <- zip [0::Int ..] args]
-  let expectedType = fromDSL (p, TheMachine) (appEndo (mconcat mkRes) (tHole "res"))
+  let expectedType = fromDSL ann (appEndo (mconcat mkRes) (tHole "res"))
   throwError $ TypeMismatch p ctx functionType expectedType
 
 -- |Takes a function and its arguments, inserts any needed implicits
@@ -226,11 +227,11 @@ checkExpr expectedType expr = do
   showCheckEntry expectedType expr
   res <- case (expectedType, expr) of
     -- If the type is a meta, then we're forced to switch to infer.
-    (Meta _ _, _) -> viaInfer emptyMachineAnn expectedType expr
+    (Meta ann _, _) -> viaInfer ann expectedType expr
 
     (Pi _ piBinder resultType, Lam ann lamBinder body)
       | visibilityOf piBinder == visibilityOf lamBinder -> do
-        checkedLamBinderType <- checkExpr Type0 (typeOf lamBinder)
+        checkedLamBinderType <- checkExpr (Type (inserted ann) 0) (typeOf lamBinder)
 
         -- Unify the result with the type of the pi binder.
         _ <- unify (provenanceOf ann) (typeOf piBinder) checkedLamBinderType
@@ -244,7 +245,7 @@ checkExpr expectedType expr = do
         return $ Lam ann checkedLamBinder checkedBody
 
     (Pi _ binder resultType, e) -> do
-      let ann = (provenanceOf binder, TheMachine)
+      let ann = inserted $ provenanceOf binder
 
       -- Add the binder to the context
       checkedExpr <- addToBoundCtx (nameOf binder) (typeOf binder) Nothing $
@@ -268,17 +269,17 @@ checkExpr expectedType expr = do
       (_, meta) <- freshMeta (provenanceOf ann)
       return meta
 
-    (_, Type _)             -> viaInfer emptyMachineAnn  expectedType expr
-    (_, Meta     ann _)     -> viaInfer ann  expectedType expr
-    (_, App      ann _ _)   -> viaInfer ann              expectedType expr
-    (_, Pi       ann _ _)   -> viaInfer ann              expectedType expr
-    (_, Builtin  ann _)     -> viaInfer ann              expectedType expr
-    (_, Var      ann _)     -> viaInfer ann              expectedType expr
-    (_, Let      ann _ _ _) -> viaInfer ann              expectedType expr
-    (_, Literal  ann _)     -> viaInfer ann              expectedType expr
-    (_, LSeq     ann _ _)   -> viaInfer ann              expectedType expr
-    (_, Ann      ann _ _)   -> viaInfer ann              expectedType expr
-    (_, PrimDict ann _)     -> viaInfer ann              expectedType expr
+    (_, Type     ann _)     -> viaInfer ann expectedType expr
+    (_, Meta     ann _)     -> viaInfer ann expectedType expr
+    (_, App      ann _ _)   -> viaInfer ann expectedType expr
+    (_, Pi       ann _ _)   -> viaInfer ann expectedType expr
+    (_, Builtin  ann _)     -> viaInfer ann expectedType expr
+    (_, Var      ann _)     -> viaInfer ann expectedType expr
+    (_, Let      ann _ _ _) -> viaInfer ann expectedType expr
+    (_, Literal  ann _)     -> viaInfer ann expectedType expr
+    (_, LSeq     ann _ _)   -> viaInfer ann expectedType expr
+    (_, Ann      ann _ _)   -> viaInfer ann expectedType expr
+    (_, PrimDict ann _)     -> viaInfer ann expectedType expr
 
   showCheckExit res
   return res
@@ -291,8 +292,8 @@ inferExpr :: TCM m
 inferExpr e = do
   showInferEntry e
   res <- case e of
-    Type l ->
-      return (Type l , Type (l + 1))
+    Type ann l ->
+      return (e , Type (inserted ann) (l + 1))
 
     Meta _ m -> developerError $ "Trying to infer the type of a meta-variable" <+> pretty m
 
@@ -305,7 +306,7 @@ inferExpr e = do
 
     Ann ann expr exprType -> do
       (checkedExprType, exprTypeType) <- inferExpr exprType
-      _ <- unify (provenanceOf ann) exprTypeType Type0
+      _ <- unify (provenanceOf ann) exprTypeType (Type (inserted ann) 0)
       checkedExpr <- checkExpr checkedExprType expr
       return (Ann ann checkedExpr checkedExprType , checkedExprType)
 
@@ -361,10 +362,10 @@ inferExpr e = do
           "Declaration'" <+> pretty ident <+> "'not found when" <+>
           "looking up variable in context" <+> pretty (Map.keys ctx) <+> "at" <+> pretty (provenanceOf ann)
 
-    Let p boundExpr binder body -> do
+    Let ann boundExpr binder body -> do
       -- Check the type of the bound expression against the provided type
       (typeOfBoundExpr, typeOfBoundExprType) <- inferExpr (typeOf binder)
-      _ <- unify (provenanceOf p) typeOfBoundExprType Type0
+      _ <- unify ann typeOfBoundExprType (Type (inserted ann) 0)
       checkedBoundExpr <- checkExpr typeOfBoundExpr boundExpr
 
       let checkedBinder = replaceBinderType typeOfBoundExpr binder
@@ -383,20 +384,22 @@ inferExpr e = do
             logDebug $ "normalising" <+> prettyVerbose typeOfBody <+> "to" <+> prettyVerbose normTypeOfBody
           return normTypeOfBody
 
-      return (Let p checkedBoundExpr checkedBinder checkedBody , normTypeOfBody)
+      return (Let ann checkedBoundExpr checkedBinder checkedBody , normTypeOfBody)
 
-    Lam p binder body -> do
+    Lam ann binder body -> do
       -- Infer the type of the bound variable from the binder
       (typeOfBinder, typeOfBinderType) <- inferExpr (typeOf binder)
-      _ <- unify (provenanceOf p) typeOfBinderType Type0
+
+      let insertedAnn = inserted ann
+      _ <- unify ann typeOfBinderType (Type insertedAnn 0)
       let checkedBinder = replaceBinderType typeOfBinder binder
 
       -- Update the context with the bound variable
       (checkedBody , typeOfBody) <-
         addToBoundCtx (nameOf binder) typeOfBinder Nothing $ inferExpr body
 
-      let t' = Pi p (removeBinderName checkedBinder) typeOfBody
-      return (Lam p checkedBinder checkedBody , t')
+      let t' = Pi insertedAnn (removeBinderName checkedBinder) typeOfBody
+      return (Lam ann checkedBinder checkedBody , t')
 
     Builtin p op -> do
       return (Builtin p op, typeOfBuiltin p op)
@@ -430,7 +433,7 @@ inferExpr e = do
 
     PrimDict ann typeClass -> do
       (checkedTypeClass, typeClassType) <- inferExpr typeClass
-      _ <- unify (provenanceOf ann) typeClassType Type0
+      _ <- unify (provenanceOf ann) typeClassType (Type (inserted ann) 0)
       return (PrimDict ann checkedTypeClass, checkedTypeClass)
 
   showInferExit res

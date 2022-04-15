@@ -65,8 +65,8 @@ parseIDX idxData idxDims tList@(ListType _ tElem) = do
       let parser = parseTensor tInnerElem dims innerElemParser
       traverse parser elems
 
-  (_, prov) <- ask
-  return $ SeqExpr (prov, TheMachine) tElem tList parsedElems
+  ann <- elementAnn
+  return $ SeqExpr ann tElem tList parsedElems
 
 parseIDX idxData idxDims tTensor@TensorType{} = do
   (tInnerElem, dims) <- getTensorTypeArgs tTensor
@@ -106,19 +106,25 @@ checkDimsMatch userDims idxDims
     (ident, prov) <- ask
     throwError $ DatasetDimensionMismatch ident prov userDims (Vector.toList idxDims)
 
+elementAnn :: MonadDataset m => m CheckedAnn
+elementAnn = do
+  (ident, _) <- ask
+  return $ datasetProvenance (nameOf ident)
+
 doubleElemParser :: MonadDataset m => CheckedExpr -> m (Double -> m CheckedExpr)
 doubleElemParser tElem = do
   (ident, prov) <- ask
-  let ann = (prov, TheMachine)
+  ann <- elementAnn
   case tElem of
-    RatType _ -> return (\v ->
-      return $ RatLiteralExpr ann Rat (toRational v))
+    RatType _ -> do
+      return (\v ->
+        return $ RatLiteralExpr ann Rat (toRational v))
     _         -> throwError $ DatasetTypeMismatch ident prov tElem Rat
 
 intElemParser :: MonadDataset m => CheckedExpr -> m (Int -> m CheckedExpr)
 intElemParser tElem = do
   (ident, prov) <- ask
-  let ann = (prov, TheMachine)
+  ann <- elementAnn
   case tElem of
     IntType _   -> return (\v ->
       return $ IntLiteralExpr ann Int v)
@@ -143,7 +149,7 @@ parseTensor _     []              elemParser contents =
 parseTensor tElem ds@(dim : dims) elemParser contents = do
   let rows = partitionData dim dims contents
   rowExprs <- traverse (parseTensor tElem dims elemParser) rows
-  ann <- asks ((, TheMachine) . snd)
+  ann <- elementAnn
   return $ SeqExpr ann tElem (mkTensorType ann tElem ds) rowExprs
 
 -- | Split data by the first dimension of the C-Array.
