@@ -38,13 +38,14 @@ instance Expand InputProg where
 
 instance Expand InputDecl where
   expand (DefResource p Parameter ident (t :: InputExpr)) = do
-    maybeValue <- asks (Map.lookup (nameOf ident))
+    let name = nameOf ident
+    maybeValue <- asks (Map.lookup name)
     body <- case maybeValue of
       Nothing    -> throwError $ ResourceNotProvided ident p Parameter
       Just value -> case parseExternalExpr value of
         Left  _ -> throwError $ UnableToParseResource ident p Parameter (unpack value)
         Right e -> do
-          v <- elabExpr e
+          v <- fmap (const (parameterProvenance name)) <$> elabExpr e
           logDebug $ "inserting" <+> pretty ident <+> "=" <+> pretty value
           return v
 

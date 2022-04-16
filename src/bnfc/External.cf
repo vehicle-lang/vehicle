@@ -63,7 +63,6 @@ position token TokTCRatOps    {"HasRatOperations"};
 position token TokTCNatLits   {"HasNatLiteralsUpTo"};
 position token TokTCIntLits   {"HasIntLiterals"};
 position token TokTCRatLits   {"HasRatLiterals"};
-position token TokTCReal      {"IsReal"};
 
 position token TokLet {"let"};
 
@@ -128,25 +127,20 @@ Ann.     Expr   ::= Expr2 TokElemOf Expr1;
 ForallT. Expr1  ::= TokForallT [Binder] TokDot Expr1;
 Let.     Expr2  ::= TokLet [LetDecl] "in" Expr2;
 Lam.     Expr3  ::= TokLambda [Binder] TokArrow Expr3;
-App.     Expr13 ::= Expr13 Arg;
 Fun.     Expr11 ::= Expr13 TokArrow Expr11;
+App.     Expr13 ::= Expr13 Arg;
 Var.     Expr15 ::= Name;
 Literal. Expr15 ::= Lit;
 Hole.    Expr15 ::= HoleToken;
 
--- Primitive types.
-List.    Expr14 ::= TokList Expr15;
-Tensor.  Expr14 ::= TokTensor Expr15 Expr15;
-Fin.     Expr14 ::= TokFin Expr15;
-Bool.    Expr15 ::= TokBool;
-Prop.    Expr15 ::= TokProp;
-Real.    Expr15 ::= TokReal;
-Rat.     Expr15 ::= TokRat;
-Int.     Expr15 ::= TokInt;
-Nat.     Expr15 ::= TokNat;
+-- Quantification
+Forall.    Expr3 ::= TokForall [Binder] TokDot Expr4;
+Exists.    Expr3 ::= TokExists [Binder] TokDot Expr4;
+ForallIn.  Expr3 ::= TokForall [Binder] "in" Expr4 TokDot Expr4;
+ExistsIn.  Expr3 ::= TokExists [Binder] "in" Expr4 TokDot Expr4;
 
 -- Boolean expressions.
-If.      Expr2  ::= TokIf Expr3 TokThen Expr3 TokElse Expr3;
+If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
 Impl.    Expr5  ::= Expr6 TokImpl Expr5;
 And.     Expr6  ::= Expr7 TokAnd Expr6;
 Or.      Expr7  ::= Expr8 TokOr Expr7;
@@ -172,11 +166,16 @@ At.      Expr12 ::= Expr12 TokAt Expr13;
 Map.     Expr13 ::= TokMap Expr15 Expr15;
 Fold.    Expr13 ::= TokFold Expr15 Expr15 Expr15;
 
--- Quantification
-Forall.    Expr4 ::= TokForall [Binder] TokDot Expr5;
-Exists.    Expr4 ::= TokExists [Binder] TokDot Expr5;
-ForallIn.  Expr4 ::= TokForall [Binder] "in" Expr5 TokDot Expr5;
-ExistsIn.  Expr4 ::= TokExists [Binder] "in" Expr5 TokDot Expr5;
+-- Primitive types.
+List.    Expr14 ::= TokList Expr15;
+Tensor.  Expr14 ::= TokTensor Expr15 Expr15;
+Fin.     Expr14 ::= TokFin Expr15;
+Bool.    Expr15 ::= TokBool;
+Prop.    Expr15 ::= TokProp;
+Real.    Expr15 ::= TokReal;
+Rat.     Expr15 ::= TokRat;
+Int.     Expr15 ::= TokInt;
+Nat.     Expr15 ::= TokNat;
 
 -- Type classes
 TCEq.      Expr15 ::= TokTCEq        Expr15 Expr15;
