@@ -74,7 +74,7 @@ instance Elab B.Arg V.InputArg where
     B.InstanceArg e -> mkArg Instance <$> elab e
     where
       mkArg :: Visibility -> V.InputExpr -> V.InputArg
-      mkArg v e = V.Arg (visProv v (provenanceOf e)) v e
+      mkArg v e = V.Arg (expandByArgVisibility v (provenanceOf e)) v e
 
 instance Elab B.Lit Literal where
   elab = \case

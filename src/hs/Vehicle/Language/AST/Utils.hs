@@ -89,3 +89,17 @@ mkNameWithIndices n indices = mconcat (n : [pack (show index) | index <- indices
 
 removeAnnotations :: Functor (t binder var) => t binder var ann -> t binder var ()
 removeAnnotations = void
+
+mkHole :: ann -> Symbol -> Expr binder var ann
+mkHole ann name = Hole ann ("_" <> name)
+
+mkDoubleExpr :: ann -> Double -> Expr binder var ann
+mkDoubleExpr ann v = LitRat ann (toRational v)
+
+mkIntExpr :: ann -> Int -> Expr binder var ann
+mkIntExpr ann v
+  | v >= 0    = LitNat ann v
+  | otherwise = LitInt ann v
+
+mkSeqExpr :: ann -> [Expr binder var ann] -> Expr binder var ann
+mkSeqExpr ann = LSeq ann (mkHole ann "seqTC")

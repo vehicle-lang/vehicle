@@ -1,2 +1,2 @@
-Error: 'List Nat' is not a valid type for the elements of the dataset 'trainingDataset'. (Line 1, Columns 9-24)
-Fix: change the type to one of [Fin, Nat, Int, Rat].
+Error: Type error: Could not satisfy 'HasNatLiteralsUpTo 2 (List Nat)' (in dataset 'trainingDataset')
+Fix: check your types

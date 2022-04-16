@@ -23,11 +23,6 @@ instance Pretty Visibility where
 
 instance Hashable Visibility
 
-visProv :: Visibility -> Provenance -> Provenance
-visProv Explicit = id
-visProv Implicit = expandProvenance (1,1)
-visProv Instance = expandProvenance (2,2)
-
 -- | Type class for types which have provenance information
 
 class HasVisibility a where

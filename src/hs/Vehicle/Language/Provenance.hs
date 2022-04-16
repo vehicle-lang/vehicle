@@ -1,12 +1,12 @@
 
-module Vehicle.Prelude.Provenance
+module Vehicle.Language.Provenance
   ( Provenance
   , tkProvenance
   , datasetProvenance
   , parameterProvenance
   , inserted
   , HasProvenance(..)
-  , expandProvenance
+  , expandByArgVisibility
   , fillInProvenance
   , wasInsertedByCompiler
   ) where
@@ -17,10 +17,9 @@ import Data.Range hiding (joinRanges)
 import Data.Maybe (maybeToList)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List (sort)
-import Prettyprinter
 
-import Vehicle.Prelude.Token
-import Vehicle.Prelude.DeveloperError
+import Vehicle.Prelude
+import Vehicle.Language.AST hiding (Bound)
 
 --------------------------------------------------------------------------------
 -- Position
@@ -166,8 +165,8 @@ instance Pretty Origin where
     []  -> "no source location"
     [r] -> pretty r
     rs  -> concatWith (\u v -> u <> "," <> v) (map pretty rs)
-  pretty (FromParameter name) = "parameter" <> squotes (pretty name)
-  pretty (FromDataset name) = "dataset" <> squotes (pretty name)
+  pretty (FromParameter name) = "parameter" <+> squotes (pretty name)
+  pretty (FromDataset   name) = "in dataset" <+> squotes (pretty name)
 
 --------------------------------------------------------------------------------
 -- Provenance
@@ -200,10 +199,6 @@ parameterProvenance name = Provenance (FromParameter name) TheUser
 inserted :: Provenance -> Provenance
 inserted (Provenance origin _owner) = Provenance origin TheMachine
 
-expandProvenance :: (Int, Int) -> Provenance -> Provenance
-expandProvenance w (Provenance (FromSource rs) o) = Provenance (FromSource (expandRange w rs)) o
-expandProvenance _ p                              = p
-
 fillInProvenance :: [Provenance] -> Provenance
 fillInProvenance ps = Provenance (FromSource rs) TheUser
   where
@@ -213,6 +208,15 @@ fillInProvenance ps = Provenance (FromSource rs) TheUser
       "should not be filling in provenance on non-source file code"
 
     rs = maybeToList $ fillInRanges $ concatMap getRanges ps
+
+expandProvenance :: (Int, Int) -> Provenance -> Provenance
+expandProvenance w (Provenance (FromSource rs) o) = Provenance (FromSource (expandRange w rs)) o
+expandProvenance _ p                              = p
+
+expandByArgVisibility :: Visibility -> Provenance -> Provenance
+expandByArgVisibility Explicit = id
+expandByArgVisibility Implicit = expandProvenance (1,1)
+expandByArgVisibility Instance = expandProvenance (2,2)
 
 instance Pretty Provenance where
   pretty (Provenance origin _) = pretty origin
@@ -242,6 +246,18 @@ instance HasProvenance a => HasProvenance (NonEmpty a) where
 
 instance HasProvenance a => HasProvenance (a, b) where
   provenanceOf = provenanceOf . fst
+
+instance HasProvenance ann => HasProvenance (Binder binder var ann) where
+  provenanceOf (Binder ann _ _ _) = provenanceOf ann
+
+instance HasProvenance ann => HasProvenance (Arg binder var ann) where
+  provenanceOf e = provenanceOf (annotationOf e :: ann)
+
+instance HasProvenance ann => HasProvenance (Expr binder var ann) where
+  provenanceOf e = provenanceOf (annotationOf e :: ann)
+
+instance HasProvenance ann => HasProvenance (Decl binder var ann) where
+  provenanceOf d = provenanceOf (annotationOf d :: ann)
 
 wasInsertedByCompiler :: HasProvenance a => a -> Bool
 wasInsertedByCompiler x = owner (provenanceOf x) == TheMachine

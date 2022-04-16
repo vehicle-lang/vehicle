@@ -37,8 +37,8 @@ import Vehicle.Backend.LossFunction ( LExpr, writeLossFunctionFiles)
 
 import Vehicle.Verify.VerificationStatus ( getProofCacheLocation )
 import Vehicle.Resource.NeuralNetwork (NetworkCtx)
-import Vehicle.Compile.Resource.Dataset (removeDatasetDecls)
-import Vehicle.Compile.Resource.Parameter (expandParameters)
+import Vehicle.Compile.Resource.Dataset ( expandDatasets )
+import Vehicle.Compile.Resource.Parameter ( expandParameters )
 
 compile :: LoggingOptions -> CompileOptions -> IO ()
 compile loggingOptions CompileOptions{..} = do
@@ -132,20 +132,20 @@ typeCheckProgAndLoadResources :: (MonadIO m, MonadCompile m)
                               -> Text
                               -> m (NetworkCtx, CheckedProg)
 typeCheckProgAndLoadResources Resources{..} txt = do
-  bnfcProg        <- parseVehicle txt
-  vehicleProg     <- elabProg bnfcProg
-  parameterProg   <- expandParameters parameters vehicleProg
-  scopedProg      <- scopeCheck parameterProg
-  typedProg       <- typeCheck scopedProg
-  normProg        <- normalise defaultNormalisationOptions typedProg
-  datasetlessProg <- removeDatasetDecls datasets normProg
-  (networkCtx, networklessProg) <- removeNetworkDecls datasetlessProg
+  bnfcProg      <- parseVehicle txt
+  vehicleProg   <- elabProg bnfcProg
+  parameterProg <- expandParameters parameters vehicleProg
+  datasetProg   <- expandDatasets datasets parameterProg
+  scopedProg    <- scopeCheck datasetProg
+  typedProg     <- typeCheck scopedProg
+  normProg      <- normalise defaultNormalisationOptions typedProg
+  (networkCtx, networklessProg) <- removeNetworkDecls normProg
   normProg2 <- normalise defaultNormalisationOptions networklessProg
   return (networkCtx, normProg2)
 
 -- | Parses, expands parameters and type-checks the program but does
 -- not load networks and datasets from disk. Used during compilation
--- to ITPs.
+-- to ITPs, where networks and datasets are postulated for the moment.
 typeCheckProgWithoutLoadingResources :: MonadCompile m
                                      => Resources
                                      -> Text

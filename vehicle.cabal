@@ -59,6 +59,7 @@ library
                       , Vehicle.Language.DSL
                       , Vehicle.Language.Print
                       , Vehicle.Language.Sugar
+                      , Vehicle.Language.Provenance
 
                       , Vehicle.Compile
                       , Vehicle.Compile.Prelude
@@ -97,12 +98,9 @@ library
                       , Vehicle.Check
 
                       , Vehicle.Resource
-                      , Vehicle.Resource.Core
                       , Vehicle.Resource.NeuralNetwork
-                      , Vehicle.Resource.Dataset.IDX
 
   other-modules:        Vehicle.Prelude.Prettyprinter
-                      , Vehicle.Prelude.Provenance
                       , Vehicle.Prelude.Token
                       , Vehicle.Prelude.Logging
                       , Vehicle.Prelude.Supply
@@ -125,6 +123,7 @@ library
                       , Vehicle.Compile.Type.Constraint
                       , Vehicle.Compile.Type.TypeClass
                       , Vehicle.Compile.Type.Unify
+                      , Vehicle.Compile.Resource.Dataset.IDX
                       , Vehicle.Compile.CapitaliseTypeNames
                       , Vehicle.Compile.QuantifierAnalysis
 

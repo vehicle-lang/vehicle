@@ -8,8 +8,8 @@ import Control.Exception (catch, IOException)
 import Control.Monad.Trans (MonadIO(liftIO))
 
 import Vehicle.Prelude
-import Vehicle.Verify.VerificationStatus (readProofCache, isSpecVerified, ProofCache(..))
 import Vehicle.Resource
+import Vehicle.Verify.VerificationStatus (readProofCache, isSpecVerified, ProofCache(..))
 
 --------------------------------------------------------------------------------
 -- Checking

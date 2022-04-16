@@ -2,8 +2,8 @@ module Vehicle.Language.Sugar where
 
 import Data.Bifunctor (first)
 
-import Vehicle.Prelude
 import Vehicle.Language.AST
+import Vehicle.Language.Provenance
 
 --------------------------------------------------------------------------------
 -- General definitions
@@ -117,7 +117,7 @@ unfoldDefFun :: HasProvenance ann
              -> Expr binder var ann
              -> Decl binder var ann
 unfoldDefFun ann ident t bs e =
-  DefFunction (provenanceOf ann) ident t (unfoldLam ann (bs, e))
+  DefFunction ann ident t (unfoldLam ann (bs, e))
 
 unfoldDefType :: HasProvenance ann
               => ann -> Identifier

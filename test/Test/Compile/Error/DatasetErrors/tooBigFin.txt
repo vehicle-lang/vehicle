@@ -1,2 +1,2 @@
-Error: Error while reading dataset 'trainingDataset'. Expected elements of type 'Fin 3' but found value '3' (Line 2, Columns 9-24)
-Fix: either remove the offending entries in the dataset or update the type of the dataset in the Vehicle specification.
+Error: Type error: Could not satisfy 'HasNatLiteralsUpTo 3 (Fin 3)' (in dataset 'trainingDataset')
+Fix: check your types

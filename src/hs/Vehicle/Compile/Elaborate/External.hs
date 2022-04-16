@@ -17,6 +17,7 @@ import Vehicle.Prelude
 import Vehicle.Language.Sugar
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Error
+import Vehicle.Language.Provenance
 
 elabProg :: MonadCompile m => B.Prog -> m V.InputProg
 elabProg = elab
@@ -105,12 +106,12 @@ instance Elab B.Expr V.InputExpr where
   elab = \case
     B.Type t                  -> return $ V.Type (mkAnn t) (parseTypeLevel t)
     B.Var  n                  -> return $ V.Var  (mkAnn n) (tkSymbol n)
-    B.Hole n                  -> return $ mkHole (tkProvenance n) (tkSymbol n)
+    B.Hole n                  -> return $ V.mkHole (tkProvenance n) (tkSymbol n)
     B.Literal l               -> elab l
 
     B.Ann e tk t              -> op2 V.Ann tk  (elab e) (elab t)
     B.Fun t1 tk t2            -> op2 V.Pi  tk  (elabFunInputType t1) (elab t2)
-    B.LSeq tk1 es _tk2        -> op1 (\ann -> V.LSeq ann (mkHole (tkProvenance tk1) "IsContainerDict")) tk1 (traverse elab es)
+    B.LSeq tk1 es _tk2        -> op1 V.mkSeqExpr tk1 (traverse elab es)
 
     B.App e1 e2               -> elabApp e1 e2
     B.Let tk1 ds e            -> unfoldLet (mkAnn tk1) <$> bitraverse (traverse elab) elab (ds, e)
@@ -177,7 +178,7 @@ elabResource :: MonadCompile m => V.ResourceType -> B.Name -> B.Expr -> m V.Inpu
 elabResource r n t = V.DefResource (tkProvenance n) r <$> elab n <*> elab t
 
 mkArg :: V.Visibility -> V.InputExpr -> V.InputArg
-mkArg v e = V.Arg (V.visProv v (provenanceOf e)) v e
+mkArg v e = V.Arg (expandByArgVisibility v (provenanceOf e)) v e
 
 instance Elab B.Name V.Identifier where
   elab n = return $ V.Identifier $ tkSymbol n
@@ -190,14 +191,11 @@ instance Elab B.Binder V.InputBinder where
   elab (B.ImplicitBinderAnn n _tk typ) = mkBinder n V.Implicit . Just <$> elab typ
   elab (B.InstanceBinderAnn n _tk typ) = mkBinder n V.Instance . Just <$> elab typ
 
-mkHole :: Provenance -> Symbol -> V.InputExpr
-mkHole p s = V.Hole p ("_" <> s)
-
 mkBinder :: B.Name -> V.Visibility -> Maybe V.InputExpr -> V.InputBinder
-mkBinder n v e = V.Binder (V.visProv v p) v (Just (tkSymbol n)) t
+mkBinder n v e = V.Binder (expandByArgVisibility v p) v (Just (tkSymbol n)) t
   where
   (p, t) = case e of
-    Nothing  -> (tkProvenance n, mkHole (tkProvenance n) (tkSymbol n))
+    Nothing  -> (tkProvenance n, V.mkHole (tkProvenance n) (tkSymbol n))
     Just t1  -> (fillInProvenance [tkProvenance n, provenanceOf t1], t1)
 
 instance Elab B.LetDecl (V.InputBinder, V.InputExpr) where
@@ -309,7 +307,7 @@ constructUnknownDefType :: B.Name -> [V.InputBinder] -> V.InputExpr
 constructUnknownDefType n = foldr addArg returnType
   where
   returnType :: V.InputExpr
-  returnType = mkHole (tkProvenance n) (typifyName (tkSymbol n))
+  returnType = V.mkHole (tkProvenance n) (typifyName (tkSymbol n))
 
   addArg :: V.InputBinder -> V.InputExpr -> V.InputExpr
   addArg b = V.Pi (V.annotationOf b) (binderToHole b)

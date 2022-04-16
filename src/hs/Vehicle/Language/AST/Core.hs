@@ -9,15 +9,9 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Hashable (Hashable)
 
 import Vehicle.Prelude
+import Vehicle.Resource (ResourceType)
 import Vehicle.Language.AST.Builtin (Builtin)
 import Vehicle.Language.AST.Visibility
-import Vehicle.Resource.Core (ResourceType)
-
---------------------------------------------------------------------------------
--- Annotations
-
-class HasAnnotation a ann | a -> ann where
-  annotationOf :: a -> ann
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -89,12 +83,6 @@ pattern InstanceBinder p n t = Binder p Instance n t
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Binder binder var ann)
 
-instance HasAnnotation (Binder binder var ann) ann where
-  annotationOf (Binder ann _ _ _) = ann
-
-instance HasProvenance ann => HasProvenance (Binder binder var ann) where
-  provenanceOf (Binder ann _ _ _) = provenanceOf ann
-
 instance HasVisibility (Binder binder var ann) where
   visibilityOf (Binder _ visibility _ _) = visibility
 
@@ -135,16 +123,8 @@ pattern InstanceArg ann e = Arg ann Instance e
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Arg binder var ann)
 
-instance HasAnnotation (Arg binder var ann) ann where
-  annotationOf (Arg ann _ _) = ann
-
 instance HasVisibility (Arg binder var ann) where
   visibilityOf (Arg _ v _) = v
-
-instance HasProvenance ann => HasProvenance (Arg binder var ann) where
-  provenanceOf (Arg _ Explicit e) = provenanceOf e
-  provenanceOf (Arg _ Implicit e) = expandProvenance (1, 1) (provenanceOf e)
-  provenanceOf (Arg _ Instance e) = expandProvenance (2, 2) (provenanceOf e)
 
 argExpr :: Arg binder var ann -> Expr binder var ann
 argExpr (Arg _ _ e) = e
@@ -264,25 +244,6 @@ data Expr binder var ann
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Expr binder var ann)
 
-instance HasAnnotation (Expr binder var ann) ann where
-  annotationOf = \case
-    Type     ann _     -> ann
-    PrimDict ann _     -> ann
-    Hole     ann _     -> ann
-    Meta     ann _     -> ann
-    Ann      ann _ _   -> ann
-    App      ann _ _   -> ann
-    Pi       ann _ _   -> ann
-    Builtin  ann _     -> ann
-    Var      ann _     -> ann
-    Let      ann _ _ _ -> ann
-    Lam      ann _ _   -> ann
-    Literal  ann _     -> ann
-    LSeq     ann _ _   -> ann
-
-instance HasProvenance ann => HasProvenance (Expr binder var ann) where
-  provenanceOf e = provenanceOf (annotationOf e :: ann)
-
 --------------------------------------------------------------------------------
 -- Identifiers
 
@@ -304,12 +265,12 @@ class HasIdentifier a where
 -- | Type of top-level declarations.
 data Decl binder var ann
   = DefResource
-    Provenance             -- Location in source file.
+    ann                    -- Location in source file.
     ResourceType           -- Type of resource.
     Identifier             -- Name of resource.
     (Expr binder var ann)  -- Vehicle type of the resource.
   | DefFunction
-    Provenance             -- Location in source file.
+    ann                    -- Location in source file.
     Identifier             -- Bound function name.
     (Expr binder var ann)  -- Bound function type.
     (Expr binder var ann)  -- Bound function body.
@@ -317,10 +278,6 @@ data Decl binder var ann
 
 instance (NFData binder, NFData var, NFData ann) => NFData (Decl binder var ann)
 
-instance HasProvenance ann => HasProvenance (Decl binder var ann) where
-  provenanceOf = \case
-    DefResource p _ _ _ -> p
-    DefFunction p _ _ _ -> p
 
 instance HasIdentifier (Decl binder var ann) where
   identifierOf = \case
@@ -328,9 +285,9 @@ instance HasIdentifier (Decl binder var ann) where
     DefFunction _ i _ _ -> i
 
 traverseDeclExprs :: Monad m
-                  => (Expr binder1 var1 ann1 -> m (Expr binder2 var2 ann2))
-                  -> Decl binder1 var1 ann1
-                  -> m (Decl binder2 var2 ann2)
+                  => (Expr binder1 var1 ann -> m (Expr binder2 var2 ann))
+                  -> Decl binder1 var1 ann
+                  -> m (Decl binder2 var2 ann)
 traverseDeclExprs f (DefResource ann r n t) = DefResource ann r n <$> f t
 traverseDeclExprs f (DefFunction ann n t e) = DefFunction ann n <$> f t <*> f e
 
@@ -364,6 +321,39 @@ instance HasType Decl where
   typeOf = \case
     DefResource _ _ _ t -> t
     DefFunction _ _ t _ -> t
+
+--------------------------------------------------------------------------------
+-- Annotations
+
+class HasAnnotation a ann | a -> ann where
+  annotationOf :: a -> ann
+
+instance HasAnnotation (Binder binder var ann) ann where
+  annotationOf (Binder ann _ _ _) = ann
+
+instance HasAnnotation (Arg binder var ann) ann where
+  annotationOf (Arg ann _ _) = ann
+
+instance HasAnnotation (Expr binder var ann) ann where
+  annotationOf = \case
+    Type     ann _     -> ann
+    PrimDict ann _     -> ann
+    Hole     ann _     -> ann
+    Meta     ann _     -> ann
+    Ann      ann _ _   -> ann
+    App      ann _ _   -> ann
+    Pi       ann _ _   -> ann
+    Builtin  ann _     -> ann
+    Var      ann _     -> ann
+    Let      ann _ _ _ -> ann
+    Lam      ann _ _   -> ann
+    Literal  ann _     -> ann
+    LSeq     ann _ _   -> ann
+
+instance HasAnnotation (Decl binder var ann) ann where
+  annotationOf = \case
+    DefResource ann _ _ _ -> ann
+    DefFunction ann _ _ _ -> ann
 
 --------------------------------------------------------------------------------
 -- Utilities

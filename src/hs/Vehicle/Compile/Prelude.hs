@@ -5,12 +5,14 @@ module Vehicle.Compile.Prelude
   ) where
 
 import Data.Map (Map)
+import Data.Text (Text)
+
+import Vehicle.Backend.Prelude (Backend)
 
 import Vehicle.Prelude as X
 import Vehicle.Language.AST as X
-import Vehicle.Backend.Prelude (Backend)
-import Vehicle.Resource.Core as X
-import Data.Text (Text)
+import Vehicle.Resource as X
+import Vehicle.Language.Provenance as X
 
 --------------------------------------------------------------------------------
 -- Compilation

@@ -122,19 +122,19 @@ datasetErrors = failTestGroup "DatasetErrors"
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
-  , testSpec
-    { testName     = "variableDimensions"
-    , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
-    , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
-    }
+  -- , testSpec
+  --   { testName     = "variableDimensions"
+  --   , testLocation = Tests
+  --   , testTargets  = [VNNLibBackend]
+  --   , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
+  --   }
 
-  , testSpec
-    { testName     = "mismatchedDimensions"
-    , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
-    , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
-    }
+  -- , testSpec
+  --   { testName     = "mismatchedDimensions"
+  --   , testLocation = Tests
+  --   , testTargets  = [VNNLibBackend]
+  --   , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
+  --   }
 
   , testSpec
     { testName     = "mismatchedType"
@@ -208,7 +208,7 @@ runTest inputFile outputFile backend Resources{..} = do
     { version       = False
     , outFile       = Nothing
     , errFile       = Just outputFile
-    , logFile       = Just Nothing
+    , logFile       = Nothing -- Just Nothing
     , commandOption = Compile $ CompileOptions
       { target           = backend
       , specification    = inputFile

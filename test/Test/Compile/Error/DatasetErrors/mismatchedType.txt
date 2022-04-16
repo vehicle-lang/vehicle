@@ -1,2 +1,2 @@
-Error: Error while reading dataset 'trainingDataset'. Expected dataset elements to be of type Int but found elements of type Rat (Line 2, Columns 9-24)
-Fix: correct the dataset type in the Vehicle specification.
+Error: Type error: Could not satisfy 'HasRatLiterals Int' (in dataset 'trainingDataset')
+Fix: check your types

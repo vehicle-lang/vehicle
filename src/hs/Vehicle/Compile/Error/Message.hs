@@ -178,11 +178,7 @@ instance MeaningfulError CompileError where
       , fix        = Nothing
       }
 
-    FailedConstraints cs -> UError $ UserError
-      { provenance = provenanceOf constraint
-      , problem    = failedConstraintError constraint nameCtx
-      , fix        = Just "check your types"
-      }
+    FailedConstraints cs -> UError $ failedConstraintError nameCtx constraint
       where
         constraint = NonEmpty.head cs
         nameCtx = ctxNames (boundContext constraint)
@@ -248,66 +244,6 @@ instance MeaningfulError CompileError where
                      "provided for the" <+> prettyResource resourceType ident
       , fix        = Nothing
       } where entity = if resourceType == Parameter then "value" else "file"
-
-    -- Dataset
-
-    DatasetInvalidContainerType ident p tCont -> UError $ UserError
-      { provenance = p
-      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
-                     "for the" <+> prettyResource Dataset ident <> "."
-      , fix        = Just $ "change the type of" <+> squotes (pretty ident) <+>
-                     "to either a" <+> squotes (pretty List) <+> "or" <+>
-                     squotes (pretty Tensor) <> "."
-      }
-
-    DatasetInvalidElementType ident p tCont -> UError $ UserError
-      { provenance = p
-      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
-                     "for the elements of the" <+> prettyResource Dataset ident <> "."
-      , fix        = Just $ "change the type to one of" <+> elementTypes <> "."
-      } where elementTypes = pretty @[Builtin] ([Fin] <> fmap NumericType [Nat, Int, Rat])
-
-    DatasetVariableSizeTensor ident p tCont -> UError $ UserError
-      { provenance = p
-      , problem    = "A tensor with variable dimensions" <+> squotes (prettyFriendly tCont) <+>
-                     "is not a supported type for the" <+> prettyResource Dataset ident <> "."
-      , fix        = Just "make sure the dimensions of the dataset are all constants."
-      }
-
-    DatasetInvalidNat ident p v -> UError $ UserError
-      { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected elements of type" <+> squotes (prettyFriendly nat) <+>
-                     "but found value" <+> squotes (pretty v)
-      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
-                     "update the type of the dataset in the Vehicle specification."
-      } where (nat :: CheckedExpr) = NatType mempty
-
-    DatasetInvalidFin ident p v n -> UError $ UserError
-      { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected elements of type" <+> squotes (prettyFriendly fin) <+>
-                     "but found value" <+> squotes (pretty v)
-      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
-                     "update the type of the dataset in the Vehicle specification."
-      }
-      where (fin :: CheckedExpr) = FinType mempty (NatLiteralExpr mempty (NatType mempty) n)
-
-    DatasetDimensionMismatch ident p expectedDims actualDims -> UError $ UserError
-      { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected dimensions to be" <+> pretty expectedDims <+>
-                     "but found dimensions" <+> pretty actualDims
-      , fix        = Just "correct the dataset dimensions in the Vehicle specification."
-      }
-
-    DatasetTypeMismatch ident p expectedType actualType -> UError $ UserError
-      { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected dataset elements to be of type" <+> prettyFriendly expectedType <+>
-                     "but found elements of type" <+> pretty actualType
-      , fix        = Just "correct the dataset type in the Vehicle specification."
-      }
 
     -- Network type errors
 
@@ -508,18 +444,102 @@ unsolvedConstraintError constraint ctx ="Typing error: not enough information to
     UC _ (Unify _)   ->  prettyFriendlyDB ctx constraint
     TC _ (_ `Has` t) ->  prettyFriendlyDB ctx t
 
-failedConstraintError :: Constraint -> [DBBinding] -> Doc a
-failedConstraintError constraint ctx = "Type error:" <+> case constraint of
-  UC _ (Unify (t1, t2)) ->
-    prettyFriendlyDB ctx t1 <+> "!=" <+> prettyFriendlyDB ctx t2
-
-  TC _ (_ `Has` (HasNatLitsUpToExpr _ n (FinType _ (LiteralExpr _ _ v)))) ->
-    "Index" <+> pretty n <+> "is out of bounds when looking up value in tensor of size" <+> pretty v
-
-  TC _ (_ `Has` (HasNatLitsUpToExpr _ n (FinType _ v))) ->
-    "Unknown if index" <+> pretty n <+> "is in bounds when looking up value in tensor of size" <+> prettyFriendlyDB ctx v
-
-  TC _ (_ `Has` t) -> "Could not satisfy" <+> squotes (prettyFriendlyDB ctx t)
-
 prettyResource :: ResourceType -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
+
+--------------------------------------------------------------------------------
+-- Constraint error messages
+
+failedConstraintError :: [DBBinding]
+                      -> Constraint
+                      -> UserError
+failedConstraintError ctx c@(UC _ (Unify (t1, t2))) = UserError
+  { provenance = provenanceOf c
+  , problem    = "Type error:" <+>
+                    prettyFriendlyDB ctx t1 <+> "!=" <+> prettyFriendlyDB ctx t2
+  , fix        = Just "check your types"
+  }
+failedConstraintError ctx c@(TC _ (_ `Has` t)) = UserError
+  { provenance = provenanceOf c
+  , problem    = "Type error:" <+>
+                    "Could not satisfy" <+> squotes (prettyFriendlyDB ctx t)
+  , fix        = Just "check your types"
+  }
+
+
+{-
+-- Some attempts more readable error messages. Need something more principled,
+e.g. Jurrian's work.
+
+    TC _ (_ `Has` (HasNatLitsUpToExpr _ n (FinType _ (LiteralExpr _ _ v)))) -> UserError
+      { provenance = p
+      , problem    = "Type error: index" <+> pretty n <+> "is out of bounds when" <+>
+                    "looking up value in tensor of size" <+> pretty v
+      , fix        = Just "check your types"
+      }
+
+    TC _ (_ `Has` (HasNatLitsUpToExpr _ n (FinType _ v))) -> UserError
+      { provenance = p
+      , problem    = "Type error: unknown if index" <+> pretty n <+> "is in bounds" <+>
+                    "when looking up value in tensor of size" <+> prettyFriendlyDB ctx v
+      , fix        = Just "check your types"
+      }
+
+    DatasetInvalidContainerType ident p tCont -> UError $ UserError
+      { provenance = p
+      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
+                     "for the" <+> prettyResource Dataset ident <> "."
+      , fix        = Just $ "change the type of" <+> squotes (pretty ident) <+>
+                     "to either a" <+> squotes (pretty List) <+> "or" <+>
+                     squotes (pretty Tensor) <> "."
+      }
+
+    DatasetInvalidElementType ident p tCont -> UError $ UserError
+      { provenance = p
+      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
+                     "for the elements of the" <+> prettyResource Dataset ident <> "."
+      , fix        = Just $ "change the type to one of" <+> elementTypes <> "."
+      } where elementTypes = pretty @[Builtin] ([Fin] <> fmap NumericType [Nat, Int, Rat])
+
+    DatasetVariableSizeTensor ident p tCont -> UError $ UserError
+      { provenance = p
+      , problem    = "A tensor with variable dimensions" <+> squotes (prettyFriendly tCont) <+>
+                     "is not a supported type for the" <+> prettyResource Dataset ident <> "."
+      , fix        = Just "make sure the dimensions of the dataset are all constants."
+      }
+
+    DatasetInvalidNat ident p v -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected elements of type" <+> squotes (prettyFriendly nat) <+>
+                     "but found value" <+> squotes (pretty v)
+      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
+                     "update the type of the dataset in the Vehicle specification."
+      } where (nat :: CheckedExpr) = NatType mempty
+
+    DatasetInvalidFin ident p v n -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected elements of type" <+> squotes (prettyFriendly fin) <+>
+                     "but found value" <+> squotes (pretty v)
+      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
+                     "update the type of the dataset in the Vehicle specification."
+      }
+      where (fin :: CheckedExpr) = FinType mempty (NatLiteralExpr mempty (NatType mempty) n)
+
+    DatasetDimensionMismatch ident p expectedDims actualDims -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected dimensions to be" <+> pretty expectedDims <+>
+                     "but found dimensions" <+> pretty actualDims
+      , fix        = Just "correct the dataset dimensions in the Vehicle specification."
+      }
+
+    DatasetTypeMismatch ident p expectedType actualType -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected dataset elements to be of type" <+> prettyFriendly expectedType <+>
+                     "but found elements of type" <+> pretty actualType
+      , fix        = Just "correct the dataset type in the Vehicle specification."
+      }
+-}

@@ -72,14 +72,6 @@ data CompileError
   | NetworkTypeHasVariableSizeTensor       Identifier CheckedExpr InputOrOutput
   | NetworkTypeHasUnsupportedElementType   Identifier CheckedExpr InputOrOutput
 
-  | DatasetInvalidContainerType Identifier Provenance CheckedExpr
-  | DatasetInvalidElementType   Identifier Provenance CheckedExpr
-  | DatasetVariableSizeTensor   Identifier Provenance CheckedExpr
-  | DatasetDimensionMismatch    Identifier Provenance [Int] [Int]
-  | DatasetTypeMismatch         Identifier Provenance CheckedExpr NumericType
-  | DatasetInvalidNat           Identifier Provenance Int
-  | DatasetInvalidFin           Identifier Provenance Int Int
-
   -- Backend errors
   | NoPropertiesFound
   | UnsupportedResource            Backend Provenance Identifier ResourceType
