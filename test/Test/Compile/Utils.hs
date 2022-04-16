@@ -31,9 +31,9 @@ data TestLocation
   = Tests
   | Examples
 
-locationDir :: TestLocation -> FilePath
-locationDir Tests    = "test" </> "specs"
-locationDir Examples = "examples"
+locationDir :: TestLocation -> String -> FilePath
+locationDir Tests    _    = "test" </> "specs"
+locationDir Examples name = "examples" </> name
 
 data TestSpec = TestSpec
     { testName       :: String

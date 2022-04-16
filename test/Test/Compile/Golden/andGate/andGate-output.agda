@@ -10,26 +10,26 @@
 open import Vehicle
 open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
-open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
+open import Data.Rational as ℚ using (ℚ)
 
 module andGate-temp-output where
 
-postulate andGate : ℝ → (ℝ → ℝ)
+postulate andGate : ℚ → (ℚ → ℚ)
 
-Truthy : ℝ → Set
-Truthy x = x ℝ.≥ ℤ.+ 1 ℝ./ 2
+Truthy : ℚ → Set
+Truthy x = x ℚ.≥ ℤ.+ 1 ℚ./ 2
 
-Falsey : ℝ → Set
-Falsey x = x ℝ.≤ ℤ.+ 1 ℝ./ 2
+Falsey : ℚ → Set
+Falsey x = x ℚ.≤ ℤ.+ 1 ℚ./ 2
 
-ValidInput : ℝ → Set
-ValidInput x = ℤ.+ 0 ℝ./ 1 ℝ.≤ x × x ℝ.≤ ℤ.+ 1 ℝ./ 1
+ValidInput : ℚ → Set
+ValidInput x = ℤ.+ 0 ℚ./ 1 ℚ.≤ x × x ℚ.≤ ℤ.+ 1 ℚ./ 1
 
-CorrectOutput : ℝ → (ℝ → Set)
+CorrectOutput : ℚ → (ℚ → Set)
 CorrectOutput x1 x2 = let y = andGate x1 x2 in (Truthy x1 × Truthy x2 → Truthy y) × ((Truthy x1 × Falsey x2 → Falsey y) × ((Falsey x1 × Truthy x2 → Falsey y) × (Falsey x1 × Falsey x2 → Falsey y)))
 
 abstract
-  andGateCorrect : ∀ (x1 : ℝ) → ∀ (x2 : ℝ) → ValidInput x1 × ValidInput x2 → CorrectOutput x1 x2
+  andGateCorrect : ∀ (x1 : ℚ) → ∀ (x2 : ℚ) → ValidInput x1 × ValidInput x2 → CorrectOutput x1 x2
   andGateCorrect = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

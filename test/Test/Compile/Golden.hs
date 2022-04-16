@@ -152,7 +152,7 @@ makeIndividualTest location name datasets backend = test
   testName       = name <> "-" <> show backend
   filePathSuffix = getGoldenFilepathSuffix backend
   moduleName     = name <> "-output"
-  inputFile      = locationDir location </> name </> name <.> ".vcl"
+  inputFile      = locationDir location name </> name <.> ".vcl"
   outputFile     = goldenDir </> name </> name <> "-temp-output" <> filePathSuffix
   goldenFile     = goldenDir </> name </> name <> "-output"      <> filePathSuffix
   isFolderOutput = backend == MarabouBackend

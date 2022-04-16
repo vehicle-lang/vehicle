@@ -1,17 +1,17 @@
 -- Correctness conditions for the Boolean AND gate
 
-network andGate : Real -> Real -> Real
+network andGate : Rat -> Rat -> Rat
 
-truthy : Real -> Prop
+truthy : Rat -> Prop
 truthy x = x >= 0.5
 
-falsey : Real -> Prop
+falsey : Rat -> Prop
 falsey x = x <= 0.5
 
-validInput : Real -> Prop
+validInput : Rat -> Prop
 validInput x = 0 <= x <= 1
 
-correctOutput : Real -> Real -> Prop
+correctOutput : Rat -> Rat -> Prop
 correctOutput x1 x2 =
   let y = andGate x1 x2 in
     (truthy x1 and truthy x2 => truthy y) and
@@ -20,4 +20,4 @@ correctOutput x1 x2 =
     (falsey x1 and falsey x2 => falsey y)
 
 andGateCorrect : Prop
-andGateCorrect = forall x1 x2 . (((validInput x1) and (validInput x2)) => (correctOutput x1 x2))
+andGateCorrect = forall x1 x2 . validInput x1 and validInput x2 => correctOutput x1 x2
