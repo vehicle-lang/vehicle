@@ -127,12 +127,8 @@ unify p e1 e2 = do
   -- TODO calculate the most general unifier
   return e1
 
-freshMeta :: TCM m
-          => Provenance
-          -> m (Meta, CheckedExpr)
-freshMeta p = do
-  ctx <- getBoundCtx
-  freshMetaWith ctx p
+freshMeta :: TCM m => Provenance -> m (Meta, CheckedExpr)
+freshMeta p = freshMetaWith p =<< getBoundCtx
 
 -- Takes the expected type of a function and the user-provided arguments
 -- and traverses through checking each argument type against the type of the
@@ -287,17 +283,18 @@ checkExpr expectedType expr = do
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
 inferExpr :: TCM m
-      => UncheckedExpr
-      -> m (CheckedExpr, CheckedExpr)
+          => UncheckedExpr
+          -> m (CheckedExpr, CheckedExpr)
 inferExpr e = do
   showInferEntry e
   res <- case e of
     Type ann l ->
       return (e , Type (inserted ann) (l + 1))
 
-    Meta _ m -> developerError $ "Trying to infer the type of a meta-variable" <+> pretty m
+    Meta _ m -> developerError $
+      "Trying to infer the type of a meta-variable" <+> pretty m
 
-    Hole ann _s -> do
+    Hole ann _name -> do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
       (_, exprMeta) <- freshMeta (provenanceOf ann)

@@ -54,6 +54,8 @@ data CompileError
     (NonEmpty Constraint)
   | UnsolvedConstraints
     (NonEmpty Constraint)
+  | UnsolvedMetas
+    (NonEmpty (Meta, Provenance))
   | MissingExplicitArg
     BoundCtx                -- The context at the time of the failure
     UncheckedArg            -- The non-explicit argument

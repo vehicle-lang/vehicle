@@ -14,6 +14,8 @@ module Vehicle.Compile.Type.Meta
   , popActivatedConstraints
   , getMetaSubstitution
   , modifyMetaSubstitution
+  , numberOfMetasCreated
+  , getMetaOrigin
   , MonadConstraintSolving
   , ConstraintProgress(..)
   , nonTriviallySolved
@@ -47,14 +49,16 @@ import Vehicle.Compile.Type.Constraint
 
 -- | The meta-variables and constraints relating the variables currently in scope.
 data MetaCtx = MetaCtx
-  { nextMeta            :: Int
+  { metaOrigins         :: [Provenance]
+  -- ^ The origin of each meta variable.
+  -- NB: these are stored in *reverse* order from which they were created.
   , currentSubstitution :: MetaSubstitution
   , constraints         :: [Constraint]
   }
 
 emptyMetaCtx :: MetaCtx
 emptyMetaCtx = MetaCtx
-  { nextMeta               = 0
+  { metaOrigins            = mempty
   , currentSubstitution    = mempty
   , constraints            = mempty
   }
@@ -138,13 +142,98 @@ instance MetaSubstitutable Constraint where
   substM (TC ctx c) = TC ctx <$> substM c
 
 --------------------------------------------------------------------------------
--- The meta monad
+-- Meta-variables
+
+freshMetaName :: MonadState MetaCtx m => Provenance -> m Meta
+freshMetaName origin = do
+  MetaCtx {..} <- get
+  let nextMeta = length metaOrigins
+  put $ MetaCtx { metaOrigins = origin : metaOrigins, .. }
+  return (MetaVar nextMeta)
+
+-- | Creates a fresh meta variable. Meta variables need to remember what was
+-- in the current context when they were created. We do this by creating a
+-- meta-variable that takes everything in the current context as an argument
+-- and then which is immediately applied to everything in the current context.
+-- Post unification, any unneeded context arguments will be normalised away.
+-- It returns the name of the meta and the expression of it applied to every
+-- variable in the context.
+freshMetaWith :: (MonadState MetaCtx m, MonadLogger m)
+              => Provenance
+              -> BoundCtx
+              -> m (Meta, CheckedExpr)
+freshMetaWith p boundCtx = do
+  -- Create a fresh name
+  metaName <- freshMetaName p
+
+  -- Create bound variables for everything in the context
+  let ann = inserted p
+  let boundEnv = reverse [ Var ann (Bound i) | i <- [0..length boundCtx - 1] ]
+
+  -- Returns a meta applied to every bound variable in the context
+  let meta = normAppList ann (Meta ann metaName) (map (ExplicitArg ann) boundEnv)
+
+  logDebug $ "fresh-meta" <+> pretty metaName
+  return (metaName, meta)
+
+-- |Creates a Pi type that abstracts over all bound variables
+makeMetaType :: BoundCtx
+             -> CheckedAnn
+             -> CheckedExpr
+             -> CheckedExpr
+makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
+  where
+    entryToPi :: (DBBinding, CheckedExpr, Maybe CheckedExpr) -> CheckedExpr -> CheckedExpr
+    entryToPi (name, t, _) = Pi ann (ExplicitBinder ann name t)
+
+getMetaOrigin :: MonadState MetaCtx m => Meta -> m Provenance
+getMetaOrigin (MetaVar m) = do
+  MetaCtx {..} <- get
+  return $ metaOrigins !! (length metaOrigins - m - 1)
+
+getMetaSubstitution :: MonadState MetaCtx m => m MetaSubstitution
+getMetaSubstitution = gets currentSubstitution
+
+modifyMetaSubstitution :: MonadState MetaCtx m => (MetaSubstitution -> MetaSubstitution) -> m ()
+modifyMetaSubstitution f = modifyMetaCtx $ \ MetaCtx {..} ->
+  MetaCtx { currentSubstitution = f currentSubstitution, ..}
 
 modifyMetaCtx :: MonadState MetaCtx m => (MetaCtx -> MetaCtx) -> m ()
 modifyMetaCtx = modify
 
 getConstraints :: MonadState MetaCtx m => m [Constraint]
 getConstraints = gets constraints
+
+numberOfMetasCreated :: MonadState MetaCtx m => m Int
+numberOfMetasCreated = gets (length . metaOrigins)
+
+metaSolved :: (MonadState MetaCtx m, MonadLogger m)
+           => Provenance
+           -> Meta
+           -> CheckedExpr
+           -> m ()
+metaSolved p m e = do
+  logDebug $ "solved" <+> pretty m <+> "as" <+> prettyVerbose e
+
+  -- Insert the new variable throwing an error if the meta-variable is already present
+  -- (should have been substituted out)
+  modifyMetaSubstitution (MetaSubst.insertWith duplicateMetaError m e)
+  where
+    duplicateMetaError :: CheckedExpr -> CheckedExpr -> a
+    duplicateMetaError new old = developerError $
+      "meta-variable" <+> pretty m <+> "already assigned" <+> prettyVerbose old <+>
+      "and should have been substituted out but it is still present and" <+>
+      "was assigned again to" <+> prettyVerbose new <+>
+      pretty p
+
+--------------------------------------------------------------------------------
+-- Constraints
+
+type MonadConstraintSolving m =
+  ( MonadState MetaCtx m
+  , MonadLogger m
+  , MonadError CompileError m
+  )
 
 addUnificationConstraint :: (MonadState MetaCtx m, MonadLogger m)
                          => Provenance
@@ -178,55 +267,6 @@ setConstraints :: (MonadState MetaCtx m) => [Constraint] -> m ()
 setConstraints newConstraints = modifyMetaCtx $ \MetaCtx{..} ->
     MetaCtx { constraints = newConstraints, ..}
 
-getMetaSubstitution :: MonadState MetaCtx m => m MetaSubstitution
-getMetaSubstitution = gets currentSubstitution
-
-modifyMetaSubstitution :: MonadState MetaCtx m => (MetaSubstitution -> MetaSubstitution) -> m ()
-modifyMetaSubstitution f = modifyMetaCtx $ \ MetaCtx {..} ->
-  MetaCtx { currentSubstitution = f currentSubstitution, ..}
-
-freshMetaName :: MonadState MetaCtx m => m Meta
-freshMetaName = do
-  MetaCtx {..} <- get;
-  put $ MetaCtx { nextMeta = succ nextMeta , ..}
-  return (MetaVar nextMeta)
-
--- | Creates a fresh meta variable. Meta variables need to remember what was
--- in the current context when they were created. We do this by creating a
--- meta-variable that takes everything in the current context as an argument
--- and then which is immediately applied to everything in the current context.
--- Post unification, any unneeded context arguments will be normalised away.
--- It returns the name of the meta and the expression of it applied to every
--- variable in the context.
-freshMetaWith :: (MonadState MetaCtx m, MonadLogger m)
-              => BoundCtx
-              -> Provenance
-              -> m (Meta, CheckedExpr)
-freshMetaWith boundCtx p = do
-  let ann = inserted p
-
-  -- Create a fresh name
-  metaName <- freshMetaName
-
-  -- Create bound variables for everything in the context
-  let boundEnv = reverse [ Var ann (Bound varIndex) | varIndex <- [0..length boundCtx - 1] ]
-
-  -- Returns a meta applied to every bound variable in the context
-  let meta = normAppList ann (Meta ann metaName) (map (ExplicitArg ann) boundEnv)
-
-  logDebug $ "fresh-meta" <+> pretty metaName
-  return (metaName, meta)
-
--- |Creates a Pi type that abstracts over all bound variables
-makeMetaType :: BoundCtx
-             -> CheckedAnn
-             -> CheckedExpr
-             -> CheckedExpr
-makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
-  where
-    entryToPi :: (DBBinding, CheckedExpr, Maybe CheckedExpr) -> CheckedExpr -> CheckedExpr
-    entryToPi (name, t, _) = Pi ann (ExplicitBinder ann name t)
-
 -- | Returns any constraints that are activated (i.e. worth retrying) based
 -- on the set of metas that were solved last pass.
 popActivatedConstraints :: MonadState MetaCtx m
@@ -244,32 +284,6 @@ popActivatedConstraints metasSolved = do
       -- A constraint is blocked if it is blocking on at least one meta
       -- and none of the metas it is blocking on have been solved in the last pass.
       not (MetaSet.null blockingMetas) && MetaSet.disjoint solvedMetas blockingMetas
-
-
-metaSolved :: (MonadState MetaCtx m, MonadLogger m)
-           => Provenance
-           -> Meta
-           -> CheckedExpr
-           -> m ()
-metaSolved p m e = do
-  logDebug $ "solved" <+> pretty m <+> "as" <+> prettyVerbose e
-
-  -- Insert the new variable throwing an error if the meta-variable is already present
-  -- (should have been substituted out)
-  modifyMetaSubstitution (MetaSubst.insertWith duplicateMetaError m e)
-  where
-    duplicateMetaError :: CheckedExpr -> CheckedExpr -> a
-    duplicateMetaError new old = developerError $
-      "meta-variable" <+> pretty m <+> "already assigned" <+> prettyVerbose old <+>
-      "and should have been substituted out but it is still present and" <+>
-      "was assigned again to" <+> prettyVerbose new <+>
-      pretty p
-
-type MonadConstraintSolving m =
-  ( MonadState MetaCtx m
-  , MonadLogger m
-  , MonadError CompileError m
-  )
 
 --------------------------------------------------------------------------------
 -- Progress in solving meta-variable constraints

@@ -7,8 +7,10 @@ import Prelude hiding (pi)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (ReaderT(..))
 import Control.Monad.State (evalStateT)
+import Control.Monad (forM)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (mapMaybe)
+import Data.IntSet qualified as IntSet
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
@@ -18,6 +20,7 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.TypeClass
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Bidirectional
+import Vehicle.Compile.Type.MetaSubstitution (metasIn)
 
 -------------------------------------------------------------------------------
 -- Algorithm
@@ -63,8 +66,20 @@ loopOverConstraints progress = do
   constraints <- getConstraints
   currentSubstitution <- getMetaSubstitution
   case constraints of
-    -- If there are no constraints to be solved then return the solution
-    [] -> return currentSubstitution
+    -- If there are no outstanding constraints then check that
+    -- all metas have been solved, and if so return the solution
+    [] -> do
+      let metasSolved = metasIn currentSubstitution
+      metasCreated <- (\v -> IntSet.fromList [0..v-1]) <$> numberOfMetasCreated
+      let unsolvedMetas = IntSet.difference metasCreated metasSolved
+      case IntSet.toList unsolvedMetas of
+        []     -> return currentSubstitution
+        m : ms -> do
+          metasAndOrigins <- forM (m :| ms) (\v -> do
+            let meta = MetaVar v
+            origin <- getMetaOrigin meta
+            return (meta, origin))
+          throwError $ UnsolvedMetas metasAndOrigins
 
     -- Otherwise see if we made progress last iteration
     (c : cs) -> case progress of

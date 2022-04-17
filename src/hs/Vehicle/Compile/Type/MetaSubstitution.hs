@@ -6,10 +6,12 @@ module Vehicle.Compile.Type.MetaSubstitution
   , lookup
   , map
   , insertWith
+  , metasIn
   ) where
 
 import Prelude hiding (map, lookup)
 import Data.Coerce (coerce)
+import Data.IntSet (IntSet)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 
@@ -33,3 +35,6 @@ insertWith :: (CheckedExpr -> CheckedExpr -> CheckedExpr)
            -> MetaSubstitution
            -> MetaSubstitution
 insertWith f m e s = coerce (IntMap.insertWith f (coerce m) e (coerce s))
+
+metasIn :: MetaSubstitution -> IntSet
+metasIn (MetaSubstitution s) = IntMap.keysSet s

@@ -68,6 +68,12 @@ typeCheckingErrors = failTestGroup "TypingErrors"
     , testLocation = Tests
     , testTargets  = [VNNLibBackend]
     }
+
+  , testSpec
+    { testName     = "unsolvedMeta"
+    , testLocation = Tests
+    , testTargets  = [VNNLibBackend]
+    }
   ]
 
 networkErrors :: TestTree

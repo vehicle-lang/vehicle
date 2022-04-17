@@ -162,7 +162,9 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
 
         let sharedArgs = positionalIntersection args1 args2
         let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
-        (_metaName, meta) <- freshMetaWith sharedArgsCtx p
+        -- Bit worrying here that we have to arbitrarily pick meta i's origin.
+        metaOrigin <- getMetaOrigin i
+        (_metaName, meta) <- freshMetaWith metaOrigin sharedArgsCtx
 
         let abstractedMeta = abstractOver args1 meta
         metaSolved p i abstractedMeta
@@ -201,8 +203,9 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
       | otherwise -> do
         let sharedArgs = args1 `intersect` args2
         let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
-
-        (_metaName, meta) <- freshMetaWith sharedArgsCtx p
+        -- Bit worrying here that we have to arbitrarily pick meta i's origin.
+        metaOrigin <- getMetaOrigin i
+        (_metaName, meta) <- freshMetaWith metaOrigin sharedArgsCtx
 
         let abstractedMeta1 = abstractOver args1 meta
         metaSolved p i abstractedMeta1

@@ -16,17 +16,17 @@ import Vehicle.Language.AST.Name
 -- Utility functions
 
 isHole :: Expr binder var ann -> Bool
-isHole (Hole _ _ ) = True
-isHole _           = False
+isHole Hole{} = True
+isHole _      = False
 
 isType :: Expr binder var ann -> Bool
-isType (Type _ _) = True
-isType _          = False
+isType Type{} = True
+isType _      = False
 
 isMeta :: Expr binder var ann -> Bool
-isMeta (Meta _ _)           = True
-isMeta (App _ (Meta _ _) _) = True
-isMeta _                    = False
+isMeta Meta{}           = True
+isMeta (App _ Meta{} _) = True
+isMeta _                = False
 
 isProperty :: Expr binder var ann -> Bool
 isProperty (Builtin _ (BooleanType Prop)) = True
@@ -35,7 +35,7 @@ isProperty _                              = False
 freeNames :: Expr binder DBVar ann -> [Identifier]
 freeNames = cata $ \case
   TypeF     _ _                 -> []
-  HoleF     _   _               -> []
+  HoleF     _ _                 -> []
   PrimDictF _ _                 -> []
   MetaF     _ _                 -> []
   LiteralF  _ _                 -> []
@@ -102,4 +102,4 @@ mkIntExpr ann v
   | otherwise = LitInt ann v
 
 mkSeqExpr :: ann -> [Expr binder var ann] -> Expr binder var ann
-mkSeqExpr ann = LSeq ann (mkHole ann "seqTC")
+mkSeqExpr ann = LSeq ann (Hole ann "_seqTC")

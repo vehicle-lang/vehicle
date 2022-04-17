@@ -192,6 +192,14 @@ instance MeaningfulError CompileError where
         constraint = NonEmpty.head cs
         nameCtx    = ctxNames (boundContext constraint)
 
+    UnsolvedMetas ms -> UError $ UserError
+      { provenance = p
+      , problem    = "Unable to infer type of bound variable"
+      , fix        = Just "add more type annotations"
+      }
+      where
+        (_, p) = NonEmpty.head ms
+
     MissingExplicitArg ctx arg argType -> UError $ UserError
       { provenance = provenanceOf arg
       , problem    = "expected an" <+> pretty Explicit <+> "argument of type" <+>
