@@ -2,10 +2,13 @@ module Vehicle.Compile.Resource.Parameter
   ( expandParameters
   ) where
 
+import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.Except
 import Data.Map qualified as Map
 import Data.Text (unpack)
+import Data.Set (Set)
+import Data.Set qualified as Set
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
@@ -19,7 +22,10 @@ expandParameters :: MonadCompile m
 expandParameters params prog = do
   logDebug MinDetail $ "Beginning" <+> phase
   incrCallDepth
-  result <- runReaderT (expand prog) params
+
+  (result, foundParams) <- runWriterT (runReaderT (expand prog) params)
+  warnIfUnusedResources Parameter (Map.keysSet params) foundParams
+
   decrCallDepth
   logDebug MinDetail $ "Finished" <+> phase <> line
   return result
@@ -27,8 +33,14 @@ expandParameters params prog = do
 phase :: Doc a
 phase = "insertion of parameters"
 
+type MonadExpand m =
+  ( MonadCompile m
+  , MonadReader ParameterValues m
+  , MonadWriter (Set Symbol) m
+  )
+
 class Expand a where
-  expand :: (MonadCompile m, MonadReader ParameterValues m) => a -> m a
+  expand :: MonadExpand m => a -> m a
 
 instance Expand InputProg where
   expand (Main ds) = Main <$> traverse expand ds
@@ -44,6 +56,7 @@ instance Expand InputDecl where
         Right e -> do
           v <- fmap (const (parameterProvenance name)) <$> elabExpr e
           logDebug MinDetail $ "inserting" <+> pretty ident <+> "=" <+> pretty value
+          tell (Set.singleton name)
           return v
 
     return $ DefFunction p ident t body

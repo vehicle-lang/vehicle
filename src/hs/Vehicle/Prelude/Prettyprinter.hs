@@ -11,6 +11,8 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet (toAscList)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (toAscList)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Map (Map)
 import Data.Map qualified as Map (toAscList)
 import Data.Version (Version, showVersion)
@@ -95,6 +97,14 @@ prettyMapEntries entries = result
   result = "{" <+> align (group
     (concatWith (\x y -> x <> ";" <> line <> y) entries')
     <> softline <> "}")
+
+prettySet :: Pretty value => Set value -> Doc b
+prettySet xs = prettySetLike (pretty <$> Set.toList xs)
+
+prettySetLike :: [Doc a] -> Doc a
+prettySetLike xs = "{" <+> align (group
+  (concatWith (\x y -> x <> ";" <> line <> y) xs)
+  <> softline <> "}")
 
 instance Pretty Rational where
   pretty p = pretty (fromRational p :: Double)

@@ -25,14 +25,16 @@ import Vehicle.Resource.NeuralNetwork
 -- their types into the NetworkCtx. It also normalises all network types into
 -- the standard form `Tensor A [m] -> Tensor B [n]`.
 removeNetworkDecls :: MonadCompile m
-                   => CheckedProg
+                   => NetworkLocations
+                   -> CheckedProg
                    -> m (NetworkCtx, CheckedProg)
-removeNetworkDecls prog1 = do
+removeNetworkDecls networks prog1 = do
   logDebug MinDetail "Beginning normalisation of network types"
   incrCallDepth
 
   (prog2, internalNetworkMap) <- runStateT (standardise prog1) mempty
   let networkCtx = fmap (\(x,_,_) -> x) internalNetworkMap
+  warnIfUnusedResources Network (Map.keysSet networks) (Map.keysSet networkCtx)
 
   logDebug MinDetail $ prettySimple prog2
   logDebug MinDetail $ prettyMap networkCtx

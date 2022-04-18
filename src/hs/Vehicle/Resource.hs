@@ -1,16 +1,20 @@
 
 module Vehicle.Resource where
 
-import Control.Monad (forM)
+import Control.Monad (forM, when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.DeepSeq
 import Data.Hashable(Hashable(hash))
 import Data.ByteString qualified as ByteString
 import Data.Map (Map, assocs)
 import Data.Text (Text)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Prettyprinter
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, ToJSON)
+
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- The different types of resources supported
@@ -86,3 +90,21 @@ hashResources Resources{..} = do
         , fileHash = networkHash
         , resType  = resourceType
         }
+
+
+--------------------------------------------------------------------------------
+-- Others
+
+warnIfUnusedResources :: MonadLogger m
+                      => ResourceType
+                      -> Set Symbol
+                      -> Set Symbol
+                      -> m ()
+warnIfUnusedResources resourceType given found = do
+  when (null found) $
+    logDebug MinDetail $ "No" <+> pretty resourceType <> "s found in program"
+
+  let unusedParams = given `Set.difference` found
+  when (Set.size unusedParams > 0) $
+    logWarning $ "the following" <+> pretty resourceType <> "s were provided" <+>
+                 "but not used by the specification:" <+> prettySet unusedParams

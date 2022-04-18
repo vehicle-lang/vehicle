@@ -46,7 +46,8 @@ compile loggingOptions CompileOptions{..} = do
   spec <- readInputFile loggingOptions specification
   case target of
     ITP Agda -> do
-      let moduleName = pack $ maybe "" (<> ".") modulePrefix <> maybe "Spec" takeBaseName outputFile
+      let baseModule = maybe "Spec" takeBaseName outputFile
+      let moduleName = pack $ maybe "" (<> ".") modulePrefix <> baseModule
       proofCacheLocation <- getProofCacheLocation loggingOptions proofCache
       let agdaOptions = AgdaOptions proofCacheLocation moduleName mempty
       agdaCode <- compileToAgda loggingOptions agdaOptions resources spec
@@ -139,7 +140,7 @@ typeCheckProgAndLoadResources Resources{..} txt = do
   scopedProg    <- scopeCheck datasetProg
   typedProg     <- typeCheck scopedProg
   normProg      <- normalise defaultNormalisationOptions typedProg
-  (networkCtx, networklessProg) <- removeNetworkDecls normProg
+  (networkCtx, networklessProg) <- removeNetworkDecls networks normProg
   normProg2 <- normalise defaultNormalisationOptions networklessProg
   return (networkCtx, normProg2)
 
