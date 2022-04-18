@@ -17,14 +17,11 @@ expandParameters :: MonadCompile m
                  -> InputProg
                  -> m InputProg
 expandParameters params prog = do
-  logDebug $ "Beginning" <+> phase
+  logDebug MinDetail $ "Beginning" <+> phase
   incrCallDepth
-
   result <- runReaderT (expand prog) params
-
   decrCallDepth
-  logDebug $ "Finished" <+> phase <> line
-  logDebug $ pretty $ show prog
+  logDebug MinDetail $ "Finished" <+> phase <> line
   return result
 
 phase :: Doc a
@@ -46,7 +43,7 @@ instance Expand InputDecl where
         Left  _ -> throwError $ UnableToParseResource ident p Parameter (unpack value)
         Right e -> do
           v <- fmap (const (parameterProvenance name)) <$> elabExpr e
-          logDebug $ "inserting" <+> pretty ident <+> "=" <+> pretty value
+          logDebug MinDetail $ "inserting" <+> pretty ident <+> "=" <+> pretty value
           return v
 
     return $ DefFunction p ident t body

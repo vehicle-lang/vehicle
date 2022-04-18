@@ -121,7 +121,7 @@ compileQuant V.Any = Any
 
 showEntry :: MonadCompile m => V.CheckedExpr -> m V.CheckedExpr
 showEntry e = do
-  logDebug ("loss-entry " <> prettySimple e)
+  logDebug MaxDetail ("loss-entry " <> prettySimple e)
   incrCallDepth
   return e
 
@@ -129,5 +129,5 @@ showExit :: MonadCompile m => m LExpr -> m LExpr
 showExit mNew = do
   new <- mNew
   decrCallDepth
-  logDebug ("loss-exit " <+> pretty (show new))
+  logDebug MaxDetail ("loss-exit " <+> pretty (show new))
   return new

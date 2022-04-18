@@ -23,7 +23,7 @@ run Options{..} = do
     print vehicleVersion
     exitSuccess
 
-  let acquireOutputHandles = openHandles  (outFile, errFile, logFile)
+  let acquireOutputHandles = openHandles  (outFile, errFile, logFile, debugLevel)
   let releaseOutputHandles = closeHandles (outFile, errFile, logFile)
 
   bracket acquireOutputHandles releaseOutputHandles $ \loggingSettings ->
@@ -33,9 +33,9 @@ run Options{..} = do
       Check   options -> check   loggingSettings options
 
 
-openHandles :: (Maybe FilePath, Maybe FilePath, Maybe (Maybe FilePath))
+openHandles :: (Maybe FilePath, Maybe FilePath, Maybe (Maybe FilePath), Int)
             -> IO LoggingOptions
-openHandles (outFile, errFile, logFile) = do
+openHandles (outFile, errFile, logFile, logLevel) = do
   outputHandle <- case outFile of
     Nothing -> return stdout
     Just x  -> openFile x AppendMode
@@ -49,10 +49,15 @@ openHandles (outFile, errFile, logFile) = do
     Just Nothing  -> return (Just stdout)
     Just (Just x) -> Just <$> openFile x AppendMode
 
+  let debugLevel = case logLevel of
+        l | l <= 1    -> MinDetail
+          | otherwise -> MaxDetail
+
   return LoggingOptions
     { errorHandle  = errorHandle
     , outputHandle = outputHandle
     , logHandle    = logHandle
+    , debugLevel   = debugLevel
     }
 
 closeHandles :: (Maybe FilePath, Maybe FilePath, Maybe (Maybe FilePath))
@@ -77,6 +82,7 @@ data Options = Options
   , outFile       :: Maybe FilePath
   , errFile       :: Maybe FilePath
   , logFile       :: Maybe (Maybe FilePath)
+  , debugLevel    :: Int
   , commandOption :: Command
   } deriving (Show)
 

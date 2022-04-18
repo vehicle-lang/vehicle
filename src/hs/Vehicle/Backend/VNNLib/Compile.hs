@@ -24,11 +24,11 @@ import Vehicle.Resource.NeuralNetwork
 
 compile :: MonadCompile m => NetworkCtx -> CheckedProg -> m [VNNLibProperty]
 compile networkCtx prog = do
-  logDebug "Beginning compilation to SMT"
+  logDebug MinDetail "Beginning compilation to SMT"
   incrCallDepth
   result <- compileProg networkCtx prog
   decrCallDepth
-  logDebug "Finished compilation to SMT\n"
+  logDebug MinDetail "Finished compilation to SMT\n"
   return result
 
 supportedTypes :: [Builtin]
@@ -65,7 +65,7 @@ compileDecl networkCtx = \case
 
 compileProperty :: MonadCompile m => NetworkCtx -> Identifier -> CheckedExpr -> m VNNLibProperty
 compileProperty networkCtx ident expr = flip runReaderT ident $ do
-  logDebug $ "Beginning compilation of SMTLib property" <+> squotes (pretty ident)
+  logDebug MinDetail $ "Beginning compilation of SMTLib property" <+> squotes (pretty ident)
   incrCallDepth
   let ann = annotationOf expr
 
@@ -103,10 +103,10 @@ compileProperty networkCtx ident expr = flip runReaderT ident $ do
   let bodyDoc = vsep (map assertion assertionDocs)
 
   let doc = if null vars then bodyDoc else compileVars vars <> line <> line <> bodyDoc
-  logDebug $ "Output:" <> align (line <> doc)
+  logDebug MinDetail $ "Output:" <> align (line <> doc)
 
   decrCallDepth
-  logDebug $ "Finished compilation of SMTLib property" <+> squotes (pretty ident)
+  logDebug MinDetail $ "Finished compilation of SMTLib property" <+> squotes (pretty ident)
 
   return $ VNNLibProperty
     { name        = nameOf ident

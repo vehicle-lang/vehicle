@@ -25,7 +25,7 @@ solveTypeClassConstraint :: MonadConstraintSolving m
 solveTypeClassConstraint ctx (m `Has` e) = do
   eWHNF <- whnf (varContext ctx) e
   when (e /= eWHNF) $
-    logDebug ("normalising to" <+> prettyVerbose eWHNF)
+    logDebug MaxDetail ("normalising to" <+> prettyVerbose eWHNF)
 
   let constraint = TC ctx (m `Has` eWHNF)
   progress <- blockOnMetas eWHNF $ case eWHNF of
@@ -68,7 +68,7 @@ blockOnMetas e action = do
   if null metas
     then action
     else do
-      logDebug $ "stuck-on metas" <+> prettyVerbose metas
+      logDebug MaxDetail $ "stuck-on metas" <+> prettyVerbose metas
       return Stuck
 
 solveHasEq :: MonadConstraintSolving m
@@ -201,7 +201,7 @@ solveDefaultTypeClassConstraints constraints = do
   -- First group by common meta-variables
   let constraintsByMeta = Map.mapMaybe id $ groupByMetas constraints
   newConstraints <- forM (Map.assocs constraintsByMeta) $ \(meta, (tc, ctx)) -> do
-    logDebug $ "Using default for" <+> pretty meta <+> "=" <+> pretty tc
+    logDebug MaxDetail $ "Using default for" <+> pretty meta <+> "=" <+> pretty tc
     let ann = inserted $ provenanceOf ctx
     let solution = defaultSolution ann tc
     return $ UC ctx (Unify (Meta ann meta, solution))

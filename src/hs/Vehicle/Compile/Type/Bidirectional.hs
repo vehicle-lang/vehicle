@@ -76,33 +76,33 @@ addToBoundCtx n t e = local add
 
 showDeclEntry :: TCM m => Identifier -> m ()
 showDeclEntry ident = do
-  logDebug ("decl-entry" <+> pretty ident)
+  logDebug MaxDetail ("decl-entry" <+> pretty ident)
   incrCallDepth
 
 showDeclExit :: TCM m => Identifier -> m ()
 showDeclExit ident = do
   decrCallDepth
-  logDebug ("decl-exit" <+> pretty ident)
+  logDebug MaxDetail ("decl-exit" <+> pretty ident)
 
 showCheckEntry :: TCM m => CheckedExpr -> UncheckedExpr -> m ()
 showCheckEntry t e = do
-  logDebug ("check-entry" <+> prettyVerbose e <+> "<-" <+> prettyVerbose t)
+  logDebug MaxDetail ("check-entry" <+> prettyVerbose e <+> "<-" <+> prettyVerbose t)
   incrCallDepth
 
 showCheckExit :: TCM m => CheckedExpr -> m ()
 showCheckExit e = do
   decrCallDepth
-  logDebug ("check-exit " <+> prettyVerbose e)
+  logDebug MaxDetail ("check-exit " <+> prettyVerbose e)
 
 showInferEntry :: TCM m => UncheckedExpr -> m ()
 showInferEntry e = do
-  logDebug ("infer-entry" <+> prettyVerbose e)
+  logDebug MaxDetail ("infer-entry" <+> prettyVerbose e)
   incrCallDepth
 
 showInferExit :: TCM m => (CheckedExpr, CheckedExpr) -> m ()
 showInferExit (e, t) = do
   decrCallDepth
-  logDebug ("infer-exit " <+> prettyVerbose e <+> "->" <+> prettyVerbose t)
+  logDebug MaxDetail ("infer-exit " <+> prettyVerbose e <+> "->" <+> prettyVerbose t)
 
 -------------------------------------------------------------------------------
 -- Utility functions
@@ -167,7 +167,7 @@ inferArgs p (Pi _ binder resultType) (arg : args)
 -- `visibilityOf binder /= Explicit` and (`visibilityOf binder /= visibilityOf arg` or args == [])
 inferArgs p (Pi _ binder resultType) args
   | visibilityOf binder /= Explicit = do
-    logDebug ("insert-arg" <+> pretty (visibilityOf binder) <+> prettyVerbose (typeOf binder))
+    logDebug MaxDetail ("insert-arg" <+> pretty (visibilityOf binder) <+> prettyVerbose (typeOf binder))
     let binderVis = visibilityOf binder
     let ann = inserted $ provenanceOf binder
 
@@ -378,7 +378,7 @@ inferExpr e = do
         else do
           let normTypeOfBody = checkedBoundExpr `substInto` typeOfBody
           when (normTypeOfBody /= typeOfBody) $
-            logDebug $ "normalising" <+> prettyVerbose typeOfBody <+> "to" <+> prettyVerbose normTypeOfBody
+            logDebug MaxDetail $ "normalising" <+> prettyVerbose typeOfBody <+> "to" <+> prettyVerbose normTypeOfBody
           return normTypeOfBody
 
       return (Let ann checkedBoundExpr checkedBinder checkedBody , normTypeOfBody)
@@ -466,9 +466,9 @@ inferDecls (d : ds) = do
 
 inferProg :: TCM m => UncheckedProg -> m CheckedProg
 inferProg (Main ds) = do
-  logDebug "Beginning initial type-checking pass"
+  logDebug MaxDetail "Beginning initial type-checking pass"
   result <- Main <$> inferDecls ds
-  logDebug "Ending initial type-checking pass\n"
+  logDebug MaxDetail "Ending initial type-checking pass\n"
   return result
 
 viaInfer :: TCM m => CheckedAnn -> CheckedExpr -> UncheckedExpr -> m CheckedExpr

@@ -45,18 +45,18 @@ runAll expr = do
   inferredExpr     <- infer expr
   metaSubstitution <- solveMetas
   let finalExpr = substMetas metaSubstitution inferredExpr
-  logDebug $ prettyVerbose finalExpr <> line
+  logDebug MinDetail $ prettyVerbose finalExpr <> line
   return finalExpr
 
 solveMetas :: MonadConstraintSolving m => m MetaSubstitution
 solveMetas = do
-  logDebug "Starting constraint solving\n"
+  logDebug MaxDetail "Starting constraint solving\n"
   constraints <- getConstraints
   solution <- loopOverConstraints $ Progress
     { newConstraints = constraints
     , solvedMetas    = mempty
     }
-  logDebug "Finished constraint solving\n"
+  logDebug MaxDetail "Finished constraint solving\n"
   return solution
 
 loopOverConstraints :: MonadConstraintSolving m
@@ -110,14 +110,14 @@ solveConstraints :: MonadConstraintSolving m
                  => [Constraint]
                  -> m ConstraintProgress
 solveConstraints constraints = do
-  logDebug "Starting new pass"
-  logDebug $ "current-constraints:" <+> align (prettyVerbose constraints)
+  logDebug MaxDetail "Starting new pass"
+  logDebug MaxDetail $ "current-constraints:" <+> align (prettyVerbose constraints)
 
   setConstraints []
   newProgress <- mconcat `fmap` traverse solveConstraint constraints
 
   metaSubst <- getMetaSubstitution
-  logDebug $ "current-solution:" <+> prettyVerbose metaSubst <> "\n"
+  logDebug MaxDetail $ "current-solution:" <+> prettyVerbose metaSubst <> "\n"
   return newProgress
 
 -- | Tries to solve a constraint deterministically.
@@ -125,7 +125,7 @@ solveConstraint :: MonadConstraintSolving m
                 => Constraint
                 -> m ConstraintProgress
 solveConstraint constraint = do
-  logDebug $ "trying" <+> prettyVerbose constraint
+  logDebug MaxDetail $ "trying" <+> prettyVerbose constraint
   incrCallDepth
 
   result <- case constraint of
@@ -147,8 +147,8 @@ addNewConstraintsUsingDefaults :: MonadConstraintSolving m
                                => [Constraint]
                                -> m ConstraintProgress
 addNewConstraintsUsingDefaults constraints = do
-  logDebug "Temporarily stuck"
-  logDebug "Trying default type-class constraints"
+  logDebug MaxDetail "Temporarily stuck"
+  logDebug MaxDetail "Trying default type-class constraints"
   incrCallDepth
   let tcConstraints = mapMaybe getTypeClassConstraint constraints
 
@@ -157,7 +157,7 @@ addNewConstraintsUsingDefaults constraints = do
     Progress newConstraints _ -> addConstraints newConstraints
     Stuck                     -> return ()
 
-  logDebug "\n"
+  logDebug MaxDetail line
   decrCallDepth
   return result
   where

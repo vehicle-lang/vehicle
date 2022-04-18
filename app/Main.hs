@@ -29,7 +29,7 @@ main = do
 optionsParserInfo :: ParserInfo Options
 optionsParserInfo = info (optionsParser <**> helper)
    ( fullDesc
-  <> header "vehicle - a program for neural network verification" )
+  <> header "Vehicle - a program for writing and checking neural network specifications" )
 
 optionsParser :: Parser Options
 optionsParser = Options
@@ -55,6 +55,12 @@ optionsParser = Options
      <> showDefault
      <> value Nothing
      <> metavar "FILENAME" )
+  <*> option auto
+      ( long "loggingLevel"
+     <> help "Sets the level of detail in the logs, if the --log argument has been passed"
+     <> showDefault
+     <> value 1
+     <> metavar "INT")
   <*> commandParser
 
 commandParser :: Parser Command

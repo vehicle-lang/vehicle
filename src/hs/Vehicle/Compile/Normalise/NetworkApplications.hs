@@ -92,12 +92,12 @@ convertNetworkAppsToMagicVars :: MonadCompile m
                               -> CheckedExpr
                               -> m (CheckedExpr, MetaNetwork)
 convertNetworkAppsToMagicVars verifier networkCtx quantifier expr = do
-  logDebug "Beginning conversion of network applications to magic variables"
+  logDebug MinDetail "Beginning conversion of network applications to magic variables"
   incrCallDepth
 
   networkAppLiftedExpr <- liftNetworkApplications expr
   let metaNetwork = generateMetaNetwork networkAppLiftedExpr
-  logDebug $ "Generated meta-network" <+> pretty metaNetwork <> line
+  logDebug MinDetail $ "Generated meta-network" <+> pretty metaNetwork <> line
 
   finalExpr <- if null metaNetwork
     then return networkAppLiftedExpr
@@ -106,7 +106,7 @@ convertNetworkAppsToMagicVars verifier networkCtx quantifier expr = do
       runReaderT e (networkCtx, verifier)
 
   decrCallDepth
-  logDebug "Finished compilation to VNNLib"
+  logDebug MinDetail "Finished compilation to VNNLib"
   return (finalExpr, metaNetwork)
 
 --------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ normExpr metaNetwork quantifier expr = do
 
   -- Append quantifiers over the magic variables so that it becomes a valid SMTLib expression
   quantifiedExpr <- quantifyOverMagicVariables quantifier metaNetworkDetails updatedExpr
-  logDebug $ "Replaced network applications:" <+> prettySimple quantifiedExpr <> line
+  logDebug MinDetail $ "Replaced network applications:" <+> prettySimple quantifiedExpr <> line
   return quantifiedExpr
 
 --------------------------------------------------------------------------------
@@ -269,7 +269,7 @@ replaceNetworkApplication :: MonadReplacement m
                           -> BindingDepth
                           -> m (CheckedExpr, IntMap Int)
 replaceNetworkApplication ann name networkInput letBody bindingDepth  = do
-  logDebug $ "replacing-application" <+> pretty bindingDepth <+> pretty name <+> prettySimple networkInput
+  logDebug MaxDetail $ "replacing-application" <+> pretty bindingDepth <+> pretty name <+> prettySimple networkInput
 
   network@(NetworkDetails inputs outputs) <- getNetworkDetailsFromCtx name
   let inputSize  = size inputs
@@ -291,11 +291,11 @@ replaceNetworkApplication ann name networkInput letBody bindingDepth  = do
   let (inputsExpr,  inputsType) = mkMagicVariableSeq inputType  inputVarIndices
   let (outputsExpr, _)          = mkMagicVariableSeq outputType outputVarIndices
 
-  logDebug $ pretty (replicate bindingDepth ("." :: String) <> replicate totalNumberOfMagicVariables "_")
-  logDebug $ pretty totalNumberOfMagicVariablesSoFar <+> pretty bindingDepth
-  logDebug $ pretty inputSize <+> pretty outputSize
-  logDebug $ pretty outputEndingDBIndex <+> pretty outputStartingDBIndex <+> pretty inputStartingDBIndex
-  logDebug $ pretty inputVarIndices <+> pretty outputVarIndices
+  logDebug MaxDetail $ pretty (replicate bindingDepth ("." :: String) <> replicate totalNumberOfMagicVariables "_")
+  logDebug MaxDetail $ pretty totalNumberOfMagicVariablesSoFar <+> pretty bindingDepth
+  logDebug MaxDetail $ pretty inputSize <+> pretty outputSize
+  logDebug MaxDetail $ pretty outputEndingDBIndex <+> pretty outputStartingDBIndex <+> pretty inputStartingDBIndex
+  logDebug MaxDetail $ pretty inputVarIndices <+> pretty outputVarIndices
 
   let body'         = outputsExpr `substInto` letBody
   let inputEquality = EqualityExpr Eq ann inputsType Prop (map (ExplicitArg ann) [inputsExpr, networkInput])
@@ -329,7 +329,7 @@ processNetworkApplication d network input = do
   totalNumberOfMagicVariables <- getNumberOfMagicVariables
   let magicInputVarStartingIndex = totalNumberOfMagicVariables + d - totalMagicVarCountSoFar - 1
 
-  logDebug $ prettyVerbose input
+  logDebug MaxDetail $ prettyVerbose input
   let localReplacableBoundVars = case input of
           SeqExpr _ _ _ xs -> getReplacableBoundVars magicInputVarStartingIndex xs
           _                -> normalisationError currentPass "LSeq"
@@ -376,7 +376,7 @@ showEntry :: MonadReplacement m
           -> CheckedExpr
           -> m ()
 showEntry d e = do
-  logDebug $ "replace-entry:" <+> pretty d <+> prettySimple e
+  logDebug MaxDetail $ "replace-entry:" <+> pretty d <+> prettySimple e
   incrCallDepth
 
 showExit :: MonadReplacement m
@@ -386,7 +386,7 @@ showExit e = do
   (_, replacableBoundVars) <- get
 
   decrCallDepth
-  logDebug $ "replace-exit: " <+> align (
+  logDebug MaxDetail $ "replace-exit: " <+> align (
     prettySimple e <> if IntMap.null replacableBoundVars
       then ""
       else softline <> parens ("replacableBoundVars =" <+> pretty (IntMap.toAscList replacableBoundVars)))

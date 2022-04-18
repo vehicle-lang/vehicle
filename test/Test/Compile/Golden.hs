@@ -93,6 +93,12 @@ goldenTests = testGroup "GoldenTests" $
       , testTargets    = [AgdaBackend]
       }
 
+    -- , testSpec
+    --   { testName       = "simple-if"
+    --   , testLocation   = Tests
+    --   , testTargets    = [MarabouBackend, AgdaBackend]
+    --   }
+
     , testSpec
       { testName       = "simple-defaultFin"
       , testLocation   = Tests
@@ -167,7 +173,8 @@ runTest inputFile outputFile modulePath backend Resources{..} = do
     { version       = False
     , outFile       = Nothing
     , errFile       = Nothing
-    , logFile       = Nothing -- Just Nothing
+    , logFile       = Just Nothing
+    , debugLevel    = 1
     , commandOption = Compile $ CompileOptions
       { target           = backend
       , specification    = inputFile

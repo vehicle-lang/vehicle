@@ -173,7 +173,7 @@ freshMetaWith p boundCtx = do
   -- Returns a meta applied to every bound variable in the context
   let meta = normAppList ann (Meta ann metaName) (map (ExplicitArg ann) boundEnv)
 
-  logDebug $ "fresh-meta" <+> pretty metaName
+  logDebug MaxDetail $ "fresh-meta" <+> pretty metaName
   return (metaName, meta)
 
 -- |Creates a Pi type that abstracts over all bound variables
@@ -213,7 +213,7 @@ metaSolved :: (MonadState MetaCtx m, MonadLogger m)
            -> CheckedExpr
            -> m ()
 metaSolved p m e = do
-  logDebug $ "solved" <+> pretty m <+> "as" <+> prettyVerbose e
+  logDebug MaxDetail $ "solved" <+> pretty m <+> "as" <+> prettyVerbose e
 
   -- Insert the new variable throwing an error if the meta-variable is already present
   -- (should have been substituted out)
@@ -259,7 +259,7 @@ addTypeClassConstraint ctx meta expr = do
 addConstraints :: (MonadState MetaCtx m, MonadLogger m) => [Constraint] -> m ()
 addConstraints []             = return ()
 addConstraints newConstraints = do
-  logDebug ("add-constraints " <> align (prettyVerbose newConstraints))
+  logDebug MaxDetail ("add-constraints " <> align (prettyVerbose newConstraints))
   modifyMetaCtx $ \ MetaCtx {..} ->
     MetaCtx { constraints = constraints ++ newConstraints, ..}
 

@@ -22,11 +22,11 @@ insertLets :: MonadLogger m
            -> CheckedExpr
            -> m CheckedExpr
 insertLets subexprFilter expr = do
-  logDebug $ line <> "Beginning let insertion"
+  logDebug MinDetail $ line <> "Beginning let insertion"
   incrCallDepth
   result <- runReaderT (applyInsert expr) subexprFilter
   decrCallDepth
-  logDebug $ "Finished let insertion" <> line
+  logDebug MinDetail $ "Finished let insertion" <> line
   return result
   where
     applyInsert :: MonadLetInsert m => CheckedExpr -> m CheckedExpr
@@ -197,11 +197,11 @@ letBindSubexpressions remainingSM subexprsToInsert expr = do
   -- Sort the subexpressions by prefix order so we insert the "larger" ones first.
   let sortedSubexprs = partialSort subexprPrefixOrder filteredSubexprs
 
-  logDebug "begin-insertion"
+  logDebug MaxDetail "begin-insertion"
   incrCallDepth
   (updatedSM, updatedExpr) <- go remainingSM sortedSubexprs expr
   decrCallDepth
-  logDebug "end-insertion"
+  logDebug MaxDetail "end-insertion"
   return (updatedExpr, updatedSM)
   where
     go :: MonadLetInsert m
@@ -210,30 +210,30 @@ letBindSubexpressions remainingSM subexprsToInsert expr = do
     go sm []                body = return (sm, body)
     go sm (cs : css) body = do
       let ann = annotationOf (fst (subexpr cs))
-      logDebug $ "inserting" <+> prettyEntry body cs
+      logDebug MaxDetail $ "inserting" <+> prettyEntry body cs
       incrCallDepth
 
-      logDebug $ "body-before:" <+> prettySimple (fromCoDB body)
+      logDebug MaxDetail $ "body-before:" <+> prettySimple (fromCoDB body)
       -- Everywhere the position tree points to, substitute a variable through
       -- which refers to the let binding that is about to be inserted.
       let coDBVar = (Var ann CoDBBound, leafBVM 0)
       let substBody = substPos coDBVar (Just (positions cs)) (lowerFreeCoDBIndices body)
       -- Wrap the substituted body in a let binding
       let updatedBody = prependLet ann cs substBody
-      logDebug $ "body-after: " <+> prettySimple (fromCoDB updatedBody)
+      logDebug MaxDetail $ "body-after: " <+> prettySimple (fromCoDB updatedBody)
 
       -- Update the remaining subexpressions that are not going to be inserted here,
       -- to take into account the updated form of the body.
       subexprFilter <- ask
-      logDebug $ "SM-before:" <+> prettySM body subexprFilter sm
+      logDebug MaxDetail $ "SM-before:" <+> prettySM body subexprFilter sm
       let updatedSM = fmap (updateSubexpression (positions cs)) sm
-      logDebug $ "SM-after: " <+> prettySM updatedBody subexprFilter updatedSM
+      logDebug MaxDetail $ "SM-after: " <+> prettySM updatedBody subexprFilter updatedSM
 
       -- Again update the remaining subexpressions to be inserted here,
       -- to take into account the updated form of the body.
-      logDebug $ "S-before:" <+> prettyCommonSubExprs body css
+      logDebug MaxDetail $ "S-before:" <+> prettyCommonSubExprs body css
       let updatedCSs = fmap (updateSubexpression (positions cs)) css
-      logDebug $ "S-after: " <+> prettyCommonSubExprs updatedBody updatedCSs
+      logDebug MaxDetail $ "S-after: " <+> prettyCommonSubExprs updatedBody updatedCSs
 
       decrCallDepth
 
@@ -292,14 +292,14 @@ duplicateError e maps _ _ = developerError $
 
 showIdentEntry :: MonadLetInsert m => CheckedCoDBExpr -> m ()
 showIdentEntry e = do
-  logDebug ("letInsert-entry " <> align (prettySimple (fromCoDB e)))
+  logDebug MaxDetail ("letInsert-entry " <> align (prettySimple (fromCoDB e)))
   incrCallDepth
 
 showIdentExit :: MonadLetInsert m => CheckedCoDBExpr -> SubexpressionMap -> m ()
 showIdentExit expr sm = do
   decrCallDepth
   subexprFilter <- ask
-  logDebug ("letInsert-exit " <+> align (
+  logDebug MaxDetail ("letInsert-exit " <+> align (
       prettySimple (fromCoDB expr) <+> " |=" <> softline <>
       prettySM expr subexprFilter sm))
 

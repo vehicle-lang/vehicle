@@ -58,11 +58,11 @@ type Precedence = Int
 logEntry :: MonadAgdaCompile m => OutputExpr -> m ()
 logEntry e = do
   incrCallDepth
-  logDebug $ "compile-entry" <+> prettySimple e
+  logDebug MaxDetail $ "compile-entry" <+> prettySimple e
 
 logExit :: MonadAgdaCompile m => Code -> m ()
 logExit e = do
-  logDebug $ "compile-exit " <+> e
+  logDebug MaxDetail $ "compile-exit " <+> e
   decrCallDepth
 
 --------------------------------------------------------------------------------

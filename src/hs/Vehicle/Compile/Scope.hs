@@ -17,9 +17,9 @@ import Vehicle.Compile.Error
 scopeCheck :: (MonadLogger m, MonadError CompileError m)
            => InputProg -> m UncheckedProg
 scopeCheck e = do
-  logDebug "Beginning scope checking"
+  logDebug MinDetail "Beginning scope checking"
   result <- runReaderT (scope e) emptyCtx
-  logDebug "Finished scope checking\n"
+  logDebug MinDetail "Finished scope checking\n"
   return result
 
 scopeCheckClosedExpr :: (MonadLogger m, MonadError CompileError m)
@@ -49,11 +49,11 @@ emptyCtx = Ctx mempty mempty
 logScopeEntry :: SCM m => InputExpr -> m ()
 logScopeEntry e = do
   incrCallDepth
-  logDebug $ "scope-entry" <+> prettyVerbose e -- <+> "in" <+> pretty ctx
+  logDebug MaxDetail $ "scope-entry" <+> prettyVerbose e -- <+> "in" <+> pretty ctx
 
 logScopeExit :: SCM m => UncheckedExpr -> m ()
 logScopeExit e = do
-  logDebug $ "scope-exit " <+> prettyVerbose e
+  logDebug MaxDetail $ "scope-exit " <+> prettyVerbose e
   decrCallDepth
 
 --------------------------------------------------------------------------------

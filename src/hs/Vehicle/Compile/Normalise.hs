@@ -21,9 +21,9 @@ import Vehicle.Compile.AlphaEquivalence ( alphaEq )
 -- |Run a function in 'MonadNorm'.
 normalise :: (MonadLogger m, Norm a) => NormalisationOptions -> a -> m a
 normalise options x = do
-  logDebug "Beginning normalisation"
+  logDebug MinDetail "Beginning normalisation"
   result <- evalStateT (runReaderT (nf x) options) mempty
-  logDebug "Finished normalisation\n"
+  logDebug MinDetail "Finished normalisation\n"
   return result
 
 --------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ defaultNormalisationOptions = Options
 
 showEntry :: MonadNorm m => CheckedExpr -> m CheckedExpr
 showEntry e = do
-  logDebug ("norm-entry " <> prettySimple e)
+  logDebug MaxDetail ("norm-entry " <> prettySimple e)
   incrCallDepth
   return e
 
@@ -58,8 +58,8 @@ showExit old mNew = do
   new <- mNew
   decrCallDepth
   when (old /= new) $
-    logDebug ("normalising" <+> prettySimple old)
-  logDebug ("norm-exit " <+> prettySimple new)
+    logDebug MaxDetail ("normalising" <+> prettySimple old)
+  logDebug MaxDetail ("norm-exit " <+> prettySimple new)
   return new
 
 --------------------------------------------------------------------------------

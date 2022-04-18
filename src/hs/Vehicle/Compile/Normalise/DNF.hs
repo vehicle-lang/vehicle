@@ -76,10 +76,10 @@ currentPass = "conversion to DNF"
 
 showEntry :: MonadLogger m => CheckedExpr -> m ()
 showEntry e = do
-  logDebug $ "dnf-entry" <+> prettySimple e
+  logDebug MaxDetail $ "dnf-entry" <+> prettySimple e
   incrCallDepth
 
 showExit :: MonadLogger m => CheckedExpr -> m ()
 showExit e = do
   decrCallDepth
-  logDebug $ "dnf-exit " <+> prettySimple e
+  logDebug MaxDetail $ "dnf-exit " <+> prettySimple e

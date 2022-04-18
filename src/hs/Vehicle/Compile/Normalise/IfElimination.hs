@@ -18,11 +18,11 @@ import Vehicle.Compile.Error
 -- of type `Prop` in which case we then normalise it to an `or` statement.
 liftAndEliminateIfs :: MonadLogger m => CheckedExpr -> m CheckedExpr
 liftAndEliminateIfs e = do
-  logDebug "Beginning if lifting and elimination"
+  logDebug MinDetail $ line <> "Beginning if lifting and elimination"
   incrCallDepth
   result <- liftAndElim liftIf elimIf e
   decrCallDepth
-  logDebug "Finished if lifting elimination"
+  logDebug MinDetail "Finished if lifting elimination"
   return result
 
 liftIf :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr

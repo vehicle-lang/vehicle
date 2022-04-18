@@ -78,6 +78,7 @@ runTest name status alterNetwork = do
     , outFile       = Just outputFile
     , errFile       = Nothing
     , logFile       = Nothing
+    , debugLevel    = 1
     , commandOption = Check $ CheckOptions
       { proofCache = proofCache
       }

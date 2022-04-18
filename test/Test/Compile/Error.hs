@@ -215,6 +215,7 @@ runTest inputFile outputFile backend Resources{..} = do
     , outFile       = Nothing
     , errFile       = Just outputFile
     , logFile       = Nothing -- Just Nothing
+    , debugLevel    = 1
     , commandOption = Compile $ CompileOptions
       { target           = backend
       , specification    = inputFile

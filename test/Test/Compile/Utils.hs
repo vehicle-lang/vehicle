@@ -79,7 +79,7 @@ discardState e = case discardLogger $ logCompileError e of
 
 traceLogger :: Logger a -> a
 traceLogger m =
-  let (v, logs) = runLogger m in
+  let (v, logs) = runLogger MaxDetail m in
   trace (showMessages logs) v
 
 textToCheckedExpr :: Text -> CheckedExpr

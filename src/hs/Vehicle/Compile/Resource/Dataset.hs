@@ -8,7 +8,6 @@ import Control.Monad.Except (MonadError(throwError))
 import Data.Map qualified as Map
 import System.FilePath (takeExtension)
 
-import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Resource.Dataset.IDX (readIDX)
@@ -23,14 +22,11 @@ expandDatasets :: (MonadIO m, MonadCompile m)
                -> InputProg
                -> m InputProg
 expandDatasets resources prog1 = do
-  logDebug "Beginning expansion of datasets"
+  logDebug MinDetail "Beginning expansion of datasets"
   incrCallDepth
-
   prog2 <- runReaderT (expandProg prog1) resources
-  logDebug $ prettySimple prog2
-
   decrCallDepth
-  logDebug $ "Finished expansion of datasets" <> line
+  logDebug MinDetail $ "Finished expansion of datasets" <> line
   return prog2
 
 --------------------------------------------------------------------------------

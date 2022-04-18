@@ -258,7 +258,7 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
 
     -- Catch-all
     _ -> do
-      logDebug $ pretty (show $ boundContext constraint)
+      logDebug MaxDetail $ pretty (show $ boundContext constraint)
       throwError $ FailedConstraints [constraint]
 
   return progress
@@ -276,7 +276,7 @@ solveEq :: (MonadConstraintSolving m, Eq a)
         -> m ()
 solveEq c v1 v2
   | v1 /= v2  = throwError $ FailedConstraints [c]
-  | otherwise = logDebug "solved-trivially"
+  | otherwise = logDebug MaxDetail "solved-trivially"
 
 solveArg :: MonadConstraintSolving m
          => Constraint
@@ -297,7 +297,7 @@ solveSimpleApplication constraint fun1 fun2 args1 args2 = do
   if fun1 /= fun2 || length args1 /= length args2 then
     throwError $ FailedConstraints [constraint]
   else if null args1 then do
-    logDebug "solved-trivially"
+    logDebug MaxDetail "solved-trivially"
     return Progress
       { newConstraints = mempty
       , solvedMetas    = mempty

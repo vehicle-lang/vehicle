@@ -57,6 +57,7 @@ runTest name inputFile networks = do
     , outFile       = Nothing
     , errFile       = Nothing
     , logFile       = Nothing
+    , debugLevel    = 1
     , commandOption = Verify $ VerifyOptions
       { verifier         = Marabou
       , specification    = inputFile

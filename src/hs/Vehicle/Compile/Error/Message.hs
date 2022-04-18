@@ -74,7 +74,7 @@ logCompileError :: Monad m
 logCompileError x = do
   e' <- runExceptT x
   case e' of
-    Left err -> logDebug (pretty (details err))
+    Left err -> logDebug MinDetail (pretty (details err))
     Right _  -> return ()
   return e'
 

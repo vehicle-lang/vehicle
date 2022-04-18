@@ -26,13 +26,13 @@ import Vehicle.Resource.NeuralNetwork
 -- | Compiles the provided program to Marabou queries.
 compile :: MonadCompile m => NetworkCtx -> CheckedProg -> m [MarabouProperty]
 compile networkCtx prog = do
-  logDebug "Beginning compilation to Marabou"
+  logDebug MinDetail "Beginning compilation to Marabou"
   incrCallDepth
 
   result <- compileProg networkCtx prog
 
   decrCallDepth
-  logDebug "Finished compilation to Marabou"
+  logDebug MinDetail "Finished compilation to Marabou"
   return result
 
 --------------------------------------------------------------------------------
@@ -65,13 +65,13 @@ compileProperty :: MonadCompile m
 compileProperty ident networkCtx expr = do
   let identDoc = squotes (pretty ident)
   let ann = annotationOf expr
-  logDebug $ "Beginning compilation of property" <+> identDoc
+  logDebug MinDetail $ "Beginning compilation of property" <+> identDoc
   incrCallDepth
 
   -- Check that we only have one type of quantifier in the property
   quantifier <- checkQuantifiersAreHomogeneous MarabouBackend ident expr
 
-  logDebug $ line <> "Quantifier type: " <> pretty (Quant quantifier)
+  logDebug MinDetail $ line <> "Quantifier type: " <> pretty (Quant quantifier)
 
   -- If the property is universally quantified then we need to negate the expression
   let (isPropertyNegated, possiblyNegatedExpr) =
@@ -82,7 +82,7 @@ compileProperty ident networkCtx expr = do
   -- Eliminate any if-expressions
   ifFreeExpr <- liftAndEliminateIfs possiblyNegatedExpr
 
-  logDebug $ line <> "After if-elimination: " <> prettyFriendly ifFreeExpr
+  logDebug MinDetail $ "After if-elimination: " <> prettyFriendly ifFreeExpr
 
   -- Normalise the expression to remove any implications, push the negations through
   -- and expand out any multiplication.
@@ -95,7 +95,7 @@ compileProperty ident networkCtx expr = do
   -- Convert to disjunctive normal form
   dnfExpr <- convertToDNF normExpr
 
-  logDebug $ line <> "After conversion to DNF: " <> prettyFriendly dnfExpr
+  logDebug MinDetail $ line <> "After conversion to DNF: " <> prettyFriendly dnfExpr
 
   -- Split up into the individual queries needed for Marabou.
   let queryExprs = splitDisjunctions dnfExpr
@@ -104,7 +104,7 @@ compileProperty ident networkCtx expr = do
   queries <- traverse (compileQuery ident networkCtx quantifier) queryExprs
 
   decrCallDepth
-  logDebug $ "Finished compilation of property" <+> identDoc
+  logDebug MinDetail $ "Finished compilation of property" <+> identDoc
 
   return $ MarabouProperty (nameOf ident) isPropertyNegated queries
 
@@ -132,10 +132,10 @@ compileQuery ident networkCtx originalQuantifier expr = do
   (vars, assertionDocs) <- compileAssertions ident originalQuantifier descopedExpr
   let doc = vsep assertionDocs
 
-  logDebug $ "Output:" <> align (line <> doc)
+  logDebug MinDetail $ "Output:" <> align (line <> doc)
 
   decrCallDepth
-  logDebug $ "Finished compilation of SMTLib query" <+> squotes (pretty ident)
+  logDebug MinDetail $ "Finished compilation of SMTLib query" <+> squotes (pretty ident)
 
   return $ MarabouQuery doc vars metaNetwork
 

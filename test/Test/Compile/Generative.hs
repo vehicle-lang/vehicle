@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Test.Compile.Generative where
 
 import Control.Monad (forM_)
