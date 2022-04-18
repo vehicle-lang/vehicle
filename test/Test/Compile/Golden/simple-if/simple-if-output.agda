@@ -8,6 +8,7 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
+open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Bool as 𝔹 using (Bool; true; false; if_then_else_)
@@ -21,5 +22,11 @@ postulate f : ℚ → ℚ
 abstract
   prop1 : ∀ (x : ℚ) → if ⌊ x ℚ.>? ℤ.+ 0 ℚ./ 1 ⌋ then f x ℚ.> ℤ.+ 0 ℚ./ 1 else f x ℚ.≤ ℤ.+ 0 ℚ./ 1
   prop1 = checkSpecification record
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
+    }
+
+abstract
+  prop3 : ∃ λ (x : ℚ) → if ⌊ f x ℚ.>? ℤ.+ 0 ℚ./ 1 ⌋ then x ℚ.≥ ℤ.+ 0 ℚ./ 1 else x ℚ.< ℤ.+ 0 ℚ./ 1
+  prop3 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
