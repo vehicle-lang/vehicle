@@ -83,11 +83,7 @@ class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delab = discardLogger . delabM
 
   delabWithLogging :: MonadDelab m => t ann -> m bnfc
-  delabWithLogging x = do
-    logDebug MinDetail "Beginning delaboration"
-    result <- delabM x
-    logDebug MinDetail "Ending delaboration\n"
-    return result
+  delabWithLogging x = logCompilerPass "delaboration" $ delabM x
 
 --  delab :: t ann -> bnfc
 --  delab = _

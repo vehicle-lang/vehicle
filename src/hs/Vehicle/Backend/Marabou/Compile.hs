@@ -6,7 +6,7 @@ import Control.Monad.Except (MonadError(..))
 import Data.Maybe (catMaybes)
 import Data.Bifunctor (Bifunctor(first))
 
-import Vehicle.Language.Print (prettySimple, prettyFriendly)
+import Vehicle.Language.Print (prettySimple)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise (normalise, NormalisationOptions(..))
@@ -15,7 +15,7 @@ import Vehicle.Compile.Normalise.IfElimination (liftAndEliminateIfs)
 import Vehicle.Compile.Normalise.DNF (convertToDNF, splitDisjunctions)
 import Vehicle.Compile.Descope (runDescope)
 import Vehicle.Compile.SupplyNames (supplyDBNames)
-import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAreHomogeneous)
+import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Marabou.Core
 import Vehicle.Resource.NeuralNetwork
@@ -25,15 +25,8 @@ import Vehicle.Resource.NeuralNetwork
 
 -- | Compiles the provided program to Marabou queries.
 compile :: MonadCompile m => NetworkCtx -> CheckedProg -> m [MarabouProperty]
-compile networkCtx prog = do
-  logDebug MinDetail "Beginning compilation to Marabou"
-  incrCallDepth
-
-  result <- compileProg networkCtx prog
-
-  decrCallDepth
-  logDebug MinDetail "Finished compilation to Marabou"
-  return result
+compile networkCtx prog = logCompilerPass "compilation to Marabou" $
+  compileProg networkCtx prog
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -62,82 +55,70 @@ compileProperty :: MonadCompile m
                 -> NetworkCtx
                 -> CheckedExpr
                 -> m MarabouProperty
-compileProperty ident networkCtx expr = do
-  let identDoc = squotes (pretty ident)
-  let ann = annotationOf expr
-  logDebug MinDetail $ "Beginning compilation of property" <+> identDoc
-  incrCallDepth
+compileProperty ident networkCtx expr =
+  logCompilerPass ("property" <+> squotes (pretty ident)) $ do
 
-  -- Check that we only have one type of quantifier in the property
-  quantifier <- checkQuantifiersAreHomogeneous MarabouBackend ident expr
+    -- Check that we only have one type of quantifier in the property
+    -- and if it is universal then negate the property
+    (isPropertyNegated, originalQuantifier, possiblyNegatedExpr) <-
+      checkQuantifiersAndNegateIfNecessary MarabouBackend ident expr
 
-  logDebug MinDetail $ line <> "Quantifier type: " <> pretty (Quant quantifier)
+    -- Eliminate any if-expressions
+    ifFreeExpr <- liftAndEliminateIfs possiblyNegatedExpr
 
-  -- If the property is universally quantified then we need to negate the expression
-  let (isPropertyNegated, possiblyNegatedExpr) =
-        if quantifier == Any
-          then (False, expr)
-          else (True,  NotExpr ann Prop [ExplicitArg ann expr])
+    -- Normalise the expression to remove any implications, push the negations through
+    -- and expand out any multiplication.
+    normExpr <- normalise (Options
+      { implicationsToDisjunctions = True
+      , subtractionToAddition      = True
+      , expandOutPolynomials       = True
+      }) ifFreeExpr
 
-  -- Eliminate any if-expressions
-  ifFreeExpr <- liftAndEliminateIfs possiblyNegatedExpr
+    -- Convert to disjunctive normal form
+    dnfExpr <- convertToDNF normExpr
 
-  logDebug MinDetail $ "After if-elimination: " <> prettyFriendly ifFreeExpr
+    -- Split up into the individual queries needed for Marabou.
+    let queryExprs = splitDisjunctions dnfExpr
+    let numberOfQueries = length queryExprs
+    logDebug MinDetail $ "Found" <+> pretty numberOfQueries <+> "queries" <> line
 
-  -- Normalise the expression to remove any implications, push the negations through
-  -- and expand out any multiplication.
-  normExpr <- normalise (Options
-    { implicationsToDisjunctions = True
-    , subtractionToAddition      = True
-    , expandOutPolynomials       = True
-    }) ifFreeExpr
+    -- Compile the individual queries
+    let compileQ = compileQuery ident networkCtx originalQuantifier
+    queries <- traverse compileQ (zip [1..] queryExprs)
 
-  -- Convert to disjunctive normal form
-  dnfExpr <- convertToDNF normExpr
-
-  logDebug MinDetail $ line <> "After conversion to DNF: " <> prettyFriendly dnfExpr
-
-  -- Split up into the individual queries needed for Marabou.
-  let queryExprs = splitDisjunctions dnfExpr
-
-  -- Compile the individual queries
-  queries <- traverse (compileQuery ident networkCtx quantifier) queryExprs
-
-  decrCallDepth
-  logDebug MinDetail $ "Finished compilation of property" <+> identDoc
-
-  return $ MarabouProperty (nameOf ident) isPropertyNegated queries
+    return $ MarabouProperty (nameOf ident) isPropertyNegated queries
 
 compileQuery :: MonadCompile m
              => Identifier
              -> NetworkCtx
              -> Quantifier
-             -> CheckedExpr
+             -> (Int, CheckedExpr)
              -> m MarabouQuery
-compileQuery ident networkCtx originalQuantifier expr = do
-  -- Convert all applications of networks into magic variables
-  (networklessExpr, metaNetwork) <- convertNetworkAppsToMagicVars Marabou networkCtx Any expr
+compileQuery ident networkCtx originalQuantifier (queryId, expr) =
+  logCompilerPass ("query" <+> pretty queryId) $ do
 
-  -- Normalise the expression to remove any implications, push the negations through
-  -- and expand out any multiplication.
-  normExpr <- normalise (Options
-    { implicationsToDisjunctions = True
-    , subtractionToAddition      = True
-    , expandOutPolynomials       = True
-    }) networklessExpr
+    -- Convert all applications of networks into magic variables
+    (networklessExpr, metaNetwork) <-
+      convertNetworkAppsToMagicVars Marabou networkCtx Any expr
 
-  -- Descope the expression, converting from DeBruijn indices to names
-  let descopedExpr = runDescope [] (supplyDBNames normExpr)
+    -- Normalise the expression to remove any implications, push the negations through
+    -- and expand out any multiplication.
+    normExpr <- normalise (Options
+      { implicationsToDisjunctions = True
+      , subtractionToAddition      = True
+      , expandOutPolynomials       = True
+      }) networklessExpr
 
-  (vars, assertionDocs) <- compileAssertions ident originalQuantifier descopedExpr
-  let doc = vsep assertionDocs
+    -- Descope the expression, converting from DeBruijn indices to names
+    let descopedExpr = runDescope [] (supplyDBNames normExpr)
 
-  logDebug MinDetail $ "Output:" <> align (line <> doc)
+    (vars, doc) <- logCompilerPass "compiling assertions" $ do
+      (vars, assertionDocs) <- compileAssertions ident originalQuantifier descopedExpr
+      let assertionsDoc = vsep assertionDocs
+      logCompilerPassOutput assertionsDoc
+      return (vars, assertionsDoc)
 
-  decrCallDepth
-  logDebug MinDetail $ "Finished compilation of SMTLib query" <+> squotes (pretty ident)
-
-  return $ MarabouQuery doc vars metaNetwork
+    return $ MarabouQuery doc vars metaNetwork
 
 compileAssertions :: MonadCompile m
                   => Identifier

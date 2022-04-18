@@ -34,7 +34,7 @@ class Inferrable a b where
   infer :: TCM m => a -> m b
 
 instance Inferrable UncheckedProg CheckedProg where
-  infer = inferProg
+  infer p = logCompilerPass "bidirectional pass" $ inferProg p
 
 instance Inferrable UncheckedExpr CheckedExpr where
   infer e = fst <$> inferExpr e

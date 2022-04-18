@@ -21,13 +21,8 @@ insertLets :: MonadLogger m
            => (CheckedCoDBExpr -> Int -> Bool)
            -> CheckedExpr
            -> m CheckedExpr
-insertLets subexprFilter expr = do
-  logDebug MinDetail $ line <> "Beginning let insertion"
-  incrCallDepth
-  result <- runReaderT (applyInsert expr) subexprFilter
-  decrCallDepth
-  logDebug MinDetail $ "Finished let insertion" <> line
-  return result
+insertLets subexprFilter expr = logCompilerPass "let insertion" $ do
+  runReaderT (applyInsert expr) subexprFilter
   where
     applyInsert :: MonadLetInsert m => CheckedExpr -> m CheckedExpr
     applyInsert e = do

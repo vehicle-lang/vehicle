@@ -16,11 +16,8 @@ import Vehicle.Compile.Error
 
 scopeCheck :: (MonadLogger m, MonadError CompileError m)
            => InputProg -> m UncheckedProg
-scopeCheck e = do
-  logDebug MinDetail "Beginning scope checking"
-  result <- runReaderT (scope e) emptyCtx
-  logDebug MinDetail "Finished scope checking\n"
-  return result
+scopeCheck e = logCompilerPass "scope checking" $
+  runReaderT (scope e) emptyCtx
 
 scopeCheckClosedExpr :: (MonadLogger m, MonadError CompileError m)
                      => InputExpr -> m UncheckedExpr

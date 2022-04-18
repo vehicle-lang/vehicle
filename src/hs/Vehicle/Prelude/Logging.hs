@@ -42,6 +42,7 @@ data Severity
 
 data DebugLevel
   = MinDetail
+  | MidDetail
   | MaxDetail
   deriving (Eq, Ord, Show)
 

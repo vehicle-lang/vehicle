@@ -7,6 +7,7 @@ import Data.List.NonEmpty as NonEmpty
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Language.Print
 
 --------------------------------------------------------------------------------
 -- If operations
@@ -17,12 +18,9 @@ import Vehicle.Compile.Error
 -- lifting the `if` expression until it reaches a point where we know that it's
 -- of type `Prop` in which case we then normalise it to an `or` statement.
 liftAndEliminateIfs :: MonadLogger m => CheckedExpr -> m CheckedExpr
-liftAndEliminateIfs e = do
-  logDebug MinDetail $ line <> "Beginning if lifting and elimination"
-  incrCallDepth
+liftAndEliminateIfs e = logCompilerPass "if elimination" $ do
   result <- liftAndElim liftIf elimIf e
-  decrCallDepth
-  logDebug MinDetail "Finished if lifting elimination"
+  logCompilerPassOutput (prettyFriendly result)
   return result
 
 liftIf :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr

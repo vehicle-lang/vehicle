@@ -13,7 +13,7 @@ import Vehicle.Language.AST
 import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Compile.Descope (runDescope)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAreHomogeneous)
+import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
 import Vehicle.Compile.Normalise
 
 import Vehicle.Backend.VNNLib.Core
@@ -64,57 +64,48 @@ compileDecl networkCtx = \case
     normalisationError currentPass (pretty r <+> "declarations")
 
 compileProperty :: MonadCompile m => NetworkCtx -> Identifier -> CheckedExpr -> m VNNLibProperty
-compileProperty networkCtx ident expr = flip runReaderT ident $ do
-  logDebug MinDetail $ "Beginning compilation of SMTLib property" <+> squotes (pretty ident)
-  incrCallDepth
-  let ann = annotationOf expr
+compileProperty networkCtx ident expr = logCompilerPass "compilation to SMTLib" $
+  flip runReaderT ident $ do
 
-  -- Check that we only have one type of quantifier in the property
-  quantifier <- checkQuantifiersAreHomogeneous VNNLibBackend ident expr
+    -- Check that we only have one type of quantifier in the property.
+    -- If the property is universally quantified then we need to negate the expression.
+    (isPropertyNegated, quantifier,  possiblyNegatedExpr) <-
+      checkQuantifiersAndNegateIfNecessary VNNLibBackend ident expr
 
-  -- If the property is universally quantified then we need to negate the expression
-  let (isPropertyNegated, possiblyNegatedExpr) =
-        if quantifier == Any
-          then (False, expr)
-          else (True,  NotExpr ann Prop [ExplicitArg ann expr])
+    -- Convert all applications of networks into magic variables
+    (networklessExpr, metaNetwork) <-
+      convertNetworkAppsToMagicVars VNNLib networkCtx quantifier possiblyNegatedExpr
 
-  -- Convert all applications of networks into magic variables
-  (networklessExpr, metaNetwork) <-
-    convertNetworkAppsToMagicVars VNNLib networkCtx quantifier possiblyNegatedExpr
+    -- Normalise the expression to remove any implications, push the negations through
+    -- and expand out any multiplication.
+    normExpr <- normalise (Options
+      { implicationsToDisjunctions = False
+      , subtractionToAddition      = False
+      , expandOutPolynomials       = False
+      }) networklessExpr
 
-  -- Normalise the expression to remove any implications, push the negations through
-  -- and expand out any multiplication.
-  normExpr <- normalise (Options
-    { implicationsToDisjunctions = False
-    , subtractionToAddition      = False
-    , expandOutPolynomials       = False
-    }) networklessExpr
+    -- Switch from DeBruijn indices to names
+    let descopedExpr = runDescope [] (supplyDBNames normExpr)
 
-  -- Switch from DeBruijn indices to names
-  let descopedExpr = runDescope [] (supplyDBNames normExpr)
+    -- Strip off the leading quantifiers
+    (vars, quantifierFreeExpr) <- stripQuantifiers descopedExpr
 
-  -- Strip off the leading quantifiers
-  (vars, quantifierFreeExpr) <- stripQuantifiers descopedExpr
+    -- Separate out conjunctions into separate assertions
+    let assertionExprs = splitConjunctions quantifierFreeExpr
 
-  -- Separate out conjunctions into separate assertions
-  let assertionExprs = splitConjunctions quantifierFreeExpr
+    assertionDocs <- traverse compileAssertion assertionExprs
+    let bodyDoc = vsep (map assertion assertionDocs)
 
-  assertionDocs <- traverse compileAssertion assertionExprs
-  let bodyDoc = vsep (map assertion assertionDocs)
+    let doc = if null vars then bodyDoc else compileVars vars <> line <> line <> bodyDoc
+    logDebug MinDetail $ "Output:" <> align (line <> doc)
 
-  let doc = if null vars then bodyDoc else compileVars vars <> line <> line <> bodyDoc
-  logDebug MinDetail $ "Output:" <> align (line <> doc)
-
-  decrCallDepth
-  logDebug MinDetail $ "Finished compilation of SMTLib property" <+> squotes (pretty ident)
-
-  return $ VNNLibProperty
-    { name        = nameOf ident
-    , doc         = doc
-    , vars        = vars
-    , negated     = isPropertyNegated
-    , metaNetwork = metaNetwork
-    }
+    return $ VNNLibProperty
+      { name        = nameOf ident
+      , doc         = doc
+      , vars        = vars
+      , negated     = isPropertyNegated
+      , metaNetwork = metaNetwork
+      }
 
 compileVars :: [VNNVar] -> Doc a
 compileVars vars = vsep (map compileVar vars)

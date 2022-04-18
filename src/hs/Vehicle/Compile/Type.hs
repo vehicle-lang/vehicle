@@ -30,7 +30,7 @@ typeCheck :: ( MonadCompile m
              , PrettyWith ('As 'Internal) b
              , MetaSubstitutable b )
           => a -> m b
-typeCheck e = do
+typeCheck e = logCompilerPass "type checking" $ do
   let prog1 = runAll e
   let prog2 = runReaderT prog1 emptyVariableCtx
   prog3 <- evalStateT prog2 emptyMetaCtx
@@ -45,19 +45,15 @@ runAll expr = do
   inferredExpr     <- infer expr
   metaSubstitution <- solveMetas
   let finalExpr = substMetas metaSubstitution inferredExpr
-  logDebug MinDetail $ prettyVerbose finalExpr <> line
   return finalExpr
 
 solveMetas :: MonadConstraintSolving m => m MetaSubstitution
-solveMetas = do
-  logDebug MaxDetail "Starting constraint solving\n"
+solveMetas = logCompilerPass "constraint solving" $ do
   constraints <- getConstraints
-  solution <- loopOverConstraints $ Progress
+  loopOverConstraints $ Progress
     { newConstraints = constraints
     , solvedMetas    = mempty
     }
-  logDebug MaxDetail "Finished constraint solving\n"
-  return solution
 
 loopOverConstraints :: MonadConstraintSolving m
                     => ConstraintProgress

@@ -28,20 +28,16 @@ removeNetworkDecls :: MonadCompile m
                    => NetworkLocations
                    -> CheckedProg
                    -> m (NetworkCtx, CheckedProg)
-removeNetworkDecls networks prog1 = do
-  logDebug MinDetail "Beginning normalisation of network types"
-  incrCallDepth
+removeNetworkDecls networks prog1 =
+  logCompilerPass "normalisation of network types" $ do
+    (prog2, internalNetworkMap) <- runStateT (standardise prog1) mempty
+    let networkCtx = fmap (\(x,_,_) -> x) internalNetworkMap
 
-  (prog2, internalNetworkMap) <- runStateT (standardise prog1) mempty
-  let networkCtx = fmap (\(x,_,_) -> x) internalNetworkMap
-  warnIfUnusedResources Network (Map.keysSet networks) (Map.keysSet networkCtx)
+    warnIfUnusedResources Network (Map.keysSet networks) (Map.keysSet networkCtx)
 
-  logDebug MinDetail $ prettySimple prog2
-  logDebug MinDetail $ prettyMap networkCtx
+    logCompilerPassOutput (prettyFriendly prog2)
 
-  decrCallDepth
-  logDebug MinDetail $ "Finished normalisation of network types" <> line
-  return (networkCtx, prog2)
+    return (networkCtx, prog2)
 
 --------------------------------------------------------------------------------
 -- Types

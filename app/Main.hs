@@ -39,25 +39,29 @@ optionsParser = Options
      <> help "Show version information." )
   <*> option auto
       ( long "output"
-     <> help "Redirects output to the provided file. If no argument is provided will default to stdout."
+     <> help "Redirects output to the provided file. \
+             \ If no argument is provided will default to stdout."
      <> showDefault
      <> value Nothing
      <> metavar "FILENAME" )
   <*> option auto
       ( long "error"
-     <> help "Redirects error to the provided file. If no argument is provided will default to stderr."
+     <> help "Redirects error to the provided file. \
+             \ If no argument is provided will default to stderr."
      <> showDefault
      <> value Nothing
      <> metavar "FILENAME" )
   <*> option auto
       ( long "log"
-     <> help "Enables logging to the provided file. If no argument is provided will default to stdout."
+     <> help "Enables logging to the provided file. \
+             \ If no argument is provided will default to stdout."
      <> showDefault
      <> value Nothing
      <> metavar "FILENAME" )
   <*> option auto
       ( long "loggingLevel"
-     <> help "Sets the level of detail in the logs, if the --log argument has been passed"
+     <> help "Sets the level of detail in the logs if the --log argument has been passed.  \
+             \ Ranges between 1 (minimal detail) to 3 (maximal detail)"
      <> showDefault
      <> value 1
      <> metavar "INT")

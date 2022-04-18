@@ -19,15 +19,9 @@ expandParameters :: MonadCompile m
                  => ParameterValues
                  -> InputProg
                  -> m InputProg
-expandParameters params prog = do
-  logDebug MinDetail $ "Beginning" <+> phase
-  incrCallDepth
-
+expandParameters params prog = logCompilerPass phase $ do
   (result, foundParams) <- runWriterT (runReaderT (expand prog) params)
   warnIfUnusedResources Parameter (Map.keysSet params) foundParams
-
-  decrCallDepth
-  logDebug MinDetail $ "Finished" <+> phase <> line
   return result
 
 phase :: Doc a

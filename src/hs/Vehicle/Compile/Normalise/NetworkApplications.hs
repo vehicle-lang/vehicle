@@ -15,7 +15,7 @@ import Data.Bifunctor(Bifunctor(..))
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Language.Print (prettySimple, prettyVerbose)
+import Vehicle.Language.Print (prettySimple, prettyVerbose, prettyFriendly)
 import Vehicle.Compile.LetInsertion (insertLets)
 import Vehicle.Resource.NeuralNetwork
 import Data.Text (Text)
@@ -91,23 +91,20 @@ convertNetworkAppsToMagicVars :: MonadCompile m
                               -> Quantifier
                               -> CheckedExpr
                               -> m (CheckedExpr, MetaNetwork)
-convertNetworkAppsToMagicVars verifier networkCtx quantifier expr = do
-  logDebug MinDetail "Beginning conversion of network applications to magic variables"
-  incrCallDepth
+convertNetworkAppsToMagicVars verifier networkCtx quantifier expr =
+  logCompilerPass "input/output variable insertion" $ do
+    networkAppLiftedExpr <- liftNetworkApplications expr
+    let metaNetwork = generateMetaNetwork networkAppLiftedExpr
+    logDebug MinDetail $ "Generated meta-network" <+> pretty metaNetwork <> line
 
-  networkAppLiftedExpr <- liftNetworkApplications expr
-  let metaNetwork = generateMetaNetwork networkAppLiftedExpr
-  logDebug MinDetail $ "Generated meta-network" <+> pretty metaNetwork <> line
+    finalExpr <- if null metaNetwork
+      then return networkAppLiftedExpr
+      else do
+        let e = normExpr metaNetwork quantifier networkAppLiftedExpr
+        runReaderT e (networkCtx, verifier)
 
-  finalExpr <- if null metaNetwork
-    then return networkAppLiftedExpr
-    else do
-      let e = normExpr metaNetwork quantifier networkAppLiftedExpr
-      runReaderT e (networkCtx, verifier)
-
-  decrCallDepth
-  logDebug MinDetail "Finished compilation to VNNLib"
-  return (finalExpr, metaNetwork)
+    logCompilerPassOutput (prettyFriendly finalExpr)
+    return (finalExpr, metaNetwork)
 
 --------------------------------------------------------------------------------
 -- Monad
@@ -147,7 +144,6 @@ normExpr metaNetwork quantifier expr = do
 
   -- Append quantifiers over the magic variables so that it becomes a valid SMTLib expression
   quantifiedExpr <- quantifyOverMagicVariables quantifier metaNetworkDetails updatedExpr
-  logDebug MinDetail $ "Replaced network applications:" <+> prettySimple quantifiedExpr <> line
   return quantifiedExpr
 
 --------------------------------------------------------------------------------

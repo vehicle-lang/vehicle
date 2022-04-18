@@ -24,15 +24,9 @@ expandDatasets :: (MonadIO m, MonadCompile m)
                => DatasetLocations
                -> InputProg
                -> m InputProg
-expandDatasets datasets prog1 = do
-  logDebug MinDetail "Beginning insertion of datasets"
-  incrCallDepth
-
+expandDatasets datasets prog1 = logCompilerPass "insertion of datasets" $ do
   (prog2, foundDatasets) <- runWriterT (runReaderT (expandProg prog1) datasets)
   warnIfUnusedResources Dataset (Map.keysSet datasets) foundDatasets
-
-  decrCallDepth
-  logDebug MinDetail $ "Finished insertion of datasets" <> line
   return prog2
 
 --------------------------------------------------------------------------------

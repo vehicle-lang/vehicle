@@ -51,6 +51,7 @@ openHandles (outFile, errFile, logFile, logLevel) = do
 
   let debugLevel = case logLevel of
         l | l <= 1    -> MinDetail
+          | l == 2    -> MidDetail
           | otherwise -> MaxDetail
 
   return LoggingOptions

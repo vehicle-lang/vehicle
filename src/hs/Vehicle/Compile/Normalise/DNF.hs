@@ -14,7 +14,13 @@ import Vehicle.Language.Print
 -- Currently assumes all implications and negations have
 -- been previously normalised out.
 convertToDNF :: MonadLogger m => CheckedExpr -> m CheckedExpr
-convertToDNF expr = do
+convertToDNF expr = logCompilerPass "conversion to disjunctive normal form" $ do
+  result <- dnf expr
+  logCompilerPassOutput (prettyFriendly result)
+  return result
+
+dnf :: MonadLogger m => CheckedExpr -> m CheckedExpr
+dnf expr = do
   showEntry expr
   result <- case expr of
     Literal{}   -> return expr
@@ -36,20 +42,20 @@ convertToDNF expr = do
     ImplExpr{} -> normalisationError currentPass "Impl"
 
     QuantifierExpr ann t binder body -> do
-      body' <- convertToDNF body
+      body' <- dnf body
       return $ liftOr (QuantifierExpr ann t binder) body'
 
     AndExpr ann t [ExplicitArg ann1 e1, ExplicitArg ann2 e2] -> do
-      e1' <- convertToDNF e1
-      e2' <- convertToDNF e2
+      e1' <- dnf e1
+      e2' <- dnf e2
       return $
         liftOr (\e1'' ->
           liftOr (\e2'' ->
             AndExpr ann t [ExplicitArg ann1 e1'', ExplicitArg ann2 e2'']) e2') e1'
 
     OrExpr ann t [e1, e2] -> do
-      e1' <- traverseArgExpr convertToDNF e1
-      e2' <- traverseArgExpr convertToDNF e2
+      e1' <- traverseArgExpr dnf e1
+      e2' <- traverseArgExpr dnf e2
       return $ OrExpr ann t [e1', e2']
 
     App{} -> return expr

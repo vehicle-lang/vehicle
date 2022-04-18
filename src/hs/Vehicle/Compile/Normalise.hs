@@ -14,16 +14,18 @@ import Data.List.Split (chunksOf)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 
-import Vehicle.Language.Print (prettySimple)
+import Vehicle.Language.Print
 import Vehicle.Compile.Prelude hiding (DeclCtx)
 import Vehicle.Compile.AlphaEquivalence ( alphaEq )
 
 -- |Run a function in 'MonadNorm'.
-normalise :: (MonadLogger m, Norm a) => NormalisationOptions -> a -> m a
-normalise options x = do
-  logDebug MinDetail "Beginning normalisation"
+normalise :: (MonadLogger m, Norm a, PrettyWith ('Named ('As 'External)) a)
+          => NormalisationOptions
+          -> a
+          -> m a
+normalise options x = logCompilerPass "normalisation" $ do
   result <- evalStateT (runReaderT (nf x) options) mempty
-  logDebug MinDetail "Finished normalisation\n"
+  logCompilerPassOutput (prettyFriendly result)
   return result
 
 --------------------------------------------------------------------------------

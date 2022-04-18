@@ -1,5 +1,7 @@
 
-module Vehicle.Compile.QuantifierAnalysis where
+module Vehicle.Compile.QuantifierAnalysis
+  ( checkQuantifiersAndNegateIfNecessary
+  ) where
 
 import Data.Maybe (catMaybes)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
@@ -8,6 +10,28 @@ import Control.Monad.Except (MonadError(throwError))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Backend.Prelude (Backend)
+import Vehicle.Language.Print (prettyFriendly)
+
+checkQuantifiersAndNegateIfNecessary :: MonadCompile m
+                                     => Backend
+                                     -> Identifier
+                                     -> CheckedExpr
+                                     -> m (Bool, Quantifier, CheckedExpr)
+checkQuantifiersAndNegateIfNecessary backend ident expr =
+  logCompilerPass "quantifier analysis" $ do
+    quantifier <- checkQuantifiersAreHomogeneous backend ident expr
+    logDebug MinDetail $ "Quantifier type: " <> pretty (Quant quantifier)
+
+    outputExpr <- if quantifier == Any
+      then return expr
+      else do
+        -- If the property is universally quantified then we need to negate the expression
+        logDebug MinDetail "Negating property..."
+        let ann = annotationOf expr
+        return $ NotExpr ann Prop [ExplicitArg ann expr]
+
+    logCompilerPassOutput (prettyFriendly outputExpr)
+    return (quantifier == All, quantifier, outputExpr)
 
 -- | Checks that the quantifiers within the expression are homogeneous,
 -- returning the quantifier. Defaults to returning `All` if the expression

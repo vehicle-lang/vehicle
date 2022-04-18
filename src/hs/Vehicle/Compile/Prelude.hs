@@ -121,3 +121,22 @@ instance IsBoundCtx [DBBinding] where
 
 instance IsBoundCtx [Symbol] where
   ctxNames = map Just
+
+--------------------------------------------------------------------------------
+-- Logging
+
+logCompilerPass :: MonadLogger m => Doc a -> m b -> m b
+logCompilerPass passName performPass = do
+  logDebug MinDetail $ "Beginning" <+> passName
+  incrCallDepth
+  result <- performPass
+  decrCallDepth
+  logDebug MinDetail $ "Finished" <+> passName <> line
+  return result
+
+logCompilerPassOutput :: MonadLogger m => Doc a -> m ()
+logCompilerPassOutput result = do
+  logDebug MidDetail "Result:"
+  incrCallDepth
+  logDebug MidDetail result
+  decrCallDepth
