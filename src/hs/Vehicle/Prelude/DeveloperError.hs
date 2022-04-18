@@ -19,6 +19,9 @@ instance Show DeveloperError where
 
 instance Exception DeveloperError
 
+-- | Immediately terminates execution. When in the `CompileMonad`, you should
+-- prefer to use the method `compilerDeveloperError` instead of this, as
+-- this method will prevent the logs from being displayed.
 developerError :: HasCallStack => Doc a -> b
 developerError message = throw $ DeveloperError $ layoutAsText $
   "Something went wrong internally. Please report the error" <+>

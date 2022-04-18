@@ -39,7 +39,7 @@ solveTypeClassConstraint ctx (m `Has` e) = do
     HasNatLitsUpToExpr   _ n t   -> solveHasNatLits     constraint n t
     HasIntLitsExpr       _ t     -> solveHasIntLits     constraint t
     HasRatLitsExpr       _ t     -> solveHasRatLits     constraint t
-    _ -> developerError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
+    _ -> compilerDeveloperError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
 
   unless (isStuck progress) $ do
     let primDict = PrimDict (annotationOf eWHNF) eWHNF

@@ -104,15 +104,15 @@ compileExpr e = showExit $ do
     V.AtExpr _ _ _ _ [xs, i]              -> At <$> compileArg xs <*> compileArg i
     V.LSeq _ _ xs                         -> TensorLit <$> traverse compileExpr xs
 
-    V.Hole{}                              -> developerError "Hole"
-    V.Meta{}                              -> developerError "Meta"
-    V.Ann{}                               -> developerError "Ann"
-    V.Let{}                               -> developerError "Let"
-    V.Lam{}                               -> developerError "Lam"
-    V.PrimDict{}                          -> developerError "PrimDict"
-    V.Pi{}                                -> developerError "Pi"
-    V.Type{}                              -> developerError "Type"
-    _                                     -> developerError $ unexpectedExprError currentPass (prettySimple e)
+    V.Hole{}                              -> resolutionError "lossFunction" "Hole"
+    V.Meta{}                              -> resolutionError "lossFunction" "Meta"
+    V.Ann{}                               -> normalisationError "lossFunction" "Ann"
+    V.Let{}                               -> normalisationError "lossFunction" "Let"
+    V.Lam{}                               -> normalisationError "lossFunction" "Lam"
+    V.PrimDict{}                          -> typeError "lossFunction" "PrimDict"
+    V.Pi{}                                -> typeError "lossFunction" "Pi"
+    V.Type{}                              -> typeError "lossFunction" "Type"
+    _                                     -> compilerDeveloperError $ unexpectedExprError currentPass (prettySimple e)
 
 
 compileQuant :: V.Quantifier -> Quantifier

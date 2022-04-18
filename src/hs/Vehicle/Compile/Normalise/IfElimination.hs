@@ -17,7 +17,7 @@ import Vehicle.Language.Print
 -- have been normalised and is of type `Prop`. It does this by recursively
 -- lifting the `if` expression until it reaches a point where we know that it's
 -- of type `Prop` in which case we then normalise it to an `or` statement.
-liftAndEliminateIfs :: MonadLogger m => CheckedExpr -> m CheckedExpr
+liftAndEliminateIfs :: MonadCompile m => CheckedExpr -> m CheckedExpr
 liftAndEliminateIfs e = logCompilerPass "if elimination" $ do
   result <- liftAndElim liftIf elimIf e
   logCompilerPassOutput (prettyFriendly result)
@@ -54,7 +54,7 @@ elimIf e = e
 type LiftingOp = (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
 type EliminationOp = CheckedExpr -> CheckedExpr
 
-liftAndElim :: MonadLogger m
+liftAndElim :: MonadCompile m
             => LiftingOp
             -> EliminationOp
             -> CheckedExpr

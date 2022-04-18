@@ -65,7 +65,7 @@ addBinderToCtx binder (Ctx ctx) = Ctx (nameOf binder : ctx)
 type MonadDescope m = MonadReader Ctx m
 
 -- |Throw an |IndexOutOfBounds| error using an arbitrary index.
-indexOutOfBounds :: DBIndex -> Int -> a
+indexOutOfBounds :: MonadDescope m => DBIndex -> Int -> m a
 indexOutOfBounds index ctxSize = developerError $
   "During descoping found DeBruijn index" <+> pretty index <+>
   "greater than current context size" <+> pretty ctxSize

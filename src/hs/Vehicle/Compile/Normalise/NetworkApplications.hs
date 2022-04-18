@@ -326,9 +326,9 @@ processNetworkApplication d network input = do
   let magicInputVarStartingIndex = totalNumberOfMagicVariables + d - totalMagicVarCountSoFar - 1
 
   logDebug MaxDetail $ prettyVerbose input
-  let localReplacableBoundVars = case input of
-          SeqExpr _ _ _ xs -> getReplacableBoundVars magicInputVarStartingIndex xs
-          _                -> normalisationError currentPass "LSeq"
+  localReplacableBoundVars <- case input of
+    SeqExpr _ _ _ xs -> return $ getReplacableBoundVars magicInputVarStartingIndex xs
+    _                -> normalisationError currentPass "LSeq"
 
   let down = DownwardsReplacementState
         { magicInputVarCount  = newMagicInputVarCount

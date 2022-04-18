@@ -288,9 +288,9 @@ compileExpr :: MonadAgdaCompile m => OutputExpr -> m Code
 compileExpr expr = do
   logEntry expr
   result <- case expr of
-    Hole{}     -> developerError "Holes should have been removed during type-checking"
-    Meta{}     -> developerError "Meta-variables should have been removed during type-checking"
-    PrimDict{} -> developerError "Primitive dictionaries should never be compiled"
+    Hole{}     -> compilerDeveloperError "Holes should have been removed during type-checking"
+    Meta{}     -> compilerDeveloperError "Meta-variables should have been removed during type-checking"
+    PrimDict{} -> compilerDeveloperError "Primitive dictionaries should never be compiled"
 
     Type _ l   -> return $ compileType l
     Var  _ n   -> return $ annotateConstant [] (pretty n)
@@ -407,7 +407,7 @@ compileBuiltin e = case e of
   FoldExpr{}            -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Fold
   BuiltinTypeClass _ tc -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) (TypeClass tc)
 
-  _ -> developerError $ "unexpected application of builtin found during compilation to Agda:" <+>
+  _ -> compilerDeveloperError $ "unexpected application of builtin found during compilation to Agda:" <+>
                         squotes (prettyVerbose e)
 
 compileAnn :: Code -> Code -> Code
@@ -449,19 +449,19 @@ compileQuantIn Bool = compileContainerExprLevelQuantifier
 compileQuantIn Prop = compileContainerTypeLevelQuantifier
 
 compileLiteral :: MonadAgdaCompile m => OutputExpr -> m Code
-compileLiteral e = return $ case e of
-  NatLiteralExpr  _ann FinType{}  n -> compileFinLiteral  (toInteger n)
-  NatLiteralExpr  _ann NatType{}  n -> compileNatLiteral  (toInteger n)
-  NatLiteralExpr  _ann IntType{}  n -> compileIntLiteral  (toInteger n)
-  NatLiteralExpr  _ann RatType{}  n -> compileRatLiteral  (toRational n)
-  NatLiteralExpr  _ann RealType{} n -> compileRealLiteral (toRational n)
-  IntLiteralExpr  _ann Int  i -> compileIntLiteral  (toInteger i)
-  IntLiteralExpr  _ann Rat  i -> compileRatLiteral  (toRational i)
-  IntLiteralExpr  _ann Real i -> compileRealLiteral (toRational i)
-  RatLiteralExpr  _ann Rat  p -> compileRatLiteral  p
-  RatLiteralExpr  _ann Real p -> compileRealLiteral p
-  BoolLiteralExpr _ann t b    -> compileBoolOp0 b t
-  _                           -> developerError $
+compileLiteral e = case e of
+  NatLiteralExpr  _ann FinType{}  n -> return $ compileFinLiteral  (toInteger n)
+  NatLiteralExpr  _ann NatType{}  n -> return $ compileNatLiteral  (toInteger n)
+  NatLiteralExpr  _ann IntType{}  n -> return $ compileIntLiteral  (toInteger n)
+  NatLiteralExpr  _ann RatType{}  n -> return $ compileRatLiteral  (toRational n)
+  NatLiteralExpr  _ann RealType{} n -> return $ compileRealLiteral (toRational n)
+  IntLiteralExpr  _ann Int        i -> return $ compileIntLiteral  (toInteger i)
+  IntLiteralExpr  _ann Rat        i -> return $ compileRatLiteral  (toRational i)
+  IntLiteralExpr  _ann Real       i -> return $ compileRealLiteral (toRational i)
+  RatLiteralExpr  _ann Rat        p -> return $ compileRatLiteral  p
+  RatLiteralExpr  _ann Real       p -> return $ compileRealLiteral p
+  BoolLiteralExpr _ann t b          -> return $ compileBoolOp0 b t
+  _                                 -> compilerDeveloperError $
     "unexpected literal" <+> squotes (prettyVerbose e) <+>
     -- "of type" <+> squotes (pretty t) <+>
     "found during compilation to Agda"

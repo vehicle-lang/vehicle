@@ -19,8 +19,8 @@ import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
 --------------------------------------------------------------------------------
 -- Error handling
 
-unexpectedCase :: Provenance -> Doc ann -> a
-unexpectedCase p expr = developerError $
+unexpectedCase :: MonadCompile m => Provenance -> Doc () -> m a
+unexpectedCase p expr = compilerDeveloperError $
   expr <+> "should not exist during unification" <+> pretty p
 
 --------------------------------------------------------------------------------
@@ -158,7 +158,7 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
       -- depends on these, and set the old meta-variable to equal that one.
       | i == j && args1 /= args2 -> do
         when (length args1 /= length args2) $
-          developerError "Identical meta variables have different numbers of arguments"
+          compilerDeveloperError "Identical meta variables have different numbers of arguments"
 
         let sharedArgs = positionalIntersection args1 args2
         let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs

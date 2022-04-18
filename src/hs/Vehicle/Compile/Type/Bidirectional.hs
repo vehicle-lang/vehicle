@@ -291,7 +291,7 @@ inferExpr e = do
     Type ann l ->
       return (e , Type (inserted ann) (l + 1))
 
-    Meta _ m -> developerError $
+    Meta _ m -> compilerDeveloperError $
       "Trying to infer the type of a meta-variable" <+> pretty m
 
     Hole ann _name -> do
@@ -345,7 +345,7 @@ inferExpr e = do
         Just (_, checkedType, _) -> do
           let liftedCheckedType = liftFreeDBIndices (i+1) checkedType
           return (Var ann (Bound i), liftedCheckedType)
-        Nothing      -> developerError $
+        Nothing      -> compilerDeveloperError $
           "DBIndex" <+> pretty i <+> "out of bounds when looking" <+>
           "up variable in context" <+> prettyVerbose (ctxNames ctx) <+> "at" <+> pretty (provenanceOf ann)
 
@@ -355,7 +355,7 @@ inferExpr e = do
       case Map.lookup ident ctx of
         Just (checkedType, _) -> return (Var ann (Free ident), checkedType)
         -- This should have been caught during scope checking
-        Nothing -> developerError $
+        Nothing -> compilerDeveloperError $
           "Declaration'" <+> pretty ident <+> "'not found when" <+>
           "looking up variable in context" <+> pretty (Map.keys ctx) <+> "at" <+> pretty (provenanceOf ann)
 

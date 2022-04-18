@@ -87,6 +87,12 @@ class MeaningfulError e where
 instance MeaningfulError CompileError where
   details = \case
 
+    ----------------------
+    -- Developer errors --
+    ----------------------
+
+    DevError text -> developerError text
+
     -------------
     -- Parsing --
     -------------

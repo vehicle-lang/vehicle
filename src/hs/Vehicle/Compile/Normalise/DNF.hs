@@ -13,13 +13,13 @@ import Vehicle.Language.Print
 -- | Converts an expression to disjunctive normal form.
 -- Currently assumes all implications and negations have
 -- been previously normalised out.
-convertToDNF :: MonadLogger m => CheckedExpr -> m CheckedExpr
+convertToDNF :: MonadCompile m => CheckedExpr -> m CheckedExpr
 convertToDNF expr = logCompilerPass "conversion to disjunctive normal form" $ do
   result <- dnf expr
   logCompilerPassOutput (prettyFriendly result)
   return result
 
-dnf :: MonadLogger m => CheckedExpr -> m CheckedExpr
+dnf :: MonadCompile m => CheckedExpr -> m CheckedExpr
 dnf expr = do
   showEntry expr
   result <- case expr of

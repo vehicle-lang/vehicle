@@ -3,7 +3,7 @@
 module Vehicle.Compile.Error where
 
 import Control.Exception (IOException)
-import Control.Monad.Except ( MonadError )
+import Control.Monad.Except ( MonadError, throwError )
 import Data.List.NonEmpty (NonEmpty)
 import Prettyprinter (list)
 
@@ -24,8 +24,10 @@ type MonadCompile m =
 -- Compilation errors
 
 data CompileError
+  = DevError (Doc ())
+
   -- Parse errors
-  = BNFCParseError String
+  | BNFCParseError String
 
   -- Errors thrown when elaborating from the BNFC internal language
   | UnknownBuiltin     Token
@@ -92,28 +94,33 @@ data CompileError
 --------------------------------------------------------------------------------
 -- Some useful developer errors
 
+-- | Should be used in preference to `developerError` whenever in the error
+-- monad, as unlike the latter this method does not prevent logging.
+compilerDeveloperError :: MonadError CompileError m => Doc () -> m b
+compilerDeveloperError message = throwError $ DevError message
+
 unexpectedExprError :: Doc a -> Doc a -> Doc a
 unexpectedExprError pass name =
   "encountered unexpected expression" <+> squotes name <+>
   "during" <+> pass <> "."
 
-normalisationError :: Doc a -> Doc a -> b
-normalisationError pass name = developerError $
+normalisationError :: MonadError CompileError m => Doc () -> Doc () -> m b
+normalisationError pass name = compilerDeveloperError $
   unexpectedExprError pass name <+> "We should have normalised this out."
 
-typeError :: Doc a -> Doc a -> b
+typeError :: MonadError CompileError m => Doc () -> Doc () -> m b
 typeError pass name = developerError $
   unexpectedExprError pass name <+> "We should not be compiling types."
 
-visibilityError :: Doc a -> Doc a -> b
+visibilityError :: MonadError CompileError m => Doc () -> Doc () -> m b
 visibilityError pass name = developerError $
   unexpectedExprError pass name <+> "Should not be present as explicit arguments"
 
-resolutionError :: Doc a -> Doc a -> b
+resolutionError :: MonadError CompileError m => Doc () -> Doc () -> m b
 resolutionError pass name = developerError $
   unexpectedExprError pass name <+> "We should have resolved this during type-checking."
 
-caseError :: Doc a -> Doc a -> [Doc a] -> b
+caseError :: MonadError CompileError m => Doc () -> Doc () -> [Doc ()] -> m b
 caseError pass name cases = developerError $
   unexpectedExprError pass name <+> "This should already have been caught by the" <+>
   "following cases:" <+> list cases

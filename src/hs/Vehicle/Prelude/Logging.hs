@@ -10,6 +10,7 @@ module Vehicle.Prelude.Logging
   , Logger
   , runLogger
   , discardLogger
+  , discardLoggerT
   , logWarning
   , logDebug
   , liftExceptWithLogging

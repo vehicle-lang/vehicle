@@ -26,7 +26,10 @@ scopeCheckClosedExpr e = runReaderT (scope e) emptyCtx
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
 
-type SCM m = (MonadLogger m, MonadError CompileError m, MonadReader Ctx m)
+type SCM m =
+  ( MonadCompile m
+  , MonadReader Ctx m
+  )
 
 -- |Type of scope checking contexts.
 data Ctx = Ctx
@@ -102,7 +105,7 @@ instance ScopeCheck InputExpr UncheckedExpr where
         bound' <- scope bound
         bindVar binder $ \binder' -> Let ann bound' binder' <$> scope body
 
-      PrimDict _ _tc -> developerError "Found PrimDict during scope checking."
+      PrimDict _ _tc -> compilerDeveloperError "Found PrimDict during scope checking."
 
     logScopeExit result
     return result

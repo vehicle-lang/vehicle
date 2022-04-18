@@ -6,6 +6,7 @@ module Test.Compile.Utils
   , locationDir
   , textToCheckedExpr
   , retypeCheckExpr
+  , discardState
   ) where
 
 import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
