@@ -17,9 +17,10 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Language.Print
 import Vehicle.Compile.Prelude hiding (DeclCtx)
 import Vehicle.Compile.AlphaEquivalence ( alphaEq )
+import Vehicle.Compile.Error
 
 -- |Run a function in 'MonadNorm'.
-normalise :: (MonadLogger m, Norm a, PrettyWith ('Named ('As 'External)) a)
+normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) a)
           => NormalisationOptions
           -> a
           -> m a
@@ -69,7 +70,7 @@ showExit old mNew = do
 
 -- |Constraint for the monad stack used by the normaliser.
 type MonadNorm m =
-  ( MonadLogger m
+  ( MonadCompile m
   , MonadState DeclCtx m
   , MonadReader NormalisationOptions m
   )
@@ -101,7 +102,7 @@ instance Norm CheckedExpr where
       Hole{}      -> return e
       Literal{}   -> return e
       Builtin{}   -> return e
-      Meta{}      -> developerError "All metas should have been solved before normalisation"
+      Meta{}      -> resolutionError "normalisation" "meta"
 
       PrimDict ann tc     -> PrimDict ann <$> nf tc
       LSeq ann dict exprs -> LSeq ann dict <$> traverse nf exprs
@@ -364,6 +365,10 @@ nfNot ann t arg = case argExpr arg of
     ne1 <- notArg t e1;
     ne2 <- notArg t e2;
     return $ OrExpr  ann t [ne1, ne2]
+  IfExpr _ tRes [p, e1, e2] -> Just $ do
+    ne1 <- notArg t e1
+    ne2 <- notArg t e2
+    return $ IfExpr ann tRes [p, ne1, ne2]
   _ -> Nothing
 
 nfAnd :: forall m . MonadNorm m

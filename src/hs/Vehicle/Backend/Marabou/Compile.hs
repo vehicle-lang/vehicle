@@ -63,19 +63,27 @@ compileProperty ident networkCtx expr =
     (isPropertyNegated, originalQuantifier, possiblyNegatedExpr) <-
       checkQuantifiersAndNegateIfNecessary MarabouBackend ident expr
 
-    -- Eliminate any if-expressions
-    ifFreeExpr <- liftAndEliminateIfs possiblyNegatedExpr
-
-    -- Normalise the expression to remove any implications, push the negations through
-    -- and expand out any multiplication.
+    -- Normalise the expression to push through the negation.
     normExpr <- normalise (Options
+      { implicationsToDisjunctions = True
+      , subtractionToAddition      = True
+      , expandOutPolynomials       = True
+      }) possiblyNegatedExpr
+
+    -- Eliminate any if-expressions
+    ifFreeExpr <- liftAndEliminateIfs normExpr
+
+    -- Normalise again to push through the introduced nots. Can definitely be
+    -- more efficient here and just push in the not, when we introduce
+    -- it during if elimination.
+    normExpr2 <- normalise (Options
       { implicationsToDisjunctions = True
       , subtractionToAddition      = True
       , expandOutPolynomials       = True
       }) ifFreeExpr
 
     -- Convert to disjunctive normal form
-    dnfExpr <- convertToDNF normExpr
+    dnfExpr <- convertToDNF normExpr2
 
     -- Split up into the individual queries needed for Marabou.
     let queryExprs = splitDisjunctions dnfExpr
@@ -139,7 +147,7 @@ compileAssertions ident quantifier expr = case expr of
 
   Var _ann v -> return ([], [pretty v])
 
-  Literal _ann l -> return $ case l of
+  Literal _ann l -> case l of
     LBool _ -> normalisationError currentPass "LBool"
     _       -> caseError currentPass "Literal" ["AndExpr"]
 
@@ -161,7 +169,7 @@ compileAssertions ident quantifier expr = case expr of
     assertion <- compileAssertion ann ident quantifier (EqualityRel eq) (argExpr lhs) (argExpr rhs)
     return ([], [assertion])
 
-  App{} -> developerError $ unexpectedExprError currentPass (prettySimple expr)
+  App{} -> compilerDeveloperError $ unexpectedExprError currentPass (prettySimple expr)
 
 compileBinder :: MonadCompile m => Identifier -> OutputBinder -> m MarabouVar
 compileBinder ident binder =
@@ -208,22 +216,28 @@ compileAssertion ann ident quantifier rel lhs rhs = do
     compileSide = \case
       Var     _ v                           -> return ([(1, v)], [])
       NegExpr _ _ [ExplicitArg _ (Var _ v)] -> return ([(-1, v)], [])
-      LiteralExpr _ _ l                     -> return ([], [compileLiteral l])
+      LiteralExpr _ _ l                     -> do
+        cl <- compileLiteral l
+        return ([], [cl])
       AddExpr _ _ _ [arg1, arg2]            -> do
         xs <- compileSide (argExpr arg1)
         ys <- compileSide (argExpr arg2)
         return (xs <> ys)
       MulExpr ann1 _ _ [arg1, arg2] -> case (argExpr arg1, argExpr arg2) of
-        (LiteralExpr _ _ l, Var _ v) -> return ([(compileLiteral l, v)],[])
-        (Var _ v, LiteralExpr _ _ l) -> return ([(compileLiteral l, v)],[])
+        (LiteralExpr _ _ l, Var _ v) -> do
+          cl <- compileLiteral l
+          return ([(cl, v)],[])
+        (Var _ v, LiteralExpr _ _ l) -> do
+          cl <- compileLiteral l
+          return ([(cl, v)],[])
         (e1, e2) -> throwError $ NonLinearConstraint MarabouBackend (provenanceOf ann1) ident e1 e2
       e -> developerError $ unexpectedExprError currentPass $ prettySimple e
 
-    compileLiteral :: Literal -> Double
+    compileLiteral :: MonadCompile m => Literal -> m Double
     compileLiteral (LBool _) = normalisationError currentPass "LBool"
-    compileLiteral (LNat  n) = fromIntegral n
-    compileLiteral (LInt  i) = fromIntegral i
-    compileLiteral (LRat  q) = fromRational q
+    compileLiteral (LNat  n) = return $ fromIntegral n
+    compileLiteral (LInt  i) = return $ fromIntegral i
+    compileLiteral (LRat  q) = return $ fromRational q
 
     compileRel :: MonadCompile m => Relation -> m (Doc a)
     compileRel (EqualityRel Eq)  = return "="
