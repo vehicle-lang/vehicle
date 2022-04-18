@@ -142,8 +142,8 @@ ExistsIn.  Expr3 ::= TokExists [Binder] "in" Expr4 TokDot Expr4;
 -- Boolean expressions.
 If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
 Impl.    Expr5  ::= Expr6 TokImpl Expr5;
-And.     Expr6  ::= Expr7 TokAnd Expr6;
-Or.      Expr7  ::= Expr8 TokOr Expr7;
+And.     Expr7  ::= Expr8 TokAnd Expr7;
+Or.      Expr7  ::= Expr8 TokOr  Expr7;
 Eq.      Expr8  ::= Expr9 TokEq  Expr9;
 Neq.     Expr8  ::= Expr9 TokNeq Expr9;
 Not.     Expr11 ::= TokNot Expr11;
