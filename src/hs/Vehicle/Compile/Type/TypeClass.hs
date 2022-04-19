@@ -203,7 +203,7 @@ solveDefaultTypeClassConstraints constraints = do
   newConstraints <- forM (Map.assocs constraintsByMeta) $ \(meta, (tc, ctx)) -> do
     logDebug MaxDetail $ "Using default for" <+> pretty meta <+> "=" <+> pretty tc
     let ann = inserted $ provenanceOf ctx
-    let solution = defaultSolution ann tc
+    solution <- defaultSolution ann tc
     return $ UC ctx (Unify (Meta ann meta, solution))
 
   return $ if null newConstraints
@@ -223,31 +223,27 @@ groupByMetas ((x, ctx) : xs) = case getDefaultCandidate x of
 
 strongest :: (TypeClass, Ctx) -> (TypeClass, Ctx) -> Maybe (TypeClass, Ctx)
 strongest x@(tc1, _) y@(tc2, _) = case (numType tc1, numType tc2) of
-  (Just (t1, isOp1), Just (t2, isOp2))
-    | t1 < t2       -> Just y
-    | t2 < t1       -> Just x
-    | isOp1 < isOp2 -> Just y
-    | otherwise     -> Just x
-  _ -> Nothing
+  (Just c1, Just c2) -> Just $ if c1 > c2 then x else y
+  _                  -> Nothing
   where
-  numType :: TypeClass -> Maybe (NumericType, Bool)
-  numType HasNatOps        = Just (Nat, True)
-  numType HasIntOps        = Just (Int, True)
-  numType HasRatOps        = Just (Rat, True)
-  numType HasNatLitsUpTo{} = Just (Nat, False)
-  numType HasIntLits       = Just (Int, False)
-  numType HasRatLits       = Just (Rat, False)
-  numType _                = Nothing
+  numType :: TypeClass -> Maybe (NumericType, Bool, Int)
+  numType HasNatOps          = Just (Nat, True,  0)
+  numType HasIntOps          = Just (Int, True,  0)
+  numType HasRatOps          = Just (Rat, True,  0)
+  numType (HasNatLitsUpTo n) = Just (Nat, False, n)
+  numType HasIntLits         = Just (Int, False, 0)
+  numType HasRatLits         = Just (Rat, False, 0)
+  numType _                  = Nothing
 
-defaultSolution :: CheckedAnn -> TypeClass -> CheckedExpr
-defaultSolution ann HasNatOps          = NatType ann
-defaultSolution ann HasIntOps          = IntType ann
-defaultSolution ann HasRatOps          = RatType ann
-defaultSolution ann (HasNatLitsUpTo n) = FinType ann (NatLiteralExpr ann (NatType ann) (n + 1))
-defaultSolution ann HasIntLits         = IntType ann
-defaultSolution ann HasRatLits         = RatType ann
-defaultSolution _   tc                 =
-  developerError $ "TypeClass" <+> pretty (show tc) <+> "should have already been eliminated"
+defaultSolution :: MonadCompile m => CheckedAnn -> TypeClass -> m CheckedExpr
+defaultSolution ann HasNatOps          = return $ NatType ann
+defaultSolution ann HasIntOps          = return $ IntType ann
+defaultSolution ann HasRatOps          = return $ RatType ann
+defaultSolution ann (HasNatLitsUpTo n) = return $ mkFinType ann (n + 1)
+defaultSolution ann HasIntLits         = return $ IntType ann
+defaultSolution ann HasRatLits         = return $ RatType ann
+defaultSolution _   tc                 = compilerDeveloperError $
+  "TypeClass" <+> pretty tc <+> "should have already been eliminated"
 
 getDefaultCandidate :: TypeClassConstraint -> Maybe (Meta, TypeClass)
 getDefaultCandidate (_ `Has` e) = case e of

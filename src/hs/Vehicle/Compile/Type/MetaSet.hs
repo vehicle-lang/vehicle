@@ -17,7 +17,7 @@ import Vehicle.Prelude
 import Vehicle.Language.AST
 
 newtype MetaSet = MetaSet IntSet
-  deriving (Semigroup, Monoid)
+  deriving (Show, Semigroup, Monoid)
 
 instance Pretty MetaSet where
   pretty = pretty . toList

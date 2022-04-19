@@ -1,2 +1,2 @@
-Error: Unable to infer type of bound variable (Line 2, Columns 15-16)
+Error: Unable to infer type of bound variable (Line 2, Columns 8-14)
 Fix: add more type annotations

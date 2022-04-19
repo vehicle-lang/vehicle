@@ -11,11 +11,18 @@ open import Vehicle
 open import Data.Unit
 open import Data.Empty
 open import Data.Product
+open import Data.Fin as Fin using (Fin; #_)
 
 module simple-let-temp-output where
 
 abstract
   e1 : let x = ⊤ in let y = ⊥ in x × y
   e1 = checkSpecification record
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
+    }
+
+abstract
+  e2 : let y = # 1 in y Fin.≥ # 2
+  e2 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

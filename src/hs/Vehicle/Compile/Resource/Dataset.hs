@@ -14,6 +14,7 @@ import System.FilePath (takeExtension)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Resource.Dataset.IDX (readIDX)
+import Vehicle.Language.Print
 
 --------------------------------------------------------------------------------
 -- Dataset expansion
@@ -49,9 +50,11 @@ expandDecl (DefResource p Dataset ident t) = do
   e <- case Map.lookup name resources of
     Just file -> do
       tell (Set.singleton name)
-      case takeExtension file of
+      value <- case takeExtension file of
         ".idx" -> readIDX file ident p
         ext    -> throwError $ UnsupportedResourceFormat ident p Dataset ext
+      logDebug MinDetail $ "expanding" <+> pretty ident <+> "=" <+> prettyFriendly value
+      return value
     _ -> throwError $ ResourceNotProvided ident p Dataset
   return $ DefFunction p ident t e
 expandDecl d = return d

@@ -74,6 +74,9 @@ pattern
     App ann (Builtin ann Fin)
       [ ExplicitArg ann tSize ]
 
+mkFinType :: ann -> Int -> Expr binder var ann
+mkFinType ann n = FinType ann (NatLiteralExpr ann (NatType ann) n)
+
 --------------------------------------------------------------------------------
 -- Numeric
 

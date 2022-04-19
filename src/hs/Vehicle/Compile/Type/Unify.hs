@@ -174,27 +174,6 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
           , solvedMetas    = MetaSet.singleton i
           }
 
-      -- Then the metas are not equal.
-      -- If the first meta has no arguments then simply set equal to the second meta.
-      --
-      -- Note: this case and the one below it are not strictly necessary as the
-      -- final case handles it, but short-circuiting here avoids 1) generating new metas
-      -- 2) performing extra unification passes and 3) often makes the process more understandable.
-      | null args1 -> do
-        metaSolved p i whnfE2
-        return Progress
-          { newConstraints = mempty
-          , solvedMetas    = MetaSet.singleton i
-          }
-
-      -- Likewise if the second meta has no arguments then simply set equal to the first meta.
-      | null args2 -> do
-        metaSolved p j whnfE1
-        return Progress
-          { newConstraints = mempty
-          , solvedMetas    = MetaSet.singleton j
-          }
-
       -- Finally if the meta-variables are different then we have much more
       -- flexibility as to how the arguments can relate to each other. In
       -- particular they can be re-arranged, and therefore we calculate the

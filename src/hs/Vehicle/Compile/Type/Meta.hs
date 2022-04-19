@@ -298,6 +298,7 @@ data ConstraintProgress
     { newConstraints  :: [Constraint]
     , solvedMetas     :: MetaSet
     }
+  deriving (Show)
 
 instance Pretty ConstraintProgress where
   pretty Stuck                        = "Stuck"

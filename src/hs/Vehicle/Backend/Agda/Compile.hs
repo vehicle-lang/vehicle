@@ -396,7 +396,7 @@ compileBuiltin e = case e of
   (QuantifierExpr   q _              binder body)      -> compileTypeLevelQuantifier q [binder] body
   (QuantifierInExpr q ann tCont tRes binder body cont) -> compileQuantIn tRes q tCont (Lam ann binder body) cont
 
-  (OrderExpr order  _ t1 t2 args) -> compileNumOrder order (numericType t1) t2 <$> traverse compileArg args
+  (OrderExpr    ord _ t1 t2 args) -> compileOrder ord  t1 t2 <$> traverse compileArg args
   (EqualityExpr Eq  _ t1 t2 args) -> compileEquality   t1 t2 =<< traverse compileArg args
   (EqualityExpr Neq _ t1 t2 args) -> compileInequality t1 t2 =<< traverse compileArg args
 
@@ -557,20 +557,25 @@ compileNumOp2 op2 t = annotateInfixOp2 dependencies precedence id qualifier opDo
       (Div, Rat)   -> ("÷", [DataRat])
       (Div, Real)  -> ("÷", [DataReal])
 
-compileNumOrder :: Order -> NumericType -> BooleanType -> [Code] -> Code
-compileNumOrder order nt bt = annotateInfixOp2 dependencies 4 opBraces qualifier opDoc
+compileOrder :: Order -> OutputExpr -> BooleanType -> [Code] -> Code
+compileOrder order elemType resultType =
+  annotateInfixOp2 dependencies 4 opBraces (Just qualifier) opDoc
   where
-    qualifier = Just $ numericQualifier nt
-    numDeps   = numericDependencies nt
-    (boolDecDoc, boolDeps) = booleanModifierDocAndDeps bt
+    (qualifier, elemDeps) = case elemType of
+      FinType  _ _           -> ("Fin", [DataFin])
+      BuiltinNumericType _ t -> (numericQualifier t, numericDependencies t)
+      _                      ->
+        unexpectedTypeError elemType ["Nat", "Int", "Rat", "Real", "Fin n"]
+
+    (boolDecDoc, boolDeps) = booleanModifierDocAndDeps resultType
     orderDoc = case order of
       Le -> "≤"
       Lt -> "<"
       Ge -> "≥"
       Gt -> ">"
 
-    opBraces     = if bt == Bool then boolBraces else id
-    dependencies = numDeps <> boolDeps
+    opBraces     = if resultType == Bool then boolBraces else id
+    dependencies = elemDeps <> boolDeps
     opDoc        = orderDoc <> boolDecDoc
 
 compileAt :: MonadAgdaCompile m => CheckedAnn -> [OutputExpr] -> m Code
@@ -645,10 +650,6 @@ equalityDependencies = \case
     return $ [DataTensorInstances] <> deps
   Var ann n -> throwError $ UnsupportedPolymorphicEquality AgdaBackend (provenanceOf ann) n
   t         -> unexpectedTypeError t ["Tensor", "Real", "Int", "List"]
-
-numericType :: OutputExpr -> NumericType
-numericType (Builtin _ (NumericType t)) = t
-numericType t = unexpectedTypeError t (map show [Nat, Int, Rat, Real])
 
 booleanType :: OutputExpr -> BooleanType
 booleanType (Builtin _ (BooleanType t)) = t
