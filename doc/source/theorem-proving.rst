@@ -22,9 +22,9 @@ This can be done using the :code:`vehicle export` command:
 .. code-block:: bash
 
   vehicle export \
-  --itp Agda \
-  --proofCache examples/windController/windController.vclp \
-  --outputFile examples/windController/agdaProof/WindControllerSpec.agda
+    --itp Agda \
+    --proofCache examples/windController/windController.vclp \
+    --outputFile examples/windController/agdaProof/WindControllerSpec.agda
 
 Command-line options
 --------------------
@@ -76,7 +76,7 @@ used to build and prove properties about a model of the larger system.
 See the car example project for a demonstration of this.
 
 Limitations
------------
+***********
 
 Postulated resources
 ####################
