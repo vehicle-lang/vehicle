@@ -15,5 +15,7 @@ Specification language
   dataset-declarations
   parameter-declarations
   properties
+  let-expressions
+  annotations-holes
   tips-and-tricks
   advanced
