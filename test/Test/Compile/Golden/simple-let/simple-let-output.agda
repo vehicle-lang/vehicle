@@ -11,6 +11,7 @@ open import Vehicle
 open import Data.Unit
 open import Data.Empty
 open import Data.Product
+open import Data.Nat as ℕ using (ℕ)
 open import Data.Fin as Fin using (Fin; #_)
 
 module simple-let-temp-output where
@@ -26,3 +27,9 @@ abstract
   e2 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
+
+e3 : ℕ
+e3 = let y = 1 ℕ.+ 1 in y
+
+e4 : ℕ → ℕ
+e4 x = let y = x in y
