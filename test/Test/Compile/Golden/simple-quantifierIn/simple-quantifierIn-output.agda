@@ -30,3 +30,15 @@ abstract
   double = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
+
+abstract
+  forallForallIn : ∀ (x : ℤ) → List.All (λ (y : ℤ) → x ≡ y) emptyList
+  forallForallIn = checkSpecification record
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
+    }
+
+abstract
+  forallInForall : List.All (λ (x : ℤ) → ∀ (y : ℤ) → x ≡ y) emptyList
+  forallInForall = checkSpecification record
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
+    }
