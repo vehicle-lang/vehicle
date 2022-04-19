@@ -82,6 +82,12 @@ goldenTests = testGroup "GoldenTests" $
 
     -- Simple tests of Vehicle syntax
     , testSpec
+      { testName       = "simple-quantifier"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend]
+      }
+
+    , testSpec
       { testName       = "simple-quantifierIn"
       , testLocation   = Tests
       , testTargets    = [AgdaBackend]

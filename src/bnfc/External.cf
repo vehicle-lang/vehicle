@@ -134,10 +134,10 @@ Literal. Expr15 ::= Lit;
 Hole.    Expr15 ::= HoleToken;
 
 -- Quantification
-Forall.    Expr3 ::= TokForall [Binder] TokDot Expr4;
-Exists.    Expr3 ::= TokExists [Binder] TokDot Expr4;
-ForallIn.  Expr3 ::= TokForall [Binder] "in" Expr4 TokDot Expr4;
-ExistsIn.  Expr3 ::= TokExists [Binder] "in" Expr4 TokDot Expr4;
+Forall.    Expr3 ::= TokForall [Binder] TokDot Expr3;
+Exists.    Expr3 ::= TokExists [Binder] TokDot Expr3;
+ForallIn.  Expr3 ::= TokForall [Binder] "in" Expr4 TokDot Expr3;
+ExistsIn.  Expr3 ::= TokExists [Binder] "in" Expr4 TokDot Expr3;
 
 -- Boolean expressions.
 If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;

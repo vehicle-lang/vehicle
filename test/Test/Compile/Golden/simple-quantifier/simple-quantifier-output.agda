@@ -8,25 +8,30 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
+open import Vehicle.Data.Tensor
 open import Data.Unit
+open import Data.Nat as ℕ using (ℕ)
 open import Data.Integer as ℤ using (ℤ)
+open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
-open import Data.List.Relation.Unary.All as List
 open import Relation.Binary.PropositionalEquality
 
-module simple-quantifierIn-temp-output where
-
-emptyList : List ℤ
-emptyList = []
+module simple-quantifier-temp-output where
 
 abstract
-  empty : List.All (λ (x : ℤ) → ⊤) emptyList
-  empty = checkSpecification record
+  bool : ∀ (x : ℤ) → ⊤
+  bool = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
 
 abstract
-  double : List.All (λ (x : ℤ) → List.All (λ (y : ℤ) → x ≡ y) emptyList) emptyList
-  double = checkSpecification record
+  expandedExpr : ∀ (x : Tensor ℤ (2 ∷ [])) → x (# 0) ≡ x (# 1)
+  expandedExpr = checkSpecification record
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
+    }
+
+abstract
+  multiple : ∀ (x : ℕ) → ∀ (y : ℕ) → x ≡ y
+  multiple = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
