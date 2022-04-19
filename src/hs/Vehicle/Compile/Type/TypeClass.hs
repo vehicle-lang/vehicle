@@ -109,9 +109,9 @@ solveIsContainer :: MonadConstraintSolving m
                  -> CheckedExpr
                  -> m ConstraintProgress
 solveIsContainer c tElem tCont =
-  return $ case getContainerElem tCont of
-    Nothing -> Stuck
-    Just t  -> Progress
+  case getContainerElem tCont of
+    Nothing -> throwError $ FailedConstraints (c :| [])
+    Just t  -> return $ Progress
       { newConstraints = [UC ctx (Unify (tElem, t))]
       , solvedMetas    = mempty
       }

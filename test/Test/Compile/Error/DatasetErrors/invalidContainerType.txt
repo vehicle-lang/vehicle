@@ -1,2 +1,2 @@
-Error: Typing error: not enough information to solve constraint IsContainer (Fin 4) Nat (in dataset 'trainingDataset')
-Fix: try adding more type annotations
+Error: Type error: Could not satisfy 'IsContainer ?14 Nat' (in dataset 'trainingDataset')
+Fix: check your types
