@@ -59,27 +59,27 @@ runTest name status alterNetwork = do
   let networkFile  = testDir </> name <> "Network.onnx"
 
   writeFile networkFile "networkContents"
-  networkHash <- hashResource networkFile
+  networkHash <- hashResource Network networkFile
   let resources =
         [ ResourceSummary "myNetwork" networkFile networkHash Network
         ]
 
   writeProofCache proofCache $ ProofCache
-    { specVersion  = vehicleVersion
-    , status       = status
-    , resources    = resources
-    , originalSpec = ""
+    { proofCacheVersion  = vehicleVersion
+    , status             = status
+    , resourceSummaries  = resources
+    , originalSpec       = ""
     }
 
   alterNetwork networkFile
 
   run $ Options
-    { version       = False
-    , outFile       = Just outputFile
-    , errFile       = Nothing
-    , logFile       = Nothing
-    , debugLevel    = 1
-    , commandOption = Check $ CheckOptions
+    { version     = False
+    , outFile     = Just outputFile
+    , errFile     = Nothing
+    , logFile     = Nothing
+    , debugLevel  = 1
+    , modeOptions = Check $ CheckOptions
       { proofCache = proofCache
       }
     }

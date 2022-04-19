@@ -28,7 +28,7 @@ check loggingOptions checkOptions = fromLoggerTIO loggingOptions $ do
 checkStatus :: LoggingOptions -> CheckOptions -> LoggerT IO CheckResult
 checkStatus _loggingOptions CheckOptions{..} = do
   ProofCache{..} <- liftIO $ readProofCache proofCache
-  (missingNetworks, alteredNetworks) <- checkResourceIntegrity resources
+  (missingNetworks, alteredNetworks) <- checkResourceIntegrity resourceSummaries
   return $ case (missingNetworks, alteredNetworks, isSpecVerified status) of
     (x : xs, _, _)  -> MissingResources (x :| xs)
     ([], x : xs, _) -> AlteredResources (x :| xs)
@@ -36,8 +36,9 @@ checkStatus _loggingOptions CheckOptions{..} = do
     ([], [], True)  -> Verified
 
 getResourceStatus :: ResourceSummary -> IO ResourceStatus
-getResourceStatus ResourceSummary{..}= do
-  maybeNewHash <- catch @IOException (Just <$> hashResource location) (const $ return Nothing)
+getResourceStatus ResourceSummary{..} = do
+  let getResourceHash = hashResource resType value
+  maybeNewHash <- catch @IOException (Just <$> getResourceHash) (const $ return Nothing)
   return $ case maybeNewHash of
     Nothing -> Missing
     Just newHash
@@ -90,4 +91,4 @@ instance Pretty CheckResult where
 
 prettyResource :: ResourceSummary -> Doc ann
 prettyResource ResourceSummary{..} =
-    pretty resType <+> pretty name <+> parens (pretty location)
+    pretty resType <+> pretty name <+> parens (pretty value)

@@ -181,19 +181,19 @@ makeIndividualTest location name datasets backend = test
 runTest :: FilePath -> FilePath -> String -> Backend -> Resources -> IO ()
 runTest inputFile outputFile modulePath backend Resources{..} = do
   run $ Options
-    { version       = False
-    , outFile       = Nothing
-    , errFile       = Nothing
-    , logFile       = Nothing -- Just Nothing
-    , debugLevel    = 1
-    , commandOption = Compile $ CompileOptions
-      { target           = backend
-      , specification    = inputFile
-      , outputFile       = Just outputFile
-      , networkLocations = networks
-      , datasetLocations = datasets
-      , parameterValues  = parameters
-      , modulePrefix     = Nothing
-      , proofCache       = Just "proofcache.vclp"
+    { version     = False
+    , outFile     = Nothing
+    , errFile     = Nothing
+    , logFile     = Nothing -- Just Nothing
+    , debugLevel  = 1
+    , modeOptions = Compile $ CompileOptions
+      { target            = backend
+      , specificationFile = inputFile
+      , outputFile        = Just outputFile
+      , networkLocations  = networks
+      , datasetLocations  = datasets
+      , parameterValues   = parameters
+      , modulePrefix      = Nothing
+      , proofCache        = Just "proofcache.vclp"
       }
     }

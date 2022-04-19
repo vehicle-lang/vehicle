@@ -8,10 +8,11 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Map qualified as Map (fromList)
 
-import Vehicle (run, Command(..), Options(Options))
+import Vehicle (run, ModeOptions(..), Options(Options))
 import Vehicle.Check (CheckOptions(..))
 import Vehicle.Compile (CompileOptions(..))
 import Vehicle.Verify (VerifyOptions(..))
+import Vehicle.Export (ExportOptions(..))
 import Data.Map (Map)
 
 --------------------------------------------------------------------------------
@@ -65,20 +66,21 @@ optionsParser = Options
      <> showDefault
      <> value 1
      <> metavar "INT")
-  <*> commandParser
+  <*> modeParser
 
-commandParser :: Parser Command
-commandParser = hsubparser
+modeParser :: Parser ModeOptions
+modeParser = hsubparser
     ( command "compile" (info (Compile <$> compileParser) compileDescription)
    <> command "verify"  (info (Verify  <$> verifyParser)  verifyDescription)
    <> command "check"   (info (Check   <$> checkParser)   checkDescription)
+   <> command "export"  (info (Export  <$> exportParser)  exportDescription)
     )
 
 --------------------------------------------------------------------------------
 -- Some shared option parsers
 
-resourceOptions :: Mod OptionFields (Text, String) -> Parser (Map Text String)
-resourceOptions desc = Map.fromList <$> many (option (maybeReader readNL) desc)
+resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
+resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
   where
   readNL :: String -> Maybe (Text, String)
   readNL s = case Text.splitOn (Text.pack ":") (Text.pack s) of
@@ -93,7 +95,7 @@ specOption = strOption
   <> metavar "FILE" )
 
 networkOption :: Parser (Map Text FilePath)
-networkOption = resourceOptions
+networkOption = resourceOption
   ( long "network"
   <> short 'n'
   <> help "Provide the implementation of a network declared in the \
@@ -103,7 +105,7 @@ networkOption = resourceOptions
   <> metavar "NAME:FILE")
 
 datasetOption :: Parser (Map Text FilePath)
-datasetOption = resourceOptions
+datasetOption = resourceOption
   ( long "dataset"
   <> short 'd'
   <> help "Provide a dataset declared in the specification. Its value should \
@@ -111,8 +113,8 @@ datasetOption = resourceOptions
           \ the specification and a file path."
   <> metavar "NAME:FILE")
 
-parameterOption :: Parser (Map Text Text)
-parameterOption = fmap Text.pack <$> resourceOptions
+parameterOption :: Parser (Map Text String)
+parameterOption = resourceOption
   ( long "parameter"
   <> short 'p'
   <> help "Provide a parameter referenced in the specification. Its value \
@@ -120,10 +122,29 @@ parameterOption = fmap Text.pack <$> resourceOptions
           \ parameter in the specification and its value."
   <> metavar "NAME:VALUE")
 
+modulePrefixOption :: Parser (Maybe String)
+modulePrefixOption = optional (strOption
+  ( long "modulePrefix"
+  <> short 'm'
+  <> help "Prefix for the name of the exported ITP module. For example, \
+          \compiling to 'Baz.agda' with a prefix of `Foo.Bar` will result in \
+          \the Agda module with the name `Foo.Bar.Baz`."
+  <> metavar "MODULENAME" ))
+
+inputProofCacheOption :: Parser String
+inputProofCacheOption = strOption
+  ( long "proofCache"
+  <> short 'p'
+  <> help "The location of the proof cache \
+          \ that can be used to check the verification status \
+          \ of the specification. The proof cache can be generated via the \
+          \ `vehicle verify` command."
+  <> metavar "FILE" )
+
 --------------------------------------------------------------------------------
 -- Compile mode
 
-compileDescription :: InfoMod Command
+compileDescription :: InfoMod ModeOptions
 compileDescription = progDesc "Compile a .vcl file to an output target"
 
 compileParser :: Parser CompileOptions
@@ -142,28 +163,16 @@ compileParser = CompileOptions
   <*> networkOption
   <*> datasetOption
   <*> parameterOption
-  <*> optional (strOption
-      ( long "modulePrefix"
-     <> short 'm'
-     <> help "Sometimes needed when compiling to ITP code. For example, compiling to \
-              \ 'Baz.agda' with a prefix of `Foo.Bar` will result in the Agda module \
-              \ with the name `Foo.Bar.Baz`."
-     <> metavar "MODULENAME" ))
-  <*> optional (strOption
-      ( long "proofCache"
-     <> short 'p'
-     <> help "The location of the proof cache \
-              \ that can be used to check the verification status \
-              \ of the specification. The proof cache can be generated via the \
-              \ `vehicle verify` command."
-     <> metavar "FILE" ))
+  <*> modulePrefixOption
+  <*> optional inputProofCacheOption
 
 --------------------------------------------------------------------------------
 -- Verify mode
 
-verifyDescription :: InfoMod Command
-verifyDescription = progDesc ("Verify the status of a Vehicle property," <>
-                              "and write out the result to a proof cache.")
+verifyDescription :: InfoMod ModeOptions
+verifyDescription = progDesc
+  "Verify the status of a Vehicle property, and write out the result to a \
+  \ proof cache."
 
 verifyParser :: Parser VerifyOptions
 verifyParser = VerifyOptions
@@ -179,19 +188,42 @@ verifyParser = VerifyOptions
   <*> optional (strOption
       ( long "proofCache"
      <> short 'c'
-     <> help "The proof cache file for the Vehicle project."
+     <> help "Location to export the proof cache file for the Vehicle project."
      <> metavar "FILE" ))
 
 --------------------------------------------------------------------------------
 -- Check mode
 
-checkDescription :: InfoMod Command
-checkDescription = progDesc "Check the verification status of a Vehicle property."
+checkDescription :: InfoMod ModeOptions
+checkDescription = progDesc
+  "Check the verification status of a Vehicle specification."
 
 checkParser :: Parser CheckOptions
 checkParser = CheckOptions
  <$> strOption
       ( long "proofCache"
      <> short 'p'
-     <> help "The proof cache file for the Vehicle project."
+     <> help "The proof-cache for the specification."
      <> metavar "FILE" )
+
+--------------------------------------------------------------------------------
+-- Export mode
+
+exportDescription :: InfoMod ModeOptions
+exportDescription = progDesc
+  "Export a Vehicle specification to an interactive theorem prover."
+
+exportParser :: Parser ExportOptions
+exportParser = ExportOptions
+  <$> option auto
+      ( long "itp"
+     <> short 'i'
+     <> help "Compilation target."
+     <> metavar "TARGET" )
+  <*> inputProofCacheOption
+  <*> optional (strOption
+      ( long "outputFile"
+     <> short 'o'
+     <> help "Output location for compiled file. Defaults to stdout if not provided."
+     <> metavar "FILE" ))
+  <*> modulePrefixOption

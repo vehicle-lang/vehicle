@@ -86,6 +86,8 @@ library
                       , Vehicle.Compile.Delaborate.Internal
                       , Vehicle.Compile.Delaborate.External
 
+                      , Vehicle.Check
+                      , Vehicle.Export
                       , Vehicle.Verify
                       , Vehicle.Verify.VerificationStatus
 
@@ -94,8 +96,6 @@ library
                       , Vehicle.Backend.Marabou
                       , Vehicle.Backend.Prelude
                       , Vehicle.Backend.LossFunction
-
-                      , Vehicle.Check
 
                       , Vehicle.Resource
                       , Vehicle.Resource.NeuralNetwork

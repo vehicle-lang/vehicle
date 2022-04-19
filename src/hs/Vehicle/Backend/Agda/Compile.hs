@@ -8,21 +8,32 @@ import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Foldable (fold)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Map as Map (Map)
 import Data.List (sort)
+import System.FilePath (takeBaseName)
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 
 import Vehicle.Language.Print
 import Vehicle.Language.Sugar
-import Vehicle.Compile.Prelude
+import Vehicle.Compile.Prelude hiding (CompileOptions(..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Compile.Descope (runDescopeProg)
 import Vehicle.Backend.Prelude
+
+
+--------------------------------------------------------------------------------
+-- Agda-specific options
+
+data AgdaOptions = AgdaOptions
+  { proofCacheLocation  :: FilePath
+  , outputFile          :: Maybe FilePath
+  , modulePrefix        :: Maybe String
+  }
 
 compileProgToAgda :: MonadCompile m => AgdaOptions -> CheckedProg -> m (Doc a)
 compileProgToAgda options prog1 = flip runReaderT options $ do
@@ -34,23 +45,15 @@ compileProgToAgda options prog1 = flip runReaderT options $ do
   -- Collects dependencies by first discarding precedence info and then
   -- folding using Set Monoid
   let progamDependencies = fold (reAnnotateS fst programStream)
+
+  let baseModule = maybe "Spec" takeBaseName (outputFile options)
+  let moduleName = Text.pack $ maybe "" (<> ".") (modulePrefix options) <> baseModule
   return $ unAnnotate ((vsep2 :: [Code] -> Code)
     [ optionStatements ["allow-exec"]
     , importStatements progamDependencies
-    , moduleHeader (moduleName options)
+    , moduleHeader moduleName
     , programDoc
     ])
-
---------------------------------------------------------------------------------
--- Agda-specific options
-
-data AgdaOptions = AgdaOptions
-  { proofCacheLocation  :: FilePath
-  , moduleName          :: Text
-  , vehicleUIDs         :: Map.Map Identifier Text
-  }
-
-type Precedence = Int
 
 --------------------------------------------------------------------------------
 -- Debug functions
@@ -180,6 +183,8 @@ scopeCode keyword code = keyword <> line <> indentCode code
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
+
+type Precedence = Int
 
 type Code = Doc (Set Dependency, Precedence)
 

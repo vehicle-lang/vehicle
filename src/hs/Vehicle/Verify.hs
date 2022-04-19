@@ -2,8 +2,6 @@ module Vehicle.Verify where
 
 import Control.Monad (forM)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Map ( Map )
-import Data.Text (Text)
 import System.IO (hPutStrLn, stderr)
 import System.Exit (exitFailure)
 import System.Directory (makeAbsolute)
@@ -15,9 +13,9 @@ import Vehicle.Verify.VerificationStatus
 
 data VerifyOptions = VerifyOptions
   { specification    :: FilePath
-  , networkLocations :: Map Text FilePath
-  , datasetLocations :: Map Text FilePath
-  , parameterValues  :: Map Text Text
+  , networkLocations :: NetworkLocations
+  , datasetLocations :: DatasetLocations
+  , parameterValues  :: ParameterValues
   , verifier         :: Verifier
   , proofCache       :: Maybe FilePath
   } deriving (Show)
@@ -42,10 +40,10 @@ verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
   case proofCache of
     Nothing -> return ()
     Just proofCachePath -> writeProofCache proofCachePath $ ProofCache
-      { specVersion  = vehicleVersion
-      , status       = status
-      , originalSpec = spec
-      , resources    = resourceSummaries
+      { proofCacheVersion = vehicleVersion
+      , status            = status
+      , originalSpec      = spec
+      , resourceSummaries = resourceSummaries
       }
 
 convertPathsToAbsolute :: MonadIO m => Resources -> m Resources

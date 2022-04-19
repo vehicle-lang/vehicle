@@ -6,7 +6,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.DeepSeq
 import Data.Hashable(Hashable(hash))
 import Data.ByteString qualified as ByteString
-import Data.Map (Map, assocs)
+import Data.Map (Map, assocs, singleton)
 import Data.Text (Text)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -41,11 +41,11 @@ supportedFileFormats Dataset = [".idx"]
 supportedFileFormats _       = []
 
 --------------------------------------------------------------------------------
--- Locations
+-- Resource locations
 
 type NetworkLocations = Map Text FilePath
 type DatasetLocations = Map Text FilePath
-type ParameterValues  = Map Text Text
+type ParameterValues  = Map Text String
 
 data Resources = Resources
   { networks   :: NetworkLocations
@@ -53,9 +53,21 @@ data Resources = Resources
   , parameters :: ParameterValues
   }
 
+instance Semigroup Resources where
+  r1 <> r2 = Resources
+    (networks   r1 <> networks   r2)
+    (datasets   r1 <> datasets   r2)
+    (parameters r1 <> parameters r2)
+
+instance Monoid Resources where
+  mempty = Resources mempty mempty mempty
+
+--------------------------------------------------------------------------------
+-- Resource summaries
+
 data ResourceSummary = ResourceSummary
   { name     :: Text
-  , location :: FilePath
+  , value    :: String
   , fileHash :: Int
   , resType  :: ResourceType
   } deriving (Generic)
@@ -66,31 +78,41 @@ instance ToJSON ResourceSummary
 --------------------------------------------------------------------------------
 -- Hashing
 
-hashResource :: MonadIO m => FilePath -> m Int
-hashResource network = do
-  contents <- liftIO $ ByteString.readFile network
-  return $ hash contents
+hashResource :: MonadIO m => ResourceType -> String -> m Int
+hashResource Network   filepath = liftIO $ hash <$> ByteString.readFile filepath
+hashResource Dataset   filepath = liftIO $ hash <$> ByteString.readFile filepath
+hashResource Parameter value    = return $ hash value
 
 hashResources :: MonadIO m => Resources -> m [ResourceSummary]
 hashResources Resources{..} = do
-  networkSummaries <- hashResourceType Network networks
-  datasetSummaries <- hashResourceType Dataset datasets
-  return $ networkSummaries <> datasetSummaries
+  networkSummaries   <- hashResourceType Network networks
+  datasetSummaries   <- hashResourceType Dataset datasets
+  parameterSummaries <- hashResourceType Parameter parameters
+  return $ networkSummaries <> datasetSummaries <> parameterSummaries
   where
   hashResourceType :: MonadIO m
-                    => ResourceType
-                    -> Map Text FilePath
-                    -> m [ResourceSummary]
-  hashResourceType resourceType locations =
-    forM (assocs locations) $ \(name, location) -> do
-      networkHash <- liftIO $ hashResource location
+                   => ResourceType
+                   -> Map Text String
+                   -> m [ResourceSummary]
+  hashResourceType resourceType values =
+    forM (assocs values) $ \(name, value) -> do
+      networkHash <- liftIO $ hashResource resourceType value
       return $ ResourceSummary
         { name     = name
-        , location = location
+        , value    = value
         , fileHash = networkHash
         , resType  = resourceType
         }
 
+reparseResources :: [ResourceSummary] -> Resources
+reparseResources []       = mempty
+reparseResources (x : xs) = r <> reparseResources xs
+  where
+    v = singleton (name x) (value x)
+    r = case resType x of
+      Network   -> Resources v mempty mempty
+      Dataset   -> Resources mempty v mempty
+      Parameter -> Resources mempty mempty v
 
 --------------------------------------------------------------------------------
 -- Others

@@ -42,7 +42,7 @@ data TestSpec = TestSpec
     , testTargets    :: [Backend]
     , testNetworks   :: [(Text, FilePath)]
     , testDatasets   :: [(Text, FilePath)]
-    , testParameters :: [(Text, Text)]
+    , testParameters :: [(Text, String)]
     }
 
 testSpec :: TestSpec

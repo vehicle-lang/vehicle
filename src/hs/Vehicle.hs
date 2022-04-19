@@ -1,7 +1,7 @@
 module Vehicle
   ( run
   , Options(..)
-  , Command(..)
+  , ModeOptions(..)
   ) where
 
 import Control.Exception (bracket)
@@ -13,9 +13,26 @@ import Vehicle.Prelude
 import Vehicle.Compile (CompileOptions(..), compile)
 import Vehicle.Check (CheckOptions(..), check)
 import Vehicle.Verify (VerifyOptions(..), verify)
+import Vehicle.Export (ExportOptions, export)
 
 --------------------------------------------------------------------------------
 -- Main command
+
+data Options = Options
+  { version       :: Bool
+  , outFile       :: Maybe FilePath
+  , errFile       :: Maybe FilePath
+  , logFile       :: Maybe (Maybe FilePath)
+  , debugLevel    :: Int
+  , modeOptions   :: ModeOptions
+  } deriving (Show)
+
+data ModeOptions
+  = Compile CompileOptions
+  | Verify  VerifyOptions
+  | Check   CheckOptions
+  | Export  ExportOptions
+   deriving (Show)
 
 run :: Options -> IO ()
 run Options{..} = do
@@ -27,11 +44,11 @@ run Options{..} = do
   let releaseOutputHandles = closeHandles (outFile, errFile, logFile)
 
   bracket acquireOutputHandles releaseOutputHandles $ \loggingSettings ->
-    case commandOption of
+    case modeOptions of
       Compile options -> compile loggingSettings options
       Verify  options -> verify  loggingSettings options
       Check   options -> check   loggingSettings options
-
+      Export  options -> export  loggingSettings options
 
 openHandles :: (Maybe FilePath, Maybe FilePath, Maybe (Maybe FilePath), Int)
             -> IO LoggingOptions
@@ -76,19 +93,3 @@ closeHandles (outFile, errFile, logFile) LoggingOptions{..} = do
   case (logFile, logHandle) of
     (Just (Just _), Just logH) -> hClose logH
     _                          -> return ()
-
-
-data Options = Options
-  { version       :: Bool
-  , outFile       :: Maybe FilePath
-  , errFile       :: Maybe FilePath
-  , logFile       :: Maybe (Maybe FilePath)
-  , debugLevel    :: Int
-  , commandOption :: Command
-  } deriving (Show)
-
-data Command
-  = Compile CompileOptions
-  | Verify  VerifyOptions
-  | Check   CheckOptions
-   deriving (Show)

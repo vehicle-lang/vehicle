@@ -11,9 +11,8 @@ module Vehicle.Compile
 
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Exception (IOException, catch)
-import Data.Text as T (Text, pack)
+import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
-import System.FilePath (takeBaseName)
 import System.IO (hPutStrLn)
 import System.Exit (exitFailure)
 
@@ -43,13 +42,11 @@ import Vehicle.Compile.Resource.Parameter ( expandParameters )
 compile :: LoggingOptions -> CompileOptions -> IO ()
 compile loggingOptions CompileOptions{..} = do
   let resources = Resources networkLocations datasetLocations parameterValues
-  spec <- readInputFile loggingOptions specification
+  spec <- readInputFile loggingOptions specificationFile
   case target of
     ITP Agda -> do
-      let baseModule = maybe "Spec" takeBaseName outputFile
-      let moduleName = pack $ maybe "" (<> ".") modulePrefix <> baseModule
       proofCacheLocation <- getProofCacheLocation loggingOptions proofCache
-      let agdaOptions = AgdaOptions proofCacheLocation moduleName mempty
+      let agdaOptions = AgdaOptions proofCacheLocation outputFile modulePrefix
       agdaCode <- compileToAgda loggingOptions agdaOptions resources spec
       writeAgdaFile outputFile agdaCode
 

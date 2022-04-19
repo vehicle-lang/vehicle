@@ -53,12 +53,12 @@ runTest name inputFile networks = do
   let outputFile   = testDir </> name <> "-output.txt"
 
   run $ Options
-    { version       = False
-    , outFile       = Nothing
-    , errFile       = Nothing
-    , logFile       = Nothing
-    , debugLevel    = 1
-    , commandOption = Verify $ VerifyOptions
+    { version     = False
+    , outFile     = Nothing
+    , errFile     = Nothing
+    , logFile     = Nothing
+    , debugLevel  = 1
+    , modeOptions = Verify $ VerifyOptions
       { verifier         = Marabou
       , specification    = inputFile
       , networkLocations = Map.fromList networks

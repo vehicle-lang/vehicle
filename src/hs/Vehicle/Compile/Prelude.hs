@@ -5,11 +5,9 @@ module Vehicle.Compile.Prelude
   ) where
 
 import Data.Map (Map)
-import Data.Text (Text)
-
-import Vehicle.Backend.Prelude (Backend)
 
 import Vehicle.Prelude as X
+import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Language.AST as X
 import Vehicle.Resource as X
 import Vehicle.Language.Provenance as X
@@ -18,14 +16,14 @@ import Vehicle.Language.Provenance as X
 -- Compilation
 
 data CompileOptions = CompileOptions
-  { target           :: Backend
-  , specification    :: FilePath
-  , outputFile       :: Maybe FilePath
-  , networkLocations :: Map Text FilePath
-  , datasetLocations :: Map Text FilePath
-  , parameterValues  :: Map Text Text
-  , modulePrefix     :: Maybe String
-  , proofCache       :: Maybe FilePath
+  { target            :: Backend
+  , specificationFile :: FilePath
+  , outputFile        :: Maybe FilePath
+  , networkLocations  :: NetworkLocations
+  , datasetLocations  :: DatasetLocations
+  , parameterValues   :: ParameterValues
+  , modulePrefix      :: Maybe String
+  , proofCache        :: Maybe FilePath
   } deriving (Show)
 
 --------------------------------------------------------------------------------

@@ -211,20 +211,20 @@ runTest inputFile outputFile backend Resources{..} = do
   run options `catch` handleExitCode
   where
   options = Options
-    { version       = False
-    , outFile       = Nothing
-    , errFile       = Just outputFile
-    , logFile       = Nothing -- Just Nothing
-    , debugLevel    = 1
-    , commandOption = Compile $ CompileOptions
-      { target           = backend
-      , specification    = inputFile
-      , outputFile       = Nothing
-      , networkLocations = networks
-      , datasetLocations = datasets
-      , parameterValues  = parameters
-      , modulePrefix     = Nothing
-      , proofCache       = Nothing
+    { version     = False
+    , outFile     = Nothing
+    , errFile     = Just outputFile
+    , logFile     = Nothing -- Just Nothing
+    , debugLevel  = 1
+    , modeOptions = Compile $ CompileOptions
+      { target            = backend
+      , specificationFile = inputFile
+      , outputFile        = Nothing
+      , networkLocations  = networks
+      , datasetLocations  = datasets
+      , parameterValues   = parameters
+      , modulePrefix      = Nothing
+      , proofCache        = Nothing
       }
     }
 

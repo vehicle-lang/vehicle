@@ -6,7 +6,7 @@ import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.Except
 import Data.Map qualified as Map
-import Data.Text (unpack)
+import Data.Text (pack)
 import Data.Set (Set)
 import Data.Set qualified as Set
 
@@ -45,8 +45,8 @@ instance Expand InputDecl where
     maybeValue <- asks (Map.lookup name)
     body <- case maybeValue of
       Nothing    -> throwError $ ResourceNotProvided ident p Parameter
-      Just value -> case parseExternalExpr value of
-        Left  _ -> throwError $ UnableToParseResource ident p Parameter (unpack value)
+      Just value -> case parseExternalExpr (pack value) of
+        Left  _ -> throwError $ UnableToParseResource ident p Parameter value
         Right e -> do
           v <- fmap (const (parameterProvenance name)) <$> elabExpr e
           logDebug MinDetail $ "inserting" <+> pretty ident <+> "=" <+> pretty value

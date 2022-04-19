@@ -33,11 +33,10 @@ Compiling to specification to Agda
 
 The (verified) specification may then be compiled to Agda by running the command:
 ```bash
-vehicle compile \
-  --target Agda \
-  --specification examples/windController/windController.vcl \
-  --outputFile examples/windController/agdaProof/WindControllerSpec.agda \
-  --proofCache examples/windController/windController.vclp
+vehicle export \
+  --itp Agda \
+  --proofCache examples/windController/windController.vclp \
+  --outputFile examples/windController/agdaProof/WindControllerSpec.agda
 ```
 
 The full proof safety which makes uses of the generated Agda version of the specification in `agdaProof/WindControllerSpec.agda` is found in `agdaProof/SafetyProof.agda`.
