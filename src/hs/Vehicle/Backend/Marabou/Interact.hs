@@ -13,7 +13,7 @@ import System.Exit (exitFailure, ExitCode (..))
 import System.FilePath ((<.>), (</>), dropExtension)
 import System.Process (readProcessWithExitCode)
 import System.IO.Temp (withSystemTempDirectory)
-import GHC.IO.StdHandles
+import System.IO (stderr)
 
 import Vehicle.Backend.Marabou.Core
 import Vehicle.Backend.Prelude

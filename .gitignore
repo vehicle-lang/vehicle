@@ -26,6 +26,9 @@ cabal.project.local~
 .ghc.environment.*
 .shake/
 
+# Mac specific files
+*.DS_Store
+
 # BNFC
 gen/
 
