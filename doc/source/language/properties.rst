@@ -1,5 +1,5 @@
-Properties
-==========
+Properties (Docs TODO)
+======================
 
 .. autosummary::
    :toctree: generated

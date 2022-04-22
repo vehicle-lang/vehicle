@@ -11,11 +11,9 @@ Networks are declared as follows using the :code:`network` keyword:
 
 .. code-block:: agda
 
-   network myNetwork : TYPE
+   network myNetwork : Tensor Rat [784] -> Tensor Rat [10]
 
-Note that no implementation is provided in the specification, instead the network
-
-At the moment Vehicle supports networks with a single input and output nodes.
+At the moment Vehicle supports networks with a single input and output node.
 Therefore expected type is of the form :code:`Tensor A [m] -> Tensor B [n]`
 where :code:`A` and :code:`B` are [numeric types] and :code:`m` and :code:`n`
 are known constants.
@@ -35,8 +33,17 @@ For example the following are allowed and are all equivalent:
 Supported formats
 -----------------
 
-At the moment only the `ONNX <https://onnx.ai/>`_ format is supported by the core
-Vehicle compiler.
+The actual implementation of the network is provided when using the
+specification during training or verification.
+
+At the moment only the `ONNX <https://onnx.ai/>`_ format is supported by Vehicle.
+
+There are various libraries to convert trained models to the ONNX format:
+
+- `Tensorflow <https://onnxruntime.ai/docs/tutorials/tf-get-started.html>`_
+- `PyTorch <https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html>`_
+
+If you would be interested in other formats being supported, please get in touch.
 
 Limitations
 -----------
@@ -44,8 +51,8 @@ Limitations
 Multiple input/outputs
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Although we are aware that common graph representations such as ONNX,
-Tensorflow, and Pytorch files can have multiple input and output nodes,
+Although we are aware that common network representations such as ONNX,
+Tensorflow, and Pytorch can have multiple input and output nodes,
 these are not currently supported by Vehicle.
 
 For example the following is not a valid type of network:
@@ -54,7 +61,7 @@ For example the following is not a valid type of network:
 
    network myNetwork : Tensor Rat [5] -> Tensor Rat [10] -> Tensor Rat [2]
 
-This is a matter of implementation rather than a fundmental limitation.
+This is a matter of implementation rather than a fundemental limitation.
 Please get in touch if you would be interested in this functionality
 being added to Vehicle.
 

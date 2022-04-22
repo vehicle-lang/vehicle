@@ -1,4 +1,4 @@
-Training with a specification
-=============================
+Training with a specification (TODO)
+====================================
 
-Coming soon!
+Implementation underway, hopefully coming soon!

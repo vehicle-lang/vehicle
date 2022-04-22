@@ -1,5 +1,5 @@
-Functions
-=========
+Functions (Docs TODO)
+=====================
 
 .. autosummary::
    :toctree: generated

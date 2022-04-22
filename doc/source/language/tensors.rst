@@ -1,5 +1,5 @@
-Tensors
-=======
+Tensors (Docs TODO)
+===================
 
 .. autosummary::
    :toctree: generated
@@ -17,6 +17,9 @@ Operations
 - `map`
 - `fold`
 - `!`
+
+Indices
+-------
 
 Limitations
 -----------
