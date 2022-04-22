@@ -1,10 +1,10 @@
 Car controller example
 ======================
 
-A simple car controller that is formally proven to always keep the car on the road in the face of noisy sensor data and an unpredictable cross-wind. The network
-specification is verified in Marabou and then this result is connected to Agda and
+A simple car controller that is formally proven to always keep the car on the road in the face of noisy sensor data and an unpredictable cross-wind. The
+specification is verified in Marabou and can then be exported to Agda and
 combined with a larger proof to prove that the car never leaves the road. A full
-description of the setup can be found in Section 2.1 of the [Vehicle paper](https://arxiv.org/pdf/2202.05207v1.pdf)):
+description of the setup can be found in Section 2.1 of the [Vehicle paper](https://arxiv.org/pdf/2202.05207v1.pdf)).
 
 This folder contains the following files:
 
@@ -12,7 +12,7 @@ This folder contains the following files:
 
 - `windController.vcl` - the specification describing the desired behaviour.
 
-- `agdaProof/SafetyProof.agda` - the Agda proof the car never laves the road.
+- `agdaProof/SafetyProof.agda` - the Agda proof the car never leaves the road.
 
 Verifying using Marabou
 -----------------------

@@ -9,7 +9,7 @@ At its heart is the Vehicle specification language, a high-level, functional lan
 
 These specifications can then automatically be compiled down to loss functions to be
 used when training your network.
-After training the same specification can be compiled down to low-level neural network verifiers such as Marabou which either prove that the specification holds or produce a counter-example. Such a proof is far better than simply testing, as you can prove that
+After training, the same specification can be compiled down to low-level neural network verifiers such as Marabou which either prove that the specification holds or produce a counter-example. Such a proof is far better than simply testing, as you can prove that
 the specifiation holds for _all_ inputs.
 Verified specifications can also be exported to interactive theorem provers (ITPs)
 such as Agda.
@@ -25,7 +25,7 @@ changes will occur frequently so use at your own risk. While verification mode a
 
 - [User manual](https://vehicle-lang.readthedocs.io/en/latest/) - currently a work in progress.
 
-## Some examples
+## Examples
 
 Each of the following examples comes with an explanatory README file:
 

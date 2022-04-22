@@ -1,10 +1,9 @@
 ACAS Xu example
 ===============
 
-ACAS Xu is a collision avoidance system for automonous unmanned aircraft, and it's
+ACAS Xu is a collision avoidance system for automonous unmanned aircraft, and its
 verification was first described in the seminal [Reluplex paper](https://arxiv.org/abs/1702.01135). This example demonstrates how the entire specification, consisting of all
-10 properties, can be written in a single file. Unlike, the equivalent low-level queries
-the specification is written at a high-level and is understandable by a non-expert.
+10 properties, can be written in a single file. Unlike the equivalent low-level Marabou queries, the specification is written at a high-level and is understandable by a non-expert.
 
 Input files
 -----------
