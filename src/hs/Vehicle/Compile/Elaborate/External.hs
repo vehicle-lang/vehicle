@@ -69,9 +69,10 @@ groupDecls (d : ds) = NonEmpty.toList <$> traverse elab (NonEmpty.groupBy1 cond 
 instance Elab (NonEmpty B.Decl) V.InputDecl where
   elab = \case
     -- Elaborate resources.
-    (B.DeclNetw  n _tk t :| []) -> elabResource V.Network   n t
-    (B.DeclData  n _tk t :| []) -> elabResource V.Dataset   n t
-    (B.DeclParam n _tk t :| []) -> elabResource V.Parameter n t
+    (B.DeclNetw      n _tk t :| []) -> elabResource V.Network   n t
+    (B.DeclData      n _tk t :| []) -> elabResource V.Dataset   n t
+    (B.DeclParam     n _tk t :| []) -> elabResource V.Parameter n t
+    (B.DeclImplParam n _tk t :| []) -> elabImplParam n t
 
     -- Elaborate a type definition.
     (B.DefType n bs e :| []) -> do
@@ -175,6 +176,10 @@ instance Elab B.Arg V.InputArg where
 
 elabResource :: MonadCompile m => V.ResourceType -> B.Name -> B.Expr -> m V.InputDecl
 elabResource r n t = V.DefResource (tkProvenance n) r <$> elab n <*> elab t
+
+elabImplParam :: MonadCompile m => B.Name -> B.Expr -> m V.InputDecl
+elabImplParam n t = V.DefFunction ann V.NotABoolean <$> elab n <*> elab t <*> pure hole
+  where ann = tkProvenance n; hole = V.mkHole (inserted ann) (tkSymbol n)
 
 mkArg :: V.Visibility -> V.InputExpr -> V.InputArg
 mkArg v e = V.Arg (expandByArgVisibility v (provenanceOf e)) v e
@@ -286,12 +291,13 @@ elabOrder order tk e1 e2 = do
 
 -- |Get the name for any declaration.
 declName :: B.Decl -> B.Name
-declName (B.DeclNetw   n _ _) = n
-declName (B.DeclData   n _ _) = n
-declName (B.DeclParam  n _ _) = n
-declName (B.DefType    n _ _) = n
-declName (B.DefFunType n _ _) = n
-declName (B.DefFunExpr n _ _) = n
+declName (B.DeclNetw       n _ _) = n
+declName (B.DeclData       n _ _) = n
+declName (B.DeclParam      n _ _) = n
+declName (B.DeclImplParam  n _ _) = n
+declName (B.DefType        n _ _) = n
+declName (B.DefFunType     n _ _) = n
+declName (B.DefFunExpr     n _ _) = n
 
 checkNonEmpty :: (MonadCompile m, IsToken token) => token -> [a] -> m ()
 checkNonEmpty tk = checkNonEmpty' (tkProvenance tk) (tkSymbol tk)

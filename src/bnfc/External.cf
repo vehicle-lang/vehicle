@@ -196,12 +196,13 @@ separator Expr ",";
 
 -- * Declarations
 
-DeclNetw.   Decl ::= "network"   Name TokElemOf Expr;
-DeclData.   Decl ::= "dataset"   Name TokElemOf Expr;
-DeclParam.  Decl ::= "parameter" Name TokElemOf Expr;
-DefType.    Decl ::= "type"    Name [Binder] "=" Expr;
-DefFunType. Decl ::= Name TokElemOf Expr;
-DefFunExpr. Decl ::= Name [Binder] "=" Expr;
+DeclNetw.      Decl ::= "network"            Name TokElemOf Expr;
+DeclData.      Decl ::= "dataset"            Name TokElemOf Expr;
+DeclParam.     Decl ::= "parameter"          Name TokElemOf Expr;
+DeclImplParam. Decl ::= "implicit parameter" Name TokElemOf Expr;
+DefType.       Decl ::= "type" Name [Binder] "=" Expr;
+DefFunType.    Decl ::= Name TokElemOf Expr;
+DefFunExpr.    Decl ::= Name [Binder] "=" Expr;
 
 separator Decl ";";
 
