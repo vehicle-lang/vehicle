@@ -21,15 +21,15 @@ import Vehicle.Prelude
 import Vehicle.Compile
 import Vehicle.Backend.Prelude
 
-import Test.Compile.Utils
 import Test.GoldenUtils
+import Test.Compile.Utils
 
 --------------------------------------------------------------------------------
 -- Tests
 
-goldenTests :: TestTree
-goldenTests = testGroup "GoldenTests" $
-  map makeGoldenTests
+goldenTests :: MonadTest m => m TestTree
+goldenTests = testGroup "GoldenTests" <$>
+  traverse makeGoldenTests
     -- Worked examples
     [ testSpec
       { testName       = "windController"
@@ -153,39 +153,47 @@ getGoldenFilepathSuffix (Verifier VNNLib)  = ".vnnlib"
 getGoldenFilepathSuffix (ITP Agda)         = ".agda"
 getGoldenFilepathSuffix LossFunction       = ".json"
 
-makeGoldenTests :: TestSpec -> TestTree
-makeGoldenTests spec@TestSpec{..} =
-  let resources = testResources spec in
-  let makeTest = makeIndividualTest testLocation testName resources in
-  testGroup testName (map makeTest testTargets)
+makeGoldenTests :: MonadTest m => TestSpec -> m TestTree
+makeGoldenTests spec@TestSpec{..} = do
+  let resources = testResources spec
+  let makeTest = makeIndividualTest testLocation testName resources
+  testGroup testName <$> traverse makeTest testTargets
 
-makeIndividualTest :: TestLocation
+makeIndividualTest :: MonadTest m
+                   => TestLocation
                    -> String
                    -> Resources
                    -> Backend
-                   -> TestTree
-makeIndividualTest location name datasets backend = test
-  where
-  testName       = name <> "-" <> show backend
-  filePathSuffix = getGoldenFilepathSuffix backend
-  moduleName     = name <> "-output"
-  inputFile      = locationDir location name </> name <.> ".vcl"
-  outputFile     = goldenDir </> name </> name <> "-temp-output" <> filePathSuffix
-  goldenFile     = goldenDir </> name </> name <> "-output"      <> filePathSuffix
-  isFolderOutput = backend == MarabouBackend
-  run            = runTest inputFile outputFile moduleName backend datasets
+                   -> m TestTree
+makeIndividualTest location name datasets backend = do
+  loggingSettings <- getTestLoggingSettings
 
-  testFn = if isFolderOutput then goldenDirectoryTest else goldenFileTest
-  test = testFn testName run omitFilePaths goldenFile outputFile
+  let testName       = name <> "-" <> show backend
+  let filePathSuffix = getGoldenFilepathSuffix backend
+  let moduleName     = name <> "-output"
+  let inputFile      = locationDir location name </> name <.> ".vcl"
+  let outputFile     = goldenDir </> name </> name <> "-temp-output" <> filePathSuffix
+  let goldenFile     = goldenDir </> name </> name <> "-output"      <> filePathSuffix
+  let isFolderOutput = backend == MarabouBackend
 
-runTest :: FilePath -> FilePath -> String -> Backend -> Resources -> IO ()
-runTest inputFile outputFile modulePath backend Resources{..} = do
+  let run = runTest loggingSettings inputFile outputFile moduleName backend datasets
+  let testFn = if isFolderOutput then goldenDirectoryTest else goldenFileTest
+  return $ testFn testName run omitFilePaths goldenFile outputFile
+
+runTest :: TestLoggingSettings
+        -> FilePath
+        -> FilePath
+        -> String
+        -> Backend
+        -> Resources
+        -> IO ()
+runTest (logFile, debugLevel) inputFile outputFile modulePath backend Resources{..} = do
   run $ Options
     { version     = False
     , outFile     = Nothing
     , errFile     = Nothing
-    , logFile     = Nothing -- Just Nothing
-    , debugLevel  = 1
+    , logFile     = logFile
+    , debugLevel  = debugLevel
     , modeOptions = Compile $ CompileOptions
       { target            = backend
       , specificationFile = inputFile

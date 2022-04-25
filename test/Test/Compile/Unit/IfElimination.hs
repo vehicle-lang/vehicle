@@ -53,8 +53,8 @@ liftAndEliminateIfsTest input expected = do
   let inputExpr    = textToCheckedExpr input
   let expectedExpr = textToCheckedExpr expected
 
-  let result = discardState (liftAndEliminateIfs inputExpr)
-  --result <- flushLogs Nothing (liftAndEliminateIfs inputExpr)
+  let result = discardLogs (liftAndEliminateIfs inputExpr)
+  --result = traceLogs (liftAndEliminateIfs inputExpr)
 
   -- Need to re-typecheck the result as lifting may put a `Hole` for
   -- the type of each lifted `if`.

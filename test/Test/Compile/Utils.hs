@@ -1,14 +1,19 @@
 module Test.Compile.Utils
-  ( TestLocation(..)
+  ( MonadTest
+  , TestLoggingSettings
+  , getTestLoggingSettings
+  , TestLocation(..)
   , TestSpec(..)
   , testSpec
   , testResources
   , locationDir
   , textToCheckedExpr
   , retypeCheckExpr
-  , discardState
+  , traceLogs
+  , discardLogs
   ) where
 
+import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
 import Data.Text.Array
 import Data.Map
@@ -27,6 +32,23 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Type (typeCheck)
 
+--------------------------------------------------------------------------------
+-- Test settings monad
+
+type MonadTest m = MonadReader (Maybe Int) m
+
+type TestLoggingSettings = (Maybe (Maybe FilePath), Int)
+
+getTestLoggingSettings :: MonadTest m => m TestLoggingSettings
+getTestLoggingSettings = do
+  logLevel <- ask
+  return $ case logLevel of
+    Nothing -> (Nothing, 0)
+    Just l  -> (Just Nothing, l)
+
+
+--------------------------------------------------------------------------------
+-- Test infrastructure
 
 data TestLocation
   = Tests
@@ -71,20 +93,26 @@ testResources TestSpec{..} =
 
   Resources networks datasets parameters
 
--- If you want to see the logs for tests, change `discardLogger` to
--- `traceLogger` here.
-discardState :: ExceptT CompileError Logger a -> a
-discardState e = case discardLogger $ logCompileError e of
-  Left  x -> developerError $ pretty $ details x
-  Right y -> y
+--------------------------------------------------------------------------------
+-- Other utilities
 
 traceLogger :: Logger a -> a
 traceLogger m =
   let (v, logs) = runLogger MaxDetail m in
   trace (showMessages logs) v
 
+discardLogs :: ExceptT CompileError Logger a -> a
+discardLogs e = case discardLogger $ logCompileError e of
+  Left  x -> developerError $ pretty $ details x
+  Right y -> y
+
+traceLogs :: ExceptT CompileError Logger a -> a
+traceLogs e = case traceLogger $ logCompileError e of
+  Left  x -> developerError $ pretty $ details x
+  Right y -> y
+
 textToCheckedExpr :: Text -> CheckedExpr
-textToCheckedExpr = discardState . typeCheckExpr
+textToCheckedExpr = discardLogs . typeCheckExpr
 
 retypeCheckExpr :: CheckedExpr -> CheckedExpr
-retypeCheckExpr = discardState . typeCheck
+retypeCheckExpr = discardLogs . typeCheck

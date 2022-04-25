@@ -235,6 +235,8 @@ test-suite vehicle-test
   default-extensions: ImportQualifiedPost
                     , OverloadedStrings
                     , RecordWildCards
+                    , ConstraintKinds
+                    , FlexibleContexts
   build-depends:      filepath >=1.4 && <2
                     , mtl      >=2.2 && <3
                     , hashable

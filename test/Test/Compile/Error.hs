@@ -31,8 +31,8 @@ import Test.Compile.Utils
 --------------------------------------------------------------------------------
 -- Tests
 
-errorTests :: TestTree
-errorTests = testGroup "ErrorTests"
+errorTests :: MonadTest m => m TestTree
+errorTests = testGroup "ErrorTests" <$> sequence
   [ argumentErrors
   , typeCheckingErrors
   , networkErrors
@@ -40,7 +40,7 @@ errorTests = testGroup "ErrorTests"
   , parameterErrors
   ]
 
-argumentErrors :: TestTree
+argumentErrors :: MonadTest m => m TestTree
 argumentErrors = failTestGroup "ArgumentErrors"
   [ testSpec
     { testName     = "missingInputFile"
@@ -49,7 +49,7 @@ argumentErrors = failTestGroup "ArgumentErrors"
     }
   ]
 
-typeCheckingErrors :: TestTree
+typeCheckingErrors :: MonadTest m => m TestTree
 typeCheckingErrors = failTestGroup "TypingErrors"
   [ testSpec
     { testName     = "intAsNat"
@@ -76,7 +76,7 @@ typeCheckingErrors = failTestGroup "TypingErrors"
     }
   ]
 
-networkErrors :: TestTree
+networkErrors :: MonadTest m => m TestTree
 networkErrors = failTestGroup "NetworkErrors"
   [ testSpec
     { testName     = "notAFunction"
@@ -91,7 +91,7 @@ networkErrors = failTestGroup "NetworkErrors"
     }
   ]
 
-datasetErrors :: TestTree
+datasetErrors :: MonadTest m => m TestTree
 datasetErrors = failTestGroup "DatasetErrors"
   [ testSpec
     { testName     = "notProvided"
@@ -164,7 +164,7 @@ datasetErrors = failTestGroup "DatasetErrors"
     }
   ]
 
-parameterErrors :: TestTree
+parameterErrors :: MonadTest m => m TestTree
 parameterErrors = failTestGroup "ParameterErrors"
   [ testSpec
     { testName       = "notProvided"
@@ -187,35 +187,44 @@ parameterErrors = failTestGroup "ParameterErrors"
 testDir :: FilePath
 testDir = "test" </> "Test" </> "Compile" </> "Error"
 
-failTestGroup :: FilePath
+failTestGroup :: MonadTest m
+              => FilePath
               -> [TestSpec]
-              -> TestTree
-failTestGroup folder tests = testGroup folder (tests <&> \spec@TestSpec{..} ->
-  let resources = testResources spec in
-  failTest (folder </> testName) (head testTargets) resources)
-
-failTest :: FilePath -> Backend -> Resources -> TestTree
-failTest filepath backend resources = test
+              -> m TestTree
+failTestGroup folder tests = testGroup folder <$> traverse mkTest tests
   where
-  testName       = takeBaseName filepath
-  basePath       = testDir </> filepath
-  inputFile      = basePath <.> ".vcl"
-  logFile        = basePath <> "-temp" <.> "txt"
-  goldenFile     = basePath <.> "txt"
-  run            = runTest inputFile logFile backend resources
+  mkTest spec@TestSpec{..} = do
+    let resources = testResources spec
+    failTest (folder </> testName) (head testTargets) resources
 
-  test = goldenFileTest testName run omitFilePaths goldenFile logFile
+failTest :: MonadTest m => FilePath -> Backend -> Resources -> m TestTree
+failTest filepath backend resources = do
+  loggingSettings <- getTestLoggingSettings
 
-runTest :: FilePath -> FilePath -> Backend -> Resources -> IO ()
-runTest inputFile outputFile backend Resources{..} = do
+  let testName       = takeBaseName filepath
+  let basePath       = testDir </> filepath
+  let inputFile      = basePath <.> ".vcl"
+  let logFile        = basePath <> "-temp" <.> "txt"
+  let goldenFile     = basePath <.> "txt"
+  let run            = runTest loggingSettings inputFile logFile backend resources
+
+  return $ goldenFileTest testName run omitFilePaths goldenFile logFile
+
+runTest :: TestLoggingSettings
+        -> FilePath
+        -> FilePath
+        -> Backend
+        -> Resources
+        -> IO ()
+runTest (logFile, debugLevel) inputFile outputFile backend Resources{..} = do
   run options `catch` handleExitCode
   where
   options = Options
     { version     = False
     , outFile     = Nothing
     , errFile     = Just outputFile
-    , logFile     = Nothing -- Just Nothing
-    , debugLevel  = 1
+    , logFile     = logFile
+    , debugLevel  = debugLevel
     , modeOptions = Compile $ CompileOptions
       { target            = backend
       , specificationFile = inputFile
