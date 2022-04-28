@@ -35,12 +35,12 @@ instance ToJSON Domain where
   toEncoding = genericToEncoding defaultOptions
 
 data LExpr
-  = Neg LExpr
-  | Con Double
+  = Negation LExpr
+  | Constant Double
   | Min LExpr LExpr
   | Max LExpr LExpr
-  | Sub LExpr LExpr
-  | Ind LExpr LExpr
+  | Substraction LExpr LExpr
+  | IndicatorFunction LExpr LExpr
   | Var V.DBIndex
   | NetApp Symbol (NonEmpty LExpr)
   | Quant Quantifier Symbol Domain LExpr
@@ -83,21 +83,21 @@ compileExpr :: MonadCompile m => V.CheckedExpr -> m LExpr
 compileExpr e = showExit $ do
   e' <- showEntry e
   case e' of
-    V.NotExpr  _ _ [e1]     -> Neg <$> compileArg e1
+    V.NotExpr  _ _ [e1]     -> Negation <$> compileArg e1
     V.AndExpr  _ _ [e1, e2] -> Min <$> compileArg e1 <*> compileArg e2
     V.OrExpr   _ _ [e1, e2] -> Max <$> compileArg e1 <*> compileArg e2
-    V.ImplExpr _ _ [e1, e2] -> Max <$> (Neg <$> compileArg e1) <*> compileArg e2
+    V.ImplExpr _ _ [e1, e2] -> Max <$> (Negation <$> compileArg e1) <*> compileArg e2
 
-    V.EqualityExpr V.Eq  _ _ _ [e1, e2] -> Ind <$> compileArg e1 <*> compileArg e2
-    V.EqualityExpr V.Neq _ _ _ [e1, e2] -> Neg <$> (Ind <$> compileArg e1 <*> compileArg e2)
+    V.EqualityExpr V.Eq  _ _ _ [e1, e2] -> IndicatorFunction <$> compileArg e1 <*> compileArg e2
+    V.EqualityExpr V.Neq _ _ _ [e1, e2] -> Negation <$> (IndicatorFunction <$> compileArg e1 <*> compileArg e2)
     V.OrderExpr    order _ _ _ [e1, e2] ->
       case order of
-        V.Le -> Sub <$> compileArg e2 <*> compileArg e1
-        V.Lt -> Neg <$> (Sub <$> compileArg e1 <*> compileArg e2)
-        V.Ge -> Sub <$> compileArg e1 <*> compileArg e2
-        V.Gt -> Neg <$> (Sub <$> compileArg e2 <*> compileArg e1)
+        V.Le -> Substraction <$> compileArg e2 <*> compileArg e1
+        V.Lt -> Negation <$> (Substraction <$> compileArg e1 <*> compileArg e2)
+        V.Ge -> Substraction <$> compileArg e1 <*> compileArg e2
+        V.Gt -> Negation <$> (Substraction <$> compileArg e2 <*> compileArg e1)
 
-    V.LiteralExpr _ _ l                   -> return $ Con (compileLiteral l)
+    V.LiteralExpr _ _ l                   -> return $ Constant (compileLiteral l)
     V.App _ (V.Var _ (V.Free ident)) p    -> NetApp (V.nameOf ident) <$> traverse compileArg p
     V.Var _ (V.Bound t)                   -> return (Var t)
     V.QuantifierExpr q _ binder body      -> Quant (compileQuant q) (V.getBinderSymbol binder) (Domain ()) <$> compileExpr body
@@ -105,15 +105,14 @@ compileExpr e = showExit $ do
     V.LSeq _ _ xs                         -> TensorLit <$> traverse compileExpr xs
 
     V.Hole{}                              -> resolutionError "lossFunction" "Hole"
-    V.Meta{}                              -> resolutionError "lossFunction" "Meta"
-    V.Ann{}                               -> normalisationError "lossFunction" "Ann"
+    V.Meta{}                              -> resolutionError "lossFunction" "Meta"  
     V.Let{}                               -> normalisationError "lossFunction" "Let"
     V.Lam{}                               -> normalisationError "lossFunction" "Lam"
     V.PrimDict{}                          -> typeError "lossFunction" "PrimDict"
     V.Pi{}                                -> typeError "lossFunction" "Pi"
     V.Type{}                              -> typeError "lossFunction" "Type"
     _                                     -> compilerDeveloperError $ unexpectedExprError currentPass (prettySimple e)
-
+    V.Ann{}                               -> normalisationError "lossFunction" "Ann"
 
 compileQuant :: V.Quantifier -> Quantifier
 compileQuant V.All = All
