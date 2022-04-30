@@ -18,6 +18,7 @@ import Vehicle.Language.Print
 --------------------------------------------------------------------------------
 -- Definitions
 
+
 data Quantifier
   = All
   | Any
@@ -46,6 +47,7 @@ data LExpr
   | Quant Quantifier Symbol Domain LExpr
   | At LExpr LExpr
   | TensorLit [LExpr]
+  | Lambda Symbol LExpr
   deriving (Eq, Ord, Generic, Show)
 
 instance FromJSON LExpr
@@ -103,16 +105,18 @@ compileExpr e = showExit $ do
     V.QuantifierExpr q _ binder body      -> Quant (compileQuant q) (V.getBinderSymbol binder) (Domain ()) <$> compileExpr body
     V.AtExpr _ _ _ _ [xs, i]              -> At <$> compileArg xs <*> compileArg i
     V.LSeq _ _ xs                         -> TensorLit <$> traverse compileExpr xs
+    V.Ann _ body _                        -> compileExpr body
+    V.Lam _ binder body                   -> Lambda (V.getBinderSymbol binder) <$> compileExpr body
+    V.Let _ val _ body                    -> compileExpr (V.substInto val body)
+          
 
     V.Hole{}                              -> resolutionError "lossFunction" "Hole"
     V.Meta{}                              -> resolutionError "lossFunction" "Meta"  
-    V.Let{}                               -> normalisationError "lossFunction" "Let"
-    V.Lam{}                               -> normalisationError "lossFunction" "Lam"
     V.PrimDict{}                          -> typeError "lossFunction" "PrimDict"
     V.Pi{}                                -> typeError "lossFunction" "Pi"
     V.Type{}                              -> typeError "lossFunction" "Type"
     _                                     -> compilerDeveloperError $ unexpectedExprError currentPass (prettySimple e)
-    V.Ann{}                               -> normalisationError "lossFunction" "Ann"
+    
 
 compileQuant :: V.Quantifier -> Quantifier
 compileQuant V.All = All
