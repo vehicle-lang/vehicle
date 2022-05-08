@@ -35,9 +35,9 @@ advises x i = forall j . j != i => mnist x ! i < mnist x ! j
 
 -- Next we define the parameter `epsilon` that will represent the radius of the
 -- ball that we want the network to be robust in. Note that we declare this as
--- a parameter which allows the value of `epsilon` to be specififed at compile
+-- a parameter which allows the value of `epsilon` to be specified at compile
 -- time rather than be fixed in the specification.
-parameter epsilon : Nat
+parameter epsilon : Rat
 
 -- We now define what it means for the network to be robust around an image `x`
 -- that should be classified as `y`. Namely, that for any valid input image `z`
