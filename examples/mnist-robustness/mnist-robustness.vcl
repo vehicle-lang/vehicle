@@ -20,24 +20,24 @@ validImage x = forall i . 0 <= x ! i <= 1
 -- score for each of the digits 0 to 9.
 network mnist : Image -> Tensor Rat [10]
 
---------------------------------------------------------------------------------
--- Definition of robustness around a point
-
--- First we define what it means for an input image `x` to be in an l-infinity
--- ball of a given `radius` around a given `centre` image.
-lInfBall : Rat -> Image -> Image -> Bool
-lInfBall radius centre x = forall i . -radius <= (x - centre) ! i <= radius
-
 -- The network advises that input image `x` has label `i` if the score
 -- for label `i` is less than the score of any other label `j`.
 advises : Image -> Label -> Bool
 advises x i = forall j . j != i => mnist x ! i < mnist x ! j
 
--- Next we define the parameter `epsilon` that will represent the radius of the
+--------------------------------------------------------------------------------
+-- Definition of robustness around a point
+
+-- First we define the parameter `epsilon` that will represent the radius of the
 -- ball that we want the network to be robust in. Note that we declare this as
 -- a parameter which allows the value of `epsilon` to be specified at compile
 -- time rather than be fixed in the specification.
 parameter epsilon : Rat
+
+-- Next we define what it means for an input image `x` to be in an l-infinity
+-- ball of a given `radius` around a given `centre` image.
+lInfBall : Image -> Image -> Bool
+lInfBall centre x = forall i . -epsilon <= (x - centre) ! i <= epsilon
 
 -- We now define what it means for the network to be robust around an image `x`
 -- that should be classified as `y`. Namely, that for any valid input image `z`
@@ -45,8 +45,7 @@ parameter epsilon : Rat
 -- still advise label `y` when asked to classify `z`.
 robustAround : Image -> Label -> Bool
 robustAround x y = forall z .
-  validImage z and lInfBall epsilon x z =>
-  advises z y
+  validImage z and lInfBall x z => advises z y
 
 --------------------------------------------------------------------------------
 -- Robustness with respect to a dataset
@@ -61,7 +60,7 @@ robustAround x y = forall z .
 -- network is robust around images in the training dataset.
 
 -- We first specify parameter `n` the size of the training dataset. Unlike
--- the earilier parameter `epsilon`, `n` is marked as implicit which means
+-- the earlier parameter `epsilon`, `n` is marked as implicit which means
 -- that it does not need to be provided manually but instead will be
 -- automatically inferred by the compiler. In this case it will be inferred
 -- from the training dataset passed.
