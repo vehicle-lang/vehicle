@@ -53,7 +53,7 @@ pi = 3.141592
 -- A constraint that says the network chooses output `i` when given the
 -- input `x`. We must necessarily provide a finite index that is less than 5
 -- (i.e. of type Index 5). The `a ! b` operator lookups index `b` in tensor `a`.
-advises : Index 5 -> InputVector -> Prop
+advises : Index 5 -> InputVector -> Bool
 advises i x = forall j . i != j => acasXu x ! i < acasXu x ! j
 
 --------------------------------------------------------------------------------
@@ -65,13 +65,13 @@ advises i x = forall j . i != j => acasXu x ! i < acasXu x ! j
 
 -- Tested on: all 45 networks.
 
-intruderDistantAndSlower : InputVector -> Prop
+intruderDistantAndSlower : InputVector -> Bool
 intruderDistantAndSlower x =
   x ! distanceToIntruder >= 55947.691 and
   x ! speed              >= 1145      and
   x ! intruderSpeed      <= 60
 
-property1 : Prop
+property1 : Bool
 property1 = forall x . intruderDistantAndSlower x =>
   acasXu x ! clearOfConflict <= 1500
 
@@ -83,7 +83,7 @@ property1 = forall x . intruderDistantAndSlower x =>
 
 -- Tested on: N_{x,y} for all x ≥ 2 and for all y
 
-property2 : Prop
+property2 : Bool
 property2 = forall x . intruderDistantAndSlower x =>
   (exists j . (acasXu x ! j) > (acasXu x ! clearOfConflict))
 
@@ -95,18 +95,18 @@ property2 = forall x . intruderDistantAndSlower x =>
 
 -- Tested on: all networks except N_{1,7}, N_{1,8}, and N_{1,9}.
 
-directlyAhead : InputVector -> Prop
+directlyAhead : InputVector -> Bool
 directlyAhead x =
   1500  <= x ! distanceToIntruder <= 1800 and
   -0.06 <= x ! angleToIntruder    <= 0.06
 
-movingTowards : InputVector -> Prop
+movingTowards : InputVector -> Bool
 movingTowards x =
   x ! intruderHeading >= 3.10  and
   x ! speed           >= 980   and
   x ! intruderSpeed   >= 960
 
-property3 : Prop
+property3 : Bool
 property3 = forall x . directlyAhead x and movingTowards x =>
   not (advises clearOfConflict x)
 
@@ -119,13 +119,13 @@ property3 = forall x . directlyAhead x and movingTowards x =>
 
 -- Tested on: all networks except N_{1,7}, N_{1,8}, and N_{1,9}.
 
-movingAway : InputVector -> Prop
+movingAway : InputVector -> Bool
 movingAway x =
           x ! intruderHeading == 0   and
   1000 <= x ! speed                  and
   700  <= x ! intruderSpeed   <= 800
 
-property4 : Prop
+property4 : Bool
 property4 = forall x . directlyAhead x and movingAway x =>
   not (advises clearOfConflict x)
 
@@ -137,7 +137,7 @@ property4 = forall x . directlyAhead x and movingAway x =>
 
 -- Tested on: N_{1,1}.
 
-nearAndApproachingFromLeft : InputVector -> Prop
+nearAndApproachingFromLeft : InputVector -> Bool
 nearAndApproachingFromLeft x =
   250 <= x ! distanceToIntruder <= 400         and
   0.2 <= x ! angleToIntruder    <= 0.4         and
@@ -145,7 +145,7 @@ nearAndApproachingFromLeft x =
   100 <= x ! speed              <= 400         and
   0   <= x ! intruderSpeed      <= 400
 
-property5 : Prop
+property5 : Bool
 property5 = forall x . nearAndApproachingFromLeft x => advises strongRight x
 
 --------------------------------------------------------------------------------
@@ -155,7 +155,7 @@ property5 = forall x . nearAndApproachingFromLeft x => advises strongRight x
 
 -- Tested on: N_{1,1}.
 
-intruderFarAway : InputVector -> Prop
+intruderFarAway : InputVector -> Bool
 intruderFarAway x =
   12000 <= x ! distanceToIntruder <= 62000                                  and
   (- pi <= x ! angleToIntruder <= -0.7 or 0.7 <= x ! angleToIntruder <= pi) and
@@ -163,7 +163,7 @@ intruderFarAway x =
   100   <= x ! speed              <= 1200                                   and
   0     <= x ! intruderSpeed      <= 1200
 
-property6 : Prop
+property6 : Bool
 property6 = forall x . intruderFarAway x => advises clearOfConflict x
 
 --------------------------------------------------------------------------------
@@ -173,7 +173,7 @@ property6 = forall x . intruderFarAway x => advises clearOfConflict x
 
 -- Tested on: N_{1,9}.
 
-largeVerticalSeparation : InputVector -> Prop
+largeVerticalSeparation : InputVector -> Bool
 largeVerticalSeparation x =
   0    <= x ! distanceToIntruder <= 60760  and
   -pi  <= x ! angleToIntruder    <= pi     and
@@ -181,7 +181,7 @@ largeVerticalSeparation x =
   100  <= x ! speed              <= 1200   and
   0    <= x ! intruderSpeed      <= 1200
 
-property7 : Prop
+property7 : Bool
 property7 = forall x . largeVerticalSeparation x =>
   not (advises strongLeft x) and not (advises strongRight x)
 
@@ -193,7 +193,7 @@ property7 = forall x . largeVerticalSeparation x =>
 
 -- Tested on: N_{2,9}.
 
-largeVerticalSeparationAndPreviousWeakLeft : InputVector -> Prop
+largeVerticalSeparationAndPreviousWeakLeft : InputVector -> Bool
 largeVerticalSeparationAndPreviousWeakLeft x =
   0    <= x ! distanceToIntruder <= 60760    and
   -pi  <= x ! angleToIntruder    <= -0.75*pi and
@@ -201,7 +201,7 @@ largeVerticalSeparationAndPreviousWeakLeft x =
   600  <= x ! speed              <= 1200     and
   600  <= x ! intruderSpeed      <= 1200
 
-property8 : Prop
+property8 : Bool
 property8 = forall x . largeVerticalSeparationAndPreviousWeakLeft x =>
   (advises clearOfConflict x) or (advises weakLeft x)
 
@@ -213,7 +213,7 @@ property8 = forall x . largeVerticalSeparationAndPreviousWeakLeft x =>
 
 -- Tested on: N_{3,3}.
 
-previousWeakRightAndNearbyIntruder : InputVector -> Prop
+previousWeakRightAndNearbyIntruder : InputVector -> Bool
 previousWeakRightAndNearbyIntruder x =
   2000 <= x ! distanceToIntruder <= 7000       and
   -0.4 <= x ! angleToIntruder    <= -0.14      and
@@ -221,7 +221,7 @@ previousWeakRightAndNearbyIntruder x =
   100  <= x ! speed              <= 150        and
   0    <= x ! intruderSpeed      <= 150
 
-property9 : Prop
+property9 : Bool
 property9 = forall x . previousWeakRightAndNearbyIntruder x =>
   advises strongLeft x
 
@@ -232,7 +232,7 @@ property9 = forall x . previousWeakRightAndNearbyIntruder x =>
 
 -- Tested on: N_{4,5}.
 
-intruderFarAway2 : InputVector -> Prop
+intruderFarAway2 : InputVector -> Bool
 intruderFarAway2 x =
   36000 <= x ! distanceToIntruder <= 60760       and
   0.7   <= x ! angleToIntruder    <= pi          and
@@ -240,5 +240,5 @@ intruderFarAway2 x =
   900   <= x ! speed              <= 1200        and
   600   <= x ! intruderSpeed      <= 1200
 
-property10 : Prop
+property10 : Bool
 property10 = forall x . intruderFarAway2 x => advises clearOfConflict x

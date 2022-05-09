@@ -24,14 +24,14 @@ measuredMean = _
 
 
 
-inputBetweenBounds : InputVector -> Prop
+inputBetweenBounds : InputVector -> Bool
 inputBetweenBounds x = forall i . (iLB ! i) <= input i <= (iUB ! i)
 
-sensibleSpectra : InputVector -> Prop
+sensibleSpectra : InputVector -> Bool
 sensibleSpectra x =
   ((weights ** spectra x) - measuredMean) .
   binCovariances .
   ((weights ** spectra x) - measuredMean)
 
-sensiblePrediction : Prop
+sensiblePrediction : Bool
 sensiblePrediction = forall (x : InputVector) . inputBetweenBounds x => sensibleSpectra x

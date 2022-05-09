@@ -72,8 +72,8 @@ standariseDecl d = case d of
   DefResource p r ident t ->
     Just . DefResource p r ident <$> standardise t
 
-  DefFunction p ident t e ->
-    Just . DefFunction p ident t <$> standardise e
+  DefFunction p u ident t e ->
+    Just . DefFunction p u ident t <$> standardise e
 
 instance Standardise Expr where
   standardise = \case

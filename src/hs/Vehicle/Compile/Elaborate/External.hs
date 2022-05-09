@@ -123,15 +123,14 @@ instance Elab B.Expr V.InputExpr where
     B.ForallIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.All ns e1 e2
     B.ExistsIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Any ns e1 e2
 
-    B.Bool tk                 -> builtin (V.BooleanType   V.Bool)   tk []
-    B.Prop tk                 -> builtin (V.BooleanType   V.Prop)   tk []
-    B.Real tk                 -> builtin (V.NumericType   V.Real)   tk []
-    B.Rat  tk                 -> builtin (V.NumericType   V.Rat)    tk []
-    B.Int tk                  -> builtin (V.NumericType   V.Int)    tk []
-    B.Nat tk                  -> builtin (V.NumericType   V.Nat)    tk []
-    B.List tk t               -> builtin (V.ContainerType V.List)   tk [t]
-    B.Tensor tk t1 t2         -> builtin (V.ContainerType V.Tensor) tk [t1, t2]
-    B.Index tk t              -> builtin V.Index                      tk [t]
+    B.Bool tk                 -> builtin V.Bool                          tk []
+    B.Real tk                 -> builtin (V.NumericType   V.Real)        tk []
+    B.Rat  tk                 -> builtin (V.NumericType   V.Rat)         tk []
+    B.Int tk                  -> builtin (V.NumericType   V.Int)         tk []
+    B.Nat tk                  -> builtin (V.NumericType   V.Nat)         tk []
+    B.List tk t               -> builtin (V.ContainerType V.List)        tk [t]
+    B.Tensor tk t1 t2         -> builtin (V.ContainerType V.Tensor)      tk [t1, t2]
+    B.Index tk t              -> builtin V.Index                         tk [t]
 
     B.If tk1 e1 _ e2 _ e3     -> builtin V.If                  tk1 [e1, e2, e3]
     B.Not tk e                -> builtin V.Not                 tk  [e]
@@ -161,7 +160,6 @@ instance Elab B.Expr V.InputExpr where
     B.TCEq      tk e1 e2 -> builtin (V.TypeClass V.HasEq)              tk [e1, e2]
     B.TCOrd     tk e1 e2 -> builtin (V.TypeClass V.HasOrd)             tk [e1, e2]
     B.TCCont    tk e1 e2 -> builtin (V.TypeClass V.IsContainer)        tk [e1, e2]
-    B.TCTruth   tk e     -> builtin (V.TypeClass V.IsTruth)            tk [e]
     B.TCNatOps  tk e     -> builtin (V.TypeClass V.HasNatOps)          tk [e]
     B.TCIntOps  tk e     -> builtin (V.TypeClass V.HasIntOps)          tk [e]
     B.TCRatOps  tk e     -> builtin (V.TypeClass V.HasRatOps)          tk [e]

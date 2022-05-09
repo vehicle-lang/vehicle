@@ -1,6 +1,7 @@
 module Vehicle.Language.AST.BuiltinPatterns where
 
 import Data.List.NonEmpty (NonEmpty(..))
+
 import Vehicle.Language.AST.Builtin
 import Vehicle.Language.AST.Core
 
@@ -98,14 +99,8 @@ pattern RealType ann = BuiltinNumericType ann Real
 --------------------------------------------------------------------------------
 -- Boolean
 
-pattern BuiltinBooleanType :: ann -> BooleanType -> Expr binder var ann
-pattern BuiltinBooleanType ann op = Builtin ann (BooleanType op)
-
 pattern BoolType :: ann -> Expr binder var ann
-pattern BoolType ann = BuiltinBooleanType ann Bool
-
-pattern PropType :: ann -> Expr binder var ann
-pattern PropType ann = BuiltinBooleanType ann Prop
+pattern BoolType ann = Builtin ann Bool
 
 --------------------------------------------------------------------------------
 -- Container
@@ -119,15 +114,6 @@ pattern BuiltinContainerType ann op = Builtin ann (ContainerType op)
 
 pattern BuiltinTypeClass :: ann -> TypeClass -> Expr binder var ann
 pattern BuiltinTypeClass ann tc = Builtin ann (TypeClass tc)
-
---------------------------------------------------------------------------------
--- IsTruth
-
-mkIsTruth :: ann
-          -> BooleanType
-          -> Expr binder var ann
-mkIsTruth ann t = App ann (BuiltinTypeClass ann IsTruth)
-  (fmap (ExplicitArg ann) [BuiltinBooleanType ann t])
 
 --------------------------------------------------------------------------------
 -- IsContainer
@@ -147,23 +133,6 @@ pattern
     App ann (BuiltinTypeClass ann IsContainer)
       [ ExplicitArg ann tElem
       , ExplicitArg ann tCont
-      ]
-
---------------------------------------------------------------------------------
--- Boolean type classes
-
-pattern IsTruthExpr :: ann
-                      -> Expr binder var ann
-                      -> Expr binder var ann
-pattern
-  IsTruthExpr ann t <-
-    App ann (BuiltinTypeClass _ IsTruth)
-      [ ExplicitArg _ t
-      ]
-  where
-  IsTruthExpr ann t =
-    App ann (BuiltinTypeClass ann IsTruth)
-      [ ExplicitArg ann t
       ]
 
 --------------------------------------------------------------------------------
@@ -266,18 +235,15 @@ pattern
 pattern HasOrdExpr :: ann
                    -> Expr binder var ann
                    -> Expr binder var ann
-                   -> Expr binder var ann
 pattern
-  HasOrdExpr ann tElem tRes <-
+  HasOrdExpr ann tElem <-
     App ann (BuiltinTypeClass _ HasOrd)
       [ ExplicitArg _ tElem
-      , ExplicitArg _ tRes
       ]
   where
-  HasOrdExpr ann tElem tRes =
+  HasOrdExpr ann tElem =
     App ann (BuiltinTypeClass ann HasOrd)
       [ ExplicitArg ann tElem
-      , ExplicitArg ann tRes
       ]
 
 --------------------------------------------------------------------------------
@@ -286,18 +252,15 @@ pattern
 pattern HasEqExpr :: ann
                   -> Expr binder var ann
                   -> Expr binder var ann
-                  -> Expr binder var ann
 pattern
-  HasEqExpr ann tElem tRes <-
+  HasEqExpr ann tElem <-
     App ann (BuiltinTypeClass _ HasEq)
       [ ExplicitArg _ tElem
-      , ExplicitArg _ tRes
       ]
   where
-  HasEqExpr ann tElem tRes =
+  HasEqExpr ann tElem =
     App ann (BuiltinTypeClass ann HasEq)
       [ ExplicitArg ann tElem
-      , ExplicitArg ann tRes
       ]
 
 --------------------------------------------------------------------------------
@@ -328,15 +291,15 @@ pattern LitBool :: ann -> Bool -> Expr binder var ann
 pattern LitBool ann n = Literal ann (LBool n)
 
 pattern BoolLiteralExpr :: ann
-                        -> BooleanType
                         -> Bool
                         -> Expr binder var ann
-pattern
-  BoolLiteralExpr ann boolType bool <-
-    LiteralExpr ann (BuiltinBooleanType _ boolType) (LBool bool)
-  where
-  BoolLiteralExpr ann boolType bool =
-    LiteralExpr ann (BuiltinBooleanType ann boolType) (LBool bool)
+pattern BoolLiteralExpr ann value = LitBool ann value
+
+pattern TrueExpr :: ann -> Expr binder var ann
+pattern TrueExpr ann = BoolLiteralExpr ann True
+
+pattern FalseExpr :: ann -> Expr binder var ann
+pattern FalseExpr ann = BoolLiteralExpr ann False
 
 --------------------------------------------------------------------------------
 -- Nat
@@ -433,27 +396,24 @@ pattern BuiltinQuantifierIn ann q = Builtin ann (QuantIn q)
 pattern QuantifierInExpr :: Quantifier
                          -> ann
                          -> Expr   binder var ann
-                         -> BooleanType
                          -> Binder binder var ann
                          -> Expr   binder var ann
                          -> Expr   binder var ann
                          -> Expr   binder var ann
 pattern
-  QuantifierInExpr q ann tCont tRes binder body container <-
+  QuantifierInExpr q ann tCont binder body container <-
     App ann (BuiltinQuantifierIn _ q)
       [ ImplicitArg _ _
       , ImplicitArg _ tCont
-      , ImplicitArg _ (BuiltinBooleanType _ tRes)
       , InstanceArg _ _
       , ExplicitArg _ (Lam _ binder body)
       , ExplicitArg _ container
       ]
   where
-  QuantifierInExpr q ann tCont tRes binder body container =
+  QuantifierInExpr q ann tCont binder body container =
     App ann (BuiltinQuantifierIn ann q)
       [ ImplicitArg ann (typeOf binder)
       , ImplicitArg ann tCont
-      , ImplicitArg ann (BuiltinBooleanType ann tRes)
       , InstanceArg ann (IsContainerExpr ann (typeOf binder) tCont)
       , ExplicitArg ann (Lam ann binder body)
       , ExplicitArg ann container
@@ -484,35 +444,25 @@ pattern
 
 pattern BooleanOp2Expr :: BooleanOp2
                        -> ann
-                       -> BooleanType
-                       -> [Arg  binder var ann]
+                       -> NonEmpty (Arg  binder var ann)
                        -> Expr  binder var ann
 pattern
-  BooleanOp2Expr op ann t explicitArgs <-
-    App ann (Builtin _ (BooleanOp2 op))
-      (  ImplicitArg _ (BuiltinBooleanType _ t)
-      :| InstanceArg _ _
-      :  explicitArgs
-      )
+  BooleanOp2Expr op ann explicitArgs <-
+    App ann (Builtin _ (BooleanOp2 op)) explicitArgs
   where
-  BooleanOp2Expr op ann t explicitArgs =
-    App ann (Builtin ann (BooleanOp2 op))
-      (  ImplicitArg ann (BuiltinBooleanType ann t)
-      :| InstanceArg ann (PrimDict ann (mkIsTruth ann t))
-      :  explicitArgs
-      )
+  BooleanOp2Expr op ann explicitArgs =
+    App ann (Builtin ann (BooleanOp2 op)) explicitArgs
 
 booleanBigOp :: forall binder var ann .
                 BooleanOp2
              -> ann
-             -> BooleanType
              -> Expr binder var ann
              -> Expr binder var ann
              -> Expr binder var ann
-booleanBigOp op ann t containerType container =
-  FoldExpr ann boolType containerType boolType $ map (ExplicitArg ann)
-    [ BooleanOp2Expr op ann t []
-    , BoolLiteralExpr ann t unit
+booleanBigOp op ann containerType container =
+  FoldExpr ann boolType containerType boolType $ fmap (ExplicitArg ann)
+    [ Builtin ann (BooleanOp2 op)
+    , BoolLiteralExpr ann unit
     , container
     ]
   where
@@ -523,41 +473,32 @@ booleanBigOp op ann t containerType container =
       Impl -> True
 
     boolType :: Expr binder var ann
-    boolType = BuiltinBooleanType ann t
+    boolType = BoolType ann
 
-pattern AndExpr :: ann -> BooleanType -> [Arg binder var ann] -> Expr binder var ann
-pattern AndExpr ann t explicitArgs <- BooleanOp2Expr And ann t explicitArgs
-  where AndExpr ann t explicitArgs = BooleanOp2Expr And ann t explicitArgs
+pattern AndExpr :: ann -> NonEmpty (Arg  binder var ann) -> Expr binder var ann
+pattern AndExpr ann explicitArgs <- BooleanOp2Expr And ann explicitArgs
+  where AndExpr ann explicitArgs = BooleanOp2Expr And ann explicitArgs
 
-pattern OrExpr :: ann -> BooleanType -> [Arg binder var ann] -> Expr binder var ann
-pattern OrExpr ann t explicitArgs <- BooleanOp2Expr Or ann t explicitArgs
-  where OrExpr ann t explicitArgs = BooleanOp2Expr Or ann t explicitArgs
+pattern OrExpr :: ann -> NonEmpty (Arg  binder var ann) -> Expr binder var ann
+pattern OrExpr ann explicitArgs <- BooleanOp2Expr Or ann explicitArgs
+  where OrExpr ann explicitArgs = BooleanOp2Expr Or ann explicitArgs
 
-pattern ImplExpr :: ann -> BooleanType -> [Arg binder var ann] -> Expr binder var ann
-pattern ImplExpr ann t explicitArgs <- BooleanOp2Expr Impl ann t explicitArgs
-  where ImplExpr ann t explicitArgs = BooleanOp2Expr Impl ann t explicitArgs
+pattern ImplExpr :: ann -> NonEmpty (Arg  binder var ann) -> Expr binder var ann
+pattern ImplExpr ann explicitArgs <- BooleanOp2Expr Impl ann explicitArgs
+  where ImplExpr ann explicitArgs = BooleanOp2Expr Impl ann explicitArgs
 
 --------------------------------------------------------------------------------
 -- Not
 
 pattern NotExpr :: ann
-                -> BooleanType
-                -> [Arg  binder var ann]
+                -> NonEmpty (Arg  binder var ann)
                 -> Expr  binder var ann
 pattern
-  NotExpr ann t explicitArgs <-
-    App ann (Builtin _ Not)
-      (  ImplicitArg _ (BuiltinBooleanType _ t)
-      :| InstanceArg _ _
-      :  explicitArgs
-      )
+  NotExpr ann explicitArgs <-
+    App ann (Builtin _ Not) explicitArgs
   where
-  NotExpr ann t explicitArgs =
-    App ann (Builtin ann Not)
-      (  ImplicitArg ann (BuiltinBooleanType ann t)
-      :| InstanceArg ann (PrimDict ann (mkIsTruth ann t))
-      :  explicitArgs
-      )
+  NotExpr ann explicitArgs =
+    App ann (Builtin ann Not) explicitArgs
 
 --------------------------------------------------------------------------------
 -- NumericOp2
@@ -630,23 +571,20 @@ pattern BuiltinEquality ann eq = Builtin ann (Equality eq)
 pattern EqualityExpr :: Equality
                      -> ann
                      -> Expr  binder var ann
-                     -> BooleanType
                      -> [Arg  binder var ann]
                      -> Expr  binder var ann
 pattern
-  EqualityExpr eq ann tElem tRes explicitArgs <-
+  EqualityExpr eq ann tElem explicitArgs <-
     App ann (BuiltinEquality _ eq)
       (  ImplicitArg _ tElem
-      :| ImplicitArg _ (BuiltinBooleanType _ tRes)
-      :  InstanceArg _ _
+      :| InstanceArg _ _
       :  explicitArgs
       )
   where
-  EqualityExpr eq ann tElem tRes explicitArgs =
+  EqualityExpr eq ann tElem explicitArgs =
     App ann (BuiltinEquality ann eq)
       (  ImplicitArg ann tElem
-      :| ImplicitArg ann (BuiltinBooleanType ann tRes)
-      :  InstanceArg ann (PrimDict ann (HasEqExpr ann tElem (BuiltinBooleanType ann tRes)))
+      :| InstanceArg ann (PrimDict ann (HasEqExpr ann tElem))
       :  explicitArgs
       )
 
@@ -659,23 +597,20 @@ pattern BuiltinOrder ann order = Builtin ann (Order order)
 pattern OrderExpr :: Order
                   -> ann
                   -> Expr  binder var ann
-                  -> BooleanType
                   -> [Arg  binder var ann]
                   -> Expr  binder var ann
 pattern
-  OrderExpr order ann tElem tRes explicitArgs <-
+  OrderExpr order ann tElem explicitArgs <-
     App ann (BuiltinOrder _ order)
       (  ImplicitArg _ tElem
-      :| ImplicitArg _ (BuiltinBooleanType _ tRes)
-      :  InstanceArg _ _
+      :| InstanceArg _ _
       :  explicitArgs
       )
   where
-  OrderExpr order ann tElem tRes explicitArgs =
+  OrderExpr order ann tElem explicitArgs =
     App ann (BuiltinOrder ann order)
       (  ImplicitArg ann tElem
-      :| ImplicitArg ann (BuiltinBooleanType ann tRes)
-      :  InstanceArg ann (PrimDict ann (HasOrdExpr ann tElem (BuiltinBooleanType ann tRes)))
+      :| InstanceArg ann (PrimDict ann (HasOrdExpr ann tElem))
       :  explicitArgs
       )
 

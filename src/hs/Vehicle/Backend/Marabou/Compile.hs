@@ -43,7 +43,7 @@ compileDecl :: MonadCompile m => NetworkCtx -> CheckedDecl -> m (Maybe MarabouPr
 compileDecl networkCtx d = case d of
   DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
 
-  DefFunction _p ident t expr ->
+  DefFunction _p _ ident t expr ->
     if not $ isProperty t
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
@@ -156,20 +156,20 @@ compileAssertions ident quantifier expr = case expr of
     (vars, docs) <- compileAssertions ident quantifier body
     return (var : vars, docs)
 
-  AndExpr _ _ [e1, e2] -> do
+  AndExpr _ [e1, e2] -> do
     (vars1, docs1) <- compileAssertions ident quantifier (argExpr e1)
     (vars2, docs2) <- compileAssertions ident quantifier (argExpr e2)
     return (vars1 <> vars2, docs1 <> docs2)
 
-  OrderExpr order ann _ _ [lhs, rhs] -> do
+  OrderExpr order ann _ [lhs, rhs] -> do
     assertion <- compileAssertion ann ident quantifier (OrderRel order) (argExpr lhs) (argExpr rhs)
     return ([], [assertion])
 
-  EqualityExpr eq ann _ _ [lhs, rhs] -> do
+  EqualityExpr eq ann _ [lhs, rhs] -> do
     assertion <- compileAssertion ann ident quantifier (EqualityRel eq) (argExpr lhs) (argExpr rhs)
     return ([], [assertion])
 
-  App{} -> compilerDeveloperError $ unexpectedExprError currentPass (prettySimple expr)
+  App{} -> unexpectedExprError currentPass (prettySimple expr)
 
 compileBinder :: MonadCompile m => Identifier -> OutputBinder -> m MarabouVar
 compileBinder ident binder =
@@ -231,7 +231,7 @@ compileAssertion ann ident quantifier rel lhs rhs = do
           cl <- compileLiteral l
           return ([(cl, v)],[])
         (e1, e2) -> throwError $ NonLinearConstraint MarabouBackend (provenanceOf ann1) ident e1 e2
-      e -> developerError $ unexpectedExprError currentPass $ prettySimple e
+      e -> unexpectedExprError currentPass $ prettySimple e
 
     compileLiteral :: MonadCompile m => Literal -> m Double
     compileLiteral (LBool _) = normalisationError currentPass "LBool"

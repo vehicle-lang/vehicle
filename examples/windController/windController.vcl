@@ -14,11 +14,11 @@ network controller : InputVector -> Rat
 --------------------------------------------------------------------------------
 -- Safety property
 
-safeInput : InputVector -> Prop
+safeInput : InputVector -> Bool
 safeInput x = forall i . -3.25 <= x ! i <= 3.25
 
-safeOutput : InputVector -> Prop
+safeOutput : InputVector -> Bool
 safeOutput x = -1.25 < controller x + 2 * (x ! currentSensor) - (x ! previousSensor) < 1.25
 
-safe : Prop
+safe : Bool
 safe = forall x . safeInput x => safeOutput x

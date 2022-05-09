@@ -74,15 +74,15 @@ whnfDecls (d : ds) = do
   let ident = identifierOf d
 
   (decl, checkedDeclBody, checkedDeclType) <- case d of
-    DefResource p r _ t -> do
+    DefResource ann r _ t -> do
       t' <- whnfExpr t
-      let checkedDecl = DefResource p r ident t'
+      let checkedDecl = DefResource ann r ident t'
       return (checkedDecl, Nothing, t')
 
-    DefFunction p _ t body -> do
+    DefFunction ann usage _ t body -> do
       t' <- whnfExpr t
       e' <- whnfExpr body
-      let checkedDecl = DefFunction p ident t' e'
+      let checkedDecl = DefFunction ann usage ident t' e'
       return (checkedDecl, Just e', t')
 
   decls <- addToDeclCtx ident checkedDeclType checkedDeclBody $ whnfDecls ds

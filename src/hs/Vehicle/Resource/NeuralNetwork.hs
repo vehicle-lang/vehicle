@@ -45,8 +45,7 @@ instance Pretty InputOrOutput where
 
 allowedNetworkElementTypes :: [Builtin]
 allowedNetworkElementTypes =
-  [ BooleanType Bool
-  , NumericType Nat
+  [ NumericType Nat
   , NumericType Int
   , NumericType Rat
   , NumericType Real

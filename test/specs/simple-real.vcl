@@ -18,20 +18,20 @@ divReal = 3.0 / 2.0
 negReal : Real
 negReal = - 2.0
 
-eqReal : Prop
+eqReal : Bool
 eqReal = 0.0 == (1.0 : Real)
 
-neqReal : Prop
+neqReal : Bool
 neqReal = 0.0 != (1.0 : Real)
 
-leqReal : Prop
+leqReal : Bool
 leqReal = 0.0 <= (1.0 : Real)
 
-ltReal : Prop
+ltReal : Bool
 ltReal = 0.0 < (1.0 : Real)
 
-geqReal : Prop
+geqReal : Bool
 geqReal = 0.0 >= (1.0 : Real)
 
-gtReal : Prop
+gtReal : Bool
 gtReal = 0.0 > (1.0 : Real)

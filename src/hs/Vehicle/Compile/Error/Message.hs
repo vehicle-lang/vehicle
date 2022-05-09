@@ -427,7 +427,7 @@ instance MeaningfulError CompileError where
     NoPropertiesFound -> UError $ UserError
       { provenance = mempty
       , problem    = "No properties found in file."
-      , fix        = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty Prop) <+> "."
+      , fix        = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty Bool) <+> "."
       }
 
     NoNetworkUsedInProperty target ann ident -> UError $ UserError

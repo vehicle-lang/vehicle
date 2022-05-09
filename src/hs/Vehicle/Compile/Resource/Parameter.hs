@@ -53,6 +53,6 @@ instance Expand InputDecl where
           tell (Set.singleton name)
           return v
 
-    return $ DefFunction p ident t body
+    return $ DefFunction p NotABoolean ident t body
 
   expand d = return d

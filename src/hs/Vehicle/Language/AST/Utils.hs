@@ -2,15 +2,16 @@ module Vehicle.Language.AST.Utils where
 
 import Control.Monad (void)
 import Data.Functor.Foldable (Recursive(..))
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (pack)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.DeBruijn
-import Vehicle.Language.AST.Builtin
 import Vehicle.Language.AST.BuiltinPatterns
 import Vehicle.Language.AST.Name
+import Vehicle.Language.AST.Visibility
 
 --------------------------------------------------------------------------------
 -- Utility functions
@@ -29,8 +30,14 @@ isMeta (App _ Meta{} _) = True
 isMeta _                = False
 
 isProperty :: Expr binder var ann -> Bool
-isProperty (Builtin _ (BooleanType Prop)) = True
-isProperty _                              = False
+isProperty (BoolType _) = True
+isProperty _            = False
+
+isFinite :: Expr binder var ann -> Bool
+isFinite BoolType{}             = True
+isFinite IndexType{}            = True
+isFinite (TensorType _ tElem _) = isFinite tElem
+isFinite _                      = False
 
 freeNames :: Expr binder DBVar ann -> [Identifier]
 freeNames = cata $ \case
@@ -58,6 +65,9 @@ toHead e                    = (e, [])
 
 exprHead :: Expr binder var ann -> Expr binder var ann
 exprHead = fst . toHead
+
+onlyExplicit :: NonEmpty (Arg binder var ann) -> [Expr binder var ann]
+onlyExplicit args = fmap argExpr $ filter isExplicit (NonEmpty.toList args)
 
 --------------------------------------------------------------------------------
 -- Views

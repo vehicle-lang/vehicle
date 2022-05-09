@@ -3,7 +3,6 @@
 module Vehicle.Language.AST.Builtin
   ( Builtin(..)
   , NumericType(..)
-  , BooleanType(..)
   , ContainerType(..)
   , Quantifier(..)
   , Relation(..)
@@ -55,20 +54,6 @@ isDecidable Real = False
 isDecidable _    = True
 
 --------------------------------------------------------------------------------
--- Boolean types
-
-data BooleanType
-  = Bool
-  | Prop
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData   BooleanType
-instance Hashable BooleanType
-
-instance Pretty BooleanType where
-  pretty = pretty . show
-
---------------------------------------------------------------------------------
 -- Container types
 
 data ContainerType
@@ -88,7 +73,6 @@ instance Pretty ContainerType where
 data TypeClass
   = HasEq
   | HasOrd
-  | IsTruth
   | HasNatOps
   | HasIntOps
   | HasRatOps
@@ -105,7 +89,6 @@ instance Show TypeClass where
   show = \case
     HasEq            -> "HasEq"
     HasOrd           -> "HasOrd"
-    IsTruth          -> "IsTruth"
     IsContainer      -> "IsContainer"
     HasNatOps        -> "HasNatOperations"
     HasIntOps        -> "HasIntOperations"
@@ -271,7 +254,7 @@ instance Pretty NumericOp2 where
 -- |Builtins in the Vehicle language
 data Builtin
   -- Types
-  = BooleanType   BooleanType
+  = Bool
   | NumericType   NumericType
   | ContainerType ContainerType
   | Index
@@ -303,7 +286,7 @@ instance Pretty Builtin where
 
 instance Show Builtin where
   show = \case
-    BooleanType   t -> show t
+    Bool            -> "Bool"
     NumericType   t -> show t
     ContainerType t -> show t
     Index           -> "Index"
@@ -326,37 +309,36 @@ instance Show Builtin where
 
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols = map (first pack)
-  [ show (BooleanType Bool)     |-> BooleanType Bool
-  , show (BooleanType Prop)     |-> BooleanType Prop
-  , show (NumericType Nat)      |-> NumericType Nat
-  , show (NumericType Int)      |-> NumericType Int
-  , show (NumericType Real)     |-> NumericType Real
-  , show (ContainerType List)   |-> ContainerType List
-  , show (ContainerType Tensor) |-> ContainerType Tensor
-  , show If                     |-> If
-  , show (BooleanOp2 Impl)      |-> BooleanOp2 Impl
-  , show (BooleanOp2 And)       |-> BooleanOp2 And
-  , show (BooleanOp2 Or)        |-> BooleanOp2 Or
-  , show Not                    |-> Not
-  , show (Equality Eq)          |-> Equality Eq
-  , show (Equality Neq)         |-> Equality Neq
-  , show (Order Le)             |-> Order Le
-  , show (Order Lt)             |-> Order Lt
-  , show (Order Ge)             |-> Order Ge
-  , show (Order Gt)             |-> Order Gt
-  , show (NumericOp2 Add)       |-> NumericOp2 Add
-  , show (NumericOp2 Mul)       |-> NumericOp2 Mul
-  , show (NumericOp2 Div)       |-> NumericOp2 Div
-  , show (NumericOp2 Sub)       |-> NumericOp2 Sub
-  , show Neg                    |-> Neg
-  , show At                     |-> At
-  , show Cons                   |-> Cons
-  , show (Quant All)            |-> Quant All
-  , show (Quant Any)            |-> Quant Any
-  , show (QuantIn All)          |-> QuantIn All
-  , show (QuantIn Any)          |-> QuantIn Any
-  , show Map                    |-> Map
-  , show Fold                   |-> Fold
+  [ show Bool                        |-> Bool
+  , show (NumericType Nat)           |-> NumericType Nat
+  , show (NumericType Int)           |-> NumericType Int
+  , show (NumericType Real)          |-> NumericType Real
+  , show (ContainerType List)        |-> ContainerType List
+  , show (ContainerType Tensor)      |-> ContainerType Tensor
+  , show If                          |-> If
+  , show (BooleanOp2 Impl)           |-> BooleanOp2 Impl
+  , show (BooleanOp2 And)            |-> BooleanOp2 And
+  , show (BooleanOp2 Or)             |-> BooleanOp2 Or
+  , show Not                         |-> Not
+  , show (Equality Eq)               |-> Equality Eq
+  , show (Equality Neq)              |-> Equality Neq
+  , show (Order Le)                  |-> Order Le
+  , show (Order Lt)                  |-> Order Lt
+  , show (Order Ge)                  |-> Order Ge
+  , show (Order Gt)                  |-> Order Gt
+  , show (NumericOp2 Add)            |-> NumericOp2 Add
+  , show (NumericOp2 Mul)            |-> NumericOp2 Mul
+  , show (NumericOp2 Div)            |-> NumericOp2 Div
+  , show (NumericOp2 Sub)            |-> NumericOp2 Sub
+  , show Neg                         |-> Neg
+  , show At                          |-> At
+  , show Cons                        |-> Cons
+  , show (Quant All)                 |-> Quant All
+  , show (Quant Any)                 |-> Quant Any
+  , show (QuantIn All)               |-> QuantIn All
+  , show (QuantIn Any)               |-> QuantIn Any
+  , show Map                         |-> Map
+  , show Fold                        |-> Fold
   ]
 
 builtinFromSymbol :: Symbol -> Maybe Builtin

@@ -21,15 +21,15 @@ capitaliseTypeNames prog = evalState (cap prog) mempty
 
 isTypeDef :: CheckedExpr -> Bool
 isTypeDef t = case t of
-  -- We don't capitalise things of type `Prop` because they will be lifted
-  -- to the type level, only things of type `X -> Prop`.
+  -- We don't capitalise things of type `Bool` because they will be lifted
+  -- to the type level, only things of type `X -> Bool`.
   Pi _ _ result -> go result
   _             -> False
   where
     go :: CheckedExpr -> Bool
-    go (BuiltinBooleanType _ Prop) = True
-    go (Pi _ _ res)                = go res
-    go _                           = False
+    go (BoolType _) = True
+    go (Pi _ _ res) = go res
+    go _            = False
 
 class CapitaliseTypes a where
   cap :: MonadState (Set Identifier) m => a -> m a
@@ -40,10 +40,10 @@ instance CapitaliseTypes CheckedProg where
 instance CapitaliseTypes CheckedDecl where
   cap d = case d of
     DefResource p r ident t -> DefResource p r <$> cap ident <*> cap t
-    DefFunction p ident t e -> do
+    DefFunction p u ident t e -> do
       when (isTypeDef t) $
         modify (insert ident)
-      DefFunction p <$> cap ident <*> cap t <*> cap e
+      DefFunction p u <$> cap ident <*> cap t <*> cap e
 
 instance CapitaliseTypes CheckedExpr where
   cap = cata $ \case

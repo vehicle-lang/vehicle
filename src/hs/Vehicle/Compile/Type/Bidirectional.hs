@@ -211,11 +211,11 @@ inferDecls (d : ds) = do
       let checkedDecl = DefResource p r ident checkedType
       return (checkedDecl, Nothing, checkedType)
 
-    DefFunction p _ t body -> do
+    DefFunction p usage _ t body -> do
       (checkedType, typeOfType) <- inferExpr t
       assertIsType p typeOfType
       checkedBody <- checkExpr checkedType body
-      let checkedDecl = DefFunction p ident checkedType checkedBody
+      let checkedDecl = DefFunction p usage ident checkedType checkedBody
       return (checkedDecl, Just checkedBody, checkedType)
 
   showDeclExit ident
@@ -381,8 +381,7 @@ inferExpr e = do
 inferLiteral :: UncheckedAnn -> Literal -> (CheckedExpr, CheckedExpr)
 inferLiteral p l = (Literal p l, typeOfLiteral p l)
 
-
--- Takes the expected type of a function and the user-provided arguments
+-- | Takes the expected type of a function and the user-provided arguments
 -- and traverses through checking each argument type against the type of the
 -- matching pi binder and inserting any required implicit/instance arguments.
 -- Returns the type of the function when applied to the full list of arguments
@@ -475,12 +474,12 @@ typeOfLiteral ann l = fromDSL ann $ case l of
   LNat  n -> forall type0 $ \t -> hasNatLitsUpTo n t ~~~> t
   LInt  _ -> forall type0 $ \t -> hasIntLits t ~~~> t
   LRat  _ -> forall type0 $ \t -> hasRatLits t ~~~> t
-  LBool _ -> forall type0 $ \t -> isTruth    t ~~~> t
+  LBool _ -> tBool
 
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: CheckedAnn -> Builtin -> CheckedExpr
 typeOfBuiltin ann b = fromDSL ann $ case b of
-  BooleanType   _           -> type0
+  Bool                      -> type0
   NumericType   _           -> type0
   ContainerType List        -> type0 ~> type0
   ContainerType Tensor      -> type0 ~> tList tNat ~> type0
@@ -488,7 +487,6 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
 
   TypeClass HasEq               -> type0 ~> type0 ~> type0
   TypeClass HasOrd              -> type0 ~> type0 ~> type0
-  TypeClass IsTruth             -> type0 ~> type0
   TypeClass HasNatOps           -> type0 ~> type0
   TypeClass HasIntOps           -> type0 ~> type0
   TypeClass HasRatOps           -> type0 ~> type0
@@ -522,24 +520,18 @@ typeOfIf =
 typeOfEqualityOp :: DSLExpr
 typeOfEqualityOp =
   forall type0 $ \t ->
-    forall type0 $ \r ->
-      hasEq t r ~~~> t ~> t ~> r
+    hasEq t ~~~> t ~> t ~> tBool
 
 typeOfComparisonOp :: DSLExpr
 typeOfComparisonOp =
   forall type0 $ \t ->
-    forall type0 $ \r ->
-      hasOrd t r ~~~> t ~> t ~> r
+    hasOrd t ~~~> t ~> t ~> tBool
 
 typeOfBoolOp2 :: DSLExpr
-typeOfBoolOp2 =
-  forall type0 $ \t ->
-    isTruth t ~~~> t ~> t ~> t
+typeOfBoolOp2 = tBool ~> tBool ~> tBool
 
 typeOfBoolOp1 :: DSLExpr
-typeOfBoolOp1 =
-  forall type0 $ \t ->
-    isTruth t ~~~> t ~> t
+typeOfBoolOp1 = tBool ~> tBool
 
 typeOfNumOp2 :: (DSLExpr -> DSLExpr) -> DSLExpr
 typeOfNumOp2 numConstraint =
@@ -554,14 +546,13 @@ typeOfNumOp1 numConstraint =
 typeOfQuantifierOp :: DSLExpr
 typeOfQuantifierOp =
   forall type0 $ \t ->
-    (t ~> tProp) ~> tProp
+    (t ~> tBool) ~> tBool
 
 typeOfQuantifierInOp :: DSLExpr
 typeOfQuantifierInOp =
   forall type0 $ \tElem ->
     forall type0 $ \tCont ->
-      forall type0 $ \tRes ->
-        isContainer tElem tCont ~~~> (tElem ~> tRes) ~> tCont ~> tRes
+      isContainer tElem tCont ~~~> (tElem ~> tBool) ~> tCont ~> tBool
 
 typeOfCons :: DSLExpr
 typeOfCons =

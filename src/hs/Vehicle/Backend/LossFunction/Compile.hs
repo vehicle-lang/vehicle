@@ -60,8 +60,8 @@ compile _ (V.Main ds) = catMaybes <$> traverse compileDecl ds
 
 compileDecl :: MonadCompile m => V.CheckedDecl -> m (Maybe LExpr)
 compileDecl V.DefResource{} = normalisationError currentPass "Resource declarations"
-compileDecl (V.DefFunction _p _ t expr) =
-    if not $ V.isProperty t
+compileDecl (V.DefFunction _ _ _ typ expr) =
+    if not $ V.isProperty typ
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
       then return Nothing
@@ -83,14 +83,14 @@ compileExpr :: MonadCompile m => V.CheckedExpr -> m LExpr
 compileExpr e = showExit $ do
   e' <- showEntry e
   case e' of
-    V.NotExpr  _ _ [e1]     -> Neg <$> compileArg e1
-    V.AndExpr  _ _ [e1, e2] -> Min <$> compileArg e1 <*> compileArg e2
-    V.OrExpr   _ _ [e1, e2] -> Max <$> compileArg e1 <*> compileArg e2
-    V.ImplExpr _ _ [e1, e2] -> Max <$> (Neg <$> compileArg e1) <*> compileArg e2
+    V.NotExpr  _ [e1]     -> Neg <$> compileArg e1
+    V.AndExpr  _ [e1, e2] -> Min <$> compileArg e1 <*> compileArg e2
+    V.OrExpr   _ [e1, e2] -> Max <$> compileArg e1 <*> compileArg e2
+    V.ImplExpr _ [e1, e2] -> Max <$> (Neg <$> compileArg e1) <*> compileArg e2
 
-    V.EqualityExpr V.Eq  _ _ _ [e1, e2] -> Ind <$> compileArg e1 <*> compileArg e2
-    V.EqualityExpr V.Neq _ _ _ [e1, e2] -> Neg <$> (Ind <$> compileArg e1 <*> compileArg e2)
-    V.OrderExpr    order _ _ _ [e1, e2] ->
+    V.EqualityExpr V.Eq  _ _ [e1, e2] -> Ind <$> compileArg e1 <*> compileArg e2
+    V.EqualityExpr V.Neq _ _ [e1, e2] -> Neg <$> (Ind <$> compileArg e1 <*> compileArg e2)
+    V.OrderExpr    order _ _ [e1, e2] ->
       case order of
         V.Le -> Sub <$> compileArg e2 <*> compileArg e1
         V.Lt -> Neg <$> (Sub <$> compileArg e1 <*> compileArg e2)
@@ -112,7 +112,7 @@ compileExpr e = showExit $ do
     V.PrimDict{}                          -> typeError "lossFunction" "PrimDict"
     V.Pi{}                                -> typeError "lossFunction" "Pi"
     V.Type{}                              -> typeError "lossFunction" "Type"
-    _                                     -> compilerDeveloperError $ unexpectedExprError currentPass (prettySimple e)
+    _                                     -> unexpectedExprError currentPass (prettySimple e)
 
 
 compileQuant :: V.Quantifier -> Quantifier

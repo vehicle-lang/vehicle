@@ -54,7 +54,7 @@ compileProg networkCtx (Main ds) = do
 
 compileDecl :: MonadCompile m => NetworkCtx -> CheckedDecl -> m (Maybe VNNLibProperty)
 compileDecl networkCtx = \case
-  DefFunction _ ident t e -> if not $ isProperty t
+  DefFunction _ _ ident t e -> if not $ isProperty t
       then return Nothing
       else do
         let doc = compileProperty networkCtx ident e
@@ -147,7 +147,7 @@ compileAssertion = \case
 
 compileBuiltin :: MonadVNNLibProp m => Builtin -> m (Doc b)
 compileBuiltin = \case
-  BooleanType   t -> typeError currentPass $ pretty t
+  Bool            -> typeError currentPass "Bool"
   NumericType   t -> typeError currentPass $ pretty t
   ContainerType t -> typeError currentPass $ pretty t
   Index             -> typeError currentPass "Fin"

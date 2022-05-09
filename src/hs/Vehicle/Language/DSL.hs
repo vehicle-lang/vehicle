@@ -4,7 +4,6 @@ module Vehicle.Language.DSL
   , fromDSL
   , type0
   , tBool
-  , tProp
   , tNat
   , tInt
   , tReal
@@ -13,7 +12,6 @@ module Vehicle.Language.DSL
   , tIndex
   , hasEq
   , hasOrd
-  , isTruth
   , hasNatOps
   , hasIntOps
   , hasRatOps
@@ -105,9 +103,8 @@ con b = DSL $ \ann _ -> Builtin ann b
 type0 :: DSLExpr
 type0 = DSL $ \ann _ -> Type ann 0
 
-tBool, tProp, tNat, tInt, tReal :: DSLExpr
-tBool = con (BooleanType Bool)
-tProp = con (BooleanType Prop)
+tBool, tNat, tInt, tReal :: DSLExpr
+tBool = con Bool
 tNat  = con (NumericType Nat)
 tInt  = con (NumericType Int)
 tReal = con (NumericType Real)
@@ -130,14 +127,11 @@ tHole name = DSL $ \ann _ -> Hole ann name
 typeClass :: Builtin -> DSLExpr
 typeClass op = DSL $ \ann _ -> Builtin ann op
 
-hasEq :: DSLExpr -> DSLExpr -> DSLExpr
-hasEq tArg tRes = typeClass (TypeClass HasEq) `eApp` [tArg, tRes]
+hasEq :: DSLExpr -> DSLExpr
+hasEq tArg = typeClass (TypeClass HasEq) `eApp` [tArg]
 
-hasOrd :: DSLExpr -> DSLExpr -> DSLExpr
-hasOrd tArg tRes = typeClass (TypeClass HasOrd) `eApp` [tArg, tRes]
-
-isTruth :: DSLExpr -> DSLExpr
-isTruth t = typeClass (TypeClass IsTruth) `eApp` [t]
+hasOrd :: DSLExpr -> DSLExpr
+hasOrd tArg = typeClass (TypeClass HasOrd) `eApp` [tArg]
 
 hasNatOps :: DSLExpr -> DSLExpr
 hasNatOps t = typeClass (TypeClass HasNatOps) `eApp` [t]

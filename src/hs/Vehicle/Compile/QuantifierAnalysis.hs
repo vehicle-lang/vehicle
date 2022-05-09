@@ -4,7 +4,6 @@ module Vehicle.Compile.QuantifierAnalysis
   ) where
 
 import Data.Maybe (catMaybes)
-import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Control.Monad.Except (MonadError(throwError))
 
 import Vehicle.Compile.Prelude
@@ -28,7 +27,7 @@ checkQuantifiersAndNegateIfNecessary backend ident expr =
         -- If the property is universally quantified then we need to negate the expression
         logDebug MinDetail "Negating property..."
         let ann = annotationOf expr
-        return $ NotExpr ann Prop [ExplicitArg ann expr]
+        return $ NotExpr ann [ExplicitArg ann expr]
 
     logCompilerPassOutput (prettyFriendly outputExpr)
     return (quantifier == All, quantifier, outputExpr)
@@ -68,8 +67,7 @@ checkQuantifiersAreHomogeneous target ident expr = maybe All fst <$> go expr
           _ -> return (Just (q, provenanceOf ann))
 
       App _ann _fun args -> do
-        let explicitArgs = filter isExplicit (NonEmpty.toList args)
-        xs <- traverse go (fmap argExpr explicitArgs)
+        xs <- traverse go (onlyExplicit args)
         return $ catMaybes xs !!? 0
 
 currentPass :: Doc a

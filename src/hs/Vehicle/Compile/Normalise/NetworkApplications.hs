@@ -151,7 +151,7 @@ normExpr metaNetwork quantifier expr = do
 
 -- We lift all network applications regardless if they are duplicated or not to
 -- ensure that they are at the top-level underneath a quantifier and hence have
--- a body with the type `Prop`.
+-- a body with the type `Bool`.
 liftNetworkApplications :: MonadLogger m => CheckedExpr -> m CheckedExpr
 liftNetworkApplications = insertLets isNetworkApplication
   where
@@ -294,8 +294,8 @@ replaceNetworkApplication ann name networkInput letBody bindingDepth  = do
   logDebug MaxDetail $ pretty inputVarIndices <+> pretty outputVarIndices
 
   let body'         = outputsExpr `substInto` letBody
-  let inputEquality = EqualityExpr Eq ann inputsType Prop (map (ExplicitArg ann) [inputsExpr, networkInput])
-  let newBody       = AndExpr ann Prop (map (ExplicitArg ann) [inputEquality, body'])
+  let inputEquality = EqualityExpr Eq ann inputsType (map (ExplicitArg ann) [inputsExpr, networkInput])
+  let newBody       = AndExpr ann (fmap (ExplicitArg ann) [inputEquality, body'])
 
   return (newBody, replaceableBoundVars)
   where
@@ -350,7 +350,7 @@ processNetworkApplication d network input = do
 processQuantifierBinding :: MonadReplacement m => m (Maybe Int)
 processQuantifierBinding = do
   (down, replacableBoundVars) <- get
-  let (magicVarUsingBinder, newMapping) = IntMap.updateLookupWithKey (\_ _ -> Nothing) 0 replacableBoundVars
+  let (magicVarUsingBinder, newMapping) = deleteAndGet 0 replacableBoundVars
   put (down, newMapping)
   return magicVarUsingBinder
 

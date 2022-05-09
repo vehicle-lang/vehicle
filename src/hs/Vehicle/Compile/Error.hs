@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
-
 module Vehicle.Compile.Error where
 
 import Control.Exception (IOException)
@@ -99,28 +97,31 @@ data CompileError
 compilerDeveloperError :: MonadError CompileError m => Doc () -> m b
 compilerDeveloperError message = throwError $ DevError message
 
-unexpectedExprError :: Doc a -> Doc a -> Doc a
-unexpectedExprError pass name =
+unexpectedExpr :: Doc a -> Doc a -> Doc a
+unexpectedExpr pass name =
   "encountered unexpected expression" <+> squotes name <+>
   "during" <+> pass <> "."
 
+unexpectedExprError :: MonadError CompileError m => Doc () -> Doc () -> m b
+unexpectedExprError pass name = compilerDeveloperError $ unexpectedExpr pass name
+
 normalisationError :: MonadError CompileError m => Doc () -> Doc () -> m b
 normalisationError pass name = compilerDeveloperError $
-  unexpectedExprError pass name <+> "We should have normalised this out."
+  unexpectedExpr pass name <+> "We should have normalised this out."
 
 typeError :: MonadError CompileError m => Doc () -> Doc () -> m b
 typeError pass name = developerError $
-  unexpectedExprError pass name <+> "We should not be compiling types."
+  unexpectedExpr pass name <+> "We should not be processing types."
 
 visibilityError :: MonadError CompileError m => Doc () -> Doc () -> m b
 visibilityError pass name = developerError $
-  unexpectedExprError pass name <+> "Should not be present as explicit arguments"
+  unexpectedExpr pass name <+> "Should not be present as explicit arguments"
 
 resolutionError :: MonadError CompileError m => Doc () -> Doc () -> m b
 resolutionError pass name = developerError $
-  unexpectedExprError pass name <+> "We should have resolved this during type-checking."
+  unexpectedExpr pass name <+> "We should have resolved this during type-checking."
 
 caseError :: MonadError CompileError m => Doc () -> Doc () -> [Doc ()] -> m b
 caseError pass name cases = developerError $
-  unexpectedExprError pass name <+> "This should already have been caught by the" <+>
+  unexpectedExpr pass name <+> "This should already have been caught by the" <+>
   "following cases:" <+> list cases

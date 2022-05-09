@@ -88,11 +88,11 @@ instance Norm CheckedDecl where
     DefResource ann r ident typ ->
       DefResource ann r ident <$> nf typ
 
-    DefFunction ann ident typ expr -> do
+    DefFunction ann u ident typ expr -> do
       typ'  <- nf typ
       expr' <- nf expr
       modify (M.insert ident expr')
-      return $ DefFunction ann ident typ' expr'
+      return $ DefFunction ann u ident typ' expr'
 
 instance Norm CheckedExpr where
   nf e = showExit e $ do
@@ -145,17 +145,16 @@ nfApp ann fun       args = do
   fromMaybe (return e) $ case e of
     -- Types
     TensorType _ tElem (NilExpr _ _) -> Just $ return tElem
-    TensorType _ tElem (SeqExpr _ _ _ []) -> Just $ return tElem
 
     -- Binary relations
-    EqualityExpr eq _ tElem tRes [arg1, arg2] -> nfEq eq ann tElem tRes arg1 arg2
-    OrderExpr order _ tElem tRes [arg1, arg2] -> nfOrder order ann tElem tRes arg1 arg2
+    EqualityExpr eq _ tElem [arg1, arg2] -> nfEq    eq    ann tElem arg1 arg2
+    OrderExpr order _ tElem [arg1, arg2] -> nfOrder order ann tElem arg1 arg2
 
     -- Boolean operations
-    NotExpr  _ t [arg]             -> nfNot     ann t arg
-    AndExpr  _ t [arg1, arg2]      -> nfAnd     ann t arg1 arg2
-    OrExpr   _ t [arg1, arg2]      -> nfOr      ann t arg1 arg2
-    ImplExpr _ t [arg1, arg2]      -> nfImplies ann t arg1 arg2 implicationsToDisjunctions
+    NotExpr  _ [arg]               -> nfNot     ann arg
+    AndExpr  _ [arg1, arg2]        -> nfAnd     ann arg1 arg2
+    OrExpr   _ [arg1, arg2]        -> nfOr      ann arg1 arg2
+    ImplExpr _ [arg1, arg2]        -> nfImplies ann arg1 arg2 implicationsToDisjunctions
     IfExpr _ _ [cond, e1, e2]      -> nfIf cond e1 e2
     QuantifierExpr q _ binder body -> nfQuantifier ann q binder body
 
@@ -171,8 +170,8 @@ nfApp ann fun       args = do
     MapExpr _ tElem tRes [fn, cont]   -> nfMap  ann tElem tRes (argExpr fn) (argExpr cont)
     AtExpr _ _ _ _ [tensor, index]    -> nfAt   tensor index
     FoldExpr _ _ _ _ [op, unit, cont] -> nfFold ann op unit cont
-    QuantifierInExpr q _ tCont tRes binder body container ->
-      nfQuantifierIn ann q tCont tRes binder body container
+    QuantifierInExpr q _ tCont binder body container ->
+      nfQuantifierIn ann q tCont binder body container
 
     -- Fall-through case
     _ -> Nothing
@@ -188,27 +187,27 @@ nfEq :: MonadNorm m
      => Equality
      -> CheckedAnn
      -> CheckedExpr
-     -> BooleanType
      -> CheckedArg
      -> CheckedArg
      -> Maybe (m CheckedExpr)
-nfEq eq ann _tElem tRes e1 e2 = case (argExpr e1, argExpr e2) of
+nfEq eq ann _tElem e1 e2 = case (argExpr e1, argExpr e2) of
   -- Simple literal comparisons
-  (BoolLiteralExpr _ _ b, BoolLiteralExpr _ _ c) -> Just $ return $ BoolLiteralExpr ann tRes (eqOp eq b c)
-  (NatLiteralExpr  _ _ m, NatLiteralExpr  _ _ n) -> Just $ return $ BoolLiteralExpr ann tRes (eqOp eq m n)
-  (IntLiteralExpr  _ _ i, IntLiteralExpr  _ _ j) -> Just $ return $ BoolLiteralExpr ann tRes (eqOp eq i j)
-  (RatLiteralExpr  _ _ p, RatLiteralExpr  _ _ q) -> Just $ return $ BoolLiteralExpr ann tRes (eqOp eq p q)
+  (BoolLiteralExpr _   b, BoolLiteralExpr _   c) -> Just $ return $ BoolLiteralExpr ann (eqOp eq b c)
+  (NatLiteralExpr  _ _ m, NatLiteralExpr  _ _ n) -> Just $ return $ BoolLiteralExpr ann (eqOp eq m n)
+  (IntLiteralExpr  _ _ i, IntLiteralExpr  _ _ j) -> Just $ return $ BoolLiteralExpr ann (eqOp eq i j)
+  (RatLiteralExpr  _ _ p, RatLiteralExpr  _ _ q) -> Just $ return $ BoolLiteralExpr ann (eqOp eq p q)
   -- Alpha equality
-  (e1', e2') | alphaEq e1' e2' -> Just $ return $ BoolLiteralExpr ann tRes (eq == Eq)
+  (e1', e2') | alphaEq e1' e2' -> Just $ return $ BoolLiteralExpr ann (eq == Eq)
   -- If a sequence then normalise to equality over elements
   (SeqExpr _ tSeqElem tCont xs, SeqExpr _ _ _ ys)
-    | length xs /= length ys -> Just $ return $ BoolLiteralExpr ann tRes False
+    | length xs /= length ys -> Just $ return $ FalseExpr ann
     | otherwise ->
-      let equalities    = zipWith (\x y -> EqualityExpr eq ann tSeqElem tRes (explicitArgs [x,y])) xs ys in
-      let tBool         = BuiltinBooleanType ann tRes in
-      let tBoolCont     = substContainerType tBool tCont in
-      let equalitiesSeq = SeqExpr ann tBool tBoolCont equalities in
-      Just $ nf $ booleanBigOp (logicOp eq) ann tRes tBoolCont equalitiesSeq
+      let mkEquality x y = EqualityExpr eq ann tSeqElem (explicitArgs [x, y]) in
+      let equalities     = zipWith mkEquality xs ys in
+      let tBool          = BoolType ann in
+      let tBoolCont      = substContainerType tBool tCont in
+      let equalitiesSeq  = SeqExpr ann tBool tBoolCont equalities in
+      Just $ nf $ booleanBigOp (logicOp eq) ann tBoolCont equalitiesSeq
   -- Otherwise no normalisation
   _ -> Nothing
   where
@@ -230,15 +229,14 @@ nfOrder :: MonadNorm m
         => Order
         -> CheckedAnn
         -> CheckedExpr
-        -> BooleanType
         -> CheckedArg
         -> CheckedArg
         -> Maybe (m CheckedExpr)
-nfOrder order ann _tElem tRes arg1 arg2 = case (argExpr arg1, argExpr arg2) of
-  (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ BoolLiteralExpr ann tRes (op order m n)
-  (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ BoolLiteralExpr ann tRes (op order i j)
-  (RatLiteralExpr _ _ x, RatLiteralExpr _ _ y) -> Just $ return $ BoolLiteralExpr ann tRes (op order x y)
-  (e1 , e2) | alphaEq e1 e2                    -> Just $ return $ BoolLiteralExpr ann tRes (not (isStrict order))
+nfOrder order ann _tElem arg1 arg2 = case (argExpr arg1, argExpr arg2) of
+  (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ BoolLiteralExpr ann (op order m n)
+  (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ BoolLiteralExpr ann (op order i j)
+  (RatLiteralExpr _ _ x, RatLiteralExpr _ _ y) -> Just $ return $ BoolLiteralExpr ann (op order x y)
+  (e1 , e2) | alphaEq e1 e2                    -> Just $ return $ BoolLiteralExpr ann (not (isStrict order))
   _                                            -> Nothing
   where
     op :: Ord a => Order -> (a -> a -> Bool)
@@ -291,7 +289,7 @@ nfQuantifier ann q binder body = case typeOf binder of
       Just n  -> do
         let tCont = ListType ann t
         let cont  = SeqExpr ann t tCont (fmap (NatLiteralExpr ann t) [0 .. n-1])
-        let e = QuantifierInExpr q ann tCont Prop binder body cont
+        let e = QuantifierInExpr q ann tCont binder body cont
         Just $ nf e
 
   _ -> Nothing
@@ -316,16 +314,15 @@ nfQuantifierIn :: MonadNorm m
                => CheckedAnn
                -> Quantifier
                -> CheckedExpr  -- tCont
-               -> BooleanType -- tRes
                -> CheckedBinder
                -> CheckedExpr
                -> CheckedExpr
                -> Maybe (m CheckedExpr)
-nfQuantifierIn ann q tCont boolType binder body container = do
-  let tRes = BuiltinBooleanType ann boolType
+nfQuantifierIn ann q tCont binder body container = do
+  let tRes = BoolType ann
   let tResCont = substContainerType tRes tCont
   let mappedContainer = MapExpr ann (typeOf binder) tRes (ExplicitArg ann <$> [Lam ann binder body, container])
-  let foldedContainer = booleanBigOp (quantOp q) ann boolType tResCont mappedContainer
+  let foldedContainer = booleanBigOp (quantOp q) ann tResCont mappedContainer
   Just (nf foldedContainer)
 
 substContainerType :: CheckedExpr -> CheckedExpr -> CheckedExpr
@@ -340,83 +337,79 @@ quantOp Any = Or
 --------------------------------------------------------------------------------
 -- Normalising boolean operations
 
-notArg :: MonadNorm m => BooleanType -> CheckedArg -> m CheckedArg
-notArg t x = let ann = annotationOf x in ExplicitArg ann <$> nf (NotExpr ann t [x])
+notArg :: MonadNorm m => CheckedArg -> m CheckedArg
+notArg x = let ann = annotationOf x in ExplicitArg ann <$> nf (NotExpr ann [x])
 
 nfNot :: forall m . MonadNorm m
       => CheckedAnn
-      -> BooleanType
       -> CheckedArg
       -> Maybe (m CheckedExpr)
-nfNot ann t arg = case argExpr arg of
-  BoolLiteralExpr    _ tBool b       -> Just $ return $ BoolLiteralExpr ann tBool (not b)
-  OrderExpr      o   _ tElem _t args -> Just $ return $ OrderExpr      (neg o)  ann tElem t args
-  EqualityExpr   eq  _ tElem _t args -> Just $ return $ EqualityExpr   (neg eq) ann tElem t args
+nfNot ann arg = case argExpr arg of
+  BoolLiteralExpr    _ b          -> Just $ return $ BoolLiteralExpr ann (not b)
+  OrderExpr      o   _ tElem args -> Just $ return $ OrderExpr      (neg o)  ann tElem args
+  EqualityExpr   eq  _ tElem args -> Just $ return $ EqualityExpr   (neg eq) ann tElem args
   QuantifierExpr q   _ binder body   -> Just $ do
-    let nBody = NotExpr ann t [ExplicitArg ann body]
+    let nBody = NotExpr ann [ExplicitArg ann body]
     QuantifierExpr (neg q) ann binder <$> nf nBody
-  ImplExpr           _ _t [e1, e2] -> Just $ do
-    ne2 <- notArg t e2;
-    return $ AndExpr ann t [e1, ne2]
-  OrExpr             _ _t [e1, e2] -> Just $ do
-    ne1 <- notArg t e1;
-    ne2 <- notArg t e2;
-    return $ AndExpr ann t [ne1, ne2]
-  AndExpr            _ _t [e1, e2] -> Just $ do
-    ne1 <- notArg t e1;
-    ne2 <- notArg t e2;
-    return $ OrExpr  ann t [ne1, ne2]
+  ImplExpr           _ [e1, e2] -> Just $ do
+    ne2 <- notArg e2;
+    return $ AndExpr ann [e1, ne2]
+  OrExpr             _ [e1, e2] -> Just $ do
+    ne1 <- notArg e1;
+    ne2 <- notArg e2;
+    return $ AndExpr ann [ne1, ne2]
+  AndExpr            _ [e1, e2] -> Just $ do
+    ne1 <- notArg e1;
+    ne2 <- notArg e2;
+    return $ OrExpr ann [ne1, ne2]
   IfExpr _ tRes [p, e1, e2] -> Just $ do
-    ne1 <- notArg t e1
-    ne2 <- notArg t e2
+    ne1 <- notArg e1
+    ne2 <- notArg e2
     return $ IfExpr ann tRes [p, ne1, ne2]
   _ -> Nothing
 
 nfAnd :: forall m . MonadNorm m
       => CheckedAnn
-      -> BooleanType
       -> CheckedArg
       -> CheckedArg
       -> Maybe (m CheckedExpr)
-nfAnd ann t arg1 arg2 = case (argExpr arg1, argExpr arg2) of
-  (BoolLiteralExpr _ _ True,  _) -> Just $ return $ argExpr arg2
-  (BoolLiteralExpr _ _ False, _) -> Just $ return $ BoolLiteralExpr ann t False
-  (_, BoolLiteralExpr _ _ True)  -> Just $ return $ argExpr arg1
-  (_, BoolLiteralExpr _ _ False) -> Just $ return $ BoolLiteralExpr ann t False
+nfAnd ann arg1 arg2 = case (argExpr arg1, argExpr arg2) of
+  (TrueExpr  _, _) -> Just $ return $ argExpr arg2
+  (FalseExpr _, _) -> Just $ return $ FalseExpr ann
+  (_, TrueExpr  _) -> Just $ return $ argExpr arg1
+  (_, FalseExpr _) -> Just $ return $ FalseExpr ann
   (e1, e2) | alphaEq e1 e2       -> Just $ return e1
   _                              -> Nothing
 
 nfOr :: forall m . MonadNorm m
      => CheckedAnn
-     -> BooleanType
      -> CheckedArg
      -> CheckedArg
      -> Maybe (m CheckedExpr)
-nfOr ann t arg1 arg2 = case (argExpr arg1, argExpr arg2) of
-  (BoolLiteralExpr _ _ True,  _) -> Just $ return $ BoolLiteralExpr ann t True
-  (BoolLiteralExpr _ _ False, _) -> Just $ return $ argExpr arg2
-  (_, BoolLiteralExpr _ _ True)  -> Just $ return $ BoolLiteralExpr ann t True
-  (_, BoolLiteralExpr _ _ False) -> Just $ return $ argExpr arg1
+nfOr ann arg1 arg2 = case (argExpr arg1, argExpr arg2) of
+  (TrueExpr  _, _) -> Just $ return $ TrueExpr ann
+  (FalseExpr _, _) -> Just $ return $ argExpr arg2
+  (_, TrueExpr  _) -> Just $ return $ TrueExpr ann
+  (_, FalseExpr _) -> Just $ return $ argExpr arg1
   (e1, e2) | alphaEq e1 e2       -> Just $ return e1
   -- TODO implement zero/identity/associativity rules?
   _                              -> Nothing
 
 nfImplies :: forall m . MonadNorm m
           => CheckedAnn
-          -> BooleanType
           -> CheckedArg
           -> CheckedArg
           -> Bool
           -> Maybe (m CheckedExpr)
-nfImplies ann t arg1 arg2 convertToOr = case (argExpr arg1, argExpr arg2) of
-  (BoolLiteralExpr _ _ True,  _) -> Just $ return $ argExpr arg2
-  (BoolLiteralExpr _ _ False, _) -> Just $ return $ BoolLiteralExpr ann t True
-  (_, BoolLiteralExpr _ _ True)  -> Just $ return $ BoolLiteralExpr ann t True
-  (_, BoolLiteralExpr _ _ False) -> Just $ return $ NotExpr ann t [arg2]
-  (e1, e2) | alphaEq e1 e2       -> Just $ return $ BoolLiteralExpr ann t True
-  _        | convertToOr         -> Just $ do
-    negArg1 <- notArg t arg1
-    return $ OrExpr ann t [negArg1, arg2]
+nfImplies ann arg1 arg2 convertToOr = case (argExpr arg1, argExpr arg2) of
+  (TrueExpr  _, _)         -> Just $ return $ argExpr arg2
+  (FalseExpr _, _)         -> Just $ return $ TrueExpr ann
+  (_, TrueExpr  _)         -> Just $ return $ TrueExpr ann
+  (_, FalseExpr _)         -> Just $ return $ NotExpr ann [arg2]
+  (e1, e2) | alphaEq e1 e2 -> Just $ return $ TrueExpr ann
+  _        | convertToOr   -> Just $ do
+    negArg1 <- notArg arg1
+    return $ OrExpr ann [negArg1, arg2]
   _                              -> Nothing
 
 nfIf :: forall m . MonadNorm m
@@ -425,9 +418,9 @@ nfIf :: forall m . MonadNorm m
      -> CheckedArg
      -> Maybe (m CheckedExpr)
 nfIf condition e1 e2 = case argExpr condition of
-  BoolLiteralExpr _ _ True  -> Just $ return $ argExpr e1
-  BoolLiteralExpr _ _ False -> Just $ return $ argExpr e2
-  _                         -> Nothing
+  TrueExpr  _ -> Just $ return $ argExpr e1
+  FalseExpr _ -> Just $ return $ argExpr e2
+  _           -> Nothing
 
 -----------------------------------------------------------------------------
 -- Normalising negation

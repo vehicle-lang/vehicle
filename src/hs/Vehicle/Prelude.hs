@@ -11,6 +11,7 @@ module Vehicle.Prelude
   , repeatN
   , readNat
   , readRat
+  , deleteAndGet
   , duplicate
   , oneHot
   , partialSort
@@ -27,6 +28,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Graph
 import Data.Version (Version)
+import Data.IntMap (IntMap, updateLookupWithKey)
 import Numeric
 import System.Directory (removeFile)
 import System.IO.Error (isDoesNotExistError)
@@ -103,6 +105,9 @@ readRat :: Text -> Rational
 readRat str = case readFloat (Text.unpack str) of
   ((n, []) : _) -> n
   _             -> error "Invalid number"
+
+deleteAndGet :: Int -> IntMap a -> (Maybe a, IntMap a)
+deleteAndGet = updateLookupWithKey (\_ _ -> Nothing)
 
 partialSort :: forall a. (a -> a -> Maybe Ordering) -> [a] -> [a]
 partialSort partialCompare xs = sortedNodes

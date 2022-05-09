@@ -1,4 +1,4 @@
 network f : Real -> Real
 
-increasing : Prop
+increasing : Bool
 increasing = forall x . x <= f x

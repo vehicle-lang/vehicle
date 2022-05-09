@@ -262,6 +262,18 @@ class HasIdentifier a where
 --------------------------------------------------------------------------------
 -- Declarations
 
+-- | A marker for how a declaration is used as part of a quantified property
+-- and therefore needs to be lifted to the type-level when being exported, or
+-- whether it is only used unquantified and therefore needs to be computable.
+data UsageInProperty
+  = NotABoolean
+  | UsedQuantified
+  | UsedUnquantified
+  | UsedBothWays
+  deriving (Show, Eq, Generic)
+
+instance NFData UsageInProperty
+
 -- | Type of top-level declarations.
 data Decl binder var ann
   = DefResource
@@ -271,6 +283,7 @@ data Decl binder var ann
     (Expr binder var ann)  -- Vehicle type of the resource.
   | DefFunction
     ann                    -- Location in source file.
+    UsageInProperty        -- How the function is used in properties.
     Identifier             -- Bound function name.
     (Expr binder var ann)  -- Bound function type.
     (Expr binder var ann)  -- Bound function body.
@@ -281,15 +294,15 @@ instance (NFData binder, NFData var, NFData ann) => NFData (Decl binder var ann)
 
 instance HasIdentifier (Decl binder var ann) where
   identifierOf = \case
-    DefResource _ _ i _ -> i
-    DefFunction _ i _ _ -> i
+    DefResource _ _ i _   -> i
+    DefFunction _ _ i _ _ -> i
 
 traverseDeclExprs :: Monad m
                   => (Expr binder1 var1 ann -> m (Expr binder2 var2 ann))
                   -> Decl binder1 var1 ann
                   -> m (Decl binder2 var2 ann)
-traverseDeclExprs f (DefResource ann r n t) = DefResource ann r n <$> f t
-traverseDeclExprs f (DefFunction ann n t e) = DefFunction ann n <$> f t <*> f e
+traverseDeclExprs f (DefResource ann r n t)   = DefResource ann r n <$> f t
+traverseDeclExprs f (DefFunction ann u n t e) = DefFunction ann u n <$> f t <*> f e
 
 --------------------------------------------------------------------------------
 -- Programs
@@ -319,8 +332,8 @@ instance HasType Binder where
 
 instance HasType Decl where
   typeOf = \case
-    DefResource _ _ _ t -> t
-    DefFunction _ _ t _ -> t
+    DefResource _ _ _ t   -> t
+    DefFunction _ _ _ t _ -> t
 
 --------------------------------------------------------------------------------
 -- Annotations
@@ -352,8 +365,8 @@ instance HasAnnotation (Expr binder var ann) ann where
 
 instance HasAnnotation (Decl binder var ann) ann where
   annotationOf = \case
-    DefResource ann _ _ _ -> ann
-    DefFunction ann _ _ _ -> ann
+    DefResource ann _ _ _   -> ann
+    DefFunction ann _ _ _ _ -> ann
 
 --------------------------------------------------------------------------------
 -- Utilities

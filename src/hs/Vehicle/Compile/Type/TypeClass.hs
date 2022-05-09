@@ -31,9 +31,8 @@ solveTypeClassConstraint ctx (m `Has` (App ann tc@(BuiltinTypeClass{}) args)) = 
   -- Then check which sort of type-class it is:
   progress <- blockOnMetas eWHNF $ case eWHNF of
     IsContainerExpr      _ t1 t2 -> solveIsContainer    constraint t1 t2
-    IsTruthExpr          _ t     -> solveIsTruth        constraint t
-    HasEqExpr            _ t1 t2 -> solveHasEq          constraint t1 t2
-    HasOrdExpr           _ t1 t2 -> solveHasOrd         constraint t1 t2
+    HasEqExpr            _ t1    -> solveHasEq          constraint t1
+    HasOrdExpr           _ t1    -> solveHasOrd         constraint t1
     HasNatOpsExpr        _ t     -> solveHasNatOps      constraint t
     HasIntOpsExpr        _ t     -> solveHasIntOps      constraint t
     HasRatOpsExpr        _ t     -> solveHasRatOps      constraint t
@@ -78,34 +77,23 @@ blockOnMetas e action = do
 solveHasEq :: MonadConstraintSolving m
            => Constraint
            -> CheckedExpr
-           -> CheckedExpr
            -> m ConstraintProgress
-solveHasEq _ (BuiltinBooleanType _ _)    (BuiltinBooleanType _ _) = return simplySolved
-solveHasEq _ (BuiltinNumericType _ _)    (BoolType _)             = return simplySolved
-solveHasEq _ (BuiltinNumericType _ t)    (PropType _)
-  | isDecidable t = return simplySolved
-solveHasEq _ (IndexType _ _)             _    = return simplySolved
-solveHasEq c (TensorType _ tElem _tDims) tRes = solveHasEq c tElem tRes
-solveHasEq c (ListType _ tElem)          tRes = solveHasEq c tElem tRes
-solveHasEq constraint _ _ = throwError $ FailedConstraints (constraint :| [])
+solveHasEq _ BoolType{}                  = return simplySolved
+solveHasEq _ BuiltinNumericType{}        = return simplySolved
+solveHasEq _ IndexType{}                 = return simplySolved
+solveHasEq c (TensorType _ tElem _tDims) = solveHasEq c tElem
+solveHasEq c (ListType _ tElem)          = solveHasEq c tElem
+solveHasEq constraint _                  =
+  throwError $ FailedConstraints (constraint :| [])
 
 solveHasOrd :: MonadConstraintSolving m
             => Constraint
             -> CheckedExpr
-            -> CheckedExpr
             -> m ConstraintProgress
-solveHasOrd _ (IndexType _ _)          _            = return simplySolved
-solveHasOrd _ (BuiltinNumericType _ _) (PropType _) = return simplySolved
-solveHasOrd _ (BuiltinNumericType _ t) (BoolType _)
-  | isDecidable t = return simplySolved
-solveHasOrd constraint _ _ = throwError $ FailedConstraints (constraint :| [])
-
-solveIsTruth :: MonadConstraintSolving m
-             => Constraint
-             -> CheckedExpr
-             -> m ConstraintProgress
-solveIsTruth _ (BuiltinBooleanType _ _) = return simplySolved
-solveIsTruth constraint _ = throwError $ FailedConstraints (constraint :| [])
+solveHasOrd _ IndexType{}          = return simplySolved
+solveHasOrd _ BuiltinNumericType{} = return simplySolved
+solveHasOrd constraint _           =
+  throwError $ FailedConstraints (constraint :| [])
 
 solveIsContainer :: MonadConstraintSolving m
                  => Constraint

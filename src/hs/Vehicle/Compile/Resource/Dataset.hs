@@ -56,5 +56,5 @@ expandDecl (DefResource p Dataset ident t) = do
       logDebug MinDetail $ "expanding" <+> pretty ident <+> "=" <+> prettyFriendly value
       return value
     _ -> throwError $ ResourceNotProvided ident p Dataset
-  return $ DefFunction p ident t e
+  return $ DefFunction p NotABoolean ident t e
 expandDecl d = return d

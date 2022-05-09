@@ -1,2 +1,2 @@
-test : Prop
+test : Bool
 test = forall x . True

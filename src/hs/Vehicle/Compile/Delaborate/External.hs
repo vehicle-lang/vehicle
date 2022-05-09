@@ -35,7 +35,6 @@ tokRat = mkToken B.TokRat "Rat"
 tokInt = mkToken B.TokInt "Int"
 tokNat = mkToken B.TokNat "Nat"
 tokBool = mkToken B.TokBool "Bool"
-tokProp = mkToken B.TokProp "Prop"
 tokIndex = mkToken B.TokIndex "Index"
 tokForall = mkToken B.TokForall "forall"
 tokExists = mkToken B.TokExists "exists"
@@ -64,7 +63,6 @@ tokFalse = mkToken B.TokFalse "False"
 tokTCEq = mkToken B.TokTCEq "HasEq"
 tokTCOrd = mkToken B.TokTCOrd "HasOrd"
 tokTCContainer = mkToken B.TokTCContainer "IsContainer"
-tokTCTruth = mkToken B.TokTCTruth "IsTruth"
 tokTCNatOps  = mkToken B.TokTCNatOps "HasNatOperations"
 tokTCIntOps  = mkToken B.TokTCIntOps "HasIntOperations"
 tokTCRatOps  = mkToken B.TokTCRatOps "HasRatOperations"
@@ -104,7 +102,7 @@ instance Delaborate (V.Decl Symbol Symbol) [B.Decl] where
         Parameter -> [B.DeclParam n' tokElemOf t']
 
     -- Elaborate a type definition.
-    (V.DefFunction _ n t e) -> delabFun n t e
+    (V.DefFunction _ _ n t e) -> delabFun n t e
 
 instance Delaborate (V.Expr Symbol Symbol) B.Expr where
   delabM expr = case expr of
@@ -121,7 +119,7 @@ instance Delaborate (V.Expr Symbol Symbol) B.Expr where
     V.Lam{}         -> delabLam expr
     V.Meta _ m      -> return $ B.Var (mkToken B.Name (layoutAsText (pretty m)))
 
-    V.App _ (V.Builtin _ b)  args -> delabBuiltin b <$> traverse (delabM . V.argExpr) (removeNonExplicitArgs $ NonEmpty.toList args)
+    V.App _ (V.Builtin _ b)  args -> delabBuiltin b <$> traverse delabM (onlyExplicit args)
     V.App _ (V.Literal _ l) _args -> return $ delabLiteral l
     V.App _ fun args             -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
     V.Builtin _ op               -> return $ delabBuiltin op []
@@ -177,8 +175,7 @@ delabApp fun (arg : args) = B.App (delabApp fun args) arg
 
 delabBuiltin :: V.Builtin -> [B.Expr] -> B.Expr
 delabBuiltin fun args = case fun of
-  V.BooleanType   V.Bool   -> B.Bool tokBool
-  V.BooleanType   V.Prop   -> B.Prop tokProp
+  V.Bool                   -> B.Bool tokBool
   V.NumericType   V.Nat    -> B.Nat  tokNat
   V.NumericType   V.Int    -> B.Int  tokInt
   V.NumericType   V.Rat    -> B.Rat  tokRat
@@ -187,7 +184,6 @@ delabBuiltin fun args = case fun of
   V.ContainerType V.Tensor -> delabOp2 B.Tensor tokTensor args
   V.Index                  -> delabOp1 B.Index    tokIndex    args
 
-  V.TypeClass V.IsTruth            -> delabOp1 B.TCTruth tokTCTruth     args
   V.TypeClass V.HasNatOps          -> delabOp1 B.TCNatOps  tokTCNatOps  args
   V.TypeClass V.HasIntOps          -> delabOp1 B.TCIntOps  tokTCIntOps  args
   V.TypeClass V.HasRatOps          -> delabOp1 B.TCRatOps  tokTCRatOps  args
@@ -290,6 +286,3 @@ delabFun n typ expr = do
     Right (binders, body)      -> do
       defType <- B.DefType n' <$> traverse delabM binders <*> delabM body
       return [defType]
-
-removeNonExplicitArgs :: [V.NamedArg ann] -> [V.NamedArg ann]
-removeNonExplicitArgs = filter (\arg -> visibilityOf arg == V.Explicit)

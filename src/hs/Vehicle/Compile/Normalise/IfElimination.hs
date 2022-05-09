@@ -14,9 +14,9 @@ import Vehicle.Language.Print
 
 -- | Lifts all `if`s in the provided expression `e`, and eliminates any which
 -- live in which is assumed to
--- have been normalised and is of type `Prop`. It does this by recursively
+-- have been normalised and is of type `Bool`. It does this by recursively
 -- lifting the `if` expression until it reaches a point where we know that it's
--- of type `Prop` in which case we then normalise it to an `or` statement.
+-- of type `Bool` in which case we then normalise it to an `or` statement.
 liftAndEliminateIfs :: MonadCompile m => CheckedExpr -> m CheckedExpr
 liftAndEliminateIfs e = logCompilerPass "if elimination" $ do
   result <- liftAndElim liftIf elimIf e
@@ -42,10 +42,10 @@ elimIf (IfExpr ann _ [cond, e1, e2]) = argExpr $
     (op2 And (notOp cond) (mapArgExpr elimIf e2))
   where
     op2 :: BooleanOp2 -> CheckedArg -> CheckedArg -> CheckedArg
-    op2 op arg1 arg2 = ExplicitArg ann (BooleanOp2Expr op ann Bool [arg1, arg2])
+    op2 op arg1 arg2 = ExplicitArg ann (BooleanOp2Expr op ann [arg1, arg2])
 
     notOp :: CheckedArg -> CheckedArg
-    notOp arg = ExplicitArg ann (NotExpr ann Bool [arg])
+    notOp arg = ExplicitArg ann (NotExpr ann [arg])
 elimIf e = e
 
 --------------------------------------------------------------------------------
@@ -72,9 +72,9 @@ liftAndElim liftOp elimOp expr =
 
     Pi{}       -> typeError currentPass "Pi"
 
-    QuantifierExpr q  ann binder body -> QuantifierExpr q ann binder . elimOp <$> recCall body
-    NotExpr           ann t args      -> NotExpr           ann t <$> traverse (traverseArgExpr (fmap elimOp . recCall)) args
-    BooleanOp2Expr op ann t args      -> BooleanOp2Expr op ann t <$> traverse (traverseArgExpr (fmap elimOp . recCall)) args
+    QuantifierExpr q  ann binder body -> QuantifierExpr q  ann binder . elimOp <$> recCall body
+    NotExpr           ann args        -> NotExpr           ann   <$> traverse (traverseArgExpr (fmap elimOp . recCall)) args
+    BooleanOp2Expr op ann args        -> BooleanOp2Expr op ann   <$> traverse (traverseArgExpr (fmap elimOp . recCall)) args
     IfExpr            ann t args      -> IfExpr            ann t <$> traverse (traverseArgExpr (fmap elimOp . recCall)) args
 
     Let ann bound binder body ->
