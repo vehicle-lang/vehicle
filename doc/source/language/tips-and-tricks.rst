@@ -108,7 +108,7 @@ writing specifications.
 
 .. code-block:: agda
 
-   isArgmin : forallT {n} . Fin n -> Tensor A n -> Bool
+   isArgmin : forallT {n} . Index n -> Tensor A n -> Bool
    isArgmin i x = forall j . i != j => x ! i < x ! j
 
 :code:`argmin`
@@ -116,7 +116,7 @@ writing specifications.
 
 .. code-block:: agda
 
-   isArgmax : forallT {n} . Fin n -> Tensor A n -> Bool
+   isArgmax : forallT {n} . Index n -> Tensor A n -> Bool
    isArgmax i x = forall j . i != j => x ! i > x ! j
 
 :code:`advises`
@@ -132,5 +132,5 @@ when applied to input `x`:
 
    network classify : Tensor Rat [24, 24] -> Tensor Rat [10]
 
-   advises : Fin 10 -> Tensor Rat [24, 24] -> Bool
+   advises : Index 10 -> Tensor Rat [24, 24] -> Bool
    advises i x = forall j . i != j => classify x ! i < classify x ! j

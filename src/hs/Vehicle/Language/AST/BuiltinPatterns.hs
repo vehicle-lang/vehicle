@@ -62,20 +62,20 @@ mkTensorType ann tElem dims =
 --------------------------------------------------------------------------------
 -- Tensor
 
-pattern FinType :: ann
+pattern IndexType :: ann
                 -> Expr binder var ann
                 -> Expr binder var ann
 pattern
-  FinType ann tSize <-
-    App ann (Builtin _ Fin)
+  IndexType ann tSize <-
+    App ann (Builtin _ Index)
       [ ExplicitArg _ tSize ]
   where
-  FinType ann tSize =
-    App ann (Builtin ann Fin)
+  IndexType ann tSize =
+    App ann (Builtin ann Index)
       [ ExplicitArg ann tSize ]
 
-mkFinType :: ann -> Int -> Expr binder var ann
-mkFinType ann n = FinType ann (NatLiteralExpr ann (NatType ann) n)
+mkIndexType :: ann -> Int -> Expr binder var ann
+mkIndexType ann n = IndexType ann (NatLiteralExpr ann (NatType ann) n)
 
 --------------------------------------------------------------------------------
 -- Numeric

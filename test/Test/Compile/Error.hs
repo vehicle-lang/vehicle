@@ -150,7 +150,7 @@ datasetErrors = failTestGroup "DatasetErrors"
     }
 
   , testSpec
-    { testName     = "tooBigFin"
+    { testName     = "tooBigIndex"
     , testLocation = Tests
     , testTargets  = [VNNLibBackend]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]

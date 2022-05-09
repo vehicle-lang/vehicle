@@ -284,7 +284,7 @@ nfQuantifier ann q binder body = case typeOf binder of
 
   -- If we're quantifying over a finite index type then expand out to a list
   -- of indices up to the max value.
-  t@(FinType _ size) ->
+  t@(IndexType _ size) ->
     case getDimension size of
       Nothing -> Nothing
       Just n  -> do

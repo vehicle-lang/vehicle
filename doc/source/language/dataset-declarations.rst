@@ -20,7 +20,7 @@ Datasets are declared as follows using the :code:`dataset` keyword:
 
 Datasets should either be of the type :code:`List` or :code:`Tensor`, and can
 contain elements of any numeric type,
-e.g. :code:`Fin n`, :code:`Nat`, :code:`Int`, :code:`Rat` etc,
+e.g. :code:`Index n`, :code:`Nat`, :code:`Int`, :code:`Rat` etc,
 
 Once declared, datasets can be used as any other named ::code:`List` or :code:`Tensor`
 would be, e.g.

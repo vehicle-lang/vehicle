@@ -106,7 +106,7 @@ goldenTests = testGroup "GoldenTests" <$>
       }
 
     , testSpec
-      { testName       = "simple-defaultFin"
+      { testName       = "simple-defaultIndex"
       , testLocation   = Tests
       , testTargets    = [AgdaBackend]
       }

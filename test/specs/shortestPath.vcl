@@ -1,4 +1,4 @@
-network shortestPath : Fin 15 -> Int
+network shortestPath : Index 15 -> Int
 
 extendsSomePath : Int -> Prop
 extendsSomePath i = exists j . shortestPath i == shortestPath j + 1

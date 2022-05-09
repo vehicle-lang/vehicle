@@ -36,7 +36,7 @@ tokInt = mkToken B.TokInt "Int"
 tokNat = mkToken B.TokNat "Nat"
 tokBool = mkToken B.TokBool "Bool"
 tokProp = mkToken B.TokProp "Prop"
-tokFin = mkToken B.TokFin "Fin"
+tokIndex = mkToken B.TokIndex "Index"
 tokForall = mkToken B.TokForall "forall"
 tokExists = mkToken B.TokExists "exists"
 tokImpl = mkToken B.TokImpl "=>"
@@ -185,7 +185,7 @@ delabBuiltin fun args = case fun of
   V.NumericType   V.Real   -> B.Real tokReal
   V.ContainerType V.List   -> delabOp1 B.List   tokList   args
   V.ContainerType V.Tensor -> delabOp2 B.Tensor tokTensor args
-  V.Fin                    -> delabOp1 B.Fin    tokFin    args
+  V.Index                  -> delabOp1 B.Index    tokIndex    args
 
   V.TypeClass V.IsTruth            -> delabOp1 B.TCTruth tokTCTruth     args
   V.TypeClass V.HasNatOps          -> delabOp1 B.TCNatOps  tokTCNatOps  args

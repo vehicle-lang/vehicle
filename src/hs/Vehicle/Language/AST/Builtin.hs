@@ -92,7 +92,7 @@ data TypeClass
   | HasNatOps
   | HasIntOps
   | HasRatOps
-  | HasNatLitsUpTo Int -- ^ Represents the maximum literal value (needed for Fin).
+  | HasNatLitsUpTo Int -- ^ Represents the maximum literal value (needed for Index).
   | HasIntLits
   | HasRatLits
   | IsContainer
@@ -274,7 +274,7 @@ data Builtin
   = BooleanType   BooleanType
   | NumericType   NumericType
   | ContainerType ContainerType
-  | Fin
+  | Index
   -- Expressions
   | If
   | Not
@@ -306,7 +306,7 @@ instance Show Builtin where
     BooleanType   t -> show t
     NumericType   t -> show t
     ContainerType t -> show t
-    Fin             -> "Fin"
+    Index           -> "Index"
     BooleanOp2 op   -> show op
     Not             -> "not"
     NumericOp2 op   -> show op

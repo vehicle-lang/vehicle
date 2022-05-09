@@ -10,7 +10,7 @@ module Vehicle.Language.DSL
   , tReal
   , tList
   , tTensor
-  , tFin
+  , tIndex
   , hasEq
   , hasOrd
   , isTruth
@@ -118,8 +118,8 @@ tTensor tElem dims = con (ContainerType Tensor) `eApp` [tElem, dims]
 tList :: DSLExpr -> DSLExpr
 tList tElem = con (ContainerType List) `eApp` [tElem]
 
-tFin :: DSLExpr -> DSLExpr
-tFin n = con Fin `eApp` [n]
+tIndex :: DSLExpr -> DSLExpr
+tIndex n = con Index `eApp` [n]
 
 tHole :: Symbol -> DSLExpr
 tHole name = DSL $ \ann _ -> Hole ann name

@@ -10,7 +10,7 @@
 open import Vehicle
 open import Data.Fin as Fin using (Fin; #_)
 
-module simple-defaultFin-temp-output where
+module simple-defaultIndex-temp-output where
 
 fin3 : Fin 4
 fin3 = # 3

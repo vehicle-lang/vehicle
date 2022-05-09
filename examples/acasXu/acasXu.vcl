@@ -52,8 +52,8 @@ pi = 3.141592
 
 -- A constraint that says the network chooses output `i` when given the
 -- input `x`. We must necessarily provide a finite index that is less than 5
--- (i.e. of type Fin 5). The `a ! b` operator lookups index `b` in tensor `a`.
-advises : Fin 5 -> InputVector -> Prop
+-- (i.e. of type Index 5). The `a ! b` operator lookups index `b` in tensor `a`.
+advises : Index 5 -> InputVector -> Prop
 advises i x = forall j . i != j => acasXu x ! i < acasXu x ! j
 
 --------------------------------------------------------------------------------

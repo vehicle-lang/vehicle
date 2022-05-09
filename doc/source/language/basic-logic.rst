@@ -77,7 +77,7 @@ The type of these operators are :code:`A -> A -> Bool` where :code:`A` can be an
 of the following types:
 
 - :code:`Bool`, :code:`Nat`, :code:`Int`, :code:`Rat`.
-- :code:`Fin n` for any value of :code:`n`.
+- :code:`Index n` for any value of :code:`n`.
 - :code:`List A` if type :code:`A` also supports the operators.
 - :code:`Tensor A dims` if type :code:`A` also supports the operators.
 

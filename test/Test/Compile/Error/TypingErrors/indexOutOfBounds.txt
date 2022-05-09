@@ -1,2 +1,2 @@
-Error: Type error: Could not satisfy 'HasNatLiteralsUpTo 1 (Fin 1)' (Line 2, Columns 21-22)
+Error: Type error: Could not satisfy 'HasNatLiteralsUpTo 1 (Index 1)' (Line 2, Columns 21-22)
 Fix: check your types

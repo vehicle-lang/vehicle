@@ -499,7 +499,7 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
   NumericType   _           -> type0
   ContainerType List        -> type0 ~> type0
   ContainerType Tensor      -> type0 ~> tList tNat ~> type0
-  Fin                       -> tNat ~> type0
+  Index                     -> tNat ~> type0
 
   TypeClass HasEq               -> type0 ~> type0 ~> type0
   TypeClass HasOrd              -> type0 ~> type0 ~> type0
@@ -588,7 +588,7 @@ typeOfAtOp =
   forall type0 $ \tElem ->
     forall type0 $ \tDim ->
       forall type0 $ \tDims ->
-        tTensor tElem (cons tDim tDims) ~> tFin tDim ~> tElem
+        tTensor tElem (cons tDim tDims) ~> tIndex tDim ~> tElem
 
 -- TODO generalise these to tensors etc. (remember to do mkMap' in utils as well)
 typeOfMapOp :: DSLExpr

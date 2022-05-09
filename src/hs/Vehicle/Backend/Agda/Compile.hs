@@ -384,7 +384,7 @@ compileBuiltin e = case e of
 
   ListType   _ tElem       -> annotateApp [DataList]   "List"   <$> traverse compileExpr [tElem]
   TensorType _ tElem tDims -> annotateApp [DataTensor] "Tensor" <$> traverse compileExpr [tElem, tDims]
-  FinType    _ size        -> annotateApp [DataFin]    "Fin"    <$> traverse compileExpr [size]
+  IndexType  _ size        -> annotateApp [DataFin]    "Fin"    <$> traverse compileExpr [size]
 
   IfExpr _ _ [e1, e2, e3] -> do
     ce1 <- compileArg e1
@@ -455,24 +455,24 @@ compileQuantIn Prop = compileContainerTypeLevelQuantifier
 
 compileLiteral :: MonadAgdaCompile m => OutputExpr -> m Code
 compileLiteral e = case e of
-  NatLiteralExpr  _ann FinType{}  n -> return $ compileFinLiteral  (toInteger n)
-  NatLiteralExpr  _ann NatType{}  n -> return $ compileNatLiteral  (toInteger n)
-  NatLiteralExpr  _ann IntType{}  n -> return $ compileIntLiteral  (toInteger n)
-  NatLiteralExpr  _ann RatType{}  n -> return $ compileRatLiteral  (toRational n)
-  NatLiteralExpr  _ann RealType{} n -> return $ compileRealLiteral (toRational n)
-  IntLiteralExpr  _ann Int        i -> return $ compileIntLiteral  (toInteger i)
-  IntLiteralExpr  _ann Rat        i -> return $ compileRatLiteral  (toRational i)
-  IntLiteralExpr  _ann Real       i -> return $ compileRealLiteral (toRational i)
-  RatLiteralExpr  _ann Rat        p -> return $ compileRatLiteral  p
-  RatLiteralExpr  _ann Real       p -> return $ compileRealLiteral p
-  BoolLiteralExpr _ann t b          -> return $ compileBoolOp0 b t
-  _                                 -> compilerDeveloperError $
+  NatLiteralExpr  _ann IndexType{} n -> return $ compileIndexLiteral (toInteger n)
+  NatLiteralExpr  _ann NatType{}   n -> return $ compileNatLiteral   (toInteger n)
+  NatLiteralExpr  _ann IntType{}   n -> return $ compileIntLiteral   (toInteger n)
+  NatLiteralExpr  _ann RatType{}   n -> return $ compileRatLiteral   (toRational n)
+  NatLiteralExpr  _ann RealType{}  n -> return $ compileRealLiteral  (toRational n)
+  IntLiteralExpr  _ann Int         i -> return $ compileIntLiteral   (toInteger i)
+  IntLiteralExpr  _ann Rat         i -> return $ compileRatLiteral   (toRational i)
+  IntLiteralExpr  _ann Real        i -> return $ compileRealLiteral  (toRational i)
+  RatLiteralExpr  _ann Rat         p -> return $ compileRatLiteral  p
+  RatLiteralExpr  _ann Real        p -> return $ compileRealLiteral p
+  BoolLiteralExpr _ann t b           -> return $ compileBoolOp0 b t
+  _                                  -> compilerDeveloperError $
     "unexpected literal" <+> squotes (prettyVerbose e) <+>
     -- "of type" <+> squotes (pretty t) <+>
     "found during compilation to Agda"
 
-compileFinLiteral :: Integer -> Code
-compileFinLiteral i = annotateInfixOp1 [DataFin] 10 Nothing "#" [pretty i]
+compileIndexLiteral :: Integer -> Code
+compileIndexLiteral i = annotateInfixOp1 [DataFin] 10 Nothing "#" [pretty i]
 
 compileNatLiteral :: Integer -> Code
 compileNatLiteral = pretty
@@ -567,10 +567,10 @@ compileOrder order elemType resultType =
   annotateInfixOp2 dependencies 4 opBraces (Just qualifier) opDoc
   where
     (qualifier, elemDeps) = case elemType of
-      FinType  _ _           -> ("Fin", [DataFin])
+      IndexType  _ _         -> ("Fin", [DataFin])
       BuiltinNumericType _ t -> (numericQualifier t, numericDependencies t)
       _                      ->
-        unexpectedTypeError elemType ["Nat", "Int", "Rat", "Real", "Fin n"]
+        unexpectedTypeError elemType ["Nat", "Int", "Rat", "Real", "Index n"]
 
     (boolDecDoc, boolDeps) = booleanModifierDocAndDeps resultType
     orderDoc = case order of

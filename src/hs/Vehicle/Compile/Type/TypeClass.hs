@@ -80,7 +80,7 @@ solveHasEq _ (BuiltinBooleanType _ _)    (BuiltinBooleanType _ _) = return simpl
 solveHasEq _ (BuiltinNumericType _ _)    (BoolType _)             = return simplySolved
 solveHasEq _ (BuiltinNumericType _ t)    (PropType _)
   | isDecidable t = return simplySolved
-solveHasEq _ (FinType _ _)               _    = return simplySolved
+solveHasEq _ (IndexType _ _)             _    = return simplySolved
 solveHasEq c (TensorType _ tElem _tDims) tRes = solveHasEq c tElem tRes
 solveHasEq c (ListType _ tElem)          tRes = solveHasEq c tElem tRes
 solveHasEq constraint _ _ = throwError $ FailedConstraints (constraint :| [])
@@ -90,7 +90,7 @@ solveHasOrd :: MonadConstraintSolving m
             -> CheckedExpr
             -> CheckedExpr
             -> m ConstraintProgress
-solveHasOrd _ (FinType _ _)            _            = return simplySolved
+solveHasOrd _ (IndexType _ _)          _            = return simplySolved
 solveHasOrd _ (BuiltinNumericType _ _) (PropType _) = return simplySolved
 solveHasOrd _ (BuiltinNumericType _ t) (BoolType _)
   | isDecidable t = return simplySolved
@@ -123,7 +123,7 @@ solveHasNatLits :: MonadConstraintSolving m
                 -> Int
                 -> CheckedExpr
                 -> m ConstraintProgress
-solveHasNatLits _ value (FinType _ (NatLiteralExpr _ _ n))
+solveHasNatLits _ value (IndexType _ (NatLiteralExpr _ _ n))
   | value < n = return simplySolved
 solveHasNatLits _ _   (NatType  _)  = return simplySolved
 solveHasNatLits _ _   (IntType  _)  = return simplySolved
@@ -239,7 +239,7 @@ defaultSolution :: MonadCompile m => CheckedAnn -> TypeClass -> m CheckedExpr
 defaultSolution ann HasNatOps          = return $ NatType ann
 defaultSolution ann HasIntOps          = return $ IntType ann
 defaultSolution ann HasRatOps          = return $ RatType ann
-defaultSolution ann (HasNatLitsUpTo n) = return $ mkFinType ann (n + 1)
+defaultSolution ann (HasNatLitsUpTo n) = return $ mkIndexType ann (n + 1)
 defaultSolution ann HasIntLits         = return $ IntType ann
 defaultSolution ann HasRatLits         = return $ RatType ann
 defaultSolution _   tc                 = compilerDeveloperError $

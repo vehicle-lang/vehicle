@@ -24,7 +24,7 @@ position token TokInt       {"Int"};
 position token TokNat       {"Nat"};
 position token TokBool      {"Bool"};
 position token TokProp      {"Prop"};
-position token TokFin       {"Fin"};
+position token TokIndex     {"Index"};
 
 position token TokForall    {"forall"};
 position token TokExists    {"exists"};
@@ -169,7 +169,7 @@ Fold.    Expr13 ::= TokFold Expr15 Expr15 Expr15;
 -- Primitive types.
 List.    Expr14 ::= TokList Expr15;
 Tensor.  Expr14 ::= TokTensor Expr15 Expr15;
-Fin.     Expr14 ::= TokFin Expr15;
+Index.   Expr14 ::= TokIndex Expr15;
 Bool.    Expr15 ::= TokBool;
 Prop.    Expr15 ::= TokProp;
 Real.    Expr15 ::= TokReal;

@@ -6,7 +6,7 @@ type Image = Tensor Rat [784]
 
 -- The type of the output labels
 -- i.e a number between 0 and 9, one for each digit
-type Label = Fin 10
+type Label = Index 10
 
 -- A predicate that states that all the pixel values in a given image are
 -- in the range 0.0 to 1.0

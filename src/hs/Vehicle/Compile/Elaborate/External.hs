@@ -131,7 +131,7 @@ instance Elab B.Expr V.InputExpr where
     B.Nat tk                  -> builtin (V.NumericType   V.Nat)    tk []
     B.List tk t               -> builtin (V.ContainerType V.List)   tk [t]
     B.Tensor tk t1 t2         -> builtin (V.ContainerType V.Tensor) tk [t1, t2]
-    B.Fin tk t                -> builtin V.Fin                      tk [t]
+    B.Index tk t              -> builtin V.Index                      tk [t]
 
     B.If tk1 e1 _ e2 _ e3     -> builtin V.If                  tk1 [e1, e2, e3]
     B.Not tk e                -> builtin V.Not                 tk  [e]

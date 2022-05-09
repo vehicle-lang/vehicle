@@ -485,14 +485,14 @@ failedConstraintError ctx c@(TC _ (_ `Has` t)) = UserError
 -- Some attempts more readable error messages. Need something more principled,
 e.g. Jurrian's work.
 
-    TC _ (_ `Has` (HasNatLitsUpToExpr _ n (FinType _ (LiteralExpr _ _ v)))) -> UserError
+    TC _ (_ `Has` (HasNatLitsUpToExpr _ n (IndexType _ (LiteralExpr _ _ v)))) -> UserError
       { provenance = p
       , problem    = "Type error: index" <+> pretty n <+> "is out of bounds when" <+>
                     "looking up value in tensor of size" <+> pretty v
       , fix        = Just "check your types"
       }
 
-    TC _ (_ `Has` (HasNatLitsUpToExpr _ n (FinType _ v))) -> UserError
+    TC _ (_ `Has` (HasNatLitsUpToExpr _ n (IndexType _ v))) -> UserError
       { provenance = p
       , problem    = "Type error: unknown if index" <+> pretty n <+> "is in bounds" <+>
                     "when looking up value in tensor of size" <+> prettyFriendlyDB ctx v
@@ -513,7 +513,7 @@ e.g. Jurrian's work.
       , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
                      "for the elements of the" <+> prettyResource Dataset ident <> "."
       , fix        = Just $ "change the type to one of" <+> elementTypes <> "."
-      } where elementTypes = pretty @[Builtin] ([Fin] <> fmap NumericType [Nat, Int, Rat])
+      } where elementTypes = pretty @[Builtin] ([Index] <> fmap NumericType [Nat, Int, Rat])
 
     DatasetVariableSizeTensor ident p tCont -> UError $ UserError
       { provenance = p
@@ -531,7 +531,7 @@ e.g. Jurrian's work.
                      "update the type of the dataset in the Vehicle specification."
       } where (nat :: CheckedExpr) = NatType mempty
 
-    DatasetInvalidFin ident p v n -> UError $ UserError
+    DatasetInvalidIndex ident p v n -> UError $ UserError
       { provenance = p
       , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
                      "Expected elements of type" <+> squotes (prettyFriendly fin) <+>
@@ -539,7 +539,7 @@ e.g. Jurrian's work.
       , fix        = Just $ "either remove the offending entries in the dataset or" <+>
                      "update the type of the dataset in the Vehicle specification."
       }
-      where (fin :: CheckedExpr) = FinType mempty (NatLiteralExpr mempty (NatType mempty) n)
+      where (fin :: CheckedExpr) = IndexType mempty (NatLiteralExpr mempty (NatType mempty) n)
 
     DatasetDimensionMismatch ident p expectedDims actualDims -> UError $ UserError
       { provenance = p
