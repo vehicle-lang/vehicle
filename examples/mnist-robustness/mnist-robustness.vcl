@@ -60,11 +60,11 @@ robustAround x y = forall z .
 -- network is robust around images in the training dataset.
 
 -- We first specify parameter `n` the size of the training dataset. Unlike
--- the earlier parameter `epsilon`, `n` is marked as implicit which means
+-- the earlier parameter `epsilon`, `n` is marked as `implicit` which means
 -- that it does not need to be provided manually but instead will be
 -- automatically inferred by the compiler. In this case it will be inferred
 -- from the training dataset passed.
-parameter {n : Nat}
+implicit parameter n : Nat
 
 -- We next declare two datasets, the training images and the corresponding
 -- training labels. Note that we use the previously declared parameter `n`
