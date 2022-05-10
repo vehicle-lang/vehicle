@@ -13,9 +13,16 @@ open import Data.Nat as ℕ using (ℕ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
 
-module simple-matrix-temp-output where
+module simple-tensor-temp-output where
 
-postulate t : Tensor ℕ (2 ∷ (2 ∷ []))
+zeroD : Tensor ℕ []
+zeroD = 2
 
-expandedExpr2 : ℕ
-expandedExpr2 = t (# 0) (# 1)
+oneD : Tensor ℕ (2 ∷ [])
+oneD = zeroD ∷ (1 ∷ [])
+
+twoD : Tensor ℕ (2 ∷ (2 ∷ []))
+twoD = oneD ∷ ((2 ∷ (3 ∷ [])) ∷ [])
+
+lookup2D : ℕ
+lookup2D = twoD (# 0) (# 1)
