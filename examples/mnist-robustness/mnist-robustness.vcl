@@ -2,7 +2,7 @@
 -- Inputs and outputs
 
 -- Define the type for our input images
-type Image = Tensor Rat [784]
+type Image = Tensor Rat [28, 28]
 
 -- The type of the output labels
 -- i.e a number between 0 and 9, one for each digit
@@ -11,7 +11,7 @@ type Label = Index 10
 -- A predicate that states that all the pixel values in a given image are
 -- in the range 0.0 to 1.0
 validImage : Image -> Bool
-validImage x = forall i . 0 <= x ! i <= 1
+validImage x = forall i j . 0 <= x ! i ! j <= 1
 
 --------------------------------------------------------------------------------
 -- Network
@@ -37,7 +37,7 @@ parameter epsilon : Rat
 -- Next we define what it means for an input image `x` to be in an l-infinity
 -- ball of a given `radius` around a given `centre` image.
 lInfBall : Image -> Image -> Bool
-lInfBall centre x = forall i . -epsilon <= (x - centre) ! i <= epsilon
+lInfBall centre x = forall i j . -epsilon <= (x - centre) ! i ! j <= epsilon
 
 -- We now define what it means for the network to be robust around an image `x`
 -- that should be classified as `y`. Namely, that for any valid input image `z`
