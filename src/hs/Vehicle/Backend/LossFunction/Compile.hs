@@ -97,7 +97,7 @@ compileExpr e = showExit $ do
         V.Ge -> Sub <$> compileArg e1 <*> compileArg e2
         V.Gt -> Neg <$> (Sub <$> compileArg e2 <*> compileArg e1)
 
-    V.LiteralExpr _ _ l                   -> return $ Con (compileLiteral l)
+    V.LiteralExpr _ _ _ l                 -> return $ Con (compileLiteral l)
     V.App _ (V.Var _ (V.Free ident)) p    -> NetApp (V.nameOf ident) <$> traverse compileArg p
     V.Var _ (V.Bound t)                   -> return (Var t)
     V.QuantifierExpr q _ binder body      -> Quant (compileQuant q) (V.getBinderSymbol binder) (Domain ()) <$> compileExpr body

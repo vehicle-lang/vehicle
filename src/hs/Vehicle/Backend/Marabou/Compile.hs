@@ -216,7 +216,7 @@ compileAssertion ann ident quantifier rel lhs rhs = do
     compileSide = \case
       Var     _ v                           -> return ([(1, v)], [])
       NegExpr _ _ [ExplicitArg _ (Var _ v)] -> return ([(-1, v)], [])
-      LiteralExpr _ _ l                     -> do
+      LiteralExpr _ _ _ l                     -> do
         cl <- compileLiteral l
         return ([], [cl])
       AddExpr _ _ _ [arg1, arg2]            -> do
@@ -224,10 +224,10 @@ compileAssertion ann ident quantifier rel lhs rhs = do
         ys <- compileSide (argExpr arg2)
         return (xs <> ys)
       MulExpr ann1 _ _ [arg1, arg2] -> case (argExpr arg1, argExpr arg2) of
-        (LiteralExpr _ _ l, Var _ v) -> do
+        (LiteralExpr _ _ _ l, Var _ v) -> do
           cl <- compileLiteral l
           return ([(cl, v)],[])
-        (Var _ v, LiteralExpr _ _ l) -> do
+        (Var _ v, LiteralExpr _ _ _ l) -> do
           cl <- compileLiteral l
           return ([(cl, v)],[])
         (e1, e2) -> throwError $ NonLinearConstraint MarabouBackend (provenanceOf ann1) ident e1 e2

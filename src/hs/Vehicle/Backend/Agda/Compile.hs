@@ -470,7 +470,6 @@ compileLiteral e = case e of
   BoolLiteralExpr _ann b             -> compileBoolOp0 b
   _                                  -> compilerDeveloperError $
     "unexpected literal" <+> squotes (prettyVerbose e) <+>
-    -- "of type" <+> squotes (pretty t) <+>
     "found during compilation to Agda"
 
 compileIndexLiteral :: Integer -> Code

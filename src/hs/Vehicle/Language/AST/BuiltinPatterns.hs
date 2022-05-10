@@ -269,19 +269,20 @@ pattern
 
 pattern LiteralExpr :: ann
                     -> Expr binder var ann
+                    -> Expr binder var ann
                     -> Literal
                     -> Expr binder var ann
 pattern
-  LiteralExpr ann litType lit <-
+  LiteralExpr ann litType litTC lit <-
     App ann (Literal _ lit)
       [ ImplicitArg _ litType
-      , InstanceArg _ _
+      , InstanceArg _ (PrimDict _ litTC)
       ]
   where
-  LiteralExpr ann litType lit =
+  LiteralExpr ann litType litTC lit =
     App ann (Literal ann lit)
       [ ImplicitArg ann litType
-      , InstanceArg ann (PrimDict ann litType)
+      , InstanceArg ann (PrimDict ann litTC)
       ]
 
 --------------------------------------------------------------------------------
@@ -313,10 +314,10 @@ pattern NatLiteralExpr :: ann
                        -> Expr binder var ann
 pattern
   NatLiteralExpr ann t n <-
-    LiteralExpr ann t (LNat n)
+    LiteralExpr ann t HasNatLitsUpToExpr{} (LNat n)
   where
   NatLiteralExpr ann t n =
-    LiteralExpr ann t (LNat n)
+    LiteralExpr ann t (HasNatLitsUpToExpr ann n t) (LNat n)
 
 --------------------------------------------------------------------------------
 -- Int
@@ -330,10 +331,10 @@ pattern IntLiteralExpr :: ann
                        -> Expr binder var ann
 pattern
   IntLiteralExpr ann t n <-
-    LiteralExpr ann (BuiltinNumericType _ t) (LInt n)
+    LiteralExpr ann (BuiltinNumericType _ t) (HasIntLitsExpr _ _) (LInt n)
   where
   IntLiteralExpr ann t n =
-    LiteralExpr ann (BuiltinNumericType ann t) (LInt n)
+    LiteralExpr ann (BuiltinNumericType ann t) (HasIntLitsExpr ann (BuiltinNumericType ann t)) (LInt n)
 
 --------------------------------------------------------------------------------
 -- Rat
@@ -347,10 +348,10 @@ pattern RatLiteralExpr :: ann
                        -> Expr binder var ann
 pattern
   RatLiteralExpr ann t n <-
-    LiteralExpr ann (BuiltinNumericType _ t) (LRat n)
+    LiteralExpr ann (BuiltinNumericType _ t) (HasRatLitsExpr _ _) (LRat n)
   where
   RatLiteralExpr ann t n =
-    LiteralExpr ann (BuiltinNumericType ann t) (LRat n)
+    LiteralExpr ann (BuiltinNumericType ann t) (HasRatLitsExpr ann (BuiltinNumericType ann t)) (LRat n)
 
 --------------------------------------------------------------------------------
 -- Expressions

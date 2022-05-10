@@ -115,7 +115,8 @@ solveHasNatLits :: MonadConstraintSolving m
                 -> Int
                 -> CheckedExpr
                 -> m ConstraintProgress
-solveHasNatLits _ value (IndexType _ (NatLiteralExpr _ _ n))
+solveHasNatLits _ value (IndexType _ (App _ (Literal _ (LNat n)) _))
+-- ^ Can't pattern match on NatLitExpr here as the PrimDict may not yet have been solved.
   | value < n = return simplySolved
 solveHasNatLits _ _   (NatType  _)  = return simplySolved
 solveHasNatLits _ _   (IntType  _)  = return simplySolved
