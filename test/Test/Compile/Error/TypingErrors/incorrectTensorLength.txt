@@ -1,0 +1,2 @@
+Error: Type error: 1 != 2 (Line 2, Columns 10-12)
+Fix: check your types

@@ -1,2 +1,2 @@
-Error: Error while reading dataset 'trainingDataset'. Expected dimensions to be [ 5 ] but found dimensions [ 4 ] (Line 2, Columns 9-24)
-Fix: correct the dataset dimensions in the Vehicle specification.
+Error: Type error: 4 != 5 (in dataset 'trainingDataset')
+Fix: check your types

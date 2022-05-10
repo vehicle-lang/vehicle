@@ -45,7 +45,7 @@ argumentErrors = failTestGroup "ArgumentErrors"
   [ testSpec
     { testName     = "missingInputFile"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     }
   ]
 
@@ -54,19 +54,25 @@ typeCheckingErrors = failTestGroup "TypingErrors"
   [ testSpec
     { testName     = "intAsNat"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     }
 
   , testSpec
     { testName     = "indexOutOfBounds"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     }
 
   , testSpec
     { testName     = "indexOutOfBoundsUnknown"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
+    }
+
+  , testSpec
+    { testName     = "incorrectTensorLength"
+    , testLocation = Tests
+    , testTargets  = [MarabouBackend]
     }
 
   , testSpec
@@ -81,13 +87,13 @@ networkErrors = failTestGroup "NetworkErrors"
   [ testSpec
     { testName     = "notAFunction"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     }
 
   , testSpec
     { testName     = "multidimInputTensor"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     }
   ]
 
@@ -96,70 +102,70 @@ datasetErrors = failTestGroup "DatasetErrors"
   [ testSpec
     { testName     = "notProvided"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     , testDatasets = []
     }
 
   , testSpec
     { testName     = "missing"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "non-existent.idx")]
     }
 
   , testSpec
     { testName     = "unsupportedFormat"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "non-existent.fgt")]
     }
 
   , testSpec
     { testName     = "invalidContainerType"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
   , testSpec
     { testName     = "invalidElementType"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
-  -- , testSpec
-  --   { testName     = "variableDimensions"
-  --   , testLocation = Tests
-  --   , testTargets  = [VNNLibBackend]
-  --   , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
-  --   }
+  , testSpec
+    { testName     = "variableDimensions"
+    , testLocation = Tests
+    , testTargets  = [MarabouBackend]
+    , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
+    }
 
-  -- , testSpec
-  --   { testName     = "mismatchedDimensions"
-  --   , testLocation = Tests
-  --   , testTargets  = [VNNLibBackend]
-  --   , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
-  --   }
+  , testSpec
+    { testName     = "mismatchedDimensions"
+    , testLocation = Tests
+    , testTargets  = [MarabouBackend]
+    , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
+    }
 
   , testSpec
     { testName     = "mismatchedType"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-rat-4.idx")]
     }
 
   , testSpec
     { testName     = "tooBigIndex"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
   , testSpec
     { testName     = "negativeNat"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-int-4.idx")]
     }
   ]
@@ -169,14 +175,14 @@ parameterErrors = failTestGroup "ParameterErrors"
   [ testSpec
     { testName       = "notProvided"
     , testLocation   = Tests
-    , testTargets    = [VNNLibBackend]
+    , testTargets    = [MarabouBackend]
     , testParameters = []
     }
 
   , testSpec
     { testName       = "unparseable"
     , testLocation   = Tests
-    , testTargets    = [VNNLibBackend]
+    , testTargets    = [MarabouBackend]
     , testParameters = [("n", "~`")]
     }
   ]

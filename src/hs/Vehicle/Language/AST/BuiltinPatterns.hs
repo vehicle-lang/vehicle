@@ -116,21 +116,39 @@ pattern BuiltinTypeClass :: ann -> TypeClass -> Expr binder var ann
 pattern BuiltinTypeClass ann tc = Builtin ann (TypeClass tc)
 
 --------------------------------------------------------------------------------
--- IsContainer
+-- Container type classes
 
-pattern IsContainerExpr :: ann
-                        -> Expr binder var ann
-                        -> Expr binder var ann
-                        -> Expr binder var ann
+pattern HasConLitsOfSizeExpr :: ann
+                             -> Int
+                             -> Expr binder var ann
+                             -> Expr binder var ann
+                             -> Expr binder var ann
 pattern
-  IsContainerExpr ann tElem tCont <-
-    App ann (BuiltinTypeClass _ IsContainer)
+  HasConLitsOfSizeExpr ann n tElem tCont <-
+    App ann (BuiltinTypeClass _ (HasConLitsOfSize n))
       [ ExplicitArg _ tElem
       , ExplicitArg _ tCont
       ]
   where
-  IsContainerExpr ann tElem tCont =
-    App ann (BuiltinTypeClass ann IsContainer)
+  HasConLitsOfSizeExpr ann n tElem tCont =
+    App ann (BuiltinTypeClass ann (HasConLitsOfSize n))
+      [ ExplicitArg ann tElem
+      , ExplicitArg ann tCont
+      ]
+
+pattern HasConOpsExpr :: ann
+                      -> Expr binder var ann
+                      -> Expr binder var ann
+                      -> Expr binder var ann
+pattern
+  HasConOpsExpr ann tElem tCont <-
+    App ann (BuiltinTypeClass _ HasConOps)
+      [ ExplicitArg _ tElem
+      , ExplicitArg _ tCont
+      ]
+  where
+  HasConOpsExpr ann tElem tCont =
+    App ann (BuiltinTypeClass ann HasConOps)
       [ ExplicitArg ann tElem
       , ExplicitArg ann tCont
       ]
@@ -415,7 +433,7 @@ pattern
     App ann (BuiltinQuantifierIn ann q)
       [ ImplicitArg ann (typeOf binder)
       , ImplicitArg ann tCont
-      , InstanceArg ann (IsContainerExpr ann (typeOf binder) tCont)
+      , InstanceArg ann (HasConOpsExpr ann (typeOf binder) tCont)
       , ExplicitArg ann (Lam ann binder body)
       , ExplicitArg ann container
       ]
@@ -625,10 +643,10 @@ pattern SeqExpr :: ann
                 -> Expr  binder var ann
 pattern
   SeqExpr ann tElem tCont xs <-
-    LSeq ann (PrimDict _ (IsContainerExpr _ tElem tCont)) xs
+    LSeq ann (PrimDict _ (HasConLitsOfSizeExpr _ _ tElem tCont)) xs
   where
   SeqExpr ann tElem tCont xs =
-    LSeq ann (PrimDict ann (IsContainerExpr ann tElem tCont)) xs
+    LSeq ann (PrimDict ann (HasConLitsOfSizeExpr ann (length xs) tElem tCont)) xs
 
 --------------------------------------------------------------------------------
 -- Nil and cons
@@ -733,6 +751,6 @@ pattern
       (  ImplicitArg ann tElem
       :| ImplicitArg ann tCont
       :  ImplicitArg ann tRes
-      :  InstanceArg ann (PrimDict ann (IsContainerExpr ann tElem tCont))
+      :  InstanceArg ann (PrimDict ann (HasConOpsExpr ann tElem tCont))
       :  explicitArgs
       )

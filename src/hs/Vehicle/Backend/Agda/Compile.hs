@@ -36,24 +36,25 @@ data AgdaOptions = AgdaOptions
   }
 
 compileProgToAgda :: MonadCompile m => AgdaOptions -> CheckedProg -> m (Doc a)
-compileProgToAgda options prog1 = flip runReaderT (options, BoolLevel) $ do
-  let prog2 = capitaliseTypeNames prog1
-  let prog3 = supplyDBNames prog2
-  let prog4 = runDescopeProg prog3
-  programDoc <- compileProg prog4
-  let programStream = layoutPretty defaultLayoutOptions programDoc
-  -- Collects dependencies by first discarding precedence info and then
-  -- folding using Set Monoid
-  let progamDependencies = fold (reAnnotateS fst programStream)
+compileProgToAgda options prog1 = logCompilerPass currentPhase $
+  flip runReaderT (options, BoolLevel) $ do
+    let prog2 = capitaliseTypeNames prog1
+    let prog3 = supplyDBNames prog2
+    let prog4 = runDescopeProg prog3
+    programDoc <- compileProg prog4
+    let programStream = layoutPretty defaultLayoutOptions programDoc
+    -- Collects dependencies by first discarding precedence info and then
+    -- folding using Set Monoid
+    let progamDependencies = fold (reAnnotateS fst programStream)
 
-  let baseModule = maybe "Spec" takeBaseName (outputFile options)
-  let moduleName = Text.pack $ maybe "" (<> ".") (modulePrefix options) <> baseModule
-  return $ unAnnotate ((vsep2 :: [Code] -> Code)
-    [ optionStatements ["allow-exec"]
-    , importStatements progamDependencies
-    , moduleHeader moduleName
-    , programDoc
-    ])
+    let baseModule = maybe "Spec" takeBaseName (outputFile options)
+    let moduleName = Text.pack $ maybe "" (<> ".") (modulePrefix options) <> baseModule
+    return $ unAnnotate ((vsep2 :: [Code] -> Code)
+      [ optionStatements ["allow-exec"]
+      , importStatements progamDependencies
+      , moduleHeader moduleName
+      , programDoc
+      ])
 
 --------------------------------------------------------------------------------
 -- Debug functions
@@ -420,7 +421,7 @@ compileBuiltin e = case e of
   (EqualityExpr Eq  _ t1 args) -> compileEquality   t1 =<< traverse compileArg args
   (EqualityExpr Neq _ t1 args) -> compileInequality t1 =<< traverse compileArg args
 
-  (ConsExpr _ tElem               args) -> compileCons tElem <$> traverse compileArg args
+  (ConsExpr _ tElem               args) -> compileCons tElem =<< traverse compileArg args
   (AtExpr ann _tElem _tDim _tDims args) -> compileAt ann (map argExpr args)
 
   MapExpr{}             -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Map
@@ -443,7 +444,7 @@ compileTypeLevelQuantifier q binders body = do
 compileQuantIn :: MonadAgdaCompile m => Quantifier -> OutputExpr -> OutputExpr -> OutputExpr -> m Code
 compileQuantIn q tCont fn cont = do
   boolLevel <- getBoolLevel
-  let contType = containerType tCont
+  contType <- containerType tCont
   let qualifier = containerQualifier contType
   case boolLevel of
     TypeLevel -> do
@@ -499,10 +500,12 @@ compileRealLiteral r = annotateInfixOp2 [DataReal] 7 id
 
 -- |Compiling sequences. No sequences in Agda so have to go via cons.
 compileSeq :: MonadAgdaCompile m => OutputAnn -> OutputExpr -> [OutputExpr] -> m Code
-compileSeq _ (PrimDict _ (IsContainerExpr _ _ tCont)) elems = go elems
+compileSeq _ (PrimDict _ (HasConLitsOfSizeExpr _ _ _ tCont)) elems = go elems
   where
     go :: MonadAgdaCompile m => [OutputExpr] -> m Code
-    go []       = return $ annotateConstant (containerDependencies (containerType tCont)) "[]"
+    go []       = do
+      contType <- containerType tCont
+      return $ annotateConstant (containerDependencies contType) "[]"
     go (x : xs) = do
       cx  <- compileExpr x
       cxs <- go xs
@@ -511,12 +514,12 @@ compileSeq ann dict elems = unexpectedArgsError (LSeq ann dict elems) elems ["tE
 
 
 -- |Compiling cons operator
-compileCons :: OutputExpr -> [Code] -> Code
-compileCons tCont = annotateInfixOp2 deps 5 id (Just qualifier) "∷"
-  where
-    contType  = containerType tCont
-    qualifier = containerQualifier contType
-    deps      = containerDependencies contType
+compileCons :: MonadCompile m => OutputExpr -> [Code] -> m Code
+compileCons tCont args = do
+  contType <- containerType tCont
+  let qualifier = containerQualifier contType
+  let deps      = containerDependencies contType
+  return $ annotateInfixOp2 deps 5 id (Just qualifier) "∷" args
 
 -- |Compiling boolean constants
 compileBoolOp0 :: MonadAgdaCompile m => Bool -> m Code
@@ -575,9 +578,9 @@ compileOrder :: MonadAgdaCompile m => Order -> OutputExpr -> [Code] -> m Code
 compileOrder order elemType args = do
   boolLevel <- getBoolLevel
 
-  let (qualifier, elemDeps) = case elemType of
-        IndexType{}            -> ("Fin", [DataFin])
-        BuiltinNumericType _ t -> (numericQualifier t, numericDependencies t)
+  (qualifier, elemDeps) <- case elemType of
+        IndexType{}            -> return ("Fin", [DataFin])
+        BuiltinNumericType _ t -> return (numericQualifier t, numericDependencies t)
         _                      ->
           unexpectedTypeError elemType ["Nat", "Int", "Rat", "Real", "Fin n"]
 
@@ -670,19 +673,19 @@ equalityDependencies = \case
   Var ann n -> throwError $ UnsupportedPolymorphicEquality AgdaBackend (provenanceOf ann) n
   t         -> unexpectedTypeError t ["Tensor", "Real", "Int", "List"]
 
-containerType :: OutputExpr -> ContainerType
-containerType (App _ (Builtin _ (ContainerType t)) _) = t
+containerType :: MonadCompile m => OutputExpr -> m ContainerType
+containerType (App _ (Builtin _ (ContainerType t)) _) = return t
 containerType t = unexpectedTypeError t (map show [List, Tensor])
 
-unexpectedTypeError :: OutputExpr -> [String] -> a
-unexpectedTypeError actualType expectedTypes = developerError $
+unexpectedTypeError :: MonadCompile m => OutputExpr -> [String] -> m a
+unexpectedTypeError actualType expectedTypes = compilerDeveloperError $
   "Unexpected type found." <+>
   "Was expecting one of" <+> pretty expectedTypes <+>
   "but found" <+> prettyFriendly actualType <+>
   "at" <+> pretty (provenanceOf actualType) <> "."
 
-unexpectedArgsError :: OutputExpr -> [OutputExpr] -> [String] -> a
-unexpectedArgsError fun actualArgs expectedArgs = developerError $
+unexpectedArgsError :: MonadCompile m => OutputExpr -> [OutputExpr] -> [String] -> m a
+unexpectedArgsError fun actualArgs expectedArgs = compilerDeveloperError $
   "The function" <+> prettyFriendly fun <+> "was expected to have arguments" <+>
   "of the following form" <+> squotes (pretty expectedArgs) <+> "but found" <+>
   "the following" <+> squotes (prettyFriendly actualArgs) <+>

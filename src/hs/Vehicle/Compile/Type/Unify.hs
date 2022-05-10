@@ -58,12 +58,13 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
     -------------------
 
     -- Try to unify with LSeq and Cons
-    (LSeq ann dict1 es, []) :~: (Builtin _ Cons, args2) ->
-      case (dict1, es, args2) of
-        (PrimDict _ (IsContainerExpr _ t1 _), x1 : xs1, [t2, x2, xs2]) -> do
-          let typeConstraint = UC ctx (Unify (t1, argExpr t2))
+    (LSeq ann (PrimDict ann1 tc) es, []) :~: (Builtin _ Cons, args2) ->
+      case (tc, es, args2) of
+        (HasConLitsOfSizeExpr ann2 n tElem tCont, x1 : xs1, [t2, x2, xs2]) -> do
+          let updatedTC      = HasConLitsOfSizeExpr ann2 (n - 1) tElem tCont
+          let typeConstraint = UC ctx (Unify (tElem, argExpr t2))
           let headConstraint = UC ctx (Unify (x1, argExpr x2))
-          let tailConstraint = UC ctx (Unify (LSeq ann dict1 xs1, argExpr xs2))
+          let tailConstraint = UC ctx (Unify (LSeq ann (PrimDict ann1 updatedTC) xs1, argExpr xs2))
           return Progress
             { newConstraints = [typeConstraint, headConstraint, tailConstraint]
             , solvedMetas    = mempty

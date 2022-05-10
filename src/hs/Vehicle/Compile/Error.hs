@@ -117,6 +117,8 @@ visibilityError :: MonadError CompileError m => Doc () -> Doc () -> m b
 visibilityError pass name = developerError $
   unexpectedExpr pass name <+> "Should not be present as explicit arguments"
 
+-- | Throw this when you encounter a case that should have been resolved during
+-- type-checking, e.g. holes or metas.
 resolutionError :: MonadError CompileError m => Doc () -> Doc () -> m b
 resolutionError pass name = developerError $
   unexpectedExpr pass name <+> "We should have resolved this during type-checking."

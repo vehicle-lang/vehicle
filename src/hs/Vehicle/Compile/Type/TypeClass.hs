@@ -3,6 +3,7 @@ module Vehicle.Compile.Type.TypeClass
   , solveDefaultTypeClassConstraints
   ) where
 
+import Data.Maybe ( maybeToList )
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.List.NonEmpty (NonEmpty(..))
@@ -30,15 +31,16 @@ solveTypeClassConstraint ctx (m `Has` (App ann tc@(BuiltinTypeClass{}) args)) = 
 
   -- Then check which sort of type-class it is:
   progress <- blockOnMetas eWHNF $ case eWHNF of
-    IsContainerExpr      _ t1 t2 -> solveIsContainer    constraint t1 t2
-    HasEqExpr            _ t1    -> solveHasEq          constraint t1
-    HasOrdExpr           _ t1    -> solveHasOrd         constraint t1
-    HasNatOpsExpr        _ t     -> solveHasNatOps      constraint t
-    HasIntOpsExpr        _ t     -> solveHasIntOps      constraint t
-    HasRatOpsExpr        _ t     -> solveHasRatOps      constraint t
-    HasNatLitsUpToExpr   _ n t   -> solveHasNatLits     constraint n t
-    HasIntLitsExpr       _ t     -> solveHasIntLits     constraint t
-    HasRatLitsExpr       _ t     -> solveHasRatLits     constraint t
+    HasEqExpr            _ t       -> solveHasEq          constraint t
+    HasOrdExpr           _ t       -> solveHasOrd         constraint t
+    HasNatOpsExpr        _ t       -> solveHasNatOps      constraint t
+    HasIntOpsExpr        _ t       -> solveHasIntOps      constraint t
+    HasRatOpsExpr        _ t       -> solveHasRatOps      constraint t
+    HasConOpsExpr        _ t1 t2   -> solveHasConOps      constraint t1 t2
+    HasNatLitsUpToExpr   _ n t     -> solveHasNatLits     constraint n t
+    HasIntLitsExpr       _ t       -> solveHasIntLits     constraint t
+    HasRatLitsExpr       _ t       -> solveHasRatLits     constraint t
+    HasConLitsOfSizeExpr _ n t1 t2 -> solveHasConLits     constraint n t1 t2
     _ -> compilerDeveloperError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
 
   unless (isStuck progress) $ do
@@ -57,22 +59,35 @@ getNonInferableMetas :: CheckedExpr -> [CheckedExpr]
 getNonInferableMetas e =
   let recurse v = maybe [] getNonInferableMetas (getVisibleArg v) in
   case toHead e of
-    (f@Meta{} , _)                                       -> [f]
-    (Builtin _ (TypeClass IsContainer), [_tElem, tCont]) -> recurse tCont
-    (_, args)                                            -> concatMap recurse args
+    (Builtin _ (TypeClass HasConOps),            [_tElem, tCont]) -> recurse tCont
+    (Builtin _ (TypeClass (HasConLitsOfSize _)), [_tElem, tCont]) -> recurse tCont
+    (f@Meta{} , _) -> [f]
+    (_, args)      -> concatMap recurse args
 
 getVisibleArg :: CheckedArg -> Maybe CheckedExpr
 getVisibleArg (ExplicitArg _ arg) = Just arg
 getVisibleArg _                   = Nothing
 
-blockOnMetas :: MonadConstraintSolving m => CheckedExpr -> m ConstraintProgress -> m ConstraintProgress
-blockOnMetas e action = do
+blockOnMetas :: MonadConstraintSolving m
+             => CheckedExpr
+             -> m ConstraintProgress
+             -> m ConstraintProgress
+blockOnMetas e solve = do
   let metas = getNonInferableMetas e
   if null metas
-    then action
+    then solve
     else do
       logDebug MaxDetail $ "stuck-on metas" <+> prettyVerbose metas
       return Stuck
+
+progressByUnification :: MonadConstraintSolving m
+                      => Constraint
+                      -> [UnificationPair]
+                      -> m ConstraintProgress
+progressByUnification c pairs = return $ Progress
+  { newConstraints = fmap (UC ctx . Unify) pairs
+  , solvedMetas    = mempty
+  } where ctx = (constraintContext c) { blockedBy = mempty }
 
 solveHasEq :: MonadConstraintSolving m
            => Constraint
@@ -95,20 +110,41 @@ solveHasOrd _ BuiltinNumericType{} = return simplySolved
 solveHasOrd constraint _           =
   throwError $ FailedConstraints (constraint :| [])
 
-solveIsContainer :: MonadConstraintSolving m
+unifyTensorElems :: MonadConstraintSolving m
                  => Constraint
+                 -> Maybe Int
+                 -> CheckedExpr
                  -> CheckedExpr
                  -> CheckedExpr
                  -> m ConstraintProgress
-solveIsContainer c tElem tCont =
-  case getContainerElem tCont of
-    Nothing -> throwError $ FailedConstraints (c :| [])
-    Just t  -> return $ Progress
-      { newConstraints = [UC ctx (Unify (tElem, t))]
-      , solvedMetas    = mempty
-      }
-  where ctx = ConstraintContext (provenanceOf c) mempty (variableContext c)
+unifyTensorElems c dim tElem tBaseElem (ConsExpr ann t [tDim, tDims]) =
+  progressByUnification c $
+    [ (tElem, TensorType ann tBaseElem (argExpr tDims)) ] <>
+    maybeToList (fmap (\d -> (NatLiteralExpr ann t d, argExpr tDim)) dim)
+unifyTensorElems c dim tElem tBaseElem (SeqExpr ann t1 t2 (tDim : tDims)) =
+  progressByUnification c $
+    [ (tElem, TensorType ann tBaseElem (SeqExpr ann t1 t2 tDims)) ] <>
+    maybeToList (fmap (\d -> (NatLiteralExpr ann t1 d, tDim)) dim)
+unifyTensorElems c _ _ _ _ = throwError $ FailedConstraints (c :| [])
 
+solveHasConOps :: MonadConstraintSolving m
+               => Constraint
+               -> CheckedExpr
+               -> CheckedExpr
+               -> m ConstraintProgress
+solveHasConOps c tElem1 (ListType   _ tElem2)          = progressByUnification c [(tElem1, tElem2)]
+solveHasConOps c tElem  (TensorType _ tBaseElem tDims) = unifyTensorElems c Nothing tElem tBaseElem tDims
+solveHasConOps c _ _ = throwError $ FailedConstraints (c :| [])
+
+solveHasConLits :: MonadConstraintSolving m
+                => Constraint
+                -> Int
+                -> CheckedExpr
+                -> CheckedExpr
+                -> m ConstraintProgress
+solveHasConLits c _ tElem1 (ListType   _ tElem2)       = progressByUnification c [(tElem1, tElem2)]
+solveHasConLits c n tElem1 (TensorType _ tElem2 tDims) = unifyTensorElems c (Just n) tElem1 tElem2 tDims
+solveHasConLits c _ _ _ = throwError $ FailedConstraints (c :| [])
 
 solveHasNatLits :: MonadConstraintSolving m
                 => Constraint

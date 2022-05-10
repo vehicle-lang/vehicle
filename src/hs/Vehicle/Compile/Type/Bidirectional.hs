@@ -357,7 +357,7 @@ inferExpr e = do
 
       -- Generate a meta-variable for the applied container type, e.g. List Int
       (_, typeOfContainer) <- freshMeta p
-      let typeOfDict = IsContainerExpr ann typeOfElems typeOfContainer
+      let typeOfDict = HasConLitsOfSizeExpr ann (length elems) typeOfElems typeOfContainer
 
       -- Check the type of the dict
       checkedDict <- if not (isHole dict)
@@ -485,15 +485,16 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
   ContainerType Tensor      -> type0 ~> tList tNat ~> type0
   Index                     -> tNat ~> type0
 
-  TypeClass HasEq               -> type0 ~> type0 ~> type0
-  TypeClass HasOrd              -> type0 ~> type0 ~> type0
-  TypeClass HasNatOps           -> type0 ~> type0
-  TypeClass HasIntOps           -> type0 ~> type0
-  TypeClass HasRatOps           -> type0 ~> type0
-  TypeClass (HasNatLitsUpTo _)  -> type0 ~> type0
-  TypeClass HasIntLits          -> type0 ~> type0
-  TypeClass HasRatLits          -> type0 ~> type0
-  TypeClass IsContainer         -> type0 ~> type0 ~> type0
+  TypeClass HasEq                -> type0 ~> type0
+  TypeClass HasOrd               -> type0 ~> type0
+  TypeClass HasNatOps            -> type0 ~> type0
+  TypeClass HasIntOps            -> type0 ~> type0
+  TypeClass HasRatOps            -> type0 ~> type0
+  TypeClass HasConOps            -> type0 ~> type0 ~> type0
+  TypeClass (HasNatLitsUpTo _)   -> type0 ~> type0
+  TypeClass HasIntLits           -> type0 ~> type0
+  TypeClass HasRatLits           -> type0 ~> type0
+  TypeClass (HasConLitsOfSize _) -> type0 ~> type0 ~> type0
 
   If           -> typeOfIf
   Not          -> typeOfBoolOp1
@@ -552,7 +553,7 @@ typeOfQuantifierInOp :: DSLExpr
 typeOfQuantifierInOp =
   forall type0 $ \tElem ->
     forall type0 $ \tCont ->
-      isContainer tElem tCont ~~~> (tElem ~> tBool) ~> tCont ~> tBool
+      hasConOps tElem tCont ~~~> (tElem ~> tBool) ~> tCont ~> tBool
 
 typeOfCons :: DSLExpr
 typeOfCons =
@@ -578,4 +579,4 @@ typeOfFoldOp =
   forall type0 $ \tElem ->
     forall type0 $ \tCont ->
       forall type0 $ \tRes ->
-        isContainer tElem tCont ~~~> (tElem ~> tRes ~> tRes) ~> tRes ~> tCont ~> tRes
+        hasConOps tElem tCont ~~~> (tElem ~> tRes ~> tRes) ~> tRes ~> tCont ~> tRes

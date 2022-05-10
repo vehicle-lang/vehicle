@@ -11,7 +11,7 @@ prop3 = exists x . if f x > 0 then x >= 0 else x < 0
 
 -- Re-enable once tensors have been sorted out.
 
--- network g : Rat -> Tensor 2 [Rat]
+-- network g : Rat -> Tensor Rat [2]
 --
 -- prop4 : Bool
 -- prop4 = exists x . (map (\v -> if v > 0 then 1 else 2) (g x)) ! 0 > 0

@@ -76,10 +76,13 @@ data TypeClass
   | HasNatOps
   | HasIntOps
   | HasRatOps
-  | HasNatLitsUpTo Int -- ^ Represents the maximum literal value (needed for Index).
+  | HasConOps
+  | HasNatLitsUpTo Int
+  -- ^ The parameter is the maximum value (needed for Index).
   | HasIntLits
   | HasRatLits
-  | IsContainer
+  | HasConLitsOfSize Int
+  -- ^ The parameter is the size of the container (needed for Tensor)
   deriving (Eq, Ord, Generic)
 
 instance NFData   TypeClass
@@ -87,15 +90,16 @@ instance Hashable TypeClass
 
 instance Show TypeClass where
   show = \case
-    HasEq            -> "HasEq"
-    HasOrd           -> "HasOrd"
-    IsContainer      -> "IsContainer"
-    HasNatOps        -> "HasNatOperations"
-    HasIntOps        -> "HasIntOperations"
-    HasRatOps        -> "HasRatOperations"
-    HasNatLitsUpTo n -> "HasNatLiteralsUpTo " <> show n
-    HasIntLits       -> "HasIntLiterals"
-    HasRatLits       -> "HasRatLiterals"
+    HasEq              -> "HasEq"
+    HasOrd             -> "HasOrd"
+    HasNatOps          -> "HasNatOperations"
+    HasIntOps          -> "HasIntOperations"
+    HasRatOps          -> "HasRatOperations"
+    HasConOps          -> "HasConOperations"
+    HasNatLitsUpTo n   -> "HasNatLiteralsUpTo " <> show n
+    HasIntLits         -> "HasIntLiterals"
+    HasRatLits         -> "HasRatLiterals"
+    HasConLitsOfSize n -> "HasConLiteralsOfSize " <> show n
 
 instance Pretty TypeClass where
   pretty = pretty . show

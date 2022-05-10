@@ -1,2 +1,2 @@
-Error: Type error: Could not satisfy 'IsContainer ?14 Nat' (in dataset 'trainingDataset')
+Error: Type error: Could not satisfy 'HasContainerLiteralsOfSize 4 ?14 Nat' (in dataset 'trainingDataset')
 Fix: check your types

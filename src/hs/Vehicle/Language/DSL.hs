@@ -15,10 +15,11 @@ module Vehicle.Language.DSL
   , hasNatOps
   , hasIntOps
   , hasRatOps
+  , hasConOps
   , hasNatLitsUpTo
   , hasIntLits
   , hasRatLits
-  , isContainer
+  , hasConLitsOfSize
   , tMax
   , tHole
   , piType
@@ -142,6 +143,9 @@ hasIntOps t = typeClass (TypeClass HasIntOps) `eApp` [t]
 hasRatOps :: DSLExpr -> DSLExpr
 hasRatOps t = typeClass (TypeClass HasRatOps) `eApp` [t]
 
+hasConOps :: DSLExpr -> DSLExpr -> DSLExpr
+hasConOps tCont tElem = typeClass (TypeClass HasConOps) `eApp` [tCont, tElem]
+
 hasNatLitsUpTo :: Int -> DSLExpr -> DSLExpr
 hasNatLitsUpTo n t = typeClass (TypeClass (HasNatLitsUpTo n)) `eApp` [t]
 
@@ -151,8 +155,9 @@ hasIntLits t = typeClass (TypeClass HasIntLits) `eApp` [t]
 hasRatLits :: DSLExpr -> DSLExpr
 hasRatLits t = typeClass (TypeClass HasRatLits) `eApp` [t]
 
-isContainer :: DSLExpr -> DSLExpr -> DSLExpr
-isContainer tCont tElem = typeClass (TypeClass IsContainer) `eApp` [tCont, tElem]
+hasConLitsOfSize :: Int -> DSLExpr -> DSLExpr -> DSLExpr
+hasConLitsOfSize n tCont tElem =
+  typeClass (TypeClass (HasConLitsOfSize n)) `eApp` [tCont, tElem]
 
 --------------------------------------------------------------------------------
 -- Operations
