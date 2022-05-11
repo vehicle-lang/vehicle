@@ -10,6 +10,7 @@ import Test.Compile.Unit.PositionTree ( positionTreeTests )
 import Test.Compile.Unit.LetInsertion ( letInsertionTests )
 import Test.Compile.Unit.CoDeBruijn ( coDeBruijnTests )
 import Test.Compile.Unit.IfElimination ( ifEliminationTests )
+import Test.Compile.Unit.QuantifierLifting ( quantiferLiftingTests )
 
 
 -- TODO plug through the testing options
@@ -20,4 +21,5 @@ unitTests = return $ testGroup "UnitTests"
   , positionTreeTests
   , letInsertionTests
   , ifEliminationTests
+  , quantiferLiftingTests
   ]

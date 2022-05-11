@@ -74,6 +74,7 @@ library
                       , Vehicle.Compile.CoDeBruijnify
                       , Vehicle.Compile.Normalise
                       , Vehicle.Compile.Normalise.IfElimination
+                      , Vehicle.Compile.Normalise.QuantifierLifting
                       , Vehicle.Compile.Normalise.DNF
                       , Vehicle.Compile.Resource.Network
                       , Vehicle.Compile.Resource.Dataset
@@ -222,6 +223,7 @@ test-suite vehicle-test
                     , Test.Compile.Unit.LetInsertion
                     , Test.Compile.Unit.PositionTree
                     , Test.Compile.Unit.IfElimination
+                    , Test.Compile.Unit.QuantifierLifting
                     , Test.Compile.Utils
                     -- , Test.Compile.Generative
                     -- , Test.Compile.Generative.Generator

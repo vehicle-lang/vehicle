@@ -1,6 +1,6 @@
 
 module Vehicle.Compile.Normalise.IfElimination
-  ( liftAndEliminateIfs
+  ( eliminateIfs
   ) where
 
 import Data.List.NonEmpty as NonEmpty
@@ -10,18 +10,24 @@ import Vehicle.Compile.Error
 import Vehicle.Language.Print
 
 --------------------------------------------------------------------------------
--- If operations
+-- Primary function
 
 -- | Lifts all `if`s in the provided expression `e`, and eliminates any which
 -- live in which is assumed to
 -- have been normalised and is of type `Bool`. It does this by recursively
 -- lifting the `if` expression until it reaches a point where we know that it's
 -- of type `Bool` in which case we then normalise it to an `or` statement.
-liftAndEliminateIfs :: MonadCompile m => CheckedExpr -> m CheckedExpr
-liftAndEliminateIfs e = logCompilerPass "if elimination" $ do
-  result <- liftAndElim liftIf elimIf e
+eliminateIfs :: MonadCompile m => CheckedExpr -> m CheckedExpr
+eliminateIfs e = logCompilerPass currentPass $ do
+  result <- liftAndElimIf e
   logCompilerPassOutput (prettyFriendly result)
   return result
+
+currentPass :: Doc a
+currentPass = "if elimination"
+
+--------------------------------------------------------------------------------
+-- If operations
 
 liftIf :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
 liftIf f (IfExpr ann _t [cond, e1, e2]) = IfExpr ann
@@ -48,19 +54,8 @@ elimIf (IfExpr ann _ [cond, e1, e2]) = argExpr $
     notOp arg = ExplicitArg ann (NotExpr ann [arg])
 elimIf e = e
 
---------------------------------------------------------------------------------
--- General operations
-
-type LiftingOp = (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
-type EliminationOp = CheckedExpr -> CheckedExpr
-
-liftAndElim :: MonadCompile m
-            => LiftingOp
-            -> EliminationOp
-            -> CheckedExpr
-            -> m CheckedExpr
-liftAndElim liftOp elimOp expr =
-  let recCall = liftAndElim liftOp elimOp in
+liftAndElimIf :: MonadCompile m => CheckedExpr -> m CheckedExpr
+liftAndElimIf expr =
   case expr of
     Type{}     -> return expr
     PrimDict{} -> return expr
@@ -72,48 +67,44 @@ liftAndElim liftOp elimOp expr =
 
     Pi{}       -> typeError currentPass "Pi"
 
-    QuantifierExpr q  ann binder body -> QuantifierExpr q  ann binder . elimOp <$> recCall body
-    NotExpr           ann args        -> NotExpr           ann   <$> traverse (traverseArgExpr (fmap elimOp . recCall)) args
-    BooleanOp2Expr op ann args        -> BooleanOp2Expr op ann   <$> traverse (traverseArgExpr (fmap elimOp . recCall)) args
-    IfExpr            ann t args      -> IfExpr            ann t <$> traverse (traverseArgExpr (fmap elimOp . recCall)) args
+    QuantifierExpr q  ann binder body -> QuantifierExpr q  ann binder . elimIf <$> liftAndElimIf body
+    NotExpr           ann args        -> NotExpr           ann   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
+    BooleanOp2Expr op ann args        -> BooleanOp2Expr op ann   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
+    IfExpr            ann t args      -> IfExpr            ann t <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
 
     Let ann bound binder body ->
-      Let ann <$> recCall bound <*> pure binder <*> recCall body
+      Let ann <$> liftAndElimIf bound <*> pure binder <*> liftAndElimIf body
 
     App ann fun args -> do
-      fun'  <- recCall fun
-      args' <- traverse (traverseArgExpr recCall) args
-      return $ liftOp (\v -> liftArgs liftOp (\vs -> App ann v vs) args') fun'
+      fun'  <- liftAndElimIf fun
+      args' <- traverse (traverseArgExpr liftAndElimIf) args
+      return $ liftIf (\v -> liftArgs (\vs -> App ann v vs) args') fun'
 
     Ann ann e t -> do
-      e' <- recCall e
-      t' <- recCall t
-      return $ liftOp (\e'' -> liftOp (\t'' -> Ann ann e'' t'') t') e'
+      e' <- liftAndElimIf e
+      t' <- liftAndElimIf t
+      return $ liftIf (\e'' -> liftIf (\t'' -> Ann ann e'' t'') t') e'
 
     LSeq ann dict es -> do
-      dict' <- recCall dict
-      es'   <- traverse recCall es
-      return $ liftOp (\dict'' -> liftSeq liftOp (\es'' -> LSeq ann dict'' es'') es') dict'
+      dict' <- liftAndElimIf dict
+      es'   <- traverse liftAndElimIf es
+      return $ liftIf (\dict'' -> liftSeq (\es'' -> LSeq ann dict'' es'') es') dict'
 
     -- Quantified lambdas should have been caught before now.
     Lam{} -> normalisationError currentPass "Non-quantified Lam"
 
-liftArg :: LiftingOp -> (CheckedArg -> CheckedExpr) -> CheckedArg -> CheckedExpr
-liftArg liftOp f (Arg ann v e) = liftOp (f . Arg ann v) e
+liftArg :: (CheckedArg -> CheckedExpr) -> CheckedArg -> CheckedExpr
+liftArg f (Arg ann v e) = liftIf (f . Arg ann v) e
 
-liftSeq :: LiftingOp -> ([CheckedExpr] -> CheckedExpr) -> [CheckedExpr] -> CheckedExpr
-liftSeq _      f []       = f []
-liftSeq liftOp f (x : xs) = liftOp (\v -> liftSeq liftOp (\ys -> f (v : ys)) xs) x
+liftSeq :: ([CheckedExpr] -> CheckedExpr) -> [CheckedExpr] -> CheckedExpr
+liftSeq f []       = f []
+liftSeq f (x : xs) = liftIf (\v -> liftSeq (\ys -> f (v : ys)) xs) x
 
 -- I feel this should be definable in terms of `liftIfs`, but I can't find it.
-liftArgs :: LiftingOp
-         -> (NonEmpty CheckedArg -> CheckedExpr)
+liftArgs :: (NonEmpty CheckedArg -> CheckedExpr)
          -> NonEmpty CheckedArg
          -> CheckedExpr
-liftArgs liftOp f (x :| [])       = liftArg liftOp (\x' -> f (x' :| [])) x
-liftArgs liftOp f (arg :| y : xs) = if visibilityOf arg == Explicit
-  then liftArg liftOp (\arg' -> liftArgs liftOp (\as -> f (arg' <| as)) (y :| xs)) arg
-  else                          liftArgs liftOp (\as -> f (arg  <| as)) (y :| xs)
-
-currentPass :: Doc a
-currentPass = "if elimination"
+liftArgs f (x :| [])       = liftArg (\x' -> f (x' :| [])) x
+liftArgs f (arg :| y : xs) = if visibilityOf arg == Explicit
+  then liftArg (\arg' -> liftArgs (\as -> f (arg' <| as)) (y :| xs)) arg
+  else                   liftArgs (\as -> f (arg  <| as)) (y :| xs)

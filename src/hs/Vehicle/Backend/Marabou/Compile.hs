@@ -11,7 +11,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise (normalise, NormalisationOptions(..))
 import Vehicle.Compile.Normalise.NetworkApplications
-import Vehicle.Compile.Normalise.IfElimination (liftAndEliminateIfs)
+import Vehicle.Compile.Normalise.IfElimination (eliminateIfs)
+import Vehicle.Compile.Normalise.QuantifierLifting (liftQuantifiers)
 import Vehicle.Compile.Normalise.DNF (convertToDNF, splitDisjunctions)
 import Vehicle.Compile.Descope (runDescope)
 import Vehicle.Compile.SupplyNames (supplyDBNames)
@@ -71,7 +72,7 @@ compileProperty ident networkCtx expr =
       }) possiblyNegatedExpr
 
     -- Eliminate any if-expressions
-    ifFreeExpr <- liftAndEliminateIfs normExpr
+    ifFreeExpr <- eliminateIfs normExpr
 
     -- Normalise again to push through the introduced nots. Can definitely be
     -- more efficient here and just push in the not, when we introduce
@@ -104,10 +105,12 @@ compileQuery :: MonadCompile m
              -> m MarabouQuery
 compileQuery ident networkCtx originalQuantifier (queryId, expr) =
   logCompilerPass ("query" <+> pretty queryId) $ do
+    -- Lift all quantifiers to the top-level
+    quantLiftedExpr <- liftQuantifiers expr
 
     -- Convert all applications of networks into magic variables
     (networklessExpr, metaNetwork) <-
-      convertNetworkAppsToMagicVars Marabou networkCtx Any expr
+      convertNetworkAppsToMagicVars Marabou networkCtx Any quantLiftedExpr
 
     -- Normalise the expression to remove any implications, push the negations through
     -- and expand out any multiplication.
