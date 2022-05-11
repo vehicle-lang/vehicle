@@ -16,7 +16,6 @@ import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.WeakHeadNormalForm
 import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Type.Constraint (ConstraintContext(varContext))
 
 --------------------------------------------------------------------------------
 -- Solution
