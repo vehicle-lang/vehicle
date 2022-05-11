@@ -53,7 +53,7 @@ recLift expr =
       e1' <- recLift e1
       e2' <- recLift e2
       return $
-        liftQuant e1' $ \e1'' d1 ->
+        liftQuant e1' $ \e1'' _d1 ->
           liftQuant e2' $ \e2'' d2 ->
             AndExpr ann
               [ ExplicitArg ann1 (liftFreeDBIndices d2 e1'')

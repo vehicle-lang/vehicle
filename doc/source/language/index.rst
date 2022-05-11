@@ -4,9 +4,9 @@ Specification language
 .. toctree::
   :maxdepth: 1
 
-  functions
   arithmetic
   basic-logic
+  functions
   quantifiers
   lists
   tensors
