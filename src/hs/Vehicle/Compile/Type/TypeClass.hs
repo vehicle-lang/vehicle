@@ -16,6 +16,7 @@ import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.WeakHeadNormalForm
 import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Type.Constraint (ConstraintContext(varContext))
 
 --------------------------------------------------------------------------------
 -- Solution
@@ -229,28 +230,28 @@ solveDefaultTypeClassConstraints :: MonadConstraintSolving m
 solveDefaultTypeClassConstraints constraints = do
   -- First group by common meta-variables
   let constraintsByMeta = Map.mapMaybe id $ groupByMetas constraints
-  newConstraints <- forM (Map.assocs constraintsByMeta) $ \(meta, (tc, ctx)) -> do
+  newConstraints <- forM (Map.assocs constraintsByMeta) $ \(meta, (tc, (metaExpr, ctx))) -> do
     logDebug MaxDetail $ "Using default for" <+> pretty meta <+> "=" <+> pretty tc
     let ann = inserted $ provenanceOf ctx
     solution <- defaultSolution ann tc
-    return $ UC ctx (Unify (Meta ann meta, solution))
+    return $ UC ctx (Unify (metaExpr, solution))
 
   return $ if null newConstraints
     then Stuck
     else Progress newConstraints mempty
 
 groupByMetas :: [(TypeClassConstraint, Ctx)]
-             -> Map Meta (Maybe (TypeClass, Ctx))
+             -> Map Meta (Maybe (TypeClass, (CheckedExpr, Ctx)))
 groupByMetas []       = mempty
 groupByMetas ((x, ctx) : xs) = case getDefaultCandidate x of
   Nothing      -> groupByMetas xs
-  Just (m, tc) -> Map.insertWith merge m (Just (tc, ctx)) (groupByMetas xs)
+  Just (m, mExpr, tc) -> Map.insertWith merge m (Just (tc, (mExpr, ctx))) (groupByMetas xs)
   where
-    merge :: Maybe (TypeClass, Ctx) -> Maybe (TypeClass, Ctx) -> Maybe (TypeClass, Ctx)
+    merge :: Maybe (TypeClass, a) -> Maybe (TypeClass, a) -> Maybe (TypeClass, a)
     merge (Just tc1) (Just tc2) = strongest tc1 tc2
     merge _          _          = Nothing
 
-strongest :: (TypeClass, Ctx) -> (TypeClass, Ctx) -> Maybe (TypeClass, Ctx)
+strongest :: (TypeClass, a) -> (TypeClass, a) -> Maybe (TypeClass, a)
 strongest x@(tc1, _) y@(tc2, _) = case (numType tc1, numType tc2) of
   (Just c1, Just c2) -> Just $ if c1 > c2 then x else y
   _                  -> Nothing
@@ -274,13 +275,17 @@ defaultSolution ann HasRatLits         = return $ RatType ann
 defaultSolution _   tc                 = compilerDeveloperError $
   "TypeClass" <+> pretty tc <+> "should have already been eliminated"
 
-getDefaultCandidate :: TypeClassConstraint -> Maybe (Meta, TypeClass)
+getDefaultCandidate :: TypeClassConstraint -> Maybe (Meta, CheckedExpr, TypeClass)
 getDefaultCandidate (_ `Has` e) = case e of
-  (HasNatLitsUpToExpr _ n (Meta _ m)) -> Just (m , HasNatLitsUpTo n)
-  (HasIntLitsExpr     _   (Meta _ m)) -> Just (m , HasIntLits)
-  (HasRatLitsExpr     _   (Meta _ m)) -> Just (m , HasRatLits)
-  (HasNatOpsExpr      _   (Meta _ m)) -> Just (m , HasNatOps)
-  (HasIntOpsExpr      _   (Meta _ m)) -> Just (m , HasIntOps)
-  (HasRatOpsExpr      _   (Meta _ m)) -> Just (m , HasRatOps)
-  _                                   -> Nothing
+  HasNatLitsUpToExpr _ n t -> extractMeta t (HasNatLitsUpTo n)
+  HasIntLitsExpr     _   t -> extractMeta t HasIntLits
+  HasRatLitsExpr     _   t -> extractMeta t HasRatLits
+  HasNatOpsExpr      _   t -> extractMeta t HasNatOps
+  HasIntOpsExpr      _   t -> extractMeta t HasIntOps
+  HasRatOpsExpr      _   t -> extractMeta t HasRatOps
+  _                        -> Nothing
 
+extractMeta :: CheckedExpr -> TypeClass -> Maybe (Meta, CheckedExpr, TypeClass)
+extractMeta t tc = case exprHead t of
+  (Meta _ m) -> Just (m, t, tc)
+  _          -> Nothing
