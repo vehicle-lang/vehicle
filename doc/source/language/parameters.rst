@@ -1,5 +1,5 @@
-Parameter declarations
-======================
+Parameters
+==========
 
 There are several reasons that one might want to set the value of
 a constant at compile time rather than when writing the spec. For example,

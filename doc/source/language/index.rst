@@ -10,11 +10,11 @@ Specification language
   quantifiers
   lists
   tensors
-  type-declarations
-  network-declarations
-  dataset-declarations
-  parameter-declarations
+  networks
+  datasets
+  parameters
   properties
+  type-synonyms
   let-expressions
   annotations-holes
   tips-and-tricks

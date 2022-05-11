@@ -1,5 +1,5 @@
-Dataset declarations
-====================
+Datasets
+========
 
 .. autosummary::
    :toctree: generated

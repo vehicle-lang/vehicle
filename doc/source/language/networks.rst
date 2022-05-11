@@ -1,5 +1,5 @@
-Network declarations
-====================
+Networks
+========
 
 .. autosummary::
    :toctree: generated
