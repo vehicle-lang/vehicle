@@ -16,7 +16,7 @@ import Test.Compile.Utils (MonadTest)
 
 -- Can't figure out how to get this passed in via the command-line *sadness*
 loggingOptions :: Maybe Int
-loggingOptions = Nothing -- Just 3
+loggingOptions = Nothing --Just 3
 
 main :: IO ()
 main = do

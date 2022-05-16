@@ -1,5 +1,3 @@
-{-# LANGUAGE ImportQualifiedPost #-}
-
 module Main where
 
 import GHC.IO.Encoding (utf8, setLocaleEncoding)

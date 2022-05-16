@@ -34,7 +34,7 @@ goldenTests = testGroup "GoldenTests" <$>
     [ testSpec
       { testName       = "windController"
       , testLocation   = Examples
-      , testTargets    = [VNNLibBackend, AgdaBackend, MarabouBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
     , testSpec
@@ -47,31 +47,31 @@ goldenTests = testGroup "GoldenTests" <$>
     , testSpec
       { testName       = "andGate"
       , testLocation   = Tests
-      , testTargets    = [VNNLibBackend, AgdaBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
     , testSpec
       { testName       = "autoencoderError"
       , testLocation   = Tests
-      , testTargets    = [VNNLibBackend, AgdaBackend]
+      , testTargets    = [AgdaBackend] -- MarabouBackend
       }
 
     , testSpec
       { testName       = "increasing"
       , testLocation   = Tests
-      , testTargets    = [VNNLibBackend, AgdaBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
     , testSpec
       { testName       = "monotonicity"
       , testLocation   = Tests
-      , testTargets    = [VNNLibBackend, AgdaBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
     , testSpec
       { testName       = "reachability"
       , testLocation   = Tests
-      , testTargets    = [VNNLibBackend, AgdaBackend, MarabouBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
     , testSpec
@@ -102,7 +102,7 @@ goldenTests = testGroup "GoldenTests" <$>
     , testSpec
       { testName       = "simple-if"
       , testLocation   = Tests
-      , testTargets    = [MarabouBackend, AgdaBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
     , testSpec
@@ -163,7 +163,6 @@ goldenDir = "test" </> "Test" </> "Compile" </> "Golden"
 
 getGoldenFilepathSuffix :: Backend -> String
 getGoldenFilepathSuffix (Verifier Marabou) = "-marabou"
-getGoldenFilepathSuffix (Verifier VNNLib)  = ".vnnlib"
 getGoldenFilepathSuffix (ITP Agda)         = ".agda"
 getGoldenFilepathSuffix LossFunction       = ".json"
 

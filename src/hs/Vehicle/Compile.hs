@@ -28,8 +28,6 @@ import Vehicle.Compile.Normalise (normalise, defaultNormalisationOptions)
 import Vehicle.Compile.Resource.Network (removeNetworkDecls)
 import Vehicle.Backend.Marabou qualified as Marabou
 import Vehicle.Backend.Marabou (MarabouProperty)
-import Vehicle.Backend.VNNLib qualified as VNNLib
-import Vehicle.Backend.VNNLib (VNNLibProperty, writeVNNLibQueryFiles)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.LossFunction ( LExpr, writeLossFunctionFiles)
@@ -54,10 +52,6 @@ compile loggingOptions CompileOptions{..} = do
       marabouProperties <- compileToMarabou loggingOptions resources spec
       Marabou.writeSpecFiles outputFile marabouProperties
 
-    Verifier VNNLib -> do
-      vnnlibProperties <- compileToVNNLib loggingOptions spec resources
-      writeVNNLibQueryFiles outputFile vnnlibProperties
-
     LossFunction -> do
       lossFunction <- compileToLossFunction loggingOptions spec resources
       writeLossFunctionFiles outputFile lossFunction
@@ -73,15 +67,6 @@ compileToMarabou loggingOptions resources spec =
   fromLoggedEitherIO loggingOptions $ do
     (networkCtx, prog) <- typeCheckProgAndLoadResources resources spec
     Marabou.compile networkCtx prog
-
-compileToVNNLib :: LoggingOptions
-                -> Text
-                -> Resources
-                -> IO [VNNLibProperty]
-compileToVNNLib loggingOptions spec resources =
-  fromLoggedEitherIO loggingOptions $ do
-    (networkCtx, prog) <- typeCheckProgAndLoadResources resources spec
-    VNNLib.compile networkCtx prog
 
 compileToAgda :: LoggingOptions
               -> AgdaOptions

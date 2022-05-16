@@ -2,8 +2,6 @@ module Vehicle.Verify where
 
 import Control.Monad (forM)
 import Control.Monad.Trans (MonadIO, liftIO)
-import System.IO (hPutStrLn, stderr)
-import System.Exit (exitFailure)
 import System.Directory (makeAbsolute)
 
 import Vehicle.Backend.Prelude
@@ -30,9 +28,6 @@ verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
     Marabou -> do
       marabouSpec <- liftIO $ compileToMarabou loggingOptions resources spec
       liftIO $ Marabou.verifySpec Nothing marabouSpec (networks resources)
-    VNNLib  -> do
-      liftIO $ hPutStrLn stderr "VNNLib is not currently a valid output target"
-      liftIO exitFailure
 
   programOutput loggingOptions $ pretty status
 

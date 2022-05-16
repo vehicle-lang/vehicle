@@ -148,7 +148,7 @@ addToBoundCtx n t e = local add
 
 logCompilerPass :: MonadLogger m => Doc a -> m b -> m b
 logCompilerPass passName performPass = do
-  logDebug MinDetail $ "Beginning" <+> passName
+  logDebug MinDetail $ "Starting" <+> passName
   incrCallDepth
   result <- performPass
   decrCallDepth

@@ -5,7 +5,6 @@ module Vehicle.Language.AST.Builtin
   , NumericType(..)
   , ContainerType(..)
   , Quantifier(..)
-  , Relation(..)
   , Order(..)
   , Equality(..)
   , TypeClass(..)
@@ -18,7 +17,6 @@ module Vehicle.Language.AST.Builtin
   , isStrict
   , flipStrictness
   , flipOrder
-  , flipRel
   , chainable
   ) where
 
@@ -195,18 +193,6 @@ flipOrder = \case
 
 chainable :: Order -> Order -> Bool
 chainable e1 e2 = e1 == e2 || e1 == flipStrictness e2
-
---------------------------------------------------------------------------------
--- Relation
-
-data Relation
-  = OrderRel Order
-  | EqualityRel Equality
-  deriving (Eq, Ord)
-
-flipRel :: Relation -> Relation
-flipRel (OrderRel order) = OrderRel (flipOrder order)
-flipRel (EqualityRel eq) = EqualityRel eq
 
 --------------------------------------------------------------------------------
 -- Boolean operations

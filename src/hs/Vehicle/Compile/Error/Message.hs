@@ -382,18 +382,14 @@ instance MeaningfulError CompileError where
                      "issue tracker to ask for support."
       } where actualOrder = if quantifier == All then flipStrictness order else order
 
-    UnsupportedEquality target p quantifier eq -> UError $ UserError
+    UnsupportedInequality target p identifier -> UError $ UserError
       { provenance = p
-      , problem    = "The use of" <+> squotes (pretty actualEq) <+> "inside of an" <+>
-                     quantifierAdverb quantifier <+> "quantifier property" <+>
-                     "is not currently supported by" <+> pretty target
-      , fix        = Just $ "instead of an equality, try bounding the region using" <+>
-                     squotes (pretty less) <+> "and" <+>  squotes (pretty greater) <+>
-                     "instead, otherwise please open an issue on the" <+> pretty target <+>
-                     "issue tracker to ask for support."
-      } where
-          actualEq = if quantifier == All then neg eq else eq
-          (less, greater) = if quantifier == All then (Lt, Gt) else (Le, Ge)
+      , problem    = "After compilation, property" <+> squotes (pretty identifier) <+>
+                     "contains a `!=` which is not current supported by" <+>
+                     pretty target <> ". See https://github.com/vehicle-lang/vehicle/issues/74" <+>
+                     "for details."
+      , fix        = Just "not easy, needs fixing upstream in Marabou."
+      }
 
     UnsupportedPolymorphicEquality target p typeName -> UError $ UserError
       { provenance = p
@@ -413,7 +409,7 @@ instance MeaningfulError CompileError where
                      "Vehicle issue tracker describing the use-case."
       }
 
-    NonLinearConstraint target p ident v1 v2 -> UError $ UserError
+    NonLinearConstraint target p ident _ v1 v2 -> UError $ UserError
       { provenance = p
       , problem    = "Property" <+> pretty ident <+> "contains a non-linear" <+>
                      "constraint (in particular constraint contains" <+>

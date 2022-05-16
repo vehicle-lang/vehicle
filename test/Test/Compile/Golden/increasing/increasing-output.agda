@@ -8,14 +8,14 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
+open import Data.Rational as ℚ using (ℚ)
 
 module increasing-temp-output where
 
-postulate f : ℝ → ℝ
+postulate f : ℚ → ℚ
 
 abstract
-  increasing : ∀ (x : ℝ) → x ℝ.≤ f x
+  increasing : ∀ (x : ℚ) → x ℚ.≤ f x
   increasing = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

@@ -20,13 +20,13 @@ import Vehicle.Compile.AlphaEquivalence ( alphaEq )
 import Vehicle.Compile.Error
 
 -- |Run a function in 'MonadNorm'.
-normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) a)
+normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) ([DBBinding], a))
           => NormalisationOptions
           -> a
           -> m a
-normalise options x = logCompilerPass "normalisation" $ do
+normalise options@Options{..} x = logCompilerPass "normalisation" $ do
   result <- evalStateT (runReaderT (nf x) options) mempty
-  logCompilerPassOutput (prettyFriendly result)
+  logCompilerPassOutput (prettyFriendlyDB boundCtx result)
   return result
 
 --------------------------------------------------------------------------------
@@ -38,6 +38,7 @@ data NormalisationOptions = Options
   { implicationsToDisjunctions :: Bool
   , subtractionToAddition      :: Bool
   , expandOutPolynomials       :: Bool
+  , boundCtx                   :: [DBBinding]
   }
 
 defaultNormalisationOptions :: NormalisationOptions
@@ -45,6 +46,7 @@ defaultNormalisationOptions = Options
   { implicationsToDisjunctions = False
   , subtractionToAddition      = False
   , expandOutPolynomials       = False
+  , boundCtx                   = []
   }
 
 --------------------------------------------------------------------------------

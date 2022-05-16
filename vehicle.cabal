@@ -23,6 +23,7 @@ common common-base
   build-depends:      base >=4.10 && <5
                     , text >=1.2 && <2
   default-language:   Haskell2010
+  default-extensions: ImportQualifiedPost
 
 -- The executable for the Shake build system
 executable build
@@ -72,14 +73,17 @@ library
                       , Vehicle.Compile.Scope
                       , Vehicle.Compile.Type
                       , Vehicle.Compile.CoDeBruijnify
+                      , Vehicle.Compile.Linearity
+                      , Vehicle.Compile.Linearity.Core
+                      , Vehicle.Compile.Linearity.GaussianElimination
                       , Vehicle.Compile.Normalise
                       , Vehicle.Compile.Normalise.IfElimination
                       , Vehicle.Compile.Normalise.QuantifierLifting
                       , Vehicle.Compile.Normalise.DNF
+                      , Vehicle.Compile.Normalise.UserVariables
                       , Vehicle.Compile.Resource.Network
                       , Vehicle.Compile.Resource.Dataset
                       , Vehicle.Compile.Resource.Parameter
-                      , Vehicle.Compile.Normalise.NetworkApplications
                       , Vehicle.Compile.LetInsertion
                       , Vehicle.Compile.Simplify
                       , Vehicle.Compile.SupplyNames
@@ -93,7 +97,6 @@ library
                       , Vehicle.Verify.VerificationStatus
 
                       , Vehicle.Backend.Agda
-                      , Vehicle.Backend.VNNLib
                       , Vehicle.Backend.Marabou
                       , Vehicle.Backend.Prelude
                       , Vehicle.Backend.LossFunction
@@ -135,9 +138,6 @@ library
                       , Vehicle.Backend.Marabou.Core
                       , Vehicle.Backend.Marabou.Compile
                       , Vehicle.Backend.Marabou.Interact
-                      , Vehicle.Backend.VNNLib.Core
-                      , Vehicle.Backend.VNNLib.Compile
-                      , Vehicle.Backend.VNNLib.Interact
                       , Vehicle.Backend.LossFunction.Compile
                       , Vehicle.Backend.LossFunction.Interact
 
@@ -172,8 +172,7 @@ library
                       , vector
 
   ghc-options:          -Wall -fprint-potential-instances
-  default-extensions:   ImportQualifiedPost
-                      , TypeApplications
+  default-extensions:   TypeApplications
                       , TypeFamilies
                       , TypeOperators
                       , RankNTypes

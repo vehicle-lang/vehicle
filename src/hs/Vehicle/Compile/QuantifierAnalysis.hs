@@ -15,7 +15,7 @@ checkQuantifiersAndNegateIfNecessary :: MonadCompile m
                                      => Backend
                                      -> Identifier
                                      -> CheckedExpr
-                                     -> m (Bool, Quantifier, CheckedExpr)
+                                     -> m (Bool, CheckedExpr)
 checkQuantifiersAndNegateIfNecessary backend ident expr =
   logCompilerPass "quantifier analysis" $ do
     quantifier <- checkQuantifiersAreHomogeneous backend ident expr
@@ -30,7 +30,7 @@ checkQuantifiersAndNegateIfNecessary backend ident expr =
         return $ NotExpr ann [ExplicitArg ann expr]
 
     logCompilerPassOutput (prettyFriendly outputExpr)
-    return (quantifier == All, quantifier, outputExpr)
+    return (quantifier == All, outputExpr)
 
 -- | Checks that the quantifiers within the expression are homogeneous,
 -- returning the quantifier. Defaults to returning `All` if the expression

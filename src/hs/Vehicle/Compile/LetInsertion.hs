@@ -2,7 +2,7 @@ module Vehicle.Compile.LetInsertion
   ( insertLets
   ) where
 
-import Control.Monad.Reader (MonadReader(..), runReaderT)
+import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.IntMap qualified as IntMap
 import Data.IntMap (IntMap)
@@ -19,14 +19,17 @@ import Vehicle.Compile.AlphaEquivalence
 -- to the highest possible level.
 insertLets :: MonadLogger m
            => (CheckedCoDBExpr -> Int -> Bool)
+           -> Bool
            -> CheckedExpr
            -> m CheckedExpr
-insertLets subexprFilter expr = logCompilerPass "let insertion" $ do
-  runReaderT (applyInsert expr) subexprFilter
+insertLets subexprFilter liftOverBinders expr = logCompilerPass "let insertion" $ do
+  result <- runReaderT applyInsert (subexprFilter, liftOverBinders)
+  logCompilerPassOutput (prettyFriendly result)
+  return result
   where
-    applyInsert :: MonadLetInsert m => CheckedExpr -> m CheckedExpr
-    applyInsert e = do
-      (result, sm) <- letInsert (toCoDBExpr e)
+    applyInsert :: MonadLetInsert m => m CheckedExpr
+    applyInsert = do
+      (result, sm) <- letInsert (toCoDBExpr expr)
       -- Any remaining subexpressions must involve free variables and therefore
       -- we can bind them here at the top level.
       (letBoundResult, _) <- letBindSubexpressions mempty (IntMap.elems sm) result
@@ -69,7 +72,7 @@ type SubexpressionMap = IntMap Subexpression
 
 type MonadLetInsert m =
   ( MonadLogger m
-  , MonadReader (CheckedCoDBExpr -> Int -> Bool) m
+  , MonadReader (CheckedCoDBExpr -> Int -> Bool, Bool) m
   )
 
 letInsert :: MonadLetInsert m => CheckedCoDBExpr -> m (CheckedCoDBExpr, SubexpressionMap)
@@ -156,9 +159,14 @@ liftOverBinder :: MonadLetInsert m
                => (CheckedCoDBExpr, SubexpressionMap)
                -> m (CheckedCoDBExpr, SubexpressionMap)
 liftOverBinder (body, sm) = do
+  liftOverBinders <- asks snd
   -- Obtain the subexpressions that need to be inserted before the binder.
-  let (insertSM, remainingSM) = IntMap.partition shouldInsertHere sm
-  let subexprsToInsert = IntMap.elems insertSM
+  let (insertSM, remainingSM) =
+        if liftOverBinders
+          then IntMap.partition shouldInsertHere sm
+          else (sm, mempty)
+
+  let subexprsToInsert = reverse (IntMap.elems insertSM)
 
   -- Let bind those subexpressions.
   (updatedBody, updatedRemainingSM) <- letBindSubexpressions remainingSM subexprsToInsert body
@@ -186,7 +194,7 @@ letBindSubexpressions :: MonadLetInsert m
 letBindSubexpressions remainingSM []               expr = return (expr, remainingSM)
 letBindSubexpressions remainingSM subexprsToInsert expr = do
   -- Filter the subexpressions using the provided filter.
-  exprFilter <- ask
+  exprFilter <- asks fst
   let filteredSubexprs = filter (filterItem exprFilter) subexprsToInsert
 
   -- Sort the subexpressions by prefix order so we insert the "larger" ones first.
@@ -219,7 +227,7 @@ letBindSubexpressions remainingSM subexprsToInsert expr = do
 
       -- Update the remaining subexpressions that are not going to be inserted here,
       -- to take into account the updated form of the body.
-      subexprFilter <- ask
+      subexprFilter <- asks fst
       logDebug MaxDetail $ "SM-before:" <+> prettySM body subexprFilter sm
       let updatedSM = fmap (updateSubexpression (positions cs)) sm
       logDebug MaxDetail $ "SM-after: " <+> prettySM updatedBody subexprFilter updatedSM
@@ -293,7 +301,7 @@ showIdentEntry e = do
 showIdentExit :: MonadLetInsert m => CheckedCoDBExpr -> SubexpressionMap -> m ()
 showIdentExit expr sm = do
   decrCallDepth
-  subexprFilter <- ask
+  subexprFilter <- asks fst
   logDebug MaxDetail ("letInsert-exit " <+> align (
       prettySimple (fromCoDB expr) <+> " |=" <> softline <>
       prettySM expr subexprFilter sm))

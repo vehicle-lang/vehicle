@@ -8,14 +8,14 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Data.Rational as ℝ using () renaming (ℚ to ℝ)
+open import Data.Rational as ℚ using (ℚ)
 
 module monotonicity-temp-output where
 
-postulate f : ℝ → ℝ
+postulate f : ℚ → ℚ
 
 abstract
-  monotonic : ∀ (x1 : ℝ) → ∀ (x2 : ℝ) → x1 ℝ.≤ x2 → f x1 ℝ.≤ f x2
+  monotonic : ∀ (x1 : ℚ) → ∀ (x2 : ℚ) → x1 ℚ.≤ x2 → f x1 ℚ.≤ f x2
   monotonic = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

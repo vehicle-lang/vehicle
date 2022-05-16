@@ -79,13 +79,13 @@ data CompileError
   | UnsupportedResource            Backend Provenance Identifier ResourceType
   | UnsupportedQuantifierSequence  Backend Provenance Identifier Quantifier
   | UnsupportedQuantifierPosition  Backend Provenance Identifier Quantifier Symbol
-  | UnsupportedVariableType        Backend Provenance Identifier Symbol OutputExpr [Builtin]
-  | UnsupportedEquality            Backend Provenance Quantifier Equality
+  | UnsupportedVariableType        Backend Provenance Identifier Symbol CheckedExpr [Builtin]
+  | UnsupportedInequality          Backend Provenance Identifier
   | UnsupportedOrder               Backend Provenance Quantifier Order
   | UnsupportedPolymorphicEquality Backend Provenance Symbol
   | UnsupportedBuiltin             Backend Provenance Builtin
   | UnsupportedNonMagicVariable    Backend Provenance Symbol
-  | NonLinearConstraint            Backend Provenance Identifier OutputExpr OutputExpr
+  | NonLinearConstraint            Backend Provenance Identifier [DBBinding] CheckedExpr CheckedExpr
   | NoNetworkUsedInProperty        Backend Provenance Identifier
   deriving (Show)
 

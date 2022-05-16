@@ -1,7 +1,7 @@
 module Vehicle.Backend.Marabou.Core where
 
 import Vehicle.Prelude
-import Vehicle.Compile.Normalise.NetworkApplications (MetaNetwork)
+import Vehicle.Resource.NeuralNetwork (MetaNetwork)
 
 type MarabouSpec = [MarabouProperty]
 

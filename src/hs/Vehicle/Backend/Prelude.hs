@@ -21,12 +21,10 @@ data ITP
   deriving (Eq, Show, Read)
 
 data Verifier
-  = VNNLib
-  | Marabou
+  = Marabou
   deriving (Eq, Show, Read)
 
 magicVariablePrefixes :: Verifier -> (Text, Text)
-magicVariablePrefixes VNNLib  = ("X_", "Y_")
 magicVariablePrefixes Marabou = ("x", "y")
 
 pattern AgdaBackend :: Backend
@@ -34,9 +32,6 @@ pattern AgdaBackend = ITP Agda
 
 pattern MarabouBackend :: Backend
 pattern MarabouBackend = Verifier Marabou
-
-pattern VNNLibBackend :: Backend
-pattern VNNLibBackend = Verifier VNNLib
 
 instance Pretty Backend where
   pretty (ITP x)      = pretty $ show x
@@ -60,14 +55,12 @@ instance Read Backend where
 commentTokenOf :: Backend -> Maybe (Doc a)
 commentTokenOf = \case
   Verifier Marabou -> Nothing
-  Verifier VNNLib  -> Just ";"
   ITP Agda         -> Just "--"
   LossFunction     -> Nothing
 
 versionOf :: Backend -> Maybe Version
 versionOf target = case target of
   Verifier Marabou -> Nothing
-  Verifier VNNLib  -> Nothing
   ITP Agda         -> Just $ makeVersion [2,6,2]
   LossFunction     -> Nothing
 

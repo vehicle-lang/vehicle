@@ -69,7 +69,7 @@ letInsertionTest subexprFilter input expected = do
   let inputExpr    = textToCheckedExpr input
   let expectedExpr = textToCheckedExpr expected
 
-  let result = discardLogger (insertLets subexprFilter inputExpr)
+  let result = discardLogger (insertLets subexprFilter True inputExpr)
   -- result <- flushLogs Nothing (insertLets subexprFilter inputExpr)
 
   -- Need to re-typecheck the result as let-insertion puts a Hole on

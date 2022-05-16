@@ -78,7 +78,7 @@ typeCheckingErrors = failTestGroup "TypingErrors"
   , testSpec
     { testName     = "unsolvedMeta"
     , testLocation = Tests
-    , testTargets  = [VNNLibBackend]
+    , testTargets  = [MarabouBackend]
     }
   ]
 

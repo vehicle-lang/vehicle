@@ -397,6 +397,12 @@ pattern
       , ExplicitArg ann (Lam ann binder body)
       ]
 
+pattern ExistsExpr :: ann
+                   -> Binder binder var ann
+                   -> Expr   binder var ann
+                   -> Expr   binder var ann
+pattern ExistsExpr ann binder body = QuantifierExpr Any ann binder body
+
 mkQuantifierSeq :: Quantifier
                 -> ann
                 -> [binder]
@@ -754,3 +760,4 @@ pattern
       :  InstanceArg ann (PrimDict ann (HasConOpsExpr ann tElem tCont))
       :  explicitArgs
       )
+
