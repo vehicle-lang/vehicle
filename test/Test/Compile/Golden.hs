@@ -148,6 +148,11 @@ goldenTests = testGroup "GoldenTests" <$>
       , testDatasets   = [("d", "dataset-rat-4.idx")]
       }
 
+    , testSpec
+      { testName       = "simple-gaussianElim"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      }
     -- , testSpec
     --   { testName       = "simple-vectorType"
     --   , testLocation   = Tests
