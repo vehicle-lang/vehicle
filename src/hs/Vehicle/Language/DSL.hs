@@ -12,9 +12,11 @@ module Vehicle.Language.DSL
   , tIndex
   , hasEq
   , hasOrd
-  , hasNatOps
-  , hasIntOps
-  , hasRatOps
+  , hasAdd
+  , hasSub
+  , hasMul
+  , hasDiv
+  , hasNeg
   , hasConOps
   , hasNatLitsUpTo
   , hasIntLits
@@ -128,20 +130,29 @@ tHole name = DSL $ \ann _ -> Hole ann name
 typeClass :: Builtin -> DSLExpr
 typeClass op = DSL $ \ann _ -> Builtin ann op
 
+hasSimpleTC :: TypeClass -> DSLExpr -> DSLExpr
+hasSimpleTC tc tArg = typeClass (TypeClass tc) `eApp` [tArg]
+
 hasEq :: DSLExpr -> DSLExpr
-hasEq tArg = typeClass (TypeClass HasEq) `eApp` [tArg]
+hasEq = hasSimpleTC HasEq
 
 hasOrd :: DSLExpr -> DSLExpr
-hasOrd tArg = typeClass (TypeClass HasOrd) `eApp` [tArg]
+hasOrd = hasSimpleTC HasOrd
 
-hasNatOps :: DSLExpr -> DSLExpr
-hasNatOps t = typeClass (TypeClass HasNatOps) `eApp` [t]
+hasAdd :: DSLExpr -> DSLExpr
+hasAdd = hasSimpleTC HasAdd
 
-hasIntOps :: DSLExpr -> DSLExpr
-hasIntOps t = typeClass (TypeClass HasIntOps) `eApp` [t]
+hasSub :: DSLExpr -> DSLExpr
+hasSub = hasSimpleTC HasSub
 
-hasRatOps :: DSLExpr -> DSLExpr
-hasRatOps t = typeClass (TypeClass HasRatOps) `eApp` [t]
+hasMul :: DSLExpr -> DSLExpr
+hasMul = hasSimpleTC HasMul
+
+hasDiv :: DSLExpr -> DSLExpr
+hasDiv = hasSimpleTC HasDiv
+
+hasNeg :: DSLExpr -> DSLExpr
+hasNeg = hasSimpleTC HasNeg
 
 hasConOps :: DSLExpr -> DSLExpr -> DSLExpr
 hasConOps tCont tElem = typeClass (TypeClass HasConOps) `eApp` [tCont, tElem]

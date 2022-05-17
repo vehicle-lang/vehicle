@@ -99,7 +99,9 @@ loopOverConstraints progress = do
         progressOnDefaults <- addNewConstraintsUsingDefaults constraints
         case progressOnDefaults of
           -- If we're still stuck then time to abort
-          Stuck -> throwError $ UnsolvedConstraints (c :| cs)
+          Stuck -> do
+            logDebug MaxDetail "Still stuck"
+            throwError $ UnsolvedConstraints (c :| cs)
           -- Otherwise start over with the remaining constraints
           _     -> loopOverConstraints progressOnDefaults
 
@@ -148,8 +150,7 @@ addNewConstraintsUsingDefaults :: MonadConstraintSolving m
                                => [Constraint]
                                -> m ConstraintProgress
 addNewConstraintsUsingDefaults constraints = do
-  logDebug MaxDetail "Temporarily stuck"
-  logDebug MaxDetail "Trying default type-class constraints"
+  logDebug MaxDetail "Temporarily stuck - trying default type-class constraints"
   incrCallDepth
   let tcConstraints = mapMaybe getTypeClassConstraint constraints
 

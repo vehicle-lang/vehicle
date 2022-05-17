@@ -60,16 +60,18 @@ tokMap = mkToken B.TokMap "map"
 tokFold = mkToken B.TokFold "fold"
 tokTrue = mkToken B.TokTrue "True"
 tokFalse = mkToken B.TokFalse "False"
-tokTCEq = mkToken B.TokTCEq "HasEq"
-tokTCOrd = mkToken B.TokTCOrd "HasOrd"
-tokTCNatOps  = mkToken B.TokTCNatOps "HasNatOperations"
-tokTCIntOps  = mkToken B.TokTCIntOps "HasIntOperations"
-tokTCRatOps  = mkToken B.TokTCRatOps "HasRatOperations"
-tokTCConOps  = mkToken B.TokTCConOps "HasContainerOperations"
-tokTCNatLits = mkToken B.TokTCNatLits "HasNatLiteralsUpTo"
-tokTCIntLits = mkToken B.TokTCIntLits "HasIntLiterals"
-tokTCRatLits = mkToken B.TokTCRatLits "HasRatLiterals"
-tokTCConLits = mkToken B.TokTCConLits "HasContainerLiteralsOfSize"
+tokHasEq      = mkToken B.TokHasEq      "HasEq"
+tokHasOrd     = mkToken B.TokHasOrd     "HasOrd"
+tokHasAdd     = mkToken B.TokHasAdd     "HasAdd"
+tokHasSub     = mkToken B.TokHasSub     "HasSub"
+tokHasMul     = mkToken B.TokHasMul     "HasMul"
+tokHasDiv     = mkToken B.TokHasDiv     "HasDiv"
+tokHasNeg     = mkToken B.TokHasNeg     "HasNeg"
+tokHasConOps  = mkToken B.TokHasConOps  "HasContainerOperations"
+tokHasNatLits = mkToken B.TokHasNatLits "HasNatLiteralsUpTo"
+tokHasIntLits = mkToken B.TokHasIntLits "HasIntLiterals"
+tokHasRatLits = mkToken B.TokHasRatLits "HasRatLiterals"
+tokHasConLits = mkToken B.TokHasConLits "HasContainerLiteralsOfSize"
 
 -- * Conversion
 
@@ -185,16 +187,18 @@ delabBuiltin fun args = case fun of
   V.ContainerType V.Tensor -> delabOp2 B.Tensor tokTensor args
   V.Index                  -> delabOp1 B.Index    tokIndex    args
 
-  V.TypeClass V.HasEq                 -> delabOp1 B.TCEq      tokTCEq      args
-  V.TypeClass V.HasOrd                -> delabOp1 B.TCOrd     tokTCOrd     args
-  V.TypeClass V.HasNatOps             -> delabOp1 B.TCNatOps  tokTCNatOps  args
-  V.TypeClass V.HasIntOps             -> delabOp1 B.TCIntOps  tokTCIntOps  args
-  V.TypeClass V.HasRatOps             -> delabOp1 B.TCRatOps  tokTCRatOps  args
-  V.TypeClass V.HasConOps             -> delabOp2 B.TCConOps  tokTCConOps  args
-  V.TypeClass (V.HasNatLitsUpTo n)    -> delabOp1 (\tk -> B.TCNatLits tk (toInteger n)) tokTCNatLits args
-  V.TypeClass V.HasIntLits            -> delabOp1 B.TCIntLits tokTCIntLits args
-  V.TypeClass V.HasRatLits            -> delabOp1 B.TCRatLits tokTCRatLits args
-  V.TypeClass (V.HasConLitsOfSize n)  -> delabOp2 (\tk -> B.TCConLits tk (toInteger n)) tokTCConLits args
+  V.TypeClass V.HasEq                 -> delabOp1 B.HasEq      tokHasEq      args
+  V.TypeClass V.HasOrd                -> delabOp1 B.HasOrd     tokHasOrd     args
+  V.TypeClass V.HasAdd                -> delabOp1 B.HasAdd     tokHasAdd     args
+  V.TypeClass V.HasSub                -> delabOp1 B.HasSub     tokHasSub     args
+  V.TypeClass V.HasMul                -> delabOp1 B.HasMul     tokHasMul     args
+  V.TypeClass V.HasDiv                -> delabOp1 B.HasDiv     tokHasDiv     args
+  V.TypeClass V.HasNeg                -> delabOp1 B.HasNeg     tokHasNeg     args
+  V.TypeClass V.HasConOps             -> delabOp2 B.HasConOps  tokHasConOps  args
+  V.TypeClass (V.HasNatLitsUpTo n)    -> delabOp1 (\tk -> B.HasNatLits tk (toInteger n)) tokHasNatLits args
+  V.TypeClass V.HasIntLits            -> delabOp1 B.HasIntLits tokHasIntLits args
+  V.TypeClass V.HasRatLits            -> delabOp1 B.HasRatLits tokHasRatLits args
+  V.TypeClass (V.HasConLitsOfSize n)  -> delabOp2 (\tk -> B.HasConLits tk (toInteger n)) tokHasConLits args
 
   V.Equality V.Eq  -> delabInfixOp2 B.Eq  tokEq args
   V.Equality V.Neq -> delabInfixOp2 B.Neq tokNeq args

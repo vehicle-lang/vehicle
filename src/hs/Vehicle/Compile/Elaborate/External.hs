@@ -158,16 +158,18 @@ instance Elab B.Expr V.InputExpr where
     B.Fold tk e1 e2 e3        -> builtin V.Fold tk [e1, e2, e3]
 
     --TypeClass folded into Expressions
-    B.TCEq      tk e       -> builtin (V.TypeClass V.HasEq)              tk [e]
-    B.TCOrd     tk e       -> builtin (V.TypeClass V.HasOrd)             tk [e]
-    B.TCNatOps  tk e       -> builtin (V.TypeClass V.HasNatOps)          tk [e]
-    B.TCIntOps  tk e       -> builtin (V.TypeClass V.HasIntOps)          tk [e]
-    B.TCRatOps  tk e       -> builtin (V.TypeClass V.HasRatOps)          tk [e]
-    B.TCConOps  tk e1 e2   -> builtin (V.TypeClass V.HasConOps)          tk [e1, e2]
-    B.TCNatLits tk n e     -> builtin (V.TypeClass (V.HasNatLitsUpTo (fromIntegral n))) tk [e]
-    B.TCIntLits tk e       -> builtin (V.TypeClass V.HasIntLits)         tk [e]
-    B.TCRatLits tk e       -> builtin (V.TypeClass V.HasRatLits)         tk [e]
-    B.TCConLits tk n e1 e2 -> builtin (V.TypeClass (V.HasConLitsOfSize (fromIntegral n))) tk [e1, e2]
+    B.HasEq      tk e       -> builtin (V.TypeClass V.HasEq)              tk [e]
+    B.HasOrd     tk e       -> builtin (V.TypeClass V.HasOrd)             tk [e]
+    B.HasAdd     tk e       -> builtin (V.TypeClass V.HasAdd)             tk [e]
+    B.HasSub     tk e       -> builtin (V.TypeClass V.HasSub)             tk [e]
+    B.HasMul     tk e       -> builtin (V.TypeClass V.HasMul)             tk [e]
+    B.HasDiv     tk e       -> builtin (V.TypeClass V.HasDiv)             tk [e]
+    B.HasNeg     tk e       -> builtin (V.TypeClass V.HasNeg)             tk [e]
+    B.HasConOps  tk e1 e2   -> builtin (V.TypeClass V.HasConOps)          tk [e1, e2]
+    B.HasNatLits tk n e     -> builtin (V.TypeClass (V.HasNatLitsUpTo (fromIntegral n))) tk [e]
+    B.HasIntLits tk e       -> builtin (V.TypeClass V.HasIntLits)         tk [e]
+    B.HasRatLits tk e       -> builtin (V.TypeClass V.HasRatLits)         tk [e]
+    B.HasConLits tk n e1 e2 -> builtin (V.TypeClass (V.HasConLitsOfSize (fromIntegral n))) tk [e1, e2]
 
 instance Elab B.Arg V.InputArg where
   elab (B.ExplicitArg e) = mkArg V.Explicit <$> elab e

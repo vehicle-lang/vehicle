@@ -487,20 +487,26 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
 
   TypeClass HasEq                -> type0 ~> type0
   TypeClass HasOrd               -> type0 ~> type0
-  TypeClass HasNatOps            -> type0 ~> type0
-  TypeClass HasIntOps            -> type0 ~> type0
-  TypeClass HasRatOps            -> type0 ~> type0
+  TypeClass HasAdd               -> type0 ~> type0
+  TypeClass HasSub               -> type0 ~> type0
+  TypeClass HasMul               -> type0 ~> type0
+  TypeClass HasDiv               -> type0 ~> type0
+  TypeClass HasNeg               -> type0 ~> type0
   TypeClass HasConOps            -> type0 ~> type0 ~> type0
   TypeClass (HasNatLitsUpTo _)   -> type0 ~> type0
   TypeClass HasIntLits           -> type0 ~> type0
   TypeClass HasRatLits           -> type0 ~> type0
   TypeClass (HasConLitsOfSize _) -> type0 ~> type0 ~> type0
 
-  If           -> typeOfIf
-  Not          -> typeOfBoolOp1
-  BooleanOp2 _ -> typeOfBoolOp2
-  Neg          -> typeOfNumOp1 hasIntOps
-  NumericOp2 _ -> typeOfNumOp2 hasNatOps
+  If             -> typeOfIf
+  Not            -> typeOfBoolOp1
+  BooleanOp2 _   -> typeOfBoolOp2
+
+  NumericOp2 Add -> typeOfNumOp2 hasAdd
+  NumericOp2 Sub -> typeOfNumOp2 hasSub
+  NumericOp2 Mul -> typeOfNumOp2 hasMul
+  NumericOp2 Div -> typeOfNumOp2 hasDiv
+  Neg            -> typeOfNumOp1 hasNeg
 
   Equality _ -> typeOfEqualityOp
   Order    _ -> typeOfComparisonOp

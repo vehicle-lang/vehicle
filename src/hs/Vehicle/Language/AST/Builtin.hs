@@ -71,9 +71,11 @@ instance Pretty ContainerType where
 data TypeClass
   = HasEq
   | HasOrd
-  | HasNatOps
-  | HasIntOps
-  | HasRatOps
+  | HasAdd
+  | HasSub
+  | HasMul
+  | HasDiv
+  | HasNeg
   | HasConOps
   | HasNatLitsUpTo Int
   -- ^ The parameter is the maximum value (needed for Index).
@@ -90,9 +92,11 @@ instance Show TypeClass where
   show = \case
     HasEq              -> "HasEq"
     HasOrd             -> "HasOrd"
-    HasNatOps          -> "HasNatOperations"
-    HasIntOps          -> "HasIntOperations"
-    HasRatOps          -> "HasRatOperations"
+    HasAdd             -> "HasAdd"
+    HasSub             -> "HasSub"
+    HasMul             -> "HasMul"
+    HasDiv             -> "HasDiv"
+    HasNeg             -> "HasNeg"
     HasConOps          -> "HasConOperations"
     HasNatLitsUpTo n   -> "HasNatLiteralsUpTo " <> show n
     HasIntLits         -> "HasIntLiterals"

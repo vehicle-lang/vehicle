@@ -171,20 +171,6 @@ pattern
       [ ExplicitArg ann t
       ]
 
-pattern HasNatOpsExpr :: ann
-                      -> Expr binder var ann
-                      -> Expr binder var ann
-pattern
-  HasNatOpsExpr ann t <-
-    App ann (BuiltinTypeClass _ HasNatOps)
-      [ ExplicitArg _ t
-      ]
-  where
-  HasNatOpsExpr ann t =
-    App ann (BuiltinTypeClass ann HasNatOps)
-      [ ExplicitArg ann t
-      ]
-
 --------------------------------------------------------------------------------
 -- Integer type classes
 
@@ -202,26 +188,12 @@ pattern
       [ ExplicitArg ann t
       ]
 
-pattern HasIntOpsExpr :: ann
-                      -> Expr binder var ann
-                      -> Expr binder var ann
-pattern
-  HasIntOpsExpr ann t <-
-    App ann (BuiltinTypeClass _ HasIntOps)
-      [ ExplicitArg _ t
-      ]
-  where
-  HasIntOpsExpr ann t =
-    App ann (BuiltinTypeClass ann HasIntOps)
-      [ ExplicitArg ann t
-      ]
-
 --------------------------------------------------------------------------------
 -- Rational type classes
 
 pattern HasRatLitsExpr :: ann
-                      -> Expr binder var ann
-                      -> Expr binder var ann
+                       -> Expr binder var ann
+                       -> Expr binder var ann
 pattern
   HasRatLitsExpr ann t <-
     App ann (BuiltinTypeClass _ HasRatLits)
@@ -233,19 +205,38 @@ pattern
       [ ExplicitArg ann t
       ]
 
-pattern HasRatOpsExpr :: ann
+--------------------------------------------------------------------------------
+-- Arithmetic ops
+
+pattern HasArithOpExpr :: ann
+                       -> TypeClass
                        -> Expr binder var ann
                        -> Expr binder var ann
 pattern
-  HasRatOpsExpr ann t <-
-    App ann (BuiltinTypeClass _ HasRatOps)
+  HasArithOpExpr ann tc t <-
+    App ann (BuiltinTypeClass _ tc)
       [ ExplicitArg _ t
       ]
   where
-  HasRatOpsExpr ann t =
-    App ann (BuiltinTypeClass ann HasRatOps)
+  HasArithOpExpr ann tc t =
+    App ann (BuiltinTypeClass ann tc)
       [ ExplicitArg ann t
       ]
+
+pattern HasAddExpr :: ann -> Expr binder var ann -> Expr binder var ann
+pattern HasAddExpr ann t = HasArithOpExpr ann HasAdd t
+
+pattern HasSubExpr :: ann -> Expr binder var ann -> Expr binder var ann
+pattern HasSubExpr ann t = HasArithOpExpr ann HasSub t
+
+pattern HasMulExpr :: ann -> Expr binder var ann -> Expr binder var ann
+pattern HasMulExpr ann t = HasArithOpExpr ann HasMul t
+
+pattern HasDivExpr :: ann -> Expr binder var ann -> Expr binder var ann
+pattern HasDivExpr ann t = HasArithOpExpr ann HasDiv t
+
+pattern HasNegExpr :: ann -> Expr binder var ann -> Expr binder var ann
+pattern HasNegExpr ann t = HasArithOpExpr ann HasNeg t
 
 --------------------------------------------------------------------------------
 -- HasOrder
@@ -583,7 +574,7 @@ pattern
   NegExpr ann t explicitArgs =
     App ann (Builtin ann Neg)
       (  ImplicitArg ann (BuiltinNumericType ann t)
-      :| InstanceArg ann (PrimDict ann (HasIntOpsExpr ann (BuiltinNumericType ann t)))
+      :| InstanceArg ann (PrimDict ann (HasNegExpr ann (BuiltinNumericType ann t)))
       :  explicitArgs
       )
 

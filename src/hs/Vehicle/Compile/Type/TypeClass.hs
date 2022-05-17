@@ -30,9 +30,11 @@ solveTypeClassConstraint ctx (m `Has` (App ann tc@(BuiltinTypeClass{}) args)) = 
   progress <- blockOnMetas eWHNF $ case eWHNF of
     HasEqExpr            _ t       -> solveHasEq          constraint t
     HasOrdExpr           _ t       -> solveHasOrd         constraint t
-    HasNatOpsExpr        _ t       -> solveHasNatOps      constraint t
-    HasIntOpsExpr        _ t       -> solveHasIntOps      constraint t
-    HasRatOpsExpr        _ t       -> solveHasRatOps      constraint t
+    HasAddExpr           _ t       -> solveHasAdd         constraint t
+    HasSubExpr           _ t       -> solveHasSub         constraint t
+    HasMulExpr           _ t       -> solveHasMul         constraint t
+    HasDivExpr           _ t       -> solveHasDiv         constraint t
+    HasNegExpr           _ t       -> solveHasNeg         constraint t
     HasConOpsExpr        _ t1 t2   -> solveHasConOps      constraint t1 t2
     HasNatLitsUpToExpr   _ n t     -> solveHasNatLits     constraint n t
     HasIntLitsExpr       _ t       -> solveHasIntLits     constraint t
@@ -124,32 +126,51 @@ solveHasRatLits _ (RatType  _) = return simplySolved
 solveHasRatLits _ (RealType _) = return simplySolved
 solveHasRatLits constraint _   = throwError $ FailedConstraints (constraint :| [])
 
-solveHasNatOps :: MonadConstraintSolving m
-               => Constraint
-               -> CheckedExpr
-               -> m ConstraintProgress
-solveHasNatOps _ (NatType  _) = return simplySolved
-solveHasNatOps _ (IntType  _) = return simplySolved
-solveHasNatOps _ (RatType  _) = return simplySolved
-solveHasNatOps _ (RealType _) = return simplySolved
-solveHasNatOps constraint _ = throwError $ FailedConstraints (constraint :| [])
+solveHasAdd :: MonadConstraintSolving m
+            => Constraint
+            -> CheckedExpr
+            -> m ConstraintProgress
+solveHasAdd _ (NatType  _) = return simplySolved
+solveHasAdd _ (IntType  _) = return simplySolved
+solveHasAdd _ (RatType  _) = return simplySolved
+solveHasAdd _ (RealType _) = return simplySolved
+solveHasAdd constraint _ = throwError $ FailedConstraints (constraint :| [])
 
-solveHasIntOps :: MonadConstraintSolving m
+solveHasSub :: MonadConstraintSolving m
                => Constraint
                -> CheckedExpr
                -> m ConstraintProgress
-solveHasIntOps _ (IntType  _) = return simplySolved
-solveHasIntOps _ (RatType  _) = return simplySolved
-solveHasIntOps _ (RealType _) = return simplySolved
-solveHasIntOps constraint _ = throwError $ FailedConstraints (constraint :| [])
+solveHasSub _ (IntType  _) = return simplySolved
+solveHasSub _ (RatType  _) = return simplySolved
+solveHasSub _ (RealType _) = return simplySolved
+solveHasSub constraint _ = throwError $ FailedConstraints (constraint :| [])
 
-solveHasRatOps :: MonadConstraintSolving m
-               => Constraint
-               -> CheckedExpr
-               -> m ConstraintProgress
-solveHasRatOps _ (RatType  _) = return simplySolved
-solveHasRatOps _ (RealType _) = return simplySolved
-solveHasRatOps constraint _ = throwError $ FailedConstraints (constraint :| [])
+solveHasMul :: MonadConstraintSolving m
+            => Constraint
+            -> CheckedExpr
+            -> m ConstraintProgress
+solveHasMul _ (NatType  _) = return simplySolved
+solveHasMul _ (IntType  _) = return simplySolved
+solveHasMul _ (RatType  _) = return simplySolved
+solveHasMul _ (RealType _) = return simplySolved
+solveHasMul constraint _ = throwError $ FailedConstraints (constraint :| [])
+
+solveHasDiv :: MonadConstraintSolving m
+            => Constraint
+            -> CheckedExpr
+            -> m ConstraintProgress
+solveHasDiv _ (RatType  _) = return simplySolved
+solveHasDiv _ (RealType _) = return simplySolved
+solveHasDiv constraint _ = throwError $ FailedConstraints (constraint :| [])
+
+solveHasNeg :: MonadConstraintSolving m
+            => Constraint
+            -> CheckedExpr
+            -> m ConstraintProgress
+solveHasNeg _ (IntType  _) = return simplySolved
+solveHasNeg _ (RatType  _) = return simplySolved
+solveHasNeg _ (RealType _) = return simplySolved
+solveHasNeg constraint _   = throwError $ FailedConstraints (constraint :| [])
 
 --------------------------------------------------------------------------------
 -- Utilities
