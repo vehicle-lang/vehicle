@@ -18,7 +18,7 @@ The following table contains the basic boolean operations:
    :header-rows: 1
 
    * - Operation
-     - Name
+     - Symbol
      - Type
      - Example
    * - Conjunction

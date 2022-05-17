@@ -9,16 +9,16 @@ Naturals
 --------
 
 The most basic type of number in Vehicle are the natural numbers.
-The type of natural numbers is written as `Nat`.
+The type of natural numbers is written as ``Nat``.
 
-The following table contains the list of builtin operations:
+The available operations over naturals are:
 
 .. list-table::
    :widths: 25 15 40 20
    :header-rows: 1
 
    * - Operation
-     - Name
+     - Symbol
      - Type
      - Example
    * - Addition
@@ -46,20 +46,20 @@ The following table contains the list of builtin operations:
      - :code:`Nat -> Nat -> Bool`
      - :code:`x >= y`
 
-Rational
---------
+Rationals
+---------
 
 Rational numbers in Vehicle are stored using arbitrary precision.
-The type of natural numbers is written as `Rat`.
+The type of natural numbers is written as ``Rat``.
 
-The following table contains the list of builtin operations:
+The available operations over rationals are:
 
 .. list-table::
    :widths: 25 15 40 20
    :header-rows: 1
 
    * - Operation
-     - Name
+     - Symbol
      - Type
      - Example
    * - Addition
