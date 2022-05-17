@@ -1,8 +1,9 @@
 Tips and tricks
 ===============
 
-.. autosummary::
-   :toctree: generated
+.. contents::
+   :depth: 1
+   :local:
 
 Naming indices
 --------------

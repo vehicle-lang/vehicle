@@ -1,8 +1,9 @@
 Datasets
 ========
 
-.. autosummary::
-   :toctree: generated
+.. contents::
+   :depth: 1
+   :local:
 
 There are two main reasons a specification may want to reference some external
 dataset. The first is that the specification works with bounds over a large

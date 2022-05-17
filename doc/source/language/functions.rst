@@ -1,8 +1,9 @@
 Functions
 =========
 
-.. autosummary::
-   :toctree: generated
+.. contents::
+   :depth: 1
+   :local:
 
 Functions make up the backbone of the language.
 Function application is written by juxtaposition, i.e. ``f x`` represents

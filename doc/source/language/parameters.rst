@@ -1,6 +1,10 @@
 Parameters
 ==========
 
+.. contents::
+   :depth: 1
+   :local:
+
 There are several reasons that one might want to set the value of
 a constant at compile time rather than when writing the spec. For example,
 the value may not be known ahead of time, or you might want to reuse the

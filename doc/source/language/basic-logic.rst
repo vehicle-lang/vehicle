@@ -1,8 +1,9 @@
 Basic logic
 ===========
 
-.. autosummary::
-   :toctree: generated
+.. contents::
+   :depth: 1
+   :local:
 
 Booleans
 --------

@@ -1,8 +1,9 @@
 Networks
 ========
 
-.. autosummary::
-   :toctree: generated
+.. contents::
+   :depth: 1
+   :local:
 
 Basics
 ------

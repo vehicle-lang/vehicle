@@ -1,8 +1,9 @@
 Quantifiers
 ===========
 
-.. autosummary::
-   :toctree: generated
+.. contents::
+   :depth: 1
+   :local:
 
 Quantifying over infinite domains
 ---------------------------------
