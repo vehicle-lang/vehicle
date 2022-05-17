@@ -15,7 +15,6 @@ open import Data.Nat as ℕ using (ℕ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
 open import Data.List.Relation.Unary.All as List
-open import Function.Base
 open import Relation.Binary.PropositionalEquality
 
 module simple-let-temp-output where
@@ -51,13 +50,13 @@ abstract
     }
 
 abstract
-  forallInLet : List.All (λ (x : ℕ) → let y = x in y ≡ 1) (List ℕ ∋ 1 ∷ [])
+  forallInLet : List.All (λ (x : Fin 2) → let y = x in y ≡ # 1) (# 1 ∷ [])
   forallInLet = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
 
 abstract
-  letForallIn : let y = 1 in List.All (λ (x : ℕ) → y ≡ x) (List ℕ ∋ 1 ∷ [])
+  letForallIn : let y = # 1 in List.All (λ (x : Fin 2) → y ≡ x) (# 1 ∷ [])
   letForallIn = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

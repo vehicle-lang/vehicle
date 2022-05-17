@@ -22,7 +22,7 @@ letForall : Bool
 letForall = let y = 1 in forall x . y == x
 
 forallInLet : Bool
-forallInLet = forall x in ([1] : List Nat) . let y = x in y == 1
+forallInLet = forall x in [1] . let y = x in y == 1
 
 letForallIn : Bool
-letForallIn = let y = 1 in forall x in ([1] : List Nat) . y == x
+letForallIn = let y = 1 in forall x in [1] . y == x

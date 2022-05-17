@@ -19,6 +19,7 @@ import Vehicle.Compile.Type.Unify
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.TypeClass
 import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Defaults
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.MetaSubstitution (metasIn)
 import Vehicle.Compile.Type.WeakHeadNormalForm

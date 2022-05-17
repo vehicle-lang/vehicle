@@ -3,4 +3,4 @@
 
 network f : Rat -> Rat
 
-forall x y . f (x + y) == 0
+forall x y . x >= 0 and y >= 2 and f (x + y) == 0

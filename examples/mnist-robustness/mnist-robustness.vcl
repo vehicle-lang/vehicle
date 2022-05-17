@@ -21,9 +21,9 @@ validImage x = forall i j . 0 <= x ! i ! j <= 1
 network mnist : Image -> Tensor Rat [10]
 
 -- The network advises that input image `x` has label `i` if the score
--- for label `i` is less than the score of any other label `j`.
+-- for label `i` is greater than the score of any other label `j`.
 advises : Image -> Label -> Bool
-advises x i = forall j . j != i => mnist x ! i < mnist x ! j
+advises x i = forall j . j != i => mnist x ! i > mnist x ! j
 
 --------------------------------------------------------------------------------
 -- Definition of robustness around a point
@@ -34,18 +34,20 @@ advises x i = forall j . j != i => mnist x ! i < mnist x ! j
 -- time rather than be fixed in the specification.
 parameter epsilon : Rat
 
--- Next we define what it means for an input image `x` to be in an l-infinity
--- ball of a given `radius` around a given `centre` image.
-lInfBall : Image -> Image -> Bool
-lInfBall centre x = forall i j . -epsilon <= (x - centre) ! i ! j <= epsilon
+-- Next we define what it means for an image `x` to be in a ball of
+-- size epsilon around 0.
+boundedByEpsilon : Image -> Bool
+boundedByEpsilon x = forall i j . -epsilon <= x ! i ! j <= epsilon
 
 -- We now define what it means for the network to be robust around an image `x`
--- that should be classified as `y`. Namely, that for any valid input image `z`
--- that lies within the ball of radius `epsilon` around `x` the network should
--- still advise label `y` when asked to classify `z`.
+-- that should be classified as `y`. Namely, that for any perturbation no greater
+-- than epsilon then if the perturbed image is still a valid image then the
+-- network should still advise label `y` for the perturbed version of `x`.
 robustAround : Image -> Label -> Bool
-robustAround x y = forall z .
-  validImage z and lInfBall x z => advises z y
+robustAround image label = forall pertubation .
+  let perturbedImage = image + pertubation in
+  boundedByEpsilon pertubation and validImage perturbedImage =>
+    advises perturbedImage label
 
 --------------------------------------------------------------------------------
 -- Robustness with respect to a dataset
@@ -79,6 +81,6 @@ dataset trainingLabels : Tensor Label [n]
 -- the dataset separately. If `separate` was omitted, Vehicle would only
 -- report if the network was robust around *every* image in the dataset, a
 -- state of affairs which is unlikely to be true.
-robust : Bool
-robust = forall separate i .
+robust : Tensor Bool [n]
+robust = foreach i .
   robustAround (trainingImages ! i) (trainingLabels ! i)

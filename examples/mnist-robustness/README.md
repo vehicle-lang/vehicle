@@ -32,6 +32,6 @@ vehicle verify \
   --network controller:examples/mnist-robustness/controller.onnx \
   --parameter epsilon:0.1 \
   --dataset trainingImages:examples/mnist-robustness/test-images.idx \
-  --dataset trainingImages:examples/mnist-robustness/test-labels.idx \
+  --dataset trainingLabels:examples/mnist-robustness/test-labels.idx \
   --verifier Marabou
 ```
