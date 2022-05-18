@@ -18,7 +18,6 @@ Operations
 
 - `map`
 - `fold`
-- `quantifiers`
 
 Absence of a lookup function
 ----------------------------

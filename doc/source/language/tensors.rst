@@ -5,8 +5,8 @@ Tensors
    :depth: 1
    :local:
 
-Tensors are the basic type underlying most machine learning abstractions.
-At it's heart, a tensor is multi-dimensional array of data.
+Tensors, which can be though of as multi-dimensional arrays of data,
+are the basic data type underlying most neural network abstractions.
 
 Type
 ----
@@ -16,25 +16,25 @@ of data stored within the tensor and ``dims`` is a list of natural numbers
 that encode its dimensions. For example ``Tensor Rat [24, 24]`` would be
 a 24-by-24 matrix of rational numbers.
 
-A tensor with an empty list of dimensions is equivalent to the underlying
-element. For example ``Tensor Rat []`` is equivalent to ``Rat``.
+A tensor type with an empty list of dimensions is equivalent to its element
+type, e.g. ``Tensor Rat []`` is equivalent to ``Rat``.
 
-The type of a tensor of tensors is equivalent to a the type of tensors with
-the dimensions concatenated. For example ``Tensor (Tensor Rat [24, 20]) [100]``
+The type of a tensor of tensors is equivalent to a type of tensors with
+the dimensions concatenated, e.g. ``Tensor (Tensor Rat [24, 20]) [100]``
 is equivalent to ``Tensor Rat [100, 24, 20]``.
 
 Creation
 --------
 
 There are two ways to create elements of a tensor type.
-The first is to use the same syntax as creating ``List``s,
+The first is to use the same syntax as when creating a ``List``,
 i.e. ``[x_1, ..., x_n]``.
 For example, the 2-by-2 identity matrix can be defined as follows:
 
 .. code-block:: agda
 
    identity : Tensor Rat [2, 2]
-   identity = [ [1, 0] , [0, 1] ]
+   identity = [ [1, 0], [0, 1] ]
 
 The type-checker will ensure that all tensors are of the correct size.
 For example, the following would result in an error:
@@ -46,9 +46,9 @@ For example, the following would result in an error:
 
 as the first dimension is ``1`` but two elements have been provided.
 
-However, manually writing out large tensors is clearly infeasible.
-Therefore the second approach is to load a tensor via the ``dataset`` keyword
-and then provide the tensor via the command line, e.g.
+Manually writing out large tensors using this syntax is clearly infeasible.
+Therefore the second way tensors can be created is to load them as a
+dataset, e.g.
 
 .. code-block:: agda
 
@@ -59,8 +59,10 @@ See the section on datasets for more details.
 Operations
 ----------
 
+The following operations over tensors are currently supported:
+
 .. list-table::
-   :widths: 25 15 40 20
+   :widths: 15 12 53 20
    :header-rows: 1
 
    * - Operation
@@ -79,7 +81,7 @@ Operations
 Indexing
 --------
 
-The type of the lookup operator ``!`` given above shows that it
+The type of the lookup operator ``!`` given above requires that it
 takes something of type ``Index d`` as its second argument.
 The set of valid elements of this type are the natural numbers
 ``{0, 1, ..., d-1}``.
@@ -106,8 +108,6 @@ is valid but the following is not as ``10`` is out of bounds:
 
    invalidElement : Rat
    invalidElement = myTensor ! 10
-
-and would error during type-checking.
 
 Most arithmetic operations over ``Index`` type are not closed with
 respect to the type, e.g. adding ``3 : Index 5`` and ``4 : Index 5``
@@ -139,13 +139,11 @@ the set of operations supported by the type is extremely limited:
      - :code:`Index d -> Index d -> Bool`
      - :code:`x >= y`
 
-Other thoughts
---------------
+Non-constant dimensions
+-----------------------
 
-Although they the dimensions of a tensor are usually a concrete list (e.g.
-``[1, 2, 3]``), they don't have to be. In fact they can contain arbitrary
-expressions of type ``List Nat``.
-
+Although the dimensions of a tensor are usually a list of constants (e.g.
+``[1, 2, 3]``), in reality they can be any valid expression of type ``List Nat``.
 For example:
 -  ``Tensor Rat [2 + d]`` is the type of vectors of length ``2 + d``.
 -  ``Tensor Rat (10 :: ds)`` is the type of tensors whose first dimension
