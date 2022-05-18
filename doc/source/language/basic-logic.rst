@@ -11,7 +11,7 @@ Booleans
 Like many systems Vehicle contains booleans. The type of boolean values is
 :code:`Bool`, and there are two values :code:`True` and :code:`False`.
 
-The following table contains the basic boolean operations:
+The available operations over booleans are:
 
 .. list-table::
    :widths: 25 15 40 20
@@ -78,7 +78,7 @@ The type of these operators are :code:`A -> A -> Bool` where :code:`A` can be an
 of the following types:
 
 - :code:`Bool`, :code:`Nat`, :code:`Int`, :code:`Rat`.
-- :code:`Index n` for any value of :code:`n`.
+- :code:`Index d` for any value of :code:`d`.
 - :code:`List A` if type :code:`A` also supports the operators.
 - :code:`Tensor A dims` if type :code:`A` also supports the operators.
 
