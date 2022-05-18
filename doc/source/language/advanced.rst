@@ -1,5 +1,5 @@
-Advanced topics (Docs TODO)
-============================
+Advanced topics (TODO)
+======================
 
 .. contents::
    :depth: 1

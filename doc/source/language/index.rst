@@ -5,11 +5,11 @@ Specification language
   :maxdepth: 1
 
   arithmetic
-  basic-logic
+  logic
   functions
-  quantifiers
   lists
   tensors
+  quantifiers
   networks
   datasets
   parameters

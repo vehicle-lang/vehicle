@@ -1,5 +1,5 @@
-Basic logic
-===========
+Logic
+=====
 
 .. contents::
    :depth: 1

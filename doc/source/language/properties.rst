@@ -1,5 +1,5 @@
-Properties (Docs TODO)
-======================
+Properties (TODO)
+=================
 
 .. contents::
    :depth: 1

@@ -1,5 +1,5 @@
-Let expressions (Docs TODO)
-===========================
+Let expressions (TODO)
+======================
 
 .. contents::
    :depth: 1

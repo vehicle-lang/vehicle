@@ -26,7 +26,7 @@ is equivalent to ``Tensor Rat [100, 24, 20]``.
 Creation
 --------
 
-There are two ways to create elements of a tensor type.
+There are two ways to create instances of a tensor type.
 The first is to use the same syntax as when creating a ``List``,
 i.e. ``[x_1, ..., x_n]``.
 For example, the 2-by-2 identity matrix can be defined as follows:
@@ -76,14 +76,14 @@ The following operations over tensors are currently supported:
    * - Fold
      - :code:`fold`
      - :code:`(Tensor A ds -> B -> B) -> B -> Tensor A (d : ds) -> B`
-     - :code:`x * y`
+     - :code:`fold f 0 t`
 
 Indexing
 --------
 
 The type of the lookup operator ``!`` given above requires that it
 takes something of type ``Index d`` as its second argument.
-The set of valid elements of this type are the natural numbers
+The set of valid instances of this type are the natural numbers
 ``{0, 1, ..., d-1}``.
 This therefore eliminates out of bounds errors by ensuring that
 one can never index into a tensor using a value greater than the
