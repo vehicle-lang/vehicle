@@ -4,8 +4,8 @@ Specification language
 .. toctree::
   :maxdepth: 1
 
-  arithmetic
   logic
+  arithmetic
   functions
   lists
   tensors
