@@ -1,5 +1,5 @@
-Lists (Docs TODO)
-=================
+Lists
+=====
 
 .. contents::
    :depth: 1
@@ -21,7 +21,7 @@ Operations
 The following operations over lists are currently supported:
 
 .. list-table::
-   :widths: 15 12 53 20
+   :widths: 15 12 43 30
    :header-rows: 1
 
    * - Operation
