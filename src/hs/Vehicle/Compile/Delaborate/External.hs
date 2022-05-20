@@ -38,6 +38,7 @@ tokBool = mkToken B.TokBool "Bool"
 tokIndex = mkToken B.TokIndex "Index"
 tokForall = mkToken B.TokForall "forall"
 tokExists = mkToken B.TokExists "exists"
+tokForeach = mkToken B.TokForeach "foreach"
 tokImpl = mkToken B.TokImpl "=>"
 tokAnd = mkToken B.TokAnd "and"
 tokOr = mkToken B.TokOr "or"
@@ -227,6 +228,8 @@ delabBuiltin fun args = case fun of
 
   V.Quant   q -> delabQuant   q args
   V.QuantIn q -> delabQuantIn q args
+  V.Foreach   -> delabForeach args
+  V.ForeachIn -> delabForeachIn args
 
 delabOp1 :: IsToken token => (token -> B.Expr -> B.Expr) -> token -> [B.Expr] -> B.Expr
 delabOp1 op tk [arg] = op tk arg
@@ -249,16 +252,24 @@ delabIf [arg1, arg2, arg3] = B.If tokIf arg1 tokThen arg2 tokElse arg3
 delabIf args               = argsError "if" 3 args
 
 delabQuant :: V.Quantifier -> [B.Expr] -> B.Expr
-delabQuant V.All [B.Lam _ binders _ body] = B.Forall tokForall binders tokDot body
-delabQuant V.Any [B.Lam _ binders _ body] = B.Exists  tokExists  binders tokDot body
-delabQuant V.All args                     = argsError (tkSymbol tokForall) 1 args
-delabQuant V.Any args                     = argsError (tkSymbol tokExists)  1 args
+delabQuant V.Forall [B.Lam _ binders _ body] = B.Forall tokForall binders tokDot body
+delabQuant V.Exists [B.Lam _ binders _ body] = B.Exists tokExists binders tokDot body
+delabQuant V.Forall args                     = argsError (tkSymbol tokForall)  1 args
+delabQuant V.Exists args                     = argsError (tkSymbol tokExists)  1 args
 
 delabQuantIn :: V.Quantifier -> [B.Expr] -> B.Expr
-delabQuantIn V.All [B.Lam _ binders _ body, xs] = B.ForallIn tokForall binders xs tokDot body
-delabQuantIn V.Any [B.Lam _ binders _ body, xs] = B.ExistsIn  tokExists  binders xs tokDot body
-delabQuantIn V.All args                         = argsError (tkSymbol tokForall) 2 args
-delabQuantIn V.Any args                         = argsError (tkSymbol tokExists)  2 args
+delabQuantIn V.Forall [B.Lam _ binders _ body, xs] = B.ForallIn tokForall binders xs tokDot body
+delabQuantIn V.Exists [B.Lam _ binders _ body, xs] = B.ExistsIn tokExists binders xs tokDot body
+delabQuantIn V.Forall args                         = argsError (tkSymbol tokForall)  2 args
+delabQuantIn V.Exists args                         = argsError (tkSymbol tokExists)  2 args
+
+delabForeach :: [B.Expr] -> B.Expr
+delabForeach [B.Lam _ binders _ body] = B.Foreach tokForeach binders tokDot body
+delabForeach args                     = argsError (tkSymbol tokForall)  1 args
+
+delabForeachIn :: [B.Expr] -> B.Expr
+delabForeachIn [B.Lam _ binders _ body, xs] = B.ForeachIn tokForeach binders xs tokDot body
+delabForeachIn args                         = argsError (tkSymbol tokForall)  2 args
 
 argsError :: Symbol -> Int -> [B.Expr] -> a
 argsError s n args = developerError $

@@ -10,7 +10,6 @@ module Vehicle.Language.AST.Builtin
   , TypeClass(..)
   , BooleanOp2(..)
   , NumericOp2(..)
-  , quantifierAdverb
   , builtinFromSymbol
   , symbolFromBuiltin
   , isDecidable
@@ -110,20 +109,18 @@ instance Pretty TypeClass where
 -- Quantifiers
 
 data Quantifier
-  = All
-  | Any
+  = Forall
+  | Exists
   deriving (Show, Eq, Ord, Generic)
 
 instance NFData   Quantifier
 instance Hashable Quantifier
-
+{-
 instance Negatable Quantifier where
-  neg Any = All
-  neg All = Any
-
-quantifierAdverb :: Quantifier -> Doc a
-quantifierAdverb All = "universally"
-quantifierAdverb Any = "existentially"
+  neg Forall = Exists
+  neg Exists = Forall
+  neg Foreach =
+-}
 
 --------------------------------------------------------------------------------
 -- Equality
@@ -267,6 +264,8 @@ data Builtin
   | TypeClass TypeClass
   | Quant     Quantifier
   | QuantIn   Quantifier
+  | Foreach
+  | ForeachIn
   deriving (Eq, Ord, Generic)
 
 instance NFData   Builtin
@@ -296,10 +295,11 @@ instance Show Builtin where
     TypeClass tc    -> show tc
     Map             -> "map"
     Fold            -> "fold"
-    Quant   All     -> "forall"
-    Quant   Any     -> "exists"
-    QuantIn All     -> "forallIn"
-    QuantIn Any     -> "existsIn"
+    Quant   Forall  -> "forall"
+    Quant   Exists  -> "exists"
+    QuantIn q       -> show (Quant q) <> "In"
+    Foreach         -> "foreach"
+    ForeachIn       -> "foreachIn"
 
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols = map (first pack)
@@ -327,10 +327,12 @@ builtinSymbols = map (first pack)
   , show Neg                         |-> Neg
   , show At                          |-> At
   , show Cons                        |-> Cons
-  , show (Quant All)                 |-> Quant All
-  , show (Quant Any)                 |-> Quant Any
-  , show (QuantIn All)               |-> QuantIn All
-  , show (QuantIn Any)               |-> QuantIn Any
+  , show (Quant Forall)              |-> Quant Forall
+  , show (Quant Exists)              |-> Quant Exists
+  , show (QuantIn Forall)            |-> QuantIn Forall
+  , show (QuantIn Exists)            |-> QuantIn Exists
+  , show Foreach                     |-> Foreach
+  , show ForeachIn                   |-> ForeachIn
   , show Map                         |-> Map
   , show Fold                        |-> Fold
   ]

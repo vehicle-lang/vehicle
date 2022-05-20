@@ -22,29 +22,75 @@ import Vehicle.Resource
 import Vehicle.Resource.NeuralNetwork
 
 --------------------------------------------------------------------------------
+-- Query addresses
+
+-- | Used to create the final filepath for a query.
+data QueryAddress = QueryAddress
+  { directory       :: FilePath
+  , propertyName    :: Text
+  , propertyIndices :: [Int]
+  , queryIndex      :: Int
+  }
+
+basicAddress :: Text -> FilePath -> QueryAddress
+basicAddress name directory = QueryAddress
+  { directory       = directory
+  , propertyName    = name
+  , propertyIndices = []
+  , queryIndex      = -1
+  }
+
+addPropertyIndex :: Int -> QueryAddress -> QueryAddress
+addPropertyIndex index QueryAddress{..} = QueryAddress
+  { propertyIndices = index : propertyIndices
+  , ..
+  }
+
+addQueryIndex :: Int -> QueryAddress -> QueryAddress
+addQueryIndex index QueryAddress{..} = QueryAddress
+  { queryIndex = index
+  , ..
+  }
+
+--------------------------------------------------------------------------------
 -- Writing out query files
 
 writeSpecFiles :: Maybe FilePath -> MarabouSpec -> IO ()
-writeSpecFiles filepath properties = forM_ properties $ writePropertyFiles filepath
-
-writePropertyFiles :: Maybe FilePath -> MarabouProperty -> IO ()
-writePropertyFiles filepath (MarabouProperty name _negated queries) = do
+writeSpecFiles filepath properties = do
   -- Create the directory to store the queries
   let directory = fmap dropExtension filepath
   forM_ directory (createDirectoryIfMissing True)
+  -- Write out the spec files
+  forM_ properties $ \ (name, property) -> do
+    let partialAddress = basicAddress name <$> directory
+    writePropertyFiles partialAddress property
 
+writePropertyFiles :: Maybe QueryAddress -> MarabouProperty -> IO ()
+writePropertyFiles partialAddress (MultiProperty subproperties) = do
+  let numberedSubproperties = zip [0..] subproperties
+  forM_ numberedSubproperties $ \(i, p) ->
+    writePropertyFiles (addPropertyIndex i <$> partialAddress) p
+writePropertyFiles partialAddress (SingleProperty _negated queries) = do
   -- Write out the queries to the new directory
   let numberedQueries = zip [1..] queries
-  forM_ numberedQueries (writeQueryFile directory name)
+  forM_ numberedQueries $ \(i, q) -> do
+    writeQueryFile (addQueryIndex i <$> partialAddress) q
 
-writeQueryFile :: Maybe FilePath -> Text -> (Int, MarabouQuery) -> IO ()
-writeQueryFile directory name (queryID, query) = do
-  let queryFilepath = fmap (queryFilePath name queryID) directory
-  writeResultToFile MarabouBackend queryFilepath (doc query)
+writeQueryFile :: Maybe QueryAddress -> MarabouQuery -> IO ()
+writeQueryFile address query = do
+  let queryFile = fmap queryFilePath address
+  writeResultToFile MarabouBackend queryFile (doc query)
 
-queryFilePath :: Text -> Int -> FilePath -> FilePath
-queryFilePath propertyName queryID directory =
-  directory </> unpack propertyName <> "-query" <> show queryID <.> "txt"
+queryFilePath :: QueryAddress -> FilePath
+queryFilePath QueryAddress{..} =
+  directory </>
+  unpack propertyName <>
+  propertyStr <>
+  "-query" <> show queryIndex <.> "txt"
+  where
+    propertyStr = if null propertyIndices
+      then ""
+      else concatMap (\v -> "!" <> show v) (reverse propertyIndices)
 
 --------------------------------------------------------------------------------
 -- Verification
@@ -59,35 +105,49 @@ verifySpec maybeMarabouExecutable spec networks = do
   marabouExecutable <- verifyExecutable maybeMarabouExecutable
   withSystemTempDirectory "marabouSpec" $ \tempDir -> do
     writeSpecFiles (Just tempDir) spec
-    results <- forM spec (verifyProperty marabouExecutable tempDir networks)
+    results <- forM spec $ \(name, property) -> do
+      let partialAddress = basicAddress name tempDir
+      result <- verifyProperty marabouExecutable partialAddress networks property
+      return (name, result)
     return $ SpecificationStatus (Map.fromList results)
 
 verifyProperty :: FilePath
-               -> FilePath
+               -> QueryAddress
                -> NetworkLocations
                -> MarabouProperty
-               -> IO (Text, PropertyStatus)
-verifyProperty executable queryDirectory networks (MarabouProperty propertyName negated queries) = do
-  status <- verifyQueries (zip [1..] queries)
-  return (propertyName, status)
+               -> IO PropertyStatus
+verifyProperty executable partialAddress networks (MultiProperty subproperties) = do
+  let numberedSubprops = zip [0..] subproperties
+  MultiPropertyStatus <$> forM numberedSubprops (\(i, p) ->
+    verifyProperty executable (addPropertyIndex i partialAddress) networks p)
+verifyProperty executable partialAddress networks (SingleProperty negated queries) = do
+  let numberedQueries = zipWith (\i q -> (addQueryIndex i partialAddress, q)) [1..] queries
+  status <- verifyQueries numberedQueries
+  return (SinglePropertyStatus status)
   where
-    verifyQueries :: [(Int, MarabouQuery)] -> IO PropertyStatus
+    verifyQueries :: [(QueryAddress, MarabouQuery)] -> IO SinglePropertyStatus
     verifyQueries [] = return (Verified Nothing)
-    verifyQueries ((queryID, query) : queryIDs) = do
-      let queryFile = queryFilePath propertyName queryID queryDirectory
-      result <- verifyQuery executable queryFile networks negated query
-      if isVerified result
-        then verifyQueries queryIDs
+    verifyQueries  ((address, query) : qs) = do
+      let queryFile = queryFilePath address
+      result <- verifyQuery executable queryFile networks query
+
+      let result' = if negated
+          then negateStatus result
+          else result
+
+      if isVerified result'
+        then verifyQueries qs
         else return result
 
-verifyQuery :: FilePath -> FilePath -> NetworkLocations -> Bool -> MarabouQuery -> IO PropertyStatus
-verifyQuery marabouExecutable queryFile networks negated query = do
+verifyQuery :: FilePath
+            -> FilePath
+            -> NetworkLocations
+            -> MarabouQuery
+            -> IO SinglePropertyStatus
+verifyQuery marabouExecutable queryFile networks query = do
   networkArg <- prepareNetworkArg networks (metaNetwork query)
   marabouOutput <- readProcessWithExitCode marabouExecutable [networkArg, queryFile] ""
-  result <- parseMarabouOutput marabouOutput
-  return $ if negated
-    then negateStatus result
-    else result
+  parseMarabouOutput marabouOutput
 
 verifyExecutable :: Maybe FilePath -> IO FilePath
 verifyExecutable maybeLocation = do
@@ -118,7 +178,7 @@ prepareNetworkArg _ _ = do
     "multiple neural networks or multiple applications of the same network."
   exitFailure
 
-parseMarabouOutput :: (ExitCode, String, String) -> IO PropertyStatus
+parseMarabouOutput :: (ExitCode, String, String) -> IO SinglePropertyStatus
 parseMarabouOutput (ExitFailure _, out, _err) = do
   -- Marabou seems to output its error messages to stdout rather than stderr...
   hPutStrLn stderr

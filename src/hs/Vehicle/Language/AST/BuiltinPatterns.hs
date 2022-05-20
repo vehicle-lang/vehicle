@@ -370,6 +370,7 @@ pattern
 pattern BuiltinQuantifier :: ann -> Quantifier -> Expr binder var ann
 pattern BuiltinQuantifier ann q = Builtin ann (Quant q)
 
+-- | Matches on `forall` and `exists`, but not `foreach`
 pattern QuantifierExpr :: Quantifier
                        -> ann
                        -> Binder binder var ann
@@ -392,7 +393,25 @@ pattern ExistsExpr :: ann
                    -> Binder binder var ann
                    -> Expr   binder var ann
                    -> Expr   binder var ann
-pattern ExistsExpr ann binder body = QuantifierExpr Any ann binder body
+pattern ExistsExpr ann binder body = QuantifierExpr Exists ann binder body
+
+pattern ForallExpr :: ann
+                   -> Binder binder var ann
+                   -> Expr   binder var ann
+                   -> Expr   binder var ann
+pattern ForallExpr ann binder body = QuantifierExpr Forall ann binder body
+
+pattern ForeachExpr :: ann
+                    -> Binder binder var ann
+                    -> Expr   binder var ann
+                    -> Expr   binder var ann
+pattern
+  ForeachExpr ann binder body <-
+    App ann (Builtin _ Foreach)
+      [ ImplicitArg _ _
+      , ImplicitArg _ _
+      , ExplicitArg _ (Lam _ binder body)
+      ]
 
 mkQuantifierSeq :: Quantifier
                 -> ann
@@ -409,13 +428,14 @@ mkQuantifierSeq q ann names t body =
 pattern BuiltinQuantifierIn :: ann -> Quantifier -> Expr binder var ann
 pattern BuiltinQuantifierIn ann q = Builtin ann (QuantIn q)
 
+-- | Matches on forallIn and existsIn but not foreachIn
 pattern QuantifierInExpr :: Quantifier
-                         -> ann
-                         -> Expr   binder var ann
-                         -> Binder binder var ann
-                         -> Expr   binder var ann
-                         -> Expr   binder var ann
-                         -> Expr   binder var ann
+                                 -> ann
+                                 -> Expr   binder var ann
+                                 -> Binder binder var ann
+                                 -> Expr   binder var ann
+                                 -> Expr   binder var ann
+                                 -> Expr   binder var ann
 pattern
   QuantifierInExpr q ann tCont binder body container <-
     App ann (BuiltinQuantifierIn _ q)
@@ -431,6 +451,48 @@ pattern
       [ ImplicitArg ann (typeOf binder)
       , ImplicitArg ann tCont
       , InstanceArg ann (HasConOpsExpr ann (typeOf binder) tCont)
+      , ExplicitArg ann (Lam ann binder body)
+      , ExplicitArg ann container
+      ]
+
+pattern ForallInExpr :: ann
+                     -> Expr   binder var ann
+                     -> Binder binder var ann
+                     -> Expr   binder var ann
+                     -> Expr   binder var ann
+                     -> Expr   binder var ann
+pattern ForallInExpr ann tCont binder body container =
+  QuantifierInExpr Forall ann tCont binder body container
+
+pattern ExistsInExpr :: ann
+                     -> Expr   binder var ann
+                     -> Binder binder var ann
+                     -> Expr   binder var ann
+                     -> Expr   binder var ann
+                     -> Expr   binder var ann
+pattern ExistsInExpr ann tCont binder body container
+  = QuantifierInExpr Exists ann tCont binder body container
+
+pattern ForeachInExpr :: ann
+                      -> Expr   binder var ann
+                      -> Expr   binder var ann
+                      -> Binder binder var ann
+                      -> Expr   binder var ann
+                      -> Expr   binder var ann
+                      -> Expr   binder var ann
+pattern
+  ForeachInExpr ann dim tCont binder body container <-
+    App ann (Builtin _ ForeachIn)
+      [ ImplicitArg _ dim
+      , ImplicitArg _ tCont
+      , ExplicitArg _ (Lam _ binder body)
+      , ExplicitArg _ container
+      ]
+  where
+  ForeachInExpr ann dim tCont binder body container =
+    App ann (Builtin ann ForeachIn)
+      [ ImplicitArg ann dim
+      , ImplicitArg ann tCont
       , ExplicitArg ann (Lam ann binder body)
       , ExplicitArg ann container
       ]

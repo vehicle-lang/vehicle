@@ -24,10 +24,13 @@ normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) ([DBBi
           => NormalisationOptions
           -> a
           -> m a
-normalise options@Options{..} x = logCompilerPass "normalisation" $ do
+normalise options@Options{..} x = logCompilerPass currentPass $ do
   result <- evalStateT (runReaderT (nf x) options) mempty
   logCompilerPassOutput (prettyFriendlyDB boundCtx result)
   return result
+
+currentPass :: Doc ()
+currentPass = "normalisation"
 
 --------------------------------------------------------------------------------
 -- Setup
@@ -104,7 +107,7 @@ instance Norm CheckedExpr where
       Hole{}      -> return e
       Literal{}   -> return e
       Builtin{}   -> return e
-      Meta{}      -> resolutionError "normalisation" "meta"
+      Meta{}      -> resolutionError currentPass "meta"
 
       PrimDict ann tc     -> PrimDict ann <$> nf tc
       LSeq ann dict exprs -> LSeq ann dict <$> traverse nf exprs
@@ -158,7 +161,15 @@ nfApp ann fun       args = do
     OrExpr   _ [arg1, arg2]        -> nfOr      ann arg1 arg2
     ImplExpr _ [arg1, arg2]        -> nfImplies ann arg1 arg2 implicationsToDisjunctions
     IfExpr _ _ [cond, e1, e2]      -> nfIf cond e1 e2
-    QuantifierExpr q _ binder body -> nfQuantifier ann q binder body
+
+    -- Quantifiers
+    ForallExpr  _ binder body -> nfQuantifier ann Forall binder body
+    ExistsExpr  _ binder body -> nfQuantifier ann Exists binder body
+    ForeachExpr _ binder body -> nfForeach ann binder body
+
+    ForallInExpr  _ tCont binder body container -> nfQuantifierIn ann Forall tCont binder body container
+    ExistsInExpr  _ tCont binder body container -> nfQuantifierIn ann Exists tCont binder body container
+    ForeachInExpr _ _ _   binder body container -> nfForeachIn ann binder body container
 
     -- Binary numeric ops
     AddExpr _ t _  [arg1, arg2] -> nfAdd ann t arg1 arg2
@@ -172,8 +183,6 @@ nfApp ann fun       args = do
     MapExpr _ tElem tRes [fn, cont]   -> nfMap  ann tElem tRes (argExpr fn) (argExpr cont)
     AtExpr _ _ _ _ [tensor, index]    -> nfAt   tensor index
     FoldExpr _ _ _ _ [op, unit, cont] -> nfFold ann op unit cont
-    QuantifierInExpr q _ tCont binder body container ->
-      nfQuantifierIn ann q tCont binder body container
 
     -- Fall-through case
     _ -> Nothing
@@ -296,6 +305,25 @@ nfQuantifier ann q binder body = case typeOf binder of
 
   _ -> Nothing
 
+nfForeach :: MonadNorm m
+          => CheckedAnn
+          -> CheckedBinder
+          -> CheckedExpr
+          -> Maybe (m CheckedExpr)
+nfForeach ann binder body = Just $
+  case typeOf binder of
+    t@(IndexType _ size) ->
+      case getDimension size of
+        Nothing -> compilerDeveloperError
+          "Encountered unexpected non-constant Index dimension during normalisation."
+        Just n  -> do
+          let tCont = ListType ann t
+          let cont  = SeqExpr ann t tCont (fmap (NatLiteralExpr ann t) [0 .. n-1])
+          let e = ForeachInExpr ann size tCont binder body cont
+          nf e
+    _ -> compilerDeveloperError
+      "Type-checking is supposed to ensure only using `foreach` with the `Index` type."
+
 makeTensorLit :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedExpr
 makeTensorLit ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)
   where
@@ -320,21 +348,31 @@ nfQuantifierIn :: MonadNorm m
                -> CheckedExpr
                -> CheckedExpr
                -> Maybe (m CheckedExpr)
-nfQuantifierIn ann q tCont binder body container = do
+nfQuantifierIn ann q tCont binder body container = Just $ do
+  logDebug MaxDetail "Hi"
   let tRes = BoolType ann
   let tResCont = substContainerType tRes tCont
   let mappedContainer = MapExpr ann (typeOf binder) tRes (ExplicitArg ann <$> [Lam ann binder body, container])
-  let foldedContainer = booleanBigOp (quantOp q) ann tResCont mappedContainer
-  Just (nf foldedContainer)
+  case q of
+    Forall  -> nf $ booleanBigOp And ann tResCont mappedContainer
+    Exists  -> nf $ booleanBigOp Or  ann tResCont mappedContainer
+
+nfForeachIn :: MonadNorm m
+            => CheckedAnn
+            -> CheckedBinder
+            -> CheckedExpr
+            -> CheckedExpr
+            -> Maybe (m CheckedExpr)
+nfForeachIn ann binder body container = Just $ do
+  let tRes = BoolType ann
+  let lamArg = ExplicitArg ann (Lam ann binder body)
+  let containerArg = ExplicitArg ann container
+  return $ MapExpr ann (typeOf binder) tRes [lamArg, containerArg]
 
 substContainerType :: CheckedExpr -> CheckedExpr -> CheckedExpr
 substContainerType newTElem (ListType   ann _tElem)       = ListType   ann newTElem
 substContainerType newTElem (TensorType ann _tElem tDims) = TensorType ann newTElem tDims
 substContainerType _ _ = developerError "Provided an invalid container type"
-
-quantOp :: Quantifier -> BooleanOp2
-quantOp All = And
-quantOp Any = Or
 
 --------------------------------------------------------------------------------
 -- Normalising boolean operations
@@ -347,12 +385,15 @@ nfNot :: forall m . MonadNorm m
       -> CheckedArg
       -> Maybe (m CheckedExpr)
 nfNot ann arg = case argExpr arg of
-  BoolLiteralExpr    _ b          -> Just $ return $ BoolLiteralExpr ann (not b)
-  OrderExpr      o   _ tElem args -> Just $ return $ OrderExpr      (neg o)  ann tElem args
-  EqualityExpr   eq  _ tElem args -> Just $ return $ EqualityExpr   (neg eq) ann tElem args
-  QuantifierExpr q   _ binder body   -> Just $ do
+  BoolLiteralExpr    _ b           -> Just $ return $ BoolLiteralExpr ann (not b)
+  OrderExpr      o   _ tElem args  -> Just $ return $ OrderExpr      (neg o)  ann tElem args
+  EqualityExpr   eq  _ tElem args  -> Just $ return $ EqualityExpr   (neg eq) ann tElem args
+  ForallExpr _ binder body -> Just $ do
     let nBody = NotExpr ann [ExplicitArg ann body]
-    QuantifierExpr (neg q) ann binder <$> nf nBody
+    ExistsExpr ann binder <$> nf nBody
+  ExistsExpr _ binder body -> Just $ do
+    let nBody = NotExpr ann [ExplicitArg ann body]
+    ForallExpr ann binder <$> nf nBody
   ImplExpr           _ [e1, e2] -> Just $ do
     ne2 <- notArg e2;
     return $ AndExpr ann [e1, ne2]

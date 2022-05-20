@@ -516,8 +516,11 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
   Map  -> typeOfMapOp
   Fold -> typeOfFoldOp
 
-  Quant   _ -> typeOfQuantifierOp
-  QuantIn _ -> typeOfQuantifierInOp
+  Quant   _ -> typeOfForallAndExists
+  QuantIn _ -> typeOfForallAndExistsIn
+
+  Foreach   -> typeOfForeach
+  ForeachIn -> typeOfForeachIn
 
 typeOfIf :: DSLExpr
 typeOfIf =
@@ -550,16 +553,31 @@ typeOfNumOp1 numConstraint =
   forall type0 $ \t ->
     numConstraint t ~~~> t ~> t
 
-typeOfQuantifierOp :: DSLExpr
-typeOfQuantifierOp =
+typeOfForallAndExists :: DSLExpr
+typeOfForallAndExists =
   forall type0 $ \t ->
     (t ~> tBool) ~> tBool
 
-typeOfQuantifierInOp :: DSLExpr
-typeOfQuantifierInOp =
+typeOfForeach :: DSLExpr
+typeOfForeach =
+  forall tNat $ \d ->
+    forall (tList tNat) $ \ds ->
+      (tIndex d ~> tTensor tBool ds) ~> tTensor tBool (cons tNat d ds)
+
+typeOfForallAndExistsIn :: DSLExpr
+typeOfForallAndExistsIn =
   forall type0 $ \tElem ->
     forall type0 $ \tCont ->
       hasConOps tElem tCont ~~~> (tElem ~> tBool) ~> tCont ~> tBool
+
+typeOfForeachIn :: DSLExpr
+typeOfForeachIn =
+  forall tNat $ \d ->
+    forall type0 $ \tElem ->
+      -- This is a hack. Need to think about the multi-dimensional case
+      -- more carefully.
+      let ds = lseq tNat (tList tNat) [d] in
+      (tElem ~> tBool) ~> tTensor tElem ds ~> tTensor tBool ds
 
 typeOfCons :: DSLExpr
 typeOfCons =
@@ -571,7 +589,7 @@ typeOfAtOp =
   forall type0 $ \tElem ->
     forall type0 $ \tDim ->
       forall type0 $ \tDims ->
-        tTensor tElem (cons tDim tDims) ~> tIndex tDim ~> tTensor tElem tDims
+        tTensor tElem (cons tNat tDim tDims) ~> tIndex tDim ~> tTensor tElem tDims
 
 -- TODO generalise these to tensors etc. (remember to do mkMap' in utils as well)
 typeOfMapOp :: DSLExpr

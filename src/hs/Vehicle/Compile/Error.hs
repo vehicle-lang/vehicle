@@ -81,7 +81,6 @@ data CompileError
   | UnsupportedQuantifierPosition  Backend Provenance Identifier Quantifier Symbol
   | UnsupportedVariableType        Backend Provenance Identifier Symbol CheckedExpr [Builtin]
   | UnsupportedInequality          Backend Provenance Identifier
-  | UnsupportedOrder               Backend Provenance Quantifier Order
   | UnsupportedPolymorphicEquality Backend Provenance Symbol
   | UnsupportedBuiltin             Backend Provenance Builtin
   | UnsupportedNonMagicVariable    Backend Provenance Symbol

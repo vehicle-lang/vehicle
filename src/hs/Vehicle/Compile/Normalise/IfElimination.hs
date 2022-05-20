@@ -68,6 +68,7 @@ liftAndElimIf expr =
     Pi{}       -> typeError currentPass "Pi"
 
     QuantifierExpr q  ann binder body -> QuantifierExpr q  ann binder . elimIf <$> liftAndElimIf body
+
     NotExpr           ann args        -> NotExpr           ann   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
     BooleanOp2Expr op ann args        -> BooleanOp2Expr op ann   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
     IfExpr            ann t args      -> IfExpr            ann t <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args

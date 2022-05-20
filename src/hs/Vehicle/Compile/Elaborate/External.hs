@@ -119,10 +119,13 @@ instance Elab B.Expr V.InputExpr where
     B.ForallT tk1 ns _tk2 t   -> do checkNonEmpty tk1 ns; unfoldForall (mkAnn tk1) <$> elabBindersAndBody ns t
     B.Lam tk1 ns _tk2 e       -> do checkNonEmpty tk1 ns; unfoldLam    (mkAnn tk1) <$> elabBindersAndBody ns e
 
-    B.Forall   tk1 ns    _tk2 e  -> elabQuantifier   tk1 V.All ns e
-    B.Exists   tk1 ns    _tk2 e  -> elabQuantifier   tk1 V.Any ns e
-    B.ForallIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.All ns e1 e2
-    B.ExistsIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Any ns e1 e2
+    B.Forall    tk1 ns    _tk2 e  -> elabQuantifier   tk1 V.Forall  ns e
+    B.Exists    tk1 ns    _tk2 e  -> elabQuantifier   tk1 V.Exists  ns e
+    B.ForallIn  tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Forall  ns e1 e2
+    B.ExistsIn  tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Exists  ns e1 e2
+
+    B.Foreach   tk1 ns    _tk2 e  -> elabForeach   tk1 ns e
+    B.ForeachIn tk1 ns e1 _tk2 e2 -> elabForeachIn tk1 ns e1 e2
 
     B.Bool tk                 -> builtin V.Bool                          tk []
     B.Real tk                 -> builtin (V.NumericType   V.Real)        tk []
@@ -263,12 +266,23 @@ elabBindersAndBody bs body = bitraverse (traverse elab) elab (bs, body)
 elabQuantifier :: (MonadCompile m, IsToken token) => token -> V.Quantifier -> [B.Binder] -> B.Expr -> m V.InputExpr
 elabQuantifier t q bs body = do
   checkNonEmpty t bs
-  unfoldQuantifier (mkAnn t) q <$> elabBindersAndBody bs body
+  unfoldQuantifier (mkAnn t) (V.Quant q) <$> elabBindersAndBody bs body
 
 elabQuantifierIn :: (MonadCompile m, IsToken token) => token -> V.Quantifier -> [B.Binder] -> B.Expr -> B.Expr -> m V.InputExpr
 elabQuantifierIn t q bs container body = do
   checkNonEmpty t bs
-  unfoldQuantifierIn (mkAnn t) q <$> elab container <*> elabBindersAndBody bs body
+  unfoldQuantifierIn (mkAnn t) (V.QuantIn q) <$> elab container <*> elabBindersAndBody bs body
+
+
+elabForeach :: (MonadCompile m, IsToken token) => token -> [B.Binder] -> B.Expr -> m V.InputExpr
+elabForeach t bs body = do
+  checkNonEmpty t bs
+  unfoldQuantifier (mkAnn t) V.Foreach <$> elabBindersAndBody bs body
+
+elabForeachIn :: (MonadCompile m, IsToken token) => token -> [B.Binder] -> B.Expr -> B.Expr -> m V.InputExpr
+elabForeachIn t bs container body = do
+  checkNonEmpty t bs
+  unfoldQuantifierIn (mkAnn t) V.ForeachIn <$> elab container <*> elabBindersAndBody bs body
 
 elabOrder :: (MonadCompile m, IsToken token) => V.Order -> token -> B.Expr -> B.Expr -> m V.InputExpr
 elabOrder order tk e1 e2 = do

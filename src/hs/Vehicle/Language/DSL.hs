@@ -25,11 +25,11 @@ module Vehicle.Language.DSL
   , tMax
   , tHole
   , piType
+  , nil
   , cons
   ) where
 
 import Prelude hiding (pi)
-import GHC.Stack (HasCallStack)
 import Data.List.NonEmpty (NonEmpty)
 
 import Vehicle.Language.Print (prettyVerbose)
@@ -44,8 +44,9 @@ class DSL expr where
   infixr 4 ~~>
   infixr 4 ~~~>
 
-  app :: expr -> NonEmpty (Visibility, expr) -> expr
-  pi  :: Visibility -> expr -> (expr -> expr) -> expr
+  app  :: expr -> NonEmpty (Visibility, expr) -> expr
+  pi   :: Visibility -> expr -> (expr -> expr) -> expr
+  lseq :: expr -> expr -> [expr] -> expr
 
   eApp :: expr -> NonEmpty expr -> expr
   eApp f args = app f (fmap (Explicit,) args)
@@ -85,7 +86,13 @@ instance DSL DSLExpr where
         args' = fmap (\(v, e) -> Arg ann v (unDSL e ann i)) args
     in App ann fun' args'
 
-piType :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
+  lseq tElem tCont args = DSL $ \ann i ->
+    SeqExpr ann
+      (unDSL tElem ann i)
+      (unDSL tCont ann i)
+      (fmap (\e -> unDSL e ann i) args)
+
+piType :: CheckedExpr -> CheckedExpr -> CheckedExpr
 piType t1 t2 = t1 `tMax` t2
 
 universeLevel :: CheckedExpr -> UniverseLevel
@@ -94,7 +101,7 @@ universeLevel (Meta _ _) = 0 -- This is probably going to bite us, apologies.
 universeLevel t          = developerError $
   "Expected argument of type Type. Found" <+> prettyVerbose t <> "."
 
-tMax :: HasCallStack => CheckedExpr -> CheckedExpr -> CheckedExpr
+tMax :: CheckedExpr -> CheckedExpr -> CheckedExpr
 tMax t1 t2  = if universeLevel t1 > universeLevel t2 then t1 else t2
 
 con :: Builtin -> DSLExpr
@@ -173,5 +180,8 @@ hasConLitsOfSize n tCont tElem =
 --------------------------------------------------------------------------------
 -- Operations
 
-cons :: DSLExpr -> DSLExpr -> DSLExpr
-cons x xs = app (con Cons) [(Implicit, tNat), (Explicit, x), (Explicit, xs)]
+nil :: DSLExpr -> DSLExpr -> DSLExpr
+nil tElem tCont = lseq tElem tCont []
+
+cons :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+cons tElem x xs = app (con Cons) [(Implicit, tElem), (Explicit, x), (Explicit, xs)]

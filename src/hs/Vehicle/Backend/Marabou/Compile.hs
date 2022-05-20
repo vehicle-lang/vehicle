@@ -23,22 +23,21 @@ import Vehicle.Compile.Linearity
 -- Compilation to Marabou
 
 -- | Compiles the provided program to Marabou queries.
-compile :: MonadCompile m => NetworkCtx -> CheckedProg -> m [MarabouProperty]
-compile networkCtx prog = logCompilerPass "compilation to Marabou" $
-  compileProg networkCtx prog
-
---------------------------------------------------------------------------------
--- Algorithm
-
-compileProg :: MonadCompile m => NetworkCtx -> CheckedProg -> m [MarabouProperty]
-compileProg networkCtx (Main ds) = do
-  results <- catMaybes <$> traverse (compileDecl networkCtx) ds
+compile :: MonadCompile m => NetworkCtx -> CheckedProg -> m [(Symbol, MarabouProperty)]
+compile networkCtx prog = logCompilerPass "compilation to Marabou" $ do
+  results <- compileProg networkCtx prog
   if null results then
     throwError NoPropertiesFound
   else
     return results
 
-compileDecl :: MonadCompile m => NetworkCtx -> CheckedDecl -> m (Maybe MarabouProperty)
+--------------------------------------------------------------------------------
+-- Algorithm
+
+compileProg :: MonadCompile m => NetworkCtx -> CheckedProg -> m [(Symbol, MarabouProperty)]
+compileProg networkCtx (Main ds) = catMaybes <$> traverse (compileDecl networkCtx) ds
+
+compileDecl :: MonadCompile m => NetworkCtx -> CheckedDecl -> m (Maybe (Symbol, MarabouProperty))
 compileDecl networkCtx d = case d of
   DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
 
@@ -47,13 +46,17 @@ compileDecl networkCtx d = case d of
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
       then return Nothing
-      else Just <$> compileProperty ident networkCtx expr
+      else do
+        property <- compileProperty ident networkCtx expr
+        return (Just (nameOf ident, property))
 
 compileProperty :: MonadCompile m
                 => Identifier
                 -> NetworkCtx
                 -> CheckedExpr
                 -> m MarabouProperty
+compileProperty ident networkCtx (SeqExpr _ _ _ es) =
+  MultiProperty <$> traverse (compileProperty ident networkCtx) es
 compileProperty ident networkCtx expr =
   logCompilerPass ("property" <+> squotes (pretty ident)) $ do
 
@@ -93,7 +96,7 @@ compileProperty ident networkCtx expr =
     let compileQ = compileQuery ident networkCtx
     queries <- traverse compileQ (zip [1..] queryExprs)
 
-    return $ MarabouProperty (nameOf ident) isPropertyNegated queries
+    return $ SingleProperty isPropertyNegated queries
 
 compileQuery :: MonadCompile m
              => Identifier

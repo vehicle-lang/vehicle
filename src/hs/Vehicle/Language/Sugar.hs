@@ -71,21 +71,21 @@ foldLam expr = first reverse (decomposeLam ([], expr))
 
 unfoldQuantifier :: forall binder var ann. Semigroup ann
                  => ann
-                 -> Quantifier
+                 -> Builtin
                  -> BindersAndBody binder var ann
                  -> Expr binder var ann
 unfoldQuantifier ann q = unfoldBinders ann (\ann1 binder body ->
-  normAppList ann1 (Builtin ann1 (Quant q))
+  normAppList ann1 (Builtin ann1 q)
     [ExplicitArg ann1 (Lam ann1 binder body)])
 
 unfoldQuantifierIn :: forall binder var ann. Semigroup ann
                    => ann
-                   -> Quantifier
+                   -> Builtin
                    -> Expr binder var ann
                    -> BindersAndBody binder var ann
                    -> Expr binder var ann
 unfoldQuantifierIn ann q container = unfoldBinders ann (\ann1 binder body ->
-  normAppList ann1 (Builtin ann1 (QuantIn q))
+  normAppList ann1 (Builtin ann1 q)
     [ ExplicitArg ann1 (Lam ann1 binder body)
     , ExplicitArg ann1 container
     ])

@@ -27,6 +27,7 @@ position token TokIndex     {"Index"};
 
 position token TokForall    {"forall"};
 position token TokExists    {"exists"};
+position token TokForeach   {"foreach"};
 position token TokImpl      {"=>"};
 position token TokAnd       {"and"};
 position token TokOr        {"or"};
@@ -135,10 +136,12 @@ Literal. Expr15 ::= Lit;
 Hole.    Expr15 ::= HoleToken;
 
 -- Quantification
-Forall.    Expr2 ::= TokForall [Binder] TokDot Expr2;
-Exists.    Expr2 ::= TokExists [Binder] TokDot Expr2;
-ForallIn.  Expr2 ::= TokForall [Binder] "in" Expr3 TokDot Expr2;
-ExistsIn.  Expr2 ::= TokExists [Binder] "in" Expr3 TokDot Expr2;
+Forall.    Expr2 ::= TokForall  [Binder] TokDot Expr2;
+Exists.    Expr2 ::= TokExists  [Binder] TokDot Expr2;
+Foreach.   Expr2 ::= TokForeach [Binder] TokDot Expr2;
+ForallIn.  Expr2 ::= TokForall  [Binder] "in" Expr3 TokDot Expr2;
+ExistsIn.  Expr2 ::= TokExists  [Binder] "in" Expr3 TokDot Expr2;
+ForeachIn. Expr2 ::= TokForeach [Binder] "in" Expr3 TokDot Expr2;
 
 -- Boolean expressions.
 If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;

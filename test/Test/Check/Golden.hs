@@ -5,6 +5,7 @@ import Data.Map qualified as Map ( fromList )
 import Data.Text (Text)
 import System.Directory (removeFile, doesFileExist)
 import System.FilePath ((</>), (<.>))
+import Data.Bifunctor
 
 import Test.Tasty
 
@@ -87,5 +88,5 @@ runTest name status alterNetwork = do
   removeFile proofCache
   removeFileIfExists networkFile
 
-mkStatus :: [(Text, PropertyStatus)] -> SpecificationStatus
-mkStatus = SpecificationStatus . Map.fromList
+mkStatus :: [(Text, SinglePropertyStatus)] -> SpecificationStatus
+mkStatus = SpecificationStatus . Map.fromList . fmap (second SinglePropertyStatus)

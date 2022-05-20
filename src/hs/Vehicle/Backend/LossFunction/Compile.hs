@@ -97,27 +97,36 @@ compileExpr e = showExit $ do
         V.Ge -> Sub <$> compileArg e1 <*> compileArg e2
         V.Gt -> Neg <$> (Sub <$> compileArg e2 <*> compileArg e1)
 
-    V.LiteralExpr _ _ _ l                 -> return $ Con (compileLiteral l)
-    V.App _ (V.Var _ (V.Free ident)) p    -> NetApp (V.nameOf ident) <$> traverse compileArg p
-    V.Var _ (V.Bound t)                   -> return (Var t)
-    V.QuantifierExpr q _ binder body      -> Quant (compileQuant q) (V.getBinderSymbol binder) (Domain ()) <$> compileExpr body
-    V.AtExpr _ _ _ _ [xs, i]              -> At <$> compileArg xs <*> compileArg i
-    V.LSeq _ _ xs                         -> TensorLit <$> traverse compileExpr xs
+    V.LiteralExpr _ _ _ l              -> return $ Con (compileLiteral l)
+    V.App _ (V.Var _ (V.Free ident)) p -> NetApp (V.nameOf ident) <$> traverse compileArg p
+    V.Var _ (V.Bound t)                -> return (Var t)
+    V.AtExpr _ _ _ _ [xs, i]           -> At <$> compileArg xs <*> compileArg i
+    V.LSeq _ _ xs                      -> TensorLit <$> traverse compileExpr xs
 
-    V.Hole{}                              -> resolutionError "lossFunction" "Hole"
-    V.Meta{}                              -> resolutionError "lossFunction" "Meta"
-    V.Ann{}                               -> normalisationError "lossFunction" "Ann"
-    V.Let{}                               -> normalisationError "lossFunction" "Let"
-    V.Lam{}                               -> normalisationError "lossFunction" "Lam"
-    V.PrimDict{}                          -> typeError "lossFunction" "PrimDict"
-    V.Pi{}                                -> typeError "lossFunction" "Pi"
-    V.Type{}                              -> typeError "lossFunction" "Type"
-    _                                     -> unexpectedExprError currentPass (prettySimple e)
+    V.ForallExpr _ binder body         -> do
+      body' <- compileExpr body
+      let varName = V.getBinderSymbol binder
+      return $ Quant (compileQuant V.Forall) varName (Domain ()) body'
+
+    V.ExistsExpr _ binder body         -> do
+      body' <- compileExpr body
+      let varName = V.getBinderSymbol binder
+      return $ Quant (compileQuant V.Exists) varName (Domain ()) body'
+
+    V.Hole{}     -> resolutionError "lossFunction" "Hole"
+    V.Meta{}     -> resolutionError "lossFunction" "Meta"
+    V.Ann{}      -> normalisationError "lossFunction" "Ann"
+    V.Let{}      -> normalisationError "lossFunction" "Let"
+    V.Lam{}      -> normalisationError "lossFunction" "Lam"
+    V.PrimDict{} -> typeError "lossFunction" "PrimDict"
+    V.Pi{}       -> typeError "lossFunction" "Pi"
+    V.Type{}     -> typeError "lossFunction" "Type"
+    _            -> unexpectedExprError currentPass (prettySimple e)
 
 
 compileQuant :: V.Quantifier -> Quantifier
-compileQuant V.All = All
-compileQuant V.Any = Any
+compileQuant V.Forall  = All
+compileQuant V.Exists  = Any
 
 showEntry :: MonadCompile m => V.CheckedExpr -> m V.CheckedExpr
 showEntry e = do

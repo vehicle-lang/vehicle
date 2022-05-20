@@ -75,10 +75,11 @@ dataset trainingImages : Tensor Image [n]
 dataset trainingLabels : Tensor Label [n]
 
 -- We then say that the network is robust if it is robust around every pair
--- of input images and output labels. Note the use of the `separate`
--- keyword when quantifying over the index `i` in the dataset. This ensures
--- that Vehicle will report on the verification status of each image in
--- the dataset separately. If `separate` was omitted, Vehicle would only
+-- of input images and output labels. Note the use of the `foreach`
+-- keyword when quantifying over the index `i` in the dataset. Whereas `forall`
+-- would return a single `Bool`, `foreach` returns a `Tensor` of booleans,
+-- ensuring that Vehicle will report on the verification status of each image in
+-- the dataset separately. If `forall` was omitted, Vehicle would only
 -- report if the network was robust around *every* image in the dataset, a
 -- state of affairs which is unlikely to be true.
 robust : Tensor Bool [n]

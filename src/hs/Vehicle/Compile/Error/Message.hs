@@ -338,9 +338,9 @@ instance MeaningfulError CompileError where
     UnsupportedQuantifierSequence target p ident q -> UError $ UserError
       { provenance = p
       , problem    = "While compiling property" <+> squotes (pretty ident) <+> "to" <+>
-                     pretty target <+> "found a" <+> prettyQuant q <+> "quantifier after a" <+>
-                     prettyQuant (neg q) <+> "quantifier. Only homogeneous sequences of" <+>
-                     prettyQuant All <+> "s or" <+> prettyQuant Any <+>
+                     pretty target <+> "found a" <+> prettyQuant q <+> "quantifier after" <+>
+                     "the opposite quantifier. Only homogeneous sequences of" <+>
+                     prettyQuant Forall <+> "s or" <+> prettyQuant Exists <+>
                      "quantifiers are currently supported."
       , fix        = Just "if possible try reformulating your property in terms of a single quantifier type."
       } where prettyQuant quant = squotes (pretty (Quant quant))
@@ -371,16 +371,6 @@ instance MeaningfulError CompileError where
       , fix        = Just $ "Try avoiding it, otherwise please open an issue on the" <+>
                      "Vehicle issue tracker."
       }
-
-    UnsupportedOrder target p quantifier order -> UError $ UserError
-      { provenance = p
-      , problem    = "The use of" <+> squotes (pretty actualOrder) <+> "inside of an" <+>
-                     quantifierAdverb quantifier <+> "quantifier property" <+>
-                     "is not currently supported by" <+> pretty target
-      , fix        = Just $ "use" <+> squotes (pretty (flipStrictness actualOrder)) <+>
-                     "instead, otherwise please open an issue on the" <+> pretty target <+>
-                     "issue tracker to ask for support."
-      } where actualOrder = if quantifier == All then flipStrictness order else order
 
     UnsupportedInequality target p identifier -> UError $ UserError
       { provenance = p

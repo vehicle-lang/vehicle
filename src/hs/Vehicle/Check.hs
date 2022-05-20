@@ -9,7 +9,7 @@ import Control.Monad.Trans (MonadIO(liftIO))
 
 import Vehicle.Prelude
 import Vehicle.Resource
-import Vehicle.Verify.VerificationStatus (readProofCache, isSpecVerified, ProofCache(..))
+import Vehicle.Verify.VerificationStatus (readProofCache, isVerified, ProofCache(..))
 
 --------------------------------------------------------------------------------
 -- Checking
@@ -29,7 +29,7 @@ checkStatus :: LoggingOptions -> CheckOptions -> LoggerT IO CheckResult
 checkStatus _loggingOptions CheckOptions{..} = do
   ProofCache{..} <- liftIO $ readProofCache proofCache
   (missingNetworks, alteredNetworks) <- checkResourceIntegrity resourceSummaries
-  return $ case (missingNetworks, alteredNetworks, isSpecVerified status) of
+  return $ case (missingNetworks, alteredNetworks, isVerified status) of
     (x : xs, _, _)  -> MissingResources (x :| xs)
     ([], x : xs, _) -> AlteredResources (x :| xs)
     ([], [], False) -> Unverified

@@ -11,7 +11,7 @@ import Data.Text ( Text )
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Data.Map (Map, (\\))
-import Data.Map qualified as Map (toAscList, fromList, keysSet, size, lookup, intersectionWith, keys)
+import Data.Map qualified as Map (toAscList, fromList, keysSet, size, lookup, intersectionWith, keys, null)
 import Data.Set qualified as Set
 import System.Directory (listDirectory, removeFile, createDirectory, removeDirectoryRecursive, createDirectoryIfMissing)
 import System.FilePath (takeFileName, (</>), takeDirectory)
@@ -126,7 +126,7 @@ compareDirectoryContents diffException (Just goldenContents) (Just outputContent
   let (sharedFiles, missingFiles, extraFiles) =
         getContentsDiff goldenContents outputContents
 
-  if Map.size sharedFiles /= Map.size goldenContents then do
+  if not (Map.null missingFiles) || not (Map.null extraFiles) then do
     let errorMessage = "Contents of output directory did not match golden directory\n"
     let errorMessage1 = errorMessage <>
           if Map.size missingFiles /= 0 then

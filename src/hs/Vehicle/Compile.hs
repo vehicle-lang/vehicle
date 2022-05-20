@@ -27,7 +27,7 @@ import Vehicle.Compile.Type (typeCheck)
 import Vehicle.Compile.Normalise (normalise, defaultNormalisationOptions)
 import Vehicle.Compile.Resource.Network (removeNetworkDecls)
 import Vehicle.Backend.Marabou qualified as Marabou
-import Vehicle.Backend.Marabou (MarabouProperty)
+import Vehicle.Backend.Marabou (MarabouSpec)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.LossFunction ( LExpr, writeLossFunctionFiles)
@@ -62,7 +62,7 @@ compile loggingOptions CompileOptions{..} = do
 compileToMarabou :: LoggingOptions
                  -> Resources
                  -> Text
-                 -> IO [MarabouProperty]
+                 -> IO MarabouSpec
 compileToMarabou loggingOptions resources spec =
   fromLoggedEitherIO loggingOptions $ do
     (networkCtx, prog) <- typeCheckProgAndLoadResources resources spec

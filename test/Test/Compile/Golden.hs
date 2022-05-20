@@ -153,6 +153,12 @@ goldenTests = testGroup "GoldenTests" <$>
       , testLocation   = Tests
       , testTargets    = [MarabouBackend]
       }
+
+    , testSpec
+      { testName       = "simple-foreach"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      }
     -- , testSpec
     --   { testName       = "simple-vectorType"
     --   , testLocation   = Tests

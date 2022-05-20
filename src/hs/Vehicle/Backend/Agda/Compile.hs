@@ -315,7 +315,7 @@ compileExpr expr = do
     Var  _ n   -> return $ annotateConstant [] (pretty n)
 
     Pi ann binder result -> case foldPi ann binder result of
-      Left (binders, body)  -> compileTypeLevelQuantifier All binders body
+      Left (binders, body)  -> compileTypeLevelQuantifier Forall binders body
       Right (input, output) ->
         annotateInfixOp2 [] minPrecedence id Nothing arrow <$> traverse compileExpr [input, output]
 
@@ -414,8 +414,13 @@ compileBuiltin e = case e of
   NumericOp2Expr op2 _ t _ args -> compileNumOp2  op2 t <$> traverse compileArg args
   NegExpr            _ t   args -> compileNeg         t <$> traverse compileArg args
 
-  (QuantifierExpr   q _         binder body)      -> compileTypeLevelQuantifier q [binder] body
-  (QuantifierInExpr q ann tCont binder body cont) -> compileQuantIn q tCont (Lam ann binder body) cont
+  (ForallExpr  _  binder body) -> compileTypeLevelQuantifier Forall [binder] body
+  (ExistsExpr  _  binder body) -> compileTypeLevelQuantifier Exists [binder] body
+  (ForeachExpr ann _ _)        -> throwError $ UnsupportedBuiltin AgdaBackend ann Foreach
+
+  (ForallInExpr  ann tCont binder body cont) -> compileQuantIn Forall tCont (Lam ann binder body) cont
+  (ExistsInExpr  ann tCont binder body cont) -> compileQuantIn Exists tCont (Lam ann binder body) cont
+  (ForeachInExpr ann _ _ _       _    _)     -> throwError $ UnsupportedBuiltin AgdaBackend ann ForeachIn
 
   (OrderExpr    ord _ t1 args) -> compileOrder ord  t1 =<< traverse compileArg args
   (EqualityExpr Eq  _ t1 args) -> compileEquality   t1 =<< traverse compileArg args
@@ -434,11 +439,17 @@ compileBuiltin e = case e of
 compileAnn :: Code -> Code -> Code
 compileAnn e t = annotateInfixOp2 [FunctionBase] 0 id Nothing "∋" [t,e]
 
-compileTypeLevelQuantifier :: MonadAgdaCompile m => Quantifier -> [OutputBinder] -> OutputExpr -> m Code
+compileTypeLevelQuantifier :: MonadAgdaCompile m
+                           => Quantifier
+                           -> [OutputBinder]
+                           -> OutputExpr
+                           -> m Code
 compileTypeLevelQuantifier q binders body = do
   cBinders  <- traverse (compileBinder False) binders
   cBody     <- compileExpr body
-  let quant = if q == All then "∀" else annotateConstant [DataProduct] "∃ λ"
+  quant     <- case q of
+    Forall  -> return "∀"
+    Exists  -> return $ annotateConstant [DataProduct] "∃ λ"
   return $ quant <+> hsep cBinders <+> arrow <+> cBody
 
 compileQuantIn :: MonadAgdaCompile m => Quantifier -> OutputExpr -> OutputExpr -> OutputExpr -> m Code
@@ -449,11 +460,11 @@ compileQuantIn q tCont fn cont = do
   case boolLevel of
     TypeLevel -> do
       let deps  = containerQuantifierDependencies q contType
-      let quant = qualifier <> "." <> (if q == All then "All" else "Any")
+      let quant = qualifier <> "." <> (if q == Forall then "All" else "Any")
       annotateApp deps quant <$> traverse compileExpr [fn, cont]
     BoolLevel -> do
       let deps  = containerDependencies contType
-      let quant = qualifier <> "." <> (if q == All then "all" else "any")
+      let quant = qualifier <> "." <> (if q == Forall then "all" else "any")
       annotateApp deps quant <$> traverse compileExpr [fn, cont]
 
 compileLiteral :: MonadAgdaCompile m => OutputExpr -> m Code
@@ -651,10 +662,10 @@ containerDependencies = \case
   Tensor -> [DataTensor]
 
 containerQuantifierDependencies :: Quantifier -> ContainerType -> [Dependency]
-containerQuantifierDependencies All List   = [DataListAll]
-containerQuantifierDependencies Any List   = [DataListAny]
-containerQuantifierDependencies All Tensor = [DataTensorAll]
-containerQuantifierDependencies Any Tensor = [DataTensorAny]
+containerQuantifierDependencies Forall  List   = [DataListAll]
+containerQuantifierDependencies Exists  List   = [DataListAny]
+containerQuantifierDependencies Forall  Tensor = [DataTensorAll]
+containerQuantifierDependencies Exists  Tensor = [DataTensorAny]
 
 
 -- Calculates the dependencies needed for equality over the provided type

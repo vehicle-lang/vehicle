@@ -30,8 +30,9 @@ isMeta (App _ Meta{} _) = True
 isMeta _                = False
 
 isProperty :: Expr binder var ann -> Bool
-isProperty (BoolType _) = True
-isProperty _            = False
+isProperty BoolType{}                  = True
+isProperty (TensorType _ BoolType{} _) = True
+isProperty _                           = False
 
 isFinite :: Expr binder var ann -> Bool
 isFinite BoolType{}             = True
@@ -67,7 +68,7 @@ exprHead :: Expr binder var ann -> Expr binder var ann
 exprHead = fst . toHead
 
 onlyExplicit :: NonEmpty (Arg binder var ann) -> [Expr binder var ann]
-onlyExplicit args = fmap argExpr $ filter isExplicit (NonEmpty.toList args)
+onlyExplicit args = argExpr <$> filter isExplicit (NonEmpty.toList args)
 
 --------------------------------------------------------------------------------
 -- Views
