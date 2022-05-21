@@ -6,9 +6,12 @@ module Vehicle.Compile.Linearity.Core
   , Assertion(..)
   , CLSTProblem(..)
   , VariableNames
+  , VarReconstruction(..)
   , linearExprFromMap
+  , addLinearExprs
   , constructAssertion
   , splitOutConstant
+  , mapExpression
   , isEquality
   , prettyLinearExpr
   , prettyAssertions
@@ -104,6 +107,9 @@ constructAssertion (lhs, rel, rhs) = Assertion
   , assertionRel  = rel
   }
 
+mapExpression :: (Vector Coefficient -> Vector Coefficient) -> Assertion -> Assertion
+mapExpression f (Assertion rel (LinearExpr e)) = Assertion rel (LinearExpr $ f e)
+
 prettyAssertion :: VariableNames -> Assertion -> Doc a
 prettyAssertion varNames (Assertion rel linearExpr) =
   prettyLinearExpr linearExpr varNames <+> pretty rel <+> "0.0"
@@ -124,3 +130,10 @@ data CLSTProblem = CLSTProblem
 instance Pretty CLSTProblem where
   pretty (CLSTProblem varNames assertions) =
     prettyAssertions varNames assertions
+
+--------------------------------------------------------------------------------
+-- Variable reconstruction
+
+data VarReconstruction
+  = RecEquality LinearExpr
+  | RecInequalities [Assertion] [Assertion]

@@ -76,6 +76,7 @@ library
                       , Vehicle.Compile.Linearity
                       , Vehicle.Compile.Linearity.Core
                       , Vehicle.Compile.Linearity.GaussianElimination
+                      , Vehicle.Compile.Linearity.FourierMotzkinElimination
                       , Vehicle.Compile.Normalise
                       , Vehicle.Compile.Normalise.IfElimination
                       , Vehicle.Compile.Normalise.QuantifierLifting

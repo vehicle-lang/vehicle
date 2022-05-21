@@ -155,6 +155,12 @@ goldenTests = testGroup "GoldenTests" <$>
       }
 
     , testSpec
+      { testName       = "simple-fourierMotzkin"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      }
+
+    , testSpec
       { testName       = "simple-foreach"
       , testLocation   = Tests
       , testTargets    = [MarabouBackend]
