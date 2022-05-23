@@ -109,7 +109,7 @@ writing specifications.
 
 .. code-block:: agda
 
-   isArgmin : forallT {n} . Index n -> Tensor A n -> Bool
+   isArgmin : forallT {n} . Index n -> Tensor Rat [n] -> Bool
    isArgmin i x = forall j . i != j => x ! i < x ! j
 
 :code:`argmin`
@@ -117,7 +117,7 @@ writing specifications.
 
 .. code-block:: agda
 
-   isArgmax : forallT {n} . Index n -> Tensor A n -> Bool
+   isArgmax : forallT {n} . Index n -> Tensor Rat [n] -> Bool
    isArgmax i x = forall j . i != j => x ! i > x ! j
 
 :code:`advises`
