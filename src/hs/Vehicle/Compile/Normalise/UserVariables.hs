@@ -82,7 +82,7 @@ normUserVariables :: MonadCompile m
                   -> Verifier
                   -> NetworkCtx
                   -> CheckedExpr
-                  -> m (CLSTProblem, MetaNetwork)
+                  -> m (CLSTProblem, MetaNetwork, UserVarReconstructionInfo)
 normUserVariables ident verifier networkCtx expr =
   logCompilerPass "input/output variable insertion" $ do
     -- First lift all the quantifiers to the top-level
@@ -110,7 +110,7 @@ normUserVariables ident verifier networkCtx expr =
 
 generateCLSTProblem :: MonadSMT m
                     => CheckedExpr
-                    -> m (CLSTProblem, MetaNetwork)
+                    -> m (CLSTProblem, MetaNetwork, UserVarReconstructionInfo)
 generateCLSTProblem assertionsExpr = do
   (_, _, metaNetwork, _, userVariables, _) <- ask
   variableNames <- getVariableNames
@@ -134,10 +134,11 @@ generateCLSTProblem assertionsExpr = do
   let assertions = inputEqualityAssertions <> userAssertions
   let clst = CLSTProblem variableNames assertions
 
-  solvedCLST <- solveForUserVariables (length userVariables) clst
+  (solvedCLST, userVarReconstruction) <-
+    solveForUserVariables (length userVariables) clst
 
   logCompilerPassOutput $ pretty solvedCLST
-  return (solvedCLST, metaNetwork)
+  return (solvedCLST, metaNetwork, userVarReconstruction)
 
 --------------------------------------------------------------------------------
 -- Monad

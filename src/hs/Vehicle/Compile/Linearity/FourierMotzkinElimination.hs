@@ -1,10 +1,12 @@
 
 module Vehicle.Compile.Linearity.FourierMotzkinElimination
   ( fourierMotzkinElimination
+  , reconstructFMUserVar
   ) where
 
 import Data.Set (Set)
 import Data.Set qualified as Set (toList)
+import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed as Vector ((!), map)
 
 import Vehicle.Compile.Error
@@ -95,6 +97,35 @@ partition var = foldr categorise ([], [], [])
         (less, a' : greater, unused)
       else
         (less, greater, a : unused)
+
+
+reconstructFMUserVar :: Vector Double
+                    -> [Assertion]
+                    -> [Assertion]
+                    -> Maybe Double
+reconstructFMUserVar currentValue less greater = do
+  let initialMax = (-1/0, LessThanOrEqualTo)
+  let initialMin = (1/0,  LessThanOrEqualTo)
+  let (minValue, minRel) = foldr (evaluateMaxValue currentValue) initialMax less
+  let (maxValue, maxRel) = foldr (evaluateMinValue currentValue) initialMin greater
+
+  if minValue < maxValue || minRel == LessThanOrEqualTo && maxRel == LessThanOrEqualTo
+    then return $ (minValue + maxValue) / 2
+    else Nothing
+  where
+  evaluateMinValue :: Vector Double -> Assertion -> (Double, Relation) -> (Double, Relation)
+  evaluateMinValue values (Assertion rel expr) current@(currentMin, _) =
+    let value = evaluateExpr expr values in
+    if (value < currentMin) || (value == currentMin && rel == LessThan)
+      then (value, rel)
+      else current
+
+  evaluateMaxValue :: Vector Double -> Assertion -> (Double, Relation) -> (Double, Relation)
+  evaluateMaxValue values (Assertion rel expr) current@(currentMax, _) =
+    let value = evaluateExpr expr values in
+    if (value > currentMax) || (value == currentMax && rel == LessThan)
+      then (value, rel)
+      else current
 
 currentPass :: Doc a
 currentPass = "Fourier-Motzkin elimination"

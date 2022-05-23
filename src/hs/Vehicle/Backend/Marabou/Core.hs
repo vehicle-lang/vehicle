@@ -2,6 +2,7 @@ module Vehicle.Backend.Marabou.Core where
 
 import Vehicle.Prelude
 import Vehicle.Resource.NeuralNetwork (MetaNetwork)
+import Vehicle.Compile.Linearity.Core (UserVarReconstructionInfo)
 
 type MarabouSpec = [(Symbol, MarabouProperty)]
 
@@ -15,15 +16,8 @@ data MarabouProperty
   -- They are implicitly conjuncted.
 
 data MarabouQuery = MarabouQuery
-  { doc         :: Doc ()
-  , vars        :: [MarabouVar]
-  , metaNetwork :: MetaNetwork
+  { doc               :: Doc ()
+  , vars              :: [Symbol]
+  , metaNetwork       :: MetaNetwork
+  , varReconstruction :: UserVarReconstructionInfo
   }
-
-data MarabouVar = MarabouVar
-  { name    :: Symbol         -- Name of the variable
-  , varType :: MarabouVarType -- Type of the variable
-  }
-
-data MarabouVarType
-  = MReal

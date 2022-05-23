@@ -1,20 +1,26 @@
 module Vehicle.Compile.Linearity
   ( module X
   , solveForUserVariables
+  , reconstructUserVars
   ) where
 
+import Control.Monad (foldM)
 import Data.List (partition)
 import Data.Set qualified as Set (difference, fromList)
+import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
+import Data.Bifunctor
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Linearity.Core as X
 import Vehicle.Compile.Linearity.GaussianElimination (gaussianElimination)
-import Vehicle.Compile.Linearity.FourierMotzkinElimination (fourierMotzkinElimination)
-import Data.Bifunctor
+import Vehicle.Compile.Linearity.FourierMotzkinElimination (fourierMotzkinElimination, reconstructFMUserVar)
 
-solveForUserVariables :: MonadCompile m => Int -> CLSTProblem -> m CLSTProblem
+solveForUserVariables :: MonadCompile m
+                      => Int
+                      -> CLSTProblem
+                      -> m (CLSTProblem, UserVarReconstructionInfo)
 solveForUserVariables numberOfUserVars (CLSTProblem varNames assertions) =
   logCompilerPass currentPass $ do
     let allUserVars = Set.fromList [0..numberOfUserVars-1]
@@ -47,13 +53,13 @@ solveForUserVariables numberOfUserVars (CLSTProblem varNames assertions) =
       fourierMotzkinElimination varNames varsUnsolvedByGaussianElim reducedInequalities
 
     -- Calculate the way to reconstruct the user variables
-    let _solutions = fmElimSolutions <> gaussianElimSolutions
+    let varSolutions = fmElimSolutions <> gaussianElimSolutions
 
     -- Calculate the final set of (user-variable free) assertions
     let finalAssertions = withoutUserVars <> unusedEqualities <> fmElimOutputInequalities
 
     -- Return the problem
-    return (CLSTProblem varNames finalAssertions)
+    return (CLSTProblem varNames finalAssertions, varSolutions)
 
 hasUserVariables :: Int -> Assertion -> Bool
 hasUserVariables numberOfUserVariables (Assertion _ (LinearExpr e)) =
@@ -65,6 +71,26 @@ substitute (Assertion r2 (LinearExpr e2)) var (LinearExpr e1) =
   let coeff = e2 Vector.! var in
   let e2'  = Vector.zipWith (\a b -> b - coeff * a) e1 e2 in
   Assertion r2 (LinearExpr e2')
+
+reconstructUserVars :: UserVarReconstructionInfo
+                    -> Vector Double
+                    -> Maybe (Vector Double)
+reconstructUserVars info ioVarValues = do
+  let numberOfUserVars = length info
+  let startingUserVarValues = Vector.replicate numberOfUserVars 0
+  let constantValue = Vector.singleton 1.0
+  let startingValues = startingUserVarValues <> ioVarValues <> constantValue
+  let reconstructedVars = foldM reconstructVar startingValues info
+  Vector.take numberOfUserVars <$> reconstructedVars
+  where
+    reconstructVar :: Vector Double
+                -> (LinearVar, VarReconstruction)
+                -> Maybe (Vector Double)
+    reconstructVar current (var, varInfo) = do
+      value <- case varInfo of
+        RecEquality e -> Just $ evaluateExpr e current
+        RecInequalities less greater -> reconstructFMUserVar current less greater
+      return $ Vector.update current [(var, value)]
 
 currentPass :: Doc ()
 currentPass = "elimination of user variables"

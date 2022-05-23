@@ -7,7 +7,11 @@ import Control.Monad ( forM, forM_ )
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Text (Text, pack, unpack)
 import Data.Text.IO (hPutStrLn)
+import Data.List (findIndex, elemIndex)
+import Data.Text qualified as Text (pack, splitOn, strip, unpack)
 import Data.Map qualified as Map (fromList, lookup)
+import Data.Vector.Unboxed (Vector)
+import Data.Vector.Unboxed qualified as Vector
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Exit (exitFailure, ExitCode (..))
 import System.FilePath ((<.>), (</>), dropExtension)
@@ -18,8 +22,10 @@ import System.IO (stderr)
 import Vehicle.Backend.Marabou.Core
 import Vehicle.Backend.Prelude
 import Vehicle.Verify.VerificationStatus
+import Vehicle.Compile.Linearity (reconstructUserVars, UserVarReconstructionInfo)
 import Vehicle.Resource
 import Vehicle.Resource.NeuralNetwork
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Query addresses
@@ -144,10 +150,10 @@ verifyQuery :: FilePath
             -> NetworkLocations
             -> MarabouQuery
             -> IO SinglePropertyStatus
-verifyQuery marabouExecutable queryFile networks query = do
-  networkArg <- prepareNetworkArg networks (metaNetwork query)
+verifyQuery marabouExecutable queryFile networks MarabouQuery{..} = do
+  networkArg <- prepareNetworkArg networks metaNetwork
   marabouOutput <- readProcessWithExitCode marabouExecutable [networkArg, queryFile] ""
-  parseMarabouOutput marabouOutput
+  parseMarabouOutput varReconstruction marabouOutput
 
 verifyExecutable :: Maybe FilePath -> IO FilePath
 verifyExecutable maybeLocation = do
@@ -178,19 +184,52 @@ prepareNetworkArg _ _ = do
     "multiple neural networks or multiple applications of the same network."
   exitFailure
 
-parseMarabouOutput :: (ExitCode, String, String) -> IO SinglePropertyStatus
-parseMarabouOutput (ExitFailure _, out, _err) = do
+parseMarabouOutput :: UserVarReconstructionInfo
+                   -> (ExitCode, String, String)
+                   -> IO SinglePropertyStatus
+parseMarabouOutput _ (ExitFailure _, out, _err) = do
   -- Marabou seems to output its error messages to stdout rather than stderr...
   hPutStrLn stderr
     ("Marabou threw the following error:\n" <>
     "  " <> pack out)
   exitFailure
-parseMarabouOutput (ExitSuccess, out, _) = do
-  let outputLines = lines out
-  if null outputLines
-    then do
-      hPutStrLn stderr "No output from Marabou..."
-      exitFailure
-    else if last outputLines == "unsat"
-      then return $ Failed   Nothing
-      else return $ Verified Nothing
+parseMarabouOutput reconstructionInfo (ExitSuccess, out, _) = do
+  let outputLines = fmap Text.pack (lines out)
+  let resultIndex = findIndex (\v -> v == "sat" || v == "unsat") outputLines
+  case resultIndex of
+    Nothing -> malformedOutputError "cannot find 'sat' or 'unsat'"
+    Just i
+      | outputLines !! i == "unsat" ->
+        return $ Failed Nothing
+      | otherwise -> do
+        let assignmentOutput = drop (i+1) outputLines
+        let ioVarAssignment = parseSATAssignment assignmentOutput
+        let maybeLinearVars = reconstructUserVars reconstructionInfo ioVarAssignment
+        case maybeLinearVars of
+          Nothing -> return $ Failed Nothing
+          -- TODO reverse normalisatio of quantified user tensor variables
+          Just _x -> return $ Verified Nothing
+
+parseSATAssignment :: [Text] -> Vector Double
+parseSATAssignment output =
+  let mInputIndex  = elemIndex "Input assignment:" output in
+  let mOutputIndex = elemIndex "Output:" output in
+  case (mInputIndex, mOutputIndex) of
+    (Just inputIndex, Just outputIndex) ->
+      let inputVarLines = take (outputIndex - inputIndex - 1) $ drop (inputIndex + 1) output in
+      let outputVarLines = drop (outputIndex + 1) output in
+      let inputValues  = parseSATAssignmentLine Input  <$> inputVarLines  in
+      let outputValues = parseSATAssignmentLine Output <$> outputVarLines in
+      Vector.fromList (inputValues <> outputValues)
+    _ -> malformedOutputError "could not find strings 'Input assignment:' and 'Output:'"
+
+parseSATAssignmentLine :: InputOrOutput -> Text -> Double
+parseSATAssignmentLine _ txt =
+  let parts = Text.strip <$> Text.splitOn "=" txt in
+  case parts of
+    [_namePart, valuePart] -> read (Text.unpack valuePart)
+    _                      -> malformedOutputError "could not split assignment line on '=' sign"
+
+malformedOutputError :: Doc a -> b
+malformedOutputError x =
+  error $ layoutAsString ("Unexpected output from Marabou..." <+> x)

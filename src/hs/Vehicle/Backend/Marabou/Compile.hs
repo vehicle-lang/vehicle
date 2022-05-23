@@ -107,17 +107,16 @@ compileQuery ident networkCtx (queryId, expr) =
   logCompilerPass ("query" <+> pretty queryId) $ do
 
     -- Convert all user varaibles and applications of networks into magic I/O variables
-    (CLSTProblem varNames assertions, metaNetwork) <-
+    (CLSTProblem varNames assertions, metaNetwork, userVarReconstruction) <-
       normUserVariables ident Marabou networkCtx expr
 
     (vars, doc) <- logCompilerPass "compiling assertions" $ do
-      let vars = fmap (`MarabouVar` MReal) varNames
       assertionDocs <- forM assertions (compileAssertion varNames)
       let assertionsDoc = vsep assertionDocs
       logCompilerPassOutput assertionsDoc
-      return (vars, assertionsDoc)
+      return (varNames, assertionsDoc)
 
-    return $ MarabouQuery doc vars metaNetwork
+    return $ MarabouQuery doc vars metaNetwork userVarReconstruction
 
 
 compileAssertion :: MonadCompile m

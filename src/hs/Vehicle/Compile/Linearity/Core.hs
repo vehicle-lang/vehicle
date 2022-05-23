@@ -7,7 +7,9 @@ module Vehicle.Compile.Linearity.Core
   , CLSTProblem(..)
   , VariableNames
   , VarReconstruction(..)
+  , UserVarReconstructionInfo
   , linearExprFromMap
+  , evaluateExpr
   , addLinearExprs
   , constructAssertion
   , splitOutConstant
@@ -53,6 +55,9 @@ type LinearVar = Int
 newtype LinearExpr = LinearExpr
   { unLinearExpr :: Vector Coefficient
   }
+
+evaluateExpr :: LinearExpr -> Vector Double -> Double
+evaluateExpr (LinearExpr e) values = Vector.sum (Vector.zipWith (*) e values)
 
 splitOutConstant :: LinearExpr -> (Vector Coefficient, Coefficient)
 splitOutConstant (LinearExpr e) = case Vector.unsnoc e of
@@ -134,6 +139,12 @@ instance Pretty CLSTProblem where
 --------------------------------------------------------------------------------
 -- Variable reconstruction
 
+-- | Information neccesary to reconstruct the user variables from the magic
+-- input/output variables.
 data VarReconstruction
   = RecEquality LinearExpr
   | RecInequalities [Assertion] [Assertion]
+
+type UserVarReconstructionInfo = [(LinearVar, VarReconstruction)]
+
+
