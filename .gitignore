@@ -39,6 +39,9 @@ package-lock.json
 .vscode/
 *.code-workspace
 
+# Pycharm
+**/.idea/
+
 # Emacs
 *.agda~
 
