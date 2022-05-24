@@ -17,11 +17,6 @@ Contents
 --------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-   installation
-   language/index.rst
-   training
-   verification
-   theorem-proving
-   other/index.rst
+   compilation

@@ -5,6 +5,7 @@ import Vehicle.Backend.Prelude
 import Vehicle.Verify.VerificationStatus
 import Vehicle.Compile
 import Vehicle.Backend.Agda (writeAgdaFile, AgdaOptions(..))
+import System.Directory (makeAbsolute)
 
 data ExportOptions = ExportOptions
   { target             :: ITP
@@ -19,8 +20,9 @@ export loggingOptions ExportOptions{..} = do
   let spec = originalSpec proofCache
   let resources = reparseResources (resourceSummaries proofCache)
 
+  absoluteProofCacheLocation <- Just <$> makeAbsolute proofCacheLocation
   case target of
     Agda -> do
-      let agdaOptions = AgdaOptions proofCacheLocation outputFile modulePrefix
+      let agdaOptions = AgdaOptions absoluteProofCacheLocation outputFile modulePrefix
       agdaCode <- compileToAgda loggingOptions agdaOptions resources spec
       writeAgdaFile outputFile agdaCode

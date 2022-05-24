@@ -15,6 +15,7 @@ import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
 import System.IO (hPutStrLn)
 import System.Exit (exitFailure)
+import System.Directory (makeAbsolute)
 
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude as CompilePrelude
@@ -32,7 +33,6 @@ import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.LossFunction ( LExpr, writeLossFunctionFiles)
 
-import Vehicle.Verify.VerificationStatus ( getProofCacheLocation )
 import Vehicle.Resource.NeuralNetwork (NetworkCtx)
 import Vehicle.Compile.Resource.Dataset ( expandDatasets )
 import Vehicle.Compile.Resource.Parameter ( expandParameters )
@@ -43,7 +43,7 @@ compile loggingOptions CompileOptions{..} = do
   spec <- readInputFile loggingOptions specificationFile
   case target of
     ITP Agda -> do
-      proofCacheLocation <- getProofCacheLocation loggingOptions proofCache
+      proofCacheLocation <- maybe (return Nothing) (fmap Just . makeAbsolute) proofCache
       let agdaOptions = AgdaOptions proofCacheLocation outputFile modulePrefix
       agdaCode <- compileToAgda loggingOptions agdaOptions resources spec
       writeAgdaFile outputFile agdaCode

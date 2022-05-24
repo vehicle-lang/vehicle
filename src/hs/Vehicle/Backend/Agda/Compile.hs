@@ -30,7 +30,7 @@ import Vehicle.Backend.Prelude
 -- Agda-specific options
 
 data AgdaOptions = AgdaOptions
-  { proofCacheLocation  :: FilePath
+  { proofCacheLocation  :: Maybe FilePath
   , outputFile          :: Maybe FilePath
   , modulePrefix        :: Maybe String
   }
@@ -649,12 +649,16 @@ compileProperty :: MonadAgdaCompile m => Code -> Code -> m Code
 compileProperty propertyName propertyBody = do
   proofCache <- asks (proofCacheLocation . fst)
   return $
-    scopeCode "abstract" $
-      propertyName <+> ":" <+> align propertyBody          <> line <>
-      propertyName <+> "= checkSpecification record"            <> line <>
-        indentCode (
-        "{ proofCache   =" <+> dquotes (pretty proofCache) <> line <>
-        "}")
+    case proofCache of
+      Nothing  ->
+        "postulate" <+> propertyName <+> ":" <+> align propertyBody
+      Just loc ->
+        scopeCode "abstract" $
+          propertyName <+> ":" <+> align propertyBody          <> line <>
+          propertyName <+> "= checkSpecification record"       <> line <>
+            indentCode (
+            "{ proofCache   =" <+> dquotes (pretty loc) <> line <>
+            "}")
 
 containerDependencies :: ContainerType -> [Dependency]
 containerDependencies = \case

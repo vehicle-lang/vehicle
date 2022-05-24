@@ -12,7 +12,6 @@ import GHC.Generics (Generic)
 import System.IO (hPutStrLn, stderr)
 import System.Exit (exitFailure)
 import System.Console.ANSI (Color(..))
-import System.Directory (makeAbsolute)
 
 import Vehicle.Prelude
 import Vehicle.Resource
@@ -131,8 +130,3 @@ readProofCache file = do
     Left  errorMsg  -> do
       hPutStrLn stderr errorMsg
       exitFailure
-
-getProofCacheLocation :: MonadIO m => LoggingOptions -> Maybe FilePath -> m FilePath
-getProofCacheLocation _              (Just location) = liftIO $ makeAbsolute location
-getProofCacheLocation loggingOptions Nothing         =
-  fatalError loggingOptions "You must provide a value for `proofCache` when compiling to Agda"
