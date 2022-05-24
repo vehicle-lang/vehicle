@@ -40,13 +40,13 @@ data LExpr
   | Constant Double
   | Min LExpr LExpr
   | Max LExpr LExpr
-  | Substraction LExpr LExpr
+  | Subtraction LExpr LExpr
   | IndicatorFunction LExpr LExpr
-  | Var V.DBIndex
-  | NetApp Symbol (NonEmpty LExpr)
-  | Quant Quantifier Symbol Domain LExpr
+  | Variable V.DBIndex
+  | NetworkApplication Symbol (NonEmpty LExpr)
+  | Quantifier Quantifier Symbol Domain LExpr
   | At LExpr LExpr
-  | TensorLit [LExpr]
+  | TensorLiteral [LExpr]
   | Lambda Symbol LExpr
   deriving (Eq, Ord, Generic, Show)
 
@@ -94,17 +94,17 @@ compileExpr e = showExit $ do
     V.EqualityExpr V.Neq _ _ _ [e1, e2] -> Negation <$> (IndicatorFunction <$> compileArg e1 <*> compileArg e2)
     V.OrderExpr    order _ _ _ [e1, e2] ->
       case order of
-        V.Le -> Substraction <$> compileArg e2 <*> compileArg e1
-        V.Lt -> Negation <$> (Substraction <$> compileArg e1 <*> compileArg e2)
-        V.Ge -> Substraction <$> compileArg e1 <*> compileArg e2
-        V.Gt -> Negation <$> (Substraction <$> compileArg e2 <*> compileArg e1)
+        V.Le -> Subtraction <$> compileArg e2 <*> compileArg e1
+        V.Lt -> Negation <$> (Subtraction <$> compileArg e1 <*> compileArg e2)
+        V.Ge -> Subtraction <$> compileArg e1 <*> compileArg e2
+        V.Gt -> Negation <$> (Subtraction <$> compileArg e2 <*> compileArg e1)
 
     V.LiteralExpr _ _ l                   -> return $ Constant (compileLiteral l)
-    V.App _ (V.Var _ (V.Free ident)) p    -> NetApp (V.nameOf ident) <$> traverse compileArg p
-    V.Var _ (V.Bound t)                   -> return (Var t)
-    V.QuantifierExpr q _ binder body      -> Quant (compileQuant q) (V.getBinderSymbol binder) (Domain ()) <$> compileExpr body
+    V.App _ (V.Var _ (V.Free ident)) p    -> NetworkApplication (V.nameOf ident) <$> traverse compileArg p
+    V.Var _ (V.Bound t)                   -> return (Variable t)
+    V.QuantifierExpr q _ binder body      -> Quantifier (compileQuant q) (V.getBinderSymbol binder) (Domain ()) <$> compileExpr body
     V.AtExpr _ _ _ _ [xs, i]              -> At <$> compileArg xs <*> compileArg i
-    V.LSeq _ _ xs                         -> TensorLit <$> traverse compileExpr xs
+    V.LSeq _ _ xs                         -> TensorLiteral <$> traverse compileExpr xs
     V.Ann _ body _                        -> compileExpr body
     V.Lam _ binder body                   -> Lambda (V.getBinderSymbol binder) <$> compileExpr body
     V.Let _ val _ body                    -> compileExpr (V.substInto val body)
