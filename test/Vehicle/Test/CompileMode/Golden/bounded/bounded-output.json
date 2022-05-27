@@ -1,130 +1,149 @@
-{
-  "tag": "Quant",
-  "contents": [
-    "All",
-    "x",
-    [],
+{  
+  "tag": "Lambda",
+  "contents": 
+  [
+    "v",
     {
-      "tag": "Max",
+      "tag": "Quant",
       "contents": [
+        "All",
+        "x",
         {
-          "tag": "Neg",
-          "contents": {
-            "tag": "Min",
-            "contents": [
-              {
-                "tag": "Neg",
-                "contents": {
-                  "tag": "Sub",
-                  "contents": [
-                    {
-                      "tag": "Con",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Var",
-                      "contents": 0
-                    }
-                  ]
-                }
-              },
-              {
-                "tag": "Neg",
-                "contents": {
-                  "tag": "Sub",
-                  "contents": [
-                    {
-                      "tag": "Var",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Con",
-                      "contents": 1
-                    }
-                  ]
-                }
-              }
-            ]
-          }
+          "tag": "Domain",
+          "contents": [
+            {
+              "tag": "Con",
+              "contents": 0
+            },
+            {
+              "tag": "Con",
+              "contents": 1
+            }
+          ]
         },
         {
-          "tag": "Min",
+          "tag": "Max",
           "contents": [
             {
               "tag": "Neg",
               "contents": {
-                "tag": "Sub",
+                "tag": "Min",
                 "contents": [
                   {
-                    "tag": "Con",
-                    "contents": 0
+                    "tag": "Neg",
+                    "contents": {
+                      "tag": "Sub",
+                      "contents": [
+                        {
+                          "tag": "Con",
+                          "contents": 0
+                        },
+                        {
+                          "tag": "Var",
+                          "contents": 0
+                        }
+                      ]
+                    }
                   },
                   {
-                    "tag": "At",
-                    "contents": [
-                      {
-                        "tag": "NetApp",
-                        "contents": [
-                          "f",
-                          [
-                            {
-                              "tag": "TensorLit",
-                              "contents": [
-                                {
-                                  "tag": "Var",
-                                  "contents": 0
-                                }
-                              ]
-                            }
-                          ]
-                        ]
-                      },
-                      {
-                        "tag": "Con",
-                        "contents": 0
-                      }
-                    ]
+                    "tag": "Neg",
+                    "contents": {
+                      "tag": "Sub",
+                      "contents": [
+                        {
+                          "tag": "Var",
+                          "contents": 0
+                        },
+                        {
+                          "tag": "Var",
+                          "contents": 1
+                        }
+                      ]
+                    }
                   }
                 ]
               }
             },
             {
-              "tag": "Neg",
-              "contents": {
-                "tag": "Sub",
-                "contents": [
-                  {
-                    "tag": "At",
+              "tag": "Min",
+              "contents": [
+                {
+                  "tag": "Neg",
+                  "contents": {
+                    "tag": "Sub",
                     "contents": [
-                      {
-                        "tag": "NetApp",
-                        "contents": [
-                          "f",
-                          [
-                            {
-                              "tag": "TensorLit",
-                              "contents": [
-                                {
-                                  "tag": "Var",
-                                  "contents": 0
-                                }
-                              ]
-                            }
-                          ]
-                        ]
-                      },
                       {
                         "tag": "Con",
                         "contents": 0
+                      },
+                      {
+                        "tag": "At",
+                        "contents": [
+                          {
+                            "tag": "NetApp",
+                            "contents": [
+                              "f",
+                              [
+                                {
+                                  "tag": "TensorLit",
+                                  "contents": [
+                                    {
+                                      "tag": "Var",
+                                      "contents": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "tag": "Con",
+                            "contents": 0
+                          }
+                        ]
                       }
                     ]
-                  },
-                  {
-                    "tag": "Con",
-                    "contents": 1
                   }
-                ]
-              }
+                },
+                {
+                  "tag": "Neg",
+                  "contents": {
+                    "tag": "Sub",
+                    "contents": [
+                      {
+                        "tag": "At",
+                        "contents": [
+                          {
+                            "tag": "NetApp",
+                            "contents": [
+                              "f",
+                              [
+                                {
+                                  "tag": "TensorLit",
+                                  "contents": [
+                                    {
+                                      "tag": "Var",
+                                      "contents": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "tag": "Con",
+                            "contents": 0
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "Var",
+                        "contents": 1
+                      }
+                    ]
+                  }
+                }
+              ]
             }
           ]
         }
