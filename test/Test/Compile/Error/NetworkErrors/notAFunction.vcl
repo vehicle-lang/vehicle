@@ -1,1 +1,1 @@
-network f : Real
+network f : Rat

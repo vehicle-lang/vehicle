@@ -94,7 +94,6 @@ data Dependency
   | DataIntegerDivMod
   | DataRat
   | DataRatInstances
-  | DataReal
   | DataBool
   | DataBoolInstances
   | DataFin
@@ -128,9 +127,6 @@ instance Pretty Dependency where
     DataIntegerDivMod    -> "Data.Int.DivMod as" <+> numericQualifier Int
     DataRat              -> "Data.Rational as" <+> numericQualifier Rat <+> "using" <+> parens "ℚ"
     DataRatInstances     -> "Data.Rational.Instances"
-    -- HACK: At the moment redirect to rationals
-    DataReal             -> "Data.Rational as" <+> numericQualifier Real <+> "using" <+> parens "" <+> "renaming (ℚ to ℝ)"
-    -- "Data.Real as" <+> numericQualifier Real <+> "using" <+> parens "ℝ"
     DataBool             -> "Data.Bool as 𝔹" <+> "using" <+> parens "Bool; true; false; if_then_else_"
     DataBoolInstances    -> "Data.Bool.Instances"
     DataFin              -> "Data.Fin as Fin" <+> "using" <+> parens "Fin; #_"
@@ -164,7 +160,6 @@ numericQualifier = \case
   Nat   -> "ℕ"
   Int   -> "ℤ"
   Rat   -> "ℚ"
-  Real  -> "ℝ"
 
 containerQualifier :: ContainerType -> Doc a
 containerQualifier = pretty . show
@@ -174,7 +169,6 @@ numericDependencies = \case
   Nat   -> [DataNat]
   Int   -> [DataInteger]
   Rat   -> [DataRat]
-  Real  -> [DataReal]
 
 indentCode :: Code -> Code
 indentCode = indent 2
@@ -473,12 +467,9 @@ compileLiteral e = case e of
   NatLiteralExpr  _ann NatType{}   n -> return $ compileNatLiteral   (toInteger n)
   NatLiteralExpr  _ann IntType{}   n -> return $ compileIntLiteral   (toInteger n)
   NatLiteralExpr  _ann RatType{}   n -> return $ compileRatLiteral   (toRational n)
-  NatLiteralExpr  _ann RealType{}  n -> return $ compileRealLiteral  (toRational n)
   IntLiteralExpr  _ann Int         i -> return $ compileIntLiteral   (toInteger i)
   IntLiteralExpr  _ann Rat         i -> return $ compileRatLiteral   (toRational i)
-  IntLiteralExpr  _ann Real        i -> return $ compileRealLiteral  (toRational i)
   RatLiteralExpr  _ann Rat         p -> return $ compileRatLiteral   p
-  RatLiteralExpr  _ann Real        p -> return $ compileRealLiteral  p
   BoolLiteralExpr _ann b             -> compileBoolOp0 b
   _                                  -> compilerDeveloperError $
     "unexpected literal" <+> squotes (prettyVerbose e) <+>
@@ -498,13 +489,6 @@ compileIntLiteral i
 compileRatLiteral :: Rational -> Code
 compileRatLiteral r = annotateInfixOp2 [DataRat] 7 id
   (Just $ numericQualifier Rat) "/"
-  [ compileIntLiteral (numerator r)
-  , compileNatLiteral (denominator r)
-  ]
-
-compileRealLiteral :: Rational -> Code
-compileRealLiteral r = annotateInfixOp2 [DataReal] 7 id
-  (Just $ numericQualifier Real) "/"
   [ compileIntLiteral (numerator r)
   , compileNatLiteral (denominator r)
   ]
@@ -583,7 +567,6 @@ compileNumOp2 op2 t = annotateInfixOp2 dependencies precedence id qualifier opDo
       (Div, Nat)   -> ("/", [DataNatDivMod])
       (Div, Int)   -> ("/", [DataIntegerDivMod])
       (Div, Rat)   -> ("÷", [DataRat])
-      (Div, Real)  -> ("÷", [DataReal])
 
 compileOrder :: MonadAgdaCompile m => Order -> OutputExpr -> [Code] -> m Code
 compileOrder order elemType args = do
@@ -593,7 +576,7 @@ compileOrder order elemType args = do
         IndexType{}            -> return ("Fin", [DataFin])
         BuiltinNumericType _ t -> return (numericQualifier t, numericDependencies t)
         _                      ->
-          unexpectedTypeError elemType ["Nat", "Int", "Rat", "Real", "Fin n"]
+          unexpectedTypeError elemType ["Nat", "Int", "Rat", "Fin n"]
 
   let (boolDecDoc, boolDeps, opBraces) = case boolLevel of
         BoolLevel -> ("?", [RelNullary], boolBraces)
@@ -677,7 +660,6 @@ equalityDependencies :: MonadAgdaCompile m => OutputExpr -> m [Dependency]
 equalityDependencies = \case
   BuiltinNumericType _ Nat  -> return [DataNatInstances]
   BuiltinNumericType _ Int  -> return [DataIntegerInstances]
-  BuiltinNumericType _ Real -> return [DataRatInstances]
   BoolType _                -> return [DataBoolInstances]
   App _ (BuiltinContainerType _ List)   [tElem] -> do
     deps <- equalityDependencies (argExpr tElem)
@@ -686,7 +668,7 @@ equalityDependencies = \case
     deps <- equalityDependencies (argExpr tElem)
     return $ [DataTensorInstances] <> deps
   Var ann n -> throwError $ UnsupportedPolymorphicEquality AgdaBackend (provenanceOf ann) n
-  t         -> unexpectedTypeError t ["Tensor", "Real", "Int", "List"]
+  t         -> unexpectedTypeError t ["Tensor", "Int", "List"]
 
 containerType :: MonadCompile m => OutputExpr -> m ContainerType
 containerType (App _ (Builtin _ (ContainerType t)) _) = return t

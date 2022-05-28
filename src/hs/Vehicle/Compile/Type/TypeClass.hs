@@ -106,7 +106,6 @@ solveHasNatLits _ value (IndexType _ (App _ (Literal _ (LNat n)) _))
 solveHasNatLits _ _   (NatType  _)  = return simplySolved
 solveHasNatLits _ _   (IntType  _)  = return simplySolved
 solveHasNatLits _ _   (RatType  _)  = return simplySolved
-solveHasNatLits _ _   (RealType _)  = return simplySolved
 solveHasNatLits constraint _ _    = throwError $ FailedConstraints (constraint :| [])
 
 solveHasIntLits :: MonadConstraintSolving m
@@ -115,7 +114,6 @@ solveHasIntLits :: MonadConstraintSolving m
                -> m ConstraintProgress
 solveHasIntLits _ (IntType  _) = return simplySolved
 solveHasIntLits _ (RatType  _) = return simplySolved
-solveHasIntLits _ (RealType _) = return simplySolved
 solveHasIntLits constraint _   = throwError $ FailedConstraints (constraint :| [])
 
 solveHasRatLits :: MonadConstraintSolving m
@@ -123,7 +121,6 @@ solveHasRatLits :: MonadConstraintSolving m
                -> CheckedExpr
                -> m ConstraintProgress
 solveHasRatLits _ (RatType  _) = return simplySolved
-solveHasRatLits _ (RealType _) = return simplySolved
 solveHasRatLits constraint _   = throwError $ FailedConstraints (constraint :| [])
 
 solveHasAdd :: MonadConstraintSolving m
@@ -133,7 +130,6 @@ solveHasAdd :: MonadConstraintSolving m
 solveHasAdd _ (NatType  _) = return simplySolved
 solveHasAdd _ (IntType  _) = return simplySolved
 solveHasAdd _ (RatType  _) = return simplySolved
-solveHasAdd _ (RealType _) = return simplySolved
 solveHasAdd constraint _ = throwError $ FailedConstraints (constraint :| [])
 
 solveHasSub :: MonadConstraintSolving m
@@ -142,7 +138,6 @@ solveHasSub :: MonadConstraintSolving m
                -> m ConstraintProgress
 solveHasSub _ (IntType  _) = return simplySolved
 solveHasSub _ (RatType  _) = return simplySolved
-solveHasSub _ (RealType _) = return simplySolved
 solveHasSub constraint _ = throwError $ FailedConstraints (constraint :| [])
 
 solveHasMul :: MonadConstraintSolving m
@@ -152,7 +147,6 @@ solveHasMul :: MonadConstraintSolving m
 solveHasMul _ (NatType  _) = return simplySolved
 solveHasMul _ (IntType  _) = return simplySolved
 solveHasMul _ (RatType  _) = return simplySolved
-solveHasMul _ (RealType _) = return simplySolved
 solveHasMul constraint _ = throwError $ FailedConstraints (constraint :| [])
 
 solveHasDiv :: MonadConstraintSolving m
@@ -160,7 +154,6 @@ solveHasDiv :: MonadConstraintSolving m
             -> CheckedExpr
             -> m ConstraintProgress
 solveHasDiv _ (RatType  _) = return simplySolved
-solveHasDiv _ (RealType _) = return simplySolved
 solveHasDiv constraint _ = throwError $ FailedConstraints (constraint :| [])
 
 solveHasNeg :: MonadConstraintSolving m
@@ -169,7 +162,6 @@ solveHasNeg :: MonadConstraintSolving m
             -> m ConstraintProgress
 solveHasNeg _ (IntType  _) = return simplySolved
 solveHasNeg _ (RatType  _) = return simplySolved
-solveHasNeg _ (RealType _) = return simplySolved
 solveHasNeg constraint _   = throwError $ FailedConstraints (constraint :| [])
 
 --------------------------------------------------------------------------------

@@ -48,7 +48,6 @@ allowedNetworkElementTypes =
   [ NumericType Nat
   , NumericType Int
   , NumericType Rat
-  , NumericType Real
   ]
 
 type MetaNetwork = [Symbol]

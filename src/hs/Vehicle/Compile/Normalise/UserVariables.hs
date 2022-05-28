@@ -443,6 +443,5 @@ currentPass = "insertion of magic network variables"
 
 supportedTypes :: [Builtin]
 supportedTypes =
-  [ NumericType Real
-  , NumericType Rat
+  [ NumericType Rat
   ]

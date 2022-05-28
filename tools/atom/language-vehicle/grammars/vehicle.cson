@@ -55,7 +55,7 @@ patterns: [
   }
   {
     name: 'storage.type.vehicle'
-    match: '\\b(Bool|Real|Nat|Tensor|List|Nil|Cons)\\b'
+    match: '\\b(Bool|Rat|Nat|Tensor|List|Nil|Cons)\\b'
   }
   {
     name: 'variable.other.vehicle'

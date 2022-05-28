@@ -30,7 +30,6 @@ tokElemOf = mkToken B.TokElemOf ":"
 tokLambda = mkToken B.TokLambda "\\"
 tokTensor = mkToken B.TokTensor "Tensor"
 tokList = mkToken B.TokList "List"
-tokReal = mkToken B.TokReal "Real"
 tokRat = mkToken B.TokRat "Rat"
 tokInt = mkToken B.TokInt "Int"
 tokNat = mkToken B.TokNat "Nat"
@@ -183,7 +182,6 @@ delabBuiltin fun args = case fun of
   V.NumericType   V.Nat    -> B.Nat  tokNat
   V.NumericType   V.Int    -> B.Int  tokInt
   V.NumericType   V.Rat    -> B.Rat  tokRat
-  V.NumericType   V.Real   -> B.Real tokReal
   V.ContainerType V.List   -> delabOp1 B.List   tokList   args
   V.ContainerType V.Tensor -> delabOp2 B.Tensor tokTensor args
   V.Index                  -> delabOp1 B.Index    tokIndex    args

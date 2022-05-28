@@ -128,7 +128,6 @@ instance Elab B.Expr V.InputExpr where
     B.ForeachIn tk1 ns e1 _tk2 e2 -> elabForeachIn tk1 ns e1 e2
 
     B.Bool tk                 -> builtin V.Bool                          tk []
-    B.Real tk                 -> builtin (V.NumericType   V.Real)        tk []
     B.Rat  tk                 -> builtin (V.NumericType   V.Rat)         tk []
     B.Int tk                  -> builtin (V.NumericType   V.Int)         tk []
     B.Nat tk                  -> builtin (V.NumericType   V.Nat)         tk []

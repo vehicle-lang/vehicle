@@ -1,25 +1,25 @@
 nBins = 300
 
-type InputVector = Tensor Real [6]
-type OutputVector = Tensor Real [2500]
+type InputVector = Tensor Rat [6]
+type OutputVector = Tensor Rat [2500]
 
 network spectra : InputVector -> OutputVector
 
 
 
-iLB : Tensor Real [6]
+iLB : Tensor Rat [6]
 iLB = [ .... ]
 
-iUB : Tensor Real [6]
+iUB : Tensor Rat [6]
 iUB = [ .... ]
 
-weights : Tensor Real [2500, nBins]
+weights : Tensor Rat [2500, nBins]
 weights = [ .... ]
 
-binCovariances : Tensor Real [nBins, nBins]
+binCovariances : Tensor Rat [nBins, nBins]
 binCovariances = _
 
-measuredMean : Tensor Real [nBins]
+measuredMean : Tensor Rat [nBins]
 measuredMean = _
 
 

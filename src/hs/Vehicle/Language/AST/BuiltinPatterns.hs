@@ -93,9 +93,6 @@ pattern IntType ann = BuiltinNumericType ann Int
 pattern RatType :: ann -> Expr binder var ann
 pattern RatType ann = BuiltinNumericType ann Rat
 
-pattern RealType :: ann -> Expr binder var ann
-pattern RealType ann = BuiltinNumericType ann Real
-
 --------------------------------------------------------------------------------
 -- Boolean
 

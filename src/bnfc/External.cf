@@ -18,7 +18,6 @@ position token TokLambda    {"\\"};
 
 position token TokTensor    {"Tensor"};
 position token TokList      {"List"};
-position token TokReal      {"Real"};
 position token TokRat       {"Rat"};
 position token TokInt       {"Int"};
 position token TokNat       {"Nat"};
@@ -175,7 +174,6 @@ List.    Expr14 ::= TokList Expr15;
 Tensor.  Expr14 ::= TokTensor Expr15 Expr15;
 Index.   Expr14 ::= TokIndex Expr15;
 Bool.    Expr15 ::= TokBool;
-Real.    Expr15 ::= TokReal;
 Rat.     Expr15 ::= TokRat;
 Int.     Expr15 ::= TokInt;
 Nat.     Expr15 ::= TokNat;

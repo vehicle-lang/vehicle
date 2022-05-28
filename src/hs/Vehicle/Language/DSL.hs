@@ -6,7 +6,7 @@ module Vehicle.Language.DSL
   , tBool
   , tNat
   , tInt
-  , tReal
+  , tRat
   , tList
   , tTensor
   , tIndex
@@ -113,11 +113,11 @@ con b = DSL $ \ann _ -> Builtin ann b
 type0 :: DSLExpr
 type0 = DSL $ \ann _ -> Type ann 0
 
-tBool, tNat, tInt, tReal :: DSLExpr
+tBool, tNat, tInt, tRat :: DSLExpr
 tBool = con Bool
 tNat  = con (NumericType Nat)
 tInt  = con (NumericType Int)
-tReal = con (NumericType Real)
+tRat  = con (NumericType Rat)
 
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
 tTensor tElem dims = con (ContainerType Tensor) `eApp` [tElem, dims]

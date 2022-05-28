@@ -1,1 +1,1 @@
-network f : Tensor Real [1, 2] -> Real
+network f : Tensor Rat [1, 2] -> Rat

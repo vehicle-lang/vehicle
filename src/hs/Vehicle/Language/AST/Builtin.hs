@@ -12,7 +12,6 @@ module Vehicle.Language.AST.Builtin
   , NumericOp2(..)
   , builtinFromSymbol
   , symbolFromBuiltin
-  , isDecidable
   , isStrict
   , flipStrictness
   , flipOrder
@@ -37,7 +36,6 @@ data NumericType
   = Nat
   | Int
   | Rat
-  | Real
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData   NumericType
@@ -45,10 +43,6 @@ instance Hashable NumericType
 
 instance Pretty NumericType where
   pretty = pretty . show
-
-isDecidable :: NumericType -> Bool
-isDecidable Real = False
-isDecidable _    = True
 
 --------------------------------------------------------------------------------
 -- Container types
@@ -306,7 +300,7 @@ builtinSymbols = map (first pack)
   [ show Bool                        |-> Bool
   , show (NumericType Nat)           |-> NumericType Nat
   , show (NumericType Int)           |-> NumericType Int
-  , show (NumericType Real)          |-> NumericType Real
+  , show (NumericType Rat)           |-> NumericType Rat
   , show (ContainerType List)        |-> ContainerType List
   , show (ContainerType Tensor)      |-> ContainerType Tensor
   , show If                          |-> If

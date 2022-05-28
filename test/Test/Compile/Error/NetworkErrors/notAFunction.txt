@@ -1,5 +1,5 @@
-Error: The type of network 'f' is not currently supported as 'Real' is not a function. (Line 1, Columns 13-17)
+Error: The type of network 'f' is not currently supported as 'Rat' is not a function. (Line 1, Columns 13-16)
 Fix: Only networks of type:
   1. Tensor A [m] -> Tensor B [n]
   2. A -> ... -> A -> B
-are allowed, where A and B are one of [ Nat, Int, Rat, Real ] and 'm' and 'n' are constants. Provide both an input type and output type for your network.
+are allowed, where A and B are one of [ Nat, Int, Rat ] and 'm' and 'n' are constants. Provide both an input type and output type for your network.

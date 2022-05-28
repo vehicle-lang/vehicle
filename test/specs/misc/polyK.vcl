@@ -7,5 +7,5 @@ kSpecialised x y = k x y
 k2 : forall {b : Type 0}. forall {a : Type 0}. a -> b -> a
 k2 x y = k x y
 
-kRealInt : Real -> Int -> Real
-kRealInt = k
+kRatInt : Rat -> Int -> Rat
+kRatInt = k
