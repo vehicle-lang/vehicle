@@ -1,6 +1,6 @@
 
 module Vehicle.Compile.Type
-  ( typeCheck
+  ( TypeCheckable(..)
   ) where
 
 import Prelude hiding (pi)
@@ -24,22 +24,19 @@ import Vehicle.Compile.Type.WeakHeadNormalForm
 -------------------------------------------------------------------------------
 -- Algorithm
 
-typeCheck :: ( MonadCompile m
-             , TypeCheckable a b
-             , MetaSubstitutable b
-             , WHNFable b
-             , PrettyWith ('As 'Internal) b
-             ) => a -> m b
-typeCheck e = logCompilerPass "type checking" $ runTCM $ do
-  inferredExpr     <- tc e
-  solveConstraints
-  checkAllConstraintsSolved
-  checkAllMetasSolved
+class TypeCheckable a b where
+  typeCheck :: MonadCompile m => a -> m b
 
-  metaSubstitution <- getMetaSubstitution
-  let metaFreeExpr = substMetas metaSubstitution inferredExpr
-  finalExpr <- convertImplicitArgsToWHNF metaFreeExpr
-  return finalExpr
+instance TypeCheckable UncheckedProg CheckedProg where
+  typeCheck p = logCompilerPass "type checking" $ runTCM $ do
+    result <- typeCheckProg p
+    postProcess result
+
+instance TypeCheckable UncheckedExpr CheckedExpr where
+  typeCheck expr = runTCM $ do
+    (checkedExpr, _checkedExprType) <- inferExpr expr
+    solveConstraints
+    postProcess checkedExpr
 
 -------------------------------------------------------------------------------
 -- Logging
@@ -57,38 +54,38 @@ showDeclExit ident = do
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-class TypeCheckable a b where
-  tc :: TCM m => a -> m b
+typeCheckProg :: TCM m => UncheckedProg -> m CheckedProg
+typeCheckProg (Main ds) = Main <$> typeCheckDecls ds
 
-instance TypeCheckable UncheckedProg CheckedProg where
-  tc (Main ds) = Main <$> tc ds
+typeCheckDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
+typeCheckDecls [] = return []
+typeCheckDecls (d : ds) = do
+  let ident = identifierOf d
+  showDeclEntry ident
 
-instance TypeCheckable [UncheckedDecl] [CheckedDecl] where
-  tc []       = return []
-  tc (d : ds) = do
-    let ident = identifierOf d
-    showDeclEntry ident
+  (checkedDecl, checkedDeclBody, checkedDeclType, typeOfType) <- case d of
+    DefResource p r _ t -> do
+      (checkedType, typeOfType) <- inferExpr t
+      let checkedDecl = DefResource p r ident checkedType
+      return (checkedDecl, Nothing, checkedType, typeOfType)
 
-    (checkedDecl, checkedDeclBody, checkedDeclType, typeOfType) <- case d of
-      DefResource p r _ t -> do
-        (checkedType, typeOfType) <- inferExpr t
-        let checkedDecl = DefResource p r ident checkedType
-        return (checkedDecl, Nothing, checkedType, typeOfType)
+    DefFunction p usage _ t body -> do
+      (checkedType, typeOfType) <- inferExpr t
+      checkedBody <- checkExpr checkedType body
+      let checkedDecl = DefFunction p usage ident checkedType checkedBody
+      return (checkedDecl, Just checkedBody, checkedType, typeOfType)
 
-      DefFunction p usage _ t body -> do
-        (checkedType, typeOfType) <- inferExpr t
-        checkedBody <- checkExpr checkedType body
-        let checkedDecl = DefFunction p usage ident checkedType checkedBody
-        return (checkedDecl, Just checkedBody, checkedType, typeOfType)
+  assertIsType (annotationOf d) typeOfType
+  logDebug MinDetail ""
+  solveConstraints
 
-    assertIsType (annotationOf d) typeOfType
+  showDeclExit ident
 
-    showDeclExit ident
-    checkedDecls <- addToDeclCtx ident checkedDeclType checkedDeclBody $ tc ds
-    return $ checkedDecl : checkedDecls
+  -- Recursively check the remainder of the declarations
+  checkedDecls <- addToDeclCtx ident checkedDeclType checkedDeclBody $
+    typeCheckDecls ds
 
-instance TypeCheckable UncheckedExpr CheckedExpr where
-  tc e = fst <$> inferExpr e
+  return $ checkedDecl : checkedDecls
 
 assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
 -- This is a bit of a hack to get around having to have a solver for universe
@@ -101,6 +98,19 @@ assertIsType p t        = do
   let typ = Type (inserted (provenanceOf t)) 0
   addUnificationConstraint p ctx t typ
   return ()
+
+postProcess :: ( TCM m
+               , MetaSubstitutable a
+               , WHNFable a
+               )
+            => a -> m a
+postProcess x = do
+  checkAllConstraintsSolved
+  checkAllMetasSolved
+  substitution <- getMetaSubstitution
+  let metaFreeExpr = substMetas substitution x
+  finalExpr <- convertImplicitArgsToWHNF metaFreeExpr
+  return finalExpr
 
 -------------------------------------------------------------------------------
 -- Constraint solving
