@@ -11,6 +11,7 @@ module Vehicle.Compile.Type.Meta
   , addConstraints
   , setConstraints
   , getConstraints
+  , getTypeClassConstraints
   , popActivatedConstraints
   , getMetaSubstitution
   , modifyMetaSubstitution
@@ -30,6 +31,7 @@ import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (Reader, runReader, ask, local)
 import Control.Monad.State (MonadState(..), modify, gets)
 import Data.List (partition)
+import Data.Maybe (mapMaybe)
 
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Prelude
@@ -199,6 +201,9 @@ modifyMetaCtx = modify
 
 getConstraints :: MonadState MetaCtx m => m [Constraint]
 getConstraints = gets constraints
+
+getTypeClassConstraints :: MonadState MetaCtx m => m [(TypeClassConstraint, ConstraintContext)]
+getTypeClassConstraints = mapMaybe getTypeClassConstraint <$> getConstraints
 
 numberOfMetasCreated :: MonadState MetaCtx m => m Int
 numberOfMetasCreated = gets (length . metaOrigins)

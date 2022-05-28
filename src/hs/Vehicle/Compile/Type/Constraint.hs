@@ -56,3 +56,8 @@ boundContext = boundCtx . variableContext
 
 instance HasProvenance Constraint where
   provenanceOf = provenanceOf . constraintContext
+
+getTypeClassConstraint :: Constraint
+                        -> Maybe (TypeClassConstraint, ConstraintContext)
+getTypeClassConstraint (TC ctx c) = Just (c, ctx)
+getTypeClassConstraint _          = Nothing

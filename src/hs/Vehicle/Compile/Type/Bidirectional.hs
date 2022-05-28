@@ -1,14 +1,16 @@
 
 module Vehicle.Compile.Type.Bidirectional
   ( TCM
-  , Inferrable(..)
+  , checkExpr
+  , inferExpr
+  , runTCM
   ) where
 
 import Prelude hiding (pi)
 import Control.Monad (when)
 import Control.Monad.Except (MonadError(..))
-import Control.Monad.Reader (MonadReader(..))
-import Control.Monad.State (MonadState)
+import Control.Monad.Reader (MonadReader(..), ReaderT (runReaderT))
+import Control.Monad.State (MonadState, StateT, evalStateT)
 import Data.Foldable (foldrM)
 import Data.Map qualified as Map
 import Data.List.NonEmpty qualified as NonEmpty (toList)
@@ -23,22 +25,11 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.WeakHeadNormalForm
 
 --------------------------------------------------------------------------------
--- Bidirectional phase of type-checking
---
--- Recurses through the program inserting implicit and instance arguments and
--- gathering the constraints between meta-variables that need to be satisfied.
+-- Bidirectional type-checking
 
--------------------------------------------------------------------------------
--- Type-class for things that can be type-checked
-
-class Inferrable a b where
-  infer :: TCM m => a -> m b
-
-instance Inferrable UncheckedProg CheckedProg where
-  infer p = logCompilerPass "bidirectional pass" $ inferProg p
-
-instance Inferrable UncheckedExpr CheckedExpr where
-  infer e = fst <$> inferExpr e
+-- Recurses through the expression, switching between check and infer modes.
+-- Inserts meta-variables for missing implicit and instance arguments and
+-- gathers the constraints over those meta-variables.
 
 --------------------------------------------------------------------------------
 -- The type-checking monad
@@ -51,18 +42,11 @@ type TCM m =
   , MonadReader VariableCtx  m
   )
 
+runTCM :: MonadCompile m => ReaderT VariableCtx (StateT MetaCtx m) a -> m a
+runTCM e = evalStateT (runReaderT e emptyVariableCtx) emptyMetaCtx
+
 --------------------------------------------------------------------------------
 -- Debug functions
-
-showDeclEntry :: MonadLogger m => Identifier -> m ()
-showDeclEntry ident = do
-  logDebug MaxDetail ("decl-entry" <+> pretty ident)
-  incrCallDepth
-
-showDeclExit :: MonadLogger m => Identifier -> m ()
-showDeclExit ident = do
-  decrCallDepth
-  logDebug MaxDetail ("decl-exit" <+> pretty ident)
 
 showCheckEntry :: MonadLogger m => CheckedExpr -> UncheckedExpr -> m ()
 showCheckEntry t e = do
@@ -86,16 +70,6 @@ showInferExit (e, t) = do
 
 -------------------------------------------------------------------------------
 -- Utility functions
-
-assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
--- This is a bit of a hack to get around having to have a solver for universe
--- levels. As type definitions will always have an annotated Type 0 inserted
--- by delaboration, we can match on it here. Anything else will be unified
--- with type 0.
-assertIsType _ (Type _ _) = return ()
-assertIsType p t        = do
-  _ <- unify p t (Type (inserted (provenanceOf t)) 0)
-  return ()
 
 removeBinderName :: CheckedBinder -> CheckedBinder
 removeBinderName (Binder ann v _n t) = Binder ann v Nothing t
@@ -190,37 +164,6 @@ viaInfer ann expectedType e = do
 
 --------------------------------------------------------------------------------
 -- Inference
-
-inferProg :: TCM m => UncheckedProg -> m CheckedProg
-inferProg (Main ds) = do
-  logDebug MaxDetail "Beginning initial type-checking pass"
-  result <- Main <$> inferDecls ds
-  logDebug MaxDetail "Ending initial type-checking pass\n"
-  return result
-
-inferDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
-inferDecls [] = return []
-inferDecls (d : ds) = do
-  let ident = identifierOf d
-  showDeclEntry ident
-
-  (checkedDecl, checkedDeclBody, checkedDeclType) <- case d of
-    DefResource p r _ t -> do
-      (checkedType, typeOfType) <- inferExpr t
-      assertIsType p typeOfType
-      let checkedDecl = DefResource p r ident checkedType
-      return (checkedDecl, Nothing, checkedType)
-
-    DefFunction p usage _ t body -> do
-      (checkedType, typeOfType) <- inferExpr t
-      assertIsType p typeOfType
-      checkedBody <- checkExpr checkedType body
-      let checkedDecl = DefFunction p usage ident checkedType checkedBody
-      return (checkedDecl, Just checkedBody, checkedType)
-
-  showDeclExit ident
-  checkedDecls <- addToDeclCtx ident checkedDeclType checkedDeclBody $ inferDecls ds
-  return $ checkedDecl : checkedDecls
 
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
