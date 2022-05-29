@@ -60,9 +60,9 @@ instance Elab B.Expr V.InputExpr where
 
 instance Elab B.Binder V.InputBinder where
   elab = \case
-    B.ExplicitBinder n e -> mkBinder n Explicit e
-    B.ImplicitBinder n e -> mkBinder n Implicit e
-    B.InstanceBinder n e -> mkBinder n Instance e
+    B.ExplicitBinder n e -> mkBinder n Explicit  e
+    B.ImplicitBinder n e -> mkBinder n Implicit  e
+    B.InstanceBinder n e -> mkBinder n Instance  e
     where
       mkBinder :: MonadCompile m => B.NameToken -> Visibility -> B.Expr -> m V.InputBinder
       mkBinder n v e = V.Binder (mkAnn n) v (Just (tkSymbol n)) <$> elab e

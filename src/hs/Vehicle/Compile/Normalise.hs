@@ -218,7 +218,7 @@ nfEq eq ann _tElem e1 e2 = case (argExpr e1, argExpr e2) of
       let tBool          = BoolType ann in
       let tBoolCont      = substContainerType tBool tCont in
       let equalitiesSeq  = SeqExpr ann tBool tBoolCont equalities in
-      Just $ nf $ booleanBigOp (logicOp eq) ann tBoolCont equalitiesSeq
+      Just $ nf $ mkBooleanBigOp (logicOp eq) ann tBoolCont equalitiesSeq
   -- Otherwise no normalisation
   _ -> Nothing
   where
@@ -349,13 +349,12 @@ nfQuantifierIn :: MonadNorm m
                -> CheckedExpr
                -> Maybe (m CheckedExpr)
 nfQuantifierIn ann q tCont binder body container = Just $ do
-  logDebug MaxDetail "Hi"
   let tRes = BoolType ann
   let tResCont = substContainerType tRes tCont
   let mappedContainer = MapExpr ann (typeOf binder) tRes (ExplicitArg ann <$> [Lam ann binder body, container])
   case q of
-    Forall  -> nf $ booleanBigOp And ann tResCont mappedContainer
-    Exists  -> nf $ booleanBigOp Or  ann tResCont mappedContainer
+    Forall  -> nf $ mkBooleanBigOp And ann tResCont mappedContainer
+    Exists  -> nf $ mkBooleanBigOp Or  ann tResCont mappedContainer
 
 nfForeachIn :: MonadNorm m
             => CheckedAnn

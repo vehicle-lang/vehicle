@@ -443,6 +443,7 @@ unsolvedConstraintError constraint ctx ="Typing error: not enough information to
   case constraint of
     UC _ (Unify _)   ->  prettyFriendlyDB ctx constraint
     TC _ (_ `Has` t) ->  prettyFriendlyDB ctx t
+    PC _ t           ->  prettyFriendlyDB ctx t
 
 prettyResource :: ResourceType -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
@@ -465,7 +466,8 @@ failedConstraintError ctx c@(TC _ (_ `Has` t)) = UserError
                     "Could not satisfy" <+> squotes (prettyFriendlyDB ctx t)
   , fix        = Just "check your types"
   }
-
+failedConstraintError ctx (PC _ t) = developerError $
+  "Should not have unsolved polarity constraint:" <+> squotes (prettyFriendlyDB ctx t)
 
 {-
 -- Some attempts more readable error messages. Need something more principled,

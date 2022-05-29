@@ -229,6 +229,10 @@ delabBuiltin fun args = case fun of
   V.Foreach   -> delabForeach args
   V.ForeachIn -> delabForeachIn args
 
+  V.Auxiliary           -> auxiliaryTypeError (pretty fun)
+  V.Polarity{}          -> auxiliaryTypeError (pretty fun)
+  V.PolarityTypeClass{} -> auxiliaryTypeError (pretty fun)
+
 delabOp1 :: IsToken token => (token -> B.Expr -> B.Expr) -> token -> [B.Expr] -> B.Expr
 delabOp1 op tk [arg] = op tk arg
 delabOp1 _  tk args  = argsError (tkSymbol tk) 1 args
@@ -301,3 +305,7 @@ delabFun n typ expr = do
     Right (binders, body)      -> do
       defType <- B.DefType n' <$> traverse delabM binders <*> delabM body
       return [defType]
+
+auxiliaryTypeError :: Doc a -> a
+auxiliaryTypeError e = developerError $
+  "Enountered" <+> squotes e <> ". Should not be delaborating auxiliary-type system code."

@@ -12,7 +12,6 @@ import Test.Check.Golden as Check (goldenTests)
 import Test.Verify.Golden as Verify (goldenTests)
 import Test.FilePathUtils (filepathTests)
 import Test.Compile.Utils (MonadTest)
--- import Test.Generative (generativeTests)
 
 -- Can't figure out how to get this passed in via the command-line *sadness*
 loggingOptions :: Maybe Int

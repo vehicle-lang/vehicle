@@ -7,7 +7,6 @@ import Prelude hiding (pi)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad (forM)
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.IntSet qualified as IntSet
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
@@ -15,10 +14,11 @@ import Vehicle.Language.Print
 import Vehicle.Compile.Type.Unify
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.TypeClass
+import Vehicle.Compile.Type.Auxiliary
+import Vehicle.Compile.Type.Auxiliary.Polarity (solvePolarityConstraint)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Defaults
 import Vehicle.Compile.Type.Bidirectional
-import Vehicle.Compile.Type.MetaSubstitution (metasIn)
 import Vehicle.Compile.Type.WeakHeadNormalForm
 
 -------------------------------------------------------------------------------
@@ -29,12 +29,14 @@ class TypeCheckable a b where
 
 instance TypeCheckable UncheckedProg CheckedProg where
   typeCheck p = logCompilerPass "type checking" $ runTCM $ do
-    result <- typeCheckProg p
+    p' <- preProcess p
+    result <- typeCheckProg p'
     postProcess result
 
 instance TypeCheckable UncheckedExpr CheckedExpr where
   typeCheck expr = runTCM $ do
-    (checkedExpr, _checkedExprType) <- inferExpr expr
+    expr' <- preProcess expr
+    (checkedExpr, _checkedExprType) <- inferExpr expr'
     solveConstraints
     postProcess checkedExpr
 
@@ -99,17 +101,36 @@ assertIsType p t        = do
   addUnificationConstraint p ctx t typ
   return ()
 
+preProcess :: ( TCM m
+              , InsertAuxiliaryAnnotations a
+              ) => a -> m a
+preProcess x =
+  return $ insertHolesForAuxiliaryAnnotations x
+
 postProcess :: ( TCM m
                , MetaSubstitutable a
                , WHNFable a
+               , RemoveAuxiliaryArguments a
                )
             => a -> m a
 postProcess x = do
-  checkAllConstraintsSolved
+  -- First check all user constraints (i.e. unification and type-class
+  -- constraints) are solved.
+  checkAllUserConstraintsSolved
+  -- Then check all meta-variables have been solved.
   checkAllMetasSolved
+  -- Then as a sanity check, check that all auxiliary constraints have
+  -- been solved. In theory the only way they can't have been solved is
+  -- if there are unsolved metas, e.g. the domain of `hasQuantifier`
+  -- constraint.
+  checkAllAuxiliaryConstraintsSolved
+
   substitution <- getMetaSubstitution
   let metaFreeExpr = substMetas substitution x
-  finalExpr <- convertImplicitArgsToWHNF metaFreeExpr
+  normExpr <- convertImplicitArgsToWHNF metaFreeExpr
+
+  -- Remove all auxiliary constraint related code from the result.
+  let finalExpr = removeAuxiliaryArguments normExpr
   return finalExpr
 
 -------------------------------------------------------------------------------
@@ -168,6 +189,7 @@ solveConstraint constraint = do
   result <- case constraint of
     UC ctx c -> solveUnificationConstraint ctx c
     TC ctx c -> solveTypeClassConstraint   ctx c
+    PC ctx c -> solvePolarityConstraint    ctx c
 
   case result of
     Progress newConstraints _ -> addConstraints newConstraints
@@ -194,9 +216,9 @@ addNewConstraintsUsingDefaults = do
   decrCallDepth
   return result
 
-checkAllConstraintsSolved :: MonadConstraintSolving m => m ()
-checkAllConstraintsSolved = do
-  constraints <- getConstraints
+checkAllUserConstraintsSolved :: MonadConstraintSolving m => m ()
+checkAllUserConstraintsSolved = do
+  constraints <- filter (not . isAuxiliaryConstraint) <$> getConstraints
   case constraints of
     [] -> return ()
     (c : cs) -> do
@@ -204,17 +226,15 @@ checkAllConstraintsSolved = do
       case result of
         Progress _ _ -> do
           loopOverConstraints result
-          checkAllConstraintsSolved
+          checkAllUserConstraintsSolved
         Stuck                     -> do
           logDebug MaxDetail "Still stuck"
           throwError $ UnsolvedConstraints (c :| cs)
 
 checkAllMetasSolved :: MonadConstraintSolving m => m ()
 checkAllMetasSolved = do
-  metasSolved  <- metasIn <$> getMetaSubstitution
-  metasCreated <- (\v -> IntSet.fromList [0..v-1]) <$> numberOfMetasCreated
-  let unsolvedMetas = IntSet.difference metasCreated metasSolved
-  case IntSet.toList unsolvedMetas of
+  unsolvedMetas <- getUnsolvedMetas
+  case unsolvedMetas of
     []     -> return ()
     m : ms -> do
       metasAndOrigins <- forM (m :| ms) (\v -> do
@@ -222,3 +242,12 @@ checkAllMetasSolved = do
         origin <- getMetaOrigin meta
         return (meta, origin))
       throwError $ UnsolvedMetas metasAndOrigins
+
+checkAllAuxiliaryConstraintsSolved :: MonadConstraintSolving m => m ()
+checkAllAuxiliaryConstraintsSolved = do
+  auxConstraints <- filter isAuxiliaryConstraint <$> getConstraints
+  case auxConstraints of
+    [] -> return ()
+    _  -> compilerDeveloperError $
+      "Unsolved auxiliary constraints - supposed to be impossible:" <+>
+      prettySimple auxConstraints

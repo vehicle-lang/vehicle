@@ -10,7 +10,13 @@ import Vehicle.Prelude
 -- Definitions
 
 -- | Visibility of function arguments.
-data Visibility = Explicit | Implicit | Instance
+data Visibility
+  = Explicit
+  -- ^ Always have to be given explicitly
+  | Implicit
+  -- ^ Inferred via unification
+  | Instance
+  -- ^ Inferred via instance search/type class resolution
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData Visibility

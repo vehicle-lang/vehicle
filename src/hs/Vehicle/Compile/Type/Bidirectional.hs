@@ -362,26 +362,39 @@ inferArgs p (Pi _ binder resultType) (arg : args)
 inferArgs p (Pi _ binder resultType) args
   | visibilityOf binder /= Explicit = do
     logDebug MaxDetail ("insert-arg" <+> pretty (visibilityOf binder) <+> prettyVerbose (typeOf binder))
-    let binderVis = visibilityOf binder
     let ann = inserted $ provenanceOf binder
+    let binderVis = visibilityOf binder
+    let binderType = typeOf binder
 
-    -- Generate a new meta-variable for the argument
-    (meta, metaExpr) <- freshMeta p
-    let metaArg = Arg ann binderVis metaExpr
+    (updateArgs, updatedResultType) <-
+      if binderVis == Instance && isAuxiliaryTypeClass binderType then do
+        -- Auxiliary constraints have no associated computational content,
+        -- so no need to generate a new meta so that the solution that be
+        -- inserted after solving the constraints.
+        ctx <- getVariableCtx
+        addAuxiliaryConstraint ctx binderType
+        return (id, resultType)
 
-    -- Check if the required argument is a type-class
-    when (binderVis == Instance) $ do
-      ctx <- getVariableCtx
-      addTypeClassConstraint ctx meta (typeOf binder)
+      else do
+        -- Generate a new meta-variable for the argument
+        (meta, metaExpr) <- freshMeta p
+        let metaArg = Arg ann binderVis metaExpr
 
-    -- Substitute meta-variable in tRes
-    let updatedResultType = metaExpr `substInto` resultType
+        -- Check if the required argument is a type-class
+        when (binderVis == Instance) $ do
+          ctx <- getVariableCtx
+          addTypeClassConstraint ctx meta binderType
+
+        -- Substitute meta-variable in tRes
+        let updatedResultType = metaExpr `substInto` resultType
+
+        return ((metaArg :), updatedResultType)
 
     -- Recurse into the list of args
     (typeAfterApplication, checkedArgs) <- inferArgs p updatedResultType args
 
     -- Return the appropriately annotated type with its inferred kind.
-    return (typeAfterApplication, metaArg : checkedArgs)
+    return (typeAfterApplication, updateArgs checkedArgs)
 
 inferArgs _p functionType [] = return (functionType, [])
 
@@ -417,33 +430,45 @@ typeOfLiteral ann l = fromDSL ann $ case l of
   LNat  n -> forall type0 $ \t -> hasNatLitsUpTo n t ~~~> t
   LInt  _ -> forall type0 $ \t -> hasIntLits t ~~~> t
   LRat  _ -> forall type0 $ \t -> hasRatLits t ~~~> t
-  LBool _ -> tBool
+  LBool _ -> tBool unquantified
 
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: CheckedAnn -> Builtin -> CheckedExpr
 typeOfBuiltin ann b = fromDSL ann $ case b of
-  Bool                      -> type0
+  Auxiliary  -> type0
+  Polarity{} -> tAux
+
+  PolarityTypeClass HasNot          -> tAux ~> tAux ~> tAux
+  PolarityTypeClass HasAndOr        -> tAux ~> tAux ~> tAux ~> tAux
+  PolarityTypeClass HasImpl         -> tAux ~> tAux ~> tAux ~> tAux
+  PolarityTypeClass HasQuantifier{} -> type0 ~> tAux ~> tAux ~> tAux
+
+  TypeClass HasEq              -> type0 ~> type0
+  TypeClass HasOrd             -> type0 ~> type0
+  TypeClass HasAdd             -> type0 ~> type0
+  TypeClass HasSub             -> type0 ~> type0
+  TypeClass HasMul             -> type0 ~> type0
+  TypeClass HasDiv             -> type0 ~> type0
+  TypeClass HasNeg             -> type0 ~> type0
+  TypeClass HasConOps          -> type0 ~> type0 ~> type0
+  TypeClass HasNatLitsUpTo{}   -> type0 ~> type0
+  TypeClass HasIntLits         -> type0 ~> type0
+  TypeClass HasRatLits         -> type0 ~> type0
+  TypeClass HasConLitsOfSize{} -> type0 ~> type0 ~> type0
+
+  -- The Bool type takes an implicit polarity argument
+  Bool                      -> type0 ~~> type0
+
   NumericType   _           -> type0
   ContainerType List        -> type0 ~> type0
   ContainerType Tensor      -> type0 ~> tList tNat ~> type0
   Index                     -> tNat ~> type0
 
-  TypeClass HasEq                -> type0 ~> type0
-  TypeClass HasOrd               -> type0 ~> type0
-  TypeClass HasAdd               -> type0 ~> type0
-  TypeClass HasSub               -> type0 ~> type0
-  TypeClass HasMul               -> type0 ~> type0
-  TypeClass HasDiv               -> type0 ~> type0
-  TypeClass HasNeg               -> type0 ~> type0
-  TypeClass HasConOps            -> type0 ~> type0 ~> type0
-  TypeClass (HasNatLitsUpTo _)   -> type0 ~> type0
-  TypeClass HasIntLits           -> type0 ~> type0
-  TypeClass HasRatLits           -> type0 ~> type0
-  TypeClass (HasConLitsOfSize _) -> type0 ~> type0 ~> type0
-
-  If             -> typeOfIf
-  Not            -> typeOfBoolOp1
-  BooleanOp2 _   -> typeOfBoolOp2
+  If              -> typeOfIf
+  Not             -> typeOfNot
+  BooleanOp2 Impl -> typeOfImpl
+  BooleanOp2 And  -> typeOfAndOr
+  BooleanOp2 Or   -> typeOfAndOr
 
   NumericOp2 Add -> typeOfNumOp2 hasAdd
   NumericOp2 Sub -> typeOfNumOp2 hasSub
@@ -459,8 +484,8 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
   Map  -> typeOfMapOp
   Fold -> typeOfFoldOp
 
-  Quant   _ -> typeOfForallAndExists
-  QuantIn _ -> typeOfForallAndExistsIn
+  Quant q   -> typeOfQuantifier q
+  QuantIn _ -> typeOfQuantifierIn
 
   Foreach   -> typeOfForeach
   ForeachIn -> typeOfForeachIn
@@ -468,23 +493,37 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
 typeOfIf :: DSLExpr
 typeOfIf =
   forall type0 $ \t ->
-    tBool ~> t ~> t ~> t
+    tBool unquantified ~> t ~> t ~> t
 
 typeOfEqualityOp :: DSLExpr
 typeOfEqualityOp =
   forall type0 $ \t ->
-    hasEq t ~~~> t ~> t ~> tBool
+    hasEq t ~~~> t ~> t ~> tBool unquantified
 
 typeOfComparisonOp :: DSLExpr
 typeOfComparisonOp =
   forall type0 $ \t ->
-    hasOrd t ~~~> t ~> t ~> tBool
+    hasOrd t ~~~> t ~> t ~> tBool unquantified
 
-typeOfBoolOp2 :: DSLExpr
-typeOfBoolOp2 = tBool ~> tBool ~> tBool
+typeOfNot :: DSLExpr
+typeOfNot =
+  forall tAux $ \pol1 ->
+    forall tAux $ \pol2 ->
+      hasNot pol1 pol2 ~~~> tBool pol1 ~> tBool pol2
 
-typeOfBoolOp1 :: DSLExpr
-typeOfBoolOp1 = tBool ~> tBool
+typeOfAndOr :: DSLExpr
+typeOfAndOr =
+  forall tAux $ \pol1 ->
+    forall tAux $ \pol2 ->
+      forall tAux $ \pol3 ->
+        hasAndOr pol1 pol2 pol3 ~~~> tBool pol1 ~> tBool pol2 ~> tBool pol3
+
+typeOfImpl :: DSLExpr
+typeOfImpl =
+  forall tAux $ \pol1 ->
+    forall tAux $ \pol2 ->
+      forall tAux $ \pol3 ->
+        hasAndOr pol1 pol2 pol3 ~~~> tBool pol1 ~> tBool pol2 ~> tBool pol3
 
 typeOfNumOp2 :: (DSLExpr -> DSLExpr) -> DSLExpr
 typeOfNumOp2 numConstraint =
@@ -496,31 +535,36 @@ typeOfNumOp1 numConstraint =
   forall type0 $ \t ->
     numConstraint t ~~~> t ~> t
 
-typeOfForallAndExists :: DSLExpr
-typeOfForallAndExists =
+typeOfQuantifier :: Quantifier -> DSLExpr
+typeOfQuantifier q =
   forall type0 $ \t ->
-    (t ~> tBool) ~> tBool
+    forall tAux $ \pol1 ->
+      forall tAux $ \pol2 ->
+        hasQuantifier q t pol1 pol2 ~~~> (t ~> tBool pol1) ~> tBool pol2
 
 typeOfForeach :: DSLExpr
 typeOfForeach =
   forall tNat $ \d ->
     forall (tList tNat) $ \ds ->
-      (tIndex d ~> tTensor tBool ds) ~> tTensor tBool (cons tNat d ds)
+      forall tAux $ \pol ->
+        (tIndex d ~> tTensor (tBool pol) ds) ~> tTensor (tBool pol) (cons tNat d ds)
 
-typeOfForallAndExistsIn :: DSLExpr
-typeOfForallAndExistsIn =
+typeOfQuantifierIn :: DSLExpr
+typeOfQuantifierIn =
   forall type0 $ \tElem ->
     forall type0 $ \tCont ->
-      hasConOps tElem tCont ~~~> (tElem ~> tBool) ~> tCont ~> tBool
+      forall tAux $ \pol ->
+        hasConOps tElem tCont ~~~> (tElem ~> tBool pol) ~> tCont ~> tBool pol
 
 typeOfForeachIn :: DSLExpr
 typeOfForeachIn =
   forall tNat $ \d ->
     forall type0 $ \tElem ->
-      -- This is a hack. Need to think about the multi-dimensional case
-      -- more carefully.
-      let ds = lseq tNat (tList tNat) [d] in
-      (tElem ~> tBool) ~> tTensor tElem ds ~> tTensor tBool ds
+      forall tAux $ \pol ->
+        -- This is a hack. Need to think about the multi-dimensional case
+        -- more carefully.
+        let ds = lseq tNat (tList tNat) [d] in
+        (tElem ~> tBool pol) ~> tTensor tElem ds ~> tTensor (tBool pol) ds
 
 typeOfCons :: DSLExpr
 typeOfCons =

@@ -128,6 +128,8 @@ library
                       , Vehicle.Compile.Type.MetaSet
                       , Vehicle.Compile.Type.MetaSubstitution
                       , Vehicle.Compile.Type.TypeClass
+                      , Vehicle.Compile.Type.Auxiliary
+                      , Vehicle.Compile.Type.Auxiliary.Polarity
                       , Vehicle.Compile.Type.Unify
                       , Vehicle.Compile.Type.WeakHeadNormalForm
 

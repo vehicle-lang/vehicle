@@ -1,7 +1,5 @@
 module Vehicle.Compile.Type.Constraint where
 
-import Prelude hiding (pi)
-
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.MetaSet
 
@@ -11,11 +9,13 @@ import Vehicle.Compile.Type.MetaSet
 -- | A pair of expressions should be equal
 type UnificationPair = (CheckedExpr, CheckedExpr)
 
+newtype UnificationConstraint = Unify UnificationPair
+  deriving (Show)
+
 data TypeClassConstraint = Meta `Has` CheckedExpr
   deriving (Show)
 
-newtype UnificationConstraint = Unify UnificationPair
-  deriving (Show)
+type PolarityConstraint = CheckedExpr
 
 -- | A sequence of attempts at unification
 type UnificationHistory = [UnificationPair]
@@ -36,14 +36,18 @@ data Constraint
   = UC ConstraintContext UnificationConstraint
   -- | Represents that the provided type must have the required functionality
   | TC ConstraintContext TypeClassConstraint
+  -- | Represents a constraint on boolean polarities
+  | PC ConstraintContext PolarityConstraint
 
 instance Show Constraint where
   show (UC _ c) = show c
   show (TC _ c) = show c
+  show (PC _ c) = show c
 
 constraintContext :: Constraint -> ConstraintContext
 constraintContext (UC ctx _) = ctx
 constraintContext (TC ctx _) = ctx
+constraintContext (PC ctx _) = ctx
 
 variableContext :: Constraint -> VariableCtx
 variableContext = varContext . constraintContext
@@ -61,3 +65,7 @@ getTypeClassConstraint :: Constraint
                         -> Maybe (TypeClassConstraint, ConstraintContext)
 getTypeClassConstraint (TC ctx c) = Just (c, ctx)
 getTypeClassConstraint _          = Nothing
+
+isAuxiliaryConstraint :: Constraint -> Bool
+isAuxiliaryConstraint PC{} = True
+isAuxiliaryConstraint _    = False

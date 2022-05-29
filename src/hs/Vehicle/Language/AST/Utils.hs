@@ -12,6 +12,7 @@ import Vehicle.Language.AST.DeBruijn
 import Vehicle.Language.AST.BuiltinPatterns
 import Vehicle.Language.AST.Name
 import Vehicle.Language.AST.Visibility
+import Vehicle.Language.AST.Builtin
 
 --------------------------------------------------------------------------------
 -- Utility functions
@@ -39,6 +40,11 @@ isFinite BoolType{}             = True
 isFinite IndexType{}            = True
 isFinite (TensorType _ tElem _) = isFinite tElem
 isFinite _                      = False
+
+isAuxiliaryTypeClass :: Expr binder var ann -> Bool
+isAuxiliaryTypeClass e = case exprHead e of
+  Builtin _ PolarityTypeClass{} -> True
+  _                             -> False
 
 freeNames :: Expr binder DBVar ann -> [Identifier]
 freeNames = cata $ \case
@@ -91,6 +97,13 @@ getDimensions :: Expr binder var ann -> Maybe [Int]
 getDimensions (SeqExpr _ _ _ es) = traverse getDimension es
 getDimensions _                  = Nothing
 
+getExplicitArg :: Arg binder var ann -> Maybe (Expr binder var ann)
+getExplicitArg (ExplicitArg _ arg) = Just arg
+getExplicitArg _                   = Nothing
+
+getExplicitArgs :: Traversable t => t (Arg binder var ann) -> Maybe (t (Expr binder var ann))
+getExplicitArgs = traverse getExplicitArg
+
 --------------------------------------------------------------------------------
 -- Construction functions
 
@@ -107,6 +120,9 @@ mkHole ann name = Hole ann ("_" <> name)
 mkDoubleExpr :: ann -> Double -> Expr binder var ann
 mkDoubleExpr ann v = LitRat ann (toRational v)
 
+mkIndexType :: ann -> Int -> Expr binder var ann
+mkIndexType ann n = IndexType ann (NatLiteralExpr ann (NatType ann) n)
+
 mkIntExpr :: ann -> Int -> Expr binder var ann
 mkIntExpr ann v
   | v >= 0    = LitNat ann v
@@ -114,3 +130,54 @@ mkIntExpr ann v
 
 mkSeqExpr :: ann -> [Expr binder var ann] -> Expr binder var ann
 mkSeqExpr ann = LSeq ann (Hole ann "_seqTC")
+
+mkTensorDims :: ann
+             -> [Int]
+             -> Expr binder var ann
+mkTensorDims ann dims =
+  let listType = ListType ann (NatType ann) in
+  let dimExprs = fmap (Literal ann . LNat) dims in
+  let dimList  = SeqExpr ann (NatType ann) listType dimExprs in
+  dimList
+
+mkTensorType :: ann
+             -> Expr binder var ann
+             -> [Int]
+             -> Expr binder var ann
+mkTensorType ann tElem dims =
+  let dimList = mkTensorDims ann dims in
+  App ann (BuiltinContainerType ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
+
+mkQuantifierSeq :: Quantifier
+                -> ann
+                -> [binder]
+                -> Expr binder var ann
+                -> Expr binder var ann
+                -> Expr binder var ann
+mkQuantifierSeq q ann names t body =
+  foldl (\e name -> QuantifierExpr q ann (ExplicitBinder ann name t) e) body names
+
+mkList :: ann
+       -> Expr binder var ann
+       -> [Expr binder var ann]
+       -> Expr binder var ann
+mkList ann tElem = foldr cons (NilExpr ann tElem)
+  where cons x xs = ConsExpr ann tElem $ fmap (ExplicitArg ann) [x, xs]
+
+mkBooleanBigOp :: BooleanOp2
+               -> ann
+               -> Expr binder var ann
+               -> Expr binder var ann
+               -> Expr binder var ann
+mkBooleanBigOp op ann containerType container =
+  FoldExpr ann (BoolType ann) containerType (BoolType ann) $ fmap (ExplicitArg ann)
+    [ Builtin ann (BooleanOp2 op)
+    , BoolLiteralExpr ann unit
+    , container
+    ]
+  where
+    unit :: Bool
+    unit = case op of
+      And  -> True
+      Or   -> False
+      Impl -> True

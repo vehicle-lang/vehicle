@@ -18,13 +18,6 @@ pattern
   where
   ListType ann tElem =  App ann (BuiltinContainerType ann List) [ExplicitArg ann tElem]
 
-mkList :: ann
-       -> Expr binder var ann
-       -> [Expr binder var ann]
-       -> Expr binder var ann
-mkList ann tElem = foldr cons (NilExpr ann tElem)
-  where cons x xs = ConsExpr ann tElem $ fmap (ExplicitArg ann) [x, xs]
-
 --------------------------------------------------------------------------------
 -- Tensor
 
@@ -43,23 +36,6 @@ pattern
       [ ExplicitArg ann tElem
       , ExplicitArg ann tDims ]
 
-mkTensorDims :: ann
-             -> [Int]
-             -> Expr binder var ann
-mkTensorDims ann dims =
-  let listType = ListType ann (NatType ann) in
-  let dimExprs = fmap (Literal ann . LNat) dims in
-  let dimList  = SeqExpr ann (NatType ann) listType dimExprs in
-  dimList
-
-mkTensorType :: ann
-             -> Expr binder var ann
-             -> [Int]
-             -> Expr binder var ann
-mkTensorType ann tElem dims =
-  let dimList = mkTensorDims ann dims in
-  App ann (BuiltinContainerType ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
-
 --------------------------------------------------------------------------------
 -- Tensor
 
@@ -74,9 +50,6 @@ pattern
   IndexType ann tSize =
     App ann (Builtin ann Index)
       [ ExplicitArg ann tSize ]
-
-mkIndexType :: ann -> Int -> Expr binder var ann
-mkIndexType ann n = IndexType ann (NatLiteralExpr ann (NatType ann) n)
 
 --------------------------------------------------------------------------------
 -- Numeric
@@ -410,15 +383,6 @@ pattern
       , ExplicitArg _ (Lam _ binder body)
       ]
 
-mkQuantifierSeq :: Quantifier
-                -> ann
-                -> [binder]
-                -> Expr binder var ann
-                -> Expr binder var ann
-                -> Expr binder var ann
-mkQuantifierSeq q ann names t body =
-  foldl (\e name -> QuantifierExpr q ann (ExplicitBinder ann name t) e) body names
-
 --------------------------------------------------------------------------------
 -- QuantifierIn
 
@@ -527,28 +491,6 @@ pattern
   where
   BooleanOp2Expr op ann explicitArgs =
     App ann (Builtin ann (BooleanOp2 op)) explicitArgs
-
-booleanBigOp :: forall binder var ann .
-                BooleanOp2
-             -> ann
-             -> Expr binder var ann
-             -> Expr binder var ann
-             -> Expr binder var ann
-booleanBigOp op ann containerType container =
-  FoldExpr ann boolType containerType boolType $ fmap (ExplicitArg ann)
-    [ Builtin ann (BooleanOp2 op)
-    , BoolLiteralExpr ann unit
-    , container
-    ]
-  where
-    unit :: Bool
-    unit = case op of
-      And  -> True
-      Or   -> False
-      Impl -> True
-
-    boolType :: Expr binder var ann
-    boolType = BoolType ann
 
 pattern AndExpr :: ann -> NonEmpty (Arg  binder var ann) -> Expr binder var ann
 pattern AndExpr ann explicitArgs <- BooleanOp2Expr And ann explicitArgs

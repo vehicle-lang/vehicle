@@ -145,6 +145,7 @@ instance Simplify TypeClassConstraint where
 instance Simplify Constraint where
   simplifyReader (TC ctx c) = TC ctx <$> simplifyReader c
   simplifyReader (UC ctx c) = UC ctx <$> simplifyReader c
+  simplifyReader (PC ctx c) = PC ctx <$> simplifyReader c
 
 instance Simplify MetaSubstitution where
   simplifyReader (MetaSubstitution m) = MetaSubstitution <$> traverse simplifyReader m

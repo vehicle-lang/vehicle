@@ -8,6 +8,7 @@ module Vehicle.Compile.Type.Meta
   , makeMetaType
   , addUnificationConstraint
   , addTypeClassConstraint
+  , addAuxiliaryConstraint
   , addConstraints
   , setConstraints
   , getConstraints
@@ -16,6 +17,7 @@ module Vehicle.Compile.Type.Meta
   , getMetaSubstitution
   , modifyMetaSubstitution
   , numberOfMetasCreated
+  , getUnsolvedMetas
   , getMetaOrigin
   , MonadConstraintSolving
   , ConstraintProgress(..)
@@ -32,11 +34,12 @@ import Control.Monad.Reader (Reader, runReader, ask, local)
 import Control.Monad.State (MonadState(..), modify, gets)
 import Data.List (partition)
 import Data.Maybe (mapMaybe)
+import Data.IntSet qualified as IntSet
 
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Type.MetaSubstitution ( MetaSubstitution )
+import Vehicle.Compile.Type.MetaSubstitution ( MetaSubstitution, metasIn )
 import Vehicle.Compile.Type.MetaSubstitution qualified as MetaSubst (map, lookup, insertWith)
 import Vehicle.Compile.Type.MetaSet (MetaSet)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton, disjoint, null)
@@ -138,6 +141,7 @@ instance MetaSubstitutable UnificationConstraint where
 instance MetaSubstitutable Constraint where
   substM (UC ctx c) = UC ctx <$> substM c
   substM (TC ctx c) = TC ctx <$> substM c
+  substM (PC ctx c) = PC ctx <$> substM c
 
 --------------------------------------------------------------------------------
 -- Meta-variables
@@ -208,6 +212,13 @@ getTypeClassConstraints = mapMaybe getTypeClassConstraint <$> getConstraints
 numberOfMetasCreated :: MonadState MetaCtx m => m Int
 numberOfMetasCreated = gets (length . metaOrigins)
 
+getUnsolvedMetas :: MonadState MetaCtx m => m [Int]
+getUnsolvedMetas = do
+  metasSolved  <- metasIn <$> getMetaSubstitution
+  metasCreated <- (\v -> IntSet.fromList [0..v-1]) <$> numberOfMetasCreated
+  let unsolvedMetas = IntSet.difference metasCreated metasSolved
+  return $ IntSet.toList unsolvedMetas
+
 metaSolved :: (MonadState MetaCtx m, MonadLogger m)
            => Provenance
            -> Meta
@@ -255,6 +266,15 @@ addTypeClassConstraint :: (MonadState MetaCtx m, MonadLogger m)
 addTypeClassConstraint ctx meta expr = do
   let context    = ConstraintContext (provenanceOf expr) mempty ctx
   let constraint = TC context (meta `Has` expr)
+  addConstraints [constraint]
+
+addAuxiliaryConstraint :: (MonadState MetaCtx m, MonadLogger m)
+                       => VariableCtx
+                       -> CheckedExpr
+                       -> m ()
+addAuxiliaryConstraint ctx expr = do
+  let context    = ConstraintContext (provenanceOf expr) mempty ctx
+  let constraint = PC context expr
   addConstraints [constraint]
 
 addConstraints :: (MonadState MetaCtx m, MonadLogger m) => [Constraint] -> m ()

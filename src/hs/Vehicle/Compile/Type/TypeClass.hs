@@ -179,11 +179,7 @@ getNonInferableExprs e = case toHead e of
   (f@Meta{} , _) -> [f]
   -- For any other type-class if any of the args contain meta-variables then
   -- they cannot be solved.
-  (_, args)      -> concatMap (maybe [] getNonInferableExprs . getVisibleArg) args
-
-getVisibleArg :: CheckedArg -> Maybe CheckedExpr
-getVisibleArg (ExplicitArg _ arg) = Just arg
-getVisibleArg _                   = Nothing
+  (_, args)      -> concatMap (maybe [] getNonInferableExprs . getExplicitArg) args
 
 blockOnMetas :: MonadConstraintSolving m
              => CheckedExpr

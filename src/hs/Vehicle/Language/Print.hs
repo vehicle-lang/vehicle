@@ -284,6 +284,7 @@ instance (PrettyUsing rest CheckedExpr)
   prettyUsing (TC _ (m `Has` e))      = pretty m <+> "<=" <+> prettyUsing @rest e
     -- <+> "<boundCtx=" <> pretty (ctxNames (boundContext c)) <> ">"
     -- <+> parens (pretty (provenanceOf c))
+  prettyUsing (PC _ e)                = "Polarity[" <>  (prettyUsing @rest e) <> "]"
 
 instance PrettyUsing rest CheckedExpr
       => PrettyUsing ('Opaque rest) MetaSubstitution where
@@ -320,6 +321,9 @@ deriving via (ViaBnfcExternal BF.Arg)    instance Pretty BF.Arg
 -- therefore adds a ton of newlines everywhere. This hack attempts to undo this.
 bnfcPrintHack :: String -> Text
 bnfcPrintHack =
+  Text.replace "{{ " "{{" .
+  Text.replace "{  " "{" .
+  Text.replace "\n{" " {" .
   Text.replace "{\n" "{" .
   Text.replace "\n}\n" "} " .
   Text.pack

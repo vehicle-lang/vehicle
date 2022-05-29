@@ -10,6 +10,8 @@ module Vehicle.Language.AST.Builtin
   , TypeClass(..)
   , BooleanOp2(..)
   , NumericOp2(..)
+  , Polarity(..)
+  , PolarityTypeClass(..)
   , builtinFromSymbol
   , symbolFromBuiltin
   , isStrict
@@ -64,12 +66,16 @@ instance Pretty ContainerType where
 data TypeClass
   = HasEq
   | HasOrd
+
+  -- Operation type-classes
   | HasAdd
   | HasSub
   | HasMul
   | HasDiv
   | HasNeg
   | HasConOps
+
+  -- Literal type-classes
   | HasNatLitsUpTo Int
   -- ^ The parameter is the maximum value (needed for Index).
   | HasIntLits
@@ -109,12 +115,10 @@ data Quantifier
 
 instance NFData   Quantifier
 instance Hashable Quantifier
-{-
+
 instance Negatable Quantifier where
   neg Forall = Exists
   neg Exists = Forall
-  neg Foreach =
--}
 
 --------------------------------------------------------------------------------
 -- Equality
@@ -234,6 +238,67 @@ instance Pretty NumericOp2 where
   pretty = pretty . show
 
 --------------------------------------------------------------------------------
+-- Linearity
+
+{-
+-- | Used to annotate numeric types, representing whether it represents a
+-- constant, linear or non-linear expression.
+data Linearity
+  = Constant
+  | Linear
+  | NonLinear
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData   Linearity
+instance Hashable Linearity
+-}
+
+--------------------------------------------------------------------------------
+-- Polarity
+
+-- | Used to annotate boolean types, represents what sort of pattern of
+-- quantifiers it contains.
+data Polarity
+  = Unquantified
+  | Quantified Quantifier
+  | MixedParallel
+  | MixedSequential
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData   Polarity
+instance Hashable Polarity
+
+instance Negatable Polarity where
+  neg = \case
+    Unquantified    -> Unquantified
+    Quantified q    -> Quantified $ neg q
+    MixedParallel   -> MixedParallel
+    MixedSequential -> MixedSequential
+
+pattern Universal :: Polarity
+pattern Universal = Quantified Forall
+
+pattern Existential :: Polarity
+pattern Existential = Quantified Exists
+
+data PolarityTypeClass
+  = HasNot
+  | HasAndOr
+  | HasImpl
+  | HasQuantifier Quantifier
+  deriving (Eq, Ord, Generic)
+
+instance NFData   PolarityTypeClass
+instance Hashable PolarityTypeClass
+
+instance Show PolarityTypeClass where
+  show = \case
+    HasNot             -> "HasNot"
+    HasAndOr           -> "HasAndOr"
+    HasImpl            -> "HasImpl"
+    HasQuantifier q    -> "HasQuantifier " <> show q
+
+--------------------------------------------------------------------------------
 -- Builtin
 
 -- |Builtins in the Vehicle language
@@ -243,6 +308,8 @@ data Builtin
   | NumericType   NumericType
   | ContainerType ContainerType
   | Index
+  -- Type classes
+  | TypeClass TypeClass
   -- Expressions
   | If
   | Not
@@ -255,11 +322,16 @@ data Builtin
   | Fold
   | Equality  Equality
   | Order     Order
-  | TypeClass TypeClass
   | Quant     Quantifier
   | QuantIn   Quantifier
   | Foreach
   | ForeachIn
+
+  -- Annotations - these should not be shown to the user.
+  | Auxiliary
+  -- ^ The type of Polarity/Linearity etc.
+  | Polarity Polarity
+  | PolarityTypeClass PolarityTypeClass
   deriving (Eq, Ord, Generic)
 
 instance NFData   Builtin
@@ -273,27 +345,30 @@ instance Pretty Builtin where
 
 instance Show Builtin where
   show = \case
-    Bool            -> "Bool"
-    NumericType   t -> show t
-    ContainerType t -> show t
-    Index           -> "Index"
-    BooleanOp2 op   -> show op
-    Not             -> "not"
-    NumericOp2 op   -> show op
-    Neg             -> "~"
-    If              -> "if"
-    At              -> "!"
-    Cons            -> "::"
-    Equality e      -> show e
-    Order o         -> show o
-    TypeClass tc    -> show tc
-    Map             -> "map"
-    Fold            -> "fold"
-    Quant   Forall  -> "forall"
-    Quant   Exists  -> "exists"
-    QuantIn q       -> show (Quant q) <> "In"
-    Foreach         -> "foreach"
-    ForeachIn       -> "foreachIn"
+    Bool                -> "Bool"
+    NumericType   t     -> show t
+    ContainerType t     -> show t
+    Index               -> "Index"
+    BooleanOp2 op       -> show op
+    Not                 -> "not"
+    NumericOp2 op       -> show op
+    Neg                 -> "~"
+    If                  -> "if"
+    At                  -> "!"
+    Cons                -> "::"
+    Equality e          -> show e
+    Order o             -> show o
+    Map                 -> "map"
+    Fold                -> "fold"
+    Quant   Forall      -> "forall"
+    Quant   Exists      -> "exists"
+    QuantIn q           -> show (Quant q) <> "In"
+    Foreach             -> "foreach"
+    ForeachIn           -> "foreachIn"
+    TypeClass tc        -> show tc
+    Auxiliary           -> "Auxiliary"
+    Polarity pol        -> show pol
+    PolarityTypeClass t -> show t
 
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols = map (first pack)
@@ -329,6 +404,12 @@ builtinSymbols = map (first pack)
   , show ForeachIn                   |-> ForeachIn
   , show Map                         |-> Map
   , show Fold                        |-> Fold
+  , show Auxiliary                   |-> Auxiliary
+  , show (Polarity Unquantified)     |-> Polarity Unquantified
+  , show (Polarity Universal)        |-> Polarity Universal
+  , show (Polarity Existential)      |-> Polarity Existential
+  , show (Polarity MixedParallel)    |-> Polarity MixedParallel
+  , show (Polarity MixedSequential)  |-> Polarity MixedSequential
   ]
 
 builtinFromSymbol :: Symbol -> Maybe Builtin
