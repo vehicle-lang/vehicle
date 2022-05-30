@@ -61,11 +61,16 @@ boundContext = boundCtx . variableContext
 instance HasProvenance Constraint where
   provenanceOf = provenanceOf . constraintContext
 
-getTypeClassConstraint :: Constraint
-                        -> Maybe (TypeClassConstraint, ConstraintContext)
-getTypeClassConstraint (TC ctx c) = Just (c, ctx)
-getTypeClassConstraint _          = Nothing
-
 isAuxiliaryConstraint :: Constraint -> Bool
 isAuxiliaryConstraint PC{} = True
 isAuxiliaryConstraint _    = False
+
+getTypeClassConstraint :: Constraint
+                       -> Maybe (TypeClassConstraint, ConstraintContext)
+getTypeClassConstraint (TC ctx c) = Just (c, ctx)
+getTypeClassConstraint _          = Nothing
+
+getAuxiliaryConstraint :: Constraint
+                       -> Maybe (CheckedExpr, ConstraintContext)
+getAuxiliaryConstraint (PC ctx c) = Just (c, ctx)
+getAuxiliaryConstraint _          = Nothing

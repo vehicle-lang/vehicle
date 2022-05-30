@@ -107,8 +107,11 @@ defaultSolution ann _   HasNeg              = return $ IntType ann
 defaultSolution ann _   (HasNatLitsUpTo n)  = return $ mkIndexType ann (n + 1)
 defaultSolution ann _   HasIntLits          = return $ IntType ann
 defaultSolution ann _   HasRatLits          = return $ RatType ann
-defaultSolution ann ctx HasConOps           = ListType ann <$> (snd <$> freshMetaWith ann ctx)
-defaultSolution ann ctx HasConLitsOfSize{}  = ListType ann <$> (snd <$> freshMetaWith ann ctx)
+defaultSolution ann ctx HasConOps           = createDefaultListType ann ctx
+defaultSolution ann ctx HasConLitsOfSize{}  = createDefaultListType ann ctx
+
+createDefaultListType :: MonadConstraintSolving m => CheckedAnn -> BoundCtx -> m CheckedExpr
+createDefaultListType ann ctx = ListType ann . snd <$> freshMetaWith ann (Type ann 0) ctx
 
 getDefaultCandidate :: TypeClassConstraint -> Maybe (Meta, CheckedExpr, TypeClass)
 getDefaultCandidate (_ `Has` e) = case e of

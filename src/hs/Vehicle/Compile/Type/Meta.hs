@@ -18,7 +18,7 @@ module Vehicle.Compile.Type.Meta
   , modifyMetaSubstitution
   , numberOfMetasCreated
   , getUnsolvedMetas
-  , getMetaOrigin
+  , getMetaInfo
   , MonadConstraintSolving
   , ConstraintProgress(..)
   , nonTriviallySolved
@@ -50,8 +50,8 @@ import Vehicle.Compile.Type.Constraint
 
 -- | The meta-variables and constraints relating the variables currently in scope.
 data MetaCtx = MetaCtx
-  { metaOrigins         :: [Provenance]
-  -- ^ The origin of each meta variable.
+  { metaInfo            :: [(Provenance, CheckedExpr)]
+  -- ^ The origin and type of each meta variable.
   -- NB: these are stored in *reverse* order from which they were created.
   , currentSubstitution :: MetaSubstitution
   , constraints         :: [Constraint]
@@ -59,7 +59,7 @@ data MetaCtx = MetaCtx
 
 emptyMetaCtx :: MetaCtx
 emptyMetaCtx = MetaCtx
-  { metaOrigins            = mempty
+  { metaInfo               = mempty
   , currentSubstitution    = mempty
   , constraints            = mempty
   }
@@ -146,11 +146,11 @@ instance MetaSubstitutable Constraint where
 --------------------------------------------------------------------------------
 -- Meta-variables
 
-freshMetaName :: MonadState MetaCtx m => Provenance -> m Meta
-freshMetaName origin = do
+freshMetaName :: MonadState MetaCtx m => Provenance -> CheckedExpr -> m Meta
+freshMetaName origin metaType = do
   MetaCtx {..} <- get
-  let nextMeta = length metaOrigins
-  put $ MetaCtx { metaOrigins = origin : metaOrigins, .. }
+  let nextMeta = length metaInfo
+  put $ MetaCtx { metaInfo = (origin, metaType) : metaInfo, .. }
   return (MetaVar nextMeta)
 
 -- | Creates a fresh meta variable. Meta variables need to remember what was
@@ -162,11 +162,12 @@ freshMetaName origin = do
 -- variable in the context.
 freshMetaWith :: (MonadState MetaCtx m, MonadLogger m)
               => Provenance
+              -> CheckedExpr
               -> BoundCtx
               -> m (Meta, CheckedExpr)
-freshMetaWith p boundCtx = do
+freshMetaWith p metaType boundCtx = do
   -- Create a fresh name
-  metaName <- freshMetaName p
+  metaName <- freshMetaName p metaType
 
   -- Create bound variables for everything in the context
   let ann = inserted p
@@ -188,10 +189,10 @@ makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse bound
     entryToPi :: (DBBinding, CheckedExpr, Maybe CheckedExpr) -> CheckedExpr -> CheckedExpr
     entryToPi (name, t, _) = Pi ann (ExplicitBinder ann name t)
 
-getMetaOrigin :: MonadState MetaCtx m => Meta -> m Provenance
-getMetaOrigin (MetaVar m) = do
+getMetaInfo :: MonadState MetaCtx m => Meta -> m (Provenance, CheckedExpr)
+getMetaInfo (MetaVar m) = do
   MetaCtx {..} <- get
-  return $ metaOrigins !! (length metaOrigins - m - 1)
+  return $ metaInfo !! (length metaInfo - m - 1)
 
 getMetaSubstitution :: MonadState MetaCtx m => m MetaSubstitution
 getMetaSubstitution = gets currentSubstitution
@@ -210,7 +211,7 @@ getTypeClassConstraints :: MonadState MetaCtx m => m [(TypeClassConstraint, Cons
 getTypeClassConstraints = mapMaybe getTypeClassConstraint <$> getConstraints
 
 numberOfMetasCreated :: MonadState MetaCtx m => m Int
-numberOfMetasCreated = gets (length . metaOrigins)
+numberOfMetasCreated = gets (length . metaInfo)
 
 getUnsolvedMetas :: MonadState MetaCtx m => m [Int]
 getUnsolvedMetas = do

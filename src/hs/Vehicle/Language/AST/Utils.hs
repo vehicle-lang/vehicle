@@ -46,22 +46,41 @@ isAuxiliaryTypeClass e = case exprHead e of
   Builtin _ PolarityTypeClass{} -> True
   _                             -> False
 
+--------------------------------------------------------------------------------
+-- Enumeration functions
+
 freeNames :: Expr binder DBVar ann -> [Identifier]
 freeNames = cata $ \case
-  TypeF     _ _                 -> []
-  HoleF     _ _                 -> []
-  PrimDictF _ _                 -> []
-  MetaF     _ _                 -> []
-  LiteralF  _ _                 -> []
-  BuiltinF  _ _                 -> []
-  AnnF      _ e t               -> e <> t
-  AppF      _ fun args          -> fun <> concatMap (freeNames . argExpr) args
-  PiF       _ binder result     -> freeNames (typeOf binder) <> result
-  VarF      _ (Free ident)      -> [ident]
-  VarF      _ (Bound _)         -> []
-  LetF      _ bound binder body -> bound <> freeNames (typeOf binder) <> body
-  LamF      _ binder body       -> freeNames (typeOf binder) <> body
-  LSeqF     _ _ xs              -> concat xs
+  TypeF{}                   -> []
+  HoleF{}                   -> []
+  PrimDictF{}               -> []
+  MetaF{}                   -> []
+  LiteralF{}                -> []
+  BuiltinF{}                -> []
+  AnnF  _ e t               -> e <> t
+  AppF  _ fun args          -> fun <> concatMap (freeNames . argExpr) args
+  PiF   _ binder result     -> freeNames (typeOf binder) <> result
+  VarF  _ (Free ident)      -> [ident]
+  VarF  _ (Bound _)         -> []
+  LetF  _ bound binder body -> bound <> freeNames (typeOf binder) <> body
+  LamF  _ binder body       -> freeNames (typeOf binder) <> body
+  LSeqF _ _ xs              -> concat xs
+
+freeMetas :: Expr binder var ann -> [Meta]
+freeMetas = cata $ \case
+  TypeF{}                   -> []
+  HoleF{}                   -> []
+  PrimDictF{}               -> []
+  LiteralF{}                -> []
+  BuiltinF{}                -> []
+  VarF {}                   -> []
+  MetaF _ m                 -> [m]
+  AnnF  _ e t               -> e <> t
+  AppF  _ fun args          -> fun <> concatMap (freeMetas . argExpr) args
+  PiF   _ binder result     -> freeMetas (typeOf binder) <> result
+  LetF  _ bound binder body -> bound <> freeMetas (typeOf binder) <> body
+  LamF  _ binder body       -> freeMetas (typeOf binder) <> body
+  LSeqF _ _ xs              -> concat xs
 
 --------------------------------------------------------------------------------
 -- Destruction functions

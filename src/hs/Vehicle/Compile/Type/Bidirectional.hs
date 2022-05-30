@@ -81,8 +81,8 @@ unify p e1 e2 = do
   -- TODO calculate the most general unifier
   return e1
 
-freshMeta :: TCM m => Provenance -> m (Meta, CheckedExpr)
-freshMeta p = freshMetaWith p =<< getBoundCtx
+freshMeta :: TCM m => Provenance -> CheckedExpr -> m (Meta, CheckedExpr)
+freshMeta p metaType = freshMetaWith p metaType =<< getBoundCtx
 
 --------------------------------------------------------------------------------
 -- Checking
@@ -132,9 +132,11 @@ checkExpr expectedType expr = do
       throwError $ TypeMismatch (provenanceOf ann) ctx expectedType expected
 
     (_, Hole ann _name) -> do
-      -- Replace the hole with meta-variable. Throws away the expected type. Can we use it somehow?
-      -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
-      (_, meta) <- freshMeta (provenanceOf ann)
+      -- Replace the hole with meta-variable. Throws away the expected type.
+      -- Can we use it somehow?
+      -- NOTE, different uses of the same hole name will be interpreted as
+      -- different meta-variables.
+      (_, meta) <- freshMeta (provenanceOf ann) expectedType
       return meta
 
     (_, Type     ann _)     -> viaInfer ann expectedType expr
@@ -182,8 +184,8 @@ inferExpr e = do
     Hole ann _name -> do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
-      (_, exprMeta) <- freshMeta (provenanceOf ann)
-      (_, typeMeta) <- freshMeta (provenanceOf ann)
+      (_, typeMeta) <- freshMeta (provenanceOf ann) (Type ann 0)
+      (_, exprMeta) <- freshMeta (provenanceOf ann) typeMeta
       return (exprMeta, typeMeta)
 
     Ann ann expr exprType -> do
@@ -294,19 +296,19 @@ inferExpr e = do
       (checkedElems, typesOfElems) <- unzip <$> traverse inferExpr elems
 
       -- Generate a fresh meta variable for the type of elements in the list, e.g. Int
-      (_, typeOfElems) <- freshMeta p
+      (_, typeOfElems) <- freshMeta p (Type ann 0)
       -- Unify the types of all the elements in the sequence
       _ <- foldrM (unify p) typeOfElems typesOfElems
 
       -- Generate a meta-variable for the applied container type, e.g. List Int
-      (_, typeOfContainer) <- freshMeta p
+      (_, typeOfContainer) <- freshMeta p (Type ann 0)
       let typeOfDict = HasConLitsOfSizeExpr ann (length elems) typeOfElems typeOfContainer
 
       -- Check the type of the dict
       checkedDict <- if not (isHole dict)
         then checkExpr typeOfDict dict
         else do
-          (meta, checkedDict) <- freshMeta p
+          (meta, checkedDict) <- freshMeta p typeOfDict
           addTypeClassConstraint ctx meta typeOfDict
           return checkedDict
 
@@ -368,7 +370,7 @@ inferArgs p (Pi _ binder resultType) args
 
     (updateArgs, updatedResultType) <-
       if binderVis == Instance && isAuxiliaryTypeClass binderType then do
-        -- Auxiliary constraints have no associated computational content,
+        -- Auxiliary type classes have no associated computational content,
         -- so no need to generate a new meta so that the solution that be
         -- inserted after solving the constraints.
         ctx <- getVariableCtx
@@ -377,7 +379,7 @@ inferArgs p (Pi _ binder resultType) args
 
       else do
         -- Generate a new meta-variable for the argument
-        (meta, metaExpr) <- freshMeta p
+        (meta, metaExpr) <- freshMeta p binderType
         let metaArg = Arg ann binderVis metaExpr
 
         -- Check if the required argument is a type-class

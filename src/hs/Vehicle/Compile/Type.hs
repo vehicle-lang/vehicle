@@ -5,7 +5,7 @@ module Vehicle.Compile.Type
 
 import Prelude hiding (pi)
 import Control.Monad.Except (MonadError(..))
-import Control.Monad (forM)
+import Control.Monad ( forM )
 import Data.List.NonEmpty (NonEmpty(..))
 
 import Vehicle.Compile.Prelude
@@ -40,67 +40,6 @@ instance TypeCheckable UncheckedExpr CheckedExpr where
     solveConstraints
     postProcess checkedExpr
 
--------------------------------------------------------------------------------
--- Logging
-
-showDeclEntry :: MonadLogger m => Identifier -> m ()
-showDeclEntry ident = do
-  logDebug MaxDetail ("decl-entry" <+> pretty ident)
-  incrCallDepth
-
-showDeclExit :: MonadLogger m => Identifier -> m ()
-showDeclExit ident = do
-  decrCallDepth
-  logDebug MaxDetail ("decl-exit" <+> pretty ident)
-
--------------------------------------------------------------------------------
--- Type-class for things that can be type-checked
-
-typeCheckProg :: TCM m => UncheckedProg -> m CheckedProg
-typeCheckProg (Main ds) = Main <$> typeCheckDecls ds
-
-typeCheckDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
-typeCheckDecls [] = return []
-typeCheckDecls (d : ds) = do
-  let ident = identifierOf d
-  showDeclEntry ident
-
-  (checkedDecl, checkedDeclBody, checkedDeclType, typeOfType) <- case d of
-    DefResource p r _ t -> do
-      (checkedType, typeOfType) <- inferExpr t
-      let checkedDecl = DefResource p r ident checkedType
-      return (checkedDecl, Nothing, checkedType, typeOfType)
-
-    DefFunction p usage _ t body -> do
-      (checkedType, typeOfType) <- inferExpr t
-      checkedBody <- checkExpr checkedType body
-      let checkedDecl = DefFunction p usage ident checkedType checkedBody
-      return (checkedDecl, Just checkedBody, checkedType, typeOfType)
-
-  assertIsType (annotationOf d) typeOfType
-  logDebug MinDetail ""
-  solveConstraints
-
-  showDeclExit ident
-
-  -- Recursively check the remainder of the declarations
-  checkedDecls <- addToDeclCtx ident checkedDeclType checkedDeclBody $
-    typeCheckDecls ds
-
-  return $ checkedDecl : checkedDecls
-
-assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
--- This is a bit of a hack to get around having to have a solver for universe
--- levels. As type definitions will always have an annotated Type 0 inserted
--- by delaboration, we can match on it here. Anything else will be unified
--- with type 0.
-assertIsType _ (Type _ _) = return ()
-assertIsType p t        = do
-  ctx <- getVariableCtx
-  let typ = Type (inserted (provenanceOf t)) 0
-  addUnificationConstraint p ctx t typ
-  return ()
-
 preProcess :: ( TCM m
               , InsertAuxiliaryAnnotations a
               ) => a -> m a
@@ -132,6 +71,71 @@ postProcess x = do
   -- Remove all auxiliary constraint related code from the result.
   let finalExpr = removeAuxiliaryArguments normExpr
   return finalExpr
+
+-------------------------------------------------------------------------------
+-- Logging
+
+showDeclEntry :: MonadLogger m => Identifier -> m ()
+showDeclEntry ident = do
+  logDebug MaxDetail ("decl-entry" <+> pretty ident)
+  incrCallDepth
+
+showDeclExit :: MonadLogger m => Identifier -> m ()
+showDeclExit ident = do
+  decrCallDepth
+  logDebug MaxDetail ("decl-exit" <+> pretty ident)
+
+-------------------------------------------------------------------------------
+-- Type-class for things that can be type-checked
+
+typeCheckProg :: TCM m => UncheckedProg -> m CheckedProg
+typeCheckProg (Main ds) = Main <$> typeCheckDecls ds
+
+typeCheckDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
+typeCheckDecls [] = return []
+typeCheckDecls (d : ds) = do
+  let ident = identifierOf d
+  showDeclEntry ident
+
+  (checkedDecl, checkedDeclBody, checkedDeclType) <- case d of
+    DefResource p r _ t -> do
+      (checkedType, typeOfType) <- inferExpr t
+      let checkedDecl = DefResource p r ident checkedType
+      assertIsType (annotationOf d) typeOfType
+      logDebug MinDetail ""
+      solveConstraints
+      return (checkedDecl, Nothing, checkedType)
+
+    DefFunction p usage _ t body -> do
+      (checkedType, typeOfType) <- inferExpr t
+      checkedBody <- checkExpr checkedType body
+      assertIsType (annotationOf d) typeOfType
+      logDebug MinDetail ""
+      solveConstraints
+      --  finalType <- quantifyOverUnsolvedAuxiliaryConstraints checkedType
+      let finalType = checkedType
+      let checkedDecl = DefFunction p usage ident finalType checkedBody
+      return (checkedDecl, Just checkedBody, finalType)
+
+  showDeclExit ident
+
+  -- Recursively check the remainder of the declarations
+  checkedDecls <- addToDeclCtx ident checkedDeclType checkedDeclBody $
+    typeCheckDecls ds
+
+  return $ checkedDecl : checkedDecls
+
+assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
+-- This is a bit of a hack to get around having to have a solver for universe
+-- levels. As type definitions will always have an annotated Type 0 inserted
+-- by delaboration, we can match on it here. Anything else will be unified
+-- with type 0.
+assertIsType _ (Type _ _) = return ()
+assertIsType p t        = do
+  ctx <- getVariableCtx
+  let typ = Type (inserted (provenanceOf t)) 0
+  addUnificationConstraint p ctx t typ
+  return ()
 
 -------------------------------------------------------------------------------
 -- Constraint solving
@@ -216,6 +220,29 @@ addNewConstraintsUsingDefaults = do
   decrCallDepth
   return result
 
+
+-------------------------------------------------------------------------------
+-- Auxiliary constraint insertion
+{-
+quantifyOverUnsolvedAuxiliaryConstraints :: MonadConstraintSolving m
+                                         => CheckedExpr
+                                         -> m CheckedExpr
+quantifyOverUnsolvedAuxiliaryConstraints declType = do
+  constraints <- getConstraints
+  let metas = freeMetas declType
+
+  constrainedType <- foldM _ declType constraints
+
+  return constrainedType
+
+quantifyOverAuxiliaryTypeClassConstraint :: MonadConstraintSolving m
+                                         => CheckedExpr
+                                         -> m CheckedExpr
+quantifyOverAuxiliaryTypeClassConstraint = _
+-}
+-------------------------------------------------------------------------------
+-- Checks
+
 checkAllUserConstraintsSolved :: MonadConstraintSolving m => m ()
 checkAllUserConstraintsSolved = do
   constraints <- filter (not . isAuxiliaryConstraint) <$> getConstraints
@@ -239,7 +266,7 @@ checkAllMetasSolved = do
     m : ms -> do
       metasAndOrigins <- forM (m :| ms) (\v -> do
         let meta = MetaVar v
-        origin <- getMetaOrigin meta
+        origin <- fst <$> getMetaInfo meta
         return (meta, origin))
       throwError $ UnsolvedMetas metasAndOrigins
 
