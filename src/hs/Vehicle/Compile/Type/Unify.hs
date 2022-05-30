@@ -175,20 +175,22 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
       -- this set of arguments and create new meta-variable that only
       -- depends on these, and set the old meta-variable to equal that one.
       | i == j && args1 /= args2 -> do
+        (meta1Origin, meta1Type) <- getMetaInfo i
+        (meta2Origin, meta2Type) <- getMetaInfo j
+
         when (length args1 /= length args2) $
           compilerDeveloperError "Identical meta variables have different numbers of arguments"
 
         let sharedArgs = positionalIntersection args1 args2
         let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
-        -- Bit worrying here that we have to arbitrarily pick meta i's origin.
-        (metaOrigin, metaType) <- getMetaInfo i
-        (_metaName, meta) <- freshMetaWith metaOrigin metaType sharedArgsCtx
+        let sharedOrigin = meta1Origin <> meta2Origin
+        let sharedTypeConstraint = UC ctx (Unify (meta1Type, meta2Type))
 
-        let abstractedMeta = abstractOver args1 meta
-        metaSolved p i abstractedMeta
+        (_metaName, meta) <- freshMetaWith sharedOrigin meta1Type sharedArgsCtx
+        metaSolved i meta
 
         return Progress
-          { newConstraints = mempty
+          { newConstraints = [sharedTypeConstraint]
           , solvedMetas    = MetaSet.singleton i
           }
 
@@ -198,20 +200,20 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
       -- non-positional intersection of their arguments. Then proceed as above
       -- for each of the meta-variables in turn.
       | otherwise -> do
+        (meta1Origin, meta1Type) <- getMetaInfo i
+        (meta2Origin, meta2Type) <- getMetaInfo j
+
         let sharedArgs = args1 `intersect` args2
         let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
-        -- Bit worrying here that we have to arbitrarily pick meta i's origin.
-        (metaOrigin, metaType) <- getMetaInfo i
-        (_metaName, meta) <- freshMetaWith metaOrigin metaType sharedArgsCtx
+        let sharedOrigin = meta1Origin <> meta2Origin
+        let sharedTypeConstraint = UC ctx (Unify (meta1Type, meta2Type))
 
-        let abstractedMeta1 = abstractOver args1 meta
-        metaSolved p i abstractedMeta1
-
-        let abstractedMeta2 = abstractOver args2 meta
-        metaSolved p j abstractedMeta2
+        (_metaName, meta) <- freshMetaWith sharedOrigin meta1Type sharedArgsCtx
+        metaSolved i meta
+        metaSolved j meta
 
         return Progress
-          { newConstraints = mempty
+          { newConstraints = [sharedTypeConstraint]
           , solvedMetas    = MetaSet.singleton i <> MetaSet.singleton j
           }
 
@@ -241,7 +243,7 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
               return Stuck
             Just defnBody -> do
               -- TODO: fail if 'Meta _ i' occurs in 'e2'
-              metaSolved p i (abstractOver args defnBody)
+              metaSolved i defnBody
               return Progress
                 { newConstraints = mempty
                 , solvedMetas    = MetaSet.singleton i
@@ -259,12 +261,6 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
       throwError $ FailedConstraints [constraint]
 
   return progress
-
-abstractOver :: [CheckedArg] -> CheckedExpr -> CheckedExpr
-abstractOver args body = foldr argToLam body args
-  where
-    argToLam :: CheckedArg -> CheckedExpr -> CheckedExpr
-    argToLam (Arg ann v argE) = Lam ann (Binder ann v Nothing argE)
 
 solveEq :: (MonadConstraintSolving m, Eq a)
         => Constraint

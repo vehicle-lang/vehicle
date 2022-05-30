@@ -459,7 +459,7 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
   TypeClass HasConLitsOfSize{} -> type0 ~> type0 ~> type0
 
   -- The Bool type takes an implicit polarity argument
-  Bool                      -> type0 ~~> type0
+  Bool                      -> tAux ~~> type0
 
   NumericType   _           -> type0
   ContainerType List        -> type0 ~> type0
@@ -576,8 +576,8 @@ typeOfCons =
 typeOfAtOp :: DSLExpr
 typeOfAtOp =
   forall type0 $ \tElem ->
-    forall type0 $ \tDim ->
-      forall type0 $ \tDims ->
+    forall tNat $ \tDim ->
+      forall (tList tNat) $ \tDims ->
         tTensor tElem (cons tNat tDim tDims) ~> tIndex tDim ~> tTensor tElem tDims
 
 -- TODO generalise these to tensors etc. (remember to do mkMap' in utils as well)

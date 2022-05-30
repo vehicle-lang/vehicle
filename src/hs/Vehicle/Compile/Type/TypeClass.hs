@@ -43,9 +43,7 @@ solveTypeClassConstraint ctx (m `Has` (App ann tc@(BuiltinTypeClass{}) args)) = 
     _ -> compilerDeveloperError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
 
   unless (isStuck progress) $ do
-    let primDict = PrimDict (annotationOf eWHNF) eWHNF
-    let solution = abstractOver (boundContext constraint) primDict
-    metaSolved (provenanceOf ctx) m solution
+    metaSolved m (PrimDict (annotationOf eWHNF) eWHNF)
 
   return progress
 
@@ -204,14 +202,6 @@ progressByUnification c pairs = return $ Progress
   { newConstraints = fmap (UC ctx . Unify) pairs
   , solvedMetas    = mempty
   } where ctx = (constraintContext c) { blockedBy = mempty }
-
-abstractOver :: BoundCtx -> CheckedExpr -> CheckedExpr
-abstractOver ctx body = foldr typeToLam body (fmap (\(_, t, _) -> t) ctx)
-  where
-    typeToLam :: CheckedExpr -> CheckedExpr -> CheckedExpr
-    typeToLam t = Lam ann (ExplicitBinder ann Nothing t)
-      where ann = annotationOf t
-
 
 unifyTensorElems :: MonadConstraintSolving m
                  => Constraint

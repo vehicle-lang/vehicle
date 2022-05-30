@@ -50,7 +50,7 @@ import Vehicle.Compile.Type.Constraint
 
 -- | The meta-variables and constraints relating the variables currently in scope.
 data MetaCtx = MetaCtx
-  { metaInfo            :: [(Provenance, CheckedExpr)]
+  { metaInfo            :: [(Provenance, CheckedExpr, BoundCtx)]
   -- ^ The origin and type of each meta variable.
   -- NB: these are stored in *reverse* order from which they were created.
   , currentSubstitution :: MetaSubstitution
@@ -146,13 +146,6 @@ instance MetaSubstitutable Constraint where
 --------------------------------------------------------------------------------
 -- Meta-variables
 
-freshMetaName :: MonadState MetaCtx m => Provenance -> CheckedExpr -> m Meta
-freshMetaName origin metaType = do
-  MetaCtx {..} <- get
-  let nextMeta = length metaInfo
-  put $ MetaCtx { metaInfo = (origin, metaType) : metaInfo, .. }
-  return (MetaVar nextMeta)
-
 -- | Creates a fresh meta variable. Meta variables need to remember what was
 -- in the current context when they were created. We do this by creating a
 -- meta-variable that takes everything in the current context as an argument
@@ -167,7 +160,10 @@ freshMetaWith :: (MonadState MetaCtx m, MonadLogger m)
               -> m (Meta, CheckedExpr)
 freshMetaWith p metaType boundCtx = do
   -- Create a fresh name
-  metaName <- freshMetaName p metaType
+  MetaCtx {..} <- get
+  let nextMeta = length metaInfo
+  put $ MetaCtx { metaInfo = (p, metaType, boundCtx) : metaInfo, .. }
+  let metaName = MetaVar nextMeta
 
   -- Create bound variables for everything in the context
   let ann = inserted p
@@ -176,7 +172,7 @@ freshMetaWith p metaType boundCtx = do
   -- Returns a meta applied to every bound variable in the context
   let meta = normAppList ann (Meta ann metaName) (map (ExplicitArg ann) boundEnv)
 
-  logDebug MaxDetail $ "fresh-meta" <+> pretty metaName
+  logDebug MaxDetail $ "fresh-meta" <+> pretty metaName <+> ":" <+> prettyVerbose metaType
   return (metaName, meta)
 
 -- |Creates a Pi type that abstracts over all bound variables
@@ -189,10 +185,15 @@ makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse bound
     entryToPi :: (DBBinding, CheckedExpr, Maybe CheckedExpr) -> CheckedExpr -> CheckedExpr
     entryToPi (name, t, _) = Pi ann (ExplicitBinder ann name t)
 
-getMetaInfo :: MonadState MetaCtx m => Meta -> m (Provenance, CheckedExpr)
-getMetaInfo (MetaVar m) = do
+getInternalMetaInfo :: MonadState MetaCtx m => Meta -> m (Provenance, CheckedExpr, BoundCtx)
+getInternalMetaInfo (MetaVar m) = do
   MetaCtx {..} <- get
   return $ metaInfo !! (length metaInfo - m - 1)
+
+getMetaInfo :: MonadState MetaCtx m => Meta -> m (Provenance, CheckedExpr)
+getMetaInfo m = do
+  (p, t, _) <- getInternalMetaInfo m
+  return (p, t)
 
 getMetaSubstitution :: MonadState MetaCtx m => m MetaSubstitution
 getMetaSubstitution = gets currentSubstitution
@@ -220,20 +221,32 @@ getUnsolvedMetas = do
   let unsolvedMetas = IntSet.difference metasCreated metasSolved
   return $ IntSet.toList unsolvedMetas
 
+abstractOverCtx :: BoundCtx -> CheckedExpr -> CheckedExpr
+abstractOverCtx ctx body =
+  let ctxTypes   = fmap (\(_, t, _) -> t) ctx in
+  let liftedBody = liftFreeDBIndices (length ctx) body in
+  foldr typeToLam liftedBody ctxTypes
+  where
+    typeToLam :: CheckedExpr -> CheckedExpr -> CheckedExpr
+    typeToLam t = Lam ann (ExplicitBinder ann Nothing t)
+      where ann = annotationOf t
+
 metaSolved :: (MonadState MetaCtx m, MonadLogger m)
-           => Provenance
-           -> Meta
+           => Meta
            -> CheckedExpr
            -> m ()
-metaSolved p m e = do
-  logDebug MaxDetail $ "solved" <+> pretty m <+> "as" <+> prettyVerbose e
+metaSolved m solution = do
+  (p, _, ctx) <- getInternalMetaInfo m
+  let abstractedSolution = abstractOverCtx ctx solution
+
+  logDebug MaxDetail $ "solved" <+> pretty m <+> "as" <+> prettyVerbose abstractedSolution
 
   -- Insert the new variable throwing an error if the meta-variable is already present
   -- (should have been substituted out)
-  modifyMetaSubstitution (MetaSubst.insertWith duplicateMetaError m e)
+  modifyMetaSubstitution (MetaSubst.insertWith (duplicateMetaError p) m abstractedSolution)
   where
-    duplicateMetaError :: CheckedExpr -> CheckedExpr -> a
-    duplicateMetaError new old = developerError $
+    duplicateMetaError :: Provenance -> CheckedExpr -> CheckedExpr -> a
+    duplicateMetaError p new old = developerError $
       "meta-variable" <+> pretty m <+> "already assigned" <+> prettyVerbose old <+>
       "and should have been substituted out but it is still present and" <+>
       "was assigned again to" <+> prettyVerbose new <+>

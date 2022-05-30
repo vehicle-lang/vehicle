@@ -5,7 +5,7 @@ module Vehicle.Compile.Type
 
 import Prelude hiding (pi)
 import Control.Monad.Except (MonadError(..))
-import Control.Monad ( forM )
+import Control.Monad ( forM, foldM )
 import Data.List.NonEmpty (NonEmpty(..))
 
 import Vehicle.Compile.Prelude
@@ -112,7 +112,7 @@ typeCheckDecls (d : ds) = do
       assertIsType (annotationOf d) typeOfType
       logDebug MinDetail ""
       solveConstraints
-      --  finalType <- quantifyOverUnsolvedAuxiliaryConstraints checkedType
+      --finalType <- quantifyOverUnsolvedAuxiliaryConstraints checkedType
       let finalType = checkedType
       let checkedDecl = DefFunction p usage ident finalType checkedBody
       return (checkedDecl, Just checkedBody, finalType)
@@ -229,16 +229,42 @@ quantifyOverUnsolvedAuxiliaryConstraints :: MonadConstraintSolving m
                                          -> m CheckedExpr
 quantifyOverUnsolvedAuxiliaryConstraints declType = do
   constraints <- getConstraints
-  let metas = freeMetas declType
+  let unsolvedMetas = freeMetas declType
+  constrainedType <- foldM prependConstraint declType constraints
+  quantifiedType  <- foldM quantifyOverMeta constrainedType unsolvedMetas
+  return quantifiedType
 
-  constrainedType <- foldM _ declType constraints
+prependConstraint :: MonadConstraintSolving m
+                  => CheckedExpr
+                  -> Constraint
+                  -> m CheckedExpr
+prependConstraint declType constraint = do
+  typeClass <- case constraint of
+    TC _ (_ `Has` t) -> return t
+    PC _ c           -> return c
+    UC _ uc          -> _
 
-  return constrainedType
+  logDebug MaxDetail $ "Prepending constraint:" <+> prettySimple typeClass
+  let ann = annotationOf declType
+  let binder = InstanceBinder ann Nothing typeClass
+  return $ Pi ann binder declType
 
-quantifyOverAuxiliaryTypeClassConstraint :: MonadConstraintSolving m
-                                         => CheckedExpr
-                                         -> m CheckedExpr
-quantifyOverAuxiliaryTypeClassConstraint = _
+quantifyOverMeta :: MonadConstraintSolving m
+                 => CheckedExpr
+                 -> Meta
+                 -> m CheckedExpr
+quantifyOverMeta declType meta = do
+  (metaProv, metaType, metaCtx) <- getMetaInfo meta
+  if isMeta metaType
+    then compilerDeveloperError $
+      "Haven't thought about what to do when type of unsolved meta is also" <+>
+      "an unsolved meta."
+    else do
+      logDebug MaxDetail $ "Prepending constraint:" <+> prettySimple typeClass
+      let ann = annotationOf declType
+      let binder = ImplicitBinder ann Nothing metaType
+      metaSolved metaProv meta _
+      return $ Pi ann binder declType
 -}
 -------------------------------------------------------------------------------
 -- Checks
@@ -266,7 +292,7 @@ checkAllMetasSolved = do
     m : ms -> do
       metasAndOrigins <- forM (m :| ms) (\v -> do
         let meta = MetaVar v
-        origin <- fst <$> getMetaInfo meta
+        (origin, _) <- getMetaInfo meta
         return (meta, origin))
       throwError $ UnsolvedMetas metasAndOrigins
 
