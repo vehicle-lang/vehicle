@@ -45,10 +45,12 @@ norm e                    = return e
 --------------------------------------------------------------------------------
 -- WHNF combined with meta variable subsitution
 
-whnfWithMetas :: MonadState MetaCtx m => VariableCtx -> CheckedExpr -> m CheckedExpr
+whnfWithMetas :: (MonadLogger m, MonadState MetaCtx m)
+              => VariableCtx
+              -> CheckedExpr
+              -> m CheckedExpr
 whnfWithMetas ctx e = do
-  subst <- getMetaSubstitution
-  let e' = substMetas subst e
+  e' <- substMetas e
   runReaderT (norm e') ctx
 
 --------------------------------------------------------------------------------

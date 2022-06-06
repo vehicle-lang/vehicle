@@ -46,6 +46,10 @@ isAuxiliaryTypeClass e = case exprHead e of
   Builtin _ PolarityTypeClass{} -> True
   _                             -> False
 
+isAuxiliaryType :: Expr binder var ann -> Bool
+isAuxiliaryType (Builtin _ AuxiliaryType) = True
+isAuxiliaryType  _                        = False
+
 --------------------------------------------------------------------------------
 -- Enumeration functions
 

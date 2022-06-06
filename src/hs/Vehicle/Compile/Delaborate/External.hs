@@ -229,7 +229,7 @@ delabBuiltin fun args = case fun of
   V.Foreach   -> delabForeach args
   V.ForeachIn -> delabForeachIn args
 
-  V.Auxiliary           -> auxiliaryTypeError (pretty fun)
+  V.AuxiliaryType       -> auxiliaryTypeError (pretty fun)
   V.Polarity{}          -> auxiliaryTypeError (pretty fun)
   V.PolarityTypeClass{} -> auxiliaryTypeError (pretty fun)
 

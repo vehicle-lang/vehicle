@@ -437,8 +437,8 @@ typeOfLiteral ann l = fromDSL ann $ case l of
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: CheckedAnn -> Builtin -> CheckedExpr
 typeOfBuiltin ann b = fromDSL ann $ case b of
-  Auxiliary  -> type0
-  Polarity{} -> tAux
+  AuxiliaryType -> type0
+  Polarity{}    -> tAux
 
   PolarityTypeClass HasNot          -> tAux ~> tAux ~> tAux
   PolarityTypeClass HasAndOr        -> tAux ~> tAux ~> tAux ~> tAux

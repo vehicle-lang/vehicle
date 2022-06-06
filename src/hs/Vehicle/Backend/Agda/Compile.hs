@@ -62,7 +62,7 @@ compileProgToAgda options prog1 = logCompilerPass currentPhase $
 logEntry :: MonadAgdaCompile m => OutputExpr -> m ()
 logEntry e = do
   incrCallDepth
-  logDebug MaxDetail $ "compile-entry" <+> prettySimple e
+  logDebug MaxDetail $ "compile-entry" <+> prettyVerbose e
 
 logExit :: MonadAgdaCompile m => Code -> m ()
 logExit e = do
@@ -427,8 +427,9 @@ compileBuiltin e = case e of
   FoldExpr{}            -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Fold
   BuiltinTypeClass _ tc -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) (TypeClass tc)
 
-  _ -> compilerDeveloperError $ "unexpected application of builtin found during compilation to Agda:" <+>
-                        squotes (prettyVerbose e)
+  _ -> compilerDeveloperError $
+    "unexpected application of builtin found during compilation to Agda:" <+>
+    squotes (prettyVerbose e) <+> parens (pretty $ provenanceOf e)
 
 compileAnn :: Code -> Code -> Code
 compileAnn e t = annotateInfixOp2 [FunctionBase] 0 id Nothing "∋" [t,e]

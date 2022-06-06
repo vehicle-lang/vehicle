@@ -328,7 +328,7 @@ data Builtin
   | ForeachIn
 
   -- Annotations - these should not be shown to the user.
-  | Auxiliary
+  | AuxiliaryType
   -- ^ The type of Polarity/Linearity etc.
   | Polarity Polarity
   | PolarityTypeClass PolarityTypeClass
@@ -366,7 +366,7 @@ instance Show Builtin where
     Foreach             -> "foreach"
     ForeachIn           -> "foreachIn"
     TypeClass tc        -> show tc
-    Auxiliary           -> "Auxiliary"
+    AuxiliaryType       -> "AuxiliaryType"
     Polarity pol        -> show pol
     PolarityTypeClass t -> show t
 
@@ -404,7 +404,7 @@ builtinSymbols = map (first pack)
   , show ForeachIn                   |-> ForeachIn
   , show Map                         |-> Map
   , show Fold                        |-> Fold
-  , show Auxiliary                   |-> Auxiliary
+  , show AuxiliaryType               |-> AuxiliaryType
   , show (Polarity Unquantified)     |-> Polarity Unquantified
   , show (Polarity Universal)        |-> Polarity Universal
   , show (Polarity Existential)      |-> Polarity Existential

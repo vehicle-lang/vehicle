@@ -19,6 +19,8 @@ import GHC.TypeLits (TypeError, ErrorMessage(..))
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.IntMap (IntMap)
+import Data.IntMap qualified as IntMap (assocs)
+import Data.Bifunctor (bimap)
 import Control.Exception (assert)
 import Prettyprinter (list)
 
@@ -284,11 +286,12 @@ instance (PrettyUsing rest CheckedExpr)
   prettyUsing (TC _ (m `Has` e))      = pretty m <+> "<=" <+> prettyUsing @rest e
     -- <+> "<boundCtx=" <> pretty (ctxNames (boundContext c)) <> ">"
     -- <+> parens (pretty (provenanceOf c))
-  prettyUsing (PC _ e)                = "Polarity[" <>  (prettyUsing @rest e) <> "]"
+  prettyUsing (PC _ e)                = "Polarity[" <> prettyUsing @rest e <> "]"
 
 instance PrettyUsing rest CheckedExpr
       => PrettyUsing ('Opaque rest) MetaSubstitution where
-  prettyUsing (MetaSubstitution m) = prettyIntMap (prettyUsing @rest <$> m)
+  prettyUsing (MetaSubstitution m) = prettyMapEntries entries
+    where entries = fmap (bimap MetaVar (prettyUsing @rest)) (IntMap.assocs m)
 
 instance (PrettyUsing rest CheckedExpr)
       => PrettyUsing ('Opaque rest) PositionsInExpr where

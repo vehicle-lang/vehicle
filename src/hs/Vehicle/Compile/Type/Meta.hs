@@ -30,7 +30,7 @@ module Vehicle.Compile.Type.Meta
   ) where
 
 import Control.Monad.Except (MonadError)
-import Control.Monad.Reader (Reader, runReader, ask, local)
+import Control.Monad.Reader (ask, local, ReaderT (..), MonadReader)
 import Control.Monad.State (MonadState(..), modify, gets)
 import Data.List (partition)
 import Data.Maybe (mapMaybe)
@@ -67,15 +67,19 @@ emptyMetaCtx = MetaCtx
 --------------------------------------------------------------------------------
 -- Meta substitutions
 
+type MonadSubst m = (MonadLogger m, MonadReader MetaSubstitution m)
+
 liftSubstitution :: MetaSubstitution -> MetaSubstitution
 liftSubstitution = MetaSubst.map (liftFreeDBIndices 1)
 
 class MetaSubstitutable a where
   -- TODO change name away from M
-  substM :: a -> Reader MetaSubstitution a
+  substM :: MonadSubst m => a -> m a
 
-  substMetas :: MetaSubstitution -> a -> a
-  substMetas s e = runReader (substM e) s
+  substMetas :: (MonadLogger m, MonadState MetaCtx m) => a -> m a
+  substMetas e = do
+    subst <- getMetaSubstitution
+    runReaderT (substM e) subst
 
 instance MetaSubstitutable a => MetaSubstitutable (a, a) where
   substM (e1, e2) = do
@@ -109,11 +113,13 @@ instance MetaSubstitutable CheckedExpr where
     e@(Meta ann _)  -> substMApp ann (e, [])
     e@(App ann _ _) -> substMApp ann (toHead e)
 
-
 -- | We really don't want un-normalised lambda applications from solved meta-variables
 -- clogging up our program so this function detects meta applications and normalises
 -- them as it substitutes the meta in.
-substMApp :: CheckedAnn -> (CheckedExpr, [CheckedArg]) -> Reader MetaSubstitution CheckedExpr
+substMApp :: MonadSubst m
+          => CheckedAnn
+          -> (CheckedExpr, [CheckedArg])
+          -> m CheckedExpr
 substMApp ann (fun@(Meta _ m), mArgs) = do
   subst <- ask
   case MetaSubst.lookup m subst of
@@ -214,12 +220,12 @@ getTypeClassConstraints = mapMaybe getTypeClassConstraint <$> getConstraints
 numberOfMetasCreated :: MonadState MetaCtx m => m Int
 numberOfMetasCreated = gets (length . metaInfo)
 
-getUnsolvedMetas :: MonadState MetaCtx m => m [Int]
+getUnsolvedMetas :: MonadState MetaCtx m => m [Meta]
 getUnsolvedMetas = do
   metasSolved  <- metasIn <$> getMetaSubstitution
   metasCreated <- (\v -> IntSet.fromList [0..v-1]) <$> numberOfMetasCreated
   let unsolvedMetas = IntSet.difference metasCreated metasSolved
-  return $ IntSet.toList unsolvedMetas
+  return $ MetaVar <$> IntSet.toList unsolvedMetas
 
 abstractOverCtx :: BoundCtx -> CheckedExpr -> CheckedExpr
 abstractOverCtx ctx body =

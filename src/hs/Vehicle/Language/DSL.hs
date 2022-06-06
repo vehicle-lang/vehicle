@@ -126,7 +126,7 @@ type0 :: DSLExpr
 type0 = DSL $ \ann _ -> Type ann 0
 
 tAux :: DSLExpr
-tAux = con Auxiliary
+tAux = con AuxiliaryType
 
 tBool :: DSLExpr -> DSLExpr
 tBool polarity = con Bool `iApp` [polarity]
