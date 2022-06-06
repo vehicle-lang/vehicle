@@ -30,11 +30,6 @@ isMeta Meta{}           = True
 isMeta (App _ Meta{} _) = True
 isMeta _                = False
 
-isProperty :: Expr binder var ann -> Bool
-isProperty BoolType{}                  = True
-isProperty (TensorType _ BoolType{} _) = True
-isProperty _                           = False
-
 isFinite :: Expr binder var ann -> Bool
 isFinite BoolType{}             = True
 isFinite IndexType{}            = True
@@ -68,22 +63,6 @@ freeNames = cata $ \case
   VarF  _ (Bound _)         -> []
   LetF  _ bound binder body -> bound <> freeNames (typeOf binder) <> body
   LamF  _ binder body       -> freeNames (typeOf binder) <> body
-  LSeqF _ _ xs              -> concat xs
-
-freeMetas :: Expr binder var ann -> [Meta]
-freeMetas = cata $ \case
-  TypeF{}                   -> []
-  HoleF{}                   -> []
-  PrimDictF{}               -> []
-  LiteralF{}                -> []
-  BuiltinF{}                -> []
-  VarF {}                   -> []
-  MetaF _ m                 -> [m]
-  AnnF  _ e t               -> e <> t
-  AppF  _ fun args          -> fun <> concatMap (freeMetas . argExpr) args
-  PiF   _ binder result     -> freeMetas (typeOf binder) <> result
-  LetF  _ bound binder body -> bound <> freeMetas (typeOf binder) <> body
-  LamF  _ binder body       -> freeMetas (typeOf binder) <> body
   LSeqF _ _ xs              -> concat xs
 
 --------------------------------------------------------------------------------
@@ -126,6 +105,9 @@ getExplicitArg _                   = Nothing
 
 getExplicitArgs :: Traversable t => t (Arg binder var ann) -> Maybe (t (Expr binder var ann))
 getExplicitArgs = traverse getExplicitArg
+
+filterOutNonExplicitArgs :: NonEmpty (Arg binder var ann) -> [Expr binder var ann]
+filterOutNonExplicitArgs args = maybe [] NonEmpty.toList $ getExplicitArgs args
 
 --------------------------------------------------------------------------------
 -- Construction functions

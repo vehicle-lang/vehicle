@@ -6,6 +6,7 @@ module Vehicle.Compile.Type
 import Prelude hiding (pi)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad ( forM, foldM )
+import Data.Foldable (fold)
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty(..))
 
@@ -14,11 +15,12 @@ import Vehicle.Compile.Error
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Unify
 import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.TypeClass
+import Vehicle.Compile.Type.TypeClass.Defaults
 import Vehicle.Compile.Type.Auxiliary
 import Vehicle.Compile.Type.Auxiliary.Polarity (solvePolarityConstraint)
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.Defaults
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.WeakHeadNormalForm
 import Vehicle.Compile.Resource
@@ -31,19 +33,20 @@ class TypeCheckable a b where
   typeCheck :: MonadCompile m => a -> m b
 
 instance TypeCheckable UncheckedProg CheckedProg where
-  typeCheck p = logCompilerPass "type checking" $ runTCM $ do
-    p' <- preProcess p
-    result <- typeCheckProg p'
-    r <- postProcess result
-    logDebug MaxDetail $ prettyFriendlyDBClosed r
-    return r
+  typeCheck prog1 = logCompilerPass "type checking" $ runTCM $ do
+    prog2 <- preProcess prog1
+    prog3 <- typeCheckProg prog2
+    prog4 <- postProcess prog3
+    logDebug MaxDetail $ prettyFriendlyDBClosed prog4
+    return prog4
 
 instance TypeCheckable UncheckedExpr CheckedExpr where
-  typeCheck expr = runTCM $ do
-    expr' <- preProcess expr
-    (checkedExpr, _checkedExprType) <- inferExpr expr'
-    solveConstraints
-    postProcess checkedExpr
+  typeCheck expr1 = runTCM $ do
+    expr2 <- preProcess expr1
+    (expr3, _exprType) <- inferExpr expr2
+    solveConstraints Nothing
+    checkAllConstraintsSolved
+    postProcess expr3
 
 preProcess :: ( TCM m
               , InsertAuxiliaryAnnotations a
@@ -58,17 +61,6 @@ postProcess :: ( TCM m
                )
             => a -> m a
 postProcess x = do
-  -- First check all user constraints (i.e. unification and type-class
-  -- constraints) are solved.
-  checkAllUserConstraintsSolved
-  -- Then check all meta-variables have been solved.
-  checkAllMetasSolved
-  -- Then as a sanity check, check that all auxiliary constraints have
-  -- been solved. In theory the only way they can't have been solved is
-  -- if there are unsolved metas, e.g. the domain of `hasQuantifier`
-  -- constraint.
-  checkAllAuxiliaryConstraintsSolved
-
   metaFreeExpr <- substMetas x
   normExpr <- convertImplicitArgsToWHNF metaFreeExpr
 
@@ -85,18 +77,13 @@ typeCheckProg (Main ds) = Main <$> typeCheckDecls ds
 typeCheckDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
 typeCheckDecls [] = return []
 typeCheckDecls (d : ds) = do
-  -- Check the current declaration.
-  (checkedDecl, checkedDeclBody, checkedDeclType) <- typeCheckDecl d
-
-  -- Recursively check the remainder of the declarations.
-  checkedDecls <- addToDeclCtx (identifierOf d) checkedDeclType checkedDeclBody $
-    typeCheckDecls ds
-
+  checkedDecl  <- typeCheckDecl d
+  checkedDecls <- addToDeclCtx checkedDecl $ typeCheckDecls ds
   return $ checkedDecl : checkedDecls
 
-typeCheckDecl :: TCM m => UncheckedDecl -> m (CheckedDecl, Maybe CheckedExpr, CheckedExpr)
-typeCheckDecl d = do
-  let ident = identifierOf d
+typeCheckDecl :: TCM m => UncheckedDecl -> m CheckedDecl
+typeCheckDecl decl = do
+  let ident = identifierOf decl
   let identDoc = squotes (pretty ident)
   let passDoc = "bidirectional pass over"
 
@@ -104,22 +91,20 @@ typeCheckDecl d = do
 
     -- First run a bidirectional pass over the type of the declaration
     checkedType <- logCompilerPass (passDoc <+> "type of" <+> identDoc) $ do
-      let declType = typeOf d
+      let declType = typeOf decl
       (checkedType, typeOfType) <- inferExpr declType
-      assertIsType (annotationOf d) typeOfType
+      assertIsType (annotationOf decl) typeOfType
       return checkedType
 
-    -- Check the body (if present)
-
     let solveConstraintsAndUpdateType = do
-          solveConstraints
+          solveConstraints (Just checkedType)
           unsolvedMetas <- getUnsolvedMetas
           logDebug MaxDetail $ "unsolved-metas:" <+> pretty unsolvedMetas
-          unsolvedConstraints <- getConstraints
+          unsolvedConstraints <- getUnsolvedConstraints
           logDebug MaxDetail $ "unsolved-constraints:" <+> prettyVerbose unsolvedConstraints <> line
           substMetas checkedType
 
-    result@(resultDecl, _, _) <- case d of
+    result <- case decl of
       DefResource p r _ _ -> do
         substType <- solveConstraintsAndUpdateType
         declCtx <- getDeclCtx
@@ -129,9 +114,9 @@ typeCheckDecl d = do
 
         checkResourceType r p ident whnfType
         let checkedDecl = DefResource p r ident substType
-        return (checkedDecl, Nothing, substType)
+        return checkedDecl
 
-      DefFunction p usage _ _ body -> do
+      DefFunction p _ _ _ body -> do
         checkedBody <- logCompilerPass (passDoc <+> "body of" <+> identDoc) $ do
           checkExpr checkedType body
 
@@ -139,13 +124,19 @@ typeCheckDecl d = do
         substBody <- substMetas checkedBody
 
         (finalType, finalBody) <- handleUnsolvedDeclConstraints (substType, substBody)
-        --let (finalType, finalBody) = (substType, substBody)
 
-        let checkedDecl = DefFunction p usage ident finalType finalBody
-        return (checkedDecl, Just finalBody, finalType)
+        -- Extract property info if the declaration is a property.
+        let propertyInfo = getPropertyInfo finalType
+        case propertyInfo of
+          Nothing -> return ()
+          Just (PropertyInfo polarity) -> logDebug MinDetail $
+            "Identified" <+> identDoc <+> "as a property of type:" <+> pretty (Polarity polarity)
 
-    logCompilerPassOutput $ prettyVerbose resultDecl
+        let checkedDecl = DefFunction p propertyInfo ident finalType finalBody
+        return checkedDecl
 
+    checkAllConstraintsSolved
+    logCompilerPassOutput $ prettyVerbose result
     return result
 
 assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
@@ -163,29 +154,41 @@ assertIsType p t        = do
 -------------------------------------------------------------------------------
 -- Constraint solving
 
-solveConstraints :: MonadConstraintSolving m => m ()
-solveConstraints = logCompilerPass "constraint solving" $ do
-  constraints <- getConstraints
-  loopOverConstraints $ Progress
+-- Tries to solve constraints. Passes in the type of the current declaration
+-- being checked, as metas are handled different according to whether they
+-- occur in the type or not.
+solveConstraints :: MonadConstraintSolving m => Maybe CheckedExpr -> m ()
+solveConstraints declType = logCompilerPass "constraint solving" $ do
+  constraints <- getUnsolvedConstraints
+  loopOverConstraints declType $ Progress
     { newConstraints = constraints
     , solvedMetas    = mempty
     }
 
 loopOverConstraints :: MonadConstraintSolving m
-                    => ConstraintProgress
+                    => Maybe CheckedExpr
+                    -> ConstraintProgress
                     -> m ()
-loopOverConstraints progress = do
-  constraints <- getConstraints
+loopOverConstraints maybeDeclType progress = do
+  constraints <- getUnsolvedConstraints
 
   case (constraints, progress) of
     -- If there are no outstanding constraints then halt.
     ([], _) -> return ()
 
-    -- Likewise halt if no progress was made last iteration.
-    (_, Stuck) -> return ()
+    -- If no progress was made last iteration then try generating new constraints
+    -- using defaults.
+    (_, Stuck) -> do
+      defaultProgress <- addNewConstraintsUsingDefaults maybeDeclType
+
+      case defaultProgress of
+        -- If still stuck then halt.
+        Stuck      -> return ()
+        -- If new constraints generated then continue solving.
+        Progress{} -> loopOverConstraints maybeDeclType defaultProgress
 
     -- If we have made useful progress then start a new pass
-    (_, Progress _newConstraints _solvedMetas) ->do
+    (_, Progress{}) -> do
 
       -- TODO try to solve only either new constraints or those that contain
       -- blocking metas that were solved last iteration.
@@ -202,7 +205,7 @@ loopOverConstraints progress = do
       logDebug MaxDetail $ "current-solution:" <+>
         prettyVerbose newSubstitution <> "\n"
 
-      loopOverConstraints newProgress
+      loopOverConstraints maybeDeclType newProgress
 
 -- | Tries to solve a constraint deterministically.
 solveConstraint :: MonadConstraintSolving m
@@ -226,24 +229,42 @@ solveConstraint constraint = do
 
 -- | Tries to add new unification constraints using default values.
 addNewConstraintsUsingDefaults :: MonadConstraintSolving m
-                               => m ConstraintProgress
-addNewConstraintsUsingDefaults = do
-  logDebug MaxDetail "Temporarily stuck - trying default type-class constraints"
+                               => Maybe CheckedExpr
+                               -> m ConstraintProgress
+addNewConstraintsUsingDefaults maybeDeclType = do
+  logDebug MaxDetail "Temporarily stuck - trying to generate new constraints using defaults for type-classes"
   incrCallDepth
 
-  constraints <- getTypeClassConstraints
+  -- Calculate the set of metas to try to generate default solutions for...
+  unsolvedMetas <- getUnsolvedMetas
+  metasToGenerateDefaultsFor <- MetaSet.toList <$> case maybeDeclType of
+    Nothing       -> return unsolvedMetas
+    Just declType -> do
+      -- In particular we only want to generate default solutions for constraints
+      -- that *don't* appear in the type of the declaration, as those will be
+      -- quantified over later.
+      metasInType <- freeMetas <$> substMetas declType
 
-  result <- solveDefaultTypeClassConstraints constraints
+      logDebug MaxDetail $ "Unsolved metas:" <+> pretty unsolvedMetas
+      logDebug MaxDetail $ "Unsolved metas in type-signature:" <+> pretty metasInType
+
+      return $ MetaSet.difference unsolvedMetas metasInType
+
+  logDebug MaxDetail $ "Unsolved metas to generate defaults for:" <+> pretty metasToGenerateDefaultsFor
+
+  constraints <- filter isTypeClassConstraint <$> getUnsolvedConstraints
+  logDebug MaxDetail $ "Unsolved type-class constraints:" <> line <> indent 2 (prettySimple constraints) <> line
+
+  result <- fold <$> forM metasToGenerateDefaultsFor generateDefaultTypeClassSolution
   case result of
     Progress newConstraints _ -> addConstraints newConstraints
     Stuck                     -> return ()
 
-  logDebug MaxDetail line
   decrCallDepth
   return result
 
 -------------------------------------------------------------------------------
--- Auxiliary constraint insertion
+-- Auxiliary constraints
 
 handleUnsolvedDeclConstraints :: MonadConstraintSolving m
                               => (CheckedExpr, CheckedExpr)
@@ -251,28 +272,28 @@ handleUnsolvedDeclConstraints :: MonadConstraintSolving m
 handleUnsolvedDeclConstraints decl@(declType, _) = do
   -- Remove all non-unification constraints and append them to the front
   -- of the declaration.
-  (auxiliaryConstraints, otherConstraints) <-
-    partition isAuxiliaryConstraint <$> getConstraints
+  (unificationConstraints, nonUnificationConstraints) <-
+    partition isUnificationConstraint <$> getUnsolvedConstraints
 
-  constrainedDecl <- if null auxiliaryConstraints
+  constrainedDecl <- if null nonUnificationConstraints
     then return decl
     else do
       logDebug MaxDetail "Prepending constraints to declaration type:"
       incrCallDepth
-      result <- foldM prependConstraint decl auxiliaryConstraints
+      result <- foldM prependConstraint decl nonUnificationConstraints
       decrCallDepth
       logDebug MaxDetail ""
       return result
-  setConstraints otherConstraints
+  setConstraints unificationConstraints
 
   -- Quantify over any unsolved type-level meta variables
   let unsolvedMetas = freeMetas declType
-  quantifiedDecl  <- if null unsolvedMetas
+  quantifiedDecl  <- if MetaSet.null unsolvedMetas
     then return constrainedDecl
     else do
       logDebug MaxDetail "Adding unsolved metas in declaration type as implicit arguments:"
       incrCallDepth
-      result <- foldM quantifyOverMeta constrainedDecl unsolvedMetas
+      result <- foldM quantifyOverMeta constrainedDecl (MetaSet.toList unsolvedMetas)
       decrCallDepth
       logDebug MaxDetail ""
       return result
@@ -299,7 +320,7 @@ prependConstraint decl constraint = do
       metaSolved meta (Var ann (Bound 0))
       substMetas decl
 
-  prependBinder typeClass substDecl
+  prependBinder Instance typeClass substDecl
 
 quantifyOverMeta :: MonadConstraintSolving m
                  => (CheckedExpr, CheckedExpr)
@@ -312,8 +333,6 @@ quantifyOverMeta decl meta = do
     then compilerDeveloperError $
       "Haven't thought about what to do when type of unsolved meta is also" <+>
       "an unsolved meta."
-  else if not $ isAuxiliaryType substMetaType
-    then return decl
   else do
     let ann = annotationOf (fst decl)
     let solution = Var ann (Bound 0)
@@ -323,44 +342,58 @@ quantifyOverMeta decl meta = do
     logDebug MaxDetail $ prettyVerbose subst
 
     substDecl <- substMetas decl
-    prependBinder substMetaType substDecl
+    prependBinder Implicit substMetaType substDecl
 
 prependBinder :: MonadCompile m
-              => CheckedExpr
+              => Visibility
+              -> CheckedExpr
               -> (CheckedExpr, CheckedExpr)
               -> m (CheckedExpr, CheckedExpr)
-prependBinder binderType (declType, declBody) = do
+prependBinder v binderType (declType, declBody) = do
   let ann1 = annotationOf declType
   let ann2 = annotationOf declBody
-  let binder1 = ImplicitBinder ann1 Nothing binderType
-  let binder2 = ImplicitBinder ann2 Nothing binderType
+  let binder1 = Binder ann1 v Nothing binderType
+  let binder2 = Binder ann2 v Nothing binderType
   let resultType = Pi  ann1 binder1 declType
   let resultBody = Lam ann2 binder2 declBody
   logCompilerPassOutput $ prettyVerbose resultType <+> prettyVerbose resultBody
   return (resultType, resultBody)
 
 -------------------------------------------------------------------------------
--- Checks
+-- Property information extraction
+
+getPropertyInfo :: CheckedExpr -> Maybe PropertyInfo
+getPropertyInfo (AnnotatedBoolType _ p) = Just $ PropertyInfo p
+getPropertyInfo (TensorType _ tElem _)  = getPropertyInfo tElem
+getPropertyInfo _                       = Nothing
+
+-------------------------------------------------------------------------------
+-- Unsolved constraint checks
+
+checkAllConstraintsSolved :: MonadConstraintSolving m => m ()
+checkAllConstraintsSolved = do
+  -- First check all user constraints (i.e. unification and type-class
+  -- constraints) are solved.
+  checkAllUserConstraintsSolved
+  -- Then check all meta-variables have been solved.
+  checkAllMetasSolved
+  -- Then as a sanity check, check that all auxiliary constraints have
+  -- been solved. In theory the only way they can't have been solved is
+  -- if there are unsolved metas, e.g. the domain of `hasQuantifier`
+  -- constraint.
+  checkAllAuxiliaryConstraintsSolved
 
 checkAllUserConstraintsSolved :: MonadConstraintSolving m => m ()
 checkAllUserConstraintsSolved = do
-  constraints <- filter (not . isAuxiliaryConstraint) <$> getConstraints
+  constraints <- filter (not . isAuxiliaryConstraint) <$> getUnsolvedConstraints
   case constraints of
-    [] -> return ()
-    (c : cs) -> do
-      result <- addNewConstraintsUsingDefaults
-      case result of
-        Progress _ _ -> do
-          loopOverConstraints result
-          checkAllUserConstraintsSolved
-        Stuck                     -> do
-          logDebug MaxDetail "Still stuck"
-          throwError $ UnsolvedConstraints (c :| cs)
+    []       -> return ()
+    (c : cs) -> throwError $ UnsolvedConstraints (c :| cs)
 
 checkAllMetasSolved :: MonadConstraintSolving m => m ()
 checkAllMetasSolved = do
   unsolvedMetas <- getUnsolvedMetas
-  case unsolvedMetas of
+  case MetaSet.toList unsolvedMetas of
     []     -> return ()
     m : ms -> do
       metasAndOrigins <- forM (m :| ms) (\meta -> do
@@ -370,9 +403,11 @@ checkAllMetasSolved = do
 
 checkAllAuxiliaryConstraintsSolved :: MonadConstraintSolving m => m ()
 checkAllAuxiliaryConstraintsSolved = do
-  auxConstraints <- filter isAuxiliaryConstraint <$> getConstraints
+  auxConstraints <- filter isAuxiliaryConstraint <$> getUnsolvedConstraints
   case auxConstraints of
     [] -> return ()
     _  -> compilerDeveloperError $
       "Unsolved auxiliary constraints - supposed to be impossible:" <+>
       prettySimple auxConstraints
+
+

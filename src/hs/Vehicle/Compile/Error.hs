@@ -120,20 +120,20 @@ normalisationError pass name = compilerDeveloperError $
   unexpectedExpr pass name <+> "We should have normalised this out."
 
 typeError :: MonadError CompileError m => Doc () -> Doc () -> m b
-typeError pass name = developerError $
+typeError pass name = compilerDeveloperError $
   unexpectedExpr pass name <+> "We should not be processing types."
 
 visibilityError :: MonadError CompileError m => Doc () -> Doc () -> m b
-visibilityError pass name = developerError $
+visibilityError pass name = compilerDeveloperError $
   unexpectedExpr pass name <+> "Should not be present as explicit arguments"
 
 -- | Throw this when you encounter a case that should have been resolved during
 -- type-checking, e.g. holes or metas.
 resolutionError :: MonadError CompileError m => Doc () -> Doc () -> m b
-resolutionError pass name = developerError $
+resolutionError pass name = compilerDeveloperError $
   unexpectedExpr pass name <+> "We should have resolved this during type-checking."
 
 caseError :: MonadError CompileError m => Doc () -> Doc () -> [Doc ()] -> m b
-caseError pass name cases = developerError $
+caseError pass name cases = compilerDeveloperError $
   unexpectedExpr pass name <+> "This should already have been caught by the" <+>
   "following cases:" <+> list cases

@@ -11,7 +11,13 @@ open import Vehicle
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 
-module simple-defaultRat-temp-output where
+module simple-untypedDecls-temp-output where
 
-ratMinus3 : ℚ
-ratMinus3 = ℚ.- (ℤ.+ 3 ℚ./ 1)
+fin3 : ∀ {_x0 : Set} {{_x1 : HasNatLits _x0}} → _x0
+fin3 = 3
+
+intMinus3 : ∀ {_x4 : Set} {{_x5 : HasNatLits _x4}} {{_x6 : HasNeg _x4}} → _x4
+intMinus3 = - 3
+
+ratMinus3 : ∀ {_x10 : Set} {{_x11 : HasRatLits _x10}} {{_x12 : HasNeg _x10}} → _x10
+ratMinus3 = - (ℤ.+ 3 ℚ./ 1)

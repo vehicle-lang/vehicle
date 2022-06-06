@@ -106,19 +106,7 @@ goldenTests = testGroup "GoldenTests" <$>
       }
 
     , testSpec
-      { testName       = "simple-defaultIndex"
-      , testLocation   = Tests
-      , testTargets    = [AgdaBackend]
-      }
-
-    , testSpec
-      { testName       = "simple-defaultInt"
-      , testLocation   = Tests
-      , testTargets    = [AgdaBackend]
-      }
-
-    , testSpec
-      { testName       = "simple-defaultRat"
+      { testName       = "simple-untypedDecls"
       , testLocation   = Tests
       , testTargets    = [AgdaBackend]
       }
@@ -165,6 +153,13 @@ goldenTests = testGroup "GoldenTests" <$>
       , testLocation   = Tests
       , testTargets    = [MarabouBackend]
       }
+{-
+    , testSpec
+      { testName       = "simple-polarity"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      }
+-}
     -- , testSpec
     --   { testName       = "simple-vectorType"
     --   , testLocation   = Tests

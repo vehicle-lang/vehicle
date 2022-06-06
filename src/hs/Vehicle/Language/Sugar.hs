@@ -117,9 +117,7 @@ unfoldDefFun :: HasProvenance ann
              -> Expr binder var ann
              -> Decl binder var ann
 unfoldDefFun ann ident t bs e =
-  -- Every function's usage gets marked as `NotABoolean` initially and then this
-  -- gets resolved later.
-  DefFunction ann NotABoolean ident t (unfoldLam ann (bs, e))
+  DefFunction ann Nothing ident t (unfoldLam ann (bs, e))
 
 unfoldDefType :: HasProvenance ann
               => ann -> Identifier

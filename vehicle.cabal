@@ -124,11 +124,11 @@ library
 
                       , Vehicle.Compile.Type.Bidirectional
                       , Vehicle.Compile.Type.Constraint
-                      , Vehicle.Compile.Type.Defaults
                       , Vehicle.Compile.Type.Meta
                       , Vehicle.Compile.Type.MetaSet
                       , Vehicle.Compile.Type.MetaSubstitution
                       , Vehicle.Compile.Type.TypeClass
+                      , Vehicle.Compile.Type.TypeClass.Defaults
                       , Vehicle.Compile.Type.Auxiliary
                       , Vehicle.Compile.Type.Auxiliary.Polarity
                       , Vehicle.Compile.Type.Unify

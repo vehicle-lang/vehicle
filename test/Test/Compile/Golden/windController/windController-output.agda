@@ -20,11 +20,11 @@ module windController-temp-output where
 InputVector : Set
 InputVector = Tensor ℚ (2 ∷ [])
 
-currentSensor : Fin 2
-currentSensor = # 0
+currentSensor : ∀ {_x0 : Set} {{_x1 : HasNatLits _x0}} → _x0
+currentSensor = 0
 
-previousSensor : Fin 2
-previousSensor = # 1
+previousSensor : ∀ {_x4 : Set} {{_x5 : HasNatLits _x4}} → _x4
+previousSensor = 1
 
 postulate controller : InputVector → Tensor ℚ (1 ∷ [])
 

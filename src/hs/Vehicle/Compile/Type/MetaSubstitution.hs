@@ -11,11 +11,12 @@ module Vehicle.Compile.Type.MetaSubstitution
 
 import Prelude hiding (map, lookup)
 import Data.Coerce (coerce)
-import Data.IntSet (IntSet)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.MetaSet (MetaSet)
+import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 
 newtype MetaSubstitution = MetaSubstitution (IntMap CheckedExpr)
   deriving (Show, Semigroup, Monoid)
@@ -36,5 +37,5 @@ insertWith :: (CheckedExpr -> CheckedExpr -> CheckedExpr)
            -> MetaSubstitution
 insertWith f m e s = coerce (IntMap.insertWith f (coerce m) e (coerce s))
 
-metasIn :: MetaSubstitution -> IntSet
-metasIn (MetaSubstitution s) = IntMap.keysSet s
+metasIn :: MetaSubstitution -> MetaSet
+metasIn (MetaSubstitution s) = MetaSet.fromIntSet $ IntMap.keysSet s

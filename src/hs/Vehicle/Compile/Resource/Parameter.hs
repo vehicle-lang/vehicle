@@ -77,10 +77,10 @@ parseNat :: CheckedAnn -> String -> Maybe CheckedExpr
 parseNat ann value = fmap (NatLiteralExpr ann (NatType ann)) (readMaybe value)
 
 parseInt :: CheckedAnn -> String -> Maybe CheckedExpr
-parseInt ann value = fmap (IntLiteralExpr ann Int) (readMaybe value)
+parseInt ann value = fmap (IntLiteralExpr ann (IntType ann)) (readMaybe value)
 
 parseRat :: CheckedAnn -> String -> Maybe CheckedExpr
-parseRat ann value = fmap (RatLiteralExpr ann Rat) (readMaybe value)
+parseRat ann value = fmap (RatLiteralExpr ann (RatType ann)) (readMaybe value)
 
 parseIndex :: CheckedExpr -> Int -> CheckedAnn -> String -> Maybe CheckedExpr
 parseIndex finType n ann value = readMaybe value >>= \v ->

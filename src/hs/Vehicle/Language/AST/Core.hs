@@ -7,10 +7,11 @@ import Control.DeepSeq (NFData)
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Hashable (Hashable)
+import Data.Maybe (isJust)
 
 import Vehicle.Prelude
 import Vehicle.Resource (ResourceType)
-import Vehicle.Language.AST.Builtin (Builtin)
+import Vehicle.Language.AST.Builtin (Builtin, Polarity(..))
 import Vehicle.Language.AST.Visibility
 
 --------------------------------------------------------------------------------
@@ -263,14 +264,14 @@ class HasIdentifier a where
 -- | A marker for how a declaration is used as part of a quantified property
 -- and therefore needs to be lifted to the type-level when being exported, or
 -- whether it is only used unquantified and therefore needs to be computable.
-data UsageInProperty
-  = NotABoolean
-  | UsedQuantified
-  | UsedUnquantified
-  | UsedBothWays
+newtype PropertyInfo
+  = PropertyInfo Polarity
   deriving (Show, Eq, Generic)
 
-instance NFData UsageInProperty
+instance NFData PropertyInfo
+
+isProperty :: Maybe PropertyInfo -> Bool
+isProperty = isJust
 
 -- | Type of top-level declarations.
 data Decl binder var ann
@@ -281,7 +282,7 @@ data Decl binder var ann
     (Expr binder var ann)  -- Vehicle type of the resource.
   | DefFunction
     ann                    -- Location in source file.
-    UsageInProperty        -- How the function is used in properties.
+    (Maybe PropertyInfo)   -- Auxiliary typing information about a property.
     Identifier             -- Bound function name.
     (Expr binder var ann)  -- Bound function type.
     (Expr binder var ann)  -- Bound function body.
@@ -301,6 +302,10 @@ traverseDeclExprs :: Monad m
                   -> m (Decl binder2 var2 ann)
 traverseDeclExprs f (DefResource ann r n t)   = DefResource ann r n <$> f t
 traverseDeclExprs f (DefFunction ann u n t e) = DefFunction ann u n <$> f t <*> f e
+
+bodyOf :: Decl binder var ann -> Maybe (Expr binder var ann)
+bodyOf DefResource{}           = Nothing
+bodyOf (DefFunction _ _ _ _ e) = Just e
 
 --------------------------------------------------------------------------------
 -- Programs

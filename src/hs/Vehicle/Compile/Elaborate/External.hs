@@ -182,7 +182,7 @@ elabResource :: MonadCompile m => V.ResourceType -> B.Name -> B.Expr -> m V.Inpu
 elabResource r n t = V.DefResource (tkProvenance n) r <$> elab n <*> elab t
 
 elabImplParam :: MonadCompile m => B.Name -> B.Expr -> m V.InputDecl
-elabImplParam n t = V.DefFunction ann V.NotABoolean <$> elab n <*> elab t <*> pure hole
+elabImplParam n t = V.DefFunction ann Nothing <$> elab n <*> elab t <*> pure hole
   where ann = tkProvenance n; hole = V.mkHole (inserted ann) (tkSymbol n)
 
 mkArg :: V.Visibility -> V.InputExpr -> V.InputArg

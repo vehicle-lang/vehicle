@@ -64,31 +64,28 @@ class WHNFable a where
 instance WHNFable CheckedProg where
   convertImplicitArgsToWHNF p = runReaderT (whnfProg p) emptyVariableCtx
 
+instance WHNFable CheckedDecl where
+  convertImplicitArgsToWHNF d = runReaderT (whnfDecl d) emptyVariableCtx
+
 instance WHNFable CheckedExpr where
   convertImplicitArgsToWHNF e = runReaderT (whnfExpr e) emptyVariableCtx
 
 whnfProg :: (MonadCompile m, MonadReader VariableCtx m) => CheckedProg -> m CheckedProg
 whnfProg (Main ds) = Main <$> whnfDecls ds
 
-whnfDecls :: (MonadCompile m, MonadReader VariableCtx m) => [CheckedDecl] -> m [CheckedDecl]
+whnfDecls :: (MonadCompile m, MonadReader VariableCtx m)
+          => [CheckedDecl]
+          -> m [CheckedDecl]
 whnfDecls [] = return []
 whnfDecls (d : ds) = do
-  let ident = identifierOf d
-
-  (decl, checkedDeclBody, checkedDeclType) <- case d of
-    DefResource ann r _ t -> do
-      t' <- whnfExpr t
-      let checkedDecl = DefResource ann r ident t'
-      return (checkedDecl, Nothing, t')
-
-    DefFunction ann usage _ t body -> do
-      t' <- whnfExpr t
-      e' <- whnfExpr body
-      let checkedDecl = DefFunction ann usage ident t' e'
-      return (checkedDecl, Just e', t')
-
-  decls <- addToDeclCtx ident checkedDeclType checkedDeclBody $ whnfDecls ds
+  decl <- whnfDecl d
+  decls <- addToDeclCtx decl $ whnfDecls ds
   return $ decl : decls
+
+whnfDecl :: (MonadCompile m, MonadReader VariableCtx m)
+          => CheckedDecl
+          -> m CheckedDecl
+whnfDecl = traverseDeclExprs whnfExpr
 
 whnfExpr :: (MonadCompile m, MonadReader VariableCtx m) => CheckedExpr -> m CheckedExpr
 whnfExpr expr = do

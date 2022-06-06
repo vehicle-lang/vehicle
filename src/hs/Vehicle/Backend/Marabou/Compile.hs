@@ -41,8 +41,8 @@ compileDecl :: MonadCompile m => NetworkContext -> CheckedDecl -> m (Maybe (Symb
 compileDecl networkCtx d = case d of
   DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
 
-  DefFunction _p _ ident t expr ->
-    if not $ isProperty t
+  DefFunction _p propertyInfo ident _ expr ->
+    if not $ isProperty propertyInfo
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
       then return Nothing

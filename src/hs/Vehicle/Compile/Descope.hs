@@ -100,13 +100,11 @@ instance Descope Arg where
 
 showScopeEntry :: Show var => Expr NamedBinding var ann -> Expr NamedBinding var ann
 showScopeEntry e =
-  --trace ("descope-entry " <> show (removeAnnotations e))
   e
 
 showScopeExit :: MonadDescope m => m (NamedExpr ann) -> m (NamedExpr ann)
 showScopeExit m = do
   e <- m
-  --trace ("descope-exit  " <> showCore e)
   return e
 
 instance Descope Expr where

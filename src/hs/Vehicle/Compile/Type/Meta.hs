@@ -11,12 +11,11 @@ module Vehicle.Compile.Type.Meta
   , addAuxiliaryConstraint
   , addConstraints
   , setConstraints
-  , getConstraints
+  , getUnsolvedConstraints
   , getTypeClassConstraints
   , popActivatedConstraints
   , getMetaSubstitution
   , modifyMetaSubstitution
-  , numberOfMetasCreated
   , getUnsolvedMetas
   , getMetaInfo
   , MonadConstraintSolving
@@ -27,14 +26,16 @@ module Vehicle.Compile.Type.Meta
   , isStuck
   , MetaCtx(..)
   , emptyMetaCtx
+  , freeMetas
   ) where
 
 import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (ask, local, ReaderT (..), MonadReader)
 import Control.Monad.State (MonadState(..), modify, gets)
+import Data.Functor.Foldable (Recursive(..))
 import Data.List (partition)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (mapMaybe)
-import Data.IntSet qualified as IntSet
 
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Prelude
@@ -42,7 +43,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Type.MetaSubstitution ( MetaSubstitution, metasIn )
 import Vehicle.Compile.Type.MetaSubstitution qualified as MetaSubst (map, lookup, insertWith)
 import Vehicle.Compile.Type.MetaSet (MetaSet)
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton, disjoint, null)
+import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Constraint
 
 --------------------------------------------------------------------------------
@@ -211,21 +212,21 @@ modifyMetaSubstitution f = modifyMetaCtx $ \ MetaCtx {..} ->
 modifyMetaCtx :: MonadState MetaCtx m => (MetaCtx -> MetaCtx) -> m ()
 modifyMetaCtx = modify
 
-getConstraints :: MonadState MetaCtx m => m [Constraint]
-getConstraints = gets constraints
+getUnsolvedConstraints :: MonadState MetaCtx m => m [Constraint]
+getUnsolvedConstraints = gets constraints
 
 getTypeClassConstraints :: MonadState MetaCtx m => m [(TypeClassConstraint, ConstraintContext)]
-getTypeClassConstraints = mapMaybe getTypeClassConstraint <$> getConstraints
+getTypeClassConstraints = mapMaybe getTypeClassConstraint <$> getUnsolvedConstraints
 
-numberOfMetasCreated :: MonadState MetaCtx m => m Int
-numberOfMetasCreated = gets (length . metaInfo)
+getNumberOfMetasCreated :: MonadState MetaCtx m => m Int
+getNumberOfMetasCreated = gets (length . metaInfo)
 
-getUnsolvedMetas :: MonadState MetaCtx m => m [Meta]
+getUnsolvedMetas :: MonadState MetaCtx m => m MetaSet
 getUnsolvedMetas = do
   metasSolved  <- metasIn <$> getMetaSubstitution
-  metasCreated <- (\v -> IntSet.fromList [0..v-1]) <$> numberOfMetasCreated
-  let unsolvedMetas = IntSet.difference metasCreated metasSolved
-  return $ MetaVar <$> IntSet.toList unsolvedMetas
+  numberOfMetasCreated <- getNumberOfMetasCreated
+  let metasCreated = MetaSet.fromList $ fmap MetaVar [0..numberOfMetasCreated-1]
+  return $ MetaSet.difference metasCreated metasSolved
 
 abstractOverCtx :: BoundCtx -> CheckedExpr -> CheckedExpr
 abstractOverCtx ctx body =
@@ -257,6 +258,24 @@ metaSolved m solution = do
       "and should have been substituted out but it is still present and" <+>
       "was assigned again to" <+> prettyVerbose new <+>
       pretty p
+
+freeMetas :: Expr binder var ann -> MetaSet
+freeMetas = cata $ \case
+  TypeF{}                   -> mempty
+  HoleF{}                   -> mempty
+  PrimDictF{}               -> mempty
+  LiteralF{}                -> mempty
+  BuiltinF{}                -> mempty
+  VarF {}                   -> mempty
+  MetaF _ m                 -> MetaSet.singleton m
+  AnnF  _ e t               -> e <> t
+  PiF   _ binder result     -> freeMetas (typeOf binder) <> result
+  LetF  _ bound binder body -> bound <> freeMetas (typeOf binder) <> body
+  LamF  _ binder body       -> freeMetas (typeOf binder) <> body
+  LSeqF _ _ xs              -> MetaSet.unions xs
+  AppF  _ fun args          ->
+    let args' = NonEmpty.toList (fmap (freeMetas . argExpr) args) in
+    MetaSet.unions (fun : args')
 
 --------------------------------------------------------------------------------
 -- Constraints
@@ -314,7 +333,7 @@ popActivatedConstraints :: MonadState MetaCtx m
                         => MetaSet
                         -> m [Constraint]
 popActivatedConstraints metasSolved = do
-  allConstraints <- getConstraints
+  allConstraints <- getUnsolvedConstraints
   let (blockedConstraints, unblockedConstraints) = partition (isBlocked metasSolved) allConstraints
   setConstraints blockedConstraints
   return unblockedConstraints

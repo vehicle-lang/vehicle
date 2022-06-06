@@ -125,11 +125,18 @@ instance IsBoundCtx [Symbol] where
 getDeclCtx :: MonadReader VariableCtx m => m DeclCtx
 getDeclCtx = asks declCtx
 
-addToDeclCtx :: MonadReader VariableCtx m => Identifier -> CheckedExpr -> Maybe CheckedExpr -> m a -> m a
-addToDeclCtx n t e = local add
+addToDeclCtx :: MonadReader VariableCtx m => CheckedDecl -> m a -> m a
+addToDeclCtx decl = local addDecl
   where
-    add :: VariableCtx -> VariableCtx
-    add VariableCtx{..} = VariableCtx{declCtx = Map.insert n (t, e) declCtx, ..}
+    declName = identifierOf decl
+    declType = typeOf decl
+    declBody = bodyOf decl
+
+    addDecl :: VariableCtx -> VariableCtx
+    addDecl VariableCtx{..} = VariableCtx
+      { declCtx = Map.insert declName (declType, declBody) declCtx
+      , ..
+      }
 
 getBoundCtx :: MonadReader VariableCtx m => m BoundCtx
 getBoundCtx = asks boundCtx

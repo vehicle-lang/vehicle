@@ -467,25 +467,25 @@ nfIf condition e1 e2 = case argExpr condition of
 -----------------------------------------------------------------------------
 -- Normalising negation
 
-negArg :: MonadNorm m => NumericType -> CheckedArg -> m CheckedArg
+negArg :: MonadNorm m => CheckedExpr -> CheckedArg -> m CheckedArg
 negArg t x = let ann = annotationOf x in ExplicitArg ann <$> nf (NegExpr ann t [x])
 
 nfAdd :: MonadNorm m
       => CheckedAnn
-      -> NumericType
+      -> CheckedExpr
       -> CheckedArg
       -> CheckedArg
       -> Maybe (m CheckedExpr)
 nfAdd ann t arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   -- TODO implement zero/identity/associativity rules?
-  (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ NatLiteralExpr ann (BuiltinNumericType ann t) (m + n)
+  (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ NatLiteralExpr ann t (m + n)
   (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ IntLiteralExpr ann t (i + j)
   (RatLiteralExpr _ _ x, RatLiteralExpr _ _ y) -> Just $ return $ RatLiteralExpr ann t (x + y)
   _                                            -> Nothing
 
 nfSub :: MonadNorm m
       => CheckedAnn
-      -> NumericType
+      -> CheckedExpr
       -> CheckedExpr
       -> CheckedArg
       -> CheckedArg
@@ -502,7 +502,7 @@ nfSub ann t tc arg1 arg2 convertToAddition = case (argExpr arg1, argExpr arg2) o
 
 nfMul :: MonadNorm m
       => CheckedAnn
-      -> NumericType
+      -> CheckedExpr
       -> CheckedExpr
       -> CheckedArg
       -> CheckedArg
@@ -527,7 +527,7 @@ nfMul ann t tc arg1 arg2 expandOut = case (argExpr arg1, argExpr arg2) of
 
 nfDiv :: MonadNorm m
       => CheckedAnn
-      -> NumericType
+      -> CheckedExpr
       -> CheckedArg
       -> CheckedArg
       -> Maybe (m CheckedExpr)
@@ -538,7 +538,7 @@ nfDiv ann t arg1 arg2 = case (argExpr arg1, argExpr arg2) of
 
 nfNeg :: MonadNorm m
       => CheckedAnn
-      -> NumericType
+      -> CheckedExpr
       -> CheckedArg
       -> Bool
       -> Maybe (m CheckedExpr)

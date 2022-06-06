@@ -43,8 +43,8 @@ instance InsertAuxiliaryAnnotations UncheckedDecl where
     DefResource ann resourceType ident t ->
       DefResource ann resourceType ident (insert t)
 
-    DefFunction ann usage ident t e ->
-      DefFunction ann usage ident (insert t) (insert e)
+    DefFunction ann propertyInfo ident t e ->
+      DefFunction ann propertyInfo ident (insert t) (insert e)
 
 instance InsertAuxiliaryAnnotations UncheckedExpr where
   insert expr = case expr of
@@ -94,8 +94,8 @@ instance RemoveAuxiliaryArguments UncheckedDecl where
     DefResource ann resourceType ident t ->
       DefResource ann resourceType ident <$> remove t
 
-    DefFunction ann usage ident t e ->
-      DefFunction ann usage ident <$> remove t <*> remove e
+    DefFunction ann propertyInfo ident t e ->
+      DefFunction ann propertyInfo ident <$> remove t <*> remove e
 
 instance RemoveAuxiliaryArguments UncheckedExpr where
   remove expr = do

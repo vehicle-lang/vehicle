@@ -72,6 +72,11 @@ pattern RatType ann = BuiltinNumericType ann Rat
 pattern BoolType :: ann -> Expr binder var ann
 pattern BoolType ann = Builtin ann Bool
 
+pattern AnnotatedBoolType :: ann -> Polarity -> Expr binder var ann
+pattern AnnotatedBoolType ann p <- App ann (BoolType _)
+  [ ImplicitArg _ (Builtin _ (Polarity p))
+  ]
+
 --------------------------------------------------------------------------------
 -- Container
 
@@ -305,15 +310,15 @@ pattern LitInt :: ann -> Int -> Expr binder var ann
 pattern LitInt ann n = Literal ann (LInt n)
 
 pattern IntLiteralExpr :: ann
-                       -> NumericType
+                       -> Expr binder var ann
                        -> Int
                        -> Expr binder var ann
 pattern
   IntLiteralExpr ann t n <-
-    LiteralExpr ann (BuiltinNumericType _ t) (HasIntLitsExpr _ _) (LInt n)
+    LiteralExpr ann t (HasIntLitsExpr _ _) (LInt n)
   where
   IntLiteralExpr ann t n =
-    LiteralExpr ann (BuiltinNumericType ann t) (HasIntLitsExpr ann (BuiltinNumericType ann t)) (LInt n)
+    LiteralExpr ann t (HasIntLitsExpr ann t) (LInt n)
 
 --------------------------------------------------------------------------------
 -- Rat
@@ -322,15 +327,15 @@ pattern LitRat :: ann -> Rational -> Expr binder var ann
 pattern LitRat ann n = Literal ann (LRat n)
 
 pattern RatLiteralExpr :: ann
-                       -> NumericType
+                       -> Expr binder var ann
                        -> Rational
                        -> Expr binder var ann
 pattern
   RatLiteralExpr ann t n <-
-    LiteralExpr ann (BuiltinNumericType _ t) (HasRatLitsExpr _ _) (LRat n)
+    LiteralExpr ann t (HasRatLitsExpr _ _) (LRat n)
   where
   RatLiteralExpr ann t n =
-    LiteralExpr ann (BuiltinNumericType ann t) (HasRatLitsExpr ann (BuiltinNumericType ann t)) (LRat n)
+    LiteralExpr ann t (HasRatLitsExpr ann t) (LRat n)
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -522,38 +527,38 @@ pattern
 
 pattern NumericOp2Expr :: NumericOp2
                        -> ann
-                       -> NumericType
+                       -> Expr  binder var ann
                        -> Expr  binder var ann
                        -> [Arg  binder var ann]
                        -> Expr  binder var ann
 pattern
   NumericOp2Expr op ann t tc explicitArgs <-
     App ann (Builtin _ (NumericOp2 op))
-      (  ImplicitArg _ (BuiltinNumericType _ t)
+      (  ImplicitArg _ t
       :| InstanceArg _ tc
       :  explicitArgs
       )
   where
   NumericOp2Expr op ann t tc explicitArgs =
     App ann (Builtin ann (NumericOp2 op))
-      (  ImplicitArg ann (BuiltinNumericType ann t)
+      (  ImplicitArg ann t
       :| InstanceArg ann tc
       :  explicitArgs
       )
 
-pattern AddExpr :: ann -> NumericType -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern AddExpr :: ann -> Expr binder var ann -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
 pattern AddExpr ann t tc explicitArgs <- NumericOp2Expr Add ann t tc explicitArgs
   where AddExpr ann t tc explicitArgs =  NumericOp2Expr Add ann t tc explicitArgs
 
-pattern SubExpr :: ann -> NumericType -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern SubExpr :: ann -> Expr binder var ann -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
 pattern SubExpr ann t tc explicitArgs <- NumericOp2Expr Sub ann t tc explicitArgs
   where SubExpr ann t tc explicitArgs =  NumericOp2Expr Sub ann t tc explicitArgs
 
-pattern MulExpr :: ann -> NumericType -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern MulExpr :: ann -> Expr binder var ann -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
 pattern MulExpr ann t tc explicitArgs <- NumericOp2Expr Mul ann t tc explicitArgs
   where MulExpr ann t tc explicitArgs =  NumericOp2Expr Mul ann t tc explicitArgs
 
-pattern DivExpr :: ann -> NumericType -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern DivExpr :: ann -> Expr binder var ann -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
 pattern DivExpr ann t tc explicitArgs <- NumericOp2Expr Div ann t tc explicitArgs
   where DivExpr ann t tc explicitArgs =  NumericOp2Expr Div ann t tc explicitArgs
 
@@ -561,21 +566,21 @@ pattern DivExpr ann t tc explicitArgs <- NumericOp2Expr Div ann t tc explicitArg
 -- Not
 
 pattern NegExpr :: ann
-                -> NumericType
+                -> Expr  binder var ann
                 -> [Arg  binder var ann]
                 -> Expr  binder var ann
 pattern
   NegExpr ann t explicitArgs <-
     App ann (Builtin _ Neg)
-      (  ImplicitArg _ (BuiltinNumericType _ t)
+      (  ImplicitArg _ t
       :| InstanceArg _ _
       :  explicitArgs
       )
   where
   NegExpr ann t explicitArgs =
     App ann (Builtin ann Neg)
-      (  ImplicitArg ann (BuiltinNumericType ann t)
-      :| InstanceArg ann (PrimDict ann (HasNegExpr ann (BuiltinNumericType ann t)))
+      (  ImplicitArg ann t
+      :| InstanceArg ann (PrimDict ann (HasNegExpr ann t))
       :  explicitArgs
       )
 

@@ -61,6 +61,10 @@ boundContext = boundCtx . variableContext
 instance HasProvenance Constraint where
   provenanceOf = provenanceOf . constraintContext
 
+isTypeClassConstraint :: Constraint -> Bool
+isTypeClassConstraint TC{} = True
+isTypeClassConstraint _    = False
+
 isUnificationConstraint :: Constraint -> Bool
 isUnificationConstraint UC{} = True
 isUnificationConstraint _    = False

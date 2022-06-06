@@ -128,12 +128,12 @@ doubleElemParser :: MonadDataset m => DatasetBaseType -> m (Double -> m CheckedE
 doubleElemParser tElem = do
   (ident, prov) <- ask
   ann <- elementAnn
+  let baseType = reconstructDatasetBaseType ann tElem
   case tElem of
     DatasetRatType -> do
       return (\v ->
-        return $ RatLiteralExpr ann Rat (toRational v))
+        return $ RatLiteralExpr ann baseType (toRational v))
     _ -> do
-      let baseType = reconstructDatasetBaseType ann tElem
       throwError $ DatasetTypeMismatch ident prov baseType Rat
 
 intElemParser :: MonadDataset m => DatasetBaseType -> m (Int -> m CheckedExpr)
@@ -143,7 +143,7 @@ intElemParser tElem = do
   let baseType = reconstructDatasetBaseType ann tElem
   case tElem of
     DatasetIntType -> return (\v ->
-      return $ IntLiteralExpr ann Int v)
+      return $ IntLiteralExpr ann baseType v)
     DatasetNatType -> return (\v ->
       if v >= 0
         then return $ NatLiteralExpr ann baseType v

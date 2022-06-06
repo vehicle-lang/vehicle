@@ -6,6 +6,7 @@ module Vehicle.Backend.Agda.Compile
 import GHC.Real (numerator, denominator)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
+import Data.Maybe (mapMaybe)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -199,6 +200,7 @@ annotateConstant :: [Dependency] -> Code -> Code
 annotateConstant dependencies = annotate (Set.fromList dependencies, maxPrecedence)
 
 annotateApp :: [Dependency] -> Code -> [Code] -> Code
+annotateApp dependencies fun [] = annotateConstant dependencies fun
 annotateApp dependencies fun args =
   let precedence = 20 in
   let bracketedArgs = map (bracketIfRequired precedence) args in
@@ -252,10 +254,11 @@ argBrackets Explicit = id
 argBrackets Implicit = braces
 argBrackets Instance = braces . braces
 
-binderBrackets :: Visibility -> Code -> Code
-binderBrackets Explicit = parens
-binderBrackets Implicit = braces
-binderBrackets Instance = braces . braces
+binderBrackets :: Bool -> Visibility -> Code -> Code
+binderBrackets True      Explicit = id
+binderBrackets False     Explicit = parens
+binderBrackets _topLevel Implicit = braces
+binderBrackets _topLevel Instance = braces . braces
 
 boolBraces :: Code -> Code
 boolBraces c = annotateConstant [RelNullaryDecidable] "⌊" <+> c <+> "⌋"
@@ -288,14 +291,14 @@ compileDecl = \case
   DefResource _ _ n t ->
     compileResource (compileIdentifier n) <$> compileExpr t
 
-  DefFunction _ann _u n t e -> do
+  DefFunction _ann propertyInfo n t e -> do
     let (binders, body) = foldLam e
     setBoolLevel TypeLevel $
-      if isProperty t
+      if isProperty propertyInfo
         then compileProperty (compileIdentifier n) =<< compileExpr e
         else do
-          let binders' = traverse (compileBinder True) binders
-          compileFunDef (compileIdentifier n) <$> compileExpr t <*> binders' <*> compileExpr body
+          let binders' = mapMaybe compileTopLevelBinder binders
+          compileFunDef (compileIdentifier n) <$> compileExpr t <*> pure binders' <*> compileExpr body
 
 compileExpr :: MonadAgdaCompile m => OutputExpr -> m Code
 compileExpr expr = do
@@ -329,7 +332,7 @@ compileExpr expr = do
 
     Lam{} -> do
       let (binders, body) = foldLam expr
-      cBinders <- traverse (compileBinder False) binders
+      cBinders <- traverse compileBinder binders
       cBody    <- compileExpr body
       return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> arrow <+> cBody)
 
@@ -341,8 +344,8 @@ compileExpr expr = do
       Literal{}    -> compileLiteral expr
       _            -> do
         cFun   <- compileExpr fun
-        cArgs  <- traverse compileArg args
-        return $ annotateApp [] cFun (NonEmpty.toList cArgs)
+        cArgs  <- traverse compileExpr (filterOutNonExplicitArgs args)
+        return $ annotateApp [] cFun cArgs
 
     LSeq ann dict xs -> compileSeq ann dict xs
 
@@ -377,15 +380,21 @@ compileType :: UniverseLevel -> Code
 compileType 0 = "Set"
 compileType l = annotateConstant [] ("Set" <> pretty l)
 
-compileBinder :: MonadAgdaCompile m => Bool -> OutputBinder -> m Code
-compileBinder topLevel binder = do
+compileTopLevelBinder :: OutputBinder -> Maybe Code
+compileTopLevelBinder binder
+  | visibilityOf binder /= Explicit = Nothing
+  | otherwise = do
+    let binderName = pretty (nameOf binder :: OutputBinding)
+    let addBrackets = binderBrackets True (visibilityOf binder)
+    Just $ addBrackets binderName
+
+compileBinder :: MonadAgdaCompile m => OutputBinder -> m Code
+compileBinder binder = do
   let binderName = pretty (nameOf binder :: OutputBinding)
-  if topLevel
-    then return binderName
-    else do
-      binderType <- compileExpr (typeOf binder)
-      let annBinder = annotateInfixOp2 [] minPrecedence id Nothing ":" [binderName, binderType]
-      return $ binderBrackets (visibilityOf binder) annBinder
+  let addBrackets = binderBrackets False (visibilityOf binder)
+  binderType <- compileExpr (typeOf binder)
+  let annBinder = annotateInfixOp2 [] minPrecedence id Nothing ":" [binderName, binderType]
+  return $ addBrackets annBinder
 
 compileBuiltin :: MonadAgdaCompile m => OutputExpr -> m Code
 compileBuiltin e = case e of
@@ -405,8 +414,8 @@ compileBuiltin e = case e of
 
   BooleanOp2Expr op2 _     args -> compileBoolOp2 op2   =<< traverse compileArg (NonEmpty.toList args)
   NotExpr            _     args -> compileNot           =<< traverse compileArg (NonEmpty.toList args)
-  NumericOp2Expr op2 _ t _ args -> compileNumOp2  op2 t <$> traverse compileArg args
-  NegExpr            _ t   args -> compileNeg         t <$> traverse compileArg args
+  NumericOp2Expr op2 _ t _ args -> compileNumOp2  op2 t =<< traverse compileArg args
+  NegExpr            _ t   args -> compileNeg         t =<< traverse compileArg args
 
   (ForallExpr  _  binder body) -> compileTypeLevelQuantifier Forall [binder] body
   (ExistsExpr  _  binder body) -> compileTypeLevelQuantifier Exists [binder] body
@@ -423,9 +432,21 @@ compileBuiltin e = case e of
   (ConsExpr _ tElem               args) -> compileCons tElem =<< traverse compileArg args
   (AtExpr ann _tElem _tDim _tDims args) -> compileAt ann (map argExpr args)
 
-  MapExpr{}             -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Map
-  FoldExpr{}            -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Fold
-  BuiltinTypeClass _ tc -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) (TypeClass tc)
+  HasEqExpr  _ t -> compileTypeClass "HasEq" t
+  HasOrdExpr _ t -> compileTypeClass "HasOrd" t
+  HasAddExpr _ t -> compileTypeClass "HasAdd" t
+  HasMulExpr _ t -> compileTypeClass "HasMul" t
+  HasSubExpr _ t -> compileTypeClass "HasSub" t
+  HasDivExpr _ t -> compileTypeClass "HasDiv" t
+  HasNegExpr _ t -> compileTypeClass "HasNeg" t
+
+  HasNatLitsUpToExpr   _   _ t -> compileTypeClass "HasNatLits" t
+  HasIntLitsExpr           _ t -> compileTypeClass "HasIntLits" t
+  HasRatLitsExpr           _ t -> compileTypeClass "HasRatLits" t
+
+  HasConLitsOfSizeExpr _ n _ _ -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) (TypeClass $ HasConLitsOfSize n)
+  MapExpr{}      -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Map
+  FoldExpr{}     -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Fold
 
   _ -> compilerDeveloperError $
     "unexpected application of builtin found during compilation to Agda:" <+>
@@ -440,7 +461,7 @@ compileTypeLevelQuantifier :: MonadAgdaCompile m
                            -> OutputExpr
                            -> m Code
 compileTypeLevelQuantifier q binders body = do
-  cBinders  <- traverse (compileBinder False) binders
+  cBinders  <- traverse compileBinder binders
   cBody     <- compileExpr body
   quant     <- case q of
     Forall  -> return "∀"
@@ -464,17 +485,30 @@ compileQuantIn q tCont fn cont = do
 
 compileLiteral :: MonadAgdaCompile m => OutputExpr -> m Code
 compileLiteral e = case e of
+  BoolLiteralExpr _ann b             -> compileBoolOp0 b
   NatLiteralExpr  _ann IndexType{} n -> return $ compileIndexLiteral (toInteger n)
   NatLiteralExpr  _ann NatType{}   n -> return $ compileNatLiteral   (toInteger n)
   NatLiteralExpr  _ann IntType{}   n -> return $ compileIntLiteral   (toInteger n)
   NatLiteralExpr  _ann RatType{}   n -> return $ compileRatLiteral   (toRational n)
-  IntLiteralExpr  _ann Int         i -> return $ compileIntLiteral   (toInteger i)
-  IntLiteralExpr  _ann Rat         i -> return $ compileRatLiteral   (toRational i)
-  RatLiteralExpr  _ann Rat         p -> return $ compileRatLiteral   p
-  BoolLiteralExpr _ann b             -> compileBoolOp0 b
+  IntLiteralExpr  _ann IntType{}   i -> return $ compileIntLiteral   (toInteger i)
+  IntLiteralExpr  _ann RatType{}   i -> return $ compileRatLiteral   (toRational i)
+  RatLiteralExpr  _ann RatType{}   p -> return $ compileRatLiteral   p
+  -- Literals using type-classes
+  App _ (Literal _ l) [ImplicitArg _ Var{}, _] -> case l of
+    LNat  n -> return $ compileNatLiteral (toInteger n)
+    LInt  n -> return $ compileIntLiteral (toInteger n)
+    LRat  n -> return $ compileRatLiteral (toRational n)
+    LBool _ -> compilerDeveloperError "Should not have non-concrete Bool literals"
   _                                  -> compilerDeveloperError $
-    "unexpected literal" <+> squotes (prettyVerbose e) <+>
+    "unexpected literal" <+> squotes (pretty $ show e) <+>
     "found during compilation to Agda"
+-- App (Literal (LNat 3))
+--   (Arg Implicit (Var "_x2") :| [Arg Instance (PrimDict (Var "_x3"))])
+
+compileTypeClass :: MonadAgdaCompile m => Code -> OutputExpr -> m Code
+compileTypeClass name arg = do
+  arg' <- compileExpr arg
+  return $ annotateApp [] name [arg']
 
 compileIndexLiteral :: Integer -> Code
 compileIndexLiteral i = annotateInfixOp1 [DataFin] 10 Nothing "#" [pretty i]
@@ -550,13 +584,25 @@ compileBoolOp2 op2 args = do
   return $ annotateInfixOp2 dependencies precedence id Nothing opDoc args
 
 -- |Compiling numeric unary operations
-compileNeg :: NumericType -> [Code] -> Code
-compileNeg Nat = developerError "Negation is not supported for naturals"
-compileNeg t   = annotateInfixOp1 (numericDependencies t) 8 (Just (numericQualifier t)) "-"
+compileNeg :: MonadAgdaCompile m => OutputExpr -> [Code] -> m Code
+compileNeg t args = case t of
+  NatType{} ->
+    compilerDeveloperError "Negation is not supported for naturals"
+  BuiltinNumericType _ tNum -> do
+    let deps      = numericDependencies tNum
+    let qualifier = Just (numericQualifier tNum)
+    return $ annotateInfixOp1 deps 8 qualifier "-" args
+  Var{} -> do
+    let deps      = []
+    let qualifier = Nothing
+    return $ annotateInfixOp1 deps 8 qualifier "-" args
+  _ ->
+    compilerDeveloperError $ "Unexpected numeric op1 type" <+> prettyVerbose t
 
 -- |Compiling numeric binary operations
-compileNumOp2 :: NumericOp2 -> NumericType -> [Code] -> Code
-compileNumOp2 op2 t = annotateInfixOp2 dependencies precedence id qualifier opDoc
+compileNumOp2 :: MonadAgdaCompile m => NumericOp2 -> OutputExpr -> [Code] -> m Code
+compileNumOp2 op2 (BuiltinNumericType _ t) args =
+  return $ annotateInfixOp2 dependencies precedence id qualifier opDoc args
   where
     precedence = if op2 == Mul || op2 == Div then 7 else 6
     qualifier  = Just (numericQualifier t)
@@ -568,6 +614,8 @@ compileNumOp2 op2 t = annotateInfixOp2 dependencies precedence id qualifier opDo
       (Div, Nat)   -> ("/", [DataNatDivMod])
       (Div, Int)   -> ("/", [DataIntegerDivMod])
       (Div, Rat)   -> ("÷", [DataRat])
+compileNumOp2 _ t _ =
+  compilerDeveloperError $ "Unexpected numeric op2 type" <+> prettyVerbose t
 
 compileOrder :: MonadAgdaCompile m => Order -> OutputExpr -> [Code] -> m Code
 compileOrder order elemType args = do

@@ -107,14 +107,14 @@ processDecl d@(DefResource ann resourceType ident declType) = do
     Parameter -> do
       addParameter name
       parameterExpr <- parseParameterValue (parameters resources) ann ident declType
-      return $ Just $ DefFunction ann NotABoolean ident declType parameterExpr
+      return $ Just $ DefFunction ann Nothing ident declType parameterExpr
     Dataset -> do
       addDataset name
       if not expandDatasets
         then return $ Just d
         else do
           datasetExpr <- parseDataset (datasets resources) ann ident declType
-          return $ Just $ DefFunction ann NotABoolean ident declType datasetExpr
+          return $ Just $ DefFunction ann Nothing ident declType datasetExpr
     Network -> do
       networkType <- extractNetworkType ann ident declType
       addNetworkType name networkType

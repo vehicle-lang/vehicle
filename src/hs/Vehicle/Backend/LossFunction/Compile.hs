@@ -60,8 +60,8 @@ compile _ (V.Main ds) = catMaybes <$> traverse compileDecl ds
 
 compileDecl :: MonadCompile m => V.CheckedDecl -> m (Maybe LExpr)
 compileDecl V.DefResource{} = normalisationError currentPass "Resource declarations"
-compileDecl (V.DefFunction _ _ _ typ expr) =
-    if not $ V.isProperty typ
+compileDecl (V.DefFunction _ propertyInfo _ _ expr) =
+    if not $ V.isProperty propertyInfo
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
       then return Nothing

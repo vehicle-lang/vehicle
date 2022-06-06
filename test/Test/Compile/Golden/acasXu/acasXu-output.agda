@@ -23,38 +23,38 @@ module acasXu-temp-output where
 InputVector : Set
 InputVector = Tensor ℚ (5 ∷ [])
 
-distanceToIntruder : Fin 5
-distanceToIntruder = # 0
+distanceToIntruder : ∀ {_x0 : Set} {{_x1 : HasNatLits _x0}} → _x0
+distanceToIntruder = 0
 
-angleToIntruder : Fin 5
-angleToIntruder = # 1
+angleToIntruder : ∀ {_x4 : Set} {{_x5 : HasNatLits _x4}} → _x4
+angleToIntruder = 1
 
-intruderHeading : Fin 5
-intruderHeading = # 2
+intruderHeading : ∀ {_x8 : Set} {{_x9 : HasNatLits _x8}} → _x8
+intruderHeading = 2
 
-speed : Fin 5
-speed = # 3
+speed : ∀ {_x12 : Set} {{_x13 : HasNatLits _x12}} → _x12
+speed = 3
 
-intruderSpeed : Fin 5
-intruderSpeed = # 4
+intruderSpeed : ∀ {_x16 : Set} {{_x17 : HasNatLits _x16}} → _x16
+intruderSpeed = 4
 
 OutputVector : Set
 OutputVector = Tensor ℚ (5 ∷ [])
 
-clearOfConflict : Fin 5
-clearOfConflict = # 0
+clearOfConflict : ∀ {_x20 : Set} {{_x21 : HasNatLits _x20}} → _x20
+clearOfConflict = 0
 
-weakLeft : Fin 5
-weakLeft = # 1
+weakLeft : ∀ {_x24 : Set} {{_x25 : HasNatLits _x24}} → _x24
+weakLeft = 1
 
-weakRight : Fin 3
-weakRight = # 2
+weakRight : ∀ {_x28 : Set} {{_x29 : HasNatLits _x28}} → _x28
+weakRight = 2
 
-strongLeft : Fin 5
-strongLeft = # 3
+strongLeft : ∀ {_x32 : Set} {{_x33 : HasNatLits _x32}} → _x32
+strongLeft = 3
 
-strongRight : Fin 5
-strongRight = # 4
+strongRight : ∀ {_x36 : Set} {{_x37 : HasNatLits _x36}} → _x36
+strongRight = 4
 
 postulate acasXu : InputVector → OutputVector
 
