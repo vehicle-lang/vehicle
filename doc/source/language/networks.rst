@@ -15,21 +15,8 @@ Networks are declared as follows using the :code:`network` keyword:
    network myNetwork : Tensor Rat [784] -> Tensor Rat [10]
 
 At the moment Vehicle supports networks with a single input and output node.
-Therefore expected type is of the form :code:`Tensor A [m] -> Tensor B [n]`
-where :code:`A` and :code:`B` are [numeric types] and :code:`m` and :code:`n`
-are known constants.
-
-For example the following are allowed and are all equivalent:
-
-.. code-block:: agda
-
-   network myNetwork : Tensor Nat [4] -> Tensor Rat [1]
-
-   network myNetwork : Tensor Nat [4] -> Rat
-
-   network myNetwork : Nat -> Nat -> Nat -> Nat -> Rat
-
-   network myNetwork : Nat -> Nat -> Nat -> Nat -> Tensor Rat [1]
+Therefore expected type is of the form :code:`Tensor Rat [m] -> Tensor Rat [n]`
+where :code:`m` and :code:`n` are known constants.
 
 Supported formats
 -----------------
@@ -56,13 +43,7 @@ Although we are aware that common network representations such as ONNX,
 Tensorflow, and Pytorch can have multiple input and output nodes,
 these are not currently supported by Vehicle.
 
-For example the following is not a valid type of network:
-
-.. code-block:: agda
-
-   network myNetwork : Tensor Rat [5] -> Tensor Rat [10] -> Tensor Rat [2]
-
-This is a matter of implementation rather than a fundemental limitation.
+This is a matter of implementation rather than a fundamental limitation.
 Please get in touch if you would be interested in this functionality
 being added to Vehicle.
 

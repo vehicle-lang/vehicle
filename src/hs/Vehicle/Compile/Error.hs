@@ -8,7 +8,6 @@ import Prettyprinter (list)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Backend.Prelude (Backend)
-import Vehicle.Resource.NeuralNetwork
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -68,11 +67,23 @@ data CompileError
   | UnableToParseResource     Identifier Provenance ResourceType String
 
   | NetworkTypeIsNotAFunction              Identifier CheckedExpr
+  | NetworkTypeIsNotOverTensors            Identifier CheckedExpr CheckedExpr InputOrOutput
   | NetworkTypeHasNonExplicitArguments     Identifier CheckedExpr CheckedBinder
-  | NetworkTypeHasHeterogeneousInputTypes  Identifier CheckedExpr CheckedExpr CheckedExpr
-  | NetworkTypeHasMultidimensionalTensor   Identifier CheckedExpr InputOrOutput
-  | NetworkTypeHasVariableSizeTensor       Identifier CheckedExpr InputOrOutput
-  | NetworkTypeHasUnsupportedElementType   Identifier CheckedExpr InputOrOutput
+  | NetworkTypeHasMultidimensionalTensor   Identifier CheckedExpr CheckedExpr InputOrOutput
+  | NetworkTypeHasVariableSizeTensor       Identifier CheckedExpr CheckedExpr InputOrOutput
+  | NetworkTypeHasUnsupportedElementType   Identifier CheckedExpr CheckedExpr InputOrOutput
+
+  | DatasetTypeUnsupportedContainer Identifier Provenance CheckedExpr
+  | DatasetTypeUnsupportedElement   Identifier Provenance CheckedExpr
+  | DatasetVariableSizeTensor   Identifier Provenance CheckedExpr
+  | DatasetDimensionMismatch    Identifier Provenance CheckedExpr [Int]
+  | DatasetTypeMismatch         Identifier Provenance CheckedExpr NumericType
+  | DatasetInvalidNat           Identifier Provenance Int
+  | DatasetInvalidIndex         Identifier Provenance Int Int
+
+  | ParameterTypeUnsupported        Identifier Provenance CheckedExpr
+  | ParameterTypeVariableSizeIndex  Identifier Provenance CheckedExpr
+  | ParameterValueUnparsable        Identifier Provenance CheckedExpr String
 
   -- Backend errors
   | NoPropertiesFound

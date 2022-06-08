@@ -1,2 +1,2 @@
-Error: Type error: Could not satisfy 'HasIntLiterals Nat' (in dataset 'trainingDataset')
-Fix: check your types
+Error: Error while reading dataset 'trainingDataset'. Expected elements of type 'Nat' but found value '-1' (Line 2, Columns 9-24)
+Fix: either remove the offending entries in the dataset or update the type of the dataset in the specification.

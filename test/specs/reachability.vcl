@@ -1,4 +1,4 @@
-network f : Tensor Rat [2] -> Rat
+network f : Tensor Rat [2] -> Tensor Rat [1]
 
 reachable : Bool
-reachable = exists x . f x == 0
+reachable = exists x . f x == [0]

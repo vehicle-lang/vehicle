@@ -15,7 +15,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print (prettySimple)
 import Vehicle.Compile.LetInsertion (insertLets)
-import Vehicle.Resource.NeuralNetwork
+import Vehicle.Compile.Resource
 import Vehicle.Compile.Linearity
 import Vehicle.Compile.Normalise.QuantifierLifting (liftQuantifiers)
 import Vehicle.Compile.Normalise
@@ -80,7 +80,7 @@ import Vehicle.Compile.Normalise
 normUserVariables :: MonadCompile m
                   => Identifier
                   -> Verifier
-                  -> NetworkCtx
+                  -> NetworkContext
                   -> CheckedExpr
                   -> m (CLSTProblem, MetaNetwork, UserVarReconstructionInfo)
 normUserVariables ident verifier networkCtx expr =
@@ -122,12 +122,12 @@ generateCLSTProblem assertionsExpr = do
   -- Normalise to remove newly introduced lookups into tensors of
   -- output variables
   boundCtx <- getBoundContext
-  normExprBody <- normalise (Options
+  normExprBody <- normalise userExprBody $ defaultNormalisationOptions
     { implicationsToDisjunctions = True
     , subtractionToAddition      = True
     , expandOutPolynomials       = True
-    , boundCtx                   = boundCtx
-    }) userExprBody
+    , boundContext               = boundCtx
+    }
 
   userAssertions <- compileAssertions normExprBody
 
@@ -149,7 +149,7 @@ type MagicVariableNames = [Symbol]
 type MonadSMT m =
   ( MonadCompile m
   , MonadReader
-    ( NetworkCtx
+    ( NetworkContext
     , Identifier
     , MetaNetwork
     , Verifier
@@ -158,7 +158,7 @@ type MonadSMT m =
     ) m
   )
 
-getNetworkDetailsFromCtx :: MonadCompile m => NetworkCtx -> Symbol -> m NetworkDetails
+getNetworkDetailsFromCtx :: MonadCompile m => NetworkContext -> Symbol -> m NetworkType
 getNetworkDetailsFromCtx networkCtx name = do
   case Map.lookup name networkCtx of
     Just details -> return details
@@ -175,13 +175,13 @@ getNumberOfUserVariables = do
   (_, _, _, _, userVariables, _) <- ask
   return $ length userVariables
 
-getMetaNetworkDetails :: MonadSMT m => m [NetworkDetails]
-getMetaNetworkDetails = do
+getMetaNetworkType :: MonadSMT m => m [NetworkType]
+getMetaNetworkType = do
   (networkCtx, _, metaNetwork, _, _, _) <- ask
   traverse (getNetworkDetailsFromCtx networkCtx) metaNetwork
 
 getNumberOfMagicVariables :: MonadSMT m => m Int
-getNumberOfMagicVariables = sum . fmap networkSize <$> getMetaNetworkDetails
+getNumberOfMagicVariables = sum . fmap networkSize <$> getMetaNetworkType
 
 getTotalNumberOfVariables :: MonadSMT m => m Int
 getTotalNumberOfVariables = do
@@ -266,7 +266,7 @@ replaceNetworkApplications IOVarState{..} (Let _ (NetworkApp ann ident inputExpr
   incrCallDepth
   (networkCtx, _, _, _, _, _) <- ask
 
-  NetworkDetails inputs outputs <- getNetworkDetailsFromCtx networkCtx (nameOf ident)
+  NetworkType inputs outputs <- getNetworkDetailsFromCtx networkCtx (nameOf ident)
   let inputSize  = size inputs
   let outputSize = size outputs
   let outputType = tElem outputs
@@ -313,10 +313,10 @@ createInputVarEqualities inputVarIndices (SeqExpr _ _ _ xs) = do
     return $ constructAssertion (lhs, Equals, rhs)
 createInputVarEqualities _ _ = normalisationError currentPass "non-Seq"
 
-mkMagicVariableSeq :: CheckedAnn -> Builtin -> [Int] -> CheckedExpr
+mkMagicVariableSeq :: CheckedAnn -> NetworkBaseType -> [Int] -> CheckedExpr
 mkMagicVariableSeq ann tElem indices = tensorExpr
   where
-  tensorElemType   = Builtin ann tElem
+  tensorElemType   = reconstructNetworkBaseType ann tElem
   tensorType       = mkTensorType ann tensorElemType [length indices]
   variables        = map (Var ann . Bound) indices
   tensorExpr       = SeqExpr ann tensorElemType tensorType variables
@@ -418,23 +418,23 @@ compileLiteral (LRat  q) = return $ fromRational q
 -- Step 6: quantification over magic variables
 
 getMagicVariablesNames :: Verifier
-                       -> [NetworkDetails]
+                       -> [NetworkType]
                        -> [Text]
 getMagicVariablesNames verifier metaNetworkDetails =
   let (_, _, result) = foldr forNetwork (0, 0, []) metaNetworkDetails in result
   where
     (inputPrefix, outputPrefix) = magicVariablePrefixes verifier
 
-    forNetwork :: NetworkDetails -> (Int, Int, [Text]) -> (Int, Int, [Text])
-    forNetwork (NetworkDetails inputs outputs) (inputIndex, outputIndex, result) =
+    forNetwork :: NetworkType -> (Int, Int, [Text]) -> (Int, Int, [Text])
+    forNetwork (NetworkType inputs outputs) (inputIndex, outputIndex, result) =
       let nextInputIndex  = inputIndex  + size inputs in
       let nextOutputIndex = outputIndex + size outputs in
       let inputNames  = forTensor inputPrefix  inputIndex  inputs in
       let outputNames = forTensor outputPrefix outputIndex outputs in
       (nextInputIndex, nextOutputIndex, result <> inputNames <> outputNames)
 
-    forTensor :: Text -> Int -> TensorDetails -> [Text]
-    forTensor prefix startingIndex (TensorDetails size _) =
+    forTensor :: Text -> Int -> NetworkTensorType -> [Text]
+    forTensor prefix startingIndex (NetworkTensorType size _) =
       let indices = [startingIndex .. startingIndex + size-1] in
       [mkNameWithIndices prefix [i] | i <- indices]
 

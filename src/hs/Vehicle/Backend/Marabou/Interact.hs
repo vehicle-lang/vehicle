@@ -24,7 +24,7 @@ import Vehicle.Backend.Prelude
 import Vehicle.Verify.VerificationStatus
 import Vehicle.Compile.Linearity (reconstructUserVars, UserVarReconstructionInfo)
 import Vehicle.Resource
-import Vehicle.Resource.NeuralNetwork
+import Vehicle.Compile.Resource
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------

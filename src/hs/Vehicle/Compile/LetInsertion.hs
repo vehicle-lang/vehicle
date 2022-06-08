@@ -166,7 +166,7 @@ liftOverBinder (body, sm) = do
           then IntMap.partition shouldInsertHere sm
           else (sm, mempty)
 
-  let subexprsToInsert = reverse (IntMap.elems insertSM)
+  let subexprsToInsert = IntMap.elems insertSM
 
   -- Let bind those subexpressions.
   (updatedBody, updatedRemainingSM) <- letBindSubexpressions remainingSM subexprsToInsert body

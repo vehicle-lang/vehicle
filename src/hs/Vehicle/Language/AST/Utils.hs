@@ -167,6 +167,7 @@ mkTensorType :: ann
              -> Expr binder var ann
              -> [Int]
              -> Expr binder var ann
+mkTensorType _   tElem []   = tElem
 mkTensorType ann tElem dims =
   let dimList = mkTensorDims ann dims in
   App ann (BuiltinContainerType ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
@@ -186,6 +187,16 @@ mkList :: ann
        -> Expr binder var ann
 mkList ann tElem = foldr cons (NilExpr ann tElem)
   where cons x xs = ConsExpr ann tElem $ fmap (ExplicitArg ann) [x, xs]
+
+mkTensor :: ann
+         -> Expr binder var ann
+         -> [Int]
+         -> [Expr binder var ann]
+         -> Expr binder var ann
+mkTensor ann tBaseElem dims elems =
+  let tensorType = mkTensorType ann tBaseElem dims in
+  let elemType = mkTensorType ann tBaseElem (tail dims) in
+  SeqExpr ann elemType tensorType elems
 
 mkBooleanBigOp :: BooleanOp2
                -> ann

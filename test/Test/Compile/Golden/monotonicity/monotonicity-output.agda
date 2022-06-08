@@ -8,14 +8,17 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
+open import Vehicle.Data.Tensor
 open import Data.Rational as ℚ using (ℚ)
+open import Data.Fin as Fin using (Fin; #_)
+open import Data.List
 
 module monotonicity-temp-output where
 
-postulate f : ℚ → ℚ
+postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 
 abstract
-  monotonic : ∀ (x1 : ℚ) → ∀ (x2 : ℚ) → x1 ℚ.≤ x2 → f x1 ℚ.≤ f x2
+  monotonic : ∀ (x1 : ℚ) → ∀ (x2 : ℚ) → x1 ℚ.≤ x2 → f (x1 ∷ []) (# 0) ℚ.≤ f (x2 ∷ []) (# 0)
   monotonic = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

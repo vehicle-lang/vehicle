@@ -15,18 +15,18 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Language.Print
-import Vehicle.Compile.Prelude hiding (DeclCtx)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.AlphaEquivalence ( alphaEq )
 import Vehicle.Compile.Error
 
 -- |Run a function in 'MonadNorm'.
 normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) ([DBBinding], a))
-          => NormalisationOptions
-          -> a
+          => a
+          -> NormalisationOptions
           -> m a
-normalise options@Options{..} x = logCompilerPass currentPass $ do
-  result <- evalStateT (runReaderT (nf x) options) mempty
-  logCompilerPassOutput (prettyFriendlyDB boundCtx result)
+normalise x options@Options{..} = logCompilerPass currentPass $ do
+  result <- evalStateT (runReaderT (nf x) options) declContext
+  logCompilerPassOutput (prettyFriendlyDB boundContext result)
   return result
 
 currentPass :: Doc ()
@@ -35,13 +35,12 @@ currentPass = "normalisation"
 --------------------------------------------------------------------------------
 -- Setup
 
-type DeclCtx = M.Map Identifier CheckedExpr
-
 data NormalisationOptions = Options
   { implicationsToDisjunctions :: Bool
   , subtractionToAddition      :: Bool
   , expandOutPolynomials       :: Bool
-  , boundCtx                   :: [DBBinding]
+  , declContext                :: DeclCtx
+  , boundContext               :: [DBBinding]
   }
 
 defaultNormalisationOptions :: NormalisationOptions
@@ -49,7 +48,8 @@ defaultNormalisationOptions = Options
   { implicationsToDisjunctions = False
   , subtractionToAddition      = False
   , expandOutPolynomials       = False
-  , boundCtx                   = []
+  , declContext                = mempty
+  , boundContext               = mempty
   }
 
 --------------------------------------------------------------------------------
@@ -86,7 +86,7 @@ class Norm vf where
   nf :: MonadNorm m => vf -> m vf
 
 instance Norm CheckedProg where
-  nf (Main decls)= Main <$> traverse nf decls
+  nf (Main decls) = Main <$> traverse nf decls
 
 instance Norm CheckedDecl where
   nf = \case
@@ -96,7 +96,7 @@ instance Norm CheckedDecl where
     DefFunction ann u ident typ expr -> do
       typ'  <- nf typ
       expr' <- nf expr
-      modify (M.insert ident expr')
+      modify (M.insert ident (typ, Just expr'))
       return $ DefFunction ann u ident typ' expr'
 
 instance Norm CheckedExpr where
@@ -117,7 +117,7 @@ instance Norm CheckedExpr where
       Ann _ann expr _typ  -> nf expr
 
       Var _ (Bound _)     -> return e
-      Var _ (Free ident)  -> gets (fromMaybe e . M.lookup ident)
+      Var _ (Free ident)  -> gets (maybe e (fromMaybe e . snd) . M.lookup ident)
 
       Let _ann letValue _binder letBody -> do
         letValue' <- nf letValue

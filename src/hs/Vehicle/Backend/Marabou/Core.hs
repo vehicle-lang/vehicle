@@ -1,7 +1,7 @@
 module Vehicle.Backend.Marabou.Core where
 
 import Vehicle.Prelude
-import Vehicle.Resource.NeuralNetwork (MetaNetwork)
+import Vehicle.Compile.Resource (MetaNetwork)
 import Vehicle.Compile.Linearity.Core (UserVarReconstructionInfo)
 
 type MarabouSpec = [(Symbol, MarabouProperty)]

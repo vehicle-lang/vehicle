@@ -1,60 +1,82 @@
 module Vehicle.Compile.Resource.Dataset
-  ( expandDatasets
+  ( checkDatasetType
+  , parseDataset
   ) where
 
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Writer (MonadWriter(..), WriterT (runWriterT))
-import Control.Monad.Reader (MonadReader(..), ReaderT (runReaderT))
 import Control.Monad.Except (MonadError(throwError))
+import Data.Bifunctor (second)
 import Data.Map qualified as Map
-import Data.Set (Set)
-import Data.Set qualified as Set
 import System.FilePath (takeExtension)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Resource.Dataset.IDX (readIDX)
+import Vehicle.Compile.Resource.Core
 import Vehicle.Language.Print
 
 --------------------------------------------------------------------------------
--- Dataset expansion
+-- Dataset typing
 
--- | This function expands all the dataset declarations in the program with
--- the contents of the provided datasets.
-expandDatasets :: (MonadIO m, MonadCompile m)
-               => DatasetLocations
-               -> InputProg
-               -> m InputProg
-expandDatasets datasets prog1 = logCompilerPass "insertion of datasets" $ do
-  (prog2, foundDatasets) <- runWriterT (runReaderT (expandProg prog1) datasets)
-  warnIfUnusedResources Dataset (Map.keysSet datasets) foundDatasets
-  return prog2
+getDatasetType :: Bool
+               -> CheckedAnn
+               -> Identifier
+               -> CheckedExpr
+               -> Either CompileError DatasetType
+getDatasetType topLevel ann ident typ = case typ of
+  ListType   _ tElem       -> DatasetListType   <$> getDatasetType False ann ident tElem
+  TensorType _ tElem tDims -> DatasetTensorType <$> getDatasetType False ann ident tElem <*> pure tDims
+  _                        -> do
+    let elemType = getDatasetElemType ann ident typ
+    if topLevel
+      then Left $ DatasetTypeUnsupportedContainer ident ann typ
+      else second DatasetBaseType elemType
+
+getDatasetElemType :: CheckedAnn
+                   -> Identifier
+                   -> CheckedExpr
+                   -> Either CompileError DatasetBaseType
+getDatasetElemType ann ident elemType = case elemType of
+  BoolType{}    -> Right DatasetBoolType
+  NatType{}     -> Right DatasetNatType
+  IntType{}     -> Right DatasetIntType
+  RatType{}     -> Right DatasetRatType
+  IndexType _ n -> Right $ DatasetIndexType n
+  _             -> Left $ DatasetTypeUnsupportedElement ident ann elemType
+
+checkDatasetType :: MonadCompile m
+                 => CheckedAnn
+                 -> Identifier
+                 -> CheckedExpr
+                 -> m ()
+checkDatasetType ann ident datasetType =
+  case getDatasetType True ann ident datasetType of
+    Left err -> throwError err
+    Right{}  -> return ()
 
 --------------------------------------------------------------------------------
--- Types
+-- Dataset parsing
 
-type MonadDataset m =
-  ( MonadIO m
-  , MonadCompile m
-  , MonadReader DatasetLocations m
-  , MonadWriter (Set Symbol) m
-  )
-
-expandProg :: MonadDataset m => InputProg -> m InputProg
-expandProg (Main ds) = Main  <$> traverse expandDecl ds
-
-expandDecl :: MonadDataset m => InputDecl -> m InputDecl
-expandDecl (DefResource p Dataset ident t) = do
-  resources <- ask
+parseDataset :: (MonadIO m, MonadCompile m)
+             => DatasetLocations
+             -> CheckedAnn
+             -> Identifier
+             -> CheckedExpr
+             -> m CheckedExpr
+parseDataset datasetLocations ann ident datasetType = do
   let name = nameOf ident
-  e <- case Map.lookup name resources of
+
+  internalType <- case getDatasetType True ann ident datasetType of
+    Left{} -> compilerDeveloperError $
+      "Invalid parameter type" <+> squotes (prettySimple datasetType) <+>
+      "should have been caught during type-checking"
+    Right res -> return res
+
+  case Map.lookup name datasetLocations of
     Just file -> do
-      tell (Set.singleton name)
+      logDebug MinDetail $ "reading" <+> squotes (pretty ident)
       value <- case takeExtension file of
-        ".idx" -> readIDX file ident p
-        ext    -> throwError $ UnsupportedResourceFormat ident p Dataset ext
-      logDebug MinDetail $ "expanding" <+> pretty ident <+> "=" <+> prettyFriendly value
+        ".idx" -> readIDX file ident ann internalType
+        ext    -> throwError $ UnsupportedResourceFormat ident ann Dataset ext
       return value
-    _ -> throwError $ ResourceNotProvided ident p Dataset
-  return $ DefFunction p NotABoolean ident t e
-expandDecl d = return d
+    _ -> throwError $ ResourceNotProvided ident ann Dataset

@@ -18,7 +18,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Resource.NeuralNetwork
+import Vehicle.Compile.Resource
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -259,19 +259,28 @@ instance MeaningfulError CompileError where
       , fix        = Nothing
       } where entity = if resourceType == Parameter then "value" else "file"
 
-    -- Network type errors
+    -- Network errors
 
     NetworkTypeIsNotAFunction ident networkType -> UError $ UserError
       { provenance = provenanceOf networkType
-      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
+      , problem    = unsupportedResourceTypeDescription Network ident networkType <+> "as" <+>
                      squotes (prettyFriendly networkType) <+> "is not a function."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Provide both an input type and output type for your network."
       }
 
+    NetworkTypeIsNotOverTensors ident fullType nonTensorType io -> UError $ UserError
+      { provenance = provenanceOf nonTensorType
+      , problem    = unsupportedResourceTypeDescription Network ident fullType <+>
+                    "as the" <+> pretty io <+> squotes (prettyFriendly nonTensorType) <+>
+                    "is not a tensor."
+      , fix        = Just $ supportedNetworkTypeDescription <+>
+                     "Ensure the" <+> pretty io <+> "of the network is a Tensor"
+      }
+
     NetworkTypeHasNonExplicitArguments ident networkType binder -> UError $ UserError
       { provenance = provenanceOf binder
-      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
+      , problem    = unsupportedResourceTypeDescription Network ident networkType <+> "as" <+>
                      squotes (prettyFriendly networkType) <+>
                      "contains a non-explicit argument" <+>
                      squotes (prettyFriendly binder) <> "."
@@ -279,21 +288,9 @@ instance MeaningfulError CompileError where
                      "Remove the non-explicit argument."
       }
 
-    NetworkTypeHasHeterogeneousInputTypes ident networkType t1 t2 -> UError $ UserError
-      { provenance = provenanceOf t1 <> provenanceOf t2
-      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
-                     squotes (prettyFriendly networkType) <+>
-                     "contains heterogeneous input types" <+>
-                     squotes (prettyFriendly t1) <+> "and" <+>
-                     squotes (prettyFriendly t2) <+> "."
-      , fix        = Just $ supportedNetworkTypeDescription <+>
-                     "Ensure that all the inputs to" <+> squotes (pretty ident) <+>
-                     "are the same type."
-      }
-
-    NetworkTypeHasUnsupportedElementType ident elementType io -> UError $ UserError
+    NetworkTypeHasUnsupportedElementType ident fullType elementType io -> UError $ UserError
       { provenance = provenanceOf elementType
-      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
+      , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
                      pretty io <+> "s of type" <+>
                      squotes (prettyFriendly elementType) <+>
                      "are not currently supported."
@@ -302,23 +299,110 @@ instance MeaningfulError CompileError where
                      "supported types."
       }
 
-    NetworkTypeHasMultidimensionalTensor ident t io -> UError $ UserError
-      { provenance = provenanceOf t
-      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
+    NetworkTypeHasMultidimensionalTensor ident fullType tensorType io -> UError $ UserError
+      { provenance = provenanceOf tensorType
+      , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
                      "the" <+> pretty io <+>
-                     squotes (prettyFriendly t) <+> "is not a 1D tensor."
+                     squotes (prettyFriendly tensorType) <+> "is not a 1D tensor."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Ensure that the network" <+> pretty io <+> "is a 1D tensor."
       }
 
-    NetworkTypeHasVariableSizeTensor ident tDim io -> UError $ UserError
+    NetworkTypeHasVariableSizeTensor ident fullType tDim io -> UError $ UserError
       { provenance = provenanceOf tDim
-      , problem    = unsupportedNetworkTypeDescription ident <+> "as" <+>
+      , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
                      "the size of the" <+> pretty io <+> "tensor" <+>
                      squotes (pretty $ show tDim) <+> "is not a constant."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "ensure that the size of the" <+> pretty io <+>
                      "tensor is constant."
+      }
+
+    -- Dataset errors
+
+    DatasetTypeUnsupportedContainer ident p tCont -> UError $ UserError
+      { provenance = p
+      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
+                     "for the" <+> prettyResource Dataset ident <> "."
+      , fix        = Just $ "change the type of" <+> squotes (pretty ident) <+>
+                     "to either a" <+> squotes (pretty List) <+> "or" <+>
+                     squotes (pretty Tensor) <> "."
+      }
+
+    DatasetTypeUnsupportedElement ident p tCont -> UError $ UserError
+      { provenance = p
+      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
+                     "for the elements of the" <+> prettyResource Dataset ident <> "."
+      , fix        = Just $ "change the type to one of" <+> elementTypes <> "."
+      } where elementTypes = pretty @[Builtin] ([Index] <> fmap NumericType [Nat, Int, Rat])
+
+    DatasetVariableSizeTensor ident p tCont -> UError $ UserError
+      { provenance = p
+      , problem    = "A tensor with variable dimensions" <+> squotes (prettyFriendly tCont) <+>
+                     "is not a supported type for the" <+> prettyResource Dataset ident <> "."
+      , fix        = Just "make sure the dimensions of the dataset are all constants."
+      }
+
+    DatasetInvalidNat ident p v -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected elements of type" <+> squotes (prettyFriendly nat) <+>
+                     "but found value" <+> squotes (pretty v)
+      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
+                     "update the type of the dataset in the specification."
+      } where (nat :: CheckedExpr) = NatType mempty
+
+    DatasetInvalidIndex ident p v n -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected elements of type" <+> squotes (prettyFriendly index) <+>
+                     "but found value" <+> squotes (pretty v)
+      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
+                     "update the type of the dataset in the specification."
+      }
+      where (index :: CheckedExpr) = IndexType mempty (NatLiteralExpr mempty (NatType mempty) n)
+
+    DatasetDimensionMismatch ident p expectedType actualDims -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected type to be" <+> prettyFriendlyDBClosed expectedType <+>
+                     "but found dimensions" <+> pretty actualDims
+      , fix        = Just "correct the dataset dimensions in the specification."
+      }
+
+    DatasetTypeMismatch ident p expectedType actualType -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
+                     "Expected dataset elements to be of type" <+> prettyFriendly expectedType <+>
+                     "but found elements of type" <+> pretty actualType
+      , fix        = Just "correct the dataset type in the specification."
+      }
+
+    -- Parameter errors
+
+    ParameterTypeUnsupported ident p expectedType -> UError $ UserError
+      { provenance = p
+      , problem    = unsupportedResourceTypeDescription Parameter ident expectedType <> "." <+>
+                     supportedParameterTypeDescription
+      , fix        = Just "change the parameter type in the specification."
+      }
+
+    ParameterValueUnparsable ident p expectedType value -> UError $ UserError
+      { provenance = p
+      , problem    = "Error while parsing the value provided for" <+>
+                     prettyResource Parameter ident <> "." <+>
+                     "Expected the value to be of type" <+>
+                     squotes (prettyFriendly expectedType) <+>
+                     "but found" <+> squotes (pretty value)
+      , fix        = Just $ "either fix the type of the parameter in the" <+>
+                     "specification or change the value provided."
+      }
+
+    ParameterTypeVariableSizeIndex ident p fullType -> UError $ UserError
+      { provenance = p
+      , problem    = "An Index with variable dimensions" <+> squotes (prettyFriendly fullType) <+>
+                     "is not a supported type for the" <+> prettyResource Parameter ident <> "."
+      , fix        = Just "make sure the dimensions of the indices are all constants."
       }
 
     --------------------
@@ -425,18 +509,28 @@ instance MeaningfulError CompileError where
       , fix        = Just "choose a different compilation target than VNNLib"
       }
 
-unsupportedNetworkTypeDescription :: Identifier -> Doc a
-unsupportedNetworkTypeDescription ident =
-  "The type of" <+> pretty Network <+>
+unsupportedResourceTypeDescription :: ResourceType -> Identifier -> CheckedExpr -> Doc a
+unsupportedResourceTypeDescription resource ident actualType =
+  "The type" <+> squotes (prettyFriendlyDBClosed actualType) <+> "of" <+> pretty resource <+>
   squotes (pretty ident) <+> "is not currently supported"
 
 supportedNetworkTypeDescription :: Doc a
 supportedNetworkTypeDescription =
-  "Only networks of type:" <> line <> indent 2 (
-     "1." <+> "Tensor A [m] -> Tensor B [n]" <> line <>
-     "2." <+> "A -> ... -> A -> B") <> line <>
-  "are allowed, where A and B are one of" <+> prettyFlatList allowedNetworkElementTypes <+>
-  "and" <+> squotes "m" <+> "and" <+> squotes "n" <+> "are constants."
+  let allowedElementTypes = prettyFriendlyDBClosed <$> allowedNetworkElementTypes in
+  "Only networks of the following types are allowed:" <> line <>
+  indent 2 "Tensor A [m] -> Tensor B [n]" <> line <>
+  "where 'A' and 'B' are one of" <+> prettyFlatList allowedElementTypes <+>
+  "and 'm' and 'n' are constants."
+
+supportedParameterTypeDescription :: Doc a
+supportedParameterTypeDescription =
+  "Only parameters of the following types are allowed:" <> line <>
+  indent 2 (
+    "1." <+> "Bool"    <> line <>
+    "2." <+> "Index n" <> line <>
+    "3." <+> "Nat"     <> line <>
+    "4." <+> "Int"     <> line <>
+    "5." <+> "Rat" )
 
 unsolvedConstraintError :: Constraint -> [DBBinding] -> Doc a
 unsolvedConstraintError constraint ctx ="Typing error: not enough information to solve constraint" <+>
@@ -485,63 +579,5 @@ e.g. Jurrian's work.
       , problem    = "Type error: unknown if index" <+> pretty n <+> "is in bounds" <+>
                     "when looking up value in tensor of size" <+> prettyFriendlyDB ctx v
       , fix        = Just "check your types"
-      }
-
-    DatasetInvalidContainerType ident p tCont -> UError $ UserError
-      { provenance = p
-      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
-                     "for the" <+> prettyResource Dataset ident <> "."
-      , fix        = Just $ "change the type of" <+> squotes (pretty ident) <+>
-                     "to either a" <+> squotes (pretty List) <+> "or" <+>
-                     squotes (pretty Tensor) <> "."
-      }
-
-    DatasetInvalidElementType ident p tCont -> UError $ UserError
-      { provenance = p
-      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
-                     "for the elements of the" <+> prettyResource Dataset ident <> "."
-      , fix        = Just $ "change the type to one of" <+> elementTypes <> "."
-      } where elementTypes = pretty @[Builtin] ([Index] <> fmap NumericType [Nat, Int, Rat])
-
-    DatasetVariableSizeTensor ident p tCont -> UError $ UserError
-      { provenance = p
-      , problem    = "A tensor with variable dimensions" <+> squotes (prettyFriendly tCont) <+>
-                     "is not a supported type for the" <+> prettyResource Dataset ident <> "."
-      , fix        = Just "make sure the dimensions of the dataset are all constants."
-      }
-
-    DatasetInvalidNat ident p v -> UError $ UserError
-      { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected elements of type" <+> squotes (prettyFriendly nat) <+>
-                     "but found value" <+> squotes (pretty v)
-      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
-                     "update the type of the dataset in the Vehicle specification."
-      } where (nat :: CheckedExpr) = NatType mempty
-
-    DatasetInvalidIndex ident p v n -> UError $ UserError
-      { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected elements of type" <+> squotes (prettyFriendly fin) <+>
-                     "but found value" <+> squotes (pretty v)
-      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
-                     "update the type of the dataset in the Vehicle specification."
-      }
-      where (fin :: CheckedExpr) = IndexType mempty (NatLiteralExpr mempty (NatType mempty) n)
-
-    DatasetDimensionMismatch ident p expectedDims actualDims -> UError $ UserError
-      { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected dimensions to be" <+> pretty expectedDims <+>
-                     "but found dimensions" <+> pretty actualDims
-      , fix        = Just "correct the dataset dimensions in the Vehicle specification."
-      }
-
-    DatasetTypeMismatch ident p expectedType actualType -> UError $ UserError
-      { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected dataset elements to be of type" <+> prettyFriendly expectedType <+>
-                     "but found elements of type" <+> pretty actualType
-      , fix        = Just "correct the dataset type in the Vehicle specification."
       }
 -}

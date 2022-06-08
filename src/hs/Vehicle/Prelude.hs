@@ -3,6 +3,7 @@ module Vehicle.Prelude
   ( module X
   , VehicleLang(..)
   , Negatable(..)
+  , InputOrOutput(..)
   , vehicleVersion
   , (|->)
   , (!?)
@@ -129,6 +130,17 @@ partialSort partialCompare xs = sortedNodes
 
 class Negatable a where
   neg :: a -> a
+
+-- | Used to distinguish between inputs and outputs of neural networks.
+data InputOrOutput
+  = Input
+  | Output
+  deriving (Show, Eq)
+
+instance Pretty InputOrOutput where
+  pretty = \case
+    Input  -> "input"
+    Output -> "output"
 
 --------------------------------------------------------------------------------
 -- IO operations

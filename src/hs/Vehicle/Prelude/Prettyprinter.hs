@@ -60,8 +60,8 @@ hcat = concatWith (<>)
 vcat :: Foldable t => t (Doc ann) -> Doc ann
 vcat = concatWith (\x y -> x <> line' <> y)
 
-prettyFlatList :: Pretty a => [a] -> Doc ann
-prettyFlatList xs = "[" <+> concatWith (surround ", ") (pretty <$> xs) <+> "]"
+prettyFlatList :: [Doc ann] -> Doc ann
+prettyFlatList xs = "[" <+> concatWith (surround ", ") xs <+> "]"
 
 --------------------------------------------------------------------------------
 -- Useful utility functions

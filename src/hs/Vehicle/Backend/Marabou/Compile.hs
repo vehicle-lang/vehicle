@@ -16,14 +16,14 @@ import Vehicle.Compile.Normalise.DNF (convertToDNF, splitDisjunctions)
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Marabou.Core
-import Vehicle.Resource.NeuralNetwork
+import Vehicle.Compile.Resource
 import Vehicle.Compile.Linearity
 
 --------------------------------------------------------------------------------
 -- Compilation to Marabou
 
 -- | Compiles the provided program to Marabou queries.
-compile :: MonadCompile m => NetworkCtx -> CheckedProg -> m [(Symbol, MarabouProperty)]
+compile :: MonadCompile m => NetworkContext -> CheckedProg -> m [(Symbol, MarabouProperty)]
 compile networkCtx prog = logCompilerPass "compilation to Marabou" $ do
   results <- compileProg networkCtx prog
   if null results then
@@ -34,10 +34,10 @@ compile networkCtx prog = logCompilerPass "compilation to Marabou" $ do
 --------------------------------------------------------------------------------
 -- Algorithm
 
-compileProg :: MonadCompile m => NetworkCtx -> CheckedProg -> m [(Symbol, MarabouProperty)]
+compileProg :: MonadCompile m => NetworkContext -> CheckedProg -> m [(Symbol, MarabouProperty)]
 compileProg networkCtx (Main ds) = catMaybes <$> traverse (compileDecl networkCtx) ds
 
-compileDecl :: MonadCompile m => NetworkCtx -> CheckedDecl -> m (Maybe (Symbol, MarabouProperty))
+compileDecl :: MonadCompile m => NetworkContext -> CheckedDecl -> m (Maybe (Symbol, MarabouProperty))
 compileDecl networkCtx d = case d of
   DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
 
@@ -52,7 +52,7 @@ compileDecl networkCtx d = case d of
 
 compileProperty :: MonadCompile m
                 => Identifier
-                -> NetworkCtx
+                -> NetworkContext
                 -> CheckedExpr
                 -> m MarabouProperty
 compileProperty ident networkCtx (SeqExpr _ _ _ es) =
@@ -66,11 +66,11 @@ compileProperty ident networkCtx expr =
       checkQuantifiersAndNegateIfNecessary MarabouBackend ident expr
 
     -- Normalise the expression to push through the negation.
-    normExpr <- normalise (defaultNormalisationOptions
+    normExpr <- normalise possiblyNegatedExpr $ defaultNormalisationOptions
       { implicationsToDisjunctions = True
       , subtractionToAddition      = True
       , expandOutPolynomials       = True
-      }) possiblyNegatedExpr
+      }
 
     -- Eliminate any if-expressions
     ifFreeExpr <- eliminateIfs normExpr
@@ -78,11 +78,11 @@ compileProperty ident networkCtx expr =
     -- Normalise again to push through the introduced nots. Can definitely be
     -- more efficient here and just push in the not, when we introduce
     -- it during if elimination.
-    normExpr2 <- normalise (defaultNormalisationOptions
+    normExpr2 <- normalise ifFreeExpr $ defaultNormalisationOptions
       { implicationsToDisjunctions = True
       , subtractionToAddition      = True
       , expandOutPolynomials       = True
-      }) ifFreeExpr
+      }
 
     -- Convert to disjunctive normal form
     dnfExpr <- convertToDNF normExpr2
@@ -100,7 +100,7 @@ compileProperty ident networkCtx expr =
 
 compileQuery :: MonadCompile m
              => Identifier
-             -> NetworkCtx
+             -> NetworkContext
              -> (Int, CheckedExpr)
              -> m MarabouQuery
 compileQuery ident networkCtx (queryId, expr) =

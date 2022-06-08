@@ -1,13 +1,13 @@
-network f : Rat -> Rat
+network f : Tensor Rat [1] -> Tensor Rat [1]
 
 prop1 : Bool
-prop1 = forall x . if x > 0 then f x > 0 else f x <= 0
+prop1 = forall x . if x > 0 then f [x] ! 0 > 0 else f [x] ! 0 <= 0
 
 -- prop2 : Bool
--- prop2 = exists x . f (if x > 0 then x else 0.2) >= 0
+-- prop2 = exists x . f [if x > 0 then x else 0.2] >= 0
 
 prop3 : Bool
-prop3 = exists x . if f x > 0 then x >= 0 else x < 0
+prop3 = exists x . if f [x] ! 0 > 0 then x >= 0 else x < 0
 
 -- Re-enable once tensors have been sorted out.
 

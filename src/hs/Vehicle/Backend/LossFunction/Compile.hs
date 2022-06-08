@@ -10,7 +10,7 @@ import Data.Maybe (catMaybes)
 
 import Vehicle.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Resource.NeuralNetwork
+import Vehicle.Compile.Resource (NetworkContext)
 import Vehicle.Language.AST qualified as V
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Language.Print
@@ -55,7 +55,7 @@ instance ToJSON LExpr where
 --------------------------------------------------------------------------------
 -- Compilation
 
-compile :: MonadCompile m => NetworkCtx -> V.CheckedProg -> m [LExpr]
+compile :: MonadCompile m => NetworkContext -> V.CheckedProg -> m [LExpr]
 compile _ (V.Main ds) = catMaybes <$> traverse compileDecl ds
 
 compileDecl :: MonadCompile m => V.CheckedDecl -> m (Maybe LExpr)

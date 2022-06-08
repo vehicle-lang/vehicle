@@ -1,1 +1,1 @@
-dataset trainingDataset : List (List Nat)
+dataset trainingDataset : List (Nat -> Nat)

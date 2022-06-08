@@ -8,14 +8,17 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
+open import Vehicle.Data.Tensor
 open import Data.Rational as ℚ using (ℚ)
+open import Data.Fin as Fin using (Fin; #_)
+open import Data.List
 
 module increasing-temp-output where
 
-postulate f : ℚ → ℚ
+postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 
 abstract
-  increasing : ∀ (x : ℚ) → x ℚ.≤ f x
+  increasing : ∀ (x : ℚ) → x ℚ.≤ f (x ∷ []) (# 0)
   increasing = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

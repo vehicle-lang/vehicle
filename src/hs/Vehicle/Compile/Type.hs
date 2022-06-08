@@ -21,6 +21,8 @@ import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Defaults
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.WeakHeadNormalForm
+import Vehicle.Compile.Resource
+import Vehicle.Compile.Normalise as Norm
 
 -------------------------------------------------------------------------------
 -- Algorithm
@@ -120,6 +122,12 @@ typeCheckDecl d = do
     result@(resultDecl, _, _) <- case d of
       DefResource p r _ _ -> do
         substType <- solveConstraintsAndUpdateType
+        declCtx <- getDeclCtx
+        whnfType <- normalise substType $ defaultNormalisationOptions
+          { Norm.declContext = declCtx
+          }
+
+        checkResourceType r p ident whnfType
         let checkedDecl = DefResource p r ident substType
         return (checkedDecl, Nothing, substType)
 

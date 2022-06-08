@@ -82,6 +82,8 @@ library
                       , Vehicle.Compile.Normalise.QuantifierLifting
                       , Vehicle.Compile.Normalise.DNF
                       , Vehicle.Compile.Normalise.UserVariables
+                      , Vehicle.Compile.Resource
+                      , Vehicle.Compile.Resource.Core
                       , Vehicle.Compile.Resource.Network
                       , Vehicle.Compile.Resource.Dataset
                       , Vehicle.Compile.Resource.Parameter
@@ -103,7 +105,6 @@ library
                       , Vehicle.Backend.LossFunction
 
                       , Vehicle.Resource
-                      , Vehicle.Resource.NeuralNetwork
 
   other-modules:        Vehicle.Prelude.Prettyprinter
                       , Vehicle.Prelude.Token

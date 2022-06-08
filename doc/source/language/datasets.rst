@@ -19,9 +19,15 @@ Datasets are declared as follows using the :code:`dataset` keyword:
 
    dataset myDataset : Tensor Rat [784]
 
-Datasets should either be of the type :code:`List` or :code:`Tensor`, and can
-contain elements of any numeric type,
-e.g. :code:`Index n`, :code:`Nat`, :code:`Int`, :code:`Rat` etc,
+Datasets can be any type :code:`t` that can be constructed from the following
+grammar:
+
+.. code-block:: agda
+
+   t ::= List t | Tensor t dims | s
+   s ::= Index n | Nat | Int | Rat
+
+where :code:`dims` is a list of known constants and :code:`n` is also a known constant.
 
 Once declared, datasets can be used as any other named ::code:`List` or :code:`Tensor`
 would be, e.g.

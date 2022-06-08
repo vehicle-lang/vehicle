@@ -20,14 +20,12 @@ Parameters can be declared using the :code:`parameter` keyword as follows:
 
    parameter epsilon : Rat
 
+Parameters can be of the following types: :code:`Bool`, :code:`Index n`,
+:code:`Nat`, :code:`Int`, :code:`Rat`.
+
 Similar to networks and datasets, parameters are passed in at compile time via
 the :code:`--parameter` command line option. For example setting :code:`epsilon` to
 the value :code:`0.1` can be achieved using :code:`--parameter epsilon:0.1`.
-
-Unlike networks and datasets, there are no restrictions on the type of
-parameters and, in theory, their value can be any valid Vehicle expression.
-However, in practice we recommend to restrict to passing numeric or boolean
-constants.
 
 Implicit parameters
 -------------------

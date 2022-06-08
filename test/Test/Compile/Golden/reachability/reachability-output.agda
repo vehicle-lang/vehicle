@@ -17,10 +17,10 @@ open import Relation.Binary.PropositionalEquality
 
 module reachability-temp-output where
 
-postulate f : Tensor ℚ (2 ∷ []) → ℚ
+postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ (1 ∷ [])
 
 abstract
-  reachable : ∃ λ (x : Tensor ℚ (2 ∷ [])) → f x ≡ ℤ.+ 0 ℚ./ 1
+  reachable : ∃ λ (x : Tensor ℚ (2 ∷ [])) → f x ≡ ℤ.+ 0 ℚ./ 1 ∷ []
   reachable = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
