@@ -164,7 +164,7 @@ instance Pretty Origin where
   pretty (FromSource ranges) = case ranges of
     []  -> "no source location"
     [r] -> pretty r
-    rs  -> concatWith (\u v -> u <> "," <> v) (map pretty rs)
+    rs  -> concatWith (\u v -> u <+> "and" <+> v) (map pretty rs)
   pretty (FromParameter name) = "parameter" <+> squotes (pretty name)
   pretty (FromDataset   name) = "in dataset" <+> squotes (pretty name)
 

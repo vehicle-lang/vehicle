@@ -16,6 +16,7 @@ module Vehicle.Compile.Type.Meta
   , popActivatedConstraints
   , getMetaSubstitution
   , modifyMetaSubstitution
+  , clearMetaSubstitution
   , getUnsolvedMetas
   , getMetaInfo
   , MonadConstraintSolving
@@ -208,6 +209,9 @@ getMetaSubstitution = gets currentSubstitution
 modifyMetaSubstitution :: MonadState MetaCtx m => (MetaSubstitution -> MetaSubstitution) -> m ()
 modifyMetaSubstitution f = modifyMetaCtx $ \ MetaCtx {..} ->
   MetaCtx { currentSubstitution = f currentSubstitution, ..}
+
+clearMetaSubstitution :: MonadState MetaCtx m => m ()
+clearMetaSubstitution = modifyMetaSubstitution (const mempty)
 
 modifyMetaCtx :: MonadState MetaCtx m => (MetaCtx -> MetaCtx) -> m ()
 modifyMetaCtx = modify

@@ -409,9 +409,9 @@ instance MeaningfulError CompileError where
     -- Backend errors --
     --------------------
 
-    UnsupportedResource target ann ident resource ->
+    UnsupportedResource target ident p resource ->
       let dType = squotes (pretty resource) in UError $ UserError
-      { provenance = provenanceOf ann
+      { provenance = p
       , problem    = "While compiling property" <+> squotes (pretty ident) <+> "to" <+>
                      pretty target <+> "found a" <+> dType <+> "declaration which" <+>
                      "cannot be compiled."
@@ -419,27 +419,24 @@ instance MeaningfulError CompileError where
                      "different compilation target."
       }
 
-    UnsupportedQuantifierSequence target p ident q -> UError $ UserError
+    UnsupportedSequentialQuantifiers target ident p q pq pp -> UError $ UserError
       { provenance = p
-      , problem    = "While compiling property" <+> squotes (pretty ident) <+> "to" <+>
-                     pretty target <+> "found a" <+> prettyQuant q <+> "quantifier after" <+>
-                     "the opposite quantifier. Only homogeneous sequences of" <+>
-                     prettyQuant Forall <+> "s or" <+> prettyQuant Exists <+>
-                     "quantifiers are currently supported."
-      , fix        = Just "if possible try reformulating your property in terms of a single quantifier type."
-      } where prettyQuant quant = squotes (pretty (Quant quant))
+      , problem    = "The property" <+> squotes (pretty ident) <+> "contains" <+>
+                     "a sequence of quantifiers unsupported by" <+> pretty target <> "." <>
+                     line <>
+                     pretty target <+> "cannot verify properties that mix both" <+>
+                     squotes (pretty Forall) <+> "and" <+> squotes (pretty Exists) <+>
+                     "quantifiers." <>
+                     line <>
+                     "In particular the" <+> squotes (pretty q) <+> "at" <+>
+                     pretty pq <+> "clashes with" <+>
+                     prettyPolarityProvenance (neg q) pp
+      , fix        = Just $ "if possible try reformulating" <+> squotes (pretty ident) <+>
+                    "in terms of a single type of quantifier."
+      }
 
-    UnsupportedQuantifierPosition target p ident quantifier name -> UError $ UserError
+    UnsupportedVariableType target ident p name t supportedTypes -> UError $ UserError
       { provenance = p
-      , problem    = "While compiling property" <+> squotes (pretty ident) <+> "to" <+>
-                     pretty target <+> "found a non top-level quantifier" <+>
-                     squotes (prettyQuant quantifier <+> pretty name) <+> "which is not" <+>
-                     "currently supported when compiling to" <+> pretty target <> "."
-      , fix        = Just "refactor your property to lift the quantifier to the top-level."
-      } where prettyQuant quant = squotes (pretty (Quant quant))
-
-    UnsupportedVariableType target ann ident name t supportedTypes -> UError $ UserError
-      { provenance = provenanceOf ann
       , problem    = "When compiling property" <+> squotes (pretty ident) <+> "to" <+>
                      pretty target <+> "found a quantified variable" <+> squotes (pretty name) <+> "of type" <+>
                      squotes (prettyFriendlyDBClosed t) <+> "which is not currently supported" <+>
@@ -456,7 +453,7 @@ instance MeaningfulError CompileError where
                      "Vehicle issue tracker."
       }
 
-    UnsupportedInequality target p identifier -> UError $ UserError
+    UnsupportedInequality target identifier p -> UError $ UserError
       { provenance = p
       , problem    = "After compilation, property" <+> squotes (pretty identifier) <+>
                      "contains a `!=` which is not current supported by" <+>
@@ -492,7 +489,6 @@ instance MeaningfulError CompileError where
       , fix        = Just $ "try avoiding it, otherwise please open an issue on the" <+>
                      "Vehicle issue tracker."
       }
-
 
     NoPropertiesFound -> UError $ UserError
       { provenance = mempty
@@ -541,6 +537,29 @@ unsolvedConstraintError constraint ctx ="Typing error: not enough information to
 
 prettyResource :: ResourceType -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
+
+prettyPolarityProvenance :: Quantifier -> PolarityProvenance -> Doc a
+prettyPolarityProvenance quantifier = \case
+  QuantifierProvenance p ->
+    "the" <+> squotes (pretty quantifier) <+> "at" <+> pretty p
+  polProv ->
+    prettyQuantifierArticle quantifier <+>
+    "derived as follows:" <> line <>
+    indent 2 (numberedList $ reverse (go quantifier polProv))
+  where
+    go :: Quantifier -> PolarityProvenance -> [Doc a]
+    go q = \case
+      QuantifierProvenance p ->
+        ["the" <+> squotes (pretty q) <+> "is originally located at" <+> pretty p]
+      LHSImpliesProvenance p pp ->
+        "which is turned into" <+> prettyQuantifierArticle q <+>
+        "by being on the LHS of the" <+> squotes (pretty (BooleanOp2 Impl)) <+>
+        "at" <+> pretty p
+        : go (neg q) pp
+      NegationProvenance p pp ->
+        "which is turned into" <+> prettyQuantifierArticle q <+>
+        "by the" <+> squotes (pretty Not) <+> "at" <+> pretty p
+        : go (neg q) pp
 
 --------------------------------------------------------------------------------
 -- Constraint error messages

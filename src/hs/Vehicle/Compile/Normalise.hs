@@ -303,6 +303,12 @@ nfQuantifier ann q binder body = case typeOf binder of
         let e = QuantifierInExpr q ann tCont binder body cont
         Just $ nf e
 
+  t@BoolType{} -> do
+    let tCont = ListType ann t
+    let cont  = SeqExpr ann t tCont [FalseExpr ann, TrueExpr ann]
+    let e = QuantifierInExpr q ann tCont binder body cont
+    Just $ nf e
+
   _ -> Nothing
 
 nfForeach :: MonadNorm m

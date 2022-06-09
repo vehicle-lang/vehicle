@@ -221,7 +221,7 @@ removeUserQuantifiers ident (ExistsExpr ann binder body) = do
       (result, binders) <- removeUserQuantifiers ident body
       return (result, n : binders)
     t -> do
-      throwError $ UnsupportedVariableType MarabouBackend ann ident n t supportedTypes
+      throwError $ UnsupportedVariableType MarabouBackend ident ann n t supportedTypes
 removeUserQuantifiers _ e = return (e, [])
 
 -- | We lift all network applications regardless if they are duplicated or not to
@@ -325,18 +325,18 @@ compileAssertions :: MonadSMT m
                   => CheckedExpr
                   -> m [Assertion]
 compileAssertions expr = case expr of
-  Type{}           -> typeError          currentPass "Type"
-  Pi{}             -> typeError          currentPass "Pi"
-  Hole{}           -> resolutionError    currentPass "Hole"
-  Meta{}           -> resolutionError    currentPass "Meta"
-  Ann{}            -> normalisationError currentPass "Ann"
-  Lam{}            -> normalisationError currentPass "Lam"
-  Let{}            -> normalisationError currentPass "Let"
-  LSeq{}           -> normalisationError currentPass "LSeq"
-  PrimDict{}       -> visibilityError    currentPass "PrimDict"
-  Builtin{}        -> normalisationError currentPass "LSeq"
-  QuantifierExpr{} -> normalisationError currentPass "Quantifier"
-  Var{}            -> caseError          currentPass "Var" ["Order", "Eq"]
+  Type{}                 -> typeError          currentPass "Type"
+  Pi{}                   -> typeError          currentPass "Pi"
+  Hole{}                 -> resolutionError    currentPass "Hole"
+  Meta{}                 -> resolutionError    currentPass "Meta"
+  Ann{}                  -> normalisationError currentPass "Ann"
+  Lam{}                  -> normalisationError currentPass "Lam"
+  Let{}                  -> normalisationError currentPass "Let"
+  LSeq{}                 -> normalisationError currentPass "LSeq"
+  PrimDict{}             -> visibilityError    currentPass "PrimDict"
+  Builtin{}              -> normalisationError currentPass "LSeq"
+  QuantifierExpr q _ _ _ -> normalisationError currentPass (pretty q)
+  Var{}                  -> caseError          currentPass "Var" ["Order", "Eq"]
 
   Literal _ann l -> case l of
     LBool _ -> normalisationError currentPass "LBool"
@@ -359,7 +359,7 @@ compileAssertions expr = case expr of
   EqualityExpr eq ann _ [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
     Neq -> do
       (_, ident, _, _, _, _) <- ask
-      throwError $ UnsupportedInequality MarabouBackend ann ident
+      throwError $ UnsupportedInequality MarabouBackend ident ann
     Eq  -> do
       assertion <- compileAssertion Equals e1 e2
       return [assertion]

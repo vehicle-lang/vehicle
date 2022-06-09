@@ -87,16 +87,15 @@ data CompileError
 
   -- Backend errors
   | NoPropertiesFound
-  | UnsupportedResource            Backend Provenance Identifier ResourceType
-  | UnsupportedQuantifierSequence  Backend Provenance Identifier Quantifier
-  | UnsupportedQuantifierPosition  Backend Provenance Identifier Quantifier Symbol
-  | UnsupportedVariableType        Backend Provenance Identifier Symbol CheckedExpr [Builtin]
-  | UnsupportedInequality          Backend Provenance Identifier
-  | UnsupportedPolymorphicEquality Backend Provenance Symbol
-  | UnsupportedBuiltin             Backend Provenance Builtin
-  | UnsupportedNonMagicVariable    Backend Provenance Symbol
-  | NonLinearConstraint            Backend Provenance Identifier [DBBinding] CheckedExpr CheckedExpr
-  | NoNetworkUsedInProperty        Backend Provenance Identifier
+  | UnsupportedResource              Backend Identifier Provenance ResourceType
+  | UnsupportedSequentialQuantifiers Backend Identifier Provenance Quantifier Provenance PolarityProvenance
+  | UnsupportedVariableType          Backend Identifier Provenance Symbol CheckedExpr [Builtin]
+  | UnsupportedInequality            Backend Identifier Provenance
+  | UnsupportedPolymorphicEquality   Backend Provenance Symbol
+  | UnsupportedBuiltin               Backend Provenance Builtin
+  | UnsupportedNonMagicVariable      Backend Provenance Symbol
+  | NonLinearConstraint              Backend Provenance Identifier [DBBinding] CheckedExpr CheckedExpr
+  | NoNetworkUsedInProperty          Backend Provenance Identifier
   deriving (Show)
 
 --------------------------------------------------------------------------------

@@ -11,6 +11,7 @@ module Vehicle.Language.AST.Builtin
   , BooleanOp2(..)
   , NumericOp2(..)
   , Polarity(..)
+  , PolarityProvenance(..)
   , PolarityTypeClass(..)
   , builtinFromSymbol
   , symbolFromBuiltin
@@ -18,6 +19,7 @@ module Vehicle.Language.AST.Builtin
   , flipStrictness
   , flipOrder
   , chainable
+  , prettyQuantifierArticle
   ) where
 
 import Data.Bifunctor (first)
@@ -120,6 +122,13 @@ instance Hashable Quantifier
 instance Negatable Quantifier where
   neg Forall = Exists
   neg Exists = Forall
+
+instance Pretty Quantifier where
+  pretty = pretty . show
+
+prettyQuantifierArticle :: Quantifier -> Doc a
+prettyQuantifierArticle q =
+  (if q == Forall then "a" else "an") <+> squotes (pretty q)
 
 --------------------------------------------------------------------------------
 -- Equality
@@ -259,37 +268,46 @@ instance Hashable Linearity
 
 -- | Used to track where the polarity information came from.
 data PolarityProvenance
-  = QuantifierProv Provenance
-  | NegationProv Provenance PolarityProvenance
-  deriving (Eq, Show, Generic)
+  = QuantifierProvenance Provenance
+  | LHSImpliesProvenance Provenance PolarityProvenance
+  | NegationProvenance Provenance PolarityProvenance
+  deriving (Generic)
+
+instance Show PolarityProvenance where
+  show _x = ""
+
+instance Eq PolarityProvenance where
+  _x == _y = True
 
 instance NFData PolarityProvenance where
   rnf _x = ()
 
 instance Hashable PolarityProvenance where
-  hashWithSalt _n _p = 0
-
+  hashWithSalt s _p = s
 
 -- | Used to annotate boolean types, represents what sort of pattern of
 -- quantifiers it contains.
+--
 data Polarity
   = Unquantified
-  | Quantified Quantifier --PolarityProvenance
-  | MixedParallel --PolarityProvenance PolarityProvenance
-  | MixedSequential --PolarityProvenance PolarityProvenance
+  | Quantified Quantifier PolarityProvenance
+  -- | Stores the provenance of the `Forall` first followed by the `Exists`.
+  | MixedParallel PolarityProvenance PolarityProvenance
+  -- | Stores the type and provenance of the top-most quantifier first.
+  | MixedSequential Quantifier Provenance PolarityProvenance
   deriving (Eq, Show, Generic)
 
 instance NFData Polarity
 
 instance Hashable Polarity
-
+{-
 instance Negatable Polarity where
   neg = \case
     Unquantified    -> Unquantified
     Quantified q    -> Quantified $ neg q
     MixedParallel   -> MixedParallel
     MixedSequential -> MixedSequential
-
+-}
 data PolarityTypeClass
   = HasNot
   | HasAndOr

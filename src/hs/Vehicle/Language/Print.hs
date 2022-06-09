@@ -286,7 +286,7 @@ instance (PrettyUsing rest CheckedExpr)
   prettyUsing (TC _ (m `Has` e))      = pretty m <+> "<=" <+> prettyUsing @rest e
     -- <+> "<boundCtx=" <> pretty (ctxNames (boundContext c)) <> ">"
     -- <+> parens (pretty (provenanceOf c))
-  prettyUsing (PC _ e)                = "Polarity[" <> prettyUsing @rest e <> "]"
+  prettyUsing (PC _ e)                = prettyUsing @rest e
 
 instance PrettyUsing rest CheckedExpr
       => PrettyUsing ('Opaque rest) MetaSubstitution where

@@ -73,10 +73,11 @@ pattern RatType ann = BuiltinNumericType ann Rat
 pattern BoolType :: Provenance -> Expr binder var
 pattern BoolType ann = Builtin ann Bool
 
-pattern AnnotatedBoolType :: Provenance -> Polarity -> Expr binder var
-pattern AnnotatedBoolType ann p <- App ann (BoolType _)
-  [ ImplicitArg _ (Builtin _ (Polarity p))
-  ]
+pattern AnnotatedBoolType :: Provenance -> Expr binder var -> Expr binder var
+pattern AnnotatedBoolType ann t <-
+  App ann (BoolType _)
+    [ ImplicitArg _ t
+    ]
 
 --------------------------------------------------------------------------------
 -- Container

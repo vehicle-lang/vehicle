@@ -30,12 +30,6 @@ isMeta Meta{}           = True
 isMeta (App _ Meta{} _) = True
 isMeta _                = False
 
-isFinite :: Expr binder var -> Bool
-isFinite BoolType{}             = True
-isFinite IndexType{}            = True
-isFinite (TensorType _ tElem _) = isFinite tElem
-isFinite _                      = False
-
 isAuxiliaryTypeClass :: Expr binder var -> Bool
 isAuxiliaryTypeClass e = case exprHead e of
   Builtin _ PolarityTypeClass{} -> True

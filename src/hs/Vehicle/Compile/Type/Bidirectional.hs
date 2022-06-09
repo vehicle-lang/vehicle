@@ -525,7 +525,7 @@ typeOfImpl =
   forall tAux $ \pol1 ->
     forall tAux $ \pol2 ->
       forall tAux $ \pol3 ->
-        hasAndOr pol1 pol2 pol3 ~~~> tBool pol1 ~> tBool pol2 ~> tBool pol3
+        hasImpl pol1 pol2 pol3 ~~~> tBool pol1 ~> tBool pol2 ~> tBool pol3
 
 typeOfNumOp2 :: (DSLExpr -> DSLExpr) -> DSLExpr
 typeOfNumOp2 numConstraint =

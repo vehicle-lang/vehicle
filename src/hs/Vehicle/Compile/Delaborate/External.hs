@@ -20,7 +20,7 @@ import Vehicle.Compile.Prelude
 type MonadDelab m = MonadLogger m
 
 tokArrow = mkToken B.TokArrow "->"
-tokForallT = mkToken B.TokForallT "forall"
+tokForallT = mkToken B.TokForallT "forallT"
 tokIf = mkToken B.TokIf "if"
 tokThen = mkToken B.TokThen "then"
 tokElse = mkToken B.TokElse "else"

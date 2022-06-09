@@ -1,11 +1,9 @@
+{-# LANGUAGE ViewPatterns #-}
 
 -- | File for solving the boolean polarity annotations
 module Vehicle.Compile.Type.Auxiliary.Polarity
   ( solvePolarityConstraint
   ) where
-
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty (init)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta
@@ -28,13 +26,12 @@ solvePolarityConstraint ctx e@(App _ (Builtin _ (PolarityTypeClass tc)) args) = 
     Nothing -> compilerDeveloperError $
       "Found non-explicit arguments in polarity constraint:" <+> squotes (prettyVerbose e)
 
-  blockOnMetas argExprs $ case (tc, argExprs) of
-    (HasNot,          [Pol pol1, res])           -> solveHasNot        c pol1 res
-    (HasAndOr,        [Pol pol1, Pol pol2, res]) -> solveHasAndOr      c pol1 pol2 res
-    (HasImpl,         [Pol pol1, Pol pol2, res]) -> solveHasImpl       c pol1 pol2 res
-    (HasQuantifier q, [domain, Pol pol1, res])   -> solveHasQuantifier c q domain pol1 res
-    _ -> compilerDeveloperError $
-      "Malformed polarity constraint: " <+> squotes (prettyVerbose e)
+  case (tc, argExprs) of
+    (HasNot,          [arg, res])         -> solveHasNot   c arg res
+    (HasAndOr,        [arg1, arg2, res])  -> solveHasAndOr c arg1 arg2 res
+    (HasImpl,         [arg1, arg2, res])  -> solveHasImpl  c arg1 arg2 res
+    (HasQuantifier q, [domain, arg, res]) -> solveHasQuantifier c q domain arg res
+    _                                     -> malformedConstraint c
 
 solvePolarityConstraint _ctx e = compilerDeveloperError $
   "Unknown polarity type-class" <+> squotes (prettyVerbose e)
@@ -42,82 +39,126 @@ solvePolarityConstraint _ctx e = compilerDeveloperError $
 --------------------------------------------------------------------------------
 -- Solutions
 
+negatePolarity :: (PolarityProvenance -> PolarityProvenance)
+               -> Polarity
+               -> Polarity
+negatePolarity negProv = \case
+  Unquantified              -> Unquantified
+  Quantified      q pp      -> Quantified (neg q) (negProv pp)
+  MixedParallel     pp1 pp2 -> MixedParallel   (negProv pp2) (negProv pp1)
+  -- We don't negate a mixed sequential polarity as its the top of the polarity
+  -- lattice and we want to give as meaningful and localised error messages
+  -- as possible.
+  pol@MixedSequential{}     -> pol
+
 solveHasNot :: MonadConstraintSolving m
             => Constraint
-            -> Polarity
+            -> CheckedExpr
             -> CheckedExpr
             -> m ConstraintProgress
-solveHasNot c Unquantified    res = unify c res Unquantified
-solveHasNot c (Quantified q)  res = unify c res (Quantified (neg q))
-solveHasNot c MixedParallel   res = unify c res MixedParallel
-solveHasNot c MixedSequential res = unify c res MixedSequential
+solveHasNot _ (exprHead -> Meta _ v) _   = blockOnMetas [v]
+solveHasNot c (Pol _ pol)            res = do
+  let negPol = negatePolarity (NegationProvenance (provenanceOf c)) pol
+  return $ unifyPolarity c res negPol
+solveHasNot c _ _ = malformedConstraint c
+
+solveHasImpl :: MonadConstraintSolving m
+             => Constraint
+             -> CheckedExpr
+             -> CheckedExpr
+             -> CheckedExpr
+             -> m ConstraintProgress
+solveHasImpl _ (exprHead -> Meta _ v)   _    _   = blockOnMetas [v]
+solveHasImpl c (Pol p pol1)             arg2 res = do
+  let arg1 = Pol p $ negatePolarity (LHSImpliesProvenance (provenanceOf c)) pol1
+  solveHasAndOr c arg1 arg2 res
+solveHasImpl c _ _ _ = malformedConstraint c
 
 solveHasAndOr :: MonadConstraintSolving m
               => Constraint
-              -> Polarity
-              -> Polarity
+              -> CheckedExpr
+              -> CheckedExpr
               -> CheckedExpr
               -> m ConstraintProgress
-solveHasAndOr c Unquantified    pol2            res  = unify c res pol2
-solveHasAndOr c pol1            Unquantified    res = unify c res pol1
-solveHasAndOr c (Quantified q1) (Quantified q2) res
-  | q1 == q2  = unify c res (Quantified q1)
-  | otherwise = unify c res MixedParallel
-solveHasAndOr c Quantified{}    MixedParallel   res = unify c res MixedParallel
-solveHasAndOr c MixedParallel   Quantified{}    res = unify c res MixedParallel
-solveHasAndOr c MixedParallel   MixedParallel   res = unify c res MixedParallel
-solveHasAndOr c MixedSequential _               res = unify c res MixedSequential
-solveHasAndOr c _               MixedSequential res = unify c res MixedSequential
-
-solveHasImpl :: MonadConstraintSolving m
-              => Constraint
-              -> Polarity
-              -> Polarity
-              -> CheckedExpr
-              -> m ConstraintProgress
-solveHasImpl c pol1 = solveHasAndOr c (neg pol1)
+solveHasAndOr _ (exprHead -> Meta _ m1) _ _   = blockOnMetas [m1]
+solveHasAndOr _ _ (exprHead -> Meta _ m2) _   = blockOnMetas [m2]
+solveHasAndOr c (Pol _ pol1) (Pol _ pol2) res =
+  return $ unifyPolarity c res $ case (pol1, pol2) of
+    (Unquantified,      _)            -> pol2
+    (_,                 Unquantified) -> pol1
+    (Quantified q1 pp1, Quantified q2 pp2)
+      | q1 == q2     -> pol1
+      | q1 == Forall -> MixedParallel pp1 pp2
+      | otherwise    -> MixedParallel pp2 pp1
+    (Quantified{},      MixedParallel{})   -> pol2
+    (MixedParallel{},   Quantified{})      -> pol1
+    (MixedParallel{},   MixedParallel{})   -> pol1
+    (MixedSequential{}, _)                 -> pol1
+    (_,                 MixedSequential{}) -> pol2
+solveHasAndOr c _ _ _ = malformedConstraint c
 
 solveHasQuantifier :: MonadConstraintSolving m
                    => Constraint
                    -> Quantifier
                    -> CheckedExpr
-                   -> Polarity
+                   -> CheckedExpr
                    -> CheckedExpr
                    -> m ConstraintProgress
-solveHasQuantifier c q domain pol res
-  | isFinite domain = unify c res pol
-  | otherwise       = case pol of
-    Unquantified    -> unify c res (Quantified q)
-    MixedParallel   -> unify c res MixedSequential
-    MixedSequential -> unify c res MixedSequential
-    Quantified q'
-      | q == q'   -> unify c res (Quantified q)
-      | otherwise -> unify c res MixedSequential
+solveHasQuantifier _ _ (exprHead -> Meta _ m) _ _ = blockOnMetas [m]
+solveHasQuantifier c q domain     arg res =
+  case checkIfFinite domain of
+    Finite Nothing               -> return $ unify c arg res
+    Finite (Just domainPolarity) -> return $ unify c arg res <> unifyPolarity c domainPolarity Unquantified
+    Infinite -> do
+      let p = provenanceOf c
+      case exprHead arg of
+        Meta _ m    -> blockOnMetas [m]
+        (Pol _ pol) -> return $ unifyPolarity c res $ case pol of
+          Unquantified          -> Quantified q (QuantifierProvenance p)
+          Quantified q' pp      -> if q == q' then pol else MixedSequential q p pp
+          MixedParallel pp1 pp2 -> MixedSequential q p (if q == Forall then pp2 else pp1)
+          MixedSequential{}     -> pol
+        _ -> malformedConstraint c
 
 --------------------------------------------------------------------------------
 -- Utils
 
-pattern Pol :: Polarity -> Expr binder var
-pattern Pol p <- Builtin _ (Polarity p)
+pattern Pol :: Provenance -> Polarity -> Expr binder var
+pattern Pol p pol = Builtin p (Polarity pol)
 
-unify :: MonadConstraintSolving m
-      => Constraint
+data Finiteness
+  = Infinite
+  | Finite (Maybe CheckedExpr)
+
+checkIfFinite :: CheckedExpr -> Finiteness
+checkIfFinite = \case
+  AnnotatedBoolType _ t  -> Finite (Just t)
+  IndexType{}            -> Finite Nothing
+  (TensorType _ tElem _) -> checkIfFinite tElem
+  _                      -> Infinite
+
+unify :: Constraint
       -> CheckedExpr
-      -> Polarity
-      -> m ConstraintProgress
-unify c e1 pol = return $ Progress
-  { newConstraints = [UC ctx $ Unify (e1, Builtin (provenanceOf ctx) (Polarity pol))]
+      -> CheckedExpr
+      -> ConstraintProgress
+unify c e1 e2 = Progress
+  { newConstraints = [UC ctx $ Unify (e1, e2)]
   , solvedMetas    = mempty
   } where ctx = (constraintContext c) { blockedBy = mempty }
 
+unifyPolarity :: Constraint
+      -> CheckedExpr
+      -> Polarity
+      -> ConstraintProgress
+unifyPolarity c e1 pol = unify c e1 (Pol (provenanceOf c) pol)
+
 blockOnMetas :: MonadConstraintSolving m
-             => NonEmpty CheckedExpr
+             => [Meta]
              -> m ConstraintProgress
-             -> m ConstraintProgress
-blockOnMetas argExprs solve = do
-  let metas = filter isMeta (NonEmpty.init argExprs)
-  if null metas
-    then solve
-    else do
-      logDebug MaxDetail $ "stuck-on metas" <+> prettyVerbose metas
-      return Stuck
+blockOnMetas metas = do
+  logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
+  return Stuck
+
+malformedConstraint :: MonadConstraintSolving m => Constraint -> m a
+malformedConstraint c = compilerDeveloperError $
+  "Malformed polarity constraint:" <+> prettyVerbose c

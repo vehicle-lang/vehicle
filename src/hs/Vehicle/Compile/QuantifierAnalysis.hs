@@ -4,7 +4,6 @@ module Vehicle.Compile.QuantifierAnalysis
   ) where
 
 import Data.Maybe (catMaybes)
-import Control.Monad.Except (MonadError(throwError))
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
@@ -19,7 +18,7 @@ checkQuantifiersAndNegateIfNecessary :: MonadCompile m
 checkQuantifiersAndNegateIfNecessary backend ident expr =
   logCompilerPass "quantifier analysis" $ do
     quantifier <- checkQuantifiersAreHomogeneous backend ident expr
-    logDebug MinDetail $ "Quantifier type: " <> pretty (Quant quantifier)
+    logDebug MinDetail $ "Quantifier type: " <> pretty quantifier
 
     outputExpr <- case quantifier of
       Exists  -> return expr
@@ -61,9 +60,11 @@ checkQuantifiersAreHomogeneous target ident expr = maybe Forall fst <$> go expr
       QuantifierExpr q ann _ body -> do
         recResult <- go body
         case recResult of
-          Just (q', p)
-            | q /= q' ->
-              throwError $ UnsupportedQuantifierSequence target p ident q'
+          Just (q', _p)
+            | q /= q' -> compilerDeveloperError $
+              "Mixed quantifiers found while compiling property" <+> pretty ident <+>
+              "to" <+> pretty target <+> "which should have been caught by" <+>
+              "the polarity type system before reaching this point."
           _ -> return (Just (q, provenanceOf ann))
 
       App _ann _fun args -> do

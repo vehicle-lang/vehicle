@@ -38,6 +38,7 @@ errorTests = testGroup "ErrorTests" <$> sequence
   , networkErrors
   , datasetErrors
   , parameterErrors
+  , quantifierErrors
   ]
 
 argumentErrors :: MonadTest m => m TestTree
@@ -184,6 +185,44 @@ parameterErrors = failTestGroup "ParameterErrors"
     , testLocation   = Tests
     , testTargets    = [MarabouBackend]
     , testParameters = [("n", "~`")]
+    }
+  ]
+
+quantifierErrors :: MonadTest m => m TestTree
+quantifierErrors = failTestGroup "QuantifierErrors"
+  [ testSpec
+      { testName       = "mixedSequential"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      , testParameters = []
+      }
+
+  , testSpec
+      { testName       = "mixedNegSequential"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      , testParameters = []
+      }
+
+  , testSpec
+    { testName       = "mixedNegNegSequential"
+    , testLocation   = Tests
+    , testTargets    = [MarabouBackend]
+    , testParameters = []
+    }
+
+  , testSpec
+    { testName       = "mixedImpliesSequential"
+    , testLocation   = Tests
+    , testTargets    = [MarabouBackend]
+    , testParameters = []
+    }
+
+  , testSpec
+    { testName       = "mixedFunSequential"
+    , testLocation   = Tests
+    , testTargets    = [MarabouBackend]
+    , testParameters = []
     }
   ]
 

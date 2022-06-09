@@ -83,14 +83,15 @@ expandResources :: (MonadCompile m, MonadIO m)
                 -> Bool
                 -> CheckedProg
                 -> m (NetworkContext, CheckedProg)
-expandResources resources@Resources{..} expandDatasets prog = do
-  (prog', ResourceContext{..}) <- runWriterT (runReaderT (processProg prog) (resources, expandDatasets))
+expandResources resources@Resources{..} expandDatasets prog =
+  logCompilerPass "expansion of external resources" $ do
+    (prog', ResourceContext{..}) <- runWriterT (runReaderT (processProg prog) (resources, expandDatasets))
 
-  warnIfUnusedResources Parameter (Map.keysSet parameters) parameterContext
-  warnIfUnusedResources Dataset   (Map.keysSet datasets)   datasetContext
-  warnIfUnusedResources Network   (Map.keysSet networks)   (Map.keysSet networkContext)
+    warnIfUnusedResources Parameter (Map.keysSet parameters) parameterContext
+    warnIfUnusedResources Dataset   (Map.keysSet datasets)   datasetContext
+    warnIfUnusedResources Network   (Map.keysSet networks)   (Map.keysSet networkContext)
 
-  return (networkContext, prog')
+    return (networkContext, prog')
 
 processProg :: MonadResource m => CheckedProg -> m CheckedProg
 processProg (Main ds) = Main <$> processDecls ds

@@ -20,6 +20,16 @@ import Vehicle.Compile.Resource
 import Vehicle.Compile.Linearity
 
 --------------------------------------------------------------------------------
+-- Compatibility
+
+checkCompatibility :: Identifier -> Provenance -> PropertyInfo -> Maybe CompileError
+checkCompatibility ident declProv (PropertyInfo polarity) = case polarity of
+  MixedSequential q p pp2 -> Just $
+    UnsupportedSequentialQuantifiers MarabouBackend ident declProv q p pp2
+  _                         -> Nothing
+
+
+--------------------------------------------------------------------------------
 -- Compilation to Marabou
 
 -- | Compiles the provided program to Marabou queries.
@@ -41,14 +51,17 @@ compileDecl :: MonadCompile m => NetworkContext -> CheckedDecl -> m (Maybe (Symb
 compileDecl networkCtx d = case d of
   DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
 
-  DefFunction _p propertyInfo ident _ expr ->
-    if not $ isProperty propertyInfo
+  DefFunction p maybePropertyInfo ident _ expr ->
+    case maybePropertyInfo of
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
-      then return Nothing
-      else do
-        property <- compileProperty ident networkCtx expr
-        return (Just (nameOf ident, property))
+      Nothing -> return Nothing
+      -- Otherwise check the property information.
+      Just propertyInfo -> case checkCompatibility ident p propertyInfo of
+        Just err -> throwError err
+        Nothing -> do
+          property <- compileProperty ident networkCtx expr
+          return (Just (nameOf ident, property))
 
 compileProperty :: MonadCompile m
                 => Identifier

@@ -101,7 +101,8 @@ typeCheckDecl decl = do
           unsolvedMetas <- getUnsolvedMetas
           logDebug MaxDetail $ "unsolved-metas:" <+> pretty unsolvedMetas
           unsolvedConstraints <- getUnsolvedConstraints
-          logDebug MaxDetail $ "unsolved-constraints:" <+> prettyVerbose unsolvedConstraints <> line
+          logDebug MaxDetail $ "unsolved-constraints:" <> line <>
+            indent 2 (prettyVerbose unsolvedConstraints) <> line
           substMetas checkedType
 
     result <- case decl of
@@ -123,7 +124,7 @@ typeCheckDecl decl = do
         substType <- solveConstraintsAndUpdateType
         substBody <- substMetas checkedBody
 
-        (finalType, finalBody) <- handleUnsolvedDeclConstraints (substType, substBody)
+        (finalType, finalBody) <- handleUnsolvedDeclConstraints ident (substType, substBody)
 
         -- Extract property info if the declaration is a property.
         let propertyInfo = getPropertyInfo finalType
@@ -136,7 +137,7 @@ typeCheckDecl decl = do
         return checkedDecl
 
     checkAllConstraintsSolved
-    logCompilerPassOutput $ prettyVerbose result
+    logCompilerPassOutput $ prettyFriendly result
     return result
 
 assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
@@ -267,9 +268,10 @@ addNewConstraintsUsingDefaults maybeDeclType = do
 -- Auxiliary constraints
 
 handleUnsolvedDeclConstraints :: MonadConstraintSolving m
-                              => (CheckedExpr, CheckedExpr)
+                              => Identifier
+                              -> (CheckedExpr, CheckedExpr)
                               -> m (CheckedExpr, CheckedExpr)
-handleUnsolvedDeclConstraints decl@(declType, _) = do
+handleUnsolvedDeclConstraints ident decl@(declType, _) = do
   -- Remove all non-unification constraints and append them to the front
   -- of the declaration.
   (unificationConstraints, nonUnificationConstraints) <-
@@ -278,9 +280,9 @@ handleUnsolvedDeclConstraints decl@(declType, _) = do
   constrainedDecl <- if null nonUnificationConstraints
     then return decl
     else do
-      logDebug MaxDetail "Prepending constraints to declaration type:"
+      logDebug MaxDetail "Prepending unsolved constraints to declaration type:"
       incrCallDepth
-      result <- foldM prependConstraint decl nonUnificationConstraints
+      result <- foldM (prependConstraint ident) decl nonUnificationConstraints
       decrCallDepth
       logDebug MaxDetail ""
       return result
@@ -293,7 +295,7 @@ handleUnsolvedDeclConstraints decl@(declType, _) = do
     else do
       logDebug MaxDetail "Adding unsolved metas in declaration type as implicit arguments:"
       incrCallDepth
-      result <- foldM quantifyOverMeta constrainedDecl (MetaSet.toList unsolvedMetas)
+      result <- foldM (quantifyOverMeta ident) constrainedDecl (MetaSet.toList unsolvedMetas)
       decrCallDepth
       logDebug MaxDetail ""
       return result
@@ -301,10 +303,11 @@ handleUnsolvedDeclConstraints decl@(declType, _) = do
   traverse substMetas quantifiedDecl
 
 prependConstraint :: MonadConstraintSolving m
-                  => (CheckedExpr, CheckedExpr)
+                  => Identifier
+                  -> (CheckedExpr, CheckedExpr)
                   -> Constraint
                   -> m (CheckedExpr, CheckedExpr)
-prependConstraint decl constraint = do
+prependConstraint ident decl constraint = do
   logDebug MaxDetail $ prettySimple constraint
 
   (typeClass, maybeMeta) <- case constraint of
@@ -320,13 +323,14 @@ prependConstraint decl constraint = do
       metaSolved meta (Var ann (Bound 0))
       substMetas decl
 
-  prependBinder Instance typeClass substDecl
+  prependBinder ident Instance typeClass substDecl
 
 quantifyOverMeta :: MonadConstraintSolving m
-                 => (CheckedExpr, CheckedExpr)
+                 => Identifier
+                 -> (CheckedExpr, CheckedExpr)
                  -> Meta
                  -> m (CheckedExpr, CheckedExpr)
-quantifyOverMeta decl meta = do
+quantifyOverMeta ident decl meta = do
   (_, metaType) <- getMetaInfo meta
   substMetaType <- substMetas metaType
   if isMeta substMetaType
@@ -338,32 +342,33 @@ quantifyOverMeta decl meta = do
     let solution = Var ann (Bound 0)
     metaSolved meta solution
 
-    subst <- getMetaSubstitution
-    logDebug MaxDetail $ prettyVerbose subst
-
     substDecl <- substMetas decl
-    prependBinder Implicit substMetaType substDecl
+    prependBinder ident Implicit substMetaType substDecl
 
 prependBinder :: MonadCompile m
-              => Visibility
+              => Identifier
+              -> Visibility
               -> CheckedExpr
               -> (CheckedExpr, CheckedExpr)
               -> m (CheckedExpr, CheckedExpr)
-prependBinder v binderType (declType, declBody) = do
+prependBinder ident v binderType (declType, declBody) = do
   let ann1 = provenanceOf declType
   let ann2 = provenanceOf declBody
   let binder1 = Binder ann1 v Nothing binderType
   let binder2 = Binder ann2 v Nothing binderType
   let resultType = Pi  ann1 binder1 declType
   let resultBody = Lam ann2 binder2 declBody
-  logCompilerPassOutput $ prettyVerbose resultType <+> prettyVerbose resultBody
+
+  logCompilerPassOutput $
+    prettyFriendly $ DefFunction mempty Nothing ident resultType resultBody
+
   return (resultType, resultBody)
 
 -------------------------------------------------------------------------------
 -- Property information extraction
 
 getPropertyInfo :: CheckedExpr -> Maybe PropertyInfo
-getPropertyInfo (AnnotatedBoolType _ p) = Just $ PropertyInfo p
+getPropertyInfo (AnnotatedBoolType _ (Builtin _ (Polarity p))) = Just $ PropertyInfo p
 getPropertyInfo (TensorType _ tElem _)  = getPropertyInfo tElem
 getPropertyInfo _                       = Nothing
 
