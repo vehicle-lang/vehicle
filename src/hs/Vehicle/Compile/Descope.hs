@@ -20,27 +20,27 @@ import Vehicle.Compile.Prelude
 -- provided context.
 runDescope :: Descope t
            => [Symbol]
-           -> t Symbol DBVar ann
-           -> t Symbol Symbol             ann
+           -> t Symbol DBVar
+           -> t Symbol Symbol
 runDescope ctx = performDescoping ctx convertDBVar
 
 -- |Converts DeBruijn variables back into named variables with no context.
-runDescopeProg :: Prog Symbol DBVar ann
-               -> Prog Symbol Symbol             ann
+runDescopeProg :: Prog Symbol DBVar
+               -> Prog Symbol Symbol
 runDescopeProg = performDescoping mempty convertDBVar
 
 -- |Converts DeBruijn indices into names naively, e.g. 0 becomes "i0".
 -- Useful for debugging
 runNaiveDBDescope :: Descope t
-                  => t Symbol DBVar ann
-                  -> t Symbol Symbol ann
+                  => t Symbol DBVar
+                  -> t Symbol Symbol
 runNaiveDBDescope = performDescoping mempty convertDBVarNaive
 
 -- |Converts DeBruijn indices into names naively, e.g. 0 becomes "i0".
 -- Useful for debugging
 runNaiveCoDBDescope :: (Descope t, ExtractPositionTrees t)
-                    => t (Symbol, Maybe PositionTree) CoDBVar ann
-                    -> (t Symbol Symbol ann, Map Symbol (Maybe PositionTree))
+                    => t (Symbol, Maybe PositionTree) CoDBVar
+                    -> (t Symbol Symbol, Map Symbol (Maybe PositionTree))
 runNaiveCoDBDescope e1 =
   let (e2, pts) = extractPTs e1 in
   let e3 = performDescoping mempty convertCoDBVarNaive e2 in
@@ -52,14 +52,14 @@ runNaiveCoDBDescope e1 =
 performDescoping :: (Descope t, Show var)
                  => [NamedBinding]
                  -> (var -> Reader Ctx NamedVar)
-                 -> t NamedBinding var      ann
-                 -> t NamedBinding NamedVar ann
+                 -> t NamedBinding var
+                 -> t NamedBinding NamedVar
 performDescoping ctx convertVar e =
   runReader (descope convertVar e) (Ctx ctx)
 
 newtype Ctx = Ctx [NamedBinding]
 
-addBinderToCtx :: NamedBinder ann -> Ctx -> Ctx
+addBinderToCtx :: NamedBinder -> Ctx -> Ctx
 addBinderToCtx binder (Ctx ctx) = Ctx (nameOf binder : ctx)
 
 type MonadDescope m = MonadReader Ctx m
@@ -89,8 +89,8 @@ convertCoDBVarNaive CoDBBound                    = return "CoDBVar"
 class Descope t where
   descope :: (MonadDescope m, Show var)
           => (var -> m NamedVar)
-          -> t NamedBinding var ann
-          -> m (t NamedBinding NamedVar ann)
+          -> t NamedBinding var
+          -> m (t NamedBinding NamedVar)
 
 instance Descope Binder where
   descope f = traverseBinderType (descope f)
@@ -98,11 +98,11 @@ instance Descope Binder where
 instance Descope Arg where
   descope f = traverseArgExpr (descope f)
 
-showScopeEntry :: Show var => Expr NamedBinding var ann -> Expr NamedBinding var ann
+showScopeEntry :: Show var => Expr NamedBinding var -> Expr NamedBinding var
 showScopeEntry e =
   e
 
-showScopeExit :: MonadDescope m => m (NamedExpr ann) -> m (NamedExpr ann)
+showScopeExit :: MonadDescope m => m NamedExpr -> m NamedExpr
 showScopeExit m = do
   e <- m
   return e

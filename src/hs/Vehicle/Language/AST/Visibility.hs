@@ -5,6 +5,7 @@ import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
 
 import Vehicle.Prelude
+import Vehicle.Language.AST.Provenance
 
 --------------------------------------------------------------------------------
 -- Definitions
@@ -36,3 +37,8 @@ class HasVisibility a where
 
 isExplicit :: HasVisibility a => a -> Bool
 isExplicit x = visibilityOf x == Explicit
+
+expandByArgVisibility :: Visibility -> Provenance -> Provenance
+expandByArgVisibility Explicit = id
+expandByArgVisibility Implicit = expandProvenance (1,1)
+expandByArgVisibility Instance = expandProvenance (2,2)

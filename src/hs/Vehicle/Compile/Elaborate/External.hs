@@ -17,7 +17,6 @@ import Vehicle.Prelude
 import Vehicle.Language.Sugar
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Error
-import Vehicle.Language.Provenance
 
 elabProg :: MonadCompile m => B.Prog -> m V.InputProg
 elabProg = elab
@@ -39,8 +38,8 @@ elabExpr = elab
 
 -- * Provenance
 
-mkAnn :: IsToken a => a -> V.InputAnn
-mkAnn = tkProvenance
+mkAnn :: IsToken a => a -> V.Provenance
+mkAnn = V.tkProvenance
 
 -- * Elaboration
 
@@ -94,20 +93,20 @@ instance Elab (NonEmpty B.Decl) V.InputDecl where
 
     -- Missing type or expression declaration.
     (B.DefFunType n _tk _t :| []) ->
-      throwError $ MissingDefFunExpr (tkProvenance n) (tkSymbol n)
+      throwError $ MissingDefFunExpr (V.tkProvenance n) (tkSymbol n)
 
     -- Multiple type of expression declarations with the same n.
     ds ->
       throwError $ DuplicateName provs symbol
         where
           symbol = tkSymbol $ declName $ NonEmpty.head ds
-          provs  = fmap (tkProvenance . declName) ds
+          provs  = fmap (V.tkProvenance . declName) ds
 
 instance Elab B.Expr V.InputExpr where
   elab = \case
     B.Type t                  -> return $ V.Type (mkAnn t) (parseTypeLevel t)
     B.Var  n                  -> return $ V.Var  (mkAnn n) (tkSymbol n)
-    B.Hole n                  -> return $ V.mkHole (tkProvenance n) (tkSymbol n)
+    B.Hole n                  -> return $ V.mkHole (V.tkProvenance n) (tkSymbol n)
     B.Literal l               -> elab l
 
     B.Ann e tk t              -> op2 V.Ann tk  (elab e) (elab t)
@@ -179,14 +178,14 @@ instance Elab B.Arg V.InputArg where
   elab (B.InstanceArg e) = mkArg V.Instance <$> elab e
 
 elabResource :: MonadCompile m => V.ResourceType -> B.Name -> B.Expr -> m V.InputDecl
-elabResource r n t = V.DefResource (tkProvenance n) r <$> elab n <*> elab t
+elabResource r n t = V.DefResource (V.tkProvenance n) r <$> elab n <*> elab t
 
 elabImplParam :: MonadCompile m => B.Name -> B.Expr -> m V.InputDecl
 elabImplParam n t = V.DefFunction ann Nothing <$> elab n <*> elab t <*> pure hole
-  where ann = tkProvenance n; hole = V.mkHole (inserted ann) (tkSymbol n)
+  where ann = V.tkProvenance n; hole = V.mkHole (V.inserted ann) (tkSymbol n)
 
 mkArg :: V.Visibility -> V.InputExpr -> V.InputArg
-mkArg v e = V.Arg (expandByArgVisibility v (provenanceOf e)) v e
+mkArg v e = V.Arg (V.expandByArgVisibility v (V.provenanceOf e)) v e
 
 instance Elab B.Name V.Identifier where
   elab n = return $ V.Identifier $ tkSymbol n
@@ -200,11 +199,11 @@ instance Elab B.Binder V.InputBinder where
   elab (B.InstanceBinderAnn n _tk typ) = mkBinder n V.Instance . Just <$> elab typ
 
 mkBinder :: B.Name -> V.Visibility -> Maybe V.InputExpr -> V.InputBinder
-mkBinder n v e = V.Binder (expandByArgVisibility v p) v (Just (tkSymbol n)) t
+mkBinder n v e = V.Binder (V.expandByArgVisibility v p) v (Just (tkSymbol n)) t
   where
   (p, t) = case e of
-    Nothing  -> (tkProvenance n, V.mkHole (tkProvenance n) ("typeOf[" <> tkSymbol n <> "]"))
-    Just t1  -> (fillInProvenance [tkProvenance n, provenanceOf t1], t1)
+    Nothing  -> (V.tkProvenance n, V.mkHole (V.tkProvenance n) ("typeOf[" <> tkSymbol n <> "]"))
+    Just t1  -> (V.fillInProvenance [V.tkProvenance n, V.provenanceOf t1], t1)
 
 instance Elab B.LetDecl (V.InputBinder, V.InputExpr) where
   elab (B.LDecl b e) = bitraverse elab elab (b,e)
@@ -219,22 +218,22 @@ instance Elab B.Lit V.InputExpr where
 parseTypeLevel :: B.TypeToken -> Int
 parseTypeLevel s = read (drop 4 (unpack (tkSymbol s)))
 
-op1 :: (MonadCompile m, HasProvenance a, IsToken token)
-    => (V.InputAnn -> a -> b)
+op1 :: (MonadCompile m, V.HasProvenance a, IsToken token)
+    => (V.Provenance -> a -> b)
     -> token -> m a -> m b
 op1 mk t e = do
   ce <- e
-  let p = fillInProvenance [tkProvenance t, provenanceOf ce]
+  let p = V.fillInProvenance [V.tkProvenance t, V.provenanceOf ce]
   return $ mk p ce
 
-op2 :: (MonadCompile m, HasProvenance a, HasProvenance b, IsToken token)
-    => (V.InputAnn -> a -> b -> c)
+op2 :: (MonadCompile m, V.HasProvenance a, V.HasProvenance b, IsToken token)
+    => (V.Provenance -> a -> b -> c)
     -> token -> m a -> m b -> m c
 
 op2 mk t e1 e2 = do
   ce1 <- e1
   ce2 <- e2
-  let p = fillInProvenance [tkProvenance t, provenanceOf ce1, provenanceOf ce2]
+  let p = V.fillInProvenance [V.tkProvenance t, V.provenanceOf ce1, V.provenanceOf ce2]
   return $ mk p ce1 ce2
 
 builtin :: (MonadCompile m, IsToken token) => V.Builtin -> token -> [B.Expr] -> m V.InputExpr
@@ -243,20 +242,20 @@ builtin b t args = builtin' b t <$> traverse elab args
 builtin' :: IsToken token => V.Builtin -> token -> [V.InputExpr] -> V.InputExpr
 builtin' b t argExprs = V.normAppList p' (V.Builtin p b) args
   where
-    p    = tkProvenance t
-    p'   = fillInProvenance (p : map provenanceOf args)
+    p    = V.tkProvenance t
+    p'   = V.fillInProvenance (p : map V.provenanceOf args)
     args = fmap (mkArg V.Explicit) argExprs
 
 elabFunInputType :: MonadCompile m => B.Expr -> m V.InputBinder
 elabFunInputType t = do
   t' <- elab t
-  return $ V.ExplicitBinder (provenanceOf t') Nothing t'
+  return $ V.ExplicitBinder (V.provenanceOf t') Nothing t'
 
 elabApp :: MonadCompile m => B.Expr -> B.Arg -> m V.InputExpr
 elabApp fun arg = do
   fun' <- elab fun
   arg' <- elab arg
-  let p = fillInProvenance [provenanceOf fun', provenanceOf arg']
+  let p = V.fillInProvenance [V.provenanceOf fun', V.provenanceOf arg']
   return $ V.normAppList p fun' [arg']
 
 elabBindersAndBody :: MonadCompile m => [B.Binder] -> B.Expr -> m ([V.InputBinder], V.InputExpr)
@@ -297,7 +296,7 @@ elabOrder order tk e1 e2 = do
     Nothing -> builtin (V.Order order) tk [e1, e2]
     Just (prevOrder, e)
       | not (V.chainable prevOrder order) ->
-        throwError $ UnchainableOrders (tkProvenance tk) prevOrder order
+        throwError $ UnchainableOrders (V.tkProvenance tk) prevOrder order
       | otherwise -> elab $ B.And e1 (B.TokAnd (tkPos, "and")) $ case order of
         V.Le -> B.Le e (B.TokLe tkDetails) e2
         V.Lt -> B.Lt e (B.TokLt tkDetails) e2
@@ -315,9 +314,9 @@ declName (B.DefFunType     n _ _) = n
 declName (B.DefFunExpr     n _ _) = n
 
 checkNonEmpty :: (MonadCompile m, IsToken token) => token -> [a] -> m ()
-checkNonEmpty tk = checkNonEmpty' (tkProvenance tk) (tkSymbol tk)
+checkNonEmpty tk = checkNonEmpty' (V.tkProvenance tk) (tkSymbol tk)
 
-checkNonEmpty' :: (MonadCompile m) => Provenance -> Symbol -> [a] -> m ()
+checkNonEmpty' :: (MonadCompile m) => V.Provenance -> Symbol -> [a] -> m ()
 checkNonEmpty' p s []      = throwError $ MissingVariables p s
 checkNonEmpty' _ _ (_ : _) = return ()
 
@@ -327,15 +326,15 @@ constructUnknownDefType :: B.Name -> [V.InputBinder] -> V.InputExpr
 constructUnknownDefType n = foldr addArg returnType
   where
   returnType :: V.InputExpr
-  returnType = V.mkHole (tkProvenance n) (typifyName (tkSymbol n))
+  returnType = V.mkHole (V.tkProvenance n) (typifyName (tkSymbol n))
 
   addArg :: V.InputBinder -> V.InputExpr -> V.InputExpr
-  addArg b = V.Pi (V.annotationOf b) (binderToHole b)
+  addArg b = V.Pi (V.provenanceOf b) (binderToHole b)
 
   binderToHole :: V.InputBinder -> V.InputBinder
   binderToHole b = V.Binder ann (V.visibilityOf b) (Just name) (V.Hole ann name)
     where
-    ann  = V.annotationOf b
+    ann  = V.provenanceOf b
     name = typifyName (V.getBinderSymbol b)
 
   typifyName :: Symbol -> Symbol

@@ -93,7 +93,7 @@ typeCheckDecl decl = do
     checkedType <- logCompilerPass (passDoc <+> "type of" <+> identDoc) $ do
       let declType = typeOf decl
       (checkedType, typeOfType) <- inferExpr declType
-      assertIsType (annotationOf decl) typeOfType
+      assertIsType (provenanceOf decl) typeOfType
       return checkedType
 
     let solveConstraintsAndUpdateType = do
@@ -316,7 +316,7 @@ prependConstraint decl constraint = do
   substDecl <- case maybeMeta of
     Nothing   -> return decl
     Just meta -> do
-      let ann = annotationOf (fst decl)
+      let ann = provenanceOf (fst decl)
       metaSolved meta (Var ann (Bound 0))
       substMetas decl
 
@@ -334,7 +334,7 @@ quantifyOverMeta decl meta = do
       "Haven't thought about what to do when type of unsolved meta is also" <+>
       "an unsolved meta."
   else do
-    let ann = annotationOf (fst decl)
+    let ann = provenanceOf (fst decl)
     let solution = Var ann (Bound 0)
     metaSolved meta solution
 
@@ -350,8 +350,8 @@ prependBinder :: MonadCompile m
               -> (CheckedExpr, CheckedExpr)
               -> m (CheckedExpr, CheckedExpr)
 prependBinder v binderType (declType, declBody) = do
-  let ann1 = annotationOf declType
-  let ann2 = annotationOf declBody
+  let ann1 = provenanceOf declType
+  let ann2 = provenanceOf declBody
   let binder1 = Binder ann1 v Nothing binderType
   let binder2 = Binder ann2 v Nothing binderType
   let resultType = Pi  ann1 binder1 declType

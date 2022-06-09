@@ -22,29 +22,29 @@ type MonadDelab m = MonadLogger m
 -- * Conversion
 
 class Delaborate t bnfc | t -> bnfc, bnfc -> t where
-  delabM :: MonadDelab m => t ann -> m bnfc
+  delabM :: MonadDelab m => t -> m bnfc
 
   -- | Delaborates the program and throws away the logs, should only be used in
   -- user-facing error messages
-  delab :: t ann -> bnfc
+  delab :: t -> bnfc
   delab = discardLogger . delabM
 
-  delabWithLogging ::  MonadDelab m => t ann -> m bnfc
+  delabWithLogging ::  MonadDelab m => t -> m bnfc
   delabWithLogging x = logCompilerPass "delaboration" $ delabM x
 
 -- |Elaborate programs.
-instance Delaborate (V.Prog Symbol Symbol) B.Prog where
+instance Delaborate V.NamedProg B.Prog where
   delabM (V.Main decls) = B.Main <$> traverse delabM decls
 
 -- |Elaborate declarations.
-instance Delaborate (V.Decl Symbol Symbol) B.Decl where
+instance Delaborate V.NamedDecl B.Decl where
   delabM = \case
     V.DefResource _ Network   n t -> B.DeclNetw  (delabIdentifier n) <$> delabM t
     V.DefResource _ Dataset   n t -> B.DeclData  (delabIdentifier n) <$> delabM t
     V.DefResource _ Parameter n t -> B.DeclParam (delabIdentifier n) <$> delabM t
     V.DefFunction _ _ n t e       -> B.DefFun    (delabIdentifier n) <$> delabM t <*> delabM e
 
-instance Delaborate (V.Expr Symbol Symbol) B.Expr where
+instance Delaborate V.NamedExpr B.Expr where
   delabM expr = case expr of
     V.Type _ l     -> return $ B.Type (mkToken B.TypeToken (pack $ "Type" <> show l))
     V.Var _ n      -> return $ B.Var  (delabSymbol n)
@@ -66,13 +66,13 @@ instance Delaborate (V.Expr Symbol Symbol) B.Expr where
     -- including them in the grammar
     V.PrimDict _ e -> B.App (B.Var (delabSymbol "PrimDict")) . B.ExplicitArg <$> delabM e
 
-instance Delaborate (V.Arg Symbol Symbol) B.Arg where
+instance Delaborate V.NamedArg B.Arg where
   delabM (V.Arg _i v e) = case v of
     V.Explicit -> B.ExplicitArg <$> delabM e
     V.Implicit -> B.ImplicitArg <$> delabM e
     V.Instance -> B.InstanceArg <$> delabM e
 
-instance Delaborate (V.Binder Symbol Symbol) B.Binder where
+instance Delaborate V.NamedBinder B.Binder where
   delabM (V.Binder _ann v n t) = case v of
     -- TODO track whether type was provided manually and so use ExplicitBinderAnn
     V.Explicit -> B.ExplicitBinder (delabSymbol n) <$> delabM t

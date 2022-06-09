@@ -4,15 +4,16 @@ import Data.List.NonEmpty (NonEmpty(..))
 
 import Vehicle.Language.AST.Builtin
 import Vehicle.Language.AST.Core
+import Vehicle.Language.AST.Provenance
 
 --------------------------------------------------------------------------------
 -- Types
 --------------------------------------------------------------------------------
 -- List
 
-pattern ListType :: ann
-                 -> Expr binder var ann
-                 -> Expr binder var ann
+pattern ListType :: Provenance
+                 -> Expr binder var
+                 -> Expr binder var
 pattern
   ListType ann tElem <- App ann (BuiltinContainerType _   List) [ExplicitArg _ tElem]
   where
@@ -21,10 +22,10 @@ pattern
 --------------------------------------------------------------------------------
 -- Tensor
 
-pattern TensorType :: ann
-                   -> Expr binder var ann
-                   -> Expr binder var ann
-                   -> Expr binder var ann
+pattern TensorType :: Provenance
+                   -> Expr binder var
+                   -> Expr binder var
+                   -> Expr binder var
 pattern
   TensorType ann tElem tDims <-
     App ann (BuiltinContainerType _ Tensor)
@@ -39,9 +40,9 @@ pattern
 --------------------------------------------------------------------------------
 -- Tensor
 
-pattern IndexType :: ann
-                -> Expr binder var ann
-                -> Expr binder var ann
+pattern IndexType :: Provenance
+                -> Expr binder var
+                -> Expr binder var
 pattern
   IndexType ann tSize <-
     App ann (Builtin _ Index)
@@ -54,25 +55,25 @@ pattern
 --------------------------------------------------------------------------------
 -- Numeric
 
-pattern BuiltinNumericType :: ann -> NumericType -> Expr binder var ann
+pattern BuiltinNumericType :: Provenance -> NumericType -> Expr binder var
 pattern BuiltinNumericType ann op = Builtin ann (NumericType op)
 
-pattern NatType :: ann -> Expr binder var ann
+pattern NatType :: Provenance -> Expr binder var
 pattern NatType ann = BuiltinNumericType ann Nat
 
-pattern IntType :: ann -> Expr binder var ann
+pattern IntType :: Provenance -> Expr binder var
 pattern IntType ann = BuiltinNumericType ann Int
 
-pattern RatType :: ann -> Expr binder var ann
+pattern RatType :: Provenance -> Expr binder var
 pattern RatType ann = BuiltinNumericType ann Rat
 
 --------------------------------------------------------------------------------
 -- Boolean
 
-pattern BoolType :: ann -> Expr binder var ann
+pattern BoolType :: Provenance -> Expr binder var
 pattern BoolType ann = Builtin ann Bool
 
-pattern AnnotatedBoolType :: ann -> Polarity -> Expr binder var ann
+pattern AnnotatedBoolType :: Provenance -> Polarity -> Expr binder var
 pattern AnnotatedBoolType ann p <- App ann (BoolType _)
   [ ImplicitArg _ (Builtin _ (Polarity p))
   ]
@@ -80,24 +81,24 @@ pattern AnnotatedBoolType ann p <- App ann (BoolType _)
 --------------------------------------------------------------------------------
 -- Container
 
-pattern BuiltinContainerType :: ann -> ContainerType -> Expr binder var ann
+pattern BuiltinContainerType :: Provenance -> ContainerType -> Expr binder var
 pattern BuiltinContainerType ann op = Builtin ann (ContainerType op)
 
 --------------------------------------------------------------------------------
 -- Type classes
 --------------------------------------------------------------------------------
 
-pattern BuiltinTypeClass :: ann -> TypeClass -> Expr binder var ann
+pattern BuiltinTypeClass :: Provenance -> TypeClass -> Expr binder var
 pattern BuiltinTypeClass ann tc = Builtin ann (TypeClass tc)
 
 --------------------------------------------------------------------------------
 -- Container type classes
 
-pattern HasConLitsOfSizeExpr :: ann
+pattern HasConLitsOfSizeExpr :: Provenance
                              -> Int
-                             -> Expr binder var ann
-                             -> Expr binder var ann
-                             -> Expr binder var ann
+                             -> Expr binder var
+                             -> Expr binder var
+                             -> Expr binder var
 pattern
   HasConLitsOfSizeExpr ann n tElem tCont <-
     App ann (BuiltinTypeClass _ (HasConLitsOfSize n))
@@ -111,10 +112,10 @@ pattern
       , ExplicitArg ann tCont
       ]
 
-pattern HasConOpsExpr :: ann
-                      -> Expr binder var ann
-                      -> Expr binder var ann
-                      -> Expr binder var ann
+pattern HasConOpsExpr :: Provenance
+                      -> Expr binder var
+                      -> Expr binder var
+                      -> Expr binder var
 pattern
   HasConOpsExpr ann tElem tCont <-
     App ann (BuiltinTypeClass _ HasConOps)
@@ -131,10 +132,10 @@ pattern
 --------------------------------------------------------------------------------
 -- Natural type classes
 
-pattern HasNatLitsUpToExpr :: ann
+pattern HasNatLitsUpToExpr :: Provenance
                            -> Int
-                           -> Expr binder var ann
-                           -> Expr binder var ann
+                           -> Expr binder var
+                           -> Expr binder var
 pattern
   HasNatLitsUpToExpr ann n t <-
     App ann (BuiltinTypeClass _ (HasNatLitsUpTo n))
@@ -149,9 +150,9 @@ pattern
 --------------------------------------------------------------------------------
 -- Integer type classes
 
-pattern HasIntLitsExpr :: ann
-                       -> Expr binder var ann
-                       -> Expr binder var ann
+pattern HasIntLitsExpr :: Provenance
+                       -> Expr binder var
+                       -> Expr binder var
 pattern
   HasIntLitsExpr ann t <-
     App ann (BuiltinTypeClass _ HasIntLits)
@@ -166,9 +167,9 @@ pattern
 --------------------------------------------------------------------------------
 -- Rational type classes
 
-pattern HasRatLitsExpr :: ann
-                       -> Expr binder var ann
-                       -> Expr binder var ann
+pattern HasRatLitsExpr :: Provenance
+                       -> Expr binder var
+                       -> Expr binder var
 pattern
   HasRatLitsExpr ann t <-
     App ann (BuiltinTypeClass _ HasRatLits)
@@ -183,10 +184,10 @@ pattern
 --------------------------------------------------------------------------------
 -- Arithmetic ops
 
-pattern HasArithOpExpr :: ann
+pattern HasArithOpExpr :: Provenance
                        -> TypeClass
-                       -> Expr binder var ann
-                       -> Expr binder var ann
+                       -> Expr binder var
+                       -> Expr binder var
 pattern
   HasArithOpExpr ann tc t <-
     App ann (BuiltinTypeClass _ tc)
@@ -198,27 +199,27 @@ pattern
       [ ExplicitArg ann t
       ]
 
-pattern HasAddExpr :: ann -> Expr binder var ann -> Expr binder var ann
+pattern HasAddExpr :: Provenance -> Expr binder var -> Expr binder var
 pattern HasAddExpr ann t = HasArithOpExpr ann HasAdd t
 
-pattern HasSubExpr :: ann -> Expr binder var ann -> Expr binder var ann
+pattern HasSubExpr :: Provenance -> Expr binder var -> Expr binder var
 pattern HasSubExpr ann t = HasArithOpExpr ann HasSub t
 
-pattern HasMulExpr :: ann -> Expr binder var ann -> Expr binder var ann
+pattern HasMulExpr :: Provenance -> Expr binder var -> Expr binder var
 pattern HasMulExpr ann t = HasArithOpExpr ann HasMul t
 
-pattern HasDivExpr :: ann -> Expr binder var ann -> Expr binder var ann
+pattern HasDivExpr :: Provenance -> Expr binder var -> Expr binder var
 pattern HasDivExpr ann t = HasArithOpExpr ann HasDiv t
 
-pattern HasNegExpr :: ann -> Expr binder var ann -> Expr binder var ann
+pattern HasNegExpr :: Provenance -> Expr binder var -> Expr binder var
 pattern HasNegExpr ann t = HasArithOpExpr ann HasNeg t
 
 --------------------------------------------------------------------------------
 -- HasOrder
 
-pattern HasOrdExpr :: ann
-                   -> Expr binder var ann
-                   -> Expr binder var ann
+pattern HasOrdExpr :: Provenance
+                   -> Expr binder var
+                   -> Expr binder var
 pattern
   HasOrdExpr ann tElem <-
     App ann (BuiltinTypeClass _ HasOrd)
@@ -233,9 +234,9 @@ pattern
 --------------------------------------------------------------------------------
 -- HasEq
 
-pattern HasEqExpr :: ann
-                  -> Expr binder var ann
-                  -> Expr binder var ann
+pattern HasEqExpr :: Provenance
+                  -> Expr binder var
+                  -> Expr binder var
 pattern
   HasEqExpr ann tElem <-
     App ann (BuiltinTypeClass _ HasEq)
@@ -251,11 +252,11 @@ pattern
 -- Literals
 --------------------------------------------------------------------------------
 
-pattern LiteralExpr :: ann
-                    -> Expr binder var ann
-                    -> Expr binder var ann
+pattern LiteralExpr :: Provenance
+                    -> Expr binder var
+                    -> Expr binder var
                     -> Literal
-                    -> Expr binder var ann
+                    -> Expr binder var
 pattern
   LiteralExpr ann litType litTC lit <-
     App ann (Literal _ lit)
@@ -272,30 +273,30 @@ pattern
 --------------------------------------------------------------------------------
 -- Bool
 
-pattern LitBool :: ann -> Bool -> Expr binder var ann
+pattern LitBool :: Provenance -> Bool -> Expr binder var
 pattern LitBool ann n = Literal ann (LBool n)
 
-pattern BoolLiteralExpr :: ann
+pattern BoolLiteralExpr :: Provenance
                         -> Bool
-                        -> Expr binder var ann
+                        -> Expr binder var
 pattern BoolLiteralExpr ann value = LitBool ann value
 
-pattern TrueExpr :: ann -> Expr binder var ann
+pattern TrueExpr :: Provenance -> Expr binder var
 pattern TrueExpr ann = BoolLiteralExpr ann True
 
-pattern FalseExpr :: ann -> Expr binder var ann
+pattern FalseExpr :: Provenance -> Expr binder var
 pattern FalseExpr ann = BoolLiteralExpr ann False
 
 --------------------------------------------------------------------------------
 -- Nat
 
-pattern LitNat :: ann -> Int -> Expr binder var ann
+pattern LitNat :: Provenance -> Int -> Expr binder var
 pattern LitNat ann n = Literal ann (LNat n)
 
-pattern NatLiteralExpr :: ann
-                       -> Expr binder var ann
+pattern NatLiteralExpr :: Provenance
+                       -> Expr binder var
                        -> Int
-                       -> Expr binder var ann
+                       -> Expr binder var
 pattern
   NatLiteralExpr ann t n <-
     LiteralExpr ann t HasNatLitsUpToExpr{} (LNat n)
@@ -306,13 +307,13 @@ pattern
 --------------------------------------------------------------------------------
 -- Int
 
-pattern LitInt :: ann -> Int -> Expr binder var ann
+pattern LitInt :: Provenance -> Int -> Expr binder var
 pattern LitInt ann n = Literal ann (LInt n)
 
-pattern IntLiteralExpr :: ann
-                       -> Expr binder var ann
+pattern IntLiteralExpr :: Provenance
+                       -> Expr binder var
                        -> Int
-                       -> Expr binder var ann
+                       -> Expr binder var
 pattern
   IntLiteralExpr ann t n <-
     LiteralExpr ann t (HasIntLitsExpr _ _) (LInt n)
@@ -323,13 +324,13 @@ pattern
 --------------------------------------------------------------------------------
 -- Rat
 
-pattern LitRat :: ann -> Rational -> Expr binder var ann
+pattern LitRat :: Provenance -> Rational -> Expr binder var
 pattern LitRat ann n = Literal ann (LRat n)
 
-pattern RatLiteralExpr :: ann
-                       -> Expr binder var ann
+pattern RatLiteralExpr :: Provenance
+                       -> Expr binder var
                        -> Rational
-                       -> Expr binder var ann
+                       -> Expr binder var
 pattern
   RatLiteralExpr ann t n <-
     LiteralExpr ann t (HasRatLitsExpr _ _) (LRat n)
@@ -342,15 +343,15 @@ pattern
 --------------------------------------------------------------------------------
 -- Quantifier
 
-pattern BuiltinQuantifier :: ann -> Quantifier -> Expr binder var ann
+pattern BuiltinQuantifier :: Provenance -> Quantifier -> Expr binder var
 pattern BuiltinQuantifier ann q = Builtin ann (Quant q)
 
 -- | Matches on `forall` and `exists`, but not `foreach`
 pattern QuantifierExpr :: Quantifier
-                       -> ann
-                       -> Binder binder var ann
-                       -> Expr   binder var ann
-                       -> Expr   binder var ann
+                       -> Provenance
+                       -> Binder binder var
+                       -> Expr   binder var
+                       -> Expr   binder var
 pattern
   QuantifierExpr q ann binder body <-
     App ann (BuiltinQuantifier _ q)
@@ -364,22 +365,22 @@ pattern
       , ExplicitArg ann (Lam ann binder body)
       ]
 
-pattern ExistsExpr :: ann
-                   -> Binder binder var ann
-                   -> Expr   binder var ann
-                   -> Expr   binder var ann
+pattern ExistsExpr :: Provenance
+                   -> Binder binder var
+                   -> Expr   binder var
+                   -> Expr   binder var
 pattern ExistsExpr ann binder body = QuantifierExpr Exists ann binder body
 
-pattern ForallExpr :: ann
-                   -> Binder binder var ann
-                   -> Expr   binder var ann
-                   -> Expr   binder var ann
+pattern ForallExpr :: Provenance
+                   -> Binder binder var
+                   -> Expr   binder var
+                   -> Expr   binder var
 pattern ForallExpr ann binder body = QuantifierExpr Forall ann binder body
 
-pattern ForeachExpr :: ann
-                    -> Binder binder var ann
-                    -> Expr   binder var ann
-                    -> Expr   binder var ann
+pattern ForeachExpr :: Provenance
+                    -> Binder binder var
+                    -> Expr   binder var
+                    -> Expr   binder var
 pattern
   ForeachExpr ann binder body <-
     App ann (Builtin _ Foreach)
@@ -391,17 +392,17 @@ pattern
 --------------------------------------------------------------------------------
 -- QuantifierIn
 
-pattern BuiltinQuantifierIn :: ann -> Quantifier -> Expr binder var ann
+pattern BuiltinQuantifierIn :: Provenance -> Quantifier -> Expr binder var
 pattern BuiltinQuantifierIn ann q = Builtin ann (QuantIn q)
 
 -- | Matches on forallIn and existsIn but not foreachIn
 pattern QuantifierInExpr :: Quantifier
-                                 -> ann
-                                 -> Expr   binder var ann
-                                 -> Binder binder var ann
-                                 -> Expr   binder var ann
-                                 -> Expr   binder var ann
-                                 -> Expr   binder var ann
+                                 -> Provenance
+                                 -> Expr   binder var
+                                 -> Binder binder var
+                                 -> Expr   binder var
+                                 -> Expr   binder var
+                                 -> Expr   binder var
 pattern
   QuantifierInExpr q ann tCont binder body container <-
     App ann (BuiltinQuantifierIn _ q)
@@ -421,31 +422,31 @@ pattern
       , ExplicitArg ann container
       ]
 
-pattern ForallInExpr :: ann
-                     -> Expr   binder var ann
-                     -> Binder binder var ann
-                     -> Expr   binder var ann
-                     -> Expr   binder var ann
-                     -> Expr   binder var ann
+pattern ForallInExpr :: Provenance
+                     -> Expr   binder var
+                     -> Binder binder var
+                     -> Expr   binder var
+                     -> Expr   binder var
+                     -> Expr   binder var
 pattern ForallInExpr ann tCont binder body container =
   QuantifierInExpr Forall ann tCont binder body container
 
-pattern ExistsInExpr :: ann
-                     -> Expr   binder var ann
-                     -> Binder binder var ann
-                     -> Expr   binder var ann
-                     -> Expr   binder var ann
-                     -> Expr   binder var ann
+pattern ExistsInExpr :: Provenance
+                     -> Expr   binder var
+                     -> Binder binder var
+                     -> Expr   binder var
+                     -> Expr   binder var
+                     -> Expr   binder var
 pattern ExistsInExpr ann tCont binder body container
   = QuantifierInExpr Exists ann tCont binder body container
 
-pattern ForeachInExpr :: ann
-                      -> Expr   binder var ann
-                      -> Expr   binder var ann
-                      -> Binder binder var ann
-                      -> Expr   binder var ann
-                      -> Expr   binder var ann
-                      -> Expr   binder var ann
+pattern ForeachInExpr :: Provenance
+                      -> Expr   binder var
+                      -> Expr   binder var
+                      -> Binder binder var
+                      -> Expr   binder var
+                      -> Expr   binder var
+                      -> Expr   binder var
 pattern
   ForeachInExpr ann dim tCont binder body container <-
     App ann (Builtin _ ForeachIn)
@@ -466,10 +467,10 @@ pattern
 --------------------------------------------------------------------------------
 -- IfExpr
 
-pattern IfExpr :: ann
-               -> Expr binder var ann
-               -> [Arg binder var ann]
-               -> Expr binder var ann
+pattern IfExpr :: Provenance
+               -> Expr binder var
+               -> [Arg binder var]
+               -> Expr binder var
 pattern
   IfExpr ann tRes args <-
     App ann (Builtin _ If)
@@ -487,9 +488,9 @@ pattern
 -- BooleanOp2
 
 pattern BooleanOp2Expr :: BooleanOp2
-                       -> ann
-                       -> NonEmpty (Arg  binder var ann)
-                       -> Expr  binder var ann
+                       -> Provenance
+                       -> NonEmpty (Arg  binder var)
+                       -> Expr  binder var
 pattern
   BooleanOp2Expr op ann explicitArgs <-
     App ann (Builtin _ (BooleanOp2 op)) explicitArgs
@@ -497,24 +498,24 @@ pattern
   BooleanOp2Expr op ann explicitArgs =
     App ann (Builtin ann (BooleanOp2 op)) explicitArgs
 
-pattern AndExpr :: ann -> NonEmpty (Arg  binder var ann) -> Expr binder var ann
+pattern AndExpr :: Provenance -> NonEmpty (Arg  binder var) -> Expr binder var
 pattern AndExpr ann explicitArgs <- BooleanOp2Expr And ann explicitArgs
   where AndExpr ann explicitArgs = BooleanOp2Expr And ann explicitArgs
 
-pattern OrExpr :: ann -> NonEmpty (Arg  binder var ann) -> Expr binder var ann
+pattern OrExpr :: Provenance -> NonEmpty (Arg  binder var) -> Expr binder var
 pattern OrExpr ann explicitArgs <- BooleanOp2Expr Or ann explicitArgs
   where OrExpr ann explicitArgs = BooleanOp2Expr Or ann explicitArgs
 
-pattern ImplExpr :: ann -> NonEmpty (Arg  binder var ann) -> Expr binder var ann
+pattern ImplExpr :: Provenance -> NonEmpty (Arg  binder var) -> Expr binder var
 pattern ImplExpr ann explicitArgs <- BooleanOp2Expr Impl ann explicitArgs
   where ImplExpr ann explicitArgs = BooleanOp2Expr Impl ann explicitArgs
 
 --------------------------------------------------------------------------------
 -- Not
 
-pattern NotExpr :: ann
-                -> NonEmpty (Arg  binder var ann)
-                -> Expr  binder var ann
+pattern NotExpr :: Provenance
+                -> NonEmpty (Arg  binder var)
+                -> Expr  binder var
 pattern
   NotExpr ann explicitArgs <-
     App ann (Builtin _ Not) explicitArgs
@@ -526,11 +527,11 @@ pattern
 -- NumericOp2
 
 pattern NumericOp2Expr :: NumericOp2
-                       -> ann
-                       -> Expr  binder var ann
-                       -> Expr  binder var ann
-                       -> [Arg  binder var ann]
-                       -> Expr  binder var ann
+                       -> Provenance
+                       -> Expr  binder var
+                       -> Expr  binder var
+                       -> [Arg  binder var]
+                       -> Expr  binder var
 pattern
   NumericOp2Expr op ann t tc explicitArgs <-
     App ann (Builtin _ (NumericOp2 op))
@@ -546,29 +547,29 @@ pattern
       :  explicitArgs
       )
 
-pattern AddExpr :: ann -> Expr binder var ann -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern AddExpr :: Provenance -> Expr binder var -> Expr binder var -> [Arg binder var] -> Expr binder var
 pattern AddExpr ann t tc explicitArgs <- NumericOp2Expr Add ann t tc explicitArgs
   where AddExpr ann t tc explicitArgs =  NumericOp2Expr Add ann t tc explicitArgs
 
-pattern SubExpr :: ann -> Expr binder var ann -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern SubExpr :: Provenance -> Expr binder var -> Expr binder var -> [Arg binder var] -> Expr binder var
 pattern SubExpr ann t tc explicitArgs <- NumericOp2Expr Sub ann t tc explicitArgs
   where SubExpr ann t tc explicitArgs =  NumericOp2Expr Sub ann t tc explicitArgs
 
-pattern MulExpr :: ann -> Expr binder var ann -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern MulExpr :: Provenance -> Expr binder var -> Expr binder var -> [Arg binder var] -> Expr binder var
 pattern MulExpr ann t tc explicitArgs <- NumericOp2Expr Mul ann t tc explicitArgs
   where MulExpr ann t tc explicitArgs =  NumericOp2Expr Mul ann t tc explicitArgs
 
-pattern DivExpr :: ann -> Expr binder var ann -> Expr binder var ann -> [Arg binder var ann] -> Expr binder var ann
+pattern DivExpr :: Provenance -> Expr binder var -> Expr binder var -> [Arg binder var] -> Expr binder var
 pattern DivExpr ann t tc explicitArgs <- NumericOp2Expr Div ann t tc explicitArgs
   where DivExpr ann t tc explicitArgs =  NumericOp2Expr Div ann t tc explicitArgs
 
 --------------------------------------------------------------------------------
 -- Not
 
-pattern NegExpr :: ann
-                -> Expr  binder var ann
-                -> [Arg  binder var ann]
-                -> Expr  binder var ann
+pattern NegExpr :: Provenance
+                -> Expr  binder var
+                -> [Arg  binder var]
+                -> Expr  binder var
 pattern
   NegExpr ann t explicitArgs <-
     App ann (Builtin _ Neg)
@@ -587,14 +588,14 @@ pattern
 --------------------------------------------------------------------------------
 -- Equality
 
-pattern BuiltinEquality :: ann -> Equality -> Expr binder var ann
+pattern BuiltinEquality :: Provenance -> Equality -> Expr binder var
 pattern BuiltinEquality ann eq = Builtin ann (Equality eq)
 
 pattern EqualityExpr :: Equality
-                     -> ann
-                     -> Expr  binder var ann
-                     -> [Arg  binder var ann]
-                     -> Expr  binder var ann
+                     -> Provenance
+                     -> Expr  binder var
+                     -> [Arg  binder var]
+                     -> Expr  binder var
 pattern
   EqualityExpr eq ann tElem explicitArgs <-
     App ann (BuiltinEquality _ eq)
@@ -613,14 +614,14 @@ pattern
 --------------------------------------------------------------------------------
 -- Order
 
-pattern BuiltinOrder :: ann -> Order -> Expr binder var ann
+pattern BuiltinOrder :: Provenance -> Order -> Expr binder var
 pattern BuiltinOrder ann order = Builtin ann (Order order)
 
 pattern OrderExpr :: Order
-                  -> ann
-                  -> Expr  binder var ann
-                  -> [Arg  binder var ann]
-                  -> Expr  binder var ann
+                  -> Provenance
+                  -> Expr  binder var
+                  -> [Arg  binder var]
+                  -> Expr  binder var
 pattern
   OrderExpr order ann tElem explicitArgs <-
     App ann (BuiltinOrder _ order)
@@ -639,11 +640,11 @@ pattern
 --------------------------------------------------------------------------------
 -- Sequence
 
-pattern SeqExpr :: ann
-                -> Expr  binder var ann
-                -> Expr  binder var ann
-                -> [Expr binder var ann]
-                -> Expr  binder var ann
+pattern SeqExpr :: Provenance
+                -> Expr  binder var
+                -> Expr  binder var
+                -> [Expr binder var]
+                -> Expr  binder var
 pattern
   SeqExpr ann tElem tCont xs <-
     LSeq ann (PrimDict _ (HasConLitsOfSizeExpr _ _ tElem tCont)) xs
@@ -654,9 +655,9 @@ pattern
 --------------------------------------------------------------------------------
 -- Nil and cons
 
-pattern NilExpr :: ann
-                -> Expr binder var ann
-                -> Expr binder var ann
+pattern NilExpr :: Provenance
+                -> Expr binder var
+                -> Expr binder var
 pattern
   NilExpr ann tElem <-
     LSeq ann tElem []
@@ -664,10 +665,10 @@ pattern
   NilExpr ann tElem =
     LSeq ann tElem []
 
-pattern ConsExpr :: ann
-                 -> Expr  binder var ann
-                 -> [Arg  binder var ann]
-                 -> Expr  binder var ann
+pattern ConsExpr :: Provenance
+                 -> Expr  binder var
+                 -> [Arg  binder var]
+                 -> Expr  binder var
 pattern
   ConsExpr ann tElem explicitArgs <-
     App ann (Builtin _ Cons)
@@ -684,12 +685,12 @@ pattern
 --------------------------------------------------------------------------------
 -- At
 
-pattern AtExpr :: ann
-                -> Expr  binder var ann
-                -> Expr  binder var ann
-                -> Expr  binder var ann
-                -> [Arg binder var ann]
-                -> Expr  binder var ann
+pattern AtExpr :: Provenance
+                -> Expr  binder var
+                -> Expr  binder var
+                -> Expr  binder var
+                -> [Arg binder var]
+                -> Expr  binder var
 pattern
   AtExpr ann tElem tDim tDims explicitArgs <-
     App ann (Builtin _ At)
@@ -710,11 +711,11 @@ pattern
 --------------------------------------------------------------------------------
 -- Sequence
 
-pattern MapExpr :: ann
-                -> Expr  binder var ann
-                -> Expr  binder var ann
-                -> [Arg  binder var ann]
-                -> Expr  binder var ann
+pattern MapExpr :: Provenance
+                -> Expr  binder var
+                -> Expr  binder var
+                -> [Arg  binder var]
+                -> Expr  binder var
 pattern
   MapExpr ann tTo tFrom explicitArgs <-
     App ann (Builtin _ Map)
@@ -733,12 +734,12 @@ pattern
 --------------------------------------------------------------------------------
 -- Sequence
 
-pattern FoldExpr :: ann
-                 -> Expr  binder var ann
-                 -> Expr  binder var ann
-                 -> Expr  binder var ann
-                 -> [Arg  binder var ann]
-                 -> Expr  binder var ann
+pattern FoldExpr :: Provenance
+                 -> Expr  binder var
+                 -> Expr  binder var
+                 -> Expr  binder var
+                 -> [Arg  binder var]
+                 -> Expr  binder var
 pattern
   FoldExpr ann tElem tCont tRes explicitArgs <-
     App ann (Builtin _ Fold)

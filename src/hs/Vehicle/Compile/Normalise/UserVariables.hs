@@ -252,7 +252,7 @@ data IOVarState = IOVarState
   , magicOutputVarCount :: Int
   }
 
-pattern NetworkApp :: CheckedAnn -> Identifier -> CheckedExpr -> CheckedExpr
+pattern NetworkApp :: Provenance -> Identifier -> CheckedExpr -> CheckedExpr
 pattern NetworkApp ann ident inputs <- App ann (Var _ (Free ident)) [ExplicitArg _ inputs]
 
 -- Takes in the expression to process and returns a function
@@ -313,7 +313,7 @@ createInputVarEqualities inputVarIndices (SeqExpr _ _ _ xs) = do
     return $ constructAssertion (lhs, Equals, rhs)
 createInputVarEqualities _ _ = normalisationError currentPass "non-Seq"
 
-mkMagicVariableSeq :: CheckedAnn -> NetworkBaseType -> [Int] -> CheckedExpr
+mkMagicVariableSeq :: Provenance -> NetworkBaseType -> [Int] -> CheckedExpr
 mkMagicVariableSeq ann tElem indices = tensorExpr
   where
   tensorElemType   = reconstructNetworkBaseType ann tElem

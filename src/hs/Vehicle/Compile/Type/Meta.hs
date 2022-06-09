@@ -118,7 +118,7 @@ instance MetaSubstitutable CheckedExpr where
 -- clogging up our program so this function detects meta applications and normalises
 -- them as it substitutes the meta in.
 substMApp :: MonadSubst m
-          => CheckedAnn
+          => Provenance
           -> (CheckedExpr, [CheckedArg])
           -> m CheckedExpr
 substMApp ann (fun@(Meta _ m), mArgs) = do
@@ -184,7 +184,7 @@ freshMetaWith p metaType boundCtx = do
 
 -- |Creates a Pi type that abstracts over all bound variables
 makeMetaType :: BoundCtx
-             -> CheckedAnn
+             -> Provenance
              -> CheckedExpr
              -> CheckedExpr
 makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
@@ -236,7 +236,7 @@ abstractOverCtx ctx body =
   where
     typeToLam :: CheckedExpr -> CheckedExpr -> CheckedExpr
     typeToLam t = Lam ann (ExplicitBinder ann Nothing t)
-      where ann = annotationOf t
+      where ann = provenanceOf t
 
 metaSolved :: (MonadState MetaCtx m, MonadLogger m)
            => Meta
@@ -259,7 +259,7 @@ metaSolved m solution = do
       "was assigned again to" <+> prettyVerbose new <+>
       pretty p
 
-freeMetas :: Expr binder var ann -> MetaSet
+freeMetas :: Expr binder var -> MetaSet
 freeMetas = cata $ \case
   TypeF{}                   -> mempty
   HoleF{}                   -> mempty

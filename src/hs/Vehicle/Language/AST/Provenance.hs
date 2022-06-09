@@ -1,12 +1,12 @@
 
-module Vehicle.Language.Provenance
+module Vehicle.Language.AST.Provenance
   ( Provenance
   , tkProvenance
   , datasetProvenance
   , parameterProvenance
   , inserted
   , HasProvenance(..)
-  , expandByArgVisibility
+  , expandProvenance
   , fillInProvenance
   , wasInsertedByCompiler
   ) where
@@ -19,7 +19,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List (sort)
 
 import Vehicle.Prelude
-import Vehicle.Language.AST hiding (Bound)
+import Data.Hashable (Hashable(..))
 
 --------------------------------------------------------------------------------
 -- Position
@@ -174,13 +174,16 @@ instance Pretty Origin where
 data Provenance = Provenance
   { origin :: Origin
   , owner  :: Owner
-  } deriving (Show)
+  } deriving (Show, Generic)
 
 instance NFData Provenance where
   rnf _ = ()
 
 instance Eq Provenance where
   _x == _y = True
+
+instance Hashable Provenance where
+  hashWithSalt s _p = s
 
 -- |Get the provenance for a single token.
 tkProvenance :: IsToken a => a -> Provenance
@@ -213,11 +216,6 @@ expandProvenance :: (Int, Int) -> Provenance -> Provenance
 expandProvenance w (Provenance (FromSource rs) o) = Provenance (FromSource (expandRange w rs)) o
 expandProvenance _ p                              = p
 
-expandByArgVisibility :: Visibility -> Provenance -> Provenance
-expandByArgVisibility Explicit = id
-expandByArgVisibility Implicit = expandProvenance (1,1)
-expandByArgVisibility Instance = expandProvenance (2,2)
-
 instance Pretty Provenance where
   pretty (Provenance origin _) = pretty origin
 
@@ -246,18 +244,6 @@ instance HasProvenance a => HasProvenance (NonEmpty a) where
 
 instance HasProvenance a => HasProvenance (a, b) where
   provenanceOf = provenanceOf . fst
-
-instance HasProvenance ann => HasProvenance (Binder binder var ann) where
-  provenanceOf (Binder ann _ _ _) = provenanceOf ann
-
-instance HasProvenance ann => HasProvenance (Arg binder var ann) where
-  provenanceOf e = provenanceOf (annotationOf e :: ann)
-
-instance HasProvenance ann => HasProvenance (Expr binder var ann) where
-  provenanceOf e = provenanceOf (annotationOf e :: ann)
-
-instance HasProvenance ann => HasProvenance (Decl binder var ann) where
-  provenanceOf d = provenanceOf (annotationOf d :: ann)
 
 wasInsertedByCompiler :: HasProvenance a => a -> Bool
 wasInsertedByCompiler x = owner (provenanceOf x) == TheMachine

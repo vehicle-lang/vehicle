@@ -129,7 +129,7 @@ bindVar binder update = do
       addBinderToCtx name Ctx{..} = Ctx declCtx (name : exprCtx)
 
 -- |Find the index for a given name of a given sort.
-getVar :: SCM m => InputAnn -> NamedVar -> m DBVar
+getVar :: SCM m => Provenance -> NamedVar -> m DBVar
 getVar ann symbol = do
   Ctx declCtx exprCtx <- ask
   case elemIndex (Just symbol) exprCtx of

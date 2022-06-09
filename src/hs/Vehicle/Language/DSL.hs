@@ -76,10 +76,10 @@ class DSL expr where
   forall = pi Implicit
 
 newtype DSLExpr = DSL
-  { unDSL :: CheckedAnn -> BindingDepth -> CheckedExpr
+  { unDSL :: Provenance -> BindingDepth -> CheckedExpr
   }
 
-fromDSL :: CheckedAnn -> DSLExpr -> CheckedExpr
+fromDSL :: Provenance -> DSLExpr -> CheckedExpr
 fromDSL ann e = unDSL e ann 0
 
 boundVar :: BindingDepth -> DSLExpr

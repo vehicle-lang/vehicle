@@ -154,7 +154,7 @@ checkExpr expectedType expr = do
   showCheckExit res
   return res
 
-viaInfer :: TCM m => CheckedAnn -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
+viaInfer :: TCM m => Provenance -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
 viaInfer ann expectedType e = do
   -- Switch to inference mode
   (checkedExpr, actualType) <- inferExpr e
@@ -323,7 +323,7 @@ inferExpr e = do
   showInferExit res
   return res
 
-inferLiteral :: UncheckedAnn -> Literal -> (CheckedExpr, CheckedExpr)
+inferLiteral :: Provenance -> Literal -> (CheckedExpr, CheckedExpr)
 inferLiteral p l = (Literal p l, typeOfLiteral p l)
 
 -- | Takes the expected type of a function and the user-provided arguments
@@ -412,7 +412,7 @@ inferArgs p functionType args = do
 -- or instance arguments and then returns the function applied to the full
 -- list of arguments as well as the result type.
 inferApp :: TCM m
-         => CheckedAnn
+         => Provenance
          -> CheckedExpr
          -> CheckedExpr
          -> [UncheckedArg]
@@ -427,7 +427,7 @@ inferApp ann fun funType args = do
 -- Typing of literals and builtins
 
 -- | Return the type of the provided literal,
-typeOfLiteral :: CheckedAnn -> Literal -> CheckedExpr
+typeOfLiteral :: Provenance -> Literal -> CheckedExpr
 typeOfLiteral ann l = fromDSL ann $ case l of
   LNat  n -> forall type0 $ \t -> hasNatLitsUpTo n t ~~~> t
   LInt  _ -> forall type0 $ \t -> hasIntLits t ~~~> t
@@ -435,7 +435,7 @@ typeOfLiteral ann l = fromDSL ann $ case l of
   LBool _ -> tBool unquantified
 
 -- | Return the type of the provided builtin.
-typeOfBuiltin :: CheckedAnn -> Builtin -> CheckedExpr
+typeOfBuiltin :: Provenance -> Builtin -> CheckedExpr
 typeOfBuiltin ann b = fromDSL ann $ case b of
   AuxiliaryType -> type0
   Polarity{}    -> tAux

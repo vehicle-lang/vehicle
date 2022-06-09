@@ -1,6 +1,5 @@
 module Vehicle.Language.AST.Utils where
 
-import Control.Monad (void)
 import Data.Functor.Foldable (Recursive(..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
@@ -13,42 +12,43 @@ import Vehicle.Language.AST.BuiltinPatterns
 import Vehicle.Language.AST.Name
 import Vehicle.Language.AST.Visibility
 import Vehicle.Language.AST.Builtin
+import Vehicle.Language.AST.Provenance
 
 --------------------------------------------------------------------------------
 -- Utility functions
 
-isHole :: Expr binder var ann -> Bool
+isHole :: Expr binder var -> Bool
 isHole Hole{} = True
 isHole _      = False
 
-isType :: Expr binder var ann -> Bool
+isType :: Expr binder var -> Bool
 isType Type{} = True
 isType _      = False
 
-isMeta :: Expr binder var ann -> Bool
+isMeta :: Expr binder var -> Bool
 isMeta Meta{}           = True
 isMeta (App _ Meta{} _) = True
 isMeta _                = False
 
-isFinite :: Expr binder var ann -> Bool
+isFinite :: Expr binder var -> Bool
 isFinite BoolType{}             = True
 isFinite IndexType{}            = True
 isFinite (TensorType _ tElem _) = isFinite tElem
 isFinite _                      = False
 
-isAuxiliaryTypeClass :: Expr binder var ann -> Bool
+isAuxiliaryTypeClass :: Expr binder var -> Bool
 isAuxiliaryTypeClass e = case exprHead e of
   Builtin _ PolarityTypeClass{} -> True
   _                             -> False
 
-isAuxiliaryType :: Expr binder var ann -> Bool
+isAuxiliaryType :: Expr binder var -> Bool
 isAuxiliaryType (Builtin _ AuxiliaryType) = True
 isAuxiliaryType  _                        = False
 
 --------------------------------------------------------------------------------
 -- Enumeration functions
 
-freeNames :: Expr binder DBVar ann -> [Identifier]
+freeNames :: Expr binder DBVar -> [Identifier]
 freeNames = cata $ \case
   TypeF{}                   -> []
   HoleF{}                   -> []
@@ -68,45 +68,45 @@ freeNames = cata $ \case
 --------------------------------------------------------------------------------
 -- Destruction functions
 
-toHead :: Expr binder var ann -> (Expr binder var ann, [Arg binder var ann])
+toHead :: Expr binder var -> (Expr binder var, [Arg binder var])
 toHead (App _ann fun args ) = (fun, NonEmpty.toList args)
 toHead e                    = (e, [])
 
-exprHead :: Expr binder var ann -> Expr binder var ann
+exprHead :: Expr binder var -> Expr binder var
 exprHead = fst . toHead
 
-onlyExplicit :: NonEmpty (Arg binder var ann) -> [Expr binder var ann]
+onlyExplicit :: NonEmpty (Arg binder var) -> [Expr binder var]
 onlyExplicit args = argExpr <$> filter isExplicit (NonEmpty.toList args)
 
 --------------------------------------------------------------------------------
 -- Views
 
-getBinderSymbol :: Binder DBBinding var ann -> Symbol
+getBinderSymbol :: Binder DBBinding var -> Symbol
 getBinderSymbol binder = case nameOf binder of
   Just symbol -> symbol
   Nothing     -> developerError "Binder unexpectedly does not appear to have a name"
 
-getContainerElem :: Expr binder var ann -> Maybe (Expr binder var ann)
+getContainerElem :: Expr binder var -> Maybe (Expr binder var)
 getContainerElem (ListType   _ t)   = Just t
 getContainerElem (TensorType _ t _) = Just t
 getContainerElem _                  = Nothing
 
-getDimension :: Expr binder var ann -> Maybe Int
+getDimension :: Expr binder var -> Maybe Int
 getDimension (NatLiteralExpr _ _ n) = return n
 getDimension _                      = Nothing
 
-getDimensions :: Expr binder var ann -> Maybe [Int]
+getDimensions :: Expr binder var -> Maybe [Int]
 getDimensions (SeqExpr _ _ _ es) = traverse getDimension es
 getDimensions _                  = Nothing
 
-getExplicitArg :: Arg binder var ann -> Maybe (Expr binder var ann)
+getExplicitArg :: Arg binder var -> Maybe (Expr binder var)
 getExplicitArg (ExplicitArg _ arg) = Just arg
 getExplicitArg _                   = Nothing
 
-getExplicitArgs :: Traversable t => t (Arg binder var ann) -> Maybe (t (Expr binder var ann))
+getExplicitArgs :: Traversable t => t (Arg binder var) -> Maybe (t (Expr binder var))
 getExplicitArgs = traverse getExplicitArg
 
-filterOutNonExplicitArgs :: NonEmpty (Arg binder var ann) -> [Expr binder var ann]
+filterOutNonExplicitArgs :: NonEmpty (Arg binder var) -> [Expr binder var]
 filterOutNonExplicitArgs args = maybe [] NonEmpty.toList $ getExplicitArgs args
 
 --------------------------------------------------------------------------------
@@ -116,75 +116,72 @@ filterOutNonExplicitArgs args = maybe [] NonEmpty.toList $ getExplicitArgs args
 mkNameWithIndices :: Symbol -> [Int] -> Symbol
 mkNameWithIndices n indices = mconcat (n : [pack (show index) | index <- indices])
 
-removeAnnotations :: Functor (t binder var) => t binder var ann -> t binder var ()
-removeAnnotations = void
-
-mkHole :: ann -> Symbol -> Expr binder var ann
+mkHole :: Provenance -> Symbol -> Expr binder var
 mkHole ann name = Hole ann ("_" <> name)
 
-mkDoubleExpr :: ann -> Double -> Expr binder var ann
+mkDoubleExpr :: Provenance -> Double -> Expr binder var
 mkDoubleExpr ann v = LitRat ann (toRational v)
 
-mkIndexType :: ann -> Int -> Expr binder var ann
+mkIndexType :: Provenance -> Int -> Expr binder var
 mkIndexType ann n = IndexType ann (NatLiteralExpr ann (NatType ann) n)
 
-mkIntExpr :: ann -> Int -> Expr binder var ann
+mkIntExpr :: Provenance -> Int -> Expr binder var
 mkIntExpr ann v
   | v >= 0    = LitNat ann v
   | otherwise = LitInt ann v
 
-mkSeqExpr :: ann -> [Expr binder var ann] -> Expr binder var ann
+mkSeqExpr :: Provenance -> [Expr binder var] -> Expr binder var
 mkSeqExpr ann = LSeq ann (Hole ann "_seqTC")
 
-mkTensorDims :: ann
+mkTensorDims :: Provenance
              -> [Int]
-             -> Expr binder var ann
+             -> Expr binder var
 mkTensorDims ann dims =
   let listType = ListType ann (NatType ann) in
   let dimExprs = fmap (Literal ann . LNat) dims in
   let dimList  = SeqExpr ann (NatType ann) listType dimExprs in
   dimList
 
-mkTensorType :: ann
-             -> Expr binder var ann
+mkTensorType :: Provenance
+             -> Expr binder var
              -> [Int]
-             -> Expr binder var ann
+             -> Expr binder var
 mkTensorType _   tElem []   = tElem
 mkTensorType ann tElem dims =
   let dimList = mkTensorDims ann dims in
   App ann (BuiltinContainerType ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
 
 mkQuantifierSeq :: Quantifier
-                -> ann
+                -> Provenance
                 -> [binder]
-                -> Expr binder var ann
-                -> Expr binder var ann
-                -> Expr binder var ann
+                -> Expr binder var
+                -> Expr binder var
+                -> Expr binder var
 mkQuantifierSeq q ann names t body =
   foldl (\e name -> QuantifierExpr q ann (ExplicitBinder ann name t) e) body names
 
-mkList :: ann
-       -> Expr binder var ann
-       -> [Expr binder var ann]
-       -> Expr binder var ann
+mkList :: Provenance
+       -> Expr binder var
+       -> [Expr binder var]
+       -> Expr binder var
 mkList ann tElem = foldr cons (NilExpr ann tElem)
   where cons x xs = ConsExpr ann tElem $ fmap (ExplicitArg ann) [x, xs]
 
-mkTensor :: ann
-         -> Expr binder var ann
+mkTensor :: Provenance
+         -> Expr binder var
          -> [Int]
-         -> [Expr binder var ann]
-         -> Expr binder var ann
+         -> [Expr binder var]
+         -> Expr binder var
 mkTensor ann tBaseElem dims elems =
   let tensorType = mkTensorType ann tBaseElem dims in
   let elemType = mkTensorType ann tBaseElem (tail dims) in
   SeqExpr ann elemType tensorType elems
 
 mkBooleanBigOp :: BooleanOp2
-               -> ann
-               -> Expr binder var ann
-               -> Expr binder var ann
-               -> Expr binder var ann
+               -> Provenance
+               -> Expr binder var
+               -> Expr binder var
+               -> Expr binder var
 mkBooleanBigOp op ann containerType container =
   FoldExpr ann (BoolType ann) containerType (BoolType ann) $ fmap (ExplicitArg ann)
     [ Builtin ann (BooleanOp2 op)

@@ -19,7 +19,7 @@ import Vehicle.Language.Print
 -- Dataset typing
 
 getDatasetType :: Bool
-               -> CheckedAnn
+               -> Provenance
                -> Identifier
                -> CheckedExpr
                -> Either CompileError DatasetType
@@ -32,7 +32,7 @@ getDatasetType topLevel ann ident typ = case typ of
       then Left $ DatasetTypeUnsupportedContainer ident ann typ
       else second DatasetBaseType elemType
 
-getDatasetElemType :: CheckedAnn
+getDatasetElemType :: Provenance
                    -> Identifier
                    -> CheckedExpr
                    -> Either CompileError DatasetBaseType
@@ -45,7 +45,7 @@ getDatasetElemType ann ident elemType = case elemType of
   _             -> Left $ DatasetTypeUnsupportedElement ident ann elemType
 
 checkDatasetType :: MonadCompile m
-                 => CheckedAnn
+                 => Provenance
                  -> Identifier
                  -> CheckedExpr
                  -> m ()
@@ -59,7 +59,7 @@ checkDatasetType ann ident datasetType =
 
 parseDataset :: (MonadIO m, MonadCompile m)
              => DatasetLocations
-             -> CheckedAnn
+             -> Provenance
              -> Identifier
              -> CheckedExpr
              -> m CheckedExpr

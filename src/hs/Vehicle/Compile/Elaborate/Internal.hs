@@ -90,21 +90,21 @@ lookupBuiltin (BuiltinToken tk) = case builtinFromSymbol (tkSymbol tk) of
     Nothing -> throwError $ UnknownBuiltin $ toToken tk
     Just v  -> return v
 
-mkAnn :: IsToken a => a -> V.InputAnn
+mkAnn :: IsToken a => a -> V.Provenance
 mkAnn = tkProvenance
 
 op1 :: (HasProvenance a)
-    => (V.InputAnn -> a -> b)
+    => (V.Provenance -> a -> b)
     -> a -> b
 op1 mk t = mk (provenanceOf t) t
 
 op2 :: (HasProvenance a, HasProvenance b)
-    => (V.InputAnn -> a -> b -> c)
+    => (V.Provenance -> a -> b -> c)
     -> a -> b -> c
 op2 mk t1 t2 = mk (provenanceOf t1 <> provenanceOf t2) t1 t2
 
 op3 :: (HasProvenance a, HasProvenance b, HasProvenance c)
-    => (V.InputAnn -> a -> b -> c -> d)
+    => (V.Provenance -> a -> b -> c -> d)
     -> a -> b -> c -> d
 op3 mk t1 t2 t3 = mk (provenanceOf t1 <> provenanceOf t2 <> provenanceOf t3) t1 t2 t3
 

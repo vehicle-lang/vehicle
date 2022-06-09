@@ -32,11 +32,9 @@ coDeBruijnTests = testGroup "CoDeBruijnIndices"
   , testCase "neg"       $ toFromCoDB "\\(x : Int) -> - x"
   ]
 
-type CBExpr = CoDBExpr CheckedAnn
-
 toFromCoDB :: Text -> Assertion
 toFromCoDB e1  = do
-  let e2 = removeAnnotations (textToCheckedExpr e1)
+  let e2 = textToCheckedExpr e1
   let e3 = toCoDBExpr e2
   let e4 = fromCoDB e3
 

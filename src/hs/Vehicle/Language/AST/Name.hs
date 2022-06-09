@@ -14,11 +14,11 @@ type NamedBinding = Symbol
 type NamedVar     = Symbol
 
 -- An expression that uses named variables for both binders and variables.
-type NamedBinder ann = Binder NamedBinding NamedVar ann
-type NamedArg    ann = Arg    NamedBinding NamedVar ann
-type NamedExpr   ann = Expr   NamedBinding NamedVar ann
-type NamedDecl   ann = Decl   NamedBinding NamedVar ann
-type NamedProg   ann = Prog   NamedBinding NamedVar ann
+type NamedBinder = Binder NamedBinding NamedVar
+type NamedArg    = Arg    NamedBinding NamedVar
+type NamedExpr   = Expr   NamedBinding NamedVar
+type NamedDecl   = Decl   NamedBinding NamedVar
+type NamedProg   = Prog   NamedBinding NamedVar
 
 --------------------------------------------------------------------------------
 -- Type class
@@ -29,7 +29,7 @@ class HasName a name where
 freshNames :: [Symbol]
 freshNames = [ "_x" <> pack (show i) | i <- [0::Int ..]]
 
-instance HasName (Binder binder var ann) binder where
+instance HasName (Binder binder var) binder where
   nameOf (Binder _ _ name _) = name
 
 instance HasName Identifier Symbol where

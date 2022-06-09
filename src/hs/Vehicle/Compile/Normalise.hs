@@ -142,7 +142,7 @@ instance Norm CheckedArg where
 --------------------------------------------------------------------------------
 -- Application
 
-nfApp :: MonadNorm m => CheckedAnn -> CheckedExpr -> NonEmpty CheckedArg -> m CheckedExpr
+nfApp :: MonadNorm m => Provenance -> CheckedExpr -> NonEmpty CheckedArg -> m CheckedExpr
 nfApp ann fun@Lam{} args = nfAppLam ann fun (NonEmpty.toList args)
 nfApp ann fun       args = do
   let e = App ann fun args
@@ -187,7 +187,7 @@ nfApp ann fun       args = do
     -- Fall-through case
     _ -> Nothing
 
-nfAppLam :: MonadNorm m => CheckedAnn -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
+nfAppLam :: MonadNorm m => Provenance -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
 nfAppLam ann (Lam _ _ body) (arg : args) = nfAppLam ann (substInto (argExpr arg) body) args
 nfAppLam ann fun              args       = nf (normAppList ann fun args)
 
@@ -196,7 +196,7 @@ nfAppLam ann fun              args       = nf (normAppList ann fun args)
 
 nfEq :: MonadNorm m
      => Equality
-     -> CheckedAnn
+     -> Provenance
      -> CheckedExpr
      -> CheckedArg
      -> CheckedArg
@@ -238,7 +238,7 @@ nfEq eq ann _tElem e1 e2 = case (argExpr e1, argExpr e2) of
 
 nfOrder :: MonadNorm m
         => Order
-        -> CheckedAnn
+        -> Provenance
         -> CheckedExpr
         -> CheckedArg
         -> CheckedArg
@@ -260,7 +260,7 @@ nfOrder order ann _tElem arg1 arg2 = case (argExpr arg1, argExpr arg2) of
 -- Normalising quantification over types
 
 nfQuantifier :: MonadNorm m
-             => CheckedAnn
+             => Provenance
              -> Quantifier
              -> CheckedBinder
              -> CheckedExpr
@@ -306,7 +306,7 @@ nfQuantifier ann q binder body = case typeOf binder of
   _ -> Nothing
 
 nfForeach :: MonadNorm m
-          => CheckedAnn
+          => Provenance
           -> CheckedBinder
           -> CheckedExpr
           -> Maybe (m CheckedExpr)
@@ -324,7 +324,7 @@ nfForeach ann binder body = Just $
     _ -> compilerDeveloperError
       "Type-checking is supposed to ensure only using `foreach` with the `Index` type."
 
-makeTensorLit :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedExpr
+makeTensorLit :: Provenance -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedExpr
 makeTensorLit ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)
   where
     mkTensorSeq :: [Int] -> [CheckedExpr] -> CheckedExpr
@@ -341,7 +341,7 @@ makeTensorLit ann tElem dims exprs = assert (product dims == length exprs) (go d
 -- |Elaborate quantification over the members of a container type.
 -- Expands e.g. `forall x in list . y` to `fold and true (map (\x -> y) list)`
 nfQuantifierIn :: MonadNorm m
-               => CheckedAnn
+               => Provenance
                -> Quantifier
                -> CheckedExpr  -- tCont
                -> CheckedBinder
@@ -357,7 +357,7 @@ nfQuantifierIn ann q tCont binder body container = Just $ do
     Exists  -> nf $ mkBooleanBigOp Or  ann tResCont mappedContainer
 
 nfForeachIn :: MonadNorm m
-            => CheckedAnn
+            => Provenance
             -> CheckedBinder
             -> CheckedExpr
             -> CheckedExpr
@@ -377,10 +377,10 @@ substContainerType _ _ = developerError "Provided an invalid container type"
 -- Normalising boolean operations
 
 notArg :: MonadNorm m => CheckedArg -> m CheckedArg
-notArg x = let ann = annotationOf x in ExplicitArg ann <$> nf (NotExpr ann [x])
+notArg x = let ann = provenanceOf x in ExplicitArg ann <$> nf (NotExpr ann [x])
 
 nfNot :: forall m . MonadNorm m
-      => CheckedAnn
+      => Provenance
       -> CheckedArg
       -> Maybe (m CheckedExpr)
 nfNot ann arg = case argExpr arg of
@@ -411,7 +411,7 @@ nfNot ann arg = case argExpr arg of
   _ -> Nothing
 
 nfAnd :: forall m . MonadNorm m
-      => CheckedAnn
+      => Provenance
       -> CheckedArg
       -> CheckedArg
       -> Maybe (m CheckedExpr)
@@ -424,7 +424,7 @@ nfAnd ann arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   _                              -> Nothing
 
 nfOr :: forall m . MonadNorm m
-     => CheckedAnn
+     => Provenance
      -> CheckedArg
      -> CheckedArg
      -> Maybe (m CheckedExpr)
@@ -438,7 +438,7 @@ nfOr ann arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   _                              -> Nothing
 
 nfImplies :: forall m . MonadNorm m
-          => CheckedAnn
+          => Provenance
           -> CheckedArg
           -> CheckedArg
           -> Bool
@@ -468,10 +468,10 @@ nfIf condition e1 e2 = case argExpr condition of
 -- Normalising negation
 
 negArg :: MonadNorm m => CheckedExpr -> CheckedArg -> m CheckedArg
-negArg t x = let ann = annotationOf x in ExplicitArg ann <$> nf (NegExpr ann t [x])
+negArg t x = let ann = provenanceOf x in ExplicitArg ann <$> nf (NegExpr ann t [x])
 
 nfAdd :: MonadNorm m
-      => CheckedAnn
+      => Provenance
       -> CheckedExpr
       -> CheckedArg
       -> CheckedArg
@@ -484,7 +484,7 @@ nfAdd ann t arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   _                                            -> Nothing
 
 nfSub :: MonadNorm m
-      => CheckedAnn
+      => Provenance
       -> CheckedExpr
       -> CheckedExpr
       -> CheckedArg
@@ -501,7 +501,7 @@ nfSub ann t tc arg1 arg2 convertToAddition = case (argExpr arg1, argExpr arg2) o
   _ -> Nothing
 
 nfMul :: MonadNorm m
-      => CheckedAnn
+      => Provenance
       -> CheckedExpr
       -> CheckedExpr
       -> CheckedArg
@@ -526,7 +526,7 @@ nfMul ann t tc arg1 arg2 expandOut = case (argExpr arg1, argExpr arg2) of
         ]
 
 nfDiv :: MonadNorm m
-      => CheckedAnn
+      => Provenance
       -> CheckedExpr
       -> CheckedArg
       -> CheckedArg
@@ -537,7 +537,7 @@ nfDiv ann t arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   _                                            -> Nothing
 
 nfNeg :: MonadNorm m
-      => CheckedAnn
+      => Provenance
       -> CheckedExpr
       -> CheckedArg
       -> Bool
@@ -560,7 +560,7 @@ nfNeg _ann t e expandOut = case argExpr e of
 -- Normalising container operations
 
 nfCons :: MonadNorm m
-       => CheckedAnn
+       => Provenance
        -> CheckedArg
        -> CheckedArg
        -> Maybe (m CheckedExpr)
@@ -569,7 +569,7 @@ nfCons ann x xs = case argExpr xs of
   _                        -> Nothing
 
 nfMap :: MonadNorm m
-      => CheckedAnn
+      => Provenance
       -> CheckedExpr
       -> CheckedExpr
       -> CheckedExpr
@@ -591,7 +591,7 @@ nfAt tensor index = case (argExpr tensor, argExpr index) of
   _                                        -> Nothing
 
 nfFold :: MonadNorm m
-       => CheckedAnn
+       => Provenance
        -> CheckedArg
        -> CheckedArg
        -> CheckedArg

@@ -13,7 +13,7 @@ import Vehicle.Compile.Resource.Core
 --------------------------------------------------------------------------------
 -- Network typing
 
-getNetworkType :: CheckedAnn
+getNetworkType :: Provenance
                -> Identifier
                -> CheckedExpr
                -> Either CompileError NetworkTypeWithUnknownDims
@@ -55,7 +55,7 @@ getNetworkType _ ident networkType = do
     throwError $ NetworkTypeHasUnsupportedElementType ident networkType tElem io
 
 checkNetworkType :: MonadCompile m
-                 => CheckedAnn
+                 => Provenance
                  -> Identifier
                  -> CheckedExpr
                  -> m ()
@@ -68,7 +68,7 @@ checkNetworkType ann ident networkType =
 -- Network standardisation
 
 extractNetworkType :: forall m . MonadCompile m
-                   => CheckedAnn
+                   => Provenance
                    -> Identifier
                    -> CheckedExpr
                    -> m NetworkType

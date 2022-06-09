@@ -104,7 +104,7 @@ strongest x@(Candidate tc1 _ _) y@(Valid (Candidate tc2 _ _)) =
   family HasConLitsOfSize{} = ConFamily True
 
 defaultSolution :: MonadConstraintSolving m
-                => CheckedAnn
+                => Provenance
                 -> BoundCtx
                 -> TypeClass
                 -> m CheckedExpr
@@ -121,7 +121,7 @@ defaultSolution ann _   HasRatLits          = return $ RatType ann
 defaultSolution ann ctx HasConOps           = createDefaultListType ann ctx
 defaultSolution ann ctx HasConLitsOfSize{}  = createDefaultListType ann ctx
 
-createDefaultListType :: MonadConstraintSolving m => CheckedAnn -> BoundCtx -> m CheckedExpr
+createDefaultListType :: MonadConstraintSolving m => Provenance -> BoundCtx -> m CheckedExpr
 createDefaultListType ann ctx = ListType ann . snd <$> freshMetaWith ann (Type ann 0) ctx
 
 getDefaultCandidate :: TypeClassConstraint -> Maybe (Meta, CheckedExpr, TypeClass)

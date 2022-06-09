@@ -15,7 +15,7 @@ import Vehicle.Compile.Resource.Core
 --------------------------------------------------------------------------------
 -- Parameter typing
 
-getParameterType :: CheckedAnn
+getParameterType :: Provenance
                  -> Identifier
                  -> CheckedExpr
                  -> Either CompileError ParameterType
@@ -30,7 +30,7 @@ getParameterType ann ident paramType = case paramType of
   _             -> Left $ ParameterTypeUnsupported ident ann paramType
 
 checkParameterType :: MonadCompile m
-                   => CheckedAnn
+                   => Provenance
                    -> Identifier
                    -> CheckedExpr
                    -> m ()
@@ -44,7 +44,7 @@ checkParameterType ann ident paramType =
 
 parseParameterValue :: MonadCompile m
                     => ParameterValues
-                    -> CheckedAnn
+                    -> Provenance
                     -> Identifier
                     -> CheckedExpr
                     -> m CheckedExpr
@@ -70,19 +70,19 @@ parseParameterValue parameterValues ann ident paramType = do
       Just e -> return e
       Nothing -> throwError $ UnableToParseResource ident ann Parameter value
 
-parseBool :: CheckedAnn -> String -> Maybe CheckedExpr
+parseBool :: Provenance -> String -> Maybe CheckedExpr
 parseBool ann value = fmap (BoolLiteralExpr ann) (readMaybe value)
 
-parseNat :: CheckedAnn -> String -> Maybe CheckedExpr
+parseNat :: Provenance -> String -> Maybe CheckedExpr
 parseNat ann value = fmap (NatLiteralExpr ann (NatType ann)) (readMaybe value)
 
-parseInt :: CheckedAnn -> String -> Maybe CheckedExpr
+parseInt :: Provenance -> String -> Maybe CheckedExpr
 parseInt ann value = fmap (IntLiteralExpr ann (IntType ann)) (readMaybe value)
 
-parseRat :: CheckedAnn -> String -> Maybe CheckedExpr
+parseRat :: Provenance -> String -> Maybe CheckedExpr
 parseRat ann value = fmap (RatLiteralExpr ann (RatType ann)) (readMaybe value)
 
-parseIndex :: CheckedExpr -> Int -> CheckedAnn -> String -> Maybe CheckedExpr
+parseIndex :: CheckedExpr -> Int -> Provenance -> String -> Maybe CheckedExpr
 parseIndex finType n ann value = readMaybe value >>= \v ->
   if v < n
     then Just $ NatLiteralExpr ann finType v

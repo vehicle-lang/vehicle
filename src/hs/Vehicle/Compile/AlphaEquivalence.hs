@@ -9,17 +9,17 @@ import Data.Hashable (Hashable(..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.CoDeBruijnify
 
-hashCoDBExpr :: CoDBExpr ann -> Int
-hashCoDBExpr e = hash (mkHashable e)
+hashCoDBExpr :: CoDBExpr -> Int
+hashCoDBExpr = hash
 
-hashDBExpr :: DBExpr ann -> Int
+hashDBExpr :: DBExpr -> Int
 hashDBExpr e = hashCoDBExpr (toCoDBExpr e)
 
 class AlphaEquivalence a where
   alphaEq :: a -> a -> Bool
 
-instance AlphaEquivalence (CoDBExpr ann) where
+instance AlphaEquivalence CoDBExpr where
   alphaEq e1 e2 = hashCoDBExpr e1 == hashCoDBExpr e2
 
-instance AlphaEquivalence (DBExpr ann) where
+instance AlphaEquivalence DBExpr where
   alphaEq e1 e2 = hashDBExpr e1 == hashDBExpr e2

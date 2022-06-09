@@ -45,7 +45,7 @@ instance Monoid ResourceContext where
 
 checkResourceType :: MonadCompile m
                   => ResourceType
-                  -> CheckedAnn
+                  -> Provenance
                   -> Identifier
                   -> CheckedExpr
                   -> m ()

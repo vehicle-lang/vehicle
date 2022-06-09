@@ -79,7 +79,7 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
     -- tensor.
     (Builtin _ (ContainerType Tensor), [tElem, tDims]) :~: (Builtin _ op, _)
       | op /= ContainerType Tensor -> do
-          let emptyDims = mkTensorDims (inserted (annotationOf tDims)) []
+          let emptyDims = mkTensorDims (inserted (provenanceOf tDims)) []
           let elemConstraint = UC ctx (Unify (argExpr tElem, whnfE2))
           let dimsConstraint = UC ctx (Unify (argExpr tDims, emptyDims))
           return Progress

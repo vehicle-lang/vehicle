@@ -353,7 +353,7 @@ compileExpr expr = do
   return result
 
 compileLetBinder :: MonadAgdaCompile m
-                 => LetBinder OutputBinding OutputVar OutputAnn
+                 => LetBinder OutputBinding OutputVar
                  -> m Code
 compileLetBinder (binder, expr) = do
   let binderName = pretty (nameOf binder :: OutputBinding)
@@ -529,7 +529,7 @@ compileRatLiteral r = annotateInfixOp2 [DataRat] 7 id
   ]
 
 -- |Compiling sequences. No sequences in Agda so have to go via cons.
-compileSeq :: MonadAgdaCompile m => OutputAnn -> OutputExpr -> [OutputExpr] -> m Code
+compileSeq :: MonadAgdaCompile m => Provenance -> OutputExpr -> [OutputExpr] -> m Code
 compileSeq _ (PrimDict _ (HasConLitsOfSizeExpr _ _ _ tCont)) elems = go elems
   where
     go :: MonadAgdaCompile m => [OutputExpr] -> m Code
@@ -641,7 +641,7 @@ compileOrder order elemType args = do
   let opDoc        = orderDoc <> boolDecDoc
   return $ annotateInfixOp2 dependencies 4 opBraces (Just qualifier) opDoc args
 
-compileAt :: MonadAgdaCompile m => CheckedAnn -> [OutputExpr] -> m Code
+compileAt :: MonadAgdaCompile m => Provenance -> [OutputExpr] -> m Code
 compileAt _ [tensorExpr, indexExpr] =
   annotateApp [] <$> compileExpr tensorExpr <*> traverse compileExpr [indexExpr]
 compileAt ann args =

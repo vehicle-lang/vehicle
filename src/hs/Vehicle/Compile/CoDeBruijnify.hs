@@ -14,7 +14,7 @@ import Vehicle.Language.AST.DeBruijn as DB
 --------------------------------------------------------------------------------
 -- Forwards direction
 
-toCoDBExpr :: Expr DBBinding DBVar ann -> (Expr CoDBBinding CoDBVar ann, BoundVarMap)
+toCoDBExpr :: Expr DBBinding DBVar -> (Expr CoDBBinding CoDBVar, BoundVarMap)
 toCoDBExpr = cata $ \case
   TypeF     ann l        -> (Type ann l,      mempty)
   HoleF     ann n        -> (Hole     ann n,  mempty)
@@ -53,12 +53,12 @@ toCoDBExpr = cata $ \case
     let (binder', bvm1) = toCoDBBinder binder positionTree in
     (Lam ann binder' body', nodeBVM [bvm1, bvm2'])
 
-toCoDBBinder :: DBBinder ann -> Maybe PositionTree -> CoDBBinder ann
+toCoDBBinder :: DBBinder -> Maybe PositionTree -> CoDBBinder
 toCoDBBinder (Binder ann v n t) mpt =
   let (t', bvm) = toCoDBExpr t in
   (Binder ann v (CoDBBinding n mpt) t', bvm)
 
-toCoDBArg :: DBArg ann -> CoDBArg ann
+toCoDBArg :: DBArg -> CoDBArg
 toCoDBArg (Arg ann v e) =
   let (e', bvm) = toCoDBExpr e in
   (Arg ann v e', bvm)
@@ -67,7 +67,7 @@ toCoDBArg (Arg ann v e) =
 -- Backwards
 
 class ConvertCodebruijn t where
-  fromCoDB :: (t CoDBBinding CoDBVar ann, BoundVarMap) -> t DBBinding DBVar ann
+  fromCoDB :: (t CoDBBinding CoDBVar, BoundVarMap) -> t DBBinding DBVar
 
 instance ConvertCodebruijn Expr where
   fromCoDB expr = case recCoDB expr of

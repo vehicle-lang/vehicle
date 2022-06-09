@@ -42,7 +42,7 @@ datasetBaseType = \case
   DatasetTensorType tElem _ -> datasetBaseType tElem
   DatasetBaseType   tElem   -> tElem
 
-reconstructDatasetBaseType :: CheckedAnn -> DatasetBaseType -> CheckedExpr
+reconstructDatasetBaseType :: Provenance -> DatasetBaseType -> CheckedExpr
 reconstructDatasetBaseType ann = \case
   DatasetBoolType    -> BoolType ann
   DatasetNatType     -> NatType ann
@@ -50,7 +50,7 @@ reconstructDatasetBaseType ann = \case
   DatasetRatType     -> RatType ann
   DatasetIndexType n -> IndexType ann n
 
-reconstructDatasetType :: CheckedAnn -> DatasetType -> CheckedExpr
+reconstructDatasetType :: Provenance -> DatasetType -> CheckedExpr
 reconstructDatasetType ann = \case
   DatasetListType   tElem      -> ListType ann (reconstructDatasetType ann tElem)
   DatasetTensorType tElem dims -> TensorType ann (reconstructDatasetType ann tElem) dims
@@ -97,7 +97,7 @@ instance Pretty NetworkBaseType where
   pretty = \case
     NetworkRatType -> pretty (NumericType Rat)
 
-reconstructNetworkBaseType :: CheckedAnn -> NetworkBaseType -> CheckedExpr
+reconstructNetworkBaseType :: Provenance -> NetworkBaseType -> CheckedExpr
 reconstructNetworkBaseType ann NetworkRatType = RatType ann
 
 allowedNetworkElementTypes :: [CheckedExpr]

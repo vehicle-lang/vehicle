@@ -26,7 +26,7 @@ checkQuantifiersAndNegateIfNecessary backend ident expr =
       Forall  -> do
         -- If the property is universally quantified then we need to negate the expression
         logDebug MinDetail "Negating property..."
-        let ann = annotationOf expr
+        let ann = provenanceOf expr
         return $ NotExpr ann [ExplicitArg ann expr]
 
     logCompilerPassOutput (prettyFriendly outputExpr)

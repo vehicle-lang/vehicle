@@ -60,7 +60,6 @@ library
                       , Vehicle.Language.DSL
                       , Vehicle.Language.Print
                       , Vehicle.Language.Sugar
-                      , Vehicle.Language.Provenance
 
                       , Vehicle.Compile
                       , Vehicle.Compile.Prelude
@@ -121,6 +120,7 @@ library
                       , Vehicle.Language.AST.Visibility
                       , Vehicle.Language.AST.Utils
                       , Vehicle.Language.AST.Position
+                      , Vehicle.Language.AST.Provenance
 
                       , Vehicle.Compile.Type.Bidirectional
                       , Vehicle.Compile.Type.Constraint

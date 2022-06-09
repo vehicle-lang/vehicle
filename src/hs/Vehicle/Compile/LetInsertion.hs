@@ -212,7 +212,7 @@ letBindSubexpressions remainingSM subexprsToInsert expr = do
        -> m (SubexpressionMap, CheckedCoDBExpr)
     go sm []                body = return (sm, body)
     go sm (cs : css) body = do
-      let ann = annotationOf (fst (subexpr cs))
+      let ann = provenanceOf (fst (subexpr cs))
       logDebug MaxDetail $ "inserting" <+> prettyEntry body cs
       incrCallDepth
 
@@ -254,7 +254,7 @@ letBindSubexpressions remainingSM subexprsToInsert expr = do
         Nothing           -> developerError "Unexpectedly disjoint position trees"
         Just newPositions -> CSItem v2 q (Node newPositions)
 
-    prependLet :: CheckedAnn -> Subexpression -> CheckedCoDBExpr -> CheckedCoDBExpr
+    prependLet :: Provenance -> Subexpression -> CheckedCoDBExpr -> CheckedCoDBExpr
     prependLet ann cs (letBody, bvm3) =
       let (pt, bvm3')   = liftBVM bvm3 in
       let (bound, bvm1) = subexpr cs in
@@ -282,7 +282,7 @@ nodeSM e sms =
           -> IntMap (GenericSubexpression PositionList)
     merge xs ys = IntMap.unionWith (<>) xs (fmap (fmap There) ys)
 
-duplicateError :: Show ann => CoDBExpr ann
+duplicateError :: CoDBExpr
                -> [SubexpressionMap]
                -> Subexpression
                -> Subexpression

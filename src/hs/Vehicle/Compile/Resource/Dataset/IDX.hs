@@ -57,7 +57,7 @@ readIDXFile file = do
 
 parseIDX :: forall m a .
             (MonadDataset m, Vector.Unbox a)
-         => CheckedAnn
+         => Provenance
          -> Identifier
          -> DatasetType
          -> (a -> m CheckedExpr)
@@ -119,7 +119,7 @@ parseIDX ann ident datasetType elemParser actualDims =
         let baseElemType = reconstructDatasetType ann tElem
         return $ mkTensor ann baseElemType tensorDims rowExprs
 
-elementAnn :: MonadDataset m => m CheckedAnn
+elementAnn :: MonadDataset m => m Provenance
 elementAnn = do
   (ident, _) <- ask
   return $ datasetProvenance (nameOf ident)

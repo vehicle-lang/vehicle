@@ -97,7 +97,7 @@ solveHasQuantifier c q domain pol res
 --------------------------------------------------------------------------------
 -- Utils
 
-pattern Pol :: Polarity -> Expr binder var ann
+pattern Pol :: Polarity -> Expr binder var
 pattern Pol p <- Builtin _ (Polarity p)
 
 unify :: MonadConstraintSolving m

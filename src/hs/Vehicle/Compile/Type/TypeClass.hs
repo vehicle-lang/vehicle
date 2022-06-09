@@ -43,7 +43,7 @@ solveTypeClassConstraint ctx (m `Has` (App ann tc@(BuiltinTypeClass{}) args)) = 
     _ -> compilerDeveloperError $ "Unknown type-class" <+> squotes (prettyVerbose eWHNF)
 
   unless (isStuck progress) $ do
-    metaSolved m (PrimDict (annotationOf eWHNF) eWHNF)
+    metaSolved m (PrimDict (provenanceOf eWHNF) eWHNF)
 
   return progress
 

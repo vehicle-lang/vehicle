@@ -30,8 +30,6 @@ alphaEquivalenceTests = testGroup "AlphaEquivalence"
   , testCase "appEq"      $ equalUpToAlpha True  "(\\(x : Nat) -> x) 1" "(\\(y : Nat) -> y) 1"
   ]
 
-type CBExpr = CoDBExpr CheckedAnn
-
 equalUpToAlpha :: Bool -> Text -> Text -> Assertion
 equalUpToAlpha shouldBeEqual t1 t2  = do
   let e1 = textToCheckedExpr t1

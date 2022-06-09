@@ -21,13 +21,13 @@ import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader, Reader, ask, runReader, runReaderT, local)
 import Control.Monad.Trans (lift)
-import Data.Kind as Kind ( Type )
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Core
 
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IM
+import Vehicle.Language.AST.Provenance
 
 --------------------------------------------------------------------------------
 -- Definitions
@@ -47,11 +47,11 @@ instance NFData DBVar
 type DBBinding = Maybe Symbol
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type DBBinder ann = Binder DBBinding DBVar ann
-type DBArg    ann = Arg    DBBinding DBVar ann
-type DBExpr   ann = Expr   DBBinding DBVar ann
-type DBDecl   ann = Decl   DBBinding DBVar ann
-type DBProg   ann = Prog   DBBinding DBVar ann
+type DBBinder = Binder DBBinding DBVar
+type DBArg    = Arg    DBBinding DBVar
+type DBExpr   = Expr   DBBinding DBVar
+type DBDecl   = Decl   DBBinding DBVar
+type DBProg   = Prog   DBBinding DBVar
 
 --------------------------------------------------------------------------------
 -- A framework for writing generic operations on DeBruijn variables
@@ -61,25 +61,25 @@ type DBProg   ann = Prog   DBBinding DBVar ann
 type BindingDepth = Int
 
 -- | A type-synonym for the function that is used to update a bound variable
-type UpdateVariable m state ann
+type UpdateVariable m state
   =  DBIndex               -- The old deBruijn index of the variable
-  -> ann                   -- The annotation of the variable
+  -> Provenance            -- The annotation of the variable
   -> (BindingDepth, state) -- How many binders the variable is under & the current state
-  -> m (DBExpr ann)        -- The resulting expression
+  -> m DBExpr              -- The resulting expression
 
 -- | A type-synonym for the function that is used to update the operation's state
 -- when traversing across a binder.
-type TraverseBinder state ann = state -> state
+type TraverseBinder state = state -> state
 
-class DeBruijnFunctor ann (a :: Kind.Type -> Kind.Type) where
+class DeBruijnFunctor a where
   alter
-    :: (Semigroup ann, MonadReader (BindingDepth, state) m)
-    => TraverseBinder state ann
-    -> UpdateVariable m state ann
-    -> a ann
-    -> m (a ann)
+    :: (MonadReader (BindingDepth, state) m)
+    => TraverseBinder state
+    -> UpdateVariable m state
+    -> a
+    -> m a
 
-instance DeBruijnFunctor ann (Expr DBBinding DBVar) where
+instance DeBruijnFunctor DBExpr where
   alter body var =
     let
       altPiBinder  = alter    body var
@@ -106,13 +106,13 @@ instance DeBruijnFunctor ann (Expr DBBinding DBVar) where
 -- Temporarily go under a binder, increasing the binding depth by one
 -- and shifting the current state.
 underBinder :: MonadReader (BindingDepth, state) m =>
-               TraverseBinder state ann -> m a -> m a
+               TraverseBinder state -> m a -> m a
 underBinder body = local (\(d, s) -> (d+1, body s))
 
-instance DeBruijnFunctor ann (Arg DBBinding DBVar) where
+instance DeBruijnFunctor DBArg where
   alter body var = traverseArgExpr (alter body var)
 
-instance DeBruijnFunctor ann (Binder DBBinding DBVar) where
+instance DeBruijnFunctor DBBinder where
   alter body var = traverseBinderType (alter body var)
 
 --------------------------------------------------------------------------------
@@ -123,25 +123,23 @@ instance DeBruijnFunctor ann (Binder DBBinding DBVar) where
 
 -- | Lift all DeBruijn indices that refer to environment variables by the
 -- provided depth.
-liftFreeDBIndices :: Semigroup ann
-                  => BindingDepth -- ^ amount to lift by
-                  -> DBExpr ann   -- ^ expression to lift
-                  -> DBExpr ann   -- ^ the result of the lifting
+liftFreeDBIndices :: BindingDepth -- ^ amount to lift by
+                  -> DBExpr       -- ^ expression to lift
+                  -> DBExpr       -- ^ the result of the lifting
 liftFreeDBIndices 0 e = e
 liftFreeDBIndices j e = runReader (alter id alterVar e) (0 , ())
   where
-    alterVar :: UpdateVariable (Reader (BindingDepth, ())) () ann
+    alterVar :: UpdateVariable (Reader (BindingDepth, ())) ()
     alterVar i ann (d, _) = return (Var ann (Bound i'))
       where
         i' | d <= i    = i + j -- Index is referencing the environment so increment
            | otherwise = i     -- Index is locally bound so no need to increment
 
 -- | De Bruijn aware substitution of one expression into another
-substIntoAtLevel :: Semigroup ann
-                 => BindingDepth -- ^ The current binding depth
-                 -> DBExpr ann   -- ^ expression to substitute
-                 -> DBExpr ann   -- ^ term to substitute into
-                 -> DBExpr ann   -- ^ the result of the substitution
+substIntoAtLevel :: BindingDepth -- ^ The current binding depth
+                 -> DBExpr       -- ^ expression to substitute
+                 -> DBExpr       -- ^ term to substitute into
+                 -> DBExpr       -- ^ the result of the substitution
 substIntoAtLevel level sub e = runReader (alter binderUpdate alterVar e) (level , sub)
   where
     alterVar i ann (d, subExpr) = case compare i d of
@@ -158,21 +156,20 @@ substIntoAtLevel level sub e = runReader (alter binderUpdate alterVar e) (level 
     binderUpdate = liftFreeDBIndices 1
 
 -- | De Bruijn aware substitution of one expression into another
-substInto :: Semigroup ann
-          => DBExpr ann -- ^ expression to substitute
-          -> DBExpr ann -- ^ term to substitute into
-          -> DBExpr ann -- ^ the result of the substitution
+substInto :: DBExpr -- ^ expression to substitute
+          -> DBExpr -- ^ term to substitute into
+          -> DBExpr -- ^ the result of the substitution
 substInto = substIntoAtLevel 0
 
-type Substitution ann = IntMap (DBExpr ann)
+type Substitution = IntMap DBExpr
 
 -- TODO: explain what this means:
 --   ?X i2 i4 i1 --> [i2 -> 2, i4 -> 1, i1 -> 0]
 
-patternOfArgs :: [DBArg ann] -> Maybe (Substitution ann)
+patternOfArgs :: [DBArg] -> Maybe Substitution
 patternOfArgs args = go (length args - 1) IM.empty args
   where
-    go :: Int -> IntMap (DBExpr ann) -> [DBArg ann] -> Maybe (Substitution ann)
+    go :: Int -> IntMap DBExpr -> [DBArg] -> Maybe Substitution
     go _ revMap [] = Just revMap
     -- TODO: we could eta-reduce arguments too, if possible
     go i revMap (Arg _ _ (Var ann (Bound j)) : restArgs) =
@@ -182,10 +179,9 @@ patternOfArgs args = go (length args - 1) IM.empty args
         go (i-1) (IM.insert j (Var ann (Bound i)) revMap) restArgs
     go _ _ _ = Nothing
 
-substAll :: Semigroup ann
-         => Substitution ann
-         -> DBExpr ann
-         -> Maybe (DBExpr ann)
+substAll :: Substitution
+         -> DBExpr
+         -> Maybe DBExpr
 substAll sub e = runReaderT (alter binderUpdate alterVar e) (0, sub)
   where
     alterVar i ann (d, subst) =

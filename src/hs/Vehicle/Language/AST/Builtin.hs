@@ -22,11 +22,12 @@ module Vehicle.Language.AST.Builtin
 
 import Data.Bifunctor (first)
 import GHC.Generics (Generic)
-import Control.DeepSeq (NFData)
+import Control.DeepSeq (NFData(..))
 import Data.Text (pack)
-import Data.Hashable (Hashable)
+import Data.Hashable (Hashable (..))
 
 import Vehicle.Prelude
+import Vehicle.Language.AST.Provenance
 
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.
@@ -256,16 +257,30 @@ instance Hashable Linearity
 --------------------------------------------------------------------------------
 -- Polarity
 
+-- | Used to track where the polarity information came from.
+data PolarityProvenance
+  = QuantifierProv Provenance
+  | NegationProv Provenance PolarityProvenance
+  deriving (Eq, Show, Generic)
+
+instance NFData PolarityProvenance where
+  rnf _x = ()
+
+instance Hashable PolarityProvenance where
+  hashWithSalt _n _p = 0
+
+
 -- | Used to annotate boolean types, represents what sort of pattern of
 -- quantifiers it contains.
 data Polarity
   = Unquantified
-  | Quantified Quantifier
-  | MixedParallel
-  | MixedSequential
-  deriving (Eq, Ord, Show, Generic)
+  | Quantified Quantifier --PolarityProvenance
+  | MixedParallel --PolarityProvenance PolarityProvenance
+  | MixedSequential --PolarityProvenance PolarityProvenance
+  deriving (Eq, Show, Generic)
 
-instance NFData   Polarity
+instance NFData Polarity
+
 instance Hashable Polarity
 
 instance Negatable Polarity where
@@ -275,18 +290,12 @@ instance Negatable Polarity where
     MixedParallel   -> MixedParallel
     MixedSequential -> MixedSequential
 
-pattern Universal :: Polarity
-pattern Universal = Quantified Forall
-
-pattern Existential :: Polarity
-pattern Existential = Quantified Exists
-
 data PolarityTypeClass
   = HasNot
   | HasAndOr
   | HasImpl
   | HasQuantifier Quantifier
-  deriving (Eq, Ord, Generic)
+  deriving (Eq, Generic)
 
 instance NFData   PolarityTypeClass
 instance Hashable PolarityTypeClass
@@ -332,7 +341,7 @@ data Builtin
   -- ^ The type of Polarity/Linearity etc.
   | Polarity Polarity
   | PolarityTypeClass PolarityTypeClass
-  deriving (Eq, Ord, Generic)
+  deriving (Eq, Generic)
 
 instance NFData   Builtin
 instance Hashable Builtin
@@ -372,44 +381,39 @@ instance Show Builtin where
 
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols = map (first pack)
-  [ show Bool                        |-> Bool
-  , show (NumericType Nat)           |-> NumericType Nat
-  , show (NumericType Int)           |-> NumericType Int
-  , show (NumericType Rat)           |-> NumericType Rat
-  , show (ContainerType List)        |-> ContainerType List
-  , show (ContainerType Tensor)      |-> ContainerType Tensor
-  , show If                          |-> If
-  , show (BooleanOp2 Impl)           |-> BooleanOp2 Impl
-  , show (BooleanOp2 And)            |-> BooleanOp2 And
-  , show (BooleanOp2 Or)             |-> BooleanOp2 Or
-  , show Not                         |-> Not
-  , show (Equality Eq)               |-> Equality Eq
-  , show (Equality Neq)              |-> Equality Neq
-  , show (Order Le)                  |-> Order Le
-  , show (Order Lt)                  |-> Order Lt
-  , show (Order Ge)                  |-> Order Ge
-  , show (Order Gt)                  |-> Order Gt
-  , show (NumericOp2 Add)            |-> NumericOp2 Add
-  , show (NumericOp2 Mul)            |-> NumericOp2 Mul
-  , show (NumericOp2 Div)            |-> NumericOp2 Div
-  , show (NumericOp2 Sub)            |-> NumericOp2 Sub
-  , show Neg                         |-> Neg
-  , show At                          |-> At
-  , show Cons                        |-> Cons
-  , show (Quant Forall)              |-> Quant Forall
-  , show (Quant Exists)              |-> Quant Exists
-  , show (QuantIn Forall)            |-> QuantIn Forall
-  , show (QuantIn Exists)            |-> QuantIn Exists
-  , show Foreach                     |-> Foreach
-  , show ForeachIn                   |-> ForeachIn
-  , show Map                         |-> Map
-  , show Fold                        |-> Fold
-  , show AuxiliaryType               |-> AuxiliaryType
-  , show (Polarity Unquantified)     |-> Polarity Unquantified
-  , show (Polarity Universal)        |-> Polarity Universal
-  , show (Polarity Existential)      |-> Polarity Existential
-  , show (Polarity MixedParallel)    |-> Polarity MixedParallel
-  , show (Polarity MixedSequential)  |-> Polarity MixedSequential
+  [ show Bool                         |-> Bool
+  , show (NumericType Nat)            |-> NumericType Nat
+  , show (NumericType Int)            |-> NumericType Int
+  , show (NumericType Rat)            |-> NumericType Rat
+  , show (ContainerType List)         |-> ContainerType List
+  , show (ContainerType Tensor)       |-> ContainerType Tensor
+  , show If                           |-> If
+  , show (BooleanOp2 Impl)            |-> BooleanOp2 Impl
+  , show (BooleanOp2 And)             |-> BooleanOp2 And
+  , show (BooleanOp2 Or)              |-> BooleanOp2 Or
+  , show Not                          |-> Not
+  , show (Equality Eq)                |-> Equality Eq
+  , show (Equality Neq)               |-> Equality Neq
+  , show (Order Le)                   |-> Order Le
+  , show (Order Lt)                   |-> Order Lt
+  , show (Order Ge)                   |-> Order Ge
+  , show (Order Gt)                   |-> Order Gt
+  , show (NumericOp2 Add)             |-> NumericOp2 Add
+  , show (NumericOp2 Mul)             |-> NumericOp2 Mul
+  , show (NumericOp2 Div)             |-> NumericOp2 Div
+  , show (NumericOp2 Sub)             |-> NumericOp2 Sub
+  , show Neg                          |-> Neg
+  , show At                           |-> At
+  , show Cons                         |-> Cons
+  , show (Quant Forall)               |-> Quant Forall
+  , show (Quant Exists)               |-> Quant Exists
+  , show (QuantIn Forall)             |-> QuantIn Forall
+  , show (QuantIn Exists)             |-> QuantIn Exists
+  , show Foreach                      |-> Foreach
+  , show ForeachIn                    |-> ForeachIn
+  , show Map                          |-> Map
+  , show Fold                         |-> Fold
+  , show AuxiliaryType                |-> AuxiliaryType
   ]
 
 builtinFromSymbol :: Symbol -> Maybe Builtin

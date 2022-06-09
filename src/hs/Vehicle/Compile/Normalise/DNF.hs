@@ -67,12 +67,12 @@ liftOr :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
 liftOr f (OrExpr ann [e1, e2]) = OrExpr ann (mapArgExpr (liftOr f) <$> [e1, e2])
 liftOr f e                     = f e
 
-splitConjunctions :: Expr binder var ann -> [Expr binder var ann]
+splitConjunctions :: Expr binder var -> [Expr binder var]
 splitConjunctions (AndExpr _ann [e1, e2]) =
   splitConjunctions (argExpr e1) <> splitConjunctions (argExpr e2)
 splitConjunctions e = [e]
 
-splitDisjunctions :: Expr binder var ann -> [Expr binder var ann]
+splitDisjunctions :: Expr binder var -> [Expr binder var]
 splitDisjunctions (OrExpr _ann [e1, e2]) =
   splitDisjunctions (argExpr e1) <> splitDisjunctions (argExpr e2)
 splitDisjunctions e = [e]

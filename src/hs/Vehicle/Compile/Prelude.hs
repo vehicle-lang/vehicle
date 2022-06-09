@@ -11,7 +11,6 @@ import Vehicle.Prelude as X
 import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Language.AST as X
 import Vehicle.Resource as X
-import Vehicle.Language.Provenance as X
 import Control.Monad.Reader
 
 --------------------------------------------------------------------------------
@@ -36,53 +35,49 @@ data CompileOptions = CompileOptions
 
 type InputBinding = Maybe NamedBinding
 type InputVar     = NamedVar
-type InputAnn     = Provenance
 
-type InputArg       = Arg    InputBinding InputVar InputAnn
-type InputBinder    = Binder InputBinding InputVar InputAnn
-type InputExpr      = Expr   InputBinding InputVar InputAnn
-type InputDecl      = Decl   InputBinding InputVar InputAnn
-type InputProg      = Prog   InputBinding InputVar InputAnn
+type InputArg       = Arg    InputBinding InputVar
+type InputBinder    = Binder InputBinding InputVar
+type InputExpr      = Expr   InputBinding InputVar
+type InputDecl      = Decl   InputBinding InputVar
+type InputProg      = Prog   InputBinding InputVar
 
 -- * Types pre type-checking
 
 type UncheckedBinding = DBBinding
 type UncheckedVar     = DBVar
-type UncheckedAnn     = Provenance
 
-type UncheckedBinder = DBBinder UncheckedAnn
-type UncheckedArg    = DBArg    UncheckedAnn
-type UncheckedExpr   = DBExpr   UncheckedAnn
-type UncheckedDecl   = DBDecl   UncheckedAnn
-type UncheckedProg   = DBProg   UncheckedAnn
+type UncheckedBinder = DBBinder
+type UncheckedArg    = DBArg
+type UncheckedExpr   = DBExpr
+type UncheckedDecl   = DBDecl
+type UncheckedProg   = DBProg
 
 -- * Types post type-checking
 
 type CheckedBinding = DBBinding
 type CheckedVar     = DBVar
-type CheckedAnn     = Provenance
 
-type CheckedBinder = DBBinder  CheckedAnn
-type CheckedArg    = DBArg     CheckedAnn
-type CheckedExpr   = DBExpr    CheckedAnn
-type CheckedDecl   = DBDecl    CheckedAnn
-type CheckedProg   = DBProg    CheckedAnn
+type CheckedBinder = DBBinder
+type CheckedArg    = DBArg
+type CheckedExpr   = DBExpr
+type CheckedDecl   = DBDecl
+type CheckedProg   = DBProg
+
+type CheckedCoDBExpr   = CoDBExpr
+type CheckedCoDBArg    = CoDBArg
+type CheckedCoDBBinder = CoDBBinder
 
 -- * Type of annotations attached to the AST that are output by the compiler
 
 type OutputBinding = NamedBinding
 type OutputVar     = NamedVar
-type OutputAnn     = Provenance
 
-type OutputBinder = Binder OutputBinding OutputVar OutputAnn
-type OutputArg    = Arg    OutputBinding OutputVar OutputAnn
-type OutputExpr   = Expr   OutputBinding OutputVar OutputAnn
-type OutputDecl   = Decl   OutputBinding OutputVar OutputAnn
-type OutputProg   = Prog   OutputBinding OutputVar OutputAnn
-
-type CheckedCoDBExpr   = CoDBExpr CheckedAnn
-type CheckedCoDBArg    = CoDBArg CheckedAnn
-type CheckedCoDBBinder = CoDBBinder CheckedAnn
+type OutputBinder = Binder OutputBinding OutputVar
+type OutputArg    = Arg    OutputBinding OutputVar
+type OutputExpr   = Expr   OutputBinding OutputVar
+type OutputDecl   = Decl   OutputBinding OutputVar
+type OutputProg   = Prog   OutputBinding OutputVar
 
 -- | An expression paired with a position tree represting positions within it.
 -- Currently used mainly for pretty printing position trees.

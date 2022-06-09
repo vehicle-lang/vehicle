@@ -13,23 +13,23 @@ import Vehicle.Compile.Prelude
 -- Public interface
 
 supplyDBNames :: SupplyNames t
-              => t DBBinding    var ann
-              -> t NamedBinding var ann
+              => t DBBinding    var
+              -> t NamedBinding var
 supplyDBNames e = snd (supplyDBNamesWithCtx (mempty, e))
 
 supplyDBNamesWithCtx :: SupplyNames t
-                     => ([DBBinding],    t DBBinding    var ann)
-                     -> ([NamedBinding], t NamedBinding var ann)
+                     => ([DBBinding],    t DBBinding    var)
+                     -> ([NamedBinding], t NamedBinding var)
 supplyDBNamesWithCtx = supplyNamesWithCtx' getName
 
 supplyCoDBNames :: SupplyNames t
-                => t CoDBBinding var ann
-                -> t (Symbol, Maybe PositionTree) var ann
+                => t CoDBBinding var
+                -> t (Symbol, Maybe PositionTree) var
 supplyCoDBNames e = snd (supplyCoDBNamesWithCtx (mempty, e))
 
 supplyCoDBNamesWithCtx :: SupplyNames t
-                       => ([DBBinding], t CoDBBinding var ann)
-                       -> ([NamedBinding], t (Symbol, Maybe PositionTree) var ann)
+                       => ([DBBinding], t CoDBBinding var)
+                       -> ([NamedBinding], t (Symbol, Maybe PositionTree) var)
 supplyCoDBNamesWithCtx = supplyNamesWithCtx' convertBinding
   where
     convertBinding :: CoDBBinding -> Supply Symbol (Symbol, Maybe PositionTree)
@@ -40,8 +40,8 @@ supplyCoDBNamesWithCtx = supplyNamesWithCtx' convertBinding
 
 supplyNamesWithCtx' :: (SupplyNames t)
              => (binding1 -> Supply Symbol binding2)
-             -> ([DBBinding],    t binding1 var ann)
-             -> ([NamedBinding], t binding2 var ann)
+             -> ([DBBinding],    t binding1 var)
+             -> ([NamedBinding], t binding2 var)
 supplyNamesWithCtx' f v = runSupply (supplyNamesWithCtx f v) freshNames
 
 supplyNamesToCtx :: MonadSupply Symbol m => [DBBinding] -> m [NamedBinding]
@@ -55,13 +55,13 @@ type MonadSupplyNames m = MonadSupply Symbol m
 class SupplyNames t where
   supplyNames :: MonadSupplyNames m
               => (binding1 -> m binding2)
-              -> t binding1 var ann
-              -> m (t binding2 var ann)
+              -> t binding1 var
+              -> m (t binding2 var)
 
   supplyNamesWithCtx :: MonadSupplyNames m
                      => (binding1 -> m binding2)
-                     -> ([DBBinding], t binding1 var ann)
-                     -> m ([Symbol], t binding2 var ann)
+                     -> ([DBBinding], t binding1 var)
+                     -> m ([Symbol], t binding2 var)
   supplyNamesWithCtx f (ctx, e) = do
     ctx' <- supplyNamesToCtx ctx
     e'   <- supplyNames f e
