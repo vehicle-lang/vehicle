@@ -1,2 +1,2 @@
-Error: No file was provided for the dataset 'trainingDataset'. (Line 2, Columns 9-24)
+Error at Line 2, Columns 9-24: No file was provided for the dataset 'trainingDataset'.
 Fix: provide it via the command line using '--dataset trainingDataset:FILEPATH'

@@ -1,2 +1,2 @@
-Error: No value was provided for the parameter 'n'. (Line 1, Columns 11-12)
+Error at Line 1, Columns 11-12: No value was provided for the parameter 'n'.
 Fix: provide it via the command line using '--parameter n:VALUE'

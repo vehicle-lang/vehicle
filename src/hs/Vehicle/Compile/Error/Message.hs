@@ -41,14 +41,10 @@ data VehicleError
 
 instance Pretty VehicleError where
   pretty (UError (UserError p prob probFix)) =
-    unAnnotate $ "Error:" <+> appendProvenance prob p <>
+    unAnnotate $ "Error at" <+> pretty p <> ":" <+> prob <>
       maybe "" (\fix -> line <> fixText fix) probFix
 
-  pretty (EError (ExternalError text)) =
-    pretty text
-
-appendProvenance :: Doc ann -> Provenance -> Doc ann
-appendProvenance doc p = doc <+> "(" <> pretty p <> ")"
+  pretty (EError (ExternalError text)) = pretty text
 
 fixText :: Doc ann -> Doc ann
 fixText t = "Fix:" <+> t
@@ -345,18 +341,18 @@ instance MeaningfulError CompileError where
 
     DatasetInvalidNat ident p v -> UError $ UserError
       { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected elements of type" <+> squotes (prettyFriendly nat) <+>
-                     "but found value" <+> squotes (pretty v)
+      , problem    = "Found value" <+> squotes (pretty v) <+>
+                     "while reading" <+> prettyResource Dataset ident <+>
+                     "but expected elements of type" <+> squotes (prettyFriendly nat)
       , fix        = Just $ "either remove the offending entries in the dataset or" <+>
                      "update the type of the dataset in the specification."
       } where (nat :: CheckedExpr) = NatType mempty
 
     DatasetInvalidIndex ident p v n -> UError $ UserError
       { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected elements of type" <+> squotes (prettyFriendly index) <+>
-                     "but found value" <+> squotes (pretty v)
+      , problem    = "Found value" <+> squotes (pretty v) <+>
+                     "while reading" <+> prettyResource Dataset ident <+>
+                     "but expected elements of type" <+> squotes (prettyFriendly index)
       , fix        = Just $ "either remove the offending entries in the dataset or" <+>
                      "update the type of the dataset in the specification."
       }
@@ -364,17 +360,17 @@ instance MeaningfulError CompileError where
 
     DatasetDimensionMismatch ident p expectedType actualDims -> UError $ UserError
       { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected type to be" <+> prettyFriendlyDBClosed expectedType <+>
-                     "but found dimensions" <+> pretty actualDims
+      , problem    = "Found dimensions" <+> pretty actualDims <+>
+                     "while reading" <+> prettyResource Dataset ident <+>
+                     "but expected type to be" <+> prettyFriendlyDBClosed expectedType
       , fix        = Just "correct the dataset dimensions in the specification."
       }
 
     DatasetTypeMismatch ident p expectedType actualType -> UError $ UserError
       { provenance = p
-      , problem    = "Error while reading" <+> prettyResource Dataset ident <> "." <+>
-                     "Expected dataset elements to be of type" <+> prettyFriendly expectedType <+>
-                     "but found elements of type" <+> pretty actualType
+      , problem    = "Found elements of type" <+> pretty actualType <+>
+                     "while reading" <+> prettyResource Dataset ident <+>
+                     "but expected elements of type" <+> prettyFriendly expectedType
       , fix        = Just "correct the dataset type in the specification."
       }
 

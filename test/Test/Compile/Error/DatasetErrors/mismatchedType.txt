@@ -1,2 +1,2 @@
-Error: Error while reading dataset 'trainingDataset'. Expected dataset elements to be of type Int but found elements of type Rat (Line 2, Columns 9-24)
+Error at Line 2, Columns 9-24: Found elements of type Rat while reading dataset 'trainingDataset' but expected elements of type Int
 Fix: correct the dataset type in the specification.

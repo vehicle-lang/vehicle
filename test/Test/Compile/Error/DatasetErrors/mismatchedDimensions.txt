@@ -1,2 +1,2 @@
-Error: Error while reading dataset 'trainingDataset'. Expected type to be Tensor Nat [5] but found dimensions [ 4 ] (Line 2, Columns 9-24)
+Error at Line 2, Columns 9-24: Found dimensions [ 4 ] while reading dataset 'trainingDataset' but expected type to be Tensor Nat [5]
 Fix: correct the dataset dimensions in the specification.

@@ -1,2 +1,2 @@
-Error: Type error: 1 != 2 (Line 2, Columns 10-12)
+Error at Line 2, Columns 10-12: Type error: 1 != 2
 Fix: check your types
