@@ -23,10 +23,14 @@ import Vehicle.Compile.Linearity
 -- Compatibility
 
 checkCompatibility :: Identifier -> Provenance -> PropertyInfo -> Maybe CompileError
-checkCompatibility ident declProv (PropertyInfo polarity) = case polarity of
-  MixedSequential q p pp2 -> Just $
-    UnsupportedSequentialQuantifiers MarabouBackend ident declProv q p pp2
-  _                         -> Nothing
+checkCompatibility ident declProv (PropertyInfo linearity polarity) =
+  case linearity of
+    NonLinear pp1 pp2 -> Just $
+      UnsupportedNonLinearConstraint MarabouBackend ident declProv pp1 pp2
+    _ -> case polarity of
+      MixedSequential q p pp2 -> Just $
+        UnsupportedSequentialQuantifiers MarabouBackend ident declProv q p pp2
+      _                         -> Nothing
 
 
 --------------------------------------------------------------------------------
@@ -34,7 +38,7 @@ checkCompatibility ident declProv (PropertyInfo polarity) = case polarity of
 
 -- | Compiles the provided program to Marabou queries.
 compile :: MonadCompile m => NetworkContext -> CheckedProg -> m [(Symbol, MarabouProperty)]
-compile networkCtx prog = logCompilerPass "compilation to Marabou" $ do
+compile networkCtx prog = logCompilerPass MinDetail "compilation to Marabou" $ do
   results <- compileProg networkCtx prog
   if null results then
     throwError NoPropertiesFound
@@ -71,7 +75,7 @@ compileProperty :: MonadCompile m
 compileProperty ident networkCtx (SeqExpr _ _ _ es) =
   MultiProperty <$> traverse (compileProperty ident networkCtx) es
 compileProperty ident networkCtx expr =
-  logCompilerPass ("property" <+> squotes (pretty ident)) $ do
+  logCompilerPass MinDetail ("property" <+> squotes (pretty ident)) $ do
 
     -- Check that we only have one type of quantifier in the property
     -- and if it is universal then negate the property
@@ -117,13 +121,13 @@ compileQuery :: MonadCompile m
              -> (Int, CheckedExpr)
              -> m MarabouQuery
 compileQuery ident networkCtx (queryId, expr) =
-  logCompilerPass ("query" <+> pretty queryId) $ do
+  logCompilerPass MinDetail ("query" <+> pretty queryId) $ do
 
     -- Convert all user varaibles and applications of networks into magic I/O variables
     (CLSTProblem varNames assertions, metaNetwork, userVarReconstruction) <-
       normUserVariables ident Marabou networkCtx expr
 
-    (vars, doc) <- logCompilerPass "compiling assertions" $ do
+    (vars, doc) <- logCompilerPass MinDetail "compiling assertions" $ do
       assertionDocs <- forM assertions (compileAssertion varNames)
       let assertionsDoc = vsep assertionDocs
       logCompilerPassOutput assertionsDoc

@@ -1,6 +1,5 @@
 module Vehicle.Compile.Resource.Network
-  ( checkNetworkType
-  , extractNetworkType
+  ( getNetworkType
   ) where
 
 import Control.Monad.Except (MonadError(..))
@@ -13,84 +12,46 @@ import Vehicle.Compile.Resource.Core
 --------------------------------------------------------------------------------
 -- Network typing
 
-getNetworkType :: Provenance
+getNetworkType :: forall m . MonadCompile m
+               => Provenance
                -> Identifier
                -> CheckedExpr
-               -> Either CompileError NetworkTypeWithUnknownDims
-getNetworkType _ ident networkType = do
-  (input, output) <- decomposeFun networkType
-  inputDetails    <- getTensorType Input  input
-  outputDetails   <- getTensorType Output output
-  let networkDetails = NetworkType inputDetails outputDetails
-  return networkDetails
+               -> m NetworkType
+getNetworkType _ ident networkType = getNetworkFunType networkType
   where
 
   -- |Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal.
-  decomposeFun :: CheckedExpr
-               -> Either CompileError (CheckedExpr, CheckedExpr)
-  decomposeFun tFun = do
+  getNetworkFunType :: CheckedExpr -> m NetworkType
+  getNetworkFunType tFun = do
     case tFun of
       Pi _ binder result
         | visibilityOf binder /= Explicit -> do
           throwError $ NetworkTypeHasNonExplicitArguments ident tFun binder
-        | otherwise  -> return (typeOf binder, result)
+        | otherwise  -> do
+          inputDetails    <- getTensorType Input  (typeOf binder)
+          outputDetails   <- getTensorType Output result
+          let networkDetails = NetworkType inputDetails outputDetails
+          return networkDetails
       _ ->
         throwError $ NetworkTypeIsNotAFunction ident tFun
 
   getTensorType :: InputOrOutput
                 -> CheckedExpr
-                -> Either CompileError NetworkTensorTypeWithUnknownDims
-  getTensorType io (TensorType _ tElem tDims) = do
-    typ   <- getElementType io tElem
-    return $ NetworkTensorType tDims typ
-  getTensorType io tTensor =
-    Left $ NetworkTypeIsNotOverTensors ident networkType tTensor io
+                -> m NetworkTensorType
+  getTensorType io tensorType@(TensorType _ tElem dims) = do
+    logDebug MaxDetail $ prettyVerbose dims
+    case getDimensions dims of
+      Just [d] -> NetworkTensorType d <$> getElementType tElem
+      Nothing  -> throwError $ NetworkTypeHasVariableSizeTensor ident networkType dims io
+      Just _   -> throwError $ NetworkTypeHasMultidimensionalTensor ident networkType tensorType io
+  getTensorType _ _ = typingError
 
-  getElementType :: InputOrOutput
-                 -> CheckedExpr
-                 -> Either CompileError NetworkBaseType
-  getElementType _ RatType{} = return NetworkRatType
-  getElementType io tElem = do
-    throwError $ NetworkTypeHasUnsupportedElementType ident networkType tElem io
+  getElementType :: CheckedExpr -> m NetworkBaseType
+  getElementType RatType{} = return NetworkRatType
+  getElementType _tElem    = typingError
 
-checkNetworkType :: MonadCompile m
-                 => Provenance
-                 -> Identifier
-                 -> CheckedExpr
-                 -> m ()
-checkNetworkType ann ident networkType =
-  case getNetworkType ann ident networkType of
-    Left err -> throwError err
-    Right{}  -> return ()
-
---------------------------------------------------------------------------------
--- Network standardisation
-
-extractNetworkType :: forall m . MonadCompile m
-                   => Provenance
-                   -> Identifier
-                   -> CheckedExpr
-                   -> m NetworkType
-extractNetworkType ann ident networkType = do
-  typeWithUnknownDims <- case getNetworkType ann ident networkType of
-    Left{} -> compilerDeveloperError $
+  typingError :: m a
+  typingError = compilerDeveloperError $
       "Invalid parameter type" <+> squotes (prettySimple networkType) <+>
       "should have been caught during type-checking"
-    Right res -> return res
-
-  convertDims typeWithUnknownDims
-  where
-    convertDims :: NetworkTypeWithUnknownDims -> m NetworkType
-    convertDims (NetworkType input output) = NetworkType
-      <$> convertDimsTensor Input input
-      <*> convertDimsTensor Output output
-
-    convertDimsTensor :: InputOrOutput
-                      -> NetworkTensorTypeWithUnknownDims
-                      -> m NetworkTensorType
-    convertDimsTensor io (NetworkTensorType dims tElem) =
-      case getDimensions dims of
-        Just [d] -> return $ NetworkTensorType d tElem
-        Nothing  -> throwError $ NetworkTypeHasVariableSizeTensor ident networkType dims io
-        Just _   -> throwError $ NetworkTypeHasMultidimensionalTensor ident networkType dims io

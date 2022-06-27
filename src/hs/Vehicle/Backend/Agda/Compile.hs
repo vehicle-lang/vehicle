@@ -7,7 +7,6 @@ import GHC.Real (numerator, denominator)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Data.Maybe (mapMaybe)
-import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Foldable (fold)
@@ -37,7 +36,7 @@ data AgdaOptions = AgdaOptions
   }
 
 compileProgToAgda :: MonadCompile m => AgdaOptions -> CheckedProg -> m (Doc a)
-compileProgToAgda options prog1 = logCompilerPass currentPhase $
+compileProgToAgda options prog1 = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     let prog2 = capitaliseTypeNames prog1
     let prog3 = supplyDBNames prog2
@@ -306,9 +305,12 @@ compileExpr expr = do
   result <- case expr of
     Hole{}     -> resolutionError currentPhase "Hole"
     Meta{}     -> resolutionError currentPhase "Meta"
-    PrimDict{} -> typeError currentPhase "PrimDict"
+    PrimDict{} -> typeError       currentPhase "PrimDict"
 
-    Type _ l   -> return $ compileType l
+    Universe _ u -> case u of
+      TypeUniv l -> return $ compileType l
+      _          -> resolutionError currentPhase (pretty u)
+
     Var  _ n   -> return $ annotateConstant [] (pretty n)
 
     Pi ann binder result -> case foldPi ann binder result of
@@ -339,6 +341,9 @@ compileExpr expr = do
     Builtin{} -> compileBuiltin expr
     Literal{} -> compileLiteral expr
 
+    SeqExpr ann _ tCont xs -> compileSeq ann tCont xs
+    LSeq{} -> caseError currentPhase "LSeq" ["SeqExpr"]
+
     App _ fun args -> case fun of
       Builtin{}    -> compileBuiltin expr
       Literal{}    -> compileLiteral expr
@@ -346,8 +351,6 @@ compileExpr expr = do
         cFun   <- compileExpr fun
         cArgs  <- traverse compileExpr (filterOutNonExplicitArgs args)
         return $ annotateApp [] cFun cArgs
-
-    LSeq ann dict xs -> compileSeq ann dict xs
 
   logExit result
   return result
@@ -412,10 +415,10 @@ compileBuiltin e = case e of
     return $ annotate (Set.singleton DataBool, 0)
       ("if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3)
 
-  BooleanOp2Expr op2 _     args -> compileBoolOp2 op2   =<< traverse compileArg (NonEmpty.toList args)
-  NotExpr            _     args -> compileNot           =<< traverse compileArg (NonEmpty.toList args)
-  NumericOp2Expr op2 _ t _ args -> compileNumOp2  op2 t =<< traverse compileArg args
-  NegExpr            _ t   args -> compileNeg         t =<< traverse compileArg args
+  BooleanOp2Expr op2 _ _       args -> compileBoolOp2 op2   =<< traverse compileArg args
+  NotExpr            _         args -> compileNot           =<< traverse compileArg args
+  NumericOp2Expr op2 _ t _ _ _ args -> compileNumOp2  op2 t =<< traverse compileArg args
+  NegExpr            _ t _     args -> compileNeg         t =<< traverse compileArg args
 
   (ForallExpr  _  binder body) -> compileTypeLevelQuantifier Forall [binder] body
   (ExistsExpr  _  binder body) -> compileTypeLevelQuantifier Exists [binder] body
@@ -425,28 +428,28 @@ compileBuiltin e = case e of
   (ExistsInExpr  ann tCont binder body cont) -> compileQuantIn Exists tCont (Lam ann binder body) cont
   (ForeachInExpr ann _ _ _       _    _)     -> throwError $ UnsupportedBuiltin AgdaBackend ann ForeachIn
 
-  (OrderExpr    ord _ t1 args) -> compileOrder ord  t1 =<< traverse compileArg args
-  (EqualityExpr Eq  _ t1 args) -> compileEquality   t1 =<< traverse compileArg args
-  (EqualityExpr Neq _ t1 args) -> compileInequality t1 =<< traverse compileArg args
+  (OrderExpr    _ ord t1 args) -> compileOrder ord  t1 =<< traverse compileArg args
+  (EqualityExpr _ Eq  t1 args) -> compileEquality   t1 =<< traverse compileArg args
+  (EqualityExpr _ Neq t1 args) -> compileInequality t1 =<< traverse compileArg args
 
   (ConsExpr _ tElem               args) -> compileCons tElem =<< traverse compileArg args
   (AtExpr ann _tElem _tDim _tDims args) -> compileAt ann (map argExpr args)
 
-  HasEqExpr  _ t -> compileTypeClass "HasEq" t
-  HasOrdExpr _ t -> compileTypeClass "HasOrd" t
-  HasAddExpr _ t -> compileTypeClass "HasAdd" t
-  HasMulExpr _ t -> compileTypeClass "HasMul" t
-  HasSubExpr _ t -> compileTypeClass "HasSub" t
-  HasDivExpr _ t -> compileTypeClass "HasDiv" t
-  HasNegExpr _ t -> compileTypeClass "HasNeg" t
+  HasEqExpr  _ _ t _ _ -> compileTypeClass "HasEq"  t
+  HasOrdExpr _ _ t _ _ -> compileTypeClass "HasOrd" t
+  HasAddExpr _ t _ _   -> compileTypeClass "HasAdd" t
+  HasMulExpr _ t _ _   -> compileTypeClass "HasMul" t
+  HasSubExpr _ t _ _   -> compileTypeClass "HasSub" t
+  HasDivExpr _ t _ _   -> compileTypeClass "HasDiv" t
+  HasNegExpr _ t _     -> compileTypeClass "HasNeg" t
 
   HasNatLitsUpToExpr   _   _ t -> compileTypeClass "HasNatLits" t
   HasIntLitsExpr           _ t -> compileTypeClass "HasIntLits" t
   HasRatLitsExpr           _ t -> compileTypeClass "HasRatLits" t
 
-  HasConLitsOfSizeExpr _ n _ _ -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) (TypeClass $ HasConLitsOfSize n)
-  MapExpr{}      -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Map
-  FoldExpr{}     -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Fold
+  HasConLitsOfSizeExpr _ n _ _ -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) (TypeClass (HasConLitsOfSize n))
+  MapExpr{}                    -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Map
+  FoldExpr{}                   -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) Fold
 
   _ -> compilerDeveloperError $
     "unexpected application of builtin found during compilation to Agda:" <+>
@@ -530,7 +533,7 @@ compileRatLiteral r = annotateInfixOp2 [DataRat] 7 id
 
 -- |Compiling sequences. No sequences in Agda so have to go via cons.
 compileSeq :: MonadAgdaCompile m => Provenance -> OutputExpr -> [OutputExpr] -> m Code
-compileSeq _ (PrimDict _ (HasConLitsOfSizeExpr _ _ _ tCont)) elems = go elems
+compileSeq _ tCont = go
   where
     go :: MonadAgdaCompile m => [OutputExpr] -> m Code
     go []       = do
@@ -540,7 +543,6 @@ compileSeq _ (PrimDict _ (HasConLitsOfSizeExpr _ _ _ tCont)) elems = go elems
       cx  <- compileExpr x
       cxs <- go xs
       return $ annotateInfixOp2 [] 5 id Nothing "∷" [cx , cxs]
-compileSeq ann dict elems = unexpectedArgsError (LSeq ann dict elems) elems ["tElem", "tCont", "tc"]
 
 
 -- |Compiling cons operator

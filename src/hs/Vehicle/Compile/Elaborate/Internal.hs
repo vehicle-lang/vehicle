@@ -43,11 +43,11 @@ instance Elab B.Expr V.InputExpr where
   elab = \case
     B.Type l           -> return $ convType l
     B.Hole name        -> return $ V.Hole (tkProvenance name) (tkSymbol name)
-    B.Ann term typ     -> op2 V.Ann <$> elab term <*> elab typ
-    B.Pi  binder expr  -> op2 V.Pi  <$> elab binder <*> elab expr;
-    B.Lam binder e     -> op2 V.Lam <$> elab binder <*> elab e
-    B.Let binder e1 e2 -> op3 V.Let <$> elab e1 <*> elab binder <*>  elab e2
-    B.LSeq es          -> op1 (\ann -> V.LSeq ann (V.Hole mempty "_")) <$> traverse elab es
+    B.Ann term typ     -> op2 V.Ann  <$> elab term <*> elab typ
+    B.Pi  binder expr  -> op2 V.Pi   <$> elab binder <*> elab expr;
+    B.Lam binder e     -> op2 V.Lam  <$> elab binder <*> elab e
+    B.Let binder e1 e2 -> op3 V.Let  <$> elab e1 <*> elab binder <*>  elab e2
+    B.LSeq es          -> op1 V.LSeq <$> traverse elab es
     B.Builtin c        -> V.Builtin (mkAnn c) <$> lookupBuiltin c
     B.Var n            -> return $ V.Var (mkAnn n) (tkSymbol n)
     B.Literal v        -> V.Literal mempty <$> elab v
@@ -113,5 +113,5 @@ op3 mk t1 t2 t3 = mk (provenanceOf t1 <> provenanceOf t2 <> provenanceOf t3) t1 
 -- the grammar wrong.
 convType :: TypeToken -> V.InputExpr
 convType tk = case unpack (tkSymbol tk) of
-  ('T':'y':'p':'e':l) -> V.Type (mkAnn tk) (read l)
+  ('T':'y':'p':'e':l) -> V.TypeUniverse (mkAnn tk) (read l)
   t                   -> developerError $ "Malformed type token" <+> pretty t

@@ -1,4 +1,3 @@
-
 e1 : Bool
 e1 = let x = True, y = False in x and y
 

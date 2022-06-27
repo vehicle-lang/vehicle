@@ -2,30 +2,21 @@
 module Vehicle.Compile.Resource.Core where
 
 import Data.Map (Map)
+import Control.Monad.Except (MonadError(..))
 
 import Vehicle.Language.AST
 import Vehicle.Prelude
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Error
+import Vehicle.Language.Print
 
 --------------------------------------------------------------------------------
--- Parameters
-
-data ParameterType
-  = ParamBoolType
-  | ParamNatType
-  | ParamIntType
-  | ParamRatType
-  | ParamIndexType CheckedExpr
-
-type ParameterContext = Map Symbol CheckedExpr
-
---------------------------------------------------------------------------------
--- Datasets
+-- Dataset typing
 
 data DatasetType
-  = DatasetListType DatasetType
-  | DatasetTensorType DatasetType CheckedExpr
-  | DatasetBaseType DatasetBaseType
+  = DatasetListType   DatasetType
+  | DatasetTensorType DatasetType [Int]
+  | DatasetBaseType   DatasetBaseType
   deriving (Show)
 
 data DatasetBaseType
@@ -33,8 +24,39 @@ data DatasetBaseType
   | DatasetNatType
   | DatasetIntType
   | DatasetRatType
-  | DatasetIndexType CheckedExpr
+  | DatasetIndexType Int
   deriving (Show)
+
+getDatasetType :: forall m . MonadCompile m
+               => Provenance
+               -> Identifier
+               -> CheckedExpr
+               -> m DatasetType
+getDatasetType ann ident datasetType = getContainerType True datasetType
+  where
+  getContainerType :: Bool -> CheckedExpr -> m DatasetType
+  getContainerType topLevel = \case
+    ListType   _ tElem       -> DatasetListType <$> getContainerType False tElem
+    TensorType _ tElem tDims -> case getDimensions tDims of
+      Just dims -> DatasetTensorType <$> getContainerType False tElem <*> pure dims
+      Nothing   -> throwError $ DatasetVariableSizeTensor ident ann tDims
+    typ -> if topLevel
+      then typingError
+      else DatasetBaseType <$> getDatasetElemType typ
+
+  getDatasetElemType :: CheckedExpr -> m DatasetBaseType
+  getDatasetElemType elemType = case elemType of
+    BoolType{}            -> return DatasetBoolType
+    NatType{}             -> return DatasetNatType
+    IntType{}             -> return DatasetIntType
+    RatType{}             -> return DatasetRatType
+    ConcreteIndexType _ n -> return $ DatasetIndexType n
+    _ -> throwError $ DatasetTypeUnsupportedElement ident ann elemType
+
+  typingError :: m a
+  typingError = compilerDeveloperError $
+      "Invalid parameter type" <+> squotes (prettySimple datasetType) <+>
+      "should have been caught during type-checking"
 
 datasetBaseType :: DatasetType -> DatasetBaseType
 datasetBaseType = \case
@@ -48,26 +70,21 @@ reconstructDatasetBaseType ann = \case
   DatasetNatType     -> NatType ann
   DatasetIntType     -> IntType ann
   DatasetRatType     -> RatType ann
-  DatasetIndexType n -> IndexType ann n
+  DatasetIndexType n -> ConcreteIndexType ann n
 
 reconstructDatasetType :: Provenance -> DatasetType -> CheckedExpr
 reconstructDatasetType ann = \case
   DatasetListType   tElem      -> ListType ann (reconstructDatasetType ann tElem)
-  DatasetTensorType tElem dims -> TensorType ann (reconstructDatasetType ann tElem) dims
+  DatasetTensorType tElem dims -> mkTensorType ann (reconstructDatasetType ann tElem) dims
   DatasetBaseType   base       -> reconstructDatasetBaseType ann base
-
-type DatasetContext = Map Symbol CheckedExpr
 
 --------------------------------------------------------------------------------
 -- Networks
 
-data AbstractNetworkType a = NetworkType
-  { inputTensor  :: AbstractNetworkTensorType a
-  , outputTensor :: AbstractNetworkTensorType a
+data NetworkType = NetworkType
+  { inputTensor  :: NetworkTensorType
+  , outputTensor :: NetworkTensorType
   }
-
-type NetworkType                = AbstractNetworkType Int
-type NetworkTypeWithUnknownDims = AbstractNetworkType CheckedExpr
 
 instance Pretty NetworkType where
   pretty (NetworkType input output) =
@@ -77,13 +94,10 @@ networkSize :: NetworkType -> Int
 networkSize network = size (inputTensor network) + size (outputTensor network)
 
 
-data AbstractNetworkTensorType a = NetworkTensorType
-  { size  :: a
+data NetworkTensorType = NetworkTensorType
+  { size  :: Int
   , tElem :: NetworkBaseType
   }
-
-type NetworkTensorType                = AbstractNetworkTensorType Int
-type NetworkTensorTypeWithUnknownDims = AbstractNetworkTensorType CheckedExpr
 
 instance Pretty NetworkTensorType where
   pretty (NetworkTensorType size tElem) =

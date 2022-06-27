@@ -22,10 +22,11 @@ insertLets :: MonadLogger m
            -> Bool
            -> CheckedExpr
            -> m CheckedExpr
-insertLets subexprFilter liftOverBinders expr = logCompilerPass "let insertion" $ do
-  result <- runReaderT applyInsert (subexprFilter, liftOverBinders)
-  logCompilerPassOutput (prettyFriendly result)
-  return result
+insertLets subexprFilter liftOverBinders expr =
+  logCompilerPass MinDetail "let insertion" $ do
+    result <- runReaderT applyInsert (subexprFilter, liftOverBinders)
+    logCompilerPassOutput (prettyFriendly result)
+    return result
   where
     applyInsert :: MonadLetInsert m => m CheckedExpr
     applyInsert = do
@@ -79,18 +80,17 @@ letInsert :: MonadLetInsert m => CheckedCoDBExpr -> m (CheckedCoDBExpr, Subexpre
 letInsert expr = do
   showIdentEntry expr
   res@(expr', sm) <- case recCoDB expr of
-    TypeC{}    -> return (expr, leafSM)
-    VarC{}     -> return (expr, leafSM)
-    LiteralC{} -> return (expr, leafSM)
-    BuiltinC{} -> return (expr, leafSM)
-    HoleC{}    -> return (expr, leafSM)
-    MetaC{}    -> return (expr, leafSM)
+    UniverseC{} -> return (expr, leafSM)
+    VarC{}      -> return (expr, leafSM)
+    LiteralC{}  -> return (expr, leafSM)
+    BuiltinC{}  -> return (expr, leafSM)
+    HoleC{}     -> return (expr, leafSM)
+    MetaC{}     -> return (expr, leafSM)
 
-    LSeqC ann dict xs -> do
-      ((dict', bvm1), sm1) <- letInsert dict
-      ((xs',   bvms), sms) <- first unzip <$> (unzip <$> traverse letInsert xs)
-      let expr' = (LSeq ann dict' xs', nodeBVM (bvm1 : bvms))
-      return (expr', nodeSM expr' (sm1 : sms))
+    LSeqC ann xs -> do
+      ((xs', bvms), sms) <- first unzip <$> (unzip <$> traverse letInsert xs)
+      let expr' = (LSeq ann xs', nodeBVM bvms)
+      return (expr', nodeSM expr' sms)
 
     PrimDictC ann e -> do
       ((e', bvm), sm) <- letInsert e

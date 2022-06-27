@@ -53,6 +53,16 @@ Go to https://github.com/microsoft/vcpkg#quick-start-windows and follow the inst
 - In the case of an internal developer error, logs may not be printed. In this case you
 can add a `traceShow text $` in front of the `do` in the `logDebug` in `Vehicle.Prelude.Logging`.
 
+# Profiling
+
+To enable profiling follow the following steps:
+
+  - Run `cabal configure --enable-library-profiling --enable-executable-profiling --enable-tests --enable-benchmarks` on the command line.
+
+  - Add `-O0` to `ghc-options` to `library` in `vehicle.cabal`
+
+  - Add `-O0 -prof -fprof-auto -with-rtsopts=-p` to `ghc-options` for the `vehicle-test` in `vehicle.cabal`
+
 # Conventions
 
 ## Using `Arg` and `Binder`

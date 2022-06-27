@@ -47,7 +47,7 @@ instance CapitaliseTypes CheckedDecl where
 
 instance CapitaliseTypes CheckedExpr where
   cap = cata $ \case
-    TypeF     ann l                 -> return $ Type ann l
+    UniverseF ann l                 -> return $ Universe ann l
     HoleF     ann n                 -> return $ Hole ann n
     MetaF     ann m                 -> return $ Meta ann m
     LiteralF  ann l                 -> return $ Literal ann l
@@ -58,7 +58,7 @@ instance CapitaliseTypes CheckedExpr where
     PiF       ann binder result     -> Pi  ann <$> cap binder <*> result
     LetF      ann bound binder body -> Let ann <$> bound <*> cap binder <*> body
     LamF      ann binder body       -> Lam ann <$> cap binder <*> body
-    LSeqF     ann dict xs           -> LSeq ann <$> dict <*> sequence xs
+    LSeqF     ann xs                -> LSeq ann <$> sequence xs
     VarF      ann v@(Bound _)       -> return $ Var ann v
     VarF      ann (Free ident)      -> Var ann . Free <$> cap ident
 

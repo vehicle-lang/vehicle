@@ -13,7 +13,7 @@ import Vehicle.Language.Print
 -- | Lifts all quantifiers in the provided expression `e`, of type `Bool` to the
 -- top-level.
 liftQuantifiers :: MonadCompile m => CheckedExpr -> m CheckedExpr
-liftQuantifiers e = logCompilerPass currentPass $ do
+liftQuantifiers e = logCompilerPass MinDetail currentPass $ do
   result <- recLift e
   logCompilerPassOutput (prettyFriendly result)
   return result
@@ -29,7 +29,7 @@ recLift expr =
   case expr of
     Hole{}     -> resolutionError currentPass "Hole"
     Meta{}     -> resolutionError currentPass "Meta"
-    Type{}     -> typeError currentPass "Type"
+    Universe{} -> typeError currentPass "Universe"
     Pi{}       -> typeError currentPass "Pi"
     PrimDict{} -> typeError currentPass "PrimDict"
     Ann{}      -> normalisationError currentPass "Ann"

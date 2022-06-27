@@ -84,7 +84,7 @@ normUserVariables :: MonadCompile m
                   -> CheckedExpr
                   -> m (CLSTProblem, MetaNetwork, UserVarReconstructionInfo)
 normUserVariables ident verifier networkCtx expr =
-  logCompilerPass "input/output variable insertion" $ do
+  logCompilerPass MinDetail "input/output variable insertion" $ do
     -- First lift all the quantifiers to the top-level
     quantLiftedExpr <- liftQuantifiers expr
 
@@ -240,7 +240,7 @@ liftNetworkApplications = insertLets isNetworkApplication False
 -- |As we've normalised out all function applications and dataset declarations,
 -- the only free names left should be network applications.
 generateMetaNetwork :: CheckedExpr -> MetaNetwork
-generateMetaNetwork e = fmap nameOf (freeNames e)
+generateMetaNetwork e = fmap nameOf (freeNamesIn e)
 
 --------------------------------------------------------------------------------
 -- Steps 3 & 4: replace network applications
@@ -317,15 +317,14 @@ mkMagicVariableSeq :: Provenance -> NetworkBaseType -> [Int] -> CheckedExpr
 mkMagicVariableSeq ann tElem indices = tensorExpr
   where
   tensorElemType   = reconstructNetworkBaseType ann tElem
-  tensorType       = mkTensorType ann tensorElemType [length indices]
   variables        = map (Var ann . Bound) indices
-  tensorExpr       = SeqExpr ann tensorElemType tensorType variables
+  tensorExpr       = mkTensor ann tensorElemType [length indices] variables
 
 compileAssertions :: MonadSMT m
                   => CheckedExpr
                   -> m [Assertion]
 compileAssertions expr = case expr of
-  Type{}                 -> typeError          currentPass "Type"
+  Universe{}             -> typeError          currentPass "Universe"
   Pi{}                   -> typeError          currentPass "Pi"
   Hole{}                 -> resolutionError    currentPass "Hole"
   Meta{}                 -> resolutionError    currentPass "Meta"
@@ -347,8 +346,8 @@ compileAssertions expr = case expr of
     as2 <- compileAssertions e2
     return (as1 <> as2)
 
-  OrderExpr order _ _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do
-    let (rel, lhs, rhs) = case order of
+  OrderExpr _ ord _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+    let (rel, lhs, rhs) = case ord of
           Lt -> (LessThan,          e1, e2)
           Le -> (LessThanOrEqualTo, e1, e2)
           Gt -> (LessThan,          e2, e1)
@@ -356,7 +355,7 @@ compileAssertions expr = case expr of
     assertion <- compileAssertion rel lhs rhs
     return [assertion]
 
-  EqualityExpr eq ann _ [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
+  EqualityExpr ann eq _ [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
     Neq -> do
       (_, ident, _, _, _, _) <- ask
       throwError $ UnsupportedInequality MarabouBackend ident ann
@@ -392,20 +391,22 @@ compileLinearExpr expr = do
   go :: MonadSMT m => CheckedExpr -> m (Map Int Coefficient)
   go e = case e of
     Var     _ v                           -> singletonVar v 1
-    NegExpr _ _ [ExplicitArg _ (Var _ v)] -> singletonVar v (-1)
+    NegExpr _ _ _ [ExplicitArg _ (Var _ v)] -> singletonVar v (-1)
     LiteralExpr _ _ _ l                   -> do
       constIndex <- getExprConstantIndex
       singletonVar (Bound constIndex) =<< compileLiteral l
-    AddExpr _ _ _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+    AddExpr _ _ _ _ _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do
       Map.unionWith (+) <$> go e1 <*> go e2
-    MulExpr ann1 _ _ [ExplicitArg _ e1, ExplicitArg _ e2] ->
+    MulExpr _ _ _ _ _ [ExplicitArg _ e1, ExplicitArg _ e2] ->
       case (e1, e2) of
         (LiteralExpr _ _ _ l, Var _ v) -> singletonVar v =<< compileLiteral l
         (Var _ v, LiteralExpr _ _ _ l) -> singletonVar v =<< compileLiteral l
         _ -> do
-          (_, ident, _, _, _, _) <- ask
-          ctx <- getBoundContext
-          throwError $ NonLinearConstraint MarabouBackend ann1 ident ctx e1 e2
+          (_, _ident, _, _, _, _) <- ask
+          _ctx <- getBoundContext
+          compilerDeveloperError $
+            "Unexpected non-linear constraint that should have been caught by the" <+>
+            "linearity analysis during type-checking."
     ex -> unexpectedExprError currentPass $ prettySimple ex
 
 compileLiteral :: MonadSMT m => Literal -> m Coefficient

@@ -122,7 +122,7 @@ unfoldDefType :: Provenance
               -> Expr binder var
               -> Decl binder var
 unfoldDefType ann ident bs e =
-  let t = foldr (Pi ann) (Type ann 0) bs in
+  let t = foldr (Pi ann) (TypeUniverse ann 0) bs in
   unfoldDefFun ann ident t bs e
 
 foldDefFun :: Expr binder var -> Expr binder var ->
@@ -134,6 +134,6 @@ foldDefFun t e = if isTypeSynonym t
   else Left  (t, foldLam e)
   where
     isTypeSynonym :: Expr binder var -> Bool
-    isTypeSynonym (Type _ _)   = True
-    isTypeSynonym (Pi _ _ res) = isTypeSynonym res
-    isTypeSynonym _            = False
+    isTypeSynonym TypeUniverse{} = True
+    isTypeSynonym (Pi _ _ res)   = isTypeSynonym res
+    isTypeSynonym _              = False

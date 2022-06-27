@@ -21,43 +21,90 @@ isHole :: Expr binder var -> Bool
 isHole Hole{} = True
 isHole _      = False
 
-isType :: Expr binder var -> Bool
-isType Type{} = True
-isType _      = False
+isTypeUniverse :: Expr binder var -> Bool
+isTypeUniverse TypeUniverse{} = True
+isTypeUniverse _              = False
+
+isPolarityUniverse :: Expr binder var -> Bool
+isPolarityUniverse PolarityUniverse{} = True
+isPolarityUniverse _                  = False
+
+isLinearityUniverse :: Expr binder var -> Bool
+isLinearityUniverse LinearityUniverse{} = True
+isLinearityUniverse _                   = False
+
+isAuxiliaryUniverse :: Expr binder var -> Bool
+isAuxiliaryUniverse e = isPolarityUniverse e || isLinearityUniverse e
+
+isAnnBoolType :: Expr binder var -> Bool
+isAnnBoolType AnnBoolType{} = True
+isAnnBoolType _             = False
+
+isNatType :: Expr binder var -> Bool
+isNatType NatType{} = True
+isNatType _         = False
+
+isIntType :: Expr binder var -> Bool
+isIntType IntType{} = True
+isIntType _         = False
+
+isAnnRatType :: Expr binder var -> Bool
+isAnnRatType AnnRatType{} = True
+isAnnRatType _            = False
+
+isListType :: Expr binder var -> Bool
+isListType ListType{} = True
+isListType _            = False
+
+isTensorType :: Expr binder var -> Bool
+isTensorType TensorType{} = True
+isTensorType _            = False
+
+isIndexType :: Expr binder var -> Bool
+isIndexType IndexType{} = True
+isIndexType _           = False
 
 isMeta :: Expr binder var -> Bool
 isMeta Meta{}           = True
 isMeta (App _ Meta{} _) = True
 isMeta _                = False
-
-isAuxiliaryTypeClass :: Expr binder var -> Bool
-isAuxiliaryTypeClass e = case exprHead e of
-  Builtin _ PolarityTypeClass{} -> True
-  _                             -> False
-
+{-
 isAuxiliaryType :: Expr binder var -> Bool
-isAuxiliaryType (Builtin _ AuxiliaryType) = True
+isAuxiliaryType (Builtin _ PolarityType)  = True
+isAuxiliaryType (Builtin _ LinearityType) = True
 isAuxiliaryType  _                        = False
+-}
+isAuxiliaryTypeClass :: TypeClass -> Bool
+isAuxiliaryTypeClass tc = case tc of
+    MulLinearity                        -> True
+    MaxLinearity                        -> True
+    NegPolarity{}                       -> True
+    AddPolarity{}                       -> True
+    EqPolarity{}                        -> True
+    ImplPolarity{}                      -> True
+    MaxPolarity{}                       -> True
+    -- TypesEqualModAuxiliaryAnnotations{} -> True
+    _                                   -> False
 
 --------------------------------------------------------------------------------
 -- Enumeration functions
 
-freeNames :: Expr binder DBVar -> [Identifier]
-freeNames = cata $ \case
-  TypeF{}                   -> []
+freeNamesIn :: Expr binder DBVar -> [Identifier]
+freeNamesIn = cata $ \case
+  VarF  _ (Free ident)      -> [ident]
+  VarF  _ (Bound _)         -> []
+  UniverseF{}               -> []
   HoleF{}                   -> []
   PrimDictF{}               -> []
   MetaF{}                   -> []
   LiteralF{}                -> []
   BuiltinF{}                -> []
   AnnF  _ e t               -> e <> t
-  AppF  _ fun args          -> fun <> concatMap (freeNames . argExpr) args
-  PiF   _ binder result     -> freeNames (typeOf binder) <> result
-  VarF  _ (Free ident)      -> [ident]
-  VarF  _ (Bound _)         -> []
-  LetF  _ bound binder body -> bound <> freeNames (typeOf binder) <> body
-  LamF  _ binder body       -> freeNames (typeOf binder) <> body
-  LSeqF _ _ xs              -> concat xs
+  AppF  _ fun args          -> fun <> concatMap (freeNamesIn . argExpr) args
+  PiF   _ binder result     -> freeNamesIn (typeOf binder) <> result
+  LetF  _ bound binder body -> bound <> freeNamesIn (typeOf binder) <> body
+  LamF  _ binder body       -> freeNamesIn (typeOf binder) <> body
+  LSeqF _ xs                -> concat xs
 
 --------------------------------------------------------------------------------
 -- Destruction functions
@@ -81,9 +128,12 @@ getBinderSymbol binder = case nameOf binder of
   Nothing     -> developerError "Binder unexpectedly does not appear to have a name"
 
 getContainerElem :: Expr binder var -> Maybe (Expr binder var)
-getContainerElem (ListType   _ t)   = Just t
-getContainerElem (TensorType _ t _) = Just t
-getContainerElem _                  = Nothing
+getContainerElem (ListType   _ t)      = Just t
+getContainerElem (TensorType p t dims) = case getDimensions dims of
+  Just [_]      -> Just t
+  Just (_ : ds) -> Just (TensorType p t (mkTensorDims p ds))
+  _             -> Nothing
+getContainerElem _                     = Nothing
 
 getDimension :: Expr binder var -> Maybe Int
 getDimension (NatLiteralExpr _ _ n) = return n
@@ -124,17 +174,12 @@ mkIntExpr ann v
   | v >= 0    = LitNat ann v
   | otherwise = LitInt ann v
 
-mkSeqExpr :: Provenance -> [Expr binder var] -> Expr binder var
-mkSeqExpr ann = LSeq ann (Hole ann "_seqTC")
-
 mkTensorDims :: Provenance
              -> [Int]
              -> Expr binder var
 mkTensorDims ann dims =
-  let listType = ListType ann (NatType ann) in
-  let dimExprs = fmap (Literal ann . LNat) dims in
-  let dimList  = SeqExpr ann (NatType ann) listType dimExprs in
-  dimList
+  let dimExprs = fmap (NatLiteralExpr ann (NatType ann)) dims in
+  mkList ann (NatType ann) dimExprs
 
 mkTensorType :: Provenance
              -> Expr binder var
@@ -158,18 +203,17 @@ mkList :: Provenance
        -> Expr binder var
        -> [Expr binder var]
        -> Expr binder var
-mkList ann tElem = foldr cons (NilExpr ann tElem)
-  where cons x xs = ConsExpr ann tElem $ fmap (ExplicitArg ann) [x, xs]
+mkList ann elemType = SeqExpr ann elemType (ListType ann elemType)
 
 mkTensor :: Provenance
          -> Expr binder var
          -> [Int]
          -> [Expr binder var]
          -> Expr binder var
-mkTensor ann tBaseElem dims elems =
+mkTensor ann tBaseElem dims =
+  let elemType   = mkTensorType ann tBaseElem (tail dims) in
   let tensorType = mkTensorType ann tBaseElem dims in
-  let elemType = mkTensorType ann tBaseElem (tail dims) in
-  SeqExpr ann elemType tensorType elems
+  SeqExpr ann elemType tensorType
 
 mkBooleanBigOp :: BooleanOp2
                -> Provenance
@@ -177,14 +221,13 @@ mkBooleanBigOp :: BooleanOp2
                -> Expr binder var
                -> Expr binder var
 mkBooleanBigOp op ann containerType container =
+  let (unit, opExpr) = case op of
+        And  -> (True, AndExpr ann [])
+        Or   -> (False, OrExpr ann [])
+        Impl -> developerError "Cannot bigOp '=>'"
+  in
   FoldExpr ann (BoolType ann) containerType (BoolType ann) $ fmap (ExplicitArg ann)
-    [ Builtin ann (BooleanOp2 op)
+    [ opExpr
     , BoolLiteralExpr ann unit
     , container
     ]
-  where
-    unit :: Bool
-    unit = case op of
-      And  -> True
-      Or   -> False
-      Impl -> True

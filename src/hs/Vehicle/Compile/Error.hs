@@ -46,19 +46,36 @@ data CompileError
     Symbol                  -- The name of the hole
   | TypeMismatch
     Provenance              -- The location of the mismatch.
-    BoundCtx                -- The context at the time of the failure
+    [DBBinding]             -- The context at the time of the failure
     CheckedExpr             -- The possible inferred types.
     CheckedExpr             -- The expected type.
-  | FailedConstraints
-    (NonEmpty Constraint)
   | UnsolvedConstraints
     (NonEmpty Constraint)
   | UnsolvedMetas
     (NonEmpty (Meta, Provenance))
   | MissingExplicitArg
-    BoundCtx                -- The context at the time of the failure
+    [DBBinding]             -- The context at the time of the failure
     UncheckedArg            -- The non-explicit argument
     CheckedExpr             -- Expected type of the argument
+  | FailedConstraints
+    (NonEmpty Constraint)
+  | FailedEqConstraint               ConstraintContext CheckedExpr CheckedExpr Equality
+  | FailedOrdConstraint              ConstraintContext CheckedExpr CheckedExpr Order
+  | FailedBuiltinConstraintArgument  ConstraintContext Builtin CheckedExpr [InputExpr] Int Int
+  | FailedBuiltinConstraintResult    ConstraintContext Builtin CheckedExpr [InputExpr]
+  | FailedNotConstraint              ConstraintContext CheckedExpr
+  | FailedBoolOp2Constraint          ConstraintContext CheckedExpr CheckedExpr BooleanOp2
+  | FailedQuantifierConstraintDomain ConstraintContext CheckedExpr Quantifier
+  | FailedQuantifierConstraintBody   ConstraintContext CheckedExpr Quantifier
+  | FailedArithOp2Constraint         ConstraintContext CheckedExpr CheckedExpr NumericOp2
+  | FailedFoldConstraintContainer    ConstraintContext CheckedExpr
+  | FailedQuantInConstraintContainer ConstraintContext CheckedExpr Quantifier
+  | FailedNatLitConstraint           ConstraintContext Int CheckedExpr
+  | FailedNatLitConstraintTooBig     ConstraintContext Int Int
+  | FailedNatLitConstraintUnknown    ConstraintContext Int CheckedExpr
+  | FailedIntLitConstraint           ConstraintContext CheckedExpr
+  | FailedRatLitConstraint           ConstraintContext CheckedExpr
+  | FailedConLitConstraint           ConstraintContext CheckedExpr
 
   -- Resource typing errors
   | ResourceNotProvided       Identifier Provenance ResourceType
@@ -75,11 +92,11 @@ data CompileError
 
   | DatasetTypeUnsupportedContainer Identifier Provenance CheckedExpr
   | DatasetTypeUnsupportedElement   Identifier Provenance CheckedExpr
-  | DatasetVariableSizeTensor   Identifier Provenance CheckedExpr
-  | DatasetDimensionMismatch    Identifier Provenance CheckedExpr [Int]
-  | DatasetTypeMismatch         Identifier Provenance CheckedExpr NumericType
-  | DatasetInvalidNat           Identifier Provenance Int
-  | DatasetInvalidIndex         Identifier Provenance Int Int
+  | DatasetVariableSizeTensor       Identifier Provenance CheckedExpr
+  | DatasetDimensionMismatch        Identifier Provenance CheckedExpr [Int]
+  | DatasetTypeMismatch             Identifier Provenance CheckedExpr NumericType
+  | DatasetInvalidNat               Identifier Provenance Int
+  | DatasetInvalidIndex             Identifier Provenance Int Int
 
   | ParameterTypeUnsupported        Identifier Provenance CheckedExpr
   | ParameterTypeVariableSizeIndex  Identifier Provenance CheckedExpr
@@ -94,7 +111,7 @@ data CompileError
   | UnsupportedPolymorphicEquality   Backend Provenance Symbol
   | UnsupportedBuiltin               Backend Provenance Builtin
   | UnsupportedNonMagicVariable      Backend Provenance Symbol
-  | NonLinearConstraint              Backend Provenance Identifier [DBBinding] CheckedExpr CheckedExpr
+  | UnsupportedNonLinearConstraint   Backend Identifier Provenance LinearityProvenance LinearityProvenance
   | NoNetworkUsedInProperty          Backend Provenance Identifier
   deriving (Show)
 
@@ -136,3 +153,17 @@ caseError :: MonadError CompileError m => Doc () -> Doc () -> [Doc ()] -> m b
 caseError pass name cases = compilerDeveloperError $
   unexpectedExpr pass name <+> "This should already have been caught by the" <+>
   "following cases:" <+> list cases
+
+allowedType :: Builtin -> InputExpr
+allowedType = let p = mempty in \case
+  NumericType   Nat    -> NatType p
+  NumericType   Int    -> IntType p
+  NumericType   Rat    -> RatType p
+  Index                -> IndexType p (Var p "n")
+  ContainerType List   -> ListType p (Var p "A")
+  ContainerType Tensor -> TensorType p (Var p "A") (Var p "dims")
+  b                    -> developerError
+    $ "Builtin" <+> squotes (pretty b) <+> "not yet supported for allowed translation"
+
+allowed :: [Builtin] -> [InputExpr]
+allowed = fmap allowedType

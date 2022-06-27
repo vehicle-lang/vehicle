@@ -14,7 +14,7 @@ import Vehicle.Language.Print
 -- Currently assumes all implications and negations have
 -- been previously normalised out.
 convertToDNF :: MonadCompile m => CheckedExpr -> m CheckedExpr
-convertToDNF expr = logCompilerPass "conversion to disjunctive normal form" $ do
+convertToDNF expr = logCompilerPass MinDetail "conversion to disjunctive normal form" $ do
   result <- dnf expr
   logCompilerPassOutput (prettyFriendly result)
   return result
@@ -30,7 +30,7 @@ dnf expr = do
     LSeq{}      -> normalisationError currentPass "LSeq"
     Ann{}       -> normalisationError currentPass "Ann"
     Let{}       -> normalisationError currentPass "Let"
-    Type{}      -> typeError          currentPass "Type"
+    Universe{}  -> typeError          currentPass "Universe"
     Pi{}        -> typeError          currentPass "Pi"
     PrimDict{}  -> visibilityError    currentPass "PrimDict"
     Hole{}      -> visibilityError    currentPass "Hole"

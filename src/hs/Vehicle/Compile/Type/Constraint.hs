@@ -2,9 +2,25 @@ module Vehicle.Compile.Type.Constraint where
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.MetaSet
+import Vehicle.Compile.Type.VariableContext
 
 --------------------------------------------------------------------------------
--- Unification definitions
+-- Constraint contexts
+
+data ConstraintContext = ConstraintContext
+  { _prov            :: Provenance       -- The origin of the constraint
+  , blockedBy        :: BlockingMetas    -- The set of metas blocking progress on this constraint, if known
+  , varContext       :: VariableCtx      -- The current declaration context (needed for normalisation)
+  } deriving (Show)
+
+instance HasProvenance ConstraintContext where
+  provenanceOf (ConstraintContext p _ _) = p
+
+instance HasBoundCtx ConstraintContext where
+  boundContextOf = boundContextOf . varContext
+
+--------------------------------------------------------------------------------
+-- Unification constraints
 
 -- | A pair of expressions should be equal
 type UnificationPair = (CheckedExpr, CheckedExpr)
@@ -12,42 +28,33 @@ type UnificationPair = (CheckedExpr, CheckedExpr)
 newtype UnificationConstraint = Unify UnificationPair
   deriving (Show)
 
+--------------------------------------------------------------------------------
+-- Type-class constraints
+
 data TypeClassConstraint = Meta `Has` CheckedExpr
   deriving (Show)
-
-type PolarityConstraint = CheckedExpr
 
 -- | A sequence of attempts at unification
 type UnificationHistory = [UnificationPair]
 
 type BlockingMetas = MetaSet
 
-data ConstraintContext = ConstraintContext
-  { _prov            :: Provenance       -- The origin of the constraint
-  , blockedBy        :: BlockingMetas    -- The set of metas blocking progress on this constraint, if known
-  , varContext       :: VariableCtx      -- The current declaration context (needed for normalisation)
-  }
-
-instance HasProvenance ConstraintContext where
-  provenanceOf (ConstraintContext p _ _) = p
+--------------------------------------------------------------------------------
+-- Constraint
 
 data Constraint
   -- | Represents that the two contained expressions should be equal.
   = UC ConstraintContext UnificationConstraint
   -- | Represents that the provided type must have the required functionality
   | TC ConstraintContext TypeClassConstraint
-  -- | Represents a constraint on boolean polarities
-  | PC ConstraintContext PolarityConstraint
 
 instance Show Constraint where
   show (UC _ c) = show c
   show (TC _ c) = show c
-  show (PC _ c) = show c
 
 constraintContext :: Constraint -> ConstraintContext
 constraintContext (UC ctx _) = ctx
 constraintContext (TC ctx _) = ctx
-constraintContext (PC ctx _) = ctx
 
 variableContext :: Constraint -> VariableCtx
 variableContext = varContext . constraintContext
@@ -58,6 +65,9 @@ declContext = declCtx . variableContext
 boundContext :: Constraint -> BoundCtx
 boundContext = boundCtx . variableContext
 
+instance HasBoundCtx Constraint where
+  boundContextOf = boundContextOf . variableContext
+
 instance HasProvenance Constraint where
   provenanceOf = provenanceOf . constraintContext
 
@@ -65,20 +75,21 @@ isTypeClassConstraint :: Constraint -> Bool
 isTypeClassConstraint TC{} = True
 isTypeClassConstraint _    = False
 
+isAuxiliaryTypeClassConstraint :: Constraint -> Bool
+isAuxiliaryTypeClassConstraint = \case
+  TC _ (_ `Has` (BuiltinTypeClass _ tc _)) -> isAuxiliaryTypeClass tc
+  _                                        -> False
+
+isNonAuxiliaryTypeClassConstraint :: Constraint -> Bool
+isNonAuxiliaryTypeClassConstraint = \case
+  TC _ (_ `Has` (BuiltinTypeClass _ tc _)) -> not (isAuxiliaryTypeClass tc)
+  _                                        -> False
+
 isUnificationConstraint :: Constraint -> Bool
 isUnificationConstraint UC{} = True
 isUnificationConstraint _    = False
-
-isAuxiliaryConstraint :: Constraint -> Bool
-isAuxiliaryConstraint PC{} = True
-isAuxiliaryConstraint _    = False
 
 getTypeClassConstraint :: Constraint
                        -> Maybe (TypeClassConstraint, ConstraintContext)
 getTypeClassConstraint (TC ctx c) = Just (c, ctx)
 getTypeClassConstraint _          = Nothing
-
-getAuxiliaryConstraint :: Constraint
-                       -> Maybe (CheckedExpr, ConstraintContext)
-getAuxiliaryConstraint (PC ctx c) = Just (c, ctx)
-getAuxiliaryConstraint _          = Nothing

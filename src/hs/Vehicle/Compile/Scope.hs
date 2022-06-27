@@ -13,12 +13,12 @@ import Data.Set (Set,)
 import Data.Set qualified as Set (member, insert)
 
 import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Prelude hiding (DeclCtx, BoundCtx)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 
 scopeCheck :: (MonadLogger m, MonadError CompileError m)
            => InputProg -> m UncheckedProg
-scopeCheck e = logCompilerPass "scope checking" $
+scopeCheck e = logCompilerPass MinDetail "scope checking" $
   runReaderT (scopeProg e) mempty
 
 scopeCheckClosedExpr :: (MonadLogger m, MonadError CompileError m)
@@ -107,7 +107,7 @@ scopeExpr :: MonadScopeExpr m => InputExpr -> m UncheckedExpr
 scopeExpr e = do
   logScopeEntry e
   result <- case e of
-    Type     ann l        -> return $ Type ann l
+    Universe  ann l       -> return $ Universe ann l
     Meta     ann i        -> return $ Meta ann i
     Hole     ann n        -> return $ Hole ann n
     Ann      ann ex t     -> Ann ann <$> scopeExpr ex <*> scopeExpr t
@@ -115,7 +115,7 @@ scopeExpr e = do
     Builtin  ann op       -> return $ Builtin ann op
     Var      ann v        -> Var ann <$> getVar ann v
     Literal  ann l        -> return $ Literal ann l
-    LSeq     ann dict es  -> LSeq ann <$> scopeExpr dict <*> traverse scopeExpr es
+    LSeq     ann es       -> LSeq ann <$> traverse scopeExpr es
 
     Pi  ann binder res -> do
       bindVar binder $ \binder' -> Pi ann binder' <$> scopeExpr res

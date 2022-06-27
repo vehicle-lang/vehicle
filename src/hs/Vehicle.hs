@@ -66,10 +66,7 @@ openHandles (outFile, errFile, logFile, logLevel) = do
     Just Nothing  -> return (Just stdout)
     Just (Just x) -> Just <$> openFile x AppendMode
 
-  let debugLevel = case logLevel of
-        l | l <= 1    -> MinDetail
-          | l == 2    -> MidDetail
-          | otherwise -> MaxDetail
+  let debugLevel = intToDebugLevel logLevel
 
   return LoggingOptions
     { errorHandle  = errorHandle

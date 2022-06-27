@@ -22,7 +22,7 @@ solveForUserVariables :: MonadCompile m
                       -> CLSTProblem
                       -> m (CLSTProblem, UserVarReconstructionInfo)
 solveForUserVariables numberOfUserVars (CLSTProblem varNames assertions) =
-  logCompilerPass currentPass $ do
+  logCompilerPass MinDetail currentPass $ do
     let allUserVars = Set.fromList [0..numberOfUserVars-1]
 
     -- First remove those assertions that don't have any user variables in them.

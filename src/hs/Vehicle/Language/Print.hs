@@ -37,7 +37,7 @@ import Vehicle.Compile.Delaborate.External as External
 import Vehicle.Compile.Descope
 import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.MetaSubstitution (MetaSubstitution(MetaSubstitution))
+import Vehicle.Compile.Type.MetaMap (MetaMap(..))
 import Vehicle.Compile.CoDeBruijnify (ConvertCodebruijn(..))
 import Vehicle.Compile.Prelude
 
@@ -159,8 +159,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags Constraint
     = 'Opaque (StrategyFor tags CheckedExpr)
 
-  StrategyFor tags MetaSubstitution
-    = 'Opaque (StrategyFor tags CheckedExpr)
+  StrategyFor tags (MetaMap a)
+    = 'Opaque (StrategyFor tags a)
 
   StrategyFor tags DBBinding
     = 'Pretty
@@ -286,11 +286,10 @@ instance (PrettyUsing rest CheckedExpr)
   prettyUsing (TC _ (m `Has` e))      = pretty m <+> "<=" <+> prettyUsing @rest e
     -- <+> "<boundCtx=" <> pretty (ctxNames (boundContext c)) <> ">"
     -- <+> parens (pretty (provenanceOf c))
-  prettyUsing (PC _ e)                = prettyUsing @rest e
 
-instance PrettyUsing rest CheckedExpr
-      => PrettyUsing ('Opaque rest) MetaSubstitution where
-  prettyUsing (MetaSubstitution m) = prettyMapEntries entries
+instance PrettyUsing rest a
+      => PrettyUsing ('Opaque rest) (MetaMap a) where
+  prettyUsing (MetaMap m) = prettyMapEntries entries
     where entries = fmap (bimap MetaVar (prettyUsing @rest)) (IntMap.assocs m)
 
 instance (PrettyUsing rest CheckedExpr)
@@ -308,6 +307,7 @@ instance Internal.Print a => Pretty (ViaBnfcInternal a) where
 deriving via (ViaBnfcInternal BC.Prog) instance Pretty BC.Prog
 deriving via (ViaBnfcInternal BC.Decl) instance Pretty BC.Decl
 deriving via (ViaBnfcInternal BC.Expr) instance Pretty BC.Expr
+deriving via (ViaBnfcInternal BC.Arg)  instance Pretty BC.Arg
 
 newtype ViaBnfcExternal a = ViaBnfcExternal a
 
@@ -328,5 +328,6 @@ bnfcPrintHack =
   Text.replace "{  " "{" .
   Text.replace "\n{" " {" .
   Text.replace "{\n" "{" .
-  Text.replace "\n}\n" "} " .
+  Text.replace "\n}" "}" .
+  Text.replace "}\n" "} " .
   Text.pack

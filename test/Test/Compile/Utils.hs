@@ -7,18 +7,17 @@ module Test.Compile.Utils
   , testSpec
   , testResources
   , locationDir
-  , textToCheckedExpr
-  , retypeCheckExpr
-  , traceLogs
-  , discardLogs
+  , unitTestCase
   ) where
 
-import Control.Monad.Reader (MonadReader(..))
+import Control.Monad.Reader (MonadReader(..), asks)
 import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
+import Data.Maybe (fromMaybe)
 import Data.Text.Array
-import Data.Map
+import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Text
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Debug.Trace
 import System.FilePath ((</>))
 
@@ -31,21 +30,23 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Type (typeCheck)
+import Test.Tasty.HUnit (testCase, Assertion)
 
 --------------------------------------------------------------------------------
 -- Test settings monad
 
-type MonadTest m = MonadReader (Maybe Int) m
+type MonadTest m = MonadReader Int m
 
 type TestLoggingSettings = (Maybe (Maybe FilePath), Int)
 
 getTestLoggingSettings :: MonadTest m => m TestLoggingSettings
 getTestLoggingSettings = do
   logLevel <- ask
-  return $ case logLevel of
-    Nothing -> (Nothing, 0)
-    Just l  -> (Just Nothing, l)
+  let logLocation = if logLevel == 0 then Nothing else Just Nothing
+  return (logLocation, logLevel)
 
+getDebugLevel :: MonadTest m => m DebugLevel
+getDebugLevel = asks intToDebugLevel
 
 --------------------------------------------------------------------------------
 -- Test infrastructure
@@ -96,23 +97,16 @@ testResources TestSpec{..} =
 --------------------------------------------------------------------------------
 -- Other utilities
 
-traceLogger :: Logger a -> a
-traceLogger m =
-  let (v, logs) = runLogger MaxDetail m in
-  trace (showMessages logs) v
+traceLogs :: Int -> ExceptT CompileError Logger a -> a
+traceLogs logLevel e = do
+  let debugLevel = intToDebugLevel logLevel
+  let e' = logCompileError e
+  let (v, logs) = runLogger debugLevel e'
+  case trace (showMessages logs) v of
+    Left  x -> developerError $ pretty $ details x
+    Right y -> y
 
-discardLogs :: ExceptT CompileError Logger a -> a
-discardLogs e = case discardLogger $ logCompileError e of
-  Left  x -> developerError $ pretty $ details x
-  Right y -> y
-
-traceLogs :: ExceptT CompileError Logger a -> a
-traceLogs e = case traceLogger $ logCompileError e of
-  Left  x -> developerError $ pretty $ details x
-  Right y -> y
-
-textToCheckedExpr :: Text -> CheckedExpr
-textToCheckedExpr = discardLogs . typeCheckExpr
-
-retypeCheckExpr :: CheckedExpr -> CheckedExpr
-retypeCheckExpr = discardLogs . typeCheck
+unitTestCase :: MonadTest m => String -> ExceptT CompileError Logger Assertion -> m TestTree
+unitTestCase testName e = do
+  logLevel <- ask
+  return $ testCase testName $ traceLogs logLevel e

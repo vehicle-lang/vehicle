@@ -165,12 +165,13 @@ goldenTests = testGroup "GoldenTests" <$>
       , testLocation   = Tests
       , testTargets    = [MarabouBackend]
       }
--}
-    -- , testSpec
-    --   { testName       = "simple-vectorType"
-    --   , testLocation   = Tests
-    --   , testTargets    = [AgdaBackend]
-    --   }
+
+    , testSpec
+      { testName       = "simple-vectorType"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend]
+      }
+      -}
     ]
 
 --------------------------------------------------------------------------------

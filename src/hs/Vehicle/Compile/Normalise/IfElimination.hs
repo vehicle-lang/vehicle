@@ -18,7 +18,7 @@ import Vehicle.Language.Print
 -- lifting the `if` expression until it reaches a point where we know that it's
 -- of type `Bool` in which case we then normalise it to an `or` statement.
 eliminateIfs :: MonadCompile m => CheckedExpr -> m CheckedExpr
-eliminateIfs e = logCompilerPass currentPass $ do
+eliminateIfs e = logCompilerPass MinDetail currentPass $ do
   result <- liftAndElimIf e
   logCompilerPassOutput (prettyFriendly result)
   return result
@@ -43,12 +43,12 @@ liftIf f e = f e
 -- provided expression.
 elimIf :: CheckedExpr -> CheckedExpr
 elimIf (IfExpr ann _ [cond, e1, e2]) = argExpr $
-  op2 Or
-    (op2 And cond         (mapArgExpr elimIf e1))
-    (op2 And (notOp cond) (mapArgExpr elimIf e2))
+  op2 Or HasOr
+    (op2 And HasAnd cond         (mapArgExpr elimIf e1))
+    (op2 And HasAnd (notOp cond) (mapArgExpr elimIf e2))
   where
-    op2 :: BooleanOp2 -> CheckedArg -> CheckedArg -> CheckedArg
-    op2 op arg1 arg2 = ExplicitArg ann (BooleanOp2Expr op ann [arg1, arg2])
+    op2 :: BooleanOp2 -> TypeClass -> CheckedArg -> CheckedArg -> CheckedArg
+    op2 op tc arg1 arg2 = ExplicitArg ann (BooleanOp2Expr op tc ann [arg1, arg2])
 
     notOp :: CheckedArg -> CheckedArg
     notOp arg = ExplicitArg ann (NotExpr ann [arg])
@@ -57,7 +57,7 @@ elimIf e = e
 liftAndElimIf :: MonadCompile m => CheckedExpr -> m CheckedExpr
 liftAndElimIf expr =
   case expr of
-    Type{}     -> return expr
+    Universe{} -> return expr
     PrimDict{} -> return expr
     Builtin{}  -> return expr
     Literal{}  -> return expr
@@ -69,9 +69,9 @@ liftAndElimIf expr =
 
     QuantifierExpr q  ann binder body -> QuantifierExpr q  ann binder . elimIf <$> liftAndElimIf body
 
-    NotExpr           ann args        -> NotExpr           ann   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
-    BooleanOp2Expr op ann args        -> BooleanOp2Expr op ann   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
-    IfExpr            ann t args      -> IfExpr            ann t <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
+    NotExpr              ann args        -> NotExpr              ann   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
+    BooleanOp2Expr op tc ann args        -> BooleanOp2Expr op tc ann   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
+    IfExpr               ann t args      -> IfExpr               ann t <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
 
     Let ann bound binder body ->
       Let ann <$> liftAndElimIf bound <*> pure binder <*> liftAndElimIf body
@@ -86,10 +86,9 @@ liftAndElimIf expr =
       t' <- liftAndElimIf t
       return $ liftIf (\e'' -> liftIf (\t'' -> Ann ann e'' t'') t') e'
 
-    LSeq ann dict es -> do
-      dict' <- liftAndElimIf dict
+    LSeq ann es -> do
       es'   <- traverse liftAndElimIf es
-      return $ liftIf (\dict'' -> liftSeq (\es'' -> LSeq ann dict'' es'') es') dict'
+      return $ liftSeq (\es'' -> LSeq ann es'') es'
 
     -- Quantified lambdas should have been caught before now.
     Lam{} -> normalisationError currentPass "Non-quantified Lam"

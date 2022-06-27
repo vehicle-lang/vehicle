@@ -38,6 +38,7 @@ newtype ExternalError = ExternalError Text
 data VehicleError
   = UError UserError
   | EError ExternalError
+  | DError (Doc ())
 
 instance Pretty VehicleError where
   pretty (UError (UserError p prob probFix)) =
@@ -45,6 +46,8 @@ instance Pretty VehicleError where
       maybe "" (\fix -> line <> fixText fix) probFix
 
   pretty (EError (ExternalError text)) = pretty text
+
+  pretty (DError text) = unAnnotate text
 
 fixText :: Doc ann -> Doc ann
 fixText t = "Fix:" <+> t
@@ -87,7 +90,7 @@ instance MeaningfulError CompileError where
     -- Developer errors --
     ----------------------
 
-    DevError text -> developerError text
+    DevError text -> DError text
 
     -------------
     -- Parsing --
@@ -105,18 +108,21 @@ instance MeaningfulError CompileError where
     UnknownBuiltin tk -> UError $ UserError
       { provenance = tkProvenance tk
       , problem    = "Unknown symbol" <+> pretty (tkSymbol tk)
-      , fix        = Just "Please consult the documentation for a description of Vehicle syntax"
+      , fix        = Just $ "Please consult the documentation for a description" <+>
+                            "of Vehicle syntax"
       }
 
     MalformedPiBinder tk -> UError $ UserError
       { provenance = tkProvenance tk
-      , problem    = "Malformed binder for Pi, expected a type but only found name" <+> pretty (tkSymbol tk)
+      , problem    = "Malformed binder for Pi, expected a type but only found" <+>
+                     "name" <+> pretty (tkSymbol tk)
       , fix        = Nothing
       }
 
     MalformedLamBinder expr -> UError $ UserError
       { provenance = provenanceOf expr
-      , problem    = "Malformed binder for Lambda, expected a name but only found an expression" <+> prettyVerbose expr
+      , problem    = "Malformed binder for Lambda, expected a name but only" <+>
+                     "found an expression" <+> prettyVerbose expr
       , fix        = Nothing
       }
 
@@ -169,10 +175,10 @@ instance MeaningfulError CompileError where
 
     TypeMismatch p ctx candidate expected -> UError $ UserError
       { provenance = p
-      , problem    = "expected something of type" <+> prettyFriendlyDB nameCtx expected <+>
-                    "but inferred type" <+> prettyFriendlyDB nameCtx candidate
+      , problem    = "expected something of type" <+> prettyExpr ctx expected <+>
+                    "but inferred type" <+> prettyExpr ctx candidate
       , fix        = Nothing
-      } where nameCtx = ctxNames ctx
+      }
 
     UnresolvedHole p name -> UError $ UserError
       { provenance = p
@@ -183,7 +189,7 @@ instance MeaningfulError CompileError where
     FailedConstraints cs -> UError $ failedConstraintError nameCtx constraint
       where
         constraint = NonEmpty.head cs
-        nameCtx = ctxNames (boundContext constraint)
+        nameCtx = boundContextOf constraint
 
     UnsolvedConstraints cs -> UError $ UserError
       { provenance = provenanceOf constraint
@@ -192,7 +198,7 @@ instance MeaningfulError CompileError where
       }
       where
         constraint = NonEmpty.head cs
-        nameCtx    = ctxNames (boundContext constraint)
+        nameCtx    = boundContextOf constraint
 
     UnsolvedMetas ms -> UError $ UserError
       { provenance = p
@@ -206,13 +212,143 @@ instance MeaningfulError CompileError where
       { provenance = provenanceOf arg
       , problem    = "expected an" <+> pretty Explicit <+> "argument of type" <+>
                     argTypeDoc <+> "but instead found" <+>
-                    pretty (visibilityOf arg) <+> "argument" <+> squotes argExprDoc
+                    pretty (visibilityOf arg) <+> "argument" <+> argExprDoc
       , fix        = Just $ "try inserting an argument of type" <+> argTypeDoc
       }
       where
-        nameCtx    = ctxNames ctx
-        argExprDoc = prettyFriendlyDB nameCtx (argExpr arg)
-        argTypeDoc = prettyFriendlyDB nameCtx argType
+        argExprDoc = prettyExpr ctx (argExpr arg)
+        argTypeDoc = prettyExpr ctx argType
+
+    FailedEqConstraint ctx t1 t2 eq -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "cannot use" <+> squotes (pretty eq) <+> "to compare" <+>
+                     "arguments" <+> "of type" <+> prettyExpr ctx t1 <+>
+                     "and" <+> prettyExpr ctx t2 <> "."
+      , fix        = Nothing
+      }
+
+    FailedOrdConstraint ctx t1 t2 ord -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "cannot use" <+> squotes (pretty ord) <+> "to compare" <+>
+                     "arguments" <+> "of type" <+> prettyExpr ctx t1 <+>
+                     "and" <+> prettyExpr ctx t2 <> "."
+      , fix        = Nothing
+      }
+
+    FailedNotConstraint ctx t -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "cannot apply" <+> squotes (pretty Not) <+> "to" <+>
+                     "something of type" <+> prettyExpr ctx t <> "."
+      , fix        = Nothing
+      }
+
+    FailedBoolOp2Constraint ctx t1 t2 op -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "cannot apply" <+> squotes (pretty op) <+> "to" <+>
+                     "arguments of type" <+> prettyExpr ctx t1 <+>
+                     "and" <+> prettyExpr ctx t2 <> "."
+      , fix        = Nothing
+      }
+
+    FailedQuantifierConstraintDomain ctx typeOfDomain _q -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "cannot quantify over arguments of type" <+>
+                     prettyExpr ctx typeOfDomain <> "."
+      , fix        = Nothing
+      }
+
+    FailedQuantifierConstraintBody ctx typeOfBody _q -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "the body of the quantifier cannot be of type" <+>
+                     prettyExpr ctx typeOfBody <> "."
+      , fix        = Nothing
+      }
+
+    FailedBuiltinConstraintArgument ctx builtin t allowedTypes argNo argTotal ->
+      UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "expecting" <+> prettyArgOrdinal argNo argTotal <+>
+                     "of" <+> squotes (pretty builtin) <+> "to be" <+>
+                     prettyAllowedTypes allowedTypes <+>
+                     "but found something of type" <+> prettyExpr ctx t <> "."
+      , fix        = Nothing
+      } where
+
+    FailedBuiltinConstraintResult ctx builtin actualType allowedTypes ->
+      UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "the return type of" <+> squotes (pretty builtin) <+>
+                     "should be" <+> prettyAllowedTypes allowedTypes <+>
+                     "but the program is expecting something of type" <+>
+                     prettyExpr ctx actualType <> "."
+      , fix        = Nothing
+      } where
+
+    FailedArithOp2Constraint ctx t1 t2 op2 -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "cannot apply" <+> squotes (pretty op2) <+> "to" <+>
+                     "arguments of type" <+> prettyExpr ctx t1 <+>
+                     "and" <+> prettyExpr ctx t2 <> "."
+      , fix        = Nothing
+      }
+
+    FailedFoldConstraintContainer ctx tCont -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "the second argument to" <+> squotes (pretty Fold) <+>
+                     "must be a container type but found something of type" <+>
+                     prettyExpr ctx tCont <> "."
+      , fix        = Nothing
+      }
+
+    FailedQuantInConstraintContainer ctx tCont q -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "the argument <c> in '" <> pretty q <> " <v> in <c> . ...`" <+>
+                     "must be a container type but found something of type" <+>
+                     prettyExpr ctx tCont <> "."
+      , fix        = Nothing
+      }
+
+    FailedNatLitConstraint ctx v t -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "the value" <+> squotes (pretty v) <+> "is not a valid" <+>
+                     "instance of type" <+> prettyExpr ctx t <> "."
+      , fix        = Nothing
+      }
+
+    FailedNatLitConstraintTooBig ctx v n -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "the value" <+> squotes (pretty v) <+> "is too big to" <+>
+                     "be used as an index of size" <+> squotes (pretty n) <> "."
+      , fix        = Nothing
+      }
+
+    FailedNatLitConstraintUnknown ctx v t -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "unable to determine if" <+> squotes (pretty v) <+>
+                     "is a valid index of size" <+> prettyExpr ctx t <> "."
+      , fix        = Nothing
+      }
+
+    FailedIntLitConstraint ctx t -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "an integer literal is not a valid element of the type" <+>
+                     prettyExpr ctx t <> "."
+      , fix        = Nothing
+      }
+
+    FailedRatLitConstraint ctx t -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "a rational literal is not a valid element of the type" <+>
+                     prettyExpr ctx t <> "."
+      , fix        = Nothing
+      }
+
+    FailedConLitConstraint ctx t -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "a sequence literal is not a valid element of the type" <+>
+                     prettyExpr ctx t <> "."
+      , fix        = Nothing
+      }
 
     ---------------
     -- Resources --
@@ -236,7 +372,8 @@ instance MeaningfulError CompileError where
       , problem    = "The file provided for the" <+> prettyResource resourceType ident <+>
                      "is in a format (" <> pretty fileExtension <> ") not currently" <+>
                      "supported by Vehicle."
-      , fix        = Just $ "use one of the supported formats" <+> pretty (supportedFileFormats resourceType) <+>
+      , fix        = Just $ "use one of the supported formats" <+>
+                     pretty (supportedFileFormats resourceType) <+>
                      ", or open an issue on Github to discuss adding support."
       }
 
@@ -287,8 +424,8 @@ instance MeaningfulError CompileError where
     NetworkTypeHasUnsupportedElementType ident fullType elementType io -> UError $ UserError
       { provenance = provenanceOf elementType
       , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
-                     pretty io <+> "s of type" <+>
-                     squotes (prettyFriendly elementType) <+>
+                     pretty io <> "s of type" <+>
+                     squotes (prettyFriendlyDBClosed elementType) <+>
                      "are not currently supported."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Ensure that the network" <+> pretty io <+> "uses" <+>
@@ -299,7 +436,7 @@ instance MeaningfulError CompileError where
       { provenance = provenanceOf tensorType
       , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
                      "the" <+> pretty io <+>
-                     squotes (prettyFriendly tensorType) <+> "is not a 1D tensor."
+                     squotes (prettyFriendlyDBClosed tensorType) <+> "is not a 1D tensor."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Ensure that the network" <+> pretty io <+> "is a 1D tensor."
       }
@@ -308,7 +445,7 @@ instance MeaningfulError CompileError where
       { provenance = provenanceOf tDim
       , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
                      "the size of the" <+> pretty io <+> "tensor" <+>
-                     squotes (pretty $ show tDim) <+> "is not a constant."
+                     squotes (prettyFriendlyDBClosed tDim) <+> "is not a constant."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "ensure that the size of the" <+> pretty io <+>
                      "tensor is constant."
@@ -334,7 +471,7 @@ instance MeaningfulError CompileError where
 
     DatasetVariableSizeTensor ident p tCont -> UError $ UserError
       { provenance = p
-      , problem    = "A tensor with variable dimensions" <+> squotes (prettyFriendly tCont) <+>
+      , problem    = "A tensor with variable dimensions" <+> squotes (prettyFriendlyDBClosed tCont) <+>
                      "is not a supported type for the" <+> prettyResource Dataset ident <> "."
       , fix        = Just "make sure the dimensions of the dataset are all constants."
       }
@@ -343,7 +480,7 @@ instance MeaningfulError CompileError where
       { provenance = p
       , problem    = "Found value" <+> squotes (pretty v) <+>
                      "while reading" <+> prettyResource Dataset ident <+>
-                     "but expected elements of type" <+> squotes (prettyFriendly nat)
+                     "but expected elements of type" <+> squotes (prettyFriendlyDBClosed nat)
       , fix        = Just $ "either remove the offending entries in the dataset or" <+>
                      "update the type of the dataset in the specification."
       } where (nat :: CheckedExpr) = NatType mempty
@@ -352,7 +489,7 @@ instance MeaningfulError CompileError where
       { provenance = p
       , problem    = "Found value" <+> squotes (pretty v) <+>
                      "while reading" <+> prettyResource Dataset ident <+>
-                     "but expected elements of type" <+> squotes (prettyFriendly index)
+                     "but expected elements of type" <+> squotes (prettyFriendlyDBClosed index)
       , fix        = Just $ "either remove the offending entries in the dataset or" <+>
                      "update the type of the dataset in the specification."
       }
@@ -370,7 +507,7 @@ instance MeaningfulError CompileError where
       { provenance = p
       , problem    = "Found elements of type" <+> pretty actualType <+>
                      "while reading" <+> prettyResource Dataset ident <+>
-                     "but expected elements of type" <+> prettyFriendly expectedType
+                     "but expected elements of type" <+> prettyFriendlyDBClosed expectedType
       , fix        = Just "correct the dataset type in the specification."
       }
 
@@ -418,8 +555,8 @@ instance MeaningfulError CompileError where
     UnsupportedSequentialQuantifiers target ident p q pq pp -> UError $ UserError
       { provenance = p
       , problem    = "The property" <+> squotes (pretty ident) <+> "contains" <+>
-                     "a sequence of quantifiers unsupported by" <+> pretty target <> "." <>
-                     line <>
+                     "a sequence of quantifiers unsupported by" <+> pretty target <>
+                     "." <> line <>
                      pretty target <+> "cannot verify properties that mix both" <+>
                      squotes (pretty Forall) <+> "and" <+> squotes (pretty Exists) <+>
                      "quantifiers." <>
@@ -429,6 +566,20 @@ instance MeaningfulError CompileError where
                      prettyPolarityProvenance (neg q) pp
       , fix        = Just $ "if possible try reformulating" <+> squotes (pretty ident) <+>
                     "in terms of a single type of quantifier."
+      }
+
+    UnsupportedNonLinearConstraint target ident p v1 v2 -> UError $ UserError
+      { provenance = p
+      , problem    = "The property" <+> squotes (pretty ident) <+> "contains" <+>
+                     "a non-linear constraint which is not supported by" <+>
+                     pretty target <> "." <> line <>
+                     "In particular the multiplication at" <+> pretty p <+>
+                     "involves" <+>
+                     prettyLinearityProvenance v1 <+>
+                     "and" <+>
+                     prettyLinearityProvenance v2
+      , fix        = Just $ "try avoiding it, otherwise please open an issue on the" <+>
+                     "Vehicle issue tracker."
       }
 
     UnsupportedVariableType target ident p name t supportedTypes -> UError $ UserError
@@ -476,16 +627,6 @@ instance MeaningfulError CompileError where
                      "Vehicle issue tracker describing the use-case."
       }
 
-    NonLinearConstraint target p ident _ v1 v2 -> UError $ UserError
-      { provenance = p
-      , problem    = "Property" <+> pretty ident <+> "contains a non-linear" <+>
-                     "constraint (in particular constraint contains" <+>
-                     squotes (prettyFriendly v1 <> "*" <> prettyFriendly v2) <+>
-                     "which is not currently supported by" <+> pretty target
-      , fix        = Just $ "try avoiding it, otherwise please open an issue on the" <+>
-                     "Vehicle issue tracker."
-      }
-
     NoPropertiesFound -> UError $ UserError
       { provenance = mempty
       , problem    = "No properties found in file."
@@ -529,10 +670,16 @@ unsolvedConstraintError constraint ctx ="Typing error: not enough information to
   case constraint of
     UC _ (Unify _)   ->  prettyFriendlyDB ctx constraint
     TC _ (_ `Has` t) ->  prettyFriendlyDB ctx t
-    PC _ t           ->  prettyFriendlyDB ctx t
 
 prettyResource :: ResourceType -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
+
+prettyExpr :: HasBoundCtx a => a -> CheckedExpr -> Doc b
+prettyExpr ctx e = squotes $ prettyFriendlyDB (boundContextOf ctx) e
+
+prettyQuantifierArticle :: Quantifier -> Doc a
+prettyQuantifierArticle q =
+  (if q == Forall then "a" else "an") <+> squotes (pretty q)
 
 prettyPolarityProvenance :: Quantifier -> PolarityProvenance -> Doc a
 prettyPolarityProvenance quantifier = \case
@@ -547,15 +694,47 @@ prettyPolarityProvenance quantifier = \case
     go q = \case
       QuantifierProvenance p ->
         ["the" <+> squotes (pretty q) <+> "is originally located at" <+> pretty p]
+      NegateProvenance p pp ->
+        surround p pp ("the" <+> squotes (pretty Not))
       LHSImpliesProvenance p pp ->
-        "which is turned into" <+> prettyQuantifierArticle q <+>
-        "by being on the LHS of the" <+> squotes (pretty (BooleanOp2 Impl)) <+>
-        "at" <+> pretty p
-        : go (neg q) pp
-      NegationProvenance p pp ->
-        "which is turned into" <+> prettyQuantifierArticle q <+>
-        "by the" <+> squotes (pretty Not) <+> "at" <+> pretty p
-        : go (neg q) pp
+        surround p pp ("being on the LHS of the" <+> squotes (pretty (BooleanOp2 Impl)))
+      EqProvenance eq p pp ->
+        surround p pp ("being involved in the" <+> squotes (pretty (Equality eq)))
+      where surround p pp x =
+              "which is turned into" <+> prettyQuantifierArticle q <+> "by" <+> x <+>
+              "at" <+> pretty p : go (neg q) pp
+
+prettyLinearityProvenance :: LinearityProvenance -> Doc a
+prettyLinearityProvenance lp =
+  indent 2 (numberedList $ reverse (go lp))
+  where
+  go :: LinearityProvenance -> [Doc a]
+  go = \case
+    QuantifiedVariableProvenance p ->
+      ["the quantified variable at" <+> pretty p ]
+    NetworkOutputProvenance p networkName ->
+      ["the output of network" <+> squotes (pretty networkName) <+> "at" <+> pretty p]
+
+prettyAllowedTypes :: [InputExpr] -> Doc b
+prettyAllowedTypes allowedTypes = if length allowedTypes == 1
+  then squotes (prettyFriendly (head allowedTypes))
+  else "one of" <+> prettyFlatList (prettyFriendly <$> allowedTypes)
+
+prettyArgOrdinal :: Int -> Int -> Doc b
+prettyArgOrdinal argNo argTotal
+  | argTotal == 1 = "the argument"
+  | argNo > 9    = "argument" <+> pretty argNo
+  | otherwise = "the" <+> (case argNo of
+    1 -> "first"
+    2 -> "second"
+    3 -> "third"
+    4 -> "fourth"
+    5 -> "fifth"
+    6 -> "sixth"
+    7 -> "seventh"
+    8 -> "eighth"
+    9 -> "ninth"
+    _ -> developerError "Cannot convert ordinal") <+> "argument"
 
 --------------------------------------------------------------------------------
 -- Constraint error messages
@@ -569,30 +748,5 @@ failedConstraintError ctx c@(UC _ (Unify (t1, t2))) = UserError
                     prettyFriendlyDB ctx t1 <+> "!=" <+> prettyFriendlyDB ctx t2
   , fix        = Just "check your types"
   }
-failedConstraintError ctx c@(TC _ (_ `Has` t)) = UserError
-  { provenance = provenanceOf c
-  , problem    = "Type error:" <+>
-                    "Could not satisfy" <+> squotes (prettyFriendlyDB ctx t)
-  , fix        = Just "check your types"
-  }
-failedConstraintError ctx (PC _ t) = developerError $
-  "Should not have unsolved polarity constraint:" <+> squotes (prettyFriendlyDB ctx t)
-
-{-
--- Some attempts more readable error messages. Need something more principled,
-e.g. Jurrian's work.
-
-    TC _ (_ `Has` (HasNatLitsUpToExpr _ n (IndexType _ (LiteralExpr _ _ v)))) -> UserError
-      { provenance = p
-      , problem    = "Type error: index" <+> pretty n <+> "is out of bounds when" <+>
-                    "looking up value in tensor of size" <+> pretty v
-      , fix        = Just "check your types"
-      }
-
-    TC _ (_ `Has` (HasNatLitsUpToExpr _ n (IndexType _ v))) -> UserError
-      { provenance = p
-      , problem    = "Type error: unknown if index" <+> pretty n <+> "is in bounds" <+>
-                    "when looking up value in tensor of size" <+> prettyFriendlyDB ctx v
-      , fix        = Just "check your types"
-      }
--}
+failedConstraintError _ TC{} =
+  developerError "Type-class constraints should not be thrown here"

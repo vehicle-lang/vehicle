@@ -45,7 +45,7 @@ boundedByEpsilon x = forall i j . -epsilon <= x ! i ! j <= epsilon
 -- network should still advise label `y` for the perturbed version of `x`.
 robustAround : Image -> Label -> Bool
 robustAround image label = forall pertubation .
-  let perturbedImage = image + pertubation in
+  let perturbedImage = image - pertubation in
   boundedByEpsilon pertubation and validImage perturbedImage =>
     advises perturbedImage label
 

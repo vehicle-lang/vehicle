@@ -10,7 +10,8 @@ module Vehicle.Language.DSL
   , tList
   , tTensor
   , tIndex
-  , tAux
+  , tPol
+  , tLin
   , hasEq
   , hasOrd
   , hasAdd
@@ -18,13 +19,14 @@ module Vehicle.Language.DSL
   , hasMul
   , hasDiv
   , hasNeg
-  , hasConOps
+  , hasFold
+  , hasQuantifierIn
   , hasNatLitsUpTo
   , hasIntLits
   , hasRatLits
-  , hasConLitsOfSize
   , hasNot
-  , hasAndOr
+  , hasAnd
+  , hasOr
   , hasImpl
   , hasQuantifier
   , tMax
@@ -33,6 +35,7 @@ module Vehicle.Language.DSL
   , nil
   , cons
   , unquantified
+  , constant
   ) where
 
 import Prelude hiding (pi)
@@ -108,9 +111,10 @@ piType :: CheckedExpr -> CheckedExpr -> CheckedExpr
 piType t1 t2 = t1 `tMax` t2
 
 universeLevel :: CheckedExpr -> UniverseLevel
-universeLevel (Type _ l)           = l
+universeLevel (TypeUniverse _ l)   = l
 universeLevel (Meta _ _ )          = 0 -- This is probably going to bite us, apologies.
 universeLevel (App _ (Meta _ _) _) = 0 -- This is probably going to bite us, apologies.
+universeLevel (Pi _ _ r)           = universeLevel r -- This is probably going to bite us, apologies.
 universeLevel t                    = developerError $
   "Expected argument of type Type. Found" <+> prettyVerbose t <> "."
 
@@ -123,14 +127,20 @@ con b = DSL $ \ann _ -> Builtin ann b
 --------------------------------------------------------------------------------
 -- Types
 
+universe :: Universe -> DSLExpr
+universe u = DSL $ \ann _ -> Universe ann u
+
 type0 :: DSLExpr
-type0 = DSL $ \ann _ -> Type ann 0
+type0 = universe $ TypeUniv 0
 
-tAux :: DSLExpr
-tAux = con AuxiliaryType
+tPol :: DSLExpr
+tPol = universe PolarityUniv
 
-tBool :: DSLExpr -> DSLExpr
-tBool polarity = con Bool `iApp` [polarity]
+tLin :: DSLExpr
+tLin = universe LinearityUniv
+
+tBool :: DSLExpr -> DSLExpr ->  DSLExpr
+tBool linearity polarity = con Bool `iApp` [linearity, polarity]
 
 tNat, tInt, tRat :: DSLExpr
 tNat  = con (NumericType Nat)
@@ -152,58 +162,59 @@ tHole name = DSL $ \ann _ -> Hole ann name
 --------------------------------------------------------------------------------
 -- TypeClass
 
-hasSimpleTC :: TypeClass -> DSLExpr -> DSLExpr
-hasSimpleTC tc tArg = con (TypeClass tc) `eApp` [tArg]
+typeClass :: TypeClass -> NonEmpty DSLExpr -> DSLExpr
+typeClass tc args = con (TypeClass tc) `eApp` args
 
-hasEq :: DSLExpr -> DSLExpr
-hasEq = hasSimpleTC HasEq
+hasEq :: Equality -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+hasEq eq t1 t2 t3 = typeClass (HasEq eq) [t1, t2, t3]
 
-hasOrd :: DSLExpr -> DSLExpr
-hasOrd = hasSimpleTC HasOrd
+hasOrd :: Order -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+hasOrd ord t1 t2 t3 = typeClass (HasOrd ord) [t1, t2, t3]
 
-hasAdd :: DSLExpr -> DSLExpr
-hasAdd = hasSimpleTC HasAdd
-
-hasSub :: DSLExpr -> DSLExpr
-hasSub = hasSimpleTC HasSub
-
-hasMul :: DSLExpr -> DSLExpr
-hasMul = hasSimpleTC HasMul
-
-hasDiv :: DSLExpr -> DSLExpr
-hasDiv = hasSimpleTC HasDiv
-
-hasNeg :: DSLExpr -> DSLExpr
-hasNeg = hasSimpleTC HasNeg
-
-hasConOps :: DSLExpr -> DSLExpr -> DSLExpr
-hasConOps tCont tElem = con (TypeClass HasConOps) `eApp` [tCont, tElem]
-
-hasNatLitsUpTo :: Int -> DSLExpr -> DSLExpr
-hasNatLitsUpTo n t = con (TypeClass (HasNatLitsUpTo n)) `eApp` [t]
-
-hasIntLits :: DSLExpr -> DSLExpr
-hasIntLits t = con (TypeClass HasIntLits) `eApp` [t]
-
-hasRatLits :: DSLExpr -> DSLExpr
-hasRatLits t = con (TypeClass HasRatLits) `eApp` [t]
-
-hasConLitsOfSize :: Int -> DSLExpr -> DSLExpr -> DSLExpr
-hasConLitsOfSize n tCont tElem =
-  con (TypeClass (HasConLitsOfSize n)) `eApp` [tCont, tElem]
-
--- Polarity type-classes
 hasNot :: DSLExpr -> DSLExpr -> DSLExpr
-hasNot pol1 pol2 = con (PolarityTypeClass HasNot) `eApp` [pol1, pol2]
+hasNot t1 t2 = typeClass HasNot [t1, t2]
 
-hasAndOr :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasAndOr pol1 pol2 pol3 = con (PolarityTypeClass HasAndOr) `eApp` [pol1, pol2, pol3]
+hasAnd :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+hasAnd t1 t2 t3 = typeClass HasAnd [t1, t2, t3]
+
+hasOr :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+hasOr t1 t2 t3 = typeClass HasOr [t1, t2, t3]
 
 hasImpl :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasImpl pol1 pol2 pol3 = con (PolarityTypeClass HasImpl) `eApp` [pol1, pol2, pol3]
+hasImpl t1 t2 t3 = typeClass HasImpl [t1, t2, t3]
 
 hasQuantifier :: Quantifier -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasQuantifier q t pol1 pol2 = con (PolarityTypeClass $ HasQuantifier q) `eApp` [t, pol1, pol2]
+hasQuantifier q t1 t2 t3 = typeClass (HasQuantifier q) [t1, t2, t3]
+
+hasAdd :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+hasAdd t1 t2 t3 = typeClass HasAdd [t1, t2, t3]
+
+hasSub :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+hasSub t1 t2 t3 = typeClass HasSub [t1, t2, t3]
+
+hasMul :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+hasMul t1 t2 t3 = typeClass HasMul [t1, t2, t3]
+
+hasDiv :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+hasDiv t1 t2 t3 = typeClass HasDiv [t1, t2, t3]
+
+hasNeg :: DSLExpr -> DSLExpr -> DSLExpr
+hasNeg t1 t2 = typeClass HasNeg [t1, t2]
+
+hasFold :: DSLExpr -> DSLExpr -> DSLExpr
+hasFold tCont tElem = typeClass HasFold [tCont, tElem]
+
+hasQuantifierIn :: Quantifier -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+hasQuantifierIn q tCont tElem tRes = typeClass (HasQuantifierIn q) [tCont, tElem, tRes]
+
+hasNatLitsUpTo :: Int -> DSLExpr -> DSLExpr
+hasNatLitsUpTo n t = typeClass (HasNatLitsUpTo n) [t]
+
+hasIntLits :: DSLExpr -> DSLExpr
+hasIntLits t = typeClass HasIntLits [t]
+
+hasRatLits :: DSLExpr -> DSLExpr
+hasRatLits t = typeClass HasRatLits [t]
 
 --------------------------------------------------------------------------------
 -- Operations
@@ -216,6 +227,9 @@ cons tElem x xs = app (con Cons) [(Implicit, tElem), (Explicit, x), (Explicit, x
 
 --------------------------------------------------------------------------------
 -- Polarities
+
+constant :: DSLExpr
+constant = con (Linearity Constant)
 
 unquantified :: DSLExpr
 unquantified = con (Polarity Unquantified)

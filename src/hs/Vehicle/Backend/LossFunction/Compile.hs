@@ -88,9 +88,9 @@ compileExpr e = showExit $ do
     V.OrExpr   _ [e1, e2] -> Max <$> compileArg e1 <*> compileArg e2
     V.ImplExpr _ [e1, e2] -> Max <$> (Neg <$> compileArg e1) <*> compileArg e2
 
-    V.EqualityExpr V.Eq  _ _ [e1, e2] -> Ind <$> compileArg e1 <*> compileArg e2
-    V.EqualityExpr V.Neq _ _ [e1, e2] -> Neg <$> (Ind <$> compileArg e1 <*> compileArg e2)
-    V.OrderExpr    order _ _ [e1, e2] ->
+    V.EqualityExpr _ V.Eq  _ [e1, e2] -> Ind <$> compileArg e1 <*> compileArg e2
+    V.EqualityExpr _ V.Neq _ [e1, e2] -> Neg <$> (Ind <$> compileArg e1 <*> compileArg e2)
+    V.OrderExpr    _ order _ [e1, e2] ->
       case order of
         V.Le -> Sub <$> compileArg e2 <*> compileArg e1
         V.Lt -> Neg <$> (Sub <$> compileArg e1 <*> compileArg e2)
@@ -101,7 +101,7 @@ compileExpr e = showExit $ do
     V.App _ (V.Var _ (V.Free ident)) p -> NetApp (V.nameOf ident) <$> traverse compileArg p
     V.Var _ (V.Bound t)                -> return (Var t)
     V.AtExpr _ _ _ _ [xs, i]           -> At <$> compileArg xs <*> compileArg i
-    V.LSeq _ _ xs                      -> TensorLit <$> traverse compileExpr xs
+    V.SeqExpr _ _ _ xs                 -> TensorLit <$> traverse compileExpr xs
 
     V.ForallExpr _ binder body         -> do
       body' <- compileExpr body
@@ -120,7 +120,7 @@ compileExpr e = showExit $ do
     V.Lam{}      -> normalisationError "lossFunction" "Lam"
     V.PrimDict{} -> typeError "lossFunction" "PrimDict"
     V.Pi{}       -> typeError "lossFunction" "Pi"
-    V.Type{}     -> typeError "lossFunction" "Type"
+    V.Universe{} -> typeError "lossFunction" "Universe"
     _            -> unexpectedExprError currentPass (prettySimple e)
 
 

@@ -29,7 +29,7 @@ fourierMotzkinElimination :: MonadCompile m
                           -> [Assertion]
                           -> m ([Solution], [Assertion])
 fourierMotzkinElimination varNames varsToSolve assertions =
-  logCompilerPass currentPass $ do
+  logCompilerPass MinDetail currentPass $ do
     logDebug MaxDetail $ prettyAssertions varNames assertions
     let numberedVars = zip [1..] (Set.toList varsToSolve)
     foldM (solveVar varNames) ([], assertions) numberedVars

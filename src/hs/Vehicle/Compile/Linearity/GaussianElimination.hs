@@ -21,7 +21,7 @@ gaussianElimination :: MonadCompile m
                     -> Int
                     -> m ([(LinearVar, LinearExpr)], [LinearExpr])
 gaussianElimination varNames exprs numberOfRowsToReduce =
-  logCompilerPass currentPhase $ do
+  logCompilerPass MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExprs varNames exprs
     let maxIterations = min (length exprs) numberOfRowsToReduce
     let iterations :: [Int] = [0 .. maxIterations - 1]

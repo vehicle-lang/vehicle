@@ -4,9 +4,10 @@ module Vehicle.Compile.Type.Unify
   ( solveUnificationConstraint
   ) where
 
-import Control.Monad (when)
+import Control.Monad (when, forM_)
 import Control.Monad.Except (MonadError(..), throwError)
 import Data.List (intersect)
+import Data.Maybe (catMaybes)
 
 import Vehicle.Language.AST
 import Vehicle.Compile.Prelude
@@ -14,7 +15,8 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
-import Vehicle.Compile.Type.WeakHeadNormalForm
+import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
+import Vehicle.Language.Print (prettyVerbose)
 
 
 --------------------------------------------------------------------------------
@@ -30,18 +32,16 @@ unexpectedCase p expr = compilerDeveloperError $
 pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
 
-solveUnificationConstraint :: MonadConstraintSolving m
+solveUnificationConstraint :: MonadMeta m
                            => ConstraintContext
                            -> UnificationConstraint
                            -> m ConstraintProgress
 -- Errors
-solveUnificationConstraint ctx (Unify (e1, e2)) = do
-  whnfE1 <- whnfWithMetas (varContext ctx) e1
-  whnfE2 <- whnfWithMetas (varContext ctx) e2
-  let constraint = UC ctx (Unify (whnfE1, whnfE2))
+solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
+  let constraint = UC ctx c
   let p = provenanceOf constraint
 
-  progress <- case (toHead whnfE1, toHead whnfE2) of
+  progress <- case (toHead e1, toHead e2) of
 
     ----------------------
     -- Impossible cases --
@@ -58,29 +58,25 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
     -------------------
 
     -- Try to unify with LSeq and Cons
-    (LSeq ann (PrimDict ann1 tc) es, []) :~: (Builtin _ Cons, args2) ->
-      case (tc, es, args2) of
-        (HasConLitsOfSizeExpr ann2 n tElem tCont, x1 : xs1, [t2, x2, xs2]) -> do
-          let updatedTC      = HasConLitsOfSizeExpr ann2 (n - 1) tElem tCont
-          let typeConstraint = UC ctx (Unify (tElem, argExpr t2))
-          let headConstraint = UC ctx (Unify (x1, argExpr x2))
-          let tailConstraint = UC ctx (Unify (LSeq ann (PrimDict ann1 updatedTC) xs1, argExpr xs2))
-          return Progress
-            { newConstraints = [typeConstraint, headConstraint, tailConstraint]
-            , solvedMetas    = mempty
-            }
-        _ -> throwError $ FailedConstraints [constraint]
+    (LSeq ann (x : xs), [tSeqElem, tCont, tc1, tc2]) :~: (Builtin _ Cons, [tElem, y, ys]) -> do
+      let typeConstraint = UC ctx (Unify (argExpr tCont, ListType p (argExpr tElem)))
+      let headConstraint = UC ctx (Unify (x, argExpr y))
+      let tailConstraint = UC ctx (Unify (App ann (LSeq ann xs) [tSeqElem, tCont, tc1, tc2], argExpr ys))
+      return Progress
+        { newConstraints = [typeConstraint, headConstraint, tailConstraint]
+        , solvedMetas    = mempty
+        }
 
     -- mirror image of the previous case, so just swap the problem over.
-    (Builtin _ Cons, _) :~: (LSeq{}, []) ->
-      solveUnificationConstraint ctx (Unify (whnfE2, whnfE1))
+    (Builtin _ Cons, _) :~: (LSeq{}, _) ->
+      solveUnificationConstraint ctx (Unify (e2, e1))
 
     -- If a tensor is unified with a non-tensor then it must be a 0 dimensional
     -- tensor.
     (Builtin _ (ContainerType Tensor), [tElem, tDims]) :~: (Builtin _ op, _)
       | op /= ContainerType Tensor -> do
           let emptyDims = mkTensorDims (inserted (provenanceOf tDims)) []
-          let elemConstraint = UC ctx (Unify (argExpr tElem, whnfE2))
+          let elemConstraint = UC ctx (Unify (argExpr tElem, e2))
           let dimsConstraint = UC ctx (Unify (argExpr tDims, emptyDims))
           return Progress
             { newConstraints = [elemConstraint, dimsConstraint]
@@ -89,13 +85,13 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
 
     -- Mirror image of the previous case, so just swap the problem over.
     (Builtin _ op, _) :~: (Builtin _ (ContainerType Tensor), [_tElem, _tDims])
-      | op /= ContainerType Tensor -> solveUnificationConstraint ctx (Unify (whnfE2, whnfE1))
+      | op /= ContainerType Tensor -> solveUnificationConstraint ctx (Unify (e2, e1))
 
     -----------------------
     -- Rigid-rigid cases --
     -----------------------
 
-    (Type _ l1, [])   :~: (Type _ l2, []) -> do
+    (Universe _ l1, []) :~: (Universe _ l2, []) -> do
       solveEq constraint l1 l2
       return Progress
         { newConstraints = mempty
@@ -119,16 +115,16 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
         , solvedMetas    = mempty
         }
 
-    (LSeq _ dict1 es1, []) :~: (LSeq _ dict2 es2, [])
+    (LSeq _ es1, args1) :~: (LSeq _ es2, args2)
       -- TODO more informative error message
-      | length es1 /= length es2 ->
+      | length es1 /= length es2 || length args1 /= length args2 ->
         throwError $ FailedConstraints [constraint]
       -- TODO need to try and unify `LSeq` with `Cons`s.
       | otherwise -> do
-        let dictConstraint  = UC ctx (Unify (dict1, dict2))
         let elemConstraints = zipWith (curry (UC ctx . Unify)) es1 es2
+        argConstraints <- solveArgs constraint (args1, args2)
         return Progress
-          { newConstraints = dictConstraint : elemConstraints
+          { newConstraints = elemConstraints <> argConstraints
           , solvedMetas    = mempty
           }
 
@@ -175,8 +171,8 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
       -- this set of arguments and create new meta-variable that only
       -- depends on these, and set the old meta-variable to equal that one.
       | i == j && args1 /= args2 -> do
-        (meta1Origin, meta1Type) <- getMetaInfo i
-        (meta2Origin, meta2Type) <- getMetaInfo j
+        MetaInfo meta1Origin meta1Type _ <- getMetaInfo i
+        MetaInfo meta2Origin meta2Type _ <- getMetaInfo j
 
         when (length args1 /= length args2) $
           compilerDeveloperError "Identical meta variables have different numbers of arguments"
@@ -186,7 +182,7 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
         let sharedOrigin = meta1Origin <> meta2Origin
         let sharedTypeConstraint = UC ctx (Unify (meta1Type, meta2Type))
 
-        (_metaName, meta) <- freshMetaWith sharedOrigin meta1Type sharedArgsCtx
+        meta <- freshExprMeta sharedOrigin meta1Type sharedArgsCtx
         metaSolved i meta
 
         return Progress
@@ -200,15 +196,15 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
       -- non-positional intersection of their arguments. Then proceed as above
       -- for each of the meta-variables in turn.
       | otherwise -> do
-        (meta1Origin, meta1Type) <- getMetaInfo i
-        (meta2Origin, meta2Type) <- getMetaInfo j
+        MetaInfo meta1Origin meta1Type _ <- getMetaInfo i
+        MetaInfo meta2Origin meta2Type _ <- getMetaInfo j
 
         let sharedArgs = args1 `intersect` args2
         let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
         let sharedOrigin = meta1Origin <> meta2Origin
         let sharedTypeConstraint = UC ctx (Unify (meta1Type, meta2Type))
 
-        (_metaName, meta) <- freshMetaWith sharedOrigin meta1Type sharedArgsCtx
+        meta <- freshExprMeta sharedOrigin meta1Type sharedArgsCtx
         metaSolved i meta
         metaSolved j meta
 
@@ -226,19 +222,37 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
     -- ==> ?Y := \x. \y. \z. ?X e1 e2 e3
 
     (Meta _ i, args) :~: _ -> do
-      -- Check that 'args' is a pattern
+
+      -- Check that 'args' is a pattern and try to calculate a substitution
+      -- that renames the variables in 'e2' to ones available to meta `i`
       case patternOfArgs args of
         Nothing -> do
           -- This constraint is stuck because it is not pattern; shelve
           -- it for now and hope that another constraint allows us to
           -- progress.
-
           -- TODO need to check with Bob what this is stuck on, presumably i?
           return Stuck
+
         Just subst -> do
-          -- 'subst' is a renaming that renames the variables in 'e2' to
-          -- ones bound by the metavariable
-          case substAll subst whnfE2 of
+          let metasInE2 = metasInWithArgs e2
+
+          -- If `i` is inside the term we're trying to unify it with then error.
+          -- Unsure if this should be a user or a developer error.
+          when (i `MetaMap.member` metasInE2) $
+            compilerDeveloperError $
+              "Meta variable" <+> pretty i <+> "found in own solution" <+>
+              squotes (prettyVerbose e2)
+
+          -- Restrict any arguments to each sub-meta on the RHS to those of i.
+          forM_ (MetaMap.toList metasInE2) $ \(j, jArgs) -> do
+            MetaInfo jOrigin jType _ <- getMetaInfo j
+            let sharedArgs = args `intersect` jArgs
+            let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
+            when (sharedArgs /= jArgs) $ do
+              meta <- freshExprMeta jOrigin jType sharedArgsCtx
+              metaSolved j meta
+
+          case substAll subst e2 of
             Nothing -> do
               return Stuck
             Just defnBody -> do
@@ -249,11 +263,10 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
                 , solvedMetas    = MetaSet.singleton i
                 }
 
-
-    _t :~: (Meta _ _i, _args) ->
+    _t :~: (Meta{}, _) ->
       -- this is the mirror image of the previous case, so just swap the
       -- problem over.
-      solveUnificationConstraint ctx (Unify (whnfE2, whnfE1))
+      solveUnificationConstraint ctx (Unify (e2, e1))
 
     -- Catch-all
     _ -> do
@@ -261,7 +274,7 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
 
   return progress
 
-solveEq :: (MonadConstraintSolving m, Eq a)
+solveEq :: (MonadMeta m, Eq a)
         => Constraint
         -> a
         -> a
@@ -270,17 +283,24 @@ solveEq c v1 v2
   | v1 /= v2  = throwError $ FailedConstraints [c]
   | otherwise = logDebug MaxDetail "solved-trivially"
 
-solveArg :: MonadConstraintSolving m
+solveArg :: MonadMeta m
          => Constraint
          -> (CheckedArg, CheckedArg)
-         -> m Constraint
+         -> m (Maybe Constraint)
 solveArg c (arg1, arg2)
   | visibilityOf arg1 /= visibilityOf arg2 = throwError $ FailedConstraints [c]
-  | otherwise = return $ UC
+  | visibilityOf arg1 == Instance = return Nothing
+  | otherwise = return $ Just $ UC
     (ConstraintContext (provenanceOf c) mempty (variableContext c))
     (Unify (argExpr arg1 , argExpr arg2))
 
-solveSimpleApplication :: (MonadConstraintSolving m, Eq a)
+solveArgs :: MonadMeta m
+          => Constraint
+          -> ([CheckedArg], [CheckedArg])
+          -> m [Constraint]
+solveArgs c (args1, args2)= catMaybes <$> traverse (solveArg c) (zip args1 args2)
+
+solveSimpleApplication :: (MonadMeta m, Eq a)
                        => Constraint
                        -> a -> a
                        -> [CheckedArg] -> [CheckedArg]
@@ -295,7 +315,7 @@ solveSimpleApplication constraint fun1 fun2 args1 args2 = do
       , solvedMetas    = mempty
       }
   else do
-    newConstraints <- traverse (solveArg constraint) (zip args1 args2)
+    newConstraints <- solveArgs constraint (args1, args2)
     return Progress
       { newConstraints = newConstraints
       , solvedMetas    = mempty
@@ -307,3 +327,4 @@ positionalIntersection _ []       = []
 positionalIntersection (x : xs) (y : ys)
  | x == y    = x : positionalIntersection xs ys
  | otherwise = positionalIntersection xs ys
+

@@ -1,12 +1,16 @@
 module Vehicle.Compile.Type.TypeClass.Defaults
-  ( generateDefaultTypeClassSolution
+  ( generateConstraintUsingDefaults
   ) where
+
+import Data.Maybe (catMaybes)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Language.Print (prettySimple)
+import Vehicle.Compile.Type.VariableContext
+import Control.Monad (foldM)
 
 --------------------------------------------------------------------------------
 -- Default solutions to type-class constraints
@@ -17,16 +21,25 @@ import Vehicle.Language.Print (prettySimple)
 type Ctx = ConstraintContext
 
 data DefaultFamily
-  = NumFamily NumericType Bool Int
-  | ConFamily Bool
+  = NumericFamily NumericType Bool Int
+  | ContainerFamily Bool
+  | BooleanFamily
+  | PolarityFamily
+  | LinearityFamily
   deriving (Eq, Ord)
 
 sameFamily :: DefaultFamily -> DefaultFamily -> Bool
-sameFamily NumFamily{} NumFamily{} = True
-sameFamily ConFamily{} ConFamily{} = True
-sameFamily _           _           = False
+sameFamily NumericFamily{}   NumericFamily{}   = True
+sameFamily ContainerFamily{} ContainerFamily{} = True
+sameFamily BooleanFamily{}   BooleanFamily{}   = True
+sameFamily PolarityFamily{}  PolarityFamily{}  = True
+sameFamily LinearityFamily{} LinearityFamily{} = True
+sameFamily _                 _                 = False
 
-data Candidate = Candidate TypeClass CheckedExpr Ctx
+data Candidate = Candidate Meta TypeClass CheckedExpr Ctx
+
+instance Pretty Candidate where
+  pretty (Candidate m tc _ _) = pretty m <+> "~" <+> pretty tc
 
 data CandidateStatus
   = Valid Candidate
@@ -35,108 +48,168 @@ data CandidateStatus
 
 instance Pretty CandidateStatus where
   pretty = \case
-    Valid (Candidate tc _ _) -> pretty tc
-    None                     -> "none encountered"
-    Invalid                  -> "incompatible"
+    Valid c -> pretty c
+    None    -> "none encountered"
+    Invalid -> "incompatible"
 
-generateDefaultTypeClassSolution :: MonadConstraintSolving m
-                                 => Meta
-                                 -> m ConstraintProgress
-generateDefaultTypeClassSolution meta =
-  logCompilerPass ("search for default solution for" <+> pretty meta) $ do
-    constraints <- getUnsolvedConstraints
-    -- First group by common meta-variables
-    strongestConstraint <- findStrongestConstraint meta constraints
-    case strongestConstraint of
-      None    -> return Stuck
-      Invalid -> return Stuck
-      Valid (Candidate tc metaExpr ctx) -> do
-        let ann = inserted $ provenanceOf ctx
-        solution <- defaultSolution ann (boundCtx $ varContext ctx) tc
-        logDebug MaxDetail $
-          "using default" <+> pretty meta <+> "=" <+> prettySimple solution <+>
-          "         " <> parens ("from" <+> pretty tc)
-        let newConstraint = UC ctx (Unify (metaExpr, solution))
-        return $ Progress [newConstraint] mempty
+generateConstraintUsingDefaults :: MonadMeta m
+                                => [Constraint]
+                                -> m ConstraintProgress
+generateConstraintUsingDefaults constraints = do
+  strongestConstraint <- findStrongestConstraint constraints
+  case strongestConstraint of
+    None    -> do
+      logDebug MaxDetail "No default solution found"
+      return Stuck
+    Invalid -> return Stuck
+    Valid (Candidate m tc metaExpr ctx) -> do
+      let ann = inserted $ provenanceOf ctx
+      solution <- defaultSolution ann (boundCtx $ varContext ctx) tc
+      logDebug MaxDetail $
+        "using default" <+> pretty m <+> "=" <+> prettySimple solution <+>
+        "         " <> parens ("from" <+> pretty tc)
+      let newConstraint = UC ctx (Unify (metaExpr, solution))
+      return $ Progress [newConstraint] mempty
 
 findStrongestConstraint :: MonadCompile m
-                        => Meta
-                        -> [Constraint]
+                        => [Constraint]
                         -> m CandidateStatus
-findStrongestConstraint _ [] = return None
-findStrongestConstraint meta (constraint : xs) = do
-  recResult <- findStrongestConstraint meta xs
+findStrongestConstraint [] = return None
+findStrongestConstraint (constraint : xs) = do
+  recResult <- findStrongestConstraint xs
   case constraint of
-    (TC ctx expr) -> case getDefaultCandidate expr of
-      Nothing -> return recResult
-      Just (m, mExpr, tc)
-        | m /= meta -> return recResult
-        | otherwise -> do
-          logDebug MaxDetail $ "considering" <+> squotes (prettySimple constraint)
-          let candidate = Candidate tc mExpr ctx
-          let result = strongest candidate recResult
-          incrCallDepth
-          logDebug MaxDetail $ "status:" <+> pretty result
-          decrCallDepth
-          return result
+    (TC ctx expr) -> do
+
+      logDebug MaxDetail $ "considering" <+> squotes (prettySimple constraint)
+      incrCallDepth
+
+      candidates <- getCandidatesFromConstraint ctx expr
+      logDebug MaxDetail $ pretty candidates
+
+      newStrongest <- foldM strongest recResult candidates
+      logDebug MaxDetail $ indent 2 $ "status:" <+> pretty newStrongest
+      decrCallDepth
+      return newStrongest
     _ -> return recResult
 
-strongest :: Candidate -> CandidateStatus -> CandidateStatus
-strongest x                     None     = Valid x
-strongest _                     Invalid  = Invalid
-strongest x@(Candidate tc1 _ _) y@(Valid (Candidate tc2 _ _)) =
-  case (family tc1, family tc2) of
-    (c1, c2) | sameFamily c1 c2 -> if c1 > c2 then Valid x else y
-    _                           -> Invalid
-  where
-  family :: TypeClass -> DefaultFamily
-  family HasEq              = NumFamily Nat False 0
-  family HasOrd             = NumFamily Nat False 0
-  family HasAdd             = NumFamily Nat True  0
-  family HasSub             = NumFamily Int True  0
-  family HasMul             = NumFamily Nat True  0
-  family HasDiv             = NumFamily Rat True  0
-  family HasNeg             = NumFamily Int True  0
-  family (HasNatLitsUpTo n) = NumFamily Nat False n
-  family HasIntLits         = NumFamily Int False 0
-  family HasRatLits         = NumFamily Rat False 0
-  family HasConOps          = ConFamily False
-  family HasConLitsOfSize{} = ConFamily True
+strongest :: MonadCompile m => CandidateStatus -> Candidate -> m CandidateStatus
+strongest Invalid  _                       = return Invalid
+strongest None     x                       = return $ Valid x
+strongest y@(Valid (Candidate _ tc2 _ _)) x@(Candidate _ tc1 _ _) = do
+  f1 <- familyOf tc1
+  f2 <- familyOf tc2
+  return $
+    if not (sameFamily f1 f2)
+      then y
+    else if f1 > f2
+      then Valid x
+    else
+      y
 
-defaultSolution :: MonadConstraintSolving m
+familyOf :: MonadCompile m => TypeClass -> m DefaultFamily
+familyOf = \case
+  HasNot             -> return BooleanFamily
+  HasAnd             -> return BooleanFamily
+  HasOr              -> return BooleanFamily
+  HasImpl            -> return BooleanFamily
+  HasQuantifier{}    -> return BooleanFamily
+  HasEq{}            -> return $ NumericFamily Nat False 0
+  HasOrd{}           -> return $ NumericFamily Nat False 0
+  HasAdd             -> return $ NumericFamily Nat True  0
+  HasSub             -> return $ NumericFamily Int True  0
+  HasMul             -> return $ NumericFamily Nat True  0
+  HasDiv             -> return $ NumericFamily Rat True  0
+  HasNeg             -> return $ NumericFamily Int True  0
+  (HasNatLitsUpTo n) -> return $ NumericFamily Nat False n
+  HasIntLits         -> return $ NumericFamily Int False 0
+  HasRatLits         -> return $ NumericFamily Rat False 0
+  HasFold            -> return $ ContainerFamily False
+  HasQuantifierIn{}  -> return $ ContainerFamily False
+  HasConLitsOfSize{} -> return $ ContainerFamily True
+
+  MaxLinearity                        -> auxiliaryTCError
+  MulLinearity                        -> auxiliaryTCError
+  NegPolarity{}                       -> auxiliaryTCError
+  AddPolarity{}                       -> auxiliaryTCError
+  EqPolarity{}                        -> auxiliaryTCError
+  ImplPolarity{}                      -> auxiliaryTCError
+  MaxPolarity{}                       -> auxiliaryTCError
+  TypesEqualModAuxiliaryAnnotations{} -> auxiliaryTCError
+
+defaultSolution :: MonadMeta m
                 => Provenance
                 -> BoundCtx
                 -> TypeClass
                 -> m CheckedExpr
-defaultSolution ann _   HasEq               = return $ NatType ann
-defaultSolution ann _   HasOrd              = return $ NatType ann
-defaultSolution ann _   HasAdd              = return $ NatType ann
-defaultSolution ann _   HasSub              = return $ IntType ann
-defaultSolution ann _   HasMul              = return $ NatType ann
-defaultSolution ann _   HasDiv              = return $ RatType ann
-defaultSolution ann _   HasNeg              = return $ IntType ann
-defaultSolution ann _   (HasNatLitsUpTo n)  = return $ mkIndexType ann (n + 1)
-defaultSolution ann _   HasIntLits          = return $ IntType ann
-defaultSolution ann _   HasRatLits          = return $ RatType ann
-defaultSolution ann ctx HasConOps           = createDefaultListType ann ctx
-defaultSolution ann ctx HasConLitsOfSize{}  = createDefaultListType ann ctx
+defaultSolution ann ctx = \case
+  HasEq{}            -> return $ NatType ann
+  HasOrd{}           -> return $ NatType ann
+  HasNot             -> createDefaultBoolType ann
+  HasAnd             -> createDefaultBoolType ann
+  HasOr              -> createDefaultBoolType ann
+  HasImpl            -> createDefaultBoolType ann
+  HasQuantifier{}    -> createDefaultBoolType ann
+  HasAdd             -> return $ NatType ann
+  HasSub             -> return $ IntType ann
+  HasMul             -> return $ NatType ann
+  HasDiv             -> createDefaultRatType ann
+  HasNeg             -> return $ IntType ann
+  (HasNatLitsUpTo n) -> return $ mkIndexType ann (n + 1)
+  HasIntLits         -> return $ IntType ann
+  HasRatLits         -> createDefaultRatType ann
+  HasFold            -> createDefaultListType ann ctx
+  HasQuantifierIn{}  -> createDefaultListType ann ctx
+  HasConLitsOfSize{} -> createDefaultListType ann ctx
 
-createDefaultListType :: MonadConstraintSolving m => Provenance -> BoundCtx -> m CheckedExpr
-createDefaultListType ann ctx = ListType ann . snd <$> freshMetaWith ann (Type ann 0) ctx
+  MaxLinearity                        -> auxiliaryTCError
+  MulLinearity                        -> auxiliaryTCError
+  NegPolarity{}                       -> auxiliaryTCError
+  AddPolarity{}                       -> auxiliaryTCError
+  EqPolarity{}                        -> auxiliaryTCError
+  ImplPolarity{}                      -> auxiliaryTCError
+  MaxPolarity{}                       -> auxiliaryTCError
+  TypesEqualModAuxiliaryAnnotations{} -> auxiliaryTCError
 
-getDefaultCandidate :: TypeClassConstraint -> Maybe (Meta, CheckedExpr, TypeClass)
-getDefaultCandidate (_ `Has` e) = case e of
-  HasEqExpr            _     t -> extractMeta t HasEq
-  HasOrdExpr           _     t -> extractMeta t HasOrd
-  HasNatLitsUpToExpr   _ n   t -> extractMeta t (HasNatLitsUpTo n)
-  HasIntLitsExpr       _     t -> extractMeta t HasIntLits
-  HasRatLitsExpr       _     t -> extractMeta t HasRatLits
-  HasArithOpExpr       _ tc  t -> extractMeta t tc
-  HasConOpsExpr        _   _ t -> extractMeta t HasConOps
-  HasConLitsOfSizeExpr _ n _ t -> extractMeta t (HasConLitsOfSize n)
-  _                            -> Nothing
+createDefaultListType :: MonadMeta m => Provenance -> BoundCtx -> m CheckedExpr
+createDefaultListType p ctx = do
+  tElem <- freshExprMeta p (TypeUniverse p 0) ctx
+  return $ ListType p tElem
 
-extractMeta :: CheckedExpr -> TypeClass -> Maybe (Meta, CheckedExpr, TypeClass)
-extractMeta t tc = case exprHead t of
-  (Meta _ m) -> Just (m, t, tc)
-  _          -> Nothing
+createDefaultBoolType :: MonadMeta m => Provenance -> m CheckedExpr
+createDefaultBoolType p = do
+  lin <- freshLinearityMeta p
+  pol <- freshPolarityMeta p
+  return $ AnnBoolType p lin pol
+
+createDefaultRatType :: MonadMeta m => Provenance -> m CheckedExpr
+createDefaultRatType p = do
+  lin <- freshLinearityMeta p
+  return $ AnnRatType p lin
+
+getCandidatesFromConstraint :: MonadCompile m => Ctx -> TypeClassConstraint -> m [Candidate]
+getCandidatesFromConstraint ctx (_ `Has` e) = do
+  let getCandidate = getCandidatesFromArgs ctx
+  return $ case e of
+    HasEqExpr            _ eq  tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] (HasEq eq)
+    HasOrdExpr           _ ord tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] (HasOrd ord)
+    HasNegExpr           _     tArg        _tRes -> getCandidate [tArg]         HasNeg
+    HasAddExpr           _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasAdd
+    HasSubExpr           _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasSub
+    HasMulExpr           _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasMul
+    HasDivExpr           _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasDiv
+    HasFoldExpr          _   _ t                 -> getCandidate [t] HasFold
+    HasNatLitsUpToExpr   _ n   t                 -> getCandidate [t] (HasNatLitsUpTo n)
+    HasIntLitsExpr       _     t                 -> getCandidate [t] HasIntLits
+    HasRatLitsExpr       _     t                 -> getCandidate [t] HasRatLits
+    HasConLitsOfSizeExpr _ n _ t                 -> getCandidate [t] (HasConLitsOfSize n)
+    _                                            -> []
+
+getCandidatesFromArgs :: Ctx -> [CheckedExpr] -> TypeClass -> [Candidate]
+getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t ->
+  case exprHead t of
+    (Meta _ m) -> Just (Candidate m tc t ctx) --m, t, tc)
+    _          -> Nothing
+
+auxiliaryTCError :: MonadCompile m => m a
+auxiliaryTCError = compilerDeveloperError
+  "Should not be considering defaults for auxiliary constraints"

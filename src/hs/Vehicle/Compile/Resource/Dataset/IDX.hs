@@ -55,8 +55,7 @@ readIDXFile file = do
       (ident, prov) <- ask
       throwError $ ResourceIOError ident prov Dataset ioExcept
 
-parseIDX :: forall m a .
-            (MonadDataset m, Vector.Unbox a)
+parseIDX :: forall m a . (MonadDataset m, Vector.Unbox a)
          => Provenance
          -> Identifier
          -> DatasetType
@@ -88,21 +87,18 @@ parseIDX ann ident datasetType elemParser actualDims =
         let splitElems = partitionData d ds elems
         exprs <- traverse (go ds tElem) splitElems
         let elemType = reconstructDatasetType ann tElem
-        return $ SeqExpr ann elemType (ListType ann elemType) exprs
+        return $ mkList ann elemType exprs
 
-    go dims (DatasetTensorType tElem tDims) elems =
-      case getDimensions tDims of
-        Nothing -> throwError $ DatasetVariableSizeTensor ident ann tDims
-        Just xs -> do
-          let size = length xs
-          if size > Vector.length dims
+    go dims (DatasetTensorType tElem tDims) elems = do
+      let size = length tDims
+      if size > Vector.length dims
+        then throwError mismatchError
+        else do
+          let ds = Vector.toList (Vector.take size dims)
+          if  ds /= tDims
             then throwError mismatchError
             else do
-              let ds = Vector.toList (Vector.take size dims)
-              if  ds /= xs
-                then throwError mismatchError
-                else do
-                  goTensor (length ds) tElem dims elems
+              goTensor (length ds) tElem dims elems
 
     goTensor :: Int
              -> DatasetType
@@ -148,7 +144,7 @@ intElemParser tElem = do
       if v >= 0
         then return $ NatLiteralExpr ann baseType v
         else throwError $ DatasetInvalidNat ident prov v)
-    DatasetIndexType (NatLiteralExpr _ _ n) -> return (\v ->
+    DatasetIndexType n -> return (\v ->
       if v >= 0 && v < n
         then return $ NatLiteralExpr ann baseType v
         else throwError $ DatasetInvalidIndex ident prov n v)

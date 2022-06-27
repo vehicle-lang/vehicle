@@ -9,3 +9,4 @@ twoD = [oneD, [2,3]]
 
 lookup2D : Nat
 lookup2D = twoD ! 0 ! 1
+

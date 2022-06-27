@@ -1,2 +1,2 @@
-Error at Line 2, Columns 8-16: Unable to infer type of bound variable
-Fix: add more type annotations
+Error at Line 2, Columns 8-14: Typing error: not enough information to solve constraint HasQuantifier Forall
+Fix: try adding more type annotations

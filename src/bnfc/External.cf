@@ -52,19 +52,6 @@ position token TokFold      {"fold"};
 position token TokTrue      {"True"};
 position token TokFalse     {"False"};
 
-position token TokHasEq        {"HasEq"};
-position token TokHasOrd       {"HasOrd"};
-position token TokHasAdd       {"HasAdd"};
-position token TokHasSub       {"HasSub"};
-position token TokHasMul       {"HasMul"};
-position token TokHasDiv       {"HasDiv"};
-position token TokHasNeg       {"HasNeg"};
-position token TokHasConOps    {"HasContainerOperations"};
-position token TokHasNatLits   {"HasNatLiteralsUpTo"};
-position token TokHasIntLits   {"HasIntLiterals"};
-position token TokHasRatLits   {"HasRatLiterals"};
-position token TokHasConLits   {"HasContainerLiteralsOfSize"};
-
 position token TokLet {"let"};
 
 position token Name        (letter (letter | digit | '_')*) ;
@@ -177,24 +164,6 @@ Bool.    Expr15 ::= TokBool;
 Rat.     Expr15 ::= TokRat;
 Int.     Expr15 ::= TokInt;
 Nat.     Expr15 ::= TokNat;
-
--- Type classes
-HasEq.      Expr15 ::= TokHasEq        Expr15;
-HasOrd.     Expr15 ::= TokHasOrd       Expr15;
-HasAdd.     Expr15 ::= TokHasAdd       Expr15;
-HasSub.     Expr15 ::= TokHasSub       Expr15;
-HasMul.     Expr15 ::= TokHasMul       Expr15;
-HasDiv.     Expr15 ::= TokHasDiv       Expr15;
-HasNeg.     Expr15 ::= TokHasNeg       Expr15;
-HasConOps.  Expr15 ::= TokHasConOps    Expr15 Expr15;
--- Natural literals type-class also stores the value
--- which needs to be expressed (used for finite index types).
-HasNatLits. Expr15 ::= TokHasNatLits Integer Expr15;
-HasIntLits. Expr15 ::= TokHasIntLits   Expr15;
-HasRatLits. Expr15 ::= TokHasRatLits   Expr15;
--- Container literals type-class also stores the size
--- of the container which is needed for tensors.
-HasConLits. Expr15 ::= TokHasConLits Integer Expr15 Expr15;
 
 coercions Expr 15;
 separator Expr ",";

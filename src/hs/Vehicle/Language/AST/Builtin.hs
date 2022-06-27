@@ -4,22 +4,10 @@ module Vehicle.Language.AST.Builtin
   ( Builtin(..)
   , NumericType(..)
   , ContainerType(..)
-  , Quantifier(..)
-  , Order(..)
-  , Equality(..)
   , TypeClass(..)
-  , BooleanOp2(..)
-  , NumericOp2(..)
-  , Polarity(..)
-  , PolarityProvenance(..)
-  , PolarityTypeClass(..)
   , builtinFromSymbol
   , symbolFromBuiltin
-  , isStrict
-  , flipStrictness
-  , flipOrder
-  , chainable
-  , prettyQuantifierArticle
+  , module X
   ) where
 
 import Data.Bifunctor (first)
@@ -29,7 +17,9 @@ import Data.Text (pack)
 import Data.Hashable (Hashable (..))
 
 import Vehicle.Prelude
-import Vehicle.Language.AST.Provenance
+import Vehicle.Language.AST.Builtin.Core as X
+import Vehicle.Language.AST.Builtin.Polarity as X
+import Vehicle.Language.AST.Builtin.Linearity as X
 
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.
@@ -67,16 +57,21 @@ instance Pretty ContainerType where
 -- Type classes
 
 data TypeClass
-  = HasEq
-  | HasOrd
-
   -- Operation type-classes
+  = HasEq Equality
+  | HasOrd Order
+  | HasNot
+  | HasAnd
+  | HasOr
+  | HasImpl
+  | HasQuantifier Quantifier
   | HasAdd
   | HasSub
   | HasMul
   | HasDiv
   | HasNeg
-  | HasConOps
+  | HasFold
+  | HasQuantifierIn Quantifier
 
   -- Literal type-classes
   | HasNatLitsUpTo Int
@@ -84,246 +79,64 @@ data TypeClass
   | HasIntLits
   | HasRatLits
   | HasConLitsOfSize Int
-  -- ^ The parameter is the size of the container (needed for Tensor)
-  deriving (Eq, Ord, Generic)
+  -- ^ Don't need to store the size as it stores the type of every element.
+
+  ----------------------------
+  -- Synthetic type-classes --
+  ----------------------------
+
+  -- Linearity type-classes
+  | MaxLinearity
+  | MulLinearity
+
+  -- Polarity type-classes
+  | NegPolarity
+  | AddPolarity Quantifier
+  | EqPolarity Equality
+  | ImplPolarity
+  | MaxPolarity
+
+  -- Utility type-classes
+  | TypesEqualModAuxiliaryAnnotations
+  -- ^ Types are equal, modulo the auxiliary constraints.
+  deriving (Eq, Generic, Show)
 
 instance NFData   TypeClass
 instance Hashable TypeClass
 
-instance Show TypeClass where
-  show = \case
-    HasEq              -> "HasEq"
-    HasOrd             -> "HasOrd"
+instance Pretty TypeClass where
+  pretty = \case
+    HasEq{}            -> "HasEq"
+    HasOrd{}           -> "HasOrd"
+    HasNot             -> "HasNot"
+    HasAnd             -> "HasAnd"
+    HasOr              -> "HasOr"
+    HasImpl            -> "HasImpl"
+    HasQuantifier q    -> "HasQuantifier" <+> pretty q
     HasAdd             -> "HasAdd"
     HasSub             -> "HasSub"
     HasMul             -> "HasMul"
     HasDiv             -> "HasDiv"
     HasNeg             -> "HasNeg"
-    HasConOps          -> "HasConOperations"
-    HasNatLitsUpTo n   -> "HasNatLiteralsUpTo " <> show n
+    HasFold            -> "HasFold"
+    HasQuantifierIn q  -> "HasQuantifierIn" <+> pretty q
+
+    HasNatLitsUpTo n   -> "HasNatLiteralsUpTo[" <> pretty n <> "]"
     HasIntLits         -> "HasIntLiterals"
     HasRatLits         -> "HasRatLiterals"
-    HasConLitsOfSize n -> "HasConLiteralsOfSize " <> show n
+    HasConLitsOfSize n -> "HasConLiteralsOfSize[" <>  pretty n <> "]"
 
-instance Pretty TypeClass where
-  pretty = pretty . show
+    MaxLinearity       -> "MaxLinearity"
+    MulLinearity       -> "MulLinearity"
 
---------------------------------------------------------------------------------
--- Quantifiers
+    NegPolarity        -> "NegPolarity"
+    AddPolarity q      -> "AddPolarity" <+> pretty q
+    EqPolarity eq      -> "EqPolarity" <+> pretty eq
+    ImplPolarity       -> "ImplPolarity"
+    MaxPolarity        -> "MaxPolarity"
 
-data Quantifier
-  = Forall
-  | Exists
-  deriving (Show, Eq, Ord, Generic)
+    TypesEqualModAuxiliaryAnnotations{} -> "TypesEqual"
 
-instance NFData   Quantifier
-instance Hashable Quantifier
-
-instance Negatable Quantifier where
-  neg Forall = Exists
-  neg Exists = Forall
-
-instance Pretty Quantifier where
-  pretty = pretty . show
-
-prettyQuantifierArticle :: Quantifier -> Doc a
-prettyQuantifierArticle q =
-  (if q == Forall then "a" else "an") <+> squotes (pretty q)
-
---------------------------------------------------------------------------------
--- Equality
-
-data Equality
-  = Eq
-  | Neq
-  deriving (Eq, Ord, Generic)
-
-instance NFData   Equality
-instance Hashable Equality
-
-instance Show Equality where
-  show = \case
-    Eq  -> "=="
-    Neq -> "!="
-
-instance Pretty Equality where
-  pretty = pretty . show
-
-instance Negatable Equality where
-  neg Eq = Neq
-  neg Neq = Eq
-
---------------------------------------------------------------------------------
--- Orders
-
-data Order
-  = Le
-  | Lt
-  | Ge
-  | Gt
-  deriving (Eq, Ord, Generic)
-
-instance NFData   Order
-instance Hashable Order
-
-instance Show Order where
-  show = \case
-    Le -> "<="
-    Lt -> "<"
-    Ge -> ">="
-    Gt -> ">"
-
-instance Pretty Order where
-  pretty = pretty . show
-
-instance Negatable Order where
-  neg = \case
-    Le -> Gt
-    Lt -> Ge
-    Ge -> Lt
-    Gt -> Le
-
-isStrict :: Order -> Bool
-isStrict order = order == Lt || order == Gt
-
-flipStrictness :: Order -> Order
-flipStrictness = \case
-  Le -> Lt
-  Lt -> Le
-  Ge -> Gt
-  Gt -> Ge
-
-flipOrder :: Order -> Order
-flipOrder = \case
-  Le -> Ge
-  Lt -> Gt
-  Ge -> Le
-  Gt -> Lt
-
-chainable :: Order -> Order -> Bool
-chainable e1 e2 = e1 == e2 || e1 == flipStrictness e2
-
---------------------------------------------------------------------------------
--- Boolean operations
-
-data BooleanOp2
-  = Impl
-  | And
-  | Or
-  deriving (Eq, Ord, Generic)
-
-instance NFData   BooleanOp2
-instance Hashable BooleanOp2
-
-instance Show BooleanOp2 where
-  show = \case
-    Impl -> "implies"
-    And  -> "and"
-    Or   -> "or"
-
-instance Pretty BooleanOp2 where
-  pretty = pretty . show
-
---------------------------------------------------------------------------------
--- Numeric operations
-
-data NumericOp2
-  = Mul
-  | Div
-  | Add
-  | Sub
-  deriving (Eq, Ord, Generic)
-
-instance NFData   NumericOp2
-instance Hashable NumericOp2
-
-instance Show NumericOp2 where
-  show = \case
-    Add -> "+"
-    Mul -> "*"
-    Div -> "/"
-    Sub -> "-"
-
-instance Pretty NumericOp2 where
-  pretty = pretty . show
-
---------------------------------------------------------------------------------
--- Linearity
-
-{-
--- | Used to annotate numeric types, representing whether it represents a
--- constant, linear or non-linear expression.
-data Linearity
-  = Constant
-  | Linear
-  | NonLinear
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData   Linearity
-instance Hashable Linearity
--}
-
---------------------------------------------------------------------------------
--- Polarity
-
--- | Used to track where the polarity information came from.
-data PolarityProvenance
-  = QuantifierProvenance Provenance
-  | LHSImpliesProvenance Provenance PolarityProvenance
-  | NegationProvenance Provenance PolarityProvenance
-  deriving (Generic)
-
-instance Show PolarityProvenance where
-  show _x = ""
-
-instance Eq PolarityProvenance where
-  _x == _y = True
-
-instance NFData PolarityProvenance where
-  rnf _x = ()
-
-instance Hashable PolarityProvenance where
-  hashWithSalt s _p = s
-
--- | Used to annotate boolean types, represents what sort of pattern of
--- quantifiers it contains.
---
-data Polarity
-  = Unquantified
-  | Quantified Quantifier PolarityProvenance
-  -- | Stores the provenance of the `Forall` first followed by the `Exists`.
-  | MixedParallel PolarityProvenance PolarityProvenance
-  -- | Stores the type and provenance of the top-most quantifier first.
-  | MixedSequential Quantifier Provenance PolarityProvenance
-  deriving (Eq, Show, Generic)
-
-instance NFData Polarity
-
-instance Hashable Polarity
-{-
-instance Negatable Polarity where
-  neg = \case
-    Unquantified    -> Unquantified
-    Quantified q    -> Quantified $ neg q
-    MixedParallel   -> MixedParallel
-    MixedSequential -> MixedSequential
--}
-data PolarityTypeClass
-  = HasNot
-  | HasAndOr
-  | HasImpl
-  | HasQuantifier Quantifier
-  deriving (Eq, Generic)
-
-instance NFData   PolarityTypeClass
-instance Hashable PolarityTypeClass
-
-instance Show PolarityTypeClass where
-  show = \case
-    HasNot             -> "HasNot"
-    HasAndOr           -> "HasAndOr"
-    HasImpl            -> "HasImpl"
-    HasQuantifier q    -> "HasQuantifier " <> show q
 
 --------------------------------------------------------------------------------
 -- Builtin
@@ -355,47 +168,64 @@ data Builtin
   | ForeachIn
 
   -- Annotations - these should not be shown to the user.
-  | AuxiliaryType
-  -- ^ The type of Polarity/Linearity etc.
   | Polarity Polarity
-  | PolarityTypeClass PolarityTypeClass
+  | Linearity Linearity
   deriving (Eq, Generic)
 
 instance NFData   Builtin
 instance Hashable Builtin
 
 instance Pretty Builtin where
-  pretty = pretty . show
-
---------------------------------------------------------------------------------
--- Conversion to symbols
+  pretty = \case
+    Bool                 -> "Bool"
+    NumericType   t      -> pretty t
+    ContainerType t      -> pretty t
+    Index                -> "Index"
+    BooleanOp2 op        -> pretty op
+    Not                  -> "not"
+    NumericOp2 op        -> pretty op
+    Neg                  -> "-"
+    If                   -> "if"
+    At                   -> "!"
+    Cons                 -> "::"
+    Equality e           -> pretty e
+    Order o              -> pretty o
+    Map                  -> "map"
+    Fold                 -> "fold"
+    Quant   Forall       -> "forall"
+    Quant   Exists       -> "exists"
+    QuantIn q            -> pretty (Quant q) <> "In"
+    Foreach              -> "foreach"
+    ForeachIn            -> "foreachIn"
+    TypeClass tc         -> pretty tc
+    Polarity pol         -> pretty pol
+    Linearity lin        -> pretty lin
 
 instance Show Builtin where
   show = \case
-    Bool                -> "Bool"
-    NumericType   t     -> show t
-    ContainerType t     -> show t
-    Index               -> "Index"
-    BooleanOp2 op       -> show op
-    Not                 -> "not"
-    NumericOp2 op       -> show op
-    Neg                 -> "~"
-    If                  -> "if"
-    At                  -> "!"
-    Cons                -> "::"
-    Equality e          -> show e
-    Order o             -> show o
-    Map                 -> "map"
-    Fold                -> "fold"
-    Quant   Forall      -> "forall"
-    Quant   Exists      -> "exists"
-    QuantIn q           -> show (Quant q) <> "In"
-    Foreach             -> "foreach"
-    ForeachIn           -> "foreachIn"
-    TypeClass tc        -> show tc
-    AuxiliaryType       -> "AuxiliaryType"
-    Polarity pol        -> show pol
-    PolarityTypeClass t -> show t
+    Bool                 -> "Bool"
+    NumericType   t      -> show t
+    ContainerType t      -> show t
+    Index                -> "Index"
+    BooleanOp2 op        -> show op
+    Not                  -> "not"
+    NumericOp2 op        -> show op
+    Neg                  -> "-"
+    If                   -> "if"
+    At                   -> "!"
+    Cons                 -> "::"
+    Equality e           -> show e
+    Order o              -> show o
+    Map                  -> "map"
+    Fold                 -> "fold"
+    Quant   Forall       -> "forall"
+    Quant   Exists       -> "exists"
+    QuantIn q            -> show (Quant q) <> "In"
+    Foreach              -> "foreach"
+    ForeachIn            -> "foreachIn"
+    TypeClass tc         -> show tc
+    Polarity pol         -> show pol
+    Linearity lin        -> show lin
 
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols = map (first pack)
@@ -431,7 +261,6 @@ builtinSymbols = map (first pack)
   , show ForeachIn                    |-> ForeachIn
   , show Map                          |-> Map
   , show Fold                         |-> Fold
-  , show AuxiliaryType                |-> AuxiliaryType
   ]
 
 builtinFromSymbol :: Symbol -> Maybe Builtin

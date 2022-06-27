@@ -19,51 +19,54 @@ import Vehicle.Compile.Normalise.QuantifierLifting
 import Vehicle.Compile.CoDeBruijnify
 
 import Test.Compile.Utils
+import Debug.Trace
 
 --------------------------------------------------------------------------------
 -- Quantifier lifting tests
 
-quantiferLiftingTests :: TestTree
-quantiferLiftingTests = testGroup "LiftQuantifiers"
-  [ liftQuantifiersTest "liftQuantId"
+quantiferLiftingTests :: MonadTest m => m TestTree
+quantiferLiftingTests = testGroup "LiftQuantifiers" <$>
+  traverse liftQuantifiersTest
+  [ QuantifierTestSpec "liftQuantId"
       "exists x . x >= 0 and 1 >= 0"
       "exists x . x >= 0 and 1 >= 0"
 
-  , liftQuantifiersTest "liftQuantSimple"
+  , QuantifierTestSpec "liftQuantSimple"
       "1 >= 0 and (exists x. x >= 0)"
       "exists x . 1 >= 0 and x >= 0"
 
-  , liftQuantifiersTest "liftQuantParallel"
-    "1 >= 0 and (exists x . x >= 0) and (exists y . y >= 0)"
-    "exists x . exists y . 1 >= 0 and x >= 0 and y >= 0"
+  , QuantifierTestSpec "liftQuantParallel"
+      "1 >= 0 and (exists x . x >= 0) and (exists y . y >= 0)"
+      "exists x . exists y . 1 >= 0 and x >= 0 and y >= 0"
 
-  , liftQuantifiersTest "liftQuantSequential"
-    "1 >= 0 and (exists x . (x >= 0 and (exists y . y >= x)))"
-    "exists x . exists y . 1 >= 0 and x >= 0 and y >= x"
+  , QuantifierTestSpec "liftQuantSequential"
+      "1 >= 0 and (exists x . (x >= 0 and (exists y . y >= x)))"
+      "exists x . exists y . 1 >= 0 and x >= 0 and y >= x"
 
-  , liftQuantifiersTest "liftQuantSequentialAndParallel"
-    "(exists z . z + 2 >= 0) and (exists x . (x >= 0 and (exists y . y >= x)))"
-    "exists z . exists x . exists y . z + 2 >= 0 and x >= 0 and y >= x"
+  , QuantifierTestSpec "liftQuantSequentialAndParallel"
+      "(exists z . z + 2 >= 0) and (exists x . (x >= 0 and (exists y . y >= x)))"
+      "exists z . exists x . exists y . z + 2 >= 0 and x >= 0 and y >= x"
   ]
 
 --------------------------------------------------------------------------------
 -- Test implementation
 
-liftQuantifiersTest :: String -> Text -> Text -> TestTree
-liftQuantifiersTest testName input expected = do
-  let inputExpr    = textToCheckedExpr input
-  let expectedExpr = textToCheckedExpr expected
+data QuantifierTestSpec = QuantifierTestSpec String Text Text
 
-  let result = discardLogs (liftQuantifiers inputExpr)
-  --result = traceLogs (liftAndEliminateIfs inputExpr)
+liftQuantifiersTest :: MonadTest m => QuantifierTestSpec -> m TestTree
+liftQuantifiersTest (QuantifierTestSpec testName input expected) =
+    unitTestCase testName $ do
+      inputExpr    <- typeCheckExpr input
+      expectedExpr <- typeCheckExpr expected
+      result       <- liftQuantifiers inputExpr
 
-  let errorMessage = layoutAsString $
-        "Expected the result of quantifier lifting on" <> line <>
-          indent 2 (squotes (pretty input)) <> line <>
-        "to be alpha equivalent to" <>  line <>
-          indent 2 (squotes (prettyFriendly expectedExpr)) <> line <>
-        "however the result was" <> line <>
-          indent 2 (squotes (prettyFriendly result))
+      let errorMessage = layoutAsString $
+            "Expected the result of quantifier lifting on" <> line <>
+              indent 2 (squotes (pretty input)) <> line <>
+            "to be alpha equivalent to" <>  line <>
+              indent 2 (squotes (prettyFriendly expected)) <> line <>
+            "however the result was" <> line <>
+              indent 2 (squotes (prettyFriendly result))
 
-  testCase testName $
-    assertBool errorMessage (alphaEq expectedExpr result)
+      return $ assertBool errorMessage $
+        alphaEq inputExpr inputExpr

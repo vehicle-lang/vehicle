@@ -60,18 +60,6 @@ tokMap = mkToken B.TokMap "map"
 tokFold = mkToken B.TokFold "fold"
 tokTrue = mkToken B.TokTrue "True"
 tokFalse = mkToken B.TokFalse "False"
-tokHasEq      = mkToken B.TokHasEq      "HasEq"
-tokHasOrd     = mkToken B.TokHasOrd     "HasOrd"
-tokHasAdd     = mkToken B.TokHasAdd     "HasAdd"
-tokHasSub     = mkToken B.TokHasSub     "HasSub"
-tokHasMul     = mkToken B.TokHasMul     "HasMul"
-tokHasDiv     = mkToken B.TokHasDiv     "HasDiv"
-tokHasNeg     = mkToken B.TokHasNeg     "HasNeg"
-tokHasConOps  = mkToken B.TokHasConOps  "HasContainerOperations"
-tokHasNatLits = mkToken B.TokHasNatLits "HasNatLiteralsUpTo"
-tokHasIntLits = mkToken B.TokHasIntLits "HasIntLiterals"
-tokHasRatLits = mkToken B.TokHasRatLits "HasRatLiterals"
-tokHasConLits = mkToken B.TokHasConLits "HasContainerLiteralsOfSize"
 
 -- * Conversion
 
@@ -84,7 +72,7 @@ class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delab = discardLogger . delabM
 
   delabWithLogging :: MonadDelab m => t -> m bnfc
-  delabWithLogging x = logCompilerPass "delaboration" $ delabM x
+  delabWithLogging x = logCompilerPass MinDetail "delaboration" $ delabM x
 
 --  delab :: t ann -> bnfc
 --  delab = _
@@ -109,13 +97,13 @@ instance Delaborate V.NamedDecl [B.Decl] where
 
 instance Delaborate V.NamedExpr B.Expr where
   delabM expr = case expr of
-    V.Type _ l      -> return $ B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
+    V.Universe _ u  -> return $ delabUniverse u
     V.Var _ n       -> return $ B.Var  (delabSymbol n)
     V.Hole _ n      -> return $ B.Hole (mkToken B.HoleToken n)
     V.Literal _ l   -> return $ delabLiteral l
 
-    V.Ann _ e t     -> B.Ann <$> delabM e <*> pure tokElemOf <*> delabM t
-    V.LSeq _ _ es   -> B.LSeq tokSeqOpen <$> traverse delabM es <*> pure tokSeqClose
+    V.Ann _ e t   -> B.Ann <$> delabM e <*> pure tokElemOf <*> delabM t
+    V.LSeq _ es   -> B.LSeq tokSeqOpen <$> traverse delabM es <*> pure tokSeqClose
 
     V.Pi  ann t1 t2 -> delabPi ann t1 t2
     V.Let{}         -> delabLet expr
@@ -176,6 +164,12 @@ delabApp :: B.Expr -> [B.Arg] -> B.Expr
 delabApp fun []           = fun
 delabApp fun (arg : args) = B.App (delabApp fun args) arg
 
+delabUniverse :: V.Universe -> B.Expr
+delabUniverse = \case
+  TypeUniv l    -> B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
+  PolarityUniv  -> auxiliaryTypeError (pretty PolarityUniv)
+  LinearityUniv -> auxiliaryTypeError (pretty LinearityUniv)
+
 delabBuiltin :: V.Builtin -> [B.Expr] -> B.Expr
 delabBuiltin fun args = case fun of
   V.Bool                   -> B.Bool tokBool
@@ -184,20 +178,7 @@ delabBuiltin fun args = case fun of
   V.NumericType   V.Rat    -> B.Rat  tokRat
   V.ContainerType V.List   -> delabOp1 B.List   tokList   args
   V.ContainerType V.Tensor -> delabOp2 B.Tensor tokTensor args
-  V.Index                  -> delabOp1 B.Index    tokIndex    args
-
-  V.TypeClass V.HasEq                 -> delabOp1 B.HasEq      tokHasEq      args
-  V.TypeClass V.HasOrd                -> delabOp1 B.HasOrd     tokHasOrd     args
-  V.TypeClass V.HasAdd                -> delabOp1 B.HasAdd     tokHasAdd     args
-  V.TypeClass V.HasSub                -> delabOp1 B.HasSub     tokHasSub     args
-  V.TypeClass V.HasMul                -> delabOp1 B.HasMul     tokHasMul     args
-  V.TypeClass V.HasDiv                -> delabOp1 B.HasDiv     tokHasDiv     args
-  V.TypeClass V.HasNeg                -> delabOp1 B.HasNeg     tokHasNeg     args
-  V.TypeClass V.HasConOps             -> delabOp2 B.HasConOps  tokHasConOps  args
-  V.TypeClass (V.HasNatLitsUpTo n)    -> delabOp1 (\tk -> B.HasNatLits tk (toInteger n)) tokHasNatLits args
-  V.TypeClass V.HasIntLits            -> delabOp1 B.HasIntLits tokHasIntLits args
-  V.TypeClass V.HasRatLits            -> delabOp1 B.HasRatLits tokHasRatLits args
-  V.TypeClass (V.HasConLitsOfSize n)  -> delabOp2 (\tk -> B.HasConLits tk (toInteger n)) tokHasConLits args
+  V.Index                  -> delabOp1 B.Index  tokIndex  args
 
   V.Equality V.Eq  -> delabInfixOp2 B.Eq  tokEq args
   V.Equality V.Neq -> delabInfixOp2 B.Neq tokNeq args
@@ -229,9 +210,9 @@ delabBuiltin fun args = case fun of
   V.Foreach   -> delabForeach args
   V.ForeachIn -> delabForeachIn args
 
-  V.AuxiliaryType       -> auxiliaryTypeError (pretty fun)
-  V.Polarity{}          -> auxiliaryTypeError (pretty fun)
-  V.PolarityTypeClass{} -> auxiliaryTypeError (pretty fun)
+  V.Polarity{}    -> auxiliaryTypeError (pretty fun)
+  V.Linearity{}   -> auxiliaryTypeError (pretty fun)
+  V.TypeClass tc  -> B.Var (delabSymbol (layoutAsText $ pretty tc))
 
 delabOp1 :: IsToken token => (token -> B.Expr -> B.Expr) -> token -> [B.Expr] -> B.Expr
 delabOp1 op tk [arg] = op tk arg
@@ -308,4 +289,4 @@ delabFun n typ expr = do
 
 auxiliaryTypeError :: Doc a -> a
 auxiliaryTypeError e = developerError $
-  "Enountered" <+> squotes e <> ". Should not be delaborating auxiliary-type system code."
+  "Encountered" <+> squotes e <> ". Should not be delaborating auxiliary-type system code."

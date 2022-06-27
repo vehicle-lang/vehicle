@@ -13,12 +13,17 @@ import Data.IntSet qualified as IntSet (insert, member, mapMonotonic)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Error (MonadCompile)
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
+import Vehicle.Compile.Type.Bidirectional
+import Vehicle.Compile.Type.Meta (freshLinearityMeta, freshPolarityMeta, getDeclType)
 
 -- | Inserts holes for all the non-user facing auxilliary annotations, e.g.
 -- polarity annotations on the `Bool` type and linearity annotations on the
 -- `Rat` type.
-insertHolesForAuxiliaryAnnotations :: InsertAuxiliaryAnnotations a => a -> a
+insertHolesForAuxiliaryAnnotations :: (TCM m
+                                     , InsertAuxiliaryAnnotations a)
+                                   => a
+                                   -> m a
 insertHolesForAuxiliaryAnnotations = insert
 
 -- | Removes all the non-user facing auxilliary arguments, i.e. arguments of
@@ -26,54 +31,85 @@ insertHolesForAuxiliaryAnnotations = insert
 removeAuxiliaryArguments :: (MonadCompile m, RemoveAuxiliaryArguments a)
                          => a -> m a
 removeAuxiliaryArguments x =
-  logCompilerPass "removal of auxiliary code" $
+  logCompilerPass MinDetail "removal of auxiliary code" $
     runReaderT (remove x) mempty
 
 -------------------------------------------------------------------------------
 -- Inserting polarity and linearity annotations
 
 class InsertAuxiliaryAnnotations a where
-  insert :: a -> a
+  insert :: TCM m => a -> m a
 
 instance InsertAuxiliaryAnnotations UncheckedProg where
-  insert (Main ds) = Main (insert <$> ds)
+  insert (Main ds) = Main <$> traverse insert ds
 
 instance InsertAuxiliaryAnnotations UncheckedDecl where
   insert = \case
-    DefResource ann resourceType ident t ->
-      DefResource ann resourceType ident (insert t)
+    DefResource p resourceType ident t ->
+      DefResource p resourceType ident <$> insert t
 
-    DefFunction ann propertyInfo ident t e ->
-      DefFunction ann propertyInfo ident (insert t) (insert e)
+    DefFunction p propertyInfo ident t e ->
+      DefFunction p propertyInfo ident <$> insert t <*> insert e
 
 instance InsertAuxiliaryAnnotations UncheckedExpr where
   insert expr = case expr of
-    -- Insert a suitable hole for types which have annotations
-    Builtin ann Bool -> App ann expr [ImplicitArg ann (mkHole ann "boolAnn")]
+    -- Insert meta-variables for types which have annotations
+    BoolType p -> do
+      lin <- freshLinearityMeta p
+      pol <- freshPolarityMeta p
+      return $ App p expr
+        [ ImplicitArg p lin
+        , ImplicitArg p pol
+        ]
+
+    RatType p -> do
+      lin <- freshLinearityMeta p
+      return $ App p expr
+        [ ImplicitArg p lin
+        ]
+
+    Var p (Free ident) -> do
+      declType <- getDeclType p ident
+      auxArgs <- declAuxArgs p declType
+      return $ normAppList p expr auxArgs
 
     -- Needed to ensure idempotence of type-checking
-    App _ (Builtin _ Bool) _ -> expr
+    App p fun@BoolType{}     args -> App p fun <$> traverse insert args
+    App p fun@RatType{}      args -> App p fun <$> traverse insert args
+    App p fun@(Var _ Free{}) args -> App p fun <$> traverse insert args
 
-    Ann  ann e t               -> Ann ann (insert e) (insert t)
-    App  ann fun args          -> App ann (insert fun) (insert <$> args)
-    Pi   ann binder res        -> Pi  ann (insert binder) (insert res)
-    Let  ann bound binder body -> Let ann (insert bound) (insert binder) (insert body)
-    Lam  ann binder body       -> Lam ann (insert binder) (insert body)
-    LSeq ann tc xs             -> LSeq ann (insert tc) (insert <$> xs)
-    PrimDict ann t             -> PrimDict ann (insert t)
+    Ann  p e t               -> Ann p <$> insert e <*> insert t
+    App  p fun args          -> App p <$> insert fun <*> traverse insert args
+    Pi   p binder res        -> Pi  p <$> insert binder <*> insert res
+    Let  p bound binder body -> Let p <$> insert bound <*> insert binder <*> insert body
+    Lam  p binder body       -> Lam p <$> insert binder <*> insert body
+    LSeq p xs                -> LSeq p <$> traverse insert xs
+    PrimDict p t             -> PrimDict p <$> insert t
 
-    Type{}    -> expr
-    Var{}     -> expr
-    Hole{}    -> expr
-    Meta{}    -> expr
-    Literal{} -> expr
-    Builtin{} -> expr
+    Universe{} -> return expr
+    Var{}      -> return expr
+    Hole{}     -> return expr
+    Meta{}     -> return expr
+    Literal{}  -> return expr
+    Builtin{}  -> return expr
 
 instance InsertAuxiliaryAnnotations UncheckedArg where
-  insert = mapArgExpr insert
+  insert = traverseArgExpr insert
 
 instance InsertAuxiliaryAnnotations UncheckedBinder where
-  insert = mapBinderType insert
+  insert = traverseBinderType insert
+
+declAuxArgs :: TCM m => Provenance -> CheckedExpr -> m [CheckedArg]
+declAuxArgs p = \case
+  Pi _ binder r
+    | visibilityOf binder == Implicit && isAuxiliaryUniverse (typeOf binder) -> do
+    xs <- declAuxArgs p r
+    meta <- case typeOf binder of
+      PolarityUniverse{}  -> freshPolarityMeta p
+      LinearityUniverse{} -> freshLinearityMeta p
+      _                   -> compilerDeveloperError "Mismatch between cases and 'isAuxiliaryUniverse'"
+    return $ ImplicitArg p meta : xs
+  _ -> return []
 
 -------------------------------------------------------------------------------
 -- Remove polarity and linearity annotations
@@ -86,63 +122,66 @@ type MonadRemove m =
 class RemoveAuxiliaryArguments a where
   remove :: MonadRemove m => a -> m a
 
-instance RemoveAuxiliaryArguments UncheckedProg where
+instance RemoveAuxiliaryArguments CheckedProg where
   remove (Main ds) = Main <$> traverse remove ds
 
-instance RemoveAuxiliaryArguments UncheckedDecl where
+instance RemoveAuxiliaryArguments CheckedDecl where
   remove = \case
-    DefResource ann resourceType ident t ->
-      DefResource ann resourceType ident <$> remove t
+    DefResource p resourceType ident t ->
+      DefResource p resourceType ident <$> remove t
 
-    DefFunction ann propertyInfo ident t e ->
-      DefFunction ann propertyInfo ident <$> remove t <*> remove e
+    DefFunction p propertyInfo ident t e ->
+      DefFunction p propertyInfo ident <$> remove t <*> remove e
 
-instance RemoveAuxiliaryArguments UncheckedExpr where
+instance RemoveAuxiliaryArguments CheckedExpr where
   remove expr = do
     showRemoveEntry expr
     result <- case expr of
-      App ann fun args ->
-        normAppList ann <$> remove fun <*> (traverse remove =<< removeAuxiliaryArgs args)
+      App p fun args ->
+        normAppList p <$> remove fun <*> (traverse remove =<< removeAuxiliaryArgs args)
 
-      Pi ann binder res -> do
+      Pi p binder res -> do
         isAux <- isAuxiliary (typeOf binder)
         if isAux
           then local (IntSet.insert 0 . underBinder) (remove res)
-          else Pi  ann <$> remove binder <*> local underBinder (remove res)
+          else Pi  p <$> remove binder <*> local underBinder (remove res)
 
-      Lam ann binder body -> do
+      Lam p binder body -> do
         isAux <- isAuxiliary (typeOf binder)
         if isAux
           then local (IntSet.insert 0 . underBinder) (remove body)
-          else Lam ann <$> remove binder <*> local underBinder (remove body)
+          else Lam p <$> remove binder <*> local underBinder (remove body)
 
-      Ann  ann e t               -> Ann ann <$> remove e <*> remove t
-      Let  ann bound binder body -> Let ann <$> remove bound <*> remove binder <*> local underBinder (remove body)
-      LSeq ann tc xs             -> LSeq ann <$> remove tc <*> traverse remove xs
-      PrimDict ann t             -> PrimDict ann <$> remove t
+      Ann  p e t               -> Ann p <$> remove e <*> remove t
+      Let  p bound binder body -> Let p <$> remove bound <*> remove binder <*> local underBinder (remove body)
+      LSeq p xs                -> LSeq p <$> traverse remove xs
+      PrimDict p t             -> PrimDict p <$> remove t
 
-      Type{}    -> return expr
-      Var{}     -> return expr
-      Hole{}    -> return expr
-      Meta{}    -> return expr
-      Literal{} -> return expr
-      Builtin{} -> return expr
+      Universe{} -> return expr
+      Var{}      -> return expr
+      Hole{}     -> return expr
+      Meta{}     -> return expr
+      Literal{}  -> return expr
+      Builtin{}  -> return expr
 
     showRemoveExit result
     return result
 
-instance RemoveAuxiliaryArguments UncheckedArg where
+instance RemoveAuxiliaryArguments CheckedArg where
   remove = traverseArgExpr remove
 
-instance RemoveAuxiliaryArguments UncheckedBinder where
+instance RemoveAuxiliaryArguments CheckedBinder where
   remove = traverseBinderType remove
 
 isAuxiliary :: MonadRemove m => CheckedExpr -> m Bool
 isAuxiliary e = case exprHead e of
-  Builtin _ AuxiliaryType       -> return True
-  Builtin _ Polarity{}          -> return True
-  Builtin _ PolarityTypeClass{} -> return True
   Var     _ (Bound v)           -> asks (IntSet.member v)
+  PolarityUniverse{}            -> return True
+  LinearityUniverse{}           -> return True
+  Builtin _ Polarity{}          -> return True
+  Builtin _ Linearity{}         -> return True
+  Builtin _ (TypeClass tc)      -> return $ isAuxiliaryTypeClass tc
+  PrimDict _ tc                 -> isAuxiliary tc
   _                             -> return False
 
 removeAuxiliaryArgs :: MonadRemove m => NonEmpty CheckedArg -> m [CheckedArg]

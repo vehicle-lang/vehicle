@@ -1,4 +1,3 @@
-
 module Vehicle.Compile.Type.Bidirectional
   ( TCM
   , checkExpr
@@ -11,8 +10,6 @@ import Control.Monad (when)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT (runReaderT))
 import Control.Monad.State (MonadState, StateT, evalStateT)
-import Data.Foldable (foldrM)
-import Data.Map qualified as Map
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Monoid (Endo(..), appEndo)
 import Data.Text (pack)
@@ -23,6 +20,7 @@ import Vehicle.Language.DSL
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.WeakHeadNormalForm
+import Vehicle.Compile.Type.VariableContext
 
 --------------------------------------------------------------------------------
 -- Bidirectional type-checking
@@ -74,15 +72,11 @@ showInferExit (e, t) = do
 removeBinderName :: CheckedBinder -> CheckedBinder
 removeBinderName (Binder ann v _n t) = Binder ann v Nothing t
 
-unify :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m CheckedExpr
+unify :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m ()
 unify p e1 e2 = do
   ctx <- getVariableCtx
-  addUnificationConstraint p ctx e1 e2
   -- TODO calculate the most general unifier
-  return e1
-
-freshMeta :: TCM m => Provenance -> CheckedExpr -> m (Meta, CheckedExpr)
-freshMeta p metaType = freshMetaWith p metaType =<< getBoundCtx
+  addUnificationConstraint p ctx e1 e2
 
 --------------------------------------------------------------------------------
 -- Checking
@@ -99,10 +93,10 @@ checkExpr expectedType expr = do
 
     (Pi _ piBinder resultType, Lam ann lamBinder body)
       | visibilityOf piBinder == visibilityOf lamBinder -> do
-        checkedLamBinderType <- checkExpr (Type (inserted ann) 0) (typeOf lamBinder)
+        checkedLamBinderType <- checkExpr (TypeUniverse (inserted ann) 0) (typeOf lamBinder)
 
         -- Unify the result with the type of the pi binder.
-        _ <- unify (provenanceOf ann) (typeOf piBinder) checkedLamBinderType
+        unify (provenanceOf ann) (typeOf piBinder) checkedLamBinderType
 
         -- Add bound variable to context
         checkedBody <- addToBoundCtx (nameOf lamBinder) checkedLamBinderType Nothing $ do
@@ -134,17 +128,15 @@ checkExpr expectedType expr = do
     (_, Lam ann binder _) -> do
       ctx <- getBoundCtx
       let expected = fromDSL ann $ pi (visibilityOf binder) (tHole "a") (const (tHole "b"))
-      throwError $ TypeMismatch (provenanceOf ann) ctx expectedType expected
+      throwError $ TypeMismatch (provenanceOf ann) (boundContextOf ctx) expectedType expected
 
-    (_, Hole ann _name) -> do
-      -- Replace the hole with meta-variable. Throws away the expected type.
-      -- Can we use it somehow?
+    (_, Hole p _name) -> do
+      -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted as
       -- different meta-variables.
-      (_, meta) <- freshMeta (provenanceOf ann) expectedType
-      return meta
+      freshExprMeta p expectedType =<< getBoundCtx
 
-    (_, Type     ann _)     -> viaInfer ann expectedType expr
+    (_, Universe  ann _)    -> viaInfer ann expectedType expr
     (_, Meta     ann _)     -> viaInfer ann expectedType expr
     (_, App      ann _ _)   -> viaInfer ann expectedType expr
     (_, Pi       ann _ _)   -> viaInfer ann expectedType expr
@@ -152,7 +144,7 @@ checkExpr expectedType expr = do
     (_, Var      ann _)     -> viaInfer ann expectedType expr
     (_, Let      ann _ _ _) -> viaInfer ann expectedType expr
     (_, Literal  ann _)     -> viaInfer ann expectedType expr
-    (_, LSeq     ann _ _)   -> viaInfer ann expectedType expr
+    (_, LSeq     ann _)     -> viaInfer ann expectedType expr
     (_, Ann      ann _ _)   -> viaInfer ann expectedType expr
     (_, PrimDict ann _)     -> viaInfer ann expectedType expr
 
@@ -166,7 +158,7 @@ viaInfer ann expectedType e = do
   -- Insert any needed implicit or instance arguments
   (appliedCheckedExpr, resultType) <- inferApp ann checkedExpr actualType []
   -- Assert the expected and the actual types are equal
-  _t <- unify (provenanceOf ann) expectedType resultType
+  unify ann expectedType resultType
   return appliedCheckedExpr
 
 --------------------------------------------------------------------------------
@@ -180,25 +172,27 @@ inferExpr :: TCM m
 inferExpr e = do
   showInferEntry e
   res <- case e of
-    Type ann l ->
-      return (e , Type (inserted ann) (l + 1))
+    Universe ann u -> case u of
+      TypeUniv l   -> return (e , TypeUniverse (inserted ann) (l + 1))
+      _            -> compilerDeveloperError $
+        "Should not be trying to infer the type of" <+> pretty u
 
-    Meta _ m -> compilerDeveloperError $
-      "Trying to infer the type of a meta-variable" <+> pretty m
+    Meta _ m -> do
+      metaType <- getMetaType m
+      return (e, metaType)
 
     Hole ann _name -> do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted
       -- as different meta-variables.
-      -- let metaType = Type ann 0
-      (_, metaType) <- freshMeta (provenanceOf ann) (Type ann 0)
-      (_, metaExpr) <- freshMeta (provenanceOf ann) metaType
-      _ <- unify ann metaType (Type ann 0)
+      metaType <- freshExprMeta (provenanceOf ann) (TypeUniverse ann 0) =<< getBoundCtx
+      metaExpr <- freshExprMeta (provenanceOf ann) metaType =<< getBoundCtx
+      unify ann metaType (TypeUniverse ann 0)
       return (metaExpr, metaType)
 
     Ann ann expr exprType -> do
       (checkedExprType, exprTypeType) <- inferExpr exprType
-      _ <- unify (provenanceOf ann) exprTypeType (Type (inserted ann) 0)
+      unify (provenanceOf ann) exprTypeType (TypeUniverse (inserted ann) 0)
       checkedExpr <- checkExpr checkedExprType expr
       return (Ann ann checkedExpr checkedExprType , checkedExprType)
 
@@ -242,22 +236,17 @@ inferExpr e = do
           return (Var ann (Bound i), liftedCheckedType)
         Nothing      -> compilerDeveloperError $
           "DBIndex" <+> pretty i <+> "out of bounds when looking" <+>
-          "up variable in context" <+> prettyVerbose (ctxNames ctx) <+> "at" <+> pretty (provenanceOf ann)
+          "up variable in context" <+> prettyVerbose (boundContextOf ctx) <+> "at" <+> pretty (provenanceOf ann)
 
     Var ann (Free ident) -> do
       -- Lookup the type of the declaration variable in the context.
-      ctx <- getDeclCtx
-      case Map.lookup ident ctx of
-        Just (checkedType, _) -> return (Var ann (Free ident), checkedType)
-        -- This should have been caught during scope checking
-        Nothing -> compilerDeveloperError $
-          "Declaration'" <+> pretty ident <+> "'not found when" <+>
-          "looking up variable in context" <+> pretty (Map.keys ctx) <+> "at" <+> pretty (provenanceOf ann)
+      checkedType <- getDeclType ann ident
+      return (Var ann (Free ident), checkedType)
 
     Let ann boundExpr binder body -> do
       -- Check the type of the bound expression against the provided type
       (typeOfBoundExpr, typeOfBoundExprType) <- inferExpr (typeOf binder)
-      _ <- unify ann typeOfBoundExprType (Type (inserted ann) 0)
+      unify ann typeOfBoundExprType (TypeUniverse (inserted ann) 0)
       checkedBoundExpr <- checkExpr typeOfBoundExpr boundExpr
 
       let checkedBinder = replaceBinderType typeOfBoundExpr binder
@@ -283,7 +272,7 @@ inferExpr e = do
       (typeOfBinder, typeOfBinderType) <- inferExpr (typeOf binder)
 
       let insertedAnn = inserted ann
-      _ <- unify ann typeOfBinderType (Type insertedAnn 0)
+      unify ann typeOfBinderType (TypeUniverse insertedAnn 0)
       let checkedBinder = replaceBinderType typeOfBinder binder
 
       -- Update the context with the bound variable
@@ -296,37 +285,45 @@ inferExpr e = do
     Builtin p op -> do
       return (Builtin p op, typeOfBuiltin p op)
 
-    LSeq ann dict elems -> do
+    LSeq ann elems -> do
       let p = provenanceOf ann
-      ctx <- getVariableCtx
 
       -- Infer the type for each element in the list
-      (checkedElems, typesOfElems) <- unzip <$> traverse inferExpr elems
+      elemTypePairs <- traverse inferExpr elems
+      -- Insert any implicit arguments for each element in the list to try and
+      -- standardise the types
+      elemTypePairs' <- traverse (uncurry $ insertNonExplicitArgs p) elemTypePairs
+      let (checkedElems, typesOfElems) = unzip elemTypePairs'
 
-      -- Generate a fresh meta variable for the type of elements in the list, e.g. Int
-      (_, typeOfElems) <- freshMeta p (Type ann 0)
-      -- Unify the types of all the elements in the sequence
-      _ <- foldrM (unify p) typeOfElems typesOfElems
+      -- Create the new type.
+      -- Roughly [x1, ..., xn] has type
+      --  forall {tElem} {tCont} {{HasConLits tElem tCont}} {{TypesEqual tElem [t1, ..., tn]}} . tCont
+      let conLitsTC = HasConLitsOfSizeExpr p (length typesOfElems)
 
-      -- Generate a meta-variable for the applied container type, e.g. List Int
-      (_, typeOfContainer) <- freshMeta p (Type ann 0)
-      let typeOfDict = HasConLitsOfSizeExpr ann (length elems) typeOfElems typeOfContainer
+      let liftedTypesOfElems = liftFreeDBIndices 3 <$> typesOfElems
+      let typesOfElemsSeq = mkList p (TypeUniverse p 0) liftedTypesOfElems
 
-      -- Check the type of the dict
-      checkedDict <- if not (isHole dict)
-        then checkExpr typeOfDict dict
-        else do
-          (meta, checkedDict) <- freshMeta p typeOfDict
-          addTypeClassConstraint ctx meta typeOfDict
-          return checkedDict
+      let tc = TypesEqualModAuxiliaryAnnotations
+      let elemsTC tElem = BuiltinTypeClass p tc (ExplicitArg p <$> [tElem, typesOfElemsSeq])
+      let typeOfContainer =
+            Pi p (ImplicitBinder p Nothing (TypeUniverse p 0)) $
+              Pi p (ImplicitBinder p Nothing (TypeUniverse p 0)) $
+                Pi p (InstanceBinder p Nothing (conLitsTC (Var p (Bound 1)) (Var p (Bound 0)))) $
+                  Pi p (InstanceBinder p Nothing (elemsTC (Var p (Bound 2)))) $
+                    Var p (Bound 2)
 
       -- Return the result
-      return (LSeq ann checkedDict checkedElems, typeOfContainer)
+      return (LSeq ann checkedElems, typeOfContainer)
 
     PrimDict ann typeClass -> do
+      return (PrimDict ann typeClass, typeClass)
+
+      -- TODO re-enable once we have the universe solver up and running.
+      {-
       (checkedTypeClass, typeClassType) <- inferExpr typeClass
-      _ <- unify (provenanceOf ann) typeClassType (Type (inserted ann) 0)
+      unify ann typeClassType (TypeUniverse (inserted ann) 0)
       return (PrimDict ann checkedTypeClass, checkedTypeClass)
+      -}
 
   showInferExit res
   return res
@@ -346,8 +343,19 @@ inferArgs :: TCM m
           -> m (CheckedExpr, [CheckedArg])
 inferArgs p (Pi _ binder resultType) (arg : args)
   | visibilityOf binder == visibilityOf arg = do
+    let binderType = typeOf binder
+
     -- Check the type of the argument.
-    checkedArgExpr <- checkExpr (typeOf binder) (argExpr arg)
+    checkedArgExpr <- checkExpr binderType (argExpr arg)
+
+    -- If the argument is an instance argument then add it to the set
+    -- of constraints. This is needed, even when the instance is already
+    -- present, as solving it may produce information needed to solve
+    -- auxiliary metas elsewhere.
+    when (visibilityOf binder == Instance) $ do
+      varCtx <- getVariableCtx
+      m <- freshTypeClassPlacementMeta p binderType
+      addTypeClassConstraint varCtx m binderType
 
     -- Generate the new checked arg
     let checkedArg = replaceArgExpr checkedArgExpr arg
@@ -365,7 +373,7 @@ inferArgs p (Pi _ binder resultType) (arg : args)
     -- Then we're expecting an explicit arg but have a non-explicit arg
     -- so panic
     ctx <- getBoundCtx
-    throwError $ MissingExplicitArg ctx arg (typeOf binder)
+    throwError $ MissingExplicitArg (boundContextOf ctx) arg (typeOf binder)
 
 -- This case handles either
 -- `visibilityOf binder /= Explicit` and (`visibilityOf binder /= visibilityOf arg` or args == [])
@@ -376,25 +384,20 @@ inferArgs p (Pi _ binder resultType) args
     let binderVis = visibilityOf binder
     let binderType = typeOf binder
 
-    (updateArgs, updatedResultType) <-
-      if binderVis == Instance && isAuxiliaryTypeClass binderType then do
-        -- Auxiliary type classes have no associated computational content,
-        -- so no need to generate a new meta so that the solution that be
-        -- inserted after solving the constraints.
-        ctx <- getVariableCtx
-        addAuxiliaryConstraint ctx binderType
-        return (id, resultType)
-
-      else do
-        -- Generate a new meta-variable for the argument
-        (meta, metaExpr) <- freshMeta p binderType
-        let metaArg = Arg ann binderVis metaExpr
+    (updateArgs, updatedResultType) <- do
 
         -- Check if the required argument is a type-class
-        when (binderVis == Instance) $ do
+        metaExpr <- if binderVis == Instance then do
+          -- Generate a new meta-variable for the argument
+          meta <- freshTypeClassPlacementMeta p binderType
           ctx <- getVariableCtx
           addTypeClassConstraint ctx meta binderType
+          return $ Meta ann meta
+        else do
+          boundCtx <- getBoundCtx
+          freshExprMeta p binderType boundCtx
 
+        let metaArg = Arg ann binderVis metaExpr
         -- Substitute meta-variable in tRes
         let updatedResultType = metaExpr `substInto` resultType
 
@@ -414,7 +417,7 @@ inferArgs p functionType args = do
   let mkRes = [Endo $ \tRes -> pi (visibilityOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
               | (i, arg) <- zip [0::Int ..] args]
   let expectedType = fromDSL ann (appEndo (mconcat mkRes) (tHole "res"))
-  throwError $ TypeMismatch p ctx functionType expectedType
+  throwError $ TypeMismatch p (boundContextOf ctx) functionType expectedType
 
 -- |Takes a function and its arguments, inserts any needed implicits
 -- or instance arguments and then returns the function applied to the full
@@ -428,8 +431,15 @@ inferApp :: TCM m
 inferApp ann fun funType args = do
   (appliedFunType, checkedArgs) <- inferArgs (provenanceOf fun) funType args
   varCtx <- getVariableCtx
-  normAppliedFunType <- whnfWithMetas varCtx appliedFunType
+  normAppliedFunType <- whnfExprWithMetas varCtx appliedFunType
   return (normAppList ann fun checkedArgs, normAppliedFunType)
+
+insertNonExplicitArgs :: TCM m
+                      => Provenance
+                      -> CheckedExpr
+                      -> CheckedExpr
+                      -> m (CheckedExpr, CheckedExpr)
+insertNonExplicitArgs ann checkedExpr actualType = inferApp ann checkedExpr actualType []
 
 --------------------------------------------------------------------------------
 -- Typing of literals and builtins
@@ -440,54 +450,71 @@ typeOfLiteral ann l = fromDSL ann $ case l of
   LNat  n -> forall type0 $ \t -> hasNatLitsUpTo n t ~~~> t
   LInt  _ -> forall type0 $ \t -> hasIntLits t ~~~> t
   LRat  _ -> forall type0 $ \t -> hasRatLits t ~~~> t
-  LBool _ -> tBool unquantified
+  LBool _ -> tBool constant unquantified
 
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedExpr
 typeOfBuiltin ann b = fromDSL ann $ case b of
-  AuxiliaryType -> type0
-  Polarity{}    -> tAux
+  Polarity{}    -> tPol
+  Linearity{}   -> tLin
 
-  PolarityTypeClass HasNot          -> tAux ~> tAux ~> tAux
-  PolarityTypeClass HasAndOr        -> tAux ~> tAux ~> tAux ~> tAux
-  PolarityTypeClass HasImpl         -> tAux ~> tAux ~> tAux ~> tAux
-  PolarityTypeClass HasQuantifier{} -> type0 ~> tAux ~> tAux ~> tAux
+  TypeClass tc -> case tc of
+    HasEq{}            -> type0 ~> type0 ~> type0 ~> type0
+    HasOrd{}           -> type0 ~> type0 ~> type0 ~> type0
+    HasNot             -> type0 ~> type0 ~> type0
+    HasAnd             -> type0 ~> type0 ~> type0 ~> type0
+    HasOr              -> type0 ~> type0 ~> type0 ~> type0
+    HasImpl            -> type0 ~> type0 ~> type0 ~> type0
+    HasQuantifier{}    -> type0 ~> type0 ~> type0 ~> type0
+    HasAdd             -> type0 ~> type0 ~> type0 ~> type0
+    HasSub             -> type0 ~> type0 ~> type0 ~> type0
+    HasMul             -> type0 ~> type0 ~> type0 ~> type0
+    HasDiv             -> type0 ~> type0 ~> type0 ~> type0
+    HasNeg             -> type0 ~> type0 ~> type0
+    HasFold            -> type0 ~> type0 ~> type0
+    HasQuantifierIn{}  -> type0 ~> type0 ~> type0
 
-  TypeClass HasEq              -> type0 ~> type0
-  TypeClass HasOrd             -> type0 ~> type0
-  TypeClass HasAdd             -> type0 ~> type0
-  TypeClass HasSub             -> type0 ~> type0
-  TypeClass HasMul             -> type0 ~> type0
-  TypeClass HasDiv             -> type0 ~> type0
-  TypeClass HasNeg             -> type0 ~> type0
-  TypeClass HasConOps          -> type0 ~> type0 ~> type0
-  TypeClass HasNatLitsUpTo{}   -> type0 ~> type0
-  TypeClass HasIntLits         -> type0 ~> type0
-  TypeClass HasRatLits         -> type0 ~> type0
-  TypeClass HasConLitsOfSize{} -> type0 ~> type0 ~> type0
+    HasNatLitsUpTo{}   -> type0 ~> type0
+    HasIntLits         -> type0 ~> type0
+    HasRatLits         -> type0 ~> type0
+    HasConLitsOfSize{} -> type0 ~> type0 ~> type0
 
-  -- The Bool type takes an implicit polarity argument
-  Bool                      -> tAux ~~> type0
+    MaxLinearity -> tLin ~> tLin ~> tLin ~> type0
+    MulLinearity -> tLin ~> tLin ~> tLin ~> type0
 
-  NumericType   _           -> type0
-  ContainerType List        -> type0 ~> type0
-  ContainerType Tensor      -> type0 ~> tList tNat ~> type0
-  Index                     -> tNat ~> type0
+    NegPolarity{}  -> tPol ~> tPol ~> type0
+    AddPolarity{}  -> tPol ~> tPol ~> type0
+    MaxPolarity    -> tPol ~> tPol ~> tPol ~> type0
+    EqPolarity{}   -> tPol ~> tPol ~> tPol ~> type0
+    ImplPolarity{} -> tPol ~> tPol ~> tPol ~> type0
+
+    TypesEqualModAuxiliaryAnnotations{} ->
+      forall type0 $ \t -> t ~> tList t ~> type0
+
+  NumericType Nat -> type0
+  NumericType Int -> type0
+  -- Rat and Bool take implicit linearity and polarity arguments during
+  -- type-checking.
+  NumericType Rat -> tLin ~~> type0
+  Bool            -> tLin ~~> tPol ~~> type0
+
+  ContainerType List   -> type0 ~> type0
+  ContainerType Tensor -> type0 ~> tList tNat ~> type0
+  Index                -> tNat ~> type0
 
   If              -> typeOfIf
-  Not             -> typeOfNot
-  BooleanOp2 Impl -> typeOfImpl
-  BooleanOp2 And  -> typeOfAndOr
-  BooleanOp2 Or   -> typeOfAndOr
 
-  NumericOp2 Add -> typeOfNumOp2 hasAdd
-  NumericOp2 Sub -> typeOfNumOp2 hasSub
-  NumericOp2 Mul -> typeOfNumOp2 hasMul
-  NumericOp2 Div -> typeOfNumOp2 hasDiv
-  Neg            -> typeOfNumOp1 hasNeg
-
-  Equality _ -> typeOfEqualityOp
-  Order    _ -> typeOfComparisonOp
+  Equality eq     -> typeOfOp2 $ hasEq eq
+  Order    ord    -> typeOfOp2 $ hasOrd ord
+  Not             -> typeOfOp1 hasNot
+  BooleanOp2 Impl -> typeOfOp2 hasImpl
+  BooleanOp2 And  -> typeOfOp2 hasAnd
+  BooleanOp2 Or   -> typeOfOp2 hasOr
+  Neg             -> typeOfOp1 hasNeg
+  NumericOp2 Add  -> typeOfOp2 hasAdd
+  NumericOp2 Sub  -> typeOfOp2 hasSub
+  NumericOp2 Mul  -> typeOfOp2 hasMul
+  NumericOp2 Div  -> typeOfOp2 hasDiv
 
   Cons -> typeOfCons
   At   -> typeOfAtOp
@@ -495,7 +522,7 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
   Fold -> typeOfFoldOp
 
   Quant q   -> typeOfQuantifier q
-  QuantIn _ -> typeOfQuantifierIn
+  QuantIn q -> typeOfQuantifierIn q
 
   Foreach   -> typeOfForeach
   ForeachIn -> typeOfForeachIn
@@ -503,78 +530,52 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
 typeOfIf :: DSLExpr
 typeOfIf =
   forall type0 $ \t ->
-    tBool unquantified ~> t ~> t ~> t
+    forall tLin $ \lin ->
+      tBool lin unquantified ~> t ~> t ~> t
 
-typeOfEqualityOp :: DSLExpr
-typeOfEqualityOp =
-  forall type0 $ \t ->
-    hasEq t ~~~> t ~> t ~> tBool unquantified
+typeOfOp1 :: (DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
+typeOfOp1 constraint =
+  forall type0 $ \t1 ->
+    forall type0 $ \t2 ->
+      constraint t1 t2 ~~~> t1 ~> t2
 
-typeOfComparisonOp :: DSLExpr
-typeOfComparisonOp =
-  forall type0 $ \t ->
-    hasOrd t ~~~> t ~> t ~> tBool unquantified
-
-typeOfNot :: DSLExpr
-typeOfNot =
-  forall tAux $ \pol1 ->
-    forall tAux $ \pol2 ->
-      hasNot pol1 pol2 ~~~> tBool pol1 ~> tBool pol2
-
-typeOfAndOr :: DSLExpr
-typeOfAndOr =
-  forall tAux $ \pol1 ->
-    forall tAux $ \pol2 ->
-      forall tAux $ \pol3 ->
-        hasAndOr pol1 pol2 pol3 ~~~> tBool pol1 ~> tBool pol2 ~> tBool pol3
-
-typeOfImpl :: DSLExpr
-typeOfImpl =
-  forall tAux $ \pol1 ->
-    forall tAux $ \pol2 ->
-      forall tAux $ \pol3 ->
-        hasImpl pol1 pol2 pol3 ~~~> tBool pol1 ~> tBool pol2 ~> tBool pol3
-
-typeOfNumOp2 :: (DSLExpr -> DSLExpr) -> DSLExpr
-typeOfNumOp2 numConstraint =
-  forall type0 $ \t ->
-    numConstraint t ~~~> t ~> t ~> t
-
-typeOfNumOp1 :: (DSLExpr -> DSLExpr) -> DSLExpr
-typeOfNumOp1 numConstraint =
-  forall type0 $ \t ->
-    numConstraint t ~~~> t ~> t
+typeOfOp2 :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
+typeOfOp2 constraint =
+  forall type0 $ \t1 ->
+    forall type0 $ \t2 ->
+      forall type0 $ \t3 ->
+        constraint t1 t2 t3 ~~~> t1 ~> t2 ~> t3
 
 typeOfQuantifier :: Quantifier -> DSLExpr
 typeOfQuantifier q =
-  forall type0 $ \t ->
-    forall tAux $ \pol1 ->
-      forall tAux $ \pol2 ->
-        hasQuantifier q t pol1 pol2 ~~~> (t ~> tBool pol1) ~> tBool pol2
+  forall type0 $ \tDomain ->
+    forall type0 $ \tBody ->
+      forall type0 $ \tRes ->
+        hasQuantifier q tDomain tBody tRes ~~~> (tDomain ~> tBody) ~> tRes
 
 typeOfForeach :: DSLExpr
 typeOfForeach =
   forall tNat $ \d ->
-    forall (tList tNat) $ \ds ->
-      forall tAux $ \pol ->
-        (tIndex d ~> tTensor (tBool pol) ds) ~> tTensor (tBool pol) (cons tNat d ds)
+    forall type0 $ \tRes ->
+      (tIndex d ~> tRes) ~> tTensor tRes (cons tNat d (nil tNat (tList tNat)))
 
-typeOfQuantifierIn :: DSLExpr
-typeOfQuantifierIn =
+typeOfQuantifierIn :: Quantifier -> DSLExpr
+typeOfQuantifierIn q =
   forall type0 $ \tElem ->
     forall type0 $ \tCont ->
-      forall tAux $ \pol ->
-        hasConOps tElem tCont ~~~> (tElem ~> tBool pol) ~> tCont ~> tBool pol
+      forall type0 $ \tRes ->
+        hasQuantifierIn q tElem tCont tRes ~~~> (tElem ~> tRes) ~> tCont ~> tRes
 
 typeOfForeachIn :: DSLExpr
 typeOfForeachIn =
   forall tNat $ \d ->
     forall type0 $ \tElem ->
-      forall tAux $ \pol ->
-        -- This is a hack. Need to think about the multi-dimensional case
-        -- more carefully.
-        let ds = lseq tNat (tList tNat) [d] in
-        (tElem ~> tBool pol) ~> tTensor tElem ds ~> tTensor (tBool pol) ds
+      forall tLin $ \lin ->
+        forall tPol $ \pol ->
+          -- This is a hack. Need to think about the multi-dimensional case
+          -- more carefully.
+          let ds = lseq tNat (tList tNat) [d] in
+          (tElem ~> tBool lin pol) ~> tTensor tElem ds ~> tTensor (tBool lin pol) ds
 
 typeOfCons :: DSLExpr
 typeOfCons =
@@ -600,4 +601,4 @@ typeOfFoldOp =
   forall type0 $ \tElem ->
     forall type0 $ \tCont ->
       forall type0 $ \tRes ->
-        hasConOps tElem tCont ~~~> (tElem ~> tRes ~> tRes) ~> tRes ~> tCont ~> tRes
+        hasFold tElem tCont ~~~> (tElem ~> tRes ~> tRes) ~> tRes ~> tCont ~> tRes

@@ -16,7 +16,7 @@ checkQuantifiersAndNegateIfNecessary :: MonadCompile m
                                      -> CheckedExpr
                                      -> m (Bool, CheckedExpr)
 checkQuantifiersAndNegateIfNecessary backend ident expr =
-  logCompilerPass "quantifier analysis" $ do
+  logCompilerPass MinDetail "quantifier analysis" $ do
     quantifier <- checkQuantifiersAreHomogeneous backend ident expr
     logDebug MinDetail $ "Quantifier type: " <> pretty quantifier
 
@@ -46,7 +46,7 @@ checkQuantifiersAreHomogeneous target ident expr = maybe Forall fst <$> go expr
       Ann{}       -> normalisationError currentPass "Ann"
       Let{}       -> normalisationError currentPass "Let"
       Lam{}       -> normalisationError currentPass "Lam"
-      Type{}      -> typeError          currentPass "Type"
+      Universe{}  -> typeError          currentPass "Universe"
       Pi{}        -> typeError          currentPass "Pi"
       PrimDict{}  -> visibilityError    currentPass "PrimDict"
       Hole{}      -> visibilityError    currentPass "Hole"

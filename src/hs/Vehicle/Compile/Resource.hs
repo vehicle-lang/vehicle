@@ -2,7 +2,6 @@
 module Vehicle.Compile.Resource
   ( module X
   , ResourceContext
-  , checkResourceType
   , expandResources
   ) where
 
@@ -41,19 +40,6 @@ instance Monoid ResourceContext where
   mempty = ResourceContext mempty mempty mempty
 
 --------------------------------------------------------------------------------
--- Type-checking
-
-checkResourceType :: MonadCompile m
-                  => ResourceType
-                  -> Provenance
-                  -> Identifier
-                  -> CheckedExpr
-                  -> m ()
-checkResourceType Parameter = checkParameterType
-checkResourceType Dataset   = checkDatasetType
-checkResourceType Network   = checkNetworkType
-
---------------------------------------------------------------------------------
 -- Resource monad
 
 type MonadResource m =
@@ -84,7 +70,7 @@ expandResources :: (MonadCompile m, MonadIO m)
                 -> CheckedProg
                 -> m (NetworkContext, CheckedProg)
 expandResources resources@Resources{..} expandDatasets prog =
-  logCompilerPass "expansion of external resources" $ do
+  logCompilerPass MinDetail "expansion of external resources" $ do
     (prog', ResourceContext{..}) <- runWriterT (runReaderT (processProg prog) (resources, expandDatasets))
 
     warnIfUnusedResources Parameter (Map.keysSet parameters) parameterContext
@@ -117,6 +103,6 @@ processDecl d@(DefResource ann resourceType ident declType) = do
           datasetExpr <- parseDataset (datasets resources) ann ident declType
           return $ Just $ DefFunction ann Nothing ident declType datasetExpr
     Network -> do
-      networkType <- extractNetworkType ann ident declType
+      networkType <- getNetworkType ann ident declType
       addNetworkType name networkType
       return Nothing

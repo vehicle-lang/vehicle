@@ -1,17 +1,19 @@
 module Vehicle.Compile.Type.WeakHeadNormalForm
   ( WHNFable(..)
-  , whnfWithMetas
+  , whnfExprWithMetas
+  , whnfConstraintWithMetas
   ) where
 
-import Control.Monad
+import Control.Monad ( (<=<) )
 import Control.Monad.Reader (MonadReader, runReaderT, ask)
-import Control.Monad.State (MonadState(..))
 import Data.Map qualified as Map (lookup)
 import Data.List.NonEmpty (NonEmpty(..))
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Error
+import Vehicle.Compile.Type.VariableContext
+import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.Constraint
 
 --------------------------------------------------------------------------------
 -- Normalisation to weak-head normal form
@@ -19,7 +21,7 @@ import Vehicle.Compile.Error
 -- This only deals with normalisation required during type-checking.
 -- For full normalisation including builtins see `Vehicle.Compile.Normalise`.
 
-norm :: MonadReader VariableCtx m => CheckedExpr -> m CheckedExpr
+norm :: (MonadCompile m, MonadReader VariableCtx m) => CheckedExpr -> m CheckedExpr
 norm (TensorType _ tElem (SeqExpr _ _ _ [])) = norm tElem
 norm e@(App ann fun (arg :| args))      = do
   normFun  <- norm fun
@@ -28,6 +30,7 @@ norm e@(App ann fun (arg :| args))      = do
       nfBody <- norm (argExpr arg `substInto` body)
       return $ normAppList ann nfBody args
     _            -> return e
+
 norm e@(Var _ v) = do
   VariableCtx{..} <- ask
   case v of
@@ -45,13 +48,28 @@ norm e                    = return e
 --------------------------------------------------------------------------------
 -- WHNF combined with meta variable subsitution
 
-whnfWithMetas :: (MonadLogger m, MonadState MetaCtx m)
-              => VariableCtx
-              -> CheckedExpr
-              -> m CheckedExpr
-whnfWithMetas ctx e = do
+whnfExprWithMetas :: MonadMeta m
+                  => VariableCtx
+                  -> CheckedExpr
+                  -> m CheckedExpr
+whnfExprWithMetas ctx e = do
   e' <- substMetas e
   runReaderT (norm e') ctx
+
+whnfConstraintWithMetas :: MonadMeta m
+                        => Constraint
+                        -> m Constraint
+whnfConstraintWithMetas = \case
+  UC ctx (Unify (e1, e2)) -> do
+    e1' <- whnfExprWithMetas (varContext ctx) e1
+    e2' <- whnfExprWithMetas (varContext ctx) e2
+    return $ UC ctx (Unify (e1', e2'))
+
+  TC ctx (m `Has` e) -> case e of
+    App p tc args -> do
+      args' <- traverse (traverseArgExpr (whnfExprWithMetas (varContext ctx))) args
+      return $ TC ctx (m `Has` App p tc args')
+    _ -> compilerDeveloperError "Malformed type-class constraint during WHNF"
 
 --------------------------------------------------------------------------------
 -- Recursively go through a check program and convert all implicit argument
@@ -90,10 +108,10 @@ whnfDecl = traverseDeclExprs whnfExpr
 whnfExpr :: (MonadCompile m, MonadReader VariableCtx m) => CheckedExpr -> m CheckedExpr
 whnfExpr expr = do
   res <- case expr of
-    Meta{} -> resolutionError currentPhase "Meta"
     Hole{} -> resolutionError currentPhase "Hole"
 
-    Type{}     -> return expr
+    Meta{}     -> return expr
+    Universe{} -> return expr
     Literal{}  -> return expr
     Builtin{}  -> return expr
     Ann{}      -> return expr
@@ -101,7 +119,7 @@ whnfExpr expr = do
     Var{}      -> return expr
 
     Pi ann binder resultType -> Pi ann binder <$> whnfExpr resultType
-    LSeq ann d es            -> LSeq ann d <$> traverse whnfExpr es
+    LSeq ann es              -> LSeq ann <$> traverse whnfExpr es
     App p fun args           -> App p <$> whnfExpr fun <*> traverse whnfArg args
 
     Let ann e1 binder e2 -> do

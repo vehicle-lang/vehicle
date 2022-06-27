@@ -15,7 +15,7 @@ import Test.Compile.Unit.QuantifierLifting ( quantiferLiftingTests )
 
 -- TODO plug through the testing options
 unitTests :: MonadTest m => m TestTree
-unitTests = return $ testGroup "UnitTests"
+unitTests = testGroup "UnitTests" <$> sequence
   [ alphaEquivalenceTests
   , coDeBruijnTests
   , positionTreeTests

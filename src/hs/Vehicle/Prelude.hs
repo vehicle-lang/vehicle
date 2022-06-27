@@ -20,6 +20,7 @@ module Vehicle.Prelude
   , removeFileIfExists
   , fatalError
   , programOutput
+  , partitionM
   ) where
 
 import Control.Monad.IO.Class
@@ -82,6 +83,13 @@ rangeStart InfiniteRange               = Nothing
 repeatN :: (a -> a) -> Int -> a -> a
 repeatN _ 0 = id
 repeatN f n = f . repeatN f (n-1)
+
+partitionM :: Monad m => (a -> m Bool) -> [a] -> m ([a], [a])
+partitionM _ [] = pure ([], [])
+partitionM f (x:xs) = do
+    res <- f x
+    (as,bs) <- partitionM f xs
+    pure ([x | res]++as, [x | not res]++bs)
 
 duplicate :: String -> Int -> String
 duplicate string n = concat $ replicate n string

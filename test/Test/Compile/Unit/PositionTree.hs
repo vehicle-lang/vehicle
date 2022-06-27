@@ -20,70 +20,83 @@ import Test.Compile.Utils
 --------------------------------------------------------------------------------
 -- Let lifting tests
 
-data PrefixTestCase = PrefixTestCase
-  { tree1     :: PositionTree
-  , tree2     :: PositionTree
-  , remainder :: Maybe PositionTree
-  , suffixes  :: [PositionTree]
-  }
+positionTreeTests :: MonadTest m => m TestTree
+positionTreeTests = testGroup "PositionTree" . concat <$> sequence
+  [ prefixTests
+  , substTests
+  ]
 
-positionTreeTests :: TestTree
-positionTreeTests = testGroup "PositionTree"
-  [ testCase "prefix: x+y || x+y && y" $ prefixTest $ PrefixTestCase
-    { tree1     = Leaf
+prefixTests :: MonadTest m => m [TestTree]
+prefixTests = traverse prefixTest
+  [ PrefixTestCase
+    { _testName = "prefix: x+y || x+y && y"
+    , tree1     = Leaf
     , tree2     = Node (There (Here Leaf))
     , remainder = Nothing
     , suffixes  = [Node (There (Here Leaf))]
     }
 
-  , testCase "prefix: (x+y)+y || x+y && y" $ prefixTest $ PrefixTestCase
-    { tree1     = Node (Here Leaf)
+  , PrefixTestCase
+    { _testName = "prefix: (x+y)+y || x+y && y"
+    , tree1     = Node (Here Leaf)
     , tree2     = Node (Both (Node (There (Here Leaf))) (Here Leaf))
     , remainder = Just (Node (There (Here Leaf)))
     , suffixes  = [Node (There (Here Leaf))]
     }
 
-  , testCase "prefix: ((x+y)/(x+y))+y || x+y && y" $ prefixTest $ PrefixTestCase
-    { tree1     = Node (Here (Node (Both Leaf                       (Here Leaf))))
+  , PrefixTestCase
+    { _testName = "prefix: ((x+y)/(x+y))+y || x+y && y"
+    , tree1     = Node (Here (Node (Both Leaf                       (Here Leaf))))
     , tree2     = Node (Both (Node (Both (Node (There (Here Leaf))) (Here (Node (There (Here Leaf))))))
                              (Here Leaf))
     , remainder = Just (Node (There (Here Leaf)))
     , suffixes  = replicate 2 (Node (There (Here Leaf)))
     }
+  ]
 
-  , testCase "substPosFun" $ substPosTest
+substTests :: MonadTest m => m [TestTree]
+substTests = traverse substPosTest
+  [ SubstPosTestCase "substPosFun"
       "Int"
       (Node (Both Leaf (Here Leaf)))
       "Nat -> Nat"
       "Int -> Int"
 
-  , testCase "substPosFunLeft" $ substPosTest
+  , SubstPosTestCase "substPosFunLeft"
       "Int"
       (Node (Here Leaf))
       "Nat -> Nat"
       "Int -> Nat"
 
-  , testCase "substPosFunRight" $ substPosTest
+  , SubstPosTestCase "substPosFunRight"
       "Int"
       (Node (There (Here Leaf)))
       "Nat -> Nat"
       "Nat -> Int"
 
-  , testCase "substPosInt" $ substPosTest
+  , SubstPosTestCase "substPosInt"
       "(1 : Int)"
       (Node (There (Here Leaf)))
       "\\(x : Int) -> - x"
       "\\(x : Int) -> (1 : Int)"
 
-  , testCase "substPosNegInt" $ substPosTest
+  , SubstPosTestCase "substPosNegInt"
       "(1 : Int)"
-      (Node (There (Here (Node (There (There (There (Here Leaf))))))))
+      (Node $ There $ Here $ Node $ There $ There $ There $ There $ Here Leaf)
       "\\(x : Int) -> - x"
       "\\(x : Int) -> - (1 : Int)"
   ]
 
-prefixTest :: PrefixTestCase -> Assertion
-prefixTest (PrefixTestCase tree1 tree2 expectedRemainder expectedSuffixes) = do
+data PrefixTestCase = PrefixTestCase
+  { _testName :: String
+  , tree1     :: PositionTree
+  , tree2     :: PositionTree
+  , remainder :: Maybe PositionTree
+  , suffixes  :: [PositionTree]
+  }
+
+prefixTest :: MonadTest m => PrefixTestCase -> m TestTree
+prefixTest (PrefixTestCase testName tree1 tree2 expectedRemainder expectedSuffixes) = do
   let expectedResult = (expectedRemainder, expectedSuffixes)
   let result = stripPrefix tree1 tree2
   let revResult = stripPrefix tree2 tree1
@@ -93,25 +106,34 @@ prefixTest (PrefixTestCase tree1 tree2 expectedRemainder expectedSuffixes) = do
         " but was actually " <> show result <> " and the reverse application" <>
         " resulted in " <> show revResult
 
-  assertBool errorMessage (result == expectedResult)
+  return $ testCase testName $ assertBool errorMessage (result == expectedResult)
 
-substPosTest :: Text -> PositionTree -> Text -> Text -> Assertion
-substPosTest valueText positions exprText expectedResultText = do
-  let value = toCoDBExpr $ textToCheckedExpr valueText
-  let expr = toCoDBExpr $ textToCheckedExpr exprText
-  let expectedResult = toCoDBExpr $ textToCheckedExpr expectedResultText
+data SubstPosTestCase = SubstPosTestCase
+  { _testName1     :: String
+  , valueText      :: Text
+  , positions      :: PositionTree
+  , exprText       :: Text
+  , expectedResult :: Text
+  }
 
-  let result = substPos value (Just positions) expr
+substPosTest :: MonadTest m => SubstPosTestCase -> m TestTree
+substPosTest (SubstPosTestCase testName valueText positions exprText expectedResult) =
+  unitTestCase testName $ do
+    value    <- toCoDBExpr <$> typeCheckExpr valueText
+    expr     <- toCoDBExpr <$> typeCheckExpr exprText
+    expected <- toCoDBExpr <$> typeCheckExpr expectedResult
 
-  let errorMessage = layoutAsString $
-        "Expected the result of substituting" <+> squotes (pretty valueText) <+>
-        "at positions" <> line <>
-          indent 2 (squotes (pretty positions)) <> line <>
-        "into" <> line <>
-          indent 2 (squotes (pretty exprText)) <> line <>
-        "to be" <> line <>
-          indent 2 (squotes (pretty expectedResultText)) <> line <>
-        "but found" <> line <>
-          indent 2 (squotes (prettySimple result))
+    let result = substPos value (Just positions) expr
 
-  assertBool errorMessage (result == expectedResult)
+    let errorMessage = layoutAsString $
+          "Expected the result of substituting" <+> squotes (pretty valueText) <+>
+          "at positions" <> line <>
+            indent 2 (squotes (pretty positions)) <> line <>
+          "into" <> line <>
+            indent 2 (squotes (prettySimple expr)) <> line <>
+          "to be" <> line <>
+            indent 2 (squotes (prettySimple expected)) <> line <>
+          "but found" <> line <>
+            indent 2 (squotes (prettySimple result))
+
+    return $ assertBool errorMessage (result == expected)

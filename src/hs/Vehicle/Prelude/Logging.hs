@@ -8,7 +8,7 @@ module Vehicle.Prelude.Logging
   , MonadLogger(incrCallDepth, decrCallDepth, logMessage)
   , LoggerT
   , Logger
-  , runLogger
+  , intToDebugLevel
   , discardLogger
   , discardLoggerT
   , logWarning
@@ -19,6 +19,7 @@ module Vehicle.Prelude.Logging
   , setBackgroundColour
   , fromLoggedIO
   , fromLoggerTIO
+  , runLogger
   ) where
 
 import Control.Monad (when, forM_)
@@ -42,10 +43,18 @@ data Severity
   deriving (Eq, Ord)
 
 data DebugLevel
-  = MinDetail
+  = NoDetail
+  | MinDetail
   | MidDetail
   | MaxDetail
   deriving (Eq, Ord, Show)
+
+intToDebugLevel :: Int -> DebugLevel
+intToDebugLevel l
+  | l <= 0    = NoDetail
+  | l == 1    = MinDetail
+  | l == 2    = MidDetail
+  | otherwise = MaxDetail
 
 data LoggingOptions = LoggingOptions
   { errorHandle  :: Handle
@@ -159,9 +168,9 @@ logWarning text = logMessage $ Message Warning (layoutAsText text)
 
 logDebug :: MonadLogger m => DebugLevel -> Doc a -> m ()
 logDebug level text = do
-  depth <- getCallDepth
   debugLevel <- getDebugLevel
-  when (level <= debugLevel) $
+  when (level <= debugLevel) $ do
+    depth <- getCallDepth
     logMessage $ Message Debug (layoutAsText (indent depth text))
 
 instance Show Message where

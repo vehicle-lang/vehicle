@@ -59,7 +59,7 @@ typeCheckingErrors = failTestGroup "TypingErrors"
     }
 
   , testSpec
-    { testName     = "indexOutOfBounds"
+    { testName     = "indexOutOfBoundsConcrete"
     , testLocation = Tests
     , testTargets  = [MarabouBackend]
     }

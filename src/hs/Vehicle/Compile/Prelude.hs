@@ -4,14 +4,10 @@ module Vehicle.Compile.Prelude
   , module Vehicle.Compile.Prelude
   ) where
 
-import Data.Map (Map)
-import Data.Map qualified as Map
-
 import Vehicle.Prelude as X
 import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Language.AST as X
 import Vehicle.Resource as X
-import Control.Monad.Reader
 
 --------------------------------------------------------------------------------
 -- Compilation
@@ -87,74 +83,25 @@ data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
 --------------------------------------------------------------------------------
 -- Contexts
 
--- | The names, types and values if known of the variables that are in
--- currently in scope, indexed into via De Bruijn expressions.
-type BoundCtx = [(DBBinding, CheckedExpr, Maybe CheckedExpr)]
+class HasBoundCtx a where
+  boundContextOf :: a -> [DBBinding]
 
-instance IsBoundCtx BoundCtx where
-  ctxNames = map (\(n, _, _) -> n)
+instance HasBoundCtx [DBBinding] where
+  boundContextOf = id
 
--- | The declarations that are currently in scope, indexed into via their names.
--- The first component is the type, and the second one the expression (if not
--- a postulate-style declaration).
-type DeclCtx = Map Identifier (CheckedExpr, Maybe CheckedExpr)
-
--- | Combined context
-data VariableCtx = VariableCtx
-  { boundCtx :: BoundCtx
-  , declCtx  :: DeclCtx
-  }
-
-emptyVariableCtx :: VariableCtx
-emptyVariableCtx = VariableCtx mempty mempty
-
-class IsBoundCtx a where
-  ctxNames :: a -> [DBBinding]
-
-instance IsBoundCtx [DBBinding] where
-  ctxNames = id
-
-instance IsBoundCtx [Symbol] where
-  ctxNames = map Just
-
-getDeclCtx :: MonadReader VariableCtx m => m DeclCtx
-getDeclCtx = asks declCtx
-
-addToDeclCtx :: MonadReader VariableCtx m => CheckedDecl -> m a -> m a
-addToDeclCtx decl = local addDecl
-  where
-    declName = identifierOf decl
-    declType = typeOf decl
-    declBody = bodyOf decl
-
-    addDecl :: VariableCtx -> VariableCtx
-    addDecl VariableCtx{..} = VariableCtx
-      { declCtx = Map.insert declName (declType, declBody) declCtx
-      , ..
-      }
-
-getBoundCtx :: MonadReader VariableCtx m => m BoundCtx
-getBoundCtx = asks boundCtx
-
-getVariableCtx :: MonadReader VariableCtx m => m VariableCtx
-getVariableCtx = ask
-
-addToBoundCtx :: MonadReader VariableCtx m => DBBinding -> CheckedExpr -> Maybe CheckedExpr -> m a -> m a
-addToBoundCtx n t e = local add
-  where
-    add :: VariableCtx -> VariableCtx
-    add VariableCtx{..} = VariableCtx{ boundCtx = (n, t, e) : boundCtx, ..}
+instance HasBoundCtx [Symbol] where
+  boundContextOf = map Just
 
 --------------------------------------------------------------------------------
 -- Logging
 
-logCompilerPass :: MonadLogger m => Doc a -> m b -> m b
-logCompilerPass passName performPass = do
-  logDebug MinDetail $ "Starting" <+> passName
+logCompilerPass :: MonadLogger m => DebugLevel -> Doc a -> m b -> m b
+logCompilerPass level passName performPass = do
+  logDebug level $ "Starting" <+> passName
   incrCallDepth
   result <- performPass
   decrCallDepth
-  logDebug MinDetail $ "Finished" <+> passName <> line
+  logDebug level $ "Finished" <+> passName <> line
   return result
 
 logCompilerPassOutput :: MonadLogger m => Doc a -> m ()

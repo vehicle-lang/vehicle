@@ -104,14 +104,14 @@ instance Elab (NonEmpty B.Decl) V.InputDecl where
 
 instance Elab B.Expr V.InputExpr where
   elab = \case
-    B.Type t                  -> return $ V.Type (mkAnn t) (parseTypeLevel t)
+    B.Type t                  -> return $ V.TypeUniverse (mkAnn t) (parseTypeLevel t)
     B.Var  n                  -> return $ V.Var  (mkAnn n) (tkSymbol n)
     B.Hole n                  -> return $ V.mkHole (V.tkProvenance n) (tkSymbol n)
     B.Literal l               -> elab l
 
-    B.Ann e tk t              -> op2 V.Ann tk  (elab e) (elab t)
-    B.Fun t1 tk t2            -> op2 V.Pi  tk  (elabFunInputType t1) (elab t2)
-    B.LSeq tk1 es _tk2        -> op1 V.mkSeqExpr tk1 (traverse elab es)
+    B.Ann e tk t              -> op2 V.Ann  tk  (elab e) (elab t)
+    B.Fun t1 tk t2            -> op2 V.Pi   tk  (elabFunInputType t1) (elab t2)
+    B.LSeq tk1 es _tk2        -> op1 V.LSeq tk1 (traverse elab es)
 
     B.App e1 e2               -> elabApp e1 e2
     B.Let tk1 ds e            -> unfoldLet (mkAnn tk1) <$> bitraverse (traverse elab) elab (ds, e)
@@ -157,20 +157,6 @@ instance Elab B.Expr V.InputExpr where
     B.At e1 tk e2             -> builtin V.At   tk [e1, e2]
     B.Map tk e1 e2            -> builtin V.Map  tk [e1, e2]
     B.Fold tk e1 e2 e3        -> builtin V.Fold tk [e1, e2, e3]
-
-    --TypeClass folded into Expressions
-    B.HasEq      tk e       -> builtin (V.TypeClass V.HasEq)              tk [e]
-    B.HasOrd     tk e       -> builtin (V.TypeClass V.HasOrd)             tk [e]
-    B.HasAdd     tk e       -> builtin (V.TypeClass V.HasAdd)             tk [e]
-    B.HasSub     tk e       -> builtin (V.TypeClass V.HasSub)             tk [e]
-    B.HasMul     tk e       -> builtin (V.TypeClass V.HasMul)             tk [e]
-    B.HasDiv     tk e       -> builtin (V.TypeClass V.HasDiv)             tk [e]
-    B.HasNeg     tk e       -> builtin (V.TypeClass V.HasNeg)             tk [e]
-    B.HasConOps  tk e1 e2   -> builtin (V.TypeClass V.HasConOps)          tk [e1, e2]
-    B.HasNatLits tk n e     -> builtin (V.TypeClass (V.HasNatLitsUpTo (fromIntegral n))) tk [e]
-    B.HasIntLits tk e       -> builtin (V.TypeClass V.HasIntLits)         tk [e]
-    B.HasRatLits tk e       -> builtin (V.TypeClass V.HasRatLits)         tk [e]
-    B.HasConLits tk n e1 e2 -> builtin (V.TypeClass (V.HasConLitsOfSize (fromIntegral n))) tk [e1, e2]
 
 instance Elab B.Arg V.InputArg where
   elab (B.ExplicitArg e) = mkArg V.Explicit <$> elab e

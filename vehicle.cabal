@@ -112,6 +112,9 @@ library
                       , Vehicle.Prelude.DeveloperError
 
                       , Vehicle.Language.AST.Builtin
+                      , Vehicle.Language.AST.Builtin.Core
+                      , Vehicle.Language.AST.Builtin.Linearity
+                      , Vehicle.Language.AST.Builtin.Polarity
                       , Vehicle.Language.AST.BuiltinPatterns
                       , Vehicle.Language.AST.Core
                       , Vehicle.Language.AST.DeBruijn
@@ -126,13 +129,15 @@ library
                       , Vehicle.Compile.Type.Constraint
                       , Vehicle.Compile.Type.Meta
                       , Vehicle.Compile.Type.MetaSet
-                      , Vehicle.Compile.Type.MetaSubstitution
+                      , Vehicle.Compile.Type.MetaMap
                       , Vehicle.Compile.Type.TypeClass
                       , Vehicle.Compile.Type.TypeClass.Defaults
                       , Vehicle.Compile.Type.Auxiliary
-                      , Vehicle.Compile.Type.Auxiliary.Polarity
+                      , Vehicle.Compile.Type.Generalise
                       , Vehicle.Compile.Type.Unify
+                      , Vehicle.Compile.Type.Resource
                       , Vehicle.Compile.Type.WeakHeadNormalForm
+                      , Vehicle.Compile.Type.VariableContext
 
                       , Vehicle.Compile.Resource.Dataset.IDX
                       , Vehicle.Compile.CapitaliseTypeNames
@@ -239,7 +244,11 @@ test-suite vehicle-test
                     , Test.GoldenUtils
                     , Test.FilePathUtils
 
-  ghc-options:        -threaded -rtsopts -with-rtsopts=-N -main-is Test
+  ghc-options:        -threaded
+                      -rtsopts
+                      "-with-rtsopts=-N"
+                      -main-is Test
+                      -O0
   default-extensions: ImportQualifiedPost
                     , OverloadedStrings
                     , RecordWildCards

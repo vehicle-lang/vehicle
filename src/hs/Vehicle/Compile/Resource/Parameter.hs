@@ -1,6 +1,5 @@
 module Vehicle.Compile.Resource.Parameter
-  ( checkParameterType
-  , parseParameterValue
+  ( parseParameterValue
   ) where
 
 import Control.Monad.Except
@@ -10,34 +9,6 @@ import Text.Read (readMaybe)
 import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Resource.Core
-
---------------------------------------------------------------------------------
--- Parameter typing
-
-getParameterType :: Provenance
-                 -> Identifier
-                 -> CheckedExpr
-                 -> Either CompileError ParameterType
-getParameterType ann ident paramType = case paramType of
-  BoolType{}    -> Right ParamBoolType
-  NatType{}     -> Right ParamNatType
-  IntType{}     -> Right ParamIntType
-  RatType{}     -> Right ParamRatType
-  -- TODO check that Index dimension is constant, or at least will be after
-  -- implicit parameters are filled in (the tricky bit).
-  IndexType _ n -> Right $ ParamIndexType n
-  _             -> Left $ ParameterTypeUnsupported ident ann paramType
-
-checkParameterType :: MonadCompile m
-                   => Provenance
-                   -> Identifier
-                   -> CheckedExpr
-                   -> m ()
-checkParameterType ann ident paramType =
-  case getParameterType ann ident paramType of
-    Left err -> throwError err
-    Right{}  -> return ()
 
 --------------------------------------------------------------------------------
 -- Parameter parsing
@@ -50,19 +21,21 @@ parseParameterValue :: MonadCompile m
                     -> m CheckedExpr
 parseParameterValue parameterValues ann ident paramType = do
   let name = nameOf ident
-  parser <- case getParameterType ann ident paramType of
-    Left{} -> compilerDeveloperError $
+  parser <- case paramType of
+    BoolType{}            -> return parseBool
+    NatType{}             -> return parseNat
+    IntType{}             -> return parseInt
+    RatType{}             -> return parseRat
+    ConcreteIndexType _ n -> return (parseIndex paramType n)
+
+    -- TODO check that Index dimension is constant, or at least will be after
+    -- implicit parameters are filled in (the tricky bit).
+    IndexType{} -> throwError $
+      ParameterTypeVariableSizeIndex ident ann paramType
+
+    _ -> compilerDeveloperError $
       "Invalid parameter type" <+> squotes (prettySimple paramType) <+>
       "should have been caught during type-checking"
-    Right validType -> case validType of
-      ParamBoolType       -> return parseBool
-      ParamNatType        -> return parseNat
-      ParamIntType        -> return parseInt
-      ParamRatType        -> return parseRat
-      ParamIndexType tDim -> case tDim of
-        (NatLiteralExpr _ _ n) -> return (parseIndex paramType n)
-        _                      ->
-          throwError $ ParameterTypeVariableSizeIndex ident ann paramType
 
   case Map.lookup name parameterValues of
     Nothing    -> throwError $ ResourceNotProvided ident ann Parameter

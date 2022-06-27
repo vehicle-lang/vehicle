@@ -30,7 +30,7 @@ class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delab = discardLogger . delabM
 
   delabWithLogging ::  MonadDelab m => t -> m bnfc
-  delabWithLogging x = logCompilerPass "delaboration" $ delabM x
+  delabWithLogging x = logCompilerPass MinDetail "delaboration" $ delabM x
 
 -- |Elaborate programs.
 instance Delaborate V.NamedProg B.Prog where
@@ -46,15 +46,15 @@ instance Delaborate V.NamedDecl B.Decl where
 
 instance Delaborate V.NamedExpr B.Expr where
   delabM expr = case expr of
-    V.Type _ l     -> return $ B.Type (mkToken B.TypeToken (pack $ "Type" <> show l))
+    V.Universe _ u -> return $ delabUniverse u
     V.Var _ n      -> return $ B.Var  (delabSymbol n)
     V.Hole _ n     -> return $ B.Hole (mkToken B.HoleToken n)
     V.Literal _ l  -> return $ delabLiteral l
-    V.Builtin _ op -> return $ B.Builtin (delabBuiltin op)
+    V.Builtin _ op -> return $ delabBuiltin op
 
     V.Ann _ e t    -> B.Ann <$> delabM e <*> delabM t
     V.Pi  _ b t    -> B.Pi  <$> delabM b <*> delabM t
-    V.LSeq _ _ es  -> B.LSeq <$> traverse delabM es
+    V.LSeq _ es    -> B.LSeq <$> traverse delabM es
 
     V.Let _ v b e  -> B.Let <$> delabM b <*> delabM v <*> delabM e
     V.Lam _ b e    -> B.Lam <$> delabM b <*> delabM e
@@ -79,13 +79,19 @@ instance Delaborate V.NamedBinder B.Binder where
     V.Implicit -> B.ImplicitBinder (delabSymbol n) <$> delabM t
     V.Instance -> B.InstanceBinder (delabSymbol n) <$> delabM t
 
+delabUniverse :: V.Universe -> B.Expr
+delabUniverse = \case
+  TypeUniv l    -> B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
+  PolarityUniv  -> B.Builtin $ mkToken B.BuiltinToken $ layoutAsText (pretty PolarityUniv)
+  LinearityUniv -> B.Builtin $ mkToken B.BuiltinToken $ layoutAsText (pretty LinearityUniv)
+
 delabLiteral :: V.Literal -> B.Expr
 delabLiteral l = case l of
   V.LBool b -> delabBoolLit b
   V.LNat n  -> delabNatLit n
   V.LInt i  -> if i >= 0
     then delabNatLit i
-    else B.App (B.Builtin (delabBuiltin V.Neg)) $ B.ExplicitArg (delabNatLit (-i))
+    else B.App (delabBuiltin V.Neg) $ B.ExplicitArg (delabNatLit (-i))
   V.LRat r  -> delabRatLit r
 
 delabBoolLit :: Bool -> B.Expr
@@ -103,8 +109,8 @@ delabSymbol = mkToken B.NameToken
 delabIdentifier :: V.Identifier -> B.NameToken
 delabIdentifier (V.Identifier n) = mkToken B.NameToken n
 
-delabBuiltin :: V.Builtin -> B.BuiltinToken
-delabBuiltin op = mkToken B.BuiltinToken $ V.symbolFromBuiltin op
+delabBuiltin :: V.Builtin -> B.Expr
+delabBuiltin op = B.Builtin $ mkToken B.BuiltinToken $ V.symbolFromBuiltin op
 
 delabApp :: B.Expr -> [B.Arg] -> B.Expr
 delabApp fun []           = fun

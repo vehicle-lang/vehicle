@@ -75,14 +75,14 @@ instance SupplyNames Decl where
 
 instance SupplyNames Expr where
   supplyNames f e = case e of
-    Type     ann l        -> return (Type ann l)
+    Universe ann l        -> return (Universe ann l)
     Hole     ann name     -> return (Hole ann name)
     Builtin  ann op       -> return (Builtin ann op)
     Literal  ann l        -> return (Literal ann l)
     Var      ann v        -> return $ Var ann v
     Ann      ann e1 t     -> Ann ann <$> supplyNames f e1 <*> supplyNames f t
     App      ann fun args -> App ann <$> supplyNames f fun <*> traverse (supplyNames f) args
-    LSeq     ann dict es  -> LSeq ann <$> supplyNames f dict <*> traverse (supplyNames f) es
+    LSeq     ann es       -> LSeq ann <$> traverse (supplyNames f) es
     PrimDict ann tc       -> PrimDict ann <$> supplyNames f tc
     Meta     ann i        -> return $ Meta ann i
 

@@ -9,7 +9,7 @@ import Data.Text
 import Data.Hashable
 
 import Vehicle.Language.Print
-import Vehicle.Compile (typeCheckExpr)
+import Vehicle.Compile (typeCheckExpr, typeCheck)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
@@ -21,14 +21,15 @@ import Test.Compile.Utils
 --------------------------------------------------------------------------------
 -- Let lifting tests
 
-letInsertionTests :: TestTree
-letInsertionTests = testGroup "LetInsertion"
-  [ testCase "insertFun" $ letInsertionTest
+letInsertionTests :: MonadTest m => m TestTree
+letInsertionTests = testGroup "LetInsertion" <$>
+  traverse letInsertionTest
+  [ InsertionTestSpec "insertFun"
       standardFilter
       "(Nat -> Nat) -> (Nat -> Nat)"
       "let y = (Nat -> Nat) in y -> y"
 
-  , testCase "insertNeg" $ letInsertionTest
+  , InsertionTestSpec "insertNeg"
       standardFilter
       "\\(x : Int) -> (- x) + (- x)"
       "\\(x : Int) -> (let y = (- x) in (y + y))"
@@ -46,11 +47,13 @@ letInsertionTests = testGroup "LetInsertion"
       "\\(x : Int) -> (let b = (- x) in (\\(y : Int) -> (let a = (- y) in (let c = (a + b) in (c / c))) + y))"
 -}
 
-  , testCase "insertLiftApp" $ letInsertionTest
+  , InsertionTestSpec "insertLiftApp"
       appFilter
       "- - (1 : Int)"
       "let a = (- (1 : Int)) in (let b = (- a) in b)"
   ]
+
+data InsertionTestSpec = InsertionTestSpec String SubexprFilter Text Text
 
 type SubexprFilter = CheckedCoDBExpr -> Int -> Bool
 
@@ -62,26 +65,24 @@ appFilter (LiteralExpr{}, _) _ = False
 appFilter (App{}, _)         _ = True
 appFilter _                  _ = False
 
-  -- \y -> \x -> ((x+y) / (x+y)) + y
+letInsertionTest :: MonadTest m => InsertionTestSpec -> m TestTree
+letInsertionTest (InsertionTestSpec testName filter input expected) =
+  unitTestCase testName $ do
+    inputExpr    <- typeCheckExpr input
+    expectedExpr <- typeCheckExpr expected
+    result       <- insertLets filter True inputExpr
 
-letInsertionTest :: SubexprFilter -> Text -> Text -> Assertion
-letInsertionTest subexprFilter input expected = do
-  let inputExpr    = textToCheckedExpr input
-  let expectedExpr = textToCheckedExpr expected
+    -- Need to re-typecheck the result as let-insertion puts a Hole on
+    -- each binder type.
+    typedResult <- typeCheck result
 
-  let result = discardLogger (insertLets subexprFilter True inputExpr)
-  -- result <- flushLogs Nothing (insertLets subexprFilter inputExpr)
+    let errorMessage = layoutAsString $
+          "Expected the result of let lifting" <> line <>
+            indent 2 (squotes (pretty input)) <> line <>
+          "to be alpha equivalent to" <> line <>
+            indent 2 (squotes (prettyFriendly expectedExpr)) <> line <>
+          "however the result was" <> line <>
+            indent 2 (squotes (prettyFriendly typedResult))
 
-  -- Need to re-typecheck the result as let-insertion puts a Hole on
-  -- each binder type.
-  let typedResult = retypeCheckExpr result
-
-  let errorMessage = layoutAsString $
-        "Expected the result of let lifting" <> line <>
-          indent 2 (squotes (pretty input)) <> line <>
-        "to be alpha equivalent to" <> line <>
-          indent 2 (squotes (prettyFriendly expectedExpr)) <> line <>
-        "however the result was" <> line <>
-          indent 2 (squotes (prettyFriendly typedResult))
-
-  assertBool errorMessage (alphaEq expectedExpr typedResult)
+    return $ assertBool errorMessage $
+      alphaEq expectedExpr typedResult

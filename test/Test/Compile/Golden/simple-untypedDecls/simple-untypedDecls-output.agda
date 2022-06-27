@@ -16,8 +16,8 @@ module simple-untypedDecls-temp-output where
 fin3 : ∀ {_x0 : Set} {{_x1 : HasNatLits _x0}} → _x0
 fin3 = 3
 
-intMinus3 : ∀ {_x4 : Set} {{_x5 : HasNatLits _x4}} {{_x6 : HasNeg _x4}} → _x4
+intMinus3 : ∀ {_x4 : Set} {_x5 : Set} {{_x6 : HasNatLits _x5}} {{_x7 : HasNeg _x5}} → _x4
 intMinus3 = - 3
 
-ratMinus3 : ∀ {_x10 : Set} {{_x11 : HasRatLits _x10}} {{_x12 : HasNeg _x10}} → _x10
+ratMinus3 : ∀ {_x12 : Set} {_x13 : Set} {{_x14 : HasRatLits _x13}} {{_x15 : HasNeg _x13}} → _x12
 ratMinus3 = - (ℤ.+ 3 ℚ./ 1)

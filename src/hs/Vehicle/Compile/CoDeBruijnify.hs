@@ -16,7 +16,7 @@ import Vehicle.Language.AST.DeBruijn as DB
 
 toCoDBExpr :: Expr DBBinding DBVar -> (Expr CoDBBinding CoDBVar, BoundVarMap)
 toCoDBExpr = cata $ \case
-  TypeF     ann l        -> (Type ann l,      mempty)
+  UniverseF ann l        -> (Universe ann l,  mempty)
   HoleF     ann n        -> (Hole     ann n,  mempty)
   MetaF     ann m        -> (Meta     ann m,  mempty)
   BuiltinF  ann op       -> (Builtin  ann op, mempty)
@@ -24,8 +24,8 @@ toCoDBExpr = cata $ \case
 
   PrimDictF ann (e, bvm) -> (PrimDict ann e, bvm)
 
-  LSeqF ann (dict, bvm) xs ->
-    let (xs', bvms) = unzip xs in (LSeq ann dict xs', nodeBVM (bvm : bvms))
+  LSeqF ann xs ->
+    let (xs', bvms) = unzip xs in (LSeq ann xs', nodeBVM bvms)
 
   VarF ann v -> case v of
     DB.Free  ident -> (Var ann (CoDBFree ident), mempty)
@@ -71,14 +71,14 @@ class ConvertCodebruijn t where
 
 instance ConvertCodebruijn Expr where
   fromCoDB expr = case recCoDB expr of
-    TypeC    ann l  -> Type    ann l
-    HoleC    ann n  -> Hole    ann n
-    MetaC    ann m  -> Meta    ann m
-    BuiltinC ann op -> Builtin ann op
-    LiteralC ann l  -> Literal ann l
+    UniverseC ann l  -> Universe ann l
+    HoleC     ann n  -> Hole     ann n
+    MetaC     ann m  -> Meta     ann m
+    BuiltinC  ann op -> Builtin  ann op
+    LiteralC  ann l  -> Literal  ann l
 
-    LSeqC ann dict xs -> LSeq ann (fromCoDB dict) (fmap fromCoDB xs)
-    VarC  ann v       -> Var ann v
+    LSeqC ann xs -> LSeq ann  (fmap fromCoDB xs)
+    VarC  ann v  -> Var ann v
 
     AnnC ann e t               -> Ann ann (fromCoDB e) (fromCoDB t)
     AppC ann fun args          -> App ann (fromCoDB fun) (fmap fromCoDB args)

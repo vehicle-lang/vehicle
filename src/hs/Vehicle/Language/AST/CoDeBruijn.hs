@@ -83,7 +83,7 @@ class ExtractPositionTrees t where
 
 instance ExtractPositionTrees Expr where
   extractPTs = cata $ \case
-    TypeF     ann l  -> (Type    ann l,  mempty)
+    UniverseF ann l  -> (Universe ann l,  mempty)
     HoleF     ann n  -> (Hole    ann n,  mempty)
     MetaF     ann m  -> (Meta    ann m,  mempty)
     BuiltinF  ann op -> (Builtin ann op, mempty)
@@ -93,9 +93,9 @@ instance ExtractPositionTrees Expr where
     PrimDictF ann (e, mpts)        -> (PrimDict ann e, mpts)
     AnnF ann (e, mpts1) (t, mpts2) -> (Ann ann e t, mergePTs [mpts1, mpts2])
 
-    LSeqF ann (dict, mpt) xs ->
+    LSeqF ann xs ->
       let (xs', mpts) = unzip xs in
-      (LSeq ann dict xs', mergePTs (mpt : mpts))
+      (LSeq ann xs', mergePTs mpts)
 
     AppF ann (fun, mpt) args ->
       let (args', mpts) = NonEmpty.unzip (fmap extractPTs args) in
@@ -149,7 +149,7 @@ data BinderC
   deriving (Show)
 
 data ExprC
-  = TypeC     Provenance UniverseLevel
+  = UniverseC Provenance Universe
   | AnnC      Provenance CoDBExpr CoDBExpr
   | AppC      Provenance CoDBExpr (NonEmpty CoDBArg)
   | PiC       Provenance CoDBBinder CoDBExpr
@@ -160,7 +160,7 @@ data ExprC
   | LetC      Provenance CoDBExpr CoDBBinder CoDBExpr
   | LamC      Provenance CoDBBinder CoDBExpr
   | LiteralC  Provenance Literal
-  | LSeqC     Provenance CoDBExpr [CoDBExpr]
+  | LSeqC     Provenance [CoDBExpr]
   | PrimDictC Provenance CoDBExpr
   deriving (Show)
 
@@ -169,7 +169,7 @@ class RecCoDB a b where
 
 instance RecCoDB CoDBExpr ExprC where
   recCoDB (expr, bvm) = case (expr, unnodeBVM bvm) of
-    (Type     ann l , _) -> TypeC     ann l
+    (Universe ann u , _) -> UniverseC ann u
     (Hole     ann n , _) -> HoleC     ann n
     (Meta     ann m , _) -> MetaC     ann m
     (Builtin  ann op, _) -> BuiltinC  ann op
@@ -177,7 +177,7 @@ instance RecCoDB CoDBExpr ExprC where
 
     (PrimDict ann e, bvm1 : _) -> PrimDictC ann (e, bvm1)
 
-    (LSeq ann dict xs, bvm1 : bvms) -> LSeqC ann (dict, bvm1) (zip xs bvms)
+    (LSeq ann xs, bvms) -> LSeqC ann (zip xs bvms)
 
     (Var ann v, _) -> case v of
       CoDBFree  ident -> assert (null bvm) (VarC ann (DB.Free ident))
@@ -221,7 +221,7 @@ substPos :: CoDBExpr -> Maybe PositionTree -> CoDBExpr -> CoDBExpr
 substPos _ Nothing         expr = expr
 substPos v (Just Leaf)     _    = v
 substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
-  (TypeC{}    , _) -> invalidPositionTreeError l
+  (UniverseC{}, _) -> invalidPositionTreeError l
   (HoleC{}    , _) -> invalidPositionTreeError l
   (PrimDictC{}, _) -> invalidPositionTreeError l
   (MetaC{}    , _) -> invalidPositionTreeError l
@@ -234,10 +234,9 @@ substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
     let (t', bvm2) = substPos v p2 t in
     (Ann ann e' t', nodeBVM [bvm1, bvm2])
 
-  (LSeqC ann dict xs, p : ps) ->
-    let (dict', bvm1) = substPos v p dict in
+  (LSeqC ann xs, ps) ->
     let (xs', bvms) = unzip (zipWith (substPos v) ps xs) in
-    (LSeq ann dict' xs', nodeBVM (bvm1 : bvms))
+    (LSeq ann xs', nodeBVM bvms)
 
   (AppC ann fun args, p1 : p2 : ps) ->
     let (fun',  bvm1) = substPos v p1 fun in

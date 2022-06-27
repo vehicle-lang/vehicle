@@ -11,7 +11,7 @@ import Data.Maybe (isJust)
 
 import Vehicle.Prelude
 import Vehicle.Resource (ResourceType)
-import Vehicle.Language.AST.Builtin (Builtin, Polarity(..))
+import Vehicle.Language.AST.Builtin(Builtin, Linearity, Polarity)
 import Vehicle.Language.AST.Visibility
 import Vehicle.Language.AST.Provenance
 
@@ -19,6 +19,21 @@ import Vehicle.Language.AST.Provenance
 -- Universes
 
 type UniverseLevel = Int
+
+data Universe
+  = TypeUniv UniverseLevel
+  | LinearityUniv
+  | PolarityUniv
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData   Universe
+instance Hashable Universe
+
+instance Pretty Universe where
+  pretty = \case
+    TypeUniv l    -> "Type" <+> pretty l
+    LinearityUniv -> "LinearityUniverse"
+    PolarityUniv  -> "PolarityUniverse"
 
 --------------------------------------------------------------------------------
 -- Meta-variables
@@ -161,10 +176,10 @@ traverseExplicitArgExpr _ arg               = return arg
 -- either the user assigned names or deBruijn indices.
 data Expr binder var
 
-  -- | The type of types. The type @Type l@ has type @Type (l+1)@.
-  = Type
+  -- | A universe, used to type types.
+  = Universe
     Provenance
-    UniverseLevel
+    Universe
 
   -- | User annotation
   | Ann
@@ -229,7 +244,6 @@ data Expr binder var
   -- | A sequence of terms for e.g. list literals.
   | LSeq
     Provenance
-    (Expr binder var)    -- Type-class dictionary.
     [Expr binder var]    -- List of expressions.
 
   -- | A placeholder for a dictionary of builtin type-classes.
@@ -265,8 +279,8 @@ class HasIdentifier a where
 -- | A marker for how a declaration is used as part of a quantified property
 -- and therefore needs to be lifted to the type-level when being exported, or
 -- whether it is only used unquantified and therefore needs to be computable.
-newtype PropertyInfo
-  = PropertyInfo Polarity
+data PropertyInfo
+  = PropertyInfo Linearity Polarity
   deriving (Show, Eq, Generic)
 
 instance NFData PropertyInfo
@@ -298,6 +312,12 @@ instance HasIdentifier (Decl binder var) where
   identifierOf = \case
     DefResource _ _ i _   -> i
     DefFunction _ _ i _ _ -> i
+
+mapDeclExprs :: (Expr binder1 var1 -> Expr binder2 var2)
+             -> Decl binder1 var1
+             -> Decl binder2 var2
+mapDeclExprs f (DefResource ann r n t)   = DefResource ann r n (f t)
+mapDeclExprs f (DefFunction ann u n t e) = DefFunction ann u n (f t) (f e)
 
 traverseDeclExprs :: Monad m
                   => (Expr binder1 var1 -> m (Expr binder2 var2))
@@ -352,7 +372,7 @@ instance HasProvenance (Arg binder var) where
 
 instance HasProvenance (Expr binder var) where
   provenanceOf = \case
-    Type     ann _     -> ann
+    Universe ann _     -> ann
     PrimDict ann _     -> ann
     Hole     ann _     -> ann
     Meta     ann _     -> ann
@@ -364,7 +384,7 @@ instance HasProvenance (Expr binder var) where
     Let      ann _ _ _ -> ann
     Lam      ann _ _   -> ann
     Literal  ann _     -> ann
-    LSeq     ann _ _   -> ann
+    LSeq     ann _     -> ann
 
 instance HasProvenance (Decl binder var) where
   provenanceOf = \case

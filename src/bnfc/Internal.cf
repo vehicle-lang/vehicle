@@ -12,8 +12,6 @@ position token BuiltinToken
   | {"Nat"} | {"Int"} | {"Index"}
   | {"Bool"}
   | {"Tensor"} | {"List"} | {"::"} | {"!"}
-  | {"Eq"} | {"Ord"} | {"Container"} | {"Truth"}
-  | {"NatOps"} | {"IntOps"} | {"RatOps"}
   );
 position token NameToken (lower (letter | digit | '_')*) ;
 position token BoolToken ({"True"} | {"False"}) ;
@@ -25,9 +23,9 @@ position token Rational (digit+ '.' digit+);
 
 -- * Binders
 
-ExplicitBinder. Binder ::= "("  NameToken ":type" Expr ")";
-ImplicitBinder. Binder ::= "{"  NameToken ":type" Expr "}";
-InstanceBinder. Binder ::= "{{" NameToken ":type" Expr "}}";
+ExplicitBinder. Binder ::= "("  NameToken ":" Expr ")";
+ImplicitBinder. Binder ::= "{"  NameToken ":" Expr "}";
+InstanceBinder. Binder ::= "{{" NameToken ":" Expr "}}";
 
 -- * Function arguments
 
@@ -43,7 +41,7 @@ LitBool. Lit ::= BoolToken;
 
 -- * Core structure.
 
-Ann.           Expr  ::= Expr1 ":type" Expr1;
+Ann.           Expr  ::= Expr1 ":" Expr1;
 Pi.            Expr  ::= "pi" Binder Expr1;
 Let.           Expr  ::= "let" Binder Expr1 Expr1;
 Lam.           Expr  ::= "lambda" Binder Expr1;
@@ -56,7 +54,7 @@ LSeq.          Expr1 ::= "[" [Expr1] "]";
 Hole.          Expr1 ::= HoleToken;
 
 coercions Expr 1;
-separator Expr1 "";
+separator Expr1 ",";
 
 -- * Declarations
 

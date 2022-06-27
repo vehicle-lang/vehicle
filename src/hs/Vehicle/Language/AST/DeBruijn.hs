@@ -15,12 +15,12 @@ module Vehicle.Language.AST.DeBruijn
   , substIntoAtLevel
   , patternOfArgs
   , substAll
+  , isBoundVar
   ) where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
-import Control.Monad.Reader (MonadReader, Reader, ask, runReader, runReaderT, local)
-import Control.Monad.Trans (lift)
+import Control.Monad.Reader (MonadReader, Reader, ask, runReader, runReaderT, local, lift)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Core
@@ -88,13 +88,13 @@ instance DeBruijnFunctor DBExpr where
       altExpr      = alter    body var
       underB       = underBinder body
     in \case
-      Type     ann l            -> return (Type ann l)
+      Universe ann l            -> return (Universe ann l)
       Meta     ann m            -> return (Meta ann m)
       Hole     ann name         -> return (Hole ann name)
       Builtin  ann op           -> return (Builtin ann op)
       Literal  ann l            -> return (Literal ann l)
       PrimDict ann e            -> return (PrimDict ann e)
-      LSeq     ann dict es      -> LSeq    ann <$> altExpr dict <*> traverse altExpr es
+      LSeq     ann es           -> LSeq    ann <$> traverse altExpr es
       Ann      ann term typ     -> Ann     ann <$> altExpr   term   <*> altExpr typ
       App      ann fun args     -> normApp ann <$> altExpr   fun    <*> traverse altArg args
       Pi       ann binder res   -> Pi      ann <$> altPiBinder binder <*> underB (altExpr res)
@@ -163,9 +163,8 @@ substInto = substIntoAtLevel 0
 
 type Substitution = IntMap DBExpr
 
--- TODO: explain what this means:
---   ?X i2 i4 i1 --> [i2 -> 2, i4 -> 1, i1 -> 0]
-
+-- | TODO: explain what this means:
+--   ?X i2 i4 i1 --> [2 -> i2, 4 -> i1, 1 -> i0]
 patternOfArgs :: [DBArg] -> Maybe Substitution
 patternOfArgs args = go (length args - 1) IM.empty args
   where
@@ -174,11 +173,30 @@ patternOfArgs args = go (length args - 1) IM.empty args
     -- TODO: we could eta-reduce arguments too, if possible
     go i revMap (Arg _ _ (Var ann (Bound j)) : restArgs) =
       if IM.member j revMap then
-        Nothing -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning; but then we should make sure the solution is well-typed
+        -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning;
+        -- but then we should make sure the solution is well-typed
+        Nothing
       else
         go (i-1) (IM.insert j (Var ann (Bound i)) revMap) restArgs
     go _ _ _ = Nothing
+    --go i revMap (_ : restArgs) = go (i-1) revMap restArgs
+    -- ^ This line was `go _ _ _ = Nothing`, unsure about the effects of the changing it.
 
+{-
+substAll :: Substitution
+         -> DBExpr
+         -> DBExpr
+substAll sub e = runIdentity $ runReaderT (alter binderUpdate alterVar e) (0, sub)
+  where
+    alterVar :: UpdateVariable (Reader (BindingDepth, Substitution)) Substitution
+    alterVar i ann (d, subst) =
+      return $ if i >= d then
+        fromMaybe (Var ann (Bound i)) (IM.lookup (i - d) subst)
+      else
+        Var ann (Bound i)
+
+    binderUpdate = IM.map (liftFreeDBIndices 1)
+-}
 substAll :: Substitution
          -> DBExpr
          -> Maybe DBExpr
@@ -191,3 +209,8 @@ substAll sub e = runReaderT (alter binderUpdate alterVar e) (0, sub)
         return $ Var ann (Bound i)
 
     binderUpdate = IM.map (liftFreeDBIndices 1)
+
+
+isBoundVar :: DBExpr -> Bool
+isBoundVar (Var _ Bound{}) = True
+isBoundVar _               = False

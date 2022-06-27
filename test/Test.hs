@@ -14,13 +14,13 @@ import Test.FilePathUtils (filepathTests)
 import Test.Compile.Utils (MonadTest)
 
 -- Can't figure out how to get this passed in via the command-line *sadness*
-loggingOptions :: Maybe Int
-loggingOptions = Nothing -- Just 3
+testLogLevel :: Int
+testLogLevel = 0
 
 main :: IO ()
 main = do
   setLocaleEncoding utf8
-  defaultMain (runReader tests loggingOptions)
+  defaultMain (runReader tests testLogLevel)
 
 tests :: MonadTest m => m TestTree
 tests = do
