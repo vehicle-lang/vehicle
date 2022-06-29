@@ -112,16 +112,21 @@ checkExpr expectedType expr = do
         let checkedLamBinder = replaceBinderType checkedLamBinderType lamBinder
         return $ Lam ann checkedLamBinder checkedBody
 
-    (Pi _ binder resultType, e) -> do
-      let ann = inserted $ provenanceOf binder
+    (Pi _ piBinder resultType, e)
+      | visibilityOf piBinder == Implicit || visibilityOf piBinder == Instance -> do
+      -- Then eta-expand
+      let ann = inserted $ provenanceOf piBinder
+      let binderName = nameOf piBinder
+      let binderType = typeOf piBinder
+      let binderVis  = visibilityOf piBinder
 
-      -- Add the binder to the context
-      checkedExpr <- addToBoundCtx (nameOf binder) (typeOf binder) Nothing $
+      -- Add the pi-bound variable to the context
+      checkedExpr <- addToBoundCtx binderName binderType Nothing $
         -- Check if the type of the expression matches the expected result type.
         checkExpr resultType (liftFreeDBIndices 1 e)
 
-      -- Create a new binder mirroring the implicit Pi binder expected
-      let lamBinder = Binder ann Implicit (nameOf binder) (typeOf binder)
+      -- Create a new binder mirroring the Pi binder expected
+      let lamBinder = Binder ann binderVis binderName binderType
 
       -- Prepend a new lambda to the expression with the implicit binder
       return $ Lam ann lamBinder checkedExpr
@@ -183,10 +188,13 @@ inferExpr e = do
 
     Hole ann _name -> do
       -- Replace the hole with meta-variable.
-      -- NOTE, different uses of the same hole name will be interpreted as different meta-variables.
-      (_, typeMeta) <- freshMeta (provenanceOf ann) (Type ann 0)
-      (_, exprMeta) <- freshMeta (provenanceOf ann) typeMeta
-      return (exprMeta, typeMeta)
+      -- NOTE, different uses of the same hole name will be interpreted
+      -- as different meta-variables.
+      -- let metaType = Type ann 0
+      (_, metaType) <- freshMeta (provenanceOf ann) (Type ann 0)
+      (_, metaExpr) <- freshMeta (provenanceOf ann) metaType
+      _ <- unify ann metaType (Type ann 0)
+      return (metaExpr, metaType)
 
     Ann ann expr exprType -> do
       (checkedExprType, exprTypeType) <- inferExpr exprType

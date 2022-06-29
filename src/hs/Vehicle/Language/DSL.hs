@@ -108,9 +108,10 @@ piType :: CheckedExpr -> CheckedExpr -> CheckedExpr
 piType t1 t2 = t1 `tMax` t2
 
 universeLevel :: CheckedExpr -> UniverseLevel
-universeLevel (Type _ l) = l
-universeLevel (Meta _ _) = 0 -- This is probably going to bite us, apologies.
-universeLevel t          = developerError $
+universeLevel (Type _ l)           = l
+universeLevel (Meta _ _ )          = 0 -- This is probably going to bite us, apologies.
+universeLevel (App _ (Meta _ _) _) = 0 -- This is probably going to bite us, apologies.
+universeLevel t                    = developerError $
   "Expected argument of type Type. Found" <+> prettyVerbose t <> "."
 
 tMax :: CheckedExpr -> CheckedExpr -> CheckedExpr

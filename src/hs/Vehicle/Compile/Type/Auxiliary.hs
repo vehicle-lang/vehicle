@@ -146,9 +146,8 @@ isAuxiliary e = case exprHead e of
   _                             -> return False
 
 removeAuxiliaryArgs :: MonadRemove m => NonEmpty CheckedArg -> m [CheckedArg]
-removeAuxiliaryArgs args= do
+removeAuxiliaryArgs args = do
   decisions <- traverse (isAuxiliary . argExpr) args
-  logDebug MaxDetail $ pretty decisions
   let argsAndDecs = NonEmpty.zip args decisions
   let nonAuxRes = NonEmpty.filter (\(_, d) -> not d) argsAndDecs
   return $ fmap fst nonAuxRes

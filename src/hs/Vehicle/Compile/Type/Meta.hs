@@ -235,8 +235,7 @@ getUnsolvedMetas = do
 abstractOverCtx :: BoundCtx -> CheckedExpr -> CheckedExpr
 abstractOverCtx ctx body =
   let ctxTypes   = fmap (\(_, t, _) -> t) ctx in
-  let liftedBody = liftFreeDBIndices (length ctx) body in
-  foldr typeToLam liftedBody ctxTypes
+  foldr typeToLam body ctxTypes
   where
     typeToLam :: CheckedExpr -> CheckedExpr -> CheckedExpr
     typeToLam t = Lam ann (ExplicitBinder ann Nothing t)

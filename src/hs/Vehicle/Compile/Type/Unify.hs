@@ -257,7 +257,6 @@ solveUnificationConstraint ctx (Unify (e1, e2)) = do
 
     -- Catch-all
     _ -> do
-      logDebug MaxDetail $ pretty (show $ boundContext constraint)
       throwError $ FailedConstraints [constraint]
 
   return progress
