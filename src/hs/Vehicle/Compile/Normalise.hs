@@ -388,8 +388,15 @@ substContainerType _ _ = developerError "Provided an invalid container type"
 --------------------------------------------------------------------------------
 -- Normalising boolean operations
 
+notExpr :: MonadNorm m => CheckedExpr -> m CheckedExpr
+notExpr x = argExpr <$> notArg (ExplicitArg (provenanceOf x) x)
+
 notArg :: MonadNorm m => CheckedArg -> m CheckedArg
-notArg x = let ann = provenanceOf x in ExplicitArg ann <$> nf (NotExpr ann [x])
+notArg x = do
+  let ann = provenanceOf x
+  ExplicitArg ann <$> case nfNot ann x of
+    Just r  -> r
+    Nothing -> return $ NotExpr ann [x]
 
 nfNot :: forall m . MonadNorm m
       => Provenance
@@ -400,11 +407,9 @@ nfNot ann arg = case argExpr arg of
   OrderExpr      _ ord tElem args  -> Just $ return $ OrderExpr    ann (neg ord) tElem args
   EqualityExpr   _ eq  tElem args  -> Just $ return $ EqualityExpr ann (neg eq)  tElem args
   ForallExpr _ binder body -> Just $ do
-    let nBody = NotExpr ann [ExplicitArg ann body]
-    ExistsExpr ann binder <$> nf nBody
+    ExistsExpr ann binder <$> notExpr body
   ExistsExpr _ binder body -> Just $ do
-    let nBody = NotExpr ann [ExplicitArg ann body]
-    ForallExpr ann binder <$> nf nBody
+    ForallExpr ann binder <$> notExpr body
   ImplExpr           _ [e1, e2] -> Just $ do
     ne2 <- notArg e2;
     return $ AndExpr ann [e1, ne2]
