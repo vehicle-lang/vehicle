@@ -727,7 +727,7 @@ solveMaxLinearity c [lin1, lin2, res] =
     (_, exprHead -> Meta _ m2) -> blockOnMetas [m2]
 
     (Lin p l1, Lin _ l2) -> do
-      let linRes = Lin p $ mulLinearity l1 l2
+      let linRes = Lin p $ maxLinearity l1 l2
       return $ unify c res linRes
 
     _ -> malformedConstraint c

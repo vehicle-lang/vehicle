@@ -85,8 +85,8 @@ typeCheckDecl decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
 
   result <- case decl of
     DefResource p r _ _ -> do
-      checkResourceType r p ident checkedType
-      let checkedDecl = DefResource p r ident checkedType
+      updatedCheckedType <- checkResourceType r p ident checkedType
+      let checkedDecl = DefResource p r ident updatedCheckedType
 
       solveConstraints (Just decl)
       substDecl <- substMetas checkedDecl

@@ -38,7 +38,8 @@ errorTests = testGroup "ErrorTests" <$> sequence
   , networkErrors
   , datasetErrors
   , parameterErrors
-  , quantifierErrors
+  , linearityErrors
+  , polarityErrors
   ]
 
 argumentErrors :: MonadTest m => m TestTree
@@ -188,8 +189,8 @@ parameterErrors = failTestGroup "ParameterErrors"
     }
   ]
 
-quantifierErrors :: MonadTest m => m TestTree
-quantifierErrors = failTestGroup "QuantifierErrors"
+polarityErrors :: MonadTest m => m TestTree
+polarityErrors = failTestGroup "PolarityErrors"
   [ testSpec
       { testName       = "mixedSequential"
       , testLocation   = Tests
@@ -224,6 +225,23 @@ quantifierErrors = failTestGroup "QuantifierErrors"
     , testTargets    = [MarabouBackend]
     , testParameters = []
     }
+  ]
+
+linearityErrors :: MonadTest m => m TestTree
+linearityErrors = failTestGroup "LinearityErrors"
+  [ testSpec
+      { testName       = "quadraticFunInput"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      , testParameters = []
+      }
+
+  , testSpec
+      { testName       = "quadraticFunOutput"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      , testParameters = []
+      }
   ]
 
 --------------------------------------------------------------------------------

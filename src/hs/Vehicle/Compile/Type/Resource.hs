@@ -4,7 +4,6 @@ module Vehicle.Compile.Type.Resource
   ) where
 
 import Control.Monad.Except (MonadError(..))
-import Control.Monad ( when )
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
@@ -18,7 +17,7 @@ checkResourceType :: TCM m
                   -> Provenance
                   -> Identifier
                   -> CheckedExpr
-                  -> m ()
+                  -> m CheckedExpr
 checkResourceType resourceType p ident t = do
   let resourceName = pretty resourceType <+> squotes (pretty ident)
   logCompilerPass MidDetail ("checking compatability of type of" <+> resourceName) $ do
@@ -30,32 +29,37 @@ checkResourceType resourceType p ident t = do
     normType <- normalise t $ defaultNormalisationOptions
       { Norm.declContext = declCtx
       }
-    checkFun p ident normType
+    alterType <- checkFun p ident normType
+    return $ alterType t
 
 checkParameterType :: TCM m
                    => Provenance
                    -> Identifier
                    -> CheckedExpr
-                   -> m ()
-checkParameterType ann ident = \case
-  BoolType{}    -> return ()
-  IndexType{}   -> return ()
-  NatType{}     -> return ()
-  IntType{}     -> return ()
+                   -> m (CheckedExpr -> CheckedExpr)
+checkParameterType ann ident t = do
+  case t of
+    BoolType{}  -> return ()
+    IndexType{} -> return ()
+    NatType{}   -> return ()
+    IntType{}   -> return ()
 
-  AnnRatType p lin -> do
-    let targetLinearity = Builtin p (Linearity Constant)
-    addUnificationConstraint p emptyVariableCtx lin targetLinearity
-    return ()
+    AnnRatType p lin -> do
+      let targetLinearity = Builtin p (Linearity Constant)
+      addUnificationConstraint p emptyVariableCtx lin targetLinearity
+      return ()
 
-  paramType     -> throwError $ ParameterTypeUnsupported ident ann paramType
+    paramType -> throwError $ ParameterTypeUnsupported ident ann paramType
+  return id
 
 checkDatasetType :: forall m . TCM m
                  => Provenance
                  -> Identifier
                  -> CheckedExpr
-                 -> m ()
-checkDatasetType ann ident = checkContainerType True
+                 -> m (CheckedExpr -> CheckedExpr)
+checkDatasetType ann ident t = do
+  checkContainerType True t
+  return id
   where
   checkContainerType :: Bool -> CheckedExpr -> m ()
   checkContainerType topLevel = \case
@@ -81,36 +85,37 @@ checkNetworkType :: forall m . TCM m
                  => Provenance
                  -> Identifier
                  -> CheckedExpr
-                 -> m ()
+                 -> m (CheckedExpr -> CheckedExpr)
 checkNetworkType _ann ident networkType = checkFunType networkType
   where
 
   -- |Decomposes the Pi types in a network type signature, checking that the
-  -- binders are explicit and their types are equal.
-  checkFunType :: CheckedExpr -> m ()
+  -- binders are explicit and their types are equal. Returns a function that
+  -- prepends the max linearity constraint.
+  checkFunType :: CheckedExpr -> m (CheckedExpr -> CheckedExpr)
   checkFunType = \case
-    Pi _ binder result
+    Pi p binder result
       | visibilityOf binder /= Explicit -> do
         throwError $ NetworkTypeHasNonExplicitArguments ident networkType binder
       | otherwise  -> do
-        checkTensorType Input (typeOf binder)
-        checkTensorType Output result
+        inputLin  <- checkTensorType Input (typeOf binder)
+        outputLin <- checkTensorType Output result
+
+        -- The linearity of the output of a network is the max of 1) Linear (as outputs
+        -- are also variables) and 2) the linearity of its input. So prepend this
+        -- constraint to the front of the type.
+        let outputLinProvenance = Linearity $ Linear $ NetworkOutputProvenance p (nameOf ident)
+        let linConstraintArgs = [inputLin, Builtin p outputLinProvenance, outputLin]
+        let linConstraint = BuiltinTypeClass p MaxLinearity (ExplicitArg p <$> linConstraintArgs)
+        return $ \t -> Pi p (InstanceBinder p Nothing linConstraint) t
     _ -> throwError $ NetworkTypeIsNotAFunction ident networkType
 
-  checkTensorType :: InputOrOutput -> CheckedExpr -> m ()
+  checkTensorType :: InputOrOutput -> CheckedExpr -> m CheckedExpr
   checkTensorType io (TensorType _ tElem _tDims) = checkElementType io tElem
   checkTensorType io tTensor =
     throwError $ NetworkTypeIsNotOverTensors ident networkType tTensor io
 
-  checkElementType :: InputOrOutput -> CheckedExpr -> m ()
+  checkElementType :: InputOrOutput -> CheckedExpr -> m CheckedExpr
   checkElementType io = \case
-    (AnnRatType p lin) -> do
-      -- Network outputs are also variables that should be counted in the
-      -- linearity analysis.
-      when (io == Output) $ do
-        let linProvenance = NetworkOutputProvenance p (nameOf ident)
-        let targetLinearity = Builtin p (Linearity (Linear linProvenance))
-        addUnificationConstraint p emptyVariableCtx lin targetLinearity
-      return ()
-    tElem ->
-      throwError $ NetworkTypeHasUnsupportedElementType ident networkType tElem io
+    (AnnRatType _ lin) -> return lin
+    tElem -> throwError $ NetworkTypeHasUnsupportedElementType ident networkType tElem io
