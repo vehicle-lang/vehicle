@@ -9,7 +9,6 @@ import Data.Vector.Unboxed qualified as Vector
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise (normalise, NormalisationOptions(..), defaultNormalisationOptions)
 import Vehicle.Compile.Normalise.UserVariables
 import Vehicle.Compile.Normalise.IfElimination (eliminateIfs)
 import Vehicle.Compile.Normalise.DNF (convertToDNF, splitDisjunctions)
@@ -82,15 +81,8 @@ compileProperty ident networkCtx expr =
     (isPropertyNegated, possiblyNegatedExpr) <-
       checkQuantifiersAndNegateIfNecessary MarabouBackend ident expr
 
-    -- Normalise the expression to push through the negation.
-    normExpr <- normalise possiblyNegatedExpr $ defaultNormalisationOptions
-      { implicationsToDisjunctions = True
-      , subtractionToAddition      = True
-      , expandOutPolynomials       = True
-      }
-
     -- Eliminate any if-expressions
-    ifFreeExpr <- eliminateIfs normExpr
+    ifFreeExpr <- eliminateIfs possiblyNegatedExpr
 
     -- Convert to disjunctive normal form
     dnfExpr <- convertToDNF ifFreeExpr

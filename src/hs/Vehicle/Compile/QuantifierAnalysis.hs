@@ -9,6 +9,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Language.Print (prettyFriendly)
+import Vehicle.Compile.Normalise.DNF
 
 checkQuantifiersAndNegateIfNecessary :: MonadCompile m
                                      => Backend
@@ -26,7 +27,7 @@ checkQuantifiersAndNegateIfNecessary backend ident expr =
         -- If the property is universally quantified then we need to negate the expression
         logDebug MinDetail "Negating property..."
         let ann = provenanceOf expr
-        return $ NotExpr ann [ExplicitArg ann expr]
+        return $ applyNotAndNormalise (ExplicitArg ann expr)
 
     logCompilerPassOutput (prettyFriendly outputExpr)
     return (quantifier == Forall, outputExpr)
