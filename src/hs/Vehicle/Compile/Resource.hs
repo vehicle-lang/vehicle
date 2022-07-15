@@ -9,7 +9,7 @@ import Control.Monad.Reader
 import Control.Monad.Writer
 import Data.Set (Set)
 import Data.Set qualified as Set (singleton)
-import Data.Map qualified as Map (singleton, keysSet)
+import Data.Map qualified as Map (singleton, keysSet, insert)
 import Data.Maybe ( catMaybes )
 
 import Vehicle.Compile.Prelude
@@ -19,6 +19,9 @@ import Vehicle.Compile.Resource.Parameter
 import Vehicle.Compile.Resource.Network
 
 import Vehicle.Compile.Resource.Core as X
+import Vehicle.Compile.Normalise
+import Vehicle.Compile.Type.VariableContext (DeclCtx)
+import Data.Bifunctor
 
 --------------------------------------------------------------------------------
 -- Resource contexts
@@ -45,7 +48,7 @@ instance Monoid ResourceContext where
 type MonadResource m =
   ( MonadCompile m
   , MonadIO m
-  , MonadReader (Resources, Bool) m
+  , MonadReader ((Resources, Bool), DeclCtx) m
   , MonadWriter ResourceContext m
   )
 
@@ -71,7 +74,7 @@ expandResources :: (MonadCompile m, MonadIO m)
                 -> m (NetworkContext, CheckedProg)
 expandResources resources@Resources{..} expandDatasets prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
-    (prog', ResourceContext{..}) <- runWriterT (runReaderT (processProg prog) (resources, expandDatasets))
+    (prog', ResourceContext{..}) <- runWriterT (runReaderT (processProg prog) ((resources, expandDatasets), mempty))
 
     warnIfUnusedResources Parameter (Map.keysSet parameters) parameterContext
     warnIfUnusedResources Dataset   (Map.keysSet datasets)   datasetContext
@@ -80,29 +83,40 @@ expandResources resources@Resources{..} expandDatasets prog =
     return (networkContext, prog')
 
 processProg :: MonadResource m => CheckedProg -> m CheckedProg
-processProg (Main ds) = Main <$> processDecls ds
+processProg (Main ds) = Main . catMaybes <$> processDecls ds
 
-processDecls :: MonadResource m => [CheckedDecl] -> m [CheckedDecl]
-processDecls ds = catMaybes <$> traverse processDecl ds
+processDecls :: MonadResource m => [CheckedDecl] -> m [Maybe CheckedDecl]
+processDecls []       = return []
+processDecls (d : ds) = do
+  (d', alterCtx)  <- processDecl d
+  ds' <- local (second alterCtx) $ processDecls ds
+  return $ d' : ds'
 
-processDecl :: MonadResource m => CheckedDecl -> m (Maybe CheckedDecl)
-processDecl d@DefFunction{} = return $ Just d
+processDecl :: MonadResource m => CheckedDecl -> m (Maybe CheckedDecl, DeclCtx -> DeclCtx)
+processDecl d@(DefFunction _ _ ident declType declExpr) =
+  return (Just d, Map.insert ident (declType, Just declExpr))
 processDecl d@(DefResource ann resourceType ident declType) = do
-  (resources, expandDatasets) <- ask
+  ((resources, expandDatasets), declCtx) <- ask
   let name = nameOf ident
+  normType <- normalise declType defaultNormalisationOptions
+    { declContext = declCtx
+    }
+
   case resourceType of
     Parameter -> do
       addParameter name
-      parameterExpr <- parseParameterValue (parameters resources) ann ident declType
-      return $ Just $ DefFunction ann Nothing ident declType parameterExpr
+      parameterExpr <- parseParameterValue (parameters resources) ann ident normType
+      let result = Just $ DefFunction ann Nothing ident normType parameterExpr
+      return (result, Map.insert ident (normType, Just parameterExpr))
     Dataset -> do
       addDataset name
       if not expandDatasets
-        then return $ Just d
+        then return (Just d, id)
         else do
-          datasetExpr <- parseDataset (datasets resources) ann ident declType
-          return $ Just $ DefFunction ann Nothing ident declType datasetExpr
+          datasetExpr <- parseDataset (datasets resources) ann ident normType
+          let result = Just $ DefFunction ann Nothing ident normType datasetExpr
+          return (result, Map.insert ident (normType, Just datasetExpr))
     Network -> do
-      networkType <- getNetworkType ann ident declType
+      networkType <- getNetworkType ann ident normType
       addNetworkType name networkType
-      return Nothing
+      return (Nothing, id)

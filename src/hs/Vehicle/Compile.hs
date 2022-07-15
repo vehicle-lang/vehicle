@@ -116,8 +116,7 @@ typeCheckProgAndLoadResources resources txt = do
   vehicleProg   <- elabProg bnfcProg
   scopedProg    <- scopeCheck vehicleProg
   typedProg     <- typeCheck scopedProg
-  normProg      <- normalise typedProg defaultNormalisationOptions
-  (networkCtx, networklessProg) <- expandResources resources True normProg
+  (networkCtx, networklessProg) <- expandResources resources True typedProg
   normProg2 <- normalise networklessProg defaultNormalisationOptions
   return (networkCtx, normProg2)
 

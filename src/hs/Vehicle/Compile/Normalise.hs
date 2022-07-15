@@ -379,7 +379,7 @@ nfForeachIn ann binder body container = Just $ do
   let tRes = BoolType ann
   let lamArg = ExplicitArg ann (Lam ann binder body)
   let containerArg = ExplicitArg ann container
-  return $ MapExpr ann (typeOf binder) tRes [lamArg, containerArg]
+  nf $ MapExpr ann (typeOf binder) tRes [lamArg, containerArg]
 
 substContainerType :: CheckedExpr -> CheckedExpr -> CheckedExpr
 substContainerType newTElem (ListType   ann _tElem)       = ListType   ann newTElem
