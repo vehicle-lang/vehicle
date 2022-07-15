@@ -44,11 +44,11 @@ ifEliminationTests = testGroup "LiftAndElimIf" <$>
 
   , IfTestSpec "elimIfNot"
       "not (if True then False else (True : Bool))"
-      "not ((True and False) or (not True and (True : Bool)))"
+      "not ((True and False) or (False and (True : Bool)))"
 
   , IfTestSpec "elimIfIf"
       "if (if True then False else True) then False else True"
-      "if ((True and False) or (not True and True)) then False else True"
+      "if ((True and False) or (False and True)) then False else True"
   ]
 
 --------------------------------------------------------------------------------

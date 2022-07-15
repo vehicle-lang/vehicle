@@ -19,6 +19,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.AlphaEquivalence ( alphaEq )
 import Vehicle.Compile.Error
 import Vehicle.Compile.Type.VariableContext (DeclCtx)
+import Vehicle.Compile.Normalise.DNF (applyNotAndNormalise)
 
 -- |Run a function in 'MonadNorm'.
 normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) ([DBBinding], a))
@@ -157,7 +158,7 @@ nfApp ann fun       args = do
     OrderExpr    _ ord tElem [arg1, arg2] -> nfOrder ann ord tElem arg1 arg2
 
     -- Boolean operations
-    NotExpr  _ [arg]               -> nfNot     ann arg
+    NotExpr  _ [arg]               -> Just $ return $ applyNotAndNormalise arg
     AndExpr  _ [arg1, arg2]        -> nfAnd     ann arg1 arg2
     OrExpr   _ [arg1, arg2]        -> nfOr      ann arg1 arg2
     ImplExpr _ [arg1, arg2]        -> nfImplies ann arg1 arg2 implicationsToDisjunctions
@@ -388,45 +389,6 @@ substContainerType _ _ = developerError "Provided an invalid container type"
 --------------------------------------------------------------------------------
 -- Normalising boolean operations
 
-notExpr :: MonadNorm m => CheckedExpr -> m CheckedExpr
-notExpr x = argExpr <$> notArg (ExplicitArg (provenanceOf x) x)
-
-notArg :: MonadNorm m => CheckedArg -> m CheckedArg
-notArg x = do
-  let ann = provenanceOf x
-  ExplicitArg ann <$> case nfNot ann x of
-    Just r  -> r
-    Nothing -> return $ NotExpr ann [x]
-
-nfNot :: forall m . MonadNorm m
-      => Provenance
-      -> CheckedArg
-      -> Maybe (m CheckedExpr)
-nfNot ann arg = case argExpr arg of
-  BoolLiteralExpr    _ b           -> Just $ return $ BoolLiteralExpr ann (not b)
-  OrderExpr      _ ord tElem args  -> Just $ return $ OrderExpr    ann (neg ord) tElem args
-  EqualityExpr   _ eq  tElem args  -> Just $ return $ EqualityExpr ann (neg eq)  tElem args
-  ForallExpr _ binder body -> Just $ do
-    ExistsExpr ann binder <$> notExpr body
-  ExistsExpr _ binder body -> Just $ do
-    ForallExpr ann binder <$> notExpr body
-  ImplExpr           _ [e1, e2] -> Just $ do
-    ne2 <- notArg e2;
-    return $ AndExpr ann [e1, ne2]
-  OrExpr             _ [e1, e2] -> Just $ do
-    ne1 <- notArg e1;
-    ne2 <- notArg e2;
-    return $ AndExpr ann [ne1, ne2]
-  AndExpr            _ [e1, e2] -> Just $ do
-    ne1 <- notArg e1;
-    ne2 <- notArg e2;
-    return $ OrExpr ann [ne1, ne2]
-  IfExpr _ tRes [p, e1, e2] -> Just $ do
-    ne1 <- notArg e1
-    ne2 <- notArg e2
-    return $ IfExpr ann tRes [p, ne1, ne2]
-  _ -> Nothing
-
 nfAnd :: forall m . MonadNorm m
       => Provenance
       -> CheckedArg
@@ -467,7 +429,7 @@ nfImplies ann arg1 arg2 convertToOr = case (argExpr arg1, argExpr arg2) of
   (_, FalseExpr _)         -> Just $ return $ NotExpr ann [arg2]
   (e1, e2) | alphaEq e1 e2 -> Just $ return $ TrueExpr ann
   _        | convertToOr   -> Just $ do
-    negArg1 <- notArg arg1
+    let negArg1 = ExplicitArg ann $ applyNotAndNormalise arg1
     return $ OrExpr ann [negArg1, arg2]
   _                              -> Nothing
 

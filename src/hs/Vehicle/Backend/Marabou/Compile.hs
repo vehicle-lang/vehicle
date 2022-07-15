@@ -92,17 +92,8 @@ compileProperty ident networkCtx expr =
     -- Eliminate any if-expressions
     ifFreeExpr <- eliminateIfs normExpr
 
-    -- Normalise again to push through the introduced nots. Can definitely be
-    -- more efficient here and just push in the not, when we introduce
-    -- it during if elimination.
-    normExpr2 <- normalise ifFreeExpr $ defaultNormalisationOptions
-      { implicationsToDisjunctions = True
-      , subtractionToAddition      = True
-      , expandOutPolynomials       = True
-      }
-
     -- Convert to disjunctive normal form
-    dnfExpr <- convertToDNF normExpr2
+    dnfExpr <- convertToDNF ifFreeExpr
 
     -- Split up into the individual queries needed for Marabou.
     let queryExprs = splitDisjunctions dnfExpr

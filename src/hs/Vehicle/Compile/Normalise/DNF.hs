@@ -4,20 +4,25 @@ module Vehicle.Compile.Normalise.DNF
   ( convertToDNF
   , splitConjunctions
   , splitDisjunctions
+  , applyNotAndNormalise
   ) where
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Language.Print
 
+--------------------------------------------------------------------------------
+-- Or operations
+
 -- | Converts an expression to disjunctive normal form.
 -- Currently assumes all implications and negations have
 -- been previously normalised out.
 convertToDNF :: MonadCompile m => CheckedExpr -> m CheckedExpr
-convertToDNF expr = logCompilerPass MinDetail "conversion to disjunctive normal form" $ do
-  result <- dnf expr
-  logCompilerPassOutput (prettyFriendly result)
-  return result
+convertToDNF expr =
+  logCompilerPass MinDetail "conversion to disjunctive normal form" $ do
+    result <- dnf expr
+    logCompilerPassOutput (prettyFriendly result)
+    return result
 
 dnf :: MonadCompile m => CheckedExpr -> m CheckedExpr
 dnf expr = do
@@ -89,3 +94,35 @@ showExit :: MonadLogger m => CheckedExpr -> m ()
 showExit e = do
   decrCallDepth
   logDebug MaxDetail $ "dnf-exit " <+> prettySimple e
+
+
+--------------------------------------------------------------------------------
+-- Not operations
+
+applyNotAndNormalise :: CheckedArg -> CheckedExpr
+applyNotAndNormalise x = do
+  let ann = provenanceOf x
+  case nfNot ann x of
+    Just r  -> r
+    Nothing -> NotExpr ann [x]
+
+notArg :: CheckedArg -> CheckedArg
+notArg x = ExplicitArg (provenanceOf x) $ applyNotAndNormalise x
+
+notExpr :: CheckedExpr -> CheckedExpr
+notExpr x = applyNotAndNormalise (ExplicitArg (provenanceOf x) x)
+
+nfNot :: Provenance
+      -> CheckedArg
+      -> Maybe CheckedExpr
+nfNot p arg = case argExpr arg of
+  BoolLiteralExpr    _ b           -> Just $ BoolLiteralExpr p (not b)
+  OrderExpr      _ ord tElem args  -> Just $ OrderExpr p (neg ord) tElem args
+  EqualityExpr   _ eq  tElem args  -> Just $ EqualityExpr p (neg eq)  tElem args
+  ForallExpr _ binder body         -> Just $ ExistsExpr p binder $ notExpr body
+  ExistsExpr _ binder body         -> Just $ ForallExpr p binder $ notExpr body
+  ImplExpr           _ [e1, e2]    -> Just $ AndExpr p [e1, notArg e2]
+  OrExpr             _ [e1, e2]    -> Just $ AndExpr p (notArg <$> [e1, e2])
+  AndExpr            _ [e1, e2]    -> Just $ OrExpr p (notArg <$> [e1, e2])
+  IfExpr _ tRes [c, e1, e2]        -> Just $ IfExpr p tRes [c, notArg e1, notArg e2]
+  _ -> Nothing

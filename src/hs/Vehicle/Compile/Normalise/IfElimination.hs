@@ -8,6 +8,7 @@ import Data.List.NonEmpty as NonEmpty
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Language.Print
+import Vehicle.Compile.Normalise.DNF (applyNotAndNormalise)
 
 --------------------------------------------------------------------------------
 -- Primary function
@@ -51,7 +52,7 @@ elimIf (IfExpr ann _ [cond, e1, e2]) = argExpr $
     op2 op tc arg1 arg2 = ExplicitArg ann (BooleanOp2Expr op tc ann [arg1, arg2])
 
     notOp :: CheckedArg -> CheckedArg
-    notOp arg = ExplicitArg ann (NotExpr ann [arg])
+    notOp arg = ExplicitArg ann $ applyNotAndNormalise arg
 elimIf e = e
 
 liftAndElimIf :: MonadCompile m => CheckedExpr -> m CheckedExpr
