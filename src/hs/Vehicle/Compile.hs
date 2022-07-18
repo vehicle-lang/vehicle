@@ -31,7 +31,6 @@ import Vehicle.Backend.Marabou (MarabouSpec)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.LossFunction ( LExpr, writeLossFunctionFiles)
-
 import Vehicle.Compile.Resource
 
 compile :: LoggingOptions -> CompileOptions -> IO ()

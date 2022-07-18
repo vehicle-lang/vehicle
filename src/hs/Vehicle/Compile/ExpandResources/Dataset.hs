@@ -1,4 +1,4 @@
-module Vehicle.Compile.Resource.Dataset
+module Vehicle.Compile.ExpandResources.Dataset
   ( getDatasetType
   , parseDataset
   ) where
@@ -10,8 +10,8 @@ import System.FilePath (takeExtension)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Resource.Dataset.IDX (readIDX)
-import Vehicle.Compile.Resource.Core
+import Vehicle.Compile.ExpandResources.Dataset.IDX (readIDX)
+import Vehicle.Compile.ExpandResources.Core
 
 --------------------------------------------------------------------------------
 -- Dataset parsing

@@ -88,6 +88,7 @@ data CompileError
   | NetworkTypeHasNonExplicitArguments     DeclProvenance CheckedExpr CheckedBinder
   | NetworkTypeHasMultidimensionalTensor   DeclProvenance CheckedExpr CheckedExpr InputOrOutput
   | NetworkTypeHasVariableSizeTensor       DeclProvenance CheckedExpr CheckedExpr InputOrOutput
+  | NetworkTypeHasImplicitSizeTensor       DeclProvenance Identifier InputOrOutput
   | NetworkTypeHasUnsupportedElementType   DeclProvenance CheckedExpr CheckedExpr InputOrOutput
 
   | DatasetTypeUnsupportedContainer DeclProvenance CheckedExpr
@@ -100,7 +101,10 @@ data CompileError
 
   | ParameterTypeUnsupported        DeclProvenance CheckedExpr
   | ParameterTypeVariableSizeIndex  DeclProvenance CheckedExpr
+  | ParameterTypeImplicitParamIndex DeclProvenance Identifier
   | ParameterValueUnparsable        DeclProvenance CheckedExpr String
+
+  | ImplicitParameterTypeUnsupported DeclProvenance CheckedExpr
 
   -- Backend errors
   | NoPropertiesFound

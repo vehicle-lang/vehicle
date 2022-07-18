@@ -83,10 +83,10 @@ library
                       , Vehicle.Compile.Normalise.DNF
                       , Vehicle.Compile.Normalise.UserVariables
                       , Vehicle.Compile.Resource
-                      , Vehicle.Compile.Resource.Core
-                      , Vehicle.Compile.Resource.Network
-                      , Vehicle.Compile.Resource.Dataset
-                      , Vehicle.Compile.Resource.Parameter
+                      , Vehicle.Compile.ExpandResources.Core
+                      , Vehicle.Compile.ExpandResources.Network
+                      , Vehicle.Compile.ExpandResources.Dataset
+                      , Vehicle.Compile.ExpandResources.Parameter
                       , Vehicle.Compile.LetInsertion
                       , Vehicle.Compile.Simplify
                       , Vehicle.Compile.SupplyNames
@@ -138,7 +138,7 @@ library
                       , Vehicle.Compile.Type.WeakHeadNormalForm
                       , Vehicle.Compile.Type.VariableContext
 
-                      , Vehicle.Compile.Resource.Dataset.IDX
+                      , Vehicle.Compile.ExpandResources.Dataset.IDX
                       , Vehicle.Compile.CapitaliseTypeNames
                       , Vehicle.Compile.QuantifierAnalysis
                       , Vehicle.Compile.Prelude.Patterns

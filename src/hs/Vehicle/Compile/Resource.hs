@@ -14,11 +14,11 @@ import Data.Maybe ( catMaybes )
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Resource.Dataset
-import Vehicle.Compile.Resource.Parameter
-import Vehicle.Compile.Resource.Network
+import Vehicle.Compile.ExpandResources.Dataset
+import Vehicle.Compile.ExpandResources.Parameter
+import Vehicle.Compile.ExpandResources.Network
 
-import Vehicle.Compile.Resource.Core as X
+import Vehicle.Compile.ExpandResources.Core as X
 import Vehicle.Compile.Normalise
 import Data.Bifunctor
 

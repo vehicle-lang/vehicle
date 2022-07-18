@@ -1,5 +1,5 @@
 
-module Vehicle.Compile.Resource.Core where
+module Vehicle.Compile.ExpandResources.Core where
 
 import Data.Map (Map)
 import Control.Monad.Except (MonadError(..))

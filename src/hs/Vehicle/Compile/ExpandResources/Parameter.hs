@@ -1,4 +1,4 @@
-module Vehicle.Compile.Resource.Parameter
+module Vehicle.Compile.ExpandResources.Parameter
   ( parseParameterValue
   ) where
 

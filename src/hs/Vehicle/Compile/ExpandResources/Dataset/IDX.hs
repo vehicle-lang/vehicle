@@ -1,5 +1,5 @@
 
-module Vehicle.Compile.Resource.Dataset.IDX
+module Vehicle.Compile.ExpandResources.Dataset.IDX
   ( readIDX
   ) where
 
@@ -14,7 +14,7 @@ import Data.Vector.Unboxed qualified as Vector
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Control.Exception
-import Vehicle.Compile.Resource.Core
+import Vehicle.Compile.ExpandResources.Core
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
 -- matches the type of the stored data.

@@ -18,7 +18,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Resource
+import Vehicle.Compile.Resource ( allowedNetworkElementTypes )
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -451,6 +451,15 @@ instance MeaningfulError CompileError where
                      "tensor is constant."
       }
 
+    NetworkTypeHasImplicitSizeTensor (_, p) implIdent _io -> UError $ UserError
+      { provenance = p
+      , problem    = "The use of implicit parameters in the type of network declarations" <+>
+                     "is not supported."
+      , fix        = Just $ "instanstiate the" <+>
+                      prettyResource ImplicitParameter implIdent <+>
+                      "to an explicit value"
+      }
+
     -- Dataset errors
 
     DatasetTypeUnsupportedContainer (ident, p) tCont -> UError $ UserError
@@ -536,6 +545,24 @@ instance MeaningfulError CompileError where
       , problem    = "An Index with variable dimensions" <+> squotes (prettyFriendly fullType) <+>
                      "is not a supported type for the" <+> prettyResource Parameter ident <> "."
       , fix        = Just "make sure the dimensions of the indices are all constants."
+      }
+
+    ParameterTypeImplicitParamIndex (ident, p) _varIndent -> UError $ UserError
+      { provenance = p
+      , problem    = "The use of an" <+> pretty ImplicitParameter <+> "for the size of" <+>
+                     "an" <+> pretty Index <+> "in the type of" <+>
+                     prettyResource Parameter ident <+>  "is not currently supported."
+      , fix        = Just $ "replace the 'implicit parameter' with a concrete value or" <+>
+                     "open an issue on the Github tracker to request support."
+      }
+
+    -- Parameter errors
+
+    ImplicitParameterTypeUnsupported (ident, p) expectedType -> UError $ UserError
+      { provenance = p
+      , problem    = unsupportedResourceTypeDescription ImplicitParameter ident expectedType <>
+                     "." <+> supportedImplicitParameterTypeDescription
+      , fix        = Just "change the implicit parameter type in the specification."
       }
 
     --------------------
@@ -664,6 +691,10 @@ supportedParameterTypeDescription =
     "3." <+> "Nat"     <> line <>
     "4." <+> "Int"     <> line <>
     "5." <+> "Rat" )
+
+supportedImplicitParameterTypeDescription :: Doc a
+supportedImplicitParameterTypeDescription =
+  "Only implicit parameters of type 'Nat' are allowed."
 
 unsolvedConstraintError :: Constraint -> [DBBinding] -> Doc a
 unsolvedConstraintError constraint ctx ="Typing error: not enough information to solve constraint" <+>

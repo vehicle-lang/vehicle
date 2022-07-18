@@ -1,4 +1,4 @@
-module Vehicle.Compile.Resource.Network
+module Vehicle.Compile.ExpandResources.Network
   ( getNetworkType
   ) where
 
@@ -7,7 +7,7 @@ import Control.Monad.Except (MonadError(..))
 import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Resource.Core
+import Vehicle.Compile.ExpandResources.Core
 
 --------------------------------------------------------------------------------
 -- Network typing
