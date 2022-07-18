@@ -95,6 +95,9 @@ typeCheckDecl decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
       finalDecl <- generaliseOverUnsolvedMetaVariables substDecl
       return finalDecl
 
+    DefPostulate p _ _ -> do
+      return $ DefPostulate p ident checkedType
+
     DefFunction p _ _ _ body -> do
       checkedBody <- logCompilerPass MidDetail (passDoc <+> "body of" <+> identDoc) $ do
         checkExpr checkedType body
@@ -260,6 +263,7 @@ getDefaultCandidates maybeDecl = do
 updatePropertyInfo :: MonadLogger m => CheckedDecl -> m CheckedDecl
 updatePropertyInfo = \case
   r@DefResource{}       -> return r
+  r@DefPostulate{}      -> return r
   DefFunction p _ ident t e -> do
     let propertyInfo = getPropertyInfo t
     case propertyInfo of

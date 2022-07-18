@@ -450,7 +450,7 @@ typeOfLiteral ann l = fromDSL ann $ case l of
   LNat  n -> forall type0 $ \t -> hasNatLitsUpTo n t ~~~> t
   LInt  _ -> forall type0 $ \t -> hasIntLits t ~~~> t
   LRat  _ -> forall type0 $ \t -> hasRatLits t ~~~> t
-  LBool _ -> tBool constant unquantified
+  LBool _ -> tAnnBool constant unquantified
 
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedExpr
@@ -531,7 +531,7 @@ typeOfIf :: DSLExpr
 typeOfIf =
   forall type0 $ \t ->
     forall tLin $ \lin ->
-      tBool lin unquantified ~> t ~> t ~> t
+      tAnnBool lin unquantified ~> t ~> t ~> t
 
 typeOfOp1 :: (DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
 typeOfOp1 constraint =
@@ -575,7 +575,7 @@ typeOfForeachIn =
           -- This is a hack. Need to think about the multi-dimensional case
           -- more carefully.
           let ds = lseq tNat (tList tNat) [d] in
-          (tElem ~> tBool lin pol) ~> tTensor tElem ds ~> tTensor (tBool lin pol) ds
+          (tElem ~> tAnnBool lin pol) ~> tTensor tElem ds ~> tTensor (tAnnBool lin pol) ds
 
 typeOfCons :: DSLExpr
 typeOfCons =

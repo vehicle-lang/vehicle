@@ -43,6 +43,7 @@ instance Delaborate V.NamedDecl B.Decl where
     V.DefResource _ Dataset   n t -> B.DeclData  (delabIdentifier n) <$> delabM t
     V.DefResource _ Parameter n t -> B.DeclParam (delabIdentifier n) <$> delabM t
     V.DefFunction _ _ n t e       -> B.DefFun    (delabIdentifier n) <$> delabM t <*> delabM e
+    V.DefPostulate _ n t          -> B.DeclPost  (delabIdentifier n) <$> delabM t
 
 instance Delaborate V.NamedExpr B.Expr where
   delabM expr = case expr of

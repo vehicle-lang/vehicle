@@ -52,7 +52,11 @@ compileProg networkCtx (Main ds) = catMaybes <$> traverse (compileDecl networkCt
 
 compileDecl :: MonadCompile m => NetworkContext -> CheckedDecl -> m (Maybe (Symbol, MarabouProperty))
 compileDecl networkCtx d = case d of
-  DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
+  DefResource _ r _ _ ->
+    normalisationError currentPass (pretty r <+> "declarations")
+
+  DefPostulate{} ->
+    normalisationError currentPass "postulates"
 
   DefFunction p maybePropertyInfo ident _ expr ->
     case maybePropertyInfo of

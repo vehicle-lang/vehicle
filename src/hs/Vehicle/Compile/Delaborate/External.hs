@@ -84,7 +84,7 @@ instance Delaborate V.NamedProg B.Prog where
 instance Delaborate V.NamedDecl [B.Decl] where
   delabM = \case
     -- Elaborate a network declaration.
-    (V.DefResource _ r n t) -> do
+    V.DefResource _ r n t -> do
       let n' = delabIdentifier n
       t' <- delabM t
       return $ case r of
@@ -93,7 +93,10 @@ instance Delaborate V.NamedDecl [B.Decl] where
         Parameter -> [B.DeclParam n' tokElemOf t']
 
     -- Elaborate a type definition.
-    (V.DefFunction _ _ n t e) -> delabFun n t e
+    V.DefFunction _ _ n t e -> delabFun n t e
+
+    V.DefPostulate{} ->
+      developerError "Should not be delaborating postulates"
 
 instance Delaborate V.NamedExpr B.Expr where
   delabM expr = case expr of

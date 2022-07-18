@@ -44,12 +44,7 @@ instance InsertAuxiliaryAnnotations UncheckedProg where
   insert (Main ds) = Main <$> traverse insert ds
 
 instance InsertAuxiliaryAnnotations UncheckedDecl where
-  insert = \case
-    DefResource p resourceType ident t ->
-      DefResource p resourceType ident <$> insert t
-
-    DefFunction p propertyInfo ident t e ->
-      DefFunction p propertyInfo ident <$> insert t <*> insert e
+  insert = traverseDeclExprs insert
 
 instance InsertAuxiliaryAnnotations UncheckedExpr where
   insert expr = case expr of
@@ -126,12 +121,7 @@ instance RemoveAuxiliaryArguments CheckedProg where
   remove (Main ds) = Main <$> traverse remove ds
 
 instance RemoveAuxiliaryArguments CheckedDecl where
-  remove = \case
-    DefResource p resourceType ident t ->
-      DefResource p resourceType ident <$> remove t
-
-    DefFunction p propertyInfo ident t e ->
-      DefFunction p propertyInfo ident <$> remove t <*> remove e
+  remove = traverseDeclExprs remove
 
 instance RemoveAuxiliaryArguments CheckedExpr where
   remove expr = do

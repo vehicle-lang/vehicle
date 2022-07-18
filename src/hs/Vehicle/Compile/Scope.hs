@@ -85,6 +85,9 @@ scopeDecl = \case
   DefFunction p u ident t e ->
     DefFunction p u ident <$> scopeDeclExpr True t <*> scopeDeclExpr False e
 
+  DefPostulate p ident t ->
+    DefPostulate p ident <$> scopeDeclExpr False t
+
 scopeDeclExpr :: forall m . MonadScope m => Bool -> InputExpr -> m UncheckedExpr
 scopeDeclExpr generalise expr = do
   declCtx <- ask

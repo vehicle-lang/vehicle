@@ -60,6 +60,7 @@ library
                       , Vehicle.Language.DSL
                       , Vehicle.Language.Print
                       , Vehicle.Language.Sugar
+                      , Vehicle.Language.Postulates
 
                       , Vehicle.Compile
                       , Vehicle.Compile.Prelude

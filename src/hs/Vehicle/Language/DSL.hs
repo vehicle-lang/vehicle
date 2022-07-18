@@ -7,6 +7,8 @@ module Vehicle.Language.DSL
   , tNat
   , tInt
   , tRat
+  , tAnnBool
+  , tAnnRat
   , tList
   , tTensor
   , tIndex
@@ -139,13 +141,17 @@ tPol = universe PolarityUniv
 tLin :: DSLExpr
 tLin = universe LinearityUniv
 
-tBool :: DSLExpr -> DSLExpr ->  DSLExpr
-tBool linearity polarity = con Bool `iApp` [linearity, polarity]
-
-tNat, tInt, tRat :: DSLExpr
+tBool, tNat, tInt, tRat :: DSLExpr
 tNat  = con (NumericType Nat)
 tInt  = con (NumericType Int)
 tRat  = con (NumericType Rat)
+tBool = con Bool
+
+tAnnRat :: DSLExpr ->  DSLExpr
+tAnnRat linearity = tRat `iApp` [linearity]
+
+tAnnBool :: DSLExpr -> DSLExpr ->  DSLExpr
+tAnnBool linearity polarity = tBool `iApp` [linearity, polarity]
 
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
 tTensor tElem dims = con (ContainerType Tensor) `eApp` [tElem, dims]

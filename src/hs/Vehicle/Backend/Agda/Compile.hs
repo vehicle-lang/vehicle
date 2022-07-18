@@ -288,7 +288,10 @@ compileProg (Main ds) = vsep2 <$> traverse compileDecl ds
 compileDecl :: MonadAgdaCompile m => OutputDecl -> m Code
 compileDecl = \case
   DefResource _ _ n t ->
-    compileResource (compileIdentifier n) <$> compileExpr t
+    compilePostulate (compileIdentifier n) <$> compileExpr t
+
+  DefPostulate _ n t ->
+    compilePostulate (compileIdentifier n) <$> compileExpr t
 
   DefFunction _ann propertyInfo n t e -> do
     let (binders, body) = foldLam e
@@ -675,8 +678,8 @@ compileFunDef n t ns e =
   n <+> (if null ns then mempty else hsep ns <> " ") <> "=" <+> e
 
 -- |Compile a `network` declaration
-compileResource :: Code -> Code -> Code
-compileResource name t =
+compilePostulate :: Code -> Code -> Code
+compilePostulate name t =
   "postulate" <+> name <+> ":" <+> align t
 
 compileProperty :: MonadAgdaCompile m => Code -> Code -> m Code

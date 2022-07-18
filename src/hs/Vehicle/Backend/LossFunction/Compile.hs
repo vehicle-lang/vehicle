@@ -59,8 +59,14 @@ compile :: MonadCompile m => NetworkContext -> V.CheckedProg -> m [LExpr]
 compile _ (V.Main ds) = catMaybes <$> traverse compileDecl ds
 
 compileDecl :: MonadCompile m => V.CheckedDecl -> m (Maybe LExpr)
-compileDecl V.DefResource{} = normalisationError currentPass "Resource declarations"
-compileDecl (V.DefFunction _ propertyInfo _ _ expr) =
+compileDecl d = case d of
+  V.DefResource{} ->
+    normalisationError currentPass "resource declarations"
+
+  V.DefPostulate{} ->
+    normalisationError currentPass "postulates"
+
+  V.DefFunction _ propertyInfo _ _ expr ->
     if not $ V.isProperty propertyInfo
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.

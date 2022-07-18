@@ -101,6 +101,9 @@ instance Norm CheckedDecl where
       modify (Map.insert ident (typ, Just expr'))
       return $ DefFunction ann u ident typ' expr'
 
+    DefPostulate ann ident typ ->
+      DefPostulate ann ident <$> nf typ
+
 instance Norm CheckedExpr where
   nf e = showExit e $ do
     e' <- showEntry e
@@ -276,7 +279,7 @@ nfQuantifier :: MonadNorm m
              -> Maybe (m CheckedExpr)
 nfQuantifier ann q binder body = case typeOf binder of
   -- If we're quantifing over a tensor, instead quantify over each individual
-  -- element,  and then substitute in a LSeq construct with those elements in.
+  -- element, and then substitute in a LSeq construct with those elements in.
   (TensorType _ tElem tDims) -> case getDimensions tDims of
     Nothing -> Nothing
     Just dims -> Just $ do

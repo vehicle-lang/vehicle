@@ -121,11 +121,13 @@ prependBinderAndSolveMeta meta v binderName binderType decl = do
   -- Construct the new binder and prepend it to both the type and
   -- (if applicable) the body of the declaration.
   let binder = Binder (provenanceOf decl) v binderName substBinderType
-  let prependedDecl = case substDecl of
-        DefResource p r ident t   ->
-          DefResource p r ident (Pi p binder t)
-        DefFunction p u ident t e ->
-          DefFunction p u ident (Pi p binder t) (Lam p binder e)
+  prependedDecl <- case substDecl of
+    DefResource p r ident t   ->
+      return $ DefResource p r ident (Pi p binder t)
+    DefFunction p u ident t e ->
+      return $ DefFunction p u ident (Pi p binder t) (Lam p binder e)
+    DefPostulate{} ->
+      compilerDeveloperError "Generalisation over postulates not yet supported"
 
   -- Then we add i) the new binder to the context of the meta-variable being
   -- solved, and ii) a new argument to all uses of the meta-variable so
