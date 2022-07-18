@@ -553,18 +553,18 @@ typeOfQuantifier q =
       forall type0 $ \tRes ->
         hasQuantifier q tDomain tBody tRes ~~~> (tDomain ~> tBody) ~> tRes
 
-typeOfForeach :: DSLExpr
-typeOfForeach =
-  forall tNat $ \d ->
-    forall type0 $ \tRes ->
-      (tIndex d ~> tRes) ~> tTensor tRes (cons tNat d (nil tNat (tList tNat)))
-
 typeOfQuantifierIn :: Quantifier -> DSLExpr
 typeOfQuantifierIn q =
   forall type0 $ \tElem ->
     forall type0 $ \tCont ->
       forall type0 $ \tRes ->
         hasQuantifierIn q tElem tCont tRes ~~~> (tElem ~> tRes) ~> tCont ~> tRes
+
+typeOfForeach :: DSLExpr
+typeOfForeach =
+  forall tNat $ \d ->
+    forall type0 $ \tRes ->
+      (tIndex d ~> tRes) ~> tTensor tRes (cons tNat d (nil tNat (tList tNat)))
 
 typeOfForeachIn :: DSLExpr
 typeOfForeachIn =

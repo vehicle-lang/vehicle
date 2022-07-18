@@ -210,7 +210,6 @@ substAll sub e = runReaderT (alter binderUpdate alterVar e) (0, sub)
 
     binderUpdate = IM.map (liftFreeDBIndices 1)
 
-
 isBoundVar :: DBExpr -> Bool
 isBoundVar (Var _ Bound{}) = True
 isBoundVar _               = False
