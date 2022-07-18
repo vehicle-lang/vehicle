@@ -480,7 +480,7 @@ instance MeaningfulError CompileError where
 
     DatasetVariableSizeTensor (ident, p) tCont -> UError $ UserError
       { provenance = p
-      , problem    = "A tensor with variable dimensions" <+> squotes (prettyFriendlyDBClosed tCont) <+>
+      , problem    = "A tensor with variable dimension" <+> squotes (prettyFriendlyDBClosed tCont) <+>
                      "is not a supported type for the" <+> prettyResource Dataset ident <> "."
       , fix        = Just "make sure the dimensions of the dataset are all constants."
       }
@@ -556,13 +556,25 @@ instance MeaningfulError CompileError where
                      "open an issue on the Github tracker to request support."
       }
 
-    -- Parameter errors
+    -- Implicit parameter errors
 
     ImplicitParameterTypeUnsupported (ident, p) expectedType -> UError $ UserError
       { provenance = p
       , problem    = unsupportedResourceTypeDescription ImplicitParameter ident expectedType <>
                      "." <+> supportedImplicitParameterTypeDescription
       , fix        = Just "change the implicit parameter type in the specification."
+      }
+
+    ImplicitParameterContradictory ident ((ident1, _p1), r1, v1) ((ident2, p2), r2, v2) ->
+      UError $ UserError
+      { provenance = p2
+      , problem    = "Found contradictory for values for" <+>
+                     prettyResource ImplicitParameter ident <> "." <>
+                     "Inferred the value" <+> squotes (pretty v1) <+> "from" <+>
+                     prettyResource r1 ident1 <>
+                     "but inferred the value" <+> squotes (pretty v2) <+> "from" <+>
+                     prettyResource r2 ident2 <> "."
+      , fix        = Just "make sure the provided resources are consistent with each other."
       }
 
     --------------------

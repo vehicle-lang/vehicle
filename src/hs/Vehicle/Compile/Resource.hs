@@ -1,129 +1,66 @@
 
-module Vehicle.Compile.Resource
-  ( module X
-  , ResourceContext
-  , expandResources
-  ) where
+module Vehicle.Compile.Resource where
 
-import Control.Monad.Reader
-import Control.Monad.Writer
+import Data.Map (Map)
 import Data.Set (Set)
-import Data.Set qualified as Set (singleton)
-import Data.Map qualified as Map (singleton, keysSet, insert)
-import Data.Maybe ( catMaybes )
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Error
-import Vehicle.Compile.ExpandResources.Dataset
-import Vehicle.Compile.ExpandResources.Parameter
-import Vehicle.Compile.ExpandResources.Network
-
-import Vehicle.Compile.ExpandResources.Core as X
-import Vehicle.Compile.Normalise
-import Data.Bifunctor
 
 --------------------------------------------------------------------------------
--- Resource contexts
+-- Parameters
 
-data ResourceContext = ResourceContext
-  { parameterContext :: Set Symbol
-  , datasetContext   :: Set Symbol
-  , networkContext   :: NetworkContext
+type ParameterContext = Set Symbol
+
+--------------------------------------------------------------------------------
+-- Implicit parameters
+
+type ImplicitParameterContext =
+  Map Symbol (Maybe (DeclProvenance, ResourceType, Int))
+
+--------------------------------------------------------------------------------
+-- Datasets
+
+type DatasetContext = Set Symbol
+
+--------------------------------------------------------------------------------
+-- Networks
+
+data NetworkType = NetworkType
+  { inputTensor  :: NetworkTensorType
+  , outputTensor :: NetworkTensorType
   }
 
-instance Semigroup ResourceContext where
-  c1 <> c2 = ResourceContext
-    { parameterContext = parameterContext c1 <> parameterContext c2
-    , datasetContext   = datasetContext   c1 <> datasetContext   c2
-    , networkContext   = networkContext   c1 <> networkContext   c2
-    }
+instance Pretty NetworkType where
+  pretty (NetworkType input output) =
+    "[input =" <+> pretty input <+> "output =" <+> pretty output <> "]"
 
-instance Monoid ResourceContext where
-  mempty = ResourceContext mempty mempty mempty
+networkSize :: NetworkType -> Int
+networkSize network = size (inputTensor network) + size (outputTensor network)
 
---------------------------------------------------------------------------------
--- Resource monad
+data NetworkTensorType = NetworkTensorType
+  { size  :: Int
+  , tElem :: NetworkBaseType
+  }
 
-type MonadResource m =
-  ( MonadCompile m
-  , MonadIO m
-  , MonadReader ((Resources, Bool), DeclCtx CheckedExpr) m
-  , MonadWriter ResourceContext m
-  )
+instance Pretty NetworkTensorType where
+  pretty (NetworkTensorType size tElem) =
+    "Tensor" <+> pretty tElem <+> "[" <> pretty size <> "]"
 
-addParameter :: MonadResource m => Symbol -> m ()
-addParameter ident =
-  tell (ResourceContext (Set.singleton ident) mempty mempty)
+data NetworkBaseType
+  = NetworkRatType
+  deriving (Enum)
 
-addDataset :: MonadResource m => Symbol -> m ()
-addDataset ident =
-  tell (ResourceContext mempty (Set.singleton ident) mempty)
+instance Pretty NetworkBaseType where
+  pretty = \case
+    NetworkRatType -> pretty (NumericType Rat)
 
-addNetworkType :: MonadResource m => Symbol -> NetworkType -> m ()
-addNetworkType ident details =
-  tell (ResourceContext mempty mempty (Map.singleton ident details))
+reconstructNetworkBaseType :: Provenance -> NetworkBaseType -> CheckedExpr
+reconstructNetworkBaseType ann NetworkRatType = RatType ann
 
---------------------------------------------------------------------------------
--- Traversal of program
+allowedNetworkElementTypes :: [CheckedExpr]
+allowedNetworkElementTypes = reconstructNetworkBaseType mempty <$>
+  [(NetworkRatType :: NetworkBaseType) ..]
 
-expandResources :: (MonadCompile m, MonadIO m)
-                => Resources
-                -> Bool
-                -> CheckedProg
-                -> m (NetworkContext, CheckedProg)
-expandResources resources@Resources{..} expandDatasets prog =
-  logCompilerPass MinDetail "expansion of external resources" $ do
-    (prog', ResourceContext{..}) <- runWriterT (runReaderT (processProg prog) ((resources, expandDatasets), mempty))
+type NetworkContext = Map Symbol NetworkType
 
-    warnIfUnusedResources Parameter (Map.keysSet parameters) parameterContext
-    warnIfUnusedResources Dataset   (Map.keysSet datasets)   datasetContext
-    warnIfUnusedResources Network   (Map.keysSet networks)   (Map.keysSet networkContext)
-
-    return (networkContext, prog')
-
-processProg :: MonadResource m => CheckedProg -> m CheckedProg
-processProg (Main ds) = Main . catMaybes <$> processDecls ds
-
-processDecls :: MonadResource m => [CheckedDecl] -> m [Maybe CheckedDecl]
-processDecls []       = return []
-processDecls (d : ds) = do
-  (d', alterCtx)  <- processDecl d
-  ds' <- local (second alterCtx) $ processDecls ds
-  return $ d' : ds'
-
-processDecl :: MonadResource m => CheckedDecl -> m (Maybe CheckedDecl, DeclCtx CheckedExpr -> DeclCtx CheckedExpr)
-processDecl d = case d of
-  DefFunction _ _ ident _ declExpr ->
-    return (Just d, Map.insert ident declExpr)
-
-  DefPostulate{} ->
-    return (Just d, id)
-
-  DefResource ann resourceType ident declType -> do
-    ((resources, expandDatasets), declCtx) <- ask
-    let name = nameOf ident
-    normType <- normalise declType defaultNormalisationOptions
-      { declContext = declCtx
-      }
-
-    case resourceType of
-      Parameter -> do
-        addParameter name
-        parameterExpr <- parseParameterValue (parameters resources) ann ident normType
-        let result = Just $ DefFunction ann Nothing ident normType parameterExpr
-        return (result, Map.insert ident parameterExpr)
-      Dataset -> do
-        addDataset name
-        if not expandDatasets
-          then return (Just d, id)
-          else do
-            datasetExpr <- parseDataset (datasets resources) ann ident normType
-            let result = Just $ DefFunction ann Nothing ident normType datasetExpr
-            return (result, Map.insert ident datasetExpr)
-      Network -> do
-        networkType <- getNetworkType ann ident normType
-        addNetworkType name networkType
-        return (Nothing, id)
-
-      ImplicitParameter -> do
-        return (Nothing, id)
+type MetaNetwork = [Symbol]

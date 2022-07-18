@@ -32,6 +32,7 @@ import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.LossFunction ( LExpr, writeLossFunctionFiles)
 import Vehicle.Compile.Resource
+import Vehicle.Compile.ExpandResources
 
 compile :: LoggingOptions -> CompileOptions -> IO ()
 compile loggingOptions CompileOptions{..} = do

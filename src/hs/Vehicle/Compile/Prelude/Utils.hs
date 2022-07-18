@@ -169,11 +169,11 @@ mkTensorDims ann dims =
 
 mkTensorType :: Provenance
              -> DBExpr
-             -> [Int]
+             -> [DBExpr]
              -> DBExpr
 mkTensorType _   tElem []   = tElem
 mkTensorType ann tElem dims =
-  let dimList = mkTensorDims ann dims in
+  let dimList = mkList ann (NatType ann) dims in
   App ann (BuiltinContainerType ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
 
 mkQuantifierSeq :: Quantifier
@@ -193,7 +193,7 @@ mkList ann elemType = SeqExpr ann elemType (ListType ann elemType)
 
 mkTensor :: Provenance
          -> DBExpr
-         -> [Int]
+         -> [DBExpr]
          -> [DBExpr]
          -> DBExpr
 mkTensor ann tBaseElem dims =

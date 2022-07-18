@@ -105,6 +105,7 @@ data CompileError
   | ParameterValueUnparsable        DeclProvenance CheckedExpr String
 
   | ImplicitParameterTypeUnsupported DeclProvenance CheckedExpr
+  | ImplicitParameterContradictory   Identifier (DeclProvenance, ResourceType, Int) (DeclProvenance, ResourceType, Int)
 
   -- Backend errors
   | NoPropertiesFound

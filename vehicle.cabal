@@ -83,6 +83,7 @@ library
                       , Vehicle.Compile.Normalise.DNF
                       , Vehicle.Compile.Normalise.UserVariables
                       , Vehicle.Compile.Resource
+                      , Vehicle.Compile.ExpandResources
                       , Vehicle.Compile.ExpandResources.Core
                       , Vehicle.Compile.ExpandResources.Network
                       , Vehicle.Compile.ExpandResources.Dataset

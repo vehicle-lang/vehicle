@@ -1,2 +1,2 @@
-Error at Line 2, Columns 9-24: A tensor with variable dimensions '[if f [0] ! 0 > 0 then 2 else 3]' is not a supported type for the dataset 'trainingDataset'.
+Error at Line 2, Columns 9-24: A tensor with variable dimension 'if f [0] ! 0 > 0 then 2 else 3' is not a supported type for the dataset 'trainingDataset'.
 Fix: make sure the dimensions of the dataset are all constants.

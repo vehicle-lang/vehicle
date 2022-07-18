@@ -318,7 +318,8 @@ mkMagicVariableSeq ann tElem indices = tensorExpr
   where
   tensorElemType   = reconstructNetworkBaseType ann tElem
   variables        = map (Var ann . Bound) indices
-  tensorExpr       = mkTensor ann tensorElemType [length indices] variables
+  dim              = NatLiteralExpr ann (NatType ann) (length indices)
+  tensorExpr       = mkTensor ann tensorElemType [dim] variables
 
 compileAssertions :: MonadSMT m
                   => CheckedExpr
