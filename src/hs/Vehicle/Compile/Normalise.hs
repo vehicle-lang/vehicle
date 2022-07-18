@@ -8,6 +8,7 @@ import Control.Exception (assert)
 import Control.Monad (when)
 import Control.Monad.State (MonadState(..), evalStateT, gets, modify)
 import Control.Monad.Reader (MonadReader(..), runReaderT)
+import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.List.Split (chunksOf)
@@ -18,7 +19,6 @@ import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.AlphaEquivalence ( alphaEq )
 import Vehicle.Compile.Error
-import Vehicle.Compile.Type.VariableContext (DeclCtx)
 import Vehicle.Compile.Normalise.DNF (applyNotAndNormalise)
 
 -- |Run a function in 'MonadNorm'.
@@ -41,7 +41,7 @@ data NormalisationOptions = Options
   { implicationsToDisjunctions :: Bool
   , subtractionToAddition      :: Bool
   , expandOutPolynomials       :: Bool
-  , declContext                :: DeclCtx
+  , declContext                :: DeclCtx CheckedExpr
   , boundContext               :: [DBBinding]
   }
 
@@ -78,7 +78,7 @@ showExit old mNew = do
 -- |Constraint for the monad stack used by the normaliser.
 type MonadNorm m =
   ( MonadCompile m
-  , MonadState DeclCtx m
+  , MonadState (Map Identifier CheckedExpr) m
   , MonadReader NormalisationOptions m
   )
 
@@ -98,7 +98,7 @@ instance Norm CheckedDecl where
     DefFunction ann u ident typ expr -> do
       typ'  <- nf typ
       expr' <- nf expr
-      modify (Map.insert ident (typ, Just expr'))
+      modify (Map.insert ident expr')
       return $ DefFunction ann u ident typ' expr'
 
     DefPostulate ann ident typ ->
@@ -122,7 +122,7 @@ instance Norm CheckedExpr where
       Ann _ann expr _typ  -> nf expr
 
       Var _ (Bound _)     -> return e
-      Var _ (Free ident)  -> gets (maybe e (fromMaybe e . snd) . Map.lookup ident)
+      Var _ (Free ident)  -> gets (fromMaybe e . Map.lookup ident)
 
       Let _ann letValue _binder letBody -> do
         letValue' <- nf letValue

@@ -138,7 +138,7 @@ familyOf = \case
 
 defaultSolution :: MonadMeta m
                 => Provenance
-                -> BoundCtx
+                -> TypingBoundCtx
                 -> TypeClass
                 -> m CheckedExpr
 defaultSolution ann ctx = \case
@@ -170,7 +170,7 @@ defaultSolution ann ctx = \case
   MaxPolarity{}                       -> auxiliaryTCError
   TypesEqualModAuxiliaryAnnotations{} -> auxiliaryTCError
 
-createDefaultListType :: MonadMeta m => Provenance -> BoundCtx -> m CheckedExpr
+createDefaultListType :: MonadMeta m => Provenance -> TypingBoundCtx -> m CheckedExpr
 createDefaultListType p ctx = do
   tElem <- freshExprMeta p (TypeUniverse p 0) ctx
   return $ ListType p tElem

@@ -4,6 +4,8 @@ module Vehicle.Compile.Prelude
   , module Vehicle.Compile.Prelude
   ) where
 
+import Data.Map (Map)
+
 import Vehicle.Prelude as X
 import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Language.AST as X
@@ -84,6 +86,10 @@ data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
 
 --------------------------------------------------------------------------------
 -- Contexts
+
+-- | Stores information associated with the declarations that are currently in
+-- scope, indexed into via their names.
+type DeclCtx a = Map Identifier a
 
 class HasBoundCtx a where
   boundContextOf :: a -> [DBBinding]

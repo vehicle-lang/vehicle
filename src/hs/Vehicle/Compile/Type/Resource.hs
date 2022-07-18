@@ -4,6 +4,7 @@ module Vehicle.Compile.Type.Resource
   ) where
 
 import Control.Monad.Except (MonadError(..))
+import Data.Map qualified as Map
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
@@ -27,7 +28,7 @@ checkResourceType resourceType decl@(ident, _) t = do
           Dataset           -> checkDatasetType
           Network           -> checkNetworkType
     normType <- normalise t $ defaultNormalisationOptions
-      { Norm.declContext = declCtx
+      { Norm.declContext = Map.mapMaybe snd declCtx
       }
     alterType <- checkFun decl normType
     return $ alterType t

@@ -59,10 +59,10 @@ constraintContext (TC ctx _) = ctx
 variableContext :: Constraint -> VariableCtx
 variableContext = varContext . constraintContext
 
-declContext :: Constraint -> DeclCtx
+declContext :: Constraint -> TypingDeclCtx
 declContext = declCtx . variableContext
 
-boundContext :: Constraint -> BoundCtx
+boundContext :: Constraint -> TypingBoundCtx
 boundContext = boundCtx . variableContext
 
 instance HasBoundCtx Constraint where

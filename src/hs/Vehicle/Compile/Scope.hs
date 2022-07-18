@@ -9,8 +9,7 @@ import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Control.Monad.State
 import Data.Bifunctor (Bifunctor(..))
 import Data.List (elemIndex)
-import Data.Set (Set,)
-import Data.Set qualified as Set (member, insert)
+import Data.Map qualified as Map
 
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Prelude
@@ -29,26 +28,18 @@ scopeCheckClosedExpr e = evalStateT (runReaderT (scopeExpr e) (mempty, False)) m
 -- Scope checking monad and context
 
 -- |Type of scope checking contexts.
-type DeclCtx = Set Identifier
 type BoundCtx = [DBBinding]
 
 type MonadScope m =
   ( MonadCompile m
-  , MonadReader DeclCtx m
+  , MonadReader (DeclCtx ()) m
   )
 
 type MonadScopeExpr m =
   ( MonadCompile m
-  , MonadReader (DeclCtx, Bool) m
+  , MonadReader (DeclCtx (), Bool) m
   , MonadState (BoundCtx, [(Provenance, Symbol)]) m
   )
-{-
-instance Pretty Ctx where
-  pretty (Ctx declCtx exprCtx) = "Ctx" <+> pretty (Set.toList declCtx) <+> pretty exprCtx
-
-emptyCtx :: Ctx
-emptyCtx = Ctx mempty mempty
--}
 
 --------------------------------------------------------------------------------
 -- Debug functions
@@ -142,7 +133,7 @@ scopeBinder :: MonadScopeExpr m => InputBinder -> m UncheckedBinder
 scopeBinder = traverseBinderType scopeExpr
 
 bindDecl :: MonadScope m => Identifier -> m a -> m a
-bindDecl ident = local (Set.insert ident)
+bindDecl ident = local (Map.insert ident ())
 
 bindVar :: MonadScopeExpr m
         => InputBinder
@@ -164,7 +155,7 @@ getVar ann symbol = do
   case elemIndex (Just symbol) boundCtx of
     Just i -> return $ Bound i
     Nothing ->
-      if Set.member (Identifier symbol) declCtx
+      if Map.member (Identifier symbol) declCtx
         then return $ Free (Identifier symbol)
       else if generaliseOverMissingVariables
         then do

@@ -18,6 +18,16 @@ pattern PolarityUniverse :: Provenance -> Expr binder var
 pattern PolarityUniverse p = Universe p PolarityUniv
 
 --------------------------------------------------------------------------------
+-- Variables
+--------------------------------------------------------------------------------
+
+pattern FreeVar :: Provenance -> Identifier -> Expr binder DBVar
+pattern FreeVar p ident = Var p (Free ident)
+
+pattern BoundVar :: Provenance -> DBIndex -> Expr binder DBVar
+pattern BoundVar p index = Var p (Bound index)
+
+--------------------------------------------------------------------------------
 -- Types
 --------------------------------------------------------------------------------
 -- List

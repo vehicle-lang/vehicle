@@ -20,7 +20,6 @@ import Vehicle.Compile.Resource.Network
 
 import Vehicle.Compile.Resource.Core as X
 import Vehicle.Compile.Normalise
-import Vehicle.Compile.Type.VariableContext (DeclCtx)
 import Data.Bifunctor
 
 --------------------------------------------------------------------------------
@@ -48,7 +47,7 @@ instance Monoid ResourceContext where
 type MonadResource m =
   ( MonadCompile m
   , MonadIO m
-  , MonadReader ((Resources, Bool), DeclCtx) m
+  , MonadReader ((Resources, Bool), DeclCtx CheckedExpr) m
   , MonadWriter ResourceContext m
   )
 
@@ -92,13 +91,13 @@ processDecls (d : ds) = do
   ds' <- local (second alterCtx) $ processDecls ds
   return $ d' : ds'
 
-processDecl :: MonadResource m => CheckedDecl -> m (Maybe CheckedDecl, DeclCtx -> DeclCtx)
+processDecl :: MonadResource m => CheckedDecl -> m (Maybe CheckedDecl, DeclCtx CheckedExpr -> DeclCtx CheckedExpr)
 processDecl d = case d of
-  DefFunction _ _ ident declType declExpr ->
-    return (Just d, Map.insert ident (declType, Just declExpr))
+  DefFunction _ _ ident _ declExpr ->
+    return (Just d, Map.insert ident declExpr)
 
-  DefPostulate _ ident declType ->
-    return (Just d, Map.insert ident (declType, Nothing))
+  DefPostulate{} ->
+    return (Just d, id)
 
   DefResource ann resourceType ident declType -> do
     ((resources, expandDatasets), declCtx) <- ask
@@ -112,7 +111,7 @@ processDecl d = case d of
         addParameter name
         parameterExpr <- parseParameterValue (parameters resources) ann ident normType
         let result = Just $ DefFunction ann Nothing ident normType parameterExpr
-        return (result, Map.insert ident (normType, Just parameterExpr))
+        return (result, Map.insert ident parameterExpr)
       Dataset -> do
         addDataset name
         if not expandDatasets
@@ -120,7 +119,7 @@ processDecl d = case d of
           else do
             datasetExpr <- parseDataset (datasets resources) ann ident normType
             let result = Just $ DefFunction ann Nothing ident normType datasetExpr
-            return (result, Map.insert ident (normType, Just datasetExpr))
+            return (result, Map.insert ident datasetExpr)
       Network -> do
         networkType <- getNetworkType ann ident normType
         addNetworkType name networkType

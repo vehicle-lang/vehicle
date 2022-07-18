@@ -159,7 +159,7 @@ instance MetaSubstitutable a => MetaSubstitutable (MetaMap a) where
 data MetaInfo = MetaInfo
   { metaProvenance :: Provenance
   , metaType       :: CheckedExpr
-  , metaCtx        :: BoundCtx
+  , metaCtx        :: TypingBoundCtx
   }
 
 instance MetaSubstitutable MetaInfo where
@@ -205,7 +205,7 @@ type MonadMeta m =
 freshMeta :: MonadMeta m
           => Provenance
           -> CheckedExpr
-          -> BoundCtx
+          -> TypingBoundCtx
           -> m (Meta, CheckedExpr)
 freshMeta p metaType boundCtx = do
   -- Create a fresh name
@@ -227,7 +227,7 @@ freshMeta p metaType boundCtx = do
 freshExprMeta :: MonadMeta m
               => Provenance
               -> CheckedExpr
-              -> BoundCtx
+              -> TypingBoundCtx
               -> m CheckedExpr
 freshExprMeta p t ctx = snd <$> freshMeta p t ctx
 
@@ -247,7 +247,7 @@ freshTypeClassPlacementMeta :: MonadMeta m
 freshTypeClassPlacementMeta p t = fst <$> freshMeta p t []
 
 -- |Creates a Pi type that abstracts over all bound variables
-makeMetaType :: BoundCtx
+makeMetaType :: TypingBoundCtx
              -> Provenance
              -> CheckedExpr
              -> CheckedExpr
@@ -273,7 +273,7 @@ getMetaProvenance m = metaProvenance <$> getMetaInfo m
 getMetaType :: MonadMeta m => Meta -> m CheckedExpr
 getMetaType m = metaType <$> getMetaInfo m
 
-getMetaContext :: MonadMeta m => Meta -> m BoundCtx
+getMetaContext :: MonadMeta m => Meta -> m TypingBoundCtx
 getMetaContext m = metaCtx <$> getMetaInfo m
 
 modifyMetasInfo :: MonadMeta m => Meta -> (MetaInfo -> MetaInfo) -> m ()
@@ -363,7 +363,7 @@ filterMetasByTypes typeFilter metas = do
   let filteredMetas = filter (typeFilter . snd) typedMetas
   return $ MetaSet.fromList (fmap fst filteredMetas)
 
-abstractOverCtx :: BoundCtx -> CheckedExpr -> CheckedExpr
+abstractOverCtx :: TypingBoundCtx -> CheckedExpr -> CheckedExpr
 abstractOverCtx ctx body =
   let ctxTypes   = fmap (\(_, t, _) -> t) ctx in
   foldr typeToLam body ctxTypes
