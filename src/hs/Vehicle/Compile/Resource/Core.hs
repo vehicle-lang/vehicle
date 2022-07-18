@@ -39,7 +39,7 @@ getDatasetType ann ident datasetType = getContainerType True datasetType
     ListType   _ tElem       -> DatasetListType <$> getContainerType False tElem
     TensorType _ tElem tDims -> case getDimensions tDims of
       Just dims -> DatasetTensorType <$> getContainerType False tElem <*> pure dims
-      Nothing   -> throwError $ DatasetVariableSizeTensor ident ann tDims
+      Nothing   -> throwError $ DatasetVariableSizeTensor (ident, ann) tDims
     typ -> if topLevel
       then typingError
       else DatasetBaseType <$> getDatasetElemType typ
@@ -51,7 +51,7 @@ getDatasetType ann ident datasetType = getContainerType True datasetType
     IntType{}             -> return DatasetIntType
     RatType{}             -> return DatasetRatType
     ConcreteIndexType _ n -> return $ DatasetIndexType n
-    _ -> throwError $ DatasetTypeUnsupportedElement ident ann elemType
+    _ -> throwError $ DatasetTypeUnsupportedElement (ident, ann) elemType
 
   typingError :: m a
   typingError = compilerDeveloperError $

@@ -110,3 +110,8 @@ logCompilerPassOutput result = do
   incrCallDepth
   logDebug MidDetail result
   decrCallDepth
+
+--------------------------------------------------------------------------------
+-- Other
+
+type DeclProvenance = (Identifier, Provenance)

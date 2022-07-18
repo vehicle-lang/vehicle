@@ -28,7 +28,7 @@ readIDX file ident prov datasetType =
   flip runReaderT (ident, prov) $ do
     contents <- readIDXFile file
     case contents of
-      Nothing      -> throwError $ UnableToParseResource ident prov Dataset file
+      Nothing      -> throwError $ UnableToParseResource (ident, prov) Dataset file
       Just idxData -> do
         let baseType = datasetBaseType datasetType
         let dims = idxDimensions idxData
@@ -53,7 +53,7 @@ readIDXFile file = do
     Right idxData  -> return idxData
     Left  ioExcept -> do
       (ident, prov) <- ask
-      throwError $ ResourceIOError ident prov Dataset ioExcept
+      throwError $ ResourceIOError (ident, prov) Dataset ioExcept
 
 parseIDX :: forall m a . (MonadDataset m, Vector.Unbox a)
          => Provenance
@@ -70,7 +70,7 @@ parseIDX ann ident datasetType elemParser actualDims =
     mismatchError =
       let expectedType = reconstructDatasetType ann datasetType in
       let actualDimList = Vector.toList actualDims in
-       DatasetDimensionMismatch ident ann expectedType actualDimList
+       DatasetDimensionMismatch (ident, ann) expectedType actualDimList
 
     go :: Vector Int
        -> DatasetType
@@ -130,7 +130,7 @@ doubleElemParser tElem = do
       return (\v ->
         return $ RatLiteralExpr ann baseType (toRational v))
     _ -> do
-      throwError $ DatasetTypeMismatch ident prov baseType Rat
+      throwError $ DatasetTypeMismatch (ident, prov) baseType Rat
 
 intElemParser :: MonadDataset m => DatasetBaseType -> m (Int -> m CheckedExpr)
 intElemParser tElem = do
@@ -143,12 +143,12 @@ intElemParser tElem = do
     DatasetNatType -> return (\v ->
       if v >= 0
         then return $ NatLiteralExpr ann baseType v
-        else throwError $ DatasetInvalidNat ident prov v)
+        else throwError $ DatasetInvalidNat (ident, prov) v)
     DatasetIndexType n -> return (\v ->
       if v >= 0 && v < n
         then return $ NatLiteralExpr ann baseType v
-        else throwError $ DatasetInvalidIndex ident prov n v)
-    _ -> throwError $ DatasetTypeMismatch ident prov baseType Int
+        else throwError $ DatasetInvalidIndex (ident, ann) n v)
+    _ -> throwError $ DatasetTypeMismatch (ident, prov) baseType Int
 
 -- | Split data by the first dimension of the C-Array.
 partitionData :: Vector.Unbox a => Int -> Vector Int -> Vector a -> [Vector a]

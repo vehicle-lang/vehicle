@@ -128,14 +128,14 @@ goldenTests = testGroup "GoldenTests" <$>
       , testLocation   = Tests
       , testTargets    = [AgdaBackend]
       }
-
+{-
     , testSpec
       { testName       = "simple-implicitParam"
       , testLocation   = Tests
       , testTargets    = [MarabouBackend]
       , testDatasets   = [("d", "dataset-rat-4.idx")]
       }
-
+-}
     , testSpec
       { testName       = "simple-gaussianElim"
       , testLocation   = Tests

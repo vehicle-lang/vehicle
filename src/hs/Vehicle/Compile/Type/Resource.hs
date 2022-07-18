@@ -14,11 +14,10 @@ import Vehicle.Compile.Type.VariableContext
 
 checkResourceType :: TCM m
                   => ResourceType
-                  -> Provenance
-                  -> Identifier
+                  -> DeclProvenance
                   -> CheckedExpr
                   -> m CheckedExpr
-checkResourceType resourceType p ident t = do
+checkResourceType resourceType decl@(ident, _) t = do
   let resourceName = pretty resourceType <+> squotes (pretty ident)
   logCompilerPass MidDetail ("checking compatability of type of" <+> resourceName) $ do
     declCtx <- getDeclCtx
@@ -29,15 +28,14 @@ checkResourceType resourceType p ident t = do
     normType <- normalise t $ defaultNormalisationOptions
       { Norm.declContext = declCtx
       }
-    alterType <- checkFun p ident normType
+    alterType <- checkFun decl normType
     return $ alterType t
 
 checkParameterType :: TCM m
-                   => Provenance
-                   -> Identifier
+                   => DeclProvenance
                    -> CheckedExpr
                    -> m (CheckedExpr -> CheckedExpr)
-checkParameterType ann ident t = do
+checkParameterType decl t = do
   case t of
     BoolType{}  -> return ()
     IndexType{} -> return ()
@@ -49,15 +47,14 @@ checkParameterType ann ident t = do
       addUnificationConstraint p emptyVariableCtx lin targetLinearity
       return ()
 
-    paramType -> throwError $ ParameterTypeUnsupported ident ann paramType
+    paramType -> throwError $ ParameterTypeUnsupported decl paramType
   return id
 
 checkDatasetType :: forall m . TCM m
-                 => Provenance
-                 -> Identifier
+                 => DeclProvenance
                  -> CheckedExpr
                  -> m (CheckedExpr -> CheckedExpr)
-checkDatasetType ann ident t = do
+checkDatasetType decl t = do
   checkContainerType True t
   return id
   where
@@ -66,10 +63,10 @@ checkDatasetType ann ident t = do
     ListType   _ tElem        -> checkContainerType False tElem
     TensorType _ tElem _tDims -> checkContainerType False tElem
     typ                       -> if topLevel
-      then throwError $ DatasetTypeUnsupportedContainer ident ann typ
+      then throwError $ DatasetTypeUnsupportedContainer decl typ
       else checkDatasetElemType typ
 
-  checkDatasetElemType ::CheckedExpr -> m ()
+  checkDatasetElemType :: CheckedExpr -> m ()
   checkDatasetElemType = \case
     BoolType{}   -> return ()
     NatType{}    -> return ()
@@ -79,14 +76,13 @@ checkDatasetType ann ident t = do
       let targetLinearity = Builtin p (Linearity Constant)
       addUnificationConstraint p emptyVariableCtx lin targetLinearity
       return ()
-    elemType     -> throwError $ DatasetTypeUnsupportedElement ident ann elemType
+    elemType     -> throwError $ DatasetTypeUnsupportedElement decl elemType
 
 checkNetworkType :: forall m . TCM m
-                 => Provenance
-                 -> Identifier
+                 => DeclProvenance
                  -> CheckedExpr
                  -> m (CheckedExpr -> CheckedExpr)
-checkNetworkType _ann ident networkType = checkFunType networkType
+checkNetworkType decl@(ident, _) networkType = checkFunType networkType
   where
 
   -- |Decomposes the Pi types in a network type signature, checking that the
@@ -96,7 +92,7 @@ checkNetworkType _ann ident networkType = checkFunType networkType
   checkFunType = \case
     Pi p binder result
       | visibilityOf binder /= Explicit -> do
-        throwError $ NetworkTypeHasNonExplicitArguments ident networkType binder
+        throwError $ NetworkTypeHasNonExplicitArguments decl networkType binder
       | otherwise  -> do
         inputLin  <- checkTensorType Input (typeOf binder)
         outputLin <- checkTensorType Output result
@@ -108,14 +104,14 @@ checkNetworkType _ann ident networkType = checkFunType networkType
         let linConstraintArgs = [inputLin, Builtin p outputLinProvenance, outputLin]
         let linConstraint = BuiltinTypeClass p MaxLinearity (ExplicitArg p <$> linConstraintArgs)
         return $ \t -> Pi p (InstanceBinder p Nothing linConstraint) t
-    _ -> throwError $ NetworkTypeIsNotAFunction ident networkType
+    _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
 
   checkTensorType :: InputOrOutput -> CheckedExpr -> m CheckedExpr
   checkTensorType io (TensorType _ tElem _tDims) = checkElementType io tElem
   checkTensorType io tTensor =
-    throwError $ NetworkTypeIsNotOverTensors ident networkType tTensor io
+    throwError $ NetworkTypeIsNotOverTensors decl networkType tTensor io
 
   checkElementType :: InputOrOutput -> CheckedExpr -> m CheckedExpr
   checkElementType io = \case
     (AnnRatType _ lin) -> return lin
-    tElem -> throwError $ NetworkTypeHasUnsupportedElementType ident networkType tElem io
+    tElem -> throwError $ NetworkTypeHasUnsupportedElementType decl networkType tElem io

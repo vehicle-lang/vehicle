@@ -354,7 +354,7 @@ instance MeaningfulError CompileError where
     -- Resources --
     ---------------
 
-    ResourceNotProvided ident p resourceType -> UError $ UserError
+    ResourceNotProvided (ident, p) resourceType -> UError $ UserError
       { provenance = p
       , problem    = "No" <+> entity <+> "was provided for the" <+>
                      prettyResource resourceType ident <> "."
@@ -367,7 +367,7 @@ instance MeaningfulError CompileError where
         Parameter -> ("value", "VALUE")
         _         -> ("file", "FILEPATH")
 
-    UnsupportedResourceFormat ident p resourceType fileExtension -> UError $ UserError
+    UnsupportedResourceFormat (ident, p) resourceType fileExtension -> UError $ UserError
       { provenance = p
       , problem    = "The file provided for the" <+> prettyResource resourceType ident <+>
                      "is in a format (" <> pretty fileExtension <> ") not currently" <+>
@@ -377,7 +377,7 @@ instance MeaningfulError CompileError where
                      ", or open an issue on Github to discuss adding support."
       }
 
-    ResourceIOError ident p resourceType ioException -> UError $ UserError
+    ResourceIOError (ident, p) resourceType ioException -> UError $ UserError
       { provenance = p
       , problem    = "The following exception occured when trying to read the file" <+>
                      "provided for" <+> prettyResource resourceType ident <> ":" <>
@@ -385,7 +385,7 @@ instance MeaningfulError CompileError where
       , fix        = Nothing
       }
 
-    UnableToParseResource ident p resourceType value -> UError $ UserError
+    UnableToParseResource (ident, p) resourceType value -> UError $ UserError
       { provenance = p
       , problem    = "Unable to parse the" <+> entity <+> squotes (pretty value) <+>
                      "provided for the" <+> prettyResource resourceType ident
@@ -394,7 +394,7 @@ instance MeaningfulError CompileError where
 
     -- Network errors
 
-    NetworkTypeIsNotAFunction ident networkType -> UError $ UserError
+    NetworkTypeIsNotAFunction (ident, _p) networkType -> UError $ UserError
       { provenance = provenanceOf networkType
       , problem    = unsupportedResourceTypeDescription Network ident networkType <+> "as" <+>
                      squotes (prettyFriendly networkType) <+> "is not a function."
@@ -402,7 +402,7 @@ instance MeaningfulError CompileError where
                      "Provide both an input type and output type for your network."
       }
 
-    NetworkTypeIsNotOverTensors ident fullType nonTensorType io -> UError $ UserError
+    NetworkTypeIsNotOverTensors (ident, _p) fullType nonTensorType io -> UError $ UserError
       { provenance = provenanceOf nonTensorType
       , problem    = unsupportedResourceTypeDescription Network ident fullType <+>
                     "as the" <+> pretty io <+> squotes (prettyFriendly nonTensorType) <+>
@@ -411,7 +411,7 @@ instance MeaningfulError CompileError where
                      "Ensure the" <+> pretty io <+> "of the network is a Tensor"
       }
 
-    NetworkTypeHasNonExplicitArguments ident networkType binder -> UError $ UserError
+    NetworkTypeHasNonExplicitArguments (ident, _p) networkType binder -> UError $ UserError
       { provenance = provenanceOf binder
       , problem    = unsupportedResourceTypeDescription Network ident networkType <+> "as" <+>
                      squotes (prettyFriendly networkType) <+>
@@ -421,7 +421,7 @@ instance MeaningfulError CompileError where
                      "Remove the non-explicit argument."
       }
 
-    NetworkTypeHasUnsupportedElementType ident fullType elementType io -> UError $ UserError
+    NetworkTypeHasUnsupportedElementType (ident, _p) fullType elementType io -> UError $ UserError
       { provenance = provenanceOf elementType
       , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
                      pretty io <> "s of type" <+>
@@ -432,7 +432,7 @@ instance MeaningfulError CompileError where
                      "supported types."
       }
 
-    NetworkTypeHasMultidimensionalTensor ident fullType tensorType io -> UError $ UserError
+    NetworkTypeHasMultidimensionalTensor (ident, _p) fullType tensorType io -> UError $ UserError
       { provenance = provenanceOf tensorType
       , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
                      "the" <+> pretty io <+>
@@ -441,7 +441,7 @@ instance MeaningfulError CompileError where
                      "Ensure that the network" <+> pretty io <+> "is a 1D tensor."
       }
 
-    NetworkTypeHasVariableSizeTensor ident fullType tDim io -> UError $ UserError
+    NetworkTypeHasVariableSizeTensor (ident, _p) fullType tDim io -> UError $ UserError
       { provenance = provenanceOf tDim
       , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
                      "the size of the" <+> pretty io <+> "tensor" <+>
@@ -453,7 +453,7 @@ instance MeaningfulError CompileError where
 
     -- Dataset errors
 
-    DatasetTypeUnsupportedContainer ident p tCont -> UError $ UserError
+    DatasetTypeUnsupportedContainer (ident, p) tCont -> UError $ UserError
       { provenance = p
       , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
                      "for the" <+> prettyResource Dataset ident <> "."
@@ -462,21 +462,21 @@ instance MeaningfulError CompileError where
                      squotes (pretty Tensor) <> "."
       }
 
-    DatasetTypeUnsupportedElement ident p tCont -> UError $ UserError
+    DatasetTypeUnsupportedElement (ident, p) tCont -> UError $ UserError
       { provenance = p
       , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
                      "for the elements of the" <+> prettyResource Dataset ident <> "."
       , fix        = Just $ "change the type to one of" <+> elementTypes <> "."
       } where elementTypes = pretty @[Builtin] ([Index] <> fmap NumericType [Nat, Int, Rat])
 
-    DatasetVariableSizeTensor ident p tCont -> UError $ UserError
+    DatasetVariableSizeTensor (ident, p) tCont -> UError $ UserError
       { provenance = p
       , problem    = "A tensor with variable dimensions" <+> squotes (prettyFriendlyDBClosed tCont) <+>
                      "is not a supported type for the" <+> prettyResource Dataset ident <> "."
       , fix        = Just "make sure the dimensions of the dataset are all constants."
       }
 
-    DatasetInvalidNat ident p v -> UError $ UserError
+    DatasetInvalidNat (ident, p) v -> UError $ UserError
       { provenance = p
       , problem    = "Found value" <+> squotes (pretty v) <+>
                      "while reading" <+> prettyResource Dataset ident <+>
@@ -485,7 +485,7 @@ instance MeaningfulError CompileError where
                      "update the type of the dataset in the specification."
       } where (nat :: CheckedExpr) = NatType mempty
 
-    DatasetInvalidIndex ident p v n -> UError $ UserError
+    DatasetInvalidIndex (ident, p) v n -> UError $ UserError
       { provenance = p
       , problem    = "Found value" <+> squotes (pretty v) <+>
                      "while reading" <+> prettyResource Dataset ident <+>
@@ -495,7 +495,7 @@ instance MeaningfulError CompileError where
       }
       where (index :: CheckedExpr) = IndexType mempty (NatLiteralExpr mempty (NatType mempty) n)
 
-    DatasetDimensionMismatch ident p expectedType actualDims -> UError $ UserError
+    DatasetDimensionMismatch (ident, p) expectedType actualDims -> UError $ UserError
       { provenance = p
       , problem    = "Found dimensions" <+> pretty actualDims <+>
                      "while reading" <+> prettyResource Dataset ident <+>
@@ -503,7 +503,7 @@ instance MeaningfulError CompileError where
       , fix        = Just "correct the dataset dimensions in the specification."
       }
 
-    DatasetTypeMismatch ident p expectedType actualType -> UError $ UserError
+    DatasetTypeMismatch (ident, p) expectedType actualType -> UError $ UserError
       { provenance = p
       , problem    = "Found elements of type" <+> pretty actualType <+>
                      "while reading" <+> prettyResource Dataset ident <+>
@@ -513,14 +513,14 @@ instance MeaningfulError CompileError where
 
     -- Parameter errors
 
-    ParameterTypeUnsupported ident p expectedType -> UError $ UserError
+    ParameterTypeUnsupported (ident, p) expectedType -> UError $ UserError
       { provenance = p
       , problem    = unsupportedResourceTypeDescription Parameter ident expectedType <> "." <+>
                      supportedParameterTypeDescription
       , fix        = Just "change the parameter type in the specification."
       }
 
-    ParameterValueUnparsable ident p expectedType value -> UError $ UserError
+    ParameterValueUnparsable (ident, p) expectedType value -> UError $ UserError
       { provenance = p
       , problem    = "Error while parsing the value provided for" <+>
                      prettyResource Parameter ident <> "." <+>
@@ -531,7 +531,7 @@ instance MeaningfulError CompileError where
                      "specification or change the value provided."
       }
 
-    ParameterTypeVariableSizeIndex ident p fullType -> UError $ UserError
+    ParameterTypeVariableSizeIndex (ident, p) fullType -> UError $ UserError
       { provenance = p
       , problem    = "An Index with variable dimensions" <+> squotes (prettyFriendly fullType) <+>
                      "is not a supported type for the" <+> prettyResource Parameter ident <> "."

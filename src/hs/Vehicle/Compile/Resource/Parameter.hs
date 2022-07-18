@@ -31,17 +31,17 @@ parseParameterValue parameterValues ann ident paramType = do
     -- TODO check that Index dimension is constant, or at least will be after
     -- implicit parameters are filled in (the tricky bit).
     IndexType{} -> throwError $
-      ParameterTypeVariableSizeIndex ident ann paramType
+      ParameterTypeVariableSizeIndex (ident, ann) paramType
 
     _ -> compilerDeveloperError $
       "Invalid parameter type" <+> squotes (prettySimple paramType) <+>
       "should have been caught during type-checking"
 
   case Map.lookup name parameterValues of
-    Nothing    -> throwError $ ResourceNotProvided ident ann Parameter
+    Nothing    -> throwError $ ResourceNotProvided (ident, ann) Parameter
     Just value -> case parser ann value of
       Just e -> return e
-      Nothing -> throwError $ UnableToParseResource ident ann Parameter value
+      Nothing -> throwError $ UnableToParseResource (ident, ann) Parameter value
 
 parseBool :: Provenance -> String -> Maybe CheckedExpr
 parseBool ann value = fmap (BoolLiteralExpr ann) (readMaybe value)

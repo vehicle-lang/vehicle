@@ -17,7 +17,7 @@ getNetworkType :: forall m . MonadCompile m
                -> Identifier
                -> CheckedExpr
                -> m NetworkType
-getNetworkType _ ident networkType = getNetworkFunType networkType
+getNetworkType ann ident networkType = getNetworkFunType networkType
   where
 
   -- |Decomposes the Pi types in a network type signature, checking that the
@@ -27,14 +27,14 @@ getNetworkType _ ident networkType = getNetworkFunType networkType
     case tFun of
       Pi _ binder result
         | visibilityOf binder /= Explicit -> do
-          throwError $ NetworkTypeHasNonExplicitArguments ident tFun binder
+          throwError $ NetworkTypeHasNonExplicitArguments (ident, ann) tFun binder
         | otherwise  -> do
           inputDetails    <- getTensorType Input  (typeOf binder)
           outputDetails   <- getTensorType Output result
           let networkDetails = NetworkType inputDetails outputDetails
           return networkDetails
       _ ->
-        throwError $ NetworkTypeIsNotAFunction ident tFun
+        throwError $ NetworkTypeIsNotAFunction (ident, ann) tFun
 
   getTensorType :: InputOrOutput
                 -> CheckedExpr
@@ -43,8 +43,8 @@ getNetworkType _ ident networkType = getNetworkFunType networkType
     logDebug MaxDetail $ prettyVerbose dims
     case getDimensions dims of
       Just [d] -> NetworkTensorType d <$> getElementType tElem
-      Nothing  -> throwError $ NetworkTypeHasVariableSizeTensor ident networkType dims io
-      Just _   -> throwError $ NetworkTypeHasMultidimensionalTensor ident networkType tensorType io
+      Nothing  -> throwError $ NetworkTypeHasVariableSizeTensor (ident, ann) networkType dims io
+      Just _   -> throwError $ NetworkTypeHasMultidimensionalTensor (ident, ann) networkType tensorType io
   getTensorType _ _ = typingError
 
   getElementType :: CheckedExpr -> m NetworkBaseType

@@ -32,6 +32,6 @@ parseDataset datasetLocations ann ident datasetType = do
       logDebug MinDetail $ "reading" <+> squotes (pretty ident)
       value <- case takeExtension file of
         ".idx" -> readIDX file ident ann internalType
-        ext    -> throwError $ UnsupportedResourceFormat ident ann Dataset ext
+        ext    -> throwError $ UnsupportedResourceFormat (ident, ann) Dataset ext
       return value
-    _ -> throwError $ ResourceNotProvided ident ann Dataset
+    _ -> throwError $ ResourceNotProvided (ident, ann) Dataset

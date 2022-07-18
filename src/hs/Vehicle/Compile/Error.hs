@@ -78,29 +78,29 @@ data CompileError
   | FailedConLitConstraint           ConstraintContext CheckedExpr
 
   -- Resource typing errors
-  | ResourceNotProvided       Identifier Provenance ResourceType
-  | ResourceIOError           Identifier Provenance ResourceType IOException
-  | UnsupportedResourceFormat Identifier Provenance ResourceType String
-  | UnableToParseResource     Identifier Provenance ResourceType String
+  | ResourceNotProvided       DeclProvenance ResourceType
+  | ResourceIOError           DeclProvenance ResourceType IOException
+  | UnsupportedResourceFormat DeclProvenance ResourceType String
+  | UnableToParseResource     DeclProvenance ResourceType String
 
-  | NetworkTypeIsNotAFunction              Identifier CheckedExpr
-  | NetworkTypeIsNotOverTensors            Identifier CheckedExpr CheckedExpr InputOrOutput
-  | NetworkTypeHasNonExplicitArguments     Identifier CheckedExpr CheckedBinder
-  | NetworkTypeHasMultidimensionalTensor   Identifier CheckedExpr CheckedExpr InputOrOutput
-  | NetworkTypeHasVariableSizeTensor       Identifier CheckedExpr CheckedExpr InputOrOutput
-  | NetworkTypeHasUnsupportedElementType   Identifier CheckedExpr CheckedExpr InputOrOutput
+  | NetworkTypeIsNotAFunction              DeclProvenance CheckedExpr
+  | NetworkTypeIsNotOverTensors            DeclProvenance CheckedExpr CheckedExpr InputOrOutput
+  | NetworkTypeHasNonExplicitArguments     DeclProvenance CheckedExpr CheckedBinder
+  | NetworkTypeHasMultidimensionalTensor   DeclProvenance CheckedExpr CheckedExpr InputOrOutput
+  | NetworkTypeHasVariableSizeTensor       DeclProvenance CheckedExpr CheckedExpr InputOrOutput
+  | NetworkTypeHasUnsupportedElementType   DeclProvenance CheckedExpr CheckedExpr InputOrOutput
 
-  | DatasetTypeUnsupportedContainer Identifier Provenance CheckedExpr
-  | DatasetTypeUnsupportedElement   Identifier Provenance CheckedExpr
-  | DatasetVariableSizeTensor       Identifier Provenance CheckedExpr
-  | DatasetDimensionMismatch        Identifier Provenance CheckedExpr [Int]
-  | DatasetTypeMismatch             Identifier Provenance CheckedExpr NumericType
-  | DatasetInvalidNat               Identifier Provenance Int
-  | DatasetInvalidIndex             Identifier Provenance Int Int
+  | DatasetTypeUnsupportedContainer DeclProvenance CheckedExpr
+  | DatasetTypeUnsupportedElement   DeclProvenance CheckedExpr
+  | DatasetVariableSizeTensor       DeclProvenance CheckedExpr
+  | DatasetDimensionMismatch        DeclProvenance CheckedExpr [Int]
+  | DatasetTypeMismatch             DeclProvenance CheckedExpr NumericType
+  | DatasetInvalidNat               DeclProvenance Int
+  | DatasetInvalidIndex             DeclProvenance Int Int
 
-  | ParameterTypeUnsupported        Identifier Provenance CheckedExpr
-  | ParameterTypeVariableSizeIndex  Identifier Provenance CheckedExpr
-  | ParameterValueUnparsable        Identifier Provenance CheckedExpr String
+  | ParameterTypeUnsupported        DeclProvenance CheckedExpr
+  | ParameterTypeVariableSizeIndex  DeclProvenance CheckedExpr
+  | ParameterValueUnparsable        DeclProvenance CheckedExpr String
 
   -- Backend errors
   | NoPropertiesFound
