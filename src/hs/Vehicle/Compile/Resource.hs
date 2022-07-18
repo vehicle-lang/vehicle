@@ -125,3 +125,6 @@ processDecl d = case d of
         networkType <- getNetworkType ann ident normType
         addNetworkType name networkType
         return (Nothing, id)
+
+      ImplicitParameter -> do
+        return (Nothing, id)

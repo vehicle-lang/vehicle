@@ -68,10 +68,10 @@ groupDecls (d : ds) = NonEmpty.toList <$> traverse elab (NonEmpty.groupBy1 cond 
 instance Elab (NonEmpty B.Decl) V.InputDecl where
   elab = \case
     -- Elaborate resources.
-    (B.DeclNetw      n _tk t :| []) -> elabResource V.Network   n t
-    (B.DeclData      n _tk t :| []) -> elabResource V.Dataset   n t
-    (B.DeclParam     n _tk t :| []) -> elabResource V.Parameter n t
-    (B.DeclImplParam n _tk t :| []) -> elabImplParam n t
+    (B.DeclNetw      n _tk t :| []) -> elabResource n t V.Network
+    (B.DeclData      n _tk t :| []) -> elabResource n t V.Dataset
+    (B.DeclParam     n _tk t :| []) -> elabResource n t V.Parameter
+    (B.DeclImplParam n _tk t :| []) -> elabResource n t V.ImplicitParameter
 
     -- Elaborate a type definition.
     (B.DefType n bs e :| []) -> do
@@ -163,12 +163,8 @@ instance Elab B.Arg V.InputArg where
   elab (B.ImplicitArg e) = mkArg V.Implicit <$> elab e
   elab (B.InstanceArg e) = mkArg V.Instance <$> elab e
 
-elabResource :: MonadCompile m => V.ResourceType -> B.Name -> B.Expr -> m V.InputDecl
-elabResource r n t = V.DefResource (V.tkProvenance n) r <$> elab n <*> elab t
-
-elabImplParam :: MonadCompile m => B.Name -> B.Expr -> m V.InputDecl
-elabImplParam n t = V.DefFunction ann Nothing <$> elab n <*> elab t <*> pure hole
-  where ann = V.tkProvenance n; hole = V.mkHole (V.inserted ann) (tkSymbol n)
+elabResource :: MonadCompile m => B.Name -> B.Expr -> V.ResourceType -> m V.InputDecl
+elabResource n t r = V.DefResource (V.tkProvenance n) r <$> elab n <*> elab t
 
 mkArg :: V.Visibility -> V.InputExpr -> V.InputArg
 mkArg v e = V.Arg (V.expandByArgVisibility v (V.provenanceOf e)) v e

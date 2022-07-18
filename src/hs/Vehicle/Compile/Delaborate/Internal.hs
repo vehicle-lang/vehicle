@@ -39,11 +39,12 @@ instance Delaborate V.NamedProg B.Prog where
 -- |Elaborate declarations.
 instance Delaborate V.NamedDecl B.Decl where
   delabM = \case
-    V.DefResource _ Network   n t -> B.DeclNetw  (delabIdentifier n) <$> delabM t
-    V.DefResource _ Dataset   n t -> B.DeclData  (delabIdentifier n) <$> delabM t
-    V.DefResource _ Parameter n t -> B.DeclParam (delabIdentifier n) <$> delabM t
-    V.DefFunction _ _ n t e       -> B.DefFun    (delabIdentifier n) <$> delabM t <*> delabM e
-    V.DefPostulate _ n t          -> B.DeclPost  (delabIdentifier n) <$> delabM t
+    V.DefResource _ Network           n t -> B.DeclNetw      (delabIdentifier n) <$> delabM t
+    V.DefResource _ Dataset           n t -> B.DeclData      (delabIdentifier n) <$> delabM t
+    V.DefResource _ Parameter         n t -> B.DeclParam     (delabIdentifier n) <$> delabM t
+    V.DefResource _ ImplicitParameter n t -> B.DeclImplParam (delabIdentifier n) <$> delabM t
+    V.DefPostulate _  n t                 -> B.DeclPost      (delabIdentifier n) <$> delabM t
+    V.DefFunction _ _ n t e               -> B.DefFun        (delabIdentifier n) <$> delabM t <*> delabM e
 
 instance Delaborate V.NamedExpr B.Expr where
   delabM expr = case expr of

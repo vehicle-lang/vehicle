@@ -22,9 +22,10 @@ checkResourceType resourceType decl@(ident, _) t = do
   logCompilerPass MidDetail ("checking compatability of type of" <+> resourceName) $ do
     declCtx <- getDeclCtx
     let checkFun = case resourceType of
-          Parameter -> checkParameterType
-          Dataset   -> checkDatasetType
-          Network   -> checkNetworkType
+          Parameter         -> checkParameterType
+          ImplicitParameter -> checkImplicitParameterType
+          Dataset           -> checkDatasetType
+          Network           -> checkNetworkType
     normType <- normalise t $ defaultNormalisationOptions
       { Norm.declContext = declCtx
       }
@@ -50,6 +51,16 @@ checkParameterType decl t = do
     paramType -> throwError $ ParameterTypeUnsupported decl paramType
   return id
 
+checkImplicitParameterType :: TCM m
+                           => DeclProvenance
+                           -> CheckedExpr
+                           -> m (CheckedExpr -> CheckedExpr)
+checkImplicitParameterType decl t = do
+  case t of
+    NatType{} -> return ()
+    paramType -> throwError $ ParameterTypeUnsupported decl paramType
+  return id
+
 checkDatasetType :: forall m . TCM m
                  => DeclProvenance
                  -> CheckedExpr
@@ -66,7 +77,7 @@ checkDatasetType decl t = do
       then throwError $ DatasetTypeUnsupportedContainer decl typ
       else checkDatasetElemType typ
 
-  checkDatasetElemType :: CheckedExpr -> m ()
+  checkDatasetElemType ::CheckedExpr -> m ()
   checkDatasetElemType = \case
     BoolType{}   -> return ()
     NatType{}    -> return ()

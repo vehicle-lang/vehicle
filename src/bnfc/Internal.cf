@@ -58,11 +58,12 @@ separator Expr1 ",";
 
 -- * Declarations
 
-DeclNetw.  Decl ::= "(" "declare-network"   NameToken Expr1 ")";
-DeclData.  Decl ::= "(" "declare-dataset"   NameToken Expr1 ")";
-DeclParam. Decl ::= "(" "declare-parameter" NameToken Expr1 ")";
-DefFun.    Decl ::= "(" "define-fun"        NameToken Expr1 Expr1 ")";
-DeclPost.  Decl ::= "(" "declare-postulate" NameToken Expr1 ")";
+DeclNetw.      Decl ::= "(" "declare-network"        NameToken Expr1 ")";
+DeclData.      Decl ::= "(" "declare-dataset"        NameToken Expr1 ")";
+DeclParam.     Decl ::= "(" "declare-parameter"      NameToken Expr1 ")";
+DeclImplParam. Decl ::= "(" "declare-impl-parameter" NameToken Expr1 ")";
+DeclPost.      Decl ::= "(" "declare-postulate"      NameToken Expr1 ")";
+DefFun.        Decl ::= "(" "define-fun"             NameToken Expr1 Expr1 ")";
 
 separator Decl "";
 
