@@ -34,12 +34,15 @@ instance Elab B.Prog V.InputProg where
 
 instance Elab B.Decl V.InputDecl where
   elab = \case
-    B.DeclNetw      n t   -> V.DefResource  (tkProvenance n) Network           <$> elab n <*> elab t
-    B.DeclData      n t   -> V.DefResource  (tkProvenance n) Dataset           <$> elab n <*> elab t
-    B.DeclParam     n t   -> V.DefResource  (tkProvenance n) Parameter         <$> elab n <*> elab t
-    B.DeclImplParam n t   -> V.DefResource  (tkProvenance n) ImplicitParameter <$> elab n <*> elab t
-    B.DefFun        n t e -> V.DefFunction  (tkProvenance n) Nothing           <$> elab n <*> elab t <*> elab e
-    B.DeclPost      n t   -> V.DefPostulate (tkProvenance n)                   <$> elab n <*> elab t
+    B.DeclNetw      n t   -> elabResource n t Network
+    B.DeclData      n t   -> elabResource n t Dataset
+    B.DeclParam     n t   -> elabResource n t Parameter
+    B.DeclImplParam n t   -> elabResource n t ImplicitParameter
+    B.DefFun        n t e -> V.DefFunction  (tkProvenance n) Nothing <$> elab n <*> elab t <*> elab e
+    B.DeclPost      n t   -> V.DefPostulate (tkProvenance n)         <$> elab n <*> elab t
+
+elabResource :: MonadCompile m => NameToken -> B.Expr -> ResourceType -> m V.InputDecl
+elabResource n t r = V.DefResource (tkProvenance n) r <$> elab n <*> elab t
 
 instance Elab B.Expr V.InputExpr where
   elab = \case

@@ -116,13 +116,11 @@ library
                       , Vehicle.Language.AST.Builtin.Core
                       , Vehicle.Language.AST.Builtin.Linearity
                       , Vehicle.Language.AST.Builtin.Polarity
-                      , Vehicle.Language.AST.BuiltinPatterns
                       , Vehicle.Language.AST.Core
                       , Vehicle.Language.AST.DeBruijn
                       , Vehicle.Language.AST.CoDeBruijn
                       , Vehicle.Language.AST.Name
                       , Vehicle.Language.AST.Visibility
-                      , Vehicle.Language.AST.Utils
                       , Vehicle.Language.AST.Position
                       , Vehicle.Language.AST.Provenance
 
@@ -143,6 +141,8 @@ library
                       , Vehicle.Compile.Resource.Dataset.IDX
                       , Vehicle.Compile.CapitaliseTypeNames
                       , Vehicle.Compile.QuantifierAnalysis
+                      , Vehicle.Compile.Prelude.Patterns
+                      , Vehicle.Compile.Prelude.Utils
 
                       , Vehicle.Backend.Agda.Compile
                       , Vehicle.Backend.Agda.Interact

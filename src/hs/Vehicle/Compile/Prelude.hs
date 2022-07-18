@@ -8,6 +8,8 @@ import Vehicle.Prelude as X
 import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Language.AST as X
 import Vehicle.Resource as X
+import Vehicle.Compile.Prelude.Patterns as X
+import Vehicle.Compile.Prelude.Utils as X
 
 --------------------------------------------------------------------------------
 -- Compilation

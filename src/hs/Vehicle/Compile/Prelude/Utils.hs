@@ -1,4 +1,4 @@
-module Vehicle.Language.AST.Utils where
+module Vehicle.Compile.Prelude.Utils where
 
 import Data.Functor.Foldable (Recursive(..))
 import Data.List.NonEmpty (NonEmpty)
@@ -6,20 +6,11 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (pack)
 
 import Vehicle.Prelude
-import Vehicle.Language.AST.Core
-import Vehicle.Language.AST.DeBruijn
-import Vehicle.Language.AST.BuiltinPatterns
-import Vehicle.Language.AST.Name
-import Vehicle.Language.AST.Visibility
-import Vehicle.Language.AST.Builtin
-import Vehicle.Language.AST.Provenance
+import Vehicle.Language.AST
+import Vehicle.Compile.Prelude.Patterns
 
 --------------------------------------------------------------------------------
 -- Utility functions
-
-isHole :: Expr binder var -> Bool
-isHole Hole{} = True
-isHole _      = False
 
 isTypeUniverse :: Expr binder var -> Bool
 isTypeUniverse TypeUniverse{} = True
@@ -36,44 +27,39 @@ isLinearityUniverse _                   = False
 isAuxiliaryUniverse :: Expr binder var -> Bool
 isAuxiliaryUniverse e = isPolarityUniverse e || isLinearityUniverse e
 
-isAnnBoolType :: Expr binder var -> Bool
+isAnnBoolType :: DBExpr -> Bool
 isAnnBoolType AnnBoolType{} = True
 isAnnBoolType _             = False
 
-isNatType :: Expr binder var -> Bool
+isNatType :: DBExpr -> Bool
 isNatType NatType{} = True
 isNatType _         = False
 
-isIntType :: Expr binder var -> Bool
+isIntType :: DBExpr -> Bool
 isIntType IntType{} = True
 isIntType _         = False
 
-isAnnRatType :: Expr binder var -> Bool
+isAnnRatType :: DBExpr -> Bool
 isAnnRatType AnnRatType{} = True
 isAnnRatType _            = False
 
-isListType :: Expr binder var -> Bool
+isListType :: DBExpr -> Bool
 isListType ListType{} = True
 isListType _            = False
 
-isTensorType :: Expr binder var -> Bool
+isTensorType :: DBExpr -> Bool
 isTensorType TensorType{} = True
 isTensorType _            = False
 
-isIndexType :: Expr binder var -> Bool
+isIndexType :: DBExpr -> Bool
 isIndexType IndexType{} = True
 isIndexType _           = False
 
-isMeta :: Expr binder var -> Bool
+isMeta :: DBExpr -> Bool
 isMeta Meta{}           = True
 isMeta (App _ Meta{} _) = True
 isMeta _                = False
-{-
-isAuxiliaryType :: Expr binder var -> Bool
-isAuxiliaryType (Builtin _ PolarityType)  = True
-isAuxiliaryType (Builtin _ LinearityType) = True
-isAuxiliaryType  _                        = False
--}
+
 isAuxiliaryTypeClass :: TypeClass -> Bool
 isAuxiliaryTypeClass tc = case tc of
     MulLinearity                        -> True
@@ -127,7 +113,7 @@ getBinderSymbol binder = case nameOf binder of
   Just symbol -> symbol
   Nothing     -> developerError "Binder unexpectedly does not appear to have a name"
 
-getContainerElem :: Expr binder var -> Maybe (Expr binder var)
+getContainerElem :: DBExpr -> Maybe DBExpr
 getContainerElem (ListType   _ t)      = Just t
 getContainerElem (TensorType p t dims) = case getDimensions dims of
   Just [_]      -> Just t
@@ -135,11 +121,11 @@ getContainerElem (TensorType p t dims) = case getDimensions dims of
   _             -> Nothing
 getContainerElem _                     = Nothing
 
-getDimension :: Expr binder var -> Maybe Int
+getDimension :: DBExpr -> Maybe Int
 getDimension (NatLiteralExpr _ _ n) = return n
 getDimension _                      = Nothing
 
-getDimensions :: Expr binder var -> Maybe [Int]
+getDimensions :: DBExpr -> Maybe [Int]
 getDimensions (SeqExpr _ _ _ es) = traverse getDimension es
 getDimensions _                  = Nothing
 
@@ -163,28 +149,28 @@ mkNameWithIndices n indices = mconcat (n : [pack (show index) | index <- indices
 mkHole :: Provenance -> Symbol -> Expr binder var
 mkHole ann name = Hole ann ("_" <> name)
 
-mkDoubleExpr :: Provenance -> Double -> Expr binder var
+mkDoubleExpr :: Provenance -> Double -> DBExpr
 mkDoubleExpr ann v = LitRat ann (toRational v)
 
-mkIndexType :: Provenance -> Int -> Expr binder var
+mkIndexType :: Provenance -> Int -> DBExpr
 mkIndexType ann n = IndexType ann (NatLiteralExpr ann (NatType ann) n)
 
-mkIntExpr :: Provenance -> Int -> Expr binder var
+mkIntExpr :: Provenance -> Int -> DBExpr
 mkIntExpr ann v
   | v >= 0    = LitNat ann v
   | otherwise = LitInt ann v
 
 mkTensorDims :: Provenance
              -> [Int]
-             -> Expr binder var
+             -> DBExpr
 mkTensorDims ann dims =
   let dimExprs = fmap (NatLiteralExpr ann (NatType ann)) dims in
   mkList ann (NatType ann) dimExprs
 
 mkTensorType :: Provenance
-             -> Expr binder var
+             -> DBExpr
              -> [Int]
-             -> Expr binder var
+             -> DBExpr
 mkTensorType _   tElem []   = tElem
 mkTensorType ann tElem dims =
   let dimList = mkTensorDims ann dims in
@@ -192,24 +178,24 @@ mkTensorType ann tElem dims =
 
 mkQuantifierSeq :: Quantifier
                 -> Provenance
-                -> [binder]
-                -> Expr binder var
-                -> Expr binder var
-                -> Expr binder var
+                -> [DBBinding]
+                -> DBExpr
+                -> DBExpr
+                -> DBExpr
 mkQuantifierSeq q ann names t body =
   foldl (\e name -> QuantifierExpr q ann (ExplicitBinder ann name t) e) body names
 
 mkList :: Provenance
-       -> Expr binder var
-       -> [Expr binder var]
-       -> Expr binder var
+       -> DBExpr
+       -> [DBExpr]
+       -> DBExpr
 mkList ann elemType = SeqExpr ann elemType (ListType ann elemType)
 
 mkTensor :: Provenance
-         -> Expr binder var
+         -> DBExpr
          -> [Int]
-         -> [Expr binder var]
-         -> Expr binder var
+         -> [DBExpr]
+         -> DBExpr
 mkTensor ann tBaseElem dims =
   let elemType   = mkTensorType ann tBaseElem (tail dims) in
   let tensorType = mkTensorType ann tBaseElem dims in
@@ -217,9 +203,9 @@ mkTensor ann tBaseElem dims =
 
 mkBooleanBigOp :: BooleanOp2
                -> Provenance
-               -> Expr binder var
-               -> Expr binder var
-               -> Expr binder var
+               -> DBExpr
+               -> DBExpr
+               -> DBExpr
 mkBooleanBigOp op ann containerType container =
   let (unit, opExpr) = case op of
         And  -> (True, AndExpr ann [])

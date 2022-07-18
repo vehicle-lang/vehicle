@@ -113,14 +113,9 @@ class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delabWithLogging :: MonadDelab m => t -> m bnfc
   delabWithLogging x = logCompilerPass MinDetail "delaboration" $ delabM x
 
---  delab :: t ann -> bnfc
---  delab = _
-
--- | Elaborate programs.
 instance Delaborate V.NamedProg B.Prog where
   delabM (V.Main decls) = B.Main . concat <$> traverse delabM decls
 
--- | Elaborate declarations.
 instance Delaborate V.NamedDecl [B.Decl] where
   delabM = \case
     -- Elaborate a network declaration.
