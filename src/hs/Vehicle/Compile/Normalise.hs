@@ -161,11 +161,11 @@ nfApp ann fun       args = do
     OrderExpr    _ ord tElem [arg1, arg2] -> nfOrder ann ord tElem arg1 arg2
 
     -- Boolean operations
-    NotExpr  _ [arg]               -> Just $ return $ applyNotAndNormalise arg
-    AndExpr  _ [arg1, arg2]        -> nfAnd     ann arg1 arg2
-    OrExpr   _ [arg1, arg2]        -> nfOr      ann arg1 arg2
-    ImplExpr _ [arg1, arg2]        -> nfImplies ann arg1 arg2 implicationsToDisjunctions
-    IfExpr _ _ [cond, e1, e2]      -> nfIf cond e1 e2
+    NotExpr     _ [arg]          -> Just $ return $ applyNotAndNormalise arg
+    AndExpr     _ [arg1, arg2]   -> nfAnd     ann arg1 arg2
+    OrExpr      _ [arg1, arg2]   -> nfOr      ann arg1 arg2
+    ImpliesExpr _ [arg1, arg2]   -> nfImplies ann arg1 arg2 implicationsToDisjunctions
+    IfExpr    _ _ [cond, e1, e2] -> nfIf cond e1 e2
 
     -- Quantifiers
     ForallExpr  _ binder body -> nfQuantifier ann Forall binder body
@@ -177,11 +177,11 @@ nfApp ann fun       args = do
     ForeachInExpr _ _ _   binder body container -> nfForeachIn ann binder body container
 
     -- Binary numeric ops
-    AddExpr _ t1 t2 t3 _  [arg1, arg2] -> nfAdd ann t1 t2 t3 arg1 arg2
-    SubExpr _ t1 t2 t3 tc [arg1, arg2] -> nfSub ann t1 t2 t3 tc arg1 arg2 subtractionToAddition
-    MulExpr _ t1 t2 t3 tc [arg1, arg2] -> nfMul ann t1 t2 t3 tc arg1 arg2 expandOutPolynomials
-    DivExpr _ t1 t2 t3 _  [arg1, arg2] -> nfDiv ann t1 t2 t3 arg1 arg2
-    NegExpr _ t1 t2       [arg]        -> nfNeg ann t1 t2 arg expandOutPolynomials
+    AddExpr _ t1 t2 t3 [arg1, arg2] -> nfAdd ann t1 t2 t3 arg1 arg2
+    SubExpr _ t1 t2 t3 [arg1, arg2] -> nfSub ann t1 t2 t3 arg1 arg2 subtractionToAddition
+    MulExpr _ t1 t2 t3 [arg1, arg2] -> nfMul ann t1 t2 t3 arg1 arg2 expandOutPolynomials
+    DivExpr _ t1 t2 t3 [arg1, arg2] -> nfDiv ann t1 t2 t3 arg1 arg2
+    NegExpr _ t1 t2    [arg]        -> nfNeg ann t1 t2 arg expandOutPolynomials
 
     -- Containers
     ConsExpr _ _ [x, xs]              -> nfCons ann x xs
@@ -229,7 +229,9 @@ nfEq ann eq _tElem e1 e2 = case (argExpr e1, argExpr e2) of
         let tBool          = BoolType ann
         let tBoolCont      = substContainerType tBool tCont
         let equalitiesSeq  = SeqExpr ann tBool tBoolCont equalities
-        nf $ mkBooleanBigOp (logicOp eq) ann tBoolCont equalitiesSeq
+        nf $ case eq of
+          Eq  -> mkBigAnd ann tBoolCont equalitiesSeq
+          Neq -> mkBigOr  ann tBoolCont equalitiesSeq
 
   -- Otherwise no normalisation
   _ -> Nothing
@@ -237,10 +239,6 @@ nfEq ann eq _tElem e1 e2 = case (argExpr e1, argExpr e2) of
     eqOp :: Eq a => Equality -> (a -> a -> Bool)
     eqOp Eq  = (==)
     eqOp Neq = (/=)
-
-    logicOp :: Equality -> BooleanOp2
-    logicOp Eq  = And
-    logicOp Neq = Or
 
     explicitArgs :: [CheckedExpr] -> [CheckedArg]
     explicitArgs = fmap (ExplicitArg ann)
@@ -370,9 +368,9 @@ nfQuantifierIn ann q tCont binder body container = Just $ do
   let tRes = BoolType ann
   let tResCont = substContainerType tRes tCont
   let mappedContainer = MapExpr ann (typeOf binder) tRes (ExplicitArg ann <$> [Lam ann binder body, container])
-  case q of
-    Forall  -> nf $ mkBooleanBigOp And ann tResCont mappedContainer
-    Exists  -> nf $ mkBooleanBigOp Or  ann tResCont mappedContainer
+  nf $ case q of
+    Forall  -> mkBigAnd ann tResCont mappedContainer
+    Exists  -> mkBigOr  ann tResCont mappedContainer
 
 nfForeachIn :: MonadNorm m
             => Provenance
@@ -475,12 +473,11 @@ nfSub :: MonadNorm m
       -> CheckedExpr
       -> CheckedExpr
       -> CheckedExpr
-      -> CheckedExpr
       -> CheckedArg
       -> CheckedArg
       -> Bool
       -> Maybe (m CheckedExpr)
-nfSub ann t1 t2 t3 tc arg1 arg2 convertToAddition = case (argExpr arg1, argExpr arg2) of
+nfSub ann t1 t2 t3 arg1 arg2 convertToAddition = case (argExpr arg1, argExpr arg2) of
   -- TODO implement zero/identity/associativity rules?
   (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) ->
     Just $ return $ IntLiteralExpr ann t3 (i - j)
@@ -488,7 +485,7 @@ nfSub ann t1 t2 t3 tc arg1 arg2 convertToAddition = case (argExpr arg1, argExpr 
     Just $ return $ RatLiteralExpr ann t3 (x - y)
   (_, _) | convertToAddition                   -> Just $ do
     negArg2 <- negArg t1 t1 arg2
-    return $ AddExpr ann t1 t2 t3 tc [arg1, negArg2]
+    return $ AddExpr ann t1 t2 t3 [arg1, negArg2]
   _ -> Nothing
 
 nfMul :: MonadNorm m
@@ -496,31 +493,38 @@ nfMul :: MonadNorm m
       -> CheckedExpr
       -> CheckedExpr
       -> CheckedExpr
-      -> CheckedExpr
       -> CheckedArg
       -> CheckedArg
       -> Bool
       -> Maybe (m CheckedExpr)
-nfMul ann t1 t2 t3 tc arg1 arg2 expandOut = case (argExpr arg1, argExpr arg2) of
+nfMul ann t1 t2 t3 arg1 arg2 expandOut = case (argExpr arg1, argExpr arg2) of
   -- TODO implement zero/identity/associativity rules?
   (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) ->
     Just $ return $ IntLiteralExpr ann t3 (i * j)
   (RatLiteralExpr _ _ x, RatLiteralExpr _ _ y) ->
     Just $ return $ RatLiteralExpr ann t3 (x * y)
   -- Expanding out multiplication
-  (_, NumericOp2Expr op _ _ _ _ _ [v1, v2])
-    | expandOut && (op == Add || op == Sub) ->
-      Just $ nf $ distribute op arg1 v1 arg1 v2
-  (NumericOp2Expr op _ _ _ _ _ [v1, v2], _)
-    | expandOut && (op == Add || op == Sub) ->
-      Just $ nf $ distribute op v1 arg2 v2 arg2
-  _    -> Nothing
+  (_, AddExpr _ _ _ _ [v1, v2]) | expandOut ->
+    Just $ nf $ distribute AddExpr arg1 v1 arg1 v2
+  (_, SubExpr _ _ _ _ [v1, v2]) | expandOut ->
+    Just $ nf $ distribute SubExpr arg1 v1 arg1 v2
+  (AddExpr _ _ _ _ [v1, v2], _) | expandOut ->
+    Just $ nf $ distribute AddExpr v1 arg2 v2 arg2
+  (SubExpr _ _ _ _ [v1, v2], _) | expandOut ->
+    Just $ nf $ distribute SubExpr v1 arg2 v2 arg2
+  _ ->
+    Nothing
   where
-    distribute :: NumericOp2 -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr
+    distribute :: (Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr ->  [CheckedArg] -> CheckedExpr)
+               -> CheckedArg
+               -> CheckedArg
+               -> CheckedArg
+               -> CheckedArg
+               -> CheckedExpr
     distribute op x1 y1 x2 y2 =
-      NumericOp2Expr op ann t3 t3 t3 tc $ fmap (ExplicitArg ann)
-        [ MulExpr ann t1 t2 t3 tc [x1, y1]
-        , MulExpr ann t1 t2 t3 tc [x2, y2]
+      op ann t3 t3 t3 $ fmap (ExplicitArg ann)
+        [ MulExpr ann t1 t2 t3 [x1, y1]
+        , MulExpr ann t1 t2 t3 [x2, y2]
         ]
 
 nfDiv :: MonadNorm m
@@ -548,13 +552,13 @@ nfNeg _ann _t1 t2 e expandOut = case argExpr e of
   IntLiteralExpr ann _ x                -> Just $ return $ IntLiteralExpr ann t2 (- x)
   RatLiteralExpr ann _ x                -> Just $ return $ RatLiteralExpr ann t2 (- x)
   NegExpr _ _ _ [e']                    -> Just $ return $ argExpr e'
-  AddExpr ann t3 t4 _t1 tc [e1, e2] | expandOut -> Just $ do
+  AddExpr ann t3 t4 _t1 [e1, e2] | expandOut -> Just $ do
     ne1 <- negArg t3 t3 e1
     ne2 <- negArg t4 t4 e2
-    nf $ AddExpr ann t3 t4 t2 tc [ne1, ne2]
-  MulExpr ann t3 t4 _t1 tc [e1, e2] | expandOut -> Just $ do
+    nf $ AddExpr ann t3 t4 t2 [ne1, ne2]
+  MulExpr ann t3 t4 _t1 [e1, e2] | expandOut -> Just $ do
     ne1 <- negArg t3 t3 e1
-    nf $ AddExpr ann t3 t4 t2 tc [ne1, e2]
+    nf $ AddExpr ann t3 t4 t2 [ne1, e2]
   _                           -> Nothing
 
 -----------------------------------------------------------------------------

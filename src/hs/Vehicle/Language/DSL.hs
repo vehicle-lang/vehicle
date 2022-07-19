@@ -29,7 +29,7 @@ module Vehicle.Language.DSL
   , hasNot
   , hasAnd
   , hasOr
-  , hasImpl
+  , hasImplies
   , hasQuantifier
   , tMax
   , tHole
@@ -142,10 +142,10 @@ tLin :: DSLExpr
 tLin = universe LinearityUniv
 
 tBool, tNat, tInt, tRat :: DSLExpr
-tNat  = con (NumericType Nat)
-tInt  = con (NumericType Int)
-tRat  = con (NumericType Rat)
 tBool = con Bool
+tNat  = con Nat
+tInt  = con Int
+tRat  = con Rat
 
 tAnnRat :: DSLExpr ->  DSLExpr
 tAnnRat linearity = tRat `iApp` [linearity]
@@ -154,10 +154,10 @@ tAnnBool :: DSLExpr -> DSLExpr ->  DSLExpr
 tAnnBool linearity polarity = tBool `iApp` [linearity, polarity]
 
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
-tTensor tElem dims = con (ContainerType Tensor) `eApp` [tElem, dims]
+tTensor tElem dims = con Tensor `eApp` [tElem, dims]
 
 tList :: DSLExpr -> DSLExpr
-tList tElem = con (ContainerType List) `eApp` [tElem]
+tList tElem = con List `eApp` [tElem]
 
 tIndex :: DSLExpr -> DSLExpr
 tIndex n = con Index `eApp` [n]
@@ -186,8 +186,8 @@ hasAnd t1 t2 t3 = typeClass HasAnd [t1, t2, t3]
 hasOr :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 hasOr t1 t2 t3 = typeClass HasOr [t1, t2, t3]
 
-hasImpl :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasImpl t1 t2 t3 = typeClass HasImpl [t1, t2, t3]
+hasImplies :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+hasImplies t1 t2 t3 = typeClass HasImplies [t1, t2, t3]
 
 hasQuantifier :: Quantifier -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 hasQuantifier q t1 t2 t3 = typeClass (HasQuantifier q) [t1, t2, t3]

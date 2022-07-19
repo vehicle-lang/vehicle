@@ -2,8 +2,6 @@
 
 module Vehicle.Language.AST.Builtin
   ( Builtin(..)
-  , NumericType(..)
-  , ContainerType(..)
   , TypeClass(..)
   , builtinFromSymbol
   , symbolFromBuiltin
@@ -25,35 +23,6 @@ import Vehicle.Language.AST.Builtin.Linearity as X
 -- somehow.
 
 --------------------------------------------------------------------------------
--- Numeric types
-
-data NumericType
-  = Nat
-  | Int
-  | Rat
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData   NumericType
-instance Hashable NumericType
-
-instance Pretty NumericType where
-  pretty = pretty . show
-
---------------------------------------------------------------------------------
--- Container types
-
-data ContainerType
-  = List
-  | Tensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData   ContainerType
-instance Hashable ContainerType
-
-instance Pretty ContainerType where
-  pretty = pretty . show
-
---------------------------------------------------------------------------------
 -- Type classes
 
 data TypeClass
@@ -63,7 +32,7 @@ data TypeClass
   | HasNot
   | HasAnd
   | HasOr
-  | HasImpl
+  | HasImplies
   | HasQuantifier Quantifier
   | HasAdd
   | HasSub
@@ -93,7 +62,7 @@ data TypeClass
   | NegPolarity
   | AddPolarity Quantifier
   | EqPolarity Equality
-  | ImplPolarity
+  | ImpliesPolarity
   | MaxPolarity
 
   -- Utility type-classes
@@ -111,7 +80,7 @@ instance Pretty TypeClass where
     HasNot             -> "HasNot"
     HasAnd             -> "HasAnd"
     HasOr              -> "HasOr"
-    HasImpl            -> "HasImpl"
+    HasImplies         -> "HasImplies"
     HasQuantifier q    -> "HasQuantifier" <+> pretty q
     HasAdd             -> "HasAdd"
     HasSub             -> "HasSub"
@@ -132,7 +101,7 @@ instance Pretty TypeClass where
     NegPolarity        -> "NegPolarity"
     AddPolarity q      -> "AddPolarity" <+> pretty q
     EqPolarity eq      -> "EqPolarity" <+> pretty eq
-    ImplPolarity       -> "ImplPolarity"
+    ImpliesPolarity    -> "ImpliesPolarity"
     MaxPolarity        -> "MaxPolarity"
 
     TypesEqualModAuxiliaryAnnotations{} -> "TypesEqual"
@@ -145,21 +114,36 @@ instance Pretty TypeClass where
 data Builtin
   -- Types
   = Bool
-  | NumericType   NumericType
-  | ContainerType ContainerType
   | Index
+  | Nat
+  | Int
+  | Rat
+  | List
+  | Tensor
+
   -- Type classes
   | TypeClass TypeClass
-  -- Expressions
-  | If
+
+  -- Boolean expressions
   | Not
-  | BooleanOp2 BooleanOp2
+  | And
+  | Or
+  | Implies
+  | If
+
+  -- Arithmetic expressions
   | Neg
-  | NumericOp2 NumericOp2
+  | Add
+  | Sub
+  | Mul
+  | Div
+
+  -- Container expressions
   | Cons
   | At
   | Map
   | Fold
+
   | Equality  Equality
   | Order     Order
   | Quant     Quantifier
@@ -168,22 +152,69 @@ data Builtin
   | ForeachIn
 
   -- Annotations - these should not be shown to the user.
-  | Polarity Polarity
+  | Polarity  Polarity
   | Linearity Linearity
   deriving (Eq, Generic)
 
 instance NFData   Builtin
 instance Hashable Builtin
 
-instance Pretty Builtin where
-  pretty = \case
+instance Show Builtin where
+  show = \case
     Bool                 -> "Bool"
-    NumericType   t      -> pretty t
-    ContainerType t      -> pretty t
     Index                -> "Index"
-    BooleanOp2 op        -> pretty op
+    Nat                  -> "Nat"
+    Int                  -> "Int"
+    Rat                  -> "Rat"
+    List                 -> "List"
+    Tensor               -> "Tensor"
+
     Not                  -> "not"
-    NumericOp2 op        -> pretty op
+    And                  -> "and"
+    Or                   -> "or"
+    Implies              -> "=>"
+    If                   -> "if"
+
+    Add                  -> "+"
+    Sub                  -> "-"
+    Mul                  -> "*"
+    Div                  -> "/"
+    Neg                  -> "-"
+
+    At                   -> "!"
+    Cons                 -> "::"
+    Equality e           -> show e
+    Order o              -> show o
+    Map                  -> "map"
+    Fold                 -> "fold"
+    Quant   Forall       -> "forall"
+    Quant   Exists       -> "exists"
+    QuantIn q            -> show (Quant q) <> "In"
+    Foreach              -> "foreach"
+    ForeachIn            -> "foreachIn"
+    TypeClass tc         -> show tc
+    Polarity pol         -> show pol
+    Linearity lin        -> show lin
+
+instance Pretty Builtin where
+  pretty b = case b of
+    Bool                 -> pretty $ show b
+    Index                -> pretty $ show b
+    Nat                  -> pretty $ show b
+    Int                  -> pretty $ show b
+    Rat                  -> pretty $ show b
+    List                 -> pretty $ show b
+    Tensor               -> pretty $ show b
+
+    Not                  -> pretty $ show b
+    And                  -> pretty $ show b
+    Or                   -> pretty $ show b
+    Implies              -> pretty $ show b
+
+    Add                  -> pretty $ show b
+    Sub                  -> pretty $ show b
+    Mul                  -> pretty $ show b
+    Div                  -> pretty $ show b
     Neg                  -> "-"
     If                   -> "if"
     At                   -> "!"
@@ -201,44 +232,19 @@ instance Pretty Builtin where
     Polarity pol         -> pretty pol
     Linearity lin        -> pretty lin
 
-instance Show Builtin where
-  show = \case
-    Bool                 -> "Bool"
-    NumericType   t      -> show t
-    ContainerType t      -> show t
-    Index                -> "Index"
-    BooleanOp2 op        -> show op
-    Not                  -> "not"
-    NumericOp2 op        -> show op
-    Neg                  -> "-"
-    If                   -> "if"
-    At                   -> "!"
-    Cons                 -> "::"
-    Equality e           -> show e
-    Order o              -> show o
-    Map                  -> "map"
-    Fold                 -> "fold"
-    Quant   Forall       -> "forall"
-    Quant   Exists       -> "exists"
-    QuantIn q            -> show (Quant q) <> "In"
-    Foreach              -> "foreach"
-    ForeachIn            -> "foreachIn"
-    TypeClass tc         -> show tc
-    Polarity pol         -> show pol
-    Linearity lin        -> show lin
-
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols = map (first pack)
   [ show Bool                         |-> Bool
-  , show (NumericType Nat)            |-> NumericType Nat
-  , show (NumericType Int)            |-> NumericType Int
-  , show (NumericType Rat)            |-> NumericType Rat
-  , show (ContainerType List)         |-> ContainerType List
-  , show (ContainerType Tensor)       |-> ContainerType Tensor
+  , show Nat                          |-> Nat
+  , show Int                          |-> Int
+  , show Rat                          |-> Rat
+  , show List                         |-> List
+  , show Tensor                       |-> Tensor
+
   , show If                           |-> If
-  , show (BooleanOp2 Impl)            |-> BooleanOp2 Impl
-  , show (BooleanOp2 And)             |-> BooleanOp2 And
-  , show (BooleanOp2 Or)              |-> BooleanOp2 Or
+  , show Implies                      |-> Implies
+  , show And                          |-> And
+  , show Or                           |-> Or
   , show Not                          |-> Not
   , show (Equality Eq)                |-> Equality Eq
   , show (Equality Neq)               |-> Equality Neq
@@ -246,10 +252,10 @@ builtinSymbols = map (first pack)
   , show (Order Lt)                   |-> Order Lt
   , show (Order Ge)                   |-> Order Ge
   , show (Order Gt)                   |-> Order Gt
-  , show (NumericOp2 Add)             |-> NumericOp2 Add
-  , show (NumericOp2 Mul)             |-> NumericOp2 Mul
-  , show (NumericOp2 Div)             |-> NumericOp2 Div
-  , show (NumericOp2 Sub)             |-> NumericOp2 Sub
+  , show Add                          |-> Add
+  , show Mul                          |-> Mul
+  , show Div                          |-> Div
+  , show Sub                          |-> Sub
   , show Neg                          |-> Neg
   , show At                           |-> At
   , show Cons                         |-> Cons

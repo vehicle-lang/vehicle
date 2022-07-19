@@ -89,10 +89,10 @@ compileExpr :: MonadCompile m => V.CheckedExpr -> m LExpr
 compileExpr e = showExit $ do
   e' <- showEntry e
   case e' of
-    V.NotExpr  _ [e1]     -> Neg <$> compileArg e1
-    V.AndExpr  _ [e1, e2] -> Min <$> compileArg e1 <*> compileArg e2
-    V.OrExpr   _ [e1, e2] -> Max <$> compileArg e1 <*> compileArg e2
-    V.ImplExpr _ [e1, e2] -> Max <$> (Neg <$> compileArg e1) <*> compileArg e2
+    V.NotExpr     _ [e1]     -> Neg <$> compileArg e1
+    V.AndExpr     _ [e1, e2] -> Min <$> compileArg e1 <*> compileArg e2
+    V.OrExpr      _ [e1, e2] -> Max <$> compileArg e1 <*> compileArg e2
+    V.ImpliesExpr _ [e1, e2] -> Max <$> (Neg <$> compileArg e1) <*> compileArg e2
 
     V.EqualityExpr _ V.Eq  _ [e1, e2] -> Ind <$> compileArg e1 <*> compileArg e2
     V.EqualityExpr _ V.Neq _ [e1, e2] -> Neg <$> (Ind <$> compileArg e1 <*> compileArg e2)

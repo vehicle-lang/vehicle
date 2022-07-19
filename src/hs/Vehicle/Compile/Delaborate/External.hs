@@ -207,28 +207,28 @@ delabUniverse = \case
 
 delabBuiltin :: V.Builtin -> [B.Expr] -> B.Expr
 delabBuiltin fun args = case fun of
-  V.Bool -> B.Bool tokBool
-  V.NumericType V.Nat -> B.Nat tokNat
-  V.NumericType V.Int -> B.Int tokInt
-  V.NumericType V.Rat -> B.Rat tokRat
-  V.ContainerType V.List -> delabOp1 B.List tokList args
-  V.ContainerType V.Tensor -> delabOp2 B.Tensor tokTensor args
-  V.Index -> delabOp1 B.Index tokIndex args
+  V.Bool   -> B.Bool tokBool
+  V.Nat    -> B.Nat  tokNat
+  V.Int    -> B.Int  tokInt
+  V.Rat    -> B.Rat  tokRat
+  V.List   -> delabOp1 B.List tokList args
+  V.Tensor -> delabOp2 B.Tensor tokTensor args
+  V.Index  -> delabOp1 B.Index tokIndex args
   V.Equality V.Eq -> delabInfixOp2 B.Eq tokEq args
   V.Equality V.Neq -> delabInfixOp2 B.Neq tokNeq args
   V.If -> delabIf args
-  V.BooleanOp2 V.And -> delabInfixOp2 B.And tokAnd args
-  V.BooleanOp2 V.Or -> delabInfixOp2 B.Or tokOr args
-  V.BooleanOp2 V.Impl -> delabInfixOp2 B.Impl tokImpl args
+  V.And -> delabInfixOp2 B.And tokAnd args
+  V.Or -> delabInfixOp2 B.Or tokOr args
+  V.Implies -> delabInfixOp2 B.Impl tokImpl args
   V.Not -> delabOp1 B.Not tokNot args
   V.Order V.Le -> delabInfixOp2 B.Le tokLe args
   V.Order V.Lt -> delabInfixOp2 B.Lt tokLt args
   V.Order V.Ge -> delabInfixOp2 B.Ge tokGe args
   V.Order V.Gt -> delabInfixOp2 B.Gt tokGt args
-  V.NumericOp2 V.Add -> delabInfixOp2 B.Add tokAdd args
-  V.NumericOp2 V.Sub -> delabInfixOp2 B.Sub tokSub args
-  V.NumericOp2 V.Mul -> delabInfixOp2 B.Mul tokMul args
-  V.NumericOp2 V.Div -> delabInfixOp2 B.Div tokDiv args
+  V.Add -> delabInfixOp2 B.Add tokAdd args
+  V.Sub -> delabInfixOp2 B.Sub tokSub args
+  V.Mul -> delabInfixOp2 B.Mul tokMul args
+  V.Div -> delabInfixOp2 B.Div tokDiv args
   V.Neg -> delabOp1 B.Neg tokSub args
   V.Cons -> delabInfixOp2 B.Cons tokCons args
   V.At -> delabInfixOp2 B.At tokAt args

@@ -73,8 +73,8 @@ solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
 
     -- If a tensor is unified with a non-tensor then it must be a 0 dimensional
     -- tensor.
-    (Builtin _ (ContainerType Tensor), [tElem, tDims]) :~: (Builtin _ op, _)
-      | op /= ContainerType Tensor -> do
+    (Builtin _ Tensor, [tElem, tDims]) :~: (Builtin _ op, _)
+      | op /= Tensor -> do
           let emptyDims = mkTensorDims (inserted (provenanceOf tDims)) []
           let elemConstraint = UC ctx (Unify (argExpr tElem, e2))
           let dimsConstraint = UC ctx (Unify (argExpr tDims, emptyDims))
@@ -84,8 +84,8 @@ solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
             }
 
     -- Mirror image of the previous case, so just swap the problem over.
-    (Builtin _ op, _) :~: (Builtin _ (ContainerType Tensor), [_tElem, _tDims])
-      | op /= ContainerType Tensor -> solveUnificationConstraint ctx (Unify (e2, e1))
+    (Builtin _ op, _) :~: (Builtin _ Tensor, [_tElem, _tDims])
+      | op /= Tensor -> solveUnificationConstraint ctx (Unify (e2, e1))
 
     -----------------------
     -- Rigid-rigid cases --

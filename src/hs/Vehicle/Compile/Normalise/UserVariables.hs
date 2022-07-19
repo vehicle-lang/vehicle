@@ -396,9 +396,9 @@ compileLinearExpr expr = do
     LiteralExpr _ _ _ l                   -> do
       constIndex <- getExprConstantIndex
       singletonVar (Bound constIndex) =<< compileLiteral l
-    AddExpr _ _ _ _ _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+    AddExpr _ _ _ _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do
       Map.unionWith (+) <$> go e1 <*> go e2
-    MulExpr _ _ _ _ _ [ExplicitArg _ e1, ExplicitArg _ e2] ->
+    MulExpr _ _ _ _ [ExplicitArg _ e1, ExplicitArg _ e2] ->
       case (e1, e2) of
         (LiteralExpr _ _ _ l, Var _ v) -> singletonVar v =<< compileLiteral l
         (Var _ v, LiteralExpr _ _ _ l) -> singletonVar v =<< compileLiteral l
@@ -444,6 +444,4 @@ currentPass :: Doc a
 currentPass = "insertion of magic network variables"
 
 supportedTypes :: [Builtin]
-supportedTypes =
-  [ NumericType Rat
-  ]
+supportedTypes = [ Rat ]

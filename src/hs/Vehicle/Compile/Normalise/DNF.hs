@@ -43,8 +43,8 @@ dnf expr = do
     Lam{}       -> caseError          currentPass "Lam" ["QuantifierExpr"]
 
     -- Some sanity checks
-    NotExpr{}  -> normalisationError currentPass "Not"
-    ImplExpr{} -> normalisationError currentPass "Impl"
+    NotExpr{}     -> normalisationError currentPass "Not"
+    ImpliesExpr{} -> normalisationError currentPass "Implies"
 
     QuantifierExpr ann t binder body -> do
       body' <- dnf body
@@ -121,7 +121,7 @@ nfNot p arg = case argExpr arg of
   EqualityExpr   _ eq  tElem args  -> Just $ EqualityExpr p (neg eq)  tElem args
   ForallExpr _ binder body         -> Just $ ExistsExpr p binder $ notExpr body
   ExistsExpr _ binder body         -> Just $ ForallExpr p binder $ notExpr body
-  ImplExpr           _ [e1, e2]    -> Just $ AndExpr p [e1, notArg e2]
+  ImpliesExpr        _ [e1, e2]    -> Just $ AndExpr p [e1, notArg e2]
   OrExpr             _ [e1, e2]    -> Just $ AndExpr p (notArg <$> [e1, e2])
   AndExpr            _ [e1, e2]    -> Just $ OrExpr p (notArg <$> [e1, e2])
   IfExpr _ tRes [c, e1, e2]        -> Just $ IfExpr p tRes [c, notArg e1, notArg e2]

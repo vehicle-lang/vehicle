@@ -43,14 +43,12 @@ liftIf f e = f e
 -- | Recursively removes all top-level `if` statements in the current
 -- provided expression.
 elimIf :: CheckedExpr -> CheckedExpr
-elimIf (IfExpr ann _ [cond, e1, e2]) = argExpr $
-  op2 Or HasOr
-    (op2 And HasAnd cond         (mapArgExpr elimIf e1))
-    (op2 And HasAnd (notOp cond) (mapArgExpr elimIf e2))
+elimIf (IfExpr ann _ [cond, e1, e2]) =
+  OrExpr ann $ fmap (ExplicitArg ann)
+    [ AndExpr ann [cond,       mapArgExpr elimIf e1]
+    , AndExpr ann [notOp cond, mapArgExpr elimIf e2]
+    ]
   where
-    op2 :: BooleanOp2 -> TypeClass -> CheckedArg -> CheckedArg -> CheckedArg
-    op2 op tc arg1 arg2 = ExplicitArg ann (BooleanOp2Expr op tc ann [arg1, arg2])
-
     notOp :: CheckedArg -> CheckedArg
     notOp arg = ExplicitArg ann $ applyNotAndNormalise arg
 elimIf e = e

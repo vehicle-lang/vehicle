@@ -157,7 +157,7 @@ doubleElemParser decl value typeInProgram = do
     RatType{} ->
       return $ RatLiteralExpr p typeInProgram (toRational value)
     _ -> do
-      throwError $ DatasetTypeMismatch decl typeInProgram Rat
+      throwError $ DatasetTypeMismatch decl typeInProgram (RatType p)
 
 intElemParser :: MonadExpandResources m
               => DeclProvenance
@@ -176,7 +176,7 @@ intElemParser decl value typeInProgram = do
     IntType{} ->
       return $ IntLiteralExpr p typeInProgram value
     _ ->
-      throwError $ DatasetTypeMismatch decl typeInProgram Int
+      throwError $ DatasetTypeMismatch decl typeInProgram (IntType p)
 
 -- | Split data by the first dimension of the C-Array.
 partitionData :: Vector.Unbox a => Int -> [Int] -> Vector a -> [Vector a]

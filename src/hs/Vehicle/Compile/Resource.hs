@@ -52,7 +52,7 @@ data NetworkBaseType
 
 instance Pretty NetworkBaseType where
   pretty = \case
-    NetworkRatType -> pretty (NumericType Rat)
+    NetworkRatType -> pretty Rat
 
 reconstructNetworkBaseType :: Provenance -> NetworkBaseType -> CheckedExpr
 reconstructNetworkBaseType ann NetworkRatType = RatType ann

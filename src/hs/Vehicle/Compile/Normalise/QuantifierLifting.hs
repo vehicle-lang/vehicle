@@ -39,10 +39,10 @@ recLift expr =
     -- ^ Should never recurse down this far, though this may change if we add support
     -- for boolean valued networks.
 
-    IfExpr{}   -> normalisationError currentPass "If"
-    OrExpr{}   -> normalisationError currentPass "Or"
-    NotExpr{}  -> normalisationError currentPass "Not"
-    ImplExpr{} -> normalisationError currentPass "Impl"
+    IfExpr{}      -> normalisationError currentPass "If"
+    OrExpr{}      -> normalisationError currentPass "Or"
+    NotExpr{}     -> normalisationError currentPass "Not"
+    ImpliesExpr{} -> normalisationError currentPass "Implies"
     -- ^ Problem becomes much harder if these two are allowed as then quantifiers have
     -- to be negated as well.
 

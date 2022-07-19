@@ -458,63 +458,32 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
   Polarity{}    -> tPol
   Linearity{}   -> tLin
 
-  TypeClass tc -> case tc of
-    HasEq{}            -> type0 ~> type0 ~> type0 ~> type0
-    HasOrd{}           -> type0 ~> type0 ~> type0 ~> type0
-    HasNot             -> type0 ~> type0 ~> type0
-    HasAnd             -> type0 ~> type0 ~> type0 ~> type0
-    HasOr              -> type0 ~> type0 ~> type0 ~> type0
-    HasImpl            -> type0 ~> type0 ~> type0 ~> type0
-    HasQuantifier{}    -> type0 ~> type0 ~> type0 ~> type0
-    HasAdd             -> type0 ~> type0 ~> type0 ~> type0
-    HasSub             -> type0 ~> type0 ~> type0 ~> type0
-    HasMul             -> type0 ~> type0 ~> type0 ~> type0
-    HasDiv             -> type0 ~> type0 ~> type0 ~> type0
-    HasNeg             -> type0 ~> type0 ~> type0
-    HasFold            -> type0 ~> type0 ~> type0
-    HasQuantifierIn{}  -> type0 ~> type0 ~> type0
+  TypeClass tc -> typeOfTypeClass tc
 
-    HasNatLitsUpTo{}   -> type0 ~> type0
-    HasIntLits         -> type0 ~> type0
-    HasRatLits         -> type0 ~> type0
-    HasConLitsOfSize{} -> type0 ~> type0 ~> type0
-
-    MaxLinearity -> tLin ~> tLin ~> tLin ~> type0
-    MulLinearity -> tLin ~> tLin ~> tLin ~> type0
-
-    NegPolarity{}  -> tPol ~> tPol ~> type0
-    AddPolarity{}  -> tPol ~> tPol ~> type0
-    MaxPolarity    -> tPol ~> tPol ~> tPol ~> type0
-    EqPolarity{}   -> tPol ~> tPol ~> tPol ~> type0
-    ImplPolarity{} -> tPol ~> tPol ~> tPol ~> type0
-
-    TypesEqualModAuxiliaryAnnotations{} ->
-      forall type0 $ \t -> t ~> tList t ~> type0
-
-  NumericType Nat -> type0
-  NumericType Int -> type0
+  Nat  -> type0
+  Int  -> type0
   -- Rat and Bool take implicit linearity and polarity arguments during
   -- type-checking.
-  NumericType Rat -> tLin ~~> type0
-  Bool            -> tLin ~~> tPol ~~> type0
+  Rat -> tLin ~~> type0
+  Bool -> tLin ~~> tPol ~~> type0
 
-  ContainerType List   -> type0 ~> type0
-  ContainerType Tensor -> type0 ~> tList tNat ~> type0
-  Index                -> tNat ~> type0
+  List   -> type0 ~> type0
+  Tensor -> type0 ~> tList tNat ~> type0
+  Index  -> tNat ~> type0
 
   If              -> typeOfIf
 
   Equality eq     -> typeOfOp2 $ hasEq eq
   Order    ord    -> typeOfOp2 $ hasOrd ord
   Not             -> typeOfOp1 hasNot
-  BooleanOp2 Impl -> typeOfOp2 hasImpl
-  BooleanOp2 And  -> typeOfOp2 hasAnd
-  BooleanOp2 Or   -> typeOfOp2 hasOr
+  Implies         -> typeOfOp2 hasImplies
+  And             -> typeOfOp2 hasAnd
+  Or              -> typeOfOp2 hasOr
   Neg             -> typeOfOp1 hasNeg
-  NumericOp2 Add  -> typeOfOp2 hasAdd
-  NumericOp2 Sub  -> typeOfOp2 hasSub
-  NumericOp2 Mul  -> typeOfOp2 hasMul
-  NumericOp2 Div  -> typeOfOp2 hasDiv
+  Add             -> typeOfOp2 hasAdd
+  Sub             -> typeOfOp2 hasSub
+  Mul             -> typeOfOp2 hasMul
+  Div             -> typeOfOp2 hasDiv
 
   Cons -> typeOfCons
   At   -> typeOfAtOp
@@ -526,6 +495,40 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
 
   Foreach   -> typeOfForeach
   ForeachIn -> typeOfForeachIn
+
+typeOfTypeClass :: TypeClass -> DSLExpr
+typeOfTypeClass tc = case tc of
+  HasEq{}            -> type0 ~> type0 ~> type0 ~> type0
+  HasOrd{}           -> type0 ~> type0 ~> type0 ~> type0
+  HasNot             -> type0 ~> type0 ~> type0
+  HasAnd             -> type0 ~> type0 ~> type0 ~> type0
+  HasOr              -> type0 ~> type0 ~> type0 ~> type0
+  HasImplies         -> type0 ~> type0 ~> type0 ~> type0
+  HasQuantifier{}    -> type0 ~> type0 ~> type0 ~> type0
+  HasAdd             -> type0 ~> type0 ~> type0 ~> type0
+  HasSub             -> type0 ~> type0 ~> type0 ~> type0
+  HasMul             -> type0 ~> type0 ~> type0 ~> type0
+  HasDiv             -> type0 ~> type0 ~> type0 ~> type0
+  HasNeg             -> type0 ~> type0 ~> type0
+  HasFold            -> type0 ~> type0 ~> type0
+  HasQuantifierIn{}  -> type0 ~> type0 ~> type0
+
+  HasNatLitsUpTo{}   -> type0 ~> type0
+  HasIntLits         -> type0 ~> type0
+  HasRatLits         -> type0 ~> type0
+  HasConLitsOfSize{} -> type0 ~> type0 ~> type0
+
+  MaxLinearity -> tLin ~> tLin ~> tLin ~> type0
+  MulLinearity -> tLin ~> tLin ~> tLin ~> type0
+
+  NegPolarity{}     -> tPol ~> tPol ~> type0
+  AddPolarity{}     -> tPol ~> tPol ~> type0
+  MaxPolarity       -> tPol ~> tPol ~> tPol ~> type0
+  EqPolarity{}      -> tPol ~> tPol ~> tPol ~> type0
+  ImpliesPolarity{} -> tPol ~> tPol ~> tPol ~> type0
+
+  TypesEqualModAuxiliaryAnnotations{} ->
+    forall type0 $ \t -> t ~> tList t ~> type0
 
 typeOfIf :: DSLExpr
 typeOfIf =

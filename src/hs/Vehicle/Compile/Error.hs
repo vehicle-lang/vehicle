@@ -64,10 +64,10 @@ data CompileError
   | FailedBuiltinConstraintArgument  ConstraintContext Builtin CheckedExpr [InputExpr] Int Int
   | FailedBuiltinConstraintResult    ConstraintContext Builtin CheckedExpr [InputExpr]
   | FailedNotConstraint              ConstraintContext CheckedExpr
-  | FailedBoolOp2Constraint          ConstraintContext CheckedExpr CheckedExpr BooleanOp2
+  | FailedBoolOp2Constraint          ConstraintContext CheckedExpr CheckedExpr Builtin
   | FailedQuantifierConstraintDomain ConstraintContext CheckedExpr Quantifier
   | FailedQuantifierConstraintBody   ConstraintContext CheckedExpr Quantifier
-  | FailedArithOp2Constraint         ConstraintContext CheckedExpr CheckedExpr NumericOp2
+  | FailedArithOp2Constraint         ConstraintContext CheckedExpr CheckedExpr Builtin
   | FailedFoldConstraintContainer    ConstraintContext CheckedExpr
   | FailedQuantInConstraintContainer ConstraintContext CheckedExpr Quantifier
   | FailedNatLitConstraint           ConstraintContext Int CheckedExpr
@@ -95,7 +95,7 @@ data CompileError
   | DatasetTypeUnsupportedElement   DeclProvenance CheckedExpr
   | DatasetVariableSizeTensor       DeclProvenance CheckedExpr
   | DatasetDimensionMismatch        DeclProvenance CheckedExpr [Int]
-  | DatasetTypeMismatch             DeclProvenance CheckedExpr NumericType
+  | DatasetTypeMismatch             DeclProvenance CheckedExpr CheckedExpr
   | DatasetInvalidNat               DeclProvenance Int
   | DatasetInvalidIndex             DeclProvenance Int Int
 
@@ -161,12 +161,12 @@ caseError pass name cases = compilerDeveloperError $
 
 allowedType :: Builtin -> InputExpr
 allowedType = let p = mempty in \case
-  NumericType   Nat    -> NatType p
-  NumericType   Int    -> IntType p
-  NumericType   Rat    -> RatType p
+  Nat                  -> NatType p
+  Int                  -> IntType p
+  Rat                  -> RatType p
   Index                -> IndexType p (Var p "n")
-  ContainerType List   -> ListType p (Var p "A")
-  ContainerType Tensor -> TensorType p (Var p "A") (Var p "dims")
+  List                 -> ListType p (Var p "A")
+  Tensor               -> TensorType p (Var p "A") (Var p "dims")
   b                    -> developerError
     $ "Builtin" <+> squotes (pretty b) <+> "not yet supported for allowed translation"
 

@@ -191,21 +191,20 @@ letBindSubexpressions :: MonadLetInsert m
                       -> [Subexpression]
                       -> CheckedCoDBExpr
                       -> m (CheckedCoDBExpr, SubexpressionMap)
-letBindSubexpressions remainingSM []               expr = return (expr, remainingSM)
-letBindSubexpressions remainingSM subexprsToInsert expr = do
-  -- Filter the subexpressions using the provided filter.
-  exprFilter <- asks fst
-  let filteredSubexprs = filter (filterItem exprFilter) subexprsToInsert
+letBindSubexpressions remainingSM subexprsToInsert expr
+  | null subexprsToInsert = return (expr, remainingSM)
+  | otherwise             = do
+    -- Filter the subexpressions using the provided filter.
+    exprFilter <- asks fst
+    let filteredSubexprs = filter (filterItem exprFilter) subexprsToInsert
 
-  -- Sort the subexpressions by prefix order so we insert the "larger" ones first.
-  let sortedSubexprs = partialSort subexprPrefixOrder filteredSubexprs
+    -- Sort the subexpressions by prefix order so we insert the "larger" ones first.
+    let sortedSubexprs = partialSort subexprPrefixOrder filteredSubexprs
 
-  logDebug MaxDetail "begin-insertion"
-  incrCallDepth
-  (updatedSM, updatedExpr) <- go remainingSM sortedSubexprs expr
-  decrCallDepth
-  logDebug MaxDetail "end-insertion"
-  return (updatedExpr, updatedSM)
+    (updatedSM, updatedExpr) <- logCompilerPass MaxDetail "insertion" $ do
+      go remainingSM sortedSubexprs expr
+
+    return (updatedExpr, updatedSM)
   where
     go :: MonadLetInsert m
        => SubexpressionMap -> [Subexpression] -> CheckedCoDBExpr

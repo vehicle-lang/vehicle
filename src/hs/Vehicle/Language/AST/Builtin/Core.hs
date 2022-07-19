@@ -4,8 +4,6 @@ module Vehicle.Language.AST.Builtin.Core
   ( Quantifier(..)
   , Order(..)
   , Equality(..)
-  , BooleanOp2(..)
-  , NumericOp2(..)
   , isStrict
   , flipStrictness
   , flipOrder
@@ -90,48 +88,6 @@ flipOrder = \case
 
 chainable :: Order -> Order -> Bool
 chainable e1 e2 = e1 == e2 || e1 == flipStrictness e2
-
---------------------------------------------------------------------------------
--- Boolean operations
-
-data BooleanOp2
-  = Impl
-  | And
-  | Or
-  deriving (Eq, Ord, Generic)
-
-instance NFData   BooleanOp2
-instance Hashable BooleanOp2
-
-instance Show BooleanOp2 where
-  show = \case
-    Impl -> "implies"
-    And  -> "and"
-    Or   -> "or"
-
-instance Pretty BooleanOp2 where
-  pretty = pretty . show
-
---------------------------------------------------------------------------------
--- Numeric operations
-
-data NumericOp2
-  = Mul
-  | Div
-  | Add
-  | Sub
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData   NumericOp2
-instance Hashable NumericOp2
-
-instance Pretty NumericOp2 where
-  pretty = \case
-    Add -> "+"
-    Mul -> "*"
-    Div -> "/"
-    Sub -> "-"
-
 
 --------------------------------------------------------------------------------
 -- Quantifiers

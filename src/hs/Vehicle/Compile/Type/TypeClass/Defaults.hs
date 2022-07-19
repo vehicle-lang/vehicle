@@ -20,6 +20,12 @@ import Control.Monad (foldM)
 
 type Ctx = ConstraintContext
 
+data NumericType
+  = NatT
+  | IntT
+  | RatT
+  deriving (Eq, Ord)
+
 data DefaultFamily
   = NumericFamily NumericType Bool Int
   | ContainerFamily Bool
@@ -111,18 +117,18 @@ familyOf = \case
   HasNot             -> return BooleanFamily
   HasAnd             -> return BooleanFamily
   HasOr              -> return BooleanFamily
-  HasImpl            -> return BooleanFamily
+  HasImplies         -> return BooleanFamily
   HasQuantifier{}    -> return BooleanFamily
-  HasEq{}            -> return $ NumericFamily Nat False 0
-  HasOrd{}           -> return $ NumericFamily Nat False 0
-  HasAdd             -> return $ NumericFamily Nat True  0
-  HasSub             -> return $ NumericFamily Int True  0
-  HasMul             -> return $ NumericFamily Nat True  0
-  HasDiv             -> return $ NumericFamily Rat True  0
-  HasNeg             -> return $ NumericFamily Int True  0
-  (HasNatLitsUpTo n) -> return $ NumericFamily Nat False n
-  HasIntLits         -> return $ NumericFamily Int False 0
-  HasRatLits         -> return $ NumericFamily Rat False 0
+  HasEq{}            -> return $ NumericFamily NatT False 0
+  HasOrd{}           -> return $ NumericFamily NatT False 0
+  HasAdd             -> return $ NumericFamily NatT True  0
+  HasSub             -> return $ NumericFamily IntT True  0
+  HasMul             -> return $ NumericFamily NatT True  0
+  HasDiv             -> return $ NumericFamily RatT True  0
+  HasNeg             -> return $ NumericFamily IntT True  0
+  (HasNatLitsUpTo n) -> return $ NumericFamily NatT False n
+  HasIntLits         -> return $ NumericFamily IntT False 0
+  HasRatLits         -> return $ NumericFamily RatT False 0
   HasFold            -> return $ ContainerFamily False
   HasQuantifierIn{}  -> return $ ContainerFamily False
   HasConLitsOfSize{} -> return $ ContainerFamily True
@@ -132,7 +138,7 @@ familyOf = \case
   NegPolarity{}                       -> auxiliaryTCError
   AddPolarity{}                       -> auxiliaryTCError
   EqPolarity{}                        -> auxiliaryTCError
-  ImplPolarity{}                      -> auxiliaryTCError
+  ImpliesPolarity{}                   -> auxiliaryTCError
   MaxPolarity{}                       -> auxiliaryTCError
   TypesEqualModAuxiliaryAnnotations{} -> auxiliaryTCError
 
@@ -147,7 +153,7 @@ defaultSolution ann ctx = \case
   HasNot             -> createDefaultBoolType ann
   HasAnd             -> createDefaultBoolType ann
   HasOr              -> createDefaultBoolType ann
-  HasImpl            -> createDefaultBoolType ann
+  HasImplies         -> createDefaultBoolType ann
   HasQuantifier{}    -> createDefaultBoolType ann
   HasAdd             -> return $ NatType ann
   HasSub             -> return $ IntType ann
@@ -166,7 +172,7 @@ defaultSolution ann ctx = \case
   NegPolarity{}                       -> auxiliaryTCError
   AddPolarity{}                       -> auxiliaryTCError
   EqPolarity{}                        -> auxiliaryTCError
-  ImplPolarity{}                      -> auxiliaryTCError
+  ImpliesPolarity{}                   -> auxiliaryTCError
   MaxPolarity{}                       -> auxiliaryTCError
   TypesEqualModAuxiliaryAnnotations{} -> auxiliaryTCError
 

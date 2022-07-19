@@ -46,7 +46,7 @@ solve = \case
   HasNot              -> solveHasNot
   HasAnd              -> solveHasAnd
   HasOr               -> solveHasOr
-  HasImpl             -> solveHasImpl
+  HasImplies          -> solveHasImplies
   HasQuantifier q     -> solveHasQuantifier q
   HasNeg              -> solveHasNeg
   HasAdd              -> solveHasAdd
@@ -64,11 +64,11 @@ solve = \case
   MaxLinearity -> solveMaxLinearity
   MulLinearity -> solveMulLinearity
 
-  NegPolarity   -> solveNegPolarity
-  AddPolarity q -> solveAddPolarity q
-  EqPolarity eq -> solveEqPolarity eq
-  ImplPolarity  -> solveImplPolarity
-  MaxPolarity   -> solveMaxPolarity
+  NegPolarity     -> solveNegPolarity
+  AddPolarity q   -> solveAddPolarity q
+  EqPolarity eq   -> solveEqPolarity eq
+  ImpliesPolarity -> solveImplPolarity
+  MaxPolarity     -> solveMaxPolarity
 
   TypesEqualModAuxiliaryAnnotations -> solveTypesEqual
 
@@ -133,10 +133,7 @@ solveHasEq eq c [arg1, arg2, res]
   where
     p = provenanceOf c
     ctx = constraintContext c
-    allowedTypes = allowed $
-      Bool : [Index] <>
-      (NumericType <$> [Nat, Int, Rat]) <>
-      (ContainerType <$> [List, Tensor])
+    allowedTypes = allowed [Bool, Index, Nat, Int, Rat, List, Tensor]
 
 solveHasEq _ c _ = malformedConstraint c
 
@@ -183,7 +180,7 @@ solveHasOrd ord c [arg1, arg2, res]
   where
     ctx = constraintContext c
     p = provenanceOf ctx
-    allowedTypes = allowed (Index : (NumericType <$> [Nat, Int, Rat]))
+    allowedTypes = allowed [Index, Nat, Int, Rat]
 
 solveHasOrd _ c _ = malformedConstraint c
 
@@ -209,32 +206,31 @@ solveHasNot c _ = malformedConstraint c
 -- HasAndOr
 
 solveHasBoolOp2 :: MonadMeta m
-                => BooleanOp2
-                -> TypeClass
+                => TypeClass
                 -> Constraint
                 -> [CheckedExpr]
                 -> m ConstraintProgress
-solveHasBoolOp2 _op2 polConstraint c [arg1, arg2, res] =
+solveHasBoolOp2 polConstraint c [arg1, arg2, res] =
   checkBoolTypesEqual MaxLinearity polConstraint c res [arg1, arg2]
-solveHasBoolOp2 _ _ c _ = malformedConstraint c
+solveHasBoolOp2 _ c _ = malformedConstraint c
 
 solveHasAnd :: MonadMeta m
             => Constraint
             -> [CheckedExpr]
             -> m ConstraintProgress
-solveHasAnd = solveHasBoolOp2 And MaxPolarity
+solveHasAnd = solveHasBoolOp2 MaxPolarity
 
 solveHasOr :: MonadMeta m
             => Constraint
             -> [CheckedExpr]
             -> m ConstraintProgress
-solveHasOr = solveHasBoolOp2 Or MaxPolarity
+solveHasOr = solveHasBoolOp2 MaxPolarity
 
-solveHasImpl :: MonadMeta m
-             => Constraint
-             -> [CheckedExpr]
-             -> m ConstraintProgress
-solveHasImpl = solveHasBoolOp2 Impl ImplPolarity
+solveHasImplies :: MonadMeta m
+                => Constraint
+                -> [CheckedExpr]
+                -> m ConstraintProgress
+solveHasImplies = solveHasBoolOp2 ImpliesPolarity
 
 --------------------------------------------------------------------------------
 -- HasQuantifier
@@ -326,7 +322,7 @@ solveHasNeg c [arg, res]
       (FailedBuiltinConstraintResult   ctx Neg res allowedTypes)
   where
     ctx = constraintContext c
-    allowedTypes = allowed (NumericType <$> [Int, Rat])
+    allowedTypes = allowed [Int, Rat]
 
 solveHasNeg c _ = malformedConstraint c
 
@@ -356,14 +352,14 @@ solveHasAdd c [arg1, arg2, res]
 
   | otherwise = throwError $ head $
     unless2 (isMeta arg1)
-      (FailedBuiltinConstraintArgument ctx (NumericOp2 Add) arg1 allowedTypes 1 2) <>
+      (FailedBuiltinConstraintArgument ctx Add arg1 allowedTypes 1 2) <>
     unless2 (isMeta arg2)
-      (FailedBuiltinConstraintArgument ctx (NumericOp2 Add) arg2 allowedTypes 2 2) <>
+      (FailedBuiltinConstraintArgument ctx Add arg2 allowedTypes 2 2) <>
     unless2 (isMeta res)
-      (FailedBuiltinConstraintResult   ctx (NumericOp2 Add) res  allowedTypes)
+      (FailedBuiltinConstraintResult   ctx Add res  allowedTypes)
   where
     ctx = constraintContext c
-    allowedTypes = allowed (NumericType <$> [Nat, Int, Rat])
+    allowedTypes = allowed [Nat, Int, Rat]
 
 solveHasAdd c _ = malformedConstraint c
 
@@ -390,14 +386,14 @@ solveHasSub c [arg1, arg2, res]
 
   | otherwise = throwError $ head $
     unless2 (isMeta arg1)
-      (FailedBuiltinConstraintArgument ctx (NumericOp2 Sub) arg1 allowedTypes 1 2) <>
+      (FailedBuiltinConstraintArgument ctx Sub arg1 allowedTypes 1 2) <>
     unless2 (isMeta arg2)
-      (FailedBuiltinConstraintArgument ctx (NumericOp2 Sub) arg2 allowedTypes 2 2) <>
+      (FailedBuiltinConstraintArgument ctx Sub arg2 allowedTypes 2 2) <>
     unless2 (isMeta res)
-      (FailedBuiltinConstraintResult   ctx (NumericOp2 Sub) res  allowedTypes)
+      (FailedBuiltinConstraintResult   ctx Sub res  allowedTypes)
   where
     ctx = constraintContext c
-    allowedTypes = allowed (NumericType <$> [Int, Rat])
+    allowedTypes = allowed [Int, Rat]
 
 solveHasSub c _ = malformedConstraint c
 
@@ -427,14 +423,14 @@ solveHasMul c [arg1, arg2, res]
 
   | otherwise = throwError $ head $
     unless2 (isMeta arg1)
-      (FailedBuiltinConstraintArgument ctx (NumericOp2 Mul) arg1 allowedTypes 1 2) <>
+      (FailedBuiltinConstraintArgument ctx Mul arg1 allowedTypes 1 2) <>
     unless2 (isMeta arg2)
-      (FailedBuiltinConstraintArgument ctx (NumericOp2 Mul) arg2 allowedTypes 2 2) <>
+      (FailedBuiltinConstraintArgument ctx Mul arg2 allowedTypes 2 2) <>
     unless2 (isMeta res)
-      (FailedBuiltinConstraintResult   ctx (NumericOp2 Mul) res  allowedTypes)
+      (FailedBuiltinConstraintResult   ctx Mul res  allowedTypes)
   where
     ctx = constraintContext c
-    allowedTypes = allowed (NumericType <$> [Nat, Int, Rat])
+    allowedTypes = allowed [Nat, Int, Rat]
 solveHasMul c _ = malformedConstraint c
 
 --------------------------------------------------------------------------------
@@ -457,14 +453,14 @@ solveHasDiv c [arg1, arg2, res]
 
   | otherwise = throwError $ head $
     unless2 (isMeta arg1)
-      (FailedBuiltinConstraintArgument ctx (NumericOp2 Div) arg1 allowedTypes 1 2) <>
+      (FailedBuiltinConstraintArgument ctx Div arg1 allowedTypes 1 2) <>
     unless2 (isMeta arg2)
-      (FailedBuiltinConstraintArgument ctx (NumericOp2 Div) arg2 allowedTypes 2 2) <>
+      (FailedBuiltinConstraintArgument ctx Div arg2 allowedTypes 2 2) <>
     unless2 (isMeta res)
-      (FailedBuiltinConstraintResult   ctx (NumericOp2 Div) res  allowedTypes)
+      (FailedBuiltinConstraintResult   ctx Div res  allowedTypes)
   where
     ctx = constraintContext c
-    allowedTypes = allowed [NumericType Rat]
+    allowedTypes = allowed [Rat]
 
 solveHasDiv c _ = malformedConstraint c
 

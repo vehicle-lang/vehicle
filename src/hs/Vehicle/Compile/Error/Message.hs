@@ -476,7 +476,7 @@ instance MeaningfulError CompileError where
       , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
                      "for the elements of the" <+> prettyResource Dataset ident <> "."
       , fix        = Just $ "change the type to one of" <+> elementTypes <> "."
-      } where elementTypes = pretty @[Builtin] ([Index] <> fmap NumericType [Nat, Int, Rat])
+      } where elementTypes = pretty @[Builtin] [Index, Nat, Int, Rat]
 
     DatasetVariableSizeTensor (ident, p) tCont -> UError $ UserError
       { provenance = p
@@ -514,7 +514,7 @@ instance MeaningfulError CompileError where
 
     DatasetTypeMismatch (ident, p) expectedType actualType -> UError $ UserError
       { provenance = p
-      , problem    = "Found elements of type" <+> pretty actualType <+>
+      , problem    = "Found elements of type" <+> prettyFriendlyDBClosed actualType <+>
                      "while reading" <+> prettyResource Dataset ident <+>
                      "but expected elements of type" <+> prettyFriendlyDBClosed expectedType
       , fix        = Just "correct the dataset type in the specification."
@@ -740,7 +740,7 @@ prettyPolarityProvenance quantifier = \case
       NegateProvenance p pp ->
         surround p pp ("the" <+> squotes (pretty Not))
       LHSImpliesProvenance p pp ->
-        surround p pp ("being on the LHS of the" <+> squotes (pretty (BooleanOp2 Impl)))
+        surround p pp ("being on the LHS of the" <+> squotes (pretty Implies))
       EqProvenance eq p pp ->
         surround p pp ("being involved in the" <+> squotes (pretty (Equality eq)))
       where surround p pp x =

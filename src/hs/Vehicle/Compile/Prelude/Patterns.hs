@@ -36,9 +36,9 @@ pattern ListType :: Provenance
                  -> Expr binder var
                  -> Expr binder var
 pattern
-  ListType ann tElem <- App ann (BuiltinContainerType _   List) [ExplicitArg _ tElem]
+  ListType ann tElem <- App ann (Builtin _ List) [ExplicitArg _ tElem]
   where
-  ListType ann tElem =  App ann (BuiltinContainerType ann List) [ExplicitArg ann tElem]
+  ListType ann tElem =  App ann (Builtin ann List) [ExplicitArg ann tElem]
 
 --------------------------------------------------------------------------------
 -- Tensor
@@ -49,12 +49,12 @@ pattern TensorType :: Provenance
                    -> Expr binder var
 pattern
   TensorType ann tElem tDims <-
-    App ann (BuiltinContainerType _ Tensor)
+    App ann (Builtin _ Tensor)
       [ ExplicitArg _ tElem
       , ExplicitArg _ tDims ]
   where
   TensorType ann tElem tDims =
-    App ann (BuiltinContainerType ann Tensor)
+    App ann (Builtin ann Tensor)
       [ ExplicitArg ann tElem
       , ExplicitArg ann tDims ]
 
@@ -86,20 +86,14 @@ pattern
 --------------------------------------------------------------------------------
 -- Numeric
 
-pattern BuiltinNumericType :: Provenance -> NumericType -> Expr binder var
-pattern BuiltinNumericType ann op = Builtin ann (NumericType op)
-
 pattern NatType :: Provenance -> Expr binder var
-pattern NatType ann = BuiltinNumericType ann Nat
+pattern NatType ann = Builtin ann Nat
 
 pattern IntType :: Provenance -> Expr binder var
-pattern IntType ann = BuiltinNumericType ann Int
-
---------------------------------------------------------------------------------
--- Rational
+pattern IntType ann = Builtin ann Int
 
 pattern RatType :: Provenance -> Expr binder var
-pattern RatType ann = BuiltinNumericType ann Rat
+pattern RatType ann = Builtin ann Rat
 
 -- | The annotated Bool type used only during type-checking
 pattern AnnRatType :: Provenance
@@ -139,12 +133,6 @@ pattern
       [ ImplicitArg ann lin
       , ImplicitArg ann pol
       ]
-
---------------------------------------------------------------------------------
--- Container
-
-pattern BuiltinContainerType :: Provenance -> ContainerType -> Expr binder var
-pattern BuiltinContainerType ann op = Builtin ann (ContainerType op)
 
 --------------------------------------------------------------------------------
 -- Type classes
@@ -654,14 +642,14 @@ pattern
 --------------------------------------------------------------------------------
 -- BooleanOp2
 
-pattern BooleanOp2Expr :: BooleanOp2
+pattern BooleanOp2Expr :: Builtin
                        -> TypeClass
                        -> Provenance
                        -> [Arg binder var]
                        -> Expr binder var
 pattern
   BooleanOp2Expr op tc p explicitArgs <-
-    App p (Builtin _ (BooleanOp2 op))
+    App p (Builtin _ op)
       (  ImplicitArg _ BoolType{}
       :| ImplicitArg _ BoolType{}
       :  ImplicitArg _ BoolType{}
@@ -671,7 +659,7 @@ pattern
 
   where
   BooleanOp2Expr op tc p explicitArgs =
-    App p (Builtin p (BooleanOp2 op))
+    App p (Builtin p op)
       (  ImplicitArg p (BoolType p)
       :| ImplicitArg p (BoolType p)
       :  ImplicitArg p (BoolType p)
@@ -688,9 +676,9 @@ pattern OrExpr :: Provenance -> [Arg binder var] -> Expr binder var
 pattern OrExpr ann explicitArgs <- BooleanOp2Expr Or HasOr ann explicitArgs
   where OrExpr ann explicitArgs = BooleanOp2Expr Or HasOr ann explicitArgs
 
-pattern ImplExpr :: Provenance -> [Arg binder var] -> Expr binder var
-pattern ImplExpr ann explicitArgs <- BooleanOp2Expr Impl HasImpl ann explicitArgs
-  where ImplExpr ann explicitArgs = BooleanOp2Expr Impl HasImpl ann explicitArgs
+pattern ImpliesExpr :: Provenance -> [Arg binder var] -> Expr binder var
+pattern ImpliesExpr ann explicitArgs <- BooleanOp2Expr Implies HasImplies ann explicitArgs
+  where ImpliesExpr ann explicitArgs = BooleanOp2Expr Implies HasImplies ann explicitArgs
 
 --------------------------------------------------------------------------------
 -- Not
@@ -718,7 +706,7 @@ pattern
 --------------------------------------------------------------------------------
 -- NumericOp2
 
-pattern NumericOp2Expr :: NumericOp2
+pattern NumericOp2Expr :: Builtin
                        -> Provenance
                        -> Expr binder var
                        -> Expr binder var
@@ -728,20 +716,20 @@ pattern NumericOp2Expr :: NumericOp2
                        -> Expr binder var
 pattern
   NumericOp2Expr op p t1 t2 t3 tc explicitArgs <-
-    App p (Builtin _ (NumericOp2 op))
+    App p (Builtin _ op)
       (  ImplicitArg _ t1
       :| ImplicitArg _ t2
       :  ImplicitArg _ t3
-      :  InstanceArg _ tc
+      :  InstanceArg _ (PrimDict _ tc)
       :  explicitArgs
       )
   where
   NumericOp2Expr op p t1 t2 t3 tc explicitArgs =
-    App p (Builtin p (NumericOp2 op))
+    App p (Builtin p op)
       (  ImplicitArg p t1
       :| ImplicitArg p t2
       :  ImplicitArg p t3
-      :  InstanceArg p tc
+      :  InstanceArg p (PrimDict p tc)
       :  explicitArgs
       )
 
@@ -749,41 +737,37 @@ pattern AddExpr :: Provenance
                 -> Expr binder var
                 -> Expr binder var
                 -> Expr binder var
-                -> Expr binder var
                 -> [Arg binder var]
                 -> Expr binder var
-pattern AddExpr ann t1 t2 t3 tc explicitArgs <- NumericOp2Expr Add ann t1 t2 t3 tc explicitArgs
-  where AddExpr ann t1 t2 t3 tc explicitArgs =  NumericOp2Expr Add ann t1 t2 t3 tc explicitArgs
+pattern AddExpr ann t1 t2 t3 explicitArgs <- NumericOp2Expr Add ann t1 t2 t3 HasAddExpr{}          explicitArgs
+  where AddExpr ann t1 t2 t3 explicitArgs =  NumericOp2Expr Add ann t1 t2 t3 (HasAddExpr ann t1 t2 t3) explicitArgs
 
 pattern SubExpr :: Provenance
                 -> Expr binder var
                 -> Expr binder var
                 -> Expr binder var
-                -> Expr binder var
                 -> [Arg binder var]
                 -> Expr binder var
-pattern SubExpr ann t1 t2 t3 tc explicitArgs <- NumericOp2Expr Sub ann t1 t2 t3 tc explicitArgs
-  where SubExpr ann t1 t2 t3 tc explicitArgs =  NumericOp2Expr Sub ann t1 t2 t3 tc explicitArgs
+pattern SubExpr ann t1 t2 t3 explicitArgs <- NumericOp2Expr Sub ann t1 t2 t3 HasSubExpr{} explicitArgs
+  where SubExpr ann t1 t2 t3 explicitArgs =  NumericOp2Expr Sub ann t1 t2 t3 (HasSubExpr ann t1 t2 t3) explicitArgs
 
 pattern MulExpr :: Provenance
                 -> Expr binder var
                 -> Expr binder var
                 -> Expr binder var
-                -> Expr binder var
                 -> [Arg binder var]
                 -> Expr binder var
-pattern MulExpr ann t1 t2 t3 tc explicitArgs <- NumericOp2Expr Mul ann t1 t2 t3 tc explicitArgs
-  where MulExpr ann t1 t2 t3 tc explicitArgs =  NumericOp2Expr Mul ann t1 t2 t3 tc explicitArgs
+pattern MulExpr ann t1 t2 t3 explicitArgs <- NumericOp2Expr Mul ann t1 t2 t3 HasMulExpr{} explicitArgs
+  where MulExpr ann t1 t2 t3 explicitArgs =  NumericOp2Expr Mul ann t1 t2 t3 (HasMulExpr ann t1 t2 t3) explicitArgs
 
 pattern DivExpr :: Provenance
                 -> Expr binder var
                 -> Expr binder var
                 -> Expr binder var
-                -> Expr binder var
                 -> [Arg binder var]
                 -> Expr binder var
-pattern DivExpr ann t1 t2 t3 tc explicitArgs <- NumericOp2Expr Div ann t1 t2 t3 tc explicitArgs
-  where DivExpr ann t1 t2 t3 tc explicitArgs =  NumericOp2Expr Div ann t1 t2 t3 tc explicitArgs
+pattern DivExpr ann t1 t2 t3 explicitArgs <- NumericOp2Expr Div ann t1 t2 t3 HasDivExpr{} explicitArgs
+  where DivExpr ann t1 t2 t3 explicitArgs =  NumericOp2Expr Div ann t1 t2 t3 (HasDivExpr ann t1 t2 t3) explicitArgs
 
 --------------------------------------------------------------------------------
 -- Not

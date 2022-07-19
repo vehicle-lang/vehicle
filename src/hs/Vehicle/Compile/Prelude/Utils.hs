@@ -67,7 +67,7 @@ isAuxiliaryTypeClass tc = case tc of
     NegPolarity{}                       -> True
     AddPolarity{}                       -> True
     EqPolarity{}                        -> True
-    ImplPolarity{}                      -> True
+    ImpliesPolarity{}                   -> True
     MaxPolarity{}                       -> True
     -- TypesEqualModAuxiliaryAnnotations{} -> True
     _                                   -> False
@@ -174,7 +174,7 @@ mkTensorType :: Provenance
 mkTensorType _   tElem []   = tElem
 mkTensorType ann tElem dims =
   let dimList = mkList ann (NatType ann) dims in
-  App ann (BuiltinContainerType ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
+  App ann (Builtin ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
 
 mkQuantifierSeq :: Quantifier
                 -> Provenance
@@ -201,17 +201,24 @@ mkTensor ann tBaseElem dims =
   let tensorType = mkTensorType ann tBaseElem dims in
   SeqExpr ann elemType tensorType
 
-mkBooleanBigOp :: BooleanOp2
-               -> Provenance
-               -> DBExpr
-               -> DBExpr
-               -> DBExpr
-mkBooleanBigOp op ann containerType container =
-  let (unit, opExpr) = case op of
-        And  -> (True, AndExpr ann [])
-        Or   -> (False, OrExpr ann [])
-        Impl -> developerError "Cannot bigOp '=>'"
-  in
+mkBigAnd :: Provenance
+         -> DBExpr
+         -> DBExpr
+         -> DBExpr
+mkBigAnd ann containerType container =
+  let (unit, opExpr) = (True, AndExpr ann []) in
+  FoldExpr ann (BoolType ann) containerType (BoolType ann) $ fmap (ExplicitArg ann)
+    [ opExpr
+    , BoolLiteralExpr ann unit
+    , container
+    ]
+
+mkBigOr :: Provenance
+        -> DBExpr
+        -> DBExpr
+        -> DBExpr
+mkBigOr ann containerType container =
+  let (unit, opExpr) = (False, OrExpr ann []) in
   FoldExpr ann (BoolType ann) containerType (BoolType ann) $ fmap (ExplicitArg ann)
     [ opExpr
     , BoolLiteralExpr ann unit

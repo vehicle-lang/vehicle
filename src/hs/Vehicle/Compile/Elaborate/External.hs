@@ -126,19 +126,19 @@ instance Elab B.Expr V.InputExpr where
     B.Foreach   tk1 ns    _tk2 e  -> elabForeach   tk1 ns e
     B.ForeachIn tk1 ns e1 _tk2 e2 -> elabForeachIn tk1 ns e1 e2
 
-    B.Bool tk                 -> builtin V.Bool                          tk []
-    B.Rat  tk                 -> builtin (V.NumericType   V.Rat)         tk []
-    B.Int tk                  -> builtin (V.NumericType   V.Int)         tk []
-    B.Nat tk                  -> builtin (V.NumericType   V.Nat)         tk []
-    B.List tk t               -> builtin (V.ContainerType V.List)        tk [t]
-    B.Tensor tk t1 t2         -> builtin (V.ContainerType V.Tensor)      tk [t1, t2]
-    B.Index tk t              -> builtin V.Index                         tk [t]
+    B.Bool tk                 -> builtin V.Bool   tk []
+    B.Index tk t              -> builtin V.Index  tk [t]
+    B.Nat tk                  -> builtin V.Nat    tk []
+    B.Int tk                  -> builtin V.Int    tk []
+    B.Rat  tk                 -> builtin V.Rat    tk []
+    B.List tk t               -> builtin V.List   tk [t]
+    B.Tensor tk t1 t2         -> builtin V.Tensor tk [t1, t2]
 
-    B.If tk1 e1 _ e2 _ e3     -> builtin V.If                  tk1 [e1, e2, e3]
-    B.Not tk e                -> builtin V.Not                 tk  [e]
-    B.Impl e1 tk e2           -> builtin (V.BooleanOp2 V.Impl) tk  [e1, e2]
-    B.And e1 tk e2            -> builtin (V.BooleanOp2 V.And)  tk  [e1, e2]
-    B.Or e1 tk e2             -> builtin (V.BooleanOp2 V.Or)   tk  [e1, e2]
+    B.If tk1 e1 _ e2 _ e3     -> builtin V.If      tk1 [e1, e2, e3]
+    B.Not tk e                -> builtin V.Not     tk  [e]
+    B.Impl e1 tk e2           -> builtin V.Implies tk  [e1, e2]
+    B.And e1 tk e2            -> builtin V.And     tk  [e1, e2]
+    B.Or e1 tk e2             -> builtin V.Or      tk  [e1, e2]
 
     B.Eq e1 tk e2             -> builtin (V.Equality V.Eq)  tk [e1, e2]
     B.Neq e1 tk e2            -> builtin (V.Equality V.Neq) tk [e1, e2]
@@ -147,10 +147,10 @@ instance Elab B.Expr V.InputExpr where
     B.Ge e1 tk e2             -> elabOrder V.Ge tk e1 e2
     B.Gt e1 tk e2             -> elabOrder V.Gt tk e1 e2
 
-    B.Mul e1 tk e2            -> builtin (V.NumericOp2 V.Mul) tk [e1, e2]
-    B.Div e1 tk e2            -> builtin (V.NumericOp2 V.Div) tk [e1, e2]
-    B.Add e1 tk e2            -> builtin (V.NumericOp2 V.Add) tk [e1, e2]
-    B.Sub e1 tk e2            -> builtin (V.NumericOp2 V.Sub) tk [e1, e2]
+    B.Mul e1 tk e2            -> builtin V.Mul tk [e1, e2]
+    B.Div e1 tk e2            -> builtin V.Div tk [e1, e2]
+    B.Add e1 tk e2            -> builtin V.Add tk [e1, e2]
+    B.Sub e1 tk e2            -> builtin V.Sub tk [e1, e2]
     B.Neg tk e                -> builtin V.Neg tk [e]
 
     B.Cons e1 tk e2           -> builtin V.Cons tk [e1, e2]
