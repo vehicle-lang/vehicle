@@ -418,6 +418,13 @@ pattern
       , InstanceArg ann (PrimDict ann litTC)
       ]
 
+
+--------------------------------------------------------------------------------
+-- Unit
+
+pattern LitUnit :: Provenance -> Expr binder var
+pattern LitUnit ann = Literal ann LUnit
+
 --------------------------------------------------------------------------------
 -- Bool
 

@@ -113,7 +113,8 @@ instance Pretty TypeClass where
 -- |Builtins in the Vehicle language
 data Builtin
   -- Types
-  = Bool
+  = Unit
+  | Bool
   | Index
   | Nat
   | Int
@@ -161,6 +162,7 @@ instance Hashable Builtin
 
 instance Show Builtin where
   show = \case
+    Unit                 -> "Unit"
     Bool                 -> "Bool"
     Index                -> "Index"
     Nat                  -> "Nat"
@@ -198,6 +200,7 @@ instance Show Builtin where
 
 instance Pretty Builtin where
   pretty b = case b of
+    Unit                 -> pretty $ show b
     Bool                 -> pretty $ show b
     Index                -> pretty $ show b
     Nat                  -> pretty $ show b

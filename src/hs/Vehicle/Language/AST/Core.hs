@@ -54,7 +54,8 @@ instance Pretty Meta where
 -- - The rational literals should `Ratio`, not `Double`
 -- - There should be a family of `Float` literals, but we haven't got there yet.
 data Literal
-  = LBool Bool
+  = LUnit
+  | LBool Bool
   | LNat  Int
   | LInt  Int
   | LRat  Rational
@@ -65,6 +66,7 @@ instance Hashable Literal
 
 instance Pretty Literal where
   pretty = \case
+    LUnit   -> "()"
     LNat  x -> pretty x
     LInt  x -> pretty x
     LRat  x -> pretty x

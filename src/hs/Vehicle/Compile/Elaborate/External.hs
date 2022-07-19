@@ -126,6 +126,7 @@ instance Elab B.Expr V.InputExpr where
     B.Foreach   tk1 ns    _tk2 e  -> elabForeach   tk1 ns e
     B.ForeachIn tk1 ns e1 _tk2 e2 -> elabForeachIn tk1 ns e1 e2
 
+    B.Unit tk                 -> builtin V.Unit   tk []
     B.Bool tk                 -> builtin V.Bool   tk []
     B.Index tk t              -> builtin V.Index  tk [t]
     B.Nat tk                  -> builtin V.Nat    tk []
@@ -192,6 +193,7 @@ instance Elab B.LetDecl (V.InputBinder, V.InputExpr) where
 
 instance Elab B.Lit V.InputExpr where
   elab = \case
+    B.LitUnit    -> return $ V.LitUnit mempty
     B.LitTrue  t -> return $ V.LitBool (mkAnn t) True
     B.LitFalse t -> return $ V.LitBool (mkAnn t) False
     B.LitNat   t -> return $ V.LitNat  (mkAnn t) (readNat (tkSymbol t))

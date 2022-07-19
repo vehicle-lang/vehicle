@@ -92,6 +92,7 @@ delabUniverse = \case
 
 delabLiteral :: V.Literal -> B.Expr
 delabLiteral l = case l of
+  V.LUnit   -> B.Literal B.LitUnit
   V.LBool b -> delabBoolLit b
   V.LNat n  -> delabNatLit n
   V.LInt i  -> if i >= 0

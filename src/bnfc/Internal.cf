@@ -9,7 +9,7 @@ position token BuiltinToken
   | {"=>"} | {"and"} | {"or"} | {"not"}
   | {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
   | {"*"} | {"/"} | {"+"} | {"-"} | {"~"}
-  | {"Nat"} | {"Int"} | {"Index"}
+  | {"Unit"} | {"Nat"} | {"Int"} | {"Index"}
   | {"Bool"}
   | {"Tensor"} | {"List"} | {"::"} | {"!"}
   );
@@ -35,6 +35,7 @@ InstanceArg. Arg ::= "{{" Expr "}}";
 
 -- * Literals
 
+LitUnit. Lit ::= "()";
 LitNat.  Lit ::= Natural;
 LitRat.  Lit ::= Rational;
 LitBool. Lit ::= BoolToken;

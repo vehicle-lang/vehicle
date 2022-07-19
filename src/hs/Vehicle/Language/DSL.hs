@@ -3,6 +3,7 @@ module Vehicle.Language.DSL
   , DSLExpr(..)
   , fromDSL
   , type0
+  , tUnit
   , tBool
   , tNat
   , tInt
@@ -140,6 +141,9 @@ tPol = universe PolarityUniv
 
 tLin :: DSLExpr
 tLin = universe LinearityUniv
+
+tUnit :: DSLExpr
+tUnit = con Unit
 
 tBool, tNat, tInt, tRat :: DSLExpr
 tBool = con Bool

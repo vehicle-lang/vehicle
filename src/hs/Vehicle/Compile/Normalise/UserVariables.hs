@@ -411,10 +411,12 @@ compileLinearExpr expr = do
     ex -> unexpectedExprError currentPass $ prettySimple ex
 
 compileLiteral :: MonadSMT m => Literal -> m Coefficient
-compileLiteral (LBool _) = normalisationError currentPass "LBool"
-compileLiteral (LNat  n) = return $ fromIntegral n
-compileLiteral (LInt  i) = return $ fromIntegral i
-compileLiteral (LRat  q) = return $ fromRational q
+compileLiteral = \case
+  LUnit   -> normalisationError currentPass "LUnit"
+  LBool _ -> normalisationError currentPass "LBool"
+  LNat  n -> return $ fromIntegral n
+  LInt  i -> return $ fromIntegral i
+  LRat  q -> return $ fromRational q
 
 --------------------------------------------------------------------------------
 -- Step 6: quantification over magic variables

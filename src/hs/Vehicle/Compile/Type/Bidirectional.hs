@@ -447,6 +447,7 @@ insertNonExplicitArgs ann checkedExpr actualType = inferApp ann checkedExpr actu
 -- | Return the type of the provided literal,
 typeOfLiteral :: Provenance -> Literal -> CheckedExpr
 typeOfLiteral ann l = fromDSL ann $ case l of
+  LUnit   -> tUnit
   LNat  n -> forall type0 $ \t -> hasNatLitsUpTo n t ~~~> t
   LInt  _ -> forall type0 $ \t -> hasIntLits t ~~~> t
   LRat  _ -> forall type0 $ \t -> hasRatLits t ~~~> t
@@ -460,11 +461,12 @@ typeOfBuiltin ann b = fromDSL ann $ case b of
 
   TypeClass tc -> typeOfTypeClass tc
 
+  Unit -> type0
   Nat  -> type0
   Int  -> type0
-  -- Rat and Bool take implicit linearity and polarity arguments during
-  -- type-checking.
+  -- Rat gets an extra linearity argument during type-checking.
   Rat -> tLin ~~> type0
+  -- Bool gets extra linearity and polarity arguments during type-checking.
   Bool -> tLin ~~> tPol ~~> type0
 
   List   -> type0 ~> type0

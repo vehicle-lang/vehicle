@@ -38,6 +38,10 @@ tokLambda = mkToken B.TokLambda "\\"
 
 tokTensor = mkToken B.TokTensor "Tensor"
 
+tokUnit = mkToken B.TokUnit "Unit"
+
+tokBool = mkToken B.TokBool "Bool"
+
 tokList = mkToken B.TokList "List"
 
 tokRat = mkToken B.TokRat "Rat"
@@ -45,8 +49,6 @@ tokRat = mkToken B.TokRat "Rat"
 tokInt = mkToken B.TokInt "Int"
 
 tokNat = mkToken B.TokNat "Nat"
-
-tokBool = mkToken B.TokBool "Bool"
 
 tokIndex = mkToken B.TokIndex "Index"
 
@@ -171,13 +173,13 @@ delabLetBinding (binder, bound) = B.LDecl <$> delabM binder <*> delabM bound
 
 delabLiteral :: V.Literal -> B.Expr
 delabLiteral l = case l of
+  V.LUnit   -> B.Literal B.LitUnit
   V.LBool b -> delabBoolLit b
-  V.LNat n -> delabNatLit n
-  V.LInt i ->
-    if i >= 0
-      then delabNatLit i
-      else B.Neg tokSub (delabNatLit (-i))
-  V.LRat r -> delabRatLit r
+  V.LNat n  -> delabNatLit n
+  V.LInt i  -> if i >= 0
+    then delabNatLit i
+    else B.Neg tokSub (delabNatLit (-i))
+  V.LRat r  -> delabRatLit r
 
 delabBoolLit :: Bool -> B.Expr
 delabBoolLit True = B.Literal $ B.LitTrue tokTrue
@@ -207,6 +209,7 @@ delabUniverse = \case
 
 delabBuiltin :: V.Builtin -> [B.Expr] -> B.Expr
 delabBuiltin fun args = case fun of
+  V.Unit   -> B.Unit tokUnit
   V.Bool   -> B.Bool tokBool
   V.Nat    -> B.Nat  tokNat
   V.Int    -> B.Int  tokInt

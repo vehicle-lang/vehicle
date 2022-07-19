@@ -503,19 +503,20 @@ compileQuantIn q tCont fn cont = do
 
 compileLiteral :: MonadAgdaCompile m => OutputExpr -> m Code
 compileLiteral e = case e of
-  BoolLiteralExpr _ann b             -> compileBoolOp0 b
-  NatLiteralExpr  _ann IndexType{} n -> return $ compileIndexLiteral (toInteger n)
-  NatLiteralExpr  _ann NatType{}   n -> return $ compileNatLiteral   (toInteger n)
-  NatLiteralExpr  _ann IntType{}   n -> return $ compileIntLiteral   (toInteger n)
-  NatLiteralExpr  _ann RatType{}   n -> return $ compileRatLiteral   (toRational n)
-  IntLiteralExpr  _ann IntType{}   i -> return $ compileIntLiteral   (toInteger i)
-  IntLiteralExpr  _ann RatType{}   i -> return $ compileRatLiteral   (toRational i)
-  RatLiteralExpr  _ann RatType{}   p -> return $ compileRatLiteral   p
+  BoolLiteralExpr _ b             -> compileBoolOp0 b
+  NatLiteralExpr  _ IndexType{} n -> return $ compileIndexLiteral (toInteger n)
+  NatLiteralExpr  _ NatType{}   n -> return $ compileNatLiteral   (toInteger n)
+  NatLiteralExpr  _ IntType{}   n -> return $ compileIntLiteral   (toInteger n)
+  NatLiteralExpr  _ RatType{}   n -> return $ compileRatLiteral   (toRational n)
+  IntLiteralExpr  _ IntType{}   i -> return $ compileIntLiteral   (toInteger i)
+  IntLiteralExpr  _ RatType{}   i -> return $ compileRatLiteral   (toRational i)
+  RatLiteralExpr  _ RatType{}   p -> return $ compileRatLiteral   p
   -- Literals using type-classes
   App _ (Literal _ l) [ImplicitArg _ Var{}, _] -> case l of
     LNat  n -> return $ compileNatLiteral (toInteger n)
     LInt  n -> return $ compileIntLiteral (toInteger n)
     LRat  n -> return $ compileRatLiteral (toRational n)
+    LUnit   -> compilerDeveloperError "Should not have non-concrete Unit literals"
     LBool _ -> compilerDeveloperError "Should not have non-concrete Bool literals"
   _                                  -> compilerDeveloperError $
     "unexpected literal" <+> squotes (pretty $ show e) <+>

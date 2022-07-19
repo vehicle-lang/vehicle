@@ -80,10 +80,12 @@ compileArg :: MonadCompile m => V.CheckedArg -> m LExpr
 compileArg (V.Arg _ _ e) = compileExpr e
 
 compileLiteral :: V.Literal -> Double
-compileLiteral (V.LBool _) = developerError "LBool"
-compileLiteral (V.LNat e ) = fromIntegral e
-compileLiteral (V.LInt e ) = fromIntegral e
-compileLiteral (V.LRat e ) = fromRational e
+compileLiteral = \case
+  V.LUnit{} -> developerError "LUnit"
+  V.LBool{} -> developerError "LBool"
+  V.LNat e  -> fromIntegral e
+  V.LInt e  -> fromIntegral e
+  V.LRat e  -> fromRational e
 
 compileExpr :: MonadCompile m => V.CheckedExpr -> m LExpr
 compileExpr e = showExit $ do

@@ -16,12 +16,13 @@ position token TokDot       {"."};
 position token TokElemOf    {":"};
 position token TokLambda    {"\\"};
 
+position token TokUnit      {"Unit"};
+position token TokBool      {"Bool"};
+position token TokNat       {"Nat"};
+position token TokInt       {"Int"};
+position token TokRat       {"Rat"};
 position token TokTensor    {"Tensor"};
 position token TokList      {"List"};
-position token TokRat       {"Rat"};
-position token TokInt       {"Int"};
-position token TokNat       {"Nat"};
-position token TokBool      {"Bool"};
 position token TokIndex     {"Index"};
 
 position token TokForall    {"forall"};
@@ -89,6 +90,7 @@ separator LetDecl ",";
 
 -- * Literals
 
+LitUnit.  Lit ::= "()";
 LitNat.   Lit ::= Natural;
 LitRat.   Lit ::= Rational;
 LitTrue.  Lit ::= TokTrue;
@@ -157,13 +159,14 @@ Map.     Expr13 ::= TokMap Expr15 Expr15;
 Fold.    Expr13 ::= TokFold Expr15 Expr15 Expr15;
 
 -- Primitive types.
-List.    Expr14 ::= TokList Expr15;
-Tensor.  Expr14 ::= TokTensor Expr15 Expr15;
-Index.   Expr14 ::= TokIndex Expr15;
+Unit.    Expr15 ::= TokUnit;
 Bool.    Expr15 ::= TokBool;
 Rat.     Expr15 ::= TokRat;
 Int.     Expr15 ::= TokInt;
 Nat.     Expr15 ::= TokNat;
+List.    Expr14 ::= TokList Expr15;
+Tensor.  Expr14 ::= TokTensor Expr15 Expr15;
+Index.   Expr14 ::= TokIndex Expr15;
 
 coercions Expr 15;
 separator Expr ",";
