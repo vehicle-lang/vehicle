@@ -18,7 +18,7 @@ validImage x = forall i j . 0 <= x ! i ! j <= 1
 
 -- Declare the network used to classify images. The output of the network is a
 -- score for each of the digits 0 to 9.
-network mnist : Image -> Tensor Rat [10]
+network mnist : Image -> Vector Rat 10
 
 -- The network advises that input image `x` has label `i` if the score
 -- for label `i` is greater than the score of any other label `j`.
@@ -71,17 +71,16 @@ implicit parameter n : Nat
 -- We next declare two datasets, the training images and the corresponding
 -- training labels. Note that we use the previously declared parameter `n`
 -- to enforce that they are the same size.
-dataset trainingImages : Tensor Image [n]
-dataset trainingLabels : Tensor Label [n]
+dataset trainingImages : Vector Image n
+dataset trainingLabels : Vector Label n
 
 -- We then say that the network is robust if it is robust around every pair
 -- of input images and output labels. Note the use of the `foreach`
 -- keyword when quantifying over the index `i` in the dataset. Whereas `forall`
--- would return a single `Bool`, `foreach` returns a `Tensor` of booleans,
+-- would return a single `Bool`, `foreach` constructs a `Vector` of booleans,
 -- ensuring that Vehicle will report on the verification status of each image in
 -- the dataset separately. If `forall` was omitted, Vehicle would only
 -- report if the network was robust around *every* image in the dataset, a
 -- state of affairs which is unlikely to be true.
-robust : Tensor Bool [n]
-robust = foreach i .
-  robustAround (trainingImages ! i) (trainingLabels ! i)
+robust : Vector Bool n
+robust = foreach i . robustAround (trainingImages ! i) (trainingLabels ! i)

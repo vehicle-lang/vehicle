@@ -388,7 +388,7 @@ nfEqualsVector :: MonadNorm m
                -> CheckedArg
                -> m CheckedExpr
 nfEqualsVector p ident tElem size recFn xs ys = do
-  let equalitiesSeq  = zipWithVector p tElem tElem (BoolType p) recFn size xs ys
+  let equalitiesSeq  = zipWithVector p tElem tElem (BoolType p) size recFn xs ys
   let ops = if ident == StdEqualsVector then (True, And) else (False, Or)
   nf $ bigOp p ops size equalitiesSeq
 
@@ -415,7 +415,7 @@ currentPass = "normalisation"
 
 showEntry :: MonadNorm m => CheckedExpr -> m CheckedExpr
 showEntry e = do
-  logDebug MaxDetail ("norm-entry " <> prettyVerbose e)
+  logDebug MaxDetail ("norm-entry " <> prettySimple e)
   incrCallDepth
   return e
 
@@ -424,6 +424,6 @@ showExit old mNew = do
   new <- mNew
   decrCallDepth
   when (old /= new) $
-    logDebug MaxDetail ("normalising" <+> prettyVerbose old)
-  logDebug MaxDetail ("norm-exit " <+> prettyVerbose new)
+    logDebug MaxDetail ("normalising" <+> prettySimple old)
+  logDebug MaxDetail ("norm-exit " <+> prettySimple new)
   return new

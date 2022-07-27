@@ -126,7 +126,7 @@ goldenTests = testGroup "GoldenTests" <$>
     , testSpec
       { testName       = "simple-tensor"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 {-
     , testSpec

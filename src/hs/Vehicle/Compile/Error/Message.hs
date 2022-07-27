@@ -18,7 +18,6 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Resource ( allowedNetworkElementTypes )
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -677,11 +676,9 @@ unsupportedResourceTypeDescription resource ident actualType =
 
 supportedNetworkTypeDescription :: Doc a
 supportedNetworkTypeDescription =
-  let allowedElementTypes = prettyFriendlyDBClosed <$> allowedNetworkElementTypes in
   "Only networks of the following types are allowed:" <> line <>
-  indent 2 "Tensor A [m] -> Tensor B [n]" <> line <>
-  "where 'A' and 'B' are one of" <+> prettyFlatList allowedElementTypes <+>
-  "and 'm' and 'n' are constants."
+  indent 2 "Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]" <> line <>
+  "where 'a_i' and 'b_i' are all constants."
 
 supportedParameterTypeDescription :: Doc a
 supportedParameterTypeDescription =

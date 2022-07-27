@@ -505,6 +505,7 @@ solveAddVector c arg1 arg2 res = do
         [ ImplicitArg p arg1Elem
         , ImplicitArg p arg2Elem
         , ImplicitArg p resElem
+        , ImplicitArg p dim
         , InstanceArg p (Meta p meta)
         ]
 
@@ -576,6 +577,7 @@ solveSubVector c arg1 arg2 res = do
         [ ImplicitArg p arg1Elem
         , ImplicitArg p arg2Elem
         , ImplicitArg p resElem
+        , ImplicitArg p dim
         , InstanceArg p (Meta p meta)
         ]
 

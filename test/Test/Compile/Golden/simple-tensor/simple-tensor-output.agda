@@ -17,6 +17,8 @@ open import Data.Vec.Functional
 
 module simple-tensor-temp-output where
 
+postulate f : Tensor ℚ (2 ∷ (2 ∷ [])) → Tensor ℚ (2 ∷ (2 ∷ []))
+
 zeroD : Tensor ℚ []
 zeroD = ℤ.+ 5 ℚ./ 2
 
@@ -34,3 +36,9 @@ addition = addVector twoD twoD
 
 subtraction : Tensor ℚ (2 ∷ (2 ∷ []))
 subtraction = subVector twoD twoD
+
+abstract
+  property : ∀ (i : Fin 2) → ∀ (j : Fin 2) → addVector (f subtraction) addition i j ℚ.≥ ℤ.+ 0 ℚ./ 1
+  property = checkSpecification record
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
+    }

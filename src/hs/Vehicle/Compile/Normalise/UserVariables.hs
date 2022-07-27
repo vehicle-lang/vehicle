@@ -3,12 +3,13 @@ module Vehicle.Compile.Normalise.UserVariables
   , normUserVariables
   ) where
 
+import Control.Monad (zipWithM)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.Map (Map)
 import Data.Map qualified as Map (member, lookup, singleton, unionWith)
-import Data.Traversable (forM)
 import Data.Text (Text)
+import Data.List.Split (chunksOf)
 
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
@@ -280,19 +281,21 @@ replaceNetworkApplications IOVarState{..} (Let _ (NetworkApp ann ident inputExpr
   let inputVarIndices         = [inputStartingDBIndex   .. outputStartingDBIndex-1]
   let outputVarIndices        = [outputStartingDBIndex  .. outputEndingDBIndex-1]
 
-  inputVarEqualities <- createInputVarEqualities inputVarIndices inputExprs
-  let outputVarsExpr = mkMagicVariableSeq ann outputType outputVarIndices
-
   logDebug MaxDetail $ "starting index:            " <+> pretty inputStartingDBIndex
   logDebug MaxDetail $ "number of input variables: " <+> pretty inputSize
   logDebug MaxDetail $ "number of output variables:" <+> pretty outputSize
   logDebug MaxDetail $ "input indices:             " <+> pretty inputVarIndices
   logDebug MaxDetail $ "output indices:            " <+> pretty outputVarIndices
+
+  inputVarEqualities <- createInputVarEqualities (dimensions inputs) inputVarIndices inputExprs
+
   variableNames <- getVariableNames
   logDebug MidDetail $ "input variable equalities:" <> line <>
     pretty (CLSTProblem variableNames inputVarEqualities) <> line
 
+  outputVarsExpr <- mkMagicVariableSeq ann outputType (dimensions outputs) outputVarIndices
   let newBody = outputVarsExpr `substInto` body
+
   (result, equalities) <- flip replaceNetworkApplications newBody $ IOVarState
     { magicInputVarCount  = magicInputVarCount + inputSize
     , magicOutputVarCount = magicInputVarCount + outputSize
@@ -303,24 +306,44 @@ replaceNetworkApplications IOVarState{..} (Let _ (NetworkApp ann ident inputExpr
 
 replaceNetworkApplications _ e = return (e, [])
 
-createInputVarEqualities :: MonadSMT m => [Int] -> CheckedExpr -> m [Assertion]
-createInputVarEqualities inputVarIndices (VecLiteral _ _ xs) = do
-  forM (zip xs inputVarIndices) $ \(e, i) -> do
-    -- Create linear expression equating the magic variable `x_i`
-    -- with the expression `e` in the relevant point = xs_i`
-    exprSize <- getExprSize
-    let lhs = linearExprFromMap exprSize (Map.singleton i 1)
-    rhs <- compileLinearExpr e
+createInputVarEqualities :: MonadSMT m => [Int] -> [Int] -> CheckedExpr -> m [Assertion]
+createInputVarEqualities (_dim : dims) inputVarIndices (VecLiteral _ _ xs) = do
+  let inputVarIndicesChunks = chunksOf (product dims) inputVarIndices
+  concat <$> zipWithM (createInputVarEqualities dims) inputVarIndicesChunks xs
+createInputVarEqualities [] [i] e = do
+  -- Create linear expression equating the magic variable `x_i`
+  -- with the expression `e` in the relevant point = xs_i`
+  exprSize <- getExprSize
+  let lhs = linearExprFromMap exprSize (Map.singleton i 1)
+  rhs <- compileLinearExpr e
+  return [constructAssertion (lhs, Equal, rhs)]
+createInputVarEqualities dims d xs =
+  compilerDeveloperError $
+    "apparently miscalculated number of magic input variables:" <+>
+    pretty dims <+> pretty d <+> prettySimple xs
 
-    return $ constructAssertion (lhs, Equal, rhs)
-createInputVarEqualities _ _ = normalisationError currentPass "non-Seq"
-
-mkMagicVariableSeq :: Provenance -> NetworkBaseType -> [Int] -> CheckedExpr
-mkMagicVariableSeq ann tElem indices = tensorExpr
+mkMagicVariableSeq :: MonadCompile m
+                   => Provenance
+                   -> NetworkBaseType
+                   -> [Int]
+                   -> [Int]
+                   -> m CheckedExpr
+mkMagicVariableSeq p tElem = go
   where
-  tensorElemType   = reconstructNetworkBaseType ann tElem
-  variables        = map (Var ann . Bound) indices
-  tensorExpr       = VecLiteral ann tensorElemType variables
+    baseElemType = reconstructNetworkBaseType p tElem
+
+    go :: MonadCompile m => [Int] -> [Int] -> m CheckedExpr
+    go (_dim : dims) outputVarIndices = do
+      let outputVarIndicesChunks = chunksOf (product dims) outputVarIndices
+      elems <- traverse (go dims) outputVarIndicesChunks
+      let elemType = TensorType p baseElemType (mkTensorDims p dims)
+      return (VecLiteral p elemType elems)
+    go [] [outputVarIndex] =
+      return $ BoundVar p outputVarIndex
+    go dims outputVarIndices =
+      compilerDeveloperError $
+        "apparently miscalculated number of magic output variables:" <+>
+        pretty tElem <+> pretty dims <+> pretty outputVarIndices
 
 compileAssertions :: MonadSMT m
                   => CheckedExpr

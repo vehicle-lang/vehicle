@@ -54,10 +54,6 @@ instance Pretty NetworkBaseType where
 reconstructNetworkBaseType :: Provenance -> NetworkBaseType -> CheckedExpr
 reconstructNetworkBaseType ann NetworkRatType = RatType ann
 
-allowedNetworkElementTypes :: [CheckedExpr]
-allowedNetworkElementTypes = reconstructNetworkBaseType mempty <$>
-  [(NetworkRatType :: NetworkBaseType) ..]
-
 type NetworkContext = Map Symbol NetworkType
 
 type MetaNetwork = [Symbol]

@@ -117,12 +117,17 @@ checkNetworkType decl@(ident, _) networkType = checkFunType networkType
     _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
 
   checkTensorType :: InputOrOutput -> CheckedExpr -> m CheckedExpr
-  checkTensorType io (TensorType _ tElem _) = checkElementType io tElem
-  checkTensorType io (VectorType _ tElem _) = checkElementType io tElem
-  checkTensorType io tTensor =
-    throwError $ NetworkTypeIsNotOverTensors decl networkType tTensor io
+  checkTensorType io tensorType = go True tensorType
+    where
+      go :: Bool -> CheckedExpr -> m CheckedExpr
+      go topLevel = \case
+        TensorType _ tElem _ -> go False tElem
+        VectorType _ tElem _ -> go False tElem
+        elemType             -> if topLevel
+          then throwError $ NetworkTypeIsNotOverTensors decl networkType tensorType io
+          else checkElementType io elemType
 
   checkElementType :: InputOrOutput -> CheckedExpr -> m CheckedExpr
   checkElementType io = \case
-    (AnnRatType _ lin) -> return lin
+    AnnRatType _ lin -> return lin
     tElem -> throwError $ NetworkTypeHasUnsupportedElementType decl networkType tElem io

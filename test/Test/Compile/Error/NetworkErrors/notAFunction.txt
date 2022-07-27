@@ -1,4 +1,4 @@
 Error at Line 1, Columns 13-16: The type 'Rat' of network 'f' is not currently supported as 'Rat' is not a function.
 Fix: Only networks of the following types are allowed:
-  Tensor A [m] -> Tensor B [n]
-where 'A' and 'B' are one of [ Rat ] and 'm' and 'n' are constants. Provide both an input type and output type for your network.
+  Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]
+where 'a_i' and 'b_i' are all constants. Provide both an input type and output type for your network.

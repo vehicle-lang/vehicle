@@ -112,7 +112,8 @@ traceLogs logLevel e = do
   let debugLevel = intToDebugLevel logLevel
   let e' = logCompileError e
   let (v, logs) = runLogger debugLevel e'
-  case trace (showMessages logs) v of
+  let result = if null logs then v else trace (showMessages logs) v
+  case result of
     Left  x -> developerError $ pretty $ details x
     Right y -> y
 

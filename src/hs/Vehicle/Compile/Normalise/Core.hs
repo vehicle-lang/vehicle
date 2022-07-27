@@ -241,7 +241,7 @@ zipWithVector :: Provenance
               -> CheckedArg
               -> CheckedArg
               -> CheckedExpr
-zipWithVector p tElem1 tElem2 tRes fn size xs ys = do
+zipWithVector p tElem1 tElem2 tRes size fn xs ys = do
   let xsLifted = mapArgExpr (liftFreeDBIndices 1) xs
   let ysLifted = mapArgExpr (liftFreeDBIndices 1) ys
   let index = ExplicitArg p (BoundVar p 0)
