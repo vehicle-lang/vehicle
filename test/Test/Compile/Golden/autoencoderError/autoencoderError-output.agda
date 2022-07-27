@@ -11,6 +11,7 @@ open import Vehicle
 open import Vehicle.Data.Tensor
 open import Data.Rational as ℚ using (ℚ)
 open import Data.List
+open import Data.Vec.Functional
 open import Relation.Binary.PropositionalEquality
 
 module autoencoderError-temp-output where
@@ -20,7 +21,7 @@ postulate encode : Tensor ℚ (5 ∷ []) → Tensor ℚ (2 ∷ [])
 postulate decode : Tensor ℚ (2 ∷ []) → Tensor ℚ (5 ∷ [])
 
 abstract
-  identity : ∀ (x : Tensor ℚ (5 ∷ [])) → decode (encode x) ≡ x
+  identity : ∀ (x : Vector ℚ 5) → decode (encode x) ≡ x
   identity = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

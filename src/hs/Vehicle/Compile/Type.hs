@@ -10,18 +10,19 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Language.Print
-import Vehicle.Compile.Type.Unify
+import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.ConstraintSolver.TypeClass
+import Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
+import Vehicle.Compile.Type.ConstraintSolver.Unification
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
-import Vehicle.Compile.Type.TypeClass
-import Vehicle.Compile.Type.TypeClass.Defaults
 import Vehicle.Compile.Type.Auxiliary
-import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.WeakHeadNormalForm
 import Vehicle.Compile.Type.VariableContext
 import Vehicle.Compile.Type.Resource
 import Vehicle.Compile.Type.Generalise
+import Vehicle.Compile.Type.Irrelevance
 
 -------------------------------------------------------------------------------
 -- Algorithm
@@ -50,13 +51,13 @@ instance TypeCheckable UncheckedExpr CheckedExpr where
 postProcess :: ( TCM m
                , MetaSubstitutable a
                , WHNFable a
-               , RemoveAuxiliaryArguments a
+               , RemoveIrrelevantCode a
                )
             => a -> m a
 postProcess x = do
   metaFreeExpr <- substMetas x
   normExpr     <- convertImplicitArgsToWHNF metaFreeExpr
-  finalExpr    <- removeAuxiliaryArguments normExpr
+  finalExpr    <- removeIrrelevantCode normExpr
   return finalExpr
 
 -------------------------------------------------------------------------------
@@ -71,7 +72,7 @@ typeCheckDecls (d : ds) = do
   -- First insert any missing auxiliary arguments into the decl
   d' <- insertHolesForAuxiliaryAnnotations d
   checkedDecl  <- typeCheckDecl d'
-  checkedDecls <- addToDeclCtx checkedDecl $ typeCheckDecls ds
+  checkedDecls <- addDeclToCtx checkedDecl $ typeCheckDecls ds
   return $ checkedDecl : checkedDecls
 
 typeCheckDecl :: TCM m => UncheckedDecl -> m CheckedDecl
@@ -85,11 +86,18 @@ typeCheckDecl decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
 
   result <- case decl of
     DefResource p r _ _ -> do
-      updatedCheckedType <- checkResourceType r (ident, p) checkedType
-      let checkedDecl = DefResource p r ident updatedCheckedType
+      let checkedDecl = DefResource p r ident checkedType
+      solveConstraints (Just checkedDecl)
+      substCheckedType <- substMetas checkedType
 
-      solveConstraints (Just decl)
-      substDecl <- substMetas checkedDecl
+      -- Add extra constraints from the resource type. Need to have called
+      -- solve constraints beforehand in order to allow for normalisation,
+      -- but really only need to have solved type-class constraints.
+      updatedCheckedType <- checkResourceType r (ident, p) substCheckedType
+      let updatedCheckedDecl = DefResource p r ident updatedCheckedType
+      solveConstraints (Just updatedCheckedDecl)
+
+      substDecl <- substMetas updatedCheckedDecl
       logUnsolvedUnknowns (Just substDecl)
 
       finalDecl <- generaliseOverUnsolvedMetaVariables substDecl
@@ -143,7 +151,7 @@ assertIsType p t        = do
 solveConstraints :: MonadMeta m => Maybe CheckedDecl -> m ()
 solveConstraints decl = logCompilerPass MinDetail "constraint solving" $ do
   constraints <- getUnsolvedConstraints
-  loopOverConstraints 1 decl $ Progress
+  loopOverConstraints 1 decl $ Progress $ Resolution
     { newConstraints = constraints
     , solvedMetas    = mempty
     }
@@ -209,8 +217,8 @@ solveConstraint unnormConstraint = do
     TC ctx c -> solveTypeClassConstraint   ctx c
 
   case result of
-    Progress newConstraints _ -> addConstraints newConstraints
-    Stuck                     -> addConstraints [constraint]
+    Progress (Resolution newConstraints _) -> addConstraints newConstraints
+    Stuck                                  -> addConstraints [constraint]
 
   decrCallDepth
   return result
@@ -232,8 +240,8 @@ addNewConstraintUsingDefaults maybeDecl = do
 
     result <- generateConstraintUsingDefaults candidateConstraints
     case result of
-      Progress newConstraints _ -> addConstraints newConstraints
-      Stuck                     -> return ()
+      Progress (Resolution newConstraints _) -> addConstraints newConstraints
+      Stuck                                  -> return ()
 
     return result
 

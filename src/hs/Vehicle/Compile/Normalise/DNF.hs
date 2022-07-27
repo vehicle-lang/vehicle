@@ -4,7 +4,6 @@ module Vehicle.Compile.Normalise.DNF
   ( convertToDNF
   , splitConjunctions
   , splitDisjunctions
-  , applyNotAndNormalise
   ) where
 
 import Vehicle.Compile.Prelude
@@ -32,12 +31,11 @@ dnf expr = do
     Builtin{}   -> return expr
     Var{}       -> return expr
 
-    LSeq{}      -> normalisationError currentPass "LSeq"
+    LVec{}      -> normalisationError currentPass "LVec"
     Ann{}       -> normalisationError currentPass "Ann"
     Let{}       -> normalisationError currentPass "Let"
     Universe{}  -> typeError          currentPass "Universe"
     Pi{}        -> typeError          currentPass "Pi"
-    PrimDict{}  -> visibilityError    currentPass "PrimDict"
     Hole{}      -> visibilityError    currentPass "Hole"
     Meta{}      -> resolutionError    currentPass "Meta"
     Lam{}       -> caseError          currentPass "Lam" ["QuantifierExpr"]
@@ -46,22 +44,22 @@ dnf expr = do
     NotExpr{}     -> normalisationError currentPass "Not"
     ImpliesExpr{} -> normalisationError currentPass "Implies"
 
-    QuantifierExpr ann t binder body -> do
+    ExistsRatExpr p binder body -> do
       body' <- dnf body
-      return $ liftOr (QuantifierExpr ann t binder) body'
+      return $ liftOr (ExistsRatExpr p binder) body'
 
-    AndExpr ann [ExplicitArg ann1 e1, ExplicitArg ann2 e2] -> do
+    AndExpr p [ExplicitArg p1 e1, ExplicitArg p2 e2] -> do
       e1' <- dnf e1
       e2' <- dnf e2
       return $
         liftOr (\e1'' ->
           liftOr (\e2'' ->
-            AndExpr ann [ExplicitArg ann1 e1'', ExplicitArg ann2 e2'']) e2') e1'
+            AndExpr p [ExplicitArg p1 e1'', ExplicitArg p2 e2'']) e2') e1'
 
-    OrExpr ann [e1, e2] -> do
+    OrExpr p [e1, e2] -> do
       e1' <- traverseArgExpr dnf e1
       e2' <- traverseArgExpr dnf e2
-      return $ OrExpr ann [e1', e2']
+      return $ OrExpr p [e1', e2']
 
     App{} -> return expr
 
@@ -94,35 +92,3 @@ showExit :: MonadLogger m => CheckedExpr -> m ()
 showExit e = do
   decrCallDepth
   logDebug MaxDetail $ "dnf-exit " <+> prettySimple e
-
-
---------------------------------------------------------------------------------
--- Not operations
-
-applyNotAndNormalise :: CheckedArg -> CheckedExpr
-applyNotAndNormalise x = do
-  let ann = provenanceOf x
-  case nfNot ann x of
-    Just r  -> r
-    Nothing -> NotExpr ann [x]
-
-notArg :: CheckedArg -> CheckedArg
-notArg x = ExplicitArg (provenanceOf x) $ applyNotAndNormalise x
-
-notExpr :: CheckedExpr -> CheckedExpr
-notExpr x = applyNotAndNormalise (ExplicitArg (provenanceOf x) x)
-
-nfNot :: Provenance
-      -> CheckedArg
-      -> Maybe CheckedExpr
-nfNot p arg = case argExpr arg of
-  BoolLiteralExpr    _ b           -> Just $ BoolLiteralExpr p (not b)
-  OrderExpr      _ ord tElem args  -> Just $ OrderExpr p (neg ord) tElem args
-  EqualityExpr   _ eq  tElem args  -> Just $ EqualityExpr p (neg eq)  tElem args
-  ForallExpr _ binder body         -> Just $ ExistsExpr p binder $ notExpr body
-  ExistsExpr _ binder body         -> Just $ ForallExpr p binder $ notExpr body
-  ImpliesExpr        _ [e1, e2]    -> Just $ AndExpr p [e1, notArg e2]
-  OrExpr             _ [e1, e2]    -> Just $ AndExpr p (notArg <$> [e1, e2])
-  AndExpr            _ [e1, e2]    -> Just $ OrExpr p (notArg <$> [e1, e2])
-  IfExpr _ tRes [c, e1, e2]        -> Just $ IfExpr p tRes [c, notArg e1, notArg e2]
-  _ -> Nothing

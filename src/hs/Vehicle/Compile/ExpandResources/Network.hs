@@ -34,25 +34,27 @@ getNetworkType decl networkType = case networkType of
     throwError $ NetworkTypeIsNotAFunction decl networkType
 
   where
-    getTensorType :: InputOrOutput
-                  -> CheckedExpr
-                  -> m NetworkTensorType
-    getTensorType io tensorType@(TensorType _ tElem dims) =
-      NetworkTensorType <$> getTensorDimensions io tensorType dims <*> getElementType tElem
-    getTensorType _ _ = typingError
-
-    getTensorDimensions :: InputOrOutput
-                        -> CheckedExpr
-                        -> CheckedExpr
-                        -> m Int
-    getTensorDimensions io tensorType dims = case dims of
-      SeqExpr _ _ _ [d] -> getTensorDimension io d
-      SeqExpr{}         -> throwError $ NetworkTypeHasMultidimensionalTensor decl networkType tensorType io
-      _                 -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
+    getTensorType :: InputOrOutput -> CheckedExpr -> m NetworkTensorType
+    getTensorType io tensorType = do
+      (baseType, dims) <- go True tensorType
+      return $ NetworkTensorType baseType dims
+      where
+        go :: Bool -> CheckedExpr -> m (NetworkBaseType, [Int])
+        go topLevel = \case
+          TensorType _ _ dims    -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
+          VectorType _ tElem dim -> do
+            d <- getTensorDimension io dim
+            (baseType, ds) <- go False tElem
+            return (baseType, d : ds)
+          t -> if topLevel
+            then throwError $ NetworkTypeIsNotOverTensors decl networkType tensorType io
+            else do
+              elemType <- getElementType t
+              return (elemType, [])
 
     getTensorDimension :: InputOrOutput -> CheckedExpr -> m Int
     getTensorDimension io dim = case dim of
-      NatLiteralExpr _ _ n -> return n
+      NatLiteral _ n -> return n
       FreeVar _ varIdent   -> do
         implicitParameters <- get
         case Map.lookup (nameOf varIdent) implicitParameters of
@@ -62,8 +64,9 @@ getNetworkType decl networkType = case networkType of
       dims                 -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
 
     getElementType :: CheckedExpr -> m NetworkBaseType
-    getElementType RatType{} = return NetworkRatType
-    getElementType _tElem    = typingError
+    getElementType = \case
+      RatType{}    -> return NetworkRatType
+      _            -> typingError
 
     typingError :: m a
     typingError = compilerDeveloperError $

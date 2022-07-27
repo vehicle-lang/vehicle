@@ -53,14 +53,3 @@ instance Pretty Linearity where
     Constant    -> "Constant"
     Linear{}    -> "Linear"
     NonLinear{} -> "Non-linear"
-
-maxLinearity :: Linearity -> Linearity -> Linearity
-maxLinearity l1 l2 = if l1 >= l2 then l1 else l2
-
-mulLinearity :: Linearity -> Linearity -> Linearity
-mulLinearity l1 l2 = case (l1, l2) of
-  (Constant, _)          -> l2
-  (_, Constant)          -> l1
-  (Linear p1, Linear p2) -> NonLinear p1 p2
-  (NonLinear{}, _)       -> l1
-  (_, NonLinear{})       -> l2

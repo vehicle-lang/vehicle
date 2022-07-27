@@ -15,6 +15,7 @@ open import Data.Rational as ℚ using (ℚ)
 open import Data.Bool as 𝔹 using (Bool; true; false; if_then_else_)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
+open import Data.Vec.Functional
 open import Relation.Nullary
 open import Relation.Nullary.Decidable
 

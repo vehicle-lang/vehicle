@@ -21,6 +21,7 @@ position token TokBool      {"Bool"};
 position token TokNat       {"Nat"};
 position token TokInt       {"Int"};
 position token TokRat       {"Rat"};
+position token TokVector    {"Vector"};
 position token TokTensor    {"Tensor"};
 position token TokList      {"List"};
 position token TokIndex     {"Index"};
@@ -43,6 +44,7 @@ position token TokDiv       {"/"};
 position token TokAdd       {"+"};
 position token TokSub       {"-"};
 
+position token TokNil       {"nil"};
 position token TokSeqOpen   {"["};
 position token TokSeqClose  {"]"};
 position token TokCons      {"::"};
@@ -90,11 +92,11 @@ separator LetDecl ",";
 
 -- * Literals
 
-LitUnit.  Lit ::= "()";
-LitNat.   Lit ::= Natural;
-LitRat.   Lit ::= Rational;
-LitTrue.  Lit ::= TokTrue;
-LitFalse. Lit ::= TokFalse;
+UnitLiteral.  Lit ::= "()";
+NatLiteral.   Lit ::= Natural;
+RatLiteral.   Lit ::= Rational;
+LitTrue.      Lit ::= TokTrue;
+LitFalse.     Lit ::= TokFalse;
 
 
 -- * Expressions
@@ -126,10 +128,10 @@ Hole.    Expr15 ::= HoleToken;
 -- Quantification
 Forall.    Expr2 ::= TokForall  [Binder] TokDot Expr2;
 Exists.    Expr2 ::= TokExists  [Binder] TokDot Expr2;
-Foreach.   Expr2 ::= TokForeach [Binder] TokDot Expr2;
 ForallIn.  Expr2 ::= TokForall  [Binder] "in" Expr3 TokDot Expr2;
 ExistsIn.  Expr2 ::= TokExists  [Binder] "in" Expr3 TokDot Expr2;
-ForeachIn. Expr2 ::= TokForeach [Binder] "in" Expr3 TokDot Expr2;
+
+Foreach.   Expr2 ::= TokForeach [Binder] TokDot Expr2;
 
 -- Boolean expressions.
 If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
@@ -152,11 +154,12 @@ Div.     Expr10 ::= Expr10 TokDiv Expr11;
 Neg.     Expr11 ::= TokSub Expr11;
 
 -- Lists and tensors.
-LSeq.    Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
-Cons.    Expr4  ::= Expr5 TokCons Expr4;
-At.      Expr12 ::= Expr12 TokAt Expr13;
-Map.     Expr13 ::= TokMap Expr15 Expr15;
-Fold.    Expr13 ::= TokFold Expr15 Expr15 Expr15;
+VecLiteral. Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
+Nil.        Expr15 ::= TokNil;
+Cons.       Expr4  ::= Expr5 TokCons Expr4;
+At.         Expr12 ::= Expr12 TokAt Expr13;
+Map.        Expr13 ::= TokMap Expr15 Expr15;
+Fold.       Expr13 ::= TokFold Expr15 Expr15 Expr15;
 
 -- Primitive types.
 Unit.    Expr15 ::= TokUnit;
@@ -165,6 +168,7 @@ Rat.     Expr15 ::= TokRat;
 Int.     Expr15 ::= TokInt;
 Nat.     Expr15 ::= TokNat;
 List.    Expr14 ::= TokList Expr15;
+Vector.  Expr14 ::= TokVector Expr15 Expr15;
 Tensor.  Expr14 ::= TokTensor Expr15 Expr15;
 Index.   Expr14 ::= TokIndex Expr15;
 

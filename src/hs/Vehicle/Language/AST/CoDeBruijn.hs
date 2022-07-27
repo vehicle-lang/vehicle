@@ -35,6 +35,7 @@ import Vehicle.Language.AST.Visibility
 import Vehicle.Language.AST.Builtin (Builtin)
 import Vehicle.Language.AST.Position
 import Vehicle.Language.AST.Provenance
+import Vehicle.Language.AST.Relevance
 
 --------------------------------------------------------------------------------
 -- AST Definitions
@@ -90,12 +91,11 @@ instance ExtractPositionTrees Expr where
     LiteralF  ann l  -> (Literal ann l,  mempty)
     VarF      ann v  -> (Var ann v,      mempty)
 
-    PrimDictF ann (e, mpts)        -> (PrimDict ann e, mpts)
     AnnF ann (e, mpts1) (t, mpts2) -> (Ann ann e t, mergePTs [mpts1, mpts2])
 
-    LSeqF ann xs ->
+    LVecF ann xs ->
       let (xs', mpts) = unzip xs in
-      (LSeq ann xs', mergePTs mpts)
+      (LVec ann xs', mergePTs mpts)
 
     AppF ann (fun, mpt) args ->
       let (args', mpts) = NonEmpty.unzip (fmap extractPTs args) in
@@ -114,15 +114,15 @@ instance ExtractPositionTrees Expr where
       (Lam ann binder' body', mergePTs [mpt1, mpt2])
 
 instance ExtractPositionTrees Binder where
-  extractPTs (Binder ann v (n, mpt) t) =
+  extractPTs (Binder ann v r (n, mpt) t) =
     let (t', mpts) = extractPTs t in
     let pts' = mergePTs [Map.singleton n mpt, mpts] in
-    (Binder ann v n t', pts')
+    (Binder ann v r n t', pts')
 
 instance ExtractPositionTrees Arg where
-  extractPTs (Arg ann v e) =
+  extractPTs (Arg ann v r e) =
     let (e', mpts) = extractPTs e in
-    (Arg ann v e', mpts)
+    (Arg ann v r e', mpts)
 
 mergePTPair :: NamedPTMap -> NamedPTMap -> NamedPTMap
 mergePTPair = Map.unionWith (\_ _ -> developerError
@@ -141,11 +141,11 @@ mergePTs = foldr mergePTPair mempty
 -- has already been carried out.
 
 data ArgC
-  = ArgC Provenance Visibility CoDBExpr
+  = ArgC Provenance Visibility Relevance CoDBExpr
   deriving (Show)
 
 data BinderC
-  = BinderC Provenance Visibility CoDBBinding CoDBExpr
+  = BinderC Provenance Visibility Relevance CoDBBinding CoDBExpr
   deriving (Show)
 
 data ExprC
@@ -161,7 +161,6 @@ data ExprC
   | LamC      Provenance CoDBBinder CoDBExpr
   | LiteralC  Provenance Literal
   | LSeqC     Provenance [CoDBExpr]
-  | PrimDictC Provenance CoDBExpr
   deriving (Show)
 
 class RecCoDB a b where
@@ -175,9 +174,7 @@ instance RecCoDB CoDBExpr ExprC where
     (Builtin  ann op, _) -> BuiltinC  ann op
     (Literal  ann l , _) -> LiteralC  ann l
 
-    (PrimDict ann e, bvm1 : _) -> PrimDictC ann (e, bvm1)
-
-    (LSeq ann xs, bvms) -> LSeqC ann (zip xs bvms)
+    (LVec ann xs, bvms) -> LSeqC ann (zip xs bvms)
 
     (Var ann v, _) -> case v of
       CoDBFree  ident -> assert (null bvm) (VarC ann (DB.Free ident))
@@ -201,10 +198,10 @@ instance RecCoDB CoDBExpr ExprC where
       "Expected the same number of BoundVarMaps as args but found" <+> pretty (length bvms)
 
 instance RecCoDB CoDBBinder BinderC where
-  recCoDB (Binder ann v n t, bvm) = BinderC ann v n (t, bvm)
+  recCoDB (Binder ann v r n t, bvm) = BinderC ann v r n (t, bvm)
 
 instance RecCoDB CoDBArg ArgC where
-  recCoDB (Arg ann v e, bvm) = ArgC ann v (e, bvm)
+  recCoDB (Arg ann v r e, bvm) = ArgC ann v r (e, bvm)
 
 positionTreeOf :: PartialCoDBBinder -> Maybe PositionTree
 positionTreeOf b = case nameOf b of
@@ -223,7 +220,6 @@ substPos v (Just Leaf)     _    = v
 substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
   (UniverseC{}, _) -> invalidPositionTreeError l
   (HoleC{}    , _) -> invalidPositionTreeError l
-  (PrimDictC{}, _) -> invalidPositionTreeError l
   (MetaC{}    , _) -> invalidPositionTreeError l
   (LiteralC{} , _) -> invalidPositionTreeError l
   (BuiltinC{} , _) -> invalidPositionTreeError l
@@ -236,7 +232,7 @@ substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
 
   (LSeqC ann xs, ps) ->
     let (xs', bvms) = unzip (zipWith (substPos v) ps xs) in
-    (LSeq ann xs', nodeBVM bvms)
+    (LVec ann xs', nodeBVM bvms)
 
   (AppC ann fun args, p1 : p2 : ps) ->
     let (fun',  bvm1) = substPos v p1 fun in
@@ -270,9 +266,9 @@ substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
 
 substPosArg :: CoDBExpr -> Maybe PositionTree -> CoDBArg -> CoDBArg
 substPosArg v p arg = case recCoDB arg of
-  (ArgC ann vis e) ->
+  (ArgC ann vis r e) ->
     let (e', bvm) = substPos v p e in
-    (Arg ann vis e', bvm)
+    (Arg ann vis r e', bvm)
 
 substPosBinder :: CoDBExpr
                -> Maybe PositionTree
@@ -280,9 +276,9 @@ substPosBinder :: CoDBExpr
                -> Maybe PositionTree
                -> CoDBBinder
 substPosBinder v p binder boundPositions = case recCoDB binder of
-  (BinderC ann vis (CoDBBinding n _) t) ->
+  (BinderC ann vis r (CoDBBinding n _) t) ->
     let (t', bvm) = substPos v p t in
-    (Binder ann vis (CoDBBinding n boundPositions) t', bvm)
+    (Binder ann vis r (CoDBBinding n boundPositions) t', bvm)
 
 invalidPositionTreeError :: PositionList -> a
 invalidPositionTreeError l = developerError $

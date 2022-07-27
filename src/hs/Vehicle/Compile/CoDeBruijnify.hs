@@ -22,10 +22,8 @@ toCoDBExpr = cata $ \case
   BuiltinF  ann op       -> (Builtin  ann op, mempty)
   LiteralF  ann l        -> (Literal  ann l,  mempty)
 
-  PrimDictF ann (e, bvm) -> (PrimDict ann e, bvm)
-
-  LSeqF ann xs ->
-    let (xs', bvms) = unzip xs in (LSeq ann xs', nodeBVM bvms)
+  LVecF ann xs ->
+    let (xs', bvms) = unzip xs in (LVec ann xs', nodeBVM bvms)
 
   VarF ann v -> case v of
     DB.Free  ident -> (Var ann (CoDBFree ident), mempty)
@@ -54,14 +52,14 @@ toCoDBExpr = cata $ \case
     (Lam ann binder' body', nodeBVM [bvm1, bvm2'])
 
 toCoDBBinder :: DBBinder -> Maybe PositionTree -> CoDBBinder
-toCoDBBinder (Binder ann v n t) mpt =
+toCoDBBinder (Binder ann v r n t) mpt =
   let (t', bvm) = toCoDBExpr t in
-  (Binder ann v (CoDBBinding n mpt) t', bvm)
+  (Binder ann v r (CoDBBinding n mpt) t', bvm)
 
 toCoDBArg :: DBArg -> CoDBArg
-toCoDBArg (Arg ann v e) =
+toCoDBArg (Arg ann v r e) =
   let (e', bvm) = toCoDBExpr e in
-  (Arg ann v e', bvm)
+  (Arg ann v r e', bvm)
 
 --------------------------------------------------------------------------------
 -- Backwards
@@ -77,7 +75,7 @@ instance ConvertCodebruijn Expr where
     BuiltinC  ann op -> Builtin  ann op
     LiteralC  ann l  -> Literal  ann l
 
-    LSeqC ann xs -> LSeq ann  (fmap fromCoDB xs)
+    LSeqC ann xs -> LVec ann  (fmap fromCoDB xs)
     VarC  ann v  -> Var ann v
 
     AnnC ann e t               -> Ann ann (fromCoDB e) (fromCoDB t)
@@ -86,12 +84,10 @@ instance ConvertCodebruijn Expr where
     LetC ann bound binder body -> Let ann (fromCoDB bound) (fromCoDB binder) (fromCoDB body)
     LamC ann binder body       -> Lam ann (fromCoDB binder) (fromCoDB body)
 
-    PrimDictC ann e -> PrimDict ann $ fromCoDB e
-
 instance ConvertCodebruijn Binder where
   fromCoDB binder = case recCoDB binder of
-    BinderC ann v (CoDBBinding n _) t -> Binder ann v n $ fromCoDB t
+    BinderC ann v r (CoDBBinding n _) t -> Binder ann v r n $ fromCoDB t
 
 instance ConvertCodebruijn Arg where
   fromCoDB arg = case recCoDB arg of
-    ArgC ann v e -> Arg ann v $ fromCoDB e
+    ArgC ann v r e -> Arg ann v r $ fromCoDB e

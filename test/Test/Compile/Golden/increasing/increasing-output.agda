@@ -12,6 +12,7 @@ open import Vehicle.Data.Tensor
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
+open import Data.Vec.Functional
 
 module increasing-temp-output where
 

@@ -22,7 +22,7 @@ parseDataset :: (MonadIO m, MonadExpandResources m)
 parseDataset datasetLocations decl@(ident, _) expectedType =
   case Map.lookup (nameOf ident) datasetLocations of
     Just file -> do
-      logDebug MinDetail $ "reading" <+> squotes (pretty ident)
+      logDebug MinDetail $ "Reading" <+> squotes (pretty ident)
       value <- case takeExtension file of
         ".idx" -> readIDX file decl expectedType
         ext    -> throwError $ UnsupportedResourceFormat decl Dataset ext

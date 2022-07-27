@@ -294,7 +294,7 @@ instance MeaningfulError CompileError where
 
     FailedFoldConstraintContainer ctx tCont -> UError $ UserError
       { provenance = provenanceOf ctx
-      , problem    = "the second argument to" <+> squotes (pretty Fold) <+>
+      , problem    = "the second argument to" <+> squotes (pretty FoldTC) <+>
                      "must be a container type but found something of type" <+>
                      prettyExpr ctx tCont <> "."
       , fix        = Nothing
@@ -345,7 +345,7 @@ instance MeaningfulError CompileError where
 
     FailedConLitConstraint ctx t -> UError $ UserError
       { provenance = provenanceOf ctx
-      , problem    = "a sequence literal is not a valid element of the type" <+>
+      , problem    = "a vector literal is not a valid element of the type" <+>
                      prettyExpr ctx t <> "."
       , fix        = Nothing
       }
@@ -406,7 +406,7 @@ instance MeaningfulError CompileError where
       { provenance = provenanceOf nonTensorType
       , problem    = unsupportedResourceTypeDescription Network ident fullType <+>
                     "as the" <+> pretty io <+> squotes (prettyFriendly nonTensorType) <+>
-                    "is not a tensor."
+                    "is not one of" <+> pretty @[Builtin] [Vector, Tensor] <> "."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Ensure the" <+> pretty io <+> "of the network is a Tensor"
       }
@@ -430,15 +430,6 @@ instance MeaningfulError CompileError where
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Ensure that the network" <+> pretty io <+> "uses" <+>
                      "supported types."
-      }
-
-    NetworkTypeHasMultidimensionalTensor (ident, _p) fullType tensorType io -> UError $ UserError
-      { provenance = provenanceOf tensorType
-      , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
-                     "the" <+> pretty io <+>
-                     squotes (prettyFriendlyDBClosed tensorType) <+> "is not a 1D tensor."
-      , fix        = Just $ supportedNetworkTypeDescription <+>
-                     "Ensure that the network" <+> pretty io <+> "is a 1D tensor."
       }
 
     NetworkTypeHasVariableSizeTensor (ident, _p) fullType tDim io -> UError $ UserError
@@ -467,9 +458,8 @@ instance MeaningfulError CompileError where
       , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
                      "for the" <+> prettyResource Dataset ident <> "."
       , fix        = Just $ "change the type of" <+> squotes (pretty ident) <+>
-                     "to either a" <+> squotes (pretty List) <+> "or" <+>
-                     squotes (pretty Tensor) <> "."
-      }
+                     "to one of" <+> elementTypes <> "."
+      } where elementTypes = pretty @[Builtin] [List, Vector, Tensor]
 
     DatasetTypeUnsupportedElement (ident, p) tCont -> UError $ UserError
       { provenance = p
@@ -498,11 +488,10 @@ instance MeaningfulError CompileError where
       { provenance = p
       , problem    = "Found value" <+> squotes (pretty v) <+>
                      "while reading" <+> prettyResource Dataset ident <+>
-                     "but expected elements of type" <+> squotes (prettyFriendlyDBClosed index)
+                     "but expected elements of type" <+> squotes (prettyFriendly (ConcreteIndexType mempty n :: InputExpr))
       , fix        = Just $ "either remove the offending entries in the dataset or" <+>
                      "update the type of the dataset in the specification."
       }
-      where (index :: CheckedExpr) = IndexType mempty (NatLiteralExpr mempty (NatType mempty) n)
 
     DatasetDimensionMismatch (ident, p) expectedType actualDims -> UError $ UserError
       { provenance = p
@@ -591,7 +580,7 @@ instance MeaningfulError CompileError where
                      "different compilation target."
       }
 
-    UnsupportedSequentialQuantifiers target ident p q pq pp -> UError $ UserError
+    UnsupportedSequentialQuantifiers target (ident, p) q pq pp -> UError $ UserError
       { provenance = p
       , problem    = "The property" <+> squotes (pretty ident) <+> "contains" <+>
                      "a sequence of quantifiers unsupported by" <+> pretty target <>
@@ -607,7 +596,7 @@ instance MeaningfulError CompileError where
                     "in terms of a single type of quantifier."
       }
 
-    UnsupportedNonLinearConstraint target ident p v1 v2 -> UError $ UserError
+    UnsupportedNonLinearConstraint target (ident, p) v1 v2 -> UError $ UserError
       { provenance = p
       , problem    = "The property" <+> squotes (pretty ident) <+> "contains" <+>
                      "a non-linear constraint which is not supported by" <+>
@@ -738,11 +727,11 @@ prettyPolarityProvenance quantifier = \case
       QuantifierProvenance p ->
         ["the" <+> squotes (pretty q) <+> "is originally located at" <+> pretty p]
       NegateProvenance p pp ->
-        surround p pp ("the" <+> squotes (pretty Not))
+        surround p pp ("the" <+> squotes (pretty NotTC))
       LHSImpliesProvenance p pp ->
-        surround p pp ("being on the LHS of the" <+> squotes (pretty Implies))
+        surround p pp ("being on the LHS of the" <+> squotes (pretty ImpliesTC))
       EqProvenance eq p pp ->
-        surround p pp ("being involved in the" <+> squotes (pretty (Equality eq)))
+        surround p pp ("being involved in the" <+> squotes (pretty (EqualsTC eq)))
       where surround p pp x =
               "which is turned into" <+> prettyQuantifierArticle q <+> "by" <+> x <+>
               "at" <+> pretty p : go (neg q) pp

@@ -62,12 +62,11 @@ instance Simplify (Expr binder var) where
     Var{}      -> return expr
 
     App ann fun args          -> normAppList ann <$> simplifyReader fun <*> simplifyReaderArgs args
-    LSeq ann xs               -> LSeq ann <$> traverse simplifyReader xs
+    LVec ann xs               -> LVec ann <$> traverse simplifyReader xs
     Ann ann e t               -> Ann ann <$> simplifyReader e <*> simplifyReader t
     Pi ann binder result      -> Pi  ann <$> simplifyReader binder <*> simplifyReader result
     Let ann bound binder body -> Let ann <$> simplifyReader bound  <*> simplifyReader binder <*> simplifyReader body
     Lam ann binder body       -> Lam ann <$> simplifyReader binder <*> simplifyReader body
-    PrimDict ann tc           -> PrimDict ann <$> simplifyReader tc
 
 instance Simplify (Binder binder var) where
   simplifyReader = traverseBinderType simplifyReader

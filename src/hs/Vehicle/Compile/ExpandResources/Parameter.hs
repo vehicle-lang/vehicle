@@ -32,7 +32,7 @@ parseParameterValue parameterValues decl@(ident, p) paramType = do
     -- TODO check that Index dimension is constant, or at least will be after
     -- implicit parameters are filled in (the tricky bit).
     ConcreteIndexType _ n ->
-      return (parseIndex paramType n)
+      return (parseIndex n)
 
     IndexType _ (FreeVar _ varIdent)
       | Map.member (nameOf varIdent) implicitParams -> throwError $
@@ -52,19 +52,19 @@ parseParameterValue parameterValues decl@(ident, p) paramType = do
       Nothing -> throwError $ UnableToParseResource decl Parameter value
 
 parseBool :: Provenance -> String -> Maybe CheckedExpr
-parseBool p value = fmap (BoolLiteralExpr p) (readMaybe value)
+parseBool p value = fmap (BoolLiteral p) (readMaybe value)
 
 parseNat :: Provenance -> String -> Maybe CheckedExpr
-parseNat p value = fmap (NatLiteralExpr p (NatType p)) (readMaybe value)
+parseNat p value = fmap (NatLiteral p) (readMaybe value)
 
 parseInt :: Provenance -> String -> Maybe CheckedExpr
-parseInt p value = fmap (IntLiteralExpr p (IntType p)) (readMaybe value)
+parseInt p value = fmap (IntLiteral p) (readMaybe value)
 
 parseRat :: Provenance -> String -> Maybe CheckedExpr
-parseRat p value = fmap (RatLiteralExpr p (RatType p)) (readMaybe value)
+parseRat p value = fmap (RatLiteral p) (readMaybe value)
 
-parseIndex :: CheckedExpr -> Int -> Provenance -> String -> Maybe CheckedExpr
-parseIndex finType n p value = readMaybe value >>= \v ->
+parseIndex :: Int -> Provenance -> String -> Maybe CheckedExpr
+parseIndex n p value = readMaybe value >>= \v ->
   if v < n
-    then Just $ NatLiteralExpr p finType v
+    then Just $ IndexLiteral p n v
     else Nothing

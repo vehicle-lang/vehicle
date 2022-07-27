@@ -21,6 +21,7 @@ module Vehicle.Prelude
   , fatalError
   , programOutput
   , partitionM
+  , prependList
   ) where
 
 import Control.Monad.IO.Class
@@ -31,6 +32,8 @@ import Data.Text qualified as Text
 import Data.Graph
 import Data.Version (Version)
 import Data.IntMap (IntMap, updateLookupWithKey)
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Numeric
 import System.Directory (removeFile)
 import System.IO.Error (isDoesNotExistError)
@@ -117,6 +120,12 @@ readRat str = case readFloat (Text.unpack str) of
 
 deleteAndGet :: Int -> IntMap a -> (Maybe a, IntMap a)
 deleteAndGet = updateLookupWithKey (\_ _ -> Nothing)
+
+-- Base 4.16 once we upgrade
+prependList :: [a] -> NonEmpty a -> NonEmpty a
+prependList ls ne = case ls of
+  [] -> ne
+  (x : xs) -> x :| xs <> NonEmpty.toList ne
 
 partialSort :: forall a. (a -> a -> Maybe Ordering) -> [a] -> [a]
 partialSort partialCompare xs = sortedNodes

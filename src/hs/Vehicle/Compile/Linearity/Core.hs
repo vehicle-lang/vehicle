@@ -32,14 +32,14 @@ import Vehicle.Compile.Prelude
 -- Relation
 
 data Relation
-  = Equals
+  = Equal
   | LessThan
   | LessThanOrEqualTo
   deriving (Eq)
 
 instance Pretty Relation where
   pretty = \case
-    Equals            -> "="
+    Equal             -> "="
     LessThan          -> "<"
     LessThanOrEqualTo -> "<="
 
@@ -104,7 +104,7 @@ data Assertion = Assertion
   }
 
 isEquality :: Assertion -> Bool
-isEquality a = assertionRel a == Equals
+isEquality a = assertionRel a == Equal
 
 constructAssertion :: (LinearExpr, Relation, LinearExpr) -> Assertion
 constructAssertion (lhs, rel, rhs) = Assertion

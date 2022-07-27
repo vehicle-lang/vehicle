@@ -27,9 +27,6 @@ scopeCheckClosedExpr e = evalStateT (runReaderT (scopeExpr e) (mempty, False)) m
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
 
--- |Type of scope checking contexts.
-type BoundCtx = [DBBinding]
-
 type MonadScope m =
   ( MonadCompile m
   , MonadReader (DeclCtx ()) m
@@ -38,7 +35,7 @@ type MonadScope m =
 type MonadScopeExpr m =
   ( MonadCompile m
   , MonadReader (DeclCtx (), Bool) m
-  , MonadState (BoundCtx, [(Provenance, Symbol)]) m
+  , MonadState (BoundCtx DBBinding, [(Provenance, Symbol)]) m
   )
 
 --------------------------------------------------------------------------------
@@ -109,7 +106,7 @@ scopeExpr e = do
     Builtin  ann op       -> return $ Builtin ann op
     Var      ann v        -> Var ann <$> getVar ann v
     Literal  ann l        -> return $ Literal ann l
-    LSeq     ann es       -> LSeq ann <$> traverse scopeExpr es
+    LVec     ann es       -> LVec ann <$> traverse scopeExpr es
 
     Pi  ann binder res -> do
       bindVar binder $ \binder' -> Pi ann binder' <$> scopeExpr res
@@ -120,8 +117,6 @@ scopeExpr e = do
     Let ann bound binder body -> do
       bound' <- scopeExpr bound
       bindVar binder $ \binder' -> Let ann bound' binder' <$> scopeExpr body
-
-    PrimDict _ _tc -> compilerDeveloperError "Found PrimDict during scope checking."
 
   logScopeExit result
   return result

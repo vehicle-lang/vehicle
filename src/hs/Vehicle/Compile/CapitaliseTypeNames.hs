@@ -57,13 +57,12 @@ instance CapitaliseTypes CheckedExpr where
     MetaF     ann m                 -> return $ Meta ann m
     LiteralF  ann l                 -> return $ Literal ann l
     BuiltinF  ann op                -> return $ Builtin ann op
-    PrimDictF ann t                 -> PrimDict ann <$> t
     AnnF      ann e t               -> Ann ann <$> e <*> t
     AppF      ann fun args          -> App ann <$> fun <*> traverse cap args
     PiF       ann binder result     -> Pi  ann <$> cap binder <*> result
     LetF      ann bound binder body -> Let ann <$> bound <*> cap binder <*> body
     LamF      ann binder body       -> Lam ann <$> cap binder <*> body
-    LSeqF     ann xs                -> LSeq ann <$> sequence xs
+    LVecF     ann xs                -> LVec ann <$> sequence xs
     VarF      ann v@(Bound _)       -> return $ Var ann v
     VarF      ann (Free ident)      -> Var ann . Free <$> cap ident
 

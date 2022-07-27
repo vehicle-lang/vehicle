@@ -38,7 +38,7 @@ gaussianElimination varNames exprs numberOfRowsToReduce =
     return (solvedExprs, unusedExprs)
 
 prettyExprs :: VariableNames -> [LinearExpr] -> Doc a
-prettyExprs varNames exprs = prettyAssertions varNames (fmap (Assertion Equals) exprs)
+prettyExprs varNames exprs = prettyAssertions varNames (fmap (Assertion Equal) exprs)
 
 prettyRows :: VariableNames -> [Row] -> Doc a
 prettyRows varNames rows = prettyExprs varNames (fmap LinearExpr rows)

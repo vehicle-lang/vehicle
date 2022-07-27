@@ -61,15 +61,14 @@ standardFilter :: SubexprFilter
 standardFilter e q = q > 1
 
 appFilter :: SubexprFilter
-appFilter (LiteralExpr{}, _) _ = False
 appFilter (App{}, _)         _ = True
 appFilter _                  _ = False
 
 letInsertionTest :: MonadTest m => InsertionTestSpec -> m TestTree
 letInsertionTest (InsertionTestSpec testName filter input expected) =
   unitTestCase testName $ do
-    inputExpr    <- typeCheckExpr input
-    expectedExpr <- typeCheckExpr expected
+    inputExpr    <- normTypeClasses =<< typeCheckExpr input
+    expectedExpr <- normTypeClasses =<< typeCheckExpr expected
     result       <- insertLets filter True inputExpr
 
     -- Need to re-typecheck the result as let-insertion puts a Hole on

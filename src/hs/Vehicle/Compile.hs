@@ -25,7 +25,6 @@ import Vehicle.Compile.Parse
 import Vehicle.Compile.Elaborate.External as External (elabProg, elabExpr)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck)
-import Vehicle.Compile.Normalise (normalise, defaultNormalisationOptions)
 import Vehicle.Backend.Marabou qualified as Marabou
 import Vehicle.Backend.Marabou (MarabouSpec)
 import Vehicle.Backend.Agda
@@ -104,22 +103,6 @@ typeCheckExpr txt = do
   typedProg   <- typeCheck scopedProg
   return typedProg
 
--- | Parses, expands parameters and datasets, type-checks and then
--- checks the network types from disk. Used during compilation to
--- verification queries.
-typeCheckProgAndLoadResources :: (MonadIO m, MonadCompile m)
-                              => Resources
-                              -> Text
-                              -> m (NetworkContext, CheckedProg)
-typeCheckProgAndLoadResources resources txt = do
-  bnfcProg      <- parseVehicle txt
-  vehicleProg   <- elabProg bnfcProg
-  scopedProg    <- scopeCheck vehicleProg
-  typedProg     <- typeCheck scopedProg
-  (networkCtx, networklessProg) <- expandResources resources True typedProg
-  normProg2 <- normalise networklessProg defaultNormalisationOptions
-  return (networkCtx, normProg2)
-
 -- | Parses and type-checks the program but does
 -- not load networks and datasets from disk.
 typeCheckProg :: MonadCompile m => Text -> m CheckedProg
@@ -129,3 +112,15 @@ typeCheckProg txt = do
   scopedProg  <- scopeCheck vehicleProg
   typedProg   <- typeCheck scopedProg
   return typedProg
+
+-- | Parses, expands parameters and datasets, type-checks and then
+-- checks the network types from disk. Used during compilation to
+-- verification queries.
+typeCheckProgAndLoadResources :: (MonadIO m, MonadCompile m)
+                              => Resources
+                              -> Text
+                              -> m (NetworkContext, CheckedProg)
+typeCheckProgAndLoadResources resources txt = do
+  typedProg               <- typeCheckProg txt
+  (networkCtx, finalProg) <- expandResources resources True typedProg
+  return (networkCtx, finalProg)

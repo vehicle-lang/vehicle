@@ -14,6 +14,7 @@ import Vehicle.Resource (ResourceType)
 import Vehicle.Language.AST.Builtin(Builtin, Linearity, Polarity)
 import Vehicle.Language.AST.Visibility
 import Vehicle.Language.AST.Provenance
+import Vehicle.Language.AST.Relevance
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -55,10 +56,11 @@ instance Pretty Meta where
 -- - There should be a family of `Float` literals, but we haven't got there yet.
 data Literal
   = LUnit
-  | LBool Bool
-  | LNat  Int
-  | LInt  Int
-  | LRat  Rational
+  | LBool  Bool
+  | LIndex Int Int
+  | LNat   Int
+  | LInt   Int
+  | LRat   Rational
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData   Literal
@@ -66,11 +68,12 @@ instance Hashable Literal
 
 instance Pretty Literal where
   pretty = \case
-    LUnit   -> "()"
-    LNat  x -> pretty x
-    LInt  x -> pretty x
-    LRat  x -> pretty x
-    LBool x -> pretty x
+    LUnit      -> "()"
+    LBool  x   -> pretty x
+    LIndex _ x -> pretty x
+    LNat   x   -> pretty x
+    LInt   x   -> pretty x
+    LRat   x   -> pretty x
 
 --------------------------------------------------------------------------------
 -- Binders
@@ -85,27 +88,37 @@ data Binder binder var
   = Binder
     Provenance
     Visibility         -- The visibility of the binder
+    Relevance          -- The relevancy of the binder
     binder             -- The representation of the bound variable
     (Expr binder var)  -- The (optional) type of the bound variable
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 pattern ExplicitBinder :: Provenance -> binder -> Expr binder var -> Binder binder var
-pattern ExplicitBinder p n t = Binder p Explicit n t
+pattern ExplicitBinder p n t = Binder p Explicit Relevant n t
 
 pattern ImplicitBinder :: Provenance -> binder -> Expr binder var -> Binder binder var
-pattern ImplicitBinder p n t = Binder p Implicit n t
+pattern ImplicitBinder p n t = Binder p Implicit Relevant n t
 
 pattern InstanceBinder :: Provenance -> binder -> Expr binder var -> Binder binder var
-pattern InstanceBinder p n t = Binder p Instance n t
+pattern InstanceBinder p n t = Binder p Instance Relevant  n t
+
+pattern IrrelevantInstanceBinder :: Provenance -> binder -> Expr binder var -> Binder binder var
+pattern IrrelevantInstanceBinder p n t = Binder p Instance Irrelevant  n t
 
 instance (NFData binder, NFData var) => NFData (Binder binder var)
 
+instance HasProvenance (Binder binder var) where
+  provenanceOf (Binder p _ _ _ _) = p
+
 instance HasVisibility (Binder binder var) where
-  visibilityOf (Binder _ visibility _ _) = visibility
+  visibilityOf (Binder _ v _ _ _) = v
+
+instance HasRelevance (Binder binder var) where
+  relevanceOf (Binder _ _ r _ _) = r
 
 mapBinderType :: (Expr binder var1 -> Expr binder var2)
               -> Binder binder var1 -> Binder binder var2
-mapBinderType f (Binder ann v n e) = Binder ann v n $ f e
+mapBinderType f (Binder ann v r n e) = Binder ann v r n $ f e
 
 replaceBinderType :: Expr binder var1
                   -> Binder binder var2
@@ -116,7 +129,7 @@ traverseBinderType :: Monad m
                    => (Expr binder var1 -> m (Expr binder var2))
                    -> Binder binder var1
                    -> m (Binder binder var2)
-traverseBinderType f (Binder ann v n e) = Binder ann v n <$> f e
+traverseBinderType f (Binder ann v r n e) = Binder ann v r n <$> f e
 
 --------------------------------------------------------------------------------
 -- Function arguments
@@ -125,30 +138,42 @@ data Arg binder var
   = Arg
     Provenance         -- Has the argument been auto-inserted by the type-checker?
     Visibility         -- The visibility of the argument
+    Relevance          -- The relevancy of the argument
     (Expr binder var)  -- The argument expression
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
--- At the moment explicit arguments can only ever be provided by the user.
 pattern ExplicitArg :: Provenance -> Expr binder var -> Arg binder var
-pattern ExplicitArg ann e = Arg ann Explicit e
+pattern ExplicitArg p e = Arg p Explicit Relevant e
 
 pattern ImplicitArg :: Provenance -> Expr binder var -> Arg binder var
-pattern ImplicitArg ann e = Arg ann Implicit e
+pattern ImplicitArg p e = Arg p Implicit Relevant e
+
+pattern IrrelevantImplicitArg :: Provenance -> Expr binder var -> Arg binder var
+pattern IrrelevantImplicitArg p e = Arg p Implicit Irrelevant e
 
 pattern InstanceArg :: Provenance -> Expr binder var -> Arg binder var
-pattern InstanceArg ann e = Arg ann Instance e
+pattern InstanceArg p e = Arg p Instance Relevant e
+
+pattern IrrelevantInstanceArg :: Provenance -> Expr binder var -> Arg binder var
+pattern IrrelevantInstanceArg p e = Arg p Instance Irrelevant e
 
 instance (NFData binder, NFData var) => NFData (Arg binder var)
 
+instance HasProvenance (Arg binder var) where
+  provenanceOf (Arg p _ _ _) = p
+
 instance HasVisibility (Arg binder var) where
-  visibilityOf (Arg _ v _) = v
+  visibilityOf (Arg _ v _ _) = v
+
+instance HasRelevance (Arg binder var) where
+  relevanceOf (Arg _ _ r _) = r
 
 argExpr :: Arg binder var -> Expr binder var
-argExpr (Arg _ _ e) = e
+argExpr (Arg _ _ _ e) = e
 
 mapArgExpr :: (Expr binder1 var1 -> Expr binder2 var2)
            -> Arg binder1 var1 -> Arg binder2 var2
-mapArgExpr f (Arg ann v e) = Arg ann v $ f e
+mapArgExpr f (Arg ann v r e) = Arg ann v r $ f e
 
 replaceArgExpr :: Expr binder1 var1 -> Arg binder2 var2 -> Arg binder1 var1
 replaceArgExpr e = mapArgExpr (const e)
@@ -157,7 +182,7 @@ traverseArgExpr :: Monad m
                 => (Expr binder1 var1 -> m (Expr binder2 var2))
                 -> Arg binder1 var1
                 -> m (Arg binder2 var2)
-traverseArgExpr f (Arg i v e) = Arg i v <$> f e
+traverseArgExpr f (Arg i v r e) = Arg i v r <$> f e
 
 traverseExplicitArgExpr :: Monad m
                         => (Expr binder var -> m (Expr binder var))
@@ -244,21 +269,30 @@ data Expr binder var
     Literal                  -- Value.
 
   -- | A sequence of terms for e.g. list literals.
-  | LSeq
+  | LVec
     Provenance
     [Expr binder var]    -- List of expressions.
-
-  -- | A placeholder for a dictionary of builtin type-classes.
-  -- At the moment doesn't carry around any meaningful information
-  -- as we don't currently have user-defined type-classes. Later
-  -- on they will carry around user definitions.
-  | PrimDict
-    Provenance
-    (Expr binder var)
 
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData binder, NFData var) => NFData (Expr binder var)
+
+type Type = Expr
+
+instance HasProvenance (Expr binder var) where
+  provenanceOf = \case
+    Universe p _     -> p
+    Hole     p _     -> p
+    Meta     p _     -> p
+    Ann      p _ _   -> p
+    App      p _ _   -> p
+    Pi       p _ _   -> p
+    Builtin  p _     -> p
+    Var      p _     -> p
+    Let      p _ _ _ -> p
+    Lam      p _ _   -> p
+    Literal  p _     -> p
+    LVec     p _     -> p
 
 --------------------------------------------------------------------------------
 -- Identifiers
@@ -316,6 +350,12 @@ data Decl binder var
 
 instance (NFData binder, NFData var) => NFData (Decl binder var)
 
+instance HasProvenance (Decl binder var) where
+  provenanceOf = \case
+    DefResource p _ _ _   -> p
+    DefFunction p _ _ _ _ -> p
+    DefPostulate p _ _    -> p
+
 instance HasIdentifier (Decl binder var) where
   identifierOf = \case
     DefResource  _ _ i _   -> i
@@ -355,6 +395,12 @@ newtype Prog binder var
 
 instance (NFData binder, NFData var) => NFData (Prog binder var)
 
+traverseProg :: Monad m
+             => (Decl binder1 var1 -> m (Decl binder2 var2))
+             -> Prog binder1 var1
+             -> m (Prog binder2 var2)
+traverseProg f (Main ds) = Main <$> traverse f ds
+
 --------------------------------------------------------------------------------
 -- Recursion principles
 
@@ -369,44 +415,13 @@ class HasType a where
   typeOf :: a binder var -> Expr binder var
 
 instance HasType Binder where
-  typeOf (Binder _ _ _ t) = t
+  typeOf (Binder _ _ _ _ t) = t
 
 instance HasType Decl where
   typeOf = \case
     DefResource _ _ _ t   -> t
     DefFunction _ _ _ t _ -> t
     DefPostulate _ _ t    -> t
-
---------------------------------------------------------------------------------
--- Annotations
-
-instance HasProvenance (Binder binder var) where
-  provenanceOf (Binder ann _ _ _) = ann
-
-instance HasProvenance (Arg binder var) where
-  provenanceOf (Arg ann _ _) = ann
-
-instance HasProvenance (Expr binder var) where
-  provenanceOf = \case
-    Universe ann _     -> ann
-    PrimDict ann _     -> ann
-    Hole     ann _     -> ann
-    Meta     ann _     -> ann
-    Ann      ann _ _   -> ann
-    App      ann _ _   -> ann
-    Pi       ann _ _   -> ann
-    Builtin  ann _     -> ann
-    Var      ann _     -> ann
-    Let      ann _ _ _ -> ann
-    Lam      ann _ _   -> ann
-    Literal  ann _     -> ann
-    LSeq     ann _     -> ann
-
-instance HasProvenance (Decl binder var) where
-  provenanceOf = \case
-    DefResource ann _ _ _   -> ann
-    DefFunction ann _ _ _ _ -> ann
-    DefPostulate ann _ _    -> ann
 
 --------------------------------------------------------------------------------
 -- Utilities

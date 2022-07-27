@@ -31,11 +31,10 @@ recLift expr =
     Meta{}     -> resolutionError currentPass "Meta"
     Universe{} -> typeError currentPass "Universe"
     Pi{}       -> typeError currentPass "Pi"
-    PrimDict{} -> typeError currentPass "PrimDict"
     Ann{}      -> normalisationError currentPass "Ann"
     Let{}      -> normalisationError currentPass "Let"
 
-    LSeq{}     -> unexpectedExprError currentPass "Seq"
+    LVec{}     -> unexpectedExprError currentPass "Seq"
     -- ^ Should never recurse down this far, though this may change if we add support
     -- for boolean valued networks.
 
@@ -46,16 +45,16 @@ recLift expr =
     -- ^ Problem becomes much harder if these two are allowed as then quantifiers have
     -- to be negated as well.
 
-    QuantifierExpr q ann binder body -> do
-      QuantifierExpr q ann binder <$> recLift body
+    ExistsRatExpr p binder body -> do
+      ExistsRatExpr p binder <$> recLift body
 
-    AndExpr ann [ExplicitArg ann1 e1, ExplicitArg ann2 e2] -> do
+    AndExpr p [ExplicitArg ann1 e1, ExplicitArg ann2 e2] -> do
       e1' <- recLift e1
       e2' <- recLift e2
       return $
         liftQuant e1' $ \e1'' _d1 ->
           liftQuant e2' $ \e2'' d2 ->
-            AndExpr ann
+            AndExpr p
               [ ExplicitArg ann1 (liftFreeDBIndices d2 e1'')
               , ExplicitArg ann2 (liftFreeDBIndices 0 e2'')
               ]
@@ -69,6 +68,6 @@ recLift expr =
     Lam{} -> caseError currentPass "Lam" ["QuantifierExpr"]
 
 liftQuant :: CheckedExpr -> (CheckedExpr -> BindingDepth -> CheckedExpr) -> CheckedExpr
-liftQuant (QuantifierExpr ann q binder body) f =
-  QuantifierExpr ann q binder (liftQuant body (\e d -> f e (d + 1)))
+liftQuant (ExistsRatExpr p binder body) f =
+  ExistsRatExpr p binder (liftQuant body (\e d -> f e (d + 1)))
 liftQuant e f = f e 0

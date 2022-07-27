@@ -80,7 +80,7 @@ processDecl d@DefPostulate{} =
 processDecl d@(DefResource p resourceType ident declType) = do
   (resources, expandDatasets, declCtx) <- ask
   let name = nameOf ident
-  normType <- normalise declType defaultNormalisationOptions
+  normType <- normalise declType fullNormalisationOptions
     { declContext = declCtx
     }
 

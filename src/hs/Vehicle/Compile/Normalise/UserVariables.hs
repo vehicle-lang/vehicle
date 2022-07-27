@@ -6,7 +6,7 @@ module Vehicle.Compile.Normalise.UserVariables
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.Map (Map)
-import Data.Map qualified as Map (lookup, singleton, unionWith)
+import Data.Map qualified as Map (member, lookup, singleton, unionWith)
 import Data.Traversable (forM)
 import Data.Text (Text)
 
@@ -89,10 +89,10 @@ normUserVariables ident verifier networkCtx expr =
     quantLiftedExpr <- liftQuantifiers expr
 
     -- Next let-lift all the network applications to avoid duplicates.
-    liftedNetworkAppExpr <- liftNetworkApplications quantLiftedExpr
+    liftedNetworkAppExpr <- liftNetworkApplications networkCtx quantLiftedExpr
 
     -- We can now calculate the meta-network.
-    let metaNetwork = generateMetaNetwork liftedNetworkAppExpr
+    let metaNetwork = generateMetaNetwork networkCtx liftedNetworkAppExpr
     metaNetworkDetails <- traverse (getNetworkDetailsFromCtx networkCtx) metaNetwork
     logDebug MinDetail $ "Generated meta-network" <+> pretty metaNetwork <> line
 
@@ -104,7 +104,7 @@ normUserVariables ident verifier networkCtx expr =
     let userVariableNames = fmap ("u'" <>) userVariables
     let magicVariableNames = getMagicVariablesNames verifier metaNetworkDetails
 
-    -- Then generate teh
+    -- Generate the SMT problem
     flip runReaderT (networkCtx, ident, metaNetwork, verifier, userVariableNames, magicVariableNames) $ do
       generateCLSTProblem quantifierlessExpr
 
@@ -122,9 +122,8 @@ generateCLSTProblem assertionsExpr = do
   -- Normalise to remove newly introduced lookups into tensors of
   -- output variables
   boundCtx <- getBoundContext
-  normExprBody <- normalise userExprBody $ defaultNormalisationOptions
+  normExprBody <- normalise userExprBody $ fullNormalisationOptions
     { implicationsToDisjunctions = True
-    , subtractionToAddition      = True
     , expandOutPolynomials       = True
     , boundContext               = boundCtx
     }
@@ -214,7 +213,7 @@ removeUserQuantifiers :: MonadCompile m
                       => Identifier
                       -> CheckedExpr
                       -> m (CheckedExpr, [Symbol])
-removeUserQuantifiers ident (ExistsExpr ann binder body) = do
+removeUserQuantifiers ident (ExistsRatExpr ann binder body) = do
   let n = getBinderSymbol binder
   case typeOf binder of
     RatType{}-> do
@@ -227,20 +226,23 @@ removeUserQuantifiers _ e = return (e, [])
 -- | We lift all network applications regardless if they are duplicated or not to
 -- ensure that they are at the top-level underneath a quantifier and hence have
 -- a body with the type `Bool`.
-liftNetworkApplications :: MonadCompile m => CheckedExpr -> m CheckedExpr
-liftNetworkApplications = insertLets isNetworkApplication False
+liftNetworkApplications :: MonadCompile m => NetworkContext -> CheckedExpr -> m CheckedExpr
+liftNetworkApplications networks = insertLets isNetworkApplication False
   where
     isNetworkApplication :: CheckedCoDBExpr -> Int -> Bool
-    isNetworkApplication (App _ (Var _ (CoDBFree _)) _, _) _quantity = True
-    isNetworkApplication _                                 _quantity = False
+    isNetworkApplication (App _ (Var _ (CoDBFree ident)) _, _) _ =
+      Map.member (nameOf ident) networks
+    isNetworkApplication _                                 _ = False
 
 --------------------------------------------------------------------------------
 -- Generate the meta-network
 
 -- |As we've normalised out all function applications and dataset declarations,
 -- the only free names left should be network applications.
-generateMetaNetwork :: CheckedExpr -> MetaNetwork
-generateMetaNetwork e = fmap nameOf (freeNamesIn e)
+generateMetaNetwork :: NetworkContext -> CheckedExpr -> MetaNetwork
+generateMetaNetwork ctx e =
+  let freeNames = fmap nameOf (freeNamesIn e) in
+  filter (`Map.member` ctx) freeNames
 
 --------------------------------------------------------------------------------
 -- Steps 3 & 4: replace network applications
@@ -267,9 +269,9 @@ replaceNetworkApplications IOVarState{..} (Let _ (NetworkApp ann ident inputExpr
   (networkCtx, _, _, _, _, _) <- ask
 
   NetworkType inputs outputs <- getNetworkDetailsFromCtx networkCtx (nameOf ident)
-  let inputSize  = size inputs
-  let outputSize = size outputs
-  let outputType = tElem outputs
+  let inputSize  = tensorSize inputs
+  let outputSize = tensorSize outputs
+  let outputType = baseType outputs
 
   numberOfUserVariables <- getNumberOfUserVariables
   let inputStartingDBIndex    = numberOfUserVariables + magicInputVarCount + magicOutputVarCount
@@ -302,7 +304,7 @@ replaceNetworkApplications IOVarState{..} (Let _ (NetworkApp ann ident inputExpr
 replaceNetworkApplications _ e = return (e, [])
 
 createInputVarEqualities :: MonadSMT m => [Int] -> CheckedExpr -> m [Assertion]
-createInputVarEqualities inputVarIndices (SeqExpr _ _ _ xs) = do
+createInputVarEqualities inputVarIndices (VecLiteral _ _ xs) = do
   forM (zip xs inputVarIndices) $ \(e, i) -> do
     -- Create linear expression equating the magic variable `x_i`
     -- with the expression `e` in the relevant point = xs_i`
@@ -310,7 +312,7 @@ createInputVarEqualities inputVarIndices (SeqExpr _ _ _ xs) = do
     let lhs = linearExprFromMap exprSize (Map.singleton i 1)
     rhs <- compileLinearExpr e
 
-    return $ constructAssertion (lhs, Equals, rhs)
+    return $ constructAssertion (lhs, Equal, rhs)
 createInputVarEqualities _ _ = normalisationError currentPass "non-Seq"
 
 mkMagicVariableSeq :: Provenance -> NetworkBaseType -> [Int] -> CheckedExpr
@@ -318,8 +320,7 @@ mkMagicVariableSeq ann tElem indices = tensorExpr
   where
   tensorElemType   = reconstructNetworkBaseType ann tElem
   variables        = map (Var ann . Bound) indices
-  dim              = NatLiteralExpr ann (NatType ann) (length indices)
-  tensorExpr       = mkTensor ann tensorElemType [dim] variables
+  tensorExpr       = VecLiteral ann tensorElemType variables
 
 compileAssertions :: MonadSMT m
                   => CheckedExpr
@@ -332,11 +333,9 @@ compileAssertions expr = case expr of
   Ann{}                  -> normalisationError currentPass "Ann"
   Lam{}                  -> normalisationError currentPass "Lam"
   Let{}                  -> normalisationError currentPass "Let"
-  LSeq{}                 -> normalisationError currentPass "LSeq"
-  PrimDict{}             -> visibilityError    currentPass "PrimDict"
-  Builtin{}              -> normalisationError currentPass "LSeq"
-  QuantifierExpr q _ _ _ -> normalisationError currentPass (pretty q)
-  Var{}                  -> caseError          currentPass "Var" ["Order", "Eq"]
+  LVec{}                 -> normalisationError currentPass "LVec"
+  Builtin{}              -> normalisationError currentPass "LVec"
+  Var{}                  -> caseError          currentPass "Var" ["OrderOp", "Eq"]
 
   Literal _ann l -> case l of
     LBool _ -> normalisationError currentPass "LBool"
@@ -347,7 +346,7 @@ compileAssertions expr = case expr of
     as2 <- compileAssertions e2
     return (as1 <> as2)
 
-  OrderExpr _ ord _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+  App _ (Builtin _ (Order OrderRat ord)) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
     let (rel, lhs, rhs) = case ord of
           Lt -> (LessThan,          e1, e2)
           Le -> (LessThanOrEqualTo, e1, e2)
@@ -356,12 +355,12 @@ compileAssertions expr = case expr of
     assertion <- compileAssertion rel lhs rhs
     return [assertion]
 
-  EqualityExpr ann eq _ [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
+  App p (Builtin _ (Equals EqRat eq)) [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
     Neq -> do
       (_, ident, _, _, _, _) <- ask
-      throwError $ UnsupportedInequality MarabouBackend ident ann
+      throwError $ UnsupportedInequality MarabouBackend ident p
     Eq  -> do
-      assertion <- compileAssertion Equals e1 e2
+      assertion <- compileAssertion Equal e1 e2
       return [assertion]
 
   App{} -> unexpectedExprError currentPass (prettySimple expr)
@@ -391,17 +390,17 @@ compileLinearExpr expr = do
 
   go :: MonadSMT m => CheckedExpr -> m (Map Int Coefficient)
   go e = case e of
-    Var     _ v                           -> singletonVar v 1
-    NegExpr _ _ _ [ExplicitArg _ (Var _ v)] -> singletonVar v (-1)
-    LiteralExpr _ _ _ l                   -> do
+    Var    _ v                           -> singletonVar v 1
+    NegExpr _ NegRat [ExplicitArg _ (Var _ v)] -> singletonVar v (-1)
+    RatLiteral _ l                   -> do
       constIndex <- getExprConstantIndex
-      singletonVar (Bound constIndex) =<< compileLiteral l
-    AddExpr _ _ _ _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+      singletonVar (Bound constIndex) (fromRational l)
+    AddExpr _ AddRat [ExplicitArg _ e1, ExplicitArg _ e2] -> do
       Map.unionWith (+) <$> go e1 <*> go e2
-    MulExpr _ _ _ _ [ExplicitArg _ e1, ExplicitArg _ e2] ->
+    MulExpr _ MulRat [ExplicitArg _ e1, ExplicitArg _ e2] ->
       case (e1, e2) of
-        (LiteralExpr _ _ _ l, Var _ v) -> singletonVar v =<< compileLiteral l
-        (Var _ v, LiteralExpr _ _ _ l) -> singletonVar v =<< compileLiteral l
+        (RatLiteral _ l, Var _ v) -> singletonVar v (fromRational l)
+        (Var _ v, RatLiteral _ l) -> singletonVar v (fromRational l)
         _ -> do
           (_, _ident, _, _, _, _) <- ask
           _ctx <- getBoundContext
@@ -409,14 +408,6 @@ compileLinearExpr expr = do
             "Unexpected non-linear constraint that should have been caught by the" <+>
             "linearity analysis during type-checking."
     ex -> unexpectedExprError currentPass $ prettySimple ex
-
-compileLiteral :: MonadSMT m => Literal -> m Coefficient
-compileLiteral = \case
-  LUnit   -> normalisationError currentPass "LUnit"
-  LBool _ -> normalisationError currentPass "LBool"
-  LNat  n -> return $ fromIntegral n
-  LInt  i -> return $ fromIntegral i
-  LRat  q -> return $ fromRational q
 
 --------------------------------------------------------------------------------
 -- Step 6: quantification over magic variables
@@ -431,19 +422,25 @@ getMagicVariablesNames verifier metaNetworkDetails =
 
     forNetwork :: NetworkType -> (Int, Int, [Text]) -> (Int, Int, [Text])
     forNetwork (NetworkType inputs outputs) (inputIndex, outputIndex, result) =
-      let nextInputIndex  = inputIndex  + size inputs in
-      let nextOutputIndex = outputIndex + size outputs in
+      let nextInputIndex  = inputIndex  + tensorSize inputs in
+      let nextOutputIndex = outputIndex + tensorSize outputs in
       let inputNames  = forTensor inputPrefix  inputIndex  inputs in
       let outputNames = forTensor outputPrefix outputIndex outputs in
       (nextInputIndex, nextOutputIndex, result <> inputNames <> outputNames)
 
     forTensor :: Text -> Int -> NetworkTensorType -> [Text]
-    forTensor prefix startingIndex (NetworkTensorType size _) =
-      let indices = [startingIndex .. startingIndex + size-1] in
-      [mkNameWithIndices prefix [i] | i <- indices]
+    forTensor prefix startingIndex tensor =
+      let indices = [startingIndex .. startingIndex + tensorSize tensor - 1] in
+      [mkNameWithIndices prefix i | i <- indices]
 
 currentPass :: Doc a
 currentPass = "insertion of magic network variables"
 
 supportedTypes :: [Builtin]
 supportedTypes = [ Rat ]
+
+tensorSize :: NetworkTensorType -> Int
+tensorSize tensor = product (dimensions tensor)
+
+networkSize :: NetworkType -> Int
+networkSize network = tensorSize (inputTensor network) + tensorSize (outputTensor network)

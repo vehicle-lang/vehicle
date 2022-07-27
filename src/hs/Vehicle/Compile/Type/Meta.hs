@@ -29,9 +29,7 @@ module Vehicle.Compile.Type.Meta
   , getMetasLinkedToMetasIn
   , MonadMeta
   , ConstraintProgress(..)
-  , nonTriviallySolved
-  , triviallySolved
-  , partiallySolved
+  , ConstraintResolution(..)
   , isStuck
   , MetaCtx(..)
   , MetaInfo(..)
@@ -42,11 +40,13 @@ module Vehicle.Compile.Type.Meta
   , prettyMetas
   , getDeclType
   , clearMetaCtx
+  , MetaSubstitution
   , MetaSubstitutable(..)
   ) where
 
 import Control.Monad.Reader (ReaderT (..), MonadReader (..), local)
 import Control.Monad.State (MonadState(..), modify, gets)
+import Control.Monad (foldM)
 import Data.List (partition)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (mapMaybe)
@@ -55,13 +55,12 @@ import Data.Map qualified as Map
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Type.MetaMap ( MetaMap(..), keys, insertWith )
+import Vehicle.Compile.Type.MetaMap ( MetaMap(..), keys, insert )
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap
 import Vehicle.Compile.Type.MetaSet (MetaSet)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.VariableContext
-import Control.Monad (foldM)
 
 
 --------------------------------------------------------------------------------
@@ -102,12 +101,11 @@ instance MetaSubstitutable CheckedExpr where
       Builtin  ann op           -> return $ Builtin ann op
       Literal  ann l            -> return $ Literal ann l
       Var      ann v            -> return $ Var     ann v
-      LSeq     ann es           -> LSeq     ann <$> traverse substM es
+      LVec     ann es           -> LVec     ann <$> traverse substM es
       Ann      ann term typ     -> Ann      ann <$> substM term   <*> substM typ
       Pi       ann binder res   -> Pi       ann <$> substM binder <*> local liftSubstitution (substM res)
       Let      ann e1 binder e2 -> Let      ann <$> substM e1     <*> substM binder <*> local liftSubstitution (substM e2)
       Lam      ann binder e     -> Lam      ann <$> substM binder <*> local liftSubstitution (substM e)
-      PrimDict ann tc           -> PrimDict ann <$> substM tc
 
       e@(Meta ann _)  -> substMApp ann (e, [])
       e@(App ann _ _) -> substMApp ann (toHead e)
@@ -382,17 +380,18 @@ metaSolved m solution = do
 
   logDebug MaxDetail $ "solved" <+> pretty m <+> "as" <+> prettyVerbose abstractedSolution
 
-  -- Insert the new variable throwing an error if the meta-variable is already present
-  -- (should have been substituted out)
-  modifyMetaSubstitution (insertWith (duplicateMetaError p) m abstractedSolution)
-  where
-    duplicateMetaError :: Provenance -> CheckedExpr -> CheckedExpr -> a
-    duplicateMetaError p new old = developerError $
+  metaSubst <- getMetaSubstitution
+  case MetaMap.lookup m metaSubst of
+    Just existing -> compilerDeveloperError $
       "meta-variable" <+> pretty m <+> "already solved as" <+>
-      line <> indent 2 (squotes (prettyVerbose old)) <> line <>
+      line <> indent 2 (squotes (prettyVerbose existing)) <> line <>
       "but is being re-solved as" <+>
-      line <> indent 2 (squotes (prettyVerbose new)) <> line <>
+      line <> indent 2 (squotes (prettyVerbose solution)) <> line <>
       "at" <+> pretty p
+    -- Could use `insertWith` instead of `insert` here for one lookup instead of
+    -- two, but not possible to throw a monadic error unfortunately.
+    Nothing -> modifyMetaSubstitution (insert m abstractedSolution)
+
 
 class HasMetas a where
   metasInWithArgs :: a -> MetaMap [CheckedArg]
@@ -404,7 +403,6 @@ instance HasMetas CheckedExpr where
   metasInWithArgs = \case
     Universe{}               -> mempty
     Hole{}                   -> mempty
-    PrimDict{}               -> mempty
     Literal{}                -> mempty
     Builtin{}                -> mempty
     Var {}                   -> mempty
@@ -413,7 +411,7 @@ instance HasMetas CheckedExpr where
     Pi   _ binder result     -> metasInWithArgs (typeOf binder) <> metasInWithArgs result
     Let  _ bound binder body -> metasInWithArgs bound <> metasInWithArgs (typeOf binder) <> metasInWithArgs body
     Lam  _ binder body       -> metasInWithArgs (typeOf binder) <> metasInWithArgs body
-    LSeq _ xs                -> MetaMap.unions (fmap metasInWithArgs xs)
+    LVec _ xs                -> MetaMap.unions (fmap metasInWithArgs xs)
     App  _ fun args          ->
       let argExprs = fmap argExpr (NonEmpty.toList args) in
       case fun of
@@ -452,7 +450,7 @@ clearMetaCtx = do
 
 addUnificationConstraint :: MonadMeta m
                          => Provenance
-                         -> VariableCtx
+                         -> TypingVariableCtx
                          -> CheckedExpr
                          -> CheckedExpr
                          -> m ()
@@ -462,7 +460,7 @@ addUnificationConstraint p ctx e1 e2 = do
   addConstraints [constraint]
 
 addTypeClassConstraint :: MonadMeta m
-                       => VariableCtx
+                       => TypingVariableCtx
                        -> Meta
                        -> CheckedExpr
                        -> m ()
@@ -501,45 +499,42 @@ popActivatedConstraints metasSolved = do
 --------------------------------------------------------------------------------
 -- Progress in solving meta-variable constraints
 
--- | Reports progress when trying to solve meta-variable constraints
--- Progress may be made if
---  a) constraints are solved (may or may not result in metas being solved)
---  b) new constraints are added
+-- | Reports that a constraint has been resolved.
+data ConstraintResolution = Resolution
+  { newConstraints :: [Constraint]
+  , solvedMetas    :: MetaSet
+  }
+  deriving (Show)
+
+instance Semigroup ConstraintResolution where
+  Resolution n1 ms1 <> Resolution n2 ms2 = Resolution (n1 <> n2) (ms1 <> ms2)
+
+instance Pretty ConstraintResolution where
+  pretty (Resolution constraints metas) =
+    "Resolution" <+> prettyVerbose constraints <+> pretty metas
+
 data ConstraintProgress
   = Stuck
-  | Progress
-    { newConstraints  :: [Constraint]
-    , solvedMetas     :: MetaSet
-    }
+  | Progress ConstraintResolution
   deriving (Show)
 
 instance Pretty ConstraintProgress where
-  pretty Stuck                        = "Stuck"
-  pretty (Progress constraints metas) =
-    "Progress" <+> prettyVerbose constraints <+> pretty metas
+  pretty Stuck                 = "Stuck"
+  pretty (Progress resolution) = pretty resolution
 
 isStuck :: ConstraintProgress -> Bool
 isStuck Stuck = True
 isStuck _     = False
 
 instance Semigroup ConstraintProgress where
-  Stuck <> x = x
-  x <> Stuck = x
-  Progress n1 ms1 <> Progress n2 ms2 = Progress (n1 <> n2) (ms1 <> ms2)
+  Stuck       <> x           = x
+  x           <> Stuck       = x
+  Progress r1 <> Progress r2 = Progress (r1 <> r2)
 
 instance Monoid ConstraintProgress where
   mempty = Stuck
 
-nonTriviallySolved :: Meta -> ConstraintProgress
-nonTriviallySolved m = Progress mempty (MetaSet.singleton m)
-
-triviallySolved :: ConstraintProgress
-triviallySolved = Progress mempty mempty
-
-partiallySolved :: [Constraint] -> ConstraintProgress
-partiallySolved constraints = Progress constraints mempty
-
-getDeclType :: (MonadCompile m, MonadReader VariableCtx m)
+getDeclType :: (MonadCompile m, MonadReader TypingVariableCtx m)
             => Provenance -> Identifier -> m CheckedExpr
 getDeclType p ident = do
   ctx <- getDeclCtx

@@ -77,12 +77,12 @@ unfoldQuantifier ann q = unfoldBinders ann (\ann1 binder body ->
     [ExplicitArg ann1 (Lam ann1 binder body)])
 
 unfoldQuantifierIn :: Provenance
-                   -> Builtin
+                   -> Quantifier
                    -> Expr binder var
                    -> BindersAndBody binder var
                    -> Expr binder var
 unfoldQuantifierIn ann q container = unfoldBinders ann (\ann1 binder body ->
-  normAppList ann1 (Builtin ann1 q)
+  normAppList ann1 (Builtin ann1 (TypeClassOp $ QuantifierInTC q))
     [ ExplicitArg ann1 (Lam ann1 binder body)
     , ExplicitArg ann1 container
     ])

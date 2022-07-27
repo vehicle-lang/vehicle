@@ -1,10 +1,7 @@
 -- | This module exports the datatype representations of the builtin symbols.
 
 module Vehicle.Language.AST.Builtin
-  ( Builtin(..)
-  , TypeClass(..)
-  , builtinFromSymbol
-  , symbolFromBuiltin
+  ( module Vehicle.Language.AST.Builtin
   , module X
   ) where
 
@@ -27,8 +24,8 @@ import Vehicle.Language.AST.Builtin.Linearity as X
 
 data TypeClass
   -- Operation type-classes
-  = HasEq Equality
-  | HasOrd Order
+  = HasEq EqualityOp
+  | HasOrd OrderOp
   | HasNot
   | HasAnd
   | HasOr
@@ -43,12 +40,16 @@ data TypeClass
   | HasQuantifierIn Quantifier
 
   -- Literal type-classes
-  | HasNatLitsUpTo Int
-  -- ^ The parameter is the maximum value (needed for Index).
-  | HasIntLits
+  | HasNatLits Int
+  -- ^ The parameter is the value (needed for Index).
   | HasRatLits
-  | HasConLitsOfSize Int
-  -- ^ Don't need to store the size as it stores the type of every element.
+  | HasVecLits Int
+  -- ^ The parameter is the size of the vector.
+
+  -- Utility constraints
+  | AlmostEqualConstraint
+  -- ^ Types are equal, modulo the auxiliary constraints.
+  | NatInDomainConstraint Int
 
   ----------------------------
   -- Synthetic type-classes --
@@ -61,13 +62,9 @@ data TypeClass
   -- Polarity type-classes
   | NegPolarity
   | AddPolarity Quantifier
-  | EqPolarity Equality
+  | EqPolarity EqualityOp
   | ImpliesPolarity
   | MaxPolarity
-
-  -- Utility type-classes
-  | TypesEqualModAuxiliaryAnnotations
-  -- ^ Types are equal, modulo the auxiliary constraints.
   deriving (Eq, Generic, Show)
 
 instance NFData   TypeClass
@@ -90,10 +87,9 @@ instance Pretty TypeClass where
     HasFold            -> "HasFold"
     HasQuantifierIn q  -> "HasQuantifierIn" <+> pretty q
 
-    HasNatLitsUpTo n   -> "HasNatLiteralsUpTo[" <> pretty n <> "]"
-    HasIntLits         -> "HasIntLiterals"
+    HasNatLits n       -> "HasNatLiterals[" <> pretty n <> "]"
     HasRatLits         -> "HasRatLiterals"
-    HasConLitsOfSize n -> "HasConLiteralsOfSize[" <>  pretty n <> "]"
+    HasVecLits n       -> "HasVecLiterals[" <>  pretty n <> "]"
 
     MaxLinearity       -> "MaxLinearity"
     MulLinearity       -> "MulLinearity"
@@ -104,26 +100,232 @@ instance Pretty TypeClass where
     ImpliesPolarity    -> "ImpliesPolarity"
     MaxPolarity        -> "MaxPolarity"
 
-    TypesEqualModAuxiliaryAnnotations{} -> "TypesEqual"
+    AlmostEqualConstraint{} -> "AlmostEqualConstraint"
+    NatInDomainConstraint{} -> "NatInDomainConstraint"
 
+-- Builtin operations for type-classes
+data TypeClassOp
+  = NotTC
+  | AndTC
+  | OrTC
+  | ImpliesTC
+
+  | FromNatTC Int
+  | FromRatTC
+  | FromVecTC Int
+
+  | NegTC
+  | AddTC
+  | SubTC
+  | MulTC
+  | DivTC
+
+  | EqualsTC EqualityOp
+  | OrderTC OrderOp
+
+  | MapTC
+  | FoldTC
+
+  | QuantifierTC   Quantifier
+  | QuantifierInTC Quantifier
+  deriving (Eq, Generic, Show)
+
+instance NFData   TypeClassOp
+instance Hashable TypeClassOp
+
+instance Pretty TypeClassOp where
+  pretty = \case
+    NotTC   -> "not"
+    AndTC   -> "and"
+    OrTC    -> "or"
+    ImpliesTC -> "=>"
+
+    NegTC   -> "-"
+    AddTC   -> "+"
+    SubTC   -> "-"
+    MulTC   -> "*"
+    DivTC   -> "/"
+
+    FromNatTC n -> "fromNat[" <> pretty n <> "]"
+    FromRatTC   -> "fromRat"
+    FromVecTC n -> "fromVec[" <> pretty n <> "]"
+
+    EqualsTC op -> pretty op
+    OrderTC  op -> pretty op
+
+    MapTC  -> "map"
+    FoldTC -> "fold"
+
+    QuantifierTC   q -> pretty q
+    QuantifierInTC q -> pretty q <> "In"
 
 --------------------------------------------------------------------------------
 -- Builtin
 
+data NegDomain
+  = NegInt
+  | NegRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData   NegDomain
+instance Hashable NegDomain
+
+instance Pretty NegDomain where
+  pretty = \case
+    NegInt -> "Int"
+    NegRat -> "Rat"
+
+data AddDomain
+  = AddNat
+  | AddInt
+  | AddRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData   AddDomain
+instance Hashable AddDomain
+
+instance Pretty AddDomain where
+  pretty = \case
+    AddNat -> "Nat"
+    AddInt -> "Int"
+    AddRat -> "Rat"
+
+data SubDomain
+  = SubInt
+  | SubRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData   SubDomain
+instance Hashable SubDomain
+
+instance Pretty SubDomain where
+  pretty = \case
+    SubInt -> "Int"
+    SubRat -> "Rat"
+
+subToAddDomain :: SubDomain -> AddDomain
+subToAddDomain = \case
+  SubInt -> AddInt
+  SubRat -> AddRat
+
+subToNegDomain :: SubDomain -> NegDomain
+subToNegDomain = \case
+  SubInt -> NegInt
+  SubRat -> NegRat
+
+data MulDomain
+  = MulNat
+  | MulInt
+  | MulRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData   MulDomain
+instance Hashable MulDomain
+
+instance Pretty MulDomain where
+  pretty = \case
+    MulNat -> "Nat"
+    MulInt -> "Int"
+    MulRat -> "Rat"
+
+data DivDomain
+  = DivRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData   DivDomain
+instance Hashable DivDomain
+
+instance Pretty DivDomain where
+  pretty = \case
+    DivRat -> "Rat"
+
+data FromNatDomain
+  = FromNatToIndex
+  | FromNatToNat
+  | FromNatToInt
+  | FromNatToRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance Pretty FromNatDomain where
+  pretty = \case
+    FromNatToIndex -> "Index"
+    FromNatToNat   -> "Nat"
+    FromNatToInt   -> "Int"
+    FromNatToRat   -> "Rat"
+
+instance NFData   FromNatDomain
+instance Hashable FromNatDomain
+
+data FromRatDomain
+  = FromRatToRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance Pretty FromRatDomain where
+  pretty = \case
+    FromRatToRat -> "Rat"
+
+instance NFData   FromRatDomain
+instance Hashable FromRatDomain
+
+data FromVecDomain
+  = FromVecToVec
+  | FromVecToList
+  deriving (Eq, Ord, Show, Generic)
+
+instance Pretty FromVecDomain where
+  pretty = \case
+    FromVecToVec  -> "Vector"
+    FromVecToList -> "List"
+
+instance NFData   FromVecDomain
+instance Hashable FromVecDomain
+
+data FoldDomain
+  = FoldList
+  | FoldVector
+  deriving (Eq, Ord, Show, Generic)
+
+instance Pretty FoldDomain where
+  pretty = \case
+    FoldList   -> "List"
+    FoldVector -> "Vector"
+
+instance NFData   FoldDomain
+instance Hashable FoldDomain
+
+data MapDomain
+  = MapList
+  | MapVector
+  deriving (Eq, Ord, Show, Generic)
+
+instance Pretty MapDomain where
+  pretty = \case
+    MapList   -> "List"
+    MapVector -> "Vector"
+
+instance NFData   MapDomain
+instance Hashable MapDomain
+
 -- |Builtins in the Vehicle language
 data Builtin
+  -- Annotations - these should not be shown to the user.
+  = Polarity  Polarity
+  | Linearity Linearity
+
   -- Types
-  = Unit
+  | Unit
   | Bool
   | Index
   | Nat
   | Int
   | Rat
   | List
+  | Vector
   | Tensor
 
   -- Type classes
-  | TypeClass TypeClass
+  | TypeClass   TypeClass
+  | TypeClassOp TypeClassOp
 
   -- Boolean expressions
   | Not
@@ -132,108 +334,77 @@ data Builtin
   | Implies
   | If
 
-  -- Arithmetic expressions
-  | Neg
-  | Add
-  | Sub
-  | Mul
-  | Div
+  -- Numeric conversion
+  | FromNat Int FromNatDomain
+  | FromRat FromRatDomain
+  | FromVec Int FromVecDomain
+
+  -- Numeric operations
+  | Neg NegDomain
+  | Add AddDomain
+  | Sub SubDomain
+  | Mul MulDomain
+  | Div DivDomain
+
+  -- Comparison expressions
+  | Equals EqualityDomain EqualityOp
+  | Order  OrderDomain OrderOp
 
   -- Container expressions
+  | Nil
   | Cons
   | At
-  | Map
-  | Fold
-
-  | Equality  Equality
-  | Order     Order
-  | Quant     Quantifier
-  | QuantIn   Quantifier
+  | Map  MapDomain
+  | Fold FoldDomain
   | Foreach
-  | ForeachIn
-
-  -- Annotations - these should not be shown to the user.
-  | Polarity  Polarity
-  | Linearity Linearity
-  deriving (Eq, Generic)
+  deriving (Eq, Show, Generic)
 
 instance NFData   Builtin
 instance Hashable Builtin
 
-instance Show Builtin where
-  show = \case
-    Unit                 -> "Unit"
-    Bool                 -> "Bool"
-    Index                -> "Index"
-    Nat                  -> "Nat"
-    Int                  -> "Int"
-    Rat                  -> "Rat"
-    List                 -> "List"
-    Tensor               -> "Tensor"
-
-    Not                  -> "not"
-    And                  -> "and"
-    Or                   -> "or"
-    Implies              -> "=>"
-    If                   -> "if"
-
-    Add                  -> "+"
-    Sub                  -> "-"
-    Mul                  -> "*"
-    Div                  -> "/"
-    Neg                  -> "-"
-
-    At                   -> "!"
-    Cons                 -> "::"
-    Equality e           -> show e
-    Order o              -> show o
-    Map                  -> "map"
-    Fold                 -> "fold"
-    Quant   Forall       -> "forall"
-    Quant   Exists       -> "exists"
-    QuantIn q            -> show (Quant q) <> "In"
-    Foreach              -> "foreach"
-    ForeachIn            -> "foreachIn"
-    TypeClass tc         -> show tc
-    Polarity pol         -> show pol
-    Linearity lin        -> show lin
-
 instance Pretty Builtin where
-  pretty b = case b of
-    Unit                 -> pretty $ show b
-    Bool                 -> pretty $ show b
-    Index                -> pretty $ show b
-    Nat                  -> pretty $ show b
-    Int                  -> pretty $ show b
-    Rat                  -> pretty $ show b
-    List                 -> pretty $ show b
-    Tensor               -> pretty $ show b
+  pretty = \case
+    Polarity  pol -> pretty pol
+    Linearity lin -> pretty lin
 
-    Not                  -> pretty $ show b
-    And                  -> pretty $ show b
-    Or                   -> pretty $ show b
-    Implies              -> pretty $ show b
+    TypeClass   tc   -> pretty tc
+    TypeClassOp tcOp -> pretty tcOp
 
-    Add                  -> pretty $ show b
-    Sub                  -> pretty $ show b
-    Mul                  -> pretty $ show b
-    Div                  -> pretty $ show b
-    Neg                  -> "-"
-    If                   -> "if"
-    At                   -> "!"
-    Cons                 -> "::"
-    Equality e           -> pretty e
-    Order o              -> pretty o
-    Map                  -> "map"
-    Fold                 -> "fold"
-    Quant   Forall       -> "forall"
-    Quant   Exists       -> "exists"
-    QuantIn q            -> pretty (Quant q) <> "In"
-    Foreach              -> "foreach"
-    ForeachIn            -> "foreachIn"
-    TypeClass tc         -> pretty tc
-    Polarity pol         -> pretty pol
-    Linearity lin        -> pretty lin
+    Unit   -> "Unit"
+    Bool   -> "Bool"
+    Index  -> "Index"
+    Nat    -> "Nat"
+    Int    -> "Int"
+    Rat    -> "Rat"
+    List   -> "List"
+    Vector -> "Vector"
+    Tensor -> "Tensor"
+
+    Not     -> "notBool"
+    And     -> "andBool"
+    Or      -> "orBool"
+    Implies -> "impliesBool"
+    If      -> "if"
+
+    Neg dom -> "neg" <> pretty dom
+    Add dom -> "add" <> pretty dom
+    Sub dom -> "sub" <> pretty dom
+    Mul dom -> "mul" <> pretty dom
+    Div dom -> "div" <> pretty dom
+
+    FromNat n dom -> "fromNat[" <> pretty n <> "]To" <> pretty dom
+    FromRat dom   -> "fromRatTo" <> pretty dom
+    FromVec n dom -> "fromVec[" <> pretty n <> "]To" <> pretty dom
+
+    Equals dom op -> equalityOpName op <> pretty dom
+    Order  dom op -> orderOpName op <> pretty dom
+
+    Foreach  -> "foreach"
+    Fold dom -> "fold" <> pretty dom
+    Map dom  -> "map" <> pretty dom
+    At       -> "!"
+    Nil      -> "nil"
+    Cons     -> "::"
 
 builtinSymbols :: [(Symbol, Builtin)]
 builtinSymbols = map (first pack)
@@ -245,35 +416,12 @@ builtinSymbols = map (first pack)
   , show Tensor                       |-> Tensor
 
   , show If                           |-> If
-  , show Implies                      |-> Implies
-  , show And                          |-> And
-  , show Or                           |-> Or
-  , show Not                          |-> Not
-  , show (Equality Eq)                |-> Equality Eq
-  , show (Equality Neq)               |-> Equality Neq
-  , show (Order Le)                   |-> Order Le
-  , show (Order Lt)                   |-> Order Lt
-  , show (Order Ge)                   |-> Order Ge
-  , show (Order Gt)                   |-> Order Gt
-  , show Add                          |-> Add
-  , show Mul                          |-> Mul
-  , show Div                          |-> Div
-  , show Sub                          |-> Sub
-  , show Neg                          |-> Neg
   , show At                           |-> At
   , show Cons                         |-> Cons
-  , show (Quant Forall)               |-> Quant Forall
-  , show (Quant Exists)               |-> Quant Exists
-  , show (QuantIn Forall)             |-> QuantIn Forall
-  , show (QuantIn Exists)             |-> QuantIn Exists
-  , show Foreach                      |-> Foreach
-  , show ForeachIn                    |-> ForeachIn
-  , show Map                          |-> Map
-  , show Fold                         |-> Fold
   ]
 
 builtinFromSymbol :: Symbol -> Maybe Builtin
 builtinFromSymbol symbol = lookup symbol builtinSymbols
 
 symbolFromBuiltin :: Builtin -> Symbol
-symbolFromBuiltin builtin = pack $ show builtin
+symbolFromBuiltin builtin = layoutAsText $ pretty builtin

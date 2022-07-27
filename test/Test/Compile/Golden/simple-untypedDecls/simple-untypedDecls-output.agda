@@ -14,10 +14,10 @@ open import Data.Rational as ℚ using (ℚ)
 module simple-untypedDecls-temp-output where
 
 fin3 : ∀ {_x0 : Set} {{_x1 : HasNatLits _x0}} → _x0
-fin3 = 3
+fin3 = _x3 3
 
 intMinus3 : ∀ {_x4 : Set} {_x5 : Set} {{_x6 : HasNatLits _x5}} {{_x7 : HasNeg _x5}} → _x4
-intMinus3 = - 3
+intMinus3 = _x11 (_x10 3)
 
 ratMinus3 : ∀ {_x12 : Set} {_x13 : Set} {{_x14 : HasRatLits _x13}} {{_x15 : HasNeg _x13}} → _x12
-ratMinus3 = - (ℤ.+ 3 ℚ./ 1)
+ratMinus3 = _x19 (_x18 (ℤ.+ 3 ℚ./ 1))

@@ -2,8 +2,14 @@
 
 module Vehicle.Language.AST.Builtin.Core
   ( Quantifier(..)
-  , Order(..)
-  , Equality(..)
+  , EqualityOp(..)
+  , equalityOp
+  , equalityOpName
+  , EqualityDomain(..)
+  , OrderOp(..)
+  , orderOp
+  , orderOpName
+  , OrderDomain(..)
   , isStrict
   , flipStrictness
   , flipOrder
@@ -17,77 +23,129 @@ import Data.Hashable (Hashable (..))
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
--- Equality
+-- EqualityOpOp
 
-data Equality
+data EqualityOp
   = Eq
   | Neq
-  deriving (Eq, Ord, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
-instance NFData   Equality
-instance Hashable Equality
+instance NFData   EqualityOp
+instance Hashable EqualityOp
 
-instance Show Equality where
-  show = \case
+instance Pretty EqualityOp where
+  pretty = \case
     Eq  -> "=="
     Neq -> "!="
 
-instance Pretty Equality where
-  pretty = pretty . show
-
-instance Negatable Equality where
+instance Negatable EqualityOp where
   neg Eq = Neq
   neg Neq = Eq
+
+equalityOpName :: EqualityOp -> Doc a
+equalityOpName = \case
+  Eq  -> "equals"
+  Neq -> "notEquals"
+
+equalityOp :: Eq a => EqualityOp -> (a -> a -> Bool)
+equalityOp Eq  = (==)
+equalityOp Neq = (/=)
+
+data EqualityDomain
+  = EqBool
+  | EqNat
+  | EqIndex
+  | EqInt
+  | EqRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData   EqualityDomain
+instance Hashable EqualityDomain
+
+instance Pretty EqualityDomain where
+  pretty = \case
+    EqBool  -> "Bool"
+    EqNat   -> "Nat"
+    EqIndex -> "Index"
+    EqInt   -> "Int"
+    EqRat   -> "Rat"
 
 --------------------------------------------------------------------------------
 -- Orders
 
-data Order
+data OrderOp
   = Le
   | Lt
   | Ge
   | Gt
-  deriving (Eq, Ord, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
-instance NFData   Order
-instance Hashable Order
+instance NFData   OrderOp
+instance Hashable OrderOp
 
-instance Show Order where
-  show = \case
+instance Pretty OrderOp where
+  pretty = \case
     Le -> "<="
     Lt -> "<"
     Ge -> ">="
     Gt -> ">"
 
-instance Pretty Order where
-  pretty = pretty . show
-
-instance Negatable Order where
+instance Negatable OrderOp where
   neg = \case
     Le -> Gt
     Lt -> Ge
     Ge -> Lt
     Gt -> Le
 
-isStrict :: Order -> Bool
+orderOp :: Ord a => OrderOp -> (a -> a -> Bool)
+orderOp Le = (<=)
+orderOp Lt = (<)
+orderOp Ge = (>=)
+orderOp Gt = (>)
+
+orderOpName :: OrderOp -> Doc a
+orderOpName = \case
+    Le -> "leq"
+    Lt -> "lt"
+    Ge -> "geq"
+    Gt -> "gt"
+
+isStrict :: OrderOp -> Bool
 isStrict order = order == Lt || order == Gt
 
-flipStrictness :: Order -> Order
+flipStrictness :: OrderOp -> OrderOp
 flipStrictness = \case
   Le -> Lt
   Lt -> Le
   Ge -> Gt
   Gt -> Ge
 
-flipOrder :: Order -> Order
+flipOrder :: OrderOp -> OrderOp
 flipOrder = \case
   Le -> Ge
   Lt -> Gt
   Ge -> Le
   Gt -> Lt
 
-chainable :: Order -> Order -> Bool
+chainable :: OrderOp -> OrderOp -> Bool
 chainable e1 e2 = e1 == e2 || e1 == flipStrictness e2
+
+data OrderDomain
+  = OrderNat
+  | OrderIndex
+  | OrderInt
+  | OrderRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData   OrderDomain
+instance Hashable OrderDomain
+
+instance Pretty OrderDomain where
+  pretty = \case
+    OrderNat   -> "Nat"
+    OrderIndex -> "Index"
+    OrderInt   -> "Int"
+    OrderRat   -> "Rat"
 
 --------------------------------------------------------------------------------
 -- Quantifiers
@@ -105,4 +163,6 @@ instance Negatable Quantifier where
   neg Exists = Forall
 
 instance Pretty Quantifier where
-  pretty = pretty . show
+  pretty = \case
+    Forall -> "forall"
+    Exists -> "exists"

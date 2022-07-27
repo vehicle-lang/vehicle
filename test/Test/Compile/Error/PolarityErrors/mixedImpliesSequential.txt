@@ -1,6 +1,6 @@
 Error at Line 3, Columns 1-9: The property 'property' contains a sequence of quantifiers unsupported by Marabou.
-Marabou cannot verify properties that mix both 'Forall' and 'Exists' quantifiers.
-In particular the 'Forall' at Line 4, Columns 12-18 clashes with an 'Exists' derived as follows:
-  1. the 'Forall' is originally located at Line 4, Columns 24-30
-  2. which is turned into an 'Exists' by being on the LHS of the '=>' at Line 4, Columns 49-51
+Marabou cannot verify properties that mix both 'forall' and 'exists' quantifiers.
+In particular the 'forall' at Line 4, Columns 12-18 clashes with an 'exists' derived as follows:
+  1. the 'forall' is originally located at Line 4, Columns 24-30
+  2. which is turned into an 'exists' by being on the LHS of the '=>' at Line 4, Columns 49-51
 Fix: if possible try reformulating 'property' in terms of a single type of quantifier.

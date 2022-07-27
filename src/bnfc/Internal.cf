@@ -23,22 +23,28 @@ position token Rational (digit+ '.' digit+);
 
 -- * Binders
 
-ExplicitBinder. Binder ::= "("  NameToken ":" Expr ")";
-ImplicitBinder. Binder ::= "{"  NameToken ":" Expr "}";
-InstanceBinder. Binder ::= "{{" NameToken ":" Expr "}}";
+RelevantExplicitBinder.   Binder ::= "(" NameToken ":" Expr ")";
+RelevantImplicitBinder.   Binder ::= "{" NameToken ":" Expr "}";
+RelevantInstanceBinder.   Binder ::= "{{" NameToken ":" Expr "}}";
+IrrelevantExplicitBinder. Binder ::= ".(" NameToken ":" Expr ")";
+IrrelevantImplicitBinder. Binder ::= ".{" NameToken ":" Expr "}";
+IrrelevantInstanceBinder. Binder ::= ".{{" NameToken ":" Expr "}}";
 
 -- * Function arguments
 
-ExplicitArg. Arg ::= Expr1;
-ImplicitArg. Arg ::= "{" Expr "}";
-InstanceArg. Arg ::= "{{" Expr "}}";
+RelevantExplicitArg.   Arg ::= Expr1;
+RelevantImplicitArg.   Arg ::= "{" Expr "}";
+RelevantInstanceArg.   Arg ::= "{{" Expr "}}";
+IrrelevantExplicitArg. Arg ::= ".(" Expr ")";
+IrrelevantImplicitArg. Arg ::= ".{" Expr "}";
+IrrelevantInstanceArg. Arg ::= ".{{" Expr "}}";
 
 -- * Literals
 
-LitUnit. Lit ::= "()";
-LitNat.  Lit ::= Natural;
-LitRat.  Lit ::= Rational;
-LitBool. Lit ::= BoolToken;
+UnitLiteral. Lit ::= "()";
+NatLiteral.  Lit ::= Natural;
+RatLiteral.  Lit ::= Rational;
+BoolLiteral. Lit ::= BoolToken;
 
 -- * Core structure.
 
@@ -51,7 +57,7 @@ Type.          Expr1 ::= TypeToken;
 Builtin.       Expr1 ::= BuiltinToken;
 Var.           Expr1 ::= NameToken;
 Literal.       Expr1 ::= Lit;
-LSeq.          Expr1 ::= "[" [Expr1] "]";
+LVec.          Expr1 ::= "[" [Expr1] "]";
 Hole.          Expr1 ::= HoleToken;
 
 coercions Expr 1;

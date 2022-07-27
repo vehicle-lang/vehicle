@@ -16,7 +16,8 @@ import Vehicle.Compile.CoDeBruijnify
 import Vehicle.Compile.AlphaEquivalence
 
 -- | Let-lifts any sub-expressions that matches the provided filter
--- to the highest possible level.
+-- to the highest possible level. Filter takes in the expression
+-- and the quantity found.
 insertLets :: MonadLogger m
            => (CheckedCoDBExpr -> Int -> Bool)
            -> Bool
@@ -89,13 +90,8 @@ letInsert expr = do
 
     LSeqC ann xs -> do
       ((xs', bvms), sms) <- first unzip <$> (unzip <$> traverse letInsert xs)
-      let expr' = (LSeq ann xs', nodeBVM bvms)
+      let expr' = (LVec ann xs', nodeBVM bvms)
       return (expr', nodeSM expr' sms)
-
-    PrimDictC ann e -> do
-      ((e', bvm), sm) <- letInsert e
-      let expr' = (PrimDict ann e', nodeBVM [bvm])
-      return (expr', nodeSM expr' [sm])
 
     AnnC ann e t -> do
       ((e', bvm1), sm1) <- letInsert e
@@ -138,12 +134,12 @@ letInsertBinder :: MonadLetInsert m
                 => CheckedCoDBBinder -> Maybe PositionTree
                 -> m (CheckedCoDBBinder, SubexpressionMap)
 letInsertBinder binder positions = case recCoDB binder of
-  (BinderC ann v (CoDBBinding n _) t) ->
+  (BinderC ann v r (CoDBBinding n _) t) ->
     if visibilityOf (fst binder) /= Explicit
-        then return (first (Binder ann v (CoDBBinding n positions)) t, mempty)
+        then return (first (Binder ann v r (CoDBBinding n positions)) t, mempty)
         else do
           ((t', bvm), sm) <- letInsert t
-          return ((Binder ann v (CoDBBinding n positions) t', bvm), sm)
+          return ((Binder ann v r (CoDBBinding n positions) t', bvm), sm)
 
 letInsertArg :: MonadLetInsert m
              => CheckedCoDBArg
@@ -151,9 +147,9 @@ letInsertArg :: MonadLetInsert m
 letInsertArg arg = if visibilityOf (fst arg) /= Explicit
   then return (arg, mempty)
   else case recCoDB arg of
-    (ArgC ann v e) -> do
+    (ArgC ann r v e) -> do
       ((e', bvm), sm) <- letInsert e
-      return ((Arg ann v e', bvm), sm)
+      return ((Arg ann r v e', bvm), sm)
 
 liftOverBinder :: MonadLetInsert m
                => (CheckedCoDBExpr, SubexpressionMap)

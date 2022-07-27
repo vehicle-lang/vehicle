@@ -70,54 +70,48 @@ parseContainer :: (MonadExpandResources m, Vector.Unbox a)
                -> CheckedExpr
                -> m CheckedExpr
 parseContainer ctx topLevel actualDims elems expectedType = case expectedType of
-  ListType   _ expectedElemType      -> parseList ctx expectedElemType actualDims elems
-  TensorType _ expectedElemType dims -> case dims of
-    SeqExpr _ _ _ expectedDims -> parseTensor ctx actualDims elems expectedElemType expectedDims
-    _                          -> typingError ctx
+  ListType   _ expectedElemType             -> parseList ctx expectedElemType actualDims elems
+  VectorType _ expectedElemType expectedDim -> parseVector ctx actualDims elems expectedElemType expectedDim
   _ -> if topLevel
     then typingError ctx
     else parseElement ctx actualDims elems expectedType
 
 
-parseTensor :: (MonadExpandResources m, Vector.Unbox a)
+parseVector :: (MonadExpandResources m, Vector.Unbox a)
             => ParseContext m a
             -> [Int]
             -> Vector a
             -> CheckedExpr
-            -> [CheckedExpr]
+            -> CheckedExpr
             -> m CheckedExpr
-parseTensor ctx@(decl, _, _, _) actualDims elems expectedElemType expectedDims  =
-  case (expectedDims, actualDims) of
-    ([], _)       -> parseContainer ctx False actualDims elems expectedElemType
-    (_, [])       -> dimensionMismatchError ctx
-    (expectedDim : expectedDims', actualDim : actualDims') -> do
+parseVector ctx [] _ _ _  = dimensionMismatchError ctx
+parseVector ctx@(decl, _, _, _) (actualDim : actualDims) elems expectedElemType expectedDim = do
+  currentDim <- case expectedDim of
+    NatLiteral _ n ->
+      if n == actualDim
+        then return actualDim
+        else dimensionMismatchError ctx
 
-      currentDim <- case expectedDim of
-        NatLiteralExpr _ _ n ->
-          if n == actualDim
-            then return actualDim
-            else dimensionMismatchError ctx
+    FreeVar _ dimIdent -> do
+      implicitParams <- get
+      let newEntry = (decl, Dataset, actualDim)
+      case Map.lookup (nameOf dimIdent) implicitParams of
+        Nothing       -> variableSizeError ctx expectedDim
 
-        FreeVar _ dimIdent -> do
-          implicitParams <- get
-          let newEntry = (decl, Dataset, actualDim)
-          case Map.lookup (nameOf dimIdent) implicitParams of
-            Nothing       -> variableSizeError ctx expectedDim
+        Just Nothing -> do
+          modify (Map.insert (nameOf dimIdent) (Just newEntry))
+          return actualDim
 
-            Just Nothing -> do
-              modify (Map.insert (nameOf dimIdent) (Just newEntry))
-              return actualDim
+        Just (Just existingEntry@(_, _, value)) ->
+          if value == actualDim
+            then return value
+            else throwError $ ImplicitParameterContradictory dimIdent existingEntry newEntry
 
-            Just (Just existingEntry@(_, _, value)) ->
-              if value == actualDim
-                then return value
-                else throwError $ ImplicitParameterContradictory dimIdent existingEntry newEntry
+    _ -> variableSizeError ctx expectedDim
 
-        _ -> variableSizeError ctx expectedDim
-
-      let rows = partitionData currentDim actualDims' elems
-      rowExprs <- traverse (\es -> parseTensor ctx actualDims' es expectedElemType expectedDims' ) rows
-      return $ mkTensor (snd decl) expectedElemType expectedDims rowExprs
+  let rows = partitionData currentDim actualDims elems
+  rowExprs <- traverse (\es -> parseContainer ctx False actualDims es expectedElemType) rows
+  return $ VecLiteral (snd decl) expectedElemType rowExprs
 
 parseList :: (MonadExpandResources m, Vector.Unbox a)
           => ParseContext m a
@@ -155,7 +149,7 @@ doubleElemParser decl value typeInProgram = do
   let p = freshProvenance decl
   case typeInProgram of
     RatType{} ->
-      return $ RatLiteralExpr p typeInProgram (toRational value)
+      return $ RatLiteral p (toRational value)
     _ -> do
       throwError $ DatasetTypeMismatch decl typeInProgram (RatType p)
 
@@ -167,14 +161,14 @@ intElemParser decl value typeInProgram = do
   case typeInProgram of
     ConcreteIndexType _ n ->
       if value >= 0 && value < n
-        then return $ NatLiteralExpr p typeInProgram value
+        then return $ IndexLiteral p n value
         else throwError $ DatasetInvalidIndex decl n value
     NatType{} ->
       if value >= 0
-        then return $ NatLiteralExpr p typeInProgram value
+        then return $ NatLiteral p value
         else throwError $ DatasetInvalidNat decl value
     IntType{} ->
-      return $ IntLiteralExpr p typeInProgram value
+      return $ IntLiteral p value
     _ ->
       throwError $ DatasetTypeMismatch decl typeInProgram (IntType p)
 

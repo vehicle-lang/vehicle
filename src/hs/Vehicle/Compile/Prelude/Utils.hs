@@ -4,6 +4,7 @@ import Data.Functor.Foldable (Recursive(..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (pack)
+import Data.Maybe (mapMaybe)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST
@@ -47,9 +48,9 @@ isListType :: DBExpr -> Bool
 isListType ListType{} = True
 isListType _            = False
 
-isTensorType :: DBExpr -> Bool
-isTensorType TensorType{} = True
-isTensorType _            = False
+isVectorType :: DBExpr -> Bool
+isVectorType VectorType{} = True
+isVectorType _            = False
 
 isIndexType :: DBExpr -> Bool
 isIndexType IndexType{} = True
@@ -81,7 +82,6 @@ freeNamesIn = cata $ \case
   VarF  _ (Bound _)         -> []
   UniverseF{}               -> []
   HoleF{}                   -> []
-  PrimDictF{}               -> []
   MetaF{}                   -> []
   LiteralF{}                -> []
   BuiltinF{}                -> []
@@ -90,7 +90,7 @@ freeNamesIn = cata $ \case
   PiF   _ binder result     -> freeNamesIn (typeOf binder) <> result
   LetF  _ bound binder body -> bound <> freeNamesIn (typeOf binder) <> body
   LamF  _ binder body       -> freeNamesIn (typeOf binder) <> body
-  LSeqF _ xs                -> concat xs
+  LVecF _ xs                -> concat xs
 
 --------------------------------------------------------------------------------
 -- Destruction functions
@@ -122,50 +122,62 @@ getContainerElem (TensorType p t dims) = case getDimensions dims of
 getContainerElem _                     = Nothing
 
 getDimension :: DBExpr -> Maybe Int
-getDimension (NatLiteralExpr _ _ n) = return n
-getDimension _                      = Nothing
+getDimension (NatLiteral _ n) = return n
+getDimension _            = Nothing
 
 getDimensions :: DBExpr -> Maybe [Int]
-getDimensions (SeqExpr _ _ _ es) = traverse getDimension es
-getDimensions _                  = Nothing
+getDimensions (NilExpr _ _)          = Just []
+getDimensions (ConsExpr _ _ [x, xs]) = do
+  d  <- getDimension  (argExpr x)
+  ds <- getDimensions (argExpr xs)
+  return $ d : ds
+getDimensions _                      = Nothing
 
 getExplicitArg :: Arg binder var -> Maybe (Expr binder var)
 getExplicitArg (ExplicitArg _ arg) = Just arg
 getExplicitArg _                   = Nothing
 
-getExplicitArgs :: Traversable t => t (Arg binder var) -> Maybe (t (Expr binder var))
-getExplicitArgs = traverse getExplicitArg
+getConcreteList :: Expr binder var -> [Expr binder var]
+getConcreteList = \case
+  NilExpr{}            -> []
+  AppConsExpr _ _ x xs -> x : getConcreteList xs
+  _                    -> developerError "Malformed concrete list"
 
 filterOutNonExplicitArgs :: NonEmpty (Arg binder var) -> [Expr binder var]
-filterOutNonExplicitArgs args = maybe [] NonEmpty.toList $ getExplicitArgs args
+filterOutNonExplicitArgs args = mapMaybe getExplicitArg (NonEmpty.toList args)
+
+findInstanceArg :: [Arg binder var] -> (Expr binder var, [Arg binder var])
+findInstanceArg (InstanceArg _ inst : xs) = (inst, xs)
+findInstanceArg (_ : xs) = findInstanceArg xs
+findInstanceArg []       = developerError "Malformed type class operation"
 
 --------------------------------------------------------------------------------
 -- Construction functions
 
 -- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3
-mkNameWithIndices :: Symbol -> [Int] -> Symbol
-mkNameWithIndices n indices = mconcat (n : [pack (show index) | index <- indices])
+mkNameWithIndices :: Symbol -> Int -> Symbol
+mkNameWithIndices n index = n <> pack (show index)
+  --mconcat (n : [pack (show index) | index <- indices])
 
 mkHole :: Provenance -> Symbol -> Expr binder var
 mkHole ann name = Hole ann ("_" <> name)
 
 mkDoubleExpr :: Provenance -> Double -> DBExpr
-mkDoubleExpr ann v = LitRat ann (toRational v)
+mkDoubleExpr ann v = RatLiteral ann (toRational v)
 
 mkIndexType :: Provenance -> Int -> DBExpr
-mkIndexType ann n = IndexType ann (NatLiteralExpr ann (NatType ann) n)
+mkIndexType ann n = IndexType ann (NatLiteral ann n)
 
 mkIntExpr :: Provenance -> Int -> DBExpr
 mkIntExpr ann v
-  | v >= 0    = LitNat ann v
-  | otherwise = LitInt ann v
+  | v >= 0    = NatLiteral ann v
+  | otherwise = IntLiteral ann v
 
 mkTensorDims :: Provenance
              -> [Int]
              -> DBExpr
 mkTensorDims ann dims =
-  let dimExprs = fmap (NatLiteralExpr ann (NatType ann)) dims in
-  mkList ann (NatType ann) dimExprs
+  mkList ann (NatType ann) (fmap (NatLiteral ann) dims)
 
 mkTensorType :: Provenance
              -> DBExpr
@@ -176,51 +188,9 @@ mkTensorType ann tElem dims =
   let dimList = mkList ann (NatType ann) dims in
   App ann (Builtin ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
 
-mkQuantifierSeq :: Quantifier
-                -> Provenance
-                -> [DBBinding]
-                -> DBExpr
-                -> DBExpr
-                -> DBExpr
-mkQuantifierSeq q ann names t body =
-  foldl (\e name -> QuantifierExpr q ann (ExplicitBinder ann name t) e) body names
-
 mkList :: Provenance
-       -> DBExpr
-       -> [DBExpr]
-       -> DBExpr
-mkList ann elemType = SeqExpr ann elemType (ListType ann elemType)
-
-mkTensor :: Provenance
-         -> DBExpr
-         -> [DBExpr]
-         -> [DBExpr]
-         -> DBExpr
-mkTensor ann tBaseElem dims =
-  let elemType   = mkTensorType ann tBaseElem (tail dims) in
-  let tensorType = mkTensorType ann tBaseElem dims in
-  SeqExpr ann elemType tensorType
-
-mkBigAnd :: Provenance
-         -> DBExpr
-         -> DBExpr
-         -> DBExpr
-mkBigAnd ann containerType container =
-  let (unit, opExpr) = (True, AndExpr ann []) in
-  FoldExpr ann (BoolType ann) containerType (BoolType ann) $ fmap (ExplicitArg ann)
-    [ opExpr
-    , BoolLiteralExpr ann unit
-    , container
-    ]
-
-mkBigOr :: Provenance
-        -> DBExpr
-        -> DBExpr
-        -> DBExpr
-mkBigOr ann containerType container =
-  let (unit, opExpr) = (False, OrExpr ann []) in
-  FoldExpr ann (BoolType ann) containerType (BoolType ann) $ fmap (ExplicitArg ann)
-    [ opExpr
-    , BoolLiteralExpr ann unit
-    , container
-    ]
+       -> Expr var binder
+       -> [Expr var binder]
+       -> Expr var binder
+mkList p elemType = foldr cons (NilExpr p elemType)
+  where cons x xs = ConsExpr p elemType [ExplicitArg p x, ExplicitArg p xs]

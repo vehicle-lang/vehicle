@@ -59,8 +59,8 @@ data IfTestSpec = IfTestSpec String Text Text
 liftAndEliminateIfsTest :: MonadTest m => IfTestSpec -> m TestTree
 liftAndEliminateIfsTest (IfTestSpec testName input expected) =
   unitTestCase testName $ do
-    inputExpr    <- typeCheckExpr input
-    expectedExpr <- typeCheckExpr expected
+    inputExpr    <- normTypeClasses =<< typeCheckExpr input
+    expectedExpr <- normTypeClasses =<< typeCheckExpr expected
     result       <- eliminateIfs inputExpr
 
     -- Need to re-typecheck the result as lifting may put a `Hole` for
@@ -71,9 +71,10 @@ liftAndEliminateIfsTest (IfTestSpec testName input expected) =
           "Expected the result of if elimination on" <> line <>
             indent 2 (squotes (pretty input)) <> line <>
           "to be alpha equivalent to" <>  line <>
-            indent 2 (squotes (prettyFriendly expectedExpr)) <> line <>
+            indent 2 (squotes (prettyVerbose expectedExpr)) <> line <>
           "however the result was" <> line <>
-            indent 2 (squotes (prettyFriendly result))
+            indent 2 (squotes (prettyVerbose result))
+
 
     return $ assertBool errorMessage $
       alphaEq expectedExpr typedResult

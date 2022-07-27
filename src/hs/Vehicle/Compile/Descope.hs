@@ -117,8 +117,7 @@ instance Descope Expr where
     Var      ann v        -> Var ann <$> f ann v
     Ann      ann e1 t     -> Ann ann <$> descope f e1 <*> descope f t
     App      ann fun args -> App ann <$> descope f fun <*> traverse (descope f) args
-    LSeq     ann es       -> LSeq ann <$> traverse (descope f) es
-    PrimDict ann tc       -> PrimDict ann <$> descope f tc
+    LVec     ann es       -> LVec ann <$> traverse (descope f) es
 
     Let ann bound binder body -> do
       bound'      <- descope f bound

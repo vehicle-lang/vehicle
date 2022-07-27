@@ -36,7 +36,7 @@ solveForUserVariables numberOfUserVars (CLSTProblem varNames assertions) =
     -- Try to solve for user variables using Gaussian elimination.
     (solvedEqualityExprs, unusedEqualityExprs) <-
       gaussianElimination varNames (map assertionExpr equalitiesWithUserVars) numberOfUserVars
-    let unusedEqualities = fmap (Assertion Equals) unusedEqualityExprs
+    let unusedEqualities = fmap (Assertion Equal) unusedEqualityExprs
     let gaussianElimSolutions = fmap (second RecEquality) solvedEqualityExprs
 
     -- Eliminate the solved user variables in the inequalities

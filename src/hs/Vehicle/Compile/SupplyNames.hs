@@ -82,8 +82,7 @@ instance SupplyNames Expr where
     Var      ann v        -> return $ Var ann v
     Ann      ann e1 t     -> Ann ann <$> supplyNames f e1 <*> supplyNames f t
     App      ann fun args -> App ann <$> supplyNames f fun <*> traverse (supplyNames f) args
-    LSeq     ann es       -> LSeq ann <$> traverse (supplyNames f) es
-    PrimDict ann tc       -> PrimDict ann <$> supplyNames f tc
+    LVec     ann es       -> LVec ann <$> traverse (supplyNames f) es
     Meta     ann i        -> return $ Meta ann i
 
     Let ann bound binder body -> Let ann <$> supplyNames f bound <*> supplyNames f binder <*> supplyNames f body
@@ -91,10 +90,10 @@ instance SupplyNames Expr where
     Pi  ann binder body       -> Pi  ann <$> supplyNames f binder <*> supplyNames f body
 
 instance SupplyNames Binder where
-  supplyNames f (Binder ann v n e) = do
+  supplyNames f (Binder p v r n e) = do
     n' <- f n
     e' <- supplyNames f e
-    return $ Binder ann v n' e'
+    return $ Binder p v r n' e'
 
 instance SupplyNames Arg where
   supplyNames f = traverseArgExpr (supplyNames f)

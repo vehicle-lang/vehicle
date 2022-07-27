@@ -8,9 +8,9 @@ import Vehicle.Compile.Type.VariableContext
 -- Constraint contexts
 
 data ConstraintContext = ConstraintContext
-  { _prov            :: Provenance       -- The origin of the constraint
-  , blockedBy        :: BlockingMetas    -- The set of metas blocking progress on this constraint, if known
-  , varContext       :: VariableCtx      -- The current declaration context (needed for normalisation)
+  { _prov            :: Provenance        -- The origin of the constraint
+  , blockedBy        :: BlockingMetas     -- The set of metas blocking progress on this constraint, if known
+  , varContext       :: TypingVariableCtx -- The current declaration context (needed for normalisation)
   } deriving (Show)
 
 instance HasProvenance ConstraintContext where
@@ -56,7 +56,7 @@ constraintContext :: Constraint -> ConstraintContext
 constraintContext (UC ctx _) = ctx
 constraintContext (TC ctx _) = ctx
 
-variableContext :: Constraint -> VariableCtx
+variableContext :: Constraint -> TypingVariableCtx
 variableContext = varContext . constraintContext
 
 declContext :: Constraint -> TypingDeclCtx

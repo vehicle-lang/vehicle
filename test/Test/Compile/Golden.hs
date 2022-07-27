@@ -73,13 +73,13 @@ goldenTests = testGroup "GoldenTests" <$>
       , testLocation   = Tests
       , testTargets    = [AgdaBackend, MarabouBackend]
       }
-
+{-
     , testSpec
       { testName       = "bounded"
       , testLocation   = Tests
       , testTargets    = [LossFunction]
       }
-
+-}
     -- Simple tests of Vehicle syntax
     , testSpec
       { testName       = "simple-quantifier"

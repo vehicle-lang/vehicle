@@ -1,4 +1,4 @@
-module Vehicle.Compile.Type.TypeClass.Defaults
+module Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
   ( generateConstraintUsingDefaults
   ) where
 
@@ -75,7 +75,7 @@ generateConstraintUsingDefaults constraints = do
         "using default" <+> pretty m <+> "=" <+> prettySimple solution <+>
         "         " <> parens ("from" <+> pretty tc)
       let newConstraint = UC ctx (Unify (metaExpr, solution))
-      return $ Progress [newConstraint] mempty
+      return $ Progress $ Resolution [newConstraint] mempty
 
 findStrongestConstraint :: MonadCompile m
                         => [Constraint]
@@ -126,21 +126,21 @@ familyOf = \case
   HasMul             -> return $ NumericFamily NatT True  0
   HasDiv             -> return $ NumericFamily RatT True  0
   HasNeg             -> return $ NumericFamily IntT True  0
-  (HasNatLitsUpTo n) -> return $ NumericFamily NatT False n
-  HasIntLits         -> return $ NumericFamily IntT False 0
+  (HasNatLits n)     -> return $ NumericFamily NatT False n
   HasRatLits         -> return $ NumericFamily RatT False 0
+  HasVecLits{}       -> return $ ContainerFamily True
   HasFold            -> return $ ContainerFamily False
   HasQuantifierIn{}  -> return $ ContainerFamily False
-  HasConLitsOfSize{} -> return $ ContainerFamily True
 
-  MaxLinearity                        -> auxiliaryTCError
-  MulLinearity                        -> auxiliaryTCError
-  NegPolarity{}                       -> auxiliaryTCError
-  AddPolarity{}                       -> auxiliaryTCError
-  EqPolarity{}                        -> auxiliaryTCError
-  ImpliesPolarity{}                   -> auxiliaryTCError
-  MaxPolarity{}                       -> auxiliaryTCError
-  TypesEqualModAuxiliaryAnnotations{} -> auxiliaryTCError
+  MaxLinearity            -> auxiliaryTCError
+  MulLinearity            -> auxiliaryTCError
+  NegPolarity{}           -> auxiliaryTCError
+  AddPolarity{}           -> auxiliaryTCError
+  EqPolarity{}            -> auxiliaryTCError
+  ImpliesPolarity{}       -> auxiliaryTCError
+  MaxPolarity{}           -> auxiliaryTCError
+  AlmostEqualConstraint{} -> auxiliaryTCError
+  NatInDomainConstraint{} -> auxiliaryTCError
 
 defaultSolution :: MonadMeta m
                 => Provenance
@@ -160,21 +160,21 @@ defaultSolution ann ctx = \case
   HasMul             -> return $ NatType ann
   HasDiv             -> createDefaultRatType ann
   HasNeg             -> return $ IntType ann
-  (HasNatLitsUpTo n) -> return $ mkIndexType ann (n + 1)
-  HasIntLits         -> return $ IntType ann
+  HasNatLits n       -> return $ mkIndexType ann (n + 1)
   HasRatLits         -> createDefaultRatType ann
+  HasVecLits{}       -> createDefaultListType ann ctx
   HasFold            -> createDefaultListType ann ctx
   HasQuantifierIn{}  -> createDefaultListType ann ctx
-  HasConLitsOfSize{} -> createDefaultListType ann ctx
 
-  MaxLinearity                        -> auxiliaryTCError
-  MulLinearity                        -> auxiliaryTCError
-  NegPolarity{}                       -> auxiliaryTCError
-  AddPolarity{}                       -> auxiliaryTCError
-  EqPolarity{}                        -> auxiliaryTCError
-  ImpliesPolarity{}                   -> auxiliaryTCError
-  MaxPolarity{}                       -> auxiliaryTCError
-  TypesEqualModAuxiliaryAnnotations{} -> auxiliaryTCError
+  MaxLinearity            -> auxiliaryTCError
+  MulLinearity            -> auxiliaryTCError
+  NegPolarity{}           -> auxiliaryTCError
+  AddPolarity{}           -> auxiliaryTCError
+  EqPolarity{}            -> auxiliaryTCError
+  ImpliesPolarity{}       -> auxiliaryTCError
+  MaxPolarity{}           -> auxiliaryTCError
+  AlmostEqualConstraint{} -> auxiliaryTCError
+  NatInDomainConstraint{} -> auxiliaryTCError
 
 createDefaultListType :: MonadMeta m => Provenance -> TypingBoundCtx -> m CheckedExpr
 createDefaultListType p ctx = do
@@ -196,18 +196,17 @@ getCandidatesFromConstraint :: MonadCompile m => Ctx -> TypeClassConstraint -> m
 getCandidatesFromConstraint ctx (_ `Has` e) = do
   let getCandidate = getCandidatesFromArgs ctx
   return $ case e of
-    HasEqExpr            _ eq  tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] (HasEq eq)
-    HasOrdExpr           _ ord tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] (HasOrd ord)
-    HasNegExpr           _     tArg        _tRes -> getCandidate [tArg]         HasNeg
-    HasAddExpr           _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasAdd
-    HasSubExpr           _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasSub
-    HasMulExpr           _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasMul
-    HasDivExpr           _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasDiv
-    HasFoldExpr          _   _ t                 -> getCandidate [t] HasFold
-    HasNatLitsUpToExpr   _ n   t                 -> getCandidate [t] (HasNatLitsUpTo n)
-    HasIntLitsExpr       _     t                 -> getCandidate [t] HasIntLits
-    HasRatLitsExpr       _     t                 -> getCandidate [t] HasRatLits
-    HasConLitsOfSizeExpr _ n _ t                 -> getCandidate [t] (HasConLitsOfSize n)
+    HasEqExpr      _ eq  tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] (HasEq eq)
+    HasOrdExpr     _ ord tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] (HasOrd ord)
+    HasNegExpr     _     tArg        _tRes -> getCandidate [tArg]         HasNeg
+    HasAddExpr     _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasAdd
+    HasSubExpr     _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasSub
+    HasMulExpr     _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasMul
+    HasDivExpr     _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasDiv
+    HasFoldExpr    _   _ t                 -> getCandidate [t] HasFold
+    HasNatLitsExpr _ n   t                 -> getCandidate [t] (HasNatLits n)
+    HasRatLitsExpr _     t                 -> getCandidate [t] HasRatLits
+    HasVecLitsExpr _ n _ t                 -> getCandidate [t] (HasVecLits n)
     _                                            -> []
 
 getCandidatesFromArgs :: Ctx -> [CheckedExpr] -> TypeClass -> [Candidate]

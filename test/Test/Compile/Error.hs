@@ -91,12 +91,6 @@ networkErrors = failTestGroup "NetworkErrors"
     , testLocation = Tests
     , testTargets  = [MarabouBackend]
     }
-
-  , testSpec
-    { testName     = "multidimInputTensor"
-    , testLocation = Tests
-    , testTargets  = [MarabouBackend]
-    }
   ]
 
 datasetErrors :: MonadTest m => m TestTree
@@ -230,6 +224,13 @@ polarityErrors = failTestGroup "PolarityErrors"
 linearityErrors :: MonadTest m => m TestTree
 linearityErrors = failTestGroup "LinearityErrors"
   [ testSpec
+      { testName       = "quadraticInput"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      , testParameters = []
+      }
+
+  , testSpec
       { testName       = "quadraticFunInput"
       , testLocation   = Tests
       , testTargets    = [MarabouBackend]

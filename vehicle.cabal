@@ -20,7 +20,7 @@ source-repository head
   location: https://github.com/wecankokke/vehicle
 
 common common-base
-  build-depends:      base >=4.10 && <5
+  build-depends:      base >=4.15 && <5
                     , text >=1.2 && <2
   default-language:   Haskell2010
   default-extensions: ImportQualifiedPost
@@ -60,7 +60,8 @@ library
                       , Vehicle.Language.DSL
                       , Vehicle.Language.Print
                       , Vehicle.Language.Sugar
-                      , Vehicle.Language.Postulates
+                      , Vehicle.Language.StandardLibrary
+                      , Vehicle.Language.StandardLibrary.Names
 
                       , Vehicle.Compile
                       , Vehicle.Compile.Prelude
@@ -78,6 +79,7 @@ library
                       , Vehicle.Compile.Linearity.GaussianElimination
                       , Vehicle.Compile.Linearity.FourierMotzkinElimination
                       , Vehicle.Compile.Normalise
+                      , Vehicle.Compile.Normalise.Core
                       , Vehicle.Compile.Normalise.IfElimination
                       , Vehicle.Compile.Normalise.QuantifierLifting
                       , Vehicle.Compile.Normalise.DNF
@@ -124,17 +126,22 @@ library
                       , Vehicle.Language.AST.Visibility
                       , Vehicle.Language.AST.Position
                       , Vehicle.Language.AST.Provenance
+                      , Vehicle.Language.AST.Relevance
 
+                      , Vehicle.Compile.Type.Auxiliary
+                      , Vehicle.Compile.Type.Irrelevance
                       , Vehicle.Compile.Type.Bidirectional
                       , Vehicle.Compile.Type.Constraint
+                      , Vehicle.Compile.Type.ConstraintSolver.Core
+                      , Vehicle.Compile.Type.ConstraintSolver.Linearity
+                      , Vehicle.Compile.Type.ConstraintSolver.Polarity
+                      , Vehicle.Compile.Type.ConstraintSolver.TypeClass
+                      , Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
+                      , Vehicle.Compile.Type.ConstraintSolver.Unification
                       , Vehicle.Compile.Type.Meta
                       , Vehicle.Compile.Type.MetaSet
                       , Vehicle.Compile.Type.MetaMap
-                      , Vehicle.Compile.Type.TypeClass
-                      , Vehicle.Compile.Type.TypeClass.Defaults
-                      , Vehicle.Compile.Type.Auxiliary
                       , Vehicle.Compile.Type.Generalise
-                      , Vehicle.Compile.Type.Unify
                       , Vehicle.Compile.Type.Resource
                       , Vehicle.Compile.Type.WeakHeadNormalForm
                       , Vehicle.Compile.Type.VariableContext
@@ -144,6 +151,7 @@ library
                       , Vehicle.Compile.QuantifierAnalysis
                       , Vehicle.Compile.Prelude.Patterns
                       , Vehicle.Compile.Prelude.Utils
+                      , Vehicle.Compile.Prelude.Contexts
 
                       , Vehicle.Backend.Agda.Compile
                       , Vehicle.Backend.Agda.Interact
@@ -212,6 +220,7 @@ library
                       , DeriveTraversable
                       , DeriveGeneric
                       , FunctionalDependencies
+                      , ViewPatterns
 
 executable vehicle
   import:             common-base
@@ -256,6 +265,7 @@ test-suite vehicle-test
                     , RecordWildCards
                     , ConstraintKinds
                     , FlexibleContexts
+                    , LambdaCase
   build-depends:      filepath >=1.4 && <2
                     , mtl      >=2.2 && <3
                     , hashable

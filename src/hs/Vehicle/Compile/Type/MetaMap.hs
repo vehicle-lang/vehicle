@@ -5,6 +5,7 @@ module Vehicle.Compile.Type.MetaMap
   , singleton
   , lookup
   , map
+  , insert
   , insertWith
   , keys
   , member
@@ -36,6 +37,9 @@ lookup m s = IntMap.lookup (coerce m) (coerce s)
 
 map :: (a -> a) -> MetaMap a -> MetaMap a
 map f = coerce. IntMap.map f . coerce
+
+insert :: Meta -> a -> MetaMap a -> MetaMap a
+insert m e s = coerce (IntMap.insert (coerce m) e (coerce s))
 
 insertWith :: (a -> a -> a)
            -> Meta

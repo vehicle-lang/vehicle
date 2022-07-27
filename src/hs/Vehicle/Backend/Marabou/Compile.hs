@@ -17,20 +17,19 @@ import Vehicle.Backend.Prelude
 import Vehicle.Backend.Marabou.Core
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Linearity
+import Vehicle.Compile.Normalise
 
 --------------------------------------------------------------------------------
 -- Compatibility
 
-checkCompatibility :: Identifier -> Provenance -> PropertyInfo -> Maybe CompileError
-checkCompatibility ident declProv (PropertyInfo linearity polarity) =
-  case linearity of
-    NonLinear pp1 pp2 -> Just $
-      UnsupportedNonLinearConstraint MarabouBackend ident declProv pp1 pp2
-    _ -> case polarity of
-      MixedSequential q p pp2 -> Just $
-        UnsupportedSequentialQuantifiers MarabouBackend ident declProv q p pp2
-      _                         -> Nothing
-
+checkCompatibility :: DeclProvenance -> PropertyInfo -> Maybe CompileError
+checkCompatibility decl (PropertyInfo linearity polarity) =
+  case (linearity, polarity) of
+    (NonLinear pp1 pp2, _)       ->
+      Just $ UnsupportedNonLinearConstraint MarabouBackend decl pp1 pp2
+    (_, MixedSequential q p pp2) ->
+      Just $ UnsupportedSequentialQuantifiers MarabouBackend decl q p pp2
+    _ -> Nothing
 
 --------------------------------------------------------------------------------
 -- Compilation to Marabou
@@ -38,7 +37,8 @@ checkCompatibility ident declProv (PropertyInfo linearity polarity) =
 -- | Compiles the provided program to Marabou queries.
 compile :: MonadCompile m => NetworkContext -> CheckedProg -> m [(Symbol, MarabouProperty)]
 compile networkCtx prog = logCompilerPass MinDetail "compilation to Marabou" $ do
-  results <- compileProg networkCtx prog
+  normProg <- normalise prog fullNormalisationOptions
+  results <- compileProg networkCtx normProg
   if null results then
     throwError NoPropertiesFound
   else
@@ -64,7 +64,7 @@ compileDecl networkCtx d = case d of
       -- of it should have been normalised out by now.
       Nothing -> return Nothing
       -- Otherwise check the property information.
-      Just propertyInfo -> case checkCompatibility ident p propertyInfo of
+      Just propertyInfo -> case checkCompatibility (ident, p) propertyInfo of
         Just err -> throwError err
         Nothing -> do
           property <- compileProperty ident networkCtx expr
@@ -75,7 +75,7 @@ compileProperty :: MonadCompile m
                 -> NetworkContext
                 -> CheckedExpr
                 -> m MarabouProperty
-compileProperty ident networkCtx (SeqExpr _ _ _ es) =
+compileProperty ident networkCtx (VecLiteral _ _ es) =
   MultiProperty <$> traverse (compileProperty ident networkCtx) es
 compileProperty ident networkCtx expr =
   logCompilerPass MinDetail ("property" <+> squotes (pretty ident)) $ do
@@ -151,7 +151,7 @@ compileAssertion varNames (Assertion rel linearExpr) = do
   return $ compiledLHS <+> compiledRel <+> compiledRHS
   where
     compileRel :: Bool -> Relation -> Doc a
-    compileRel _     Equals            = "="
+    compileRel _     Equal             = "="
     compileRel False LessThanOrEqualTo = "<="
     compileRel True  LessThanOrEqualTo = ">="
     -- Suboptimal. Marabou doesn't currently support strict inequalities.

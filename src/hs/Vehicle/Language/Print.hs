@@ -30,7 +30,7 @@ import Vehicle.Internal.Abs qualified as BC
 import Vehicle.External.Abs qualified as BF
 
 import Vehicle.Prelude
-import Vehicle.Language.AST
+-- import Vehicle.Language.AST
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.Delaborate.Internal as Internal
 import Vehicle.Compile.Delaborate.External as External
@@ -39,7 +39,7 @@ import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.MetaMap (MetaMap(..))
 import Vehicle.Compile.CoDeBruijnify (ConvertCodebruijn(..))
-import Vehicle.Compile.Prelude
+import Vehicle.Compile.Prelude hiding (MapList)
 
 
 -- The old methods for compatibility:

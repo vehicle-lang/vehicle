@@ -14,6 +14,7 @@ open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
+open import Data.Vec.Functional
 
 module windController-temp-output where
 
@@ -21,10 +22,10 @@ InputVector : Set
 InputVector = Tensor ℚ (2 ∷ [])
 
 currentSensor : ∀ {_x0 : Set} {{_x1 : HasNatLits _x0}} → _x0
-currentSensor = 0
+currentSensor = _x3 0
 
 previousSensor : ∀ {_x4 : Set} {{_x5 : HasNatLits _x4}} → _x4
-previousSensor = 1
+previousSensor = _x7 1
 
 postulate controller : InputVector → Tensor ℚ (1 ∷ [])
 
@@ -35,7 +36,7 @@ SafeOutput : InputVector → Set
 SafeOutput x = ℚ.- (ℤ.+ 5 ℚ./ 4) ℚ.< (controller x (# 0) ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* x currentSensor) ℚ.- x previousSensor × (controller x (# 0) ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* x currentSensor) ℚ.- x previousSensor ℚ.< ℤ.+ 5 ℚ./ 4
 
 abstract
-  safe : ∀ (x : Tensor ℚ (2 ∷ [])) → SafeInput x → SafeOutput x
+  safe : ∀ (x : Vector ℚ 2) → SafeInput x → SafeOutput x
   safe = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

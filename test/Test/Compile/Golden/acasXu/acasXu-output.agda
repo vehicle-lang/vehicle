@@ -8,53 +8,52 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Sum
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.List
+open import Data.Vec.Functional
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 
 module acasXu-temp-output where
 
 InputVector : Set
-InputVector = Tensor ℚ (5 ∷ [])
+InputVector = Vector ℚ 5
 
 distanceToIntruder : ∀ {_x0 : Set} {{_x1 : HasNatLits _x0}} → _x0
-distanceToIntruder = 0
+distanceToIntruder = _x3 0
 
 angleToIntruder : ∀ {_x4 : Set} {{_x5 : HasNatLits _x4}} → _x4
-angleToIntruder = 1
+angleToIntruder = _x7 1
 
 intruderHeading : ∀ {_x8 : Set} {{_x9 : HasNatLits _x8}} → _x8
-intruderHeading = 2
+intruderHeading = _x11 2
 
 speed : ∀ {_x12 : Set} {{_x13 : HasNatLits _x12}} → _x12
-speed = 3
+speed = _x15 3
 
 intruderSpeed : ∀ {_x16 : Set} {{_x17 : HasNatLits _x16}} → _x16
-intruderSpeed = 4
+intruderSpeed = _x19 4
 
 OutputVector : Set
-OutputVector = Tensor ℚ (5 ∷ [])
+OutputVector = Vector ℚ 5
 
 clearOfConflict : ∀ {_x20 : Set} {{_x21 : HasNatLits _x20}} → _x20
-clearOfConflict = 0
+clearOfConflict = _x23 0
 
 weakLeft : ∀ {_x24 : Set} {{_x25 : HasNatLits _x24}} → _x24
-weakLeft = 1
+weakLeft = _x27 1
 
 weakRight : ∀ {_x28 : Set} {{_x29 : HasNatLits _x28}} → _x28
-weakRight = 2
+weakRight = _x31 2
 
 strongLeft : ∀ {_x32 : Set} {{_x33 : HasNatLits _x32}} → _x32
-strongLeft = 3
+strongLeft = _x35 3
 
 strongRight : ∀ {_x36 : Set} {{_x37 : HasNatLits _x36}} → _x36
-strongRight = 4
+strongRight = _x39 4
 
 postulate acasXu : InputVector → OutputVector
 
@@ -68,13 +67,13 @@ IntruderDistantAndSlower : InputVector → Set
 IntruderDistantAndSlower x = x distanceToIntruder ℚ.≥ ℤ.+ 55947691 ℚ./ 1000 × (x speed ℚ.≥ ℤ.+ 1145 ℚ./ 1 × x intruderSpeed ℚ.≤ ℤ.+ 60 ℚ./ 1)
 
 abstract
-  property1 : ∀ (x : Tensor ℚ (5 ∷ [])) → IntruderDistantAndSlower x → acasXu x clearOfConflict ℚ.≤ ℤ.+ 1500 ℚ./ 1
+  property1 : ∀ (x : Vector ℚ 5) → IntruderDistantAndSlower x → acasXu x clearOfConflict ℚ.≤ ℤ.+ 1500 ℚ./ 1
   property1 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
 
 abstract
-  property2 : ∀ (x : Tensor ℚ (5 ∷ [])) → IntruderDistantAndSlower x → ∃ λ (j : Fin 5) → acasXu x j ℚ.> acasXu x clearOfConflict
+  property2 : ∀ (x : Vector ℚ 5) → IntruderDistantAndSlower x → ∃ λ (j : Fin 5) → acasXu x j ℚ.> acasXu x clearOfConflict
   property2 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
@@ -86,7 +85,7 @@ MovingTowards : InputVector → Set
 MovingTowards x = x intruderHeading ℚ.≥ ℤ.+ 31 ℚ./ 10 × (x speed ℚ.≥ ℤ.+ 980 ℚ./ 1 × x intruderSpeed ℚ.≥ ℤ.+ 960 ℚ./ 1)
 
 abstract
-  property3 : ∀ (x : Tensor ℚ (5 ∷ [])) → DirectlyAhead x × MovingTowards x → ¬ Advises clearOfConflict x
+  property3 : ∀ (x : Vector ℚ 5) → DirectlyAhead x × MovingTowards x → ¬ Advises clearOfConflict x
   property3 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
@@ -95,7 +94,7 @@ MovingAway : InputVector → Set
 MovingAway x = x intruderHeading ≡ ℤ.+ 0 ℚ./ 1 × (ℤ.+ 1000 ℚ./ 1 ℚ.≤ x speed × (ℤ.+ 700 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 800 ℚ./ 1))
 
 abstract
-  property4 : ∀ (x : Tensor ℚ (5 ∷ [])) → DirectlyAhead x × MovingAway x → ¬ Advises clearOfConflict x
+  property4 : ∀ (x : Vector ℚ 5) → DirectlyAhead x × MovingAway x → ¬ Advises clearOfConflict x
   property4 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
@@ -104,7 +103,7 @@ NearAndApproachingFromLeft : InputVector → Set
 NearAndApproachingFromLeft x = (ℤ.+ 250 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 400 ℚ./ 1) × ((ℤ.+ 1 ℚ./ 5 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℤ.+ 2 ℚ./ 5) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 400 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 400 ℚ./ 1))))
 
 abstract
-  property5 : ∀ (x : Tensor ℚ (5 ∷ [])) → NearAndApproachingFromLeft x → Advises strongRight x
+  property5 : ∀ (x : Vector ℚ 5) → NearAndApproachingFromLeft x → Advises strongRight x
   property5 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
@@ -113,7 +112,7 @@ IntruderFarAway : InputVector → Set
 IntruderFarAway x = (ℤ.+ 12000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 62000 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 10) ⊎ ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
 abstract
-  property6 : ∀ (x : Tensor ℚ (5 ∷ [])) → IntruderFarAway x → Advises clearOfConflict x
+  property6 : ∀ (x : Vector ℚ 5) → IntruderFarAway x → Advises clearOfConflict x
   property6 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
@@ -122,7 +121,7 @@ LargeVerticalSeparation : InputVector → Set
 LargeVerticalSeparation x = (ℤ.+ 0 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ pi) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
 abstract
-  property7 : ∀ (x : Tensor ℚ (5 ∷ [])) → LargeVerticalSeparation x → ¬ Advises strongLeft x × ¬ Advises strongRight x
+  property7 : ∀ (x : Vector ℚ 5) → LargeVerticalSeparation x → ¬ Advises strongLeft x × ¬ Advises strongRight x
   property7 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
@@ -131,7 +130,7 @@ LargeVerticalSeparationAndPreviousWeakLeft : InputVector → Set
 LargeVerticalSeparationAndPreviousWeakLeft x = (ℤ.+ 0 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 3 ℚ./ 4) ℚ.* pi) × ((ℚ.- (ℤ.+ 1 ℚ./ 10) ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℤ.+ 1 ℚ./ 10) × ((ℤ.+ 600 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
 abstract
-  property8 : ∀ (x : Tensor ℚ (5 ∷ [])) → LargeVerticalSeparationAndPreviousWeakLeft x → Advises clearOfConflict x ⊎ Advises weakLeft x
+  property8 : ∀ (x : Vector ℚ 5) → LargeVerticalSeparationAndPreviousWeakLeft x → Advises clearOfConflict x ⊎ Advises weakLeft x
   property8 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
@@ -140,7 +139,7 @@ PreviousWeakRightAndNearbyIntruder : InputVector → Set
 PreviousWeakRightAndNearbyIntruder x = (ℤ.+ 2000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 7000 ℚ./ 1) × ((ℚ.- (ℤ.+ 2 ℚ./ 5) ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 50)) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 150 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 150 ℚ./ 1))))
 
 abstract
-  property9 : ∀ (x : Tensor ℚ (5 ∷ [])) → PreviousWeakRightAndNearbyIntruder x → Advises strongLeft x
+  property9 : ∀ (x : Vector ℚ 5) → PreviousWeakRightAndNearbyIntruder x → Advises strongLeft x
   property9 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
@@ -149,7 +148,7 @@ IntruderFarAway2 : InputVector → Set
 IntruderFarAway2 x = (ℤ.+ 36000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 900 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
 abstract
-  property10 : ∀ (x : Tensor ℚ (5 ∷ [])) → IntruderFarAway2 x → Advises clearOfConflict x
+  property10 : ∀ (x : Vector ℚ 5) → IntruderFarAway2 x → Advises clearOfConflict x
   property10 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

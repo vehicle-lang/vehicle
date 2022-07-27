@@ -35,7 +35,7 @@ data CompileError
   | MissingDefFunExpr    Provenance Symbol
   | DuplicateName        (NonEmpty Provenance) Symbol
   | MissingVariables     Provenance Symbol
-  | UnchainableOrders    Provenance Order Order
+  | UnchainableOrders    Provenance OrderOp OrderOp
 
   -- Errors thrown by scope checking.
   | UnboundName Symbol Provenance
@@ -59,8 +59,8 @@ data CompileError
     CheckedExpr             -- Expected type of the argument
   | FailedConstraints
     (NonEmpty Constraint)
-  | FailedEqConstraint               ConstraintContext CheckedExpr CheckedExpr Equality
-  | FailedOrdConstraint              ConstraintContext CheckedExpr CheckedExpr Order
+  | FailedEqConstraint               ConstraintContext CheckedExpr CheckedExpr EqualityOp
+  | FailedOrdConstraint              ConstraintContext CheckedExpr CheckedExpr OrderOp
   | FailedBuiltinConstraintArgument  ConstraintContext Builtin CheckedExpr [InputExpr] Int Int
   | FailedBuiltinConstraintResult    ConstraintContext Builtin CheckedExpr [InputExpr]
   | FailedNotConstraint              ConstraintContext CheckedExpr
@@ -86,7 +86,6 @@ data CompileError
   | NetworkTypeIsNotAFunction              DeclProvenance CheckedExpr
   | NetworkTypeIsNotOverTensors            DeclProvenance CheckedExpr CheckedExpr InputOrOutput
   | NetworkTypeHasNonExplicitArguments     DeclProvenance CheckedExpr CheckedBinder
-  | NetworkTypeHasMultidimensionalTensor   DeclProvenance CheckedExpr CheckedExpr InputOrOutput
   | NetworkTypeHasVariableSizeTensor       DeclProvenance CheckedExpr CheckedExpr InputOrOutput
   | NetworkTypeHasImplicitSizeTensor       DeclProvenance Identifier InputOrOutput
   | NetworkTypeHasUnsupportedElementType   DeclProvenance CheckedExpr CheckedExpr InputOrOutput
@@ -110,13 +109,13 @@ data CompileError
   -- Backend errors
   | NoPropertiesFound
   | UnsupportedResource              Backend Identifier Provenance ResourceType
-  | UnsupportedSequentialQuantifiers Backend Identifier Provenance Quantifier Provenance PolarityProvenance
+  | UnsupportedSequentialQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedVariableType          Backend Identifier Provenance Symbol CheckedExpr [Builtin]
   | UnsupportedInequality            Backend Identifier Provenance
   | UnsupportedPolymorphicEquality   Backend Provenance Symbol
   | UnsupportedBuiltin               Backend Provenance Builtin
   | UnsupportedNonMagicVariable      Backend Provenance Symbol
-  | UnsupportedNonLinearConstraint   Backend Identifier Provenance LinearityProvenance LinearityProvenance
+  | UnsupportedNonLinearConstraint   Backend DeclProvenance LinearityProvenance LinearityProvenance
   | NoNetworkUsedInProperty          Backend Provenance Identifier
   deriving (Show)
 

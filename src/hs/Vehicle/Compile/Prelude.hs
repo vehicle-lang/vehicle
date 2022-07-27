@@ -4,14 +4,13 @@ module Vehicle.Compile.Prelude
   , module Vehicle.Compile.Prelude
   ) where
 
-import Data.Map (Map)
-
 import Vehicle.Prelude as X
 import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Language.AST as X
 import Vehicle.Resource as X
 import Vehicle.Compile.Prelude.Patterns as X
 import Vehicle.Compile.Prelude.Utils as X
+import Vehicle.Compile.Prelude.Contexts as X
 
 --------------------------------------------------------------------------------
 -- Compilation
@@ -61,6 +60,7 @@ type CheckedVar     = DBVar
 type CheckedBinder = DBBinder
 type CheckedArg    = DBArg
 type CheckedExpr   = DBExpr
+type CheckedType   = CheckedExpr
 type CheckedDecl   = DBDecl
 type CheckedProg   = DBProg
 
@@ -83,22 +83,6 @@ type OutputProg   = Prog   OutputBinding OutputVar
 -- Currently used mainly for pretty printing position trees.
 data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
   deriving Show
-
---------------------------------------------------------------------------------
--- Contexts
-
--- | Stores information associated with the declarations that are currently in
--- scope, indexed into via their names.
-type DeclCtx a = Map Identifier a
-
-class HasBoundCtx a where
-  boundContextOf :: a -> [DBBinding]
-
-instance HasBoundCtx [DBBinding] where
-  boundContextOf = id
-
-instance HasBoundCtx [Symbol] where
-  boundContextOf = map Just
 
 --------------------------------------------------------------------------------
 -- Logging

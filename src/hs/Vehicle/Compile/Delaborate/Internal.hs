@@ -59,7 +59,7 @@ instance Delaborate V.NamedExpr B.Expr where
 
     V.Ann _ e t    -> B.Ann <$> delabM e <*> delabM t
     V.Pi  _ b t    -> B.Pi  <$> delabM b <*> delabM t
-    V.LSeq _ es    -> B.LSeq <$> traverse delabM es
+    V.LVec _ es    -> B.LVec <$> traverse delabM es
 
     V.Let _ v b e  -> B.Let <$> delabM b <*> delabM v <*> delabM e
     V.Lam _ b e    -> B.Lam <$> delabM b <*> delabM e
@@ -67,22 +67,23 @@ instance Delaborate V.NamedExpr B.Expr where
 
     V.App _ fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
 
-    -- This is a hack to get printing of PrimDicts to work without explicitly
-    -- including them in the grammar
-    V.PrimDict _ e -> B.App (B.Var (delabSymbol "PrimDict")) . B.ExplicitArg <$> delabM e
-
 instance Delaborate V.NamedArg B.Arg where
-  delabM (V.Arg _i v e) = case v of
-    V.Explicit -> B.ExplicitArg <$> delabM e
-    V.Implicit -> B.ImplicitArg <$> delabM e
-    V.Instance -> B.InstanceArg <$> delabM e
+  delabM (V.Arg _ v r e) = case (v, r) of
+    (V.Explicit, V.Relevant)   -> B.RelevantExplicitArg   <$> delabM e
+    (V.Implicit, V.Relevant)   -> B.RelevantImplicitArg   <$> delabM e
+    (V.Instance, V.Relevant)   -> B.RelevantInstanceArg   <$> delabM e
+    (V.Explicit, V.Irrelevant) -> B.IrrelevantExplicitArg <$> delabM e
+    (V.Implicit, V.Irrelevant) -> B.IrrelevantImplicitArg <$> delabM e
+    (V.Instance, V.Irrelevant) -> B.IrrelevantInstanceArg <$> delabM e
 
 instance Delaborate V.NamedBinder B.Binder where
-  delabM (V.Binder _ann v n t) = case v of
-    -- TODO track whether type was provided manually and so use ExplicitBinderAnn
-    V.Explicit -> B.ExplicitBinder (delabSymbol n) <$> delabM t
-    V.Implicit -> B.ImplicitBinder (delabSymbol n) <$> delabM t
-    V.Instance -> B.InstanceBinder (delabSymbol n) <$> delabM t
+  delabM (V.Binder _ v r n t) = case (v, r) of
+    (V.Explicit, V.Relevant)   -> B.RelevantExplicitBinder   (delabSymbol n) <$> delabM t
+    (V.Implicit, V.Relevant)   -> B.RelevantImplicitBinder   (delabSymbol n) <$> delabM t
+    (V.Instance, V.Relevant)   -> B.RelevantInstanceBinder   (delabSymbol n) <$> delabM t
+    (V.Explicit, V.Irrelevant) -> B.IrrelevantExplicitBinder (delabSymbol n) <$> delabM t
+    (V.Implicit, V.Irrelevant) -> B.IrrelevantImplicitBinder (delabSymbol n) <$> delabM t
+    (V.Instance, V.Irrelevant) -> B.IrrelevantInstanceBinder (delabSymbol n) <$> delabM t
 
 delabUniverse :: V.Universe -> B.Expr
 delabUniverse = \case
@@ -92,22 +93,23 @@ delabUniverse = \case
 
 delabLiteral :: V.Literal -> B.Expr
 delabLiteral l = case l of
-  V.LUnit   -> B.Literal B.LitUnit
-  V.LBool b -> delabBoolLit b
-  V.LNat n  -> delabNatLit n
-  V.LInt i  -> if i >= 0
+  V.LUnit      -> B.Literal B.UnitLiteral
+  V.LBool b    -> delabBoolLit b
+  V.LIndex _ n -> delabNatLit n
+  V.LNat n     -> delabNatLit n
+  V.LInt i     -> if i >= 0
     then delabNatLit i
-    else B.App (delabBuiltin V.Neg) $ B.ExplicitArg (delabNatLit (-i))
-  V.LRat r  -> delabRatLit r
+    else B.App (delabBuiltin (V.Neg NegInt)) $ B.RelevantExplicitArg (delabNatLit (-i))
+  V.LRat r     -> delabRatLit r
 
 delabBoolLit :: Bool -> B.Expr
-delabBoolLit b = B.Literal $ B.LitBool  (mkToken B.BoolToken (if b then "True" else "False"))
+delabBoolLit b = B.Literal $ B.BoolLiteral  (mkToken B.BoolToken (if b then "True" else "False"))
 
 delabNatLit :: Int -> B.Expr
-delabNatLit n = B.Literal $ B.LitNat (mkToken B.Natural (pack $ show n))
+delabNatLit n = B.Literal $ B.NatLiteral (mkToken B.Natural (pack $ show n))
 
 delabRatLit :: Rational -> B.Expr
-delabRatLit r = B.Literal $ B.LitRat (mkToken B.Rational (pack $ show (fromRational r :: Double)))
+delabRatLit r = B.Literal $ B.RatLiteral (mkToken B.Rational (pack $ show (fromRational r :: Double)))
 
 delabSymbol :: Symbol -> B.NameToken
 delabSymbol = mkToken B.NameToken

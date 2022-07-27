@@ -13,6 +13,7 @@ open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.List
+open import Data.Vec.Functional
 open import Relation.Binary.PropositionalEquality
 
 module reachability-temp-output where
@@ -20,7 +21,7 @@ module reachability-temp-output where
 postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ (1 ∷ [])
 
 abstract
-  reachable : ∃ λ (x : Tensor ℚ (2 ∷ [])) → f x ≡ ℤ.+ 0 ℚ./ 1 ∷ []
+  reachable : ∃ λ (x : Vector ℚ 2) → f x ≡ ℤ.+ 0 ℚ./ 1 ∷ []
   reachable = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

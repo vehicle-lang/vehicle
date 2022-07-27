@@ -4,7 +4,6 @@ module Vehicle.Compile.Type.Resource
   ) where
 
 import Control.Monad.Except (MonadError(..))
-import Data.Map qualified as Map
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
@@ -21,15 +20,13 @@ checkResourceType :: TCM m
 checkResourceType resourceType decl@(ident, _) t = do
   let resourceName = pretty resourceType <+> squotes (pretty ident)
   logCompilerPass MidDetail ("checking compatability of type of" <+> resourceName) $ do
-    declCtx <- getDeclCtx
+    declCtx <- getNormalisationContext
     let checkFun = case resourceType of
           Parameter         -> checkParameterType
           ImplicitParameter -> checkImplicitParameterType
           Dataset           -> checkDatasetType
           Network           -> checkNetworkType
-    normType <- normalise t $ defaultNormalisationOptions
-      { Norm.declContext = Map.mapMaybe snd declCtx
-      }
+    normType <- normalise t $ fullNormalisationOptions { Norm.declContext = declCtx }
     alterType <- checkFun decl normType
     return $ alterType t
 
@@ -73,6 +70,7 @@ checkDatasetType decl t = do
   checkContainerType :: Bool -> CheckedExpr -> m ()
   checkContainerType topLevel = \case
     ListType   _ tElem        -> checkContainerType False tElem
+    VectorType _ tElem _tDims -> checkContainerType False tElem
     TensorType _ tElem _tDims -> checkContainerType False tElem
     typ                       -> if topLevel
       then throwError $ DatasetTypeUnsupportedContainer decl typ
@@ -115,11 +113,12 @@ checkNetworkType decl@(ident, _) networkType = checkFunType networkType
         let outputLinProvenance = Linearity $ Linear $ NetworkOutputProvenance p (nameOf ident)
         let linConstraintArgs = [inputLin, Builtin p outputLinProvenance, outputLin]
         let linConstraint = BuiltinTypeClass p MaxLinearity (ExplicitArg p <$> linConstraintArgs)
-        return $ \t -> Pi p (InstanceBinder p Nothing linConstraint) t
+        return $ \t -> Pi p (IrrelevantInstanceBinder p Nothing linConstraint) t
     _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
 
   checkTensorType :: InputOrOutput -> CheckedExpr -> m CheckedExpr
-  checkTensorType io (TensorType _ tElem _tDims) = checkElementType io tElem
+  checkTensorType io (TensorType _ tElem _) = checkElementType io tElem
+  checkTensorType io (VectorType _ tElem _) = checkElementType io tElem
   checkTensorType io tTensor =
     throwError $ NetworkTypeIsNotOverTensors decl networkType tTensor io
 

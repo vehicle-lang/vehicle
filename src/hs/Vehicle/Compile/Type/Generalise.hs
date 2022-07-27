@@ -58,9 +58,13 @@ prependConstraint decl constraint = do
     UC{}                -> compilerDeveloperError
       "Unification constraints should have been filtered out earlier"
 
+  relevancy <- case typeClass of
+    BuiltinTypeClass _ tc _ -> return $ relevanceOf tc
+    _                       -> compilerDeveloperError "Malformed type-class when finding relevancy"
+
   substTypeClass <- substMetas typeClass
   logCompilerPass MaxDetail ("generalisation over" <+> prettySimple substTypeClass) $
-    prependBinderAndSolveMeta meta Instance Nothing substTypeClass decl
+    prependBinderAndSolveMeta meta Instance relevancy Nothing substTypeClass decl
 
 --------------------------------------------------------------------------------
 -- Unsolved meta generalisation
@@ -97,10 +101,12 @@ quantifyOverMeta decl meta = do
       "Haven't thought about what to do when type of unsolved meta is also" <+>
       "an unsolved meta."
   else do
+    -- TODO more principled to store relevance with the meta itself.
+    let relevance = if isAuxiliaryUniverse metaType then Irrelevant else Relevant
     metaDoc <- prettyMeta meta
     logCompilerPass MinDetail ("generalisation over" <+> metaDoc) $ do
       -- Prepend the implicit binders for the new generalised variable.
-      prependBinderAndSolveMeta meta Implicit Nothing metaType decl
+      prependBinderAndSolveMeta meta Implicit relevance Nothing metaType decl
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -108,11 +114,12 @@ quantifyOverMeta decl meta = do
 prependBinderAndSolveMeta :: MonadMeta m
                           => Meta
                           -> Visibility
+                          -> Relevance
                           -> DBBinding
                           -> CheckedExpr
                           -> CheckedDecl
                           -> m CheckedDecl
-prependBinderAndSolveMeta meta v binderName binderType decl = do
+prependBinderAndSolveMeta meta v r binderName binderType decl = do
   -- All the metas contained within the type of the binder about to be
   -- appended cannot have any dependencies on variables later on in the expression.
   -- So the replace them with meta-variables with empty contexts.
@@ -120,10 +127,10 @@ prependBinderAndSolveMeta meta v binderName binderType decl = do
 
   -- Construct the new binder and prepend it to both the type and
   -- (if applicable) the body of the declaration.
-  let binder = Binder (provenanceOf decl) v binderName substBinderType
+  let binder = Binder (provenanceOf decl) v r binderName substBinderType
   prependedDecl <- case substDecl of
-    DefResource p r ident t   ->
-      return $ DefResource p r ident (Pi p binder t)
+    DefResource p rt ident t   ->
+      return $ DefResource p rt ident (Pi p binder t)
     DefFunction p u ident t e ->
       return $ DefFunction p u ident (Pi p binder t) (Lam p binder e)
     DefPostulate{} ->
@@ -189,13 +196,12 @@ addNewArgumentToMetaUses meta = mapDeclExprs (go (-1))
       Literal{}                    -> expr
       Builtin{}                    -> expr
       Var{}                        -> expr
-      PrimDict p t                 -> PrimDict p (go d t)
       Ann      p e t               -> Ann p (go d e) (go d t)
       App p fun args               -> App p (go d fun) (goArgs args)
       Pi       p binder result     -> Pi p (goBinder binder) (go (d+1) result)
       Let      p bound binder body -> Let p (go d bound) (goBinder binder) (go (d+1) body)
       Lam      p binder body       -> Lam p (goBinder binder) (go (d+1) body)
-      LSeq     p xs                -> LSeq p (map (go d) xs)
+      LVec     p xs                -> LVec p (map (go d) xs)
       where
         newVar p = ExplicitArg p (Var p (Bound d))
         goBinder = mapBinderType (go d)

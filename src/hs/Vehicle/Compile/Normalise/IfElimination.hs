@@ -8,7 +8,7 @@ import Data.List.NonEmpty as NonEmpty
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Language.Print
-import Vehicle.Compile.Normalise.DNF (applyNotAndNormalise)
+import Vehicle.Compile.Normalise.Core (normaliseNotArg)
 
 --------------------------------------------------------------------------------
 -- Primary function
@@ -45,55 +45,53 @@ liftIf f e = f e
 elimIf :: CheckedExpr -> CheckedExpr
 elimIf (IfExpr ann _ [cond, e1, e2]) =
   OrExpr ann $ fmap (ExplicitArg ann)
-    [ AndExpr ann [cond,       mapArgExpr elimIf e1]
-    , AndExpr ann [notOp cond, mapArgExpr elimIf e2]
+    [ AndExpr ann [cond,                 mapArgExpr elimIf e1]
+    , AndExpr ann [normaliseNotArg cond, mapArgExpr elimIf e2]
     ]
-  where
-    notOp :: CheckedArg -> CheckedArg
-    notOp arg = ExplicitArg ann $ applyNotAndNormalise arg
 elimIf e = e
 
 liftAndElimIf :: MonadCompile m => CheckedExpr -> m CheckedExpr
-liftAndElimIf expr =
-  case expr of
-    Universe{} -> return expr
-    PrimDict{} -> return expr
-    Builtin{}  -> return expr
-    Literal{}  -> return expr
-    Var{}      -> return expr
-    Hole{}     -> return expr
-    Meta{}     -> return expr
+liftAndElimIf expr = case expr of
+  Universe{} -> return expr
+  Builtin{}  -> return expr
+  Literal{}  -> return expr
+  Var{}      -> return expr
+  Hole{}     -> return expr
+  Meta{}     -> return expr
 
-    Pi{}       -> typeError currentPass "Pi"
+  Pi{}       -> typeError currentPass "Pi"
 
-    QuantifierExpr q  ann binder body -> QuantifierExpr q  ann binder . elimIf <$> liftAndElimIf body
+  ExistsRatExpr p binder body -> ExistsRatExpr p binder . elimIf <$> liftAndElimIf body
+  ForallRatExpr p binder body -> ForallRatExpr p binder . elimIf <$> liftAndElimIf body
 
-    NotExpr              ann args        -> NotExpr              ann   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
-    BooleanOp2Expr op tc ann args        -> BooleanOp2Expr op tc ann   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
-    IfExpr               ann t args      -> IfExpr               ann t <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
+  NotExpr     p   args -> NotExpr     p   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
+  AndExpr     p   args -> AndExpr     p   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
+  OrExpr      p   args -> OrExpr      p   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
+  ImpliesExpr p   args -> ImpliesExpr p   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
+  IfExpr      p t args -> IfExpr      p t <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
 
-    Let ann bound binder body ->
-      Let ann <$> liftAndElimIf bound <*> pure binder <*> liftAndElimIf body
+  Let p bound binder body ->
+    Let p <$> liftAndElimIf bound <*> pure binder <*> liftAndElimIf body
 
-    App ann fun args -> do
-      fun'  <- liftAndElimIf fun
-      args' <- traverse (traverseArgExpr liftAndElimIf) args
-      return $ liftIf (\v -> liftArgs (\vs -> App ann v vs) args') fun'
+  App p fun args -> do
+    fun'  <- liftAndElimIf fun
+    args' <- traverse (traverseArgExpr liftAndElimIf) args
+    return $ liftIf (\v -> liftArgs (\vs -> App p v vs) args') fun'
 
-    Ann ann e t -> do
-      e' <- liftAndElimIf e
-      t' <- liftAndElimIf t
-      return $ liftIf (\e'' -> liftIf (\t'' -> Ann ann e'' t'') t') e'
+  Ann p e t -> do
+    e' <- liftAndElimIf e
+    t' <- liftAndElimIf t
+    return $ liftIf (\e'' -> liftIf (\t'' -> Ann p e'' t'') t') e'
 
-    LSeq ann es -> do
-      es'   <- traverse liftAndElimIf es
-      return $ liftSeq (\es'' -> LSeq ann es'') es'
+  LVec p es -> do
+    es'   <- traverse liftAndElimIf es
+    return $ liftSeq (\es'' -> LVec p es'') es'
 
-    -- Quantified lambdas should have been caught before now.
-    Lam{} -> normalisationError currentPass "Non-quantified Lam"
+  -- Quantified lambdas should have been caught before now.
+  Lam{} -> normalisationError currentPass "Non-quantified Lam"
 
 liftArg :: (CheckedArg -> CheckedExpr) -> CheckedArg -> CheckedExpr
-liftArg f (Arg ann v e) = liftIf (f . Arg ann v) e
+liftArg f (Arg ann v r e) = liftIf (f . Arg ann v r) e
 
 liftSeq :: ([CheckedExpr] -> CheckedExpr) -> [CheckedExpr] -> CheckedExpr
 liftSeq f []       = f []

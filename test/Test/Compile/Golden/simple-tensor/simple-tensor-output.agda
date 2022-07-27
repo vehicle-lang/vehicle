@@ -12,6 +12,7 @@ open import Vehicle.Data.Tensor
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
+open import Data.Vec.Functional
 
 module simple-tensor-temp-output where
 

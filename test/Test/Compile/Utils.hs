@@ -8,6 +8,7 @@ module Test.Compile.Utils
   , testResources
   , locationDir
   , unitTestCase
+  , normTypeClasses
   ) where
 
 import Control.Monad.Reader (MonadReader(..), asks)
@@ -24,12 +25,11 @@ import System.FilePath ((</>))
 import Test.Tasty ( TestName, testGroup, after, DependencyType )
 import Test.Tasty.Runners (TestTree(..))
 
-import Vehicle.Compile (typeCheckExpr)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
-import Vehicle.Compile.Type (typeCheck)
+import Vehicle.Compile.Normalise
 import Test.Tasty.HUnit (testCase, Assertion)
 
 --------------------------------------------------------------------------------
@@ -93,6 +93,16 @@ testResources TestSpec{..} =
   let parameters = Map.fromList testParameters in
 
   Resources networks datasets parameters
+
+normTypeClasses :: MonadCompile m => CheckedExpr -> m CheckedExpr
+normTypeClasses e = normalise e noNormalisationOptions
+  { normaliseBuiltin = \case
+      TypeClassOp{} -> True
+      FromNat{}     -> True
+      FromRat{}     -> True
+      FromVec{}     -> True
+      _             -> False
+  }
 
 --------------------------------------------------------------------------------
 -- Other utilities
