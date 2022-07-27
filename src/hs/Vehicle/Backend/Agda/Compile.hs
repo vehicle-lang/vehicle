@@ -41,7 +41,7 @@ compileProgToAgda :: MonadCompile m => AgdaOptions -> CheckedProg -> m (Doc a)
 compileProgToAgda options prog = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     normProg <- normalise prog noNormalisationOptions
-      { normaliseBuiltin            = normaliseBuiltins
+      { normaliseBuiltin = normaliseBuiltins
       }
 
     let prog2 = capitaliseTypeNames normProg

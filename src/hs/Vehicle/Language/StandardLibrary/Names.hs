@@ -22,6 +22,8 @@ stdLibFunctions =
   , StdNotEqualsBool
   , StdEqualsVector
   , StdNotEqualsVector
+  , StdAddVector
+  , StdSubVector
   ]
 
 pattern StdExistsBool, StdForallBool :: Identifier
@@ -48,6 +50,9 @@ pattern StdNotEqualsBool   = Identifier "notEqualsBool"
 pattern StdEqualsVector    = Identifier "equalsVector"
 pattern StdNotEqualsVector = Identifier "notEqualsVector"
 
+pattern StdAddVector, StdSubVector :: Identifier
+pattern StdAddVector = Identifier "addVector"
+pattern StdSubVector = Identifier "subVector"
 
 pattern PostulateExistsNat, PostulateForallNat :: Identifier
 pattern PostulateExistsNat = Identifier "existsNat"

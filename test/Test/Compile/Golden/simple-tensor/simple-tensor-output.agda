@@ -9,21 +9,28 @@
 
 open import Vehicle
 open import Vehicle.Data.Tensor
-open import Data.Nat as ℕ using (ℕ)
+open import Data.Integer as ℤ using (ℤ)
+open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
 open import Data.Vec.Functional
 
 module simple-tensor-temp-output where
 
-zeroD : Tensor ℕ []
-zeroD = 2
+zeroD : Tensor ℚ []
+zeroD = ℤ.+ 5 ℚ./ 2
 
-oneD : Tensor ℕ (2 ∷ [])
-oneD = zeroD ∷ (1 ∷ [])
+oneD : Tensor ℚ (2 ∷ [])
+oneD = zeroD ∷ (ℤ.+ 1 ℚ./ 1 ∷ [])
 
-twoD : Tensor ℕ (2 ∷ (2 ∷ []))
-twoD = oneD ∷ ((2 ∷ (3 ∷ [])) ∷ [])
+twoD : Tensor ℚ (2 ∷ (2 ∷ []))
+twoD = oneD ∷ ((ℤ.+ 2 ℚ./ 1 ∷ (ℤ.+ 3 ℚ./ 1 ∷ [])) ∷ [])
 
-lookup2D : ℕ
+lookup2D : ℚ
 lookup2D = twoD (# 0) (# 1)
+
+addition : Tensor ℚ (2 ∷ (2 ∷ []))
+addition = addVector twoD twoD
+
+subtraction : Tensor ℚ (2 ∷ (2 ∷ []))
+subtraction = subVector twoD twoD

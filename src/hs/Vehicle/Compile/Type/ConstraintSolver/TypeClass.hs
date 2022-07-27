@@ -435,9 +435,10 @@ solveHasAdd :: MonadMeta m
             -> m TypeClassProgress
 solveHasAdd c types@[arg1, arg2, res]
   | allOf types isMeta           = blockOnMetas types
-  | anyOf types isNatType        = solveAddNat c arg1 arg2 res
-  | anyOf types isIntType        = solveAddInt c arg1 arg2 res
-  | anyOf types isAnnRatType     = solveAddRat c arg1 arg2 res
+  | anyOf types isNatType        = solveAddNat    c arg1 arg2 res
+  | anyOf types isIntType        = solveAddInt    c arg1 arg2 res
+  | anyOf types isAnnRatType     = solveAddRat    c arg1 arg2 res
+  | anyOf types isVectorType     = solveAddVector c arg1 arg2 res
   | otherwise                    = blockOrThrowError c types tcError
   where
     allowedTypes = allowed [Nat, Int, Rat]
@@ -484,6 +485,31 @@ solveAddRat c arg1 arg2 res = do
   let solution = Builtin p (Add AddRat)
   return $ Right (constraints, solution)
 
+solveAddVector :: MonadMeta m
+               => Constraint
+               -> CheckedExpr
+               -> CheckedExpr
+               -> CheckedExpr
+               -> m TypeClassProgress
+solveAddVector c arg1 arg2 res = do
+  let p = provenanceOf c
+  dim <- freshDimMeta c
+
+  (arg1Eq, arg1Elem) <- unifyWithVectorType c dim arg1
+  (arg2Eq, arg2Elem) <- unifyWithVectorType c dim arg2
+  (resEq,  resElem)  <- unifyWithVectorType c dim res
+  (meta, recTC) <- createTC c HasAdd [arg1Elem, arg2Elem, resElem]
+
+  let constraints = [arg1Eq, arg2Eq, resEq, recTC]
+  let solution = App p (FreeVar p StdAddVector)
+        [ ImplicitArg p arg1Elem
+        , ImplicitArg p arg2Elem
+        , ImplicitArg p resElem
+        , InstanceArg p (Meta p meta)
+        ]
+
+  return $ Right (constraints, solution)
+
 --------------------------------------------------------------------------------
 -- HasSub
 
@@ -493,8 +519,9 @@ solveHasSub :: MonadMeta m
             -> m TypeClassProgress
 solveHasSub c types@[arg1, arg2, res]
   | allOf types isMeta           = blockOnMetas types
-  | anyOf types isIntType        = solveSubInt c arg1 arg2 res
-  | anyOf types isAnnRatType     = solveSubRat c arg1 arg2 res
+  | anyOf types isIntType        = solveSubInt    c arg1 arg2 res
+  | anyOf types isAnnRatType     = solveSubRat    c arg1 arg2 res
+  | anyOf types isVectorType     = solveSubVector c arg1 arg2 res
   | otherwise                    = blockOrThrowError c types tcError
   where
     allowedTypes = allowed [Int, Rat]
@@ -527,6 +554,31 @@ solveSubRat c arg1 arg2 res = do
   let p = provenanceOf c
   constraints <- checkRatTypesEqual c res [arg1, arg2] MaxLinearity
   let solution = Builtin p (Sub SubRat)
+  return $ Right (constraints, solution)
+
+solveSubVector :: MonadMeta m
+               => Constraint
+               -> CheckedExpr
+               -> CheckedExpr
+               -> CheckedExpr
+               -> m TypeClassProgress
+solveSubVector c arg1 arg2 res = do
+  let p = provenanceOf c
+  dim <- freshDimMeta c
+
+  (arg1Eq, arg1Elem) <- unifyWithVectorType c dim arg1
+  (arg2Eq, arg2Elem) <- unifyWithVectorType c dim arg2
+  (resEq,  resElem)  <- unifyWithVectorType c dim res
+  (meta, recTC) <- createTC c HasSub [arg1Elem, arg2Elem, resElem]
+
+  let constraints = [arg1Eq, arg2Eq, resEq, recTC]
+  let solution = App p (FreeVar p StdSubVector)
+        [ ImplicitArg p arg1Elem
+        , ImplicitArg p arg2Elem
+        , ImplicitArg p resElem
+        , InstanceArg p (Meta p meta)
+        ]
+
   return $ Right (constraints, solution)
 
 --------------------------------------------------------------------------------

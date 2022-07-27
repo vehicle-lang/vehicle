@@ -227,6 +227,11 @@ nfStdLibFn p ident args = do
       | ident == StdEqualsVector || ident == StdNotEqualsVector ->
         Just $ nfEqualsVector p ident tElem size recFn arg1 arg2
 
+    -- Addition
+    [ImplicitArg _ tElem1, ImplicitArg _ tElem2, ImplicitArg _ tElem3, ImplicitArg _ size, InstanceArg _ recFn, arg1, arg2]
+      | ident == StdAddVector || ident == StdSubVector ->
+        Just $ return $ zipWithVector p tElem1 tElem2 tElem3 size recFn arg1 arg2
+
     _ -> Nothing
 
 --------------------------------------------------------------------------------

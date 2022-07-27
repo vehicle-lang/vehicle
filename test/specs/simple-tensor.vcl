@@ -1,12 +1,17 @@
-zeroD : Tensor Nat []
-zeroD = 2
+zeroD : Tensor Rat []
+zeroD = 2.5
 
-oneD : Tensor Nat [2]
+oneD : Tensor Rat [2]
 oneD = [zeroD, 1]
 
-twoD : Tensor Nat [2, 2]
-twoD = [oneD, [2,3]]
+twoD : Tensor Rat [2, 2]
+twoD = [oneD, [2, 3]]
 
-lookup2D : Nat
+lookup2D : Rat
 lookup2D = twoD ! 0 ! 1
 
+addition : Tensor Rat [2, 2]
+addition = twoD + twoD
+
+subtraction : Tensor Rat [2, 2]
+subtraction = twoD - twoD
