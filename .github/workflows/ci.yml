@@ -56,7 +56,7 @@ jobs:
         shell: powershell
 
       - name: Install Agda
-        run: cabal v2-install Agda-${{ matrix.agda }}
+        run: cabal v2-install --global Agda-${{ matrix.agda }}
 
       - name: Build shakefile
         run: cabal v2-build exe:build
