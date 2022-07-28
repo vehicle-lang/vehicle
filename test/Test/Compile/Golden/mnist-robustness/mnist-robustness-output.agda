@@ -48,5 +48,8 @@ postulate trainingImages : Vector Image n
 
 postulate trainingLabels : Vector Label n
 
-robust : Vector Set n
-robust = λ (i : Fin n) → RobustAround (trainingImages i) (trainingLabels i)
+abstract
+  robust : λ (i : Fin n) → RobustAround (trainingImages i) (trainingLabels i)
+  robust = checkSpecification record
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
+    }
