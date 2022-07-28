@@ -19,18 +19,31 @@ Vehicle is written in Haskell. The first task is to install Haskell itself:
   -  GHC 9.0.X (for some version of X)
   -  Cabal 3.X (for some version of X)
 
+4. Run ``cabal update`` to update your list of packages.
+
 Now we can install Vehicle itself.
 
-4. Clone the Vehicle github repository to your local computer and
+1. Clone the Vehicle github repository to your local computer and
    navigate to the directory.
 
-5. Run ``cabal run build init`` to initialise the project and install
-   any dependencies that are needed for building the project.
+2. Run ``cabal run build init`` to initialise the project and install
+   any dependencies that are needed for building the project, pressing
+   ``y`` as required.
 
-6. Run ``cabal run build test`` to run the test suite.
+3. Run ``cabal run build test`` to run the test suite.
   (If this doesn't work then check that check that `~/.cabal/bin` has
    been added to your system path.)
 
-7. Run ``cabal install`` to install the Vehicle executable.
+4. Run ``cabal install`` to install the Vehicle executable.
 
-8. Run ``vehicle -h`` to check that Vehicle has been installed.
+5. Run ``vehicle -h`` to check that Vehicle has been installed.
+
+Syntax highlighting
+-------------------
+
+The syntax highlighting can be installed in VSCode by going to the
+"Extensions" tab and searching for "Vehicle Syntax Highlighting".
+
+Contributions adding syntax highlighting to other IDEs would be welcome.
+The source code for the VSCode extension is available
+`here <https://github.com/vehicle-lang/vscode-vehicle-syntax-highlighting>`_.
