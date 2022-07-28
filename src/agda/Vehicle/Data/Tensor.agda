@@ -14,6 +14,6 @@ private
     n : ℕ
 
 Tensor : Set a → List ℕ → Set a
-Tensor A []           = ⊥
+Tensor A []           = A
 Tensor A (n ∷ [])     = Vector A n
 Tensor A (m ∷ n ∷ ns) = Vector (Tensor A (n ∷ ns)) m
