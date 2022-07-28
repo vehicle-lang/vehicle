@@ -80,7 +80,7 @@ initialState = record
   }
 
 controller : ℚ → ℚ → ℚ
-controller x y = Vehicle.controller (toTensor x y)
+controller x y = Vehicle.controller (toTensor x y) 0F
 
 nextState : Observation → State → State
 nextState o s = record
