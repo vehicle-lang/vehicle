@@ -162,7 +162,7 @@ intElemParser decl value typeInProgram = do
     ConcreteIndexType _ n ->
       if value >= 0 && value < n
         then return $ IndexLiteral p n value
-        else throwError $ DatasetInvalidIndex decl n value
+        else throwError $ DatasetInvalidIndex decl value n
     NatType{} ->
       if value >= 0
         then return $ NatLiteral p value

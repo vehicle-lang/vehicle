@@ -565,6 +565,16 @@ instance MeaningfulError CompileError where
       , fix        = Just "make sure the provided resources are consistent with each other."
       }
 
+    ImplicitParameterUninferrable (ident, p) ->
+      UError $ UserError
+      { provenance = p
+      , problem    = "Unable to infer the value of" <+>
+                     prettyResource ImplicitParameter ident <> "."
+      , fix        = Just $ "For an implicit parameter to be inferable, it must" <>
+                      "be used as the dimension of a dataset" <>
+                      "(networks will be supported later)."
+      }
+
     --------------------
     -- Backend errors --
     --------------------

@@ -285,6 +285,7 @@ updatePropertyInfo = \case
     getPropertyInfo = \case
       (AnnBoolType _ (Builtin _ (Linearity lin)) (Builtin _ (Polarity pol))) ->
         Just $ PropertyInfo lin pol
+      (VectorType _ tElem _) -> getPropertyInfo tElem
       (TensorType _ tElem _) -> getPropertyInfo tElem
       _                      -> Nothing
 

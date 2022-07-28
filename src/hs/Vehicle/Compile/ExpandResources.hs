@@ -5,9 +5,10 @@ module Vehicle.Compile.ExpandResources
 
 import Control.Monad.Reader
 import Control.Monad.Writer
+import Control.Monad.Except
 import Control.Monad.State
 import Data.Set qualified as Set (singleton)
-import Data.Map qualified as Map (singleton, keysSet, insert)
+import Data.Map qualified as Map (singleton, keysSet, insert, lookup)
 import Data.Maybe ( catMaybes )
 
 import Vehicle.Compile.Prelude
@@ -49,15 +50,17 @@ expandResources :: (MonadIO m, MonadCompile m)
                 -> m (NetworkContext, CheckedProg)
 expandResources resources@Resources{..} expandDatasets prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
-    ((prog', ResourceContext{..}), _implicitParams) <-
+    ((prog', ResourceContext{..}), implicitParams) <-
       runStateT (runWriterT (runReaderT (processProg prog)
         (resources, expandDatasets, mempty))) mempty
+
+    finalProg <- insertImplicitParameters implicitParams prog'
 
     warnIfUnusedResources Parameter (Map.keysSet parameters) parameterContext
     warnIfUnusedResources Dataset   (Map.keysSet datasets)   datasetContext
     warnIfUnusedResources Network   (Map.keysSet networks)   (Map.keysSet networkContext)
 
-    return (networkContext, prog')
+    return (networkContext, finalProg)
 
 processProg :: (MonadIO m, MonadExpandResources m) => CheckedProg -> m CheckedProg
 processProg (Main ds) = Main . catMaybes <$> processDecls ds
@@ -108,3 +111,15 @@ processDecl d@(DefResource p resourceType ident declType) = do
       networkType <- getNetworkType (ident, p) normType
       addNetworkType name networkType
       return (Nothing, id)
+
+insertImplicitParameters :: MonadCompile m => ImplicitParameterContext -> CheckedProg -> m CheckedProg
+insertImplicitParameters implicitParams = traverseProg $ \case
+  r@DefFunction{}  -> return r
+  r@DefPostulate{} -> return r
+  DefResource p ImplicitParameter ident t -> do
+    case Map.lookup (nameOf ident) implicitParams of
+      Nothing -> compilerDeveloperError "Somehow missed the implicit parameter on the first pass"
+      Just Nothing -> throwError $ ImplicitParameterUninferrable (ident, p)
+      Just (Just (_, _, v)) -> return $ DefFunction p Nothing ident t (NatLiteral p v)
+  r@DefResource{} ->
+    compilerDeveloperError $ "Found unexpanded resource: " <+> pretty (identifierOf r)
