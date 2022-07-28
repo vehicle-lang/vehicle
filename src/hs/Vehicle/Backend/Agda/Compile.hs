@@ -420,11 +420,7 @@ compileExpr expr = do
       return $ "let" <+> vsep (punctuate ";" cBoundExprs) <+> "in" <+> cBody
       -}
 
-    Lam{} -> do
-      let (binders, body) = foldLam expr
-      cBinders <- traverse compileBinder binders
-      cBody    <- compileExpr body
-      return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> arrow <+> cBody)
+    Lam{} -> compileLam expr
 
     Builtin{}   -> compileBuiltin expr
     Literal _ l -> compileLiteral l
@@ -448,6 +444,13 @@ compileLetBinder (binder, expr) = do
   let binderName = pretty (nameOf binder :: OutputBinding)
   cExpr <- compileExpr expr
   return $ binderName <+> "=" <+> cExpr
+
+compileLam :: MonadAgdaCompile m => OutputExpr -> m Code
+compileLam expr = do
+  let (binders, body) = foldLam expr
+  cBinders <- traverse compileBinder binders
+  cBody    <- compileExpr body
+  return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> arrow <+> cBody)
 
 compileArg :: MonadAgdaCompile m => OutputArg -> m Code
 compileArg arg = argBrackets (visibilityOf arg) <$> compileExpr (argExpr arg)
@@ -517,7 +520,7 @@ compileBuiltin e = case e of
 
   (ForallTCExpr  _  binder body) -> compileTypeLevelQuantifier Forall [binder] body
   (ExistsTCExpr  _  binder body) -> compileTypeLevelQuantifier Exists [binder] body
-  (ForeachExpr p _ _ _)          -> throwError $ UnsupportedBuiltin AgdaBackend p Foreach
+  (ForeachExpr _ _ _ lam)        -> compileLam lam
 
   (ForallInTCExpr p tCont binder body cont) -> compileQuantIn Forall tCont (Lam p binder body) cont
   (ExistsInTCExpr p tCont binder body cont) -> compileQuantIn Exists tCont (Lam p binder body) cont

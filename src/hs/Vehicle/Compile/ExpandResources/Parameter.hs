@@ -5,7 +5,9 @@ module Vehicle.Compile.ExpandResources.Parameter
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Map qualified as Map
+import Data.Text (pack)
 import Text.Read (readMaybe)
+import Data.Text.Read (rational)
 
 import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
@@ -20,7 +22,7 @@ parseParameterValue :: MonadExpandResources m
                     -> DeclProvenance
                     -> CheckedExpr
                     -> m CheckedExpr
-parseParameterValue parameterValues decl@(ident, p) paramType = do
+parseParameterValue parameterValues decl@(ident, _) paramType = do
   implicitParams <- get
 
   parser <- case paramType of
@@ -47,24 +49,31 @@ parseParameterValue parameterValues decl@(ident, p) paramType = do
 
   case Map.lookup (nameOf ident) parameterValues of
     Nothing    -> throwError $ ResourceNotProvided decl Parameter
-    Just value -> case parser p value of
-      Just e -> return e
-      Nothing -> throwError $ UnableToParseResource decl Parameter value
+    Just value -> parser decl value
 
-parseBool :: Provenance -> String -> Maybe CheckedExpr
-parseBool p value = fmap (BoolLiteral p) (readMaybe value)
+parseBool :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
+parseBool decl@(_, p) value = case readMaybe value of
+  Just v  -> return $ BoolLiteral p v
+  Nothing -> throwError $ UnableToParseResource decl Parameter value
 
-parseNat :: Provenance -> String -> Maybe CheckedExpr
-parseNat p value = fmap (NatLiteral p) (readMaybe value)
+parseNat :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
+parseNat decl@(_, p) value = case readMaybe value of
+  Just v  -> return $ NatLiteral p v
+  Nothing -> throwError $ UnableToParseResource decl Parameter value
 
-parseInt :: Provenance -> String -> Maybe CheckedExpr
-parseInt p value = fmap (IntLiteral p) (readMaybe value)
+parseInt :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
+parseInt decl@(_, p) value = case readMaybe value of
+  Just v  -> return $ IntLiteral p v
+  Nothing -> throwError $ UnableToParseResource decl Parameter value
 
-parseRat :: Provenance -> String -> Maybe CheckedExpr
-parseRat p value = fmap (RatLiteral p) (readMaybe value)
+parseRat :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
+parseRat decl@(_, p) value = case rational (pack value) of
+  Left  _err   -> throwError $ UnableToParseResource decl Parameter value
+  Right (v, _) -> return $ RatLiteral p v
 
-parseIndex :: Int -> Provenance -> String -> Maybe CheckedExpr
-parseIndex n p value = readMaybe value >>= \v ->
-  if v < n
-    then Just $ IndexLiteral p n v
-    else Nothing
+parseIndex :: MonadCompile m => Int -> DeclProvenance -> String -> m CheckedExpr
+parseIndex n decl@(_, p) value = case readMaybe value of
+  Nothing -> throwError $ UnableToParseResource decl Parameter value
+  Just v  -> if v < n
+    then return $ IndexLiteral p n v
+    else throwError $ UnableToParseResource decl Parameter value

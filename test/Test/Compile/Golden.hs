@@ -43,6 +43,16 @@ goldenTests = testGroup "GoldenTests" <$>
       , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
+    , testSpec
+      { testName       = "mnist-robustness"
+      , testLocation   = Examples
+      , testTargets    = [AgdaBackend]
+      , testDatasets   = [ ("trainingImages", "test-images-5.idx")
+                         , ("trainingLabels", "test-labels-5.idx")
+                         ]
+      , testParameters = [ ("epsilon", "0.1") ]
+      }
+
     -- Realistic tests
     , testSpec
       { testName       = "andGate"
