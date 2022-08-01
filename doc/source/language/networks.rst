@@ -8,15 +8,15 @@ Networks
 Basics
 ------
 
-Networks are declared as follows using the :code:`network` keyword:
+Networks are declared as follows using the ``network`` keyword:
 
 .. code-block:: agda
 
    network myNetwork : Tensor Rat [784] -> Tensor Rat [10]
 
 At the moment Vehicle supports networks with a single input and output node.
-Therefore expected type is of the form :code:`Tensor Rat [m] -> Tensor Rat [n]`
-where :code:`m` and :code:`n` are known constants.
+Therefore expected type is of the form ``Tensor Rat dims1 -> Tensor Rat dims1``
+where ``dims1`` and ``dims1`` are a non-empty list of constants.
 
 Supported formats
 -----------------

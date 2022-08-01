@@ -6,7 +6,3 @@ Properties (TODO)
    :local:
 
 Properties are any declaration with the type `Bool`.
-
-
-
-Separate keyword.

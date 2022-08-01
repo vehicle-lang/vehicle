@@ -8,6 +8,7 @@ Specification language
   arithmetic
   functions
   lists
+  vectors
   tensors
   quantifiers
   networks

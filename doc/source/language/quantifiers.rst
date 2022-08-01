@@ -16,22 +16,22 @@ Suppose you have the following network which produces two outputs:
 
 .. code-block:: agda
 
-   network f : Tensor Rat [10] -> Tensor Rat [2]
+   network f : Tensor Rat [10, 10] -> Tensor Rat [2]
 
 and would like to specify that *for any input the network's first
 output is always positive*.
-This can be achieved by using the :code:`forall` quantifier as follows:
+This can be achieved by using the ``forall`` quantifier as follows:
 
 .. code-block:: agda
 
    forall x . f x ! 0 > 0
 
-which brings a new variable :code:`x` of type :code:`Tensor Rat [10]` into
-scope. The variable :code:`x` has no assigned value and therefore represents
+which brings a new variable ``x`` of type ``Tensor Rat [10, 10]`` into
+scope. The variable ``x`` has no assigned value and therefore represents
 an arbitrary input.
 
 Similarly, if trying to specify that *there exists at least one input for which
-the network's first output is positive*, the :code:`exists` quantifier can be
+the network's first output is positive*, the ``exists`` quantifier can be
 used as follows:
 
 .. code-block:: agda
@@ -43,7 +43,7 @@ their types:
 
 .. code-block:: agda
 
-   exists (x : Tensor Rat [10]) . f x ! 0 > 0
+   exists (x : Tensor Rat [10, 10]) . f x ! 0 > 0
 
 and multiple variables can be quantified over at once:
 
@@ -54,7 +54,7 @@ and multiple variables can be quantified over at once:
 In many cases you don't want the property to hold over *all* the
 values in the set, but only a (still infinite) subset of them.
 For example, network inputs are frequently normalised to lie
-within the range [0,1]. If the quantified variable's domain is not
+within the range ``[0,1]``. If the quantified variable's domain is not
 also restricted to this range, then Vehicle will produce spurious
 counter-examples to the specification.
 
@@ -63,7 +63,7 @@ with an implication as follows:
 
 .. code-block:: agda
 
-   forall x . 0 <= x <= 1 => f x ! 0 > 0
+   forall x. (forall i j . 0 <= x ! i ! j <= 1) => f x ! 0 > 0
 
 Quantifying over finite sets
 ----------------------------
@@ -80,14 +80,14 @@ type. For example:
 
 .. code-block:: agda
 
-   pointwiseLess : Tensor Rat [3] -> Tensor Rat [3] -> Bool
+   pointwiseLess : Vector Rat 3 -> Vector Rat 3 -> Bool
    pointwiseLess x y = forall (i : Index 3) . x ! i < y ! i
 
 will get automatically expanded to:
 
 .. code-block:: agda
 
-   pointwiseLess : Tensor Rat [3] -> Tensor Rat [3] -> Bool
+   pointwiseLess : Vector Rat 3 -> Vector Rat 3 -> Bool
    pointwiseLess x y = x ! 0 < y ! 0 and x ! 1 < y ! 1 and x ! 1 < y ! 1
 
 The type annotations on the quantified variable ``i`` are included for clarity
@@ -96,8 +96,8 @@ but are not need in practice as they can be inferred by the compiler.
 The ``in`` keyword
 ++++++++++++++++++
 
-Alternatively quantifiers can be modified with the :code:`in` keyword to
-quantify over all the values contained within a :code:`List` or a :code:`Tensor`:
+Alternatively quantifiers can be modified with the ``in`` keyword to
+quantify over all the values contained within a ``List``, ``Vector`` or ``Tensor``:
 
 .. code-block:: agda
 
@@ -124,7 +124,7 @@ property holds over every element of a dataset, e.g.
 
 .. code-block:: agda
 
-   dataset dataset : List (Tensor Rat [784])
+   dataset dataset : List (Tensor Rat [28, 28])
 
    ...
 
@@ -142,7 +142,7 @@ on the verification status of each individual element.
 
 .. code-block:: agda
 
-   dataset trainingDataset : List (Tensor Rat [784])
+   dataset trainingDataset : List (Tensor Rat [28, 28])
 
    ...
 
@@ -157,13 +157,13 @@ Limitations
 -----------
 
 One hard constraint enforced by both training and
-verification tools is that you may not use both a :code:`forall` and
-an :code:`exists` that quantify over infinite domains within the same property.
+verification tools is that you may not use both a ``forall` and
+an ``exists` that quantify over infinite domains within the same property.
 For example, the following is not allowed:
 
 .. code-block:: agda
 
-   network f : Tensor Rat [2] -> Rat
+   network f : Vecotr Rat 2 -> Vector Rat 1
 
    surjective : Bool
    surjective = forall y . exists x. f x == y
@@ -173,9 +173,9 @@ separate functions. For example, the following is not allowed either:
 
 .. code-block:: agda
 
-   network f : Tensor Rat [2] -> Rat
+   network f : Vector Rat 2 -> Rat
 
-   hits : Tensor Rat [2] -> Bool
+   hits : Vector Rat 2 -> Bool
    hits y = exists x . f x == y
 
    surjective : Bool
@@ -187,7 +187,7 @@ For example, the following *is* allowed:
 
 .. code-block:: agda
 
-   network f : Tensor Rat [2] -> Rat
+   network f : Vector Rat 2 -> Rat
 
    prop1 : Bool
    prop1 y = exists x . f x >= 2
