@@ -88,7 +88,7 @@ will get automatically expanded to:
 .. code-block:: agda
 
    pointwiseLess : Vector Rat 3 -> Vector Rat 3 -> Bool
-   pointwiseLess x y = x ! 0 < y ! 0 and x ! 1 < y ! 1 and x ! 1 < y ! 1
+   pointwiseLess x y = x ! 0 < y ! 0 and x ! 1 < y ! 1 and x ! 2 < y ! 2
 
 The type annotations on the quantified variable ``i`` are included for clarity
 but are not need in practice as they can be inferred by the compiler.
