@@ -115,50 +115,12 @@ to a sequence of conjunctions as follows:
    myListInRange : Bool
    myListInRange = 0 <= f 0.4 <= 1 and 0 <= f 1.1 <= 1 and 0 <= f 0.2 <= 1
 
-
-The ``foreach`` quantifier
-++++++++++++++++++++++++++
-
-Finally a common use of the finite quantification is to assert that the
-property holds over every element of a dataset, e.g.
-
-.. code-block:: agda
-
-   dataset dataset : List (Tensor Rat [28, 28])
-
-   ...
-
-   robust : Bool
-   robust = forall x in dataset . robustAround x
-
-The problem with this formulation of the specification is that Vehicle
-will only report whether the network is robust around *all* the elements
-in the dataset. This is unlikely to be true.
-
-Instead the ``foreach`` quantifier may be used. Instead of returning a
-single value of type ``Bool`` it returns a ``List`` / ``Tensor``
-of ``Bool`` values. When used a property, Vehicle will therefore report
-on the verification status of each individual element.
-
-.. code-block:: agda
-
-   dataset trainingDataset : List (Tensor Rat [28, 28])
-
-   ...
-
-   robust : List Bool
-   robust = foreach x in trainingDataset . robustAround x
-
-Unlike the ``forall`` keyword, the ``foreach`` keyword cannot be used to
-quantify over infinite types. It can be used to quantify over ``Index``
-types.
-
 Limitations
 -----------
 
 One hard constraint enforced by both training and
-verification tools is that you may not use both a ``forall` and
-an ``exists` that quantify over infinite domains within the same property.
+verification tools is that you may not use both a ``forall`` and
+an ``exists`` that quantify over infinite domains within the same property.
 For example, the following is not allowed:
 
 .. code-block:: agda
