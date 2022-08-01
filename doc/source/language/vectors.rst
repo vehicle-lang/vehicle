@@ -27,57 +27,57 @@ Creation
 There are three ways to create an instance of a vector:
 
 #. Use the same syntax as when creating a ``List``, i.e. ``[x_1, ..., x_n]``.
-For example:
+  For example:
 
-.. code-block:: agda
+  .. code-block:: agda
 
-  myVector1 : Vector Rat 3
-  myVector1 = [ 0.1, 0.3, -0.1 ]
+    myVector1 : Vector Rat 3
+    myVector1 = [ 0.1, 0.3, -0.1 ]
 
-The type-checker will ensure that all vectors written in this way are of
-the correct size. For example the following would result in an error:
+  The type-checker will ensure that all vectors written in this way are of
+  the correct size. For example the following would result in an error:
 
-.. code-block:: agda
+  .. code-block:: agda
 
-   myBadVector : Vector Rat 3
-   myBadVector = [ 0.1, 0.3 ]
+    myBadVector : Vector Rat 3
+    myBadVector = [ 0.1, 0.3 ]
 
-as the size of the vector is ``3`` but only 2 elements have been provided.
+  as the size of the vector is ``3`` but only 2 elements have been provided.
 
-While it is possible to use this method to write out small vectors,
-writing out large vectors this way is clearly impracticle.
+  While it is possible to use this method to write out small vectors,
+  writing out large vectors this way is clearly impractical.
 
 #. Therefore the second method is to use the ``foreach`` constructor,
-which is used to provide a value for each index ``i``. This method is
-useful if the vector has some regular structure. For example:
+  which is used to provide a value for each index ``i``. This method is
+  useful if the vector has some regular structure. For example:
 
-.. code-block:: agda
+  .. code-block:: agda
 
-  myVector2 : Vector Rat 100
-  myVector2 = foreach i . 0
+    myVector2 : Vector Rat 100
+    myVector2 = foreach i . 0
 
-constructs a vector of 100 rationals all of which are ``0``, and
+  constructs a vector of 100 rationals all of which are ``0``, and
 
-.. code-block:: agda
+  .. code-block:: agda
 
-  myVector3 : Vector Rat 100
-  myVector3 = foreach i . if i < 20 then 1 else 0
+    myVector3 : Vector Rat 100
+    myVector3 = foreach i . if i < 20 then 1 else 0
 
-constructs a vector of 100 rationals where the first 20 elements are ``1``
-and the remaining are ``0``.
+  constructs a vector of 100 rationals where the first 20 elements are ``1``
+  and the remaining are ``0``.
 
-When using the ``foreach`` to construct a vector of size ``n``` the type
-of variable ``i`` is ``Index n``. See the Index section for more details.
+  When using the ``foreach`` to construct a vector of size ``n``` the type
+  of variable ``i`` is ``Index n``. See the Index section for more details.
 
 #. The final way vectors can be created is to load them as a
-``dataset``, e.g.
+  ``dataset``, e.g.
 
-.. code-block:: agda
+  .. code-block:: agda
 
-   dataset myVector4 : Vector Rat 10000
+    dataset myVector4 : Vector Rat 10000
 
-which allows the loading of large vectors with no regular structure.
-See the section on datasets for more details.
+  which allows the loading of large vectors with no regular structure.
+  See the section on datasets for more details.
 
 Operations
 ----------
