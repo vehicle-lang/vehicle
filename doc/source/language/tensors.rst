@@ -20,10 +20,10 @@ a 24-by-24 matrix of rational numbers.
 As might be expected, the ``Tensor`` is really just a convenient wrapper
 around multiple ``Vector`` types, and therefore obeys the following laws:
 
-1. A tensor type with an empty list of dimensions is equivalent to its element
+#. A tensor type with an empty list of dimensions is equivalent to its element
 type, e.g. ``Tensor Rat []`` is equivalent to ``Rat``.
 
-2. A tensor type with an non-empty list of dimensions ``d :: ds`` is equivalent
+#. A tensor type with an non-empty list of dimensions ``d :: ds`` is equivalent
   to a vector of length ``d`` whose elements are tensors of dimensions ``ds``,
   e.g. ``Tensor Rat [2,3,4]`` is equivalent to ``Vector (Tensor Rat [3,4]) 2``
   (and therefore ``Vector (Vector (Vector Rat 4) 3) 2)``).
@@ -35,12 +35,12 @@ the dimensions concatenated, e.g. ``Tensor (Tensor Rat [24, 20]) [100]``
 is equivalent to ``Tensor Rat [100, 24, 20]``.
 
 Creation
-########
+--------
 
 As tensors are really just vectors underneath the hood, they can be
 created by the same three mechanisms:
 
-1. Use the same syntax as lists, e.g. the 2-by-2 identity matrix can
+#. Use the same syntax as lists, e.g. the 2-by-2 identity matrix can
    be defined as follows:
 
 .. code-block:: agda
@@ -58,14 +58,14 @@ For example, the following would result in an error:
 
 as the second dimension is ``2`` but three elements have been provided.
 
-2. The ``foreach`` syntax:
+#. The ``foreach`` syntax:
 
 .. code-block:: agda
 
   identity : Tensor Rat [1000,1000]
   identity = foreach i j . if i == j then 1 else 0
 
-3. The final way tensors can be created is to load them as a
+#. The final way tensors can be created is to load them as a
 ``dataset``, e.g.
 
 .. code-block:: agda
@@ -75,7 +75,7 @@ as the second dimension is ``2`` but three elements have been provided.
 See the section on datasets for more details.
 
 Operations
-##########
+----------
 
 The following operations over tensors are currently supported:
 

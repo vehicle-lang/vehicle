@@ -22,12 +22,12 @@ rational numbers,  and ``Vector (List Nat) 2`` is a vector of length 2
 that contains lists of natural numbers.
 
 Creation
-########
+--------
 
 There are three ways to create an instance of a vector:
 
-1. Use the same syntax as when creating a ``List``, i.e. ``[x_1, ..., x_n]``.
-For example, the type-checker
+#. Use the same syntax as when creating a ``List``, i.e. ``[x_1, ..., x_n]``.
+For example:
 
 .. code-block:: agda
 
@@ -35,21 +35,21 @@ For example, the type-checker
   myVector1 = [ 0.1, 0.3, -0.1 ]
 
 The type-checker will ensure that all vectors written in this way are of
-the correct size. For example, the following would result in an error:
+the correct size. For example the following would result in an error:
 
 .. code-block:: agda
 
    myBadVector : Vector Rat 3
    myBadVector = [ 0.1, 0.3 ]
 
-as the size of the vector is ``3`` but only two elements have been provided.
+as the size of the vector is ``3`` but only 2 elements have been provided.
 
-While it is possible to write out small vectors this way, writing out large
-vectors in this way is clearly impracticable.
+While it is possible to use this method to write out small vectors,
+writing out large vectors this way is clearly impracticle.
 
-2. Therefore the second method is to use the ``foreach`` constructor,
-which is used to provide a value for each index ``i``. This is useful if
-your vector has some regular structure. For example:
+#. Therefore the second method is to use the ``foreach`` constructor,
+which is used to provide a value for each index ``i``. This method is
+useful if the vector has some regular structure. For example:
 
 .. code-block:: agda
 
@@ -69,7 +69,7 @@ and the remaining are ``0``.
 When using the ``foreach`` to construct a vector of size ``n``` the type
 of variable ``i`` is ``Index n``. See the Index section for more details.
 
-3. The final way vectors can be created is to load them as a
+#. The final way vectors can be created is to load them as a
 ``dataset``, e.g.
 
 .. code-block:: agda
@@ -80,7 +80,7 @@ which allows the loading of large vectors with no regular structure.
 See the section on datasets for more details.
 
 Operations
-##########
+----------
 
 The following operations over vectors are currently supported:
 
@@ -124,7 +124,7 @@ The following operations over vectors are currently supported:
        repeatedly with the head of the vector.
 
 Indexing
-########
+--------
 
 The type of the lookup operator ``!`` given above requires that it
 takes a value of type ``Index d`` as its second argument.

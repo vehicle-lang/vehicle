@@ -1,5 +1,5 @@
-Specification language
-======================
+The specification language
+==========================
 
 .. toctree::
   :maxdepth: 1

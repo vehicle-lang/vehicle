@@ -21,12 +21,3 @@ synonym for it and use it as follows:
 
   robustAround : Image -> Bool
   robustAround x = ...
-
-Declared types can also have arguments. For example we
-can declare :code:`Vector` as a synonym for 1-dimensional tensors as follows:
-
-.. code-block:: agda
-
-  type Vector A n = Tensor A [n]
-
-  network classify : Vector Rat 10 -> Vector Rat 1
