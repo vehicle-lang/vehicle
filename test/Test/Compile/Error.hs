@@ -176,10 +176,44 @@ parameterErrors = failTestGroup "ParameterErrors"
     }
 
   , testSpec
-    { testName       = "unparseable"
+    { testName       = "unsupportedType"
+    , testLocation   = Tests
+    , testTargets    = [MarabouBackend]
+    }
+
+  , testSpec
+    { testName       = "unparseableBool"
+    , testLocation   = Tests
+    , testTargets    = [MarabouBackend]
+    , testParameters = [("b", "x")]
+    }
+
+  , testSpec
+    { testName       = "unparseableIndex"
     , testLocation   = Tests
     , testTargets    = [MarabouBackend]
     , testParameters = [("n", "~`")]
+    }
+
+  , testSpec
+    { testName       = "tooLargeAnIndex"
+    , testLocation   = Tests
+    , testTargets    = [MarabouBackend]
+    , testParameters = [("n", "5")]
+    }
+
+  , testSpec
+    { testName       = "unparseableNat"
+    , testLocation   = Tests
+    , testTargets    = [MarabouBackend]
+    , testParameters = [("n", "~`")]
+    }
+
+  , testSpec
+    { testName       = "unparseableRat"
+    , testLocation   = Tests
+    , testTargets    = [MarabouBackend]
+    , testParameters = [("r", "~`")]
     }
   ]
 

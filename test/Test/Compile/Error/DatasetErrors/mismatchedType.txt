@@ -1,2 +1,2 @@
 Error at Line 2, Columns 9-24: Found elements of type Rat while reading dataset 'trainingDataset' but expected elements of type Int
-Fix: correct the dataset type in the specification.
+Fix: correct the dataset type in the specification or check that the dataset is in the format you were expecting.

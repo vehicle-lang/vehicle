@@ -469,8 +469,10 @@ instance MeaningfulError CompileError where
 
     DatasetVariableSizeTensor (ident, p) tCont -> UError $ UserError
       { provenance = p
-      , problem    = "A tensor with variable dimension" <+> squotes (prettyFriendlyDBClosed tCont) <+>
-                     "is not a supported type for the" <+> prettyResource Dataset ident <> "."
+      , problem    = "A tensor with variable dimension" <+>
+                     squotes (prettyFriendlyDBClosed tCont) <+>
+                     "is not a supported type for the" <+>
+                     prettyResource Dataset ident <> "."
       , fix        = Just "make sure the dimensions of the dataset are all constants."
       }
 
@@ -497,7 +499,8 @@ instance MeaningfulError CompileError where
       , problem    = "Found dimensions" <+> pretty actualDims <+>
                      "while reading" <+> prettyResource Dataset ident <+>
                      "but expected type to be" <+> prettyFriendlyDBClosed expectedType
-      , fix        = Just "correct the dataset dimensions in the specification."
+      , fix        = Just $ "correct the dataset dimensions in the specification" <+>
+                      "or check that the dataset is in the format you were expecting."
       }
 
     DatasetTypeMismatch (ident, p) expectedType actualType -> UError $ UserError
@@ -505,34 +508,45 @@ instance MeaningfulError CompileError where
       , problem    = "Found elements of type" <+> prettyFriendlyDBClosed actualType <+>
                      "while reading" <+> prettyResource Dataset ident <+>
                      "but expected elements of type" <+> prettyFriendlyDBClosed expectedType
-      , fix        = Just "correct the dataset type in the specification."
+      , fix        = Just $ "correct the dataset type in the specification or check that" <+>
+                      "the dataset is in the format you were expecting."
       }
 
     -- Parameter errors
 
     ParameterTypeUnsupported (ident, p) expectedType -> UError $ UserError
       { provenance = p
-      , problem    = unsupportedResourceTypeDescription Parameter ident expectedType <> "." <+>
-                     supportedParameterTypeDescription
+      , problem    = unsupportedResourceTypeDescription Parameter ident expectedType <>
+                    "." <+> supportedParameterTypeDescription
       , fix        = Just "change the parameter type in the specification."
       }
 
-    ParameterValueUnparsable (ident, p) expectedType value -> UError $ UserError
+    ParameterValueUnparsable (ident, p) value expectedType -> UError $ UserError
       { provenance = p
-      , problem    = "Error while parsing the value provided for" <+>
-                     prettyResource Parameter ident <> "." <+>
-                     "Expected the value to be of type" <+>
-                     squotes (prettyFriendly expectedType) <+>
-                     "but found" <+> squotes (pretty value)
-      , fix        = Just $ "either fix the type of the parameter in the" <+>
+      , problem    = "The value" <+> squotes (pretty value) <+>
+                     "provided for" <+> prettyResource Parameter ident <+>
+                     "could not be parsed as" <+> prettyBuiltinType expectedType <> "."
+      , fix        = Just $ "either change the type of the parameter in the" <+>
                      "specification or change the value provided."
       }
 
     ParameterTypeVariableSizeIndex (ident, p) fullType -> UError $ UserError
       { provenance = p
-      , problem    = "An Index with variable dimensions" <+> squotes (prettyFriendly fullType) <+>
+      , problem    = "An" <+> pretty Index <+> "with variable dimensions" <+>
+                     squotes (prettyFriendly fullType) <+>
                      "is not a supported type for the" <+> prettyResource Parameter ident <> "."
       , fix        = Just "make sure the dimensions of the indices are all constants."
+      }
+
+    ParameterValueTooLargeForIndex (ident, p) value indexSize -> UError $ UserError
+      { provenance = p
+      , problem    = "The value" <+> squotes (pretty value) <+>
+                     "provided for" <+> prettyResource Parameter ident <+> "is not" <+>
+                     "a valid member of the type" <+>
+                     squotes (pretty Index <+> pretty indexSize) <> "."
+      , fix        = Just $ "either change the size of the index or ensure the value" <+>
+                      "provided is in the range" <+> squotes ("0..." <> pretty (indexSize -1)) <+>
+                      "(inclusive)."
       }
 
     ParameterTypeImplicitParamIndex (ident, p) _varIndent -> UError $ UserError
@@ -712,6 +726,14 @@ unsolvedConstraintError constraint ctx ="Typing error: not enough information to
 
 prettyResource :: ResourceType -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
+
+prettyBuiltinType :: Builtin -> Doc a
+prettyBuiltinType t = article <+> squotes (pretty t)
+  where
+    article :: Doc a
+    article = case t of
+      Index -> "an"
+      _     -> "a"
 
 prettyExpr :: HasBoundCtx a => a -> CheckedExpr -> Doc b
 prettyExpr ctx e = squotes $ prettyFriendlyDB (boundContextOf ctx) e

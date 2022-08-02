@@ -36,10 +36,10 @@ checkParameterType :: TCM m
                    -> m (CheckedExpr -> CheckedExpr)
 checkParameterType decl t = do
   case t of
-    BoolType{}  -> return ()
-    IndexType{} -> return ()
-    NatType{}   -> return ()
-    IntType{}   -> return ()
+    AnnBoolType{} -> return ()
+    IndexType{}   -> return ()
+    NatType{}     -> return ()
+    IntType{}     -> return ()
 
     AnnRatType p lin -> do
       let targetLinearity = Builtin p (Linearity Constant)

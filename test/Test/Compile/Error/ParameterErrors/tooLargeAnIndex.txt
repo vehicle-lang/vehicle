@@ -1,0 +1,2 @@
+Error at Line 1, Columns 11-12: The value '5' provided for parameter 'n' is not a valid member of the type 'Index 5'.
+Fix: either change the size of the index or ensure the value provided is in the range '0...4' (inclusive).

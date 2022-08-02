@@ -54,26 +54,26 @@ parseParameterValue parameterValues decl@(ident, _) paramType = do
 parseBool :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
 parseBool decl@(_, p) value = case readMaybe value of
   Just v  -> return $ BoolLiteral p v
-  Nothing -> throwError $ UnableToParseResource decl Parameter value
+  Nothing -> throwError $ ParameterValueUnparsable decl value Bool
 
 parseNat :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
 parseNat decl@(_, p) value = case readMaybe value of
   Just v  -> return $ NatLiteral p v
-  Nothing -> throwError $ UnableToParseResource decl Parameter value
+  Nothing -> throwError $ ParameterValueUnparsable decl value Nat
 
 parseInt :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
 parseInt decl@(_, p) value = case readMaybe value of
   Just v  -> return $ IntLiteral p v
-  Nothing -> throwError $ UnableToParseResource decl Parameter value
+  Nothing -> throwError $ ParameterValueUnparsable decl value Int
 
 parseRat :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
 parseRat decl@(_, p) value = case rational (pack value) of
-  Left  _err   -> throwError $ UnableToParseResource decl Parameter value
+  Left  _err   -> throwError $ ParameterValueUnparsable decl value Rat
   Right (v, _) -> return $ RatLiteral p v
 
 parseIndex :: MonadCompile m => Int -> DeclProvenance -> String -> m CheckedExpr
 parseIndex n decl@(_, p) value = case readMaybe value of
-  Nothing -> throwError $ UnableToParseResource decl Parameter value
+  Nothing -> throwError $ ParameterValueUnparsable decl value Index
   Just v  -> if v < n
     then return $ IndexLiteral p n v
-    else throwError $ UnableToParseResource decl Parameter value
+    else throwError $ ParameterValueTooLargeForIndex decl v n

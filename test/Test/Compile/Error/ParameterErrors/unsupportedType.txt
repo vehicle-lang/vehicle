@@ -1,0 +1,7 @@
+Error at Line 1, Columns 11-12: The type 'Nat -> Nat' of parameter 'n' is not currently supported. Only parameters of the following types are allowed:
+  1. Bool
+  2. Index n
+  3. Nat
+  4. Int
+  5. Rat
+Fix: change the parameter type in the specification.

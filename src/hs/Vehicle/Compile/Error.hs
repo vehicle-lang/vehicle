@@ -101,7 +101,8 @@ data CompileError
   | ParameterTypeUnsupported        DeclProvenance CheckedExpr
   | ParameterTypeVariableSizeIndex  DeclProvenance CheckedExpr
   | ParameterTypeImplicitParamIndex DeclProvenance Identifier
-  | ParameterValueUnparsable        DeclProvenance CheckedExpr String
+  | ParameterValueUnparsable        DeclProvenance String Builtin
+  | ParameterValueTooLargeForIndex  DeclProvenance Int Int
 
   | ImplicitParameterTypeUnsupported DeclProvenance CheckedExpr
   | ImplicitParameterContradictory   Identifier (DeclProvenance, ResourceType, Int) (DeclProvenance, ResourceType, Int)

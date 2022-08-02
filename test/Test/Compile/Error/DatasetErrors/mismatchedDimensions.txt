@@ -1,2 +1,2 @@
 Error at Line 2, Columns 9-24: Found dimensions [ 4 ] while reading dataset 'trainingDataset' but expected type to be Vector Nat 5
-Fix: correct the dataset dimensions in the specification.
+Fix: correct the dataset dimensions in the specification or check that the dataset is in the format you were expecting.
