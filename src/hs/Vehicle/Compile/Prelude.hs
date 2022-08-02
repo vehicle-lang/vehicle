@@ -96,6 +96,14 @@ logCompilerPass level passName performPass = do
   logDebug level $ "Finished" <+> passName <> line
   return result
 
+logCompilerSection :: MonadLogger m => DebugLevel -> Doc a -> m b -> m b
+logCompilerSection level sectionName performPass = do
+  logDebug level sectionName
+  incrCallDepth
+  result <- performPass
+  decrCallDepth
+  return result
+
 logCompilerPassOutput :: MonadLogger m => Doc a -> m ()
 logCompilerPassOutput result = do
   logDebug MidDetail "Result:"

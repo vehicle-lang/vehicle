@@ -55,21 +55,13 @@ positionalIntersection (x : xs) (y : ys)
 blockOn :: MonadMeta m => [Meta] -> m ConstraintProgress
 blockOn metas = do
   logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
-  return Stuck
+  return $ Stuck $ MetaSet.fromList metas
 
 unify :: Constraint -> CheckedExpr -> CheckedExpr -> Constraint
-unify c e1 e2 = UC ctx $ Unify (e1, e2)
-  where ctx = (constraintContext c) { blockedBy = mempty }
-
+unify c e1 e2 = UC (copyContext (constraintContext c)) $ Unify (e1, e2)
 
 solved :: ConstraintProgress
-solved = Progress $ Resolution mempty mempty
-
-solvedAndSolvedMetas :: Meta -> ConstraintProgress
-solvedAndSolvedMetas m = Progress $ Resolution mempty (MetaSet.singleton m)
-
-solvedAndNewConstraints :: [Constraint] -> ConstraintProgress
-solvedAndNewConstraints constraints = Progress $ Resolution constraints mempty
+solved = Progress mempty
 
 getMeta :: CheckedExpr -> Maybe Meta
 getMeta e = case exprHead e of

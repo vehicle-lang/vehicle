@@ -16,8 +16,9 @@ module Vehicle.Compile.Type.Meta
   , getTypeClassConstraints
   , popActivatedConstraints
   , getMetaSubstitution
-  , modifyMetaSubstitution
+  , getSolvedMetas
   , clearMetaSubstitution
+  , clearSolvedMetas
   , substMetasThroughCtx
   , getUnsolvedMetas
   , getUnsolvedAuxiliaryMetas
@@ -29,7 +30,6 @@ module Vehicle.Compile.Type.Meta
   , getMetasLinkedToMetasIn
   , MonadMeta
   , ConstraintProgress(..)
-  , ConstraintResolution(..)
   , isStuck
   , MetaCtx(..)
   , MetaInfo(..)
@@ -170,6 +170,7 @@ data MetaCtx = MetaCtx
   -- NB: these are stored in *reverse* order from which they were created.
   , currentSubstitution :: MetaSubstitution
   , constraints         :: [Constraint]
+  , solvedMetas         :: MetaSet
   }
 
 emptyMetaCtx :: MetaCtx
@@ -177,6 +178,7 @@ emptyMetaCtx = MetaCtx
   { metaInfo               = mempty
   , currentSubstitution    = mempty
   , constraints            = mempty
+  , solvedMetas            = mempty
   }
 
 substMetas :: (MonadMeta m, MetaSubstitutable a)
@@ -285,12 +287,16 @@ modifyMetasInfo m f = modify (\MetaCtx{..} ->
 getMetaSubstitution :: MonadMeta m => m MetaSubstitution
 getMetaSubstitution = gets currentSubstitution
 
-modifyMetaSubstitution :: MonadMeta m => (MetaSubstitution -> MetaSubstitution) -> m ()
-modifyMetaSubstitution f = modifyMetaCtx $ \ MetaCtx {..} ->
-  MetaCtx { currentSubstitution = f currentSubstitution, ..}
+getSolvedMetas :: MonadMeta m => m MetaSet
+getSolvedMetas = gets solvedMetas
 
 clearMetaSubstitution :: MonadMeta m => m ()
-clearMetaSubstitution = modifyMetaSubstitution (const mempty)
+clearMetaSubstitution = modifyMetaCtx $ \ MetaCtx {..} ->
+  MetaCtx { currentSubstitution = mempty, ..}
+
+clearSolvedMetas :: MonadMeta m => m ()
+clearSolvedMetas = modifyMetaCtx $ \MetaCtx {..} ->
+  MetaCtx { solvedMetas = mempty, ..}
 
 modifyMetaCtx :: MonadMeta m => (MetaCtx -> MetaCtx) -> m ()
 modifyMetaCtx = modify
@@ -305,6 +311,7 @@ substMetasThroughCtx = do
     { constraints = substConstraints
     , metaInfo = substMetaInfo
     , currentSubstitution = substMetaSolution
+    , solvedMetas = solvedMetas
     }
 
 getUnsolvedConstraints :: MonadMeta m => m [Constraint]
@@ -390,8 +397,12 @@ metaSolved m solution = do
       "at" <+> pretty p
     -- Could use `insertWith` instead of `insert` here for one lookup instead of
     -- two, but not possible to throw a monadic error unfortunately.
-    Nothing -> modifyMetaSubstitution (insert m abstractedSolution)
-
+    Nothing -> do
+      modifyMetaCtx $ \ MetaCtx {..} -> MetaCtx
+        { currentSubstitution = insert m abstractedSolution currentSubstitution
+        , solvedMetas         = MetaSet.insert m solvedMetas
+        , ..
+        }
 
 class HasMetas a where
   metasInWithArgs :: a -> MetaMap [CheckedArg]
@@ -499,40 +510,24 @@ popActivatedConstraints metasSolved = do
 --------------------------------------------------------------------------------
 -- Progress in solving meta-variable constraints
 
--- | Reports that a constraint has been resolved.
-data ConstraintResolution = Resolution
-  { newConstraints :: [Constraint]
-  , solvedMetas    :: MetaSet
-  }
-  deriving (Show)
-
-instance Semigroup ConstraintResolution where
-  Resolution n1 ms1 <> Resolution n2 ms2 = Resolution (n1 <> n2) (ms1 <> ms2)
-
-instance Pretty ConstraintResolution where
-  pretty (Resolution constraints metas) =
-    "Resolution" <+> prettyVerbose constraints <+> pretty metas
-
 data ConstraintProgress
-  = Stuck
-  | Progress ConstraintResolution
+  = Stuck MetaSet
+  | Progress [Constraint]
   deriving (Show)
 
 instance Pretty ConstraintProgress where
-  pretty Stuck                 = "Stuck"
-  pretty (Progress resolution) = pretty resolution
+  pretty (Stuck metas)         = "StuckOn[" <+> pretty metas <+> "]"
+  pretty (Progress constraints) = "Resolution" <+> prettyVerbose constraints
 
 isStuck :: ConstraintProgress -> Bool
-isStuck Stuck = True
-isStuck _     = False
+isStuck Stuck{} = True
+isStuck _       = False
 
 instance Semigroup ConstraintProgress where
-  Stuck       <> x           = x
-  x           <> Stuck       = x
-  Progress r1 <> Progress r2 = Progress (r1 <> r2)
-
-instance Monoid ConstraintProgress where
-  mempty = Stuck
+  Stuck m1     <> Stuck m2     = Stuck (m1 <> m2)
+  Stuck{}      <> x@Progress{} = x
+  x@Progress{} <> Stuck{}      = x
+  Progress r1  <> Progress r2 = Progress (r1 <> r2)
 
 getDeclType :: (MonadCompile m, MonadReader TypingVariableCtx m)
             => Provenance -> Identifier -> m CheckedExpr

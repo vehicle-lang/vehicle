@@ -30,7 +30,6 @@ import Vehicle.Internal.Abs qualified as BC
 import Vehicle.External.Abs qualified as BF
 
 import Vehicle.Prelude
--- import Vehicle.Language.AST
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.Delaborate.Internal as Internal
 import Vehicle.Compile.Delaborate.External as External
@@ -38,6 +37,7 @@ import Vehicle.Compile.Descope
 import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.MetaMap (MetaMap(..))
+import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.CoDeBruijnify (ConvertCodebruijn(..))
 import Vehicle.Compile.Prelude hiding (MapList)
 
@@ -282,8 +282,16 @@ instance Pretty a => PrettyUsing 'Pretty a where
 
 instance (PrettyUsing rest CheckedExpr)
       => PrettyUsing ('Opaque rest) Constraint where
-  prettyUsing (UC _ (Unify (e1, e2))) = prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2
-  prettyUsing (TC _ (m `Has` e))      = pretty m <+> "<=" <+> prettyUsing @rest e
+  prettyUsing = \case
+    UC ctx (Unify (e1, e2)) -> prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2 <> prettyCtx ctx
+    TC ctx (m `Has` e)      -> pretty m <+> "<=" <+> prettyUsing @rest e <> prettyCtx ctx
+    where
+      prettyCtx :: ConstraintContext -> Doc a
+      prettyCtx ctx = do
+        let blockingMetas = blockedBy ctx
+        if MetaSet.null blockingMetas
+          then ""
+          else "     " <> parens ("blockedBy:" <+> pretty (blockedBy ctx))
     -- <+> "<boundCtx=" <> pretty (ctxNames (boundContext c)) <> ">"
     -- <+> parens (pretty (provenanceOf c))
 

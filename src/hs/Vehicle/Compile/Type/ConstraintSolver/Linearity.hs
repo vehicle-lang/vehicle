@@ -33,7 +33,7 @@ solveMaxLinearity c [lin1, lin2, res] =
 
     (LinearityExpr p l1, LinearityExpr _ l2) -> do
       let linRes = LinearityExpr p $ maxLinearity l1 l2
-      return $ solvedAndNewConstraints [unify c res linRes]
+      return $ Progress [unify c res linRes]
 
     _ -> malformedConstraintError c
 
@@ -51,7 +51,7 @@ solveMulLinearity c [lin1, lin2, res] =
 
     (LinearityExpr p l1, LinearityExpr _ l2) -> do
       let linRes = LinearityExpr p $ mulLinearity l1 l2
-      return $ solvedAndNewConstraints [unify c res linRes]
+      return $ Progress [unify c res linRes]
 
     _ -> malformedConstraintError c
 

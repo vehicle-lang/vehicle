@@ -2,7 +2,7 @@ module Vehicle.Compile.Type.ConstraintSolver.Unification
   ( solveUnificationConstraint
   ) where
 
-import Control.Monad (when, forM_)
+import Control.Monad (when)
 import Control.Monad.Except (MonadError(..), throwError)
 import Data.List (intersect)
 import Data.Maybe (catMaybes)
@@ -16,6 +16,7 @@ import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Type.ConstraintSolver.Core
+import Data.Traversable (for)
 
 --------------------------------------------------------------------------------
 -- Unification algorithm
@@ -31,9 +32,9 @@ solveUnificationConstraint :: MonadMeta m
                            -> UnificationConstraint
                            -> m ConstraintProgress
 -- Errors
-solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
-  let constraint = UC ctx c
-  let p = provenanceOf constraint
+solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
+  let c = UC ctx pair
+  let p = provenanceOf ctx
 
   progress <- case (toHead e1, toHead e2) of
 
@@ -53,13 +54,10 @@ solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
 
     -- Try to unify with LVec and Cons
     (LVec ann (x : xs), [tSeqElem, tCont, tc1, tc2]) :~: (Builtin _ Cons, [tElem, y, ys]) -> do
-      let typeConstraint = UC ctx (Unify (argExpr tCont, ListType p (argExpr tElem)))
-      let headConstraint = UC ctx (Unify (x, argExpr y))
-      let tailConstraint = UC ctx (Unify (App ann (LVec ann xs) [tSeqElem, tCont, tc1, tc2], argExpr ys))
-      return $ Progress $ Resolution
-        { newConstraints = [typeConstraint, headConstraint, tailConstraint]
-        , solvedMetas    = mempty
-        }
+      let typeConstraint = unify c (argExpr tCont) (ListType p (argExpr tElem))
+      let headConstraint = unify c x (argExpr y)
+      let tailConstraint = unify c (App ann (LVec ann xs) [tSeqElem, tCont, tc1, tc2]) (argExpr ys)
+      return $ Progress [typeConstraint, headConstraint, tailConstraint]
 
     -- mirror image of the previous case, so just swap the problem over.
     (Builtin _ Cons, _) :~: (LVec{}, _) ->
@@ -70,12 +68,9 @@ solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
     (Builtin _ Tensor, [tElem, tDims]) :~: (Builtin _ op, _)
       | op /= Tensor -> do
           let emptyDims = mkTensorDims (inserted (provenanceOf tDims)) []
-          let elemConstraint = UC ctx (Unify (argExpr tElem, e2))
-          let dimsConstraint = UC ctx (Unify (argExpr tDims, emptyDims))
-          return $ Progress $ Resolution
-            { newConstraints = [elemConstraint, dimsConstraint]
-            , solvedMetas    = mempty
-            }
+          let elemConstraint = unify c (argExpr tElem) e2
+          let dimsConstraint = unify c (argExpr tDims) emptyDims
+          return $ Progress [elemConstraint, dimsConstraint]
 
     -- Mirror image of the previous case, so just swap the problem over.
     (Builtin _ op, _) :~: (Builtin _ Tensor, [_tElem, _tDims])
@@ -86,58 +81,45 @@ solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
     -----------------------
 
     (Universe _ l1, []) :~: (Universe _ l2, []) -> do
-      solveEq constraint l1 l2
-      return $ Progress $ Resolution
-        { newConstraints = mempty
-        , solvedMetas    = mempty
-        }
+      solveEq c l1 l2
+      return $ Progress mempty
 
     -- We ASSUME that all terms here are in normal form, so there
     -- will never be an unreduced redex.
     (Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, [])
       | visibilityOf binder1 /= visibilityOf binder2 ->
-        throwError $ FailedConstraints [constraint]
-      | otherwise -> return $ Progress $ Resolution
-        { newConstraints = [UC ctx (Unify (body1, body2))]
-        , solvedMetas    = mempty
-        }
+        throwError $ FailedConstraints [c]
+      | otherwise -> return $ Progress [unify c body1 body2]
 
     (LVec _ es1, args1) :~: (LVec _ es2, args2)
       -- TODO more informative error message
       | length es1 /= length es2 || length args1 /= length args2 ->
-        throwError $ FailedConstraints [constraint]
+        throwError $ FailedConstraints [c]
       -- TODO need to try and unify `LVec` with `Cons`s.
       | otherwise -> do
-        let elemConstraints = zipWith (curry (UC ctx . Unify)) es1 es2
-        argConstraints <- solveArgs constraint (args1, args2)
-        return $ Progress $ Resolution
-          { newConstraints = elemConstraints <> argConstraints
-          , solvedMetas    = mempty
-          }
-
+        let elemConstraints = zipWith (unify c) es1 es2
+        argConstraints <- solveArgs c (args1, args2)
+        return $ Progress $ elemConstraints <> argConstraints
 
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
       | visibilityOf binder1 /= visibilityOf binder2 ->
-        throwError $ FailedConstraints [constraint]
+        throwError $ FailedConstraints [c]
       | otherwise -> do
           -- !!TODO!! Block until binders are solved
           -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
           -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
-          let binderConstraint = UC ctx (Unify (typeOf binder1, typeOf binder2))
-          let bodyConstraint   = UC ctx (Unify (body1, body2))
-          return $ Progress $ Resolution
-            { newConstraints = [binderConstraint, bodyConstraint]
-            , solvedMetas    = mempty
-            }
+          let binderConstraint = unify c (typeOf binder1) (typeOf binder2)
+          let bodyConstraint   = unify c body1 body2
+          return $ Progress [binderConstraint, bodyConstraint]
 
     (Builtin _ op1, args1) :~: (Builtin _ op2, args2) ->
-      solveSimpleApplication constraint op1 op2 args1 args2
+      solveSimpleApplication c op1 op2 args1 args2
 
     (Var _ v1, args1) :~: (Var _ v2, args2) ->
-      solveSimpleApplication constraint v1 v2 args1 args2
+      solveSimpleApplication c v1 v2 args1 args2
 
     (Literal _ l1, args1) :~: (Literal _ l2, args2) ->
-      solveSimpleApplication constraint l1 l2 args1 args2
+      solveSimpleApplication c l1 l2 args1 args2
 
     ---------------------
     -- Flex-flex cases --
@@ -147,10 +129,7 @@ solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
       -- If the expressions are exactly equal then simply discard the constraint
       -- as it doesn't tell us anything.
       | i == j && args1 == args2 ->
-        return $ Progress $ Resolution
-          { newConstraints = mempty
-          , solvedMetas    = mempty
-          }
+        return $ Progress mempty
 
       -- If the meta-variables are equal but their arguments are not
       -- then the meta-variables can only depend on the set of arguments
@@ -167,15 +146,12 @@ solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
         let sharedArgs = positionalIntersection args1 args2
         let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
         let sharedOrigin = meta1Origin <> meta2Origin
-        let sharedTypeConstraint = UC ctx (Unify (meta1Type, meta2Type))
+        let sharedTypeConstraint = unify c meta1Type meta2Type
 
         meta <- freshExprMeta sharedOrigin meta1Type sharedArgsCtx
         metaSolved i meta
 
-        return $ Progress $ Resolution
-          { newConstraints = [sharedTypeConstraint]
-          , solvedMetas    = MetaSet.singleton i
-          }
+        return $ Progress [sharedTypeConstraint]
 
       -- Finally if the meta-variables are different then we have much more
       -- flexibility as to how the arguments can relate to each other. In
@@ -189,16 +165,13 @@ solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
         let sharedArgs = args1 `intersect` args2
         let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
         let sharedOrigin = meta1Origin <> meta2Origin
-        let sharedTypeConstraint = UC ctx (Unify (meta1Type, meta2Type))
+        let sharedTypeConstraint = unify c meta1Type meta2Type
 
         meta <- freshExprMeta sharedOrigin meta1Type sharedArgsCtx
         metaSolved i meta
         metaSolved j meta
 
-        return $ Progress $ Resolution
-          { newConstraints = [sharedTypeConstraint]
-          , solvedMetas    = MetaSet.singleton i <> MetaSet.singleton j
-          }
+        return $ Progress [sharedTypeConstraint]
 
     ----------------------
     -- Flex-rigid cases --
@@ -218,7 +191,7 @@ solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
           -- it for now and hope that another constraint allows us to
           -- progress.
           -- TODO need to check with Bob what this is stuck on, presumably i?
-          return Stuck
+          return $ Stuck $ MetaSet.singleton i
 
         Just subst -> do
           let metasInE2 = metasInWithArgs e2
@@ -231,22 +204,24 @@ solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
               squotes (prettyVerbose e2)
 
           -- Restrict any arguments to each sub-meta on the RHS to those of i.
-          forM_ (MetaMap.toList metasInE2) $ \(j, jArgs) -> do
+          newMetasSolved <- or <$> for (MetaMap.toList metasInE2) (\(j, jArgs) -> do
             MetaInfo jOrigin jType _ <- getMetaInfo j
             let sharedArgs = args `intersect` jArgs
             let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
-            when (sharedArgs /= jArgs) $ do
+            if sharedArgs /= jArgs then do
               meta <- freshExprMeta jOrigin jType sharedArgsCtx
               metaSolved j meta
+              return True
+            else
+              return False)
 
-          case substAll subst e2 of
-            Nothing       -> return Stuck
+          finalE2 <- if newMetasSolved then substMetas e2 else return e2
+
+          case substAll subst finalE2 of
+            Nothing       -> return $ Stuck mempty -- MetaSet.singleton i
             Just defnBody -> do
               metaSolved i defnBody
-              return $ Progress $ Resolution
-                { newConstraints = mempty
-                , solvedMetas    = MetaSet.singleton i
-                }
+              return $ Progress mempty
 
     _t :~: (Meta{}, _) ->
       -- this is the mirror image of the previous case, so just swap the
@@ -254,7 +229,7 @@ solveUnificationConstraint ctx c@(Unify (e1, e2)) = do
       solveUnificationConstraint ctx (Unify (e2, e1))
 
     -- Catch-all
-    _ -> blockOnReductionBlockingMetasOrThrowError [e1,e2] (FailedConstraints [constraint])
+    _ -> blockOnReductionBlockingMetasOrThrowError [e1,e2] (FailedConstraints [c])
 
   return progress
 
@@ -274,9 +249,7 @@ solveArg :: MonadMeta m
 solveArg c (arg1, arg2)
   | visibilityOf arg1 /= visibilityOf arg2 = throwError $ FailedConstraints [c]
   | isInstance arg1 = return Nothing
-  | otherwise = return $ Just $ UC
-    (ConstraintContext (provenanceOf c) mempty (variableContext c))
-    (Unify (argExpr arg1 , argExpr arg2))
+  | otherwise = return $ Just $ unify c (argExpr arg1) (argExpr arg2)
 
 solveArgs :: MonadMeta m
           => Constraint
@@ -294,13 +267,7 @@ solveSimpleApplication constraint fun1 fun2 args1 args2 = do
     throwError $ FailedConstraints [constraint]
   else if null args1 then do
     logDebug MaxDetail "solved-trivially"
-    return $ Progress $ Resolution
-      { newConstraints = mempty
-      , solvedMetas    = mempty
-      }
+    return $ Progress mempty
   else do
     newConstraints <- solveArgs constraint (args1, args2)
-    return $ Progress $ Resolution
-      { newConstraints = newConstraints
-      , solvedMetas    = mempty
-      }
+    return $ Progress newConstraints

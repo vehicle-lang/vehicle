@@ -1,7 +1,8 @@
 module Vehicle.Compile.Type.Constraint where
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.MetaSet
+import Vehicle.Compile.Type.MetaSet (MetaSet)
+import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext
 
 --------------------------------------------------------------------------------
@@ -18,6 +19,13 @@ instance HasProvenance ConstraintContext where
 
 instance HasBoundCtx ConstraintContext where
   boundContextOf = boundContextOf . varContext
+
+blockCtxOn :: ConstraintContext -> MetaSet -> ConstraintContext
+blockCtxOn (ConstraintContext p _ ctx) metas = ConstraintContext p metas ctx
+
+-- | Create a new fresh copy of the context for a new constraint
+copyContext :: ConstraintContext -> ConstraintContext
+copyContext (ConstraintContext p _ ctx) = ConstraintContext p mempty ctx
 
 --------------------------------------------------------------------------------
 -- Unification constraints
@@ -93,3 +101,12 @@ getTypeClassConstraint :: Constraint
                        -> Maybe (TypeClassConstraint, ConstraintContext)
 getTypeClassConstraint (TC ctx c) = Just (c, ctx)
 getTypeClassConstraint _          = Nothing
+
+blockConstraintOn :: Constraint -> MetaSet -> Constraint
+blockConstraintOn (UC ctx c) metas = UC (blockCtxOn ctx metas) c
+blockConstraintOn (TC ctx c) metas = TC (blockCtxOn ctx metas) c
+
+isUnblockedBy :: MetaSet -> Constraint -> Bool
+isUnblockedBy solvedMetas c = do
+  let blockingMetas = blockedBy (constraintContext c)
+  MetaSet.null blockingMetas || not (MetaSet.disjoint solvedMetas blockingMetas)

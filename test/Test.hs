@@ -25,7 +25,7 @@ main = do
 tests :: MonadTest m => m TestTree
 tests = do
   compTests <- compileTests
-  return $ testGroup "Tests"
+  return $ localOption (mkTimeout 100000000) $ testGroup "Tests"
     [ compTests
     , checkTests
     -- , verifyTests

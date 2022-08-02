@@ -81,7 +81,7 @@ solveNegPolarity c [arg1, res] = case arg1 of
 
   PolarityExpr p pol -> do
     let resPol = PolarityExpr p $ negatePolarity (provenanceOf c) pol
-    return $ solvedAndNewConstraints [unify c res resPol]
+    return $ Progress [unify c res resPol]
 
   _ -> malformedConstraintError c
 
@@ -99,7 +99,7 @@ solveAddPolarity q c [arg1, res] = case arg1 of
   PolarityExpr _ pol -> do
     let p = provenanceOf c
     let resPol = PolarityExpr p $ addPolarity p q pol
-    return $ solvedAndNewConstraints [unify c res resPol]
+    return $ Progress [unify c res resPol]
 
   _ -> malformedConstraintError c
 
@@ -117,7 +117,7 @@ solvePolarityOp2 op2 c [arg1, arg2, res] = case (arg1, arg2) of
 
   (PolarityExpr p pol1, PolarityExpr _ pol2) -> do
     let pol3 = PolarityExpr p $ op2 (provenanceOf c) pol1 pol2
-    return $ solvedAndNewConstraints [unify c res pol3]
+    return $ Progress [unify c res pol3]
 
   _ -> malformedConstraintError c
 

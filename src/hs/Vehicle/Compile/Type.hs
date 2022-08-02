@@ -4,7 +4,8 @@ module Vehicle.Compile.Type
   ) where
 
 import Control.Monad.Except (MonadError(..))
-import Control.Monad (forM)
+import Control.Monad (forM, when, unless)
+import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty(..))
 
 import Vehicle.Compile.Prelude
@@ -98,7 +99,7 @@ typeCheckDecl decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
       solveConstraints (Just updatedCheckedDecl)
 
       substDecl <- substMetas updatedCheckedDecl
-      logUnsolvedUnknowns (Just substDecl)
+      logUnsolvedUnknowns (Just substDecl) Nothing
 
       finalDecl <- generaliseOverUnsolvedMetaVariables substDecl
       return finalDecl
@@ -114,7 +115,7 @@ typeCheckDecl decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
       solveConstraints (Just checkedDecl)
 
       substDecl <- substMetas checkedDecl
-      logUnsolvedUnknowns (Just substDecl)
+      logUnsolvedUnknowns (Just substDecl) Nothing
 
       checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints substDecl
       checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
@@ -150,83 +151,73 @@ assertIsType p t        = do
 -- occur in the type or not.
 solveConstraints :: MonadMeta m => Maybe CheckedDecl -> m ()
 solveConstraints decl = logCompilerPass MinDetail "constraint solving" $ do
-  constraints <- getUnsolvedConstraints
-  loopOverConstraints 1 decl $ Progress $ Resolution
-    { newConstraints = constraints
-    , solvedMetas    = mempty
-    }
+  loopOverConstraints 1 decl
 
 loopOverConstraints :: MonadMeta m
                     => Int
                     -> Maybe CheckedDecl
-                    -> ConstraintProgress
                     -> m ()
-loopOverConstraints loopNumber decl progress = do
-  constraints <- getUnsolvedConstraints
+loopOverConstraints loopNumber decl = do
+  unsolvedConstraints <- getUnsolvedConstraints
+  metasSolvedLastLoop <- getSolvedMetas
+  clearSolvedMetas
 
-  case (constraints, progress) of
-    -- If there are no outstanding constraints then halt.
-    ([], _) -> return ()
+  unless (null unsolvedConstraints) $ do
+    let isUnblocked = isUnblockedBy metasSolvedLastLoop
+    let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
 
-    -- If no progress was made last iteration then try generating new constraints
-    -- using defaults.
-    (_, Stuck) -> do
-      defaultProgress <- addNewConstraintUsingDefaults decl
-
-      case defaultProgress of
-        -- If still stuck then halt.
-        Stuck      -> return ()
+    if null unblockedConstraints then do
+      -- If no constraints are unblocked then try generating new constraints using defaults.
+      successfullyGeneratedDefault <- addNewConstraintUsingDefaults decl
+      when successfullyGeneratedDefault $ do
         -- If new constraints generated then continue solving.
-        Progress{} -> loopOverConstraints (loopNumber + 1) decl defaultProgress
+        loopOverConstraints loopNumber decl
 
-    -- If we have made useful progress then start a new pass
-    (_, Progress{}) -> do
+    else do
+      -- If we have made useful progress then start a new pass
 
       -- TODO try to solve only either new constraints or those that contain
       -- blocking metas that were solved last iteration.
-      (updatedDecl, newProgress) <- logCompilerPass MaxDetail
+      updatedDecl <- logCompilerPass MaxDetail
         ("constraint solving pass" <+> pretty loopNumber) $ do
 
         updatedDecl <- traverse substMetas decl
-        logUnsolvedUnknowns updatedDecl
+        logUnsolvedUnknowns updatedDecl (Just metasSolvedLastLoop)
 
-        setConstraints []
-        newProgress <- mconcat `fmap` traverse solveConstraint constraints
+        setConstraints blockedConstraints
+        mconcat `fmap` traverse solveConstraint unblockedConstraints
 
         substMetasThroughCtx
         newSubstitution <- getMetaSubstitution
         logDebug MaxDetail $ "current-solution:" <+>
           prettyVerbose newSubstitution <> "\n"
 
-        return (updatedDecl, newProgress)
+        return updatedDecl
 
-      loopOverConstraints (loopNumber + 1) updatedDecl newProgress
+      loopOverConstraints (loopNumber + 1) updatedDecl
 
 -- | Tries to solve a constraint deterministically.
 solveConstraint :: MonadMeta m
                 => Constraint
-                -> m ConstraintProgress
+                -> m ()
 solveConstraint unnormConstraint = do
   constraint <- whnfConstraintWithMetas unnormConstraint
 
-  logDebug MaxDetail $ "trying" <+> prettyVerbose constraint
-  incrCallDepth
+  logCompilerSection MaxDetail ("trying" <+> prettyVerbose constraint) $ do
+    result <- case constraint of
+      UC ctx c -> solveUnificationConstraint ctx c
+      TC ctx c -> solveTypeClassConstraint   ctx c
 
-  result <- case constraint of
-    UC ctx c -> solveUnificationConstraint ctx c
-    TC ctx c -> solveTypeClassConstraint   ctx c
-
-  case result of
-    Progress (Resolution newConstraints _) -> addConstraints newConstraints
-    Stuck                                  -> addConstraints [constraint]
-
-  decrCallDepth
-  return result
+    case result of
+      Progress newConstraints -> addConstraints newConstraints
+      Stuck metas -> do
+        let blockedConstraint = blockConstraintOn constraint metas
+        addConstraints [blockedConstraint]
 
 -- | Tries to add new unification constraints using default values.
 addNewConstraintUsingDefaults :: MonadMeta m
-                               => Maybe CheckedDecl
-                               -> m ConstraintProgress
+                              => Maybe CheckedDecl
+                              -> m Bool
 addNewConstraintUsingDefaults maybeDecl = do
   logDebug MaxDetail $ "Temporarily stuck" <> line
 
@@ -240,10 +231,10 @@ addNewConstraintUsingDefaults maybeDecl = do
 
     result <- generateConstraintUsingDefaults candidateConstraints
     case result of
-      Progress (Resolution newConstraints _) -> addConstraints newConstraints
-      Stuck                                  -> return ()
-
-    return result
+      Nothing            -> return False
+      Just newConstraint -> do
+        addConstraints [newConstraint]
+        return True
 
 getDefaultCandidates :: MonadMeta m => Maybe CheckedDecl -> m [Constraint]
 getDefaultCandidates maybeDecl = do
@@ -320,16 +311,25 @@ checkAllMetasSolved = do
         return (meta, origin))
       throwError $ UnsolvedMetas metasAndOrigins
 
-logUnsolvedUnknowns :: MonadMeta m => Maybe CheckedDecl -> m ()
-logUnsolvedUnknowns maybeDecl = do
+logUnsolvedUnknowns :: MonadMeta m => Maybe CheckedDecl -> Maybe MetaSet -> m ()
+logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
   unsolvedMetas    <- getUnsolvedMetas
   unsolvedMetasDoc <- prettyMetas unsolvedMetas
   logDebug MaxDetail $ "unsolved-metas:" <> line <>
     indent 2 unsolvedMetasDoc <> line
 
   unsolvedConstraints <- getUnsolvedConstraints
-  logDebug MaxDetail $ "unsolved-constraints:" <> line <>
-    indent 2 (prettyVerbose unsolvedConstraints) <> line
+  case maybeSolvedMetas of
+    Nothing ->
+      logDebug MaxDetail $ "unsolved-constraints:" <> line <>
+        indent 2 (prettyVerbose unsolvedConstraints) <> line
+    Just solvedMetas -> do
+      let isUnblocked = isUnblockedBy solvedMetas
+      let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
+      logDebug MaxDetail $ "unsolved-blocked-constraints:" <> line <>
+        indent 2 (prettyVerbose blockedConstraints) <> line
+      logDebug MaxDetail $ "unsolved-unblocked-constraints:" <> line <>
+        indent 2 (prettyVerbose unblockedConstraints) <> line
 
   case maybeDecl of
     Nothing   -> return ()

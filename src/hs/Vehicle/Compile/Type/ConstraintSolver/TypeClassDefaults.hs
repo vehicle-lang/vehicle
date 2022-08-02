@@ -60,22 +60,22 @@ instance Pretty CandidateStatus where
 
 generateConstraintUsingDefaults :: MonadMeta m
                                 => [Constraint]
-                                -> m ConstraintProgress
+                                -> m (Maybe Constraint)
 generateConstraintUsingDefaults constraints = do
   strongestConstraint <- findStrongestConstraint constraints
   case strongestConstraint of
     None    -> do
       logDebug MaxDetail "No default solution found"
-      return Stuck
-    Invalid -> return Stuck
+      return Nothing
+    Invalid -> return Nothing
     Valid (Candidate m tc metaExpr ctx) -> do
       let ann = inserted $ provenanceOf ctx
       solution <- defaultSolution ann (boundCtx $ varContext ctx) tc
       logDebug MaxDetail $
         "using default" <+> pretty m <+> "=" <+> prettySimple solution <+>
         "         " <> parens ("from" <+> pretty tc)
-      let newConstraint = UC ctx (Unify (metaExpr, solution))
-      return $ Progress $ Resolution [newConstraint] mempty
+      let newConstraint = UC (copyContext ctx) (Unify (metaExpr, solution))
+      return $ Just newConstraint
 
 findStrongestConstraint :: MonadCompile m
                         => [Constraint]

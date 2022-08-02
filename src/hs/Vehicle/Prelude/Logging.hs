@@ -167,7 +167,7 @@ logWarning :: MonadLogger m => Doc a -> m ()
 logWarning text = logMessage $ Message Warning (layoutAsText text)
 
 logDebug :: MonadLogger m => DebugLevel -> Doc a -> m ()
-logDebug level text = do
+logDebug level text = do --traceShow text $ do
   debugLevel <- getDebugLevel
   when (level <= debugLevel) $ do
     depth <- getCallDepth

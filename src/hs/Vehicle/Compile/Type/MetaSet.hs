@@ -7,6 +7,7 @@ module Vehicle.Compile.Type.MetaSet
   , fromIntSet
   , singleton
   , member
+  , insert
   , difference
   , null
   , disjoint
@@ -45,6 +46,9 @@ singleton = coerce . IntSet.singleton . coerce
 
 null :: MetaSet -> Bool
 null = coerce . IntSet.null . coerce
+
+insert :: Meta -> MetaSet -> MetaSet
+insert = coerce . IntSet.insert . coerce
 
 disjoint :: MetaSet -> MetaSet -> Bool
 disjoint = coerce . IntSet.disjoint . coerce

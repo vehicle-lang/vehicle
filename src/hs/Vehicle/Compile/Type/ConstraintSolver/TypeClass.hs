@@ -3,6 +3,7 @@ module Vehicle.Compile.Type.ConstraintSolver.TypeClass
   ) where
 
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Maybe (catMaybes)
 import Control.Monad (forM)
 import Control.Monad.Except ( throwError )
 
@@ -16,7 +17,6 @@ import Vehicle.Compile.Type.ConstraintSolver.Core
 import Vehicle.Compile.Type.WeakHeadNormalForm (whnfExprWithMetas)
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Language.StandardLibrary.Names
-import Data.Maybe (catMaybes)
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -29,10 +29,10 @@ solveTypeClassConstraint ctx c@(m `Has` BuiltinTypeClass _ tc args) = do
   progress <- solve tc (TC ctx c) (onlyExplicit args)
 
   case progress of
-    Left  _                      -> return Stuck
+    Left  metas                      -> return $ Stuck metas
     Right (newConstraints, solution) -> do
       metaSolved m solution
-      return $ Progress $ Resolution newConstraints mempty
+      return $ Progress newConstraints
 
 solveTypeClassConstraint _ (_ `Has` e) =
   compilerDeveloperError $ "Unknown type-class application" <+> squotes (prettyVerbose e)
@@ -87,8 +87,8 @@ castProgressFn f c e = castProgress (provenanceOf c) <$> f c e
 
 castProgress :: Provenance -> ConstraintProgress -> TypeClassProgress
 castProgress c = \case
-  Stuck                                  -> Left mempty
-  Progress (Resolution newConstraints _) -> irrelevant c newConstraints
+  Stuck metas             -> Left metas
+  Progress newConstraints -> irrelevant c newConstraints
 
 --------------------------------------------------------------------------------
 -- HasEq
@@ -998,7 +998,7 @@ createTC :: MonadMeta m
          -> m (Meta, Constraint)
 createTC c tc args = do
   let p = provenanceOf c
-  let ctx = constraintContext c
+  let ctx = copyContext (constraintContext c)
   let tcExpr = BuiltinTypeClass p tc (ExplicitArg p <$> args)
   m <- freshTypeClassPlacementMeta p tcExpr
   return (m, TC ctx (m `Has` tcExpr))
