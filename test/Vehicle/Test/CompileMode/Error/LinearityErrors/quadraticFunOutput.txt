@@ -1,3 +1,7 @@
 Error at Line 6, Columns 1-9: The property 'property' contains a non-linear constraint which is not supported by Marabou.
-In particular the multiplication at Line 6, Columns 1-9 involves   1. the quantified variable at Line 7, Columns 12-18 and   1. the quantified variable at Line 7, Columns 12-18
+In particular the multiplication at Line 6, Columns 1-9 involves
+  1. the output of network 'f' at Line 1, Columns 13-41
+and
+  1. the output of network 'f' at Line 1, Columns 13-41
+
 Fix: try avoiding it, otherwise please open an issue on the Vehicle issue tracker.

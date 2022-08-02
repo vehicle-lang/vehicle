@@ -276,6 +276,20 @@ linearityErrors = failTestGroup "LinearityErrors"
       , testTargets    = [MarabouBackend]
       , testParameters = []
       }
+
+  , testSpec
+      { testName       = "quadraticInputOutput"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      , testParameters = []
+      }
+
+  , testSpec
+      { testName       = "quadraticTensorInputLookup"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      , testParameters = []
+      }
   ]
 
 --------------------------------------------------------------------------------

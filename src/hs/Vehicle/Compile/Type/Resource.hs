@@ -112,7 +112,7 @@ checkNetworkType decl@(ident, _) networkType = checkFunType networkType
         -- are also variables) and 2) the linearity of its input. So prepend this
         -- constraint to the front of the type.
         let outputLinProvenance = Linearity $ Linear $ NetworkOutputProvenance p (nameOf ident)
-        let linConstraintArgs = [inputLin, Builtin p outputLinProvenance, outputLin]
+        let linConstraintArgs = [Builtin p outputLinProvenance, inputLin, outputLin]
         let linConstraint = BuiltinTypeClass p MaxLinearity (ExplicitArg p <$> linConstraintArgs)
         return $ \t -> Pi p (IrrelevantInstanceBinder p Nothing linConstraint) t
     _ -> throwError $ NetworkTypeIsNotAFunction decl networkType

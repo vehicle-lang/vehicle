@@ -625,9 +625,9 @@ instance MeaningfulError CompileError where
                      "a non-linear constraint which is not supported by" <+>
                      pretty target <> "." <> line <>
                      "In particular the multiplication at" <+> pretty p <+>
-                     "involves" <+>
-                     prettyLinearityProvenance v1 <+>
-                     "and" <+>
+                     "involves" <>
+                     prettyLinearityProvenance v1 <>
+                     "and" <>
                      prettyLinearityProvenance v2
       , fix        = Just $ "try avoiding it, otherwise please open an issue on the" <+>
                      "Vehicle issue tracker."
@@ -767,7 +767,7 @@ prettyPolarityProvenance quantifier = \case
 
 prettyLinearityProvenance :: LinearityProvenance -> Doc a
 prettyLinearityProvenance lp =
-  indent 2 (numberedList $ reverse (go lp))
+  line <> indent 2 (numberedList $ reverse (go lp)) <> line
   where
   go :: LinearityProvenance -> [Doc a]
   go = \case

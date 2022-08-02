@@ -1,6 +1,6 @@
 Error at Line 3, Columns 1-9: The property 'property' contains a non-linear constraint which is not supported by Marabou.
 In particular the multiplication at Line 3, Columns 1-9 involves
-  1. the quantified variable at Line 4, Columns 12-18
+  1. the output of network 'f' at Line 1, Columns 13-41
 and
   1. the quantified variable at Line 4, Columns 12-18
 

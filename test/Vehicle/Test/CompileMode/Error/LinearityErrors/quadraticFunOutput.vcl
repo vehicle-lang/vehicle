@@ -1,4 +1,4 @@
-network f : Tensor Rat [1] -> Tensor Rat [1]
+network f : Vector Rat 1 -> Vector Rat 1
 
 square : Rat -> Rat
 square y = y * y
