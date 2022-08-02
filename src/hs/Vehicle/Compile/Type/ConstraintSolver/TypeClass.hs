@@ -15,7 +15,6 @@ import Vehicle.Compile.Type.ConstraintSolver.Polarity
 import Vehicle.Compile.Type.ConstraintSolver.Linearity
 import Vehicle.Compile.Type.ConstraintSolver.Core
 import Vehicle.Compile.Type.WeakHeadNormalForm (whnfExprWithMetas)
-import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Language.StandardLibrary.Names
 
 --------------------------------------------------------------------------------
@@ -25,7 +24,7 @@ solveTypeClassConstraint :: MonadMeta m
                          => ConstraintContext
                          -> TypeClassConstraint
                          -> m ConstraintProgress
-solveTypeClassConstraint ctx c@(m `Has` BuiltinTypeClass _ tc args) = do
+solveTypeClassConstraint ctx c@(Has m tc args) = do
   progress <- solve tc (TC ctx c) (onlyExplicit args)
 
   case progress of
@@ -33,9 +32,6 @@ solveTypeClassConstraint ctx c@(m `Has` BuiltinTypeClass _ tc args) = do
     Right (newConstraints, solution) -> do
       metaSolved m solution
       return $ Progress newConstraints
-
-solveTypeClassConstraint _ (_ `Has` e) =
-  compilerDeveloperError $ "Unknown type-class application" <+> squotes (prettyVerbose e)
 
 --------------------------------------------------------------------------------
 -- Solver
@@ -996,12 +992,12 @@ createTC :: MonadMeta m
          -> TypeClass
          -> NonEmpty CheckedExpr
          -> m (Meta, Constraint)
-createTC c tc args = do
+createTC c tc argExprs = do
   let p = provenanceOf c
   let ctx = copyContext (constraintContext c)
-  let tcExpr = BuiltinTypeClass p tc (ExplicitArg p <$> args)
-  m <- freshTypeClassPlacementMeta p tcExpr
-  return (m, TC ctx (m `Has` tcExpr))
+  let args = ExplicitArg p <$> argExprs
+  m <- freshTypeClassPlacementMeta p (BuiltinTypeClass p tc args)
+  return (m, TC ctx (Has m tc args))
 
 unifyWithAnnBoolType :: MonadMeta m
                      => Constraint

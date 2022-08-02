@@ -7,7 +7,7 @@ module Vehicle.Compile.Simplify
 import Control.Monad.Reader (MonadReader(..), runReader)
 import Data.Default (Default (..))
 import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.List.NonEmpty qualified as NonEmpty (toList, fromList)
 import Data.Maybe (catMaybes)
 import Data.IntMap ( IntMap )
 import Data.Text ( Text )
@@ -135,9 +135,9 @@ instance Simplify UnificationConstraint where
     return $ Unify (e1', e2')
 
 instance Simplify TypeClassConstraint where
-  simplifyReader (m `Has` e) = do
-    e' <- simplifyReader e
-    return $ m `Has` e'
+  simplifyReader (Has m tc es) = do
+    es' <- simplifyReaderArgs es
+    return $ Has m tc (NonEmpty.fromList es')
 
 instance Simplify Constraint where
   simplifyReader (TC ctx c) = TC ctx <$> simplifyReader c

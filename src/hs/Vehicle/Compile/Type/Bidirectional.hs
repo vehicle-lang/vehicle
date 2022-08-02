@@ -21,6 +21,7 @@ import Vehicle.Language.Print
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.WeakHeadNormalForm
 import Vehicle.Compile.Type.VariableContext
+import Vehicle.Compile.Type.Constraint
 
 --------------------------------------------------------------------------------
 -- Bidirectional type-checking
@@ -75,7 +76,7 @@ unify :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m ()
 unify p e1 e2 = do
   ctx <- getVariableCtx
   -- TODO calculate the most general unifier
-  addUnificationConstraint p ctx e1 e2
+  addUnificationConstraint TypeGroup p ctx e1 e2
 
 --------------------------------------------------------------------------------
 -- Checking

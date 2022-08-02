@@ -17,7 +17,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map (toAscList)
 import Data.Version (Version, showVersion)
 
-import Prettyprinter ( line', unAnnotate, layoutPretty, defaultLayoutOptions, surround)
+import Prettyprinter ( line', unAnnotate, layoutPretty, defaultLayoutOptions, surround, group)
 import Prettyprinter.Internal (Doc(Annotated))
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
@@ -30,7 +30,6 @@ import Prettyprinter as CommonPrettyprinter
   , parens
   , braces
   , concatWith
-  , group
   , softline
   , line
   , squotes

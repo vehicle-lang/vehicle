@@ -13,7 +13,6 @@ import Vehicle.Compile.Type.VariableContext
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Normalise
-import Vehicle.Language.Print (prettyVerbose)
 
 --------------------------------------------------------------------------------
 -- Weak head options
@@ -57,12 +56,9 @@ whnfConstraintWithMetas = \case
     e2' <- whnfExprWithMetas (varContext ctx) e2
     return $ UC ctx (Unify (e1', e2'))
 
-  TC ctx (m `Has` e) -> case e of
-    App p tc args -> do
-      args' <- traverse (traverseArgExpr (whnfExprWithMetas (varContext ctx))) args
-      return $ TC ctx (m `Has` App p tc args')
-    _ -> compilerDeveloperError $
-        "Malformed type-class constraint during WHNF:" <+> prettyVerbose e
+  TC ctx (Has m tc args) -> do
+    args' <- traverse (traverseArgExpr (whnfExprWithMetas (varContext ctx))) args
+    return $ TC ctx (Has m tc args')
 
 --------------------------------------------------------------------------------
 -- Recursively go through a check program and convert all implicit argument

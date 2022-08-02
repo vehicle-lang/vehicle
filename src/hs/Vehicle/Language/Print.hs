@@ -284,7 +284,7 @@ instance (PrettyUsing rest CheckedExpr)
       => PrettyUsing ('Opaque rest) Constraint where
   prettyUsing = \case
     UC ctx (Unify (e1, e2)) -> prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2 <> prettyCtx ctx
-    TC ctx (m `Has` e)      -> pretty m <+> "<=" <+> prettyUsing @rest e <> prettyCtx ctx
+    TC ctx (Has m tc e)     -> pretty m <+> "<=" <+> prettyUsing @rest (BuiltinTypeClass mempty tc e) <> prettyCtx ctx
     where
       prettyCtx :: ConstraintContext -> Doc a
       prettyCtx ctx = do

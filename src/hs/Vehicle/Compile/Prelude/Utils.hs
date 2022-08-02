@@ -61,18 +61,6 @@ isMeta Meta{}           = True
 isMeta (App _ Meta{} _) = True
 isMeta _                = False
 
-isAuxiliaryTypeClass :: TypeClass -> Bool
-isAuxiliaryTypeClass tc = case tc of
-    MulLinearity                        -> True
-    MaxLinearity                        -> True
-    NegPolarity{}                       -> True
-    AddPolarity{}                       -> True
-    EqPolarity{}                        -> True
-    ImpliesPolarity{}                   -> True
-    MaxPolarity{}                       -> True
-    -- TypesEqualModAuxiliaryAnnotations{} -> True
-    _                                   -> False
-
 --------------------------------------------------------------------------------
 -- Enumeration functions
 

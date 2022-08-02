@@ -48,6 +48,7 @@ import Control.Monad.Reader (ReaderT (..), MonadReader (..), local)
 import Control.Monad.State (MonadState(..), modify, gets)
 import Control.Monad (foldM)
 import Data.List (partition)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (mapMaybe)
 import Data.Map qualified as Map
@@ -86,6 +87,9 @@ instance MetaSubstitutable a => MetaSubstitutable (a, a) where
 instance MetaSubstitutable a => MetaSubstitutable [a] where
   substM = traverse substM
 
+instance MetaSubstitutable a => MetaSubstitutable (NonEmpty a) where
+  substM = traverse substM
+
 instance MetaSubstitutable CheckedArg where
   substM = traverseArgExpr substM
 
@@ -96,7 +100,7 @@ instance MetaSubstitutable CheckedExpr where
   substM ex =
     --logCompilerPass MaxDetail (prettyVerbose ex) $
     case ex of
-      Universe  ann l            -> return $ Universe ann l
+      Universe ann l            -> return $ Universe ann l
       Hole     ann name         -> return $ Hole    ann name
       Builtin  ann op           -> return $ Builtin ann op
       Literal  ann l            -> return $ Literal ann l
@@ -142,7 +146,7 @@ instance MetaSubstitutable UnificationConstraint where
   substM (Unify es) = Unify <$> substM es
 
 instance MetaSubstitutable TypeClassConstraint where
-  substM (m `Has` e) = (m `Has`) <$> substM e
+  substM (Has m tc es) = Has m tc <$> substM es
 
 instance MetaSubstitutable Constraint where
   substM (UC ctx c) = UC ctx <$> substM c
@@ -434,10 +438,16 @@ instance HasMetas CheckedExpr where
           let args' = fmap metasInWithArgs argExprs in
           MetaMap.unions (metasInWithArgs fun : args')
 
+instance HasMetas CheckedArg where
+  metasInWithArgs arg = metasInWithArgs (argExpr arg)
+
+instance HasMetas a => HasMetas (NonEmpty a) where
+  metasInWithArgs xs = MetaMap.unions $ map metasInWithArgs (NonEmpty.toList xs)
+
 instance HasMetas Constraint where
   metasInWithArgs = \case
     UC _ (Unify (e1, e2)) -> MetaMap.unions [metasInWithArgs e1, metasInWithArgs e2]
-    TC _ (_ `Has` e)      -> metasInWithArgs e
+    TC _ (Has _ _ e)     -> metasInWithArgs e
 
 prettyMetas :: MonadMeta m => MetaSet -> m (Doc a)
 prettyMetas metas = do
@@ -460,13 +470,14 @@ clearMetaCtx = do
 -- Constraints
 
 addUnificationConstraint :: MonadMeta m
-                         => Provenance
+                         => ConstraintGroup
+                         -> Provenance
                          -> TypingVariableCtx
                          -> CheckedExpr
                          -> CheckedExpr
                          -> m ()
-addUnificationConstraint p ctx e1 e2 = do
-  let context    = ConstraintContext p mempty ctx
+addUnificationConstraint group p ctx e1 e2 = do
+  let context    = ConstraintContext p mempty ctx group
   let constraint = UC context $ Unify (e1, e2)
   addConstraints [constraint]
 
@@ -476,8 +487,14 @@ addTypeClassConstraint :: MonadMeta m
                        -> CheckedExpr
                        -> m ()
 addTypeClassConstraint ctx meta expr = do
-  let context    = ConstraintContext (provenanceOf expr) mempty ctx
-  let constraint = TC context (meta `Has` expr)
+  (tc, args) <- case expr of
+    BuiltinTypeClass _ tc args -> return (tc, args)
+    _                          -> compilerDeveloperError $
+      "Malformed type class constraint" <+> prettyVerbose expr
+
+  let group      = typeClassGroup tc
+  let context    = ConstraintContext (provenanceOf expr) mempty ctx group
+  let constraint = TC context (Has meta tc args)
   addConstraints [constraint]
 
 addConstraints :: MonadMeta m => [Constraint] -> m ()

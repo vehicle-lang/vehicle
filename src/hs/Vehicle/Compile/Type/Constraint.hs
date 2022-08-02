@@ -1,9 +1,57 @@
 module Vehicle.Compile.Type.Constraint where
 
+import Data.List.NonEmpty (NonEmpty)
+
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.MetaSet (MetaSet)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext
+
+--------------------------------------------------------------------------------
+-- Constraint types
+
+data ConstraintGroup
+  = TypeGroup
+  | PolarityGroup
+  | LinearityGroup
+  deriving (Show, Eq)
+
+
+typeClassGroup :: TypeClass -> ConstraintGroup
+typeClassGroup tc = case tc of
+    HasEq{}                 -> TypeGroup
+    HasOrd{}                -> TypeGroup
+    HasNot                  -> TypeGroup
+    HasAnd                  -> TypeGroup
+    HasOr                   -> TypeGroup
+    HasImplies              -> TypeGroup
+    HasQuantifier{}         -> TypeGroup
+    HasAdd                  -> TypeGroup
+    HasSub                  -> TypeGroup
+    HasMul                  -> TypeGroup
+    HasDiv                  -> TypeGroup
+    HasNeg                  -> TypeGroup
+    HasFold                 -> TypeGroup
+    HasQuantifierIn{}       -> TypeGroup
+    HasNatLits{}            -> TypeGroup
+    HasRatLits              -> TypeGroup
+    HasVecLits{}            -> TypeGroup
+    AlmostEqualConstraint{} -> TypeGroup
+    NatInDomainConstraint{} -> TypeGroup
+
+    MulLinearity  -> LinearityGroup
+    MaxLinearity  -> LinearityGroup
+
+    NegPolarity{}      -> PolarityGroup
+    AddPolarity{}      -> PolarityGroup
+    EqPolarity{}       -> PolarityGroup
+    ImpliesPolarity{}  -> PolarityGroup
+    MaxPolarity{}      -> PolarityGroup
+
+isAuxiliaryTypeClass :: TypeClass -> Bool
+isAuxiliaryTypeClass tc = do
+  let group = typeClassGroup tc
+  group == PolarityGroup || group == LinearityGroup
 
 --------------------------------------------------------------------------------
 -- Constraint contexts
@@ -12,20 +60,21 @@ data ConstraintContext = ConstraintContext
   { _prov            :: Provenance        -- The origin of the constraint
   , blockedBy        :: BlockingMetas     -- The set of metas blocking progress on this constraint, if known
   , varContext       :: TypingVariableCtx -- The current declaration context (needed for normalisation)
+  , group            :: ConstraintGroup
   } deriving (Show)
 
 instance HasProvenance ConstraintContext where
-  provenanceOf (ConstraintContext p _ _) = p
+  provenanceOf (ConstraintContext p _ _ _) = p
 
 instance HasBoundCtx ConstraintContext where
   boundContextOf = boundContextOf . varContext
 
 blockCtxOn :: ConstraintContext -> MetaSet -> ConstraintContext
-blockCtxOn (ConstraintContext p _ ctx) metas = ConstraintContext p metas ctx
+blockCtxOn (ConstraintContext p _ ctx group) metas = ConstraintContext p metas ctx group
 
 -- | Create a new fresh copy of the context for a new constraint
 copyContext :: ConstraintContext -> ConstraintContext
-copyContext (ConstraintContext p _ ctx) = ConstraintContext p mempty ctx
+copyContext (ConstraintContext p _ ctx group) = ConstraintContext p mempty ctx group
 
 --------------------------------------------------------------------------------
 -- Unification constraints
@@ -39,7 +88,7 @@ newtype UnificationConstraint = Unify UnificationPair
 --------------------------------------------------------------------------------
 -- Type-class constraints
 
-data TypeClassConstraint = Meta `Has` CheckedExpr
+data TypeClassConstraint = Has Meta TypeClass (NonEmpty CheckedArg)
   deriving (Show)
 
 -- | A sequence of attempts at unification
@@ -85,13 +134,13 @@ isTypeClassConstraint _    = False
 
 isAuxiliaryTypeClassConstraint :: Constraint -> Bool
 isAuxiliaryTypeClassConstraint = \case
-  TC _ (_ `Has` (BuiltinTypeClass _ tc _)) -> isAuxiliaryTypeClass tc
-  _                                        -> False
+  TC _ (Has _ tc _) -> isAuxiliaryTypeClass tc
+  _                 -> False
 
 isNonAuxiliaryTypeClassConstraint :: Constraint -> Bool
 isNonAuxiliaryTypeClassConstraint = \case
-  TC _ (_ `Has` (BuiltinTypeClass _ tc _)) -> not (isAuxiliaryTypeClass tc)
-  _                                        -> False
+  TC _ (Has _ tc _) -> not (isAuxiliaryTypeClass tc)
+  _                 -> False
 
 isUnificationConstraint :: Constraint -> Bool
 isUnificationConstraint UC{} = True

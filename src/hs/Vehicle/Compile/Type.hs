@@ -140,7 +140,7 @@ assertIsType _ (TypeUniverse _ _) = return ()
 assertIsType p t        = do
   ctx <- getVariableCtx
   let typ = TypeUniverse (inserted (provenanceOf t)) 0
-  addUnificationConstraint p ctx t typ
+  addUnificationConstraint TypeGroup p ctx t typ
   return ()
 
 -------------------------------------------------------------------------------

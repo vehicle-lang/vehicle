@@ -721,8 +721,8 @@ supportedImplicitParameterTypeDescription =
 unsolvedConstraintError :: Constraint -> [DBBinding] -> Doc a
 unsolvedConstraintError constraint ctx ="Typing error: not enough information to solve constraint" <+>
   case constraint of
-    UC _ (Unify _)   ->  prettyFriendlyDB ctx constraint
-    TC _ (_ `Has` t) ->  prettyFriendlyDB ctx t
+    UC _ (Unify _)       ->  prettyFriendlyDB ctx constraint
+    TC _ (Has _ tc args) ->  prettyFriendlyDB ctx (BuiltinTypeClass mempty tc args)
 
 prettyResource :: ResourceType -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)

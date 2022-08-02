@@ -11,6 +11,7 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Normalise as Norm
 import Vehicle.Compile.Type.VariableContext
+import Vehicle.Compile.Type.Constraint
 
 checkResourceType :: TCM m
                   => ResourceType
@@ -43,7 +44,7 @@ checkParameterType decl t = do
 
     AnnRatType p lin -> do
       let targetLinearity = Builtin p (Linearity Constant)
-      addUnificationConstraint p emptyVariableCtx lin targetLinearity
+      addUnificationConstraint LinearityGroup p emptyVariableCtx lin targetLinearity
       return ()
 
     paramType -> throwError $ ParameterTypeUnsupported decl paramType
@@ -84,7 +85,7 @@ checkDatasetType decl t = do
     IndexType{}  -> return ()
     AnnRatType p lin -> do
       let targetLinearity = Builtin p (Linearity Constant)
-      addUnificationConstraint p emptyVariableCtx lin targetLinearity
+      addUnificationConstraint LinearityGroup p emptyVariableCtx lin targetLinearity
       return ()
     elemType     -> throwError $ DatasetTypeUnsupportedElement decl elemType
 

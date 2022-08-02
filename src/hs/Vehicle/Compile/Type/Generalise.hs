@@ -54,8 +54,8 @@ prependConstraint :: MonadMeta m
                   -> m CheckedDecl
 prependConstraint decl constraint = do
   (typeClass, meta) <- case constraint of
-    TC _ (meta `Has` t) -> return (t, meta)
-    UC{}                -> compilerDeveloperError
+    TC _ (Has meta tc args) -> return (BuiltinTypeClass mempty tc args, meta)
+    UC{}                    -> compilerDeveloperError
       "Unification constraints should have been filtered out earlier"
 
   relevancy <- case typeClass of

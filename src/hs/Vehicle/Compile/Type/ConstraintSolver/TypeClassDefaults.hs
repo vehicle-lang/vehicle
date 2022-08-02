@@ -193,26 +193,27 @@ createDefaultRatType p = do
   return $ AnnRatType p lin
 
 getCandidatesFromConstraint :: MonadCompile m => Ctx -> TypeClassConstraint -> m [Candidate]
-getCandidatesFromConstraint ctx (_ `Has` e) = do
+getCandidatesFromConstraint ctx (Has _ tc args) = do
   let getCandidate = getCandidatesFromArgs ctx
-  return $ case e of
-    HasEqExpr      _ eq  tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] (HasEq eq)
-    HasOrdExpr     _ ord tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] (HasOrd ord)
-    HasNegExpr     _     tArg        _tRes -> getCandidate [tArg]         HasNeg
-    HasAddExpr     _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasAdd
-    HasSubExpr     _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasSub
-    HasMulExpr     _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasMul
-    HasDivExpr     _     tArg1 tArg2 _tRes -> getCandidate [tArg1, tArg2] HasDiv
-    HasFoldExpr    _   _ t                 -> getCandidate [t] HasFold
-    HasNatLitsExpr _ n   t                 -> getCandidate [t] (HasNatLits n)
-    HasRatLitsExpr _     t                 -> getCandidate [t] HasRatLits
-    HasVecLitsExpr _ n _ t                 -> getCandidate [t] (HasVecLits n)
-    _                                            -> []
+  return $ case (tc, args) of
+    (HasEq eq,     [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasEq eq)
+    (HasOrd ord,   [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasOrd ord)
+    (HasNeg,       [tArg, _tRes])         -> getCandidate [tArg]         HasNeg
+    (HasAdd,       [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasAdd
+    (HasSub,       [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasSub
+    (HasMul,       [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasMul
+    (HasDiv,       [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasDiv
+    (HasFold,      [_, t])                -> getCandidate [t] HasFold
+    (HasNatLits n, [t])                   -> getCandidate [t] (HasNatLits n)
+    (HasRatLits,   [t])                   -> getCandidate [t] HasRatLits
+    (HasVecLits n, [_, t])                -> getCandidate [t] (HasVecLits n)
+    _                                     -> []
 
-getCandidatesFromArgs :: Ctx -> [CheckedExpr] -> TypeClass -> [Candidate]
-getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t ->
-  case exprHead t of
-    (Meta _ m) -> Just (Candidate m tc t ctx) --m, t, tc)
+getCandidatesFromArgs :: Ctx -> [CheckedArg] -> TypeClass -> [Candidate]
+getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t -> do
+  let e = argExpr t
+  case exprHead (argExpr t) of
+    (Meta _ m) -> Just (Candidate m tc e ctx) --m, t, tc)
     _          -> Nothing
 
 auxiliaryTCError :: MonadCompile m => m a
