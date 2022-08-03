@@ -215,6 +215,7 @@ library
                       , data-fix             >=0.2  && <1
                       , deepseq              >=1.4  && <2
                       , ansi-terminal        >=0.6  && <1
+                      , linkedhashmap        >=0.4  && <1
                       , bytestring
                       , split
                       , data-default-class
@@ -222,9 +223,9 @@ library
                       , aeson-pretty
                       , temporary
                       , process
+                      , vector
                       -- Used for parsing IDX format
                       , mnist-idx            >= 0.1.3.1
-                      , vector
 
   ghc-options:          -Wall -fprint-potential-instances
 
