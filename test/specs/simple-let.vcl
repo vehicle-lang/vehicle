@@ -10,9 +10,8 @@ e3 = let y = 1 + 1 in y
 lamLet : Nat -> Nat
 lamLet = \(x : Nat) -> let y = x in y
 
--- See #89
--- letLam : Nat -> Nat
--- letLam = let y = \x -> x in y
+letLam : Nat -> Nat
+letLam = let y = \x -> x in y
 
 forallLet : Bool
 forallLet = forall (x : Nat) . let y = x in y == 1

@@ -37,6 +37,9 @@ e3 = let y = 1 ℕ.+ 1 in y
 lamLet : ℕ → ℕ
 lamLet x = let y = x in y
 
+letLam : ℕ → ℕ
+letLam = let y = λ (x : ℕ) → x in y
+
 abstract
   forallLet : ∀ (x : ℕ) → let y = x in y ≡ 1
   forallLet = checkSpecification record
