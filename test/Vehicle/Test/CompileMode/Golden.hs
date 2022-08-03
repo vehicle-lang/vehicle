@@ -149,6 +149,12 @@ testSpecs =
       , testLocation   = Tests
       , testTargets    = [AgdaBackend, MarabouBackend]
       }
+
+  , testSpec
+      { testName       = "simple-index"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend]
+      }
   {-
   , testSpec
       { testName       = "simple-implicitParam"

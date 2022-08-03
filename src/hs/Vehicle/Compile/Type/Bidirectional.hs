@@ -636,7 +636,9 @@ typeOfEquals domain _op = case domain of
         tAnnBool l1 p1 ~> tAnnBool l2 p2 ~> tAnnBool l3 p3
 
   EqIndex{} ->
-    forall tNat $ \n -> tIndex n ~> tIndex n ~> tAnnBool constant unquantified
+    forall tNat $ \n1 ->
+      forall tNat $ \n2 ->
+        tIndex n1 ~> tIndex n2 ~> tAnnBool constant unquantified
 
   EqNat{} ->
     tNat ~> tNat ~> tAnnBool constant unquantified
@@ -652,8 +654,9 @@ typeOfEquals domain _op = case domain of
 typeOfOrder :: OrderDomain -> OrderOp -> DSLExpr
 typeOfOrder domain _op = case domain of
   OrderIndex{} ->
-    forall tNat $ \n ->
-      tIndex n ~> tIndex n ~> tAnnBool constant unquantified
+    forall tNat $ \n1 ->
+      forall tNat $ \n2 ->
+        tIndex n1 ~> tIndex n2 ~> tAnnBool constant unquantified
 
   OrderNat{} ->
     tNat ~> tNat ~> tAnnBool constant unquantified

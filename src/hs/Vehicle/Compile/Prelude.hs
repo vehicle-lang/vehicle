@@ -102,6 +102,7 @@ logCompilerSection level sectionName performPass = do
   incrCallDepth
   result <- performPass
   decrCallDepth
+  logDebug level ""
   return result
 
 logCompilerPassOutput :: MonadLogger m => Doc a -> m ()

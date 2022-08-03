@@ -96,7 +96,7 @@ solveHasEq :: MonadMeta m
            -> m TypeClassProgress
 solveHasEq op c [arg1, arg2, res]
   | allOf args isMeta        = blockOnMetas args
-  | anyOf args isIndexType   = solveSimpleComparisonOp c arg1 arg2 res (Equals EqIndex op)
+  | anyOf args isIndexType   = solveIndexComparisonOp  c arg1 arg2 res (Equals EqIndex op)
   | anyOf args isNatType     = solveSimpleComparisonOp c arg1 arg2 res (Equals EqNat op)
   | anyOf args isIntType     = solveSimpleComparisonOp c arg1 arg2 res (Equals EqInt op)
   | anyOf args isAnnRatType  = solveRatComparisonOp    c arg1 arg2 res (Equals EqRat op)
@@ -180,7 +180,7 @@ solveHasOrd :: MonadMeta m
             -> m TypeClassProgress
 solveHasOrd op c [arg1, arg2, res]
   | allOf args isMeta           = blockOnMetas args
-  | anyOf args isIndexType      = solveSimpleComparisonOp c arg1 arg2 res (Order OrderIndex op)
+  | anyOf args isIndexType      = solveIndexComparisonOp  c arg1 arg2 res (Order OrderIndex op)
   | anyOf args isNatType        = solveSimpleComparisonOp c arg1 arg2 res (Order OrderNat   op)
   | anyOf args isIntType        = solveSimpleComparisonOp c arg1 arg2 res (Order OrderInt   op)
   | anyOf args isAnnRatType     = solveRatComparisonOp    c arg1 arg2 res (Order OrderRat   op)
@@ -927,9 +927,9 @@ solveInDomain n c [arg] = case arg of
 
   IndexType _ size -> do
     -- TODO normalising here is a total hack
-    size' <- whnfExprWithMetas (variableContext c) size
-    case size' of
-      (exprHead -> Meta{}) -> blockOnMetas [arg]
+    normSize <- whnfExprWithMetas (variableContext c) size
+    case normSize of
+      (exprHead -> Meta{}) -> blockOnMetas [normSize]
 
       (BuiltinExpr _ (TypeClassOp FromNatTC{}) (_ :| InstanceArg _ inst@Meta{} : _)) ->
         blockOnMetas [inst]
@@ -938,7 +938,7 @@ solveInDomain n c [arg] = case arg of
         | m > n     -> return $ irrelevant c []
         | otherwise -> throwError $ FailedNatLitConstraintTooBig (constraintContext c) n m
 
-      _ -> throwError $ FailedNatLitConstraintUnknown (constraintContext c) n size
+      _ -> throwError $ FailedNatLitConstraintUnknown (constraintContext c) n normSize
 
   NatType{}    -> return $ Right ([], UnitLiteral p)
   IntType{}    -> return $ Right ([], UnitLiteral p)
@@ -986,6 +986,14 @@ checkRatTypesEqual c targetType subTypes linTC = do
   linTCConstraints <- combineAuxiliaryConstraints linTC freshLinearityMeta c targetLin subLins
 
   return $ targetEqConstraint : subEqConstraints <> linTCConstraints
+
+checkOp2SimpleTypesEqual :: Constraint
+                         -> CheckedExpr -> CheckedExpr -> CheckedExpr
+                         -> [Constraint]
+checkOp2SimpleTypesEqual c arg1 arg2 res = do
+  let argsEq = unify c arg1 arg2
+  let resEq  = unify c arg1 res
+  [argsEq, resEq]
 
 createTC :: MonadMeta m
          => Constraint
@@ -1056,14 +1064,6 @@ freshDimMeta c = do
   let p = provenanceOf c
   freshExprMeta p (NatType p) (boundContext c)
 
-checkOp2SimpleTypesEqual :: Constraint
-                         -> CheckedExpr -> CheckedExpr -> CheckedExpr
-                         -> [Constraint]
-checkOp2SimpleTypesEqual c arg1 arg2 res = do
-  let argsEq = unify c arg1 arg2
-  let resEq  = unify c arg1 res
-  [argsEq, resEq]
-
 solveSimpleComparisonOp :: MonadMeta m
                         => Constraint
                         -> CheckedExpr
@@ -1076,6 +1076,20 @@ solveSimpleComparisonOp c arg1 arg2 res solution = do
   let resEq = unify c res (AnnBoolType p (LinearityExpr p Constant) (PolarityExpr p Unquantified))
   let argEq = unify c arg1 arg2
   return $ Right ([argEq, resEq], Builtin p solution)
+
+solveIndexComparisonOp :: MonadMeta m
+                       => Constraint
+                       -> CheckedExpr
+                       -> CheckedExpr
+                       -> CheckedExpr
+                       -> Builtin
+                       -> m TypeClassProgress
+solveIndexComparisonOp c arg1 arg2 res solution = do
+  let p = provenanceOf c
+  (arg1Eq, _size1) <- unifyWithIndexType c arg1
+  (arg2Eq, _size2) <- unifyWithIndexType c arg2
+  let resEq = unify c res (AnnBoolType p (LinearityExpr p Constant) (PolarityExpr p Unquantified))
+  return $ Right ([arg1Eq, arg2Eq, resEq], Builtin p solution)
 
 solveRatComparisonOp :: MonadMeta m
                      => Constraint

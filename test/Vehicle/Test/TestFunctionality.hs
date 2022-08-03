@@ -13,6 +13,9 @@ import Vehicle.Test.Utils (MonadTest, filepathTests)
 testLogLevel :: Int
 testLogLevel = 0
 
+timeOutSeconds :: Integer
+timeOutSeconds = 100
+
 main :: IO ()
 main = do
   setLocaleEncoding utf8
@@ -21,7 +24,7 @@ main = do
 tests :: MonadTest m => m TestTree
 tests = do
   compileTests <- CompileMode.functionalityTests
-  return $ localOption (mkTimeout 100000000) $ testGroup "Tests"
+  return $ localOption (mkTimeout (timeOutSeconds * 1000000)) $ testGroup "Tests"
     [ compileTests
     , CheckMode.functionalityTests
     -- , verifyTests

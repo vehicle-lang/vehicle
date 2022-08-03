@@ -38,13 +38,13 @@ lamLet : ℕ → ℕ
 lamLet x = let y = x in y
 
 abstract
-  forallLet : ∀ (x : Fin 2) → let y = x in y ≡ # 1
+  forallLet : ∀ (x : ℕ) → let y = x in y ≡ 1
   forallLet = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
 
 abstract
-  letForall : let y = # 1 in ∀ (x : Fin 2) → y ≡ x
+  letForall : let y = 1 in ∀ (x : ℕ) → y ≡ x
   letForall = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

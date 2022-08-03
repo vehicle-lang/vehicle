@@ -28,16 +28,16 @@ quantiferLiftingTests :: MonadTest m => m TestTree
 quantiferLiftingTests = testGroup "LiftQuantifiers" <$>
   traverse liftQuantifiersTest
   [ QuantifierTestSpec "liftQuantId"
-      "exists x . x >= 0 and 1 >= 0"
-      "exists x . x >= 0 and 1 >= 0"
+      "exists (x : Nat) . x >= 0 and 1 >= 0"
+      "exists (x : Nat) . x >= 0 and 1 >= 0"
 
   , QuantifierTestSpec "liftQuantSimple"
-      "1 >= 0 and (exists x. x >= 0)"
-      "exists x . 1 >= 0 and x >= 0"
+      "1 >= 0 and (exists (x : Nat) . x >= 0)"
+      "exists (x : Nat) . 1 >= 0 and x >= 0"
 
   , QuantifierTestSpec "liftQuantParallel"
-      "1 >= 0 and (exists x . x >= 0) and (exists y . y >= 0)"
-      "exists x . exists y . 1 >= 0 and x >= 0 and y >= 0"
+      "1 >= 0 and (exists (x : Nat) . x >= 0) and (exists (y : Nat) . y >= 0)"
+      "exists (x : Nat) . exists (y : Nat) . 1 >= 0 and x >= 0 and y >= 0"
 
   , QuantifierTestSpec "liftQuantSequential"
       "1 >= 0 and (exists x . (x >= 0 and (exists y . y >= x)))"

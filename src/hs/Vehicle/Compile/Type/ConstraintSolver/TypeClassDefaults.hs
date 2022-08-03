@@ -84,18 +84,14 @@ findStrongestConstraint [] = return None
 findStrongestConstraint (constraint : xs) = do
   recResult <- findStrongestConstraint xs
   case constraint of
-    (TC ctx expr) -> do
+    (TC ctx expr) ->
+      logCompilerSection MaxDetail ("considering" <+> squotes (prettySimple constraint)) $ do
+        candidates <- getCandidatesFromConstraint ctx expr
 
-      logDebug MaxDetail $ "considering" <+> squotes (prettySimple constraint)
-      incrCallDepth
+        newStrongest <- foldM strongest recResult candidates
+        logDebug MaxDetail $ indent 2 $ "status:" <+> pretty newStrongest
+        return newStrongest
 
-      candidates <- getCandidatesFromConstraint ctx expr
-      logDebug MaxDetail $ pretty candidates
-
-      newStrongest <- foldM strongest recResult candidates
-      logDebug MaxDetail $ indent 2 $ "status:" <+> pretty newStrongest
-      decrCallDepth
-      return newStrongest
     _ -> return recResult
 
 strongest :: MonadCompile m => CandidateStatus -> Candidate -> m CandidateStatus
@@ -114,23 +110,24 @@ strongest y@(Valid (Candidate _ tc2 _ _)) x@(Candidate _ tc1 _ _) = do
 
 familyOf :: MonadCompile m => TypeClass -> m DefaultFamily
 familyOf = \case
-  HasNot             -> return BooleanFamily
-  HasAnd             -> return BooleanFamily
-  HasOr              -> return BooleanFamily
-  HasImplies         -> return BooleanFamily
-  HasQuantifier{}    -> return BooleanFamily
-  HasEq{}            -> return $ NumericFamily NatT False 0
-  HasOrd{}           -> return $ NumericFamily NatT False 0
-  HasAdd             -> return $ NumericFamily NatT True  0
-  HasSub             -> return $ NumericFamily IntT True  0
-  HasMul             -> return $ NumericFamily NatT True  0
-  HasDiv             -> return $ NumericFamily RatT True  0
-  HasNeg             -> return $ NumericFamily IntT True  0
-  (HasNatLits n)     -> return $ NumericFamily NatT False n
-  HasRatLits         -> return $ NumericFamily RatT False 0
-  HasVecLits{}       -> return $ ContainerFamily True
-  HasFold            -> return $ ContainerFamily False
-  HasQuantifierIn{}  -> return $ ContainerFamily False
+  HasNot                  -> return BooleanFamily
+  HasAnd                  -> return BooleanFamily
+  HasOr                   -> return BooleanFamily
+  HasImplies              -> return BooleanFamily
+  HasQuantifier{}         -> return BooleanFamily
+  HasEq{}                 -> return $ NumericFamily NatT False 0
+  HasOrd{}                -> return $ NumericFamily NatT False 0
+  HasAdd                  -> return $ NumericFamily NatT True  0
+  HasSub                  -> return $ NumericFamily IntT True  0
+  HasMul                  -> return $ NumericFamily NatT True  0
+  HasDiv                  -> return $ NumericFamily RatT True  0
+  HasNeg                  -> return $ NumericFamily IntT True  0
+  (HasNatLits n)          -> return $ NumericFamily NatT False n
+  HasRatLits              -> return $ NumericFamily RatT False 0
+  HasVecLits{}            -> return $ ContainerFamily True
+  HasFold                 -> return $ ContainerFamily False
+  HasQuantifierIn{}       -> return $ ContainerFamily False
+  NatInDomainConstraint n -> return $ NumericFamily NatT False n
 
   MaxLinearity            -> auxiliaryTCError
   MulLinearity            -> auxiliaryTCError
@@ -140,31 +137,31 @@ familyOf = \case
   ImpliesPolarity{}       -> auxiliaryTCError
   MaxPolarity{}           -> auxiliaryTCError
   AlmostEqualConstraint{} -> auxiliaryTCError
-  NatInDomainConstraint{} -> auxiliaryTCError
 
 defaultSolution :: MonadMeta m
                 => Provenance
                 -> TypingBoundCtx
                 -> TypeClass
                 -> m CheckedExpr
-defaultSolution ann ctx = \case
-  HasEq{}            -> return $ NatType ann
-  HasOrd{}           -> return $ NatType ann
-  HasNot             -> createDefaultBoolType ann
-  HasAnd             -> createDefaultBoolType ann
-  HasOr              -> createDefaultBoolType ann
-  HasImplies         -> createDefaultBoolType ann
-  HasQuantifier{}    -> createDefaultBoolType ann
-  HasAdd             -> return $ NatType ann
-  HasSub             -> return $ IntType ann
-  HasMul             -> return $ NatType ann
-  HasDiv             -> createDefaultRatType ann
-  HasNeg             -> return $ IntType ann
-  HasNatLits n       -> return $ mkIndexType ann (n + 1)
-  HasRatLits         -> createDefaultRatType ann
-  HasVecLits{}       -> createDefaultListType ann ctx
-  HasFold            -> createDefaultListType ann ctx
-  HasQuantifierIn{}  -> createDefaultListType ann ctx
+defaultSolution p ctx = \case
+  HasEq{}                 -> return $ NatType p
+  HasOrd{}                -> return $ NatType p
+  HasNot                  -> createDefaultBoolType p
+  HasAnd                  -> createDefaultBoolType p
+  HasOr                   -> createDefaultBoolType p
+  HasImplies              -> createDefaultBoolType p
+  HasQuantifier{}         -> createDefaultBoolType p
+  HasAdd                  -> return $ NatType p
+  HasSub                  -> return $ IntType p
+  HasMul                  -> return $ NatType p
+  HasDiv                  -> createDefaultRatType p
+  HasNeg                  -> return $ IntType p
+  HasNatLits n            -> return $ mkIndexType p (n + 1)
+  HasRatLits              -> createDefaultRatType p
+  HasVecLits{}            -> createDefaultListType p ctx
+  HasFold                 -> createDefaultListType p ctx
+  HasQuantifierIn{}       -> createDefaultListType p ctx
+  NatInDomainConstraint n -> return $ NatLiteral p (n + 1)
 
   MaxLinearity            -> auxiliaryTCError
   MulLinearity            -> auxiliaryTCError
@@ -174,7 +171,6 @@ defaultSolution ann ctx = \case
   ImpliesPolarity{}       -> auxiliaryTCError
   MaxPolarity{}           -> auxiliaryTCError
   AlmostEqualConstraint{} -> auxiliaryTCError
-  NatInDomainConstraint{} -> auxiliaryTCError
 
 createDefaultListType :: MonadMeta m => Provenance -> TypingBoundCtx -> m CheckedExpr
 createDefaultListType p ctx = do
@@ -207,6 +203,9 @@ getCandidatesFromConstraint ctx (Has _ tc args) = do
     (HasNatLits n, [t])                   -> getCandidate [t] (HasNatLits n)
     (HasRatLits,   [t])                   -> getCandidate [t] HasRatLits
     (HasVecLits n, [_, t])                -> getCandidate [t] (HasVecLits n)
+    (NatInDomainConstraint n, [t]) -> case argExpr t of
+      BuiltinExpr _ Index [size] -> getCandidate [size] (NatInDomainConstraint n)
+      _                          -> []
     _                                     -> []
 
 getCandidatesFromArgs :: Ctx -> [CheckedArg] -> TypeClass -> [Candidate]
