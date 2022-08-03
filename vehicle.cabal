@@ -235,7 +235,6 @@ executable vehicle
   hs-source-dirs:     app
   build-depends:      vehicle
                     , optparse-applicative >=0.16 && <1
-                    , containers
 
 common common-test-base
   import:             common-base

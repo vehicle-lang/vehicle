@@ -55,31 +55,31 @@ typeCheckingErrors = failTestGroup "TypingErrors"
   [ testSpec
     { testName     = "intAsNat"
     , testLocation = Tests
-    , testTargets  = [MarabouBackend]
+    , testTargets  = [TypeCheck]
     }
 
   , testSpec
     { testName     = "indexOutOfBoundsConcrete"
     , testLocation = Tests
-    , testTargets  = [MarabouBackend]
+    , testTargets  = [TypeCheck]
     }
 
   , testSpec
     { testName     = "indexOutOfBoundsUnknown"
     , testLocation = Tests
-    , testTargets  = [MarabouBackend]
+    , testTargets  = [TypeCheck]
     }
 
   , testSpec
     { testName     = "incorrectTensorLength"
     , testLocation = Tests
-    , testTargets  = [MarabouBackend]
+    , testTargets  = [TypeCheck]
     }
 
   , testSpec
     { testName     = "unsolvedMeta"
     , testLocation = Tests
-    , testTargets  = [MarabouBackend]
+    , testTargets  = [TypeCheck]
     }
   ]
 
@@ -88,7 +88,7 @@ networkErrors = failTestGroup "NetworkErrors"
   [ testSpec
     { testName     = "notAFunction"
     , testLocation = Tests
-    , testTargets  = [MarabouBackend]
+    , testTargets  = [TypeCheck]
     }
   ]
 
@@ -118,14 +118,14 @@ datasetErrors = failTestGroup "DatasetErrors"
   , testSpec
     { testName     = "invalidContainerType"
     , testLocation = Tests
-    , testTargets  = [MarabouBackend]
+    , testTargets  = [TypeCheck]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
   , testSpec
     { testName     = "invalidElementType"
     , testLocation = Tests
-    , testTargets  = [MarabouBackend]
+    , testTargets  = [TypeCheck]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
@@ -184,7 +184,7 @@ parameterErrors = failTestGroup "ParameterErrors"
   , testSpec
     { testName       = "unsupportedType"
     , testLocation   = Tests
-    , testTargets    = [MarabouBackend]
+    , testTargets    = [TypeCheck]
     }
 
   , testSpec

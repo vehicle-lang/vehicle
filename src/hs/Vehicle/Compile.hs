@@ -38,6 +38,10 @@ compile loggingOptions CompileOptions{..} = do
   let resources = Resources networkLocations datasetLocations parameterValues
   spec <- readInputFile loggingOptions specificationFile
   case target of
+    TypeCheck -> do
+      _ <- fromLoggedEitherIO loggingOptions $ typeCheckProg spec
+      return ()
+
     ITP Agda -> do
       proofCacheLocation <- maybe (return Nothing) (fmap Just . makeAbsolute) proofCache
       let agdaOptions = AgdaOptions proofCacheLocation outputFile modulePrefix
@@ -51,6 +55,7 @@ compile loggingOptions CompileOptions{..} = do
     LossFunction -> do
       lossFunction <- compileToLossFunction loggingOptions spec resources
       writeLossFunctionFiles outputFile lossFunction
+
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
