@@ -34,7 +34,6 @@ solveUnificationConstraint :: MonadMeta m
 -- Errors
 solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
   let c = UC ctx pair
-  let p = provenanceOf ctx
 
   progress <- case (toHead e1, toHead e2) of
 
@@ -47,34 +46,6 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
 
     (Hole{}, _) :~: _           -> unexpectedExprError passName "Holes"
     _           :~: (Hole{}, _) -> unexpectedExprError passName "Holes"
-
-    -------------------
-    -- Special cases --
-    -------------------
-
-    -- Try to unify with LVec and Cons
-    (LVec ann (x : xs), [tSeqElem, tCont, tc1, tc2]) :~: (Builtin _ Cons, [tElem, y, ys]) -> do
-      let typeConstraint = unify c (argExpr tCont) (ListType p (argExpr tElem))
-      let headConstraint = unify c x (argExpr y)
-      let tailConstraint = unify c (App ann (LVec ann xs) [tSeqElem, tCont, tc1, tc2]) (argExpr ys)
-      return $ Progress [typeConstraint, headConstraint, tailConstraint]
-
-    -- mirror image of the previous case, so just swap the problem over.
-    (Builtin _ Cons, _) :~: (LVec{}, _) ->
-      solveUnificationConstraint ctx (Unify (e2, e1))
-
-    -- If a tensor is unified with a non-tensor then it must be a 0 dimensional
-    -- tensor.
-    (Builtin _ Tensor, [tElem, tDims]) :~: (Builtin _ op, _)
-      | op /= Tensor -> do
-          let emptyDims = mkTensorDims (inserted (provenanceOf tDims)) []
-          let elemConstraint = unify c (argExpr tElem) e2
-          let dimsConstraint = unify c (argExpr tDims) emptyDims
-          return $ Progress [elemConstraint, dimsConstraint]
-
-    -- Mirror image of the previous case, so just swap the problem over.
-    (Builtin _ op, _) :~: (Builtin _ Tensor, [_tElem, _tDims])
-      | op /= Tensor -> solveUnificationConstraint ctx (Unify (e2, e1))
 
     -----------------------
     -- Rigid-rigid cases --
