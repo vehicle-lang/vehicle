@@ -102,7 +102,7 @@ datasetErrors = failTestGroup "DatasetErrors"
     }
 
   , testSpec
-    { testName     = "missing"
+    { testName     = "missingDataset"
     , testLocation = Tests
     , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "non-existent.idx")]
@@ -138,6 +138,13 @@ datasetErrors = failTestGroup "DatasetErrors"
 
   , testSpec
     { testName     = "mismatchedDimensions"
+    , testLocation = Tests
+    , testTargets  = [MarabouBackend]
+    , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
+    }
+
+  , testSpec
+    { testName     = "mismatchedDimensionSize"
     , testLocation = Tests
     , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]

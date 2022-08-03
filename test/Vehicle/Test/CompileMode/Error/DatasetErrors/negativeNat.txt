@@ -1,2 +1,3 @@
-Error at Line 2, Columns 9-24: Found value '-1' while reading dataset 'trainingDataset' but expected elements of type 'Nat'
-Fix: either remove the offending entries in the dataset or update the type of the dataset in the specification.
+Error at Line 2, Columns 9-24: Mismatch in the type of elements of dataset 'trainingDataset'.
+Expected elements of type 'Nat' but found value '-1' when reading 'test/datasets/dataset-int-4.idx'.
+Fix: change the type of 'trainingDataset' in the specification or check that 'dataset-int-4.idx' is in the format you were expecting.

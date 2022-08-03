@@ -93,10 +93,11 @@ data CompileError
   | DatasetTypeUnsupportedContainer DeclProvenance CheckedExpr
   | DatasetTypeUnsupportedElement   DeclProvenance CheckedExpr
   | DatasetVariableSizeTensor       DeclProvenance CheckedExpr
-  | DatasetDimensionMismatch        DeclProvenance CheckedExpr [Int]
-  | DatasetTypeMismatch             DeclProvenance CheckedExpr CheckedExpr
-  | DatasetInvalidNat               DeclProvenance Int
-  | DatasetInvalidIndex             DeclProvenance Int Int
+  | DatasetDimensionSizeMismatch    DeclProvenance FilePath Int Int [Int] [Int]
+  | DatasetDimensionsMismatch       DeclProvenance FilePath CheckedExpr [Int]
+  | DatasetTypeMismatch             DeclProvenance FilePath CheckedExpr CheckedExpr
+  | DatasetInvalidNat               DeclProvenance FilePath Int
+  | DatasetInvalidIndex             DeclProvenance FilePath Int Int
 
   | ParameterTypeUnsupported        DeclProvenance CheckedExpr
   | ParameterTypeVariableSizeIndex  DeclProvenance CheckedExpr

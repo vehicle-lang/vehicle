@@ -18,6 +18,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Constraint
+import System.FilePath
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -266,7 +267,7 @@ instance MeaningfulError CompileError where
     FailedBuiltinConstraintArgument ctx builtin t allowedTypes argNo argTotal ->
       UError $ UserError
       { provenance = provenanceOf ctx
-      , problem    = "expecting" <+> prettyArgOrdinal argNo argTotal <+>
+      , problem    = "expecting" <+> prettyOrdinal "argument" argNo (Just argTotal) <+>
                      "of" <+> squotes (pretty builtin) <+> "to be" <+>
                      prettyAllowedTypes allowedTypes <+>
                      "but found something of type" <+> prettyExpr ctx t <> "."
@@ -368,9 +369,9 @@ instance MeaningfulError CompileError where
 
     UnsupportedResourceFormat (ident, p) resourceType fileExtension -> UError $ UserError
       { provenance = p
-      , problem    = "The file provided for the" <+> prettyResource resourceType ident <+>
-                     "is in a format (" <> pretty fileExtension <> ") not currently" <+>
-                     "supported by Vehicle."
+      , problem    = "The" <+> quotePretty fileExtension <+> "format of the file provided" <+>
+                     "for the" <+> prettyResource resourceType ident <+>
+                     "is not currently supported by Vehicle."
       , fix        = Just $ "use one of the supported formats" <+>
                      pretty (supportedFileFormats resourceType) <+>
                      ", or open an issue on Github to discuss adding support."
@@ -464,7 +465,7 @@ instance MeaningfulError CompileError where
       { provenance = p
       , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
                      "for the elements of the" <+> prettyResource Dataset ident <> "."
-      , fix        = Just $ "change the type to one of" <+> elementTypes <> "."
+      , fix        = Just $ "change the element type to one of" <+> elementTypes <> "."
       } where elementTypes = pretty @[Builtin] [Index, Nat, Int, Rat]
 
     DatasetVariableSizeTensor (ident, p) tCont -> UError $ UserError
@@ -476,40 +477,60 @@ instance MeaningfulError CompileError where
       , fix        = Just "make sure the dimensions of the dataset are all constants."
       }
 
-    DatasetInvalidNat (ident, p) v -> UError $ UserError
+    DatasetDimensionsMismatch (ident, p) file expectedType actualDims -> UError $ UserError
       { provenance = p
-      , problem    = "Found value" <+> squotes (pretty v) <+>
-                     "while reading" <+> prettyResource Dataset ident <+>
-                     "but expected elements of type" <+> squotes (prettyFriendlyDBClosed nat)
-      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
-                     "update the type of the dataset in the specification."
-      } where (nat :: CheckedExpr) = NatType mempty
+      , problem    = "Mismatch in the dimensions of" <+> prettyResource Dataset ident <> "." <> line <>
+                     "According to the specification it should be" <+>
+                     pretty (dimensionsOf expectedType) <> "-dimensional" <+>
+                     "but was actually found to be" <+> pretty (length actualDims) <> "-dimensional" <+>
+                     "when reading" <+> quotePretty file <> "."
+      , fix        = Just $ datasetDimensionsFix "dimensions" ident file
+      }
+      where
+        dimensionsOf :: CheckedExpr -> Int
+        dimensionsOf = \case
+          ListType   _ t    -> 1 + dimensionsOf t
+          VectorType _ t _  -> 1 + dimensionsOf t
+          TensorType _ t ds -> length ds + dimensionsOf t
+          _                 -> 0
 
-    DatasetInvalidIndex (ident, p) v n -> UError $ UserError
+    DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize allDimensions visitedDimensions -> UError $ UserError
       { provenance = p
-      , problem    = "Found value" <+> squotes (pretty v) <+>
-                     "while reading" <+> prettyResource Dataset ident <+>
-                     "but expected elements of type" <+> squotes (prettyFriendly (ConcreteIndexType mempty n :: InputExpr))
-      , fix        = Just $ "either remove the offending entries in the dataset or" <+>
-                     "update the type of the dataset in the specification."
+      , problem    = "Mismatch in the size of" <+> dimension <+>
+                     "of" <+> prettyResource Dataset ident <> "." <> line <>
+                     "According to the specification it should be" <+> quotePretty expectedSize <+>
+                     "but was actually found to be" <+> quotePretty actualSize <+> "when reading" <+>
+                     quotePretty file <> "."
+      , fix        = Just $ datasetDimensionsFix "dimensions" ident file
+      } where
+        numberOfCorrectDimensions = length allDimensions - length visitedDimensions
+        dimension = prettyOrdinal "dimension" (numberOfCorrectDimensions + 1) Nothing
+
+    DatasetInvalidNat (ident, p) file v -> UError $ UserError
+      { provenance = p
+      , problem    = "Mismatch in the type of elements of" <+> prettyResource Dataset ident <> "." <> line <>
+                     "Expected elements of type" <+> quotePretty Nat <+>
+                     "but found value" <+> quotePretty v <+>
+                     "when reading" <+> quotePretty file <> "."
+      , fix        = Just $ datasetDimensionsFix "type" ident file
       }
 
-    DatasetDimensionMismatch (ident, p) expectedType actualDims -> UError $ UserError
+    DatasetInvalidIndex (ident, p) file v n -> UError $ UserError
       { provenance = p
-      , problem    = "Found dimensions" <+> pretty actualDims <+>
-                     "while reading" <+> prettyResource Dataset ident <+>
-                     "but expected type to be" <+> prettyFriendlyDBClosed expectedType
-      , fix        = Just $ "correct the dataset dimensions in the specification" <+>
-                      "or check that the dataset is in the format you were expecting."
+      , problem    = "Mismatch in the type of elements of" <+> prettyResource Dataset ident <> "." <> line <>
+                     "Expected elements of type" <+> squotes (pretty Index <+> pretty n) <+>
+                     "but found value" <+> quotePretty v <+>
+                     "when reading" <+> quotePretty file <> "."
+      , fix        = Just $ datasetDimensionsFix "type" ident file
       }
 
-    DatasetTypeMismatch (ident, p) expectedType actualType -> UError $ UserError
+    DatasetTypeMismatch (ident, p) file expectedType actualType -> UError $ UserError
       { provenance = p
-      , problem    = "Found elements of type" <+> prettyFriendlyDBClosed actualType <+>
-                     "while reading" <+> prettyResource Dataset ident <+>
-                     "but expected elements of type" <+> prettyFriendlyDBClosed expectedType
-      , fix        = Just $ "correct the dataset type in the specification or check that" <+>
-                      "the dataset is in the format you were expecting."
+      , problem    = "Mismatch in the type of elements of" <+> prettyResource Dataset ident <> "." <> line <>
+                     "Expected elements of type" <+> squotes (prettyFriendlyDBClosed expectedType) <+>
+                     "but found elements of type" <+> squotes (prettyFriendlyDBClosed actualType) <+>
+                     "when reading" <+> quotePretty file <> "."
+      , fix        = Just $ datasetDimensionsFix "type" ident file
       }
 
     -- Parameter errors
@@ -693,6 +714,11 @@ instance MeaningfulError CompileError where
       , fix        = Just "choose a different compilation target than VNNLib"
       }
 
+datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
+datasetDimensionsFix feature ident file =
+  "change the" <+> feature <+> "of" <+> quotePretty ident <+> "in the specification" <+>
+  "or check that" <+> quotePretty (takeFileName file) <+> "is in the format you were expecting."
+
 unsupportedResourceTypeDescription :: ResourceType -> Identifier -> CheckedExpr -> Doc a
 unsupportedResourceTypeDescription resource ident actualType =
   "The type" <+> squotes (prettyFriendlyDBClosed actualType) <+> "of" <+> pretty resource <+>
@@ -723,6 +749,9 @@ unsolvedConstraintError constraint ctx ="Typing error: not enough information to
   case constraint of
     UC _ (Unify _)       ->  prettyFriendlyDB ctx constraint
     TC _ (Has _ tc args) ->  prettyFriendlyDB ctx (BuiltinTypeClass mempty tc args)
+
+quotePretty :: Pretty a => a -> Doc b
+quotePretty = squotes . pretty
 
 prettyResource :: ResourceType -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
@@ -781,11 +810,14 @@ prettyAllowedTypes allowedTypes = if length allowedTypes == 1
   then squotes (prettyFriendly (head allowedTypes))
   else "one of" <+> prettyFlatList (prettyFriendly <$> allowedTypes)
 
-prettyArgOrdinal :: Int -> Int -> Doc b
-prettyArgOrdinal argNo argTotal
-  | argTotal == 1 = "the argument"
-  | argNo > 9    = "argument" <+> pretty argNo
-  | otherwise = "the" <+> (case argNo of
+prettyOrdinal :: Doc b -> Int -> Maybe Int -> Doc b
+prettyOrdinal object argNo argTotal
+  | argTotal == Just 1 = "the" <+> object
+  | argNo > 9          = object <+> pretty argNo
+  | otherwise          = "the" <+> prettyOrd argNo <+> object
+  where
+  prettyOrd :: Int -> Doc b
+  prettyOrd = \case
     1 -> "first"
     2 -> "second"
     3 -> "third"
@@ -795,7 +827,7 @@ prettyArgOrdinal argNo argTotal
     7 -> "seventh"
     8 -> "eighth"
     9 -> "ninth"
-    _ -> developerError "Cannot convert ordinal") <+> "argument"
+    _ -> developerError "Cannot convert ordinal"
 
 --------------------------------------------------------------------------------
 -- Constraint error messages

@@ -1,2 +1,2 @@
 Error at Line 1, Columns 9-24: 'Nat -> Nat' is not a valid type for the elements of the dataset 'trainingDataset'.
-Fix: change the type to one of [Index, Nat, Int, Rat].
+Fix: change the element type to one of [Index, Nat, Int, Rat].
