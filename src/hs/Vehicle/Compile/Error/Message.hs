@@ -458,15 +458,15 @@ instance MeaningfulError CompileError where
       , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
                      "for the" <+> prettyResource Dataset ident <> "."
       , fix        = Just $ "change the type of" <+> squotes (pretty ident) <+>
-                     "to one of" <+> elementTypes <> "."
-      } where elementTypes = pretty @[Builtin] [List, Vector, Tensor]
+                     "to" <+> prettyAllowedBuiltins supportedTypes <> "."
+      } where supportedTypes = [List, Vector, Tensor]
 
     DatasetTypeUnsupportedElement (ident, p) tCont -> UError $ UserError
       { provenance = p
       , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
                      "for the elements of the" <+> prettyResource Dataset ident <> "."
-      , fix        = Just $ "change the element type to one of" <+> elementTypes <> "."
-      } where elementTypes = pretty @[Builtin] [Index, Nat, Int, Rat]
+      , fix        = Just $ "change the element type to" <+> prettyAllowedBuiltins supportedTypes <> "."
+      } where supportedTypes = [Index, Nat, Int, Rat]
 
     DatasetVariableSizeTensor (ident, p) tCont -> UError $ UserError
       { provenance = p
@@ -537,18 +537,18 @@ instance MeaningfulError CompileError where
 
     ParameterTypeUnsupported (ident, p) expectedType -> UError $ UserError
       { provenance = p
-      , problem    = unsupportedResourceTypeDescription Parameter ident expectedType <>
-                    "." <+> supportedParameterTypeDescription
-      , fix        = Just "change the parameter type in the specification."
-      }
+      , problem    = unsupportedResourceTypeDescription Parameter ident expectedType <> "."
+      , fix        = Just $ "change the type of" <+> quotePretty ident <+> "to" <+>
+                       prettyAllowedBuiltins supportedTypes <> "."
+      } where supportedTypes = [Bool, Index, Nat, Int, Rat]
 
     ParameterValueUnparsable (ident, p) value expectedType -> UError $ UserError
       { provenance = p
       , problem    = "The value" <+> squotes (pretty value) <+>
                      "provided for" <+> prettyResource Parameter ident <+>
                      "could not be parsed as" <+> prettyBuiltinType expectedType <> "."
-      , fix        = Just $ "either change the type of the parameter in the" <+>
-                     "specification or change the value provided."
+      , fix        = Just $ "either change the type of" <+> quotePretty ident <+>
+                       "in the specification or change the value provided."
       }
 
     ParameterTypeVariableSizeIndex (ident, p) fullType -> UError $ UserError
@@ -559,15 +559,23 @@ instance MeaningfulError CompileError where
       , fix        = Just "make sure the dimensions of the indices are all constants."
       }
 
-    ParameterValueTooLargeForIndex (ident, p) value indexSize -> UError $ UserError
+    ParameterValueInvalidIndex (ident, p) value n -> UError $ UserError
       { provenance = p
-      , problem    = "The value" <+> squotes (pretty value) <+>
-                     "provided for" <+> prettyResource Parameter ident <+> "is not" <+>
-                     "a valid member of the type" <+>
-                     squotes (pretty Index <+> pretty indexSize) <> "."
+      , problem    = "Mismatch in the type of" <+> prettyResource Parameter ident <> "." <> line <>
+                     "Expected something of type" <+> squotes (pretty Index <+> pretty n) <+>
+                     "but was provided the value" <+> quotePretty value <> "."
       , fix        = Just $ "either change the size of the index or ensure the value" <+>
-                      "provided is in the range" <+> squotes ("0..." <> pretty (indexSize -1)) <+>
+                      "provided is in the range" <+> squotes ("0..." <> pretty (n-1)) <+>
                       "(inclusive)."
+      }
+
+    ParameterValueInvalidNat (ident, p) value -> UError $ UserError
+      { provenance = p
+      , problem    = "Mismatch in the type of" <+> prettyResource Parameter ident <> "." <> line <>
+                     "Expected something of type" <+> quotePretty Nat <+>
+                     "but was provided the value" <+> quotePretty value <> "."
+      , fix        = Just $ "either change the type of" <+> quotePretty ident <+>
+                      "or ensure the value provided is non-negative."
       }
 
     ParameterTypeImplicitParamIndex (ident, p) _varIndent -> UError $ UserError
@@ -730,16 +738,6 @@ supportedNetworkTypeDescription =
   indent 2 "Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]" <> line <>
   "where 'a_i' and 'b_i' are all constants."
 
-supportedParameterTypeDescription :: Doc a
-supportedParameterTypeDescription =
-  "Only parameters of the following types are allowed:" <> line <>
-  indent 2 (
-    "1." <+> "Bool"    <> line <>
-    "2." <+> "Index n" <> line <>
-    "3." <+> "Nat"     <> line <>
-    "4." <+> "Int"     <> line <>
-    "5." <+> "Rat" )
-
 supportedImplicitParameterTypeDescription :: Doc a
 supportedImplicitParameterTypeDescription =
   "Only implicit parameters of type 'Nat' are allowed."
@@ -809,6 +807,13 @@ prettyAllowedTypes :: [InputExpr] -> Doc b
 prettyAllowedTypes allowedTypes = if length allowedTypes == 1
   then squotes (prettyFriendly (head allowedTypes))
   else "one of" <+> prettyFlatList (prettyFriendly <$> allowedTypes)
+
+prettyAllowedBuiltins :: [Builtin] -> Doc b
+prettyAllowedBuiltins allowedTypes = if length allowedTypes == 1
+  then squotes (pretty (head allowedTypes))
+  else do
+    let docs = fmap quotePretty allowedTypes
+    "one of" <+> commaSep (init docs) <+> "or" <+> last docs
 
 prettyOrdinal :: Doc b -> Int -> Maybe Int -> Doc b
 prettyOrdinal object argNo argTotal

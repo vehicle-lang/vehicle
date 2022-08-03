@@ -96,14 +96,15 @@ data CompileError
   | DatasetDimensionSizeMismatch    DeclProvenance FilePath Int Int [Int] [Int]
   | DatasetDimensionsMismatch       DeclProvenance FilePath CheckedExpr [Int]
   | DatasetTypeMismatch             DeclProvenance FilePath CheckedExpr CheckedExpr
-  | DatasetInvalidNat               DeclProvenance FilePath Int
   | DatasetInvalidIndex             DeclProvenance FilePath Int Int
+  | DatasetInvalidNat               DeclProvenance FilePath Int
 
   | ParameterTypeUnsupported        DeclProvenance CheckedExpr
   | ParameterTypeVariableSizeIndex  DeclProvenance CheckedExpr
   | ParameterTypeImplicitParamIndex DeclProvenance Identifier
   | ParameterValueUnparsable        DeclProvenance String Builtin
-  | ParameterValueTooLargeForIndex  DeclProvenance Int Int
+  | ParameterValueInvalidIndex      DeclProvenance Int Int
+  | ParameterValueInvalidNat        DeclProvenance Int
 
   | ImplicitParameterTypeUnsupported DeclProvenance CheckedExpr
   | ImplicitParameterContradictory   Identifier (DeclProvenance, ResourceType, Int) (DeclProvenance, ResourceType, Int)

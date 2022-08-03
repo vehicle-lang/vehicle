@@ -1,2 +1,2 @@
 Error at Line 1, Columns 11-12: The value '~`' provided for parameter 'n' could not be parsed as a 'Nat'.
-Fix: either change the type of the parameter in the specification or change the value provided.
+Fix: either change the type of 'n' in the specification or change the value provided.

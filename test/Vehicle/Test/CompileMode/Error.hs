@@ -202,10 +202,17 @@ parameterErrors = failTestGroup "ParameterErrors"
     }
 
   , testSpec
-    { testName       = "tooLargeAnIndex"
+    { testName       = "invalidIndex"
     , testLocation   = Tests
     , testTargets    = [MarabouBackend]
     , testParameters = [("n", "5")]
+    }
+
+  , testSpec
+    { testName       = "invalidNat"
+    , testLocation   = Tests
+    , testTargets    = [MarabouBackend]
+    , testParameters = [("n", "-5")]
     }
 
   , testSpec

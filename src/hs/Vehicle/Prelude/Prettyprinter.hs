@@ -59,11 +59,14 @@ hcat = concatWith (<>)
 vcat :: Foldable t => t (Doc ann) -> Doc ann
 vcat = concatWith (\x y -> x <> line' <> y)
 
+commaSep :: Foldable t => t (Doc ann) -> Doc ann
+commaSep = concatWith (surround ", ")
+
 numberedList :: [Doc ann] -> Doc ann
 numberedList elems = vsep (zipWith (\i e -> pretty i <> "." <+> e) [(1::Int)..] elems)
 
 prettyFlatList :: [Doc ann] -> Doc ann
-prettyFlatList xs = "[" <+> concatWith (surround ", ") xs <+> "]"
+prettyFlatList xs = "[" <+> commaSep xs <+> "]"
 
 --------------------------------------------------------------------------------
 -- Useful utility functions

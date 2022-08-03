@@ -58,7 +58,9 @@ parseBool decl@(_, p) value = case readMaybe value of
 
 parseNat :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
 parseNat decl@(_, p) value = case readMaybe value of
-  Just v  -> return $ NatLiteral p v
+  Just v
+    | v >= 0    -> return $ NatLiteral p v
+    | otherwise -> throwError $ ParameterValueInvalidNat decl v
   Nothing -> throwError $ ParameterValueUnparsable decl value Nat
 
 parseInt :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
@@ -74,6 +76,6 @@ parseRat decl@(_, p) value = case rational (pack value) of
 parseIndex :: MonadCompile m => Int -> DeclProvenance -> String -> m CheckedExpr
 parseIndex n decl@(_, p) value = case readMaybe value of
   Nothing -> throwError $ ParameterValueUnparsable decl value Index
-  Just v  -> if v < n
+  Just v  -> if v >= 0 && v < n
     then return $ IndexLiteral p n v
-    else throwError $ ParameterValueTooLargeForIndex decl v n
+    else throwError $ ParameterValueInvalidIndex decl v n
