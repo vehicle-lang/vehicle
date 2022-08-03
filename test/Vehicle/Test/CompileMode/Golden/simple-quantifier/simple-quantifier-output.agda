@@ -8,30 +8,22 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Data.Tensor
-open import Data.Unit
-open import Data.Nat as ℕ using (ℕ)
-open import Data.Integer as ℤ using (ℤ)
+open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.List
-open import Relation.Binary.PropositionalEquality
+open import Data.Vec.Functional
 
 module simple-quantifier-temp-output where
 
-abstract
-  bool : ∀ (x : ℤ) → ⊤
-  bool = checkSpecification record
-    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    }
+postulate f : Vector ℚ 1 → Vector ℚ 1
 
 abstract
-  expandedExpr : ∀ (x : Tensor ℤ (2 ∷ [])) → x (# 0) ≡ x (# 1)
+  expandedExpr : ∀ (x : Vector ℚ 1) → x (# 0) ℚ.≥ f x (# 0)
   expandedExpr = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
 
 abstract
-  multiple : ∀ (x : ℕ) → ∀ (y : ℕ) → x ≡ y
-  multiple = checkSpecification record
+  sequential : ∀ (x : Vector ℚ 1) → ∀ (y : Vector ℚ 1) → f x (# 0) ℚ.≥ f y (# 0)
+  sequential = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

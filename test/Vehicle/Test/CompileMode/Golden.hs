@@ -74,7 +74,7 @@ testSpecs =
   , testSpec
       { testName       = "autoencoderError"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend] -- MarabouBackend
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
   , testSpec
@@ -105,7 +105,7 @@ testSpecs =
   , testSpec
       { testName       = "simple-quantifier"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
   , testSpec
@@ -213,7 +213,7 @@ makeIndividualTest :: MonadTest m
 makeIndividualTest location name datasets backend = do
   loggingSettings <- getTestLoggingSettings
 
-  let testName       = name <> "-" <> show backend
+  let testName       = name <> "-" <> layoutAsString (pretty backend)
   let filePathSuffix = getGoldenFilepathSuffix backend
   let moduleName     = name <> "-output"
   let inputFile      = locationDir location name </> name <.> ".vcl"
@@ -242,7 +242,7 @@ makePerformanceTest :: TestLocation
 makePerformanceTest location name datasets backend = do
   let loggingSettings = (Nothing, 0)
 
-  let testName       = name <> "-" <> show backend
+  let testName       = name <> "-" <> layoutAsString (pretty backend)
   let filePathSuffix = getGoldenFilepathSuffix backend
   let moduleName     = name <> "-output"
   let inputFile      = locationDir location name </> name <.> ".vcl"
@@ -259,9 +259,11 @@ goldenDir :: FilePath
 goldenDir = baseTestDir </> "CompileMode" </> "Golden"
 
 getGoldenFilepathSuffix :: Backend -> String
-getGoldenFilepathSuffix (Verifier Marabou) = "-marabou"
-getGoldenFilepathSuffix (ITP Agda)         = ".agda"
-getGoldenFilepathSuffix LossFunction       = ".json"
+getGoldenFilepathSuffix = \case
+  Verifier Marabou -> "-marabou"
+  ITP Agda         -> ".agda"
+  LossFunction     -> ".json"
+  TypeCheck        -> ""
 
 runTest :: TestLoggingSettings
         -> FilePath
