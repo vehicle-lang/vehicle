@@ -271,9 +271,9 @@ makeAgdaIntegrationTest spec@TestSpec{..}
     let name            = layoutAsString (pretty backend) <> "-integration" <> "-" <> testName
     let filePathSuffix  = getGoldenFilepathSuffix backend
     let goldenDirectory = goldenDir </> testName
-    let goldenFile      = goldenDirectory </> testName <> "-output" <> filePathSuffix
+    let goldenFile      = testName <> "-output" <> filePathSuffix
 
-    testProgram name "agda" [goldenFile] Nothing -- (Just goldenDirectory)
+    testProgram name "agda" [goldenFile, "--library=vehicle", "--include-path=."] (Just goldenDirectory)
 
 --------------------------------------------------------------------------------
 -- Utils

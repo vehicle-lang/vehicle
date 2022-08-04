@@ -38,6 +38,16 @@ Now we can install Vehicle itself.
 
 5. Run ``vehicle -h`` to check that Vehicle has been installed.
 
+Setting Vehicle to work with Agda
+---------------------------------
+
+If you want to enable Vehicle to work with Agda, run:
+
+1. Run ``cabal run build init-agda``
+
+This command will add the ``Vehicle`` Agda library to the Agda ``libraries`` file
+and add the ``vehicle`` executable to the Agda ``executables`` file.
+
 Syntax highlighting
 -------------------
 
