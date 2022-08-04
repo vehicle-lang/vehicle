@@ -26,6 +26,7 @@ import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Compile.Descope (runDescopeProg)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Normalise
+import Vehicle.Compile.Monomorphisation (monomorphise)
 
 
 --------------------------------------------------------------------------------
@@ -40,7 +41,8 @@ data AgdaOptions = AgdaOptions
 compileProgToAgda :: MonadCompile m => AgdaOptions -> CheckedProg -> m (Doc a)
 compileProgToAgda options prog = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
-    normProg <- normalise prog noNormalisationOptions
+    monoProg <- monomorphise prog
+    normProg <- normalise monoProg noNormalisationOptions
       { normaliseBuiltin = normaliseBuiltins
       }
 

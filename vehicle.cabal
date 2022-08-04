@@ -194,6 +194,7 @@ library
                       , Vehicle.Compile.Prelude.Patterns
                       , Vehicle.Compile.Prelude.Utils
                       , Vehicle.Compile.Prelude.Contexts
+                      , Vehicle.Compile.Monomorphisation
 
                       , Vehicle.Backend.Agda.Compile
                       , Vehicle.Backend.Agda.Interact

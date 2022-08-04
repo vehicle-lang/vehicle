@@ -15,7 +15,6 @@ module Vehicle.Language.AST.DeBruijn
   , substIntoAtLevel
   , patternOfArgs
   , substAll
-  , isBoundVar
   ) where
 
 import GHC.Generics (Generic)
@@ -193,7 +192,3 @@ substAll sub e = runReaderT (alter binderUpdate alterVar e) (0, sub)
         return $ Var ann (Bound i)
 
     binderUpdate = IM.map (liftFreeDBIndices 1)
-
-isBoundVar :: DBExpr -> Bool
-isBoundVar (Var _ Bound{}) = True
-isBoundVar _               = False

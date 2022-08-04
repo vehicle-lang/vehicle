@@ -21,11 +21,11 @@ module windController-temp-output where
 InputVector : Set
 InputVector = Tensor ℚ (2 ∷ [])
 
-currentSensor : ∀ {_x0 : Set} {{_x1 : HasNatLits _x0}} → _x0
-currentSensor = _x3 0
+currentSensor[Index-2] : Fin 2
+currentSensor[Index-2] = # 0
 
-previousSensor : ∀ {_x4 : Set} {{_x5 : HasNatLits _x4}} → _x4
-previousSensor = _x7 1
+previousSensor[Index-2] : Fin 2
+previousSensor[Index-2] = # 1
 
 postulate controller : InputVector → Tensor ℚ (1 ∷ [])
 
@@ -33,7 +33,7 @@ SafeInput : InputVector → Set
 SafeInput x = ∀ (i : Fin 2) → ℚ.- (ℤ.+ 13 ℚ./ 4) ℚ.≤ x i × x i ℚ.≤ ℤ.+ 13 ℚ./ 4
 
 SafeOutput : InputVector → Set
-SafeOutput x = ℚ.- (ℤ.+ 5 ℚ./ 4) ℚ.< (controller x (# 0) ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* x currentSensor) ℚ.- x previousSensor × (controller x (# 0) ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* x currentSensor) ℚ.- x previousSensor ℚ.< ℤ.+ 5 ℚ./ 4
+SafeOutput x = ℚ.- (ℤ.+ 5 ℚ./ 4) ℚ.< (controller x (# 0) ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* x currentSensor[Index-2]) ℚ.- x previousSensor[Index-2] × (controller x (# 0) ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* x currentSensor[Index-2]) ℚ.- x previousSensor[Index-2] ℚ.< ℤ.+ 5 ℚ./ 4
 
 abstract
   safe : ∀ (x : Vector ℚ 2) → SafeInput x → SafeOutput x

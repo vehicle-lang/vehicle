@@ -28,6 +28,10 @@ isLinearityUniverse _                   = False
 isAuxiliaryUniverse :: Expr binder var -> Bool
 isAuxiliaryUniverse e = isPolarityUniverse e || isLinearityUniverse e
 
+isBoundVar :: DBExpr -> Bool
+isBoundVar BoundVar{} = True
+isBoundVar _          = False
+
 isAnnBoolType :: DBExpr -> Bool
 isAnnBoolType AnnBoolType{} = True
 isAnnBoolType _             = False
@@ -84,8 +88,8 @@ freeNamesIn = cata $ \case
 -- Destruction functions
 
 toHead :: Expr binder var -> (Expr binder var, [Arg binder var])
-toHead (App _ann fun args ) = (fun, NonEmpty.toList args)
-toHead e                    = (e, [])
+toHead (App _ fun args) = (fun, NonEmpty.toList args)
+toHead e                = (e, [])
 
 exprHead :: Expr binder var -> Expr binder var
 exprHead = fst . toHead
@@ -95,6 +99,11 @@ onlyExplicit args = argExpr <$> filter isExplicit (NonEmpty.toList args)
 
 --------------------------------------------------------------------------------
 -- Views
+
+getFreeVar :: DBExpr -> Maybe Identifier
+getFreeVar = \case
+  FreeVar _ ident -> Just ident
+  _               -> Nothing
 
 getBinderSymbol :: Binder DBBinding var -> Symbol
 getBinderSymbol binder = case nameOf binder of
@@ -124,6 +133,10 @@ getDimensions _                      = Nothing
 getExplicitArg :: Arg binder var -> Maybe (Expr binder var)
 getExplicitArg (ExplicitArg _ arg) = Just arg
 getExplicitArg _                   = Nothing
+
+getImplicitArg :: Arg binder var -> Maybe (Expr binder var)
+getImplicitArg (ImplicitArg _ arg) = Just arg
+getImplicitArg _                   = Nothing
 
 getConcreteList :: Expr binder var -> [Expr binder var]
 getConcreteList = \case
