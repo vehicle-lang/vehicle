@@ -16,7 +16,7 @@ open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
 open import Data.Vec.Functional
 
-module autoencoderError-temp-output where
+module autoencoderError-output where
 
 postulate encode : Tensor ℚ (5 ∷ []) → Tensor ℚ (2 ∷ [])
 

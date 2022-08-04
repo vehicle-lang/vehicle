@@ -19,7 +19,7 @@ open import Data.Vec.Functional
 open import Relation.Nullary
 open import Relation.Nullary.Decidable
 
-module simple-if-temp-output where
+module simple-if-output where
 
 postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 

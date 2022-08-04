@@ -17,7 +17,7 @@ open import Data.List
 open import Data.List.Relation.Unary.All as List
 open import Relation.Binary.PropositionalEquality
 
-module simple-let-temp-output where
+module simple-let-output where
 
 abstract
   e1 : let x = ⊤ in let y = ⊥ in x × y

@@ -17,7 +17,7 @@ open import Data.Vec.Functional
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 
-module acasXu-temp-output where
+module acasXu-output where
 
 InputVector : Set
 InputVector = Vector ℚ 5

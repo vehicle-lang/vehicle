@@ -12,7 +12,7 @@ open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.Vec.Functional
 
-module simple-quantifier-temp-output where
+module simple-quantifier-output where
 
 postulate f : Vector ℚ 1 → Vector ℚ 1
 

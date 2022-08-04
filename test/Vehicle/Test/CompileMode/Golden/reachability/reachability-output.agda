@@ -16,7 +16,7 @@ open import Data.List
 open import Data.Vec.Functional
 open import Relation.Binary.PropositionalEquality
 
-module reachability-temp-output where
+module reachability-output where
 
 postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ (1 ∷ [])
 

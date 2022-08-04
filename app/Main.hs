@@ -122,11 +122,12 @@ parameterOption = resourceOption
 
 modulePrefixOption :: Parser (Maybe String)
 modulePrefixOption = optional (strOption
-  ( long "modulePrefix"
+  ( long "moduleName"
   <> short 'm'
-  <> help "Prefix for the name of the exported ITP module. For example, \
-          \compiling to 'Baz.agda' with a prefix of `Foo.Bar` will result in \
-          \the Agda module with the name `Foo.Bar.Baz`."
+  <> help "Override the name of the exported ITP module. For example, \
+          \compiling with 'Foo.Bar' will result in \
+          \the Agda module with the internal name `Foo.Bar.agda`. If not
+          \provided then the name will default to the name of the output file."
   <> metavar "MODULENAME" ))
 
 inputProofCacheOption :: Parser String

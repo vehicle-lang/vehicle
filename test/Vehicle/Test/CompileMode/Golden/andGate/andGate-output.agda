@@ -16,7 +16,7 @@ open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
 open import Data.Vec.Functional
 
-module andGate-temp-output where
+module andGate-output where
 
 postulate andGate : Tensor ℚ (2 ∷ []) → Tensor ℚ (1 ∷ [])
 

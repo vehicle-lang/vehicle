@@ -35,7 +35,7 @@ import Vehicle.Compile.Monomorphisation (monomorphise)
 data AgdaOptions = AgdaOptions
   { proofCacheLocation  :: Maybe FilePath
   , outputFile          :: Maybe FilePath
-  , modulePrefix        :: Maybe String
+  , moduleName          :: Maybe String
   }
 
 compileProgToAgda :: MonadCompile m => AgdaOptions -> CheckedProg -> m (Doc a)
@@ -55,12 +55,14 @@ compileProgToAgda options prog = logCompilerPass MinDetail currentPhase $
     -- folding using Set Monoid
     let progamDependencies = fold (reAnnotateS fst programStream)
 
-    let baseModule = maybe "Spec" takeBaseName (outputFile options)
-    let moduleName = Text.pack $ maybe "" (<> ".") (modulePrefix options) <> baseModule
+    let nameOfModule = Text.pack $ case moduleName options of
+          Just name -> name
+          _         -> maybe "Spec" takeBaseName (outputFile options)
+
     return $ unAnnotate ((vsep2 :: [Code] -> Code)
       [ optionStatements ["allow-exec"]
       , importStatements progamDependencies
-      , moduleHeader moduleName
+      , moduleHeader nameOfModule
       , programDoc
       ])
 

@@ -357,7 +357,7 @@ runTest (logFile, debugLevel) inputFile outputFile backend Resources{..} = do
       , networkLocations  = networks
       , datasetLocations  = datasets
       , parameterValues   = parameters
-      , modulePrefix      = Nothing
+      , moduleName        = Nothing
       , proofCache        = Nothing
       }
     }

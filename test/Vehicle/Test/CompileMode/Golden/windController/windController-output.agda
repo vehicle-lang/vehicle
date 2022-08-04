@@ -16,7 +16,7 @@ open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
 open import Data.Vec.Functional
 
-module windController-temp-output where
+module windController-output where
 
 InputVector : Set
 InputVector = Tensor ℚ (2 ∷ [])

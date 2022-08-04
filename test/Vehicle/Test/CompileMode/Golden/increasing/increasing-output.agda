@@ -14,7 +14,7 @@ open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
 open import Data.Vec.Functional
 
-module increasing-temp-output where
+module increasing-output where
 
 postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 

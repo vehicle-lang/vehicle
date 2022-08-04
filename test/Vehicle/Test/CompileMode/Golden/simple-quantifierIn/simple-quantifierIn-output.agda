@@ -14,7 +14,7 @@ open import Data.List
 open import Data.List.Relation.Unary.All as List
 open import Relation.Binary.PropositionalEquality
 
-module simple-quantifierIn-temp-output where
+module simple-quantifierIn-output where
 
 emptyList : List ℤ
 emptyList = []

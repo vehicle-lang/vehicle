@@ -58,6 +58,8 @@ common common-base
                     , mtl        >=2.2 && <3
                     , hashable   >=1.3 && <2
                     , containers >=0.5 && <1
+                    , deepseq    >=1.4  && <2
+                    , process
                     , directory
 
   default-language:   Haskell2010
@@ -214,7 +216,6 @@ library
                       , data-default         >=0.7  && <1
                       , prettyprinter        >=1.7  && <2
                       , data-fix             >=0.2  && <1
-                      , deepseq              >=1.4  && <2
                       , ansi-terminal        >=0.6  && <1
                       , linkedhashmap        >=0.4  && <1
                       , bytestring
@@ -223,7 +224,6 @@ library
                       , aeson
                       , aeson-pretty
                       , temporary
-                      , process
                       , vector
                       -- Used for parsing IDX format
                       , mnist-idx            >= 0.1.3.1
@@ -263,14 +263,19 @@ common common-test-base
                     , Vehicle.Test.Utils
                     , Vehicle.Test.Utils.Golden
                     , Vehicle.Test.Utils.FilePath
+                    , Vehicle.Test.Utils.TestProgram
 
   build-depends:      Diff
+                    , vehicle
                     , tasty
                     , tasty-golden
                     , tasty-hunit
-                    , tasty-bench >=0.3 && <1
-                    , vehicle
+                    , tasty-bench   >=0.3   && <1
                     , regex-tdfa
+
+                    -- Clone of tasty-program in `Vehicle.Test.Utils.TestProgram`
+                    -- , tasty-program >=1.0.5 && <2
+
                     -- For generation of terms
                     -- , lazy-search
                     -- , size-based

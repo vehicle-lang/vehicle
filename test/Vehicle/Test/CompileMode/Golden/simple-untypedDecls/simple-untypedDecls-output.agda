@@ -11,7 +11,7 @@ open import Vehicle
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 
-module simple-untypedDecls-temp-output where
+module simple-untypedDecls-output where
 
 fin3 : ∀ {_x0 : Set} {{_x1 : HasNatLits _x0}} → _x0
 fin3 = _x3 3

@@ -11,7 +11,7 @@ open import Vehicle
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 
-module simple-arithmetic-temp-output where
+module simple-arithmetic-output where
 
 precedence : ℚ → (ℚ → (ℚ → ℚ))
 precedence x y z = (x ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* y) ℚ.- z ℚ.÷ y

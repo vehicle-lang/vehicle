@@ -11,7 +11,7 @@ data ExportOptions = ExportOptions
   { target             :: ITP
   , proofCacheLocation :: FilePath
   , outputFile         :: Maybe FilePath
-  , modulePrefix       :: Maybe String
+  , moduleName         :: Maybe String
   } deriving (Show)
 
 export :: LoggingOptions -> ExportOptions -> IO ()
@@ -23,6 +23,6 @@ export loggingOptions ExportOptions{..} = do
   absoluteProofCacheLocation <- Just <$> makeAbsolute proofCacheLocation
   case target of
     Agda -> do
-      let agdaOptions = AgdaOptions absoluteProofCacheLocation outputFile modulePrefix
+      let agdaOptions = AgdaOptions absoluteProofCacheLocation outputFile moduleName
       agdaCode <- compileToAgda loggingOptions agdaOptions resources spec
       writeAgdaFile outputFile agdaCode

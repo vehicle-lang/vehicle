@@ -1,6 +1,7 @@
 module Vehicle.Test.CompileMode.Golden
   ( functionalityTests
   , performanceTests
+  , integrationTests
   ) where
 
 import Control.Exception ( catch, throwIO )
@@ -10,8 +11,7 @@ import Data.Text.IO qualified as T
 import Data.Bifunctor (first)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Test.Tasty
-import Test.Tasty.Golden.Advanced (goldenTest)
+import Data.Maybe (mapMaybe)
 import System.Exit (exitFailure)
 import System.FilePath (takeFileName, splitPath, (<.>), (</>))
 import System.Directory (removeFile, removeDirectory)
@@ -22,8 +22,12 @@ import Vehicle.Prelude
 import Vehicle.Compile
 import Vehicle.Backend.Prelude
 
+import Test.Tasty
+import Test.Tasty.Golden.Advanced (goldenTest)
+import Test.Tasty.Bench (Benchmark, bench, nfIO)
+
 import Vehicle.Test.Utils
-import Test.Tasty.Bench
+import Vehicle.Test.Utils.TestProgram (testProgram, CatchStderr(..))
 
 --------------------------------------------------------------------------------
 -- Tests
@@ -35,6 +39,10 @@ functionalityTests = testGroup "GoldenTests" <$>
 performanceTests :: TestTree
 performanceTests = testGroup "GoldenTests" $
   fmap makePerformanceTests testSpecs
+
+integrationTests :: TestTree
+integrationTests = localOption (CatchStderr True) $ testGroup "AgdaIntegrationTests" $
+  mapMaybe makeAgdaIntegrationTest testSpecs
 
 --------------------------------------------------------------------------------
 -- Specifications
@@ -196,7 +204,7 @@ testSpecs =
   ]
 
 --------------------------------------------------------------------------------
--- Test infrastructure
+-- Functionality tests
 
 makeFunctionalityTests :: MonadTest m => TestSpec -> m TestTree
 makeFunctionalityTests spec@TestSpec{..} = do
@@ -221,7 +229,7 @@ makeIndividualTest location name datasets backend = do
   let goldenFile     = goldenDir </> name </> name <> "-output"      <> filePathSuffix
   let isFolderOutput = backend == MarabouBackend
 
-  let run = runTest loggingSettings inputFile outputFile moduleName backend datasets
+  let run = runVehicle loggingSettings inputFile outputFile moduleName backend datasets
   let testFn = if isFolderOutput then goldenDirectoryTest else goldenFileTest
   return $ testFn testName run omitFilePaths goldenFile outputFile
 
@@ -248,9 +256,24 @@ makePerformanceTest location name datasets backend = do
   let inputFile      = locationDir location name </> name <.> ".vcl"
   let outputFile     = goldenDir </> name </> name <> "-temp-output" <> filePathSuffix
 
-  let run = runTest loggingSettings inputFile outputFile moduleName backend datasets
+  let run = runVehicle loggingSettings inputFile outputFile moduleName backend datasets
   let runAndClean = do run; cleanupOutput (backend /= MarabouBackend) outputFile
   bench testName (nfIO runAndClean)
+
+--------------------------------------------------------------------------------
+-- Integration tests
+
+makeAgdaIntegrationTest :: TestSpec -> Maybe TestTree
+makeAgdaIntegrationTest spec@TestSpec{..}
+  | AgdaBackend `notElem` testTargets = Nothing
+  | otherwise = Just $ do
+    let backend         = AgdaBackend
+    let name            = layoutAsString (pretty backend) <> "-integration" <> "-" <> testName
+    let filePathSuffix  = getGoldenFilepathSuffix backend
+    let goldenDirectory = goldenDir </> testName
+    let goldenFile      = goldenDirectory </> testName <> "-output" <> filePathSuffix
+
+    testProgram name "agda" [goldenFile] Nothing -- (Just goldenDirectory)
 
 --------------------------------------------------------------------------------
 -- Utils
@@ -265,14 +288,14 @@ getGoldenFilepathSuffix = \case
   LossFunction     -> ".json"
   TypeCheck        -> ""
 
-runTest :: TestLoggingSettings
-        -> FilePath
-        -> FilePath
-        -> String
-        -> Backend
-        -> Resources
-        -> IO ()
-runTest (logFile, debugLevel) inputFile outputFile modulePath backend Resources{..} = do
+runVehicle :: TestLoggingSettings
+           -> FilePath
+           -> FilePath
+           -> String
+           -> Backend
+           -> Resources
+           -> IO ()
+runVehicle (logFile, debugLevel) inputFile outputFile moduleName backend Resources{..} = do
   run $ Options
     { version     = False
     , outFile     = Nothing
@@ -286,7 +309,7 @@ runTest (logFile, debugLevel) inputFile outputFile modulePath backend Resources{
       , networkLocations  = networks
       , datasetLocations  = datasets
       , parameterValues   = parameters
-      , modulePrefix      = Nothing
+      , moduleName        = Just moduleName
       , proofCache        = Just "proofcache.vclp"
       }
     }

@@ -44,7 +44,7 @@ compile loggingOptions CompileOptions{..} = do
 
     ITP Agda -> do
       proofCacheLocation <- maybe (return Nothing) (fmap Just . makeAbsolute) proofCache
-      let agdaOptions = AgdaOptions proofCacheLocation outputFile modulePrefix
+      let agdaOptions = AgdaOptions proofCacheLocation outputFile moduleName
       agdaCode <- compileToAgda loggingOptions agdaOptions resources spec
       writeAgdaFile outputFile agdaCode
 

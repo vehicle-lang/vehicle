@@ -22,7 +22,7 @@ data CompileOptions = CompileOptions
   , networkLocations  :: NetworkLocations
   , datasetLocations  :: DatasetLocations
   , parameterValues   :: ParameterValues
-  , modulePrefix      :: Maybe String
+  , moduleName        :: Maybe String
   , proofCache        :: Maybe FilePath
   } deriving (Show)
 

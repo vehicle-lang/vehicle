@@ -10,7 +10,7 @@
 open import Vehicle
 open import Data.Nat as ℕ using (ℕ)
 
-module simple-generalisedVariables-temp-output where
+module simple-generalisedVariables-output where
 
 id[Nat] : ℕ → ℕ
 id[Nat] x = x

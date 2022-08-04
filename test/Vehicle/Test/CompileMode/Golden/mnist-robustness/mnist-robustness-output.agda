@@ -18,7 +18,7 @@ open import Data.List
 open import Data.Vec.Functional
 open import Relation.Binary.PropositionalEquality
 
-module mnist-robustness-temp-output where
+module mnist-robustness-output where
 
 Image : Set
 Image = Tensor ℚ (28 ∷ (28 ∷ []))

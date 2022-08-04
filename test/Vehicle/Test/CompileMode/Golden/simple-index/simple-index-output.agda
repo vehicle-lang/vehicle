@@ -12,7 +12,7 @@ open import Data.Fin as Fin using (Fin; #_)
 open import Function.Base
 open import Relation.Binary.PropositionalEquality
 
-module simple-index-temp-output where
+module simple-index-output where
 
 abstract
   eqIndex : (Fin 1 ∋ # 0) ≡ (Fin 2 ∋ # 1)

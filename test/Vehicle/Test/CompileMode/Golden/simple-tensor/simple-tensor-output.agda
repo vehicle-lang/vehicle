@@ -15,7 +15,7 @@ open import Data.Fin as Fin using (Fin; #_)
 open import Data.List
 open import Data.Vec.Functional
 
-module simple-tensor-temp-output where
+module simple-tensor-output where
 
 postulate f : Tensor ℚ (2 ∷ (2 ∷ [])) → Tensor ℚ (2 ∷ (2 ∷ []))
 
