@@ -1,7 +1,9 @@
 module Vehicle.Test.CompileMode.Golden
   ( functionalityTests
   , performanceTests
-  , integrationTests
+  , goldenTestSpecifications
+  , goldenTestDirectory
+  , goldenFilepathSuffix
   ) where
 
 import Control.Exception ( catch, throwIO )
@@ -27,28 +29,23 @@ import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.Bench (Benchmark, bench, nfIO)
 
 import Vehicle.Test.Utils
-import Vehicle.Test.Utils.TestProgram (testProgram, CatchStderr(..))
 
 --------------------------------------------------------------------------------
 -- Tests
 
 functionalityTests :: MonadTest m => m TestTree
 functionalityTests = testGroup "GoldenTests" <$>
-  traverse makeFunctionalityTests testSpecs
+  traverse makeFunctionalityTests goldenTestSpecifications
 
 performanceTests :: TestTree
 performanceTests = testGroup "GoldenTests" $
-  fmap makePerformanceTests testSpecs
-
-integrationTests :: TestTree
-integrationTests = localOption (CatchStderr True) $ testGroup "AgdaIntegrationTests" $
-  mapMaybe makeAgdaIntegrationTest testSpecs
+  fmap makePerformanceTests goldenTestSpecifications
 
 --------------------------------------------------------------------------------
 -- Specifications
 
-testSpecs :: [TestSpec]
-testSpecs =
+goldenTestSpecifications :: [TestSpec]
+goldenTestSpecifications =
   -- Worked examples
   [ testSpec
       { testName       = "windController"
@@ -222,11 +219,11 @@ makeIndividualTest location name datasets backend = do
   loggingSettings <- getTestLoggingSettings
 
   let testName       = name <> "-" <> layoutAsString (pretty backend)
-  let filePathSuffix = getGoldenFilepathSuffix backend
+  let filePathSuffix = goldenFilepathSuffix backend
   let moduleName     = name <> "-output"
   let inputFile      = locationDir location name </> name <.> ".vcl"
-  let outputFile     = goldenDir </> name </> name <> "-temp-output" <> filePathSuffix
-  let goldenFile     = goldenDir </> name </> name <> "-output"      <> filePathSuffix
+  let outputFile     = goldenTestDirectory </> name </> name <> "-temp-output" <> filePathSuffix
+  let goldenFile     = goldenTestDirectory </> name </> name <> "-output"      <> filePathSuffix
   let isFolderOutput = backend == MarabouBackend
 
   let run = runVehicle loggingSettings inputFile outputFile moduleName backend datasets
@@ -251,38 +248,23 @@ makePerformanceTest location name datasets backend = do
   let loggingSettings = (Nothing, 0)
 
   let testName       = name <> "-" <> layoutAsString (pretty backend)
-  let filePathSuffix = getGoldenFilepathSuffix backend
+  let filePathSuffix = goldenFilepathSuffix backend
   let moduleName     = name <> "-output"
   let inputFile      = locationDir location name </> name <.> ".vcl"
-  let outputFile     = goldenDir </> name </> name <> "-temp-output" <> filePathSuffix
+  let outputFile     = goldenTestDirectory </> name </> name <> "-temp-output" <> filePathSuffix
 
   let run = runVehicle loggingSettings inputFile outputFile moduleName backend datasets
   let runAndClean = do run; cleanupOutput (backend /= MarabouBackend) outputFile
   bench testName (nfIO runAndClean)
 
 --------------------------------------------------------------------------------
--- Integration tests
-
-makeAgdaIntegrationTest :: TestSpec -> Maybe TestTree
-makeAgdaIntegrationTest spec@TestSpec{..}
-  | AgdaBackend `notElem` testTargets = Nothing
-  | otherwise = Just $ do
-    let backend         = AgdaBackend
-    let name            = layoutAsString (pretty backend) <> "-integration" <> "-" <> testName
-    let filePathSuffix  = getGoldenFilepathSuffix backend
-    let goldenDirectory = goldenDir </> testName
-    let goldenFile      = testName <> "-output" <> filePathSuffix
-
-    testProgram name "agda" [goldenFile, "--library=vehicle", "--include-path=."] (Just goldenDirectory)
-
---------------------------------------------------------------------------------
 -- Utils
 
-goldenDir :: FilePath
-goldenDir = baseTestDir </> "CompileMode" </> "Golden"
+goldenTestDirectory :: FilePath
+goldenTestDirectory = baseTestDir </> "CompileMode" </> "Golden"
 
-getGoldenFilepathSuffix :: Backend -> String
-getGoldenFilepathSuffix = \case
+goldenFilepathSuffix :: Backend -> String
+goldenFilepathSuffix = \case
   Verifier Marabou -> "-marabou"
   ITP Agda         -> ".agda"
   LossFunction     -> ".json"
