@@ -11,15 +11,15 @@ open import Vehicle
 open import Vehicle.Data.Tensor
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.List
-open import Data.Vec.Functional
+open import Data.List.Base
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module increasing-output where
 
 postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 
 abstract
-  increasing : ∀ (x : ℚ) → x ℚ.≤ f (x ∷ []) (# 0)
+  increasing : ∀ (x : ℚ) → x ℚ.≤ f (x ∷ᵥ []ᵥ) (# 0)
   increasing = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

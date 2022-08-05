@@ -6,8 +6,11 @@ Installation
 At the moment, the only way to install Vehicle is from source. We aim to make it
 available as both an executable and a Python package in the near future.
 
-Building from source
---------------------
+Building from source on Linux
+-----------------------------
+
+On Linux
+********
 
 Vehicle is written in Haskell. The first task is to install Haskell itself:
 
@@ -37,6 +40,35 @@ Now we can install Vehicle itself.
 4. Run ``cabal install`` to install the Vehicle executable.
 
 5. Run ``vehicle -h`` to check that Vehicle has been installed.
+
+**Troubleshooting**
+
+* Check if you're using the right versions of GHC and Cabal.
+
+* Check if you have any other installations of GHC and Cabal not managed by GHCUp.
+  Either remove those installations or make sure that GHCUp is earlier in the PATH environment variable.
+
+On Windows
+**********
+
+The easiest way is:
+
+* Install the Windows Subsystem for Linux (WSL) from the Microsoft Store.
+
+* Follow the instructions for Linux above in a WSL terminal.
+
+.. warning::
+
+    Although Vehicle itself supports and is tested on Windows, that does
+    not mean that all backends will work on Windows. For example ``Marabou``
+    does not currently support Windows.
+
+**Troubleshooting**
+
+* If you have problems with the WSL check if you're using the latest version.
+
+* If you get the error: Missing (or bad) C libraries: icuuc, icuin, icudt
+Go to https://github.com/microsoft/vcpkg#quick-start-windows and follow the instructions.
 
 Setting Vehicle to work with Agda
 ---------------------------------

@@ -283,16 +283,25 @@ common common-test-base
                     -- , bifunctors
                     -- , mtl
 
-test-suite vehicle-test
+test-suite vehicle-executable-tests
   import:          common-test-base
   type:            exitcode-stdio-1.0
-  main-is:         Vehicle/Test/TestFunctionality.hs
+  main-is:         Vehicle/Test/TestExecutable.hs
   ghc-options:     -threaded
                    -rtsopts
                    "-with-rtsopts=-N"
                    -O0
 
-benchmark vehicle-benchmark
+test-suite vehicle-integration-tests
+  import:          common-test-base
+  type:            exitcode-stdio-1.0
+  main-is:         Vehicle/Test/TestIntegration.hs
+  ghc-options:     -threaded
+                   -rtsopts
+                   "-with-rtsopts=-N"
+                   -O0
+
+benchmark vehicle-benchmarks
   import:          common-test-base
   type:            exitcode-stdio-1.0
   main-is:         Vehicle/Test/TestPerformance.hs

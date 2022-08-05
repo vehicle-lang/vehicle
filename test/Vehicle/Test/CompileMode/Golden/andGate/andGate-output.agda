@@ -13,8 +13,8 @@ open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.List
-open import Data.Vec.Functional
+open import Data.List.Base
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module andGate-output where
 
@@ -30,7 +30,7 @@ ValidInput : ℚ → Set
 ValidInput x = ℤ.+ 0 ℚ./ 1 ℚ.≤ x × x ℚ.≤ ℤ.+ 1 ℚ./ 1
 
 CorrectOutput : ℚ → (ℚ → Set)
-CorrectOutput x1 x2 = let y = andGate (x1 ∷ (x2 ∷ [])) (# 0) in (Truthy x1 × Truthy x2 → Truthy y) × ((Truthy x1 × Falsey x2 → Falsey y) × ((Falsey x1 × Truthy x2 → Falsey y) × (Falsey x1 × Falsey x2 → Falsey y)))
+CorrectOutput x1 x2 = let y = andGate (x1 ∷ᵥ (x2 ∷ᵥ []ᵥ)) (# 0) in (Truthy x1 × Truthy x2 → Truthy y) × ((Truthy x1 × Falsey x2 → Falsey y) × ((Falsey x1 × Truthy x2 → Falsey y) × (Falsey x1 × Falsey x2 → Falsey y)))
 
 abstract
   andGateCorrect : ∀ (x1 : ℚ) → ∀ (x2 : ℚ) → ValidInput x1 × ValidInput x2 → CorrectOutput x1 x2

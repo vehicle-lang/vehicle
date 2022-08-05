@@ -14,8 +14,8 @@ open import Data.Nat as ℕ using (ℕ)
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.List
-open import Data.Vec.Functional
+open import Data.List.Base
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 open import Relation.Binary.PropositionalEquality
 
 module mnist-robustness-output where

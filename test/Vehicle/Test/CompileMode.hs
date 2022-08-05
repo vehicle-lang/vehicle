@@ -13,7 +13,6 @@ import Vehicle.Test.Utils
 functionalityTests :: MonadTest m => m TestTree
 functionalityTests = testGroup "Compile" <$> sequence
   [ Golden.functionalityTests
-  -- , return Golden.integrationTests
   , Unit.functionalityTests
   , Error.functionalityTests
   ]

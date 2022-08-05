@@ -13,7 +13,7 @@ open import Data.Empty
 open import Data.Product
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.List
+open import Data.List.Base
 open import Data.List.Relation.Unary.All as List
 open import Relation.Binary.PropositionalEquality
 

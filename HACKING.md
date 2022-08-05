@@ -1,50 +1,53 @@
-# Setup for hacking on Vehicle
+# Set up
 
-## Linux
+In order to setup Vehicle for development, follow the instructions for building
+Vehicle from source in the
+[documentation](https://vehicle-lang.readthedocs.io/en/latest/installation.html).
 
-* Install `GHCUp` following the instructions from https://www.haskell.org/ghcup/. (Options: add to path, install language server, but no need to install stack). 
+# Build system
 
-* Close and reopen your terminal.
-
-* Run `ghcup tui` and install Haskell 9.0.1
-
-* Clone the github repository to your local computer and navigate to the directory.
-
-* Run `cabal run build init` to initialise the project and install any dependencies that are needed for building the project.
-
-* Run `cabal run build test` to try to build the project and run the test suite.
-
-## Windows 10
-
-The easiest way is:
-
-* Install the Windows Subsystem for Linux (WSL) from the Microsoft Store.
-
-* Follow the instructions for Linux above in a WSL terminal.
-
-## Troubleshooting
-
-* Check if you're using the right versions of GHC and Cabal.
-
-* Check if you have any other installations of GHC and Cabal not managed by GHCUp. Either remove those installations or make sure that GHCUp is earlier in the PATH environment variable.
-
-* If you have problems with the WSL check if you're using the latest version.
-
-* If you get the error: Missing (or bad) C libraries: icuuc, icuin, icudt
-Go to https://github.com/microsoft/vcpkg#quick-start-windows and follow the instructions.
+We use [Shake](https://shakebuild.com/) as a build system for Vehicle, which is
+just a fancy DSL for Haskell.
+The entire build system lives in the top-level file `build.hs`, and is just an
+additional executable in the `cabal` project and therefore can be run as
+`cabal run build X` where `X` is the command to the build system.
 
 # Testing Vehicle
 
-* We currently have two types of tests for Vehicle.
+There are currently three types of tests for Vehicle. The build system for Vehicle contains
+various utility commands for running the various test suites (these simply wrap the `cabal test`
+command in various ways).
 
-* Running `cabal run build test` will run the entire test suite.
+* `cabal run build all-tests` will run all the tests
 
-* Running `cabal run build test-accept` will run the entire test suite and accept all of the changed output files.
-  *Warning*: Only run this if you are okay with the changes to the output!
+## Basic tests
 
-* Running `cabal test --test-show-details=always --test-option="-p /X/"` will only run tests
+These test the functionality of the executable, and include golden tests, unit tests etc.
+The build system contains the following commands (which simply wrap the `cabal test`
+command in various ways):
+
+* `cabal run build basic-tests` will run the tests.
+
+* `cabal run build accept-basic-tests` - will run the tests and accept the changes to any of the
+  changed output files. *Warning*: Only run this if you are okay with the changes to the output!
+
+* `cabal test --test-show-details=always --test-option="-p /X/"` - will only run tests
   with `X` in their name. If you only want to run a test for a particular backend `Y`
   change the `X` to `X-Y`, e.g. `quantifier-Agda`.
+
+## Integration tests
+
+These test the integration of Vehicle's output with various backends. In order to run these
+tests you will need all the various backends installed. Again the build system contains the
+following utility command:
+
+* `cabal run build integration-tests` - will run the integration tests.
+
+## Performance tests
+
+These test the performance of the Vehicle compiler, and may be long running.
+
+* `cabal run build performance-tests`
 
 # Logging
 
@@ -59,9 +62,10 @@ To enable profiling follow the following steps:
 
   - Run `cabal configure --enable-library-profiling --enable-executable-profiling --enable-tests --enable-benchmarks` on the command line.
 
-  - Add `-O0` to `ghc-options` to `library` in `vehicle.cabal`
+  - Add `-O0` to `ghc-options` to `library` in `vehicle.cabal`.
 
-  - Add `-O0 -prof -fprof-auto -with-rtsopts=-p` to `ghc-options` for the `vehicle-test` in `vehicle.cabal`
+  - Add `-O0 -prof -fprof-auto -with-rtsopts=-p` to `ghc-options` for the relevant test-suite
+    (e.g. `vehicle-executable-tests`) in `vehicle.cabal`.
 
 # Conventions
 

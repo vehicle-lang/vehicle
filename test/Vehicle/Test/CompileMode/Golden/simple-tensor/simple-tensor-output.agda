@@ -12,8 +12,8 @@ open import Vehicle.Data.Tensor
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.List
-open import Data.Vec.Functional
+open import Data.List.Base
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module simple-tensor-output where
 
@@ -23,10 +23,10 @@ zeroD : Tensor ℚ []
 zeroD = ℤ.+ 5 ℚ./ 2
 
 oneD : Tensor ℚ (2 ∷ [])
-oneD = zeroD ∷ (ℤ.+ 1 ℚ./ 1 ∷ [])
+oneD = zeroD ∷ᵥ (ℤ.+ 1 ℚ./ 1 ∷ᵥ []ᵥ)
 
 twoD : Tensor ℚ (2 ∷ (2 ∷ []))
-twoD = oneD ∷ ((ℤ.+ 2 ℚ./ 1 ∷ (ℤ.+ 3 ℚ./ 1 ∷ [])) ∷ [])
+twoD = oneD ∷ᵥ ((ℤ.+ 2 ℚ./ 1 ∷ᵥ (ℤ.+ 3 ℚ./ 1 ∷ᵥ []ᵥ)) ∷ᵥ []ᵥ)
 
 lookup2D : ℚ
 lookup2D = twoD (# 0) (# 1)

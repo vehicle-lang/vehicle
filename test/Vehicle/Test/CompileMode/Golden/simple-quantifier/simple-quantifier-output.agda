@@ -10,7 +10,7 @@
 open import Vehicle
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.Vec.Functional
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module simple-quantifier-output where
 

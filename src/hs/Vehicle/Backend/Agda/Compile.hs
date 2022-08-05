@@ -144,11 +144,11 @@ instance Pretty Dependency where
     DataBool             -> "Data.Bool as" <+> boolQualifier <+> "using" <+> parens "Bool; true; false; if_then_else_"
     DataBoolInstances    -> "Data.Bool.Instances"
     DataFin              -> "Data.Fin as" <+> finQualifier <+> "using" <+> parens "Fin; #_"
-    DataList             -> "Data.List"
+    DataList             -> "Data.List.Base"
     DataListInstances    -> "Data.List.Instances"
     DataListAll          -> "Data.List.Relation.Unary.All as" <+> listQualifier
     DataListAny          -> "Data.List.Relation.Unary.Any as" <+> listQualifier
-    DataVector           -> "Data.Vec.Functional"
+    DataVector           -> "Data.Vec.Functional" <+> "renaming" <+> parens "[] to []ᵥ; _∷_ to _∷ᵥ_"
     DataVectorInstances  -> "Data.Vec.Functional.Instances"
     DataVectorAll        -> "Data.Vec.Functional.Relation.Unary.All as" <+> vectorQualifier
     DataVectorAny        -> "Data.Vec.Functional.Relation.Unary.Any as" <+> vectorQualifier
@@ -620,11 +620,11 @@ compileRatLiteral r = annotateInfixOp2 [DataRat] 7 id
 -- |Compiling vector literals. No literals in Agda so have to go via cons.
 compileVecLiteral :: MonadAgdaCompile m => [OutputExpr] -> m Code
 compileVecLiteral = \case
-  []       -> return $ annotateConstant [DataVector] "[]"
+  []       -> return $ annotateConstant [DataVector] "[]ᵥ"
   (x : xs) -> do
     cx  <- compileExpr x
     cxs <- compileVecLiteral xs
-    return $ annotateInfixOp2 [] 5 id Nothing "∷" [cx , cxs]
+    return $ annotateInfixOp2 [] 5 id Nothing "∷ᵥ" [cx , cxs]
 
 compileNil :: Code
 compileNil = annotateConstant [DataList] "[]"

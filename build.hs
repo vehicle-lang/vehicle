@@ -262,20 +262,50 @@ $(GEN_DIR_HS)/Vehicle/External/Par.info: $(GEN_DIR_HS)/Vehicle/External/Par.y
   -- Test Vehicle
   -------------------------------------------------------------------------------
 
-  phony "test" $ do
-    requireHaskell
-    need bnfcTargets
-    command_ [] "cabal"$
-      [ "v2-test" ] <>
-      testOptions
-
-  phony "test-accept" $ do
+  phony "basic-tests" $ do
     requireHaskell
     need bnfcTargets
     command_ [] "cabal" $
-      [ "v2-test" ] <>
+      [ "v2-test"
+      , "vehicle-executable-tests"
+      ] <>
+      testOptions
+
+  phony "accept-basic-tests" $ do
+    requireHaskell
+    need bnfcTargets
+    command_ [] "cabal" $
+      [ "v2-test"
+      , "vehicle-executable-tests"
+      ] <>
       testOptions   <>
       [ "--test-option=--accept" ]
+
+  phony "integration-tests" $ do
+    requireHaskell
+    need bnfcTargets
+    command_ [] "cabal" $
+      [ "v2-test"
+      , "vehicle-integration-tests"
+      ] <>
+      testOptions
+
+  phony "benchmark-tests" $ do
+    requireHaskell
+    need bnfcTargets
+    command_ [] "cabal" $
+      [ "v2-test"
+      , "vehicle-benchmarks"
+      ] <>
+      testOptions
+
+  phony "all-tests" $ do
+    requireHaskell
+    need bnfcTargets
+    command_ [] "cabal" $
+      [ "v2-test"
+      ] <>
+      testOptions
 
 ---------------------------------------------------------------------------------
 -- Utility functions
