@@ -160,7 +160,7 @@ instance MetaSubstitutable a => MetaSubstitutable (MetaMap a) where
 
 data MetaInfo = MetaInfo
   { metaProvenance :: Provenance
-  , metaType       :: CheckedExpr
+  , metaType       :: CheckedType
   , metaCtx        :: TypingBoundCtx
   }
 
@@ -208,7 +208,7 @@ type MonadMeta m =
 -- variable in the context.
 freshMeta :: MonadMeta m
           => Provenance
-          -> CheckedExpr
+          -> CheckedType
           -> TypingBoundCtx
           -> m (Meta, CheckedExpr)
 freshMeta p metaType boundCtx = do
@@ -230,7 +230,7 @@ freshMeta p metaType boundCtx = do
 
 freshExprMeta :: MonadMeta m
               => Provenance
-              -> CheckedExpr
+              -> CheckedType
               -> TypingBoundCtx
               -> m CheckedExpr
 freshExprMeta p t ctx = snd <$> freshMeta p t ctx
@@ -246,18 +246,18 @@ freshUniverseLevelMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
 
 freshTypeClassPlacementMeta :: MonadMeta m
                             => Provenance
-                            -> CheckedExpr
+                            -> CheckedType
                             -> m Meta
 freshTypeClassPlacementMeta p t = fst <$> freshMeta p t []
 
 -- |Creates a Pi type that abstracts over all bound variables
 makeMetaType :: TypingBoundCtx
              -> Provenance
-             -> CheckedExpr
-             -> CheckedExpr
+             -> CheckedType
+             -> CheckedType
 makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
   where
-    entryToPi :: (DBBinding, CheckedExpr, Maybe CheckedExpr) -> CheckedExpr -> CheckedExpr
+    entryToPi :: (DBBinding, CheckedType, Maybe CheckedExpr) -> CheckedType -> CheckedType
     entryToPi (name, t, _) = Pi ann (ExplicitBinder ann name t)
 
 getMetaIndex :: [MetaInfo] -> Meta -> Int
@@ -274,7 +274,7 @@ getMetaInfo m = do
 getMetaProvenance :: MonadMeta m => Meta -> m Provenance
 getMetaProvenance m = metaProvenance <$> getMetaInfo m
 
-getMetaType :: MonadMeta m => Meta -> m CheckedExpr
+getMetaType :: MonadMeta m => Meta -> m CheckedType
 getMetaType m = metaType <$> getMetaInfo m
 
 getMetaContext :: MonadMeta m => Meta -> m TypingBoundCtx
@@ -337,15 +337,15 @@ getUnsolvedMetas = do
 getUnsolvedAuxiliaryMetas :: MonadMeta m => m MetaSet
 getUnsolvedAuxiliaryMetas = filterMetasByTypes isAuxiliaryUniverse =<< getUnsolvedMetas
 
-getMetaTypes :: MonadMeta m => MetaSet -> m [(Meta, CheckedExpr)]
+getMetaTypes :: MonadMeta m => MetaSet -> m [(Meta, CheckedType)]
 getMetaTypes metas = traverse (\m -> (m,) <$> getMetaType m) (MetaSet.toList metas)
 
 -- | Computes the set of all metas that are related via constraints to the
 -- metas in the provided expression as long as the types of those metas
 -- satisfy the provided predicate.
 getMetasLinkedToMetasIn :: forall m . MonadMeta m
-                        => CheckedExpr
-                        -> (CheckedExpr -> Bool)
+                        => CheckedType
+                        -> (CheckedType -> Bool)
                         -> m MetaSet
 getMetasLinkedToMetasIn t typeFilter = do
   constraints <- getUnsolvedConstraints
@@ -366,7 +366,7 @@ getMetasLinkedToMetasIn t typeFilter = do
         then (constraint : nonRelatedConstraints, typeMetas)
         else (nonRelatedConstraints, MetaSet.unions [constraintMetas, typeMetas])
 
-filterMetasByTypes :: MonadMeta m => (CheckedExpr -> Bool) -> MetaSet -> m MetaSet
+filterMetasByTypes :: MonadMeta m => (CheckedType -> Bool) -> MetaSet -> m MetaSet
 filterMetasByTypes typeFilter metas = do
   typedMetas <- getMetaTypes metas
   let filteredMetas = filter (typeFilter . snd) typedMetas
@@ -377,7 +377,7 @@ abstractOverCtx ctx body =
   let ctxTypes   = fmap (\(_, t, _) -> t) ctx in
   foldr typeToLam body ctxTypes
   where
-    typeToLam :: CheckedExpr -> CheckedExpr -> CheckedExpr
+    typeToLam :: CheckedType -> CheckedExpr -> CheckedExpr
     typeToLam t = Lam ann (ExplicitBinder ann Nothing t)
       where ann = provenanceOf t
 
@@ -458,7 +458,7 @@ prettyMetas metas = do
 prettyMeta :: MonadMeta m => Meta -> m (Doc a)
 prettyMeta meta = prettyMetaInternal meta <$> getMetaType meta
 
-prettyMetaInternal :: Meta -> CheckedExpr -> Doc a
+prettyMetaInternal :: Meta -> CheckedType -> Doc a
 prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
 
 clearMetaCtx :: MonadMeta m => m ()
@@ -547,7 +547,7 @@ instance Semigroup ConstraintProgress where
   Progress r1  <> Progress r2 = Progress (r1 <> r2)
 
 getDeclType :: (MonadCompile m, MonadReader TypingVariableCtx m)
-            => Provenance -> Identifier -> m CheckedExpr
+            => Provenance -> Identifier -> m CheckedType
 getDeclType p ident = do
   ctx <- getDeclCtx
   case Map.lookup ident ctx of

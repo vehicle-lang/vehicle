@@ -46,7 +46,7 @@ runTCM e = evalStateT (runReaderT e emptyVariableCtx) emptyMetaCtx
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showCheckEntry :: MonadLogger m => CheckedExpr -> UncheckedExpr -> m ()
+showCheckEntry :: MonadLogger m => CheckedType -> UncheckedExpr -> m ()
 showCheckEntry t e = do
   logDebug MaxDetail ("check-entry" <+> prettyVerbose e <+> "<-" <+> prettyVerbose t)
   incrCallDepth
@@ -61,7 +61,7 @@ showInferEntry e = do
   logDebug MaxDetail ("infer-entry" <+> prettyVerbose e)
   incrCallDepth
 
-showInferExit :: MonadLogger m => (CheckedExpr, CheckedExpr) -> m ()
+showInferExit :: MonadLogger m => (CheckedExpr, CheckedType) -> m ()
 showInferExit (e, t) = do
   decrCallDepth
   logDebug MaxDetail ("infer-exit " <+> prettyVerbose e <+> "->" <+> prettyVerbose t)
@@ -82,7 +82,7 @@ unify p e1 e2 = do
 -- Checking
 
 checkExpr :: TCM m
-          => CheckedExpr   -- Type we're checking against
+          => CheckedType   -- Type we're checking against
           -> UncheckedExpr -- Expression being type-checked
           -> m CheckedExpr -- Updated expression
 checkExpr expectedType expr = do
@@ -149,7 +149,7 @@ checkExpr expectedType expr = do
   showCheckExit res
   return res
 
-viaInfer :: TCM m => Provenance -> CheckedExpr -> UncheckedExpr -> m CheckedExpr
+viaInfer :: TCM m => Provenance -> CheckedType -> UncheckedExpr -> m CheckedExpr
 viaInfer ann expectedType e = do
   -- Switch to inference mode
   (checkedExpr, actualType) <- inferExpr e
@@ -166,7 +166,7 @@ viaInfer ann expectedType e = do
 -- Returns the expression annotated with its type as well as the type itself.
 inferExpr :: TCM m
           => UncheckedExpr
-          -> m (CheckedExpr, CheckedExpr)
+          -> m (CheckedExpr, CheckedType)
 inferExpr e = do
   showInferEntry e
   res <- case e of
@@ -318,7 +318,7 @@ inferExpr e = do
   showInferExit res
   return res
 
-inferLiteral :: Provenance -> Literal -> (CheckedExpr, CheckedExpr)
+inferLiteral :: Provenance -> Literal -> (CheckedExpr, CheckedType)
 inferLiteral p l = (Literal p l, typeOfLiteral p l)
 
 -- | Takes the expected type of a function and the user-provided arguments
@@ -328,9 +328,9 @@ inferLiteral p l = (Literal p l, typeOfLiteral p l)
 -- (including inserted arguments) and that list of arguments.
 inferArgs :: TCM m
           => Provenance     -- Provenance of the function
-          -> CheckedExpr    -- Type of the function
+          -> CheckedType    -- Type of the function
           -> [UncheckedArg] -- User-provided arguments of the function
-          -> m (CheckedExpr, [CheckedArg])
+          -> m (CheckedType, [CheckedArg])
 inferArgs p (Pi _ binder resultType) (arg : args)
   | visibilityOf binder == visibilityOf arg = do
     let binderType = typeOf binder
@@ -416,9 +416,9 @@ inferArgs p functionType args = do
 inferApp :: TCM m
          => Provenance
          -> CheckedExpr
-         -> CheckedExpr
+         -> CheckedType
          -> [UncheckedArg]
-         -> m (CheckedExpr, CheckedExpr)
+         -> m (CheckedExpr, CheckedType)
 inferApp ann fun funType args = do
   (appliedFunType, checkedArgs) <- inferArgs (provenanceOf fun) funType args
   varCtx <- getVariableCtx
@@ -428,15 +428,15 @@ inferApp ann fun funType args = do
 insertNonExplicitArgs :: TCM m
                       => Provenance
                       -> CheckedExpr
-                      -> CheckedExpr
-                      -> m (CheckedExpr, CheckedExpr)
+                      -> CheckedType
+                      -> m (CheckedExpr, CheckedType)
 insertNonExplicitArgs ann checkedExpr actualType = inferApp ann checkedExpr actualType []
 
 --------------------------------------------------------------------------------
 -- Typing of literals and builtins
 
 -- | Return the type of the provided literal,
-typeOfLiteral :: Provenance -> Literal -> CheckedExpr
+typeOfLiteral :: Provenance -> Literal -> CheckedType
 typeOfLiteral ann l = fromDSL ann $ case l of
   LUnit      -> tUnit
   LBool _    -> tAnnBool constant unquantified
@@ -475,7 +475,7 @@ typeOfTypeClassOp b = case b of
   QuantifierInTC q -> typeOfQuantifierIn q
 
 -- | Return the type of the provided builtin.
-typeOfBuiltin :: Provenance -> Builtin -> CheckedExpr
+typeOfBuiltin :: Provenance -> Builtin -> CheckedType
 typeOfBuiltin ann b = fromDSL ann $ case b of
   -- Auxillary types
   Polarity{}    -> tPol

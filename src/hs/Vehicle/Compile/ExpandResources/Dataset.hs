@@ -17,8 +17,8 @@ import Vehicle.Compile.ExpandResources.Core
 parseDataset :: (MonadIO m, MonadExpandResources m)
              => DatasetLocations
              -> DeclProvenance
-             -> CheckedExpr
-             -> m CheckedExpr
+             -> CheckedType
+             -> m CheckedType
 parseDataset datasetLocations decl@(ident, _) expectedType =
   case Map.lookup (nameOf ident) datasetLocations of
     Just file -> do

@@ -41,7 +41,7 @@ type TypeClassProgress = Either MetaSet ([Constraint], CheckedExpr)
 solve :: MonadMeta m
       => TypeClass
       -> Constraint
-      -> [CheckedExpr]
+      -> [CheckedType]
       -> m TypeClassProgress
 solve = \case
   HasEq eq            -> solveHasEq eq
@@ -77,8 +77,8 @@ solve = \case
 
 -- A temporary hack until we separate out the solvers properly.
 castProgressFn :: MonadMeta m
-               => (Constraint -> [CheckedExpr] -> m ConstraintProgress)
-               -> (Constraint -> [CheckedExpr] -> m TypeClassProgress)
+               => (Constraint -> [CheckedType] -> m ConstraintProgress)
+               -> (Constraint -> [CheckedType] -> m TypeClassProgress)
 castProgressFn f c e = castProgress (provenanceOf c) <$> f c e
 
 castProgress :: Provenance -> ConstraintProgress -> TypeClassProgress
@@ -92,7 +92,7 @@ castProgress c = \case
 solveHasEq :: MonadMeta m
            => EqualityOp
            -> Constraint
-           -> [CheckedExpr]
+           -> [CheckedType]
            -> m TypeClassProgress
 solveHasEq op c [arg1, arg2, res]
   | allOf args isMeta        = blockOnMetas args
@@ -115,9 +115,9 @@ solveHasEq _ c _ = malformedConstraintError c
 
 solveBoolEquals :: MonadMeta m
                 => Constraint
-                -> CheckedExpr
-                -> CheckedExpr
-                -> CheckedExpr
+                -> CheckedType
+                -> CheckedType
+                -> CheckedType
                 -> EqualityOp
                 -> m TypeClassProgress
 solveBoolEquals c arg1 arg2 res op = do
@@ -130,9 +130,9 @@ solveBoolEquals c arg1 arg2 res op = do
 solveListEquals :: MonadMeta m
                 => EqualityOp
                 -> Constraint
-                -> CheckedExpr
-                -> CheckedExpr
-                -> CheckedExpr
+                -> CheckedType
+                -> CheckedType
+                -> CheckedType
                 -> m TypeClassProgress
 solveListEquals op c arg1 arg2 res = do
   let p = provenanceOf c
@@ -149,9 +149,9 @@ solveListEquals op c arg1 arg2 res = do
 solveVectorEquals :: MonadMeta m
                   => EqualityOp
                   -> Constraint
-                  -> CheckedExpr
-                  -> CheckedExpr
-                  -> CheckedExpr
+                  -> CheckedType
+                  -> CheckedType
+                  -> CheckedType
                   -> m TypeClassProgress
 solveVectorEquals op c arg1 arg2 res = do
   dim <- freshDimMeta c
@@ -176,7 +176,7 @@ solveVectorEquals op c arg1 arg2 res = do
 solveHasOrd :: MonadMeta m
             => OrderOp
             -> Constraint
-            -> [CheckedExpr]
+            -> [CheckedType]
             -> m TypeClassProgress
 solveHasOrd op c [arg1, arg2, res]
   | allOf args isMeta           = blockOnMetas args
@@ -198,7 +198,7 @@ solveHasOrd _ c _ = malformedConstraintError c
 
 solveHasNot :: MonadMeta m
             => Constraint
-            -> [CheckedExpr]
+            -> [CheckedType]
             -> m TypeClassProgress
 solveHasNot c [arg, res] = do
   let p = provenanceOf c
@@ -220,7 +220,7 @@ solveHasBoolOp2 :: MonadMeta m
                 => TypeClass
                 -> Builtin
                 -> Constraint
-                -> [CheckedExpr]
+                -> [CheckedType]
                 -> m TypeClassProgress
 solveHasBoolOp2 polConstraint solutionBuiltin c [arg1, arg2, res] = do
   let p = provenanceOf c
@@ -231,19 +231,19 @@ solveHasBoolOp2 _ _ c _ = malformedConstraintError c
 
 solveHasAnd :: MonadMeta m
             => Constraint
-            -> [CheckedExpr]
+            -> [CheckedType]
             -> m TypeClassProgress
 solveHasAnd = solveHasBoolOp2 MaxPolarity And
 
 solveHasOr :: MonadMeta m
             => Constraint
-            -> [CheckedExpr]
+            -> [CheckedType]
             -> m TypeClassProgress
 solveHasOr = solveHasBoolOp2 MaxPolarity Or
 
 solveHasImplies :: MonadMeta m
                 => Constraint
-                -> [CheckedExpr]
+                -> [CheckedType]
                 -> m TypeClassProgress
 solveHasImplies = solveHasBoolOp2 ImpliesPolarity Implies
 
@@ -253,7 +253,7 @@ solveHasImplies = solveHasBoolOp2 ImpliesPolarity Implies
 solveHasQuantifier :: forall m . MonadMeta m
                    => Quantifier
                    -> Constraint
-                   -> [CheckedExpr]
+                   -> [CheckedType]
                    -> m TypeClassProgress
 solveHasQuantifier q c [domain, body, res]
   | isMeta        domain = blockOnMetas [domain]
@@ -271,9 +271,9 @@ solveHasQuantifier _ c _ = malformedConstraintError c
 solveBoolQuantifier :: MonadMeta m
                     => Quantifier
                     -> Constraint
-                    -> CheckedExpr
-                    -> CheckedExpr
-                    -> CheckedExpr
+                    -> CheckedType
+                    -> CheckedType
+                    -> CheckedType
                     -> m TypeClassProgress
 solveBoolQuantifier q c domain body res = do
   let p = provenanceOf c
@@ -298,9 +298,9 @@ solveBoolQuantifier q c domain body res = do
 solveIndexQuantifier :: MonadMeta m
                      => Quantifier
                      -> Constraint
-                     -> CheckedExpr
-                     -> CheckedExpr
-                     -> CheckedExpr
+                     -> CheckedType
+                     -> CheckedType
+                     -> CheckedType
                      -> m TypeClassProgress
 solveIndexQuantifier q c domain body res = do
   let p = provenanceOf c
@@ -319,9 +319,9 @@ solveIndexQuantifier q c domain body res = do
 solveSimpleQuantifier :: MonadMeta m
                       => Quantifier
                       -> Constraint
-                      -> CheckedExpr
-                      -> CheckedExpr
-                      -> CheckedExpr
+                      -> CheckedType
+                      -> CheckedType
+                      -> CheckedType
                       -> Identifier
                       -> Identifier
                       -> m TypeClassProgress
@@ -338,9 +338,9 @@ solveSimpleQuantifier q c _domain body res forallMethod existsMethod = do
 solveRatQuantifier :: MonadMeta m
                    => Quantifier
                    -> Constraint
-                   -> CheckedExpr
-                   -> CheckedExpr
-                   -> CheckedExpr
+                   -> CheckedType
+                   -> CheckedType
+                   -> CheckedType
                    -> m TypeClassProgress
 solveRatQuantifier q c domain body res = do
   let p = provenanceOf c
@@ -368,9 +368,9 @@ solveRatQuantifier q c domain body res = do
 solveVectorQuantifier :: MonadMeta m
                       => Quantifier
                       -> Constraint
-                      -> CheckedExpr
-                      -> CheckedExpr
-                      -> CheckedExpr
+                      -> CheckedType
+                      -> CheckedType
+                      -> CheckedType
                       -> m TypeClassProgress
 solveVectorQuantifier q c domain body res = do
   let p = provenanceOf c
@@ -394,7 +394,7 @@ solveVectorQuantifier q c domain body res = do
 
 solveHasNeg :: MonadMeta m
             => Constraint
-            -> [CheckedExpr]
+            -> [CheckedType]
             -> m TypeClassProgress
 solveHasNeg c [arg, res]
   | allOf types isMeta       = blockOnMetas [arg, res]
@@ -412,8 +412,8 @@ solveHasNeg c _ = malformedConstraintError c
 
 solveNeg :: MonadMeta m
          => Constraint
-         -> CheckedExpr
-         -> CheckedExpr
+         -> CheckedType
+         -> CheckedType
          -> NegDomain
          -> m TypeClassProgress
 solveNeg c arg res dom = do
@@ -427,7 +427,7 @@ solveNeg c arg res dom = do
 
 solveHasAdd :: MonadMeta m
             => Constraint
-            -> [CheckedExpr]
+            -> [CheckedType]
             -> m TypeClassProgress
 solveHasAdd c types@[arg1, arg2, res]
   | allOf types isMeta           = blockOnMetas types
@@ -447,9 +447,9 @@ solveHasAdd c _ = malformedConstraintError c
 
 solveAddNat :: MonadMeta m
             => Constraint
-            -> CheckedExpr
-            -> CheckedExpr
-            -> CheckedExpr
+            -> CheckedType
+            -> CheckedType
+            -> CheckedType
             -> m TypeClassProgress
 solveAddNat c arg1 arg2 res = do
   let p = provenanceOf c
@@ -459,9 +459,9 @@ solveAddNat c arg1 arg2 res = do
 
 solveAddInt :: MonadMeta m
             => Constraint
-            -> CheckedExpr
-            -> CheckedExpr
-            -> CheckedExpr
+            -> CheckedType
+            -> CheckedType
+            -> CheckedType
             -> m TypeClassProgress
 solveAddInt c arg1 arg2 res = do
   let p = provenanceOf c
@@ -471,9 +471,9 @@ solveAddInt c arg1 arg2 res = do
 
 solveAddRat :: MonadMeta m
             => Constraint
-            -> CheckedExpr
-            -> CheckedExpr
-            -> CheckedExpr
+            -> CheckedType
+            -> CheckedType
+            -> CheckedType
             -> m TypeClassProgress
 solveAddRat c arg1 arg2 res = do
   let p = provenanceOf c
@@ -483,9 +483,9 @@ solveAddRat c arg1 arg2 res = do
 
 solveAddVector :: MonadMeta m
                => Constraint
-               -> CheckedExpr
-               -> CheckedExpr
-               -> CheckedExpr
+               -> CheckedType
+               -> CheckedType
+               -> CheckedType
                -> m TypeClassProgress
 solveAddVector c arg1 arg2 res = do
   let p = provenanceOf c
@@ -512,7 +512,7 @@ solveAddVector c arg1 arg2 res = do
 
 solveHasSub :: MonadMeta m
             => Constraint
-            -> [CheckedExpr]
+            -> [CheckedType]
             -> m TypeClassProgress
 solveHasSub c types@[arg1, arg2, res]
   | allOf types isMeta           = blockOnMetas types
@@ -531,9 +531,9 @@ solveHasSub c _ = malformedConstraintError c
 
 solveSubInt :: MonadMeta m
             => Constraint
-            -> CheckedExpr
-            -> CheckedExpr
-            -> CheckedExpr
+            -> CheckedType
+            -> CheckedType
+            -> CheckedType
             -> m TypeClassProgress
 solveSubInt c arg1 arg2 res = do
   let p = provenanceOf c
@@ -543,9 +543,9 @@ solveSubInt c arg1 arg2 res = do
 
 solveSubRat :: MonadMeta m
             => Constraint
-            -> CheckedExpr
-            -> CheckedExpr
-            -> CheckedExpr
+            -> CheckedType
+            -> CheckedType
+            -> CheckedType
             -> m TypeClassProgress
 solveSubRat c arg1 arg2 res = do
   let p = provenanceOf c
@@ -555,9 +555,9 @@ solveSubRat c arg1 arg2 res = do
 
 solveSubVector :: MonadMeta m
                => Constraint
-               -> CheckedExpr
-               -> CheckedExpr
-               -> CheckedExpr
+               -> CheckedType
+               -> CheckedType
+               -> CheckedType
                -> m TypeClassProgress
 solveSubVector c arg1 arg2 res = do
   let p = provenanceOf c
@@ -584,7 +584,7 @@ solveSubVector c arg1 arg2 res = do
 
 solveHasMul :: MonadMeta m
             => Constraint
-            -> [CheckedExpr]
+            -> [CheckedType]
             -> m TypeClassProgress
 solveHasMul c types@[arg1, arg2, res]
   | allOf types isMeta           = blockOnMetas types
@@ -602,9 +602,9 @@ solveHasMul c _ = malformedConstraintError c
 
 solveMulNat :: MonadMeta m
             => Constraint
-            -> CheckedExpr
-            -> CheckedExpr
-            -> CheckedExpr
+            -> CheckedType
+            -> CheckedType
+            -> CheckedType
             -> m TypeClassProgress
 solveMulNat c arg1 arg2 res = do
   let p = provenanceOf c
@@ -614,9 +614,9 @@ solveMulNat c arg1 arg2 res = do
 
 solveMulInt :: MonadMeta m
             => Constraint
-            -> CheckedExpr
-            -> CheckedExpr
-            -> CheckedExpr
+            -> CheckedType
+            -> CheckedType
+            -> CheckedType
             -> m TypeClassProgress
 solveMulInt c arg1 arg2 res = do
   let p = provenanceOf c
@@ -626,9 +626,9 @@ solveMulInt c arg1 arg2 res = do
 
 solveMulRat :: MonadMeta m
             => Constraint
-            -> CheckedExpr
-            -> CheckedExpr
-            -> CheckedExpr
+            -> CheckedType
+            -> CheckedType
+            -> CheckedType
             -> m TypeClassProgress
 solveMulRat c arg1 arg2 res = do
   let p = provenanceOf c
@@ -641,7 +641,7 @@ solveMulRat c arg1 arg2 res = do
 
 solveHasDiv :: MonadMeta m
             => Constraint
-            -> [CheckedExpr]
+            -> [CheckedType]
             -> m TypeClassProgress
 solveHasDiv c types@[arg1, arg2, res]
   | allOf types isMeta           = blockOnMetas types
@@ -658,9 +658,9 @@ solveHasDiv c _ = malformedConstraintError c
 
 solveRatDiv :: MonadMeta m
             => Constraint
-            -> CheckedExpr
-            -> CheckedExpr
-            -> CheckedExpr
+            -> CheckedType
+            -> CheckedType
+            -> CheckedType
             -> m TypeClassProgress
 solveRatDiv c arg1 arg2 res = do
   constraints <- checkRatTypesEqual c res [arg1, arg2] MulLinearity
@@ -672,7 +672,7 @@ solveRatDiv c arg1 arg2 res = do
 
 solveHasFold :: MonadMeta m
              => Constraint
-             -> [CheckedExpr]
+             -> [CheckedType]
              -> m TypeClassProgress
 solveHasFold c [tElem, tCont] = case tCont of
   (exprHead -> Meta{})      -> blockOnMetas [tCont]
@@ -685,8 +685,8 @@ solveHasFold c _ = malformedConstraintError c
 
 solveFoldList :: MonadMeta m
               => Constraint
-              -> CheckedExpr
-              -> CheckedExpr
+              -> CheckedType
+              -> CheckedType
               -> m TypeClassProgress
 solveFoldList c tElem tListElem = do
   let constraint = unify c tElem tListElem
@@ -695,8 +695,8 @@ solveFoldList c tElem tListElem = do
 
 solveFoldVec :: MonadMeta m
               => Constraint
-              -> CheckedExpr
-              -> CheckedExpr
+              -> CheckedType
+              -> CheckedType
               -> CheckedExpr
               -> m TypeClassProgress
 solveFoldVec c tElem tListElem _dim = do
@@ -710,7 +710,7 @@ solveFoldVec c tElem tListElem _dim = do
 solveHasQuantifierIn :: MonadMeta m
                      => Quantifier
                      -> Constraint
-                     -> [CheckedExpr]
+                     -> [CheckedType]
                      -> m TypeClassProgress
 solveHasQuantifierIn q c [tElem, tCont, tRes] = case tCont of
   (exprHead -> Meta{}) -> blockOnMetas [tCont]
@@ -742,7 +742,7 @@ solveHasQuantifierIn _ c _ = malformedConstraintError c
 solveHasNatLits :: MonadMeta m
                 => Int
                 -> Constraint
-                -> [CheckedExpr]
+                -> [CheckedType]
                 -> m TypeClassProgress
 solveHasNatLits n c [arg]
   | isMeta arg           = blockOnMetas [arg]
@@ -757,7 +757,7 @@ solveHasNatLits _ c _ = malformedConstraintError c
 solveSimpleFromNat :: MonadMeta m
                    => Constraint
                    -> Int
-                   -> CheckedExpr
+                   -> CheckedType
                    -> FromNatDomain
                    -> m TypeClassProgress
 solveSimpleFromNat c n _arg dom = do
@@ -768,7 +768,7 @@ solveSimpleFromNat c n _arg dom = do
 solveFromNatToIndex :: MonadMeta m
                     => Constraint
                     -> Int
-                    -> CheckedExpr
+                    -> CheckedType
                     -> m TypeClassProgress
 solveFromNatToIndex c n arg = do
   let p = provenanceOf c
@@ -779,7 +779,7 @@ solveFromNatToIndex c n arg = do
 solveFromNatToRat :: MonadMeta m
                   => Constraint
                   -> Int
-                  -> CheckedExpr
+                  -> CheckedType
                   -> m TypeClassProgress
 solveFromNatToRat c n arg = do
   let p           = provenanceOf c
@@ -804,7 +804,7 @@ solveHasRatLits c _ = malformedConstraintError c
 
 solveFromRatToRat :: MonadMeta m
                   => Constraint
-                  -> CheckedExpr
+                  -> CheckedType
                   -> m TypeClassProgress
 solveFromRatToRat c arg = do
   let p          = provenanceOf c
@@ -819,7 +819,7 @@ solveFromRatToRat c arg = do
 solveHasVecLits :: MonadMeta m
                 => Int
                 -> Constraint
-                -> [CheckedExpr]
+                -> [CheckedType]
                 -> m TypeClassProgress
 solveHasVecLits n c [tElem, tCont] = case tCont of
   (exprHead -> Meta{}) -> blockOnMetas [tCont]
@@ -848,7 +848,7 @@ solveHasVecLits _ c _ = malformedConstraintError c
 
 solveAlmostEqual :: MonadMeta m
                  => Constraint
-                 -> [CheckedExpr]
+                 -> [CheckedType]
                  -> m TypeClassProgress
 solveAlmostEqual c [targetType, subTypesExpr]
   | allOf types isMeta        = blockOnMetas types
@@ -864,24 +864,24 @@ solveAlmostEqual c _ = malformedConstraintError c
 
 solveBoolTypesEqual :: MonadMeta m
                     => Constraint
-                    -> CheckedExpr
-                    -> [CheckedExpr]
+                    -> CheckedType
+                    -> [CheckedType]
                     -> m [Constraint]
 solveBoolTypesEqual c targetType subTypes =
   checkBoolTypesEqual c targetType subTypes MaxLinearity MaxPolarity
 
 solveRatTypesEqual :: MonadMeta m
                    => Constraint
-                   -> CheckedExpr
-                   -> [CheckedExpr]
+                   -> CheckedType
+                   -> [CheckedType]
                    -> m [Constraint]
 solveRatTypesEqual c targetType subTypes =
   checkRatTypesEqual c targetType subTypes MaxLinearity
 
 solveListTypesEqual :: MonadMeta m
                     => Constraint
-                    -> CheckedExpr
-                    -> [CheckedExpr]
+                    -> CheckedType
+                    -> [CheckedType]
                     -> m [Constraint]
 solveListTypesEqual c targetType subTypes = do
   let p = provenanceOf c
@@ -893,8 +893,8 @@ solveListTypesEqual c targetType subTypes = do
 
 solveVectorTypesEqual :: MonadMeta m
                       => Constraint
-                      -> CheckedExpr
-                      -> [CheckedExpr]
+                      -> CheckedType
+                      -> [CheckedType]
                       -> m [Constraint]
 solveVectorTypesEqual c targetType subTypes = do
   let p = provenanceOf c
@@ -907,7 +907,7 @@ solveVectorTypesEqual c targetType subTypes = do
 
 solveSimpleTypesEqual :: MonadMeta m
                       => Constraint
-                      -> [CheckedExpr]
+                      -> [CheckedType]
                       -> m [Constraint]
 solveSimpleTypesEqual c types = do
   let adjacentPairs = zip types $ tail types
@@ -920,7 +920,7 @@ solveSimpleTypesEqual c types = do
 solveInDomain :: MonadMeta m
               => Int
               -> Constraint
-              -> [CheckedExpr]
+              -> [CheckedType]
               -> m TypeClassProgress
 solveInDomain n c [arg] = case arg of
   (exprHead -> Meta{}) -> blockOnMetas [arg]
@@ -953,8 +953,8 @@ solveInDomain _ c _ = malformedConstraintError c
 
 checkBoolTypesEqual :: MonadMeta m
                     => Constraint
-                    -> CheckedExpr
-                    -> [CheckedExpr]
+                    -> CheckedType
+                    -> [CheckedType]
                     -> TypeClass
                     -> TypeClass
                     -> m [Constraint]
@@ -972,8 +972,8 @@ checkBoolTypesEqual c targetType subTypes linTC polTC = do
 
 checkRatTypesEqual :: MonadMeta m
                    => Constraint
-                   -> CheckedExpr
-                   -> [CheckedExpr]
+                   -> CheckedType
+                   -> [CheckedType]
                    -> TypeClass
                    -> m [Constraint]
 checkRatTypesEqual c targetType subTypes linTC = do
@@ -988,7 +988,7 @@ checkRatTypesEqual c targetType subTypes linTC = do
   return $ targetEqConstraint : subEqConstraints <> linTCConstraints
 
 checkOp2SimpleTypesEqual :: Constraint
-                         -> CheckedExpr -> CheckedExpr -> CheckedExpr
+                         -> CheckedType -> CheckedType -> CheckedType
                          -> [Constraint]
 checkOp2SimpleTypesEqual c arg1 arg2 res = do
   let argsEq = unify c arg1 arg2
@@ -998,7 +998,7 @@ checkOp2SimpleTypesEqual c arg1 arg2 res = do
 createTC :: MonadMeta m
          => Constraint
          -> TypeClass
-         -> NonEmpty CheckedExpr
+         -> NonEmpty CheckedType
          -> m (Meta, Constraint)
 createTC c tc argExprs = do
   let p = provenanceOf c
@@ -1009,7 +1009,7 @@ createTC c tc argExprs = do
 
 unifyWithAnnBoolType :: MonadMeta m
                      => Constraint
-                     -> CheckedExpr
+                     -> CheckedType
                      -> m (Constraint, CheckedExpr, CheckedExpr)
 unifyWithAnnBoolType c t = do
   let p = provenanceOf c
@@ -1020,7 +1020,7 @@ unifyWithAnnBoolType c t = do
 
 unifyWithIndexType :: MonadMeta m
                    => Constraint
-                   -> CheckedExpr
+                   -> CheckedType
                    -> m (Constraint, CheckedExpr)
 unifyWithIndexType c t = do
   let p = provenanceOf c
@@ -1030,7 +1030,7 @@ unifyWithIndexType c t = do
 
 unifyWithAnnRatType :: MonadMeta m
                     => Constraint
-                    -> CheckedExpr
+                    -> CheckedType
                     -> m (Constraint, CheckedExpr)
 unifyWithAnnRatType c t = do
   let p = provenanceOf c
@@ -1040,7 +1040,7 @@ unifyWithAnnRatType c t = do
 
 unifyWithListType :: MonadMeta m
                  => Constraint
-                 -> CheckedExpr
+                 -> CheckedType
                  -> m (Constraint, CheckedExpr)
 unifyWithListType c t = do
   let p = provenanceOf c
@@ -1051,8 +1051,8 @@ unifyWithListType c t = do
 unifyWithVectorType :: MonadMeta m
                     => Constraint
                     -> CheckedExpr
-                    -> CheckedExpr
-                    -> m (Constraint, CheckedExpr)
+                    -> CheckedType
+                    -> m (Constraint, CheckedType)
 unifyWithVectorType c dim t = do
   let p = provenanceOf c
   elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
@@ -1066,9 +1066,9 @@ freshDimMeta c = do
 
 solveSimpleComparisonOp :: MonadMeta m
                         => Constraint
-                        -> CheckedExpr
-                        -> CheckedExpr
-                        -> CheckedExpr
+                        -> CheckedType
+                        -> CheckedType
+                        -> CheckedType
                         -> Builtin
                         -> m TypeClassProgress
 solveSimpleComparisonOp c arg1 arg2 res solution = do
@@ -1079,9 +1079,9 @@ solveSimpleComparisonOp c arg1 arg2 res solution = do
 
 solveIndexComparisonOp :: MonadMeta m
                        => Constraint
-                       -> CheckedExpr
-                       -> CheckedExpr
-                       -> CheckedExpr
+                       -> CheckedType
+                       -> CheckedType
+                       -> CheckedType
                        -> Builtin
                        -> m TypeClassProgress
 solveIndexComparisonOp c arg1 arg2 res solution = do
@@ -1093,9 +1093,9 @@ solveIndexComparisonOp c arg1 arg2 res solution = do
 
 solveRatComparisonOp :: MonadMeta m
                      => Constraint
-                     -> CheckedExpr
-                     -> CheckedExpr
-                     -> CheckedExpr
+                     -> CheckedType
+                     -> CheckedType
+                     -> CheckedType
                      -> Builtin
                      -> m TypeClassProgress
 solveRatComparisonOp c arg1 arg2 res op = do

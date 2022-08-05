@@ -19,7 +19,7 @@ import Vehicle.Compile.ExpandResources.Core
 -- binders are explicit and their types are equal.
 getNetworkType :: forall m . MonadExpandResources m
                => DeclProvenance
-               -> CheckedExpr
+               -> CheckedType
                -> m NetworkType
 getNetworkType decl networkType = case networkType of
   Pi _ binder result
@@ -34,12 +34,12 @@ getNetworkType decl networkType = case networkType of
     throwError $ NetworkTypeIsNotAFunction decl networkType
 
   where
-    getTensorType :: InputOrOutput -> CheckedExpr -> m NetworkTensorType
+    getTensorType :: InputOrOutput -> CheckedType -> m NetworkTensorType
     getTensorType io tensorType = do
       (baseType, dims) <- go True tensorType
       return $ NetworkTensorType baseType dims
       where
-        go :: Bool -> CheckedExpr -> m (NetworkBaseType, [Int])
+        go :: Bool -> CheckedType -> m (NetworkBaseType, [Int])
         go topLevel = \case
           TensorType _ _ dims    -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
           VectorType _ tElem dim -> do
@@ -52,7 +52,7 @@ getNetworkType decl networkType = case networkType of
               elemType <- getElementType t
               return (elemType, [])
 
-    getTensorDimension :: InputOrOutput -> CheckedExpr -> m Int
+    getTensorDimension :: InputOrOutput -> CheckedType -> m Int
     getTensorDimension io dim = case dim of
       NatLiteral _ n -> return n
       FreeVar _ varIdent   -> do
@@ -63,7 +63,7 @@ getNetworkType decl networkType = case networkType of
           Just (Just (_, _, d)) -> return d
       dims                 -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
 
-    getElementType :: CheckedExpr -> m NetworkBaseType
+    getElementType :: CheckedType -> m NetworkBaseType
     getElementType = \case
       RatType{}    -> return NetworkRatType
       _            -> typingError

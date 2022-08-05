@@ -27,7 +27,7 @@ unless2 :: MonadPlus m => Bool -> a -> m a
 unless2 p a = if not p then return a else mzero
 
 tcArgError :: Constraint
-           -> CheckedExpr
+           -> CheckedType
            -> TypeClassOp
            -> [InputExpr]
            -> Int
@@ -37,7 +37,7 @@ tcArgError c arg op allowedTypes argIndex numberOfArgs = unless2 (isMeta arg)
     (FailedBuiltinConstraintArgument (constraintContext c) (TypeClassOp op) arg allowedTypes argIndex numberOfArgs)
 
 tcResultError :: Constraint
-              -> CheckedExpr
+              -> CheckedType
               -> TypeClassOp
               -> [InputExpr]
               -> [CompileError]

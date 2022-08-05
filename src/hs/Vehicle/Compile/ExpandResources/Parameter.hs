@@ -20,8 +20,8 @@ import Vehicle.Compile.ExpandResources.Core
 parseParameterValue :: MonadExpandResources m
                     => ParameterValues
                     -> DeclProvenance
-                    -> CheckedExpr
-                    -> m CheckedExpr
+                    -> CheckedType
+                    -> m CheckedType
 parseParameterValue parameterValues decl@(ident, _) paramType = do
   implicitParams <- get
 

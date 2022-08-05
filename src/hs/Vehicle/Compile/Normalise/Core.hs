@@ -30,9 +30,9 @@ nfEq p dom eq e1 e2 = case (dom, argExpr e1, argExpr e2) of
 -- Normalising tensor types
 
 nfTensor :: Provenance
+         -> CheckedType
          -> CheckedExpr
-         -> CheckedExpr
-         -> CheckedExpr
+         -> CheckedType
 nfTensor p tElem dims = case dims of
   NilExpr{}            -> tElem
   AppConsExpr _ _ d ds -> VectorType p (nfTensor p tElem ds) d
@@ -233,9 +233,9 @@ bigOp p (unit, op) size xs =
     ]
 
 zipWithVector :: Provenance
-              -> CheckedExpr
-              -> CheckedExpr
-              -> CheckedExpr
+              -> CheckedType
+              -> CheckedType
+              -> CheckedType
               -> CheckedExpr
               -> CheckedExpr
               -> CheckedArg
@@ -256,8 +256,8 @@ zipWithVector p tElem1 tElem2 tRes size fn xs ys = do
 
 {-
 nfMapList :: MonadNorm m
-          => CheckedExpr
-          -> CheckedExpr
+          => CheckedType
+          -> CheckedType
           -> CheckedExpr
           -> CheckedExpr
           -> Maybe (m CheckedExpr)

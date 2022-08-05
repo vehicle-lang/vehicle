@@ -10,7 +10,7 @@ import Vehicle.Compile.Prelude
 --------------------------------------------------------------------------------
 -- Declaration context
 
-type TypingDeclCtxEntry = (CheckedExpr, Maybe CheckedExpr)
+type TypingDeclCtxEntry = (CheckedType, Maybe CheckedExpr)
 
 type TypingDeclCtx = DeclCtx TypingDeclCtxEntry
 
@@ -19,7 +19,7 @@ type TypingDeclCtx = DeclCtx TypingDeclCtxEntry
 
 -- | The names, types and values if known of the variables that are in
 -- currently in scope, indexed into via De Bruijn expressions.
-type TypingBoundCtxEntry = (DBBinding, CheckedExpr, Maybe CheckedExpr)
+type TypingBoundCtxEntry = (DBBinding, CheckedType, Maybe CheckedExpr)
 
 type TypingBoundCtx = BoundCtx TypingBoundCtxEntry
 

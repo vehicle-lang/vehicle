@@ -487,7 +487,7 @@ instance MeaningfulError CompileError where
       , fix        = Just $ datasetDimensionsFix "dimensions" ident file
       }
       where
-        dimensionsOf :: CheckedExpr -> Int
+        dimensionsOf :: CheckedType -> Int
         dimensionsOf = \case
           ListType   _ t    -> 1 + dimensionsOf t
           VectorType _ t _  -> 1 + dimensionsOf t
@@ -727,7 +727,7 @@ datasetDimensionsFix feature ident file =
   "change the" <+> feature <+> "of" <+> quotePretty ident <+> "in the specification" <+>
   "or check that" <+> quotePretty (takeFileName file) <+> "is in the format you were expecting."
 
-unsupportedResourceTypeDescription :: ResourceType -> Identifier -> CheckedExpr -> Doc a
+unsupportedResourceTypeDescription :: ResourceType -> Identifier -> CheckedType -> Doc a
 unsupportedResourceTypeDescription resource ident actualType =
   "The type" <+> squotes (prettyFriendlyDBClosed actualType) <+> "of" <+> pretty resource <+>
   squotes (pretty ident) <+> "is not currently supported"

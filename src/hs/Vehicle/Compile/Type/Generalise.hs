@@ -116,7 +116,7 @@ prependBinderAndSolveMeta :: MonadMeta m
                           -> Visibility
                           -> Relevance
                           -> DBBinding
-                          -> CheckedExpr
+                          -> CheckedType
                           -> CheckedDecl
                           -> m CheckedDecl
 prependBinderAndSolveMeta meta v r binderName binderType decl = do
@@ -157,9 +157,9 @@ prependBinderAndSolveMeta meta v r binderName binderType decl = do
   return resultDecl
 
 removeContextsOfMetasIn :: MonadMeta m
-                        => CheckedExpr
+                        => CheckedType
                         -> CheckedDecl
-                        -> m (CheckedExpr, CheckedDecl)
+                        -> m (CheckedType, CheckedDecl)
 removeContextsOfMetasIn binderType decl =
   logCompilerPass MaxDetail "removing dependencies from dependent metas" $ do
     let metasInBinder = metasIn binderType
@@ -207,7 +207,7 @@ addNewArgumentToMetaUses meta = mapDeclExprs (go (-1))
         goBinder = mapBinderType (go d)
         goArgs   = fmap (mapArgExpr (go d))
 
-addNewBinderToMetaContext :: MonadMeta m => Meta -> DBBinding -> CheckedExpr -> m ()
+addNewBinderToMetaContext :: MonadMeta m => Meta -> DBBinding -> CheckedType -> m ()
 addNewBinderToMetaContext m newVarName newVarType =
   modifyMetasInfo m $ \(MetaInfo p n ctx) ->
     let entry = (newVarName, newVarType, Nothing) in

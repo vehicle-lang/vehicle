@@ -21,7 +21,7 @@ import Vehicle.Compile.ExpandResources.Core
 readIDX :: (MonadExpandResources m, MonadIO m)
         => FilePath
         -> DeclProvenance
-        -> CheckedExpr
+        -> CheckedType
         -> m CheckedExpr
 readIDX file decl expectedType = do
   contents <- readIDXFile decl file
@@ -32,12 +32,12 @@ readIDX file decl expectedType = do
       if isIDXIntegral idxData then do
         let elems = idxIntContent idxData
         let parser = intElemParser decl file
-        let ctx = (decl, file,expectedType, actualDimensions, parser)
+        let ctx = (decl, file, expectedType, actualDimensions, parser)
         parseIDX ctx elems
       else do
         let elems = idxDoubleContent idxData
         let parser = doubleElemParser decl file
-        let ctx = (decl, file,expectedType, actualDimensions, parser)
+        let ctx = (decl, file, expectedType, actualDimensions, parser)
         parseIDX ctx elems
 
 readIDXFile :: (MonadCompile m, MonadIO m)
@@ -67,7 +67,7 @@ parseContainer :: (MonadExpandResources m, Vector.Unbox a)
                -> Bool
                -> [Int]
                -> Vector a
-               -> CheckedExpr
+               -> CheckedType
                -> m CheckedExpr
 parseContainer ctx topLevel actualDims elems expectedType = case expectedType of
   ListType   _ expectedElemType             -> parseList ctx expectedElemType actualDims elems
@@ -81,7 +81,7 @@ parseVector :: (MonadExpandResources m, Vector.Unbox a)
             => ParseContext m a
             -> [Int]
             -> Vector a
-            -> CheckedExpr
+            -> CheckedType
             -> CheckedExpr
             -> m CheckedExpr
 parseVector ctx [] _ _ _  = dimensionMismatchError ctx
@@ -115,7 +115,7 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
 
 parseList :: (MonadExpandResources m, Vector.Unbox a)
           => ParseContext m a
-          -> CheckedExpr
+          -> CheckedType
           -> [Int]
           -> Vector a
           -> m CheckedExpr
@@ -131,7 +131,7 @@ parseElement :: (MonadExpandResources m, Vector.Unbox a)
              => ParseContext m a
              -> [Int]
              -> Vector a
-             -> CheckedExpr
+             -> CheckedType
              -> m CheckedExpr
 parseElement ctx@(_, _, _, _, elemParser) dims elems expectedType
   | not (null dims)          = dimensionMismatchError ctx
@@ -141,12 +141,12 @@ parseElement ctx@(_, _, _, _, elemParser) dims elems expectedType
 type ParseContext m a =
   ( DeclProvenance
   , FilePath
-  , CheckedExpr
+  , CheckedType
   , [Int]           -- Actual dimensions of dataset
   , ElemParser m a
   )
 
-type ElemParser m a = a -> CheckedExpr -> m CheckedExpr
+type ElemParser m a = a -> CheckedType -> m CheckedExpr
 
 doubleElemParser :: MonadExpandResources m
                  => DeclProvenance

@@ -172,18 +172,18 @@ defaultSolution p ctx = \case
   MaxPolarity{}           -> auxiliaryTCError
   AlmostEqualConstraint{} -> auxiliaryTCError
 
-createDefaultListType :: MonadMeta m => Provenance -> TypingBoundCtx -> m CheckedExpr
+createDefaultListType :: MonadMeta m => Provenance -> TypingBoundCtx -> m CheckedType
 createDefaultListType p ctx = do
   tElem <- freshExprMeta p (TypeUniverse p 0) ctx
   return $ ListType p tElem
 
-createDefaultBoolType :: MonadMeta m => Provenance -> m CheckedExpr
+createDefaultBoolType :: MonadMeta m => Provenance -> m CheckedType
 createDefaultBoolType p = do
   lin <- freshLinearityMeta p
   pol <- freshPolarityMeta p
   return $ AnnBoolType p lin pol
 
-createDefaultRatType :: MonadMeta m => Provenance -> m CheckedExpr
+createDefaultRatType :: MonadMeta m => Provenance -> m CheckedType
 createDefaultRatType p = do
   lin <- freshLinearityMeta p
   return $ AnnRatType p lin

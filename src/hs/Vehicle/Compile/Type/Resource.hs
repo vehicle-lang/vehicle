@@ -16,8 +16,8 @@ import Vehicle.Compile.Type.Constraint
 checkResourceType :: TCM m
                   => ResourceType
                   -> DeclProvenance
-                  -> CheckedExpr
-                  -> m CheckedExpr
+                  -> CheckedType
+                  -> m CheckedType
 checkResourceType resourceType decl@(ident, _) t = do
   let resourceName = pretty resourceType <+> squotes (pretty ident)
   logCompilerPass MidDetail ("checking compatability of type of" <+> resourceName) $ do
@@ -33,8 +33,8 @@ checkResourceType resourceType decl@(ident, _) t = do
 
 checkParameterType :: TCM m
                    => DeclProvenance
-                   -> CheckedExpr
-                   -> m (CheckedExpr -> CheckedExpr)
+                   -> CheckedType
+                   -> m (CheckedType -> CheckedType)
 checkParameterType decl t = do
   case t of
     AnnBoolType{} -> return ()
@@ -52,8 +52,8 @@ checkParameterType decl t = do
 
 checkImplicitParameterType :: TCM m
                            => DeclProvenance
-                           -> CheckedExpr
-                           -> m (CheckedExpr -> CheckedExpr)
+                           -> CheckedType
+                           -> m (CheckedType -> CheckedType)
 checkImplicitParameterType decl t = do
   case t of
     NatType{} -> return ()
@@ -62,13 +62,13 @@ checkImplicitParameterType decl t = do
 
 checkDatasetType :: forall m . TCM m
                  => DeclProvenance
-                 -> CheckedExpr
-                 -> m (CheckedExpr -> CheckedExpr)
+                 -> CheckedType
+                 -> m (CheckedType -> CheckedType)
 checkDatasetType decl t = do
   checkContainerType True t
   return id
   where
-  checkContainerType :: Bool -> CheckedExpr -> m ()
+  checkContainerType :: Bool -> CheckedType -> m ()
   checkContainerType topLevel = \case
     ListType   _ tElem        -> checkContainerType False tElem
     VectorType _ tElem _tDims -> checkContainerType False tElem
@@ -77,7 +77,7 @@ checkDatasetType decl t = do
       then throwError $ DatasetTypeUnsupportedContainer decl typ
       else checkDatasetElemType typ
 
-  checkDatasetElemType ::CheckedExpr -> m ()
+  checkDatasetElemType ::CheckedType -> m ()
   checkDatasetElemType = \case
     BoolType{}   -> return ()
     NatType{}    -> return ()
@@ -91,15 +91,15 @@ checkDatasetType decl t = do
 
 checkNetworkType :: forall m . TCM m
                  => DeclProvenance
-                 -> CheckedExpr
-                 -> m (CheckedExpr -> CheckedExpr)
+                 -> CheckedType
+                 -> m (CheckedType -> CheckedType)
 checkNetworkType decl@(ident, _) networkType = checkFunType networkType
   where
 
   -- |Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that
   -- prepends the max linearity constraint.
-  checkFunType :: CheckedExpr -> m (CheckedExpr -> CheckedExpr)
+  checkFunType :: CheckedType -> m (CheckedType -> CheckedType)
   checkFunType = \case
     Pi p binder result
       | visibilityOf binder /= Explicit -> do
@@ -117,10 +117,10 @@ checkNetworkType decl@(ident, _) networkType = checkFunType networkType
         return $ \t -> Pi p (IrrelevantInstanceBinder p Nothing linConstraint) t
     _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
 
-  checkTensorType :: InputOrOutput -> CheckedExpr -> m CheckedExpr
+  checkTensorType :: InputOrOutput -> CheckedType -> m CheckedType
   checkTensorType io tensorType = go True tensorType
     where
-      go :: Bool -> CheckedExpr -> m CheckedExpr
+      go :: Bool -> CheckedType -> m CheckedType
       go topLevel = \case
         TensorType _ tElem _ -> go False tElem
         VectorType _ tElem _ -> go False tElem
@@ -128,7 +128,7 @@ checkNetworkType decl@(ident, _) networkType = checkFunType networkType
           then throwError $ NetworkTypeIsNotOverTensors decl networkType tensorType io
           else checkElementType io elemType
 
-  checkElementType :: InputOrOutput -> CheckedExpr -> m CheckedExpr
+  checkElementType :: InputOrOutput -> CheckedType -> m CheckedType
   checkElementType io = \case
     AnnRatType _ lin -> return lin
     tElem -> throwError $ NetworkTypeHasUnsupportedElementType decl networkType tElem io

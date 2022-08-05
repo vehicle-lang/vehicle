@@ -272,7 +272,7 @@ updatePropertyInfo = \case
           pretty linearity <+> pretty polarity
     return $ DefFunction p propertyInfo ident t e
   where
-    getPropertyInfo :: CheckedExpr -> Maybe PropertyInfo
+    getPropertyInfo :: CheckedType -> Maybe PropertyInfo
     getPropertyInfo = \case
       (AnnBoolType _ (Builtin _ (Linearity lin)) (Builtin _ (Polarity pol))) ->
         Just $ PropertyInfo lin pol

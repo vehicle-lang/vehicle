@@ -47,8 +47,8 @@ data CompileError
   | TypeMismatch
     Provenance              -- The location of the mismatch.
     [DBBinding]             -- The context at the time of the failure
-    CheckedExpr             -- The possible inferred types.
-    CheckedExpr             -- The expected type.
+    CheckedType             -- The possible inferred types.
+    CheckedType             -- The expected type.
   | UnsolvedConstraints
     (NonEmpty Constraint)
   | UnsolvedMetas
@@ -56,26 +56,26 @@ data CompileError
   | MissingExplicitArg
     [DBBinding]             -- The context at the time of the failure
     UncheckedArg            -- The non-explicit argument
-    CheckedExpr             -- Expected type of the argument
+    CheckedType             -- Expected type of the argument
   | FailedConstraints
     (NonEmpty Constraint)
-  | FailedEqConstraint               ConstraintContext CheckedExpr CheckedExpr EqualityOp
-  | FailedOrdConstraint              ConstraintContext CheckedExpr CheckedExpr OrderOp
-  | FailedBuiltinConstraintArgument  ConstraintContext Builtin CheckedExpr [InputExpr] Int Int
-  | FailedBuiltinConstraintResult    ConstraintContext Builtin CheckedExpr [InputExpr]
-  | FailedNotConstraint              ConstraintContext CheckedExpr
-  | FailedBoolOp2Constraint          ConstraintContext CheckedExpr CheckedExpr Builtin
-  | FailedQuantifierConstraintDomain ConstraintContext CheckedExpr Quantifier
-  | FailedQuantifierConstraintBody   ConstraintContext CheckedExpr Quantifier
-  | FailedArithOp2Constraint         ConstraintContext CheckedExpr CheckedExpr Builtin
-  | FailedFoldConstraintContainer    ConstraintContext CheckedExpr
-  | FailedQuantInConstraintContainer ConstraintContext CheckedExpr Quantifier
-  | FailedNatLitConstraint           ConstraintContext Int CheckedExpr
+  | FailedEqConstraint               ConstraintContext CheckedType CheckedType EqualityOp
+  | FailedOrdConstraint              ConstraintContext CheckedType CheckedType OrderOp
+  | FailedBuiltinConstraintArgument  ConstraintContext Builtin CheckedType [InputExpr] Int Int
+  | FailedBuiltinConstraintResult    ConstraintContext Builtin CheckedType [InputExpr]
+  | FailedNotConstraint              ConstraintContext CheckedType
+  | FailedBoolOp2Constraint          ConstraintContext CheckedType CheckedType Builtin
+  | FailedQuantifierConstraintDomain ConstraintContext CheckedType Quantifier
+  | FailedQuantifierConstraintBody   ConstraintContext CheckedType Quantifier
+  | FailedArithOp2Constraint         ConstraintContext CheckedType CheckedType Builtin
+  | FailedFoldConstraintContainer    ConstraintContext CheckedType
+  | FailedQuantInConstraintContainer ConstraintContext CheckedType Quantifier
+  | FailedNatLitConstraint           ConstraintContext Int CheckedType
   | FailedNatLitConstraintTooBig     ConstraintContext Int Int
-  | FailedNatLitConstraintUnknown    ConstraintContext Int CheckedExpr
-  | FailedIntLitConstraint           ConstraintContext CheckedExpr
-  | FailedRatLitConstraint           ConstraintContext CheckedExpr
-  | FailedConLitConstraint           ConstraintContext CheckedExpr
+  | FailedNatLitConstraintUnknown    ConstraintContext Int CheckedType
+  | FailedIntLitConstraint           ConstraintContext CheckedType
+  | FailedRatLitConstraint           ConstraintContext CheckedType
+  | FailedConLitConstraint           ConstraintContext CheckedType
 
   -- Resource typing errors
   | ResourceNotProvided       DeclProvenance ResourceType
@@ -83,30 +83,30 @@ data CompileError
   | UnsupportedResourceFormat DeclProvenance ResourceType String
   | UnableToParseResource     DeclProvenance ResourceType String
 
-  | NetworkTypeIsNotAFunction              DeclProvenance CheckedExpr
-  | NetworkTypeIsNotOverTensors            DeclProvenance CheckedExpr CheckedExpr InputOrOutput
-  | NetworkTypeHasNonExplicitArguments     DeclProvenance CheckedExpr CheckedBinder
-  | NetworkTypeHasVariableSizeTensor       DeclProvenance CheckedExpr CheckedExpr InputOrOutput
+  | NetworkTypeIsNotAFunction              DeclProvenance CheckedType
+  | NetworkTypeIsNotOverTensors            DeclProvenance CheckedType CheckedType InputOrOutput
+  | NetworkTypeHasNonExplicitArguments     DeclProvenance CheckedType CheckedBinder
+  | NetworkTypeHasVariableSizeTensor       DeclProvenance CheckedType CheckedExpr InputOrOutput
   | NetworkTypeHasImplicitSizeTensor       DeclProvenance Identifier InputOrOutput
-  | NetworkTypeHasUnsupportedElementType   DeclProvenance CheckedExpr CheckedExpr InputOrOutput
+  | NetworkTypeHasUnsupportedElementType   DeclProvenance CheckedType CheckedType InputOrOutput
 
-  | DatasetTypeUnsupportedContainer DeclProvenance CheckedExpr
-  | DatasetTypeUnsupportedElement   DeclProvenance CheckedExpr
+  | DatasetTypeUnsupportedContainer DeclProvenance CheckedType
+  | DatasetTypeUnsupportedElement   DeclProvenance CheckedType
   | DatasetVariableSizeTensor       DeclProvenance CheckedExpr
   | DatasetDimensionSizeMismatch    DeclProvenance FilePath Int Int [Int] [Int]
   | DatasetDimensionsMismatch       DeclProvenance FilePath CheckedExpr [Int]
-  | DatasetTypeMismatch             DeclProvenance FilePath CheckedExpr CheckedExpr
+  | DatasetTypeMismatch             DeclProvenance FilePath CheckedType CheckedType
   | DatasetInvalidIndex             DeclProvenance FilePath Int Int
   | DatasetInvalidNat               DeclProvenance FilePath Int
 
-  | ParameterTypeUnsupported        DeclProvenance CheckedExpr
+  | ParameterTypeUnsupported        DeclProvenance CheckedType
   | ParameterTypeVariableSizeIndex  DeclProvenance CheckedExpr
   | ParameterTypeImplicitParamIndex DeclProvenance Identifier
   | ParameterValueUnparsable        DeclProvenance String Builtin
   | ParameterValueInvalidIndex      DeclProvenance Int Int
   | ParameterValueInvalidNat        DeclProvenance Int
 
-  | ImplicitParameterTypeUnsupported DeclProvenance CheckedExpr
+  | ImplicitParameterTypeUnsupported DeclProvenance CheckedType
   | ImplicitParameterContradictory   Identifier (DeclProvenance, ResourceType, Int) (DeclProvenance, ResourceType, Int)
   | ImplicitParameterUninferrable    DeclProvenance
 
@@ -114,7 +114,7 @@ data CompileError
   | NoPropertiesFound
   | UnsupportedResource              Backend Identifier Provenance ResourceType
   | UnsupportedSequentialQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
-  | UnsupportedVariableType          Backend Identifier Provenance Symbol CheckedExpr [Builtin]
+  | UnsupportedVariableType          Backend Identifier Provenance Symbol CheckedType [Builtin]
   | UnsupportedInequality            Backend Identifier Provenance
   | UnsupportedPolymorphicEquality   Backend Provenance Symbol
   | UnsupportedBuiltin               Backend Provenance Builtin
