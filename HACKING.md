@@ -2,13 +2,22 @@
 
 This file contains instructions for how to get started to contributing to Vehicle.
 
-## Set up
+## 1. Set up
 
-In order to setup Vehicle for development, follow the instructions for building
-Vehicle from source in the
-[documentation](https://vehicle-lang.readthedocs.io/en/latest/installation.html).
+In order to setup Vehicle for development, follow all the instructions for installing
+Haskell in the [documentation](https://vehicle-lang.readthedocs.io/en/latest/installation.html)
+and the _first_ instruction for installing Vehicle itself.
 
-## Build system
+You may use whatever Haskell development environment you like, although we have found
+that [VSCode](https://code.visualstudio.com/) works particularly well with GHCup.
+VSCode extensions that should be installed are:
+- Haskell
+- Haskell Syntax Highlighting
+- Trailing Whitespace
+and some useful ones are:
+- Cursor Align
+
+## 2. Build system
 
 We use [Shake](https://shakebuild.com/) as a build system for Vehicle, which is
 just a fancy DSL for Haskell.
@@ -16,7 +25,7 @@ The entire build system lives in the top-level file `build.hs`, and is just an
 additional executable in the `cabal` project and therefore can be run as
 `cabal run build X` where `X` is the command to the build system.
 
-## Testing Vehicle
+## 3. Testing Vehicle
 
 There are currently three types of tests for Vehicle. The build system for Vehicle contains
 various utility commands for running the various test suites (these simply wrap the `cabal test`
@@ -53,14 +62,19 @@ These test the performance of the Vehicle compiler, and may be long running.
 
 * `cabal run build performance-tests`
 
-## Logging
+### Continuous integration
+
+The tests are run automatically when changes are pushed to Github.
+The CI script that controls this is `.github/workflows/ci.yml`.
+
+## 4. Logging
 
 - Logs can be enabled by providing the `--logging` option on the command line.
 
 - In the case of an internal developer error, logs may not be printed. In this case you
 can add a `traceShow text $` in front of the `do` in the `logDebug` in `Vehicle.Prelude.Logging`.
 
-## Profiling
+## 5. Profiling
 
 To enable profiling follow the following steps:
 
@@ -71,7 +85,7 @@ To enable profiling follow the following steps:
   - Add `-O0 -prof -fprof-auto -with-rtsopts=-p` to `ghc-options` for the relevant test-suite
     (e.g. `vehicle-executable-tests`) in `vehicle.cabal`.
 
-## Documentation
+## 6. Documentation
 
 The documentation is hosted by ReadTheDocs (RTD). To rebuild the documentation, add your changes
 to the Github documentation and then go to
@@ -80,7 +94,7 @@ and hit `Build`.
 
 Ideally the documentation would automatically rebuild but haven't yet got that set up.
 
-## Coding conventions
+## 7. Coding conventions
 
 * In order to maintain flexibility in adding extra fields to `Arg` and `Binder`
   one should avoid pattern-matching on them whenever possible, and instead use suitable
