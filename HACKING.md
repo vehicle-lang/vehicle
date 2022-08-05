@@ -71,7 +71,16 @@ To enable profiling follow the following steps:
   - Add `-O0 -prof -fprof-auto -with-rtsopts=-p` to `ghc-options` for the relevant test-suite
     (e.g. `vehicle-executable-tests`) in `vehicle.cabal`.
 
-## Conventions
+## Documentation
+
+The documentation is hosted by ReadTheDocs (RTD). To rebuild the documentation, add your changes
+to the Github documentation and then go to
+https://readthedocs.org/projects/vehicle-lang/
+and hit `Build`.
+
+Ideally the documentation would automatically rebuild but haven't yet got that set up.
+
+## Coding conventions
 
 * In order to maintain flexibility in adding extra fields to `Arg` and `Binder`
   one should avoid pattern-matching on them whenever possible, and instead use suitable
