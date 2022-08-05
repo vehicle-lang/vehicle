@@ -59,6 +59,7 @@ runTest name inputFile networks = do
     , debugLevel  = 1
     , modeOptions = Verify $ VerifyOptions
       { verifier         = Marabou
+      , verifierLocation = Nothing
       , specification    = inputFile
       , networkLocations = Map.fromList networks
       , datasetLocations = mempty

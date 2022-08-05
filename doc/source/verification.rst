@@ -66,6 +66,11 @@ for the :code:`verify` command.
     Set which verifier should be used to perform the specification.
     At the moment the only supported option is :code:`Marabou`.
 
+.. option:: --verifierLocation, -l
+
+    Location of the executable for the verifier. If not provided, then Vehicle
+    will search for the executable in the ``PATH`` environment variable.
+
 .. option:: --proofCache, -c
 
     Set the location to write out the proof cache containing the results.

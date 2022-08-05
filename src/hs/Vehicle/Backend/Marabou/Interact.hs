@@ -4,7 +4,6 @@ module Vehicle.Backend.Marabou.Interact
   ) where
 
 import Control.Monad ( forM, forM_ )
-import Data.Maybe (fromMaybe, isNothing)
 import Data.Text (Text, pack, unpack)
 import Data.Text.IO (hPutStrLn)
 import Data.List (findIndex, elemIndex)
@@ -12,7 +11,7 @@ import Data.Text qualified as Text (pack, splitOn, strip, unpack)
 import Data.Map qualified as Map (fromList, lookup)
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
-import System.Directory (createDirectoryIfMissing, doesFileExist)
+import System.Directory (createDirectoryIfMissing)
 import System.Exit (exitFailure, ExitCode (..))
 import System.FilePath ((<.>), (</>), dropExtension)
 import System.Process (readProcessWithExitCode)
@@ -103,12 +102,11 @@ queryFilePath QueryAddress{..} =
 
 -- | Uses Marabou to verify the specification. Failure of one property, does
 -- not prevent the verification of the other properties.
-verifySpec :: Maybe FilePath
+verifySpec :: FilePath
            -> MarabouSpec
            -> NetworkLocations
            -> IO SpecificationStatus
-verifySpec maybeMarabouExecutable spec networks = do
-  marabouExecutable <- verifyExecutable maybeMarabouExecutable
+verifySpec marabouExecutable spec networks = do
   withSystemTempDirectory "marabouSpec" $ \tempDir -> do
     writeSpecFiles (Just tempDir) spec
     results <- forM spec $ \(name, property) -> do
@@ -154,20 +152,6 @@ verifyQuery marabouExecutable queryFile networks MarabouQuery{..} = do
   networkArg <- prepareNetworkArg networks metaNetwork
   marabouOutput <- readProcessWithExitCode marabouExecutable [networkArg, queryFile] ""
   parseMarabouOutput varReconstruction marabouOutput
-
-verifyExecutable :: Maybe FilePath -> IO FilePath
-verifyExecutable maybeLocation = do
-  let location = fromMaybe "bin/Marabou" maybeLocation
-  exists <- doesFileExist location
-  if exists
-    then return location
-    else do
-      hPutStrLn stderr $
-        "Could not locate the Marabou executable at " <> pack location <> "'." <>
-        (if isNothing maybeLocation
-          then " Run 'cabal run build init' to install locally."
-          else "")
-      exitFailure
 
 prepareNetworkArg :: NetworkLocations -> MetaNetwork -> IO String
 prepareNetworkArg networkLocations [name] =

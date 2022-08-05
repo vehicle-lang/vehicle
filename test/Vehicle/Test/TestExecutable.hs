@@ -14,7 +14,7 @@ testLogLevel :: Int
 testLogLevel = 0
 
 timeOutSeconds :: Integer
-timeOutSeconds = 100
+timeOutSeconds = 1000
 
 main :: IO ()
 main = do

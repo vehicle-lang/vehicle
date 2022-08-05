@@ -25,6 +25,13 @@ data Verifier
   = Marabou
   deriving (Eq, Show, Read)
 
+instance Pretty Verifier where
+  pretty = pretty . show
+
+verifierExecutableName :: Verifier -> String
+verifierExecutableName = \case
+  Marabou -> "marabou"
+
 magicVariablePrefixes :: Verifier -> (Text, Text)
 magicVariablePrefixes Marabou = ("x", "y")
 

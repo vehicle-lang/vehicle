@@ -126,7 +126,7 @@ modulePrefixOption = optional (strOption
   <> short 'm'
   <> help "Override the name of the exported ITP module. For example, \
           \compiling with 'Foo.Bar' will result in \
-          \the Agda module with the internal name `Foo.Bar.agda`. If not
+          \the Agda module with the internal name `Foo.Bar.agda`. If not \
           \provided then the name will default to the name of the output file."
   <> metavar "MODULENAME" ))
 
@@ -184,6 +184,13 @@ verifyParser = VerifyOptions
      <> short 'v'
      <> help "Verifier to use."
      <> metavar "TARGET" )
+  <*> optional (strOption
+      ( long "verifierLocation"
+     <> short 'l'
+     <> help "Location of the executable for the verifier. \
+             \If not provided then Vehicle will search for it in the PATH \
+             \environment variable."
+     <> metavar "FILE" ))
   <*> optional (strOption
       ( long "proofCache"
      <> short 'c'
