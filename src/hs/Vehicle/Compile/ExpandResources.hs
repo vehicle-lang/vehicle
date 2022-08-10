@@ -76,7 +76,7 @@ processDecls (d : ds) = do
 processDecl :: (MonadIO m, MonadExpandResources m)
             => CheckedDecl
             -> m (Maybe CheckedDecl, DeclCtx CheckedExpr -> DeclCtx CheckedExpr)
-processDecl d@(DefFunction _ _ ident _ declExpr) =
+processDecl d@(DefFunction _ ident _ declExpr) =
   return (Just d, Map.insert ident declExpr)
 processDecl d@DefPostulate{} =
   return (Just d, id)
@@ -95,7 +95,7 @@ processDecl d@(DefResource p resourceType ident declType) = do
     Parameter -> do
       addParameter name
       parameterExpr <- parseParameterValue (parameters resources) (ident, p) normType
-      let result = Just $ DefFunction p Nothing ident normType parameterExpr
+      let result = Just $ DefFunction p ident normType parameterExpr
       return (result, Map.insert ident parameterExpr)
 
     Dataset -> do
@@ -104,7 +104,7 @@ processDecl d@(DefResource p resourceType ident declType) = do
         then return (Just d, id)
         else do
           datasetExpr <- parseDataset (datasets resources) (ident, p) normType
-          let result = Just $ DefFunction p Nothing ident normType datasetExpr
+          let result = Just $ DefFunction p ident normType datasetExpr
           return (result, Map.insert ident datasetExpr)
 
     Network -> do
@@ -120,6 +120,6 @@ insertInferableParameters implicitParams = traverseProg $ \case
     case Map.lookup (nameOf ident) implicitParams of
       Nothing -> compilerDeveloperError "Somehow missed the implicit parameter on the first pass"
       Just Nothing -> throwError $ InferableParameterUninferrable (ident, p)
-      Just (Just (_, _, v)) -> return $ DefFunction p Nothing ident t (NatLiteral p v)
+      Just (Just (_, _, v)) -> return $ DefFunction p ident t (NatLiteral p v)
   r@DefResource{} ->
     compilerDeveloperError $ "Found unexpanded resource: " <+> pretty (identifierOf r)

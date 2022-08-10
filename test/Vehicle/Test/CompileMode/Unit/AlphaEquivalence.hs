@@ -11,7 +11,7 @@ import Data.Hashable
 
 import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
-import Vehicle.Compile (typeCheckExpr)
+import Vehicle.Compile (parseAndTypeCheckExpr)
 import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
 import Vehicle.Compile.CoDeBruijnify
@@ -36,8 +36,8 @@ data AlphaTestSpec = AlphaTestSpec String Bool Text Text
 equalUpToAlpha :: MonadTest m => AlphaTestSpec -> m TestTree
 equalUpToAlpha (AlphaTestSpec testName shouldBeEqual t1 t2) =
   unitTestCase testName $ do
-    e1 <- typeCheckExpr t1
-    e2 <- typeCheckExpr t2
+    e1 <- parseAndTypeCheckExpr t1
+    e2 <- parseAndTypeCheckExpr t2
 
     let errorMessage = layoutAsString $
           "Expected:" <+> line <> indent 2 (

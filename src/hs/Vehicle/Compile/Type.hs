@@ -1,12 +1,16 @@
 
 module Vehicle.Compile.Type
-  ( TypeCheckable(..)
+  ( typeCheck
+  , typeCheckExpr
   ) where
 
+import Control.Monad.Writer (MonadWriter(..), runWriterT)
 import Control.Monad.Except (MonadError(..))
 import Control.Monad (forM, when, unless)
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Set qualified as Set (member)
+import Data.Map qualified as Map (singleton)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
@@ -28,26 +32,24 @@ import Vehicle.Compile.Type.Irrelevance
 -------------------------------------------------------------------------------
 -- Algorithm
 
-class TypeCheckable a b where
-  typeCheck :: MonadCompile m => a -> m b
+typeCheck :: MonadCompile m
+          => (UncheckedProg, UncheckedPropertyContext)
+          -> m (CheckedProg, PropertyContext)
+typeCheck (uncheckedProg, uncheckedCtx) =
+  logCompilerPass MinDetail "type checking" $ runTCM $ do
+  (checkedProg, checkedCtx) <- runWriterT $ typeCheckProg uncheckedCtx uncheckedProg
+  cleanedProg <- postProcess checkedProg
+  logDebug MaxDetail $ prettyFriendlyDBClosed cleanedProg
+  return (cleanedProg, checkedCtx)
 
-instance TypeCheckable UncheckedProg CheckedProg where
-  typeCheck prog1 =
-    logCompilerPass MinDetail "type checking" $ runTCM $ do
-    prog2 <- typeCheckProg prog1
-    prog3 <- postProcess prog2
-    logDebug MaxDetail $ prettyFriendlyDBClosed prog3
-    return prog3
-
-
-instance TypeCheckable UncheckedExpr CheckedExpr where
-  typeCheck expr1 = runTCM $ do
-    expr2 <- insertHolesForAuxiliaryAnnotations expr1
-    (expr3, _exprType) <- inferExpr expr2
-    solveConstraints Nothing
-    expr4 <- postProcess expr3
-    checkAllUnknownsSolved
-    return expr4
+typeCheckExpr :: MonadCompile m => UncheckedExpr -> m CheckedExpr
+typeCheckExpr expr1 = runTCM $ do
+  expr2 <- insertHolesForAuxiliaryAnnotations expr1
+  (expr3, _exprType) <- inferExpr expr2
+  solveConstraints Nothing
+  expr4 <- postProcess expr3
+  checkAllUnknownsSolved
+  return expr4
 
 postProcess :: ( TCM m
                , MetaSubstitutable a
@@ -64,20 +66,22 @@ postProcess x = do
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-typeCheckProg :: TCM m => UncheckedProg -> m CheckedProg
-typeCheckProg (Main ds) = Main <$> typeCheckDecls ds
+type TopLevelTCM m = (TCM m, MonadWriter PropertyContext m)
 
-typeCheckDecls :: TCM m => [UncheckedDecl] -> m [CheckedDecl]
-typeCheckDecls [] = return []
-typeCheckDecls (d : ds) = do
+typeCheckProg :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedProg -> m CheckedProg
+typeCheckProg ctx (Main ds) = Main <$> typeCheckDecls ctx ds
+
+typeCheckDecls :: TopLevelTCM m => UncheckedPropertyContext -> [UncheckedDecl] -> m [CheckedDecl]
+typeCheckDecls _   [] = return []
+typeCheckDecls ctx (d : ds) = do
   -- First insert any missing auxiliary arguments into the decl
   d' <- insertHolesForAuxiliaryAnnotations d
-  checkedDecl  <- typeCheckDecl d'
-  checkedDecls <- addDeclToCtx checkedDecl $ typeCheckDecls ds
+  checkedDecl  <- typeCheckDecl ctx d'
+  checkedDecls <- addDeclToCtx checkedDecl $ typeCheckDecls ctx ds
   return $ checkedDecl : checkedDecls
 
-typeCheckDecl :: TCM m => UncheckedDecl -> m CheckedDecl
-typeCheckDecl decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
+typeCheckDecl :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedDecl -> m CheckedDecl
+typeCheckDecl propertyCtx decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
   -- First run a bidirectional pass over the type of the declaration
   checkedType <- logCompilerPass MidDetail (passDoc <+> "type of" <+> identDoc) $ do
     let declType = typeOf decl
@@ -107,10 +111,10 @@ typeCheckDecl decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
     DefPostulate p _ _ -> do
       return $ DefPostulate p ident checkedType
 
-    DefFunction p propertyInfo _ _ body -> do
+    DefFunction p _ _ body -> do
       checkedBody <- logCompilerPass MidDetail (passDoc <+> "body of" <+> identDoc) $ do
         checkExpr checkedType body
-      let checkedDecl = DefFunction p propertyInfo ident checkedType checkedBody
+      let checkedDecl = DefFunction p ident checkedType checkedBody
 
       solveConstraints (Just checkedDecl)
 
@@ -119,8 +123,12 @@ typeCheckDecl decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
 
       checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints substDecl
       checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
-      finalDecl    <- updatePropertyInfo checkedDecl3
-      return finalDecl
+
+      let isProperty = ident `Set.member` propertyCtx
+      when isProperty $ do
+        checkPropertyInfo (ident, p) (typeOf checkedDecl2)
+
+      return checkedDecl3
 
   checkAllUnknownsSolved
   logCompilerPassOutput $ prettyFriendlyDBClosed result
@@ -259,25 +267,20 @@ getDefaultCandidates maybeDecl = do
 -------------------------------------------------------------------------------
 -- Property information extraction
 
-updatePropertyInfo :: MonadCompile m => CheckedDecl -> m CheckedDecl
-updatePropertyInfo = \case
-  r@DefResource{}       -> return r
-  r@DefPostulate{}      -> return r
-  r@(DefFunction p maybePropertyInfo ident t e) -> case maybePropertyInfo of
-    Nothing -> return r
-    Just _  -> do
-      propertyInfo@(PropertyInfo linearity polarity) <- getPropertyInfo (ident, p) t
-      logDebug MinDetail $
-        "Identified" <+> squotes (pretty ident) <+> "as a property of type:" <+>
-          pretty linearity <+> pretty polarity
-      return $ DefFunction p (Just propertyInfo) ident t e
+checkPropertyInfo :: TopLevelTCM m => DeclProvenance -> CheckedType -> m ()
+checkPropertyInfo decl@(ident, _) t = do
+  propertyInfo <- getPropertyInfo t
+  tell (Map.singleton ident propertyInfo)
+  logDebug MinDetail $
+    "Identified" <+> squotes (pretty ident) <+> "as a property of type:" <+> pretty propertyInfo
 
-getPropertyInfo :: MonadCompile m => DeclProvenance -> CheckedType -> m PropertyInfo
-getPropertyInfo decl = \case
-  (AnnBoolType _ (Builtin _ (Linearity lin)) (Builtin _ (Polarity pol))) -> return $ PropertyInfo lin pol
-  (VectorType _ tElem _) -> getPropertyInfo decl tElem
-  (TensorType _ tElem _) -> getPropertyInfo decl tElem
-  otherType              -> throwError $ PropertyTypeUnsupported decl otherType
+  where
+    getPropertyInfo :: MonadCompile m => CheckedType -> m PropertyInfo
+    getPropertyInfo = \case
+      AnnBoolType _ (Builtin _ (Linearity lin)) (Builtin _ (Polarity pol)) -> return $ PropertyInfo lin pol
+      VectorType _ tElem _ -> getPropertyInfo tElem
+      TensorType _ tElem _ -> getPropertyInfo tElem
+      otherType            -> throwError $ PropertyTypeUnsupported decl otherType
 
 -------------------------------------------------------------------------------
 -- Unsolved constraint checks

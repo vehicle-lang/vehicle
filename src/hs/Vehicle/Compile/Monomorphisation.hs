@@ -62,7 +62,7 @@ monoDecl decl = do
   let alteration = case result of
         DefResource{}  -> id
         DefPostulate{} -> id
-        DefFunction _ _ ident t _ -> do
+        DefFunction _ ident t _ -> do
           case isMonomorphisationCandidate t of
             Nothing -> id
             Just d  -> Map.insert ident d
@@ -138,7 +138,7 @@ cleanUpDecl monos decl = case decl of
   DefPostulate{} -> [decl]
   DefResource{}  -> [decl]
 
-  DefFunction p u ident t e -> do
+  DefFunction p ident t e -> do
     case Map.lookup ident monos of
       Nothing -> [decl]
       Just xs -> do
@@ -147,7 +147,7 @@ cleanUpDecl monos decl = case decl of
         flip fmap (Map.toList namesAndArgs) $ \(suffix, args) -> do
           let newIdent = Identifier $ nameOf ident <> suffix
           let (t', e') = substituteArgsThrough (t, e, args)
-          DefFunction p u newIdent t' e'
+          DefFunction p newIdent t' e'
 
 substituteArgsThrough :: (CheckedType, CheckedExpr, [CheckedArg]) -> (CheckedType, CheckedExpr)
 substituteArgsThrough = \case

@@ -7,7 +7,6 @@ import Control.DeepSeq (NFData)
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Hashable (Hashable)
-import Data.Maybe (isJust)
 
 import Vehicle.Prelude
 import Vehicle.Resource (ResourceType)
@@ -321,11 +320,8 @@ data PropertyInfo
 
 instance NFData PropertyInfo
 
-emptyPropertyInfo :: PropertyInfo
-emptyPropertyInfo = PropertyInfo Constant Unquantified
-
-isProperty :: Maybe PropertyInfo -> Bool
-isProperty = isJust
+instance Pretty PropertyInfo where
+  pretty (PropertyInfo lin pol) = pretty lin <+> pretty pol
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -340,7 +336,6 @@ data Decl binder var
 
   | DefFunction
     Provenance             -- Location in source file.
-    (Maybe PropertyInfo)   -- Auxiliary typing information about a property.
     Identifier             -- Bound function name.
     (Expr binder var)      -- Bound function type.
     (Expr binder var)      -- Bound function body.
@@ -355,38 +350,38 @@ instance (NFData binder, NFData var) => NFData (Decl binder var)
 
 instance HasProvenance (Decl binder var) where
   provenanceOf = \case
-    DefResource p _ _ _   -> p
-    DefFunction p _ _ _ _ -> p
-    DefPostulate p _ _    -> p
+    DefResource p _ _ _  -> p
+    DefFunction p _  _ _ -> p
+    DefPostulate p _ _   -> p
 
 instance HasIdentifier (Decl binder var) where
   identifierOf = \case
-    DefResource  _ _ i _   -> i
-    DefFunction  _ _ i _ _ -> i
-    DefPostulate _ i _     -> i
+    DefResource  _ _ i _  -> i
+    DefFunction  _  i _ _ -> i
+    DefPostulate _ i _    -> i
 
 mapDeclExprs :: (Expr binder1 var1 -> Expr binder2 var2)
              -> Decl binder1 var1
              -> Decl binder2 var2
 mapDeclExprs f = \case
-  DefResource ann r n t   -> DefResource ann r n (f t)
-  DefFunction ann u n t e -> DefFunction ann u n (f t) (f e)
-  DefPostulate ann n t    -> DefPostulate ann n (f t)
+  DefResource p r n t -> DefResource p r n (f t)
+  DefFunction p n t e -> DefFunction p n (f t) (f e)
+  DefPostulate p n t  -> DefPostulate p n (f t)
 
 traverseDeclExprs :: Monad m
                   => (Expr binder1 var1 -> m (Expr binder2 var2))
                   -> Decl binder1 var1
                   -> m (Decl binder2 var2)
 traverseDeclExprs f = \case
-  DefResource ann r n t   -> DefResource ann r n <$> f t
-  DefFunction ann u n t e -> DefFunction ann u n <$> f t <*> f e
-  DefPostulate ann n t    -> DefPostulate ann n <$> f t
+  DefResource p r n t -> DefResource p r n <$> f t
+  DefFunction p n t e -> DefFunction p n <$> f t <*> f e
+  DefPostulate p n t  -> DefPostulate p n <$> f t
 
 bodyOf :: Decl binder var -> Maybe (Expr binder var)
 bodyOf = \case
-  DefResource{}           -> Nothing
-  (DefFunction _ _ _ _ e) -> Just e
-  DefPostulate{}          -> Nothing
+  DefResource{}       -> Nothing
+  DefFunction _ _ _ e -> Just e
+  DefPostulate{}      -> Nothing
 
 --------------------------------------------------------------------------------
 -- Programs
@@ -422,9 +417,9 @@ instance HasType Binder where
 
 instance HasType Decl where
   typeOf = \case
-    DefResource _ _ _ t   -> t
-    DefFunction _ _ _ t _ -> t
-    DefPostulate _ _ t    -> t
+    DefResource _ _ _ t -> t
+    DefFunction _ _ t _ -> t
+    DefPostulate _ _ t  -> t
 
 --------------------------------------------------------------------------------
 -- Utilities

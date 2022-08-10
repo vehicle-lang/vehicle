@@ -137,8 +137,8 @@ instance Delaborate V.NamedDecl [B.Decl] where
 
       return [defAnn, defFun]
 
-    V.DefFunction _ i n t e ->
-      delabFun i n t e
+    V.DefFunction _ n t e ->
+      delabFun False n t e
 
     V.DefPostulate {} ->
       developerError "Should not be delaborating postulates"
@@ -349,17 +349,18 @@ delabLam expr =
   let (binders, body) = foldLam expr
    in B.Lam tokLambda <$> traverse delabM binders <*> pure tokArrow <*> delabM body
 
-delabFun :: MonadDelab m => Maybe V.PropertyInfo -> V.Identifier -> V.NamedExpr -> V.NamedExpr -> m [B.Decl]
-delabFun propertyInfo name typ expr = do
+delabFun :: MonadDelab m => Bool -> V.Identifier -> V.NamedExpr -> V.NamedExpr -> m [B.Decl]
+delabFun isProperty name typ expr = do
   let n' = delabIdentifier name
   case foldDefFun typ expr of
     Left (t, (binders, body)) -> do
       defExpr <- B.DefFunExpr n' <$> traverse delabM binders <*> delabM body
       defType <- B.DefFunType n' tokElemOf <$> delabM t
+      let decl = [defType, defExpr]
 
-      return $ case propertyInfo of
-        Nothing -> [defType, defExpr]
-        Just _  -> [delabAnn propertyAnn [], defType, defExpr]
+      return $ if isProperty
+        then delabAnn propertyAnn [] : decl
+        else decl
 
     Right (binders, body) -> do
       defType <- B.DefType n' <$> traverse delabM binders <*> delabM body

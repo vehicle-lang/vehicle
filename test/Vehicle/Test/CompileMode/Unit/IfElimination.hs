@@ -12,7 +12,7 @@ import Data.Hashable
 
 import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
-import Vehicle.Compile (typeCheckExpr, typeCheck)
+import Vehicle.Compile (parseAndTypeCheckExpr, typeCheckExpr)
 import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.IfElimination
@@ -59,13 +59,13 @@ data IfTestSpec = IfTestSpec String Text Text
 liftAndEliminateIfsTest :: MonadTest m => IfTestSpec -> m TestTree
 liftAndEliminateIfsTest (IfTestSpec testName input expected) =
   unitTestCase testName $ do
-    inputExpr    <- normTypeClasses =<< typeCheckExpr input
-    expectedExpr <- normTypeClasses =<< typeCheckExpr expected
+    inputExpr    <- normTypeClasses =<< parseAndTypeCheckExpr input
+    expectedExpr <- normTypeClasses =<< parseAndTypeCheckExpr expected
     result       <- eliminateIfs inputExpr
 
     -- Need to re-typecheck the result as lifting may put a `Hole` for
     -- the type of each lifted `if`.
-    typedResult <- typeCheck result
+    typedResult <- typeCheckExpr result
 
     let errorMessage = layoutAsString $
           "Expected the result of if elimination on" <> line <>

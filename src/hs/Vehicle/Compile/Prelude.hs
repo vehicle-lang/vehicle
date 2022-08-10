@@ -4,6 +4,9 @@ module Vehicle.Compile.Prelude
   , module Vehicle.Compile.Prelude
   ) where
 
+import Data.Set (Set)
+import Data.Map (Map)
+
 import Vehicle.Prelude as X
 import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Language.AST as X
@@ -11,6 +14,7 @@ import Vehicle.Resource as X
 import Vehicle.Compile.Prelude.Patterns as X
 import Vehicle.Compile.Prelude.Utils as X
 import Vehicle.Compile.Prelude.Contexts as X
+import Vehicle.Compile.Prelude.DependencyGraph as X
 
 --------------------------------------------------------------------------------
 -- Compilation
@@ -116,3 +120,6 @@ logCompilerPassOutput result = do
 -- Other
 
 type DeclProvenance = (Identifier, Provenance)
+
+type UncheckedPropertyContext = Set Identifier
+type PropertyContext = Map Identifier PropertyInfo

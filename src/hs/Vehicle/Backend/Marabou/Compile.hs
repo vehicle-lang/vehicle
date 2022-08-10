@@ -5,6 +5,7 @@ module Vehicle.Backend.Marabou.Compile
 import Control.Monad.Except (MonadError(..))
 import Control.Monad (forM)
 import Data.Maybe (catMaybes)
+import Data.Map qualified as Map (lookup)
 import Data.Vector.Unboxed qualified as Vector
 
 import Vehicle.Compile.Prelude
@@ -18,6 +19,7 @@ import Vehicle.Backend.Marabou.Core
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Linearity
 import Vehicle.Compile.Normalise
+import Control.Monad.Reader (MonadReader, asks, ReaderT (..))
 
 --------------------------------------------------------------------------------
 -- Compatibility
@@ -35,22 +37,35 @@ checkCompatibility decl (PropertyInfo linearity polarity) =
 -- Compilation to Marabou
 
 -- | Compiles the provided program to Marabou queries.
-compile :: MonadCompile m => NetworkContext -> CheckedProg -> m [(Symbol, MarabouProperty)]
-compile networkCtx prog = logCompilerPass MinDetail "compilation to Marabou" $ do
+compile :: MonadCompile m
+        => CheckedProg
+        -> PropertyContext
+        -> NetworkContext
+        -> m [(Symbol, MarabouProperty)]
+compile prog propertyCtx networkCtx = logCompilerPass MinDetail "compilation to Marabou" $ do
   normProg <- normalise prog fullNormalisationOptions
-  results <- compileProg networkCtx normProg
+  results <- runReaderT (compileProg networkCtx normProg) propertyCtx
   if null results then
     throwError NoPropertiesFound
   else
     return results
 
 --------------------------------------------------------------------------------
+-- Monad
+
+type MonadCompileMarabou m =
+  ( MonadCompile m
+  , MonadReader PropertyContext m
+  )
+
+--------------------------------------------------------------------------------
 -- Algorithm
 
-compileProg :: MonadCompile m => NetworkContext -> CheckedProg -> m [(Symbol, MarabouProperty)]
+
+compileProg :: MonadCompileMarabou m => NetworkContext -> CheckedProg -> m [(Symbol, MarabouProperty)]
 compileProg networkCtx (Main ds) = catMaybes <$> traverse (compileDecl networkCtx) ds
 
-compileDecl :: MonadCompile m => NetworkContext -> CheckedDecl -> m (Maybe (Symbol, MarabouProperty))
+compileDecl :: MonadCompileMarabou m => NetworkContext -> CheckedDecl -> m (Maybe (Symbol, MarabouProperty))
 compileDecl networkCtx d = case d of
   DefResource _ r _ _ ->
     normalisationError currentPass (pretty r <+> "declarations")
@@ -58,7 +73,8 @@ compileDecl networkCtx d = case d of
   DefPostulate{} ->
     normalisationError currentPass "postulates"
 
-  DefFunction p maybePropertyInfo ident _ expr ->
+  DefFunction p ident _ expr -> do
+    maybePropertyInfo <- asks (Map.lookup ident)
     case maybePropertyInfo of
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.

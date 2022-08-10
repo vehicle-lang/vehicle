@@ -108,14 +108,13 @@ foldLet expr = first reverse (decomposeLet ([], expr))
 -- Function and type declarations
 
 unfoldDefFun :: Provenance
-             -> Maybe PropertyInfo
              -> Identifier
              -> Expr binder var
              -> [Binder binder var]
              -> Expr binder var
              -> Decl binder var
-unfoldDefFun p propertyInfo ident t bs e =
-  DefFunction p propertyInfo ident t (unfoldLam p (bs, e))
+unfoldDefFun p ident t bs e =
+  DefFunction p ident t (unfoldLam p (bs, e))
 
 unfoldDefType :: Provenance
               -> Identifier
@@ -124,7 +123,7 @@ unfoldDefType :: Provenance
               -> Decl binder var
 unfoldDefType p ident bs e =
   let t = foldr (Pi p) (Universe p (TypeUniv 0)) bs in
-  unfoldDefFun p Nothing ident t bs e
+  unfoldDefFun p ident t bs e
 
 foldDefFun :: Expr binder var -> Expr binder var ->
               Either

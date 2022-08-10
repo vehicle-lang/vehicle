@@ -4,7 +4,8 @@ module Vehicle.Compile.Scope
   , scopeCheckClosedExpr
   ) where
 
-import Control.Monad.Except ( MonadError(..) )
+import Control.Monad.Except (MonadError(..))
+import Control.Monad.Writer (MonadWriter(..), runWriterT)
 import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Control.Monad.State
 import Data.Bifunctor (Bifunctor(..))
@@ -15,14 +16,13 @@ import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 
-scopeCheck :: (MonadLogger m, MonadError CompileError m)
-           => InputProg -> m UncheckedProg
-scopeCheck e = logCompilerPass MinDetail "scope checking" $
-  runReaderT (scopeProg e) mempty
+scopeCheck :: MonadCompile m => InputProg -> m (UncheckedProg, DependencyGraph)
+scopeCheck e = logCompilerPass MinDetail "scope checking" $ do
+  (prog, dependencies) <- runReaderT (scopeProg e) mempty
+  return (prog, fromEdges dependencies)
 
-scopeCheckClosedExpr :: (MonadLogger m, MonadError CompileError m)
-                     => InputExpr -> m UncheckedExpr
-scopeCheckClosedExpr e = evalStateT (runReaderT (scopeExpr e) (mempty, False)) mempty
+scopeCheckClosedExpr :: MonadCompile m => InputExpr -> m UncheckedExpr
+scopeCheckClosedExpr e = fst <$> runWriterT (evalStateT (runReaderT (scopeExpr e) (mempty, False)) mempty)
 
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
@@ -36,6 +36,7 @@ type MonadScopeExpr m =
   ( MonadCompile m
   , MonadReader (DeclCtx (), Bool) m
   , MonadState (BoundCtx DBBinding, [(Provenance, Symbol)]) m
+  , MonadWriter Dependencies m
   )
 
 --------------------------------------------------------------------------------
@@ -54,35 +55,36 @@ logScopeExit e = do
 --------------------------------------------------------------------------------
 -- Algorithm
 
-scopeProg :: MonadScope m => InputProg -> m UncheckedProg
-scopeProg (Main ds) = Main <$> scopeDecls ds
+scopeProg :: MonadScope m => InputProg -> m (UncheckedProg, DependencyList)
+scopeProg (Main ds) = first Main <$> scopeDecls ds
 
-scopeDecls :: MonadScope m => [InputDecl] -> m [UncheckedDecl]
+scopeDecls :: MonadScope m => [InputDecl] -> m ([UncheckedDecl], DependencyList)
 scopeDecls = \case
-  []       -> return []
+  []       -> return ([], [])
   (d : ds) -> do
-    d' <- scopeDecl d
+    (d', dep) <- runWriterT $ scopeDecl d
 
     let ident = identifierOf d'
     exists <- asks (Map.member ident)
     if exists
       then throwError $ DuplicateName (provenanceOf d) (nameOf ident)
       else do
-        ds' <- bindDecl (identifierOf d') (scopeDecls ds)
-        return (d' : ds')
+        (ds', deps) <- bindDecl (identifierOf d') (scopeDecls ds)
+        let dependencies = (identifierOf d, dep) : deps
+        return (d' : ds', dependencies)
 
-scopeDecl :: MonadScope m => InputDecl -> m UncheckedDecl
+scopeDecl :: (MonadWriter Dependencies m, MonadScope m) => InputDecl -> m UncheckedDecl
 scopeDecl = \case
   DefResource p r ident t ->
     DefResource p r ident <$> scopeDeclExpr False t
 
-  DefFunction p u ident t e ->
-    DefFunction p u ident <$> scopeDeclExpr True t <*> scopeDeclExpr False e
+  DefFunction p ident t e ->
+    DefFunction p ident <$> scopeDeclExpr True t <*> scopeDeclExpr False e
 
   DefPostulate p ident t ->
     DefPostulate p ident <$> scopeDeclExpr False t
 
-scopeDeclExpr :: forall m . MonadScope m => Bool -> InputExpr -> m UncheckedExpr
+scopeDeclExpr :: (MonadWriter Dependencies m, MonadScope m) => Bool -> InputExpr -> m UncheckedExpr
 scopeDeclExpr generalise expr = do
   declCtx <- ask
 
@@ -155,9 +157,11 @@ getVar p symbol = do
 
   case elemIndex (Just symbol) boundCtx of
     Just i -> return $ Bound i
-    Nothing ->
-      if Map.member (Identifier symbol) declCtx
-        then return $ Free (Identifier symbol)
+    Nothing -> do
+      let ident = Identifier symbol
+      if Map.member ident declCtx then do
+        tell [ident]
+        return $ Free ident
       else if not generaliseOverMissingVariables
         then throwError $ UnboundName p  symbol
       else do

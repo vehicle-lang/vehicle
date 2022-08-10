@@ -5,13 +5,14 @@ module Vehicle.Backend.Agda.Compile
 
 import GHC.Real (numerator, denominator)
 import Control.Monad.Except (MonadError(..))
-import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
+import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Foldable (fold)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Map qualified as Map (member)
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NonEmpty
 import System.FilePath (takeBaseName)
@@ -38,9 +39,9 @@ data AgdaOptions = AgdaOptions
   , moduleName          :: Maybe String
   }
 
-compileProgToAgda :: MonadCompile m => AgdaOptions -> CheckedProg -> m (Doc a)
-compileProgToAgda options prog = logCompilerPass MinDetail currentPhase $
-  flip runReaderT (options, BoolLevel) $ do
+compileProgToAgda :: MonadCompile m => CheckedProg -> PropertyContext -> AgdaOptions -> m (Doc a)
+compileProgToAgda prog propertyContext options = logCompilerPass MinDetail currentPhase $
+  flip runReaderT (propertyContext, options, BoolLevel) $ do
     monoProg <- monomorphise prog
     normProg <- normalise monoProg noNormalisationOptions
       { normaliseBuiltin = normaliseBuiltins
@@ -299,14 +300,26 @@ arrow = "→" -- <> softline'
 
 type MonadAgdaCompile m =
   ( MonadCompile m
-  , MonadReader (AgdaOptions, BoolLevel) m
+  , MonadReader (PropertyContext, AgdaOptions, BoolLevel) m
   )
 
+isProperty :: MonadAgdaCompile m => Identifier -> m Bool
+isProperty ident = do
+  (ctx, _, _) <- ask
+  return $ ident `Map.member` ctx
+
+getProofCacheLocation :: MonadAgdaCompile m => m (Maybe FilePath)
+getProofCacheLocation = do
+  (_, options, _) <- ask
+  return $ proofCacheLocation options
+
 getBoolLevel :: MonadAgdaCompile m => m BoolLevel
-getBoolLevel = asks snd
+getBoolLevel = do
+  (_, _, boolLevel) <- ask
+  return boolLevel
 
 setBoolLevel :: MonadAgdaCompile m => BoolLevel -> m a -> m a
-setBoolLevel level = local (\(opts, _) -> (opts, level))
+setBoolLevel level = local (\(ctx, opts, _) -> (ctx, opts, level))
 
 --------------------------------------------------------------------------------
 -- Program Compilation
@@ -383,10 +396,11 @@ compileDecl = \case
   DefPostulate _ n t ->
     compilePostulate (compileIdentifier n) <$> compileExpr t
 
-  DefFunction _ann propertyInfo n t e -> do
+  DefFunction _ n t e -> do
     let (binders, body) = foldLam e
-    setBoolLevel TypeLevel $
-      if isProperty propertyInfo
+    setBoolLevel TypeLevel $ do
+      property <- isProperty n
+      if property
         then compileProperty (compileIdentifier n) =<< compileExpr e
         else do
           let binders' = mapMaybe compileTopLevelBinder binders
@@ -777,7 +791,7 @@ compilePostulate name t =
 
 compileProperty :: MonadAgdaCompile m => Code -> Code -> m Code
 compileProperty propertyName propertyBody = do
-  proofCache <- asks (proofCacheLocation . fst)
+  proofCache <- getProofCacheLocation
   return $
     case proofCache of
       Nothing  ->

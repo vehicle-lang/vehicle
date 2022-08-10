@@ -42,10 +42,10 @@ instance CapitaliseTypes CheckedDecl where
     DefResource p r ident t ->
       DefResource p r <$> cap ident <*> cap t
 
-    DefFunction p u ident t e -> do
+    DefFunction p ident t e -> do
       when (isTypeDef t) $
         modify (insert ident)
-      DefFunction p u <$> cap ident <*> cap t <*> cap e
+      DefFunction p <$> cap ident <*> cap t <*> cap e
 
     DefPostulate p ident t ->
       DefPostulate p <$> cap ident <*> cap t

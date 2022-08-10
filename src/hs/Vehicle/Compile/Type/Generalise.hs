@@ -131,8 +131,8 @@ prependBinderAndSolveMeta meta v r binderName binderType decl = do
   prependedDecl <- case substDecl of
     DefResource p rt ident t   ->
       return $ DefResource p rt ident (Pi p binder t)
-    DefFunction p u ident t e ->
-      return $ DefFunction p u ident (Pi p binder t) (Lam p binder e)
+    DefFunction p ident t e ->
+      return $ DefFunction p ident (Pi p binder t) (Lam p binder e)
     DefPostulate{} ->
       compilerDeveloperError "Generalisation over postulates not yet supported"
 

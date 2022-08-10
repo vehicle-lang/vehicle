@@ -12,7 +12,7 @@ import Data.IntMap qualified as IntMap
 
 import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
-import Vehicle.Compile (typeCheckExpr)
+import Vehicle.Compile (parseAndTypeCheckExpr)
 import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
 import Vehicle.Compile.CoDeBruijnify
@@ -38,7 +38,7 @@ data CoDeBruijnTestSpec = CoDeBruijnTestSpec String Text
 toFromCoDB :: MonadTest m => CoDeBruijnTestSpec -> m TestTree
 toFromCoDB (CoDeBruijnTestSpec testName e1) =
   unitTestCase testName $ do
-    e2 <- typeCheckExpr e1
+    e2 <- parseAndTypeCheckExpr e1
     let e3 = toCoDBExpr e2
     let e4 = fromCoDB e3
 

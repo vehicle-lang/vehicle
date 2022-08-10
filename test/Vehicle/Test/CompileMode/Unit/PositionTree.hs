@@ -11,7 +11,7 @@ import Test.Tasty.HUnit ( assertBool, testCase, Assertion )
 
 import Vehicle.Prelude
 import Vehicle.Language.AST
-import Vehicle.Compile (typeCheckExpr)
+import Vehicle.Compile (parseAndTypeCheckExpr)
 import Vehicle.Compile.CoDeBruijnify ( toCoDBExpr )
 import Vehicle.Language.Print
 
@@ -119,9 +119,9 @@ data SubstPosTestCase = SubstPosTestCase
 substPosTest :: MonadTest m => SubstPosTestCase -> m TestTree
 substPosTest (SubstPosTestCase testName valueText positions exprText expectedResult) =
   unitTestCase testName $ do
-    value    <- toCoDBExpr <$> typeCheckExpr valueText
-    expr     <- toCoDBExpr <$> typeCheckExpr exprText
-    expected <- toCoDBExpr <$> typeCheckExpr expectedResult
+    value    <- toCoDBExpr <$> parseAndTypeCheckExpr valueText
+    expr     <- toCoDBExpr <$> parseAndTypeCheckExpr exprText
+    expected <- toCoDBExpr <$> parseAndTypeCheckExpr expectedResult
 
     let result = substPos value (Just positions) expr
 

@@ -3,10 +3,12 @@ module Vehicle.Backend.LossFunction.Compile
   , compile
   ) where
 
+import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Data.Aeson
 import GHC.Generics (Generic)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (catMaybes)
+import Data.Map qualified as Map (member)
 
 import Vehicle.Prelude
 import Vehicle.Compile.Error
@@ -14,6 +16,13 @@ import Vehicle.Compile.Resource (NetworkContext)
 import Vehicle.Language.AST qualified as V
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Language.Print
+
+--------------------------------------------------------------------------------
+-- Public interface
+
+compile :: MonadCompile m => V.CheckedProg -> V.PropertyContext -> NetworkContext -> m [LExpr]
+compile prog propertyCtx _networkCtx = do
+  runReaderT (compileProg prog) propertyCtx
 
 --------------------------------------------------------------------------------
 -- Definitions
@@ -55,10 +64,15 @@ instance ToJSON LExpr where
 --------------------------------------------------------------------------------
 -- Compilation
 
-compile :: MonadCompile m => NetworkContext -> V.CheckedProg -> m [LExpr]
-compile _ (V.Main ds) = catMaybes <$> traverse compileDecl ds
+type MonadCompileLoss m =
+  ( MonadCompile m
+  , MonadReader V.PropertyContext m
+  )
 
-compileDecl :: MonadCompile m => V.CheckedDecl -> m (Maybe LExpr)
+compileProg :: MonadCompileLoss m => V.CheckedProg -> m [LExpr]
+compileProg  (V.Main ds) = catMaybes <$> traverse compileDecl ds
+
+compileDecl :: MonadCompileLoss m => V.CheckedDecl -> m (Maybe LExpr)
 compileDecl d = case d of
   V.DefResource{} ->
     normalisationError currentPass "resource declarations"
@@ -66,8 +80,9 @@ compileDecl d = case d of
   V.DefPostulate{} ->
     normalisationError currentPass "postulates"
 
-  V.DefFunction _ propertyInfo _ _ expr ->
-    if not $ V.isProperty propertyInfo
+  V.DefFunction _ ident _ expr -> do
+    isProperty <- asks (Map.member ident)
+    if not isProperty
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
       then return Nothing

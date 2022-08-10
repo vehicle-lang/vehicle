@@ -98,17 +98,17 @@ instance Norm CheckedProg where
 instance Norm CheckedDecl where
   nf decl = logCompilerPass MaxDetail ("normalisation of" <+> squotes declIdent) $
     case decl of
-      DefResource ann r ident typ ->
-        DefResource ann r ident <$> nf typ
+      DefResource p r ident typ ->
+        DefResource p r ident <$> nf typ
 
-      DefFunction ann u ident typ expr -> do
+      DefFunction p ident typ expr -> do
         typ'  <- nf typ
         expr' <- nf expr
         modify (Map.insert ident expr')
-        return $ DefFunction ann u ident typ' expr'
+        return $ DefFunction p ident typ' expr'
 
-      DefPostulate ann ident typ ->
-        DefPostulate ann ident <$> nf typ
+      DefPostulate p ident typ ->
+        DefPostulate p ident <$> nf typ
 
     where declIdent = pretty (identifierOf decl)
 

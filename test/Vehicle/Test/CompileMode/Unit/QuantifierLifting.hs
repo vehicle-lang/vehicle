@@ -12,7 +12,7 @@ import Data.Hashable
 
 import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
-import Vehicle.Compile (typeCheckExpr)
+import Vehicle.Compile (parseAndTypeCheckExpr)
 import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.QuantifierLifting
@@ -56,8 +56,8 @@ data QuantifierTestSpec = QuantifierTestSpec String Text Text
 liftQuantifiersTest :: MonadTest m => QuantifierTestSpec -> m TestTree
 liftQuantifiersTest (QuantifierTestSpec testName input expected) =
     unitTestCase testName $ do
-      inputExpr    <- typeCheckExpr input
-      expectedExpr <- typeCheckExpr expected
+      inputExpr    <- parseAndTypeCheckExpr input
+      expectedExpr <- parseAndTypeCheckExpr expected
       result       <- liftQuantifiers inputExpr
 
       let errorMessage = layoutAsString $

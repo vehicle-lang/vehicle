@@ -6,6 +6,7 @@ module Vehicle.Compile
   , compileToAgda
   , typeCheck
   , typeCheckExpr
+  , parseAndTypeCheckExpr
   , readInputFile
   ) where
 
@@ -22,9 +23,9 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Parse
-import Vehicle.Compile.Elaborate.External as External (elabProg, elabExpr)
+import Vehicle.Compile.Elaborate.External as External (elaborate, elaborateExpr)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
-import Vehicle.Compile.Type (typeCheck)
+import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
 import Vehicle.Backend.Marabou qualified as Marabou
 import Vehicle.Backend.Marabou (MarabouSpec)
 import Vehicle.Backend.Agda
@@ -66,8 +67,8 @@ compileToMarabou :: LoggingOptions
                  -> IO MarabouSpec
 compileToMarabou loggingOptions resources spec =
   fromLoggedEitherIO loggingOptions $ do
-    (networkCtx, prog) <- typeCheckProgAndLoadResources resources spec
-    Marabou.compile networkCtx prog
+    (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources resources spec
+    Marabou.compile prog propertyCtx networkCtx
 
 compileToLossFunction :: LoggingOptions
                       -> Text
@@ -75,8 +76,8 @@ compileToLossFunction :: LoggingOptions
                       -> IO [LExpr]
 compileToLossFunction loggingOptions spec resources = do
   fromLoggedEitherIO loggingOptions $ do
-    (networkCtx, prog) <- typeCheckProgAndLoadResources resources spec
-    LossFunction.compile networkCtx prog
+    (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources resources spec
+    LossFunction.compile prog propertyCtx networkCtx
 
 compileToAgda :: LoggingOptions
               -> AgdaOptions
@@ -85,8 +86,8 @@ compileToAgda :: LoggingOptions
               -> IO (Doc a)
 compileToAgda loggingOptions agdaOptions _resources spec =
   fromLoggedEitherIO loggingOptions $ do
-    prog <- typeCheckProg spec
-    compileProgToAgda agdaOptions prog
+    (prog, propertyCtx, _) <- typeCheckProg spec
+    compileProgToAgda prog propertyCtx agdaOptions
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply multiple compiler passes
@@ -98,25 +99,23 @@ readInputFile LoggingOptions{..} inputFile = do
       "Error occured while reading input file: \n  " <> show e
     exitFailure
 
-typeCheckExpr :: MonadCompile m
-              => Text
-              -> m CheckedExpr
-typeCheckExpr txt = do
+parseAndTypeCheckExpr :: MonadCompile m => Text -> m CheckedExpr
+parseAndTypeCheckExpr txt = do
   bnfcProg    <- parseVehicle txt
-  vehicleProg <- elabExpr bnfcProg
+  vehicleProg <- elaborateExpr bnfcProg
   scopedProg  <- scopeCheckClosedExpr vehicleProg
-  typedProg   <- typeCheck scopedProg
+  typedProg   <- typeCheckExpr scopedProg
   return typedProg
 
 -- | Parses and type-checks the program but does
 -- not load networks and datasets from disk.
-typeCheckProg :: MonadCompile m => Text -> m CheckedProg
+typeCheckProg :: MonadCompile m => Text -> m (CheckedProg, PropertyContext, DependencyGraph)
 typeCheckProg txt = do
-  bnfcProg    <- parseVehicle txt
-  vehicleProg <- elabProg bnfcProg
-  scopedProg  <- scopeCheck vehicleProg
-  typedProg   <- typeCheck scopedProg
-  return typedProg
+  bnfcProg <- parseVehicle txt
+  (vehicleProg, uncheckedPropertyCtx) <- elaborate bnfcProg
+  (scopedProg, dependencyGraph) <- scopeCheck vehicleProg
+  (typedProg, propertyContext) <- typeCheck (scopedProg, uncheckedPropertyCtx)
+  return (typedProg, propertyContext, dependencyGraph)
 
 -- | Parses, expands parameters and datasets, type-checks and then
 -- checks the network types from disk. Used during compilation to
@@ -124,8 +123,8 @@ typeCheckProg txt = do
 typeCheckProgAndLoadResources :: (MonadIO m, MonadCompile m)
                               => Resources
                               -> Text
-                              -> m (NetworkContext, CheckedProg)
+                              -> m (CheckedProg, PropertyContext, NetworkContext, DependencyGraph)
 typeCheckProgAndLoadResources resources txt = do
-  typedProg               <- typeCheckProg txt
+  (typedProg, propertyCtx, depGraph) <- typeCheckProg txt
   (networkCtx, finalProg) <- expandResources resources True typedProg
-  return (networkCtx, finalProg)
+  return (finalProg, propertyCtx, networkCtx, depGraph)

@@ -9,7 +9,7 @@ import Data.Text
 import Data.Hashable
 
 import Vehicle.Language.Print
-import Vehicle.Compile (typeCheckExpr, typeCheck)
+import Vehicle.Compile (parseAndTypeCheckExpr, typeCheckExpr)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
@@ -67,13 +67,13 @@ appFilter _                  _ = False
 letInsertionTest :: MonadTest m => InsertionTestSpec -> m TestTree
 letInsertionTest (InsertionTestSpec testName filter input expected) =
   unitTestCase testName $ do
-    inputExpr    <- normTypeClasses =<< typeCheckExpr input
-    expectedExpr <- normTypeClasses =<< typeCheckExpr expected
+    inputExpr    <- normTypeClasses =<< parseAndTypeCheckExpr input
+    expectedExpr <- normTypeClasses =<< parseAndTypeCheckExpr expected
     result       <- insertLets filter True inputExpr
 
     -- Need to re-typecheck the result as let-insertion puts a Hole on
     -- each binder type.
-    typedResult <- typeCheck result
+    typedResult <- typeCheckExpr result
 
     let errorMessage = layoutAsString $
           "Expected the result of let lifting" <> line <>

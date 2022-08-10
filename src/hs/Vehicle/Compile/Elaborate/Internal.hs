@@ -38,8 +38,8 @@ instance Elab B.Decl V.InputDecl where
     B.DeclData      n t   -> elabResource n t Dataset
     B.DeclParam     n t   -> elabResource n t Parameter
     B.DeclImplParam n t   -> elabResource n t InferableParameter
-    B.DefFun        n t e -> V.DefFunction  (tkProvenance n) Nothing <$> elab n <*> elab t <*> elab e
-    B.DeclPost      n t   -> V.DefPostulate (tkProvenance n)         <$> elab n <*> elab t
+    B.DefFun        n t e -> V.DefFunction  (tkProvenance n) <$> elab n <*> elab t <*> elab e
+    B.DeclPost      n t   -> V.DefPostulate (tkProvenance n) <$> elab n <*> elab t
 
 elabResource :: MonadCompile m => NameToken -> B.Expr -> ResourceType -> m V.InputDecl
 elabResource n t r = V.DefResource (tkProvenance n) r <$> elab n <*> elab t
