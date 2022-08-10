@@ -1,1 +1,2 @@
-dataset trainingDataset : List (Nat -> Nat)
+@dataset
+trainingDataset : List (Nat -> Nat)

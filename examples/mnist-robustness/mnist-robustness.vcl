@@ -18,7 +18,8 @@ validImage x = forall i j . 0 <= x ! i ! j <= 1
 
 -- Declare the network used to classify images. The output of the network is a
 -- score for each of the digits 0 to 9.
-network mnist : Image -> Vector Rat 10
+@network
+mnist : Image -> Vector Rat 10
 
 -- The network advises that input image `x` has label `i` if the score
 -- for label `i` is greater than the score of any other label `j`.
@@ -32,7 +33,8 @@ advises x i = forall j . j != i => mnist x ! i > mnist x ! j
 -- ball that we want the network to be robust in. Note that we declare this as
 -- a parameter which allows the value of `epsilon` to be specified at compile
 -- time rather than be fixed in the specification.
-parameter epsilon : Rat
+@parameter
+epsilon : Rat
 
 -- Next we define what it means for an image `x` to be in a ball of
 -- size epsilon around 0.
@@ -62,17 +64,21 @@ robustAround image label = forall pertubation .
 -- network is robust around images in the training dataset.
 
 -- We first specify parameter `n` the size of the training dataset. Unlike
--- the earlier parameter `epsilon`, `n` is marked as `implicit` which means
--- that it does not need to be provided manually but instead will be
--- automatically inferred by the compiler. In this case it will be inferred
--- from the training dataset passed.
-implicit parameter n : Nat
+-- the earlier parameter `epsilon`, we set the `infer` option of the
+-- parameter `n` to 'True'. This means that it does not need to be provided
+--  manually but instead will be automatically inferred by the compiler.
+-- In this case it will be inferred from the training datasets.
+@parameter(infer=True)
+n : Nat
 
 -- We next declare two datasets, the training images and the corresponding
 -- training labels. Note that we use the previously declared parameter `n`
 -- to enforce that they are the same size.
-dataset trainingImages : Vector Image n
-dataset trainingLabels : Vector Label n
+@dataset
+trainingImages : Vector Image n
+
+@dataset
+trainingLabels : Vector Label n
 
 -- We then say that the network is robust if it is robust around every pair
 -- of input images and output labels. Note the use of the `foreach`
@@ -82,5 +88,6 @@ dataset trainingLabels : Vector Label n
 -- the dataset separately. If `forall` was omitted, Vehicle would only
 -- report if the network was robust around *every* image in the dataset, a
 -- state of affairs which is unlikely to be true.
+@property
 robust : Vector Bool n
 robust = foreach i . robustAround (trainingImages ! i) (trainingLabels ! i)

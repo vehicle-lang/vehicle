@@ -16,7 +16,8 @@ Suppose you have the following network which produces two outputs:
 
 .. code-block:: agda
 
-   network f : Tensor Rat [10, 10] -> Tensor Rat [2]
+   @network
+   f : Tensor Rat [10, 10] -> Tensor Rat [2]
 
 and would like to specify that *for any input the network's first
 output is always positive*.
@@ -125,7 +126,8 @@ For example, the following is not allowed:
 
 .. code-block:: agda
 
-   network f : Vecotr Rat 2 -> Vector Rat 1
+   @network
+   f : Vector Rat 2 -> Vector Rat 1
 
    surjective : Bool
    surjective = forall y . exists x. f x == y
@@ -135,7 +137,8 @@ separate functions. For example, the following is not allowed either:
 
 .. code-block:: agda
 
-   network f : Vector Rat 2 -> Rat
+   @network
+   f : Vector Rat 2 -> Rat
 
    hits : Vector Rat 2 -> Bool
    hits y = exists x . f x == y
@@ -149,7 +152,8 @@ For example, the following *is* allowed:
 
 .. code-block:: agda
 
-   network f : Vector Rat 2 -> Rat
+   @network
+   f : Vector Rat 2 -> Rat
 
    prop1 : Bool
    prop1 y = exists x . f x >= 2

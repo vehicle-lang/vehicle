@@ -1,1 +1,2 @@
-network f : Rat
+@network
+f : Rat

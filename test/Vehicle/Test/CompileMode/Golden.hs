@@ -160,14 +160,14 @@ goldenTestSpecifications =
       , testLocation   = Tests
       , testTargets    = [AgdaBackend]
       }
-  {-
+{-
   , testSpec
-      { testName       = "simple-implicitParam"
+      { testName       = "simple-inferableParam"
       , testLocation   = Tests
       , testTargets    = [MarabouBackend]
       , testDatasets   = [("d", "dataset-rat-4.idx")]
       }
-  -}
+-}
   , testSpec
       { testName       = "simple-gaussianElim"
       , testLocation   = Tests

@@ -1,7 +1,7 @@
-Error at Line 6, Columns 1-9: The property 'property' contains a non-linear constraint which is not supported by Marabou.
-In particular the multiplication at Line 6, Columns 1-9 involves
-  1. the output of network 'f' at Line 1, Columns 13-41
+Error at Line 8, Columns 1-2: The property 'p' contains a non-linear constraint which is not supported by Marabou.
+In particular the multiplication at Line 8, Columns 1-2 involves
+  1. the output of network 'f' at Line 2, Columns 5-33
 and
-  1. the output of network 'f' at Line 1, Columns 13-41
+  1. the output of network 'f' at Line 2, Columns 5-33
 
 Fix: try avoiding it, otherwise please open an issue on the Vehicle issue tracker.

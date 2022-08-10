@@ -15,9 +15,11 @@ synonym for it and use it as follows:
 
   type Image = Tensor Rat [24, 24]
 
-  network classify : Image -> Tensor Rat [10]
+  @network
+  classify : Image -> Tensor Rat [10]
 
-  dataset trainingDataset : List Image
+  @dataset
+  trainingDataset : List Image
 
   robustAround : Image -> Bool
   robustAround x = ...

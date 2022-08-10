@@ -37,17 +37,17 @@ strongRight     = 4
 --------------------------------------------------------------------------------
 -- The network
 
--- Next we use the `network` keyword to declare the name and the type of the
+-- Next we use the `network` annotation to declare the name and the type of the
 -- neural network we are verifying. The implementation is passed to the compiler
 -- via a reference to the ONNX file at compile time.
 
-network acasXu : InputVector -> OutputVector
+@network
+acasXu : InputVector -> OutputVector
 
 --------------------------------------------------------------------------------
 -- Utilities
 
 -- The value of the constant `pi`
-pi : Rat
 pi = 3.141592
 
 -- A constraint that says the network chooses output `i` when given the
@@ -71,6 +71,7 @@ intruderDistantAndSlower x =
   x ! speed              >= 1145      and
   x ! intruderSpeed      <= 60
 
+@property
 property1 : Bool
 property1 = forall x . intruderDistantAndSlower x =>
   acasXu x ! clearOfConflict <= 1500
@@ -83,6 +84,7 @@ property1 = forall x . intruderDistantAndSlower x =>
 
 -- Tested on: N_{x,y} for all x ≥ 2 and for all y
 
+@property
 property2 : Bool
 property2 = forall x . intruderDistantAndSlower x =>
   (exists j . (acasXu x ! j) > (acasXu x ! clearOfConflict))
@@ -106,6 +108,7 @@ movingTowards x =
   x ! speed           >= 980   and
   x ! intruderSpeed   >= 960
 
+@property
 property3 : Bool
 property3 = forall x . directlyAhead x and movingTowards x =>
   not (advises clearOfConflict x)
@@ -125,6 +128,7 @@ movingAway x =
   1000 <= x ! speed                  and
   700  <= x ! intruderSpeed   <= 800
 
+@property
 property4 : Bool
 property4 = forall x . directlyAhead x and movingAway x =>
   not (advises clearOfConflict x)
@@ -145,6 +149,7 @@ nearAndApproachingFromLeft x =
   100 <= x ! speed              <= 400         and
   0   <= x ! intruderSpeed      <= 400
 
+@property
 property5 : Bool
 property5 = forall x . nearAndApproachingFromLeft x => advises strongRight x
 
@@ -163,6 +168,7 @@ intruderFarAway x =
   100   <= x ! speed              <= 1200                                   and
   0     <= x ! intruderSpeed      <= 1200
 
+@property
 property6 : Bool
 property6 = forall x . intruderFarAway x => advises clearOfConflict x
 
@@ -181,6 +187,7 @@ largeVerticalSeparation x =
   100  <= x ! speed              <= 1200   and
   0    <= x ! intruderSpeed      <= 1200
 
+@property
 property7 : Bool
 property7 = forall x . largeVerticalSeparation x =>
   not (advises strongLeft x) and not (advises strongRight x)
@@ -201,6 +208,7 @@ largeVerticalSeparationAndPreviousWeakLeft x =
   600  <= x ! speed              <= 1200     and
   600  <= x ! intruderSpeed      <= 1200
 
+@property
 property8 : Bool
 property8 = forall x . largeVerticalSeparationAndPreviousWeakLeft x =>
   (advises clearOfConflict x) or (advises weakLeft x)
@@ -221,6 +229,7 @@ previousWeakRightAndNearbyIntruder x =
   100  <= x ! speed              <= 150        and
   0    <= x ! intruderSpeed      <= 150
 
+@property
 property9 : Bool
 property9 = forall x . previousWeakRightAndNearbyIntruder x =>
   advises strongLeft x
@@ -240,5 +249,6 @@ intruderFarAway2 x =
   900   <= x ! speed              <= 1200        and
   600   <= x ! intruderSpeed      <= 1200
 
+@property
 property10 : Bool
 property10 = forall x . intruderFarAway2 x => advises clearOfConflict x

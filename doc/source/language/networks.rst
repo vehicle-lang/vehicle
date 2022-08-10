@@ -8,11 +8,12 @@ Networks
 Basics
 ------
 
-Networks are declared as follows using the ``network`` keyword:
+Networks are declared as follows using the ``network`` annotation:
 
 .. code-block:: agda
 
-   network myNetwork : Tensor Rat [784] -> Tensor Rat [10]
+   @network
+   myNetwork : Tensor Rat [784] -> Tensor Rat [10]
 
 At the moment Vehicle supports networks with a single input and output node.
 Therefore expected type is of the form ``Tensor Rat dims1 -> Tensor Rat dims1``
@@ -56,4 +57,5 @@ The following are not currently allowed:
 
    -- Reason: boolean inputs are not current allowed
    -- Justification: lack of support for verifiers or training methods
-   network myNetwork : Tensor Bool [4] -> Tensor Rat [1]
+   @network
+   myNetwork : Tensor Bool [4] -> Tensor Rat [1]

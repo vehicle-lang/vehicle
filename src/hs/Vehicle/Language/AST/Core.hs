@@ -11,7 +11,7 @@ import Data.Maybe (isJust)
 
 import Vehicle.Prelude
 import Vehicle.Resource (ResourceType)
-import Vehicle.Language.AST.Builtin(Builtin, Linearity, Polarity)
+import Vehicle.Language.AST.Builtin(Builtin, Linearity (..), Polarity (..))
 import Vehicle.Language.AST.Visibility
 import Vehicle.Language.AST.Provenance
 import Vehicle.Language.AST.Relevance
@@ -320,6 +320,9 @@ data PropertyInfo
   deriving (Show, Eq, Generic)
 
 instance NFData PropertyInfo
+
+emptyPropertyInfo :: PropertyInfo
+emptyPropertyInfo = PropertyInfo Constant Unquantified
 
 isProperty :: Maybe PropertyInfo -> Bool
 isProperty = isJust

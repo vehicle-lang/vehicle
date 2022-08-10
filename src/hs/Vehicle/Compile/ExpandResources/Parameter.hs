@@ -38,7 +38,7 @@ parseParameterValue parameterValues decl@(ident, _) paramType = do
 
     IndexType _ (FreeVar _ varIdent)
       | Map.member (nameOf varIdent) implicitParams -> throwError $
-        ParameterTypeImplicitParamIndex decl varIdent
+        ParameterTypeInferableParameterIndex decl varIdent
 
     IndexType{} -> throwError $
       ParameterTypeVariableSizeIndex decl paramType

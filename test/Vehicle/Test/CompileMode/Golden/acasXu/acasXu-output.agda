@@ -57,8 +57,8 @@ strongRight[Index-5] = # 4
 
 postulate acasXu : InputVector → OutputVector
 
-pi : ℚ
-pi = ℤ.+ 392699 ℚ./ 125000
+pi[Rat] : ℚ
+pi[Rat] = ℤ.+ 392699 ℚ./ 125000
 
 Advises : Fin 5 → (InputVector → Set)
 Advises i x = ∀ (j : Fin 5) → i ≢ j → acasXu x i ℚ.< acasXu x j
@@ -100,7 +100,7 @@ abstract
     }
 
 NearAndApproachingFromLeft : InputVector → Set
-NearAndApproachingFromLeft x = (ℤ.+ 250 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 400 ℚ./ 1) × ((ℤ.+ 1 ℚ./ 5 ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ ℤ.+ 2 ℚ./ 5) × ((ℚ.- pi ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 400 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 400 ℚ./ 1))))
+NearAndApproachingFromLeft x = (ℤ.+ 250 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 400 ℚ./ 1) × ((ℤ.+ 1 ℚ./ 5 ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ ℤ.+ 2 ℚ./ 5) × ((ℚ.- pi[Rat] ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ ℚ.- pi[Rat] ℚ.+ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 400 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 400 ℚ./ 1))))
 
 abstract
   property5 : ∀ (x : Vector ℚ 5) → NearAndApproachingFromLeft x → Advises strongRight[Index-5] x
@@ -109,7 +109,7 @@ abstract
     }
 
 IntruderFarAway : InputVector → Set
-IntruderFarAway x = (ℤ.+ 12000 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 62000 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 10) ⊎ ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
+IntruderFarAway x = (ℤ.+ 12000 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 62000 ℚ./ 1) × ((ℚ.- pi[Rat] ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 10) ⊎ ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ pi[Rat]) × ((ℚ.- pi[Rat] ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ ℚ.- pi[Rat] ℚ.+ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
 abstract
   property6 : ∀ (x : Vector ℚ 5) → IntruderFarAway x → Advises clearOfConflict[Index-5] x
@@ -118,7 +118,7 @@ abstract
     }
 
 LargeVerticalSeparation : InputVector → Set
-LargeVerticalSeparation x = (ℤ.+ 0 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ pi) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
+LargeVerticalSeparation x = (ℤ.+ 0 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℚ.- pi[Rat] ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ pi[Rat]) × ((ℚ.- pi[Rat] ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ pi[Rat]) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
 abstract
   property7 : ∀ (x : Vector ℚ 5) → LargeVerticalSeparation x → ¬ Advises strongLeft[Index-5] x × ¬ Advises strongRight[Index-5] x
@@ -127,7 +127,7 @@ abstract
     }
 
 LargeVerticalSeparationAndPreviousWeakLeft : InputVector → Set
-LargeVerticalSeparationAndPreviousWeakLeft x = (ℤ.+ 0 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ ℚ.- (ℤ.+ 3 ℚ./ 4) ℚ.* pi) × ((ℚ.- (ℤ.+ 1 ℚ./ 10) ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ ℤ.+ 1 ℚ./ 10) × ((ℤ.+ 600 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
+LargeVerticalSeparationAndPreviousWeakLeft x = (ℤ.+ 0 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℚ.- pi[Rat] ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ ℚ.- (ℤ.+ 3 ℚ./ 4) ℚ.* pi[Rat]) × ((ℚ.- (ℤ.+ 1 ℚ./ 10) ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ ℤ.+ 1 ℚ./ 10) × ((ℤ.+ 600 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
 abstract
   property8 : ∀ (x : Vector ℚ 5) → LargeVerticalSeparationAndPreviousWeakLeft x → Advises clearOfConflict[Index-5] x ⊎ Advises weakLeft[Index-5] x
@@ -136,7 +136,7 @@ abstract
     }
 
 PreviousWeakRightAndNearbyIntruder : InputVector → Set
-PreviousWeakRightAndNearbyIntruder x = (ℤ.+ 2000 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 7000 ℚ./ 1) × ((ℚ.- (ℤ.+ 2 ℚ./ 5) ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 50)) × ((ℚ.- pi ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 150 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 150 ℚ./ 1))))
+PreviousWeakRightAndNearbyIntruder x = (ℤ.+ 2000 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 7000 ℚ./ 1) × ((ℚ.- (ℤ.+ 2 ℚ./ 5) ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 50)) × ((ℚ.- pi[Rat] ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ ℚ.- pi[Rat] ℚ.+ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 150 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 150 ℚ./ 1))))
 
 abstract
   property9 : ∀ (x : Vector ℚ 5) → PreviousWeakRightAndNearbyIntruder x → Advises strongLeft[Index-5] x
@@ -145,7 +145,7 @@ abstract
     }
 
 IntruderFarAway2 : InputVector → Set
-IntruderFarAway2 x = (ℤ.+ 36000 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 900 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
+IntruderFarAway2 x = (ℤ.+ 36000 ℚ./ 1 ℚ.≤ x distanceToIntruder[Index-5] × x distanceToIntruder[Index-5] ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder[Index-5] × x angleToIntruder[Index-5] ℚ.≤ pi[Rat]) × ((ℚ.- pi[Rat] ℚ.≤ x intruderHeading[Index-5] × x intruderHeading[Index-5] ℚ.≤ ℚ.- pi[Rat] ℚ.+ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 900 ℚ./ 1 ℚ.≤ x speed[Index-5] × x speed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed[Index-5] × x intruderSpeed[Index-5] ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
 abstract
   property10 : ∀ (x : Vector ℚ 5) → IntruderFarAway2 x → Advises clearOfConflict[Index-5] x

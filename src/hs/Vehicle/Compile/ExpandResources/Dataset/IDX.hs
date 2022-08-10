@@ -105,7 +105,7 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
         Just (Just existingEntry@(_, _, value)) ->
           if value == actualDim
             then return value
-            else throwError $ ImplicitParameterContradictory dimIdent existingEntry newEntry
+            else throwError $ InferableParameterContradictory dimIdent existingEntry newEntry
 
     _ -> variableSizeError ctx expectedDim
 

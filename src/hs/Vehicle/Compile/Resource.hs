@@ -14,7 +14,7 @@ type ParameterContext = Set Symbol
 --------------------------------------------------------------------------------
 -- Implicit parameters
 
-type ImplicitParameterContext =
+type InferableParameterContext =
   Map Symbol (Maybe (DeclProvenance, ResourceType, Int))
 
 --------------------------------------------------------------------------------

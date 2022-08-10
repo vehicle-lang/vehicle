@@ -38,7 +38,7 @@ subtraction : Tensor ℚ (2 ∷ (2 ∷ []))
 subtraction = subVector twoD twoD
 
 abstract
-  property : ∀ (i : Fin 2) → ∀ (j : Fin 2) → addVector (f subtraction) addition i j ℚ.≥ ℤ.+ 0 ℚ./ 1
-  property = checkSpecification record
+  p : ∀ (i : Fin 2) → ∀ (j : Fin 2) → addVector (f subtraction) addition i j ℚ.≥ ℤ.+ 0 ℚ./ 1
+  p = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

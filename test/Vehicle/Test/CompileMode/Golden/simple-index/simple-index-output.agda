@@ -14,38 +14,20 @@ open import Relation.Binary.PropositionalEquality
 
 module simple-index-output where
 
-abstract
-  eqIndex : (Fin 1 ∋ # 0) ≡ (Fin 2 ∋ # 1)
-  eqIndex = checkSpecification record
-    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    }
+eqIndex : Set
+eqIndex = (Fin 1 ∋ # 0) ≡ (Fin 2 ∋ # 1)
 
-abstract
-  neqIndex : (Fin 1 ∋ # 0) ≢ (Fin 2 ∋ # 1)
-  neqIndex = checkSpecification record
-    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    }
+neqIndex : Set
+neqIndex = (Fin 1 ∋ # 0) ≢ (Fin 2 ∋ # 1)
 
-abstract
-  leqIndex : (Fin 1 ∋ # 0) Fin.≤ (Fin 2 ∋ # 1)
-  leqIndex = checkSpecification record
-    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    }
+leqIndex : Set
+leqIndex = (Fin 1 ∋ # 0) Fin.≤ (Fin 2 ∋ # 1)
 
-abstract
-  ltIndex : (Fin 1 ∋ # 0) Fin.< (Fin 2 ∋ # 1)
-  ltIndex = checkSpecification record
-    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    }
+ltIndex : Set
+ltIndex = (Fin 1 ∋ # 0) Fin.< (Fin 2 ∋ # 1)
 
-abstract
-  geqIndex : (Fin 1 ∋ # 0) Fin.≥ (Fin 2 ∋ # 1)
-  geqIndex = checkSpecification record
-    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    }
+geqIndex : Set
+geqIndex = (Fin 1 ∋ # 0) Fin.≥ (Fin 2 ∋ # 1)
 
-abstract
-  gtIndex : (Fin 1 ∋ # 0) Fin.> (Fin 2 ∋ # 1)
-  gtIndex = checkSpecification record
-    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    }
+gtIndex : Set
+gtIndex = (Fin 1 ∋ # 0) Fin.> (Fin 2 ∋ # 1)

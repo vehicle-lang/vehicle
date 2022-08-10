@@ -17,11 +17,11 @@ type MonadExpandResources m =
   ( MonadCompile m
   , MonadReader (Resources, Bool, DeclCtx CheckedExpr) m
   , MonadWriter ResourceContext m
-  , MonadState ImplicitParameterContext m
+  , MonadState InferableParameterContext m
   )
 
-isImplicitParameter :: MonadExpandResources m => Identifier -> m Bool
-isImplicitParameter ident = gets (Map.member (nameOf ident))
+isInferableParameter :: MonadExpandResources m => Identifier -> m Bool
+isInferableParameter ident = gets (Map.member (nameOf ident))
 
 --------------------------------------------------------------------------------
 -- Resource contexts

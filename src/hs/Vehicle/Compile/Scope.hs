@@ -5,7 +5,7 @@ module Vehicle.Compile.Scope
   ) where
 
 import Control.Monad.Except ( MonadError(..) )
-import Control.Monad.Reader (MonadReader(..), runReaderT)
+import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
 import Control.Monad.State
 import Data.Bifunctor (Bifunctor(..))
 import Data.List (elemIndex)
@@ -62,8 +62,14 @@ scopeDecls = \case
   []       -> return []
   (d : ds) -> do
     d' <- scopeDecl d
-    ds' <- bindDecl (identifierOf d') (scopeDecls ds)
-    return (d' : ds')
+
+    let ident = identifierOf d'
+    exists <- asks (Map.member ident)
+    if exists
+      then throwError $ DuplicateName (provenanceOf d) (nameOf ident)
+      else do
+        ds' <- bindDecl (identifierOf d') (scopeDecls ds)
+        return (d' : ds')
 
 scopeDecl :: MonadScope m => InputDecl -> m UncheckedDecl
 scopeDecl = \case
@@ -143,7 +149,7 @@ bindVar binder update = do
 
 -- |Find the index for a given name of a given sort.
 getVar :: MonadScopeExpr m => Provenance -> NamedVar -> m DBVar
-getVar ann symbol = do
+getVar p symbol = do
   (declCtx, generaliseOverMissingVariables) <- ask
   (boundCtx, varsToGeneralise) <- get
 
@@ -152,8 +158,9 @@ getVar ann symbol = do
     Nothing ->
       if Map.member (Identifier symbol) declCtx
         then return $ Free (Identifier symbol)
-      else if generaliseOverMissingVariables
-        then do
+      else if not generaliseOverMissingVariables
+        then throwError $ UnboundName p  symbol
+      else do
           -- Assumes that we're generalising in reverse order to the occurrences
           -- of unbound variables:
           -- e.g.
@@ -163,10 +170,8 @@ getVar ann symbol = do
           logDebug MaxDetail $
             "Variable" <+> squotes (pretty symbol) <+> "should be generalised over"
 
-          let newVarsToGeneralise = (ann, symbol) : varsToGeneralise
+          let newVarsToGeneralise = (p, symbol) : varsToGeneralise
           let newBoundCtx = boundCtx <> [Just symbol]
           put (newBoundCtx, newVarsToGeneralise)
           let dbIndex = length boundCtx
           return $ Bound dbIndex
-      else
-        throwError $ UnboundName symbol (provenanceOf ann)

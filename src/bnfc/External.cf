@@ -6,6 +6,14 @@ comment "{-" "-}";
 -- * Tokens
 
 -- NOTE: Token rules are tried IN ORDER, so the order matters!
+position token Boolean  ({"True"} | {"False"});
+position token Natural  (digit+);
+position token Rational (digit+ '.' digit+);
+
+position token TokNetwork   {"@network"};
+position token TokDataset   {"@dataset"};
+position token TokParameter {"@parameter"};
+position token TokProperty  {"@property"};
 
 position token TokArrow     {"->"};
 position token TokForallT   {"forallT"};
@@ -15,6 +23,7 @@ position token TokElse      {"else"};
 position token TokDot       {"."};
 position token TokElemOf    {":"};
 position token TokLambda    {"\\"};
+position token TokLet       {"let"};
 
 position token TokUnit      {"Unit"};
 position token TokBool      {"Bool"};
@@ -52,17 +61,11 @@ position token TokAt        {"!"};
 position token TokMap       {"map"};
 position token TokFold      {"fold"};
 
-position token TokTrue      {"True"};
-position token TokFalse     {"False"};
-
-position token TokLet {"let"};
-
 position token Name        (letter (letter | digit | '_')*) ;
 position token HoleToken   ({"?"} (letter | digit | '_')*);
 position token TypeToken   ({"Type"} digit+);
 
-position token Natural  (digit+);
-position token Rational (digit+ '.' digit+);
+position token DeclAnnOptionValue ((letter | digit)+);
 
 separator Name "";
 
@@ -95,8 +98,7 @@ separator LetDecl ",";
 UnitLiteral.  Lit ::= "()";
 NatLiteral.   Lit ::= Natural;
 RatLiteral.   Lit ::= Rational;
-LitTrue.      Lit ::= TokTrue;
-LitFalse.     Lit ::= TokFalse;
+BoolLiteral.  Lit ::= Boolean;
 
 
 -- * Expressions
@@ -175,18 +177,33 @@ Index.   Expr14 ::= TokIndex Expr15;
 coercions Expr 15;
 separator Expr ",";
 
+-- * Annotations
+
+Network.   DeclAnnName ::= TokNetwork;
+Dataset.   DeclAnnName ::= TokDataset;
+Parameter. DeclAnnName ::= TokParameter;
+Property.  DeclAnnName ::= TokProperty;
+
+-- * Annotation options
+
+BooleanOption. DeclAnnOption ::= Name "=" Boolean;
+
+separator DeclAnnOption ",";
+
+-- * Declarations annotations
+
+DeclAnnWithOpts.    DeclAnnOpts ::= "(" [DeclAnnOption] ")";
+DeclAnnWithoutOpts. DeclAnnOpts ::= "";
+
 -- * Declarations
 
-DeclNetw.      Decl ::= "network"            Name TokElemOf Expr;
-DeclData.      Decl ::= "dataset"            Name TokElemOf Expr;
-DeclParam.     Decl ::= "parameter"          Name TokElemOf Expr;
-DeclImplParam. Decl ::= "implicit parameter" Name TokElemOf Expr;
-DefType.       Decl ::= "type" Name [Binder] "=" Expr;
-DefFunType.    Decl ::= Name TokElemOf Expr;
-DefFunExpr.    Decl ::= Name [Binder] "=" Expr;
+
+DefAnn.       Decl ::= DeclAnnName DeclAnnOpts;
+DefType.      Decl ::= "type" Name [Binder] "=" Expr;
+DefFunType.   Decl ::= Name TokElemOf Expr;
+DefFunExpr.   Decl ::= Name [Binder] "=" Expr;
 
 separator Decl ";";
-
 
 -- * Program
 

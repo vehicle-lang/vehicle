@@ -37,7 +37,7 @@ instance Elab B.Decl V.InputDecl where
     B.DeclNetw      n t   -> elabResource n t Network
     B.DeclData      n t   -> elabResource n t Dataset
     B.DeclParam     n t   -> elabResource n t Parameter
-    B.DeclImplParam n t   -> elabResource n t ImplicitParameter
+    B.DeclImplParam n t   -> elabResource n t InferableParameter
     B.DefFun        n t e -> V.DefFunction  (tkProvenance n) Nothing <$> elab n <*> elab t <*> elab e
     B.DeclPost      n t   -> V.DefPostulate (tkProvenance n)         <$> elab n <*> elab t
 

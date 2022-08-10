@@ -1,11 +1,14 @@
-network f : Vector Rat 1 -> Vector Rat 1
+@network
+f : Vector Rat 1 -> Vector Rat 1
 
 -- bool : Bool
 -- bool = forall (x : Int) . True
 
+@property
 expandedExpr : Bool
 expandedExpr = forall x . x ! 0 >= f x ! 0
 
+@property
 sequential : Bool
 sequential = forall x y . f x ! 0 >= f y ! 0
 

@@ -11,7 +11,6 @@ import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Void ( Void )
 import Data.Text ( Text, pack )
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Foldable (fold)
 
 import Vehicle.Prelude
 import Vehicle.Compile.Error
@@ -130,43 +129,84 @@ instance MeaningfulError CompileError where
     -- Elaboration external --
     --------------------------
 
-    MissingDefFunExpr p name -> UError $ UserError
+    FunctionNotGivenBody p name -> UError $ UserError
       { provenance = p
-      , problem    = "missing definition for the declaration" <+> squotes (pretty name)
-      , fix        = Just $ "add a definition for the declaration, e.g."
-                    <> line <> line
-                    <> "addOne :: Int -> Int" <> line
-                    <> "addOne x = x + 1     <-----   declaration definition"
+      , problem    = "no definition found for the declaration" <+> quotePretty name <+> "."
+      , fix        = Just $ "add a definition for" <+> quotePretty name <+>
+                      "or mark it with an annotation, e.g. '@network'"
       }
 
-    DuplicateName p name -> UError $ UserError
-      { provenance = fold p
-      , problem    = "multiple definitions found with the name" <+> squotes (pretty name)
-      , fix        = Just "remove or rename the duplicate definitions"
+    PropertyNotGivenBody p name -> UError $ UserError
+      { provenance = p
+      , problem    = "missing definition for property" <+> quotePretty name <> "."
+      , fix        = Just $ "add a definition for" <+> quotePretty name <+> "."
+      }
+
+    ResourceGivenBody p resource name -> UError $ UserError
+      { provenance = p
+      , problem    = "The declaration" <+> quotePretty name <+> "should not have a definition" <+>
+                     "as it has been marked with a" <+> quotePretty resource <+> "annotation."
+      , fix        = Just $ "either remove the definition for" <+> quotePretty name <+>
+                    "or remove the" <+> quotePretty resource <+> "annotation."
+      }
+
+    AnnotationWithNoDeclaration p name -> UError $ UserError
+      { provenance = p
+      , problem    = "unattached annotation" <+> quotePretty name
+      , fix        = Just "either attach the annotation to a declaration or remove it entirely"
+      }
+
+    FunctionWithMismatchedNames p name1 name2 -> UError $ UserError
+      { provenance = p
+      , problem    = "mismatch in function declaration names:" <+> quotePretty name1 <+> "and" <+> quotePretty name2 <> "."
+      , fix        = Just "ensure the function definition has the same name as the declaration it follows."
       }
 
     MissingVariables p symbol -> UError $ UserError
       { provenance = p
-      , problem    = "expected at least one variable name after" <+> squotes (pretty symbol)
-      , fix        = Just $ "add one or more names after" <+> squotes (pretty symbol)
+      , problem    = "expected at least one variable name after" <+> quotePretty symbol
+      , fix        = Just $ "add one or more names after" <+> quotePretty symbol
       }
 
     UnchainableOrders p prevOrder currentOrder -> UError $ UserError
       { provenance = p
-      , problem    = "cannot chain" <+> squotes (pretty prevOrder) <+>
-                     "and" <+> squotes (pretty currentOrder)
+      , problem    = "cannot chain" <+> quotePretty prevOrder <+>
+                     "and" <+> quotePretty currentOrder
       , fix        = Just "split chained orders into a conjunction"
+      }
+
+    InvalidAnnotationOption p annotationName parameterName suggestions -> UError $ UserError
+      { provenance = p
+      , problem    = "unknown option" <+> quotePretty parameterName <+>
+                     "for" <+> quotePretty annotationName <+> "annotation."
+      , fix        =
+          if null suggestions
+            then Nothing
+            else Just $ "did you mean" <+> quotePretty (head suggestions) <> "?"
+      }
+
+    InvalidAnnotationOptionValue p parameterName parameterValue -> UError $ UserError
+      { provenance = p
+      , problem    = "unable to parse the value" <+> quotePretty parameterValue <+>
+                     "for option" <+> quotePretty parameterName
+      , fix        = Nothing
       }
 
     -------------
     -- Scoping --
     -------------
 
-    UnboundName name p -> UError $ UserError
+    UnboundName p name -> UError $ UserError
       { provenance = p
       -- TODO can use Levenschtein distance to search contexts/builtins
       , problem    = "The name" <+> squotes (pretty name) <+> "is not in scope"
       , fix        = Nothing
+      }
+
+    DuplicateName p name -> UError $ UserError
+      { provenance = p
+      , problem    = "multiple declarations found with the name" <+> quotePretty name
+      , fix        = Just "remove or rename the duplicate definitions"
       }
 
     ------------
@@ -447,7 +487,7 @@ instance MeaningfulError CompileError where
       , problem    = "The use of implicit parameters in the type of network declarations" <+>
                      "is not supported."
       , fix        = Just $ "instanstiate the" <+>
-                      prettyResource ImplicitParameter implIdent <+>
+                      prettyResource InferableParameter implIdent <+>
                       "to an explicit value"
       }
 
@@ -578,29 +618,27 @@ instance MeaningfulError CompileError where
                       "or ensure the value provided is non-negative."
       }
 
-    ParameterTypeImplicitParamIndex (ident, p) _varIndent -> UError $ UserError
+    ParameterTypeInferableParameterIndex (ident, p) _varIndent -> UError $ UserError
       { provenance = p
-      , problem    = "The use of an" <+> pretty ImplicitParameter <+> "for the size of" <+>
+      , problem    = "The use of an" <+> pretty InferableParameter <+> "for the size of" <+>
                      "an" <+> pretty Index <+> "in the type of" <+>
                      prettyResource Parameter ident <+>  "is not currently supported."
-      , fix        = Just $ "replace the 'implicit parameter' with a concrete value or" <+>
+      , fix        = Just $ "replace the inferable parameter with a concrete value or" <+>
                      "open an issue on the Github tracker to request support."
       }
 
-    -- Implicit parameter errors
-
-    ImplicitParameterTypeUnsupported (ident, p) expectedType -> UError $ UserError
+    InferableParameterTypeUnsupported (ident, p) expectedType -> UError $ UserError
       { provenance = p
-      , problem    = unsupportedResourceTypeDescription ImplicitParameter ident expectedType <>
-                     "." <+> supportedImplicitParameterTypeDescription
-      , fix        = Just "change the implicit parameter type in the specification."
+      , problem    = unsupportedResourceTypeDescription InferableParameter ident expectedType <>
+                     "." <+> supportedInferableParameterTypeDescription
+      , fix        = Just "change the inferable parameter type in the specification."
       }
 
-    ImplicitParameterContradictory ident ((ident1, _p1), r1, v1) ((ident2, p2), r2, v2) ->
+    InferableParameterContradictory ident ((ident1, _p1), r1, v1) ((ident2, p2), r2, v2) ->
       UError $ UserError
       { provenance = p2
-      , problem    = "Found contradictory for values for" <+>
-                     prettyResource ImplicitParameter ident <> "." <>
+      , problem    = "Found contradictory values for" <+>
+                     prettyResource InferableParameter ident <> "." <>
                      "Inferred the value" <+> squotes (pretty v1) <+> "from" <+>
                      prettyResource r1 ident1 <>
                      "but inferred the value" <+> squotes (pretty v2) <+> "from" <+>
@@ -608,14 +646,24 @@ instance MeaningfulError CompileError where
       , fix        = Just "make sure the provided resources are consistent with each other."
       }
 
-    ImplicitParameterUninferrable (ident, p) ->
+    InferableParameterUninferrable (ident, p) ->
       UError $ UserError
       { provenance = p
       , problem    = "Unable to infer the value of" <+>
-                     prettyResource ImplicitParameter ident <> "."
-      , fix        = Just $ "For an implicit parameter to be inferable, it must" <>
-                      "be used as the dimension of a dataset" <>
+                     prettyResource Parameter ident <> "."
+      , fix        = Just $ "For a parameter's value to be inferable, it must" <+>
+                      "be used as the dimension of a dataset" <+>
                       "(networks will be supported later)."
+      }
+
+    -- Property
+
+    PropertyTypeUnsupported (ident, p) expectedType -> UError $ UserError
+      { provenance = p
+      , problem    = "Invalid type" <+> squotes (prettyFriendlyDBClosed expectedType) <+>
+                     "for" <+> prettyResource Parameter ident <> "."
+      , fix        = Just $ "change the type of" <+> quotePretty ident <+> "to" <+>
+                       "one of `Bool`, `Vector Bool n` or `Tensor Bool n`" <> "."
       }
 
     --------------------
@@ -738,8 +786,8 @@ supportedNetworkTypeDescription =
   indent 2 "Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]" <> line <>
   "where 'a_i' and 'b_i' are all constants."
 
-supportedImplicitParameterTypeDescription :: Doc a
-supportedImplicitParameterTypeDescription =
+supportedInferableParameterTypeDescription :: Doc a
+supportedInferableParameterTypeDescription =
   "Only implicit parameters of type 'Nat' are allowed."
 
 unsolvedConstraintError :: Constraint -> [DBBinding] -> Doc a

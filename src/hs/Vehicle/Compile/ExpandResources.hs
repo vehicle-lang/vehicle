@@ -28,8 +28,8 @@ addParameter :: MonadExpandResources m => Symbol -> m ()
 addParameter ident =
   tell (ResourceContext (Set.singleton ident) mempty mempty)
 
-addImplicitParameter :: MonadExpandResources m => Symbol -> m ()
-addImplicitParameter ident =
+addInferableParameter :: MonadExpandResources m => Symbol -> m ()
+addInferableParameter ident =
   modify (Map.insert ident Nothing)
 
 addDataset :: MonadExpandResources m => Symbol -> m ()
@@ -54,7 +54,7 @@ expandResources resources@Resources{..} expandDatasets prog =
       runStateT (runWriterT (runReaderT (processProg prog)
         (resources, expandDatasets, mempty))) mempty
 
-    finalProg <- insertImplicitParameters implicitParams prog'
+    finalProg <- insertInferableParameters implicitParams prog'
 
     warnIfUnusedResources Parameter (Map.keysSet parameters) parameterContext
     warnIfUnusedResources Dataset   (Map.keysSet datasets)   datasetContext
@@ -88,8 +88,8 @@ processDecl d@(DefResource p resourceType ident declType) = do
     }
 
   case resourceType of
-    ImplicitParameter -> do
-      addImplicitParameter name
+    InferableParameter -> do
+      addInferableParameter name
       return (Just d, id)
 
     Parameter -> do
@@ -112,14 +112,14 @@ processDecl d@(DefResource p resourceType ident declType) = do
       addNetworkType name networkType
       return (Nothing, id)
 
-insertImplicitParameters :: MonadCompile m => ImplicitParameterContext -> CheckedProg -> m CheckedProg
-insertImplicitParameters implicitParams = traverseProg $ \case
+insertInferableParameters :: MonadCompile m => InferableParameterContext -> CheckedProg -> m CheckedProg
+insertInferableParameters implicitParams = traverseProg $ \case
   r@DefFunction{}  -> return r
   r@DefPostulate{} -> return r
-  DefResource p ImplicitParameter ident t -> do
+  DefResource p InferableParameter ident t -> do
     case Map.lookup (nameOf ident) implicitParams of
       Nothing -> compilerDeveloperError "Somehow missed the implicit parameter on the first pass"
-      Just Nothing -> throwError $ ImplicitParameterUninferrable (ident, p)
+      Just Nothing -> throwError $ InferableParameterUninferrable (ident, p)
       Just (Just (_, _, v)) -> return $ DefFunction p Nothing ident t (NatLiteral p v)
   r@DefResource{} ->
     compilerDeveloperError $ "Found unexpanded resource: " <+> pretty (identifierOf r)

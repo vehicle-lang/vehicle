@@ -1,1 +1,2 @@
-parameter n : Index 5
+@parameter
+n : Index 5

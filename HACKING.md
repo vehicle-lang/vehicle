@@ -44,7 +44,7 @@ command in various ways):
 * `cabal run build accept-basic-tests` - will run the tests and accept the changes to any of the
   changed output files. *Warning*: Only run this if you are okay with the changes to the output!
 
-* `cabal test --test-show-details=always --test-option="-p /X/"` - will only run tests
+* `cabal test vehicle-executable-tests --test-show-details=always --test-option="-p /X/"` - will only run tests
   with `X` in their name. If you only want to run a test for a particular backend `Y`
   change the `X` to `X-Y`, e.g. `quantifier-Agda`.
 

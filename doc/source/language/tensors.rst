@@ -63,7 +63,8 @@ created by the same three mechanisms:
 
    .. code-block:: agda
 
-     dataset myLargeTensor : Tensor Rat [10000, 10000]
+     @dataset
+     myLargeTensor : Tensor Rat [10000, 10000]
 
    See the section on datasets for more details.
 

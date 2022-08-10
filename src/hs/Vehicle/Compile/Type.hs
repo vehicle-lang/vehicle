@@ -107,10 +107,10 @@ typeCheckDecl decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
     DefPostulate p _ _ -> do
       return $ DefPostulate p ident checkedType
 
-    DefFunction p _ _ _ body -> do
+    DefFunction p propertyInfo _ _ body -> do
       checkedBody <- logCompilerPass MidDetail (passDoc <+> "body of" <+> identDoc) $ do
         checkExpr checkedType body
-      let checkedDecl = DefFunction p Nothing ident checkedType checkedBody
+      let checkedDecl = DefFunction p propertyInfo ident checkedType checkedBody
 
       solveConstraints (Just checkedDecl)
 
@@ -259,26 +259,25 @@ getDefaultCandidates maybeDecl = do
 -------------------------------------------------------------------------------
 -- Property information extraction
 
-updatePropertyInfo :: MonadLogger m => CheckedDecl -> m CheckedDecl
+updatePropertyInfo :: MonadCompile m => CheckedDecl -> m CheckedDecl
 updatePropertyInfo = \case
   r@DefResource{}       -> return r
   r@DefPostulate{}      -> return r
-  DefFunction p _ ident t e -> do
-    let propertyInfo = getPropertyInfo t
-    case propertyInfo of
-      Nothing -> return ()
-      Just (PropertyInfo linearity polarity) -> logDebug MinDetail $
+  r@(DefFunction p maybePropertyInfo ident t e) -> case maybePropertyInfo of
+    Nothing -> return r
+    Just _  -> do
+      propertyInfo@(PropertyInfo linearity polarity) <- getPropertyInfo (ident, p) t
+      logDebug MinDetail $
         "Identified" <+> squotes (pretty ident) <+> "as a property of type:" <+>
           pretty linearity <+> pretty polarity
-    return $ DefFunction p propertyInfo ident t e
-  where
-    getPropertyInfo :: CheckedType -> Maybe PropertyInfo
-    getPropertyInfo = \case
-      (AnnBoolType _ (Builtin _ (Linearity lin)) (Builtin _ (Polarity pol))) ->
-        Just $ PropertyInfo lin pol
-      (VectorType _ tElem _) -> getPropertyInfo tElem
-      (TensorType _ tElem _) -> getPropertyInfo tElem
-      _                      -> Nothing
+      return $ DefFunction p (Just propertyInfo) ident t e
+
+getPropertyInfo :: MonadCompile m => DeclProvenance -> CheckedType -> m PropertyInfo
+getPropertyInfo decl = \case
+  (AnnBoolType _ (Builtin _ (Linearity lin)) (Builtin _ (Polarity pol))) -> return $ PropertyInfo lin pol
+  (VectorType _ tElem _) -> getPropertyInfo decl tElem
+  (TensorType _ tElem _) -> getPropertyInfo decl tElem
+  otherType              -> throwError $ PropertyTypeUnsupported decl otherType
 
 -------------------------------------------------------------------------------
 -- Unsolved constraint checks

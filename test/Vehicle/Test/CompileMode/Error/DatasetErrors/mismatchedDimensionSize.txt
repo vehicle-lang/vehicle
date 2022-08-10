@@ -1,3 +1,3 @@
-Error at Line 2, Columns 9-24: Mismatch in the size of the first dimension of dataset 'trainingDataset'.
+Error at Line 3, Columns 1-16: Mismatch in the size of the first dimension of dataset 'trainingDataset'.
 According to the specification it should be '5' but was actually found to be '4' when reading 'test/datasets/dataset-nat-4.idx'.
 Fix: change the dimensions of 'trainingDataset' in the specification or check that 'dataset-nat-4.idx' is in the format you were expecting.

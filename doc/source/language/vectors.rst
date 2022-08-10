@@ -73,7 +73,8 @@ There are three ways to create an instance of a vector:
 
    .. code-block:: agda
 
-     dataset myVector4 : Vector Rat 10000
+     @dataset
+     myVector4 : Vector Rat 10000
 
    which allows the loading of large vectors with no regular structure.
    See the section on datasets for more details.
@@ -141,7 +142,8 @@ For example:
 
 .. code-block:: agda
 
-   dataset myVector : Vector Rat [10]
+   @dataset
+   myVector : Vector Rat [10]
 
    firstElement : Rat
    firstElement = myVector ! 0

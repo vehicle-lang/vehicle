@@ -1,1 +1,2 @@
-parameter r : Rat
+@parameter
+r : Rat

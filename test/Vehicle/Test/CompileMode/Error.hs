@@ -33,6 +33,7 @@ import Vehicle.Test.Utils
 functionalityTests :: MonadTest m => m TestTree
 functionalityTests = testGroup "ErrorTests" <$> sequence
   [ argumentErrors
+  , parsingErrors
   , typeCheckingErrors
   , networkErrors
   , datasetErrors
@@ -42,268 +43,158 @@ functionalityTests = testGroup "ErrorTests" <$> sequence
   ]
 
 argumentErrors :: MonadTest m => m TestTree
-argumentErrors = failTestGroup "ArgumentErrors"
-  [ testSpec
-    { testName     = "missingInputFile"
-    , testLocation = Tests
-    , testTargets  = [MarabouBackend]
-    }
+argumentErrors = failTestGroup "ArgumentErrors" TypeCheck
+  [ testSpec { testName = "missingInputFile" }
+  ]
+
+parsingErrors :: MonadTest m => m TestTree
+parsingErrors = failTestGroup "ParsingErrors" TypeCheck
+  [ testSpec { testName = "functionNotGivenBody"}
+  , testSpec { testName = "propertyNotGivenBody"}
+  , testSpec { testName = "resourceGivenBody"}
+  , testSpec { testName = "annotationWithNoDeclaration"}
+  , testSpec { testName = "invalidAnnotationParameter"}
+  , testSpec { testName = "invalidAnnotationParameterValue"}
+  , testSpec { testName = "functionWithMismatchedNames"}
+  , testSpec { testName = "missingVariablesLambda"}
+  , testSpec { testName = "unchainableOrdersEqualsEquals"}
   ]
 
 typeCheckingErrors :: MonadTest m => m TestTree
-typeCheckingErrors = failTestGroup "TypingErrors"
-  [ testSpec
-    { testName     = "intAsNat"
-    , testLocation = Tests
-    , testTargets  = [TypeCheck]
-    }
-
-  , testSpec
-    { testName     = "indexOutOfBoundsConcrete"
-    , testLocation = Tests
-    , testTargets  = [TypeCheck]
-    }
-
-  , testSpec
-    { testName     = "indexOutOfBoundsUnknown"
-    , testLocation = Tests
-    , testTargets  = [TypeCheck]
-    }
-
-  , testSpec
-    { testName     = "incorrectTensorLength"
-    , testLocation = Tests
-    , testTargets  = [TypeCheck]
-    }
-
-  , testSpec
-    { testName     = "unsolvedMeta"
-    , testLocation = Tests
-    , testTargets  = [TypeCheck]
-    }
+typeCheckingErrors = failTestGroup "TypingErrors" TypeCheck
+  [ testSpec { testName = "intAsNat"}
+  , testSpec { testName = "indexOutOfBoundsConcrete"}
+  , testSpec { testName = "indexOutOfBoundsUnknown"}
+  , testSpec { testName = "incorrectTensorLength"}
+  , testSpec { testName = "unsolvedMeta"}
   ]
 
 networkErrors :: MonadTest m => m TestTree
-networkErrors = failTestGroup "NetworkErrors"
+networkErrors = failTestGroup "NetworkErrors" MarabouBackend
   [ testSpec
     { testName     = "notAFunction"
-    , testLocation = Tests
-    , testTargets  = [TypeCheck]
     }
   ]
 
 datasetErrors :: MonadTest m => m TestTree
-datasetErrors = failTestGroup "DatasetErrors"
+datasetErrors = failTestGroup "DatasetErrors" MarabouBackend
   [ testSpec
     { testName     = "notProvided"
-    , testLocation = Tests
-    , testTargets  = [MarabouBackend]
-    , testDatasets = []
     }
 
   , testSpec
     { testName     = "missingDataset"
-    , testLocation = Tests
-    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "non-existent.idx")]
     }
 
   , testSpec
     { testName     = "unsupportedFormat"
-    , testLocation = Tests
-    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "non-existent.fgt")]
     }
 
   , testSpec
     { testName     = "invalidContainerType"
-    , testLocation = Tests
-    , testTargets  = [TypeCheck]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
   , testSpec
     { testName     = "invalidElementType"
-    , testLocation = Tests
-    , testTargets  = [TypeCheck]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
   , testSpec
     { testName     = "variableDimensions"
-    , testLocation = Tests
-    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
   , testSpec
     { testName     = "mismatchedDimensions"
-    , testLocation = Tests
-    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
   , testSpec
     { testName     = "mismatchedDimensionSize"
-    , testLocation = Tests
-    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
   , testSpec
     { testName     = "mismatchedType"
-    , testLocation = Tests
-    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-rat-4.idx")]
     }
 
   , testSpec
     { testName     = "tooBigIndex"
-    , testLocation = Tests
-    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-nat-4.idx")]
     }
 
   , testSpec
     { testName     = "negativeNat"
-    , testLocation = Tests
-    , testTargets  = [MarabouBackend]
     , testDatasets = [("trainingDataset", "dataset-int-4.idx")]
     }
   ]
 
 parameterErrors :: MonadTest m => m TestTree
-parameterErrors = failTestGroup "ParameterErrors"
+parameterErrors = failTestGroup "ParameterErrors" MarabouBackend
   [ testSpec
     { testName       = "notProvided"
-    , testLocation   = Tests
-    , testTargets    = [MarabouBackend]
-    , testParameters = []
     }
 
   , testSpec
     { testName       = "unsupportedType"
-    , testLocation   = Tests
-    , testTargets    = [TypeCheck]
     }
 
   , testSpec
     { testName       = "unparseableBool"
-    , testLocation   = Tests
-    , testTargets    = [MarabouBackend]
     , testParameters = [("b", "x")]
     }
 
   , testSpec
     { testName       = "unparseableIndex"
-    , testLocation   = Tests
-    , testTargets    = [MarabouBackend]
     , testParameters = [("n", "~`")]
     }
 
   , testSpec
     { testName       = "invalidIndex"
-    , testLocation   = Tests
-    , testTargets    = [MarabouBackend]
     , testParameters = [("n", "5")]
     }
 
   , testSpec
     { testName       = "invalidNat"
-    , testLocation   = Tests
-    , testTargets    = [MarabouBackend]
     , testParameters = [("n", "-5")]
     }
 
   , testSpec
     { testName       = "unparseableNat"
-    , testLocation   = Tests
-    , testTargets    = [MarabouBackend]
     , testParameters = [("n", "~`")]
     }
 
   , testSpec
     { testName       = "unparseableRat"
-    , testLocation   = Tests
-    , testTargets    = [MarabouBackend]
     , testParameters = [("r", "~`")]
     }
   ]
 
+propertyErrors :: MonadTest m => m TestTree
+propertyErrors = failTestGroup "PropertyErrors" TypeCheck
+  [ testSpec { testName = "invalidType"}
+  ]
+
 polarityErrors :: MonadTest m => m TestTree
-polarityErrors = failTestGroup "PolarityErrors"
-  [ testSpec
-      { testName       = "mixedSequential"
-      , testLocation   = Tests
-      , testTargets    = [MarabouBackend]
-      , testParameters = []
-      }
-
-  , testSpec
-      { testName       = "mixedNegSequential"
-      , testLocation   = Tests
-      , testTargets    = [MarabouBackend]
-      , testParameters = []
-      }
-
-  , testSpec
-    { testName       = "mixedNegNegSequential"
-    , testLocation   = Tests
-    , testTargets    = [MarabouBackend]
-    , testParameters = []
-    }
-
-  , testSpec
-    { testName       = "mixedImpliesSequential"
-    , testLocation   = Tests
-    , testTargets    = [MarabouBackend]
-    , testParameters = []
-    }
-
-  , testSpec
-    { testName       = "mixedFunSequential"
-    , testLocation   = Tests
-    , testTargets    = [MarabouBackend]
-    , testParameters = []
-    }
+polarityErrors = failTestGroup "PolarityErrors" MarabouBackend
+  [ testSpec { testName = "mixedSequential"}
+  , testSpec { testName = "mixedNegSequential"}
+  , testSpec { testName = "mixedNegNegSequential"}
+  , testSpec { testName = "mixedImpliesSequential"}
+  , testSpec { testName = "mixedFunSequential"}
   ]
 
 linearityErrors :: MonadTest m => m TestTree
-linearityErrors = failTestGroup "LinearityErrors"
-  [ testSpec
-      { testName       = "quadraticInput"
-      , testLocation   = Tests
-      , testTargets    = [MarabouBackend]
-      , testParameters = []
-      }
-
-  , testSpec
-      { testName       = "quadraticFunInput"
-      , testLocation   = Tests
-      , testTargets    = [MarabouBackend]
-      , testParameters = []
-      }
-
-  , testSpec
-      { testName       = "quadraticFunOutput"
-      , testLocation   = Tests
-      , testTargets    = [MarabouBackend]
-      , testParameters = []
-      }
-
-  , testSpec
-      { testName       = "quadraticInputOutput"
-      , testLocation   = Tests
-      , testTargets    = [MarabouBackend]
-      , testParameters = []
-      }
-
-  , testSpec
-      { testName       = "quadraticTensorInputLookup"
-      , testLocation   = Tests
-      , testTargets    = [MarabouBackend]
-      , testParameters = []
-      }
+linearityErrors = failTestGroup "LinearityErrors" MarabouBackend
+  [ testSpec { testName = "quadraticInput" }
+  , testSpec { testName = "quadraticFunInput"}
+  , testSpec { testName = "quadraticFunOutput"}
+  , testSpec { testName = "quadraticInputOutput"}
+  , testSpec { testName = "quadraticTensorInputLookup"}
   ]
 
 --------------------------------------------------------------------------------
@@ -314,13 +205,15 @@ testDir = baseTestDir </> "CompileMode" </> "Error"
 
 failTestGroup :: MonadTest m
               => FilePath
+              -> Backend
               -> [TestSpec]
               -> m TestTree
-failTestGroup folder tests = testGroup folder <$> traverse mkTest tests
+failTestGroup folder testTarget tests = testGroup folder <$> traverse mkTest tests
   where
   mkTest spec@TestSpec{..} = do
-    let resources = testResources spec
-    failTest (folder </> testName) (head testTargets) resources
+    let fullSpec = TestSpec{testLocation = Tests, testTargets = [testTarget], ..}
+    let resources = testResources fullSpec
+    failTest (folder </> testName) (head [testTarget]) resources
 
 failTest :: MonadTest m => FilePath -> Backend -> Resources -> m TestTree
 failTest filepath backend resources = do

@@ -1,27 +1,41 @@
-Properties (TODO)
-=================
+Properties
+==========
 
 .. contents::
    :depth: 1
    :local:
 
-Properties are any declaration with the type ``Bool``, ``Vector Bool n`` or
-``Tensor Bool n``.
+Basics
+------
 
-The ``foreach`` quantifier
-++++++++++++++++++++++++++
-
-Finally a common use of the ``forall`` quantifier is to assert that the
-property holds over every element of a dataset, e.g.
+A property is any self-contained statement that you wish to check using Vehicle.
+Properties are declared by annotating declarations with the ``@property`` annotation:
 
 .. code-block:: agda
 
-   dataset dataset : List (Tensor Rat [28, 28])
+   @property
+   robust : Bool
+   robust = forall x . f x ! 0 >= 0.0
+
+Only declarations with the types ``Bool``, ``Vector Bool n`` or ``Tensor Bool n`` may
+be annotated as properties. In the latter case, Vehicle will report the status of each
+element of the ``Vector`` or ``Tensor`` individually.
+
+The ``foreach`` quantifier
+--------------------------
+
+A common use of the ``forall`` quantifier is to assert that a
+predicate holds over every element of a dataset, e.g.
+
+.. code-block:: agda
+
+   @dataset
+   trainingDataset : List (Tensor Rat [28, 28])
 
    ...
 
    robust : Bool
-   robust = forall x in dataset . robustAround x
+   robust = forall x in trainingDataset . robustAround x
 
 The problem with this formulation of the specification is that Vehicle
 will only report whether the network is robust around *all* the elements
@@ -34,13 +48,14 @@ on the verification status of each individual element.
 
 .. code-block:: agda
 
-   dataset trainingDataset : List (Tensor Rat [28, 28])
+   @dataset
+   trainingDataset : List (Tensor Rat [28, 28])
 
    ...
 
    robust : List Bool
-   robust = foreach x in trainingDataset . robustAround x
+   robust = foreach i in trainingDataset . robustAround x
 
 Unlike the ``forall`` keyword, the ``foreach`` keyword cannot be used to
-quantify over infinite types. It can be used to quantify over ``Index``
+quantify over infinite types. It _can_ be used to quantify over ``Index``
 types.

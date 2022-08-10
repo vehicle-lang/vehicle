@@ -1,6 +1,7 @@
 -- Correctness conditions for the Boolean AND gate
 
-network andGate : Tensor Rat [2] -> Tensor Rat [1]
+@network
+andGate : Tensor Rat [2] -> Tensor Rat [1]
 
 truthy : Rat -> Bool
 truthy x = x >= 0.5
@@ -19,5 +20,6 @@ correctOutput x1 x2 =
     (falsey x1 and truthy x2 => falsey y) and
     (falsey x1 and falsey x2 => falsey y)
 
+@property
 andGateCorrect : Bool
 andGateCorrect = forall x1 x2 . validInput x1 and validInput x2 => correctOutput x1 x2

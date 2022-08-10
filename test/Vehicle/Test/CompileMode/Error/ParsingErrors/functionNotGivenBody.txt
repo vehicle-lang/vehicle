@@ -1,0 +1,2 @@
+Error at Line 1, Columns 1-5: no definition found for the declaration 'test' .
+Fix: add a definition for 'test' or mark it with an annotation, e.g. '@network'

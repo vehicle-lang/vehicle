@@ -3,7 +3,8 @@ nBins = 300
 type InputVector = Tensor Rat [6]
 type OutputVector = Tensor Rat [2500]
 
-network spectra : InputVector -> OutputVector
+@network
+spectra : InputVector -> OutputVector
 
 
 
@@ -33,5 +34,6 @@ sensibleSpectra x =
   binCovariances .
   ((weights ** spectra x) - measuredMean)
 
+@property
 sensiblePrediction : Bool
 sensiblePrediction = forall (x : InputVector) . inputBetweenBounds x => sensibleSpectra x

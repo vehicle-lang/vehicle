@@ -24,7 +24,7 @@ checkResourceType resourceType decl@(ident, _) t = do
     declCtx <- getNormalisationContext
     let checkFun = case resourceType of
           Parameter         -> checkParameterType
-          ImplicitParameter -> checkImplicitParameterType
+          InferableParameter -> checkInferableParameterType
           Dataset           -> checkDatasetType
           Network           -> checkNetworkType
     normType <- normalise t $ fullNormalisationOptions { Norm.declContext = declCtx }
@@ -50,11 +50,11 @@ checkParameterType decl t = do
     paramType -> throwError $ ParameterTypeUnsupported decl paramType
   return id
 
-checkImplicitParameterType :: TCM m
+checkInferableParameterType :: TCM m
                            => DeclProvenance
                            -> CheckedType
                            -> m (CheckedType -> CheckedType)
-checkImplicitParameterType decl t = do
+checkInferableParameterType decl t = do
   case t of
     NatType{} -> return ()
     paramType -> throwError $ ParameterTypeUnsupported decl paramType

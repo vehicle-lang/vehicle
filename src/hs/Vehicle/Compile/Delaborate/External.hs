@@ -18,6 +18,11 @@ import Vehicle.Language.Sugar
 -- | Constraint for the monad stack used by the elaborator.
 type MonadDelab m = MonadLogger m
 
+networkAnn   = B.Network   $ mkToken B.TokNetwork   "@network"
+datasetAnn   = B.Dataset   $ mkToken B.TokDataset   "@dataset"
+parameterAnn = B.Parameter $ mkToken B.TokParameter "@parameter"
+propertyAnn  = B.Property  $ mkToken B.TokProperty  "@property"
+
 tokArrow = mkToken B.TokArrow "->"
 
 tokForallT = mkToken B.TokForallT "forallT"
@@ -102,9 +107,6 @@ tokMap = mkToken B.TokMap "map"
 
 tokFold = mkToken B.TokFold "fold"
 
-tokTrue = mkToken B.TokTrue "True"
-
-tokFalse = mkToken B.TokFalse "False"
 
 -- * Conversion
 
@@ -124,18 +126,20 @@ instance Delaborate V.NamedProg B.Prog where
 
 instance Delaborate V.NamedDecl [B.Decl] where
   delabM = \case
-    -- Elaborate a network declaration.
     V.DefResource _ r n t -> do
-      let n' = delabIdentifier n
-      t' <- delabM t
-      return $ case r of
-        Network           -> [B.DeclNetw      n' tokElemOf t']
-        Dataset           -> [B.DeclData      n' tokElemOf t']
-        Parameter         -> [B.DeclParam     n' tokElemOf t']
-        ImplicitParameter -> [B.DeclImplParam n' tokElemOf t']
+      defFun <- B.DefFunType (delabIdentifier n) tokElemOf <$> delabM t
 
-    -- Elaborate a type definition.
-    V.DefFunction _ _ n t e -> delabFun n t e
+      let defAnn = case r of
+            Network           -> delabAnn networkAnn []
+            Dataset           -> delabAnn datasetAnn []
+            Parameter         -> delabAnn parameterAnn []
+            InferableParameter -> delabAnn parameterAnn [mkDeclAnnOption V.InferableOption True]
+
+      return [defAnn, defFun]
+
+    V.DefFunction _ i n t e ->
+      delabFun i n t e
+
     V.DefPostulate {} ->
       developerError "Should not be delaborating postulates"
 
@@ -164,7 +168,6 @@ instance Delaborate V.NamedArg B.Arg where
 
 instance Delaborate V.NamedBinder B.Binder where
   delabM (V.Binder _ v _ n _t) = case v of
-    -- TODO track whether type was provided manually and so use ExplicitBinderAnn
     V.Explicit -> return $ B.ExplicitBinder $ delabSymbol n
     V.Implicit -> return $ B.ImplicitBinder $ delabSymbol n
     V.Instance -> return $ B.InstanceBinder $ delabSymbol n
@@ -175,23 +178,22 @@ delabLetBinding (binder, bound) = B.LDecl <$> delabM binder <*> delabM bound
 delabLiteral :: V.Literal -> B.Expr
 delabLiteral l = case l of
   V.LUnit      -> B.Literal B.UnitLiteral
-  V.LBool b    -> delabBoolLit b
-  V.LIndex _ x -> delabNatLit x
-  V.LNat n     -> delabNatLit n
+  V.LBool b    -> B.Literal $ B.BoolLiteral $ delabBoolLit b
+  V.LIndex _ x -> B.Literal $ B.NatLiteral  $ delabNatLit x
+  V.LNat n     -> B.Literal $ B.NatLiteral  $ delabNatLit n
   V.LInt i     -> if i >= 0
-    then delabNatLit i
-    else B.Neg tokSub (delabNatLit (-i))
-  V.LRat r  -> delabRatLit r
+    then B.Literal $ B.NatLiteral $ delabNatLit i
+    else B.Neg tokSub (B.Literal $ B.NatLiteral $ delabNatLit (-i))
+  V.LRat r  -> B.Literal $ B.RatLiteral $ delabRatLit r
 
-delabBoolLit :: Bool -> B.Expr
-delabBoolLit True = B.Literal $ B.LitTrue tokTrue
-delabBoolLit False = B.Literal $ B.LitFalse tokFalse
+delabBoolLit :: Bool -> B.Boolean
+delabBoolLit b = mkToken B.Boolean (pack $ show b)
 
-delabNatLit :: Int -> B.Expr
-delabNatLit n = B.Literal $ B.NatLiteral (mkToken B.Natural (pack $ show n))
+delabNatLit :: Int -> B.Natural
+delabNatLit n = mkToken B.Natural (pack $ show n)
 
-delabRatLit :: Rational -> B.Expr
-delabRatLit r = B.Literal $ B.RatLiteral (mkToken B.Rational (pack $ show (fromRational r :: Double)))
+delabRatLit :: Rational -> B.Rational
+delabRatLit r = mkToken B.Rational (pack $ show (fromRational r :: Double))
 
 delabSymbol :: Symbol -> B.Name
 delabSymbol = mkToken B.Name
@@ -347,17 +349,28 @@ delabLam expr =
   let (binders, body) = foldLam expr
    in B.Lam tokLambda <$> traverse delabM binders <*> pure tokArrow <*> delabM body
 
-delabFun :: MonadDelab m => V.Identifier -> V.NamedExpr -> V.NamedExpr -> m [B.Decl]
-delabFun n typ expr = do
-  let n' = delabIdentifier n
+delabFun :: MonadDelab m => Maybe V.PropertyInfo -> V.Identifier -> V.NamedExpr -> V.NamedExpr -> m [B.Decl]
+delabFun propertyInfo name typ expr = do
+  let n' = delabIdentifier name
   case foldDefFun typ expr of
     Left (t, (binders, body)) -> do
-      defType <- B.DefFunType n' tokElemOf <$> delabM t
       defExpr <- B.DefFunExpr n' <$> traverse delabM binders <*> delabM body
-      return [defType, defExpr]
+      defType <- B.DefFunType n' tokElemOf <$> delabM t
+
+      return $ case propertyInfo of
+        Nothing -> [defType, defExpr]
+        Just _  -> [delabAnn propertyAnn [], defType, defExpr]
+
     Right (binders, body) -> do
       defType <- B.DefType n' <$> traverse delabM binders <*> delabM body
       return [defType]
+
+delabAnn :: B.DeclAnnName -> [B.DeclAnnOption] -> B.Decl
+delabAnn name []  = B.DefAnn name B.DeclAnnWithoutOpts
+delabAnn name ops = B.DefAnn name $ B.DeclAnnWithOpts ops
+
+mkDeclAnnOption :: Symbol -> Bool -> B.DeclAnnOption
+mkDeclAnnOption name value = B.BooleanOption (mkToken B.Name name) (delabBoolLit value)
 
 auxiliaryTypeError :: Doc a -> a
 auxiliaryTypeError e =

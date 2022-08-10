@@ -1,1 +1,2 @@
-dataset trainingDataset : Nat
+@dataset
+trainingDataset : Nat

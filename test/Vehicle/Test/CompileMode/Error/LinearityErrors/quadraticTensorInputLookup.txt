@@ -1,7 +1,7 @@
-Error at Line 3, Columns 1-9: The property 'property' contains a non-linear constraint which is not supported by Marabou.
-In particular the multiplication at Line 3, Columns 1-9 involves
-  1. the quantified variable at Line 4, Columns 12-18
+Error at Line 5, Columns 1-2: The property 'p' contains a non-linear constraint which is not supported by Marabou.
+In particular the multiplication at Line 5, Columns 1-2 involves
+  1. the quantified variable at Line 6, Columns 5-11
 and
-  1. the quantified variable at Line 4, Columns 12-18
+  1. the quantified variable at Line 6, Columns 5-11
 
 Fix: try avoiding it, otherwise please open an issue on the Vehicle issue tracker.

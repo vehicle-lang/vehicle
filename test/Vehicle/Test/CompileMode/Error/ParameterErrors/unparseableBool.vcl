@@ -1,1 +1,2 @@
-parameter b : Bool
+@parameter
+b : Bool

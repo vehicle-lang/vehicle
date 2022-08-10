@@ -23,7 +23,7 @@ data ResourceType
   = Network
   | Dataset
   | Parameter
-  | ImplicitParameter
+  | InferableParameter
   deriving (Eq, Show, Generic)
 
 instance NFData ResourceType
@@ -32,10 +32,10 @@ instance ToJSON ResourceType
 
 instance Pretty ResourceType where
   pretty = \case
-    Network           -> "network"
-    Dataset           -> "dataset"
-    Parameter         -> "parameter"
-    ImplicitParameter -> "implicit parameter"
+    Network            -> "network"
+    Dataset            -> "dataset"
+    Parameter          -> "parameter"
+    InferableParameter -> "inferable parameter"
 
 supportedFileFormats :: ResourceType -> [String]
 supportedFileFormats Network = [".onnx"]
@@ -84,7 +84,7 @@ hashResource :: MonadIO m => ResourceType -> String -> m Int
 hashResource Network           filepath = liftIO $ hash <$> ByteString.readFile filepath
 hashResource Dataset           filepath = liftIO $ hash <$> ByteString.readFile filepath
 hashResource Parameter         value    = return $ hash value
-hashResource ImplicitParameter _        =
+hashResource InferableParameter _        =
   developerError "Should not be hashing implicit parameters"
 
 hashResources :: MonadIO m => Resources -> m [ResourceSummary]
@@ -117,7 +117,7 @@ reparseResources (x : xs) = r <> reparseResources xs
       Network           -> Resources v mempty mempty
       Dataset           -> Resources mempty v mempty
       Parameter         -> Resources mempty mempty v
-      ImplicitParameter -> developerError "Should not be reparsing implicit parameters"
+      InferableParameter -> developerError "Should not be reparsing implicit parameters"
 
 
 --------------------------------------------------------------------------------

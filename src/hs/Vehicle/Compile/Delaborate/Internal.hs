@@ -46,7 +46,7 @@ instance Delaborate V.NamedDecl B.Decl where
             Network           -> B.DeclNetw
             Dataset           -> B.DeclData
             Parameter         -> B.DeclParam
-            ImplicitParameter -> B.DeclImplParam
+            InferableParameter -> B.DeclImplParam
       constructor (delabIdentifier n) <$> delabM t
 
 instance Delaborate V.NamedExpr B.Expr where

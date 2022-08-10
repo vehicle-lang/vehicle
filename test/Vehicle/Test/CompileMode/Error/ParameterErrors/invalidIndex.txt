@@ -1,3 +1,3 @@
-Error at Line 1, Columns 11-12: Mismatch in the type of parameter 'n'.
+Error at Line 2, Columns 1-2: Mismatch in the type of parameter 'n'.
 Expected something of type 'Index 5' but was provided the value '5'.
 Fix: either change the size of the index or ensure the value provided is in the range '0...4' (inclusive).

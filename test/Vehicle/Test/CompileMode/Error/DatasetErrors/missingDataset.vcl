@@ -1,2 +1,3 @@
 -- Test passes a reference to a non-existent dataset
-dataset trainingDataset : List Rat
+@dataset
+trainingDataset : List Rat

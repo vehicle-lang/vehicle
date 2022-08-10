@@ -32,13 +32,19 @@ data CompileError
   | MalformedLamBinder InputExpr
 
   -- Errors thrown when elaborating from the BNFC external language
-  | MissingDefFunExpr    Provenance Symbol
-  | DuplicateName        (NonEmpty Provenance) Symbol
-  | MissingVariables     Provenance Symbol
-  | UnchainableOrders    Provenance OrderOp OrderOp
+  | FunctionNotGivenBody         Provenance Symbol
+  | PropertyNotGivenBody         Provenance Symbol
+  | ResourceGivenBody            Provenance Symbol Symbol
+  | AnnotationWithNoDeclaration  Provenance Symbol
+  | FunctionWithMismatchedNames  Provenance Symbol Symbol
+  | MissingVariables             Provenance Symbol
+  | UnchainableOrders            Provenance OrderOp OrderOp
+  | InvalidAnnotationOption      Provenance Symbol Symbol [Symbol]
+  | InvalidAnnotationOptionValue Provenance Symbol Symbol
 
   -- Errors thrown by scope checking.
-  | UnboundName Symbol Provenance
+  | UnboundName Provenance Symbol
+  | DuplicateName Provenance Symbol
 
   -- Errors thrown while type checking
   | UnresolvedHole
@@ -99,16 +105,17 @@ data CompileError
   | DatasetInvalidIndex             DeclProvenance FilePath Int Int
   | DatasetInvalidNat               DeclProvenance FilePath Int
 
-  | ParameterTypeUnsupported        DeclProvenance CheckedType
-  | ParameterTypeVariableSizeIndex  DeclProvenance CheckedExpr
-  | ParameterTypeImplicitParamIndex DeclProvenance Identifier
-  | ParameterValueUnparsable        DeclProvenance String Builtin
-  | ParameterValueInvalidIndex      DeclProvenance Int Int
-  | ParameterValueInvalidNat        DeclProvenance Int
+  | ParameterTypeUnsupported             DeclProvenance CheckedType
+  | ParameterTypeVariableSizeIndex       DeclProvenance CheckedExpr
+  | ParameterTypeInferableParameterIndex DeclProvenance Identifier
+  | ParameterValueUnparsable             DeclProvenance String Builtin
+  | ParameterValueInvalidIndex           DeclProvenance Int Int
+  | ParameterValueInvalidNat             DeclProvenance Int
+  | InferableParameterTypeUnsupported    DeclProvenance CheckedType
+  | InferableParameterContradictory      Identifier (DeclProvenance, ResourceType, Int) (DeclProvenance, ResourceType, Int)
+  | InferableParameterUninferrable       DeclProvenance
 
-  | ImplicitParameterTypeUnsupported DeclProvenance CheckedType
-  | ImplicitParameterContradictory   Identifier (DeclProvenance, ResourceType, Int) (DeclProvenance, ResourceType, Int)
-  | ImplicitParameterUninferrable    DeclProvenance
+  | PropertyTypeUnsupported         DeclProvenance CheckedType
 
   -- Backend errors
   | NoPropertiesFound

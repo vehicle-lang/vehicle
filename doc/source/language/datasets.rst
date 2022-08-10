@@ -13,23 +13,24 @@ Many specifications
 Basics
 ------
 
-Datasets are declared as follows using the :code:`dataset` keyword:
+Datasets are declared as follows using the :code:`dataset` annotation:
 
 .. code-block:: agda
 
-   dataset myDataset : Tensor Rat [784]
+   @dataset
+   myDataset : Tensor Rat [784]
 
 Datasets can be any type :code:`t` that can be constructed from the following
 grammar:
 
 .. code-block:: agda
 
-   t ::= List t | Tensor t dims | s
+   t ::= List t | Vector t n | Tensor t ns | s
    s ::= Index n | Nat | Int | Rat
 
-where :code:`dims` is a list of known constants and :code:`n` is also a known constant.
+where :code:`n` is a known constant and :code:`ns` is a list of known constants.
 
-Once declared, datasets can be used as any other named ::code:`List` or :code:`Tensor`
+Once declared, datasets can be used as any other named ``List``, ``Vector`` or ``Tensor``
 would be, e.g.
 
 .. code-block:: agda
