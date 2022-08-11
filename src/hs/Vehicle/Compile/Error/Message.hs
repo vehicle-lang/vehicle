@@ -796,9 +796,6 @@ unsolvedConstraintError constraint ctx ="Typing error: not enough information to
     UC _ (Unify _)       ->  prettyFriendlyDB ctx constraint
     TC _ (Has _ tc args) ->  prettyFriendlyDB ctx (BuiltinTypeClass mempty tc args)
 
-quotePretty :: Pretty a => a -> Doc b
-quotePretty = squotes . pretty
-
 prettyResource :: ResourceType -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
 

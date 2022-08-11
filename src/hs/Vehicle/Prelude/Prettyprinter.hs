@@ -84,6 +84,9 @@ layoutAsString = renderString . layoutPretty defaultLayoutOptions
 layoutAsText :: Doc ann -> Text
 layoutAsText = renderStrict . layoutPretty defaultLayoutOptions
 
+quotePretty :: Pretty a => a -> Doc b
+quotePretty = squotes . pretty
+
 --------------------------------------------------------------------------------
 -- Pretty printing of datatypes
 

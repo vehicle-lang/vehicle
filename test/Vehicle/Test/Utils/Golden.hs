@@ -99,7 +99,7 @@ goldenDirectoryTest testName generateOutput diffException goldenDir outputDir = 
   readGolden = readDirectory goldenDir
   readOutput = do generateOutput; readDirectory outputDir
   updateGolden = updateGoldenDirectory goldenDir
-  diffCommand  = compareDirectoryContents diffException
+  diffCommand  = compareDirectoryContents diffException goldenDir
   test = goldenTest testName readGolden readOutput diffCommand updateGolden
   testWithCleanup = cleanupTestOutput False outputDir test
 
@@ -119,14 +119,17 @@ readDirectory directory = do
       return $ Just $ Map.fromList $ zip files contents
 
 compareDirectoryContents :: DiffException
+                         -> FilePath
                          -> Maybe (Map FilePath Text)
                          -> Maybe (Map FilePath Text)
                          -> IO (Maybe String)
-compareDirectoryContents _ _ Nothing =
+compareDirectoryContents _ _ _ Nothing =
   return $ Just "No output directory was created by the test"
-compareDirectoryContents _ Nothing _ =
-  return $ Just "No golden directory was found for the test. Accept the test to create it."
-compareDirectoryContents diffException (Just goldenContents) (Just outputContents) = do
+compareDirectoryContents _ goldenDir Nothing outputContents = do
+  -- "No golden directory was found for the test. Creating it."
+  updateGoldenDirectory goldenDir outputContents
+  return Nothing
+compareDirectoryContents diffException _ (Just goldenContents) (Just outputContents) = do
   let (sharedFiles, missingFiles, extraFiles) =
         getContentsDiff goldenContents outputContents
 

@@ -193,6 +193,7 @@ library
                       , Vehicle.Compile.ExpandResources.Dataset.IDX
                       , Vehicle.Compile.CapitaliseTypeNames
                       , Vehicle.Compile.QuantifierAnalysis
+                      , Vehicle.Compile.DependencyAnalysis
                       , Vehicle.Compile.Prelude.Patterns
                       , Vehicle.Compile.Prelude.Utils
                       , Vehicle.Compile.Prelude.Contexts

@@ -33,9 +33,10 @@ import Vehicle.Compile.Type.Irrelevance
 -- Algorithm
 
 typeCheck :: MonadCompile m
-          => (UncheckedProg, UncheckedPropertyContext)
+          => UncheckedProg
+          -> UncheckedPropertyContext
           -> m (CheckedProg, PropertyContext)
-typeCheck (uncheckedProg, uncheckedCtx) =
+typeCheck uncheckedProg uncheckedCtx =
   logCompilerPass MinDetail "type checking" $ runTCM $ do
   (checkedProg, checkedCtx) <- runWriterT $ typeCheckProg uncheckedCtx uncheckedProg
   cleanedProg <- postProcess checkedProg

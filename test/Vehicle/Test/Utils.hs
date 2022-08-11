@@ -72,22 +72,24 @@ locationDir Tests    _    = "test" </> "specs"
 locationDir Examples name = "examples" </> name
 
 data TestSpec = TestSpec
-    { testName       :: String
-    , testLocation   :: TestLocation
-    , testTargets    :: [Backend]
-    , testNetworks   :: [(Text, FilePath)]
-    , testDatasets   :: [(Text, FilePath)]
-    , testParameters :: [(Text, String)]
+    { testName         :: String
+    , testLocation     :: TestLocation
+    , testTargets      :: [Backend]
+    , testNetworks     :: [(Text, FilePath)]
+    , testDatasets     :: [(Text, FilePath)]
+    , testParameters   :: [(Text, String)]
+    , testDecls        :: [Text]
     }
 
 testSpec :: TestSpec
 testSpec = TestSpec
-  { testName       = error "Must provide the 'testName' field"
-  , testLocation   = error "Must provide the 'testLocation' field"
-  , testTargets    = error "Must provide the 'testTargets' field"
-  , testNetworks   = []
-  , testDatasets   = []
-  , testParameters = []
+  { testName         = error "Must provide the 'testName' field"
+  , testLocation     = error "Must provide the 'testLocation' field"
+  , testTargets      = error "Must provide the 'testTargets' field"
+  , testNetworks     = []
+  , testDatasets     = []
+  , testParameters   = []
+  , testDecls        = []
   }
 
 testResources :: TestSpec -> Resources

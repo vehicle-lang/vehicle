@@ -2,6 +2,8 @@
 module Vehicle.Prelude
   ( module X
   , VehicleLang(..)
+  , Specification
+  , Properties
   , Negatable(..)
   , InputOrOutput(..)
   , vehicleVersion
@@ -47,12 +49,19 @@ import Vehicle.Prelude.Supply as X
 import Vehicle.Prelude.DeveloperError as X
 
 import Paths_vehicle qualified as Cabal (version)
+import Data.Set (Set)
 
 vehicleVersion :: Version
 vehicleVersion = Cabal.version
 
 data VehicleLang = External | Internal
   deriving (Show)
+
+-- | A textual representation of a Vehicle specification.
+type Specification = Text
+
+-- | A set of properties in the specification.
+type Properties = Set Symbol
 
 infix 1 |->
 -- | Useful for writing association lists.

@@ -20,14 +20,15 @@ import Vehicle.Compile.Prelude.DependencyGraph as X
 -- Compilation
 
 data CompileOptions = CompileOptions
-  { target            :: Backend
-  , specificationFile :: FilePath
-  , outputFile        :: Maybe FilePath
-  , networkLocations  :: NetworkLocations
-  , datasetLocations  :: DatasetLocations
-  , parameterValues   :: ParameterValues
-  , moduleName        :: Maybe String
-  , proofCache        :: Maybe FilePath
+  { target                :: Backend
+  , specification         :: FilePath
+  , declarationsToCompile :: Set Symbol
+  , outputFile            :: Maybe FilePath
+  , networkLocations      :: NetworkLocations
+  , datasetLocations      :: DatasetLocations
+  , parameterValues       :: ParameterValues
+  , moduleName            :: Maybe String
+  , proofCache            :: Maybe FilePath
   } deriving (Show)
 
 --------------------------------------------------------------------------------

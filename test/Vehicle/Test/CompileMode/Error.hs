@@ -244,14 +244,15 @@ runTest (logFile, debugLevel) inputFile outputFile backend Resources{..} = do
     , logFile     = logFile
     , debugLevel  = debugLevel
     , modeOptions = Compile $ CompileOptions
-      { target            = backend
-      , specificationFile = inputFile
-      , outputFile        = Nothing
-      , networkLocations  = networks
-      , datasetLocations  = datasets
-      , parameterValues   = parameters
-      , moduleName        = Nothing
-      , proofCache        = Nothing
+      { target                = backend
+      , specification         = inputFile
+      , declarationsToCompile = mempty
+      , outputFile            = Nothing
+      , networkLocations      = networks
+      , datasetLocations      = datasets
+      , parameterValues       = parameters
+      , moduleName            = Nothing
+      , proofCache            = Nothing
       }
     }
 

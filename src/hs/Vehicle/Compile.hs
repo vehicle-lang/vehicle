@@ -7,11 +7,12 @@ module Vehicle.Compile
   , typeCheck
   , typeCheckExpr
   , parseAndTypeCheckExpr
-  , readInputFile
+  , readSpecification
   ) where
 
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Exception (IOException, catch)
+import Data.Set (Set)
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
 import System.IO (hPutStrLn)
@@ -23,6 +24,7 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Parse
+import Vehicle.Compile.DependencyAnalysis
 import Vehicle.Compile.Elaborate.External as External (elaborate, elaborateExpr)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
@@ -37,24 +39,24 @@ import Vehicle.Compile.ExpandResources
 compile :: LoggingOptions -> CompileOptions -> IO ()
 compile loggingOptions CompileOptions{..} = do
   let resources = Resources networkLocations datasetLocations parameterValues
-  spec <- readInputFile loggingOptions specificationFile
+  spec <- readSpecification loggingOptions specification
   case target of
     TypeCheck -> do
-      _ <- fromLoggedEitherIO loggingOptions $ typeCheckProg spec
+      _ <- fromLoggedEitherIO loggingOptions $ typeCheckProg spec declarationsToCompile
       return ()
 
     ITP Agda -> do
       proofCacheLocation <- maybe (return Nothing) (fmap Just . makeAbsolute) proofCache
       let agdaOptions = AgdaOptions proofCacheLocation outputFile moduleName
-      agdaCode <- compileToAgda loggingOptions agdaOptions resources spec
+      agdaCode <- compileToAgda loggingOptions agdaOptions spec declarationsToCompile resources
       writeAgdaFile outputFile agdaCode
 
     Verifier Marabou -> do
-      marabouProperties <- compileToMarabou loggingOptions resources spec
+      marabouProperties <- compileToMarabou loggingOptions spec declarationsToCompile resources
       Marabou.writeSpecFiles outputFile marabouProperties
 
     LossFunction -> do
-      lossFunction <- compileToLossFunction loggingOptions spec resources
+      lossFunction <- compileToLossFunction loggingOptions spec declarationsToCompile resources
       writeLossFunctionFiles outputFile lossFunction
 
 
@@ -62,69 +64,77 @@ compile loggingOptions CompileOptions{..} = do
 -- Backend-specific compilation functions
 
 compileToMarabou :: LoggingOptions
+                 -> Specification
+                 -> Properties
                  -> Resources
-                 -> Text
                  -> IO MarabouSpec
-compileToMarabou loggingOptions resources spec =
+compileToMarabou loggingOptions spec properties resources =
   fromLoggedEitherIO loggingOptions $ do
-    (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources resources spec
+    (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec properties resources
     Marabou.compile prog propertyCtx networkCtx
 
 compileToLossFunction :: LoggingOptions
-                      -> Text
+                      -> Specification
+                      -> Set Symbol
                       -> Resources
                       -> IO [LExpr]
-compileToLossFunction loggingOptions spec resources = do
+compileToLossFunction loggingOptions spec declarationsToCompile resources = do
   fromLoggedEitherIO loggingOptions $ do
-    (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources resources spec
+    (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec declarationsToCompile resources
     LossFunction.compile prog propertyCtx networkCtx
 
 compileToAgda :: LoggingOptions
               -> AgdaOptions
+              -> Specification
+              -> Properties
               -> Resources
-              -> Text
               -> IO (Doc a)
-compileToAgda loggingOptions agdaOptions _resources spec =
+compileToAgda loggingOptions agdaOptions spec properties _resources =
   fromLoggedEitherIO loggingOptions $ do
-    (prog, propertyCtx, _) <- typeCheckProg spec
+    (prog, propertyCtx, _) <- typeCheckProg spec properties
     compileProgToAgda prog propertyCtx agdaOptions
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply multiple compiler passes
 
-readInputFile :: MonadIO m => LoggingOptions -> FilePath -> m Text
-readInputFile LoggingOptions{..} inputFile = do
+readSpecification :: MonadIO m => LoggingOptions -> FilePath -> m Specification
+readSpecification LoggingOptions{..} inputFile = do
   liftIO $ TIO.readFile inputFile `catch` \ (e :: IOException) -> do
     hPutStrLn errorHandle $
       "Error occured while reading input file: \n  " <> show e
     exitFailure
 
 parseAndTypeCheckExpr :: MonadCompile m => Text -> m CheckedExpr
-parseAndTypeCheckExpr txt = do
-  bnfcProg    <- parseVehicle txt
-  vehicleProg <- elaborateExpr bnfcProg
-  scopedProg  <- scopeCheckClosedExpr vehicleProg
-  typedProg   <- typeCheckExpr scopedProg
-  return typedProg
+parseAndTypeCheckExpr expr = do
+  bnfcExpr    <- parseVehicle expr
+  vehicleExpr <- elaborateExpr bnfcExpr
+  scopedExpr  <- scopeCheckClosedExpr vehicleExpr
+  typedExpr   <- typeCheckExpr scopedExpr
+  return typedExpr
 
 -- | Parses and type-checks the program but does
 -- not load networks and datasets from disk.
-typeCheckProg :: MonadCompile m => Text -> m (CheckedProg, PropertyContext, DependencyGraph)
-typeCheckProg txt = do
-  bnfcProg <- parseVehicle txt
+typeCheckProg :: MonadCompile m
+              => Specification
+              -> Set Symbol
+              -> m (CheckedProg, PropertyContext, DependencyGraph)
+typeCheckProg spec declarationsToCompile = do
+  bnfcProg <- parseVehicle spec
   (vehicleProg, uncheckedPropertyCtx) <- elaborate bnfcProg
   (scopedProg, dependencyGraph) <- scopeCheck vehicleProg
-  (typedProg, propertyContext) <- typeCheck (scopedProg, uncheckedPropertyCtx)
+  prunedProg <- analyseDependenciesAndPrune scopedProg uncheckedPropertyCtx dependencyGraph declarationsToCompile
+  (typedProg, propertyContext) <- typeCheck prunedProg uncheckedPropertyCtx
   return (typedProg, propertyContext, dependencyGraph)
 
 -- | Parses, expands parameters and datasets, type-checks and then
 -- checks the network types from disk. Used during compilation to
 -- verification queries.
 typeCheckProgAndLoadResources :: (MonadIO m, MonadCompile m)
-                              => Resources
-                              -> Text
+                              => Specification
+                              -> Properties
+                              -> Resources
                               -> m (CheckedProg, PropertyContext, NetworkContext, DependencyGraph)
-typeCheckProgAndLoadResources resources txt = do
-  (typedProg, propertyCtx, depGraph) <- typeCheckProg txt
+typeCheckProgAndLoadResources spec properties resources = do
+  (typedProg, propertyCtx, depGraph) <- typeCheckProg spec properties
   (networkCtx, finalProg) <- expandResources resources True typedProg
   return (finalProg, propertyCtx, networkCtx, depGraph)

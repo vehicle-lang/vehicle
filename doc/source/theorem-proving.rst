@@ -32,7 +32,7 @@ Command-line options
 The table below contains the full list of command line arguments available
 for the :code:`export` command.
 
-.. option:: --itp, -i
+.. option:: --target, -t
 
     Set which ITP to export the specification to.
     At the moment the only supported option is :code:`Agda`.

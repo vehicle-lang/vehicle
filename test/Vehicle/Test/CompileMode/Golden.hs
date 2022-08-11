@@ -13,6 +13,7 @@ import Data.Text.IO qualified as T
 import Data.Bifunctor (first)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Set qualified as Set (fromList)
 import Data.Maybe (mapMaybe)
 import System.Exit (exitFailure)
 import System.FilePath (takeFileName, splitPath, (<.>), (</>))
@@ -191,6 +192,13 @@ goldenTestSpecifications =
       , testLocation   = Tests
       , testTargets    = [AgdaBackend]
       }
+
+  , testSpec
+      { testName       = "simple-pruneDecls"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend, AgdaBackend]
+      , testDecls      = ["p2"]
+      }
   {-
   , testSpec
       { testName       = "simple-vectorType"
@@ -206,16 +214,17 @@ goldenTestSpecifications =
 makeFunctionalityTests :: MonadTest m => TestSpec -> m TestTree
 makeFunctionalityTests spec@TestSpec{..} = do
   let resources = testResources spec
-  let makeTest = makeIndividualTest testLocation testName resources
+  let makeTest = makeIndividualTest testLocation testName resources testDecls
   testGroup testName <$> traverse makeTest testTargets
 
 makeIndividualTest :: MonadTest m
                    => TestLocation
                    -> String
                    -> Resources
+                   -> [Text]
                    -> Backend
                    -> m TestTree
-makeIndividualTest location name datasets backend = do
+makeIndividualTest location name datasets testDecls backend = do
   loggingSettings <- getTestLoggingSettings
 
   let testName       = name <> "-" <> layoutAsString (pretty backend)
@@ -226,7 +235,7 @@ makeIndividualTest location name datasets backend = do
   let goldenFile     = goldenTestDirectory </> name </> name <> "-output"      <> filePathSuffix
   let isFolderOutput = backend == MarabouBackend
 
-  let run = runVehicle loggingSettings inputFile outputFile moduleName backend datasets
+  let run = runVehicle loggingSettings inputFile outputFile moduleName backend datasets testDecls
   let testFn = if isFolderOutput then goldenDirectoryTest else goldenFileTest
   return $ testFn testName run omitFilePaths goldenFile outputFile
 
@@ -236,15 +245,16 @@ makeIndividualTest location name datasets backend = do
 makePerformanceTests :: TestSpec -> TestTree
 makePerformanceTests spec@TestSpec{..} = do
   let resources = testResources spec
-  let makeTest = makePerformanceTest testLocation testName resources
+  let makeTest = makePerformanceTest testLocation testName resources testDecls
   testGroup testName $ fmap makeTest testTargets
 
 makePerformanceTest :: TestLocation
                     -> String
                     -> Resources
+                    -> [Text]
                     -> Backend
                     -> TestTree
-makePerformanceTest location name datasets backend = do
+makePerformanceTest location name datasets testDecls backend = do
   let loggingSettings = (Nothing, 0)
 
   let testName       = name <> "-" <> layoutAsString (pretty backend)
@@ -253,7 +263,7 @@ makePerformanceTest location name datasets backend = do
   let inputFile      = locationDir location name </> name <.> ".vcl"
   let outputFile     = goldenTestDirectory </> name </> name <> "-temp-output" <> filePathSuffix
 
-  let run = runVehicle loggingSettings inputFile outputFile moduleName backend datasets
+  let run = runVehicle loggingSettings inputFile outputFile moduleName backend datasets testDecls
   let runAndClean = do run; cleanupOutput (backend /= MarabouBackend) outputFile
   bench testName (nfIO runAndClean)
 
@@ -276,8 +286,9 @@ runVehicle :: TestLoggingSettings
            -> String
            -> Backend
            -> Resources
+           -> [Symbol]
            -> IO ()
-runVehicle (logFile, debugLevel) inputFile outputFile moduleName backend Resources{..} = do
+runVehicle (logFile, debugLevel) inputFile outputFile moduleName backend Resources{..} declarationsToCompile = do
   run $ Options
     { version     = False
     , outFile     = Nothing
@@ -285,13 +296,14 @@ runVehicle (logFile, debugLevel) inputFile outputFile moduleName backend Resourc
     , logFile     = logFile
     , debugLevel  = debugLevel
     , modeOptions = Compile $ CompileOptions
-      { target            = backend
-      , specificationFile = inputFile
-      , outputFile        = Just outputFile
-      , networkLocations  = networks
-      , datasetLocations  = datasets
-      , parameterValues   = parameters
-      , moduleName        = Just moduleName
-      , proofCache        = Just "proofcache.vclp"
+      { target                = backend
+      , specification         = inputFile
+      , declarationsToCompile = Set.fromList declarationsToCompile
+      , outputFile            = Just outputFile
+      , networkLocations      = networks
+      , datasetLocations      = datasets
+      , parameterValues       = parameters
+      , moduleName            = Just moduleName
+      , proofCache            = Just "proofcache.vclp"
       }
     }

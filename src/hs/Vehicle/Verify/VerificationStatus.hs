@@ -110,10 +110,11 @@ instance Pretty SpecificationStatus where
 -- Overall status of the specification
 
 data ProofCache = ProofCache
-  { proofCacheVersion :: Version
-  , status            :: SpecificationStatus
-  , resourceSummaries :: [ResourceSummary]
-  , originalSpec      :: Text
+  { proofCacheVersion  :: Version
+  , status             :: SpecificationStatus
+  , resourceSummaries  :: [ResourceSummary]
+  , originalSpec       :: Specification
+  , originalProperties :: Properties
   } deriving (Generic)
 
 instance FromJSON ProofCache

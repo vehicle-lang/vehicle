@@ -4,14 +4,16 @@ import GHC.IO.Encoding (utf8, setLocaleEncoding)
 import Options.Applicative
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Map (Map)
 import Data.Map qualified as Map (fromList)
+import Data.Set (Set)
+import Data.Set qualified as Set (fromList)
 
 import Vehicle (run, ModeOptions(..), Options(Options))
 import Vehicle.Check (CheckOptions(..))
 import Vehicle.Compile (CompileOptions(..))
 import Vehicle.Verify (VerifyOptions(..))
 import Vehicle.Export (ExportOptions(..))
-import Data.Map (Map)
 
 --------------------------------------------------------------------------------
 -- Main function
@@ -22,13 +24,43 @@ main = do
   options <- execParser optionsParserInfo
   run options
 
+{-
+Short-options guide:
+  - a
+  - b
+  - c -- proof cache
+  - d -- dataset file
+  - e
+  - f
+  - g
+  - h
+  - i
+  - j
+  - k
+  - l -- verifier location
+  - m -- Agda module name
+  - n -- network file
+  - o -- output file
+  - p -- parameter value
+  - q
+  - r
+  - s -- specification file
+  - t -- compilation target
+  - u
+  - v -- verifier
+  - x
+  - y -- property
+  - z
+-}
+
 --------------------------------------------------------------------------------
 -- Options common to all modes
 
 optionsParserInfo :: ParserInfo Options
 optionsParserInfo = info (optionsParser <**> helper)
    ( fullDesc
-  <> header "Vehicle - a program for writing and checking neural network specifications" )
+  <> header "Vehicle - a program for writing and checking neural network specifications"
+   )
 
 optionsParser :: Parser Options
 optionsParser = Options
@@ -77,6 +109,9 @@ modeParser = hsubparser
 --------------------------------------------------------------------------------
 -- Some shared option parsers
 
+repeatedParameterHelp :: String
+repeatedParameterHelp = "Can be provided multiple times."
+
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
   where
@@ -85,8 +120,8 @@ resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
     [name, value] -> Just (name, Text.unpack value)
     _             -> Nothing
 
-specOption :: Parser FilePath
-specOption = strOption
+specificationOption :: Parser FilePath
+specificationOption = strOption
   ( long "specification"
   <> short 's'
   <> help "The .vcl file containing the specification."
@@ -96,28 +131,28 @@ networkOption :: Parser (Map Text FilePath)
 networkOption = resourceOption
   ( long "network"
   <> short 'n'
-  <> help "Provide the implementation of a network declared in the \
+  <> help ("Provide the implementation of a network declared in the \
           \ specification. Its value should consist of a colon-separated \
           \ pair of the name of the network in the specification and a file \
-          \ path."
+          \ path. " <> repeatedParameterHelp)
   <> metavar "NAME:FILE")
 
 datasetOption :: Parser (Map Text FilePath)
 datasetOption = resourceOption
   ( long "dataset"
   <> short 'd'
-  <> help "Provide a dataset declared in the specification. Its value should \
+  <> help ("Provide a dataset declared in the specification. Its value should \
           \ consist of a colon-separated pair of the name of the dataset in \
-          \ the specification and a file path."
+          \ the specification and a file path. " <> repeatedParameterHelp)
   <> metavar "NAME:FILE")
 
 parameterOption :: Parser (Map Text String)
 parameterOption = resourceOption
   ( long "parameter"
   <> short 'p'
-  <> help "Provide a parameter referenced in the specification. Its value \
+  <> help ("Provide a value for a parameter referenced in the specification. Its value \
           \ should consist of a colon-separated pair of the name of the \
-          \ parameter in the specification and its value."
+          \ parameter in the specification and its value. " <> repeatedParameterHelp)
   <> metavar "NAME:VALUE")
 
 modulePrefixOption :: Parser (Maybe String)
@@ -130,15 +165,31 @@ modulePrefixOption = optional (strOption
           \provided then the name will default to the name of the output file."
   <> metavar "MODULENAME" ))
 
-inputProofCacheOption :: Parser String
-inputProofCacheOption = strOption
+proofCacheOption :: Mod OptionFields String -> Parser String
+proofCacheOption helpField = strOption
   ( long "proofCache"
-  <> short 'p'
-  <> help "The location of the proof cache \
-          \ that can be used to check the verification status \
-          \ of the specification. The proof cache can be generated via the \
-          \ `vehicle verify` command."
-  <> metavar "FILE" )
+  <> short 'c'
+  <> helpField
+  <> metavar "FILE"
+  )
+
+outputFileOption :: Parser (Maybe String)
+outputFileOption = optional $ strOption
+  ( long "outputFile"
+  <> short 'o'
+  <> help "Output location for compiled file(s). Defaults to stdout if not provided."
+  <> metavar "FILE"
+  )
+
+propertyOption :: Mod OptionFields Text -> Parser (Set Text)
+propertyOption extraDesc = Set.fromList <$> many (option auto desc)
+  where
+    desc :: Mod OptionFields Text
+    desc =
+         long "property"
+      <> short 'y'
+      <> extraDesc
+      <> metavar "NAME"
 
 --------------------------------------------------------------------------------
 -- Compile mode
@@ -153,17 +204,21 @@ compileParser = CompileOptions
      <> short 't'
      <> help "Compilation target."
      <> metavar "TARGET" )
-  <*> specOption
-  <*> optional (strOption
-      ( long "outputFile"
-     <> short 'o'
-     <> help "Output location for compiled file. Defaults to stdout if not provided."
-     <> metavar "FILE" ))
+  <*> specificationOption
+  <*> propertyOption
+       ( help ("Property to include during compilation. " <> repeatedParameterHelp)
+       )
+  <*> outputFileOption
   <*> networkOption
   <*> datasetOption
   <*> parameterOption
   <*> modulePrefixOption
-  <*> optional inputProofCacheOption
+  <*> optional (proofCacheOption
+       ( help "The location of the proof cache \
+          \ that can be used to check the verification status \
+          \ of the specification. The proof cache can be generated via the \
+          \ `vehicle verify` command."
+       ))
 
 --------------------------------------------------------------------------------
 -- Verify mode
@@ -175,7 +230,11 @@ verifyDescription = progDesc
 
 verifyParser :: Parser VerifyOptions
 verifyParser = VerifyOptions
-  <$> specOption
+  <$> specificationOption
+  <*> propertyOption
+       ( help ("Property in the specification to verify. " <> repeatedParameterHelp <>
+               " If none provided then all properties in the file will be verified.")
+       )
   <*> networkOption
   <*> datasetOption
   <*> parameterOption
@@ -191,11 +250,9 @@ verifyParser = VerifyOptions
              \If not provided then Vehicle will search for it in the PATH \
              \environment variable."
      <> metavar "FILE" ))
-  <*> optional (strOption
-      ( long "proofCache"
-     <> short 'c'
-     <> help "Location to export the proof cache file for the Vehicle project."
-     <> metavar "FILE" ))
+  <*> optional (proofCacheOption
+      ( help "Location to create the proof cache for the verified result."
+      ))
 
 --------------------------------------------------------------------------------
 -- Check mode
@@ -206,11 +263,9 @@ checkDescription = progDesc
 
 checkParser :: Parser CheckOptions
 checkParser = CheckOptions
- <$> strOption
-      ( long "proofCache"
-     <> short 'p'
-     <> help "The proof-cache for the specification."
-     <> metavar "FILE" )
+ <$> proofCacheOption
+      ( help "The proof-cache for the specification."
+      )
 
 --------------------------------------------------------------------------------
 -- Export mode
@@ -222,14 +277,12 @@ exportDescription = progDesc
 exportParser :: Parser ExportOptions
 exportParser = ExportOptions
   <$> option auto
-      ( long "itp"
-     <> short 'i'
+      ( long "target"
+     <> short 't'
      <> help "Compilation target."
      <> metavar "TARGET" )
-  <*> inputProofCacheOption
-  <*> optional (strOption
-      ( long "outputFile"
-     <> short 'o'
-     <> help "Output location for compiled file. Defaults to stdout if not provided."
-     <> metavar "FILE" ))
+  <*> proofCacheOption
+      ( help "the proof cache containing the verification result"
+      )
+  <*> outputFileOption
   <*> modulePrefixOption

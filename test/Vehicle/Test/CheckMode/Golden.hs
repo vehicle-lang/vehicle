@@ -72,6 +72,7 @@ runTest name status alterNetwork = do
     , status             = status
     , resourceSummaries  = resources
     , originalSpec       = ""
+    , originalProperties = mempty
     }
 
   alterNetwork networkFile

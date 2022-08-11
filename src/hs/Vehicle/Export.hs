@@ -18,11 +18,12 @@ export :: LoggingOptions -> ExportOptions -> IO ()
 export loggingOptions ExportOptions{..} = do
   proofCache <- readProofCache proofCacheLocation
   let spec = originalSpec proofCache
+  let properties = originalProperties proofCache
   let resources = reparseResources (resourceSummaries proofCache)
 
   absoluteProofCacheLocation <- Just <$> makeAbsolute proofCacheLocation
   case target of
     Agda -> do
       let agdaOptions = AgdaOptions absoluteProofCacheLocation outputFile moduleName
-      agdaCode <- compileToAgda loggingOptions agdaOptions resources spec
+      agdaCode <- compileToAgda loggingOptions agdaOptions spec properties resources
       writeAgdaFile outputFile agdaCode

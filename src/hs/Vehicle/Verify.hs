@@ -14,6 +14,7 @@ import Vehicle.Verify.VerificationStatus
 
 data VerifyOptions = VerifyOptions
   { specification    :: FilePath
+  , properties       :: Properties
   , networkLocations :: NetworkLocations
   , datasetLocations :: DatasetLocations
   , parameterValues  :: ParameterValues
@@ -25,13 +26,13 @@ data VerifyOptions = VerifyOptions
 verify :: LoggingOptions -> VerifyOptions -> IO ()
 verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
   verifierExectuable <- locateVerifier verifier verifierLocation
-  spec <- readInputFile loggingOptions specification
+  spec <- readSpecification loggingOptions specification
   resources <- convertPathsToAbsolute $
     Resources networkLocations datasetLocations parameterValues
 
   status <- case verifier of
     Marabou -> do
-      marabouSpec <- liftIO $ compileToMarabou loggingOptions resources spec
+      marabouSpec <- liftIO $ compileToMarabou loggingOptions spec properties resources
       liftIO $ Marabou.verifySpec verifierExectuable marabouSpec (networks resources)
 
   programOutput loggingOptions $ pretty status
@@ -40,10 +41,11 @@ verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
   case proofCache of
     Nothing -> return ()
     Just proofCachePath -> writeProofCache proofCachePath $ ProofCache
-      { proofCacheVersion = vehicleVersion
-      , status            = status
-      , originalSpec      = spec
-      , resourceSummaries = resourceSummaries
+      { proofCacheVersion  = vehicleVersion
+      , originalSpec       = spec
+      , originalProperties = properties
+      , status             = status
+      , resourceSummaries  = resourceSummaries
       }
 
 locateVerifier :: MonadIO m => Verifier -> Maybe FilePath -> m FilePath
