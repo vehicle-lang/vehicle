@@ -211,6 +211,7 @@ scopeCode keyword code = keyword <> line <> indentCode code
 
 -- | Marks if the current boolean expression is compiled to `Set` or `Bool`
 data BoolLevel = TypeLevel | BoolLevel
+  deriving (Eq)
 
 type Precedence = Int
 
@@ -766,8 +767,13 @@ compileDiv dom args = do
   annotateInfixOp2 [dependency] 7 id (Just qualifier) "÷" args
 
 compileOrder :: MonadAgdaCompile m => OrderOp -> OutputExpr -> [Code] -> m Code
-compileOrder order elemType args = do
+compileOrder originalOrder elemType originalArgs = do
   boolLevel <- getBoolLevel
+
+  -- HACK because v1.7 of stdlib doesn't have >? and >=?. Fixed in v2.0 so remove when released.
+  let (order, args) = if isRatType elemType && boolLevel == BoolLevel && (originalOrder == Ge || originalOrder == Gt)
+      then (flipOrder originalOrder, reverse originalArgs)
+      else (originalOrder, originalArgs)
 
   (qualifier, elemDep) <- case elemType of
     IndexType{} -> return (finQualifier, DataFin)

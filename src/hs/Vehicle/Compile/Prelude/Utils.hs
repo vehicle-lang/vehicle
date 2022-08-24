@@ -44,9 +44,13 @@ isIntType :: DBExpr -> Bool
 isIntType IntType{} = True
 isIntType _         = False
 
-isAnnRatType :: DBExpr -> Bool
+isAnnRatType :: Type binder var -> Bool
 isAnnRatType AnnRatType{} = True
 isAnnRatType _            = False
+
+isRatType :: Type binder var -> Bool
+isRatType RatType{} = True
+isRatType _         = False
 
 isListType :: DBExpr -> Bool
 isListType ListType{} = True

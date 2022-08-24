@@ -24,13 +24,13 @@ module simple-if-output where
 postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 
 abstract
-  prop1 : ∀ (x : ℚ) → if ⌊ x ℚ.>? ℤ.+ 0 ℚ./ 1 ⌋ then f (x ∷ᵥ []ᵥ) (# 0) ℚ.> ℤ.+ 0 ℚ./ 1 else f (x ∷ᵥ []ᵥ) (# 0) ℚ.≤ ℤ.+ 0 ℚ./ 1
+  prop1 : ∀ (x : ℚ) → if ⌊ ℤ.+ 0 ℚ./ 1 ℚ.<? x ⌋ then f (x ∷ᵥ []ᵥ) (# 0) ℚ.> ℤ.+ 0 ℚ./ 1 else f (x ∷ᵥ []ᵥ) (# 0) ℚ.≤ ℤ.+ 0 ℚ./ 1
   prop1 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
 
 abstract
-  prop3 : ∃ λ (x : ℚ) → if ⌊ f (x ∷ᵥ []ᵥ) (# 0) ℚ.>? ℤ.+ 0 ℚ./ 1 ⌋ then x ℚ.≥ ℤ.+ 0 ℚ./ 1 else x ℚ.< ℤ.+ 0 ℚ./ 1
+  prop3 : ∃ λ (x : ℚ) → if ⌊ ℤ.+ 0 ℚ./ 1 ℚ.<? f (x ∷ᵥ []ᵥ) (# 0) ⌋ then x ℚ.≥ ℤ.+ 0 ℚ./ 1 else x ℚ.< ℤ.+ 0 ℚ./ 1
   prop3 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
