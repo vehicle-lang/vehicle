@@ -183,9 +183,10 @@ nfApp p fun args = do
   case fun of
     Lam{}       | normaliseLambdaApplications -> nfAppLam p fun (NonEmpty.toList args)
     Builtin _ b | normaliseBuiltin b          -> nfBuiltin p b args
-    FreeVar _ i | normaliseStdLibApplications
-                  && isStdLibFunction i       -> nfStdLibFn p i args
-    _                                         -> return e
+    FreeVar _ i | normaliseStdLibApplications -> case findStdLibFunction (symbolOf i) of
+      Nothing -> return e
+      Just f  -> nfStdLibFn p f args
+    _ -> return e
 
 nfAppLam :: MonadNorm m => Provenance -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
 nfAppLam _ fun            []           = nf fun
@@ -207,32 +208,29 @@ nfTypeClassOp p op args = do
 
 nfStdLibFn :: MonadNorm m
            => Provenance
-           -> Identifier
+           -> StdLibFunction
            -> NonEmpty CheckedArg
            -> m CheckedExpr
-nfStdLibFn p ident args = do
-  let e = App p (FreeVar p ident) args
-  fromMaybe (return e) $ case args of
-    -- Quantification
-    [ImplicitArg _ tElem, ImplicitArg _ (NatLiteral _ size), InstanceArg _ recFn, ExplicitArg _ (Lam _ binder body)]
-      | ident == StdForallVector || ident == StdExistsVector ->
-        Just $ nfQuantifierVector p tElem size binder body recFn
+nfStdLibFn p f allArgs = do
+  let e = App p (FreeVar p (identifierOf f)) allArgs
+  fromMaybe (return e) $ case embedStdLib f allArgs of
+    Nothing -> Nothing
+    Just res -> case res of
+      EqualsBool    args -> fmap return (nfEqualsBool Eq  p args)
+      NotEqualsBool args -> fmap return (nfEqualsBool Neq p args)
 
-    [ImplicitArg _ (NatLiteral _ size), ExplicitArg _ lam]
-      | ident == StdForallIndex || ident == StdExistsIndex ->
-        Just $ nfQuantifierIndex p ident size lam
+      ExistsBool{} -> Nothing
+      ForallBool{} -> Nothing
 
-    -- Equality
-    [ImplicitArg _ tElem, ImplicitArg _ size, InstanceArg _ recFn, arg1, arg2]
-      | ident == StdEqualsVector || ident == StdNotEqualsVector ->
-        Just $ nfEqualsVector p ident tElem size recFn arg1 arg2
+      EqualsVector    tElem size recFn args        -> nfEqualsVector Eq  p tElem size recFn args
+      NotEqualsVector tElem size recFn args        -> nfEqualsVector Neq p tElem size recFn args
+      AddVector       tElem size recFn args        -> nfAddVector p tElem size recFn args
+      SubVector       tElem size recFn args        -> nfSubVector p tElem size recFn args
+      ForallVector    tElem size recFn binder body -> Just $ nfQuantifierVector p tElem size binder body recFn
+      ExistsVector    tElem size recFn binder body -> Just $ nfQuantifierVector p tElem size binder body recFn
 
-    -- Addition
-    [ImplicitArg _ tElem1, ImplicitArg _ tElem2, ImplicitArg _ tElem3, ImplicitArg _ size, InstanceArg _ recFn, arg1, arg2]
-      | ident == StdAddVector || ident == StdSubVector ->
-        Just $ return $ zipWithVector p tElem1 tElem2 tElem3 size recFn arg1 arg2
-
-    _ -> Nothing
+      ExistsIndex size lam -> Just $ nfQuantifierIndex p Exists size lam
+      ForallIndex size lam -> Just $ nfQuantifierIndex p Forall size lam
 
 --------------------------------------------------------------------------------
 -- Builtins
@@ -348,14 +346,13 @@ nfQuantifierVector p tElem size binder body recFn = do
 
 nfQuantifierIndex :: MonadNorm m
                   => Provenance
-                  -> Identifier
+                  -> Quantifier
                   -> Int
                   -> CheckedExpr
                   -> m CheckedExpr
-nfQuantifierIndex p ident size lam = do
+nfQuantifierIndex p q size lam = do
   let indexType = ConcreteIndexType p size
   let cont  = VecLiteral p indexType (fmap (IndexLiteral p size) [0 .. size-1])
-  let q = if ident == StdForallIndex then Forall else Exists
   nfQuantifierInVector p q indexType (NatLiteral p size) lam cont
 
 -- | Elaborate quantification over the members of a container type.
@@ -378,19 +375,53 @@ nfQuantifierInVector p q tElem size lam container = do
 
   nf $ bigOp p ops size mappedContainer
 
+nfEqualsBool :: EqualityOp -> Provenance -> [CheckedArg] -> Maybe CheckedExpr
+nfEqualsBool op p args@[arg1, arg2] = case op of
+  Neq -> nfNot p . ExplicitArg p <$> nfEqualsBool Neq p args
+  Eq  -> do
+    let bothTrue  = AndExpr p [arg1, arg2]
+    let bothFalse = AndExpr p (ExplicitArg p . nfNot p <$> [arg1, arg2])
+    Just $ OrExpr p (ExplicitArg p <$> [bothTrue, bothFalse])
+nfEqualsBool _ _ _ = Nothing
+
 nfEqualsVector :: MonadNorm m
-               => Provenance
-               -> Identifier
+               => EqualityOp
+               -> Provenance
                -> CheckedExpr
                -> CheckedExpr
                -> CheckedExpr
-               -> CheckedArg
-               -> CheckedArg
-               -> m CheckedExpr
-nfEqualsVector p ident tElem size recFn xs ys = do
-  let equalitiesSeq  = zipWithVector p tElem tElem (BoolType p) size recFn xs ys
-  let ops = if ident == StdEqualsVector then (True, And) else (False, Or)
-  nf $ bigOp p ops size equalitiesSeq
+               -> [CheckedArg]
+               -> Maybe (m CheckedExpr)
+nfEqualsVector op p tElem size recFn args = case args of
+  [ExplicitArg _ xs, ExplicitArg _ ys] -> do
+    let equalitiesSeq  = zipWithVector p tElem tElem (BoolType p) size recFn xs ys
+    let ops = if op == Eq then (True, And) else (False, Or)
+    Just $ nf $ bigOp p ops size equalitiesSeq
+  _ -> Nothing
+
+nfAddVector :: MonadNorm m
+            => Provenance
+            -> CheckedExpr
+            -> CheckedExpr
+            -> CheckedExpr
+            -> [CheckedArg]
+            -> Maybe (m CheckedExpr)
+nfAddVector p tElem size recFn args = case args of
+  [ExplicitArg _ xs, ExplicitArg _ ys] -> do
+    Just $ nf $ zipWithVector p tElem tElem tElem size recFn xs ys
+  _ -> Nothing
+
+nfSubVector :: MonadNorm m
+            => Provenance
+            -> CheckedExpr
+            -> CheckedExpr
+            -> CheckedExpr
+            -> [CheckedArg]
+            -> Maybe (m CheckedExpr)
+nfSubVector p tElem size recFn args = case args of
+  [ExplicitArg _ xs, ExplicitArg _ ys] -> do
+    Just $ nf $ zipWithVector p tElem tElem tElem size recFn xs ys
+  _ -> Nothing
 
 nfMapVector :: MonadNorm m
             => Provenance

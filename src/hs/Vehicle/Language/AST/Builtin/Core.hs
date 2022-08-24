@@ -52,8 +52,7 @@ equalityOp Eq  = (==)
 equalityOp Neq = (/=)
 
 data EqualityDomain
-  = EqBool
-  | EqNat
+  = EqNat
   | EqIndex
   | EqInt
   | EqRat
@@ -64,7 +63,6 @@ instance Hashable EqualityDomain
 
 instance Pretty EqualityDomain where
   pretty = \case
-    EqBool  -> "Bool"
     EqNat   -> "Nat"
     EqIndex -> "Index"
     EqInt   -> "Int"

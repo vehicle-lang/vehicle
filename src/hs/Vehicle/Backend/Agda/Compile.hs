@@ -28,6 +28,8 @@ import Vehicle.Compile.Descope (runDescopeProg)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Monomorphisation (monomorphise)
+import Vehicle.Language.StandardLibrary.Names (findStdLibFunction, StdLibFunction)
+import Data.List.NonEmpty (NonEmpty)
 
 
 --------------------------------------------------------------------------------
@@ -442,18 +444,28 @@ compileExpr expr = do
 
     Builtin{}   -> compileBuiltin expr
     Literal _ l -> compileLiteral l
-
     LVec _ xs -> compileVecLiteral xs
 
-    App _ fun args -> case fun of
-      Builtin{} -> compileBuiltin expr
-      _         -> do
-        cFun   <- compileExpr fun
-        cArgs  <- traverse compileExpr (filterOutNonExplicitArgs args)
-        return $ annotateApp [] cFun cArgs
+    App _ fun args -> compileApp fun args
 
   logExit result
   return result
+
+compileApp :: MonadAgdaCompile m => OutputExpr -> NonEmpty OutputArg -> m Code
+compileApp fun args = do
+  specialResult <- case fun of
+    Builtin{} -> Just <$> compileBuiltin (App mempty fun args)
+    Var _ i   -> case findStdLibFunction i of
+      Nothing -> return Nothing
+      Just f  -> Just <$> compileStdLibFunction f args
+    _         -> return Nothing
+
+  case specialResult of
+    Just v -> return v
+    Nothing -> do
+      cFun   <- compileExpr fun
+      cArgs  <- traverse compileExpr (filterOutNonExplicitArgs args)
+      return $ annotateApp [] cFun cArgs
 
 compileLetBinder :: MonadAgdaCompile m
                  => LetBinder OutputBinding OutputVar
@@ -505,6 +517,28 @@ compileBinder binder = do
   binderType <- compileExpr (typeOf binder)
   let annBinder = annotateInfixOp2 [] minPrecedence id Nothing ":" [binderName, binderType]
   return $ addBrackets annBinder
+
+compileStdLibFunction :: MonadAgdaCompile m => StdLibFunction -> NonEmpty OutputArg -> m Code
+compileStdLibFunction f allArgs = case embedStdLib f allArgs of
+  Nothing -> compilerDeveloperError $ "Compilation of stdlib function" <+> quotePretty f <+> "not yet supported"
+  Just v  -> case v of
+    AddVector _ _ _ args -> annotateApp [VehicleUtils] "add" <$> traverse (compileExpr . argExpr) args
+    SubVector _ _ _ args -> annotateApp [VehicleUtils] "sub" <$> traverse (compileExpr . argExpr) args
+
+    EqualsVector{}    -> eqError
+    NotEqualsVector{} -> eqError
+    EqualsBool{}      -> eqError
+    NotEqualsBool{}   -> eqError
+
+    ExistsVector{} -> quantError
+    ForallVector{} -> quantError
+    ExistsBool{}   -> quantError
+    ForallBool{}   -> quantError
+    ExistsIndex{}  -> quantError
+    ForallIndex{}  -> quantError
+    where
+      quantError = compilerDeveloperError "Quantifier type-class ops should not have been normalised out."
+      eqError    = compilerDeveloperError "Equality type-class ops should not have been normalised out."
 
 compileBuiltin :: MonadAgdaCompile m => OutputExpr -> m Code
 compileBuiltin e = case e of

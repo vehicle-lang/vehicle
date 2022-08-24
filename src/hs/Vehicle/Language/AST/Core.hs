@@ -308,6 +308,9 @@ instance Hashable Identifier
 class HasIdentifier a where
   identifierOf :: a -> Identifier
 
+symbolOf :: Identifier -> Symbol
+symbolOf (Identifier s) = s
+
 --------------------------------------------------------------------------------
 -- Property annotations
 

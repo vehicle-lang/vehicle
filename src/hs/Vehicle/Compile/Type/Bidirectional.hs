@@ -628,13 +628,6 @@ typeOfIf =
 
 typeOfEquals :: EqualityDomain -> EqualityOp -> DSLExpr
 typeOfEquals domain _op = case domain of
-  EqBool{} ->
-    forallLinearityTriples $ \l1 l2 l3 ->
-      forallPolarityTriples $ \p1 p2 p3 ->
-        maxLinearity l1 l2 l3 .~~~>
-        maxPolarity  p1 p2 p3 .~~~>
-        tAnnBool l1 p1 ~> tAnnBool l2 p2 ~> tAnnBool l3 p3
-
   EqIndex{} ->
     forall tNat $ \n1 ->
       forall tNat $ \n2 ->

@@ -123,7 +123,7 @@ solveBoolEquals :: MonadMeta m
 solveBoolEquals c arg1 arg2 res op = do
   let p = provenanceOf c
   constraints <- checkBoolTypesEqual c res [arg1, arg2] MaxLinearity (EqPolarity op)
-  let solution = FreeVar p StdEqualsBool
+  let solution = FreeVar p (identifierOf StdEqualsBool)
   return $ Right (constraints, solution)
 
 {-
@@ -162,7 +162,7 @@ solveVectorEquals op c arg1 arg2 res = do
   (meta, recEq) <- createTC c (HasEq op) [tElem1, tElem2, res]
 
   let p = provenanceOf c
-  let solution = App p (FreeVar p StdEqualsVector)
+  let solution = App p (FreeVar p (identifierOf StdEqualsVector))
         [ ImplicitArg p tElem1
         , ImplicitArg p dim
         , InstanceArg p (Meta p meta)
@@ -289,7 +289,7 @@ solveBoolQuantifier q c domain body res = do
   -- The result is equal to the body
   let resEq = unify c res body
 
-  let solution = FreeVar p $ case q of
+  let solution = FreeVar p $ identifierOf $ case q of
         Forall -> StdForallBool
         Exists -> StdExistsBool
 
@@ -309,7 +309,7 @@ solveIndexQuantifier q c domain body res = do
   (bodyEq, _, _)        <- unifyWithAnnBoolType c body
   let resEq          = unify c res body
 
-  let method = if q == Forall then StdForallIndex else StdExistsIndex
+  let method = identifierOf $ if q == Forall then StdForallIndex else StdExistsIndex
   let solution = App p (FreeVar (provenanceOf c) method)
         [ ImplicitArg p indexSize
         ]
@@ -381,7 +381,7 @@ solveVectorQuantifier q c domain body res = do
   (meta, recTC) <- createTC c (HasQuantifier q) [vecElem, body, res]
 
   let method = if q == Forall then StdForallVector else StdExistsVector
-  let solution = App p (FreeVar (provenanceOf c) method)
+  let solution = App p (FreeVar (provenanceOf c) (identifierOf method))
         [ ImplicitArg p vecElem
         , ImplicitArg p dim
         , InstanceArg p (Meta p meta)
@@ -497,7 +497,7 @@ solveAddVector c arg1 arg2 res = do
   (meta, recTC) <- createTC c HasAdd [arg1Elem, arg2Elem, resElem]
 
   let constraints = [arg1Eq, arg2Eq, resEq, recTC]
-  let solution = App p (FreeVar p StdAddVector)
+  let solution = App p (FreeVar p (identifierOf StdAddVector))
         [ ImplicitArg p arg1Elem
         , ImplicitArg p arg2Elem
         , ImplicitArg p resElem
@@ -569,7 +569,7 @@ solveSubVector c arg1 arg2 res = do
   (meta, recTC) <- createTC c HasSub [arg1Elem, arg2Elem, resElem]
 
   let constraints = [arg1Eq, arg2Eq, resEq, recTC]
-  let solution = App p (FreeVar p StdSubVector)
+  let solution = App p (FreeVar p (identifierOf StdSubVector))
         [ ImplicitArg p arg1Elem
         , ImplicitArg p arg2Elem
         , ImplicitArg p resElem
@@ -720,14 +720,14 @@ solveHasQuantifierIn q c [tElem, tCont, tRes] = case tCont of
     let elemEq = unify c tElem tListElem
     (resEq, _, _) <- unifyWithAnnBoolType c tRes
     let method = if q == Forall then StdForallInList else StdExistsInList
-    let solution = App p (FreeVar p method) [ImplicitArg p tElem, ImplicitArg p tRes]
+    let solution = App p (FreeVar p (identifierOf method)) [ImplicitArg p tElem, ImplicitArg p tRes]
     return $ Right ([elemEq, resEq], solution)
 
   VectorType _ tVecElem dim -> do
     let p = provenanceOf c
     let elemEq = unify c tElem tVecElem
     (resEq, _, _) <- unifyWithAnnBoolType c tRes
-    let method = if q == Forall then StdForallInVector else StdExistsInVector
+    let method = identifierOf $ if q == Forall then StdForallInVector else StdExistsInVector
     let solution = App p (FreeVar p method) [ImplicitArg p tElem, ImplicitArg p dim, ImplicitArg p tRes]
     return $ Right ([elemEq, resEq], solution)
 

@@ -1,12 +1,13 @@
 module Vehicle.Compile.Normalise.Core where
 
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (head)
 
 import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.AlphaEquivalence ( alphaEq )
 import Vehicle.Compile.Error
+
 
 --------------------------------------------------------------------------------
 -- Normalising equality
@@ -18,7 +19,6 @@ nfEq :: Provenance
      -> CheckedArg
      -> CheckedExpr
 nfEq p dom eq e1 e2 = case (dom, argExpr e1, argExpr e2) of
-  (EqBool,  BoolLiteral    _ x, BoolLiteral    _ y) -> BoolLiteral p (equalityOp eq x y)
   (EqIndex, IndexLiteral _ _ x, IndexLiteral _ _ y) -> BoolLiteral p (equalityOp eq x y)
   (EqNat,   NatLiteral     _ x, NatLiteral     _ y) -> BoolLiteral p (equalityOp eq x y)
   (EqInt,   IntLiteral     _ x, IntLiteral     _ y) -> BoolLiteral p (equalityOp eq x y)
@@ -238,12 +238,12 @@ zipWithVector :: Provenance
               -> CheckedType
               -> CheckedExpr
               -> CheckedExpr
-              -> CheckedArg
-              -> CheckedArg
+              -> CheckedExpr
+              -> CheckedExpr
               -> CheckedExpr
 zipWithVector p tElem1 tElem2 tRes size fn xs ys = do
-  let xsLifted = mapArgExpr (liftFreeDBIndices 1) xs
-  let ysLifted = mapArgExpr (liftFreeDBIndices 1) ys
+  let xsLifted = mapArgExpr (liftFreeDBIndices 1) (ExplicitArg p xs)
+  let ysLifted = mapArgExpr (liftFreeDBIndices 1) (ExplicitArg p ys)
   let index = ExplicitArg p (BoundVar p 0)
 
   let body = App p fn $ ExplicitArg p <$>

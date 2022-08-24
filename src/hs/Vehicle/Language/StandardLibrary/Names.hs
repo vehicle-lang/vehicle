@@ -1,58 +1,62 @@
 
 module Vehicle.Language.StandardLibrary.Names where
 
+import Data.Map (Map)
+import Data.Map qualified as Map (fromList, lookup)
+import Data.Text (pack)
+
+import Vehicle.Prelude
 import Vehicle.Language.AST.Core
 
-isStdLibFunction :: Identifier -> Bool
-isStdLibFunction ident = ident `elem` stdLibFunctions
+data StdLibFunction
+  = StdExistsBool
+  | StdForallBool
+  | StdExistsIndex
+  | StdForallIndex
+  | StdExistsVector
+  | StdForallVector
+  | StdExistsInList
+  | StdForallInList
+  | StdExistsInVector
+  | StdForallInVector
+  | StdEqualsBool
+  | StdNotEqualsBool
+  | StdEqualsVector
+  | StdNotEqualsVector
+  | StdAddVector
+  | StdSubVector
+  deriving (Eq, Enum, Bounded)
 
-stdLibFunctions :: [Identifier]
-stdLibFunctions =
-  [ StdExistsBool
-  , StdForallBool
-  , StdExistsIndex
-  , StdForallIndex
-  , StdExistsVector
-  , StdForallVector
-  , StdExistsInList
-  , StdForallInList
-  , StdExistsInVector
-  , StdForallInVector
-  , StdEqualsBool
-  , StdNotEqualsBool
-  , StdEqualsVector
-  , StdNotEqualsVector
-  , StdAddVector
-  , StdSubVector
-  ]
+instance Show StdLibFunction where
+  show = \case
+    StdExistsBool      -> "existsBool"
+    StdForallBool      -> "forallBool"
+    StdExistsIndex     -> "existsIndex"
+    StdForallIndex     -> "forallIndex"
+    StdExistsVector    -> "existsVector"
+    StdForallVector    -> "forallVector"
+    StdExistsInList    -> "existsInList"
+    StdForallInList    -> "forallInList"
+    StdExistsInVector  -> "existsInVector"
+    StdForallInVector  -> "forallInVector"
+    StdEqualsBool      -> "equalsBool"
+    StdNotEqualsBool   -> "notEqualsBool"
+    StdEqualsVector    -> "equalsVector"
+    StdNotEqualsVector -> "notEqualsVector"
+    StdAddVector       -> "addVector"
+    StdSubVector       -> "subVector"
 
-pattern StdExistsBool, StdForallBool :: Identifier
-pattern StdExistsBool = Identifier "existsBool"
-pattern StdForallBool = Identifier "forallBool"
+instance Pretty StdLibFunction where
+  pretty = pretty . show
 
-pattern StdExistsIndex, StdForallIndex :: Identifier
-pattern StdExistsIndex = Identifier "existsIndex"
-pattern StdForallIndex = Identifier "forallIndex"
+instance HasIdentifier StdLibFunction where
+  identifierOf f = Identifier $ pack $ show f
 
-pattern StdExistsVector, StdForallVector :: Identifier
-pattern StdExistsVector = Identifier "existsVector"
-pattern StdForallVector = Identifier "forallVector"
+stdLibFunctions :: Map Symbol StdLibFunction
+stdLibFunctions = Map.fromList $ fmap (\f -> (pack $ show f, f)) [minBound .. maxBound]
 
-pattern StdExistsInList, StdForallInList, StdExistsInVector, StdForallInVector :: Identifier
-pattern StdExistsInList   = Identifier "existsInList"
-pattern StdForallInList   = Identifier "forallInList"
-pattern StdExistsInVector = Identifier "existsInVector"
-pattern StdForallInVector = Identifier "forallInVector"
-
-pattern StdEqualsBool, StdNotEqualsBool, StdEqualsVector, StdNotEqualsVector :: Identifier
-pattern StdEqualsBool      = Identifier "equalsBool"
-pattern StdNotEqualsBool   = Identifier "notEqualsBool"
-pattern StdEqualsVector    = Identifier "equalsVector"
-pattern StdNotEqualsVector = Identifier "notEqualsVector"
-
-pattern StdAddVector, StdSubVector :: Identifier
-pattern StdAddVector = Identifier "addVector"
-pattern StdSubVector = Identifier "subVector"
+findStdLibFunction :: Symbol -> Maybe StdLibFunction
+findStdLibFunction name = Map.lookup name stdLibFunctions
 
 pattern PostulateExistsNat, PostulateForallNat :: Identifier
 pattern PostulateExistsNat = Identifier "existsNat"

@@ -8,6 +8,7 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
+open import Vehicle.Utils
 open import Vehicle.Data.Tensor
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
@@ -32,13 +33,13 @@ lookup2D : ℚ
 lookup2D = twoD (# 0) (# 1)
 
 addition : Tensor ℚ (2 ∷ (2 ∷ []))
-addition = addVector twoD twoD
+addition = add twoD twoD
 
 subtraction : Tensor ℚ (2 ∷ (2 ∷ []))
-subtraction = subVector twoD twoD
+subtraction = sub twoD twoD
 
 abstract
-  p : ∀ (i : Fin 2) → ∀ (j : Fin 2) → addVector (f subtraction) addition i j ℚ.≥ ℤ.+ 0 ℚ./ 1
+  p : ∀ (i : Fin 2) → ∀ (j : Fin 2) → add (f subtraction) addition i j ℚ.≥ ℤ.+ 0 ℚ./ 1
   p = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

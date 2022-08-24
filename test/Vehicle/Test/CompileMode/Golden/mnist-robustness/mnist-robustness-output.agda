@@ -8,6 +8,7 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
+open import Vehicle.Utils
 open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Nat as ℕ using (ℕ)
@@ -40,7 +41,7 @@ BoundedByEpsilon : Image → Set
 BoundedByEpsilon x = ∀ (i : Fin 28) → ∀ (j : Fin 28) → ℚ.- epsilon ℚ.≤ x i j × x i j ℚ.≤ epsilon
 
 RobustAround : Image → (Label → Set)
-RobustAround image label = ∀ (pertubation : Vector (Vector ℚ 28) 28) → let perturbedImage = subVector image pertubation in BoundedByEpsilon pertubation × ValidImage perturbedImage → Advises perturbedImage label
+RobustAround image label = ∀ (pertubation : Vector (Vector ℚ 28) 28) → let perturbedImage = sub image pertubation in BoundedByEpsilon pertubation × ValidImage perturbedImage → Advises perturbedImage label
 
 postulate n : ℕ
 
