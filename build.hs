@@ -271,7 +271,7 @@ $(GEN_DIR_HS)/Vehicle/External/Par.info: $(GEN_DIR_HS)/Vehicle/External/Par.y
       ] <>
       testOptions
 
-  phony "accept-basic-tests" $ do
+  phony "basic-tests-accept" $ do
     requireHaskell
     need bnfcTargets
     command_ [] "cabal" $

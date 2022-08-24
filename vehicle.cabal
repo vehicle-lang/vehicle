@@ -220,6 +220,7 @@ library
                       , data-fix             >=0.2  && <1
                       , ansi-terminal        >=0.6  && <1
                       , linkedhashmap        >=0.4  && <1
+                      , unordered-containers
                       , bytestring
                       , split
                       , data-default-class

@@ -41,7 +41,7 @@ command in various ways):
 
 * `cabal run build basic-tests` will run the tests.
 
-* `cabal run build accept-basic-tests` - will run the tests and accept the changes to any of the
+* `cabal run build basic-tests-accept` - will run the tests and accept the changes to any of the
   changed output files. *Warning*: Only run this if you are okay with the changes to the output!
 
 * `cabal test vehicle-executable-tests --test-show-details=always --test-option="-p /X/"` - will only run tests

@@ -51,8 +51,8 @@ equalUpToAlpha (AlphaTestSpec testName shouldBeEqual t1 t2) =
             squotes (prettyVerbose (toCoDBExpr e2))) <>
           "\n\n" <>
           "Hashes:" <> line <> indent 2 (
-            squotes (pretty $ hashDBExpr e1) <> line <>
-            squotes (pretty $ hashDBExpr e2))
+            squotes (pretty $ hash e1) <> line <>
+            squotes (pretty $ hash e2))
 
     let result = alphaEq e1 e2
     return $ assertBool errorMessage (result == shouldBeEqual)

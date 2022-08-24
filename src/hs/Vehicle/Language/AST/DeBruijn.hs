@@ -20,6 +20,7 @@ module Vehicle.Language.AST.DeBruijn
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader, Reader, ask, runReader, runReaderT, local, lift)
+import Data.Hashable (Hashable(..))
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Core
@@ -41,6 +42,8 @@ data DBVar
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData DBVar
+
+instance Hashable DBVar
 
 -- |The type of the data DeBruijn notation stores at binding sites.
 type DBBinding = Maybe Symbol

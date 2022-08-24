@@ -55,10 +55,11 @@ agdaGoldenTestsSetup :: IO ()
 agdaGoldenTestsSetup = do
   writeProofCache mockProofCacheLocation $
     ProofCache
-      { proofCacheVersion = vehicleVersion
-      , status            = SpecificationStatus mempty
-      , resourceSummaries = []
-      , originalSpec      = ""
+      { proofCacheVersion  = vehicleVersion
+      , status             = SpecificationStatus mempty
+      , resourceSummaries  = []
+      , originalSpec       = ""
+      , originalProperties = mempty
       }
 
 makeAgdaTest :: TestSpec -> Maybe TestTree

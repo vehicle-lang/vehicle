@@ -16,7 +16,7 @@ import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.CoDeBruijnify
 import Vehicle.Compile.AlphaEquivalence
-import Data.Hashable (Hashable)
+import Data.Hashable (Hashable (hash))
 
 -- | Let-lifts any sub-expressions that matches the provided filter
 -- to the highest possible level. Filter takes in the expression
@@ -273,7 +273,7 @@ nodeSM e sms =
   let mergedCSIMap = fmap (fmap Node) (foldr merge Map.empty $ fmap (fmap (fmap Here)) sms) in
 
   -- Add the current node to the map
-  let eHash = hashCoDBExpr e in
+  let eHash = hash e in
   let item  = CSItem e 1 Leaf in
   Map.insertWith (duplicateError e sms) eHash item mergedCSIMap
   where
@@ -290,7 +290,7 @@ duplicateError :: CoDBExpr
 duplicateError e maps _ _ = developerError $
   "During let-lifting found duplicate sub-expression" <+> squotes (prettyVerbose e) <+>
   "containing itself..." <> line <>
-  "Hash code =" <+> pretty (hashCoDBExpr e) <> line <>
+  "Hash code =" <+> pretty (hash e) <> line <>
   "Maps = " <+> pretty (show maps)
 
 showIdentEntry :: MonadLetInsert m => CheckedCoDBExpr -> m ()

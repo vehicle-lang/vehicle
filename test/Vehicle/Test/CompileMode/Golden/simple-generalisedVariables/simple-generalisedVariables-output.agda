@@ -12,8 +12,8 @@ open import Data.Nat as ℕ using (ℕ)
 
 module simple-generalisedVariables-output where
 
-id[Nat] : ℕ → ℕ
-id[Nat] x = x
+id : ℕ → ℕ
+id x = x
 
 natId : ℕ → ℕ
-natId = id[Nat]
+natId = id
