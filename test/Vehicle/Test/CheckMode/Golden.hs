@@ -18,6 +18,7 @@ import Vehicle.Prelude
 import Vehicle.Resource
 
 import Vehicle.Test.Utils ( goldenFileTest, omitFilePaths, baseTestDir )
+import Vehicle.Compile.Prelude (PropertyState(..))
 
 tests :: TestTree
 tests = testGroup "GoldenTests"
@@ -32,19 +33,19 @@ testDir = baseTestDir </> "CheckMode" </> "Golden"
 successTest :: TestTree
 successTest = createTest "success" status alterNetwork
   where
-  status = mkStatus [("network1", Verified Nothing)]
+  status = mkStatus [("network1", SAT Nothing)]
   alterNetwork = const $ return ()
 
 networkChangedTest :: TestTree
 networkChangedTest = createTest "networkChanged" status alterNetwork
   where
-  status = mkStatus [("network1", Verified Nothing)]
+  status = mkStatus [("network1", SAT Nothing)]
   alterNetwork f = writeFile f "alteredContents"
 
 networkMissingTest :: TestTree
 networkMissingTest = createTest "networkMissing" status alterNetwork
   where
-  status = mkStatus [("network1", Verified Nothing)]
+  status = mkStatus [("network1", SAT Nothing)]
   alterNetwork = removeFile
 
 createTest :: String -> SpecificationStatus -> (FilePath -> IO ()) -> TestTree
@@ -91,5 +92,6 @@ runTest name status alterNetwork = do
   removeFile proofCache
   removeFileIfExists networkFile
 
-mkStatus :: [(Text, SinglePropertyStatus)] -> SpecificationStatus
-mkStatus = SpecificationStatus . Map.fromList . fmap (second SinglePropertyStatus)
+mkStatus :: [(Text, SatisfiabilityStatus)] -> SpecificationStatus
+mkStatus = SpecificationStatus . Map.fromList . fmap (second satToProperty)
+  where satToProperty = SinglePropertyStatus False .  NonTrivial

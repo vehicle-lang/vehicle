@@ -24,6 +24,7 @@ module Vehicle.Prelude
   , programOutput
   , partitionM
   , prependList
+  , xor
   ) where
 
 import Control.Monad.IO.Class
@@ -167,6 +168,9 @@ instance Pretty InputOrOutput where
   pretty = \case
     Input  -> "input"
     Output -> "output"
+
+xor :: Bool -> Bool -> Bool
+xor p q = p /= q
 
 --------------------------------------------------------------------------------
 -- IO operations

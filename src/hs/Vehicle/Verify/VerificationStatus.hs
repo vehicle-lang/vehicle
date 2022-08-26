@@ -13,8 +13,8 @@ import System.IO (hPutStrLn, stderr)
 import System.Exit (exitFailure)
 import System.Console.ANSI (Color(..))
 
-import Vehicle.Prelude
 import Vehicle.Resource
+import Vehicle.Compile.Prelude
 
 class IsVerified a where
   isVerified :: a -> Bool
@@ -22,20 +22,14 @@ class IsVerified a where
 --------------------------------------------------------------------------------
 -- Verification status of a single property
 
-data SinglePropertyStatus
-  -- | Witness
-  = Verified (Maybe Text)
-  -- | Counter-example
-  | Failed (Maybe Text)
+data SatisfiabilityStatus
+  = SAT (Maybe Text)
+  | UnSAT
   deriving (Show, Generic)
 
-instance FromJSON SinglePropertyStatus
-instance ToJSON SinglePropertyStatus
-
-instance IsVerified SinglePropertyStatus where
-  isVerified Verified{} = True
-  isVerified Failed{}   = False
-
+instance FromJSON SatisfiabilityStatus
+instance ToJSON SatisfiabilityStatus
+{-
 -- | Negates the status of the property under the assumption that it
 -- represents the status of an existential satisfaction problem.
 negateStatus :: SinglePropertyStatus -> SinglePropertyStatus
@@ -48,42 +42,59 @@ exampleOf (Failed   e) = e
 
 prettySinglePropertyStatus :: (Symbol, SinglePropertyStatus) -> Doc a
 prettySinglePropertyStatus (name, status) =
-  pretty symbol <+> pretty name <> example
-  where
-  (symbol, exampleText) = if isVerified status
-    then (setTextColour Green "🗸", "Witness")
-    else (setTextColour Red   "✗",  "Counter-example")
 
-  example = case exampleOf status of
-    Nothing -> ""
-    Just e  -> line <> indent 2 (exampleText <> ":" <+> pretty e)
-
+-}
 --------------------------------------------------------------------------------
 -- Verification status of a single property
 
 data PropertyStatus
   = MultiPropertyStatus [PropertyStatus]
-  | SinglePropertyStatus SinglePropertyStatus
-  deriving (Show, Generic)
+  | SinglePropertyStatus Bool (PropertyState SatisfiabilityStatus)
+  deriving (Generic)
 
 instance FromJSON PropertyStatus
 instance ToJSON PropertyStatus
 
 instance IsVerified PropertyStatus where
-  isVerified (MultiPropertyStatus ps) = and (fmap isVerified ps)
-  isVerified (SinglePropertyStatus s) = isVerified s
+  isVerified = \case
+    MultiPropertyStatus ps         -> and (fmap isVerified ps)
+    SinglePropertyStatus negated s -> do
+      let result = case s of
+            Trivial    status -> status
+            NonTrivial status -> case status of
+              SAT _ -> True
+              UnSAT -> False
 
-prettyPropertyStatus :: (Symbol, PropertyStatus) -> Doc a
-prettyPropertyStatus (name, MultiPropertyStatus ps) =
-  let numberedSubproperties =
-        zipWith (\(i :: Int) p -> (name <> "!" <> pack (show i), p)) [0..] ps in
-  let numVerified = pretty (length (filter isVerified ps)) in
-  let num = pretty $ length ps in
-  let summary = pretty name <> ":" <+> numVerified <> "/" <> num <+> "verified" in
-  let results = indent 2 $ vsep (fmap prettyPropertyStatus numberedSubproperties) in
-  summary <> line <> results
-prettyPropertyStatus (name, SinglePropertyStatus s) =
-  prettySinglePropertyStatus (name, s)
+      result `xor` negated
+
+prettyPropertyStatus :: Symbol -> PropertyStatus -> Doc a
+prettyPropertyStatus name = \case
+  MultiPropertyStatus ps -> do
+    let numberedSubproperties =
+          zipWith (\(i :: Int) p -> (name <> "!" <> pack (show i), p)) [0..] ps
+    let numVerified = pretty (length (filter isVerified ps))
+    let num = pretty $ length ps
+    let summary = pretty name <> ":" <+> numVerified <> "/" <> num <+> "verified"
+    let results = indent 2 $ vsep (fmap (uncurry prettyPropertyStatus) numberedSubproperties)
+    summary <> line <> results
+
+  SinglePropertyStatus negated s -> do
+    let (verified, evidenceText) = case s of
+          Trivial    status -> (status `xor` negated, " (trivial)")
+          NonTrivial status -> case status of
+            UnSAT       -> (negated, "")
+            SAT witness -> do
+              let witnessText = if negated then "Counter-example" else "Witness"
+              let formatWitness e = line <> indent 2 (witnessText <> ":" <+> pretty e)
+              let witnessDoc = maybe "" formatWitness witness
+              (not negated, witnessDoc)
+
+    prettyNameAndStatus name verified <> evidenceText
+
+prettyNameAndStatus :: Text -> Bool -> Doc a
+prettyNameAndStatus name verified = do
+  let (colour, symbol) = if verified then (Green, "🗸") else (Red, "✗")
+  pretty (setTextColour colour symbol) <+> pretty name
 
 --------------------------------------------------------------------------------
 -- Verification status of the specification
@@ -104,7 +115,7 @@ instance Pretty SpecificationStatus where
       then "Result: verified"
       else "Result: unverified")
     <> line
-    <> indent 2 (vsep (fmap prettyPropertyStatus (Map.toList properties)))
+    <> indent 2 (vsep (fmap (uncurry prettyPropertyStatus) (Map.toList properties)))
 
 --------------------------------------------------------------------------------
 -- Overall status of the specification

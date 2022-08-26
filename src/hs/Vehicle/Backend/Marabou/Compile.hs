@@ -91,10 +91,11 @@ compileProperty :: MonadCompile m
                 -> NetworkContext
                 -> CheckedExpr
                 -> m MarabouProperty
-compileProperty ident networkCtx (VecLiteral _ _ es) =
-  MultiProperty <$> traverse (compileProperty ident networkCtx) es
-compileProperty ident networkCtx expr =
-  logCompilerPass MinDetail ("property" <+> squotes (pretty ident)) $ do
+compileProperty ident networkCtx = \case
+  VecLiteral _ _ es ->
+    MultiProperty <$> traverse (compileProperty ident networkCtx) es
+
+  expr -> logCompilerPass MinDetail ("property" <+> squotes (pretty ident)) $ do
 
     -- Check that we only have one type of quantifier in the property
     -- and if it is universal then negate the property
@@ -116,27 +117,30 @@ compileProperty ident networkCtx expr =
     let compileQ = compileQuery ident networkCtx
     queries <- traverse compileQ (zip [1..] queryExprs)
 
-    return $ SingleProperty isPropertyNegated queries
+    let result = disjunctPropertyStates queries
+    return $ SingleProperty isPropertyNegated result
 
+-- Returns `Nothing` for trivially false, `Just Nothing` for trivially true and `Just Just` otherwise.
 compileQuery :: MonadCompile m
              => Identifier
              -> NetworkContext
              -> (Int, CheckedExpr)
-             -> m MarabouQuery
+             -> m (PropertyState MarabouQuery)
 compileQuery ident networkCtx (queryId, expr) =
   logCompilerPass MinDetail ("query" <+> pretty queryId) $ do
 
-    -- Convert all user varaibles and applications of networks into magic I/O variables
-    (CLSTProblem varNames assertions, metaNetwork, userVarReconstruction) <-
-      normUserVariables ident Marabou networkCtx expr
+    -- Convert all user variables and applications of networks into magic I/O variables
+    result <- normUserVariables ident Marabou networkCtx expr
 
-    (vars, doc) <- logCompilerPass MinDetail "compiling assertions" $ do
-      assertionDocs <- forM assertions (compileAssertion varNames)
-      let assertionsDoc = vsep assertionDocs
-      logCompilerPassOutput assertionsDoc
-      return (varNames, assertionsDoc)
+    traversePropertyState result $
+      \(CLSTProblem varNames assertions, metaNetwork, userVarReconstruction) -> do
+        (vars, doc) <- logCompilerPass MinDetail "compiling assertions" $ do
+          assertionDocs <- forM assertions (compileAssertion varNames)
+          let assertionsDoc = vsep assertionDocs
+          logCompilerPassOutput assertionsDoc
+          return (varNames, assertionsDoc)
 
-    return $ MarabouQuery doc vars metaNetwork userVarReconstruction
+        return $ MarabouQuery doc vars metaNetwork userVarReconstruction
 
 
 compileAssertion :: MonadCompile m

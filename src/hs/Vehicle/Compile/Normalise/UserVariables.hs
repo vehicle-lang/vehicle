@@ -83,7 +83,7 @@ normUserVariables :: MonadCompile m
                   -> Verifier
                   -> NetworkContext
                   -> CheckedExpr
-                  -> m (CLSTProblem, MetaNetwork, UserVarReconstructionInfo)
+                  -> m (PropertyState (CLSTProblem, MetaNetwork, UserVarReconstructionInfo))
 normUserVariables ident verifier networkCtx expr =
   logCompilerPass MinDetail "input/output variable insertion" $ do
     -- First lift all the quantifiers to the top-level
@@ -111,7 +111,7 @@ normUserVariables ident verifier networkCtx expr =
 
 generateCLSTProblem :: MonadSMT m
                     => CheckedExpr
-                    -> m (CLSTProblem, MetaNetwork, UserVarReconstructionInfo)
+                    -> m (PropertyState (CLSTProblem, MetaNetwork, UserVarReconstructionInfo))
 generateCLSTProblem assertionsExpr = do
   (_, _, metaNetwork, _, userVariables, _) <- ask
   variableNames <- getVariableNames
@@ -129,16 +129,17 @@ generateCLSTProblem assertionsExpr = do
     , boundContext               = boundCtx
     }
 
-  userAssertions <- compileAssertions normExprBody
+  result <- compileAssertions normExprBody
 
-  let assertions = inputEqualityAssertions <> userAssertions
-  let clst = CLSTProblem variableNames assertions
+  traversePropertyState result $ \userAssertions -> do
+    let assertions = inputEqualityAssertions <> userAssertions
+    let clst = CLSTProblem variableNames assertions
 
-  (solvedCLST, userVarReconstruction) <-
-    solveForUserVariables (length userVariables) clst
+    (solvedCLST, userVarReconstruction) <-
+      solveForUserVariables (length userVariables) clst
 
-  logCompilerPassOutput $ pretty solvedCLST
-  return (solvedCLST, metaNetwork, userVarReconstruction)
+    logCompilerPassOutput $ pretty solvedCLST
+    return (solvedCLST, metaNetwork, userVarReconstruction)
 
 --------------------------------------------------------------------------------
 -- Monad
@@ -345,48 +346,51 @@ mkMagicVariableSeq p tElem = go
         "apparently miscalculated number of magic output variables:" <+>
         pretty tElem <+> pretty dims <+> pretty outputVarIndices
 
-compileAssertions :: MonadSMT m
-                  => CheckedExpr
-                  -> m [Assertion]
-compileAssertions expr = case expr of
-  Universe{}             -> typeError          currentPass "Universe"
-  Pi{}                   -> typeError          currentPass "Pi"
-  Hole{}                 -> resolutionError    currentPass "Hole"
-  Meta{}                 -> resolutionError    currentPass "Meta"
-  Ann{}                  -> normalisationError currentPass "Ann"
-  Lam{}                  -> normalisationError currentPass "Lam"
-  Let{}                  -> normalisationError currentPass "Let"
-  LVec{}                 -> normalisationError currentPass "LVec"
-  Builtin{}              -> normalisationError currentPass "LVec"
-  Var{}                  -> caseError          currentPass "Var" ["OrderOp", "Eq"]
+compileAssertions :: MonadSMT m => CheckedExpr -> m (PropertyState [Assertion])
+compileAssertions = \case
+  BoolLiteral _ b -> return $ Trivial b
+  e               -> NonTrivial <$> go e
+  where
+    go :: MonadSMT m => CheckedExpr -> m [Assertion]
+    go expr = case expr of
+      Universe{}             -> typeError          currentPass "Universe"
+      Pi{}                   -> typeError          currentPass "Pi"
+      Hole{}                 -> resolutionError    currentPass "Hole"
+      Meta{}                 -> resolutionError    currentPass "Meta"
+      Ann{}                  -> normalisationError currentPass "Ann"
+      Lam{}                  -> normalisationError currentPass "Lam"
+      Let{}                  -> normalisationError currentPass "Let"
+      LVec{}                 -> normalisationError currentPass "LVec"
+      Builtin{}              -> normalisationError currentPass "LVec"
+      Var{}                  -> caseError          currentPass "Var" ["OrderOp", "Eq"]
 
-  Literal _ann l -> case l of
-    LBool _ -> normalisationError currentPass "LBool"
-    _       -> caseError currentPass "Literal" ["AndExpr"]
+      Literal _ann l -> case l of
+        LBool _ -> normalisationError currentPass "LBool"
+        _       -> caseError currentPass "Literal" ["AndExpr"]
 
-  AndExpr _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do
-    as1 <- compileAssertions e1
-    as2 <- compileAssertions e2
-    return (as1 <> as2)
+      AndExpr _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+        as1 <- go e1
+        as2 <- go e2
+        return (as1 <> as2)
 
-  App _ (Builtin _ (Order OrderRat ord)) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
-    let (rel, lhs, rhs) = case ord of
-          Lt -> (LessThan,          e1, e2)
-          Le -> (LessThanOrEqualTo, e1, e2)
-          Gt -> (LessThan,          e2, e1)
-          Ge -> (LessThanOrEqualTo, e2, e1)
-    assertion <- compileAssertion rel lhs rhs
-    return [assertion]
+      App _ (Builtin _ (Order OrderRat ord)) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+        let (rel, lhs, rhs) = case ord of
+              Lt -> (LessThan,          e1, e2)
+              Le -> (LessThanOrEqualTo, e1, e2)
+              Gt -> (LessThan,          e2, e1)
+              Ge -> (LessThanOrEqualTo, e2, e1)
+        assertion <- compileAssertion rel lhs rhs
+        return [assertion]
 
-  App p (Builtin _ (Equals EqRat eq)) [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
-    Neq -> do
-      (_, ident, _, _, _, _) <- ask
-      throwError $ UnsupportedInequality MarabouBackend ident p
-    Eq  -> do
-      assertion <- compileAssertion Equal e1 e2
-      return [assertion]
+      App p (Builtin _ (Equals EqRat eq)) [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
+        Neq -> do
+          (_, ident, _, _, _, _) <- ask
+          throwError $ UnsupportedInequality MarabouBackend ident p
+        Eq  -> do
+          assertion <- compileAssertion Equal e1 e2
+          return [assertion]
 
-  App{} -> unexpectedExprError currentPass (prettySimple expr)
+      App{} -> unexpectedExprError currentPass (prettySimple expr)
 
 compileAssertion :: MonadSMT m
                  => Relation

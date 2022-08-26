@@ -4,9 +4,13 @@ module Vehicle.Backend.Marabou.Interact
   ) where
 
 import Control.Monad ( forM, forM_ )
+import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Data.Text (Text, pack, unpack)
 import Data.Text.IO (hPutStrLn)
 import Data.List (findIndex, elemIndex)
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.List.NonEmpty qualified as NonEmpty (zip, zipWith)
 import Data.Text qualified as Text (pack, splitOn, strip, unpack)
 import Data.Map qualified as Map (fromList, lookup)
 import Data.Vector.Unboxed (Vector)
@@ -67,19 +71,23 @@ writeSpecFiles filepath properties = do
   forM_ directory (createDirectoryIfMissing True)
   -- Write out the spec files
   forM_ properties $ \ (name, property) -> do
-    let partialAddress = basicAddress name <$> directory
-    writePropertyFiles partialAddress property
+      let partialAddress = basicAddress name <$> directory
+      writePropertyFiles partialAddress property
 
 writePropertyFiles :: Maybe QueryAddress -> MarabouProperty -> IO ()
-writePropertyFiles partialAddress (MultiProperty subproperties) = do
-  let numberedSubproperties = zip [0..] subproperties
-  forM_ numberedSubproperties $ \(i, p) ->
-    writePropertyFiles (addPropertyIndex i <$> partialAddress) p
-writePropertyFiles partialAddress (SingleProperty _negated queries) = do
-  -- Write out the queries to the new directory
-  let numberedQueries = zip [1..] queries
-  forM_ numberedQueries $ \(i, q) -> do
-    writeQueryFile (addQueryIndex i <$> partialAddress) q
+writePropertyFiles partialAddress = \case
+  MultiProperty subproperties -> do
+    let numberedSubproperties = zip [0..] subproperties
+    forM_ numberedSubproperties $ \(i, p) ->
+      writePropertyFiles (addPropertyIndex i <$> partialAddress) p
+
+  SingleProperty _negated queryState -> case queryState of
+    Trivial{} -> return ()
+    NonTrivial queries -> do
+      -- Write out the queries to the new directory
+      let numberedQueries = NonEmpty.zip [1..] queries
+      forM_ numberedQueries $ \(i, q) -> do
+        writeQueryFile (addQueryIndex i <$> partialAddress) q
 
 writeQueryFile :: Maybe QueryAddress -> MarabouQuery -> IO ()
 writeQueryFile address query = do
@@ -100,58 +108,57 @@ queryFilePath QueryAddress{..} =
 --------------------------------------------------------------------------------
 -- Verification
 
--- | Uses Marabou to verify the specification. Failure of one property, does
+type MonadVerify m =
+  ( MonadIO m
+  , MonadReader (FilePath, NetworkLocations) m
+  )
+
+-- | Uses Marabou to verify the specification. Failure of one property does
 -- not prevent the verification of the other properties.
-verifySpec :: FilePath
-           -> MarabouSpec
-           -> NetworkLocations
-           -> IO SpecificationStatus
-verifySpec marabouExecutable spec networks = do
+verifySpec :: FilePath -> NetworkLocations -> MarabouSpec -> IO SpecificationStatus
+verifySpec marabouExecutable networkLocations spec = do
   withSystemTempDirectory "marabouSpec" $ \tempDir -> do
     writeSpecFiles (Just tempDir) spec
     results <- forM spec $ \(name, property) -> do
       let partialAddress = basicAddress name tempDir
-      result <- verifyProperty marabouExecutable partialAddress networks property
+      result <- runReaderT (verifyProperty partialAddress property) (marabouExecutable, networkLocations)
       return (name, result)
     return $ SpecificationStatus (Map.fromList results)
 
-verifyProperty :: FilePath
-               -> QueryAddress
-               -> NetworkLocations
+verifyProperty :: MonadVerify m
+               => QueryAddress
                -> MarabouProperty
-               -> IO PropertyStatus
-verifyProperty executable partialAddress networks (MultiProperty subproperties) = do
-  let numberedSubprops = zip [0..] subproperties
-  MultiPropertyStatus <$> forM numberedSubprops (\(i, p) ->
-    verifyProperty executable (addPropertyIndex i partialAddress) networks p)
-verifyProperty executable partialAddress networks (SingleProperty negated queries) = do
-  let numberedQueries = zipWith (\i q -> (addQueryIndex i partialAddress, q)) [1..] queries
-  status <- verifyQueries numberedQueries
-  return (SinglePropertyStatus status)
-  where
-    verifyQueries :: [(QueryAddress, MarabouQuery)] -> IO SinglePropertyStatus
-    verifyQueries [] = return (Verified Nothing)
-    verifyQueries  ((address, query) : qs) = do
-      let queryFile = queryFilePath address
-      result <- verifyQuery executable queryFile networks query
+               -> m PropertyStatus
+verifyProperty partialAddress = \case
+  MultiProperty subproperties -> do
+    let numberedSubprops = zip [0..] subproperties
+    MultiPropertyStatus <$> forM numberedSubprops (\(i, p) ->
+      verifyProperty (addPropertyIndex i partialAddress) p)
 
-      let result' = if negated
-          then negateStatus result
-          else result
+  SingleProperty negated queryState -> SinglePropertyStatus negated <$> case queryState of
+    Trivial s -> return $ Trivial s
+    NonTrivial queries -> NonTrivial <$> do
+      let queryFile i = queryFilePath $ addQueryIndex i partialAddress
+      let numberedQueries = NonEmpty.zipWith (\i q -> (queryFile i, q)) [1..] queries
+      performQueries numberedQueries
 
-      if isVerified result'
-        then verifyQueries qs
-        else return result
+performQueries :: MonadVerify m => NonEmpty (FilePath, MarabouQuery) -> m SatisfiabilityStatus
+performQueries (q :| []) = performQuery q
+performQueries (q :| r : qs) = do
+  result <- performQuery q
+  case result of
+    SAT{} -> return result
+    UnSAT -> performQueries (r :| qs)
 
-verifyQuery :: FilePath
-            -> FilePath
-            -> NetworkLocations
-            -> MarabouQuery
-            -> IO SinglePropertyStatus
-verifyQuery marabouExecutable queryFile networks MarabouQuery{..} = do
-  networkArg <- prepareNetworkArg networks metaNetwork
-  marabouOutput <- readProcessWithExitCode marabouExecutable [networkArg, queryFile] ""
-  parseMarabouOutput varReconstruction marabouOutput
+performQuery :: MonadVerify m
+             => (FilePath, MarabouQuery)
+             -> m SatisfiabilityStatus
+performQuery (queryFile, MarabouQuery{..}) = do
+  (marabouExecutable, networkLocations) <- ask
+  liftIO $ do
+    networkArg <- prepareNetworkArg networkLocations metaNetwork
+    marabouOutput <- readProcessWithExitCode marabouExecutable [networkArg, queryFile] ""
+    parseMarabouOutput varReconstruction marabouOutput
 
 prepareNetworkArg :: NetworkLocations -> MetaNetwork -> IO String
 prepareNetworkArg networkLocations [name] =
@@ -170,29 +177,31 @@ prepareNetworkArg _ _ = do
 
 parseMarabouOutput :: UserVarReconstructionInfo
                    -> (ExitCode, String, String)
-                   -> IO SinglePropertyStatus
-parseMarabouOutput _ (ExitFailure _, out, _err) = do
-  -- Marabou seems to output its error messages to stdout rather than stderr...
-  hPutStrLn stderr
-    ("Marabou threw the following error:\n" <>
-    "  " <> pack out)
-  exitFailure
-parseMarabouOutput reconstructionInfo (ExitSuccess, out, _) = do
-  let outputLines = fmap Text.pack (lines out)
-  let resultIndex = findIndex (\v -> v == "sat" || v == "unsat") outputLines
-  case resultIndex of
-    Nothing -> malformedOutputError "cannot find 'sat' or 'unsat'"
-    Just i
-      | outputLines !! i == "unsat" ->
-        return $ Failed Nothing
-      | otherwise -> do
-        let assignmentOutput = drop (i+1) outputLines
-        let ioVarAssignment = parseSATAssignment assignmentOutput
-        let maybeLinearVars = reconstructUserVars reconstructionInfo ioVarAssignment
-        case maybeLinearVars of
-          Nothing -> return $ Failed Nothing
-          -- TODO reverse normalisatio of quantified user tensor variables
-          Just _x -> return $ Verified Nothing
+                   -> IO SatisfiabilityStatus
+parseMarabouOutput reconstructionInfo (exitCode, out, _err) = case exitCode of
+  ExitFailure _ -> do
+    -- Marabou seems to output its error messages to stdout rather than stderr...
+    hPutStrLn stderr
+      ("Marabou threw the following error:\n" <>
+      "  " <> pack out)
+    exitFailure
+
+  ExitSuccess -> do
+    let outputLines = fmap Text.pack (lines out)
+    let resultIndex = findIndex (\v -> v == "sat" || v == "unsat") outputLines
+    case resultIndex of
+      Nothing -> malformedOutputError "cannot find 'sat' or 'unsat'"
+      Just i
+        | outputLines !! i == "unsat" ->
+          return UnSAT
+        | otherwise -> do
+          let assignmentOutput = drop (i+1) outputLines
+          let ioVarAssignment = parseSATAssignment assignmentOutput
+          let maybeLinearVars = reconstructUserVars reconstructionInfo ioVarAssignment
+          case maybeLinearVars of
+            Nothing -> return $ SAT Nothing
+            -- TODO reverse normalisation of quantified user tensor variables
+            Just _x -> return $ SAT Nothing
 
 parseSATAssignment :: [Text] -> Vector Double
 parseSATAssignment output =

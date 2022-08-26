@@ -33,7 +33,7 @@ verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
   status <- case verifier of
     Marabou -> do
       marabouSpec <- liftIO $ compileToMarabou loggingOptions spec properties resources
-      liftIO $ Marabou.verifySpec verifierExectuable marabouSpec (networks resources)
+      liftIO $ Marabou.verifySpec verifierExectuable (networks resources) marabouSpec
 
   programOutput loggingOptions $ pretty status
 

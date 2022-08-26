@@ -1,8 +1,8 @@
+unused : Bool
+unused = forall (x : Int) . True
+
 @network
 f : Vector Rat 1 -> Vector Rat 1
-
--- bool : Bool
--- bool = forall (x : Int) . True
 
 @property
 expandedExpr : Bool

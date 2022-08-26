@@ -126,15 +126,11 @@ prettyAssertions varNames assertions =
 --------------------------------------------------------------------------------
 -- Linear satisfaction problem
 
--- | Conjunctive linear satisfication problem
-data CLSTProblem = CLSTProblem
-  { variableNames :: VariableNames
-  , assertions    :: [Assertion]
-  }
+-- | Conjunctive linear satisfaction problem
+data CLSTProblem = CLSTProblem VariableNames [Assertion]
 
 instance Pretty CLSTProblem where
-  pretty (CLSTProblem varNames assertions) =
-    prettyAssertions varNames assertions
+  pretty (CLSTProblem varNames assertions) = prettyAssertions varNames assertions
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction

@@ -199,6 +199,13 @@ goldenTestSpecifications =
       , testTargets    = [MarabouBackend, AgdaBackend]
       , testDecls      = ["p2"]
       }
+
+  , testSpec
+      { testName       = "simple-triviallyTrue"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend, AgdaBackend]
+      }
+
   {-
   , testSpec
       { testName       = "simple-vectorType"
