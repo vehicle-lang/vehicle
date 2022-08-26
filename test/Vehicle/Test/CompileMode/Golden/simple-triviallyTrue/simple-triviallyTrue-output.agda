@@ -9,26 +9,18 @@
 
 open import Vehicle
 open import Data.Unit
+open import Data.Sum
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
-module simple-quantifier-output where
-
-unused : Set
-unused = ∀ (x : ℤ) → ⊤
+module simple-triviallyTrue-output where
 
 postulate f : Vector ℚ 1 → Vector ℚ 1
 
 abstract
-  expandedExpr : ∀ (x : Vector ℚ 1) → x (# 0) ℚ.≥ f x (# 0)
-  expandedExpr = checkSpecification record
-    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    }
-
-abstract
-  sequential : ∀ (x : Vector ℚ 1) → ∀ (y : Vector ℚ 1) → f x (# 0) ℚ.≥ f y (# 0)
-  sequential = checkSpecification record
+  p : ∀ (x : Vector ℚ 1) → f x (# 0) ℚ.> ℤ.+ 0 ℚ./ 1 ⊎ ⊤
+  p = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
