@@ -3,7 +3,7 @@ module Vehicle.Test.VerifyMode.Golden where
 import Control.Monad (when)
 import Data.Map qualified as Map ( fromList )
 import Data.Text (Text)
-import System.Directory (removeFile, doesFileExist)
+import System.Directory (removeFile, doesFileExist, findExecutable)
 import System.FilePath ((</>), (<.>))
 import System.Info (os)
 
@@ -17,63 +17,78 @@ import Vehicle.Resource
 import Vehicle.Backend.Prelude
 
 import Vehicle.Test.Utils.Golden ( goldenFileTest, omitFilePaths )
-
+import Vehicle.Test.Utils
 
 --------------------------------------------------------------------------------
 -- Tests
 
-goldenTests :: TestTree
-goldenTests = testGroup "GoldenTests"
-  [ successTest
+goldenTests :: MonadTest m => m TestTree
+goldenTests = testGroup "GoldenTests" <$> traverse makeTests
+  [ testSpec
+      { testName       = "simple-triviallyTrue"
+      , testLocation   = Tests
+      , testTargets    = [MarabouBackend]
+      }
   ]
-
-successTest :: TestTree
-successTest = createTest "Marabou-success" inputFile networks
-  where
-  inputFile = "test/network/windController/windController.vcl"
-  networks  = [("controller", "examples/network/windController/controller.onnx")]
 
 --------------------------------------------------------------------------------
 -- Utils
 
 testDir :: FilePath
-testDir = "test" </> "Test" </> "Verify" </> "Golden"
+testDir = baseTestDir </> "VerifyMode" </> "Golden"
 
-createTest :: String -> String -> [(Text, FilePath)] -> TestTree
-createTest name inputFile networks =
-  goldenFileTest name run omitFilePaths goldenFile outputFile
-  where
-  run = runTest name inputFile networks
-  goldenFile = testDir </> name <.> "txt"
-  outputFile = testDir </> name <> "-output.txt"
+makeTests :: MonadTest m => TestSpec -> m TestTree
+makeTests spec@TestSpec{..} = do
+  let resources = testResources spec
+  let mkTest = makeTest testLocation testName resources
+  testGroup testName <$> traverse mkTest testTargets
 
-runTest :: String -> String -> [(Text, FilePath)] -> IO ()
-runTest name inputFile networks = do
-  let outputFile   = testDir </> name <> "-output.txt"
+makeTest :: MonadTest m
+         => TestLocation
+         -> String
+         -> Resources
+         -> Backend
+         -> m TestTree
+makeTest location name resources backend = do
+  loggingSettings <- getTestLoggingSettings
 
-  run $ Options
+  let verifier    = getVerifier backend
+  let verifierStr = layoutAsString (pretty verifier)
+  let testName    = name <> "-" <> verifierStr
+  let inputFile   = locationDir location name </> name <.> ".vcl"
+  let outputFile  = testDir </> name </> name <> "-" <> verifierStr <> "-temp-output.txt"
+  let goldenFile  = testDir </> name </> name <> "-" <> verifierStr <> "-output.txt"
+
+  let run = runVehicle loggingSettings inputFile outputFile verifier resources
+  return $ goldenFileTest testName run omitFilePaths goldenFile outputFile
+
+runVehicle :: TestLoggingSettings -> FilePath -> FilePath -> Verifier -> Resources -> IO ()
+runVehicle (logFile, debugLevel) inputFile outputFile verifier Resources{..} = do
+  -- Total hack until we get Marabou installed properly
+  verifierLocation <- findExecutable "which"
+  run Options
     { version     = False
-    , outFile     = Nothing
+    , outFile     = Just outputFile
     , errFile     = Nothing
-    , logFile     = Nothing
-    , debugLevel  = 1
+    , logFile     = logFile
+    , debugLevel  = debugLevel
     , modeOptions = Verify $ VerifyOptions
       { specification    = inputFile
       , properties       = mempty
-      , networkLocations = Map.fromList networks
-      , datasetLocations = mempty
-      , parameterValues  = mempty
-      , verifier         = Marabou
-      , verifierLocation = Nothing
+      , networkLocations = networks
+      , datasetLocations = datasets
+      , parameterValues  = parameters
+      , verifier         = verifier
+      , verifierLocation = verifierLocation
       , proofCache       = Nothing
       }
     }
 
-fixWindowsFilePaths :: FilePath -> IO ()
-fixWindowsFilePaths outputFile = do
-  contents <- readFile outputFile
-  let newContents = fmap (\c -> if c == '\\' then '/' else c) contents
-  writeFile outputFile newContents
-
 mkStatus :: [(Text, PropertyStatus)] -> SpecificationStatus
 mkStatus = SpecificationStatus . Map.fromList
+
+getVerifier :: Backend -> Verifier
+getVerifier = \case
+  Verifier v -> v
+  backend    -> error $ layoutAsString message
+    where message = "Non-verifier backend" <+> quotePretty backend <+> "passed to verifier test."

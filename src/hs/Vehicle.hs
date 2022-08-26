@@ -7,6 +7,8 @@ module Vehicle
 import Control.Exception (bracket)
 import Control.Monad (when,)
 import System.Exit (exitSuccess)
+import System.Directory (doesFileExist, createDirectoryIfMissing)
+import System.FilePath (takeDirectory)
 import System.IO
 
 import Vehicle.Prelude
@@ -14,7 +16,6 @@ import Vehicle.Compile (CompileOptions(..), compile)
 import Vehicle.Check (CheckOptions(..), check)
 import Vehicle.Verify (VerifyOptions(..), verify)
 import Vehicle.Export (ExportOptions, export)
-
 --------------------------------------------------------------------------------
 -- Main command
 
@@ -54,17 +55,17 @@ openHandles :: (Maybe FilePath, Maybe FilePath, Maybe (Maybe FilePath), Int)
             -> IO LoggingOptions
 openHandles (outFile, errFile, logFile, logLevel) = do
   outputHandle <- case outFile of
-    Nothing -> return stdout
-    Just x  -> openFile x AppendMode
+    Nothing   -> return stdout
+    Just file -> openHandle file
 
   errorHandle <- case errFile of
-    Nothing -> return stderr
-    Just x  -> openFile x AppendMode
+    Nothing   -> return stderr
+    Just file -> openHandle file
 
   logHandle <- case logFile of
-    Nothing       -> return Nothing
-    Just Nothing  -> return (Just stdout)
-    Just (Just x) -> Just <$> openFile x AppendMode
+    Nothing          -> return Nothing
+    Just Nothing     -> return (Just stdout)
+    Just (Just file) -> Just <$> openHandle file
 
   let debugLevel = intToDebugLevel logLevel
 
@@ -90,3 +91,18 @@ closeHandles (outFile, errFile, logFile) LoggingOptions{..} = do
   case (logFile, logHandle) of
     (Just (Just _), Just logH) -> hClose logH
     _                          -> return ()
+
+openHandle :: FilePath -> IO Handle
+openHandle file = do
+  exists <- doesFileExist file
+  if exists
+    then openFile file AppendMode
+    else do
+      -- Must be a better way of doing this...
+      createEmptyFile file
+      openFile file WriteMode
+
+createEmptyFile :: FilePath -> IO ()
+createEmptyFile path = do
+  createDirectoryIfMissing True $ takeDirectory path
+  writeFile path ""

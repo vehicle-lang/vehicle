@@ -9,6 +9,7 @@
 
 open import Vehicle
 open import Data.Unit
+open import Data.Empty
 open import Data.Sum
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
@@ -22,5 +23,11 @@ postulate f : Vector ℚ 1 → Vector ℚ 1
 abstract
   p : ∀ (x : Vector ℚ 1) → f x (# 0) ℚ.> ℤ.+ 0 ℚ./ 1 ⊎ ⊤
   p = checkSpecification record
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
+    }
+
+abstract
+  multiProperty : (⊤ ∷ᵥ (⊤ ∷ᵥ (⊤ ∷ᵥ []ᵥ))) ∷ᵥ ((⊥ ∷ᵥ (⊤ ∷ᵥ (⊥ ∷ᵥ []ᵥ))) ∷ᵥ []ᵥ)
+  multiProperty = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

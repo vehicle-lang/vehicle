@@ -3,7 +3,6 @@ module Vehicle.Test.CompileMode.Golden
   , performanceTests
   , goldenTestSpecifications
   , goldenTestDirectory
-  , goldenFilepathSuffix
   ) where
 
 import Control.Exception ( catch, throwIO )
@@ -231,18 +230,18 @@ makeIndividualTest :: MonadTest m
                    -> [Text]
                    -> Backend
                    -> m TestTree
-makeIndividualTest location name datasets testDecls backend = do
+makeIndividualTest location name resources testDecls backend = do
   loggingSettings <- getTestLoggingSettings
 
   let testName       = name <> "-" <> layoutAsString (pretty backend)
-  let filePathSuffix = goldenFilepathSuffix backend
+  let extension      = extensionOf backend
   let moduleName     = name <> "-output"
   let inputFile      = locationDir location name </> name <.> ".vcl"
-  let outputFile     = goldenTestDirectory </> name </> name <> "-temp-output" <> filePathSuffix
-  let goldenFile     = goldenTestDirectory </> name </> name <> "-output"      <> filePathSuffix
+  let outputFile     = goldenTestDirectory </> name </> name <> "-temp-output" <> extension
+  let goldenFile     = goldenTestDirectory </> name </> name <> "-output"      <> extension
   let isFolderOutput = backend == MarabouBackend
 
-  let run = runVehicle loggingSettings inputFile outputFile moduleName backend datasets testDecls
+  let run = runVehicle loggingSettings inputFile outputFile moduleName backend resources testDecls
   let testFn = if isFolderOutput then goldenDirectoryTest else goldenFileTest
   return $ testFn testName run omitFilePaths goldenFile outputFile
 
@@ -264,11 +263,11 @@ makePerformanceTest :: TestLocation
 makePerformanceTest location name datasets testDecls backend = do
   let loggingSettings = (Nothing, 0)
 
-  let testName       = name <> "-" <> layoutAsString (pretty backend)
-  let filePathSuffix = goldenFilepathSuffix backend
-  let moduleName     = name <> "-output"
-  let inputFile      = locationDir location name </> name <.> ".vcl"
-  let outputFile     = goldenTestDirectory </> name </> name <> "-temp-output" <> filePathSuffix
+  let testName   = name <> "-" <> layoutAsString (pretty backend)
+  let extension  = extensionOf backend
+  let moduleName = name <> "-output"
+  let inputFile  = locationDir location name </> name <.> ".vcl"
+  let outputFile = goldenTestDirectory </> name </> name <> "-temp-output" <> extension
 
   let run = runVehicle loggingSettings inputFile outputFile moduleName backend datasets testDecls
   let runAndClean = do run; cleanupOutput (backend /= MarabouBackend) outputFile
@@ -279,13 +278,6 @@ makePerformanceTest location name datasets testDecls backend = do
 
 goldenTestDirectory :: FilePath
 goldenTestDirectory = baseTestDir </> "CompileMode" </> "Golden"
-
-goldenFilepathSuffix :: Backend -> String
-goldenFilepathSuffix = \case
-  Verifier Marabou -> "-marabou"
-  ITP Agda         -> ".agda"
-  LossFunction     -> ".json"
-  TypeCheck        -> ""
 
 runVehicle :: TestLoggingSettings
            -> FilePath

@@ -70,6 +70,13 @@ versionOf target = case target of
   LossFunction     -> Nothing
   TypeCheck        -> Nothing
 
+extensionOf :: Backend -> String
+extensionOf = \case
+  Verifier Marabou -> "-marabou"
+  ITP Agda         -> ".agda"
+  LossFunction     -> ".json"
+  TypeCheck        -> ""
+
 -- |Generate the file header given the token used to start comments in the
 -- target language
 prependfileHeader :: Doc a -> Backend -> Doc a

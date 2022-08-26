@@ -6,7 +6,6 @@ import System.Environment
 
 import Vehicle.Test.CompileMode qualified as CompileMode (functionalityTests)
 import Vehicle.Test.CheckMode qualified as CheckMode (functionalityTests)
-import Vehicle.Test.VerifyMode qualified as VerifyMode (functionalityTests)
 import Vehicle.Test.Utils (MonadTest, filepathTests)
 
 -- Can't figure out how to get this passed in via the command-line *sadness*
@@ -22,13 +21,10 @@ main = do
   defaultMain (runReader tests testLogLevel)
 
 tests :: MonadTest m => m TestTree
-tests = do
-  compileTests <- CompileMode.functionalityTests
-  return $ localOption (mkTimeout (timeOutSeconds * 1000000)) $ testGroup "Tests"
-    [ compileTests
-    , CheckMode.functionalityTests
-    -- , verifyTests
-    , miscTests
+tests = localOption (mkTimeout (timeOutSeconds * 1000000)) . testGroup "Tests" <$> sequence
+    [ CompileMode.functionalityTests
+    , return CheckMode.functionalityTests
+    , return miscTests
     ]
 
 miscTests :: TestTree

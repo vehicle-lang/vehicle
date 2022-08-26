@@ -1,4 +1,4 @@
-
+import Control.Monad.Reader (runReader)
 import Data.Maybe (mapMaybe)
 import GHC.IO.Encoding
 import System.Environment
@@ -12,8 +12,10 @@ import Test.Tasty
 
 import Vehicle.Test.Utils.TestProgram (testProgram, CatchStderr(..))
 import Vehicle.Test.CompileMode.Golden
+import Vehicle.Test.VerifyMode as Verify
 import Vehicle.Test.Utils (MonadTest, filepathTests, TestSpec (..))
 import Vehicle.Verify.VerificationStatus (writeProofCache, ProofCache (..), SpecificationStatus (SpecificationStatus))
+
 
 -- Can't figure out how to get this passed in via the command-line *sadness*
 testLogLevel :: Int
@@ -34,7 +36,8 @@ main = do
 tests :: TestTree
 tests = do
   testGroup "IntegrationTests"
-    [ agdaGoldenTests
+    [ agdaIntegrationTests
+    , runReader Verify.integrationTests 0
     ]
 
 
@@ -44,8 +47,8 @@ tests = do
 mockProofCacheLocation :: FilePath
 mockProofCacheLocation = "./proofcache.vclp"
 
-agdaGoldenTests :: TestTree
-agdaGoldenTests = do
+agdaIntegrationTests :: TestTree
+agdaIntegrationTests = do
   let tests =  testGroup "AgdaIntegrationTests" $ mapMaybe makeAgdaTest goldenTestSpecifications
   let testsWithStderr = localOption (CatchStderr True) tests
   let testsWithProofCache = withResource agdaGoldenTestsSetup agdaGoldenTestsTeardown (const testsWithStderr)
@@ -68,9 +71,9 @@ makeAgdaTest spec@TestSpec{..}
   | otherwise = Just $ do
     let backend         = AgdaBackend
     let name            = layoutAsString (pretty backend) <> "-integration" <> "-" <> testName
-    let filePathSuffix  = goldenFilepathSuffix backend
+    let extension       = extensionOf backend
     let goldenDirectory = goldenTestDirectory </> testName
-    let goldenFile      = testName <> "-output" <> filePathSuffix
+    let goldenFile      = testName <> "-output" <> extension
 
     testProgram name "agda" [goldenFile, "--library=vehicle", "--include-path=."] (Just goldenDirectory)
 
