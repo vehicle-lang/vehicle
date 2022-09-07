@@ -58,9 +58,8 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
     -- We ASSUME that all terms here are in normal form, so there
     -- will never be an unreduced redex.
     (Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, [])
-      | visibilityOf binder1 /= visibilityOf binder2 ->
-        throwError $ FailedConstraints [c]
-      | otherwise -> return $ Progress [unify c body1 body2]
+      | visibilityMatches binder1 binder2 -> return $ Progress [unify c body1 body2]
+      | otherwise                         -> throwError $ FailedConstraints [c]
 
     (LVec _ es1, args1) :~: (LVec _ es2, args2)
       -- TODO more informative error message
@@ -73,15 +72,15 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
         return $ Progress $ elemConstraints <> argConstraints
 
     (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
-      | visibilityOf binder1 /= visibilityOf binder2 ->
-        throwError $ FailedConstraints [c]
-      | otherwise -> do
+      | visibilityMatches binder1 binder2 -> do
           -- !!TODO!! Block until binders are solved
           -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
           -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
           let binderConstraint = unify c (typeOf binder1) (typeOf binder2)
           let bodyConstraint   = unify c body1 body2
           return $ Progress [binderConstraint, bodyConstraint]
+
+      | otherwise -> throwError $ FailedConstraints [c]
 
     (Builtin _ op1, args1) :~: (Builtin _ op2, args2) ->
       solveSimpleApplication c op1 op2 args1 args2
@@ -218,9 +217,9 @@ solveArg :: MonadMeta m
          -> (CheckedArg, CheckedArg)
          -> m (Maybe Constraint)
 solveArg c (arg1, arg2)
-  | visibilityOf arg1 /= visibilityOf arg2 = throwError $ FailedConstraints [c]
-  | isInstance arg1 = return Nothing
-  | otherwise = return $ Just $ unify c (argExpr arg1) (argExpr arg2)
+  | not (visibilityMatches arg1 arg2) = throwError $ FailedConstraints [c]
+  | isInstance arg1                   = return Nothing
+  | otherwise                         = return $ Just $ unify c (argExpr arg1) (argExpr arg2)
 
 solveArgs :: MonadMeta m
           => Constraint

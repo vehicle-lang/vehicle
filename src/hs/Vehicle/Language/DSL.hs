@@ -154,7 +154,7 @@ x ~~> y = pi Implicit Relevant x (const y)
 -- | Irrelevant implicit function type
 infixr 4 .~~>
 (.~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x .~~> y = pi Implicit Relevant x (const y)
+x .~~> y = pi Implicit Irrelevant x (const y)
 
 -- | Instance function type
 infixr 4 ~~~>

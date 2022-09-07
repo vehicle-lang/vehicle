@@ -331,72 +331,47 @@ inferArgs :: TCM m
           -> CheckedType    -- Type of the function
           -> [UncheckedArg] -- User-provided arguments of the function
           -> m (CheckedType, [CheckedArg])
-inferArgs p (Pi _ binder resultType) (arg : args)
-  | visibilityOf binder == visibilityOf arg = do
-    let binderType = typeOf binder
+inferArgs p piT@(Pi _ binder resultType) args
+  | isExplicit binder && null args = return (piT, [])
+  | otherwise = do
 
-    checkedArgExpr <- if isInstance binder
-      -- If the argument is an instance argument then add it to the set
-      -- of constraints. This is needed, even when the instance is already
-      -- present, as solving it may produce information needed to solve
-      -- auxiliary metas elsewhere.
-      then createInstanceMetaAndAddConstraint p binder
-      -- Check the type of the argument.
-      else checkExpr binderType (argExpr arg)
+    -- Determine whether we have an arg that matches the binder
+    (matchedUncheckedArg, remainingUncheckedArgs) <- case args of
+      [] -> return (Nothing, args)
+      (arg : remainingArgs)
+        | visibilityMatches binder arg -> return (Just arg, remainingArgs)
+        | isExplicit binder            -> missingExplicitArgumentError binder arg
+        | otherwise                    -> return (Nothing, args)
 
-    -- Substitute argument in `resultType`
-    let updatedResultType = checkedArgExpr `substInto` resultType
-    let newArg = replaceArgExpr checkedArgExpr arg
+    -- Calculate what the new checked arg should be, create a fresh meta if no arg was matched above
+    checkedArgExpr <- case matchedUncheckedArg of
+      Just arg -> checkExpr (typeOf binder) (argExpr arg)
+      Nothing
+        | isInstance binder -> createInstanceMetaAndAddConstraint p binder
+        | otherwise         -> freshExprMeta p (typeOf binder) =<< getBoundCtx
+    let checkedArg = Arg p (visibilityOf binder) (relevanceOf binder) checkedArgExpr
 
-    -- Recurse into the list of args
-    (typeAfterApplication, checkedArgs) <- inferArgs p updatedResultType args
+    -- Substitute the checked arg through the result of the Pi type.
+    let substResultType = argExpr checkedArg `substInto` resultType
 
-    -- Return the appropriately annotated type with its inferred kind.
-    return (typeAfterApplication, newArg : checkedArgs)
+    -- Recurse if necessary to check the remaining unchecked args
+    let needToRecurse = not (null remainingUncheckedArgs) || visibilityOf binder /= Explicit
+    (typeAfterApplication, checkedArgs) <- if needToRecurse
+      then inferArgs p substResultType remainingUncheckedArgs
+      else return (substResultType, [])
 
-  | visibilityOf binder == Explicit = do
-    -- Then we're expecting an explicit arg but have a non-explicit arg
-    -- so panic
+    -- Return the result
+    return (typeAfterApplication, checkedArg : checkedArgs)
+
+inferArgs p nonPiType args
+  | null args = return (nonPiType, [])
+  | otherwise    = do
     ctx <- getBoundCtx
-    throwError $ MissingExplicitArg (boundContextOf ctx) arg (typeOf binder)
-
--- This case handles either
--- `visibilityOf binder /= Explicit` and (`visibilityOf binder /= visibilityOf arg` or args == [])
-inferArgs p (Pi _ binder resultType) args
-  | visibilityOf binder /= Explicit = do
-    logDebug MaxDetail ("insert-arg" <+> pretty (visibilityOf binder) <+> prettyVerbose (typeOf binder))
-    let ann = inserted $ provenanceOf binder
-    let binderType = typeOf binder
-
-    (updateArgs, updatedResultType) <- do
-        -- Check if the required argument is an instance argument
-        metaExpr <- if isInstance binder
-          then createInstanceMetaAndAddConstraint p binder
-          else freshExprMeta p binderType =<< getBoundCtx
-
-        -- Substitute meta-variable in tRes
-        let updatedResultType = metaExpr `substInto` resultType
-
-        -- Create a new argument
-        let newArg = Arg ann (visibilityOf binder) (relevanceOf binder) metaExpr
-
-        return ((newArg:), updatedResultType)
-
-    -- Recurse into the list of args
-    (typeAfterApplication, checkedArgs) <- inferArgs p updatedResultType args
-
-    -- Return the appropriately annotated type with its inferred kind.
-    return (typeAfterApplication, updateArgs checkedArgs)
-
-inferArgs _p functionType [] = return (functionType, [])
-
-inferArgs p functionType args = do
-  ctx <- getBoundCtx
-  let ann = inserted p
-  let mkRes = [Endo $ \tRes -> pi (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
-              | (i, arg) <- zip [0::Int ..] args]
-  let expectedType = fromDSL ann (appEndo (mconcat mkRes) (tHole "res"))
-  throwError $ TypeMismatch p (boundContextOf ctx) functionType expectedType
+    let ann = inserted p
+    let mkRes = [Endo $ \tRes -> pi (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
+                | (i, arg) <- zip [0::Int ..] args]
+    let expectedType = fromDSL ann (appEndo (mconcat mkRes) (tHole "res"))
+    throwError $ TypeMismatch p (boundContextOf ctx) nonPiType expectedType
 
 -- |Takes a function and its arguments, inserts any needed implicits
 -- or instance arguments and then returns the function applied to the full
@@ -427,6 +402,12 @@ createInstanceMetaAndAddConstraint p binder = do
   ctx <- getVariableCtx
   addTypeClassConstraint ctx m binderType
   return $ Meta p m
+
+missingExplicitArgumentError :: TCM m => CheckedBinder -> UncheckedArg -> m a
+missingExplicitArgumentError expectedBinder actualArg = do
+  -- Then we're expecting an explicit arg but have a non-explicit arg so error
+  ctx <- getBoundCtx
+  throwError $ MissingExplicitArg (boundContextOf ctx) actualArg (typeOf expectedBinder)
 
 --------------------------------------------------------------------------------
 -- Typing of literals and builtins

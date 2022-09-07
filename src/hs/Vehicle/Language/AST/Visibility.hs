@@ -49,6 +49,9 @@ isInstance x = case visibilityOf x of
   Instance{} -> True
   _          -> False
 
+visibilityMatches :: (HasVisibility a, HasVisibility b) => a -> b -> Bool
+visibilityMatches x y = visibilityOf x == visibilityOf y
+
 expandByArgVisibility :: Visibility -> Provenance -> Provenance
 expandByArgVisibility Explicit{} = id
 expandByArgVisibility Implicit{} = expandProvenance (1,1)
