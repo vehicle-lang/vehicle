@@ -335,26 +335,21 @@ inferArgs p (Pi _ binder resultType) (arg : args)
   | visibilityOf binder == visibilityOf arg = do
     let binderType = typeOf binder
 
-    checkedArgExpr <- if isInstance binder then do
+    checkedArgExpr <- if isInstance binder
       -- If the argument is an instance argument then add it to the set
       -- of constraints. This is needed, even when the instance is already
       -- present, as solving it may produce information needed to solve
       -- auxiliary metas elsewhere.
-      varCtx <- getVariableCtx
-      m <- freshTypeClassPlacementMeta p binderType
-      addTypeClassConstraint varCtx m binderType
-      return $ Meta p m
-    else do
+      then createInstanceMetaAndAddConstraint p binder
       -- Check the type of the argument.
-      checkExpr binderType (argExpr arg)
+      else checkExpr binderType (argExpr arg)
 
     -- Substitute argument in `resultType`
     let updatedResultType = checkedArgExpr `substInto` resultType
+    let newArg = replaceArgExpr checkedArgExpr arg
 
     -- Recurse into the list of args
     (typeAfterApplication, checkedArgs) <- inferArgs p updatedResultType args
-
-    let newArg = replaceArgExpr checkedArgExpr arg
 
     -- Return the appropriately annotated type with its inferred kind.
     return (typeAfterApplication, newArg : checkedArgs)
@@ -374,17 +369,10 @@ inferArgs p (Pi _ binder resultType) args
     let binderType = typeOf binder
 
     (updateArgs, updatedResultType) <- do
-
-        -- Check if the required argument is a type-class
-        metaExpr <- if isInstance binder then do
-          -- Generate a new meta-variable for the argument
-          meta <- freshTypeClassPlacementMeta p binderType
-          ctx <- getVariableCtx
-          addTypeClassConstraint ctx meta binderType
-          return $ Meta ann meta
-        else do
-          boundCtx <- getBoundCtx
-          freshExprMeta p binderType boundCtx
+        -- Check if the required argument is an instance argument
+        metaExpr <- if isInstance binder
+          then createInstanceMetaAndAddConstraint p binder
+          else freshExprMeta p binderType =<< getBoundCtx
 
         -- Substitute meta-variable in tRes
         let updatedResultType = metaExpr `substInto` resultType
@@ -431,6 +419,14 @@ insertNonExplicitArgs :: TCM m
                       -> CheckedType
                       -> m (CheckedExpr, CheckedType)
 insertNonExplicitArgs ann checkedExpr actualType = inferApp ann checkedExpr actualType []
+
+createInstanceMetaAndAddConstraint :: TCM m => Provenance -> CheckedBinder -> m CheckedExpr
+createInstanceMetaAndAddConstraint p binder = do
+  let binderType = typeOf binder
+  m <- freshTypeClassPlacementMeta p binderType
+  ctx <- getVariableCtx
+  addTypeClassConstraint ctx m binderType
+  return $ Meta p m
 
 --------------------------------------------------------------------------------
 -- Typing of literals and builtins
