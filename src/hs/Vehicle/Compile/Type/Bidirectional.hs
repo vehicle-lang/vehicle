@@ -88,24 +88,6 @@ checkExpr :: TCM m
 checkExpr expectedType expr = do
   showCheckEntry expectedType expr
   res <- case (expectedType, expr) of
-    -- If the type is a meta, then we're forced to switch to infer.
-    (Meta ann _, _) -> viaInfer ann expectedType expr
-
-    (Pi _ piBinder resultType, Lam ann lamBinder body)
-      | visibilityOf piBinder == visibilityOf lamBinder -> do
-        checkedLamBinderType <- checkExpr (TypeUniverse (inserted ann) 0) (typeOf lamBinder)
-
-        -- Unify the result with the type of the pi binder.
-        unify (provenanceOf ann) (typeOf piBinder) checkedLamBinderType
-
-        -- Add bound variable to context
-        checkedBody <- addToBoundCtx (nameOf lamBinder, checkedLamBinderType, Nothing) $ do
-          -- Check if the type of the expression matches the expected result type.
-          checkExpr resultType body
-
-        let checkedLamBinder = replaceBinderType checkedLamBinderType lamBinder
-        return $ Lam ann checkedLamBinder checkedBody
-
     (Pi _ piBinder resultType, e)
       | isImplicit piBinder || isInstance piBinder -> do
       -- Then eta-expand
@@ -124,39 +106,27 @@ checkExpr expectedType expr = do
       -- Prepend a new lambda to the expression with the implicit binder
       return $ Lam ann lamBinder checkedExpr
 
-    (_, Lam ann binder _) -> do
-      ctx <- getBoundCtx
-      let expected = fromDSL ann $ pi (visibilityOf binder) (relevanceOf binder) (tHole "a") (const (tHole "b"))
-      throwError $ TypeMismatch (provenanceOf ann) (boundContextOf ctx) expectedType expected
-
     (_, Hole p _name) -> do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted as
       -- different meta-variables.
       freshExprMeta p expectedType =<< getBoundCtx
 
-    (_, Universe  ann _)    -> viaInfer ann expectedType expr
-    (_, Meta     ann _)     -> viaInfer ann expectedType expr
-    (_, App      ann _ _)   -> viaInfer ann expectedType expr
-    (_, Pi       ann _ _)   -> viaInfer ann expectedType expr
-    (_, Builtin  ann _)     -> viaInfer ann expectedType expr
-    (_, Var      ann _)     -> viaInfer ann expectedType expr
-    (_, Let      ann _ _ _) -> viaInfer ann expectedType expr
-    (_, Literal  ann _)     -> viaInfer ann expectedType expr
-    (_, LVec     ann _)     -> viaInfer ann expectedType expr
-    (_, Ann      ann _ _)   -> viaInfer ann expectedType expr
+    -- Otherwise switch to inference mode
+    (_, _) -> viaInfer expectedType expr
 
   showCheckExit res
   return res
 
-viaInfer :: TCM m => Provenance -> CheckedType -> UncheckedExpr -> m CheckedExpr
-viaInfer ann expectedType e = do
+viaInfer :: TCM m => CheckedType -> UncheckedExpr -> m CheckedExpr
+viaInfer expectedType expr = do
+  let p = provenanceOf expr
   -- Switch to inference mode
-  (checkedExpr, actualType) <- inferExpr e
+  (checkedExpr, actualType) <- inferExpr expr
   -- Insert any needed implicit or instance arguments
-  (appliedCheckedExpr, resultType) <- inferApp ann checkedExpr actualType []
+  (appliedCheckedExpr, resultType) <- inferApp p checkedExpr actualType []
   -- Assert the expected and the actual types are equal
-  unify ann expectedType resultType
+  unify p expectedType resultType
   return appliedCheckedExpr
 
 --------------------------------------------------------------------------------
