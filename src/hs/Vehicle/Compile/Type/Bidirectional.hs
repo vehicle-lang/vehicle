@@ -88,6 +88,26 @@ checkExpr :: TCM m
 checkExpr expectedType expr = do
   showCheckEntry expectedType expr
   res <- case (expectedType, expr) of
+
+    -- In the case where we have a matching pi binder and lam binder use the pi-binder to
+    -- aid inference of lambda binder.
+    (Pi _ piBinder resultType, Lam ann lamBinder body)
+      | visibilityOf piBinder == visibilityOf lamBinder -> do
+        checkedLamBinderType <- checkExpr (TypeUniverse (inserted ann) 0) (typeOf lamBinder)
+
+        -- Unify the result with the type of the pi binder.
+        unify (provenanceOf ann) (typeOf piBinder) checkedLamBinderType
+
+        -- Add bound variable to context
+        checkedBody <- addToBoundCtx (nameOf lamBinder, checkedLamBinderType, Nothing) $ do
+          -- Check if the type of the expression matches the expected result type.
+          checkExpr resultType body
+
+        let checkedLamBinder = replaceBinderType checkedLamBinderType lamBinder
+        return $ Lam ann checkedLamBinder checkedBody
+
+    -- In the case where we have an implicit or instance pi binder then insert a new
+    -- lambda expression.
     (Pi _ piBinder resultType, e)
       | isImplicit piBinder || isInstance piBinder -> do
       -- Then eta-expand
