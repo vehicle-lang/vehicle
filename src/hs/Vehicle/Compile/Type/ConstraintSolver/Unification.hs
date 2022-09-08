@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use tuple-section" #-}
 module Vehicle.Compile.Type.ConstraintSolver.Unification
   ( solveUnificationConstraint
   ) where
@@ -6,6 +8,8 @@ import Control.Monad (when)
 import Control.Monad.Except (MonadError(..), throwError)
 import Data.List (intersect)
 import Data.Maybe (catMaybes)
+import Data.Traversable (for)
+import Data.IntMap qualified as IntMap
 
 import Vehicle.Language.AST
 import Vehicle.Compile.Prelude
@@ -16,7 +20,6 @@ import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Type.ConstraintSolver.Core
-import Data.Traversable (for)
 
 --------------------------------------------------------------------------------
 -- Unification algorithm
@@ -96,32 +99,16 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
     ---------------------
 
     (Meta _ i, args1) :~: (Meta _ j, args2)
-      -- If the expressions are exactly equal then simply discard the constraint
+      -- If the meta-variables are equal then simply discard the constraint
       -- as it doesn't tell us anything.
-      | i == j && args1 == args2 ->
-        return $ Progress mempty
-
-      -- If the meta-variables are equal but their arguments are not
-      -- then the meta-variables can only depend on the set of arguments
-      -- that are shared in the same position by both of them. Calculate
-      -- this set of arguments and create new meta-variable that only
-      -- depends on these, and set the old meta-variable to equal that one.
-      | i == j && args1 /= args2 -> do
-        MetaInfo meta1Origin meta1Type _ <- getMetaInfo i
-        MetaInfo meta2Origin meta2Type _ <- getMetaInfo j
-
-        when (length args1 /= length args2) $
-          compilerDeveloperError "Identical meta variables have different numbers of arguments"
-
-        let sharedArgs = positionalIntersection args1 args2
-        let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
-        let sharedOrigin = meta1Origin <> meta2Origin
-        let sharedTypeConstraint = unify c meta1Type meta2Type
-
-        meta <- freshExprMeta sharedOrigin meta1Type sharedArgsCtx
-        metaSolved i meta
-
-        return $ Progress [sharedTypeConstraint]
+      | i == j -> if args1 == args2
+        then return $ Progress mempty
+        else compilerDeveloperError $
+          -- Used to have a case for this, e.g. see commit cc02a9d for details,
+          -- but I don't think its necessary as we always replace the meta-variable
+          -- with a new one in order to update the context.
+          "Found the same meta-variable" <+> pretty i <+> "unequal contexts:" <+>
+          prettyVerbose args1 <+> prettyVerbose args2
 
       -- Finally if the meta-variables are different then we have much more
       -- flexibility as to how the arguments can relate to each other. In
@@ -132,16 +119,13 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
         MetaInfo meta1Origin meta1Type _ <- getMetaInfo i
         MetaInfo meta2Origin meta2Type _ <- getMetaInfo j
 
-        let sharedArgs = args1 `intersect` args2
-        let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
-        let sharedOrigin = meta1Origin <> meta2Origin
-        let sharedTypeConstraint = unify c meta1Type meta2Type
+        let jointContext = args1 `intersect` args2
+        meta <- createMetaWithRestrictedContext (meta1Origin <> meta2Origin) meta1Type jointContext
 
-        meta <- freshExprMeta sharedOrigin meta1Type sharedArgsCtx
         metaSolved i meta
         metaSolved j meta
 
-        return $ Progress [sharedTypeConstraint]
+        return $ Progress [unify c meta1Type meta2Type]
 
     ----------------------
     -- Flex-rigid cases --
@@ -155,7 +139,7 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
 
       -- Check that 'args' is a pattern and try to calculate a substitution
       -- that renames the variables in 'e2' to ones available to meta `i`
-      case patternOfArgs args of
+      case getArgPattern args of
         Nothing -> do
           -- This constraint is stuck because it is not pattern; shelve
           -- it for now and hope that another constraint allows us to
@@ -163,7 +147,8 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
           -- TODO need to check with Bob what this is stuck on, presumably i?
           return $ Stuck $ MetaSet.singleton i
 
-        Just subst -> do
+        Just argPattern -> do
+          let forwardSubst = patternToSubst argPattern
           let metasInE2 = metasInWithArgs e2
 
           -- If `i` is inside the term we're trying to unify it with then error.
@@ -176,18 +161,18 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
           -- Restrict any arguments to each sub-meta on the RHS to those of i.
           newMetasSolved <- or <$> for (MetaMap.toList metasInE2) (\(j, jArgs) -> do
             MetaInfo jOrigin jType _ <- getMetaInfo j
-            let sharedArgs = args `intersect` jArgs
-            let sharedArgsCtx = map (\arg -> (Nothing, argExpr arg, Nothing)) sharedArgs
-            if sharedArgs /= jArgs then do
-              meta <- freshExprMeta jOrigin jType sharedArgsCtx
-              metaSolved j meta
-              return True
-            else
-              return False)
+
+            let sharedContext = args `intersect` jArgs
+            if sharedContext == jArgs
+              then return False
+              else do
+                meta <- createMetaWithRestrictedContext jOrigin jType sharedContext
+                metaSolved j meta
+                return True)
 
           finalE2 <- if newMetasSolved then substMetas e2 else return e2
 
-          case substAll subst finalE2 of
+          case substAll forwardSubst finalE2 of
             Nothing       -> return $ Stuck mempty -- MetaSet.singleton i
             Just defnBody -> do
               metaSolved i defnBody
@@ -241,3 +226,13 @@ solveSimpleApplication constraint fun1 fun2 args1 args2 = do
   else do
     newConstraints <- solveArgs constraint (args1, args2)
     return $ Progress newConstraints
+
+createMetaWithRestrictedContext :: MonadMeta m => Provenance -> CheckedType -> [CheckedArg] -> m CheckedExpr
+createMetaWithRestrictedContext p metaType newContext = do
+  let sharedExprs = fmap argExpr newContext
+  let sharedArgsCtx = fmap (\arg -> (Nothing, arg, Nothing)) sharedExprs
+  let sharedArgsSubst = IntMap.fromAscList (zip [0..] sharedExprs)
+  meta <- freshExprMeta p metaType sharedArgsCtx
+  case substAll sharedArgsSubst meta of
+    Just e  -> return e
+    Nothing -> compilerDeveloperError $ "Malfomed substitution" <+> prettyVerbose sharedArgsSubst

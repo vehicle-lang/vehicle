@@ -13,14 +13,17 @@ module Vehicle.Language.AST.DeBruijn
   , liftFreeDBIndices
   , substInto
   , substIntoAtLevel
-  , patternOfArgs
   , substAll
+  , getArgPattern
+  , reverseArgPattern
+  , patternToSubst
   ) where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader, Reader, ask, runReader, runReaderT, local, lift)
 import Data.Hashable (Hashable(..))
+import Data.Tuple (swap)
 
 import Vehicle.Prelude
 import Vehicle.Language.AST.Core
@@ -164,25 +167,6 @@ substInto = substIntoAtLevel 0
 
 type Substitution = IntMap DBExpr
 
--- | TODO: explain what this means:
---   ?X i2 i4 i1 --> [2 -> i2, 4 -> i1, 1 -> i0]
-patternOfArgs :: [DBArg] -> Maybe Substitution
-patternOfArgs args = go (length args - 1) IM.empty args
-  where
-    go :: Int -> IntMap DBExpr -> [DBArg] -> Maybe Substitution
-    go _ revMap [] = Just revMap
-    -- TODO: we could eta-reduce arguments too, if possible
-    go i revMap (arg : restArgs) =
-      case argExpr arg of
-        Var ann (Bound j) ->
-           if IM.member j revMap then
-            -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning;
-            -- but then we should make sure the solution is well-typed
-            Nothing
-          else
-            go (i-1) (IM.insert j (Var ann (Bound i)) revMap) restArgs
-        _ -> Nothing
-
 substAll :: Substitution
          -> DBExpr
          -> Maybe DBExpr
@@ -195,3 +179,34 @@ substAll sub e = runReaderT (alter binderUpdate alterVar e) (0, sub)
         return $ Var ann (Bound i)
 
     binderUpdate = IM.map (liftFreeDBIndices 1)
+
+
+--------------------------------------------------------------------------------
+-- Argument patterns
+
+newtype ArgPattern = ArgPattern (IntMap Int)
+
+-- | TODO: explain what this means:
+-- [i2 i4 i1] --> [2 -> 2, 4 -> 1, 1 -> 0]
+getArgPattern :: [DBArg] -> Maybe ArgPattern
+getArgPattern args = ArgPattern <$> go (length args - 1) IM.empty args
+  where
+    go :: Int -> IntMap Int -> [DBArg] -> Maybe (IntMap Int)
+    go _ revMap [] = Just revMap
+    -- TODO: we could eta-reduce arguments too, if possible
+    go i revMap (arg : restArgs) =
+      case argExpr arg of
+        Var _ (Bound j) ->
+           if IM.member j revMap then
+            -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning;
+            -- but then we should make sure the solution is well-typed
+            Nothing
+          else
+            go (i-1) (IM.insert j i revMap) restArgs
+        _ -> Nothing
+
+reverseArgPattern :: ArgPattern -> ArgPattern
+reverseArgPattern (ArgPattern xs) = ArgPattern $ IM.fromList (fmap swap (IM.toList xs))
+
+patternToSubst :: ArgPattern -> Substitution
+patternToSubst (ArgPattern xs) = fmap (Var mempty . Bound) xs
