@@ -309,25 +309,6 @@ pattern
       , ExplicitArg p resType
       ]
 
-pattern HasQuantifierExpr :: Quantifier
-                          -> Provenance
-                          -> Expr binder var
-                          -> Expr binder var
-pattern
-  HasQuantifierExpr q p tDomain <-
-    BuiltinTypeClass p (HasQuantifier q)
-      [ ExplicitArg _ tDomain
-      , ExplicitArg _ _
-      , ExplicitArg _ _
-      ]
-  where
-  HasQuantifierExpr q p tDomain =
-    BuiltinTypeClass p (HasQuantifier q)
-      [ ExplicitArg p tDomain
-      , ExplicitArg p (BoolType p)
-      , ExplicitArg p (BoolType p)
-      ]
-
 --------------------------------------------------------------------------------
 -- Literals
 --------------------------------------------------------------------------------
@@ -409,7 +390,6 @@ pattern
   QuantifierTCExpr p q binder body <-
     App p (Builtin _ (TypeClassOp (QuantifierTC q)))
       [ ImplicitArg _ _
-      , ImplicitArg _ _
       , ImplicitArg _ _
       , InstanceArg _ _
       , ExplicitArg _ (Lam _ binder body)

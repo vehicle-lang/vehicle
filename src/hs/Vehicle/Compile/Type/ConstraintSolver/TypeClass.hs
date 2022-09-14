@@ -257,16 +257,20 @@ solveHasQuantifier :: forall m . MonadMeta m
                    -> Constraint
                    -> [CheckedType]
                    -> m TypeClassProgress
-solveHasQuantifier q c [domain, body, res]
+solveHasQuantifier _ _ [lamType, _]
+  | isMeta lamType = blockOnMetas [lamType]
+solveHasQuantifier q c [Pi _ binder body, res]
   | isMeta        domain = blockOnMetas [domain]
-  | isAnnBoolType domain = solveBoolQuantifier   q c domain body res
-  | isIndexType   domain = solveIndexQuantifier  q c domain body res
-  | isNatType     domain = solveNatQuantifier    q c domain body res
-  | isIntType     domain = solveIntQuantifier    q c domain body res
-  | isAnnRatType  domain = solveRatQuantifier    q c domain body res
-  | isVectorType  domain = solveVectorQuantifier q c domain body res
+  | isAnnBoolType domain = solveBoolQuantifier   q c binder body res
+  | isIndexType   domain = solveIndexQuantifier  q c binder body res
+  | isNatType     domain = solveNatQuantifier    q c binder body res
+  | isIntType     domain = solveIntQuantifier    q c binder body res
+  | isAnnRatType  domain = solveRatQuantifier    q c binder body res
+  | isVectorType  domain = solveVectorQuantifier q c binder body res
   | otherwise            = blockOrThrowError c [domain] tcError
-    where tcError = FailedQuantifierConstraintDomain (constraintContext c) domain q
+    where
+      domain  = typeOf binder
+      tcError = FailedQuantifierConstraintDomain (constraintContext c) domain q
 
 solveHasQuantifier _ c _ = malformedConstraintError c
 
@@ -274,19 +278,19 @@ type HasQuantifierSolver m
   =  MonadMeta m
   => Quantifier
   -> Constraint
-  -> CheckedType
+  -> CheckedBinder
   -> CheckedType
   -> CheckedType
   -> m TypeClassProgress
 
 solveBoolQuantifier :: HasQuantifierSolver m
-solveBoolQuantifier q c domain body res = do
+solveBoolQuantifier q c domainBinder body res = do
   let p = provenanceOf c
 
   -- If we're quantifying over a Bool then it itself is linear and unquantified
   let domainLin = LinearityExpr p Constant
   let domainPol = PolarityExpr p Unquantified
-  let domainEq = unify c domain (AnnBoolType p domainLin domainPol)
+  let domainEq = unify c (typeOf domainBinder) (AnnBoolType p domainLin domainPol)
 
   -- The body is some unknown annotated boolean
   (bodyEq, _, _) <- unifyWithAnnBoolType c body
@@ -301,10 +305,10 @@ solveBoolQuantifier q c domain body res = do
   return $ Right ([domainEq, bodyEq, resEq], solution)
 
 solveIndexQuantifier :: HasQuantifierSolver m
-solveIndexQuantifier q c domain body res = do
+solveIndexQuantifier q c domainBinder body res = do
   let p = provenanceOf c
 
-  (domainEq, indexSize) <- unifyWithIndexType c domain
+  (domainEq, indexSize) <- unifyWithIndexType c (typeOf domainBinder)
   (bodyEq, _, _)        <- unifyWithAnnBoolType c body
   let resEq          = unify c res body
 
@@ -316,7 +320,7 @@ solveIndexQuantifier q c domain body res = do
   return $ Right ([domainEq, bodyEq, resEq], solution)
 
 solveNatQuantifier :: HasQuantifierSolver m
-solveNatQuantifier q c _domain body res = do
+solveNatQuantifier q c _domainBinder body res = do
   (bodyEq, _, _) <- unifyWithAnnBoolType c body
   let resEq          = unify c res body
 
@@ -327,9 +331,9 @@ solveNatQuantifier q c _domain body res = do
   return $ Right ([bodyEq, resEq], solution)
 
 solveIntQuantifier :: HasQuantifierSolver m
-solveIntQuantifier q c _domain body res = do
+solveIntQuantifier q c _domainBinder body res = do
   (bodyEq, _, _) <- unifyWithAnnBoolType c body
-  let resEq          = unify c res body
+  let resEq      = unify c res body
 
   let solution = FreeVar (provenanceOf c) $ case q of
         Forall -> PostulateForallInt
@@ -338,12 +342,13 @@ solveIntQuantifier q c _domain body res = do
   return $ Right ([bodyEq, resEq], solution)
 
 solveRatQuantifier :: HasQuantifierSolver m
-solveRatQuantifier q c domain body res = do
+solveRatQuantifier q c domainBinder body res = do
   let p = provenanceOf c
 
   -- The rational being quantified over is, by definition, linear
-  let domainLin = LinearityExpr p (Linear (QuantifiedVariableProvenance p))
-  let domainEq  = unify c domain (AnnRatType p domainLin)
+  let varName   = getBinderSymbol domainBinder
+  let domainLin = LinearityExpr p (Linear (QuantifiedVariableProvenance p varName))
+  let domainEq  = unify c (typeOf domainBinder) (AnnRatType p domainLin)
 
   -- The body must be of some Bool type
   (bodyEq, bodyLin, bodyPol) <- unifyWithAnnBoolType c body
@@ -362,13 +367,14 @@ solveRatQuantifier q c domain body res = do
   return $ Right ([domainEq, polTC, bodyEq, resEq], solution)
 
 solveVectorQuantifier :: HasQuantifierSolver m
-solveVectorQuantifier q c domain body res = do
+solveVectorQuantifier q c domainBinder body res = do
   let p = provenanceOf c
   dim <- freshDimMeta c
-  (domainEq, vecElem) <- unifyWithVectorType c dim domain
+  (domainEq, vecElem) <- unifyWithVectorType c dim (typeOf domainBinder)
 
   -- Recursively check that you can quantify over it.
-  (meta, recTC) <- createTC c (HasQuantifier q) [vecElem, body, res]
+  let elemDomainBinder = replaceBinderType vecElem domainBinder
+  (meta, recTC) <- createTC c (HasQuantifier q) [Pi p elemDomainBinder body, res]
 
   let method = if q == Forall then StdForallVector else StdExistsVector
   let solution = App p (FreeVar (provenanceOf c) (identifierOf method))

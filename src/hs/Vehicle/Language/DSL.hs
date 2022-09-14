@@ -255,8 +255,8 @@ hasOr t1 t2 t3 = typeClass HasOr [t1, t2, t3]
 hasImplies :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 hasImplies t1 t2 t3 = typeClass HasImplies [t1, t2, t3]
 
-hasQuantifier :: Quantifier -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasQuantifier q t1 t2 t3 = typeClass (HasQuantifier q) [t1, t2, t3]
+hasQuantifier :: Quantifier -> DSLExpr -> DSLExpr -> DSLExpr
+hasQuantifier q t1 t2 = typeClass (HasQuantifier q) [t1, t2]
 
 hasAdd :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 hasAdd t1 t2 t3 = typeClass HasAdd [t1, t2, t3]
@@ -338,7 +338,7 @@ constant :: DSLExpr
 constant = con (Linearity Constant)
 
 linear :: DSLExpr
-linear = DSL $ \p _ -> Builtin p (Linearity (Linear $ prov p))
+linear = DSL $ \p _ -> Builtin p (Linearity (Linear $ prov p ""))
   where prov = QuantifiedVariableProvenance
 
 unquantified :: DSLExpr

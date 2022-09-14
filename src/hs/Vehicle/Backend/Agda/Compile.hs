@@ -571,20 +571,20 @@ compileBuiltin e = case e of
   DivExpr     _ dom args -> compileDiv dom <$> traverse compileArg (NonEmpty.toList args)
   NegExpr     _ dom args -> compileNeg dom <$> traverse compileArg (NonEmpty.toList args)
 
-  (ForallTCExpr  _  binder body) -> compileTypeLevelQuantifier Forall [binder] body
-  (ExistsTCExpr  _  binder body) -> compileTypeLevelQuantifier Exists [binder] body
-  (ForeachExpr _ _ _ lam)        -> compileLam lam
+  ForallTCExpr  _  binder body -> compileTypeLevelQuantifier Forall [binder] body
+  ExistsTCExpr  _  binder body -> compileTypeLevelQuantifier Exists [binder] body
+  ForeachExpr _ _ _ lam        -> compileLam lam
 
-  (ForallInTCExpr p tCont binder body cont) -> compileQuantIn Forall tCont (Lam p binder body) cont
-  (ExistsInTCExpr p tCont binder body cont) -> compileQuantIn Exists tCont (Lam p binder body) cont
+  ForallInTCExpr p tCont binder body cont -> compileQuantIn Forall tCont (Lam p binder body) cont
+  ExistsInTCExpr p tCont binder body cont -> compileQuantIn Exists tCont (Lam p binder body) cont
 
-  (OrderTCExpr    _ ord t1 _ _ args) -> compileOrder ord  t1 =<< traverse compileArg args
-  (EqualityTCExpr _ Eq  t1 _ _ args) -> compileEquality   t1 =<< traverse compileArg args
-  (EqualityTCExpr _ Neq t1 _ _ args) -> compileInequality t1 =<< traverse compileArg args
+  OrderTCExpr    _ ord t1 _ _ args -> compileOrder ord  t1 =<< traverse compileArg args
+  EqualityTCExpr _ Eq  t1 _ _ args -> compileEquality   t1 =<< traverse compileArg args
+  EqualityTCExpr _ Neq t1 _ _ args -> compileInequality t1 =<< traverse compileArg args
 
-  (NilExpr _ _)          -> return compileNil
-  (ConsExpr _ _   args)  -> compileCons <$> traverse compileArg args
-  (AtExpr _ _ _ [xs, i]) -> compileAt (argExpr xs) (argExpr i)
+  NilExpr _ _          -> return compileNil
+  ConsExpr _ _   args  -> compileCons <$> traverse compileArg args
+  AtExpr _ _ _ [xs, i] -> compileAt (argExpr xs) (argExpr i)
 
   HasEqExpr  _ _ t _ _ -> compileTypeClass "HasEq"  t
   HasOrdExpr _ _ t _ _ -> compileTypeClass "HasOrd" t

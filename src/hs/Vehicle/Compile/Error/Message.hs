@@ -841,8 +841,8 @@ prettyLinearityProvenance lp isLHS =
   where
   go :: LinearityProvenance -> [Doc a]
   go = \case
-    QuantifiedVariableProvenance p ->
-      ["the quantified variable introduced at" <+> pretty p ]
+    QuantifiedVariableProvenance p v ->
+      ["the quantified variable" <+> quotePretty v <+> "introduced at" <+> pretty p]
     NetworkOutputProvenance p networkName ->
       ["the output of network" <+> squotes (pretty networkName) <+> "at" <+> pretty p]
     LinFunctionProvenance p pp position ->

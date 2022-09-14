@@ -53,9 +53,6 @@ showInferExit (e, t) = do
 -------------------------------------------------------------------------------
 -- Utility functions
 
-removeBinderName :: CheckedBinder -> CheckedBinder
-removeBinderName (Binder ann v r _n t) = Binder ann v r Nothing t
-
 unify :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m ()
 unify p e1 e2 = do
   ctx <- getVariableCtx
@@ -249,7 +246,7 @@ inferExpr e = do
       (checkedBody , typeOfBody) <-
         addToBoundCtx (nameOf binder, typeOfBinder, Nothing) $ inferExpr body
 
-      let t' = Pi insertedAnn (removeBinderName checkedBinder) typeOfBody
+      let t' = Pi insertedAnn checkedBinder typeOfBody
       return (Lam ann checkedBinder checkedBody , t')
 
     Builtin p op -> do
@@ -526,7 +523,7 @@ typeOfTypeClass tc = case tc of
   HasAnd             -> type0 ~> type0 ~> type0 ~> type0
   HasOr              -> type0 ~> type0 ~> type0 ~> type0
   HasImplies         -> type0 ~> type0 ~> type0 ~> type0
-  HasQuantifier{}    -> type0 ~> type0 ~> type0 ~> type0
+  HasQuantifier{}    -> type0 ~> type0 ~> type0
   HasAdd             -> type0 ~> type0 ~> type0 ~> type0
   HasSub             -> type0 ~> type0 ~> type0 ~> type0
   HasMul             -> type0 ~> type0 ~> type0 ~> type0
@@ -654,10 +651,9 @@ typeOfFold =
 
 typeOfQuantifier :: Quantifier -> DSLExpr
 typeOfQuantifier q =
-  forall type0 $ \tDomain ->
-    forall type0 $ \tBody ->
-      forall type0 $ \tRes ->
-        hasQuantifier q tDomain tBody tRes ~~~> (tDomain ~> tBody) ~> tRes
+  forall type0 $ \tLam ->
+    forall type0 $ \tRes ->
+      hasQuantifier q tLam tRes ~~~> tLam ~> tRes
 
 typeOfQuantifierIn :: Quantifier -> DSLExpr
 typeOfQuantifierIn q =
