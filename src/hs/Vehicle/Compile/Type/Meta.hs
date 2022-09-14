@@ -10,6 +10,7 @@ module Vehicle.Compile.Type.Meta
   , makeMetaType
   , addUnificationConstraint
   , addTypeClassConstraint
+  , createMetaAndAddTypeClassConstraint
   , addConstraints
   , setConstraints
   , getUnsolvedConstraints
@@ -42,10 +43,12 @@ module Vehicle.Compile.Type.Meta
   , clearMetaCtx
   , MetaSubstitution
   , MetaSubstitutable(..)
+  , TCM
+  , runTCM
   ) where
 
 import Control.Monad.Reader (ReaderT (..), MonadReader (..), local)
-import Control.Monad.State (MonadState(..), modify, gets)
+import Control.Monad.State (MonadState(..), modify, gets, StateT, evalStateT)
 import Control.Monad (foldM)
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty)
@@ -62,6 +65,7 @@ import Vehicle.Compile.Type.MetaSet (MetaSet)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.VariableContext
+import Control.Monad.Writer (execWriter, MonadWriter (tell))
 
 
 --------------------------------------------------------------------------------
@@ -409,45 +413,61 @@ metaSolved m solution = do
         }
 
 class HasMetas a where
+  traverseMetas :: Monad m => (Provenance -> Meta -> [CheckedArg] -> m CheckedExpr) -> a -> m a
+
   metasInWithArgs :: a -> MetaMap [CheckedArg]
+  metasInWithArgs e = execWriter (traverseMetas f e)
+    where
+      f p m args = do
+        tell (MetaMap.singleton m args)
+        return $ normAppList p (Meta p m) args
 
   metasIn :: a -> MetaSet
   metasIn = MetaMap.keys . metasInWithArgs
 
 instance HasMetas CheckedExpr where
-  metasInWithArgs = \case
-    Universe{}               -> mempty
-    Hole{}                   -> mempty
-    Literal{}                -> mempty
-    Builtin{}                -> mempty
-    Var {}                   -> mempty
-    Meta _ m                 -> MetaMap.singleton m mempty
-    Ann  _ e t               -> metasInWithArgs e <> metasInWithArgs t
-    Pi   _ binder result     -> metasInWithArgs (typeOf binder) <> metasInWithArgs result
-    Let  _ bound binder body -> metasInWithArgs bound <> metasInWithArgs (typeOf binder) <> metasInWithArgs body
-    Lam  _ binder body       -> metasInWithArgs (typeOf binder) <> metasInWithArgs body
-    LVec _ xs                -> MetaMap.unions (fmap metasInWithArgs xs)
-    App  _ fun args          ->
-      let argExprs = fmap argExpr (NonEmpty.toList args) in
-      case fun of
-        Meta p m ->
-          let (varArgs, remainingArgs) = span isBoundVar argExprs in
-          let remainingArgs' = fmap metasInWithArgs remainingArgs in
-          MetaMap.unions $ MetaMap.singleton m (map (ExplicitArg p) varArgs) : remainingArgs'
-        _ ->
-          let args' = fmap metasInWithArgs argExprs in
-          MetaMap.unions (metasInWithArgs fun : args')
+  traverseMetas f expr = case expr of
+    Meta p m                 -> f p m []
+    App p (Meta _ m) args    -> do
+      let (metaCtxArgs, otherArgs) = span (isBoundVar . argExpr) (NonEmpty.toList args)
+      otherArgs' <- traverseMetas f otherArgs
+      result <- f p m metaCtxArgs
+      return $ normAppList p result otherArgs'
+
+    Universe{}               -> return expr
+    Hole{}                   -> return expr
+    Literal{}                -> return expr
+    Builtin{}                -> return expr
+    Var {}                   -> return expr
+    Ann  p e t               -> Ann p <$> traverseMetas f e <*> traverseMetas f t
+    Pi   p binder result     -> Pi p <$> traverseMetas f binder <*> traverseMetas f result
+    Let  p bound binder body -> Let p <$> traverseMetas f bound <*> traverseMetas f binder <*> traverseMetas f body
+    Lam  p binder body       -> Lam p <$> traverseMetas f binder <*> traverseMetas f body
+    LVec p xs                -> LVec p <$> traverseMetas f xs
+    App  p fun args          -> App p <$> traverseMetas f fun <*> traverseMetas f args
 
 instance HasMetas CheckedArg where
-  metasInWithArgs arg = metasInWithArgs (argExpr arg)
+  traverseMetas f = traverseArgExpr (traverseMetas f)
+
+instance HasMetas CheckedBinder where
+  traverseMetas f = traverseBinderType (traverseMetas f)
+
+instance HasMetas a => HasMetas [a] where
+  traverseMetas f = traverse (traverseMetas f)
 
 instance HasMetas a => HasMetas (NonEmpty a) where
-  metasInWithArgs xs = MetaMap.unions $ map metasInWithArgs (NonEmpty.toList xs)
+  traverseMetas f = traverse (traverseMetas f)
 
 instance HasMetas Constraint where
-  metasInWithArgs = \case
-    UC _ (Unify (e1, e2)) -> MetaMap.unions [metasInWithArgs e1, metasInWithArgs e2]
-    TC _ (Has _ _ e)     -> metasInWithArgs e
+  traverseMetas f = \case
+    UC ctx (Unify (e1, e2)) -> do
+      e1' <- traverseMetas f e1
+      e2' <- traverseMetas f e2
+      return $ UC ctx (Unify (e1', e2'))
+
+    TC ctx (Has m tc e) -> do
+      e' <- traverseMetas f e
+      return $ TC ctx $ Has m tc e'
 
 prettyMetas :: MonadMeta m => MetaSet -> m (Doc a)
 prettyMetas metas = do
@@ -477,25 +497,35 @@ addUnificationConstraint :: MonadMeta m
                          -> CheckedExpr
                          -> m ()
 addUnificationConstraint group p ctx e1 e2 = do
-  let context    = ConstraintContext p mempty ctx group
+  let context    = ConstraintContext p p mempty ctx group
   let constraint = UC context $ Unify (e1, e2)
   addConstraints [constraint]
 
 addTypeClassConstraint :: MonadMeta m
-                       => TypingVariableCtx
+                       => Provenance
+                       -> TypingVariableCtx
                        -> Meta
                        -> CheckedExpr
                        -> m ()
-addTypeClassConstraint ctx meta expr = do
+addTypeClassConstraint creationProvenance ctx meta expr = do
   (tc, args) <- case expr of
     BuiltinTypeClass _ tc args -> return (tc, args)
     _                          -> compilerDeveloperError $
       "Malformed type class constraint" <+> prettyVerbose expr
 
+  let originProvenance = provenanceOf expr
+
   let group      = typeClassGroup tc
-  let context    = ConstraintContext (provenanceOf expr) mempty ctx group
+  let context    = ConstraintContext originProvenance creationProvenance mempty ctx group
   let constraint = TC context (Has meta tc args)
   addConstraints [constraint]
+
+createMetaAndAddTypeClassConstraint :: TCM m => Provenance -> CheckedType -> m CheckedExpr
+createMetaAndAddTypeClassConstraint p tc = do
+  m <- freshTypeClassPlacementMeta p tc
+  ctx <- getVariableCtx
+  addTypeClassConstraint p ctx m tc
+  return $ Meta p m
 
 addConstraints :: MonadMeta m => [Constraint] -> m ()
 addConstraints []             = return ()
@@ -557,3 +587,16 @@ getDeclType p ident = do
       "Declaration'" <+> pretty ident <+> "'not found when" <+>
       "looking up variable in context" <+> pretty (Map.keys ctx) <+>
       "at" <+> pretty p
+
+--------------------------------------------------------------------------------
+-- The type-checking monad
+
+-- | The type-checking monad
+type TCM m =
+  ( MonadCompile                   m
+  , MonadState  MetaCtx            m
+  , MonadReader TypingVariableCtx  m
+  )
+
+runTCM :: MonadCompile m => ReaderT TypingVariableCtx (StateT MetaCtx m) a -> m a
+runTCM e = evalStateT (runReaderT e emptyVariableCtx) emptyMetaCtx

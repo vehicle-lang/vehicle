@@ -1,4 +1,5 @@
-Error at Line 8, Columns 1-2: The property 'p' contains a sequence of quantifiers unsupported by Marabou.
-Marabou cannot verify properties that mix both 'forall' and 'exists' quantifiers.
-In particular the 'forall' at Line 9, Columns 5-11 clashes with the 'exists' at Line 5, Columns 17-23
-Fix: if possible try reformulating 'p' in terms of a single type of quantifier.
+Error at Line 8, Columns 1-2: The property 'p' contains alternating 'forall' and 'exists' quantifiers which is not supported by Marabou.
+In particular:
+  1. the inner quantifier is the 'exists' located at Line 5, Columns 17-23
+  2. which is which is proceduced as an output of the function 'existential' at Line 9, Columns 24-37
+  3. which alternates with the outer 'forall' at Line 9, Columns 5-11

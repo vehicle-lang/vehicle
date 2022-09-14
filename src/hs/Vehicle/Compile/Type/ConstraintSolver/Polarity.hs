@@ -53,7 +53,7 @@ eqPolarity :: EqualityOp
            -> Polarity
            -> Polarity
 eqPolarity eq p pol1 pol2 =
-  let negPol = negPolarity (EqProvenance eq p) in
+  let negPol = negPolarity (\pp -> EqProvenance p pp eq) in
   -- `a == b` = (a and b) or (not a and not b)
   maxPolarity
     (maxPolarity pol1 pol2)
@@ -142,3 +142,18 @@ solveImplPolarity :: MonadMeta m
                  -> m ConstraintProgress
 solveImplPolarity = solvePolarityOp2 implPolarity
 
+solveFunctionPolarity :: MonadMeta m
+                            => FunctionPosition
+                            -> Constraint
+                            -> [CheckedExpr]
+                            -> m ConstraintProgress
+solveFunctionPolarity functionPosition c [arg, res] = case arg of
+  (exprHead -> Meta _ m1) -> blockOn [m1]
+  PolarityExpr _ pol      -> do
+    let p = provenanceOf c
+    let addFuncProv pp = PolFunctionProvenance p pp functionPosition
+    let pol3 = PolarityExpr p $ mapPolarityProvenance addFuncProv pol
+    return $ Progress [unify c res pol3]
+  _                        -> malformedConstraintError c
+
+solveFunctionPolarity _ c _ = malformedConstraintError c

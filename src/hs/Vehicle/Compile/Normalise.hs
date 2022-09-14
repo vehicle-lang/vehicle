@@ -256,16 +256,16 @@ nfBuiltin p b                args = do
     IfExpr    _ t [cond, e1, e2] -> Just $ return $ nfIf      p t cond e1 e2
 
     -- Numeric operations
-    (NegExpr _ dom [arg])        -> Just $ return $ nfNeg p dom arg
-    (AddExpr _ dom [arg1, arg2]) -> Just $ return $ nfAdd p dom arg1 arg2
-    (SubExpr _ dom [arg1, arg2]) -> Just $ return $ nfSub expandOutPolynomials p dom arg1 arg2
-    (MulExpr _ dom [arg1, arg2]) -> Just $ return $ nfMul expandOutPolynomials p dom arg1 arg2
-    (DivExpr _ dom [arg1, arg2]) -> Just $ return $ nfDiv p dom arg1 arg2
+    NegExpr _ dom [arg]        -> Just $ return $ nfNeg p dom arg
+    AddExpr _ dom [arg1, arg2] -> Just $ return $ nfAdd p dom arg1 arg2
+    SubExpr _ dom [arg1, arg2] -> Just $ return $ nfSub expandOutPolynomials p dom arg1 arg2
+    MulExpr _ dom [arg1, arg2] -> Just $ return $ nfMul expandOutPolynomials p dom arg1 arg2
+    DivExpr _ dom [arg1, arg2] -> Just $ return $ nfDiv p dom arg1 arg2
 
     -- Numeric conversion
-    (FromNatExpr _ n dom args') -> Just $ nfFromNat p n dom args'
-    (FromRatExpr _ dom   [arg]) -> Just $ nfFromRat dom arg
-    (FromVecExpr _ _ dom [arg]) -> Just $ nfFromVec dom arg
+    FromNatExpr _ n dom args' -> Just $ nfFromNat p n dom args'
+    FromRatExpr _ dom   [arg] -> Just $ nfFromRat dom arg
+    FromVecExpr _ _ dom [arg] -> Just $ nfFromVec dom arg
 
     -- Containers
     -- MapExpr _ tElem tRes [fn, cont] -> nfMap  p tElem tRes (argExpr fn) (argExpr cont)

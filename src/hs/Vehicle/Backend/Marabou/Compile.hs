@@ -27,10 +27,10 @@ import Control.Monad.Reader (MonadReader, asks, ReaderT (..))
 checkCompatibility :: DeclProvenance -> PropertyInfo -> Maybe CompileError
 checkCompatibility decl (PropertyInfo linearity polarity) =
   case (linearity, polarity) of
-    (NonLinear pp1 pp2, _)       ->
-      Just $ UnsupportedNonLinearConstraint MarabouBackend decl pp1 pp2
+    (NonLinear p pp1 pp2, _)       ->
+      Just $ UnsupportedNonLinearConstraint MarabouBackend decl p pp1 pp2
     (_, MixedSequential q p pp2) ->
-      Just $ UnsupportedSequentialQuantifiers MarabouBackend decl q p pp2
+      Just $ UnsupportedAlternatingQuantifiers MarabouBackend decl q p pp2
     _ -> Nothing
 
 --------------------------------------------------------------------------------

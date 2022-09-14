@@ -1,8 +1,9 @@
-module Vehicle.Language.Sugar where
+module Vehicle.Compile.Sugar where
 
 import Data.Bifunctor (first)
 
 import Vehicle.Language.AST
+import Vehicle.Compile.Prelude
 
 --------------------------------------------------------------------------------
 -- General definitions
@@ -132,8 +133,3 @@ foldDefFun :: Expr binder var -> Expr binder var ->
 foldDefFun t e = if isTypeSynonym t
   then Right (foldLam e)
   else Left  (t, foldLam e)
-  where
-    isTypeSynonym :: Expr binder var -> Bool
-    isTypeSynonym (Universe _ TypeUniv{}) = True
-    isTypeSynonym (Pi _ _ res)   = isTypeSynonym res
-    isTypeSynonym _              = False

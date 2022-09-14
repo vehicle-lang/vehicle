@@ -10,7 +10,7 @@ import Data.Text (pack)
 import Vehicle.Compile.Prelude
 import Vehicle.External.Abs qualified as B
 import Vehicle.Language.AST qualified as V
-import Vehicle.Language.Sugar
+import Vehicle.Compile.Sugar
 
 --------------------------------------------------------------------------------
 -- Conversion to BNFC AST

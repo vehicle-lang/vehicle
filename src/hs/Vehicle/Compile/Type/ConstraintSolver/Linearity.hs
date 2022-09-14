@@ -11,11 +11,11 @@ import Vehicle.Compile.Type.ConstraintSolver.Core
 maxLinearity :: Linearity -> Linearity -> Linearity
 maxLinearity l1 l2 = if l1 >= l2 then l1 else l2
 
-mulLinearity :: Linearity -> Linearity -> Linearity
-mulLinearity l1 l2 = case (l1, l2) of
+mulLinearity :: Provenance -> Linearity -> Linearity -> Linearity
+mulLinearity p l1 l2 = case (l1, l2) of
   (Constant, _)          -> l2
   (_, Constant)          -> l1
-  (Linear p1, Linear p2) -> NonLinear p1 p2
+  (Linear p1, Linear p2) -> NonLinear p p1 p2
   (NonLinear{}, _)       -> l1
   (_, NonLinear{})       -> l2
 
@@ -49,10 +49,27 @@ solveMulLinearity c [lin1, lin2, res] =
     (exprHead -> Meta _ m1, _) -> blockOn [m1]
     (_, exprHead -> Meta _ m2) -> blockOn [m2]
 
-    (LinearityExpr p l1, LinearityExpr _ l2) -> do
-      let linRes = LinearityExpr p $ mulLinearity l1 l2
+    (LinearityExpr _ l1, LinearityExpr _ l2) -> do
+      let p = originalProvenance (constraintContext c)
+      let linRes = LinearityExpr p $ mulLinearity p l1 l2
       return $ Progress [unify c res linRes]
 
     _ -> malformedConstraintError c
 
 solveMulLinearity c _ = malformedConstraintError c
+
+solveFunctionLinearity :: MonadMeta m
+                            => FunctionPosition
+                            -> Constraint
+                            -> [CheckedExpr]
+                            -> m ConstraintProgress
+solveFunctionLinearity functionPosition c [arg, res] = case arg of
+  (exprHead -> Meta _ m1) -> blockOn [m1]
+  LinearityExpr _ lin     -> do
+    let p = provenanceOf c
+    let addFuncProv pp = LinFunctionProvenance p pp functionPosition
+    let resLin = LinearityExpr p $ mapLinearityProvenance addFuncProv lin
+    return $ Progress [unify c res resLin]
+  _                       -> malformedConstraintError c
+
+solveFunctionLinearity _ c _ = malformedConstraintError c

@@ -103,7 +103,7 @@ library
                       , Vehicle.Language.AST
                       , Vehicle.Language.DSL
                       , Vehicle.Language.Print
-                      , Vehicle.Language.Sugar
+                      , Vehicle.Compile.Sugar
                       , Vehicle.Language.StandardLibrary
                       , Vehicle.Language.StandardLibrary.Names
 

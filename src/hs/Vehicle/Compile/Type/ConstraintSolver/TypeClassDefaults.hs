@@ -137,6 +137,8 @@ familyOf = \case
   ImpliesPolarity{}       -> auxiliaryTCError
   MaxPolarity{}           -> auxiliaryTCError
   AlmostEqualConstraint{} -> auxiliaryTCError
+  FunctionLinearity{}     -> auxiliaryTCError
+  FunctionPolarity{}      -> auxiliaryTCError
 
 defaultSolution :: MonadMeta m
                 => Provenance
@@ -171,6 +173,8 @@ defaultSolution p ctx = \case
   ImpliesPolarity{}       -> auxiliaryTCError
   MaxPolarity{}           -> auxiliaryTCError
   AlmostEqualConstraint{} -> auxiliaryTCError
+  FunctionLinearity{}     -> auxiliaryTCError
+  FunctionPolarity{}      -> auxiliaryTCError
 
 createDefaultListType :: MonadMeta m => Provenance -> TypingBoundCtx -> m CheckedType
 createDefaultListType p ctx = do

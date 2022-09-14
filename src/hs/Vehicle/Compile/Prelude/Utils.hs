@@ -69,6 +69,12 @@ isMeta Meta{}           = True
 isMeta (App _ Meta{} _) = True
 isMeta _                = False
 
+isTypeSynonym :: Expr binder var -> Bool
+isTypeSynonym = \case
+  TypeUniverse{} -> True
+  Pi _ _ res     -> isTypeSynonym res
+  _              -> False
+
 --------------------------------------------------------------------------------
 -- Enumeration functions
 

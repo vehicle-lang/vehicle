@@ -58,6 +58,7 @@ data TypeClass
   -- Linearity type-classes
   | MaxLinearity
   | MulLinearity
+  | FunctionLinearity FunctionPosition
 
   -- Polarity type-classes
   | NegPolarity
@@ -65,6 +66,7 @@ data TypeClass
   | EqPolarity EqualityOp
   | ImpliesPolarity
   | MaxPolarity
+  | FunctionPolarity FunctionPosition
   deriving (Eq, Generic, Show)
 
 instance NFData   TypeClass
@@ -91,17 +93,20 @@ instance Pretty TypeClass where
     HasRatLits         -> "HasRatLiterals"
     HasVecLits n       -> "HasVecLiterals[" <>  pretty n <> "]"
 
-    MaxLinearity       -> "MaxLinearity"
-    MulLinearity       -> "MulLinearity"
+    MaxLinearity        -> "MaxLinearity"
+    MulLinearity        -> "MulLinearity"
+    FunctionLinearity{} -> "FunctionOutputLinearity"
 
     NegPolarity        -> "NegPolarity"
     AddPolarity q      -> "AddPolarity" <+> pretty q
     EqPolarity eq      -> "EqPolarity" <+> pretty eq
     ImpliesPolarity    -> "ImpliesPolarity"
     MaxPolarity        -> "MaxPolarity"
+    FunctionPolarity{} -> "FunctionOutputPolarity"
 
-    AlmostEqualConstraint{} -> "AlmostEqualConstraint"
-    NatInDomainConstraint{} -> "NatInDomainConstraint"
+    AlmostEqualConstraint{}    -> "AlmostEqualConstraint"
+    NatInDomainConstraint{}    -> "NatInDomainConstraint"
+
 
 -- Builtin operations for type-classes
 data TypeClassOp

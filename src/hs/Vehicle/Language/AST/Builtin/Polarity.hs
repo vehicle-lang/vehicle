@@ -13,10 +13,11 @@ import Vehicle.Language.AST.Builtin.Core
 
 -- | Used to track where the polarity information came from.
 data PolarityProvenance
-  = QuantifierProvenance Provenance
-  | NegateProvenance     Provenance PolarityProvenance
-  | LHSImpliesProvenance Provenance PolarityProvenance
-  | EqProvenance         EqualityOp Provenance PolarityProvenance
+  = QuantifierProvenance     Provenance
+  | NegateProvenance         Provenance PolarityProvenance
+  | LHSImpliesProvenance     Provenance PolarityProvenance
+  | EqProvenance             Provenance PolarityProvenance EqualityOp
+  | PolFunctionProvenance    Provenance PolarityProvenance FunctionPosition
   deriving (Generic)
 
 instance Show PolarityProvenance where
@@ -57,3 +58,12 @@ instance Pretty Polarity where
 
 instance Show Polarity where
   show = layoutAsString . pretty
+
+mapPolarityProvenance :: (PolarityProvenance -> PolarityProvenance) -> Polarity -> Polarity
+mapPolarityProvenance f = \case
+  Unquantified           -> Unquantified
+  Quantified q pp        -> Quantified q (f pp)
+  MixedParallel pp1 pp2  -> MixedParallel (f pp1) (f pp2)
+  -- At the moment we don't change non-linear provenance because we
+  -- want the minimal example.
+  MixedSequential q p pp -> MixedSequential q p pp

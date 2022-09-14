@@ -19,34 +19,36 @@ data ConstraintGroup
 
 typeClassGroup :: TypeClass -> ConstraintGroup
 typeClassGroup tc = case tc of
-    HasEq{}                 -> TypeGroup
-    HasOrd{}                -> TypeGroup
-    HasNot                  -> TypeGroup
-    HasAnd                  -> TypeGroup
-    HasOr                   -> TypeGroup
-    HasImplies              -> TypeGroup
-    HasQuantifier{}         -> TypeGroup
-    HasAdd                  -> TypeGroup
-    HasSub                  -> TypeGroup
-    HasMul                  -> TypeGroup
-    HasDiv                  -> TypeGroup
-    HasNeg                  -> TypeGroup
-    HasFold                 -> TypeGroup
-    HasQuantifierIn{}       -> TypeGroup
-    HasNatLits{}            -> TypeGroup
-    HasRatLits              -> TypeGroup
-    HasVecLits{}            -> TypeGroup
-    AlmostEqualConstraint{} -> TypeGroup
-    NatInDomainConstraint{} -> TypeGroup
+    HasEq{}                    -> TypeGroup
+    HasOrd{}                   -> TypeGroup
+    HasNot                     -> TypeGroup
+    HasAnd                     -> TypeGroup
+    HasOr                      -> TypeGroup
+    HasImplies                 -> TypeGroup
+    HasQuantifier{}            -> TypeGroup
+    HasAdd                     -> TypeGroup
+    HasSub                     -> TypeGroup
+    HasMul                     -> TypeGroup
+    HasDiv                     -> TypeGroup
+    HasNeg                     -> TypeGroup
+    HasFold                    -> TypeGroup
+    HasQuantifierIn{}          -> TypeGroup
+    HasNatLits{}               -> TypeGroup
+    HasRatLits                 -> TypeGroup
+    HasVecLits{}               -> TypeGroup
+    AlmostEqualConstraint{}    -> TypeGroup
+    NatInDomainConstraint{}    -> TypeGroup
 
-    MulLinearity  -> LinearityGroup
-    MaxLinearity  -> LinearityGroup
+    MulLinearity        -> LinearityGroup
+    MaxLinearity        -> LinearityGroup
+    FunctionLinearity{} -> LinearityGroup
 
     NegPolarity{}      -> PolarityGroup
     AddPolarity{}      -> PolarityGroup
     EqPolarity{}       -> PolarityGroup
     ImpliesPolarity{}  -> PolarityGroup
     MaxPolarity{}      -> PolarityGroup
+    FunctionPolarity{} -> PolarityGroup
 
 isAuxiliaryTypeClass :: TypeClass -> Bool
 isAuxiliaryTypeClass tc = do
@@ -57,24 +59,33 @@ isAuxiliaryTypeClass tc = do
 -- Constraint contexts
 
 data ConstraintContext = ConstraintContext
-  { _prov            :: Provenance        -- The origin of the constraint
-  , blockedBy        :: BlockingMetas     -- The set of metas blocking progress on this constraint, if known
-  , varContext       :: TypingVariableCtx -- The current declaration context (needed for normalisation)
-  , group            :: ConstraintGroup
+  { originalProvenance :: Provenance
+  -- ^ The origin of the constraint
+  , creationProvenance :: Provenance
+  -- ^ Where the constraint was instantiated
+  , blockedBy          :: BlockingMetas
+  -- ^ The set of metas blocking progress on this constraint, if known
+  , varContext         :: TypingVariableCtx
+  -- ^ TODO reduce this to just `TypingBoundCtx`
+  -- (At the moment the full context is needed for normalisation but should
+  -- be able to get that from TCM)
+  , group              :: ConstraintGroup
   } deriving (Show)
 
 instance HasProvenance ConstraintContext where
-  provenanceOf (ConstraintContext p _ _ _) = p
+  provenanceOf (ConstraintContext _ creationProvenance _ _ _) = creationProvenance
 
 instance HasBoundCtx ConstraintContext where
   boundContextOf = boundContextOf . varContext
 
 blockCtxOn :: ConstraintContext -> MetaSet -> ConstraintContext
-blockCtxOn (ConstraintContext p _ ctx group) metas = ConstraintContext p metas ctx group
+blockCtxOn (ConstraintContext originProv creationProv _ ctx group) metas =
+  ConstraintContext originProv creationProv metas ctx group
 
 -- | Create a new fresh copy of the context for a new constraint
 copyContext :: ConstraintContext -> ConstraintContext
-copyContext (ConstraintContext p _ ctx group) = ConstraintContext p mempty ctx group
+copyContext (ConstraintContext originProv creationProv _ ctx group) =
+  ConstraintContext originProv creationProv mempty ctx group
 
 --------------------------------------------------------------------------------
 -- Unification constraints

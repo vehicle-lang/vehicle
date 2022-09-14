@@ -66,14 +66,16 @@ solve = \case
   AlmostEqualConstraint   -> solveAlmostEqual
   NatInDomainConstraint n -> solveInDomain n
 
-  MaxLinearity -> castProgressFn solveMaxLinearity
-  MulLinearity -> castProgressFn solveMulLinearity
+  MaxLinearity               -> castProgressFn solveMaxLinearity
+  MulLinearity               -> castProgressFn solveMulLinearity
+  FunctionLinearity position -> castProgressFn $ solveFunctionLinearity position
 
-  NegPolarity     -> castProgressFn solveNegPolarity
-  AddPolarity q   -> castProgressFn $ solveAddPolarity q
-  EqPolarity eq   -> castProgressFn $ solveEqPolarity eq
-  ImpliesPolarity -> castProgressFn solveImplPolarity
-  MaxPolarity     -> castProgressFn solveMaxPolarity
+  NegPolarity               -> castProgressFn solveNegPolarity
+  AddPolarity q             -> castProgressFn $ solveAddPolarity q
+  EqPolarity eq             -> castProgressFn $ solveEqPolarity eq
+  ImpliesPolarity           -> castProgressFn solveImplPolarity
+  MaxPolarity               -> castProgressFn solveMaxPolarity
+  FunctionPolarity position -> castProgressFn $ solveFunctionPolarity position
 
 -- A temporary hack until we separate out the solvers properly.
 castProgressFn :: MonadMeta m
@@ -259,8 +261,8 @@ solveHasQuantifier q c [domain, body, res]
   | isMeta        domain = blockOnMetas [domain]
   | isAnnBoolType domain = solveBoolQuantifier   q c domain body res
   | isIndexType   domain = solveIndexQuantifier  q c domain body res
-  | isNatType     domain = solveSimpleQuantifier q c domain body res PostulateForallNat PostulateForallNat
-  | isIntType     domain = solveSimpleQuantifier q c domain body res PostulateForallInt PostulateForallInt
+  | isNatType     domain = solveNatQuantifier    q c domain body res
+  | isIntType     domain = solveIntQuantifier    q c domain body res
   | isAnnRatType  domain = solveRatQuantifier    q c domain body res
   | isVectorType  domain = solveVectorQuantifier q c domain body res
   | otherwise            = blockOrThrowError c [domain] tcError
@@ -268,13 +270,16 @@ solveHasQuantifier q c [domain, body, res]
 
 solveHasQuantifier _ c _ = malformedConstraintError c
 
-solveBoolQuantifier :: MonadMeta m
-                    => Quantifier
-                    -> Constraint
-                    -> CheckedType
-                    -> CheckedType
-                    -> CheckedType
-                    -> m TypeClassProgress
+type HasQuantifierSolver m
+  =  MonadMeta m
+  => Quantifier
+  -> Constraint
+  -> CheckedType
+  -> CheckedType
+  -> CheckedType
+  -> m TypeClassProgress
+
+solveBoolQuantifier :: HasQuantifierSolver m
 solveBoolQuantifier q c domain body res = do
   let p = provenanceOf c
 
@@ -295,13 +300,7 @@ solveBoolQuantifier q c domain body res = do
 
   return $ Right ([domainEq, bodyEq, resEq], solution)
 
-solveIndexQuantifier :: MonadMeta m
-                     => Quantifier
-                     -> Constraint
-                     -> CheckedType
-                     -> CheckedType
-                     -> CheckedType
-                     -> m TypeClassProgress
+solveIndexQuantifier :: HasQuantifierSolver m
 solveIndexQuantifier q c domain body res = do
   let p = provenanceOf c
 
@@ -316,32 +315,29 @@ solveIndexQuantifier q c domain body res = do
 
   return $ Right ([domainEq, bodyEq, resEq], solution)
 
-solveSimpleQuantifier :: MonadMeta m
-                      => Quantifier
-                      -> Constraint
-                      -> CheckedType
-                      -> CheckedType
-                      -> CheckedType
-                      -> Identifier
-                      -> Identifier
-                      -> m TypeClassProgress
-solveSimpleQuantifier q c _domain body res forallMethod existsMethod = do
+solveNatQuantifier :: HasQuantifierSolver m
+solveNatQuantifier q c _domain body res = do
   (bodyEq, _, _) <- unifyWithAnnBoolType c body
   let resEq          = unify c res body
 
   let solution = FreeVar (provenanceOf c) $ case q of
-        Forall -> forallMethod
-        Exists -> existsMethod
+        Forall -> PostulateForallNat
+        Exists -> PostulateExistsNat
 
   return $ Right ([bodyEq, resEq], solution)
 
-solveRatQuantifier :: MonadMeta m
-                   => Quantifier
-                   -> Constraint
-                   -> CheckedType
-                   -> CheckedType
-                   -> CheckedType
-                   -> m TypeClassProgress
+solveIntQuantifier :: HasQuantifierSolver m
+solveIntQuantifier q c _domain body res = do
+  (bodyEq, _, _) <- unifyWithAnnBoolType c body
+  let resEq          = unify c res body
+
+  let solution = FreeVar (provenanceOf c) $ case q of
+        Forall -> PostulateForallInt
+        Exists -> PostulateForallInt
+
+  return $ Right ([bodyEq, resEq], solution)
+
+solveRatQuantifier :: HasQuantifierSolver m
 solveRatQuantifier q c domain body res = do
   let p = provenanceOf c
 
@@ -365,13 +361,7 @@ solveRatQuantifier q c domain body res = do
 
   return $ Right ([domainEq, polTC, bodyEq, resEq], solution)
 
-solveVectorQuantifier :: MonadMeta m
-                      => Quantifier
-                      -> Constraint
-                      -> CheckedType
-                      -> CheckedType
-                      -> CheckedType
-                      -> m TypeClassProgress
+solveVectorQuantifier :: HasQuantifierSolver m
 solveVectorQuantifier q c domain body res = do
   let p = provenanceOf c
   dim <- freshDimMeta c

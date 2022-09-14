@@ -1,7 +1,7 @@
 id : a -> a
 id x = x
 
-natId : Nat -> Nat
+natId : Rat -> Rat
 natId = id
 
 -- fst : a -> b -> a

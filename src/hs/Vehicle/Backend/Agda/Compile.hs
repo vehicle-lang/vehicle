@@ -19,7 +19,7 @@ import System.FilePath (takeBaseName)
 import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 
 import Vehicle.Language.Print
-import Vehicle.Language.Sugar
+import Vehicle.Compile.Sugar
 import Vehicle.Compile.Prelude hiding (CompileOptions(..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)

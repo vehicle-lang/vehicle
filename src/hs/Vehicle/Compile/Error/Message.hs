@@ -63,8 +63,7 @@ fromLoggedEitherIO :: MonadIO m
                    => LoggingOptions
                    -> ExceptT CompileError (LoggerT m) a
                    -> m a
-fromLoggedEitherIO loggingOptions x = do
-  fromEitherIO loggingOptions =<< fromLoggedIO loggingOptions (logCompileError x)
+fromLoggedEitherIO loggingOptions x = fromEitherIO loggingOptions =<< fromLoggedIO loggingOptions (logCompileError x)
 
 logCompileError :: Monad m
                 => ExceptT CompileError (LoggerT m) a
@@ -661,7 +660,7 @@ instance MeaningfulError CompileError where
     PropertyTypeUnsupported (ident, p) expectedType -> UError $ UserError
       { provenance = p
       , problem    = "Invalid type" <+> squotes (prettyFriendlyDBClosed expectedType) <+>
-                     "for" <+> prettyResource Parameter ident <> "."
+                     "for property" <+> quotePretty ident <> "."
       , fix        = Just $ "change the type of" <+> quotePretty ident <+> "to" <+>
                        "one of `Bool`, `Vector Bool n` or `Tensor Bool n`" <> "."
       }
@@ -680,32 +679,26 @@ instance MeaningfulError CompileError where
                      "different compilation target."
       }
 
-    UnsupportedSequentialQuantifiers target (ident, p) q pq pp -> UError $ UserError
+    UnsupportedAlternatingQuantifiers target (ident, p) q pq pp -> UError $ UserError
       { provenance = p
       , problem    = "The property" <+> squotes (pretty ident) <+> "contains" <+>
-                     "a sequence of quantifiers unsupported by" <+> pretty target <>
-                     "." <> line <>
-                     pretty target <+> "cannot verify properties that mix both" <+>
-                     squotes (pretty Forall) <+> "and" <+> squotes (pretty Exists) <+>
-                     "quantifiers." <>
+                     "alternating" <+> quotePretty Forall <+> "and" <+> quotePretty Exists <+>
+                     "quantifiers which is not supported by" <+> pretty target <> "." <>
                      line <>
-                     "In particular the" <+> squotes (pretty q) <+> "at" <+>
-                     pretty pq <+> "clashes with" <+>
-                     prettyPolarityProvenance (neg q) pp
-      , fix        = Just $ "if possible try reformulating" <+> squotes (pretty ident) <+>
-                    "in terms of a single type of quantifier."
+                     "In particular:" <> line <> indent 2 (prettyPolarityProvenance pq q pp)
+      , fix        = Nothing
       }
 
-    UnsupportedNonLinearConstraint target (ident, p) v1 v2 -> UError $ UserError
+    UnsupportedNonLinearConstraint target (ident, p) p' v1 v2 -> UError $ UserError
       { provenance = p
       , problem    = "The property" <+> squotes (pretty ident) <+> "contains" <+>
                      "a non-linear constraint which is not supported by" <+>
                      pretty target <> "." <> line <>
-                     "In particular the multiplication at" <+> pretty p <+>
+                     "In particular the multiplication at" <+> pretty p' <+>
                      "involves" <>
-                     prettyLinearityProvenance v1 <>
+                     prettyLinearityProvenance v1 True <>
                      "and" <>
-                     prettyLinearityProvenance v2
+                     prettyLinearityProvenance v2 False
       , fix        = Just $ "try avoiding it, otherwise please open an issue on the" <+>
                      "Vehicle issue tracker."
       }
@@ -814,39 +807,55 @@ prettyQuantifierArticle :: Quantifier -> Doc a
 prettyQuantifierArticle q =
   (if q == Forall then "a" else "an") <+> squotes (pretty q)
 
-prettyPolarityProvenance :: Quantifier -> PolarityProvenance -> Doc a
-prettyPolarityProvenance quantifier = \case
-  QuantifierProvenance p ->
-    "the" <+> squotes (pretty quantifier) <+> "at" <+> pretty p
-  polProv ->
-    prettyQuantifierArticle quantifier <+>
-    "derived as follows:" <> line <>
-    indent 2 (numberedList $ reverse (go quantifier polProv))
+prettyPolarityProvenance :: Provenance -> Quantifier -> PolarityProvenance -> Doc a
+prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvenance =
+  let bottomQuantifier = neg topQuantifier in
+  numberedList $ reverse (finalLine : go bottomQuantifier bottomQuantifierProvenance)
   where
     go :: Quantifier -> PolarityProvenance -> [Doc a]
     go q = \case
       QuantifierProvenance p ->
-        ["the" <+> squotes (pretty q) <+> "is originally located at" <+> pretty p]
+        ["the inner quantifier is the" <+> quotePretty q <+> "located at" <+> pretty p]
       NegateProvenance p pp ->
-        surround p pp ("the" <+> squotes (pretty NotTC))
+        transform p ("the" <+> quotePretty NotTC) : go (neg q) pp
       LHSImpliesProvenance p pp ->
-        surround p pp ("being on the LHS of the" <+> squotes (pretty ImpliesTC))
-      EqProvenance eq p pp ->
-        surround p pp ("being involved in the" <+> squotes (pretty (EqualsTC eq)))
-      where surround p pp x =
-              "which is turned into" <+> prettyQuantifierArticle q <+> "by" <+> x <+>
-              "at" <+> pretty p : go (neg q) pp
+        transform p ("being on the LHS of the" <+> quotePretty ImpliesTC) : go (neg q) pp
+      EqProvenance p pp eq ->
+        transform p ("being involved in the" <+> quotePretty (EqualsTC eq)) : go (neg q) pp
+      PolFunctionProvenance p pp position ->
+        surround p (prettyAuxiliaryFunctionProvenance position) : go q pp
+      where
+        surround p x =
+          "which is" <+> x <+> "at" <+> pretty p
 
-prettyLinearityProvenance :: LinearityProvenance -> Doc a
-prettyLinearityProvenance lp =
-  line <> indent 2 (numberedList $ reverse (go lp)) <> line
+        transform p x =
+          surround p ("turned into" <+> prettyQuantifierArticle q <+> "by" <+> x)
+
+    finalLine :: Doc a
+    finalLine = "which alternates with the outer" <+> quotePretty topQuantifier <+>
+      "at" <+> pretty topQuantifierProv
+
+prettyLinearityProvenance :: LinearityProvenance -> Bool -> Doc a
+prettyLinearityProvenance lp isLHS =
+  line <> indent 2 (numberedList $ reverse (finalLine : go lp)) <> line
   where
   go :: LinearityProvenance -> [Doc a]
   go = \case
     QuantifiedVariableProvenance p ->
-      ["the quantified variable at" <+> pretty p ]
+      ["the quantified variable introduced at" <+> pretty p ]
     NetworkOutputProvenance p networkName ->
       ["the output of network" <+> squotes (pretty networkName) <+> "at" <+> pretty p]
+    LinFunctionProvenance p pp position ->
+      (prettyAuxiliaryFunctionProvenance position <+> "at" <+> pretty p) : go pp
+
+  finalLine :: Doc a
+  finalLine = "which is used on the" <+> (if isLHS then "left" else "right") <+>
+    "hand side of the multiplication"
+
+prettyAuxiliaryFunctionProvenance :: FunctionPosition -> Doc a
+prettyAuxiliaryFunctionProvenance = \case
+  FunctionInput  n _ -> "which is used as an input to the function" <+> quotePretty n
+  FunctionOutput n -> "which is proceduced as an output of the function" <+> quotePretty n
 
 prettyAllowedTypes :: [InputExpr] -> Doc b
 prettyAllowedTypes allowedTypes = if length allowedTypes == 1

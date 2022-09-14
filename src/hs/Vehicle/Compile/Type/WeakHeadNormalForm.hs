@@ -2,6 +2,7 @@ module Vehicle.Compile.Type.WeakHeadNormalForm
   ( WHNFable(..)
   , whnfExprWithMetas
   , whnfConstraintWithMetas
+  , whnf
   ) where
 
 import Control.Monad ( (<=<) )

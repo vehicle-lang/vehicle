@@ -16,7 +16,7 @@ import Text.Read (readMaybe)
 import Vehicle.External.Abs qualified as B
 
 import Vehicle.Prelude
-import Vehicle.Language.Sugar
+import Vehicle.Compile.Sugar
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Error
 

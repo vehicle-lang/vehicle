@@ -14,6 +14,7 @@ module Vehicle.Language.AST.Builtin.Core
   , flipStrictness
   , flipOrder
   , chainable
+  , FunctionPosition(..)
   ) where
 
 import GHC.Generics (Generic)
@@ -21,6 +22,15 @@ import Control.DeepSeq (NFData(..))
 import Data.Hashable (Hashable (..))
 
 import Vehicle.Prelude
+
+-- | Represents whether something is an input or an output of a function
+data FunctionPosition
+  = FunctionInput Symbol Int
+  | FunctionOutput Symbol
+  deriving (Eq, Show, Generic)
+
+instance NFData   FunctionPosition
+instance Hashable FunctionPosition
 
 --------------------------------------------------------------------------------
 -- EqualityOpOp

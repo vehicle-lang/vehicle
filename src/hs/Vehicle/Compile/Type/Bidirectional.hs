@@ -8,8 +8,6 @@ module Vehicle.Compile.Type.Bidirectional
 import Prelude hiding (pi)
 import Control.Monad (when)
 import Control.Monad.Except (MonadError(..))
-import Control.Monad.Reader (MonadReader(..), ReaderT (runReaderT))
-import Control.Monad.State (MonadState, StateT, evalStateT)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Monoid (Endo(..), appEndo)
 import Data.Text (pack)
@@ -20,7 +18,6 @@ import Vehicle.Language.DSL
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.WeakHeadNormalForm
-import Vehicle.Compile.Type.VariableContext
 import Vehicle.Compile.Type.Constraint
 
 --------------------------------------------------------------------------------
@@ -29,19 +26,6 @@ import Vehicle.Compile.Type.Constraint
 -- Recurses through the expression, switching between check and infer modes.
 -- Inserts meta-variables for missing implicit and instance arguments and
 -- gathers the constraints over those meta-variables.
-
---------------------------------------------------------------------------------
--- The type-checking monad
-
--- | The type-checking monad
-type TCM m =
-  ( MonadCompile                   m
-  , MonadState  MetaCtx            m
-  , MonadReader TypingVariableCtx  m
-  )
-
-runTCM :: MonadCompile m => ReaderT TypingVariableCtx (StateT MetaCtx m) a -> m a
-runTCM e = evalStateT (runReaderT e emptyVariableCtx) emptyMetaCtx
 
 --------------------------------------------------------------------------------
 -- Debug functions
@@ -210,7 +194,6 @@ inferExpr e = do
       let (checkedLit, checkedLitType) = inferLiteral ann l
       inferApp ann checkedLit checkedLitType []
 
-
     App ann fun args -> do
       (checkedFun, checkedFunType) <- inferExpr fun
       inferApp ann checkedFun checkedFunType (NonEmpty.toList args)
@@ -226,10 +209,9 @@ inferExpr e = do
           "DBIndex" <+> pretty i <+> "out of bounds when looking" <+>
           "up variable in context" <+> prettyVerbose (boundContextOf ctx) <+> "at" <+> pretty (provenanceOf ann)
 
-    Var ann (Free ident) -> do
-      -- Lookup the type of the declaration variable in the context.
-      checkedType <- getDeclType ann ident
-      return (Var ann (Free ident), checkedType)
+    Var p (Free ident) -> do
+      originalType <- getDeclType p ident
+      return (Var p (Free ident), originalType)
 
     Let ann boundExpr binder body -> do
       -- Check the type of the bound expression against the provided type
@@ -337,8 +319,8 @@ inferArgs p piT@(Pi _ binder resultType) args
     checkedArgExpr <- case matchedUncheckedArg of
       Just arg -> checkExpr (typeOf binder) (argExpr arg)
       Nothing
-        | isInstance binder -> createInstanceMetaAndAddConstraint p binder
-        | otherwise         -> freshExprMeta p (typeOf binder) =<< getBoundCtx
+        | isImplicit binder -> freshExprMeta p (typeOf binder) =<< getBoundCtx
+        | otherwise         -> createMetaAndAddTypeClassConstraint p (typeOf binder)
     let checkedArg = Arg p (visibilityOf binder) (relevanceOf binder) checkedArgExpr
 
     -- Substitute the checked arg through the result of the Pi type.
@@ -384,14 +366,6 @@ insertNonExplicitArgs :: TCM m
                       -> CheckedType
                       -> m (CheckedExpr, CheckedType)
 insertNonExplicitArgs ann checkedExpr actualType = inferApp ann checkedExpr actualType []
-
-createInstanceMetaAndAddConstraint :: TCM m => Provenance -> CheckedBinder -> m CheckedExpr
-createInstanceMetaAndAddConstraint p binder = do
-  let binderType = typeOf binder
-  m <- freshTypeClassPlacementMeta p binderType
-  ctx <- getVariableCtx
-  addTypeClassConstraint ctx m binderType
-  return $ Meta p m
 
 missingExplicitArgumentError :: TCM m => CheckedBinder -> UncheckedArg -> m a
 missingExplicitArgumentError expectedBinder actualArg = do
@@ -443,7 +417,7 @@ typeOfTypeClassOp b = case b of
 
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedType
-typeOfBuiltin ann b = fromDSL ann $ case b of
+typeOfBuiltin p b = fromDSL p $ case b of
   -- Auxillary types
   Polarity{}    -> tPol
   Linearity{}   -> tLin
@@ -565,17 +539,19 @@ typeOfTypeClass tc = case tc of
   HasRatLits   -> type0 ~> type0
   HasVecLits{} -> type0 ~> type0 ~> type0
 
-  MaxLinearity -> tLin ~> tLin ~> tLin ~> type0
-  MulLinearity -> tLin ~> tLin ~> tLin ~> type0
+  MaxLinearity        -> tLin ~> tLin ~> tLin ~> type0
+  MulLinearity        -> tLin ~> tLin ~> tLin ~> type0
+  FunctionLinearity{} -> tLin ~> tLin ~> type0
 
-  NegPolarity{}     -> tPol ~> tPol ~> type0
-  AddPolarity{}     -> tPol ~> tPol ~> type0
-  MaxPolarity       -> tPol ~> tPol ~> tPol ~> type0
-  EqPolarity{}      -> tPol ~> tPol ~> tPol ~> type0
-  ImpliesPolarity{} -> tPol ~> tPol ~> tPol ~> type0
+  NegPolarity{}      -> tPol ~> tPol ~> type0
+  AddPolarity{}      -> tPol ~> tPol ~> type0
+  MaxPolarity        -> tPol ~> tPol ~> tPol ~> type0
+  EqPolarity{}       -> tPol ~> tPol ~> tPol ~> type0
+  ImpliesPolarity{}  -> tPol ~> tPol ~> tPol ~> type0
+  FunctionPolarity{} -> tPol ~> tPol ~> type0
 
-  AlmostEqualConstraint{} -> forall type0 $ \t -> t ~> tList t ~> type0
-  NatInDomainConstraint{} -> forall type0 $ \t -> t ~> type0
+  AlmostEqualConstraint{}    -> forall type0 $ \t -> t ~> tList t ~> type0
+  NatInDomainConstraint{}    -> forall type0 $ \t -> t ~> type0
 
 typeOfBoolOp2 :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr)
               -> (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr)

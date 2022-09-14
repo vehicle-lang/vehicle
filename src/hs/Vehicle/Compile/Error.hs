@@ -120,13 +120,13 @@ data CompileError
   -- Backend errors
   | NoPropertiesFound
   | UnsupportedResource              Backend Identifier Provenance ResourceType
-  | UnsupportedSequentialQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
+  | UnsupportedAlternatingQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedVariableType          Backend Identifier Provenance Symbol CheckedType [Builtin]
   | UnsupportedInequality            Backend Identifier Provenance
   | UnsupportedPolymorphicEquality   Backend Provenance Symbol
   | UnsupportedBuiltin               Backend Provenance Builtin
   | UnsupportedNonMagicVariable      Backend Provenance Symbol
-  | UnsupportedNonLinearConstraint   Backend DeclProvenance LinearityProvenance LinearityProvenance
+  | UnsupportedNonLinearConstraint   Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
   | NoNetworkUsedInProperty          Backend Provenance Identifier
   deriving (Show)
 

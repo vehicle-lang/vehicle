@@ -1,67 +1,66 @@
 module Vehicle.Compile.Type.Auxiliary
-  ( InsertAuxiliaryAnnotations
-  , insertHolesForAuxiliaryAnnotations
+  ( insertHolesForAuxiliaryAnnotations
+  , addFunctionAuxiliaryInputOutputConstraints
   ) where
+
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error (compilerDeveloperError)
-import Vehicle.Compile.Type.Bidirectional
-import Vehicle.Compile.Type.Meta (freshLinearityMeta, freshPolarityMeta, getDeclType)
-
--- | Inserts holes for all the non-user facing auxilliary annotations, e.g.
--- polarity annotations on the `Bool` type and linearity annotations on the
--- `Rat` type.
-insertHolesForAuxiliaryAnnotations :: (TCM m
-                                     , InsertAuxiliaryAnnotations a)
-                                   => a
-                                   -> m a
-insertHolesForAuxiliaryAnnotations = insert
+import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.WeakHeadNormalForm (whnf)
+import Vehicle.Language.Print (prettyVerbose)
 
 -------------------------------------------------------------------------------
--- Inserting polarity and linearity annotations
+-- Utilities for traversing auxiliary arguments.
 
-class InsertAuxiliaryAnnotations a where
-  insert :: TCM m => a -> m a
+data AuxType = Pol | Lin
 
-instance InsertAuxiliaryAnnotations UncheckedProg where
-  insert (Main ds) = Main <$> traverse insert ds
+-- | Function for updating an auxiliary argument (which may be missing)
+type AuxArgUpdate m = Provenance -> AuxType -> Maybe CheckedExpr -> m CheckedExpr
 
-instance InsertAuxiliaryAnnotations UncheckedDecl where
-  insert = traverseDeclExprs insert
+class TraverseAuxiliaryArguments a where
+  -- | Traverses all the auxiliary type arguments in the provided element,
+  -- applying the provided update function when it finds them (or a space
+  -- where they should be).
+  traverseAux :: TCM m => AuxArgUpdate m -> a -> m a
 
-instance InsertAuxiliaryAnnotations UncheckedExpr where
-  insert expr = case expr of
-    -- Insert meta-variables for types which have annotations
+instance TraverseAuxiliaryArguments UncheckedDecl where
+  traverseAux f = traverseDeclExprs (traverseAux f)
+
+instance TraverseAuxiliaryArguments UncheckedExpr where
+  traverseAux f expr = case expr of
     BoolType p -> do
-      lin <- freshLinearityMeta p
-      pol <- freshPolarityMeta p
-      return $ App p expr
-        [ IrrelevantImplicitArg p lin
-        , IrrelevantImplicitArg p pol
-        ]
+      lin <- f p Lin Nothing
+      pol <- f p Pol Nothing
+      return $ AnnBoolType p lin pol
+
+    AnnBoolType p lin pol -> do
+      lin' <- f p Lin (Just lin)
+      pol' <- f p Pol (Just pol)
+      return $ AnnBoolType p lin' pol'
 
     RatType p -> do
-      lin <- freshLinearityMeta p
-      return $ App p expr
-        [ IrrelevantImplicitArg p lin
-        ]
+      lin <- f p Lin Nothing
+      return $ AnnRatType p lin
 
-    Var p (Free ident) -> do
-      declType <- getDeclType p ident
-      auxArgs <- declAuxArgs p declType
-      return $ normAppList p expr auxArgs
+    AnnRatType p lin -> do
+      lin' <- f p Lin (Just lin)
+      return $ AnnRatType p lin'
 
-    -- Needed to ensure idempotence of type-checking
-    App p fun@BoolType{}     args -> App p fun <$> traverse insert args
-    App p fun@RatType{}      args -> App p fun <$> traverse insert args
-    App p fun@(Var _ Free{}) args -> App p fun <$> traverse insert args
+    FreeVar p ident ->
+      traverseFreeVariable f p ident []
 
-    Ann  p e t               -> Ann p <$> insert e <*> insert t
-    App  p fun args          -> App p <$> insert fun <*> traverse insert args
-    Pi   p binder res        -> Pi  p <$> insert binder <*> insert res
-    Let  p bound binder body -> Let p <$> insert bound <*> insert binder <*> insert body
-    Lam  p binder body       -> Lam p <$> insert binder <*> insert body
-    LVec p xs                -> LVec p <$> traverse insert xs
+    App p (FreeVar _ ident) args ->  do
+      traverseFreeVariable f p ident (NonEmpty.toList args)
+
+    Ann  p e t               -> Ann p <$> traverseAux f e <*> traverseAux f t
+    App  p fun args          -> App p <$> traverseAux f fun <*> traverseAux f args
+    Pi   p binder res        -> Pi  p <$> traverseAux f binder <*> traverseAux f res
+    Let  p bound binder body -> Let p <$> traverseAux f bound <*> traverseAux f binder <*> traverseAux f body
+    Lam  p binder body       -> Lam p <$> traverseAux f binder <*> traverseAux f body
+    LVec p xs                -> LVec p <$> traverse (traverseAux f) xs
 
     Universe{} -> return expr
     Var{}      -> return expr
@@ -70,20 +69,146 @@ instance InsertAuxiliaryAnnotations UncheckedExpr where
     Literal{}  -> return expr
     Builtin{}  -> return expr
 
-instance InsertAuxiliaryAnnotations UncheckedArg where
-  insert = traverseArgExpr insert
+instance TraverseAuxiliaryArguments UncheckedArg where
+  traverseAux f = traverseArgExpr (traverseAux f)
 
-instance InsertAuxiliaryAnnotations UncheckedBinder where
-  insert = traverseBinderType insert
+instance TraverseAuxiliaryArguments UncheckedBinder where
+  traverseAux f = traverseBinderType (traverseAux f)
 
-declAuxArgs :: TCM m => Provenance -> CheckedExpr -> m [CheckedArg]
-declAuxArgs p = \case
-  Pi _ binder r
+instance TraverseAuxiliaryArguments a => TraverseAuxiliaryArguments (NonEmpty a) where
+  traverseAux f = traverse (traverseAux f)
+
+instance TraverseAuxiliaryArguments a => TraverseAuxiliaryArguments [a] where
+  traverseAux f = traverse (traverseAux f)
+
+traverseFreeVariable :: TCM m => AuxArgUpdate m -> Provenance -> Identifier -> [CheckedArg] -> m CheckedExpr
+traverseFreeVariable f p ident args = do
+  args' <- traverseAux f args
+  declType <- getDeclType p ident
+  args'' <- if isTypeSynonym declType
+    then traverseAuxFreeVarArgs f p declType args'
+    else return args'
+
+  return $ normAppList p (FreeVar p ident) args''
+
+traverseAuxFreeVarArgs :: TCM m
+                       => AuxArgUpdate m
+                       -> Provenance
+                       -> CheckedType
+                       -> [CheckedArg]
+                       -> m [CheckedArg]
+traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
+  (Pi _ binder res, arg : args) -> do
+    args' <- traverseAuxFreeVarArgs f p res args
+    arg' <-
+      if isPolarityUniverse  (typeOf binder)
+        then traverseArgExpr (\e -> f (provenanceOf e) Pol (Just e)) arg
+      else if isLinearityUniverse (typeOf binder)
+        then traverseArgExpr (\e -> f (provenanceOf e) Lin (Just e)) arg
+      else return arg
+    return (arg' : args')
+
+  (Pi _ binder res, [])
     | visibilityOf binder == Implicit && isAuxiliaryUniverse (typeOf binder) -> do
-    xs <- declAuxArgs p r
+    xs <- traverseAuxFreeVarArgs f p res []
     meta <- case typeOf binder of
-      PolarityUniverse{}  -> freshPolarityMeta p
-      LinearityUniverse{} -> freshLinearityMeta p
+      LinearityUniverse{} -> f p Lin Nothing
+      PolarityUniverse{}  -> f p Pol Nothing
       _                   -> compilerDeveloperError "Mismatch between cases and 'isAuxiliaryUniverse'"
     return $ IrrelevantImplicitArg p meta : xs
-  _ -> return []
+
+  (_, []) -> return []
+
+  (FreeVar{}, _) -> do
+    normDeclType <- whnf declType
+    traverseAuxFreeVarArgs f p normDeclType declArgs
+
+  (App _ (FreeVar{}) _, _) -> do
+    normDeclType <- whnf declType
+    traverseAuxFreeVarArgs f p normDeclType declArgs
+
+  (_, _) ->
+    compilerDeveloperError $
+      "Malformed type and arguments found when traversing auxilarity arguments" <> line <>
+      indent 2 ("Type:" <+> prettyVerbose declType <> line <>
+                "Args:" <+> prettyVerbose declArgs)
+
+-------------------------------------------------------------------------------
+-- Inserting polarity and linearity annotations
+
+-- | Inserts holes for all the non-user facing auxilliary annotations, e.g.
+-- polarity annotations on the `Bool` type and linearity annotations on the
+-- `Rat` type.
+insertHolesForAuxiliaryAnnotations :: (TCM m
+                                     , TraverseAuxiliaryArguments a)
+                                   => a
+                                   -> m a
+insertHolesForAuxiliaryAnnotations e =
+  logCompilerPass MaxDetail "insertion of missing auxiliary types" $
+    traverseAux insertionUpdateFn e
+
+insertionUpdateFn :: TCM m => AuxArgUpdate m
+insertionUpdateFn p auxType = \case
+  Just e -> return e
+  Nothing -> case auxType of
+    Lin -> freshLinearityMeta p
+    Pol -> freshPolarityMeta p
+
+-------------------------------------------------------------------------------
+-- Inserting polarity and linearity constraints to capture function application
+
+-- | Function for inserting function input and output constraints. Traverses
+-- the declaration type, replacing linearity and polarity types with fresh
+-- meta variables, and then relates the the two by adding a new suitable
+-- constraint.
+addFunctionAuxiliaryInputOutputConstraints :: TCM m
+                                           => CheckedDecl
+                                           -> m CheckedDecl
+addFunctionAuxiliaryInputOutputConstraints = \case
+  DefFunction p ident t e -> do
+    logCompilerPass MaxDetail "insertion of function constraints" $ do
+      DefFunction p ident <$> decomposePiType (ident, p) 0 t <*> pure e
+
+  d -> return d
+
+decomposePiType :: TCM m => DeclProvenance -> Int -> CheckedType -> m CheckedType
+decomposePiType declProv@(ident, p) explicitBindingDepth = \case
+  Pi p' binder res
+    | isExplicit binder -> do
+      let position = FunctionInput (nameOf ident) explicitBindingDepth
+      newBinder <- traverseAux (replaceAux (p, position)) binder
+      Pi p' newBinder <$> decomposePiType declProv (explicitBindingDepth + 1) res
+    | otherwise -> do
+      Pi p' binder <$> decomposePiType declProv explicitBindingDepth res
+
+  outputType -> do
+    let position = FunctionOutput (nameOf ident)
+    traverseAux (replaceAux (p, position)) outputType
+
+replaceAux :: TCM m => (Provenance, FunctionPosition) -> AuxArgUpdate m
+replaceAux position p auxType = \case
+  Nothing   -> compilerDeveloperError
+    "Should not be missing auxiliary arguments during function constraint insertion"
+  Just expr -> case auxType of
+    Lin -> do
+      newLin <- freshLinearityMeta p
+      addFunctionConstraint FunctionLinearity position expr newLin
+      return newLin
+    Pol -> do
+      newPol <- freshPolarityMeta p
+      addFunctionConstraint FunctionPolarity position expr newPol
+      return newPol
+
+addFunctionConstraint :: TCM m
+                      => (FunctionPosition -> TypeClass)
+                      -> (Provenance, FunctionPosition)
+                      -> CheckedExpr
+                      -> CheckedExpr
+                      -> m ()
+addFunctionConstraint tc (declProv, position) existingMeta newMeta = do
+  let constraintArgs = ExplicitArg (provenanceOf existingMeta) <$> case position of
+          FunctionInput{}  -> [newMeta, existingMeta]
+          FunctionOutput{} -> [existingMeta, newMeta]
+  let constraint = BuiltinTypeClass declProv (tc position) constraintArgs
+  _ <- createMetaAndAddTypeClassConstraint declProv constraint
+  return ()

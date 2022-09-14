@@ -8,7 +8,6 @@ import Control.Monad.Except (MonadError(..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Type.Meta
-import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Normalise as Norm
 import Vehicle.Compile.Type.VariableContext
 import Vehicle.Compile.Type.Constraint
@@ -20,7 +19,7 @@ checkResourceType :: TCM m
                   -> m CheckedType
 checkResourceType resourceType decl@(ident, _) t = do
   let resourceName = pretty resourceType <+> squotes (pretty ident)
-  logCompilerPass MidDetail ("checking compatability of type of" <+> resourceName) $ do
+  logCompilerPass MidDetail ("checking suitability of the type of" <+> resourceName) $ do
     declCtx <- getNormalisationContext
     let checkFun = case resourceType of
           Parameter         -> checkParameterType
@@ -111,6 +110,7 @@ checkNetworkType decl@(ident, _) networkType = checkFunType networkType
         -- The linearity of the output of a network is the max of 1) Linear (as outputs
         -- are also variables) and 2) the linearity of its input. So prepend this
         -- constraint to the front of the type.
+        logDebug MaxDetail "Appending `MaxLinearity` constraint to network type"
         let outputLinProvenance = Linearity $ Linear $ NetworkOutputProvenance p (nameOf ident)
         let linConstraintArgs = [Builtin p outputLinProvenance, inputLin, outputLin]
         let linConstraint = BuiltinTypeClass p MaxLinearity (ExplicitArg p <$> linConstraintArgs)

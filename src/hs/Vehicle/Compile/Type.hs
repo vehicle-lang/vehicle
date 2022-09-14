@@ -113,22 +113,28 @@ typeCheckDecl propertyCtx decl = logCompilerPass MinDetail ("declaration" <+> id
       return $ DefPostulate p ident checkedType
 
     DefFunction p _ _ body -> do
+      -- Type check the body.
       checkedBody <- logCompilerPass MidDetail (passDoc <+> "body of" <+> identDoc) $ do
         checkExpr checkedType body
+
+      -- Reconstruct the function.
       let checkedDecl = DefFunction p ident checkedType checkedBody
 
+      -- Solve constraints and substitute through.
       solveConstraints (Just checkedDecl)
-
       substDecl <- substMetas checkedDecl
       logUnsolvedUnknowns (Just substDecl) Nothing
 
-      checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints substDecl
-      checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
-
+      -- Extract auxiliary annotations if a property.
+      -- This check must happen before generalisation as the `Bool` type will get
+      -- generalised with function input/output constraints.
       let isProperty = ident `Set.member` propertyCtx
       when isProperty $ do
-        checkPropertyInfo (ident, p) (typeOf checkedDecl2)
+        checkPropertyInfo (ident, p) (typeOf substDecl)
 
+      checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
+      checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints checkedDecl1
+      checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
       return checkedDecl3
 
   checkAllUnknownsSolved
