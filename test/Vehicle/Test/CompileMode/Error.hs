@@ -186,6 +186,7 @@ polarityErrors = failTestGroup "PolarityErrors" MarabouBackend
   , testSpec { testName = "mixedNegNegSequential"}
   , testSpec { testName = "mixedImpliesSequential"}
   , testSpec { testName = "mixedFunSequential"}
+  , testSpec { testName = "quantifiedIfCondition"}
   ]
 
 linearityErrors :: MonadTest m => m TestTree
@@ -195,6 +196,7 @@ linearityErrors = failTestGroup "LinearityErrors" MarabouBackend
   , testSpec { testName = "quadraticFunOutput"}
   , testSpec { testName = "quadraticInputOutput"}
   , testSpec { testName = "quadraticTensorInputLookup"}
+  , testSpec { testName = "nonLinearIfCondition"}
   ]
 
 --------------------------------------------------------------------------------

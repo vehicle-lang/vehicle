@@ -1,2 +1,2 @@
 Error at Line 3, Columns 1-16: The '.fgt' format of the file provided for the dataset 'trainingDataset' is not currently supported by Vehicle.
-Fix: use one of the supported formats [ .idx ] , or open an issue on Github to discuss adding support.
+Fix: use one of the supported formats [ .idx ] , or open an issue on Github (https://github.com/vehicle-lang/vehicle/issues/) to discuss adding support.

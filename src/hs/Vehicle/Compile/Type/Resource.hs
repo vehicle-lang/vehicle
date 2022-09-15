@@ -113,7 +113,7 @@ checkNetworkType decl@(ident, _) networkType = checkFunType networkType
         logDebug MaxDetail "Appending `MaxLinearity` constraint to network type"
         let outputLinProvenance = Linearity $ Linear $ NetworkOutputProvenance p (nameOf ident)
         let linConstraintArgs = [Builtin p outputLinProvenance, inputLin, outputLin]
-        let linConstraint = BuiltinTypeClass p MaxLinearity (ExplicitArg p <$> linConstraintArgs)
+        let linConstraint = BuiltinTypeClass p (LinearityTypeClass MaxLinearity) (ExplicitArg p <$> linConstraintArgs)
         return $ \t -> Pi p (IrrelevantInstanceBinder p Nothing linConstraint) t
     _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
 

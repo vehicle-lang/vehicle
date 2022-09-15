@@ -1,9 +1,28 @@
-module Vehicle.Compile.Type.ConstraintSolver.Polarity where
+module Vehicle.Compile.Type.ConstraintSolver.Polarity
+  ( solvePolarityConstraint
+  ) where
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.ConstraintSolver.Core
 import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Error
+
+import Control.Monad.Except (MonadError(..))
+
+solvePolarityConstraint :: MonadMeta m
+                        => PolarityTypeClass
+                        -> Constraint
+                        -> [CheckedType]
+                        -> m ConstraintProgress
+solvePolarityConstraint = \case
+  NegPolarity               -> solveNegPolarity
+  AddPolarity q             -> solveAddPolarity q
+  EqPolarity eq             -> solveEqPolarity eq
+  ImpliesPolarity           -> solveImplPolarity
+  MaxPolarity               -> solveMaxPolarity
+  FunctionPolarity position -> solveFunctionPolarity position
+  IfCondPolarity            -> solveIfCondPolarity
 
 --------------------------------------------------------------------------------
 -- Operations over polarities
@@ -157,3 +176,17 @@ solveFunctionPolarity functionPosition c [arg, res] = case arg of
   _                        -> malformedConstraintError c
 
 solveFunctionPolarity _ c _ = malformedConstraintError c
+
+solveIfCondPolarity :: MonadMeta m
+                    => Constraint
+                    -> [CheckedExpr]
+                    -> m ConstraintProgress
+solveIfCondPolarity c [arg] = case arg of
+  (exprHead -> Meta _ m1) -> blockOn [m1]
+  PolarityExpr _ pol     -> case pol of
+    Unquantified -> return $ Progress []
+    _            -> throwError $ QuantifiedIfCondition (constraintContext c)
+
+  _ -> malformedConstraintError c
+
+solveIfCondPolarity c _ = malformedConstraintError c

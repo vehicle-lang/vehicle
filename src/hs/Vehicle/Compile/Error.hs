@@ -83,6 +83,9 @@ data CompileError
   | FailedRatLitConstraint           ConstraintContext CheckedType
   | FailedConLitConstraint           ConstraintContext CheckedType
 
+  | QuantifiedIfCondition ConstraintContext
+  | NonLinearIfCondition  ConstraintContext
+
   -- Resource typing errors
   | ResourceNotProvided       DeclProvenance ResourceType
   | ResourceIOError           DeclProvenance ResourceType IOException

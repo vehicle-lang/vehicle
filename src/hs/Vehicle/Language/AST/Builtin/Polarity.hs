@@ -67,3 +67,29 @@ mapPolarityProvenance f = \case
   -- At the moment we don't change non-linear provenance because we
   -- want the minimal example.
   MixedSequential q p pp -> MixedSequential q p pp
+
+--------------------------------------------------------------------------------
+-- Polarity constraint
+
+data PolarityTypeClass
+  = NegPolarity
+  | AddPolarity Quantifier
+  | EqPolarity EqualityOp
+  | ImpliesPolarity
+  | MaxPolarity
+  | FunctionPolarity FunctionPosition
+  | IfCondPolarity
+  deriving (Eq, Generic, Show)
+
+instance NFData   PolarityTypeClass
+instance Hashable PolarityTypeClass
+
+instance Pretty PolarityTypeClass where
+  pretty = \case
+    NegPolarity        -> "NegPolarity"
+    AddPolarity q      -> "AddPolarity" <+> pretty q
+    EqPolarity eq      -> "EqPolarity" <+> pretty eq
+    ImpliesPolarity    -> "ImpliesPolarity"
+    MaxPolarity        -> "MaxPolarity"
+    IfCondPolarity     -> "IfCondPolarity"
+    FunctionPolarity{} -> "FunctionOutputPolarity"

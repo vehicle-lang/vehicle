@@ -192,11 +192,11 @@ replaceAux position p auxType = \case
   Just expr -> case auxType of
     Lin -> do
       newLin <- freshLinearityMeta p
-      addFunctionConstraint FunctionLinearity position expr newLin
+      addFunctionConstraint (LinearityTypeClass . FunctionLinearity) position expr newLin
       return newLin
     Pol -> do
       newPol <- freshPolarityMeta p
-      addFunctionConstraint FunctionPolarity position expr newPol
+      addFunctionConstraint (PolarityTypeClass . FunctionPolarity) position expr newPol
       return newPol
 
 addFunctionConstraint :: TCM m

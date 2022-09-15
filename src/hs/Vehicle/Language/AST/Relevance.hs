@@ -43,14 +43,8 @@ instance HasRelevance TypeClass where
     HasRatLits{}      -> Relevant
     HasVecLits{}      -> Relevant
 
+    HasIf{}                    -> Irrelevant
     AlmostEqualConstraint{}    -> Irrelevant
     NatInDomainConstraint{}    -> Irrelevant
-    MaxLinearity{}             -> Irrelevant
-    MulLinearity{}             -> Irrelevant
-    FunctionLinearity{}        -> Irrelevant
-    NegPolarity{}              -> Irrelevant
-    AddPolarity{}              -> Irrelevant
-    EqPolarity{}               -> Irrelevant
-    ImpliesPolarity{}          -> Irrelevant
-    MaxPolarity{}              -> Irrelevant
-    FunctionPolarity{}         -> Irrelevant
+    LinearityTypeClass{}       -> Irrelevant
+    PolarityTypeClass{}        -> Irrelevant

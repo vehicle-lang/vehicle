@@ -531,24 +531,34 @@ typeOfTypeClass tc = case tc of
   HasNeg             -> type0 ~> type0 ~> type0
   HasFold            -> type0 ~> type0 ~> type0
   HasQuantifierIn{}  -> type0 ~> type0 ~> type0
+  HasIf              -> type0 ~> type0 ~> type0 ~> type0 ~> type0
 
   HasNatLits{} -> type0 ~> type0
   HasRatLits   -> type0 ~> type0
   HasVecLits{} -> type0 ~> type0 ~> type0
 
+  AlmostEqualConstraint{}    -> forall type0 $ \t -> t ~> tList t ~> type0
+  NatInDomainConstraint{}    -> forall type0 $ \t -> t ~> type0
+
+  LinearityTypeClass t -> typeOfLinearityTypeClass t
+  PolarityTypeClass  t -> typeOfPolarityTypeClass t
+
+typeOfLinearityTypeClass :: LinearityTypeClass -> DSLExpr
+typeOfLinearityTypeClass = \case
   MaxLinearity        -> tLin ~> tLin ~> tLin ~> type0
   MulLinearity        -> tLin ~> tLin ~> tLin ~> type0
   FunctionLinearity{} -> tLin ~> tLin ~> type0
+  IfCondLinearity     -> tLin ~> type0
 
+typeOfPolarityTypeClass :: PolarityTypeClass -> DSLExpr
+typeOfPolarityTypeClass = \case
   NegPolarity{}      -> tPol ~> tPol ~> type0
   AddPolarity{}      -> tPol ~> tPol ~> type0
   MaxPolarity        -> tPol ~> tPol ~> tPol ~> type0
   EqPolarity{}       -> tPol ~> tPol ~> tPol ~> type0
   ImpliesPolarity{}  -> tPol ~> tPol ~> tPol ~> type0
   FunctionPolarity{} -> tPol ~> tPol ~> type0
-
-  AlmostEqualConstraint{}    -> forall type0 $ \t -> t ~> tList t ~> type0
-  NatInDomainConstraint{}    -> forall type0 $ \t -> t ~> type0
+  IfCondPolarity     -> tLin ~> type0
 
 typeOfBoolOp2 :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr)
               -> (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr)
@@ -562,9 +572,12 @@ typeOfBoolOp2 linearityConstraint polarityConstraint =
 
 typeOfIf :: DSLExpr
 typeOfIf =
-  forall type0 $ \t ->
-    forallIrrelevant tLin $ \lin ->
-      tAnnBool lin unquantified ~> t ~> t ~> t
+  forall type0 $ \tCond ->
+    forall type0 $ \tArg1 ->
+      forall type0 $ \tArg2 ->
+        forall type0 $ \tRes ->
+          hasIf tCond tArg1 tArg2 tRes .~~~>
+            tCond ~> tArg1 ~> tArg2 ~> tRes
 
 typeOfEquals :: EqualityDomain -> EqualityOp -> DSLExpr
 typeOfEquals domain _op = case domain of

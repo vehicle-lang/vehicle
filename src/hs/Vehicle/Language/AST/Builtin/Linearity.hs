@@ -66,3 +66,23 @@ mapLinearityProvenance f = \case
   -- At the moment we don't change non-linear provenance because we
   -- want the minimal example.
   NonLinear p lp lp' -> NonLinear p lp lp'
+
+--------------------------------------------------------------------------------
+-- Linearity constraints
+
+data LinearityTypeClass
+  = MaxLinearity
+  | MulLinearity
+  | FunctionLinearity FunctionPosition
+  | IfCondLinearity
+  deriving (Eq, Generic, Show)
+
+instance NFData   LinearityTypeClass
+instance Hashable LinearityTypeClass
+
+instance Pretty LinearityTypeClass where
+  pretty = \case
+    MaxLinearity        -> "MaxLinearity"
+    MulLinearity        -> "MulLinearity"
+    IfCondLinearity     -> "IfCondLinearity"
+    FunctionLinearity{} -> "FunctionOutputLinearity"

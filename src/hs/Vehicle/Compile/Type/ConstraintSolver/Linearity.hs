@@ -1,9 +1,25 @@
-module Vehicle.Compile.Type.ConstraintSolver.Linearity where
+module Vehicle.Compile.Type.ConstraintSolver.Linearity
+  ( solveLinearityConstraint
+  ) where
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.ConstraintSolver.Core
+import Vehicle.Compile.Error
+
+import Control.Monad.Except (MonadError(..))
+
+solveLinearityConstraint :: MonadMeta m
+                         => LinearityTypeClass
+                         -> Constraint
+                         -> [CheckedType]
+                         -> m ConstraintProgress
+solveLinearityConstraint = \case
+  MaxLinearity               -> solveMaxLinearity
+  MulLinearity               -> solveMulLinearity
+  FunctionLinearity position -> solveFunctionLinearity position
+  IfCondLinearity            -> solveIfCondLinearity
 
 --------------------------------------------------------------------------------
 -- Operations over linearities
@@ -73,3 +89,18 @@ solveFunctionLinearity functionPosition c [arg, res] = case arg of
   _                       -> malformedConstraintError c
 
 solveFunctionLinearity _ c _ = malformedConstraintError c
+
+solveIfCondLinearity :: MonadMeta m
+                     => Constraint
+                     -> [CheckedExpr]
+                     -> m ConstraintProgress
+solveIfCondLinearity c [arg] = case arg of
+  (exprHead -> Meta _ m1) -> blockOn [m1]
+  LinearityExpr _ lin     -> case lin of
+    Constant    -> return $ Progress []
+    Linear{}    -> return $ Progress []
+    NonLinear{} -> throwError $ NonLinearIfCondition (constraintContext c)
+
+  _ -> malformedConstraintError c
+
+solveIfCondLinearity c _ = malformedConstraintError c

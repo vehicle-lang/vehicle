@@ -484,16 +484,22 @@ pattern IfExpr :: Provenance
                -> [Arg binder var]
                -> Expr binder var
 pattern
-  IfExpr ann tRes args <-
-    App ann (Builtin _ If)
-      (  ImplicitArg _ tRes
-      :| args
+  IfExpr p tRes args <-
+    App p (Builtin _ If)
+      (  ImplicitArg _ BoolType{}
+      :| ImplicitArg _ _
+      :  ImplicitArg _ _
+      :  ImplicitArg _ tRes
+      :  args
       )
   where
-  IfExpr ann tRes args =
-    App ann (Builtin ann If)
-      (  ImplicitArg ann tRes
-      :| args
+  IfExpr p tRes args =
+    App p (Builtin p If)
+      (  ImplicitArg p (BoolType p)
+      :| ImplicitArg p tRes
+      :  ImplicitArg p tRes
+      :  ImplicitArg p tRes
+      :  args
       )
 
 --------------------------------------------------------------------------------

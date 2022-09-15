@@ -58,6 +58,7 @@ solve = \case
   HasDiv              -> solveHasDiv
   HasFold             -> solveHasFold
   HasQuantifierIn q   -> solveHasQuantifierIn q
+  HasIf               -> solveHasIf
 
   HasNatLits n -> solveHasNatLits n
   HasRatLits   -> solveHasRatLits
@@ -66,16 +67,8 @@ solve = \case
   AlmostEqualConstraint   -> solveAlmostEqual
   NatInDomainConstraint n -> solveInDomain n
 
-  MaxLinearity               -> castProgressFn solveMaxLinearity
-  MulLinearity               -> castProgressFn solveMulLinearity
-  FunctionLinearity position -> castProgressFn $ solveFunctionLinearity position
-
-  NegPolarity               -> castProgressFn solveNegPolarity
-  AddPolarity q             -> castProgressFn $ solveAddPolarity q
-  EqPolarity eq             -> castProgressFn $ solveEqPolarity eq
-  ImpliesPolarity           -> castProgressFn solveImplPolarity
-  MaxPolarity               -> castProgressFn solveMaxPolarity
-  FunctionPolarity position -> castProgressFn $ solveFunctionPolarity position
+  LinearityTypeClass tc -> castProgressFn $ solveLinearityConstraint tc
+  PolarityTypeClass  tc -> castProgressFn $ solvePolarityConstraint tc
 
 -- A temporary hack until we separate out the solvers properly.
 castProgressFn :: MonadMeta m
@@ -124,7 +117,7 @@ solveBoolEquals :: MonadMeta m
                 -> m TypeClassProgress
 solveBoolEquals c arg1 arg2 res op = do
   let p = provenanceOf c
-  constraints <- checkBoolTypesEqual c res [arg1, arg2] MaxLinearity (EqPolarity op)
+  constraints <- checkBoolTypesEqualUpTo c res [arg1, arg2] MaxLinearity (EqPolarity op)
   let solution = FreeVar p (identifierOf StdEqualsBool)
   return $ Right (constraints, solution)
 
@@ -208,7 +201,7 @@ solveHasNot c [arg, res] = do
   (resEq, resLin, resPol) <- unifyWithAnnBoolType c res
 
   let linEq = unify c argLin resLin
-  (_, polTC) <- createTC c NegPolarity [argPol, resPol]
+  (_, polTC) <- createTC c (PolarityTypeClass NegPolarity) [argPol, resPol]
   let solution = Builtin p Not
 
   return $ Right ([argEq, resEq, linEq, polTC], solution)
@@ -219,14 +212,14 @@ solveHasNot c _ = malformedConstraintError c
 -- HasAndOr
 
 solveHasBoolOp2 :: MonadMeta m
-                => TypeClass
+                => PolarityTypeClass
                 -> Builtin
                 -> Constraint
                 -> [CheckedType]
                 -> m TypeClassProgress
 solveHasBoolOp2 polConstraint solutionBuiltin c [arg1, arg2, res] = do
   let p = provenanceOf c
-  constraints <- checkBoolTypesEqual c res [arg1, arg2] MaxLinearity polConstraint
+  constraints <- checkBoolTypesEqualUpTo c res [arg1, arg2] MaxLinearity polConstraint
   let solution = Builtin p solutionBuiltin
   return $ Right (constraints, solution)
 solveHasBoolOp2 _ _ c _ = malformedConstraintError c
@@ -355,7 +348,7 @@ solveRatQuantifier q c domainBinder body res = do
 
   -- Generate a new polarity for the result type and relate it to the polarity of the body.
   resPol     <- freshPolarityMeta p
-  (_, polTC) <- createTC c (AddPolarity q) [bodyPol, resPol]
+  (_, polTC) <- createTC c (PolarityTypeClass (AddPolarity q)) [bodyPol, resPol]
 
   -- The result type is the Bool type with the same linearity as the body.
   let resEq  = unify c res  (AnnBoolType p bodyLin resPol)
@@ -473,7 +466,7 @@ solveAddRat :: MonadMeta m
             -> m TypeClassProgress
 solveAddRat c arg1 arg2 res = do
   let p = provenanceOf c
-  constraints <- checkRatTypesEqual c res [arg1, arg2] MaxLinearity
+  constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MaxLinearity
   let solution = Builtin p (Add AddRat)
   return $ Right (constraints, solution)
 
@@ -545,7 +538,7 @@ solveSubRat :: MonadMeta m
             -> m TypeClassProgress
 solveSubRat c arg1 arg2 res = do
   let p = provenanceOf c
-  constraints <- checkRatTypesEqual c res [arg1, arg2] MaxLinearity
+  constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MaxLinearity
   let solution = Builtin p (Sub SubRat)
   return $ Right (constraints, solution)
 
@@ -628,7 +621,7 @@ solveMulRat :: MonadMeta m
             -> m TypeClassProgress
 solveMulRat c arg1 arg2 res = do
   let p = provenanceOf c
-  constraints <- checkRatTypesEqual c res [arg1, arg2] MulLinearity
+  constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MulLinearity
   let solution = Builtin p (Mul MulRat)
   return $ Right (constraints, solution)
 
@@ -659,7 +652,7 @@ solveRatDiv :: MonadMeta m
             -> CheckedType
             -> m TypeClassProgress
 solveRatDiv c arg1 arg2 res = do
-  constraints <- checkRatTypesEqual c res [arg1, arg2] MulLinearity
+  constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MulLinearity
   let solution = Builtin (provenanceOf c) (Div DivRat)
   return $ Right (constraints, solution)
 
@@ -731,6 +724,22 @@ solveHasQuantifierIn q c [tElem, tCont, tRes] = case tCont of
     where tcError = FailedQuantInConstraintContainer (constraintContext c) tCont q
 
 solveHasQuantifierIn _ c _ = malformedConstraintError c
+
+--------------------------------------------------------------------------------
+-- HasIf
+
+solveHasIf :: MonadMeta m
+           => Constraint
+           -> [CheckedType]
+           -> m TypeClassProgress
+solveHasIf c [tCond, tArg1, tArg2, tRes] = do
+  (tCondEq, condLin, condPol) <- unifyWithAnnBoolType c tCond
+  argEqs <- checkSubtypes c tRes [tArg1, tArg2]
+  (_, linTC) <- createTC c (LinearityTypeClass IfCondLinearity) [condLin]
+  (_, polTC) <- createTC c (PolarityTypeClass IfCondPolarity) [condPol]
+  return $ irrelevant c $ tCondEq : linTC : polTC : argEqs
+
+solveHasIf c _ = malformedConstraintError c
 
 --------------------------------------------------------------------------------
 -- HasNatLits
@@ -847,68 +856,12 @@ solveAlmostEqual :: MonadMeta m
                  -> [CheckedType]
                  -> m TypeClassProgress
 solveAlmostEqual c [targetType, subTypesExpr]
-  | allOf types isMeta        = blockOnMetas types
-  | anyOf types isAnnRatType  = irrelevant c <$> solveRatTypesEqual    c targetType subTypes
-  | anyOf types isAnnBoolType = irrelevant c <$> solveBoolTypesEqual   c targetType subTypes
-  | anyOf types isListType    = irrelevant c <$> solveListTypesEqual   c targetType subTypes
-  | anyOf types isVectorType  = irrelevant c <$> solveVectorTypesEqual c targetType subTypes
-  | otherwise                 = irrelevant c <$> solveSimpleTypesEqual c types
+  | allOf types isMeta  = blockOnMetas types
+  | otherwise           = irrelevant c <$> checkSubtypes c targetType subTypes
   where
     subTypes = getConcreteList subTypesExpr
     types    = targetType : subTypes
 solveAlmostEqual c _ = malformedConstraintError c
-
-solveBoolTypesEqual :: MonadMeta m
-                    => Constraint
-                    -> CheckedType
-                    -> [CheckedType]
-                    -> m [Constraint]
-solveBoolTypesEqual c targetType subTypes =
-  checkBoolTypesEqual c targetType subTypes MaxLinearity MaxPolarity
-
-solveRatTypesEqual :: MonadMeta m
-                   => Constraint
-                   -> CheckedType
-                   -> [CheckedType]
-                   -> m [Constraint]
-solveRatTypesEqual c targetType subTypes =
-  checkRatTypesEqual c targetType subTypes MaxLinearity
-
-solveListTypesEqual :: MonadMeta m
-                    => Constraint
-                    -> CheckedType
-                    -> [CheckedType]
-                    -> m [Constraint]
-solveListTypesEqual c targetType subTypes = do
-  let p = provenanceOf c
-  (targetEqConstraint, targetElemType) <- unifyWithListType c targetType
-  (subEqConstraints, subElemTypes) <- unzip <$> forM subTypes (unifyWithListType c)
-  let subElemTypeSeq = mkList p (TypeUniverse p 0) subElemTypes
-  (_, recEq) <- createTC c AlmostEqualConstraint [targetElemType, subElemTypeSeq]
-  return (targetEqConstraint : recEq : subEqConstraints)
-
-solveVectorTypesEqual :: MonadMeta m
-                      => Constraint
-                      -> CheckedType
-                      -> [CheckedType]
-                      -> m [Constraint]
-solveVectorTypesEqual c targetType subTypes = do
-  let p = provenanceOf c
-  dim <- freshDimMeta c
-  (targetEqConstraint, targetElemType) <- unifyWithVectorType c dim targetType
-  (subEqConstraints, subElemTypes) <- unzip <$> forM subTypes (unifyWithVectorType c dim)
-  let subElemTypeSeq = mkList p (TypeUniverse p 0) subElemTypes
-  (_, recEq) <- createTC c AlmostEqualConstraint [targetElemType, subElemTypeSeq]
-  return (targetEqConstraint : recEq : subEqConstraints)
-
-solveSimpleTypesEqual :: MonadMeta m
-                      => Constraint
-                      -> [CheckedType]
-                      -> m [Constraint]
-solveSimpleTypesEqual c types = do
-  let adjacentPairs = zip types $ tail types
-  let constraints = map (uncurry (unify c)) adjacentPairs
-  return constraints
 
 --------------------------------------------------------------------------------
 -- LessThan
@@ -944,44 +897,100 @@ solveInDomain n c [arg] = case arg of
 
 solveInDomain _ c _ = malformedConstraintError c
 
+
+--------------------------------------------------------------------------------
+-- Subtyping
+
+type SubtypingCheck m
+  = MonadMeta m
+  => Constraint
+  -> CheckedType
+  -> [CheckedType]
+  -> m [Constraint]
+
+checkSubtypes :: SubtypingCheck m
+checkSubtypes c targetType subTypes
+  | anyOf types isAnnRatType  = checkRatSubtypes    c targetType subTypes
+  | anyOf types isAnnBoolType = checkBoolSubtypes   c targetType subTypes
+  | anyOf types isListType    = checkListSubtypes   c targetType subTypes
+  | anyOf types isVectorType  = checkVectorSubtypes c targetType subTypes
+  | otherwise                 = checkSimpleSubtypes c targetType subTypes
+  where types = targetType : subTypes
+
+checkBoolSubtypes :: SubtypingCheck m
+checkBoolSubtypes c targetType subTypes = do
+  checkBoolTypesEqualUpTo c targetType subTypes MaxLinearity MaxPolarity
+
+checkRatSubtypes :: SubtypingCheck m
+checkRatSubtypes c targetType subTypes = do
+  checkRatTypesEqualUpTo c targetType subTypes MaxLinearity
+
+checkListSubtypes :: SubtypingCheck m
+checkListSubtypes c targetType subTypes = do
+  let p = provenanceOf c
+  (targetEqConstraint, targetElemType) <- unifyWithListType c targetType
+  (subEqConstraints, subElemTypes) <- unzip <$> forM subTypes (unifyWithListType c)
+  let subElemTypeSeq = mkList p (TypeUniverse p 0) subElemTypes
+  (_, recEq) <- createTC c AlmostEqualConstraint [targetElemType, subElemTypeSeq]
+  return (targetEqConstraint : recEq : subEqConstraints)
+
+checkVectorSubtypes :: SubtypingCheck m
+checkVectorSubtypes c targetType subTypes = do
+  let p = provenanceOf c
+  dim <- freshDimMeta c
+  (targetEqConstraint, targetElemType) <- unifyWithVectorType c dim targetType
+  (subEqConstraints, subElemTypes) <- unzip <$> forM subTypes (unifyWithVectorType c dim)
+  let subElemTypeSeq = mkList p (TypeUniverse p 0) subElemTypes
+  (_, recEq) <- createTC c AlmostEqualConstraint [targetElemType, subElemTypeSeq]
+  return (targetEqConstraint : recEq : subEqConstraints)
+
+checkSimpleSubtypes :: SubtypingCheck m
+checkSimpleSubtypes c targetType subTypes = do
+  let types = targetType : subTypes
+  let adjacentPairs = zip types $ tail types
+  let constraints = map (uncurry (unify c)) adjacentPairs
+  return constraints
+
+
 --------------------------------------------------------------------------------
 -- Utilities
 
-checkBoolTypesEqual :: MonadMeta m
-                    => Constraint
-                    -> CheckedType
-                    -> [CheckedType]
-                    -> TypeClass
-                    -> TypeClass
-                    -> m [Constraint]
-checkBoolTypesEqual c targetType subTypes linTC polTC = do
+checkBoolTypesEqualUpTo :: MonadMeta m
+                        => Constraint
+                        -> CheckedType
+                        -> [CheckedType]
+                        -> LinearityTypeClass
+                        -> PolarityTypeClass
+                        -> m [Constraint]
+checkBoolTypesEqualUpTo c targetType subTypes linTC polTC = do
   (targetEqConstraint, targetLin, targetPol) <-
     unifyWithAnnBoolType c targetType
 
   (subEqConstraints, subLins, subPols) <-
     unzip3 <$> forM subTypes (unifyWithAnnBoolType c)
 
-  linTCConstraints <- combineAuxiliaryConstraints linTC freshLinearityMeta c targetLin subLins
-  polTCConstraints <- combineAuxiliaryConstraints polTC freshPolarityMeta  c targetPol subPols
+  linTCConstraints <- combineAuxiliaryConstraints (LinearityTypeClass linTC) freshLinearityMeta c targetLin subLins
+  polTCConstraints <- combineAuxiliaryConstraints (PolarityTypeClass  polTC) freshPolarityMeta  c targetPol subPols
 
   return $ targetEqConstraint : subEqConstraints <> linTCConstraints <> polTCConstraints
 
-checkRatTypesEqual :: MonadMeta m
-                   => Constraint
-                   -> CheckedType
-                   -> [CheckedType]
-                   -> TypeClass
-                   -> m [Constraint]
-checkRatTypesEqual c targetType subTypes linTC = do
+checkRatTypesEqualUpTo :: MonadMeta m
+                       => Constraint
+                       -> CheckedType
+                       -> [CheckedType]
+                       -> LinearityTypeClass
+                       -> m [Constraint]
+checkRatTypesEqualUpTo c targetType subTypes linTC = do
   (targetEqConstraint, targetLin) <-
     unifyWithAnnRatType c targetType
 
   (subEqConstraints, subLins) <-
     unzip <$> forM subTypes (unifyWithAnnRatType c)
 
-  linTCConstraints <- combineAuxiliaryConstraints linTC freshLinearityMeta c targetLin subLins
+  linTCConstraints <- combineAuxiliaryConstraints (LinearityTypeClass linTC) freshLinearityMeta c targetLin subLins
 
   return $ targetEqConstraint : subEqConstraints <> linTCConstraints
+
 
 checkOp2SimpleTypesEqual :: Constraint
                          -> CheckedType -> CheckedType -> CheckedType
@@ -1102,7 +1111,7 @@ solveRatComparisonOp c arg1 arg2 res op = do
   (resEq, resLin, resPol) <- unifyWithAnnBoolType c res
 
   -- The resulting linearity is the max of the linearity of the arguments.
-  (_meta, linTC) <- createTC c MaxLinearity [arg1Lin, arg2Lin, resLin]
+  (_meta, linTC) <- createTC c (LinearityTypeClass MaxLinearity) [arg1Lin, arg2Lin, resLin]
   -- The polarity is unquantified.
   let polEq = unify c resPol (PolarityExpr p Unquantified)
 

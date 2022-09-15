@@ -389,6 +389,19 @@ instance MeaningfulError CompileError where
       , fix        = Nothing
       }
 
+    QuantifiedIfCondition ctx -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "cannot currently use quantifiers in `if` conditions."
+      , fix        = Just $ implementationLimitation Nothing
+      }
+
+    NonLinearIfCondition ctx -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "cannot currently use expressions that are non-linear" <+>
+                     "in quantified variables in `if` conditions."
+      , fix        = Just $ implementationLimitation Nothing
+      }
+
     ---------------
     -- Resources --
     ---------------
@@ -413,7 +426,7 @@ instance MeaningfulError CompileError where
                      "is not currently supported by Vehicle."
       , fix        = Just $ "use one of the supported formats" <+>
                      pretty (supportedFileFormats resourceType) <+>
-                     ", or open an issue on Github to discuss adding support."
+                     ", or open an issue on Github (" <> githubIssues <> ") to discuss adding support."
       }
 
     ResourceIOError (ident, p) resourceType ioException -> UError $ UserError
@@ -725,9 +738,8 @@ instance MeaningfulError CompileError where
       { provenance = p
       , problem    = "After compilation, property" <+> squotes (pretty identifier) <+>
                      "contains a `!=` which is not current supported by" <+>
-                     pretty target <> ". See https://github.com/vehicle-lang/vehicle/issues/74" <+>
-                     "for details."
-      , fix        = Just "not easy, needs fixing upstream in Marabou."
+                     pretty target <> ". "
+      , fix        = Just (implementationLimitation (Just 74))
       }
 
     UnsupportedPolymorphicEquality target p typeName -> UError $ UserError
@@ -782,6 +794,17 @@ supportedNetworkTypeDescription =
 supportedInferableParameterTypeDescription :: Doc a
 supportedInferableParameterTypeDescription =
   "Only implicit parameters of type 'Nat' are allowed."
+
+githubIssues :: Doc a
+githubIssues = "https://github.com/vehicle-lang/vehicle/issues/"
+
+implementationLimitation :: Maybe Int -> Doc a
+implementationLimitation issue =
+  "This is a limitation of the current implementation rather than a fundamental problem." <+>
+  case issue of
+    Nothing -> "If you would like this to be fixed, please open an issue at" <+> squotes githubIssues
+    Just issueNumber -> "If you would like this to be fixed, please comment at" <+>
+      squotes (githubIssues <+> pretty issueNumber) <> "."
 
 unsolvedConstraintError :: Constraint -> [DBBinding] -> Doc a
 unsolvedConstraintError constraint ctx ="Typing error: not enough information to solve constraint" <+>

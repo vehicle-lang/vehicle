@@ -129,16 +129,11 @@ familyOf = \case
   HasQuantifierIn{}       -> return $ ContainerFamily False
   NatInDomainConstraint n -> return $ NumericFamily NatT False n
 
-  MaxLinearity            -> auxiliaryTCError
-  MulLinearity            -> auxiliaryTCError
-  NegPolarity{}           -> auxiliaryTCError
-  AddPolarity{}           -> auxiliaryTCError
-  EqPolarity{}            -> auxiliaryTCError
-  ImpliesPolarity{}       -> auxiliaryTCError
-  MaxPolarity{}           -> auxiliaryTCError
   AlmostEqualConstraint{} -> auxiliaryTCError
-  FunctionLinearity{}     -> auxiliaryTCError
-  FunctionPolarity{}      -> auxiliaryTCError
+
+  HasIf{}                 -> ifTCError
+  LinearityTypeClass{}    -> auxiliaryTCError
+  PolarityTypeClass{}     -> auxiliaryTCError
 
 defaultSolution :: MonadMeta m
                 => Provenance
@@ -165,16 +160,10 @@ defaultSolution p ctx = \case
   HasQuantifierIn{}       -> createDefaultListType p ctx
   NatInDomainConstraint n -> return $ NatLiteral p (n + 1)
 
-  MaxLinearity            -> auxiliaryTCError
-  MulLinearity            -> auxiliaryTCError
-  NegPolarity{}           -> auxiliaryTCError
-  AddPolarity{}           -> auxiliaryTCError
-  EqPolarity{}            -> auxiliaryTCError
-  ImpliesPolarity{}       -> auxiliaryTCError
-  MaxPolarity{}           -> auxiliaryTCError
+  HasIf{}                 -> ifTCError
+  LinearityTypeClass{}    -> auxiliaryTCError
+  PolarityTypeClass{}     -> auxiliaryTCError
   AlmostEqualConstraint{} -> auxiliaryTCError
-  FunctionLinearity{}     -> auxiliaryTCError
-  FunctionPolarity{}      -> auxiliaryTCError
 
 createDefaultListType :: MonadMeta m => Provenance -> TypingBoundCtx -> m CheckedType
 createDefaultListType p ctx = do
@@ -222,3 +211,7 @@ getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t -> do
 auxiliaryTCError :: MonadCompile m => m a
 auxiliaryTCError = compilerDeveloperError
   "Should not be considering defaults for auxiliary constraints"
+
+ifTCError :: MonadCompile m => m a
+ifTCError = compilerDeveloperError
+  "Should not be considering defaults for 'HasIf' constraints"

@@ -42,6 +42,7 @@ module Vehicle.Language.DSL
   , hasOr
   , hasImplies
   , hasQuantifier
+  , hasIf
   , natInDomainConstraint
   , maxLinearity
   , mulLinearity
@@ -276,6 +277,9 @@ hasNeg t1 t2 = typeClass HasNeg [t1, t2]
 hasFold :: DSLExpr -> DSLExpr -> DSLExpr
 hasFold tCont tElem = typeClass HasFold [tCont, tElem]
 
+hasIf :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+hasIf tCond tArg1 tArg2 tRes = typeClass HasIf [tCond, tArg1, tArg2, tRes]
+
 hasQuantifierIn :: Quantifier -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 hasQuantifierIn q tCont tElem tRes = typeClass (HasQuantifierIn q) [tCont, tElem, tRes]
 
@@ -288,26 +292,38 @@ hasRatLits t = typeClass HasRatLits [t]
 hasVecLits :: Int -> DSLExpr -> DSLExpr -> DSLExpr
 hasVecLits n t d = typeClass (HasVecLits n) [t, d]
 
+--------------------------------------------------------------------------------
+-- LinearityTypeClass
+
+linearityTypeClass :: LinearityTypeClass -> NonEmpty DSLExpr -> DSLExpr
+linearityTypeClass tc = typeClass (LinearityTypeClass tc)
+
 maxLinearity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-maxLinearity l1 l2 l3 = typeClass MulLinearity [l1, l2, l3]
+maxLinearity l1 l2 l3 = linearityTypeClass MulLinearity [l1, l2, l3]
 
 mulLinearity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-mulLinearity l1 l2 l3 = typeClass MulLinearity [l1, l2, l3]
+mulLinearity l1 l2 l3 = linearityTypeClass MulLinearity [l1, l2, l3]
 
 natInDomainConstraint :: Int -> DSLExpr -> DSLExpr
 natInDomainConstraint n t = typeClass (NatInDomainConstraint n) [t]
 
+--------------------------------------------------------------------------------
+-- PolarityTypeClass
+
+polarityTypeClass :: PolarityTypeClass -> NonEmpty DSLExpr -> DSLExpr
+polarityTypeClass tc = typeClass (PolarityTypeClass tc)
+
 addPolarity :: Quantifier -> DSLExpr -> DSLExpr -> DSLExpr
-addPolarity q l1 l2 = typeClass (AddPolarity q) [l1, l2]
+addPolarity q l1 l2 = polarityTypeClass (AddPolarity q) [l1, l2]
 
 maxPolarity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-maxPolarity l1 l2 l3 = typeClass MaxPolarity [l1, l2, l3]
+maxPolarity l1 l2 l3 = polarityTypeClass MaxPolarity [l1, l2, l3]
 
 impliesPolarity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-impliesPolarity l1 l2 l3 = typeClass ImpliesPolarity [l1, l2, l3]
+impliesPolarity l1 l2 l3 = polarityTypeClass ImpliesPolarity [l1, l2, l3]
 
 negPolarity :: DSLExpr -> DSLExpr -> DSLExpr
-negPolarity l1 l2 = typeClass NegPolarity [l1, l2]
+negPolarity l1 l2 = polarityTypeClass NegPolarity [l1, l2]
 
 --------------------------------------------------------------------------------
 -- Operations

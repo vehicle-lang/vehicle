@@ -163,6 +163,7 @@ library
                       , Vehicle.Language.AST.Builtin.Core
                       , Vehicle.Language.AST.Builtin.Linearity
                       , Vehicle.Language.AST.Builtin.Polarity
+                      , Vehicle.Language.AST.Builtin.TypeClass
                       , Vehicle.Language.AST.Core
                       , Vehicle.Language.AST.DeBruijn
                       , Vehicle.Language.AST.CoDeBruijn

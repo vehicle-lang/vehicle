@@ -36,19 +36,12 @@ typeClassGroup tc = case tc of
     HasNatLits{}               -> TypeGroup
     HasRatLits                 -> TypeGroup
     HasVecLits{}               -> TypeGroup
+    HasIf{}                    -> TypeGroup
     AlmostEqualConstraint{}    -> TypeGroup
     NatInDomainConstraint{}    -> TypeGroup
 
-    MulLinearity        -> LinearityGroup
-    MaxLinearity        -> LinearityGroup
-    FunctionLinearity{} -> LinearityGroup
-
-    NegPolarity{}      -> PolarityGroup
-    AddPolarity{}      -> PolarityGroup
-    EqPolarity{}       -> PolarityGroup
-    ImpliesPolarity{}  -> PolarityGroup
-    MaxPolarity{}      -> PolarityGroup
-    FunctionPolarity{} -> PolarityGroup
+    LinearityTypeClass{}       -> LinearityGroup
+    PolarityTypeClass{}        -> PolarityGroup
 
 isAuxiliaryTypeClass :: TypeClass -> Bool
 isAuxiliaryTypeClass tc = do
