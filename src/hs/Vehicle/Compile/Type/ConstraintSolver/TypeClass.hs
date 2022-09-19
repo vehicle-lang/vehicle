@@ -731,12 +731,14 @@ solveHasIf :: MonadMeta m
            => Constraint
            -> [CheckedType]
            -> m TypeClassProgress
-solveHasIf c [tCond, tArg1, tArg2, tRes] = do
-  (tCondEq, condLin, condPol) <- unifyWithAnnBoolType c tCond
-  argEqs <- checkSubtypes c tRes [tArg1, tArg2]
-  (_, linTC) <- createTC c (LinearityTypeClass IfCondLinearity) [condLin]
-  (_, polTC) <- createTC c (PolarityTypeClass IfCondPolarity) [condPol]
-  return $ irrelevant c $ tCondEq : linTC : polTC : argEqs
+solveHasIf c [tCond, tArg1, tArg2, tRes]
+  | allOf [tArg1, tArg2, tRes] isMeta = blockOnMetas [tArg1, tArg2, tRes]
+  | otherwise = do
+    (tCondEq, condLin, condPol) <- unifyWithAnnBoolType c tCond
+    argEqs <- checkSubtypes c tRes [tArg1, tArg2]
+    (_, linTC) <- createTC c (LinearityTypeClass IfCondLinearity) [condLin]
+    (_, polTC) <- createTC c (PolarityTypeClass IfCondPolarity) [condPol]
+    return $ irrelevant c $ tCondEq : linTC : polTC : argEqs
 
 solveHasIf c _ = malformedConstraintError c
 

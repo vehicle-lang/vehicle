@@ -30,6 +30,12 @@ abstract
     }
 
 abstract
+  prop2 : ∃ λ (x : ℚ) → f ((if ⌊ ℤ.+ 0 ℚ./ 1 ℚ.<? x ⌋ then x else ℤ.+ 1 ℚ./ 5) ∷ᵥ []ᵥ) (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1
+  prop2 = checkSpecification record
+    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
+    }
+
+abstract
   prop3 : ∃ λ (x : ℚ) → if ⌊ ℤ.+ 0 ℚ./ 1 ℚ.<? f (x ∷ᵥ []ᵥ) (# 0) ⌋ then x ℚ.≥ ℤ.+ 0 ℚ./ 1 else x ℚ.< ℤ.+ 0 ℚ./ 1
   prop3 = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
