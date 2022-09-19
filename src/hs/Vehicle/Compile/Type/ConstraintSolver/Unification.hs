@@ -173,7 +173,7 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
           finalE2 <- if newMetasSolved then substMetas e2 else return e2
 
           case substAll forwardSubst finalE2 of
-            Nothing       -> return $ Stuck mempty -- MetaSet.singleton i
+            Nothing       -> return $ Stuck $ MetaSet.singleton i
             Just defnBody -> do
               metaSolved i defnBody
               return $ Progress mempty
