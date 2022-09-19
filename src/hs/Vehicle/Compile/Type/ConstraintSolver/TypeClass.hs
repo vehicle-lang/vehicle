@@ -14,7 +14,6 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.ConstraintSolver.Polarity
 import Vehicle.Compile.Type.ConstraintSolver.Linearity
 import Vehicle.Compile.Type.ConstraintSolver.Core
-import Vehicle.Compile.Type.WeakHeadNormalForm (whnfExprWithMetas)
 import Vehicle.Language.StandardLibrary.Names
 
 --------------------------------------------------------------------------------
@@ -874,25 +873,22 @@ solveInDomain :: MonadMeta m
 solveInDomain n c [arg] = case arg of
   (exprHead -> Meta{}) -> blockOnMetas [arg]
 
-  IndexType _ size -> do
-    -- TODO normalising here is a total hack
-    normSize <- whnfExprWithMetas (variableContext c) size
-    case normSize of
-      (exprHead -> Meta{}) -> blockOnMetas [normSize]
+  IndexType _ size -> case size of
+    (exprHead -> Meta{}) -> blockOnMetas [size]
 
-      (BuiltinExpr _ (TypeClassOp FromNatTC{}) (_ :| InstanceArg _ inst@Meta{} : _)) ->
-        blockOnMetas [inst]
+    (BuiltinExpr _ (TypeClassOp FromNatTC{}) (_ :| InstanceArg _ inst@Meta{} : _)) ->
+      blockOnMetas [inst]
 
-      (NatLiteral _ m)
-        | m > n     -> return $ irrelevant c []
-        | otherwise -> throwError $ FailedNatLitConstraintTooBig (constraintContext c) n m
+    (NatLiteral _ m)
+      | m > n     -> return $ irrelevant c []
+      | otherwise -> throwError $ FailedNatLitConstraintTooBig (constraintContext c) n m
 
-      _ -> throwError $ FailedNatLitConstraintUnknown (constraintContext c) n normSize
+    _ -> throwError $ FailedNatLitConstraintUnknown (constraintContext c) n size
 
   NatType{}    -> return $ Right ([], UnitLiteral p)
   IntType{}    -> return $ Right ([], UnitLiteral p)
   AnnRatType{} -> return $ Right ([], UnitLiteral p)
-  _         -> malformedConstraintError c
+  _            -> malformedConstraintError c
   where p = provenanceOf c
 
 solveInDomain _ c _ = malformedConstraintError c
@@ -1032,7 +1028,7 @@ unifyWithIndexType :: MonadMeta m
                    -> m (Constraint, CheckedExpr)
 unifyWithIndexType c t = do
   let p = provenanceOf c
-  indexSize <- freshExprMeta p (NatType p) (boundContext c)
+  indexSize <- freshExprMeta p (NatType p) (boundContext $ constraintContext  c)
   let eq = unify c t (IndexType p indexSize)
   return (eq, indexSize)
 
@@ -1052,7 +1048,7 @@ unifyWithListType :: MonadMeta m
                  -> m (Constraint, CheckedExpr)
 unifyWithListType c t = do
   let p = provenanceOf c
-  elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
+  elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext $ constraintContext c)
   let eq = unify c t (ListType p elemType)
   return (eq, elemType)
 
@@ -1063,14 +1059,14 @@ unifyWithVectorType :: MonadMeta m
                     -> m (Constraint, CheckedType)
 unifyWithVectorType c dim t = do
   let p = provenanceOf c
-  elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
+  elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext $ constraintContext  c)
   let eq = unify c t (VectorType p elemType dim)
   return (eq, elemType)
 
 freshDimMeta :: MonadMeta m => Constraint -> m CheckedExpr
 freshDimMeta c = do
   let p = provenanceOf c
-  freshExprMeta p (NatType p) (boundContext c)
+  freshExprMeta p (NatType p) (boundContext $ constraintContext c)
 
 solveSimpleComparisonOp :: MonadMeta m
                         => Constraint

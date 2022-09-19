@@ -492,7 +492,7 @@ clearMetaCtx = do
 addUnificationConstraint :: MonadMeta m
                          => ConstraintGroup
                          -> Provenance
-                         -> TypingVariableCtx
+                         -> TypingBoundCtx
                          -> CheckedExpr
                          -> CheckedExpr
                          -> m ()
@@ -503,7 +503,7 @@ addUnificationConstraint group p ctx e1 e2 = do
 
 addTypeClassConstraint :: MonadMeta m
                        => Provenance
-                       -> TypingVariableCtx
+                       -> TypingBoundCtx
                        -> Meta
                        -> CheckedExpr
                        -> m ()
@@ -523,7 +523,7 @@ addTypeClassConstraint creationProvenance ctx meta expr = do
 createMetaAndAddTypeClassConstraint :: TCM m => Provenance -> CheckedType -> m CheckedExpr
 createMetaAndAddTypeClassConstraint p tc = do
   m <- freshTypeClassPlacementMeta p tc
-  ctx <- getVariableCtx
+  ctx <- getBoundCtx
   addTypeClassConstraint p ctx m tc
   return $ Meta p m
 

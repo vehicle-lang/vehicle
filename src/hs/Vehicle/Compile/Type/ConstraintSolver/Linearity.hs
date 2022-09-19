@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use max" #-}
 module Vehicle.Compile.Type.ConstraintSolver.Linearity
   ( solveLinearityConstraint
   ) where

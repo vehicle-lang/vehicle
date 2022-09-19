@@ -12,7 +12,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Type.VariableContext
 import Vehicle.Compile.Type.Meta
-import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Constraint as Constraint
 import Vehicle.Compile.Normalise
 
 --------------------------------------------------------------------------------
@@ -40,7 +40,7 @@ whnf e = do
 --------------------------------------------------------------------------------
 -- WHNF combined with meta variable subsitution
 
-whnfExprWithMetas :: MonadMeta m
+whnfExprWithMetas :: TCM m
                   => TypingVariableCtx
                   -> CheckedExpr
                   -> m CheckedExpr
@@ -48,18 +48,19 @@ whnfExprWithMetas ctx e = do
   e' <- substMetas e
   runReaderT (whnf e') ctx
 
-whnfConstraintWithMetas :: MonadMeta m
-                        => Constraint
-                        -> m Constraint
-whnfConstraintWithMetas = \case
-  UC ctx (Unify (e1, e2)) -> do
-    e1' <- whnfExprWithMetas (varContext ctx) e1
-    e2' <- whnfExprWithMetas (varContext ctx) e2
-    return $ UC ctx (Unify (e1', e2'))
+whnfConstraintWithMetas :: TCM m => Constraint -> m Constraint
+whnfConstraintWithMetas c = do
+  declCtx <- getDeclCtx
+  let varCtx = VariableCtx declCtx (Constraint.boundContext (constraintContext c))
+  case c of
+    UC ctx (Unify (e1, e2)) -> do
+      e1' <- whnfExprWithMetas varCtx e1
+      e2' <- whnfExprWithMetas varCtx e2
+      return $ UC ctx (Unify (e1', e2'))
 
-  TC ctx (Has m tc args) -> do
-    args' <- traverse (traverseArgExpr (whnfExprWithMetas (varContext ctx))) args
-    return $ TC ctx (Has m tc args')
+    TC ctx (Has m tc args) -> do
+      args' <- traverse (traverseArgExpr (whnfExprWithMetas varCtx)) args
+      return $ TC ctx (Has m tc args')
 
 --------------------------------------------------------------------------------
 -- Recursively go through a check program and convert all implicit argument

@@ -55,7 +55,7 @@ showInferExit (e, t) = do
 
 unify :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m ()
 unify p e1 e2 = do
-  ctx <- getVariableCtx
+  ctx <- getBoundCtx
   -- TODO calculate the most general unifier
   addUnificationConstraint TypeGroup p ctx e1 e2
 

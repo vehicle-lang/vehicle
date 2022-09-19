@@ -43,7 +43,7 @@ checkParameterType decl t = do
 
     AnnRatType p lin -> do
       let targetLinearity = Builtin p (Linearity Constant)
-      addUnificationConstraint LinearityGroup p emptyVariableCtx lin targetLinearity
+      addUnificationConstraint LinearityGroup p mempty lin targetLinearity
       return ()
 
     paramType -> throwError $ ParameterTypeUnsupported decl paramType
@@ -84,7 +84,7 @@ checkDatasetType decl t = do
     IndexType{}  -> return ()
     AnnRatType p lin -> do
       let targetLinearity = Builtin p (Linearity Constant)
-      addUnificationConstraint LinearityGroup p emptyVariableCtx lin targetLinearity
+      addUnificationConstraint LinearityGroup p mempty lin targetLinearity
       return ()
     elemType     -> throwError $ DatasetTypeUnsupportedElement decl elemType
 

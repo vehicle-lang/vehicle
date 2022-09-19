@@ -16,7 +16,6 @@ data ConstraintGroup
   | LinearityGroup
   deriving (Show, Eq)
 
-
 typeClassGroup :: TypeClass -> ConstraintGroup
 typeClassGroup tc = case tc of
     HasEq{}                    -> TypeGroup
@@ -58,7 +57,7 @@ data ConstraintContext = ConstraintContext
   -- ^ Where the constraint was instantiated
   , blockedBy          :: BlockingMetas
   -- ^ The set of metas blocking progress on this constraint, if known
-  , varContext         :: TypingVariableCtx
+  , boundContext       :: TypingBoundCtx
   -- ^ TODO reduce this to just `TypingBoundCtx`
   -- (At the moment the full context is needed for normalisation but should
   -- be able to get that from TCM)
@@ -69,7 +68,7 @@ instance HasProvenance ConstraintContext where
   provenanceOf (ConstraintContext _ creationProvenance _ _ _) = creationProvenance
 
 instance HasBoundCtx ConstraintContext where
-  boundContextOf = boundContextOf . varContext
+  boundContextOf = boundContextOf . boundContext
 
 blockCtxOn :: ConstraintContext -> MetaSet -> ConstraintContext
 blockCtxOn (ConstraintContext originProv creationProv _ ctx group) metas =
@@ -117,17 +116,8 @@ constraintContext :: Constraint -> ConstraintContext
 constraintContext (UC ctx _) = ctx
 constraintContext (TC ctx _) = ctx
 
-variableContext :: Constraint -> TypingVariableCtx
-variableContext = varContext . constraintContext
-
-declContext :: Constraint -> TypingDeclCtx
-declContext = declCtx . variableContext
-
-boundContext :: Constraint -> TypingBoundCtx
-boundContext = boundCtx . variableContext
-
 instance HasBoundCtx Constraint where
-  boundContextOf = boundContextOf . variableContext
+  boundContextOf = boundContextOf . constraintContext
 
 instance HasProvenance Constraint where
   provenanceOf = provenanceOf . constraintContext

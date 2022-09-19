@@ -70,7 +70,7 @@ generateConstraintUsingDefaults constraints = do
     Invalid -> return Nothing
     Valid (Candidate m tc metaExpr ctx) -> do
       let ann = inserted $ provenanceOf ctx
-      solution <- defaultSolution ann (boundCtx $ varContext ctx) tc
+      solution <- defaultSolution ann (boundContext ctx) tc
       logDebug MaxDetail $
         "using default" <+> pretty m <+> "=" <+> prettySimple solution <+>
         "         " <> parens ("from" <+> pretty tc)

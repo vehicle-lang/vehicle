@@ -153,7 +153,7 @@ assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
 -- with type 0.
 assertIsType _ (TypeUniverse _ _) = return ()
 assertIsType p t        = do
-  ctx <- getVariableCtx
+  ctx <- getBoundCtx
   let typ = TypeUniverse (inserted (provenanceOf t)) 0
   addUnificationConstraint TypeGroup p ctx t typ
   return ()
@@ -164,14 +164,11 @@ assertIsType p t        = do
 -- | Tries to solve constraints. Passes in the type of the current declaration
 -- being checked, as metas are handled different according to whether they
 -- occur in the type or not.
-solveConstraints :: MonadMeta m => Maybe CheckedDecl -> m ()
+solveConstraints :: TCM m => Maybe CheckedDecl -> m ()
 solveConstraints decl = logCompilerPass MinDetail "constraint solving" $ do
   loopOverConstraints 1 decl
 
-loopOverConstraints :: MonadMeta m
-                    => Int
-                    -> Maybe CheckedDecl
-                    -> m ()
+loopOverConstraints :: TCM m => Int -> Maybe CheckedDecl -> m ()
 loopOverConstraints loopNumber decl = do
   unsolvedConstraints <- getUnsolvedConstraints
   metasSolvedLastLoop <- getSolvedMetas
@@ -212,9 +209,7 @@ loopOverConstraints loopNumber decl = do
       loopOverConstraints (loopNumber + 1) updatedDecl
 
 -- | Tries to solve a constraint deterministically.
-solveConstraint :: MonadMeta m
-                => Constraint
-                -> m ()
+solveConstraint :: TCM m => Constraint -> m ()
 solveConstraint unnormConstraint = do
   constraint <- whnfConstraintWithMetas unnormConstraint
 
