@@ -150,6 +150,12 @@ goldenTestSpecifications =
       }
 
   , testSpec
+      { testName       = "simple-vector"
+      , testLocation   = Tests
+      , testTargets    = [AgdaBackend, MarabouBackend]
+      }
+
+  , testSpec
       { testName       = "simple-tensor"
       , testLocation   = Tests
       , testTargets    = [AgdaBackend, MarabouBackend]

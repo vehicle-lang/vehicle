@@ -3,7 +3,7 @@ module Vehicle.Compile.Type.ConstraintSolver.TypeClass
   ) where
 
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import Control.Monad (forM)
 import Control.Monad.Except ( throwError )
 
@@ -969,8 +969,10 @@ checkBoolTypesEqualUpTo c targetType subTypes linTC polTC = do
   (subEqConstraints, subLins, subPols) <-
     unzip3 <$> forM subTypes (unifyWithAnnBoolType c)
 
-  linTCConstraints <- combineAuxiliaryConstraints (LinearityTypeClass linTC) freshLinearityMeta c targetLin subLins
-  polTCConstraints <- combineAuxiliaryConstraints (PolarityTypeClass  polTC) freshPolarityMeta  c targetPol subPols
+  let polCombine = combineAuxiliaryConstraints (PolarityTypeClass  polTC) (Polarity Unquantified)
+  let linCombine = combineAuxiliaryConstraints (LinearityTypeClass linTC) (Linearity Constant)
+  linTCConstraints <- linCombine freshLinearityMeta c targetLin subLins
+  polTCConstraints <- polCombine freshPolarityMeta c targetPol subPols
 
   return $ targetEqConstraint : subEqConstraints <> linTCConstraints <> polTCConstraints
 
@@ -987,7 +989,8 @@ checkRatTypesEqualUpTo c targetType subTypes linTC = do
   (subEqConstraints, subLins) <-
     unzip <$> forM subTypes (unifyWithAnnRatType c)
 
-  linTCConstraints <- combineAuxiliaryConstraints (LinearityTypeClass linTC) freshLinearityMeta c targetLin subLins
+  let linCombine = combineAuxiliaryConstraints (LinearityTypeClass linTC) (Linearity Constant)
+  linTCConstraints <- linCombine freshLinearityMeta c targetLin subLins
 
   return $ targetEqConstraint : subEqConstraints <> linTCConstraints
 
@@ -1120,18 +1123,19 @@ solveRatComparisonOp c arg1 arg2 res op = do
 
 combineAuxiliaryConstraints :: forall m . MonadMeta m
                             => TypeClass
+                            -> Builtin
                             -> (Provenance -> m CheckedExpr)
                             -> Constraint
                             -> CheckedExpr
                             -> [CheckedExpr]
                             -> m [Constraint]
-combineAuxiliaryConstraints tc makeMeta c result auxs = do
+combineAuxiliaryConstraints tc unit makeMeta c result auxs = do
   (res, tcConstraints) <- foldPairs auxs
   let resEq = unify c res result
   return $ resEq : tcConstraints
   where
     foldPairs :: [CheckedExpr] -> m (CheckedExpr, [Constraint])
-    foldPairs []       = compilerDeveloperError "Empty list of auxiliary expressions"
+    foldPairs []       = return (Builtin mempty unit, [])
     foldPairs [a]      = return (a, [])
     foldPairs (a : cs) = do
       (b, constraints) <- foldPairs cs
@@ -1144,7 +1148,7 @@ irrelevant c newConstraints = Right (newConstraints, UnitLiteral (provenanceOf c
 
 blockOnMetas :: MonadMeta m => [CheckedExpr] -> m TypeClassProgress
 blockOnMetas args = do
-  let metas = catMaybes (getMeta <$> args)
+  let metas = mapMaybe getMeta args
   progress <- blockOn metas
   return $ castProgress mempty progress
 
