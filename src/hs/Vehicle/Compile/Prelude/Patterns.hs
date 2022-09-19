@@ -407,35 +407,47 @@ pattern ExistsTCExpr :: Provenance
                      -> Expr binder var
 pattern ExistsTCExpr p binder body <- QuantifierTCExpr p Exists binder body
 
-pattern ExistsRatExpr :: Provenance
-                      -> DBBinder
-                      -> DBExpr
-                      -> DBExpr
+pattern PostulatedQuantifierExpr :: Provenance
+                                 -> Identifier
+                                 -> DBBinder
+                                 -> DBExpr
+                                 -> DBExpr
 pattern
-  ExistsRatExpr p binder body <-
-    App p (FreeVar _ PostulateExistsRat)
+  PostulatedQuantifierExpr p ident binder body <-
+    App p (FreeVar _ ident)
       [ ExplicitArg _ (Lam _ binder body)
       ]
   where
-  ExistsRatExpr p binder body =
-    App p (FreeVar p PostulateExistsRat)
+  PostulatedQuantifierExpr p ident binder body =
+    App p (FreeVar p ident)
       [ ExplicitArg p (Lam p binder body)
       ]
 
-pattern ForallRatExpr :: Provenance
-                      -> DBBinder
-                      -> DBExpr
-                      -> DBExpr
-pattern
-  ForallRatExpr p binder body <-
-    App p (FreeVar _ PostulateForallRat)
-      [ ExplicitArg _ (Lam _ binder body)
-      ]
-  where
-  ForallRatExpr p binder body =
-    App p (FreeVar p PostulateForallRat)
-      [ ExplicitArg p (Lam p binder body)
-      ]
+pattern ExistsNatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ExistsNatExpr p binder body =
+  PostulatedQuantifierExpr p PostulateExistsNat binder body
+
+pattern ForallNatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ForallNatExpr p binder body =
+  PostulatedQuantifierExpr p PostulateForallNat binder body
+
+pattern ExistsIntExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ExistsIntExpr p binder body =
+  PostulatedQuantifierExpr p PostulateExistsInt binder body
+
+pattern ForallIntExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ForallIntExpr p binder body =
+  PostulatedQuantifierExpr p PostulateForallInt binder body
+
+pattern ExistsRatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ExistsRatExpr p binder body =
+  PostulatedQuantifierExpr p PostulateExistsRat binder body
+
+pattern ForallRatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ForallRatExpr p binder body =
+  PostulatedQuantifierExpr p PostulateForallRat binder body
+
+
 
 --------------------------------------------------------------------------------
 -- QuantifierIn

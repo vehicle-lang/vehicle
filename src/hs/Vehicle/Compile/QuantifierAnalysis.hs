@@ -4,6 +4,7 @@ module Vehicle.Compile.QuantifierAnalysis
   ) where
 
 import Data.Maybe (catMaybes)
+import Control.Monad.Except (MonadError(..))
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
@@ -60,6 +61,11 @@ checkQuantifiersAreHomogeneous target ident expr = maybe Forall fst <$> go expr
       ExistsRatExpr p _ body -> checkEqual p Exists =<< go body
       ForallRatExpr p _ body -> checkEqual p Forall =<< go body
 
+      ExistsNatExpr p binder _ -> unsupportedVariableType p binder
+      ForallNatExpr p binder _ -> unsupportedVariableType p binder
+      ExistsIntExpr p binder _ -> unsupportedVariableType p binder
+      ForallIntExpr p binder _ -> unsupportedVariableType p binder
+
       App _ann _fun args -> do
         xs <- traverse go (onlyExplicit args)
         return $ catMaybes xs !!? 0
@@ -75,6 +81,10 @@ checkQuantifiersAreHomogeneous target ident expr = maybe Forall fst <$> go expr
           "to" <+> pretty target <+> "which should have been caught by" <+>
           "the polarity type system before reaching this point."
       _ -> return (Just (q, p))
+
+    unsupportedVariableType :: Provenance -> CheckedBinder -> m a
+    unsupportedVariableType p binder =
+      throwError $ UnsupportedVariableType target ident p (getBinderSymbol binder) (typeOf binder) [Rat]
 
 currentPass :: Doc a
 currentPass = "quantifier analysis"

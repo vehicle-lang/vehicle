@@ -215,14 +215,10 @@ removeUserQuantifiers :: MonadCompile m
                       => Identifier
                       -> CheckedExpr
                       -> m (CheckedExpr, [Symbol])
-removeUserQuantifiers ident (ExistsRatExpr ann binder body) = do
+removeUserQuantifiers ident (ExistsRatExpr _ binder body) = do
   let n = getBinderSymbol binder
-  case typeOf binder of
-    RatType{}-> do
-      (result, binders) <- removeUserQuantifiers ident body
-      return (result, n : binders)
-    t -> do
-      throwError $ UnsupportedVariableType MarabouBackend ident ann n t supportedTypes
+  (result, binders) <- removeUserQuantifiers ident body
+  return (result, n : binders)
 removeUserQuantifiers _ e = return (e, [])
 
 -- | We lift all network applications regardless if they are duplicated or not to
@@ -462,9 +458,6 @@ getMagicVariablesNames verifier metaNetworkDetails =
 
 currentPass :: Doc a
 currentPass = "insertion of magic network variables"
-
-supportedTypes :: [Builtin]
-supportedTypes = [ Rat ]
 
 tensorSize :: NetworkTensorType -> Int
 tensorSize tensor = product (dimensions tensor)

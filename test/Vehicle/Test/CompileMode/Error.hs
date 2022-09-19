@@ -40,6 +40,7 @@ functionalityTests = testGroup "ErrorTests" <$> sequence
   , parameterErrors
   , linearityErrors
   , polarityErrors
+  , otherVerifierErrors
   ]
 
 argumentErrors :: MonadTest m => m TestTree
@@ -197,6 +198,13 @@ linearityErrors = failTestGroup "LinearityErrors" MarabouBackend
   , testSpec { testName = "quadraticInputOutput"}
   , testSpec { testName = "quadraticTensorInputLookup"}
   , testSpec { testName = "nonLinearIfCondition"}
+  ]
+
+otherVerifierErrors :: MonadTest m => m TestTree
+otherVerifierErrors = failTestGroup "OtherVerifierErrors" MarabouBackend
+  [ testSpec { testName = "quantifiedNat" }
+  , testSpec { testName = "quantifiedInt" }
+  , testSpec { testName = "quantifiedVectorNat" }
   ]
 
 --------------------------------------------------------------------------------

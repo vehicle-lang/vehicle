@@ -718,10 +718,10 @@ instance MeaningfulError CompileError where
 
     UnsupportedVariableType target ident p name t supportedTypes -> UError $ UserError
       { provenance = p
-      , problem    = "When compiling property" <+> squotes (pretty ident) <+> "to" <+>
-                     pretty target <+> "found a quantified variable" <+> squotes (pretty name) <+> "of type" <+>
+      , problem    = "Property" <+> quotePretty ident <+> "contains a quantified variable" <+>
+                     quotePretty name <+> "of type" <+>
                      squotes (prettyFriendlyDBClosed t) <+> "which is not currently supported" <+>
-                     "when compiling to" <+> pretty target <> "."
+                     "by" <+> pretty target <> "."
       , fix        = Just $ "try switching the variable to one of the following supported types:" <+>
                      pretty supportedTypes
       }
