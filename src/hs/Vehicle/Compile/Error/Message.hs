@@ -878,7 +878,7 @@ prettyLinearityProvenance lp isLHS =
 prettyAuxiliaryFunctionProvenance :: FunctionPosition -> Doc a
 prettyAuxiliaryFunctionProvenance = \case
   FunctionInput  n _ -> "which is used as an input to the function" <+> quotePretty n
-  FunctionOutput n -> "which is proceduced as an output of the function" <+> quotePretty n
+  FunctionOutput n -> "which is returned as an output of the function" <+> quotePretty n
 
 prettyAllowedTypes :: [InputExpr] -> Doc b
 prettyAllowedTypes allowedTypes = if length allowedTypes == 1
