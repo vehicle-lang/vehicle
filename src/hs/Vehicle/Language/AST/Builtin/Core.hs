@@ -32,6 +32,11 @@ data FunctionPosition
 instance NFData   FunctionPosition
 instance Hashable FunctionPosition
 
+instance Pretty FunctionPosition where
+  pretty = \case
+    FunctionInput n i -> "Input[" <> pretty n <> "][" <> pretty i <> "]"
+    FunctionOutput n  -> "Output[" <> pretty n <> "]"
+
 --------------------------------------------------------------------------------
 -- EqualityOpOp
 

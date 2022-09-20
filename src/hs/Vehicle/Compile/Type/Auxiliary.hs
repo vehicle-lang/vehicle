@@ -205,10 +205,10 @@ addFunctionConstraint :: TCM m
                       -> CheckedExpr
                       -> CheckedExpr
                       -> m ()
-addFunctionConstraint tc (declProv, position) existingMeta newMeta = do
-  let constraintArgs = ExplicitArg (provenanceOf existingMeta) <$> case position of
-          FunctionInput{}  -> [newMeta, existingMeta]
-          FunctionOutput{} -> [existingMeta, newMeta]
+addFunctionConstraint tc (declProv, position) existingExpr newMeta = do
+  let constraintArgs = ExplicitArg (provenanceOf existingExpr) <$> case position of
+          FunctionInput{}  -> [newMeta, existingExpr]
+          FunctionOutput{} -> [existingExpr, newMeta]
   let constraint = BuiltinTypeClass declProv (tc position) constraintArgs
   _ <- createMetaAndAddTypeClassConstraint declProv constraint
   return ()

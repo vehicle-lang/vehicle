@@ -85,4 +85,4 @@ instance Pretty LinearityTypeClass where
     MaxLinearity        -> "MaxLinearity"
     MulLinearity        -> "MulLinearity"
     IfCondLinearity     -> "IfCondLinearity"
-    FunctionLinearity{} -> "FunctionOutputLinearity"
+    FunctionLinearity p -> "FunctionLinearity" <> pretty p

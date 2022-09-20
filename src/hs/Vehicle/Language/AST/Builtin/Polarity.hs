@@ -92,4 +92,4 @@ instance Pretty PolarityTypeClass where
     ImpliesPolarity    -> "ImpliesPolarity"
     MaxPolarity        -> "MaxPolarity"
     IfCondPolarity     -> "IfCondPolarity"
-    FunctionPolarity{} -> "FunctionOutputPolarity"
+    FunctionPolarity p -> "FunctionPolarity" <> pretty p

@@ -1,0 +1,1 @@
+Error at Line 12, Columns 32-33: The name 'x' is not in scope

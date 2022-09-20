@@ -182,11 +182,11 @@ propertyErrors = failTestGroup "PropertyErrors" TypeCheck
 
 polarityErrors :: MonadTest m => m TestTree
 polarityErrors = failTestGroup "PolarityErrors" MarabouBackend
-  [ testSpec { testName = "mixedSequential"}
-  , testSpec { testName = "mixedNegSequential"}
-  , testSpec { testName = "mixedNegNegSequential"}
-  , testSpec { testName = "mixedImpliesSequential"}
-  , testSpec { testName = "mixedFunSequential"}
+  [ testSpec { testName = "alternating"}
+  , testSpec { testName = "alternatingNeg"}
+  , testSpec { testName = "alternatingNegNeg"}
+  , testSpec { testName = "alternatingImplies"}
+  , testSpec { testName = "alternatingFun"}
   , testSpec { testName = "quantifiedIfCondition"}
   ]
 
