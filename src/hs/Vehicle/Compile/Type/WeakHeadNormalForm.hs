@@ -6,27 +6,24 @@ module Vehicle.Compile.Type.WeakHeadNormalForm
   ) where
 
 import Control.Monad ( (<=<) )
-import Control.Monad.Reader (MonadReader, runReaderT)
+import Control.Monad.Reader (MonadReader(..), runReaderT)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Type.VariableContext
-import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Constraint as Constraint
 import Vehicle.Compile.Normalise
 
 --------------------------------------------------------------------------------
 -- Weak head options
 
-whnf :: (MonadCompile m, MonadReader TypingVariableCtx m)
-     => CheckedExpr
-     -> m CheckedExpr
-whnf e = do
-  declCtx <- getNormalisationContext
+whnf :: MonadCompile m => TypingDeclCtx -> CheckedExpr -> m CheckedExpr
+whnf declCtx e = do
   discardLoggerT $ normalise e Options
     { implicationsToDisjunctions  = False
     , expandOutPolynomials        = False
-    , declContext                 = declCtx
+    , declContext                 = toNormalisationDeclContext declCtx
     , boundContext                = mempty -- see issue #129
     , normaliseDeclApplications   = True
     , normaliseLambdaApplications = True
@@ -41,62 +38,57 @@ whnf e = do
 -- WHNF combined with meta variable subsitution
 
 whnfExprWithMetas :: TCM m
-                  => TypingVariableCtx
-                  -> CheckedExpr
+                  => CheckedExpr
                   -> m CheckedExpr
-whnfExprWithMetas ctx e = do
+whnfExprWithMetas e = do
   e' <- substMetas e
-  runReaderT (whnf e') ctx
+  declCtx <- getDeclContext
+  whnf declCtx e'
 
 whnfConstraintWithMetas :: TCM m => Constraint -> m Constraint
-whnfConstraintWithMetas c = do
-  declCtx <- getDeclCtx
-  let varCtx = VariableCtx declCtx (Constraint.boundContext (constraintContext c))
-  case c of
-    UC ctx (Unify (e1, e2)) -> do
-      e1' <- whnfExprWithMetas varCtx e1
-      e2' <- whnfExprWithMetas varCtx e2
-      return $ UC ctx (Unify (e1', e2'))
+whnfConstraintWithMetas c = case c of
+  UC ctx (Unify (e1, e2)) -> do
+    e1' <- whnfExprWithMetas e1
+    e2' <- whnfExprWithMetas e2
+    return $ UC ctx (Unify (e1', e2'))
 
-    TC ctx (Has m tc args) -> do
-      args' <- traverse (traverseArgExpr (whnfExprWithMetas varCtx)) args
-      return $ TC ctx (Has m tc args')
+  TC ctx (Has m tc args) -> do
+    args' <- traverse (traverseArgExpr whnfExprWithMetas) args
+    return $ TC ctx (Has m tc args')
 
 --------------------------------------------------------------------------------
 -- Recursively go through a check program and convert all implicit argument
 -- types to whnf. This is needed because we pattern match on implicit args to
 -- do type-directed compilation.
 
+type WHNFMonad m =
+  ( MonadCompile m
+  , MonadReader TypingDeclCtx m
+  )
+
 class WHNFable a where
   convertImplicitArgsToWHNF :: MonadCompile m => a -> m a
 
 instance WHNFable CheckedProg where
-  convertImplicitArgsToWHNF p = runReaderT (whnfProg p) emptyVariableCtx
-
-instance WHNFable CheckedDecl where
-  convertImplicitArgsToWHNF d = runReaderT (whnfDecl d) emptyVariableCtx
+  convertImplicitArgsToWHNF p = runReaderT (whnfProg p) mempty
 
 instance WHNFable CheckedExpr where
-  convertImplicitArgsToWHNF e = runReaderT (whnfExpr e) emptyVariableCtx
+  convertImplicitArgsToWHNF e = runReaderT (whnfExpr e) mempty
 
-whnfProg :: (MonadCompile m, MonadReader TypingVariableCtx m) => CheckedProg -> m CheckedProg
+whnfProg :: WHNFMonad m => CheckedProg -> m CheckedProg
 whnfProg (Main ds) = Main <$> whnfDecls ds
 
-whnfDecls :: (MonadCompile m, MonadReader TypingVariableCtx m)
-          => [CheckedDecl]
-          -> m [CheckedDecl]
+whnfDecls :: WHNFMonad m => [CheckedDecl] -> m [CheckedDecl]
 whnfDecls [] = return []
 whnfDecls (d : ds) = do
   decl <- whnfDecl d
-  decls <- addDeclToCtx decl $ whnfDecls ds
+  decls <- local (addToDeclCtx d) (whnfDecls ds)
   return $ decl : decls
 
-whnfDecl :: (MonadCompile m, MonadReader TypingVariableCtx m)
-          => CheckedDecl
-          -> m CheckedDecl
+whnfDecl :: WHNFMonad m => CheckedDecl -> m CheckedDecl
 whnfDecl = traverseDeclExprs whnfExpr
 
-whnfExpr :: (MonadCompile m, MonadReader TypingVariableCtx m) => CheckedExpr -> m CheckedExpr
+whnfExpr :: WHNFMonad m => CheckedExpr -> m CheckedExpr
 whnfExpr expr = do
   res <- case expr of
     Hole{} -> resolutionError currentPhase "Hole"
@@ -115,19 +107,21 @@ whnfExpr expr = do
     Let ann e1 binder e2 -> do
       -- Check the type of the bound expression against the provided type
       e1' <- whnfExpr e1
-      e2' <- addToBoundCtx (nameOf binder, typeOf binder, Just e1') $ whnfExpr e2
+      e2' <- whnfExpr e2 -- addToBoundCtx (nameOf binder, typeOf binder, Just e1') $ whnfExpr e2
       return (Let ann e1' binder e2')
 
     Lam ann binder body -> do
-      body' <- addToBoundCtx (nameOf binder, typeOf binder, Nothing) $ whnfExpr body
+      body' <- whnfExpr body -- addToBoundCtx (nameOf binder, typeOf binder, Nothing) $ whnfExpr body
       return $ Lam ann binder body'
 
   -- showInferExit res
   return res
 
-whnfArg :: (MonadCompile m, MonadReader TypingVariableCtx m) => CheckedArg -> m CheckedArg
+whnfArg :: WHNFMonad m => CheckedArg -> m CheckedArg
 whnfArg arg
-  | visibilityOf arg == Implicit = traverseArgExpr (whnfExpr <=< whnf) arg
+  | visibilityOf arg == Implicit = do
+    declCtx <- ask
+    traverseArgExpr (whnfExpr <=< whnf declCtx) arg
   | otherwise = traverseArgExpr whnfExpr arg
 
 currentPhase :: Doc ()

@@ -2,12 +2,12 @@ module Vehicle.Compile.Type.Bidirectional
   ( TCM
   , checkExpr
   , inferExpr
-  , runTCM
   ) where
 
 import Prelude hiding (pi)
 import Control.Monad (when)
 import Control.Monad.Except (MonadError(..))
+import Control.Monad.Reader (MonadReader(..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Monoid (Endo(..), appEndo)
 import Data.Text (pack)
@@ -16,9 +16,9 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Language.DSL
 import Vehicle.Language.Print
-import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.WeakHeadNormalForm
 import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Monad
 
 --------------------------------------------------------------------------------
 -- Bidirectional type-checking
@@ -53,16 +53,16 @@ showInferExit (e, t) = do
 -------------------------------------------------------------------------------
 -- Utility functions
 
-unify :: TCM m => Provenance -> CheckedExpr -> CheckedExpr -> m ()
+unify :: LocalTCM m => Provenance -> CheckedExpr -> CheckedExpr -> m ()
 unify p e1 e2 = do
-  ctx <- getBoundCtx
+  ctx <- ask
   -- TODO calculate the most general unifier
   addUnificationConstraint TypeGroup p ctx e1 e2
 
 --------------------------------------------------------------------------------
 -- Checking
 
-checkExpr :: TCM m
+checkExpr :: LocalTCM m
           => CheckedType   -- Type we're checking against
           -> UncheckedExpr -- Expression being type-checked
           -> m CheckedExpr -- Updated expression
@@ -119,7 +119,7 @@ checkExpr expectedType expr = do
   showCheckExit res
   return res
 
-viaInfer :: TCM m => CheckedType -> UncheckedExpr -> m CheckedExpr
+viaInfer :: LocalTCM m => CheckedType -> UncheckedExpr -> m CheckedExpr
 viaInfer expectedType expr = do
   let p = provenanceOf expr
   -- Switch to inference mode
@@ -135,7 +135,7 @@ viaInfer expectedType expr = do
 
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
-inferExpr :: TCM m
+inferExpr :: LocalTCM m
           => UncheckedExpr
           -> m (CheckedExpr, CheckedType)
 inferExpr e = do
@@ -295,7 +295,7 @@ inferLiteral p l = (Literal p l, typeOfLiteral p l)
 -- matching pi binder and inserting any required implicit/instance arguments.
 -- Returns the type of the function when applied to the full list of arguments
 -- (including inserted arguments) and that list of arguments.
-inferArgs :: TCM m
+inferArgs :: LocalTCM m
           => Provenance     -- Provenance of the function
           -> CheckedType    -- Type of the function
           -> [UncheckedArg] -- User-provided arguments of the function
@@ -345,7 +345,7 @@ inferArgs p nonPiType args
 -- |Takes a function and its arguments, inserts any needed implicits
 -- or instance arguments and then returns the function applied to the full
 -- list of arguments as well as the result type.
-inferApp :: TCM m
+inferApp :: LocalTCM m
          => Provenance
          -> CheckedExpr
          -> CheckedType
@@ -353,18 +353,17 @@ inferApp :: TCM m
          -> m (CheckedExpr, CheckedType)
 inferApp ann fun funType args = do
   (appliedFunType, checkedArgs) <- inferArgs (provenanceOf fun) funType args
-  varCtx <- getVariableCtx
-  normAppliedFunType <- whnfExprWithMetas varCtx appliedFunType
+  normAppliedFunType <- whnfExprWithMetas appliedFunType
   return (normAppList ann fun checkedArgs, normAppliedFunType)
 
-insertNonExplicitArgs :: TCM m
+insertNonExplicitArgs :: LocalTCM m
                       => Provenance
                       -> CheckedExpr
                       -> CheckedType
                       -> m (CheckedExpr, CheckedType)
 insertNonExplicitArgs ann checkedExpr actualType = inferApp ann checkedExpr actualType []
 
-missingExplicitArgumentError :: TCM m => CheckedBinder -> UncheckedArg -> m a
+missingExplicitArgumentError :: LocalTCM m => CheckedBinder -> UncheckedArg -> m a
 missingExplicitArgumentError expectedBinder actualArg = do
   -- Then we're expecting an explicit arg but have a non-explicit arg so error
   ctx <- getBoundCtx

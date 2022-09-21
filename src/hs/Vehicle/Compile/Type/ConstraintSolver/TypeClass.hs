@@ -11,6 +11,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.ConstraintSolver.Polarity
 import Vehicle.Compile.Type.ConstraintSolver.Linearity
 import Vehicle.Compile.Type.ConstraintSolver.Core
@@ -19,7 +20,7 @@ import Vehicle.Language.StandardLibrary.Names
 --------------------------------------------------------------------------------
 -- Public interface
 
-solveTypeClassConstraint :: MonadMeta m
+solveTypeClassConstraint :: TCM m
                          => ConstraintContext
                          -> TypeClassConstraint
                          -> m ConstraintProgress
@@ -37,7 +38,7 @@ solveTypeClassConstraint ctx c@(Has m tc args) = do
 
 type TypeClassProgress = Either MetaSet ([Constraint], CheckedExpr)
 
-solve :: MonadMeta m
+solve :: TCM m
       => TypeClass
       -> Constraint
       -> [CheckedType]
@@ -70,7 +71,7 @@ solve = \case
   PolarityTypeClass  tc -> castProgressFn $ solvePolarityConstraint tc
 
 -- A temporary hack until we separate out the solvers properly.
-castProgressFn :: MonadMeta m
+castProgressFn :: TCM m
                => (Constraint -> [CheckedType] -> m ConstraintProgress)
                -> (Constraint -> [CheckedType] -> m TypeClassProgress)
 castProgressFn f c e = castProgress (provenanceOf c) <$> f c e
@@ -83,7 +84,7 @@ castProgress c = \case
 --------------------------------------------------------------------------------
 -- HasEq
 
-solveHasEq :: MonadMeta m
+solveHasEq :: TCM m
            => EqualityOp
            -> Constraint
            -> [CheckedType]
@@ -107,7 +108,7 @@ solveHasEq op c [arg1, arg2, res]
 
 solveHasEq _ c _ = malformedConstraintError c
 
-solveBoolEquals :: MonadMeta m
+solveBoolEquals :: TCM m
                 => Constraint
                 -> CheckedType
                 -> CheckedType
@@ -121,7 +122,7 @@ solveBoolEquals c arg1 arg2 res op = do
   return $ Right (constraints, solution)
 
 {-
-solveListEquals :: MonadMeta m
+solveListEquals :: TCM m
                 => EqualityOp
                 -> Constraint
                 -> CheckedType
@@ -140,7 +141,7 @@ solveListEquals op c arg1 arg2 res = do
   return $ Right ([arg1Eq, arg2Eq, recEq], solution)
 -}
 
-solveVectorEquals :: MonadMeta m
+solveVectorEquals :: TCM m
                   => EqualityOp
                   -> Constraint
                   -> CheckedType
@@ -167,7 +168,7 @@ solveVectorEquals op c arg1 arg2 res = do
 --------------------------------------------------------------------------------
 -- HasOrd
 
-solveHasOrd :: MonadMeta m
+solveHasOrd :: TCM m
             => OrderOp
             -> Constraint
             -> [CheckedType]
@@ -190,7 +191,7 @@ solveHasOrd _ c _ = malformedConstraintError c
 --------------------------------------------------------------------------------
 -- HasNot
 
-solveHasNot :: MonadMeta m
+solveHasNot :: TCM m
             => Constraint
             -> [CheckedType]
             -> m TypeClassProgress
@@ -210,7 +211,7 @@ solveHasNot c _ = malformedConstraintError c
 --------------------------------------------------------------------------------
 -- HasAndOr
 
-solveHasBoolOp2 :: MonadMeta m
+solveHasBoolOp2 :: TCM m
                 => PolarityTypeClass
                 -> Builtin
                 -> Constraint
@@ -223,19 +224,19 @@ solveHasBoolOp2 polConstraint solutionBuiltin c [arg1, arg2, res] = do
   return $ Right (constraints, solution)
 solveHasBoolOp2 _ _ c _ = malformedConstraintError c
 
-solveHasAnd :: MonadMeta m
+solveHasAnd :: TCM m
             => Constraint
             -> [CheckedType]
             -> m TypeClassProgress
 solveHasAnd = solveHasBoolOp2 MaxPolarity And
 
-solveHasOr :: MonadMeta m
+solveHasOr :: TCM m
             => Constraint
             -> [CheckedType]
             -> m TypeClassProgress
 solveHasOr = solveHasBoolOp2 MaxPolarity Or
 
-solveHasImplies :: MonadMeta m
+solveHasImplies :: TCM m
                 => Constraint
                 -> [CheckedType]
                 -> m TypeClassProgress
@@ -244,7 +245,7 @@ solveHasImplies = solveHasBoolOp2 ImpliesPolarity Implies
 --------------------------------------------------------------------------------
 -- HasQuantifier
 
-solveHasQuantifier :: forall m . MonadMeta m
+solveHasQuantifier :: forall m . TCM m
                    => Quantifier
                    -> Constraint
                    -> [CheckedType]
@@ -267,7 +268,7 @@ solveHasQuantifier q c [Pi _ binder body, res]
 solveHasQuantifier _ c _ = malformedConstraintError c
 
 type HasQuantifierSolver m
-  =  MonadMeta m
+  =  TCM m
   => Quantifier
   -> Constraint
   -> CheckedBinder
@@ -380,7 +381,7 @@ solveVectorQuantifier q c domainBinder body res = do
 --------------------------------------------------------------------------------
 -- HasNeg
 
-solveHasNeg :: MonadMeta m
+solveHasNeg :: TCM m
             => Constraint
             -> [CheckedType]
             -> m TypeClassProgress
@@ -398,7 +399,7 @@ solveHasNeg c [arg, res]
 
 solveHasNeg c _ = malformedConstraintError c
 
-solveNeg :: MonadMeta m
+solveNeg :: TCM m
          => Constraint
          -> CheckedType
          -> CheckedType
@@ -413,7 +414,7 @@ solveNeg c arg res dom = do
 --------------------------------------------------------------------------------
 -- HasAdd
 
-solveHasAdd :: MonadMeta m
+solveHasAdd :: TCM m
             => Constraint
             -> [CheckedType]
             -> m TypeClassProgress
@@ -433,7 +434,7 @@ solveHasAdd c types@[arg1, arg2, res]
 
 solveHasAdd c _ = malformedConstraintError c
 
-solveAddNat :: MonadMeta m
+solveAddNat :: TCM m
             => Constraint
             -> CheckedType
             -> CheckedType
@@ -445,7 +446,7 @@ solveAddNat c arg1 arg2 res = do
   let solution = Builtin p (Add AddNat)
   return $ Right (constraints, solution)
 
-solveAddInt :: MonadMeta m
+solveAddInt :: TCM m
             => Constraint
             -> CheckedType
             -> CheckedType
@@ -457,7 +458,7 @@ solveAddInt c arg1 arg2 res = do
   let solution = Builtin p (Add AddInt)
   return $ Right (constraints, solution)
 
-solveAddRat :: MonadMeta m
+solveAddRat :: TCM m
             => Constraint
             -> CheckedType
             -> CheckedType
@@ -469,7 +470,7 @@ solveAddRat c arg1 arg2 res = do
   let solution = Builtin p (Add AddRat)
   return $ Right (constraints, solution)
 
-solveAddVector :: MonadMeta m
+solveAddVector :: TCM m
                => Constraint
                -> CheckedType
                -> CheckedType
@@ -498,7 +499,7 @@ solveAddVector c arg1 arg2 res = do
 --------------------------------------------------------------------------------
 -- HasSub
 
-solveHasSub :: MonadMeta m
+solveHasSub :: TCM m
             => Constraint
             -> [CheckedType]
             -> m TypeClassProgress
@@ -517,7 +518,7 @@ solveHasSub c types@[arg1, arg2, res]
 
 solveHasSub c _ = malformedConstraintError c
 
-solveSubInt :: MonadMeta m
+solveSubInt :: TCM m
             => Constraint
             -> CheckedType
             -> CheckedType
@@ -529,7 +530,7 @@ solveSubInt c arg1 arg2 res = do
   let solution = Builtin p (Sub SubInt)
   return $ Right (constraints, solution)
 
-solveSubRat :: MonadMeta m
+solveSubRat :: TCM m
             => Constraint
             -> CheckedType
             -> CheckedType
@@ -541,7 +542,7 @@ solveSubRat c arg1 arg2 res = do
   let solution = Builtin p (Sub SubRat)
   return $ Right (constraints, solution)
 
-solveSubVector :: MonadMeta m
+solveSubVector :: TCM m
                => Constraint
                -> CheckedType
                -> CheckedType
@@ -570,7 +571,7 @@ solveSubVector c arg1 arg2 res = do
 --------------------------------------------------------------------------------
 -- HasMul
 
-solveHasMul :: MonadMeta m
+solveHasMul :: TCM m
             => Constraint
             -> [CheckedType]
             -> m TypeClassProgress
@@ -588,7 +589,7 @@ solveHasMul c types@[arg1, arg2, res]
       tcResultError c res  MulTC allowedTypes
 solveHasMul c _ = malformedConstraintError c
 
-solveMulNat :: MonadMeta m
+solveMulNat :: TCM m
             => Constraint
             -> CheckedType
             -> CheckedType
@@ -600,7 +601,7 @@ solveMulNat c arg1 arg2 res = do
   let solution = Builtin p (Mul MulNat)
   return $ Right (constraints, solution)
 
-solveMulInt :: MonadMeta m
+solveMulInt :: TCM m
             => Constraint
             -> CheckedType
             -> CheckedType
@@ -612,7 +613,7 @@ solveMulInt c arg1 arg2 res = do
   let solution = Builtin p (Mul MulInt)
   return $ Right (constraints, solution)
 
-solveMulRat :: MonadMeta m
+solveMulRat :: TCM m
             => Constraint
             -> CheckedType
             -> CheckedType
@@ -627,7 +628,7 @@ solveMulRat c arg1 arg2 res = do
 --------------------------------------------------------------------------------
 -- HasDiv
 
-solveHasDiv :: MonadMeta m
+solveHasDiv :: TCM m
             => Constraint
             -> [CheckedType]
             -> m TypeClassProgress
@@ -644,7 +645,7 @@ solveHasDiv c types@[arg1, arg2, res]
 
 solveHasDiv c _ = malformedConstraintError c
 
-solveRatDiv :: MonadMeta m
+solveRatDiv :: TCM m
             => Constraint
             -> CheckedType
             -> CheckedType
@@ -658,7 +659,7 @@ solveRatDiv c arg1 arg2 res = do
 --------------------------------------------------------------------------------
 -- HasFold
 
-solveHasFold :: MonadMeta m
+solveHasFold :: TCM m
              => Constraint
              -> [CheckedType]
              -> m TypeClassProgress
@@ -671,7 +672,7 @@ solveHasFold c [tElem, tCont] = case tCont of
 
 solveHasFold c _ = malformedConstraintError c
 
-solveFoldList :: MonadMeta m
+solveFoldList :: TCM m
               => Constraint
               -> CheckedType
               -> CheckedType
@@ -681,7 +682,7 @@ solveFoldList c tElem tListElem = do
   let solution = Builtin (provenanceOf c) (Fold FoldList)
   return $ Right ([constraint], solution)
 
-solveFoldVec :: MonadMeta m
+solveFoldVec :: TCM m
               => Constraint
               -> CheckedType
               -> CheckedType
@@ -695,7 +696,7 @@ solveFoldVec c tElem tListElem _dim = do
 --------------------------------------------------------------------------------
 -- HasQuantifierIn
 
-solveHasQuantifierIn :: MonadMeta m
+solveHasQuantifierIn :: TCM m
                      => Quantifier
                      -> Constraint
                      -> [CheckedType]
@@ -727,7 +728,7 @@ solveHasQuantifierIn _ c _ = malformedConstraintError c
 --------------------------------------------------------------------------------
 -- HasIf
 
-solveHasIf :: MonadMeta m
+solveHasIf :: TCM m
            => Constraint
            -> [CheckedType]
            -> m TypeClassProgress
@@ -745,7 +746,7 @@ solveHasIf c _ = malformedConstraintError c
 --------------------------------------------------------------------------------
 -- HasNatLits
 
-solveHasNatLits :: MonadMeta m
+solveHasNatLits :: TCM m
                 => Int
                 -> Constraint
                 -> [CheckedType]
@@ -760,7 +761,7 @@ solveHasNatLits n c [arg]
   where tcError = FailedNatLitConstraint (constraintContext c) n arg
 solveHasNatLits _ c _ = malformedConstraintError c
 
-solveSimpleFromNat :: MonadMeta m
+solveSimpleFromNat :: TCM m
                    => Constraint
                    -> Int
                    -> CheckedType
@@ -771,7 +772,7 @@ solveSimpleFromNat c n _arg dom = do
   let solution = Builtin p (FromNat n dom)
   return $ Right ([], solution)
 
-solveFromNatToIndex :: MonadMeta m
+solveFromNatToIndex :: TCM m
                     => Constraint
                     -> Int
                     -> CheckedType
@@ -782,7 +783,7 @@ solveFromNatToIndex c n arg = do
   let solution = App p (Builtin p (FromNat n FromNatToIndex)) [ImplicitArg p index]
   return $ Right ([indexEq], solution)
 
-solveFromNatToRat :: MonadMeta m
+solveFromNatToRat :: TCM m
                   => Constraint
                   -> Int
                   -> CheckedType
@@ -797,7 +798,7 @@ solveFromNatToRat c n arg = do
 --------------------------------------------------------------------------------
 -- HasRatLits
 
-solveHasRatLits :: MonadMeta m
+solveHasRatLits :: TCM m
                => Constraint
                -> [CheckedExpr]
                -> m TypeClassProgress
@@ -808,7 +809,7 @@ solveHasRatLits c [arg]
   where tcError = FailedRatLitConstraint (constraintContext c) arg
 solveHasRatLits c _ = malformedConstraintError c
 
-solveFromRatToRat :: MonadMeta m
+solveFromRatToRat :: TCM m
                   => Constraint
                   -> CheckedType
                   -> m TypeClassProgress
@@ -822,7 +823,7 @@ solveFromRatToRat c arg = do
 --------------------------------------------------------------------------------
 -- HasConLits
 
-solveHasVecLits :: MonadMeta m
+solveHasVecLits :: TCM m
                 => Int
                 -> Constraint
                 -> [CheckedType]
@@ -852,7 +853,7 @@ solveHasVecLits _ c _ = malformedConstraintError c
 --------------------------------------------------------------------------------
 -- AlmostEqual
 
-solveAlmostEqual :: MonadMeta m
+solveAlmostEqual :: TCM m
                  => Constraint
                  -> [CheckedType]
                  -> m TypeClassProgress
@@ -867,7 +868,7 @@ solveAlmostEqual c _ = malformedConstraintError c
 --------------------------------------------------------------------------------
 -- LessThan
 
-solveInDomain :: MonadMeta m
+solveInDomain :: TCM m
               => Int
               -> Constraint
               -> [CheckedType]
@@ -900,7 +901,7 @@ solveInDomain _ c _ = malformedConstraintError c
 -- Subtyping
 
 type SubtypingCheck m
-  = MonadMeta m
+  = TCM m
   => Constraint
   -> CheckedType
   -> [CheckedType]
@@ -953,7 +954,7 @@ checkSimpleSubtypes c targetType subTypes = do
 --------------------------------------------------------------------------------
 -- Utilities
 
-checkBoolTypesEqualUpTo :: MonadMeta m
+checkBoolTypesEqualUpTo :: TCM m
                         => Constraint
                         -> CheckedType
                         -> [CheckedType]
@@ -974,7 +975,7 @@ checkBoolTypesEqualUpTo c targetType subTypes linTC polTC = do
 
   return $ targetEqConstraint : subEqConstraints <> linTCConstraints <> polTCConstraints
 
-checkRatTypesEqualUpTo :: MonadMeta m
+checkRatTypesEqualUpTo :: TCM m
                        => Constraint
                        -> CheckedType
                        -> [CheckedType]
@@ -1001,7 +1002,7 @@ checkOp2SimpleTypesEqual c arg1 arg2 res = do
   let resEq  = unify c arg1 res
   [argsEq, resEq]
 
-createTC :: MonadMeta m
+createTC :: TCM m
          => Constraint
          -> TypeClass
          -> NonEmpty CheckedType
@@ -1013,7 +1014,7 @@ createTC c tc argExprs = do
   m <- freshTypeClassPlacementMeta p (BuiltinTypeClass p tc args)
   return (m, TC ctx (Has m tc args))
 
-unifyWithAnnBoolType :: MonadMeta m
+unifyWithAnnBoolType :: TCM m
                      => Constraint
                      -> CheckedType
                      -> m (Constraint, CheckedExpr, CheckedExpr)
@@ -1024,7 +1025,7 @@ unifyWithAnnBoolType c t = do
   let eq = unify c t (AnnBoolType p lin pol)
   return (eq, lin, pol)
 
-unifyWithIndexType :: MonadMeta m
+unifyWithIndexType :: TCM m
                    => Constraint
                    -> CheckedType
                    -> m (Constraint, CheckedExpr)
@@ -1034,7 +1035,7 @@ unifyWithIndexType c t = do
   let eq = unify c t (IndexType p indexSize)
   return (eq, indexSize)
 
-unifyWithAnnRatType :: MonadMeta m
+unifyWithAnnRatType :: TCM m
                     => Constraint
                     -> CheckedType
                     -> m (Constraint, CheckedExpr)
@@ -1044,7 +1045,7 @@ unifyWithAnnRatType c t = do
   let eq = unify c t (AnnRatType p lin)
   return (eq, lin)
 
-unifyWithListType :: MonadMeta m
+unifyWithListType :: TCM m
                  => Constraint
                  -> CheckedType
                  -> m (Constraint, CheckedExpr)
@@ -1054,7 +1055,7 @@ unifyWithListType c t = do
   let eq = unify c t (ListType p elemType)
   return (eq, elemType)
 
-unifyWithVectorType :: MonadMeta m
+unifyWithVectorType :: TCM m
                     => Constraint
                     -> CheckedExpr
                     -> CheckedType
@@ -1065,12 +1066,12 @@ unifyWithVectorType c dim t = do
   let eq = unify c t (VectorType p elemType dim)
   return (eq, elemType)
 
-freshDimMeta :: MonadMeta m => Constraint -> m CheckedExpr
+freshDimMeta :: TCM m => Constraint -> m CheckedExpr
 freshDimMeta c = do
   let p = provenanceOf c
   freshExprMeta p (NatType p) (boundContext $ constraintContext c)
 
-solveSimpleComparisonOp :: MonadMeta m
+solveSimpleComparisonOp :: TCM m
                         => Constraint
                         -> CheckedType
                         -> CheckedType
@@ -1083,7 +1084,7 @@ solveSimpleComparisonOp c arg1 arg2 res solution = do
   let argEq = unify c arg1 arg2
   return $ Right ([argEq, resEq], Builtin p solution)
 
-solveIndexComparisonOp :: MonadMeta m
+solveIndexComparisonOp :: TCM m
                        => Constraint
                        -> CheckedType
                        -> CheckedType
@@ -1097,7 +1098,7 @@ solveIndexComparisonOp c arg1 arg2 res solution = do
   let resEq = unify c res (AnnBoolType p (LinearityExpr p Constant) (PolarityExpr p Unquantified))
   return $ Right ([arg1Eq, arg2Eq, resEq], Builtin p solution)
 
-solveRatComparisonOp :: MonadMeta m
+solveRatComparisonOp :: TCM m
                      => Constraint
                      -> CheckedType
                      -> CheckedType
@@ -1119,7 +1120,7 @@ solveRatComparisonOp c arg1 arg2 res op = do
   return $ Right ([arg1Eq, arg2Eq, resEq, linTC, polEq], Builtin p op)
 
 
-combineAuxiliaryConstraints :: forall m . MonadMeta m
+combineAuxiliaryConstraints :: forall m . TCM m
                             => TypeClass
                             -> Builtin
                             -> (Provenance -> m CheckedExpr)
@@ -1144,13 +1145,13 @@ combineAuxiliaryConstraints tc unit makeMeta c result auxs = do
 irrelevant :: HasProvenance a => a -> [Constraint] -> TypeClassProgress
 irrelevant c newConstraints = Right (newConstraints, UnitLiteral (provenanceOf c))
 
-blockOnMetas :: MonadMeta m => [CheckedExpr] -> m TypeClassProgress
+blockOnMetas :: TCM m => [CheckedExpr] -> m TypeClassProgress
 blockOnMetas args = do
   let metas = mapMaybe getMeta args
   progress <- blockOn metas
   return $ castProgress mempty progress
 
-blockOrThrowError :: MonadMeta m
+blockOrThrowError :: TCM m
                   => Constraint
                   -> [CheckedExpr]
                   -> CompileError

@@ -184,6 +184,7 @@ library
                       , Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
                       , Vehicle.Compile.Type.ConstraintSolver.Unification
                       , Vehicle.Compile.Type.Meta
+                      , Vehicle.Compile.Type.Monad
                       , Vehicle.Compile.Type.MetaSet
                       , Vehicle.Compile.Type.MetaMap
                       , Vehicle.Compile.Type.Generalise

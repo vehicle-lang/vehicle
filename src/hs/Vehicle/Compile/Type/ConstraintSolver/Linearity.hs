@@ -9,10 +9,11 @@ import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.ConstraintSolver.Core
 import Vehicle.Compile.Error
+import Vehicle.Compile.Type.Monad
 
 import Control.Monad.Except (MonadError(..))
 
-solveLinearityConstraint :: MonadMeta m
+solveLinearityConstraint :: TCM m
                          => LinearityTypeClass
                          -> Constraint
                          -> [CheckedType]
@@ -40,7 +41,7 @@ mulLinearity p l1 l2 = case (l1, l2) of
 --------------------------------------------------------------------------------
 -- Constraint solving
 
-solveMaxLinearity :: MonadMeta m
+solveMaxLinearity :: TCM m
                   => Constraint
                   -> [CheckedExpr]
                   -> m ConstraintProgress
@@ -58,7 +59,7 @@ solveMaxLinearity c [lin1, lin2, res] =
 solveMaxLinearity c _ = malformedConstraintError c
 
 
-solveMulLinearity :: MonadMeta m
+solveMulLinearity :: TCM m
                   => Constraint
                   -> [CheckedExpr]
                   -> m ConstraintProgress
@@ -76,11 +77,11 @@ solveMulLinearity c [lin1, lin2, res] =
 
 solveMulLinearity c _ = malformedConstraintError c
 
-solveFunctionLinearity :: MonadMeta m
-                            => FunctionPosition
-                            -> Constraint
-                            -> [CheckedExpr]
-                            -> m ConstraintProgress
+solveFunctionLinearity :: TCM m
+                       => FunctionPosition
+                       -> Constraint
+                       -> [CheckedExpr]
+                       -> m ConstraintProgress
 solveFunctionLinearity functionPosition c [arg, res] = case arg of
   (exprHead -> Meta _ m1) -> blockOn [m1]
   LinearityExpr _ lin     -> do
@@ -92,7 +93,7 @@ solveFunctionLinearity functionPosition c [arg, res] = case arg of
 
 solveFunctionLinearity _ c _ = malformedConstraintError c
 
-solveIfCondLinearity :: MonadMeta m
+solveIfCondLinearity :: TCM m
                      => Constraint
                      -> [CheckedExpr]
                      -> m ConstraintProgress

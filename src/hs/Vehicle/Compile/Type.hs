@@ -6,6 +6,7 @@ module Vehicle.Compile.Type
 
 import Control.Monad.Writer (MonadWriter(..), runWriterT)
 import Control.Monad.Except (MonadError(..))
+import Control.Monad.Reader (ReaderT(..))
 import Control.Monad (forM, when, unless)
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty(..))
@@ -20,11 +21,11 @@ import Vehicle.Compile.Type.ConstraintSolver.TypeClass
 import Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
 import Vehicle.Compile.Type.ConstraintSolver.Unification
 import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Auxiliary
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.WeakHeadNormalForm
-import Vehicle.Compile.Type.VariableContext
 import Vehicle.Compile.Type.Resource
 import Vehicle.Compile.Type.Generalise
 import Vehicle.Compile.Type.Irrelevance
@@ -37,16 +38,16 @@ typeCheck :: MonadCompile m
           -> UncheckedPropertyContext
           -> m (CheckedProg, PropertyContext)
 typeCheck uncheckedProg uncheckedCtx =
-  logCompilerPass MinDetail "type checking" $ runTCM $ do
-  (checkedProg, checkedCtx) <- runWriterT $ typeCheckProg uncheckedCtx uncheckedProg
-  cleanedProg <- postProcess checkedProg
-  logDebug MaxDetail $ prettyFriendlyDBClosed cleanedProg
-  return (cleanedProg, checkedCtx)
+  logCompilerPass MinDetail "type checking" $ runTypeCheckerT $ do
+    (checkedProg, checkedCtx) <- runWriterT $ typeCheckProg uncheckedCtx uncheckedProg
+    cleanedProg <- postProcess checkedProg
+    logDebug MaxDetail $ prettyFriendlyDBClosed cleanedProg
+    return (cleanedProg, checkedCtx)
 
 typeCheckExpr :: MonadCompile m => UncheckedExpr -> m CheckedExpr
-typeCheckExpr expr1 = runTCM $ do
+typeCheckExpr expr1 = runTypeCheckerT $ do
   expr2 <- insertHolesForAuxiliaryAnnotations expr1
-  (expr3, _exprType) <- inferExpr expr2
+  (expr3, _exprType) <- runReaderT (inferExpr expr2) mempty
   solveConstraints Nothing
   expr4 <- postProcess expr3
   checkAllUnknownsSolved
@@ -67,7 +68,10 @@ postProcess x = do
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-type TopLevelTCM m = (TCM m, MonadWriter PropertyContext m)
+type TopLevelTCM m =
+  ( TCM m
+  , MonadWriter PropertyContext m
+  )
 
 typeCheckProg :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedProg -> m CheckedProg
 typeCheckProg ctx (Main ds) = Main <$> typeCheckDecls ctx ds
@@ -78,7 +82,7 @@ typeCheckDecls ctx (d : ds) = do
   -- First insert any missing auxiliary arguments into the decl
   d' <- insertHolesForAuxiliaryAnnotations d
   checkedDecl  <- typeCheckDecl ctx d'
-  checkedDecls <- addDeclToCtx checkedDecl $ typeCheckDecls ctx ds
+  checkedDecls <- addDeclContext checkedDecl $ typeCheckDecls ctx ds
   return $ checkedDecl : checkedDecls
 
 typeCheckDecl :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedDecl -> m CheckedDecl
@@ -86,7 +90,7 @@ typeCheckDecl propertyCtx decl = logCompilerPass MinDetail ("declaration" <+> id
   -- First run a bidirectional pass over the type of the declaration
   checkedType <- logCompilerPass MidDetail (passDoc <+> "type of" <+> identDoc) $ do
     let declType = typeOf decl
-    (checkedType, typeOfType) <- inferExpr declType
+    (checkedType, typeOfType) <- runReaderT (inferExpr declType) mempty
     assertIsType (provenanceOf decl) typeOfType
     return checkedType
 
@@ -115,7 +119,7 @@ typeCheckDecl propertyCtx decl = logCompilerPass MinDetail ("declaration" <+> id
     DefFunction p _ _ body -> do
       -- Type check the body.
       checkedBody <- logCompilerPass MidDetail (passDoc <+> "body of" <+> identDoc) $ do
-        checkExpr checkedType body
+        runReaderT (checkExpr checkedType body) mempty
 
       -- Reconstruct the function.
       let checkedDecl = DefFunction p ident checkedType checkedBody
@@ -153,9 +157,8 @@ assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
 -- with type 0.
 assertIsType _ (TypeUniverse _ _) = return ()
 assertIsType p t        = do
-  ctx <- getBoundCtx
   let typ = TypeUniverse (inserted (provenanceOf t)) 0
-  addUnificationConstraint TypeGroup p ctx t typ
+  addUnificationConstraint TypeGroup p mempty t typ
   return ()
 
 -------------------------------------------------------------------------------
@@ -225,7 +228,7 @@ solveConstraint unnormConstraint = do
         addConstraints [blockedConstraint]
 
 -- | Tries to add new unification constraints using default values.
-addNewConstraintUsingDefaults :: MonadMeta m
+addNewConstraintUsingDefaults :: TCM m
                               => Maybe CheckedDecl
                               -> m Bool
 addNewConstraintUsingDefaults maybeDecl = do
@@ -246,7 +249,7 @@ addNewConstraintUsingDefaults maybeDecl = do
         addConstraints [newConstraint]
         return True
 
-getDefaultCandidates :: MonadMeta m => Maybe CheckedDecl -> m [Constraint]
+getDefaultCandidates :: TCM m => Maybe CheckedDecl -> m [Constraint]
 getDefaultCandidates maybeDecl = do
   unsolvedConstraints <- filter isNonAuxiliaryTypeClassConstraint <$> getUnsolvedConstraints
   case maybeDecl of
@@ -287,7 +290,7 @@ checkPropertyInfo decl@(ident, _) t = do
 -------------------------------------------------------------------------------
 -- Unsolved constraint checks
 
-checkAllUnknownsSolved :: MonadMeta m => m ()
+checkAllUnknownsSolved :: TCM m => m ()
 checkAllUnknownsSolved = do
   -- First check all user constraints (i.e. unification and type-class
   -- constraints) are solved.
@@ -297,14 +300,14 @@ checkAllUnknownsSolved = do
   -- Then clear the meta-ctx
   clearMetaCtx
 
-checkAllConstraintsSolved :: MonadMeta m => m ()
+checkAllConstraintsSolved :: TCM m => m ()
 checkAllConstraintsSolved = do
   constraints <- getUnsolvedConstraints
   case constraints of
     []       -> return ()
     (c : cs) -> throwError $ UnsolvedConstraints (c :| cs)
 
-checkAllMetasSolved :: MonadMeta m => m ()
+checkAllMetasSolved :: TCM m => m ()
 checkAllMetasSolved = do
   unsolvedMetas <- getUnsolvedMetas
   case MetaSet.toList unsolvedMetas of
@@ -315,7 +318,7 @@ checkAllMetasSolved = do
         return (meta, origin))
       throwError $ UnsolvedMetas metasAndOrigins
 
-logUnsolvedUnknowns :: MonadMeta m => Maybe CheckedDecl -> Maybe MetaSet -> m ()
+logUnsolvedUnknowns :: TCM m => Maybe CheckedDecl -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
   unsolvedMetas    <- getUnsolvedMetas
   unsolvedMetasDoc <- prettyMetas unsolvedMetas

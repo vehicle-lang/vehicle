@@ -16,6 +16,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
 import Vehicle.Language.Print (prettyVerbose)
@@ -30,7 +31,7 @@ passName = "unification"
 pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
 
-solveUnificationConstraint :: MonadMeta m
+solveUnificationConstraint :: TCM m
                            => ConstraintContext
                            -> UnificationConstraint
                            -> m ConstraintProgress
@@ -188,7 +189,7 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
 
   return progress
 
-solveEq :: (MonadMeta m, Eq a)
+solveEq :: (TCM m, Eq a)
         => Constraint
         -> a
         -> a
@@ -197,7 +198,7 @@ solveEq c v1 v2
   | v1 /= v2  = throwError $ FailedConstraints [c]
   | otherwise = logDebug MaxDetail "solved-trivially"
 
-solveArg :: MonadMeta m
+solveArg :: TCM m
          => Constraint
          -> (CheckedArg, CheckedArg)
          -> m (Maybe Constraint)
@@ -206,13 +207,13 @@ solveArg c (arg1, arg2)
   | isInstance arg1                   = return Nothing
   | otherwise                         = return $ Just $ unify c (argExpr arg1) (argExpr arg2)
 
-solveArgs :: MonadMeta m
+solveArgs :: TCM m
           => Constraint
           -> ([CheckedArg], [CheckedArg])
           -> m [Constraint]
 solveArgs c (args1, args2)= catMaybes <$> traverse (solveArg c) (zip args1 args2)
 
-solveSimpleApplication :: (MonadMeta m, Eq a)
+solveSimpleApplication :: (TCM m, Eq a)
                        => Constraint
                        -> a -> a
                        -> [CheckedArg] -> [CheckedArg]
@@ -227,7 +228,7 @@ solveSimpleApplication constraint fun1 fun2 args1 args2 = do
     newConstraints <- solveArgs constraint (args1, args2)
     return $ Progress newConstraints
 
-createMetaWithRestrictedContext :: MonadMeta m => Provenance -> CheckedType -> [CheckedArg] -> m CheckedExpr
+createMetaWithRestrictedContext :: TCM m => Provenance -> CheckedType -> [CheckedArg] -> m CheckedExpr
 createMetaWithRestrictedContext p metaType newContext = do
   let sharedExprs = fmap argExpr newContext
   let sharedArgsCtx = fmap (\arg -> (Nothing, arg, Nothing)) sharedExprs

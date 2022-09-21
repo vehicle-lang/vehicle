@@ -2,7 +2,6 @@
 
 module Vehicle.Compile.Type.VariableContext where
 
-import Control.Monad.Reader
 import Data.Map qualified as Map
 
 import Vehicle.Compile.Prelude
@@ -13,6 +12,9 @@ import Vehicle.Compile.Prelude
 type TypingDeclCtxEntry = (CheckedType, Maybe CheckedExpr)
 
 type TypingDeclCtx = DeclCtx TypingDeclCtxEntry
+
+addToDeclCtx :: CheckedDecl -> TypingDeclCtx -> TypingDeclCtx
+addToDeclCtx decl = Map.insert (identifierOf decl) (typeOf decl, bodyOf decl)
 
 --------------------------------------------------------------------------------
 -- Bound variable context
@@ -25,17 +27,3 @@ type TypingBoundCtx = BoundCtx TypingBoundCtxEntry
 
 instance HasBoundCtx TypingBoundCtx where
   boundContextOf = map (\(n, _, _) -> n)
-
---------------------------------------------------------------------------------
--- Variable context
-
-type TypingVariableCtx = VariableCtx TypingDeclCtxEntry TypingBoundCtxEntry
-
-addDeclToCtx :: MonadReader TypingVariableCtx m => CheckedDecl -> m a -> m a
-addDeclToCtx decl = addToDeclCtx (identifierOf decl) (typeOf decl, bodyOf decl)
-
-instance HasBoundCtx TypingVariableCtx where
-  boundContextOf = boundContextOf . boundCtx
-
-getNormalisationContext :: MonadReader TypingVariableCtx m => m (DeclCtx CheckedExpr)
-getNormalisationContext = Map.mapMaybe snd <$> getDeclCtx

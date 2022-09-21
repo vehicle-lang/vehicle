@@ -4,7 +4,7 @@ module Vehicle.Compile.Type.ConstraintSolver.Core where
 import Control.Monad (MonadPlus(..))
 import Control.Monad.Except (MonadError(..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
@@ -52,7 +52,7 @@ positionalIntersection (x : xs) (y : ys)
  | x == y    = x : positionalIntersection xs ys
  | otherwise = positionalIntersection xs ys
 
-blockOn :: MonadMeta m => [Meta] -> m ConstraintProgress
+blockOn :: MonadCompile m => [Meta] -> m ConstraintProgress
 blockOn metas = do
   logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
   return $ Stuck $ MetaSet.fromList metas
@@ -74,13 +74,13 @@ getReductionBlockingArgs = \case
   BuiltinExpr _ TypeClassOp{} args -> [ fst (findInstanceArg (NonEmpty.toList args)) ]
   _                                -> []
 
-blockOnReductionBlockingMetasOrThrowError :: MonadMeta m
+blockOnReductionBlockingMetasOrThrowError :: MonadCompile m
                                           => [CheckedExpr]
                                           -> CompileError
                                           -> m ConstraintProgress
 blockOnReductionBlockingMetasOrThrowError args err = do
   let blockingArgs = concatMap getReductionBlockingArgs args
-  let blockingMetas = catMaybes (getMeta <$> blockingArgs)
+  let blockingMetas = mapMaybe getMeta blockingArgs
   if null blockingMetas
     then throwError err
     else blockOn blockingMetas

@@ -6,11 +6,12 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.ConstraintSolver.Core
 import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Error
 
 import Control.Monad.Except (MonadError(..))
 
-solvePolarityConstraint :: MonadMeta m
+solvePolarityConstraint :: TCM m
                         => PolarityTypeClass
                         -> Constraint
                         -> [CheckedType]
@@ -91,7 +92,7 @@ implPolarity p pol1 pol2 =
 --------------------------------------------------------------------------------
 -- Constraint solving
 
-solveNegPolarity :: MonadMeta m
+solveNegPolarity :: TCM m
                  => Constraint
                  -> [CheckedExpr]
                  -> m ConstraintProgress
@@ -107,7 +108,7 @@ solveNegPolarity c [arg1, res] = case arg1 of
 solveNegPolarity c _ = malformedConstraintError c
 
 
-solveAddPolarity :: MonadMeta m
+solveAddPolarity :: TCM m
                   => Quantifier
                   -> Constraint
                   -> [CheckedExpr]
@@ -125,7 +126,7 @@ solveAddPolarity q c [arg1, res] = case arg1 of
 solveAddPolarity _ c _ = malformedConstraintError c
 
 
-solvePolarityOp2 :: MonadMeta m
+solvePolarityOp2 :: TCM m
                  => (Provenance -> Polarity -> Polarity -> Polarity)
                  -> Constraint
                  -> [CheckedExpr]
@@ -142,26 +143,26 @@ solvePolarityOp2 op2 c [arg1, arg2, res] = case (arg1, arg2) of
 
 solvePolarityOp2 _ c _ = malformedConstraintError c
 
-solveMaxPolarity :: MonadMeta m
+solveMaxPolarity :: TCM m
                  => Constraint
                  -> [CheckedExpr]
                  -> m ConstraintProgress
 solveMaxPolarity = solvePolarityOp2 (const maxPolarity)
 
-solveEqPolarity :: MonadMeta m
+solveEqPolarity :: TCM m
                  => EqualityOp
                  -> Constraint
                  -> [CheckedExpr]
                  -> m ConstraintProgress
 solveEqPolarity eq = solvePolarityOp2 (eqPolarity eq)
 
-solveImplPolarity :: MonadMeta m
+solveImplPolarity :: TCM m
                  => Constraint
                  -> [CheckedExpr]
                  -> m ConstraintProgress
 solveImplPolarity = solvePolarityOp2 implPolarity
 
-solveFunctionPolarity :: MonadMeta m
+solveFunctionPolarity :: TCM m
                             => FunctionPosition
                             -> Constraint
                             -> [CheckedExpr]
@@ -177,7 +178,7 @@ solveFunctionPolarity functionPosition c [arg, res] = case arg of
 
 solveFunctionPolarity _ c _ = malformedConstraintError c
 
-solveIfCondPolarity :: MonadMeta m
+solveIfCondPolarity :: TCM m
                     => Constraint
                     -> [CheckedExpr]
                     -> m ConstraintProgress

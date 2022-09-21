@@ -7,9 +7,8 @@ import Control.Monad.Except (MonadError(..))
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Normalise as Norm
-import Vehicle.Compile.Type.VariableContext
+import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Constraint
 
 checkResourceType :: TCM m
@@ -20,12 +19,12 @@ checkResourceType :: TCM m
 checkResourceType resourceType decl@(ident, _) t = do
   let resourceName = pretty resourceType <+> squotes (pretty ident)
   logCompilerPass MidDetail ("checking suitability of the type of" <+> resourceName) $ do
-    declCtx <- getNormalisationContext
+    declCtx <- toNormalisationDeclContext <$> getDeclContext
     let checkFun = case resourceType of
-          Parameter         -> checkParameterType
+          Parameter          -> checkParameterType
           InferableParameter -> checkInferableParameterType
-          Dataset           -> checkDatasetType
-          Network           -> checkNetworkType
+          Dataset            -> checkDatasetType
+          Network            -> checkNetworkType
     normType <- normalise t $ fullNormalisationOptions { Norm.declContext = declCtx }
     alterType <- checkFun decl normType
     return $ alterType t

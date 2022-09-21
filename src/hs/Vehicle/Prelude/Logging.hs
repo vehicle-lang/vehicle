@@ -5,10 +5,11 @@ module Vehicle.Prelude.Logging
   , Severity
   , DebugLevel(..)
   , Message(..)
-  , MonadLogger(incrCallDepth, decrCallDepth, logMessage)
+  , MonadLogger(..)
   , LoggerT
   , Logger
   , intToDebugLevel
+  , mapLoggerT
   , discardLogger
   , discardLoggerT
   , logWarning
@@ -23,11 +24,11 @@ module Vehicle.Prelude.Logging
   ) where
 
 import Control.Monad (when, forM_)
-import Control.Monad.State (StateT(..), get, modify, evalStateT)
-import Control.Monad.Writer (WriterT(..), tell, runWriterT)
+import Control.Monad.State (StateT(..), get, modify, evalStateT, mapStateT)
+import Control.Monad.Writer (WriterT(..), tell, runWriterT, mapWriterT)
 import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.Except (MonadError(..), Except, ExceptT, mapExceptT)
-import Control.Monad.Reader (ReaderT(..), ask)
+import Control.Monad.Reader (ReaderT(..), ask, mapReaderT)
 import Control.Monad.Trans ( MonadIO(..), MonadTrans(..) )
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -159,6 +160,9 @@ instance MonadIO m => MonadIO (LoggerT m) where
 runLoggerT :: Monad m => DebugLevel -> LoggerT m a -> m (a, [Message])
 runLoggerT debugLevel (LoggerT logger) =
   evalStateT (runWriterT (runReaderT logger debugLevel)) 0
+
+mapLoggerT :: (m ((a, [Message]), Int) -> n ((b, [Message]), Int)) -> LoggerT m a -> LoggerT n b
+mapLoggerT f l = LoggerT $ mapReaderT (mapWriterT (mapStateT f)) (unloggerT l)
 
 runLogger :: DebugLevel -> Logger a -> (a, [Message])
 runLogger debugLevel = runIdentity . runLoggerT debugLevel

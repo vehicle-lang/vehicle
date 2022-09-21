@@ -8,7 +8,7 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error (compilerDeveloperError)
-import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.WeakHeadNormalForm (whnf)
 import Vehicle.Language.Print (prettyVerbose)
 
@@ -120,11 +120,13 @@ traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
   (_, []) -> return []
 
   (FreeVar{}, _) -> do
-    normDeclType <- whnf declType
+    declCtx <- getDeclContext
+    normDeclType <- whnf declCtx declType
     traverseAuxFreeVarArgs f p normDeclType declArgs
 
   (App _ (FreeVar{}) _, _) -> do
-    normDeclType <- whnf declType
+    declCtx <- getDeclContext
+    normDeclType <- whnf declCtx declType
     traverseAuxFreeVarArgs f p normDeclType declArgs
 
   (_, _) ->
@@ -205,10 +207,14 @@ addFunctionConstraint :: TCM m
                       -> CheckedExpr
                       -> CheckedExpr
                       -> m ()
-addFunctionConstraint tc (declProv, position) existingExpr newMeta = do
+addFunctionConstraint mkTC (declProv, position) existingExpr newMeta = do
   let constraintArgs = ExplicitArg (provenanceOf existingExpr) <$> case position of
           FunctionInput{}  -> [newMeta, existingExpr]
           FunctionOutput{} -> [existingExpr, newMeta]
-  let constraint = BuiltinTypeClass declProv (tc position) constraintArgs
-  _ <- createMetaAndAddTypeClassConstraint declProv constraint
+  let tc = mkTC position
+  let constraint = BuiltinTypeClass declProv tc constraintArgs
+
+  m <- freshTypeClassPlacementMeta declProv constraint
+  addTypeClassConstraint declProv mempty m constraint
+
   return ()

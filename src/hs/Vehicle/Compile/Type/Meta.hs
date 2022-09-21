@@ -1,71 +1,28 @@
-
 module Vehicle.Compile.Type.Meta
   ( MetaSet
-  , freshUniverseLevelMeta
-  , freshLinearityMeta
-  , freshPolarityMeta
-  , freshExprMeta
-  , freshTypeClassPlacementMeta
-  , metaSolved
-  , makeMetaType
-  , addUnificationConstraint
-  , addTypeClassConstraint
-  , createMetaAndAddTypeClassConstraint
-  , addConstraints
-  , setConstraints
-  , getUnsolvedConstraints
-  , getTypeClassConstraints
-  , popActivatedConstraints
-  , getMetaSubstitution
-  , getSolvedMetas
-  , clearMetaSubstitution
-  , clearSolvedMetas
-  , substMetasThroughCtx
-  , getUnsolvedMetas
-  , getUnsolvedAuxiliaryMetas
-  , getMetaInfo
-  , getMetaProvenance
-  , getMetaType
-  , getMetaContext
-  , modifyMetasInfo
-  , getMetasLinkedToMetasIn
-  , MonadMeta
   , ConstraintProgress(..)
   , isStuck
   , MetaCtx(..)
   , MetaInfo(..)
   , emptyMetaCtx
   , HasMetas(..)
-  , substMetas
-  , prettyMeta
-  , prettyMetas
-  , getDeclType
-  , clearMetaCtx
   , MetaSubstitution
   , MetaSubstitutable(..)
-  , TCM
-  , runTCM
   ) where
 
-import Control.Monad.Reader (ReaderT (..), MonadReader (..), local)
-import Control.Monad.State (MonadState(..), modify, gets, StateT, evalStateT)
-import Control.Monad (foldM)
-import Data.List (partition)
+import Control.Monad.Reader (MonadReader (..), local)
+import Control.Monad.Writer (MonadWriter (..), execWriter)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Maybe (mapMaybe)
-import Data.Map qualified as Map
 
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Type.MetaMap ( MetaMap(..), keys, insert )
+import Vehicle.Compile.Type.MetaMap ( MetaMap(..) )
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap
 import Vehicle.Compile.Type.MetaSet (MetaSet)
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.VariableContext
-import Control.Monad.Writer (execWriter, MonadWriter (tell))
 
 
 --------------------------------------------------------------------------------
@@ -189,231 +146,14 @@ emptyMetaCtx = MetaCtx
   , solvedMetas            = mempty
   }
 
-substMetas :: (MonadMeta m, MetaSubstitutable a)
-           => a -> m a
-substMetas e = do
-  subst <- getMetaSubstitution
-  runReaderT (substM e) subst
-
 --------------------------------------------------------------------------------
--- Meta-variables
-
-type MonadMeta m =
-  ( MonadState MetaCtx m
-  , MonadCompile m
-  )
-
--- | Creates a fresh meta variable. Meta variables need to remember what was
--- in the current context when they were created. We do this by creating a
--- meta-variable that takes everything in the current context as an argument
--- and then which is immediately applied to everything in the current context.
--- Post unification, any unneeded context arguments will be normalised away.
--- It returns the name of the meta and the expression of it applied to every
--- variable in the context.
-freshMeta :: MonadMeta m
-          => Provenance
-          -> CheckedType
-          -> TypingBoundCtx
-          -> m (Meta, CheckedExpr)
-freshMeta p metaType boundCtx = do
-  -- Create a fresh name
-  MetaCtx {..} <- get
-  let nextMeta = length metaInfo
-  put $ MetaCtx { metaInfo = MetaInfo p metaType boundCtx : metaInfo, .. }
-  let meta = MetaVar nextMeta
-
-  -- Create bound variables for everything in the context
-  let ann = inserted p
-  let boundEnv = reverse [ Var ann (Bound i) | i <- [0..length boundCtx - 1] ]
-
-  -- Returns a meta applied to every bound variable in the context
-  let metaExpr = normAppList ann (Meta ann meta) (map (ExplicitArg ann) boundEnv)
-
-  logDebug MaxDetail $ "fresh-meta" <+> pretty meta <+> ":" <+> prettyVerbose metaType
-  return (meta, metaExpr)
-
-freshExprMeta :: MonadMeta m
-              => Provenance
-              -> CheckedType
-              -> TypingBoundCtx
-              -> m CheckedExpr
-freshExprMeta p t ctx = snd <$> freshMeta p t ctx
-
-freshPolarityMeta :: MonadMeta m => Provenance -> m CheckedExpr
-freshPolarityMeta p = snd <$> freshMeta p (PolarityUniverse p) mempty
-
-freshLinearityMeta :: MonadMeta m => Provenance -> m CheckedExpr
-freshLinearityMeta p = snd <$> freshMeta p (LinearityUniverse p) mempty
-
-freshUniverseLevelMeta :: MonadMeta m => Provenance -> m CheckedExpr
-freshUniverseLevelMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
-
-freshTypeClassPlacementMeta :: MonadMeta m
-                            => Provenance
-                            -> CheckedType
-                            -> m Meta
-freshTypeClassPlacementMeta p t = fst <$> freshMeta p t []
-
--- |Creates a Pi type that abstracts over all bound variables
-makeMetaType :: TypingBoundCtx
-             -> Provenance
-             -> CheckedType
-             -> CheckedType
-makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
-  where
-    entryToPi :: (DBBinding, CheckedType, Maybe CheckedExpr) -> CheckedType -> CheckedType
-    entryToPi (name, t, _) = Pi ann (ExplicitBinder ann name t)
-
-getMetaIndex :: [MetaInfo] -> Meta -> Int
-getMetaIndex metaInfo (MetaVar m) = length metaInfo - m - 1
-
-getMetaInfo :: MonadMeta m => Meta -> m MetaInfo
-getMetaInfo m = do
-  MetaCtx {..} <- get
-  case metaInfo !!? getMetaIndex metaInfo m of
-    Just info -> return info
-    Nothing -> compilerDeveloperError $
-      "Requesting info for unknown meta" <+> pretty m <+> "not in context"
-
-getMetaProvenance :: MonadMeta m => Meta -> m Provenance
-getMetaProvenance m = metaProvenance <$> getMetaInfo m
-
-getMetaType :: MonadMeta m => Meta -> m CheckedType
-getMetaType m = metaType <$> getMetaInfo m
-
-getMetaContext :: MonadMeta m => Meta -> m TypingBoundCtx
-getMetaContext m = metaCtx <$> getMetaInfo m
-
-modifyMetasInfo :: MonadMeta m => Meta -> (MetaInfo -> MetaInfo) -> m ()
-modifyMetasInfo m f = modify (\MetaCtx{..} ->
-  let (xs, i : ys) = splitAt (getMetaIndex metaInfo m) metaInfo in
-  MetaCtx
-    { metaInfo = xs <> [f i] <> ys
-    , ..
-    })
-
-getMetaSubstitution :: MonadMeta m => m MetaSubstitution
-getMetaSubstitution = gets currentSubstitution
-
-getSolvedMetas :: MonadMeta m => m MetaSet
-getSolvedMetas = gets solvedMetas
-
-clearMetaSubstitution :: MonadMeta m => m ()
-clearMetaSubstitution = modifyMetaCtx $ \ MetaCtx {..} ->
-  MetaCtx { currentSubstitution = mempty, ..}
-
-clearSolvedMetas :: MonadMeta m => m ()
-clearSolvedMetas = modifyMetaCtx $ \MetaCtx {..} ->
-  MetaCtx { solvedMetas = mempty, ..}
-
-modifyMetaCtx :: MonadMeta m => (MetaCtx -> MetaCtx) -> m ()
-modifyMetaCtx = modify
-
-substMetasThroughCtx :: MonadMeta m => m ()
-substMetasThroughCtx = do
-  MetaCtx {..} <- get
-  substConstraints <- substMetas constraints
-  substMetaInfo    <- substMetas metaInfo
-  substMetaSolution <- substMetas currentSubstitution
-  put $ MetaCtx
-    { constraints = substConstraints
-    , metaInfo = substMetaInfo
-    , currentSubstitution = substMetaSolution
-    , solvedMetas = solvedMetas
-    }
-
-getUnsolvedConstraints :: MonadMeta m => m [Constraint]
-getUnsolvedConstraints = gets constraints
-
-getTypeClassConstraints :: MonadMeta m => m [(TypeClassConstraint, ConstraintContext)]
-getTypeClassConstraints = mapMaybe getTypeClassConstraint <$> getUnsolvedConstraints
-
-getNumberOfMetasCreated :: MonadMeta m => m Int
-getNumberOfMetasCreated = gets (length . metaInfo)
-
-getUnsolvedMetas :: MonadMeta m => m MetaSet
-getUnsolvedMetas = do
-  metasSolved  <- keys <$> getMetaSubstitution
-  numberOfMetasCreated <- getNumberOfMetasCreated
-  let metasCreated = MetaSet.fromList $ fmap MetaVar [0..numberOfMetasCreated-1]
-  return $ MetaSet.difference metasCreated metasSolved
-
-getUnsolvedAuxiliaryMetas :: MonadMeta m => m MetaSet
-getUnsolvedAuxiliaryMetas = filterMetasByTypes isAuxiliaryUniverse =<< getUnsolvedMetas
-
-getMetaTypes :: MonadMeta m => MetaSet -> m [(Meta, CheckedType)]
-getMetaTypes metas = traverse (\m -> (m,) <$> getMetaType m) (MetaSet.toList metas)
-
--- | Computes the set of all metas that are related via constraints to the
--- metas in the provided expression as long as the types of those metas
--- satisfy the provided predicate.
-getMetasLinkedToMetasIn :: forall m . MonadMeta m
-                        => CheckedType
-                        -> (CheckedType -> Bool)
-                        -> m MetaSet
-getMetasLinkedToMetasIn t typeFilter = do
-  constraints <- getUnsolvedConstraints
-  directMetasInType <- filterMetasByTypes typeFilter (metasIn t)
-  loopOverConstraints constraints directMetasInType
-  where
-    loopOverConstraints :: [Constraint] -> MetaSet -> m MetaSet
-    loopOverConstraints constraints metas = do
-      (unrelatedConstraints, newMetas) <- foldM processConstraint ([], metas) constraints
-      if metas /= newMetas
-        then loopOverConstraints unrelatedConstraints newMetas
-        else return metas
-
-    processConstraint :: ([Constraint], MetaSet) -> Constraint -> m ([Constraint], MetaSet)
-    processConstraint (nonRelatedConstraints, typeMetas) constraint = do
-      constraintMetas <- filterMetasByTypes typeFilter (metasIn constraint)
-      return $ if MetaSet.disjoint constraintMetas typeMetas
-        then (constraint : nonRelatedConstraints, typeMetas)
-        else (nonRelatedConstraints, MetaSet.unions [constraintMetas, typeMetas])
-
-filterMetasByTypes :: MonadMeta m => (CheckedType -> Bool) -> MetaSet -> m MetaSet
-filterMetasByTypes typeFilter metas = do
-  typedMetas <- getMetaTypes metas
-  let filteredMetas = filter (typeFilter . snd) typedMetas
-  return $ MetaSet.fromList (fmap fst filteredMetas)
-
-abstractOverCtx :: TypingBoundCtx -> CheckedExpr -> CheckedExpr
-abstractOverCtx ctx body =
-  let ctxTypes   = fmap (\(_, t, _) -> t) ctx in
-  foldr typeToLam body ctxTypes
-  where
-    typeToLam :: CheckedType -> CheckedExpr -> CheckedExpr
-    typeToLam t = Lam ann (ExplicitBinder ann Nothing t)
-      where ann = provenanceOf t
-
-metaSolved :: (MonadState MetaCtx m, MonadCompile m)
-           => Meta
-           -> CheckedExpr
-           -> m ()
-metaSolved m solution = do
-  MetaInfo p _ ctx <- getMetaInfo m
-  let abstractedSolution = abstractOverCtx ctx solution
-
-  logDebug MaxDetail $ "solved" <+> pretty m <+> "as" <+> prettyVerbose abstractedSolution
-
-  metaSubst <- getMetaSubstitution
-  case MetaMap.lookup m metaSubst of
-    Just existing -> compilerDeveloperError $
-      "meta-variable" <+> pretty m <+> "already solved as" <+>
-      line <> indent 2 (squotes (prettyVerbose existing)) <> line <>
-      "but is being re-solved as" <+>
-      line <> indent 2 (squotes (prettyVerbose solution)) <> line <>
-      "at" <+> pretty p
-    -- Could use `insertWith` instead of `insert` here for one lookup instead of
-    -- two, but not possible to throw a monadic error unfortunately.
-    Nothing -> do
-      modifyMetaCtx $ \ MetaCtx {..} -> MetaCtx
-        { currentSubstitution = insert m abstractedSolution currentSubstitution
-        , solvedMetas         = MetaSet.insert m solvedMetas
-        , ..
-        }
+-- Objects which have meta variables in.
 
 class HasMetas a where
-  traverseMetas :: Monad m => (Provenance -> Meta -> [CheckedArg] -> m CheckedExpr) -> a -> m a
+  traverseMetas :: Monad m
+                => (Provenance -> Meta -> [CheckedArg] -> m CheckedExpr)
+                -> a
+                -> m a
 
   metasInWithArgs :: a -> MetaMap [CheckedArg]
   metasInWithArgs e = execWriter (traverseMetas f e)
@@ -469,91 +209,6 @@ instance HasMetas Constraint where
       e' <- traverseMetas f e
       return $ TC ctx $ Has m tc e'
 
-prettyMetas :: MonadMeta m => MetaSet -> m (Doc a)
-prettyMetas metas = do
-  typedMetaList <- getMetaTypes metas
-  let docs = fmap (uncurry prettyMetaInternal) typedMetaList
-  return $ prettySetLike docs
-
-prettyMeta :: MonadMeta m => Meta -> m (Doc a)
-prettyMeta meta = prettyMetaInternal meta <$> getMetaType meta
-
-prettyMetaInternal :: Meta -> CheckedType -> Doc a
-prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
-
-clearMetaCtx :: MonadMeta m => m ()
-clearMetaCtx = do
-  logDebug MaxDetail "Clearing meta-variable context"
-  modifyMetaCtx (const emptyMetaCtx)
-
---------------------------------------------------------------------------------
--- Constraints
-
-addUnificationConstraint :: MonadMeta m
-                         => ConstraintGroup
-                         -> Provenance
-                         -> TypingBoundCtx
-                         -> CheckedExpr
-                         -> CheckedExpr
-                         -> m ()
-addUnificationConstraint group p ctx e1 e2 = do
-  let context    = ConstraintContext p p mempty ctx group
-  let constraint = UC context $ Unify (e1, e2)
-  addConstraints [constraint]
-
-addTypeClassConstraint :: MonadMeta m
-                       => Provenance
-                       -> TypingBoundCtx
-                       -> Meta
-                       -> CheckedExpr
-                       -> m ()
-addTypeClassConstraint creationProvenance ctx meta expr = do
-  (tc, args) <- case expr of
-    BuiltinTypeClass _ tc args -> return (tc, args)
-    _                          -> compilerDeveloperError $
-      "Malformed type class constraint" <+> prettyVerbose expr
-
-  let originProvenance = provenanceOf expr
-
-  let group      = typeClassGroup tc
-  let context    = ConstraintContext originProvenance creationProvenance mempty ctx group
-  let constraint = TC context (Has meta tc args)
-  addConstraints [constraint]
-
-createMetaAndAddTypeClassConstraint :: TCM m => Provenance -> CheckedType -> m CheckedExpr
-createMetaAndAddTypeClassConstraint p tc = do
-  m <- freshTypeClassPlacementMeta p tc
-  ctx <- getBoundCtx
-  addTypeClassConstraint p ctx m tc
-  return $ Meta p m
-
-addConstraints :: MonadMeta m => [Constraint] -> m ()
-addConstraints []             = return ()
-addConstraints newConstraints = do
-  logDebug MaxDetail ("add-constraints " <> align (prettyVerbose newConstraints))
-  modifyMetaCtx $ \ MetaCtx {..} ->
-    MetaCtx { constraints = constraints ++ newConstraints, ..}
-
-setConstraints :: MonadMeta m => [Constraint] -> m ()
-setConstraints newConstraints = modifyMetaCtx $ \MetaCtx{..} ->
-    MetaCtx { constraints = newConstraints, ..}
-
--- | Returns any constraints that are activated (i.e. worth retrying) based
--- on the set of metas that were solved last pass.
-popActivatedConstraints :: MonadMeta m => MetaSet -> m [Constraint]
-popActivatedConstraints metasSolved = do
-  allConstraints <- getUnsolvedConstraints
-  let (blockedConstraints, unblockedConstraints) = partition (isBlocked metasSolved) allConstraints
-  setConstraints blockedConstraints
-  return unblockedConstraints
-  where
-    isBlocked :: MetaSet -> Constraint -> Bool
-    isBlocked solvedMetas constraint =
-      let blockingMetas = blockedBy $ constraintContext constraint in
-      -- A constraint is blocked if it is blocking on at least one meta
-      -- and none of the metas it is blocking on have been solved in the last pass.
-      not (MetaSet.null blockingMetas) && MetaSet.disjoint solvedMetas blockingMetas
-
 --------------------------------------------------------------------------------
 -- Progress in solving meta-variable constraints
 
@@ -575,28 +230,3 @@ instance Semigroup ConstraintProgress where
   Stuck{}      <> x@Progress{} = x
   x@Progress{} <> Stuck{}      = x
   Progress r1  <> Progress r2 = Progress (r1 <> r2)
-
-getDeclType :: (MonadCompile m, MonadReader TypingVariableCtx m)
-            => Provenance -> Identifier -> m CheckedType
-getDeclType p ident = do
-  ctx <- getDeclCtx
-  case Map.lookup ident ctx of
-    Just (checkedType, _) -> return checkedType
-    -- This should have been caught during scope checking
-    Nothing -> compilerDeveloperError $
-      "Declaration'" <+> pretty ident <+> "'not found when" <+>
-      "looking up variable in context" <+> pretty (Map.keys ctx) <+>
-      "at" <+> pretty p
-
---------------------------------------------------------------------------------
--- The type-checking monad
-
--- | The type-checking monad
-type TCM m =
-  ( MonadCompile                   m
-  , MonadState  MetaCtx            m
-  , MonadReader TypingVariableCtx  m
-  )
-
-runTCM :: MonadCompile m => ReaderT TypingVariableCtx (StateT MetaCtx m) a -> m a
-runTCM e = evalStateT (runReaderT e emptyVariableCtx) emptyMetaCtx

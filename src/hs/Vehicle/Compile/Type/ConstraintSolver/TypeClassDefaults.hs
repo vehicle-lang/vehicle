@@ -7,7 +7,7 @@ import Data.Maybe (catMaybes)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.Monad
 import Vehicle.Language.Print (prettySimple)
 import Vehicle.Compile.Type.VariableContext
 import Control.Monad (foldM)
@@ -58,7 +58,7 @@ instance Pretty CandidateStatus where
     None    -> "none encountered"
     Invalid -> "incompatible"
 
-generateConstraintUsingDefaults :: MonadMeta m
+generateConstraintUsingDefaults :: TCM m
                                 => [Constraint]
                                 -> m (Maybe Constraint)
 generateConstraintUsingDefaults constraints = do
@@ -135,7 +135,7 @@ familyOf = \case
   LinearityTypeClass{}    -> auxiliaryTCError
   PolarityTypeClass{}     -> auxiliaryTCError
 
-defaultSolution :: MonadMeta m
+defaultSolution :: TCM m
                 => Provenance
                 -> TypingBoundCtx
                 -> TypeClass
@@ -165,18 +165,18 @@ defaultSolution p ctx = \case
   PolarityTypeClass{}     -> auxiliaryTCError
   AlmostEqualConstraint{} -> auxiliaryTCError
 
-createDefaultListType :: MonadMeta m => Provenance -> TypingBoundCtx -> m CheckedType
+createDefaultListType :: TCM m => Provenance -> TypingBoundCtx -> m CheckedType
 createDefaultListType p ctx = do
   tElem <- freshExprMeta p (TypeUniverse p 0) ctx
   return $ ListType p tElem
 
-createDefaultBoolType :: MonadMeta m => Provenance -> m CheckedType
+createDefaultBoolType :: TCM m => Provenance -> m CheckedType
 createDefaultBoolType p = do
   lin <- freshLinearityMeta p
   pol <- freshPolarityMeta p
   return $ AnnBoolType p lin pol
 
-createDefaultRatType :: MonadMeta m => Provenance -> m CheckedType
+createDefaultRatType :: TCM m => Provenance -> m CheckedType
 createDefaultRatType p = do
   lin <- freshLinearityMeta p
   return $ AnnRatType p lin

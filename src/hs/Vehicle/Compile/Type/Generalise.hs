@@ -12,6 +12,7 @@ import Vehicle.Language.Print
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Monad
 
 --------------------------------------------------------------------------------
 -- Type-class generalisation
@@ -19,7 +20,7 @@ import Vehicle.Compile.Type.Constraint
 -- Finds any unsolved type class constraints that are blocked on
 -- metas that occur in the type of the declaration. It then appends these
 -- constraints as instance arguments to the declaration.
-generaliseOverUnsolvedTypeClassConstraints :: MonadMeta m
+generaliseOverUnsolvedTypeClassConstraints :: TCM m
                                            => CheckedDecl
                                            -> m CheckedDecl
 generaliseOverUnsolvedTypeClassConstraints decl = do
@@ -48,7 +49,7 @@ generaliseOverUnsolvedTypeClassConstraints decl = do
       result <- foldM prependConstraint decl prependableConstraints
       return result
 
-prependConstraint :: MonadMeta m
+prependConstraint :: TCM m
                   => CheckedDecl
                   -> Constraint
                   -> m CheckedDecl
@@ -74,7 +75,7 @@ prependConstraint decl constraint = do
 -- | Finds any unsolved metas that occur in the type of the declaration. For
 -- each such meta, it then prepends a new quantified variable to the declaration
 -- type and then solves the meta as that new variable.
-generaliseOverUnsolvedMetaVariables :: MonadMeta m
+generaliseOverUnsolvedMetaVariables :: TCM m
                                     => CheckedDecl
                                     -> m CheckedDecl
 generaliseOverUnsolvedMetaVariables decl = do
@@ -92,7 +93,7 @@ generaliseOverUnsolvedMetaVariables decl = do
       result <- foldM quantifyOverMeta decl (MetaSet.toList unsolvedMetas)
       substMetas result
 
-quantifyOverMeta :: MonadMeta m
+quantifyOverMeta :: TCM m
                  => CheckedDecl
                  -> Meta
                  -> m CheckedDecl
@@ -113,7 +114,7 @@ quantifyOverMeta decl meta = do
 --------------------------------------------------------------------------------
 -- Utilities
 
-prependBinderAndSolveMeta :: MonadMeta m
+prependBinderAndSolveMeta :: TCM m
                           => Meta
                           -> Visibility
                           -> Relevance
@@ -158,7 +159,7 @@ prependBinderAndSolveMeta meta v r binderName binderType decl = do
   logCompilerPassOutput $ prettyVerbose resultDecl
   return resultDecl
 
-removeContextsOfMetasIn :: MonadMeta m
+removeContextsOfMetasIn :: TCM m
                         => CheckedType
                         -> CheckedDecl
                         -> m (CheckedType, CheckedDecl)
@@ -209,7 +210,7 @@ addNewArgumentToMetaUses meta = mapDeclExprs (go (-1))
         goBinder = mapBinderType (go d)
         goArgs   = fmap (mapArgExpr (go d))
 
-addNewBinderToMetaContext :: MonadMeta m => Meta -> DBBinding -> CheckedType -> m ()
+addNewBinderToMetaContext :: TCM m => Meta -> DBBinding -> CheckedType -> m ()
 addNewBinderToMetaContext m newVarName newVarType =
   modifyMetasInfo m $ \(MetaInfo p n ctx) ->
     let entry = (newVarName, newVarType, Nothing) in
