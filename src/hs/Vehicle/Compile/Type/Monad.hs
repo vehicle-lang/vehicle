@@ -64,6 +64,14 @@ instance (Monoid w, MonadTypeChecker m) => MonadTypeChecker (ReaderT w m) where
   getsMetaCtx = lift . getsMetaCtx
   putMetaCtx = lift . putMetaCtx
   modifyMetaCtx = lift . modifyMetaCtx
+
+instance MonadTypeChecker m => MonadTypeChecker (StateT s m) where
+  getDeclContext = lift getDeclContext
+  addDeclContext d = mapStateT (addDeclContext d)
+  getMetaCtx = lift getMetaCtx
+  getsMetaCtx = lift . getsMetaCtx
+  putMetaCtx = lift . putMetaCtx
+  modifyMetaCtx = lift . modifyMetaCtx
 {-
 instance MonadTypeChecker m => MonadTypeChecker (ExceptT w m) where
   getDeclContext = lift getDeclContext

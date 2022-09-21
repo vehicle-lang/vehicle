@@ -187,6 +187,7 @@ polarityErrors = failTestGroup "PolarityErrors" MarabouBackend
   , testSpec { testName = "alternatingNegNeg"}
   , testSpec { testName = "alternatingImplies"}
   , testSpec { testName = "alternatingFun"}
+  , testSpec { testName = "alternatingIndirectNegFun"}
   , testSpec { testName = "quantifiedIfCondition"}
   ]
 

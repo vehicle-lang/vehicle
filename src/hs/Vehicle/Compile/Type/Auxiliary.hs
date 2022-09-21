@@ -5,12 +5,15 @@ module Vehicle.Compile.Type.Auxiliary
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Control.Monad.State (MonadState(..), evalStateT, modify)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.WeakHeadNormalForm (whnf)
 import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Type.MetaMap (MetaMap(..))
+import Vehicle.Compile.Type.MetaMap qualified as MetaMap
 
 -------------------------------------------------------------------------------
 -- Utilities for traversing auxiliary arguments.
@@ -169,11 +172,16 @@ addFunctionAuxiliaryInputOutputConstraints :: TCM m
 addFunctionAuxiliaryInputOutputConstraints = \case
   DefFunction p ident t e -> do
     logCompilerPass MaxDetail "insertion of function constraints" $ do
-      DefFunction p ident <$> decomposePiType (ident, p) 0 t <*> pure e
+      t' <- evalStateT (decomposePiType (ident, p) 0 t) mempty
+      return $ DefFunction p ident t' e
 
   d -> return d
 
-decomposePiType :: TCM m => DeclProvenance -> Int -> CheckedType -> m CheckedType
+decomposePiType :: (TCM m, MonadState (MetaMap CheckedExpr) m)
+                => DeclProvenance
+                -> Int
+                -> CheckedType
+                -> m CheckedType
 decomposePiType declProv@(ident, p) explicitBindingDepth = \case
   Pi p' binder res
     | isExplicit binder -> do
@@ -184,37 +192,46 @@ decomposePiType declProv@(ident, p) explicitBindingDepth = \case
       Pi p' binder <$> decomposePiType declProv explicitBindingDepth res
 
   outputType -> do
+    -- Reset the state to empty
+    modify (const mempty)
     let position = FunctionOutput (nameOf ident)
     traverseAux (replaceAux (p, position)) outputType
 
-replaceAux :: TCM m => (Provenance, FunctionPosition) -> AuxArgUpdate m
+replaceAux :: (TCM m, MonadState (MetaMap CheckedExpr) m)
+           => (Provenance, FunctionPosition)
+           -> AuxArgUpdate m
 replaceAux position p auxType = \case
   Nothing   -> compilerDeveloperError
     "Should not be missing auxiliary arguments during function constraint insertion"
   Just expr -> case auxType of
-    Lin -> do
-      newLin <- freshLinearityMeta p
-      addFunctionConstraint (LinearityTypeClass . FunctionLinearity) position expr newLin
-      return newLin
-    Pol -> do
-      newPol <- freshPolarityMeta p
-      addFunctionConstraint (PolarityTypeClass . FunctionPolarity) position expr newPol
-      return newPol
+    Lin -> addFunctionConstraint (LinearityTypeClass . FunctionLinearity) (freshLinearityMeta p) position expr
+    Pol -> addFunctionConstraint (PolarityTypeClass  . FunctionPolarity)  (freshPolarityMeta  p) position expr
 
-addFunctionConstraint :: TCM m
+addFunctionConstraint :: (TCM m, MonadState (MetaMap CheckedExpr) m)
                       => (FunctionPosition -> TypeClass)
+                      -> m CheckedExpr
                       -> (Provenance, FunctionPosition)
                       -> CheckedExpr
-                      -> CheckedExpr
-                      -> m ()
-addFunctionConstraint mkTC (declProv, position) existingExpr newMeta = do
+                      -> m CheckedExpr
+addFunctionConstraint mkTC createNewMeta (declProv, position) existingExpr = do
+  newExpr <- case existingExpr of
+      Meta _ m -> do
+        xs <- get
+        case MetaMap.lookup m xs of
+          Nothing -> do
+            m' <- createNewMeta
+            modify (MetaMap.insert m m')
+            return m'
+          Just e -> return e
+      _ -> createNewMeta
+
   let constraintArgs = ExplicitArg (provenanceOf existingExpr) <$> case position of
-          FunctionInput{}  -> [newMeta, existingExpr]
-          FunctionOutput{} -> [existingExpr, newMeta]
+          FunctionInput{}  -> [newExpr, existingExpr]
+          FunctionOutput{} -> [existingExpr, newExpr]
   let tc = mkTC position
   let constraint = BuiltinTypeClass declProv tc constraintArgs
 
   m <- freshTypeClassPlacementMeta declProv constraint
   addTypeClassConstraint declProv mempty m constraint
 
-  return ()
+  return newExpr
