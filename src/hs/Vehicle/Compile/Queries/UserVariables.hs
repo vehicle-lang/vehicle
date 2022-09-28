@@ -1,4 +1,4 @@
-module Vehicle.Compile.Normalise.UserVariables
+module Vehicle.Compile.Queries.UserVariables
   ( MetaNetwork
   , normUserVariables
   ) where
@@ -18,8 +18,9 @@ import Vehicle.Language.Print (prettySimple)
 import Vehicle.Compile.LetInsertion (insertLets)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Linearity
-import Vehicle.Compile.Normalise.QuantifierLifting (liftQuantifiers)
 import Vehicle.Compile.Normalise
+import Vehicle.Verify.Specification
+import Vehicle.Verify.Verifier.Interface
 
 --------------------------------------------------------------------------------
 -- Removing network applications
@@ -83,21 +84,18 @@ normUserVariables :: MonadCompile m
                   -> Verifier
                   -> NetworkContext
                   -> CheckedExpr
-                  -> m (PropertyState (CLSTProblem, MetaNetwork, UserVarReconstructionInfo))
+                  -> m (Query (CLSTProblem, MetaNetwork, UserVarReconstructionInfo))
 normUserVariables ident verifier networkCtx expr =
   logCompilerPass MinDetail "input/output variable insertion" $ do
-    -- First lift all the quantifiers to the top-level
-    quantLiftedExpr <- liftQuantifiers expr
-
-    -- Next let-lift all the network applications to avoid duplicates.
-    liftedNetworkAppExpr <- liftNetworkApplications networkCtx quantLiftedExpr
+    -- Let-lift all the network applications to avoid duplicates.
+    liftedNetworkAppExpr <- liftNetworkApplications networkCtx expr
 
     -- We can now calculate the meta-network.
     let metaNetwork = generateMetaNetwork networkCtx liftedNetworkAppExpr
     metaNetworkDetails <- traverse (getNetworkDetailsFromCtx networkCtx) metaNetwork
     logDebug MinDetail $ "Generated meta-network" <+> pretty metaNetwork <> line
 
-    -- Next remove all the user quantifiers which we assume are at the top-level.
+    -- Next remove all the user quantifiers which we must now be at the top-level.
     (quantifierlessExpr, userVariables) <- removeUserQuantifiers ident liftedNetworkAppExpr
 
     -- We prepend user variables with a special character to distinguish them in the
@@ -106,12 +104,20 @@ normUserVariables ident verifier networkCtx expr =
     let magicVariableNames = getMagicVariablesNames verifier metaNetworkDetails
 
     -- Generate the SMT problem
-    flip runReaderT (networkCtx, ident, metaNetwork, verifier, userVariableNames, magicVariableNames) $ do
-      generateCLSTProblem quantifierlessExpr
+    let problemState =
+          ( networkCtx
+          , ident
+          , metaNetwork
+          , verifier
+          , userVariableNames
+          , magicVariableNames
+          )
+
+    runReaderT (generateCLSTProblem quantifierlessExpr) problemState
 
 generateCLSTProblem :: MonadSMT m
                     => CheckedExpr
-                    -> m (PropertyState (CLSTProblem, MetaNetwork, UserVarReconstructionInfo))
+                    -> m (Query (CLSTProblem, MetaNetwork, UserVarReconstructionInfo))
 generateCLSTProblem assertionsExpr = do
   (_, _, metaNetwork, _, userVariables, _) <- ask
   variableNames <- getVariableNames
@@ -131,7 +137,7 @@ generateCLSTProblem assertionsExpr = do
 
   result <- compileAssertions normExprBody
 
-  traversePropertyState result $ \userAssertions -> do
+  flip traverseQuery result $ \userAssertions -> do
     let assertions = inputEqualityAssertions <> userAssertions
     let clst = CLSTProblem variableNames assertions
 
@@ -342,15 +348,15 @@ mkMagicVariableSeq p tElem = go
         "apparently miscalculated number of magic output variables:" <+>
         pretty tElem <+> pretty dims <+> pretty outputVarIndices
 
-compileAssertions :: MonadSMT m => CheckedExpr -> m (PropertyState [Assertion])
+compileAssertions :: MonadSMT m => CheckedExpr -> m (Query [Assertion])
 compileAssertions = \case
   BoolLiteral _ b -> return $ Trivial b
   e               -> NonTrivial <$> go e
   where
     go :: MonadSMT m => CheckedExpr -> m [Assertion]
     go expr = case expr of
-      Universe{}             -> typeError          currentPass "Universe"
-      Pi{}                   -> typeError          currentPass "Pi"
+      Universe{}             -> unexpectedTypeInExprError          currentPass "Universe"
+      Pi{}                   -> unexpectedTypeInExprError          currentPass "Pi"
       Hole{}                 -> resolutionError    currentPass "Hole"
       Meta{}                 -> resolutionError    currentPass "Meta"
       Ann{}                  -> normalisationError currentPass "Ann"

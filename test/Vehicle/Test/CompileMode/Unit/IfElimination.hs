@@ -15,7 +15,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile (parseAndTypeCheckExpr, typeCheckExpr)
 import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.IfElimination
+import Vehicle.Compile.Queries.IfElimination
 import Vehicle.Compile.CoDeBruijnify
 
 import Vehicle.Test.Utils

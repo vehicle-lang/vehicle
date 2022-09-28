@@ -1,4 +1,7 @@
-module Vehicle.Verify where
+module Vehicle.Verify
+  ( VerifyOptions(..)
+  , verify
+  ) where
 
 import Control.Monad (forM)
 import Control.Monad.Trans (MonadIO, liftIO)
@@ -7,33 +10,37 @@ import System.Directory (makeAbsolute, findExecutable, doesFileExist)
 import System.Exit (exitFailure)
 import System.IO (stderr)
 
-import Vehicle.Backend.Prelude
-import Vehicle.Backend.Marabou as Marabou (verifySpec)
 import Vehicle.Compile
-import Vehicle.Verify.VerificationStatus
+import Vehicle.Verify.ProofCache (ProofCache(..), writeProofCache)
+import Vehicle.Verify.Core
+import Vehicle.Verify.Verifier.Interface
+import Vehicle.Verify.Verifier (verifiers)
+import Vehicle.Verify.Specification.IO
 
 data VerifyOptions = VerifyOptions
   { specification    :: FilePath
-  , properties       :: Properties
+  , properties       :: PropertyNames
   , networkLocations :: NetworkLocations
   , datasetLocations :: DatasetLocations
   , parameterValues  :: ParameterValues
-  , verifier         :: Verifier
-  , verifierLocation :: Maybe FilePath
+  , verifier         :: VerifierIdentifier
+  , verifierLocation :: Maybe VerifierExecutable
   , proofCache       :: Maybe FilePath
   } deriving (Show)
 
 verify :: LoggingOptions -> VerifyOptions -> IO ()
-verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
-  verifierExectuable <- locateVerifier verifier verifierLocation
-  spec <- readSpecification loggingOptions specification
-  resources <- convertPathsToAbsolute $
-    Resources networkLocations datasetLocations parameterValues
+verify loggingOptions VerifyOptions{..} = do
+  let verifierImpl = verifiers verifier
+  verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
 
-  status <- case verifier of
-    Marabou -> do
-      marabouSpec <- liftIO $ compileToMarabou loggingOptions spec properties resources
-      liftIO $ Marabou.verifySpec verifierExectuable (networks resources) marabouSpec
+  resources <- convertPathsToAbsolute $ Resources networkLocations datasetLocations parameterValues
+
+  uncompiledSpecification <- readSpecification loggingOptions specification
+
+  compiledSpecification <- fromLoggerTIO loggingOptions $ do
+    liftIO $ compileToVerifier loggingOptions uncompiledSpecification properties resources verifierImpl
+
+  status <- verifySpecification verifierImpl verifierExecutable networkLocations compiledSpecification
 
   programOutput loggingOptions $ pretty status
 
@@ -42,32 +49,31 @@ verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
     Nothing -> return ()
     Just proofCachePath -> writeProofCache proofCachePath $ ProofCache
       { proofCacheVersion  = vehicleVersion
-      , originalSpec       = spec
+      , originalSpec       = uncompiledSpecification
       , originalProperties = properties
       , status             = status
       , resourceSummaries  = resourceSummaries
       }
 
-locateVerifier :: MonadIO m => Verifier -> Maybe FilePath -> m FilePath
-locateVerifier verifier = \case
+locateVerifierExecutable :: MonadIO m => Verifier -> Maybe VerifierExecutable -> m VerifierExecutable
+locateVerifierExecutable Verifier{..} = \case
   Just providedLocation -> liftIO $ do
     exists <- doesFileExist providedLocation
     if exists
       then return providedLocation
       else do
         hPutStrLn stderr $ layoutAsText $
-          "No" <+> pretty verifier <+> "executable found at the provided location" <+>
+          "No" <+> pretty verifierIdentifier <+> "executable found at the provided location" <+>
           squotes (pretty providedLocation) <> "."
         exitFailure
 
   Nothing -> do
-    let verifierName = verifierExecutableName verifier
-    maybeLocationOnPath <- liftIO $ findExecutable verifierName
+    maybeLocationOnPath <- liftIO $ findExecutable verifierExecutableName
     case maybeLocationOnPath of
       Just locationOnPath -> return locationOnPath
       Nothing -> liftIO $ do
         hPutStrLn stderr $ layoutAsText $
-          "Could not locate the executable" <+> squotes (pretty verifierName) <+>
+          "Could not locate the executable" <+> quotePretty verifierExecutableName <+>
           "via the PATH environment variable." <> line <>
           "Please either provide it using the `--verifierLocation` command line option" <+>
           "or add it to the PATH environment variable."

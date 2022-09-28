@@ -15,7 +15,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile (parseAndTypeCheckExpr)
 import Vehicle.Compile.AlphaEquivalence
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.QuantifierLifting
+import Vehicle.Compile.Queries.QuantifierLifting
 import Vehicle.Compile.CoDeBruijnify
 
 import Vehicle.Test.Utils

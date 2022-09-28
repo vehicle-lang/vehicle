@@ -1,6 +1,6 @@
 
 
-module Vehicle.Compile.Normalise.DNF
+module Vehicle.Compile.Queries.DNF
   ( convertToDNF
   , splitConjunctions
   , splitDisjunctions
@@ -34,8 +34,8 @@ dnf expr = do
     LVec{}      -> normalisationError currentPass "LVec"
     Ann{}       -> normalisationError currentPass "Ann"
     Let{}       -> normalisationError currentPass "Let"
-    Universe{}  -> typeError          currentPass "Universe"
-    Pi{}        -> typeError          currentPass "Pi"
+    Universe{}  -> unexpectedTypeInExprError          currentPass "Universe"
+    Pi{}        -> unexpectedTypeInExprError          currentPass "Pi"
     Hole{}      -> visibilityError    currentPass "Hole"
     Meta{}      -> resolutionError    currentPass "Meta"
     Lam{}       -> caseError          currentPass "Lam" ["QuantifierExpr"]

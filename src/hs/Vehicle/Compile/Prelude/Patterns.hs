@@ -567,6 +567,12 @@ pattern NotExpr :: Provenance -> NonEmpty (Arg binder var) -> Expr binder var
 pattern NotExpr p explicitArgs <- App p (Builtin _ Not) explicitArgs
   where NotExpr p explicitArgs =  App p (Builtin p Not) explicitArgs
 
+pattern AppliedAndExpr :: Provenance -> Expr binder var -> Expr binder var -> Expr binder var
+pattern AppliedAndExpr p x y <- AndExpr p [ExplicitArg _ x, ExplicitArg _ y]
+
+pattern AppliedOrExpr :: Provenance -> Expr binder var -> Expr binder var -> Expr binder var
+pattern AppliedOrExpr p x y <- OrExpr p [ExplicitArg _ x, ExplicitArg _ y]
+
 --------------------------------------------------------------------------------
 -- NumericOp2
 

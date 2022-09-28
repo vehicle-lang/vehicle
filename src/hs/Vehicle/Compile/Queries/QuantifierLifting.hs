@@ -1,5 +1,5 @@
 
-module Vehicle.Compile.Normalise.QuantifierLifting
+module Vehicle.Compile.Queries.QuantifierLifting
   ( liftQuantifiers
   ) where
 
@@ -29,8 +29,8 @@ recLift expr =
   case expr of
     Hole{}     -> resolutionError currentPass "Hole"
     Meta{}     -> resolutionError currentPass "Meta"
-    Universe{} -> typeError currentPass "Universe"
-    Pi{}       -> typeError currentPass "Pi"
+    Universe{} -> unexpectedTypeInExprError currentPass "Universe"
+    Pi{}       -> unexpectedTypeInExprError currentPass "Pi"
     Ann{}      -> normalisationError currentPass "Ann"
     Let{}      -> normalisationError currentPass "Let"
 

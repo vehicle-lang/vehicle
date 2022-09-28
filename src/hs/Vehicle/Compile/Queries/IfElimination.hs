@@ -1,5 +1,5 @@
 
-module Vehicle.Compile.Normalise.IfElimination
+module Vehicle.Compile.Queries.IfElimination
   ( eliminateIfs
   ) where
 
@@ -59,10 +59,10 @@ liftAndElimIf expr = case expr of
   Hole{}     -> return expr
   Meta{}     -> return expr
 
-  Pi{}       -> typeError currentPass "Pi"
+  Pi{}       -> unexpectedTypeInExprError currentPass "Pi"
 
-  ExistsRatExpr p binder body -> ExistsRatExpr p binder . elimIf <$> liftAndElimIf body
-  ForallRatExpr p binder body -> ForallRatExpr p binder . elimIf <$> liftAndElimIf body
+  PostulatedQuantifierExpr ident p binder body ->
+    PostulatedQuantifierExpr ident p binder . elimIf <$> liftAndElimIf body
 
   NotExpr     p   args -> NotExpr     p   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
   AndExpr     p   args -> AndExpr     p   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args

@@ -11,13 +11,15 @@ import Test.Tasty
 
 import Vehicle
 import Vehicle.Verify
-import Vehicle.Verify.VerificationStatus hiding (version)
 import Vehicle.Prelude
 import Vehicle.Resource
 import Vehicle.Backend.Prelude
 
 import Vehicle.Test.Utils.Golden ( goldenFileTest, omitFilePaths )
 import Vehicle.Test.Utils
+import Vehicle.Verify.Specification.Status
+import Vehicle.Verify.Verifier.Interface
+import Vehicle.Verify.Core (VerifierIdentifier)
 
 --------------------------------------------------------------------------------
 -- Tests
@@ -62,7 +64,7 @@ makeTest location name resources backend = do
   let run = runVehicle loggingSettings inputFile outputFile verifier resources
   return $ goldenFileTest testName run omitFilePaths goldenFile outputFile
 
-runVehicle :: TestLoggingSettings -> FilePath -> FilePath -> Verifier -> Resources -> IO ()
+runVehicle :: TestLoggingSettings -> FilePath -> FilePath -> VerifierIdentifier -> Resources -> IO ()
 runVehicle (logFile, debugLevel) inputFile outputFile verifier Resources{..} = do
   -- Total hack until we get Marabou installed properly
   verifierLocation <- findExecutable "which"
@@ -87,8 +89,8 @@ runVehicle (logFile, debugLevel) inputFile outputFile verifier Resources{..} = d
 mkStatus :: [(Text, PropertyStatus)] -> SpecificationStatus
 mkStatus = SpecificationStatus . Map.fromList
 
-getVerifier :: Backend -> Verifier
+getVerifier :: Backend -> VerifierIdentifier
 getVerifier = \case
-  Verifier v -> v
+  VerifierBackend v -> v
   backend    -> error $ layoutAsString message
     where message = "Non-verifier backend" <+> quotePretty backend <+> "passed to verifier test."

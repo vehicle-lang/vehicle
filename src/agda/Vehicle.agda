@@ -63,7 +63,7 @@ checkSpecificationMacro args hole = do
   output ← runCmdTC (checkCmd args)
   if checkSuccessful output
     then unify hole `valid
-    else typeError (strErr ("Error: " ++ output) ∷ [])
+    else unexpectedTypeInExprError (strErr ("Error: " ++ output) ∷ [])
 
 macro
   checkSpecification : CheckArgs → Term → TC ⊤

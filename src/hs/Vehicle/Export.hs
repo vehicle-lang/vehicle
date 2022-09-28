@@ -1,11 +1,12 @@
 
 module Vehicle.Export where
 
+import System.Directory (makeAbsolute)
+
 import Vehicle.Backend.Prelude
-import Vehicle.Verify.VerificationStatus
 import Vehicle.Compile
 import Vehicle.Backend.Agda (writeAgdaFile, AgdaOptions(..))
-import System.Directory (makeAbsolute)
+import Vehicle.Verify.ProofCache
 
 data ExportOptions = ExportOptions
   { target             :: ITP

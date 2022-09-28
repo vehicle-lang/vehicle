@@ -139,8 +139,8 @@ compileExpr e = showExit $ do
     V.Ann{}      -> normalisationError "lossFunction" "Ann"
     V.Let{}      -> normalisationError "lossFunction" "Let"
     V.Lam{}      -> normalisationError "lossFunction" "Lam"
-    V.Pi{}       -> typeError "lossFunction" "Pi"
-    V.Universe{} -> typeError "lossFunction" "Universe"
+    V.Pi{}       -> unexpectedTypeInExprError "lossFunction" "Pi"
+    V.Universe{} -> unexpectedTypeInExprError "lossFunction" "Universe"
     _            -> unexpectedExprError currentPass (prettySimple e)
 
 

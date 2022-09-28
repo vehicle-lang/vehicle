@@ -7,7 +7,8 @@ import Prettyprinter (list)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Backend.Prelude (Backend)
+import Vehicle.Verify.Core (VerifierIdentifier)
+import Vehicle.Backend.Prelude
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -123,14 +124,14 @@ data CompileError
   -- Backend errors
   | NoPropertiesFound
   | UnsupportedResource              Backend Identifier Provenance ResourceType
-  | UnsupportedAlternatingQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
-  | UnsupportedVariableType          Backend Identifier Provenance Symbol CheckedType [Builtin]
   | UnsupportedInequality            Backend Identifier Provenance
   | UnsupportedPolymorphicEquality   Backend Provenance Symbol
   | UnsupportedBuiltin               Backend Provenance Builtin
   | UnsupportedNonMagicVariable      Backend Provenance Symbol
-  | UnsupportedNonLinearConstraint   Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
   | NoNetworkUsedInProperty          Backend Provenance Identifier
+  | UnsupportedVariableType           VerifierIdentifier Identifier Provenance Symbol CheckedType [Builtin]
+  | UnsupportedAlternatingQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
+  | UnsupportedNonLinearConstraint   Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
   deriving (Show)
 
 --------------------------------------------------------------------------------
@@ -153,8 +154,8 @@ normalisationError :: MonadError CompileError m => Doc () -> Doc () -> m b
 normalisationError pass name = compilerDeveloperError $
   unexpectedExpr pass name <+> "We should have normalised this out."
 
-typeError :: MonadError CompileError m => Doc () -> Doc () -> m b
-typeError pass name = compilerDeveloperError $
+unexpectedTypeInExprError :: MonadError CompileError m => Doc () -> Doc () -> m b
+unexpectedTypeInExprError pass name = compilerDeveloperError $
   unexpectedExpr pass name <+> "We should not be processing types."
 
 visibilityError :: MonadError CompileError m => Doc () -> Doc () -> m b

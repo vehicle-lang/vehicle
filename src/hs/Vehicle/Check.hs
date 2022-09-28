@@ -9,7 +9,8 @@ import Control.Monad.Trans (MonadIO(liftIO))
 
 import Vehicle.Prelude
 import Vehicle.Resource
-import Vehicle.Verify.VerificationStatus (readProofCache, isVerified, ProofCache(..))
+import Vehicle.Verify.Specification.Status (isVerified)
+import Vehicle.Verify.ProofCache (readProofCache, ProofCache(..))
 
 --------------------------------------------------------------------------------
 -- Checking

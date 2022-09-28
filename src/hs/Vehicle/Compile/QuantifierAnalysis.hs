@@ -8,12 +8,12 @@ import Control.Monad.Except (MonadError(..))
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Language.Print (prettyFriendly)
 import Vehicle.Compile.Normalise.Core ( nfNot )
+import Vehicle.Verify.Core (VerifierIdentifier)
 
 checkQuantifiersAndNegateIfNecessary :: MonadCompile m
-                                     => Backend
+                                     => VerifierIdentifier
                                      -> Identifier
                                      -> CheckedExpr
                                      -> m (Bool, CheckedExpr)
@@ -37,7 +37,7 @@ checkQuantifiersAndNegateIfNecessary backend ident expr =
 -- returning the quantifier. Defaults to returning `All` if the expression
 -- contains no quantifiers.
 checkQuantifiersAreHomogeneous :: forall m . MonadCompile m
-                               => Backend
+                               => VerifierIdentifier
                                -> Identifier
                                -> CheckedExpr
                                -> m Quantifier
@@ -48,8 +48,8 @@ checkQuantifiersAreHomogeneous target ident expr = maybe Forall fst <$> go expr
       Ann{}       -> normalisationError currentPass "Ann"
       Let{}       -> normalisationError currentPass "Let"
       Lam{}       -> normalisationError currentPass "Lam"
-      Universe{}  -> typeError          currentPass "Universe"
-      Pi{}        -> typeError          currentPass "Pi"
+      Universe{}  -> unexpectedTypeInExprError          currentPass "Universe"
+      Pi{}        -> unexpectedTypeInExprError          currentPass "Pi"
       Hole{}      -> visibilityError    currentPass "Hole"
       Meta{}      -> resolutionError    currentPass "Meta"
 

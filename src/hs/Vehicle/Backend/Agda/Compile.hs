@@ -20,7 +20,7 @@ import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 
 import Vehicle.Language.Print
 import Vehicle.Compile.Sugar
-import Vehicle.Compile.Prelude hiding (CompileOptions(..))
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.SupplyNames (supplyDBNames)

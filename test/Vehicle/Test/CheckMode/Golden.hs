@@ -13,12 +13,13 @@ import Test.Tasty
 
 import Vehicle
 import Vehicle.Check
-import Vehicle.Verify.VerificationStatus hiding (version)
 import Vehicle.Prelude
 import Vehicle.Resource
 
 import Vehicle.Test.Utils ( goldenFileTest, omitFilePaths, baseTestDir )
-import Vehicle.Compile.Prelude (PropertyState(..))
+import Vehicle.Verify.Specification.Status
+import Vehicle.Verify.ProofCache
+import Vehicle.Verify.Specification
 
 tests :: TestTree
 tests = testGroup "GoldenTests"
@@ -93,5 +94,7 @@ runTest name status alterNetwork = do
   removeFileIfExists networkFile
 
 mkStatus :: [(Text, SatisfiabilityStatus)] -> SpecificationStatus
-mkStatus = SpecificationStatus . Map.fromList . fmap (second satToProperty)
-  where satToProperty = SinglePropertyStatus False .  NonTrivial
+mkStatus xs = do
+  let satToProperty s = SinglePropertyStatus (False, NonTrivial s)
+  let xs' = fmap (second satToProperty) xs :: [(Text, PropertyStatus)]
+  SpecificationStatus (Map.fromList xs')

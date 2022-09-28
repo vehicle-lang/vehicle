@@ -1,6 +1,5 @@
 module Vehicle.Backend.Prelude where
 
-import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Data.Bifunctor (Bifunctor(first))
 import Data.Version (Version, makeVersion)
@@ -8,11 +7,13 @@ import System.FilePath (takeDirectory)
 import System.Directory (createDirectoryIfMissing)
 
 import Vehicle.Prelude
+import Vehicle.Verify.Core
+
 import Paths_vehicle qualified as VehiclePath
 
 data Backend
   = ITP ITP
-  | Verifier Verifier
+  | VerifierBackend VerifierIdentifier
   | LossFunction
   | TypeCheck
   deriving (Eq, Show)
@@ -21,61 +22,47 @@ data ITP
   = Agda
   deriving (Eq, Show, Read)
 
-data Verifier
-  = Marabou
-  deriving (Eq, Show, Read)
-
-instance Pretty Verifier where
-  pretty = pretty . show
-
-verifierExecutableName :: Verifier -> String
-verifierExecutableName = \case
-  Marabou -> "marabou"
-
-magicVariablePrefixes :: Verifier -> (Text, Text)
-magicVariablePrefixes Marabou = ("x", "y")
-
 pattern AgdaBackend :: Backend
 pattern AgdaBackend = ITP Agda
 
 pattern MarabouBackend :: Backend
-pattern MarabouBackend = Verifier Marabou
+pattern MarabouBackend = VerifierBackend Marabou
 
 instance Pretty Backend where
   pretty = \case
-    ITP x         -> pretty $ show x
-    Verifier x    -> pretty $ show x
-    LossFunction  -> "LossFunction"
-    TypeCheck     -> "TypeCheck"
+    ITP x             -> pretty $ show x
+    VerifierBackend x -> pretty $ show x
+    LossFunction      -> "LossFunction"
+    TypeCheck         -> "TypeCheck"
 
 instance Read Backend where
   readsPrec d x =
     case readsPrec d x of
       [] -> case readsPrec d x of
         []  -> []
-        res -> fmap (first Verifier) res
+        res -> fmap (first VerifierBackend) res
       res -> fmap (first ITP) res
 
 commentTokenOf :: Backend -> Maybe (Doc a)
 commentTokenOf = \case
-  Verifier Marabou -> Nothing
-  ITP Agda         -> Just "--"
-  LossFunction     -> Nothing
-  TypeCheck        -> Nothing
+  VerifierBackend Marabou -> Nothing
+  ITP Agda                -> Just "--"
+  LossFunction            -> Nothing
+  TypeCheck               -> Nothing
 
 versionOf :: Backend -> Maybe Version
 versionOf target = case target of
-  Verifier Marabou -> Nothing
-  ITP Agda         -> Just $ makeVersion [2,6,2]
-  LossFunction     -> Nothing
-  TypeCheck        -> Nothing
+  VerifierBackend Marabou -> Nothing
+  ITP Agda                -> Just $ makeVersion [2,6,2]
+  LossFunction            -> Nothing
+  TypeCheck               -> Nothing
 
 extensionOf :: Backend -> String
 extensionOf = \case
-  Verifier Marabou -> "-marabou"
-  ITP Agda         -> ".agda"
-  LossFunction     -> ".json"
-  TypeCheck        -> ""
+  VerifierBackend Marabou -> "-marabou"
+  ITP Agda                -> ".agda"
+  LossFunction            -> ".json"
+  TypeCheck               -> ""
 
 -- |Generate the file header given the token used to start comments in the
 -- target language

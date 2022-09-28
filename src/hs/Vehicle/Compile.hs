@@ -2,8 +2,8 @@ module Vehicle.Compile
   ( module CompilePrelude
   , CompileOptions(..)
   , compile
-  , compileToMarabou
   , compileToAgda
+  , compileToVerifier
   , typeCheck
   , typeCheckExpr
   , parseAndTypeCheckExpr
@@ -19,7 +19,6 @@ import System.IO (hPutStrLn)
 import System.Exit (exitFailure)
 import System.Directory (makeAbsolute)
 
-import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
@@ -28,13 +27,29 @@ import Vehicle.Compile.DependencyAnalysis
 import Vehicle.Compile.Elaborate.External as External (elaborate, elaborateExpr)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
-import Vehicle.Backend.Marabou qualified as Marabou
-import Vehicle.Backend.Marabou (MarabouSpec)
+import Vehicle.Verify.Verifier (verifiers)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.LossFunction ( LExpr, writeLossFunctionFiles)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.ExpandResources
+import Vehicle.Backend.Prelude
+import Vehicle.Compile.Queries (compileToQueries, QueryData)
+import Vehicle.Verify.Specification.IO
+import Vehicle.Verify.Specification
+import Vehicle.Verify.Verifier.Interface
+
+data CompileOptions = CompileOptions
+  { target                :: Backend
+  , specification         :: FilePath
+  , declarationsToCompile :: Set Symbol
+  , outputFile            :: Maybe FilePath
+  , networkLocations      :: NetworkLocations
+  , datasetLocations      :: DatasetLocations
+  , parameterValues       :: ParameterValues
+  , moduleName            :: Maybe String
+  , proofCache            :: Maybe FilePath
+  } deriving (Show)
 
 compile :: LoggingOptions -> CompileOptions -> IO ()
 compile loggingOptions CompileOptions{..} = do
@@ -51,9 +66,12 @@ compile loggingOptions CompileOptions{..} = do
       agdaCode <- compileToAgda loggingOptions agdaOptions spec declarationsToCompile resources
       writeAgdaFile outputFile agdaCode
 
-    Verifier Marabou -> do
-      marabouProperties <- compileToMarabou loggingOptions spec declarationsToCompile resources
-      Marabou.writeSpecFiles outputFile marabouProperties
+    VerifierBackend verifierIdentifier -> do
+      let verifier = verifiers verifierIdentifier
+      compiledSpecification <- compileToVerifier loggingOptions spec declarationsToCompile resources verifier
+      case outputFile of
+        Nothing     -> outputSpecification loggingOptions compiledSpecification
+        Just folder -> writeSpecificationFiles verifier folder compiledSpecification
 
     LossFunction -> do
       lossFunction <- compileToLossFunction loggingOptions spec declarationsToCompile resources
@@ -63,18 +81,20 @@ compile loggingOptions CompileOptions{..} = do
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
 
-compileToMarabou :: LoggingOptions
-                 -> Specification
-                 -> Properties
-                 -> Resources
-                 -> IO MarabouSpec
-compileToMarabou loggingOptions spec properties resources =
+compileToVerifier :: LoggingOptions
+                  -> SpecificationText
+                  -> PropertyNames
+                  -> Resources
+                  -> Verifier
+                  -> IO (Specification QueryData)
+compileToVerifier loggingOptions spec properties resources verifier =
   fromLoggedEitherIO loggingOptions $ do
     (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec properties resources
-    Marabou.compile prog propertyCtx networkCtx
+    compileToQueries verifier prog propertyCtx networkCtx
+
 
 compileToLossFunction :: LoggingOptions
-                      -> Specification
+                      -> SpecificationText
                       -> Set Symbol
                       -> Resources
                       -> IO [LExpr]
@@ -85,8 +105,8 @@ compileToLossFunction loggingOptions spec declarationsToCompile resources = do
 
 compileToAgda :: LoggingOptions
               -> AgdaOptions
-              -> Specification
-              -> Properties
+              -> SpecificationText
+              -> PropertyNames
               -> Resources
               -> IO (Doc a)
 compileToAgda loggingOptions agdaOptions spec properties _resources =
@@ -97,7 +117,7 @@ compileToAgda loggingOptions agdaOptions spec properties _resources =
 --------------------------------------------------------------------------------
 -- Useful functions that apply multiple compiler passes
 
-readSpecification :: MonadIO m => LoggingOptions -> FilePath -> m Specification
+readSpecification :: MonadIO m => LoggingOptions -> FilePath -> m SpecificationText
 readSpecification LoggingOptions{..} inputFile = do
   liftIO $ TIO.readFile inputFile `catch` \ (e :: IOException) -> do
     hPutStrLn errorHandle $
@@ -115,7 +135,7 @@ parseAndTypeCheckExpr expr = do
 -- | Parses and type-checks the program but does
 -- not load networks and datasets from disk.
 typeCheckProg :: MonadCompile m
-              => Specification
+              => SpecificationText
               -> Set Symbol
               -> m (CheckedProg, PropertyContext, DependencyGraph)
 typeCheckProg spec declarationsToCompile = do
@@ -130,8 +150,8 @@ typeCheckProg spec declarationsToCompile = do
 -- checks the network types from disk. Used during compilation to
 -- verification queries.
 typeCheckProgAndLoadResources :: (MonadIO m, MonadCompile m)
-                              => Specification
-                              -> Properties
+                              => SpecificationText
+                              -> PropertyNames
                               -> Resources
                               -> m (CheckedProg, PropertyContext, NetworkContext, DependencyGraph)
 typeCheckProgAndLoadResources spec properties resources = do
