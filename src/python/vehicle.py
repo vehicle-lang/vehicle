@@ -149,7 +149,8 @@ class LossFunctionTranslation:
                 elif contents[0] == 'Any':
                     min_loss = min(min_loss, body_loss(context))
                 context.pop(0)
-            return min_loss
+            if contents[0] == 'All': return max_loss 
+            elif contents[0] == 'Any': return min_loss
                 
         return result_func
 

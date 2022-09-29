@@ -1,0 +1,14 @@
+{
+    "tag": "Domain",
+    "contents":
+        [
+            {
+                "tag": "Con",
+                "contents": 4
+            },
+            {
+                "tag": "Con",
+                "contents": 7
+            }
+        ]
+}

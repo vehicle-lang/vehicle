@@ -61,12 +61,10 @@ if __name__ == '__main__':
     path_to_spec = '/Users/marcocasadio/Projects/vehicle/test/specs/bounded.vcl'
     function_name = 'bounded'
     model = keras.Sequential([
-        tf.keras.layers.Input(shape=(1,)),
+        keras.layers.Input(shape=(1,)),
         keras.layers.Dense(units=1),
     ])
     resources = {'f': model}
-    #loss = generate_loss_function(pathToSpec, functionName, resources)
-    #print(loss(1))
 
     batch_size = 1
     epochs = 4
