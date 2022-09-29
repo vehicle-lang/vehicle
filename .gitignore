@@ -52,6 +52,9 @@ package-lock.json
 # Emacs
 MAlonzo/**
 
+# Python
+**/__pycache__/
+
 # Vehicle build system
 build/
 bin/

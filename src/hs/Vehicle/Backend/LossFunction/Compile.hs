@@ -55,6 +55,7 @@ data LExpr
   | Quant Quantifier Symbol Domain LExpr
   | At LExpr LExpr
   | TensorLit [LExpr]
+  | Lambda Symbol LExpr
   deriving (Eq, Ord, Generic, Show)
 
 instance FromJSON LExpr
