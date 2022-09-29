@@ -4,10 +4,10 @@ import tensorflow as tf
 import numpy as np
 
 
-def train(model, train_dataset, test_dataset, epochs, alfa, beta, pathToSpec, functionName, resources):
+def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, functionName, resources):
     optimizer = keras.optimizers.Adam()
     ce_batch_loss = keras.losses.BinaryCrossentropy()
-    vehicle_batch_loss = generate_loss_function(pathToSpec, functionName, resources)
+    vehicle_batch_loss = generate_loss_function(path_to_spec, functionName, resources)
 
     train_acc_metric = keras.metrics.BinaryCrossentropy()
     test_acc_metric = keras.metrics.BinaryCrossentropy()
@@ -58,8 +58,8 @@ def train(model, train_dataset, test_dataset, epochs, alfa, beta, pathToSpec, fu
 
 
 if __name__ == '__main__':
-    pathToSpec = '/Users/marcocasadio/Projects/vehicle/test/specs/bounded.vcl'
-    functionName = 'bounded'
+    path_to_spec = '/Users/marcocasadio/Projects/vehicle/test/specs/bounded.vcl'
+    function_name = 'bounded'
     model = keras.Sequential([
         tf.keras.layers.Input(shape=(1,)),
         keras.layers.Dense(units=1),
@@ -87,4 +87,4 @@ if __name__ == '__main__':
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
     test_dataset = test_dataset.batch(batch_size)
     
-    model = train(model, train_dataset, test_dataset, epochs, alfa, beta, pathToSpec, functionName, resources)
+    model = train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, function_name, resources)
