@@ -79,7 +79,7 @@ for the :code:`verify` command.
 .. option:: --verifierLocation, -l
 
     Location of the executable for the verifier. If not provided, then Vehicle
-    will search for the executable in the ``PATH`` environment variable.
+    will search for the ``Marabou`` executable in the ``PATH`` environment variable.
 
 .. option:: --proofCache, -c
 

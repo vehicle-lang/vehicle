@@ -55,7 +55,6 @@ to discuss it with us.
 #### Verifier backends
 
 - [Marabou](https://github.com/NeuralNetworkVerification/Marabou)
-   - We require a branch of the main Marabou repo to which we've added native support for ONNX files, so it is recommended you install it via `cabal run build init` command. We have an [open PR](https://github.com/NeuralNetworkVerification/Marabou/pull/553) to get it merged into Marabou.
 
 #### Interactive Theorem Prover backends
 
