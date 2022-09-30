@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macOS-latest, ubuntu-latest, windows-latest]
+        os: [ubuntu-latest] #, macOS-latest, windows-latest]
         ghc: ["9.0.1"]
         cabal: ["3.4"]
 
@@ -66,23 +66,29 @@ jobs:
       - name: Install dependencies
         run: cabal v2-run build init
 
-      - name: Run tests
-        run: cabal v2-run build basic-tests
+      #- name: Run tests
+      #  run: cabal v2-run build basic-tests
+
+      - name: Install Vehicle
+        run: cabal install exe:vehicle
+
+      - name: Echo Cabal path
+        run: echo "${{ steps.setup-haskell.outputs.cabal-path}}"
 
 
   ####################
   ## Run Agda tests ##
   ####################
 
-  run-agda-tests:
-    name: Run Agda tests on ${{ matrix.os }}
-    needs: build
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macOS-latest, ubuntu-latest, windows-latest]
-        agda: ["2.6.2.2"]
+  # run-agda-tests:
+  #   name: Run Agda tests on ${{ matrix.os }}
+  #   needs: build
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     matrix:
+  #       os: [macOS-latest, ubuntu-latest, windows-latest]
+  #       agda: ["2.6.2.2"]
 
-    steps:
-      - name: Install Agda
-        run: cabal v2-install --ignore-project Agda-${{ matrix.agda }}
+  #   steps:
+  #     - name: Install Agda
+  #       run: cabal v2-install --ignore-project Agda-${{ matrix.agda }}
