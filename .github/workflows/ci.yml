@@ -11,9 +11,9 @@ on:
 
 jobs:
 
-  -------------------
-  -- Build Vehicle --
-  -------------------
+  ###################
+  ## Build Vehicle ##
+  ###################
 
   build:
     name: Build Vehicle on ${{ matrix.os }} / GHC ${{ matrix.ghc }}
@@ -70,9 +70,9 @@ jobs:
         run: cabal v2-run build basic-tests
 
 
-  --------------------
-  -- Run Agda tests --
-  --------------------
+  ####################
+  ## Run Agda tests ##
+  ####################
 
   run-agda-tests:
     name: Run Agda tests on ${{ matrix.os }}
