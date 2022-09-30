@@ -66,8 +66,8 @@ jobs:
       - name: Install dependencies
         run: cabal v2-run build init
 
-      #- name: Run tests
-      #  run: cabal v2-run build basic-tests
+      - name: Run tests
+        run: cabal v2-run build basic-tests
 
       - name: Install Vehicle
         run: cabal install exe:vehicle
