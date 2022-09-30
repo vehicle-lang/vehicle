@@ -10,15 +10,19 @@ on:
       - synchronize
 
 jobs:
+
+  -------------------
+  -- Build Vehicle --
+  -------------------
+
   build:
-    name: ${{ matrix.os }} / GHC ${{ matrix.ghc }}
+    name: Build Vehicle on ${{ matrix.os }} / GHC ${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [macOS-latest, ubuntu-latest, windows-latest]
         ghc: ["9.0.1"]
         cabal: ["3.4"]
-        agda: ["2.6.2.2"]
 
     steps:
       - name: Checkout
@@ -36,7 +40,8 @@ jobs:
           cabal v2-update
           cabal v2-freeze --enable-tests --enable-benchmarks
 
-      - name: Cache ~/.cabal/store and dist-newstyle
+      - name: cache ~/.cabal/store and dist-newstyle
+        id: haskell-cache
         uses: actions/cache@v2
         with:
           path: |
@@ -55,9 +60,6 @@ jobs:
         run: echo "$env:APPDATA\cabal\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: powershell
 
-      - name: Install Agda
-        run: cabal v2-install --ignore-project Agda-${{ matrix.agda }}
-
       - name: Build shakefile
         run: cabal v2-build exe:build
 
@@ -66,3 +68,21 @@ jobs:
 
       - name: Run tests
         run: cabal v2-run build basic-tests
+
+
+  --------------------
+  -- Run Agda tests --
+  --------------------
+
+  run-agda-tests:
+    name: Run Agda tests on ${{ matrix.os }}
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macOS-latest, ubuntu-latest, windows-latest]
+        agda: ["2.6.2.2"]
+
+    steps:
+      - name: Install Agda
+        run: cabal v2-install --ignore-project Agda-${{ matrix.agda }}
