@@ -75,20 +75,47 @@ jobs:
       - name: Echo Cabal path
         run: echo "${{ steps.setup-haskell.outputs.cabal-path}}"
 
+      - uses: actions/upload-artifact@v2
+        with:
+          name: vehicle-executable-${{ matrix.os }}
+          path: ~/.cabal/bin/vehicle
 
   ####################
   ## Run Agda tests ##
   ####################
 
-  # run-agda-tests:
-  #   name: Run Agda tests on ${{ matrix.os }}
-  #   needs: build
-  #   runs-on: ${{ matrix.os }}
-  #   strategy:
-  #     matrix:
-  #       os: [macOS-latest, ubuntu-latest, windows-latest]
-  #       agda: ["2.6.2.2"]
+  run-agda-tests:
+    name: Run Agda tests on ${{ matrix.os }}
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        agda: ["2.6.2.2"]
 
-  #   steps:
-  #     - name: Install Agda
-  #       run: cabal v2-install --ignore-project Agda-${{ matrix.agda }}
+    steps:
+      - name: Download Vehicle executable
+      - uses: actions/download-artifact@v2
+        with:
+          name: vehicle-executable-${{ matrix.os }}
+
+      # - name: Install Agda
+      #  run: cabal v2-install --ignore-project Agda-${{ matrix.agda }}
+
+  #######################
+  ## Run Marabou tests ##
+  #######################
+
+  run-marabou-tests:
+    name: Run Marabou tests on ${{ matrix.os }}
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+      - name: Download Vehicle executable
+      - uses: actions/download-artifact@v2
+        with:
+          name: vehicle-executable-${{ matrix.os }}
