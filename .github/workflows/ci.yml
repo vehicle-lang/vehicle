@@ -75,7 +75,8 @@ jobs:
       - name: Echo Cabal path
         run: echo "${{ steps.setup-haskell.outputs.cabal-path}}"
 
-      - uses: actions/upload-artifact@v2
+      - name: Upload Vehicle executable
+        uses: actions/upload-artifact@v2
         with:
           name: vehicle-executable-${{ matrix.os }}
           path: ~/.cabal/bin/vehicle
@@ -95,7 +96,7 @@ jobs:
 
     steps:
       - name: Download Vehicle executable
-      - uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v2
         with:
           name: vehicle-executable-${{ matrix.os }}
 
@@ -116,6 +117,6 @@ jobs:
 
     steps:
       - name: Download Vehicle executable
-      - uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v2
         with:
           name: vehicle-executable-${{ matrix.os }}
