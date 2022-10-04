@@ -30,7 +30,7 @@ import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
 import Vehicle.Verify.Verifier (verifiers)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction qualified as LossFunction
-import Vehicle.Backend.LossFunction ( LExpr, writeLossFunctionFiles)
+import Vehicle.Backend.LossFunction ( LDecl, writeLossFunctionFiles)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.ExpandResources
 import Vehicle.Backend.Prelude
@@ -97,7 +97,7 @@ compileToLossFunction :: LoggingOptions
                       -> SpecificationText
                       -> Set Symbol
                       -> Resources
-                      -> IO [LExpr]
+                      -> IO [LDecl]
 compileToLossFunction loggingOptions spec declarationsToCompile resources = do
   fromLoggedEitherIO loggingOptions $ do
     (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec declarationsToCompile resources

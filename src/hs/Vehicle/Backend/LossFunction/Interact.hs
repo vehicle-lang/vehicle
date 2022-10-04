@@ -10,7 +10,7 @@ import Data.Aeson.Encode.Pretty
 import Data.ByteString.Lazy.Char8
 
 
-encode :: LExpr -> String
+encode :: LDecl -> String
 encode e = unpack $ flip encodePretty' e $ Config
   { confIndent          = Spaces 2
   , confCompare         = \t1 t2 -> compare t2 t1
@@ -18,6 +18,6 @@ encode e = unpack $ flip encodePretty' e $ Config
   , confTrailingNewline = False
   }
 
-writeLossFunctionFiles :: Maybe FilePath -> [LExpr] -> IO ()
+writeLossFunctionFiles :: Maybe FilePath -> [LDecl] -> IO ()
 writeLossFunctionFiles filepath functions = forM_ functions $ \function -> do
   writeResultToFile LossFunction filepath (pretty (encode function))
