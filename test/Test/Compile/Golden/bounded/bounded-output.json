@@ -1,5 +1,5 @@
 {
-  "tag": "Quant",
+  "tag": "Quantifier",
   "contents": [
     "All",
     "x",
@@ -8,37 +8,37 @@
       "tag": "Max",
       "contents": [
         {
-          "tag": "Neg",
+          "tag": "Negation",
           "contents": {
             "tag": "Min",
             "contents": [
               {
-                "tag": "Neg",
+                "tag": "Negation",
                 "contents": {
-                  "tag": "Sub",
+                  "tag": "Subtraction",
                   "contents": [
                     {
-                      "tag": "Con",
+                      "tag": "Constant",
                       "contents": 0
                     },
                     {
-                      "tag": "Var",
+                      "tag": "Variable",
                       "contents": 0
                     }
                   ]
                 }
               },
               {
-                "tag": "Neg",
+                "tag": "Negation",
                 "contents": {
-                  "tag": "Sub",
+                  "tag": "Subtraction",
                   "contents": [
                     {
-                      "tag": "Var",
+                      "tag": "Variable",
                       "contents": 0
                     },
                     {
-                      "tag": "Con",
+                      "tag": "Constant",
                       "contents": 1
                     }
                   ]
@@ -51,27 +51,27 @@
           "tag": "Min",
           "contents": [
             {
-              "tag": "Neg",
+              "tag": "Negation",
               "contents": {
-                "tag": "Sub",
+                "tag": "Subtraction",
                 "contents": [
                   {
-                    "tag": "Con",
+                    "tag": "Constant",
                     "contents": 0
                   },
                   {
                     "tag": "At",
                     "contents": [
                       {
-                        "tag": "NetApp",
+                        "tag": "NetworkApplication",
                         "contents": [
                           "f",
                           [
                             {
-                              "tag": "TensorLit",
+                              "tag": "TensorLiteral",
                               "contents": [
                                 {
-                                  "tag": "Var",
+                                  "tag": "Variable",
                                   "contents": 0
                                 }
                               ]
@@ -80,7 +80,7 @@
                         ]
                       },
                       {
-                        "tag": "Con",
+                        "tag": "Constant",
                         "contents": 0
                       }
                     ]
@@ -89,23 +89,23 @@
               }
             },
             {
-              "tag": "Neg",
+              "tag": "Negation",
               "contents": {
-                "tag": "Sub",
+                "tag": "Subtraction",
                 "contents": [
                   {
                     "tag": "At",
                     "contents": [
                       {
-                        "tag": "NetApp",
+                        "tag": "NetworkApplication",
                         "contents": [
                           "f",
                           [
                             {
-                              "tag": "TensorLit",
+                              "tag": "TensorLiteral",
                               "contents": [
                                 {
-                                  "tag": "Var",
+                                  "tag": "Variable",
                                   "contents": 0
                                 }
                               ]
@@ -114,13 +114,13 @@
                         ]
                       },
                       {
-                        "tag": "Con",
+                        "tag": "Constant",
                         "contents": 0
                       }
                     ]
                   },
                   {
-                    "tag": "Con",
+                    "tag": "Constant",
                     "contents": 1
                   }
                 ]
