@@ -17,6 +17,7 @@ import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Language.Print
 import Vehicle.Language.AST.Name (HasName(nameOf))
 import Vehicle.Compile.Resource (NetworkContext)
+import Vehicle.Compile.Normalise (normalise, NormalisationOptions(..))
 
 --------------------------------------------------------------------------------
 -- Declaration definition
@@ -75,7 +76,50 @@ instance ToJSON LExpr
 
 compile :: MonadCompile m => V.CheckedProg -> V.PropertyContext -> NetworkContext -> m [LDecl]
 compile prog propertyCtx networkCtx = do
-  runReaderT (compileProg prog) (propertyCtx, networkCtx)
+  normalisedProg <- normalise prog normalisationOptions
+  runReaderT (compileProg normalisedProg) (propertyCtx, networkCtx)
+
+normalisationOptions :: NormalisationOptions
+normalisationOptions = Options
+  { implicationsToDisjunctions  = False
+  , expandOutPolynomials        = False
+  , declContext                 = mempty
+  , boundContext                = mempty
+  , normaliseDeclApplications   = False
+  , normaliseLambdaApplications = False
+  , normaliseLetBindings        = True
+  , normaliseAnnotations        = False
+  , normaliseStdLibApplications = False
+  , normaliseBuiltin            = normBuiltin
+  , normaliseWeakly             = False
+  }
+
+normBuiltin :: V.Builtin -> Bool
+normBuiltin b = case b of
+  V.TypeClassOp t -> case t of
+    V.FromNatTC {} -> True
+    V.FromRatTC    -> True
+    V.FromVecTC {} -> True
+    V.NotTC -> True
+    V.AndTC -> True
+    V.OrTC  -> True
+    V.ImpliesTC -> True
+    V.MapTC -> True
+    V.NegTC -> True
+    V.AddTC -> True
+    V.SubTC -> True
+    V.MulTC -> True
+    V.DivTC -> True
+    _            -> False
+  V.FromNat {}       -> True
+  V.FromRat {}       -> True
+  V.FromVec {}       -> True
+  V.Foreach{}        -> True
+  --V.Not{}            -> True
+  --V.And{}            -> True
+  --V.Or{}             -> True
+
+  _                  -> False
   
 compileProg :: MonadCompileLoss m => V.CheckedProg -> m [LDecl]
 compileProg  (V.Main ds) = catMaybes <$> traverse compileDecl ds
@@ -132,7 +176,7 @@ compileExpr e = showExit $ do
       V.Eq  -> IndicatorFunction <$> compileArg e1 <*> compileArg e2
       V.Neq -> Negation <$> (IndicatorFunction <$> compileArg e1 <*> compileArg e2)
 
-    V.OrderExpr    _ _ order [e1, e2] ->
+    V.OrderTCExpr    _ order _ _ _ [e1, e2] ->
       case order of
         V.Le -> Subtraction <$> compileArg e2 <*> compileArg e1
         V.Lt -> Negation <$> (Subtraction <$> compileArg e1 <*> compileArg e2)
@@ -150,6 +194,7 @@ compileExpr e = showExit $ do
       let varName = V.getBinderSymbol binder
       return $ Quantifier (compileQuant q) varName (Domain ()) body'
 
+   
     V.Hole{}     -> resolutionError "lossFunction" "Hole"
     V.Meta{}     -> resolutionError "lossFunction" "Meta"
     V.Ann{}      -> normalisationError "lossFunction" "Ann"
@@ -157,7 +202,8 @@ compileExpr e = showExit $ do
     V.Lam{}      -> normalisationError "lossFunction" "Lam"
     V.Pi{}       -> unexpectedTypeInExprError "lossFunction" "Pi"
     V.Universe{} -> unexpectedTypeInExprError "lossFunction" "Universe"
-    _            -> unexpectedExprError currentPass (prettySimple e)
+    V.IfExpr{}   -> unexpectedExprError "lossFunction" "If statements are not handled at the moment (possibly in the future)"
+    _            -> unexpectedExprError currentPass (prettyVerbose e)
 
 
 compileQuant :: V.Quantifier -> Quantifier

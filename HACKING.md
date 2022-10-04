@@ -48,7 +48,7 @@ command in various ways):
   with `X` in their name. If you only want to run a test for a particular backend `Y`
   change the `X` to `X-Y`, e.g. `quantifier-Agda`.
 
-* The logging level for these tests can be set at the top of `test/Vehicle/Test/Test/Executable.hs`.
+* The logging level for these tests can be set at the top of `test/Vehicle/Test/TestExecutable.hs`.
 
 ### Integration tests
 
