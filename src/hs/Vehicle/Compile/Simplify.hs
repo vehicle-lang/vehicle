@@ -7,14 +7,14 @@ module Vehicle.Compile.Simplify
 import Control.Monad.Reader (MonadReader(..), runReader)
 import Data.Default (Default (..))
 import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.List.NonEmpty qualified as NonEmpty (toList, fromList)
 import Data.Maybe (catMaybes)
 import Data.IntMap ( IntMap )
 import Data.Text ( Text )
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.MetaSubstitution
+import Vehicle.Compile.Type.MetaMap
 
 
 data SimplifyOptions = SimplifyOptions
@@ -31,7 +31,6 @@ instance Default SimplifyOptions where
       }
 
 type MonadSimplify m = MonadReader SimplifyOptions m
-type WellFormedAnn ann = (HasProvenance ann, Semigroup ann)
 
 class Simplify a where
 
@@ -47,44 +46,42 @@ class Simplify a where
 
   simplifyReader :: MonadSimplify m => a -> m a
 
-instance WellFormedAnn ann => Simplify (Prog binder var ann) where
+instance Simplify (Prog binder var) where
   simplifyReader (Main ds) = Main <$> traverse simplifyReader ds
 
-instance WellFormedAnn ann => Simplify (Decl binder var ann) where
+instance Simplify (Decl binder var) where
   simplifyReader = traverseDeclExprs simplifyReader
 
-instance WellFormedAnn ann => Simplify (Expr binder var ann) where
+instance Simplify (Expr binder var) where
   simplifyReader expr = case expr of
-    Type{}    -> return expr
-    Hole{}    -> return expr
-    Meta{}    -> return expr
-    Builtin{} -> return expr
-    Literal{} -> return expr
-    Var{}     -> return expr
+    Universe{} -> return expr
+    Hole{}     -> return expr
+    Meta{}     -> return expr
+    Builtin{}  -> return expr
+    Literal{}  -> return expr
+    Var{}      -> return expr
 
     App ann fun args          -> normAppList ann <$> simplifyReader fun <*> simplifyReaderArgs args
-    LSeq ann dict xs          -> LSeq ann <$> simplifyReader dict <*> traverse simplifyReader xs
+    LVec ann xs               -> LVec ann <$> traverse simplifyReader xs
     Ann ann e t               -> Ann ann <$> simplifyReader e <*> simplifyReader t
     Pi ann binder result      -> Pi  ann <$> simplifyReader binder <*> simplifyReader result
     Let ann bound binder body -> Let ann <$> simplifyReader bound  <*> simplifyReader binder <*> simplifyReader body
     Lam ann binder body       -> Lam ann <$> simplifyReader binder <*> simplifyReader body
-    PrimDict ann tc           -> PrimDict ann <$> simplifyReader tc
 
-instance WellFormedAnn ann => Simplify (Binder binder var ann) where
+instance Simplify (Binder binder var) where
   simplifyReader = traverseBinderType simplifyReader
 
-instance WellFormedAnn ann => Simplify (Arg binder var ann) where
+instance Simplify (Arg binder var) where
   simplifyReader = traverseArgExpr simplifyReader
 
-simplifyReaderArgs
-  :: (WellFormedAnn ann, MonadSimplify m)
-  => NonEmpty (Arg binder var ann)
-  -> m [Arg binder var ann]
+simplifyReaderArgs :: MonadSimplify m
+                   => NonEmpty (Arg binder var)
+                   -> m [Arg binder var]
 simplifyReaderArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args)
   where
-    prettyArg :: (WellFormedAnn ann, MonadSimplify m)
-              => Arg binder var ann
-              -> m (Maybe (Arg binder var ann))
+    prettyArg :: MonadSimplify m
+              => Arg binder var
+              -> m (Maybe (Arg binder var))
     prettyArg arg = do
       SimplifyOptions{..} <- ask
 
@@ -138,13 +135,13 @@ instance Simplify UnificationConstraint where
     return $ Unify (e1', e2')
 
 instance Simplify TypeClassConstraint where
-  simplifyReader (m `Has` e) = do
-    e' <- simplifyReader e
-    return $ m `Has` e'
+  simplifyReader (Has m tc es) = do
+    es' <- simplifyReaderArgs es
+    return $ Has m tc (NonEmpty.fromList es')
 
 instance Simplify Constraint where
   simplifyReader (TC ctx c) = TC ctx <$> simplifyReader c
   simplifyReader (UC ctx c) = UC ctx <$> simplifyReader c
 
-instance Simplify MetaSubstitution where
-  simplifyReader (MetaSubstitution m) = MetaSubstitution <$> traverse simplifyReader m
+instance Simplify a => Simplify (MetaMap a) where
+  simplifyReader (MetaMap m) = MetaMap <$> traverse simplifyReader m

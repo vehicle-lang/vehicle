@@ -17,7 +17,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map (toAscList)
 import Data.Version (Version, showVersion)
 
-import Prettyprinter ( line', unAnnotate, layoutPretty, defaultLayoutOptions, surround)
+import Prettyprinter ( line', unAnnotate, layoutPretty, defaultLayoutOptions, surround, group)
 import Prettyprinter.Internal (Doc(Annotated))
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
@@ -30,7 +30,6 @@ import Prettyprinter as CommonPrettyprinter
   , parens
   , braces
   , concatWith
-  , group
   , softline
   , line
   , squotes
@@ -60,8 +59,14 @@ hcat = concatWith (<>)
 vcat :: Foldable t => t (Doc ann) -> Doc ann
 vcat = concatWith (\x y -> x <> line' <> y)
 
-prettyFlatList :: Pretty a => [a] -> Doc ann
-prettyFlatList xs = "[" <+> concatWith (surround ", ") (pretty <$> xs) <+> "]"
+commaSep :: Foldable t => t (Doc ann) -> Doc ann
+commaSep = concatWith (surround ", ")
+
+numberedList :: [Doc ann] -> Doc ann
+numberedList elems = vsep (zipWith (\i e -> pretty i <> "." <+> e) [(1::Int)..] elems)
+
+prettyFlatList :: [Doc ann] -> Doc ann
+prettyFlatList xs = "[" <+> commaSep xs <+> "]"
 
 --------------------------------------------------------------------------------
 -- Useful utility functions
@@ -78,6 +83,9 @@ layoutAsString = renderString . layoutPretty defaultLayoutOptions
 
 layoutAsText :: Doc ann -> Text
 layoutAsText = renderStrict . layoutPretty defaultLayoutOptions
+
+quotePretty :: Pretty a => a -> Doc b
+quotePretty = squotes . pretty
 
 --------------------------------------------------------------------------------
 -- Pretty printing of datatypes

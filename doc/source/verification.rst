@@ -25,6 +25,16 @@ Command-line options
 The table below contains the full list of command line arguments available
 for the :code:`verify` command.
 
+.. option:: --specification, -s
+
+    Location of the ``.vcl`` file containing the specification to be verified.
+
+.. option:: --property, -y
+
+    The name of a property in the specification to verify. You may provide this
+    option multiple times to verify multiple properties at once. If not provided,
+    then by default all properties in the specification are verified.
+
 .. option:: --network, -n
 
     Provide the implementation of a network declared in the specification.
@@ -65,6 +75,11 @@ for the :code:`verify` command.
 
     Set which verifier should be used to perform the specification.
     At the moment the only supported option is :code:`Marabou`.
+
+.. option:: --verifierLocation, -l
+
+    Location of the executable for the verifier. If not provided, then Vehicle
+    will search for the ``Marabou`` executable in the ``PATH`` environment variable.
 
 .. option:: --proofCache, -c
 

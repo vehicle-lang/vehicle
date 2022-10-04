@@ -12,13 +12,13 @@
 -- We first define the types of the input & output of the network and add
 -- meaningful names for the indices.
 
--- Vehicle is dependently typed so we can specify the dimensions of the tensor,
+-- Vehicle is dependently typed so we can specify the dimensions of the vector,
 -- as well as the type of data stored within it. This means that it impossible
--- to mess up indexing into tensors, e.g. if you changed
+-- to mess up indexing into vectors, e.g. if you changed
 -- `distanceToIntruder = 0` to `distanceToIntruder = 5` the specification would
 -- fail to type-check.
 
-type InputVector = Tensor Rat [5]
+type InputVector = Vector Rat 5
 
 distanceToIntruder = 0
 angleToIntruder    = 1
@@ -26,7 +26,7 @@ intruderHeading    = 2
 speed              = 3
 intruderSpeed      = 4
 
-type OutputVector = Tensor Rat [5]
+type OutputVector = Vector Rat 5
 
 clearOfConflict = 0
 weakLeft        = 1
@@ -37,23 +37,23 @@ strongRight     = 4
 --------------------------------------------------------------------------------
 -- The network
 
--- Next we use the `network` keyword to declare the name and the type of the
+-- Next we use the `network` annotation to declare the name and the type of the
 -- neural network we are verifying. The implementation is passed to the compiler
 -- via a reference to the ONNX file at compile time.
 
-network acasXu : InputVector -> OutputVector
+@network
+acasXu : InputVector -> OutputVector
 
 --------------------------------------------------------------------------------
 -- Utilities
 
 -- The value of the constant `pi`
-pi : Rat
 pi = 3.141592
 
 -- A constraint that says the network chooses output `i` when given the
 -- input `x`. We must necessarily provide a finite index that is less than 5
--- (i.e. of type Fin 5). The `a ! b` operator lookups index `b` in tensor `a`.
-advises : Fin 5 -> InputVector -> Prop
+-- (i.e. of type Index 5). The `a ! b` operator lookups index `b` in vector `a`.
+advises : Index 5 -> InputVector -> Bool
 advises i x = forall j . i != j => acasXu x ! i < acasXu x ! j
 
 --------------------------------------------------------------------------------
@@ -65,13 +65,14 @@ advises i x = forall j . i != j => acasXu x ! i < acasXu x ! j
 
 -- Tested on: all 45 networks.
 
-intruderDistantAndSlower : InputVector -> Prop
+intruderDistantAndSlower : InputVector -> Bool
 intruderDistantAndSlower x =
   x ! distanceToIntruder >= 55947.691 and
   x ! speed              >= 1145      and
   x ! intruderSpeed      <= 60
 
-property1 : Prop
+@property
+property1 : Bool
 property1 = forall x . intruderDistantAndSlower x =>
   acasXu x ! clearOfConflict <= 1500
 
@@ -83,7 +84,8 @@ property1 = forall x . intruderDistantAndSlower x =>
 
 -- Tested on: N_{x,y} for all x ≥ 2 and for all y
 
-property2 : Prop
+@property
+property2 : Bool
 property2 = forall x . intruderDistantAndSlower x =>
   (exists j . (acasXu x ! j) > (acasXu x ! clearOfConflict))
 
@@ -95,18 +97,19 @@ property2 = forall x . intruderDistantAndSlower x =>
 
 -- Tested on: all networks except N_{1,7}, N_{1,8}, and N_{1,9}.
 
-directlyAhead : InputVector -> Prop
+directlyAhead : InputVector -> Bool
 directlyAhead x =
   1500  <= x ! distanceToIntruder <= 1800 and
   -0.06 <= x ! angleToIntruder    <= 0.06
 
-movingTowards : InputVector -> Prop
+movingTowards : InputVector -> Bool
 movingTowards x =
   x ! intruderHeading >= 3.10  and
   x ! speed           >= 980   and
   x ! intruderSpeed   >= 960
 
-property3 : Prop
+@property
+property3 : Bool
 property3 = forall x . directlyAhead x and movingTowards x =>
   not (advises clearOfConflict x)
 
@@ -119,13 +122,14 @@ property3 = forall x . directlyAhead x and movingTowards x =>
 
 -- Tested on: all networks except N_{1,7}, N_{1,8}, and N_{1,9}.
 
-movingAway : InputVector -> Prop
+movingAway : InputVector -> Bool
 movingAway x =
           x ! intruderHeading == 0   and
   1000 <= x ! speed                  and
   700  <= x ! intruderSpeed   <= 800
 
-property4 : Prop
+@property
+property4 : Bool
 property4 = forall x . directlyAhead x and movingAway x =>
   not (advises clearOfConflict x)
 
@@ -137,7 +141,7 @@ property4 = forall x . directlyAhead x and movingAway x =>
 
 -- Tested on: N_{1,1}.
 
-nearAndApproachingFromLeft : InputVector -> Prop
+nearAndApproachingFromLeft : InputVector -> Bool
 nearAndApproachingFromLeft x =
   250 <= x ! distanceToIntruder <= 400         and
   0.2 <= x ! angleToIntruder    <= 0.4         and
@@ -145,7 +149,8 @@ nearAndApproachingFromLeft x =
   100 <= x ! speed              <= 400         and
   0   <= x ! intruderSpeed      <= 400
 
-property5 : Prop
+@property
+property5 : Bool
 property5 = forall x . nearAndApproachingFromLeft x => advises strongRight x
 
 --------------------------------------------------------------------------------
@@ -155,7 +160,7 @@ property5 = forall x . nearAndApproachingFromLeft x => advises strongRight x
 
 -- Tested on: N_{1,1}.
 
-intruderFarAway : InputVector -> Prop
+intruderFarAway : InputVector -> Bool
 intruderFarAway x =
   12000 <= x ! distanceToIntruder <= 62000                                  and
   (- pi <= x ! angleToIntruder <= -0.7 or 0.7 <= x ! angleToIntruder <= pi) and
@@ -163,7 +168,8 @@ intruderFarAway x =
   100   <= x ! speed              <= 1200                                   and
   0     <= x ! intruderSpeed      <= 1200
 
-property6 : Prop
+@property
+property6 : Bool
 property6 = forall x . intruderFarAway x => advises clearOfConflict x
 
 --------------------------------------------------------------------------------
@@ -173,7 +179,7 @@ property6 = forall x . intruderFarAway x => advises clearOfConflict x
 
 -- Tested on: N_{1,9}.
 
-largeVerticalSeparation : InputVector -> Prop
+largeVerticalSeparation : InputVector -> Bool
 largeVerticalSeparation x =
   0    <= x ! distanceToIntruder <= 60760  and
   -pi  <= x ! angleToIntruder    <= pi     and
@@ -181,7 +187,8 @@ largeVerticalSeparation x =
   100  <= x ! speed              <= 1200   and
   0    <= x ! intruderSpeed      <= 1200
 
-property7 : Prop
+@property
+property7 : Bool
 property7 = forall x . largeVerticalSeparation x =>
   not (advises strongLeft x) and not (advises strongRight x)
 
@@ -193,7 +200,7 @@ property7 = forall x . largeVerticalSeparation x =>
 
 -- Tested on: N_{2,9}.
 
-largeVerticalSeparationAndPreviousWeakLeft : InputVector -> Prop
+largeVerticalSeparationAndPreviousWeakLeft : InputVector -> Bool
 largeVerticalSeparationAndPreviousWeakLeft x =
   0    <= x ! distanceToIntruder <= 60760    and
   -pi  <= x ! angleToIntruder    <= -0.75*pi and
@@ -201,7 +208,8 @@ largeVerticalSeparationAndPreviousWeakLeft x =
   600  <= x ! speed              <= 1200     and
   600  <= x ! intruderSpeed      <= 1200
 
-property8 : Prop
+@property
+property8 : Bool
 property8 = forall x . largeVerticalSeparationAndPreviousWeakLeft x =>
   (advises clearOfConflict x) or (advises weakLeft x)
 
@@ -213,7 +221,7 @@ property8 = forall x . largeVerticalSeparationAndPreviousWeakLeft x =>
 
 -- Tested on: N_{3,3}.
 
-previousWeakRightAndNearbyIntruder : InputVector -> Prop
+previousWeakRightAndNearbyIntruder : InputVector -> Bool
 previousWeakRightAndNearbyIntruder x =
   2000 <= x ! distanceToIntruder <= 7000       and
   -0.4 <= x ! angleToIntruder    <= -0.14      and
@@ -221,7 +229,8 @@ previousWeakRightAndNearbyIntruder x =
   100  <= x ! speed              <= 150        and
   0    <= x ! intruderSpeed      <= 150
 
-property9 : Prop
+@property
+property9 : Bool
 property9 = forall x . previousWeakRightAndNearbyIntruder x =>
   advises strongLeft x
 
@@ -232,7 +241,7 @@ property9 = forall x . previousWeakRightAndNearbyIntruder x =>
 
 -- Tested on: N_{4,5}.
 
-intruderFarAway2 : InputVector -> Prop
+intruderFarAway2 : InputVector -> Bool
 intruderFarAway2 x =
   36000 <= x ! distanceToIntruder <= 60760       and
   0.7   <= x ! angleToIntruder    <= pi          and
@@ -240,5 +249,6 @@ intruderFarAway2 x =
   900   <= x ! speed              <= 1200        and
   600   <= x ! intruderSpeed      <= 1200
 
-property10 : Prop
+@property
+property10 : Bool
 property10 = forall x . intruderFarAway2 x => advises clearOfConflict x

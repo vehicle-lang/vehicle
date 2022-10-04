@@ -2,7 +2,10 @@
 module Vehicle.Prelude
   ( module X
   , VehicleLang(..)
+  , SpecificationText
+  , PropertyNames
   , Negatable(..)
+  , InputOrOutput(..)
   , vehicleVersion
   , (|->)
   , (!?)
@@ -11,6 +14,7 @@ module Vehicle.Prelude
   , repeatN
   , readNat
   , readRat
+  , deleteAndGet
   , duplicate
   , oneHot
   , partialSort
@@ -18,6 +22,9 @@ module Vehicle.Prelude
   , removeFileIfExists
   , fatalError
   , programOutput
+  , partitionM
+  , prependList
+  , xor
   ) where
 
 import Control.Monad.IO.Class
@@ -27,6 +34,9 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Graph
 import Data.Version (Version)
+import Data.IntMap (IntMap, updateLookupWithKey)
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Numeric
 import System.Directory (removeFile)
 import System.IO.Error (isDoesNotExistError)
@@ -40,12 +50,19 @@ import Vehicle.Prelude.Supply as X
 import Vehicle.Prelude.DeveloperError as X
 
 import Paths_vehicle qualified as Cabal (version)
+import Data.Set (Set)
 
 vehicleVersion :: Version
 vehicleVersion = Cabal.version
 
 data VehicleLang = External | Internal
   deriving (Show)
+
+-- | A textual representation of a Vehicle specification.
+type SpecificationText = Text
+
+-- | A set of properties in the specification.
+type PropertyNames = Set Symbol
 
 infix 1 |->
 -- | Useful for writing association lists.
@@ -80,6 +97,13 @@ repeatN :: (a -> a) -> Int -> a -> a
 repeatN _ 0 = id
 repeatN f n = f . repeatN f (n-1)
 
+partitionM :: Monad m => (a -> m Bool) -> [a] -> m ([a], [a])
+partitionM _ [] = pure ([], [])
+partitionM f (x:xs) = do
+    res <- f x
+    (as,bs) <- partitionM f xs
+    pure ([x | res]++as, [x | not res]++bs)
+
 duplicate :: String -> Int -> String
 duplicate string n = concat $ replicate n string
 
@@ -104,6 +128,15 @@ readRat str = case readFloat (Text.unpack str) of
   ((n, []) : _) -> n
   _             -> error "Invalid number"
 
+deleteAndGet :: Int -> IntMap a -> (Maybe a, IntMap a)
+deleteAndGet = updateLookupWithKey (\_ _ -> Nothing)
+
+-- Base 4.16 once we upgrade
+prependList :: [a] -> NonEmpty a -> NonEmpty a
+prependList ls ne = case ls of
+  [] -> ne
+  (x : xs) -> x :| xs <> NonEmpty.toList ne
+
 partialSort :: forall a. (a -> a -> Maybe Ordering) -> [a] -> [a]
 partialSort partialCompare xs = sortedNodes
   where
@@ -124,6 +157,20 @@ partialSort partialCompare xs = sortedNodes
 
 class Negatable a where
   neg :: a -> a
+
+-- | Used to distinguish between inputs and outputs of neural networks.
+data InputOrOutput
+  = Input
+  | Output
+  deriving (Show, Eq)
+
+instance Pretty InputOrOutput where
+  pretty = \case
+    Input  -> "input"
+    Output -> "output"
+
+xor :: Bool -> Bool -> Bool
+xor p q = p /= q
 
 --------------------------------------------------------------------------------
 -- IO operations

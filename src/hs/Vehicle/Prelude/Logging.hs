@@ -5,10 +5,11 @@ module Vehicle.Prelude.Logging
   , Severity
   , DebugLevel(..)
   , Message(..)
-  , MonadLogger(incrCallDepth, decrCallDepth, logMessage)
+  , MonadLogger(..)
   , LoggerT
   , Logger
-  , runLogger
+  , intToDebugLevel
+  , mapLoggerT
   , discardLogger
   , discardLoggerT
   , logWarning
@@ -19,14 +20,15 @@ module Vehicle.Prelude.Logging
   , setBackgroundColour
   , fromLoggedIO
   , fromLoggerTIO
+  , runLogger
   ) where
 
 import Control.Monad (when, forM_)
-import Control.Monad.State (StateT(..), get, modify, evalStateT)
-import Control.Monad.Writer (WriterT(..), tell, runWriterT)
+import Control.Monad.State (StateT(..), get, modify, evalStateT, mapStateT)
+import Control.Monad.Writer (WriterT(..), tell, runWriterT, mapWriterT)
 import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.Except (MonadError(..), Except, ExceptT, mapExceptT)
-import Control.Monad.Reader (ReaderT(..), ask)
+import Control.Monad.Reader (ReaderT(..), ask, mapReaderT)
 import Control.Monad.Trans ( MonadIO(..), MonadTrans(..) )
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -42,10 +44,18 @@ data Severity
   deriving (Eq, Ord)
 
 data DebugLevel
-  = MinDetail
+  = NoDetail
+  | MinDetail
   | MidDetail
   | MaxDetail
   deriving (Eq, Ord, Show)
+
+intToDebugLevel :: Int -> DebugLevel
+intToDebugLevel l
+  | l <= 0    = NoDetail
+  | l == 1    = MinDetail
+  | l == 2    = MidDetail
+  | otherwise = MaxDetail
 
 data LoggingOptions = LoggingOptions
   { errorHandle  :: Handle
@@ -151,6 +161,9 @@ runLoggerT :: Monad m => DebugLevel -> LoggerT m a -> m (a, [Message])
 runLoggerT debugLevel (LoggerT logger) =
   evalStateT (runWriterT (runReaderT logger debugLevel)) 0
 
+mapLoggerT :: (m ((a, [Message]), Int) -> n ((b, [Message]), Int)) -> LoggerT m a -> LoggerT n b
+mapLoggerT f l = LoggerT $ mapReaderT (mapWriterT (mapStateT f)) (unloggerT l)
+
 runLogger :: DebugLevel -> Logger a -> (a, [Message])
 runLogger debugLevel = runIdentity . runLoggerT debugLevel
 
@@ -158,10 +171,10 @@ logWarning :: MonadLogger m => Doc a -> m ()
 logWarning text = logMessage $ Message Warning (layoutAsText text)
 
 logDebug :: MonadLogger m => DebugLevel -> Doc a -> m ()
-logDebug level text = do
-  depth <- getCallDepth
+logDebug level text = do --traceShow text $ do
   debugLevel <- getDebugLevel
-  when (level <= debugLevel) $
+  when (level <= debugLevel) $ do
+    depth <- getCallDepth
     logMessage $ Message Debug (layoutAsText (indent depth text))
 
 instance Show Message where

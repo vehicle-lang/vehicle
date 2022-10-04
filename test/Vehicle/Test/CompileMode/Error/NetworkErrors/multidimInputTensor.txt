@@ -1,0 +1,4 @@
+Error at Line 1, Columns 13-29: The type 'Tensor Rat [1, 2] -> Tensor Rat [1]' of network 'f' is not currently supported as the input 'Tensor Rat [1, 2]' is not a 1D tensor.
+Fix: Only networks of the following types are allowed:
+  Tensor A [m] -> Tensor B [n]
+where 'A' and 'B' are one of [ Rat ] and 'm' and 'n' are constants. Ensure that the network input is a 1D tensor.

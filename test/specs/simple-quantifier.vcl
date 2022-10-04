@@ -1,9 +1,17 @@
+unused : Bool
+unused = forall (x : Int) . True
 
-bool : Prop
-bool = forall (x : Int) . True
+@network
+f : Vector Rat 1 -> Vector Rat 1
 
-expandedExpr : Prop
-expandedExpr = forall (x : Tensor Int [2]) . x ! 0 == x ! 1
+@property
+expandedExpr : Bool
+expandedExpr = forall x . x ! 0 >= f x ! 0
 
-multiple : Prop
-multiple = forall (x : Nat) . forall (y : Nat) . x == y
+@property
+sequential : Bool
+sequential = forall x y . f x ! 0 >= f y ! 0
+
+-- See #102
+-- parallel : Bool
+-- parallel = (forall x . f x ! 0 >= 0) and (exists x . f x ! 0 >= 5)

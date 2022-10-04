@@ -1,38 +1,46 @@
-module Vehicle.Verify where
+module Vehicle.Verify
+  ( VerifyOptions(..)
+  , verify
+  ) where
 
 import Control.Monad (forM)
 import Control.Monad.Trans (MonadIO, liftIO)
-import System.IO (hPutStrLn, stderr)
+import Data.Text.IO (hPutStrLn)
+import System.Directory (makeAbsolute, findExecutable, doesFileExist)
 import System.Exit (exitFailure)
-import System.Directory (makeAbsolute)
+import System.IO (stderr)
 
-import Vehicle.Backend.Prelude
-import Vehicle.Backend.Marabou as Marabou (verifySpec)
 import Vehicle.Compile
-import Vehicle.Verify.VerificationStatus
+import Vehicle.Verify.ProofCache (ProofCache(..), writeProofCache)
+import Vehicle.Verify.Core
+import Vehicle.Verify.Verifier.Interface
+import Vehicle.Verify.Verifier (verifiers)
+import Vehicle.Verify.Specification.IO
 
 data VerifyOptions = VerifyOptions
   { specification    :: FilePath
+  , properties       :: PropertyNames
   , networkLocations :: NetworkLocations
   , datasetLocations :: DatasetLocations
   , parameterValues  :: ParameterValues
-  , verifier         :: Verifier
+  , verifier         :: VerifierIdentifier
+  , verifierLocation :: Maybe VerifierExecutable
   , proofCache       :: Maybe FilePath
   } deriving (Show)
 
 verify :: LoggingOptions -> VerifyOptions -> IO ()
-verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
-  spec <- readInputFile loggingOptions specification
-  resources <- convertPathsToAbsolute $
-    Resources networkLocations datasetLocations parameterValues
+verify loggingOptions VerifyOptions{..} = do
+  let verifierImpl = verifiers verifier
+  verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
 
-  status <- case verifier of
-    Marabou -> do
-      marabouSpec <- liftIO $ compileToMarabou loggingOptions resources spec
-      liftIO $ Marabou.verifySpec Nothing marabouSpec (networks resources)
-    VNNLib  -> do
-      liftIO $ hPutStrLn stderr "VNNLib is not currently a valid output target"
-      liftIO exitFailure
+  resources <- convertPathsToAbsolute $ Resources networkLocations datasetLocations parameterValues
+
+  uncompiledSpecification <- readSpecification loggingOptions specification
+
+  compiledSpecification <- fromLoggerTIO loggingOptions $ do
+    liftIO $ compileToVerifier loggingOptions uncompiledSpecification properties resources verifierImpl
+
+  status <- verifySpecification verifierImpl verifierExecutable networkLocations compiledSpecification
 
   programOutput loggingOptions $ pretty status
 
@@ -40,11 +48,36 @@ verify loggingOptions VerifyOptions{..} = fromLoggerTIO loggingOptions $ do
   case proofCache of
     Nothing -> return ()
     Just proofCachePath -> writeProofCache proofCachePath $ ProofCache
-      { proofCacheVersion = vehicleVersion
-      , status            = status
-      , originalSpec      = spec
-      , resourceSummaries = resourceSummaries
+      { proofCacheVersion  = vehicleVersion
+      , originalSpec       = uncompiledSpecification
+      , originalProperties = properties
+      , status             = status
+      , resourceSummaries  = resourceSummaries
       }
+
+locateVerifierExecutable :: MonadIO m => Verifier -> Maybe VerifierExecutable -> m VerifierExecutable
+locateVerifierExecutable Verifier{..} = \case
+  Just providedLocation -> liftIO $ do
+    exists <- doesFileExist providedLocation
+    if exists
+      then return providedLocation
+      else do
+        hPutStrLn stderr $ layoutAsText $
+          "No" <+> pretty verifierIdentifier <+> "executable found at the provided location" <+>
+          squotes (pretty providedLocation) <> "."
+        exitFailure
+
+  Nothing -> do
+    maybeLocationOnPath <- liftIO $ findExecutable verifierExecutableName
+    case maybeLocationOnPath of
+      Just locationOnPath -> return locationOnPath
+      Nothing -> liftIO $ do
+        hPutStrLn stderr $ layoutAsText $
+          "Could not locate the executable" <+> quotePretty verifierExecutableName <+>
+          "via the PATH environment variable." <> line <>
+          "Please either provide it using the `--verifierLocation` command line option" <+>
+          "or add it to the PATH environment variable."
+        liftIO exitFailure
 
 convertPathsToAbsolute :: MonadIO m => Resources -> m Resources
 convertPathsToAbsolute Resources{..} = do

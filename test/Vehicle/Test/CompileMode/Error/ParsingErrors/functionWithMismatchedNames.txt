@@ -1,0 +1,2 @@
+Error at Line 1, Columns 1-6: mismatch in function declaration names: 'test1' and 'test2'.
+Fix: ensure the function definition has the same name as the declaration it follows.

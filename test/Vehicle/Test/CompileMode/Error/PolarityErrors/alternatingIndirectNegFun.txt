@@ -1,0 +1,8 @@
+Error at Line 11, Columns 1-2: The property 'p' contains alternating 'forall' and 'exists' quantifiers which is not supported by Marabou.
+In particular:
+  1. the inner quantifier is the 'forall' located at Line 5, Columns 14-20
+  2. which is which is returned as an output of the function 'myForall' at Line 12, Columns 23-31
+  3. which is which is used as an input to the function 'notApp' at Line 12, Columns 16-33
+  4. which is turned into an 'exists' by the 'not' at Line 12, Columns 16-33
+  5. which is which is returned as an output of the function 'notApp' at Line 12, Columns 16-33
+  6. which alternates with the outer 'forall' at Line 12, Columns 5-11

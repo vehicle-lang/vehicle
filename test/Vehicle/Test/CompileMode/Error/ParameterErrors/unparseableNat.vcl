@@ -1,0 +1,2 @@
+@parameter
+n : Nat

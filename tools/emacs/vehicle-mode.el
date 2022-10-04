@@ -44,7 +44,7 @@
 
 (defconst vehicle-types
 	'( "Bool"
-		 "Real"
+		 "Rat"
 		 "Nat"
 		 "Tensor"
 		 "List"

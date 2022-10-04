@@ -14,6 +14,7 @@ cabal-dev
 .cabal-sandbox/
 cabal.sandbox.config
 *.prof
+*.prof.html
 *.aux
 *.hp
 *.eventlog
@@ -26,6 +27,9 @@ cabal.project.local~
 .ghc.environment.*
 .shake/
 
+# Mac specific files
+*.DS_Store
+
 # BNFC
 gen/
 
@@ -36,6 +40,9 @@ package-lock.json
 .vscode/
 *.code-workspace
 
+# Pycharm
+**/.idea/
+
 # Emacs
 *.agda~
 
@@ -44,6 +51,9 @@ package-lock.json
 
 # Emacs
 MAlonzo/**
+
+# Python
+**/__pycache__/
 
 # Vehicle build system
 build/

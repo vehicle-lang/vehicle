@@ -1,0 +1,2 @@
+Error at Line 2, Columns 1-2: The value 'x' provided for parameter 'b' could not be parsed as a 'Bool'.
+Fix: either change the type of 'b' in the specification or change the value provided.

@@ -12,5 +12,5 @@ network lookup : forall {t   : Type 0}.
 		 forall {ok  : (lt idx len)}.
 		 t
 
-testLookup : array 10 Real -> Real
+testLookup : array 10 Rat -> Rat
 testLookup arr = lookup arr 5

@@ -1,4 +1,6 @@
-network f : Real -> Real
+@network
+f : Tensor Rat [1] -> Tensor Rat [1]
 
-increasing : Prop
-increasing = forall x . x <= f x
+@property
+increasing : Bool
+increasing = forall x . x <= f [x] ! 0

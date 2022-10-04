@@ -1,54 +1,448 @@
 module Vehicle.Compile.Normalise
   ( NormalisationOptions(..)
-  , defaultNormalisationOptions
+  , fullNormalisationOptions
+  , noNormalisationOptions
   , normalise
+  , nfTensor
   ) where
 
-import Control.Exception (assert)
 import Control.Monad (when)
-import Control.Monad.State (MonadState(..), evalStateT, gets, modify)
+import Control.Monad.State (MonadState(..), evalStateT, modify)
 import Control.Monad.Reader (MonadReader(..), runReaderT)
-import Data.Map qualified as M
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
-import Data.List.Split (chunksOf)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Language.Print
-import Vehicle.Compile.Prelude hiding (DeclCtx)
-import Vehicle.Compile.AlphaEquivalence ( alphaEq )
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Core
+import Vehicle.Language.StandardLibrary.Names
 
 -- |Run a function in 'MonadNorm'.
-normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) a)
-          => NormalisationOptions
-          -> a
+normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) ([DBBinding], a))
+          => a
+          -> NormalisationOptions
           -> m a
-normalise options x = logCompilerPass "normalisation" $ do
-  result <- evalStateT (runReaderT (nf x) options) mempty
-  logCompilerPassOutput (prettyFriendly result)
+normalise x options@Options{..} = logCompilerPass MinDetail currentPass $ do
+  result <- evalStateT (runReaderT (nf x) options) declContext
+  -- logCompilerPassOutput (prettyFriendlyDB boundContext result)
   return result
 
 --------------------------------------------------------------------------------
--- Setup
-
-type DeclCtx = M.Map Identifier CheckedExpr
+-- Normalisation options
 
 data NormalisationOptions = Options
-  { implicationsToDisjunctions :: Bool
-  , subtractionToAddition      :: Bool
-  , expandOutPolynomials       :: Bool
+  { implicationsToDisjunctions  :: Bool
+  , expandOutPolynomials        :: Bool
+  , declContext                 :: DeclCtx CheckedExpr
+  , boundContext                :: [DBBinding]
+  , normaliseAnnotations        :: Bool
+  , normaliseDeclApplications   :: Bool
+  , normaliseLambdaApplications :: Bool
+  , normaliseLetBindings        :: Bool
+  , normaliseStdLibApplications :: Bool
+  , normaliseBuiltin            :: Builtin -> Bool
+  , normaliseWeakly             :: Bool
   }
 
-defaultNormalisationOptions :: NormalisationOptions
-defaultNormalisationOptions = Options
-  { implicationsToDisjunctions = False
-  , subtractionToAddition      = False
-  , expandOutPolynomials       = False
+fullNormalisationOptions :: NormalisationOptions
+fullNormalisationOptions = Options
+  { implicationsToDisjunctions  = False
+  , expandOutPolynomials        = False
+  , declContext                 = mempty
+  , boundContext                = mempty
+  , normaliseDeclApplications   = True
+  , normaliseLambdaApplications = True
+  , normaliseLetBindings        = True
+  , normaliseAnnotations        = True
+  , normaliseStdLibApplications = True
+  , normaliseBuiltin            = const True
+  , normaliseWeakly             = False
   }
+
+noNormalisationOptions :: NormalisationOptions
+noNormalisationOptions = Options
+  { implicationsToDisjunctions  = False
+  , expandOutPolynomials        = False
+  , declContext                 = mempty
+  , boundContext                = mempty
+  , normaliseDeclApplications   = False
+  , normaliseLambdaApplications = False
+  , normaliseLetBindings        = False
+  , normaliseAnnotations        = False
+  , normaliseStdLibApplications = False
+  , normaliseBuiltin            = const False
+  , normaliseWeakly             = False
+  }
+
+-- |Constraint for the monad stack used by the normaliser.
+type MonadNorm m =
+  ( MonadCompile m
+  , MonadReader NormalisationOptions m
+  , MonadState (Map Identifier CheckedExpr) m
+  )
+
+--------------------------------------------------------------------------------
+-- Normalisation algorithm
+
+-- | Class for the various normalisation functions.
+class Norm vf where
+  nf :: MonadNorm m => vf -> m vf
+
+instance Norm CheckedProg where
+  nf (Main decls) = Main <$> traverse nf decls
+
+instance Norm CheckedDecl where
+  nf decl = logCompilerPass MaxDetail ("normalisation of" <+> squotes declIdent) $
+    case decl of
+      DefResource p r ident typ ->
+        DefResource p r ident <$> nf typ
+
+      DefFunction p ident typ expr -> do
+        typ'  <- nf typ
+        expr' <- nf expr
+        modify (Map.insert ident expr')
+        return $ DefFunction p ident typ' expr'
+
+      DefPostulate p ident typ ->
+        DefPostulate p ident <$> nf typ
+
+    where declIdent = pretty (identifierOf decl)
+
+instance Norm CheckedExpr where
+  nf e = showExit e $ do
+    e' <- showEntry e
+    Options{..} <- ask
+    case e' of
+      Universe{}  -> return e
+      Hole{}      -> return e
+      Literal{}   -> return e
+      Builtin{}   -> return e
+      Meta{}      -> return e
+
+      LVec p xs -> LVec p <$> traverse nf xs
+
+      Lam p binder expr ->
+        Lam p <$> nf binder <*> nf expr
+
+      Pi p binder body ->
+        Pi p <$> nf binder <*> nf body
+
+      Ann p expr typ
+        | normaliseAnnotations -> nf expr
+        | otherwise            -> Ann p <$> nf expr <*> nf typ
+
+      Var _ (Bound _) ->
+        return e
+
+      Var _ (Free ident)
+        | normaliseDeclApplications -> do
+          ctx <- get
+          case Map.lookup ident ctx of
+            Nothing -> return e
+            Just v  -> nf v
+        | otherwise                 -> return e
+
+      Let p letValue letBinder letBody -> do
+        letValue' <- nf letValue
+        letBody'  <- nf letBody
+        if normaliseLetBindings then do
+          let letBodyWithSubstitution = substInto letValue' letBody'
+          nf letBodyWithSubstitution
+        else do
+          letBinder' <- nf letBinder
+          return $ Let p letValue' letBinder' letBody'
+
+      App p fun args -> do
+        nFun  <- nf fun
+        nArgs <- if normaliseWeakly
+          then return args
+          -- Remove the below in future if we actually have computational
+          -- behaviour in implicit/instance arguments
+          else traverse (traverseExplicitArgExpr nf) args
+
+        nfApp p nFun nArgs
+
+instance Norm CheckedBinder where
+  nf = traverseBinderType nf
+
+instance Norm CheckedArg where
+  nf (ExplicitArg ann e) = ExplicitArg ann <$> nf e
+  nf arg@Arg{}           = return arg
+
+--------------------------------------------------------------------------------
+-- Application
+
+nfApp :: MonadNorm m => Provenance -> CheckedExpr -> NonEmpty CheckedArg -> m CheckedExpr
+nfApp p fun args = do
+  let e = App p fun args
+  Options{..} <- ask
+  case fun of
+    Lam{}       | normaliseLambdaApplications -> nfAppLam p fun (NonEmpty.toList args)
+    Builtin _ b | normaliseBuiltin b          -> nfBuiltin p b args
+    FreeVar _ i | normaliseStdLibApplications -> case findStdLibFunction (symbolOf i) of
+      Nothing -> return e
+      Just f  -> nfStdLibFn p f args
+    _ -> return e
+
+nfAppLam :: MonadNorm m => Provenance -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
+nfAppLam _ fun            []           = nf fun
+nfAppLam p (Lam _ _ body) (arg : args) = nfAppLam p (substInto (argExpr arg) body) args
+nfAppLam p fun            (arg : args) = nfApp p fun (arg :| args)
+
+nfTypeClassOp :: MonadNorm m => Provenance -> TypeClassOp -> NonEmpty CheckedArg -> m CheckedExpr
+nfTypeClassOp p op args = do
+  let originalExpr = App p (Builtin p (TypeClassOp op)) args
+  let (inst, remainingArgs) = findInstanceArg (NonEmpty.toList args)
+
+  case (inst, remainingArgs) of
+    (Meta{}, _)  -> return originalExpr
+    (_, v : vs) -> do
+      let (fn, args') = toHead inst
+      nfApp p fn (prependList args' (v :| vs))
+    (_     , []) -> compilerDeveloperError $
+      "Type class operation with no further arguments:" <+> prettyVerbose originalExpr
+
+nfStdLibFn :: MonadNorm m
+           => Provenance
+           -> StdLibFunction
+           -> NonEmpty CheckedArg
+           -> m CheckedExpr
+nfStdLibFn p f allArgs = do
+  let e = App p (FreeVar p (identifierOf f)) allArgs
+  fromMaybe (return e) $ case embedStdLib f allArgs of
+    Nothing -> Nothing
+    Just res -> case res of
+      EqualsBool    args -> fmap return (nfEqualsBool Eq  p args)
+      NotEqualsBool args -> fmap return (nfEqualsBool Neq p args)
+
+      ExistsBool{} -> Nothing
+      ForallBool{} -> Nothing
+
+      EqualsVector    tElem size recFn args        -> nfEqualsVector Eq  p tElem size recFn args
+      NotEqualsVector tElem size recFn args        -> nfEqualsVector Neq p tElem size recFn args
+      AddVector       tElem size recFn args        -> nfAddVector p tElem size recFn args
+      SubVector       tElem size recFn args        -> nfSubVector p tElem size recFn args
+      ForallVector    tElem size recFn binder body -> Just $ nfQuantifierVector p tElem size binder body recFn
+      ExistsVector    tElem size recFn binder body -> Just $ nfQuantifierVector p tElem size binder body recFn
+
+      ExistsIndex size lam -> Just $ nfQuantifierIndex p Exists size lam
+      ForallIndex size lam -> Just $ nfQuantifierIndex p Forall size lam
+
+--------------------------------------------------------------------------------
+-- Builtins
+
+nfBuiltin :: MonadNorm m => Provenance -> Builtin -> NonEmpty CheckedArg -> m CheckedExpr
+nfBuiltin p (TypeClassOp op) args = nfTypeClassOp p op args
+nfBuiltin p b                args = do
+  let e = App p (Builtin p b) args
+  Options{..} <- ask
+  fromMaybe (return e) $ case e of
+    -- Types
+    TensorType _ tElem dims -> Just $ return $ nfTensor p tElem dims
+
+    -- Binary relations
+    EqualityExpr _ dom op [arg1, arg2] -> Just $ return $ nfEq    p dom op arg1 arg2
+    OrderExpr    _ dom op [arg1, arg2] -> Just $ return $ nfOrder p dom op arg1 arg2
+
+    -- Boolean operations
+    NotExpr     _ [arg]          -> Just $ return $ nfNot     p arg
+    AndExpr     _ [arg1, arg2]   -> Just $ return $ nfAnd     p arg1 arg2
+    OrExpr      _ [arg1, arg2]   -> Just $ return $ nfOr      p arg1 arg2
+    ImpliesExpr _ [arg1, arg2]   -> Just $ return $ nfImplies p arg1 arg2 implicationsToDisjunctions
+    IfExpr    _ t [cond, e1, e2] -> Just $ return $ nfIf      p t cond e1 e2
+
+    -- Numeric operations
+    NegExpr _ dom [arg]        -> Just $ return $ nfNeg p dom arg
+    AddExpr _ dom [arg1, arg2] -> Just $ return $ nfAdd p dom arg1 arg2
+    SubExpr _ dom [arg1, arg2] -> Just $ return $ nfSub expandOutPolynomials p dom arg1 arg2
+    MulExpr _ dom [arg1, arg2] -> Just $ return $ nfMul expandOutPolynomials p dom arg1 arg2
+    DivExpr _ dom [arg1, arg2] -> Just $ return $ nfDiv p dom arg1 arg2
+
+    -- Numeric conversion
+    FromNatExpr _ n dom args' -> Just $ nfFromNat p n dom args'
+    FromRatExpr _ dom   [arg] -> Just $ nfFromRat dom arg
+    FromVecExpr _ _ dom [arg] -> Just $ nfFromVec dom arg
+
+    -- Containers
+    -- MapExpr _ tElem tRes [fn, cont] -> nfMap  p tElem tRes (argExpr fn) (argExpr cont)
+    AtExpr _ tElem tDim [tensor, index]          -> Just $ return $ nfAt p tElem tDim tensor index
+    ForeachExpr _ tElem (NatLiteral _ size) body -> Just $ nfForeach p tElem size body
+
+    MapVectorExpr _ tFrom tTo size [fn, vector] ->
+      Just $ nfMapVector p tFrom tTo size fn vector
+
+    FoldVectorExpr _ tElem size tRes [op, unit, cont] ->
+      Just $ nfFoldVector p tElem size tRes op unit cont
+
+    -- Fall-through case
+    _ -> Nothing
+
+--------------------------------------------------------------------------------
+-- Normalising quantification over types
+
+nfForeach :: MonadNorm m
+          => Provenance
+          -> CheckedType
+          -> Int
+          -> CheckedExpr
+          -> m CheckedExpr
+nfForeach p resultType size lambda = do
+  let fn i = nfAppLam p lambda [ExplicitArg p (IndexLiteral p size i)]
+  VecLiteral p resultType <$> traverse fn [0 .. (size-1 :: Int)]
+
+
+nfFoldVector :: MonadNorm m
+             => Provenance
+             -> CheckedExpr
+             -> CheckedExpr
+             -> CheckedExpr
+             -> CheckedArg
+             -> CheckedArg
+             -> CheckedArg
+             -> m CheckedExpr
+nfFoldVector p tElem size tRes foldOp unit vector = case argExpr vector of
+  AnnVecLiteral _ _ xs -> do
+    let combine x body = normApp p (argExpr foldOp) (ExplicitArg p <$> [x, body])
+    nf $ foldr combine (argExpr unit) xs
+  _ -> return $ FoldVectorExpr p tElem size tRes [foldOp, unit, vector]
+
+-----------------------------------------------------------------------------
+-- Normalising quantifiers
+
+-- If we're quantifying over a tensor, instead quantify over each individual
+-- element, and then substitute in a LVec construct with those elements in.
+nfQuantifierVector :: MonadNorm m
+                   => Provenance
+                   -> CheckedExpr
+                   -> Int
+                   -> CheckedBinder
+                   -> CheckedExpr
+                   -> CheckedExpr
+                   -> m CheckedExpr
+nfQuantifierVector p tElem size binder body recFn = do
+  -- Use the list monad to create a nested list of all possible indices into the tensor
+  let allIndices = [0..size-1]
+
+  -- Generate the corresponding names from the indices
+  let allNames   = map (mkNameWithIndices (getBinderSymbol binder)) (reverse allIndices)
+
+  -- Generate a list of variables, one for each index
+  let allExprs   = map (\i -> Var p (Bound i)) (reverse allIndices)
+  -- Construct the corresponding nested tensor expression
+  let tensor     = VecLiteral p tElem allExprs
+  -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
+  let body1      = liftFreeDBIndices size body
+  -- Substitute throught the tensor expression for the old top-level binder
+  body2 <- nf $ substIntoAtLevel size tensor body1
+
+  let mkQuantifier e name = App p recFn [ExplicitArg p (Lam p (ExplicitBinder p name tElem) e)]
+
+  -- Generate a expression prepended with `tensorSize` quantifiers
+  return $ foldl mkQuantifier body2 (map Just allNames)
+
+nfQuantifierIndex :: MonadNorm m
+                  => Provenance
+                  -> Quantifier
+                  -> Int
+                  -> CheckedExpr
+                  -> m CheckedExpr
+nfQuantifierIndex p q size lam = do
+  let indexType = ConcreteIndexType p size
+  let cont  = VecLiteral p indexType (fmap (IndexLiteral p size) [0 .. size-1])
+  nfQuantifierInVector p q indexType (NatLiteral p size) lam cont
+
+-- | Elaborate quantification over the members of a container type.
+-- Expands e.g. `forall x in vector . y` to `fold and true (map (\x -> y) vector)`
+nfQuantifierInVector :: MonadNorm m
+                     => Provenance
+                     -> Quantifier
+                     -> CheckedExpr
+                     -> CheckedExpr
+                     -> CheckedExpr
+                     -> CheckedExpr
+                     -> m CheckedExpr
+nfQuantifierInVector p q tElem size lam container = do
+  let tTo   = BoolType p
+  let mappedContainer = MapVectorExpr p tElem tTo size (ExplicitArg p <$> [lam, container])
+
+  let ops = case q of
+        Forall -> (True, And)
+        Exists -> (False, Or)
+
+  nf $ bigOp p ops size mappedContainer
+
+nfEqualsBool :: EqualityOp -> Provenance -> [CheckedArg] -> Maybe CheckedExpr
+nfEqualsBool op p args@[arg1, arg2] = case op of
+  Neq -> nfNot p . ExplicitArg p <$> nfEqualsBool Neq p args
+  Eq  -> do
+    let bothTrue  = AndExpr p [arg1, arg2]
+    let bothFalse = AndExpr p (ExplicitArg p . nfNot p <$> [arg1, arg2])
+    Just $ OrExpr p (ExplicitArg p <$> [bothTrue, bothFalse])
+nfEqualsBool _ _ _ = Nothing
+
+nfEqualsVector :: MonadNorm m
+               => EqualityOp
+               -> Provenance
+               -> CheckedExpr
+               -> CheckedExpr
+               -> CheckedExpr
+               -> [CheckedArg]
+               -> Maybe (m CheckedExpr)
+nfEqualsVector op p tElem size recFn args = case args of
+  [ExplicitArg _ xs, ExplicitArg _ ys] -> do
+    let equalitiesSeq  = zipWithVector p tElem tElem (BoolType p) size recFn xs ys
+    let ops = if op == Eq then (True, And) else (False, Or)
+    Just $ nf $ bigOp p ops size equalitiesSeq
+  _ -> Nothing
+
+nfAddVector :: MonadNorm m
+            => Provenance
+            -> CheckedExpr
+            -> CheckedExpr
+            -> CheckedExpr
+            -> [CheckedArg]
+            -> Maybe (m CheckedExpr)
+nfAddVector p tElem size recFn args = case args of
+  [ExplicitArg _ xs, ExplicitArg _ ys] -> do
+    Just $ nf $ zipWithVector p tElem tElem tElem size recFn xs ys
+  _ -> Nothing
+
+nfSubVector :: MonadNorm m
+            => Provenance
+            -> CheckedExpr
+            -> CheckedExpr
+            -> CheckedExpr
+            -> [CheckedArg]
+            -> Maybe (m CheckedExpr)
+nfSubVector p tElem size recFn args = case args of
+  [ExplicitArg _ xs, ExplicitArg _ ys] -> do
+    Just $ nf $ zipWithVector p tElem tElem tElem size recFn xs ys
+  _ -> Nothing
+
+nfMapVector :: MonadNorm m
+            => Provenance
+            -> CheckedExpr
+            -> CheckedExpr
+            -> CheckedExpr
+            -> CheckedArg
+            -> CheckedArg
+            -> m CheckedExpr
+nfMapVector p tFrom tTo size fun vector =
+  case argExpr vector of
+    AnnVecLiteral _ _ xs -> do
+      let appFun x = App p (argExpr fun) [ExplicitArg p x]
+      return $ VecLiteral p tTo (fmap appFun xs)
+    _                 ->  return $ MapVectorExpr p tFrom tTo size [fun, vector]
 
 --------------------------------------------------------------------------------
 -- Debug functions
+
+currentPass :: Doc ()
+currentPass = "normalisation"
 
 showEntry :: MonadNorm m => CheckedExpr -> m CheckedExpr
 showEntry e = do
@@ -64,505 +458,3 @@ showExit old mNew = do
     logDebug MaxDetail ("normalising" <+> prettySimple old)
   logDebug MaxDetail ("norm-exit " <+> prettySimple new)
   return new
-
---------------------------------------------------------------------------------
--- Normalisation algorithm
-
--- |Constraint for the monad stack used by the normaliser.
-type MonadNorm m =
-  ( MonadCompile m
-  , MonadState DeclCtx m
-  , MonadReader NormalisationOptions m
-  )
-
--- |Class for the various normalisation functions.
--- Invariant is that everything in the context is fully normalised
-class Norm vf where
-  nf :: MonadNorm m => vf -> m vf
-
-instance Norm CheckedProg where
-  nf (Main decls)= Main <$> traverse nf decls
-
-instance Norm CheckedDecl where
-  nf = \case
-    DefResource ann r ident typ ->
-      DefResource ann r ident <$> nf typ
-
-    DefFunction ann ident typ expr -> do
-      typ'  <- nf typ
-      expr' <- nf expr
-      modify (M.insert ident expr')
-      return $ DefFunction ann ident typ' expr'
-
-instance Norm CheckedExpr where
-  nf e = showExit e $ do
-    e' <- showEntry e
-    case e' of
-      Type{}      -> return e
-      Hole{}      -> return e
-      Literal{}   -> return e
-      Builtin{}   -> return e
-      Meta{}      -> resolutionError "normalisation" "meta"
-
-      PrimDict ann tc     -> PrimDict ann <$> nf tc
-      LSeq ann dict exprs -> LSeq ann dict <$> traverse nf exprs
-      Lam ann binder expr -> Lam ann <$> nf binder <*> nf expr
-      Pi ann binder body  -> Pi ann <$> nf binder <*> nf body
-
-      Ann _ann expr _typ  -> nf expr
-
-      Var _ (Bound _)     -> return e
-      Var _ (Free ident)  -> gets (fromMaybe e . M.lookup ident)
-
-      Let _ann letValue _binder letBody -> do
-        letValue' <- nf letValue
-        letBody'  <- nf letBody
-        let letBodyWithSubstitution = substInto letValue' letBody'
-        nf letBodyWithSubstitution
-
-      App ann fun args -> do
-        nFun  <- nf fun
-        -- TODO temporary hack please remove in future once we actually have computational
-        -- behaviour in implicit/instance arguments
-        nArgs <- traverse (traverseExplicitArgExpr nf) args
-        nfApp ann nFun nArgs
-
-instance Norm CheckedBinder where
-  nf = traverseBinderType nf
-
-instance Norm CheckedArg where
-  nf (ExplicitArg ann e) = ExplicitArg ann <$> nf e
-  nf arg@Arg{}           = return arg
-
---------------------------------------------------------------------------------
--- Application
-
-nfApp :: MonadNorm m => CheckedAnn -> CheckedExpr -> NonEmpty CheckedArg -> m CheckedExpr
-nfApp ann fun@Lam{} args = nfAppLam ann fun (NonEmpty.toList args)
-nfApp ann fun       args = do
-  let e = App ann fun args
-  Options{..} <- ask
-  fromMaybe (return e) $ case e of
-    -- Types
-    TensorType _ tElem (NilExpr _ _) -> Just $ return tElem
-
-    -- Binary relations
-    EqualityExpr eq _ tElem tRes [arg1, arg2] -> nfEq eq ann tElem tRes arg1 arg2
-    OrderExpr order _ tElem tRes [arg1, arg2] -> nfOrder order ann tElem tRes arg1 arg2
-
-    -- Boolean operations
-    NotExpr  _ t [arg]             -> nfNot     ann t arg
-    AndExpr  _ t [arg1, arg2]      -> nfAnd     ann t arg1 arg2
-    OrExpr   _ t [arg1, arg2]      -> nfOr      ann t arg1 arg2
-    ImplExpr _ t [arg1, arg2]      -> nfImplies ann t arg1 arg2 implicationsToDisjunctions
-    IfExpr _ _ [cond, e1, e2]      -> nfIf cond e1 e2
-    QuantifierExpr q _ binder body -> nfQuantifier ann q binder body
-
-    -- Binary numeric ops
-    AddExpr _ t _  [arg1, arg2] -> nfAdd ann t arg1 arg2
-    SubExpr _ t tc [arg1, arg2] -> nfSub ann t tc arg1 arg2 subtractionToAddition
-    MulExpr _ t tc [arg1, arg2] -> nfMul ann t tc arg1 arg2 expandOutPolynomials
-    DivExpr _ t _  [arg1, arg2] -> nfDiv ann t arg1 arg2
-    NegExpr _ t    [arg]        -> nfNeg ann t arg expandOutPolynomials
-
-    -- Containers
-    ConsExpr _ _ [x, xs]              -> nfCons ann x xs
-    MapExpr _ tElem tRes [fn, cont]   -> nfMap  ann tElem tRes (argExpr fn) (argExpr cont)
-    AtExpr _ _ _ _ [tensor, index]    -> nfAt   tensor index
-    FoldExpr _ _ _ _ [op, unit, cont] -> nfFold ann op unit cont
-    QuantifierInExpr q _ tCont tRes binder body container ->
-      nfQuantifierIn ann q tCont tRes binder body container
-
-    -- Fall-through case
-    _ -> Nothing
-
-nfAppLam :: MonadNorm m => CheckedAnn -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
-nfAppLam ann (Lam _ _ body) (arg : args) = nfAppLam ann (substInto (argExpr arg) body) args
-nfAppLam ann fun              args       = nf (normAppList ann fun args)
-
---------------------------------------------------------------------------------
--- Normalising equality
-
-nfEq :: MonadNorm m
-     => Equality
-     -> CheckedAnn
-     -> CheckedExpr
-     -> BooleanType
-     -> CheckedArg
-     -> CheckedArg
-     -> Maybe (m CheckedExpr)
-nfEq eq ann _tElem tRes e1 e2 = case (argExpr e1, argExpr e2) of
-  -- Simple literal comparisons
-  (BoolLiteralExpr _ _ b, BoolLiteralExpr _ _ c) -> Just $ return $ BoolLiteralExpr ann tRes (eqOp eq b c)
-  (NatLiteralExpr  _ _ m, NatLiteralExpr  _ _ n) -> Just $ return $ BoolLiteralExpr ann tRes (eqOp eq m n)
-  (IntLiteralExpr  _ _ i, IntLiteralExpr  _ _ j) -> Just $ return $ BoolLiteralExpr ann tRes (eqOp eq i j)
-  (RatLiteralExpr  _ _ p, RatLiteralExpr  _ _ q) -> Just $ return $ BoolLiteralExpr ann tRes (eqOp eq p q)
-  -- Alpha equality
-  (e1', e2') | alphaEq e1' e2' -> Just $ return $ BoolLiteralExpr ann tRes (eq == Eq)
-  -- If a sequence then normalise to equality over elements
-  (SeqExpr _ tSeqElem tCont xs, SeqExpr _ _ _ ys)
-    | length xs /= length ys -> Just $ return $ BoolLiteralExpr ann tRes False
-    | otherwise ->
-      let equalities    = zipWith (\x y -> EqualityExpr eq ann tSeqElem tRes (explicitArgs [x,y])) xs ys in
-      let tBool         = BuiltinBooleanType ann tRes in
-      let tBoolCont     = substContainerType tBool tCont in
-      let equalitiesSeq = SeqExpr ann tBool tBoolCont equalities in
-      Just $ nf $ booleanBigOp (logicOp eq) ann tRes tBoolCont equalitiesSeq
-  -- Otherwise no normalisation
-  _ -> Nothing
-  where
-    eqOp :: Eq a => Equality -> (a -> a -> Bool)
-    eqOp Eq  = (==)
-    eqOp Neq = (/=)
-
-    logicOp :: Equality -> BooleanOp2
-    logicOp Eq  = And
-    logicOp Neq = Or
-
-    explicitArgs :: [CheckedExpr] -> [CheckedArg]
-    explicitArgs = fmap (ExplicitArg ann)
-
---------------------------------------------------------------------------------
--- Normalising orders
-
-nfOrder :: MonadNorm m
-        => Order
-        -> CheckedAnn
-        -> CheckedExpr
-        -> BooleanType
-        -> CheckedArg
-        -> CheckedArg
-        -> Maybe (m CheckedExpr)
-nfOrder order ann _tElem tRes arg1 arg2 = case (argExpr arg1, argExpr arg2) of
-  (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ BoolLiteralExpr ann tRes (op order m n)
-  (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ BoolLiteralExpr ann tRes (op order i j)
-  (RatLiteralExpr _ _ x, RatLiteralExpr _ _ y) -> Just $ return $ BoolLiteralExpr ann tRes (op order x y)
-  (e1 , e2) | alphaEq e1 e2                    -> Just $ return $ BoolLiteralExpr ann tRes (not (isStrict order))
-  _                                            -> Nothing
-  where
-    op :: Ord a => Order -> (a -> a -> Bool)
-    op Le = (<=)
-    op Lt = (<)
-    op Ge = (>=)
-    op Gt = (>)
-
---------------------------------------------------------------------------------
--- Normalising quantification over types
-
-nfQuantifier :: MonadNorm m
-             => CheckedAnn
-             -> Quantifier
-             -> CheckedBinder
-             -> CheckedExpr
-             -> Maybe (m CheckedExpr)
-nfQuantifier ann q binder body = case typeOf binder of
-  -- If we're quantifing over a tensor, instead quantify over each individual
-  -- element,  and then substitute in a LSeq construct with those elements in.
-  (TensorType _ tElem tDims) ->
-    case getDimensions (exprHead tDims) of
-      Nothing -> Nothing
-      Just dims -> Just $ do
-        -- Calculate the dimensions of the tensor
-        let tensorSize = product dims
-
-        -- Use the list monad to create a nested list of all possible indices into the tensor
-        let allIndices = traverse (\dim -> [0..dim-1]) dims
-        -- Generate the corresponding names from the indices
-        let allNames   = map (mkNameWithIndices (getBinderSymbol binder)) (reverse allIndices)
-
-        -- Generate a list of variables, one for each index
-        let allExprs   = map (\i -> Var ann (Bound i)) (reverse [0..tensorSize-1])
-        -- Construct the corresponding nested tensor expression
-        let tensor     = makeTensorLit ann tElem dims allExprs
-        -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
-        let body1      = liftFreeDBIndices tensorSize body
-        -- Substitute throught the tensor expression for the old top-level binder
-        body2 <- nf $ substIntoAtLevel tensorSize tensor body1
-
-        -- Generate a expression prepended with `tensorSize` quantifiers
-        return $ mkQuantifierSeq q ann (map Just allNames) tElem body2
-
-  -- If we're quantifying over a finite index type then expand out to a list
-  -- of indices up to the max value.
-  t@(FinType _ size) ->
-    case getDimension size of
-      Nothing -> Nothing
-      Just n  -> do
-        let tCont = ListType ann t
-        let cont  = SeqExpr ann t tCont (fmap (NatLiteralExpr ann t) [0 .. n-1])
-        let e = QuantifierInExpr q ann tCont Prop binder body cont
-        Just $ nf e
-
-  _ -> Nothing
-
-makeTensorLit :: CheckedAnn -> CheckedExpr -> [Int] -> [CheckedExpr] -> CheckedExpr
-makeTensorLit ann tElem dims exprs = assert (product dims == length exprs) (go dims exprs)
-  where
-    mkTensorSeq :: [Int] -> [CheckedExpr] -> CheckedExpr
-    mkTensorSeq ds = SeqExpr ann tElem (mkTensorType ann tElem ds)
-
-    go []       [] = mkTensorSeq []       []
-    go [d]      es = mkTensorSeq [d]      es
-    go (d : ds) es = mkTensorSeq (d : ds) (map (go ds) (chunksOf (product ds) es))
-    go []  (_ : _) = developerError "Found inhabitants of the empty dimension! Woo!"
-
---------------------------------------------------------------------------------
--- Normalising quantification over lists
-
--- |Elaborate quantification over the members of a container type.
--- Expands e.g. `forall x in list . y` to `fold and true (map (\x -> y) list)`
-nfQuantifierIn :: MonadNorm m
-               => CheckedAnn
-               -> Quantifier
-               -> CheckedExpr  -- tCont
-               -> BooleanType -- tRes
-               -> CheckedBinder
-               -> CheckedExpr
-               -> CheckedExpr
-               -> Maybe (m CheckedExpr)
-nfQuantifierIn ann q tCont boolType binder body container = do
-  let tRes = BuiltinBooleanType ann boolType
-  let tResCont = substContainerType tRes tCont
-  let mappedContainer = MapExpr ann (typeOf binder) tRes (ExplicitArg ann <$> [Lam ann binder body, container])
-  let foldedContainer = booleanBigOp (quantOp q) ann boolType tResCont mappedContainer
-  Just (nf foldedContainer)
-
-substContainerType :: CheckedExpr -> CheckedExpr -> CheckedExpr
-substContainerType newTElem (ListType   ann _tElem)       = ListType   ann newTElem
-substContainerType newTElem (TensorType ann _tElem tDims) = TensorType ann newTElem tDims
-substContainerType _ _ = developerError "Provided an invalid container type"
-
-quantOp :: Quantifier -> BooleanOp2
-quantOp All = And
-quantOp Any = Or
-
---------------------------------------------------------------------------------
--- Normalising boolean operations
-
-notArg :: MonadNorm m => BooleanType -> CheckedArg -> m CheckedArg
-notArg t x = let ann = annotationOf x in ExplicitArg ann <$> nf (NotExpr ann t [x])
-
-nfNot :: forall m . MonadNorm m
-      => CheckedAnn
-      -> BooleanType
-      -> CheckedArg
-      -> Maybe (m CheckedExpr)
-nfNot ann t arg = case argExpr arg of
-  BoolLiteralExpr    _ tBool b       -> Just $ return $ BoolLiteralExpr ann tBool (not b)
-  OrderExpr      o   _ tElem _t args -> Just $ return $ OrderExpr      (neg o)  ann tElem t args
-  EqualityExpr   eq  _ tElem _t args -> Just $ return $ EqualityExpr   (neg eq) ann tElem t args
-  QuantifierExpr q   _ binder body   -> Just $ do
-    let nBody = NotExpr ann t [ExplicitArg ann body]
-    QuantifierExpr (neg q) ann binder <$> nf nBody
-  ImplExpr           _ _t [e1, e2] -> Just $ do
-    ne2 <- notArg t e2;
-    return $ AndExpr ann t [e1, ne2]
-  OrExpr             _ _t [e1, e2] -> Just $ do
-    ne1 <- notArg t e1;
-    ne2 <- notArg t e2;
-    return $ AndExpr ann t [ne1, ne2]
-  AndExpr            _ _t [e1, e2] -> Just $ do
-    ne1 <- notArg t e1;
-    ne2 <- notArg t e2;
-    return $ OrExpr  ann t [ne1, ne2]
-  IfExpr _ tRes [p, e1, e2] -> Just $ do
-    ne1 <- notArg t e1
-    ne2 <- notArg t e2
-    return $ IfExpr ann tRes [p, ne1, ne2]
-  _ -> Nothing
-
-nfAnd :: forall m . MonadNorm m
-      => CheckedAnn
-      -> BooleanType
-      -> CheckedArg
-      -> CheckedArg
-      -> Maybe (m CheckedExpr)
-nfAnd ann t arg1 arg2 = case (argExpr arg1, argExpr arg2) of
-  (BoolLiteralExpr _ _ True,  _) -> Just $ return $ argExpr arg2
-  (BoolLiteralExpr _ _ False, _) -> Just $ return $ BoolLiteralExpr ann t False
-  (_, BoolLiteralExpr _ _ True)  -> Just $ return $ argExpr arg1
-  (_, BoolLiteralExpr _ _ False) -> Just $ return $ BoolLiteralExpr ann t False
-  (e1, e2) | alphaEq e1 e2       -> Just $ return e1
-  _                              -> Nothing
-
-nfOr :: forall m . MonadNorm m
-     => CheckedAnn
-     -> BooleanType
-     -> CheckedArg
-     -> CheckedArg
-     -> Maybe (m CheckedExpr)
-nfOr ann t arg1 arg2 = case (argExpr arg1, argExpr arg2) of
-  (BoolLiteralExpr _ _ True,  _) -> Just $ return $ BoolLiteralExpr ann t True
-  (BoolLiteralExpr _ _ False, _) -> Just $ return $ argExpr arg2
-  (_, BoolLiteralExpr _ _ True)  -> Just $ return $ BoolLiteralExpr ann t True
-  (_, BoolLiteralExpr _ _ False) -> Just $ return $ argExpr arg1
-  (e1, e2) | alphaEq e1 e2       -> Just $ return e1
-  -- TODO implement zero/identity/associativity rules?
-  _                              -> Nothing
-
-nfImplies :: forall m . MonadNorm m
-          => CheckedAnn
-          -> BooleanType
-          -> CheckedArg
-          -> CheckedArg
-          -> Bool
-          -> Maybe (m CheckedExpr)
-nfImplies ann t arg1 arg2 convertToOr = case (argExpr arg1, argExpr arg2) of
-  (BoolLiteralExpr _ _ True,  _) -> Just $ return $ argExpr arg2
-  (BoolLiteralExpr _ _ False, _) -> Just $ return $ BoolLiteralExpr ann t True
-  (_, BoolLiteralExpr _ _ True)  -> Just $ return $ BoolLiteralExpr ann t True
-  (_, BoolLiteralExpr _ _ False) -> Just $ return $ NotExpr ann t [arg2]
-  (e1, e2) | alphaEq e1 e2       -> Just $ return $ BoolLiteralExpr ann t True
-  _        | convertToOr         -> Just $ do
-    negArg1 <- notArg t arg1
-    return $ OrExpr ann t [negArg1, arg2]
-  _                              -> Nothing
-
-nfIf :: forall m . MonadNorm m
-     => CheckedArg
-     -> CheckedArg
-     -> CheckedArg
-     -> Maybe (m CheckedExpr)
-nfIf condition e1 e2 = case argExpr condition of
-  BoolLiteralExpr _ _ True  -> Just $ return $ argExpr e1
-  BoolLiteralExpr _ _ False -> Just $ return $ argExpr e2
-  _                         -> Nothing
-
------------------------------------------------------------------------------
--- Normalising negation
-
-negArg :: MonadNorm m => NumericType -> CheckedArg -> m CheckedArg
-negArg t x = let ann = annotationOf x in ExplicitArg ann <$> nf (NegExpr ann t [x])
-
-nfAdd :: MonadNorm m
-      => CheckedAnn
-      -> NumericType
-      -> CheckedArg
-      -> CheckedArg
-      -> Maybe (m CheckedExpr)
-nfAdd ann t arg1 arg2 = case (argExpr arg1, argExpr arg2) of
-  -- TODO implement zero/identity/associativity rules?
-  (NatLiteralExpr _ _ m, NatLiteralExpr _ _ n) -> Just $ return $ NatLiteralExpr ann (BuiltinNumericType ann t) (m + n)
-  (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ IntLiteralExpr ann t (i + j)
-  (RatLiteralExpr _ _ x, RatLiteralExpr _ _ y) -> Just $ return $ RatLiteralExpr ann t (x + y)
-  _                                            -> Nothing
-
-nfSub :: MonadNorm m
-      => CheckedAnn
-      -> NumericType
-      -> CheckedExpr
-      -> CheckedArg
-      -> CheckedArg
-      -> Bool
-      -> Maybe (m CheckedExpr)
-nfSub ann t tc arg1 arg2 convertToAddition = case (argExpr arg1, argExpr arg2) of
-  -- TODO implement zero/identity/associativity rules?
-  (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ IntLiteralExpr ann t (i - j)
-  (RatLiteralExpr _ _ x, RatLiteralExpr _ _ y) -> Just $ return $ RatLiteralExpr ann t (x - y)
-  (_, _) | convertToAddition                   -> Just $ do
-    negArg2 <- negArg t arg2
-    return $ AddExpr ann t tc [arg1, negArg2]
-  _ -> Nothing
-
-nfMul :: MonadNorm m
-      => CheckedAnn
-      -> NumericType
-      -> CheckedExpr
-      -> CheckedArg
-      -> CheckedArg
-      -> Bool
-      -> Maybe (m CheckedExpr)
-nfMul ann t tc arg1 arg2 expandOut = case (argExpr arg1, argExpr arg2) of
-  -- TODO implement zero/identity/associativity rules?
-  (IntLiteralExpr _ _ i, IntLiteralExpr _ _ j) -> Just $ return $ IntLiteralExpr ann t (i * j)
-  (RatLiteralExpr _ _ x, RatLiteralExpr _ _ y) -> Just $ return $ RatLiteralExpr ann t (x * y)
-  -- Expanding out multiplication
-  (_, NumericOp2Expr op _ _ _ [v1, v2])
-    | expandOut && (op == Add || op == Sub) -> Just $ nf $ distribute op arg1 v1 arg1 v2
-  (NumericOp2Expr op _ _ _ [v1, v2], _)
-    | expandOut && (op == Add || op == Sub) -> Just $ nf $ distribute op v1 arg2 v2 arg2
-  _    -> Nothing
-  where
-    distribute :: NumericOp2 -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr
-    distribute op x1 y1 x2 y2 = NumericOp2Expr op ann t tc $ fmap (ExplicitArg ann)
-        [ MulExpr ann t tc [x1, y1]
-        , MulExpr ann t tc [x2, y2]
-        ]
-
-nfDiv :: MonadNorm m
-      => CheckedAnn
-      -> NumericType
-      -> CheckedArg
-      -> CheckedArg
-      -> Maybe (m CheckedExpr)
-nfDiv ann t arg1 arg2 = case (argExpr arg1, argExpr arg2) of
-  -- TODO implement zero/identity/associativity rules?
-  (RatLiteralExpr _ _ x, RatLiteralExpr _ _ y) -> Just $ return $ RatLiteralExpr ann t (x / y)
-  _                                            -> Nothing
-
-nfNeg :: MonadNorm m
-      => CheckedAnn
-      -> NumericType
-      -> CheckedArg
-      -> Bool
-      -> Maybe (m CheckedExpr)
-nfNeg _ann t e expandOut = case argExpr e of
-  NatLiteralExpr ann _ x                -> Just $ return $ IntLiteralExpr ann t (- x)
-  IntLiteralExpr ann _ x                -> Just $ return $ IntLiteralExpr ann t (- x)
-  RatLiteralExpr ann _ x                -> Just $ return $ RatLiteralExpr ann t (- x)
-  NegExpr _ _ [e']                      -> Just $ return $ argExpr e'
-  AddExpr ann _ tc [e1, e2] | expandOut -> Just $ do
-    ne1 <- negArg t e1
-    ne2 <- negArg t e2
-    nf $ AddExpr ann t tc [ne1, ne2]
-  MulExpr ann _ tc [e1, e2] | expandOut -> Just $ do
-    ne1 <- negArg t e1
-    nf $ AddExpr ann t tc [ne1, e2]
-  _                           -> Nothing
-
------------------------------------------------------------------------------
--- Normalising container operations
-
-nfCons :: MonadNorm m
-       => CheckedAnn
-       -> CheckedArg
-       -> CheckedArg
-       -> Maybe (m CheckedExpr)
-nfCons ann x xs = case argExpr xs of
-  SeqExpr _ tElem tList es -> Just $ return $ SeqExpr ann tElem tList (argExpr x : es)
-  _                        -> Nothing
-
-nfMap :: MonadNorm m
-      => CheckedAnn
-      -> CheckedExpr
-      -> CheckedExpr
-      -> CheckedExpr
-      -> CheckedExpr
-      -> Maybe (m CheckedExpr)
-nfMap ann _tFrom tTo fun container = case container of
-  SeqExpr _ _ _ xs -> Just $ do
-    ys <- traverse (\x -> nf $ normApp ann fun [ExplicitArg ann x]) xs
-    let tCont = ListType ann tTo
-    return $ SeqExpr ann tTo tCont ys
-  _        -> Nothing
-
-nfAt :: MonadNorm m
-     => CheckedArg
-     -> CheckedArg
-     -> Maybe (m CheckedExpr)
-nfAt tensor index = case (argExpr tensor, argExpr index) of
-  (SeqExpr _ _ _ es, NatLiteralExpr _ _ i) -> Just $ return $ es !! fromIntegral i
-  _                                        -> Nothing
-
-nfFold :: MonadNorm m
-       => CheckedAnn
-       -> CheckedArg
-       -> CheckedArg
-       -> CheckedArg
-       -> Maybe (m CheckedExpr)
-nfFold ann foldOp unit container = case argExpr container of
-  SeqExpr _ _ _ xs -> do
-    let combine x body = normApp ann (argExpr foldOp) [ExplicitArg ann x, ExplicitArg ann body]
-    Just $ nf $ foldr combine (argExpr unit) xs
-  _ -> Nothing
-  -- TODO distribute over cons

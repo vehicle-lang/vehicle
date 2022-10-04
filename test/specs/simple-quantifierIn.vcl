@@ -1,14 +1,18 @@
 emptyList : List Int
 emptyList = []
 
-empty : Prop
+@property
+empty : Bool
 empty = forall x in emptyList . True
 
-double : Prop
+@property
+double : Bool
 double = forall x in emptyList . forall y in emptyList . x == y
 
-forallForallIn : Prop
+@property
+forallForallIn : Bool
 forallForallIn = forall x . forall y in emptyList . x == y
 
-forallInForall : Prop
+@property
+forallInForall : Bool
 forallInForall = forall x in emptyList . forall y . x == y

@@ -2,34 +2,42 @@ module Vehicle.Compile.LetInsertion
   ( insertLets
   ) where
 
-import Control.Monad.Reader (MonadReader(..), runReaderT)
+import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
+import Data.List qualified as List
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.IntMap qualified as IntMap
-import Data.IntMap (IntMap)
 import Data.Bifunctor (Bifunctor(..))
 import Data.Maybe (mapMaybe, listToMaybe)
+import Data.LinkedHashMap (LinkedHashMap)
+import Data.LinkedHashMap qualified as Map
+import Data.IntMap qualified as IntMap
 import Prettyprinter (list)
 
 import Vehicle.Language.Print
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.CoDeBruijnify
 import Vehicle.Compile.AlphaEquivalence
+import Data.Hashable (Hashable (hash))
 
 -- | Let-lifts any sub-expressions that matches the provided filter
--- to the highest possible level.
+-- to the highest possible level. Filter takes in the expression
+-- and the quantity found.
 insertLets :: MonadLogger m
            => (CheckedCoDBExpr -> Int -> Bool)
+           -> Bool
            -> CheckedExpr
            -> m CheckedExpr
-insertLets subexprFilter expr = logCompilerPass "let insertion" $ do
-  runReaderT (applyInsert expr) subexprFilter
+insertLets subexprFilter liftOverBinders expr =
+  logCompilerPass MinDetail "let insertion" $ do
+    result <- runReaderT applyInsert (subexprFilter, liftOverBinders)
+    logCompilerPassOutput (prettyFriendly result)
+    return result
   where
-    applyInsert :: MonadLetInsert m => CheckedExpr -> m CheckedExpr
-    applyInsert e = do
-      (result, sm) <- letInsert (toCoDBExpr e)
+    applyInsert :: MonadLetInsert m => m CheckedExpr
+    applyInsert = do
+      (result, sm) <- letInsert (toCoDBExpr expr)
       -- Any remaining subexpressions must involve free variables and therefore
       -- we can bind them here at the top level.
-      (letBoundResult, _) <- letBindSubexpressions mempty (IntMap.elems sm) result
+      (letBoundResult, _) <- letBindSubexpressions Map.empty (Map.elems sm) result
       return (fromCoDB letBoundResult)
 
 --------------------------------------------------------------------------------
@@ -64,35 +72,31 @@ type Subexpression = GenericSubexpression PositionTree
 subexprPrefixOrder :: Subexpression -> Subexpression -> Maybe Ordering
 subexprPrefixOrder e1 e2 = prefixOrd (positions e1) (positions e2)
 
--- | Common sub-expression map from hashes to expressions
-type SubexpressionMap = IntMap Subexpression
+-- | Common sub-expression map from hashes to expressions.
+-- We use a LinkedHashMap rather than a regular map so that expressions are
+-- let bound in the order that they occur in the expression.
+type SubexpressionMap = LinkedHashMap Int Subexpression
 
 type MonadLetInsert m =
   ( MonadLogger m
-  , MonadReader (CheckedCoDBExpr -> Int -> Bool) m
+  , MonadReader (CheckedCoDBExpr -> Int -> Bool, Bool) m
   )
 
 letInsert :: MonadLetInsert m => CheckedCoDBExpr -> m (CheckedCoDBExpr, SubexpressionMap)
 letInsert expr = do
   showIdentEntry expr
   res@(expr', sm) <- case recCoDB expr of
-    TypeC{}    -> return (expr, leafSM)
-    VarC{}     -> return (expr, leafSM)
-    LiteralC{} -> return (expr, leafSM)
-    BuiltinC{} -> return (expr, leafSM)
-    HoleC{}    -> return (expr, leafSM)
-    MetaC{}    -> return (expr, leafSM)
+    UniverseC{} -> return (expr, leafSM)
+    VarC{}      -> return (expr, leafSM)
+    LiteralC{}  -> return (expr, leafSM)
+    BuiltinC{}  -> return (expr, leafSM)
+    HoleC{}     -> return (expr, leafSM)
+    MetaC{}     -> return (expr, leafSM)
 
-    LSeqC ann dict xs -> do
-      ((dict', bvm1), sm1) <- letInsert dict
-      ((xs',   bvms), sms) <- first unzip <$> (unzip <$> traverse letInsert xs)
-      let expr' = (LSeq ann dict' xs', nodeBVM (bvm1 : bvms))
-      return (expr', nodeSM expr' (sm1 : sms))
-
-    PrimDictC ann e -> do
-      ((e', bvm), sm) <- letInsert e
-      let expr' = (PrimDict ann e', nodeBVM [bvm])
-      return (expr', nodeSM expr' [sm])
+    LSeqC ann xs -> do
+      ((xs', bvms), sms) <- first unzip <$> (unzip <$> traverse letInsert xs)
+      let expr' = (LVec ann xs', nodeBVM bvms)
+      return (expr', nodeSM expr' sms)
 
     AnnC ann e t -> do
       ((e', bvm1), sm1) <- letInsert e
@@ -135,30 +139,35 @@ letInsertBinder :: MonadLetInsert m
                 => CheckedCoDBBinder -> Maybe PositionTree
                 -> m (CheckedCoDBBinder, SubexpressionMap)
 letInsertBinder binder positions = case recCoDB binder of
-  (BinderC ann v (CoDBBinding n _) t) ->
+  (BinderC ann v r (CoDBBinding n _) t) ->
     if visibilityOf (fst binder) /= Explicit
-        then return (first (Binder ann v (CoDBBinding n positions)) t, mempty)
+        then return (first (Binder ann v r (CoDBBinding n positions)) t, Map.empty)
         else do
           ((t', bvm), sm) <- letInsert t
-          return ((Binder ann v (CoDBBinding n positions) t', bvm), sm)
+          return ((Binder ann v r (CoDBBinding n positions) t', bvm), sm)
 
 letInsertArg :: MonadLetInsert m
              => CheckedCoDBArg
              -> m (CheckedCoDBArg, SubexpressionMap)
 letInsertArg arg = if visibilityOf (fst arg) /= Explicit
-  then return (arg, mempty)
+  then return (arg, Map.empty)
   else case recCoDB arg of
-    (ArgC ann v e) -> do
+    (ArgC ann r v e) -> do
       ((e', bvm), sm) <- letInsert e
-      return ((Arg ann v e', bvm), sm)
+      return ((Arg ann r v e', bvm), sm)
 
 liftOverBinder :: MonadLetInsert m
                => (CheckedCoDBExpr, SubexpressionMap)
                -> m (CheckedCoDBExpr, SubexpressionMap)
 liftOverBinder (body, sm) = do
+  liftOverBinders <- asks snd
   -- Obtain the subexpressions that need to be inserted before the binder.
-  let (insertSM, remainingSM) = IntMap.partition shouldInsertHere sm
-  let subexprsToInsert = IntMap.elems insertSM
+  let (insertSM, remainingSM) =
+        if not liftOverBinders
+          then (sm, Map.empty)
+          else partitionMap shouldInsertHere sm
+
+  let subexprsToInsert = Map.elems insertSM
 
   -- Let bind those subexpressions.
   (updatedBody, updatedRemainingSM) <- letBindSubexpressions remainingSM subexprsToInsert body
@@ -183,28 +192,27 @@ letBindSubexpressions :: MonadLetInsert m
                       -> [Subexpression]
                       -> CheckedCoDBExpr
                       -> m (CheckedCoDBExpr, SubexpressionMap)
-letBindSubexpressions remainingSM []               expr = return (expr, remainingSM)
-letBindSubexpressions remainingSM subexprsToInsert expr = do
-  -- Filter the subexpressions using the provided filter.
-  exprFilter <- ask
-  let filteredSubexprs = filter (filterItem exprFilter) subexprsToInsert
+letBindSubexpressions remainingSM subexprsToInsert expr
+  | null subexprsToInsert = return (expr, remainingSM)
+  | otherwise             = do
+    -- Filter the subexpressions using the provided filter.
+    exprFilter <- asks fst
+    let filteredSubexprs = filter (filterItem exprFilter) subexprsToInsert
 
-  -- Sort the subexpressions by prefix order so we insert the "larger" ones first.
-  let sortedSubexprs = partialSort subexprPrefixOrder filteredSubexprs
+    -- Sort the subexpressions by prefix order so we insert the "larger" ones first.
+    let sortedSubexprs = partialSort subexprPrefixOrder filteredSubexprs
 
-  logDebug MaxDetail "begin-insertion"
-  incrCallDepth
-  (updatedSM, updatedExpr) <- go remainingSM sortedSubexprs expr
-  decrCallDepth
-  logDebug MaxDetail "end-insertion"
-  return (updatedExpr, updatedSM)
+    (updatedSM, updatedExpr) <- logCompilerPass MaxDetail "insertion" $ do
+      go remainingSM sortedSubexprs expr
+
+    return (updatedExpr, updatedSM)
   where
     go :: MonadLetInsert m
        => SubexpressionMap -> [Subexpression] -> CheckedCoDBExpr
        -> m (SubexpressionMap, CheckedCoDBExpr)
     go sm []                body = return (sm, body)
     go sm (cs : css) body = do
-      let ann = annotationOf (fst (subexpr cs))
+      let ann = provenanceOf (fst (subexpr cs))
       logDebug MaxDetail $ "inserting" <+> prettyEntry body cs
       incrCallDepth
 
@@ -219,7 +227,7 @@ letBindSubexpressions remainingSM subexprsToInsert expr = do
 
       -- Update the remaining subexpressions that are not going to be inserted here,
       -- to take into account the updated form of the body.
-      subexprFilter <- ask
+      subexprFilter <- asks fst
       logDebug MaxDetail $ "SM-before:" <+> prettySM body subexprFilter sm
       let updatedSM = fmap (updateSubexpression (positions cs)) sm
       logDebug MaxDetail $ "SM-after: " <+> prettySM updatedBody subexprFilter updatedSM
@@ -246,7 +254,7 @@ letBindSubexpressions remainingSM subexprsToInsert expr = do
         Nothing           -> developerError "Unexpectedly disjoint position trees"
         Just newPositions -> CSItem v2 q (Node newPositions)
 
-    prependLet :: CheckedAnn -> Subexpression -> CheckedCoDBExpr -> CheckedCoDBExpr
+    prependLet :: Provenance -> Subexpression -> CheckedCoDBExpr -> CheckedCoDBExpr
     prependLet ann cs (letBody, bvm3) =
       let (pt, bvm3')   = liftBVM bvm3 in
       let (bound, bvm1) = subexpr cs in
@@ -257,24 +265,24 @@ letBindSubexpressions remainingSM subexprsToInsert expr = do
       (Let ann bound binder letBody, nodeBVM [bvm1, bvm2, bvm3'])
 
 leafSM :: SubexpressionMap
-leafSM = mempty
+leafSM = Map.empty
 
 nodeSM :: CheckedCoDBExpr -> [SubexpressionMap] -> SubexpressionMap
 nodeSM e sms =
   -- Merge the maps together
-  let mergedCSIMap = fmap (fmap Node) (foldr merge mempty $ fmap (fmap (fmap Here)) sms) in
+  let mergedCSIMap = fmap (fmap Node) (foldr merge Map.empty $ fmap (fmap (fmap Here)) sms) in
 
   -- Add the current node to the map
-  let eHash = hashCoDBExpr e in
+  let eHash = hash e in
   let item  = CSItem e 1 Leaf in
-  IntMap.insertWith (duplicateError e sms) eHash item mergedCSIMap
+  Map.insertWith (duplicateError e sms) eHash item mergedCSIMap
   where
-    merge :: IntMap (GenericSubexpression PositionList)
-          -> IntMap (GenericSubexpression PositionList)
-          -> IntMap (GenericSubexpression PositionList)
-    merge xs ys = IntMap.unionWith (<>) xs (fmap (fmap There) ys)
+    merge :: LinkedHashMap Int (GenericSubexpression PositionList)
+          -> LinkedHashMap Int (GenericSubexpression PositionList)
+          -> LinkedHashMap Int (GenericSubexpression PositionList)
+    merge xs ys = Map.unionWith (<>) xs (fmap (fmap There) ys)
 
-duplicateError :: Show ann => CoDBExpr ann
+duplicateError :: CoDBExpr
                -> [SubexpressionMap]
                -> Subexpression
                -> Subexpression
@@ -282,7 +290,7 @@ duplicateError :: Show ann => CoDBExpr ann
 duplicateError e maps _ _ = developerError $
   "During let-lifting found duplicate sub-expression" <+> squotes (prettyVerbose e) <+>
   "containing itself..." <> line <>
-  "Hash code =" <+> pretty (hashCoDBExpr e) <> line <>
+  "Hash code =" <+> pretty (hash e) <> line <>
   "Maps = " <+> pretty (show maps)
 
 showIdentEntry :: MonadLetInsert m => CheckedCoDBExpr -> m ()
@@ -293,7 +301,7 @@ showIdentEntry e = do
 showIdentExit :: MonadLetInsert m => CheckedCoDBExpr -> SubexpressionMap -> m ()
 showIdentExit expr sm = do
   decrCallDepth
-  subexprFilter <- ask
+  subexprFilter <- asks fst
   logDebug MaxDetail ("letInsert-exit " <+> align (
       prettySimple (fromCoDB expr) <+> " |=" <> softline <>
       prettySM expr subexprFilter sm))
@@ -314,8 +322,12 @@ prettyItem expr subexprFilter item = if filterItem subexprFilter item
 
 prettySM :: CheckedCoDBExpr -> (CheckedCoDBExpr -> Int -> Bool) -> SubexpressionMap -> Doc a
 prettySM expr subexprFilter sm =
-  pretty (layoutAsText <$> mapMaybe (prettyItem expr subexprFilter) (IntMap.elems sm))
+  pretty (layoutAsText <$> mapMaybe (prettyItem expr subexprFilter) (Map.elems sm))
 
 prettyCommonSubExprs :: CheckedCoDBExpr -> [Subexpression] -> Doc a
 prettyCommonSubExprs expr cses = list (fmap (prettyEntry expr) cses)
 
+partitionMap :: Hashable k => (a -> Bool) -> LinkedHashMap k a -> (LinkedHashMap k a, LinkedHashMap k a)
+partitionMap p xs = do
+  let (pass, notPass) = List.partition (p . snd) $ Map.toList xs
+  (Map.fromList pass, Map.fromList notPass)

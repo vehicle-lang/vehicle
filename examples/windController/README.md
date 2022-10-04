@@ -1,7 +1,18 @@
-Wind controller example
-=======================
+Car controller example
+======================
 
-This is the example described in Section 2.1 of the [initial Vehicle paper](https://arxiv.org/abs/2202.05207v1). The neural network used to implement the controller is `controller.onnx`. The Vehicle specification describing its behavious is `windController.vcl`.
+A simple car controller that is formally proven to always keep the car on the road in the face of noisy sensor data and an unpredictable cross-wind. The
+specification is verified in Marabou and can then be exported to Agda and
+combined with a larger proof to prove that the car never leaves the road. A full
+description of the setup can be found in Section 2.1 of the [Vehicle paper](https://arxiv.org/pdf/2202.05207v1.pdf)).
+
+This folder contains the following files:
+
+- `controller.onnx` - the neural network used to implement the controller.
+
+- `windController.vcl` - the specification describing the desired behaviour.
+
+- `agdaProof/SafetyProof.agda` - the Agda proof the car never leaves the road.
 
 Verifying using Marabou
 -----------------------
@@ -41,3 +52,9 @@ vehicle export \
 
 The full proof safety which makes uses of the generated Agda version of the specification in `agdaProof/WindControllerSpec.agda` is found in `agdaProof/SafetyProof.agda`.
 
+Generated files
+---------------
+
+The outputs of the above Vehicle commands can be found in the test suite:
+  - [Automatically generated Marabou queries](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden/windController/windController-output-marabou)
+  - [Automatically generated Agda code](https://github.com/vehicle-lang/vehicle/blob/dev/test/Test/Compile/Golden/windController/windController-output.agda)

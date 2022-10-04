@@ -4,54 +4,50 @@ module Vehicle.Compile.Scope
   , scopeCheckClosedExpr
   ) where
 
-import Control.Monad.Except ( MonadError(..) )
-import Control.Monad.Reader (MonadReader(..), runReaderT)
+import Control.Monad.Except (MonadError(..))
+import Control.Monad.Writer (MonadWriter(..), runWriterT)
+import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
+import Control.Monad.State
+import Data.Bifunctor (Bifunctor(..))
 import Data.List (elemIndex)
-import Data.Set (Set,)
-import Data.Set qualified as Set (member, insert, toList)
+import Data.Map qualified as Map
 
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 
-scopeCheck :: (MonadLogger m, MonadError CompileError m)
-           => InputProg -> m UncheckedProg
-scopeCheck e = logCompilerPass "scope checking" $
-  runReaderT (scope e) emptyCtx
+scopeCheck :: MonadCompile m => InputProg -> m (UncheckedProg, DependencyGraph)
+scopeCheck e = logCompilerPass MinDetail "scope checking" $ do
+  (prog, dependencies) <- runReaderT (scopeProg e) mempty
+  return (prog, fromEdges dependencies)
 
-scopeCheckClosedExpr :: (MonadLogger m, MonadError CompileError m)
-                     => InputExpr -> m UncheckedExpr
-scopeCheckClosedExpr e = runReaderT (scope e) emptyCtx
+scopeCheckClosedExpr :: MonadCompile m => InputExpr -> m UncheckedExpr
+scopeCheckClosedExpr e = fst <$> runWriterT (evalStateT (runReaderT (scopeExpr e) (mempty, False)) mempty)
 
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
 
-type SCM m =
+type MonadScope m =
   ( MonadCompile m
-  , MonadReader Ctx m
+  , MonadReader (DeclCtx ()) m
   )
 
--- |Type of scope checking contexts.
-data Ctx = Ctx
-  { declCtx :: Set Identifier
-  , exprCtx :: [DBBinding]
-  }
-
-instance Pretty Ctx where
-  pretty (Ctx declCtx exprCtx) = "Ctx" <+> pretty (Set.toList declCtx) <+> pretty exprCtx
-
-emptyCtx :: Ctx
-emptyCtx = Ctx mempty mempty
+type MonadScopeExpr m =
+  ( MonadCompile m
+  , MonadReader (DeclCtx (), Bool) m
+  , MonadState (BoundCtx DBBinding, [(Provenance, Symbol)]) m
+  , MonadWriter Dependencies m
+  )
 
 --------------------------------------------------------------------------------
 -- Debug functions
 
-logScopeEntry :: SCM m => InputExpr -> m ()
+logScopeEntry :: MonadScopeExpr m => InputExpr -> m ()
 logScopeEntry e = do
   incrCallDepth
   logDebug MaxDetail $ "scope-entry" <+> prettyVerbose e -- <+> "in" <+> pretty ctx
 
-logScopeExit :: SCM m => UncheckedExpr -> m ()
+logScopeExit :: MonadScopeExpr m => UncheckedExpr -> m ()
 logScopeExit e = do
   logDebug MaxDetail $ "scope-exit " <+> prettyVerbose e
   decrCallDepth
@@ -59,82 +55,127 @@ logScopeExit e = do
 --------------------------------------------------------------------------------
 -- Algorithm
 
-class ScopeCheck a b where
-  scope :: SCM m => a -> m b
+scopeProg :: MonadScope m => InputProg -> m (UncheckedProg, DependencyList)
+scopeProg (Main ds) = first Main <$> scopeDecls ds
 
-instance ScopeCheck InputProg UncheckedProg where
-  scope (Main ds) = Main <$> scope ds
+scopeDecls :: MonadScope m => [InputDecl] -> m ([UncheckedDecl], DependencyList)
+scopeDecls = \case
+  []       -> return ([], [])
+  (d : ds) -> do
+    (d', dep) <- runWriterT $ scopeDecl d
 
-instance ScopeCheck [InputDecl] [UncheckedDecl] where
-  scope []       = return []
-  scope (d : ds) = do
-    d' <- scope d
-    ds' <- bindDecl (identifierOf d') (scope ds)
-    return (d' : ds')
+    let ident = identifierOf d'
+    exists <- asks (Map.member ident)
+    if exists
+      then throwError $ DuplicateName (provenanceOf d) (nameOf ident)
+      else do
+        (ds', deps) <- bindDecl (identifierOf d') (scopeDecls ds)
+        let dependencies = (identifierOf d, dep) : deps
+        return (d' : ds', dependencies)
 
-instance ScopeCheck InputDecl UncheckedDecl where
-  scope = traverseDeclExprs scope
+scopeDecl :: (MonadWriter Dependencies m, MonadScope m) => InputDecl -> m UncheckedDecl
+scopeDecl = \case
+  DefResource p r ident t ->
+    DefResource p r ident <$> scopeDeclExpr False t
 
-instance ScopeCheck InputArg UncheckedArg where
-  scope = traverseArgExpr scope
+  DefFunction p ident t e ->
+    DefFunction p ident <$> scopeDeclExpr True t <*> scopeDeclExpr False e
 
-instance ScopeCheck InputBinder UncheckedBinder where
-  scope = traverseBinderType scope
+  DefPostulate p ident t ->
+    DefPostulate p ident <$> scopeDeclExpr False t
 
-instance ScopeCheck InputExpr UncheckedExpr where
-  scope e = do
-    logScopeEntry e
-    result <- case e of
-      Type     ann l        -> return $ Type ann l
-      Meta     ann i        -> return $ Meta ann i
-      Hole     ann n        -> return $ Hole ann n
-      Ann      ann ex t     -> Ann ann <$> scope ex <*> scope t
-      App      ann fun args -> App ann <$> scope fun <*> traverse scope args
-      Builtin  ann op       -> return $ Builtin ann op
-      Var      ann v        -> Var ann <$> getVar ann v
-      Literal  ann l        -> return $ Literal ann l
-      LSeq     ann dict es  -> LSeq ann <$> scope dict <*> traverse scope es
+scopeDeclExpr :: (MonadWriter Dependencies m, MonadScope m) => Bool -> InputExpr -> m UncheckedExpr
+scopeDeclExpr generalise expr = do
+  declCtx <- ask
 
-      Pi  ann binder res -> do
-        bindVar binder $ \binder' -> Pi ann binder' <$> scope res
+  (scopedExpr, (_, varsToGeneralise)) <-
+    runStateT (runReaderT (scopeExpr expr) (declCtx, generalise)) (mempty, mempty)
 
-      Lam ann binder body -> do
-        bindVar binder $ \binder' -> Lam ann binder' <$> scope body
+  if not generalise || null varsToGeneralise then
+    return scopedExpr
+  else do
+    logDebug MaxDetail $
+      "Generalising over the following variables" <+> pretty (map snd varsToGeneralise)
+    return $ foldr generaliseOverVar scopedExpr varsToGeneralise
 
-      Let ann bound binder body -> do
-        bound' <- scope bound
-        bindVar binder $ \binder' -> Let ann bound' binder' <$> scope body
+generaliseOverVar :: (Provenance, Symbol) -> UncheckedExpr -> UncheckedExpr
+generaliseOverVar (p, n) = Pi p (ImplicitBinder p (Just n) binderType)
+  where binderType = mkHole p ("typeOf[" <> n <> "]")
 
-      PrimDict _ _tc -> compilerDeveloperError "Found PrimDict during scope checking."
+scopeExpr :: MonadScopeExpr m => InputExpr -> m UncheckedExpr
+scopeExpr e = do
+  logScopeEntry e
+  result <- case e of
+    Universe  ann l       -> return $ Universe ann l
+    Meta     ann i        -> return $ Meta ann i
+    Hole     ann n        -> return $ Hole ann n
+    Ann      ann ex t     -> Ann ann <$> scopeExpr ex <*> scopeExpr t
+    App      ann fun args -> App ann <$> scopeExpr fun <*> traverse scopeArg args
+    Builtin  ann op       -> return $ Builtin ann op
+    Var      ann v        -> Var ann <$> getVar ann v
+    Literal  ann l        -> return $ Literal ann l
+    LVec     ann es       -> LVec ann <$> traverse scopeExpr es
 
-    logScopeExit result
-    return result
+    Pi  ann binder res -> do
+      bindVar binder $ \binder' -> Pi ann binder' <$> scopeExpr res
 
-bindDecl :: SCM m => Identifier -> m a -> m a
-bindDecl ident continuation = do
-  local addDeclToCtx continuation
-    where
-      addDeclToCtx :: Ctx -> Ctx
-      addDeclToCtx Ctx {..} = Ctx (Set.insert ident declCtx) exprCtx
+    Lam ann binder body -> do
+      bindVar binder $ \binder' -> Lam ann binder' <$> scopeExpr body
 
-bindVar :: SCM m
+    Let ann bound binder body -> do
+      bound' <- scopeExpr bound
+      bindVar binder $ \binder' -> Let ann bound' binder' <$> scopeExpr body
+
+  logScopeExit result
+  return result
+
+scopeArg :: MonadScopeExpr m => InputArg -> m UncheckedArg
+scopeArg = traverseArgExpr scopeExpr
+
+scopeBinder :: MonadScopeExpr m => InputBinder -> m UncheckedBinder
+scopeBinder = traverseBinderType scopeExpr
+
+bindDecl :: MonadScope m => Identifier -> m a -> m a
+bindDecl ident = local (Map.insert ident ())
+
+bindVar :: MonadScopeExpr m
         => InputBinder
         -> (UncheckedBinder -> m UncheckedExpr)
         -> m UncheckedExpr
 bindVar binder update = do
-  binder' <- scope binder
-  local (addBinderToCtx (nameOf binder)) (update binder')
-    where
-      addBinderToCtx :: DBBinding -> Ctx -> Ctx
-      addBinderToCtx name Ctx{..} = Ctx declCtx (name : exprCtx)
+  binder' <- scopeBinder binder
+  modify (first (nameOf binder :))
+  result <- update binder'
+  modify (first tail)
+  return result
 
 -- |Find the index for a given name of a given sort.
-getVar :: SCM m => InputAnn -> NamedVar -> m DBVar
-getVar ann symbol = do
-  Ctx declCtx exprCtx <- ask
-  case elemIndex (Just symbol) exprCtx of
+getVar :: MonadScopeExpr m => Provenance -> NamedVar -> m DBVar
+getVar p symbol = do
+  (declCtx, generaliseOverMissingVariables) <- ask
+  (boundCtx, varsToGeneralise) <- get
+
+  case elemIndex (Just symbol) boundCtx of
     Just i -> return $ Bound i
-    Nothing ->
-      if Set.member (Identifier symbol) declCtx
-        then return $ Free (Identifier symbol)
-        else throwError $ UnboundName symbol (provenanceOf ann)
+    Nothing -> do
+      let ident = Identifier symbol
+      if Map.member ident declCtx then do
+        tell [ident]
+        return $ Free ident
+      else if not generaliseOverMissingVariables
+        then throwError $ UnboundName p  symbol
+      else do
+          -- Assumes that we're generalising in reverse order to the occurrences
+          -- of unbound variables:
+          -- e.g.
+          -- test :: a -> b -> c
+          -- will become
+          -- test :: forall c b a . a -> b -> c
+          logDebug MaxDetail $
+            "Variable" <+> squotes (pretty symbol) <+> "should be generalised over"
+
+          let newVarsToGeneralise = (p, symbol) : varsToGeneralise
+          let newBoundCtx = boundCtx <> [Just symbol]
+          put (newBoundCtx, newVarsToGeneralise)
+          let dbIndex = length boundCtx
+          return $ Bound dbIndex

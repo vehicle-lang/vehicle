@@ -1,5 +1,0 @@
-Error: The type of network 'f' is not currently supported as the input 'Tensor Real [1, 2]' is not a 1D tensor. (Line 1, Columns 13-30)
-Fix: Only networks of type:
-  1. Tensor A [m] -> Tensor B [n]
-  2. A -> ... -> A -> B
-are allowed, where A and B are one of [ Bool, Nat, Int, Rat, Real ] and 'm' and 'n' are constants. Ensure that the network input is a 1D tensor.

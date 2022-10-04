@@ -1,2 +1,0 @@
-Error: A tensor with variable dimensions '[f 0]' is not a supported type for the dataset 'trainingDataset'. (Line 2, Columns 9-24)
-Fix: make sure the dimensions of the dataset are all constants.

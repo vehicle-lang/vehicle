@@ -1,0 +1,2 @@
+Error at Line 3, Columns 5-11: Property 'f' contains a quantified variable 'x' of type 'Nat' which is not currently supported by Marabou.
+Fix: try switching the variable to one of the following supported types: [Rat]

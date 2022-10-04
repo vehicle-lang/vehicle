@@ -11,14 +11,12 @@ module Vehicle.Language.AST.CoDeBruijn
   , ArgC(..)
   , ExprC(..)
   , RecCoDB(..)
-  , mkHashable
   , substPos
   , liftFreeCoDBIndices
   , lowerFreeCoDBIndices
   ) where
 
 import Control.Exception (assert)
-import Data.Bifunctor (first)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty (unzip, zip, zipWith, toList)
 import Data.Map (Map)
@@ -35,8 +33,9 @@ import Vehicle.Language.AST.DeBruijn hiding (Free, Bound)
 import Vehicle.Language.AST.DeBruijn qualified as DB (DBVar(..))
 import Vehicle.Language.AST.Visibility
 import Vehicle.Language.AST.Builtin (Builtin)
-import Vehicle.Language.AST.Utils
 import Vehicle.Language.AST.Position
+import Vehicle.Language.AST.Provenance
+import Vehicle.Language.AST.Relevance
 
 --------------------------------------------------------------------------------
 -- AST Definitions
@@ -60,20 +59,17 @@ data CoDBVar
 instance Hashable CoDBVar
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type PartialCoDBBinder ann = Binder CoDBBinding CoDBVar ann
-type PartialCoDBArg    ann = Arg    CoDBBinding CoDBVar ann
-type PartialCoDBExpr   ann = Expr   CoDBBinding CoDBVar ann
+type PartialCoDBBinder = Binder CoDBBinding CoDBVar
+type PartialCoDBArg    = Arg    CoDBBinding CoDBVar
+type PartialCoDBExpr   = Expr   CoDBBinding CoDBVar
 
-type CoDBBinder ann = (PartialCoDBBinder ann, BoundVarMap)
-type CoDBArg    ann = (PartialCoDBArg    ann, BoundVarMap)
-type CoDBExpr   ann = (PartialCoDBExpr   ann, BoundVarMap)
+type CoDBBinder = (PartialCoDBBinder, BoundVarMap)
+type CoDBArg    = (PartialCoDBArg   , BoundVarMap)
+type CoDBExpr   = (PartialCoDBExpr  , BoundVarMap)
 
-instance Hashable (PartialCoDBExpr   ()) where
-instance Hashable (PartialCoDBArg    ()) where
-instance Hashable (PartialCoDBBinder ()) where
-
-mkHashable :: CoDBExpr ann -> CoDBExpr ()
-mkHashable = first removeAnnotations
+instance Hashable PartialCoDBExpr
+instance Hashable PartialCoDBArg
+instance Hashable PartialCoDBBinder
 
 --------------------------------------------------------------------------------
 -- Extract binder positionTrees
@@ -83,24 +79,23 @@ mkHashable = first removeAnnotations
 type NamedPTMap = Map NamedBinding (Maybe PositionTree)
 
 class ExtractPositionTrees t where
-  extractPTs :: t (Symbol, Maybe PositionTree) CoDBVar ann ->
-                (t Symbol CoDBVar ann, NamedPTMap)
+  extractPTs :: t (Symbol, Maybe PositionTree) CoDBVar ->
+                (t Symbol CoDBVar, NamedPTMap)
 
 instance ExtractPositionTrees Expr where
   extractPTs = cata $ \case
-    TypeF     ann l  -> (Type    ann l,  mempty)
+    UniverseF ann l  -> (Universe ann l,  mempty)
     HoleF     ann n  -> (Hole    ann n,  mempty)
     MetaF     ann m  -> (Meta    ann m,  mempty)
     BuiltinF  ann op -> (Builtin ann op, mempty)
     LiteralF  ann l  -> (Literal ann l,  mempty)
     VarF      ann v  -> (Var ann v,      mempty)
 
-    PrimDictF ann (e, mpts)        -> (PrimDict ann e, mpts)
     AnnF ann (e, mpts1) (t, mpts2) -> (Ann ann e t, mergePTs [mpts1, mpts2])
 
-    LSeqF ann (dict, mpt) xs ->
+    LVecF ann xs ->
       let (xs', mpts) = unzip xs in
-      (LSeq ann dict xs', mergePTs (mpt : mpts))
+      (LVec ann xs', mergePTs mpts)
 
     AppF ann (fun, mpt) args ->
       let (args', mpts) = NonEmpty.unzip (fmap extractPTs args) in
@@ -119,15 +114,15 @@ instance ExtractPositionTrees Expr where
       (Lam ann binder' body', mergePTs [mpt1, mpt2])
 
 instance ExtractPositionTrees Binder where
-  extractPTs (Binder ann v (n, mpt) t) =
+  extractPTs (Binder ann v r (n, mpt) t) =
     let (t', mpts) = extractPTs t in
     let pts' = mergePTs [Map.singleton n mpt, mpts] in
-    (Binder ann v n t', pts')
+    (Binder ann v r n t', pts')
 
 instance ExtractPositionTrees Arg where
-  extractPTs (Arg ann v e) =
+  extractPTs (Arg ann v r e) =
     let (e', mpts) = extractPTs e in
-    (Arg ann v e', mpts)
+    (Arg ann v r e', mpts)
 
 mergePTPair :: NamedPTMap -> NamedPTMap -> NamedPTMap
 mergePTPair = Map.unionWith (\_ _ -> developerError
@@ -145,44 +140,41 @@ mergePTs = foldr mergePTPair mempty
 -- over again we define the following intermediate state where the decomposition
 -- has already been carried out.
 
-data ArgC ann
-  = ArgC ann Visibility (CoDBExpr ann)
+data ArgC
+  = ArgC Provenance Visibility Relevance CoDBExpr
   deriving (Show)
 
-data BinderC ann
-  = BinderC ann Visibility CoDBBinding (CoDBExpr ann)
+data BinderC
+  = BinderC Provenance Visibility Relevance CoDBBinding CoDBExpr
   deriving (Show)
 
-data ExprC ann
-  = TypeC     ann UniverseLevel
-  | AnnC      ann (CoDBExpr ann) (CoDBExpr ann)
-  | AppC      ann (CoDBExpr ann) (NonEmpty (CoDBArg ann))
-  | PiC       ann (CoDBBinder ann) (CoDBExpr ann)
-  | BuiltinC  ann Builtin
-  | VarC      ann DBVar
-  | HoleC     ann Symbol
-  | MetaC     ann Meta
-  | LetC      ann (CoDBExpr ann) (CoDBBinder ann) (CoDBExpr ann)
-  | LamC      ann (CoDBBinder ann) (CoDBExpr ann)
-  | LiteralC  ann Literal
-  | LSeqC      ann (CoDBExpr ann) [CoDBExpr ann]
-  | PrimDictC ann (CoDBExpr ann)
+data ExprC
+  = UniverseC Provenance Universe
+  | AnnC      Provenance CoDBExpr CoDBExpr
+  | AppC      Provenance CoDBExpr (NonEmpty CoDBArg)
+  | PiC       Provenance CoDBBinder CoDBExpr
+  | BuiltinC  Provenance Builtin
+  | VarC      Provenance DBVar
+  | HoleC     Provenance Symbol
+  | MetaC     Provenance Meta
+  | LetC      Provenance CoDBExpr CoDBBinder CoDBExpr
+  | LamC      Provenance CoDBBinder CoDBExpr
+  | LiteralC  Provenance Literal
+  | LSeqC     Provenance [CoDBExpr]
   deriving (Show)
 
 class RecCoDB a b where
   recCoDB :: a -> b
 
-instance RecCoDB (CoDBExpr ann) (ExprC ann) where
+instance RecCoDB CoDBExpr ExprC where
   recCoDB (expr, bvm) = case (expr, unnodeBVM bvm) of
-    (Type     ann l , _) -> TypeC     ann l
+    (Universe ann u , _) -> UniverseC ann u
     (Hole     ann n , _) -> HoleC     ann n
     (Meta     ann m , _) -> MetaC     ann m
     (Builtin  ann op, _) -> BuiltinC  ann op
     (Literal  ann l , _) -> LiteralC  ann l
 
-    (PrimDict ann e, bvm1 : _) -> PrimDictC ann (e, bvm1)
-
-    (LSeq ann dict xs, bvm1 : bvms) -> LSeqC ann (dict, bvm1) (zip xs bvms)
+    (LVec ann xs, bvms) -> LSeqC ann (zip xs bvms)
 
     (Var ann v, _) -> case v of
       CoDBFree  ident -> assert (null bvm) (VarC ann (DB.Free ident))
@@ -205,13 +197,13 @@ instance RecCoDB (CoDBExpr ann) (ExprC ann) where
     (_, bvms) -> developerError $
       "Expected the same number of BoundVarMaps as args but found" <+> pretty (length bvms)
 
-instance RecCoDB (CoDBBinder ann) (BinderC ann) where
-  recCoDB (Binder ann v n t, bvm) = BinderC ann v n (t, bvm)
+instance RecCoDB CoDBBinder BinderC where
+  recCoDB (Binder ann v r n t, bvm) = BinderC ann v r n (t, bvm)
 
-instance RecCoDB (CoDBArg ann) (ArgC ann) where
-  recCoDB (Arg ann v e, bvm) = ArgC ann v (e, bvm)
+instance RecCoDB CoDBArg ArgC where
+  recCoDB (Arg ann v r e, bvm) = ArgC ann v r (e, bvm)
 
-positionTreeOf :: PartialCoDBBinder ann -> Maybe PositionTree
+positionTreeOf :: PartialCoDBBinder -> Maybe PositionTree
 positionTreeOf b = case nameOf b of
   CoDBBinding _ pt -> pt
 
@@ -222,13 +214,12 @@ positionTreeOf b = case nameOf b of
 -- with care as unlike DeBruijn based substitution it does not only target
 -- variables but arbitrary expressions. Assumes that all the variables in the
 -- value `v` being substituted are free in the expression being substituted into.
-substPos :: CoDBExpr ann -> Maybe PositionTree -> CoDBExpr ann -> CoDBExpr ann
+substPos :: CoDBExpr -> Maybe PositionTree -> CoDBExpr -> CoDBExpr
 substPos _ Nothing         expr = expr
 substPos v (Just Leaf)     _    = v
 substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
-  (TypeC{}    , _) -> invalidPositionTreeError l
+  (UniverseC{}, _) -> invalidPositionTreeError l
   (HoleC{}    , _) -> invalidPositionTreeError l
-  (PrimDictC{}, _) -> invalidPositionTreeError l
   (MetaC{}    , _) -> invalidPositionTreeError l
   (LiteralC{} , _) -> invalidPositionTreeError l
   (BuiltinC{} , _) -> invalidPositionTreeError l
@@ -239,10 +230,9 @@ substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
     let (t', bvm2) = substPos v p2 t in
     (Ann ann e' t', nodeBVM [bvm1, bvm2])
 
-  (LSeqC ann dict xs, p : ps) ->
-    let (dict', bvm1) = substPos v p dict in
+  (LSeqC ann xs, ps) ->
     let (xs', bvms) = unzip (zipWith (substPos v) ps xs) in
-    (LSeq ann dict' xs', nodeBVM (bvm1 : bvms))
+    (LVec ann xs', nodeBVM bvms)
 
   (AppC ann fun args, p1 : p2 : ps) ->
     let (fun',  bvm1) = substPos v p1 fun in
@@ -271,24 +261,24 @@ substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
   (_, ps) -> developerError $
     "Expected the same number of PositionTrees as args but found" <+> pretty (length ps)
   where
-    lowerValue :: CoDBExpr ann -> CoDBExpr ann
+    lowerValue :: CoDBExpr -> CoDBExpr
     lowerValue (e, bvm) = (e, lowerBVM Nothing bvm)
 
-substPosArg :: CoDBExpr ann -> Maybe PositionTree -> CoDBArg ann -> CoDBArg ann
+substPosArg :: CoDBExpr -> Maybe PositionTree -> CoDBArg -> CoDBArg
 substPosArg v p arg = case recCoDB arg of
-  (ArgC ann vis e) ->
+  (ArgC ann vis r e) ->
     let (e', bvm) = substPos v p e in
-    (Arg ann vis e', bvm)
+    (Arg ann vis r e', bvm)
 
-substPosBinder :: CoDBExpr ann
+substPosBinder :: CoDBExpr
                -> Maybe PositionTree
-               -> CoDBBinder ann
+               -> CoDBBinder
                -> Maybe PositionTree
-               -> CoDBBinder ann
+               -> CoDBBinder
 substPosBinder v p binder boundPositions = case recCoDB binder of
-  (BinderC ann vis (CoDBBinding n _) t) ->
+  (BinderC ann vis r (CoDBBinding n _) t) ->
     let (t', bvm) = substPos v p t in
-    (Binder ann vis (CoDBBinding n boundPositions) t', bvm)
+    (Binder ann vis r (CoDBBinding n boundPositions) t', bvm)
 
 invalidPositionTreeError :: PositionList -> a
 invalidPositionTreeError l = developerError $
@@ -298,8 +288,8 @@ invalidPositionTreeError l = developerError $
 --------------------------------------------------------------------------------
 -- Lifting
 
-liftFreeCoDBIndices :: CoDBExpr ann -> CoDBExpr ann
+liftFreeCoDBIndices :: CoDBExpr -> CoDBExpr
 liftFreeCoDBIndices (e, bvm) = (e, IntMap.mapKeysMonotonic (\x -> x - 1) bvm)
 
-lowerFreeCoDBIndices :: CoDBExpr ann -> CoDBExpr ann
+lowerFreeCoDBIndices :: CoDBExpr -> CoDBExpr
 lowerFreeCoDBIndices (e, bvm) = (e, IntMap.mapKeysMonotonic (+ 1) bvm)

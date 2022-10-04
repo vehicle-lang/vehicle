@@ -1,0 +1,1 @@
+Error at Line 2, Columns 7-8: the return type of '-' should be one of [ Int, Rat ] but the program is expecting something of type 'Nat'.

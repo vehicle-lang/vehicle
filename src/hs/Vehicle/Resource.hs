@@ -23,6 +23,7 @@ data ResourceType
   = Network
   | Dataset
   | Parameter
+  | InferableParameter
   deriving (Eq, Show, Generic)
 
 instance NFData ResourceType
@@ -31,9 +32,10 @@ instance ToJSON ResourceType
 
 instance Pretty ResourceType where
   pretty = \case
-    Network   -> "network"
-    Dataset   -> "dataset"
-    Parameter -> "parameter"
+    Network            -> "network"
+    Dataset            -> "dataset"
+    Parameter          -> "parameter"
+    InferableParameter -> "inferable parameter"
 
 supportedFileFormats :: ResourceType -> [String]
 supportedFileFormats Network = [".onnx"]
@@ -79,14 +81,16 @@ instance ToJSON ResourceSummary
 -- Hashing
 
 hashResource :: MonadIO m => ResourceType -> String -> m Int
-hashResource Network   filepath = liftIO $ hash <$> ByteString.readFile filepath
-hashResource Dataset   filepath = liftIO $ hash <$> ByteString.readFile filepath
-hashResource Parameter value    = return $ hash value
+hashResource Network           filepath = liftIO $ hash <$> ByteString.readFile filepath
+hashResource Dataset           filepath = liftIO $ hash <$> ByteString.readFile filepath
+hashResource Parameter         value    = return $ hash value
+hashResource InferableParameter _        =
+  developerError "Should not be hashing implicit parameters"
 
 hashResources :: MonadIO m => Resources -> m [ResourceSummary]
 hashResources Resources{..} = do
-  networkSummaries   <- hashResourceType Network networks
-  datasetSummaries   <- hashResourceType Dataset datasets
+  networkSummaries   <- hashResourceType Network   networks
+  datasetSummaries   <- hashResourceType Dataset   datasets
   parameterSummaries <- hashResourceType Parameter parameters
   return $ networkSummaries <> datasetSummaries <> parameterSummaries
   where
@@ -110,9 +114,11 @@ reparseResources (x : xs) = r <> reparseResources xs
   where
     v = singleton (name x) (value x)
     r = case resType x of
-      Network   -> Resources v mempty mempty
-      Dataset   -> Resources mempty v mempty
-      Parameter -> Resources mempty mempty v
+      Network           -> Resources v mempty mempty
+      Dataset           -> Resources mempty v mempty
+      Parameter         -> Resources mempty mempty v
+      InferableParameter -> developerError "Should not be reparsing implicit parameters"
+
 
 --------------------------------------------------------------------------------
 -- Others

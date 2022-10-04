@@ -4,27 +4,16 @@ module Vehicle.Compile.Prelude
   , module Vehicle.Compile.Prelude
   ) where
 
+import Data.Set (Set)
 import Data.Map (Map)
 
 import Vehicle.Prelude as X
-import Vehicle.Backend.Prelude (Backend)
 import Vehicle.Language.AST as X
 import Vehicle.Resource as X
-import Vehicle.Language.Provenance as X
-
---------------------------------------------------------------------------------
--- Compilation
-
-data CompileOptions = CompileOptions
-  { target            :: Backend
-  , specificationFile :: FilePath
-  , outputFile        :: Maybe FilePath
-  , networkLocations  :: NetworkLocations
-  , datasetLocations  :: DatasetLocations
-  , parameterValues   :: ParameterValues
-  , modulePrefix      :: Maybe String
-  , proofCache        :: Maybe FilePath
-  } deriving (Show)
+import Vehicle.Compile.Prelude.Patterns as X
+import Vehicle.Compile.Prelude.Utils as X
+import Vehicle.Compile.Prelude.Contexts as X
+import Vehicle.Compile.Prelude.DependencyGraph as X
 
 --------------------------------------------------------------------------------
 -- Type synonyms
@@ -34,102 +23,77 @@ data CompileOptions = CompileOptions
 
 type InputBinding = Maybe NamedBinding
 type InputVar     = NamedVar
-type InputAnn     = Provenance
 
-type InputArg       = Arg    InputBinding InputVar InputAnn
-type InputBinder    = Binder InputBinding InputVar InputAnn
-type InputExpr      = Expr   InputBinding InputVar InputAnn
-type InputDecl      = Decl   InputBinding InputVar InputAnn
-type InputProg      = Prog   InputBinding InputVar InputAnn
+type InputArg       = Arg    InputBinding InputVar
+type InputBinder    = Binder InputBinding InputVar
+type InputExpr      = Expr   InputBinding InputVar
+type InputDecl      = Decl   InputBinding InputVar
+type InputProg      = Prog   InputBinding InputVar
 
 -- * Types pre type-checking
 
 type UncheckedBinding = DBBinding
 type UncheckedVar     = DBVar
-type UncheckedAnn     = Provenance
 
-type UncheckedBinder = DBBinder UncheckedAnn
-type UncheckedArg    = DBArg    UncheckedAnn
-type UncheckedExpr   = DBExpr   UncheckedAnn
-type UncheckedDecl   = DBDecl   UncheckedAnn
-type UncheckedProg   = DBProg   UncheckedAnn
+type UncheckedBinder = DBBinder
+type UncheckedArg    = DBArg
+type UncheckedExpr   = DBExpr
+type UncheckedDecl   = DBDecl
+type UncheckedProg   = DBProg
 
 -- * Types post type-checking
 
 type CheckedBinding = DBBinding
 type CheckedVar     = DBVar
-type CheckedAnn     = Provenance
 
-type CheckedBinder = DBBinder  CheckedAnn
-type CheckedArg    = DBArg     CheckedAnn
-type CheckedExpr   = DBExpr    CheckedAnn
-type CheckedDecl   = DBDecl    CheckedAnn
-type CheckedProg   = DBProg    CheckedAnn
+type CheckedBinder = DBBinder
+type CheckedArg    = DBArg
+type CheckedExpr   = DBExpr
+type CheckedType   = CheckedExpr
+type CheckedDecl   = DBDecl
+type CheckedProg   = DBProg
+
+type CheckedCoDBExpr   = CoDBExpr
+type CheckedCoDBArg    = CoDBArg
+type CheckedCoDBBinder = CoDBBinder
 
 -- * Type of annotations attached to the AST that are output by the compiler
 
 type OutputBinding = NamedBinding
 type OutputVar     = NamedVar
-type OutputAnn     = Provenance
 
-type OutputBinder = Binder OutputBinding OutputVar OutputAnn
-type OutputArg    = Arg    OutputBinding OutputVar OutputAnn
-type OutputExpr   = Expr   OutputBinding OutputVar OutputAnn
-type OutputDecl   = Decl   OutputBinding OutputVar OutputAnn
-type OutputProg   = Prog   OutputBinding OutputVar OutputAnn
-
-type CheckedCoDBExpr   = CoDBExpr CheckedAnn
-type CheckedCoDBArg    = CoDBArg CheckedAnn
-type CheckedCoDBBinder = CoDBBinder CheckedAnn
+type OutputBinder = Binder OutputBinding OutputVar
+type OutputArg    = Arg    OutputBinding OutputVar
+type OutputExpr   = Expr   OutputBinding OutputVar
+type OutputDecl   = Decl   OutputBinding OutputVar
+type OutputProg   = Prog   OutputBinding OutputVar
 
 -- | An expression paired with a position tree represting positions within it.
 -- Currently used mainly for pretty printing position trees.
 data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
   deriving Show
 
---------------------------------------------------------------------------------
--- Contexts
-
--- | The names, types and values if known of the variables that are in
--- currently in scope, indexed into via De Bruijn expressions.
-type BoundCtx = [(DBBinding, CheckedExpr, Maybe CheckedExpr)]
-
-instance IsBoundCtx BoundCtx where
-  ctxNames = map (\(n, _, _) -> n)
-
--- | The declarations that are currently in scope, indexed into via their names.
--- The first component is the type, and the second one the expression (if not
--- a postulate-style declaration).
-type DeclCtx = Map Identifier (CheckedExpr, Maybe CheckedExpr)
-
--- | Combined context
-data VariableCtx = VariableCtx
-  { boundCtx :: BoundCtx
-  , declCtx  :: DeclCtx
-  }
-
-emptyVariableCtx :: VariableCtx
-emptyVariableCtx = VariableCtx mempty mempty
-
-class IsBoundCtx a where
-  ctxNames :: a -> [DBBinding]
-
-instance IsBoundCtx [DBBinding] where
-  ctxNames = id
-
-instance IsBoundCtx [Symbol] where
-  ctxNames = map Just
+type DeclProvenance = (Identifier, Provenance)
 
 --------------------------------------------------------------------------------
 -- Logging
 
-logCompilerPass :: MonadLogger m => Doc a -> m b -> m b
-logCompilerPass passName performPass = do
-  logDebug MinDetail $ "Beginning" <+> passName
+logCompilerPass :: MonadLogger m => DebugLevel -> Doc a -> m b -> m b
+logCompilerPass level passName performPass = do
+  logDebug level $ "Starting" <+> passName
   incrCallDepth
   result <- performPass
   decrCallDepth
-  logDebug MinDetail $ "Finished" <+> passName <> line
+  logDebug level $ "Finished" <+> passName <> line
+  return result
+
+logCompilerSection :: MonadLogger m => DebugLevel -> Doc a -> m b -> m b
+logCompilerSection level sectionName performPass = do
+  logDebug level sectionName
+  incrCallDepth
+  result <- performPass
+  decrCallDepth
+  logDebug level ""
   return result
 
 logCompilerPassOutput :: MonadLogger m => Doc a -> m ()
@@ -138,3 +102,9 @@ logCompilerPassOutput result = do
   incrCallDepth
   logDebug MidDetail result
   decrCallDepth
+
+--------------------------------------------------------------------------------
+-- Other
+
+type UncheckedPropertyContext = Set Identifier
+type PropertyContext = Map Identifier PropertyInfo

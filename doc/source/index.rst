@@ -24,3 +24,4 @@ Contents
    training
    verification
    theorem-proving
+   other/index.rst

@@ -16,9 +16,9 @@
        comment = 'Natural literal';
      },
      {
-       name = 'constant.numeric.real.vehicle';
+       name = 'constant.numeric.rat.vehicle';
        match = '\b([0-9]+\\.[0-9]+?(e-?[0-9]+)?)\b';
-       comment = 'Real literal';
+       comment = 'Rational literal';
      },
      {
        name = 'constant.boolean.vehicle';
@@ -26,7 +26,7 @@
      },
      {
        name = 'constant.type.vehicle';
-       match = '\b(Bool|Real|Nat|Tensor|List|Nil|Cons)\b';
+       match = '\b(Bool|Rat|Nat|Tensor|List|Nil|Cons)\b';
      },
      {
        name = 'variable.other.vehicle';

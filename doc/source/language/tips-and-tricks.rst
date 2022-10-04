@@ -1,8 +1,9 @@
 Tips and tricks
 ===============
 
-.. autosummary::
-   :toctree: generated
+.. contents::
+   :depth: 1
+   :local:
 
 Naming indices
 --------------
@@ -19,7 +20,8 @@ each possible action.
 
 .. code-block:: agda
 
-   network action : Tensor Rat [12] -> Tensor 5 [Rat]
+   @network
+   action : Tensor Rat [12] -> Tensor 5 [Rat]
 
 Suppose the first and second outputs are the scores for staying still
 and moving up respectively, and that we would like to encode the constraint
@@ -108,7 +110,7 @@ writing specifications.
 
 .. code-block:: agda
 
-   isArgmin : forallT {n} . Fin n -> Tensor A n -> Bool
+   isArgmin : Index n -> Tensor Rat [n] -> Bool
    isArgmin i x = forall j . i != j => x ! i < x ! j
 
 :code:`argmin`
@@ -116,7 +118,7 @@ writing specifications.
 
 .. code-block:: agda
 
-   isArgmax : forallT {n} . Fin n -> Tensor A n -> Bool
+   isArgmax : Index n -> Tensor Rat [n] -> Bool
    isArgmax i x = forall j . i != j => x ! i > x ! j
 
 :code:`advises`
@@ -130,7 +132,8 @@ when applied to input `x`:
 
 .. code-block:: agda
 
-   network classify : Tensor Rat [24, 24] -> Tensor Rat [10]
+   @network
+   classify : Tensor Rat [24, 24] -> Tensor Rat [10]
 
-   advises : Fin 10 -> Tensor Rat [24, 24] -> Bool
+   advises : Index 10 -> Tensor Rat [24, 24] -> Bool
    advises i x = forall j . i != j => classify x ! i < classify x ! j

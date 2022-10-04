@@ -147,7 +147,7 @@ unnode (Node l) = unlist l
 liftBVM :: BoundVarMap -> (Maybe PositionTree, BoundVarMap)
 liftBVM bvm1 = (mt, bvm3)
   where
-    (mt, bvm2) = IntMap.updateLookupWithKey (\_k _v -> Nothing) 0 bvm1
+    (mt, bvm2) = deleteAndGet 0 bvm1
     bvm3       = IntMap.mapKeysMonotonic (\x -> x - 1) bvm2
 
 -- | Lowers a `BoundVarMap` over a binder, add the position tree for the

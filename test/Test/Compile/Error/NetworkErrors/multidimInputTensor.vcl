@@ -1,1 +1,0 @@
-network f : Tensor Real [1, 2] -> Real

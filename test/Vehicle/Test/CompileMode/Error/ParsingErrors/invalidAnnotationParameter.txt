@@ -1,0 +1,2 @@
+Error at Line 1, Columns 12-17: unknown option 'valid' for '@parameter' annotation.
+Fix: did you mean 'infer'?

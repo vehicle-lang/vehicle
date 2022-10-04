@@ -1,6 +1,9 @@
-network f : Rat -> Tensor Rat [4]
+@network
+f : Tensor Rat [1] -> Tensor Rat [4]
 
-dataset d : List (Fin 4)
+@dataset
+d : List (Index 4)
 
-spec : Prop
-spec = forall i in d . f 0.0 ! i >= 0
+@property
+spec : Bool
+spec = forall i in d . f [0] ! i >= 0

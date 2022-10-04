@@ -25,5 +25,5 @@ instance Exception DeveloperError
 developerError :: HasCallStack => Doc a -> b
 developerError message = throw $ DeveloperError $ layoutAsText $
   "Something went wrong internally. Please report the error" <+>
-  "shown below to `https://github.com/wenkokke/vehicle/issues`." <> line <>
+  "shown below to `https://github.com/vehicle-lang/vehicle/issues`." <> line <>
   "Error:" <+> message

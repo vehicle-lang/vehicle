@@ -8,7 +8,7 @@
 {-# LANGUAGE OverloadedLists #-}
 
 import Control.Monad (when, unless)
-import Data.Maybe (isJust, isNothing)
+import Data.Maybe (isJust, isNothing, fromMaybe)
 import Data.Version
 import System.Directory
 import System.IO
@@ -23,6 +23,9 @@ import Development.Shake.Util
 ---------------------------------------------------------------------------------
 --- Configuration
 ---------------------------------------------------------------------------------
+
+vehicleExecutableName :: String
+vehicleExecutableName = "vehicle"
 
 buildFolder :: FilePath
 buildFolder = "build"
@@ -162,10 +165,14 @@ main = shakeArgs shakeOptions $ do
     requireMarabou
 
   phony "init-agda" $ do
+    -- Find the Vehicle executable, erroring if its not installed.
+    let err = error "Please install Vehicle before running \"init-agda\""
+    vehicleExecutablePath <- liftIO $ fromMaybe err <$> findExecutable vehicleExecutableName
+
     requireAgda
 
     putInfo ""
-    putInfo "Setting up Agda libraries for Vehicle"
+    putInfo "Setting up Agda installation for Vehicle"
 
     -- Locate the home directory
     homeDirectory <- liftIO getHomeDirectory
@@ -177,9 +184,8 @@ main = shakeArgs shakeOptions $ do
     addedLibrary <- addLineToFileIfNotPresent agdaLibrariesFile vehicleAgdaLib
 
     -- Install the Vehicle executable
-
-    -- let vehicleExecutable = "unknown"
-    -- addedExecutable <- addLineToFileIfNotPresent agdaExecutablesFile vehicleExecutable
+    agdaExecutablesFile <- liftIO $ makeAbsolute $ agdaDirectory </> "executables"
+    addedExecutable <- addLineToFileIfNotPresent agdaExecutablesFile vehicleExecutablePath
 
     return ()
 
@@ -256,20 +262,50 @@ $(GEN_DIR_HS)/Vehicle/External/Par.info: $(GEN_DIR_HS)/Vehicle/External/Par.y
   -- Test Vehicle
   -------------------------------------------------------------------------------
 
-  phony "test" $ do
-    requireHaskell
-    need bnfcTargets
-    command_ [] "cabal"$
-      [ "v2-test" ] <>
-      testOptions
-
-  phony "test-accept" $ do
+  phony "basic-tests" $ do
     requireHaskell
     need bnfcTargets
     command_ [] "cabal" $
-      [ "v2-test" ] <>
+      [ "v2-test"
+      , "vehicle-executable-tests"
+      ] <>
+      testOptions
+
+  phony "basic-tests-accept" $ do
+    requireHaskell
+    need bnfcTargets
+    command_ [] "cabal" $
+      [ "v2-test"
+      , "vehicle-executable-tests"
+      ] <>
       testOptions   <>
       [ "--test-option=--accept" ]
+
+  phony "integration-tests" $ do
+    requireHaskell
+    need bnfcTargets
+    command_ [] "cabal" $
+      [ "v2-test"
+      , "vehicle-integration-tests"
+      ] <>
+      testOptions
+
+  phony "benchmark-tests" $ do
+    requireHaskell
+    need bnfcTargets
+    command_ [] "cabal" $
+      [ "v2-test"
+      , "vehicle-benchmarks"
+      ] <>
+      testOptions
+
+  phony "all-tests" $ do
+    requireHaskell
+    need bnfcTargets
+    command_ [] "cabal" $
+      [ "v2-test"
+      ] <>
+      testOptions
 
 ---------------------------------------------------------------------------------
 -- Utility functions
@@ -311,7 +347,7 @@ cabalInstallIfMissing executable packageName link version = do
     putInfo $ "Vehicle requires " <> packageName
     putInfo $ "See: " <> link
 
-    askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
+    -- askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
 
     command_ [] "cabal"
       [ "v2-install"

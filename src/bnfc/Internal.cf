@@ -9,11 +9,9 @@ position token BuiltinToken
   | {"=>"} | {"and"} | {"or"} | {"not"}
   | {"=="} | {"!="} | {"<="} | {"<"} | {">="} | {">"}
   | {"*"} | {"/"} | {"+"} | {"-"} | {"~"}
-  | {"Nat"} | {"Int"} | {"Real"} | {"Fin"}
-  | {"Prop"} | {"Bool"}
+  | {"Unit"} | {"Nat"} | {"Int"} | {"Index"}
+  | {"Bool"}
   | {"Tensor"} | {"List"} | {"::"} | {"!"}
-  | {"Eq"} | {"Ord"} | {"Container"} | {"Truth"}
-  | {"NatOps"} | {"IntOps"} | {"RatOps"}
   );
 position token NameToken (lower (letter | digit | '_')*) ;
 position token BoolToken ({"True"} | {"False"}) ;
@@ -25,25 +23,32 @@ position token Rational (digit+ '.' digit+);
 
 -- * Binders
 
-ExplicitBinder. Binder ::= "("  NameToken ":type" Expr ")";
-ImplicitBinder. Binder ::= "{"  NameToken ":type" Expr "}";
-InstanceBinder. Binder ::= "{{" NameToken ":type" Expr "}}";
+RelevantExplicitBinder.   Binder ::= "(" NameToken ":" Expr ")";
+RelevantImplicitBinder.   Binder ::= "{" NameToken ":" Expr "}";
+RelevantInstanceBinder.   Binder ::= "{{" NameToken ":" Expr "}}";
+IrrelevantExplicitBinder. Binder ::= ".(" NameToken ":" Expr ")";
+IrrelevantImplicitBinder. Binder ::= ".{" NameToken ":" Expr "}";
+IrrelevantInstanceBinder. Binder ::= ".{{" NameToken ":" Expr "}}";
 
 -- * Function arguments
 
-ExplicitArg. Arg ::= Expr1;
-ImplicitArg. Arg ::= "{" Expr "}";
-InstanceArg. Arg ::= "{{" Expr "}}";
+RelevantExplicitArg.   Arg ::= Expr1;
+RelevantImplicitArg.   Arg ::= "{" Expr "}";
+RelevantInstanceArg.   Arg ::= "{{" Expr "}}";
+IrrelevantExplicitArg. Arg ::= ".(" Expr ")";
+IrrelevantImplicitArg. Arg ::= ".{" Expr "}";
+IrrelevantInstanceArg. Arg ::= ".{{" Expr "}}";
 
 -- * Literals
 
-LitNat.  Lit ::= Natural;
-LitRat.  Lit ::= Rational;
-LitBool. Lit ::= BoolToken;
+UnitLiteral. Lit ::= "()";
+NatLiteral.  Lit ::= Natural;
+RatLiteral.  Lit ::= Rational;
+BoolLiteral. Lit ::= BoolToken;
 
 -- * Core structure.
 
-Ann.           Expr  ::= Expr1 ":type" Expr1;
+Ann.           Expr  ::= Expr1 ":" Expr1;
 Pi.            Expr  ::= "pi" Binder Expr1;
 Let.           Expr  ::= "let" Binder Expr1 Expr1;
 Lam.           Expr  ::= "lambda" Binder Expr1;
@@ -52,18 +57,20 @@ Type.          Expr1 ::= TypeToken;
 Builtin.       Expr1 ::= BuiltinToken;
 Var.           Expr1 ::= NameToken;
 Literal.       Expr1 ::= Lit;
-LSeq.          Expr1 ::= "[" [Expr1] "]";
+LVec.          Expr1 ::= "[" [Expr1] "]";
 Hole.          Expr1 ::= HoleToken;
 
 coercions Expr 1;
-separator Expr1 "";
+separator Expr1 ",";
 
 -- * Declarations
 
-DeclNetw.  Decl ::= "(" "declare-network"   NameToken Expr1 ")";
-DeclData.  Decl ::= "(" "declare-dataset"   NameToken Expr1 ")";
-DeclParam. Decl ::= "(" "declare-parameter" NameToken Expr1 ")";
-DefFun.    Decl ::= "(" "define-fun"        NameToken Expr1 Expr1 ")";
+DeclNetw.      Decl ::= "(" "declare-network"        NameToken Expr1 ")";
+DeclData.      Decl ::= "(" "declare-dataset"        NameToken Expr1 ")";
+DeclParam.     Decl ::= "(" "declare-parameter"      NameToken Expr1 ")";
+DeclImplParam. Decl ::= "(" "declare-impl-parameter" NameToken Expr1 ")";
+DeclPost.      Decl ::= "(" "declare-postulate"      NameToken Expr1 ")";
+DefFun.        Decl ::= "(" "define-fun"             NameToken Expr1 Expr1 ")";
 
 separator Decl "";
 

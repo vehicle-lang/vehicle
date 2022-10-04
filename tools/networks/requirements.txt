@@ -1,0 +1,6 @@
+sklearn >= 0.0
+tensorflow >= 2.7
+matplotlib >= 3.5.1
+keras >= 2.7.0
+tf2onnx >= 1.9.3
+numpy >= 1.22.0

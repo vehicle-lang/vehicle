@@ -15,20 +15,20 @@ multInt = 3 * 2
 negInt : Int
 negInt = - 2
 
-eqInt : Prop
+eqInt : Bool
 eqInt = 0 == (1 : Int)
 
-neqInt : Prop
+neqInt : Bool
 neqInt = 0 != (1 : Int)
 
-leqInt : Prop
+leqInt : Bool
 leqInt = 0 <= (1 : Int)
 
-ltInt : Prop
+ltInt : Bool
 ltInt = 0 < (1 : Int)
 
-geqInt : Prop
+geqInt : Bool
 geqInt = 0 >= (1 : Int)
 
-gtInt : Prop
+gtInt : Bool
 gtInt = 0 > (1 : Int)

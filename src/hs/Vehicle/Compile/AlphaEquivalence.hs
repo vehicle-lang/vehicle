@@ -1,7 +1,7 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Compile.AlphaEquivalence
   ( AlphaEquivalence(..)
-  , hashDBExpr
-  , hashCoDBExpr
   ) where
 
 import Data.Hashable (Hashable(..))
@@ -9,17 +9,17 @@ import Data.Hashable (Hashable(..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.CoDeBruijnify
 
-hashCoDBExpr :: CoDBExpr ann -> Int
-hashCoDBExpr e = hash (mkHashable e)
+instance Hashable DBArg where
 
-hashDBExpr :: DBExpr ann -> Int
-hashDBExpr e = hashCoDBExpr (toCoDBExpr e)
+instance Hashable DBExpr where
+  hashWithSalt s e =  hashWithSalt s (toCoDBExpr e)
+
 
 class AlphaEquivalence a where
   alphaEq :: a -> a -> Bool
 
-instance AlphaEquivalence (CoDBExpr ann) where
-  alphaEq e1 e2 = hashCoDBExpr e1 == hashCoDBExpr e2
+instance AlphaEquivalence CoDBExpr where
+  alphaEq e1 e2 = hash e1 == hash e2
 
-instance AlphaEquivalence (DBExpr ann) where
-  alphaEq e1 e2 = hashDBExpr e1 == hashDBExpr e2
+instance AlphaEquivalence DBExpr where
+  alphaEq e1 e2 = hash e1 == hash e2

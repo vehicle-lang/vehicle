@@ -1,20 +1,21 @@
-Specification language
-======================
+The specification language
+==========================
 
 .. toctree::
   :maxdepth: 1
 
-  functions
+  logic
   arithmetic
-  basic-logic
-  quantifiers
+  functions
   lists
+  vectors
   tensors
-  type-declarations
-  network-declarations
-  dataset-declarations
-  parameter-declarations
+  quantifiers
+  networks
+  datasets
+  parameters
   properties
+  type-synonyms
   let-expressions
   annotations-holes
   tips-and-tricks
