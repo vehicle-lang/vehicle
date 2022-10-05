@@ -1,4 +1,5 @@
 from typing import Dict, Callable
+import utils
 import tensorflow as tf
 import numpy as np
 import random
@@ -149,7 +150,9 @@ class LossFunctionTranslation:
                 elif contents[0] == 'Any':
                     min_loss = min(min_loss, body_loss(context))
                 context.pop(0)
-            return min_loss
+            if contents[0] == 'All': return max_loss 
+            elif contents[0] == 'Any': return min_loss
+            else: utils.internal_error_msg('Found a quantifier in the generated json that is not All nor Any.')
                 
         return result_func
 

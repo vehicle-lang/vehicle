@@ -1,0 +1,14 @@
+{
+    "tag": "Min",
+    "contents": 
+        [
+            {
+                "tag": "Con",
+                "contents": 12
+            },
+            {
+                "tag": "Con",
+                "contents": 7
+            }
+        ]
+}
