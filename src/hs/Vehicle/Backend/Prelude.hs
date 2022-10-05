@@ -36,12 +36,12 @@ instance Pretty Backend where
     TypeCheck         -> "TypeCheck"
 
 instance Read Backend where
-  readsPrec d x =
-    case readsPrec d x of
-      [] -> case readsPrec d x of
-        []  -> []
-        res -> fmap (first VerifierBackend) res
-      res -> fmap (first ITP) res
+  readsPrec _d x = case x of
+    "Marabou" -> [(MarabouBackend, [])]
+    "LossFunction" -> [(LossFunction, [])]
+    "Agda" -> [(AgdaBackend, [])]
+    "TypeCheck" -> [(TypeCheck, [])]
+    _           -> []
 
 commentTokenOf :: Backend -> Maybe (Doc a)
 commentTokenOf = \case
