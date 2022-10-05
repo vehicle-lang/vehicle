@@ -51,6 +51,7 @@ instance ToJSON Domain
 
 --definitoon of the LExpr - all expressions allowed in loss constraint
 
+--If changing constructor names, make sure to change it in vehicle.py as well
 data LExpr
   = Negation LExpr
   | Constant Double

@@ -25,17 +25,18 @@ class LossFunctionTranslation:
         tag = json_dict['tag']
         contents = json_dict['contents']
 
-        if tag == 'Con': return self._translate_constant(contents)
-        elif tag == 'Var': return self._translate_variable(contents)
-        elif tag == 'TensorLit': return self._translate_tensor(contents, resources)
-        elif tag == 'Neg': return self._translate_negation(contents, resources)
+        # These strings are taken from the constructor names in src/hs/Vehicle/Backend/LossFunction/Compile.hs
+        if tag == 'Constant': return self._translate_constant(contents)
+        elif tag == 'Variable': return self._translate_variable(contents)
+        elif tag == 'TensorLiteral': return self._translate_tensor(contents, resources)
+        elif tag == 'Negation': return self._translate_negation(contents, resources)
         elif tag == 'Min': return self._translate_minimum(contents, resources)
         elif tag == 'Max': return self._translate_maximum(contents, resources)
-        elif tag == 'Sub': return self._translate_subtraction(contents, resources)
-        elif tag == 'Ind': return self._translate_indicator(contents, resources)
+        elif tag == 'Subtraction': return self._translate_subtraction(contents, resources)
+        elif tag == 'IndicatorFunction': return self._translate_indicator(contents, resources)
         elif tag == 'At': return self._translate_at(contents, resources)
-        elif tag == 'NetApp': return self._translate_network(contents, resources)
-        elif tag == 'Quant': return self._translate_quantifier(contents, resources)
+        elif tag == 'NetworkApplication': return self._translate_network(contents, resources)
+        elif tag == 'Quantifier': return self._translate_quantifier(contents, resources)
         elif tag == 'Lambda': return self._translate_lambda(contents, resources)
         elif tag == 'Domain': return self._translate_domain(contents, resources)
 
