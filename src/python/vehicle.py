@@ -12,20 +12,12 @@ def generate_loss_function(path_to_spec:str, function_name:str, resources:Dict[s
     functionName: name of the function for which we want to create the loss function
     resources: dictionary mapping from the name of the resources declared in the spec to the python implementation
     '''
-
-    json_dict = generate_json(path_to_spec, function_name)
+    # Call command_line.call_vehicle_to_generate_loss_json()
+    #json_dict = load_json(path_to_spec)
     empty_context = []
     loss = LossFunctionTranslation().to_loss_function(resources, json_dict)
 
     return loss(empty_context)
-    
-
-def generate_json(path_to_spec:str, function_name:str) -> dict:
-    #call vehicle executable on the provided spec file - for now just load a specific json file
-    path_to_json = '/Users/marcocasadio/Projects/vehicle/src/python/bounded-output.json'
-    with open(path_to_json) as f:
-        json_dict = json.load(f)
-    return json_dict
 
 
 class LossFunctionTranslation:
