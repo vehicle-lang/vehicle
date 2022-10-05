@@ -5,7 +5,7 @@ from tensorflow import keras
 
 class TestLossFunctionTranslation(unittest.TestCase):
     def load_json(self, file_name):
-        path_to_json = f'/Users/marcocasadio/Projects/vehicle/src/python/test_json/{file_name}.json'
+        path_to_json = f'./src/python/test_json/{file_name}.json'
         with open(path_to_json) as f:
             json_dict = json.load(f)
         return json_dict
@@ -113,6 +113,8 @@ class TestLossFunctionTranslation(unittest.TestCase):
         context = []
         loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)(3)
         self.assertEqual(loss, 3)
+        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)(8)
+        self.assertEqual(loss, 8)
     
 
     def test_domain(self):
