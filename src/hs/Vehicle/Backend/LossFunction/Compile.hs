@@ -56,7 +56,11 @@ data LExpr
   | Constant Double
   | Min LExpr LExpr
   | Max LExpr LExpr
+  | Addition LExpr LExpr
   | Subtraction LExpr LExpr
+  | Multiplication LExpr LExpr
+  | Division LExpr LExpr
+  | Negative LExpr
   | IndicatorFunction LExpr LExpr
   | Variable V.DBIndex
   | FreeVariable Symbol
@@ -100,19 +104,23 @@ normBuiltin b = case b of
     V.FromNatTC {} -> True
     V.FromRatTC    -> True
     V.FromVecTC {} -> True
-    V.NotTC -> True
-    V.AndTC -> True
-    V.OrTC  -> True
-    V.ImpliesTC -> True
-    V.MapTC -> True
-    _            -> False
+    V.NotTC        -> True
+    V.AndTC        -> True
+    V.OrTC         -> True
+    V.ImpliesTC    -> True
+    V.MapTC        -> True
+    V.NegTC        -> True
+    V.AddTC        -> True
+    V.SubTC        -> True
+    V.MulTC        -> True
+    V.DivTC        -> True
+    
+    _              -> False
+
   V.FromNat {}       -> True
   V.FromRat {}       -> True
   V.FromVec {}       -> True
   V.Foreach{}        -> True
-  --V.Not{}            -> True
-  --V.And{}            -> True
-  --V.Or{}             -> True
 
   _                  -> False
   
@@ -151,8 +159,8 @@ compileArg arg = compileExpr (V.argExpr arg)
 
 compileLiteral :: V.Literal -> Double
 compileLiteral = \case
-  V.LUnit{} -> developerError "LUnit"
-  V.LBool{} -> developerError "LBool"
+  V.LUnit{}    -> developerError "LUnit"
+  V.LBool{}    -> developerError "LBool"
   V.LIndex _ e -> fromIntegral e
   V.LNat     e -> fromIntegral e
   V.LInt     e -> fromIntegral e
@@ -162,10 +170,18 @@ compileExpr :: MonadCompile m => V.CheckedExpr -> m LExpr
 compileExpr e = showExit $ do
   e' <- showEntry e
   case e' of
+    --logical operatives
     V.NotExpr     _ [e1]     -> Negation <$> compileArg e1
     V.AndExpr     _ [e1, e2] -> Min <$> compileArg e1 <*> compileArg e2
     V.OrExpr      _ [e1, e2] -> Max <$> compileArg e1 <*> compileArg e2
     V.ImpliesExpr _ [e1, e2] -> Max <$> (Negation <$> compileArg e1) <*> compileArg e2
+
+    --arithmetic operations
+    V.AddExpr   _ _ [e1, e2] -> Addition <$> compileArg e1 <*> compileArg e2
+    V.SubExpr   _ _ [e1, e2] -> Subtraction <$> compileArg e1 <*> compileArg e2
+    V.MulExpr   _ _ [e1, e2] -> Multiplication <$> compileArg e1 <*> compileArg e2
+    V.DivExpr   _ _ [e1, e2] -> Division <$> compileArg e1 <*> compileArg e2
+    V.NegExpr   _ _ [e1]     -> Negative <$> compileArg e1
 
     V.EqualityTCExpr _ op _ _ _ [e1, e2] -> case op of
       V.Eq  -> IndicatorFunction <$> compileArg e1 <*> compileArg e2
@@ -189,7 +205,6 @@ compileExpr e = showExit $ do
       let varName = V.getBinderSymbol binder
       return $ Quantifier (compileQuant q) varName (Domain ()) body'
 
-   
     V.Hole{}     -> resolutionError "lossFunction" "Hole"
     V.Meta{}     -> resolutionError "lossFunction" "Meta"
     V.Ann{}      -> normalisationError "lossFunction" "Ann"

@@ -50,7 +50,7 @@ goldenTestSpecifications =
   [ testSpec
       { testName       = "windController"
       , testLocation   = Examples
-      , testTargets    = [AgdaBackend, MarabouBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
       }
 
   , testSpec
@@ -177,13 +177,13 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-gaussianElim"
       , testLocation   = Tests
-      , testTargets    = [MarabouBackend]
+      , testTargets    = [MarabouBackend, LossFunction]
       }
 
   , testSpec
       { testName       = "simple-fourierMotzkin"
       , testLocation   = Tests
-      , testTargets    = [MarabouBackend]
+      , testTargets    = [MarabouBackend, LossFunction]
       }
 
   , testSpec
@@ -208,7 +208,7 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-triviallyTrue"
       , testLocation   = Tests
-      , testTargets    = [MarabouBackend, AgdaBackend]
+      , testTargets    = [MarabouBackend, AgdaBackend, LossFunction]
       }
 
   {-
