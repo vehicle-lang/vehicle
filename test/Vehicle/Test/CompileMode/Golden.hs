@@ -73,7 +73,7 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "andGate"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, MarabouBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
       }
 
   , testSpec
@@ -85,32 +85,32 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "increasing"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, MarabouBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
       }
 
   , testSpec
       { testName       = "monotonicity"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, MarabouBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
       }
 
   , testSpec
       { testName       = "reachability"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, MarabouBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
       }
-  {-
+
   , testSpec
       { testName       = "bounded"
       , testLocation   = Tests
       , testTargets    = [LossFunction]
       }
-  -}
+
   -- Simple tests of Vehicle syntax
   , testSpec
       { testName       = "simple-quantifier"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, MarabouBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
       }
 
   , testSpec
@@ -140,7 +140,7 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-constantInput"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, MarabouBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
       }
 
   , testSpec
@@ -152,7 +152,7 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-vector"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, MarabouBackend]
+      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction ]
       }
 
   , testSpec
@@ -189,7 +189,7 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-foreach"
       , testLocation   = Tests
-      , testTargets    = [MarabouBackend]
+      , testTargets    = [MarabouBackend, LossFunction ]
       }
 
   , testSpec
@@ -201,7 +201,7 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-pruneDecls"
       , testLocation   = Tests
-      , testTargets    = [MarabouBackend, AgdaBackend]
+      , testTargets    = [MarabouBackend, AgdaBackend, LossFunction ]
       , testDecls      = ["p2"]
       }
 
