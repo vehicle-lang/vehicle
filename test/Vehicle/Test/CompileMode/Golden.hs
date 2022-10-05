@@ -50,19 +50,19 @@ goldenTestSpecifications =
   [ testSpec
       { testName       = "windController"
       , testLocation   = Examples
-      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
   , testSpec
       { testName       = "acasXu"
       , testLocation   = Examples
-      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
   , testSpec
       { testName       = "mnist-robustness"
       , testLocation   = Examples
-      , testTargets    = [AgdaBackend, LossFunction]
+      , testTargets    = [AgdaBackend]
       , testDatasets   = [ ("trainingImages", "test-images-5.idx")
                          , ("trainingLabels", "test-labels-5.idx")
                          ]
@@ -79,7 +79,7 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "autoencoderError"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
   , testSpec
@@ -116,25 +116,25 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-quantifierIn"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, LossFunction]
+      , testTargets    = [AgdaBackend]
       }
 
   , testSpec
       { testName       = "simple-let"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, LossFunction]
+      , testTargets    = [AgdaBackend]
       }
 
   , testSpec
       { testName       = "simple-if"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
   , testSpec
       { testName       = "simple-untypedDecls"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, LossFunction]
+      , testTargets    = [AgdaBackend]
       }
 
   , testSpec
@@ -146,7 +146,7 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-arithmetic"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, LossFunction]
+      , testTargets    = [AgdaBackend]
       }
 
   , testSpec
@@ -158,13 +158,13 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-tensor"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, MarabouBackend, LossFunction]
+      , testTargets    = [AgdaBackend, MarabouBackend]
       }
 
   , testSpec
       { testName       = "simple-index"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, LossFunction]
+      , testTargets    = [AgdaBackend]
       }
 {-
   , testSpec
@@ -177,13 +177,13 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-gaussianElim"
       , testLocation   = Tests
-      , testTargets    = [MarabouBackend, LossFunction]
+      , testTargets    = [MarabouBackend]
       }
 
   , testSpec
       { testName       = "simple-fourierMotzkin"
       , testLocation   = Tests
-      , testTargets    = [MarabouBackend, LossFunction]
+      , testTargets    = [MarabouBackend]
       }
 
   , testSpec
@@ -195,7 +195,7 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-generalisedVariables"
       , testLocation   = Tests
-      , testTargets    = [AgdaBackend, LossFunction]
+      , testTargets    = [AgdaBackend]
       }
 
   , testSpec
@@ -208,7 +208,7 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-triviallyTrue"
       , testLocation   = Tests
-      , testTargets    = [MarabouBackend, AgdaBackend, LossFunction ]
+      , testTargets    = [MarabouBackend, AgdaBackend]
       }
 
   {-

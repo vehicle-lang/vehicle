@@ -1,0 +1,72 @@
+[
+  "andGateCorrect",
+  {
+    "tag": "Quantifier",
+    "contents": [
+      "All",
+      "x1",
+      [],
+      {
+        "tag": "Quantifier",
+        "contents": [
+          "All",
+          "x2",
+          [],
+          {
+            "tag": "Max",
+            "contents": [
+              {
+                "tag": "Negation",
+                "contents": {
+                  "tag": "Min",
+                  "contents": [
+                    {
+                      "tag": "NetworkApplication",
+                      "contents": [
+                        "validInput",
+                        [
+                          {
+                            "tag": "Variable",
+                            "contents": 1
+                          }
+                        ]
+                      ]
+                    },
+                    {
+                      "tag": "NetworkApplication",
+                      "contents": [
+                        "validInput",
+                        [
+                          {
+                            "tag": "Variable",
+                            "contents": 0
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "tag": "NetworkApplication",
+                "contents": [
+                  "correctOutput",
+                  [
+                    {
+                      "tag": "Variable",
+                      "contents": 1
+                    },
+                    {
+                      "tag": "Variable",
+                      "contents": 0
+                    }
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

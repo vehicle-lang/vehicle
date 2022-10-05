@@ -1,0 +1,37 @@
+[
+  "reachable",
+  {
+    "tag": "Quantifier",
+    "contents": [
+      "Any",
+      "x",
+      [],
+      {
+        "tag": "IndicatorFunction",
+        "contents": [
+          {
+            "tag": "NetworkApplication",
+            "contents": [
+              "f",
+              [
+                {
+                  "tag": "Variable",
+                  "contents": 0
+                }
+              ]
+            ]
+          },
+          {
+            "tag": "TensorLiteral",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

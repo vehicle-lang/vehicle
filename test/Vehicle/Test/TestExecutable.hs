@@ -10,7 +10,7 @@ import Vehicle.Test.Utils (MonadTest, filepathTests)
 
 -- Can't figure out how to get this passed in via the command-line *sadness*
 testLogLevel :: Int
-testLogLevel = 0
+testLogLevel = 3
 
 timeOutSeconds :: Integer
 timeOutSeconds = 1000

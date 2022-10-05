@@ -105,11 +105,6 @@ normBuiltin b = case b of
     V.OrTC  -> True
     V.ImpliesTC -> True
     V.MapTC -> True
-    V.NegTC -> True
-    V.AddTC -> True
-    V.SubTC -> True
-    V.MulTC -> True
-    V.DivTC -> True
     _            -> False
   V.FromNat {}       -> True
   V.FromRat {}       -> True
