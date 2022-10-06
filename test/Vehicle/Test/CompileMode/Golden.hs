@@ -208,7 +208,7 @@ goldenTestSpecifications =
   , testSpec
       { testName       = "simple-triviallyTrue"
       , testLocation   = Tests
-      , testTargets    = [MarabouBackend, AgdaBackend, LossFunction]
+      , testTargets    = [MarabouBackend, AgdaBackend]
       }
 
   {-

@@ -1,20 +1,34 @@
 [
-  "safe",
-  {
-    "tag": "Quantifier",
-    "contents": [
-      "All",
-      "x",
-      [],
-      {
-        "tag": "Max",
-        "contents": [
-          {
-            "tag": "Negation",
-            "contents": {
+  [
+    "safe",
+    {
+      "tag": "Quantifier",
+      "contents": [
+        "All",
+        "x",
+        [],
+        {
+          "tag": "Max",
+          "contents": [
+            {
+              "tag": "Negation",
+              "contents": {
+                "tag": "NetworkApplication",
+                "contents": [
+                  "safeInput",
+                  [
+                    {
+                      "tag": "Variable",
+                      "contents": 0
+                    }
+                  ]
+                ]
+              }
+            },
+            {
               "tag": "NetworkApplication",
               "contents": [
-                "safeInput",
+                "safeOutput",
                 [
                   {
                     "tag": "Variable",
@@ -23,21 +37,9 @@
                 ]
               ]
             }
-          },
-          {
-            "tag": "NetworkApplication",
-            "contents": [
-              "safeOutput",
-              [
-                {
-                  "tag": "Variable",
-                  "contents": 0
-                }
-              ]
-            ]
-          }
-        ]
-      }
-    ]
-  }
+          ]
+        }
+      ]
+    }
+  ]
 ]

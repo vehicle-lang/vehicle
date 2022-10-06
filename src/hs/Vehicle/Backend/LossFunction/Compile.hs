@@ -133,7 +133,8 @@ type MonadCompileLoss m =
   )
 
 compileDecl :: MonadCompileLoss m => V.CheckedDecl -> m (Maybe LDecl)
-compileDecl d = case d of
+compileDecl d = 
+  case d of
   V.DefResource{} ->
     normalisationError currentPass "resource declarations"
 
@@ -149,6 +150,7 @@ compileDecl d = case d of
       then return Nothing
       else do 
         expr' <- compileExpr expr
+        logDebug MaxDetail ("loss-declaration " <> prettySimple expr)
         return (Just (DefFunction (nameOf ident) expr'))
 
 currentPass :: Doc a
