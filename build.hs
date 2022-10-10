@@ -27,8 +27,8 @@ import Development.Shake.Util
 vehicleExecutableName :: String
 vehicleExecutableName = "vehicle"
 
-buildFolder :: FilePath
-buildFolder = "build"
+toolsFolder :: FilePath
+toolsFolder = "tools"
 
 binFolder :: FilePath
 binFolder = "bin"
@@ -110,23 +110,15 @@ requireMarabou :: Action ()
 requireMarabou = do
   missingMarabou <- not <$> hasLocalExecutable "Marabou"
   when missingMarabou $ do
-    let marabouFolder      = buildFolder </> "marabou"
+    liftIO $ createDirectoryIfMissing False toolsFolder
+
+    let marabouFolder      = toolsFolder </> "marabou"
     let marabouBuildFolder = marabouFolder </> "build"
 
-    liftIO $ createDirectoryIfMissing False buildFolder
-
-    -- At the moment we have to use our own branch that supports Onnx files
-    -- from the command line. See https://github.com/NeuralNetworkVerification/Marabou/issues/498
-    -- for details. Uncomment the code below when this is merged into mainline
-    -- Marabou.
-    -- let marabouRepoURL = "https://github.com/MatthewDaggitt/Marabou"
-    -- command_ [] "git" [ "clone", marabouRepoURL, marabouFolder]
-    -- command_ [] "git" [ "-C", marabouFolder, "checkout", "onnx-support"]
-{-
     let marabouRepoURL = "https://github.com/NeuralNetworkVerification/Marabou"
     command_ [] "git" [ "clone", marabouRepoURL, marabouFolder]
-    command_ [] "git" [ "-C", marabouFolder, "checkout", "ffd353b"]
--}
+    -- command_ [] "git" [ "-C", marabouFolder, "checkout", "ffd353b"]
+
     liftIO $ createDirectoryIfMissing False marabouBuildFolder
     command_ [] "cmake" [ marabouFolder, "-B", marabouBuildFolder ]
     command_ [] "cmake" [ "--build", marabouBuildFolder]
