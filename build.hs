@@ -15,7 +15,7 @@ import System.IO
 import System.Exit
 import System.Environment (lookupEnv)
 
-import Development.Shake
+import Development.Shake hiding (doesFileExist)
 import Development.Shake.Command
 import Development.Shake.FilePath
 import Development.Shake.Util
@@ -353,6 +353,10 @@ cabalInstallIfMissing executable packageName link version = do
 
 addLineToFileIfNotPresent :: FilePath -> String -> Action Bool
 addLineToFileIfNotPresent filePath line = do
+  fileExists <- liftIO $ doesFileExist filePath
+  unless fileExists $
+    putInfo $ "Creating file" <> 
+
   fileLines <- liftIO $ lines <$> readFile filePath
   let entryInfo = "entry '" <> line <> "' in " <> filePath
 
