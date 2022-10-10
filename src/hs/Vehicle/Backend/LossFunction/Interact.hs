@@ -4,13 +4,12 @@ module Vehicle.Backend.LossFunction.Interact
 
 import Vehicle.Backend.Prelude
 import Vehicle.Prelude
-import Control.Monad (forM_)
 import Vehicle.Backend.LossFunction.Compile
 import Data.Aeson.Encode.Pretty
 import Data.ByteString.Lazy.Char8
 
 
-encode :: LDecl -> String
+encode :: [LDecl] -> String
 encode e = unpack $ flip encodePretty' e $ Config
   { confIndent          = Spaces 2
   , confCompare         = \t1 t2 -> compare t2 t1
@@ -19,5 +18,5 @@ encode e = unpack $ flip encodePretty' e $ Config
   }
 
 writeLossFunctionFiles :: Maybe FilePath -> [LDecl] -> IO ()
-writeLossFunctionFiles filepath functions = forM_ functions $ \function -> do
-  writeResultToFile LossFunction filepath (pretty (encode function))
+writeLossFunctionFiles filepath functions =
+  writeResultToFile LossFunction filepath (pretty (encode functions))
