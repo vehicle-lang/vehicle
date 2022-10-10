@@ -354,11 +354,15 @@ cabalInstallIfMissing executable packageName link version = do
 addLineToFileIfNotPresent :: FilePath -> String -> Action Bool
 addLineToFileIfNotPresent filePath line = do
   fileExists <- liftIO $ doesFileExist filePath
-  unless fileExists $
-    putInfo $ "Creating file" <> 
 
-  fileLines <- liftIO $ lines <$> readFile filePath
-  let entryInfo = "entry '" <> line <> "' in " <> filePath
+  fileLines <-
+    if fileExists then
+      liftIO $ lines <$> readFile filePath
+    else do
+      putInfo $ "Creating file'" <> filePath <> "'"
+      return []
+
+  let entryInfo = "entry '" <> line <> "' in '" <> filePath <> "'"
 
   if line `elem` fileLines
     then do
