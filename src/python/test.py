@@ -2,12 +2,19 @@ from vehicle import generate_loss_function
 from tensorflow import keras
 import tensorflow as tf
 import numpy as np
+import random
 
 
-def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, functionName, resources):
+def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, functionName, resources, quantifier_sampling):
     optimizer = keras.optimizers.Adam()
     ce_batch_loss = keras.losses.BinaryCrossentropy()
-    vehicle_batch_loss = generate_loss_function(path_to_spec, functionName, resources)
+    vehicle_batch_loss = generate_loss_function(path_to_spec, functionName, resources, quantifier_sampling)
+    #Yep, I receive a number instead of a function.
+    #If I pass loss instead of loss(empty_context) it works if I do
+    #vehicle_loss = vehicle_batch_loss([]) instead of vehicle_loss = vehicle_batch_loss(0.5)
+    #Is this because we don't have the Lambda at the beginning of the json?
+    #Or is it because we don't pass the network yet, so it is a just a number not related to the batch?
+    print(vehicle_batch_loss)
 
     train_acc_metric = keras.metrics.BinaryCrossentropy()
     test_acc_metric = keras.metrics.BinaryCrossentropy()
@@ -66,6 +73,8 @@ if __name__ == '__main__':
     ])
     resources = {'f': model}
 
+    quantifier_sampling = {'x': lambda: random.uniform(0, 1)}
+
     batch_size = 1
     epochs = 4
     alfa = 0
@@ -76,13 +85,10 @@ if __name__ == '__main__':
     y_train = np.array([0, 0, 0, 1, 1])
     y_test = np.array([0, 0, 1, 1, 1])
 
-    print(X_train.shape)
-    print(y_train.shape)
-
     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
     test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
 
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
     test_dataset = test_dataset.batch(batch_size)
     
-    model = train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, function_name, resources)
+    model = train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, function_name, resources, quantifier_sampling)

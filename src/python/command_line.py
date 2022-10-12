@@ -13,15 +13,13 @@ def call_vehicle(args:List[str]) -> None:
         raise Exception('Error during specification compilation: ' + result.stderr.decode('UTF-8'))
 
 
-
 def load_json(path_to_json:str) -> dict:
-    #path_to_json = '/Users/marcocasadio/Projects/vehicle/src/python/bounded-output.json'
     with open(path_to_json) as f:
         json_dict = json.load(f)
     return json_dict
 
 
-def call_vehicle_to_generate_loss_json(specification:str) -> dict:
+def call_vehicle_to_generate_loss_json(specification:str, function_name:str) -> dict:
     with TemporaryDirectory() as path_to_json_directory:
         path_to_json = path_to_json_directory + 'loss_function.json'
         args =  ['compile',
@@ -67,8 +65,3 @@ def call_vehicle_to_verify_specification(specification:str, verifier:str, networ
     args = args + network_list + dataset_list + parameter_list
     call_vehicle(args)
     return
-
-
-if __name__ == '__main__':
-    loss_function_json = call_vehicle_to_generate_loss_json('/Users/marcocasadio/Projects/vehicle/test/specs/bounded.vcl')
-    print(loss_function_json)

@@ -59,12 +59,36 @@ class TestLossFunctionTranslation(unittest.TestCase):
         self.assertEqual(loss, 12)
 
 
+    # def test_addition(self):
+    #     resources = {}
+    #     json_dict = self.load_json('test_addition')
+    #     context = []
+    #     loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
+    #     self.assertEqual(loss, 5)
+
+
     def test_subtraction(self):
         resources = {}
         json_dict = self.load_json('test_subtraction')
         context = []
         loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
         self.assertEqual(loss, 5)
+    
+
+    # def test_multiplication(self):
+    #     resources = {}
+    #     json_dict = self.load_json('test_multiplication')
+    #     context = []
+    #     loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
+    #     self.assertEqual(loss, 5)
+    
+
+    # def test_division(self):
+    #     resources = {}
+    #     json_dict = self.load_json('test_division')
+    #     context = []
+    #     loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
+    #     self.assertEqual(loss, 5)
 
 
     def test_indicator(self):
