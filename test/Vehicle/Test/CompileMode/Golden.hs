@@ -291,7 +291,7 @@ runVehicle :: TestLoggingSettings
            -> String
            -> Backend
            -> Resources
-           -> [Symbol]
+           -> [Name]
            -> IO ()
 runVehicle (logFile, debugLevel) inputFile outputFile moduleName backend Resources{..} declarationsToCompile = do
   run $ Options
