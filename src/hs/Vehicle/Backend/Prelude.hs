@@ -20,7 +20,7 @@ data Backend
 
 data ITP
   = Agda
-  deriving (Eq, Show, Read)
+  deriving (Eq, Show, Read, Bounded, Enum)
 
 pattern AgdaBackend :: Backend
 pattern AgdaBackend = ITP Agda

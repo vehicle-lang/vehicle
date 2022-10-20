@@ -15,6 +15,12 @@ import Vehicle.Compile (CompileOptions(..))
 import Vehicle.Verify (VerifyOptions(..))
 import Vehicle.Export (ExportOptions(..))
 
+import Vehicle.Verify.Verifier.Interface
+import Data.List (intercalate)
+import Vehicle.Verify.Core (VerifierIdentifier)
+import Vehicle.Prelude (pretty, enumerate)
+import Vehicle.Backend.Prelude (ITP, Backend (..))
+
 --------------------------------------------------------------------------------
 -- Main function
 
@@ -112,6 +118,9 @@ modeParser = hsubparser
 repeatedParameterHelp :: String
 repeatedParameterHelp = "Can be provided multiple times."
 
+targetOptions :: [String] -> String
+targetOptions opts = "Supported options: " <> intercalate ", " opts
+
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
   where
@@ -202,7 +211,7 @@ compileParser = CompileOptions
   <$> option auto
       ( long "target"
      <> short 't'
-     <> help "Compilation target."
+     <> help ("Compilation target. " <> targetOptions allBackends)
      <> metavar "TARGET" )
   <*> specificationOption
   <*> propertyOption
@@ -219,6 +228,11 @@ compileParser = CompileOptions
           \ of the specification. The proof cache can be generated via the \
           \ `vehicle verify` command."
        ))
+  where allBackends =
+          map show (enumerate @VerifierIdentifier) <>
+          map show (enumerate @ITP) <>
+          [show LossFunction] <>
+          [show TypeCheck]
 
 --------------------------------------------------------------------------------
 -- Verify mode
@@ -241,7 +255,7 @@ verifyParser = VerifyOptions
   <*> option auto
       ( long "verifier"
      <> short 'v'
-     <> help "Verifier to use."
+     <> help ("Verifier to use. " <> targetOptions allVerifiers)
      <> metavar "TARGET" )
   <*> optional (strOption
       ( long "verifierLocation"
@@ -253,6 +267,7 @@ verifyParser = VerifyOptions
   <*> optional (proofCacheOption
       ( help "Location to create the proof cache for the verified result."
       ))
+  where allVerifiers = map show (enumerate @VerifierIdentifier)
 
 --------------------------------------------------------------------------------
 -- Check mode
@@ -279,10 +294,12 @@ exportParser = ExportOptions
   <$> option auto
       ( long "target"
      <> short 't'
-     <> help "Compilation target."
+     <> help ("The target to export to. " <> targetOptions allITPs)
      <> metavar "TARGET" )
   <*> proofCacheOption
-      ( help "the proof cache containing the verification result"
+      ( help "The proof cache containing the verification result"
       )
   <*> outputFileOption
   <*> modulePrefixOption
+  where
+    allITPs = map show (enumerate @ITP)

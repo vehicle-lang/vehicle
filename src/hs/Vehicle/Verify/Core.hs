@@ -4,7 +4,7 @@ import Vehicle.Prelude
 
 data VerifierIdentifier
   = Marabou
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 instance Pretty VerifierIdentifier where
   pretty = pretty . show

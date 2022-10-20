@@ -26,6 +26,7 @@ module Vehicle.Prelude
   , partitionM
   , prependList
   , xor
+  , enumerate
   ) where
 
 import Control.Monad.IO.Class
@@ -36,6 +37,7 @@ import Data.Text qualified as Text
 import Data.Graph
 import Data.Version (Version)
 import Data.IntMap (IntMap, updateLookupWithKey)
+import Data.Set (Set)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Numeric
@@ -51,7 +53,6 @@ import Vehicle.Prelude.Supply as X
 import Vehicle.Prelude.DeveloperError as X
 
 import Paths_vehicle qualified as Cabal (version)
-import Data.Set (Set)
 
 vehicleVersion :: Version
 vehicleVersion = Cabal.version
@@ -193,3 +194,6 @@ fatalError LoggingOptions{..} message = liftIO $ do
 
 programOutput :: MonadIO m => LoggingOptions -> Doc a -> m ()
 programOutput LoggingOptions{..} message = liftIO $ hPrint outputHandle message
+
+enumerate :: (Bounded a, Enum a) => [a]
+enumerate = [minBound..maxBound]
