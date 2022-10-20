@@ -7,8 +7,8 @@ module Vehicle.Language.AST.CoDeBruijn
   , CoDBBinding(..)
   , CoDBVar(..)
   , ExtractPositionTrees(..)
-  , BinderC(..)
-  , ArgC(..)
+  , BinderC
+  , ArgC
   , ExprC(..)
   , RecCoDB(..)
   , substPos
@@ -31,11 +31,9 @@ import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.Name
 import Vehicle.Language.AST.DeBruijn hiding (Free, Bound)
 import Vehicle.Language.AST.DeBruijn qualified as DB (DBVar(..))
-import Vehicle.Language.AST.Visibility
 import Vehicle.Language.AST.Builtin (Builtin)
 import Vehicle.Language.AST.Position
 import Vehicle.Language.AST.Provenance
-import Vehicle.Language.AST.Relevance
 
 --------------------------------------------------------------------------------
 -- AST Definitions
@@ -138,13 +136,9 @@ mergePTs = foldr mergePTPair mempty
 -- over again we define the following intermediate state where the decomposition
 -- has already been carried out.
 
-data ArgC
-  = ArgC Provenance Visibility Relevance CoDBExpr
-  deriving (Show)
+type ArgC = GenericArg CoDBExpr
 
-data BinderC
-  = BinderC Provenance Visibility Relevance (CoDBBinding DBBinding) CoDBExpr
-  deriving (Show)
+type BinderC = GenericBinder (CoDBBinding DBBinding) CoDBExpr
 
 data ExprC
   = UniverseC Provenance Universe
@@ -196,10 +190,10 @@ instance RecCoDB CoDBExpr ExprC where
       "Expected the same number of BoundVarMaps as args but found" <+> pretty (length bvms)
 
 instance RecCoDB CoDBBinder BinderC where
-  recCoDB (Binder ann v r n t, bvm) = BinderC ann v r n (t, bvm)
+  recCoDB (Binder ann v r n t, bvm) = Binder ann v r n (t, bvm)
 
 instance RecCoDB CoDBArg ArgC where
-  recCoDB (Arg ann v r e, bvm) = ArgC ann v r (e, bvm)
+  recCoDB (Arg ann v r e, bvm) = Arg ann v r (e, bvm)
 
 positionTreeOf :: PartialCoDBBinder -> Maybe PositionTree
 positionTreeOf b = case (nameOf b :: CoDBBinding DBBinding) of
@@ -264,7 +258,7 @@ substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
 
 substPosArg :: CoDBExpr -> Maybe PositionTree -> CoDBArg -> CoDBArg
 substPosArg v p arg = case recCoDB arg of
-  (ArgC ann vis r e) ->
+  (Arg ann vis r e) ->
     let (e', bvm) = substPos v p e in
     (Arg ann vis r e', bvm)
 
@@ -274,7 +268,7 @@ substPosBinder :: CoDBExpr
                -> Maybe PositionTree
                -> CoDBBinder
 substPosBinder v p binder boundPositions = case recCoDB binder of
-  (BinderC ann vis r (CoDBBinding n _) t) ->
+  (Binder ann vis r (CoDBBinding n _) t) ->
     let (t', bvm) = substPos v p t in
     (Binder ann vis r (CoDBBinding n boundPositions) t', bvm)
 

@@ -139,7 +139,7 @@ letInsertBinder :: MonadLetInsert m
                 => CheckedCoDBBinder -> Maybe PositionTree
                 -> m (CheckedCoDBBinder, SubexpressionMap)
 letInsertBinder binder positions = case recCoDB binder of
-  (BinderC ann v r (CoDBBinding n _) t) ->
+  (Binder ann v r (CoDBBinding n _) t) ->
     if visibilityOf (fst binder) /= Explicit
         then return (first (Binder ann v r (CoDBBinding n positions)) t, Map.empty)
         else do
@@ -152,7 +152,7 @@ letInsertArg :: MonadLetInsert m
 letInsertArg arg = if visibilityOf (fst arg) /= Explicit
   then return (arg, Map.empty)
   else case recCoDB arg of
-    (ArgC ann r v e) -> do
+    (Arg ann r v e) -> do
       ((e', bvm), sm) <- letInsert e
       return ((Arg ann r v e', bvm), sm)
 
