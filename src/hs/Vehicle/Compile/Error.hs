@@ -160,6 +160,10 @@ visibilityError :: MonadError CompileError m => Doc () -> Doc () -> m b
 visibilityError pass name = compilerDeveloperError $
   unexpectedExpr pass name <+> "Should not be present as explicit arguments"
 
+nestedAppError :: MonadError CompileError m => Doc () -> Doc () -> m b
+nestedAppError pass name = compilerDeveloperError $
+  unexpectedExpr pass name <+> "Internal invariant of no nested applications violated."
+
 -- | Throw this when you encounter a case that should have been resolved during
 -- type-checking, e.g. holes or metas.
 resolutionError :: MonadError CompileError m => Doc () -> Doc () -> m b
@@ -170,6 +174,11 @@ caseError :: MonadError CompileError m => Doc () -> Doc () -> [Doc ()] -> m b
 caseError pass name cases = compilerDeveloperError $
   unexpectedExpr pass name <+> "This should already have been caught by the" <+>
   "following cases:" <+> list cases
+
+internalScopingError :: MonadError CompileError m => Doc () -> Identifier -> m b
+internalScopingError pass ident = compilerDeveloperError $
+  "Internal scoping error during" <+> pass <> ":" <+>
+  "declaration" <+> quotePretty ident <+> "not found in scope..."
 
 unexpectedExpr :: Doc a -> Doc a -> Doc a
 unexpectedExpr pass name =

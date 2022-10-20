@@ -70,8 +70,8 @@ equalityOp Eq  = (==)
 equalityOp Neq = (/=)
 
 data EqualityDomain
-  = EqNat
-  | EqIndex
+  = EqIndex
+  | EqNat
   | EqInt
   | EqRat
   deriving (Eq, Ord, Show, Generic)
@@ -81,8 +81,8 @@ instance Hashable EqualityDomain
 
 instance Pretty EqualityDomain where
   pretty = \case
-    EqNat   -> "Nat"
     EqIndex -> "Index"
+    EqNat   -> "Nat"
     EqInt   -> "Int"
     EqRat   -> "Rat"
 

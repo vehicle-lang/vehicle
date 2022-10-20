@@ -157,7 +157,7 @@ getConcreteList = \case
 filterOutNonExplicitArgs :: NonEmpty (Arg binder var) -> [Expr binder var]
 filterOutNonExplicitArgs args = mapMaybe getExplicitArg (NonEmpty.toList args)
 
-findInstanceArg :: [Arg binder var] -> (Expr binder var, [Arg binder var])
+findInstanceArg :: [GenericArg a] -> (a, [GenericArg a])
 findInstanceArg (InstanceArg _ inst : xs) = (inst, xs)
 findInstanceArg (_ : xs) = findInstanceArg xs
 findInstanceArg []       = developerError "Malformed type class operation"
