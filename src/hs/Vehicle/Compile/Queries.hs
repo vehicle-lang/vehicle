@@ -63,12 +63,12 @@ getProperties :: MonadCompile m
               => VerifierIdentifier
               -> PropertyContext
               -> CheckedProg
-              -> m [(Symbol, CheckedExpr)]
+              -> m [(Name, CheckedExpr)]
 getProperties verifier propertyCtx (Main ds) = catMaybes <$> traverse go ds
   where
     go :: MonadCompile m
        => CheckedDecl
-       -> m (Maybe (Symbol, CheckedExpr))
+       -> m (Maybe (Name, CheckedExpr))
     go d = case d of
       DefResource _ r _ _ ->
         normalisationError currentPass (pretty r <+> "declarations")
@@ -90,7 +90,7 @@ getProperties verifier propertyCtx (Main ds) = catMaybes <$> traverse go ds
 type MonadCompileProperty m =
   ( MonadCompile m
   , MonadSupply QueryID m
-  , MonadReader (Verifier, Symbol, NetworkContext) m
+  , MonadReader (Verifier, Name, NetworkContext) m
   )
 
 compileProperty :: MonadCompileProperty m => CheckedExpr -> m (Property QueryData)

@@ -24,19 +24,19 @@ import Vehicle.Compile.Resource
 --------------------------------------------------------------------------------
 -- Resource monad
 
-addParameter :: MonadExpandResources m => Symbol -> m ()
+addParameter :: MonadExpandResources m => Name -> m ()
 addParameter ident =
   tell (ResourceContext (Set.singleton ident) mempty mempty)
 
-addInferableParameter :: MonadExpandResources m => Symbol -> m ()
+addInferableParameter :: MonadExpandResources m => Name -> m ()
 addInferableParameter ident =
   modify (Map.insert ident Nothing)
 
-addDataset :: MonadExpandResources m => Symbol -> m ()
+addDataset :: MonadExpandResources m => Name -> m ()
 addDataset ident =
   tell (ResourceContext mempty (Set.singleton ident) mempty)
 
-addNetworkType :: MonadExpandResources m => Symbol -> NetworkType -> m ()
+addNetworkType :: MonadExpandResources m => Name -> NetworkType -> m ()
 addNetworkType ident details =
   tell (ResourceContext mempty mempty (Map.singleton ident details))
 

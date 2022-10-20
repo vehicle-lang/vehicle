@@ -498,7 +498,7 @@ compileBooleanType = do
     BoolLevel -> annotateConstant [DataBool] "Bool"
 
 compileIdentifier :: Identifier -> Code
-compileIdentifier ident = pretty (nameOf ident :: Symbol)
+compileIdentifier ident = pretty (nameOf ident :: Name)
 
 compileType :: UniverseLevel -> Code
 compileType 0 = "Set"

@@ -207,7 +207,7 @@ traverseProperty f = \case
 
 -- | A compiled specification, parameterised by the data stored at each query.
 newtype Specification queryData
-  = Specification [(Symbol, Property queryData)]
+  = Specification [(Name, Property queryData)]
 
 
 traverseSpecification :: Monad m

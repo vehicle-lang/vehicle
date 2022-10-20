@@ -48,7 +48,7 @@ instance IsVerified PropertyStatus where
     MultiPropertyStatus ps -> and (fmap isVerified ps)
     SinglePropertyStatus s -> isVerified s
 
-prettyPropertyStatus :: Symbol -> PropertyStatus -> Doc a
+prettyPropertyStatus :: Name -> PropertyStatus -> Doc a
 prettyPropertyStatus name = \case
   MultiPropertyStatus ps -> do
     let numberedSubproperties =

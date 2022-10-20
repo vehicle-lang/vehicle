@@ -24,7 +24,7 @@ import Vehicle.Compile.Normalise (normalise, NormalisationOptions(..))
 
 data LDecl
   = DefFunction
-    Symbol                   -- Bound function name.
+    Name                     -- Bound function name.
     LExpr                    -- Bound function body.
   deriving (Eq, Show, Generic)
 
@@ -63,12 +63,12 @@ data LExpr
   | Negative LExpr
   | IndicatorFunction LExpr LExpr
   | Variable V.DBIndex
-  | FreeVariable Symbol
-  | NetworkApplication Symbol (NonEmpty LExpr)
-  | Quantifier Quantifier Symbol Domain LExpr
+  | FreeVariable Name
+  | NetworkApplication Name (NonEmpty LExpr)
+  | Quantifier Quantifier Name Domain LExpr
   | At LExpr LExpr
   | TensorLiteral [LExpr]
-  | Lambda Symbol LExpr
+  | Lambda Name LExpr
   deriving (Eq, Ord, Generic, Show)
 
 instance FromJSON LExpr
@@ -204,7 +204,7 @@ compileExpr e = showExit $ do
 
     V.QuantifierTCExpr _ q binder body         -> do
       body' <- compileExpr body
-      let varName = V.getBinderSymbol binder
+      let varName = V.getBinderName binder
       return $ Quantifier (compileQuant q) varName (Domain ()) body'
 
     V.Hole{}     -> resolutionError "lossFunction" "Hole"

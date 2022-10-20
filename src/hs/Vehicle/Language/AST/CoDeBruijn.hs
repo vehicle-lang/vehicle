@@ -77,8 +77,8 @@ instance Hashable PartialCoDBBinder
 type NamedPTMap = Map NamedBinding (Maybe PositionTree)
 
 class ExtractPositionTrees t where
-  extractPTs :: t (CoDBBinding Symbol) CoDBVar ->
-                (t Symbol CoDBVar, NamedPTMap)
+  extractPTs :: t (CoDBBinding Name) CoDBVar ->
+                (t Name CoDBVar, NamedPTMap)
 
 instance ExtractPositionTrees Expr where
   extractPTs = cata $ \case
@@ -111,8 +111,8 @@ instance ExtractPositionTrees Expr where
       let (binder', mpt1) = extractPTsBinder binder in
       (Lam ann binder' body', mergePTs [mpt1, mpt2])
 
-extractPTsBinder :: GenericBinder (CoDBBinding Symbol) (Expr Symbol CoDBVar, NamedPTMap)
-                 -> (Binder Symbol CoDBVar, NamedPTMap)
+extractPTsBinder :: GenericBinder (CoDBBinding Name) (Expr Name CoDBVar, NamedPTMap)
+                 -> (Binder Name CoDBVar, NamedPTMap)
 extractPTsBinder binder = do
   let CoDBBinding binderName mpt = binderRepresentation binder
   let (binder', mpts)  = unpairBinder binder
@@ -147,7 +147,7 @@ data ExprC
   | PiC       Provenance CoDBBinder CoDBExpr
   | BuiltinC  Provenance Builtin
   | VarC      Provenance DBVar
-  | HoleC     Provenance Symbol
+  | HoleC     Provenance Name
   | MetaC     Provenance Meta
   | LetC      Provenance CoDBExpr CoDBBinder CoDBExpr
   | LamC      Provenance CoDBBinder CoDBExpr

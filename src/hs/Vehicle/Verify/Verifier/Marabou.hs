@@ -83,7 +83,7 @@ compileAssertion varNames (Assertion rel linearExpr) = do
     compileRel False LessThan          = "<="
     compileRel True  LessThan          = ">="
 
-    compileVar :: Bool -> (Double, Symbol) -> Doc a
+    compileVar :: Bool -> (Double, Name) -> Doc a
     compileVar False (1,           var) = pretty var
     compileVar True  (1,           var) = "+" <> pretty var
     compileVar _     (-1,          var) = "-" <> pretty var

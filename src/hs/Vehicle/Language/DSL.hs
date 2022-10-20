@@ -229,7 +229,7 @@ tList tElem = con List @ [tElem]
 tIndex :: DSLExpr -> DSLExpr
 tIndex n = con Index @ [n]
 
-tHole :: Symbol -> DSLExpr
+tHole :: Name -> DSLExpr
 tHole name = DSL $ \ann _ -> Hole ann name
 
 --------------------------------------------------------------------------------

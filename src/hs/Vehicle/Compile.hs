@@ -12,7 +12,6 @@ module Vehicle.Compile
 
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Exception (IOException, catch)
-import Data.Set (Set)
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
 import System.IO (hPutStrLn)
@@ -42,7 +41,7 @@ import Vehicle.Verify.Verifier.Interface
 data CompileOptions = CompileOptions
   { target                :: Backend
   , specification         :: FilePath
-  , declarationsToCompile :: Set Symbol
+  , declarationsToCompile :: DeclarationNames
   , outputFile            :: Maybe FilePath
   , networkLocations      :: NetworkLocations
   , datasetLocations      :: DatasetLocations
@@ -95,7 +94,7 @@ compileToVerifier loggingOptions spec properties resources verifier =
 
 compileToLossFunction :: LoggingOptions
                       -> SpecificationText
-                      -> Set Symbol
+                      -> DeclarationNames
                       -> Resources
                       -> IO [LDecl]
 compileToLossFunction loggingOptions spec declarationsToCompile resources = do
@@ -136,7 +135,7 @@ parseAndTypeCheckExpr expr = do
 -- not load networks and datasets from disk.
 typeCheckProg :: MonadCompile m
               => SpecificationText
-              -> Set Symbol
+              -> DeclarationNames
               -> m (CheckedProg, PropertyContext, DependencyGraph)
 typeCheckProg spec declarationsToCompile = do
   bnfcProg <- parseVehicle spec
@@ -151,10 +150,10 @@ typeCheckProg spec declarationsToCompile = do
 -- verification queries.
 typeCheckProgAndLoadResources :: (MonadIO m, MonadCompile m)
                               => SpecificationText
-                              -> PropertyNames
+                              -> DeclarationNames
                               -> Resources
                               -> m (CheckedProg, PropertyContext, NetworkContext, DependencyGraph)
-typeCheckProgAndLoadResources spec properties resources = do
-  (typedProg, propertyCtx, depGraph) <- typeCheckProg spec properties
+typeCheckProgAndLoadResources spec declarationsToCompile resources = do
+  (typedProg, propertyCtx, depGraph) <- typeCheckProg spec declarationsToCompile
   (networkCtx, finalProg) <- expandResources resources True typedProg
   return (finalProg, propertyCtx, networkCtx, depGraph)

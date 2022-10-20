@@ -150,8 +150,8 @@ generateCLSTProblem assertionsExpr = do
 --------------------------------------------------------------------------------
 -- Monad
 
-type UserVariableNames = [Symbol]
-type MagicVariableNames = [Symbol]
+type UserVariableNames = [Name]
+type MagicVariableNames = [Name]
 
 type MonadSMT m =
   ( MonadCompile m
@@ -165,7 +165,7 @@ type MonadSMT m =
     ) m
   )
 
-getNetworkDetailsFromCtx :: MonadCompile m => NetworkContext -> Symbol -> m NetworkType
+getNetworkDetailsFromCtx :: MonadCompile m => NetworkContext -> Name -> m NetworkType
 getNetworkDetailsFromCtx networkCtx name = do
   case Map.lookup name networkCtx of
     Just details -> return details
@@ -220,9 +220,9 @@ getExprConstantIndex =
 removeUserQuantifiers :: MonadCompile m
                       => Identifier
                       -> CheckedExpr
-                      -> m (CheckedExpr, [Symbol])
+                      -> m (CheckedExpr, [Name])
 removeUserQuantifiers ident (ExistsRatExpr _ binder body) = do
-  let n = getBinderSymbol binder
+  let n = getBinderName binder
   (result, binders) <- removeUserQuantifiers ident body
   return (result, n : binders)
 removeUserQuantifiers _ e = return (e, [])

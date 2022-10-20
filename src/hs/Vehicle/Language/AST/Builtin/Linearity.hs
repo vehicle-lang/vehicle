@@ -15,8 +15,8 @@ import Vehicle.Language.AST.Builtin.Core
 -- 1) rename LinearityProvenance to LinearityProof
 -- 2) mimic AST nodes names
 data LinearityProvenance
-  = QuantifiedVariableProvenance Provenance Symbol
-  | NetworkOutputProvenance      Provenance Symbol
+  = QuantifiedVariableProvenance Provenance Name
+  | NetworkOutputProvenance      Provenance Name
   | LinFunctionProvenance        Provenance LinearityProvenance FunctionPosition
   deriving (Generic)
 

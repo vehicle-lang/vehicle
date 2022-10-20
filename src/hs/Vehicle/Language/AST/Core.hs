@@ -264,7 +264,7 @@ data Expr binder var
   -- | A hole in the program.
   | Hole
     Provenance
-    Symbol           -- Hole name.
+    Name             -- Hole name.
 
   -- | Unsolved meta variables.
   | Meta
@@ -323,7 +323,7 @@ instance HasProvenance (Expr binder var) where
 --------------------------------------------------------------------------------
 -- Identifiers
 
-newtype Identifier = Identifier Symbol
+newtype Identifier = Identifier Name
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty Identifier where
@@ -334,9 +334,6 @@ instance Hashable Identifier
 
 class HasIdentifier a where
   identifierOf :: a -> Identifier
-
-symbolOf :: Identifier -> Symbol
-symbolOf (Identifier s) = s
 
 --------------------------------------------------------------------------------
 -- Property annotations

@@ -4,6 +4,7 @@ module Vehicle.Prelude
   , VehicleLang(..)
   , SpecificationText
   , PropertyNames
+  , DeclarationNames
   , Negatable(..)
   , InputOrOutput(..)
   , vehicleVersion
@@ -62,7 +63,10 @@ data VehicleLang = External | Internal
 type SpecificationText = Text
 
 -- | A set of properties in the specification.
-type PropertyNames = Set Symbol
+type PropertyNames = Set Name
+
+-- | A set of declarations in the specification.
+type DeclarationNames = Set Name
 
 infix 1 |->
 -- | Useful for writing association lists.

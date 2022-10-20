@@ -23,26 +23,26 @@ import Data.Coerce (coerce)
 runDescope :: Descope t
            => NamedBoundCtx
            -> t NamedBinding DBVar
-           -> t NamedBinding Symbol
+           -> t NamedBinding Name
 runDescope ctx = performDescoping ctx descopeDBVar
 
 -- |Converts DeBruijn variables back into named variables with no context.
-runDescopeProg :: Prog Symbol DBVar
-               -> Prog Symbol Symbol
+runDescopeProg :: Prog Name DBVar
+               -> Prog Name Name
 runDescopeProg = performDescoping mempty descopeDBVar
 
 -- |Converts DeBruijn indices into names naively, e.g. 0 becomes "i0".
 -- Useful for debugging
 runNaiveDBDescope :: Descope t
-                  => t Symbol DBVar
-                  -> t Symbol Symbol
+                  => t Name DBVar
+                  -> t Name Name
 runNaiveDBDescope = performDescoping mempty descopeDBVarNaive
 
 -- |Converts DeBruijn indices into names naively, e.g. 0 becomes "i0".
 -- Useful for debugging
 runNaiveCoDBDescope :: (Descope t, ExtractPositionTrees t)
-                    => t (CoDBBinding Symbol) CoDBVar
-                    -> (t Symbol Symbol, Map Symbol (Maybe PositionTree))
+                    => t (CoDBBinding Name) CoDBVar
+                    -> (t Name Name, Map Name (Maybe PositionTree))
 runNaiveCoDBDescope e1 =
   let (e2, pts) = extractPTs e1 in
   let e3 = performDescoping mempty descopeCoDBVarNaive e2 in
@@ -59,9 +59,9 @@ addBinderToCtx binder (Ctx ctx) = Ctx (nameOf binder : ctx)
 
 performDescoping :: (Descope t, Show var)
                  => [NamedBinding]
-                 -> (Provenance -> var -> Reader Ctx NamedVar)
+                 -> (Provenance -> var -> Reader Ctx Name)
                  -> t NamedBinding var
-                 -> t NamedBinding NamedVar
+                 -> t NamedBinding Name
 performDescoping ctx convertVar e =
   runReader (descope convertVar e) (Ctx ctx)
 
@@ -69,9 +69,9 @@ type MonadDescope m = MonadReader Ctx m
 
 class Descope t where
   descope :: (MonadDescope m, Show var)
-          => (Provenance -> var -> m NamedVar)
+          => (Provenance -> var -> m Name)
           -> t NamedBinding var
-          -> m (t NamedBinding NamedVar)
+          -> m (t NamedBinding Name)
 
 instance Descope Prog where
   descope f (Main ds) = Main <$> traverse (descope f) ds
@@ -108,15 +108,15 @@ instance Descope Expr where
       return $ Pi ann binder' body'
 
 descopeBinder :: (MonadReader Ctx f, Show var)
-              => (Provenance -> var -> f NamedVar)
+              => (Provenance -> var -> f Name)
               -> GenericBinder NamedBinding (Expr NamedBinding var)
-              -> f (GenericBinder NamedBinding (Expr NamedBinding NamedVar))
+              -> f (GenericBinder NamedBinding (Expr NamedBinding Name))
 descopeBinder f = traverse (descope f)
 
 descopeArg :: (MonadReader Ctx f, Show var)
-           => (Provenance -> var -> f NamedVar)
+           => (Provenance -> var -> f Name)
            -> GenericArg (Expr NamedBinding var)
-           -> f (GenericArg (Expr NamedBinding NamedVar))
+           -> f (GenericArg (Expr NamedBinding Name))
 descopeArg f = traverse (descope f)
 
 instance Descope Arg' where
@@ -125,7 +125,7 @@ instance Descope Arg' where
 instance Descope Binder' where
   descope f a = coerce <$> descopeBinder f (coerce a)
 
-descopeDBVar :: MonadDescope m => Provenance -> DBVar -> m NamedVar
+descopeDBVar :: MonadDescope m => Provenance -> DBVar -> m Name
 descopeDBVar _ (Free (Identifier name)) = return name
 descopeDBVar p (Bound i) = do
   Ctx ctx <- ask
@@ -133,12 +133,12 @@ descopeDBVar p (Bound i) = do
     Nothing -> indexOutOfBounds p i (length ctx)
     Just x  -> return x
 
-descopeDBVarNaive :: MonadDescope m => Provenance -> DBVar -> m NamedVar
+descopeDBVarNaive :: MonadDescope m => Provenance -> DBVar -> m Name
 descopeDBVarNaive _ = \case
   Free  i -> return $ nameOf i
   Bound i -> return $ pack ("i" <> show i)
 
-descopeCoDBVarNaive :: MonadDescope m => Provenance -> CoDBVar -> m NamedVar
+descopeCoDBVarNaive :: MonadDescope m => Provenance -> CoDBVar -> m Name
 descopeCoDBVarNaive _ = \case
   CoDBFree i -> return $ nameOf i
   CoDBBound  -> return "CoDBVar"

@@ -14,7 +14,7 @@ analyseDependenciesAndPrune :: MonadCompile m
                             => UncheckedProg
                             -> UncheckedPropertyContext
                             -> DependencyGraph
-                            -> Set Symbol
+                            -> DeclarationNames
                             -> m UncheckedProg
 analyseDependenciesAndPrune prog propertyContext dependencyGraph declarationsToCompile = do
   checkForDeadCode prog propertyContext dependencyGraph

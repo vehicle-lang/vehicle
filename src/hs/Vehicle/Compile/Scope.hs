@@ -35,7 +35,7 @@ type MonadScope m =
 type MonadScopeExpr m =
   ( MonadCompile m
   , MonadReader (DeclCtx (), Bool) m
-  , MonadState (BoundCtx DBBinding, [(Provenance, Symbol)]) m
+  , MonadState (BoundCtx DBBinding, [(Provenance, Name)]) m
   , MonadWriter Dependencies m
   )
 
@@ -98,7 +98,7 @@ scopeDeclExpr generalise expr = do
       "Generalising over the following variables" <+> pretty (map snd varsToGeneralise)
     return $ foldr generaliseOverVar scopedExpr varsToGeneralise
 
-generaliseOverVar :: (Provenance, Symbol) -> UncheckedExpr -> UncheckedExpr
+generaliseOverVar :: (Provenance, Name) -> UncheckedExpr -> UncheckedExpr
 generaliseOverVar (p, n) = Pi p (ImplicitBinder p (Just n) binderType)
   where binderType = mkHole p ("typeOf[" <> n <> "]")
 
@@ -150,7 +150,7 @@ bindVar binder update = do
   return result
 
 -- |Find the index for a given name of a given sort.
-getVar :: MonadScopeExpr m => Provenance -> NamedVar -> m DBVar
+getVar :: MonadScopeExpr m => Provenance -> Name -> m DBVar
 getVar p symbol = do
   (declCtx, generaliseOverMissingVariables) <- ask
   (boundCtx, varsToGeneralise) <- get

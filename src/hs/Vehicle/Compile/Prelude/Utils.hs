@@ -115,8 +115,8 @@ getFreeVar = \case
   FreeVar _ ident -> Just ident
   _               -> Nothing
 
-getBinderSymbol :: Binder DBBinding var -> Symbol
-getBinderSymbol binder = case nameOf binder of
+getBinderName :: Binder DBBinding var -> Name
+getBinderName binder = case nameOf binder of
   Just symbol -> symbol
   Nothing     -> developerError "Binder unexpectedly does not appear to have a name"
 
@@ -166,11 +166,11 @@ findInstanceArg []       = developerError "Malformed type class operation"
 -- Construction functions
 
 -- | Generates a name for a variable based on the indices, e.g. x [1,2,3] -> x_1_2_3
-mkNameWithIndices :: Symbol -> Int -> Symbol
+mkNameWithIndices :: Name -> Int -> Name
 mkNameWithIndices n index = n <> pack (show index)
   --mconcat (n : [pack (show index) | index <- indices])
 
-mkHole :: Provenance -> Symbol -> Expr binder var
+mkHole :: Provenance -> Name -> Expr binder var
 mkHole ann name = Hole ann ("_" <> name)
 
 mkDoubleExpr :: Provenance -> Double -> DBExpr

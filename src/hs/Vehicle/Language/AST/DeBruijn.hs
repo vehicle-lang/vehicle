@@ -50,7 +50,7 @@ instance NFData DBVar
 instance Hashable DBVar
 
 -- |The type of the data DeBruijn notation stores at binding sites.
-type DBBinding = Maybe Symbol
+type DBBinding = Maybe Name
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
 type DBBinder = Binder DBBinding DBVar

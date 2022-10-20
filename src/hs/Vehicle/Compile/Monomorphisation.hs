@@ -15,6 +15,7 @@ import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as Map (insert, lookup, unionWith, singleton, unions, union, member)
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as Set (toList, size, union, singleton)
+import Data.Text (Text)
 import Data.Text qualified as Text
 
 import Vehicle.Compile.Prelude
@@ -244,7 +245,7 @@ substituteArgsThrough = \case
     substituteArgsThrough (expr `substInto` t, expr `substInto` e, args)
   _ -> developerError "Unexpected type/body of function undergoing monomorphisation"
 
-getMonomorphisedSuffix :: [CheckedArg] -> Symbol
+getMonomorphisedSuffix :: [CheckedArg] -> Text
 getMonomorphisedSuffix args = do
   let implicits = mapMaybe getImplicitArg args
   let typesText = fmap (layoutAsText . prettyFriendly) implicits

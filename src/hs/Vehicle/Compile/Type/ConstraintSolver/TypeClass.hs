@@ -339,7 +339,7 @@ solveRatQuantifier q c domainBinder body res = do
   let p = provenanceOf c
 
   -- The rational being quantified over is, by definition, linear
-  let varName   = getBinderSymbol domainBinder
+  let varName   = getBinderName domainBinder
   let domainLin = LinearityExpr p (Linear (QuantifiedVariableProvenance p varName))
   let domainEq  = unify c (typeOf' domainBinder) (AnnRatType p domainLin)
 

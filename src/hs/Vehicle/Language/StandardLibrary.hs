@@ -74,7 +74,7 @@ typeClassSolutions = fromDeclList
 standardPostulates :: Map Identifier DBDecl
 standardPostulates = quantifiers
 
-postulate :: Symbol -> DSLExpr -> DBDecl
+postulate :: Name -> DSLExpr -> DBDecl
 postulate name t = DefPostulate mempty (Identifier name) (fromDSL mempty t)
 
 quantifiers :: Map Identifier DBDecl

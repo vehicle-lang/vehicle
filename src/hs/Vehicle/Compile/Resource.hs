@@ -9,18 +9,18 @@ import Vehicle.Compile.Prelude
 --------------------------------------------------------------------------------
 -- Parameters
 
-type ParameterContext = Set Symbol
+type ParameterContext = Set Name
 
 --------------------------------------------------------------------------------
 -- Implicit parameters
 
 type InferableParameterContext =
-  Map Symbol (Maybe (DeclProvenance, ResourceType, Int))
+  Map Name (Maybe (DeclProvenance, ResourceType, Int))
 
 --------------------------------------------------------------------------------
 -- Datasets
 
-type DatasetContext = Set Symbol
+type DatasetContext = Set Name
 
 --------------------------------------------------------------------------------
 -- Networks
@@ -54,6 +54,6 @@ instance Pretty NetworkBaseType where
 reconstructNetworkBaseType :: Provenance -> NetworkBaseType -> CheckedType
 reconstructNetworkBaseType ann NetworkRatType = RatType ann
 
-type NetworkContext = Map Symbol NetworkType
+type NetworkContext = Map Name NetworkType
 
-type MetaNetwork = [Symbol]
+type MetaNetwork = [Name]

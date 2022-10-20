@@ -22,7 +22,7 @@ class HasBoundCtx a where
 instance HasBoundCtx (BoundCtx DBBinding) where
   boundContextOf = id
 
-instance HasBoundCtx (BoundCtx Symbol) where
+instance HasBoundCtx (BoundCtx Name) where
   boundContextOf = map Just
 
 addToBoundCtx :: MonadReader (BoundCtx b) m => b -> m c -> m c

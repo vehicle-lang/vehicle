@@ -111,7 +111,7 @@ delabNatLit n = B.Literal $ B.NatLiteral (mkToken B.Natural (pack $ show n))
 delabRatLit :: Rational -> B.Expr
 delabRatLit r = B.Literal $ B.RatLiteral (mkToken B.Rational (pack $ show (fromRational r :: Double)))
 
-delabSymbol :: Symbol -> B.NameToken
+delabSymbol :: Text -> B.NameToken
 delabSymbol = mkToken B.NameToken
 
 delabIdentifier :: V.Identifier -> B.NameToken

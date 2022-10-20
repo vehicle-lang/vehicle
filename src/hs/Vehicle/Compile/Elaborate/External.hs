@@ -7,7 +7,7 @@ module Vehicle.Compile.Elaborate.External
 
 import Control.Monad.Except (throwError, foldM)
 import Control.Monad.Writer (MonadWriter(..), runWriterT)
-import Data.Text (unpack)
+import Data.Text (unpack, Text)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Bitraversable (bitraverse)
 import Data.Set qualified as Set (singleton)
@@ -108,7 +108,7 @@ elabDeclGroup dx = do
     (B.DefAnn a _ :| _) ->
       throwError $ AnnotationWithNoDeclaration (annotationProvenance a) (annotationSymbol a)
 
-annotationSymbol :: B.DeclAnnName -> Symbol
+annotationSymbol :: B.DeclAnnName -> Text
 annotationSymbol = \case
   B.Network   tk -> tkSymbol tk
   B.Dataset   tk -> tkSymbol tk
@@ -368,7 +368,7 @@ mkAnn = V.tkProvenance
 checkNonEmpty :: (MonadCompile m, IsToken token) => token -> [a] -> m ()
 checkNonEmpty tk = checkNonEmpty' (V.tkProvenance tk) (tkSymbol tk)
 
-checkNonEmpty' :: (MonadCompile m) => V.Provenance -> Symbol -> [a] -> m ()
+checkNonEmpty' :: (MonadCompile m) => V.Provenance -> Text -> [a] -> m ()
 checkNonEmpty' p s []      = throwError $ MissingVariables p s
 checkNonEmpty' _ _ (_ : _) = return ()
 
@@ -387,7 +387,7 @@ constructUnknownDefType n = foldr addArg returnType
   binderToHole b = V.Binder ann (V.visibilityOf b) (V.relevanceOf b) (Just name) (V.Hole ann name)
     where
     ann  = V.provenanceOf b
-    name = typifyName (V.getBinderSymbol b)
+    name = typifyName (V.getBinderName b)
 
-  typifyName :: Symbol -> Symbol
+  typifyName :: Text -> Text
   typifyName x = "typeOf_" <> x

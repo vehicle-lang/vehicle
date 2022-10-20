@@ -25,8 +25,8 @@ import Vehicle.Prelude
 
 -- | Represents whether something is an input or an output of a function
 data FunctionPosition
-  = FunctionInput Symbol Int
-  | FunctionOutput Symbol
+  = FunctionInput Name Int
+  | FunctionOutput Name
   deriving (Eq, Show, Generic)
 
 instance NFData   FunctionPosition

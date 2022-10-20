@@ -184,7 +184,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (BoundDBCtx, Binder DBBinding var) = 'SupplyNamesOpen (StrategyFor tags (NamedBoundCtx, Binder NamedBinding var))
 
   StrategyFor tags (BoundDBCtx, t (CoDBBinding DBBinding) var)
-    = 'SupplyNamesOpen (StrategyFor tags (BoundDBCtx, t (Symbol, Maybe PositionTree) var))
+    = 'SupplyNamesOpen (StrategyFor tags (BoundDBCtx, t (Name, Maybe PositionTree) var))
 
   StrategyFor tags (t (CoDBBinding DBBinding) var)
     = 'SupplyNamesClosed (StrategyFor tags (t (NamedBinding, Maybe PositionTree) var))
@@ -302,7 +302,7 @@ instance PrettyUsing rest NamedBinder
 -- Convert from CoDeBruijn representation to named representation naively
 
 instance PrettyUsing rest NamedExpr
-      => PrettyUsing ('CoDBToNamedNaive rest) (Expr (CoDBBinding Symbol) CoDBVar) where
+      => PrettyUsing ('CoDBToNamedNaive rest) (Expr (CoDBBinding Name) CoDBVar) where
   prettyUsing e = let (e', pts) = runNaiveCoDBDescope e in
     prettyUsing @rest e' <+> prettyMap pts
 
@@ -359,25 +359,25 @@ instance PrettyUsing rest DBBinder
 --------------------------------------------------------------------------------
 -- Supply names for open DB terms
 
-instance PrettyUsing rest (NamedBoundCtx, Prog Symbol var)
+instance PrettyUsing rest (NamedBoundCtx, Prog Name var)
       => PrettyUsing ('SupplyNamesOpen rest) (BoundDBCtx, Prog DBBinding var) where
   prettyUsing p = prettyUsing @rest (supplyDBNamesWithCtx p)
 
-instance PrettyUsing rest (NamedBoundCtx, Decl Symbol var)
+instance PrettyUsing rest (NamedBoundCtx, Decl Name var)
       => PrettyUsing ('SupplyNamesOpen rest) (BoundDBCtx, Decl DBBinding var) where
   prettyUsing p = prettyUsing @rest (supplyDBNamesWithCtx p)
 
-instance PrettyUsing rest (NamedBoundCtx, Expr Symbol var)
+instance PrettyUsing rest (NamedBoundCtx, Expr Name var)
       => PrettyUsing ('SupplyNamesOpen rest) (BoundDBCtx, Expr DBBinding var) where
   prettyUsing p = prettyUsing @rest (supplyDBNamesWithCtx p)
 
-instance PrettyUsing rest (NamedBoundCtx, Arg Symbol var)
+instance PrettyUsing rest (NamedBoundCtx, Arg Name var)
       => PrettyUsing ('SupplyNamesOpen rest) (BoundDBCtx, Arg DBBinding var) where
   prettyUsing (ctx, a) =
     let (ctx', a') = supplyDBNamesWithCtx (ctx, WrapArg a) in
     prettyUsing @rest (ctx', unwrapArg a')
 
-instance PrettyUsing rest (NamedBoundCtx, Binder Symbol var)
+instance PrettyUsing rest (NamedBoundCtx, Binder Name var)
       => PrettyUsing ('SupplyNamesOpen rest) (BoundDBCtx, Binder DBBinding var) where
   prettyUsing (ctx, a) =
     let (ctx', a') = supplyDBNamesWithCtx (ctx, WrapBinder a) in
@@ -387,34 +387,34 @@ instance PrettyUsing rest (NamedBoundCtx, Binder Symbol var)
 --------------------------------------------------------------------------------
 -- Supply names for closed DB terms
 
-instance PrettyUsing rest (Prog Symbol var)
+instance PrettyUsing rest (Prog Name var)
       => PrettyUsing ('SupplyNamesClosed rest) (Prog DBBinding var) where
   prettyUsing e = prettyUsing @rest (supplyDBNames e)
 
-instance PrettyUsing rest (Decl Symbol var)
+instance PrettyUsing rest (Decl Name var)
       => PrettyUsing ('SupplyNamesClosed rest) (Decl DBBinding var) where
   prettyUsing e = prettyUsing @rest (supplyDBNames e)
 
-instance PrettyUsing rest (Expr Symbol var)
+instance PrettyUsing rest (Expr Name var)
       => PrettyUsing ('SupplyNamesClosed rest) (Expr DBBinding var) where
   prettyUsing e = prettyUsing @rest (supplyDBNames e)
 
-instance PrettyUsing rest (Arg Symbol var)
+instance PrettyUsing rest (Arg Name var)
       => PrettyUsing ('SupplyNamesClosed rest) (Arg DBBinding var) where
   prettyUsing e = prettyUsing @rest (unwrapArg (supplyDBNames (WrapArg e)))
 
-instance PrettyUsing rest (Binder Symbol var)
+instance PrettyUsing rest (Binder Name var)
       => PrettyUsing ('SupplyNamesClosed rest) (Binder DBBinding var) where
   prettyUsing e = prettyUsing @rest (unwrapBinder (supplyDBNames (WrapBinder e)))
 
 
 
 
-instance (SupplyNames t, PrettyUsing rest ([Symbol], t (CoDBBinding Symbol) var))
+instance (SupplyNames t, PrettyUsing rest ([Name], t (CoDBBinding Name) var))
       => PrettyUsing ('SupplyNamesOpen rest) ([DBBinding], t (CoDBBinding DBBinding) var) where
   prettyUsing p = prettyUsing @rest (supplyCoDBNamesWithCtx p)
 
-instance (SupplyNames t, PrettyUsing rest (t (CoDBBinding Symbol) var))
+instance (SupplyNames t, PrettyUsing rest (t (CoDBBinding Name) var))
       => PrettyUsing ('SupplyNamesClosed rest) (t (CoDBBinding DBBinding) var) where
   prettyUsing e = prettyUsing @rest (supplyCoDBNames e)
 

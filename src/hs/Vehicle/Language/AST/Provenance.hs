@@ -144,9 +144,9 @@ instance Monoid Owner where
 data Origin
   = FromSource [Range Position]
   -- ^ set of locations in the source file
-  | FromParameter Symbol
+  | FromParameter Name
   -- ^ name of the parameter
-  | FromDataset Symbol
+  | FromDataset Name
   deriving (Show, Eq, Ord, Generic)
 
 instance Semigroup Origin where
@@ -192,10 +192,10 @@ tkProvenance tk = Provenance (FromSource [start +=+ end]) TheUser
     start = tkPosition tk
     end   = Position (posLine start) (posColumn start + tkLength tk)
 
-datasetProvenance :: Symbol -> Provenance
+datasetProvenance :: Name -> Provenance
 datasetProvenance name = Provenance (FromDataset name) TheUser
 
-parameterProvenance :: Symbol -> Provenance
+parameterProvenance :: Name -> Provenance
 parameterProvenance name = Provenance (FromParameter name) TheUser
 
 -- | Marks the provenance as inserted by the compiler.

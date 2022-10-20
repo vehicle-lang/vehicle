@@ -8,7 +8,7 @@ module Vehicle.Language.AST.Builtin
 import Data.Bifunctor (first)
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData(..))
-import Data.Text (pack)
+import Data.Text (Text, pack)
 import Data.Hashable (Hashable (..))
 
 import Vehicle.Prelude
@@ -267,7 +267,7 @@ instance Pretty Builtin where
     Nil      -> "nil"
     Cons     -> "::"
 
-builtinSymbols :: [(Symbol, Builtin)]
+builtinSymbols :: [(Text, Builtin)]
 builtinSymbols = map (first pack)
   [ show Bool                         |-> Bool
   , show Nat                          |-> Nat
@@ -281,8 +281,8 @@ builtinSymbols = map (first pack)
   , show Cons                         |-> Cons
   ]
 
-builtinFromSymbol :: Symbol -> Maybe Builtin
+builtinFromSymbol :: Text -> Maybe Builtin
 builtinFromSymbol symbol = lookup symbol builtinSymbols
 
-symbolFromBuiltin :: Builtin -> Symbol
+symbolFromBuiltin :: Builtin -> Text
 symbolFromBuiltin builtin = layoutAsText $ pretty builtin

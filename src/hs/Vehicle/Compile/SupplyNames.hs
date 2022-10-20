@@ -32,7 +32,7 @@ supplyCoDBNamesWithCtx :: SupplyNames t
                        -> ([NamedBinding], t (CoDBBinding NamedBinding) var)
 supplyCoDBNamesWithCtx = supplyNamesWithCtx' convertBinding
   where
-    convertBinding :: CoDBBinding DBBinding -> Supply Symbol (CoDBBinding NamedBinding)
+    convertBinding :: CoDBBinding DBBinding -> Supply Name (CoDBBinding NamedBinding)
     convertBinding (CoDBBinding n pt) = do
       n' <- getName n
       return (CoDBBinding n' pt)
@@ -41,18 +41,18 @@ supplyCoDBNamesWithCtx = supplyNamesWithCtx' convertBinding
 -- Core operation
 
 supplyNamesWithCtx' :: (SupplyNames t)
-             => (binding1 -> Supply Symbol binding2)
+             => (binding1 -> Supply Name binding2)
              -> ([DBBinding],    t binding1 var)
              -> ([NamedBinding], t binding2 var)
 supplyNamesWithCtx' f v = runSupply (supplyNamesWithCtx f v) freshNames
 
-supplyNamesToCtx :: MonadSupply Symbol m => [DBBinding] -> m [NamedBinding]
+supplyNamesToCtx :: MonadSupply Name m => [DBBinding] -> m [NamedBinding]
 supplyNamesToCtx = mapM getName
 
-getName :: MonadSupply Symbol m => DBBinding -> m Symbol
+getName :: MonadSupply Name m => DBBinding -> m Name
 getName = maybe demand return
 
-type MonadSupplyNames m = MonadSupply Symbol m
+type MonadSupplyNames m = MonadSupply Name m
 
 class SupplyNames t where
   supplyNames :: MonadSupplyNames m
@@ -63,7 +63,7 @@ class SupplyNames t where
   supplyNamesWithCtx :: MonadSupplyNames m
                      => (binding1 -> m binding2)
                      -> ([DBBinding], t binding1 var)
-                     -> m ([Symbol], t binding2 var)
+                     -> m ([Name], t binding2 var)
   supplyNamesWithCtx f (ctx, e) = do
     ctx' <- supplyNamesToCtx ctx
     e'   <- supplyNames f e
@@ -97,7 +97,7 @@ instance SupplyNames Arg' where
 instance SupplyNames Binder' where
   supplyNames f e = WrapBinder <$> supplyNamesBinder f (unwrapBinder e)
 
-supplyNamesBinder ::  (SupplyNames t, MonadSupply Symbol m)
+supplyNamesBinder ::  (SupplyNames t, MonadSupply Name m)
                   => (binding1 -> m binder)
                   -> GenericBinder binding1 (t binding1 var)
                   -> m (GenericBinder binder (t binder var))
@@ -106,7 +106,7 @@ supplyNamesBinder f (Binder p v r n e) = do
     e' <- supplyNames f e
     return $ Binder p v r n' e'
 
-supplyNamesArg :: (Traversable t1, SupplyNames t2, MonadSupply Symbol f)
+supplyNamesArg :: (Traversable t1, SupplyNames t2, MonadSupply Name f)
                => (binding1 -> f binding2)
                -> t1 (t2 binding1 var) -> f (t1 (t2 binding2 var))
 supplyNamesArg f = traverse (supplyNames f)

@@ -52,10 +52,10 @@ instance Pretty StdLibFunction where
 instance HasIdentifier StdLibFunction where
   identifierOf f = Identifier $ pack $ show f
 
-stdLibFunctions :: Map Symbol StdLibFunction
+stdLibFunctions :: Map Name StdLibFunction
 stdLibFunctions = Map.fromList $ fmap (\f -> (pack $ show f, f)) [minBound .. maxBound]
 
-findStdLibFunction :: Symbol -> Maybe StdLibFunction
+findStdLibFunction :: Name -> Maybe StdLibFunction
 findStdLibFunction name = Map.lookup name stdLibFunctions
 
 pattern PostulateExistsNat, PostulateForallNat :: Identifier

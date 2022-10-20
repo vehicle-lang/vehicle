@@ -6,7 +6,7 @@ module Vehicle.Compile.Delaborate.External
 where
 
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Text (pack)
+import Data.Text (pack, Text)
 import Vehicle.Compile.Prelude
 import Vehicle.External.Abs qualified as B
 import Vehicle.Language.AST qualified as V
@@ -195,7 +195,7 @@ delabNatLit n = mkToken B.Natural (pack $ show n)
 delabRatLit :: Rational -> B.Rational
 delabRatLit r = mkToken B.Rational (pack $ show (fromRational r :: Double))
 
-delabSymbol :: Symbol -> B.Name
+delabSymbol :: Text -> B.Name
 delabSymbol = mkToken B.Name
 
 delabIdentifier :: V.Identifier -> B.Name
@@ -323,13 +323,13 @@ delabForeach :: [B.Expr] -> B.Expr
 delabForeach [B.Lam _ binders _ body] = B.Foreach tokForeach binders tokDot body
 delabForeach args = argsError (tkSymbol tokForall) 1 args
 
-argsError :: Symbol -> Int -> [B.Expr] -> a
+argsError :: Text -> Int -> [B.Expr] -> a
 argsError s n args =
   developerError $
-    "Expecting" <+> pretty n <+> "arguments for" <+> squotes (pretty s)
+    "Expecting" <+> pretty n <+> "arguments for" <+> quotePretty s
       <+> "but found"
       <+> pretty (length args)
-      <+> squotes (pretty (show args))
+      <+> quotePretty (show args)
 
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
 delabPi :: MonadDelab m => Provenance -> V.NamedBinder -> V.NamedExpr -> m B.Expr
@@ -370,7 +370,7 @@ delabAnn :: B.DeclAnnName -> [B.DeclAnnOption] -> B.Decl
 delabAnn name []  = B.DefAnn name B.DeclAnnWithoutOpts
 delabAnn name ops = B.DefAnn name $ B.DeclAnnWithOpts ops
 
-mkDeclAnnOption :: Symbol -> Bool -> B.DeclAnnOption
+mkDeclAnnOption :: Text -> Bool -> B.DeclAnnOption
 mkDeclAnnOption name value = B.BooleanOption (mkToken B.Name name) (delabBoolLit value)
 
 auxiliaryTypeError :: Doc a -> a

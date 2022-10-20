@@ -84,7 +84,7 @@ checkQuantifiersAreHomogeneous target ident expr = maybe Forall fst <$> go expr
 
     unsupportedVariableType :: Provenance -> CheckedBinder -> m a
     unsupportedVariableType p binder =
-      throwError $ UnsupportedVariableType target ident p (getBinderSymbol binder) (binderType binder) [Rat]
+      throwError $ UnsupportedVariableType target ident p (getBinderName binder) (binderType binder) [Rat]
 
 currentPass :: Doc a
 currentPass = "quantifier analysis"

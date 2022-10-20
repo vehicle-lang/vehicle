@@ -125,8 +125,8 @@ reparseResources (x : xs) = r <> reparseResources xs
 
 warnIfUnusedResources :: MonadLogger m
                       => ResourceType
-                      -> Set Symbol
-                      -> Set Symbol
+                      -> Set Name
+                      -> Set Name
                       -> m ()
 warnIfUnusedResources resourceType given found = do
   when (null found) $

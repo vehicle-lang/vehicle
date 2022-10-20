@@ -33,24 +33,24 @@ data CompileError
   | MalformedLamBinder InputExpr
 
   -- Errors thrown when elaborating from the BNFC external language
-  | FunctionNotGivenBody         Provenance Symbol
-  | PropertyNotGivenBody         Provenance Symbol
-  | ResourceGivenBody            Provenance Symbol Symbol
-  | AnnotationWithNoDeclaration  Provenance Symbol
-  | FunctionWithMismatchedNames  Provenance Symbol Symbol
-  | MissingVariables             Provenance Symbol
+  | FunctionNotGivenBody         Provenance Name
+  | PropertyNotGivenBody         Provenance Name
+  | ResourceGivenBody            Provenance Name Name
+  | AnnotationWithNoDeclaration  Provenance Name
+  | FunctionWithMismatchedNames  Provenance Name Name
+  | MissingVariables             Provenance Name
   | UnchainableOrders            Provenance OrderOp OrderOp
-  | InvalidAnnotationOption      Provenance Symbol Symbol [Symbol]
-  | InvalidAnnotationOptionValue Provenance Symbol Symbol
+  | InvalidAnnotationOption      Provenance Name Name [Name]
+  | InvalidAnnotationOptionValue Provenance Name Name
 
   -- Errors thrown by scope checking.
-  | UnboundName Provenance Symbol
-  | DuplicateName Provenance Symbol
+  | UnboundName Provenance Name
+  | DuplicateName Provenance Name
 
   -- Errors thrown while type checking
   | UnresolvedHole
     Provenance              -- The location of the hole
-    Symbol                  -- The name of the hole
+    Name                  -- The name of the hole
   | TypeMismatch
     Provenance              -- The location of the mismatch.
     [DBBinding]             -- The context at the time of the failure
@@ -125,11 +125,11 @@ data CompileError
   | NoPropertiesFound
   | UnsupportedResource              Backend Identifier Provenance ResourceType
   | UnsupportedInequality            Backend Identifier Provenance
-  | UnsupportedPolymorphicEquality   Backend Provenance Symbol
+  | UnsupportedPolymorphicEquality   Backend Provenance Name
   | UnsupportedBuiltin               Backend Provenance Builtin
-  | UnsupportedNonMagicVariable      Backend Provenance Symbol
+  | UnsupportedNonMagicVariable      Backend Provenance Name
   | NoNetworkUsedInProperty          Backend Provenance Identifier
-  | UnsupportedVariableType           VerifierIdentifier Identifier Provenance Symbol CheckedType [Builtin]
+  | UnsupportedVariableType           VerifierIdentifier Identifier Provenance Name CheckedType [Builtin]
   | UnsupportedAlternatingQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedNonLinearConstraint   Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
   deriving (Show)

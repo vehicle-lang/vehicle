@@ -56,7 +56,7 @@ outputSpecification loggingOptions (Specification properties) = do
   let doc = vsep2 (fmap goProperty properties)
   hPrint (outputHandle loggingOptions) (layoutAsString doc)
   where
-    goProperty :: (Symbol, Property QueryData) -> Doc ()
+    goProperty :: (Name, Property QueryData) -> Doc ()
     goProperty (name, property) = do
       pretty name <> line <>
         indent 2  (vsep2 (goMultiProperty property))
@@ -112,7 +112,7 @@ verifyQuery (queryFile, QueryData _ metaNetwork userVar) = do
 -- | Indices into a multi-property.
 type MultiPropertyIndex = Int
 
-calculateFilePaths :: FilePath -> Symbol -> Property a -> Property (FilePath, a)
+calculateFilePaths :: FilePath -> Name -> Property a -> Property (FilePath, a)
 calculateFilePaths directory propertyName = goProperty []
   where
   goProperty :: [MultiPropertyIndex] -> Property a -> Property (FilePath, a)

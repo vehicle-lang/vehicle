@@ -8,17 +8,15 @@ import Vehicle.Language.AST.Core
 --------------------------------------------------------------------------------
 -- Definition
 
--- |Type of bindings when using the named representation of the AST.
-type NamedBinding = Symbol
--- |Type of variables when using named representation of the AST.
-type NamedVar     = Symbol
+-- | Bindings when using the named representation of the AST.
+type NamedBinding = Name
 
 -- An expression that uses named variables for both binders and variables.
-type NamedBinder = Binder NamedBinding NamedVar
-type NamedArg    = Arg    NamedBinding NamedVar
-type NamedExpr   = Expr   NamedBinding NamedVar
-type NamedDecl   = Decl   NamedBinding NamedVar
-type NamedProg   = Prog   NamedBinding NamedVar
+type NamedBinder = Binder NamedBinding Name
+type NamedArg    = Arg    NamedBinding Name
+type NamedExpr   = Expr   NamedBinding Name
+type NamedDecl   = Decl   NamedBinding Name
+type NamedProg   = Prog   NamedBinding Name
 
 --------------------------------------------------------------------------------
 -- Type class
@@ -26,11 +24,11 @@ type NamedProg   = Prog   NamedBinding NamedVar
 class HasName a name where
   nameOf :: a -> name
 
-freshNames :: [Symbol]
+freshNames :: [Name]
 freshNames = [ "_x" <> pack (show i) | i <- [0::Int ..]]
 
 instance HasName (Binder binder var) binder where
   nameOf (Binder _ _ _ name _) = name
 
-instance HasName Identifier Symbol where
+instance HasName Identifier Name where
   nameOf (Identifier name) = name

@@ -22,7 +22,7 @@ import Vehicle.Compile.Prelude.DependencyGraph as X
 -- before being analysed by the compiler
 
 type InputBinding = Maybe NamedBinding
-type InputVar     = NamedVar
+type InputVar     = Name
 
 type InputArg       = Arg    InputBinding InputVar
 type InputBinder    = Binder InputBinding InputVar
@@ -59,7 +59,7 @@ type CheckedCoDBBinder = CoDBBinder
 
 -- * Type of annotations attached to the AST that are output by the compiler
 type OutputBinding = NamedBinding
-type OutputVar     = NamedVar
+type OutputVar     = Name
 
 type OutputBinder = Binder OutputBinding OutputVar
 type OutputArg    = Arg    OutputBinding OutputVar

@@ -183,7 +183,7 @@ nfApp p fun args = do
   case fun of
     Lam{}       | normaliseLambdaApplications -> nfAppLam p fun (NonEmpty.toList args)
     Builtin _ b | normaliseBuiltin b          -> nfBuiltin p b args
-    FreeVar _ i | normaliseStdLibApplications -> case findStdLibFunction (symbolOf i) of
+    FreeVar _ i | normaliseStdLibApplications -> case findStdLibFunction (nameOf i) of
       Nothing -> return e
       Just f  -> nfStdLibFn p f args
     _ -> return e
@@ -328,7 +328,7 @@ nfQuantifierVector p tElem size binder body recFn = do
   let allIndices = [0..size-1]
 
   -- Generate the corresponding names from the indices
-  let allNames   = map (mkNameWithIndices (getBinderSymbol binder)) (reverse allIndices)
+  let allNames   = map (mkNameWithIndices (getBinderName binder)) (reverse allIndices)
 
   -- Generate a list of variables, one for each index
   let allExprs   = map (\i -> Var p (Bound i)) (reverse allIndices)
