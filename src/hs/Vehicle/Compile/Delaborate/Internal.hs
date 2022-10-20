@@ -6,7 +6,7 @@ module Vehicle.Compile.Delaborate.Internal
   ) where
 
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Text (pack)
+import Data.Text (pack, Text)
 
 import Vehicle.Internal.Abs qualified as B
 
