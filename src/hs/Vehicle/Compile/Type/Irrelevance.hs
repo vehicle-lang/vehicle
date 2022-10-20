@@ -66,10 +66,10 @@ instance RemoveIrrelevantCode CheckedExpr where
     return result
 
 instance RemoveIrrelevantCode CheckedArg where
-  remove = traverseArgExpr remove
+  remove = traverse remove
 
 instance RemoveIrrelevantCode CheckedBinder where
-  remove = traverseBinderType remove
+  remove = traverse remove
 
 --------------------------------------------------------------------------------
 -- Debug functions

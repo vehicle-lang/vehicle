@@ -57,8 +57,8 @@ dnf expr = do
             AndExpr p [ExplicitArg p1 e1'', ExplicitArg p2 e2'']) e2') e1'
 
     OrExpr p [e1, e2] -> do
-      e1' <- traverseArgExpr dnf e1
-      e2' <- traverseArgExpr dnf e2
+      e1' <- traverse dnf e1
+      e2' <- traverse dnf e2
       return $ OrExpr p [e1', e2']
 
     App{} -> return expr
@@ -67,7 +67,7 @@ dnf expr = do
   return result
 
 liftOr :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
-liftOr f (OrExpr ann [e1, e2]) = OrExpr ann (mapArgExpr (liftOr f) <$> [e1, e2])
+liftOr f (OrExpr ann [e1, e2]) = OrExpr ann (fmap (liftOr f) <$> [e1, e2])
 liftOr f e                     = f e
 
 splitConjunctions :: Expr binder var -> [Expr binder var]

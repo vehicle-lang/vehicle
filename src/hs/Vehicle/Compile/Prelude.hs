@@ -58,7 +58,6 @@ type CheckedCoDBArg    = CoDBArg
 type CheckedCoDBBinder = CoDBBinder
 
 -- * Type of annotations attached to the AST that are output by the compiler
-
 type OutputBinding = NamedBinding
 type OutputVar     = NamedVar
 
@@ -67,6 +66,13 @@ type OutputArg    = Arg    OutputBinding OutputVar
 type OutputExpr   = Expr   OutputBinding OutputVar
 type OutputDecl   = Decl   OutputBinding OutputVar
 type OutputProg   = Prog   OutputBinding OutputVar
+
+-- | De Bruijn expressions that have had the missing names supplied.
+type SuppliedDBProg   = Prog   NamedBinding DBVar
+type SuppliedDBDecl   = Decl   NamedBinding DBVar
+type SuppliedDBExpr   = Expr   NamedBinding DBVar
+type SuppliedDBArg    = Arg    NamedBinding DBVar
+type SuppliedDBBinder = Binder NamedBinding DBVar
 
 -- | An expression paired with a position tree represting positions within it.
 -- Currently used mainly for pretty printing position trees.

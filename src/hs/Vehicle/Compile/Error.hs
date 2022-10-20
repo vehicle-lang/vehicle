@@ -158,6 +158,10 @@ unexpectedTypeInExprError :: MonadError CompileError m => Doc () -> Doc () -> m 
 unexpectedTypeInExprError pass name = compilerDeveloperError $
   unexpectedExpr pass name <+> "We should not be processing types."
 
+illTypedError :: MonadError CompileError m => Doc () -> Doc () -> m b
+illTypedError pass name = compilerDeveloperError $
+  unexpectedExpr pass name <+> "This is ill-typed."
+
 visibilityError :: MonadError CompileError m => Doc () -> Doc () -> m b
 visibilityError pass name = compilerDeveloperError $
   unexpectedExpr pass name <+> "Should not be present as explicit arguments"

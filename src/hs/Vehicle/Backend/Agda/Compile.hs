@@ -338,9 +338,6 @@ normaliseBuiltins = \case
     FromRatTC{} -> True
     FromVecTC{} -> True
 
-    EqualsTC{} -> False
-    OrderTC{}  -> False
-
     NotTC     -> True
     AndTC     -> True
     OrTC      -> True
@@ -352,6 +349,10 @@ normaliseBuiltins = \case
     DivTC     -> True
     MapTC     -> True
     FoldTC    -> True
+
+    EqualsTC{} -> False
+    OrderTC{}  -> False
+
     QuantifierTC{}   -> False
     QuantifierInTC{} -> False
 
@@ -515,7 +516,7 @@ compileBinder :: MonadAgdaCompile m => OutputBinder -> m Code
 compileBinder binder = do
   let binderName = pretty (nameOf binder :: OutputBinding)
   let addBrackets = binderBrackets False (visibilityOf binder)
-  binderType <- compileExpr (typeOf binder)
+  binderType <- compileExpr (binderType binder)
   let annBinder = annotateInfixOp2 [] minPrecedence id Nothing ":" [binderName, binderType]
   return $ addBrackets annBinder
 

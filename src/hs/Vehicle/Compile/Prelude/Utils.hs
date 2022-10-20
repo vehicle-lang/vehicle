@@ -88,10 +88,10 @@ freeNamesIn = cata $ \case
   LiteralF{}                -> []
   BuiltinF{}                -> []
   AnnF  _ e t               -> e <> t
-  AppF  _ fun args          -> fun <> concatMap (freeNamesIn . argExpr) args
-  PiF   _ binder result     -> freeNamesIn (typeOf binder) <> result
-  LetF  _ bound binder body -> bound <> freeNamesIn (typeOf binder) <> body
-  LamF  _ binder body       -> freeNamesIn (typeOf binder) <> body
+  AppF  _ fun args          -> fun <> concatMap argExpr args
+  PiF   _ binder result     -> binderType binder <> result
+  LetF  _ bound binder body -> bound <> binderType binder <> body
+  LamF  _ binder body       -> binderType binder <> body
   LVecF _ xs                -> concat xs
 
 --------------------------------------------------------------------------------

@@ -52,10 +52,10 @@ instance MetaSubstitutable a => MetaSubstitutable (NonEmpty a) where
   substM = traverse substM
 
 instance MetaSubstitutable CheckedArg where
-  substM = traverseArgExpr substM
+  substM = traverse substM
 
 instance MetaSubstitutable CheckedBinder where
-  substM = traverseBinderType substM
+  substM = traverse substM
 
 instance MetaSubstitutable CheckedExpr where
   substM ex =
@@ -187,10 +187,10 @@ instance HasMetas CheckedExpr where
     App  p fun args          -> App p <$> traverseMetas f fun <*> traverseMetas f args
 
 instance HasMetas CheckedArg where
-  traverseMetas f = traverseArgExpr (traverseMetas f)
+  traverseMetas f = traverse (traverseMetas f)
 
 instance HasMetas CheckedBinder where
-  traverseMetas f = traverseBinderType (traverseMetas f)
+  traverseMetas f = traverse (traverseMetas f)
 
 instance HasMetas a => HasMetas [a] where
   traverseMetas f = traverse (traverseMetas f)

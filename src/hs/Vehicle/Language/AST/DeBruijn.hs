@@ -97,10 +97,10 @@ class DeBruijnFunctor a where
 instance DeBruijnFunctor DBExpr where
   alter body var =
     let
-      altPiBinder  = alter    body var
-      altLamBinder = alter    body var
-      altArg       = alter    body var
-      altExpr      = alter    body var
+      altPiBinder  = traverse (alter body var)
+      altLamBinder = traverse (alter body var)
+      altArg       = traverse (alter body var)
+      altExpr      = alter body var
       underB       = underBinder body
     in \case
       Universe ann l            -> return (Universe ann l)
@@ -122,12 +122,6 @@ instance DeBruijnFunctor DBExpr where
 underBinder :: MonadReader (BindingDepth, state) m =>
                TraverseBinder state -> m a -> m a
 underBinder body = local (\(d, s) -> (d+1, body s))
-
-instance DeBruijnFunctor DBArg where
-  alter body var = traverseArgExpr (alter body var)
-
-instance DeBruijnFunctor DBBinder where
-  alter body var = traverseBinderType (alter body var)
 
 --------------------------------------------------------------------------------
 -- Concrete operations

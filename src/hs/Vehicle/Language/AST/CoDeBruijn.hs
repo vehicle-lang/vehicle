@@ -40,15 +40,15 @@ import Vehicle.Language.AST.Relevance
 --------------------------------------------------------------------------------
 -- AST Definitions
 
-data CoDBBinding
-  = CoDBBinding DBBinding (Maybe PositionTree)
+data CoDBBinding name
+  = CoDBBinding name (Maybe PositionTree)
   deriving (Show, Eq, Generic)
 
-instance Hashable CoDBBinding where
+instance Eq name => Hashable (CoDBBinding name) where
   -- We deliberately ignore the name stored in the binding
   hashWithSalt d (CoDBBinding _n t) = hashWithSalt d t
 
-instance HasName CoDBBinding DBBinding where
+instance HasName (CoDBBinding name) name where
   nameOf (CoDBBinding name _) = name
 
 data CoDBVar
@@ -59,9 +59,9 @@ data CoDBVar
 instance Hashable CoDBVar
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type PartialCoDBBinder = Binder CoDBBinding CoDBVar
-type PartialCoDBArg    = Arg    CoDBBinding CoDBVar
-type PartialCoDBExpr   = Expr   CoDBBinding CoDBVar
+type PartialCoDBBinder = Binder (CoDBBinding DBBinding) CoDBVar
+type PartialCoDBArg    = Arg    (CoDBBinding DBBinding) CoDBVar
+type PartialCoDBExpr   = Expr   (CoDBBinding DBBinding) CoDBVar
 
 type CoDBBinder = (PartialCoDBBinder, BoundVarMap)
 type CoDBArg    = (PartialCoDBArg   , BoundVarMap)
@@ -79,7 +79,7 @@ instance Hashable PartialCoDBBinder
 type NamedPTMap = Map NamedBinding (Maybe PositionTree)
 
 class ExtractPositionTrees t where
-  extractPTs :: t (Symbol, Maybe PositionTree) CoDBVar ->
+  extractPTs :: t (CoDBBinding Symbol) CoDBVar ->
                 (t Symbol CoDBVar, NamedPTMap)
 
 instance ExtractPositionTrees Expr where
@@ -98,31 +98,29 @@ instance ExtractPositionTrees Expr where
       (LVec ann xs', mergePTs mpts)
 
     AppF ann (fun, mpt) args ->
-      let (args', mpts) = NonEmpty.unzip (fmap extractPTs args) in
+      let (args', mpts) = NonEmpty.unzip (fmap unpairArg args) in
       (App ann fun args', mergePTs (mpt : NonEmpty.toList mpts))
 
     PiF  ann binder (result', mpt2) ->
-      let (binder', mpt1) = extractPTs binder in
+      let (binder', mpt1) = extractPTsBinder binder in
       (Pi ann binder' result', mergePTs [mpt1, mpt2])
 
     LetF ann (bound', mpt1) binder (body', mpt3) ->
-      let (binder', mpt2) = extractPTs binder in
+      let (binder', mpt2) = extractPTsBinder binder in
       (Let ann bound' binder' body', mergePTs [mpt1, mpt2, mpt3])
 
     LamF ann binder (body', mpt2) ->
-      let (binder', mpt1) = extractPTs binder in
+      let (binder', mpt1) = extractPTsBinder binder in
       (Lam ann binder' body', mergePTs [mpt1, mpt2])
 
-instance ExtractPositionTrees Binder where
-  extractPTs (Binder ann v r (n, mpt) t) =
-    let (t', mpts) = extractPTs t in
-    let pts' = mergePTs [Map.singleton n mpt, mpts] in
-    (Binder ann v r n t', pts')
-
-instance ExtractPositionTrees Arg where
-  extractPTs (Arg ann v r e) =
-    let (e', mpts) = extractPTs e in
-    (Arg ann v r e', mpts)
+extractPTsBinder :: GenericBinder (CoDBBinding Symbol) (Expr Symbol CoDBVar, NamedPTMap)
+                 -> (Binder Symbol CoDBVar, NamedPTMap)
+extractPTsBinder binder = do
+  let CoDBBinding binderName mpt = binderRepresentation binder
+  let (binder', mpts)  = unpairBinder binder
+  let binder''         = replaceBinderRep binderName binder'
+  let pts'             = mergePTs [Map.singleton binderName mpt, mpts]
+  (binder'', pts')
 
 mergePTPair :: NamedPTMap -> NamedPTMap -> NamedPTMap
 mergePTPair = Map.unionWith (\_ _ -> developerError
@@ -145,7 +143,7 @@ data ArgC
   deriving (Show)
 
 data BinderC
-  = BinderC Provenance Visibility Relevance CoDBBinding CoDBExpr
+  = BinderC Provenance Visibility Relevance (CoDBBinding DBBinding) CoDBExpr
   deriving (Show)
 
 data ExprC
@@ -204,7 +202,7 @@ instance RecCoDB CoDBArg ArgC where
   recCoDB (Arg ann v r e, bvm) = ArgC ann v r (e, bvm)
 
 positionTreeOf :: PartialCoDBBinder -> Maybe PositionTree
-positionTreeOf b = case nameOf b of
+positionTreeOf b = case (nameOf b :: CoDBBinding DBBinding) of
   CoDBBinding _ pt -> pt
 
 --------------------------------------------------------------------------------

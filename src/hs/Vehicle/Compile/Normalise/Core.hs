@@ -242,8 +242,8 @@ zipWithVector :: Provenance
               -> CheckedExpr
               -> CheckedExpr
 zipWithVector p tElem1 tElem2 tRes size fn xs ys = do
-  let xsLifted = mapArgExpr (liftFreeDBIndices 1) (ExplicitArg p xs)
-  let ysLifted = mapArgExpr (liftFreeDBIndices 1) (ExplicitArg p ys)
+  let xsLifted = fmap (liftFreeDBIndices 1) (ExplicitArg p xs)
+  let ysLifted = fmap (liftFreeDBIndices 1) (ExplicitArg p ys)
   let index = ExplicitArg p (BoundVar p 0)
 
   let body = App p fn $ ExplicitArg p <$>

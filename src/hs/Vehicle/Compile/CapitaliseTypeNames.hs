@@ -58,19 +58,13 @@ instance CapitaliseTypes CheckedExpr where
     LiteralF  ann l                 -> return $ Literal ann l
     BuiltinF  ann op                -> return $ Builtin ann op
     AnnF      ann e t               -> Ann ann <$> e <*> t
-    AppF      ann fun args          -> App ann <$> fun <*> traverse cap args
-    PiF       ann binder result     -> Pi  ann <$> cap binder <*> result
-    LetF      ann bound binder body -> Let ann <$> bound <*> cap binder <*> body
-    LamF      ann binder body       -> Lam ann <$> cap binder <*> body
+    AppF      ann fun args          -> App ann <$> fun <*> traverse sequenceA args --traverse cap args
+    PiF       ann binder result     -> Pi  ann <$> sequenceA binder <*> result
+    LetF      ann bound binder body -> Let ann <$> bound <*> sequenceA binder <*> body
+    LamF      ann binder body       -> Lam ann <$> sequenceA binder <*> body
     LVecF     ann xs                -> LVec ann <$> sequence xs
     VarF      ann v@(Bound _)       -> return $ Var ann v
     VarF      ann (Free ident)      -> Var ann . Free <$> cap ident
-
-instance CapitaliseTypes CheckedArg where
-  cap = traverseArgExpr cap
-
-instance CapitaliseTypes CheckedBinder where
-  cap = traverseBinderType cap
 
 instance CapitaliseTypes Identifier where
   cap ident@(Identifier s) = do

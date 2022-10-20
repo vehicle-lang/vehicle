@@ -207,8 +207,8 @@ addNewArgumentToMetaUses meta = mapDeclExprs (go (-1))
       LVec     p xs                -> LVec p (map (go d) xs)
       where
         newVar p = ExplicitArg p (Var p (Bound d))
-        goBinder = mapBinderType (go d)
-        goArgs   = fmap (mapArgExpr (go d))
+        goBinder = fmap (go d)
+        goArgs   = fmap (fmap (go d))
 
 addNewBinderToMetaContext :: TCM m => Meta -> DBBinding -> CheckedType -> m ()
 addNewBinderToMetaContext m newVarName newVarType =

@@ -69,10 +69,10 @@ instance Simplify (Expr binder var) where
     Lam ann binder body       -> Lam ann <$> simplifyReader binder <*> simplifyReader body
 
 instance Simplify (Binder binder var) where
-  simplifyReader = traverseBinderType simplifyReader
+  simplifyReader = traverse simplifyReader
 
 instance Simplify (Arg binder var) where
-  simplifyReader = traverseArgExpr simplifyReader
+  simplifyReader = traverse simplifyReader
 
 simplifyReaderArgs :: MonadSimplify m
                    => NonEmpty (Arg binder var)

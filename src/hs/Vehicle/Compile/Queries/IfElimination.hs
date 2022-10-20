@@ -35,8 +35,8 @@ liftIf f (IfExpr ann _t [cond, e1, e2]) = IfExpr ann
   -- Can't reconstruct the result type of `f` here, so have to insert a hole.
   (Hole ann "?")
   [ cond
-  , mapArgExpr (liftIf f) e1
-  , mapArgExpr (liftIf f) e2
+  , fmap (liftIf f) e1
+  , fmap (liftIf f) e2
   ]
 liftIf f e = f e
 
@@ -45,8 +45,8 @@ liftIf f e = f e
 elimIf :: CheckedExpr -> CheckedExpr
 elimIf (IfExpr ann _ [cond, e1, e2]) =
   OrExpr ann $ fmap (ExplicitArg ann)
-    [ AndExpr ann [cond,                 mapArgExpr elimIf e1]
-    , AndExpr ann [normaliseNotArg cond, mapArgExpr elimIf e2]
+    [ AndExpr ann [cond,                 fmap elimIf e1]
+    , AndExpr ann [normaliseNotArg cond, fmap elimIf e2]
     ]
 elimIf e = e
 
@@ -64,18 +64,18 @@ liftAndElimIf expr = case expr of
   PostulatedQuantifierExpr ident p binder body ->
     PostulatedQuantifierExpr ident p binder . elimIf <$> liftAndElimIf body
 
-  NotExpr     p   args -> NotExpr     p   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
-  AndExpr     p   args -> AndExpr     p   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
-  OrExpr      p   args -> OrExpr      p   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
-  ImpliesExpr p   args -> ImpliesExpr p   <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
-  IfExpr      p t args -> IfExpr      p t <$> traverse (traverseArgExpr (fmap elimIf . liftAndElimIf)) args
+  NotExpr     p   args -> NotExpr     p   <$> traverse (traverse (fmap elimIf . liftAndElimIf)) args
+  AndExpr     p   args -> AndExpr     p   <$> traverse (traverse (fmap elimIf . liftAndElimIf)) args
+  OrExpr      p   args -> OrExpr      p   <$> traverse (traverse (fmap elimIf . liftAndElimIf)) args
+  ImpliesExpr p   args -> ImpliesExpr p   <$> traverse (traverse (fmap elimIf . liftAndElimIf)) args
+  IfExpr      p t args -> IfExpr      p t <$> traverse (traverse (fmap elimIf . liftAndElimIf)) args
 
   Let p bound binder body ->
     Let p <$> liftAndElimIf bound <*> pure binder <*> liftAndElimIf body
 
   App p fun args -> do
     fun'  <- liftAndElimIf fun
-    args' <- traverse (traverseArgExpr liftAndElimIf) args
+    args' <- traverse (traverse liftAndElimIf) args
     return $ liftIf (\v -> liftArgs (\vs -> App p v vs) args') fun'
 
   Ann p e t -> do

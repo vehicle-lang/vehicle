@@ -73,10 +73,10 @@ instance TraverseAuxiliaryArguments UncheckedExpr where
     Builtin{}  -> return expr
 
 instance TraverseAuxiliaryArguments UncheckedArg where
-  traverseAux f = traverseArgExpr (traverseAux f)
+  traverseAux f = traverse (traverseAux f)
 
 instance TraverseAuxiliaryArguments UncheckedBinder where
-  traverseAux f = traverseBinderType (traverseAux f)
+  traverseAux f = traverse (traverseAux f)
 
 instance TraverseAuxiliaryArguments a => TraverseAuxiliaryArguments (NonEmpty a) where
   traverseAux f = traverse (traverseAux f)
@@ -102,19 +102,20 @@ traverseAuxFreeVarArgs :: TCM m
                        -> m [CheckedArg]
 traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
   (Pi _ binder res, arg : args) -> do
+    let inputType = typeOf' binder
     args' <- traverseAuxFreeVarArgs f p res args
     arg' <-
-      if isPolarityUniverse  (typeOf binder)
-        then traverseArgExpr (\e -> f (provenanceOf e) Pol (Just e)) arg
-      else if isLinearityUniverse (typeOf binder)
-        then traverseArgExpr (\e -> f (provenanceOf e) Lin (Just e)) arg
+      if isPolarityUniverse inputType
+        then traverse (\e -> f (provenanceOf e) Pol (Just e)) arg
+      else if isLinearityUniverse inputType
+        then traverse (\e -> f (provenanceOf e) Lin (Just e)) arg
       else return arg
     return (arg' : args')
 
   (Pi _ binder res, [])
-    | visibilityOf binder == Implicit && isAuxiliaryUniverse (typeOf binder) -> do
+    | visibilityOf binder == Implicit && isAuxiliaryUniverse (typeOf' binder) -> do
     xs <- traverseAuxFreeVarArgs f p res []
-    meta <- case typeOf binder of
+    meta <- case typeOf' binder of
       LinearityUniverse{} -> f p Lin Nothing
       PolarityUniverse{}  -> f p Pol Nothing
       _                   -> compilerDeveloperError "Mismatch between cases and 'isAuxiliaryUniverse'"

@@ -83,112 +83,138 @@ instance Pretty Literal where
 -- reversibility during delaboration, and that as the type annotation was
 -- manually provided by the user it never needs to be updated after unification
 -- and type-class resolution.
-data Binder binder var
-  = Binder
-    Provenance
-    Visibility         -- The visibility of the binder
-    Relevance          -- The relevancy of the binder
-    binder             -- The representation of the bound variable
-    (Expr binder var)  -- The (optional) type of the bound variable
-  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+data GenericBinder binder expr = Binder
+  { binderProvenance     :: Provenance
+  , binderVisibility     :: Visibility
+  -- ^ The visibility of the binder
+  , binderRelevance      :: Relevance
+  -- ^ The relevancy of the binder
+  , binderRepresentation :: binder
+  -- ^ The representation of the bound variable
+  , binderType           :: expr
+  -- The type of the bound variable
+  } deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-pattern ExplicitBinder :: Provenance -> binder -> Expr binder var -> Binder binder var
+pattern ExplicitBinder :: Provenance -> binder -> expr -> GenericBinder binder expr
 pattern ExplicitBinder p n t = Binder p Explicit Relevant n t
 
-pattern ImplicitBinder :: Provenance -> binder -> Expr binder var -> Binder binder var
+pattern ImplicitBinder :: Provenance -> binder -> expr -> GenericBinder binder expr
 pattern ImplicitBinder p n t = Binder p Implicit Relevant n t
 
-pattern InstanceBinder :: Provenance -> binder -> Expr binder var -> Binder binder var
+pattern InstanceBinder :: Provenance -> binder -> expr -> GenericBinder binder expr
 pattern InstanceBinder p n t = Binder p Instance Relevant  n t
 
-pattern IrrelevantInstanceBinder :: Provenance -> binder -> Expr binder var -> Binder binder var
+pattern IrrelevantInstanceBinder :: Provenance -> binder -> expr -> GenericBinder binder expr
 pattern IrrelevantInstanceBinder p n t = Binder p Instance Irrelevant  n t
 
-instance (NFData binder, NFData var) => NFData (Binder binder var)
+instance (NFData binder, NFData expr) => NFData (GenericBinder binder expr)
 
-instance HasProvenance (Binder binder var) where
-  provenanceOf (Binder p _ _ _ _) = p
+instance HasProvenance (GenericBinder binder expr) where
+  provenanceOf = binderProvenance
 
-instance HasVisibility (Binder binder var) where
-  visibilityOf (Binder _ v _ _ _) = v
+instance HasVisibility (GenericBinder binder expr) where
+  visibilityOf = binderVisibility
 
-instance HasRelevance (Binder binder var) where
-  relevanceOf (Binder _ _ r _ _) = r
+instance HasRelevance (GenericBinder binder expr) where
+  relevanceOf = binderRelevance
 
-mapBinderType :: (Expr binder var1 -> Expr binder var2)
-              -> Binder binder var1 -> Binder binder var2
-mapBinderType f (Binder ann v r n e) = Binder ann v r n $ f e
+pairBinder :: (GenericBinder binder a, b) -> GenericBinder binder (a, b)
+pairBinder (Binder p v r b x, y) = Binder p v r b (x, y)
 
-replaceBinderType :: Expr binder var1
-                  -> Binder binder var2
-                  -> Binder binder var1
-replaceBinderType e = mapBinderType (const e)
+unpairBinder :: GenericBinder binder (a, b) -> (GenericBinder binder a, b)
+unpairBinder (Binder p v r b (x, y)) = (Binder p v r b x, y)
 
-traverseBinderType :: Monad m
-                   => (Expr binder var1 -> m (Expr binder var2))
-                   -> Binder binder var1
-                   -> m (Binder binder var2)
-traverseBinderType f (Binder ann v r n e) = Binder ann v r n <$> f e
+unpairBinderRep :: GenericBinder (a, b) e -> (GenericBinder a e, b)
+unpairBinderRep (Binder p v r (x, y) t) = (Binder p v r x t, y)
+
+mapBinderRep :: (a -> b) -> GenericBinder a e -> GenericBinder b e
+mapBinderRep f (Binder p v r b t) = Binder p v r (f b) t
+
+replaceBinderRep :: b -> GenericBinder a e -> GenericBinder b e
+replaceBinderRep b' (Binder p v r _b t) = Binder p v r b' t
+
+replaceBinderType :: expr1
+                  -> GenericBinder binder expr2
+                  -> GenericBinder binder expr1
+replaceBinderType e = fmap (const e)
+
+type Binder binder var = GenericBinder binder (Expr binder var)
+
+-- | This horrible construction is needed because |Binder| is a type synonym
+-- synonyms which can't be used as functions at the type level. This wraps
+-- it as required.
+newtype Binder' var binder = WrapBinder
+  { unwrapBinder :: Binder var binder
+  }
 
 --------------------------------------------------------------------------------
 -- Function arguments
 
-data Arg binder var
-  = Arg
-    Provenance         -- Has the argument been auto-inserted by the type-checker?
-    Visibility         -- The visibility of the argument
-    Relevance          -- The relevancy of the argument
-    (Expr binder var)  -- The argument expression
+-- | An argument to a function, parameterised by the type of expression it
+-- stores.
+data GenericArg expr = Arg
+  { argProvenance :: Provenance
+    -- ^ Has the argument been auto-inserted by the type-checker?
+  , argVisibility :: Visibility
+    -- ^ The visibility of the argument
+  , argRelevance  :: Relevance
+    -- ^ The relevancy of the argument
+  , argExpr       :: expr
+    -- ^ The argument expression
+  }
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-pattern ExplicitArg :: Provenance -> Expr binder var -> Arg binder var
+instance (NFData expr) => NFData (GenericArg expr)
+
+instance HasProvenance (GenericArg expr) where
+  provenanceOf = argProvenance
+
+instance HasVisibility (GenericArg expr) where
+  visibilityOf = argVisibility
+
+instance HasRelevance (GenericArg expr) where
+  relevanceOf = argRelevance
+
+pattern ExplicitArg :: Provenance -> expr -> GenericArg expr
 pattern ExplicitArg p e = Arg p Explicit Relevant e
 
-pattern ImplicitArg :: Provenance -> Expr binder var -> Arg binder var
+pattern ImplicitArg :: Provenance -> expr -> GenericArg expr
 pattern ImplicitArg p e = Arg p Implicit Relevant e
 
-pattern IrrelevantImplicitArg :: Provenance -> Expr binder var -> Arg binder var
+pattern IrrelevantImplicitArg :: Provenance -> expr -> GenericArg expr
 pattern IrrelevantImplicitArg p e = Arg p Implicit Irrelevant e
 
-pattern InstanceArg :: Provenance -> Expr binder var -> Arg binder var
+pattern InstanceArg :: Provenance -> expr -> GenericArg expr
 pattern InstanceArg p e = Arg p Instance Relevant e
 
-pattern IrrelevantInstanceArg :: Provenance -> Expr binder var -> Arg binder var
+pattern IrrelevantInstanceArg :: Provenance -> expr -> GenericArg expr
 pattern IrrelevantInstanceArg p e = Arg p Instance Irrelevant e
 
-instance (NFData binder, NFData var) => NFData (Arg binder var)
+pairArg :: (GenericArg a, b) -> GenericArg (a, b)
+pairArg (Arg p v r x, y) = Arg p v r (x, y)
 
-instance HasProvenance (Arg binder var) where
-  provenanceOf (Arg p _ _ _) = p
+unpairArg :: GenericArg (a, b) -> (GenericArg a, b)
+unpairArg (Arg p v r (x, y)) = (Arg p v r x, y)
 
-instance HasVisibility (Arg binder var) where
-  visibilityOf (Arg _ v _ _) = v
-
-instance HasRelevance (Arg binder var) where
-  relevanceOf (Arg _ _ r _) = r
-
-argExpr :: Arg binder var -> Expr binder var
-argExpr (Arg _ _ _ e) = e
-
-mapArgExpr :: (Expr binder1 var1 -> Expr binder2 var2)
-           -> Arg binder1 var1 -> Arg binder2 var2
-mapArgExpr f (Arg ann v r e) = Arg ann v r $ f e
-
-replaceArgExpr :: Expr binder1 var1 -> Arg binder2 var2 -> Arg binder1 var1
-replaceArgExpr e = mapArgExpr (const e)
-
-traverseArgExpr :: Monad m
-                => (Expr binder1 var1 -> m (Expr binder2 var2))
-                -> Arg binder1 var1
-                -> m (Arg binder2 var2)
-traverseArgExpr f (Arg i v r e) = Arg i v r <$> f e
+replaceArgExpr :: expr1 -> GenericArg expr2 -> GenericArg expr1
+replaceArgExpr e = fmap (const e)
 
 traverseExplicitArgExpr :: Monad m
-                        => (Expr binder var -> m (Expr binder var))
-                        -> Arg binder var
-                        -> m (Arg binder var)
+                        => (expr -> m expr)
+                        -> GenericArg expr
+                        -> m (GenericArg expr)
 traverseExplicitArgExpr f (ExplicitArg i e) = ExplicitArg i <$> f e
 traverseExplicitArgExpr _ arg               = return arg
+
+
+type Arg binder var = GenericArg (Expr binder var)
+
+-- | This horrible construction is needed because |Arg| is a type synonym
+-- synonyms which can't be used as functions at the type level. This wraps
+-- it as required.
+newtype Arg' var binder = WrapArg
+  { unwrapArg :: Arg var binder
+  }
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -245,7 +271,8 @@ data Expr binder var
     Provenance
     Meta             -- Meta variable number.
 
-  -- | Let expressions.
+  -- | Let expressions. We have these in the core syntax because we want to
+  -- cross compile them to various backends.
   --
   -- NOTE: that the order of the bound expression and the binder is reversed
   -- to better mimic the flow of the context, which makes writing monadic
@@ -405,8 +432,8 @@ traverseProg f (Main ds) = Main <$> traverse f ds
 --------------------------------------------------------------------------------
 -- Recursion principles
 
-makeBaseFunctor ''Arg
-makeBaseFunctor ''Binder
+makeBaseFunctor ''GenericArg
+makeBaseFunctor ''GenericBinder
 makeBaseFunctor ''Expr
 
 --------------------------------------------------------------------------------
@@ -415,14 +442,14 @@ makeBaseFunctor ''Expr
 class HasType a where
   typeOf :: a binder var -> Expr binder var
 
-instance HasType Binder where
-  typeOf (Binder _ _ _ _ t) = t
-
 instance HasType Decl where
   typeOf = \case
     DefResource _ _ _ t -> t
     DefFunction _ _ t _ -> t
     DefPostulate _ _ t  -> t
+
+typeOf' :: Binder binder var -> Expr binder var
+typeOf' = binderType
 
 --------------------------------------------------------------------------------
 -- Utilities

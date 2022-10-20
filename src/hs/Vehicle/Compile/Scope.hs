@@ -130,10 +130,10 @@ scopeExpr e = do
   return result
 
 scopeArg :: MonadScopeExpr m => InputArg -> m UncheckedArg
-scopeArg = traverseArgExpr scopeExpr
+scopeArg = traverse scopeExpr
 
 scopeBinder :: MonadScopeExpr m => InputBinder -> m UncheckedBinder
-scopeBinder = traverseBinderType scopeExpr
+scopeBinder = traverse scopeExpr
 
 bindDecl :: MonadScope m => Identifier -> m a -> m a
 bindDecl ident = local (Map.insert ident ())

@@ -53,7 +53,7 @@ whnfConstraintWithMetas c = case c of
     return $ UC ctx (Unify (e1', e2'))
 
   TC ctx (Has m tc args) -> do
-    args' <- traverse (traverseArgExpr whnfExprWithMetas) args
+    args' <- traverse (traverse whnfExprWithMetas) args
     return $ TC ctx (Has m tc args')
 
 --------------------------------------------------------------------------------
@@ -121,8 +121,8 @@ whnfArg :: WHNFMonad m => CheckedArg -> m CheckedArg
 whnfArg arg
   | visibilityOf arg == Implicit = do
     declCtx <- ask
-    traverseArgExpr (whnfExpr <=< whnf declCtx) arg
-  | otherwise = traverseArgExpr whnfExpr arg
+    traverse (whnfExpr <=< whnf declCtx) arg
+  | otherwise = traverse whnfExpr arg
 
 currentPhase :: Doc ()
 currentPhase = "normalisation of inserted implicit types"

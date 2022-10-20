@@ -468,7 +468,7 @@ instance MeaningfulError CompileError where
       , problem    = unsupportedResourceTypeDescription Network ident networkType <+> "as" <+>
                      squotes (prettyFriendly networkType) <+>
                      "contains a non-explicit argument" <+>
-                     squotes (prettyFriendly binder) <> "."
+                     squotes (prettyFriendly (typeOf' binder)) <> "."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Remove the non-explicit argument."
       }

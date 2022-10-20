@@ -1,6 +1,8 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Avoid lambda using `infix`" #-}
 module Vehicle.Compile.CoDeBruijnify
-  ( ConvertCodebruijn(..)
-  , toCoDBExpr
+  ( toCoDBExpr
+  , fromCoDB
   ) where
 
 import Data.Functor.Foldable (Recursive(..))
@@ -14,7 +16,7 @@ import Vehicle.Language.AST.DeBruijn as DB
 --------------------------------------------------------------------------------
 -- Forwards direction
 
-toCoDBExpr :: Expr DBBinding DBVar -> (Expr CoDBBinding CoDBVar, BoundVarMap)
+toCoDBExpr :: DBExpr -> CoDBExpr
 toCoDBExpr = cata $ \case
   UniverseF ann l        -> (Universe ann l,  mempty)
   HoleF     ann n        -> (Hole     ann n,  mempty)
@@ -33,7 +35,7 @@ toCoDBExpr = cata $ \case
     (Ann ann e' t', nodeBVM [bvm1, bvm2])
 
   AppF ann (fun', bvm) args ->
-    let (args', bvms) = NonEmpty.unzip $ fmap toCoDBArg args in
+    let (args', bvms) = NonEmpty.unzip $ fmap unpairArg args in
     (App ann fun' args', nodeBVM (bvm : NonEmpty.toList bvms))
 
   PiF  ann binder (result', bvm2) ->
@@ -51,43 +53,37 @@ toCoDBExpr = cata $ \case
     let (binder', bvm1) = toCoDBBinder binder positionTree in
     (Lam ann binder' body', nodeBVM [bvm1, bvm2'])
 
-toCoDBBinder :: DBBinder -> Maybe PositionTree -> CoDBBinder
-toCoDBBinder (Binder ann v r n t) mpt =
-  let (t', bvm) = toCoDBExpr t in
-  (Binder ann v r (CoDBBinding n mpt) t', bvm)
-
-toCoDBArg :: DBArg -> CoDBArg
-toCoDBArg (Arg ann v r e) =
-  let (e', bvm) = toCoDBExpr e in
-  (Arg ann v r e', bvm)
+toCoDBBinder :: GenericBinder DBBinding CoDBExpr
+             -> Maybe PositionTree
+             -> CoDBBinder
+toCoDBBinder binder mpt =
+  let (t', bvm) = unpairBinder binder in
+  (mapBinderRep (\n -> CoDBBinding n mpt) t', bvm)
 
 --------------------------------------------------------------------------------
 -- Backwards
 
-class ConvertCodebruijn t where
-  fromCoDB :: (t CoDBBinding CoDBVar, BoundVarMap) -> t DBBinding DBVar
+fromCoDB :: CoDBExpr -> DBExpr
+fromCoDB expr = case recCoDB expr of
+  UniverseC p l  -> Universe p l
+  HoleC     p n  -> Hole     p n
+  MetaC     p m  -> Meta     p m
+  BuiltinC  p op -> Builtin  p op
+  LiteralC  p l  -> Literal  p l
 
-instance ConvertCodebruijn Expr where
-  fromCoDB expr = case recCoDB expr of
-    UniverseC ann l  -> Universe ann l
-    HoleC     ann n  -> Hole     ann n
-    MetaC     ann m  -> Meta     ann m
-    BuiltinC  ann op -> Builtin  ann op
-    LiteralC  ann l  -> Literal  ann l
+  LSeqC p xs -> LVec p  (fmap fromCoDB xs)
+  VarC  p v  -> Var p v
 
-    LSeqC ann xs -> LVec ann  (fmap fromCoDB xs)
-    VarC  ann v  -> Var ann v
+  AnnC p e t               -> Ann p (fromCoDB e) (fromCoDB t)
+  AppC p fun args          -> App p (fromCoDB fun) (fmap fromCoDBArg args)
+  PiC  p binder result     -> Pi  p (fromCoDBBinder binder) (fromCoDB result)
+  LetC p bound binder body -> Let p (fromCoDB bound) (fromCoDBBinder binder) (fromCoDB body)
+  LamC p binder body       -> Lam p (fromCoDBBinder binder) (fromCoDB body)
 
-    AnnC ann e t               -> Ann ann (fromCoDB e) (fromCoDB t)
-    AppC ann fun args          -> App ann (fromCoDB fun) (fmap fromCoDB args)
-    PiC  ann binder result     -> Pi  ann (fromCoDB binder) (fromCoDB result)
-    LetC ann bound binder body -> Let ann (fromCoDB bound) (fromCoDB binder) (fromCoDB body)
-    LamC ann binder body       -> Lam ann (fromCoDB binder) (fromCoDB body)
+fromCoDBBinder :: RecCoDB a BinderC => a -> GenericBinder DBBinding (Expr DBBinding DBVar)
+fromCoDBBinder binder = case recCoDB binder of
+  BinderC p v r (CoDBBinding n _) t -> Binder p v r n $ fromCoDB t
 
-instance ConvertCodebruijn Binder where
-  fromCoDB binder = case recCoDB binder of
-    BinderC ann v r (CoDBBinding n _) t -> Binder ann v r n $ fromCoDB t
-
-instance ConvertCodebruijn Arg where
-  fromCoDB arg = case recCoDB arg of
-    ArgC ann v r e -> Arg ann v r $ fromCoDB e
+fromCoDBArg :: RecCoDB a ArgC => a -> GenericArg (Expr DBBinding DBVar)
+fromCoDBArg arg = case recCoDB arg of
+    ArgC p v r e -> Arg p v r $ fromCoDB e

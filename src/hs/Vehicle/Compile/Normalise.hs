@@ -167,7 +167,7 @@ instance Norm CheckedExpr where
         nfApp p nFun nArgs
 
 instance Norm CheckedBinder where
-  nf = traverseBinderType nf
+  nf = traverse nf
 
 instance Norm CheckedArg where
   nf (ExplicitArg ann e) = ExplicitArg ann <$> nf e

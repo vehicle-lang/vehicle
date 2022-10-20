@@ -80,7 +80,7 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
           -- !!TODO!! Block until binders are solved
           -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
           -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
-          let binderConstraint = unify c (typeOf binder1) (typeOf binder2)
+          let binderConstraint = unify c (typeOf' binder1) (typeOf' binder2)
           let bodyConstraint   = unify c body1 body2
           return $ Progress [binderConstraint, bodyConstraint]
 

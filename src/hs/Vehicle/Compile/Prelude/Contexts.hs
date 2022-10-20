@@ -12,7 +12,9 @@ import Vehicle.Language.AST
 
 -- | The names, types and values if known of the variables that are in
 -- currently in scope, indexed into via De Bruijn expressions.
-type BoundCtx a = [a]
+type BoundCtx a    = [a]
+type BoundDBCtx    = BoundCtx DBBinding
+type NamedBoundCtx = BoundCtx NamedBinding
 
 class HasBoundCtx a where
   boundContextOf :: a -> [DBBinding]

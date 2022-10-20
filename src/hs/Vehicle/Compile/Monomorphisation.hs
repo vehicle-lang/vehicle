@@ -69,7 +69,7 @@ traverseCandidateApplications processApp = go
   go expr = case expr of
     App p fun args -> do
       fun'  <- go fun
-      args' <- traverse (traverseArgExpr go) args
+      args' <- traverse (traverse go) args
       let defaultResult = App p fun' args'
       case getFreeVar fun' of
         Nothing    -> return defaultResult
@@ -88,9 +88,9 @@ traverseCandidateApplications processApp = go
 
     LVec p es                -> LVec p <$> traverse go es
     Ann  p e t               -> Ann  p <$> go e <*> go t
-    Pi   p binder res        -> Pi   p <$> traverseBinderType go binder <*> go res
-    Lam  p binder body       -> Lam  p <$> traverseBinderType go binder <*> go body
-    Let  p bound binder body -> Let  p <$> go bound  <*> traverseBinderType go binder <*> go body
+    Pi   p binder res        -> Pi   p <$> traverse go binder <*> go res
+    Lam  p binder body       -> Lam  p <$> traverse go binder <*> go body
+    Let  p bound binder body -> Let  p <$> go bound  <*> traverse go binder <*> go body
 
 isCandidateApplication :: MonadMono m
                        => Identifier
@@ -132,9 +132,6 @@ instance Monomorphise CheckedProg where
 instance Monomorphise CheckedDecl where
   collect decl = do
     result <- traverseDeclExprs collect decl
-    logDebug MaxDetail $ pretty $ identifierOf result
-    logDebug MaxDetail $ pretty $ show (typeOf decl)
-    logDebug MaxDetail $ pretty $ isMonomorphisationCandidate result
     case isMonomorphisationCandidate result of
       Nothing -> return ()
       Just d  -> addCandidate (identifierOf result) d
@@ -167,7 +164,7 @@ isMonomorphisationCandidate = \case
       _ -> Nothing
 
     isCandidateBinder :: CheckedBinder -> Bool
-    isCandidateBinder binder = case (visibilityOf binder, typeOf binder) of
+    isCandidateBinder binder = case (visibilityOf binder, binderType binder) of
       (Implicit, TypeUniverse _ 0) -> True
       (Instance, _)                -> True
       _                            -> False
