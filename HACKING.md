@@ -23,7 +23,7 @@ We use [Shake](https://shakebuild.com/) as a build system for Vehicle, which is
 just a fancy DSL for Haskell.
 The entire build system lives in the top-level file `build.hs`, and is just an
 additional executable in the `cabal` project and therefore can be run as
-`cabal run build X` where `X` is the command to the build system.
+`cabal run vehicle-build-system X` where `X` is the command to the build system.
 
 ## 3. Testing Vehicle
 
@@ -31,7 +31,7 @@ There are currently three types of tests for Vehicle. The build system for Vehic
 various utility commands for running the various test suites (these simply wrap the `cabal test`
 command in various ways).
 
-* `cabal run build all-tests` will run all the tests
+* `cabal run vehicle-build-system all-tests` will run all the tests
 
 ### Basic tests
 
@@ -39,9 +39,9 @@ These test the functionality of the executable, and include golden tests, unit t
 The build system contains the following commands (which simply wrap the `cabal test`
 command in various ways):
 
-* `cabal run build basic-tests` will run the tests.
+* `cabal run vehicle-build-system basic-tests` will run the tests.
 
-* `cabal run build basic-tests-accept` - will run the tests and accept the changes to any of the
+* `cabal run vehicle-build-system basic-tests-accept` - will run the tests and accept the changes to any of the
   changed output files. *Warning*: Only run this if you are okay with the changes to the output!
 
 * `cabal test vehicle-executable-tests --test-show-details=always --test-option="-p /X/"` - will only run tests
@@ -58,13 +58,13 @@ These test the integration of Vehicle's output with various backends. In order t
 tests you will need all the various backends installed. Again the build system contains the
 following utility command:
 
-* `cabal run build integration-tests` - will run the integration tests.
+* `cabal run vehicle-build-system integration-tests` - will run the integration tests.
 
 ### Performance tests
 
 These test the performance of the Vehicle compiler, and may be long running.
 
-* `cabal run build performance-tests`
+* `cabal run vehicle-build-system performance-tests`
 
 ### Continuous integration
 
@@ -76,8 +76,8 @@ The CI script that controls this is `.github/workflows/ci.yml`.
 - The parsers for Vehicle are generated via [`BNFC`](https://bnfc.readthedocs.io/)
   grammars located in the `src/bnfc` folder.
 
-- The parsers are automatically built when you run `cabal run build init` command,
-  but can be manually rebuilt after changes using `cabal run build bnfc`.
+- The parsers are automatically built when you run `cabal run vehicle-build-system init` command,
+  but can be manually rebuilt after changes using `cabal run vehicle-build-system bnfc`.
 
 - These commands generate Haskell parsers for the language which are automatically
   placed in the `gen/hs` folder.

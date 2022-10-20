@@ -10,7 +10,7 @@ cradle:
       cradle:
         cabal:
           - path: "./build.hs"
-            component: "exe:build"
+            component: "exe:vehicle-build-system"
           - path: "./app/Main.hs"
             component: "exe:vehicle"
           - path: "./src/hs"

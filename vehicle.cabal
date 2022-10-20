@@ -65,7 +65,7 @@ common common-base
   default-language:   Haskell2010
 
 -- The executable for the Shake build system
-executable build
+executable vehicle-build-system
   main-is:            build.hs
   build-depends:      base >=4.13 && <5
                     , shake

@@ -29,10 +29,10 @@ Now we can install Vehicle itself.
 1. Clone the Vehicle github repository to your local computer and
    navigate to the directory.
 
-2. Run ``cabal run build init`` to initialise the project and install
+2. Run ``cabal run vehicle-build-system init`` to initialise the project and install
    any dependencies that are needed for building the project.
 
-3. Run ``cabal run build test`` to run the test suite.
+3. (Optional) - run ``cabal run vehicle-build-system basic-tests`` to run the test suite.
   (If this doesn't work then check that check that `~/.cabal/bin` has
    been added to your system path.)
 
@@ -74,7 +74,7 @@ Setting Vehicle to work with Agda
 
 If you want to enable Vehicle to work with Agda, run:
 
-1. Run ``cabal run build init-agda``
+1. Run ``cabal run vehicle-build-system init-agda``
 
 This command will add the ``Vehicle`` Agda library to the Agda ``libraries`` file
 and add the ``vehicle`` executable to the Agda ``executables`` file.
