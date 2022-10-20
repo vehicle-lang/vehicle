@@ -8,6 +8,7 @@ import json
 # TODO: check if it's None or else
 def call_vehicle(args:List[str]) -> None:
     command = ['vehicle'] + args
+    # print(' '.join(command))
     result = subprocess.run(command, capture_output=True)
     if result.returncode != 0:
         raise Exception('Error during specification compilation: ' + result.stderr.decode('UTF-8'))
@@ -25,7 +26,8 @@ def call_vehicle_to_generate_loss_json(specification:str, function_name:str) -> 
         args =  ['compile',
                 '--target', 'LossFunction', 
                 '--specification', specification, 
-                '--outputFile', path_to_json]
+                '--outputFile', path_to_json,
+                '--property', function_name]
         call_vehicle(args)
         loss_function_json = load_json(path_to_json)
     return loss_function_json

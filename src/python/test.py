@@ -9,12 +9,6 @@ def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, 
     optimizer = keras.optimizers.Adam()
     ce_batch_loss = keras.losses.BinaryCrossentropy()
     vehicle_batch_loss = generate_loss_function(path_to_spec, functionName, resources, quantifier_sampling)
-    #Yep, I receive a number instead of a function.
-    #If I pass loss instead of loss(empty_context) it works if I do
-    #vehicle_loss = vehicle_batch_loss([]) instead of vehicle_loss = vehicle_batch_loss(0.5)
-    #Is this because we don't have the Lambda at the beginning of the json?
-    #Or is it because we don't pass the network yet, so it is a just a number not related to the batch?
-    print(vehicle_batch_loss)
 
     train_acc_metric = keras.metrics.BinaryCrossentropy()
     test_acc_metric = keras.metrics.BinaryCrossentropy()
@@ -30,7 +24,7 @@ def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, 
             with tf.GradientTape() as tape:
                 outputs = model(x_batch_train, training=True)  # Outputs for this minibatch
                 ce_loss_value = ce_batch_loss(y_batch_train, outputs)
-                vehicle_loss = vehicle_batch_loss(0.5)
+                vehicle_loss = vehicle_batch_loss()
                 total_loss = ce_loss_value * alfa + vehicle_loss * beta
             # Use the gradient tape to automatically retrieve the gradients of the trainable variables with respect to the loss.
             grads = tape.gradient(total_loss, model.trainable_weights)
@@ -73,7 +67,7 @@ if __name__ == '__main__':
     ])
     resources = {'f': model}
 
-    quantifier_sampling = {'x': lambda: random.uniform(0, 1)}
+    quantifier_sampling = {'x': lambda: random.uniform(.5, .5)}
 
     batch_size = 1
     epochs = 4

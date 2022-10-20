@@ -3,13 +3,12 @@ from command_line import call_vehicle_to_generate_loss_json
 import utils
 import tensorflow as tf
 import numpy as np
-import random
 
 
 def generate_loss_function(specification:str,
                             function_name:str,
                             resources:Dict[str,any],
-                            quantifier_sampling:Dict[str,Callable]) -> Callable:
+                            quantifier_sampling:Dict[str,Callable]=None) -> Callable:
     '''
     pathToSpec: path to the vehicle spec .vcl file
     functionName: name of the function for which we want to create the loss function
@@ -17,11 +16,11 @@ def generate_loss_function(specification:str,
     '''
     json_dict = call_vehicle_to_generate_loss_json(specification, function_name)
     empty_context = []
+    if quantifier_sampling is None:
+        quantifier_sampling = {}
     loss_metadata = LossMetadata(resources, quantifier_sampling)
     loss = LossFunctionTranslation().to_loss_function(loss_metadata, json_dict)
 
-    #It seems that now loss(empty_context) gives a number instead of a function. Not really sure why.
-    print(loss)
     return loss(empty_context)
 
 
@@ -36,7 +35,15 @@ class LossFunctionTranslation:
         declaration_context = {}
         #for _ in json_dict:
             #declaration_loss = self._translate_expression(resources, json_dict)
-        declaration_loss = self._translate_expression(metadata, json_dict[1])
+        if json_dict[1]['tag'] == 'Lambda':
+            declaration_loss = self._translate_expression(metadata, json_dict[1])
+        else:
+            # If the expression that we are translating is not a function in vehicle specification, then translaiting
+            # naively will result in a constant being returned.
+            # This is a problem because, implicitly, the expression is a function in terms of the networks
+            # passed in via the metadata and therefore should still change if the network changes.
+            # To fix this we therefore wrap it in a lambda with no arguments to delay evaluation.
+            declaration_loss = lambda context: lambda: self._translate_expression(metadata, json_dict[1])(context)
         return declaration_loss
 
     def _translate_expression(self, metadata:LossMetadata, json_dict:dict) -> Callable:
