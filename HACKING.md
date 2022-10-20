@@ -71,14 +71,25 @@ These test the performance of the Vehicle compiler, and may be long running.
 The tests are run automatically when changes are pushed to Github.
 The CI script that controls this is `.github/workflows/ci.yml`.
 
-## 4. Logging
+## 4. Parsers
+
+- The parsers for Vehicle are generated via [`BNFC`](https://bnfc.readthedocs.io/)
+  grammars located in the `src/bnfc` folder.
+
+- The parsers are automatically built when you run `cabal run build init` command,
+  but can be manually rebuilt after changes using `cabal run build bnfc`.
+
+- These commands generate Haskell parsers for the language which are automatically
+  placed in the `gen/hs` folder.
+
+## 5. Logging
 
 - Logs can be enabled by providing the `--logging` option on the command line.
 
 - In the case of an internal developer error, logs may not be printed. In this case you
 can add a `traceShow text $` in front of the `do` in the `logDebug` in `Vehicle.Prelude.Logging`.
 
-## 5. Profiling
+## 6. Profiling
 
 To enable profiling follow the following steps:
 
@@ -89,7 +100,7 @@ To enable profiling follow the following steps:
   - Add `-O0 -prof -fprof-auto -with-rtsopts=-p` to `ghc-options` for the relevant test-suite
     (e.g. `vehicle-executable-tests`) in `vehicle.cabal`.
 
-## 6. Documentation
+## 7. Documentation
 
 The documentation is hosted by ReadTheDocs (RTD). To rebuild the documentation, add your changes
 to the Github documentation and then go to
@@ -98,7 +109,7 @@ and hit `Build`.
 
 Ideally the documentation would automatically rebuild but haven't yet got that set up.
 
-## 7. Coding conventions
+## 8. Coding conventions
 
 * In order to maintain flexibility in adding extra fields to `Arg` and `Binder`
   one should avoid pattern-matching on them whenever possible, and instead use suitable

@@ -149,6 +149,7 @@ main = shakeArgs shakeOptions $ do
     requireAlex
     requireHappy
     requireBNFC
+    need bnfcTargets
 
   phony "clean" $ do
     liftIO $ removeDirectoryRecursive genDirHS
@@ -193,8 +194,7 @@ main = shakeArgs shakeOptions $ do
   -- builds all parsers.
 
   phony "bnfc" $ do
-    need bnfcInternalTargets
-    need bnfcExternalTargets
+    need bnfcTargets
 
   bnfcInternalTargets &%> \_ -> do
     requireBNFC
