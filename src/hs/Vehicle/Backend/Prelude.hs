@@ -1,7 +1,6 @@
 module Vehicle.Backend.Prelude where
 
 import Data.Text.IO qualified as TIO
-import Data.Bifunctor (Bifunctor(first))
 import Data.Version (Version, makeVersion)
 import System.FilePath (takeDirectory)
 import System.Directory (createDirectoryIfMissing)
