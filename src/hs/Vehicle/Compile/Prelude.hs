@@ -84,7 +84,7 @@ type DeclProvenance = (Identifier, Provenance)
 --------------------------------------------------------------------------------
 -- Logging
 
-logCompilerPass :: MonadLogger m => DebugLevel -> Doc a -> m b -> m b
+logCompilerPass :: MonadLogger m => LoggingLevel -> Doc a -> m b -> m b
 logCompilerPass level passName performPass = do
   logDebug level $ "Starting" <+> passName
   incrCallDepth
@@ -93,7 +93,7 @@ logCompilerPass level passName performPass = do
   logDebug level $ "Finished" <+> passName <> line
   return result
 
-logCompilerSection :: MonadLogger m => DebugLevel -> Doc a -> m b -> m b
+logCompilerSection :: MonadLogger m => LoggingLevel -> Doc a -> m b -> m b
 logCompilerSection level sectionName performPass = do
   logDebug level sectionName
   incrCallDepth

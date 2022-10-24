@@ -42,15 +42,15 @@ data CompileOptions = CompileOptions
   { target                :: Backend
   , specification         :: FilePath
   , declarationsToCompile :: DeclarationNames
-  , outputFile            :: Maybe FilePath
   , networkLocations      :: NetworkLocations
   , datasetLocations      :: DatasetLocations
   , parameterValues       :: ParameterValues
+  , outputFile            :: Maybe FilePath
   , moduleName            :: Maybe String
   , proofCache            :: Maybe FilePath
-  } deriving (Show)
+  } deriving (Eq, Show)
 
-compile :: LoggingOptions -> CompileOptions -> IO ()
+compile :: VehicleIOSettings -> CompileOptions -> IO ()
 compile loggingOptions CompileOptions{..} = do
   let resources = Resources networkLocations datasetLocations parameterValues
   spec <- readSpecification loggingOptions specification
@@ -80,7 +80,7 @@ compile loggingOptions CompileOptions{..} = do
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
 
-compileToVerifier :: LoggingOptions
+compileToVerifier :: VehicleIOSettings
                   -> SpecificationText
                   -> PropertyNames
                   -> Resources
@@ -92,7 +92,7 @@ compileToVerifier loggingOptions spec properties resources verifier =
     compileToQueries verifier prog propertyCtx networkCtx
 
 
-compileToLossFunction :: LoggingOptions
+compileToLossFunction :: VehicleIOSettings
                       -> SpecificationText
                       -> DeclarationNames
                       -> Resources
@@ -102,7 +102,7 @@ compileToLossFunction loggingOptions spec declarationsToCompile resources = do
     (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec declarationsToCompile resources
     LossFunction.compile prog propertyCtx networkCtx
 
-compileToAgda :: LoggingOptions
+compileToAgda :: VehicleIOSettings
               -> AgdaOptions
               -> SpecificationText
               -> PropertyNames
@@ -116,8 +116,8 @@ compileToAgda loggingOptions agdaOptions spec properties _resources =
 --------------------------------------------------------------------------------
 -- Useful functions that apply multiple compiler passes
 
-readSpecification :: MonadIO m => LoggingOptions -> FilePath -> m SpecificationText
-readSpecification LoggingOptions{..} inputFile = do
+readSpecification :: MonadIO m => VehicleIOSettings -> FilePath -> m SpecificationText
+readSpecification VehicleIOSettings{..} inputFile = do
   liftIO $ TIO.readFile inputFile `catch` \ (e :: IOException) -> do
     hPutStrLn errorHandle $
       "Error occured while reading input file: \n  " <> show e

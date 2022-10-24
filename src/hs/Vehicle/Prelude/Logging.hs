@@ -1,14 +1,13 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
 module Vehicle.Prelude.Logging
-  ( LoggingOptions(..)
-  , Severity
-  , DebugLevel(..)
+  ( Severity
+  , LoggingLevel(..)
   , Message(..)
   , MonadLogger(..)
-  , LoggerT
+  , LoggerT(..)
   , Logger
-  , intToDebugLevel
+  , defaultLoggingLevel
   , mapLoggerT
   , discardLogger
   , discardLoggerT
@@ -18,12 +17,11 @@ module Vehicle.Prelude.Logging
   , showMessages
   , setTextColour
   , setBackgroundColour
-  , fromLoggedIO
-  , fromLoggerTIO
   , runLogger
+  , runLoggerT
   ) where
 
-import Control.Monad (when, forM_)
+import Control.Monad (when)
 import Control.Monad.State (StateT(..), get, modify, evalStateT, mapStateT)
 import Control.Monad.Writer (WriterT(..), tell, runWriterT, mapWriterT)
 import Control.Monad.Identity (Identity, runIdentity)
@@ -33,7 +31,6 @@ import Control.Monad.Trans ( MonadIO(..), MonadTrans(..) )
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.Console.ANSI
-import System.IO ( Handle, hPrint )
 
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
@@ -43,26 +40,15 @@ data Severity
   | Warning
   deriving (Eq, Ord)
 
-data DebugLevel
+data LoggingLevel
   = NoDetail
   | MinDetail
   | MidDetail
   | MaxDetail
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
-intToDebugLevel :: Int -> DebugLevel
-intToDebugLevel l
-  | l <= 0    = NoDetail
-  | l == 1    = MinDetail
-  | l == 2    = MidDetail
-  | otherwise = MaxDetail
-
-data LoggingOptions = LoggingOptions
-  { errorHandle  :: Handle
-  , outputHandle :: Handle
-  , logHandle    :: Maybe Handle
-  , debugLevel   :: DebugLevel
-  }
+defaultLoggingLevel :: LoggingLevel
+defaultLoggingLevel = NoDetail
 
 setTextColour :: Color -> String -> String
 setTextColour c s =
@@ -96,11 +82,11 @@ class Monad m => MonadLogger m where
   getCallDepth  :: m CallDepth
   incrCallDepth :: m ()
   decrCallDepth :: m ()
-  getDebugLevel :: m DebugLevel
+  getDebugLevel :: m LoggingLevel
   logMessage    :: Message -> m ()
 
 newtype LoggerT m a = LoggerT
-  { unloggerT :: ReaderT DebugLevel (WriterT [Message] (StateT Int m)) a
+  { unloggerT :: ReaderT LoggingLevel (WriterT [Message] (StateT Int m)) a
   } deriving (Functor, Applicative, Monad)
 
 type Logger = LoggerT Identity
@@ -157,20 +143,20 @@ instance MonadError e m => MonadError e (LoggerT m) where
 instance MonadIO m => MonadIO (LoggerT m) where
   liftIO = lift . liftIO
 
-runLoggerT :: Monad m => DebugLevel -> LoggerT m a -> m (a, [Message])
+runLoggerT :: Monad m => LoggingLevel -> LoggerT m a -> m (a, [Message])
 runLoggerT debugLevel (LoggerT logger) =
   evalStateT (runWriterT (runReaderT logger debugLevel)) 0
 
 mapLoggerT :: (m ((a, [Message]), Int) -> n ((b, [Message]), Int)) -> LoggerT m a -> LoggerT n b
 mapLoggerT f l = LoggerT $ mapReaderT (mapWriterT (mapStateT f)) (unloggerT l)
 
-runLogger :: DebugLevel -> Logger a -> (a, [Message])
+runLogger :: LoggingLevel -> Logger a -> (a, [Message])
 runLogger debugLevel = runIdentity . runLoggerT debugLevel
 
 logWarning :: MonadLogger m => Doc a -> m ()
 logWarning text = logMessage $ Message Warning (layoutAsText text)
 
-logDebug :: MonadLogger m => DebugLevel -> Doc a -> m ()
+logDebug :: MonadLogger m => LoggingLevel -> Doc a -> m ()
 logDebug level text = do --traceShow text $ do
   debugLevel <- getDebugLevel
   when (level <= debugLevel) $ do
@@ -193,24 +179,3 @@ discardLoggerT m = fst <$> runLoggerT MinDetail m
 
 discardLogger :: Logger a -> a
 discardLogger m = fst $ runLogger MinDetail m
-
-flushLogger :: MonadIO m => DebugLevel -> Handle -> LoggerT m a -> m a
-flushLogger debugLevel logHandle logger = do
-  (v, messages) <- runLoggerT debugLevel logger
-  flushLogs logHandle messages
-  return v
-
-flushLogs :: MonadIO m => Handle -> [Message] -> m ()
-flushLogs logHandle messages = liftIO $ mapM_ (hPrint logHandle) messages
-
-fromLoggedIO :: MonadIO m => LoggingOptions -> LoggerT m a -> m a
-fromLoggedIO LoggingOptions{..} logger = case logHandle of
-  Nothing       -> discardLoggerT logger
-  (Just handle) -> flushLogger debugLevel handle logger
-
-fromLoggerTIO :: LoggingOptions -> LoggerT IO a -> IO a
-fromLoggerTIO options@LoggingOptions{..} logger = do
-  (v, messages) <- runLoggerT debugLevel logger
-  fromLoggedIO options $ do
-    forM_ messages logMessage
-    return v

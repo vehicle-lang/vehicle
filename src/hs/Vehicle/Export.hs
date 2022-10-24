@@ -13,9 +13,9 @@ data ExportOptions = ExportOptions
   , proofCacheLocation :: FilePath
   , outputFile         :: Maybe FilePath
   , moduleName         :: Maybe String
-  } deriving (Show)
+  } deriving (Eq, Show)
 
-export :: LoggingOptions -> ExportOptions -> IO ()
+export :: VehicleIOSettings -> ExportOptions -> IO ()
 export loggingOptions ExportOptions{..} = do
   proofCache <- readProofCache proofCacheLocation
   let spec = originalSpec proofCache

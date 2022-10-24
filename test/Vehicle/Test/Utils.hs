@@ -3,10 +3,9 @@ module Vehicle.Test.Utils
   , module GoldenUtils
   , baseTestDir
   , MonadTest
-  , TestLoggingSettings
-  , getTestLoggingSettings
   , TestLocation(..)
   , TestSpec(..)
+  , getLoggingLevel
   , testSpec
   , testResources
   , locationDir
@@ -47,18 +46,10 @@ baseTestDir = "test" </> "Vehicle" </> "Test"
 --------------------------------------------------------------------------------
 -- Test settings monad
 
-type MonadTest m = MonadReader Int m
+type MonadTest m = MonadReader LoggingLevel m
 
-type TestLoggingSettings = (Maybe (Maybe FilePath), Int)
-
-getTestLoggingSettings :: MonadTest m => m TestLoggingSettings
-getTestLoggingSettings = do
-  logLevel <- ask
-  let logLocation = if logLevel == 0 then Nothing else Just Nothing
-  return (logLocation, logLevel)
-
-getDebugLevel :: MonadTest m => m DebugLevel
-getDebugLevel = asks intToDebugLevel
+getLoggingLevel :: MonadTest m => m LoggingLevel
+getLoggingLevel = ask
 
 --------------------------------------------------------------------------------
 -- Test infrastructure
@@ -121,11 +112,10 @@ normTypeClasses e = normalise e noNormalisationOptions
 --------------------------------------------------------------------------------
 -- Other utilities
 
-traceLogs :: Int -> ExceptT CompileError Logger a -> a
+traceLogs :: LoggingLevel -> ExceptT CompileError Logger a -> a
 traceLogs logLevel e = do
-  let debugLevel = intToDebugLevel logLevel
   let e' = logCompileError e
-  let (v, logs) = runLogger debugLevel e'
+  let (v, logs) = runLogger logLevel e'
   let result = if null logs then v else trace (showMessages logs) v
   case result of
     Left  x -> developerError $ pretty $ details x

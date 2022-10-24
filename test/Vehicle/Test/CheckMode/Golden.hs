@@ -80,12 +80,10 @@ runTest name status alterNetwork = do
   alterNetwork networkFile
 
   run $ Options
-    { version     = False
-    , outFile     = Just outputFile
-    , errFile     = Nothing
-    , logFile     = Nothing
-    , debugLevel  = 1
-    , modeOptions = Check $ CheckOptions
+    { globalOptions = defaultGlobalOptions
+      { outFile      = Just outputFile
+      }
+    , modeOptions  = Just $ Check $ CheckOptions
       { proofCache = proofCache
       }
     }

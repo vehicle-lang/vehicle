@@ -49,7 +49,7 @@ writeSpecificationFiles Verifier{..} folder (Specification properties) = do
     return ()
 
 -- | Outputs the specification to IO
-outputSpecification :: LoggingOptions
+outputSpecification :: VehicleIOSettings
                     -> Specification QueryData
                     -> IO ()
 outputSpecification loggingOptions (Specification properties) = do

@@ -1,5 +1,6 @@
 module Vehicle.Verify
   ( VerifyOptions(..)
+  , VerifierIdentifier
   , verify
   ) where
 
@@ -26,9 +27,9 @@ data VerifyOptions = VerifyOptions
   , verifier         :: VerifierIdentifier
   , verifierLocation :: Maybe VerifierExecutable
   , proofCache       :: Maybe FilePath
-  } deriving (Show)
+  } deriving (Eq, Show)
 
-verify :: LoggingOptions -> VerifyOptions -> IO ()
+verify :: VehicleIOSettings -> VerifyOptions -> IO ()
 verify loggingOptions VerifyOptions{..} = do
   let verifierImpl = verifiers verifier
   verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation

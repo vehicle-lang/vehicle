@@ -49,6 +49,7 @@ import System.Exit
 import Vehicle.Prelude.Token as X
 import Vehicle.Prelude.Prettyprinter as X
 import Vehicle.Prelude.Logging as X
+import Vehicle.Prelude.IO as X
 import Vehicle.Prelude.Supply as X
 import Vehicle.Prelude.DeveloperError as X
 
@@ -187,13 +188,13 @@ removeFileIfExists fileName = removeFile fileName `catch` handleExists
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
 
-fatalError :: MonadIO m => LoggingOptions -> Doc a -> m b
-fatalError LoggingOptions{..} message = liftIO $ do
+fatalError :: MonadIO m => VehicleIOSettings -> Doc a -> m b
+fatalError VehicleIOSettings{..} message = liftIO $ do
   hPrint errorHandle message
   exitFailure
 
-programOutput :: MonadIO m => LoggingOptions -> Doc a -> m ()
-programOutput LoggingOptions{..} message = liftIO $ hPrint outputHandle message
+programOutput :: MonadIO m => VehicleIOSettings -> Doc a -> m ()
+programOutput VehicleIOSettings{..} message = liftIO $ hPrint outputHandle message
 
 enumerate :: (Bounded a, Enum a) => [a]
 enumerate = [minBound..maxBound]

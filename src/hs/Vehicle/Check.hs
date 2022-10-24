@@ -17,16 +17,16 @@ import Vehicle.Verify.ProofCache (readProofCache, ProofCache(..))
 
 newtype CheckOptions = CheckOptions
   { proofCache :: FilePath
-  } deriving (Show)
+  } deriving (Eq, Show)
 
-check :: LoggingOptions -> CheckOptions -> IO ()
+check :: VehicleIOSettings -> CheckOptions -> IO ()
 check loggingOptions checkOptions = fromLoggerTIO loggingOptions $ do
   -- If the user has specificied no logging target for check mode then
   -- default to command-line.
   status <- checkStatus loggingOptions checkOptions
   programOutput loggingOptions $ pretty status
 
-checkStatus :: LoggingOptions -> CheckOptions -> LoggerT IO CheckResult
+checkStatus :: VehicleIOSettings -> CheckOptions -> LoggerT IO CheckResult
 checkStatus _loggingOptions CheckOptions{..} = do
   ProofCache{..} <- liftIO $ readProofCache proofCache
   (missingNetworks, alteredNetworks) <- checkResourceIntegrity resourceSummaries

@@ -11,6 +11,7 @@ import Vehicle.Test.CompileMode.Unit.LetInsertion ( letInsertionTests )
 import Vehicle.Test.CompileMode.Unit.CoDeBruijn ( coDeBruijnTests )
 import Vehicle.Test.CompileMode.Unit.IfElimination ( ifEliminationTests )
 import Vehicle.Test.CompileMode.Unit.QuantifierLifting ( quantiferLiftingTests )
+import Vehicle.Test.CompileMode.Unit.CommandLine (commandLineParserTests)
 
 functionalityTests :: MonadTest m => m TestTree
 functionalityTests = testGroup "UnitTests" <$> sequence
@@ -20,4 +21,5 @@ functionalityTests = testGroup "UnitTests" <$> sequence
   , letInsertionTests
   , ifEliminationTests
   , quantiferLiftingTests
+  , pure commandLineParserTests
   ]

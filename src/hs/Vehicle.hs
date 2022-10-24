@@ -1,6 +1,8 @@
 module Vehicle
   ( run
   , Options(..)
+  , GlobalOptions(..)
+  , defaultGlobalOptions
   , ModeOptions(..)
   ) where
 
@@ -16,43 +18,60 @@ import Vehicle.Compile (CompileOptions(..), compile)
 import Vehicle.Check (CheckOptions(..), check)
 import Vehicle.Verify (VerifyOptions(..), verify)
 import Vehicle.Export (ExportOptions, export)
+
 --------------------------------------------------------------------------------
 -- Main command
 
 data Options = Options
+  { globalOptions :: GlobalOptions
+  , modeOptions   :: Maybe ModeOptions
+  } deriving (Eq, Show)
+
+data GlobalOptions = GlobalOptions
   { version       :: Bool
   , outFile       :: Maybe FilePath
   , errFile       :: Maybe FilePath
-  , logFile       :: Maybe (Maybe FilePath)
-  , debugLevel    :: Int
-  , modeOptions   :: ModeOptions
-  } deriving (Show)
+  , logFile       :: Maybe FilePath
+  , loggingLevel  :: LoggingLevel
+  } deriving (Eq, Show)
+
+defaultGlobalOptions :: GlobalOptions
+defaultGlobalOptions = GlobalOptions
+  { version      = False
+  , outFile      = Nothing
+  , errFile      = Nothing
+  , logFile      = Nothing
+  , loggingLevel = defaultLoggingLevel
+  }
 
 data ModeOptions
   = Compile CompileOptions
   | Verify  VerifyOptions
   | Check   CheckOptions
   | Export  ExportOptions
-   deriving (Show)
+   deriving (Eq, Show)
 
 run :: Options -> IO ()
 run Options{..} = do
+  let GlobalOptions{..} = globalOptions
   when version $ do
     print vehicleVersion
     exitSuccess
 
-  let acquireOutputHandles = openHandles  (outFile, errFile, logFile, debugLevel)
+  let acquireOutputHandles = openHandles  (outFile, errFile, logFile, loggingLevel)
   let releaseOutputHandles = closeHandles (outFile, errFile, logFile)
 
-  bracket acquireOutputHandles releaseOutputHandles $ \loggingSettings ->
+  bracket acquireOutputHandles releaseOutputHandles $ \ioSettings ->
     case modeOptions of
-      Compile options -> compile loggingSettings options
-      Verify  options -> verify  loggingSettings options
-      Check   options -> check   loggingSettings options
-      Export  options -> export  loggingSettings options
+      Nothing   -> outputErrorAndQuit ioSettings "No mode provided. Please use one of 'compile', 'verify', 'check', 'export'"
+      Just mode -> case mode of
+        Compile options -> compile ioSettings options
+        Verify  options -> verify  ioSettings options
+        Check   options -> check   ioSettings options
+        Export  options -> export  ioSettings options
 
-openHandles :: (Maybe FilePath, Maybe FilePath, Maybe (Maybe FilePath), Int)
-            -> IO LoggingOptions
+openHandles :: (Maybe FilePath, Maybe FilePath, Maybe FilePath, LoggingLevel)
+            -> IO VehicleIOSettings
 openHandles (outFile, errFile, logFile, logLevel) = do
   outputHandle <- case outFile of
     Nothing   -> return stdout
@@ -63,23 +82,20 @@ openHandles (outFile, errFile, logFile, logLevel) = do
     Just file -> openHandle file
 
   logHandle <- case logFile of
-    Nothing          -> return Nothing
-    Just Nothing     -> return (Just stdout)
-    Just (Just file) -> Just <$> openHandle file
+    Nothing   -> return stdout
+    Just file -> openHandle file
 
-  let debugLevel = intToDebugLevel logLevel
-
-  return LoggingOptions
+  return VehicleIOSettings
     { errorHandle  = errorHandle
     , outputHandle = outputHandle
     , logHandle    = logHandle
-    , debugLevel   = debugLevel
+    , loggingLevel = logLevel
     }
 
-closeHandles :: (Maybe FilePath, Maybe FilePath, Maybe (Maybe FilePath))
-             -> LoggingOptions
+closeHandles :: (Maybe FilePath, Maybe FilePath, Maybe FilePath)
+             -> VehicleIOSettings
              -> IO ()
-closeHandles (outFile, errFile, logFile) LoggingOptions{..} = do
+closeHandles (outFile, errFile, logFile) VehicleIOSettings{..} = do
   case outFile of
     Nothing -> return ()
     Just _  -> hClose outputHandle
@@ -88,9 +104,9 @@ closeHandles (outFile, errFile, logFile) LoggingOptions{..} = do
     Nothing -> return ()
     Just _  -> hClose errorHandle
 
-  case (logFile, logHandle) of
-    (Just (Just _), Just logH) -> hClose logH
-    _                          -> return ()
+  case logFile of
+    Nothing  -> return ()
+    Just _   -> hClose logHandle
 
 openHandle :: FilePath -> IO Handle
 openHandle file = do

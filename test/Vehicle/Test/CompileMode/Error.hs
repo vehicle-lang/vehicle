@@ -228,7 +228,7 @@ failTestGroup folder testTarget tests = testGroup folder <$> traverse mkTest tes
 
 failTest :: MonadTest m => FilePath -> Backend -> Resources -> m TestTree
 failTest filepath backend resources = do
-  loggingSettings <- getTestLoggingSettings
+  loggingSettings <- getLoggingLevel
 
   let testName       = takeBaseName filepath
   let basePath       = testDir </> filepath
@@ -239,22 +239,21 @@ failTest filepath backend resources = do
 
   return $ goldenFileTest testName run omitFilePaths goldenFile logFile
 
-runTest :: TestLoggingSettings
+runTest :: LoggingLevel
         -> FilePath
         -> FilePath
         -> Backend
         -> Resources
         -> IO ()
-runTest (logFile, debugLevel) inputFile outputFile backend Resources{..} = do
+runTest loggingLevel inputFile outputFile backend Resources{..} = do
   run options `catch` handleExitCode
   where
   options = Options
-    { version     = False
-    , outFile     = Nothing
-    , errFile     = Just outputFile
-    , logFile     = logFile
-    , debugLevel  = debugLevel
-    , modeOptions = Compile $ CompileOptions
+    { globalOptions = defaultGlobalOptions
+      { errFile      = Just outputFile
+      , loggingLevel = loggingLevel
+      }
+    , modeOptions  = Just $ Compile $ CompileOptions
       { target                = backend
       , specification         = inputFile
       , declarationsToCompile = mempty

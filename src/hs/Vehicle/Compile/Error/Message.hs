@@ -54,13 +54,13 @@ fixText t = "Fix:" <+> t
 --------------------------------------------------------------------------------
 -- IO
 
-fromEitherIO :: MonadIO m => LoggingOptions -> Either CompileError a -> m a
+fromEitherIO :: MonadIO m => VehicleIOSettings -> Either CompileError a -> m a
 fromEitherIO _              (Right x)  = return x
 fromEitherIO loggingOptions (Left err) =
   fatalError loggingOptions $ pretty $ details err
 
 fromLoggedEitherIO :: MonadIO m
-                   => LoggingOptions
+                   => VehicleIOSettings
                    -> ExceptT CompileError (LoggerT m) a
                    -> m a
 fromLoggedEitherIO loggingOptions x = fromEitherIO loggingOptions =<< fromLoggedIO loggingOptions (logCompileError x)

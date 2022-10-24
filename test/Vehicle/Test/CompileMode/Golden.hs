@@ -29,6 +29,7 @@ import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.Bench (Benchmark, bench, nfIO)
 
 import Vehicle.Test.Utils
+import Vehicle.CommandLine (commandLineOptionsParserInfo)
 
 --------------------------------------------------------------------------------
 -- Tests
@@ -237,7 +238,7 @@ makeIndividualTest :: MonadTest m
                    -> Backend
                    -> m TestTree
 makeIndividualTest location name resources testDecls backend = do
-  loggingSettings <- getTestLoggingSettings
+  loggingLevel <- getLoggingLevel
 
   let testName       = name <> "-" <> layoutAsString (pretty backend)
   let extension      = extensionOf backend
@@ -247,7 +248,7 @@ makeIndividualTest location name resources testDecls backend = do
   let goldenFile     = goldenTestDirectory </> name </> name <> "-output"      <> extension
   let isFolderOutput = backend == MarabouBackend
 
-  let run = runVehicle loggingSettings inputFile outputFile moduleName backend resources testDecls
+  let run = runVehicle loggingLevel inputFile outputFile moduleName backend resources testDecls
   let testFn = if isFolderOutput then goldenDirectoryTest else goldenFileTest
   return $ testFn testName run omitFilePaths goldenFile outputFile
 
@@ -267,7 +268,7 @@ makePerformanceTest :: TestLocation
                     -> Backend
                     -> TestTree
 makePerformanceTest location name datasets testDecls backend = do
-  let loggingSettings = (Nothing, 0)
+  let loggingLevel = NoDetail
 
   let testName   = name <> "-" <> layoutAsString (pretty backend)
   let extension  = extensionOf backend
@@ -275,7 +276,7 @@ makePerformanceTest location name datasets testDecls backend = do
   let inputFile  = locationDir location name </> name <.> ".vcl"
   let outputFile = goldenTestDirectory </> name </> name <> "-temp-output" <> extension
 
-  let run = runVehicle loggingSettings inputFile outputFile moduleName backend datasets testDecls
+  let run = runVehicle loggingLevel inputFile outputFile moduleName backend datasets testDecls
   let runAndClean = do run; cleanupOutput (backend /= MarabouBackend) outputFile
   bench testName (nfIO runAndClean)
 
@@ -285,7 +286,7 @@ makePerformanceTest location name datasets testDecls backend = do
 goldenTestDirectory :: FilePath
 goldenTestDirectory = baseTestDir </> "CompileMode" </> "Golden"
 
-runVehicle :: TestLoggingSettings
+runVehicle :: LoggingLevel
            -> FilePath
            -> FilePath
            -> String
@@ -293,14 +294,12 @@ runVehicle :: TestLoggingSettings
            -> Resources
            -> [Name]
            -> IO ()
-runVehicle (logFile, debugLevel) inputFile outputFile moduleName backend Resources{..} declarationsToCompile = do
+runVehicle loggingLevel inputFile outputFile moduleName backend Resources{..} declarationsToCompile = do
   run $ Options
-    { version     = False
-    , outFile     = Nothing
-    , errFile     = Nothing
-    , logFile     = logFile
-    , debugLevel  = debugLevel
-    , modeOptions = Compile $ CompileOptions
+    { globalOptions = defaultGlobalOptions
+      { loggingLevel = loggingLevel
+      }
+    , modeOptions = Just $ Compile $ CompileOptions
       { target                = backend
       , specification         = inputFile
       , declarationsToCompile = Set.fromList declarationsToCompile
