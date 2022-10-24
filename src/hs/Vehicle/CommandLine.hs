@@ -183,6 +183,9 @@ exportParser = ExportOptions
 repeatedParameterHelp :: String
 repeatedParameterHelp = "Can be provided multiple times."
 
+allLoggingLevels :: [String]
+allLoggingLevels = map show (enumerate @LoggingLevel)
+
 allITPs :: [String]
 allITPs = map show (enumerate @ITP)
 
@@ -192,8 +195,8 @@ allVerifiers = map show (enumerate @VerifierIdentifier)
 allBackends :: [String]
 allBackends = allVerifiers <> allITPs <> map show [LossFunction, TypeCheck]
 
-targetOptions :: [String] -> String
-targetOptions opts = "Supported options: " <> intercalate ", " opts
+supportedOptions :: [String] -> String
+supportedOptions opts = "Supported options: " <> intercalate ", " opts
 
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
@@ -233,10 +236,10 @@ redirectLogsParser = optional $ strOption $
 loggingLevelParser :: Parser LoggingLevel
 loggingLevelParser = option auto $
   long "logging" <>
-  help "Sets the level of detail in the logs if the --log argument has been passed.  \
-          \ Ranges between 1 (minimal detail) to 3 (maximal detail)" <>
   value defaultLoggingLevel <>
-  showDefault
+  showDefault <>
+  help ("Sets the level of detail in the logs if the --log argument has been passed. " <>
+        supportedOptions allLoggingLevels)
 
 specificationParser :: Parser FilePath
 specificationParser = strOption $
@@ -291,7 +294,7 @@ outputFileParser = optional $ strOption $
   help    "Output location for compiled file(s). Defaults to stdout if not provided."
 
 propertyParser :: Parser (Set Text)
-propertyParser = Set.fromList <$> many (option auto $
+propertyParser = Set.fromList <$> many (strOption $
   long    "property" <>
   short   'y' <>
   metavar "NAME" <>
@@ -299,7 +302,7 @@ propertyParser = Set.fromList <$> many (option auto $
           " If none provided then all properties in the specification will be verified."))
 
 declarationParser :: Parser (Set Text)
-declarationParser = Set.fromList <$> many (option auto $
+declarationParser = Set.fromList <$> many (strOption $
   long    "declaration" <>
   short   'e' <>
   metavar "NAME" <>
@@ -312,7 +315,7 @@ verifierParser = option auto $
   long    "verifier" <>
   short   'v' <>
   metavar "VERIFIER" <>
-  help    ("Verifier to use. " <> targetOptions allVerifiers)
+  help    ("Verifier to use. " <> supportedOptions allVerifiers)
 
 verifierLocationParser :: Parser (Maybe FilePath)
 verifierLocationParser = optional $ strOption $
@@ -328,14 +331,14 @@ exportTargetParser = option auto $
   long    "target" <>
   short   't'      <>
   metavar "TARGET" <>
-  help    ("The target to export to. " <> targetOptions allITPs)
+  help    ("The target to export to. " <> supportedOptions allITPs)
 
 compilationTargetParser :: Parser Backend
 compilationTargetParser = option auto $
   long    "target" <>
   short   't' <>
   metavar "TARGET" <>
-  help    ("Compilation target. " <> targetOptions allBackends)
+  help    ("Compilation target. " <> supportedOptions allBackends)
 
 proofCacheOption :: Mod OptionFields String -> Parser String
 proofCacheOption helpField = strOption $

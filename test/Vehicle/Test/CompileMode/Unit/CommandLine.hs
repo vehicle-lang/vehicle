@@ -2,15 +2,21 @@ module Vehicle.Test.CompileMode.Unit.CommandLine
   ( commandLineParserTests
   ) where
 
-import Test.Tasty
-import Test.Tasty.HUnit
+import Data.Map as Map
+import Data.Set as Set
 import Options.Applicative
 
+import Test.Tasty
+import Test.Tasty.HUnit
+
 import Vehicle
-import Vehicle.Test.Utils (unitTestCase)
 import Vehicle.Check (CheckOptions(..))
 import Vehicle.CommandLine (commandLineOptionsParserInfo)
 import Vehicle.Prelude
+import Vehicle.Verify (VerifyOptions(..))
+
+import Vehicle.Test.Utils (unitTestCase)
+import Vehicle.Verify.Core (VerifierIdentifier(..))
 
 commandLineParserTests :: TestTree
 commandLineParserTests = testGroup "CommandLineParser"
@@ -56,6 +62,49 @@ commandLineParserTests = testGroup "CommandLineParser"
       { globalOptions = defaultGlobalOptions
       , modeOptions  = Just $ Check $ CheckOptions
         { proofCache = "mpc.vpcl"
+        }
+      }
+
+  , parserTest "verifyMode1"
+    "vehicle verify \
+      \--specification test/spec.vcl \
+      \--network f:test/myNetwork.onnx \
+      \--verifier Marabou"
+    Options
+      { globalOptions = defaultGlobalOptions
+      , modeOptions  = Just $ Verify $ VerifyOptions
+        { specification    = "test/spec.vcl"
+        , properties       = mempty
+        , networkLocations = Map.fromList [("f", "test/myNetwork.onnx")]
+        , datasetLocations = mempty
+        , parameterValues  = mempty
+        , verifier         = Marabou
+        , verifierLocation = Nothing
+        , proofCache       = Nothing
+        }
+      }
+
+  , parserTest "verifyMode2"
+    "vehicle verify \
+      \--specification test/spec.vcl \
+      \--property p1 \
+      \--property p2 \
+      \--dataset d:test/myDataset.idx \
+      \--network f1:test/myNetwork1.onnx \
+      \--parameter p:7.3 \
+      \--network f2:test/myNetwork2.onnx \
+      \--verifier Marabou"
+    Options
+      { globalOptions = defaultGlobalOptions
+      , modeOptions  = Just $ Verify $ VerifyOptions
+        { specification    = "test/spec.vcl"
+        , properties       = Set.fromList ["p1", "p2"]
+        , networkLocations = Map.fromList [("f1", "test/myNetwork1.onnx"),("f2", "test/myNetwork2.onnx")]
+        , datasetLocations = Map.fromList [("d", "test/myDataset.idx")]
+        , parameterValues  = Map.fromList [("p", "7.3")]
+        , verifier         = Marabou
+        , verifierLocation = Nothing
+        , proofCache       = Nothing
         }
       }
   ]
