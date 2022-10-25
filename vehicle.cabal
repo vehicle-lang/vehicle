@@ -194,6 +194,7 @@ library
     Vehicle.Compile.Queries
     Vehicle.Compile.Type.Auxiliary
     Vehicle.Compile.Type.Bidirectional
+    Vehicle.Compile.Type.Builtin
     Vehicle.Compile.Type.Constraint
     Vehicle.Compile.Type.ConstraintSolver.Core
     Vehicle.Compile.Type.ConstraintSolver.Linearity
