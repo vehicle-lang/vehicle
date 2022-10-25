@@ -4,6 +4,7 @@ module Vehicle.Compile.Normalise
   , noNormalisationOptions
   , normalise
   , nfTensor
+  , nfTypeClassOp
   ) where
 
 import Control.Monad (when)
@@ -193,19 +194,6 @@ nfAppLam _ fun            []           = nf fun
 nfAppLam p (Lam _ _ body) (arg : args) = nfAppLam p (substInto (argExpr arg) body) args
 nfAppLam p fun            (arg : args) = nfApp p fun (arg :| args)
 
-nfTypeClassOp :: MonadNorm m => Provenance -> TypeClassOp -> NonEmpty CheckedArg -> m CheckedExpr
-nfTypeClassOp p op args = do
-  let originalExpr = App p (Builtin p (TypeClassOp op)) args
-  let (inst, remainingArgs) = findInstanceArg (NonEmpty.toList args)
-
-  case (inst, remainingArgs) of
-    (Meta{}, _)  -> return originalExpr
-    (_, v : vs) -> do
-      let (fn, args') = toHead inst
-      nfApp p fn (prependList args' (v :| vs))
-    (_     , []) -> compilerDeveloperError $
-      "Type class operation with no further arguments:" <+> prettyVerbose originalExpr
-
 nfStdLibFn :: MonadNorm m
            => Provenance
            -> StdLibFunction
@@ -235,8 +223,15 @@ nfStdLibFn p f allArgs = do
 --------------------------------------------------------------------------------
 -- Builtins
 
-nfBuiltin :: MonadNorm m => Provenance -> Builtin -> NonEmpty CheckedArg -> m CheckedExpr
-nfBuiltin p (TypeClassOp op) args = nfTypeClassOp p op args
+nfBuiltin :: forall m. MonadNorm m => Provenance -> Builtin -> NonEmpty CheckedArg -> m CheckedExpr
+nfBuiltin p (TypeClassOp op) args = do
+  let originalExpr = App p (Builtin p (TypeClassOp op)) args
+  case nfTypeClassOp p op (NonEmpty.toList args) of
+    Nothing  -> return originalExpr
+    Just res -> do
+      (fn, newArgs) <- res
+      nfApp p fn newArgs
+
 nfBuiltin p b                args = do
   let e = App p (Builtin p b) args
   Options{..} <- ask
@@ -280,6 +275,21 @@ nfBuiltin p b                args = do
 
     -- Fall-through case
     _ -> Nothing
+
+nfTypeClassOp :: MonadCompile m
+              => Provenance
+              -> TypeClassOp
+              -> [Arg binder var]
+              -> Maybe (m (Expr binder var, NonEmpty (Arg binder var)))
+nfTypeClassOp _p op args = do
+  let (inst, remainingArgs) = findInstanceArg args
+  case (inst, remainingArgs) of
+    (Meta{}, _)  -> Nothing
+    (_, v : vs) -> do
+      let (fn, args') = toHead inst
+      Just $ return (fn, prependList args' (v :| vs))
+    (_     , []) -> Just $ compilerDeveloperError $
+      "Type class operation with no further arguments:" <+> pretty op
 
 --------------------------------------------------------------------------------
 -- Normalising quantification over types

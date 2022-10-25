@@ -26,7 +26,7 @@ import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Compile.Descope (runDescopeProg)
 import Vehicle.Backend.Prelude
-import Vehicle.Compile.Normalise
+import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Language.StandardLibrary.Names (findStdLibFunction, StdLibFunction)
 import Data.List.NonEmpty (NonEmpty)
@@ -45,11 +45,8 @@ compileProgToAgda :: MonadCompile m => CheckedProg -> PropertyContext -> AgdaOpt
 compileProgToAgda prog propertyContext options = logCompilerPass MinDetail currentPhase $
   flip runReaderT (propertyContext, options, BoolLevel) $ do
     monoProg <- monomorphise prog
-    normProg <- normalise monoProg noNormalisationOptions
-      { normaliseBuiltin = normaliseBuiltins
-      }
 
-    let prog2 = capitaliseTypeNames normProg
+    let prog2 = capitaliseTypeNames monoProg
     let prog3 = supplyDBNames prog2
     let prog4 = runDescopeProg prog3
     programDoc <- compileProg prog4
@@ -327,68 +324,6 @@ setBoolLevel level = local (\(ctx, opts, _) -> (ctx, opts, level))
 --------------------------------------------------------------------------------
 -- Program Compilation
 
-normaliseBuiltins :: Builtin -> Bool
-normaliseBuiltins = \case
-  Polarity{}  -> False
-  Linearity{} -> False
-
-  TypeClass{}    -> False
-  TypeClassOp op -> case op of
-    FromNatTC{} -> True
-    FromRatTC{} -> True
-    FromVecTC{} -> True
-
-    NotTC     -> True
-    AndTC     -> True
-    OrTC      -> True
-    ImpliesTC -> True
-    NegTC     -> True
-    AddTC     -> True
-    SubTC     -> True
-    MulTC     -> True
-    DivTC     -> True
-    MapTC     -> True
-    FoldTC    -> True
-
-    EqualsTC{} -> False
-    OrderTC{}  -> False
-
-    QuantifierTC{}   -> False
-    QuantifierInTC{} -> False
-
-  Unit   -> False
-  Bool   -> False
-  Index  -> False
-  Nat    -> False
-  Int    -> False
-  Rat    -> False
-  List   -> False
-  Vector -> False
-  Tensor -> False
-
-  FromNat{} -> True
-  FromRat{} -> True
-  FromVec{} -> True
-
-  Not      -> False
-  And      -> False
-  Or       -> False
-  Implies  -> False
-  If       -> False
-  Neg{}    -> False
-  Add{}    -> False
-  Sub{}    -> False
-  Mul{}    -> False
-  Div{}    -> False
-  Equals{} -> False
-  Order{}  -> False
-  Nil      -> False
-  Cons     -> False
-  At       -> False
-  Map{}    -> False
-  Fold{}   -> False
-  Foreach  -> False
-
 compileProg :: MonadAgdaCompile m => OutputProg -> m Code
 compileProg (Main ds) = vsep2 <$> traverse compileDecl ds
 
@@ -444,7 +379,7 @@ compileExpr expr = do
 
     Lam{} -> compileLam expr
 
-    Builtin{}   -> compileBuiltin expr
+    Builtin _ b -> compileBuiltin b []
     Literal _ l -> compileLiteral l
     LVec _ xs -> compileVecLiteral xs
 
@@ -456,11 +391,11 @@ compileExpr expr = do
 compileApp :: MonadAgdaCompile m => OutputExpr -> NonEmpty OutputArg -> m Code
 compileApp fun args = do
   specialResult <- case fun of
-    Builtin{} -> Just <$> compileBuiltin (App mempty fun args)
-    Var _ i   -> case findStdLibFunction i of
+    Builtin _ b -> Just <$> compileBuiltin b (NonEmpty.toList args)
+    Var _ i     -> case findStdLibFunction i of
       Nothing -> return Nothing
       Just f  -> Just <$> compileStdLibFunction f args
-    _         -> return Nothing
+    _           -> return Nothing
 
   case specialResult of
     Just v -> return v
@@ -542,8 +477,38 @@ compileStdLibFunction f allArgs = case embedStdLib f allArgs of
       quantError = compilerDeveloperError "Quantifier type-class ops should not have been normalised out."
       eqError    = compilerDeveloperError "Equality type-class ops should not have been normalised out."
 
-compileBuiltin :: MonadAgdaCompile m => OutputExpr -> m Code
-compileBuiltin e = case e of
+isTypeClassInAgda :: TypeClassOp -> Bool
+isTypeClassInAgda = \case
+  EqualsTC{}       -> True
+  OrderTC{}        -> True
+  QuantifierTC{}   -> True
+  QuantifierInTC{} -> True
+  _                -> False
+
+agdaNegInt :: [Code] -> Code
+agdaNegInt = annotateInfixOp1 [DataInteger] 6 (Just intQualifier) "-"
+
+agdaPosInt :: [Code] -> Code
+agdaPosInt = annotateInfixOp1 [DataInteger] 8 (Just intQualifier) "+"
+
+agdaDivRat :: [Code] -> Code
+agdaDivRat = annotateInfixOp2 [DataRat] 7 id (Just ratQualifier) "/"
+
+agdaNatToFin :: [Code] -> Code
+agdaNatToFin = annotateInfixOp1 [DataFin] 10 Nothing "#"
+
+compileBuiltin :: MonadAgdaCompile m => Builtin -> [OutputArg] -> m Code
+compileBuiltin (TypeClassOp op) allArgs
+  | not (isTypeClassInAgda op) = do
+    let result = nfTypeClassOp mempty op allArgs
+    case result of
+      Nothing  -> compilerDeveloperError $
+        "Unable to normalise type-class op:" <+> pretty op
+      Just res -> do
+        (fn, args) <- res
+        compileApp fn args
+
+compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs of
   BoolType{} -> compileBooleanType
   NatType{}  -> return $ annotateConstant [DataNat] natQualifier
   IntType{}  -> return $ annotateConstant [DataInteger] intQualifier
@@ -553,6 +518,10 @@ compileBuiltin e = case e of
   VectorType _ tElem tDim  -> annotateApp [DataVector] vectorQualifier <$> traverse compileExpr [tElem, tDim]
   TensorType _ tElem tDims -> annotateApp [DataTensor] tensorQualifier <$> traverse compileExpr [tElem, tDims]
   IndexType  _ size        -> annotateApp [DataFin]    finQualifier    <$> traverse compileExpr [size]
+
+  FromNatExpr _ _n dom args -> compileFromNat dom <$> traverse compileArg (NonEmpty.toList args)
+  FromRatExpr _    dom args -> compileFromRat dom <$> traverse compileArg (NonEmpty.toList args)
+  FromVecExpr _ _n dom args -> compileFromVec dom <$> traverse compileArg args
 
   IfExpr _ _ [e1, e2, e3] -> do
     ce1 <- setBoolLevel BoolLevel $ compileArg e1
@@ -597,13 +566,15 @@ compileBuiltin e = case e of
 
   HasNatLitsExpr   _   _ t -> compileTypeClass "HasNatLits" t
   HasRatLitsExpr       _ t -> compileTypeClass "HasRatLits" t
-  HasVecLitsExpr _ n _ _   -> throwError $ UnsupportedBuiltin AgdaBackend (provenanceOf e) (TypeClass (HasVecLits n))
+  HasVecLitsExpr p n _ _   -> throwError $ UnsupportedBuiltin AgdaBackend p (TypeClass (HasVecLits n))
 
   BuiltinTypeClass _ NatInDomainConstraint{} [t] -> compileTypeClass "NatInDomain" (argExpr t)
 
-  _ -> compilerDeveloperError $
-    "unexpected application of builtin found during compilation to Agda:" <+>
-    squotes (prettyVerbose e) <+> parens (pretty $ provenanceOf e)
+  _ -> do
+    let e = normAppList mempty (Builtin mempty op) allArgs
+    compilerDeveloperError $
+      "unexpected application of builtin found during compilation to Agda:" <+>
+      squotes (prettyVerbose e) <+> parens (pretty $ provenanceOf e)
 
 compileTypeClass :: MonadAgdaCompile m => Code -> OutputExpr -> m Code
 compileTypeClass name arg = do
@@ -650,22 +621,21 @@ compileLiteral e = case e of
   LRat  p     -> return $ compileRatLiteral   p
 
 compileIndexLiteral :: Integer -> Code
-compileIndexLiteral i = annotateInfixOp1 [DataFin] 10 Nothing "#" [pretty i]
+compileIndexLiteral i = agdaNatToFin [pretty i]
 
 compileNatLiteral :: Integer -> Code
 compileNatLiteral = pretty
 
 compileIntLiteral :: Integer -> Code
 compileIntLiteral i
-  | i >= 0    = annotateInfixOp1 [DataInteger] 8 (Just intQualifier) "+" [pretty i]
-  | otherwise = annotateInfixOp1 [DataInteger] 6 (Just intQualifier) "-" [compileIntLiteral (- i)]
+  | i >= 0    = agdaPosInt [pretty i]
+  | otherwise = agdaNegInt [compileIntLiteral (- i)]
 
 compileRatLiteral :: Rational -> Code
-compileRatLiteral r = annotateInfixOp2 [DataRat] 7 id
-  (Just ratQualifier) "/"
-  [ compileIntLiteral (numerator r)
-  , compileNatLiteral (denominator r)
-  ]
+compileRatLiteral r = agdaDivRat [ num, denom ]
+  where
+    num   = compileIntLiteral (numerator r)
+    denom = compileNatLiteral (denominator r)
 
 -- |Compiling vector literals. No literals in Agda so have to go via cons.
 compileVecLiteral :: MonadAgdaCompile m => [OutputExpr] -> m Code
@@ -680,7 +650,7 @@ compileNil :: Code
 compileNil = annotateConstant [DataList] "[]"
 
 compileCons :: [Code] -> Code
-compileCons = annotateInfixOp2 [DataList] 5 id Nothing "∷" -- (Just listQualifier)
+compileCons = annotateInfixOp2 [DataList] 5 id Nothing "∷"
 
 -- |Compiling boolean constants
 compileBoolOp0 :: MonadAgdaCompile m => Bool -> m Code
@@ -733,6 +703,22 @@ compileNeg dom args = do
         NegRat -> (ratQualifier, DataRat)
 
   annotateInfixOp1 [dependency] 8 (Just qualifier) "-" args
+
+compileFromNat :: FromNatDomain -> [Code] -> Code
+compileFromNat dom args = case dom of
+  FromNatToIndex -> agdaNatToFin (tail args)
+  FromNatToNat   -> head args
+  FromNatToInt   -> agdaPosInt args
+  FromNatToRat   -> agdaDivRat [agdaPosInt [head args], "1"]
+
+compileFromRat :: FromRatDomain -> [Code] -> Code
+compileFromRat dom args = case dom of
+  FromRatToRat -> head args
+
+compileFromVec :: FromVecDomain -> [Code] -> Code
+compileFromVec dom args = case dom of
+  FromVecToVec  -> head args
+  FromVecToList -> annotateInfixOp1 [DataVector] 7 (Just vectorQualifier) "toList" args
 
 compileAdd :: AddDomain -> [Code] -> Code
 compileAdd dom args = do

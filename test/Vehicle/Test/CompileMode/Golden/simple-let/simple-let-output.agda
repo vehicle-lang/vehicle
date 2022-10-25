@@ -13,8 +13,8 @@ open import Data.Empty
 open import Data.Product
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.List.Base
 open import Data.List.Relation.Unary.All as List
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 open import Relation.Binary.PropositionalEquality
 
 module simple-let-output where
@@ -53,13 +53,13 @@ abstract
     }
 
 abstract
-  forallInLet : List.All (λ (x : Fin 2) → let y = x in y ≡ # 1) (# 1 ∷ [])
+  forallInLet : List.All (λ (x : Fin 2) → let y = x in y ≡ # 1) (Vector.toList (# 1 ∷ᵥ []ᵥ))
   forallInLet = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }
 
 abstract
-  letForallIn : let y = # 1 in List.All (λ (x : Fin 2) → y ≡ x) (# 1 ∷ [])
+  letForallIn : let y = # 1 in List.All (λ (x : Fin 2) → y ≡ x) (Vector.toList (# 1 ∷ᵥ []ᵥ))
   letForallIn = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

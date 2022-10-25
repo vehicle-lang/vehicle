@@ -12,12 +12,13 @@ open import Data.Unit
 open import Data.Integer as ℤ using (ℤ)
 open import Data.List.Base
 open import Data.List.Relation.Unary.All as List
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 open import Relation.Binary.PropositionalEquality
 
 module simple-quantifierIn-output where
 
 emptyList : List ℤ
-emptyList = []
+emptyList = Vector.toList []ᵥ
 
 abstract
   empty : List.All (λ (x : ℤ) → ⊤) emptyList
