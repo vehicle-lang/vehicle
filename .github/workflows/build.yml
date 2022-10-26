@@ -44,7 +44,7 @@ jobs:
         run: cabal v2-run vehicle-build-system basic-tests
         shell: bash
 
-      - name: Copy Vehicle binaries to dist/bin
+      - name: Copy Vehicle executable to dist/bin
         run: |
           mkdir -p ${{ github.workspace }}/dist/bin
           cabal install exe:vehicle \
@@ -53,8 +53,18 @@ jobs:
             --installdir=${{ github.workspace }}/dist/bin
         shell: bash
 
-      - name: Upload Vehicle binaries
+      - name: Upload Vehicle executable (Linux or macOS)
+        if: runner.os == 'Linux' || runner.os == 'macOS'
         uses: actions/upload-artifact@v2
         with:
-          name: vehicle-${{ runner.arch }}-${{ runner.os }}
-          path: ${{ github.workspace }}/dist/bin/*
+          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.ghc-version }}
+          path: ${{ github.workspace }}/dist/bin/vehicle
+          if-no-files-found: error
+          
+      - name: Upload Vehicle executable (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v2
+        with:
+          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.ghc-version }}
+          path: ${{ github.workspace }}/dist/bin/vehicle.exe
+          if-no-files-found: error
