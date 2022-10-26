@@ -1,14 +1,14 @@
 module Vehicle.Compile.Prelude.Utils where
 
-import Data.Functor.Foldable (Recursive(..))
+import Data.Functor.Foldable (Recursive (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Text (pack)
 import Data.Maybe (mapMaybe)
+import Data.Text (pack)
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
 import Vehicle.Compile.Prelude.Patterns
+import Vehicle.Language.AST
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Utility functions
@@ -54,7 +54,7 @@ isRatType _         = False
 
 isListType :: DBExpr -> Bool
 isListType ListType{} = True
-isListType _            = False
+isListType _          = False
 
 isVectorType :: DBExpr -> Bool
 isVectorType VectorType{} = True
@@ -130,7 +130,7 @@ getContainerElem _                     = Nothing
 
 getDimension :: DBExpr -> Maybe Int
 getDimension (NatLiteral _ n) = return n
-getDimension _            = Nothing
+getDimension _                = Nothing
 
 getDimensions :: DBExpr -> Maybe [Int]
 getDimensions (NilExpr _ _)          = Just []

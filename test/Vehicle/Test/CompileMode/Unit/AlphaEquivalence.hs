@@ -5,16 +5,16 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Control.Exception
-import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
-import Data.Text
+import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Data.Hashable
+import Data.Text
 
-import Vehicle.Language.Print
-import Vehicle.Compile.Prelude
 import Vehicle.Compile (parseAndTypeCheckExpr)
 import Vehicle.Compile.AlphaEquivalence
-import Vehicle.Compile.Error
 import Vehicle.Compile.CoDeBruijnify
+import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
+import Vehicle.Language.Print
 
 import Vehicle.Test.Utils
 

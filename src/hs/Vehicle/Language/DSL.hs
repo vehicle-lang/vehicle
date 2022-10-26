@@ -61,11 +61,11 @@ module Vehicle.Language.DSL
   , linear
   ) where
 
-import Prelude hiding (pi)
 import Data.List.NonEmpty (NonEmpty)
+import Prelude hiding (pi)
 
-import Vehicle.Prelude
 import Vehicle.Language.AST
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Definition

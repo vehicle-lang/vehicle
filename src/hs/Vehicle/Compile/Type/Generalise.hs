@@ -3,16 +3,16 @@ module Vehicle.Compile.Type.Generalise
   , generaliseOverUnsolvedMetaVariables
   ) where
 
-import Control.Monad ( foldM, forM )
+import Control.Monad (foldM, forM)
 import Data.List.NonEmpty ((<|))
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Language.Print
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
-import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
+import Vehicle.Language.Print
 
 --------------------------------------------------------------------------------
 -- Type-class generalisation

@@ -8,12 +8,12 @@ module Vehicle.Prelude.Supply
   , runSupply
   ) where
 
+import Control.Monad.Except (ExceptT, MonadError (..))
 import Control.Monad.Identity (Identity, runIdentity)
-import Control.Monad.State (MonadState(..), StateT, evalStateT)
 import Control.Monad.Reader (ReaderT)
+import Control.Monad.State (MonadState (..), StateT, evalStateT)
+import Control.Monad.Trans (MonadTrans (..))
 import Control.Monad.Writer (WriterT)
-import Control.Monad.Except (MonadError(..), ExceptT)
-import Control.Monad.Trans (MonadTrans(..),)
 
 class Monad m => MonadSupply s m where
   demand :: m s
@@ -34,7 +34,7 @@ instance Monad m => MonadSupply s (SupplyT s m) where
   demand = SupplyT $ do
     supply <- get
     case supply of
-      [] -> error "runSupplyT was not provided with an infinite list"
+      []     -> error "runSupplyT was not provided with an infinite list"
       x : xs -> do put xs; return x
 
 instance MonadSupply t m => MonadSupply t (StateT s m) where

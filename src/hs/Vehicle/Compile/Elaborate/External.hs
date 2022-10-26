@@ -5,20 +5,20 @@ module Vehicle.Compile.Elaborate.External
   , elaborateExpr
   ) where
 
-import Control.Monad.Except (throwError, foldM)
-import Control.Monad.Writer (MonadWriter(..), runWriterT)
-import Data.Text (unpack, Text)
-import Data.List.NonEmpty (NonEmpty(..))
+import Control.Monad.Except (foldM, throwError)
+import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.Bitraversable (bitraverse)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set qualified as Set (singleton)
+import Data.Text (Text, unpack)
 import Text.Read (readMaybe)
 
 import Vehicle.External.Abs qualified as B
 
-import Vehicle.Prelude
-import Vehicle.Compile.Sugar
-import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude qualified as V
+import Vehicle.Compile.Sugar
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -251,7 +251,7 @@ elabLiteral = \case
 
 elabParameterOptions :: MonadCompile m =>B.DeclAnnOpts -> m V.ResourceType
 elabParameterOptions = \case
-  B.DeclAnnWithoutOpts -> return V.Parameter
+  B.DeclAnnWithoutOpts   -> return V.Parameter
   B.DeclAnnWithOpts opts -> foldM parseOpt V.Parameter opts
   where
   parseOpt :: MonadCompile m => V.ResourceType -> B.DeclAnnOption -> m V.ResourceType

@@ -6,18 +6,18 @@ module Vehicle.Compile.Error.Message
   , logCompileError
   ) where
 
-import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Except (ExceptT, runExceptT)
-import Data.Void ( Void )
-import Data.Text ( Text, pack )
+import Control.Monad.IO.Class (MonadIO (..))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Text (Text, pack)
+import Data.Void (Void)
 
-import Vehicle.Prelude
+import System.FilePath
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Language.Print
 import Vehicle.Compile.Type.Constraint
-import System.FilePath
+import Vehicle.Language.Print
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- User errors

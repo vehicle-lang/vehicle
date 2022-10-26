@@ -5,31 +5,31 @@ module Vehicle.Test.CompileMode.Golden
   , goldenTestDirectory
   ) where
 
-import Control.Exception ( catch, throwIO )
-import Data.Text (Text)
-import Data.Text qualified as T
-import Data.Text.IO qualified as T
+import Control.Exception (catch, throwIO)
 import Data.Bifunctor (first)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Set qualified as Set (fromList)
 import Data.Maybe (mapMaybe)
+import Data.Set qualified as Set (fromList)
+import Data.Text (Text)
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
+import System.Directory (removeDirectory, removeFile)
 import System.Exit (exitFailure)
-import System.FilePath (takeFileName, splitPath, (<.>), (</>))
-import System.Directory (removeFile, removeDirectory)
+import System.FilePath (splitPath, takeFileName, (<.>), (</>))
 import System.IO.Error (isDoesNotExistError)
 
 import Vehicle
-import Vehicle.Prelude
-import Vehicle.Compile
 import Vehicle.Backend.Prelude
+import Vehicle.Compile
+import Vehicle.Prelude
 
 import Test.Tasty
-import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.Bench (Benchmark, bench, nfIO)
+import Test.Tasty.Golden.Advanced (goldenTest)
 
-import Vehicle.Test.Utils
 import Vehicle.CommandLine (commandLineOptionsParserInfo)
+import Vehicle.Test.Utils
 
 --------------------------------------------------------------------------------
 -- Tests

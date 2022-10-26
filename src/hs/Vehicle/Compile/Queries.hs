@@ -3,25 +3,25 @@ module Vehicle.Compile.Queries
   , QueryData(..)
   ) where
 
-import Control.Monad.Except (MonadError(..))
-import Control.Monad.Reader (MonadReader(..), ReaderT (..))
 import Control.Monad (forM)
-import Data.Maybe (catMaybes)
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Map qualified as Map (lookup)
+import Data.Maybe (catMaybes)
 
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Error
-import Vehicle.Compile.Queries.UserVariables
-import Vehicle.Compile.Queries.IfElimination (eliminateIfs)
-import Vehicle.Compile.Queries.DNF (convertToDNF, splitDisjunctions)
-import Vehicle.Compile.Queries.QuantifierLifting (liftQuantifiers)
-import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
 import Vehicle.Backend.Prelude
-import Vehicle.Compile.Resource
+import Vehicle.Compile.Error
 import Vehicle.Compile.Linearity
 import Vehicle.Compile.Normalise
-import Vehicle.Verify.Specification
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
+import Vehicle.Compile.Queries.DNF (convertToDNF, splitDisjunctions)
+import Vehicle.Compile.Queries.IfElimination (eliminateIfs)
+import Vehicle.Compile.Queries.QuantifierLifting (liftQuantifiers)
+import Vehicle.Compile.Queries.UserVariables
+import Vehicle.Compile.Resource
 import Vehicle.Verify.Core
+import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface
 
 data QueryData = QueryData

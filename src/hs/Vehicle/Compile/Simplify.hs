@@ -4,13 +4,13 @@ module Vehicle.Compile.Simplify
   , SimplifyOptions(..)
   ) where
 
-import Control.Monad.Reader (MonadReader(..), runReader)
+import Control.Monad.Reader (MonadReader (..), runReader)
 import Data.Default (Default (..))
+import Data.IntMap (IntMap)
 import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty (toList, fromList)
+import Data.List.NonEmpty qualified as NonEmpty (fromList, toList)
 import Data.Maybe (catMaybes)
-import Data.IntMap ( IntMap )
-import Data.Text ( Text )
+import Data.Text (Text)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint

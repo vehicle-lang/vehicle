@@ -6,13 +6,13 @@ import Control.Monad.Except
 import Control.Monad.State
 import Data.Map qualified as Map
 import Data.Text (pack)
-import Text.Read (readMaybe)
 import Data.Text.Read (rational)
+import Text.Read (readMaybe)
 
-import Vehicle.Language.Print
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
+import Vehicle.Compile.Prelude
+import Vehicle.Language.Print
 
 --------------------------------------------------------------------------------
 -- Parameter parsing

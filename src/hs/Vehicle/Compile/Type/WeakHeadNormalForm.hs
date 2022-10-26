@@ -5,15 +5,15 @@ module Vehicle.Compile.Type.WeakHeadNormalForm
   , whnf
   ) where
 
-import Control.Monad ( (<=<) )
-import Control.Monad.Reader (MonadReader(..), runReaderT)
+import Control.Monad ((<=<))
+import Control.Monad.Reader (MonadReader (..), runReaderT)
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Type.VariableContext
-import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Constraint as Constraint
 import Vehicle.Compile.Normalise
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Constraint as Constraint
+import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.VariableContext
 
 --------------------------------------------------------------------------------
 -- Weak head options

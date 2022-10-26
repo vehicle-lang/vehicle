@@ -18,29 +18,29 @@ data ConstraintGroup
 
 typeClassGroup :: TypeClass -> ConstraintGroup
 typeClassGroup tc = case tc of
-    HasEq{}                    -> TypeGroup
-    HasOrd{}                   -> TypeGroup
-    HasNot                     -> TypeGroup
-    HasAnd                     -> TypeGroup
-    HasOr                      -> TypeGroup
-    HasImplies                 -> TypeGroup
-    HasQuantifier{}            -> TypeGroup
-    HasAdd                     -> TypeGroup
-    HasSub                     -> TypeGroup
-    HasMul                     -> TypeGroup
-    HasDiv                     -> TypeGroup
-    HasNeg                     -> TypeGroup
-    HasFold                    -> TypeGroup
-    HasQuantifierIn{}          -> TypeGroup
-    HasNatLits{}               -> TypeGroup
-    HasRatLits                 -> TypeGroup
-    HasVecLits{}               -> TypeGroup
-    HasIf{}                    -> TypeGroup
-    AlmostEqualConstraint{}    -> TypeGroup
-    NatInDomainConstraint{}    -> TypeGroup
+    HasEq{}                 -> TypeGroup
+    HasOrd{}                -> TypeGroup
+    HasNot                  -> TypeGroup
+    HasAnd                  -> TypeGroup
+    HasOr                   -> TypeGroup
+    HasImplies              -> TypeGroup
+    HasQuantifier{}         -> TypeGroup
+    HasAdd                  -> TypeGroup
+    HasSub                  -> TypeGroup
+    HasMul                  -> TypeGroup
+    HasDiv                  -> TypeGroup
+    HasNeg                  -> TypeGroup
+    HasFold                 -> TypeGroup
+    HasQuantifierIn{}       -> TypeGroup
+    HasNatLits{}            -> TypeGroup
+    HasRatLits              -> TypeGroup
+    HasVecLits{}            -> TypeGroup
+    HasIf{}                 -> TypeGroup
+    AlmostEqualConstraint{} -> TypeGroup
+    NatInDomainConstraint{} -> TypeGroup
 
-    LinearityTypeClass{}       -> LinearityGroup
-    PolarityTypeClass{}        -> PolarityGroup
+    LinearityTypeClass{}    -> LinearityGroup
+    PolarityTypeClass{}     -> PolarityGroup
 
 isAuxiliaryTypeClass :: TypeClass -> Bool
 isAuxiliaryTypeClass tc = do

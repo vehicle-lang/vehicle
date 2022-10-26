@@ -1,12 +1,12 @@
 module Vehicle.Language.AST.Builtin.Polarity where
 
-import Control.DeepSeq (NFData(..))
-import Data.Hashable (Hashable(..))
+import Control.DeepSeq (NFData (..))
+import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)
 
-import Vehicle.Prelude
-import Vehicle.Language.AST.Provenance
 import Vehicle.Language.AST.Builtin.Core
+import Vehicle.Language.AST.Provenance
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- PolarityProvenance

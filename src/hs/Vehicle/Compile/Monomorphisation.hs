@@ -4,24 +4,26 @@
 
 module Vehicle.Compile.Monomorphisation where
 
-import Control.Monad.Reader (ReaderT (runReaderT), MonadReader, asks, local)
-import Control.Monad.State (MonadState(..), modify, StateT (runStateT), evalStateT, gets)
-import Control.Monad.Writer (MonadWriter(..), runWriterT)
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty (splitAt, length)
-import Data.Traversable (for)
-import Data.Maybe (mapMaybe)
+import Control.Monad.Reader (MonadReader, ReaderT (runReaderT), asks, local)
+import Control.Monad.State (MonadState (..), StateT (runStateT), evalStateT,
+                            gets, modify)
+import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.HashMap.Strict (HashMap)
-import Data.HashMap.Strict qualified as Map (insert, lookup, unionWith, singleton, unions, union, member)
+import Data.HashMap.Strict qualified as Map (insert, lookup, member, singleton,
+                                             union, unionWith, unions)
 import Data.HashSet (HashSet)
-import Data.HashSet qualified as Set (toList, size, union, singleton)
+import Data.HashSet qualified as Set (singleton, size, toList, union)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty (length, splitAt)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Traversable (for)
 
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Error
-import Vehicle.Language.Print (prettyFriendly)
 import Vehicle.Compile.AlphaEquivalence ()
+import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
+import Vehicle.Language.Print (prettyFriendly)
 
 --------------------------------------------------------------------------------
 -- Public interface

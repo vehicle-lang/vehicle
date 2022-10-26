@@ -2,19 +2,19 @@ module Vehicle.Compile.ExpandResources.Dataset.IDX
   ( readIDX
   ) where
 
-import Control.Monad.IO.Class
-import Control.Monad.Except
-import Control.Monad.State
 import Control.Exception
+import Control.Monad.Except
+import Control.Monad.IO.Class
+import Control.Monad.State
 import Data.IDX
 import Data.Map qualified as Map
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Language.Print
 import Vehicle.Compile.ExpandResources.Core
+import Vehicle.Compile.Prelude
+import Vehicle.Language.Print
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
 -- matches the type of the stored data.

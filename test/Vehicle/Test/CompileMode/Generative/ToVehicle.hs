@@ -1,10 +1,10 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE OverloadedLists       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 module Vehicle.Test.CompileMode.Generative.ToVehicle
   ( convertKind
@@ -12,8 +12,8 @@ module Vehicle.Test.CompileMode.Generative.ToVehicle
   , convertTerm
   ) where
 
-import Data.Bifunctor (Bifunctor(..))
-import Control.Monad.Reader (Reader(..), ask, runReader, withReader, local)
+import Control.Monad.Reader (Reader (..), ask, local, runReader, withReader)
+import Data.Bifunctor (Bifunctor (..))
 
 import Test.CompileMode.Generative.Generator
 

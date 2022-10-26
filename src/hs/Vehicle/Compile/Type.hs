@@ -4,31 +4,31 @@ module Vehicle.Compile.Type
   , typeCheckExpr
   ) where
 
-import Control.Monad.Writer (MonadWriter(..), runWriterT)
-import Control.Monad.Except (MonadError(..))
-import Control.Monad.Reader (ReaderT(..))
-import Control.Monad (forM, when, unless)
+import Control.Monad (forM, unless, when)
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (ReaderT (..))
+import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.List (partition)
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.Set qualified as Set (member)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map (singleton)
+import Data.Set qualified as Set (member)
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Language.Print
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Auxiliary
+import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.ConstraintSolver.TypeClass
 import Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
 import Vehicle.Compile.Type.ConstraintSolver.Unification
-import Vehicle.Compile.Type.Meta
-import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet
-import Vehicle.Compile.Type.Auxiliary
-import Vehicle.Compile.Type.Bidirectional
-import Vehicle.Compile.Type.WeakHeadNormalForm
-import Vehicle.Compile.Type.Resource
 import Vehicle.Compile.Type.Generalise
 import Vehicle.Compile.Type.Irrelevance
+import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.MetaSet qualified as MetaSet
+import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Resource
+import Vehicle.Compile.Type.WeakHeadNormalForm
+import Vehicle.Language.Print
 
 -------------------------------------------------------------------------------
 -- Algorithm

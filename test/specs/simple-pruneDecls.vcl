@@ -3,7 +3,7 @@
 add1 : Rat -> Rat
 add1 x = x + 1
 
-@network 
+@network
 f : Vector Rat 1 -> Vector Rat 1
 
 @property

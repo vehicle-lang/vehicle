@@ -24,7 +24,7 @@ infixl 6 _+_ _-_
 abstract
   _+_ : ℚ → ℚ → ℚ
   _+_ = ℚ._+_
-  
+
   _*_ : ℚ → ℚ → ℚ
   _*_ = ℚ._*_
 
@@ -36,7 +36,7 @@ abstract
 
   *-eq : _*_ ≡ ℚ._*_
   *-eq = refl
-  
+
   neg-eq : _-_ ≡ ℚ._-_
   neg-eq = refl
 
@@ -51,7 +51,7 @@ abstract
 
   p-[p+q]≡q : ∀ p q → p - (p + q) ≡ q
   p-[p+q]≡q = ℚ.p-[p+q]≡q
-  
+
   ∣p-q∣≤∣p∣+∣q∣ : ∀ p q → ∣ p - q ∣ ≤ ∣ p ∣ + ∣ q ∣
   ∣p-q∣≤∣p∣+∣q∣ = ℚ.∣p-q∣≤∣p∣+∣q∣
 
@@ -60,7 +60,7 @@ abstract
 
   -p<q<p⇒∣q∣<p : ∀ {p q} → - p < q → q < p → ∣ q ∣ < p
   -p<q<p⇒∣q∣<p = ℚ.-p<q<p⇒∣q∣<p
-  
+
   2*p≡p+p : ∀ p → 2ℚ * p ≡ p + p
   2*p≡p+p = ℚ.2*p≡p+p
 
@@ -94,8 +94,8 @@ abstract
     2ℚ * p + 1ℚ * p ≡⟨ sym (ℚ.*-distribʳ-+ p 2ℚ 1ℚ) ⟩
     (2ℚ + 1ℚ) * p   ∎
     where open ≤-Reasoning
-    
-  
+
+
   lem1 : ∀ a b c d e f g → a + (b + c) + d + (e + f + f - g) - (e + f + f - g) ≡
                            c + (a + f + (e + b + d + f)) - g - (f + f + (e - g))
   lem1 = solve 7 (λ a b c d e f g → (a ⊕ (b ⊕ c) ⊕ d ⊕ (e ⊕ f ⊕ f ⊕ (⊝ g)) ⊕ (⊝ (e ⊕ f ⊕ f ⊕ (⊝ g))) ,

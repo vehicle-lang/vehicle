@@ -11,15 +11,15 @@ module Vehicle.Language.AST.Provenance
   , wasInsertedByCompiler
   ) where
 
-import GHC.Generics (Generic)
-import Control.DeepSeq (NFData(..))
-import Data.Range hiding (joinRanges)
-import Data.Maybe (maybeToList)
-import Data.List.NonEmpty (NonEmpty)
+import Control.DeepSeq (NFData (..))
 import Data.List (sort)
+import Data.List.NonEmpty (NonEmpty)
+import Data.Maybe (maybeToList)
+import Data.Range hiding (joinRanges)
+import GHC.Generics (Generic)
 
+import Data.Hashable (Hashable (..))
 import Vehicle.Prelude
-import Data.Hashable (Hashable(..))
 
 --------------------------------------------------------------------------------
 -- Position
@@ -150,12 +150,12 @@ data Origin
   deriving (Show, Eq, Ord, Generic)
 
 instance Semigroup Origin where
-  FromSource r1     <> FromSource r2    = FromSource (joinRanges r1 r2)
-  p@FromSource{}    <> _                = p
-  _                 <> p@FromSource{}   = p
-  p@FromDataset{}   <> _                = p
-  _                 <> p@FromDataset{}  = p
-  p@FromParameter{} <> _                = p
+  FromSource r1     <> FromSource r2   = FromSource (joinRanges r1 r2)
+  p@FromSource{}    <> _               = p
+  _                 <> p@FromSource{}  = p
+  p@FromDataset{}   <> _               = p
+  _                 <> p@FromDataset{} = p
+  p@FromParameter{} <> _               = p
 
 instance Monoid Origin where
   mempty = FromSource mempty

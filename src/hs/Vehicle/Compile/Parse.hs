@@ -4,18 +4,18 @@ module Vehicle.Compile.Parse
   , parseExternalExpr
   ) where
 
-import Control.Monad.Except (MonadError(..), liftEither)
+import Control.Monad.Except (MonadError (..), liftEither)
+import Data.Bifunctor (first)
 import Data.Text (Text)
 import Data.Text.IO qualified as T
-import Data.Bifunctor (first)
 
 import Vehicle.Internal.Abs as Internal
-import Vehicle.Internal.Par as Internal (pProg, pExpr, myLexer)
+import Vehicle.Internal.Par as Internal (myLexer, pExpr, pProg)
 
 import Vehicle.External.Abs as External
-import Vehicle.External.Lex as External (Token)
-import Vehicle.External.Par as External (pProg, pExpr, myLexer)
 import Vehicle.External.Layout as External (resolveLayout)
+import Vehicle.External.Lex as External (Token)
+import Vehicle.External.Par as External (myLexer, pExpr, pProg)
 
 import Vehicle.Compile.Error
 

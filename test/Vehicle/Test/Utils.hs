@@ -13,26 +13,26 @@ module Vehicle.Test.Utils
   , normTypeClasses
   ) where
 
-import Control.Monad.Reader (MonadReader(..), asks)
-import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
-import Data.Maybe (fromMaybe)
-import Data.Text.Array
+import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
+import Control.Monad.Reader (MonadReader (..), asks)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.Array
 import Debug.Trace
 import System.FilePath ((</>))
 
-import Test.Tasty ( TestName, testGroup, after, DependencyType )
-import Test.Tasty.Runners (TestTree(..))
-import Test.Tasty.HUnit (testCase, Assertion)
+import Test.Tasty (DependencyType, TestName, after, testGroup)
+import Test.Tasty.HUnit (Assertion, testCase)
+import Test.Tasty.Runners (TestTree (..))
 
 import Vehicle.Backend.Prelude
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Normalise
+import Vehicle.Compile.Prelude
 
 import Vehicle.Test.Utils.FilePath as FilePathUtils
 import Vehicle.Test.Utils.Golden as GoldenUtils
@@ -63,13 +63,13 @@ locationDir Tests    _    = "test" </> "specs"
 locationDir Examples name = "examples" </> name
 
 data TestSpec = TestSpec
-    { testName         :: String
-    , testLocation     :: TestLocation
-    , testTargets      :: [Backend]
-    , testNetworks     :: [(Text, FilePath)]
-    , testDatasets     :: [(Text, FilePath)]
-    , testParameters   :: [(Text, String)]
-    , testDecls        :: [Text]
+    { testName       :: String
+    , testLocation   :: TestLocation
+    , testTargets    :: [Backend]
+    , testNetworks   :: [(Text, FilePath)]
+    , testDatasets   :: [(Text, FilePath)]
+    , testParameters :: [(Text, String)]
+    , testDecls      :: [Text]
     }
 
 testSpec :: TestSpec

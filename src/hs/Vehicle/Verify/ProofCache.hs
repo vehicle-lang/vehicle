@@ -1,16 +1,16 @@
 module Vehicle.Verify.ProofCache where
 
-import Control.Monad.IO.Class ( MonadIO, liftIO )
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.ByteString.Lazy qualified as ByteString
 import Data.Version (Version)
 import GHC.Generics (Generic)
-import System.IO (hPutStrLn, stderr)
 import System.Exit (exitFailure)
+import System.IO (hPutStrLn, stderr)
 
-import Vehicle.Resource
 import Vehicle.Compile.Prelude
+import Vehicle.Resource
 import Vehicle.Verify.Specification.Status (SpecificationStatus)
 
 --------------------------------------------------------------------------------

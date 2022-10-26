@@ -2,14 +2,14 @@ module Vehicle.Compile.Type.ConstraintSolver.Polarity
   ( solvePolarityConstraint
   ) where
 
+import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.ConstraintSolver.Core
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Error
 
-import Control.Monad.Except (MonadError(..))
+import Control.Monad.Except (MonadError (..))
 
 solvePolarityConstraint :: TCM m
                         => PolarityTypeClass
@@ -39,7 +39,7 @@ negPolarity modProv pol =
     -- We don't negate a mixed sequential polarity as its the top of the polarity
     -- lattice and we want to give as meaningful and localised error messages
     -- as possible.
-    MixedSequential{}     -> pol
+    MixedSequential{}         -> pol
 
 negatePolarity :: Provenance
                -> Polarity

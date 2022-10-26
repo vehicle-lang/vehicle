@@ -4,21 +4,21 @@ module Vehicle.Compile.Queries.UserVariables
   ) where
 
 import Control.Monad (zipWithM)
-import Control.Monad.Except (MonadError(..))
-import Control.Monad.Reader (MonadReader(..), runReaderT)
-import Data.Map (Map)
-import Data.Map qualified as Map (member, lookup, singleton, unionWith)
-import Data.Text (Text)
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.List.Split (chunksOf)
+import Data.Map (Map)
+import Data.Map qualified as Map (lookup, member, singleton, unionWith)
+import Data.Text (Text)
 
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude
-import Vehicle.Language.Print (prettySimple)
 import Vehicle.Compile.LetInsertion (insertLets)
-import Vehicle.Compile.Resource
 import Vehicle.Compile.Linearity
 import Vehicle.Compile.Normalise
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource
+import Vehicle.Language.Print (prettySimple)
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface
 

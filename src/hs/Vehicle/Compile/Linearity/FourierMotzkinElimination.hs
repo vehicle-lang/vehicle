@@ -7,12 +7,12 @@ module Vehicle.Compile.Linearity.FourierMotzkinElimination
 import Data.Set (Set)
 import Data.Set qualified as Set (toList)
 import Data.Vector.Unboxed (Vector)
-import Data.Vector.Unboxed as Vector ((!), map)
+import Data.Vector.Unboxed as Vector (map, (!))
 
-import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Linearity.Core
 import Control.Monad (foldM)
+import Vehicle.Compile.Error
+import Vehicle.Compile.Linearity.Core
+import Vehicle.Compile.Prelude
 
 type Solution = (LinearVar, VarReconstruction)
 

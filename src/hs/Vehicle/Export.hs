@@ -3,9 +3,9 @@ module Vehicle.Export where
 
 import System.Directory (makeAbsolute)
 
+import Vehicle.Backend.Agda (AgdaOptions (..), writeAgdaFile)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile
-import Vehicle.Backend.Agda (writeAgdaFile, AgdaOptions(..))
 import Vehicle.Verify.ProofCache
 
 data ExportOptions = ExportOptions

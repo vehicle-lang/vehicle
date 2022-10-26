@@ -4,11 +4,11 @@ module Vehicle.Compile.DependencyAnalysis
   ) where
 
 import Control.Monad (forM_)
-import Data.Set ( Set )
-import Data.Set qualified as Set ( map, member, fromList, difference )
+import Data.Set (Set)
+import Data.Set qualified as Set (difference, fromList, map, member)
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
 
 analyseDependenciesAndPrune :: MonadCompile m
                             => UncheckedProg

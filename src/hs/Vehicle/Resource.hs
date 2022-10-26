@@ -1,18 +1,18 @@
 
 module Vehicle.Resource where
 
+import Control.DeepSeq
 import Control.Monad (forM, when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.DeepSeq
-import Data.Hashable(Hashable(hash))
+import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString qualified as ByteString
+import Data.Hashable (Hashable (hash))
 import Data.Map (Map, assocs, singleton)
-import Data.Text (Text)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Prettyprinter
+import Data.Text (Text)
 import GHC.Generics (Generic)
-import Data.Aeson (FromJSON, ToJSON)
+import Prettyprinter
 
 import Vehicle.Prelude
 

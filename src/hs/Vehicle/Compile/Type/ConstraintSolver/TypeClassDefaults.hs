@@ -4,13 +4,13 @@ module Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
 
 import Data.Maybe (catMaybes)
 
-import Vehicle.Compile.Prelude
+import Control.Monad (foldM)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
-import Vehicle.Language.Print (prettySimple)
 import Vehicle.Compile.Type.VariableContext
-import Control.Monad (foldM)
+import Vehicle.Language.Print (prettySimple)
 
 --------------------------------------------------------------------------------
 -- Default solutions to type-class constraints

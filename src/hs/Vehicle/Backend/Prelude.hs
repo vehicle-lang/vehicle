@@ -2,8 +2,8 @@ module Vehicle.Backend.Prelude where
 
 import Data.Text.IO qualified as TIO
 import Data.Version (Version, makeVersion)
-import System.FilePath (takeDirectory)
 import System.Directory (createDirectoryIfMissing)
+import System.FilePath (takeDirectory)
 
 import Vehicle.Prelude
 import Vehicle.Verify.Core
@@ -36,11 +36,11 @@ instance Pretty Backend where
 
 instance Read Backend where
   readsPrec _d x = case x of
-    "Marabou" -> [(MarabouBackend, [])]
+    "Marabou"      -> [(MarabouBackend, [])]
     "LossFunction" -> [(LossFunction, [])]
-    "Agda" -> [(AgdaBackend, [])]
-    "TypeCheck" -> [(TypeCheck, [])]
-    _           -> []
+    "Agda"         -> [(AgdaBackend, [])]
+    "TypeCheck"    -> [(TypeCheck, [])]
+    _              -> []
 
 commentTokenOf :: Backend -> Maybe (Doc a)
 commentTokenOf = \case

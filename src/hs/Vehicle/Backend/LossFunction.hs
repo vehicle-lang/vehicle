@@ -1,4 +1,4 @@
-module Vehicle.Backend.LossFunction 
+module Vehicle.Backend.LossFunction
   ( module X
   ) where
 

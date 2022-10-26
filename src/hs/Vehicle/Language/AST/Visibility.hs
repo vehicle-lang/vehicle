@@ -1,11 +1,11 @@
 module Vehicle.Language.AST.Visibility where
 
-import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
+import GHC.Generics (Generic)
 
-import Vehicle.Prelude
 import Vehicle.Language.AST.Provenance
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Definitions

@@ -2,26 +2,27 @@
 
 module Vehicle.Compile.Type.Monad where
 
-import Control.Monad.Reader (ReaderT (..), MonadReader (..), mapReaderT)
-import Control.Monad.State (StateT(..), MonadState(..), evalStateT, gets, modify, mapStateT)
-import Control.Monad.Writer (WriterT(..), mapWriterT)
-import Control.Monad.Trans.Class ( lift )
-import Control.Monad.Except (MonadError (..))
 import Control.Monad (foldM)
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), mapReaderT)
+import Control.Monad.State (MonadState (..), StateT (..), evalStateT, gets,
+                            mapStateT, modify)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Writer (WriterT (..), mapWriterT)
 import Data.List (partition)
-import Data.Maybe (mapMaybe)
 import Data.Map qualified as Map
+import Data.Maybe (mapMaybe)
 
-import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Prelude
+import Control.Monad.Trans (MonadTrans)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Type.MetaMap ( keys, insert )
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.MetaMap (insert, keys)
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
-import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.VariableContext
-import Vehicle.Compile.Type.Meta
-import Control.Monad.Trans (MonadTrans)
+import Vehicle.Language.Print (prettyVerbose)
 
 --------------------------------------------------------------------------------
 -- The type-checking monad

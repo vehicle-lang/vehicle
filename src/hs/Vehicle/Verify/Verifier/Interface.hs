@@ -1,12 +1,12 @@
 module Vehicle.Verify.Verifier.Interface where
 
-import Vehicle.Compile.Prelude
-import Vehicle.Verify.Specification.Status (SatisfiabilityStatus)
 import Control.Monad.IO.Class (MonadIO)
-import Vehicle.Verify.Core
-import Vehicle.Compile.Linearity
-import Vehicle.Compile.Resource
 import Data.Text (Text)
+import Vehicle.Compile.Linearity
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource
+import Vehicle.Verify.Core
+import Vehicle.Verify.Specification.Status (SatisfiabilityStatus)
 
 -- | The type of methods that compile queries for a verifier
 type VerifierCompile
@@ -37,5 +37,3 @@ data Verifier = Verifier
   , magicVariablePrefixes  :: (Text, Text)
   -- ^ Magic variables (should be folded into compileQuery)
   }
-
-

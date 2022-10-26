@@ -5,17 +5,17 @@ module Vehicle.Language.AST.Builtin
   , module X
   ) where
 
+import Control.DeepSeq (NFData (..))
 import Data.Bifunctor (first)
-import GHC.Generics (Generic)
-import Control.DeepSeq (NFData(..))
-import Data.Text (Text, pack)
 import Data.Hashable (Hashable (..))
+import Data.Text (Text, pack)
+import GHC.Generics (Generic)
 
-import Vehicle.Prelude
 import Vehicle.Language.AST.Builtin.Core as X
-import Vehicle.Language.AST.Builtin.Polarity as X
 import Vehicle.Language.AST.Builtin.Linearity as X
+import Vehicle.Language.AST.Builtin.Polarity as X
 import Vehicle.Language.AST.Builtin.TypeClass as X
+import Vehicle.Prelude
 
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.
@@ -225,47 +225,47 @@ instance Hashable Builtin
 
 instance Pretty Builtin where
   pretty = \case
-    Polarity  pol -> pretty pol
-    Linearity lin -> pretty lin
+    Polarity  pol    -> pretty pol
+    Linearity lin    -> pretty lin
 
     TypeClass   tc   -> pretty tc
     TypeClassOp tcOp -> pretty tcOp
 
-    Unit   -> "Unit"
-    Bool   -> "Bool"
-    Index  -> "Index"
-    Nat    -> "Nat"
-    Int    -> "Int"
-    Rat    -> "Rat"
-    List   -> "List"
-    Vector -> "Vector"
-    Tensor -> "Tensor"
+    Unit             -> "Unit"
+    Bool             -> "Bool"
+    Index            -> "Index"
+    Nat              -> "Nat"
+    Int              -> "Int"
+    Rat              -> "Rat"
+    List             -> "List"
+    Vector           -> "Vector"
+    Tensor           -> "Tensor"
 
-    Not     -> "notBool"
-    And     -> "andBool"
-    Or      -> "orBool"
-    Implies -> "impliesBool"
-    If      -> "if"
+    Not              -> "notBool"
+    And              -> "andBool"
+    Or               -> "orBool"
+    Implies          -> "impliesBool"
+    If               -> "if"
 
-    Neg dom -> "neg" <> pretty dom
-    Add dom -> "add" <> pretty dom
-    Sub dom -> "sub" <> pretty dom
-    Mul dom -> "mul" <> pretty dom
-    Div dom -> "div" <> pretty dom
+    Neg dom          -> "neg" <> pretty dom
+    Add dom          -> "add" <> pretty dom
+    Sub dom          -> "sub" <> pretty dom
+    Mul dom          -> "mul" <> pretty dom
+    Div dom          -> "div" <> pretty dom
 
-    FromNat n dom -> "fromNat[" <> pretty n <> "]To" <> pretty dom
-    FromRat dom   -> "fromRatTo" <> pretty dom
-    FromVec n dom -> "fromVec[" <> pretty n <> "]To" <> pretty dom
+    FromNat n dom    -> "fromNat[" <> pretty n <> "]To" <> pretty dom
+    FromRat dom      -> "fromRatTo" <> pretty dom
+    FromVec n dom    -> "fromVec[" <> pretty n <> "]To" <> pretty dom
 
-    Equals dom op -> equalityOpName op <> pretty dom
-    Order  dom op -> orderOpName op <> pretty dom
+    Equals dom op    -> equalityOpName op <> pretty dom
+    Order  dom op    -> orderOpName op <> pretty dom
 
-    Foreach  -> "foreach"
-    Fold dom -> "fold" <> pretty dom
-    Map dom  -> "map" <> pretty dom
-    At       -> "!"
-    Nil      -> "nil"
-    Cons     -> "::"
+    Foreach          -> "foreach"
+    Fold dom         -> "fold" <> pretty dom
+    Map dom          -> "map" <> pretty dom
+    At               -> "!"
+    Nil              -> "nil"
+    Cons             -> "::"
 
 builtinSymbols :: [(Text, Builtin)]
 builtinSymbols = map (first pack)

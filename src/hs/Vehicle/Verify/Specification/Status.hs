@@ -1,11 +1,11 @@
 module Vehicle.Verify.Specification.Status where
 
 import Data.Aeson
-import Data.Text (Text, pack)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Text (Text, pack)
 import GHC.Generics (Generic)
-import System.Console.ANSI (Color(..))
+import System.Console.ANSI (Color (..))
 
 import Vehicle.Prelude
 import Vehicle.Verify.Specification

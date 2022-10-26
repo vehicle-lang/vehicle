@@ -5,25 +5,25 @@ module Vehicle.Verify.Specification.IO
   , verifySpecification
   ) where
 
-import Control.Monad (forM_, forM)
-import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Reader (MonadReader(..), ReaderT (..))
+import Control.Monad (forM, forM_)
+import Control.Monad.IO.Class (MonadIO (..))
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Data.Bifunctor (Bifunctor (..))
+import Data.Map qualified as Map
+import Data.Text (unpack)
 import System.Directory (createDirectoryIfMissing)
-import System.FilePath (dropExtension, (</>), (<.>))
+import System.FilePath (dropExtension, (<.>), (</>))
 import System.IO (hPrint)
 import System.IO.Temp (withSystemTempDirectory)
-import Data.Bifunctor (Bifunctor(..))
-import Data.Text (unpack)
-import Data.Map qualified as Map
 
+import Vehicle.Backend.Prelude (Backend (..), writeResultToFile)
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Queries
 import Vehicle.Prelude
+import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Interface
-import Vehicle.Backend.Prelude (Backend (..), writeResultToFile)
-import Vehicle.Compile.Prelude
-import Vehicle.Verify.Core
-import Vehicle.Compile.Queries
 
 -- | Writes the queries that make up the specification to individual files in
 -- provided folder.

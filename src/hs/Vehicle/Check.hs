@@ -3,14 +3,14 @@ module Vehicle.Check
   , check
   ) where
 
-import Data.List.NonEmpty (NonEmpty(..))
-import Control.Exception (catch, IOException)
-import Control.Monad.Trans (MonadIO(liftIO))
+import Control.Exception (IOException, catch)
+import Control.Monad.Trans (MonadIO (liftIO))
+import Data.List.NonEmpty (NonEmpty (..))
 
 import Vehicle.Prelude
 import Vehicle.Resource
+import Vehicle.Verify.ProofCache (ProofCache (..), readProofCache)
 import Vehicle.Verify.Specification.Status (isVerified)
-import Vehicle.Verify.ProofCache (readProofCache, ProofCache(..))
 
 --------------------------------------------------------------------------------
 -- Checking

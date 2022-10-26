@@ -2,19 +2,19 @@ module Vehicle.Compile.Type.ConstraintSolver.TypeClass
   ( solveTypeClassConstraint
   ) where
 
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe (mapMaybe)
 import Control.Monad (forM)
-import Control.Monad.Except ( throwError )
+import Control.Monad.Except (throwError)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe (mapMaybe)
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.ConstraintSolver.Core
+import Vehicle.Compile.Type.ConstraintSolver.Linearity
+import Vehicle.Compile.Type.ConstraintSolver.Polarity
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.ConstraintSolver.Polarity
-import Vehicle.Compile.Type.ConstraintSolver.Linearity
-import Vehicle.Compile.Type.ConstraintSolver.Core
 import Vehicle.Language.StandardLibrary.Names
 
 --------------------------------------------------------------------------------
@@ -44,31 +44,31 @@ solve :: TCM m
       -> [CheckedType]
       -> m TypeClassProgress
 solve = \case
-  HasEq eq            -> solveHasEq eq
-  HasOrd ord          -> solveHasOrd ord
-  HasNot              -> solveHasNot
-  HasAnd              -> solveHasAnd
-  HasOr               -> solveHasOr
-  HasImplies          -> solveHasImplies
-  HasQuantifier q     -> solveHasQuantifier q
-  HasNeg              -> solveHasNeg
-  HasAdd              -> solveHasAdd
-  HasSub              -> solveHasSub
-  HasMul              -> solveHasMul
-  HasDiv              -> solveHasDiv
-  HasFold             -> solveHasFold
-  HasQuantifierIn q   -> solveHasQuantifierIn q
-  HasIf               -> solveHasIf
+  HasEq eq                -> solveHasEq eq
+  HasOrd ord              -> solveHasOrd ord
+  HasNot                  -> solveHasNot
+  HasAnd                  -> solveHasAnd
+  HasOr                   -> solveHasOr
+  HasImplies              -> solveHasImplies
+  HasQuantifier q         -> solveHasQuantifier q
+  HasNeg                  -> solveHasNeg
+  HasAdd                  -> solveHasAdd
+  HasSub                  -> solveHasSub
+  HasMul                  -> solveHasMul
+  HasDiv                  -> solveHasDiv
+  HasFold                 -> solveHasFold
+  HasQuantifierIn q       -> solveHasQuantifierIn q
+  HasIf                   -> solveHasIf
 
-  HasNatLits n -> solveHasNatLits n
-  HasRatLits   -> solveHasRatLits
-  HasVecLits n -> solveHasVecLits n
+  HasNatLits n            -> solveHasNatLits n
+  HasRatLits              -> solveHasRatLits
+  HasVecLits n            -> solveHasVecLits n
 
   AlmostEqualConstraint   -> solveAlmostEqual
   NatInDomainConstraint n -> solveInDomain n
 
-  LinearityTypeClass tc -> castProgressFn $ solveLinearityConstraint tc
-  PolarityTypeClass  tc -> castProgressFn $ solvePolarityConstraint tc
+  LinearityTypeClass tc   -> castProgressFn $ solveLinearityConstraint tc
+  PolarityTypeClass  tc   -> castProgressFn $ solvePolarityConstraint tc
 
 -- A temporary hack until we separate out the solvers properly.
 castProgressFn :: TCM m

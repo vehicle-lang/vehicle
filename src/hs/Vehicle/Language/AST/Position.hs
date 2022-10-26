@@ -18,14 +18,14 @@ module Vehicle.Language.AST.Position
   ) where
 
 import Control.Monad (join)
+import Data.Bifunctor (Bifunctor (..))
+import Data.Hashable (Hashable (..))
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
-import Data.Hashable (Hashable(..))
-import Data.Bifunctor (Bifunctor(..))
 import GHC.Generics (Generic)
 
+import Vehicle.Language.AST.DeBruijn (DBIndex)
 import Vehicle.Prelude
-import Vehicle.Language.AST.DeBruijn ( DBIndex )
 
 
 --------------------------------------------------------------------------------

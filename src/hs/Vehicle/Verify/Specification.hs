@@ -45,14 +45,14 @@ instance FromJSON a => FromJSON (Query a)
 
 instance Functor Query where
   fmap f = \case
-    Trivial    s   -> Trivial s
+    Trivial    s -> Trivial s
     NonTrivial s -> NonTrivial (f s)
 
 instance Pretty a => Pretty (Query a) where
   pretty = \case
-    Trivial True   -> "TriviallyTrue"
-    Trivial False  -> "TriviallyFalse"
-    NonTrivial a   -> pretty a
+    Trivial True  -> "TriviallyTrue"
+    Trivial False -> "TriviallyFalse"
+    NonTrivial a  -> pretty a
 
 traverseQuery :: Monad m
               => (a -> m b)
@@ -98,9 +98,9 @@ instance Functor PropertyExpr where
 
 instance Pretty a => Pretty (PropertyExpr a) where
   pretty = \case
-    Query n x     -> pretty x <+> "(negate =" <+> pretty n <> ")"
-    Disjunct x y  -> "And[" <> pretty x <+> pretty y <> "]"
-    Conjunct x y  -> "Or["  <> pretty x <+> pretty y <> "]"
+    Query n x    -> pretty x <+> "(negate =" <+> pretty n <> ")"
+    Disjunct x y -> "And[" <> pretty x <+> pretty y <> "]"
+    Conjunct x y -> "Or["  <> pretty x <+> pretty y <> "]"
 
 -- | Lazily folds over the property expression. Avoids evaluating parts
 -- of the expression that are not needed.
@@ -176,8 +176,8 @@ evaluatePropertyExpr f = \case
 propertyExprToList :: PropertyExpr a -> [(NegationStatus, a)]
 propertyExprToList = \case
   Query n a       -> case a of
-    Trivial{}     -> []
-    NonTrivial b  -> [(n, b)]
+    Trivial{}    -> []
+    NonTrivial b -> [(n, b)]
   Disjunct e1 e2 -> propertyExprToList e1 <> propertyExprToList e2
   Conjunct e1 e2 -> propertyExprToList e1 <> propertyExprToList e2
 

@@ -4,14 +4,14 @@ module Vehicle.Compile.Type.ConstraintSolver.Linearity
   ( solveLinearityConstraint
   ) where
 
+import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.ConstraintSolver.Core
-import Vehicle.Compile.Error
+import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
 
-import Control.Monad.Except (MonadError(..))
+import Control.Monad.Except (MonadError (..))
 
 solveLinearityConstraint :: TCM m
                          => LinearityTypeClass

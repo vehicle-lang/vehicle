@@ -1,10 +1,10 @@
 
 module Vehicle.Test.VerifyMode where
 
-import Test.Tasty ( testGroup, TestTree )
+import Test.Tasty (TestTree, testGroup)
 
-import Vehicle.Test.VerifyMode.Golden as Golden
 import Vehicle.Test.Utils (MonadTest)
+import Vehicle.Test.VerifyMode.Golden as Golden
 
 integrationTests :: MonadTest m => m TestTree
 integrationTests = testGroup "Verify" <$> sequence

@@ -110,31 +110,31 @@ typeOfBuiltin p b = fromDSL p $ case b of
 
 typeOfTypeClass :: TypeClass -> DSLExpr
 typeOfTypeClass tc = case tc of
-  HasEq{}            -> type0 ~> type0 ~> type0 ~> type0
-  HasOrd{}           -> type0 ~> type0 ~> type0 ~> type0
-  HasNot             -> type0 ~> type0 ~> type0
-  HasAnd             -> type0 ~> type0 ~> type0 ~> type0
-  HasOr              -> type0 ~> type0 ~> type0 ~> type0
-  HasImplies         -> type0 ~> type0 ~> type0 ~> type0
-  HasQuantifier{}    -> type0 ~> type0 ~> type0
-  HasAdd             -> type0 ~> type0 ~> type0 ~> type0
-  HasSub             -> type0 ~> type0 ~> type0 ~> type0
-  HasMul             -> type0 ~> type0 ~> type0 ~> type0
-  HasDiv             -> type0 ~> type0 ~> type0 ~> type0
-  HasNeg             -> type0 ~> type0 ~> type0
-  HasFold            -> type0 ~> type0 ~> type0
-  HasQuantifierIn{}  -> type0 ~> type0 ~> type0
-  HasIf              -> type0 ~> type0 ~> type0 ~> type0 ~> type0
+  HasEq{}                 -> type0 ~> type0 ~> type0 ~> type0
+  HasOrd{}                -> type0 ~> type0 ~> type0 ~> type0
+  HasNot                  -> type0 ~> type0 ~> type0
+  HasAnd                  -> type0 ~> type0 ~> type0 ~> type0
+  HasOr                   -> type0 ~> type0 ~> type0 ~> type0
+  HasImplies              -> type0 ~> type0 ~> type0 ~> type0
+  HasQuantifier{}         -> type0 ~> type0 ~> type0
+  HasAdd                  -> type0 ~> type0 ~> type0 ~> type0
+  HasSub                  -> type0 ~> type0 ~> type0 ~> type0
+  HasMul                  -> type0 ~> type0 ~> type0 ~> type0
+  HasDiv                  -> type0 ~> type0 ~> type0 ~> type0
+  HasNeg                  -> type0 ~> type0 ~> type0
+  HasFold                 -> type0 ~> type0 ~> type0
+  HasQuantifierIn{}       -> type0 ~> type0 ~> type0
+  HasIf                   -> type0 ~> type0 ~> type0 ~> type0 ~> type0
 
-  HasNatLits{} -> type0 ~> type0
-  HasRatLits   -> type0 ~> type0
-  HasVecLits{} -> type0 ~> type0 ~> type0
+  HasNatLits{}            -> type0 ~> type0
+  HasRatLits              -> type0 ~> type0
+  HasVecLits{}            -> type0 ~> type0 ~> type0
 
-  AlmostEqualConstraint{}    -> forall type0 $ \t -> t ~> tList t ~> type0
-  NatInDomainConstraint{}    -> forall type0 $ \t -> t ~> type0
+  AlmostEqualConstraint{} -> forall type0 $ \t -> t ~> tList t ~> type0
+  NatInDomainConstraint{} -> forall type0 $ \t -> t ~> type0
 
-  LinearityTypeClass t -> typeOfLinearityTypeClass t
-  PolarityTypeClass  t -> typeOfPolarityTypeClass t
+  LinearityTypeClass t    -> typeOfLinearityTypeClass t
+  PolarityTypeClass  t    -> typeOfPolarityTypeClass t
 
 
 typeOfTypeClassOp :: TypeClassOp -> DSLExpr

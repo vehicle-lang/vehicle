@@ -15,14 +15,14 @@ import Control.Monad.Writer (MonadWriter (..), execWriter)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 
-import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Type.MetaMap ( MetaMap(..) )
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.MetaMap (MetaMap (..))
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap
 import Vehicle.Compile.Type.MetaSet (MetaSet)
-import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.VariableContext
+import Vehicle.Language.Print (prettyVerbose)
 
 
 --------------------------------------------------------------------------------
@@ -218,7 +218,7 @@ data ConstraintProgress
   deriving (Show)
 
 instance Pretty ConstraintProgress where
-  pretty (Stuck metas)         = "StuckOn[" <+> pretty metas <+> "]"
+  pretty (Stuck metas)          = "StuckOn[" <+> pretty metas <+> "]"
   pretty (Progress constraints) = "Resolution" <+> prettyVerbose constraints
 
 isStuck :: ConstraintProgress -> Bool
@@ -229,4 +229,4 @@ instance Semigroup ConstraintProgress where
   Stuck m1     <> Stuck m2     = Stuck (m1 <> m2)
   Stuck{}      <> x@Progress{} = x
   x@Progress{} <> Stuck{}      = x
-  Progress r1  <> Progress r2 = Progress (r1 <> r2)
+  Progress r1  <> Progress r2  = Progress (r1 <> r2)

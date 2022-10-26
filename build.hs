@@ -7,13 +7,13 @@
 
 {-# LANGUAGE OverloadedLists #-}
 
-import Control.Monad (when, unless)
-import Data.Maybe (isJust, isNothing, fromMaybe)
+import Control.Monad (unless, when)
+import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Version
 import System.Directory
-import System.IO
-import System.Exit
 import System.Environment (lookupEnv)
+import System.Exit
+import System.IO
 
 import Development.Shake hiding (doesFileExist)
 import Development.Shake.Command

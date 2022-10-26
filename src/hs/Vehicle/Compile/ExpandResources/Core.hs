@@ -2,12 +2,12 @@
 module Vehicle.Compile.ExpandResources.Core where
 
 import Control.Monad.Reader
-import Control.Monad.Writer
 import Control.Monad.State
+import Control.Monad.Writer
 import Data.Map qualified as Map
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 
 --------------------------------------------------------------------------------

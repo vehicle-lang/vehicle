@@ -58,4 +58,3 @@ For example, in the code above if the datasets passed in at compile time both
 have 20 training samples then the compiler will deduce that the value of ``n``is 20.
 If the datasets are of different sizes then compilation will fail with a
 suitable error.
-

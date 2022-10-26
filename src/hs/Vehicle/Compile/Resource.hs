@@ -35,8 +35,8 @@ instance Pretty NetworkType where
     "[input =" <+> pretty input <+> "output =" <+> pretty output <> "]"
 
 data NetworkTensorType = NetworkTensorType
-  { baseType    :: NetworkBaseType
-  , dimensions  :: [Int]
+  { baseType   :: NetworkBaseType
+  , dimensions :: [Int]
   }
 
 instance Pretty NetworkTensorType where

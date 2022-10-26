@@ -1,6 +1,6 @@
 module Main where
 
-import GHC.IO.Encoding (utf8, setLocaleEncoding)
+import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import Options.Applicative (execParser)
 import System.Environment (getArgs)
 

@@ -3,10 +3,10 @@ module Vehicle.Compile.Normalise.Core where
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (head)
 
-import Vehicle.Language.Print
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.AlphaEquivalence ( alphaEq )
+import Vehicle.Compile.AlphaEquivalence (alphaEq)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
+import Vehicle.Language.Print
 
 
 --------------------------------------------------------------------------------

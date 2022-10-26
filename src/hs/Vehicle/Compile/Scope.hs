@@ -4,17 +4,17 @@ module Vehicle.Compile.Scope
   , scopeCheckClosedExpr
   ) where
 
-import Control.Monad.Except (MonadError(..))
-import Control.Monad.Writer (MonadWriter(..), runWriterT)
-import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (MonadReader (..), asks, runReaderT)
 import Control.Monad.State
-import Data.Bifunctor (Bifunctor(..))
+import Control.Monad.Writer (MonadWriter (..), runWriterT)
+import Data.Bifunctor (Bifunctor (..))
 import Data.List (elemIndex)
 import Data.Map qualified as Map
 
-import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
+import Vehicle.Language.Print (prettyVerbose)
 
 scopeCheck :: MonadCompile m => InputProg -> m (UncheckedProg, DependencyGraph)
 scopeCheck e = logCompilerPass MinDetail "scope checking" $ do

@@ -5,7 +5,7 @@ module Vehicle.Compile.CoDeBruijnify
   , fromCoDB
   ) where
 
-import Data.Functor.Foldable (Recursive(..))
+import Data.Functor.Foldable (Recursive (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList, unzip)
 
 import Vehicle.Compile.Prelude

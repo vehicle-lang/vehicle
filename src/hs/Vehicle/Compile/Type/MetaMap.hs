@@ -13,15 +13,15 @@ module Vehicle.Compile.Type.MetaMap
   , toList
   ) where
 
-import Prelude hiding (map, lookup)
 import Data.Coerce (coerce)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
+import Prelude hiding (lookup, map)
 
+import Data.Bifunctor (Bifunctor (first))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.MetaSet (MetaSet)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
-import Data.Bifunctor (Bifunctor(first))
 
 --------------------------------------------------------------------------------
 -- Meta substitution

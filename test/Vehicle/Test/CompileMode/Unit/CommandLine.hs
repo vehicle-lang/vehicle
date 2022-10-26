@@ -10,13 +10,13 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Vehicle
-import Vehicle.Check (CheckOptions(..))
+import Vehicle.Check (CheckOptions (..))
 import Vehicle.CommandLine (commandLineOptionsParserInfo)
 import Vehicle.Prelude
-import Vehicle.Verify (VerifyOptions(..))
+import Vehicle.Verify (VerifyOptions (..))
 
 import Vehicle.Test.Utils (unitTestCase)
-import Vehicle.Verify.Core (VerifierIdentifier(..))
+import Vehicle.Verify.Core (VerifierIdentifier (..))
 
 commandLineParserTests :: TestTree
 commandLineParserTests = testGroup "CommandLineParser"

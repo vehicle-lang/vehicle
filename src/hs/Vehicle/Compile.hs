@@ -10,32 +10,32 @@ module Vehicle.Compile
   , readSpecification
   ) where
 
-import Control.Monad.IO.Class (MonadIO(..))
 import Control.Exception (IOException, catch)
+import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
-import System.IO (hPutStrLn)
-import System.Exit (exitFailure)
 import System.Directory (makeAbsolute)
+import System.Exit (exitFailure)
+import System.IO (hPutStrLn)
 
-import Vehicle.Compile.Prelude as CompilePrelude
-import Vehicle.Compile.Error
-import Vehicle.Compile.Error.Message
-import Vehicle.Compile.Parse
+import Vehicle.Backend.Agda
+import Vehicle.Backend.LossFunction (LDecl, writeLossFunctionFiles)
+import Vehicle.Backend.LossFunction qualified as LossFunction
+import Vehicle.Backend.Prelude
 import Vehicle.Compile.DependencyAnalysis
 import Vehicle.Compile.Elaborate.External as External (elaborate, elaborateExpr)
+import Vehicle.Compile.Error
+import Vehicle.Compile.Error.Message
+import Vehicle.Compile.ExpandResources
+import Vehicle.Compile.Parse
+import Vehicle.Compile.Prelude as CompilePrelude
+import Vehicle.Compile.Queries (QueryData, compileToQueries)
+import Vehicle.Compile.Resource
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
-import Vehicle.Verify.Verifier (verifiers)
-import Vehicle.Backend.Agda
-import Vehicle.Backend.LossFunction qualified as LossFunction
-import Vehicle.Backend.LossFunction ( LDecl, writeLossFunctionFiles)
-import Vehicle.Compile.Resource
-import Vehicle.Compile.ExpandResources
-import Vehicle.Backend.Prelude
-import Vehicle.Compile.Queries (compileToQueries, QueryData)
-import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Specification
+import Vehicle.Verify.Specification.IO
+import Vehicle.Verify.Verifier (verifiers)
 import Vehicle.Verify.Verifier.Interface
 
 data CompileOptions = CompileOptions

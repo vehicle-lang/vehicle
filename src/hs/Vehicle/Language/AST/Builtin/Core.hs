@@ -17,9 +17,9 @@ module Vehicle.Language.AST.Builtin.Core
   , FunctionPosition(..)
   ) where
 
-import GHC.Generics (Generic)
-import Control.DeepSeq (NFData(..))
+import Control.DeepSeq (NFData (..))
 import Data.Hashable (Hashable (..))
+import GHC.Generics (Generic)
 
 import Vehicle.Prelude
 
@@ -54,7 +54,7 @@ instance Pretty EqualityOp where
     Neq -> "!="
 
 instance Negatable EqualityOp where
-  neg Eq = Neq
+  neg Eq  = Neq
   neg Neq = Eq
 
 equalityOpName :: EqualityOp -> Doc a

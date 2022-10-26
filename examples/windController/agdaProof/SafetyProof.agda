@@ -167,7 +167,7 @@ valid⇒nextState-accurateSensor : ∀ o → ValidObservation o → ∀ s →
 valid⇒nextState-accurateSensor o (ε≤εₘₐₓ , _) s = let s' = nextState o s in begin
   ∣ position s' - sensor s' ∣                     ≡⟨⟩
   ∣ position s' - (position s' + sensorError o) ∣ ≡⟨ cong ∣_∣ (p-[p+q]≡q (position s') (sensorError o)) ⟩
-  ∣ sensorError o ∣                               ≤⟨ ε≤εₘₐₓ ⟩ 
+  ∣ sensorError o ∣                               ≤⟨ ε≤εₘₐₓ ⟩
   maxSensorError                                  ∎
 
 valid+safe⇒nextState-onRoad : ∀ o → ValidObservation o →
@@ -196,7 +196,7 @@ valid+safe⇒nextState-safeDistanceFromEdge o valid@(ε-accurate , _) s safe@(sa
     v  = velocity  s; v' = velocity  s'
     w  = windSpeed s; w' = windSpeed s'
     p  = sensor    s; p' = sensor    s'
-    ε  = y - p;       ε' = sensorError o 
+    ε  = y - p;       ε' = sensorError o
     dw = windShift   o
     dv = controller p' p
     ∣dv+2p'-p∣ = ∣ dv + 2ℚ * p' - p ∣

@@ -3,13 +3,13 @@ module Vehicle.Compile.Type.Resource
   ( checkResourceType
   ) where
 
-import Control.Monad.Except (MonadError(..))
+import Control.Monad.Except (MonadError (..))
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise as Norm
-import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Monad
 
 checkResourceType :: TCM m
                   => ResourceType

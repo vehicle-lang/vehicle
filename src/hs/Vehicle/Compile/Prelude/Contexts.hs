@@ -1,11 +1,11 @@
 
 module Vehicle.Compile.Prelude.Contexts where
 
-import Control.Monad.Reader (MonadReader(..))
+import Control.Monad.Reader (MonadReader (..))
 import Data.Map (Map)
 
-import Vehicle.Prelude
 import Vehicle.Language.AST
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Bound variable context

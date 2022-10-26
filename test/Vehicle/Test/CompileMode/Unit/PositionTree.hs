@@ -3,17 +3,17 @@ module Vehicle.Test.CompileMode.Unit.PositionTree
   ) where
 
 
-import Control.Monad.Except (MonadError(..), ExceptT, runExceptT)
-import Data.Text (Text)
+import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Data.Maybe (listToMaybe)
-import Test.Tasty ( testGroup, TestTree )
-import Test.Tasty.HUnit ( assertBool, testCase, Assertion )
+import Data.Text (Text)
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (Assertion, assertBool, testCase)
 
-import Vehicle.Prelude
-import Vehicle.Language.AST
 import Vehicle.Compile (parseAndTypeCheckExpr)
-import Vehicle.Compile.CoDeBruijnify ( toCoDBExpr )
+import Vehicle.Compile.CoDeBruijnify (toCoDBExpr)
+import Vehicle.Language.AST
 import Vehicle.Language.Print
+import Vehicle.Prelude
 
 import Vehicle.Test.Utils
 
