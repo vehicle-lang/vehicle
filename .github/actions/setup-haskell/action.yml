@@ -36,9 +36,9 @@ runs:
             ${{ steps.setup-haskell.outputs.cabal-store }}
             dist-newstyle
           key: |
-            haskell-cache-${{ runner.arch }}-${{ runner.os }}-${{ inputs.ghc-version }}-${{ hashFiles(inputs.cabal-project-freeze-file) }}
+            haskell-cache-${{ runner.arch }}-${{ runner.os }}-ghc-${{ inputs.ghc-version }}-${{ hashFiles(inputs.cabal-project-freeze-file) }}
           restore-keys: |
-            haskell-cache-${{ runner.arch }}-${{ runner.os }}-${{ inputs.ghc-version }}-
+            haskell-cache-${{ runner.arch }}-${{ runner.os }}-ghc-${{ inputs.ghc-version }}-
 
       - name: Add default Cabal installdir to PATH (Unix)
         if: runner.os == 'Linux' || runner.os == 'macOS'
