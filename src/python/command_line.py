@@ -26,8 +26,8 @@ def call_vehicle_to_generate_loss_json(specification:str, function_name:str) -> 
         args =  ['compile',
                 '--target', 'LossFunction', 
                 '--specification', specification, 
-                '--outputFile', path_to_json,
-                '--property', function_name]
+                '--outputFile', path_to_json]
+                #'--property', function_name]
         call_vehicle(args)
         loss_function_json = load_json(path_to_json)
     return loss_function_json
