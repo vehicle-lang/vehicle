@@ -121,6 +121,11 @@ requireBNFC = do
   cabalInstallIfMissing "happy" "happy" "https://hackage.haskell.org/package/happy" happyVersion
   cabalInstallIfMissing "bnfc" "BNFC" "https://bnfc.digitalgrammars.com/" bnfcVersion
 
+-- stylish-haskell -- a formatter for Haskell code
+requireStylishHaskell :: Action ()
+requireStylishHaskell =
+  cabalInstallIfMissing "stylish-haskell" "stylish-haskell" "https://github.com/haskell/stylish-haskell/blob/main/README.markdown" stylishHaskellVersion
+
 requireAgda :: Action ()
 requireAgda = do
   missingAgda <- not <$> hasExecutable "agda"
