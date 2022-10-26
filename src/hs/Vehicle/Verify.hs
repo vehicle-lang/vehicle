@@ -7,16 +7,16 @@ module Vehicle.Verify
 import Control.Monad (forM)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Text.IO (hPutStrLn)
-import System.Directory (makeAbsolute, findExecutable, doesFileExist)
+import System.Directory (doesFileExist, findExecutable, makeAbsolute)
 import System.Exit (exitFailure)
 import System.IO (stderr)
 
 import Vehicle.Compile
-import Vehicle.Verify.ProofCache (ProofCache(..), writeProofCache)
 import Vehicle.Verify.Core
-import Vehicle.Verify.Verifier.Interface
-import Vehicle.Verify.Verifier (verifiers)
+import Vehicle.Verify.ProofCache (ProofCache (..), writeProofCache)
 import Vehicle.Verify.Specification.IO
+import Vehicle.Verify.Verifier (verifiers)
+import Vehicle.Verify.Verifier.Interface
 
 data VerifyOptions = VerifyOptions
   { specification    :: FilePath

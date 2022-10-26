@@ -1,8 +1,8 @@
 module Vehicle.Language.AST.Relevance where
 
-import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
+import GHC.Generics (Generic)
 
 import Vehicle.Language.AST.Builtin
 
@@ -25,26 +25,26 @@ isIrrelevant x = relevanceOf x == Irrelevant
 
 instance HasRelevance TypeClass where
   relevanceOf = \case
-    HasEq{}           -> Relevant
-    HasOrd{}          -> Relevant
-    HasNot{}          -> Relevant
-    HasAnd{}          -> Relevant
-    HasOr{}           -> Relevant
-    HasImplies{}      -> Relevant
-    HasQuantifier{}   -> Relevant
-    HasAdd{}          -> Relevant
-    HasSub{}          -> Relevant
-    HasMul{}          -> Relevant
-    HasDiv{}          -> Relevant
-    HasNeg{}          -> Relevant
-    HasFold{}         -> Relevant
-    HasQuantifierIn{} -> Relevant
-    HasNatLits{}      -> Relevant
-    HasRatLits{}      -> Relevant
-    HasVecLits{}      -> Relevant
+    HasEq{}                 -> Relevant
+    HasOrd{}                -> Relevant
+    HasNot{}                -> Relevant
+    HasAnd{}                -> Relevant
+    HasOr{}                 -> Relevant
+    HasImplies{}            -> Relevant
+    HasQuantifier{}         -> Relevant
+    HasAdd{}                -> Relevant
+    HasSub{}                -> Relevant
+    HasMul{}                -> Relevant
+    HasDiv{}                -> Relevant
+    HasNeg{}                -> Relevant
+    HasFold{}               -> Relevant
+    HasQuantifierIn{}       -> Relevant
+    HasNatLits{}            -> Relevant
+    HasRatLits{}            -> Relevant
+    HasVecLits{}            -> Relevant
 
-    HasIf{}                    -> Irrelevant
-    AlmostEqualConstraint{}    -> Irrelevant
-    NatInDomainConstraint{}    -> Irrelevant
-    LinearityTypeClass{}       -> Irrelevant
-    PolarityTypeClass{}        -> Irrelevant
+    HasIf{}                 -> Irrelevant
+    AlmostEqualConstraint{} -> Irrelevant
+    NatInDomainConstraint{} -> Irrelevant
+    LinearityTypeClass{}    -> Irrelevant
+    PolarityTypeClass{}     -> Irrelevant

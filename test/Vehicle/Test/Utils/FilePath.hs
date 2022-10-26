@@ -3,8 +3,8 @@ module Vehicle.Test.Utils.FilePath
   , filepathTests
   ) where
 
-import Text.Regex.TDFA
 import Control.Exception (assert)
+import Text.Regex.TDFA
 
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, testCase)

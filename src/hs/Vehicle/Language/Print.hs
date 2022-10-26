@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DerivingVia         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving  #-}
 
 module Vehicle.Language.Print
   ( PrettyUsing(..)
@@ -15,31 +15,31 @@ module Vehicle.Language.Print
   , prettyFriendlyDBClosed
   ) where
 
-import GHC.TypeLits (TypeError, ErrorMessage(..))
-import Data.Text (Text)
-import Data.Text qualified as Text
+import Control.Exception (assert)
+import Data.Bifunctor (bimap)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
-import Data.Bifunctor (bimap)
-import Control.Exception (assert)
+import Data.Text (Text)
+import Data.Text qualified as Text
+import GHC.TypeLits (ErrorMessage (..), TypeError)
 import Prettyprinter (list)
 
-import Vehicle.Internal.Print as Internal (printTree, Print)
-import Vehicle.External.Print as External (printTree, Print)
-import Vehicle.Internal.Abs qualified as BC
 import Vehicle.External.Abs qualified as BF
+import Vehicle.External.Print as External (Print, printTree)
+import Vehicle.Internal.Abs qualified as BC
+import Vehicle.Internal.Print as Internal (Print, printTree)
 
-import Vehicle.Prelude
-import Vehicle.Compile.Simplify
-import Vehicle.Compile.Delaborate.Internal as Internal
+import Vehicle.Compile.CoDeBruijnify
 import Vehicle.Compile.Delaborate.External as External
+import Vehicle.Compile.Delaborate.Internal as Internal
 import Vehicle.Compile.Descope
+import Vehicle.Compile.Prelude hiding (MapList)
+import Vehicle.Compile.Simplify
 import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.MetaMap (MetaMap(..))
+import Vehicle.Compile.Type.MetaMap (MetaMap (..))
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
-import Vehicle.Compile.CoDeBruijnify
-import Vehicle.Compile.Prelude hiding (MapList)
+import Vehicle.Prelude
 
 
 --------------------------------------------------------------------------------

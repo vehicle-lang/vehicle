@@ -2,15 +2,15 @@ module Vehicle.Compile.ExpandResources.Network
   ( getNetworkType
   ) where
 
-import Control.Monad.Except (MonadError(..))
-import Control.Monad.State (MonadState(..))
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.State (MonadState (..))
 import Data.Map qualified as Map
 
-import Vehicle.Language.Print
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Resource
 import Vehicle.Compile.ExpandResources.Core
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource
+import Vehicle.Language.Print
 
 --------------------------------------------------------------------------------
 -- Network typing
@@ -65,8 +65,8 @@ getNetworkType decl networkType = case networkType of
 
     getElementType :: CheckedType -> m NetworkBaseType
     getElementType = \case
-      RatType{}    -> return NetworkRatType
-      _            -> typingError
+      RatType{} -> return NetworkRatType
+      _         -> typingError
 
     typingError :: m a
     typingError = compilerDeveloperError $

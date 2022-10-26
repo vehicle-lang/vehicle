@@ -3,11 +3,11 @@ module Vehicle.Test.CheckMode.Golden
   ) where
 
 import Control.Monad (when)
-import Data.Map qualified as Map ( fromList )
-import Data.Text (Text)
-import System.Directory (removeFile, doesFileExist)
-import System.FilePath ((</>), (<.>))
 import Data.Bifunctor
+import Data.Map qualified as Map (fromList)
+import Data.Text (Text)
+import System.Directory (doesFileExist, removeFile)
+import System.FilePath ((<.>), (</>))
 
 import Test.Tasty
 
@@ -16,10 +16,10 @@ import Vehicle.Check
 import Vehicle.Prelude
 import Vehicle.Resource
 
-import Vehicle.Test.Utils ( goldenFileTest, omitFilePaths, baseTestDir )
-import Vehicle.Verify.Specification.Status
+import Vehicle.Test.Utils (baseTestDir, goldenFileTest, omitFilePaths)
 import Vehicle.Verify.ProofCache
 import Vehicle.Verify.Specification
+import Vehicle.Verify.Specification.Status
 
 tests :: TestTree
 tests = testGroup "GoldenTests"

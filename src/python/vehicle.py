@@ -18,7 +18,7 @@ def generate_loss_function(path_to_spec:str, function_name:str, resources:Dict[s
     loss = LossFunctionTranslation().to_loss_function(resources, json_dict)
 
     return loss(empty_context)
-    
+
 
 def generate_json(path_to_spec:str, function_name:str) -> dict:
     #call vehicle executable on the provided spec file - for now just load a specific json file
@@ -58,7 +58,7 @@ class LossFunctionTranslation:
             return context[contents]
 
         return result_func
-    
+
     def _translate_tensor(self, contents:dict, resources:Dict[str,any]) -> Callable:
         func_losses = [self.to_loss_function(resources, c) for c in contents]
 
@@ -67,7 +67,7 @@ class LossFunctionTranslation:
             return tf.convert_to_tensor(values_tensor)
 
         return result_func
-    
+
     def _translate_negation(self, contents:dict, resources:Dict[str,any]) -> Callable:
         loss = self.to_loss_function(resources, contents)
 
@@ -75,7 +75,7 @@ class LossFunctionTranslation:
             return -loss(context)
 
         return result_func
-    
+
     def _translate_minimum(self, contents:dict, resources:Dict[str,any]) -> Callable:
         loss_1 = self.to_loss_function(resources, contents[0])
         loss_2 = self.to_loss_function(resources, contents[1])
@@ -93,7 +93,7 @@ class LossFunctionTranslation:
             return max(loss_1(context), loss_2(context))
 
         return result_func
-    
+
     def _translate_subtraction(self, contents:dict, resources:Dict[str,any]) -> Callable:
         loss_1 = self.to_loss_function(resources, contents[0])
         loss_2 = self.to_loss_function(resources, contents[1])
@@ -122,7 +122,7 @@ class LossFunctionTranslation:
             return loss_tensor(context)[loss_index(context)]
 
         return result_func
-    
+
     def _translate_network(self, contents:dict, resources:Dict[str,any]) -> Callable:
         model = resources[contents[0]]
         input_losses = [self.to_loss_function(resources, c) for c in contents[1]]
@@ -150,10 +150,10 @@ class LossFunctionTranslation:
                 elif contents[0] == 'Any':
                     min_loss = min(min_loss, body_loss(context))
                 context.pop(0)
-            if contents[0] == 'All': return max_loss 
+            if contents[0] == 'All': return max_loss
             elif contents[0] == 'Any': return min_loss
             else: utils.internal_error_msg('Found a quantifier in the generated json that is not All nor Any.')
-                
+
         return result_func
 
     def _translate_lambda(self, contents:dict, resources:Dict[str,any]) -> Callable:

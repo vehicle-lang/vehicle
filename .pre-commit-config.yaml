@@ -6,6 +6,7 @@ repos:
       - id: check-byte-order-marker
       - id: check-case-conflict
       - id: check-executables-have-shebangs
+      - id: check-json
       - id: check-merge-conflict
       - id: check-shebang-scripts-are-executable
       - id: check-symlinks
@@ -27,5 +28,10 @@ repos:
         language: system
         args: [--inplace]
         types: [haskell]
+
+# Do not run stylish-haskell on pre-commit CI:
 ci:
   skip: [stylish-haskell]
+
+# Exclude golden standard generated JSON files:
+exclude: ^test/Vehicle/Test/CompileMode/Golden/.*/.*\.json$

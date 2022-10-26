@@ -17,14 +17,14 @@ class TestLossFunctionTranslation(unittest.TestCase):
         loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
         self.assertEqual(loss, 0)
 
-    
+
     def test_variable(self):
         resources = {}
         json_dict = self.load_json('test_variable')
         context = [5, 2]
         loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
         self.assertEqual(loss, 2)
-    
+
 
     def test_tensor(self):
         resources = {}
@@ -106,7 +106,7 @@ class TestLossFunctionTranslation(unittest.TestCase):
         self.assertEqual(loss_all, 50)
         self.assertEqual(loss_any, 12)
 
-    
+
     def test_lambda(self):
         resources = {}
         json_dict = self.load_json('test_lambda')
@@ -115,7 +115,7 @@ class TestLossFunctionTranslation(unittest.TestCase):
         self.assertEqual(loss, 3)
         loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)(8)
         self.assertEqual(loss, 8)
-    
+
 
     def test_domain(self):
         resources = {}

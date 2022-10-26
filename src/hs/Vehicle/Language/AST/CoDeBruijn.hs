@@ -17,23 +17,23 @@ module Vehicle.Language.AST.CoDeBruijn
   ) where
 
 import Control.Exception (assert)
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.List.NonEmpty qualified as NonEmpty (unzip, zip, zipWith, toList)
+import Data.Functor.Foldable (Recursive (..))
+import Data.Hashable (Hashable (..))
+import Data.IntMap qualified as IntMap
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty (toList, unzip, zip, zipWith)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.IntMap qualified as IntMap
-import Data.Hashable (Hashable(..))
-import Data.Functor.Foldable (Recursive(..))
 import GHC.Generics (Generic)
 
-import Vehicle.Prelude
-import Vehicle.Language.AST.Core
-import Vehicle.Language.AST.Name
-import Vehicle.Language.AST.DeBruijn hiding (Free, Bound)
-import Vehicle.Language.AST.DeBruijn qualified as DB (DBVar(..))
 import Vehicle.Language.AST.Builtin (Builtin)
+import Vehicle.Language.AST.Core
+import Vehicle.Language.AST.DeBruijn hiding (Bound, Free)
+import Vehicle.Language.AST.DeBruijn qualified as DB (DBVar (..))
+import Vehicle.Language.AST.Name
 import Vehicle.Language.AST.Position
 import Vehicle.Language.AST.Provenance
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- AST Definitions

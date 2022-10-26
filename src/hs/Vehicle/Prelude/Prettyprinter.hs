@@ -6,38 +6,28 @@ module Vehicle.Prelude.Prettyprinter
   )
   where
 
-import Data.Text (Text)
-import Data.IntSet (IntSet)
-import Data.IntSet qualified as IntSet (toAscList)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (toAscList)
-import Data.Set (Set)
-import Data.Set qualified as Set
+import Data.IntSet (IntSet)
+import Data.IntSet qualified as IntSet (toAscList)
 import Data.Map (Map)
 import Data.Map qualified as Map (toAscList)
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.Text (Text)
 import Data.Version (Version, showVersion)
 
-import Prettyprinter ( line', unAnnotate, layoutPretty, defaultLayoutOptions, surround, group)
-import Prettyprinter.Internal (Doc(Annotated))
+import Prettyprinter (defaultLayoutOptions, group, layoutPretty, line',
+                      surround, unAnnotate)
+import Prettyprinter.Internal (Doc (Annotated))
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
 
 -- This stuff we re-export
-import Prettyprinter as CommonPrettyprinter
-  ( Pretty(..)
-  , Doc
-  , (<+>)
-  , parens
-  , braces
-  , concatWith
-  , softline
-  , line
-  , squotes
-  , align
-  , nest
-  , indent
-  , unAnnotate
-  )
+import Prettyprinter as CommonPrettyprinter (Doc, Pretty (..), align, braces,
+                                             concatWith, indent, line, nest,
+                                             parens, softline, squotes,
+                                             unAnnotate, (<+>))
 
 -- * Additions to the prettyprinter library
 

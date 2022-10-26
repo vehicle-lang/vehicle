@@ -1,14 +1,14 @@
 module Vehicle.Compile.Error where
 
 import Control.Exception (IOException)
-import Control.Monad.Except ( MonadError, throwError )
+import Control.Monad.Except (MonadError, throwError)
 import Data.List.NonEmpty (NonEmpty)
 import Prettyprinter (list)
 
+import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Verify.Core (VerifierIdentifier)
-import Vehicle.Backend.Prelude
 
 --------------------------------------------------------------------------------
 -- Compilation monad

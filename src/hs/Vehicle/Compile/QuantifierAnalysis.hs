@@ -3,13 +3,13 @@ module Vehicle.Compile.QuantifierAnalysis
   ( checkQuantifiersAndNegateIfNecessary
   ) where
 
+import Control.Monad.Except (MonadError (..))
 import Data.Maybe (catMaybes)
-import Control.Monad.Except (MonadError(..))
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Core (nfNot)
+import Vehicle.Compile.Prelude
 import Vehicle.Language.Print (prettyFriendly)
-import Vehicle.Compile.Normalise.Core ( nfNot )
 import Vehicle.Verify.Core (VerifierIdentifier)
 
 checkQuantifiersAndNegateIfNecessary :: MonadCompile m

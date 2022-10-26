@@ -2,26 +2,26 @@ module Vehicle.Verify.Verifier.Marabou
   ( marabouVerifier
   ) where
 
-import Control.Monad.IO.Class (MonadIO(..))
-import Data.Text (Text, pack)
-import Data.Text.IO (hPutStrLn)
-import Data.List (findIndex, elemIndex)
-import Data.Text qualified as Text (pack, splitOn, strip, unpack)
+import Control.Monad.IO.Class (MonadIO (..))
+import Data.List (elemIndex, findIndex)
 import Data.Map qualified as Map (lookup)
+import Data.Text (Text, pack)
+import Data.Text qualified as Text (pack, splitOn, strip, unpack)
+import Data.Text.IO (hPutStrLn)
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
-import System.Exit (exitFailure, ExitCode (..))
-import System.Process (readProcessWithExitCode)
+import System.Exit (ExitCode (..), exitFailure)
 import System.IO (stderr)
+import System.Process (readProcessWithExitCode)
 
-import Vehicle.Prelude
-import Vehicle.Verify.Specification.Status
-import Vehicle.Compile.Resource
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Linearity
 import Control.Monad (forM)
-import Vehicle.Verify.Verifier.Interface
+import Vehicle.Compile.Linearity
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource
+import Vehicle.Prelude
 import Vehicle.Verify.Core
+import Vehicle.Verify.Specification.Status
+import Vehicle.Verify.Verifier.Interface
 
 --------------------------------------------------------------------------------
 -- The main interface

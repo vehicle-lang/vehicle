@@ -15,13 +15,13 @@ module Vehicle.Compile.Type.MetaSet
   , isSubsetOf
   ) where
 
-import Prelude hiding (null)
+import Data.Coerce (coerce)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
-import Data.Coerce (coerce)
+import Prelude hiding (null)
 
-import Vehicle.Prelude
 import Vehicle.Language.AST
+import Vehicle.Prelude
 
 newtype MetaSet = MetaSet IntSet
   deriving (Show, Eq, Semigroup, Monoid)

@@ -27,7 +27,7 @@ private
 
 private
   module +-*-Monomorphism = RingMonomorphisms toℚᵘ-isRingMonomorphism-+-*
-  
+
 ------------------------------------------------------------------------
 -- Things to work out how to put in standard library
 
@@ -109,7 +109,7 @@ p+q-q≡p p q = begin-equality
 +-isCommutativeSemigroup : IsCommutativeSemigroup _≡_ _+_
 +-isCommutativeSemigroup = isCommutativeSemigroup
   where open IsCommutativeMonoid +-0-isCommutativeMonoid
-  
+
 +-commutativeSemigroup : CommutativeSemigroup 0ℓ 0ℓ
 +-commutativeSemigroup = record
   { isCommutativeSemigroup = +-isCommutativeSemigroup
@@ -121,4 +121,3 @@ p+q-q≡p p q = begin-equality
   (1ℚ + 1ℚ) * p   ≡⟨ *-distribʳ-+ p 1ℚ 1ℚ ⟩
   1ℚ * p + 1ℚ * p ≡⟨ cong₂ _+_ (*-identityˡ p) (*-identityˡ p) ⟩
   p + p           ∎
-

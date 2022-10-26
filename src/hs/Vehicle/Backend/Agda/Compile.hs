@@ -3,42 +3,43 @@ module Vehicle.Backend.Agda.Compile
   , compileProgToAgda
   ) where
 
-import GHC.Real (numerator, denominator)
-import Control.Monad.Except (MonadError(..))
-import Control.Monad.Reader (MonadReader(..), runReaderT)
-import Data.Maybe (mapMaybe)
-import Data.Text (Text)
-import Data.Text qualified as Text
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Foldable (fold)
-import Data.Set (Set)
-import Data.Set qualified as Set
-import Data.Map qualified as Map (member)
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Map qualified as Map (member)
+import Data.Maybe (mapMaybe)
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.Text (Text)
+import Data.Text qualified as Text
+import GHC.Real (denominator, numerator)
+import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
-import Prettyprinter hiding (hsep, vsep, hcat, vcat)
 
-import Vehicle.Language.Print
-import Vehicle.Compile.Sugar
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Error
-import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
-import Vehicle.Compile.SupplyNames (supplyDBNames)
-import Vehicle.Compile.Descope (runDescopeProg)
-import Vehicle.Backend.Prelude
-import Vehicle.Compile.Normalise (nfTypeClassOp)
-import Vehicle.Compile.Monomorphisation (monomorphise)
-import Vehicle.Language.StandardLibrary.Names (findStdLibFunction, StdLibFunction)
 import Data.List.NonEmpty (NonEmpty)
+import Vehicle.Backend.Prelude
+import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
+import Vehicle.Compile.Descope (runDescopeProg)
+import Vehicle.Compile.Error
+import Vehicle.Compile.Monomorphisation (monomorphise)
+import Vehicle.Compile.Normalise (nfTypeClassOp)
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Sugar
+import Vehicle.Compile.SupplyNames (supplyDBNames)
+import Vehicle.Language.Print
+import Vehicle.Language.StandardLibrary.Names (StdLibFunction,
+                                               findStdLibFunction)
 
 
 --------------------------------------------------------------------------------
 -- Agda-specific options
 
 data AgdaOptions = AgdaOptions
-  { proofCacheLocation  :: Maybe FilePath
-  , outputFile          :: Maybe FilePath
-  , moduleName          :: Maybe String
+  { proofCacheLocation :: Maybe FilePath
+  , outputFile         :: Maybe FilePath
+  , moduleName         :: Maybe String
   }
 
 compileProgToAgda :: MonadCompile m => CheckedProg -> PropertyContext -> AgdaOptions -> m (Doc a)
@@ -590,8 +591,8 @@ compileTypeLevelQuantifier q binders body = do
   cBinders  <- traverse compileBinder binders
   cBody     <- compileExpr body
   quant     <- case q of
-    Forall  -> return "∀"
-    Exists  -> return $ annotateConstant [DataProduct] "∃ λ"
+    Forall -> return "∀"
+    Exists -> return $ annotateConstant [DataProduct] "∃ λ"
   return $ quant <+> hsep cBinders <+> arrow <+> cBody
 
 compileQuantIn :: MonadAgdaCompile m => Quantifier -> OutputExpr -> OutputExpr -> OutputExpr -> m Code
@@ -613,12 +614,12 @@ compileQuantIn q tCont fn cont = do
 
 compileLiteral :: MonadAgdaCompile m => Literal -> m Code
 compileLiteral e = case e of
-  LUnit       -> return $ annotateConstant [DataUnit] "tt"
-  LBool b     -> compileBoolOp0 b
-  LIndex _ n  -> return $ compileIndexLiteral (toInteger n)
-  LNat  n     -> return $ compileNatLiteral   (toInteger n)
-  LInt  i     -> return $ compileIntLiteral   (toInteger i)
-  LRat  p     -> return $ compileRatLiteral   p
+  LUnit      -> return $ annotateConstant [DataUnit] "tt"
+  LBool b    -> compileBoolOp0 b
+  LIndex _ n -> return $ compileIndexLiteral (toInteger n)
+  LNat  n    -> return $ compileNatLiteral   (toInteger n)
+  LInt  i    -> return $ compileIntLiteral   (toInteger i)
+  LRat  p    -> return $ compileRatLiteral   p
 
 compileIndexLiteral :: Integer -> Code
 compileIndexLiteral i = agdaNatToFin [pretty i]

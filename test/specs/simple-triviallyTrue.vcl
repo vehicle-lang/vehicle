@@ -1,4 +1,4 @@
-@network 
+@network
 f : Vector Rat 1 -> Vector Rat 1
 
 @property

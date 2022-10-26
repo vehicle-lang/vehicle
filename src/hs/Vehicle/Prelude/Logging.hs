@@ -22,12 +22,12 @@ module Vehicle.Prelude.Logging
   ) where
 
 import Control.Monad (when)
-import Control.Monad.State (StateT(..), get, modify, evalStateT, mapStateT)
-import Control.Monad.Writer (WriterT(..), tell, runWriterT, mapWriterT)
+import Control.Monad.Except (Except, ExceptT, MonadError (..), mapExceptT)
 import Control.Monad.Identity (Identity, runIdentity)
-import Control.Monad.Except (MonadError(..), Except, ExceptT, mapExceptT)
-import Control.Monad.Reader (ReaderT(..), ask, mapReaderT)
-import Control.Monad.Trans ( MonadIO(..), MonadTrans(..) )
+import Control.Monad.Reader (ReaderT (..), ask, mapReaderT)
+import Control.Monad.State (StateT (..), evalStateT, get, mapStateT, modify)
+import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
+import Control.Monad.Writer (WriterT (..), mapWriterT, runWriterT, tell)
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.Console.ANSI
@@ -64,12 +64,12 @@ setBackgroundColour c s =
 
 severityColour :: Severity -> Maybe Color
 severityColour = \case
-  Warning        -> Just Yellow
-  Debug          -> Just Green
+  Warning -> Just Yellow
+  Debug   -> Just Green
 
 severityPrefix :: Severity -> Text
-severityPrefix Warning        = "Warning: "
-severityPrefix Debug          = ""
+severityPrefix Warning = "Warning: "
+severityPrefix Debug   = ""
 
 type CallDepth = Int
 

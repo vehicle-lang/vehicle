@@ -2,11 +2,11 @@ module Vehicle.Backend.LossFunction.Interact
   ( writeLossFunctionFiles
   ) where
 
-import Vehicle.Backend.Prelude
-import Vehicle.Prelude
-import Vehicle.Backend.LossFunction.Compile
 import Data.Aeson.Encode.Pretty
 import Data.ByteString.Lazy.Char8
+import Vehicle.Backend.LossFunction.Compile
+import Vehicle.Backend.Prelude
+import Vehicle.Prelude
 
 
 encode :: [LDecl] -> String

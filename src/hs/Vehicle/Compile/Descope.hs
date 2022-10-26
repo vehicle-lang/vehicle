@@ -8,12 +8,12 @@ module Vehicle.Compile.Descope
 
   ) where
 
-import Control.Monad.Reader (MonadReader(..), Reader, runReader)
-import Data.Text (pack)
+import Control.Monad.Reader (MonadReader (..), Reader, runReader)
 import Data.Map (Map)
+import Data.Text (pack)
 
-import Vehicle.Compile.Prelude
 import Data.Coerce (coerce)
+import Vehicle.Compile.Prelude
 
 --------------------------------------------------------------------------------
 -- Public interface

@@ -3,14 +3,14 @@ module Vehicle.Compile.Linearity.GaussianElimination
   ( gaussianElimination
   ) where
 
-import Data.Vector.Unboxed qualified as V
 import Data.Maybe (fromMaybe)
+import Data.Vector.Unboxed qualified as V
 
-import Vehicle.Compile.Linearity.Core
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Error
 import Control.Monad (foldM, unless)
 import Data.Bifunctor
+import Vehicle.Compile.Error
+import Vehicle.Compile.Linearity.Core
+import Vehicle.Compile.Prelude
 
 type Row = V.Vector Coefficient
 type Solution = (LinearVar, Row)

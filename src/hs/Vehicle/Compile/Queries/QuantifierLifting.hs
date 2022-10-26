@@ -3,8 +3,8 @@ module Vehicle.Compile.Queries.QuantifierLifting
   ( liftQuantifiers
   ) where
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
 
 --------------------------------------------------------------------------------

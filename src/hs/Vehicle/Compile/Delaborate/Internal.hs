@@ -6,7 +6,7 @@ module Vehicle.Compile.Delaborate.Internal
   ) where
 
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Text (pack, Text)
+import Data.Text (Text, pack)
 
 import Vehicle.Internal.Abs qualified as B
 
@@ -43,9 +43,9 @@ instance Delaborate V.NamedDecl B.Decl where
     V.DefFunction _ n t e -> B.DefFun (delabIdentifier n) <$> delabM t <*> delabM e
     V.DefResource _ r n t -> do
       let constructor = case r of
-            Network           -> B.DeclNetw
-            Dataset           -> B.DeclData
-            Parameter         -> B.DeclParam
+            Network            -> B.DeclNetw
+            Dataset            -> B.DeclData
+            Parameter          -> B.DeclParam
             InferableParameter -> B.DeclImplParam
       constructor (delabIdentifier n) <$> delabM t
 

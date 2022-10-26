@@ -110,4 +110,3 @@ supplyNamesArg :: (Traversable t1, SupplyNames t2, MonadSupply Name f)
                => (binding1 -> f binding2)
                -> t1 (t2 binding1 var) -> f (t1 (t2 binding2 var))
 supplyNamesArg f = traverse (supplyNames f)
-

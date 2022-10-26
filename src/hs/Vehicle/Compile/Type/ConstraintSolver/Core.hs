@@ -1,17 +1,17 @@
 
 module Vehicle.Compile.Type.ConstraintSolver.Core where
 
-import Control.Monad (MonadPlus(..))
-import Control.Monad.Except (MonadError(..))
+import Control.Monad (MonadPlus (..))
+import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (mapMaybe)
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
-import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
+import Vehicle.Language.Print (prettyVerbose)
 
 malformedConstraintError :: MonadCompile m => Constraint -> m a
 malformedConstraintError c = compilerDeveloperError $

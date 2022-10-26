@@ -1,24 +1,24 @@
+{-# LANGUAGE AllowAmbiguousTypes  #-}
 {-# LANGUAGE ApplicativeDo        #-}
 {-# LANGUAGE DeriveAnyClass       #-}
 {-# LANGUAGE DeriveDataTypeable   #-}
 {-# LANGUAGE DeriveFunctor        #-}
 {-# LANGUAGE EmptyCase            #-}
 {-# LANGUAGE EmptyDataDeriving    #-}
-{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE PatternSynonyms      #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Vehicle.Test.CompileMode.Generative.Generator where
 
 import Control.Enumerable
-import Control.Search
 import Control.Monad.Reader (Reader, ask, runReader, withReader)
+import Control.Search
 import Data.Bifunctor
 import Data.Bifunctor.TH
 import Data.Coolean
@@ -58,8 +58,8 @@ fromZ :: Z -> a
 fromZ n = case n of {} -- No inhabitants, no cases.
 
 fromS :: a -> (n -> a) -> (S n -> a)
-fromS fz fs FZ      = fz
-fromS fz fs (FS n)  = fs n
+fromS fz fs FZ     = fz
+fromS fz fs (FS n) = fs n
 
 instance Enumerable Z where
   enumerate = share . aconcat $ []
@@ -167,11 +167,11 @@ extTySub s = fromS (TyVar FZ) (fmap FS . s)
 
 appTySub :: TySub ty ty' -> Type ty -> Type ty'
 appTySub s TyNat          = TyNat
-appTySub s (a :-> b)       = appTySub s a :-> appTySub s b
-appTySub s (TyForall k a)  = TyForall k (appTySub (extTySub s) a)
-appTySub s (TyVar i)       = s i
-appTySub s (TyLam a)       = TyLam (appTySub (extTySub s) a)
-appTySub s (TyApp a b k)   = TyApp (appTySub s a) (appTySub s b) k
+appTySub s (a :-> b)      = appTySub s a :-> appTySub s b
+appTySub s (TyForall k a) = TyForall k (appTySub (extTySub s) a)
+appTySub s (TyVar i)      = s i
+appTySub s (TyLam a)      = TyLam (appTySub (extTySub s) a)
+appTySub s (TyApp a b k)  = TyApp (appTySub s a) (appTySub s b) k
 
 pattern TyRed a b k = TyApp (TyLam a) b k
 

@@ -1,24 +1,24 @@
 module Vehicle.Test.VerifyMode.Golden where
 
 import Control.Monad (when)
-import Data.Map qualified as Map ( fromList )
+import Data.Map qualified as Map (fromList)
 import Data.Text (Text)
-import System.Directory (removeFile, doesFileExist, findExecutable)
-import System.FilePath ((</>), (<.>))
+import System.Directory (doesFileExist, findExecutable, removeFile)
+import System.FilePath ((<.>), (</>))
 import System.Info (os)
 
 import Test.Tasty
 
 import Vehicle
+import Vehicle.Backend.Prelude
+import Vehicle.Prelude
+import Vehicle.Resource
 import Vehicle.Verify
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Interface
-import Vehicle.Prelude
-import Vehicle.Resource
-import Vehicle.Backend.Prelude
 
-import Vehicle.Test.Utils.Golden ( goldenFileTest, omitFilePaths )
 import Vehicle.Test.Utils
+import Vehicle.Test.Utils.Golden (goldenFileTest, omitFilePaths)
 
 --------------------------------------------------------------------------------
 -- Tests

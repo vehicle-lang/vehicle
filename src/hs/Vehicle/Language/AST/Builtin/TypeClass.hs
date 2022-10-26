@@ -1,14 +1,14 @@
 
 module Vehicle.Language.AST.Builtin.TypeClass where
 
-import GHC.Generics (Generic)
-import Control.DeepSeq (NFData(..))
+import Control.DeepSeq (NFData (..))
 import Data.Hashable (Hashable (..))
+import GHC.Generics (Generic)
 
-import Vehicle.Prelude
 import Vehicle.Language.AST.Builtin.Core
 import Vehicle.Language.AST.Builtin.Linearity (LinearityTypeClass)
 import Vehicle.Language.AST.Builtin.Polarity (PolarityTypeClass)
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Type classes
@@ -59,31 +59,31 @@ instance Hashable TypeClass
 
 instance Pretty TypeClass where
   pretty = \case
-    HasEq{}            -> "HasEq"
-    HasOrd{}           -> "HasOrd"
-    HasNot             -> "HasNot"
-    HasAnd             -> "HasAnd"
-    HasOr              -> "HasOr"
-    HasImplies         -> "HasImplies"
-    HasQuantifier q    -> "HasQuantifier" <+> pretty q
-    HasAdd             -> "HasAdd"
-    HasSub             -> "HasSub"
-    HasMul             -> "HasMul"
-    HasDiv             -> "HasDiv"
-    HasNeg             -> "HasNeg"
-    HasFold            -> "HasFold"
-    HasQuantifierIn q  -> "HasQuantifierIn" <+> pretty q
-    HasIf              -> "HasIf"
+    HasEq{}                 -> "HasEq"
+    HasOrd{}                -> "HasOrd"
+    HasNot                  -> "HasNot"
+    HasAnd                  -> "HasAnd"
+    HasOr                   -> "HasOr"
+    HasImplies              -> "HasImplies"
+    HasQuantifier q         -> "HasQuantifier" <+> pretty q
+    HasAdd                  -> "HasAdd"
+    HasSub                  -> "HasSub"
+    HasMul                  -> "HasMul"
+    HasDiv                  -> "HasDiv"
+    HasNeg                  -> "HasNeg"
+    HasFold                 -> "HasFold"
+    HasQuantifierIn q       -> "HasQuantifierIn" <+> pretty q
+    HasIf                   -> "HasIf"
 
-    HasNatLits n       -> "HasNatLiterals[" <> pretty n <> "]"
-    HasRatLits         -> "HasRatLiterals"
-    HasVecLits n       -> "HasVecLiterals[" <>  pretty n <> "]"
+    HasNatLits n            -> "HasNatLiterals[" <> pretty n <> "]"
+    HasRatLits              -> "HasRatLiterals"
+    HasVecLits n            -> "HasVecLiterals[" <>  pretty n <> "]"
 
     AlmostEqualConstraint{} -> "AlmostEqualConstraint"
     NatInDomainConstraint{} -> "NatInDomainConstraint"
 
-    LinearityTypeClass tc -> pretty tc
-    PolarityTypeClass  tc -> pretty tc
+    LinearityTypeClass tc   -> pretty tc
+    PolarityTypeClass  tc   -> pretty tc
 
 
 -- Builtin operations for type-classes
@@ -118,26 +118,26 @@ instance Hashable TypeClassOp
 
 instance Pretty TypeClassOp where
   pretty = \case
-    NotTC   -> "not"
-    AndTC   -> "and"
-    OrTC    -> "or"
-    ImpliesTC -> "=>"
+    NotTC            -> "not"
+    AndTC            -> "and"
+    OrTC             -> "or"
+    ImpliesTC        -> "=>"
 
-    NegTC   -> "-"
-    AddTC   -> "+"
-    SubTC   -> "-"
-    MulTC   -> "*"
-    DivTC   -> "/"
+    NegTC            -> "-"
+    AddTC            -> "+"
+    SubTC            -> "-"
+    MulTC            -> "*"
+    DivTC            -> "/"
 
-    FromNatTC n -> "fromNat[" <> pretty n <> "]"
-    FromRatTC   -> "fromRat"
-    FromVecTC n -> "fromVec[" <> pretty n <> "]"
+    FromNatTC n      -> "fromNat[" <> pretty n <> "]"
+    FromRatTC        -> "fromRat"
+    FromVecTC n      -> "fromVec[" <> pretty n <> "]"
 
-    EqualsTC op -> pretty op
-    OrderTC  op -> pretty op
+    EqualsTC op      -> pretty op
+    OrderTC  op      -> pretty op
 
-    MapTC  -> "map"
-    FoldTC -> "fold"
+    MapTC            -> "map"
+    FoldTC           -> "fold"
 
     QuantifierTC   q -> pretty q
     QuantifierInTC q -> pretty q <> "In"

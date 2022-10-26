@@ -5,9 +5,9 @@ module Vehicle.Test.CompileMode
 
 import Test.Tasty
 
+import Vehicle.Test.CompileMode.Error qualified as Error (functionalityTests)
 import Vehicle.Test.CompileMode.Golden qualified as Golden
 import Vehicle.Test.CompileMode.Unit qualified as Unit (functionalityTests)
-import Vehicle.Test.CompileMode.Error qualified as Error (functionalityTests)
 import Vehicle.Test.Utils
 
 functionalityTests :: MonadTest m => m TestTree

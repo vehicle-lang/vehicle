@@ -3,8 +3,8 @@ module Vehicle.Prelude.DeveloperError
   ( developerError
   ) where
 
-import Data.Text
 import Control.Exception (Exception, throw)
+import Data.Text
 import GHC.Stack (HasCallStack)
 
 import Vehicle.Prelude.Prettyprinter

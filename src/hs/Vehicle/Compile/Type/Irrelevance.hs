@@ -5,9 +5,9 @@ module Vehicle.Compile.Type.Irrelevance
 
 import Data.List.NonEmpty qualified as NonEmpty (filter)
 
+import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Error (MonadCompile)
 
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCode :: (MonadCompile m, RemoveIrrelevantCode a)

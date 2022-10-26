@@ -3,17 +3,17 @@ module Vehicle.Compile.Type.Auxiliary
   , addFunctionAuxiliaryInputOutputConstraints
   ) where
 
+import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Control.Monad.State (MonadState(..), evalStateT, modify)
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error (compilerDeveloperError)
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.MetaMap (MetaMap (..))
+import Vehicle.Compile.Type.MetaMap qualified as MetaMap
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.WeakHeadNormalForm (whnf)
 import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Type.MetaMap (MetaMap(..))
-import Vehicle.Compile.Type.MetaMap qualified as MetaMap
 
 -------------------------------------------------------------------------------
 -- Utilities for traversing auxiliary arguments.

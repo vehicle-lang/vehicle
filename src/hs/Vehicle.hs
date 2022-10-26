@@ -7,17 +7,17 @@ module Vehicle
   ) where
 
 import Control.Exception (bracket)
-import Control.Monad (when,)
+import Control.Monad (when)
+import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Exit (exitSuccess)
-import System.Directory (doesFileExist, createDirectoryIfMissing)
 import System.FilePath (takeDirectory)
 import System.IO
 
-import Vehicle.Prelude
-import Vehicle.Compile (CompileOptions(..), compile)
-import Vehicle.Check (CheckOptions(..), check)
-import Vehicle.Verify (VerifyOptions(..), verify)
+import Vehicle.Check (CheckOptions (..), check)
+import Vehicle.Compile (CompileOptions (..), compile)
 import Vehicle.Export (ExportOptions, export)
+import Vehicle.Prelude
+import Vehicle.Verify (VerifyOptions (..), verify)
 
 --------------------------------------------------------------------------------
 -- Main command
@@ -28,11 +28,11 @@ data Options = Options
   } deriving (Eq, Show)
 
 data GlobalOptions = GlobalOptions
-  { version       :: Bool
-  , outFile       :: Maybe FilePath
-  , errFile       :: Maybe FilePath
-  , logFile       :: Maybe FilePath
-  , loggingLevel  :: LoggingLevel
+  { version      :: Bool
+  , outFile      :: Maybe FilePath
+  , errFile      :: Maybe FilePath
+  , logFile      :: Maybe FilePath
+  , loggingLevel :: LoggingLevel
   } deriving (Eq, Show)
 
 defaultGlobalOptions :: GlobalOptions
@@ -105,8 +105,8 @@ closeHandles (outFile, errFile, logFile) VehicleIOSettings{..} = do
     Just _  -> hClose errorHandle
 
   case logFile of
-    Nothing  -> return ()
-    Just _   -> hClose logHandle
+    Nothing -> return ()
+    Just _  -> hClose logHandle
 
 openHandle :: FilePath -> IO Handle
 openHandle file = do

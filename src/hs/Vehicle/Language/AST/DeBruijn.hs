@@ -20,18 +20,19 @@ module Vehicle.Language.AST.DeBruijn
   , traverseBoundVars
   ) where
 
-import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
-import Control.Monad.Reader (MonadReader, ask, runReader, runReaderT, local, lift, ReaderT)
 import Control.Monad.Identity
-import Data.Hashable (Hashable(..))
-import Data.Tuple (swap)
+import Control.Monad.Reader (MonadReader, ReaderT, ask, lift, local, runReader,
+                             runReaderT)
+import Data.Hashable (Hashable (..))
 import Data.IntMap (IntMap)
-import qualified Data.IntMap as IM
+import Data.IntMap qualified as IM
+import Data.Tuple (swap)
+import GHC.Generics (Generic)
 
-import Vehicle.Prelude
 import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.Provenance
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Definitions

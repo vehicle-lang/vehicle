@@ -43,7 +43,7 @@ record HasAdd {a} (A : Set a) : Set a where
 open HasAdd {{...}} public
 
 instance
-  addNat : HasAdd ℕ 
+  addNat : HasAdd ℕ
   addNat = hasAdd ℕ._+_
 
   addRat : HasAdd ℚ

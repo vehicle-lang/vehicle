@@ -4,22 +4,22 @@ module Vehicle.Compile.Type.Bidirectional
   , inferExpr
   ) where
 
-import Prelude hiding (pi)
 import Control.Monad (when)
-import Control.Monad.Except (MonadError(..))
-import Control.Monad.Reader (MonadReader(..))
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (MonadReader (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Monoid (Endo(..), appEndo)
+import Data.Monoid (Endo (..), appEndo)
 import Data.Text (pack)
+import Prelude hiding (pi)
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Language.DSL
-import Vehicle.Language.Print
-import Vehicle.Compile.Type.WeakHeadNormalForm
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Builtin
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Builtin
+import Vehicle.Compile.Type.WeakHeadNormalForm
+import Vehicle.Language.DSL
+import Vehicle.Language.Print
 
 --------------------------------------------------------------------------------
 -- Bidirectional type-checking

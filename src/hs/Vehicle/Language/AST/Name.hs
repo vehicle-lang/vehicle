@@ -2,8 +2,8 @@ module Vehicle.Language.AST.Name where
 
 import Data.Text (pack)
 
-import Vehicle.Prelude
 import Vehicle.Language.AST.Core
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Definition

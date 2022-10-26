@@ -5,14 +5,14 @@ module Vehicle.Prelude.IO
   , outputErrorAndQuit
   ) where
 
-import System.IO
-import Data.Text.IO as T (hPutStrLn)
-import Control.Monad.Trans (MonadIO(..))
 import Control.Monad (forM_)
+import Control.Monad.Trans (MonadIO (..))
+import Data.Text.IO as T (hPutStrLn)
+import System.IO
 
+import System.Exit (exitFailure)
 import Vehicle.Prelude.Logging
 import Vehicle.Prelude.Prettyprinter
-import System.Exit (exitFailure)
 
 data VehicleIOSettings = VehicleIOSettings
   { errorHandle  :: Handle

@@ -2,21 +2,21 @@ module Vehicle.Compile.LetInsertion
   ( insertLets
   ) where
 
-import Control.Monad.Reader (MonadReader(..), runReaderT, asks)
-import Data.List qualified as List
-import Data.List.NonEmpty qualified as NonEmpty
-import Data.Bifunctor (Bifunctor(..))
-import Data.Maybe (mapMaybe, listToMaybe)
+import Control.Monad.Reader (MonadReader (..), asks, runReaderT)
+import Data.Bifunctor (Bifunctor (..))
+import Data.IntMap qualified as IntMap
 import Data.LinkedHashMap (LinkedHashMap)
 import Data.LinkedHashMap qualified as Map
-import Data.IntMap qualified as IntMap
+import Data.List qualified as List
+import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (listToMaybe, mapMaybe)
 import Prettyprinter (list)
 
-import Vehicle.Language.Print
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.CoDeBruijnify
-import Vehicle.Compile.AlphaEquivalence
 import Data.Hashable (Hashable (hash))
+import Vehicle.Compile.AlphaEquivalence
+import Vehicle.Compile.CoDeBruijnify
+import Vehicle.Compile.Prelude
+import Vehicle.Language.Print
 
 -- | Let-lifts any sub-expressions that matches the provided filter
 -- to the highest possible level. Filter takes in the expression

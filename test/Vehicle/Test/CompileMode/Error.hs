@@ -2,28 +2,28 @@ module Vehicle.Test.CompileMode.Error
   ( functionalityTests
   ) where
 
+import Control.Exception (Exception, SomeException, catch, throwIO)
+import Control.Monad.RWS.Lazy (when)
+import Data.Bifunctor (first)
+import Data.Functor ((<&>))
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Data.Bifunctor (first)
-import Data.Functor ((<&>))
-import Data.Map ( Map )
-import Data.Map qualified as Map
-import System.Exit (exitFailure, ExitCode)
-import System.FilePath (takeFileName, splitPath, (<.>), (</>), takeBaseName)
-import System.Directory (removeFile, removeDirectory)
-import System.IO.Error (isDoesNotExistError)
+import System.Directory (removeDirectory, removeFile)
+import System.Exit (ExitCode, exitFailure)
+import System.FilePath (splitPath, takeBaseName, takeFileName, (<.>), (</>))
 import System.IO (stderr)
-import Control.Exception ( catch, throwIO, SomeException, Exception )
-import Data.Maybe (fromMaybe)
-import Control.Monad.RWS.Lazy (when)
+import System.IO.Error (isDoesNotExistError)
 import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 
 import Vehicle
-import Vehicle.Prelude
-import Vehicle.Compile
 import Vehicle.Backend.Prelude
+import Vehicle.Compile
+import Vehicle.Prelude
 
 import Vehicle.Test.Utils
 

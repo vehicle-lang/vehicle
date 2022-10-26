@@ -1,6 +1,6 @@
 module Vehicle.Compile.Prelude.Patterns where
 
-import Data.List.NonEmpty (NonEmpty(..), toList)
+import Data.List.NonEmpty (NonEmpty (..), toList)
 
 import Vehicle.Language.AST
 import Vehicle.Language.StandardLibrary.Names

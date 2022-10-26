@@ -1,7 +1,7 @@
 module Vehicle.Prelude.Token where
 
-import Data.Function (on)
 import Data.Coerce (Coercible, coerce)
+import Data.Function (on)
 import Data.Text (Text)
 import Data.Text qualified as T
 

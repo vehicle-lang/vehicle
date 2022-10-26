@@ -4,10 +4,10 @@ module Vehicle.Compile.AlphaEquivalence
   ( AlphaEquivalence(..)
   ) where
 
-import Data.Hashable (Hashable(..))
+import Data.Hashable (Hashable (..))
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.CoDeBruijnify
+import Vehicle.Compile.Prelude
 
 instance Hashable DBArg where
 

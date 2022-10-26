@@ -5,17 +5,18 @@ module Vehicle.Compile.Linearity
   ) where
 
 import Control.Monad (foldM)
+import Data.Bifunctor
 import Data.List (partition)
 import Data.Set qualified as Set (difference, fromList)
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
-import Data.Bifunctor
 
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Linearity.Core as X
+import Vehicle.Compile.Linearity.FourierMotzkinElimination (fourierMotzkinElimination,
+                                                            reconstructFMUserVar)
 import Vehicle.Compile.Linearity.GaussianElimination (gaussianElimination)
-import Vehicle.Compile.Linearity.FourierMotzkinElimination (fourierMotzkinElimination, reconstructFMUserVar)
+import Vehicle.Compile.Prelude
 
 solveForUserVariables :: MonadCompile m
                       => Int

@@ -2,23 +2,23 @@ module Vehicle.CommandLine
  ( commandLineOptionsParserInfo
  ) where
 
-import Data.Text (Text)
-import Data.Text qualified as Text
+import Data.List (intercalate)
 import Data.Map (Map)
 import Data.Map qualified as Map (fromList)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList)
-import Data.List (intercalate)
+import Data.Text (Text)
+import Data.Text qualified as Text
 
 import Options.Applicative
 
-import Vehicle (Options(..), ModeOptions(..), GlobalOptions (..))
-import Vehicle.Prelude (enumerate, LoggingLevel, defaultLoggingLevel)
-import Vehicle.Check (CheckOptions(..))
-import Vehicle.Compile (CompileOptions(..))
-import Vehicle.Verify (VerifyOptions(..), VerifierIdentifier)
-import Vehicle.Export (ExportOptions(..))
-import Vehicle.Backend.Prelude (ITP, Backend (..))
+import Vehicle (GlobalOptions (..), ModeOptions (..), Options (..))
+import Vehicle.Backend.Prelude (Backend (..), ITP)
+import Vehicle.Check (CheckOptions (..))
+import Vehicle.Compile (CompileOptions (..))
+import Vehicle.Export (ExportOptions (..))
+import Vehicle.Prelude (LoggingLevel, defaultLoggingLevel, enumerate)
+import Vehicle.Verify (VerifierIdentifier, VerifyOptions (..))
 
 --------------------------------------------------------------------------------
 -- List of all options

@@ -19,12 +19,12 @@ module Vehicle.Compile.Linearity.Core
   , prettyAssertions
   ) where
 
-import Data.Vector.Unboxed ( Vector )
-import Data.Vector.Unboxed qualified as Vector
-import Data.Text (Text)
-import Data.Map qualified as Map
 import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import Data.Vector.Unboxed (Vector)
+import Data.Vector.Unboxed qualified as Vector
 
 import Vehicle.Compile.Prelude
 
@@ -142,5 +142,3 @@ data VarReconstruction
   | RecInequalities [Assertion] [Assertion]
 
 type UserVarReconstructionInfo = [(LinearVar, VarReconstruction)]
-
-

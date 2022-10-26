@@ -6,11 +6,11 @@ module Vehicle.Compile.Delaborate.External
 where
 
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Text (pack, Text)
+import Data.Text (Text, pack)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Sugar
 import Vehicle.External.Abs qualified as B
 import Vehicle.Language.AST qualified as V
-import Vehicle.Compile.Sugar
 
 --------------------------------------------------------------------------------
 -- Conversion to BNFC AST
@@ -202,55 +202,55 @@ delabIdentifier :: V.Identifier -> B.Name
 delabIdentifier (V.Identifier n) = mkToken B.Name n
 
 delabApp :: B.Expr -> [B.Arg] -> B.Expr
-delabApp fun [] = fun
+delabApp fun []           = fun
 delabApp fun (arg : args) = B.App (delabApp fun args) arg
 
 delabUniverse :: V.Universe -> B.Expr
 delabUniverse = \case
-  TypeUniv l -> B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
-  PolarityUniv -> auxiliaryTypeError (pretty PolarityUniv)
+  TypeUniv l    -> B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
+  PolarityUniv  -> auxiliaryTypeError (pretty PolarityUniv)
   LinearityUniv -> auxiliaryTypeError (pretty LinearityUniv)
 
 delabBuiltin :: V.Builtin -> [B.Expr] -> B.Expr
 delabBuiltin fun args = case fun of
-  V.Unit   -> B.Unit tokUnit
-  V.Bool   -> B.Bool tokBool
-  V.Nat    -> B.Nat  tokNat
-  V.Int    -> B.Int  tokInt
-  V.Rat    -> B.Rat  tokRat
-  V.List   -> delabOp1 B.List tokList args
-  V.Vector -> delabOp2 B.Vector tokVector args
-  V.Tensor -> delabOp2 B.Tensor tokTensor args
-  V.Index  -> delabOp1 B.Index tokIndex args
+  V.Unit           -> B.Unit tokUnit
+  V.Bool           -> B.Bool tokBool
+  V.Nat            -> B.Nat  tokNat
+  V.Int            -> B.Int  tokInt
+  V.Rat            -> B.Rat  tokRat
+  V.List           -> delabOp1 B.List tokList args
+  V.Vector         -> delabOp2 B.Vector tokVector args
+  V.Tensor         -> delabOp2 B.Tensor tokTensor args
+  V.Index          -> delabOp1 B.Index tokIndex args
 
-  V.And     -> delabTypeClassOp V.AndTC args
-  V.Or      -> delabTypeClassOp V.OrTC args
-  V.Implies -> delabTypeClassOp V.ImpliesTC args
-  V.Not     -> delabTypeClassOp V.NotTC args
-  V.If      -> delabIf args
+  V.And            -> delabTypeClassOp V.AndTC args
+  V.Or             -> delabTypeClassOp V.OrTC args
+  V.Implies        -> delabTypeClassOp V.ImpliesTC args
+  V.Not            -> delabTypeClassOp V.NotTC args
+  V.If             -> delabIf args
 
-  V.FromNat{} -> primOpError fun
-  V.FromRat{} -> primOpError fun
-  V.FromVec{} -> primOpError fun
+  V.FromNat{}      -> primOpError fun
+  V.FromRat{}      -> primOpError fun
+  V.FromVec{}      -> primOpError fun
 
-  V.Neg _ -> delabTypeClassOp V.NegTC args
-  V.Add _ -> delabTypeClassOp V.AddTC args
-  V.Sub _ -> delabTypeClassOp V.SubTC args
-  V.Mul _ -> delabTypeClassOp V.MulTC args
-  V.Div _ -> delabTypeClassOp V.DivTC args
+  V.Neg _          -> delabTypeClassOp V.NegTC args
+  V.Add _          -> delabTypeClassOp V.AddTC args
+  V.Sub _          -> delabTypeClassOp V.SubTC args
+  V.Mul _          -> delabTypeClassOp V.MulTC args
+  V.Div _          -> delabTypeClassOp V.DivTC args
 
-  V.Equals _ op -> delabTypeClassOp (V.EqualsTC op) args
-  V.Order _ op  -> delabTypeClassOp (V.OrderTC op) args
+  V.Equals _ op    -> delabTypeClassOp (V.EqualsTC op) args
+  V.Order _ op     -> delabTypeClassOp (V.OrderTC op) args
 
-  V.Fold _  -> primOpError fun
-  V.Map  _  -> primOpError fun
-  V.Nil     -> B.Nil tokNil
-  V.Cons    -> delabInfixOp2 B.Cons tokCons args
-  V.At      -> delabInfixOp2 B.At tokAt args
-  V.Foreach -> delabForeach args
+  V.Fold _         -> primOpError fun
+  V.Map  _         -> primOpError fun
+  V.Nil            -> B.Nil tokNil
+  V.Cons           -> delabInfixOp2 B.Cons tokCons args
+  V.At             -> delabInfixOp2 B.At tokAt args
+  V.Foreach        -> delabForeach args
 
-  V.Polarity{}  -> auxiliaryTypeError (pretty fun)
-  V.Linearity{} -> auxiliaryTypeError (pretty fun)
+  V.Polarity{}     -> auxiliaryTypeError (pretty fun)
+  V.Linearity{}    -> auxiliaryTypeError (pretty fun)
 
   V.TypeClass   tc -> B.Var (delabSymbol (layoutAsText $ pretty tc))
   V.TypeClassOp tc -> delabTypeClassOp tc args
@@ -273,8 +273,8 @@ delabTypeClassOp op args = case op of
   V.DivTC -> delabInfixOp2 B.Div tokDiv args
 
   V.EqualsTC eq -> case eq of
-    V.Eq   -> delabInfixOp2 B.Eq tokEq args
-    V.Neq  -> delabInfixOp2 B.Neq tokNeq args
+    V.Eq  -> delabInfixOp2 B.Eq tokEq args
+    V.Neq -> delabInfixOp2 B.Neq tokNeq args
   V.OrderTC ord -> case ord of
     V.Le -> delabInfixOp2 B.Le tokLe args
     V.Lt -> delabInfixOp2 B.Lt tokLt args
@@ -289,23 +289,23 @@ delabTypeClassOp op args = case op of
 
 delabOp1 :: IsToken token => (token -> B.Expr -> B.Expr) -> token -> [B.Expr] -> B.Expr
 delabOp1 op tk [arg] = op tk arg
-delabOp1 _ tk args = argsError (tkSymbol tk) 1 args
+delabOp1 _ tk args   = argsError (tkSymbol tk) 1 args
 
 delabOp2 :: IsToken token => (token -> B.Expr -> B.Expr -> B.Expr) -> token -> [B.Expr] -> B.Expr
 delabOp2 op tk [arg1, arg2] = op tk arg1 arg2
-delabOp2 _ tk args = argsError (tkSymbol tk) 2 args
+delabOp2 _ tk args          = argsError (tkSymbol tk) 2 args
 
 delabOp3 :: IsToken token => (token -> B.Expr -> B.Expr -> B.Expr -> B.Expr) -> token -> [B.Expr] -> B.Expr
 delabOp3 op tk [arg1, arg2, arg3] = op tk arg1 arg2 arg3
-delabOp3 _ tk args = argsError (tkSymbol tk) 3 args
+delabOp3 _ tk args                = argsError (tkSymbol tk) 3 args
 
 delabInfixOp2 :: IsToken token => (B.Expr -> token -> B.Expr -> B.Expr) -> token -> [B.Expr] -> B.Expr
 delabInfixOp2 op tk [arg1, arg2] = op arg1 tk arg2
-delabInfixOp2 _ tk args = argsError (tkSymbol tk) 2 args
+delabInfixOp2 _ tk args          = argsError (tkSymbol tk) 2 args
 
 delabIf :: [B.Expr] -> B.Expr
 delabIf [arg1, arg2, arg3] = B.If tokIf arg1 tokThen arg2 tokElse arg3
-delabIf args = argsError "if" 3 args
+delabIf args               = argsError "if" 3 args
 
 delabQuantifier :: V.Quantifier -> [B.Expr] -> B.Expr
 delabQuantifier V.Forall [B.Lam _ binders _ body] = B.Forall tokForall binders tokDot body
@@ -321,7 +321,7 @@ delabQuantifierIn V.Exists args = argsError (tkSymbol tokExists) 2 args
 
 delabForeach :: [B.Expr] -> B.Expr
 delabForeach [B.Lam _ binders _ body] = B.Foreach tokForeach binders tokDot body
-delabForeach args = argsError (tkSymbol tokForall) 1 args
+delabForeach args                     = argsError (tkSymbol tokForall) 1 args
 
 argsError :: Text -> Int -> [B.Expr] -> a
 argsError s n args =

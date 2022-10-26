@@ -3,20 +3,20 @@ module Vehicle.Compile.ExpandResources
   ( expandResources
   ) where
 
-import Control.Monad.Reader
-import Control.Monad.Writer
 import Control.Monad.Except
+import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Writer
+import Data.Map qualified as Map (insert, keysSet, lookup, singleton)
+import Data.Maybe (catMaybes)
 import Data.Set qualified as Set (singleton)
-import Data.Map qualified as Map (singleton, keysSet, insert, lookup)
-import Data.Maybe ( catMaybes )
 
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.ExpandResources.Dataset
-import Vehicle.Compile.ExpandResources.Parameter
-import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Core
+import Vehicle.Compile.ExpandResources.Dataset
+import Vehicle.Compile.ExpandResources.Network
+import Vehicle.Compile.ExpandResources.Parameter
+import Vehicle.Compile.Prelude
 
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Resource

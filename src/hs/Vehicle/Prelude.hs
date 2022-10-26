@@ -29,29 +29,29 @@ module Vehicle.Prelude
   , enumerate
   ) where
 
-import Control.Monad.IO.Class
 import Control.Exception (catch, throwIO)
+import Control.Monad.IO.Class
+import Data.Graph
+import Data.IntMap (IntMap, updateLookupWithKey)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Range
+import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Graph
 import Data.Version (Version)
-import Data.IntMap (IntMap, updateLookupWithKey)
-import Data.Set (Set)
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Numeric
 import System.Directory (removeFile)
-import System.IO.Error (isDoesNotExistError)
-import System.IO
 import System.Exit
+import System.IO
+import System.IO.Error (isDoesNotExistError)
 
-import Vehicle.Prelude.Token as X
-import Vehicle.Prelude.Prettyprinter as X
-import Vehicle.Prelude.Logging as X
-import Vehicle.Prelude.IO as X
-import Vehicle.Prelude.Supply as X
 import Vehicle.Prelude.DeveloperError as X
+import Vehicle.Prelude.IO as X
+import Vehicle.Prelude.Logging as X
+import Vehicle.Prelude.Prettyprinter as X
+import Vehicle.Prelude.Supply as X
+import Vehicle.Prelude.Token as X
 
 import Paths_vehicle qualified as Cabal (version)
 
@@ -78,15 +78,15 @@ infix 1 |->
 -- |Attempts to extract the first element from a bound
 boundStart :: Bound a -> Maybe a
 boundStart (Bound v Inclusive)= Just v
-boundStart (Bound _v Exclusive)= Nothing
+boundStart (Bound _v Exclusive)=Nothing
 
 -- |Attempts to extract the first element in a range
 rangeStart :: Range a -> Maybe a
-rangeStart (SingletonRange a)          = Just a
-rangeStart (SpanRange lb _ub)          = boundStart lb
-rangeStart (LowerBoundRange b)         = boundStart b
-rangeStart (UpperBoundRange _)         = Nothing
-rangeStart InfiniteRange               = Nothing
+rangeStart (SingletonRange a)  = Just a
+rangeStart (SpanRange lb _ub)  = boundStart lb
+rangeStart (LowerBoundRange b) = boundStart b
+rangeStart (UpperBoundRange _) = Nothing
+rangeStart InfiniteRange       = Nothing
 
 (!?) :: Eq a => [(a,b)] -> a -> Maybe b
 [] !? _ = Nothing
@@ -140,7 +140,7 @@ deleteAndGet = updateLookupWithKey (\_ _ -> Nothing)
 -- Base 4.16 once we upgrade
 prependList :: [a] -> NonEmpty a -> NonEmpty a
 prependList ls ne = case ls of
-  [] -> ne
+  []       -> ne
   (x : xs) -> x :| xs <> NonEmpty.toList ne
 
 partialSort :: forall a. (a -> a -> Maybe Ordering) -> [a] -> [a]

@@ -2,18 +2,18 @@
 
 module Vehicle.Language.AST.Core where
 
-import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Data.Functor.Foldable.TH (makeBaseFunctor)
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.Hashable (Hashable)
+import Data.List.NonEmpty (NonEmpty (..))
+import GHC.Generics (Generic)
 
-import Vehicle.Prelude
-import Vehicle.Resource (ResourceType)
-import Vehicle.Language.AST.Builtin(Builtin, Linearity (..), Polarity (..))
-import Vehicle.Language.AST.Visibility
+import Vehicle.Language.AST.Builtin (Builtin, Linearity (..), Polarity (..))
 import Vehicle.Language.AST.Provenance
 import Vehicle.Language.AST.Relevance
+import Vehicle.Language.AST.Visibility
+import Vehicle.Prelude
+import Vehicle.Resource (ResourceType)
 
 --------------------------------------------------------------------------------
 -- Universes

@@ -6,23 +6,25 @@ module Vehicle.Test.Utils.Golden
   , cleanupOutput
   ) where
 
-import Test.Tasty
-import Test.Tasty.Golden.Advanced
-import Data.Text ( Text )
+import Control.Exception (catch, throwIO)
+import Data.Bifunctor (Bifunctor (first, second))
+import Data.List (intercalate, isInfixOf)
+import Data.Map (Map, (\\))
+import Data.Map qualified as Map (fromList, intersectionWith, keys, keysSet,
+                                  lookup, null, size, toAscList)
+import Data.Maybe (catMaybes, listToMaybe)
+import Data.Set qualified as Set
+import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
-import Data.Map (Map, (\\))
-import Data.Map qualified as Map (toAscList, fromList, keysSet, size, lookup, intersectionWith, keys, null)
-import Data.Set qualified as Set
-import System.Directory (listDirectory, removeFile, createDirectory, removeDirectoryRecursive, createDirectoryIfMissing)
-import System.FilePath (takeFileName, (</>), takeDirectory)
-import Data.List (intercalate, isInfixOf)
+import System.Directory (createDirectory, createDirectoryIfMissing,
+                         listDirectory, removeDirectoryRecursive, removeFile)
+import System.FilePath (takeDirectory, takeFileName, (</>))
 import System.IO.Error
-import Control.Exception (catch, throwIO)
-import Data.Bifunctor (Bifunctor(second, first))
-import Data.Maybe (catMaybes, listToMaybe)
+import Test.Tasty
+import Test.Tasty.Golden.Advanced
 
-import Data.Algorithm.Diff (Diff, PolyDiff(..), getGroupedDiffBy)
+import Data.Algorithm.Diff (Diff, PolyDiff (..), getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
 
 import Vehicle.Test.Utils.FilePath (removeFilePaths)

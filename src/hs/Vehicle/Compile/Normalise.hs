@@ -8,18 +8,18 @@ module Vehicle.Compile.Normalise
   ) where
 
 import Control.Monad (when)
-import Control.Monad.State (MonadState(..), evalStateT, modify)
-import Control.Monad.Reader (MonadReader(..), runReaderT)
+import Control.Monad.Reader (MonadReader (..), runReaderT)
+import Control.Monad.State (MonadState (..), evalStateT, modify)
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
-import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NonEmpty (toList)
 
-import Vehicle.Language.Print
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Core
+import Vehicle.Compile.Prelude
+import Vehicle.Language.Print
 import Vehicle.Language.StandardLibrary.Names
 
 -- |Run a function in 'MonadNorm'.

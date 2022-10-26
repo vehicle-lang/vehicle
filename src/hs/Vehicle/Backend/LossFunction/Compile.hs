@@ -3,21 +3,21 @@ module Vehicle.Backend.LossFunction.Compile
   , compile
   ) where
 
-import Control.Monad.Reader (MonadReader(..), runReaderT)
+import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Aeson
-import GHC.Generics (Generic)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Maybe (catMaybes)
 import Data.Map qualified as Map (member)
+import Data.Maybe (catMaybes)
+import GHC.Generics (Generic)
 
-import Vehicle.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Language.AST qualified as V
+import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
 import Vehicle.Compile.Prelude qualified as V
-import Vehicle.Language.Print
-import Vehicle.Language.AST.Name (HasName(nameOf))
 import Vehicle.Compile.Resource (NetworkContext)
-import Vehicle.Compile.Normalise (normalise, NormalisationOptions(..))
+import Vehicle.Language.AST qualified as V
+import Vehicle.Language.AST.Name (HasName (nameOf))
+import Vehicle.Language.Print
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Declaration definition
@@ -47,7 +47,7 @@ newtype Domain = Domain ()
   deriving (Eq, Ord, Generic, Show)
 
 instance FromJSON Domain
-instance ToJSON Domain 
+instance ToJSON Domain
 
 --definitoon of the LExpr - all expressions allowed in loss constraint
 
@@ -114,7 +114,7 @@ normBuiltin b = case b of
     V.SubTC        -> True
     V.MulTC        -> True
     V.DivTC        -> True
-    
+
     _              -> False
 
   V.FromNat {}       -> True
@@ -123,7 +123,7 @@ normBuiltin b = case b of
   V.Foreach{}        -> True
 
   _                  -> False
-  
+
 compileProg :: MonadCompileLoss m => V.CheckedProg -> m [LDecl]
 compileProg  (V.Main ds) = catMaybes <$> traverse compileDecl ds
 
@@ -133,7 +133,7 @@ type MonadCompileLoss m =
   )
 
 compileDecl :: MonadCompileLoss m => V.CheckedDecl -> m (Maybe LDecl)
-compileDecl d = 
+compileDecl d =
   case d of
   V.DefResource{} ->
     normalisationError currentPass "resource declarations"
@@ -148,7 +148,7 @@ compileDecl d =
       -- If it's not a property then we can discard it as all applications
       -- of it should have been normalised out by now.
       then return Nothing
-      else do 
+      else do
         expr' <- compileExpr expr
         logDebug MaxDetail ("loss-declaration " <> prettySimple expr)
         return (Just (DefFunction (nameOf ident) expr'))
@@ -219,8 +219,8 @@ compileExpr e = showExit $ do
 
 
 compileQuant :: V.Quantifier -> Quantifier
-compileQuant V.Forall  = All
-compileQuant V.Exists  = Any
+compileQuant V.Forall = All
+compileQuant V.Exists = Any
 
 showEntry :: MonadCompile m => V.CheckedExpr -> m V.CheckedExpr
 showEntry e = do

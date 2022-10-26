@@ -77,4 +77,3 @@ separator Decl "";
 -- * Program
 
 Main. Prog ::= "(" [Decl] ")";
-

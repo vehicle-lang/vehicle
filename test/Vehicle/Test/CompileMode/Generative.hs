@@ -3,12 +3,12 @@ module Vehicle.Test.CompileMode.Generative where
 import Control.Monad (forM_)
 import Control.Monad.Except (runExceptT)
 import Data.Either (isRight)
-import Debug.Trace (traceShow, trace, traceShowId)
+import Debug.Trace (trace, traceShow, traceShowId)
 
-import Vehicle.Prelude
 import Vehicle.Language.AST
-import Vehicle.Language.Type (typeCheck)
 import Vehicle.Language.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Language.Type (typeCheck)
+import Vehicle.Prelude
 
 import Test.Tasty
 import Test.Tasty.HUnit

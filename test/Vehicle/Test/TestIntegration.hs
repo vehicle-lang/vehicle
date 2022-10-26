@@ -1,8 +1,8 @@
 import Control.Monad.Reader (runReader)
 import Data.Maybe (mapMaybe)
 import GHC.IO.Encoding
-import System.Environment
 import System.Directory (findExecutable)
+import System.Environment
 import System.FilePath
 
 import Vehicle.Backend.Prelude
@@ -10,11 +10,13 @@ import Vehicle.Prelude
 
 import Test.Tasty
 
-import Vehicle.Test.Utils.TestProgram (testProgram, CatchStderr(..))
 import Vehicle.Test.CompileMode.Golden
+import Vehicle.Test.Utils (MonadTest, TestSpec (..), filepathTests)
+import Vehicle.Test.Utils.TestProgram (CatchStderr (..), testProgram)
 import Vehicle.Test.VerifyMode as Verify
-import Vehicle.Test.Utils (MonadTest, filepathTests, TestSpec (..))
-import Vehicle.Verify.VerificationStatus (writeProofCache, ProofCache (..), SpecificationStatus (SpecificationStatus))
+import Vehicle.Verify.VerificationStatus (ProofCache (..),
+                                          SpecificationStatus (SpecificationStatus),
+                                          writeProofCache)
 
 
 -- Can't figure out how to get this passed in via the command-line *sadness*

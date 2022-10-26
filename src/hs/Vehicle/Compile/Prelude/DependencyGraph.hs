@@ -8,9 +8,9 @@ module Vehicle.Compile.Prelude.DependencyGraph
   ) where
 
 import Data.Graph
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Maybe (fromMaybe)
 import Data.Tree qualified as Tree
 
 import Vehicle.Language.AST

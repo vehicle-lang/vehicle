@@ -5,22 +5,22 @@ module Vehicle.Compile.Type.ConstraintSolver.Unification
   ) where
 
 import Control.Monad (when)
-import Control.Monad.Except (MonadError(..), throwError)
+import Control.Monad.Except (MonadError (..), throwError)
+import Data.IntMap qualified as IntMap
 import Data.List (intersect)
 import Data.Maybe (catMaybes)
 import Data.Traversable (for)
-import Data.IntMap qualified as IntMap
 
-import Vehicle.Language.AST
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.Meta
-import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
-import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
-import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Type.ConstraintSolver.Core
+import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
+import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
+import Vehicle.Compile.Type.Monad
+import Vehicle.Language.AST
+import Vehicle.Language.Print (prettyVerbose)
 
 --------------------------------------------------------------------------------
 -- Unification algorithm
