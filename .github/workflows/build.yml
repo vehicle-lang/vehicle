@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
         ghc-version: ["8.10", "9.0"]
         cabal-version: ["3.4"]
 
