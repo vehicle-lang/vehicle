@@ -10,3 +10,4 @@
 open import Vehicle
 
 module simple-untypedDecls-output where
+
