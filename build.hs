@@ -5,20 +5,23 @@
 -- subcomponents and programs that Vehicle relies on.
 ---------------------------------------------------------------------------------
 
-{-# LANGUAGE OverloadedLists #-}
-
 import Control.Monad (unless, when)
+import Data.List (stripPrefix)
 import Data.Maybe (fromMaybe, isJust, isNothing)
-import Data.Version
-import System.Directory
+import Data.Version (Version, showVersion)
+import Development.Shake (Action, Exit (Exit), Stdout (Stdout), command,
+                          command_, liftIO, need, phony, putInfo,
+                          removeFilesAfter, shakeArgs, shakeOptions, (&%>))
+import Development.Shake.Command (Exit (Exit), Stdout (Stdout), command,
+                                  command_)
+import Development.Shake.FilePath ((</>))
+import Development.Shake.Util ()
+import System.Directory (createDirectoryIfMissing, doesFileExist,
+                         findExecutable, getHomeDirectory, makeAbsolute,
+                         removeDirectoryRecursive, renameFile)
 import System.Environment (lookupEnv)
-import System.Exit
-import System.IO
-
-import Development.Shake hiding (doesFileExist)
-import Development.Shake.Command
-import Development.Shake.FilePath
-import Development.Shake.Util
+import System.Exit (ExitCode (ExitFailure, ExitSuccess), exitSuccess)
+import System.IO (BufferMode (NoBuffering), hGetBuffering, hSetBuffering, stdin)
 
 ---------------------------------------------------------------------------------
 --- Configuration
@@ -44,6 +47,9 @@ happyVersion = [1,20,0]
 
 bnfcVersion :: Version
 bnfcVersion = [2,9,4]
+
+stylishHaskellVersion :: Version
+stylishHaskellVersion = [0,14,3,0]
 
 srcDirBNFC :: FilePath
 srcDirBNFC = "src" </> "bnfc"
@@ -82,6 +88,24 @@ bnfcExternalGarbage =
 -- Dependencies with reasonable error messages
 ---------------------------------------------------------------------------------
 
+requirePreCommit :: Action ()
+requirePreCommit = do
+  missingPreCommit <- not <$> hasExecutable "pre-commit"
+  when missingPreCommit $ do
+    missingPip<- not <$> hasExecutable "pip"
+    if missingPip
+      then do
+        fail "Vehicle requires pre-commit\n\
+             \See: https://pre-commit.com/#install"
+      else do
+        -- askConsent "Would you like to install pre-commit? [y/N]"
+        command_ [] "pip" [ "install", "pre-commit"]
+
+installPreCommitHooks :: Action ()
+installPreCommitHooks = do
+  requirePreCommit
+  command_ [] "pre-commit" ["install"]
+
 requireHaskell :: Action ()
 requireHaskell = do
   missingGHC   <- not <$> hasExecutable "ghc"
@@ -93,6 +117,10 @@ requireHaskell = do
 -- BNFC -- a generator for parsers and printers
 requireBNFC :: Action ()
 requireBNFC = cabalInstallIfMissing "bnfc" "BNFC" "https://bnfc.digitalgrammars.com/" bnfcVersion
+
+-- stylish-haskell -- a formatter for Haskell code
+requireStylishHaskell :: Action ()
+requireStylishHaskell = cabalInstallIfMissing "stylish-haskell" "stylish-haskell" "https://github.com/haskell/stylish-haskell/blob/main/README.markdown" stylishHaskellVersion
 
 requireAlex :: Action ()
 requireAlex = cabalInstallIfMissing "alex" "alex" "https://hackage.haskell.org/package/alex" alexVersion
@@ -137,19 +165,14 @@ main = shakeArgs shakeOptions $ do
   -- Initialise project
   -------------------------------------------------------------------------------
 
-  let setupGitHooks = command_ [] "git"
-        [ "config"
-        , "--local"
-        , "core.hooksPath"
-        , "hooks/"
-        ]
-
   phony "init" $ do
     requireHaskell
     requireAlex
     requireHappy
     requireBNFC
     need bnfcTargets
+    requireStylishHaskell
+    installPreCommitHooks
 
   phony "clean" $ do
     liftIO $ removeDirectoryRecursive genDirHS
