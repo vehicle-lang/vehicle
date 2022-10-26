@@ -34,4 +34,4 @@ ci:
   skip: [stylish-haskell]
 
 # Exclude golden standard generated JSON files:
-exclude: ^test/Vehicle/Test/CompileMode/Golden/.*/.*\.json$
+exclude: ^test/Vehicle/Test/CompileMode/(Error|Golden)/.*\.(json|txt|agda)$
