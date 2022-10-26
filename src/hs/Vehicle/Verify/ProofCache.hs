@@ -8,9 +8,7 @@ import Data.Version (Version)
 import GHC.Generics (Generic)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
-
 import Vehicle.Compile.Prelude
-import Vehicle.Resource
 import Vehicle.Verify.Specification.Status (SpecificationStatus)
 
 --------------------------------------------------------------------------------

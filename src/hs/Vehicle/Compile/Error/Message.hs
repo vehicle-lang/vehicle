@@ -17,7 +17,6 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Language.Print
-import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- User errors

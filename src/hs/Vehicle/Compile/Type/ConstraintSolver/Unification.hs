@@ -19,7 +19,6 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
 import Vehicle.Compile.Type.Monad
-import Vehicle.Language.AST
 import Vehicle.Language.Print (prettyVerbose)
 
 --------------------------------------------------------------------------------

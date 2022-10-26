@@ -2,11 +2,12 @@ module Vehicle.Compile.ExpandResources.Dataset.IDX
   ( readIDX
   ) where
 
-import Control.Exception
-import Control.Monad.Except
-import Control.Monad.IO.Class
-import Control.Monad.State
-import Data.IDX
+import Control.Exception (try)
+import Control.Monad.Except (MonadError (throwError))
+import Control.Monad.IO.Class (MonadIO (..))
+import Control.Monad.State (MonadState (get), modify)
+import Data.IDX (IDXData, decodeIDXFile, idxDimensions, idxDoubleContent,
+                 idxIntContent, isIDXIntegral)
 import Data.Map qualified as Map
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector

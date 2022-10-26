@@ -4,7 +4,7 @@ module Vehicle.Backend.LossFunction.Compile
   ) where
 
 import Control.Monad.Reader (MonadReader (..), runReaderT)
-import Data.Aeson
+import Data.Aeson (FromJSON, ToJSON)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map (member)
 import Data.Maybe (catMaybes)
@@ -14,9 +14,8 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Resource (NetworkContext)
-import Vehicle.Language.AST qualified as V
 import Vehicle.Language.AST.Name (HasName (nameOf))
-import Vehicle.Language.Print
+import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
