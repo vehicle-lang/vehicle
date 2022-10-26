@@ -2,6 +2,7 @@ module Vehicle.Verify.Verifier.Marabou
   ( marabouVerifier
   ) where
 
+import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.List (elemIndex, findIndex)
 import Data.Map qualified as Map (lookup)
@@ -13,12 +14,9 @@ import Data.Vector.Unboxed qualified as Vector
 import System.Exit (ExitCode (..), exitFailure)
 import System.IO (stderr)
 import System.Process (readProcessWithExitCode)
-
-import Control.Monad (forM)
 import Vehicle.Compile.Linearity
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
-import Vehicle.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Interface

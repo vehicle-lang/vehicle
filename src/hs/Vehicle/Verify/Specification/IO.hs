@@ -19,7 +19,6 @@ import System.IO.Temp (withSystemTempDirectory)
 import Vehicle.Backend.Prelude (Backend (..), writeResultToFile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries
-import Vehicle.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status

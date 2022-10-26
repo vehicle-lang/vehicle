@@ -137,9 +137,9 @@ con b = DSL $ \ann _ -> Builtin ann b
 --------------------------------------------------------------------------------
 -- Types
 
-infix 4 @
-(@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
-(@) f args = app f (fmap (Explicit, Relevant,) args)
+infix 4 @@
+(@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
+(@@) f args = app f (fmap (Explicit, Relevant,) args)
 
 -- | Explicit function type
 
@@ -218,16 +218,16 @@ tAnnBool linearity polarity = app tBool
   ]
 
 tVector :: DSLExpr -> DSLExpr -> DSLExpr
-tVector tElem dim = con Vector @ [tElem, dim]
+tVector tElem dim = con Vector @@ [tElem, dim]
 
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
-tTensor tElem dims = con Tensor @ [tElem, dims]
+tTensor tElem dims = con Tensor @@ [tElem, dims]
 
 tList :: DSLExpr -> DSLExpr
-tList tElem = con List @ [tElem]
+tList tElem = con List @@ [tElem]
 
 tIndex :: DSLExpr -> DSLExpr
-tIndex n = con Index @ [n]
+tIndex n = con Index @@ [n]
 
 tHole :: Name -> DSLExpr
 tHole name = DSL $ \ann _ -> Hole ann name
@@ -236,7 +236,7 @@ tHole name = DSL $ \ann _ -> Hole ann name
 -- TypeClass
 
 typeClass :: TypeClass -> NonEmpty DSLExpr -> DSLExpr
-typeClass tc args = con (TypeClass tc) @ args
+typeClass tc args = con (TypeClass tc) @@ args
 
 hasEq :: EqualityOp -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 hasEq eq t1 t2 t3 = typeClass (HasEq eq) [t1, t2, t3]

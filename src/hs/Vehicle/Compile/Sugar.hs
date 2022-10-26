@@ -3,7 +3,6 @@ module Vehicle.Compile.Sugar where
 import Data.Bifunctor (first)
 
 import Vehicle.Compile.Prelude
-import Vehicle.Language.AST
 
 --------------------------------------------------------------------------------
 -- General definitions

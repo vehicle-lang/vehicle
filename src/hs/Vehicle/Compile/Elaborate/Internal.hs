@@ -10,7 +10,6 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Internal.Abs as B
-import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Conversion from BNFC AST
