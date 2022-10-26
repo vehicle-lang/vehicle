@@ -97,11 +97,11 @@ solveHasEq op c [arg1, arg2, res]
   | anyOf args isAnnRatType  = solveRatComparisonOp    c arg1 arg2 res (Equals EqRat op)
   | anyOf args isAnnBoolType = solveBoolEquals         c arg1 arg2 res op
   | anyOf args isVectorType  = solveVectorEquals op c arg1 arg2 res
-  | otherwise                = blockOrThrowError c args tcError
+  | otherwise                = blockOrThrowErrors c args tcError
   where
     args = [arg1, arg2]
     allowedTypes = allowed [Bool, Index, Nat, Int, Rat, List, Vector, Tensor]
-    tcError = head $
+    tcError =
       tcArgError c arg1 (EqualsTC op) allowedTypes 1 2 <>
       tcArgError c arg2 (EqualsTC op) allowedTypes 2 2
 
@@ -174,16 +174,16 @@ solveHasOrd :: TCM m
             -> [CheckedType]
             -> m TypeClassProgress
 solveHasOrd op c [arg1, arg2, res]
-  | allOf args isMeta           = blockOnMetas args
+  | allOf args isMeta           = do logDebug MaxDetail "hi2"; blockOnMetas args
   | anyOf args isIndexType      = solveIndexComparisonOp  c arg1 arg2 res (Order OrderIndex op)
   | anyOf args isNatType        = solveSimpleComparisonOp c arg1 arg2 res (Order OrderNat   op)
   | anyOf args isIntType        = solveSimpleComparisonOp c arg1 arg2 res (Order OrderInt   op)
   | anyOf args isAnnRatType     = solveRatComparisonOp    c arg1 arg2 res (Order OrderRat   op)
-  | otherwise                   = blockOrThrowError c args tcError
+  | otherwise                   = do logDebug MaxDetail "hi"; blockOrThrowErrors c args tcError
   where
     args         = [arg1, arg2]
     allowedTypes = allowed [Index, Nat, Int, Rat]
-    tcError      = head $
+    tcError      =
       tcArgError c arg1 (OrderTC op) allowedTypes 1 2 <>
       tcArgError c arg2 (OrderTC op) allowedTypes 1 2
 solveHasOrd _ c _ = malformedConstraintError c
@@ -260,10 +260,10 @@ solveHasQuantifier q c [Pi _ binder body, res]
   | isIntType     domain = solveIntQuantifier    q c binder body res
   | isAnnRatType  domain = solveRatQuantifier    q c binder body res
   | isVectorType  domain = solveVectorQuantifier q c binder body res
-  | otherwise            = blockOrThrowError c [domain] tcError
+  | otherwise            = blockOrThrowErrors c [domain] tcError
     where
       domain  = typeOf' binder
-      tcError = FailedQuantifierConstraintDomain (constraintContext c) domain q
+      tcError = [FailedQuantifierConstraintDomain (constraintContext c) domain q]
 
 solveHasQuantifier _ c _ = malformedConstraintError c
 
@@ -389,11 +389,11 @@ solveHasNeg c [arg, res]
   | allOf types isMeta       = blockOnMetas [arg, res]
   | anyOf types isIntType    = solveNeg c res arg NegInt
   | anyOf types isAnnRatType = solveNeg c res arg NegRat
-  | otherwise                = blockOrThrowError c types tcError
+  | otherwise                = blockOrThrowErrors c types tcError
   where
     types = [arg, res]
     allowedTypes = allowed [Int, Rat]
-    tcError = head $
+    tcError =
       tcArgError    c arg NegTC allowedTypes 1 1 <>
       tcResultError c res NegTC allowedTypes
 
@@ -424,10 +424,10 @@ solveHasAdd c types@[arg1, arg2, res]
   | anyOf types isIntType        = solveAddInt    c arg1 arg2 res
   | anyOf types isAnnRatType     = solveAddRat    c arg1 arg2 res
   | anyOf types isVectorType     = solveAddVector c arg1 arg2 res
-  | otherwise                    = blockOrThrowError c types tcError
+  | otherwise                    = blockOrThrowErrors c types tcError
   where
     allowedTypes = allowed [Nat, Int, Rat]
-    tcError  = head $
+    tcError  =
       tcArgError    c arg1 AddTC allowedTypes 1 2 <>
       tcArgError    c arg2 AddTC allowedTypes 2 2 <>
       tcResultError c res  AddTC allowedTypes
@@ -508,10 +508,10 @@ solveHasSub c types@[arg1, arg2, res]
   | anyOf types isIntType        = solveSubInt    c arg1 arg2 res
   | anyOf types isAnnRatType     = solveSubRat    c arg1 arg2 res
   | anyOf types isVectorType     = solveSubVector c arg1 arg2 res
-  | otherwise                    = blockOrThrowError c types tcError
+  | otherwise                    = blockOrThrowErrors c types tcError
   where
     allowedTypes = allowed [Int, Rat]
-    tcError  = head $
+    tcError  =
       tcArgError    c arg1 SubTC allowedTypes 1 2 <>
       tcArgError    c arg2 SubTC allowedTypes 2 2 <>
       tcResultError c res  SubTC allowedTypes
@@ -580,10 +580,10 @@ solveHasMul c types@[arg1, arg2, res]
   | anyOf types isNatType        = solveMulNat c arg1 arg2 res
   | anyOf types isIntType        = solveMulInt c arg1 arg2 res
   | anyOf types isAnnRatType     = solveMulRat c arg1 arg2 res
-  | otherwise                    = blockOrThrowError c types tcError
+  | otherwise                    = blockOrThrowErrors c types tcError
   where
     allowedTypes = allowed [Nat, Int, Rat]
-    tcError  = head $
+    tcError  =
       tcArgError    c arg1 MulTC allowedTypes 1 2 <>
       tcArgError    c arg2 MulTC allowedTypes 2 2 <>
       tcResultError c res  MulTC allowedTypes
@@ -635,10 +635,10 @@ solveHasDiv :: TCM m
 solveHasDiv c types@[arg1, arg2, res]
   | allOf types isMeta           = blockOnMetas types
   | anyOf types isAnnRatType     = solveRatDiv c arg1 arg2 res
-  | otherwise                    = blockOrThrowError c types tcError
+  | otherwise                    = blockOrThrowErrors c types tcError
   where
     allowedTypes = allowed [Rat]
-    tcError = head $
+    tcError =
       tcArgError    c arg1 DivTC allowedTypes 1 2 <>
       tcArgError    c arg2 DivTC allowedTypes 2 2 <>
       tcResultError c res  DivTC allowedTypes
@@ -667,7 +667,7 @@ solveHasFold c [tElem, tCont] = case tCont of
   (exprHead -> Meta{})      -> blockOnMetas [tCont]
   ListType   _ tListElem    -> solveFoldList c tElem tListElem
   VectorType _ tVecElem dim -> solveFoldVec  c tElem tVecElem dim
-  _                         -> blockOrThrowError c [tCont] tcError
+  _                         -> blockOrThrowErrors c [tCont] [tcError]
     where tcError = FailedFoldConstraintContainer (constraintContext c) tCont
 
 solveHasFold c _ = malformedConstraintError c
@@ -720,7 +720,7 @@ solveHasQuantifierIn q c [tElem, tCont, tRes] = case tCont of
     let solution = App p (FreeVar p method) [ImplicitArg p tElem, ImplicitArg p dim, ImplicitArg p tRes]
     return $ Right ([elemEq, resEq], solution)
 
-  _ -> blockOrThrowError c [tCont] tcError
+  _ -> blockOrThrowErrors c [tCont] [tcError]
     where tcError = FailedQuantInConstraintContainer (constraintContext c) tCont q
 
 solveHasQuantifierIn _ c _ = malformedConstraintError c
@@ -757,7 +757,7 @@ solveHasNatLits n c [arg]
   | isNatType        arg = solveSimpleFromNat  c n arg FromNatToNat
   | isIntType        arg = solveSimpleFromNat  c n arg FromNatToInt
   | isAnnRatType     arg = solveFromNatToRat   c n arg
-  | otherwise            = blockOrThrowError c [arg] tcError
+  | otherwise            = blockOrThrowErrors c [arg] [tcError]
   where tcError = FailedNatLitConstraint (constraintContext c) n arg
 solveHasNatLits _ c _ = malformedConstraintError c
 
@@ -805,7 +805,7 @@ solveHasRatLits :: TCM m
 solveHasRatLits c [arg]
   | isMeta arg           = blockOnMetas [arg]
   | isAnnRatType     arg = solveFromRatToRat c arg
-  | otherwise            = blockOrThrowError c [arg] tcError
+  | otherwise            = blockOrThrowErrors c [arg] [tcError]
   where tcError = FailedRatLitConstraint (constraintContext c) arg
 solveHasRatLits c _ = malformedConstraintError c
 
@@ -844,7 +844,7 @@ solveHasVecLits n c [tElem, tCont] = case tCont of
     let solution = BuiltinExpr p (FromVec n FromVecToVec) [ImplicitArg p tVecElem]
     return $ Right ([elemEq, dimEq], solution)
 
-  _ -> blockOrThrowError c [tCont] tcError
+  _ -> blockOrThrowErrors c [tCont] [tcError]
     where tcError = FailedConLitConstraint (constraintContext c) tCont
 
 solveHasVecLits _ c _ = malformedConstraintError c
@@ -1151,10 +1151,10 @@ blockOnMetas args = do
   progress <- blockOn metas
   return $ castProgress mempty progress
 
-blockOrThrowError :: TCM m
+blockOrThrowErrors :: TCM m
                   => Constraint
                   -> [CheckedExpr]
-                  -> CompileError
+                  -> [CompileError]
                   -> m TypeClassProgress
-blockOrThrowError c args err =
-  castProgress (provenanceOf c) <$> blockOnReductionBlockingMetasOrThrowError args err
+blockOrThrowErrors c args err =
+  castProgress (provenanceOf c) <$> blockOnReductionBlockingMetasOrThrowError args (head err)
