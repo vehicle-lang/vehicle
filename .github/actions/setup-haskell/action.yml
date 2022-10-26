@@ -1,0 +1,50 @@
+name: 'Setup Haskell'
+description: 'Setup Haskell'
+inputs:
+  ghc-version:
+    required: false
+    description: 'Version of GHC to use. If set to "latest", it will always get the latest stable version.'
+    default: 'latest'
+  cabal-version:
+    required: false
+    description: 'Version of Cabal to use. If set to "latest", it will always get the latest stable version.'
+    default: 'latest'
+  cabal-project-file:
+    required: false
+    description: 'Path to the project configuration. Defaults to "cabal.project".'
+    default: 'cabal.project'
+  cabal-project-freeze-file:
+    required: false
+    description: 'Path to project freeze file. Defaults to "cabal.project.freeze".'
+    default: 'cabal.project.freeze'
+runs:
+  using: "composite"
+  steps:
+
+      - id: setup-haskell
+        name: Setup Haskell
+        uses: haskell/actions/setup@v1
+        with:
+          ghc-version: ${{ inputs.ghc-version }}
+          cabal-version: ${{ inputs.cabal-version }}
+
+      - id: haskell-cache
+        name: Cache ~/.cabal/store and dist-newstyle
+        uses: actions/cache@v2
+        with:
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-newstyle
+          key: ${{ inputs.os }}-${{ inputs.ghc-version }}-${{ hashFiles(inputs.cabal-project-freeze-file) }}
+          restore-keys: |
+            ${{ inputs.os }}-${{ inputs.ghc-version }}-
+
+      - name: Add default Cabal installdir to PATH (Unix)
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        run: echo "${HOME}/.cabal/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Add default Cabal installdir to PATH (Windows)
+        if: runner.os == 'Windows'
+        run: echo "$env:APPDATA\cabal\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: powershell

@@ -116,17 +116,10 @@ requireHaskell = do
 
 -- BNFC -- a generator for parsers and printers
 requireBNFC :: Action ()
-requireBNFC = cabalInstallIfMissing "bnfc" "BNFC" "https://bnfc.digitalgrammars.com/" bnfcVersion
-
--- stylish-haskell -- a formatter for Haskell code
-requireStylishHaskell :: Action ()
-requireStylishHaskell = cabalInstallIfMissing "stylish-haskell" "stylish-haskell" "https://github.com/haskell/stylish-haskell/blob/main/README.markdown" stylishHaskellVersion
-
-requireAlex :: Action ()
-requireAlex = cabalInstallIfMissing "alex" "alex" "https://hackage.haskell.org/package/alex" alexVersion
-
-requireHappy :: Action ()
-requireHappy = cabalInstallIfMissing "happy" "happy" "https://hackage.haskell.org/package/happy" happyVersion
+requireBNFC = do
+  cabalInstallIfMissing "alex" "alex" "https://hackage.haskell.org/package/alex" alexVersion
+  cabalInstallIfMissing "happy" "happy" "https://hackage.haskell.org/package/happy" happyVersion
+  cabalInstallIfMissing "bnfc" "BNFC" "https://bnfc.digitalgrammars.com/" bnfcVersion
 
 requireAgda :: Action ()
 requireAgda = do
@@ -167,9 +160,6 @@ main = shakeArgs shakeOptions $ do
 
   phony "init" $ do
     requireHaskell
-    requireAlex
-    requireHappy
-    requireBNFC
     need bnfcTargets
     requireStylishHaskell
     installPreCommitHooks

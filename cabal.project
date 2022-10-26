@@ -1,6 +1,1 @@
 packages: vehicle.cabal
-
--- source-repository-package
---   type: git
---   location: https://github.com/wenkokke/sized-functors.git
---   tag: dc003da12320be34a919d07eb65098ad804e1a66
