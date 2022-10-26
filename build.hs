@@ -92,13 +92,10 @@ requireHaskell = do
 
 -- BNFC -- a generator for parsers and printers
 requireBNFC :: Action ()
-requireBNFC = cabalInstallIfMissing "bnfc" "BNFC" "https://bnfc.digitalgrammars.com/" bnfcVersion
-
-requireAlex :: Action ()
-requireAlex = cabalInstallIfMissing "alex" "alex" "https://hackage.haskell.org/package/alex" alexVersion
-
-requireHappy :: Action ()
-requireHappy = cabalInstallIfMissing "happy" "happy" "https://hackage.haskell.org/package/happy" happyVersion
+requireBNFC = do
+  cabalInstallIfMissing "alex" "alex" "https://hackage.haskell.org/package/alex" alexVersion
+  cabalInstallIfMissing "happy" "happy" "https://hackage.haskell.org/package/happy" happyVersion
+  cabalInstallIfMissing "bnfc" "BNFC" "https://bnfc.digitalgrammars.com/" bnfcVersion
 
 requireAgda :: Action ()
 requireAgda = do
@@ -146,9 +143,6 @@ main = shakeArgs shakeOptions $ do
 
   phony "init" $ do
     requireHaskell
-    requireAlex
-    requireHappy
-    requireBNFC
     need bnfcTargets
 
   phony "clean" $ do

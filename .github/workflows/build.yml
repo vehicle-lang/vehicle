@@ -28,44 +28,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - id: setup-haskell
-        name: Setup Haskell
-        uses: haskell/actions/setup@v1
+      - name: Setup Haskell
+        uses: ./.github/actions/setup-haskell
         with:
           ghc-version: ${{ matrix.ghc-version }}
           cabal-version: ${{ matrix.cabal-version }}
+          cabal-project-file: ${{ env.CABAL_PROJECT_FILE }}
+          cabal-project-freeze-file: ${{ env.CABAL_PROJECT_FREEZE_FILE }}
 
-      - id: haskell-cache
-        name: Cache ~/.cabal/store and dist-newstyle
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ steps.setup-haskell.outputs.cabal-store }}
-            dist-newstyle
-          key: ${{ matrix.os }}-${{ matrix.ghc-version }}-${{ hashFiles(env.CABAL_PROJECT_FREEZE_FILE) }}
-          restore-keys: |
-            ${{ matrix.os }}-${{ matrix.ghc-version }}-
+      - name: Build Vehicle
+        run: cabal v2-run vehicle-build-system build
 
-      - name: Add Cabal installdir to path (Unix)
-        if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: echo "${HOME}/.cabal/bin" >> $GITHUB_PATH
-        shell: bash
-
-      - name: Add Cabal installdir to path (Windows)
-        if: runner.os == 'Windows'
-        run: echo "$env:APPDATA\cabal\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        shell: powershell
-
-      - name: Build shakefile
-        run: cabal v2-build exe:vehicle-build-system
-
-      - name: Setup dependencies
-        run: cabal v2-run vehicle-build-system init
-
-      - name: Run tests
+      - name: Test Vehicle
         run: cabal v2-run vehicle-build-system basic-tests
 
-      - name: Copy Vehicle
+      - name: Copy Vehicle binaries to dist/bin
         run: |
           mkdir -p ${{ github.workspace }}/dist/bin
           cabal install exe:vehicle \
@@ -74,7 +51,7 @@ jobs:
             --installdir=${{ github.workspace }}/dist/bin
         shell: bash
 
-      - name: Upload Vehicle
+      - name: Upload Vehicle binaries
         uses: actions/upload-artifact@v2
         with:
           name: vehicle-${{ runner.arch }}-${{ runner.os }}
