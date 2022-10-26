@@ -93,26 +93,27 @@ whnfExpr expr = do
   res <- case expr of
     Hole{} -> resolutionError currentPhase "Hole"
 
-    Meta{}     -> return expr
-    Universe{} -> return expr
-    Literal{}  -> return expr
-    Builtin{}  -> return expr
-    Ann{}      -> return expr
-    Var{}      -> return expr
+    Meta{}        -> return expr
+    Universe{}    -> return expr
+    Literal{}     -> return expr
+    Builtin{}     -> return expr
+    Constructor{} -> return expr
+    Ann{}         -> return expr
+    Var{}         -> return expr
 
-    Pi ann binder resultType -> Pi ann binder <$> whnfExpr resultType
-    LVec ann es              -> LVec ann <$> traverse whnfExpr es
+    Pi p binder resultType -> Pi p binder <$> whnfExpr resultType
+    LVec p es              -> LVec p <$> traverse whnfExpr es
     App p fun args           -> App p <$> whnfExpr fun <*> traverse whnfArg args
 
-    Let ann e1 binder e2 -> do
+    Let p e1 binder e2 -> do
       -- Check the type of the bound expression against the provided type
       e1' <- whnfExpr e1
       e2' <- whnfExpr e2 -- addToBoundCtx (nameOf binder, typeOf binder, Just e1') $ whnfExpr e2
-      return (Let ann e1' binder e2')
+      return (Let p e1' binder e2')
 
-    Lam ann binder body -> do
+    Lam p binder body -> do
       body' <- whnfExpr body -- addToBoundCtx (nameOf binder, typeOf binder, Nothing) $ whnfExpr body
-      return $ Lam ann binder body'
+      return $ Lam p binder body'
 
   -- showInferExit res
   return res

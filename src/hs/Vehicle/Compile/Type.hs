@@ -282,7 +282,7 @@ checkPropertyInfo decl@(ident, _) t = do
   where
     getPropertyInfo :: MonadCompile m => CheckedType -> m PropertyInfo
     getPropertyInfo = \case
-      AnnBoolType _ (Builtin _ (Linearity lin)) (Builtin _ (Polarity pol)) -> return $ PropertyInfo lin pol
+      AnnBoolType _ (LinearityExpr _ lin) (PolarityExpr _ pol) -> return $ PropertyInfo lin pol
       VectorType _ tElem _ -> getPropertyInfo tElem
       TensorType _ tElem _ -> getPropertyInfo tElem
       otherType            -> throwError $ PropertyTypeUnsupported decl otherType

@@ -54,12 +54,13 @@ instance Simplify (Decl binder var) where
 
 instance Simplify (Expr binder var) where
   simplifyReader expr = case expr of
-    Universe{} -> return expr
-    Hole{}     -> return expr
-    Meta{}     -> return expr
-    Builtin{}  -> return expr
-    Literal{}  -> return expr
-    Var{}      -> return expr
+    Universe{}    -> return expr
+    Hole{}        -> return expr
+    Meta{}        -> return expr
+    Builtin{}     -> return expr
+    Constructor{} -> return expr
+    Literal{}     -> return expr
+    Var{}         -> return expr
 
     App ann fun args          -> normAppList ann <$> simplifyReader fun <*> simplifyReaderArgs args
     LVec ann xs               -> LVec ann <$> traverse simplifyReader xs

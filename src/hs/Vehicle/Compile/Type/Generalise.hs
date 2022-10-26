@@ -193,12 +193,14 @@ addNewArgumentToMetaUses meta = mapDeclExprs (go (-1))
       App p (Meta p' m) args
         | m == meta -> App p (Meta p' m) (newVar p <| goArgs args)
 
-      Universe{}                   -> expr
-      Hole{}                       -> expr
-      Meta{}                       -> expr
-      Literal{}                    -> expr
-      Builtin{}                    -> expr
-      Var{}                        -> expr
+      Universe{}    -> expr
+      Hole{}        -> expr
+      Meta{}        -> expr
+      Literal{}     -> expr
+      Builtin{}     -> expr
+      Constructor{} -> expr
+      Var{}         -> expr
+
       Ann      p e t               -> Ann p (go d e) (go d t)
       App p fun args               -> App p (go d fun) (goArgs args)
       Pi       p binder result     -> Pi p (goBinder binder) (go (d+1) result)

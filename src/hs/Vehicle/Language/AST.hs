@@ -12,6 +12,7 @@ import Vehicle.Language.AST.Visibility      as X
 import Vehicle.Language.AST.Position        as X
 import Vehicle.Language.AST.Provenance      as X
 import Vehicle.Language.AST.Relevance       as X
+import Vehicle.Language.AST.Datatype       as X
 
 import Data.Text
 

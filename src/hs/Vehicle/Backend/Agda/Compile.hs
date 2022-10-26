@@ -380,6 +380,8 @@ compileExpr expr = do
     Lam{} -> compileLam expr
 
     Builtin _ b -> compileBuiltin b []
+    Constructor _ c -> compileConstructor c []
+
     Literal _ l -> compileLiteral l
     LVec _ xs -> compileVecLiteral xs
 
@@ -391,7 +393,8 @@ compileExpr expr = do
 compileApp :: MonadAgdaCompile m => OutputExpr -> NonEmpty OutputArg -> m Code
 compileApp fun args = do
   specialResult <- case fun of
-    Builtin _ b -> Just <$> compileBuiltin b (NonEmpty.toList args)
+    Builtin     _ b -> Just <$> compileBuiltin     b (NonEmpty.toList args)
+    Constructor _ c -> Just <$> compileConstructor c (NonEmpty.toList args)
     Var _ i     -> case findStdLibFunction i of
       Nothing -> return Nothing
       Just f  -> Just <$> compileStdLibFunction f args
@@ -497,6 +500,40 @@ agdaDivRat = annotateInfixOp2 [DataRat] 7 id (Just ratQualifier) "/"
 agdaNatToFin :: [Code] -> Code
 agdaNatToFin = annotateInfixOp1 [DataFin] 10 Nothing "#"
 
+compileConstructor :: MonadAgdaCompile m => Constructor -> [OutputArg] -> m Code
+compileConstructor c allArgs = case normAppList mempty (Constructor mempty c) allArgs of
+  BoolType{} -> compileBooleanType
+  NatType{}  -> return $ annotateConstant [DataNat] natQualifier
+  IntType{}  -> return $ annotateConstant [DataInteger] intQualifier
+  RatType{}  -> return $ annotateConstant [DataRat] ratQualifier
+
+  ListType   _ tElem       -> annotateApp [DataList]   listQualifier   <$> traverse compileExpr [tElem]
+  VectorType _ tElem tDim  -> annotateApp [DataVector] vectorQualifier <$> traverse compileExpr [tElem, tDim]
+  IndexType  _ size        -> annotateApp [DataFin]    finQualifier    <$> traverse compileExpr [size]
+
+  NilExpr _ _          -> return compileNil
+  ConsExpr _ _   args  -> compileCons <$> traverse compileArg args
+
+  HasEqExpr  _ _ t _ _ -> compileTypeClass "HasEq"  t
+  HasOrdExpr _ _ t _ _ -> compileTypeClass "HasOrd" t
+  HasAddExpr _ t _ _   -> compileTypeClass "HasAdd" t
+  HasMulExpr _ t _ _   -> compileTypeClass "HasMul" t
+  HasSubExpr _ t _ _   -> compileTypeClass "HasSub" t
+  HasDivExpr _ t _ _   -> compileTypeClass "HasDiv" t
+  HasNegExpr _ t _     -> compileTypeClass "HasNeg" t
+
+  HasNatLitsExpr   _   _ t -> compileTypeClass "HasNatLits" t
+  HasRatLitsExpr       _ t -> compileTypeClass "HasRatLits" t
+  HasVecLitsExpr _ n _ _   -> compilerDeveloperError $
+    "compilation of" <+> pretty (TypeClass (HasVecLits n)) <+> "to Agda not yet implemented."
+
+  BuiltinTypeClass _ NatInDomainConstraint{} [t] -> compileTypeClass "NatInDomain" (argExpr t)
+
+  e -> compilerDeveloperError $
+    "unexpected application of constructor found during compilation to Agda:" <+>
+    squotes (prettyVerbose e) <+> parens (pretty $ provenanceOf e)
+
+
 compileBuiltin :: MonadAgdaCompile m => Builtin -> [OutputArg] -> m Code
 compileBuiltin (TypeClassOp op) allArgs
   | not (isTypeClassInAgda op) = do
@@ -509,15 +546,7 @@ compileBuiltin (TypeClassOp op) allArgs
         compileApp fn args
 
 compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs of
-  BoolType{} -> compileBooleanType
-  NatType{}  -> return $ annotateConstant [DataNat] natQualifier
-  IntType{}  -> return $ annotateConstant [DataInteger] intQualifier
-  RatType{}  -> return $ annotateConstant [DataRat] ratQualifier
-
-  ListType   _ tElem       -> annotateApp [DataList]   listQualifier   <$> traverse compileExpr [tElem]
-  VectorType _ tElem tDim  -> annotateApp [DataVector] vectorQualifier <$> traverse compileExpr [tElem, tDim]
   TensorType _ tElem tDims -> annotateApp [DataTensor] tensorQualifier <$> traverse compileExpr [tElem, tDims]
-  IndexType  _ size        -> annotateApp [DataFin]    finQualifier    <$> traverse compileExpr [size]
 
   FromNatExpr _ _n dom args -> compileFromNat dom <$> traverse compileArg (NonEmpty.toList args)
   FromRatExpr _    dom args -> compileFromRat dom <$> traverse compileArg (NonEmpty.toList args)
@@ -552,23 +581,7 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
   EqualityTCExpr _ Eq  t1 _ _ args -> compileEquality   t1 =<< traverse compileArg args
   EqualityTCExpr _ Neq t1 _ _ args -> compileInequality t1 =<< traverse compileArg args
 
-  NilExpr _ _          -> return compileNil
-  ConsExpr _ _   args  -> compileCons <$> traverse compileArg args
   AtExpr _ _ _ [xs, i] -> compileAt (argExpr xs) (argExpr i)
-
-  HasEqExpr  _ _ t _ _ -> compileTypeClass "HasEq"  t
-  HasOrdExpr _ _ t _ _ -> compileTypeClass "HasOrd" t
-  HasAddExpr _ t _ _   -> compileTypeClass "HasAdd" t
-  HasMulExpr _ t _ _   -> compileTypeClass "HasMul" t
-  HasSubExpr _ t _ _   -> compileTypeClass "HasSub" t
-  HasDivExpr _ t _ _   -> compileTypeClass "HasDiv" t
-  HasNegExpr _ t _     -> compileTypeClass "HasNeg" t
-
-  HasNatLitsExpr   _   _ t -> compileTypeClass "HasNatLits" t
-  HasRatLitsExpr       _ t -> compileTypeClass "HasRatLits" t
-  HasVecLitsExpr p n _ _   -> throwError $ UnsupportedBuiltin AgdaBackend p (TypeClass (HasVecLits n))
-
-  BuiltinTypeClass _ NatInDomainConstraint{} [t] -> compileTypeClass "NatInDomain" (argExpr t)
 
   _ -> do
     let e = normAppList mempty (Builtin mempty op) allArgs
@@ -607,7 +620,7 @@ compileQuantIn q tCont fn cont = do
     (BoolLevel, Exists, ListType{})   -> return ("any", listQualifier,   DataList)
     (BoolLevel, Forall, TensorType{}) -> return ("all", tensorQualifier, DataTensor)
     (BoolLevel, Exists, TensorType{}) -> return ("any", tensorQualifier, DataTensor)
-    _                                 -> unexpectedTypeError tCont [List, Tensor]
+    _                                 -> unexpectedTypeError tCont [pretty List, pretty Tensor]
 
   annotateApp [dep] (qualifier <> "." <> quant) <$> traverse compileExpr [fn, cont]
 
@@ -767,7 +780,7 @@ compileOrder originalOrder elemType originalArgs = do
     NatType{}   -> return (natQualifier, DataNat)
     IntType{}   -> return (intQualifier, DataInteger)
     RatType{}   -> return (ratQualifier, DataRat)
-    _           -> unexpectedTypeError elemType [Nat, Int, Rat, Index]
+    _           -> unexpectedTypeError elemType (map pretty [Nat, Int, Rat, Index])
 
   let (boolDecDoc, boolDeps, opBraces) = case boolLevel of
         BoolLevel -> ("?", [RelNullary], boolBraces)
@@ -839,19 +852,19 @@ equalityDependencies = \case
   NatType  _ -> return [DataNatInstances]
   IntType  _ -> return [DataIntegerInstances]
   BoolType _ -> return [DataBoolInstances]
-  App _ (Builtin _ List)   [tElem] -> do
-    deps <- equalityDependencies (argExpr tElem)
+  ListType _ tElem -> do
+    deps <- equalityDependencies tElem
     return $ [DataListInstances] <> deps
-  App _ (Builtin _ Tensor) [tElem, _tDims] -> do
-    deps <- equalityDependencies (argExpr tElem)
+  TensorType _ tElem _tDims -> do
+    deps <- equalityDependencies tElem
     return $ [DataTensorInstances] <> deps
   Var ann n -> throwError $ UnsupportedPolymorphicEquality AgdaBackend (provenanceOf ann) n
-  t         -> unexpectedTypeError t [Bool, Nat, Int, List, Tensor]
+  t         -> unexpectedTypeError t (map pretty [Bool, Nat, Int, List] <> map pretty [Tensor])
 
-unexpectedTypeError :: MonadCompile m => OutputExpr -> [Builtin] -> m a
+unexpectedTypeError :: MonadCompile m => OutputExpr -> [Doc ()] -> m a
 unexpectedTypeError actualType expectedTypes = compilerDeveloperError $
   "Unexpected type found." <+>
-  "Was expecting one of" <+> pretty expectedTypes <+>
+  "Was expecting one of" <+> list expectedTypes <+>
   "but found" <+> prettyFriendly actualType <+>
   "at" <+> pretty (provenanceOf actualType) <> "."
 

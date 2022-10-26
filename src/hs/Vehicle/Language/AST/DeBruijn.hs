@@ -103,19 +103,20 @@ instance DeBruijnFunctor DBExpr where
       altExpr      = alter body var
       underB       = underBinder body
     in \case
-      Universe ann l            -> return (Universe ann l)
-      Meta     ann m            -> return (Meta ann m)
-      Hole     ann name         -> return (Hole ann name)
-      Builtin  ann op           -> return (Builtin ann op)
-      Literal  ann l            -> return (Literal ann l)
-      LVec     ann es           -> LVec    ann <$> traverse altExpr es
-      Ann      ann term typ     -> Ann     ann <$> altExpr   term   <*> altExpr typ
-      App      ann fun args     -> normApp ann <$> altExpr   fun    <*> traverse altArg args
-      Pi       ann binder res   -> Pi      ann <$> altPiBinder binder <*> underB (altExpr res)
-      Let      ann e1 binder e2 -> Let     ann <$> altExpr e1 <*> altLamBinder binder <*> underB (altExpr e2)
-      Lam      ann binder e     -> Lam     ann <$> altLamBinder binder <*> underB (altExpr e)
-      Var      ann (Free i)     -> return (Var ann (Free i))
-      Var      ann (Bound i)    -> lift <$> var i ann =<< ask
+      Universe    p l            -> return (Universe p l)
+      Meta        p m            -> return (Meta p m)
+      Hole        p name         -> return (Hole p name)
+      Builtin     p op           -> return (Builtin p op)
+      Constructor p c            -> return (Constructor p c)
+      Literal     p l            -> return (Literal p l)
+      LVec        p es           -> LVec    p <$> traverse altExpr es
+      Ann         p term typ     -> Ann     p <$> altExpr   term   <*> altExpr typ
+      App         p fun args     -> normApp p <$> altExpr   fun    <*> traverse altArg args
+      Pi          p binder res   -> Pi      p <$> altPiBinder binder <*> underB (altExpr res)
+      Let         p e1 binder e2 -> Let     p <$> altExpr e1 <*> altLamBinder binder <*> underB (altExpr e2)
+      Lam         p binder e     -> Lam     p <$> altLamBinder binder <*> underB (altExpr e)
+      Var         p (Free i)     -> return (Var p (Free i))
+      Var         p (Bound i)    -> lift <$> var i p =<< ask
 
 -- Temporarily go under a binder, increasing the binding depth by one
 -- and shifting the current state.

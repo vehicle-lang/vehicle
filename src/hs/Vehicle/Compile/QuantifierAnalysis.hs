@@ -53,10 +53,11 @@ checkQuantifiersAreHomogeneous target ident expr = maybe Forall fst <$> go expr
       Hole{}      -> visibilityError    currentPass "Hole"
       Meta{}      -> resolutionError    currentPass "Meta"
 
-      Literal{}   -> return Nothing
-      Builtin{}   -> return Nothing
-      Var{}       -> return Nothing
-      LVec{}      -> return Nothing
+      Literal{}     -> return Nothing
+      Builtin{}     -> return Nothing
+      Constructor{} -> return Nothing
+      Var{}         -> return Nothing
+      LVec{}        -> return Nothing
 
       ExistsRatExpr p _ body -> checkEqual p Exists =<< go body
       ForallRatExpr p _ body -> checkEqual p Forall =<< go body

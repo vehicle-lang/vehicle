@@ -41,12 +41,13 @@ compileToQueries :: MonadCompile m
                  -> PropertyContext
                  -> NetworkContext
                  -> m (Specification QueryData)
-compileToQueries verifier@Verifier{..} prog propertyCtx networkCtx =
+compileToQueries verifier@Verifier{..} prog propertyCtx networkCtx = do
   logCompilerPass MinDetail currentPass $ do
     if null propertyCtx
       then throwError NoPropertiesFound
       else do
         normProg <- normalise prog fullNormalisationOptions
+
         properties <- getProperties verifierIdentifier propertyCtx normProg
 
         xs <- forM properties $ \(name, expr) -> do

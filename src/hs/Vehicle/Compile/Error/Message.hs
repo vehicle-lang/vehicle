@@ -11,13 +11,14 @@ import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Void ( Void )
 import Data.Text ( Text, pack )
 import Data.List.NonEmpty qualified as NonEmpty
+import Prettyprinter (list)
+import System.FilePath
 
 import Vehicle.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
 import Vehicle.Compile.Type.Constraint
-import System.FilePath
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -307,7 +308,7 @@ instance MeaningfulError CompileError where
       UError $ UserError
       { provenance = provenanceOf ctx
       , problem    = "expecting" <+> prettyOrdinal "argument" argNo (Just argTotal) <+>
-                     "of" <+> squotes (pretty builtin) <+> "to be" <+>
+                     "of" <+> quotePretty builtin <+> "to be" <+>
                      prettyAllowedTypes allowedTypes <+>
                      "but found something of type" <+> prettyExpr ctx t <> "."
       , fix        = Nothing
@@ -316,7 +317,7 @@ instance MeaningfulError CompileError where
     FailedBuiltinConstraintResult ctx builtin actualType allowedTypes ->
       UError $ UserError
       { provenance = provenanceOf ctx
-      , problem    = "the return type of" <+> squotes (pretty builtin) <+>
+      , problem    = "the return type of" <+> quotePretty builtin <+>
                      "should be" <+> prettyAllowedTypes allowedTypes <+>
                      "but the program is expecting something of type" <+>
                      prettyExpr ctx actualType <> "."
@@ -458,7 +459,7 @@ instance MeaningfulError CompileError where
       { provenance = provenanceOf nonTensorType
       , problem    = unsupportedResourceTypeDescription Network ident fullType <+>
                     "as the" <+> pretty io <+> squotes (prettyFriendly nonTensorType) <+>
-                    "is not one of" <+> pretty @[Builtin] [Vector, Tensor] <> "."
+                    "is not one of" <+> list [pretty Vector, pretty Tensor] <> "."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Ensure the" <+> pretty io <+> "of the network is a Tensor"
       }
@@ -511,14 +512,14 @@ instance MeaningfulError CompileError where
                      "for the" <+> prettyResource Dataset ident <> "."
       , fix        = Just $ "change the type of" <+> squotes (pretty ident) <+>
                      "to" <+> prettyAllowedBuiltins supportedTypes <> "."
-      } where supportedTypes = [List, Vector, Tensor]
+      } where supportedTypes = map pretty [List, Vector] <> [pretty Tensor]
 
     DatasetTypeUnsupportedElement (ident, p) tCont -> UError $ UserError
       { provenance = p
       , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
                      "for the elements of the" <+> prettyResource Dataset ident <> "."
       , fix        = Just $ "change the element type to" <+> prettyAllowedBuiltins supportedTypes <> "."
-      } where supportedTypes = [Index, Nat, Int, Rat]
+      } where supportedTypes = map pretty [Index, Nat, Int, Rat]
 
     DatasetVariableSizeTensor (ident, p) tCont -> UError $ UserError
       { provenance = p
@@ -592,7 +593,7 @@ instance MeaningfulError CompileError where
       , problem    = unsupportedResourceTypeDescription Parameter ident expectedType <> "."
       , fix        = Just $ "change the type of" <+> quotePretty ident <+> "to" <+>
                        prettyAllowedBuiltins supportedTypes <> "."
-      } where supportedTypes = [Bool, Index, Nat, Int, Rat]
+      } where supportedTypes = map pretty [Bool, Index, Nat, Int, Rat]
 
     ParameterValueUnparsable (ident, p) value expectedType -> UError $ UserError
       { provenance = p
@@ -728,7 +729,7 @@ instance MeaningfulError CompileError where
 
     UnsupportedBuiltin target p builtin -> UError $ UserError
       { provenance = p
-      , problem    = "Compilation of" <+> squotes (pretty builtin) <+> "to" <+>
+      , problem    = "Compilation of" <+> quotePretty builtin <+> "to" <+>
                      pretty target <+> "is not currently supported."
       , fix        = Just $ "Try avoiding it, otherwise please open an issue on the" <+>
                      "Vehicle issue tracker."
@@ -815,7 +816,7 @@ unsolvedConstraintError constraint ctx ="Typing error: not enough information to
 prettyResource :: ResourceType -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
 
-prettyBuiltinType :: Builtin -> Doc a
+prettyBuiltinType :: Constructor -> Doc a
 prettyBuiltinType t = article <+> squotes (pretty t)
   where
     article :: Doc a
@@ -880,16 +881,16 @@ prettyAuxiliaryFunctionProvenance = \case
   FunctionInput  n _ -> "which is used as an input to the function" <+> quotePretty n
   FunctionOutput n -> "which is returned as an output of the function" <+> quotePretty n
 
-prettyAllowedTypes :: [InputExpr] -> Doc b
+prettyAllowedTypes :: [Doc b] -> Doc b
 prettyAllowedTypes allowedTypes = if length allowedTypes == 1
-  then squotes (prettyFriendly (head allowedTypes))
-  else "one of" <+> prettyFlatList (prettyFriendly <$> allowedTypes)
+  then squotes (head allowedTypes)
+  else "one of" <+> prettyFlatList allowedTypes
 
-prettyAllowedBuiltins :: [Builtin] -> Doc b
+prettyAllowedBuiltins :: [Doc b] -> Doc b
 prettyAllowedBuiltins allowedTypes = if length allowedTypes == 1
-  then squotes (pretty (head allowedTypes))
+  then squotes (head allowedTypes)
   else do
-    let docs = fmap quotePretty allowedTypes
+    let docs = fmap squotes allowedTypes
     "one of" <+> commaSep (init docs) <+> "or" <+> last docs
 
 prettyOrdinal :: Doc b -> Int -> Maybe Int -> Doc b

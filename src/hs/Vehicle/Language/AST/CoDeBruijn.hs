@@ -32,6 +32,7 @@ import Vehicle.Language.AST.Name
 import Vehicle.Language.AST.DeBruijn hiding (Free, Bound)
 import Vehicle.Language.AST.DeBruijn qualified as DB (DBVar(..))
 import Vehicle.Language.AST.Builtin (Builtin)
+import Vehicle.Language.AST.Datatype
 import Vehicle.Language.AST.Position
 import Vehicle.Language.AST.Provenance
 
@@ -82,12 +83,13 @@ class ExtractPositionTrees t where
 
 instance ExtractPositionTrees Expr where
   extractPTs = cata $ \case
-    UniverseF ann l  -> (Universe ann l,  mempty)
-    HoleF     ann n  -> (Hole    ann n,  mempty)
-    MetaF     ann m  -> (Meta    ann m,  mempty)
-    BuiltinF  ann op -> (Builtin ann op, mempty)
-    LiteralF  ann l  -> (Literal ann l,  mempty)
-    VarF      ann v  -> (Var ann v,      mempty)
+    UniverseF    p l  -> (Universe    p l,  mempty)
+    HoleF        p n  -> (Hole        p n,  mempty)
+    MetaF        p m  -> (Meta        p m,  mempty)
+    ConstructorF p c  -> (Constructor p c,  mempty)
+    BuiltinF     p op -> (Builtin     p op, mempty)
+    LiteralF     p l  -> (Literal     p l,  mempty)
+    VarF         p v  -> (Var         p v,  mempty)
 
     AnnF ann (e, mpts1) (t, mpts2) -> (Ann ann e t, mergePTs [mpts1, mpts2])
 
@@ -141,18 +143,19 @@ type ArgC = GenericArg CoDBExpr
 type BinderC = GenericBinder (CoDBBinding DBBinding) CoDBExpr
 
 data ExprC
-  = UniverseC Provenance Universe
-  | AnnC      Provenance CoDBExpr CoDBExpr
-  | AppC      Provenance CoDBExpr (NonEmpty CoDBArg)
-  | PiC       Provenance CoDBBinder CoDBExpr
-  | BuiltinC  Provenance Builtin
-  | VarC      Provenance DBVar
-  | HoleC     Provenance Name
-  | MetaC     Provenance Meta
-  | LetC      Provenance CoDBExpr CoDBBinder CoDBExpr
-  | LamC      Provenance CoDBBinder CoDBExpr
-  | LiteralC  Provenance Literal
-  | LSeqC     Provenance [CoDBExpr]
+  = UniverseC    Provenance Universe
+  | AnnC         Provenance CoDBExpr CoDBExpr
+  | AppC         Provenance CoDBExpr (NonEmpty CoDBArg)
+  | PiC          Provenance CoDBBinder CoDBExpr
+  | BuiltinC     Provenance Builtin
+  | ConstructorC Provenance Constructor
+  | VarC         Provenance DBVar
+  | HoleC        Provenance Name
+  | MetaC        Provenance Meta
+  | LetC         Provenance CoDBExpr CoDBBinder CoDBExpr
+  | LamC         Provenance CoDBBinder CoDBExpr
+  | LiteralC     Provenance Literal
+  | LSeqC        Provenance [CoDBExpr]
   deriving (Show)
 
 class RecCoDB a b where

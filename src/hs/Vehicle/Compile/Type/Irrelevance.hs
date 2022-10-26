@@ -55,12 +55,13 @@ instance RemoveIrrelevantCode CheckedExpr where
       Let  p bound binder body -> Let p <$> remove bound <*> remove binder <*> remove body
       LVec p xs                -> LVec p <$> traverse remove xs
 
-      Universe{} -> return expr
-      Var{}      -> return expr
-      Hole{}     -> return expr
-      Meta{}     -> return expr
-      Literal{}  -> return expr
-      Builtin{}  -> return expr
+      Universe{}    -> return expr
+      Var{}         -> return expr
+      Hole{}        -> return expr
+      Meta{}        -> return expr
+      Literal{}     -> return expr
+      Builtin{}     -> return expr
+      Constructor{} -> return expr
 
     showRemoveExit result
     return result

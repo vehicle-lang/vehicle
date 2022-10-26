@@ -131,8 +131,11 @@ universeLevel t                         = developerError $
 tMax :: DBExpr -> DBExpr -> DBExpr
 tMax t1 t2  = if universeLevel t1 > universeLevel t2 then t1 else t2
 
-con :: Builtin -> DSLExpr
-con b = DSL $ \ann _ -> Builtin ann b
+builtin :: Builtin -> DSLExpr
+builtin b = DSL $ \p _ -> Builtin p b
+
+constructor :: Constructor -> DSLExpr
+constructor c = DSL $ \p _ -> Constructor p c
 
 --------------------------------------------------------------------------------
 -- Types
@@ -198,13 +201,13 @@ tLin :: DSLExpr
 tLin = universe LinearityUniv
 
 tUnit :: DSLExpr
-tUnit = con Unit
+tUnit = constructor Unit
 
 tBool, tNat, tInt, tRat :: DSLExpr
-tBool = con Bool
-tNat  = con Nat
-tInt  = con Int
-tRat  = con Rat
+tBool = constructor Bool
+tNat  = constructor Nat
+tInt  = constructor Int
+tRat  = constructor Rat
 
 tAnnRat :: DSLExpr ->  DSLExpr
 tAnnRat linearity = app tRat
@@ -218,16 +221,16 @@ tAnnBool linearity polarity = app tBool
   ]
 
 tVector :: DSLExpr -> DSLExpr -> DSLExpr
-tVector tElem dim = con Vector @ [tElem, dim]
+tVector tElem dim = constructor Vector @ [tElem, dim]
 
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
-tTensor tElem dims = con Tensor @ [tElem, dims]
+tTensor tElem dims = builtin Tensor @ [tElem, dims]
 
 tList :: DSLExpr -> DSLExpr
-tList tElem = con List @ [tElem]
+tList tElem = constructor List @ [tElem]
 
 tIndex :: DSLExpr -> DSLExpr
-tIndex n = con Index @ [n]
+tIndex n = constructor Index @ [n]
 
 tHole :: Name -> DSLExpr
 tHole name = DSL $ \ann _ -> Hole ann name
@@ -236,7 +239,7 @@ tHole name = DSL $ \ann _ -> Hole ann name
 -- TypeClass
 
 typeClass :: TypeClass -> NonEmpty DSLExpr -> DSLExpr
-typeClass tc args = con (TypeClass tc) @ args
+typeClass tc args = constructor (TypeClass tc) @ args
 
 hasEq :: EqualityOp -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 hasEq eq t1 t2 t3 = typeClass (HasEq eq) [t1, t2, t3]
@@ -332,7 +335,7 @@ nil :: DSLExpr -> DSLExpr
 nil tElem = lseq tElem []
 
 cons :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-cons tElem x xs = app (con Cons)
+cons tElem x xs = app (constructor Cons)
   [ (Implicit, Relevant, tElem)
   , (Explicit, Relevant, x)
   , (Explicit, Relevant, xs)
@@ -351,11 +354,11 @@ natLit = lit . LNat
 -- Polarities
 
 constant :: DSLExpr
-constant = con (Linearity Constant)
+constant = constructor (Linearity Constant)
 
 linear :: DSLExpr
-linear = DSL $ \p _ -> Builtin p (Linearity (Linear $ prov p ""))
+linear = DSL $ \p _ -> Constructor p (Linearity (Linear $ prov p ""))
   where prov = QuantifiedVariableProvenance
 
 unquantified :: DSLExpr
-unquantified = con (Polarity Unquantified)
+unquantified = constructor (Polarity Unquantified)

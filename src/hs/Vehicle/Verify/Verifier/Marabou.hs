@@ -22,6 +22,7 @@ import Vehicle.Compile.Linearity
 import Control.Monad (forM)
 import Vehicle.Verify.Verifier.Interface
 import Vehicle.Verify.Core
+import Vehicle.Compile.Error (compilerDeveloperError)
 
 --------------------------------------------------------------------------------
 -- The main interface

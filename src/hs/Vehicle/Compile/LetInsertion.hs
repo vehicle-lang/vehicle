@@ -17,11 +17,12 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.CoDeBruijnify
 import Vehicle.Compile.AlphaEquivalence
 import Data.Hashable (Hashable (hash))
+import Vehicle.Compile.Error
 
 -- | Let-lifts any sub-expressions that matches the provided filter
 -- to the highest possible level. Filter takes in the expression
 -- and the quantity found.
-insertLets :: MonadLogger m
+insertLets :: MonadCompile m
            => (CheckedCoDBExpr -> Int -> Bool)
            -> Bool
            -> CheckedExpr
@@ -34,10 +35,14 @@ insertLets subexprFilter liftOverBinders expr =
   where
     applyInsert :: MonadLetInsert m => m CheckedExpr
     applyInsert = do
-      (result, sm) <- letInsert (toCoDBExpr expr)
+      let coDBExpr = toCoDBExpr expr
+      logDebug MaxDetail "Bye"
+      (result, sm) <- letInsert coDBExpr
+      compilerDeveloperError  "Hi4"
       -- Any remaining subexpressions must involve free variables and therefore
       -- we can bind them here at the top level.
       (letBoundResult, _) <- letBindSubexpressions Map.empty (Map.elems sm) result
+      compilerDeveloperError  "Hi3"
       return (fromCoDB letBoundResult)
 
 --------------------------------------------------------------------------------
@@ -78,7 +83,7 @@ subexprPrefixOrder e1 e2 = prefixOrd (positions e1) (positions e2)
 type SubexpressionMap = LinkedHashMap Int Subexpression
 
 type MonadLetInsert m =
-  ( MonadLogger m
+  ( MonadCompile m
   , MonadReader (CheckedCoDBExpr -> Int -> Bool, Bool) m
   )
 
@@ -86,12 +91,13 @@ letInsert :: MonadLetInsert m => CheckedCoDBExpr -> m (CheckedCoDBExpr, Subexpre
 letInsert expr = do
   showIdentEntry expr
   res@(expr', sm) <- case recCoDB expr of
-    UniverseC{} -> return (expr, leafSM)
-    VarC{}      -> return (expr, leafSM)
-    LiteralC{}  -> return (expr, leafSM)
-    BuiltinC{}  -> return (expr, leafSM)
-    HoleC{}     -> return (expr, leafSM)
-    MetaC{}     -> return (expr, leafSM)
+    UniverseC{}    -> return (expr, leafSM)
+    VarC{}         -> return (expr, leafSM)
+    LiteralC{}     -> return (expr, leafSM)
+    BuiltinC{}     -> return (expr, leafSM)
+    -- ConstructorC{} -> return (expr, leafSM)
+    HoleC{}        -> return (expr, leafSM)
+    MetaC{}        -> return (expr, leafSM)
 
     LSeqC ann xs -> do
       ((xs', bvms), sms) <- first unzip <$> (unzip <$> traverse letInsert xs)

@@ -59,10 +59,11 @@ recLift expr =
               , ExplicitArg ann2 (liftFreeDBIndices 0 e2'')
               ]
 
-    App{}      -> return expr
-    Builtin{}  -> return expr
-    Literal{}  -> return expr
-    Var{}      -> return expr
+    App{}         -> return expr
+    Constructor{} -> return expr
+    Builtin{}     -> return expr
+    Literal{}     -> return expr
+    Var{}         -> return expr
 
     -- Quantified lambdas should have been caught before now.
     Lam{} -> caseError currentPass "Lam" ["QuantifierExpr"]

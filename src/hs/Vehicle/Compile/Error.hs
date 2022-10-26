@@ -3,6 +3,7 @@ module Vehicle.Compile.Error where
 import Control.Exception (IOException)
 import Control.Monad.Except ( MonadError, throwError )
 import Data.List.NonEmpty (NonEmpty)
+import Data.Void ( Void )
 import Prettyprinter (list)
 
 import Vehicle.Compile.Prelude
@@ -68,8 +69,8 @@ data CompileError
     (NonEmpty Constraint)
   | FailedEqConstraint               ConstraintContext CheckedType CheckedType EqualityOp
   | FailedOrdConstraint              ConstraintContext CheckedType CheckedType OrderOp
-  | FailedBuiltinConstraintArgument  ConstraintContext Builtin CheckedType [InputExpr] Int Int
-  | FailedBuiltinConstraintResult    ConstraintContext Builtin CheckedType [InputExpr]
+  | FailedBuiltinConstraintArgument  ConstraintContext Builtin CheckedType [Doc Void] Int Int
+  | FailedBuiltinConstraintResult    ConstraintContext Builtin CheckedType [Doc Void]
   | FailedNotConstraint              ConstraintContext CheckedType
   | FailedBoolOp2Constraint          ConstraintContext CheckedType CheckedType Builtin
   | FailedQuantifierConstraintDomain ConstraintContext CheckedType Quantifier
@@ -112,7 +113,7 @@ data CompileError
   | ParameterTypeUnsupported             DeclProvenance CheckedType
   | ParameterTypeVariableSizeIndex       DeclProvenance CheckedExpr
   | ParameterTypeInferableParameterIndex DeclProvenance Identifier
-  | ParameterValueUnparsable             DeclProvenance String Builtin
+  | ParameterValueUnparsable             DeclProvenance String Constructor
   | ParameterValueInvalidIndex           DeclProvenance Int Int
   | ParameterValueInvalidNat             DeclProvenance Int
   | InferableParameterTypeUnsupported    DeclProvenance CheckedType
@@ -129,7 +130,7 @@ data CompileError
   | UnsupportedBuiltin               Backend Provenance Builtin
   | UnsupportedNonMagicVariable      Backend Provenance Name
   | NoNetworkUsedInProperty          Backend Provenance Identifier
-  | UnsupportedVariableType           VerifierIdentifier Identifier Provenance Name CheckedType [Builtin]
+  | UnsupportedVariableType           VerifierIdentifier Identifier Provenance Name CheckedType [Constructor]
   | UnsupportedAlternatingQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedNonLinearConstraint   Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
   deriving (Show)
@@ -176,17 +177,3 @@ caseError :: MonadError CompileError m => Doc () -> Doc () -> [Doc ()] -> m b
 caseError pass name cases = compilerDeveloperError $
   unexpectedExpr pass name <+> "This should already have been caught by the" <+>
   "following cases:" <+> list cases
-
-allowedType :: Builtin -> InputExpr
-allowedType = let p = mempty in \case
-  Nat                  -> NatType p
-  Int                  -> IntType p
-  Rat                  -> RatType p
-  Index                -> IndexType p (Var p "n")
-  List                 -> ListType p (Var p "A")
-  Tensor               -> TensorType p (Var p "A") (Var p "dims")
-  b                    -> developerError
-    $ "Builtin" <+> squotes (pretty b) <+> "not yet supported for allowed translation"
-
-allowed :: [Builtin] -> [InputExpr]
-allowed = fmap allowedType

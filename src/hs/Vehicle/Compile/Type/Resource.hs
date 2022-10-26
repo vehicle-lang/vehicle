@@ -41,7 +41,7 @@ checkParameterType decl t = do
     IntType{}     -> return ()
 
     AnnRatType p lin -> do
-      let targetLinearity = Builtin p (Linearity Constant)
+      let targetLinearity = LinearityExpr p Constant
       addUnificationConstraint LinearityGroup p mempty lin targetLinearity
       return ()
 
@@ -82,7 +82,7 @@ checkDatasetType decl t = do
     IntType{}    -> return ()
     IndexType{}  -> return ()
     AnnRatType p lin -> do
-      let targetLinearity = Builtin p (Linearity Constant)
+      let targetLinearity = LinearityExpr p Constant
       addUnificationConstraint LinearityGroup p mempty lin targetLinearity
       return ()
     elemType     -> throwError $ DatasetTypeUnsupportedElement decl elemType
@@ -110,8 +110,8 @@ checkNetworkType decl@(ident, _) networkType = checkFunType networkType
         -- are also variables) and 2) the linearity of its input. So prepend this
         -- constraint to the front of the type.
         logDebug MaxDetail "Appending `MaxLinearity` constraint to network type"
-        let outputLinProvenance = Linearity $ Linear $ NetworkOutputProvenance p (nameOf ident)
-        let linConstraintArgs = [Builtin p outputLinProvenance, inputLin, outputLin]
+        let outputLinProvenance = Linear $ NetworkOutputProvenance p (nameOf ident)
+        let linConstraintArgs = [LinearityExpr p outputLinProvenance, inputLin, outputLin]
         let linConstraint = BuiltinTypeClass p (LinearityTypeClass MaxLinearity) (ExplicitArg p <$> linConstraintArgs)
         return $ \t -> Pi p (IrrelevantInstanceBinder p Nothing linConstraint) t
     _ -> throwError $ NetworkTypeIsNotAFunction decl networkType

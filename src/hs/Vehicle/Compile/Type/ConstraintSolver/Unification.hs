@@ -89,6 +89,9 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
     (Builtin _ op1, args1) :~: (Builtin _ op2, args2) ->
       solveSimpleApplication c op1 op2 args1 args2
 
+    (Constructor _ op1, args1) :~: (Constructor _ op2, args2) ->
+      solveSimpleApplication c op1 op2 args1 args2
+
     (Var _ v1, args1) :~: (Var _ v2, args2) ->
       solveSimpleApplication c v1 v2 args1 args2
 

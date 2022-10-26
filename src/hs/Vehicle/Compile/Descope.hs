@@ -81,31 +81,33 @@ instance Descope Decl where
 
 instance Descope Expr where
   descope f e = showScopeExit $ case showScopeEntry e of
-    Universe  ann l        -> return $ Universe ann l
-    Hole     ann name     -> return $ Hole    ann name
-    Builtin  ann op       -> return $ Builtin ann op
-    Literal  ann l        -> return $ Literal ann l
-    Meta     ann i        -> return $ Meta ann i
-    Var      ann v        -> Var ann <$> f ann v
-    Ann      ann e1 t     -> Ann ann <$> descope f e1 <*> descope f t
-    App      ann fun args -> App ann <$> descope f fun <*> traverse (descopeArg f) args
-    LVec     ann es       -> LVec ann <$> traverse (descope f) es
+    Universe    p l    -> return $ Universe p l
+    Hole        p name -> return $ Hole p name
+    Builtin     p op   -> return $ Builtin p op
+    Constructor p c    -> return $ Constructor p c
+    Literal     p l    -> return $ Literal p l
+    Meta        p i    -> return $ Meta p i
 
-    Let ann bound binder body -> do
+    Var         p v        -> Var p <$> f p v
+    Ann         p e1 t     -> Ann p <$> descope f e1 <*> descope f t
+    App         p fun args -> App p <$> descope f fun <*> traverse (descopeArg f) args
+    LVec        p es       -> LVec p <$> traverse (descope f) es
+
+    Let p bound binder body -> do
       bound'      <- descope f bound
       binder'     <- descopeBinder f binder
       body'       <- local (addBinderToCtx binder') (descope f body)
-      return $ Let ann bound' binder' body'
+      return $ Let p bound' binder' body'
 
-    Lam ann binder body -> do
+    Lam p binder body -> do
       binder'     <- descopeBinder f binder
       body'       <- local (addBinderToCtx binder') (descope f body)
-      return $ Lam ann binder' body'
+      return $ Lam p binder' body'
 
-    Pi ann binder body -> do
+    Pi p binder body -> do
       binder'     <- descopeBinder f binder
       body'       <- local (addBinderToCtx binder') (descope f body)
-      return $ Pi ann binder' body'
+      return $ Pi p binder' body'
 
 descopeBinder :: (MonadReader Ctx f, Show var)
               => (Provenance -> var -> f Name)

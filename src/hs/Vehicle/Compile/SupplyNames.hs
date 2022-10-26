@@ -77,15 +77,17 @@ instance SupplyNames Decl where
 
 instance SupplyNames Expr where
   supplyNames f e = case e of
-    Universe ann l        -> return (Universe ann l)
-    Hole     ann name     -> return (Hole ann name)
-    Builtin  ann op       -> return (Builtin ann op)
-    Literal  ann l        -> return (Literal ann l)
-    Var      ann v        -> return $ Var ann v
-    Ann      ann e1 t     -> Ann ann <$> supplyNames f e1 <*> supplyNames f t
-    App      ann fun args -> App ann <$> supplyNames f fun <*> traverse (supplyNamesArg f) args
-    LVec     ann es       -> LVec ann <$> traverse (supplyNames f) es
-    Meta     ann i        -> return $ Meta ann i
+    Universe    p l        -> return $ Universe p l
+    Hole        p name     -> return $ Hole p name
+    Builtin     p op       -> return $ Builtin p op
+    Constructor p c        -> return $ Constructor p c
+    Literal     p l        -> return $ Literal p l
+    Var         p v        -> return $ Var p v
+    Meta        p i        -> return $ Meta p i
+
+    Ann         p e1 t     -> Ann p <$> supplyNames f e1 <*> supplyNames f t
+    App         p fun args -> App p <$> supplyNames f fun <*> traverse (supplyNamesArg f) args
+    LVec        p es       -> LVec p <$> traverse (supplyNames f) es
 
     Let ann bound binder body -> Let ann <$> supplyNames f bound <*> supplyNamesBinder f binder <*> supplyNames f body
     Lam ann binder body       -> Lam ann <$> supplyNamesBinder f binder <*> supplyNames f body

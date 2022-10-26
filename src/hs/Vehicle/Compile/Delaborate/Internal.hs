@@ -51,11 +51,12 @@ instance Delaborate V.NamedDecl B.Decl where
 
 instance Delaborate V.NamedExpr B.Expr where
   delabM expr = case expr of
-    V.Universe _ u -> return $ delabUniverse u
-    V.Var _ n      -> return $ B.Var  (delabSymbol n)
-    V.Hole _ n     -> return $ B.Hole (mkToken B.HoleToken n)
-    V.Literal _ l  -> return $ delabLiteral l
-    V.Builtin _ op -> return $ delabBuiltin op
+    V.Universe _ u    -> return $ delabUniverse u
+    V.Var _ n         -> return $ B.Var  (delabSymbol n)
+    V.Hole _ n        -> return $ B.Hole (mkToken B.HoleToken n)
+    V.Literal _ l     -> return $ delabLiteral l
+    V.Builtin _ op    -> return $ delabBuiltin op
+    V.Constructor _ c -> return $ delabConstructor c
 
     V.Ann _ e t    -> B.Ann <$> delabM e <*> delabM t
     V.Pi  _ b t    -> B.Pi  <$> delabM b <*> delabM t
@@ -118,7 +119,10 @@ delabIdentifier :: V.Identifier -> B.NameToken
 delabIdentifier (V.Identifier n) = mkToken B.NameToken n
 
 delabBuiltin :: V.Builtin -> B.Expr
-delabBuiltin op = B.Builtin $ mkToken B.BuiltinToken $ V.symbolFromBuiltin op
+delabBuiltin op = B.Builtin $ mkToken B.BuiltinToken $ layoutAsText $ pretty op
+
+delabConstructor :: V.Constructor -> B.Expr
+delabConstructor c = B.Builtin $ mkToken B.BuiltinToken $ layoutAsText $ pretty c
 
 delabApp :: B.Expr -> [B.Arg] -> B.Expr
 delabApp fun []           = fun

@@ -14,6 +14,7 @@ import Vehicle.Language.AST.Builtin(Builtin, Linearity (..), Polarity (..))
 import Vehicle.Language.AST.Visibility
 import Vehicle.Language.AST.Provenance
 import Vehicle.Language.AST.Relevance
+import Vehicle.Language.AST.Datatype
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -251,6 +252,10 @@ data Expr binder var
     (Binder binder var)  -- The bound name
     (Expr   binder var)  -- (Dependent) result type.
 
+  | Constructor
+    Provenance
+    Constructor
+
   -- | Terms consisting of constants that are built into the language.
   | Builtin
     Provenance
@@ -307,18 +312,19 @@ type Type = Expr
 
 instance HasProvenance (Expr binder var) where
   provenanceOf = \case
-    Universe p _     -> p
-    Hole     p _     -> p
-    Meta     p _     -> p
-    Ann      p _ _   -> p
-    App      p _ _   -> p
-    Pi       p _ _   -> p
-    Builtin  p _     -> p
-    Var      p _     -> p
-    Let      p _ _ _ -> p
-    Lam      p _ _   -> p
-    Literal  p _     -> p
-    LVec     p _     -> p
+    Universe    p _     -> p
+    Hole        p _     -> p
+    Meta        p _     -> p
+    Ann         p _ _   -> p
+    App         p _ _   -> p
+    Pi          p _ _   -> p
+    Constructor p _     -> p
+    Builtin     p _     -> p
+    Var         p _     -> p
+    Let         p _ _ _ -> p
+    Lam         p _ _   -> p
+    Literal     p _     -> p
+    LVec        p _     -> p
 
 --------------------------------------------------------------------------------
 -- Identifiers

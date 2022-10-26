@@ -87,8 +87,11 @@ normUserVariables :: MonadCompile m
                   -> m (Query (CLSTProblem, MetaNetwork, UserVarReconstructionInfo))
 normUserVariables ident verifier networkCtx expr =
   logCompilerPass MinDetail "input/output variable insertion" $ do
+
     -- Let-lift all the network applications to avoid duplicates.
     liftedNetworkAppExpr <- liftNetworkApplications networkCtx expr
+
+    compilerDeveloperError "Hi2"
 
     -- We can now calculate the meta-network.
     let metaNetwork = generateMetaNetwork networkCtx liftedNetworkAppExpr
@@ -97,6 +100,8 @@ normUserVariables ident verifier networkCtx expr =
 
     -- Next remove all the user quantifiers which we must now be at the top-level.
     (quantifierlessExpr, userVariables) <- removeUserQuantifiers ident liftedNetworkAppExpr
+
+    compilerDeveloperError "Hi3"
 
     -- We prepend user variables with a special character to distinguish them in the
     -- logs in the case that the user variables coincide with the magic variables.
@@ -363,7 +368,8 @@ compileAssertions = \case
       Lam{}                  -> normalisationError currentPass "Lam"
       Let{}                  -> normalisationError currentPass "Let"
       LVec{}                 -> normalisationError currentPass "LVec"
-      Builtin{}              -> normalisationError currentPass "LVec"
+      Builtin{}              -> normalisationError currentPass "Builtin"
+      Constructor{}          -> normalisationError currentPass "Constructor"
       Var{}                  -> caseError          currentPass "Var" ["OrderOp", "Eq"]
 
       Literal _ann l -> case l of

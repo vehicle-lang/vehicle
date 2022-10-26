@@ -5,6 +5,7 @@ import Control.Monad (MonadPlus(..))
 import Control.Monad.Except (MonadError(..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (mapMaybe)
+import Data.Void (Void)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
@@ -29,7 +30,7 @@ unless2 p a = if not p then return a else mzero
 tcArgError :: Constraint
            -> CheckedType
            -> TypeClassOp
-           -> [InputExpr]
+           -> [Doc Void]
            -> Int
            -> Int
            -> [CompileError]
@@ -39,7 +40,7 @@ tcArgError c arg op allowedTypes argIndex numberOfArgs = unless2 (isMeta arg)
 tcResultError :: Constraint
               -> CheckedType
               -> TypeClassOp
-              -> [InputExpr]
+              -> [Doc Void]
               -> [CompileError]
 tcResultError c result op allowedTypes =
   unless2 (isMeta result)

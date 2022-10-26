@@ -16,7 +16,7 @@ testLogLevel =
   -- MaxDetail
 
 timeOutSeconds :: Integer
-timeOutSeconds = 1000
+timeOutSeconds = 20
 
 main :: IO ()
 main = do

@@ -169,23 +169,10 @@ instance Hashable MapDomain
 
 -- |Builtins in the Vehicle language
 data Builtin
-  -- Annotations - these should not be shown to the user.
-  = Polarity  Polarity
-  | Linearity Linearity
-
   -- Types
-  | Unit
-  | Bool
-  | Index
-  | Nat
-  | Int
-  | Rat
-  | List
-  | Vector
-  | Tensor
+  = Tensor
 
-  -- Type classes
-  | TypeClass   TypeClass
+  -- Type classes operations
   | TypeClassOp TypeClassOp
 
   -- Boolean expressions
@@ -212,8 +199,6 @@ data Builtin
   | Order  OrderDomain OrderOp
 
   -- Container expressions
-  | Nil
-  | Cons
   | At
   | Map  MapDomain
   | Fold FoldDomain
@@ -225,20 +210,8 @@ instance Hashable Builtin
 
 instance Pretty Builtin where
   pretty = \case
-    Polarity  pol -> pretty pol
-    Linearity lin -> pretty lin
-
-    TypeClass   tc   -> pretty tc
     TypeClassOp tcOp -> pretty tcOp
 
-    Unit   -> "Unit"
-    Bool   -> "Bool"
-    Index  -> "Index"
-    Nat    -> "Nat"
-    Int    -> "Int"
-    Rat    -> "Rat"
-    List   -> "List"
-    Vector -> "Vector"
     Tensor -> "Tensor"
 
     Not     -> "notBool"
@@ -264,25 +237,15 @@ instance Pretty Builtin where
     Fold dom -> "fold" <> pretty dom
     Map dom  -> "map" <> pretty dom
     At       -> "!"
-    Nil      -> "nil"
-    Cons     -> "::"
 
+-- TODO nix.
 builtinSymbols :: [(Text, Builtin)]
 builtinSymbols = map (first pack)
-  [ show Bool                         |-> Bool
-  , show Nat                          |-> Nat
-  , show Int                          |-> Int
-  , show Rat                          |-> Rat
-  , show List                         |-> List
-  , show Tensor                       |-> Tensor
+  [ show Tensor                       |-> Tensor
 
   , show If                           |-> If
   , show At                           |-> At
-  , show Cons                         |-> Cons
   ]
 
 builtinFromSymbol :: Text -> Maybe Builtin
 builtinFromSymbol symbol = lookup symbol builtinSymbols
-
-symbolFromBuiltin :: Builtin -> Text
-symbolFromBuiltin builtin = layoutAsText $ pretty builtin

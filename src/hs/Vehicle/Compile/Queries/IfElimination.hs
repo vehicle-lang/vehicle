@@ -52,14 +52,13 @@ elimIf e = e
 
 liftAndElimIf :: MonadCompile m => CheckedExpr -> m CheckedExpr
 liftAndElimIf expr = case expr of
-  Universe{} -> return expr
-  Builtin{}  -> return expr
-  Literal{}  -> return expr
-  Var{}      -> return expr
-  Hole{}     -> return expr
-  Meta{}     -> return expr
-
-  Pi{}       -> unexpectedTypeInExprError currentPass "Pi"
+  Universe{}    -> return expr
+  Builtin{}     -> return expr
+  Literal{}     -> return expr
+  Constructor{} -> return expr
+  Var{}         -> return expr
+  Hole{}        -> return expr
+  Meta{}        -> return expr
 
   PostulatedQuantifierExpr ident p binder body ->
     PostulatedQuantifierExpr ident p binder . elimIf <$> liftAndElimIf body
@@ -89,6 +88,8 @@ liftAndElimIf expr = case expr of
 
   -- Quantified lambdas should have been caught before now.
   Lam{} -> normalisationError currentPass "Non-quantified Lam"
+
+  Pi{} -> unexpectedTypeInExprError currentPass "Pi"
 
 liftArg :: (CheckedArg -> CheckedExpr) -> CheckedArg -> CheckedExpr
 liftArg f (Arg ann v r e) = liftIf (f . Arg ann v r) e

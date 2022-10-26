@@ -1,5 +1,6 @@
 module Vehicle.Compile.Type.Builtin
   ( typeOfBuiltin
+  , typeOfConstructor
   ) where
 
 import Vehicle.Compile.Prelude
@@ -8,24 +9,11 @@ import Vehicle.Language.DSL
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedType
 typeOfBuiltin p b = fromDSL p $ case b of
-  -- Auxillary types
-  Polarity{}    -> tPol
-  Linearity{}   -> tLin
 
   -- Type classes
-  TypeClass   tc -> typeOfTypeClass tc
   TypeClassOp tc -> typeOfTypeClassOp tc
 
-  -- Types
-  Unit   -> type0
-  Nat    -> type0
-  Int    -> type0
-  Rat    -> tLin .~~> type0
-  Bool   -> tLin .~~> tPol .~~> type0
-  List   -> type0 ~> type0
-  Vector -> type0 ~> tNat ~> type0
   Tensor -> type0 ~> tList tNat ~> type0
-  Index  -> tNat ~> type0
 
   -- Boolean operations
   Not ->
@@ -101,12 +89,33 @@ typeOfBuiltin p b = fromDSL p $ case b of
                       forall tNat $ \dim ->
                         (tElem ~> tRes ~> tRes) ~> tRes ~> tVector tElem dim ~> tRes
 
-  Nil     -> typeOfNil
-  Cons    -> typeOfCons
-
   At      -> typeOfAt
 
   Foreach -> typeOfForeach
+
+typeOfConstructor :: Provenance -> Constructor -> CheckedType
+typeOfConstructor p c = fromDSL p $ case c of
+  -- Auxillary types
+  Polarity{}    -> tPol
+  Linearity{}   -> tLin
+
+  -- Types
+  Unit   -> type0
+  Nat    -> type0
+  Int    -> type0
+  Rat    -> tLin .~~> type0
+  Bool   -> tLin .~~> tPol .~~> type0
+  List   -> type0 ~> type0
+  Vector -> type0 ~> tNat ~> type0
+  Index  -> tNat ~> type0
+
+  -- Type classes
+  TypeClass   tc -> typeOfTypeClass tc
+
+  -- List constructors
+  Nil     -> typeOfNil
+  Cons    -> typeOfCons
+
 
 typeOfTypeClass :: TypeClass -> DSLExpr
 typeOfTypeClass tc = case tc of

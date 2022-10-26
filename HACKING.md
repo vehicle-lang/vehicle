@@ -82,12 +82,13 @@ The CI script that controls this is `.github/workflows/ci.yml`.
 - These commands generate Haskell parsers for the language which are automatically
   placed in the `gen/hs` folder.
 
-## 5. Logging
+## 5. Debugging
 
 - Logs can be enabled by providing the `--logging` option on the command line.
 
-- In the case of an internal developer error, logs may not be printed. In this case you
-can add a `traceShow text $` in front of the `do` in the `logDebug` in `Vehicle.Prelude.Logging`.
+- In the case of an internal developer error or an infinite loop, logs will not be printed.
+  In this case you can add a `traceShow text $` in front of the `do` in the `logDebug` in
+  `Vehicle.Prelude.Logging`.
 
 ## 6. Profiling
 
@@ -97,7 +98,7 @@ To enable profiling follow the following steps:
 
   - Add `-O0` to `ghc-options` to `library` in `vehicle.cabal`.
 
-  - Add `-O0 -prof -fprof-auto -with-rtsopts=-p` to `ghc-options` for the relevant test-suite
+  - Add `-prof -fprof-auto -with-rtsopts=-p` to `ghc-options` for the relevant test-suite
     (e.g. `vehicle-executable-tests`) in `vehicle.cabal`.
 
 ## 7. Documentation

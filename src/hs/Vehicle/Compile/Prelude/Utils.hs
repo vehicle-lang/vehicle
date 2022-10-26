@@ -87,6 +87,7 @@ freeNamesIn = cata $ \case
   MetaF{}                   -> []
   LiteralF{}                -> []
   BuiltinF{}                -> []
+  ConstructorF{}            -> []
   AnnF  _ e t               -> e <> t
   AppF  _ fun args          -> fun <> concatMap argExpr args
   PiF   _ binder result     -> binderType binder <> result

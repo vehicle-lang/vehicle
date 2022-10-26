@@ -61,19 +61,21 @@ instance MetaSubstitutable CheckedExpr where
   substM ex =
     --logCompilerPass MaxDetail (prettyVerbose ex) $
     case ex of
-      Universe ann l            -> return $ Universe ann l
-      Hole     ann name         -> return $ Hole    ann name
-      Builtin  ann op           -> return $ Builtin ann op
-      Literal  ann l            -> return $ Literal ann l
-      Var      ann v            -> return $ Var     ann v
-      LVec     ann es           -> LVec     ann <$> traverse substM es
-      Ann      ann term typ     -> Ann      ann <$> substM term   <*> substM typ
-      Pi       ann binder res   -> Pi       ann <$> substM binder <*> local liftSubstitution (substM res)
-      Let      ann e1 binder e2 -> Let      ann <$> substM e1     <*> substM binder <*> local liftSubstitution (substM e2)
-      Lam      ann binder e     -> Lam      ann <$> substM binder <*> local liftSubstitution (substM e)
+      Universe    p l    -> return $ Universe    p l
+      Hole        p name -> return $ Hole        p name
+      Builtin     p op   -> return $ Builtin     p op
+      Constructor p c    -> return $ Constructor p c
+      Literal     p l    -> return $ Literal     p l
+      Var         p v    -> return $ Var         p v
 
-      e@(Meta ann _)  -> substMApp ann (e, [])
-      e@(App ann _ _) -> substMApp ann (toHead e)
+      LVec p es           -> LVec p <$> traverse substM es
+      Ann  p term typ     -> Ann  p <$> substM term   <*> substM typ
+      Pi   p binder res   -> Pi   p <$> substM binder <*> local liftSubstitution (substM res)
+      Let  p e1 binder e2 -> Let  p <$> substM e1     <*> substM binder <*> local liftSubstitution (substM e2)
+      Lam  p binder e     -> Lam  p <$> substM binder <*> local liftSubstitution (substM e)
+
+      e@(Meta p _)  -> substMApp p (e, [])
+      e@(App p _ _) -> substMApp p (toHead e)
 
 -- | We really don't want un-normalised lambda applications from solved meta-variables
 -- clogging up our program so this function detects meta applications and normalises
@@ -174,11 +176,13 @@ instance HasMetas CheckedExpr where
       result <- f p m metaCtxArgs
       return $ normAppList p result otherArgs'
 
-    Universe{}               -> return expr
-    Hole{}                   -> return expr
-    Literal{}                -> return expr
-    Builtin{}                -> return expr
-    Var {}                   -> return expr
+    Universe{}    -> return expr
+    Hole{}        -> return expr
+    Literal{}     -> return expr
+    Builtin{}     -> return expr
+    Constructor{} -> return expr
+    Var {}        -> return expr
+
     Ann  p e t               -> Ann p <$> traverseMetas f e <*> traverseMetas f t
     Pi   p binder result     -> Pi p <$> traverseMetas f binder <*> traverseMetas f result
     Let  p bound binder body -> Let p <$> traverseMetas f bound <*> traverseMetas f binder <*> traverseMetas f body

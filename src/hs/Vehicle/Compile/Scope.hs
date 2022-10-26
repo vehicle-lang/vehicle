@@ -106,25 +106,27 @@ scopeExpr :: MonadScopeExpr m => InputExpr -> m UncheckedExpr
 scopeExpr e = do
   logScopeEntry e
   result <- case e of
-    Universe  ann l       -> return $ Universe ann l
-    Meta     ann i        -> return $ Meta ann i
-    Hole     ann n        -> return $ Hole ann n
-    Ann      ann ex t     -> Ann ann <$> scopeExpr ex <*> scopeExpr t
-    App      ann fun args -> App ann <$> scopeExpr fun <*> traverse scopeArg args
-    Builtin  ann op       -> return $ Builtin ann op
-    Var      ann v        -> Var ann <$> getVar ann v
-    Literal  ann l        -> return $ Literal ann l
-    LVec     ann es       -> LVec ann <$> traverse scopeExpr es
+    Universe    p l  -> return $ Universe p l
+    Meta        p i  -> return $ Meta p i
+    Hole        p n  -> return $ Hole p n
+    Constructor p c  -> return $ Constructor p c
+    Builtin     p op -> return $ Builtin p op
 
-    Pi  ann binder res -> do
-      bindVar binder $ \binder' -> Pi ann binder' <$> scopeExpr res
+    Ann      p ex t     -> Ann p <$> scopeExpr ex <*> scopeExpr t
+    App      p fun args -> App p <$> scopeExpr fun <*> traverse scopeArg args
+    Var      p v        -> Var p <$> getVar p v
+    Literal  p l        -> return $ Literal p l
+    LVec     p es       -> LVec p <$> traverse scopeExpr es
 
-    Lam ann binder body -> do
-      bindVar binder $ \binder' -> Lam ann binder' <$> scopeExpr body
+    Pi  p binder res -> do
+      bindVar binder $ \binder' -> Pi p binder' <$> scopeExpr res
 
-    Let ann bound binder body -> do
+    Lam p binder body -> do
+      bindVar binder $ \binder' -> Lam p binder' <$> scopeExpr body
+
+    Let p bound binder body -> do
       bound' <- scopeExpr bound
-      bindVar binder $ \binder' -> Let ann bound' binder' <$> scopeExpr body
+      bindVar binder $ \binder' -> Let p bound' binder' <$> scopeExpr body
 
   logScopeExit result
   return result

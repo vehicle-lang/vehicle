@@ -118,11 +118,12 @@ instance Norm CheckedExpr where
     e' <- showEntry e
     Options{..} <- ask
     case e' of
-      Universe{}  -> return e
-      Hole{}      -> return e
-      Literal{}   -> return e
-      Builtin{}   -> return e
-      Meta{}      -> return e
+      Universe{}    -> return e
+      Hole{}        -> return e
+      Literal{}     -> return e
+      Builtin{}     -> return e
+      Constructor{} -> return e
+      Meta{}        -> return e
 
       LVec p xs -> LVec p <$> traverse nf xs
 

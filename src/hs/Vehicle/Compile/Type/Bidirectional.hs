@@ -253,6 +253,9 @@ inferExpr e = do
     Builtin p op -> do
       return (Builtin p op, typeOfBuiltin p op)
 
+    Constructor p op -> do
+      return (Constructor p op, typeOfConstructor p op)
+
     LVec ann elems -> do
       let p = provenanceOf ann
 

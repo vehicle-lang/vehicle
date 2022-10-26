@@ -65,12 +65,13 @@ instance TraverseAuxiliaryArguments UncheckedExpr where
     Lam  p binder body       -> Lam p <$> traverseAux f binder <*> traverseAux f body
     LVec p xs                -> LVec p <$> traverse (traverseAux f) xs
 
-    Universe{} -> return expr
-    Var{}      -> return expr
-    Hole{}     -> return expr
-    Meta{}     -> return expr
-    Literal{}  -> return expr
-    Builtin{}  -> return expr
+    Universe{}    -> return expr
+    Var{}         -> return expr
+    Hole{}        -> return expr
+    Meta{}        -> return expr
+    Literal{}     -> return expr
+    Builtin{}     -> return expr
+    Constructor{} -> return expr
 
 instance TraverseAuxiliaryArguments UncheckedArg where
   traverseAux f = traverse (traverseAux f)

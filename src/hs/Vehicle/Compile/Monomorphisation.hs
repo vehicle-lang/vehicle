@@ -85,6 +85,7 @@ traverseCandidateApplications processApp = go
     Meta{}        -> return expr
     Hole{}        -> return expr
     Builtin{}     -> return expr
+    Constructor{} -> return expr
     Literal{}     -> return expr
 
     LVec p es                -> LVec p <$> traverse go es

@@ -218,6 +218,7 @@ library
     Vehicle.Language.AST.Builtin.TypeClass
     Vehicle.Language.AST.CoDeBruijn
     Vehicle.Language.AST.Core
+    Vehicle.Language.AST.Datatype
     Vehicle.Language.AST.DeBruijn
     Vehicle.Language.AST.Name
     Vehicle.Language.AST.Position
@@ -255,7 +256,9 @@ library
     , vehicle-bnfc
 
   -- Used for parsing IDX format
-  ghc-options:     -Werror -Wall -fprint-potential-instances
+  ghc-options:     -Wall -fprint-potential-instances -O0
+
+  default-extensions: Strict
 
 ---------------------
 -- Main executable --
@@ -322,7 +325,7 @@ test-suite vehicle-executable-tests
   import:      common-test-base
   type:        exitcode-stdio-1.0
   main-is:     Vehicle/Test/TestExecutable.hs
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -O0
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -O0 -prof -fprof-auto -with-rtsopts=-p
 
 test-suite vehicle-integration-tests
   import:      common-test-base

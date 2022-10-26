@@ -27,15 +27,16 @@ dnf :: MonadCompile m => CheckedExpr -> m CheckedExpr
 dnf expr = do
   showEntry expr
   result <- case expr of
-    Literal{}   -> return expr
-    Builtin{}   -> return expr
-    Var{}       -> return expr
+    Literal{}     -> return expr
+    Builtin{}     -> return expr
+    Constructor{} -> return expr
+    Var{}         -> return expr
 
     LVec{}      -> normalisationError currentPass "LVec"
     Ann{}       -> normalisationError currentPass "Ann"
     Let{}       -> normalisationError currentPass "Let"
-    Universe{}  -> unexpectedTypeInExprError          currentPass "Universe"
-    Pi{}        -> unexpectedTypeInExprError          currentPass "Pi"
+    Universe{}  -> unexpectedTypeInExprError currentPass "Universe"
+    Pi{}        -> unexpectedTypeInExprError currentPass "Pi"
     Hole{}      -> visibilityError    currentPass "Hole"
     Meta{}      -> resolutionError    currentPass "Meta"
     Lam{}       -> caseError          currentPass "Lam" ["QuantifierExpr"]

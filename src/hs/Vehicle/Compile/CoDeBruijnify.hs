@@ -18,40 +18,41 @@ import Vehicle.Language.AST.DeBruijn as DB
 
 toCoDBExpr :: DBExpr -> CoDBExpr
 toCoDBExpr = cata $ \case
-  UniverseF ann l        -> (Universe ann l,  mempty)
-  HoleF     ann n        -> (Hole     ann n,  mempty)
-  MetaF     ann m        -> (Meta     ann m,  mempty)
-  BuiltinF  ann op       -> (Builtin  ann op, mempty)
-  LiteralF  ann l        -> (Literal  ann l,  mempty)
+  UniverseF    p l        -> (Universe    p l,  mempty)
+  HoleF        p n        -> (Hole        p n,  mempty)
+  MetaF        p m        -> (Meta        p m,  mempty)
+  BuiltinF     p op       -> (Builtin     p op, mempty)
+  ConstructorF p op       -> (Constructor p op, mempty)
+  LiteralF     p l        -> (Literal     p l,  mempty)
 
-  LVecF ann xs ->
-    let (xs', bvms) = unzip xs in (LVec ann xs', nodeBVM bvms)
+  LVecF p xs ->
+    let (xs', bvms) = unzip xs in (LVec p xs', nodeBVM bvms)
 
-  VarF ann v -> case v of
-    DB.Free  ident -> (Var ann (CoDBFree ident), mempty)
-    DB.Bound i     -> (Var ann CoDBBound,        leafBVM i)
+  VarF p v -> case v of
+    DB.Free  ident -> (Var p (CoDBFree ident), mempty)
+    DB.Bound i     -> (Var p CoDBBound,        leafBVM i)
 
-  AnnF ann (e', bvm1) (t', bvm2) ->
-    (Ann ann e' t', nodeBVM [bvm1, bvm2])
+  AnnF p (e', bvm1) (t', bvm2) ->
+    (Ann p e' t', nodeBVM [bvm1, bvm2])
 
-  AppF ann (fun', bvm) args ->
+  AppF p (fun', bvm) args ->
     let (args', bvms) = NonEmpty.unzip $ fmap unpairArg args in
-    (App ann fun' args', nodeBVM (bvm : NonEmpty.toList bvms))
+    (App p fun' args', nodeBVM (bvm : NonEmpty.toList bvms))
 
-  PiF  ann binder (result', bvm2) ->
+  PiF  p binder (result', bvm2) ->
     let (positionTree, bvm2') = liftBVM bvm2 in
     let (binder', bvm1) = toCoDBBinder binder positionTree in
-    (Pi ann binder' result', nodeBVM [bvm1, bvm2'])
+    (Pi p binder' result', nodeBVM [bvm1, bvm2'])
 
-  LetF ann (bound', bvm1) binder (body', bvm3) ->
+  LetF p (bound', bvm1) binder (body', bvm3) ->
     let (positionTree, bvm3') = liftBVM bvm3 in
     let (binder', bvm2) = toCoDBBinder binder positionTree in
-    (Let ann bound' binder' body', nodeBVM [bvm1, bvm2, bvm3'])
+    (Let p bound' binder' body', nodeBVM [bvm1, bvm2, bvm3'])
 
-  LamF ann binder (body', bvm2) ->
+  LamF p binder (body', bvm2) ->
     let (positionTree, bvm2') = liftBVM bvm2 in
     let (binder', bvm1) = toCoDBBinder binder positionTree in
-    (Lam ann binder' body', nodeBVM [bvm1, bvm2'])
+    (Lam p binder' body', nodeBVM [bvm1, bvm2'])
 
 toCoDBBinder :: GenericBinder DBBinding CoDBExpr
              -> Maybe PositionTree
@@ -65,11 +66,12 @@ toCoDBBinder binder mpt =
 
 fromCoDB :: CoDBExpr -> DBExpr
 fromCoDB expr = case recCoDB expr of
-  UniverseC p l  -> Universe p l
-  HoleC     p n  -> Hole     p n
-  MetaC     p m  -> Meta     p m
-  BuiltinC  p op -> Builtin  p op
-  LiteralC  p l  -> Literal  p l
+  UniverseC    p l  -> Universe    p l
+  HoleC        p n  -> Hole        p n
+  MetaC        p m  -> Meta        p m
+  BuiltinC     p op -> Builtin     p op
+  ConstructorC p op -> Constructor p op
+  LiteralC     p l  -> Literal     p l
 
   LSeqC p xs -> LVec p  (fmap fromCoDB xs)
   VarC  p v  -> Var p v
