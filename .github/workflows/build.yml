@@ -17,15 +17,15 @@ jobs:
         ghc-version: ["8.10", "9.0"]
         cabal-version: ["3.4"]
         experimental: [false]
-        include:
-          - os: ubuntu-latest
-            ghc-version: "9.2"
-            cabal-version: "3.4"
-            experimental: true
-          - os: ubuntu-latest
-            ghc-version: "9.4"
-            cabal-version: "3.4"
-            experimental: true
+        # include:
+        #   - os: ubuntu-latest
+        #     ghc-version: "9.2"
+        #     cabal-version: "3.4"
+        #     experimental: true
+        #   - os: ubuntu-latest
+        #     ghc-version: "9.4"
+        #     cabal-version: "3.4"
+        #     experimental: true
     env:
       CABAL_PROJECT_FILE: cabal.project.ghc-${{ matrix.ghc-version }}
       CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ matrix.ghc-version }}.freeze
