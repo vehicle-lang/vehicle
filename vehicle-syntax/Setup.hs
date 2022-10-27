@@ -1,15 +1,15 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-import Control.Monad (forM_, when)
-import Data.List (isSuffixOf, dropWhile)
+import Control.Monad (mapM, forM_, when)
+import Data.List (isPrefixOf, isSuffixOf, dropWhile)
 import Distribution.Simple (Args, UserHooks (buildHook, preConf), defaultMainWithHooks, simpleUserHooks)
 import Distribution.Simple.Program (Program, runDbProgram, simpleProgram)
 import Distribution.Simple.Setup (BuildFlags (buildVerbosity), ConfigFlags (configVerbosity), fromFlagOrDefault)
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, intercalate, die', notice, safeTail, takeWhileEndLE)
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, moreRecentFile, intercalate, die', notice, safeTail, takeWhileEndLE)
 import Distribution.Types.LocalBuildInfo (LocalBuildInfo(LocalBuildInfo, withPrograms))
-import Distribution.Types.PackageDescription (PackageDescription(PackageDescription, extraSrcFiles))
+import Distribution.Types.PackageDescription (PackageDescription(PackageDescription, extraSrcFiles, extraTmpFiles))
 import Distribution.Verbosity (Verbosity, normal)
-import System.FilePath (makeRelative, splitDirectories, takeDirectory, takeBaseName)
+import System.FilePath ((</>), makeRelative, splitDirectories, takeDirectory, takeBaseName)
 
 srcDir :: FilePath
 srcDir = "src"
@@ -39,25 +39,37 @@ makeAutogenDir args configFlags = do
 preProcessBnfc :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO ()
 preProcessBnfc packageDescription localBuildInfo userHooks buildFlags = do
   let verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
-  let PackageDescription{extraSrcFiles} = packageDescription
+  let PackageDescription{extraSrcFiles, extraTmpFiles} = packageDescription
   let LocalBuildInfo{withPrograms} = localBuildInfo
   forM_ extraSrcFiles $ \extraSrcFile ->
     when (".cf" `isSuffixOf` extraSrcFile) $ do
-      notice verbosity $ "Compile " ++ extraSrcFile
-      let namespace = intercalate "."
-                    $ splitDirectories
-                    $ makeRelative srcDir
-                    $ takeDirectory extraSrcFile
-      let args = concat
+      -- Example:
+      --   extraSrcFile      = "src/Vehicle/Syntax/External.cf"
+      --   outputPrefix      = "Vehicle/Syntax"
+      --   namespacePrefix   = "Vehicle.Syntax"
+      --   outputDir         = "autogen/Vehicle/Syntax/External"
+      let outputPrefix = makeRelative srcDir (takeDirectory extraSrcFile)
+      let namespacePrefix = intercalate "." (splitDirectories outputPrefix)
+      let outputDir = autogenDir </> outputPrefix </> takeBaseName extraSrcFile
+      let targetFiles = filter (outputDir `isPrefixOf`) extraTmpFiles
+      shouldCompile <- and <$> mapM (extraSrcFile `moreRecentFile`) targetFiles
+      when shouldCompile $ do
+          notice verbosity
+            $ unlines
+            $ concat
+            [ ["Compiling " ++ extraSrcFile ++ "to generate:"]
+            , map ("- " ++) targetFiles
+            ]
+          runDbProgram verbosity bnfcProgram withPrograms
+            $ concat
             [ [ "-d" ]
             , [ "--haskell" ]
             , [ "--generic" ]
             , [ "--text-token" ]
-            , [ "--name-space=" ++ namespace | not (null namespace) ]
+            , [ "--name-space=" ++ namespacePrefix | not (null namespacePrefix) ]
             , [ "--outputdir=" ++ autogenDir ]
             , [ extraSrcFile ]
             ]
-      runDbProgram verbosity bnfcProgram withPrograms args
 
 bnfcProgram :: Program
 bnfcProgram = simpleProgram "bnfc"
