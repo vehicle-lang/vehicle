@@ -8,24 +8,13 @@ import Vehicle.Language.DSL
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedType
 typeOfBuiltin p b = fromDSL p $ case b of
-  -- Auxillary types
-  Polarity{}    -> tPol
-  Linearity{}   -> tLin
+  Constructor c -> typeOfConstructor c
 
-  -- Type classes
-  TypeClass   tc -> typeOfTypeClass tc
+  -- Type classes operations
   TypeClassOp tc -> typeOfTypeClassOp tc
 
   -- Types
-  Unit   -> type0
-  Nat    -> type0
-  Int    -> type0
-  Rat    -> tLin .~~> type0
-  Bool   -> tLin .~~> tPol .~~> type0
-  List   -> type0 ~> type0
-  Vector -> type0 ~> tNat ~> type0
   Tensor -> type0 ~> tList tNat ~> type0
-  Index  -> tNat ~> type0
 
   -- Boolean operations
   Not ->
@@ -101,12 +90,28 @@ typeOfBuiltin p b = fromDSL p $ case b of
                       forall tNat $ \dim ->
                         (tElem ~> tRes ~> tRes) ~> tRes ~> tVector tElem dim ~> tRes
 
-  Nil     -> typeOfNil
-  Cons    -> typeOfCons
-
   At      -> typeOfAt
 
   Foreach -> typeOfForeach
+
+typeOfConstructor :: BuiltinConstructor -> DSLExpr
+typeOfConstructor = \case
+  Unit           -> type0
+  Nat            -> type0
+  Int            -> type0
+  Rat            -> tLin .~~> type0
+  Bool           -> tLin .~~> tPol .~~> type0
+  List           -> type0 ~> type0
+  Vector         -> type0 ~> tNat ~> type0
+  Index          -> tNat ~> type0
+
+  TypeClass   tc -> typeOfTypeClass tc
+
+  Polarity{}     -> tPol
+  Linearity{}    -> tLin
+
+  Nil            -> typeOfNil
+  Cons           -> typeOfCons
 
 typeOfTypeClass :: TypeClass -> DSLExpr
 typeOfTypeClass tc = case tc of

@@ -17,8 +17,55 @@ import Vehicle.Language.AST.Builtin.Polarity as X
 import Vehicle.Language.AST.Builtin.TypeClass as X
 import Vehicle.Prelude
 
--- TODO all the show instances should really be obtainable from the grammar
--- somehow.
+--------------------------------------------------------------------------------
+-- Constructors
+
+-- | Constructors for types in the language. The types and type-classes
+-- are viewed as constructors for `Type`.
+data BuiltinConstructor
+  -- Annotations - these should not be shown to the user.
+  = Polarity  Polarity
+  | Linearity Linearity
+
+  -- Types
+  | Unit
+  | Bool
+  | Index
+  | Nat
+  | Int
+  | Rat
+  | List
+  | Vector
+
+  -- Type classes
+  | TypeClass   TypeClass
+
+  -- Container expressions
+  | Nil
+  | Cons
+  deriving (Eq, Show, Generic)
+
+instance NFData   BuiltinConstructor
+instance Hashable BuiltinConstructor
+
+instance Pretty BuiltinConstructor where
+  pretty = \case
+    Unit           -> "Unit"
+    Bool           -> "Bool"
+    Index          -> "Index"
+    Nat            -> "Nat"
+    Int            -> "Int"
+    Rat            -> "Rat"
+    List           -> "List"
+    Vector         -> "Vector"
+
+    TypeClass   tc -> pretty tc
+
+    Polarity  pol  -> pretty pol
+    Linearity lin  -> pretty lin
+
+    Nil            -> "nil"
+    Cons           -> "::"
 
 --------------------------------------------------------------------------------
 -- Builtin
@@ -167,26 +214,10 @@ instance Pretty MapDomain where
 instance NFData   MapDomain
 instance Hashable MapDomain
 
+
 -- |Builtins in the Vehicle language
 data Builtin
-  -- Annotations - these should not be shown to the user.
-  = Polarity  Polarity
-  | Linearity Linearity
-
-  -- Types
-  | Unit
-  | Bool
-  | Index
-  | Nat
-  | Int
-  | Rat
-  | List
-  | Vector
-  | Tensor
-
-  -- Type classes
-  | TypeClass   TypeClass
-  | TypeClassOp TypeClassOp
+  = Constructor BuiltinConstructor
 
   -- Boolean expressions
   | Not
@@ -211,11 +242,12 @@ data Builtin
   | Equals EqualityDomain EqualityOp
   | Order  OrderDomain OrderOp
 
-  -- Container expressions
-  | Nil
-  | Cons
   | At
   | Map  MapDomain
+
+  -- Derived
+  | Tensor
+  | TypeClassOp TypeClassOp
   | Fold FoldDomain
   | Foreach
   deriving (Eq, Show, Generic)
@@ -223,23 +255,13 @@ data Builtin
 instance NFData   Builtin
 instance Hashable Builtin
 
+-- TODO all the show instances should really be obtainable from the grammar
+-- somehow.
 instance Pretty Builtin where
   pretty = \case
-    Polarity  pol    -> pretty pol
-    Linearity lin    -> pretty lin
+    Constructor c    -> pretty c
 
-    TypeClass   tc   -> pretty tc
     TypeClassOp tcOp -> pretty tcOp
-
-    Unit             -> "Unit"
-    Bool             -> "Bool"
-    Index            -> "Index"
-    Nat              -> "Nat"
-    Int              -> "Int"
-    Rat              -> "Rat"
-    List             -> "List"
-    Vector           -> "Vector"
-    Tensor           -> "Tensor"
 
     Not              -> "notBool"
     And              -> "andBool"
@@ -260,25 +282,16 @@ instance Pretty Builtin where
     Equals dom op    -> equalityOpName op <> pretty dom
     Order  dom op    -> orderOpName op <> pretty dom
 
+    Tensor           -> "Tensor"
     Foreach          -> "foreach"
     Fold dom         -> "fold" <> pretty dom
     Map dom          -> "map" <> pretty dom
     At               -> "!"
-    Nil              -> "nil"
-    Cons             -> "::"
 
 builtinSymbols :: [(Text, Builtin)]
 builtinSymbols = map (first pack)
-  [ show Bool                         |-> Bool
-  , show Nat                          |-> Nat
-  , show Int                          |-> Int
-  , show Rat                          |-> Rat
-  , show List                         |-> List
-  , show Tensor                       |-> Tensor
-
-  , show If                           |-> If
+  [ show If                           |-> If
   , show At                           |-> At
-  , show Cons                         |-> Cons
   ]
 
 builtinFromSymbol :: Text -> Maybe Builtin

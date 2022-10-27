@@ -224,6 +224,9 @@ nfStdLibFn p f allArgs = do
 -- Builtins
 
 nfBuiltin :: forall m. MonadNorm m => Provenance -> Builtin -> NonEmpty CheckedArg -> m CheckedExpr
+nfBuiltin p (Constructor c) args =
+  return $ App p (Builtin p (Constructor c)) args
+
 nfBuiltin p (TypeClassOp op) args = do
   let originalExpr = App p (Builtin p (TypeClassOp op)) args
   case nfTypeClassOp p op (NonEmpty.toList args) of

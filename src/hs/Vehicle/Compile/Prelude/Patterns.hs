@@ -39,12 +39,18 @@ pattern BuiltinExpr :: Provenance
 pattern BuiltinExpr p b args <- App p (Builtin _ b) args
   where BuiltinExpr p b args =  App p (Builtin p b) args
 
+pattern ConstructorExpr :: Provenance
+                        -> BuiltinConstructor
+                        -> NonEmpty (Arg binder var)
+                        -> Expr binder var
+pattern ConstructorExpr p b args = BuiltinExpr p (Constructor b) args
+
 --------------------------------------------------------------------------------
 -- Types
 --------------------------------------------------------------------------------
 
 pattern BoolType :: Provenance -> Expr binder var
-pattern BoolType p = Builtin p Bool
+pattern BoolType p = Builtin p (Constructor Bool)
 
 -- | The annotated Bool type used only during type-checking
 pattern AnnBoolType :: Provenance
@@ -52,45 +58,45 @@ pattern AnnBoolType :: Provenance
                     -> Expr binder var
                     -> Expr binder var
 pattern
-  AnnBoolType p lin pol <- BuiltinExpr p Bool
+  AnnBoolType p lin pol <- ConstructorExpr p Bool
     [ IrrelevantImplicitArg _ lin
     , IrrelevantImplicitArg _ pol
     ]
   where
-  AnnBoolType p lin pol = BuiltinExpr p Bool
+  AnnBoolType p lin pol = ConstructorExpr p Bool
     [ IrrelevantImplicitArg p lin
     , IrrelevantImplicitArg p pol
     ]
 
 pattern NatType :: Provenance -> Expr binder var
-pattern NatType p = Builtin p Nat
+pattern NatType p = Builtin p (Constructor Nat)
 
 pattern IntType :: Provenance -> Expr binder var
-pattern IntType p = Builtin p Int
+pattern IntType p = Builtin p (Constructor Int)
 
 pattern RatType :: Provenance -> Expr binder var
-pattern RatType p = Builtin p Rat
+pattern RatType p = Builtin p (Constructor Rat)
 
 -- | The annotated Bool type used only during type-checking
 pattern AnnRatType :: Provenance -> Expr binder var -> Expr binder var
-pattern AnnRatType p lin <- BuiltinExpr p Rat [ IrrelevantImplicitArg _ lin ]
-  where AnnRatType p lin =  BuiltinExpr p Rat [ IrrelevantImplicitArg p lin ]
+pattern AnnRatType p lin <- ConstructorExpr p Rat [ IrrelevantImplicitArg _ lin ]
+  where AnnRatType p lin =  ConstructorExpr p Rat [ IrrelevantImplicitArg p lin ]
 
 pattern ListType :: Provenance -> Expr binder var -> Expr binder var
-pattern ListType p tElem <- BuiltinExpr p List [ExplicitArg _ tElem]
-  where ListType p tElem =  BuiltinExpr p List [ExplicitArg p tElem]
+pattern ListType p tElem <- ConstructorExpr p List [ExplicitArg _ tElem]
+  where ListType p tElem =  ConstructorExpr p List [ExplicitArg p tElem]
 
 pattern VectorType :: Provenance
                    -> Expr binder var
                    -> Expr binder var
                    -> Expr binder var
 pattern
-  VectorType p tElem tDim <- BuiltinExpr p Vector
+  VectorType p tElem tDim <- ConstructorExpr p Vector
     [ ExplicitArg _ tElem
     , ExplicitArg _ tDim
     ]
   where
-  VectorType p tElem tDim = BuiltinExpr p Vector
+  VectorType p tElem tDim = ConstructorExpr p Vector
     [ ExplicitArg p tElem
     , ExplicitArg p tDim
     ]
@@ -111,8 +117,8 @@ pattern
     ]
 
 pattern IndexType :: Provenance -> Expr binder var -> Expr binder var
-pattern IndexType p tSize <- BuiltinExpr p Index [ ExplicitArg _ tSize ]
-  where IndexType p tSize =  BuiltinExpr p Index [ ExplicitArg p tSize ]
+pattern IndexType p tSize <- ConstructorExpr p Index [ ExplicitArg _ tSize ]
+  where IndexType p tSize =  ConstructorExpr p Index [ ExplicitArg p tSize ]
 
 pattern ConcreteIndexType :: Provenance -> Int -> Expr binder var
 pattern ConcreteIndexType p n <- IndexType p (NatLiteral _ n)
@@ -126,8 +132,8 @@ pattern BuiltinTypeClass :: Provenance
                          -> TypeClass
                          -> NonEmpty (Arg binder var)
                          -> Expr binder var
-pattern BuiltinTypeClass p tc args <- BuiltinExpr p (TypeClass tc) args
-  where BuiltinTypeClass p tc args =  BuiltinExpr p (TypeClass tc) args
+pattern BuiltinTypeClass p tc args <- ConstructorExpr p (TypeClass tc) args
+  where BuiltinTypeClass p tc args =  ConstructorExpr p (TypeClass tc) args
 
 pattern HasVecLitsExpr :: Provenance
                           -> Int
@@ -704,8 +710,8 @@ pattern
 -- Nil and cons
 
 pattern NilExpr :: Provenance -> Expr binder var -> Expr binder var
-pattern NilExpr p tElem <- BuiltinExpr p Nil [ImplicitArg _ tElem]
-  where NilExpr p tElem =  BuiltinExpr p Nil [ImplicitArg p tElem]
+pattern NilExpr p tElem <- ConstructorExpr p Nil [ImplicitArg _ tElem]
+  where NilExpr p tElem =  ConstructorExpr p Nil [ImplicitArg p tElem]
 
 pattern ConsExpr :: Provenance
                  -> Expr binder var
@@ -713,13 +719,13 @@ pattern ConsExpr :: Provenance
                  -> Expr binder var
 pattern
   ConsExpr ann tElem explicitArgs <-
-    App ann (Builtin _ Cons)
+    ConstructorExpr ann Cons
       (  ImplicitArg _ tElem
       :| explicitArgs
       )
   where
   ConsExpr ann tElem explicitArgs =
-    App ann (Builtin ann Cons)
+    ConstructorExpr ann Cons
       (  ImplicitArg ann tElem
       :| explicitArgs
       )
@@ -867,10 +873,10 @@ pattern
 --------------------------------------------------------------------------------
 
 pattern PolarityExpr :: Provenance -> Polarity -> Expr binder var
-pattern PolarityExpr p pol = Builtin p (Polarity pol)
+pattern PolarityExpr p pol = Builtin p (Constructor (Polarity pol))
 
 pattern LinearityExpr :: Provenance -> Linearity -> Expr binder var
-pattern LinearityExpr p lin = Builtin p (Linearity lin)
+pattern LinearityExpr p lin = Builtin p (Constructor (Linearity lin))
 
 
 
