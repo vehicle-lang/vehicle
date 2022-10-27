@@ -7,10 +7,10 @@
 
 import Control.Monad (unless, when)
 import Data.List (stripPrefix)
-import Data.Maybe (fromMaybe, isJust, isNothing)
+import Data.Maybe (fromMaybe, isJust, isNothing, maybeToList)
 import Data.Version (Version, showVersion)
 import Development.Shake (Action, Exit (Exit), Stdout (Stdout), command,
-                          command_, liftIO, need, phony, putInfo,
+                          command_, getEnv, liftIO, need, phony, putInfo,
                           removeFilesAfter, shakeArgs, shakeOptions, (&%>))
 import Development.Shake.Command (Exit (Exit), Stdout (Stdout), command,
                                   command_)
@@ -266,7 +266,8 @@ $(GEN_DIR_HS)/Vehicle/External/Par.info: $(GEN_DIR_HS)/Vehicle/External/Par.y
   phony "build" $ do
     requireHaskell
     need bnfcTargets
-    command_ [] "cabal" ["v2-build"]
+    cabalProjectFile <- getCabalProjectFileArg
+    command_ [] "cabal" ("v2-build" : cabalProjectFile)
 
   -------------------------------------------------------------------------------
   -- Test Vehicle
@@ -275,47 +276,48 @@ $(GEN_DIR_HS)/Vehicle/External/Par.info: $(GEN_DIR_HS)/Vehicle/External/Par.y
   phony "basic-tests" $ do
     requireHaskell
     need bnfcTargets
+    cabalProjectFile <- getCabalProjectFileArg
     command_ [] "cabal" $
-      [ "v2-test"
-      , "vehicle-executable-tests"
-      ] <>
-      testOptions
+      [ "v2-test", "vehicle-executable-tests" ]
+      <> cabalProjectFile
+      <> testOptions
 
   phony "basic-tests-accept" $ do
     requireHaskell
     need bnfcTargets
+    cabalProjectFile <- getCabalProjectFileArg
     command_ [] "cabal" $
-      [ "v2-test"
-      , "vehicle-executable-tests"
-      ] <>
-      testOptions   <>
-      [ "--test-option=--accept" ]
+      [ "v2-test", "vehicle-executable-tests" ]
+      <> [ "--test-option=--accept" ]
+      <> cabalProjectFile
+      <> testOptions
 
   phony "integration-tests" $ do
     requireHaskell
     need bnfcTargets
+    cabalProjectFile <- getCabalProjectFileArg
     command_ [] "cabal" $
-      [ "v2-test"
-      , "vehicle-integration-tests"
-      ] <>
-      testOptions
+      [ "v2-test", "vehicle-integration-tests" ]
+      <> cabalProjectFile
+      <> testOptions
 
   phony "benchmark-tests" $ do
     requireHaskell
     need bnfcTargets
+    cabalProjectFile <- getCabalProjectFileArg
     command_ [] "cabal" $
-      [ "v2-test"
-      , "vehicle-benchmarks"
-      ] <>
-      testOptions
+      [ "v2-test", "vehicle-benchmarks" ]
+      <> cabalProjectFile
+      <> testOptions
 
   phony "all-tests" $ do
     requireHaskell
     need bnfcTargets
+    cabalProjectFile <- getCabalProjectFileArg
     command_ [] "cabal" $
-      [ "v2-test"
-      ] <>
-      testOptions
+      [ "v2-test" ]
+      <> cabalProjectFile
+      <> testOptions
 
 ---------------------------------------------------------------------------------
 -- Utility functions
@@ -359,12 +361,11 @@ cabalInstallIfMissing executable packageName link version = do
 
     -- askConsent $ "Would you like to install " <> packageName <> "? [y/N]"
 
-    command_ [] "cabal"
-      [ "v2-install"
-      , "--ignore-project"
-      , "--overwrite-policy=always"
-      , packageName <> "-" <> showVersion version
-      ]
+    cabalProjectFile <- getCabalProjectFileArg
+    command_ [] "cabal" $
+      [ "v2-install", "--overwrite-policy=always" ]
+      <> cabalProjectFile
+      <> [ packageName <> "-" <> showVersion version ]
 
     p <- liftIO (findExecutable executable)
     putInfo $ "Exec: " <> show p
@@ -390,3 +391,8 @@ addLineToFileIfNotPresent filePath line = do
       putInfo $ "Adding " <> entryInfo
       liftIO $ writeFile filePath (unlines (fileLines ++ [line]))
       return True
+
+getCabalProjectFileArg :: Action [String]
+getCabalProjectFileArg = do
+  cabalProjectFile <- getEnv "CABAL_PROJECT_FILE"
+  return $ maybe [] (\path -> ["--project-file=" <> path]) cabalProjectFile
