@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload Vehicle executable (Linux or macOS)
         if: runner.os == 'Linux' || runner.os == 'macOS'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.ghc-version }}
           path: bdist/vehicle
@@ -78,7 +78,7 @@ jobs:
 
       - name: Upload Vehicle executable (Windows)
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.ghc-version }}
           path: bdist/vehicle.exe
