@@ -16,11 +16,16 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         ghc-version: ["8.10", "9.0"]
         cabal-version: ["3.4"]
+        experimental: [false]
         include:
-          - experimental: false
-          - os: windows-latest
+          - os: ubuntu-latest
+            ghc-version: "9.2"
+            cabal-version: "3.4"
             experimental: true
-
+          - os: ubuntu-latest
+            ghc-version: "9.4"
+            cabal-version: "3.4"
+            experimental: true
     env:
       CABAL_PROJECT_FILE: cabal.project.ghc-${{ matrix.ghc-version }}
       CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ matrix.ghc-version }}.freeze
@@ -65,7 +70,7 @@ jobs:
           name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.ghc-version }}
           path: build/vehicle
           if-no-files-found: error
-          
+
       - name: Upload Vehicle executable (Windows)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v2

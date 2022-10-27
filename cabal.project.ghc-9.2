@@ -1,3 +1,8 @@
 packages: vehicle.cabal
 
--- Unsupported: conflict set containers, linkedhashmap, text, vehicle
+-- Package linkedhashmap seems unmaintained.
+-- The latest update seems to have been in 2015 (see linkedhashmap).
+-- Unfortunately, the constraint on containers prevents vehicle from building with GHC 9.2.
+-- See: https://github.com/vehicle-lang/vehicle/issues/191
+
+allow-newer: linkedhashmap-0.4.0.0:containers
