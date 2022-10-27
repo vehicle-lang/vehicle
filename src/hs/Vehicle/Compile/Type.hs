@@ -55,14 +55,12 @@ typeCheckExpr expr1 = runTypeCheckerT $ do
 
 postProcess :: ( TCM m
                , MetaSubstitutable a
-               , WHNFable a
                , RemoveIrrelevantCode a
                )
             => a -> m a
 postProcess x = do
   metaFreeExpr <- substMetas x
-  normExpr     <- convertImplicitArgsToWHNF metaFreeExpr
-  finalExpr    <- removeIrrelevantCode normExpr
+  finalExpr    <- removeIrrelevantCode metaFreeExpr
   return finalExpr
 
 -------------------------------------------------------------------------------

@@ -241,7 +241,15 @@ nfBuiltin p b                args = do
     -- Containers
     -- MapExpr _ tElem tRes [fn, cont] -> nfMap  p tElem tRes (argExpr fn) (argExpr cont)
     AtExpr _ tElem tDim [tensor, index]          -> Just $ return $ nfAt p tElem tDim tensor index
-    ForeachExpr _ tElem (NatLiteral _ size) body -> Just $ nfForeach p tElem size body
+
+    ForeachExpr _ tElem s body -> Just $ do
+      -- This is a huge bodge. Really we need to normalise implicit arguments as well,
+      -- but hideously inefficiently at the moment, so wait until we have the new
+      -- normalisation up and running.
+      s' <- nf s
+      case s' of
+        NatLiteral _ n -> nfForeach p tElem n body
+        _              -> compilerDeveloperError "Non-concrete foreach size"
 
     MapVectorExpr _ tFrom tTo size [fn, vector] ->
       Just $ nfMapVector p tFrom tTo size fn vector

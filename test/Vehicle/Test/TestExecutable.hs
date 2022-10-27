@@ -13,7 +13,7 @@ import Vehicle.Test.Utils (MonadTest, filepathTests)
 testLogLevel :: LoggingLevel
 testLogLevel =
   NoDetail
-  -- MaxDetail
+  --MaxDetail
 
 timeOutSeconds :: Integer
 timeOutSeconds = 1000
