@@ -83,6 +83,11 @@ instance Pretty NegDomain where
     NegInt -> "Int"
     NegRat -> "Rat"
 
+negToMulDomain :: NegDomain -> MulDomain
+negToMulDomain = \case
+  NegInt -> MulInt
+  NegRat -> MulRat
+
 data AddDomain
   = AddNat
   | AddInt

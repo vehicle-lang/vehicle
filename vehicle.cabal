@@ -155,6 +155,7 @@ library
     Vehicle.Compile.Parse
     Vehicle.Compile.Prelude
     Vehicle.Compile.Queries.DNF
+    Vehicle.Compile.Queries.LNF
     Vehicle.Compile.Queries.IfElimination
     Vehicle.Compile.Queries.QuantifierLifting
     Vehicle.Compile.Queries.UserVariables

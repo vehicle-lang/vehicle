@@ -136,12 +136,9 @@ normaliseNegArg dom x = ExplicitArg (provenanceOf x) $ nfNeg (provenanceOf x) do
 
 nfNeg :: Provenance -> NegDomain -> CheckedArg -> CheckedExpr
 nfNeg p dom e = case (dom, argExpr e) of
-  (NegInt, IntLiteral _ x)       -> IntLiteral p (- x)
-  (NegRat, RatLiteral _ x)       -> RatLiteral p (- x)
-  (_, NegExpr _ _ [e'])          -> argExpr e'
-  (_, AddExpr _ addDom [e1, e2]) -> AddExpr p addDom [normaliseNegArg dom e1, normaliseNegArg dom e2]
-  (_, MulExpr _ mulDom [e1, e2]) -> MulExpr p mulDom [normaliseNegArg dom e1, e2]
-  _                              -> NegExpr p dom [e]
+  (NegInt, IntLiteral _ x) -> IntLiteral p (- x)
+  (NegRat, RatLiteral _ x) -> RatLiteral p (- x)
+  _                        -> NegExpr p dom [e]
 
 nfAdd :: Provenance -> AddDomain -> CheckedArg -> CheckedArg -> CheckedExpr
 nfAdd p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
@@ -150,43 +147,23 @@ nfAdd p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
   (AddRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x + y)
   _                                        -> AddExpr p dom [arg1, arg2]
 
-nfSub :: Bool -> Provenance -> SubDomain -> CheckedArg -> CheckedArg -> CheckedExpr
-nfSub convertToAddition p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
+nfSub :: Provenance -> SubDomain -> CheckedArg -> CheckedArg -> CheckedExpr
+nfSub p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
   (SubInt, IntLiteral _ x, IntLiteral _ y) -> IntLiteral p (x - y)
   (SubRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x - y)
-  _ | convertToAddition -> do
-    let nArg1 = normaliseNegArg (subToNegDomain dom) arg2
-    App p (Builtin p (Add (subToAddDomain dom))) [arg1, nArg1]
   _                                        -> SubExpr p dom [arg1, arg2]
 
-nfMul :: Bool -> Provenance -> MulDomain -> CheckedArg -> CheckedArg -> CheckedExpr
-nfMul expandOut p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
+nfMul :: Provenance -> MulDomain -> CheckedArg -> CheckedArg -> CheckedExpr
+nfMul p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
   (MulNat, NatLiteral _ x, NatLiteral _ y) -> NatLiteral p (x * y)
   (MulInt, IntLiteral _ x, IntLiteral _ y) -> IntLiteral p (x * y)
   (MulRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x * y)
-  -- Expanding out multiplication
-  (_, _, AddExpr _ addDom [v1, v2]) | expandOut ->
-    distribute p (nfAdd p addDom) (nfMul expandOut p dom) arg1 v1 arg1 v2
-  (_, AddExpr _ addDom [v1, v2], _) | expandOut ->
-    distribute p (nfAdd p addDom) (nfMul expandOut p dom) v1 arg2 v2 arg2
-  _ -> MulExpr p dom [arg1, arg2]
-
+  _                                        -> MulExpr p dom [arg1, arg2]
 
 nfDiv :: Provenance -> DivDomain -> CheckedArg -> CheckedArg -> CheckedExpr
 nfDiv p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
   (DivRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x / y)
   _                                        -> DivExpr p dom [arg1, arg2]
-
-distribute :: Provenance
-           -> (CheckedArg -> CheckedArg -> CheckedExpr)
-           -> (CheckedArg -> CheckedArg -> CheckedExpr)
-           -> CheckedArg
-           -> CheckedArg
-           -> CheckedArg
-           -> CheckedArg
-           -> CheckedExpr
-distribute p op1 op2 x1 y1 x2 y2 =
-  op1 (ExplicitArg p (op2 x1 y1)) (ExplicitArg p (op2 x2 y2))
 
 -----------------------------------------------------------------------------
 -- Normalising container operations

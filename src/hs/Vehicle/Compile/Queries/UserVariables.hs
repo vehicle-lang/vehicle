@@ -17,6 +17,7 @@ import Vehicle.Compile.LetInsertion (insertLets)
 import Vehicle.Compile.Linearity
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Queries.LNF (convertToLNF)
 import Vehicle.Compile.Resource
 import Vehicle.Language.Print (prettySimple)
 import Vehicle.Verify.Specification
@@ -130,8 +131,7 @@ generateCLSTProblem assertionsExpr = do
   -- output variables
   boundCtx <- getBoundContext
   normExprBody <- normalise userExprBody $ fullNormalisationOptions
-    { expandOutPolynomials       = True
-    , boundContext               = boundCtx
+    { boundContext               = boundCtx
     }
 
   result <- compileAssertions normExprBody
@@ -374,7 +374,7 @@ compileAssertions = \case
         as2 <- go e2
         return (as1 <> as2)
 
-      App _ (Builtin _ (Order OrderRat ord)) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+      OrderExpr _ OrderRat ord [ExplicitArg _ e1, ExplicitArg _ e2] -> do
         let (rel, lhs, rhs) = case ord of
               Lt -> (LessThan,          e1, e2)
               Le -> (LessThanOrEqualTo, e1, e2)
@@ -383,7 +383,7 @@ compileAssertions = \case
         assertion <- compileAssertion rel lhs rhs
         return [assertion]
 
-      App p (Builtin _ (Equals EqRat eq)) [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
+      EqualityExpr p EqRat eq [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
         Neq -> do
           (_, ident, _, _, _, _) <- ask
           throwError $ UnsupportedInequality MarabouBackend ident p
@@ -405,9 +405,10 @@ compileAssertion rel lhs rhs = do
 
 compileLinearExpr :: MonadSMT m => CheckedExpr -> m LinearExpr
 compileLinearExpr expr = do
-  varToCoefficientMap <- go expr
+  lnfExpr <- convertToLNF expr
+  linearExpr <- go lnfExpr
   exprSize <- getExprSize
-  return $ linearExprFromMap exprSize varToCoefficientMap
+  return $ linearExprFromMap exprSize linearExpr
   where
   singletonVar :: MonadSMT m => DBVar -> Coefficient -> m (Map Int Coefficient)
   singletonVar Free{}    _ = normalisationError currentPass "FreeVar"
@@ -418,13 +419,19 @@ compileLinearExpr expr = do
 
   go :: MonadSMT m => CheckedExpr -> m (Map Int Coefficient)
   go e = case e of
-    Var    _ v                           -> singletonVar v 1
-    NegExpr _ NegRat [ExplicitArg _ (Var _ v)] -> singletonVar v (-1)
+    Var _ v ->
+      singletonVar v 1
+
+    NegExpr _ NegRat [ExplicitArg _ (Var _ v)] ->
+      singletonVar v (-1)
+
     RatLiteral _ l                   -> do
       constIndex <- getExprConstantIndex
       singletonVar (Bound constIndex) (fromRational l)
+
     AddExpr _ AddRat [ExplicitArg _ e1, ExplicitArg _ e2] -> do
       Map.unionWith (+) <$> go e1 <*> go e2
+
     MulExpr _ MulRat [ExplicitArg _ e1, ExplicitArg _ e2] ->
       case (e1, e2) of
         (RatLiteral _ l, Var _ v) -> singletonVar v (fromRational l)
@@ -435,6 +442,7 @@ compileLinearExpr expr = do
           compilerDeveloperError $
             "Unexpected non-linear constraint that should have been caught by the" <+>
             "linearity analysis during type-checking."
+
     ex -> unexpectedExprError currentPass $ prettySimple ex
 
 --------------------------------------------------------------------------------

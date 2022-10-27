@@ -35,8 +35,7 @@ normalise x options@Options{..} = logCompilerPass MinDetail currentPass $ do
 -- Normalisation options
 
 data NormalisationOptions = Options
-  { expandOutPolynomials        :: Bool
-  , declContext                 :: DeclCtx CheckedExpr
+  { declContext                 :: DeclCtx CheckedExpr
   , boundContext                :: [DBBinding]
   , normaliseDeclApplications   :: Bool
   , normaliseLambdaApplications :: Bool
@@ -47,8 +46,7 @@ data NormalisationOptions = Options
 
 fullNormalisationOptions :: NormalisationOptions
 fullNormalisationOptions = Options
-  { expandOutPolynomials        = False
-  , declContext                 = mempty
+  { declContext                 = mempty
   , boundContext                = mempty
   , normaliseDeclApplications   = True
   , normaliseLambdaApplications = True
@@ -213,7 +211,6 @@ nfBuiltin p (TypeClassOp op) args = do
 
 nfBuiltin p b                args = do
   let e = App p (Builtin p b) args
-  Options{..} <- ask
   fromMaybe (return e) $ case e of
     -- Types
     TensorType _ tElem dims -> Just $ return $ nfTensor p tElem dims
@@ -232,8 +229,8 @@ nfBuiltin p b                args = do
     -- Numeric operations
     NegExpr _ dom [arg]        -> Just $ return $ nfNeg p dom arg
     AddExpr _ dom [arg1, arg2] -> Just $ return $ nfAdd p dom arg1 arg2
-    SubExpr _ dom [arg1, arg2] -> Just $ return $ nfSub expandOutPolynomials p dom arg1 arg2
-    MulExpr _ dom [arg1, arg2] -> Just $ return $ nfMul expandOutPolynomials p dom arg1 arg2
+    SubExpr _ dom [arg1, arg2] -> Just $ return $ nfSub p dom arg1 arg2
+    MulExpr _ dom [arg1, arg2] -> Just $ return $ nfMul p dom arg1 arg2
     DivExpr _ dom [arg1, arg2] -> Just $ return $ nfDiv p dom arg1 arg2
 
     -- Numeric conversion

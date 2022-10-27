@@ -35,9 +35,7 @@ dnf expr = do
     Meta{}      -> resolutionError    currentPass "Meta"
     Lam{}       -> caseError          currentPass "Lam" ["QuantifierExpr"]
 
-    ImpliesExpr p [arg1, arg2] ->
-      dnf $ OrExpr p [ExplicitArg p (NotExpr p [arg1]), arg2]
-
+    -- Inductive cases
     ExistsRatExpr p binder body -> do
       body' <- dnf body
       return $ liftOr (ExistsRatExpr p binder) body'
@@ -55,8 +53,12 @@ dnf expr = do
       e2' <- traverse dnf e2
       return $ OrExpr p [e1', e2']
 
+    -- Elimination cases
     NotExpr _ [e] ->
       dnf $ lowerNot (argExpr e)
+
+    ImpliesExpr p [arg1, arg2] ->
+      dnf $ OrExpr p [ExplicitArg p (NotExpr p [arg1]), arg2]
 
     -- Anything else is a base case.
     App{}     -> return expr
@@ -87,7 +89,9 @@ lowerNot arg = case arg of
   OrExpr        p args         -> AndExpr p (lowerNotArg <$> args)
   AndExpr       p args         -> OrExpr p (lowerNotArg <$> args)
   IfExpr p tRes [c, e1, e2]    -> IfExpr p tRes [c, lowerNotArg e1, lowerNotArg e2]
-  e                            -> developerError ("Unable to lower 'not' through" <+> pretty (show e))
+
+  -- Errors
+  e  -> developerError ("Unable to lower 'not' through" <+> pretty (show e))
 
 lowerNotArg :: CheckedArg -> CheckedArg
 lowerNotArg = fmap lowerNot
