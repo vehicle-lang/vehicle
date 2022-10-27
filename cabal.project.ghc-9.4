@@ -1,8 +1,25 @@
+-- Cabal project configuration file
+--
+-- TL;DR
+--  The cabal.project is the basic configuration file for Cabal projects.
+--  Usually, this just points to the .cabal file for your project, but it
+--  may contain additional configuration options.
+--  Each supported GHC version has its own version of this file, which is
+--  named `cabal.project.ghc-X.Y`. If no changes are needed, that file is
+--  a symlink to this file.
+--  For each project file `cabal.project.ghc-X.Y` there is a corresponding
+--  freeze file `cabal.project.ghc-X.Y.freeze` which records the package
+--  versions and flags with which the project is known to compile.
+--
+-- See: https://cabal.readthedocs.io/en/latest/cabal-project.html
+
 packages: vehicle.cabal
 
--- Package linkedhashmap seems unmaintained.
--- The latest update seems to have been in 2015 (see linkedhashmap).
--- Unfortunately, the constraint on containers prevents vehicle from building with GHC 9.4.
--- See: https://github.com/vehicle-lang/vehicle/issues/191
+-- Changes for GHC 9.4:
+--
+-- * The package linkedhashmap seems unmaintained. The latest update seems to
+--   have been in 2015. Unfortunately, the constraint on containers prevents
+--   vehicle from building with GHC 9.2.
+--   See: https://github.com/vehicle-lang/vehicle/issues/191
 
 allow-newer: linkedhashmap-0.4.0.0:containers
