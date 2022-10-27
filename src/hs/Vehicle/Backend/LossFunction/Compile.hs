@@ -84,8 +84,7 @@ compile prog propertyCtx networkCtx = do
 
 normalisationOptions :: NormalisationOptions
 normalisationOptions = Options
-  { implicationsToDisjunctions  = False
-  , expandOutPolynomials        = False
+  { expandOutPolynomials        = False
   , declContext                 = mempty
   , boundContext                = mempty
   , normaliseDeclApplications   = False

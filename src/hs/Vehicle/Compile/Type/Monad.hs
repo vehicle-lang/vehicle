@@ -444,8 +444,7 @@ whnf :: TCM m => CheckedExpr -> m CheckedExpr
 whnf e = do
   declCtx <- getDeclContext
   discardLoggerT $ normalise e Options
-    { implicationsToDisjunctions  = False
-    , expandOutPolynomials        = False
+    { expandOutPolynomials        = False
     , declContext                 = toNormalisationDeclContext declCtx
     , boundContext                = mempty -- see issue #129
     , normaliseDeclApplications   = True

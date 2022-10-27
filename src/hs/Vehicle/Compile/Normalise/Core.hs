@@ -64,16 +64,8 @@ normaliseNotArg x = ExplicitArg (provenanceOf x) $ nfNot (provenanceOf x) x
 
 nfNot :: Provenance -> CheckedArg -> CheckedExpr
 nfNot p arg = case argExpr arg of
-  BoolLiteral        _ b                 -> BoolLiteral p (not b)
-  App _ (Builtin _ (Order dom ord)) args -> App p (Builtin p (Order dom (neg ord))) args
-  App _ (Builtin _ (Equals dom eq)) args -> App p (Builtin p (Equals dom (neg eq))) args
-  ForallRatExpr _ binder body            -> ExistsRatExpr p binder $ nfNot p (ExplicitArg p body)
-  ExistsRatExpr _ binder body            -> ForallRatExpr p binder $ nfNot p (ExplicitArg p body)
-  ImpliesExpr        _ [e1, e2]          -> AndExpr p [e1, normaliseNotArg e2]
-  OrExpr             _ [e1, e2]          -> AndExpr p (normaliseNotArg <$> [e1, e2])
-  AndExpr            _ [e1, e2]          -> OrExpr p (normaliseNotArg <$> [e1, e2])
-  IfExpr _ tRes [c, e1, e2]              -> IfExpr p tRes [c, normaliseNotArg e1, normaliseNotArg e2]
-  _                                      -> NotExpr p [arg]
+  BoolLiteral _ b -> BoolLiteral p (not b)
+  _               -> NotExpr p [arg]
 
 nfAnd :: Provenance -> CheckedArg -> CheckedArg -> CheckedExpr
 nfAnd p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
@@ -93,14 +85,13 @@ nfOr p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (e1, e2) | alphaEq e1 e2 -> e1
   _                        -> OrExpr p [arg1, arg2]
 
-nfImplies :: Provenance -> CheckedArg -> CheckedArg -> Bool -> CheckedExpr
-nfImplies p arg1 arg2 convertToOr = case (argExpr arg1, argExpr arg2) of
+nfImplies :: Provenance -> CheckedArg -> CheckedArg -> CheckedExpr
+nfImplies p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (TrueExpr  _, _)         -> argExpr arg2
   (FalseExpr _, _)         -> TrueExpr p
   (_, TrueExpr  _)         -> TrueExpr p
   (_, FalseExpr _)         -> NotExpr p [arg2]
   (e1, e2) | alphaEq e1 e2 -> TrueExpr p
-  _        | convertToOr   -> OrExpr p [normaliseNotArg arg1, arg2]
   _                        -> ImpliesExpr p [arg1, arg2]
 
 nfIf :: Provenance -> CheckedExpr -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr

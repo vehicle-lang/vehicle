@@ -7,8 +7,8 @@ import Control.Monad.Except (MonadError (..))
 import Data.Maybe (catMaybes)
 
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Core (nfNot)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Queries.DNF (lowerNot)
 import Vehicle.Language.Print (prettyFriendly)
 import Vehicle.Verify.Core (VerifierIdentifier)
 
@@ -27,8 +27,7 @@ checkQuantifiersAndNegateIfNecessary backend ident expr =
       Forall  -> do
         -- If the property is universally quantified then we need to negate the expression
         logDebug MinDetail "Negating property..."
-        let p = provenanceOf expr
-        return $ nfNot p (ExplicitArg p expr)
+        return $ lowerNot expr
 
     logCompilerPassOutput (prettyFriendly outputExpr)
     return (quantifier == Forall, outputExpr)

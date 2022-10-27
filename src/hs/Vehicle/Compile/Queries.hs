@@ -15,7 +15,7 @@ import Vehicle.Compile.Linearity
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
-import Vehicle.Compile.Queries.DNF (convertToDNF, splitDisjunctions)
+import Vehicle.Compile.Queries.DNF (convertToDNF)
 import Vehicle.Compile.Queries.IfElimination (eliminateIfs)
 import Vehicle.Compile.Queries.QuantifierLifting (liftQuantifiers)
 import Vehicle.Compile.Queries.UserVariables
@@ -157,6 +157,11 @@ compileSingleQuery expr = do
       queryDoc <- compileQuery verifier clstProblem
       logCompilerPassOutput queryDoc
       return (QueryData queryDoc u v)
+
+splitDisjunctions :: Expr binder var -> [Expr binder var]
+splitDisjunctions (OrExpr _ann [e1, e2]) =
+  splitDisjunctions (argExpr e1) <> splitDisjunctions (argExpr e2)
+splitDisjunctions e = [e]
 
 currentPass :: Doc a
 currentPass = "compilation to individual queries"

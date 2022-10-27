@@ -35,8 +35,7 @@ normalise x options@Options{..} = logCompilerPass MinDetail currentPass $ do
 -- Normalisation options
 
 data NormalisationOptions = Options
-  { implicationsToDisjunctions  :: Bool
-  , expandOutPolynomials        :: Bool
+  { expandOutPolynomials        :: Bool
   , declContext                 :: DeclCtx CheckedExpr
   , boundContext                :: [DBBinding]
   , normaliseDeclApplications   :: Bool
@@ -48,8 +47,7 @@ data NormalisationOptions = Options
 
 fullNormalisationOptions :: NormalisationOptions
 fullNormalisationOptions = Options
-  { implicationsToDisjunctions  = False
-  , expandOutPolynomials        = False
+  { expandOutPolynomials        = False
   , declContext                 = mempty
   , boundContext                = mempty
   , normaliseDeclApplications   = True
@@ -134,8 +132,6 @@ instance Norm CheckedExpr where
         nFun  <- nf fun
         nArgs <- if normaliseWeakly
           then return args
-          -- Remove the below in future if we actually have computational
-          -- behaviour in implicit/instance arguments
           else traverse (traverseExplicitArgExpr nf) args
 
         nfApp p nFun nArgs
@@ -144,6 +140,8 @@ instance Norm CheckedBinder where
   nf = traverse nf
 
 instance Norm CheckedArg where
+  -- A massive hack to get performance, we should remove once we have NBE up and
+  -- running
   nf (ExplicitArg ann e) = ExplicitArg ann <$> nf e
   nf arg@Arg{}           = return arg
 
@@ -228,7 +226,7 @@ nfBuiltin p b                args = do
     NotExpr     _ [arg]          -> Just $ return $ nfNot     p arg
     AndExpr     _ [arg1, arg2]   -> Just $ return $ nfAnd     p arg1 arg2
     OrExpr      _ [arg1, arg2]   -> Just $ return $ nfOr      p arg1 arg2
-    ImpliesExpr _ [arg1, arg2]   -> Just $ return $ nfImplies p arg1 arg2 implicationsToDisjunctions
+    ImpliesExpr _ [arg1, arg2]   -> Just $ return $ nfImplies p arg1 arg2
     IfExpr    _ t [cond, e1, e2] -> Just $ return $ nfIf      p t cond e1 e2
 
     -- Numeric operations

@@ -2,16 +2,12 @@
 
 module Vehicle.Compile.Queries.DNF
   ( convertToDNF
-  , splitConjunctions
-  , splitDisjunctions
+  , lowerNot
   ) where
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
-
---------------------------------------------------------------------------------
--- Or operations
 
 -- | Converts an expression to disjunctive normal form.
 -- Currently assumes all implications and negations have
@@ -23,14 +19,13 @@ convertToDNF expr =
     logCompilerPassOutput (prettyFriendly result)
     return result
 
+--------------------------------------------------------------------------------
+-- DNF
+
 dnf :: MonadCompile m => CheckedExpr -> m CheckedExpr
 dnf expr = do
   showEntry expr
   result <- case expr of
-    Literal{}   -> return expr
-    Builtin{}   -> return expr
-    Var{}       -> return expr
-
     LVec{}      -> normalisationError currentPass "LVec"
     Ann{}       -> normalisationError currentPass "Ann"
     Let{}       -> normalisationError currentPass "Let"
@@ -40,9 +35,8 @@ dnf expr = do
     Meta{}      -> resolutionError    currentPass "Meta"
     Lam{}       -> caseError          currentPass "Lam" ["QuantifierExpr"]
 
-    -- Some sanity checks
-    NotExpr{}     -> normalisationError currentPass "Not"
-    ImpliesExpr{} -> normalisationError currentPass "Implies"
+    ImpliesExpr p [arg1, arg2] ->
+      dnf $ OrExpr p [ExplicitArg p (NotExpr p [arg1]), arg2]
 
     ExistsRatExpr p binder body -> do
       body' <- dnf body
@@ -61,7 +55,15 @@ dnf expr = do
       e2' <- traverse dnf e2
       return $ OrExpr p [e1', e2']
 
-    App{} -> return expr
+    NotExpr _ [e] ->
+      dnf $ lowerNot (argExpr e)
+
+    -- Anything else is a base case.
+    App{}     -> return expr
+    Literal{} -> return expr
+    Builtin{} -> return expr
+    Var{}     -> return expr
+
 
   showExit result
   return result
@@ -70,15 +72,25 @@ liftOr :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
 liftOr f (OrExpr ann [e1, e2]) = OrExpr ann (fmap (liftOr f) <$> [e1, e2])
 liftOr f e                     = f e
 
-splitConjunctions :: Expr binder var -> [Expr binder var]
-splitConjunctions (AndExpr _ann [e1, e2]) =
-  splitConjunctions (argExpr e1) <> splitConjunctions (argExpr e2)
-splitConjunctions e = [e]
+lowerNot :: CheckedExpr -> CheckedExpr
+lowerNot arg = case arg of
+  -- Base cases
+  BoolLiteral   p b            -> BoolLiteral p (not b)
+  OrderExpr     p dom ord args -> OrderExpr p dom (neg ord) args
+  EqualityExpr  p dom eq args  -> EqualityExpr p dom (neg eq) args
+  NotExpr       _ [e]          -> argExpr e
 
-splitDisjunctions :: Expr binder var -> [Expr binder var]
-splitDisjunctions (OrExpr _ann [e1, e2]) =
-  splitDisjunctions (argExpr e1) <> splitDisjunctions (argExpr e2)
-splitDisjunctions e = [e]
+  -- Inductive cases
+  ForallRatExpr p binder body  -> ExistsRatExpr p binder $ lowerNot body
+  ExistsRatExpr p binder body  -> ForallRatExpr p binder $ lowerNot body
+  ImpliesExpr   p [e1, e2]     -> AndExpr p [e1, lowerNotArg e2]
+  OrExpr        p args         -> AndExpr p (lowerNotArg <$> args)
+  AndExpr       p args         -> OrExpr p (lowerNotArg <$> args)
+  IfExpr p tRes [c, e1, e2]    -> IfExpr p tRes [c, lowerNotArg e1, lowerNotArg e2]
+  e                            -> developerError ("Unable to lower 'not' through" <+> pretty (show e))
+
+lowerNotArg :: CheckedArg -> CheckedArg
+lowerNotArg = fmap lowerNot
 
 currentPass :: Doc a
 currentPass = "conversion to DNF"

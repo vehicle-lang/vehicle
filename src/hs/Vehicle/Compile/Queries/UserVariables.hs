@@ -130,8 +130,7 @@ generateCLSTProblem assertionsExpr = do
   -- output variables
   boundCtx <- getBoundContext
   normExprBody <- normalise userExprBody $ fullNormalisationOptions
-    { implicationsToDisjunctions = True
-    , expandOutPolynomials       = True
+    { expandOutPolynomials       = True
     , boundContext               = boundCtx
     }
 
