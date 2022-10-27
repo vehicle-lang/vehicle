@@ -23,7 +23,7 @@ runs:
 
       - id: setup-haskell
         name: Setup Haskell
-        uses: haskell/actions/setup@v1
+        uses: haskell/actions/setup@v2
         with:
           ghc-version: ${{ inputs.ghc-version }}
           cabal-version: ${{ inputs.cabal-version }}
