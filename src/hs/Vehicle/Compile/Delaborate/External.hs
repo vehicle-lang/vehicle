@@ -223,9 +223,9 @@ delabBuiltin fun args = case fun of
   V.Not            -> delabTypeClassOp V.NotTC args
   V.If             -> delabIf args
 
-  V.FromNat{}      -> primOpError fun
-  V.FromRat{}      -> primOpError fun
-  V.FromVec{}      -> primOpError fun
+  V.FromNat{}      -> head args
+  V.FromRat{}      -> head args
+  V.FromVec{}      -> head args
 
   V.Neg _          -> delabTypeClassOp V.NegTC args
   V.Add _          -> delabTypeClassOp V.AddTC args

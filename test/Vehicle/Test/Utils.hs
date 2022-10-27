@@ -34,6 +34,8 @@ import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Prelude
 
+import Data.Functor.Foldable (Recursive (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Test.Utils.FilePath as FilePathUtils
 import Vehicle.Test.Utils.Golden as GoldenUtils
 
@@ -100,14 +102,30 @@ testResources TestSpec{..} =
   Resources networks datasets parameters
 
 normTypeClasses :: MonadCompile m => CheckedExpr -> m CheckedExpr
-normTypeClasses e = normalise e noNormalisationOptions
-  { normaliseBuiltin = \case
-      TypeClassOp{} -> True
-      FromNat{}     -> True
-      FromRat{}     -> True
-      FromVec{}     -> True
-      _             -> False
-  }
+normTypeClasses = cata $ \case
+  AppF ann fun args -> do
+    fun'  <- fun
+    args' <- traverse sequenceA args
+    case fun' of
+      Builtin p (TypeClassOp op) -> case nfTypeClassOp p op (NonEmpty.toList args') of
+        Nothing  -> error "No metas should be present"
+        Just res -> do
+          (fn, newArgs) <- res
+          return $ normApp p fn newArgs
+
+      _ -> return $ App ann fun' args'
+
+  UniverseF ann l                 -> return $ Universe ann l
+  HoleF     ann n                 -> return $ Hole ann n
+  MetaF     ann m                 -> return $ Meta ann m
+  LiteralF  ann l                 -> return $ Literal ann l
+  BuiltinF  ann op                -> return $ Builtin ann op
+  AnnF      ann e t               -> Ann ann <$> e <*> t
+  PiF       ann binder result     -> Pi  ann <$> sequenceA binder <*> result
+  LetF      ann bound binder body -> Let ann <$> bound <*> sequenceA binder <*> body
+  LamF      ann binder body       -> Lam ann <$> sequenceA binder <*> body
+  LVecF     ann xs                -> LVec ann <$> sequence xs
+  VarF      ann v                 -> return $ Var ann v
 
 --------------------------------------------------------------------------------
 -- Other utilities

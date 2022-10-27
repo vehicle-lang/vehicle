@@ -1,7 +1,6 @@
 module Vehicle.Compile.Normalise
   ( NormalisationOptions(..)
   , fullNormalisationOptions
-  , noNormalisationOptions
   , normalise
   , nfTensor
   , nfTypeClassOp
@@ -40,10 +39,8 @@ data NormalisationOptions = Options
   , expandOutPolynomials        :: Bool
   , declContext                 :: DeclCtx CheckedExpr
   , boundContext                :: [DBBinding]
-  , normaliseAnnotations        :: Bool
   , normaliseDeclApplications   :: Bool
   , normaliseLambdaApplications :: Bool
-  , normaliseLetBindings        :: Bool
   , normaliseStdLibApplications :: Bool
   , normaliseBuiltin            :: Builtin -> Bool
   , normaliseWeakly             :: Bool
@@ -57,25 +54,8 @@ fullNormalisationOptions = Options
   , boundContext                = mempty
   , normaliseDeclApplications   = True
   , normaliseLambdaApplications = True
-  , normaliseLetBindings        = True
-  , normaliseAnnotations        = True
   , normaliseStdLibApplications = True
   , normaliseBuiltin            = const True
-  , normaliseWeakly             = False
-  }
-
-noNormalisationOptions :: NormalisationOptions
-noNormalisationOptions = Options
-  { implicationsToDisjunctions  = False
-  , expandOutPolynomials        = False
-  , declContext                 = mempty
-  , boundContext                = mempty
-  , normaliseDeclApplications   = False
-  , normaliseLambdaApplications = False
-  , normaliseLetBindings        = False
-  , normaliseAnnotations        = False
-  , normaliseStdLibApplications = False
-  , normaliseBuiltin            = const False
   , normaliseWeakly             = False
   }
 
@@ -132,30 +112,23 @@ instance Norm CheckedExpr where
       Pi p binder body ->
         Pi p <$> nf binder <*> nf body
 
-      Ann p expr typ
-        | normaliseAnnotations -> nf expr
-        | otherwise            -> Ann p <$> nf expr <*> nf typ
+      Ann _ expr _typ -> nf expr
 
-      Var _ (Bound _) ->
-        return e
+      Var _ v -> case v of
+        Bound{} -> return e
+        Free ident
+          | normaliseDeclApplications -> do
+            ctx <- get
+            case Map.lookup ident ctx of
+              Nothing -> return e
+              Just x  -> nf x
+          | otherwise                 -> return e
 
-      Var _ (Free ident)
-        | normaliseDeclApplications -> do
-          ctx <- get
-          case Map.lookup ident ctx of
-            Nothing -> return e
-            Just v  -> nf v
-        | otherwise                 -> return e
-
-      Let p letValue letBinder letBody -> do
+      Let _ letValue _letBinder letBody -> do
         letValue' <- nf letValue
         letBody'  <- nf letBody
-        if normaliseLetBindings then do
-          let letBodyWithSubstitution = substInto letValue' letBody'
-          nf letBodyWithSubstitution
-        else do
-          letBinder' <- nf letBinder
-          return $ Let p letValue' letBinder' letBody'
+        let letBodyWithSubstitution = substInto letValue' letBody'
+        nf letBodyWithSubstitution
 
       App p fun args -> do
         nFun  <- nf fun

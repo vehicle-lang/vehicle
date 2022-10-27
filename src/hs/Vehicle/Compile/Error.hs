@@ -141,11 +141,6 @@ data CompileError
 compilerDeveloperError :: MonadError CompileError m => Doc () -> m b
 compilerDeveloperError message = throwError $ DevError message
 
-unexpectedExpr :: Doc a -> Doc a -> Doc a
-unexpectedExpr pass name =
-  "encountered unexpected expression" <+> squotes name <+>
-  "during" <+> pass <> "."
-
 unexpectedExprError :: MonadError CompileError m => Doc () -> Doc () -> m b
 unexpectedExprError pass name = compilerDeveloperError $ unexpectedExpr pass name
 
@@ -175,3 +170,8 @@ caseError :: MonadError CompileError m => Doc () -> Doc () -> [Doc ()] -> m b
 caseError pass name cases = compilerDeveloperError $
   unexpectedExpr pass name <+> "This should already have been caught by the" <+>
   "following cases:" <+> list cases
+
+unexpectedExpr :: Doc a -> Doc a -> Doc a
+unexpectedExpr pass name =
+  "encountered unexpected expression" <+> squotes name <+>
+  "during" <+> pass <> "."
