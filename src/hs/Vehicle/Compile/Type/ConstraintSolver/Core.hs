@@ -29,7 +29,7 @@ unless2 p a = if not p then return a else mzero
 tcArgError :: Constraint
            -> CheckedType
            -> TypeClassOp
-           -> [InputExpr]
+           -> [Builtin]
            -> Int
            -> Int
            -> [CompileError]
@@ -39,7 +39,7 @@ tcArgError c arg op allowedTypes argIndex numberOfArgs = unless2 (isMeta arg)
 tcResultError :: Constraint
               -> CheckedType
               -> TypeClassOp
-              -> [InputExpr]
+              -> [Builtin]
               -> [CompileError]
 tcResultError c result op allowedTypes =
   unless2 (isMeta result)

@@ -14,7 +14,6 @@ open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List.Base
-open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module windController-output where
 
@@ -36,7 +35,7 @@ SafeOutput : InputVector → Set
 SafeOutput x = ℚ.- (ℤ.+ 5 ℚ./ 4) ℚ.< (controller x (# 0) ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* x currentSensor) ℚ.- x previousSensor × (controller x (# 0) ℚ.+ (ℤ.+ 2 ℚ./ 1) ℚ.* x currentSensor) ℚ.- x previousSensor ℚ.< ℤ.+ 5 ℚ./ 4
 
 abstract
-  safe : ∀ (x : Vector ℚ 2) → SafeInput x → SafeOutput x
+  safe : ∀ (x : InputVector) → SafeInput x → SafeOutput x
   safe = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

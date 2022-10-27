@@ -31,16 +31,16 @@ ifEliminationTests = testGroup "LiftAndElimIf" <$>
       "if False then (True : Bool) else (False : Bool)"
 
   , IfTestSpec "liftListIf2"
-      "[if True then 1 else 2, if False then 3 else 4] : List Nat"
+      "([if True then 1 else 2, if False then 3 else 4]) ! 0 >= (0 : Nat)"
       "if True \
-        \then (if False then ([1, 3] : List Nat) else ([1, 4] : List Nat)) \
-        \else (if False then ([2, 3] : List Nat) else ([2, 4] : List Nat))"
+        \then (if False then ([1, 3] ! 0 >= (0 : Nat)) else ([1, 4] ! 0 >= (0 : Nat))) \
+        \else (if False then ([2, 3] ! 0 >= (0 : Nat)) else ([2, 4] ! 0 >= (0 : Nat)))"
 
   , IfTestSpec "liftIfAdd2"
-      "(if True then 1 else 2) + (if False then 3 else 4)"
+      "(if True then 1 else 2) + (if False then 3 else 4) >= 0"
       "if True \
-        \then (if False then (1 + 3) else (1 + 4)) \
-        \else (if False then (2 + 3) else (2 + 4))"
+        \then (if False then (1 + 3 >= 0) else (1 + 4 >= 0)) \
+        \else (if False then (2 + 3 >= 0) else (2 + 4 >= 0))"
 
   , IfTestSpec "elimIfNot"
       "not (if True then False else (True : Bool))"
@@ -63,10 +63,6 @@ liftAndEliminateIfsTest (IfTestSpec testName input expected) =
     expectedExpr <- normTypeClasses =<< parseAndTypeCheckExpr expected
     result       <- eliminateIfs inputExpr
 
-    -- Need to re-typecheck the result as lifting may put a `Hole` for
-    -- the type of each lifted `if`.
-    typedResult <- typeCheckExpr result
-
     let errorMessage = layoutAsString $
           "Expected the result of if elimination on" <> line <>
             indent 2 (squotes (pretty input)) <> line <>
@@ -77,4 +73,4 @@ liftAndEliminateIfsTest (IfTestSpec testName input expected) =
 
 
     return $ assertBool errorMessage $
-      alphaEq expectedExpr typedResult
+      alphaEq expectedExpr result

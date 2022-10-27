@@ -565,9 +565,10 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
   HasDivExpr _ t _ _   -> compileTypeClass "HasDiv" t
   HasNegExpr _ t _     -> compileTypeClass "HasNeg" t
 
-  HasNatLitsExpr   _   _ t -> compileTypeClass "HasNatLits" t
-  HasRatLitsExpr       _ t -> compileTypeClass "HasRatLits" t
-  HasVecLitsExpr p n _ _   -> throwError $ UnsupportedBuiltin AgdaBackend p (TypeClass (HasVecLits n))
+  HasNatLitsExpr _ _ t -> compileTypeClass "HasNatLits" t
+  HasRatLitsExpr _   t -> compileTypeClass "HasRatLits" t
+  HasVecLitsExpr{}     ->
+    compilerDeveloperError "Compilation of HasVecLits type-class constraint to Agda not yet supported"
 
   BuiltinTypeClass _ NatInDomainConstraint{} [t] -> compileTypeClass "NatInDomain" (argExpr t)
 
@@ -608,7 +609,7 @@ compileQuantIn q tCont fn cont = do
     (BoolLevel, Exists, ListType{})   -> return ("any", listQualifier,   DataList)
     (BoolLevel, Forall, TensorType{}) -> return ("all", tensorQualifier, DataTensor)
     (BoolLevel, Exists, TensorType{}) -> return ("any", tensorQualifier, DataTensor)
-    _                                 -> unexpectedTypeError tCont [List, Tensor]
+    _                                 -> unexpectedTypeError tCont [pretty List, pretty Tensor]
 
   annotateApp [dep] (qualifier <> "." <> quant) <$> traverse compileExpr [fn, cont]
 
@@ -768,7 +769,7 @@ compileOrder originalOrder elemType originalArgs = do
     NatType{}   -> return (natQualifier, DataNat)
     IntType{}   -> return (intQualifier, DataInteger)
     RatType{}   -> return (ratQualifier, DataRat)
-    _           -> unexpectedTypeError elemType [Nat, Int, Rat, Index]
+    _           -> unexpectedTypeError elemType $ map pretty [Nat, Int, Rat, Index]
 
   let (boolDecDoc, boolDeps, opBraces) = case boolLevel of
         BoolLevel -> ("?", [RelNullary], boolBraces)
@@ -840,19 +841,22 @@ equalityDependencies = \case
   NatType  _ -> return [DataNatInstances]
   IntType  _ -> return [DataIntegerInstances]
   BoolType _ -> return [DataBoolInstances]
-  App _ (Builtin _ List)   [tElem] -> do
-    deps <- equalityDependencies (argExpr tElem)
+  ListType _ tElem -> do
+    deps <- equalityDependencies tElem
     return $ [DataListInstances] <> deps
-  App _ (Builtin _ Tensor) [tElem, _tDims] -> do
-    deps <- equalityDependencies (argExpr tElem)
+  VectorType _ tElem _tDims -> do
+    deps <- equalityDependencies tElem
+    return $ [DataVectorInstances] <> deps
+  TensorType _ tElem _tDims -> do
+    deps <- equalityDependencies tElem
     return $ [DataTensorInstances] <> deps
   Var ann n -> throwError $ UnsupportedPolymorphicEquality AgdaBackend (provenanceOf ann) n
-  t         -> unexpectedTypeError t [Bool, Nat, Int, List, Tensor]
+  t         -> unexpectedTypeError t (map pretty [Bool, Nat, Int, List, Vector] <> [pretty Tensor])
 
-unexpectedTypeError :: MonadCompile m => OutputExpr -> [Builtin] -> m a
+unexpectedTypeError :: MonadCompile m => OutputExpr -> [Doc ()] -> m a
 unexpectedTypeError actualType expectedTypes = compilerDeveloperError $
   "Unexpected type found." <+>
-  "Was expecting one of" <+> pretty expectedTypes <+>
+  "Was expecting one of" <+> list expectedTypes <+>
   "but found" <+> prettyFriendly actualType <+>
   "at" <+> pretty (provenanceOf actualType) <> "."
 

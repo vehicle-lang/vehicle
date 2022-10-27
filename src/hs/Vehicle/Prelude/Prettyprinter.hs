@@ -24,12 +24,16 @@ import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
 
 -- This stuff we re-export
+import Data.Void (Void)
 import Prettyprinter as CommonPrettyprinter (Doc, Pretty (..), align, braces,
                                              concatWith, indent, line, nest,
                                              parens, softline, squotes,
                                              unAnnotate, (<+>))
 
 -- * Additions to the prettyprinter library
+
+-- | A |Doc| without any annotations
+type UnAnnDoc = Doc Void
 
 --------------------------------------------------------------------------------
 -- More flexible combinators

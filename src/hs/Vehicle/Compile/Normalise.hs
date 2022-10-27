@@ -1,7 +1,6 @@
 module Vehicle.Compile.Normalise
   ( NormalisationOptions(..)
   , fullNormalisationOptions
-  , noNormalisationOptions
   , normalise
   , nfTensor
   , nfTypeClassOp
@@ -40,10 +39,8 @@ data NormalisationOptions = Options
   , expandOutPolynomials        :: Bool
   , declContext                 :: DeclCtx CheckedExpr
   , boundContext                :: [DBBinding]
-  , normaliseAnnotations        :: Bool
   , normaliseDeclApplications   :: Bool
   , normaliseLambdaApplications :: Bool
-  , normaliseLetBindings        :: Bool
   , normaliseStdLibApplications :: Bool
   , normaliseBuiltin            :: Builtin -> Bool
   , normaliseWeakly             :: Bool
@@ -57,25 +54,8 @@ fullNormalisationOptions = Options
   , boundContext                = mempty
   , normaliseDeclApplications   = True
   , normaliseLambdaApplications = True
-  , normaliseLetBindings        = True
-  , normaliseAnnotations        = True
   , normaliseStdLibApplications = True
   , normaliseBuiltin            = const True
-  , normaliseWeakly             = False
-  }
-
-noNormalisationOptions :: NormalisationOptions
-noNormalisationOptions = Options
-  { implicationsToDisjunctions  = False
-  , expandOutPolynomials        = False
-  , declContext                 = mempty
-  , boundContext                = mempty
-  , normaliseDeclApplications   = False
-  , normaliseLambdaApplications = False
-  , normaliseLetBindings        = False
-  , normaliseAnnotations        = False
-  , normaliseStdLibApplications = False
-  , normaliseBuiltin            = const False
   , normaliseWeakly             = False
   }
 
@@ -132,30 +112,23 @@ instance Norm CheckedExpr where
       Pi p binder body ->
         Pi p <$> nf binder <*> nf body
 
-      Ann p expr typ
-        | normaliseAnnotations -> nf expr
-        | otherwise            -> Ann p <$> nf expr <*> nf typ
+      Ann _ expr _typ -> nf expr
 
-      Var _ (Bound _) ->
-        return e
+      Var _ v -> case v of
+        Bound{} -> return e
+        Free ident
+          | normaliseDeclApplications -> do
+            ctx <- get
+            case Map.lookup ident ctx of
+              Nothing -> return e
+              Just x  -> nf x
+          | otherwise                 -> return e
 
-      Var _ (Free ident)
-        | normaliseDeclApplications -> do
-          ctx <- get
-          case Map.lookup ident ctx of
-            Nothing -> return e
-            Just v  -> nf v
-        | otherwise                 -> return e
-
-      Let p letValue letBinder letBody -> do
+      Let _ letValue _letBinder letBody -> do
         letValue' <- nf letValue
         letBody'  <- nf letBody
-        if normaliseLetBindings then do
-          let letBodyWithSubstitution = substInto letValue' letBody'
-          nf letBodyWithSubstitution
-        else do
-          letBinder' <- nf letBinder
-          return $ Let p letValue' letBinder' letBody'
+        let letBodyWithSubstitution = substInto letValue' letBody'
+        nf letBodyWithSubstitution
 
       App p fun args -> do
         nFun  <- nf fun
@@ -214,8 +187,13 @@ nfStdLibFn p f allArgs = do
       NotEqualsVector tElem size recFn args        -> nfEqualsVector Neq p tElem size recFn args
       AddVector       tElem size recFn args        -> nfAddVector p tElem size recFn args
       SubVector       tElem size recFn args        -> nfSubVector p tElem size recFn args
-      ForallVector    tElem size recFn binder body -> Just $ nfQuantifierVector p tElem size binder body recFn
-      ExistsVector    tElem size recFn binder body -> Just $ nfQuantifierVector p tElem size binder body recFn
+
+      ForallVector    tElem size recFn binder body -> Just $ do
+        n <- getSize size
+        nfQuantifierVector p tElem n binder body recFn
+      ExistsVector    tElem size recFn binder body -> Just $ do
+        n <- getSize size
+        nfQuantifierVector p tElem n binder body recFn
 
       ExistsIndex size lam -> Just $ nfQuantifierIndex p Exists size lam
       ForallIndex size lam -> Just $ nfQuantifierIndex p Forall size lam
@@ -224,6 +202,9 @@ nfStdLibFn p f allArgs = do
 -- Builtins
 
 nfBuiltin :: forall m. MonadNorm m => Provenance -> Builtin -> NonEmpty CheckedArg -> m CheckedExpr
+nfBuiltin p (Constructor c) args =
+  return $ App p (Builtin p (Constructor c)) args
+
 nfBuiltin p (TypeClassOp op) args = do
   let originalExpr = App p (Builtin p (TypeClassOp op)) args
   case nfTypeClassOp p op (NonEmpty.toList args) of
@@ -265,7 +246,13 @@ nfBuiltin p b                args = do
     -- Containers
     -- MapExpr _ tElem tRes [fn, cont] -> nfMap  p tElem tRes (argExpr fn) (argExpr cont)
     AtExpr _ tElem tDim [tensor, index]          -> Just $ return $ nfAt p tElem tDim tensor index
-    ForeachExpr _ tElem (NatLiteral _ size) body -> Just $ nfForeach p tElem size body
+
+    ForeachExpr _ tElem s body -> Just $ do
+      -- This is a huge bodge. Really we need to normalise implicit arguments as well,
+      -- but hideously inefficiently at the moment, so wait until we have the new
+      -- normalisation up and running.
+      n <- getSize s
+      nfForeach p tElem n body
 
     MapVectorExpr _ tFrom tTo size [fn, vector] ->
       Just $ nfMapVector p tFrom tTo size fn vector
@@ -447,6 +434,16 @@ nfMapVector p tFrom tTo size fun vector =
       let appFun x = App p (argExpr fun) [ExplicitArg p x]
       return $ VecLiteral p tTo (fmap appFun xs)
     _                 ->  return $ MapVectorExpr p tFrom tTo size [fun, vector]
+
+getSize :: MonadNorm m => CheckedExpr -> m Int
+getSize sizeExpr = do
+  -- This is a huge bodge. Really we need to normalise implicit arguments as well,
+  -- but hideously inefficiently at the moment, so wait until we have the new
+  -- normalisation up and running.
+  nfSizeExpr <- nf sizeExpr
+  case nfSizeExpr of
+    NatLiteral _ size -> return size
+    _                 -> compilerDeveloperError "Non-concrete foreach size"
 
 --------------------------------------------------------------------------------
 -- Debug functions

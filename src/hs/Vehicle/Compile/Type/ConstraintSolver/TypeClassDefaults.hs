@@ -197,8 +197,8 @@ getCandidatesFromConstraint ctx (Has _ tc args) = do
     (HasRatLits,   [t])                   -> getCandidate [t] HasRatLits
     (HasVecLits n, [_, t])                -> getCandidate [t] (HasVecLits n)
     (NatInDomainConstraint n, [t]) -> case argExpr t of
-      BuiltinExpr _ Index [size] -> getCandidate [size] (NatInDomainConstraint n)
-      _                          -> []
+      ConstructorExpr _ Index [size] -> getCandidate [size] (NatInDomainConstraint n)
+      _                              -> []
     _                                     -> []
 
 getCandidatesFromArgs :: Ctx -> [CheckedArg] -> TypeClass -> [Candidate]

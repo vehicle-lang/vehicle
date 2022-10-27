@@ -50,7 +50,7 @@ letInsertionTests = testGroup "LetInsertion" <$>
   , InsertionTestSpec "insertLiftApp"
       appFilter
       "- - (1 : Int)"
-      "let a = (- (1 : Int)) in (let b = (- a) in b)"
+      "let a = 1 in let b = (- (a : Int)) in let c = - b in c"
   ]
 
 data InsertionTestSpec = InsertionTestSpec String SubexprFilter Text Text

@@ -37,8 +37,10 @@ solveUnificationConstraint :: TCM m
 -- Errors
 solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
   let c = UC ctx pair
+  e1' <- whnf e1
+  e2' <- whnf e2
 
-  progress <- case (toHead e1, toHead e2) of
+  progress <- case (toHead e1', toHead e2') of
 
     ----------------------
     -- Impossible cases --

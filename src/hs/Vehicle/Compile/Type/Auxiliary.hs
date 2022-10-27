@@ -12,7 +12,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.MetaMap (MetaMap (..))
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.WeakHeadNormalForm (whnf)
 import Vehicle.Language.Print (prettyVerbose)
 
 -------------------------------------------------------------------------------
@@ -94,6 +93,8 @@ traverseFreeVariable f p ident args = do
 
   return $ normAppList p (FreeVar p ident) args''
 
+-- | Traverses a telescope of the expected type and the actual provided arguments
+-- applying the update function everywhere it finds an auxiliary argument in the type.
 traverseAuxFreeVarArgs :: TCM m
                        => AuxArgUpdate m
                        -> Provenance
@@ -124,13 +125,11 @@ traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
   (_, []) -> return []
 
   (FreeVar{}, _) -> do
-    declCtx <- getDeclContext
-    normDeclType <- whnf declCtx declType
+    normDeclType <- whnf declType
     traverseAuxFreeVarArgs f p normDeclType declArgs
 
-  (App _ (FreeVar{}) _, _) -> do
-    declCtx <- getDeclContext
-    normDeclType <- whnf declCtx declType
+  (App _ FreeVar{} _, _) -> do
+    normDeclType <- whnf declType
     traverseAuxFreeVarArgs f p normDeclType declArgs
 
   (_, _) ->

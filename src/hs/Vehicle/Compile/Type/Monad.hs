@@ -15,6 +15,7 @@ import Data.Maybe (mapMaybe)
 
 import Control.Monad.Trans (MonadTrans)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
@@ -438,3 +439,18 @@ createMetaAndAddTypeClassConstraint p tc = do
   ctx <- getBoundCtx
   addTypeClassConstraint p ctx m tc
   return $ Meta p m
+
+whnf :: TCM m => CheckedExpr -> m CheckedExpr
+whnf e = do
+  declCtx <- getDeclContext
+  discardLoggerT $ normalise e Options
+    { implicationsToDisjunctions  = False
+    , expandOutPolynomials        = False
+    , declContext                 = toNormalisationDeclContext declCtx
+    , boundContext                = mempty -- see issue #129
+    , normaliseDeclApplications   = True
+    , normaliseLambdaApplications = True
+    , normaliseStdLibApplications = True
+    , normaliseBuiltin            = const True
+    , normaliseWeakly             = False
+    }

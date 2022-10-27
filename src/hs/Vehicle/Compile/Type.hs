@@ -27,7 +27,6 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
-import Vehicle.Compile.Type.WeakHeadNormalForm
 import Vehicle.Language.Print
 
 -------------------------------------------------------------------------------
@@ -55,14 +54,12 @@ typeCheckExpr expr1 = runTypeCheckerT $ do
 
 postProcess :: ( TCM m
                , MetaSubstitutable a
-               , WHNFable a
                , RemoveIrrelevantCode a
                )
             => a -> m a
 postProcess x = do
   metaFreeExpr <- substMetas x
-  normExpr     <- convertImplicitArgsToWHNF metaFreeExpr
-  finalExpr    <- removeIrrelevantCode normExpr
+  finalExpr    <- removeIrrelevantCode metaFreeExpr
   return finalExpr
 
 -------------------------------------------------------------------------------
@@ -214,7 +211,7 @@ loopOverConstraints loopNumber decl = do
 -- | Tries to solve a constraint deterministically.
 solveConstraint :: TCM m => Constraint -> m ()
 solveConstraint unnormConstraint = do
-  constraint <- whnfConstraintWithMetas unnormConstraint
+  constraint <- substMetas unnormConstraint
 
   logCompilerSection MaxDetail ("trying" <+> prettyVerbose constraint) $ do
     result <- case constraint of
@@ -282,7 +279,7 @@ checkPropertyInfo decl@(ident, _) t = do
   where
     getPropertyInfo :: MonadCompile m => CheckedType -> m PropertyInfo
     getPropertyInfo = \case
-      AnnBoolType _ (Builtin _ (Linearity lin)) (Builtin _ (Polarity pol)) -> return $ PropertyInfo lin pol
+      AnnBoolType _ (LinearityExpr _ lin) (PolarityExpr _ pol) -> return $ PropertyInfo lin pol
       VectorType _ tElem _ -> getPropertyInfo tElem
       TensorType _ tElem _ -> getPropertyInfo tElem
       otherType            -> throwError $ PropertyTypeUnsupported decl otherType

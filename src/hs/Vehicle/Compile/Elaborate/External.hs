@@ -161,14 +161,18 @@ elabExpr = \case
 
   B.Foreach   tk1 ns    _tk2 e  -> elabForeach   tk1 ns e
 
-  B.Unit tk                 -> builtin V.Unit   tk []
-  B.Bool tk                 -> builtin V.Bool   tk []
-  B.Index tk t              -> builtin V.Index  tk [t]
-  B.Nat tk                  -> builtin V.Nat    tk []
-  B.Int tk                  -> builtin V.Int    tk []
-  B.Rat  tk                 -> builtin V.Rat    tk []
-  B.List tk t               -> builtin V.List   tk [t]
-  B.Vector tk t1 t2         -> builtin V.Vector tk [t1, t2]
+  B.Unit tk                 -> constructor V.Unit   tk []
+  B.Bool tk                 -> constructor V.Bool   tk []
+  B.Index tk t              -> constructor V.Index  tk [t]
+  B.Nat tk                  -> constructor V.Nat    tk []
+  B.Int tk                  -> constructor V.Int    tk []
+  B.Rat  tk                 -> constructor V.Rat    tk []
+  B.List tk t               -> constructor V.List   tk [t]
+  B.Vector tk t1 t2         -> constructor V.Vector tk [t1, t2]
+
+  B.Nil tk                  -> constructor V.Cons tk []
+  B.Cons e1 tk e2           -> constructor V.Cons tk [e1, e2]
+
   B.Tensor tk t1 t2         -> elabTensor tk t1 t2
 
   B.Not tk e                -> builtin (V.TypeClassOp V.NotTC)     tk  [e]
@@ -191,8 +195,6 @@ elabExpr = \case
   B.Div e1 tk e2            -> builtin (V.TypeClassOp V.DivTC) tk [e1, e2]
   B.Neg tk e                -> builtin (V.TypeClassOp V.NegTC) tk [e]
 
-  B.Nil tk                  -> builtin V.Cons tk []
-  B.Cons e1 tk e2           -> builtin V.Cons tk [e1, e2]
   B.At e1 tk e2             -> builtin V.At   tk [e1, e2]
   B.Map tk e1 e2            -> builtin (V.TypeClassOp V.MapTC)  tk [e1, e2]
   B.Fold tk e1 e2 e3        -> builtin (V.TypeClassOp V.FoldTC) tk [e1, e2, e3]
@@ -288,6 +290,9 @@ op2 mk t e1 e2 = do
 
 builtin :: (MonadCompile m, IsToken token) => V.Builtin -> token -> [B.Expr] -> m V.InputExpr
 builtin b t args = app (V.Builtin (V.tkProvenance t) b) <$> traverse elabExpr args
+
+constructor :: (MonadCompile m, IsToken token) => V.BuiltinConstructor -> token -> [B.Expr] -> m V.InputExpr
+constructor b = builtin (V.Constructor b)
 
 app :: V.InputExpr -> [V.InputExpr] -> V.InputExpr
 app fun argExprs = V.normAppList p' fun args

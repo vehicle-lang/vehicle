@@ -23,6 +23,9 @@ import GHC.Generics (Generic)
 
 import Vehicle.Prelude
 
+--------------------------------------------------------------------------------
+-- Function positions
+
 -- | Represents whether something is an input or an output of a function
 data FunctionPosition
   = FunctionInput Name Int
@@ -38,7 +41,7 @@ instance Pretty FunctionPosition where
     FunctionOutput n  -> "Output[" <> pretty n <> "]"
 
 --------------------------------------------------------------------------------
--- EqualityOpOp
+-- EqualityOp
 
 data EqualityOp
   = Eq

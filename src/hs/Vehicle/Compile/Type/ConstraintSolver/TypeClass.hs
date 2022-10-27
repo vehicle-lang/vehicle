@@ -25,7 +25,8 @@ solveTypeClassConstraint :: TCM m
                          -> TypeClassConstraint
                          -> m ConstraintProgress
 solveTypeClassConstraint ctx c@(Has m tc args) = do
-  progress <- solve tc (TC ctx c) (onlyExplicit args)
+  nfArgs <- traverse whnf (onlyExplicit args)
+  progress <- solve tc (TC ctx c) nfArgs
 
   case progress of
     Left  metas                      -> return $ Stuck metas
@@ -100,7 +101,7 @@ solveHasEq op c [arg1, arg2, res]
   | otherwise                = blockOrThrowErrors c args tcError
   where
     args = [arg1, arg2]
-    allowedTypes = allowed [Bool, Index, Nat, Int, Rat, List, Vector, Tensor]
+    allowedTypes = map Constructor [Bool, Index, Nat, Int, Rat, List, Vector] <> [Tensor]
     tcError =
       tcArgError c arg1 (EqualsTC op) allowedTypes 1 2 <>
       tcArgError c arg2 (EqualsTC op) allowedTypes 2 2
@@ -182,7 +183,7 @@ solveHasOrd op c [arg1, arg2, res]
   | otherwise                   = do logDebug MaxDetail "hi"; blockOrThrowErrors c args tcError
   where
     args         = [arg1, arg2]
-    allowedTypes = allowed [Index, Nat, Int, Rat]
+    allowedTypes = fmap Constructor [Index, Nat, Int, Rat]
     tcError      =
       tcArgError c arg1 (OrderTC op) allowedTypes 1 2 <>
       tcArgError c arg2 (OrderTC op) allowedTypes 1 2
@@ -392,7 +393,7 @@ solveHasNeg c [arg, res]
   | otherwise                = blockOrThrowErrors c types tcError
   where
     types = [arg, res]
-    allowedTypes = allowed [Int, Rat]
+    allowedTypes = fmap Constructor [Int, Rat]
     tcError =
       tcArgError    c arg NegTC allowedTypes 1 1 <>
       tcResultError c res NegTC allowedTypes
@@ -426,7 +427,7 @@ solveHasAdd c types@[arg1, arg2, res]
   | anyOf types isVectorType     = solveAddVector c arg1 arg2 res
   | otherwise                    = blockOrThrowErrors c types tcError
   where
-    allowedTypes = allowed [Nat, Int, Rat]
+    allowedTypes = fmap Constructor [Nat, Int, Rat]
     tcError  =
       tcArgError    c arg1 AddTC allowedTypes 1 2 <>
       tcArgError    c arg2 AddTC allowedTypes 2 2 <>
@@ -510,7 +511,7 @@ solveHasSub c types@[arg1, arg2, res]
   | anyOf types isVectorType     = solveSubVector c arg1 arg2 res
   | otherwise                    = blockOrThrowErrors c types tcError
   where
-    allowedTypes = allowed [Int, Rat]
+    allowedTypes = fmap Constructor [Int, Rat]
     tcError  =
       tcArgError    c arg1 SubTC allowedTypes 1 2 <>
       tcArgError    c arg2 SubTC allowedTypes 2 2 <>
@@ -582,7 +583,7 @@ solveHasMul c types@[arg1, arg2, res]
   | anyOf types isAnnRatType     = solveMulRat c arg1 arg2 res
   | otherwise                    = blockOrThrowErrors c types tcError
   where
-    allowedTypes = allowed [Nat, Int, Rat]
+    allowedTypes = fmap Constructor [Nat, Int, Rat]
     tcError  =
       tcArgError    c arg1 MulTC allowedTypes 1 2 <>
       tcArgError    c arg2 MulTC allowedTypes 2 2 <>
@@ -637,7 +638,7 @@ solveHasDiv c types@[arg1, arg2, res]
   | anyOf types isAnnRatType     = solveRatDiv c arg1 arg2 res
   | otherwise                    = blockOrThrowErrors c types tcError
   where
-    allowedTypes = allowed [Rat]
+    allowedTypes = fmap Constructor [Rat]
     tcError =
       tcArgError    c arg1 DivTC allowedTypes 1 2 <>
       tcArgError    c arg2 DivTC allowedTypes 2 2 <>
@@ -1122,7 +1123,7 @@ solveRatComparisonOp c arg1 arg2 res op = do
 
 combineAuxiliaryConstraints :: forall m . TCM m
                             => TypeClass
-                            -> Builtin
+                            -> BuiltinConstructor
                             -> (Provenance -> m CheckedExpr)
                             -> Constraint
                             -> CheckedExpr
@@ -1134,7 +1135,7 @@ combineAuxiliaryConstraints tc unit makeMeta c result auxs = do
   return $ resEq : tcConstraints
   where
     foldPairs :: [CheckedExpr] -> m (CheckedExpr, [Constraint])
-    foldPairs []       = return (Builtin mempty unit, [])
+    foldPairs []       = return (Builtin mempty (Constructor unit), [])
     foldPairs [a]      = return (a, [])
     foldPairs (a : cs) = do
       (b, constraints) <- foldPairs cs

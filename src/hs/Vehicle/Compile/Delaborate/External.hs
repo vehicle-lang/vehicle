@@ -213,15 +213,9 @@ delabUniverse = \case
 
 delabBuiltin :: V.Builtin -> [B.Expr] -> B.Expr
 delabBuiltin fun args = case fun of
-  V.Unit           -> B.Unit tokUnit
-  V.Bool           -> B.Bool tokBool
-  V.Nat            -> B.Nat  tokNat
-  V.Int            -> B.Int  tokInt
-  V.Rat            -> B.Rat  tokRat
-  V.List           -> delabOp1 B.List tokList args
-  V.Vector         -> delabOp2 B.Vector tokVector args
+  V.Constructor c  -> delabConstructor c args
+
   V.Tensor         -> delabOp2 B.Tensor tokTensor args
-  V.Index          -> delabOp1 B.Index tokIndex args
 
   V.And            -> delabTypeClassOp V.AndTC args
   V.Or             -> delabTypeClassOp V.OrTC args
@@ -229,9 +223,9 @@ delabBuiltin fun args = case fun of
   V.Not            -> delabTypeClassOp V.NotTC args
   V.If             -> delabIf args
 
-  V.FromNat{}      -> primOpError fun
-  V.FromRat{}      -> primOpError fun
-  V.FromVec{}      -> primOpError fun
+  V.FromNat{}      -> head args
+  V.FromRat{}      -> head args
+  V.FromVec{}      -> head args
 
   V.Neg _          -> delabTypeClassOp V.NegTC args
   V.Add _          -> delabTypeClassOp V.AddTC args
@@ -244,16 +238,29 @@ delabBuiltin fun args = case fun of
 
   V.Fold _         -> primOpError fun
   V.Map  _         -> primOpError fun
-  V.Nil            -> B.Nil tokNil
-  V.Cons           -> delabInfixOp2 B.Cons tokCons args
   V.At             -> delabInfixOp2 B.At tokAt args
   V.Foreach        -> delabForeach args
+
+  V.TypeClassOp tc -> delabTypeClassOp tc args
+
+delabConstructor :: V.BuiltinConstructor -> [B.Expr] -> B.Expr
+delabConstructor fun args = case fun of
+  V.Unit           -> B.Unit tokUnit
+  V.Bool           -> B.Bool tokBool
+  V.Nat            -> B.Nat  tokNat
+  V.Int            -> B.Int  tokInt
+  V.Rat            -> B.Rat  tokRat
+  V.List           -> delabOp1 B.List tokList args
+  V.Vector         -> delabOp2 B.Vector tokVector args
+  V.Index          -> delabOp1 B.Index tokIndex args
 
   V.Polarity{}     -> auxiliaryTypeError (pretty fun)
   V.Linearity{}    -> auxiliaryTypeError (pretty fun)
 
   V.TypeClass   tc -> B.Var (delabSymbol (layoutAsText $ pretty tc))
-  V.TypeClassOp tc -> delabTypeClassOp tc args
+
+  V.Nil            -> B.Nil tokNil
+  V.Cons           -> delabInfixOp2 B.Cons tokCons args
 
 delabTypeClassOp :: V.TypeClassOp -> [B.Expr] -> B.Expr
 delabTypeClassOp op args = case op of

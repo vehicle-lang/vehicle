@@ -17,7 +17,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Builtin
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.WeakHeadNormalForm
 import Vehicle.Language.DSL
 import Vehicle.Language.Print
 
@@ -346,7 +345,7 @@ inferArgs p nonPiType args
     let expectedType = fromDSL ann (appEndo (mconcat mkRes) (tHole "res"))
     throwError $ TypeMismatch p (boundContextOf ctx) nonPiType expectedType
 
--- |Takes a function and its arguments, inserts any needed implicits
+-- | Takes a function and its arguments, inserts any needed implicits
 -- or instance arguments and then returns the function applied to the full
 -- list of arguments as well as the result type.
 inferApp :: LocalTCM m
@@ -357,8 +356,7 @@ inferApp :: LocalTCM m
          -> m (CheckedExpr, CheckedType)
 inferApp ann fun funType args = do
   (appliedFunType, checkedArgs) <- inferArgs (provenanceOf fun) funType args
-  normAppliedFunType <- whnfExprWithMetas appliedFunType
-  return (normAppList ann fun checkedArgs, normAppliedFunType)
+  return (normAppList ann fun checkedArgs, appliedFunType)
 
 insertNonExplicitArgs :: LocalTCM m
                       => Provenance

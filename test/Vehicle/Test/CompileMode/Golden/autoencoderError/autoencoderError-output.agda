@@ -15,7 +15,6 @@ open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List.Base
-open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module autoencoderError-output where
 
@@ -27,7 +26,7 @@ epsilon : Tensor ℚ (5 ∷ [])
 epsilon = λ (i : Fin 5) → ℤ.+ 1 ℚ./ 10
 
 abstract
-  identity : ∀ (x : Vector ℚ 5) → ∀ (i : Fin 5) → sub x epsilon i ℚ.≤ decode (encode x) i × decode (encode x) i ℚ.≤ add x epsilon i
+  identity : ∀ (x : Tensor ℚ (5 ∷ [])) → ∀ (i : Fin 5) → sub x epsilon i ℚ.≤ decode (encode x) i × decode (encode x) i ℚ.≤ add x epsilon i
   identity = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

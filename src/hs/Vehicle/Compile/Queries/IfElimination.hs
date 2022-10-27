@@ -33,7 +33,7 @@ currentPass = "if elimination"
 liftIf :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
 liftIf f (IfExpr ann _t [cond, e1, e2]) = IfExpr ann
   -- Can't reconstruct the result type of `f` here, so have to insert a hole.
-  (Hole ann "?")
+  (BoolType ann)
   [ cond
   , fmap (liftIf f) e1
   , fmap (liftIf f) e2
