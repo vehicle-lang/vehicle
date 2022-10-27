@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        ghc-version: ["8.10", "9.0"]
+        cabal-version: ["3.4"]
+        experimental: [false]
+        # include:
+        #   - os: ubuntu-latest
+        #     ghc-version: "9.2"
+        #     cabal-version: "3.4"
+        #     experimental: true
+        #   - os: ubuntu-latest
+        #     ghc-version: "9.4"
+        #     cabal-version: "3.4"
+        #     experimental: true
+    env:
+      CABAL_PROJECT_FILE: cabal.project.ghc-${{ matrix.ghc-version }}
+      CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ matrix.ghc-version }}.freeze
+
+    name: Build on ${{ matrix.os }} with GHC ${{ matrix.ghc-version }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Haskell
+        uses: ./.github/actions/setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc-version }}
+          cabal-version: ${{ matrix.cabal-version }}
+          cabal-project-file: ${{ env.CABAL_PROJECT_FILE }}
+          cabal-project-freeze-file: ${{ env.CABAL_PROJECT_FREEZE_FILE }}
+
+      - name: Build Vehicle (Build System)
+        run: cabal --project-file=${{ env.CABAL_PROJECT_FILE }} v2-build exe:vehicle-build-system
+        shell: bash
+
+      - name: Build Vehicle (BNFC)
+        run: cabal --project-file=${{ env.CABAL_PROJECT_FILE }} v2-run exe:vehicle-build-system bnfc
+        shell: bash
+
+      - name: Build Vehicle
+        run: cabal --project-file=${{ env.CABAL_PROJECT_FILE }} v2-build exe:vehicle
+        shell: bash
+
+      - name: Test Vehicle
+        run: cabal --project-file=${{ env.CABAL_PROJECT_FILE }} v2-run vehicle-build-system basic-tests
+        shell: bash
+
+      - name: Copy Vehicle executable to bdist
+        run: |
+          mkdir bdist
+          cabal --project-file=${{ env.CABAL_PROJECT_FILE }} v2-install exe:vehicle --overwrite-policy=always --install-method=copy --installdir=bdist
+        shell: bash
+
+      - name: Upload Vehicle executable (Linux or macOS)
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        uses: actions/upload-artifact@v2
+        with:
+          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.ghc-version }}
+          path: bdist/vehicle
+          if-no-files-found: error
+
+      - name: Upload Vehicle executable (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v2
+        with:
+          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.ghc-version }}
+          path: bdist/vehicle.exe
+          if-no-files-found: error

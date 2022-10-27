@@ -1,3 +1,16 @@
+# pre-commit configuration file
+#
+# TL;DR
+#   pre-commit runs a series of formatters and linters on every commit.
+#   If throws an error, it's usually already fixed the problem and just
+#   wants you to have a look at the changes it made.
+#   This file sets up pre-commit to do some basic checks, fix whitespace
+#   and line endings, and run stylish-haskell.
+#   To setup the pre-commit hooks, you'll need pre-commit, and install the
+#   hooks by running `pre-commit install` from the repository root.
+#
+# See: https://pre-commit.com
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0

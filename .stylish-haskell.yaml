@@ -1,5 +1,10 @@
 # stylish-haskell configuration file
-# ==================================
+#
+# TL;DR
+#  stylish-haskell is a prettifier for Haskell. It should be run on every
+#  commit by pre-commit (see .pre-commit-config.yaml).
+#
+# See: https://github.com/haskell/stylish-haskell#readme
 
 # The stylish-haskell tool is mainly configured by specifying steps. These steps
 # are a list, so they have an order, and one specific step may appear more than

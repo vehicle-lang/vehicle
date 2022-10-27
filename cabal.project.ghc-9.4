@@ -14,3 +14,12 @@
 -- See: https://cabal.readthedocs.io/en/latest/cabal-project.html
 
 packages: vehicle.cabal
+
+-- Changes for GHC 9.4:
+--
+-- * The package linkedhashmap seems unmaintained. The latest update seems to
+--   have been in 2015. Unfortunately, the constraint on containers prevents
+--   vehicle from building with GHC 9.2.
+--   See: https://github.com/vehicle-lang/vehicle/issues/191
+
+allow-newer: linkedhashmap-0.4.0.0:containers

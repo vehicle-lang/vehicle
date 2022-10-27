@@ -1,4 +1,4 @@
-[![Tests](https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml/badge.svg)](https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml)
+[![Build](https://github.com/vehicle-lang/vehicle/actions/workflows/build.yml/badge.svg)](https://github.com/vehicle-lang/vehicle/actions/workflows/build.yml)
 [![Documentation](https://readthedocs.org/projects/vehicle-lang/badge/?version=latest)](https://vehicle-lang.readthedocs.io/en/latest/)
 
 
