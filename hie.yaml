@@ -1,29 +1,39 @@
 cradle:
   multi:
-  # ignore deprecated code
-  - path: "./depr"
-    config: { cradle: { none: } }
-  - path: "./"
-    config:
-      cradle:
-        cabal:
-          # lib:vehicle-syntax
-          - path: "./vehicle-syntax/autogen"
-            component: "vehicle-syntax:lib:vehicle-syntax"
-          - path: "./vehicle-syntax/src"
-            component: "vehicle-syntax:lib:vehicle-syntax"
-          # exe:vehicle
-          - path: "./vehicle/app/Main.hs"
-            component: "vehicle:exe:vehicle"
-          # lib:vehicle
-          - path: "./vehicle/src"
-            component: "vehicle:lib:vehicle"
-          # test:vehicle-test
-          - path: "./vehicle/test/Spec.hs"
-            component: "vehicle:test:vehicle-test"
-          # test:vehicle-test-integration
-          - path: "./vehicle/test/Integration.hs"
-            component: "vehicle:test:vehicle-test-integration"
-          # benchmark:vehicle-benchmark
-          - path: "./vehicle/test/Benchmark.hs"
-            component: "vehicle:benchmark:vehicle-benchmark"
+    # vehicle-syntax-setup
+    - path: "./vehicle-syntax/Setup.hs"
+      config:
+        cradle:
+          cabal:
+
+    # vehicle-syntax
+    - path: "./vehicle-syntax"
+      config:
+        cradle:
+          cabal:
+            - path: "./vehicle-syntax/autogen"
+              component: "lib:vehicle-syntax"
+
+    # vehicle
+    - path: "./vehicle"
+      config:
+        cradle:
+          cabal:
+            - path: "./vehicle/src"
+              component: "lib:vehicle"
+            - path: "./vehicle/app"
+              component: "exe:vehicle"
+            - path: "./vehicle/tests/Vehicle/Test/Common"
+              component: "lib:vehicle-test-common"
+            - path: "./vehicle/tests/Tests.hs"
+              component: "test:vehicle-tests"
+            - path: "./vehicle/tests/IntegrationTests.hs"
+              component: "test:vehicle-integration-tests"
+            - path: "./vehicle/tests/Benchmarks.hs"
+              component: "benchmark:vehicle-benchmarks"
+
+    # ignore
+    - path: "./"
+      config:
+        cradle:
+          none:

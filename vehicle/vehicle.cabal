@@ -1,4 +1,4 @@
-cabal-version:   3.0
+cabal-version:   3.4
 name:            vehicle
 version:         0.1.0
 description:
@@ -14,287 +14,12 @@ license-file:    LICENSE
 build-type:      Simple
 
 -- Generated with `script/data-files`:
-data-files:
-  test/datasets/dataset-int-4.idx
-  test/datasets/dataset-nat-4.idx
-  test/datasets/dataset-rat-4.idx
-  test/networks/identity-2.onnx
-  test/specs/andGate.vcl
-  test/specs/autoencoderError.vcl
-  test/specs/bounded.vcl
-  test/specs/increasing.vcl
-  test/specs/misc/arrays.vcl
-  test/specs/misc/dependent/dependent-output.vcl
-  test/specs/misc/dependent/dependent.vcl
-  test/specs/misc/idealised-algol.vcl
-  test/specs/misc/loop.vcl
-  test/specs/misc/polyI.vcl
-  test/specs/misc/polyK.vcl
-  test/specs/misc/typeclasses.vcl
-  test/specs/monotonicity.vcl
-  test/specs/powerSpectra.vcl
-  test/specs/reachability.vcl
-  test/specs/shortestPath.vcl
-  test/specs/simple-arithmetic.vcl
-  test/specs/simple-bool.vcl
-  test/specs/simple-constantInput.vcl
-  test/specs/simple-dataset.vcl
-  test/specs/simple-foreach.vcl
-  test/specs/simple-fourierMotzkin.vcl
-  test/specs/simple-gaussianElim.vcl
-  test/specs/simple-generalisedVariables.vcl
-  test/specs/simple-if.vcl
-  test/specs/simple-index.vcl
-  test/specs/simple-inferableParam.vcl
-  test/specs/simple-int.vcl
-  test/specs/simple-let.vcl
-  test/specs/simple-pruneDecls.vcl
-  test/specs/simple-quantifier.vcl
-  test/specs/simple-quantifierIn.vcl
-  test/specs/simple-tensor.vcl
-  test/specs/simple-triviallyTrue.vcl
-  test/specs/simple-untypedDecls.vcl
-  test/specs/simple-vector.vcl
-  test/specs/simple-vectorType.vcl
-  test/Vehicle/Test/CheckMode/Golden/networkChanged.txt
-  test/Vehicle/Test/CheckMode/Golden/networkMissing.txt
-  test/Vehicle/Test/CheckMode/Golden/success.txt
-  test/Vehicle/Test/CompileMode/Error/ArgumentErrors/missingInputFile.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/invalidContainerType.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/invalidContainerType.vcl
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/invalidElementType.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/invalidElementType.vcl
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/mismatchedDimensions.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/mismatchedDimensions.vcl
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/mismatchedDimensionSize.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/mismatchedDimensionSize.vcl
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/mismatchedType.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/mismatchedType.vcl
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/missingDataset.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/missingDataset.vcl
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/negativeNat.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/negativeNat.vcl
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/notProvided.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/notProvided.vcl
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/tooBigIndex.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/tooBigIndex.vcl
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/unsupportedFormat.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/unsupportedFormat.vcl
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/variableDimensions.txt
-  test/Vehicle/Test/CompileMode/Error/DatasetErrors/variableDimensions.vcl
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/nonLinearIfCondition.txt
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/nonLinearIfCondition.vcl
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/quadraticFunInput.txt
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/quadraticFunInput.vcl
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/quadraticFunOutput.txt
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/quadraticFunOutput.vcl
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/quadraticInput.txt
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/quadraticInput.vcl
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/quadraticInputOutput.txt
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/quadraticInputOutput.vcl
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/quadraticTensorInputLookup.txt
-  test/Vehicle/Test/CompileMode/Error/LinearityErrors/quadraticTensorInputLookup.vcl
-  test/Vehicle/Test/CompileMode/Error/NetworkErrors/multidimInputTensor.txt
-  test/Vehicle/Test/CompileMode/Error/NetworkErrors/multidimInputTensor.vcl
-  test/Vehicle/Test/CompileMode/Error/NetworkErrors/notAFunction.txt
-  test/Vehicle/Test/CompileMode/Error/NetworkErrors/notAFunction.vcl
-  test/Vehicle/Test/CompileMode/Error/OtherVerifierErrors/quantifiedInt.txt
-  test/Vehicle/Test/CompileMode/Error/OtherVerifierErrors/quantifiedInt.vcl
-  test/Vehicle/Test/CompileMode/Error/OtherVerifierErrors/quantifiedNat.txt
-  test/Vehicle/Test/CompileMode/Error/OtherVerifierErrors/quantifiedNat.vcl
-  test/Vehicle/Test/CompileMode/Error/OtherVerifierErrors/quantifiedVectorNat.txt
-  test/Vehicle/Test/CompileMode/Error/OtherVerifierErrors/quantifiedVectorNat.vcl
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/invalidIndex.txt
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/invalidIndex.vcl
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/invalidNat.txt
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/invalidNat.vcl
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/notProvided.txt
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/notProvided.vcl
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/unparseableBool.txt
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/unparseableBool.vcl
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/unparseableIndex.txt
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/unparseableIndex.vcl
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/unparseableNat.txt
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/unparseableNat.vcl
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/unparseableRat.txt
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/unparseableRat.vcl
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/unsupportedType.txt
-  test/Vehicle/Test/CompileMode/Error/ParameterErrors/unsupportedType.vcl
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/annotationWithNoDeclaration.txt
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/annotationWithNoDeclaration.vcl
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/functionNotGivenBody.txt
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/functionNotGivenBody.vcl
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/functionWithMismatchedNames.txt
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/functionWithMismatchedNames.vcl
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/invalidAnnotationParameter.txt
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/invalidAnnotationParameter.vcl
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/invalidAnnotationParameterValue.txt
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/invalidAnnotationParameterValue.vcl
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/missingVariablesLambda.txt
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/missingVariablesLambda.vcl
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/propertyNotGivenBody.txt
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/propertyNotGivenBody.vcl
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/resourceGivenBody.txt
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/resourceGivenBody.vcl
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/unchainableOrdersEqualsEquals.txt
-  test/Vehicle/Test/CompileMode/Error/ParsingErrors/unchainableOrdersEqualsEquals.vcl
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternating.txt
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternating.vcl
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternatingFun.txt
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternatingFun.vcl
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternatingImplies.txt
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternatingImplies.vcl
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternatingIndirectNegFun.txt
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternatingIndirectNegFun.vcl
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternatingNeg.txt
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternatingNeg.vcl
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternatingNegNeg.txt
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/alternatingNegNeg.vcl
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/quantifiedIfCondition.txt
-  test/Vehicle/Test/CompileMode/Error/PolarityErrors/quantifiedIfCondition.vcl
-  test/Vehicle/Test/CompileMode/Error/PropertyErrors/invalidType.vcl
-  test/Vehicle/Test/CompileMode/Error/TypingErrors/incorrectTensorLength.txt
-  test/Vehicle/Test/CompileMode/Error/TypingErrors/incorrectTensorLength.vcl
-  test/Vehicle/Test/CompileMode/Error/TypingErrors/indexOutOfBoundsConcrete.txt
-  test/Vehicle/Test/CompileMode/Error/TypingErrors/indexOutOfBoundsConcrete.vcl
-  test/Vehicle/Test/CompileMode/Error/TypingErrors/indexOutOfBoundsUnknown.txt
-  test/Vehicle/Test/CompileMode/Error/TypingErrors/indexOutOfBoundsUnknown.vcl
-  test/Vehicle/Test/CompileMode/Error/TypingErrors/intAsNat.txt
-  test/Vehicle/Test/CompileMode/Error/TypingErrors/intAsNat.vcl
-  test/Vehicle/Test/CompileMode/Error/TypingErrors/unsolvedMeta.txt
-  test/Vehicle/Test/CompileMode/Error/TypingErrors/unsolvedMeta.vcl
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property1-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property10-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property10-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property10-query3.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property10-query4.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property2-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property3-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property4-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property5-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property5-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property5-query3.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property5-query4.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property6-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property6-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property6-query3.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property6-query4.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property6-query5.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property6-query6.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property6-query7.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property6-query8.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property7-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property7-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query10.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query11.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query12.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query13.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query14.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query15.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query16.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query3.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query4.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query5.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query6.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query7.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query8.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property8-query9.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property9-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property9-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property9-query3.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output-marabou/property9-query4.txt
-  test/Vehicle/Test/CompileMode/Golden/acasXu/acasXu-output.agda
-  test/Vehicle/Test/CompileMode/Golden/andGate/andGate-output-marabou/andGateCorrect-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/andGate/andGate-output-marabou/andGateCorrect-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/andGate/andGate-output-marabou/andGateCorrect-query3.txt
-  test/Vehicle/Test/CompileMode/Golden/andGate/andGate-output-marabou/andGateCorrect-query4.txt
-  test/Vehicle/Test/CompileMode/Golden/andGate/andGate-output.agda
-  test/Vehicle/Test/CompileMode/Golden/andGate/andGate-output.json
-  test/Vehicle/Test/CompileMode/Golden/autoencoderError/autoencoderError-output-marabou/identity-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/autoencoderError/autoencoderError-output-marabou/identity-query10.txt
-  test/Vehicle/Test/CompileMode/Golden/autoencoderError/autoencoderError-output-marabou/identity-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/autoencoderError/autoencoderError-output-marabou/identity-query3.txt
-  test/Vehicle/Test/CompileMode/Golden/autoencoderError/autoencoderError-output-marabou/identity-query4.txt
-  test/Vehicle/Test/CompileMode/Golden/autoencoderError/autoencoderError-output-marabou/identity-query5.txt
-  test/Vehicle/Test/CompileMode/Golden/autoencoderError/autoencoderError-output-marabou/identity-query6.txt
-  test/Vehicle/Test/CompileMode/Golden/autoencoderError/autoencoderError-output-marabou/identity-query7.txt
-  test/Vehicle/Test/CompileMode/Golden/autoencoderError/autoencoderError-output-marabou/identity-query8.txt
-  test/Vehicle/Test/CompileMode/Golden/autoencoderError/autoencoderError-output-marabou/identity-query9.txt
-  test/Vehicle/Test/CompileMode/Golden/autoencoderError/autoencoderError-output.agda
-  test/Vehicle/Test/CompileMode/Golden/bounded/bounded-output.json
-  test/Vehicle/Test/CompileMode/Golden/increasing/increasing-output-marabou/increasing-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/increasing/increasing-output.agda
-  test/Vehicle/Test/CompileMode/Golden/increasing/increasing-output.json
-  test/Vehicle/Test/CompileMode/Golden/mnist-robustness/mnist-robustness-output.agda
-  test/Vehicle/Test/CompileMode/Golden/monotonicity/monotonicity-output-marabou/monotonic-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/monotonicity/monotonicity-output.agda
-  test/Vehicle/Test/CompileMode/Golden/monotonicity/monotonicity-output.json
-  test/Vehicle/Test/CompileMode/Golden/reachability/reachability-output-marabou/reachable-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/reachability/reachability-output.agda
-  test/Vehicle/Test/CompileMode/Golden/reachability/reachability-output.json
-  test/Vehicle/Test/CompileMode/Golden/simple-arithmetic/simple-arithmetic-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-constantInput/simple-constantInput-output-marabou/spec-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-constantInput/simple-constantInput-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-constantInput/simple-constantInput-output.json
-  test/Vehicle/Test/CompileMode/Golden/simple-foreach/simple-foreach-output-marabou/index!0-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-foreach/simple-foreach-output-marabou/index!1-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-foreach/simple-foreach-output.json
-  test/Vehicle/Test/CompileMode/Golden/simple-fourierMotzkin/simple-fourierMotzkin-output-marabou/underConstrainedVar1-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-fourierMotzkin/simple-fourierMotzkin-output-marabou/underConstrainedVar2-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-fourierMotzkin/simple-fourierMotzkin-output-marabou/underConstrainedVars-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-fourierMotzkin/simple-fourierMotzkin-output-marabou/unusedVar-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-fourierMotzkin/simple-fourierMotzkin-output.json
-  test/Vehicle/Test/CompileMode/Golden/simple-gaussianElim/simple-gaussianElim-output-marabou/test1-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-gaussianElim/simple-gaussianElim-output-marabou/test2-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-gaussianElim/simple-gaussianElim-output.json
-  test/Vehicle/Test/CompileMode/Golden/simple-generalisedVariables/simple-generalisedVariables-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-if/simple-if-output-marabou/prop1-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-if/simple-if-output-marabou/prop1-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-if/simple-if-output-marabou/prop2-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-if/simple-if-output-marabou/prop2-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-if/simple-if-output-marabou/prop3-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-if/simple-if-output-marabou/prop3-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-if/simple-if-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-implicitParam/simple-implicitParam-output-marabou/positive-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-implicitParam/simple-implicitParam-output-marabou/positive-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-implicitParam/simple-implicitParam-output-marabou/positive-query3.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-implicitParam/simple-implicitParam-output-marabou/positive-query4.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-index/simple-index-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-let/simple-let-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-let/simple-let-output.smtlib
-  test/Vehicle/Test/CompileMode/Golden/simple-pruneDecls/simple-pruneDecls-output-marabou/p2-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-pruneDecls/simple-pruneDecls-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-pruneDecls/simple-pruneDecls-output.json
-  test/Vehicle/Test/CompileMode/Golden/simple-quantifier/simple-quantifier-output-marabou/expandedExpr-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-quantifier/simple-quantifier-output-marabou/sequential-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-quantifier/simple-quantifier-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-quantifier/simple-quantifier-output.json
-  test/Vehicle/Test/CompileMode/Golden/simple-quantifierIn/simple-quantifierIn-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-quantifierIn/simple-quantifierIn-output.smtlib
-  test/Vehicle/Test/CompileMode/Golden/simple-tensor/simple-tensor-output-marabou/p-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-tensor/simple-tensor-output-marabou/p-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-tensor/simple-tensor-output-marabou/p-query3.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-tensor/simple-tensor-output-marabou/p-query4.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-tensor/simple-tensor-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-triviallyTrue/simple-triviallyTrue-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-untypedDecls/simple-untypedDecls-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-vector/simple-vector-output-marabou/p-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/simple-vector/simple-vector-output.agda
-  test/Vehicle/Test/CompileMode/Golden/simple-vector/simple-vector-output.json
-  test/Vehicle/Test/CompileMode/Golden/simple-vectorType/simple-vectorType-output.agda
-  test/Vehicle/Test/CompileMode/Golden/windController/windController-output-marabou/safe-query1.txt
-  test/Vehicle/Test/CompileMode/Golden/windController/windController-output-marabou/safe-query2.txt
-  test/Vehicle/Test/CompileMode/Golden/windController/windController-output.agda
-  test/Vehicle/Test/CompileMode/Golden/windController/windController-output.json
-  test/Vehicle/Test/VerifyMode/Golden/simple-triviallyTrue/simple-triviallyTrue-Marabou-output.txt
+-- data-files:
 
 -- Generated with `script/extra-doc-files`:
 extra-doc-files:
   ChangeLog.md
   README.md
-  test/datasets/README.md
 
 source-repository head
   type:     git
@@ -496,8 +221,17 @@ executable vehicle
 -- Test suites --
 -----------------
 
-common common-test
-  hs-source-dirs: test
+library vehicle-test-common
+  import:          common-language
+  hs-source-dirs:  tests
+  exposed-modules:
+    Vehicle.Test.Common
+    Vehicle.Test.Common.Compile.Fail
+    Vehicle.Test.Common.Compile.Succeed
+
+  other-modules:   Paths_vehicle
+  build-depends:   vehicle
+  ghc-options:     -threaded -rtsopts -with-rtsopts=-N -O0
   build-depends:
     , base                  >=4.13   && <5
     , containers            >=0.5    && <1
@@ -516,28 +250,40 @@ common common-test
     , tasty-golden          >=2.3.5  && <2.4
     , tasty-hunit           >=0.10.0 && <0.11
     , text                  >=1.2    && <3
+
+test-suite vehicle-tests
+  import:             common-language
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     tests
+  main-is:            Tests.hs
+  build-depends:
+    , base     >=4.13 && <5
+    , process  >=1.2  && <2
     , vehicle
 
-test-suite vehicle-test
-  import:             common-language
-  import:             common-test
-  type:               exitcode-stdio-1.0
-  main-is:            Spec.hs
   build-tool-depends: vehicle:vehicle
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -O0
 
-test-suite vehicle-test-integration
+test-suite vehicle-integration-tests
   import:             common-language
-  import:             common-test
   type:               exitcode-stdio-1.0
-  main-is:            Integration.hs
+  hs-source-dirs:     tests
+  main-is:            IntegrationTests.hs
+  build-depends:
+    , base     >=4.13 && <5
+    , vehicle
+
   build-tool-depends: vehicle:vehicle
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -O0
 
-benchmark vehicle-benchmark
+benchmark vehicle-benchmarks
   import:             common-language
-  import:             common-test
   type:               exitcode-stdio-1.0
-  main-is:            Benchmark.hs
+  hs-source-dirs:     tests
+  main-is:            Benchmarks.hs
+  build-depends:
+    , base     >=4.13 && <5
+    , vehicle
+
   build-tool-depends: vehicle:vehicle
   ghc-options:        -O2
