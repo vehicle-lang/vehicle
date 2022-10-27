@@ -13,4 +13,6 @@
 --
 -- See: https://cabal.readthedocs.io/en/latest/cabal-project.html
 
-packages: vehicle.cabal
+packages:
+  vehicle/vehicle.cabal
+  vehicle-syntax/vehicle-syntax.cabal

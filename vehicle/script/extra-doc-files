@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# See: https://stackoverflow.com/a/4774063
+ROOT_DIR="$(dirname $( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P ))"
+
+(
+  cd "$ROOT_DIR" \
+  && find test \
+  -type f \
+  -and \
+    \( \
+    -name '*.md' \
+    -or -name '*.rst' \
+    \)
+)
