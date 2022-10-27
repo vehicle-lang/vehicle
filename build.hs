@@ -363,8 +363,7 @@ cabalInstallIfMissing executable packageName link version = do
 
     cabalProjectFile <- getCabalProjectFileArg
     command_ [] "cabal" $
-      [ "v2-install", "--overwrite-policy=always" ]
-      <> cabalProjectFile
+      [ "v2-install", "--ignore-project", "--overwrite-policy=always" ]
       <> [ packageName <> "-" <> showVersion version ]
 
     p <- liftIO (findExecutable executable)
