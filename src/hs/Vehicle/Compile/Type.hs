@@ -27,7 +27,6 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
-import Vehicle.Compile.Type.WeakHeadNormalForm
 import Vehicle.Language.Print
 
 -------------------------------------------------------------------------------
@@ -212,7 +211,7 @@ loopOverConstraints loopNumber decl = do
 -- | Tries to solve a constraint deterministically.
 solveConstraint :: TCM m => Constraint -> m ()
 solveConstraint unnormConstraint = do
-  constraint <- whnfConstraintWithMetas unnormConstraint
+  constraint <- substMetas unnormConstraint
 
   logCompilerSection MaxDetail ("trying" <+> prettyVerbose constraint) $ do
     result <- case constraint of

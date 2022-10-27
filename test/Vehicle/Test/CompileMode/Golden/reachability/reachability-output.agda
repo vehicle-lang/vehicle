@@ -21,7 +21,7 @@ module reachability-output where
 postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ (1 ∷ [])
 
 abstract
-  reachable : ∃ λ (x : Vector ℚ 2) → f x ≡ ℤ.+ 0 ℚ./ 1 ∷ᵥ []ᵥ
+  reachable : ∃ λ (x : Tensor ℚ (2 ∷ [])) → f x ≡ ℤ.+ 0 ℚ./ 1 ∷ᵥ []ᵥ
   reachable = checkSpecification record
     { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
     }

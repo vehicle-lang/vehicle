@@ -25,7 +25,8 @@ solveTypeClassConstraint :: TCM m
                          -> TypeClassConstraint
                          -> m ConstraintProgress
 solveTypeClassConstraint ctx c@(Has m tc args) = do
-  progress <- solve tc (TC ctx c) (onlyExplicit args)
+  nfArgs <- traverse whnf (onlyExplicit args)
+  progress <- solve tc (TC ctx c) nfArgs
 
   case progress of
     Left  metas                      -> return $ Stuck metas

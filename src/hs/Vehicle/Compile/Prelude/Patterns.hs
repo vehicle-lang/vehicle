@@ -889,8 +889,8 @@ data StdLibRep binder var where
   NotEqualsVector :: Type binder var -> Expr binder var -> Expr binder var -> [Arg binder var] -> StdLibRep binder var
   AddVector       :: Type binder var -> Expr binder var -> Expr binder var -> [Arg binder var] -> StdLibRep binder var
   SubVector       :: Type binder var -> Expr binder var -> Expr binder var -> [Arg binder var] -> StdLibRep binder var
-  ExistsVector    :: Type binder var -> Int -> Expr binder var -> Binder binder var -> Expr binder var -> StdLibRep binder var
-  ForallVector    :: Type binder var -> Int -> Expr binder var -> Binder binder var -> Expr binder var -> StdLibRep binder var
+  ExistsVector    :: Type binder var -> Expr binder var -> Expr binder var -> Binder binder var -> Expr binder var -> StdLibRep binder var
+  ForallVector    :: Type binder var -> Expr binder var -> Expr binder var -> Binder binder var -> Expr binder var -> StdLibRep binder var
 
   EqualsBool      :: [Arg binder var] -> StdLibRep binder var
   NotEqualsBool   :: [Arg binder var] -> StdLibRep binder var
@@ -940,7 +940,7 @@ embedStdLib f allArgs = case f of
 
   StdExistsVector -> case allArgs of
     [ ImplicitArg _ tElem
-     , ImplicitArg _ (NatLiteral _ size)
+     , ImplicitArg _ size
      , InstanceArg _ recFn
      , ExplicitArg _ (Lam _ binder body)
      ] -> Just $ ExistsVector tElem size recFn binder body
@@ -948,7 +948,7 @@ embedStdLib f allArgs = case f of
 
   StdForallVector -> case allArgs of
     [ ImplicitArg _ tElem
-     , ImplicitArg _ (NatLiteral _ size)
+     , ImplicitArg _ size
      , InstanceArg _ recFn
      , ExplicitArg _ (Lam _ binder body)
      ] -> Just $ ForallVector tElem size recFn binder body

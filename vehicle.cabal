@@ -214,7 +214,6 @@ library
     Vehicle.Compile.Type.Monad
     Vehicle.Compile.Type.Resource
     Vehicle.Compile.Type.VariableContext
-    Vehicle.Compile.Type.WeakHeadNormalForm
     Vehicle.Language.AST.Builtin
     Vehicle.Language.AST.Builtin.Core
     Vehicle.Language.AST.Builtin.Linearity

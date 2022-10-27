@@ -187,8 +187,13 @@ nfStdLibFn p f allArgs = do
       NotEqualsVector tElem size recFn args        -> nfEqualsVector Neq p tElem size recFn args
       AddVector       tElem size recFn args        -> nfAddVector p tElem size recFn args
       SubVector       tElem size recFn args        -> nfSubVector p tElem size recFn args
-      ForallVector    tElem size recFn binder body -> Just $ nfQuantifierVector p tElem size binder body recFn
-      ExistsVector    tElem size recFn binder body -> Just $ nfQuantifierVector p tElem size binder body recFn
+
+      ForallVector    tElem size recFn binder body -> Just $ do
+        n <- getSize size
+        nfQuantifierVector p tElem n binder body recFn
+      ExistsVector    tElem size recFn binder body -> Just $ do
+        n <- getSize size
+        nfQuantifierVector p tElem n binder body recFn
 
       ExistsIndex size lam -> Just $ nfQuantifierIndex p Exists size lam
       ForallIndex size lam -> Just $ nfQuantifierIndex p Forall size lam
@@ -246,10 +251,8 @@ nfBuiltin p b                args = do
       -- This is a huge bodge. Really we need to normalise implicit arguments as well,
       -- but hideously inefficiently at the moment, so wait until we have the new
       -- normalisation up and running.
-      s' <- nf s
-      case s' of
-        NatLiteral _ n -> nfForeach p tElem n body
-        _              -> compilerDeveloperError "Non-concrete foreach size"
+      n <- getSize s
+      nfForeach p tElem n body
 
     MapVectorExpr _ tFrom tTo size [fn, vector] ->
       Just $ nfMapVector p tFrom tTo size fn vector
@@ -431,6 +434,16 @@ nfMapVector p tFrom tTo size fun vector =
       let appFun x = App p (argExpr fun) [ExplicitArg p x]
       return $ VecLiteral p tTo (fmap appFun xs)
     _                 ->  return $ MapVectorExpr p tFrom tTo size [fun, vector]
+
+getSize :: MonadNorm m => CheckedExpr -> m Int
+getSize sizeExpr = do
+  -- This is a huge bodge. Really we need to normalise implicit arguments as well,
+  -- but hideously inefficiently at the moment, so wait until we have the new
+  -- normalisation up and running.
+  nfSizeExpr <- nf sizeExpr
+  case nfSizeExpr of
+    NatLiteral _ size -> return size
+    _                 -> compilerDeveloperError "Non-concrete foreach size"
 
 --------------------------------------------------------------------------------
 -- Debug functions
