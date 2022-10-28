@@ -1,25 +1,23 @@
-cabal-version:   3.4
-name:            vehicle
-version:         0.1.0
+cabal-version: 3.4
+name:          vehicle
+version:       0.1.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
-homepage:        https://github.com/vehicle-lang/vehicle#readme
-bug-reports:     https://github.com/vehicle-lang/vehicle/issues
-author:          Wen Kokke
-maintainer:      wenkokke@users.noreply.github.com
-copyright:       © Wen Kokke
-license:         BSD-3-Clause
-license-file:    LICENSE
-build-type:      Simple
+homepage:      https://github.com/vehicle-lang/vehicle#readme
+bug-reports:   https://github.com/vehicle-lang/vehicle/issues
+author:        Wen Kokke
+maintainer:    wenkokke@users.noreply.github.com
+copyright:     © Wen Kokke
+license:       BSD-3-Clause
+license-file:  LICENSE
+build-type:    Simple
 
--- Generated with `script/data-files`:
--- data-files:
+-- Generated with `script/extra-source-files`:
+-- extra-source-files:
 
 -- Generated with `script/extra-doc-files`:
-extra-doc-files:
-  ChangeLog.md
-  README.md
+-- extra-doc-files:
 
 source-repository head
   type:     git
@@ -224,32 +222,19 @@ executable vehicle
 library vehicle-test-common
   import:          common-language
   hs-source-dirs:  tests
-  exposed-modules:
-    Vehicle.Test.Common
-    Vehicle.Test.Common.Compile.Fail
-    Vehicle.Test.Common.Compile.Succeed
-
-  other-modules:   Paths_vehicle
-  build-depends:   vehicle
-  ghc-options:     -threaded -rtsopts -with-rtsopts=-N -O0
+  exposed-modules: Vehicle.Test.Common
   build-depends:
-    , base                  >=4.13   && <5
-    , containers            >=0.5    && <1
-    , deepseq               >=1.4    && <2
-    , Diff                  >=0.4.1  && <0.5
-    , directory             >=1.3.6  && <1.4
-    , filepath              >=1.4    && <2
-    , hashable              >=1.3    && <2
-    , mtl                   >=2.2    && <3
-    , optparse-applicative  >=0.16   && <1
-    , process               >=1.6.13 && <1.7
-    , recursion-schemes     >=5.2    && <6
-    , regex-tdfa            >=1.3.2  && <1.4
-    , tasty                 >=1.4.2  && <1.5
-    , tasty-bench           >=0.3    && <1
-    , tasty-golden          >=2.3.5  && <2.4
-    , tasty-hunit           >=0.10.0 && <0.11
-    , text                  >=1.2    && <3
+    , aeson         >=2.1.1 && <2.2
+    , base          >=4.13  && <5
+    , Diff          >=0.4.1 && <0.5
+    , directory     >=1.3.6 && <1.4
+    , filepath      >=1.4   && <2
+    , process       >=1.2   && <2
+    , tasty
+    , tasty-golden
+    , temporary
+    , text          >=1.2   && <3
+    , vehicle
 
 test-suite vehicle-tests
   import:             common-language
@@ -259,31 +244,6 @@ test-suite vehicle-tests
   build-depends:
     , base     >=4.13 && <5
     , process  >=1.2  && <2
-    , vehicle
 
   build-tool-depends: vehicle:vehicle
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -O0
-
-test-suite vehicle-integration-tests
-  import:             common-language
-  type:               exitcode-stdio-1.0
-  hs-source-dirs:     tests
-  main-is:            IntegrationTests.hs
-  build-depends:
-    , base     >=4.13 && <5
-    , vehicle
-
-  build-tool-depends: vehicle:vehicle
-  ghc-options:        -threaded -rtsopts -with-rtsopts=-N -O0
-
-benchmark vehicle-benchmarks
-  import:             common-language
-  type:               exitcode-stdio-1.0
-  hs-source-dirs:     tests
-  main-is:            Benchmarks.hs
-  build-depends:
-    , base     >=4.13 && <5
-    , vehicle
-
-  build-tool-depends: vehicle:vehicle
-  ghc-options:        -O2
