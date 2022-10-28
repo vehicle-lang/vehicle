@@ -13,8 +13,6 @@ license:            BSD-3-Clause
 license-file:       LICENSE
 build-type:         Custom
 extra-source-files:
-  ChangeLog.md
-  README.md
   src/Vehicle/Syntax/External.cf
   src/Vehicle/Syntax/Internal.cf
 

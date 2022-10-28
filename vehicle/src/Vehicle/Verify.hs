@@ -4,10 +4,9 @@ module Vehicle.Verify
   , verify
   ) where
 
-import Control.Monad (forM)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Text.IO (hPutStrLn)
-import System.Directory (doesFileExist, findExecutable, makeAbsolute)
+import System.Directory (doesFileExist, findExecutable)
 import System.Exit (exitFailure)
 import System.IO (stderr)
 
@@ -34,7 +33,7 @@ verify loggingOptions VerifyOptions{..} = do
   let verifierImpl = verifiers verifier
   verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
 
-  resources <- convertPathsToAbsolute $ Resources networkLocations datasetLocations parameterValues
+  let resources = Resources networkLocations datasetLocations parameterValues
 
   uncompiledSpecification <- readSpecification loggingOptions specification
 
@@ -80,8 +79,3 @@ locateVerifierExecutable Verifier{..} = \case
           "or add it to the PATH environment variable."
         liftIO exitFailure
 
-convertPathsToAbsolute :: MonadIO m => Resources -> m Resources
-convertPathsToAbsolute Resources{..} = do
-  absNetworks <- forM networks (liftIO . makeAbsolute)
-  absDatasets <- forM datasets (liftIO . makeAbsolute)
-  return $ Resources absNetworks absDatasets parameters
