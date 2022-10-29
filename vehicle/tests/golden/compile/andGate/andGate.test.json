@@ -1,0 +1,6 @@
+{
+  "name": "andGate",
+  "run": "vehicle compile -s andGate.vcl -t Agda -o andGate.agda",
+  "needs": ["andGate.vcl"],
+  "produces": ["andGate.agda"]
+}
