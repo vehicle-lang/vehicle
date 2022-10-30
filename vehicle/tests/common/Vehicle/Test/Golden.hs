@@ -166,9 +166,6 @@ readTestSpecsFile testSpecFile = do
 -- | Check that each test specification has a unique name.
 validateTestSpecs :: Absolute FilePath -> TestSpecs -> IO ()
 validateTestSpecs testSpecFile (TestSpecs testSpecs) = do
-  -- Print diffSpecIgnore
-  forM_ testSpecs $ \testSpec -> do
-    traverse_ Text.putStrLn (diffSpecIgnoreRegexText <$> (diffSpecIgnore =<< testSpecDiffSpec testSpec))
   -- Check for duplicate testSpecNames:
   let duplicateTestSpecNames =
         duplicates (NonEmpty.toList (testSpecName <$> testSpecs))
