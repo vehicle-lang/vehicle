@@ -1,6 +1,5 @@
-import System.FilePath (splitDirectories, takeDirectory, (</>))
-import System.FilePath.Glob (globDir)
-import Vehicle.Test.Golden (readTestTree)
+import System.FilePath ((</>))
+import Vehicle.Test.Golden (makeTestTreeFromDirectoryRecursive)
 import Test.Tasty (defaultMain)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 
@@ -10,5 +9,5 @@ testDirectory = "tests" </> "golden"
 main :: IO ()
 main = do
   setLocaleEncoding utf8
-  testTree <- readTestTree (testDirectory </> "compile" </> "andGate" </> "andGate.test.json")
+  testTree <- makeTestTreeFromDirectoryRecursive "Tests" testDirectory
   defaultMain testTree

@@ -225,12 +225,15 @@ library vehicle-tests-common
   exposed-modules: Vehicle.Test.Golden
   build-depends:
     , aeson                 >=2.1.1  && <2.2
+    , aeson-pretty
     , array
     , base                  >=4.13   && <5
+    , bytestring
     , Diff                  >=0.4.1  && <0.5
     , directory             >=1.3.6  && <1.4
     , filepath              >=1.4    && <2
     , Glob                  >=0.10.2 && <0.11
+    , hashable
     , process               >=1.2    && <2
     , regex-tdfa
     , tasty
@@ -251,6 +254,7 @@ test-suite vehicle-tests
     , filepath
     , Glob  >=0.10.2 && <0.11
     , tasty
+    , regex-tdfa
     , vehicle:vehicle-tests-common
 
   build-tool-depends: vehicle:vehicle
