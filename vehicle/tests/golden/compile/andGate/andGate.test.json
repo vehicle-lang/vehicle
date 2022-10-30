@@ -1,6 +1,25 @@
-{
-  "name": "andGate",
-  "run": "vehicle compile -s andGate.vcl -t Agda -o andGate.agda",
-  "needs": ["andGate.vcl"],
-  "produces": ["andGate.agda"]
-}
+[
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s andGate.vcl -t Agda -o andGate.agda",
+    "needs": ["andGate.vcl"],
+    "produces": ["andGate.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s andGate.vcl -t LossFunction -o andGate.loss.json",
+    "needs": ["andGate.vcl"],
+    "produces": ["andGate.loss.json"]
+  },
+  {
+    "name": "Marabou",
+    "run": "vehicle compile -s andGate.vcl -t Marabou -o andGate.inputquery",
+    "needs": ["andGate.vcl"],
+    "produces": [
+      "andGate.inputquery/andGateCorrect-query1.txt",
+      "andGate.inputquery/andGateCorrect-query2.txt",
+      "andGate.inputquery/andGateCorrect-query3.txt",
+      "andGate.inputquery/andGateCorrect-query4.txt"
+    ]
+  }
+]

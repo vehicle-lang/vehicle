@@ -16,7 +16,7 @@ open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List.Base
 
-module autoencoderError-output where
+module autoencoderError where
 
 postulate encode : Tensor ℚ (5 ∷ []) → Tensor ℚ (2 ∷ [])
 

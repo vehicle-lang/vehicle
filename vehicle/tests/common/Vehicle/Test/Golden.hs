@@ -1,41 +1,61 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant <&>" #-}
+{-# HLINT ignore "Monad law, left identity" #-}
 module Vehicle.Test.Golden
-  ( readTestTree
+  ( makeTestTreesFromFile
+  , makeTestTreeFromDirectoryRecursive
   )
   where
 
+import Control.Applicative (Alternative ((<|>)))
 import Control.Exception (IOException, assert, try)
-import Control.Monad (forM, forM_, join, when)
-import Data.Aeson (eitherDecodeFileStrict')
-import Data.Aeson.Types (FromJSON (..), Object, Parser, Value, withObject,
-                         (.!=), (.:), (.:?))
+import Control.Monad (filterM, forM, forM_, join, unless, when)
+import Data.Aeson (eitherDecodeFileStrict', eitherDecodeStrict')
+import Data.Aeson.Encode.Pretty (Config (confCompare), defConfig, encodePretty',
+                                 encodePrettyToTextBuilder,
+                                 encodePrettyToTextBuilder', keyOrder)
+import Data.Aeson.Types (FromJSON (..), KeyValue ((.=)), Object, Pair, Parser,
+                         ToJSON (toJSON), Value, object, withObject, (.!=),
+                         (.:), (.:?))
 import Data.Aeson.Types qualified as Value
 import Data.Algorithm.Diff (Diff, PolyDiff (..), getGroupedDiff,
                             getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Array ((!))
-import Data.Foldable (asum, for_)
+import Data.ByteString (ByteString)
+import Data.ByteString qualified as ByteString
+import Data.Foldable (asum, for_, traverse_)
 import Data.Function (on)
+import Data.Functor ((<&>))
+import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HashSet
 import Data.List (foldl')
-import Data.Maybe (catMaybes, maybeToList)
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (catMaybes, fromMaybe, maybeToList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
+import Data.Text.Lazy qualified as Lazy
+import Data.Text.Lazy.Builder qualified as Builder
+import Data.Traversable (for)
 import System.Directory (copyFile, createDirectoryIfMissing, doesDirectoryExist,
                          doesFileExist, getModificationTime, listDirectory,
                          removeFile)
-import System.FilePath (isRelative, makeRelative, takeDirectory, (-<.>), (<.>),
-                        (</>))
-import System.FilePath.Glob (globDir)
+import System.FilePath (isExtensionOf, isRelative, joinPath, makeRelative,
+                        takeBaseName, takeDirectory, (-<.>), (<.>), (</>))
+import System.FilePath.Glob (globDir, globDir1)
 import System.IO (IOMode (ReadMode), withFile)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (cwd), readCreateProcessWithExitCode,
                        shell)
-import Test.Tasty (TestName, TestTree)
+import Test.Tasty (TestName, TestTree, Timeout (Timeout), localOption,
+                   testGroup)
 import Test.Tasty.Golden.Advanced (goldenTest)
+import Test.Tasty.Options (IsOption (parseValue))
 import Text.Printf (printf)
 import Text.Regex.TDFA (MatchArray,
                         RegexOptions (defaultCompOpt, defaultExecOpt))
@@ -43,81 +63,140 @@ import Text.Regex.TDFA qualified as Regex
 import Text.Regex.TDFA.Text (Regex)
 import Text.Regex.TDFA.Text qualified as Regex (compile, execute)
 
-type Absolute a = a
-type Relative a = a
+-- Type of test specifications:
+
+newtype TestSpecs = TestSpecs (NonEmpty TestSpec)
 
 data TestSpec = TestSpec
   { testSpecName     :: TestName
+    -- ^ Test name.
+    --   In a file with multiple test specifications, each name must be unique.
+  , testSpecEnabled  :: Maybe Bool
+    -- ^ Whether or not the test is enabled.
+    --   By default, the test is assumed to be enabled.
   , testSpecRun      :: String
+    -- ^ Test command to run.
   , testSpecNeeds    :: [Relative FilePath]
+    -- ^ Files needed by the test command.
+    --   Paths should be relative to the test specification file.
   , testSpecProduces :: [Relative FilePath]
-  , testSpecDiffSpec :: DiffSpec
+    -- ^ Files produced by the test command.
+    --   Paths should be relative to the test specification file,
+    --   and should not contain the .golden file extension.
+  , testSpecTimeout  :: Maybe Timeout
+    -- ^ Local options for the test.
+  , testSpecDiffSpec :: Maybe DiffSpec
+    -- ^ Options for the `diff` algorithm.
   } deriving (Show)
 
-readTestSpec :: FilePath -> IO TestSpec
-readTestSpec file = do
-  eitherErrorOrTestSpec <- eitherDecodeFileStrict' file
-  either
-    (fail . printf "Could not parse %s: %s" file)
-    return
-    eitherErrorOrTestSpec
-
 newtype DiffSpec = DiffSpec
-  { diffSpecIgnore :: Maybe (Text, Regex)
+  { diffSpecIgnore :: Maybe DiffSpecIgnore
+    -- ^ A regular expression to apply to each line before testing for
+    --   equality.
+  } deriving (Show)
+
+data DiffSpecIgnore = DiffSpecIgnore
+  { diffSpecIgnoreRegexText :: Text
+  , diffSpecIgnoreRegex     :: Regex
   }
 
-instance Show DiffSpec where
-  show :: DiffSpec -> String
-  show DiffSpec{diffSpecIgnore = Nothing} = "DiffSpec {diffSpecIgnore = Nothing}"
-  show DiffSpec{diffSpecIgnore = Just (txt, re)} =
-    printf "DiffSpec {diffSpecIgnore = Just %s}" (show txt)
-
-emptyDiffSpec :: DiffSpec
-emptyDiffSpec = DiffSpec
-  { diffSpecIgnore = Nothing
-  }
+instance Show DiffSpecIgnore where
+  show :: DiffSpecIgnore -> String
+  show DiffSpecIgnore{..} = show diffSpecIgnoreRegexText
 
 data TestOutput = TestOutput
   { stdout :: Text
+    -- ^ Standard output stream produced by a test.
   , stderr :: Text
+    -- ^ Standard error stream produced by a test.
   , files  :: HashMap (Relative FilePath) Text
+    -- ^ Files produced by a test.
   } deriving (Show)
 
-instance FromJSON TestSpec where
-  parseJSON :: Value -> Parser TestSpec
-  parseJSON = withObject "TestSpec" $ \v ->
-    TestSpec
-      <$> v .: "name"
-      <*> v .: "run"
-      <*> v .:? "needs" .!= []
-      <*> v .:? "produces" .!= []
-      <*> (traverse parseDiffSpec =<< v .:? "diff") .!= emptyDiffSpec
-    where
-      parseDiffSpec :: Value -> Parser DiffSpec
-      parseDiffSpec = withObject "Diff" $ \v ->
-          DiffSpec
-            <$> (traverse parseDiffSpecIgnore =<< v .:? "ignore")
+-- | Create a test tree from all test specifications in a directory, recursively.
+makeTestTreeFromDirectoryRecursive :: TestName -> Absolute FilePath -> IO TestTree
+makeTestTreeFromDirectoryRecursive testGroupLabel testDirectory = do
+  -- List all paths in `testDirectory`
+  testDirectoryEntries <- listDirectory testDirectory
 
-      parseDiffSpecIgnore :: Text -> Parser (Text, Regex)
-      parseDiffSpecIgnore txt =
-        case Regex.compile defaultCompOpt defaultExecOpt txt of
-          Left err -> fail $ "Failed to parse regular expression 'ignore': " <> err
-          Right re -> return (txt, re)
+  -- Construct test trees for each .test.json file in the current directory:
+  testTreesFromHere <-
+    return testDirectoryEntries
+      -- Filter directory entries to only test specifications
+      >>= filterM (isTestSpecFile . (testDirectory </>))
+      -- Make test trees
+      >>= traverse (\testSpecFileName ->
+            let testSpecFile = testDirectory </> testSpecFileName in
+                makeTestTreesFromFile (testDirectory </> testSpecFileName))
+      <&> concatMap NonEmpty.toList
 
-readTestTree :: Absolute FilePath -> IO TestTree
-readTestTree testSpecFilePath = do
-  testSpec <- readTestSpec testSpecFilePath
-  print testSpec
-  let testDirectory = takeDirectory testSpecFilePath
-  return $ makeTestTree testDirectory testSpec
+  -- Construct test trees for all subdirectories:
+  testTreesFromFurther <-
+    return testDirectoryEntries
+      -- Filter directory entries to only test specifications:
+      >>= filterM (doesDirectoryExist . (testDirectory </>))
+      -- Make test trees for each subdirectory:
+      >>= traverse (\subDirectoryName ->
+            let testSubDirectory = testDirectory </> subDirectoryName in
+              makeTestTreeFromDirectoryRecursive subDirectoryName testSubDirectory)
 
-makeTestTree :: Absolute FilePath -> TestSpec -> TestTree
-makeTestTree testDirectory testSpec@TestSpec{..} =
-  goldenTest testSpecName readGoldenFiles runTestSpec compareTestOutput updateGoldenFiles
+  -- Combine all test trees:
+  return $ testGroup testGroupLabel (testTreesFromHere <> testTreesFromFurther)
+
+-- | Test whether a path refers to an existing test specification file.
+isTestSpecFile :: Absolute FilePath -> IO Bool
+isTestSpecFile path =
+  (".test.json" `isExtensionOf` path &&) <$> doesFileExist path
+
+-- | Read a test specification and return a TestTree.
+makeTestTreesFromFile :: Absolute FilePath -> IO (NonEmpty TestTree)
+makeTestTreesFromFile testSpecFile = do
+  TestSpecs testSpecs <- readTestSpecsFile testSpecFile
+  return $ toTestTree testSpecFile <$> testSpecs
+
+-- | Read TestSpecs from a file.
+readTestSpecsFile :: FilePath -> IO TestSpecs
+readTestSpecsFile testSpecFile = do
+  eitherTestSpecs <- eitherDecodeFileStrict' testSpecFile
+  let parseError msg = fail $ printf "Could not parse %s: %s" testSpecFile msg
+  testSpecs <- either parseError return eitherTestSpecs
+  validateTestSpecs testSpecFile testSpecs
+  return testSpecs
+
+-- | Check that each test specification has a unique name.
+validateTestSpecs :: Absolute FilePath -> TestSpecs -> IO ()
+validateTestSpecs testSpecFile (TestSpecs testSpecs) = do
+  -- Print diffSpecIgnore
+  forM_ testSpecs $ \testSpec -> do
+    traverse_ Text.putStrLn (diffSpecIgnoreRegexText <$> (diffSpecIgnore =<< testSpecDiffSpec testSpec))
+  -- Check for duplicate testSpecNames:
+  let duplicateTestSpecNames =
+        duplicates (NonEmpty.toList (testSpecName <$> testSpecs))
+  unless (null duplicateTestSpecNames) $ fail $
+    printf "Duplicate names %s in %s" (show duplicateTestSpecNames) testSpecFile
+
+-- | Whether or not the test is enabled.
+isEnabled :: TestSpec -> Bool
+isEnabled = fromMaybe True . testSpecEnabled
+
+-- | Convert a test specifications to a test tree.
+toTestTree :: Absolute FilePath -> TestSpec -> TestTree
+toTestTree testSpecFile testSpec =
+  someLocalOptions someTestOptions goldenTestTree
   where
+    someTestOptions :: [SomeOption]
+    someTestOptions = catMaybes [SomeOption <$> testSpecTimeout testSpec]
+
+    goldenTestTree :: TestTree
+    goldenTestTree =
+      goldenTest (testSpecName testSpec) readGoldenFiles runTestSpec compareTestOutput updateGoldenFiles
+
+    testDirectory :: Absolute FilePath
+    testDirectory = takeDirectory testSpecFile
+
     goldenStdoutPath, goldenStderrPath :: Relative FilePath
-    goldenStdoutPath = testSpecName <.> "out" <.> "golden"
-    goldenStderrPath = testSpecName <.> "err" <.> "golden"
+    goldenStdoutPath = testSpecName testSpec <.> "out" <.> "golden"
+    goldenStderrPath = testSpecName testSpec <.> "err" <.> "golden"
 
     readGoldenFile :: Absolute FilePath -> IO Text
     readGoldenFile goldenFile = do
@@ -130,7 +209,7 @@ makeTestTree testDirectory testSpec@TestSpec{..} =
     readGoldenFiles = do
       stdout <- readGoldenFile $ testDirectory </> goldenStdoutPath
       stderr <- readGoldenFile $ testDirectory </> goldenStderrPath
-      fileList <- forM testSpecProduces $ \filePath -> do
+      fileList <- forM (testSpecProduces testSpec) $ \filePath -> do
         fileContents <- readGoldenFile (testDirectory </> filePath <.> "golden")
         return (filePath, fileContents)
       let files = HashMap.fromList fileList
@@ -139,27 +218,29 @@ makeTestTree testDirectory testSpec@TestSpec{..} =
     runTestSpec :: IO TestOutput
     runTestSpec = do
       -- Create a temporary directory:
-      let tempDirectoryNameTemplate = printf "vehicle-test-%s" testSpecName
+      let tempDirectoryNameTemplate = printf "vehicle-test-%s" (testSpecName testSpec)
       withSystemTempDirectory tempDirectoryNameTemplate $ \tempDirectory -> do
         -- Copy over all needed files:
-        forM_ testSpecNeeds $ \neededFile -> do
+        forM_ (testSpecNeeds testSpec) $ \neededFile -> do
           createDirectoryRecursive (tempDirectory </> takeDirectory neededFile)
           copyFile (testDirectory </> neededFile) (tempDirectory </> neededFile)
         -- Run the command in the specified directory:
-        let cmdSpec = (shell testSpecRun) {cwd = Just tempDirectory}
+        let cmdSpec = (shell $ testSpecRun testSpec) {cwd = Just tempDirectory}
         (exitCode, stdoutString, stderrString)
           <- readCreateProcessWithExitCode cmdSpec ""
         let stdout = Text.pack stdoutString
         let stderr = Text.pack stderrString
         -- List all files in tempDirectory:
         allFiles
-          <- concat <$> globDir ["*", "**/*"] tempDirectory
+          -- NOTE: we filter by `doesFileExist` to check that the entries are FILES
+          --       not to check that they exist, as they clearly do
+          <- filterM doesFileExist . concat =<< globDir ["*", "**/*"] tempDirectory
           :: IO [Absolute FilePath]
         let outputFiles :: [Relative FilePath]
             outputFiles = do
               absoluteFilePath <- allFiles
               let relativeFilePath = makeRelative tempDirectory absoluteFilePath
-              if relativeFilePath `notElem` testSpecNeeds
+              if relativeFilePath `notElem` testSpecNeeds testSpec
                 then return relativeFilePath
                 else fail $ printf "File %s is an input" relativeFilePath
         outputFilePathsAndContent <-
@@ -171,24 +252,13 @@ makeTestTree testDirectory testSpec@TestSpec{..} =
         return TestOutput{..}
 
     -- Unpack the DiffSpec for use in compareTestOutput:
-    DiffSpec{..} = testSpecDiffSpec
+    maybeDiffSpecIgnoreRegex =
+      diffSpecIgnoreRegex <$> (diffSpecIgnore =<< testSpecDiffSpec testSpec)
 
     compareLine :: Text -> Text -> Bool
-    compareLine = case diffSpecIgnore of
+    compareLine = case maybeDiffSpecIgnoreRegex of
       Nothing -> (==)
-      Just (_txt, re) -> (==) `on` strikeOut re
-
-    strikeOut :: Regex -> Text -> Text
-    strikeOut re txt = strikeOutAcc (Regex.matchAll re txt) txt []
-      where
-        strikeOutAcc :: [MatchArray] -> Text -> [Text] -> Text
-        strikeOutAcc []                txt acc = Text.concat (reverse (txt : acc))
-        strikeOutAcc (match : matches) txt acc = strikeOutAcc matches rest newAcc
-          where
-            newAcc = Text.replicate length "_" : before : acc
-            (before, matchTextAndRest) = Text.splitAt offset txt
-            (_matchText, rest) = Text.splitAt length matchTextAndRest
-            (offset, length) = match ! 0
+      Just re -> \l1 l2 -> l1 == l2 ||  strikeOut re l1 == strikeOut re l2
 
     compareTestOutput :: TestOutput -> TestOutput -> IO (Maybe String)
     compareTestOutput golden actual = do
@@ -262,13 +332,141 @@ makeTestTree testDirectory testSpec@TestSpec{..} =
             mapDiff f (Second y) = Second (f y)
             mapDiff f (Both x y) = Both (f x) (f y)
 
+    updateTestSpecFile :: TestSpec -> IO ()
+    updateTestSpecFile newTestSpec = do
+      TestSpecs oldTestSpecs <- readTestSpecsFile testSpecFile
+      let replaceOldTestSpec oldTestSpec
+            | testSpecName oldTestSpec == testSpecName newTestSpec = newTestSpec
+            | otherwise = oldTestSpec
+      let newTestSpecs = TestSpecs $ fmap replaceOldTestSpec oldTestSpecs
+      writeFileChanged testSpecFile (encodeTestSpecsPretty newTestSpecs)
+
     updateGoldenFiles :: TestOutput -> IO ()
     updateGoldenFiles TestOutput{..} = do
+      -- Update test specification:
+      let newTestSpecProduces = HashMap.keys files
+      let newTestSpec = testSpec {testSpecProduces = newTestSpecProduces}
+      updateTestSpecFile newTestSpec
+      -- Update golden files for stdout and stderr:
       writeFileChanged (testDirectory </> goldenStdoutPath) stdout
       writeFileChanged (testDirectory </> goldenStderrPath) stderr
+      -- Update other golden files:
       for_ (HashMap.toList files) $ \(path, contents) -> do
         writeFileChanged (testDirectory </> path <.> "golden") contents
 
+-- Conversion from TestSpecs to JSON.
+
+instance FromJSON TestSpecs where
+  parseJSON :: Value -> Parser TestSpecs
+  parseJSON v = TestSpecs <$> (parse1 <|> parseN)
+    where
+      parse1 = (:| []) <$> parseJSON v
+      parseN = parseJSON v
+
+instance ToJSON TestSpecs where
+  toJSON :: TestSpecs -> Value
+  toJSON (TestSpecs (testSpec :| []))   = toJSON testSpec
+  toJSON (TestSpecs testSpecs@(_ :| _)) = toJSON testSpecs
+
+instance FromJSON TestSpec where
+  parseJSON :: Value -> Parser TestSpec
+  parseJSON = withObject "TestSpec" $ \v ->
+    TestSpec
+      <$> v .: "name"
+      <*> v .:? "enabled"
+      <*> v .: "run"
+      <*> v .:? "needs" .!= []
+      <*> v .:? "produces" .!= []
+      <*> (traverse parseTimeout =<< v .:? "timeout")
+      <*> (traverse parseDiffSpec =<< v .:? "diff")
+    where
+      parseTimeout :: Text -> Parser Timeout
+      parseTimeout txt = maybe parseError return (parseValue str)
+        where
+          str = Text.unpack txt
+          parseError = fail $ unlines
+            [
+              "Could not parse value of 'timeout'.",
+              "Expected a number, optionally followed by a suffix (ms, s, m, h).",
+              "Found: " <> str
+            ]
+
+      parseDiffSpec :: Value -> Parser DiffSpec
+      parseDiffSpec = withObject "Diff" $ \v ->
+          DiffSpec
+            <$> (traverse parseDiffSpecIgnore =<< v .:? "ignore")
+
+      parseDiffSpecIgnore :: Text -> Parser DiffSpecIgnore
+      parseDiffSpecIgnore txt =
+        case Regex.compile defaultCompOpt defaultExecOpt txt of
+          Left err -> fail $ "Failed to parse regular expression 'ignore': " <> err
+          Right re -> return $ DiffSpecIgnore txt re
+
+instance ToJSON TestSpec where
+  toJSON :: TestSpec -> Value
+  toJSON TestSpec{..} =
+    object $ catMaybes [
+      Just $ "name" .= testSpecName,
+      ("enabled" .=) <$> testSpecEnabled,
+      Just $ "run" .= testSpecRun,
+      -- Include "needs" only if it is non-empty:
+      if null testSpecNeeds
+        then Nothing
+        else Just ("needs" .= testSpecNeeds),
+      -- Include "produces" only if it is non-empty:
+      if null testSpecProduces
+        then Nothing
+        else Just ("produces" .= testSpecProduces),
+      -- Include "timeout" only if it is non-empty:
+      case testSpecTimeout of
+        Just (Timeout _ms timeout) -> Just $ "timeout" .= timeout
+        _                          -> Nothing,
+      -- Include "diff" only if it is non-empty:
+      ("diff" .=) <$> (diffSpecToJSON =<< testSpecDiffSpec)
+    ]
+
+diffSpecToJSON :: DiffSpec -> Maybe Value
+diffSpecToJSON DiffSpec {..}
+  | null diffSpecFields = Nothing
+  | otherwise = Just $ object diffSpecFields
+  where
+    diffSpecFields :: [Pair]
+    diffSpecFields = catMaybes [("ignore" .=) . toJSON <$> diffSpecIgnore]
+
+instance ToJSON DiffSpecIgnore where
+  toJSON :: DiffSpecIgnore -> Value
+  toJSON DiffSpecIgnore{..} = Value.String diffSpecIgnoreRegexText
+
+-- | Type-level tag to mark absolute FilePath types.
+type Absolute a = a
+
+-- | Type-level tag to mark relative FilePath types.
+type Relative a = a
+
+-- | Dynamic type for test options.
+data SomeOption = forall v. IsOption v => SomeOption v
+
+someLocalOptions :: [SomeOption] -> TestTree -> TestTree
+someLocalOptions someOptions testTree =
+  foldr (\(SomeOption v) -> localOption v) testTree someOptions
+
+
+strikeOut :: Regex -> Text -> Text
+strikeOut re txt = strikeOutAcc (Regex.matchAll re txt) txt []
+  where
+    strikeOutAcc :: [MatchArray] -> Text -> [Text] -> Text
+    strikeOutAcc []                txt acc = Text.concat (reverse (txt : acc))
+    strikeOutAcc (match : matches) txt acc = strikeOutAcc matches rest newAcc
+      where
+        newAcc = "[IGNORE]" : before : acc
+        (before, matchTextAndRest) = Text.splitAt offset txt
+        (_matchText, rest) = Text.splitAt length matchTextAndRest
+        (offset, length) = match ! 0
+
+-- | Encode a TestSpec as JSON using aeson-pretty.
+encodeTestSpecsPretty :: TestSpecs -> Text
+encodeTestSpecsPretty =
+  Lazy.toStrict . Builder.toLazyText . encodePrettyToTextBuilder
 
 -- | Write a file, but only if the contents would change.
 --
@@ -299,3 +497,12 @@ createDirectoryRecursive :: FilePath -> IO ()
 createDirectoryRecursive dir = do
     x <- try @IOException $ doesDirectoryExist dir
     when (x /= Right True) $ createDirectoryIfMissing True dir
+
+-- | Find the duplicate elements in a list:
+duplicates :: (Eq a, Hashable a) => [a] -> [a]
+duplicates = duplicatesAcc HashSet.empty
+  where
+    duplicatesAcc seen [] = []
+    duplicatesAcc seen (x : xs)
+      | x `HashSet.member` seen = x : duplicatesAcc seen xs
+      | otherwise = duplicatesAcc (HashSet.insert x seen) xs
