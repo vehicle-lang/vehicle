@@ -31,7 +31,7 @@ instance RemoveIrrelevantCode CheckedProg where
   remove (Main ds) = Main <$> traverse remove ds
 
 instance RemoveIrrelevantCode CheckedDecl where
-  remove = traverseDeclExprs remove
+  remove = traverse remove
 
 instance RemoveIrrelevantCode CheckedExpr where
   remove expr = do

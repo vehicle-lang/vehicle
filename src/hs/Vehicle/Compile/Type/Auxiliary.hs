@@ -29,7 +29,7 @@ class TraverseAuxiliaryArguments a where
   traverseAux :: TCM m => AuxArgUpdate m -> a -> m a
 
 instance TraverseAuxiliaryArguments UncheckedDecl where
-  traverseAux f = traverseDeclExprs (traverseAux f)
+  traverseAux f = traverse (traverseAux f)
 
 instance TraverseAuxiliaryArguments UncheckedExpr where
   traverseAux f expr = case expr of

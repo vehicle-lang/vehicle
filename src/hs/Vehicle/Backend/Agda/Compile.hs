@@ -48,7 +48,7 @@ compileProgToAgda prog propertyContext options = logCompilerPass MinDetail curre
     monoProg <- monomorphise prog
 
     let prog2 = capitaliseTypeNames monoProg
-    let prog3 = supplyDBNames prog2
+    let prog3 = unwrapProg $ supplyDBNames (WrapProg prog2)
     let prog4 = runDescopeProg prog3
     programDoc <- compileProg prog4
     let programStream = layoutPretty defaultLayoutOptions programDoc

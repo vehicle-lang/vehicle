@@ -113,7 +113,7 @@ processDecl d@(DefResource p resourceType ident declType) = do
       return (Nothing, id)
 
 insertInferableParameters :: MonadCompile m => InferableParameterContext -> CheckedProg -> m CheckedProg
-insertInferableParameters implicitParams = traverseProg $ \case
+insertInferableParameters implicitParams = traverseDecls $ \case
   r@DefFunction{}  -> return r
   r@DefPostulate{} -> return r
   DefResource p InferableParameter ident t -> do

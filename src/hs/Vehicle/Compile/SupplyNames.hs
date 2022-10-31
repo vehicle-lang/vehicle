@@ -69,11 +69,17 @@ class SupplyNames t where
     e'   <- supplyNames f e
     return (ctx', e')
 
-instance SupplyNames Prog where
-  supplyNames f (Main ds) = Main <$> traverse (supplyNames f) ds
+supplyNamesProg :: MonadSupplyNames m
+                => (binding1 -> m binding2)
+                -> Prog binding1 var
+                -> m (Prog binding2 var)
+supplyNamesProg f = traverse (supplyNames f)
 
-instance SupplyNames Decl where
-  supplyNames f = traverseDeclExprs (supplyNames f)
+supplyNamesDecl :: MonadSupplyNames m
+                => (binding1 -> m binding2)
+                -> Decl binding1 var
+                -> m (Decl binding2 var)
+supplyNamesDecl f = traverse (supplyNames f)
 
 instance SupplyNames Expr where
   supplyNames f e = case e of
@@ -91,13 +97,19 @@ instance SupplyNames Expr where
     Lam ann binder body       -> Lam ann <$> supplyNamesBinder f binder <*> supplyNames f body
     Pi  ann binder body       -> Pi  ann <$> supplyNamesBinder f binder <*> supplyNames f body
 
+instance SupplyNames Prog' where
+  supplyNames f e = WrapProg <$> supplyNamesProg f (unwrapProg e)
+
+instance SupplyNames Decl' where
+  supplyNames f e = WrapDecl <$> supplyNamesDecl f (unwrapDecl e)
+
 instance SupplyNames Arg' where
   supplyNames f e = WrapArg <$> supplyNamesArg f (unwrapArg e)
 
 instance SupplyNames Binder' where
   supplyNames f e = WrapBinder <$> supplyNamesBinder f (unwrapBinder e)
 
-supplyNamesBinder ::  (SupplyNames t, MonadSupply Name m)
+supplyNamesBinder :: (SupplyNames t, MonadSupply Name m)
                   => (binding1 -> m binder)
                   -> GenericBinder binding1 (t binding1 var)
                   -> m (GenericBinder binder (t binder var))

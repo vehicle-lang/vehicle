@@ -27,9 +27,8 @@ runDescope :: Descope t
 runDescope ctx = performDescoping ctx descopeDBVar
 
 -- |Converts DeBruijn variables back into named variables with no context.
-runDescopeProg :: Prog Name DBVar
-               -> Prog Name Name
-runDescopeProg = performDescoping mempty descopeDBVar
+runDescopeProg :: Prog Name DBVar -> Prog Name Name
+runDescopeProg e = unwrapProg $ performDescoping mempty descopeDBVar (WrapProg e)
 
 -- |Converts DeBruijn indices into names naively, e.g. 0 becomes "i0".
 -- Useful for debugging
@@ -73,11 +72,17 @@ class Descope t where
           -> t NamedBinding var
           -> m (t NamedBinding Name)
 
-instance Descope Prog where
-  descope f (Main ds) = Main <$> traverse (descope f) ds
+descopeProg :: (MonadReader Ctx f, Show var)
+            => (Provenance -> var -> f Name)
+            -> Prog NamedBinding var
+            -> f (Prog NamedBinding Name)
+descopeProg f = traverse (descope f)
 
-instance Descope Decl where
-  descope f = traverseDeclExprs (descope f)
+descopeDecl :: (MonadReader Ctx f, Show var)
+            => (Provenance -> var -> f Name)
+            -> Decl NamedBinding var
+            -> f (Decl NamedBinding Name)
+descopeDecl f = traverse (descope f)
 
 instance Descope Expr where
   descope f e = showScopeExit $ case showScopeEntry e of
@@ -118,6 +123,12 @@ descopeArg :: (MonadReader Ctx f, Show var)
            -> GenericArg (Expr NamedBinding var)
            -> f (GenericArg (Expr NamedBinding Name))
 descopeArg f = traverse (descope f)
+
+instance Descope Prog' where
+  descope f a = coerce <$> descopeProg f (coerce a)
+
+instance Descope Decl' where
+  descope f a = coerce <$> descopeDecl f (coerce a)
 
 instance Descope Arg' where
   descope f a = coerce <$> descopeArg f (coerce a)

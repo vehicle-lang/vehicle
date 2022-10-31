@@ -46,11 +46,11 @@ class Simplify a where
 
   simplifyReader :: MonadSimplify m => a -> m a
 
-instance Simplify (Prog binder var) where
-  simplifyReader (Main ds) = Main <$> traverse simplifyReader ds
+instance Simplify expr => Simplify (GenericProg expr) where
+  simplifyReader = traverse simplifyReader
 
-instance Simplify (Decl binder var) where
-  simplifyReader = traverseDeclExprs simplifyReader
+instance Simplify expr => Simplify (GenericDecl expr) where
+  simplifyReader = traverse simplifyReader
 
 instance Simplify (Expr binder var) where
   simplifyReader expr = case expr of

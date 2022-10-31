@@ -266,10 +266,10 @@ instance (External.Delaborate t bnfc, Pretty bnfc) => PrettyUsing ('ConvertTo 'E
 -- Convert closed terms from DeBruijn representation to named representation naively
 
 instance (PrettyUsing rest NamedProg) => PrettyUsing ('DBToNamedNaive rest) SuppliedDBProg where
-  prettyUsing e = prettyUsing @rest (runNaiveDBDescope e)
+  prettyUsing e = prettyUsing @rest (unwrapProg (runNaiveDBDescope (WrapProg e)))
 
 instance (PrettyUsing rest NamedDecl) => PrettyUsing ('DBToNamedNaive rest) SuppliedDBDecl where
-  prettyUsing e = prettyUsing @rest (runNaiveDBDescope e)
+  prettyUsing e = prettyUsing @rest (unwrapDecl (runNaiveDBDescope (WrapDecl e)))
 
 instance (PrettyUsing rest NamedExpr) => PrettyUsing ('DBToNamedNaive rest) SuppliedDBExpr where
   prettyUsing e = prettyUsing @rest (runNaiveDBDescope e)
@@ -307,10 +307,10 @@ instance PrettyUsing rest NamedExpr
 -- Convert closed term from DeBruijn representation to named representation
 
 instance PrettyUsing rest NamedProg => PrettyUsing ('DBToNamedClosed rest) SuppliedDBProg where
-  prettyUsing e = prettyUsing @rest (runDescope mempty e)
+  prettyUsing e = prettyUsing @rest (unwrapProg $ runDescope mempty $ WrapProg e)
 
 instance PrettyUsing rest NamedDecl => PrettyUsing ('DBToNamedClosed rest) SuppliedDBDecl where
-  prettyUsing e = prettyUsing @rest (runDescope mempty e)
+  prettyUsing e = prettyUsing @rest (unwrapDecl $ runDescope mempty $ WrapDecl e)
 
 instance PrettyUsing rest NamedExpr => PrettyUsing ('DBToNamedClosed rest) SuppliedDBExpr where
   prettyUsing e = prettyUsing @rest (runDescope mempty e)
@@ -358,11 +358,15 @@ instance PrettyUsing rest DBBinder
 
 instance PrettyUsing rest (NamedBoundCtx, Prog Name var)
       => PrettyUsing ('SupplyNamesOpen rest) (BoundDBCtx, Prog DBBinding var) where
-  prettyUsing p = prettyUsing @rest (supplyDBNamesWithCtx p)
+  prettyUsing (ctx, a) =
+    let (ctx', a') = supplyDBNamesWithCtx (ctx, WrapProg a) in
+    prettyUsing @rest (ctx', unwrapProg a')
 
 instance PrettyUsing rest (NamedBoundCtx, Decl Name var)
       => PrettyUsing ('SupplyNamesOpen rest) (BoundDBCtx, Decl DBBinding var) where
-  prettyUsing p = prettyUsing @rest (supplyDBNamesWithCtx p)
+  prettyUsing (ctx, a) =
+    let (ctx', a') = supplyDBNamesWithCtx (ctx, WrapDecl a) in
+    prettyUsing @rest (ctx', unwrapDecl a')
 
 instance PrettyUsing rest (NamedBoundCtx, Expr Name var)
       => PrettyUsing ('SupplyNamesOpen rest) (BoundDBCtx, Expr DBBinding var) where
@@ -386,11 +390,11 @@ instance PrettyUsing rest (NamedBoundCtx, Binder Name var)
 
 instance PrettyUsing rest (Prog Name var)
       => PrettyUsing ('SupplyNamesClosed rest) (Prog DBBinding var) where
-  prettyUsing e = prettyUsing @rest (supplyDBNames e)
+  prettyUsing e = prettyUsing @rest (unwrapProg $ supplyDBNames $ WrapProg e)
 
 instance PrettyUsing rest (Decl Name var)
       => PrettyUsing ('SupplyNamesClosed rest) (Decl DBBinding var) where
-  prettyUsing e = prettyUsing @rest (supplyDBNames e)
+  prettyUsing e = prettyUsing @rest (unwrapDecl $ supplyDBNames $ WrapDecl e)
 
 instance PrettyUsing rest (Expr Name var)
       => PrettyUsing ('SupplyNamesClosed rest) (Expr DBBinding var) where

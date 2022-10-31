@@ -354,77 +354,78 @@ instance Pretty PropertyInfo where
 -- Declarations
 
 -- | Type of top-level declarations.
-data Decl binder var
+data GenericDecl expr
   = DefResource
     Provenance             -- Location in source file.
     ResourceType           -- Type of resource.
     Identifier             -- Name of resource.
-    (Expr binder var)      -- Vehicle type of the resource.
+    expr                   -- Vehicle type of the resource.
 
   | DefFunction
     Provenance             -- Location in source file.
     Identifier             -- Bound function name.
-    (Expr binder var)      -- Bound function type.
-    (Expr binder var)      -- Bound function body.
+    expr                   -- Bound function type.
+    expr                   -- Bound function body.
 
   | DefPostulate
     Provenance
     Identifier
-    (Expr binder var)
+    expr
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance (NFData binder, NFData var) => NFData (Decl binder var)
+instance NFData expr => NFData (GenericDecl expr)
 
-instance HasProvenance (Decl binder var) where
+instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
     DefResource p _ _ _  -> p
     DefFunction p _  _ _ -> p
     DefPostulate p _ _   -> p
 
-instance HasIdentifier (Decl binder var) where
+instance HasIdentifier (GenericDecl expr) where
   identifierOf = \case
     DefResource  _ _ i _  -> i
     DefFunction  _  i _ _ -> i
     DefPostulate _ i _    -> i
 
-mapDeclExprs :: (Expr binder1 var1 -> Expr binder2 var2)
-             -> Decl binder1 var1
-             -> Decl binder2 var2
-mapDeclExprs f = \case
-  DefResource p r n t -> DefResource p r n (f t)
-  DefFunction p n t e -> DefFunction p n (f t) (f e)
-  DefPostulate p n t  -> DefPostulate p n (f t)
-
-traverseDeclExprs :: Monad m
-                  => (Expr binder1 var1 -> m (Expr binder2 var2))
-                  -> Decl binder1 var1
-                  -> m (Decl binder2 var2)
-traverseDeclExprs f = \case
-  DefResource p r n t -> DefResource p r n <$> f t
-  DefFunction p n t e -> DefFunction p n <$> f t <*> f e
-  DefPostulate p n t  -> DefPostulate p n <$> f t
-
-bodyOf :: Decl binder var -> Maybe (Expr binder var)
+bodyOf :: GenericDecl expr -> Maybe expr
 bodyOf = \case
   DefResource{}       -> Nothing
   DefFunction _ _ _ e -> Just e
   DefPostulate{}      -> Nothing
 
+type Decl binder var = GenericDecl (Expr binder var)
+
+-- | This horrible construction is needed because |Decl| is a type synonym
+-- synonyms which can't be used as functions at the type level. This wraps
+-- it as required.
+newtype Decl' var binder = WrapDecl
+  { unwrapDecl :: Decl var binder
+  }
+
 --------------------------------------------------------------------------------
 -- Programs
 
 -- | Type of Vehicle internal programs.
-newtype Prog binder var
-  = Main [Decl binder var] -- ^ List of declarations.
+newtype GenericProg expr
+  = Main [GenericDecl expr] -- ^ List of declarations.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance (NFData binder, NFData var) => NFData (Prog binder var)
+instance NFData expr => NFData (GenericProg expr)
 
-traverseProg :: Monad m
-             => (Decl binder1 var1 -> m (Decl binder2 var2))
-             -> Prog binder1 var1
-             -> m (Prog binder2 var2)
-traverseProg f (Main ds) = Main <$> traverse f ds
+traverseDecls :: Monad m
+              => (Decl binder1 var1 -> m (Decl binder2 var2))
+              -> Prog binder1 var1
+              -> m (Prog binder2 var2)
+traverseDecls f (Main ds) = Main <$> traverse f ds
+
+type Prog binder var = GenericProg (Expr binder var)
+
+-- | This horrible construction is needed because |Prog| is a type synonym
+-- synonyms which can't be used as functions at the type level. This wraps
+-- it as required.
+newtype Prog' var binder = WrapProg
+  { unwrapProg :: Prog var binder
+  }
 
 --------------------------------------------------------------------------------
 -- Recursion principles
@@ -436,16 +437,13 @@ makeBaseFunctor ''Expr
 --------------------------------------------------------------------------------
 -- Type-classes
 
-class HasType a where
-  typeOf :: a binder var -> Expr binder var
+typeOf :: GenericDecl expr -> expr
+typeOf = \case
+  DefResource _ _ _ t -> t
+  DefFunction _ _ t _ -> t
+  DefPostulate _ _ t  -> t
 
-instance HasType Decl where
-  typeOf = \case
-    DefResource _ _ _ t -> t
-    DefFunction _ _ t _ -> t
-    DefPostulate _ _ t  -> t
-
-typeOf' :: Binder binder var -> Expr binder var
+typeOf' :: GenericBinder binder expr -> expr
 typeOf' = binderType
 
 --------------------------------------------------------------------------------

@@ -184,7 +184,7 @@ removeContextsOfMetasIn binderType decl =
       return (substBinderType, substDecl)
 
 addNewArgumentToMetaUses :: Meta -> CheckedDecl -> CheckedDecl
-addNewArgumentToMetaUses meta = mapDeclExprs (go (-1))
+addNewArgumentToMetaUses meta = fmap (go (-1))
   where
     go :: BindingDepth -> CheckedExpr -> CheckedExpr
     go d expr = case expr of

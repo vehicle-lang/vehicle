@@ -98,7 +98,7 @@ substMApp ann (fun@(Meta _ m), mArgs) = do
 substMApp ann (fun, args) = normAppList ann <$> substM fun <*> substM args
 
 instance MetaSubstitutable CheckedDecl where
-  substM = traverseDeclExprs substM
+  substM = traverse substM
 
 instance MetaSubstitutable CheckedProg where
   substM (Main ds) = Main <$> traverse substM ds

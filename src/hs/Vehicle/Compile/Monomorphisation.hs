@@ -130,11 +130,11 @@ class Monomorphise a where
   collect :: MonadCollect m => a -> m a
 
 instance Monomorphise CheckedProg where
-  collect = traverseProg collect
+  collect = traverseDecls collect
 
 instance Monomorphise CheckedDecl where
   collect decl = do
-    result <- traverseDeclExprs collect decl
+    result <- traverse collect decl
     case isMonomorphisationCandidate result of
       Nothing -> return ()
       Just d  -> addCandidate (identifierOf result) d
@@ -196,7 +196,7 @@ insertDecl :: MonadInsert m
            -> CheckedDecl
            -> m ([CheckedDecl], CandidateApplicationSolutions)
 insertDecl (Applications apps) decl = do
-  result <- traverseDeclExprs insertExpr decl
+  result <- traverse insertExpr decl
 
   case result of
     DefPostulate{} -> return ([decl], mempty)
