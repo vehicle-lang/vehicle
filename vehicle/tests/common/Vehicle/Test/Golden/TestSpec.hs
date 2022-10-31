@@ -1,10 +1,13 @@
 module Vehicle.Test.Golden.TestSpec
   ( TestSpecs (..)
   , TestSpec (..)
+  , FilePattern (..)
+  , parseFilePattern
   , DiffSpec (..)
   , DiffSpecIgnore (..)
   , TestOutput (..)
   , mergeTestSpecs
+  , addOrReplaceTestSpec
   , testSpecOptions
   , testSpecIsEnabled
   , testSpecDiffTestOutput
@@ -12,7 +15,8 @@ module Vehicle.Test.Golden.TestSpec
   , writeTestSpecsFile
   , readGoldenFiles
   , writeGoldenFiles
-  )where
+  , encodeTestSpecsPretty
+  ) where
 
 import Control.Applicative (Alternative ((<|>)))
 import Control.Exception (assert)
@@ -40,6 +44,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)), (<|))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (catMaybes, fromMaybe, maybeToList)
 import Data.Monoid (Any (Any))
+import Data.String (IsString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
@@ -65,11 +70,11 @@ data TestSpec = TestSpec
   { testSpecName     :: TestName
     -- ^ Test name.
     --   In a file with multiple test specifications, each name must be unique.
+  , testSpecRun      :: String
+    -- ^ Test command to run.
   , testSpecEnabled  :: Maybe Bool
     -- ^ Whether or not the test is enabled.
     --   By default, the test is assumed to be enabled.
-  , testSpecRun      :: String
-    -- ^ Test command to run.
   , testSpecNeeds    :: [FilePath]
     -- ^ Files needed by the test command.
     --   Paths should be relative to the test specification file.
@@ -88,13 +93,30 @@ data TestSpec = TestSpec
 --   Consists of a pair of the original string and the parsed glob pattern,
 --   so that we can output the original string in `show` and `toJSON`.
 data FilePattern = FilePattern
-  { filePatternText :: Text
-  , filePattern     :: Glob.Pattern
+  { filePatternString :: String
+  , filePattern       :: Glob.Pattern
   }
+
+parseFilePattern :: String -> Either String FilePattern
+parseFilePattern patternString = do
+  globPattern <- eitherGlobPattern
+  let patternText = Text.pack patternString
+  return $ FilePattern patternString globPattern
+  where
+    eitherGlobPattern = Glob.tryCompileWith compOptions (patternString <.> "golden")
+    compOptions = CompOptions {
+      characterClasses   = False,
+      characterRanges    = False,
+      numberRanges       = False,
+      wildcards          = True,
+      recursiveWildcards = True,
+      pathSepInRanges    = False,
+      errorRecovery      = False
+    }
 
 instance Show FilePattern where
   show :: FilePattern -> String
-  show FilePattern{..} = show filePatternText
+  show FilePattern{..} = show filePatternString
 
 -- | Type of options for the comparison between the produced output and the golden output.
 newtype DiffSpec = DiffSpec
@@ -350,8 +372,8 @@ instance FromJSON TestSpec where
   parseJSON = withObject "TestSpec" $ \o ->
     TestSpec
       <$> o .: "name"
-      <*> o .:? "enabled"
       <*> o .: "run"
+      <*> o .:? "enabled"
       <*> o .:? "needs" .!= []
       <*> produces o
       <*> timeout o
@@ -369,12 +391,12 @@ instance ToJSON TestSpec where
   toJSON TestSpec{..} =
     object $ catMaybes [
       Just $ "name" .= testSpecName,
-      ("enabled" .=) <$> testSpecEnabled,
       Just $ "run" .= testSpecRun,
+      ("enabled" .=) <$> testSpecEnabled,
       -- Include "needs" only if it is non-empty:
-      boolToMaybe (null testSpecNeeds) ("needs" .= testSpecNeeds),
+      boolToMaybe (not $ null testSpecNeeds) ("needs" .= testSpecNeeds),
       -- Include "produces" only if it is non-empty:
-      boolToMaybe (null testSpecProduces) ("produces" .= testSpecProduces),
+      boolToMaybe (not $ null testSpecProduces) ("produces" .= testSpecProduces),
       -- Include "timeout" only if it is non-empty:
       ("timeout" .=) . timeoutToJSON <$> testSpecTimeout,
       -- Include "diff" only if it is non-empty:
@@ -384,28 +406,12 @@ instance ToJSON TestSpec where
 instance FromJSON FilePattern where
   parseJSON :: Value -> Parser FilePattern
   parseJSON (Value.String patternText) =
-    FilePattern patternText <$> parseGlobPattern patternText
-    where
-      parseGlobPattern :: Text -> Parser Glob.Pattern
-      parseGlobPattern patternText =
-        let patternString = Text.unpack patternText <.> "golden"
-            eitherPattern = Glob.tryCompileWith compOptions patternString in
-          either fail (return . Glob.simplify) eitherPattern
-        where
-          compOptions = CompOptions {
-            characterClasses   = False,
-            characterRanges    = False,
-            numberRanges       = False,
-            wildcards          = True,
-            recursiveWildcards = True,
-            pathSepInRanges    = False,
-            errorRecovery      = False
-          }
+    either fail return $ parseFilePattern (Text.unpack patternText)
   parseJSON v = typeMismatch "String" v
 
 instance ToJSON FilePattern where
   toJSON :: FilePattern -> Value
-  toJSON = toJSON . filePatternText
+  toJSON = toJSON . filePatternString
 
 parseJSONTimeout :: Value -> Parser Timeout
 parseJSONTimeout (Value.String timeoutText) =
@@ -456,6 +462,6 @@ encodeTestSpecsPretty =
     . encodePrettyToTextBuilder'
       defConfig {
         confIndent = Indent.Spaces 2,
-        confCompare = keyOrder ["name", "enabled", "run", "needs", "produces", "timeout", "diff"],
+        confCompare = keyOrder ["name", "run", "enabled", "needs", "produces", "timeout", "diff"],
         confTrailingNewline = True
       }

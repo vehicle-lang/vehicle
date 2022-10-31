@@ -225,23 +225,27 @@ library vehicle-tests-common
   exposed-modules:
     Vehicle.Test.Golden
     Vehicle.Test.Golden.TestSpec
-  other-modules:
-    Vehicle.Test.Golden.Extra
+    Vehicle.Test.Golden.TestSpec.New
+
+  other-modules:   Vehicle.Test.Golden.Extra
   build-depends:
     , aeson                 >=2.1.1  && <2.2
     , aeson-pretty
     , array
     , base                  >=4.13   && <5
     , bytestring
+    , containers
     , Diff                  >=0.4.1  && <0.5
     , directory             >=1.3.6  && <1.4
     , dlist
     , filepath              >=1.4    && <2
     , Glob                  >=0.10.2 && <0.11
     , hashable
+    , mtl
+    , optparse-applicative
     , process               >=1.2    && <2
     , regex-tdfa
-    , mtl
+    , tagged
     , tasty
     , tasty-golden
     , temporary
@@ -252,15 +256,14 @@ library vehicle-tests-common
 test-suite vehicle-tests
   import:             common-language
   type:               exitcode-stdio-1.0
-  hs-source-dirs:     tests/golden
-  main-is:            Tests.hs
+  main-is:            tests/golden/Tests.hs
   build-depends:
-    , base  >=4.13   && <5
+    , base                          >=4.13   && <5
     , containers
     , filepath
-    , Glob  >=0.10.2 && <0.11
-    , tasty
+    , Glob                          >=0.10.2 && <0.11
     , regex-tdfa
+    , tasty
     , vehicle:vehicle-tests-common
 
   build-tool-depends: vehicle:vehicle
@@ -268,18 +271,9 @@ test-suite vehicle-tests
 
 executable vehicle-new-test
   import:             common-language
-  type:               exitcode-stdio-1.0
-  hs-source-dirs:     tests/helper
-  main-is:            NewTest.hs
+  main-is:            tests/golden/NewTest.hs
   build-depends:
-    , base  >=4.13   && <5
-    , containers
-    , filepath
-    , Glob  >=0.10.2 && <0.11
-    , tasty
-    , regex-tdfa
-    , optparse-applicative
-    , vehicle
+    , base                          >=4.13 && <5
     , vehicle:vehicle-tests-common
 
-  build-tool-depends: vehicle:vehicle
+  ghc-options:        -threaded -rtsopts -with-rtsopts=-N -O0

@@ -1,0 +1,10 @@
+{
+  "name": "LossFunction",
+  "run": "vehicle compile -s bounded.vcl -t LossFunction -o bounded.loss.json",
+  "needs": [
+    "bounded.vcl"
+  ],
+  "produces": [
+    "bounded.loss.json"
+  ]
+}
