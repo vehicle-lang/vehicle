@@ -12,17 +12,6 @@
     "name": "Marabou",
     "run": "vehicle compile -s autoencoderError.vcl -t Marabou -o autoencoderError.inputquery",
     "needs": ["autoencoderError.vcl"],
-    "produces": [
-      "autoencoderError.inputquery/identity-query1.txt",
-      "autoencoderError.inputquery/identity-query2.txt",
-      "autoencoderError.inputquery/identity-query3.txt",
-      "autoencoderError.inputquery/identity-query4.txt",
-      "autoencoderError.inputquery/identity-query5.txt",
-      "autoencoderError.inputquery/identity-query6.txt",
-      "autoencoderError.inputquery/identity-query7.txt",
-      "autoencoderError.inputquery/identity-query8.txt",
-      "autoencoderError.inputquery/identity-query9.txt",
-      "autoencoderError.inputquery/identity-query10.txt"
-    ]
+    "produces": ["autoencoderError.inputquery/*.txt"]
   }
 ]

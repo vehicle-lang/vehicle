@@ -222,7 +222,11 @@ executable vehicle
 library vehicle-tests-common
   import:          common-language
   hs-source-dirs:  tests/common
-  exposed-modules: Vehicle.Test.Golden
+  exposed-modules:
+    Vehicle.Test.Golden
+    Vehicle.Test.Golden.TestSpec
+  other-modules:
+    Vehicle.Test.Golden.Extra
   build-depends:
     , aeson                 >=2.1.1  && <2.2
     , aeson-pretty
@@ -231,11 +235,13 @@ library vehicle-tests-common
     , bytestring
     , Diff                  >=0.4.1  && <0.5
     , directory             >=1.3.6  && <1.4
+    , dlist
     , filepath              >=1.4    && <2
     , Glob                  >=0.10.2 && <0.11
     , hashable
     , process               >=1.2    && <2
     , regex-tdfa
+    , mtl
     , tasty
     , tasty-golden
     , temporary

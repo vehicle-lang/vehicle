@@ -1,0 +1,461 @@
+module Vehicle.Test.Golden.TestSpec
+  ( TestSpecs (..)
+  , TestSpec (..)
+  , DiffSpec (..)
+  , DiffSpecIgnore (..)
+  , TestOutput (..)
+  , mergeTestSpecs
+  , testSpecOptions
+  , testSpecIsEnabled
+  , testSpecDiffTestOutput
+  , readTestSpecsFile
+  , writeTestSpecsFile
+  , readGoldenFiles
+  , writeGoldenFiles
+  )where
+
+import Control.Applicative (Alternative ((<|>)))
+import Control.Exception (assert)
+import Control.Monad (forM, join, unless)
+import Control.Monad.Writer.Strict (Writer, runWriter, tell)
+import Data.Aeson (FromJSON (parseJSONList), eitherDecodeFileStrict')
+import Data.Aeson.Encode.Pretty (Config (..), defConfig,
+                                 encodePrettyToTextBuilder', keyOrder)
+import Data.Aeson.Encode.Pretty qualified as Indent (Indent (..))
+import Data.Aeson.Types (FromJSON (parseJSON), KeyValue ((.=)), Object, Pair,
+                         Parser, ToJSON (toJSON), Value, object, typeMismatch,
+                         withArray, withObject, withText, (.!=), (.:), (.:?))
+import Data.Aeson.Types qualified as Value (Value (..))
+import Data.Algorithm.Diff (Diff (..), PolyDiff (..), getGroupedDiffBy)
+import Data.Algorithm.DiffOutput (ppDiff)
+import Data.Array qualified as Array ((!))
+import Data.Foldable (for_)
+import Data.Function (on)
+import Data.Hashable (Hashable)
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
+import Data.List qualified as List
+import Data.List.NonEmpty (NonEmpty ((:|)), (<|))
+import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (catMaybes, fromMaybe, maybeToList)
+import Data.Monoid (Any (Any))
+import Data.Text (Text)
+import Data.Text qualified as Text
+import Data.Text.IO qualified as Text
+import Data.Text.Lazy qualified as Lazy
+import Data.Text.Lazy.Builder qualified as Builder
+import GHC.Stack.Types (HasCallStack)
+import System.Directory (doesFileExist)
+import System.FilePath (makeRelative, takeFileName, (-<.>), (<.>), (</>))
+import System.FilePath.Glob (CompOptions (..))
+import System.FilePath.Glob qualified as Glob
+import Test.Tasty (TestName, TestTree, Timeout (Timeout), localOption)
+import Test.Tasty.Options (IsOption (parseValue))
+import Text.Printf (printf)
+import Text.Regex.TDFA qualified as Regex
+import Text.Regex.TDFA.Text (Regex)
+import Text.Regex.TDFA.Text qualified as Regex
+import Vehicle.Test.Golden.Extra (SomeOption (SomeOption), boolToMaybe,
+                                  duplicates, writeFileChanged)
+
+newtype TestSpecs = TestSpecs (NonEmpty TestSpec)
+
+data TestSpec = TestSpec
+  { testSpecName     :: TestName
+    -- ^ Test name.
+    --   In a file with multiple test specifications, each name must be unique.
+  , testSpecEnabled  :: Maybe Bool
+    -- ^ Whether or not the test is enabled.
+    --   By default, the test is assumed to be enabled.
+  , testSpecRun      :: String
+    -- ^ Test command to run.
+  , testSpecNeeds    :: [FilePath]
+    -- ^ Files needed by the test command.
+    --   Paths should be relative to the test specification file.
+  , testSpecProduces :: [FilePattern]
+    -- ^ Files produced by the test command.
+    --   Paths should be relative to the test specification file,
+    --   and should not contain the .golden file extension.
+  , testSpecTimeout  :: Maybe Timeout
+    -- ^ Local options for the test.
+  , testSpecDiffSpec :: Maybe DiffSpec
+    -- ^ Options for the `diff` algorithm.
+  } deriving (Show)
+
+-- | Type of file patterns.
+--
+--   Consists of a pair of the original string and the parsed glob pattern,
+--   so that we can output the original string in `show` and `toJSON`.
+data FilePattern = FilePattern
+  { filePatternText :: Text
+  , filePattern     :: Glob.Pattern
+  }
+
+instance Show FilePattern where
+  show :: FilePattern -> String
+  show FilePattern{..} = show filePatternText
+
+-- | Type of options for the comparison between the produced output and the golden output.
+newtype DiffSpec = DiffSpec
+  { diffSpecIgnore :: Maybe DiffSpecIgnore
+    -- ^ A regular expression to apply to each line before testing for
+    --   equality.
+  } deriving (Show)
+
+-- | Type of regular expression to ignore in the comparison.
+--
+--   Consists of a pair of the original string and the parsed regular expression,
+--   so that we can output the original string in `show` and `toJSON`.
+data DiffSpecIgnore = DiffSpecIgnore
+  { diffSpecIgnoreRegexText :: Text
+  , diffSpecIgnoreRegex     :: Regex
+  }
+
+instance Show DiffSpecIgnore where
+  show :: DiffSpecIgnore -> String
+  show DiffSpecIgnore{..} = show diffSpecIgnoreRegexText
+
+-- | The output of running a test.
+--
+--   Consists of the contents of the standard output stream, the standard error
+--   stream, and the contents of each of the files produced by the test.
+data TestOutput = TestOutput
+  { testOutputStdout :: Text
+    -- ^ Standard output stream produced by a test.
+  , testOutputStderr :: Text
+    -- ^ Standard error stream produced by a test.
+  , testOutputFiles  :: HashMap FilePath Text
+    -- ^ Files produced by a test.
+    --   Should be relative to the test specification file.
+  } deriving (Show)
+
+testSpecOptions :: TestSpec -> [SomeOption]
+testSpecOptions testSpec =
+  catMaybes [SomeOption <$> testSpecTimeout testSpec]
+
+-- Helper functions for accessing fields:
+
+-- | Whether or not the test is enabled.
+testSpecIsEnabled :: TestSpec -> Bool
+testSpecIsEnabled = fromMaybe True . testSpecEnabled
+
+-- | Find the files matching the file patterns in a test specification 'produces' field.
+testSpecProducesGlobDir :: FilePath -> TestSpec -> IO [FilePath]
+testSpecProducesGlobDir testDirectory testSpec =
+  concat <$> Glob.globDir (filePattern <$> testSpecProduces testSpec) testDirectory
+
+-- | Compare two test outputs using the options set in DiffSpec.
+testSpecDiffTestOutput :: TestSpec -> TestOutput -> TestOutput -> IO (Maybe String)
+testSpecDiffTestOutput testSpec golden actual = do
+  let goldenFiles = HashMap.keysSet (testOutputFiles golden)
+  let actualFiles = HashMap.keysSet (testOutputFiles actual)
+  -- Compute missing files:
+  let missingOutputFileErrors =
+        [ printf "Missing output file %s" missingFile
+        | missingFile <- HashSet.toList $ HashSet.difference goldenFiles actualFiles
+        ]
+  -- Compute extraneous files:
+  let extraOutputFileErrors =
+        [ printf "Extraneous output file %s" extraFile
+        | extraFile <- HashSet.toList $ HashSet.difference actualFiles goldenFiles
+        ]
+  -- Compare output & error stream content:
+  let differentStdoutError =
+        printf "Contents of stdout differ:\n%s" <$>
+          testSpecDiffText testSpec (testOutputStdout golden) (testOutputStdout actual)
+  let differentStderrError =
+        printf "Contents of stderr differ:\n%s" <$>
+          testSpecDiffText testSpec (testOutputStderr golden) (testOutputStderr actual)
+  -- Compare file content:
+  let differentOutputFileErrors = catMaybes
+        [ printf "Content of %s differs:\n%s" file <$>
+          testSpecDiffText testSpec
+            (testOutputFiles golden HashMap.! file)
+            (testOutputFiles actual HashMap.! file)
+        | file <- HashSet.toList $ HashSet.intersection goldenFiles actualFiles
+        ]
+  -- Combine all messages:
+  let messages = join
+        [ missingOutputFileErrors
+        , extraOutputFileErrors
+        , maybeToList differentStdoutError
+        , maybeToList differentStderrError
+        , differentOutputFileErrors
+        ]
+  return $ boolToMaybe (null messages) (unlines messages)
+
+-- | Compare two texts using the options set in DiffSpec.
+testSpecDiffText :: TestSpec -> Text -> Text -> Maybe String
+testSpecDiffText testSpec golden actual
+  | goldenLines == actualLines = Nothing
+  | otherwise = return prettyDiff
+  where
+    goldenLines, actualLines :: [Text]
+    goldenLines = Text.lines golden
+    actualLines = Text.lines actual
+
+    diffGroups :: [Diff [Text]]
+    diffGroups = getGroupedDiffBy (testSpecCompareLine testSpec) goldenLines actualLines
+
+    prettyDiff :: String
+    prettyDiff =
+      -- ASSERT: we should not be computing the pretty diff unless
+      -- there is an actual difference, guarded by the comparison
+      assert (not (all isBoth diffGroups)) $
+        ppDiff (mapDiff (fmap Text.unpack) <$> diffGroups)
+
+    -- TODO: upstream DiffOutput to work with Text
+    isBoth :: Diff a -> Bool
+    isBoth (Both _ _) = True
+    isBoth _          = False
+
+    mapDiff :: (a -> b) -> Diff a -> Diff b
+    mapDiff f (First x)  = First (f x)
+    mapDiff f (Second y) = Second (f y)
+    mapDiff f (Both x y) = Both (f x) (f y)
+
+-- | Compare two lines using the options set in DiffSpec.
+testSpecCompareLine :: TestSpec -> Text -> Text -> Bool
+testSpecCompareLine testSpec =
+  (==) `on` testSpecDiffSpecStrikeOut testSpec
+
+-- | Strike out matches for the DiffSpecIgnore expression.
+testSpecDiffSpecStrikeOut :: TestSpec -> Text -> Text
+testSpecDiffSpecStrikeOut testSpec = maybe id strikeOut maybeRegex
+  where
+    maybeRegex = diffSpecIgnoreRegex <$> (diffSpecIgnore =<< testSpecDiffSpec testSpec)
+
+-- | Strike out matches for a regular expression.
+strikeOut :: Regex -> Text -> Text
+strikeOut re txt = strikeOutAcc (Regex.matchAll re txt) txt []
+  where
+    strikeOutAcc :: [Regex.MatchArray] -> Text -> [Text] -> Text
+    strikeOutAcc []                txt acc = Text.concat (reverse (txt : acc))
+    strikeOutAcc (match : matches) txt acc = strikeOutAcc matches rest newAcc
+      where
+        newAcc = "[IGNORE]" : before : acc
+        (before, matchTextAndRest) = Text.splitAt offset txt
+        (_matchText, rest) = Text.splitAt length matchTextAndRest
+        (offset, length) = match Array.! 0
+
+-- Reading and writing test specifications:
+
+-- | Read TestSpecs from a file.
+readTestSpecsFile :: FilePath -> IO TestSpecs
+readTestSpecsFile testSpecFile = do
+  eitherTestSpecs <- eitherDecodeFileStrict' testSpecFile
+  let parseError msg = fail $ printf "Could not parse %s: %s" testSpecFile msg
+  testSpecs <- either parseError return eitherTestSpecs
+  validateTestSpecs testSpecFile testSpecs
+  return testSpecs
+
+writeTestSpecsFile :: FilePath -> TestSpecs -> IO ()
+writeTestSpecsFile testSpecFile testSpecs = do
+  Text.writeFile testSpecFile (encodeTestSpecsPretty testSpecs)
+
+mergeTestSpecs :: HasCallStack => TestSpecs -> TestSpecs -> TestSpecs
+mergeTestSpecs (TestSpecs testSpecs1) testSpecs2 =
+  foldr addOrReplaceTestSpec testSpecs2 testSpecs1
+
+addOrReplaceTestSpec :: HasCallStack => TestSpec -> TestSpecs -> TestSpecs
+addOrReplaceTestSpec newTestSpec (TestSpecs oldTestSpecs)
+  | replaced  = TestSpecs newTestSpecs
+  | otherwise = TestSpecs $ newTestSpec <| oldTestSpecs
+  where
+    (newTestSpecs, Any replaced) = runWriter (traverse (substByName newTestSpec) oldTestSpecs)
+
+    substByName :: TestSpec -> TestSpec -> Writer Any TestSpec
+    substByName newTestSpec oldTestSpec
+      | testSpecName newTestSpec == testSpecName oldTestSpec =
+        tell (Any True) >> return newTestSpec
+      | otherwise = return oldTestSpec
+
+-- | Check that each test specification has a unique name.
+validateTestSpecs :: FilePath -> TestSpecs -> IO ()
+validateTestSpecs testSpecFile (TestSpecs testSpecs) = do
+  -- Check the filename:
+  unless (takeFileName testSpecFile == "test.json") $ fail $
+    printf "Test specification file should be named 'test.json', found: %s" testSpecFile
+  -- Check for duplicate testSpecNames:
+  let duplicateTestSpecNames =
+        duplicates (NonEmpty.toList (testSpecName <$> testSpecs))
+  unless (null duplicateTestSpecNames) $ fail $
+    printf "Duplicate names %s in %s" (show duplicateTestSpecNames) testSpecFile
+
+-- Reading and writing .golden files:
+
+-- | Read a golden file, if it exists.
+readGoldenFile :: FilePath -> IO Text
+readGoldenFile goldenFile = do
+  goldenFileExists <- doesFileExist goldenFile
+  if goldenFileExists then Text.readFile goldenFile else return ""
+
+goldenStdoutFileName, goldenStderrFileName :: TestSpec -> FilePath
+goldenStdoutFileName testSpec = testSpecName testSpec <.> "out" <.> "golden"
+goldenStderrFileName testSpec = testSpecName testSpec <.> "err" <.> "golden"
+
+-- | Read the golden files for a test specification.
+readGoldenFiles :: FilePath -> TestSpec -> IO TestOutput
+readGoldenFiles testDirectory testSpec = do
+  testOutputStdout <- readGoldenFile $ testDirectory </> goldenStdoutFileName testSpec
+  testOutputStderr <- readGoldenFile $ testDirectory </> goldenStderrFileName testSpec
+  testOutputFiles <-
+    fmap HashMap.fromList $ do
+      goldenFiles <- testSpecProducesGlobDir testDirectory testSpec
+      forM goldenFiles $ \goldenFile -> do
+        goldenFileContents <- readGoldenFile (testDirectory </> goldenFile)
+        let relativeFilePath = makeRelative testDirectory $ goldenFile -<.> "golden"
+        return (relativeFilePath, goldenFileContents)
+  return TestOutput {..}
+
+writeGoldenFiles :: FilePath -> TestSpec -> TestOutput -> IO ()
+writeGoldenFiles testDirectory testSpec testOutput@TestOutput{..} = do
+  validateTestSpecProduces testSpec testOutput
+  writeFileChanged (testDirectory </> goldenStdoutFileName testSpec) testOutputStdout
+  writeFileChanged (testDirectory </> goldenStderrFileName testSpec) testOutputStderr
+  for_ (HashMap.toList testOutputFiles) $ \(file, fileContents) -> do
+    writeFileChanged (testDirectory </> file <.> "golden") fileContents
+
+-- | Test whether or not the 'produces' patterns still match all the produced files.
+validateTestSpecProduces :: TestSpec -> TestOutput -> IO ()
+validateTestSpecProduces testSpec testOutput
+  | null unmatchFileErrors = return ()
+  | otherwise = fail $ unlines unmatchFileErrors
+  where
+    isMatched filePath =
+      let goldenFilePath = filePath <.> "golden" in
+        any (`Glob.match` goldenFilePath) (filePattern <$> testSpecProduces testSpec)
+    unmatchFileErrors = do
+      outputFilePath <- HashMap.keys $ testOutputFiles testOutput
+      if isMatched outputFilePath then mempty else
+        return $ printf "Output file %s is not matched by file patterns in 'produces'" outputFilePath
+
+-- Conversion from TestSpecs to JSON.
+
+instance FromJSON TestSpecs where
+  parseJSON :: Value -> Parser TestSpecs
+  parseJSON v = TestSpecs <$> (parse1 <|> parseN)
+    where
+      parse1 = (:| []) <$> parseJSON v
+      parseN = parseJSON v
+
+instance ToJSON TestSpecs where
+  toJSON :: TestSpecs -> Value
+  toJSON (TestSpecs (testSpec :| []))   = toJSON testSpec
+  toJSON (TestSpecs testSpecs@(_ :| _)) = toJSON testSpecs
+
+instance FromJSON TestSpec where
+  parseJSON :: Value -> Parser TestSpec
+  parseJSON = withObject "TestSpec" $ \o ->
+    TestSpec
+      <$> o .: "name"
+      <*> o .:? "enabled"
+      <*> o .: "run"
+      <*> o .:? "needs" .!= []
+      <*> produces o
+      <*> timeout o
+      <*> o .:? "ignore"
+    where
+      produces :: Object -> Parser [FilePattern]
+      produces o = o .:? "produces" >>= \case
+         Nothing -> return []
+         Just v  -> fmap List.singleton (parseJSON v) <|> parseJSONList v
+      timeout :: Object -> Parser (Maybe Timeout)
+      timeout o = o .:? "timeout" >>= traverse parseJSONTimeout
+
+instance ToJSON TestSpec where
+  toJSON :: TestSpec -> Value
+  toJSON TestSpec{..} =
+    object $ catMaybes [
+      Just $ "name" .= testSpecName,
+      ("enabled" .=) <$> testSpecEnabled,
+      Just $ "run" .= testSpecRun,
+      -- Include "needs" only if it is non-empty:
+      boolToMaybe (null testSpecNeeds) ("needs" .= testSpecNeeds),
+      -- Include "produces" only if it is non-empty:
+      boolToMaybe (null testSpecProduces) ("produces" .= testSpecProduces),
+      -- Include "timeout" only if it is non-empty:
+      ("timeout" .=) . timeoutToJSON <$> testSpecTimeout,
+      -- Include "diff" only if it is non-empty:
+      ("diff" .=) <$> (diffSpecToJSON =<< testSpecDiffSpec)
+    ]
+
+instance FromJSON FilePattern where
+  parseJSON :: Value -> Parser FilePattern
+  parseJSON (Value.String patternText) =
+    FilePattern patternText <$> parseGlobPattern patternText
+    where
+      parseGlobPattern :: Text -> Parser Glob.Pattern
+      parseGlobPattern patternText =
+        let patternString = Text.unpack patternText <.> "golden"
+            eitherPattern = Glob.tryCompileWith compOptions patternString in
+          either fail (return . Glob.simplify) eitherPattern
+        where
+          compOptions = CompOptions {
+            characterClasses   = False,
+            characterRanges    = False,
+            numberRanges       = False,
+            wildcards          = True,
+            recursiveWildcards = True,
+            pathSepInRanges    = False,
+            errorRecovery      = False
+          }
+  parseJSON v = typeMismatch "String" v
+
+instance ToJSON FilePattern where
+  toJSON :: FilePattern -> Value
+  toJSON = toJSON . filePatternText
+
+parseJSONTimeout :: Value -> Parser Timeout
+parseJSONTimeout (Value.String timeoutText) =
+  maybe parseError return (parseValue timeoutString)
+  where
+    timeoutString = Text.unpack timeoutText
+    parseError = fail $ unlines
+      [
+        "Could not parse value of 'timeout'.",
+        "Expected a number, optionally followed by a suffix (ms, s, m, h).",
+        "Found: " <> timeoutString
+      ]
+parseJSONTimeout v = typeMismatch "String" v
+
+timeoutToJSON :: Timeout -> Maybe Value
+timeoutToJSON (Timeout _ms timeoutString) = return $ Value.String (Text.pack timeoutString)
+timeoutToJSON _                           = Nothing
+
+instance FromJSON DiffSpec where
+  parseJSON :: Value -> Parser DiffSpec
+  parseJSON = withObject "diff" $ \v ->
+    DiffSpec <$> v .:? "ignore"
+
+diffSpecToJSON :: DiffSpec -> Maybe Value
+diffSpecToJSON DiffSpec {..} =
+  boolToMaybe (null diffSpecFields) (object diffSpecFields)
+  where
+    diffSpecFields :: [Pair]
+    diffSpecFields = catMaybes [("ignore" .=) . toJSON <$> diffSpecIgnore]
+
+instance FromJSON DiffSpecIgnore where
+  parseJSON :: Value -> Parser DiffSpecIgnore
+  parseJSON (Value.String regexText) =
+    case Regex.compile Regex.defaultCompOpt Regex.defaultExecOpt regexText of
+      Left compileError -> fail $ "Failed to parse regular expression 'ignore': " <> compileError
+      Right regex -> return $ DiffSpecIgnore regexText regex
+  parseJSON v = typeMismatch "String" v
+
+instance ToJSON DiffSpecIgnore where
+  toJSON :: DiffSpecIgnore -> Value
+  toJSON DiffSpecIgnore{..} = Value.String diffSpecIgnoreRegexText
+
+-- | Encode a TestSpec as JSON using aeson-pretty.
+encodeTestSpecsPretty :: TestSpecs -> Text
+encodeTestSpecsPretty =
+  Lazy.toStrict
+    . Builder.toLazyText
+    . encodePrettyToTextBuilder'
+      defConfig {
+        confIndent = Indent.Spaces 2,
+        confCompare = keyOrder ["name", "enabled", "run", "needs", "produces", "timeout", "diff"],
+        confTrailingNewline = True
+      }
