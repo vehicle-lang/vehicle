@@ -259,3 +259,21 @@ test-suite vehicle-tests
 
   build-tool-depends: vehicle:vehicle
   ghc-options:        -threaded -rtsopts -with-rtsopts=-N -O0
+
+executable vehicle-new-test
+  import:             common-language
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     tests/helper
+  main-is:            NewTest.hs
+  build-depends:
+    , base  >=4.13   && <5
+    , containers
+    , filepath
+    , Glob  >=0.10.2 && <0.11
+    , tasty
+    , regex-tdfa
+    , optparse-applicative
+    , vehicle
+    , vehicle:vehicle-tests-common
+
+  build-tool-depends: vehicle:vehicle
