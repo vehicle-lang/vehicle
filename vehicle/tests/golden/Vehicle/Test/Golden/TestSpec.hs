@@ -39,7 +39,6 @@ import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty ((:|)), (<|))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (catMaybes, fromMaybe, maybeToList)

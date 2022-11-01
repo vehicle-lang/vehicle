@@ -5,7 +5,7 @@ module Vehicle.Test.Golden.TestSpec.NewTestSpec where
 import Control.Applicative (optional, (<**>))
 import Control.Exception (assert)
 import Control.Monad (forM_, join, unless)
-import Data.List qualified as List
+import Data.List.NonEmpty (NonEmpty, (:|))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, isNothing, maybeToList)
@@ -152,7 +152,7 @@ newTestSpec args = do
   testSpecsFileExists <- doesFileExist testSpecsFile
   testSpecs <-
     if not testSpecsFileExists
-    then return $ TestSpecs (NonEmpty.singleton newTestSpec)
+    then return $ TestSpecs (newTestSpec :| [])
     else addOrReplaceTestSpec newTestSpec <$> readTestSpecsFile testSpecsFile
 
   printf "Writing %s:\n" testSpecsFile
@@ -224,7 +224,7 @@ instance TestSpecLike Vehicle.ExportOptions where
   targetName = layoutAsString . pretty . Backend.ITP . ExportOptions.target
 
   needs :: Vehicle.ExportOptions -> [FilePath]
-  needs = List.singleton . ExportOptions.proofCacheLocation
+  needs = (: []) . ExportOptions.proofCacheLocation
 
   produces :: Vehicle.ExportOptions -> Either String [FilePattern]
   produces = traverse parseFilePattern . maybeToList . ExportOptions.outputFile
@@ -248,7 +248,7 @@ instance TestSpecLike Vehicle.CheckOptions where
   targetName = const "Check"
 
   needs :: Vehicle.CheckOptions -> [FilePath]
-  needs = List.singleton . CheckOptions.proofCache
+  needs = (: []) . CheckOptions.proofCache
 
   produces :: Vehicle.CheckOptions -> Either String [FilePattern]
   produces = const (return [])
