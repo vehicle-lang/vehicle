@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle compile -s invalidIndex.vcl -t TypeCheck",
+  "run": "vehicle compile -s invalidIndex.vcl -t TypeCheck -p n:5",
   "needs": ["invalidIndex.vcl"]
 }
