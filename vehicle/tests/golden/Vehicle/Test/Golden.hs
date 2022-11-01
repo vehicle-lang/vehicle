@@ -27,7 +27,7 @@ import Vehicle.Test.Golden.TestSpec (TestOutput (..), TestSpec,
                                      readTestSpecsFile, testSpecDiffTestOutput,
                                      testSpecName, testSpecNeeds,
                                      testSpecOptions, testSpecRun,
-                                     writeGoldenFiles)
+                                     writeGoldenFiles, testSpecIsEnabled)
 
 -- | Create a test tree from all test specifications in a directory, recursively.
 makeTestTreeFromDirectoryRecursive :: TestName -> FilePath -> IO TestTree
@@ -44,7 +44,7 @@ makeTestTreeFromDirectoryRecursive testGroupLabel testDirectory = do
       >>= traverse (\testSpecFileName ->
             let testSpecFile = testDirectory </> testSpecFileName in
                 makeTestTreesFromFile (testDirectory </> testSpecFileName))
-      <&> concatMap NonEmpty.toList
+      <&> concat
 
   -- Construct test trees for all subdirectories:
   testTreesFromFurther <-
@@ -60,10 +60,11 @@ makeTestTreeFromDirectoryRecursive testGroupLabel testDirectory = do
   return $ testGroup testGroupLabel (testTreesFromHere <> testTreesFromFurther)
 
 -- | Read a test specification and return a TestTree.
-makeTestTreesFromFile :: FilePath -> IO (NonEmpty TestTree)
+makeTestTreesFromFile :: FilePath -> IO [TestTree]
 makeTestTreesFromFile testSpecFile = do
   TestSpecs testSpecs <- readTestSpecsFile testSpecFile
-  return $ toTestTree testSpecFile <$> testSpecs
+  let enabledTestSpec = filter testSpecIsEnabled $ NonEmpty.toList testSpecs
+  return $ toTestTree testSpecFile <$> enabledTestSpec
 
 -- | Test whether a path refers to an existing test specification file.
 isTestSpecFile :: FilePath -> IO Bool
