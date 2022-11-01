@@ -1,0 +1,11 @@
+Result: unverified
+  multiProperty: 1/2 verified
+    multiProperty!0: 3/3 verified
+      [92m🗸[97m multiProperty!0!0 (trivial)
+      [92m🗸[97m multiProperty!0!1 (trivial)
+      [92m🗸[97m multiProperty!0!2 (trivial)
+    multiProperty!1: 1/3 verified
+      [91m✗[97m multiProperty!1!0 (trivial)
+      [92m🗸[97m multiProperty!1!1 (trivial)
+      [91m✗[97m multiProperty!1!2 (trivial)
+  [92m🗸[97m p (trivial)

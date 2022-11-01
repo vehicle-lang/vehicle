@@ -1,0 +1,6 @@
+{
+  "name": "Marabou",
+  "run": "vehicle verify -s simple-triviallyTrue.vcl -t Marabou",
+  "enabled": false,
+  "needs": ["simple-triviallyTrue.vcl"]
+}
