@@ -1,5 +1,6 @@
 {
   "name": "TypeCheck",
   "run": "vehicle compile -s negativeNat.vcl -t TypeCheck -d trainingDataset:dataset-int-4.idx",
+  "enabled": false,
   "needs": ["negativeNat.vcl", "dataset-int-4.idx"]
 }
