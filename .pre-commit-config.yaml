@@ -52,7 +52,7 @@ repos:
 
 # Do not run format-haskell on pre-commit CI:
 ci:
-  skip: [format-haskell]
+  skip: [format-haskell, shellcheck]
 
 # Exclude golden standard generated JSON files:
 exclude: ^.*\.golden$
