@@ -1,3 +1,0 @@
-name: wind-controller
-include: .
-depend: standard-library-1.7 vehicle
