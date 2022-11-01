@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s nonLinearIfCondition.vcl -t TypeCheck",
+  "needs": ["nonLinearIfCondition.vcl"]
+}

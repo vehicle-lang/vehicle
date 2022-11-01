@@ -1,15 +1,21 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-import Control.Monad (mapM, forM_, when)
-import Data.List (isPrefixOf, isSuffixOf, dropWhile)
-import Distribution.Simple (Args, UserHooks (buildHook, preConf), defaultMainWithHooks, simpleUserHooks)
+import Control.Monad (forM_, mapM, when)
+import Data.List (dropWhile, isPrefixOf, isSuffixOf)
+import Distribution.Simple (Args, UserHooks (buildHook, preConf),
+                            defaultMainWithHooks, simpleUserHooks)
 import Distribution.Simple.Program (Program, runDbProgram, simpleProgram)
-import Distribution.Simple.Setup (BuildFlags (buildVerbosity), ConfigFlags (configVerbosity), fromFlagOrDefault)
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, moreRecentFile, intercalate, die', notice, safeTail, takeWhileEndLE)
-import Distribution.Types.LocalBuildInfo (LocalBuildInfo(LocalBuildInfo, withPrograms))
-import Distribution.Types.PackageDescription (PackageDescription(PackageDescription, extraSrcFiles, extraTmpFiles))
+import Distribution.Simple.Setup (BuildFlags (buildVerbosity),
+                                  ConfigFlags (configVerbosity),
+                                  fromFlagOrDefault)
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, die',
+                                  intercalate, moreRecentFile, notice, safeTail,
+                                  takeWhileEndLE)
+import Distribution.Types.LocalBuildInfo (LocalBuildInfo (LocalBuildInfo, withPrograms))
+import Distribution.Types.PackageDescription (PackageDescription (PackageDescription, extraSrcFiles, extraTmpFiles))
 import Distribution.Verbosity (Verbosity, normal)
-import System.FilePath ((</>), makeRelative, splitDirectories, takeDirectory, takeBaseName)
+import System.FilePath (makeRelative, splitDirectories, takeBaseName,
+                        takeDirectory, (</>))
 
 srcDir :: FilePath
 srcDir = "src"

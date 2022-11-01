@@ -1,22 +1,19 @@
 [
   {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s autoencoderError.vcl -t TypeCheck",
+    "needs": ["autoencoderError.vcl"]
+  },
+  {
     "name": "Marabou",
     "run": "vehicle compile -s autoencoderError.vcl -t Marabou -o autoencoderError.inputquery/",
-    "needs": [
-      "autoencoderError.vcl"
-    ],
-    "produces": [
-      "autoencoderError.inputquery/*.txt"
-    ]
+    "needs": ["autoencoderError.vcl"],
+    "produces": ["autoencoderError.inputquery/*.txt"]
   },
   {
     "name": "Agda",
     "run": "vehicle compile -s autoencoderError.vcl -t Agda -o autoencoderError.agda",
-    "needs": [
-      "autoencoderError.vcl"
-    ],
-    "produces": [
-      "autoencoderError.agda"
-    ]
+    "needs": ["autoencoderError.vcl"],
+    "produces": ["autoencoderError.agda"]
   }
 ]

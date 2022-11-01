@@ -1,5 +1,10 @@
 [
   {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s andGate.vcl -t TypeCheck",
+    "needs": ["andGate.vcl"]
+  },
+  {
     "name": "Agda",
     "run": "vehicle compile -s andGate.vcl -t Agda -o andGate.agda",
     "needs": ["andGate.vcl"],

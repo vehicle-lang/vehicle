@@ -1,10 +1,13 @@
-{
-  "name": "Agda",
-  "run": "vehicle compile -s simple-index.vcl -t Agda -o simple-index.agda",
-  "needs": [
-    "simple-index.vcl"
-  ],
-  "produces": [
-    "simple-index.agda"
-  ]
-}
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-index.vcl -t TypeCheck",
+    "needs": ["simple-index.vcl"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-index.vcl -t Agda -o simple-index.agda",
+    "needs": ["simple-index.vcl"],
+    "produces": ["simple-index.agda"]
+  }
+]

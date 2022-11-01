@@ -9,8 +9,8 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (Text, pack)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Sugar
-import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Language.AST qualified as V
+import Vehicle.Syntax.External.Abs qualified as B
 
 --------------------------------------------------------------------------------
 -- Conversion to BNFC AST

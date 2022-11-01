@@ -2,22 +2,25 @@ module Vehicle.CommandLine
  ( commandLineOptionsParserInfo
  ) where
 
-import Data.List (intercalate)
+import Control.Applicative (Alternative (many), (<**>))
 import Data.Map (Map)
 import Data.Map qualified as Map (fromList)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList)
 import Data.Text (Text)
 import Data.Text qualified as Text
-
-import Options.Applicative
-
+import Options.Applicative (InfoMod, Mod, OptionFields, Parser, ParserInfo,
+                            auto, command, fullDesc, header, help, helper,
+                            hsubparser, info, long, maybeReader, metavar,
+                            option, optional, progDesc, short, showDefault,
+                            strOption, switch, value)
 import Vehicle (GlobalOptions (..), ModeOptions (..), Options (..))
 import Vehicle.Backend.Prelude (Backend (..), ITP)
 import Vehicle.Check (CheckOptions (..))
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
-import Vehicle.Prelude (LoggingLevel, defaultLoggingLevel, enumerate)
+import Vehicle.Prelude (LoggingLevel, defaultLoggingLevel, enumerate,
+                        loggingLevelHelp, supportedOptions)
 import Vehicle.Verify (VerifierIdentifier, VerifyOptions (..))
 
 --------------------------------------------------------------------------------
@@ -183,9 +186,6 @@ exportParser = ExportOptions
 repeatedParameterHelp :: String
 repeatedParameterHelp = "Can be provided multiple times."
 
-allLoggingLevels :: [String]
-allLoggingLevels = map show (enumerate @LoggingLevel)
-
 allITPs :: [String]
 allITPs = map show (enumerate @ITP)
 
@@ -194,9 +194,6 @@ allVerifiers = map show (enumerate @VerifierIdentifier)
 
 allBackends :: [String]
 allBackends = allVerifiers <> allITPs <> map show [LossFunction, TypeCheck]
-
-supportedOptions :: [String] -> String
-supportedOptions opts = "Supported options: " <> intercalate ", " opts
 
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
@@ -238,8 +235,7 @@ loggingLevelParser = option auto $
   long "logging" <>
   value defaultLoggingLevel <>
   showDefault <>
-  help ("Sets the level of detail in the logs if the --log argument has been passed. " <>
-        supportedOptions allLoggingLevels)
+  help loggingLevelHelp
 
 specificationParser :: Parser FilePath
 specificationParser = strOption $

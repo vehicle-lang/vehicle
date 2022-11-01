@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s tooBigIndex.vcl -t TypeCheck",
+  "needs": ["tooBigIndex.vcl"]
+}

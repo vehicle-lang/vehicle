@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
-module Vehicle.Test.Golden.TestSpec.New where
+
+module Vehicle.Test.Golden.TestSpec.NewTestSpec where
 
 import Control.Applicative (optional, (<**>))
 import Control.Exception (assert)
@@ -9,12 +10,14 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, isNothing, maybeToList)
 import Data.Tagged (Tagged (unTagged))
+import Data.Text.IO qualified as Text
 import Options.Applicative (Parser, ParserInfo, ParserPrefs (..), command,
-                            defaultPrefs, execParserPure, fullDesc,
+                            defaultPrefs, execParserPure, flag, fullDesc,
                             handleParseResult, header, help, helper, hsubparser,
                             info, long, maybeReader, metavar, noBacktrack,
-                            option, short, strArgument, strOption, subparser, flag)
-import Options.Applicative.Types (Parser (..), ParserInfo (..), fromM, Backtracking (..))
+                            option, short, strArgument, strOption, subparser)
+import Options.Applicative.Types (Backtracking (..), Parser (..),
+                                  ParserInfo (..), fromM)
 import System.Directory (canonicalizePath, copyFile, doesFileExist)
 import System.FilePath (equalFilePath, isRelative, normalise, splitDirectories,
                         takeBaseName, takeDirectory, (</>))
@@ -41,15 +44,15 @@ import Vehicle.Prelude (Pretty (pretty), layoutAsString)
 import Vehicle.Test.Golden.Extra (createDirectoryRecursive)
 import Vehicle.Test.Golden.TestSpec (FilePattern, TestSpec (..),
                                      TestSpecs (TestSpecs),
-                                     addOrReplaceTestSpec, filePatternString,
+                                     addOrReplaceTestSpec,
+                                     encodeTestSpecsPretty, filePatternString,
                                      mergeTestSpecs, parseFilePattern,
-                                     readTestSpecsFile, writeTestSpecsFile, encodeTestSpecsPretty)
+                                     readTestSpecsFile, writeTestSpecsFile)
 import Vehicle.Verify qualified as Vehicle (VerifyOptions)
 import Vehicle.Verify qualified as VerifyOptions (datasetLocations,
                                                   networkLocations, proofCache,
                                                   specification, verifier)
 import Vehicle.Verify.Core (VerifierIdentifier (..))
-import qualified Data.Text.IO as Text
 
 data NewTestSpecOptions = NewTestSpecOptions
   { newTestSpecDryRun         :: Bool

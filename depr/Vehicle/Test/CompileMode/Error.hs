@@ -2,30 +2,32 @@ module Vehicle.Test.CompileMode.Error
   ( functionalityTests
   ) where
 
-import Control.Exception (Exception, SomeException, catch, throwIO)
-import Control.Monad.RWS.Lazy (when)
-import Data.Bifunctor (first)
-import Data.Functor ((<&>))
-import Data.Map (Map)
-import Data.Map qualified as Map
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
-import Data.Text qualified as T
-import Data.Text.IO qualified as T
-import System.Directory (removeDirectory, removeFile)
-import System.Exit (ExitCode, exitFailure)
-import System.FilePath (splitPath, takeBaseName, takeFileName, (<.>), (</>))
-import System.IO (stderr)
-import System.IO.Error (isDoesNotExistError)
-import Test.Tasty
-import Test.Tasty.Golden.Advanced (goldenTest)
+import           Control.Exception          (Exception, SomeException, catch,
+                                             throwIO)
+import           Control.Monad.RWS.Lazy     (when)
+import           Data.Bifunctor             (first)
+import           Data.Functor               ((<&>))
+import           Data.Map                   (Map)
+import qualified Data.Map                   as Map
+import           Data.Maybe                 (fromMaybe)
+import           Data.Text                  (Text)
+import qualified Data.Text                  as T
+import qualified Data.Text.IO               as T
+import           System.Directory           (removeDirectory, removeFile)
+import           System.Exit                (ExitCode, exitFailure)
+import           System.FilePath            (splitPath, takeBaseName,
+                                             takeFileName, (<.>), (</>))
+import           System.IO                  (stderr)
+import           System.IO.Error            (isDoesNotExistError)
+import           Test.Tasty
+import           Test.Tasty.Golden.Advanced (goldenTest)
 
-import Vehicle
-import Vehicle.Backend.Prelude
-import Vehicle.Compile
-import Vehicle.Prelude
+import           Vehicle
+import           Vehicle.Backend.Prelude
+import           Vehicle.Compile
+import           Vehicle.Prelude
 
-import Vehicle.Test.Utils
+import           Vehicle.Test.Utils
 
 --------------------------------------------------------------------------------
 -- Tests

@@ -1,22 +1,19 @@
 [
   {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-foreach.vcl -t TypeCheck",
+    "needs": ["simple-foreach.vcl"]
+  },
+  {
     "name": "Marabou",
     "run": "vehicle compile -s simple-foreach.vcl -t Marabou -o simple-foreach.inputquery/",
-    "needs": [
-      "simple-foreach.vcl"
-    ],
-    "produces": [
-      "simple-foreach.inputquery/*.txt"
-    ]
+    "needs": ["simple-foreach.vcl"],
+    "produces": ["simple-foreach.inputquery/*.txt"]
   },
   {
     "name": "LossFunction",
     "run": "vehicle compile -s simple-foreach.vcl -t LossFunction -o simple-foreach.loss.json",
-    "needs": [
-      "simple-foreach.vcl"
-    ],
-    "produces": [
-      "simple-foreach.loss.json"
-    ]
+    "needs": ["simple-foreach.vcl"],
+    "produces": ["simple-foreach.loss.json"]
   }
 ]

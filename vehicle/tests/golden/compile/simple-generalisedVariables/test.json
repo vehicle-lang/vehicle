@@ -1,10 +1,13 @@
-{
-  "name": "Agda",
-  "run": "vehicle compile -s simple-generalisedVariables.vcl -t Agda -o simple-generalisedVariables.agda",
-  "needs": [
-    "simple-generalisedVariables.vcl"
-  ],
-  "produces": [
-    "simple-generalisedVariables.agda"
-  ]
-}
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-generalisedVariables.vcl -t TypeCheck",
+    "needs": ["simple-generalisedVariables.vcl"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-generalisedVariables.vcl -t Agda -o simple-generalisedVariables.agda",
+    "needs": ["simple-generalisedVariables.vcl"],
+    "produces": ["simple-generalisedVariables.agda"]
+  }
+]

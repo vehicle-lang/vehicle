@@ -19,6 +19,8 @@ module Vehicle.Prelude.Logging
   , setBackgroundColour
   , runLogger
   , runLoggerT
+  , allLoggingLevels
+  , loggingLevelHelp
   ) where
 
 import Control.Monad (when)
@@ -32,6 +34,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import System.Console.ANSI
 
+import Vehicle.Prelude.Misc (enumerate, supportedOptions)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
 
@@ -46,6 +49,14 @@ data LoggingLevel
   | MidDetail
   | MaxDetail
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+allLoggingLevels :: [String]
+allLoggingLevels = map show (enumerate @LoggingLevel)
+
+loggingLevelHelp :: String
+loggingLevelHelp =
+  "Sets the level of detail in the logs if the --log argument has been passed. " <>
+  supportedOptions allLoggingLevels
 
 defaultLoggingLevel :: LoggingLevel
 defaultLoggingLevel = NoDetail

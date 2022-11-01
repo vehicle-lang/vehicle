@@ -39,16 +39,20 @@ repos:
       - id: prettier
   - repo: local
     hooks:
-      - id: stylish-haskell
-        name: stylish-haskell
-        entry: stylish-haskell
-        language: system
-        args: [--inplace]
+      - id: format-haskell
+        name: format-haskell
+        entry: ./script/format-haskell
+        language: script
         types: [haskell]
+      - id: shellcheck
+        name: shellcheck
+        entry: shellcheck
+        language: system
+        types: [sh]
 
-# Do not run stylish-haskell on pre-commit CI:
+# Do not run format-haskell on pre-commit CI:
 ci:
-  skip: [stylish-haskell]
+  skip: [format-haskell]
 
 # Exclude golden standard generated JSON files:
 exclude: ^.*\.golden$
