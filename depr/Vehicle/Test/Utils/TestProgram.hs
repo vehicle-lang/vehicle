@@ -35,18 +35,18 @@ module Vehicle.Test.Utils.TestProgram (
  , CatchStderr(..)
  ) where
 
-import Control.DeepSeq (deepseq)
-import Data.List (intercalate)
-import Data.Proxy (Proxy (..))
-import Data.Typeable (Typeable)
-import System.Directory (findExecutable)
-import System.Exit (ExitCode (..))
-import System.IO (hGetContents)
-import System.Process (runInteractiveProcess, waitForProcess)
-import Test.Tasty.Options (IsOption (..), OptionDescription (..), flagCLParser,
-                           lookupOption, safeRead)
-import Test.Tasty.Providers (IsTest (..), Result, TestName, TestTree,
-                             singleTest, testFailed, testPassed)
+import           Control.DeepSeq      (deepseq)
+import           Data.List            (intercalate)
+import           Data.Proxy           (Proxy (..))
+import           Data.Typeable        (Typeable)
+import           System.Directory     (findExecutable)
+import           System.Exit          (ExitCode (..))
+import           System.IO            (hGetContents)
+import           System.Process       (runInteractiveProcess, waitForProcess)
+import           Test.Tasty.Options   (IsOption (..), OptionDescription (..),
+                                       flagCLParser, lookupOption, safeRead)
+import           Test.Tasty.Providers (IsTest (..), Result, TestName, TestTree,
+                                       singleTest, testFailed, testPassed)
 
 data TestProgram = TestProgram String [String] (Maybe FilePath)
      deriving (Typeable)

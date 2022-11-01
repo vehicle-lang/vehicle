@@ -5,23 +5,29 @@ module Vehicle.Test.Golden
   , makeTestTreeFromDirectoryRecursive
   )
   where
+import Control.Monad (filterM, forM, forM_)
+import Data.Functor ((<&>))
 import Data.HashMap.Strict qualified as HashMap
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
-import System.Process (CreateProcess (..), shell, readCreateProcessWithExitCode)
+import System.Directory (copyFile, doesDirectoryExist, doesFileExist,
+                         listDirectory)
+import System.FilePath (makeRelative, takeDirectory, takeFileName, (</>))
+import System.IO.Temp (withSystemTempDirectory)
+import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName, TestTree, testGroup)
-import Vehicle.Test.Golden.Extra (SomeOption, someLocalOptions, listFilesRecursive, createDirectoryRecursive)
-import Vehicle.Test.Golden.TestSpec (TestOutput (..), TestSpec,
-                                     TestSpecs (TestSpecs), readTestSpecsFile, testSpecOptions, testSpecName, readGoldenFiles, testSpecDiffTestOutput, writeGoldenFiles, testSpecNeeds, testSpecRun)
-import System.Directory (listDirectory, doesDirectoryExist, doesFileExist, copyFile)
-import Control.Monad (filterM, forM, forM_)
-import System.FilePath ((</>), takeFileName, takeDirectory, makeRelative)
-import Data.Functor ((<&>))
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Text.Printf (printf)
-import System.IO.Temp (withSystemTempDirectory)
+import Vehicle.Test.Golden.Extra (SomeOption, createDirectoryRecursive,
+                                  listFilesRecursive, someLocalOptions)
+import Vehicle.Test.Golden.TestSpec (TestOutput (..), TestSpec,
+                                     TestSpecs (TestSpecs), readGoldenFiles,
+                                     readTestSpecsFile, testSpecDiffTestOutput,
+                                     testSpecName, testSpecNeeds,
+                                     testSpecOptions, testSpecRun,
+                                     writeGoldenFiles)
 
 -- | Create a test tree from all test specifications in a directory, recursively.
 makeTestTreeFromDirectoryRecursive :: TestName -> FilePath -> IO TestTree

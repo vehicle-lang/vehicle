@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s negativeNat.vcl -t TypeCheck",
+  "needs": ["negativeNat.vcl"]
+}

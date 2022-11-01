@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s quadraticFunOutput.vcl -t TypeCheck",
+  "needs": ["quadraticFunOutput.vcl"]
+}

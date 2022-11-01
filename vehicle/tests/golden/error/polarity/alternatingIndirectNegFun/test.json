@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s alternatingIndirectNegFun.vcl -t TypeCheck",
+  "needs": ["alternatingIndirectNegFun.vcl"]
+}

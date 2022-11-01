@@ -1,32 +1,25 @@
 [
   {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s windController.vcl -t TypeCheck",
+    "needs": ["windController.vcl"]
+  },
+  {
     "name": "Marabou",
     "run": "vehicle compile -s windController.vcl -t Marabou -o windController.inputquery/",
-    "needs": [
-      "windController.vcl"
-    ],
-    "produces": [
-      "windController.inputquery/*.txt"
-    ]
+    "needs": ["windController.vcl"],
+    "produces": ["windController.inputquery/*.txt"]
   },
   {
     "name": "LossFunction",
     "run": "vehicle compile -s windController.vcl -t LossFunction -o windController.loss.json",
-    "needs": [
-      "windController.vcl"
-    ],
-    "produces": [
-      "windController.loss.json"
-    ]
+    "needs": ["windController.vcl"],
+    "produces": ["windController.loss.json"]
   },
   {
     "name": "Agda",
     "run": "vehicle compile -s windController.vcl -t Agda -o windController.agda",
-    "needs": [
-      "windController.vcl"
-    ],
-    "produces": [
-      "windController.agda"
-    ]
+    "needs": ["windController.vcl"],
+    "produces": ["windController.agda"]
   }
 ]

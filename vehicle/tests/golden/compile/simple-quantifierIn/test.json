@@ -1,10 +1,13 @@
-{
-  "name": "Agda",
-  "run": "vehicle compile -s simple-quantifierIn.vcl -t Agda -o simple-quantifierIn.agda",
-  "needs": [
-    "simple-quantifierIn.vcl"
-  ],
-  "produces": [
-    "simple-quantifierIn.agda"
-  ]
-}
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-quantifierIn.vcl -t TypeCheck",
+    "needs": ["simple-quantifierIn.vcl"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-quantifierIn.vcl -t Agda -o simple-quantifierIn.agda",
+    "needs": ["simple-quantifierIn.vcl"],
+    "produces": ["simple-quantifierIn.agda"]
+  }
+]

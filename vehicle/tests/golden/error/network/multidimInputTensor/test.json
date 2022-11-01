@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s multidimInputTensor.vcl -t TypeCheck",
+  "needs": ["multidimInputTensor.vcl"]
+}

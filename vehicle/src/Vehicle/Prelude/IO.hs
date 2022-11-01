@@ -3,16 +3,22 @@ module Vehicle.Prelude.IO
   , fromLoggedIO
   , fromLoggerTIO
   , outputErrorAndQuit
+  , removeFileIfExists
+  , fatalError
+  , programOutput
   ) where
 
+import Control.Exception (catch, throwIO)
 import Control.Monad (forM_)
-import Control.Monad.Trans (MonadIO (..))
+import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text.IO as T (hPutStrLn)
-import System.IO
-
+import System.Directory (removeFile)
 import System.Exit (exitFailure)
-import Vehicle.Prelude.Logging
-import Vehicle.Prelude.Prettyprinter
+import System.IO (Handle, hPrint)
+import System.IO.Error (isDoesNotExistError)
+import Vehicle.Prelude.Logging (LoggerT, LoggingLevel, Message,
+                                MonadLogger (logMessage), runLoggerT)
+import Vehicle.Prelude.Prettyprinter (Doc, layoutAsText)
 
 data VehicleIOSettings = VehicleIOSettings
   { errorHandle  :: Handle
@@ -44,3 +50,22 @@ flushLogger debugLevel logHandle logger = do
 
 flushLogs :: MonadIO m => Handle -> [Message] -> m ()
 flushLogs logHandle messages = liftIO $ mapM_ (hPrint logHandle) messages
+
+
+--------------------------------------------------------------------------------
+-- IO operations
+
+removeFileIfExists :: FilePath -> IO ()
+removeFileIfExists fileName = removeFile fileName `catch` handleExists
+  where
+    handleExists e
+      | isDoesNotExistError e = return ()
+      | otherwise = throwIO e
+
+fatalError :: MonadIO m => VehicleIOSettings -> Doc a -> m b
+fatalError VehicleIOSettings{..} message = liftIO $ do
+  hPrint errorHandle message
+  exitFailure
+
+programOutput :: MonadIO m => VehicleIOSettings -> Doc a -> m ()
+programOutput VehicleIOSettings{..} message = liftIO $ hPrint outputHandle message

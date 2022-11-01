@@ -1,5 +1,4 @@
-MNIST robustness example
-========================
+# MNIST robustness example
 
 This is an example of a specification for the widely studied adversarial
 robustness problem.
@@ -20,12 +19,12 @@ This folder contains the following files:
 
 - `test-labels.idx` (MISSING) - the dataset of training output labels.
 
-Verifying using Marabou
------------------------
+## Verifying using Marabou
 
 The outputs of the above Vehicle commands can be found in the test suite:
 
 A network can be verified against the specification by running the following command:
+
 ```bash
 vehicle verify \
   --specification examples/mnist-robustness/mnist-robustness.vcl \

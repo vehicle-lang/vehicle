@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s quadraticTensorInputLookup.vcl -t TypeCheck",
+  "needs": ["quadraticTensorInputLookup.vcl"]
+}

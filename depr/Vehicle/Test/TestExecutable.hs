@@ -1,13 +1,13 @@
 
-import Control.Monad.Reader (runReader)
-import GHC.IO.Encoding
-import System.Environment
-import Test.Tasty
+import           Control.Monad.Reader     (runReader)
+import           GHC.IO.Encoding
+import           System.Environment
+import           Test.Tasty
 
-import Vehicle.Prelude
-import Vehicle.Test.CheckMode qualified as CheckMode (functionalityTests)
-import Vehicle.Test.CompileMode qualified as CompileMode (functionalityTests)
-import Vehicle.Test.Utils (MonadTest, filepathTests)
+import           Vehicle.Prelude
+import qualified Vehicle.Test.CheckMode   as CheckMode (functionalityTests)
+import qualified Vehicle.Test.CompileMode as CompileMode (functionalityTests)
+import           Vehicle.Test.Utils       (MonadTest, filepathTests)
 
 -- Can't figure out how to get this passed in via the command-line *sadness*
 testLogLevel :: LoggingLevel

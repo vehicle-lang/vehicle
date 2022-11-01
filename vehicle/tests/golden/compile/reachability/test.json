@@ -1,32 +1,25 @@
 [
   {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s reachability.vcl -t TypeCheck",
+    "needs": ["reachability.vcl"]
+  },
+  {
     "name": "Marabou",
     "run": "vehicle compile -s reachability.vcl -t Marabou -o reachability.inputquery/",
-    "needs": [
-      "reachability.vcl"
-    ],
-    "produces": [
-      "reachability.inputquery/*.txt"
-    ]
+    "needs": ["reachability.vcl"],
+    "produces": ["reachability.inputquery/*.txt"]
   },
   {
     "name": "LossFunction",
     "run": "vehicle compile -s reachability.vcl -t LossFunction -o reachability.loss.json",
-    "needs": [
-      "reachability.vcl"
-    ],
-    "produces": [
-      "reachability.loss.json"
-    ]
+    "needs": ["reachability.vcl"],
+    "produces": ["reachability.loss.json"]
   },
   {
     "name": "Agda",
     "run": "vehicle compile -s reachability.vcl -t Agda -o reachability.agda",
-    "needs": [
-      "reachability.vcl"
-    ],
-    "produces": [
-      "reachability.agda"
-    ]
+    "needs": ["reachability.vcl"],
+    "produces": ["reachability.agda"]
   }
 ]

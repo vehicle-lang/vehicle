@@ -7,9 +7,9 @@ module Vehicle.Compile.Delaborate.Internal
 
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (Text, pack)
-import Vehicle.Syntax.Internal.Abs qualified as B
 import Vehicle.Compile.Prelude
 import Vehicle.Language.AST qualified as V
+import Vehicle.Syntax.Internal.Abs qualified as B
 
 --------------------------------------------------------------------------------
 -- Conversion to BNFC AST

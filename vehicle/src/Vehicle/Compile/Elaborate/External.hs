@@ -12,11 +12,11 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set qualified as Set (singleton)
 import Data.Text (Text, unpack)
 import Text.Read (readMaybe)
-import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Sugar
 import Vehicle.Prelude
+import Vehicle.Syntax.External.Abs qualified as B
 
 --------------------------------------------------------------------------------
 -- Public interface
