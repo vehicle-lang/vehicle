@@ -1,11 +1,10 @@
 {
-    "tag": "Lambda",
-    "contents":
-        [
-            "v",
-            {
-                "tag": "Var",
-                "contents": 0
-            }
-        ]
+  "tag": "Lambda",
+  "contents": [
+    "v",
+    {
+      "tag": "Var",
+      "contents": 0
+    }
+  ]
 }

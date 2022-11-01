@@ -78,4 +78,3 @@ locateVerifierExecutable Verifier{..} = \case
           "Please either provide it using the `--verifierLocation` command line option" <+>
           "or add it to the PATH environment variable."
         liftIO exitFailure
-

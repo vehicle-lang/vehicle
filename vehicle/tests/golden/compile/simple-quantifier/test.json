@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Marabou",
+    "run": "vehicle compile -s simple-quantifier.vcl -t Marabou -o simple-quantifier.inputquery/",
+    "needs": [
+      "simple-quantifier.vcl"
+    ],
+    "produces": [
+      "simple-quantifier.inputquery/*.txt"
+    ]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-quantifier.vcl -t LossFunction -o simple-quantifier.loss.json",
+    "needs": [
+      "simple-quantifier.vcl"
+    ],
+    "produces": [
+      "simple-quantifier.loss.json"
+    ]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-quantifier.vcl -t Agda -o simple-quantifier.agda",
+    "needs": [
+      "simple-quantifier.vcl"
+    ],
+    "produces": [
+      "simple-quantifier.agda"
+    ]
+  }
+]

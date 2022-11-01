@@ -1,8 +1,7 @@
 {
-    "tag": "Neg",
-    "contents":
-        {
-            "tag": "Con",
-            "contents": 1
-        }
+  "tag": "Neg",
+  "contents": {
+    "tag": "Con",
+    "contents": 1
+  }
 }

@@ -1,32 +1,27 @@
-Architecture
-============
+# Architecture
 
-* Parser for external language is generated via BNCF (version 2.9.0 and above)
+- Parser for external language is generated via BNCF (version 2.9.0 and above)
 
-* Syntax-driven elaboration to internal language
+- Syntax-driven elaboration to internal language
 
-* Scope checking
+- Scope checking
 
-* Type checking (includes some type-driven elaboration)
+- Type checking (includes some type-driven elaboration)
 
+## Compiling to VNNLIB
 
-Compiling to VNNLIB
--------------------
+- Normalisation
 
-* Normalisation
+- Compile
 
-* Compile
+## Compiling to Agda
 
-Compiling to Agda
------------------
+- No normalisation
 
-* No normalisation
+- Compile
 
-* Compile
+## Compiling to loss-functions
 
-Compiling to loss-functions
----------------------------
+- Normalise (?)
 
-* Normalise (?)
-
-* Compile
+- Compile

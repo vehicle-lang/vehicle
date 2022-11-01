@@ -1,0 +1,44 @@
+#!/bin/sh
+
+# See: https://stackoverflow.com/a/4774063
+ROOT_DIR="$(dirname $( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P ))"
+
+TEST_ROOT_DIR="$ROOT_DIR/tests/golden"
+
+for SPEC_PATH in $(find "$TEST_ROOT_DIR" -name '*.vcl');
+do
+  SPEC_FILE="${SPEC_PATH#"$TEST_ROOT_DIR/"}"
+  TEST_DIR="$(dirname "$SPEC_FILE")"
+  echo "Creating tests for $TEST_DIR"
+  BASENAME="$(basename ${SPEC_PATH%.vcl})"
+  # Create test for Agda target:
+  OUTPUT_AGDA="$BASENAME.agda.golden"
+  if [ -f "$TEST_ROOT_DIR/$TEST_DIR/$OUTPUT_AGDA" ]; then
+    echo "Creating Agda test for $SPEC_FILE"
+    (
+      cd "$TEST_ROOT_DIR/$TEST_DIR" \
+        && cabal v2-run vehicle-new-test -- \
+        vehicle compile -s "$BASENAME.vcl" -t Agda -o "${OUTPUT_AGDA%.golden}"
+    )
+  fi
+  # Create test for LossFunction target:
+  OUTPUT_LOSSFUNCTION="$BASENAME.loss.json.golden"
+  if [ -f "$TEST_ROOT_DIR/$TEST_DIR/$OUTPUT_LOSSFUNCTION" ]; then
+    echo "Creating LossFunction test for $SPEC_FILE"
+    (
+      cd "$TEST_ROOT_DIR/$TEST_DIR" \
+        && cabal v2-run vehicle-new-test -- \
+        vehicle compile -s "$BASENAME.vcl" -t LossFunction -o "${OUTPUT_LOSSFUNCTION%.golden}"
+    )
+  fi
+  # Create test for Marabou target:
+  OUTPUT_MARABOU="$BASENAME.inputquery/"
+  if [ -d "$TEST_ROOT_DIR/$TEST_DIR/$OUTPUT_MARABOU" ]; then
+    echo "Creating Marabou test for $SPEC_FILE"
+    (
+      cd "$TEST_ROOT_DIR/$TEST_DIR" \
+        && cabal v2-run vehicle-new-test -- \
+        vehicle compile -s "$BASENAME.vcl" -t Marabou -o "$OUTPUT_MARABOU"
+    )
+  fi
+done

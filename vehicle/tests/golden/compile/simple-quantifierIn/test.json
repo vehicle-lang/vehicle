@@ -1,0 +1,10 @@
+{
+  "name": "Agda",
+  "run": "vehicle compile -s simple-quantifierIn.vcl -t Agda -o simple-quantifierIn.agda",
+  "needs": [
+    "simple-quantifierIn.vcl"
+  ],
+  "produces": [
+    "simple-quantifierIn.agda"
+  ]
+}
