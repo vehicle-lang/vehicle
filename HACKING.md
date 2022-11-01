@@ -11,10 +11,11 @@ and the _first_ instruction for installing Vehicle itself.
 You may use whatever Haskell development environment you like, although we have found
 that [VSCode](https://code.visualstudio.com/) works particularly well with GHCup.
 VSCode extensions that should be installed are:
+
 - Haskell
 - Haskell Syntax Highlighting
 - Trailing Whitespace
-and some useful ones are:
+  and some useful ones are:
 - Cursor Align
 
 ## 2. Build system
@@ -31,7 +32,7 @@ There are currently three types of tests for Vehicle. The build system for Vehic
 various utility commands for running the various test suites (these simply wrap the `cabal test`
 command in various ways).
 
-* `cabal run vehicle-build-system all-tests` will run all the tests
+- `cabal run vehicle-build-system all-tests` will run all the tests
 
 ### Basic tests
 
@@ -39,18 +40,18 @@ These test the functionality of the executable, and include golden tests, unit t
 The build system contains the following commands (which simply wrap the `cabal test`
 command in various ways):
 
-* `cabal run vehicle-build-system basic-tests` will run the tests.
+- `cabal run vehicle-build-system basic-tests` will run the tests.
 
-* `cabal run vehicle-build-system basic-tests-accept` - will run the tests and accept the changes to any of the
-  changed output files. *Warning*: Only run this if you are okay with the changes to the output!
+- `cabal run vehicle-build-system basic-tests-accept` - will run the tests and accept the changes to any of the
+  changed output files. _Warning_: Only run this if you are okay with the changes to the output!
 
-* `cabal test vehicle-executable-tests --test-show-details=always --test-option="-p /X/"` - will only run tests
+- `cabal test vehicle-executable-tests --test-show-details=always --test-option="-p /X/"` - will only run tests
   with `X` in their name. If you only want to run a test for a particular backend `Y`
   change the `X` to `X-Y`, e.g. `quantifier-Agda`.
 
-* If you want to accept the output of a single test add `--test-option="--accept"` to the previous command.
+- If you want to accept the output of a single test add `--test-option="--accept"` to the previous command.
 
-* The logging level for these tests can be set at the top of `test/Vehicle/Test/TestExecutable.hs`.
+- The logging level for these tests can be set at the top of `test/Vehicle/Test/TestExecutable.hs`.
 
 ### Integration tests
 
@@ -58,13 +59,13 @@ These test the integration of Vehicle's output with various backends. In order t
 tests you will need all the various backends installed. Again the build system contains the
 following utility command:
 
-* `cabal run vehicle-build-system integration-tests` - will run the integration tests.
+- `cabal run vehicle-build-system integration-tests` - will run the integration tests.
 
 ### Performance tests
 
 These test the performance of the Vehicle compiler, and may be long running.
 
-* `cabal run vehicle-build-system performance-tests`
+- `cabal run vehicle-build-system performance-tests`
 
 ### Continuous integration
 
@@ -87,18 +88,18 @@ The CI script that controls this is `.github/workflows/ci.yml`.
 - Logs can be enabled by providing the `--logging` option on the command line.
 
 - In the case of an internal developer error, logs may not be printed. In this case you
-can add a `traceShow text $` in front of the `do` in the `logDebug` in `Vehicle.Prelude.Logging`.
+  can add a `traceShow text $` in front of the `do` in the `logDebug` in `Vehicle.Prelude.Logging`.
 
 ## 6. Profiling
 
 To enable profiling follow the following steps:
 
-  - Run `cabal configure --enable-library-profiling --enable-executable-profiling --enable-tests --enable-benchmarks` on the command line.
+- Run `cabal configure --enable-library-profiling --enable-executable-profiling --enable-tests --enable-benchmarks` on the command line.
 
-  - Add `-O0` to `ghc-options` to `library` in `vehicle.cabal`.
+- Add `-O0` to `ghc-options` to `library` in `vehicle.cabal`.
 
-  - Add `-O0 -prof -fprof-auto -with-rtsopts=-p` to `ghc-options` for the relevant test-suite
-    (e.g. `vehicle-executable-tests`) in `vehicle.cabal`.
+- Add `-O0 -prof -fprof-auto -with-rtsopts=-p` to `ghc-options` for the relevant test-suite
+  (e.g. `vehicle-executable-tests`) in `vehicle.cabal`.
 
 ## 7. Documentation
 
@@ -111,6 +112,6 @@ Ideally the documentation would automatically rebuild but haven't yet got that s
 
 ## 8. Coding conventions
 
-* In order to maintain flexibility in adding extra fields to `Arg` and `Binder`
+- In order to maintain flexibility in adding extra fields to `Arg` and `Binder`
   one should avoid pattern-matching on them whenever possible, and instead use suitable
   mapping, traversing and projection functions.

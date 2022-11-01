@@ -1,1 +1,1 @@
-examples/mnist-robustness/mnist-robustness.vcl
+../../../../../examples/mnist-robustness/mnist-robustness.vcl

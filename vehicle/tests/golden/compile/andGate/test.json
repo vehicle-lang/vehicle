@@ -13,13 +13,8 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s andGate.vcl -t Marabou -o andGate.inputquery",
+    "run": "vehicle compile -s andGate.vcl -t Marabou -o andGate.inputquery/",
     "needs": ["andGate.vcl"],
-    "produces": [
-      "andGate.inputquery/andGateCorrect-query1.txt",
-      "andGate.inputquery/andGateCorrect-query2.txt",
-      "andGate.inputquery/andGateCorrect-query3.txt",
-      "andGate.inputquery/andGateCorrect-query4.txt"
-    ]
+    "produces": ["andGate.inputquery/*.txt"]
   }
 ]

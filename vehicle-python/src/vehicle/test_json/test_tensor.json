@@ -1,9 +1,9 @@
 {
-    "tag": "TensorLit",
-    "contents": [
-        {
-            "tag": "Var",
-            "contents": 0
-        }
-    ]
+  "tag": "TensorLit",
+  "contents": [
+    {
+      "tag": "Var",
+      "contents": 0
+    }
+  ]
 }

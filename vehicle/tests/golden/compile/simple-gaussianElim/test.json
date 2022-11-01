@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Marabou",
+    "run": "vehicle compile -s simple-gaussianElim.vcl -t Marabou -o simple-gaussianElim.inputquery/",
+    "needs": [
+      "simple-gaussianElim.vcl"
+    ],
+    "produces": [
+      "simple-gaussianElim.inputquery/*.txt"
+    ]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-gaussianElim.vcl -t LossFunction -o simple-gaussianElim.loss.json",
+    "needs": [
+      "simple-gaussianElim.vcl"
+    ],
+    "produces": [
+      "simple-gaussianElim.loss.json"
+    ]
+  }
+]

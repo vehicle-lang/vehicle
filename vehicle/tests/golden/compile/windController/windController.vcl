@@ -1,1 +1,1 @@
-examples/windController/windController.vcl
+../../../../../examples/windController/windController.vcl
