@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle compile -s invalidElementType.vcl -t TypeCheck",
-  "needs": ["invalidElementType.vcl"]
+  "run": "vehicle compile -s invalidElementType.vcl -t TypeCheck -d trainingDataset:dataset-nat-4.idx",
+  "needs": ["invalidElementType.vcl", "dataset-nat-4.idx"]
 }

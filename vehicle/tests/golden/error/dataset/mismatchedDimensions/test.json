@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle compile -s mismatchedDimensions.vcl -t TypeCheck",
-  "needs": ["mismatchedDimensions.vcl"]
+  "run": "vehicle compile -s mismatchedDimensions.vcl -t TypeCheck -d trainingDataset:dataset-nat-4.idx",
+  "needs": ["mismatchedDimensions.vcl", "dataset-nat-4.idx"]
 }

@@ -9,7 +9,10 @@ if [ -f "$SHELLCHECK" ]
 then
   "$SHELLCHECK" "$@" || echo > "$fail"
 else
-  echo "\033[1;33mWarning: could not find 'shellcheck'\033[0m" 1>&2
+  echo "\033[0;31mError: Could not find shellcheck.\033[0m" 1>&2
+  echo "\033[0;31m       Install shellcheck or commit with SKIP=shellcheck\033[0m"
+  echo "\033[0;31m       See: https://www.shellcheck.net\033[0m"
+  exit 1
 fi
 
 # Test if the file "$fail" exists and has size greater than zero:

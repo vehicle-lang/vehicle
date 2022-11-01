@@ -1,5 +1,4 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle compile -s invalidContainerType.vcl -t TypeCheck",
-  "needs": ["invalidContainerType.vcl"]
+  "run": "vehicle compile -s missingInputFile.vcl -t TypeCheck"
 }

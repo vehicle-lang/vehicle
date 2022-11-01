@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle compile -s unparseableNat.vcl -t TypeCheck",
+  "run": "vehicle compile -s unparseableNat.vcl -t TypeCheck -p n:~",
   "needs": ["unparseableNat.vcl"]
 }
