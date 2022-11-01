@@ -5,7 +5,7 @@ module Vehicle.Test.Golden.TestSpec.NewTestSpec where
 import Control.Applicative (optional, (<**>))
 import Control.Exception (assert)
 import Control.Monad (forM_, join, unless)
-import Data.List.NonEmpty (NonEmpty, (:|))
+import Data.List.NonEmpty (NonEmpty (:|))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, isNothing, maybeToList)
