@@ -94,6 +94,7 @@ library
     Vehicle.Compile.Prelude
     Vehicle.Compile.Queries.DNF
     Vehicle.Compile.Queries.IfElimination
+    Vehicle.Compile.Queries.LNF
     Vehicle.Compile.Queries.QuantifierLifting
     Vehicle.Compile.Queries.UserVariables
     Vehicle.Compile.Resource
