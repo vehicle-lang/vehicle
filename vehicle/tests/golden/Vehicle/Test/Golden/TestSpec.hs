@@ -382,7 +382,7 @@ instance FromJSON TestSpec where
       produces :: Object -> Parser [FilePattern]
       produces o = o .:? "produces" >>= \case
          Nothing -> return []
-         Just v  -> fmap List.singleton (parseJSON v) <|> parseJSONList v
+         Just v  -> fmap (: []) (parseJSON v) <|> parseJSONList v
       timeout :: Object -> Parser (Maybe Timeout)
       timeout o = o .:? "timeout" >>= traverse parseJSONTimeout
 
