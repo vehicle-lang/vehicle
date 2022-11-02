@@ -1,4 +1,4 @@
-[![Build](https://github.com/vehicle-lang/vehicle/actions/workflows/build.yml/badge.svg)](https://github.com/vehicle-lang/vehicle/actions/workflows/build.yml)
+[![CI](https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml/badge.svg)](https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml)
 [![readthedocs status](https://readthedocs.org/projects/vehicle-lang/badge/?version=latest)](https://vehicle-lang.readthedocs.io/en/latest/)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/vehicle-lang/vehicle/dev.svg)](https://results.pre-commit.ci/latest/github/vehicle-lang/vehicle/dev)
 
