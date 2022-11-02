@@ -1,0 +1,13 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-arithmetic.vcl -t TypeCheck",
+    "needs": ["simple-arithmetic.vcl"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-arithmetic.vcl -t Agda -o simple-arithmetic.agda",
+    "needs": ["simple-arithmetic.vcl"],
+    "produces": ["simple-arithmetic.agda"]
+  }
+]

@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s unsupportedFormat.vcl -t TypeCheck -d trainingDataset:non-existent.blerp",
+  "needs": ["unsupportedFormat.vcl"]
+}

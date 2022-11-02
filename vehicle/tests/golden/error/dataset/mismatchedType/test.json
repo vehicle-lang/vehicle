@@ -1,0 +1,6 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s mismatchedType.vcl -t TypeCheck -d trainingDataset:dataset-rat-4.idx",
+  "enabled": false,
+  "needs": ["mismatchedType.vcl", "dataset-rat-4.idx"]
+}

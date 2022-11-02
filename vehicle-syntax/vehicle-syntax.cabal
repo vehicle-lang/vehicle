@@ -1,0 +1,80 @@
+cabal-version:      3.4
+name:               vehicle-syntax
+version:            0.1.0
+description:
+  Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
+
+homepage:           https://github.com/vehicle-lang/vehicle#readme
+bug-reports:        https://github.com/vehicle-lang/vehicle/issues
+author:             Wen Kokke
+maintainer:         wenkokke@users.noreply.github.com
+copyright:          © Wen Kokke
+license:            BSD-3-Clause
+license-file:       LICENSE
+build-type:         Custom
+extra-source-files:
+  src/Vehicle/Syntax/External.cf
+  src/Vehicle/Syntax/Internal.cf
+
+extra-tmp-files:
+  autogen/Vehicle/Syntax/External/Abs.hs
+  autogen/Vehicle/Syntax/External/ErrM.hs
+  autogen/Vehicle/Syntax/External/Layout.hs
+  autogen/Vehicle/Syntax/External/Lex.hs
+  autogen/Vehicle/Syntax/External/Par.hs
+  autogen/Vehicle/Syntax/External/Print.hs
+  autogen/Vehicle/Syntax/Internal/Abs.hs
+  autogen/Vehicle/Syntax/Internal/ErrM.hs
+  autogen/Vehicle/Syntax/Internal/Lex.hs
+  autogen/Vehicle/Syntax/Internal/Par.hs
+  autogen/Vehicle/Syntax/Internal/Print.hs
+
+source-repository head
+  type:     git
+  location: https://github.com/vehicle-lang/vehicle
+
+custom-setup
+  setup-depends:
+    , base      >=4
+    , Cabal     >=2.0.0.2
+    , filepath  >=1
+
+library
+  hs-source-dirs:     autogen
+  exposed-modules:
+    Vehicle.Syntax.External.Abs
+    Vehicle.Syntax.External.ErrM
+    Vehicle.Syntax.External.Layout
+    Vehicle.Syntax.External.Lex
+    Vehicle.Syntax.External.Par
+    Vehicle.Syntax.External.Print
+    Vehicle.Syntax.Internal.Abs
+    Vehicle.Syntax.Internal.ErrM
+    Vehicle.Syntax.Internal.Lex
+    Vehicle.Syntax.Internal.Par
+    Vehicle.Syntax.Internal.Print
+
+  autogen-modules:
+    Vehicle.Syntax.External.Abs
+    Vehicle.Syntax.External.ErrM
+    Vehicle.Syntax.External.Layout
+    Vehicle.Syntax.External.Lex
+    Vehicle.Syntax.External.Par
+    Vehicle.Syntax.External.Print
+    Vehicle.Syntax.Internal.Abs
+    Vehicle.Syntax.Internal.ErrM
+    Vehicle.Syntax.Internal.Lex
+    Vehicle.Syntax.Internal.Par
+    Vehicle.Syntax.Internal.Print
+
+  build-depends:
+    , array  >=0.5 && <1
+    , base   >=4   && <5
+    , text   >=1.2 && <3
+
+  build-tool-depends:
+    , alex:alex    >=3
+    , BNFC:bnfc    >=2.9.4
+    , happy:happy  >=1.19
+
+  default-language:   Haskell2010

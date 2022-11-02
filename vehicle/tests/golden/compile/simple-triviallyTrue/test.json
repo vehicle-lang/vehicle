@@ -1,0 +1,19 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t TypeCheck",
+    "needs": ["simple-triviallyTrue.vcl"]
+  },
+  {
+    "name": "Marabou",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t Marabou -o simple-triviallyTrue.inputquery/",
+    "needs": ["simple-triviallyTrue.vcl"],
+    "produces": ["simple-triviallyTrue.inputquery/*.txt"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t Agda -o simple-triviallyTrue.agda",
+    "needs": ["simple-triviallyTrue.vcl"],
+    "produces": ["simple-triviallyTrue.agda"]
+  }
+]

@@ -1,0 +1,13 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-let.vcl -t TypeCheck",
+    "needs": ["simple-let.vcl"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-let.vcl -t Agda -o simple-let.agda",
+    "needs": ["simple-let.vcl"],
+    "produces": ["simple-let.agda"]
+  }
+]

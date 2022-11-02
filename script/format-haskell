@@ -1,0 +1,42 @@
+#!/bin/sh
+
+fail="$(mktemp)"
+
+STYLISH_HASKELL=$(which stylish-haskell)
+
+if [ -f "$STYLISH_HASKELL" ]
+then
+    VEHICLE_DIR="vehicle"
+    VEHICLE_SYNTAX_DIR="vehicle-syntax"
+
+    for src in "$@"
+    do
+        if echo "$src" | grep -q "^$VEHICLE_DIR/*\$"
+        then
+            rel="${src#"$VEHICLE_DIR/"}"
+            echo "Fixing $VEHICLE_DIR $rel"
+            (cd "$VEHICLE_DIR" && "$STYLISH_HASKELL" --inplace "$rel" || echo > "$fail")
+        fi
+        if echo "$src" | grep -q "^$VEHICLE_SYNTAX_DIR/*\$"
+        then
+            rel="${src#"$VEHICLE_SYNTAX_DIR/"}"
+            echo "Fixing $VEHICLE_SYNTAX_DIR $rel"
+            (cd "$VEHICLE_SYNTAX_DIR" && "$STYLISH_HASKELL" --inplace "$rel" || echo > "$fail")
+        fi
+    done
+else
+    echo "\033[0;31mError: Could not find stylish-haskell.\033[0m" 1>&2
+    echo "\033[0;31m       Install stylish-haskell or commit with SKIP=format-haskell\033[0m"
+    echo "\033[0;31m       See: https://github.com/haskell/stylish-haskell#readme\033[0m"
+    exit 1
+fi
+
+# Test if the file "$fail" exists and has size greater than zero:
+if [ -s "$fail" ]
+then
+    # File exists, which means some of the stylish-haskell calls had non-zero exit codes:
+    rm "$fail" && exit 1
+else
+    # File doesn't exist or has zero size, which means all calls were successful:
+    rm "$fail" && exit 0
+fi

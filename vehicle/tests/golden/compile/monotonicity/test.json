@@ -1,0 +1,25 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s monotonicity.vcl -t TypeCheck",
+    "needs": ["monotonicity.vcl"]
+  },
+  {
+    "name": "Marabou",
+    "run": "vehicle compile -s monotonicity.vcl -t Marabou -o monotonicity.inputquery/",
+    "needs": ["monotonicity.vcl"],
+    "produces": ["monotonicity.inputquery/*.txt"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s monotonicity.vcl -t LossFunction -o monotonicity.loss.json",
+    "needs": ["monotonicity.vcl"],
+    "produces": ["monotonicity.loss.json"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s monotonicity.vcl -t Agda -o monotonicity.agda",
+    "needs": ["monotonicity.vcl"],
+    "produces": ["monotonicity.agda"]
+  }
+]

@@ -1,0 +1,26 @@
+#!/bin/sh
+
+
+fail="$(mktemp)"
+
+SHELLCHECK=$(which shellcheck)
+
+if [ -f "$SHELLCHECK" ]
+then
+  "$SHELLCHECK" "$@" || echo > "$fail"
+else
+  echo "\033[0;31mError: Could not find shellcheck.\033[0m" 1>&2
+  echo "\033[0;31m       Install shellcheck or commit with SKIP=shellcheck\033[0m"
+  echo "\033[0;31m       See: https://www.shellcheck.net\033[0m"
+  exit 1
+fi
+
+# Test if the file "$fail" exists and has size greater than zero:
+if [ -s "$fail" ]
+then
+    # File exists, which means some of the stylish-haskell calls had non-zero exit codes:
+    rm "$fail" && exit 1
+else
+    # File doesn't exist or has zero size, which means all calls were successful:
+    rm "$fail" && exit 0
+fi

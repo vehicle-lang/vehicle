@@ -1,0 +1,13 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-untypedDecls.vcl -t TypeCheck",
+    "needs": ["simple-untypedDecls.vcl"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-untypedDecls.vcl -t Agda -o simple-untypedDecls.agda",
+    "needs": ["simple-untypedDecls.vcl"],
+    "produces": ["simple-untypedDecls.agda"]
+  }
+]

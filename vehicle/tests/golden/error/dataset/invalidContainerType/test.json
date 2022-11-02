@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s invalidContainerType.vcl -t TypeCheck -d trainingDataset:dataset-nat-4.idx",
+  "needs": ["invalidContainerType.vcl", "dataset-nat-4.idx"]
+}

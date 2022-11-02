@@ -1,0 +1,316 @@
+cabal-version: 3.8
+name:          vehicle
+version:       0.1.0
+description:
+  Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
+
+homepage:      https://github.com/vehicle-lang/vehicle#readme
+bug-reports:   https://github.com/vehicle-lang/vehicle/issues
+author:        Wen Kokke
+maintainer:    wenkokke@users.noreply.github.com
+copyright:     © Wen Kokke
+license:       BSD-3-Clause
+license-file:  LICENSE
+build-type:    Simple
+
+-- Generated with `script/extra-source-files`:
+-- extra-source-files:
+
+-- Generated with `script/extra-doc-files`:
+-- extra-doc-files:
+
+source-repository head
+  type:     git
+  location: https://github.com/vehicle-lang/vehicle
+
+common common-language
+  default-language:   Haskell2010
+  default-extensions:
+    ConstraintKinds
+    ConstraintKinds
+    DataKinds
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DuplicateRecordFields
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    ImportQualifiedPost
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    LiberalTypeSynonyms
+    MultiParamTypeClasses
+    OverloadedLists
+    OverloadedStrings
+    PatternSynonyms
+    PolyKinds
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    UndecidableInstances
+    ViewPatterns
+
+library
+  import:          common-language
+  hs-source-dirs:  src
+  exposed-modules:
+    Vehicle
+    Vehicle.Backend.Agda
+    Vehicle.Backend.LossFunction
+    Vehicle.Backend.Prelude
+    Vehicle.Check
+    Vehicle.CommandLine
+    Vehicle.Compile
+    Vehicle.Compile.AlphaEquivalence
+    Vehicle.Compile.CoDeBruijnify
+    Vehicle.Compile.Delaborate.External
+    Vehicle.Compile.Delaborate.Internal
+    Vehicle.Compile.Descope
+    Vehicle.Compile.Elaborate.External
+    Vehicle.Compile.Elaborate.Internal
+    Vehicle.Compile.Error
+    Vehicle.Compile.Error.Message
+    Vehicle.Compile.ExpandResources
+    Vehicle.Compile.ExpandResources.Core
+    Vehicle.Compile.ExpandResources.Dataset
+    Vehicle.Compile.ExpandResources.Network
+    Vehicle.Compile.ExpandResources.Parameter
+    Vehicle.Compile.LetInsertion
+    Vehicle.Compile.Linearity
+    Vehicle.Compile.Linearity.Core
+    Vehicle.Compile.Linearity.FourierMotzkinElimination
+    Vehicle.Compile.Linearity.GaussianElimination
+    Vehicle.Compile.Normalise
+    Vehicle.Compile.Normalise.Core
+    Vehicle.Compile.Parse
+    Vehicle.Compile.Prelude
+    Vehicle.Compile.Queries.DNF
+    Vehicle.Compile.Queries.IfElimination
+    Vehicle.Compile.Queries.LNF
+    Vehicle.Compile.Queries.QuantifierLifting
+    Vehicle.Compile.Queries.UserVariables
+    Vehicle.Compile.Resource
+    Vehicle.Compile.Scope
+    Vehicle.Compile.Simplify
+    Vehicle.Compile.Sugar
+    Vehicle.Compile.SupplyNames
+    Vehicle.Compile.Type
+    Vehicle.Export
+    Vehicle.Language.AST
+    Vehicle.Language.DSL
+    Vehicle.Language.Print
+    Vehicle.Language.StandardLibrary
+    Vehicle.Language.StandardLibrary.Names
+    Vehicle.Prelude
+    Vehicle.Resource
+    Vehicle.Verify
+    Vehicle.Verify.Core
+    Vehicle.Verify.ProofCache
+    Vehicle.Verify.Specification
+    Vehicle.Verify.Specification.IO
+    Vehicle.Verify.Specification.Status
+    Vehicle.Verify.Verifier.Interface
+
+  other-modules:
+    Paths_vehicle
+    Vehicle.Backend.Agda.Compile
+    Vehicle.Backend.Agda.Interact
+    Vehicle.Backend.LossFunction.Compile
+    Vehicle.Backend.LossFunction.Interact
+    Vehicle.Compile.CapitaliseTypeNames
+    Vehicle.Compile.DependencyAnalysis
+    Vehicle.Compile.ExpandResources.Dataset.IDX
+    Vehicle.Compile.Monomorphisation
+    Vehicle.Compile.Prelude.Contexts
+    Vehicle.Compile.Prelude.DependencyGraph
+    Vehicle.Compile.Prelude.Patterns
+    Vehicle.Compile.Prelude.Utils
+    Vehicle.Compile.QuantifierAnalysis
+    Vehicle.Compile.Queries
+    Vehicle.Compile.Type.Auxiliary
+    Vehicle.Compile.Type.Bidirectional
+    Vehicle.Compile.Type.Builtin
+    Vehicle.Compile.Type.Constraint
+    Vehicle.Compile.Type.ConstraintSolver.Core
+    Vehicle.Compile.Type.ConstraintSolver.Linearity
+    Vehicle.Compile.Type.ConstraintSolver.Polarity
+    Vehicle.Compile.Type.ConstraintSolver.TypeClass
+    Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
+    Vehicle.Compile.Type.ConstraintSolver.Unification
+    Vehicle.Compile.Type.Generalise
+    Vehicle.Compile.Type.Irrelevance
+    Vehicle.Compile.Type.Meta
+    Vehicle.Compile.Type.MetaMap
+    Vehicle.Compile.Type.MetaSet
+    Vehicle.Compile.Type.Monad
+    Vehicle.Compile.Type.Resource
+    Vehicle.Compile.Type.VariableContext
+    Vehicle.Language.AST.Builtin
+    Vehicle.Language.AST.Builtin.Core
+    Vehicle.Language.AST.Builtin.Linearity
+    Vehicle.Language.AST.Builtin.Polarity
+    Vehicle.Language.AST.Builtin.TypeClass
+    Vehicle.Language.AST.CoDeBruijn
+    Vehicle.Language.AST.Core
+    Vehicle.Language.AST.DeBruijn
+    Vehicle.Language.AST.Name
+    Vehicle.Language.AST.Position
+    Vehicle.Language.AST.Provenance
+    Vehicle.Language.AST.Relevance
+    Vehicle.Language.AST.Visibility
+    Vehicle.Prelude.DeveloperError
+    Vehicle.Prelude.IO
+    Vehicle.Prelude.Logging
+    Vehicle.Prelude.Prettyprinter
+    Vehicle.Prelude.Supply
+    Vehicle.Prelude.Token
+    Vehicle.Prelude.Misc
+    Vehicle.Verify.Verifier
+    Vehicle.Verify.Verifier.Marabou
+
+  build-depends:
+    , aeson                 >=2.1.1   && <2.2
+    , aeson-pretty          >=0.8.9   && <0.9
+    , ansi-terminal         >=0.6     && <1
+    , base                  >=4.13    && <5
+    , bytestring            >=0.10.12 && <0.11
+    , containers            >=0.5     && <1
+    , data-default          >=0.7     && <1
+    , data-default-class    >=0.1.2   && <0.2
+    , data-fix              >=0.2     && <1
+    , deepseq               >=1.4     && <2
+    , directory             >=1.3.6   && <1.4
+    , filepath              >=1.4     && <2
+    , hashable              >=1.3     && <2
+    , linkedhashmap         >=0.4     && <1
+    , mnist-idx             >=0.1.3.1 && <0.2
+    , mtl                   >=2.2     && <3
+    , optparse-applicative  >=0.16    && <1
+    , prettyprinter         >=1.7     && <2
+    , process               >=1.6.13  && <1.7
+    , range                 >=0.3     && <1
+    , recursion-schemes     >=5.2     && <6
+    , split                 >=0.2.3   && <0.3
+    , temporary             >=1.3     && <1.4
+    , text                  >=1.2     && <3
+    , transformers          >=0.4     && <0.6
+    , unordered-containers  >=0.2.19  && <0.3
+    , vector                >=0.12.3  && <0.13
+    , vehicle-syntax
+
+  ghc-options:     -Werror -Wall -fprint-potential-instances
+
+executable vehicle
+  import:         common-language
+  main-is:        Main.hs
+  hs-source-dirs: app
+  build-depends:
+    , base                  >=4.13 && <5
+    , optparse-applicative  >=0.16 && <1
+    , vehicle
+
+-----------------
+-- Test suites --
+-----------------
+
+library vehicle-golden-tests-common
+  import:          common-language
+  hs-source-dirs:  tests/golden
+  exposed-modules:
+    Vehicle.Test.Golden
+    Vehicle.Test.Golden.TestSpec
+    Vehicle.Test.Golden.TestSpec.NewTestSpec
+
+  other-modules:   Vehicle.Test.Golden.Extra
+  build-depends:
+    , aeson                 >=2.1.1  && <2.2
+    , aeson-pretty
+    , array
+    , base                  >=4.13   && <5
+    , bytestring
+    , containers
+    , Diff                  >=0.4.1  && <0.5
+    , directory             >=1.3.6  && <1.4
+    , dlist
+    , filepath              >=1.4    && <2
+    , Glob                  >=0.10.2 && <0.11
+    , hashable
+    , mtl
+    , optparse-applicative
+    , process               >=1.2    && <2
+    , regex-tdfa
+    , tagged
+    , tasty
+    , tasty-golden
+    , temporary
+    , text                  >=1.2    && <3
+    , unordered-containers  >=0.2.19 && <0.3
+    , vehicle
+
+test-suite vehicle-golden-tests
+  import:             common-language
+  type:               exitcode-stdio-1.0
+  main-is:            tests/golden/Tests.hs
+  build-depends:
+    , base                                 >=4.13   && <5
+    , containers
+    , filepath
+    , Glob                                 >=0.10.2 && <0.11
+    , regex-tdfa
+    , tasty
+    , vehicle:vehicle-golden-tests-common
+
+  build-tool-depends: vehicle:vehicle
+  ghc-options:        -threaded -rtsopts -with-rtsopts=-N -O0
+
+executable vehicle-new-golden-test
+  import:        common-language
+  main-is:       tests/golden/NewTest.hs
+  build-depends:
+    , base                                 >=4.13 && <5
+    , vehicle:vehicle-golden-tests-common
+
+  ghc-options:   -threaded -rtsopts -with-rtsopts=-N -O0
+
+library vehicle-unit-tests-common
+  import:          common-language
+  hs-source-dirs:  tests/unit
+  exposed-modules:
+    Vehicle.Test.Unit.Common
+    Vehicle.Test.Unit.Compile.AlphaEquivalence
+    Vehicle.Test.Unit.Compile.CoDeBruijn
+    Vehicle.Test.Unit.Compile.CommandLine
+    Vehicle.Test.Unit.Compile.IfElimination
+    Vehicle.Test.Unit.Compile.LetInsertion
+    Vehicle.Test.Unit.Compile.PositionTree
+    Vehicle.Test.Unit.Compile.QuantifierLifting
+
+  build-depends:
+    , base                  >=4.13 && <5
+    , containers
+    , hashable
+    , mtl
+    , optparse-applicative
+    , recursion-schemes     >=5.2  && <6
+    , tagged
+    , tasty
+    , tasty-hunit
+    , text
+    , vehicle
+
+test-suite vehicle-unit-tests
+  import:        common-language
+  type:          exitcode-stdio-1.0
+  main-is:       tests/unit/Tests.hs
+  build-depends:
+    , base                               >=4.13 && <5
+    , tasty
+    , vehicle:vehicle-unit-tests-common

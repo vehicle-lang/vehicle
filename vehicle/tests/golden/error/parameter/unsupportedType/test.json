@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s unsupportedType.vcl -t TypeCheck",
+  "needs": ["unsupportedType.vcl"]
+}

@@ -1,27 +1,33 @@
 cradle:
   multi:
-  # ignore generative tests
-  - path: "./test/Test/Generative.hs"
-    config: { cradle: { none: } }
-  - path: "./test/Test/Generative"
-    config: { cradle: { none: } }
-  - path: "./"
-    config:
-      cradle:
-        cabal:
-          - path: "./build.hs"
-            component: "exe:vehicle-build-system"
-          - path: "./app/Main.hs"
-            component: "exe:vehicle"
-          - path: "./src/hs"
-            component: "lib:vehicle"
-          - path: "./gen/hs"
-            component: "lib:vehicle-bnfc"
-          - path: "./test/Vehicle/Test/TestExecutable.hs"
-            component: "test:vehicle-executable-tests"
-          - path: "./test/Vehicle/Test/TestIntegration.hs"
-            component: "test:vehicle-integration-tests"
-          - path: "./test/Vehicle/Test/TestPerformance.hs"
-            component: "bench:vehicle-benchmarks"
-          - path: "./test/Vehicle/Test/"
-            component: "test:vehicle-executable-tests"
+    # vehicle-syntax
+    - path: "./vehicle-syntax"
+      config:
+        cradle:
+          cabal:
+            # - path: "./vehicle-syntax/autogen"
+            #   component: "lib:vehicle-syntax"
+
+    # vehicle
+    - path: "./vehicle"
+      config:
+        cradle:
+          cabal:
+            # - path: "./vehicle/src"
+            #   component: "lib:vehicle"
+            # - path: "./vehicle/app"
+            #   component: "exe:vehicle"
+            # - path: "./vehicle/tests/Vehicle/Test/Common"
+            #   component: "lib:vehicle-test-common"
+            # - path: "./vehicle/tests/Tests.hs"
+            #   component: "test:vehicle-tests"
+            # - path: "./vehicle/tests/IntegrationTests.hs"
+            #   component: "test:vehicle-integration-tests"
+            # - path: "./vehicle/tests/Benchmarks.hs"
+            #   component: "benchmark:vehicle-benchmarks"
+
+    # ignore
+    - path: "./"
+      config:
+        cradle:
+          none:

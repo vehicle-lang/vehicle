@@ -1,0 +1,19 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-tensor.vcl -t TypeCheck",
+    "needs": ["simple-tensor.vcl"]
+  },
+  {
+    "name": "Marabou",
+    "run": "vehicle compile -s simple-tensor.vcl -t Marabou -o simple-tensor.inputquery/",
+    "needs": ["simple-tensor.vcl"],
+    "produces": ["simple-tensor.inputquery/*.txt"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-tensor.vcl -t Agda -o simple-tensor.agda",
+    "needs": ["simple-tensor.vcl"],
+    "produces": ["simple-tensor.agda"]
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s autoencoderError.vcl -t Agda -o autoencoderError.agda -c ./autoencoderError.vcl.proofcache",
+    "needs": ["autoencoderError.vcl"],
+    "produces": ["autoencoderError.agda"],
+    "diff": {
+      "ignore": "(([A-Z]:)?[\\/])?([A-Za-z0-9$_-]+[\\/])+[A-Za-z0-9$_-]+(\\.[A-Za-z0-9]+)*"
+    }
+  },
+  {
+    "name": "Marabou",
+    "run": "vehicle compile -s autoencoderError.vcl -t Marabou -o autoencoderError.inputquery",
+    "needs": ["autoencoderError.vcl"],
+    "produces": ["autoencoderError.inputquery/*.txt"]
+  }
+]

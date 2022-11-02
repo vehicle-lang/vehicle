@@ -1,0 +1,13 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s mnist-robustness.vcl -t TypeCheck",
+    "needs": ["mnist-robustness.vcl"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s mnist-robustness.vcl -t Agda -o mnist-robustness.agda",
+    "needs": ["mnist-robustness.vcl"],
+    "produces": ["mnist-robustness.agda"]
+  }
+]

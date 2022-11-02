@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle compile -s notAFunction.vcl -t TypeCheck",
+  "needs": ["notAFunction.vcl"]
+}

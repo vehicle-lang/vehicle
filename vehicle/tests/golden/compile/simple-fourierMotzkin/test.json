@@ -1,0 +1,19 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t TypeCheck",
+    "needs": ["simple-fourierMotzkin.vcl"]
+  },
+  {
+    "name": "Marabou",
+    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t Marabou -o simple-fourierMotzkin.inputquery/",
+    "needs": ["simple-fourierMotzkin.vcl"],
+    "produces": ["simple-fourierMotzkin.inputquery/*.txt"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t LossFunction -o simple-fourierMotzkin.loss.json",
+    "needs": ["simple-fourierMotzkin.vcl"],
+    "produces": ["simple-fourierMotzkin.loss.json"]
+  }
+]

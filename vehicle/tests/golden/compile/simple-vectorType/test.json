@@ -1,0 +1,13 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-vectorType.vcl -t TypeCheck",
+    "needs": ["simple-vectorType.vcl"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-vectorType.vcl -t Agda -o simple-vectorType.agda",
+    "needs": ["simple-vectorType.vcl"],
+    "produces": ["simple-vectorType.agda"]
+  }
+]

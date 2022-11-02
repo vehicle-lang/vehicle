@@ -1,0 +1,19 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s simple-if.vcl -t TypeCheck",
+    "needs": ["simple-if.vcl"]
+  },
+  {
+    "name": "Marabou",
+    "run": "vehicle compile -s simple-if.vcl -t Marabou -o simple-if.inputquery/",
+    "needs": ["simple-if.vcl"],
+    "produces": ["simple-if.inputquery/*.txt"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-if.vcl -t Agda -o simple-if.agda",
+    "needs": ["simple-if.vcl"],
+    "produces": ["simple-if.agda"]
+  }
+]

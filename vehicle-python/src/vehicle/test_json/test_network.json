@@ -1,0 +1,17 @@
+{
+  "tag": "NetApp",
+  "contents": [
+    "f",
+    [
+      {
+        "tag": "TensorLit",
+        "contents": [
+          {
+            "tag": "Var",
+            "contents": 1
+          }
+        ]
+      }
+    ]
+  ]
+}
