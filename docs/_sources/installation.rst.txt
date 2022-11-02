@@ -19,8 +19,8 @@ Vehicle is written in Haskell. The first task is to install Haskell itself:
 2. Close and reopen your terminal.
 
 3. Run ``ghcup tui`` and use it to install and set:
-  - The latest version of GHC 8.10 or 9.0.
-  - The recommended version of Cabal.
+  -  GHC - 8.10.X or 9.0.X (for any version of X)
+  -  Cabal - 3.4 or later
 
 4. Run ``cabal update`` to update your list of packages.
 

@@ -1,0 +1,540 @@
+<!doctype html>
+<html class="writer-html5" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="generator"
+      content="Docutils 0.17.1: http://docutils.sourceforge.net/"
+    />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Installation &mdash; Vehicle 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <!--[if lt IE 9]>
+      <script src="_static/js/html5shiv.min.js"></script>
+    <![endif]-->
+
+    <script
+      data-url_root="./"
+      id="documentation_options"
+      src="_static/documentation_options.js"
+    ></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link
+      rel="next"
+      title="The specification language"
+      href="language/index.html"
+    />
+    <link
+      rel="prev"
+      title="Welcome to Vehicle’s documentation!"
+      href="index.html"
+    />
+  </head>
+
+  <body class="wy-body-for-nav">
+    <div class="wy-grid-for-nav">
+      <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+        <div class="wy-side-scroll">
+          <div class="wy-side-nav-search">
+            <a href="index.html" class="icon icon-home"> Vehicle </a>
+            <div class="version">0.1.0</div>
+            <div role="search">
+              <form
+                id="rtd-search-form"
+                class="wy-form"
+                action="search.html"
+                method="get"
+              >
+                <input type="text" name="q" placeholder="Search docs" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+            </div>
+          </div>
+          <div
+            class="wy-menu wy-menu-vertical"
+            data-spy="affix"
+            role="navigation"
+            aria-label="Navigation menu"
+          >
+            <ul class="current">
+              <li class="toctree-l1 current">
+                <a class="current reference internal" href="#">Installation</a>
+                <ul>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="#building-from-source"
+                      >Building from source</a
+                    >
+                    <ul>
+                      <li class="toctree-l3">
+                        <a class="reference internal" href="#on-linux"
+                          >On Linux</a
+                        >
+                      </li>
+                      <li class="toctree-l3">
+                        <a class="reference internal" href="#on-windows"
+                          >On Windows</a
+                        >
+                      </li>
+                    </ul>
+                  </li>
+                  <li class="toctree-l2">
+                    <a
+                      class="reference internal"
+                      href="#setting-vehicle-to-work-with-agda"
+                      >Setting Vehicle to work with Agda</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="#syntax-highlighting"
+                      >Syntax highlighting</a
+                    >
+                  </li>
+                </ul>
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="language/index.html"
+                  >The specification language</a
+                >
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="training.html"
+                  >Training with a specification (TODO)</a
+                >
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="verification.html"
+                  >Verifying a specification</a
+                >
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="theorem-proving.html"
+                  >Exporting a specification to an ITP</a
+                >
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="other/index.html">Other</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+        <nav class="wy-nav-top" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Vehicle</a>
+        </nav>
+
+        <div class="wy-nav-content">
+          <div class="rst-content">
+            <div role="navigation" aria-label="Page navigation">
+              <ul class="wy-breadcrumbs">
+                <li><a href="index.html" class="icon icon-home"></a></li>
+                <li class="breadcrumb-item active">Installation</li>
+                <li class="wy-breadcrumbs-aside">
+                  <a href="_sources/installation.rst.txt" rel="nofollow">
+                    View page source</a
+                  >
+                </li>
+              </ul>
+              <hr />
+            </div>
+            <div
+              role="main"
+              class="document"
+              itemscope="itemscope"
+              itemtype="http://schema.org/Article"
+            >
+              <div itemprop="articleBody">
+                <section id="installation">
+                  <h1>
+                    Installation<a
+                      class="headerlink"
+                      href="#installation"
+                      title="Permalink to this headline"
+                      ></a
+                    >
+                  </h1>
+                  <p id="id1">
+                    At the moment, the only way to install Vehicle is from
+                    source. We aim to make it available as both an executable
+                    and a Python package in the near future.
+                  </p>
+                  <section id="building-from-source">
+                    <h2>
+                      Building from source<a
+                        class="headerlink"
+                        href="#building-from-source"
+                        title="Permalink to this headline"
+                        ></a
+                      >
+                    </h2>
+                    <section id="on-linux">
+                      <h3>
+                        On Linux<a
+                          class="headerlink"
+                          href="#on-linux"
+                          title="Permalink to this headline"
+                          ></a
+                        >
+                      </h3>
+                      <p>
+                        Vehicle is written in Haskell. The first task is to
+                        install Haskell itself:
+                      </p>
+                      <ol class="arabic simple">
+                        <li>
+                          <p>
+                            Install GHCUp following the instructions from
+                            <a
+                              class="reference external"
+                              href="https://www.haskell.org/ghcup/"
+                              >https://www.haskell.org/ghcup/</a
+                            >.
+                          </p>
+                        </li>
+                        <li><p>Close and reopen your terminal.</p></li>
+                        <li>
+                          <p>
+                            Run
+                            <code class="docutils literal notranslate"
+                              ><span class="pre">ghcup</span>
+                              <span class="pre">tui</span></code
+                            >
+                            and use it to install and set:
+                          </p>
+                        </li>
+                      </ol>
+                      <blockquote>
+                        <div>
+                          <ul class="simple">
+                            <li><p>GHC 9.0.X (for some version of X)</p></li>
+                            <li><p>Cabal 3.X (for some version of X)</p></li>
+                          </ul>
+                        </div>
+                      </blockquote>
+                      <ol class="arabic simple" start="4">
+                        <li>
+                          <p>
+                            Run
+                            <code class="docutils literal notranslate"
+                              ><span class="pre">cabal</span>
+                              <span class="pre">update</span></code
+                            >
+                            to update your list of packages.
+                          </p>
+                        </li>
+                      </ol>
+                      <p>Now we can install Vehicle itself.</p>
+                      <ol class="arabic simple">
+                        <li>
+                          <p>
+                            Clone the Vehicle github repository to your local
+                            computer and navigate to the directory.
+                          </p>
+                        </li>
+                        <li>
+                          <p>
+                            Run
+                            <code class="docutils literal notranslate"
+                              ><span class="pre">cabal</span>
+                              <span class="pre">run</span>
+                              <span class="pre">vehicle-build-system</span>
+                              <span class="pre">init</span></code
+                            >
+                            to initialise the project and install any
+                            dependencies that are needed for building the
+                            project.
+                          </p>
+                        </li>
+                        <li>
+                          <p>
+                            (Optional) - run
+                            <code class="docutils literal notranslate"
+                              ><span class="pre">cabal</span>
+                              <span class="pre">run</span>
+                              <span class="pre">vehicle-build-system</span>
+                              <span class="pre">basic-tests</span></code
+                            >
+                            to run the test suite.
+                          </p>
+                        </li>
+                      </ol>
+                      <blockquote>
+                        <div>
+                          <dl class="simple">
+                            <dt>
+                              (If this doesn’t work then check that check that
+                              <cite>~/.cabal/bin</cite> has
+                            </dt>
+                            <dd><p>been added to your system path.)</p></dd>
+                          </dl>
+                        </div>
+                      </blockquote>
+                      <ol class="arabic simple" start="4">
+                        <li>
+                          <p>
+                            Run
+                            <code class="docutils literal notranslate"
+                              ><span class="pre">cabal</span>
+                              <span class="pre">install</span></code
+                            >
+                            to install the Vehicle executable.
+                          </p>
+                        </li>
+                        <li>
+                          <p>
+                            Run
+                            <code class="docutils literal notranslate"
+                              ><span class="pre">vehicle</span>
+                              <span class="pre">-h</span></code
+                            >
+                            to check that Vehicle has been installed.
+                          </p>
+                        </li>
+                      </ol>
+                      <p><strong>Troubleshooting</strong></p>
+                      <ul class="simple">
+                        <li>
+                          <p>
+                            Check if you’re using the right versions of GHC and
+                            Cabal.
+                          </p>
+                        </li>
+                        <li>
+                          <p>
+                            Check if you have any other installations of GHC and
+                            Cabal not managed by GHCUp. Either remove those
+                            installations or make sure that GHCUp is earlier in
+                            the PATH environment variable.
+                          </p>
+                        </li>
+                      </ul>
+                    </section>
+                    <section id="on-windows">
+                      <h3>
+                        On Windows<a
+                          class="headerlink"
+                          href="#on-windows"
+                          title="Permalink to this headline"
+                          ></a
+                        >
+                      </h3>
+                      <p>The easiest way is:</p>
+                      <ul class="simple">
+                        <li>
+                          <p>
+                            Install the Windows Subsystem for Linux (WSL) from
+                            the Microsoft Store.
+                          </p>
+                        </li>
+                        <li>
+                          <p>
+                            Follow the instructions for Linux above in a WSL
+                            terminal.
+                          </p>
+                        </li>
+                      </ul>
+                      <div class="admonition warning">
+                        <p class="admonition-title">Warning</p>
+                        <p>
+                          Although Vehicle itself supports and is tested on
+                          Windows, that does not mean that all backends will
+                          work on Windows. For example
+                          <code class="docutils literal notranslate"
+                            ><span class="pre">Marabou</span></code
+                          >
+                          does not currently support Windows.
+                        </p>
+                      </div>
+                      <p><strong>Troubleshooting</strong></p>
+                      <ul class="simple">
+                        <li>
+                          <p>
+                            If you have problems with the WSL check if you’re
+                            using the latest version.
+                          </p>
+                        </li>
+                        <li>
+                          <p>
+                            If you get the error: Missing (or bad) C libraries:
+                            icuuc, icuin, icudt
+                          </p>
+                        </li>
+                      </ul>
+                      <p>
+                        Go to
+                        <a
+                          class="reference external"
+                          href="https://github.com/microsoft/vcpkg#quick-start-windows"
+                          >https://github.com/microsoft/vcpkg#quick-start-windows</a
+                        >
+                        and follow the instructions.
+                      </p>
+                    </section>
+                  </section>
+                  <section id="setting-vehicle-to-work-with-agda">
+                    <h2>
+                      Setting Vehicle to work with Agda<a
+                        class="headerlink"
+                        href="#setting-vehicle-to-work-with-agda"
+                        title="Permalink to this headline"
+                        ></a
+                      >
+                    </h2>
+                    <p>If you want to enable Vehicle to work with Agda, run:</p>
+                    <ol class="arabic simple">
+                      <li>
+                        <p>
+                          Run
+                          <code class="docutils literal notranslate"
+                            ><span class="pre">cabal</span>
+                            <span class="pre">run</span>
+                            <span class="pre">vehicle-build-system</span>
+                            <span class="pre">init-agda</span></code
+                          >
+                        </p>
+                      </li>
+                    </ol>
+                    <p>
+                      This command will add the
+                      <code class="docutils literal notranslate"
+                        ><span class="pre">Vehicle</span></code
+                      >
+                      Agda library to the Agda
+                      <code class="docutils literal notranslate"
+                        ><span class="pre">libraries</span></code
+                      >
+                      file and add the
+                      <code class="docutils literal notranslate"
+                        ><span class="pre">vehicle</span></code
+                      >
+                      executable to the Agda
+                      <code class="docutils literal notranslate"
+                        ><span class="pre">executables</span></code
+                      >
+                      file.
+                    </p>
+                    <p>
+                      The command does not install the
+                      <cite>vehicle</cite> library in your Agda
+                      <code class="docutils literal notranslate"
+                        ><span class="pre">defaults</span></code
+                      >
+                      file. Before using an Agda file generated by Vehicle you
+                      will need to add
+                      <code class="docutils literal notranslate"
+                        ><span class="pre">vehicle</span></code
+                      >
+                      to either your library’s
+                      <code class="docutils literal notranslate"
+                        ><span class="pre">.agda-lib</span></code
+                      >
+                      file or to your Agda
+                      <code class="docutils literal notranslate"
+                        ><span class="pre">defaults</span></code
+                      >
+                      file.
+                    </p>
+                    <p>
+                      See the Agda documentation on
+                      <a
+                        class="reference external"
+                        href="https://agda.readthedocs.io/en/v2.6.0.1/tools/package-system.html"
+                        >Library Management</a
+                      >
+                      for more details.
+                    </p>
+                  </section>
+                  <section id="syntax-highlighting">
+                    <h2>
+                      Syntax highlighting<a
+                        class="headerlink"
+                        href="#syntax-highlighting"
+                        title="Permalink to this headline"
+                        ></a
+                      >
+                    </h2>
+                    <p>
+                      The syntax highlighting can be installed in VSCode by
+                      going to the “Extensions” tab and searching for “Vehicle
+                      Syntax Highlighting”.
+                    </p>
+                    <p>
+                      Contributions adding syntax highlighting to other IDEs
+                      would be welcome. The source code for the VSCode extension
+                      is available
+                      <a
+                        class="reference external"
+                        href="https://github.com/vehicle-lang/vscode-vehicle-syntax-highlighting"
+                        >here</a
+                      >.
+                    </p>
+                  </section>
+                </section>
+              </div>
+            </div>
+            <footer>
+              <div
+                class="rst-footer-buttons"
+                role="navigation"
+                aria-label="Footer"
+              >
+                <a
+                  href="index.html"
+                  class="btn btn-neutral float-left"
+                  title="Welcome to Vehicle’s documentation!"
+                  accesskey="p"
+                  rel="prev"
+                  ><span
+                    class="fa fa-arrow-circle-left"
+                    aria-hidden="true"
+                  ></span>
+                  Previous</a
+                >
+                <a
+                  href="language/index.html"
+                  class="btn btn-neutral float-right"
+                  title="The specification language"
+                  accesskey="n"
+                  rel="next"
+                  >Next
+                  <span
+                    class="fa fa-arrow-circle-right"
+                    aria-hidden="true"
+                  ></span
+                ></a>
+              </div>
+
+              <hr />
+
+              <div role="contentinfo">
+                <p>&#169; Copyright 2022.</p>
+              </div>
+
+              Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using
+              a
+              <a href="https://github.com/readthedocs/sphinx_rtd_theme"
+                >theme</a
+              >
+              provided by <a href="https://readthedocs.org">Read the Docs</a>.
+            </footer>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      jQuery(function () {
+        SphinxRtdTheme.Navigation.enable(true);
+      });
+    </script>
+  </body>
+</html>
