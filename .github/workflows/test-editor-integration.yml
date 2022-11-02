@@ -21,7 +21,7 @@ jobs:
       CABAL_PROJECT_FILE: cabal.project.ghc-${{ matrix.ghc-version }}
       CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ matrix.ghc-version }}.freeze
 
-    name: Build on ${{ matrix.os }} with GHC ${{ matrix.ghc-version }}
+    name: Test Editor Integration on ${{ matrix.os }} with GHC ${{ matrix.ghc-version }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
 
