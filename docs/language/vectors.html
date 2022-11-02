@@ -1,1100 +1,341 @@
-<!doctype html>
-<html class="writer-html5" lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="generator"
-      content="Docutils 0.17.1: http://docutils.sourceforge.net/"
-    />
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vectors &mdash; Vehicle 0.1 documentation</title>
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-    <!--[if lt IE 9]>
-      <script src="../_static/js/html5shiv.min.js"></script>
-    <![endif]-->
-
-    <script
-      data-url_root="../"
-      id="documentation_options"
-      src="../_static/documentation_options.js"
-    ></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
-    <script src="../_static/doctools.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vectors &mdash; Vehicle 0.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Tensors" href="tensors.html" />
-    <link rel="prev" title="Lists" href="lists.html" />
-  </head>
+    <link rel="prev" title="Lists" href="lists.html" /> 
+</head>
 
-  <body class="wy-body-for-nav">
-    <div class="wy-grid-for-nav">
-      <nav data-toggle="wy-nav-shift" class="wy-nav-side">
-        <div class="wy-side-scroll">
-          <div class="wy-side-nav-search">
-            <a href="../index.html" class="icon icon-home"> Vehicle </a>
-            <div class="version">0.1.0</div>
-            <div role="search">
-              <form
-                id="rtd-search-form"
-                class="wy-form"
-                action="../search.html"
-                method="get"
-              >
-                <input type="text" name="q" placeholder="Search docs" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-            </div>
-          </div>
-          <div
-            class="wy-menu wy-menu-vertical"
-            data-spy="affix"
-            role="navigation"
-            aria-label="Navigation menu"
-          >
-            <ul class="current">
-              <li class="toctree-l1">
-                <a class="reference internal" href="../installation.html"
-                  >Installation</a
-                >
-              </li>
-              <li class="toctree-l1 current">
-                <a class="reference internal" href="index.html"
-                  >The specification language</a
-                >
-                <ul class="current">
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="logic.html">Logic</a>
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="arithmetic.html"
-                      >Arithmetic</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="functions.html"
-                      >Functions</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="lists.html">Lists</a>
-                  </li>
-                  <li class="toctree-l2 current">
-                    <a class="current reference internal" href="#">Vectors</a>
-                    <ul>
-                      <li class="toctree-l3">
-                        <a class="reference internal" href="#basics">Basics</a>
-                      </li>
-                      <li class="toctree-l3">
-                        <a class="reference internal" href="#creation"
-                          >Creation</a
-                        >
-                      </li>
-                      <li class="toctree-l3">
-                        <a class="reference internal" href="#operations"
-                          >Operations</a
-                        >
-                      </li>
-                      <li class="toctree-l3">
-                        <a class="reference internal" href="#indexing"
-                          >Indexing</a
-                        >
-                      </li>
-                      <li class="toctree-l3">
-                        <a class="reference internal" href="#non-constant-sizes"
-                          >Non-constant sizes</a
-                        >
-                      </li>
-                    </ul>
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="tensors.html"
-                      >Tensors</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="quantifiers.html"
-                      >Quantifiers</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="networks.html"
-                      >Networks</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="datasets.html"
-                      >Datasets</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="parameters.html"
-                      >Parameters</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="properties.html"
-                      >Properties</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="type-synonyms.html"
-                      >Type synonyms</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="let-expressions.html"
-                      >Let expressions (TODO)</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="annotations-holes.html"
-                      >Annotations and holes (Docs TODO)</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="tips-and-tricks.html"
-                      >Tips and tricks</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="advanced.html"
-                      >Advanced topics (TODO)</a
-                    >
-                  </li>
-                </ul>
-              </li>
-              <li class="toctree-l1">
-                <a class="reference internal" href="../training.html"
-                  >Training with a specification (TODO)</a
-                >
-              </li>
-              <li class="toctree-l1">
-                <a class="reference internal" href="../verification.html"
-                  >Verifying a specification</a
-                >
-              </li>
-              <li class="toctree-l1">
-                <a class="reference internal" href="../theorem-proving.html"
-                  >Exporting a specification to an ITP</a
-                >
-              </li>
-              <li class="toctree-l1">
-                <a class="reference internal" href="../other/index.html"
-                  >Other</a
-                >
-              </li>
-            </ul>
-          </div>
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Vehicle
+          </a>
+              <div class="version">
+                0.1.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">The specification language</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="logic.html">Logic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="arithmetic.html">Arithmetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="functions.html">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lists.html">Lists</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Vectors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#basics">Basics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#creation">Creation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#operations">Operations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#indexing">Indexing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#non-constant-sizes">Non-constant sizes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tensors.html">Tensors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quantifiers.html">Quantifiers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="networks.html">Networks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parameters.html">Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="properties.html">Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="type-synonyms.html">Type synonyms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="let-expressions.html">Let expressions (TODO)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="annotations-holes.html">Annotations and holes (Docs TODO)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tips-and-tricks.html">Tips and tricks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced.html">Advanced topics (TODO)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../training.html">Training with a specification (TODO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../verification.html">Verifying a specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../theorem-proving.html">Exporting a specification to an ITP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../other/index.html">Other</a></li>
+</ul>
+
         </div>
-      </nav>
+      </div>
+    </nav>
 
-      <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-        <nav class="wy-nav-top" aria-label="Mobile navigation menu">
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../index.html">Vehicle</a>
-        </nav>
+      </nav>
 
-        <div class="wy-nav-content">
-          <div class="rst-content">
-            <div role="navigation" aria-label="Page navigation">
-              <ul class="wy-breadcrumbs">
-                <li><a href="../index.html" class="icon icon-home"></a></li>
-                <li class="breadcrumb-item">
-                  <a href="index.html">The specification language</a>
-                </li>
-                <li class="breadcrumb-item active">Vectors</li>
-                <li class="wy-breadcrumbs-aside">
-                  <a href="../_sources/language/vectors.rst.txt" rel="nofollow">
-                    View page source</a
-                  >
-                </li>
-              </ul>
-              <hr />
-            </div>
-            <div
-              role="main"
-              class="document"
-              itemscope="itemscope"
-              itemtype="http://schema.org/Article"
-            >
-              <div itemprop="articleBody">
-                <section id="vectors">
-                  <h1>
-                    Vectors<a
-                      class="headerlink"
-                      href="#vectors"
-                      title="Permalink to this headline"
-                      ></a
-                    >
-                  </h1>
-                  <div class="contents local topic" id="contents">
-                    <ul class="simple">
-                      <li>
-                        <p>
-                          <a class="reference internal" href="#basics" id="id1"
-                            >Basics</a
-                          >
-                        </p>
-                      </li>
-                      <li>
-                        <p>
-                          <a
-                            class="reference internal"
-                            href="#creation"
-                            id="id2"
-                            >Creation</a
-                          >
-                        </p>
-                      </li>
-                      <li>
-                        <p>
-                          <a
-                            class="reference internal"
-                            href="#operations"
-                            id="id3"
-                            >Operations</a
-                          >
-                        </p>
-                      </li>
-                      <li>
-                        <p>
-                          <a
-                            class="reference internal"
-                            href="#indexing"
-                            id="id4"
-                            >Indexing</a
-                          >
-                        </p>
-                      </li>
-                      <li>
-                        <p>
-                          <a
-                            class="reference internal"
-                            href="#non-constant-sizes"
-                            id="id5"
-                            >Non-constant sizes</a
-                          >
-                        </p>
-                      </li>
-                    </ul>
-                  </div>
-                  <section id="basics">
-                    <h2>
-                      <a class="toc-backref" href="#id1">Basics</a
-                      ><a
-                        class="headerlink"
-                        href="#basics"
-                        title="Permalink to this headline"
-                        ></a
-                      >
-                    </h2>
-                    <p>
-                      The
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Vector</span></code
-                      >
-                      type represents a mathematical vector, or in programming
-                      terms can be thought of as a fixed-length array. One
-                      crucial aspect in Vehicle is that the size of the vector
-                      (i.e the number of items it contains) must be known
-                      statically at compile time. This allows Vehicle to check
-                      for the presence of out-of-bounds errors at compile time
-                      rather than run time.
-                    </p>
-                    <p>
-                      The full type is therefore written as
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Vector</span>
-                        <span class="pre">A</span>
-                        <span class="pre">n</span></code
-                      >, which represents the type of vectors with
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">n</span></code
-                      >
-                      elements of each of type
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">A</span></code
-                      >. For example,
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Vector</span>
-                        <span class="pre">Rat</span>
-                        <span class="pre">10</span></code
-                      >
-                      is a vector of length 10 that contains rational numbers,
-                      and
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Vector</span>
-                        <span class="pre">(List</span>
-                        <span class="pre">Nat)</span>
-                        <span class="pre">2</span></code
-                      >
-                      is a vector of length 2 that contains lists of natural
-                      numbers.
-                    </p>
-                  </section>
-                  <section id="creation">
-                    <h2>
-                      <a class="toc-backref" href="#id2">Creation</a
-                      ><a
-                        class="headerlink"
-                        href="#creation"
-                        title="Permalink to this headline"
-                        ></a
-                      >
-                    </h2>
-                    <p>
-                      There are three ways to create an instance of a vector:
-                    </p>
-                    <ol class="arabic">
-                      <li>
-                        <p>
-                          Use the same syntax as when creating a
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">List</span></code
-                          >, i.e.
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">[x_1,</span>
-                            <span class="pre">...,</span>
-                            <span class="pre">x_n]</span></code
-                          >. For example:
-                        </p>
-                        <div class="highlight-agda notranslate">
-                          <div class="highlight">
-                            <pre><span></span><span class="nf">myVector1</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"></span>
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">The specification language</a></li>
+      <li class="breadcrumb-item active">Vectors</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/language/vectors.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="vectors">
+<h1>Vectors<a class="headerlink" href="#vectors" title="Permalink to this headline"></a></h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#basics" id="id1">Basics</a></p></li>
+<li><p><a class="reference internal" href="#creation" id="id2">Creation</a></p></li>
+<li><p><a class="reference internal" href="#operations" id="id3">Operations</a></p></li>
+<li><p><a class="reference internal" href="#indexing" id="id4">Indexing</a></p></li>
+<li><p><a class="reference internal" href="#non-constant-sizes" id="id5">Non-constant sizes</a></p></li>
+</ul>
+</div>
+<section id="basics">
+<h2><a class="toc-backref" href="#id1">Basics</a><a class="headerlink" href="#basics" title="Permalink to this headline"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">Vector</span></code> type represents a mathematical vector, or in programming
+terms can be thought of as a fixed-length array.
+One crucial aspect in Vehicle is that the size of the vector
+(i.e the number of items it contains) must be known statically
+at compile time. This allows Vehicle to check for the presence of
+out-of-bounds errors at compile time rather than run time.</p>
+<p>The full type is therefore written as <code class="docutils literal notranslate"><span class="pre">Vector</span> <span class="pre">A</span> <span class="pre">n</span></code>, which
+represents the type of vectors with <code class="docutils literal notranslate"><span class="pre">n</span></code> elements of each of type <code class="docutils literal notranslate"><span class="pre">A</span></code>.
+For example, <code class="docutils literal notranslate"><span class="pre">Vector</span> <span class="pre">Rat</span> <span class="pre">10</span></code> is a vector of length 10 that contains
+rational numbers,  and <code class="docutils literal notranslate"><span class="pre">Vector</span> <span class="pre">(List</span> <span class="pre">Nat)</span> <span class="pre">2</span></code> is a vector of length 2
+that contains lists of natural numbers.</p>
+</section>
+<section id="creation">
+<h2><a class="toc-backref" href="#id2">Creation</a><a class="headerlink" href="#creation" title="Permalink to this headline"></a></h2>
+<p>There are three ways to create an instance of a vector:</p>
+<ol class="arabic">
+<li><p>Use the same syntax as when creating a <code class="docutils literal notranslate"><span class="pre">List</span></code>, i.e. <code class="docutils literal notranslate"><span class="pre">[x_1,</span> <span class="pre">...,</span> <span class="pre">x_n]</span></code>.
+For example:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="nf">myVector1</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"></span>
 myVector1<span class="w"> </span><span class="ow">=</span><span class="w"> </span>[<span class="w"> </span><span class="mf">0.1</span>,<span class="w"> </span><span class="mf">0.3</span>,<span class="w"> </span>-0.1<span class="w"> </span>]<span class="w"></span>
-</pre>
-                          </div>
-                        </div>
-                        <p>
-                          The type-checker will ensure that all vectors written
-                          in this way are of the correct size. For example the
-                          following would result in an error:
-                        </p>
-                        <div class="highlight-agda notranslate">
-                          <div class="highlight">
-                            <pre><span></span><span class="nf">myBadVector</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The type-checker will ensure that all vectors written in this way are of
+the correct size. For example the following would result in an error:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="nf">myBadVector</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"></span>
 myBadVector<span class="w"> </span><span class="ow">=</span><span class="w"> </span>[<span class="w"> </span><span class="mf">0.1</span>,<span class="w"> </span><span class="mf">0.3</span><span class="w"> </span>]<span class="w"></span>
-</pre>
-                          </div>
-                        </div>
-                        <p>
-                          as the size of the vector is
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">3</span></code
-                          >
-                          but only 2 elements have been provided.
-                        </p>
-                        <p>
-                          While it is possible to use this method to write out
-                          small vectors, writing out large vectors this way is
-                          clearly impractical.
-                        </p>
-                      </li>
-                      <li>
-                        <p>
-                          Therefore the second method is to use the
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">foreach</span></code
-                          >
-                          constructor, which is used to provide a value for each
-                          index
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">i</span></code
-                          >. This method is useful if the vector has some
-                          regular structure. For example:
-                        </p>
-                        <div class="highlight-agda notranslate">
-                          <div class="highlight">
-                            <pre><span></span><span class="nf">myVector2</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">100</span><span class="w"></span>
+</pre></div>
+</div>
+<p>as the size of the vector is <code class="docutils literal notranslate"><span class="pre">3</span></code> but only 2 elements have been provided.</p>
+<p>While it is possible to use this method to write out small vectors,
+writing out large vectors this way is clearly impractical.</p>
+</li>
+<li><p>Therefore the second method is to use the <code class="docutils literal notranslate"><span class="pre">foreach</span></code> constructor,
+which is used to provide a value for each index <code class="docutils literal notranslate"><span class="pre">i</span></code>. This method is
+useful if the vector has some regular structure. For example:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="nf">myVector2</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">100</span><span class="w"></span>
 myVector2<span class="w"> </span><span class="ow">=</span><span class="w"> </span>foreach<span class="w"> </span>i<span class="w"> </span><span class="ow">.</span><span class="w"> </span><span class="mi">0</span><span class="w"></span>
-</pre>
-                          </div>
-                        </div>
-                        <p>
-                          constructs a vector of 100 rationals all of which are
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">0</span></code
-                          >, and
-                        </p>
-                        <div class="highlight-agda notranslate">
-                          <div class="highlight">
-                            <pre><span></span><span class="nf">myVector3</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">100</span><span class="w"></span>
+</pre></div>
+</div>
+<p>constructs a vector of 100 rationals all of which are <code class="docutils literal notranslate"><span class="pre">0</span></code>, and</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="nf">myVector3</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">100</span><span class="w"></span>
 myVector3<span class="w"> </span><span class="ow">=</span><span class="w"> </span>foreach<span class="w"> </span>i<span class="w"> </span><span class="ow">.</span><span class="w"> </span>if<span class="w"> </span>i<span class="w"> </span>&lt;<span class="w"> </span><span class="mi">20</span><span class="w"> </span>then<span class="w"> </span><span class="mi">1</span><span class="w"> </span>else<span class="w"> </span><span class="mi">0</span><span class="w"></span>
-</pre>
-                          </div>
-                        </div>
-                        <p>
-                          constructs a vector of 100 rationals where the first
-                          20 elements are
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">1</span></code
-                          >
-                          and the remaining are
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">0</span></code
-                          >.
-                        </p>
-                        <p>
-                          When using the
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">foreach</span></code
-                          >
-                          to construct a vector of size
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">n`</span></code
-                          >
-                          the type of variable
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">i</span></code
-                          >
-                          is
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">Index</span>
-                            <span class="pre">n</span></code
-                          >. See the Index section for more details.
-                        </p>
-                      </li>
-                      <li>
-                        <p>
-                          The final way vectors can be created is to load them
-                          as a
-                          <code class="docutils literal notranslate"
-                            ><span class="pre">dataset</span></code
-                          >, e.g.
-                        </p>
-                        <div class="highlight-agda notranslate">
-                          <div class="highlight">
-                            <pre><span></span>@dataset<span class="w"></span>
+</pre></div>
+</div>
+<p>constructs a vector of 100 rationals where the first 20 elements are <code class="docutils literal notranslate"><span class="pre">1</span></code>
+and the remaining are <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
+<p>When using the <code class="docutils literal notranslate"><span class="pre">foreach</span></code> to construct a vector of size <code class="docutils literal notranslate"><span class="pre">n`</span></code> the type
+of variable <code class="docutils literal notranslate"><span class="pre">i</span></code> is <code class="docutils literal notranslate"><span class="pre">Index</span> <span class="pre">n</span></code>. See the Index section for more details.</p>
+</li>
+<li><p>The final way vectors can be created is to load them as a <code class="docutils literal notranslate"><span class="pre">dataset</span></code>, e.g.</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span>@dataset<span class="w"></span>
 <span class="nf">myVector4</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">10000</span><span class="w"></span>
-</pre>
-                          </div>
-                        </div>
-                        <p>
-                          which allows the loading of large vectors with no
-                          regular structure. See the section on datasets for
-                          more details.
-                        </p>
-                      </li>
-                    </ol>
-                  </section>
-                  <section id="operations">
-                    <h2>
-                      <a class="toc-backref" href="#id3">Operations</a
-                      ><a
-                        class="headerlink"
-                        href="#operations"
-                        title="Permalink to this headline"
-                        ></a
-                      >
-                    </h2>
-                    <p>
-                      The following operations over vectors are currently
-                      supported:
-                    </p>
-                    <table class="colwidths-given docutils align-default">
-                      <colgroup>
-                        <col style="width: 15%" />
-                        <col style="width: 12%" />
-                        <col style="width: 38%" />
-                        <col style="width: 15%" />
-                        <col style="width: 20%" />
-                      </colgroup>
-                      <thead>
-                        <tr class="row-odd">
-                          <th class="head"><p>Operation</p></th>
-                          <th class="head"><p>Symbol</p></th>
-                          <th class="head"><p>Type</p></th>
-                          <th class="head"><p>Example</p></th>
-                          <th class="head"><p>Description</p></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr class="row-even">
-                          <td><p>Lookup</p></td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">!</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">Vector</span>
-                                <span class="pre">A</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Index</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">A</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">v</span>
-                                <span class="pre">!</span>
-                                <span class="pre">i</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              Extract the value at a given index of the vector.
-                            </p>
-                          </td>
-                        </tr>
-                        <tr class="row-odd">
-                          <td><p>Map</p></td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">map</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">(A</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">B)</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Vector</span>
-                                <span class="pre">A</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Vector</span>
-                                <span class="pre">B</span>
-                                <span class="pre">d</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">map</span>
-                                <span class="pre">f</span>
-                                <span class="pre">v</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              Apply the function
-                              <code class="docutils literal notranslate"
-                                ><span class="pre">f</span></code
-                              >
-                              to every value in the vector.
-                            </p>
-                          </td>
-                        </tr>
-                        <tr class="row-even">
-                          <td><p>Pointwise addition</p></td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">+</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">Vector</span>
-                                <span class="pre">A</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Vector</span>
-                                <span class="pre">A</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Vector</span>
-                                <span class="pre">A</span>
-                                <span class="pre">d</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">v1</span>
-                                <span class="pre">+</span>
-                                <span class="pre">v2</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              Pointwise add the values in two vectors together.
-                              Only valid if addition is defined for the type of
-                              elements
-                              <code class="docutils literal notranslate"
-                                ><span class="pre">A</span></code
-                              >.
-                            </p>
-                          </td>
-                        </tr>
-                        <tr class="row-odd">
-                          <td><p>Pointwise subtraction</p></td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">-</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">Vector</span>
-                                <span class="pre">A</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Vector</span>
-                                <span class="pre">A</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Vector</span>
-                                <span class="pre">A</span>
-                                <span class="pre">d</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">v1</span>
-                                <span class="pre">-</span>
-                                <span class="pre">v2</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              Pointwise subtract the values in the first vector
-                              from the values in the second. Only valid if
-                              subtraction is defined for the type of elements
-                              <code class="docutils literal notranslate"
-                                ><span class="pre">A</span></code
-                              >.
-                            </p>
-                          </td>
-                        </tr>
-                        <tr class="row-even">
-                          <td><p>Fold</p></td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">fold</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">(A</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">B</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">B)</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">B</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Vector</span>
-                                <span class="pre">A</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">B</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">fold</span>
-                                <span class="pre">f</span>
-                                <span class="pre">e</span>
-                                <span class="pre">v</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              Reduce the vector to a single value by iterating
-                              the function <cite>f</cite> repeatedly with the
-                              head of the vector.
-                            </p>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </section>
-                  <section id="indexing">
-                    <h2>
-                      <a class="toc-backref" href="#id4">Indexing</a
-                      ><a
-                        class="headerlink"
-                        href="#indexing"
-                        title="Permalink to this headline"
-                        ></a
-                      >
-                    </h2>
-                    <p>
-                      The type of the lookup operator
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">!</span></code
-                      >
-                      given above requires that it takes a value of type
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Index</span>
-                        <span class="pre">d</span></code
-                      >
-                      as its second argument. The set of valid instances of this
-                      type are the natural numbers
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">{0,</span>
-                        <span class="pre">1,</span>
-                        <span class="pre">...,</span>
-                        <span class="pre">d-1}</span></code
-                      >. This therefore eliminates out of bounds errors by
-                      ensuring that one can never index into a vector using a
-                      value greater than its size.
-                    </p>
-                    <p>
-                      Indices can be written as any other natural number would
-                      be, and the type-checker will automatically infer they
-                      should be of type
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Index</span></code
-                      >
-                      from their use.
-                    </p>
-                    <p>For example:</p>
-                    <div class="highlight-agda notranslate">
-                      <div class="highlight">
-                        <pre><span></span>@dataset<span class="w"></span>
+</pre></div>
+</div>
+<p>which allows the loading of large vectors with no regular structure.
+See the section on datasets for more details.</p>
+</li>
+</ol>
+</section>
+<section id="operations">
+<h2><a class="toc-backref" href="#id3">Operations</a><a class="headerlink" href="#operations" title="Permalink to this headline"></a></h2>
+<p>The following operations over vectors are currently supported:</p>
+<table class="colwidths-given docutils align-default">
+<colgroup>
+<col style="width: 15%" />
+<col style="width: 12%" />
+<col style="width: 38%" />
+<col style="width: 15%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Operation</p></th>
+<th class="head"><p>Symbol</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Example</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Lookup</p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">!</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">Vector</span> <span class="pre">A</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Index</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">A</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">v</span> <span class="pre">!</span> <span class="pre">i</span></code></p></td>
+<td><p>Extract the value at a given index of the vector.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Map</p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">map</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">(A</span> <span class="pre">-&gt;</span> <span class="pre">B)</span> <span class="pre">-&gt;</span> <span class="pre">Vector</span> <span class="pre">A</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Vector</span> <span class="pre">B</span> <span class="pre">d</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">map</span> <span class="pre">f</span> <span class="pre">v</span></code></p></td>
+<td><p>Apply the function <code class="docutils literal notranslate"><span class="pre">f</span></code> to every value in the vector.</p></td>
+</tr>
+<tr class="row-even"><td><p>Pointwise addition</p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">+</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">Vector</span> <span class="pre">A</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Vector</span> <span class="pre">A</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Vector</span> <span class="pre">A</span> <span class="pre">d</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">v1</span> <span class="pre">+</span> <span class="pre">v2</span></code></p></td>
+<td><p>Pointwise add the values in two vectors together. Only valid
+if addition is defined for the type of elements <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Pointwise subtraction</p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">-</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">Vector</span> <span class="pre">A</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Vector</span> <span class="pre">A</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Vector</span> <span class="pre">A</span> <span class="pre">d</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">v1</span> <span class="pre">-</span> <span class="pre">v2</span></code></p></td>
+<td><p>Pointwise subtract the values in the first vector from the values
+in the second. Only valid if subtraction is defined for the type of
+elements <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p>Fold</p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">fold</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">(A</span> <span class="pre">-&gt;</span> <span class="pre">B</span> <span class="pre">-&gt;</span> <span class="pre">B)</span> <span class="pre">-&gt;</span> <span class="pre">B</span> <span class="pre">-&gt;</span> <span class="pre">Vector</span> <span class="pre">A</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">B</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">fold</span> <span class="pre">f</span> <span class="pre">e</span> <span class="pre">v</span></code></p></td>
+<td><p>Reduce the vector to a single value by iterating the function <cite>f</cite>
+repeatedly with the head of the vector.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="indexing">
+<h2><a class="toc-backref" href="#id4">Indexing</a><a class="headerlink" href="#indexing" title="Permalink to this headline"></a></h2>
+<p>The type of the lookup operator <code class="docutils literal notranslate"><span class="pre">!</span></code> given above requires that it
+takes a value of type <code class="docutils literal notranslate"><span class="pre">Index</span> <span class="pre">d</span></code> as its second argument.
+The set of valid instances of this type are the natural numbers
+<code class="docutils literal notranslate"><span class="pre">{0,</span> <span class="pre">1,</span> <span class="pre">...,</span> <span class="pre">d-1}</span></code>.
+This therefore eliminates out of bounds errors by ensuring that
+one can never index into a vector using a value greater than its
+size.</p>
+<p>Indices can be written as any other natural number would be, and
+the type-checker will automatically infer they should be of type
+<code class="docutils literal notranslate"><span class="pre">Index</span></code> from their use.</p>
+<p>For example:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span>@dataset<span class="w"></span>
 <span class="nf">myVector</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span>[10]<span class="w"></span>
 
 <span class="nf">firstElement</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Rat<span class="w"></span>
 firstElement<span class="w"> </span><span class="ow">=</span><span class="w"> </span>myVector<span class="w"> </span>!<span class="w"> </span><span class="mi">0</span><span class="w"></span>
-</pre>
-                      </div>
-                    </div>
-                    <p>
-                      is valid but the following is not as
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">10</span></code
-                      >
-                      is out of bounds:
-                    </p>
-                    <div class="highlight-agda notranslate">
-                      <div class="highlight">
-                        <pre><span></span><span class="nf">invalidElement</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Rat<span class="w"></span>
+</pre></div>
+</div>
+<p>is valid but the following is not as <code class="docutils literal notranslate"><span class="pre">10</span></code> is out of bounds:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="nf">invalidElement</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Rat<span class="w"></span>
 invalidElement<span class="w"> </span><span class="ow">=</span><span class="w"> </span>myVector<span class="w"> </span>!<span class="w"> </span><span class="mi">10</span><span class="w"></span>
-</pre>
-                      </div>
-                    </div>
-                    <p>
-                      Most arithmetic operations over
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Index</span></code
-                      >
-                      type are not closed with respect to the type, e.g. adding
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">3</span> <span class="pre">:</span>
-                        <span class="pre">Index</span>
-                        <span class="pre">5</span></code
-                      >
-                      and
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">4</span> <span class="pre">:</span>
-                        <span class="pre">Index</span>
-                        <span class="pre">5</span></code
-                      >
-                      results in
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">7</span></code
-                      >
-                      which is not a member of
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Index</span>
-                        <span class="pre">5</span></code
-                      >. Consequently the set of operations supported by the
-                      type is extremely limited:
-                    </p>
-                    <table class="colwidths-given docutils align-default">
-                      <colgroup>
-                        <col style="width: 25%" />
-                        <col style="width: 15%" />
-                        <col style="width: 40%" />
-                        <col style="width: 20%" />
-                      </colgroup>
-                      <thead>
-                        <tr class="row-odd">
-                          <th class="head"><p>Operation</p></th>
-                          <th class="head"><p>Symbol</p></th>
-                          <th class="head"><p>Type</p></th>
-                          <th class="head"><p>Example</p></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr class="row-even">
-                          <td><p>Less than or equal</p></td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">&lt;=</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">Index</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Index</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Bool</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">x</span>
-                                <span class="pre">&lt;=</span>
-                                <span class="pre">y</span></code
-                              >
-                            </p>
-                          </td>
-                        </tr>
-                        <tr class="row-odd">
-                          <td><p>Less than</p></td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">&lt;</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">Index</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Index</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Bool</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">x</span>
-                                <span class="pre">&lt;</span>
-                                <span class="pre">y</span></code
-                              >
-                            </p>
-                          </td>
-                        </tr>
-                        <tr class="row-even">
-                          <td><p>Greater than or equal</p></td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">&gt;=</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">Index</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Index</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Bool</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">x</span>
-                                <span class="pre">&gt;=</span>
-                                <span class="pre">y</span></code
-                              >
-                            </p>
-                          </td>
-                        </tr>
-                        <tr class="row-odd">
-                          <td><p>Greater than</p></td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">&gt;</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">Index</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Index</span>
-                                <span class="pre">d</span>
-                                <span class="pre">-&gt;</span>
-                                <span class="pre">Bool</span></code
-                              >
-                            </p>
-                          </td>
-                          <td>
-                            <p>
-                              <code class="code docutils literal notranslate"
-                                ><span class="pre">x</span>
-                                <span class="pre">&gt;=</span>
-                                <span class="pre">y</span></code
-                              >
-                            </p>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </section>
-                  <section id="non-constant-sizes">
-                    <h2>
-                      <a class="toc-backref" href="#id5">Non-constant sizes</a
-                      ><a
-                        class="headerlink"
-                        href="#non-constant-sizes"
-                        title="Permalink to this headline"
-                        ></a
-                      >
-                    </h2>
-                    <p>
-                      Although the size of a vector is usually a constant (e.g.
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">10</span></code
-                      >), Vehicle allows them to be any valid expression of type
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Nat</span></code
-                      >. For example if
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">d</span></code
-                      >
-                      is some other variable then: -
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Vector</span>
-                        <span class="pre">Rat</span>
-                        <span class="pre">(1</span> <span class="pre">+</span>
-                        <span class="pre">d)</span></code
-                      >
-                      is the type of vectors of length
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">1</span> <span class="pre">+</span>
-                        <span class="pre">d</span></code
-                      >. -
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Vector</span>
-                        <span class="pre">Rat</span>
-                        <span class="pre">(2</span> <span class="pre">*</span>
-                        <span class="pre">d)</span></code
-                      >
-                      is the type of vectors of length
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">2</span> <span class="pre">*</span>
-                        <span class="pre">d</span></code
-                      >.
-                    </p>
-                    <p>
-                      Similarly, the size of the
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Index</span></code
-                      >
-                      type can be any valid expression of type
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Nat</span></code
-                      >, e.g.
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Index</span>
-                        <span class="pre">(1</span> <span class="pre">+</span>
-                        <span class="pre">d)</span></code
-                      >.
-                    </p>
-                  </section>
-                </section>
-              </div>
-            </div>
-            <footer>
-              <div
-                class="rst-footer-buttons"
-                role="navigation"
-                aria-label="Footer"
-              >
-                <a
-                  href="lists.html"
-                  class="btn btn-neutral float-left"
-                  title="Lists"
-                  accesskey="p"
-                  rel="prev"
-                  ><span
-                    class="fa fa-arrow-circle-left"
-                    aria-hidden="true"
-                  ></span>
-                  Previous</a
-                >
-                <a
-                  href="tensors.html"
-                  class="btn btn-neutral float-right"
-                  title="Tensors"
-                  accesskey="n"
-                  rel="next"
-                  >Next
-                  <span
-                    class="fa fa-arrow-circle-right"
-                    aria-hidden="true"
-                  ></span
-                ></a>
-              </div>
+</pre></div>
+</div>
+<p>Most arithmetic operations over <code class="docutils literal notranslate"><span class="pre">Index</span></code> type are not closed with
+respect to the type, e.g. adding <code class="docutils literal notranslate"><span class="pre">3</span> <span class="pre">:</span> <span class="pre">Index</span> <span class="pre">5</span></code> and <code class="docutils literal notranslate"><span class="pre">4</span> <span class="pre">:</span> <span class="pre">Index</span> <span class="pre">5</span></code>
+results in <code class="docutils literal notranslate"><span class="pre">7</span></code> which is not a member of <code class="docutils literal notranslate"><span class="pre">Index</span> <span class="pre">5</span></code>. Consequently
+the set of operations supported by the type is extremely limited:</p>
+<table class="colwidths-given docutils align-default">
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 15%" />
+<col style="width: 40%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Operation</p></th>
+<th class="head"><p>Symbol</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Less than or equal</p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">&lt;=</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">Index</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Index</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Bool</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">x</span> <span class="pre">&lt;=</span> <span class="pre">y</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Less than</p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">&lt;</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">Index</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Index</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Bool</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">x</span> <span class="pre">&lt;</span> <span class="pre">y</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Greater than or equal</p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">&gt;=</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">Index</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Index</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Bool</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">x</span> <span class="pre">&gt;=</span> <span class="pre">y</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Greater than</p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">&gt;</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">Index</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Index</span> <span class="pre">d</span> <span class="pre">-&gt;</span> <span class="pre">Bool</span></code></p></td>
+<td><p><code class="code docutils literal notranslate"><span class="pre">x</span> <span class="pre">&gt;=</span> <span class="pre">y</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="non-constant-sizes">
+<h2><a class="toc-backref" href="#id5">Non-constant sizes</a><a class="headerlink" href="#non-constant-sizes" title="Permalink to this headline"></a></h2>
+<p>Although the size of a vector is usually a constant (e.g. <code class="docutils literal notranslate"><span class="pre">10</span></code>),
+Vehicle allows them to be any valid expression of type <code class="docutils literal notranslate"><span class="pre">Nat</span></code>.
+For example if <code class="docutils literal notranslate"><span class="pre">d</span></code> is some other variable then:
+-  <code class="docutils literal notranslate"><span class="pre">Vector</span> <span class="pre">Rat</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">d)</span></code> is the type of vectors of length <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">d</span></code>.
+-  <code class="docutils literal notranslate"><span class="pre">Vector</span> <span class="pre">Rat</span> <span class="pre">(2</span> <span class="pre">*</span> <span class="pre">d)</span></code> is the type of vectors of length <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">d</span></code>.</p>
+<p>Similarly, the size of the <code class="docutils literal notranslate"><span class="pre">Index</span></code> type can be any valid expression of
+type <code class="docutils literal notranslate"><span class="pre">Nat</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">Index</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">d)</span></code>.</p>
+</section>
+</section>
 
-              <hr />
 
-              <div role="contentinfo">
-                <p>&#169; Copyright 2022.</p>
-              </div>
-
-              Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using
-              a
-              <a href="https://github.com/readthedocs/sphinx_rtd_theme"
-                >theme</a
-              >
-              provided by <a href="https://readthedocs.org">Read the Docs</a>.
-            </footer>
+           </div>
           </div>
-        </div>
-      </section>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="lists.html" class="btn btn-neutral float-left" title="Lists" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tensors.html" class="btn btn-neutral float-right" title="Tensors" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
-    <script>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
       jQuery(function () {
-        SphinxRtdTheme.Navigation.enable(true);
+          SphinxRtdTheme.Navigation.enable(true);
       });
-    </script>
-  </body>
+  </script> 
+
+</body>
 </html>

@@ -1,573 +1,217 @@
-<!doctype html>
-<html class="writer-html5" lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="generator"
-      content="Docutils 0.17.1: http://docutils.sourceforge.net/"
-    />
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quantifiers &mdash; Vehicle 0.1 documentation</title>
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-    <!--[if lt IE 9]>
-      <script src="../_static/js/html5shiv.min.js"></script>
-    <![endif]-->
-
-    <script
-      data-url_root="../"
-      id="documentation_options"
-      src="../_static/documentation_options.js"
-    ></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
-    <script src="../_static/doctools.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quantifiers &mdash; Vehicle 0.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Networks" href="networks.html" />
-    <link rel="prev" title="Tensors" href="tensors.html" />
-  </head>
+    <link rel="prev" title="Tensors" href="tensors.html" /> 
+</head>
 
-  <body class="wy-body-for-nav">
-    <div class="wy-grid-for-nav">
-      <nav data-toggle="wy-nav-shift" class="wy-nav-side">
-        <div class="wy-side-scroll">
-          <div class="wy-side-nav-search">
-            <a href="../index.html" class="icon icon-home"> Vehicle </a>
-            <div class="version">0.1.0</div>
-            <div role="search">
-              <form
-                id="rtd-search-form"
-                class="wy-form"
-                action="../search.html"
-                method="get"
-              >
-                <input type="text" name="q" placeholder="Search docs" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-            </div>
-          </div>
-          <div
-            class="wy-menu wy-menu-vertical"
-            data-spy="affix"
-            role="navigation"
-            aria-label="Navigation menu"
-          >
-            <ul class="current">
-              <li class="toctree-l1">
-                <a class="reference internal" href="../installation.html"
-                  >Installation</a
-                >
-              </li>
-              <li class="toctree-l1 current">
-                <a class="reference internal" href="index.html"
-                  >The specification language</a
-                >
-                <ul class="current">
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="logic.html">Logic</a>
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="arithmetic.html"
-                      >Arithmetic</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="functions.html"
-                      >Functions</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="lists.html">Lists</a>
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="vectors.html"
-                      >Vectors</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="tensors.html"
-                      >Tensors</a
-                    >
-                  </li>
-                  <li class="toctree-l2 current">
-                    <a class="current reference internal" href="#"
-                      >Quantifiers</a
-                    >
-                    <ul>
-                      <li class="toctree-l3">
-                        <a
-                          class="reference internal"
-                          href="#quantifying-over-infinite-sets"
-                          >Quantifying over infinite sets</a
-                        >
-                      </li>
-                      <li class="toctree-l3">
-                        <a
-                          class="reference internal"
-                          href="#quantifying-over-finite-sets"
-                          >Quantifying over finite sets</a
-                        >
-                        <ul>
-                          <li class="toctree-l4">
-                            <a
-                              class="reference internal"
-                              href="#quantifying-over-an-index-type"
-                              >Quantifying over an
-                              <code class="docutils literal notranslate"
-                                ><span class="pre">Index</span></code
-                              >
-                              type</a
-                            >
-                          </li>
-                          <li class="toctree-l4">
-                            <a class="reference internal" href="#the-in-keyword"
-                              >The
-                              <code class="docutils literal notranslate"
-                                ><span class="pre">in</span></code
-                              >
-                              keyword</a
-                            >
-                          </li>
-                        </ul>
-                      </li>
-                      <li class="toctree-l3">
-                        <a class="reference internal" href="#limitations"
-                          >Limitations</a
-                        >
-                      </li>
-                    </ul>
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="networks.html"
-                      >Networks</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="datasets.html"
-                      >Datasets</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="parameters.html"
-                      >Parameters</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="properties.html"
-                      >Properties</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="type-synonyms.html"
-                      >Type synonyms</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="let-expressions.html"
-                      >Let expressions (TODO)</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="annotations-holes.html"
-                      >Annotations and holes (Docs TODO)</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="tips-and-tricks.html"
-                      >Tips and tricks</a
-                    >
-                  </li>
-                  <li class="toctree-l2">
-                    <a class="reference internal" href="advanced.html"
-                      >Advanced topics (TODO)</a
-                    >
-                  </li>
-                </ul>
-              </li>
-              <li class="toctree-l1">
-                <a class="reference internal" href="../training.html"
-                  >Training with a specification (TODO)</a
-                >
-              </li>
-              <li class="toctree-l1">
-                <a class="reference internal" href="../verification.html"
-                  >Verifying a specification</a
-                >
-              </li>
-              <li class="toctree-l1">
-                <a class="reference internal" href="../theorem-proving.html"
-                  >Exporting a specification to an ITP</a
-                >
-              </li>
-              <li class="toctree-l1">
-                <a class="reference internal" href="../other/index.html"
-                  >Other</a
-                >
-              </li>
-            </ul>
-          </div>
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Vehicle
+          </a>
+              <div class="version">
+                0.1.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">The specification language</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="logic.html">Logic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="arithmetic.html">Arithmetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="functions.html">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lists.html">Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="vectors.html">Vectors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tensors.html">Tensors</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Quantifiers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#quantifying-over-infinite-sets">Quantifying over infinite sets</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#quantifying-over-finite-sets">Quantifying over finite sets</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#quantifying-over-an-index-type">Quantifying over an <code class="docutils literal notranslate"><span class="pre">Index</span></code> type</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#the-in-keyword">The <code class="docutils literal notranslate"><span class="pre">in</span></code> keyword</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#limitations">Limitations</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="networks.html">Networks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parameters.html">Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="properties.html">Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="type-synonyms.html">Type synonyms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="let-expressions.html">Let expressions (TODO)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="annotations-holes.html">Annotations and holes (Docs TODO)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tips-and-tricks.html">Tips and tricks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced.html">Advanced topics (TODO)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../training.html">Training with a specification (TODO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../verification.html">Verifying a specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../theorem-proving.html">Exporting a specification to an ITP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../other/index.html">Other</a></li>
+</ul>
+
         </div>
-      </nav>
+      </div>
+    </nav>
 
-      <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-        <nav class="wy-nav-top" aria-label="Mobile navigation menu">
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../index.html">Vehicle</a>
-        </nav>
+      </nav>
 
-        <div class="wy-nav-content">
-          <div class="rst-content">
-            <div role="navigation" aria-label="Page navigation">
-              <ul class="wy-breadcrumbs">
-                <li><a href="../index.html" class="icon icon-home"></a></li>
-                <li class="breadcrumb-item">
-                  <a href="index.html">The specification language</a>
-                </li>
-                <li class="breadcrumb-item active">Quantifiers</li>
-                <li class="wy-breadcrumbs-aside">
-                  <a
-                    href="../_sources/language/quantifiers.rst.txt"
-                    rel="nofollow"
-                  >
-                    View page source</a
-                  >
-                </li>
-              </ul>
-              <hr />
-            </div>
-            <div
-              role="main"
-              class="document"
-              itemscope="itemscope"
-              itemtype="http://schema.org/Article"
-            >
-              <div itemprop="articleBody">
-                <section id="quantifiers">
-                  <h1>
-                    Quantifiers<a
-                      class="headerlink"
-                      href="#quantifiers"
-                      title="Permalink to this headline"
-                      ></a
-                    >
-                  </h1>
-                  <div class="contents local topic" id="contents">
-                    <ul class="simple">
-                      <li>
-                        <p>
-                          <a
-                            class="reference internal"
-                            href="#quantifying-over-infinite-sets"
-                            id="id1"
-                            >Quantifying over infinite sets</a
-                          >
-                        </p>
-                      </li>
-                      <li>
-                        <p>
-                          <a
-                            class="reference internal"
-                            href="#quantifying-over-finite-sets"
-                            id="id2"
-                            >Quantifying over finite sets</a
-                          >
-                        </p>
-                      </li>
-                      <li>
-                        <p>
-                          <a
-                            class="reference internal"
-                            href="#limitations"
-                            id="id3"
-                            >Limitations</a
-                          >
-                        </p>
-                      </li>
-                    </ul>
-                  </div>
-                  <section id="quantifying-over-infinite-sets">
-                    <h2>
-                      <a class="toc-backref" href="#id1"
-                        >Quantifying over infinite sets</a
-                      ><a
-                        class="headerlink"
-                        href="#quantifying-over-infinite-sets"
-                        title="Permalink to this headline"
-                        ></a
-                      >
-                    </h2>
-                    <p>
-                      One of the main advantages of Vehicle compared to a
-                      testing framework is that it can be used to state and
-                      prove specifications that describe the network’s behaviour
-                      over an infinite set of values.
-                    </p>
-                    <p>
-                      Suppose you have the following network which produces two
-                      outputs:
-                    </p>
-                    <div class="highlight-agda notranslate">
-                      <div class="highlight">
-                        <pre><span></span>@network<span class="w"></span>
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">The specification language</a></li>
+      <li class="breadcrumb-item active">Quantifiers</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/language/quantifiers.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="quantifiers">
+<h1>Quantifiers<a class="headerlink" href="#quantifiers" title="Permalink to this headline"></a></h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#quantifying-over-infinite-sets" id="id1">Quantifying over infinite sets</a></p></li>
+<li><p><a class="reference internal" href="#quantifying-over-finite-sets" id="id2">Quantifying over finite sets</a></p></li>
+<li><p><a class="reference internal" href="#limitations" id="id3">Limitations</a></p></li>
+</ul>
+</div>
+<section id="quantifying-over-infinite-sets">
+<h2><a class="toc-backref" href="#id1">Quantifying over infinite sets</a><a class="headerlink" href="#quantifying-over-infinite-sets" title="Permalink to this headline"></a></h2>
+<p>One of the main advantages of Vehicle compared to a testing framework is
+that it can be used to state and prove specifications that describe the
+network’s behaviour over an infinite set of values.</p>
+<p>Suppose you have the following network which produces two outputs:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span>@network<span class="w"></span>
 <span class="nf">f</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Tensor<span class="w"> </span>Rat<span class="w"> </span>[10,<span class="w"> </span><span class="mi">10</span>]<span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Tensor<span class="w"> </span>Rat<span class="w"> </span>[2]<span class="w"></span>
-</pre>
-                      </div>
-                    </div>
-                    <p>
-                      and would like to specify that
-                      <em
-                        >for any input the network’s first output is always
-                        positive</em
-                      >. This can be achieved by using the
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">forall</span></code
-                      >
-                      quantifier as follows:
-                    </p>
-                    <div class="highlight-agda notranslate">
-                      <div class="highlight">
-                        <pre><span></span><span class="kr">forall</span><span class="w"> </span>x<span class="w"> </span><span class="ow">.</span><span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span><span class="mi">0</span><span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"></span>
-</pre>
-                      </div>
-                    </div>
-                    <p>
-                      which brings a new variable
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">x</span></code
-                      >
-                      of type
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">Tensor</span>
-                        <span class="pre">Rat</span>
-                        <span class="pre">[10,</span>
-                        <span class="pre">10]</span></code
-                      >
-                      into scope. The variable
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">x</span></code
-                      >
-                      has no assigned value and therefore represents an
-                      arbitrary input.
-                    </p>
-                    <p>
-                      Similarly, if trying to specify that
-                      <em
-                        >there exists at least one input for which the network’s
-                        first output is positive</em
-                      >, the
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">exists</span></code
-                      >
-                      quantifier can be used as follows:
-                    </p>
-                    <div class="highlight-agda notranslate">
-                      <div class="highlight">
-                        <pre><span></span>exists<span class="w"> </span>x<span class="w"> </span><span class="ow">.</span><span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span><span class="mi">0</span><span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"></span>
-</pre>
-                      </div>
-                    </div>
-                    <p>
-                      As with lambda functions, the quantified variables can be
-                      annotated with their types:
-                    </p>
-                    <div class="highlight-agda notranslate">
-                      <div class="highlight">
-                        <pre><span></span>exists<span class="w"> </span><span class="o">(</span>x<span class="w"> </span><span class="ow">:</span><span class="w"> </span>Tensor<span class="w"> </span>Rat<span class="w"> </span>[10,<span class="w"> </span><span class="mi">10</span>]<span class="o">)</span><span class="w"> </span><span class="ow">.</span><span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span><span class="mi">0</span><span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"></span>
-</pre>
-                      </div>
-                    </div>
-                    <p>
-                      and multiple variables can be quantified over at once:
-                    </p>
-                    <div class="highlight-agda notranslate">
-                      <div class="highlight">
-                        <pre><span></span>exists<span class="w"> </span>x<span class="w"> </span>i<span class="w"> </span><span class="ow">.</span><span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span>i<span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"></span>
-</pre>
-                      </div>
-                    </div>
-                    <p>
-                      In many cases you don’t want the property to hold over
-                      <em>all</em> the values in the set, but only a (still
-                      infinite) subset of them. For example, network inputs are
-                      frequently normalised to lie within the range
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">[0,1]</span></code
-                      >. If the quantified variable’s domain is not also
-                      restricted to this range, then Vehicle will produce
-                      spurious counter-examples to the specification.
-                    </p>
-                    <p>
-                      In general such restrictions can be achieved by combining
-                      a quantifier with an implication as follows:
-                    </p>
-                    <div class="highlight-agda notranslate">
-                      <div class="highlight">
-                        <pre><span></span><span class="kr">forall</span><span class="w"> </span>x.<span class="w"> </span><span class="o">(</span><span class="kr">forall</span><span class="w"> </span>i<span class="w"> </span>j<span class="w"> </span><span class="ow">.</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span>&lt;=<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span>i<span class="w"> </span>!<span class="w"> </span>j<span class="w"> </span>&lt;=<span class="w"> </span><span class="mi">1</span><span class="o">)</span><span class="w"> </span><span class="ow">=</span>&gt;<span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span><span class="mi">0</span><span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"></span>
-</pre>
-                      </div>
-                    </div>
-                  </section>
-                  <section id="quantifying-over-finite-sets">
-                    <h2>
-                      <a class="toc-backref" href="#id2"
-                        >Quantifying over finite sets</a
-                      ><a
-                        class="headerlink"
-                        href="#quantifying-over-finite-sets"
-                        title="Permalink to this headline"
-                        ></a
-                      >
-                    </h2>
-                    <p>
-                      While most specifications will quantify over at least one
-                      variable with an infinite domain, sometimes one might also
-                      want to quantify over a finite set of values. There are
-                      multiple ways of doing this:
-                    </p>
-                    <section id="quantifying-over-an-index-type">
-                      <h3>
-                        Quantifying over an
-                        <code class="docutils literal notranslate"
-                          ><span class="pre">Index</span></code
-                        >
-                        type<a
-                          class="headerlink"
-                          href="#quantifying-over-an-index-type"
-                          title="Permalink to this headline"
-                          ></a
-                        >
-                      </h3>
-                      <p>
-                        The first approach is to quantify over a variable with
-                        the
-                        <code class="docutils literal notranslate"
-                          ><span class="pre">Index</span></code
-                        >
-                        type. For example:
-                      </p>
-                      <div class="highlight-agda notranslate">
-                        <div class="highlight">
-                          <pre><span></span><span class="nf">pointwiseLess</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Bool<span class="w"></span>
+</pre></div>
+</div>
+<p>and would like to specify that <em>for any input the network’s first
+output is always positive</em>.
+This can be achieved by using the <code class="docutils literal notranslate"><span class="pre">forall</span></code> quantifier as follows:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="kr">forall</span><span class="w"> </span>x<span class="w"> </span><span class="ow">.</span><span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span><span class="mi">0</span><span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"></span>
+</pre></div>
+</div>
+<p>which brings a new variable <code class="docutils literal notranslate"><span class="pre">x</span></code> of type <code class="docutils literal notranslate"><span class="pre">Tensor</span> <span class="pre">Rat</span> <span class="pre">[10,</span> <span class="pre">10]</span></code> into
+scope. The variable <code class="docutils literal notranslate"><span class="pre">x</span></code> has no assigned value and therefore represents
+an arbitrary input.</p>
+<p>Similarly, if trying to specify that <em>there exists at least one input for which
+the network’s first output is positive</em>, the <code class="docutils literal notranslate"><span class="pre">exists</span></code> quantifier can be
+used as follows:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span>exists<span class="w"> </span>x<span class="w"> </span><span class="ow">.</span><span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span><span class="mi">0</span><span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"></span>
+</pre></div>
+</div>
+<p>As with lambda functions, the quantified variables can be annotated with
+their types:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span>exists<span class="w"> </span><span class="o">(</span>x<span class="w"> </span><span class="ow">:</span><span class="w"> </span>Tensor<span class="w"> </span>Rat<span class="w"> </span>[10,<span class="w"> </span><span class="mi">10</span>]<span class="o">)</span><span class="w"> </span><span class="ow">.</span><span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span><span class="mi">0</span><span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"></span>
+</pre></div>
+</div>
+<p>and multiple variables can be quantified over at once:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span>exists<span class="w"> </span>x<span class="w"> </span>i<span class="w"> </span><span class="ow">.</span><span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span>i<span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"></span>
+</pre></div>
+</div>
+<p>In many cases you don’t want the property to hold over <em>all</em> the
+values in the set, but only a (still infinite) subset of them.
+For example, network inputs are frequently normalised to lie
+within the range <code class="docutils literal notranslate"><span class="pre">[0,1]</span></code>. If the quantified variable’s domain is not
+also restricted to this range, then Vehicle will produce spurious
+counter-examples to the specification.</p>
+<p>In general such restrictions can be achieved by combining a quantifier
+with an implication as follows:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="kr">forall</span><span class="w"> </span>x.<span class="w"> </span><span class="o">(</span><span class="kr">forall</span><span class="w"> </span>i<span class="w"> </span>j<span class="w"> </span><span class="ow">.</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span>&lt;=<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span>i<span class="w"> </span>!<span class="w"> </span>j<span class="w"> </span>&lt;=<span class="w"> </span><span class="mi">1</span><span class="o">)</span><span class="w"> </span><span class="ow">=</span>&gt;<span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span><span class="mi">0</span><span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+<section id="quantifying-over-finite-sets">
+<h2><a class="toc-backref" href="#id2">Quantifying over finite sets</a><a class="headerlink" href="#quantifying-over-finite-sets" title="Permalink to this headline"></a></h2>
+<p>While most specifications will quantify over at least one variable
+with an infinite domain, sometimes one might also want to quantify
+over a finite set of values. There are multiple ways of doing this:</p>
+<section id="quantifying-over-an-index-type">
+<h3>Quantifying over an <code class="docutils literal notranslate"><span class="pre">Index</span></code> type<a class="headerlink" href="#quantifying-over-an-index-type" title="Permalink to this headline"></a></h3>
+<p>The first approach is to quantify over a variable with the <code class="docutils literal notranslate"><span class="pre">Index</span></code>
+type. For example:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="nf">pointwiseLess</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Bool<span class="w"></span>
 pointwiseLess<span class="w"> </span>x<span class="w"> </span>y<span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="kr">forall</span><span class="w"> </span><span class="o">(</span>i<span class="w"> </span><span class="ow">:</span><span class="w"> </span>Index<span class="w"> </span><span class="mi">3</span><span class="o">)</span><span class="w"> </span><span class="ow">.</span><span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span>i<span class="w"> </span>&lt;<span class="w"> </span>y<span class="w"> </span>!<span class="w"> </span>i<span class="w"></span>
-</pre>
-                        </div>
-                      </div>
-                      <p>will get automatically expanded to:</p>
-                      <div class="highlight-agda notranslate">
-                        <div class="highlight">
-                          <pre><span></span><span class="nf">pointwiseLess</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Bool<span class="w"></span>
+</pre></div>
+</div>
+<p>will get automatically expanded to:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="nf">pointwiseLess</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Bool<span class="w"></span>
 pointwiseLess<span class="w"> </span>x<span class="w"> </span>y<span class="w"> </span><span class="ow">=</span><span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span><span class="mi">0</span><span class="w"> </span>&lt;<span class="w"> </span>y<span class="w"> </span>!<span class="w"> </span><span class="mi">0</span><span class="w"> </span>and<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span><span class="mi">1</span><span class="w"> </span>&lt;<span class="w"> </span>y<span class="w"> </span>!<span class="w"> </span><span class="mi">1</span><span class="w"> </span>and<span class="w"> </span>x<span class="w"> </span>!<span class="w"> </span><span class="mi">2</span><span class="w"> </span>&lt;<span class="w"> </span>y<span class="w"> </span>!<span class="w"> </span><span class="mi">2</span><span class="w"></span>
-</pre>
-                        </div>
-                      </div>
-                      <p>
-                        The type annotations on the quantified variable
-                        <code class="docutils literal notranslate"
-                          ><span class="pre">i</span></code
-                        >
-                        are included for clarity but are not need in practice as
-                        they can be inferred by the compiler.
-                      </p>
-                    </section>
-                    <section id="the-in-keyword">
-                      <h3>
-                        The
-                        <code class="docutils literal notranslate"
-                          ><span class="pre">in</span></code
-                        >
-                        keyword<a
-                          class="headerlink"
-                          href="#the-in-keyword"
-                          title="Permalink to this headline"
-                          ></a
-                        >
-                      </h3>
-                      <p>
-                        Alternatively quantifiers can be modified with the
-                        <code class="docutils literal notranslate"
-                          ><span class="pre">in</span></code
-                        >
-                        keyword to quantify over all the values contained within
-                        a
-                        <code class="docutils literal notranslate"
-                          ><span class="pre">List</span></code
-                        >,
-                        <code class="docutils literal notranslate"
-                          ><span class="pre">Vector</span></code
-                        >
-                        or
-                        <code class="docutils literal notranslate"
-                          ><span class="pre">Tensor</span></code
-                        >:
-                      </p>
-                      <div class="highlight-agda notranslate">
-                        <div class="highlight">
-                          <pre><span></span><span class="nf">myList</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>List<span class="w"> </span>Rat<span class="w"></span>
+</pre></div>
+</div>
+<p>The type annotations on the quantified variable <code class="docutils literal notranslate"><span class="pre">i</span></code> are included for clarity
+but are not need in practice as they can be inferred by the compiler.</p>
+</section>
+<section id="the-in-keyword">
+<h3>The <code class="docutils literal notranslate"><span class="pre">in</span></code> keyword<a class="headerlink" href="#the-in-keyword" title="Permalink to this headline"></a></h3>
+<p>Alternatively quantifiers can be modified with the <code class="docutils literal notranslate"><span class="pre">in</span></code> keyword to
+quantify over all the values contained within a <code class="docutils literal notranslate"><span class="pre">List</span></code>, <code class="docutils literal notranslate"><span class="pre">Vector</span></code> or <code class="docutils literal notranslate"><span class="pre">Tensor</span></code>:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="nf">myList</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>List<span class="w"> </span>Rat<span class="w"></span>
 myList<span class="w"> </span><span class="ow">=</span><span class="w"> </span>[0.4,<span class="w"> </span><span class="mf">1.1</span>,<span class="w"> </span><span class="mf">0.2</span>]<span class="w"></span>
 
 <span class="nf">myListInRange</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Bool<span class="w"></span>
 myListInRange<span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="kr">forall</span><span class="w"> </span>x<span class="w"> </span><span class="kr">in</span><span class="w"> </span>myList<span class="w"> </span><span class="ow">.</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span>&lt;=<span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>&lt;=<span class="w"> </span><span class="mi">1</span><span class="w"></span>
-</pre>
-                        </div>
-                      </div>
-                      <p>
-                        During compilation Vehicle will automatically expand
-                        this out to a sequence of conjunctions as follows:
-                      </p>
-                      <div class="highlight-agda notranslate">
-                        <div class="highlight">
-                          <pre><span></span><span class="nf">myListInRange</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Bool<span class="w"></span>
+</pre></div>
+</div>
+<p>During compilation Vehicle will automatically expand this out
+to a sequence of conjunctions as follows:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="nf">myListInRange</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Bool<span class="w"></span>
 myListInRange<span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span>&lt;=<span class="w"> </span>f<span class="w"> </span><span class="mf">0.4</span><span class="w"> </span>&lt;=<span class="w"> </span><span class="mi">1</span><span class="w"> </span>and<span class="w"> </span><span class="mi">0</span><span class="w"> </span>&lt;=<span class="w"> </span>f<span class="w"> </span><span class="mf">1.1</span><span class="w"> </span>&lt;=<span class="w"> </span><span class="mi">1</span><span class="w"> </span>and<span class="w"> </span><span class="mi">0</span><span class="w"> </span>&lt;=<span class="w"> </span>f<span class="w"> </span><span class="mf">0.2</span><span class="w"> </span>&lt;=<span class="w"> </span><span class="mi">1</span><span class="w"></span>
-</pre>
-                        </div>
-                      </div>
-                    </section>
-                  </section>
-                  <section id="limitations">
-                    <h2>
-                      <a class="toc-backref" href="#id3">Limitations</a
-                      ><a
-                        class="headerlink"
-                        href="#limitations"
-                        title="Permalink to this headline"
-                        ></a
-                      >
-                    </h2>
-                    <p>
-                      One hard constraint enforced by both training and
-                      verification tools is that you may not use both a
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">forall</span></code
-                      >
-                      and an
-                      <code class="docutils literal notranslate"
-                        ><span class="pre">exists</span></code
-                      >
-                      that quantify over infinite domains within the same
-                      property. For example, the following is not allowed:
-                    </p>
-                    <div class="highlight-agda notranslate">
-                      <div class="highlight">
-                        <pre><span></span>@network<span class="w"></span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="limitations">
+<h2><a class="toc-backref" href="#id3">Limitations</a><a class="headerlink" href="#limitations" title="Permalink to this headline"></a></h2>
+<p>One hard constraint enforced by both training and
+verification tools is that you may not use both a <code class="docutils literal notranslate"><span class="pre">forall</span></code> and
+an <code class="docutils literal notranslate"><span class="pre">exists</span></code> that quantify over infinite domains within the same property.
+For example, the following is not allowed:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span>@network<span class="w"></span>
 <span class="nf">f</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">1</span><span class="w"></span>
 
 <span class="nf">surjective</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Bool<span class="w"></span>
 surjective<span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="kr">forall</span><span class="w"> </span>y<span class="w"> </span><span class="ow">.</span><span class="w"> </span>exists<span class="w"> </span>x.<span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span><span class="ow">==</span><span class="w"> </span>y<span class="w"></span>
-</pre>
-                      </div>
-                    </div>
-                    <p>
-                      This remains true even if you move one or more of the
-                      quantifiers to separate functions. For example, the
-                      following is not allowed either:
-                    </p>
-                    <div class="highlight-agda notranslate">
-                      <div class="highlight">
-                        <pre><span></span>@network<span class="w"></span>
+</pre></div>
+</div>
+<p>This remains true even if you move one or more of the quantifiers to
+separate functions. For example, the following is not allowed either:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span>@network<span class="w"></span>
 <span class="nf">f</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Rat<span class="w"></span>
 
 <span class="nf">hits</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Bool<span class="w"></span>
@@ -575,18 +219,12 @@ hits<span class="w"> </span>y<span class="w"> </span><span class="ow">=</span><s
 
 <span class="nf">surjective</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Bool<span class="w"></span>
 surjective<span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="kr">forall</span><span class="w"> </span>y<span class="w"> </span><span class="ow">.</span><span class="w"> </span>hits<span class="w"> </span>y<span class="w"></span>
-</pre>
-                      </div>
-                    </div>
-                    <p>
-                      However, you can have both types of quantifiers within the
-                      same specification as long as they belong to different
-                      properties. For example, the following
-                      <em>is</em> allowed:
-                    </p>
-                    <div class="highlight-agda notranslate">
-                      <div class="highlight">
-                        <pre><span></span>@network<span class="w"></span>
+</pre></div>
+</div>
+<p>However, you can have both types of quantifiers within the same
+specification as long as they belong to different properties.
+For example, the following <em>is</em> allowed:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span>@network<span class="w"></span>
 <span class="nf">f</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Vector<span class="w"> </span>Rat<span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Rat<span class="w"></span>
 
 <span class="nf">prop1</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Bool<span class="w"></span>
@@ -594,66 +232,40 @@ prop1<span class="w"> </span>y<span class="w"> </span><span class="ow">=</span><
 
 <span class="nf">prop2</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Bool<span class="w"></span>
 prop2<span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="kr">forall</span><span class="w"> </span>x<span class="w"> </span><span class="ow">.</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span>&lt;=<span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>&lt;=<span class="w"> </span><span class="mi">3</span><span class="w"></span>
-</pre>
-                      </div>
-                    </div>
-                  </section>
-                </section>
-              </div>
-            </div>
-            <footer>
-              <div
-                class="rst-footer-buttons"
-                role="navigation"
-                aria-label="Footer"
-              >
-                <a
-                  href="tensors.html"
-                  class="btn btn-neutral float-left"
-                  title="Tensors"
-                  accesskey="p"
-                  rel="prev"
-                  ><span
-                    class="fa fa-arrow-circle-left"
-                    aria-hidden="true"
-                  ></span>
-                  Previous</a
-                >
-                <a
-                  href="networks.html"
-                  class="btn btn-neutral float-right"
-                  title="Networks"
-                  accesskey="n"
-                  rel="next"
-                  >Next
-                  <span
-                    class="fa fa-arrow-circle-right"
-                    aria-hidden="true"
-                  ></span
-                ></a>
-              </div>
+</pre></div>
+</div>
+</section>
+</section>
 
-              <hr />
 
-              <div role="contentinfo">
-                <p>&#169; Copyright 2022.</p>
-              </div>
-
-              Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using
-              a
-              <a href="https://github.com/readthedocs/sphinx_rtd_theme"
-                >theme</a
-              >
-              provided by <a href="https://readthedocs.org">Read the Docs</a>.
-            </footer>
+           </div>
           </div>
-        </div>
-      </section>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="tensors.html" class="btn btn-neutral float-left" title="Tensors" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="networks.html" class="btn btn-neutral float-right" title="Networks" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
-    <script>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
       jQuery(function () {
-        SphinxRtdTheme.Navigation.enable(true);
+          SphinxRtdTheme.Navigation.enable(true);
       });
-    </script>
-  </body>
+  </script> 
+
+</body>
 </html>
