@@ -22,4 +22,3 @@ sphinx:
 # python:
 #    install:
 #    - requirements: docs/source/requirements.txt
-
