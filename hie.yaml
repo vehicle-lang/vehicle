@@ -5,26 +5,18 @@ cradle:
       config:
         cradle:
           cabal:
-            # - path: "./vehicle-syntax/autogen"
-            #   component: "lib:vehicle-syntax"
 
     # vehicle
     - path: "./vehicle"
       config:
         cradle:
           cabal:
-            # - path: "./vehicle/src"
-            #   component: "lib:vehicle"
-            # - path: "./vehicle/app"
-            #   component: "exe:vehicle"
-            # - path: "./vehicle/tests/Vehicle/Test/Common"
-            #   component: "lib:vehicle-test-common"
-            # - path: "./vehicle/tests/Tests.hs"
-            #   component: "test:vehicle-tests"
-            # - path: "./vehicle/tests/IntegrationTests.hs"
-            #   component: "test:vehicle-integration-tests"
-            # - path: "./vehicle/tests/Benchmarks.hs"
-            #   component: "benchmark:vehicle-benchmarks"
+
+    # scripts
+    - path: "./scripts"
+      config:
+        cradle:
+          cabal:
 
     # ignore
     - path: "./"

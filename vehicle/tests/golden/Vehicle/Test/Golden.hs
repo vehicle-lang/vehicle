@@ -25,9 +25,9 @@ import Vehicle.Test.Golden.Extra (SomeOption, createDirectoryRecursive,
 import Vehicle.Test.Golden.TestSpec (TestOutput (..), TestSpec,
                                      TestSpecs (TestSpecs), readGoldenFiles,
                                      readTestSpecsFile, testSpecDiffTestOutput,
-                                     testSpecName, testSpecNeeds,
-                                     testSpecOptions, testSpecRun,
-                                     writeGoldenFiles, testSpecIsEnabled)
+                                     testSpecIsEnabled, testSpecName,
+                                     testSpecNeeds, testSpecOptions,
+                                     testSpecRun, writeGoldenFiles)
 
 -- | Create a test tree from all test specifications in a directory, recursively.
 makeTestTreeFromDirectoryRecursive :: TestName -> FilePath -> IO TestTree

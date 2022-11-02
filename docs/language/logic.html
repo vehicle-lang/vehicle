@@ -1,0 +1,667 @@
+<!doctype html>
+<html class="writer-html5" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="generator"
+      content="Docutils 0.17.1: http://docutils.sourceforge.net/"
+    />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Logic &mdash; Vehicle 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <!--[if lt IE 9]>
+      <script src="../_static/js/html5shiv.min.js"></script>
+    <![endif]-->
+
+    <script
+      data-url_root="../"
+      id="documentation_options"
+      src="../_static/documentation_options.js"
+    ></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Arithmetic" href="arithmetic.html" />
+    <link rel="prev" title="The specification language" href="index.html" />
+  </head>
+
+  <body class="wy-body-for-nav">
+    <div class="wy-grid-for-nav">
+      <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+        <div class="wy-side-scroll">
+          <div class="wy-side-nav-search">
+            <a href="../index.html" class="icon icon-home"> Vehicle </a>
+            <div class="version">0.1.0</div>
+            <div role="search">
+              <form
+                id="rtd-search-form"
+                class="wy-form"
+                action="../search.html"
+                method="get"
+              >
+                <input type="text" name="q" placeholder="Search docs" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+            </div>
+          </div>
+          <div
+            class="wy-menu wy-menu-vertical"
+            data-spy="affix"
+            role="navigation"
+            aria-label="Navigation menu"
+          >
+            <ul class="current">
+              <li class="toctree-l1">
+                <a class="reference internal" href="../installation.html"
+                  >Installation</a
+                >
+              </li>
+              <li class="toctree-l1 current">
+                <a class="reference internal" href="index.html"
+                  >The specification language</a
+                >
+                <ul class="current">
+                  <li class="toctree-l2 current">
+                    <a class="current reference internal" href="#">Logic</a>
+                    <ul>
+                      <li class="toctree-l3">
+                        <a class="reference internal" href="#booleans"
+                          >Booleans</a
+                        >
+                      </li>
+                      <li class="toctree-l3">
+                        <a class="reference internal" href="#conditionals"
+                          >Conditionals</a
+                        >
+                      </li>
+                      <li class="toctree-l3">
+                        <a class="reference internal" href="#equality"
+                          >Equality</a
+                        >
+                      </li>
+                    </ul>
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="arithmetic.html"
+                      >Arithmetic</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="functions.html"
+                      >Functions</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="lists.html">Lists</a>
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="vectors.html"
+                      >Vectors</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="tensors.html"
+                      >Tensors</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="quantifiers.html"
+                      >Quantifiers</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="networks.html"
+                      >Networks</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="datasets.html"
+                      >Datasets</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="parameters.html"
+                      >Parameters</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="properties.html"
+                      >Properties</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="type-synonyms.html"
+                      >Type synonyms</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="let-expressions.html"
+                      >Let expressions (TODO)</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="annotations-holes.html"
+                      >Annotations and holes (Docs TODO)</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="tips-and-tricks.html"
+                      >Tips and tricks</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="advanced.html"
+                      >Advanced topics (TODO)</a
+                    >
+                  </li>
+                </ul>
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="../training.html"
+                  >Training with a specification (TODO)</a
+                >
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="../verification.html"
+                  >Verifying a specification</a
+                >
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="../theorem-proving.html"
+                  >Exporting a specification to an ITP</a
+                >
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="../other/index.html"
+                  >Other</a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+        <nav class="wy-nav-top" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Vehicle</a>
+        </nav>
+
+        <div class="wy-nav-content">
+          <div class="rst-content">
+            <div role="navigation" aria-label="Page navigation">
+              <ul class="wy-breadcrumbs">
+                <li><a href="../index.html" class="icon icon-home"></a></li>
+                <li class="breadcrumb-item">
+                  <a href="index.html">The specification language</a>
+                </li>
+                <li class="breadcrumb-item active">Logic</li>
+                <li class="wy-breadcrumbs-aside">
+                  <a href="../_sources/language/logic.rst.txt" rel="nofollow">
+                    View page source</a
+                  >
+                </li>
+              </ul>
+              <hr />
+            </div>
+            <div
+              role="main"
+              class="document"
+              itemscope="itemscope"
+              itemtype="http://schema.org/Article"
+            >
+              <div itemprop="articleBody">
+                <section id="logic">
+                  <h1>
+                    Logic<a
+                      class="headerlink"
+                      href="#logic"
+                      title="Permalink to this headline"
+                      ></a
+                    >
+                  </h1>
+                  <div class="contents local topic" id="contents">
+                    <ul class="simple">
+                      <li>
+                        <p>
+                          <a
+                            class="reference internal"
+                            href="#booleans"
+                            id="id1"
+                            >Booleans</a
+                          >
+                        </p>
+                      </li>
+                      <li>
+                        <p>
+                          <a
+                            class="reference internal"
+                            href="#conditionals"
+                            id="id2"
+                            >Conditionals</a
+                          >
+                        </p>
+                      </li>
+                      <li>
+                        <p>
+                          <a
+                            class="reference internal"
+                            href="#equality"
+                            id="id3"
+                            >Equality</a
+                          >
+                        </p>
+                      </li>
+                    </ul>
+                  </div>
+                  <section id="booleans">
+                    <h2>
+                      <a class="toc-backref" href="#id1">Booleans</a
+                      ><a
+                        class="headerlink"
+                        href="#booleans"
+                        title="Permalink to this headline"
+                        ></a
+                      >
+                    </h2>
+                    <p>
+                      Like many systems Vehicle contains booleans. The type of
+                      boolean values is
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">Bool</span></code
+                      >, and there are two values
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">True</span></code
+                      >
+                      and
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">False</span></code
+                      >.
+                    </p>
+                    <p>The available operations over booleans are:</p>
+                    <table class="colwidths-given docutils align-default">
+                      <colgroup>
+                        <col style="width: 25%" />
+                        <col style="width: 15%" />
+                        <col style="width: 40%" />
+                        <col style="width: 20%" />
+                      </colgroup>
+                      <thead>
+                        <tr class="row-odd">
+                          <th class="head"><p>Operation</p></th>
+                          <th class="head"><p>Symbol</p></th>
+                          <th class="head"><p>Type</p></th>
+                          <th class="head"><p>Example</p></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="row-even">
+                          <td><p>Conjunction</p></td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">and</span></code
+                              >
+                            </p>
+                          </td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">Bool</span>
+                                <span class="pre">-&gt;</span>
+                                <span class="pre">Bool</span>
+                                <span class="pre">-&gt;</span>
+                                <span class="pre">Bool</span></code
+                              >
+                            </p>
+                          </td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">x</span>
+                                <span class="pre">and</span>
+                                <span class="pre">y</span></code
+                              >
+                            </p>
+                          </td>
+                        </tr>
+                        <tr class="row-odd">
+                          <td><p>Disjunction</p></td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">or</span></code
+                              >
+                            </p>
+                          </td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">Bool</span>
+                                <span class="pre">-&gt;</span>
+                                <span class="pre">Bool</span>
+                                <span class="pre">-&gt;</span>
+                                <span class="pre">Bool</span></code
+                              >
+                            </p>
+                          </td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">x</span>
+                                <span class="pre">or</span>
+                                <span class="pre">y</span></code
+                              >
+                            </p>
+                          </td>
+                        </tr>
+                        <tr class="row-even">
+                          <td><p>Implication</p></td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">=&gt;</span></code
+                              >
+                            </p>
+                          </td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">Bool</span>
+                                <span class="pre">-&gt;</span>
+                                <span class="pre">Bool</span>
+                                <span class="pre">-&gt;</span>
+                                <span class="pre">Bool</span></code
+                              >
+                            </p>
+                          </td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">x</span>
+                                <span class="pre">=&gt;</span>
+                                <span class="pre">y</span></code
+                              >
+                            </p>
+                          </td>
+                        </tr>
+                        <tr class="row-odd">
+                          <td><p>Negation</p></td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">not</span></code
+                              >
+                            </p>
+                          </td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">Bool</span>
+                                <span class="pre">-&gt;</span>
+                                <span class="pre">Bool</span></code
+                              >
+                            </p>
+                          </td>
+                          <td>
+                            <p>
+                              <code class="code docutils literal notranslate"
+                                ><span class="pre">not</span>
+                                <span class="pre">x</span></code
+                              >
+                            </p>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </section>
+                  <section id="conditionals">
+                    <h2>
+                      <a class="toc-backref" href="#id2">Conditionals</a
+                      ><a
+                        class="headerlink"
+                        href="#conditionals"
+                        title="Permalink to this headline"
+                        ></a
+                      >
+                    </h2>
+                    <p>
+                      Conditional statements are written using the syntax
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">if</span>
+                        <span class="pre">..</span>
+                        <span class="pre">then</span>
+                        <span class="pre">..</span>
+                        <span class="pre">else</span>
+                        <span class="pre">..</span></code
+                      >
+                      and have type
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">Bool</span>
+                        <span class="pre">-&gt;</span>
+                        <span class="pre">A</span>
+                        <span class="pre">-&gt;</span>
+                        <span class="pre">A</span>
+                        <span class="pre">-&gt;</span>
+                        <span class="pre">A</span></code
+                      >
+                      for any type
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">A</span></code
+                      >. For example:
+                    </p>
+                    <div class="highlight-agda notranslate">
+                      <div class="highlight">
+                        <pre><span></span>if<span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"> </span>then<span class="w"> </span>x<span class="w"> </span>&lt;<span class="w"> </span><span class="mi">0</span><span class="w"> </span>else<span class="w"> </span>x<span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="w"></span>
+</pre>
+                      </div>
+                    </div>
+                    <p>
+                      In a functional language like Vehicle (and unlike in
+                      imperative languages) all statements must return a value.
+                      Therefore it is not possible to omit the
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">else</span></code
+                      >
+                      branch when writing a conditional.
+                    </p>
+                    <p>
+                      Due to decidability issues, specifications that will be
+                      exported to a theorem prover may not contain
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">if</span>
+                        <span class="pre">then</span>
+                        <span class="pre">else</span></code
+                      >
+                      statements whose condition involves quantification over a
+                      variable with an infinite domain. For example, the
+                      following is not allowed:
+                    </p>
+                    <div class="highlight-agda notranslate">
+                      <div class="highlight">
+                        <pre><span></span>if<span class="w"> </span><span class="o">(</span><span class="kr">forall</span><span class="w"> </span>x.<span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span>&gt;<span class="w"> </span><span class="mi">0</span><span class="o">)</span><span class="w"> </span>then<span class="w"> </span><span class="mi">2</span><span class="w"> </span>else<span class="w"> </span><span class="mi">3</span><span class="w"></span>
+</pre>
+                      </div>
+                    </div>
+                    <div class="admonition note">
+                      <p class="admonition-title">Note</p>
+                      <p>
+                        As discussed in the Tips and Tricks section,
+                        <code class="code docutils literal notranslate"
+                          ><span class="pre">if</span>
+                          <span class="pre">then</span>
+                          <span class="pre">else</span></code
+                        >
+                        should be used sparingly, as each conditional in the
+                        final normalised expression approximately doubles the
+                        time taken to verify the specification.
+                      </p>
+                    </div>
+                  </section>
+                  <section id="equality">
+                    <h2>
+                      <a class="toc-backref" href="#id3">Equality</a
+                      ><a
+                        class="headerlink"
+                        href="#equality"
+                        title="Permalink to this headline"
+                        ></a
+                      >
+                    </h2>
+                    <p>
+                      Two expressions of the same type can be declared to be
+                      equal or not equal using the
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">==</span></code
+                      >
+                      and
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">!=</span></code
+                      >
+                      operators respectively.
+                    </p>
+                    <p>
+                      The type of these operators are
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">A</span>
+                        <span class="pre">-&gt;</span>
+                        <span class="pre">A</span>
+                        <span class="pre">-&gt;</span>
+                        <span class="pre">Bool</span></code
+                      >
+                      where
+                      <code class="code docutils literal notranslate"
+                        ><span class="pre">A</span></code
+                      >
+                      can be any of the following types:
+                    </p>
+                    <ul class="simple">
+                      <li>
+                        <p>
+                          <code class="code docutils literal notranslate"
+                            ><span class="pre">Bool</span></code
+                          >,
+                          <code class="code docutils literal notranslate"
+                            ><span class="pre">Nat</span></code
+                          >,
+                          <code class="code docutils literal notranslate"
+                            ><span class="pre">Int</span></code
+                          >,
+                          <code class="code docutils literal notranslate"
+                            ><span class="pre">Rat</span></code
+                          >.
+                        </p>
+                      </li>
+                      <li>
+                        <p>
+                          <code class="code docutils literal notranslate"
+                            ><span class="pre">Index</span>
+                            <span class="pre">d</span></code
+                          >
+                          for any value of
+                          <code class="code docutils literal notranslate"
+                            ><span class="pre">d</span></code
+                          >.
+                        </p>
+                      </li>
+                      <li>
+                        <p>
+                          <code class="code docutils literal notranslate"
+                            ><span class="pre">List</span>
+                            <span class="pre">A</span></code
+                          >
+                          if type
+                          <code class="code docutils literal notranslate"
+                            ><span class="pre">A</span></code
+                          >
+                          also supports the operators.
+                        </p>
+                      </li>
+                      <li>
+                        <p>
+                          <code class="code docutils literal notranslate"
+                            ><span class="pre">Tensor</span>
+                            <span class="pre">A</span>
+                            <span class="pre">dims</span></code
+                          >
+                          if type
+                          <code class="code docutils literal notranslate"
+                            ><span class="pre">A</span></code
+                          >
+                          also supports the operators.
+                        </p>
+                      </li>
+                    </ul>
+                    <p>For example:</p>
+                    <div class="highlight-agda notranslate">
+                      <div class="highlight">
+                        <pre><span></span><span class="kr">forall</span><span class="w"> </span>x<span class="w"> </span><span class="ow">.</span><span class="w"> </span>x<span class="w"> </span>!=<span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="ow">=</span>&gt;<span class="w"> </span>f<span class="w"> </span>x<span class="w"> </span><span class="ow">==</span><span class="w"> </span><span class="mi">1</span><span class="w"></span>
+</pre>
+                      </div>
+                    </div>
+                  </section>
+                </section>
+              </div>
+            </div>
+            <footer>
+              <div
+                class="rst-footer-buttons"
+                role="navigation"
+                aria-label="Footer"
+              >
+                <a
+                  href="index.html"
+                  class="btn btn-neutral float-left"
+                  title="The specification language"
+                  accesskey="p"
+                  rel="prev"
+                  ><span
+                    class="fa fa-arrow-circle-left"
+                    aria-hidden="true"
+                  ></span>
+                  Previous</a
+                >
+                <a
+                  href="arithmetic.html"
+                  class="btn btn-neutral float-right"
+                  title="Arithmetic"
+                  accesskey="n"
+                  rel="next"
+                  >Next
+                  <span
+                    class="fa fa-arrow-circle-right"
+                    aria-hidden="true"
+                  ></span
+                ></a>
+              </div>
+
+              <hr />
+
+              <div role="contentinfo">
+                <p>&#169; Copyright 2022.</p>
+              </div>
+
+              Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using
+              a
+              <a href="https://github.com/readthedocs/sphinx_rtd_theme"
+                >theme</a
+              >
+              provided by <a href="https://readthedocs.org">Read the Docs</a>.
+            </footer>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      jQuery(function () {
+        SphinxRtdTheme.Navigation.enable(true);
+      });
+    </script>
+  </body>
+</html>

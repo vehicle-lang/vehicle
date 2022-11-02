@@ -1,4 +1,4 @@
-cabal-version: 3.8
+cabal-version: 3.4
 name:          vehicle
 version:       0.1.0
 description:

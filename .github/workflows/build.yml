@@ -1,4 +1,4 @@
-name: CI
+name: Build
 
 on:
   push:
@@ -17,15 +17,6 @@ jobs:
         ghc-version: ["8.10", "9.0"]
         cabal-version: ["3.8"]
         experimental: [false]
-        # include:
-        #   - os: ubuntu-latest
-        #     ghc-version: "9.2"
-        #     cabal-version: "3.8"
-        #     experimental: true
-        #   - os: ubuntu-latest
-        #     ghc-version: "9.4"
-        #     cabal-version: "3.8"
-        #     experimental: true
     env:
       CABAL_PROJECT_FILE: cabal.project.ghc-${{ matrix.ghc-version }}
       CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ matrix.ghc-version }}.freeze
@@ -48,35 +39,31 @@ jobs:
 
       - name: Build Vehicle
         run: |
-          cabal v2-build exe:vehicle \
+          cabal v2-build exe:vehicle         \
             --project-file=${{ env.CABAL_PROJECT_FILE }}
-        shell: bash
+        shell: sh
 
-      - name: Test Vehicle (Unit)
+      - name: Test Vehicle
         run: |
-          cabal v2-test vehicle-unit-tests \
-            --test-option=--color=always \
-            --test-show-details=always \
+          cabal v2-test vehicle-unit-tests   \
+            --test-option=--color=always     \
+            --test-show-details=always       \
             --project-file=${{ env.CABAL_PROJECT_FILE }}
-        shell: bash
-
-      - name: Test Vehicle (Golden)
-        run: |
           cabal v2-test vehicle-golden-tests \
-            --test-option=--color=always \
-            --test-show-details=always \
+            --test-option=--color=always     \
+            --test-show-details=always       \
             --project-file=${{ env.CABAL_PROJECT_FILE }}
-        shell: bash
+        shell: sh
 
       - name: Copy Vehicle executable to bdist
         run: |
           mkdir bdist
-          cabal v2-install exe:vehicle \
-            --overwrite-policy=always \
-            --install-method=copy \
-            --installdir=bdist \
+          cabal v2-install exe:vehicle       \
+            --overwrite-policy=always        \
+            --install-method=copy            \
+            --installdir=bdist               \
             --project-file=${{ env.CABAL_PROJECT_FILE }}
-        shell: bash
+        shell: sh
 
       - name: Upload Vehicle executable (Linux or macOS)
         if: runner.os == 'Linux' || runner.os == 'macOS'

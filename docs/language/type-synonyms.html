@@ -1,0 +1,317 @@
+<!doctype html>
+<html class="writer-html5" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="generator"
+      content="Docutils 0.17.1: http://docutils.sourceforge.net/"
+    />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Type synonyms &mdash; Vehicle 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <!--[if lt IE 9]>
+      <script src="../_static/js/html5shiv.min.js"></script>
+    <![endif]-->
+
+    <script
+      data-url_root="../"
+      id="documentation_options"
+      src="../_static/documentation_options.js"
+    ></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link
+      rel="next"
+      title="Let expressions (TODO)"
+      href="let-expressions.html"
+    />
+    <link rel="prev" title="Properties" href="properties.html" />
+  </head>
+
+  <body class="wy-body-for-nav">
+    <div class="wy-grid-for-nav">
+      <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+        <div class="wy-side-scroll">
+          <div class="wy-side-nav-search">
+            <a href="../index.html" class="icon icon-home"> Vehicle </a>
+            <div class="version">0.1.0</div>
+            <div role="search">
+              <form
+                id="rtd-search-form"
+                class="wy-form"
+                action="../search.html"
+                method="get"
+              >
+                <input type="text" name="q" placeholder="Search docs" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+            </div>
+          </div>
+          <div
+            class="wy-menu wy-menu-vertical"
+            data-spy="affix"
+            role="navigation"
+            aria-label="Navigation menu"
+          >
+            <ul class="current">
+              <li class="toctree-l1">
+                <a class="reference internal" href="../installation.html"
+                  >Installation</a
+                >
+              </li>
+              <li class="toctree-l1 current">
+                <a class="reference internal" href="index.html"
+                  >The specification language</a
+                >
+                <ul class="current">
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="logic.html">Logic</a>
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="arithmetic.html"
+                      >Arithmetic</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="functions.html"
+                      >Functions</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="lists.html">Lists</a>
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="vectors.html"
+                      >Vectors</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="tensors.html"
+                      >Tensors</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="quantifiers.html"
+                      >Quantifiers</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="networks.html"
+                      >Networks</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="datasets.html"
+                      >Datasets</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="parameters.html"
+                      >Parameters</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="properties.html"
+                      >Properties</a
+                    >
+                  </li>
+                  <li class="toctree-l2 current">
+                    <a class="current reference internal" href="#"
+                      >Type synonyms</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="let-expressions.html"
+                      >Let expressions (TODO)</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="annotations-holes.html"
+                      >Annotations and holes (Docs TODO)</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="tips-and-tricks.html"
+                      >Tips and tricks</a
+                    >
+                  </li>
+                  <li class="toctree-l2">
+                    <a class="reference internal" href="advanced.html"
+                      >Advanced topics (TODO)</a
+                    >
+                  </li>
+                </ul>
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="../training.html"
+                  >Training with a specification (TODO)</a
+                >
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="../verification.html"
+                  >Verifying a specification</a
+                >
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="../theorem-proving.html"
+                  >Exporting a specification to an ITP</a
+                >
+              </li>
+              <li class="toctree-l1">
+                <a class="reference internal" href="../other/index.html"
+                  >Other</a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+        <nav class="wy-nav-top" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Vehicle</a>
+        </nav>
+
+        <div class="wy-nav-content">
+          <div class="rst-content">
+            <div role="navigation" aria-label="Page navigation">
+              <ul class="wy-breadcrumbs">
+                <li><a href="../index.html" class="icon icon-home"></a></li>
+                <li class="breadcrumb-item">
+                  <a href="index.html">The specification language</a>
+                </li>
+                <li class="breadcrumb-item active">Type synonyms</li>
+                <li class="wy-breadcrumbs-aside">
+                  <a
+                    href="../_sources/language/type-synonyms.rst.txt"
+                    rel="nofollow"
+                  >
+                    View page source</a
+                  >
+                </li>
+              </ul>
+              <hr />
+            </div>
+            <div
+              role="main"
+              class="document"
+              itemscope="itemscope"
+              itemtype="http://schema.org/Article"
+            >
+              <div itemprop="articleBody">
+                <section id="type-synonyms">
+                  <h1>
+                    Type synonyms<a
+                      class="headerlink"
+                      href="#type-synonyms"
+                      title="Permalink to this headline"
+                      ></a
+                    >
+                  </h1>
+                  <p>
+                    Although Vehicle’s builtin types are sufficient to write a
+                    wide range of specifications, specifications can often be
+                    made more readable by using the
+                    <code class="code docutils literal notranslate"
+                      ><span class="pre">type</span></code
+                    >
+                    keyword to defining meaningful synonyms for those that are
+                    used repeatedly.
+                  </p>
+                  <p>
+                    For example, when defining a robustness specification for
+                    the MNIST dataset which contains 24x24 greyscale images, in
+                    order to avoid having to repeatedly write
+                    <code class="code docutils literal notranslate"
+                      ><span class="pre">Tensor</span>
+                      <span class="pre">Rat</span>
+                      <span class="pre">[24,</span>
+                      <span class="pre">24]</span></code
+                    >, one could declare
+                    <code class="code docutils literal notranslate"
+                      ><span class="pre">Image</span></code
+                    >
+                    as a synonym for it and use it as follows:
+                  </p>
+                  <div class="highlight-agda notranslate">
+                    <div class="highlight">
+                      <pre><span></span>type<span class="w"> </span>Image<span class="w"> </span><span class="ow">=</span><span class="w"> </span>Tensor<span class="w"> </span>Rat<span class="w"> </span>[24,<span class="w"> </span><span class="mi">24</span>]<span class="w"></span>
+
+@network<span class="w"></span>
+<span class="nf">classify</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Image<span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Tensor<span class="w"> </span>Rat<span class="w"> </span>[10]<span class="w"></span>
+
+@dataset<span class="w"></span>
+<span class="nf">trainingDataset</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>List<span class="w"> </span>Image<span class="w"></span>
+
+<span class="nf">robustAround</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Image<span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Bool<span class="w"></span>
+robustAround<span class="w"> </span>x<span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="ow">...</span><span class="w"></span>
+</pre>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+            <footer>
+              <div
+                class="rst-footer-buttons"
+                role="navigation"
+                aria-label="Footer"
+              >
+                <a
+                  href="properties.html"
+                  class="btn btn-neutral float-left"
+                  title="Properties"
+                  accesskey="p"
+                  rel="prev"
+                  ><span
+                    class="fa fa-arrow-circle-left"
+                    aria-hidden="true"
+                  ></span>
+                  Previous</a
+                >
+                <a
+                  href="let-expressions.html"
+                  class="btn btn-neutral float-right"
+                  title="Let expressions (TODO)"
+                  accesskey="n"
+                  rel="next"
+                  >Next
+                  <span
+                    class="fa fa-arrow-circle-right"
+                    aria-hidden="true"
+                  ></span
+                ></a>
+              </div>
+
+              <hr />
+
+              <div role="contentinfo">
+                <p>&#169; Copyright 2022.</p>
+              </div>
+
+              Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using
+              a
+              <a href="https://github.com/readthedocs/sphinx_rtd_theme"
+                >theme</a
+              >
+              provided by <a href="https://readthedocs.org">Read the Docs</a>.
+            </footer>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      jQuery(function () {
+        SphinxRtdTheme.Navigation.enable(true);
+      });
+    </script>
+  </body>
+</html>
