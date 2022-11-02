@@ -1,4 +1,4 @@
-name: Build
+name: CI
 
 on:
   push:
@@ -53,6 +53,10 @@ jobs:
             --test-option=--color=always     \
             --test-show-details=always       \
             --project-file=${{ env.CABAL_PROJECT_FILE }}
+        shell: sh
+
+      - name: Test Editor Integration
+        run: ./scripts/hie-bios-check $(git ls-files -- '*.hs')
         shell: sh
 
       - name: Copy Vehicle executable to bdist
