@@ -1,40 +1,41 @@
 #!/usr/bin/env cabal
 {- cabal:
 build-depends:
-  , base     >=4       && <5
-  , containers
-  , directory
-  , extra
-  , filepath
-  , process  >=1.2.0.0 && <2
+  , base       >=4   && <5
+  , containers >=0.5 && <0.6
+  , directory  >=1   && <2
+  , filepath   >=1   && <2
+  , process    >=1.2 && <2
 
-build-tool-depends: stylish-haskell:stylish-haskell
 default-language:   Haskell2010
-default-extensions: ImportQualifiedPost
 ghc-options:        -Wall
 -}
-import Control.Monad (forM, unless)
-import Control.Monad.Extra (partitionM)
+{-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE LambdaCase          #-}
+import Control.Monad (filterM, forM, unless)
 import Data.List (isPrefixOf, partition)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe ( fromMaybe, listToMaybe )
-import System.Directory (doesFileExist)
+import Data.Maybe (fromMaybe, listToMaybe)
+import System.Directory (doesFileExist, findExecutable)
 import System.Environment (getArgs)
-import System.Exit (ExitCode (..), exitWith)
+import System.Exit (ExitCode (..), exitFailure, exitWith)
 import System.FilePath (isRelative, makeRelative, splitDirectories,
                         takeDirectory, (</>))
+import System.IO (hPutStrLn, stderr)
 import System.Process (CreateProcess (..), proc, waitForProcess,
                        withCreateProcess)
 
 main :: IO ()
 main = do
-  args <- getArgs
+  -- Find 'stylish-haskell':
+  stylishHaskell <- findStylishHaskell
+
   -- Separate out flags from files:
-  let (flags, files) = partition ("-" `isPrefixOf`) args
+  (flags, files) <- partition ("-" `isPrefixOf`) <$> getArgs
 
   -- Check that all the file arguments exist:
-  (exist, notExist) <- partitionM doesFileExist files
+  notExist <- filterM (fmap not . doesFileExist) files
   unless (null notExist) $ fail $ unlines $
     "Error: vehicle-stylish-haskell was called with non-existent file paths:"
       : ["- " <> file | file <- notExist]
@@ -47,7 +48,7 @@ main = do
 
   -- Get all the project root directories:
   let filesByProjectRoot :: Map FilePath [FilePath]
-      filesByProjectRoot = foldr insertByProjectRoot Map.empty exist
+      filesByProjectRoot = foldr insertByProjectRoot Map.empty files
         where
           insertByProjectRoot file =
             Map.alter (Just . (relativeFile :) . fromMaybe []) projectRoot
@@ -55,10 +56,10 @@ main = do
               projectRoot = fromMaybe "." .listToMaybe . splitDirectories . takeDirectory $ file
               relativeFile = makeRelative projectRoot file
 
-
   -- Check that all project roots have a .stylish-haskell.yaml:
-  (projectRoots, projectRootsWithoutStylishHaskellYaml) <-
-    partitionM (doesFileExist . (</> ".stylish-haskell.yaml")) (Map.keys filesByProjectRoot)
+  let projectRoots = Map.keys filesByProjectRoot
+  projectRootsWithoutStylishHaskellYaml <-
+    filterM (fmap not . doesFileExist . (</> ".stylish-haskell.yaml")) projectRoots
   unless (null projectRootsWithoutStylishHaskellYaml) $ fail $ unlines $
     "Error: vehicle-stylish-haskell was on projects without .stylish-haskell.yaml:"
       : ["- " <> projectRoot | projectRoot <- projectRootsWithoutStylishHaskellYaml]
@@ -70,15 +71,31 @@ main = do
         Nothing -> error "Empty key in filesByProjectRoot"
         Just filesForProjectRoot -> do
           let argsForProjectRoot = flags <> filesForProjectRoot
-          let stylishHaskell =
-                (proc "stylish-haskell" argsForProjectRoot)
+          let callStylishHaskell =
+                (proc stylishHaskell argsForProjectRoot)
                   {cwd = Just projectRoot}
-          withCreateProcess stylishHaskell $
+          withCreateProcess callStylishHaskell $
             \_stdin _stdout _stderr processHandle -> do
               -- TODO: assert stream handles are Nothing
               waitForProcess processHandle
 
   -- Exit with success only if all calls to stylish-haskell succeeded
-  let isSuccess ExitSuccess = True
-      isSuccess _           = False
-  exitWith $ if all isSuccess exitCodes then ExitSuccess else ExitFailure 1
+  exitWith $ if all isExitSuccess exitCodes then ExitSuccess else ExitFailure 1
+
+isExitSuccess :: ExitCode -> Bool
+isExitSuccess ExitSuccess = True
+isExitSuccess _           = False
+
+findStylishHaskell :: IO FilePath
+findStylishHaskell = do
+  findExecutable "stylish-haskell" >>= \case
+    Just stylishHaskell -> return stylishHaskell
+    Nothing             -> do
+      hPutStrLn stderr
+        "Error: The pre-commit hook requires 'stylish-haskell' to format Haskell code.\
+        \       You can install 'stylish-haskell' by running:\
+        \\
+        \       cabal v2-install stylish-haskell --ignore-project --overwrite-policy=always\
+        \\
+        \       See: https://github.com/haskell/stylish-haskell#readme"
+      exitFailure
