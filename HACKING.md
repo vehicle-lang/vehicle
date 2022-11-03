@@ -18,54 +18,52 @@ VSCode extensions that should be installed are:
   and some useful ones are:
 - Cursor Align
 
-## 2. Build system
-
-We use [Shake](https://shakebuild.com/) as a build system for Vehicle, which is
-just a fancy DSL for Haskell.
-The entire build system lives in the top-level file `build.hs`, and is just an
-additional executable in the `cabal` project and therefore can be run as
-`cabal run vehicle-build-system X` where `X` is the command to the build system.
-
-## 3. Testing Vehicle
+## 2. Testing Vehicle
 
 There are currently three types of tests for Vehicle. The build system for Vehicle contains
 various utility commands for running the various test suites (these simply wrap the `cabal test`
 command in various ways).
 
-- `cabal run vehicle-build-system all-tests` will run all the tests
+### Unit tests
 
-### Basic tests
-
-These test the functionality of the executable, and include golden tests, unit tests etc.
+These test the functionality of the Vehicle library, unit tests etc.
 The build system contains the following commands (which simply wrap the `cabal test`
 command in various ways):
 
-- `cabal run vehicle-build-system basic-tests` will run the tests.
+- `cabal test vehicle-unit-tests --test-show-details=always` will run the tests.
 
-- `cabal run vehicle-build-system basic-tests-accept` - will run the tests and accept the changes to any of the
-  changed output files. _Warning_: Only run this if you are okay with the changes to the output!
+- Adding `--test-option="-p /X/"` to the command will only run tests with `X` in their name.
 
-- `cabal test vehicle-executable-tests --test-show-details=always --test-option="-p /X/"` - will only run tests
-  with `X` in their name. If you only want to run a test for a particular backend `Y`
-  change the `X` to `X-Y`, e.g. `quantifier-Agda`.
+- Adding `--test-option="--vehicle-logging X"` to the command will set the logging level to
+  `X` where the various levels can be found with the `vehicle --help` command.
 
-- If you want to accept the output of a single test add `--test-option="--accept"` to the previous command.
+### Golden tests
 
-- The logging level for these tests can be set at the top of `test/Vehicle/Test/TestExecutable.hs`.
+- `cabal test vehicle-golden-tests --test-show-details=always` will run the tests.
+
+- Adding `--test-option="-p /X/"` to the command will only run tests with `X` in their name.
+  If you only want to run a test for a particular backend `Y` change the `X` to `X-Y`, e.g. `quantifier-Agda`.
+
+- Adding `--test-option="--accept"` to the command will accept the output of the tests.
+  _Warning_: Only run this if you are okay with the changes to the output!
+
+- The logging level can be changed for the golden tests by changing the vehicle command
+  in the `test.json` files in the golden test suite.
+
+- To create a new golden test json file you can run `cabal run vehicle-new-golden-test -- Y`
+  where `Y` is the Vehicle command you would run e.g. `vehicle compile --target Marabou --specification spec.vcl --network myNetwork.onnx --outputFile=spec-input-query`.
+
+- If you add `--test-path my/path/` after `vehicle-new-golden-test` and before `--` then this
+  will automatically copy the generated `test.json` file and all the file dependencies to the
+  provided path (e.g. `--test-path tests/golden/compile/spec`)
 
 ### Integration tests
 
-These test the integration of Vehicle's output with various backends. In order to run these
-tests you will need all the various backends installed. Again the build system contains the
-following utility command:
-
-- `cabal run vehicle-build-system integration-tests` - will run the integration tests.
+Currently disabled.
 
 ### Performance tests
 
-These test the performance of the Vehicle compiler, and may be long running.
-
-- `cabal run vehicle-build-system performance-tests`
+Currently disabled.
 
 ### Continuous integration
 
@@ -75,13 +73,7 @@ The CI script that controls this is `.github/workflows/ci.yml`.
 ## 4. Parsers
 
 - The parsers for Vehicle are generated via [`BNFC`](https://bnfc.readthedocs.io/)
-  grammars located in the `src/bnfc` folder.
-
-- The parsers are automatically built when you run `cabal run vehicle-build-system init` command,
-  but can be manually rebuilt after changes using `cabal run vehicle-build-system bnfc`.
-
-- These commands generate Haskell parsers for the language which are automatically
-  placed in the `gen/hs` folder.
+  grammars located in the `vehicle-syntax/src/Vehicle/Syntax` folder.
 
 ## 5. Logging
 
@@ -99,16 +91,11 @@ To enable profiling follow the following steps:
 - Add `-O0` to `ghc-options` to `library` in `vehicle.cabal`.
 
 - Add `-O0 -prof -fprof-auto -with-rtsopts=-p` to `ghc-options` for the relevant test-suite
-  (e.g. `vehicle-executable-tests`) in `vehicle.cabal`.
+  in `vehicle.cabal`.
 
 ## 7. Documentation
 
-The documentation is hosted by ReadTheDocs (RTD). To rebuild the documentation, add your changes
-to the Github documentation and then go to
-https://readthedocs.org/projects/vehicle-lang/
-and hit `Build`.
-
-Ideally the documentation would automatically rebuild but haven't yet got that set up.
+The documentation is hosted by ReadTheDocs (RTD). The documentation is automatically rebuilt.
 
 ## 8. Coding conventions
 
