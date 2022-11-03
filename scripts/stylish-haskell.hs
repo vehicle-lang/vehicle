@@ -12,11 +12,12 @@ ghc-options:        -Wall
 -}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase          #-}
+import Control.Exception (assert)
 import Control.Monad (filterM, forM, unless)
 import Data.List (isPrefixOf, partition)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (fromMaybe, isNothing, listToMaybe)
 import System.Directory (doesFileExist, findExecutable)
 import System.Environment (getArgs)
 import System.Exit (ExitCode (..), exitFailure, exitWith)
@@ -75,9 +76,9 @@ main = do
                 (proc stylishHaskell argsForProjectRoot)
                   {cwd = Just projectRoot}
           withCreateProcess callStylishHaskell $
-            \_stdin _stdout _stderr processHandle -> do
-              -- TODO: assert stream handles are Nothing
-              waitForProcess processHandle
+            \stdinHandle stdoutHandle stderrHandle processHandle -> do
+              assert (all isNothing [stdinHandle, stdoutHandle, stderrHandle]) $
+                waitForProcess processHandle
 
   -- Exit with success only if all calls to stylish-haskell succeeded
   exitWith $ if all isExitSuccess exitCodes then ExitSuccess else ExitFailure 1

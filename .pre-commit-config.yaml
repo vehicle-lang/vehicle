@@ -34,7 +34,14 @@ repos:
       - id: trailing-whitespace
   - repo: local
     hooks:
-      - id: vehicle-stylish-haskell
+      - id: vehicle-format-cabal
+        name: "format haskell with cabal-fmt"
+        entry: ./scripts/cabal-fmt.hs
+        language: script
+        types: [file, text]
+        files: ^.*\.cabal$
+        args: [--check, --inplace]
+      - id: vehicle-format-haskell
         name: "format haskell with stylish-haskell"
         entry: ./scripts/stylish-haskell.hs
         language: script
@@ -57,7 +64,7 @@ repos:
 
 # Do not run local hooks on pre-commit CI:
 ci:
-  skip: [vehicle-stylish-haskell]
+  skip: [vehicle-format-cabal, vehicle-format-haskell]
 
 # Exclude golden standard generated JSON files:
 exclude: ^.*\.golden$|^docs/.*$
