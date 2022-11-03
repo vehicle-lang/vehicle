@@ -50,7 +50,7 @@ repos:
 
 # Do not run local hooks on pre-commit CI:
 ci:
-  skip: [vehicle-format-cabal, vehicle-format-haskell]
+  skip: [cabal-fmt, stylish-haskell]
 
 # Exclude golden standard generated JSON files:
 exclude: ^.*\.golden$|^docs/.*$
