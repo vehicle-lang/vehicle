@@ -1,2 +1,2 @@
-subtraction : Rat
-subtraction = 6 / 2
+division : Rat
+division = 6 / 2

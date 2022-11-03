@@ -1,2 +1,2 @@
-subtraction : Rat
-subtraction = 6 + 2
+addition : Rat
+addition = 6 + 2

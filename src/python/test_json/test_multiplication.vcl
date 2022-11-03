@@ -1,2 +1,2 @@
-subtraction : Rat
-subtraction = 6 * 2
+multiplication : Rat
+multiplication = 6 * 2
