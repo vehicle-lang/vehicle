@@ -63,7 +63,10 @@ jobs:
           cabal v2-install hie-bios          \
             --ignore-project                 \
             --overwrite-policy=always
-          ./scripts/hie-bios-check.hs        \
+          cabal v2-run                       \
+            scripts/hie-bios-check.hs        \
+            --ignore-project                 \
+            --                               \
             $(git ls-files -- '*.hs')
         shell: sh
 
