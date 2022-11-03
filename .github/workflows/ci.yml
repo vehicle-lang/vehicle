@@ -58,17 +58,17 @@ jobs:
             --project-file=${{ env.CABAL_PROJECT_FILE }}
         shell: sh
 
-      - name: Test Editor Integration
-        run: |
-          cabal v2-install hie-bios          \
-            --ignore-project                 \
-            --overwrite-policy=always
-          cabal v2-run                       \
-            scripts/hie-bios-check.hs        \
-            --ignore-project                 \
-            --                               \
-            $(git ls-files -- '*.hs')
-        shell: sh
+      # - name: Test Editor Integration
+      #   run: |
+      #     cabal v2-install hie-bios          \
+      #       --ignore-project                 \
+      #       --overwrite-policy=always
+      #     cabal v2-run                       \
+      #       scripts/hie-bios-check.hs        \
+      #       --ignore-project                 \
+      #       --                               \
+      #       $(git ls-files -- '*.hs')
+      #   shell: sh
 
       - name: Copy Vehicle executable to bdist
         run: |
