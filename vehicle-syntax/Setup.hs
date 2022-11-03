@@ -1,3 +1,12 @@
+#!/usr/bin/env cabal
+{- cabal:
+build-depends:
+    base      >=4
+  , Cabal     >=2.0.0.2
+  , filepath  >=1
+default-language:   Haskell2010
+ghc-options:        -Wall
+-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 import Control.Monad (forM_, mapM, when)

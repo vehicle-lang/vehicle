@@ -1,7 +1,7 @@
 #!/usr/bin/env cabal
 {- cabal:
 build-depends:
-  , base       >=4   && <5
+    base       >=4   && <5
   , containers >=0.5 && <0.6
   , directory  >=1   && <2
   , filepath   >=1   && <2
