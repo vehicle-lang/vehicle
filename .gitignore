@@ -38,6 +38,7 @@ MAlonzo/**
 
 # Python
 __pycache__/
+.mypy_cache/
 
 # Examples folder
 examples/**/*.vclp
