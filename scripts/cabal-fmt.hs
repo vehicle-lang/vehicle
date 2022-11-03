@@ -30,13 +30,13 @@ main = do
   -- Check that all the file arguments exist:
   notExist <- filterM (fmap not . doesFileExist) files
   unless (null notExist) $ fail $ unlines $
-    "Error: vehicle-cabal-fmt was called with non-existent file paths:"
+    "Error: cabal-fmt was called with non-existent file paths:"
       : ["- " <> file | file <- notExist]
 
   -- Check that all file paths are relative:
   let notRelative = filter (not . isRelative) files
   unless (null notRelative) $ fail $ unlines $
-    "Error: vehicle-cabal-fmt was called with non-relative file paths:"
+    "Error: cabal-fmt was called with non-relative file paths:"
       : ["- " <> file | file <- notExist]
 
   -- Call stylish-haskell for each project root:
@@ -56,8 +56,8 @@ isExitSuccess _           = False
 findCabalFmt :: IO FilePath
 findCabalFmt = do
   findExecutable "cabal-fmt" >>= \case
-    Just stylishHaskell -> return stylishHaskell
-    Nothing             -> do
+    Just cabalFmt -> return cabalFmt
+    Nothing       -> do
       hPutStrLn stderr . unlines $
         [ "The pre-commit hook requires 'cabal-fmt' to format Haskell code."
         , "You can install 'cabal-fmt' by running:"
@@ -65,5 +65,13 @@ findCabalFmt = do
         , "  cabal v2-install cabal-fmt --ignore-project --overwrite-policy=always"
         , ""
         , "See: https://github.com/haskell/cabal-fmt#readme"
+        , ""
+        , "If you want to skip this pre-commit hook, commit with:"
+        , ""
+        , "  SKIP=format-cabal git commit -m \"...\""
+        , ""
+        , "If you want to skip all pre-commit hooks, commit with:"
+        , ""
+        , "  git commit -m \"...\" --no-verify"
         ]
       exitFailure

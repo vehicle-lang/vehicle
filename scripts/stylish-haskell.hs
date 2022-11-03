@@ -38,13 +38,13 @@ main = do
   -- Check that all the file arguments exist:
   notExist <- filterM (fmap not . doesFileExist) files
   unless (null notExist) $ fail $ unlines $
-    "Error: vehicle-stylish-haskell was called with non-existent file paths:"
+    "Error: stylish-haskell was called with non-existent file paths:"
       : ["- " <> file | file <- notExist]
 
   -- Check that all file paths are relative:
   let notRelative = filter (not . isRelative) files
   unless (null notRelative) $ fail $ unlines $
-    "Error: vehicle-stylish-haskell was called with non-relative file paths:"
+    "Error: stylish-haskell was called with non-relative file paths:"
       : ["- " <> file | file <- notExist]
 
   -- Get all the project root directories:
@@ -62,7 +62,7 @@ main = do
   projectRootsWithoutStylishHaskellYaml <-
     filterM (fmap not . doesFileExist . (</> ".stylish-haskell.yaml")) projectRoots
   unless (null projectRootsWithoutStylishHaskellYaml) $ fail $ unlines $
-    "Error: vehicle-stylish-haskell was on projects without .stylish-haskell.yaml:"
+    "Error: stylish-haskell was run on projects without .stylish-haskell.yaml:"
       : ["- " <> projectRoot | projectRoot <- projectRootsWithoutStylishHaskellYaml]
 
   -- Call stylish-haskell for each project root:
@@ -92,11 +92,20 @@ findStylishHaskell = do
   findExecutable "stylish-haskell" >>= \case
     Just stylishHaskell -> return stylishHaskell
     Nothing             -> do
-      hPutStrLn stderr
-        "Error: The pre-commit hook requires 'stylish-haskell' to format Haskell code.\
-        \       You can install 'stylish-haskell' by running:\
-        \\
-        \       cabal v2-install stylish-haskell --ignore-project --overwrite-policy=always\
-        \\
-        \       See: https://github.com/haskell/stylish-haskell#readme"
+      hPutStrLn stderr . unlines $
+        [ "The pre-commit hook requires 'stylish-haskell' to format Haskell code."
+        , "You can install 'stylish-haskell' by running:"
+        , ""
+        , "  cabal v2-install stylish-haskell --ignore-project --overwrite-policy=always"
+        , ""
+        , "See: https://github.com/haskell/stylish-haskell#readme"
+        , ""
+        , "If you want to skip this pre-commit hook, commit with:"
+        , ""
+        , "  SKIP=format-cabal git commit -m \"...\""
+        , ""
+        , "If you want to skip all pre-commit hooks, commit with:"
+        , ""
+        , "  git commit -m \"...\" --no-verify"
+        ]
       exitFailure

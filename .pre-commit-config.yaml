@@ -34,33 +34,19 @@ repos:
       - id: trailing-whitespace
   - repo: local
     hooks:
-      - id: vehicle-format-cabal
-        name: "format haskell with cabal-fmt"
+      - id: cabal-fmt
+        name: "format cabal with cabal-fmt"
         entry: ./scripts/cabal-fmt.hs
         language: script
         types: [file, text]
         files: ^.*\.cabal$
         args: [--check, --inplace]
-      - id: vehicle-format-haskell
+      - id: stylish-haskell
         name: "format haskell with stylish-haskell"
         entry: ./scripts/stylish-haskell.hs
         language: script
         types: [haskell]
         args: [--inplace]
-  - repo: https://github.com/thclark/pre-commit-sphinx
-    rev: 0.0.1
-    hooks:
-      - id: build-docs
-        args:
-          [
-            "--cache-dir",
-            "docs-doctrees",
-            "--html-dir",
-            "docs",
-            "--source-dir",
-            "docs-source",
-          ]
-        language_version: python3
 
 # Do not run local hooks on pre-commit CI:
 ci:

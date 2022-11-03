@@ -54,13 +54,14 @@ isExitSuccess _           = False
 findHieBios :: IO FilePath
 findHieBios = do
   findExecutable "hie-bios" >>= \case
-    Just stylishHaskell -> return stylishHaskell
-    Nothing             -> do
-      hPutStrLn stderr
-        "Error: The pre-commit hook requires 'hie-bios' to format Haskell code.\
-        \       You can install 'hie-bios' by running:\
-        \\
-        \       cabal v2-install hie-bios --ignore-project --overwrite-policy=always\
-        \\
-        \       See: https://github.com/haskell/hie-bios#readme"
+    Just hieBios -> return hieBios
+    Nothing      -> do
+      hPutStrLn stderr . unlines $
+        [ "The pre-commit hook requires 'hie-bios' to format Haskell code."
+        , "You can install 'hie-bios' by running:"
+        , ""
+        , "  cabal v2-install hie-bios --ignore-project --overwrite-policy=always"
+        , ""
+        , "See: https://github.com/haskell/hie-bios#readme"
+        ]
       exitFailure
