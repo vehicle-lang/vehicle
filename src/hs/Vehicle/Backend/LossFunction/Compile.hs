@@ -8,7 +8,7 @@ import Data.Aeson
 import GHC.Generics (Generic)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (catMaybes)
-import Data.Map qualified as Map (member)
+--import Data.Map qualified as Map (member)
 
 import Vehicle.Prelude
 import Vehicle.Compile.Error
@@ -143,16 +143,9 @@ compileDecl d =
     normalisationError currentPass "postulates"
 
   V.DefFunction _ ident _ expr -> do
-    (propertyCtx, _) <- ask
-    let isProperty = Map.member ident propertyCtx
-    if not isProperty
-      -- If it's not a property then we can discard it as all applications
-      -- of it should have been normalised out by now.
-      then return Nothing
-      else do 
-        expr' <- compileExpr expr
-        logDebug MaxDetail ("loss-declaration " <> prettySimple expr)
-        return (Just (DefFunction (nameOf ident) expr'))
+    expr' <- compileExpr expr
+    logDebug MaxDetail ("loss-declaration " <> prettySimple expr)
+    return (Just (DefFunction (nameOf ident) expr'))
 
 currentPass :: Doc a
 currentPass = "compilation to loss functions"

@@ -1,1 +1,26 @@
-[]
+[
+  [
+    "quantifier",
+    {
+      "tag": "Quantifier",
+      "contents": [
+        "All",
+        "x",
+        [],
+        {
+          "tag": "Subtraction",
+          "contents": [
+            {
+              "tag": "Variable",
+              "contents": 0
+            },
+            {
+              "tag": "Constant",
+              "contents": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+]

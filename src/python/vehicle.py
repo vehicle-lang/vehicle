@@ -33,8 +33,15 @@ class LossMetadata():
 class LossFunctionTranslation:
     def to_loss_function(self, metadata:LossMetadata, json_dict:dict) -> Callable:
         declaration_context = {}
+        # For now we only translate one function, but we'll need to handle a list of functions:
+        # [
+        #   [name, {json}],
+        #   ...,
+        #   [name, {json}]
+        # ]
         #for _ in json_dict:
             #declaration_loss = self._translate_expression(resources, json_dict)
+        json_dict = json_dict[0]
         if json_dict[1]['tag'] == 'Lambda':
             declaration_loss = self._translate_expression(metadata, json_dict[1])
         else:
@@ -198,6 +205,7 @@ class LossFunctionTranslation:
         def result_func(context):
             max_loss = np.NINF
             min_loss = np.Inf
+            # We generate 10 samples, have to change it in the future
             for _ in range(10):
                 sample = generate_sample()
                 context.insert(0, sample)
