@@ -169,10 +169,10 @@ library
     Vehicle.Prelude.DeveloperError
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging
+    Vehicle.Prelude.Misc
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply
     Vehicle.Prelude.Token
-    Vehicle.Prelude.Misc
     Vehicle.Verify.Verifier
     Vehicle.Verify.Verifier.Marabou
 

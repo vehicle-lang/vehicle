@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Networks &mdash; Vehicle 0.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Datasets" href="datasets.html" />
+    <link rel="prev" title="Quantifiers" href="quantifiers.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Vehicle
+          </a>
+              <div class="version">
+                0.1.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">The specification language</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="logic.html">Logic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="arithmetic.html">Arithmetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="functions.html">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lists.html">Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="vectors.html">Vectors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tensors.html">Tensors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quantifiers.html">Quantifiers</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Networks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#basics">Basics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#supported-formats">Supported formats</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#limitations">Limitations</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#multiple-input-outputs">Multiple input/outputs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#boolean-networks">Boolean networks</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parameters.html">Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="properties.html">Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="type-synonyms.html">Type synonyms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="let-expressions.html">Let expressions (TODO)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="annotations-holes.html">Annotations and holes (Docs TODO)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tips-and-tricks.html">Tips and tricks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced.html">Advanced topics (TODO)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../training.html">Training with a specification (TODO)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../verification.html">Verifying a specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../theorem-proving.html">Exporting a specification to an ITP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../other/index.html">Other</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Vehicle</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">The specification language</a></li>
+      <li class="breadcrumb-item active">Networks</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/language/networks.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="networks">
+<h1>Networks<a class="headerlink" href="#networks" title="Permalink to this headline"></a></h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#basics" id="id1">Basics</a></p></li>
+<li><p><a class="reference internal" href="#supported-formats" id="id2">Supported formats</a></p></li>
+<li><p><a class="reference internal" href="#limitations" id="id3">Limitations</a></p></li>
+</ul>
+</div>
+<section id="basics">
+<h2><a class="toc-backref" href="#id1">Basics</a><a class="headerlink" href="#basics" title="Permalink to this headline"></a></h2>
+<p>Networks are declared as follows using the <code class="docutils literal notranslate"><span class="pre">network</span></code> annotation:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span>@network<span class="w"></span>
+<span class="nf">myNetwork</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Tensor<span class="w"> </span>Rat<span class="w"> </span>[784]<span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Tensor<span class="w"> </span>Rat<span class="w"> </span>[10]<span class="w"></span>
+</pre></div>
+</div>
+<p>At the moment Vehicle supports networks with a single input and output node.
+Therefore expected type is of the form <code class="docutils literal notranslate"><span class="pre">Tensor</span> <span class="pre">Rat</span> <span class="pre">dims1</span> <span class="pre">-&gt;</span> <span class="pre">Tensor</span> <span class="pre">Rat</span> <span class="pre">dims1</span></code>
+where <code class="docutils literal notranslate"><span class="pre">dims1</span></code> and <code class="docutils literal notranslate"><span class="pre">dims1</span></code> are a non-empty list of constants.</p>
+</section>
+<section id="supported-formats">
+<h2><a class="toc-backref" href="#id2">Supported formats</a><a class="headerlink" href="#supported-formats" title="Permalink to this headline"></a></h2>
+<p>The actual implementation of the network is provided when using the
+specification during training or verification.</p>
+<p>At the moment only the <a class="reference external" href="https://onnx.ai/">ONNX</a> format is supported by Vehicle.</p>
+<p>There are various libraries to convert trained models to the ONNX format:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://onnxruntime.ai/docs/tutorials/tf-get-started.html">Tensorflow</a></p></li>
+<li><p><a class="reference external" href="https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html">PyTorch</a></p></li>
+</ul>
+<p>If you would be interested in other formats being supported, please get in touch.</p>
+</section>
+<section id="limitations">
+<h2><a class="toc-backref" href="#id3">Limitations</a><a class="headerlink" href="#limitations" title="Permalink to this headline"></a></h2>
+<section id="multiple-input-outputs">
+<h3>Multiple input/outputs<a class="headerlink" href="#multiple-input-outputs" title="Permalink to this headline"></a></h3>
+<p>Although we are aware that common network representations such as ONNX,
+Tensorflow, and Pytorch can have multiple input and output nodes,
+these are not currently supported by Vehicle.</p>
+<p>This is a matter of implementation rather than a fundamental limitation.
+Please get in touch if you would be interested in this functionality
+being added to Vehicle.</p>
+</section>
+<section id="boolean-networks">
+<h3>Boolean networks<a class="headerlink" href="#boolean-networks" title="Permalink to this headline"></a></h3>
+<p>The following are not currently allowed:</p>
+<div class="highlight-agda notranslate"><div class="highlight"><pre><span></span><span class="c1">-- Reason: boolean inputs are not current allowed</span><span class="w"></span>
+<span class="c1">-- Justification: lack of support for verifiers or training methods</span><span class="w"></span>
+@network<span class="w"></span>
+<span class="nf">myNetwork</span><span class="w"> </span><span class="ow">:</span><span class="w"> </span>Tensor<span class="w"> </span>Bool<span class="w"> </span>[4]<span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span>Tensor<span class="w"> </span>Rat<span class="w"> </span>[1]<span class="w"></span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="quantifiers.html" class="btn btn-neutral float-left" title="Quantifiers" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="datasets.html" class="btn btn-neutral float-right" title="Datasets" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

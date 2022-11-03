@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verifying a specification &mdash; Vehicle 0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Exporting a specification to an ITP" href="theorem-proving.html" />
+    <link rel="prev" title="Training with a specification (TODO)" href="training.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> Vehicle
+          </a>
+              <div class="version">
+                0.1.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="language/index.html">The specification language</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training.html">Training with a specification (TODO)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Verifying a specification</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#command-line-options">Command-line options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#checking-a-verification-result">Checking a verification result</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#supported-backends">Supported backends</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#marabou">Marabou</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#limitations">Limitations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#linearity">Linearity</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="theorem-proving.html">Exporting a specification to an ITP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="other/index.html">Other</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Vehicle</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a></li>
+      <li class="breadcrumb-item active">Verifying a specification</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/verification.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="verifying-a-specification">
+<h1>Verifying a specification<a class="headerlink" href="#verifying-a-specification" title="Permalink to this headline"></a></h1>
+<table class="autosummary longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<p>Given a specification, Vehicle can be used to check whether a given
+neural network obeys the specification.</p>
+<p>A specification can be verified by using the <code class="code docutils literal notranslate"><span class="pre">vehicle</span> <span class="pre">verify</span></code> command.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>vehicle verify <span class="se">\</span>
+  --specification my/project/mnist-robustness.vcl <span class="se">\</span>
+  --network classify:my/project/mnist.onnx <span class="se">\</span>
+  --dataset trainingImages:my/project/mnist-trainingImages.idx <span class="se">\</span>
+  --dataset trainingLabels:my/project/mnist-trainingLabels.idx <span class="se">\</span>
+  --parameter epsilon:0.1 <span class="se">\</span>
+  --verifier Marabou <span class="se">\</span>
+</pre></div>
+</div>
+<section id="command-line-options">
+<h2>Command-line options<a class="headerlink" href="#command-line-options" title="Permalink to this headline"></a></h2>
+<p>The table below contains the full list of command line arguments available
+for the <code class="code docutils literal notranslate"><span class="pre">verify</span></code> command.</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-specification">
+<span id="cmdoption-s"></span><span class="sig-name descname"><span class="pre">--specification</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-specification" title="Permalink to this definition"></a></dt>
+<dd><p>Location of the <code class="docutils literal notranslate"><span class="pre">.vcl</span></code> file containing the specification to be verified.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-property">
+<span id="cmdoption-y"></span><span class="sig-name descname"><span class="pre">--property</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">-y</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-property" title="Permalink to this definition"></a></dt>
+<dd><p>The name of a property in the specification to verify. You may provide this
+option multiple times to verify multiple properties at once. If not provided,
+then by default all properties in the specification are verified.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-network">
+<span id="cmdoption-n"></span><span class="sig-name descname"><span class="pre">--network</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">-n</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-network" title="Permalink to this definition"></a></dt>
+<dd><p>Provide the implementation of a network declared in the specification.
+Its value should consist of a colon-separated pair of the name of the network
+in the specification and a file path, i.e.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--network NAME:FILEPATH
+</pre></div>
+</div>
+<p>Can be used multiple times if the specification involves more than one network.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-dataset">
+<span id="cmdoption-d"></span><span class="sig-name descname"><span class="pre">--dataset</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">-d</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-dataset" title="Permalink to this definition"></a></dt>
+<dd><p>Provide a dataset declared in the specification.
+Its value should consist of a colon-separated pair of the name of the dataset
+in the specification and a file path, i.e.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--dataset NAME:FILEPATH
+</pre></div>
+</div>
+<p>Can be used multiple times if the specification involves more than one dataset.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-parameter">
+<span id="cmdoption-p"></span><span class="sig-name descname"><span class="pre">--parameter</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">-p</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-parameter" title="Permalink to this definition"></a></dt>
+<dd><p>Provide a parameter referenced in the specification.
+Its value should consist of a colon-separated pair of the name of the parameter
+in the specification and its value, i.e.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--parameter NAME:VALUE
+</pre></div>
+</div>
+<p>Can be used multiple times to provide multiple parameters.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-verifier">
+<span id="cmdoption-v"></span><span class="sig-name descname"><span class="pre">--verifier</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">-v</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-verifier" title="Permalink to this definition"></a></dt>
+<dd><p>Set which verifier should be used to perform the specification.
+At the moment the only supported option is <code class="code docutils literal notranslate"><span class="pre">Marabou</span></code>.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-verifierLocation">
+<span id="cmdoption-verifierlocation"></span><span id="cmdoption-l"></span><span class="sig-name descname"><span class="pre">--verifierLocation</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">-l</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-verifierLocation" title="Permalink to this definition"></a></dt>
+<dd><p>Location of the executable for the verifier. If not provided, then Vehicle
+will search for the <code class="docutils literal notranslate"><span class="pre">Marabou</span></code> executable in the <code class="docutils literal notranslate"><span class="pre">PATH</span></code> environment variable.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-proofCache">
+<span id="cmdoption-proofcache"></span><span id="cmdoption-c"></span><span class="sig-name descname"><span class="pre">--proofCache</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">-c</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-proofCache" title="Permalink to this definition"></a></dt>
+<dd><p>Set the location to write out the proof cache containing the results.
+If this argument is not provided then no proof cache will be generated.</p>
+</dd></dl>
+
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The <code class="code docutils literal notranslate"><span class="pre">verify</span></code> command is not atomic.
+Verification involves repeatedly loading the network(s) from disk
+and Vehicle will not detect changes to the networks that occur
+while the command is running.</p>
+<p>If such changes do occur, the verification result may not be sound.
+Unlike networks, datasets are only loaded once and therefore do not suffer
+from such race conditions.</p>
+</div>
+</section>
+<section id="checking-a-verification-result">
+<h2>Checking a verification result<a class="headerlink" href="#checking-a-verification-result" title="Permalink to this headline"></a></h2>
+<p>There are several reasons why one might want to check the status of a specification
+some time after having initially called <code class="code docutils literal notranslate"><span class="pre">verify</span></code>:</p>
+<blockquote>
+<div><p>1. The verification could be part of an automated test suite in a continuous
+integration framework.</p>
+<p>2. The specification could have been exported to an interactive theorem prover
+whose workflow consists of regularly rechecking the validity of proofs.</p>
+</div></blockquote>
+<p>Unfortunately, depending on the size of the network and the complexity of the
+specification, verification can be a very expensive procedure taking hours or days.
+Therefore it is important to avoid unnecessary re-verification.</p>
+<p>To solve this problem, after successfully verifying a specification
+Vehicle can write out a <em>proof cache</em> file.
+This file contains:</p>
+<ul class="simple">
+<li><p>The original text of the specification.</p></li>
+<li><p>The status of the specification.</p></li>
+<li><p>The values of the provided parameters.</p></li>
+<li><p>The file paths of the networks and datasets provided to the original
+<code class="code docutils literal notranslate"><span class="pre">verify</span></code> command along with a hash of the contents of each file.</p></li>
+</ul>
+<p>The <code class="code docutils literal notranslate"><span class="pre">check</span></code> command can then be run to use the proof cache to check
+the status of the specification as follows:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>vehicle check <span class="se">\</span>
+ --proofCache /my/project/spec.vclp
+</pre></div>
+</div>
+<p>Vehicle will read the proof cache, and use its contents to find and rehash
+the networks and datasets that were used during the original verification
+of the specification.
+If the new hashes match those stored in the proof cache then the check passes,
+otherwise the check command will exit with an error.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For obvious reasons, moving or renaming any of the networks or datasets
+will result in the <code class="code docutils literal notranslate"><span class="pre">check</span></code> command failing.</p>
+</div>
+</section>
+<section id="supported-backends">
+<h2>Supported backends<a class="headerlink" href="#supported-backends" title="Permalink to this headline"></a></h2>
+<section id="marabou">
+<h3>Marabou<a class="headerlink" href="#marabou" title="Permalink to this headline"></a></h3>
+</section>
+</section>
+<section id="limitations">
+<h2>Limitations<a class="headerlink" href="#limitations" title="Permalink to this headline"></a></h2>
+<section id="linearity">
+<h3>Linearity<a class="headerlink" href="#linearity" title="Permalink to this headline"></a></h3>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="training.html" class="btn btn-neutral float-left" title="Training with a specification (TODO)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="theorem-proving.html" class="btn btn-neutral float-right" title="Exporting a specification to an ITP" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

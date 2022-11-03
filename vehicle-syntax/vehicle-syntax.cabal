@@ -1,4 +1,4 @@
-cabal-version:      3.4
+cabal-version:      1.24
 name:               vehicle-syntax
 version:            0.1.0
 description:
@@ -9,7 +9,7 @@ bug-reports:        https://github.com/vehicle-lang/vehicle/issues
 author:             Wen Kokke
 maintainer:         wenkokke@users.noreply.github.com
 copyright:          © Wen Kokke
-license:            BSD-3-Clause
+license:            BSD3
 license-file:       LICENSE
 build-type:         Custom
 extra-source-files:
@@ -35,7 +35,7 @@ source-repository head
 
 custom-setup
   setup-depends:
-    , base      >=4
+      base      >=4
     , Cabal     >=2.0.0.2
     , filepath  >=1
 
@@ -68,12 +68,12 @@ library
     Vehicle.Syntax.Internal.Print
 
   build-depends:
-    , array  >=0.5 && <1
+      array  >=0.5 && <1
     , base   >=4   && <5
     , text   >=1.2 && <3
 
   build-tool-depends:
-    , alex:alex    >=3
+      alex:alex    >=3
     , BNFC:bnfc    >=2.9.4
     , happy:happy  >=1.19
 

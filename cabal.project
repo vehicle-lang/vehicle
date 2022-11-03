@@ -16,3 +16,11 @@
 packages:
   vehicle/vehicle.cabal
   vehicle-syntax/vehicle-syntax.cabal
+
+-- Workaround for linkedhashmap:
+--
+-- * The package linkedhashmap seems unmaintained. The latest update seems to
+--   have been in 2015. Unfortunately, it requires containers <0.6:
+--   See: https://github.com/vehicle-lang/vehicle/issues/191
+
+allow-newer: linkedhashmap-0.4.0.0:containers

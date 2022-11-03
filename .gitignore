@@ -1,7 +1,4 @@
 # Haskell
-dist
-dist-*
-cabal-dev
 *.o
 *.hi
 *.hie
@@ -9,55 +6,39 @@ cabal-dev
 *.chs.h
 *.dyn_o
 *.dyn_hi
-.hpc
-.hsenv
-.cabal-sandbox/
-cabal.sandbox.config
 *.prof
 *.prof.html
 *.aux
 *.hp
 *.eventlog
-.stack-work/
-stack.yaml
-stack.yaml.lock
+/dist
+/dist-newstyle
+/.stack-work
 cabal.project.local
 cabal.project.local~
-.HTF/
-.ghc.environment.*
-.shake/
+
+# Sphinx & ReadTheDocs
+/docs-doctrees
 
 # Mac specific files
 *.DS_Store
 
-# BNFC
-gen/
-
-# Grammars
-package-lock.json
-
 # VSCode
 .vscode/
-*.code-workspace
 
 # Pycharm
-**/.idea/
-
-# Emacs
-*.agda~
+.idea/
 
 # Agda
 *.agdai
 
 # Emacs
+*.agda~
 MAlonzo/**
 
 # Python
-**/__pycache__/
-
-# Vehicle build system
-build/
-bin/
+__pycache__/
+.mypy_cache/
 
 # Examples folder
 examples/**/*.vclp
