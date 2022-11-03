@@ -5,7 +5,6 @@ from vehicle import generate_loss_function
 from tensorflow import keras
 import tensorflow as tf
 import numpy as np
-import random
 
 class TestLossFunctionTranslation(unittest.TestCase):
     def load_json(self, file_name):
