@@ -27,9 +27,10 @@ import Data.Map qualified as Map
 import GHC.Generics (Generic)
 
 import Vehicle.Language.AST.Builtin (Builtin)
-import Vehicle.Language.AST.Core
+import Vehicle.Language.AST.Expr
 import Vehicle.Language.AST.DeBruijn hiding (Bound, Free)
 import Vehicle.Language.AST.DeBruijn qualified as DB (DBVar (..))
+import Vehicle.Language.AST.Meta
 import Vehicle.Language.AST.Name
 import Vehicle.Language.AST.Position
 import Vehicle.Language.AST.Provenance

@@ -161,8 +161,11 @@ library
     Vehicle.Language.AST.Builtin.Polarity
     Vehicle.Language.AST.Builtin.TypeClass
     Vehicle.Language.AST.CoDeBruijn
-    Vehicle.Language.AST.Core
+    Vehicle.Language.AST.Decl
+    Vehicle.Language.AST.Prog
+    Vehicle.Language.AST.Expr
     Vehicle.Language.AST.DeBruijn
+    Vehicle.Language.AST.Meta
     Vehicle.Language.AST.Name
     Vehicle.Language.AST.Position
     Vehicle.Language.AST.Provenance
