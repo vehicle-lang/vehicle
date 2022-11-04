@@ -16,7 +16,7 @@ import Vehicle.Compile.Linearity.Core as X
 import Vehicle.Compile.Linearity.FourierMotzkinElimination (fourierMotzkinElimination,
                                                             reconstructFMUserVar)
 import Vehicle.Compile.Linearity.GaussianElimination (gaussianElimination)
-import Vehicle.Compile.Prelude
+import Vehicle.Compile.Prelude hiding (substitute)
 
 solveForUserVariables :: MonadCompile m
                       => Int
