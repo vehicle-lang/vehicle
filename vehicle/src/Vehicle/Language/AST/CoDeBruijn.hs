@@ -34,6 +34,8 @@ import Vehicle.Language.AST.Name
 import Vehicle.Language.AST.Position
 import Vehicle.Language.AST.Provenance
 import Vehicle.Prelude
+import Vehicle.Language.AST.Binder
+import Vehicle.Language.AST.Arg
 
 --------------------------------------------------------------------------------
 -- AST Definitions

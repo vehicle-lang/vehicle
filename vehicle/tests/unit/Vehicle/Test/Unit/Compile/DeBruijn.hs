@@ -12,6 +12,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Language.AST
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Test.Unit.Common (unitTestCase)
+import Data.IntMap (IntMap)
 
 --------------------------------------------------------------------------------
 -- Alpha equivalence tests
@@ -26,21 +27,21 @@ substitutionTests :: [TestTree]
 substitutionTests = fmap substTest
   [ SubstitutionTest
     { name     = "UnderLambdaClosed"
-    , subst    = \case {0 -> Just $ NatLiteral p 2; _ -> Nothing}
+    , subst    = IntMap.fromList [(0, NatLiteral p 2)]
     , input    = Lam p (binding (NatType p)) (BoundVar p 0)
     , expected = Lam p (binding (NatType p)) (BoundVar p 0)
     }
 
   , SubstitutionTest
     { name     = "UnderLambdaOpenBody"
-    , subst    = \case {0 -> Just $ NatLiteral p 2; _ -> Nothing}
+    , subst    = IntMap.fromList [(0, NatLiteral p 2)]
     , input    = Lam p (binding (NatType p)) (BoundVar p 1)
     , expected = Lam p (binding (NatType p)) (NatLiteral p 2)
     }
 
   , SubstitutionTest
     { name     = "UnderLambdaOpenType"
-    , subst    = \case {0 -> Just $ NatLiteral p 2; _ -> Nothing}
+    , subst    = IntMap.fromList [(0, NatLiteral p 2)]
     , input    = Lam p (binding (BoundVar p 0)) (BoundVar p 0)
     , expected = Lam p (binding (NatLiteral p 2)) (BoundVar p 0)
     }
@@ -75,7 +76,7 @@ liftingTests = fmap liftTest
 
 data SubstitutionTest = SubstitutionTest
   { name     :: String
-  , subst    :: Substitution
+  , subst    :: IntMap DBExpr
   , input    :: CheckedExpr
   , expected :: CheckedExpr
   }
@@ -84,7 +85,7 @@ substTest :: SubstitutionTest -> TestTree
 substTest SubstitutionTest{..} =
   unitTestCase ("subst" <> name) $ do
 
-    let actual = substitute subst input
+    let actual = substAll subst input
 
     let errorMessage = layoutAsString $
           "Expected performing the subsitution:" <> line <>

@@ -5,7 +5,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map (fromList, lookup)
 import Data.Text (pack)
 
-import Vehicle.Language.AST.Core
+import Vehicle.Language.AST.Name
 import Vehicle.Prelude
 
 data StdLibFunction

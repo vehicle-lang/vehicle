@@ -132,8 +132,8 @@ toNormalisationDeclContext = Map.mapMaybe snd
 
 substMetas :: (TCM m, MetaSubstitutable a) => a -> m a
 substMetas e = do
-  subst <- getMetaSubstitution
-  runReaderT (substM e) subst
+  metaSubst <- getMetaSubstitution
+  runReaderT (substM e) metaSubst
 
 --------------------------------------------------------------------------------
 -- Meta-variable creation

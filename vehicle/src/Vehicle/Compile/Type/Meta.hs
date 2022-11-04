@@ -83,8 +83,8 @@ substMApp :: forall m . MonadSubst m
           -> (CheckedExpr, [CheckedArg])
           -> m CheckedExpr
 substMApp ann (fun@(Meta _ m), mArgs) = do
-  subst <- ask
-  case MetaMap.lookup m subst of
+  metaSubst <- ask
+  case MetaMap.lookup m metaSubst of
     Just eRes -> substM =<< substMArgs eRes mArgs
     Nothing   -> normAppList ann fun <$> substM mArgs
   where
