@@ -153,6 +153,8 @@ library
     Vehicle.Compile.Type.Monad
     Vehicle.Compile.Type.Resource
     Vehicle.Compile.Type.VariableContext
+    Vehicle.Language.AST.Arg
+    Vehicle.Language.AST.Binder
     Vehicle.Language.AST.Builtin
     Vehicle.Language.AST.Builtin.Core
     Vehicle.Language.AST.Builtin.Linearity

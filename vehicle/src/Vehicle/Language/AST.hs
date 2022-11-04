@@ -3,6 +3,8 @@ module Vehicle.Language.AST
   , pattern InferableOption
   ) where
 
+import Vehicle.Language.AST.Arg as X
+import Vehicle.Language.AST.Binder as X
 import Vehicle.Language.AST.Builtin as X
 import Vehicle.Language.AST.CoDeBruijn as X
 import Vehicle.Language.AST.Core as X

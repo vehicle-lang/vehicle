@@ -26,6 +26,8 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import GHC.Generics (Generic)
 
+import Vehicle.Language.AST.Arg
+import Vehicle.Language.AST.Binder
 import Vehicle.Language.AST.Builtin (Builtin)
 import Vehicle.Language.AST.Core
 import Vehicle.Language.AST.DeBruijn hiding (Bound, Free)
