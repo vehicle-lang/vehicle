@@ -263,7 +263,7 @@ solveHasQuantifier q c [Pi _ binder body, res]
   | isVectorType  domain = solveVectorQuantifier q c binder body res
   | otherwise            = blockOrThrowErrors c [domain] tcError
     where
-      domain  = typeOf' binder
+      domain  = typeOf binder
       tcError = [FailedQuantifierConstraintDomain (constraintContext c) domain q]
 
 solveHasQuantifier _ c _ = malformedConstraintError c
@@ -284,7 +284,7 @@ solveBoolQuantifier q c domainBinder body res = do
   -- If we're quantifying over a Bool then it itself is linear and unquantified
   let domainLin = LinearityExpr p Constant
   let domainPol = PolarityExpr p Unquantified
-  let domainEq = unify c (typeOf' domainBinder) (AnnBoolType p domainLin domainPol)
+  let domainEq = unify c (typeOf domainBinder) (AnnBoolType p domainLin domainPol)
 
   -- The body is some unknown annotated boolean
   (bodyEq, _, _) <- unifyWithAnnBoolType c body
@@ -302,7 +302,7 @@ solveIndexQuantifier :: HasQuantifierSolver m
 solveIndexQuantifier q c domainBinder body res = do
   let p = provenanceOf c
 
-  (domainEq, indexSize) <- unifyWithIndexType c (typeOf' domainBinder)
+  (domainEq, indexSize) <- unifyWithIndexType c (typeOf domainBinder)
   (bodyEq, _, _)        <- unifyWithAnnBoolType c body
   let resEq          = unify c res body
 
@@ -342,7 +342,7 @@ solveRatQuantifier q c domainBinder body res = do
   -- The rational being quantified over is, by definition, linear
   let varName   = getBinderName domainBinder
   let domainLin = LinearityExpr p (Linear (QuantifiedVariableProvenance p varName))
-  let domainEq  = unify c (typeOf' domainBinder) (AnnRatType p domainLin)
+  let domainEq  = unify c (typeOf domainBinder) (AnnRatType p domainLin)
 
   -- The body must be of some Bool type
   (bodyEq, bodyLin, bodyPol) <- unifyWithAnnBoolType c body
@@ -364,7 +364,7 @@ solveVectorQuantifier :: HasQuantifierSolver m
 solveVectorQuantifier q c domainBinder body res = do
   let p = provenanceOf c
   dim <- freshDimMeta c
-  (domainEq, vecElem) <- unifyWithVectorType c dim (typeOf' domainBinder)
+  (domainEq, vecElem) <- unifyWithVectorType c dim (typeOf domainBinder)
 
   -- Recursively check that you can quantify over it.
   let elemDomainBinder = replaceBinderType vecElem domainBinder

@@ -74,10 +74,10 @@ checkExpr expectedType expr = do
     -- aid inference of lambda binder.
     (Pi _ piBinder resultType, Lam ann lamBinder body)
       | visibilityOf piBinder == visibilityOf lamBinder -> do
-        checkedLamBinderType <- checkExpr (TypeUniverse (inserted ann) 0) (typeOf' lamBinder)
+        checkedLamBinderType <- checkExpr (TypeUniverse (inserted ann) 0) (typeOf lamBinder)
 
         -- Unify the result with the type of the pi binder.
-        unify (provenanceOf ann) (typeOf' piBinder) checkedLamBinderType
+        unify (provenanceOf ann) (typeOf piBinder) checkedLamBinderType
 
         -- Add bound variable to context
         checkedBody <- addToBoundCtx (nameOf lamBinder, checkedLamBinderType, Nothing) $ do
@@ -94,7 +94,7 @@ checkExpr expectedType expr = do
       -- Then eta-expand
       let ann = inserted $ provenanceOf piBinder
       let binderName = nameOf piBinder
-      let binderType = typeOf' piBinder
+      let binderType = typeOf piBinder
 
       -- Add the pi-bound variable to the context
       checkedExpr <- addToBoundCtx (binderName, binderType, Nothing) $
@@ -166,7 +166,7 @@ inferExpr e = do
       return (Ann ann checkedExpr checkedExprType , checkedExprType)
 
     Pi ann binder resultType -> do
-      (checkedBinderType, typeOfBinderType) <- inferExpr (typeOf' binder)
+      (checkedBinderType, typeOfBinderType) <- inferExpr (typeOf binder)
 
       (checkedResultType, typeOfResultType) <-
         addToBoundCtx (nameOf binder, checkedBinderType, Nothing) $ inferExpr resultType
@@ -212,7 +212,7 @@ inferExpr e = do
 
     Let ann boundExpr binder body -> do
       -- Check the type of the bound expression against the provided type
-      (typeOfBoundExpr, typeOfBoundExprType) <- inferExpr (typeOf' binder)
+      (typeOfBoundExpr, typeOfBoundExprType) <- inferExpr (typeOf binder)
       unify ann typeOfBoundExprType (TypeUniverse (inserted ann) 0)
       checkedBoundExpr <- checkExpr typeOfBoundExpr boundExpr
 
@@ -236,7 +236,7 @@ inferExpr e = do
 
     Lam ann binder body -> do
       -- Infer the type of the bound variable from the binder
-      (typeOfBinder, typeOfBinderType) <- inferExpr (typeOf' binder)
+      (typeOfBinder, typeOfBinderType) <- inferExpr (typeOf binder)
 
       let insertedAnn = inserted ann
       unify ann typeOfBinderType (TypeUniverse insertedAnn 0)
@@ -314,7 +314,7 @@ inferArgs p piT@(Pi _ binder resultType) args
 
     -- Calculate what the new checked arg should be, create a fresh meta if no arg was matched above
     checkedArgExpr <- do
-      let binderType = typeOf' binder
+      let binderType = typeOf binder
       case matchedUncheckedArg of
         Just arg -> checkExpr binderType (argExpr arg)
         Nothing
@@ -369,7 +369,7 @@ missingExplicitArgumentError :: LocalTCM m => CheckedBinder -> UncheckedArg -> m
 missingExplicitArgumentError expectedBinder actualArg = do
   -- Then we're expecting an explicit arg but have a non-explicit arg so error
   ctx <- getBoundCtx
-  throwError $ MissingExplicitArg (boundContextOf ctx) actualArg (typeOf' expectedBinder)
+  throwError $ MissingExplicitArg (boundContextOf ctx) actualArg (typeOf expectedBinder)
 
 --------------------------------------------------------------------------------
 -- Typing of literals and builtins

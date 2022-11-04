@@ -103,7 +103,7 @@ checkNetworkType decl@(ident, _) networkType = checkFunType networkType
       | visibilityOf binder /= Explicit -> do
         throwError $ NetworkTypeHasNonExplicitArguments decl networkType binder
       | otherwise  -> do
-        inputLin  <- checkTensorType Input (typeOf' binder)
+        inputLin  <- checkTensorType Input (typeOf binder)
         outputLin <- checkTensorType Output result
 
         -- The linearity of the output of a network is the max of 1) Linear (as outputs

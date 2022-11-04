@@ -103,7 +103,7 @@ traverseAuxFreeVarArgs :: TCM m
                        -> m [CheckedArg]
 traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
   (Pi _ binder res, arg : args) -> do
-    let inputType = typeOf' binder
+    let inputType = binderType binder
     args' <- traverseAuxFreeVarArgs f p res args
     arg' <-
       if isPolarityUniverse inputType
@@ -114,9 +114,9 @@ traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
     return (arg' : args')
 
   (Pi _ binder res, [])
-    | visibilityOf binder == Implicit && isAuxiliaryUniverse (typeOf' binder) -> do
+    | visibilityOf binder == Implicit && isAuxiliaryUniverse (typeOf binder) -> do
     xs <- traverseAuxFreeVarArgs f p res []
-    meta <- case typeOf' binder of
+    meta <- case binderType binder of
       LinearityUniverse{} -> f p Lin Nothing
       PolarityUniverse{}  -> f p Pol Nothing
       _                   -> compilerDeveloperError "Mismatch between cases and 'isAuxiliaryUniverse'"
