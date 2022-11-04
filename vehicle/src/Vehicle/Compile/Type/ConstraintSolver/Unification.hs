@@ -175,8 +175,7 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
           finalE2 <- if newMetasSolved then substMetas e2 else return e2
 
           case substAll forwardSubst finalE2 of
-            Nothing       -> return $ Stuck $ MetaSet.singleton i
-            Just defnBody -> do
+            defnBody -> do
               metaSolved i defnBody
               return $ Progress mempty
 
@@ -235,6 +234,4 @@ createMetaWithRestrictedContext p metaType newContext = do
   let sharedArgsCtx = fmap (\arg -> (Nothing, arg, Nothing)) sharedExprs
   let sharedArgsSubst = IntMap.fromAscList (zip [0..] sharedExprs)
   meta <- freshExprMeta p metaType sharedArgsCtx
-  case substAll sharedArgsSubst meta of
-    Just e  -> return e
-    Nothing -> compilerDeveloperError $ "Malfomed substitution" <+> prettyVerbose sharedArgsSubst
+  return $ substAll sharedArgsSubst meta
