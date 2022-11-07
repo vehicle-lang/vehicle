@@ -36,7 +36,7 @@ repos:
     hooks:
       - id: cabal-fmt
         name: "format cabal with cabal-fmt"
-        entry: ./scripts/cabal-fmt.hs
+        entry: ./scripts/cabal-fmt
         language: script
         types: [file, text]
         files: ^.*\.cabal$
