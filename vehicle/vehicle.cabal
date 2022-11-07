@@ -90,6 +90,8 @@ library
     Vehicle.Compile.Linearity.GaussianElimination
     Vehicle.Compile.Normalise
     Vehicle.Compile.Normalise.Core
+    Vehicle.Compile.Normalise.NBE
+    Vehicle.Compile.Normalise.NormExpr
     Vehicle.Compile.Parse
     Vehicle.Compile.Prelude
     Vehicle.Compile.Queries.DNF

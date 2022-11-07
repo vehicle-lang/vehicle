@@ -71,21 +71,21 @@ compileAssertion varNames (Assertion rel linearExpr) = do
   let compiledLHS = hsep (fmap (compileVar (length finalCoefVars > 1)) finalCoefVars)
   let compiledRHS = pretty finalConstant
   return $ compiledLHS <+> compiledRel <+> compiledRHS
-  where
-    compileRel :: Bool -> Relation -> Doc a
-    compileRel _     Equal             = "="
-    compileRel False LessThanOrEqualTo = "<="
-    compileRel True  LessThanOrEqualTo = ">="
-    -- Suboptimal. Marabou doesn't currently support strict inequalities.
-    -- See https://github.com/vehicle-lang/vehicle/issues/74 for details.
-    compileRel False LessThan          = "<="
-    compileRel True  LessThan          = ">="
 
-    compileVar :: Bool -> (Double, Name) -> Doc a
-    compileVar False (1,           var) = pretty var
-    compileVar True  (1,           var) = "+" <> pretty var
-    compileVar _     (-1,          var) = "-" <> pretty var
-    compileVar _     (coefficient, var) = pretty coefficient <> pretty var
+compileRel :: Bool -> Relation -> Doc a
+compileRel _     Equal             = "="
+compileRel False LessThanOrEqualTo = "<="
+compileRel True  LessThanOrEqualTo = ">="
+-- Suboptimal. Marabou doesn't currently support strict inequalities.
+-- See https://github.com/vehicle-lang/vehicle/issues/74 for details.
+compileRel False LessThan          = "<="
+compileRel True  LessThan          = ">="
+
+compileVar :: Bool -> (Double, Name) -> Doc a
+compileVar False (1,           var) = pretty var
+compileVar True  (1,           var) = "+" <> pretty var
+compileVar _     (-1,          var) = "-" <> pretty var
+compileVar _     (coefficient, var) = pretty coefficient <> pretty var
 
 --------------------------------------------------------------------------------
 -- Invoking Marabou

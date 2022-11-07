@@ -30,7 +30,7 @@ generaliseOverUnsolvedTypeClassConstraints decl = do
           then return False
         else do
           let metaFilter = if isAuxiliaryTypeClassConstraint c
-              then (\e -> isPolarityUniverse e || isLinearityUniverse e)
+              then isAuxiliaryUniverse
               else isTypeUniverse
           -- Find any unsolved meta variables that are transitively linked
           -- by constraints of the same type.

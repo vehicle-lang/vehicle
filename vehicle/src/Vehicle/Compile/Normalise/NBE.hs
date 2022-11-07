@@ -1,46 +1,44 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Compile.Normalise.NBE where
+module Vehicle.Compile.Normalise.NBE
+  ( whnf
+  , unnormalise
+  , evalBuiltin
+  ) where
 
-import Control.Monad.Reader (MonadReader, asks)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty (..), toList)
 import Data.Map qualified as Map (lookup)
 
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NormExpr
 import Vehicle.Compile.Prelude
+import Control.Monad.Except (runExceptT)
 
------------------------------------------------------------------------------
--- Data
-
-type Env = [Value]
-
--- | A list of arguments for an application that cannot be normalised.
-type Spine = [GenericArg Value]
-
--- TODO - make generic over WHNF.
-data Value
-  = VUniverse Provenance Universe
-  | VLiteral  Provenance Literal
-  | VLam      Provenance CheckedBinder Env CheckedExpr
-  | VPi       Provenance CheckedBinder Env CheckedExpr
-  | VLVec     Provenance [Value]
-  | VMeta     Provenance Meta Spine
-  | VVar      Provenance DBVar Spine
-  | VBuiltin  Provenance Builtin Spine
-
-type MonadNorm m =
-  ( MonadCompile m
-  , MonadReader (DeclCtx Value) m
-  )
+whnf :: MonadCompile m => DeclCtx GluedExpr -> CheckedExpr -> m NormExpr
+whnf declCtx e = runReaderT (eval mempty e) (fmap normalised declCtx)
+{-
+whnf :: MonadCompile m
+     => DeclCtx CheckedExpr
+     -> BoundCtx (Maybe CheckedExpr)
+     -> CheckedExpr
+     -> m NormExpr
+whnf ctx expr = runReaderT (eval _ expr) ctx
+-}
 
 -----------------------------------------------------------------------------
 -- Evaluation
 
+type MonadNorm m =
+  ( MonadCompile m
+  , MonadReader (DeclCtx NormExpr) m
+  )
 -- WHNF - does And call eval on bodies.
 -- NF - does call eval on bodies.
 
 -- TODO change to return a tuple of NF and WHNF?
-eval :: MonadNorm m => Env -> CheckedExpr -> m Value
+eval :: MonadNorm m => Env -> CheckedExpr -> m NormExpr
 eval env = \case
   Hole{} -> resolutionError currentPass "Hole"
   Meta{} -> resolutionError currentPass "Meta"
@@ -52,30 +50,37 @@ eval env = \case
   Ann      _ e _   -> eval env e
   LVec     p xs    -> VLVec p <$> traverse (eval env) xs
 
-  Lam p binder body -> return $ VLam p binder env body
-  Pi  p binder body -> return $ VPi  p binder env body
+  Lam p binder body -> do
+    binder' <- evalBinder env binder
+    return $ VLam p binder' env body
+
+  Pi  p binder body ->
+    VPi p <$> evalBinder env binder <*> eval (liftEnvOverBinder p env) body
 
   Var _ v -> case v of
     Bound i    -> return $ env !! i
     Free ident -> do
-      declValue <- asks (Map.lookup ident)
-      case declValue of
+      declExpr <- asks (Map.lookup ident)
+      case declExpr of
         Just x  -> return x
         Nothing -> internalScopingError currentPass ident
 
   Let _ bound _binder body -> do
-    boundValue <- eval env bound
-    eval (boundValue : env) body
+    boundNormExpr <- eval env bound
+    eval (boundNormExpr : env) body
 
   App _ fun args -> do
     fun'  <- eval env fun
     args' <- traverse (traverse (eval env)) args
     evalApp fun' args'
 
-evalApp :: MonadNorm m => Value -> NonEmpty (GenericArg Value) -> m Value
+evalBinder :: MonadNorm m => Env -> CheckedBinder -> m NormBinder
+evalBinder env = traverse (eval env)
+
+evalApp :: MonadNorm m => NormExpr -> NonEmpty (GenericArg NormExpr) -> m NormExpr
 evalApp fun (arg :| args) = case fun of
   VMeta p v [] -> return $ VMeta p v (arg : args)
-  VVar p v []             -> return $ VVar p v (arg : args)
+  VVar  p v [] -> return $ VVar  p v (arg : args)
 
   VLam _ _binder env body -> do
     body' <- eval (argExpr arg : env) body
@@ -108,24 +113,6 @@ evalApp fun (arg :| args) = case fun of
   VLiteral{}  -> unexpectedExprError currentPass "VLiteral"
   VLVec{}     -> unexpectedExprError currentPass "VLVec"
 
-pattern VBool :: Bool -> GenericArg Value
-pattern VBool x <- ExplicitArg _ (VLiteral _ (LBool x))
-
-pattern VIndex :: Int -> GenericArg Value
-pattern VIndex x <- ExplicitArg _ (VLiteral _ (LIndex _ x))
-
-pattern VNat :: Int -> GenericArg Value
-pattern VNat x <- ExplicitArg _ (VLiteral _ (LNat x))
-
-pattern VInt :: Int -> GenericArg Value
-pattern VInt x <- ExplicitArg _ (VLiteral _ (LInt x))
-
-pattern VRat :: Rational -> GenericArg Value
-pattern VRat x <- ExplicitArg _ (VLiteral _ (LRat x))
-
-pattern VConstructor :: Provenance -> BuiltinConstructor -> [GenericArg Value] -> Value
-pattern VConstructor p c args = VBuiltin p (Constructor c) args
-
 -- Separate builtins from syntactic sugar
 --
 -- Pass in the right number of arguments ensuring all literals
@@ -133,8 +120,8 @@ pattern VConstructor p c args = VBuiltin p (Constructor c) args
 evalBuiltin :: MonadNorm m
             => Provenance
             -> Builtin
-            -> NonEmpty (GenericArg Value)
-            -> m Value
+            -> NonEmpty (GenericArg NormExpr)
+            -> m NormExpr
 evalBuiltin p b args = case b of
   -- TODO rearrange builtin constructors so we don't have to do this.
   Constructor{} -> caseError currentPass "Constructor" ["evalApp"]
@@ -211,7 +198,24 @@ evalBuiltin p b args = case b of
 
 
 
-type EvalBuiltin = forall m . MonadNorm m => Provenance -> NonEmpty (GenericArg Value) -> m Value
+type EvalBuiltin = forall m . MonadNorm m => Provenance -> NonEmpty (GenericArg NormExpr) -> m NormExpr
+
+
+pattern VBool :: Bool -> GenericArg NormExpr
+pattern VBool x <- ExplicitArg _ (VLiteral _ (LBool x))
+
+pattern VIndex :: Int -> GenericArg NormExpr
+pattern VIndex x <- ExplicitArg _ (VLiteral _ (LIndex _ x))
+
+pattern VNat :: Int -> GenericArg NormExpr
+pattern VNat x <- ExplicitArg _ (VLiteral _ (LNat x))
+
+pattern VInt :: Int -> GenericArg NormExpr
+pattern VInt x <- ExplicitArg _ (VLiteral _ (LInt x))
+
+pattern VRat :: Rational -> GenericArg NormExpr
+pattern VRat x <- ExplicitArg _ (VLiteral _ (LRat x))
+
 
 -- TODO a lot of duplication in the below. Once we have separated out the
 -- derived builtins we should be able to
@@ -394,10 +398,10 @@ evalForeach p = \case
 evalTypeClassOp :: MonadNorm m
                 => Provenance
                 -> TypeClassOp
-                -> NonEmpty (GenericArg Value)
-                -> m Value
+                -> NonEmpty (GenericArg NormExpr)
+                -> m NormExpr
 evalTypeClassOp _p op args = do
-  let (inst, remainingArgs) = findInstanceArg (toList args) :: (Value, [GenericArg Value])
+  let (inst, remainingArgs) = findInstanceArg (toList args) :: (NormExpr, [GenericArg NormExpr])
   case remainingArgs of
     -- (VMeta{}, _) -> Nothing
     v : vs -> evalApp inst (v :| vs)
@@ -418,7 +422,7 @@ evalImplies p = \case
   args -> return $ VBuiltin p Implies $ toList args
 
 {-
-impliesDef :: Provenance -> Env -> Value
+impliesDef :: Provenance -> Env -> NormExpr
 impliesDef p env =
   VLam p (ExplicitBinder p Nothing (BoolType p)) env $
     Lam p (ExplicitBinder p Nothing (BoolType p)) $
@@ -435,7 +439,7 @@ evalTensor p = \case
   args -> return $ VBuiltin p Tensor $ toList args
 
 {-
-tensorDef :: Provenance -> Env -> Value
+tensorDef :: Provenance -> Env -> NormExpr
 tensorDef p env =
   VLam p (ExplicitBinder p Nothing _) env $
     Lam p (ExplicitBinder p Nothing _) $
@@ -459,7 +463,7 @@ evalMapList p = \case
   args       -> return $ VBuiltin p (Map MapList) $ toList args
 
 {-
-mapListDef :: Provenance -> Env -> Value
+mapListDef :: Provenance -> Env -> NormExpr
 mapListDef p env = _
 -}
 
@@ -472,20 +476,16 @@ evalMapVec p = \case
   args -> return $ VBuiltin p (Map MapVector) $ toList args
 
 {-
-mapVecDef :: Provenance -> Env -> Value
+mapVecDef :: Provenance -> Env -> NormExpr
 mapVecDef p env = _
 -}
 
 evalFromVecToList :: Int -> EvalBuiltin
-evalFromVecToList n p = \case
-  [tElem, _f, ExplicitArg _ (VLVec _ xs)] -> do
-    let nil = VConstructor p Nil [tElem]
-    let cons y ys = VConstructor p Cons [tElem, ExplicitArg p y, ExplicitArg p ys]
-    return $ foldr cons nil xs
-
-  args -> return $ VBuiltin p (FromVec n FromVecToList) $ toList args
+evalFromVecToList n p args = return $ case args of
+  [tElem, _f, ExplicitArg _ (VLVec _ xs)] -> mkNList p (argExpr tElem) xs
+  _ -> VBuiltin p (FromVec n FromVecToList) $ toList args
 {-
-fromVecToListDef :: Int -> Provenance -> Env -> Value
+fromVecToListDef :: Int -> Provenance -> Env -> NormExpr
 fromVecToListDef n env p = _
 -}
 
@@ -495,7 +495,7 @@ evalFromVecToVec n p = \case
   args              -> return $ VBuiltin p (FromVec n FromVecToVec) $ toList args
 
 {-
-fromVecToVecDef :: Int -> Provenance -> Env -> Value
+fromVecToVecDef :: Int -> Provenance -> Env -> NormExpr
 fromVecToVecDef n env p =
   VLam p (ExplicitBinder p Nothing (VectorType p _ _)) _ (BoundVar p 0)
 -}
@@ -503,20 +503,103 @@ fromVecToVecDef n env p =
 -----------------------------------------------------------------------------
 -- Reification
 
--- TODO ditch simply
+class Quote a b where
+  quote :: MonadCompile m => a -> m b
+
+instance Quote NormExpr CheckedExpr where
+  quote = \case
+    VUniverse p u -> return $ Universe p u
+    VLiteral  p l -> return $ Literal p l
+
+    VMeta     p m spine -> normAppList p (Meta p m)    <$> traverse quote spine
+    VVar      p v spine -> normAppList p (Var p v)     <$> traverse quote spine
+    VBuiltin  p b spine -> normAppList p (Builtin p b) <$> traverse quote spine
+
+    VLVec p xs -> LVec p <$> traverse quote xs
+    VPi   p binder body -> Pi p <$> quote binder <*> quote body
+
+    VLam  p binder env body -> do
+      -- First quote the binder
+      quotedBinder <- quote binder
+
+      -- We normalise the body
+      let newEnv = liftEnvOverBinder p env
+      normBody <- runReaderT (eval newEnv body) mempty
+      -- We then quote the body.
+      quotedBody <- quote normBody
+
+      return $ Lam p quotedBinder quotedBody
+
+instance Quote NormBinder CheckedBinder where
+  quote = traverse quote
+
+instance Quote NormArg CheckedArg where
+  quote = traverse quote
+
+-- | Converts from a normalised representation to an unnormalised representation.
+-- Do not call except for logging and debug purposes, very expensive with nested
+-- lambdas.
+unnormalise :: Quote a b => a -> b
+unnormalise e = do
+  let r = discardLogger $ runExceptT (quote e)
+  case r of
+    Left err -> developerError $ "Error thrown while unquoting" <+> pretty (show err)
+    Right v  -> v
+
+-----------------------------------------------------------------------------
+-- Substitution
 {-
-reify :: MonadCompile m => Value -> m CheckedExpr
-reify = \case
-  VUniverse p u -> return $ Universe p u
-  VLiteral  p l -> return $ Literal p l
+instance Substitutable NormExpr NormExpr where
+  subst = \case
+    VUniverse p u -> return $ VUniverse p u
+    VLiteral  p l -> return $ VLiteral p l
 
-  VVar      p v spine -> normAppList p (Var p v) <$> traverse (traverse reify) spine
-  VBuiltin  p b spine -> normAppList p (Builtin p b) <$> traverse (traverse reify) spine
+    VMeta p m args -> VMeta p m <$> traverse subst args
+    VLVec p args   -> VLVec p <$> traverse subst args
 
-  VLam      p binder env body -> Lam p binder <$> (reify =<< eval _ body)
-  VPi       p binder env body -> Pi  p binder <$> _
+    VVar p v@(Free _) args -> VVar p v <$> traverse subst args
+    VPi  p binder body -> VPi p <$> traverse subst binder <*> subst body
 
-  VLVec     p xs -> LVec p <$> traverse reify xs
+    VVar p v@(Bound i) args -> do
+      args' <- traverse subst args
+      (d, sub) <- ask
+      if i < d then
+        -- If the variable was a bound variable at the start of the substitution
+        return $ VVar p v args'
+      else case sub p (i - d) of
+        -- If no value was provided for the variable
+        Nothing -> return $ VVar p (Bound i) args'
+        Just e  -> do
+          -- Otherwise lift the substitution as per the number of binders we've gone under.
+          let e' = if d > 0 then liftFreeDBIndicesNorm d e else e
+          case args' of
+            [] -> return e'
+            (a : as) -> do
+              -- Normalise the resulting application to preserve the invariant that the
+              -- expression is in normal form.
+              let x = evalApp e' (a :| as)
+              r <- discardLoggerT $ runExceptT x
+              case r of
+                Left err -> developerError $ "Error thrown while unquoting" <+> pretty (show err)
+                Right t  -> return t
+
+    VLam p binder env body ->
+      VLam p <$> traverse subst binder <*> traverse subst env <*> subst body
+
+    expr@(VBuiltin p b args) -> case args of
+      [] -> return expr
+      (a : as) -> do
+        args' <- traverse subst (a :| as)
+        runReaderT (evalBuiltin p b args') mempty
 -}
+liftFreeDBIndicesNorm :: Int -> NormExpr -> NormExpr
+liftFreeDBIndicesNorm = developerError "Lifting not yet implemented" -- liftDBIndices (\p v -> VVar p v [])
+
+liftEnvOverBinder :: Provenance -> Env -> Env
+liftEnvOverBinder p env = VVar p (Bound 0) [] : fmap (liftFreeDBIndicesNorm 1) env
+
+-----------------------------------------------------------------------------
+-- Other
+
 currentPass :: Doc ()
-currentPass = "Normalisation"
+currentPass = "normalisation by evaluation"
