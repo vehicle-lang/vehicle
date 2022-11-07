@@ -43,7 +43,7 @@ repos:
         args: [--check, --inplace]
       - id: stylish-haskell
         name: "format haskell with stylish-haskell"
-        entry: ./scripts/stylish-haskell.hs
+        entry: ./scripts/stylish-haskell
         language: script
         types: [haskell]
         args: [--inplace]
