@@ -26,7 +26,7 @@ getNetworkType decl networkType = case networkType of
     | visibilityOf binder /= Explicit -> do
       throwError $ NetworkTypeHasNonExplicitArguments decl networkType binder
     | otherwise  -> do
-      inputDetails    <- getTensorType Input  (typeOf binder)
+      inputDetails    <- getTensorType Input  (binderType binder)
       outputDetails   <- getTensorType Output result
       let networkDetails = NetworkType inputDetails outputDetails
       return networkDetails
