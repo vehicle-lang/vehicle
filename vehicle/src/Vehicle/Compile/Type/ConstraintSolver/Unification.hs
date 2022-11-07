@@ -6,7 +6,6 @@ module Vehicle.Compile.Type.ConstraintSolver.Unification
 
 import Control.Monad (when)
 import Control.Monad.Except (MonadError (..), throwError)
-import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import Data.List (intersect)
 import Data.Maybe (catMaybes)
@@ -236,30 +235,3 @@ createMetaWithRestrictedContext p metaType newContext = do
   let sharedArgsSubst = IntMap.fromAscList (zip [0..] sharedExprs)
   meta <- freshExprMeta p metaType sharedArgsCtx
   return $ substAll sharedArgsSubst meta
-
---------------------------------------------------------------------------------
--- Argument patterns
-
-newtype ArgPattern = ArgPattern (IntMap Int)
-
--- | TODO: explain what this means:
--- [i2 i4 i1] --> [2 -> 2, 4 -> 1, 1 -> 0]
-getArgPattern :: [DBArg] -> Maybe ArgPattern
-getArgPattern args = ArgPattern <$> go (length args - 1) IntMap.empty args
-  where
-    go :: Int -> IntMap Int -> [DBArg] -> Maybe (IntMap Int)
-    go _ revMap [] = Just revMap
-    -- TODO: we could eta-reduce arguments too, if possible
-    go i revMap (arg : restArgs) =
-      case argExpr arg of
-        Var _ (Bound j) ->
-           if IntMap.member j revMap then
-            -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning;
-            -- but then we should make sure the solution is well-typed
-            Nothing
-          else
-            go (i-1) (IntMap.insert j i revMap) restArgs
-        _ -> Nothing
-
-patternToSubst :: ArgPattern -> IntMap DBExpr
-patternToSubst (ArgPattern xs) = fmap (Var mempty . Bound) xs

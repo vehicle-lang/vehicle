@@ -1,12 +1,9 @@
 module Vehicle.Language.AST.Name where
 
 import Data.Text (pack)
-import GHC.Generics (Generic)
-import Control.DeepSeq (NFData)
-import Data.Hashable (Hashable)
 
+import Vehicle.Language.AST.Core
 import Vehicle.Prelude
-import Vehicle.Language.AST.Binder
 
 --------------------------------------------------------------------------------
 -- Definition
@@ -14,20 +11,12 @@ import Vehicle.Language.AST.Binder
 -- | Bindings when using the named representation of the AST.
 type NamedBinding = Name
 
---------------------------------------------------------------------------------
--- Identifiers
-
-newtype Identifier = Identifier Name
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty Identifier where
-  pretty (Identifier s) = pretty s
-
-instance NFData   Identifier
-instance Hashable Identifier
-
-class HasIdentifier a where
-  identifierOf :: a -> Identifier
+-- An expression that uses named variables for both binders and variables.
+type NamedBinder = Binder NamedBinding Name
+type NamedArg    = Arg    NamedBinding Name
+type NamedExpr   = Expr   NamedBinding Name
+type NamedDecl   = Decl   NamedBinding Name
+type NamedProg   = Prog   NamedBinding Name
 
 --------------------------------------------------------------------------------
 -- Type class
@@ -38,8 +27,8 @@ class HasName a name where
 freshNames :: [Name]
 freshNames = [ "_x" <> pack (show i) | i <- [0::Int ..]]
 
-instance HasName (GenericBinder binder expr) binder where
-  nameOf = binderRepresentation
+instance HasName (Binder binder var) binder where
+  nameOf (Binder _ _ _ name _) = name
 
 instance HasName Identifier Name where
   nameOf (Identifier name) = name
