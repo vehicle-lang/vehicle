@@ -6,7 +6,6 @@ import Vehicle.Test.Unit.Common (vehicleLoggingIngredient)
 import Vehicle.Test.Unit.Compile.AlphaEquivalence (alphaEquivalenceTests)
 import Vehicle.Test.Unit.Compile.CoDeBruijn (coDeBruijnTests)
 import Vehicle.Test.Unit.Compile.CommandLine (commandLineParserTests)
-import Vehicle.Test.Unit.Compile.DeBruijn (deBruijnTests)
 import Vehicle.Test.Unit.Compile.IfElimination (ifEliminationTests)
 import Vehicle.Test.Unit.Compile.LetInsertion (letInsertionTests)
 import Vehicle.Test.Unit.Compile.PositionTree (positionTreeTests)
@@ -21,7 +20,6 @@ main = do
     testGroup "Tests"
       [ alphaEquivalenceTests
       , coDeBruijnTests
-      , deBruijnTests
       , positionTreeTests
       , letInsertionTests
       , ifEliminationTests

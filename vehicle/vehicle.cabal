@@ -287,7 +287,6 @@ library vehicle-unit-tests-common
     Vehicle.Test.Unit.Common
     Vehicle.Test.Unit.Compile.AlphaEquivalence
     Vehicle.Test.Unit.Compile.CoDeBruijn
-    Vehicle.Test.Unit.Compile.DeBruijn
     Vehicle.Test.Unit.Compile.CommandLine
     Vehicle.Test.Unit.Compile.IfElimination
     Vehicle.Test.Unit.Compile.LetInsertion

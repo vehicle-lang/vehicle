@@ -10,7 +10,6 @@ module Vehicle.Language.AST.DeBruijn
   , DBArg
   , DBBinder
   , BindingDepth
-  , Substitution
   , liftFreeDBIndices
   , substInto
   , substIntoAtLevel
@@ -18,15 +17,16 @@ module Vehicle.Language.AST.DeBruijn
   , getArgPattern
   , reverseArgPattern
   , patternToSubst
-  , substitute
+  , traverseBoundVars
   ) where
 
 import Control.DeepSeq (NFData)
-import Control.Monad.Reader (MonadReader, ask, local, runReader)
-import Data.Bifunctor (Bifunctor (..))
+import Control.Monad.Identity
+import Control.Monad.Reader (MonadReader, ReaderT, ask, lift, local, runReader,
+                             runReaderT)
 import Data.Hashable (Hashable (..))
-import Data.IntMap.Lazy (IntMap)
-import Data.IntMap.Lazy qualified as IM
+import Data.IntMap (IntMap)
+import Data.IntMap qualified as IM
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
 
@@ -67,70 +67,103 @@ type BindingDepth = Int
 --------------------------------------------------------------------------------
 -- A framework for writing generic operations on DeBruijn variables
 
-type Substitution = DBIndex -> Maybe DBExpr
+traverseBoundVars :: Monad m
+                  => TraverseBinder state
+                  -> UpdateVariable m state
+                  -> BindingDepth
+                  -> state
+                  -> DBExpr
+                  -> m DBExpr
+traverseBoundVars traverseBinder updateVar depth state e =
+  runReaderT (alter traverseBinder updateVar e) (depth, state)
 
-class Substitute a where
-  subst :: MonadReader (BindingDepth, Substitution) m => a -> m a
+-- | A type-synonym for the function that is used to update a bound variable
+type UpdateVariable m state
+  =  DBIndex               -- The old deBruijn index of the variable
+  -> Provenance            -- The annotation of the variable
+  -> (BindingDepth, state) -- How many binders the variable is under & the current state
+  -> m DBExpr              -- The resulting expression
 
-  substitute :: Substitution -> a -> a
-  substitute su e = runReader (subst e) (0, su)
+-- | A type-synonym for the function that is used to update the operation's state
+-- when traversing across a binder.
+type TraverseBinder state = state -> state
 
-instance Substitute DBExpr where
-  subst = \case
-    Var p (Bound i)    -> do
-      (d, s) <- ask
-      return $ if i < d then
-        Var p (Bound i)
-      else case s (i - d) of
-        Nothing -> Var p (Bound i)
-        Just v  -> if d > 0 then liftFreeDBIndices d v else v
+class DeBruijnFunctor a where
+  alter :: Monad m
+        => TraverseBinder state
+        -> UpdateVariable m state
+        -> a
+        -> ReaderT (BindingDepth, state) m a
 
-    Universe p l            -> return $ Universe p l
-    Meta     p m            -> return $ Meta p m
-    Hole     p name         -> return $ Hole p name
-    Builtin  p op           -> return $ Builtin p op
-    Literal  p l            -> return $ Literal p l
-    Var      p (Free i)     -> return $ Var p (Free i)
-
-    LVec     p es           -> LVec    p <$> traverse subst es
-    Ann      p term typ     -> Ann     p <$> subst   term   <*> subst typ
-    App      p fun args     -> normApp p <$> subst   fun    <*> traverse subst args
-    Pi       p binder res   -> Pi      p <$> traverse subst binder <*> underBinder (subst res)
-    Let      p e1 binder e2 -> Let     p <$> subst e1 <*> traverse subst binder <*> underBinder (subst e2)
-    Lam      p binder e     -> Lam     p <$> traverse subst binder <*> underBinder (subst e)
-
-instance Substitute a => Substitute (GenericArg a) where
-  subst = traverse subst
-
-instance Substitute a => Substitute (GenericBinder binder a) where
-  subst = traverse subst
+instance DeBruijnFunctor DBExpr where
+  alter body var =
+    let
+      altPiBinder  = traverse (alter body var)
+      altLamBinder = traverse (alter body var)
+      altArg       = traverse (alter body var)
+      altExpr      = alter body var
+      underB       = underBinder body
+    in \case
+      Universe ann l            -> return (Universe ann l)
+      Meta     ann m            -> return (Meta ann m)
+      Hole     ann name         -> return (Hole ann name)
+      Builtin  ann op           -> return (Builtin ann op)
+      Literal  ann l            -> return (Literal ann l)
+      LVec     ann es           -> LVec    ann <$> traverse altExpr es
+      Ann      ann term typ     -> Ann     ann <$> altExpr   term   <*> altExpr typ
+      App      ann fun args     -> normApp ann <$> altExpr   fun    <*> traverse altArg args
+      Pi       ann binder res   -> Pi      ann <$> altPiBinder binder <*> underB (altExpr res)
+      Let      ann e1 binder e2 -> Let     ann <$> altExpr e1 <*> altLamBinder binder <*> underB (altExpr e2)
+      Lam      ann binder e     -> Lam     ann <$> altLamBinder binder <*> underB (altExpr e)
+      Var      ann (Free i)     -> return (Var ann (Free i))
+      Var      ann (Bound i)    -> lift <$> var i ann =<< ask
 
 -- Temporarily go under a binder, increasing the binding depth by one
 -- and shifting the current state.
-underBinder :: MonadReader (BindingDepth, Substitution) m =>
-               m a -> m a
-underBinder = local (first (+1))
+underBinder :: MonadReader (BindingDepth, state) m =>
+               TraverseBinder state -> m a -> m a
+underBinder body = local (\(d, s) -> (d+1, body s))
 
 --------------------------------------------------------------------------------
 -- Concrete operations
 
+-- Code loosely based off of:
+-- http://blog.discus-lang.org/2011/08/how-i-learned-to-stop-worrying-and-love.html
+
+
 -- | Lift all DeBruijn indices that refer to environment variables by the
 -- provided depth.
-liftFreeDBIndices :: Int          -- ^ amount to lift by
+liftFreeDBIndices :: BindingDepth -- ^ amount to lift by
                   -> DBExpr       -- ^ expression to lift
                   -> DBExpr       -- ^ the result of the lifting
-liftFreeDBIndices d e = substitute s e
+liftFreeDBIndices 0 e = e
+liftFreeDBIndices j e = runIdentity $ traverseBoundVars id alterVar 0 () e
   where
-    p = provenanceOf e
-    s v = Just $ Var p (Bound (v+d))
+    alterVar :: UpdateVariable Identity ()
+    alterVar i ann (d, _) = return (Var ann (Bound i'))
+      where
+        i' | d <= i    = i + j -- Index is referencing the environment so increment
+           | otherwise = i     -- Index is locally bound so no need to increment
 
 -- | De Bruijn aware substitution of one expression into another
-substIntoAtLevel :: DBIndex      -- ^ The index of the variable of which to substitute
+substIntoAtLevel :: BindingDepth -- ^ The current binding depth
                  -> DBExpr       -- ^ expression to substitute
                  -> DBExpr       -- ^ term to substitute into
                  -> DBExpr       -- ^ the result of the substitution
-substIntoAtLevel level value =
-  substitute (\v -> if v == level then Just value else Nothing)
+substIntoAtLevel level sub e = runReader (alter binderUpdate alterVar e) (level , sub)
+  where
+    alterVar i ann (d, subExpr) = case compare i d of
+      -- Index matches the expression we're substituting for
+      EQ -> return subExpr
+      -- Index was bound in the original expression
+      LT -> return $ Var ann (Bound i)
+      -- Index was free in the original expression,
+      -- and we've removed a binder so decrease it by 1.
+      GT -> return $ Var ann (Bound (i - 1))
+
+    -- Whenever we go underneath the binder we must lift
+    -- all the indices in the substituted expression
+    binderUpdate = liftFreeDBIndices 1
 
 -- | De Bruijn aware substitution of one expression into another
 substInto :: DBExpr -- ^ expression to substitute
@@ -138,8 +171,23 @@ substInto :: DBExpr -- ^ expression to substitute
           -> DBExpr -- ^ the result of the substitution
 substInto = substIntoAtLevel 0
 
-substAll :: IntMap DBExpr -> DBExpr -> DBExpr
-substAll su = substitute (`IM.lookup` su)
+type Substitution = IntMap DBExpr
+
+substAll :: Substitution
+         -> DBExpr
+         -> Maybe DBExpr
+substAll = traverseBoundVars binderUpdate alterVar 0
+  where
+    alterVar :: DBIndex -> Provenance -> (BindingDepth, Substitution) -> Maybe DBExpr
+    alterVar i ann (d, subst) =
+      if i >= d then
+        IM.lookup (i - d) subst
+      else
+        return $ Var ann (Bound i)
+
+    binderUpdate :: Substitution -> Substitution
+    binderUpdate = IM.map (liftFreeDBIndices 1)
+
 
 --------------------------------------------------------------------------------
 -- Argument patterns
@@ -168,5 +216,5 @@ getArgPattern args = ArgPattern <$> go (length args - 1) IM.empty args
 reverseArgPattern :: ArgPattern -> ArgPattern
 reverseArgPattern (ArgPattern xs) = ArgPattern $ IM.fromList (fmap swap (IM.toList xs))
 
-patternToSubst :: ArgPattern -> IntMap DBExpr
+patternToSubst :: ArgPattern -> Substitution
 patternToSubst (ArgPattern xs) = fmap (Var mempty . Bound) xs
