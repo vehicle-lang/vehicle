@@ -2,7 +2,7 @@ module Vehicle.Compile.Type.Meta
   ( MetaSet
   , ConstraintProgress(..)
   , isStuck
-  , MetaCtx(..)
+  , TypingMetaCtx(..)
   , MetaInfo(..)
   , emptyMetaCtx
   , HasMetas(..)
@@ -129,7 +129,7 @@ instance MetaSubstitutable MetaInfo where
   substM (MetaInfo p t ctx) = MetaInfo p <$> substM t <*> pure ctx
 
 -- | The meta-variables and constraints relating the variables currently in scope.
-data MetaCtx = MetaCtx
+data TypingMetaCtx = TypingMetaCtx
   { metaInfo            :: [MetaInfo]
   -- ^ The origin and type of each meta variable.
   -- NB: these are stored in *reverse* order from which they were created.
@@ -138,8 +138,8 @@ data MetaCtx = MetaCtx
   , solvedMetas         :: MetaSet
   }
 
-emptyMetaCtx :: MetaCtx
-emptyMetaCtx = MetaCtx
+emptyMetaCtx :: TypingMetaCtx
+emptyMetaCtx = TypingMetaCtx
   { metaInfo               = mempty
   , currentSubstitution    = mempty
   , constraints            = mempty

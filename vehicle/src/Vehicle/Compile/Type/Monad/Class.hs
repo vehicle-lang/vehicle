@@ -21,10 +21,10 @@ import Vehicle.Compile.Type.VariableContext (TypingDeclCtx)
 class Monad m => MonadTypeChecker m where
   getDeclContext  :: m TypingDeclCtx
   addDeclContext :: CheckedDecl -> m a -> m a
-  getMetaCtx     :: m MetaCtx
-  getsMetaCtx    :: (MetaCtx -> a) -> m a
-  putMetaCtx     :: MetaCtx -> m ()
-  modifyMetaCtx :: (MetaCtx -> MetaCtx) -> m ()
+  getMetaCtx     :: m TypingMetaCtx
+  getsMetaCtx    :: (TypingMetaCtx -> a) -> m a
+  putMetaCtx     :: TypingMetaCtx -> m ()
+  modifyMetaCtx :: (TypingMetaCtx -> TypingMetaCtx) -> m ()
 
 instance (Monoid w, MonadTypeChecker m) => MonadTypeChecker (WriterT w m) where
   getDeclContext = lift getDeclContext
@@ -82,8 +82,8 @@ getUnsolvedMetas = do
   return $ MetaSet.difference metasCreated metasSolved
 
 setConstraints :: MonadTypeChecker m => [WithContext Constraint] -> m ()
-setConstraints newConstraints = modifyMetaCtx $ \MetaCtx{..} ->
-    MetaCtx { constraints = newConstraints, ..}
+setConstraints newConstraints = modifyMetaCtx $ \TypingMetaCtx{..} ->
+    TypingMetaCtx { constraints = newConstraints, ..}
 
 
 -- | Returns any constraints that are activated (i.e. worth retrying) based

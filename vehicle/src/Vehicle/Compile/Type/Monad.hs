@@ -31,13 +31,13 @@ import Vehicle.Language.Print (prettyVerbose)
 class Monad m => MonadTypeChecker m where
   getDeclContext  :: m TypingDeclCtx
   addDeclContext :: CheckedDecl -> m a -> m a
-  getMetaCtx     :: m MetaCtx
-  getsMetaCtx    :: (MetaCtx -> a) -> m a
-  putMetaCtx     :: MetaCtx -> m ()
-  modifyMetaCtx :: (MetaCtx -> MetaCtx) -> m ()
+  getMetaCtx     :: m TypingMetaCtx
+  getsMetaCtx    :: (TypingMetaCtx -> a) -> m a
+  putMetaCtx     :: TypingMetaCtx -> m ()
+  modifyMetaCtx :: (TypingMetaCtx -> TypingMetaCtx) -> m ()
 
 newtype TypeCheckerT m a = TypeCheckerT
-  { unTypeCheckerT :: ReaderT TypingDeclCtx (StateT MetaCtx m) a
+  { unTypeCheckerT :: ReaderT TypingDeclCtx (StateT TypingMetaCtx m) a
   } deriving (Functor, Applicative, Monad)
 
 instance MonadTrans TypeCheckerT where
@@ -87,13 +87,13 @@ instance MonadTypeChecker m => MonadTypeChecker (LoggerT m) where
   getDeclContext = lift getDeclContext
   addDeclContext d = mapLoggerT (addDeclContext d)
   getMetaCtx = lift getMetaCtx
-  getsMetaCtx :: MonadTypeChecker m => (MetaCtx -> a) -> LoggerT m a
+  getsMetaCtx :: MonadTypeChecker m => (TypingMetaCtx -> a) -> LoggerT m a
   getsMetaCtx = lift . getsMetaCtx
   putMetaCtx = lift . putMetaCtx
   modifyMetaCtx = lift . modifyMetaCtx
   -}
 
-mapTypeCheckerT :: (m (a, MetaCtx) -> n (b, MetaCtx)) -> TypeCheckerT m a -> TypeCheckerT n b
+mapTypeCheckerT :: (m (a, TypingMetaCtx) -> n (b, TypingMetaCtx)) -> TypeCheckerT m a -> TypeCheckerT n b
 mapTypeCheckerT f m = TypeCheckerT (mapReaderT (mapStateT f) (unTypeCheckerT m))
 
 instance MonadError e m => MonadError e (TypeCheckerT m) where
@@ -152,9 +152,9 @@ freshMeta :: TCM m
           -> m (Meta, CheckedExpr)
 freshMeta p metaType boundCtx = do
   -- Create a fresh name
-  MetaCtx {..} <- getMetaCtx
+  TypingMetaCtx {..} <- getMetaCtx
   let nextMeta = length metaInfo
-  putMetaCtx $ MetaCtx { metaInfo = MetaInfo p metaType boundCtx : metaInfo, .. }
+  putMetaCtx $ TypingMetaCtx { metaInfo = MetaInfo p metaType boundCtx : metaInfo, .. }
   let meta = MetaVar nextMeta
 
   -- Create bound variables for everything in the context
@@ -207,7 +207,7 @@ getMetaIndex metaInfo (MetaVar m) = length metaInfo - m - 1
 
 getMetaInfo :: TCM m => Meta -> m MetaInfo
 getMetaInfo m = do
-  MetaCtx {..} <- getMetaCtx
+  TypingMetaCtx {..} <- getMetaCtx
   case metaInfo !!? getMetaIndex metaInfo m of
     Just info -> return info
     Nothing -> compilerDeveloperError $
@@ -223,9 +223,9 @@ getMetaContext :: TCM m => Meta -> m TypingBoundCtx
 getMetaContext m = metaCtx <$> getMetaInfo m
 
 modifyMetasInfo :: TCM m => Meta -> (MetaInfo -> MetaInfo) -> m ()
-modifyMetasInfo m f = modifyMetaCtx (\MetaCtx{..} ->
+modifyMetasInfo m f = modifyMetaCtx (\TypingMetaCtx{..} ->
   let (xs, i : ys) = splitAt (getMetaIndex metaInfo m) metaInfo in
-  MetaCtx
+  TypingMetaCtx
     { metaInfo = xs <> [f i] <> ys
     , ..
     })
@@ -237,20 +237,20 @@ getSolvedMetas :: TCM m => m MetaSet
 getSolvedMetas = getsMetaCtx solvedMetas
 
 clearMetaSubstitution :: TCM m => m ()
-clearMetaSubstitution = modifyMetaCtx $ \ MetaCtx {..} ->
-  MetaCtx { currentSubstitution = mempty, ..}
+clearMetaSubstitution = modifyMetaCtx $ \ TypingMetaCtx {..} ->
+  TypingMetaCtx { currentSubstitution = mempty, ..}
 
 clearSolvedMetas :: TCM m => m ()
-clearSolvedMetas = modifyMetaCtx $ \MetaCtx {..} ->
-  MetaCtx { solvedMetas = mempty, ..}
+clearSolvedMetas = modifyMetaCtx $ \TypingMetaCtx {..} ->
+  TypingMetaCtx { solvedMetas = mempty, ..}
 
 substMetasThroughCtx :: TCM m => m ()
 substMetasThroughCtx = do
-  MetaCtx {..} <- getMetaCtx
+  TypingMetaCtx {..} <- getMetaCtx
   substConstraints  <- substMetas constraints
   substMetaInfo     <- substMetas metaInfo
   substMetaSolution <- substMetas currentSubstitution
-  putMetaCtx $ MetaCtx
+  putMetaCtx $ TypingMetaCtx
     { constraints = substConstraints
     , metaInfo = substMetaInfo
     , currentSubstitution = substMetaSolution
@@ -329,7 +329,7 @@ metaSolved m solution = do
     -- Could use `insertWith` instead of `insert` here for one lookup instead of
     -- two, but not possible to throw a monadic error unfortunately.
     Nothing -> do
-      modifyMetaCtx $ \ MetaCtx {..} -> MetaCtx
+      modifyMetaCtx $ \ TypingMetaCtx {..} -> TypingMetaCtx
         { currentSubstitution = insert m abstractedSolution currentSubstitution
         , solvedMetas         = MetaSet.insert m solvedMetas
         , ..
@@ -410,12 +410,12 @@ addConstraints :: TCM m => [Constraint] -> m ()
 addConstraints []             = return ()
 addConstraints newConstraints = do
   logDebug MaxDetail ("add-constraints " <> align (prettyVerbose newConstraints))
-  modifyMetaCtx $ \ MetaCtx {..} ->
-    MetaCtx { constraints = constraints ++ newConstraints, ..}
+  modifyMetaCtx $ \ TypingMetaCtx {..} ->
+    TypingMetaCtx { constraints = constraints ++ newConstraints, ..}
 
 setConstraints :: TCM m => [Constraint] -> m ()
-setConstraints newConstraints = modifyMetaCtx $ \MetaCtx{..} ->
-    MetaCtx { constraints = newConstraints, ..}
+setConstraints newConstraints = modifyMetaCtx $ \TypingMetaCtx{..} ->
+    TypingMetaCtx { constraints = newConstraints, ..}
 
 -- | Returns any constraints that are activated (i.e. worth retrying) based
 -- on the set of metas that were solved last pass.
