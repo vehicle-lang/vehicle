@@ -1,7 +1,10 @@
 import unittest
 import json
 from vehicle import LossFunctionTranslation
+from vehicle import generate_loss_function
 from tensorflow import keras
+import tensorflow as tf
+import numpy as np
 
 class TestLossFunctionTranslation(unittest.TestCase):
     def load_json(self, file_name):
@@ -9,120 +12,145 @@ class TestLossFunctionTranslation(unittest.TestCase):
         with open(path_to_json) as f:
             json_dict = json.load(f)
         return json_dict
+    
+    def vcl_file(self, file_name):
+        path_to_vcl = f'./src/python/test_json/{file_name}.vcl'
+        return path_to_vcl
 
     def test_constant(self):
+        path_to_vcl = self.vcl_file('test_constant')
+        functionName = 'constant'
         resources = {}
-        json_dict = self.load_json('test_constant')
-        context = []
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
-        self.assertEqual(loss, 0)
-
-
-    def test_variable(self):
-        resources = {}
-        json_dict = self.load_json('test_variable')
-        context = [5, 2]
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
-        self.assertEqual(loss, 2)
-
+        loss = generate_loss_function(path_to_vcl, functionName, resources)
+        self.assertEqual(loss(), 5)
+    
+    
+    # def test_variable(self):
+    #     path_to_vcl = self.vcl_file('test_variable')
+    #     functionName = 'variable'
+    #     resources = {}
+    #     loss = generate_loss_function(path_to_vcl, functionName, resources)
+    #     self.assertEqual(loss(2), 2)
+    
 
     def test_tensor(self):
+        path_to_vcl = self.vcl_file('test_tensor')
+        functionName = 'tensor'
         resources = {}
-        json_dict = self.load_json('test_tensor')
-        context = [5, 2]
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
-        self.assertEqual(loss.shape, (1,))
-        self.assertEqual(loss, 5)
+        loss = generate_loss_function(path_to_vcl, functionName, resources)
+        self.assertEqual((np.array(loss().shape) & np.array(tf.constant([2, 4, 1, 0]).shape)).all(), True)
+        self.assertEqual((np.array(loss()) & np.array([5, 2, 16, 7])).all(), True)
+    
+
+    # def test_negation(self):
+    #     path_to_vcl = self.vcl_file('test_negation')
+    #     functionName = 'negation'
+    #     resources = {}
+    #     loss = generate_loss_function(path_to_vcl, functionName, resources)
+    #     self.assertEqual(loss(), 0)
 
 
-    def test_negation(self):
+    # def test_minimum(self):
+    #     path_to_vcl = self.vcl_file('test_minimum')
+    #     functionName = 'minimum'
+    #     resources = {}
+    #     loss = generate_loss_function(path_to_vcl, functionName, resources)
+    #     self.assertEqual(loss(), 0)
+
+
+    # def test_maximum(self):
+    #     path_to_vcl = self.vcl_file('test_maximum')
+    #     functionName = 'maximum'
+    #     resources = {}
+    #     loss = generate_loss_function(path_to_vcl, functionName, resources)
+    #     self.assertEqual(loss(), 1)
+
+
+    def test_addition(self):
+        path_to_vcl = self.vcl_file('test_addition')
+        functionName = 'addition'
         resources = {}
-        json_dict = self.load_json('test_negation')
-        context = []
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
-        self.assertEqual(loss, -1)
-
-
-    def test_minimum(self):
-        resources = {}
-        json_dict = self.load_json('test_minimum')
-        context = []
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
-        self.assertEqual(loss, 7)
-
-
-    def test_maximum(self):
-        resources = {}
-        json_dict = self.load_json('test_maximum')
-        context = []
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
-        self.assertEqual(loss, 12)
+        loss = generate_loss_function(path_to_vcl, functionName, resources)
+        self.assertEqual(loss(), 8)
 
 
     def test_subtraction(self):
+        path_to_vcl = self.vcl_file('test_subtraction')
+        functionName = 'subtraction'
         resources = {}
-        json_dict = self.load_json('test_subtraction')
-        context = []
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
-        self.assertEqual(loss, 5)
+        loss = generate_loss_function(path_to_vcl, functionName, resources)
+        self.assertEqual(loss(), 4)
+    
 
-
-    def test_indicator(self):
+    def test_multiplication(self):
+        path_to_vcl = self.vcl_file('test_multiplication')
+        functionName = 'multiplication'
         resources = {}
-        json_dict = self.load_json('test_indicator')
-        context = []
-        loss_not_equal = LossFunctionTranslation().to_loss_function(resources, json_dict[0])(context)
-        loss_equal = LossFunctionTranslation().to_loss_function(resources, json_dict[1])(context)
-        self.assertEqual(loss_not_equal, 0)
-        self.assertEqual(loss_equal, 1)
+        loss = generate_loss_function(path_to_vcl, functionName, resources)
+        self.assertEqual(loss(), 12)
+    
 
-
-    def test_at(self):
+    def test_division(self):
+        path_to_vcl = self.vcl_file('test_division')
+        functionName = 'division'
         resources = {}
-        json_dict = self.load_json('test_at')
-        context = [[4, 13, 22, 1]]
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
-        self.assertEqual(loss, 22)
+        loss = generate_loss_function(path_to_vcl, functionName, resources)
+        self.assertEqual(loss(), 3)
+ 
+
+    # def test_indicator(self):
+    #     path_to_vcl = self.vcl_file('test_indicator')
+    #     functionName = 'indicator'
+    #     resources = {}
+    #     loss = generate_loss_function(path_to_vcl, functionName, resources)
+    #     # loss(5)(7)
+    #     self.assertEqual(loss(5, 7), 0)
+    #     self.assertEqual(loss(5, 5), 1)
+
+
+    # def test_at(self):
+    #     path_to_vcl = self.vcl_file('test_at')
+    #     functionName = 'at'
+    #     resources = {}
+    #     loss = generate_loss_function(path_to_vcl, functionName, resources)
+    #     self.assertEqual(loss([1, 4, 7]), 4)
 
 
     def test_network(self):
+        path_to_vcl = self.vcl_file('test_network')
+        functionName = 'network'
         model = keras.Sequential([
             keras.layers.Input(shape=(1,)),
             keras.layers.Dense(units=1, kernel_initializer='ones'),
         ])
-        resources = {'f': model}
-        json_dict = self.load_json('test_network')
-        context = [2, 3.5, 14]
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
-        self.assertEqual(loss, 3.5)
+        resources = {'net': model}
+        loss = generate_loss_function(path_to_vcl, functionName, resources)
+        self.assertEqual(loss(), 1)
 
 
     def test_quantifier(self):
+        path_to_vcl = self.vcl_file('test_quantifier_all')
+        functionName = 'quantifier'
         resources = {}
-        json_dict = self.load_json('test_quantifier')
-        context = []
-        loss_all = LossFunctionTranslation().to_loss_function(resources, json_dict[0])(context)
-        loss_any = LossFunctionTranslation().to_loss_function(resources, json_dict[1])(context)
-        self.assertEqual(loss_all, 50)
-        self.assertEqual(loss_any, 12)
 
+        quantifier_sampling = {'x': lambda: 2.1}
+        loss = generate_loss_function(path_to_vcl, functionName, resources, quantifier_sampling)
+        print(loss())
+        self.assertEqual(loss(), 2.1)
 
-    def test_lambda(self):
-        resources = {}
-        json_dict = self.load_json('test_lambda')
-        context = []
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)(3)
-        self.assertEqual(loss, 3)
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)(8)
-        self.assertEqual(loss, 8)
+        quantifier_sampling = {'x': lambda: -5.5}
+        loss = generate_loss_function(path_to_vcl, functionName, resources, quantifier_sampling)
+        self.assertEqual(loss(), -5.5)
 
+        path_to_vcl = self.vcl_file('test_quantifier_any')
 
-    def test_domain(self):
-        resources = {}
-        json_dict = self.load_json('test_domain')
-        context = []
-        loss = LossFunctionTranslation().to_loss_function(resources, json_dict)(context)
-        self.assertEqual(loss, (4, 7))
+        quantifier_sampling = {'x': lambda: 21.5}
+        loss = generate_loss_function(path_to_vcl, functionName, resources, quantifier_sampling)
+        self.assertEqual(loss(), 21.5)
+
+        quantifier_sampling = {'x': lambda: -2.8}
+        loss = generate_loss_function(path_to_vcl, functionName, resources, quantifier_sampling)
+        self.assertEqual(loss(), -2.8)
 
 
 if __name__ == '__main__':
