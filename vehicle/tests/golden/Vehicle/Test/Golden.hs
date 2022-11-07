@@ -7,8 +7,8 @@ module Vehicle.Test.Golden
   where
 import Control.Monad (filterM, forM, forM_)
 import Data.Functor ((<&>))
-import Data.HashMap.Strict qualified as HashMap
 import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HashMap
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
@@ -18,7 +18,8 @@ import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
 import System.Directory (copyFile, doesDirectoryExist, doesFileExist,
                          listDirectory)
-import System.FilePath (makeRelative, takeDirectory, takeFileName, (</>), takeBaseName)
+import System.FilePath (makeRelative, takeBaseName, takeDirectory, takeFileName,
+                        (</>))
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName, TestTree, testGroup)

@@ -23,11 +23,11 @@ import Data.IntMap.Lazy (IntMap)
 import Data.IntMap.Lazy qualified as IM
 import GHC.Generics (Generic)
 
-import Vehicle.Prelude
-import Vehicle.Language.AST.Provenance
+import Vehicle.Language.AST.Arg (GenericArg (..))
 import Vehicle.Language.AST.Binder (GenericBinder)
-import Vehicle.Language.AST.Arg (GenericArg(..))
 import Vehicle.Language.AST.Name
+import Vehicle.Language.AST.Provenance
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Definitions

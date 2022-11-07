@@ -4,6 +4,7 @@ module Vehicle.Prelude.Misc where
 --       Moved these definitions here from Vehicle.Prelude,
 --       so they can be used from Vehicle.Prelude.* modules.
 
+import Control.Monad.Identity (Identity (..))
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.IntMap (IntMap, updateLookupWithKey)
 import Data.List qualified as List
@@ -18,7 +19,6 @@ import Numeric (readFloat)
 import Paths_vehicle qualified as Cabal (version)
 import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
 import Vehicle.Prelude.Token (Name)
-import Control.Monad.Identity (Identity(..))
 
 vehicleVersion :: Version
 vehicleVersion = Cabal.version

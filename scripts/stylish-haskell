@@ -54,7 +54,7 @@ for project in $projects; do
     done
     # Call 'stylish-haskell' for the project:
     if [ -n "$files" ]; then
-        echo "Running stylish-haskell for $(basename "$project")..."
+        # echo "Running stylish-haskell for $(basename "$project")..."
         (cd "$project" && $stylish_haskell $flags $files || echo > "$fail")
     fi
     unset -v project
