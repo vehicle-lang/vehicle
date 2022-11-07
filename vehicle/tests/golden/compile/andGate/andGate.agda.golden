@@ -32,4 +32,8 @@ ValidInput x = ℤ.+ 0 ℚ./ 1 ℚ.≤ x × x ℚ.≤ ℤ.+ 1 ℚ./ 1
 CorrectOutput : ℚ → (ℚ → Set)
 CorrectOutput x1 x2 = let y = andGate (x1 ∷ᵥ (x2 ∷ᵥ []ᵥ)) (# 0) in (Truthy x1 × Truthy x2 → Truthy y) × ((Truthy x1 × Falsey x2 → Falsey y) × ((Falsey x1 × Truthy x2 → Falsey y) × (Falsey x1 × Falsey x2 → Falsey y)))
 
-postulate andGateCorrect : ∀ (x1 : ℚ) → ∀ (x2 : ℚ) → ValidInput x1 × ValidInput x2 → CorrectOutput x1 x2
+abstract
+  andGateCorrect : ∀ (x1 : ℚ) → ∀ (x2 : ℚ) → ValidInput x1 × ValidInput x2 → CorrectOutput x1 x2
+  andGateCorrect = checkSpecification record
+    { proofCache   = "proofcache.vclp"
+    }

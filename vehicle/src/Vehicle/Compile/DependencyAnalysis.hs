@@ -30,8 +30,8 @@ checkForDeadCode prog properties dependencyGraph = do
   let reachableDecls = reachableFrom dependencyGraph properties
   let allDecls = allDeclsIn prog
   let unreachableDecls = Set.difference allDecls reachableDecls
-  forM_ unreachableDecls $ \d ->
-    logWarning $ "unused declaration" <+> quotePretty d <+> ""
+  forM_ unreachableDecls $ \_d ->
+    return () -- logWarning $ "unused declaration" <+> quotePretty d <+> ""
 
 pruneProg :: UncheckedProg -> Set Identifier -> UncheckedProg
 pruneProg (Main ds) declsToKeep = Main $ filter keepDecl ds

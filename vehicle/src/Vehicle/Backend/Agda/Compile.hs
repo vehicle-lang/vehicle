@@ -60,12 +60,14 @@ compileProgToAgda prog propertyContext options = logCompilerPass MinDetail curre
           Just name -> name
           _         -> maybe "Spec" takeBaseName (outputFile options)
 
-    return $ unAnnotate ((vsep2 :: [Code] -> Code)
-      [ optionStatements ["allow-exec"]
-      , importStatements progamDependencies
-      , moduleHeader nameOfModule
-      , programDoc
-      ])
+    let agdaProgram = unAnnotate ((vsep2 :: [Code] -> Code)
+          [ optionStatements ["allow-exec"]
+          , importStatements progamDependencies
+          , moduleHeader nameOfModule
+          , programDoc
+          ])
+
+    return agdaProgram
 
 --------------------------------------------------------------------------------
 -- Debug functions

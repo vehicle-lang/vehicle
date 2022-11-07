@@ -13,12 +13,8 @@ open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
-module simple-pruneDecls-output where
+module simple-pruneDecls where
 
 postulate g : Vector ℚ 2 → Vector ℚ 1
 
-abstract
-  p2 : ∀ (x : Vector ℚ 2) → g x (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1
-  p2 = checkSpecification record
-    { proofCache   = "/home/matthew/Code/AISEC/vehicle/proofcache.vclp"
-    }
+postulate p2 : ∀ (x : Vector ℚ 2) → g x (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1

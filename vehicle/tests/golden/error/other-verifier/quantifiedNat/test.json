@@ -1,5 +1,5 @@
 {
-  "name": "TypeCheck",
-  "run": "vehicle compile -s quantifiedNat.vcl -t TypeCheck",
+  "name": "Marabou",
+  "run": "vehicle compile -s quantifiedNat.vcl -t Marabou",
   "needs": ["quantifiedNat.vcl"]
 }

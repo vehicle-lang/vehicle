@@ -1,5 +1,5 @@
 {
-  "name": "TypeCheck",
-  "run": "vehicle compile -s missingDataset.vcl -t TypeCheck -d trainingDataset:non-existent.idx",
+  "name": "Marabou",
+  "run": "vehicle compile -s missingDataset.vcl -t Marabou -d trainingDataset:non-existent.idx",
   "needs": ["missingDataset.vcl"]
 }

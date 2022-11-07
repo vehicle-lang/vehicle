@@ -12,7 +12,7 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-tensor.vcl -t Agda -o simple-tensor.agda",
+    "run": "vehicle compile -s simple-tensor.vcl -t Agda -o simple-tensor.agda -c proofcache.vclp",
     "needs": ["simple-tensor.vcl"],
     "produces": ["simple-tensor.agda"]
   }

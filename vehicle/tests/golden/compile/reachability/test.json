@@ -18,7 +18,7 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s reachability.vcl -t Agda -o reachability.agda",
+    "run": "vehicle compile -s reachability.vcl -t Agda -o reachability.agda -c proofcache.vclp",
     "needs": ["reachability.vcl"],
     "produces": ["reachability.agda"]
   }

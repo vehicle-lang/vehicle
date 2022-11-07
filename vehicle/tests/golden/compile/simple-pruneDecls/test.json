@@ -1,24 +1,24 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s simple-pruneDecls.vcl -t TypeCheck",
+    "run": "vehicle compile -s simple-pruneDecls.vcl -t TypeCheck -e p2",
     "needs": ["simple-pruneDecls.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-pruneDecls.vcl -t Marabou -o simple-pruneDecls.inputquery/",
+    "run": "vehicle compile -s simple-pruneDecls.vcl -t Marabou -o simple-pruneDecls.inputquery -e p2",
     "needs": ["simple-pruneDecls.vcl"],
     "produces": ["simple-pruneDecls.inputquery/*.txt"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s simple-pruneDecls.vcl -t LossFunction -o simple-pruneDecls.loss.json",
+    "run": "vehicle compile -s simple-pruneDecls.vcl -t LossFunction -o simple-pruneDecls.loss.json -e p2",
     "needs": ["simple-pruneDecls.vcl"],
     "produces": ["simple-pruneDecls.loss.json"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-pruneDecls.vcl -t Agda -o simple-pruneDecls.agda",
+    "run": "vehicle compile -s simple-pruneDecls.vcl -t Agda -o simple-pruneDecls.agda -e p2",
     "needs": ["simple-pruneDecls.vcl"],
     "produces": ["simple-pruneDecls.agda"]
   }

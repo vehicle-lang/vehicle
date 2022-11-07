@@ -8,13 +8,17 @@ module Vehicle.Test.Golden
 import Control.Monad (filterM, forM, forM_)
 import Data.Functor ((<&>))
 import Data.HashMap.Strict qualified as HashMap
+import Data.HashMap.Strict (HashMap)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
 import System.Directory (copyFile, doesDirectoryExist, doesFileExist,
                          listDirectory)
-import System.FilePath (makeRelative, takeDirectory, takeFileName, (</>))
+import System.FilePath (makeRelative, takeDirectory, takeFileName, (</>), takeBaseName)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName, TestTree, testGroup)
@@ -92,20 +96,24 @@ toTestTree testSpecFile testSpec = someLocalOptions testOptions testTree
           let tempDirectoryNameTemplate = printf "vehicle-test-%s" (testSpecName testSpec)
           withSystemTempDirectory tempDirectoryNameTemplate $ \tempDirectory -> do
             -- Copy over all needed files:
-            forM_ (testSpecNeeds testSpec) $ \neededFile -> do
+            let neededFiles = Set.fromList $ testSpecNeeds testSpec
+            forM_ neededFiles $ \neededFile -> do
               createDirectoryRecursive (tempDirectory </> takeDirectory neededFile)
               copyFile (testDirectory </> neededFile) (tempDirectory </> neededFile)
             -- Run the command in the specified directory:
             let cmdSpec = (shell $ testSpecRun testSpec) {cwd = Just tempDirectory}
             (_exitCode, stdoutString, stderrString) <- readCreateProcessWithExitCode cmdSpec ""
+            -- Gather the outputs
             let testOutputStdout = Text.pack stdoutString
             let testOutputStderr = Text.pack stderrString
-            testOutputFiles <-
-              fmap HashMap.fromList $ do
-                filePaths <-
-                  fmap (makeRelative tempDirectory)
-                    <$> listFilesRecursive tempDirectory
-                forM filePaths $ \filePath -> do
-                  fileContents <- Text.readFile $ tempDirectory </> filePath
-                  return (filePath, fileContents)
+            testOutputFiles <- HashMap.fromList <$> getTestOutputFiles neededFiles tempDirectory
             return TestOutput{..}
+
+getTestOutputFiles :: Set FilePath -> FilePath -> IO [(FilePath, Text)]
+getTestOutputFiles ignoredFiles tempDirectory = do
+  absoluteFilePaths <- listFilesRecursive tempDirectory
+  let filePaths = fmap (makeRelative tempDirectory) absoluteFilePaths
+  let outputFilePaths = filter (`Set.notMember` ignoredFiles) filePaths
+  forM outputFilePaths $ \filePath -> do
+    fileContents <- Text.readFile $ tempDirectory </> filePath
+    return (filePath, fileContents)

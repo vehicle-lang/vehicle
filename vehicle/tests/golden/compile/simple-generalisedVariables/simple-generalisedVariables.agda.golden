@@ -10,7 +10,7 @@
 open import Vehicle
 open import Data.Rational as ℚ using (ℚ)
 
-module simple-generalisedVariables-output where
+module simple-generalisedVariables where
 
 id : ℚ → ℚ
 id x = x

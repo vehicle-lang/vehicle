@@ -18,4 +18,4 @@ TODO
 
 The outputs of the above Vehicle commands can be found in the test suite:
 
-- [Automatically generated Marabou queries](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden/acasXu/acasXu-output-marabou)
+- [Automatically generated Marabou queries](https://github.com/vehicle-lang/vehicle/tree/dev/vehicle/tests/golden/compile/acasXu/acasXu.inputquery)

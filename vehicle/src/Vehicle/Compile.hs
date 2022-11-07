@@ -14,7 +14,6 @@ import Control.Exception (IOException, catch)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
-import System.Directory (makeAbsolute)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn)
 
@@ -60,8 +59,7 @@ compile loggingOptions CompileOptions{..} = do
       return ()
 
     ITP Agda -> do
-      proofCacheLocation <- maybe (return Nothing) (fmap Just . makeAbsolute) proofCache
-      let agdaOptions = AgdaOptions proofCacheLocation outputFile moduleName
+      let agdaOptions = AgdaOptions proofCache outputFile moduleName
       agdaCode <- compileToAgda loggingOptions agdaOptions spec declarationsToCompile resources
       writeAgdaFile outputFile agdaCode
 

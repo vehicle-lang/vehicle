@@ -51,7 +51,7 @@ import Data.Text.Lazy qualified as Lazy
 import Data.Text.Lazy.Builder qualified as Builder
 import GHC.Stack.Types (HasCallStack)
 import System.Directory (doesFileExist)
-import System.FilePath (makeRelative, takeFileName, (-<.>), (<.>), (</>))
+import System.FilePath (makeRelative, takeFileName, (-<.>), (<.>), (</>), dropExtension)
 import System.FilePath.Glob (CompOptions (..))
 import System.FilePath.Glob qualified as Glob
 import Test.Tasty (TestName, TestTree, Timeout (Timeout), localOption)
@@ -204,7 +204,7 @@ testSpecDiffTestOutput testSpec golden actual = do
         , maybeToList differentStderrError
         , differentOutputFileErrors
         ]
-  return $ boolToMaybe (null messages) (unlines messages)
+  return $ boolToMaybe (not $ null messages) (unlines messages)
 
 -- | Compare two texts using the options set in DiffSpec.
 testSpecDiffText :: TestSpec -> Text -> Text -> Maybe String
@@ -325,10 +325,17 @@ readGoldenFiles testDirectory testSpec = do
     fmap HashMap.fromList $ do
       goldenFiles <- testSpecProducesGlobDir testDirectory testSpec
       forM goldenFiles $ \goldenFile -> do
-        goldenFileContents <- readGoldenFile (testDirectory </> goldenFile)
-        let relativeFilePath = makeRelative testDirectory $ goldenFile -<.> "golden"
-        return (relativeFilePath, goldenFileContents)
+        goldenFileContents <- readGoldenFile goldenFile
+        -- let relativeFilePath = makeRelative testDirectory $ goldenFile -<.> "golden"
+        let relativeFilePath = makeRelative testDirectory goldenFile
+        -- Convert the golden file path back to the corresponding output file path.
+        let outputFilePath = goldenFileToOutputFile relativeFilePath
+
+        return (outputFilePath, goldenFileContents)
   return TestOutput {..}
+
+goldenFileToOutputFile :: FilePath -> FilePath
+goldenFileToOutputFile = dropExtension
 
 writeGoldenFiles :: FilePath -> TestSpec -> TestOutput -> IO ()
 writeGoldenFiles testDirectory testSpec testOutput@TestOutput{..} = do

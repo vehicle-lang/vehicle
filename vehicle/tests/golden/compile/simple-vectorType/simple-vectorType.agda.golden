@@ -12,7 +12,7 @@ open import Vehicle.Data.Tensor
 open import Data.Nat as ℕ using (ℕ)
 open import Data.List
 
-module simple-vectorType-temp-output where
+module simple-vectorType-temp where
 
 Vector : Set → (ℕ → Set)
 Vector A n = Tensor A (n ∷ [])

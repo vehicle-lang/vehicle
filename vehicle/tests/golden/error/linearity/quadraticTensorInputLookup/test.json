@@ -1,5 +1,5 @@
 {
-  "name": "TypeCheck",
-  "run": "vehicle compile -s quadraticTensorInputLookup.vcl -t TypeCheck",
+  "name": "Marabou",
+  "run": "vehicle compile -s quadraticTensorInputLookup.vcl -t Marabou",
   "needs": ["quadraticTensorInputLookup.vcl"]
 }

@@ -1,2 +1,0 @@
-Error at Line 2, Columns 1-2: The value '~`' provided for parameter 'r' could not be parsed as a 'Rat'.
-Fix: either change the type of 'r' in the specification or change the value provided.

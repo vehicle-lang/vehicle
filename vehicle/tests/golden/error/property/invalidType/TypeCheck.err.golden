@@ -1,0 +1,2 @@
+Error at Line 2, Columns 1-2: Invalid type 'Rat' for property 'p'.
+Fix: change the type of 'p' to one of `Bool`, `Vector Bool n` or `Tensor Bool n`.

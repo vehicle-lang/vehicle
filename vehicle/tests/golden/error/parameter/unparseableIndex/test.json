@@ -1,5 +1,5 @@
 {
-  "name": "TypeCheck",
-  "run": "vehicle compile -s unparseableIndex.vcl -t TypeCheck -p n:~",
+  "name": "Marabou",
+  "run": "vehicle compile -s unparseableIndex.vcl -t Marabou -p n:~",
   "needs": ["unparseableIndex.vcl"]
 }

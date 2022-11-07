@@ -12,7 +12,7 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-triviallyTrue.vcl -t Agda -o simple-triviallyTrue.agda",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t Agda -o simple-triviallyTrue.agda -c proofcache.vclp",
     "needs": ["simple-triviallyTrue.vcl"],
     "produces": ["simple-triviallyTrue.agda"]
   }

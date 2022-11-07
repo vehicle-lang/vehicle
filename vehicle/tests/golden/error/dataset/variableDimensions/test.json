@@ -1,5 +1,5 @@
 {
-  "name": "TypeCheck",
-  "run": "vehicle compile -s variableDimensions.vcl -t TypeCheck -d trainingDataset:dataset-nat-4.idx",
+  "name": "Marabou",
+  "run": "vehicle compile -s variableDimensions.vcl -t Marabou -d trainingDataset:dataset-nat-4.idx",
   "needs": ["variableDimensions.vcl", "dataset-nat-4.idx"]
 }

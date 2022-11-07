@@ -6,7 +6,7 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s andGate.vcl -t Agda -o andGate.agda",
+    "run": "vehicle compile -s andGate.vcl -t Agda -o andGate.agda -c proofcache.vclp",
     "needs": ["andGate.vcl"],
     "produces": ["andGate.agda"]
   },

@@ -1,5 +1,5 @@
 {
-  "name": "TypeCheck",
-  "run": "vehicle compile -s alternating.vcl -t TypeCheck",
+  "name": "Marabou",
+  "run": "vehicle compile -s alternating.vcl -t Marabou",
   "needs": ["alternating.vcl"]
 }
