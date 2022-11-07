@@ -1,0 +1,45 @@
+#!/bin/sh
+
+# POSIX compliant method for 'pipefail':
+fail=$(mktemp)
+
+# Check if 'hie-bios' is on the PATH:
+hie_bios=$(which hie-bios || echo > "$fail")
+
+if [ -s "$fail" ]; then
+    rm "$fail"
+    echo "The pre-commit hook requires 'hie-bios' to format Haskell code."
+    echo "You can install 'hie-bios' by running:"
+    echo
+    echo "  cabal v2-install hie-bios --ignore-project --overwrite-policy=always"
+    echo
+    echo "See: https://github.com/haskell/hie-bios#readme"
+    echo
+    exit 1
+fi
+
+for file; do
+    # Run 'hie-bios' for the file, if it exists:
+    if [ -f "$file" ]; then
+        echo "Checking $file..."
+        $hie_bios check "$file" || echo > "$fail"
+    else
+        echo "Could not find $file"
+        exit 1
+    fi
+
+    # Check whether or not the subcommand failed:
+    if [ -s "$fail" ]; then
+        rm "$fail"
+        exit 1
+    fi
+done
+
+# Check whether or not any subcommand failed:
+if [ -s "$fail" ]; then
+    rm "$fail"
+    exit 1
+else
+    rm "$fail"
+    exit 0
+fi
