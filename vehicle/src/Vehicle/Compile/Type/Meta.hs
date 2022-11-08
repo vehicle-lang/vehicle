@@ -8,6 +8,7 @@ module Vehicle.Compile.Type.Meta
   , HasMetas(..)
   , MetaSubstitution
   , MetaSubstitutable(..)
+  , makeMetaType
   ) where
 
 import Control.Monad.Reader (MonadReader (..), local)
@@ -145,6 +146,16 @@ emptyMetaCtx = TypingMetaCtx
   , constraints            = mempty
   , solvedMetas            = mempty
   }
+
+-- |Creates a Pi type that abstracts over all bound variables
+makeMetaType :: TypingBoundCtx
+             -> Provenance
+             -> CheckedType
+             -> CheckedType
+makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
+  where
+    entryToPi :: (DBBinding, CheckedType, Maybe CheckedExpr) -> CheckedType -> CheckedType
+    entryToPi (name, t, _) = Pi ann (ExplicitBinder ann name t)
 
 --------------------------------------------------------------------------------
 -- Objects which have meta variables in.
