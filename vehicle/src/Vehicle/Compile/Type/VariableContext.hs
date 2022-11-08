@@ -16,6 +16,9 @@ type TypingDeclCtx = DeclCtx TypingDeclCtxEntry
 addToDeclCtx :: CheckedDecl -> TypingDeclCtx -> TypingDeclCtx
 addToDeclCtx decl = Map.insert (identifierOf decl) (typeOf decl, bodyOf decl)
 
+toNormalisationDeclContext :: TypingDeclCtx -> DeclCtx CheckedExpr
+toNormalisationDeclContext = Map.mapMaybe snd
+
 --------------------------------------------------------------------------------
 -- Bound variable context
 
