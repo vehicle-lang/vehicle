@@ -10,14 +10,14 @@ import Vehicle.Prelude
 --------------------------------------------------------------------------------
 -- Meta-variables
 
-newtype Meta = MetaVar Int
+newtype MetaID = MetaID Int
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   Meta
-instance Hashable Meta
+instance NFData   MetaID
+instance Hashable MetaID
 
-instance Pretty Meta where
-  pretty (MetaVar m) = "?" <> pretty m
+instance Pretty MetaID where
+  pretty (MetaID m) = "?" <> pretty m
 
 --------------------------------------------------------------------------------
 -- Meta-variable substitution

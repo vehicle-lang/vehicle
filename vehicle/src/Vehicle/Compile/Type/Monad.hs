@@ -149,13 +149,13 @@ freshMeta :: TCM m
           => Provenance
           -> CheckedType
           -> TypingBoundCtx
-          -> m (Meta, CheckedExpr)
+          -> m (MetaID, CheckedExpr)
 freshMeta p metaType boundCtx = do
   -- Create a fresh name
   TypingMetaCtx {..} <- getMetaCtx
   let nextMeta = length metaInfo
   putMetaCtx $ TypingMetaCtx { metaInfo = MetaInfo p metaType boundCtx : metaInfo, .. }
-  let meta = MetaVar nextMeta
+  let meta = MetaID nextMeta
 
   -- Create bound variables for everything in the context
   let ann = inserted p
@@ -186,7 +186,7 @@ freshUniverseLevelMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
 freshTypeClassPlacementMeta :: TCM m
                             => Provenance
                             -> CheckedType
-                            -> m Meta
+                            -> m MetaID
 freshTypeClassPlacementMeta p t = fst <$> freshMeta p t []
 
 -- |Creates a Pi type that abstracts over all bound variables
@@ -202,10 +202,10 @@ makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse bound
 --------------------------------------------------------------------------------
 -- Meta information retrieval
 
-getMetaIndex :: [MetaInfo] -> Meta -> Int
-getMetaIndex metaInfo (MetaVar m) = length metaInfo - m - 1
+getMetaIndex :: [MetaInfo] -> MetaID -> Int
+getMetaIndex metaInfo (MetaID m) = length metaInfo - m - 1
 
-getMetaInfo :: TCM m => Meta -> m MetaInfo
+getMetaInfo :: TCM m => MetaID -> m MetaInfo
 getMetaInfo m = do
   TypingMetaCtx {..} <- getMetaCtx
   case metaInfo !!? getMetaIndex metaInfo m of
@@ -213,16 +213,16 @@ getMetaInfo m = do
     Nothing -> compilerDeveloperError $
       "Requesting info for unknown meta" <+> pretty m <+> "not in context"
 
-getMetaProvenance :: TCM m => Meta -> m Provenance
+getMetaProvenance :: TCM m => MetaID -> m Provenance
 getMetaProvenance m = metaProvenance <$> getMetaInfo m
 
-getMetaType :: TCM m => Meta -> m CheckedType
+getMetaType :: TCM m => MetaID -> m CheckedType
 getMetaType m = metaType <$> getMetaInfo m
 
-getMetaContext :: TCM m => Meta -> m TypingBoundCtx
+getMetaContext :: TCM m => MetaID -> m TypingBoundCtx
 getMetaContext m = metaCtx <$> getMetaInfo m
 
-modifyMetasInfo :: TCM m => Meta -> (MetaInfo -> MetaInfo) -> m ()
+modifyMetasInfo :: TCM m => MetaID -> (MetaInfo -> MetaInfo) -> m ()
 modifyMetasInfo m f = modifyMetaCtx (\TypingMetaCtx{..} ->
   let (xs, i : ys) = splitAt (getMetaIndex metaInfo m) metaInfo in
   TypingMetaCtx
@@ -261,13 +261,13 @@ getUnsolvedMetas :: TCM m => m MetaSet
 getUnsolvedMetas = do
   metasSolved  <- keys <$> getMetaSubstitution
   numberOfMetasCreated <- getNumberOfMetasCreated
-  let metasCreated = MetaSet.fromList $ fmap MetaVar [0..numberOfMetasCreated-1]
+  let metasCreated = MetaSet.fromList $ fmap MetaID [0..numberOfMetasCreated-1]
   return $ MetaSet.difference metasCreated metasSolved
 
 getUnsolvedAuxiliaryMetas :: TCM m => m MetaSet
 getUnsolvedAuxiliaryMetas = filterMetasByTypes isAuxiliaryUniverse =<< getUnsolvedMetas
 
-getMetaTypes :: TCM m => MetaSet -> m [(Meta, CheckedType)]
+getMetaTypes :: TCM m => MetaSet -> m [(MetaID, CheckedType)]
 getMetaTypes metas = traverse (\m -> (m,) <$> getMetaType m) (MetaSet.toList metas)
 
 -- | Computes the set of all metas that are related via constraints to the
@@ -311,7 +311,7 @@ abstractOverCtx ctx body =
     typeToLam t = Lam ann (ExplicitBinder ann Nothing t)
       where ann = provenanceOf t
 
-metaSolved :: TCM m => Meta -> CheckedExpr -> m ()
+metaSolved :: TCM m => MetaID -> CheckedExpr -> m ()
 metaSolved m solution = do
   MetaInfo p _ ctx <- getMetaInfo m
   let abstractedSolution = abstractOverCtx ctx solution
@@ -341,10 +341,10 @@ prettyMetas metas = do
   let docs = fmap (uncurry prettyMetaInternal) typedMetaList
   return $ prettySetLike docs
 
-prettyMeta :: TCM m => Meta -> m (Doc a)
+prettyMeta :: TCM m => MetaID -> m (Doc a)
 prettyMeta meta = prettyMetaInternal meta <$> getMetaType meta
 
-prettyMetaInternal :: Meta -> CheckedType -> Doc a
+prettyMetaInternal :: MetaID -> CheckedType -> Doc a
 prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
 
 clearMetaCtx :: TCM m => m ()
@@ -390,7 +390,7 @@ addUnificationConstraint group p ctx e1 e2 = do
 addTypeClassConstraint :: TCM m
                        => Provenance
                        -> TypingBoundCtx
-                       -> Meta
+                       -> MetaID
                        -> CheckedExpr
                        -> m ()
 addTypeClassConstraint creationProvenance ctx meta expr = do

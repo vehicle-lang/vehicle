@@ -91,7 +91,7 @@ newtype UnificationConstraint = Unify UnificationPair
 --------------------------------------------------------------------------------
 -- Type-class constraints
 
-data TypeClassConstraint = Has Meta TypeClass (NonEmpty CheckedArg)
+data TypeClassConstraint = Has MetaID TypeClass (NonEmpty CheckedArg)
   deriving (Show)
 
 -- | A sequence of attempts at unification

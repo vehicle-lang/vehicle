@@ -151,7 +151,7 @@ emptyMetaCtx = TypingMetaCtx
 
 class HasMetas a where
   traverseMetas :: Monad m
-                => (Provenance -> Meta -> [CheckedArg] -> m CheckedExpr)
+                => (Provenance -> MetaID -> [CheckedArg] -> m CheckedExpr)
                 -> a
                 -> m a
 

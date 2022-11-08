@@ -78,7 +78,7 @@ getUnsolvedMetas :: MonadTypeChecker m => m MetaSet
 getUnsolvedMetas = do
   metasSolved  <- MetaMap.keys <$> getMetaSubstitution
   numberOfMetasCreated <- getNumberOfMetasCreated
-  let metasCreated = MetaSet.fromList $ fmap MetaVar [0..numberOfMetasCreated-1]
+  let metasCreated = MetaSet.fromList $ fmap MetaID [0..numberOfMetasCreated-1]
   return $ MetaSet.difference metasCreated metasSolved
 
 setConstraints :: MonadTypeChecker m => [WithContext Constraint] -> m ()

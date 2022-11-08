@@ -52,7 +52,7 @@ positionalIntersection (x : xs) (y : ys)
  | x == y    = x : positionalIntersection xs ys
  | otherwise = positionalIntersection xs ys
 
-blockOn :: MonadCompile m => [Meta] -> m ConstraintProgress
+blockOn :: MonadCompile m => [MetaID] -> m ConstraintProgress
 blockOn metas = do
   logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
   return $ Stuck $ MetaSet.fromList metas
@@ -63,7 +63,7 @@ unify c e1 e2 = UC (copyContext (constraintContext c)) $ Unify (e1, e2)
 solved :: ConstraintProgress
 solved = Progress mempty
 
-getMeta :: CheckedExpr -> Maybe Meta
+getMeta :: CheckedExpr -> Maybe MetaID
 getMeta e = case exprHead e of
   Meta _ m -> Just m
   _        -> Nothing
