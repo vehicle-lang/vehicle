@@ -470,7 +470,7 @@ instance (PrettyUsing rest CheckedExpr) => PrettyUsing ('Opaque rest) Constraint
 
 instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (MetaMap a) where
   prettyUsing (MetaMap m) = prettyMapEntries entries
-    where entries = fmap (bimap MetaVar (prettyUsing @rest)) (IntMap.assocs m)
+    where entries = fmap (bimap MetaID (prettyUsing @rest)) (IntMap.assocs m)
 
 instance (PrettyUsing rest CheckedExpr) => PrettyUsing ('Opaque rest) PositionsInExpr where
   prettyUsing (PositionsInExpr e p) = prettyUsing @rest (fromCoDB (substPos hole (Just p) e))

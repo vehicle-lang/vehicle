@@ -95,7 +95,7 @@ generaliseOverUnsolvedMetaVariables decl = do
 
 quantifyOverMeta :: TCM m
                  => CheckedDecl
-                 -> Meta
+                 -> MetaID
                  -> m CheckedDecl
 quantifyOverMeta decl meta = do
   metaType <- substMetas =<< getMetaType meta
@@ -115,7 +115,7 @@ quantifyOverMeta decl meta = do
 -- Utilities
 
 prependBinderAndSolveMeta :: TCM m
-                          => Meta
+                          => MetaID
                           -> Visibility
                           -> Relevance
                           -> DBBinding
@@ -183,7 +183,7 @@ removeContextsOfMetasIn binderType decl =
       logCompilerPassOutput (prettyVerbose substDecl)
       return (substBinderType, substDecl)
 
-addNewArgumentToMetaUses :: Meta -> CheckedDecl -> CheckedDecl
+addNewArgumentToMetaUses :: MetaID -> CheckedDecl -> CheckedDecl
 addNewArgumentToMetaUses meta = fmap (go (-1))
   where
     go :: BindingDepth -> CheckedExpr -> CheckedExpr
@@ -210,7 +210,7 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
         goBinder = fmap (go d)
         goArgs   = fmap (fmap (go d))
 
-addNewBinderToMetaContext :: TCM m => Meta -> DBBinding -> CheckedType -> m ()
+addNewBinderToMetaContext :: TCM m => MetaID -> DBBinding -> CheckedType -> m ()
 addNewBinderToMetaContext m newVarName newVarType =
   modifyMetasInfo m $ \(MetaInfo p n ctx) ->
     let entry = (newVarName, newVarType, Nothing) in

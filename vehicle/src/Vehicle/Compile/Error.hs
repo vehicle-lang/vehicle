@@ -59,7 +59,7 @@ data CompileError
   | UnsolvedConstraints
     (NonEmpty Constraint)
   | UnsolvedMetas
-    (NonEmpty (Meta, Provenance))
+    (NonEmpty (MetaID, Provenance))
   | MissingExplicitArg
     [DBBinding]             -- The context at the time of the failure
     UncheckedArg            -- The non-explicit argument

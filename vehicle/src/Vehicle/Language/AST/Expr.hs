@@ -120,7 +120,7 @@ data Expr binder var
   -- | Unsolved meta variables.
   | Meta
     Provenance
-    Meta             -- Meta variable number.
+    MetaID           -- Meta variable number.
 
   -- | Let expressions. We have these in the core syntax because we want to
   -- cross compile them to various backends.

@@ -151,7 +151,7 @@ data ExprC
   | BuiltinC  Provenance Builtin
   | VarC      Provenance DBVar
   | HoleC     Provenance Name
-  | MetaC     Provenance Meta
+  | MetaC     Provenance MetaID
   | LetC      Provenance CoDBExpr CoDBBinder CoDBExpr
   | LamC      Provenance CoDBBinder CoDBExpr
   | LiteralC  Provenance Literal
