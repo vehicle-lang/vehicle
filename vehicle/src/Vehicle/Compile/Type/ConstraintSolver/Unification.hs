@@ -15,7 +15,8 @@ import Data.Traversable (for)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.ConstraintSolver.Core
+import Vehicle.Compile.Type.ConstraintSolver.Core (blockOnReductionBlockingMetasOrThrowError,
+                                                   unify)
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
@@ -32,12 +33,11 @@ pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
 
 solveUnificationConstraint :: TCM m
-                           => ConstraintContext
-                           -> UnificationConstraint
+                           => WithContext UnificationConstraint
                            -> m ConstraintProgress
 -- Errors
-solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
-  let c = UC ctx pair
+solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
+  let c = WithContext (Unify e1 e2) ctx
   e1' <- whnf e1
   e2' <- whnf e2
 
@@ -64,16 +64,16 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
     -- We ASSUME that all terms here are in normal form, so there
     -- will never be an unreduced redex.
     (Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, [])
-      | visibilityMatches binder1 binder2 -> return $ Progress [unify c body1 body2]
-      | otherwise                         -> throwError $ FailedConstraints [c]
+      | visibilityMatches binder1 binder2 -> return $ Progress [unify ctx body1 body2]
+      | otherwise                         -> throwError $ FailedUnificationConstraints [c]
 
     (LVec _ es1, args1) :~: (LVec _ es2, args2)
       -- TODO more informative error message
       | length es1 /= length es2 || length args1 /= length args2 ->
-        throwError $ FailedConstraints [c]
+        throwError $ FailedUnificationConstraints [c]
       -- TODO need to try and unify `LVec` with `Cons`s.
       | otherwise -> do
-        let elemConstraints = zipWith (unify c) es1 es2
+        let elemConstraints = zipWith (unify ctx) es1 es2
         argConstraints <- solveArgs c (args1, args2)
         return $ Progress $ elemConstraints <> argConstraints
 
@@ -82,11 +82,11 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
           -- !!TODO!! Block until binders are solved
           -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
           -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
-          let binderConstraint = unify c (typeOf binder1) (typeOf binder2)
-          let bodyConstraint   = unify c body1 body2
+          let binderConstraint = unify ctx (typeOf binder1) (typeOf binder2)
+          let bodyConstraint   = unify ctx body1 body2
           return $ Progress [binderConstraint, bodyConstraint]
 
-      | otherwise -> throwError $ FailedConstraints [c]
+      | otherwise -> throwError $ FailedUnificationConstraints [c]
 
     (Builtin _ op1, args1) :~: (Builtin _ op2, args2) ->
       solveSimpleApplication c op1 op2 args1 args2
@@ -128,7 +128,7 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
         metaSolved i meta
         metaSolved j meta
 
-        return $ Progress [unify c meta1Type meta2Type]
+        return $ Progress [unify ctx meta1Type meta2Type]
 
     ----------------------
     -- Flex-rigid cases --
@@ -183,45 +183,45 @@ solveUnificationConstraint ctx pair@(Unify (e1, e2)) = do
     _t :~: (Meta{}, _) ->
       -- this is the mirror image of the previous case, so just swap the
       -- problem over.
-      solveUnificationConstraint ctx (Unify (e2, e1))
+      solveUnificationConstraint (WithContext (Unify e2 e1) ctx)
 
     -- Catch-all
-    _ -> blockOnReductionBlockingMetasOrThrowError [e1,e2] (FailedConstraints [c])
+    _ -> blockOnReductionBlockingMetasOrThrowError [e1,e2] (FailedUnificationConstraints [c])
 
   return progress
 
 solveEq :: (TCM m, Eq a)
-        => Constraint
+        => WithContext UnificationConstraint
         -> a
         -> a
         -> m ()
 solveEq c v1 v2
-  | v1 /= v2  = throwError $ FailedConstraints [c]
+  | v1 /= v2  = throwError $ FailedUnificationConstraints [c]
   | otherwise = logDebug MaxDetail "solved-trivially"
 
 solveArg :: TCM m
-         => Constraint
+         => WithContext UnificationConstraint
          -> (CheckedArg, CheckedArg)
-         -> m (Maybe Constraint)
+         -> m (Maybe (WithContext Constraint))
 solveArg c (arg1, arg2)
-  | not (visibilityMatches arg1 arg2) = throwError $ FailedConstraints [c]
+  | not (visibilityMatches arg1 arg2) = throwError $ FailedUnificationConstraints [c]
   | isInstance arg1                   = return Nothing
-  | otherwise                         = return $ Just $ unify c (argExpr arg1) (argExpr arg2)
+  | otherwise                         = return $ Just $ unify (contextOf c) (argExpr arg1) (argExpr arg2)
 
 solveArgs :: TCM m
-          => Constraint
+          => WithContext UnificationConstraint
           -> ([CheckedArg], [CheckedArg])
-          -> m [Constraint]
+          -> m [WithContext Constraint]
 solveArgs c (args1, args2)= catMaybes <$> traverse (solveArg c) (zip args1 args2)
 
 solveSimpleApplication :: (TCM m, Eq a)
-                       => Constraint
+                       => WithContext UnificationConstraint
                        -> a -> a
                        -> [CheckedArg] -> [CheckedArg]
                        -> m ConstraintProgress
 solveSimpleApplication constraint fun1 fun2 args1 args2 = do
   if fun1 /= fun2 || length args1 /= length args2 then
-    throwError $ FailedConstraints [constraint]
+    throwError $ FailedUnificationConstraints [constraint]
   else if null args1 then do
     logDebug MaxDetail "solved-trivially"
     return $ Progress mempty

@@ -24,23 +24,11 @@ generaliseOverUnsolvedTypeClassConstraints :: TCM m
                                            => CheckedDecl
                                            -> m CheckedDecl
 generaliseOverUnsolvedTypeClassConstraints decl = do
-  -- Tests if a constraint is prependable
-  let isPrependable c = do
-        if not (isTypeClassConstraint c)
-          then return False
-        else do
-          let metaFilter = if isAuxiliaryTypeClassConstraint c
-              then isAuxiliaryUniverse
-              else isTypeUniverse
-          -- Find any unsolved meta variables that are transitively linked
-          -- by constraints of the same type.
-          linkedMetas <- getMetasLinkedToMetasIn (typeOf decl) metaFilter
-          -- Only prepend the constraint if all variables in the constraint
-          -- are so linked.
-          return $ metasIn c `MetaSet.isSubsetOf` linkedMetas
+  unsolvedConstraints <- getUnsolvedConstraints
 
   (prependableConstraints, nonPrependableConstraints) <-
-    partitionM isPrependable =<< getUnsolvedConstraints
+    partitionMaybeM (isPrependable (typeOf decl)) unsolvedConstraints
+
   setConstraints nonPrependableConstraints
 
   if null prependableConstraints
@@ -49,21 +37,35 @@ generaliseOverUnsolvedTypeClassConstraints decl = do
       result <- foldM prependConstraint decl prependableConstraints
       return result
 
+  -- Tests if a constraint is prependable
+isPrependable :: TCM m
+              => CheckedType
+              -> WithContext Constraint
+              -> m (Maybe (WithContext TypeClassConstraint))
+isPrependable declType (WithContext constraint ctx) = case constraint of
+  UnificationConstraint{} -> return Nothing
+  TypeClassConstraint tc -> do
+    let metaFilter = if isAuxiliaryTypeClassConstraint tc
+        then isAuxiliaryUniverse
+        else isTypeUniverse
+    -- Find any unsolved meta variables that are transitively linked
+    -- by constraints of the same type.
+    linkedMetas <- getMetasLinkedToMetasIn declType metaFilter
+    -- Only prepend the constraint if all variables in the constraint
+    -- are so linked.
+    let constraintMetas = metasIn tc
+    return $ if constraintMetas `MetaSet.isSubsetOf` linkedMetas
+      then Just (WithContext tc ctx)
+      else Nothing
+
 prependConstraint :: TCM m
                   => CheckedDecl
-                  -> Constraint
+                  -> WithContext TypeClassConstraint
                   -> m CheckedDecl
-prependConstraint decl constraint = do
-  (typeClass, meta) <- case constraint of
-    TC _ (Has meta tc args) -> do
-      let p = originalProvenance $ constraintContext constraint
-      return (BuiltinTypeClass p tc args, meta)
-    UC{}                    -> compilerDeveloperError
-      "Unification constraints should have been filtered out earlier"
-
-  relevancy <- case typeClass of
-    BuiltinTypeClass _ tc _ -> return $ relevanceOf tc
-    _                       -> compilerDeveloperError "Malformed type-class when finding relevancy"
+prependConstraint decl (WithContext (Has meta tc args) ctx) = do
+  let p = originalProvenance ctx
+  let typeClass = BuiltinTypeClass p tc args
+  let relevancy = relevanceOf tc
 
   substTypeClass <- substMetas typeClass
   logCompilerPass MaxDetail ("generalisation over" <+> prettySimple substTypeClass) $
