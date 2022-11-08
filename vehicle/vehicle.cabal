@@ -153,6 +153,8 @@ library
     Vehicle.Compile.Type.MetaMap
     Vehicle.Compile.Type.MetaSet
     Vehicle.Compile.Type.Monad
+    Vehicle.Compile.Type.Monad.Class
+    Vehicle.Compile.Type.Monad.Instance
     Vehicle.Compile.Type.Resource
     Vehicle.Compile.Type.VariableContext
     Vehicle.Language.AST.Arg

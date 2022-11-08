@@ -17,6 +17,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Builtin
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
 import Vehicle.Language.DSL
 import Vehicle.Language.Print
 
@@ -53,7 +54,14 @@ showInferExit (e, t) = do
 -------------------------------------------------------------------------------
 -- Utility functions
 
-unify :: LocalTCM m => Provenance -> CheckedExpr -> CheckedExpr -> m ()
+-- | Type checking monad with additional bound context for the bidirectional
+-- type-checking pass.
+type MonadBidirectional m =
+  ( TCM m
+  , MonadReader TypingBoundCtx m
+  )
+
+unify :: MonadBidirectional m => Provenance -> CheckedExpr -> CheckedExpr -> m ()
 unify p e1 e2 = do
   ctx <- ask
   -- TODO calculate the most general unifier
@@ -62,7 +70,7 @@ unify p e1 e2 = do
 --------------------------------------------------------------------------------
 -- Checking
 
-checkExpr :: LocalTCM m
+checkExpr :: MonadBidirectional m
           => CheckedType   -- Type we're checking against
           -> UncheckedExpr -- Expression being type-checked
           -> m CheckedExpr -- Updated expression
@@ -119,7 +127,7 @@ checkExpr expectedType expr = do
   showCheckExit res
   return res
 
-viaInfer :: LocalTCM m => CheckedType -> UncheckedExpr -> m CheckedExpr
+viaInfer :: MonadBidirectional m => CheckedType -> UncheckedExpr -> m CheckedExpr
 viaInfer expectedType expr = do
   let p = provenanceOf expr
   -- Switch to inference mode
@@ -135,7 +143,7 @@ viaInfer expectedType expr = do
 
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
-inferExpr :: LocalTCM m
+inferExpr :: MonadBidirectional m
           => UncheckedExpr
           -> m (CheckedExpr, CheckedType)
 inferExpr e = do
@@ -295,7 +303,7 @@ inferLiteral p l = (Literal p l, typeOfLiteral p l)
 -- matching pi binder and inserting any required implicit/instance arguments.
 -- Returns the type of the function when applied to the full list of arguments
 -- (including inserted arguments) and that list of arguments.
-inferArgs :: LocalTCM m
+inferArgs :: MonadBidirectional m
           => Provenance     -- Provenance of the function
           -> CheckedType    -- Type of the function
           -> [UncheckedArg] -- User-provided arguments of the function
@@ -348,7 +356,7 @@ inferArgs p nonPiType args
 -- | Takes a function and its arguments, inserts any needed implicits
 -- or instance arguments and then returns the function applied to the full
 -- list of arguments as well as the result type.
-inferApp :: LocalTCM m
+inferApp :: MonadBidirectional m
          => Provenance
          -> CheckedExpr
          -> CheckedType
@@ -358,18 +366,25 @@ inferApp ann fun funType args = do
   (appliedFunType, checkedArgs) <- inferArgs (provenanceOf fun) funType args
   return (normAppList ann fun checkedArgs, appliedFunType)
 
-insertNonExplicitArgs :: LocalTCM m
+insertNonExplicitArgs :: MonadBidirectional m
                       => Provenance
                       -> CheckedExpr
                       -> CheckedType
                       -> m (CheckedExpr, CheckedType)
 insertNonExplicitArgs ann checkedExpr actualType = inferApp ann checkedExpr actualType []
 
-missingExplicitArgumentError :: LocalTCM m => CheckedBinder -> UncheckedArg -> m a
+missingExplicitArgumentError :: MonadBidirectional m => CheckedBinder -> UncheckedArg -> m a
 missingExplicitArgumentError expectedBinder actualArg = do
   -- Then we're expecting an explicit arg but have a non-explicit arg so error
   ctx <- getBoundCtx
   throwError $ MissingExplicitArg (boundContextOf ctx) actualArg (typeOf expectedBinder)
+
+createMetaAndAddTypeClassConstraint :: MonadBidirectional m => Provenance -> CheckedType -> m CheckedExpr
+createMetaAndAddTypeClassConstraint p tc = do
+  m <- freshTypeClassPlacementMeta p tc
+  ctx <- getBoundCtx
+  addTypeClassConstraint p ctx m tc
+  return $ Meta p m
 
 --------------------------------------------------------------------------------
 -- Typing of literals and builtins

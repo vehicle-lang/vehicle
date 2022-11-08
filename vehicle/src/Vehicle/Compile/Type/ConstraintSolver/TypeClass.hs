@@ -900,7 +900,7 @@ createTC :: TCM m
          => Constraint
          -> TypeClass
          -> NonEmpty CheckedType
-         -> m (Meta, Constraint)
+         -> m (MetaID, Constraint)
 createTC c tc argExprs = do
   let p = provenanceOf c
   let ctx = copyContext (constraintContext c)

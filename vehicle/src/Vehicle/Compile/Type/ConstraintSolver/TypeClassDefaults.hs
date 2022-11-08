@@ -42,7 +42,7 @@ sameFamily PolarityFamily{}  PolarityFamily{}  = True
 sameFamily LinearityFamily{} LinearityFamily{} = True
 sameFamily _                 _                 = False
 
-data Candidate = Candidate Meta TypeClass CheckedExpr Ctx
+data Candidate = Candidate MetaID TypeClass CheckedExpr Ctx
 
 instance Pretty Candidate where
   pretty (Candidate m tc _ _) = pretty m <+> "~" <+> pretty tc

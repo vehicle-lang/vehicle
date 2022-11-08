@@ -15,7 +15,7 @@ data NormExpr
   | VLam      Provenance NormBinder Env CheckedExpr
   | VPi       Provenance NormBinder NormExpr
   | VLVec     Provenance [NormExpr]
-  | VMeta     Provenance Meta Spine
+  | VMeta     Provenance MetaID Spine
   | VVar      Provenance DBVar Spine
   | VBuiltin  Provenance Builtin Spine
   deriving (Show)
