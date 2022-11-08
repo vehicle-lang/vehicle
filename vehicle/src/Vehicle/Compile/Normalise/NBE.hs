@@ -11,10 +11,10 @@ import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty (..), toList)
 import Data.Map qualified as Map (lookup)
 
+import Control.Monad.Except (runExceptT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NormExpr
 import Vehicle.Compile.Prelude
-import Control.Monad.Except (runExceptT)
 
 whnf :: MonadCompile m => DeclCtx GluedExpr -> CheckedExpr -> m NormExpr
 whnf declCtx e = runReaderT (eval mempty e) (fmap normalised declCtx)

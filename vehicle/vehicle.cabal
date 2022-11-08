@@ -165,13 +165,13 @@ library
     Vehicle.Language.AST.Builtin.Polarity
     Vehicle.Language.AST.Builtin.TypeClass
     Vehicle.Language.AST.CoDeBruijn
-    Vehicle.Language.AST.Decl
-    Vehicle.Language.AST.Prog
-    Vehicle.Language.AST.Expr
     Vehicle.Language.AST.DeBruijn
+    Vehicle.Language.AST.Decl
+    Vehicle.Language.AST.Expr
     Vehicle.Language.AST.Meta
     Vehicle.Language.AST.Name
     Vehicle.Language.AST.Position
+    Vehicle.Language.AST.Prog
     Vehicle.Language.AST.Provenance
     Vehicle.Language.AST.Relevance
     Vehicle.Language.AST.Visibility
@@ -296,8 +296,8 @@ library vehicle-unit-tests-common
     Vehicle.Test.Unit.Common
     Vehicle.Test.Unit.Compile.AlphaEquivalence
     Vehicle.Test.Unit.Compile.CoDeBruijn
-    Vehicle.Test.Unit.Compile.DeBruijn
     Vehicle.Test.Unit.Compile.CommandLine
+    Vehicle.Test.Unit.Compile.DeBruijn
     Vehicle.Test.Unit.Compile.IfElimination
     Vehicle.Test.Unit.Compile.LetInsertion
     Vehicle.Test.Unit.Compile.PositionTree
