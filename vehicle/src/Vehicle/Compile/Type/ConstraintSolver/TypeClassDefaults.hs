@@ -18,8 +18,6 @@ import Vehicle.Language.Print (prettySimple)
 -- This is some pretty ugly code. There must be a way of making this process
 -- more elegant....
 
-type Ctx = ConstraintContext
-
 data NumericType
   = NatT
   | IntT
@@ -42,7 +40,7 @@ sameFamily PolarityFamily{}  PolarityFamily{}  = True
 sameFamily LinearityFamily{} LinearityFamily{} = True
 sameFamily _                 _                 = False
 
-data Candidate = Candidate MetaID TypeClass CheckedExpr Ctx
+data Candidate = Candidate MetaID TypeClass CheckedExpr ConstraintContext
 
 instance Pretty Candidate where
   pretty (Candidate m tc _ _) = pretty m <+> "~" <+> pretty tc
@@ -59,8 +57,8 @@ instance Pretty CandidateStatus where
     Invalid -> "incompatible"
 
 generateConstraintUsingDefaults :: TCM m
-                                => [Constraint]
-                                -> m (Maybe Constraint)
+                                => [WithContext TypeClassConstraint]
+                                -> m (Maybe (WithContext Constraint))
 generateConstraintUsingDefaults constraints = do
   strongestConstraint <- findStrongestConstraint constraints
   case strongestConstraint of
@@ -74,25 +72,24 @@ generateConstraintUsingDefaults constraints = do
       logDebug MaxDetail $
         "using default" <+> pretty m <+> "=" <+> prettySimple solution <+>
         "         " <> parens ("from" <+> pretty tc)
-      let newConstraint = UC (copyContext ctx) (Unify (metaExpr, solution))
+      let unificationConstraint = UnificationConstraint (Unify metaExpr solution)
+      let newConstraint = WithContext unificationConstraint (copyContext ctx)
       return $ Just newConstraint
 
 findStrongestConstraint :: MonadCompile m
-                        => [Constraint]
+                        => [WithContext TypeClassConstraint]
                         -> m CandidateStatus
 findStrongestConstraint [] = return None
-findStrongestConstraint (constraint : xs) = do
+findStrongestConstraint (WithContext constraint ctx : xs) = do
   recResult <- findStrongestConstraint xs
-  case constraint of
-    (TC ctx expr) ->
-      logCompilerSection MaxDetail ("considering" <+> squotes (prettySimple constraint)) $ do
-        candidates <- getCandidatesFromConstraint ctx expr
 
-        newStrongest <- foldM strongest recResult candidates
-        logDebug MaxDetail $ indent 2 $ "status:" <+> pretty newStrongest
-        return newStrongest
+  logCompilerSection MaxDetail ("considering" <+> squotes (prettySimple constraint)) $ do
+    candidates <- getCandidatesFromConstraint ctx constraint
 
-    _ -> return recResult
+    newStrongest <- foldM strongest recResult candidates
+    logDebug MaxDetail $ indent 2 $ "status:" <+> pretty newStrongest
+    return newStrongest
+
 
 strongest :: MonadCompile m => CandidateStatus -> Candidate -> m CandidateStatus
 strongest Invalid  _                       = return Invalid
@@ -181,7 +178,7 @@ createDefaultRatType p = do
   lin <- freshLinearityMeta p
   return $ AnnRatType p lin
 
-getCandidatesFromConstraint :: MonadCompile m => Ctx -> TypeClassConstraint -> m [Candidate]
+getCandidatesFromConstraint :: MonadCompile m => ConstraintContext -> TypeClassConstraint -> m [Candidate]
 getCandidatesFromConstraint ctx (Has _ tc args) = do
   let getCandidate = getCandidatesFromArgs ctx
   return $ case (tc, args) of
@@ -201,7 +198,7 @@ getCandidatesFromConstraint ctx (Has _ tc args) = do
       _                              -> []
     _                                     -> []
 
-getCandidatesFromArgs :: Ctx -> [CheckedArg] -> TypeClass -> [Candidate]
+getCandidatesFromArgs :: ConstraintContext -> [CheckedArg] -> TypeClass -> [Candidate]
 getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t -> do
   let e = argExpr t
   case exprHead (argExpr t) of

@@ -105,14 +105,18 @@ instance MetaSubstitutable CheckedProg where
   substM (Main ds) = Main <$> traverse substM ds
 
 instance MetaSubstitutable UnificationConstraint where
-  substM (Unify es) = Unify <$> substM es
+  substM (Unify e1 e2) = Unify <$> substM e1 <*> substM e2
 
 instance MetaSubstitutable TypeClassConstraint where
   substM (Has m tc es) = Has m tc <$> substM es
 
 instance MetaSubstitutable Constraint where
-  substM (UC ctx c) = UC ctx <$> substM c
-  substM (TC ctx c) = TC ctx <$> substM c
+  substM = \case
+    UnificationConstraint c -> UnificationConstraint <$> substM c
+    TypeClassConstraint   c -> TypeClassConstraint   <$> substM c
+
+instance MetaSubstitutable object => MetaSubstitutable (Contextualised object context) where
+  substM (WithContext object context) = WithContext <$> substM object <*> pure context
 
 instance MetaSubstitutable a => MetaSubstitutable (MetaMap a) where
   substM (MetaMap t) = MetaMap <$> traverse substM t
@@ -135,7 +139,7 @@ data TypingMetaCtx = TypingMetaCtx
   -- ^ The origin and type of each meta variable.
   -- NB: these are stored in *reverse* order from which they were created.
   , currentSubstitution :: MetaSubstitution
-  , constraints         :: [Constraint]
+  , constraints         :: [WithContext Constraint]
   , solvedMetas         :: MetaSet
   }
 
@@ -161,71 +165,66 @@ makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse bound
 -- Objects which have meta variables in.
 
 class HasMetas a where
-  traverseMetas :: Monad m
-                => (Provenance -> MetaID -> [CheckedArg] -> m CheckedExpr)
-                -> a
-                -> m a
+  findMetas :: MonadWriter (MetaMap [CheckedArg]) m => a -> m ()
 
   metasInWithArgs :: a -> MetaMap [CheckedArg]
-  metasInWithArgs e = execWriter (traverseMetas f e)
-    where
-      f p m args = do
-        tell (MetaMap.singleton m args)
-        return $ normAppList p (Meta p m) args
+  metasInWithArgs e = execWriter (findMetas e)
 
   metasIn :: a -> MetaSet
   metasIn = MetaMap.keys . metasInWithArgs
 
 instance HasMetas CheckedExpr where
-  traverseMetas f expr = case expr of
-    Meta p m                 -> f p m []
-    App p (Meta _ m) args    -> do
-      let (metaCtxArgs, otherArgs) = span (isBoundVar . argExpr) (NonEmpty.toList args)
-      otherArgs' <- traverseMetas f otherArgs
-      result <- f p m metaCtxArgs
-      return $ normAppList p result otherArgs'
+  findMetas expr = case expr of
+    Meta _ m -> do
+      tell (MetaMap.singleton m [])
 
-    Universe{}               -> return expr
-    Hole{}                   -> return expr
-    Literal{}                -> return expr
-    Builtin{}                -> return expr
-    Var {}                   -> return expr
-    Ann  p e t               -> Ann p <$> traverseMetas f e <*> traverseMetas f t
-    Pi   p binder result     -> Pi p <$> traverseMetas f binder <*> traverseMetas f result
-    Let  p bound binder body -> Let p <$> traverseMetas f bound <*> traverseMetas f binder <*> traverseMetas f body
-    Lam  p binder body       -> Lam p <$> traverseMetas f binder <*> traverseMetas f body
-    LVec p xs                -> LVec p <$> traverseMetas f xs
-    App  p fun args          -> App p <$> traverseMetas f fun <*> traverseMetas f args
+    App _ (Meta _ m) args    -> do
+      let (metaCtxArgs, otherArgs) = span (isBoundVar . argExpr) (NonEmpty.toList args)
+      tell (MetaMap.singleton m metaCtxArgs)
+      findMetas otherArgs
+
+    Universe{}               -> return ()
+    Hole{}                   -> return ()
+    Literal{}                -> return ()
+    Builtin{}                -> return ()
+    Var {}                   -> return ()
+
+    LVec _ xs                -> findMetas xs
+    Ann  _ e t               -> do findMetas e; findMetas t
+    Pi   _ binder result     -> do findMetas binder; findMetas result
+    Let  _ bound binder body -> do findMetas bound; findMetas binder; findMetas body
+    Lam  _ binder body       -> do findMetas binder; findMetas body
+    App  _ fun args          -> do findMetas fun; findMetas args
 
 instance HasMetas CheckedArg where
-  traverseMetas f = traverse (traverseMetas f)
+  findMetas = mapM_ findMetas
 
 instance HasMetas CheckedBinder where
-  traverseMetas f = traverse (traverseMetas f)
+  findMetas = mapM_ findMetas
 
 instance HasMetas a => HasMetas [a] where
-  traverseMetas f = traverse (traverseMetas f)
+  findMetas = mapM_ findMetas
 
 instance HasMetas a => HasMetas (NonEmpty a) where
-  traverseMetas f = traverse (traverseMetas f)
+  findMetas = mapM_ findMetas
+
+instance HasMetas TypeClassConstraint where
+  findMetas (Has _ _ e) = findMetas e
+
+instance HasMetas UnificationConstraint where
+  findMetas (Unify e1 e2) = do findMetas e1; findMetas e2
 
 instance HasMetas Constraint where
-  traverseMetas f = \case
-    UC ctx (Unify (e1, e2)) -> do
-      e1' <- traverseMetas f e1
-      e2' <- traverseMetas f e2
-      return $ UC ctx (Unify (e1', e2'))
-
-    TC ctx (Has m tc e) -> do
-      e' <- traverseMetas f e
-      return $ TC ctx $ Has m tc e'
+  findMetas = \case
+    UnificationConstraint c -> findMetas c
+    TypeClassConstraint   c -> findMetas c
 
 --------------------------------------------------------------------------------
 -- Progress in solving meta-variable constraints
 
 data ConstraintProgress
   = Stuck MetaSet
-  | Progress [Constraint]
+  | Progress [WithContext Constraint]
   deriving (Show)
 
 instance Pretty ConstraintProgress where

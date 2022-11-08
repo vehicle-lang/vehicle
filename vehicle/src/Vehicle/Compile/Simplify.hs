@@ -129,19 +129,18 @@ instance Simplify Int where
   simplifyReader = return
 
 instance Simplify UnificationConstraint where
-  simplifyReader (Unify (e1, e2)) = do
+  simplifyReader (Unify e1 e2) = do
     e1' <- simplifyReader e1
     e2' <- simplifyReader e2
-    return $ Unify (e1', e2')
+    return $ Unify e1' e2'
 
 instance Simplify TypeClassConstraint where
   simplifyReader (Has m tc es) = do
     es' <- simplifyReaderArgs es
     return $ Has m tc (NonEmpty.fromList es')
 
-instance Simplify Constraint where
-  simplifyReader (TC ctx c) = TC ctx <$> simplifyReader c
-  simplifyReader (UC ctx c) = UC ctx <$> simplifyReader c
+instance Simplify a => Simplify (Contextualised a b) where
+  simplifyReader (WithContext a ctx) = WithContext <$> simplifyReader a <*> pure ctx
 
 instance Simplify a => Simplify (MetaMap a) where
   simplifyReader (MetaMap m) = MetaMap <$> traverse simplifyReader m

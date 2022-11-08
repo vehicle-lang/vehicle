@@ -57,15 +57,15 @@ data CompileError
     CheckedType             -- The possible inferred types.
     CheckedType             -- The expected type.
   | UnsolvedConstraints
-    (NonEmpty Constraint)
+    (NonEmpty (WithContext Constraint))
   | UnsolvedMetas
     (NonEmpty (MetaID, Provenance))
   | MissingExplicitArg
     [DBBinding]             -- The context at the time of the failure
     UncheckedArg            -- The non-explicit argument
     CheckedType             -- Expected type of the argument
-  | FailedConstraints
-    (NonEmpty Constraint)
+  | FailedUnificationConstraints
+    (NonEmpty (WithContext UnificationConstraint))
   | FailedEqConstraint               ConstraintContext CheckedType CheckedType EqualityOp
   | FailedOrdConstraint              ConstraintContext CheckedType CheckedType OrderOp
   | FailedBuiltinConstraintArgument  ConstraintContext Builtin CheckedType [Builtin] Int Int
@@ -136,6 +136,11 @@ data CompileError
 --------------------------------------------------------------------------------
 -- Some useful developer errors
 
+unexpectedExpr :: Doc a -> Doc a -> Doc a
+unexpectedExpr pass name =
+  "encountered unexpected expression" <+> squotes name <+>
+  "during" <+> pass <> "."
+
 -- | Should be used in preference to `developerError` whenever in the error
 -- monad, as unlike the latter this method does not prevent logging.
 compilerDeveloperError :: MonadError CompileError m => Doc () -> m b
@@ -179,8 +184,3 @@ internalScopingError :: MonadError CompileError m => Doc () -> Identifier -> m b
 internalScopingError pass ident = compilerDeveloperError $
   "Internal scoping error during" <+> pass <> ":" <+>
   "declaration" <+> quotePretty ident <+> "not found in scope..."
-
-unexpectedExpr :: Doc a -> Doc a -> Doc a
-unexpectedExpr pass name =
-  "encountered unexpected expression" <+> squotes name <+>
-  "during" <+> pass <> "."

@@ -114,3 +114,10 @@ logCompilerPassOutput result = do
 
 type UncheckedPropertyContext = Set Identifier
 type PropertyContext = Map Identifier PropertyInfo
+
+data Contextualised object context = WithContext
+  { objectIn  :: object
+  , contextOf :: context
+  } deriving (Show)
+
+type family WithContext a

@@ -15,7 +15,7 @@ import Control.Monad.Except (MonadError (..))
 
 solveLinearityConstraint :: TCM m
                          => LinearityTypeClass
-                         -> Constraint
+                         -> WithContext TypeClassConstraint
                          -> [CheckedType]
                          -> m ConstraintProgress
 solveLinearityConstraint = \case
@@ -42,7 +42,7 @@ mulLinearity p l1 l2 = case (l1, l2) of
 -- Constraint solving
 
 solveMaxLinearity :: TCM m
-                  => Constraint
+                  => WithContext TypeClassConstraint
                   -> [CheckedExpr]
                   -> m ConstraintProgress
 solveMaxLinearity c [lin1, lin2, res] =
@@ -52,7 +52,7 @@ solveMaxLinearity c [lin1, lin2, res] =
 
     (LinearityExpr p l1, LinearityExpr _ l2) -> do
       let linRes = LinearityExpr p $ maxLinearity l1 l2
-      return $ Progress [unify c res linRes]
+      return $ Progress [unify (contextOf c) res linRes]
 
     _ -> malformedConstraintError c
 
@@ -60,7 +60,7 @@ solveMaxLinearity c _ = malformedConstraintError c
 
 
 solveMulLinearity :: TCM m
-                  => Constraint
+                  => WithContext TypeClassConstraint
                   -> [CheckedExpr]
                   -> m ConstraintProgress
 solveMulLinearity c [lin1, lin2, res] =
@@ -69,9 +69,10 @@ solveMulLinearity c [lin1, lin2, res] =
     (_, exprHead -> Meta _ m2) -> blockOn [m2]
 
     (LinearityExpr _ l1, LinearityExpr _ l2) -> do
-      let p = originalProvenance (constraintContext c)
+      let ctx = contextOf c
+      let p = originalProvenance ctx
       let linRes = LinearityExpr p $ mulLinearity p l1 l2
-      return $ Progress [unify c res linRes]
+      return $ Progress [unify ctx res linRes]
 
     _ -> malformedConstraintError c
 
@@ -79,22 +80,23 @@ solveMulLinearity c _ = malformedConstraintError c
 
 solveFunctionLinearity :: TCM m
                        => FunctionPosition
-                       -> Constraint
+                       -> WithContext TypeClassConstraint
                        -> [CheckedExpr]
                        -> m ConstraintProgress
 solveFunctionLinearity functionPosition c [arg, res] = case arg of
   (exprHead -> Meta _ m1) -> blockOn [m1]
   LinearityExpr _ lin     -> do
-    let p = provenanceOf c
+    let ctx = contextOf c
+    let p = provenanceOf ctx
     let addFuncProv pp = LinFunctionProvenance p pp functionPosition
     let resLin = LinearityExpr p $ mapLinearityProvenance addFuncProv lin
-    return $ Progress [unify c res resLin]
+    return $ Progress [unify ctx res resLin]
   _                       -> malformedConstraintError c
 
 solveFunctionLinearity _ c _ = malformedConstraintError c
 
 solveIfCondLinearity :: TCM m
-                     => Constraint
+                     => WithContext TypeClassConstraint
                      -> [CheckedExpr]
                      -> m ConstraintProgress
 solveIfCondLinearity c [arg] = case arg of
@@ -102,7 +104,7 @@ solveIfCondLinearity c [arg] = case arg of
   LinearityExpr _ lin     -> case lin of
     Constant    -> return $ Progress []
     Linear{}    -> return $ Progress []
-    NonLinear{} -> throwError $ NonLinearIfCondition (constraintContext c)
+    NonLinear{} -> throwError $ NonLinearIfCondition (contextOf c)
 
   _ -> malformedConstraintError c
 

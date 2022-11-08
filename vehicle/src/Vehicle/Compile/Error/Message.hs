@@ -224,19 +224,24 @@ instance MeaningfulError CompileError where
       , fix        = Nothing
       }
 
-    FailedConstraints cs -> UError $ failedConstraintError nameCtx constraint
+    FailedUnificationConstraints cs -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = "Type error:" <+>
+                        prettyFriendlyDB namedCtx e1 <+> "!=" <+> prettyFriendlyDB namedCtx e2
+      , fix        = Just "check your types"
+      }
       where
-        constraint = NonEmpty.head cs
-        nameCtx = boundContextOf constraint
+        WithContext (Unify e1 e2) ctx = NonEmpty.head cs
+        namedCtx = boundContextOf ctx
 
     UnsolvedConstraints cs -> UError $ UserError
-      { provenance = provenanceOf constraint
+      { provenance = provenanceOf ctx
       , problem    = unsolvedConstraintError constraint nameCtx
       , fix        = Just "try adding more type annotations"
       }
       where
-        constraint = NonEmpty.head cs
-        nameCtx    = boundContextOf constraint
+        WithContext constraint ctx = NonEmpty.head cs
+        nameCtx    = boundContextOf ctx
 
     UnsolvedMetas ms -> UError $ UserError
       { provenance = p
@@ -800,8 +805,8 @@ implementationLimitation issue =
 unsolvedConstraintError :: Constraint -> [DBBinding] -> Doc a
 unsolvedConstraintError constraint ctx ="Typing error: not enough information to solve constraint" <+>
   case constraint of
-    UC _ (Unify _)       ->  prettyFriendlyDB ctx constraint
-    TC _ (Has _ tc args) ->  prettyFriendlyDB ctx (BuiltinTypeClass mempty tc args)
+    UnificationConstraint{}             ->  prettyFriendlyDB ctx constraint
+    TypeClassConstraint (Has _ tc args) ->  prettyFriendlyDB ctx (BuiltinTypeClass mempty tc args)
 
 prettyResource :: ResourceType -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
@@ -901,18 +906,3 @@ prettyOrdinal object argNo argTotal
     8 -> "eighth"
     9 -> "ninth"
     _ -> developerError "Cannot convert ordinal"
-
---------------------------------------------------------------------------------
--- Constraint error messages
-
-failedConstraintError :: [DBBinding]
-                      -> Constraint
-                      -> UserError
-failedConstraintError ctx c@(UC _ (Unify (t1, t2))) = UserError
-  { provenance = provenanceOf c
-  , problem    = "Type error:" <+>
-                    prettyFriendlyDB ctx t1 <+> "!=" <+> prettyFriendlyDB ctx t2
-  , fix        = Just "check your types"
-  }
-failedConstraintError _ TC{} =
-  developerError "Type-class constraints should not be thrown here"

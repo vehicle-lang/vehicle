@@ -43,18 +43,21 @@ import Control.Monad.Writer (WriterT (..), mapWriterT)
 import Data.List (partition)
 import Data.Map qualified as Map
 
+import Control.Monad (foldM)
+import Data.Maybe (mapMaybe)
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
+import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Meta (HasMetas (..), MetaInfo (..),
+                                  MetaSubstitutable (..), MetaSubstitution,
+                                  TypingMetaCtx (..), emptyMetaCtx)
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap
 import Vehicle.Compile.Type.MetaSet (MetaSet)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
-import Vehicle.Compile.Type.VariableContext (TypingDeclCtx, TypingBoundCtx, toNormalisationDeclContext)
-import Vehicle.Compile.Type.Meta (TypingMetaCtx(..), MetaSubstitution, MetaSubstitutable (..), MetaInfo (..), HasMetas (..), emptyMetaCtx)
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
-import Vehicle.Compile.Normalise (NormalisationOptions(..), normalise)
+import Vehicle.Compile.Type.VariableContext (TypingBoundCtx, TypingDeclCtx,
+                                             toNormalisationDeclContext)
 import Vehicle.Language.Print (prettyVerbose)
-import Control.Monad (foldM)
-import Data.Maybe (mapMaybe)
 
 --------------------------------------------------------------------------------
 -- The type-checking monad class
@@ -104,7 +107,7 @@ instance MonadTypeChecker m => MonadTypeChecker (LoggerT m) where
 
 -}
 
-getUnsolvedConstraints :: MonadTypeChecker m => m [Constraint]
+getUnsolvedConstraints :: MonadTypeChecker m => m [WithContext Constraint]
 getUnsolvedConstraints = getsMetaCtx constraints
 
 getNumberOfMetasCreated :: MonadTypeChecker m => m Int
@@ -123,23 +126,23 @@ getUnsolvedMetas = do
   let metasCreated = MetaSet.fromList $ fmap MetaID [0..numberOfMetasCreated-1]
   return $ MetaSet.difference metasCreated metasSolved
 
-setConstraints :: MonadTypeChecker m => [Constraint] -> m ()
+setConstraints :: MonadTypeChecker m => [WithContext Constraint] -> m ()
 setConstraints newConstraints = modifyMetaCtx $ \TypingMetaCtx{..} ->
     TypingMetaCtx { constraints = newConstraints, ..}
 
 
 -- | Returns any constraints that are activated (i.e. worth retrying) based
 -- on the set of metas that were solved last pass.
-popActivatedConstraints :: MonadTypeChecker m => MetaSet -> m [Constraint]
+popActivatedConstraints :: MonadTypeChecker m => MetaSet -> m [WithContext Constraint]
 popActivatedConstraints metasSolved = do
   allConstraints <- getUnsolvedConstraints
   let (blockedConstraints, unblockedConstraints) = partition (isBlocked metasSolved) allConstraints
   setConstraints blockedConstraints
   return unblockedConstraints
   where
-    isBlocked :: MetaSet -> Constraint -> Bool
+    isBlocked :: MetaSet -> WithContext Constraint -> Bool
     isBlocked solvedMetas constraint =
-      let blockingMetas = blockedBy $ constraintContext constraint in
+      let blockingMetas = blockedBy $ contextOf constraint in
       -- A constraint is blocked if it is blocking on at least one meta
       -- and none of the metas it is blocking on have been solved in the last pass.
       not (MetaSet.null blockingMetas) && MetaSet.disjoint solvedMetas blockingMetas
@@ -272,7 +275,7 @@ getMetasLinkedToMetasIn :: forall m . MonadTypeChecker m
                         -> (CheckedType -> Bool)
                         -> m MetaSet
 getMetasLinkedToMetasIn t typeFilter = do
-  constraints <- getUnsolvedConstraints
+  constraints <- fmap objectIn <$> getUnsolvedConstraints
   directMetasInType <- filterMetasByTypes typeFilter (metasIn t)
   loopOverConstraints constraints directMetasInType
   where
@@ -283,7 +286,9 @@ getMetasLinkedToMetasIn t typeFilter = do
         then loopOverConstraints unrelatedConstraints newMetas
         else return metas
 
-    processConstraint :: ([Constraint], MetaSet) -> Constraint -> m ([Constraint], MetaSet)
+    processConstraint :: ([Constraint], MetaSet)
+                      -> Constraint
+                      -> m ([Constraint], MetaSet)
     processConstraint (nonRelatedConstraints, typeMetas) constraint = do
       constraintMetas <- filterMetasByTypes typeFilter (metasIn constraint)
       return $ if MetaSet.disjoint constraintMetas typeMetas
@@ -360,7 +365,7 @@ getDeclType p ident = do
 --------------------------------------------------------------------------------
 -- Constraints
 
-getTypeClassConstraints :: MonadTypeChecker m => m [(TypeClassConstraint, ConstraintContext)]
+getTypeClassConstraints :: MonadTypeChecker m => m [WithContext TypeClassConstraint]
 getTypeClassConstraints = mapMaybe getTypeClassConstraint <$> getUnsolvedConstraints
 
 addUnificationConstraint :: MonadTypeChecker m
@@ -371,9 +376,9 @@ addUnificationConstraint :: MonadTypeChecker m
                          -> CheckedExpr
                          -> m ()
 addUnificationConstraint group p ctx e1 e2 = do
+  let constraint = UnificationConstraint $ Unify e1 e2
   let context    = ConstraintContext p p mempty ctx group
-  let constraint = UC context $ Unify (e1, e2)
-  addConstraints [constraint]
+  addConstraints [WithContext constraint context]
 
 addTypeClassConstraint :: MonadTypeChecker m
                        => Provenance
@@ -391,10 +396,10 @@ addTypeClassConstraint creationProvenance ctx meta expr = do
 
   let group      = typeClassGroup tc
   let context    = ConstraintContext originProvenance creationProvenance mempty ctx group
-  let constraint = TC context (Has meta tc args)
-  addConstraints [constraint]
+  let constraint = TypeClassConstraint (Has meta tc args)
+  addConstraints [WithContext constraint context]
 
-addConstraints :: MonadTypeChecker m => [Constraint] -> m ()
+addConstraints :: MonadTypeChecker m => [WithContext Constraint] -> m ()
 addConstraints []             = return ()
 addConstraints newConstraints = do
   logDebug MaxDetail ("add-constraints " <> align (prettyVerbose newConstraints))
