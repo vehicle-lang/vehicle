@@ -1,33 +1,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Compile.Type.Monad.Instance
-  ( runTypeCheckerT
+  ( module Vehicle.Compile.Type.Monad.Class
+  , runTypeCheckerT
   , toNormalisationDeclContext
-  , substMetas
-  , freshExprMeta
-  , freshPolarityMeta
-  , freshLinearityMeta
-  , freshUniverseLevelMeta
-  , freshTypeClassPlacementMeta
-  , getMetaIndex
-  , metaSolved
-  , filterMetasByTypes
-  , getUnsolvedAuxiliaryMetas
-  , getMetasLinkedToMetasIn
-  , clearSolvedMetas
-  , clearMetaSubstitution
-  , substMetasThroughCtx
-  , modifyMetasInfo
-  , getMetaContext
-  , getMetaProvenance
-  , prettyMetas
-  , prettyMeta
-  , clearMetaCtx
-  , getDeclType
-  , getTypeClassConstraints
-  , addUnificationConstraint
-  , addTypeClassConstraint
-  , whnf
   ) where
 
 import Control.Monad.Except (MonadError (..))

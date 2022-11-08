@@ -186,9 +186,10 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (t (CoDBBinding DBBinding) var)
     = 'SupplyNamesClosed (StrategyFor tags (t (NamedBinding, Maybe PositionTree) var))
 
-  -- Simplification
-  StrategyFor ('Simple tags) (SimplifyOptions, a) = 'SimplifyWithOptions (StrategyFor tags a)
-  StrategyFor ('Simple tags) a                    = 'SimplifyDefault (StrategyFor tags a)
+  -- Constraints
+  StrategyFor tags Constraint            = StrategyFor tags CheckedExpr
+  StrategyFor tags TypeClassConstraint   = StrategyFor tags CheckedExpr
+  StrategyFor tags UnificationConstraint = StrategyFor tags CheckedExpr
 
   -- Things that we just pretty print.
   StrategyFor tags DBBinding    = 'Pretty
@@ -196,16 +197,20 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags Int          = 'Pretty
   StrategyFor tags Text         = 'Pretty
 
+  -- Objects for which we want to block the strategy computation on.
+  StrategyFor tags (MetaMap a)          = 'Opaque (StrategyFor tags a)
+  StrategyFor tags PositionsInExpr      = 'Opaque (StrategyFor tags CheckedExpr)
+  StrategyFor tags (Contextualised a b) = StrategyFor tags a
+
+  -- Simplification
+  StrategyFor ('Simple tags) (SimplifyOptions, a) = 'SimplifyWithOptions (StrategyFor tags a)
+  StrategyFor ('Simple tags) a                    = 'SimplifyDefault (StrategyFor tags a)
+
   -- Things were we just print the structure and recursively print through.
   StrategyFor tags (IntMap a) = 'MapIntMap (StrategyFor tags a)
   StrategyFor tags [a]        = 'MapList   (StrategyFor tags a)
   StrategyFor tags (a, b)     = 'MapTuple2 (StrategyFor tags a) (StrategyFor tags b)
   StrategyFor tags (a, b, c)  = 'MapTuple3 (StrategyFor tags a) (StrategyFor tags b) (StrategyFor tags c)
-
-  -- Objects for which we want to block the strategy computation on.
-  StrategyFor tags Constraint      = 'Opaque (StrategyFor tags CheckedExpr)
-  StrategyFor tags (MetaMap a)     = 'Opaque (StrategyFor tags a)
-  StrategyFor tags PositionsInExpr = 'Opaque (StrategyFor tags CheckedExpr)
 
   -- Otherwise if we cannot compute an error then throw an informative error at type-checking time.
   StrategyFor tags a
@@ -454,13 +459,26 @@ instance Pretty a => PrettyUsing 'Pretty a where
 --------------------------------------------------------------------------------
 -- Instances for opaque types
 
-instance (PrettyUsing rest CheckedExpr) => PrettyUsing ('Opaque rest) Constraint where
+instance (PrettyUsing rest CheckedExpr) => PrettyUsing rest UnificationConstraint where
+  prettyUsing (Unify e1 e2) = prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2
+
+instance (PrettyUsing rest CheckedExpr) => PrettyUsing rest TypeClassConstraint where
+  prettyUsing (Has m tc e) = pretty m <+> "<=" <+> prettyUsing @rest (BuiltinTypeClass mempty tc e)
+
+instance (PrettyUsing rest UnificationConstraint, PrettyUsing rest TypeClassConstraint) =>
+  PrettyUsing rest Constraint where
   prettyUsing = \case
-    UC ctx (Unify (e1, e2)) -> prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2 <> prettyCtx ctx
-    TC ctx (Has m tc e)     -> pretty m <+> "<=" <+> prettyUsing @rest (BuiltinTypeClass mempty tc e) <> prettyCtx ctx
+    UnificationConstraint c -> prettyUsing @rest c
+    TypeClassConstraint   c -> prettyUsing @rest c
+
+instance PrettyUsing rest a => PrettyUsing rest (Contextualised a b) where
+  prettyUsing (WithContext a _b) = prettyUsing @rest a
+
+instance (PrettyUsing rest Constraint) => PrettyUsing ('Opaque rest) (Contextualised Constraint ConstraintContext) where
+  prettyUsing (WithContext c ctx)= prettyUsing @rest c <> prettyCtx
     where
-      prettyCtx :: ConstraintContext -> Doc a
-      prettyCtx ctx = do
+      prettyCtx :: Doc a
+      prettyCtx = do
         let blockingMetas = blockedBy ctx
         if MetaSet.null blockingMetas
           then ""

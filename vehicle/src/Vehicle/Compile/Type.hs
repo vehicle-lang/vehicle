@@ -13,6 +13,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map (singleton)
 import Data.Set qualified as Set (member)
 
+import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Auxiliary
@@ -209,19 +210,19 @@ loopOverConstraints loopNumber decl = do
       loopOverConstraints (loopNumber + 1) updatedDecl
 
 -- | Tries to solve a constraint deterministically.
-solveConstraint :: TCM m => Constraint -> m ()
-solveConstraint unnormConstraint = do
+solveConstraint :: TCM m => WithContext Constraint -> m ()
+solveConstraint (WithContext unnormConstraint ctx) = do
   constraint <- substMetas unnormConstraint
 
   logCompilerSection MaxDetail ("trying" <+> prettyVerbose constraint) $ do
     result <- case constraint of
-      UC ctx c -> solveUnificationConstraint ctx c
-      TC ctx c -> solveTypeClassConstraint   ctx c
+      UnificationConstraint c -> solveUnificationConstraint (WithContext c ctx)
+      TypeClassConstraint   c -> solveTypeClassConstraint   (WithContext c ctx)
 
     case result of
       Progress newConstraints -> addConstraints newConstraints
       Stuck metas -> do
-        let blockedConstraint = blockConstraintOn constraint metas
+        let blockedConstraint = blockConstraintOn (WithContext constraint ctx) metas
         addConstraints [blockedConstraint]
 
 -- | Tries to add new unification constraints using default values.
@@ -246,11 +247,12 @@ addNewConstraintUsingDefaults maybeDecl = do
         addConstraints [newConstraint]
         return True
 
-getDefaultCandidates :: TCM m => Maybe CheckedDecl -> m [Constraint]
+getDefaultCandidates :: TCM m => Maybe CheckedDecl -> m [WithContext TypeClassConstraint]
 getDefaultCandidates maybeDecl = do
-  unsolvedConstraints <- filter isNonAuxiliaryTypeClassConstraint <$> getUnsolvedConstraints
+  constraints <- getUnsolvedConstraints
+  let typeClassConstraints = mapMaybe getTypeClassConstraint constraints
   case maybeDecl of
-    Nothing   -> return unsolvedConstraints
+    Nothing   -> return typeClassConstraints
     Just decl -> do
       declType <- substMetas (typeOf decl)
 
@@ -263,8 +265,8 @@ getDefaultCandidates maybeDecl = do
       logDebug MaxDetail $
         "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
 
-      return $ flip filter unsolvedConstraints $ \c ->
-        MetaSet.disjoint (metasIn c) typeMetas
+      return $ flip filter typeClassConstraints $ \tc ->
+        MetaSet.disjoint (metasIn (objectIn tc)) typeMetas
 
 -------------------------------------------------------------------------------
 -- Property information extraction
