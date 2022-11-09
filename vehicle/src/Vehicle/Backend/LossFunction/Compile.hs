@@ -13,11 +13,12 @@ import GHC.Generics (Generic)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
 import Vehicle.Compile.Prelude qualified as V
+import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Resource (NetworkContext)
 import Vehicle.Language.AST.Name (HasName (nameOf))
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Prelude
-import Vehicle.Compile.Queries.DNF (lowerNot)
+--import Vehicle.Compile.Queries.DNF (lowerNot)
 
 --------------------------------------------------------------------------------
 -- Declaration definition
@@ -94,11 +95,6 @@ compile d prog propertyCtx networkCtx = do
   
 --------------------------------------------------------------------------------
 -- different avilable differentiable logics (types of translation from the constraint to loss function)
-data DifferentiableLogic
-  = DL2
-  | Godel 
-  | Lukasiewicz
-  | Product
 
 --compile entire specification (calls compileDecl)
 compileProg :: MonadCompileLoss m => Translation -> V.CheckedProg -> m [LDecl]
@@ -224,7 +220,7 @@ dl2Translation = Translation
    { --double check implication, do negation properly
      compileAnd = Addition,
      compileOr  = Multiplication,
-     --compileNot = lowerNot,
+     compileNot = Negation, --lowerNot
      compileImplication = \arg1 arg2 -> Max (Negation arg1) arg2,
 
      compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
