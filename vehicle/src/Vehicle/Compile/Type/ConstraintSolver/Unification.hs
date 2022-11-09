@@ -232,9 +232,8 @@ solveSimpleApplication constraint fun1 fun2 args1 args2 = do
 createMetaWithRestrictedContext :: TCM m => Provenance -> CheckedType -> [CheckedArg] -> m CheckedExpr
 createMetaWithRestrictedContext p metaType newContext = do
   let sharedExprs = fmap argExpr newContext
-  let sharedArgsCtx = fmap (\arg -> (Nothing, arg, Nothing)) sharedExprs
   let sharedArgsSubst = IntMap.fromAscList (zip [0..] sharedExprs)
-  meta <- freshExprMeta p metaType sharedArgsCtx
+  meta <- freshExprMeta p metaType (length sharedExprs)
   return $ substAll sharedArgsSubst meta
 
 --------------------------------------------------------------------------------

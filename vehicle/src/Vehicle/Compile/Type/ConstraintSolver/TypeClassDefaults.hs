@@ -9,7 +9,6 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.VariableContext
 import Vehicle.Language.Print (prettySimple)
 
 --------------------------------------------------------------------------------
@@ -67,8 +66,9 @@ generateConstraintUsingDefaults constraints = do
       return Nothing
     Invalid -> return Nothing
     Valid (Candidate m tc metaExpr ctx) -> do
-      let ann = inserted $ provenanceOf ctx
-      solution <- defaultSolution ann (boundContext ctx) tc
+      let p = inserted $ provenanceOf ctx
+      let ctxSize = length (boundContext ctx)
+      solution <- defaultSolution p ctxSize tc
       logDebug MaxDetail $
         "using default" <+> pretty m <+> "=" <+> prettySimple solution <+>
         "         " <> parens ("from" <+> pretty tc)
@@ -134,10 +134,10 @@ familyOf = \case
 
 defaultSolution :: TCM m
                 => Provenance
-                -> TypingBoundCtx
+                -> Int
                 -> TypeClass
                 -> m CheckedExpr
-defaultSolution p ctx = \case
+defaultSolution p ctxSize = \case
   HasEq{}                 -> return $ NatType p
   HasOrd{}                -> return $ NatType p
   HasNot                  -> createDefaultBoolType p
@@ -152,9 +152,9 @@ defaultSolution p ctx = \case
   HasNeg                  -> return $ IntType p
   HasNatLits n            -> return $ mkIndexType p (n + 1)
   HasRatLits              -> createDefaultRatType p
-  HasVecLits{}            -> createDefaultListType p ctx
-  HasFold                 -> createDefaultListType p ctx
-  HasQuantifierIn{}       -> createDefaultListType p ctx
+  HasVecLits{}            -> createDefaultListType p ctxSize
+  HasFold                 -> createDefaultListType p ctxSize
+  HasQuantifierIn{}       -> createDefaultListType p ctxSize
   NatInDomainConstraint n -> return $ NatLiteral p (n + 1)
 
   HasIf{}                 -> ifTCError
@@ -162,9 +162,9 @@ defaultSolution p ctx = \case
   PolarityTypeClass{}     -> auxiliaryTCError
   AlmostEqualConstraint{} -> auxiliaryTCError
 
-createDefaultListType :: TCM m => Provenance -> TypingBoundCtx -> m CheckedType
-createDefaultListType p ctx = do
-  tElem <- freshExprMeta p (TypeUniverse p 0) ctx
+createDefaultListType :: TCM m => Provenance -> Int -> m CheckedType
+createDefaultListType p ctxSize = do
+  tElem <- freshExprMeta p (TypeUniverse p 0) ctxSize
   return $ ListType p tElem
 
 createDefaultBoolType :: TCM m => Provenance -> m CheckedType
