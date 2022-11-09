@@ -17,6 +17,7 @@ import Vehicle.Compile.Resource (NetworkContext)
 import Vehicle.Language.AST.Name (HasName (nameOf))
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Prelude
+import Vehicle.Compile.Queries.DNF (lowerNot)
 
 --------------------------------------------------------------------------------
 -- Declaration definition
@@ -223,7 +224,7 @@ dl2Translation = Translation
    { --double check implication, do negation properly
      compileAnd = Addition,
      compileOr  = Multiplication,
-     compileNot = Negation,
+     --compileNot = lowerNot,
      compileImplication = \arg1 arg2 -> Max (Negation arg1) arg2,
 
      compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
