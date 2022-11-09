@@ -27,22 +27,22 @@ substitutionTests :: [TestTree]
 substitutionTests = fmap substTest
   [ SubstitutionTest
     { name     = "UnderLambdaClosed"
-    , subst    = IntMap.fromList [(0, NatLiteral p 2)]
-    , input    = Lam p (binding (NatType p)) (BoundVar p 0)
+    , value    = NatLiteral p 2
+    , expr     = Lam p (binding (NatType p)) (BoundVar p 0)
     , expected = Lam p (binding (NatType p)) (BoundVar p 0)
     }
 
   , SubstitutionTest
     { name     = "UnderLambdaOpenBody"
-    , subst    = IntMap.fromList [(0, NatLiteral p 2)]
-    , input    = Lam p (binding (NatType p)) (BoundVar p 1)
+    , value    = NatLiteral p 2
+    , expr     = Lam p (binding (NatType p)) (BoundVar p 1)
     , expected = Lam p (binding (NatType p)) (NatLiteral p 2)
     }
 
   , SubstitutionTest
     { name     = "UnderLambdaOpenType"
-    , subst    = IntMap.fromList [(0, NatLiteral p 2)]
-    , input    = Lam p (binding (BoundVar p 0)) (BoundVar p 0)
+    , value    = NatLiteral p 2
+    , expr     = Lam p (binding (BoundVar p 0)) (BoundVar p 0)
     , expected = Lam p (binding (NatLiteral p 2)) (BoundVar p 0)
     }
   ]
@@ -76,8 +76,8 @@ liftingTests = fmap liftTest
 
 data SubstitutionTest = SubstitutionTest
   { name     :: String
-  , subst    :: IntMap DBExpr
-  , input    :: CheckedExpr
+  , value    :: DBExpr
+  , expr     :: CheckedExpr
   , expected :: CheckedExpr
   }
 
@@ -85,13 +85,13 @@ substTest :: SubstitutionTest -> TestTree
 substTest SubstitutionTest{..} =
   unitTestCase ("subst" <> name) $ do
 
-    let actual = substAll subst input
+    let actual = value `substInto` expr
 
     let errorMessage = layoutAsString $
           "Expected performing the subsitution:" <> line <>
-            indent 2 "(unviewable)" <> line <>
+            indent 2 (prettyVerbose value) <> line <>
           "into" <> line <>
-            indent 2 (prettyVerbose input) <> line <>
+            indent 2 (prettyVerbose expr) <> line <>
           "to be equal to:" <+> line <>
             indent 2 (prettyVerbose expected) <> line <>
           "but was:" <+> line <>

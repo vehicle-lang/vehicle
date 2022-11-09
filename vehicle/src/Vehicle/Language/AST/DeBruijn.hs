@@ -111,5 +111,5 @@ substInto :: (HasDBVariables value, Substitutable value target)
           -> target -- ^ the result of the substitution
 substInto = substIntoAtLevel 0
 
-substAll :: Substitutable value target => IntMap value -> target -> target
-substAll su = substitute (\_p v -> v `IM.lookup` su)
+substAll :: (HasDBVariables value, Substitutable value target) => IntMap Int -> target -> target
+substAll su = substitute (\p v -> fmap (mkVar p) $ v `IM.lookup` su)
