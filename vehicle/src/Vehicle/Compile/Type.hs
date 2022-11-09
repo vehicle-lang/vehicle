@@ -84,79 +84,81 @@ typeCheckDecls ctx (d : ds) = do
   return $ checkedDecl : checkedDecls
 
 typeCheckDecl :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedDecl -> m CheckedDecl
-typeCheckDecl propertyCtx decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
-  -- First run a bidirectional pass over the type of the declaration
-  checkedType <- logCompilerPass MidDetail (passDoc <+> "type of" <+> identDoc) $ do
-    let declType = typeOf decl
-    (checkedType, typeOfType) <- runReaderT (inferExpr declType) mempty
-    assertIsType (provenanceOf decl) typeOfType
-    return checkedType
+typeCheckDecl propertyCtx decl = do
+  let ident = identifierOf decl
+  let identDoc = quotePretty ident
+  let passDoc = "bidirectional pass over"
 
-  result <- case decl of
-    DefResource p r _ _ -> do
-      let checkedDecl = DefResource p r ident checkedType
-      solveConstraints (Just checkedDecl)
-      substCheckedType <- substMetas checkedType
+  logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
+    -- First run a bidirectional pass over the type of the declaration
+    checkedType <- logCompilerPass MidDetail (passDoc <+> "type of" <+> identDoc) $ do
+      let declType = typeOf decl
+      (checkedType, typeOfType) <- runReaderT (inferExpr declType) mempty
+      assertDeclTypeIsType ident typeOfType
+      return checkedType
 
-      -- Add extra constraints from the resource type. Need to have called
-      -- solve constraints beforehand in order to allow for normalisation,
-      -- but really only need to have solved type-class constraints.
-      updatedCheckedType <- checkResourceType r (ident, p) substCheckedType
-      let updatedCheckedDecl = DefResource p r ident updatedCheckedType
-      solveConstraints (Just updatedCheckedDecl)
+    result <- case decl of
+      DefResource p r _ _ -> do
+        let checkedDecl = DefResource p r ident checkedType
+        solveConstraints (Just checkedDecl)
+        substCheckedType <- substMetas checkedType
 
-      substDecl <- substMetas updatedCheckedDecl
-      logUnsolvedUnknowns (Just substDecl) Nothing
+        -- Add extra constraints from the resource type. Need to have called
+        -- solve constraints beforehand in order to allow for normalisation,
+        -- but really only need to have solved type-class constraints.
+        updatedCheckedType <- checkResourceType r (ident, p) substCheckedType
+        let updatedCheckedDecl = DefResource p r ident updatedCheckedType
+        solveConstraints (Just updatedCheckedDecl)
 
-      finalDecl <- generaliseOverUnsolvedMetaVariables substDecl
-      return finalDecl
+        substDecl <- substMetas updatedCheckedDecl
+        logUnsolvedUnknowns (Just substDecl) Nothing
 
-    DefPostulate p _ _ -> do
-      return $ DefPostulate p ident checkedType
+        finalDecl <- generaliseOverUnsolvedMetaVariables substDecl
+        return finalDecl
 
-    DefFunction p _ _ body -> do
-      -- Type check the body.
-      checkedBody <- logCompilerPass MidDetail (passDoc <+> "body of" <+> identDoc) $ do
-        runReaderT (checkExpr checkedType body) mempty
+      DefPostulate p _ _ -> do
+        return $ DefPostulate p ident checkedType
 
-      -- Reconstruct the function.
-      let checkedDecl = DefFunction p ident checkedType checkedBody
+      DefFunction p _ _ body -> do
+        -- Type check the body.
+        checkedBody <- logCompilerPass MidDetail (passDoc <+> "body of" <+> identDoc) $ do
+          runReaderT (checkExpr checkedType body) mempty
 
-      -- Solve constraints and substitute through.
-      solveConstraints (Just checkedDecl)
-      substDecl <- substMetas checkedDecl
-      logUnsolvedUnknowns (Just substDecl) Nothing
+        -- Reconstruct the function.
+        let checkedDecl = DefFunction p ident checkedType checkedBody
 
-      -- Extract auxiliary annotations if a property.
-      -- This check must happen before generalisation as the `Bool` type will get
-      -- generalised with function input/output constraints.
-      let isProperty = ident `Set.member` propertyCtx
-      when isProperty $ do
-        checkPropertyInfo (ident, p) (typeOf substDecl)
+        -- Solve constraints and substitute through.
+        solveConstraints (Just checkedDecl)
+        substDecl <- substMetas checkedDecl
+        logUnsolvedUnknowns (Just substDecl) Nothing
 
-      checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
-      checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints checkedDecl1
-      checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
-      return checkedDecl3
+        -- Extract auxiliary annotations if a property.
+        -- This check must happen before generalisation as the `Bool` type will get
+        -- generalised with function input/output constraints.
+        let isProperty = ident `Set.member` propertyCtx
+        when isProperty $ do
+          checkPropertyInfo (ident, p) (typeOf substDecl)
 
-  checkAllUnknownsSolved
-  logCompilerPassOutput $ prettyFriendlyDBClosed result
-  return result
+        checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
+        checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints checkedDecl1
+        checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
+        return checkedDecl3
 
-  where
-    ident = identifierOf decl
-    identDoc = squotes (pretty ident)
-    passDoc = "bidirectional pass over"
+    checkAllUnknownsSolved
+    logCompilerPassOutput $ prettyFriendlyDBClosed result
+    return result
 
-assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
+assertDeclTypeIsType :: TCM m => Identifier -> CheckedType -> m ()
 -- This is a bit of a hack to get around having to have a solver for universe
 -- levels. As type definitions will always have an annotated Type 0 inserted
 -- by delaboration, we can match on it here. Anything else will be unified
 -- with type 0.
-assertIsType _ (TypeUniverse _ _) = return ()
-assertIsType p t        = do
-  let typ = TypeUniverse (inserted (provenanceOf t)) 0
-  addUnificationConstraint TypeGroup p mempty t typ
+assertDeclTypeIsType _     TypeUniverse{} = return ()
+assertDeclTypeIsType ident actualType     = do
+  let p = provenanceOf actualType
+  let expectedType = TypeUniverse p 0
+  let origin = CheckingExprType (FreeVar p ident) expectedType actualType
+  addFreshUnificationConstraint TypeGroup p mempty origin expectedType actualType
   return ()
 
 -------------------------------------------------------------------------------
