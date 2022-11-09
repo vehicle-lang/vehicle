@@ -2,21 +2,18 @@
   {
     "name": "TypeCheck",
     "run": "vehicle compile -s acasXu.vcl -t TypeCheck",
-    "needs": ["acasXu.vcl"],
-    "enabled": false
+    "needs": ["acasXu.vcl"]
   },
   {
     "name": "Marabou",
     "run": "vehicle compile -s acasXu.vcl -t Marabou -o acasXu.inputquery/",
     "needs": ["acasXu.vcl"],
-    "produces": ["acasXu.inputquery/*.txt"],
-    "enabled": false
+    "produces": ["acasXu.inputquery/*.txt"]
   },
   {
     "name": "Agda",
     "run": "vehicle compile -s acasXu.vcl -t Agda -o acasXu.agda",
     "needs": ["acasXu.vcl"],
-    "produces": ["acasXu.agda"],
-    "enabled": false
+    "produces": ["acasXu.agda"]
   }
 ]
