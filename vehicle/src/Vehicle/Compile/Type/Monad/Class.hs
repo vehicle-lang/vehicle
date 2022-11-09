@@ -24,9 +24,9 @@ module Vehicle.Compile.Type.Monad.Class
   , getDeclType
   , getMetaInfo
   , getTypeClassConstraints
-  , addUnificationConstraint
-  , addTypeClassConstraint
   , addConstraints
+  , addFreshUnificationConstraint
+  , addFreshTypeClassConstraint
   , setConstraints
   , getMetaSubstitution
   , getSolvedMetas
@@ -365,39 +365,50 @@ getDeclType p ident = do
 --------------------------------------------------------------------------------
 -- Constraints
 
-getTypeClassConstraints :: MonadTypeChecker m => m [WithContext TypeClassConstraint]
-getTypeClassConstraints = mapMaybe getTypeClassConstraint <$> getUnsolvedConstraints
-
-addUnificationConstraint :: MonadTypeChecker m
-                         => ConstraintGroup
-                         -> Provenance
-                         -> TypingBoundCtx
-                         -> CheckedExpr
-                         -> CheckedExpr
-                         -> m ()
-addUnificationConstraint group p ctx e1 e2 = do
-  let constraint = UnificationConstraint $ Unify e1 e2
-  let context    = ConstraintContext p p mempty ctx group
+-- | Adds an entirely new unification constraint (as opposed to one
+-- derived from another constraint).
+addFreshUnificationConstraint :: MonadTypeChecker m
+                              => ConstraintGroup
+                              -> Provenance
+                              -> TypingBoundCtx
+                              -> ConstraintOrigin
+                              -> CheckedType
+                              -> CheckedType
+                              -> m ()
+addFreshUnificationConstraint group p ctx origin expectedType actualType = do
+  let constraint = UnificationConstraint $ Unify expectedType actualType
+  let context    = ConstraintContext p origin p mempty ctx group
   addConstraints [WithContext constraint context]
 
-addTypeClassConstraint :: MonadTypeChecker m
-                       => Provenance
-                       -> TypingBoundCtx
-                       -> MetaID
-                       -> CheckedExpr
-                       -> m ()
-addTypeClassConstraint creationProvenance ctx meta expr = do
-  (tc, args) <- case expr of
+-- | Adds an entirely new type-class constraint (as opposed to one
+-- derived from another constraint).
+addFreshTypeClassConstraint :: MonadTypeChecker m
+                            => TypingBoundCtx
+                            -> CheckedExpr
+                            -> [CheckedArg]
+                            -> CheckedType
+                            -> m MetaID
+addFreshTypeClassConstraint ctx fun funArgs tcExpr = do
+  (tc, args) <- case tcExpr of
     BuiltinTypeClass _ tc args -> return (tc, args)
     _                          -> compilerDeveloperError $
-      "Malformed type class constraint" <+> prettyVerbose expr
+      "Malformed type class constraint" <+> prettyVerbose tcExpr
 
-  let originProvenance = provenanceOf expr
+  let p = provenanceOf fun
+  meta <- freshTypeClassPlacementMeta p tcExpr
+
+  let originProvenance = provenanceOf tcExpr
 
   let group      = typeClassGroup tc
-  let context    = ConstraintContext originProvenance creationProvenance mempty ctx group
+  let origin     = CheckingTypeClass fun funArgs tc
   let constraint = TypeClassConstraint (Has meta tc args)
+  let context    = ConstraintContext originProvenance origin p mempty ctx group
   addConstraints [WithContext constraint context]
+
+  return meta
+
+getTypeClassConstraints :: MonadTypeChecker m => m [WithContext TypeClassConstraint]
+getTypeClassConstraints = mapMaybe getTypeClassConstraint <$> getUnsolvedConstraints
 
 addConstraints :: MonadTypeChecker m => [WithContext Constraint] -> m ()
 addConstraints []             = return ()

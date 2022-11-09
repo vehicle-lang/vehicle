@@ -226,22 +226,61 @@ instance MeaningfulError CompileError where
 
     FailedUnificationConstraints cs -> UError $ UserError
       { provenance = provenanceOf ctx
-      , problem    = "Type error:" <+>
-                        prettyFriendlyDB namedCtx e1 <+> "!=" <+> prettyFriendlyDB namedCtx e2
+      , problem    = constraintOriginMessage <> "." <+>
+                     "In particular" <+>
+                     prettyFriendlyDB nameCtx e1 <+> "!=" <+> prettyFriendlyDB nameCtx e2 <> "."
       , fix        = Just "check your types"
       }
       where
         WithContext (Unify e1 e2) ctx = NonEmpty.head cs
-        namedCtx = boundContextOf ctx
+        nameCtx = boundContextOf ctx
+
+        constraintOriginMessage = case origin ctx of
+          CheckingExprType expr expectedType actualType ->
+            "expected" <+> squotes (prettyUnificationConstraintOriginExpr ctx expr) <+>
+            "to be of type" <+> prettyFriendlyDB nameCtx expectedType <+>
+            "but was found to be of type" <+> prettyFriendlyDB nameCtx actualType
+
+          CheckingBinderType varName expectedType actualType ->
+            "expected the variable" <+> quotePretty varName <+>
+            "to be of type" <+> squotes (prettyFriendlyDB nameCtx expectedType) <+>
+            "but was found to be of type" <+> squotes (prettyFriendlyDB nameCtx actualType)
+
+          CheckingTypeClass fun args _tc ->
+            "unable to find a consistent type for the overloaded expression" <+>
+            squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
+
+          CheckingAuxiliary ->
+            developerError "Auxiliary constraints should not be unsolved."
 
     UnsolvedConstraints cs -> UError $ UserError
       { provenance = provenanceOf ctx
-      , problem    = unsolvedConstraintError constraint nameCtx
+      , problem    = constraintOriginMessage <> "." -- <+>
+                    -- "In particular unable to solve the constraint:" <+>
+                    --  prettyFriendlyDB nameCtx constraint
       , fix        = Just "try adding more type annotations"
       }
       where
-        WithContext constraint ctx = NonEmpty.head cs
+        WithContext _constraint ctx = NonEmpty.head cs
         nameCtx    = boundContextOf ctx
+
+        constraintOriginMessage = case origin ctx of
+          CheckingExprType expr expectedType _actualType ->
+            "expected" <+> squotes (prettyUnificationConstraintOriginExpr ctx expr) <+>
+            "to be of type" <+> prettyFriendlyDB nameCtx expectedType <+>
+            "but was unable to prove it."
+
+          CheckingBinderType varName expectedType _actualType ->
+            "expected the variable" <+> squotes (pretty varName) <+>
+            "to be of type" <+> squotes (prettyFriendlyDB nameCtx expectedType) <+>
+            "but was unable to prove it."
+
+          CheckingTypeClass fun args _tc ->
+            "insufficient information to find a valid type for the overloaded expression" <+>
+            squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
+
+          CheckingAuxiliary ->
+            developerError "Auxiliary constraints should not be unsolved."
 
     UnsolvedMetas ms -> UError $ UserError
       { provenance = p
@@ -802,12 +841,6 @@ implementationLimitation issue =
     Just issueNumber -> "If you would like this to be fixed, please comment at" <+>
       squotes (githubIssues <+> pretty issueNumber) <> "."
 
-unsolvedConstraintError :: Constraint -> [DBBinding] -> Doc a
-unsolvedConstraintError constraint ctx ="Typing error: not enough information to solve constraint" <+>
-  case constraint of
-    UnificationConstraint{}             ->  prettyFriendlyDB ctx constraint
-    TypeClassConstraint (Has _ tc args) ->  prettyFriendlyDB ctx (BuiltinTypeClass mempty tc args)
-
 prettyResource :: ResourceType -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
 
@@ -906,3 +939,22 @@ prettyOrdinal object argNo argTotal
     8 -> "eighth"
     9 -> "ninth"
     _ -> developerError "Cannot convert ordinal"
+
+prettyTypeClassConstraintOriginExpr :: ConstraintContext -> CheckedExpr -> [UncheckedArg] -> Doc a
+prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
+  Builtin _ b
+      -- Need to check whether the function was introduced as part of desugaring
+    | isDesugared b -> prettyFriendlyDB (boundContextOf ctx) (last args)
+    | otherwise     -> pretty b
+    where
+      isDesugared :: Builtin -> Bool
+      isDesugared (TypeClassOp FromNatTC{}) = True
+      isDesugared (TypeClassOp FromRatTC{}) = True
+      isDesugared (TypeClassOp FromVecTC{}) = True
+      isDesugared _                         = False
+  _           -> prettyFriendlyDB (boundContextOf ctx) fun
+
+prettyUnificationConstraintOriginExpr :: ConstraintContext -> CheckedExpr -> Doc a
+prettyUnificationConstraintOriginExpr ctx = \case
+  Builtin _ b -> pretty b
+  expr        -> prettyFriendlyDB (boundContextOf ctx) expr

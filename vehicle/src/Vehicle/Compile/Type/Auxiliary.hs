@@ -228,10 +228,8 @@ addFunctionConstraint mkTC createNewMeta (declProv, position) existingExpr = do
   let constraintArgs = ExplicitArg (provenanceOf existingExpr) <$> case position of
           FunctionInput{}  -> [newExpr, existingExpr]
           FunctionOutput{} -> [existingExpr, newExpr]
-  let tc = mkTC position
-  let constraint = BuiltinTypeClass declProv tc constraintArgs
+  let tcExpr = BuiltinTypeClass declProv (mkTC position) constraintArgs
 
-  m <- freshTypeClassPlacementMeta declProv constraint
-  addTypeClassConstraint declProv mempty m constraint
+  _ <- addFreshTypeClassConstraint mempty existingExpr mempty tcExpr
 
   return newExpr

@@ -48,13 +48,25 @@ isAuxiliaryTypeClass tc = do
   group == PolarityGroup || group == LinearityGroup
 
 --------------------------------------------------------------------------------
+-- Constraint origins
+
+data ConstraintOrigin
+  = CheckingExprType   CheckedExpr CheckedType CheckedType
+  | CheckingBinderType DBBinding   CheckedType CheckedType
+  | CheckingTypeClass  CheckedExpr [UncheckedArg] TypeClass
+  | CheckingAuxiliary
+  deriving (Show)
+
+--------------------------------------------------------------------------------
 -- Constraint contexts
 
 type BlockingMetas = MetaSet
 
 data ConstraintContext = ConstraintContext
   { originalProvenance :: Provenance
-  -- ^ The origin of the constraint
+  -- ^ The original provenance of the constraint
+  , origin :: ConstraintOrigin
+  -- ^ The origin of the constraint.
   , creationProvenance :: Provenance
   -- ^ Where the constraint was instantiated
   , blockedBy          :: BlockingMetas
@@ -67,19 +79,19 @@ data ConstraintContext = ConstraintContext
   } deriving (Show)
 
 instance HasProvenance ConstraintContext where
-  provenanceOf (ConstraintContext _ creationProvenance _ _ _) = creationProvenance
+  provenanceOf (ConstraintContext _ _ creationProvenance _ _ _) = creationProvenance
 
 instance HasBoundCtx ConstraintContext where
   boundContextOf = boundContextOf . boundContext
 
 blockCtxOn :: MetaSet -> ConstraintContext -> ConstraintContext
-blockCtxOn metas (ConstraintContext originProv creationProv _ ctx group) =
-  ConstraintContext originProv creationProv metas ctx group
+blockCtxOn metas (ConstraintContext originProv originalConstraint creationProv _ ctx group) =
+  ConstraintContext originProv originalConstraint creationProv metas ctx group
 
 -- | Create a new fresh copy of the context for a new constraint
 copyContext :: ConstraintContext -> ConstraintContext
-copyContext (ConstraintContext originProv creationProv _ ctx group) =
-  ConstraintContext originProv creationProv mempty ctx group
+copyContext (ConstraintContext originProv originalConstraint creationProv _ ctx group) =
+  ConstraintContext originProv originalConstraint creationProv mempty ctx group
 
 --------------------------------------------------------------------------------
 -- Unification constraints
