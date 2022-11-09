@@ -121,9 +121,10 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
       | otherwise -> do
         MetaInfo meta1Origin meta1Type _ <- getMetaInfo i
         MetaInfo meta2Origin meta2Type _ <- getMetaInfo j
-
-        let jointContext = args1 `intersect` args2
-        meta <- createMetaWithRestrictedContext (meta1Origin <> meta2Origin) meta1Type jointContext
+        deps1 <- getMetaDependencies args1
+        deps2 <- getMetaDependencies args2
+        let jointContext = deps1 `intersect` deps2
+        meta <- createMetaWithRestrictedDependencies (meta1Origin <> meta2Origin) meta1Type jointContext
 
         metaSolved i meta
         metaSolved j meta
@@ -139,19 +140,18 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
     -- ==> ?Y := \x. \y. \z. ?X e1 e2 e3
 
     (Meta _ i, args) :~: _ -> do
+      deps <- getMetaDependencies args
 
       -- Check that 'args' is a pattern and try to calculate a substitution
       -- that renames the variables in 'e2' to ones available to meta `i`
-      case getArgPattern args of
-        Nothing -> do
-          -- This constraint is stuck because it is not pattern; shelve
-          -- it for now and hope that another constraint allows us to
-          -- progress.
-          -- TODO need to check with Bob what this is stuck on, presumably i?
-          return $ Stuck $ MetaSet.singleton i
+      case getArgPattern deps of
+        -- This constraint is stuck because it is not pattern; shelve
+        -- it for now and hope that another constraint allows us to
+        -- progress.
+        -- TODO need to check with Bob what this is stuck on, presumably i?
+        Nothing -> return $ Stuck $ MetaSet.singleton i
 
         Just argPattern -> do
-          let forwardSubst = patternToSubst argPattern
           let metasInE2 = metasInWithArgs e2
 
           -- If `i` is inside the term we're trying to unify it with then error.
@@ -164,18 +164,19 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
           -- Restrict any arguments to each sub-meta on the RHS to those of i.
           newMetasSolved <- or <$> for (MetaMap.toList metasInE2) (\(j, jArgs) -> do
             MetaInfo jOrigin jType _ <- getMetaInfo j
+            jDeps <- getMetaDependencies jArgs
 
-            let sharedContext = args `intersect` jArgs
-            if sharedContext == jArgs
+            let sharedDependencies = deps `intersect` jDeps
+            if sharedDependencies == jDeps
               then return False
               else do
-                meta <- createMetaWithRestrictedContext jOrigin jType sharedContext
+                meta <- createMetaWithRestrictedDependencies jOrigin jType sharedDependencies
                 metaSolved j meta
                 return True)
 
           finalE2 <- if newMetasSolved then substMetas e2 else return e2
 
-          case substAll forwardSubst finalE2 of
+          case substAll argPattern finalE2 of
             defnBody -> do
               metaSolved i defnBody
               return $ Progress mempty
@@ -229,37 +230,41 @@ solveSimpleApplication constraint fun1 fun2 args1 args2 = do
     newConstraints <- solveArgs constraint (args1, args2)
     return $ Progress newConstraints
 
-createMetaWithRestrictedContext :: TCM m => Provenance -> CheckedType -> [CheckedArg] -> m CheckedExpr
-createMetaWithRestrictedContext p metaType newContext = do
-  let sharedExprs = fmap argExpr newContext
-  let sharedArgsCtx = fmap (\arg -> (Nothing, arg, Nothing)) sharedExprs
-  let sharedArgsSubst = IntMap.fromAscList (zip [0..] sharedExprs)
-  meta <- freshExprMeta p metaType sharedArgsCtx
-  return $ substAll sharedArgsSubst meta
+createMetaWithRestrictedDependencies :: TCM m
+                                     => Provenance
+                                     -> CheckedType
+                                     -> [DBIndex]
+                                     -> m CheckedExpr
+createMetaWithRestrictedDependencies p metaType newDependencies = do
+  meta <- freshExprMeta p metaType (length newDependencies)
+  let substitution = IntMap.fromAscList (zip [0..] newDependencies)
+  return $ substAll substitution meta
 
 --------------------------------------------------------------------------------
 -- Argument patterns
 
-newtype ArgPattern = ArgPattern (IntMap Int)
+type ArgPattern = IntMap Int
 
 -- | TODO: explain what this means:
 -- [i2 i4 i1] --> [2 -> 2, 4 -> 1, 1 -> 0]
-getArgPattern :: [DBArg] -> Maybe ArgPattern
-getArgPattern args = ArgPattern <$> go (length args - 1) IntMap.empty args
+getArgPattern :: [DBIndex] -> Maybe ArgPattern
+getArgPattern args = go (length args - 1) IntMap.empty args
   where
-    go :: Int -> IntMap Int -> [DBArg] -> Maybe (IntMap Int)
+    go :: Int -> IntMap Int -> [DBIndex] -> Maybe (IntMap Int)
     go _ revMap [] = Just revMap
     -- TODO: we could eta-reduce arguments too, if possible
-    go i revMap (arg : restArgs) =
-      case argExpr arg of
-        Var _ (Bound j) ->
-           if IntMap.member j revMap then
-            -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning;
-            -- but then we should make sure the solution is well-typed
-            Nothing
-          else
-            go (i-1) (IntMap.insert j i revMap) restArgs
-        _ -> Nothing
+    go i revMap (j : restArgs) =
+      if IntMap.member j revMap then
+        -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning;
+        -- but then we should make sure the solution is well-typed
+        Nothing
+      else
+        go (i-1) (IntMap.insert j i revMap) restArgs
 
-patternToSubst :: ArgPattern -> IntMap DBExpr
-patternToSubst (ArgPattern xs) = fmap (Var mempty . Bound) xs
+getMetaDependencies :: forall m . MonadCompile m => [CheckedArg] -> m [DBIndex]
+getMetaDependencies = traverse (getDep . argExpr)
+  where
+  getDep :: CheckedExpr -> m DBIndex
+  getDep (BoundVar _ i) = return i
+  getDep e              = compilerDeveloperError $
+    "Non-variable expression" <+> prettyVerbose e <+> "found in meta dependencies"
