@@ -30,7 +30,7 @@ def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, 
             grads = tape.gradient(total_loss, model.trainable_weights)
             # Run one step of gradient descent by updating the value of the variables to minimize the loss.
             optimizer.apply_gradients(zip(grads, model.trainable_weights))
-        
+
         # Run a training loop at the end of each epoch.
         for x_batch_train, y_batch_train in train_dataset:
             train_outputs = model(x_batch_train, training=False)
@@ -84,5 +84,5 @@ if __name__ == '__main__':
 
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
     test_dataset = test_dataset.batch(batch_size)
-    
+
     model = train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, function_name, resources, quantifier_sampling)

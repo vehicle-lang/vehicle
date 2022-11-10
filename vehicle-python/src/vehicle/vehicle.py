@@ -87,7 +87,7 @@ class LossFunctionTranslation:
             return context[contents]
 
         return result_func
-    
+
     def _translate_tensor(self, contents:dict, metadata:LossMetadata) -> Callable:
         func_losses = [self._translate_expression(metadata, c) for c in contents]
 
@@ -96,7 +96,7 @@ class LossFunctionTranslation:
             return tf.convert_to_tensor(values_tensor)
 
         return result_func
-    
+
     def _translate_negation(self, contents:dict, metadata:LossMetadata) -> Callable:
         loss = self._translate_expression(metadata, contents)
 
@@ -104,7 +104,7 @@ class LossFunctionTranslation:
             return -loss(context)
 
         return result_func
-    
+
     def _translate_minimum(self, contents:dict, metadata:LossMetadata) -> Callable:
         loss_1 = self._translate_expression(metadata, contents[0])
         loss_2 = self._translate_expression(metadata, contents[1])
@@ -122,7 +122,7 @@ class LossFunctionTranslation:
             return max(loss_1(context), loss_2(context))
 
         return result_func
-    
+
     def _translate_addition(self, contents:dict, metadata:LossMetadata) -> Callable:
         loss_1 = self._translate_expression(metadata, contents[0])
         loss_2 = self._translate_expression(metadata, contents[1])
@@ -178,7 +178,7 @@ class LossFunctionTranslation:
             return loss_tensor(context)[loss_index(context)]
 
         return result_func
-    
+
     def _translate_network(self, contents:dict, metadata:LossMetadata) -> Callable:
         model = metadata.resources[contents[0]]
         input_losses = [self._translate_expression(metadata, c) for c in contents[1]]
@@ -215,10 +215,10 @@ class LossFunctionTranslation:
                 elif contents[0] == 'Any':
                     min_loss = min(min_loss, body_loss(context))
                 context.pop(0)
-            if contents[0] == 'All': return max_loss 
+            if contents[0] == 'All': return max_loss
             elif contents[0] == 'Any': return min_loss
             else: utils.internal_error_msg('Found a quantifier in the generated json that is not All nor Any.')
-                
+
         return result_func
 
     def _translate_lambda(self, contents:dict, metadata:LossMetadata) -> Callable:

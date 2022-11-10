@@ -24,8 +24,8 @@ def call_vehicle_to_generate_loss_json(specification:str, function_name:str) -> 
     with TemporaryDirectory() as path_to_json_directory:
         path_to_json = path_to_json_directory + 'loss_function.json'
         args =  ['compile',
-                '--target', 'LossFunction', 
-                '--specification', specification, 
+                '--target', 'LossFunction',
+                '--specification', specification,
                 '--outputFile', path_to_json]
                 #'--property', function_name]
         call_vehicle(args)
@@ -45,8 +45,8 @@ def call_vehicle_to_verify_specification(specification:str, verifier:str, networ
     network_list = make_resource_arguments(networks, 'network')
     dataset_list = make_resource_arguments(datasets, 'dataset')
     parameter_list = make_resource_arguments(parameters, 'parameter')
-    args =  ['verify', 
-            '--specification', specification, 
+    args =  ['verify',
+            '--specification', specification,
             '--verifier', verifier]
     args = args + network_list + dataset_list + parameter_list
     call_vehicle(args)

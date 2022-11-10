@@ -12,7 +12,7 @@ class TestLossFunctionTranslation(unittest.TestCase):
         with open(path_to_json) as f:
             json_dict = json.load(f)
         return json_dict
-    
+
     def vcl_file(self, file_name):
         path_to_vcl = f'./src/python/test_json/{file_name}.vcl'
         return path_to_vcl
@@ -23,15 +23,15 @@ class TestLossFunctionTranslation(unittest.TestCase):
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual(loss(), 5)
-    
-    
+
+
     # def test_variable(self):
     #     path_to_vcl = self.vcl_file('test_variable')
     #     functionName = 'variable'
     #     resources = {}
     #     loss = generate_loss_function(path_to_vcl, functionName, resources)
     #     self.assertEqual(loss(2), 2)
-    
+
 
     def test_tensor(self):
         path_to_vcl = self.vcl_file('test_tensor')
@@ -40,7 +40,7 @@ class TestLossFunctionTranslation(unittest.TestCase):
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual((np.array(loss().shape) & np.array(tf.constant([2, 4, 1, 0]).shape)).all(), True)
         self.assertEqual((np.array(loss()) & np.array([5, 2, 16, 7])).all(), True)
-    
+
 
     # def test_negation(self):
     #     path_to_vcl = self.vcl_file('test_negation')
@@ -80,7 +80,7 @@ class TestLossFunctionTranslation(unittest.TestCase):
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual(loss(), 4)
-    
+
 
     def test_multiplication(self):
         path_to_vcl = self.vcl_file('test_multiplication')
@@ -88,7 +88,7 @@ class TestLossFunctionTranslation(unittest.TestCase):
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual(loss(), 12)
-    
+
 
     def test_division(self):
         path_to_vcl = self.vcl_file('test_division')
@@ -96,7 +96,7 @@ class TestLossFunctionTranslation(unittest.TestCase):
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual(loss(), 3)
- 
+
 
     # def test_indicator(self):
     #     path_to_vcl = self.vcl_file('test_indicator')
