@@ -57,10 +57,11 @@ instance Pretty Backend where
 instance Read Backend where
   readsPrec _d x = case x of
     "Marabou"      -> [(MarabouBackend, [])]
-    "DL2"          -> [(LossFunctionDL2, [])]
-    "Godel"          -> [(LossFunctionGodel, [])]
-    "Lukasiewicz"          -> [(LossFunctionLukasiewicz, [])]
-    "Product"          -> [(LossFunctionProduct, [])]
+    "LossFunction"  -> [(LossFunctionDL2, [])]
+    "LossFunction-DL2"          -> [(LossFunctionDL2, [])]
+    "LossFunction-Godel"          -> [(LossFunctionGodel, [])]
+    "LossFunction-Lukasiewicz"          -> [(LossFunctionLukasiewicz, [])]
+    "LossFunction-Product"          -> [(LossFunctionProduct, [])]
     "Agda"         -> [(AgdaBackend, [])]
     "TypeCheck"    -> [(TypeCheck, [])]
     _              -> []

@@ -80,6 +80,15 @@ instance ToJSON LExpr
 -- Compilation
 -- the translation into the LExpr (this is the exported top compile function)
 
+--------------------------------------------------------------------------------
+-- different avilable differentiable logics (types of translation from the constraint to loss function) are
+-- DL2
+-- Godel
+-- Lukasiewicz
+-- Product based
+
+--they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2. 
+
 compile :: MonadCompile m => DifferentiableLogic -> V.CheckedProg -> V.PropertyContext -> NetworkContext -> m [LDecl]
 compile d prog propertyCtx networkCtx = do
   normalisedProg <- normalise prog normalisationOptions
@@ -93,8 +102,6 @@ compile d prog propertyCtx networkCtx = do
     Product -> do
       runReaderT (compileProg productTranslation normalisedProg) (propertyCtx, networkCtx)
   
---------------------------------------------------------------------------------
--- different avilable differentiable logics (types of translation from the constraint to loss function)
 
 --compile entire specification (calls compileDecl)
 compileProg :: MonadCompileLoss m => Translation -> V.CheckedProg -> m [LDecl]
@@ -141,6 +148,15 @@ compileLiteral t l = case l of
   V.LInt     e -> fromIntegral e
   V.LRat     e -> fromRational e
 
+--helps compile a name from DBBinding, even if there is no name given
+-- compileDBBinding :: Maybe Name -> Name
+-- compileDBBinding name = 
+
+  -- e <- fromMaybe name
+  -- case e of
+  --   Nothing -> Name "generic_name" --option for when there was no name given
+  --   _ -> e
+
 --compile a property or single expression
 compileExpr :: MonadCompile m => Translation -> V.CheckedExpr -> m LExpr
 compileExpr t e = showExit $ do
@@ -176,18 +192,18 @@ compileExpr t e = showExit $ do
     V.Var _ (V.Bound var)                -> return (Variable var)
     V.AtExpr _ _ _ [xs, i]             -> At <$> compileArg t xs <*> compileArg t i
     V.Let _ _ _ _                         -> normalisationError "lossFunction" "Let"
-    --V.Lam _ name x                    -> Lambda (V.nameOf name) <$> (compileExpr t x)
+    --V.Lam _ name x                    -> Lambda (V.binderRepresentation name) <$> (compileExpr t x)
 
     V.QuantifierTCExpr _ q binder body         -> do
       body' <- compileExpr t body
       let varName = V.getBinderName binder
       return $ Quantifier (compileQuant q) varName (Domain ()) body'
 
-    V.Hole{}     -> resolutionError "lossFunction" "Hole"
-    V.Meta{}     -> resolutionError "lossFunction" "Meta"
-    V.Ann{}      -> normalisationError "lossFunction" "Ann"
-    V.Pi{}       -> unexpectedTypeInExprError "lossFunction" "Pi"
-    V.Universe{} -> unexpectedTypeInExprError "lossFunction" "Universe"
+    V.Hole{}     -> resolutionError "lossFunction" "Should not enounter Hole"
+    V.Meta{}     -> resolutionError "lossFunction" "Should not enounter  Meta"
+    V.Ann{}      -> normalisationError "lossFunction" "Should not enounter  Ann"
+    V.Pi{}       -> unexpectedTypeInExprError "lossFunction" "Should not enounter  Pi"
+    V.Universe{} -> unexpectedTypeInExprError "lossFunction" "Should not enounter  Universe"
     V.IfExpr{}   -> unexpectedExprError "lossFunction" "If statements are not handled at the moment (possibly in the future)"
     _            -> unexpectedExprError currentPass (prettyVerbose e)
 
@@ -309,6 +325,8 @@ productTranslation = Translation
 --                                         (Division (Constant 1) p))) 
 --                                     (Constant 0),
 --      compileNot = \arg -> Subtraction (Constant 1) arg,
+
+
 --      compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)),
 --      compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))),
 --      compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)),
