@@ -33,34 +33,18 @@ def call_vehicle_to_generate_loss_json(specification:str, function_name:str) -> 
     return loss_function_json
 
 
-def make_network_argument(networks:dict[str, str]) -> List[str]:
-    network_list = []
-    for name, location in networks.items():
-        network_list.append('--network')
-        network_list.append(name + ':' + location)
-    return network_list
-
-
-def make_dataset_argument(datasets:dict[str, str]) -> List[str]:
-    dataset_list = []
-    for name, location in datasets.items():
-        dataset_list.append('--network')
-        dataset_list.append(name + ':' + location)
-    return dataset_list
-
-
-def make_parameter_argument(parameters:dict[str, any]) -> List[str]:
-    parameter_list = []
-    for name, value in parameters.items():
-        parameter_list.append('--network')
-        parameter_list.append(name + ':' + str(value))
-    return parameter_list
+def make_resource_arguments(resources:dict[str, str], arg_name:str) -> List[str]:
+    resource_list = []
+    for name, resource in resources.items():
+        resource_list.append('--' + arg_name)
+        resource_list.append(name + ':' + str(resource))
+    return resource_list
 
 
 def call_vehicle_to_verify_specification(specification:str, verifier:str, networks:dict[str, str], datasets:dict[str, str], parameters:dict[str, any]) -> None:
-    network_list = make_network_argument(networks)
-    dataset_list = make_dataset_argument(datasets)
-    parameter_list = make_parameter_argument(parameters)
+    network_list = make_resource_arguments(networks, 'network')
+    dataset_list = make_resource_arguments(datasets, 'dataset')
+    parameter_list = make_resource_arguments(parameters, 'parameter')
     args =  ['verify', 
             '--specification', specification, 
             '--verifier', verifier]
