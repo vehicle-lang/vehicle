@@ -10,9 +10,10 @@ def generate_loss_function(specification:str,
                             resources:Dict[str,any],
                             quantifier_sampling:Dict[str,Callable]=None) -> Callable:
     '''
-    pathToSpec: path to the vehicle spec .vcl file
-    functionName: name of the function for which we want to create the loss function
+    specification: path to the vehicle spec .vcl file
+    function_name: name of the function for which we want to create the loss function
     resources: dictionary mapping from the name of the resources declared in the spec to the python implementation
+    quantifier_sampling: dictionary with the name and function for sampling
     '''
     json_dict = call_vehicle_to_generate_loss_json(specification, function_name)
     empty_context = []
