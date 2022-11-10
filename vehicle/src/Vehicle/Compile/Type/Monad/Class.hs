@@ -15,7 +15,6 @@ module Vehicle.Compile.Type.Monad.Class
   , clearMetaSubstitution
   , substMetasThroughCtx
   , modifyMetasInfo
-  , getMetaContext
   , getMetaProvenance
   , prettyMetas
   , prettyMeta
@@ -168,18 +167,18 @@ substMetas e = do
 freshMeta :: MonadTypeChecker m
           => Provenance
           -> CheckedType
-          -> TypingBoundCtx
+          -> Int
           -> m (MetaID, CheckedExpr)
-freshMeta p metaType boundCtx = do
+freshMeta p metaType boundCtxSize = do
   -- Create a fresh name
   TypingMetaCtx {..} <- getMetaCtx
   let nextMeta = length metaInfo
-  putMetaCtx $ TypingMetaCtx { metaInfo = MetaInfo p metaType boundCtx : metaInfo, .. }
+  putMetaCtx $ TypingMetaCtx { metaInfo = MetaInfo p metaType boundCtxSize : metaInfo, .. }
   let meta = MetaID nextMeta
 
   -- Create bound variables for everything in the context
   let ann = inserted p
-  let boundEnv = reverse [ Var ann (Bound i) | i <- [0..length boundCtx - 1] ]
+  let boundEnv = reverse [ Var ann (Bound i) | i <- [0..boundCtxSize - 1] ]
 
   -- Returns a meta applied to every bound variable in the context
   let metaExpr = normAppList ann (Meta ann meta) (map (ExplicitArg ann) boundEnv)
@@ -190,24 +189,24 @@ freshMeta p metaType boundCtx = do
 freshExprMeta :: MonadTypeChecker m
               => Provenance
               -> CheckedType
-              -> TypingBoundCtx
+              -> Int
               -> m CheckedExpr
-freshExprMeta p t ctx = snd <$> freshMeta p t ctx
+freshExprMeta p t boundCtxSize = snd <$> freshMeta p t boundCtxSize
 
 freshPolarityMeta :: MonadTypeChecker m => Provenance -> m CheckedExpr
-freshPolarityMeta p = snd <$> freshMeta p (PolarityUniverse p) mempty
+freshPolarityMeta p = snd <$> freshMeta p (PolarityUniverse p) 0
 
 freshLinearityMeta :: MonadTypeChecker m => Provenance -> m CheckedExpr
-freshLinearityMeta p = snd <$> freshMeta p (LinearityUniverse p) mempty
+freshLinearityMeta p = snd <$> freshMeta p (LinearityUniverse p) 0
 
 freshUniverseLevelMeta :: MonadTypeChecker m => Provenance -> m CheckedExpr
-freshUniverseLevelMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
+freshUniverseLevelMeta p = snd <$> freshMeta p (TypeUniverse p 0) 0
 
 freshTypeClassPlacementMeta :: MonadTypeChecker m
                             => Provenance
                             -> CheckedType
                             -> m MetaID
-freshTypeClassPlacementMeta p t = fst <$> freshMeta p t []
+freshTypeClassPlacementMeta p t = fst <$> freshMeta p t 0
 
 --------------------------------------------------------------------------------
 -- Meta information retrieval
@@ -228,9 +227,6 @@ getMetaProvenance m = metaProvenance <$> getMetaInfo m
 
 getMetaType :: MonadTypeChecker m => MetaID -> m CheckedType
 getMetaType m = metaType <$> getMetaInfo m
-
-getMetaContext :: MonadTypeChecker m => MetaID -> m TypingBoundCtx
-getMetaContext m = metaCtx <$> getMetaInfo m
 
 modifyMetasInfo :: MonadTypeChecker m => MetaID -> (MetaInfo -> MetaInfo) -> m ()
 modifyMetasInfo m f = modifyMetaCtx (\TypingMetaCtx{..} ->
@@ -301,19 +297,16 @@ filterMetasByTypes typeFilter metas = do
   let filteredMetas = filter (typeFilter . snd) typedMetas
   return $ MetaSet.fromList (fmap fst filteredMetas)
 
-abstractOverCtx :: TypingBoundCtx -> CheckedExpr -> CheckedExpr
-abstractOverCtx ctx body =
-  let ctxTypes   = fmap (\(_, t, _) -> t) ctx in
-  foldr typeToLam body ctxTypes
-  where
-    typeToLam :: CheckedType -> CheckedExpr -> CheckedExpr
-    typeToLam t = Lam ann (ExplicitBinder ann Nothing t)
-      where ann = provenanceOf t
+abstractOverCtx :: Int -> CheckedExpr -> CheckedExpr
+abstractOverCtx ctxSize body = do
+  let p = mempty
+  let lam _ = Lam p (ExplicitBinder p Nothing (TypeUniverse p 0))
+  foldr lam body ([0 .. ctxSize-1] :: [Int])
 
 metaSolved :: MonadTypeChecker m => MetaID -> CheckedExpr -> m ()
 metaSolved m solution = do
-  MetaInfo p _ ctx <- getMetaInfo m
-  let abstractedSolution = abstractOverCtx ctx solution
+  MetaInfo p _ ctxSize <- getMetaInfo m
+  let abstractedSolution = abstractOverCtx ctxSize solution
 
   logDebug MaxDetail $ "solved" <+> pretty m <+> "as" <+> prettyVerbose abstractedSolution
 

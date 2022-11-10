@@ -138,7 +138,7 @@ checkExpr expectedType expr = do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted as
       -- different meta-variables.
-      freshExprMeta p expectedType =<< getBoundCtx
+      freshExprMeta p expectedType . length =<< getBoundCtx
 
     -- Otherwise switch to inference mode
     (_, _) -> viaInfer expectedType expr
@@ -181,8 +181,8 @@ inferExpr e = do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted
       -- as different meta-variables.
-      metaType <- freshExprMeta p (TypeUniverse p 0) =<< getBoundCtx
-      metaExpr <- freshExprMeta p metaType =<< getBoundCtx
+      metaType <- freshExprMeta p (TypeUniverse p 0) . length =<< getBoundCtx
+      metaExpr <- freshExprMeta p metaType . length =<< getBoundCtx
       checkExprTypesEqual p metaExpr metaType (TypeUniverse p 0)
       return (metaExpr, metaType)
 
@@ -361,7 +361,7 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
       case matchedUncheckedArg of
         Just arg -> checkExpr binderType (argExpr arg)
         Nothing
-          | isImplicit binder -> freshExprMeta p binderType =<< getBoundCtx
+          | isImplicit binder -> freshExprMeta p binderType . length =<< getBoundCtx
           | otherwise         -> do
               ctx <- getBoundCtx
               meta <- addFreshTypeClassConstraint ctx fun args' binderType

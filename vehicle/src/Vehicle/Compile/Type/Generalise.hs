@@ -144,15 +144,15 @@ prependBinderAndSolveMeta meta v r binderName binderType decl = do
   -- Then we add i) the new binder to the context of the meta-variable being
   -- solved, and ii) a new argument to all uses of the meta-variable so
   -- that meta-subsitution will work later.
-  addNewBinderToMetaContext meta binderName substBinderType
+  addNewBinderToMetaContext meta
   let consistentDecl = addNewArgumentToMetaUses meta prependedDecl
 
   logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose consistentDecl
 
   -- We now solve the meta as the newly bound variable
-  MetaInfo _ _ metaCtx <- getMetaInfo meta
+  MetaInfo _ _ metaCtxSize <- getMetaInfo meta
   let ann = provenanceOf consistentDecl
-  let solution = Var ann (Bound (length metaCtx - 1))
+  let solution = Var ann (Bound (metaCtxSize - 1))
   metaSolved meta solution
 
   -- Substitute the new meta solution through.
@@ -169,11 +169,11 @@ removeContextsOfMetasIn binderType decl =
   logCompilerPass MaxDetail "removing dependencies from dependent metas" $ do
     let metasInBinder = metasIn binderType
     newMetas <- or <$> forM (MetaSet.toList metasInBinder) (\m -> do
-      MetaInfo p t ctx <- getMetaInfo m
-      if null ctx then
+      MetaInfo p t ctxSize <- getMetaInfo m
+      if ctxSize == 0 then
         return False
       else do
-        newMeta <- freshExprMeta p t []
+        newMeta <- freshExprMeta p t 0
         metaSolved m newMeta
         return True)
 
@@ -212,8 +212,6 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
         goBinder = fmap (go d)
         goArgs   = fmap (fmap (go d))
 
-addNewBinderToMetaContext :: TCM m => MetaID -> DBBinding -> CheckedType -> m ()
-addNewBinderToMetaContext m newVarName newVarType =
-  modifyMetasInfo m $ \(MetaInfo p n ctx) ->
-    let entry = (newVarName, newVarType, Nothing) in
-    MetaInfo p n (ctx <> [entry])
+addNewBinderToMetaContext :: TCM m => MetaID -> m ()
+addNewBinderToMetaContext m = modifyMetasInfo m $
+  \(MetaInfo p n ctxSize) -> MetaInfo p n (ctxSize + 1)

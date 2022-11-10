@@ -126,7 +126,7 @@ instance MetaSubstitutable a => MetaSubstitutable (MetaMap a) where
 data MetaInfo = MetaInfo
   { metaProvenance :: Provenance
   , metaType       :: CheckedType
-  , metaCtx        :: TypingBoundCtx
+  , metaCtxSize    :: Int
   }
 
 instance MetaSubstitutable MetaInfo where

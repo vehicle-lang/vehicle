@@ -949,7 +949,7 @@ unifyWithIndexType :: TCM m
                    -> m (WithContext Constraint, CheckedExpr)
 unifyWithIndexType c t = do
   let p = provenanceOf c
-  indexSize <- freshExprMeta p (NatType p) (boundContext c)
+  indexSize <- freshExprMeta p (NatType p) (length (boundContext c))
   let eq = unify c t (IndexType p indexSize)
   return (eq, indexSize)
 
@@ -969,7 +969,7 @@ unifyWithListType :: TCM m
                  -> m (WithContext Constraint, CheckedExpr)
 unifyWithListType c t = do
   let p = provenanceOf c
-  elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
+  elemType <- freshExprMeta p (TypeUniverse p 0) (length (boundContext c))
   let eq = unify c t (ListType p elemType)
   return (eq, elemType)
 
@@ -980,14 +980,14 @@ unifyWithVectorType :: TCM m
                     -> m (WithContext Constraint, CheckedType)
 unifyWithVectorType c dim t = do
   let p = provenanceOf c
-  elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
+  elemType <- freshExprMeta p (TypeUniverse p 0) (length (boundContext c))
   let eq = unify c t (VectorType p elemType dim)
   return (eq, elemType)
 
 freshDimMeta :: TCM m => ConstraintContext -> m CheckedExpr
 freshDimMeta c = do
   let p = provenanceOf c
-  freshExprMeta p (NatType p) (boundContext c)
+  freshExprMeta p (NatType p) (length (boundContext c))
 
 solveSimpleComparisonOp :: TCM m
                         => ConstraintContext
