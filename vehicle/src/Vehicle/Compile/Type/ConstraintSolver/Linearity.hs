@@ -47,8 +47,8 @@ solveMaxLinearity :: TCM m
                   -> m ConstraintProgress
 solveMaxLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
-    (exprHead -> Meta _ m1, _) -> blockOn [m1]
-    (_, exprHead -> Meta _ m2) -> blockOn [m2]
+    (getMeta -> Just m1, _) -> blockOn [m1]
+    (_, getMeta -> Just m2) -> blockOn [m2]
 
     (LinearityExpr p l1, LinearityExpr _ l2) -> do
       let linRes = LinearityExpr p $ maxLinearity l1 l2
@@ -65,8 +65,8 @@ solveMulLinearity :: TCM m
                   -> m ConstraintProgress
 solveMulLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
-    (exprHead -> Meta _ m1, _) -> blockOn [m1]
-    (_, exprHead -> Meta _ m2) -> blockOn [m2]
+    (getMeta -> Just m1, _) -> blockOn [m1]
+    (_, getMeta -> Just m2) -> blockOn [m2]
 
     (LinearityExpr _ l1, LinearityExpr _ l2) -> do
       let ctx = contextOf c
@@ -84,7 +84,7 @@ solveFunctionLinearity :: TCM m
                        -> [CheckedExpr]
                        -> m ConstraintProgress
 solveFunctionLinearity functionPosition c [arg, res] = case arg of
-  (exprHead -> Meta _ m1) -> blockOn [m1]
+  (getMeta -> Just m1) -> blockOn [m1]
   LinearityExpr _ lin     -> do
     let ctx = contextOf c
     let p = provenanceOf ctx
@@ -100,7 +100,7 @@ solveIfCondLinearity :: TCM m
                      -> [CheckedExpr]
                      -> m ConstraintProgress
 solveIfCondLinearity c [arg] = case arg of
-  (exprHead -> Meta _ m1) -> blockOn [m1]
+  (getMeta -> Just m1) -> blockOn [m1]
   LinearityExpr _ lin     -> case lin of
     Constant    -> return $ Progress []
     Linear{}    -> return $ Progress []

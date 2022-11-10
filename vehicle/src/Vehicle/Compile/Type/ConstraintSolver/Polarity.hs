@@ -97,7 +97,7 @@ solveNegPolarity :: TCM m
                  -> [CheckedExpr]
                  -> m ConstraintProgress
 solveNegPolarity c [arg1, res] = case arg1 of
-  (exprHead -> Meta _ m) -> blockOn [m]
+  (getMeta -> Just m) -> blockOn [m]
 
   PolarityExpr p pol -> do
     let ctx = contextOf c
@@ -115,7 +115,7 @@ solveAddPolarity :: TCM m
                   -> [CheckedExpr]
                   -> m ConstraintProgress
 solveAddPolarity q c [arg1, res] = case arg1 of
-  (exprHead -> Meta _ m) -> blockOn [m]
+  (getMeta -> Just m) -> blockOn [m]
 
   PolarityExpr _ pol -> do
     let ctx = contextOf c
@@ -134,8 +134,8 @@ solvePolarityOp2 :: TCM m
                  -> [CheckedExpr]
                  -> m ConstraintProgress
 solvePolarityOp2 op2 c [arg1, arg2, res] = case (arg1, arg2) of
-  (exprHead -> Meta _ m1, _) -> blockOn [m1]
-  (_, exprHead -> Meta _ m2) -> blockOn [m2]
+  (getMeta -> Just m1, _) -> blockOn [m1]
+  (_, getMeta -> Just m2) -> blockOn [m2]
 
   (PolarityExpr p pol1, PolarityExpr _ pol2) -> do
     let ctx = contextOf c
@@ -171,7 +171,7 @@ solveFunctionPolarity :: TCM m
                       -> [CheckedExpr]
                       -> m ConstraintProgress
 solveFunctionPolarity functionPosition c [arg, res] = case arg of
-  (exprHead -> Meta _ m1) -> blockOn [m1]
+  (getMeta -> Just m1) -> blockOn [m1]
   PolarityExpr _ pol      -> do
     let ctx = contextOf c
     let p = provenanceOf ctx
@@ -187,7 +187,7 @@ solveIfCondPolarity :: TCM m
                     -> [CheckedExpr]
                     -> m ConstraintProgress
 solveIfCondPolarity c [arg] = case arg of
-  (exprHead -> Meta _ m1) -> blockOn [m1]
+  (getMeta -> Just m1) -> blockOn [m1]
   PolarityExpr _ pol     -> case pol of
     Unquantified -> return $ Progress []
     _            -> throwError $ QuantifiedIfCondition (contextOf c)

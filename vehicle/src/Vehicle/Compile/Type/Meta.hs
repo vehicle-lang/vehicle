@@ -11,7 +11,7 @@ module Vehicle.Compile.Type.Meta
   , makeMetaType
   ) where
 
-import Control.Monad.Reader (MonadReader (..), local)
+import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.Writer (MonadWriter (..), execWriter)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -32,9 +32,6 @@ import Vehicle.Language.Print (prettyVerbose)
 type MetaSubstitution = MetaMap CheckedExpr
 
 type MonadSubst m = (MonadCompile m, MonadReader MetaSubstitution m)
-
-liftSubstitution :: MetaSubstitution -> MetaSubstitution
-liftSubstitution = MetaMap.map (liftFreeDBIndices 1)
 
 class MetaSubstitutable a where
   -- TODO change name away from M
@@ -69,9 +66,11 @@ instance MetaSubstitutable CheckedExpr where
       Var      ann v            -> return $ Var     ann v
       LVec     ann es           -> LVec     ann <$> traverse substM es
       Ann      ann term typ     -> Ann      ann <$> substM term   <*> substM typ
-      Pi       ann binder res   -> Pi       ann <$> substM binder <*> local liftSubstitution (substM res)
-      Let      ann e1 binder e2 -> Let      ann <$> substM e1     <*> substM binder <*> local liftSubstitution (substM e2)
-      Lam      ann binder e     -> Lam      ann <$> substM binder <*> local liftSubstitution (substM e)
+      -- NOTE: no need to lift the substitutions here as we're passing under the binders
+      -- because by construction every meta-variable solution is a closed term.
+      Pi       ann binder res   -> Pi       ann <$> substM binder <*> substM res
+      Let      ann e1 binder e2 -> Let      ann <$> substM e1     <*> substM binder <*> substM e2
+      Lam      ann binder e     -> Lam      ann <$> substM binder <*> substM e
 
       e@(Meta ann _)  -> substMApp ann (e, [])
       e@(App ann _ _) -> substMApp ann (toHead e)
