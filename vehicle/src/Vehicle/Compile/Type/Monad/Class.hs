@@ -402,14 +402,17 @@ addFreshTypeClassConstraint ctx fun funArgs tcExpr = do
     _                          -> compilerDeveloperError $
       "Malformed type class constraint" <+> prettyVerbose tcExpr
 
+  let ctxSize = length ctx
+  nArgs <- traverse (traverse (whnfNBE ctxSize)) args
+
   let p = provenanceOf fun
-  (meta, metaExpr) <- freshTypeClassPlacementMeta p tcExpr (length ctx)
+  (meta, metaExpr) <- freshTypeClassPlacementMeta p tcExpr ctxSize
 
   let originProvenance = provenanceOf tcExpr
 
   let group      = typeClassGroup tc
   let origin     = CheckingTypeClass fun funArgs tc
-  let constraint = TypeClassConstraint (Has meta tc args)
+  let constraint = TypeClassConstraint (Has meta tc nArgs)
   let context    = ConstraintContext originProvenance origin p mempty ctx group
   addConstraints [WithContext constraint context]
 

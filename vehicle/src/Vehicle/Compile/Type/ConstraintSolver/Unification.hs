@@ -15,7 +15,7 @@ import Data.Traversable (for)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.ConstraintSolver.Core (unify, unify, blockOnNormReductionBlockingMetasOrThrowError)
+import Vehicle.Compile.Type.ConstraintSolver.Core (unify, unify, blockOnReductionBlockingMetasOrThrowError)
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
@@ -173,7 +173,7 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
       solveUnificationConstraint (WithContext (Unify e2 e1) ctx)
 
     -- Catch-all
-    _ -> blockOnNormReductionBlockingMetasOrThrowError [e1,e2] (FailedUnificationConstraints [c])
+    _ -> blockOnReductionBlockingMetasOrThrowError [e1,e2] (FailedUnificationConstraints [c])
 
   return progress
 

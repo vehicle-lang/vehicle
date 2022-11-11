@@ -392,7 +392,7 @@ evalTypeClassOp :: MonadNorm m
                 -> m NormExpr
 evalTypeClassOp p op args = do
   let (inst, remainingArgs) = findInstanceArg args
-  if isNMeta inst
+  if isMeta inst
     then return $ VBuiltin p (TypeClassOp op) args
     else case remainingArgs of
       v : vs -> evalApp inst (v :| vs)

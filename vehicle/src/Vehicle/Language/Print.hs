@@ -19,6 +19,7 @@ import Control.Exception (assert)
 import Data.Bifunctor (bimap)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.TypeLits (ErrorMessage (..), TypeError)
@@ -36,7 +37,7 @@ import Vehicle.Syntax.External.Abs qualified as BF
 import Vehicle.Syntax.External.Print as External (Print, printTree)
 import Vehicle.Syntax.Internal.Abs qualified as BC
 import Vehicle.Syntax.Internal.Print as Internal (Print, printTree)
-import Vehicle.Compile.Normalise.NormExpr (NormExpr, NormArg)
+import Vehicle.Compile.Normalise.NormExpr (NormExpr (..), NormArg)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 
 
@@ -197,7 +198,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
 
   -- Constraints
   StrategyFor tags Constraint            = StrategyFor tags NormExpr
-  StrategyFor tags TypeClassConstraint   = StrategyFor tags CheckedExpr
+  StrategyFor tags TypeClassConstraint   = StrategyFor tags NormExpr
   StrategyFor tags UnificationConstraint = StrategyFor tags NormExpr
 
   -- Things that we just pretty print.
@@ -489,8 +490,9 @@ instance PrettyUsing rest CheckedExpr => PrettyUsing ('Denormalise rest) Checked
 instance PrettyUsing rest NormExpr => PrettyUsing rest UnificationConstraint where
   prettyUsing (Unify e1 e2) = prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2
 
-instance PrettyUsing rest CheckedExpr => PrettyUsing rest TypeClassConstraint where
-  prettyUsing (Has m tc e) = pretty m <+> "<=" <+> prettyUsing @rest (BuiltinTypeClass mempty tc e)
+instance PrettyUsing rest NormExpr => PrettyUsing rest TypeClassConstraint where
+  prettyUsing (Has m tc args) = pretty m <+> "<=" <+>
+    prettyUsing @rest (VBuiltin mempty (Constructor $ TypeClass tc) (NonEmpty.toList args))
 
 instance (PrettyUsing rest UnificationConstraint, PrettyUsing rest TypeClassConstraint) =>
   PrettyUsing rest Constraint where

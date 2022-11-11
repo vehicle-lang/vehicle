@@ -253,7 +253,7 @@ inferExpr e = do
       (checkedBody, typeOfBody) <-
         addToBoundCtx (nameOf binder, typeOfBoundExpr, Just checkedBoundExpr) $ inferExpr body
 
-      restrictedTypeOfBody <- case getMeta typeOfBody of
+      restrictedTypeOfBody <- case getMetaID typeOfBody of
         -- It's possible for the type of the body to depend on the let bound variable,
         -- e.g. `let y = Nat in (2 : y)` so in order to avoid the DeBruijn index escaping
         -- it's context we need to substitute the bound expression into the type.
