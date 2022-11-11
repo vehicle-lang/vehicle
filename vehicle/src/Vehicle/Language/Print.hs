@@ -32,11 +32,12 @@ import Vehicle.Compile.Simplify
 import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.MetaMap (MetaMap (..))
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Syntax.External.Abs qualified as BF
 import Vehicle.Syntax.External.Print as External (Print, printTree)
 import Vehicle.Syntax.Internal.Abs qualified as BC
 import Vehicle.Syntax.Internal.Print as Internal (Print, printTree)
+import Vehicle.Compile.Normalise.NormExpr (NormExpr, NormArg)
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 
 
 --------------------------------------------------------------------------------
@@ -100,6 +101,7 @@ data Strategy
   | CoDBToDBClosed       Strategy
   | SupplyNamesOpen      Strategy
   | SupplyNamesClosed    Strategy
+  | Denormalise          Strategy
   | SimplifyWithOptions  Strategy
   | SimplifyDefault      Strategy
   | MapList              Strategy
@@ -186,10 +188,17 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (t (CoDBBinding DBBinding) var)
     = 'SupplyNamesClosed (StrategyFor tags (t (NamedBinding, Maybe PositionTree) var))
 
+  -- Closed normalised expressions
+  StrategyFor tags NormExpr = 'Denormalise (StrategyFor tags CheckedExpr)
+  StrategyFor tags NormArg  = 'Denormalise (StrategyFor tags CheckedArg)
+
+  -- Open normalised expressions
+  StrategyFor tags (BoundDBCtx, NormExpr) = 'Denormalise (StrategyFor tags (BoundDBCtx, CheckedExpr))
+
   -- Constraints
-  StrategyFor tags Constraint            = StrategyFor tags CheckedExpr
+  StrategyFor tags Constraint            = StrategyFor tags NormExpr
   StrategyFor tags TypeClassConstraint   = StrategyFor tags CheckedExpr
-  StrategyFor tags UnificationConstraint = StrategyFor tags CheckedExpr
+  StrategyFor tags UnificationConstraint = StrategyFor tags NormExpr
 
   -- Things that we just pretty print.
   StrategyFor tags DBBinding    = 'Pretty
@@ -457,12 +466,30 @@ instance Pretty a => PrettyUsing 'Pretty a where
   prettyUsing = pretty
 
 --------------------------------------------------------------------------------
+-- Instances for normalised types
+
+instance PrettyUsing rest CheckedExpr => PrettyUsing ('Denormalise rest) NormExpr where
+  prettyUsing e = prettyUsing @rest (unnormalise @NormExpr @CheckedExpr e)
+
+instance PrettyUsing rest (BoundDBCtx, CheckedExpr)
+  => PrettyUsing ('Denormalise rest) (BoundDBCtx, NormExpr) where
+  prettyUsing (ctx, e) = prettyUsing @rest (ctx, unnormalise @NormExpr @CheckedExpr e)
+
+instance PrettyUsing rest CheckedArg => PrettyUsing ('Denormalise rest) NormArg where
+  prettyUsing e = prettyUsing @rest (unnormalise @NormArg @CheckedArg e)
+
+-- This is a hack that should eventually be removed when `TypeClassConstraints`
+-- use norm expressions.
+instance PrettyUsing rest CheckedExpr => PrettyUsing ('Denormalise rest) CheckedExpr where
+  prettyUsing = prettyUsing @rest
+
+--------------------------------------------------------------------------------
 -- Instances for opaque types
 
-instance (PrettyUsing rest CheckedExpr) => PrettyUsing rest UnificationConstraint where
+instance PrettyUsing rest NormExpr => PrettyUsing rest UnificationConstraint where
   prettyUsing (Unify e1 e2) = prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2
 
-instance (PrettyUsing rest CheckedExpr) => PrettyUsing rest TypeClassConstraint where
+instance PrettyUsing rest CheckedExpr => PrettyUsing rest TypeClassConstraint where
   prettyUsing (Has m tc e) = pretty m <+> "<=" <+> prettyUsing @rest (BuiltinTypeClass mempty tc e)
 
 instance (PrettyUsing rest UnificationConstraint, PrettyUsing rest TypeClassConstraint) =>
@@ -471,20 +498,11 @@ instance (PrettyUsing rest UnificationConstraint, PrettyUsing rest TypeClassCons
     UnificationConstraint c -> prettyUsing @rest c
     TypeClassConstraint   c -> prettyUsing @rest c
 
-instance PrettyUsing rest a => PrettyUsing rest (Contextualised a b) where
-  prettyUsing (WithContext a _b) = prettyUsing @rest a
+instance (PrettyUsing rest a, Pretty b) => PrettyUsing rest (Contextualised a b) where
+  prettyUsing (WithContext a b) = prettyUsing @rest a <> pretty b
 
-instance (PrettyUsing rest Constraint) => PrettyUsing ('Opaque rest) (Contextualised Constraint ConstraintContext) where
-  prettyUsing (WithContext c ctx)= prettyUsing @rest c <> prettyCtx
-    where
-      prettyCtx :: Doc a
-      prettyCtx = do
-        let blockingMetas = blockedBy ctx
-        if MetaSet.null blockingMetas
-          then ""
-          else "     " <> parens ("blockedBy:" <+> pretty (blockedBy ctx))
-    -- <+> "<boundCtx=" <> pretty (ctxNames (boundContext c)) <> ">"
-    -- <+> parens (pretty (provenanceOf c))
+instance PrettyUsing rest Constraint => PrettyUsing ('Opaque rest) (Contextualised Constraint ConstraintContext) where
+  prettyUsing (WithContext c ctx) = prettyUsing @rest c <> pretty ctx
 
 instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (MetaMap a) where
   prettyUsing (MetaMap m) = prettyMapEntries entries

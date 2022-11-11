@@ -13,6 +13,7 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Language.Print
+import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..))
 
 --------------------------------------------------------------------------------
 -- Type-class generalisation
@@ -53,7 +54,7 @@ isPrependable declType (WithContext constraint ctx) = case constraint of
     linkedMetas <- getMetasLinkedToMetasIn declType metaFilter
     -- Only prepend the constraint if all variables in the constraint
     -- are so linked.
-    let constraintMetas = metasIn tc
+    constraintMetas <- metasIn tc
     return $ if constraintMetas `MetaSet.isSubsetOf` linkedMetas
       then Just (WithContext tc ctx)
       else Nothing
@@ -87,7 +88,7 @@ generaliseOverUnsolvedMetaVariables decl = do
     -- In a type synonym so quantify only over auxiliary metas (unsure about this!)
     then getUnsolvedAuxiliaryMetas
     -- Quantify over any unsolved type-level meta variables
-    else return $ metasIn (typeOf decl)
+    else metasIn (typeOf decl)
 
   if MetaSet.null unsolvedMetas
     then return decl
@@ -145,18 +146,18 @@ prependBinderAndSolveMeta meta v r binderName binderType decl = do
   -- solved, and ii) a new argument to all uses of the meta-variable so
   -- that meta-subsitution will work later.
   addNewBinderToMetaContext meta
-  let consistentDecl = addNewArgumentToMetaUses meta prependedDecl
-
-  logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose consistentDecl
+  let updatedDecl = addNewArgumentToMetaUses meta prependedDecl
 
   -- We now solve the meta as the newly bound variable
   MetaInfo _ _ metaCtxSize <- getMetaInfo meta
-  let ann = provenanceOf consistentDecl
-  let solution = Var ann (Bound (metaCtxSize - 1))
-  metaSolved meta solution
+  let p = provenanceOf prependedDecl
+  let solution = Var p (Bound (metaCtxSize - 1))
+  metaSolved meta solution metaCtxSize
+
+  logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose updatedDecl
 
   -- Substitute the new meta solution through.
-  resultDecl <- substMetas consistentDecl
+  resultDecl <- substMetas updatedDecl
 
   logCompilerPassOutput $ prettyVerbose resultDecl
   return resultDecl
@@ -167,14 +168,14 @@ removeContextsOfMetasIn :: TCM m
                         -> m (CheckedType, CheckedDecl)
 removeContextsOfMetasIn binderType decl =
   logCompilerPass MaxDetail "removing dependencies from dependent metas" $ do
-    let metasInBinder = metasIn binderType
+    metasInBinder <- metasIn binderType
     newMetas <- or <$> forM (MetaSet.toList metasInBinder) (\m -> do
       MetaInfo p t ctxSize <- getMetaInfo m
       if ctxSize == 0 then
         return False
       else do
         newMeta <- freshExprMeta p t 0
-        metaSolved m newMeta
+        metaSolved m (unnormalised newMeta) ctxSize
         return True)
 
     if not newMetas then
@@ -214,4 +215,4 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
 
 addNewBinderToMetaContext :: TCM m => MetaID -> m ()
 addNewBinderToMetaContext m = modifyMetasInfo m $
-  \(MetaInfo p n ctxSize) -> MetaInfo p n (ctxSize + 1)
+  \(MetaInfo p t ctxSize) -> MetaInfo p t (ctxSize + 1)

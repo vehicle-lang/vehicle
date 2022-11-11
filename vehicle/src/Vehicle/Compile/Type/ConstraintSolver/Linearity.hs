@@ -12,6 +12,7 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
 
 import Control.Monad.Except (MonadError (..))
+import Vehicle.Compile.Normalise.NormExpr (pattern VLinearityExpr)
 
 solveLinearityConstraint :: TCM m
                          => LinearityTypeClass
@@ -51,8 +52,9 @@ solveMaxLinearity c [lin1, lin2, res] =
     (_, getMeta -> Just m2) -> blockOn [m2]
 
     (LinearityExpr p l1, LinearityExpr _ l2) -> do
-      let linRes = LinearityExpr p $ maxLinearity l1 l2
-      return $ Progress [unify (contextOf c) res linRes]
+      let linRes = VLinearityExpr p $ maxLinearity l1 l2
+      nRes <- whnfNBE (length (boundContext (contextOf c))) res
+      return $ Progress [unify (contextOf c) nRes linRes]
 
     _ -> malformedConstraintError c
 
@@ -71,8 +73,9 @@ solveMulLinearity c [lin1, lin2, res] =
     (LinearityExpr _ l1, LinearityExpr _ l2) -> do
       let ctx = contextOf c
       let p = originalProvenance ctx
-      let linRes = LinearityExpr p $ mulLinearity p l1 l2
-      return $ Progress [unify ctx res linRes]
+      let linRes = VLinearityExpr p $ mulLinearity p l1 l2
+      nRes <- whnfNBE (length (boundContext ctx)) res
+      return $ Progress [unify ctx nRes linRes]
 
     _ -> malformedConstraintError c
 
@@ -89,8 +92,9 @@ solveFunctionLinearity functionPosition c [arg, res] = case arg of
     let ctx = contextOf c
     let p = provenanceOf ctx
     let addFuncProv pp = LinFunctionProvenance p pp functionPosition
-    let resLin = LinearityExpr p $ mapLinearityProvenance addFuncProv lin
-    return $ Progress [unify ctx res resLin]
+    let resLin = VLinearityExpr p $ mapLinearityProvenance addFuncProv lin
+    nRes <- whnfNBE (length (boundContext ctx)) res
+    return $ Progress [unify ctx nRes resLin]
   _                       -> malformedConstraintError c
 
 solveFunctionLinearity _ c _ = malformedConstraintError c

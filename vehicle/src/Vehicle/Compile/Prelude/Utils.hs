@@ -110,6 +110,11 @@ onlyExplicit args = argExpr <$> filter isExplicit (NonEmpty.toList args)
 --------------------------------------------------------------------------------
 -- Views
 
+getMeta :: Expr binder var -> Maybe MetaID
+getMeta e = case exprHead e of
+  Meta _ m -> Just m
+  _        -> Nothing
+
 getFreeVar :: DBExpr -> Maybe Identifier
 getFreeVar = \case
   FreeVar _ ident -> Just ident

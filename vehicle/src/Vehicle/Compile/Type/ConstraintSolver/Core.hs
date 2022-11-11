@@ -2,8 +2,8 @@
 module Vehicle.Compile.Type.ConstraintSolver.Core
   ( blockOn
   , unify
-  , getMeta
   , blockOnReductionBlockingMetasOrThrowError
+  , blockOnNormReductionBlockingMetasOrThrowError
   , malformedConstraintError
   ) where
 
@@ -17,24 +17,21 @@ import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Normalise.NormExpr (NormExpr(..), pattern VTensorType)
+import Vehicle.Compile.Normalise.NormExpr qualified as Norm (getMeta)
 
 blockOn :: MonadCompile m => [MetaID] -> m ConstraintProgress
 blockOn metas = do
   logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
   return $ Stuck $ MetaSet.fromList metas
 
-unify :: ConstraintContext -> CheckedExpr -> CheckedExpr -> WithContext Constraint
+unify :: ConstraintContext -> NormExpr -> NormExpr -> WithContext Constraint
 unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) (copyContext ctx)
-
-getMeta :: CheckedExpr -> Maybe MetaID
-getMeta e = case exprHead e of
-  Meta _ m -> Just m
-  _        -> Nothing
 
 getReductionBlockingArgs :: CheckedExpr -> [CheckedExpr]
 getReductionBlockingArgs = \case
   TensorType _ _ dims              -> [dims]
-  BuiltinExpr _ TypeClassOp{} args -> [ fst (findInstanceArg (NonEmpty.toList args)) ]
+  BuiltinExpr _ TypeClassOp{} args -> [fst (findInstanceArg (NonEmpty.toList args))]
   _                                -> []
 
 blockOnReductionBlockingMetasOrThrowError :: MonadCompile m
@@ -44,6 +41,24 @@ blockOnReductionBlockingMetasOrThrowError :: MonadCompile m
 blockOnReductionBlockingMetasOrThrowError args err = do
   let blockingArgs = concatMap getReductionBlockingArgs args
   let blockingMetas = mapMaybe getMeta blockingArgs
+  if null blockingMetas
+    then throwError err
+    else blockOn blockingMetas
+
+getNormReductionBlockingArgs :: NormExpr -> [NormExpr]
+getNormReductionBlockingArgs = \case
+  VTensorType _ _ dims          -> [dims]
+  VBuiltin _ TypeClassOp{} args -> [fst (findInstanceArg args)]
+  _                             -> []
+
+blockOnNormReductionBlockingMetasOrThrowError :: MonadCompile m
+                                              => [NormExpr]
+                                              -> CompileError
+                                              -> m ConstraintProgress
+blockOnNormReductionBlockingMetasOrThrowError args err = do
+  let blockingArgs = concatMap getNormReductionBlockingArgs args
+  logDebug MaxDetail $ prettyVerbose blockingArgs
+  let blockingMetas = mapMaybe Norm.getMeta blockingArgs
   if null blockingMetas
     then throwError err
     else blockOn blockingMetas

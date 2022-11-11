@@ -15,7 +15,7 @@ import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------
--- Alpha equivalence tests
+-- De Bruijn tests
 
 deBruijnTests :: TestTree
 deBruijnTests =

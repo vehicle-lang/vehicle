@@ -92,6 +92,7 @@ library
     Vehicle.Compile.Normalise.Core
     Vehicle.Compile.Normalise.NBE
     Vehicle.Compile.Normalise.NormExpr
+    Vehicle.Compile.Normalise.Quote
     Vehicle.Compile.Parse
     Vehicle.Compile.Prelude
     Vehicle.Compile.Queries.DNF
@@ -300,6 +301,7 @@ library vehicle-unit-tests-common
     Vehicle.Test.Unit.Compile.DeBruijn
     Vehicle.Test.Unit.Compile.IfElimination
     Vehicle.Test.Unit.Compile.LetInsertion
+    Vehicle.Test.Unit.Compile.Normalisation
     Vehicle.Test.Unit.Compile.PositionTree
     Vehicle.Test.Unit.Compile.QuantifierLifting
 

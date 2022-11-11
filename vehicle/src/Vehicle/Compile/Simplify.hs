@@ -128,12 +128,6 @@ instance Simplify Text where
 instance Simplify Int where
   simplifyReader = return
 
-instance Simplify UnificationConstraint where
-  simplifyReader (Unify e1 e2) = do
-    e1' <- simplifyReader e1
-    e2' <- simplifyReader e2
-    return $ Unify e1' e2'
-
 instance Simplify TypeClassConstraint where
   simplifyReader (Has m tc es) = do
     es' <- simplifyReaderArgs es

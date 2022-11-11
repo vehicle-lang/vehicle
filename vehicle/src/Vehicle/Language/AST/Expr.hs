@@ -255,9 +255,9 @@ instance Substitutable DBExpr DBExpr where
       (d, s) <- ask
       return $ if i < d then
         Var p (Bound i)
-      else case s p (i - d) of
-        Nothing -> Var p (Bound i)
-        Just v  -> if d > 0 then liftFreeDBIndices d v else v
+      else case s (i - d) of
+        Left i' -> Var p (Bound (i' + d))
+        Right v -> if d > 0 then liftFreeDBIndices d v else v
 
     Universe p l        -> return $ Universe p l
     Meta     p m        -> return $ Meta p m
@@ -269,13 +269,9 @@ instance Substitutable DBExpr DBExpr where
     LVec p es           -> LVec    p <$> traverse subst es
     Ann  p term typ     -> Ann     p <$> subst   term   <*> subst typ
     App  p fun args     -> normApp p <$> subst   fun    <*> traverse subst args
-    Pi   p binder res   -> Pi      p <$> traverse subst binder <*> underBinder (subst res)
-    Let  p e1 binder e2 -> Let     p <$> subst e1 <*> traverse subst binder <*> underBinder (subst e2)
-    Lam  p binder e     -> Lam     p <$> traverse subst binder <*> underBinder (subst e)
-
-
-instance HasDBVariables DBExpr where
-  mkVar p i = Var p (Bound i)
+    Pi   p binder res   -> Pi      p <$> traverse subst binder <*> underDBBinder (subst res)
+    Let  p e1 binder e2 -> Let     p <$> subst e1 <*> traverse subst binder <*> underDBBinder (subst e2)
+    Lam  p binder e     -> Lam     p <$> traverse subst binder <*> underDBBinder (subst e)
 
 liftFreeDBIndices :: Int    -- ^ amount to lift by
                   -> DBExpr -- ^ target term to lift

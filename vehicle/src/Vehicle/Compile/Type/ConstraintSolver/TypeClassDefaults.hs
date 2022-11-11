@@ -10,6 +10,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
 import Vehicle.Language.Print (prettySimple)
+import Vehicle.Compile.Normalise.NormExpr
 
 --------------------------------------------------------------------------------
 -- Default solutions to type-class constraints
@@ -72,7 +73,8 @@ generateConstraintUsingDefaults constraints = do
       logDebug MaxDetail $
         "using default" <+> pretty m <+> "=" <+> prettySimple solution <+>
         "         " <> parens ("from" <+> pretty tc)
-      let unificationConstraint = UnificationConstraint (Unify metaExpr solution)
+      normMetaExpr <- whnfNBE ctxSize metaExpr
+      let unificationConstraint = UnificationConstraint (Unify normMetaExpr solution)
       let newConstraint = WithContext unificationConstraint (copyContext ctx)
       return $ Just newConstraint
 
@@ -136,47 +138,47 @@ defaultSolution :: TCM m
                 => Provenance
                 -> Int
                 -> TypeClass
-                -> m CheckedExpr
+                -> m NormExpr
 defaultSolution p ctxSize = \case
-  HasEq{}                 -> return $ NatType p
-  HasOrd{}                -> return $ NatType p
+  HasEq{}                 -> return $ VNatType p
+  HasOrd{}                -> return $ VNatType p
   HasNot                  -> createDefaultBoolType p
   HasAnd                  -> createDefaultBoolType p
   HasOr                   -> createDefaultBoolType p
   HasImplies              -> createDefaultBoolType p
   HasQuantifier{}         -> createDefaultBoolType p
-  HasAdd                  -> return $ NatType p
-  HasSub                  -> return $ IntType p
-  HasMul                  -> return $ NatType p
+  HasAdd                  -> return $ VNatType p
+  HasSub                  -> return $ VIntType p
+  HasMul                  -> return $ VNatType p
   HasDiv                  -> createDefaultRatType p
-  HasNeg                  -> return $ IntType p
-  HasNatLits n            -> return $ mkIndexType p (n + 1)
+  HasNeg                  -> return $ VIntType p
+  HasNatLits n            -> return $ VIndexType p (VNatLiteral p (n + 1))
   HasRatLits              -> createDefaultRatType p
   HasVecLits{}            -> createDefaultListType p ctxSize
   HasFold                 -> createDefaultListType p ctxSize
   HasQuantifierIn{}       -> createDefaultListType p ctxSize
-  NatInDomainConstraint n -> return $ NatLiteral p (n + 1)
+  NatInDomainConstraint n -> return $ VNatLiteral p (n + 1)
 
   HasIf{}                 -> ifTCError
   LinearityTypeClass{}    -> auxiliaryTCError
   PolarityTypeClass{}     -> auxiliaryTCError
   AlmostEqualConstraint{} -> auxiliaryTCError
 
-createDefaultListType :: TCM m => Provenance -> Int -> m CheckedType
+createDefaultListType :: TCM m => Provenance -> Int -> m NormType
 createDefaultListType p ctxSize = do
-  tElem <- freshExprMeta p (TypeUniverse p 0) ctxSize
-  return $ ListType p tElem
+  tElem <- normalised <$> freshExprMeta p (TypeUniverse p 0) ctxSize
+  return $ VListType p tElem
 
-createDefaultBoolType :: TCM m => Provenance -> m CheckedType
+createDefaultBoolType :: TCM m => Provenance -> m NormType
 createDefaultBoolType p = do
-  lin <- freshLinearityMeta p
-  pol <- freshPolarityMeta p
-  return $ AnnBoolType p lin pol
+  lin <- normalised <$> freshLinearityMeta p
+  pol <- normalised <$> freshPolarityMeta p
+  return $ VAnnBoolType p lin pol
 
-createDefaultRatType :: TCM m => Provenance -> m CheckedType
+createDefaultRatType :: TCM m => Provenance -> m NormType
 createDefaultRatType p = do
-  lin <- freshLinearityMeta p
-  return $ AnnRatType p lin
+  lin <- normalised <$> freshLinearityMeta p
+  return $ VAnnRatType p lin
 
 getCandidatesFromConstraint :: MonadCompile m => ConstraintContext -> TypeClassConstraint -> m [Candidate]
 getCandidatesFromConstraint ctx (Has _ tc args) = do
