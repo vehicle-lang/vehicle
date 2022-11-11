@@ -14,6 +14,7 @@ import Prelude hiding (pi)
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..))
 import Vehicle.Compile.Type.Builtin
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
@@ -138,7 +139,8 @@ checkExpr expectedType expr = do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted as
       -- different meta-variables.
-      freshExprMeta p expectedType . length =<< getBoundCtx
+      boundCtxSize <- length <$> getBoundCtx
+      unnormalised <$> freshExprMeta p expectedType boundCtxSize
 
     -- Otherwise switch to inference mode
     (_, _) -> viaInfer expectedType expr
@@ -181,8 +183,9 @@ inferExpr e = do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted
       -- as different meta-variables.
-      metaType <- freshExprMeta p (TypeUniverse p 0) . length =<< getBoundCtx
-      metaExpr <- freshExprMeta p metaType . length =<< getBoundCtx
+      boundCtxSize <- length <$> getBoundCtx
+      metaType <- unnormalised <$> freshExprMeta p (TypeUniverse p 0) boundCtxSize
+      metaExpr <- unnormalised <$>freshExprMeta p metaType boundCtxSize
       checkExprTypesEqual p metaExpr metaType (TypeUniverse p 0)
       return (metaExpr, metaType)
 
@@ -250,18 +253,26 @@ inferExpr e = do
       (checkedBody, typeOfBody) <-
         addToBoundCtx (nameOf binder, typeOfBoundExpr, Just checkedBoundExpr) $ inferExpr body
 
-      -- It's possible for the type of the body to depend on the let bound variable,
-      -- e.g. `let y = Nat in (2 : y)` so in order to avoid the DeBruijn index escaping
-      -- it's context we need to substitute the bound expression into the type.
-      normTypeOfBody <- if isMeta typeOfBody
-        then return typeOfBody
-        else do
+      restrictedTypeOfBody <- case getMeta typeOfBody of
+        -- It's possible for the type of the body to depend on the let bound variable,
+        -- e.g. `let y = Nat in (2 : y)` so in order to avoid the DeBruijn index escaping
+        -- it's context we need to substitute the bound expression into the type.
+        Nothing -> do
           let normTypeOfBody = checkedBoundExpr `substInto` typeOfBody
           when (normTypeOfBody /= typeOfBody) $
             logDebug MaxDetail $ "normalising" <+> prettyVerbose typeOfBody <+> "to" <+> prettyVerbose normTypeOfBody
           return normTypeOfBody
+        -- However meta-variables don't react well to having their context substituted through
+        -- so we restrict the meta-variable's scope so it can't depend on the most recent
+        -- value. This seems like a massive hack and there must be a more principled way
+        -- of doing it.....
+        Just m -> do
+          boundCtxSize <- length <$> getBoundCtx
+          newTypeOfBody <- unnormalised <$> freshExprMeta p (TypeUniverse p 0) boundCtxSize
+          metaSolved m newTypeOfBody boundCtxSize
+          return newTypeOfBody
 
-      return (Let p checkedBoundExpr checkedBinder checkedBody , normTypeOfBody)
+      return (Let p checkedBoundExpr checkedBinder checkedBody , restrictedTypeOfBody)
 
     Lam p binder body -> do
       -- Infer the type of the bound variable from the binder
@@ -294,7 +305,7 @@ inferExpr e = do
       -- Create the new type.
       -- Roughly [x1, ..., xn] has type
       --  forall {tElem} {{TypesEqual tElem [t1, ..., tn]}} . Vector tElem n
-      let liftedTypesOfElems = liftFreeDBIndices 3 <$> typesOfElems
+      let liftedTypesOfElems = liftFreeDBIndices 1 <$> typesOfElems
       let typesOfElemsSeq = mkList p (TypeUniverse p 0) liftedTypesOfElems
       let tc = AlmostEqualConstraint
       let elemsTC tElem = BuiltinTypeClass p tc (ExplicitArg p <$> [tElem, typesOfElemsSeq])
@@ -361,11 +372,13 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
       case matchedUncheckedArg of
         Just arg -> checkExpr binderType (argExpr arg)
         Nothing
-          | isImplicit binder -> freshExprMeta p binderType . length =<< getBoundCtx
+          | isImplicit binder -> do
+            boundCtxSize <- length <$> getBoundCtx
+            unnormalised <$> freshExprMeta p binderType boundCtxSize
           | otherwise         -> do
               ctx <- getBoundCtx
-              meta <- addFreshTypeClassConstraint ctx fun args' binderType
-              return $ Meta p meta
+              metaExpr <- addFreshTypeClassConstraint ctx fun args' binderType
+              return metaExpr
 
     let checkedArg = Arg p (visibilityOf binder) (relevanceOf binder) checkedArgExpr
 

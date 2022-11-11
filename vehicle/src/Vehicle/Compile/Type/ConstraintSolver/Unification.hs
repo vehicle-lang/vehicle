@@ -15,19 +15,18 @@ import Data.Traversable (for)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.ConstraintSolver.Core (blockOnReductionBlockingMetasOrThrowError,
-                                                   unify)
+import Vehicle.Compile.Type.ConstraintSolver.Core (unify, unify, blockOnNormReductionBlockingMetasOrThrowError)
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Compile.Normalise.Quote (adjustDBIndices, Quote (..))
+
 
 --------------------------------------------------------------------------------
 -- Unification algorithm
-
-passName :: Doc a
-passName = "unification"
 
 pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x,y)
@@ -35,101 +34,89 @@ pattern x :~: y = (x,y)
 solveUnificationConstraint :: TCM m
                            => WithContext UnificationConstraint
                            -> m ConstraintProgress
--- Errors
 solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
   let c = WithContext (Unify e1 e2) ctx
-  e1' <- whnf e1
-  e2' <- whnf e2
+  let ctxSize = length (boundContext ctx)
 
-  progress <- case (toHead e1', toHead e2') of
-
-    ----------------------
-    -- Impossible cases --
-    ----------------------
-
-    (Let{}, _) :~: _           -> unexpectedExprError passName "Let"
-    _          :~: (Let{}, _)  -> unexpectedExprError passName "Let"
-
-    (Hole{}, _) :~: _           -> unexpectedExprError passName "Holes"
-    _           :~: (Hole{}, _) -> unexpectedExprError passName "Holes"
+  progress <- case (e1, e2) of
 
     -----------------------
     -- Rigid-rigid cases --
     -----------------------
 
-    (Universe _ l1, []) :~: (Universe _ l2, []) -> do
+    VUniverse _ l1 :~: VUniverse _ l2 ->
       solveEq c l1 l2
-      return $ Progress mempty
 
     -- We ASSUME that all terms here are in normal form, so there
     -- will never be an unreduced redex.
-    (Lam _ binder1 body1, []) :~: (Lam _ binder2 body2, [])
-      | visibilityMatches binder1 binder2 -> return $ Progress [unify ctx body1 body2]
-      | otherwise                         -> throwError $ FailedUnificationConstraints [c]
+    VLam _ _binder1 _env1 _body1 :~: VLam _ _binder2 _env2 _body2
+      -> compilerDeveloperError "unification of type-level lambdas not yet supported"
+      -- | visibilityMatches binder1 binder2 -> return $ Progress [unify ctx body1 body2]
+      -- | otherwise                         -> throwError $ FailedUnificationConstraints [c]
 
-    (LVec _ es1, args1) :~: (LVec _ es2, args2)
-      -- TODO more informative error message
-      | length es1 /= length es2 || length args1 /= length args2 ->
-        throwError $ FailedUnificationConstraints [c]
-      -- TODO need to try and unify `LVec` with `Cons`s.
-      | otherwise -> do
-        let elemConstraints = zipWith (unify ctx) es1 es2
-        argConstraints <- solveArgs c (args1, args2)
-        return $ Progress $ elemConstraints <> argConstraints
+    VLVec _ es1 args1 :~: VLVec _ es2 args2
+      | length es1 /= length es2 -> throwError $ FailedUnificationConstraints [c]
+      | otherwise                -> do
+        let elemEqs = zipWith (unify ctx) es1 es2
+        argsEqs <- solveArgs c (args1, args2)
+        return $ Progress $ elemEqs <> argsEqs
 
-    (Pi _ binder1 body1, []) :~: (Pi _ binder2 body2, [])
+    VPi _ binder1 body1 :~: VPi _ binder2 body2
       | visibilityMatches binder1 binder2 -> do
-          -- !!TODO!! Block until binders are solved
-          -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
-          -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
-          let binderConstraint = unify ctx (typeOf binder1) (typeOf binder2)
-          let bodyConstraint   = unify ctx body1 body2
-          return $ Progress [binderConstraint, bodyConstraint]
+        -- !!TODO!! Block until binders are solved
+        -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
+        -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
+        let binderConstraint = unify ctx (typeOf binder1) (typeOf binder2)
+        let bodyConstraint   = unify ctx body1 body2
+        return $ Progress [binderConstraint, bodyConstraint]
 
       | otherwise -> throwError $ FailedUnificationConstraints [c]
 
-    (Builtin _ op1, args1) :~: (Builtin _ op2, args2) ->
+    VBuiltin _ op1 args1 :~: VBuiltin _ op2 args2 ->
       solveSimpleApplication c op1 op2 args1 args2
 
-    (Var _ v1, args1) :~: (Var _ v2, args2) ->
+    VVar _ v1 args1 :~: VVar _ v2 args2 ->
       solveSimpleApplication c v1 v2 args1 args2
 
-    (Literal _ l1, args1) :~: (Literal _ l2, args2) ->
-      solveSimpleApplication c l1 l2 args1 args2
+    VLiteral _ l1 :~: VLiteral _ l2 ->
+      solveEq c l1 l2
 
     ---------------------
     -- Flex-flex cases --
     ---------------------
 
-    (Meta _ i, args1) :~: (Meta _ j, args2)
+    VMeta _ i args1 :~: VMeta _ j args2 -> do
+      deps1 <- getNormMetaDependencies args1
+      deps2 <- getNormMetaDependencies args2
       -- If the meta-variables are equal then simply discard the constraint
       -- as it doesn't tell us anything.
-      | i == j -> if args1 == args2
-        then return $ Progress mempty
-        else compilerDeveloperError $
-          -- Used to have a case for this, e.g. see commit cc02a9d for details,
-          -- but I don't think its necessary as we always replace the meta-variable
-          -- with a new one in order to update the context.
-          "Found the same meta-variable" <+> pretty i <+> "unequal contexts:" <+>
-          prettyVerbose args1 <+> prettyVerbose args2
+      if i == j then
+        if deps1 == deps2
+          then return $ Progress mempty
+          else compilerDeveloperError $
+            -- Used to have a case for this, e.g. see commit cc02a9d for details,
+            -- but I don't think its necessary as we always replace the meta-variable
+            -- with a new one in order to update the context.
+            "Found the same meta-variable" <+> pretty i <+> "with different dependencies:" <+>
+            prettyVerbose deps1 <+> prettyVerbose deps2
 
       -- Finally if the meta-variables are different then we have much more
       -- flexibility as to how the arguments can relate to each other. In
       -- particular they can be re-arranged, and therefore we calculate the
       -- non-positional intersection of their arguments. Then proceed as above
       -- for each of the meta-variables in turn.
-      | otherwise -> do
+      else do
         MetaInfo meta1Origin meta1Type _ <- getMetaInfo i
         MetaInfo meta2Origin meta2Type _ <- getMetaInfo j
-        deps1 <- getMetaDependencies args1
-        deps2 <- getMetaDependencies args2
         let jointContext = deps1 `intersect` deps2
         meta <- createMetaWithRestrictedDependencies (meta1Origin <> meta2Origin) meta1Type jointContext
 
-        metaSolved i meta
-        metaSolved j meta
+        metaSolved i meta ctxSize
+        metaSolved j meta ctxSize
 
-        return $ Progress [unify ctx meta1Type meta2Type]
+        typeEq <- unify ctx <$> whnfNBE ctxSize meta1Type <*> whnfNBE ctxSize meta2Type
+
+        return $ Progress [typeEq]
 
     ----------------------
     -- Flex-rigid cases --
@@ -139,8 +126,8 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
 
     -- ==> ?Y := \x. \y. \z. ?X e1 e2 e3
 
-    (Meta _ i, args) :~: _ -> do
-      deps <- getMetaDependencies args
+    VMeta _ i args :~: _ -> do
+      deps <- getNormMetaDependencies args
 
       -- Check that 'args' is a pattern and try to calculate a substitution
       -- that renames the variables in 'e2' to ones available to meta `i`
@@ -152,7 +139,7 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
         Nothing -> return $ Stuck $ MetaSet.singleton i
 
         Just argPattern -> do
-          let metasInE2 = metasInWithArgs e2
+          metasInE2 <- metasInWithDependencies e2
 
           -- If `i` is inside the term we're trying to unify it with then error.
           -- Unsure if this should be a user or a developer error.
@@ -162,32 +149,31 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
               squotes (prettyVerbose e2)
 
           -- Restrict any arguments to each sub-meta on the RHS to those of i.
-          newMetasSolved <- or <$> for (MetaMap.toList metasInE2) (\(j, jArgs) -> do
+          newMetasSolved <- or <$> for (MetaMap.toList metasInE2) (\(j, jDeps) -> do
             MetaInfo jOrigin jType _ <- getMetaInfo j
-            jDeps <- getMetaDependencies jArgs
 
             let sharedDependencies = deps `intersect` jDeps
             if sharedDependencies == jDeps
               then return False
               else do
                 meta <- createMetaWithRestrictedDependencies jOrigin jType sharedDependencies
-                metaSolved j meta
+                metaSolved j meta ctxSize
                 return True)
 
           finalE2 <- if newMetasSolved then substMetas e2 else return e2
 
-          case substAll argPattern finalE2 of
-            defnBody -> do
-              metaSolved i defnBody
-              return $ Progress mempty
+          let solution = adjustDBIndices 0 (`IntMap.lookup` argPattern) finalE2
+          unnormSolution <- quote solution
+          metaSolved i unnormSolution ctxSize
+          return $ Progress mempty
 
-    _t :~: (Meta{}, _) ->
+    _t :~: VMeta{} ->
       -- this is the mirror image of the previous case, so just swap the
       -- problem over.
       solveUnificationConstraint (WithContext (Unify e2 e1) ctx)
 
     -- Catch-all
-    _ -> blockOnReductionBlockingMetasOrThrowError [e1,e2] (FailedUnificationConstraints [c])
+    _ -> blockOnNormReductionBlockingMetasOrThrowError [e1,e2] (FailedUnificationConstraints [c])
 
   return progress
 
@@ -195,14 +181,16 @@ solveEq :: (TCM m, Eq a)
         => WithContext UnificationConstraint
         -> a
         -> a
-        -> m ()
+        -> m ConstraintProgress
 solveEq c v1 v2
   | v1 /= v2  = throwError $ FailedUnificationConstraints [c]
-  | otherwise = logDebug MaxDetail "solved-trivially"
+  | otherwise = do
+    logDebug MaxDetail "solved-trivially"
+    return $ Progress mempty
 
 solveArg :: TCM m
          => WithContext UnificationConstraint
-         -> (CheckedArg, CheckedArg)
+         -> (NormArg, NormArg)
          -> m (Maybe (WithContext Constraint))
 solveArg c (arg1, arg2)
   | not (visibilityMatches arg1 arg2) = throwError $ FailedUnificationConstraints [c]
@@ -211,14 +199,14 @@ solveArg c (arg1, arg2)
 
 solveArgs :: TCM m
           => WithContext UnificationConstraint
-          -> ([CheckedArg], [CheckedArg])
+          -> ([NormArg], [NormArg])
           -> m [WithContext Constraint]
 solveArgs c (args1, args2)= catMaybes <$> traverse (solveArg c) (zip args1 args2)
 
 solveSimpleApplication :: (TCM m, Eq a)
                        => WithContext UnificationConstraint
                        -> a -> a
-                       -> [CheckedArg] -> [CheckedArg]
+                       -> [NormArg] -> [NormArg]
                        -> m ConstraintProgress
 solveSimpleApplication constraint fun1 fun2 args1 args2 = do
   if fun1 /= fun2 || length args1 /= length args2 then
@@ -238,7 +226,7 @@ createMetaWithRestrictedDependencies :: TCM m
 createMetaWithRestrictedDependencies p metaType newDependencies = do
   meta <- freshExprMeta p metaType (length newDependencies)
   let substitution = IntMap.fromAscList (zip [0..] newDependencies)
-  return $ substAll substitution meta
+  return $ substAll 0 (`IntMap.lookup` substitution) (unnormalised meta)
 
 --------------------------------------------------------------------------------
 -- Argument patterns
@@ -250,7 +238,7 @@ type ArgPattern = IntMap Int
 getArgPattern :: [DBIndex] -> Maybe ArgPattern
 getArgPattern args = go (length args - 1) IntMap.empty args
   where
-    go :: Int -> IntMap Int -> [DBIndex] -> Maybe (IntMap Int)
+    go :: Int -> IntMap Int -> [DBIndex] -> Maybe ArgPattern
     go _ revMap [] = Just revMap
     -- TODO: we could eta-reduce arguments too, if possible
     go i revMap (j : restArgs) =
@@ -260,11 +248,3 @@ getArgPattern args = go (length args - 1) IntMap.empty args
         Nothing
       else
         go (i-1) (IntMap.insert j i revMap) restArgs
-
-getMetaDependencies :: forall m . MonadCompile m => [CheckedArg] -> m [DBIndex]
-getMetaDependencies = traverse (getDep . argExpr)
-  where
-  getDep :: CheckedExpr -> m DBIndex
-  getDep (BoundVar _ i) = return i
-  getDep e              = compilerDeveloperError $
-    "Non-variable expression" <+> prettyVerbose e <+> "found in meta dependencies"

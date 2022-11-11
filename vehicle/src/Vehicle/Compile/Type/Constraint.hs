@@ -6,6 +6,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.MetaSet (MetaSet)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext
+import Vehicle.Compile.Normalise.NormExpr
 
 --------------------------------------------------------------------------------
 -- Constraint types
@@ -78,6 +79,14 @@ data ConstraintContext = ConstraintContext
   , group              :: ConstraintGroup
   } deriving (Show)
 
+instance Pretty ConstraintContext where
+  pretty ctx = do
+    let blockingMetas = blockedBy ctx
+    (if MetaSet.null blockingMetas
+      then ""
+      else "     " <> parens ("blockedBy:" <+> pretty (blockedBy ctx)))
+    -- <+> "<boundCtx=" <> pretty (length (boundContext ctx)) <> ">"
+
 instance HasProvenance ConstraintContext where
   provenanceOf (ConstraintContext _ _ creationProvenance _ _ _) = creationProvenance
 
@@ -97,7 +106,7 @@ copyContext (ConstraintContext originProv originalConstraint creationProv _ ctx 
 -- Unification constraints
 
 -- | A constraint representing that a pair of expressions should be equal
-data UnificationConstraint = Unify CheckedExpr CheckedExpr
+data UnificationConstraint = Unify NormExpr NormExpr
   deriving (Show)
 
 type instance WithContext UnificationConstraint =

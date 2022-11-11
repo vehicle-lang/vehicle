@@ -27,7 +27,7 @@ import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 -- Meta substitution
 
 newtype MetaMap a = MetaMap (IntMap a)
-  deriving (Show, Semigroup, Monoid, Foldable)
+  deriving (Show, Semigroup, Monoid, Foldable, Functor)
 
 singleton :: MetaID -> a -> MetaMap a
 singleton m e = coerce (IntMap.singleton (coerce m) e)

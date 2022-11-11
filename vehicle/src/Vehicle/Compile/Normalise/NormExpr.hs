@@ -14,7 +14,7 @@ data NormExpr
   | VLiteral  Provenance Literal
   | VLam      Provenance NormBinder Env CheckedExpr
   | VPi       Provenance NormBinder NormExpr
-  | VLVec     Provenance [NormExpr]
+  | VLVec     Provenance [NormExpr] Spine
   | VMeta     Provenance MetaID Spine
   | VVar      Provenance DBVar Spine
   | VBuiltin  Provenance Builtin Spine
@@ -26,7 +26,7 @@ instance HasProvenance NormExpr where
     VLiteral  p _     -> p
     VLam      p _ _ _ -> p
     VPi       p _ _   -> p
-    VLVec     p _     -> p
+    VLVec     p _ _   -> p
     VMeta     p _ _   -> p
     VVar      p _ _   -> p
     VBuiltin  p _ _   -> p
@@ -67,8 +67,8 @@ pattern VBoolLit p x = VLiteral p (LBool x)
 -- pattern VIndexLit :: Provenance -> Int -> NormExpr
 -- pattern VIndexLit p x <- VLiteral p (LIndex _ x)
 
-pattern VNatLit :: Provenance -> Int -> NormExpr
-pattern VNatLit p x = VLiteral p (LNat x)
+pattern VNatLiteral :: Provenance -> Int -> NormExpr
+pattern VNatLiteral p x = VLiteral p (LNat x)
 
 pattern VIntLit :: Provenance -> Int -> NormExpr
 pattern VIntLit p x = VLiteral p (LInt x)
@@ -79,13 +79,13 @@ pattern VRatLit p x = VLiteral p (LRat x)
 pattern VConstructor :: Provenance -> BuiltinConstructor -> [GenericArg NormExpr] -> NormExpr
 pattern VConstructor p c args = VBuiltin p (Constructor c) args
 
-pattern VLinearity :: Provenance -> Linearity -> NormExpr
-pattern VLinearity p l <- VConstructor p (Linearity l) []
-  where VLinearity p l =  VConstructor p (Linearity l) []
+pattern VLinearityExpr :: Provenance -> Linearity -> NormExpr
+pattern VLinearityExpr p l <- VConstructor p (Linearity l) []
+  where VLinearityExpr p l =  VConstructor p (Linearity l) []
 
-pattern VPolarity :: Provenance -> Polarity -> NormExpr
-pattern VPolarity p l <- VConstructor p (Polarity l) []
-  where VPolarity p l =  VConstructor p (Polarity l) []
+pattern VPolarityExpr :: Provenance -> Polarity -> NormExpr
+pattern VPolarityExpr p l <- VConstructor p (Polarity l) []
+  where VPolarityExpr p l =  VConstructor p (Polarity l) []
 
 pattern VAnnBoolType :: Provenance -> NormExpr -> NormExpr -> NormType
 pattern VAnnBoolType p lin pol <- VConstructor p Bool [IrrelevantImplicitArg _ lin, IrrelevantImplicitArg _ pol]
@@ -130,6 +130,9 @@ mkNList p tElem = foldr cons nil
     nil       = VConstructor p Nil [t]
     cons y ys = VConstructor p Cons [t, ExplicitArg p y, ExplicitArg p ys]
 
+mkVLVec :: Provenance -> [NormExpr] -> NormArg -> NormExpr
+mkVLVec p xs t = VLVec p xs [t, InstanceArg p (VUnitLit p)]
+
 isNTypeUniverse :: NormExpr -> Bool
 isNTypeUniverse (VUniverse _ TypeUniv{}) = True
 isNTypeUniverse _                        = False
@@ -146,9 +149,13 @@ isNAuxiliaryUniverse :: NormExpr -> Bool
 isNAuxiliaryUniverse e = isNPolarityUniverse e || isNLinearityUniverse e
 
 
-isMeta :: NormExpr -> Bool
-isMeta VMeta{} = True
-isMeta _       = False
+isNMeta :: NormExpr -> Bool
+isNMeta VMeta{} = True
+isNMeta _       = False
+
+getMeta :: NormExpr -> Maybe MetaID
+getMeta (VMeta _ m _) = Just m
+getMeta _             = Nothing
 
 isBoolType :: NormExpr -> Bool
 isBoolType (VConstructor _ Bool _) = True

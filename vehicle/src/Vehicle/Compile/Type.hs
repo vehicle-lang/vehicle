@@ -4,7 +4,7 @@ module Vehicle.Compile.Type
   , typeCheckExpr
   ) where
 
-import Control.Monad (forM, unless, when)
+import Control.Monad ( forM, unless, when, filterM )
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.Writer (MonadWriter (..), runWriterT)
@@ -29,6 +29,7 @@ import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
 import Vehicle.Language.Print
+import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..))
 
 -------------------------------------------------------------------------------
 -- Algorithm
@@ -80,7 +81,8 @@ typeCheckDecls ctx (d : ds) = do
   -- First insert any missing auxiliary arguments into the decl
   d' <- insertHolesForAuxiliaryAnnotations d
   checkedDecl  <- typeCheckDecl ctx d'
-  checkedDecls <- addDeclContext checkedDecl $ typeCheckDecls ctx ds
+  normDecl <- traverse (glueNBE 0) checkedDecl
+  checkedDecls <- addDeclContext normDecl $ typeCheckDecls ctx ds
   return $ checkedDecl : checkedDecls
 
 typeCheckDecl :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedDecl -> m CheckedDecl
@@ -205,7 +207,7 @@ loopOverConstraints loopNumber decl = do
         substMetasThroughCtx
         newSubstitution <- getMetaSubstitution
         logDebug MaxDetail $ "current-solution:" <+>
-          prettyVerbose newSubstitution <> "\n"
+          prettyVerbose (fmap unnormalised newSubstitution) <> "\n"
 
         return updatedDecl
 
@@ -267,8 +269,9 @@ getDefaultCandidates maybeDecl = do
       logDebug MaxDetail $
         "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
 
-      return $ flip filter typeClassConstraints $ \tc ->
-        MetaSet.disjoint (metasIn (objectIn tc)) typeMetas
+      flip filterM typeClassConstraints $ \tc -> do
+        constraintMetas <- metasIn (objectIn tc)
+        return $ MetaSet.disjoint constraintMetas typeMetas
 
 -------------------------------------------------------------------------------
 -- Property information extraction

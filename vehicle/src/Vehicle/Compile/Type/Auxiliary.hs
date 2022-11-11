@@ -9,6 +9,7 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Normalise.NormExpr
 import Vehicle.Compile.Type.MetaMap (MetaMap (..))
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap
 import Vehicle.Compile.Type.Monad
@@ -156,8 +157,8 @@ insertionUpdateFn :: TCM m => AuxArgUpdate m
 insertionUpdateFn p auxType = \case
   Just e -> return e
   Nothing -> case auxType of
-    Lin -> freshLinearityMeta p
-    Pol -> freshPolarityMeta p
+    Lin -> unnormalised <$> freshLinearityMeta p
+    Pol -> unnormalised <$> freshPolarityMeta p
 
 -------------------------------------------------------------------------------
 -- Inserting polarity and linearity constraints to capture function application
@@ -204,8 +205,8 @@ replaceAux position p auxType = \case
   Nothing   -> compilerDeveloperError
     "Should not be missing auxiliary arguments during function constraint insertion"
   Just expr -> case auxType of
-    Lin -> addFunctionConstraint (LinearityTypeClass . FunctionLinearity) (freshLinearityMeta p) position expr
-    Pol -> addFunctionConstraint (PolarityTypeClass  . FunctionPolarity)  (freshPolarityMeta  p) position expr
+    Lin -> addFunctionConstraint (LinearityTypeClass . FunctionLinearity) (unnormalised <$> freshLinearityMeta p) position expr
+    Pol -> addFunctionConstraint (PolarityTypeClass  . FunctionPolarity)  (unnormalised <$> freshPolarityMeta  p) position expr
 
 addFunctionConstraint :: (TCM m, MonadState (MetaMap CheckedExpr) m)
                       => (FunctionPosition -> TypeClass)

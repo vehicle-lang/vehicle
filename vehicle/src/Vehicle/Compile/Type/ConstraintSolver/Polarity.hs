@@ -10,6 +10,7 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
 
 import Control.Monad.Except (MonadError (..))
+import Vehicle.Compile.Normalise.NormExpr (pattern VPolarityExpr)
 
 solvePolarityConstraint :: TCM m
                         => PolarityTypeClass
@@ -101,8 +102,9 @@ solveNegPolarity c [arg1, res] = case arg1 of
 
   PolarityExpr p pol -> do
     let ctx = contextOf c
-    let resPol = PolarityExpr p $ negatePolarity (provenanceOf ctx) pol
-    return $ Progress [unify ctx res resPol]
+    let resPol = VPolarityExpr p $ negatePolarity (provenanceOf ctx) pol
+    nRes <- whnfNBE (length (boundContext ctx)) res
+    return $ Progress [unify ctx nRes resPol]
 
   _ -> malformedConstraintError c
 
@@ -120,8 +122,9 @@ solveAddPolarity q c [arg1, res] = case arg1 of
   PolarityExpr _ pol -> do
     let ctx = contextOf c
     let p = provenanceOf ctx
-    let resPol = PolarityExpr p $ addPolarity p q pol
-    return $ Progress [unify ctx res resPol]
+    let resPol = VPolarityExpr p $ addPolarity p q pol
+    nRes <- whnfNBE (length (boundContext ctx)) res
+    return $ Progress [unify ctx nRes resPol]
 
   _ -> malformedConstraintError c
 
@@ -139,8 +142,9 @@ solvePolarityOp2 op2 c [arg1, arg2, res] = case (arg1, arg2) of
 
   (PolarityExpr p pol1, PolarityExpr _ pol2) -> do
     let ctx = contextOf c
-    let pol3 = PolarityExpr p $ op2 (provenanceOf ctx) pol1 pol2
-    return $ Progress [unify ctx res pol3]
+    let pol3 = VPolarityExpr p $ op2 (provenanceOf ctx) pol1 pol2
+    nRes <- whnfNBE (length (boundContext ctx)) res
+    return $ Progress [unify ctx nRes pol3]
 
   _ -> malformedConstraintError c
 
@@ -176,8 +180,9 @@ solveFunctionPolarity functionPosition c [arg, res] = case arg of
     let ctx = contextOf c
     let p = provenanceOf ctx
     let addFuncProv pp = PolFunctionProvenance p pp functionPosition
-    let pol3 = PolarityExpr p $ mapPolarityProvenance addFuncProv pol
-    return $ Progress [unify ctx res pol3]
+    let pol3 = VPolarityExpr p $ mapPolarityProvenance addFuncProv pol
+    nRes <- whnfNBE (length (boundContext ctx)) res
+    return $ Progress [unify ctx nRes pol3]
   _                        -> malformedConstraintError c
 
 solveFunctionPolarity _ c _ = malformedConstraintError c
