@@ -757,6 +757,10 @@ compileDiv dom args = do
 
   annotateInfixOp2 [dependency] 7 id (Just qualifier) "÷" args
 
+isRatType :: Type binder var -> Bool
+isRatType RatType{} = True
+isRatType _         = False
+
 compileOrder :: MonadAgdaCompile m => OrderOp -> OutputExpr -> [Code] -> m Code
 compileOrder originalOrder elemType originalArgs = do
   boolLevel <- getBoolLevel

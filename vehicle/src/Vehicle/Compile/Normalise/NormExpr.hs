@@ -58,8 +58,8 @@ pattern VLinearityUniverse :: Provenance -> NormExpr
 pattern VLinearityUniverse p = VUniverse p PolarityUniv
 
 
-pattern VUnitLit :: Provenance -> NormExpr
-pattern VUnitLit p = VLiteral p LUnit
+pattern VUnitLiteral :: Provenance -> NormExpr
+pattern VUnitLiteral p = VLiteral p LUnit
 
 pattern VBoolLit :: Provenance -> Bool -> NormExpr
 pattern VBoolLit p x = VLiteral p (LBool x)
@@ -131,7 +131,7 @@ mkNList p tElem = foldr cons nil
     cons y ys = VConstructor p Cons [t, ExplicitArg p y, ExplicitArg p ys]
 
 mkVLVec :: Provenance -> [NormExpr] -> NormArg -> NormExpr
-mkVLVec p xs t = VLVec p xs [t, InstanceArg p (VUnitLit p)]
+mkVLVec p xs t = VLVec p xs [t, InstanceArg p (VUnitLiteral p)]
 
 isNTypeUniverse :: NormExpr -> Bool
 isNTypeUniverse (VUniverse _ TypeUniv{}) = True
@@ -148,10 +148,9 @@ isNLinearityUniverse _                             = False
 isNAuxiliaryUniverse :: NormExpr -> Bool
 isNAuxiliaryUniverse e = isNPolarityUniverse e || isNLinearityUniverse e
 
-
-isNMeta :: NormExpr -> Bool
-isNMeta VMeta{} = True
-isNMeta _       = False
+isMeta :: NormExpr -> Bool
+isMeta VMeta{} = True
+isMeta _       = False
 
 getMeta :: NormExpr -> Maybe MetaID
 getMeta (VMeta _ m _) = Just m

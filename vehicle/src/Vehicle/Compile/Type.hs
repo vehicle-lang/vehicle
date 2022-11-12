@@ -242,7 +242,7 @@ addNewConstraintUsingDefaults maybeDecl = do
     -- Calculate the set of candidate constraints
     candidateConstraints <- getDefaultCandidates maybeDecl
     logDebug MaxDetail $ "Candidate type-class constraints:" <> line <>
-      indent 2 (prettySimple candidateConstraints) <> line
+      indent 2 (prettyVerbose candidateConstraints) <> line
 
     result <- generateConstraintUsingDefaults candidateConstraints
     case result of

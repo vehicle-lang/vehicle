@@ -9,6 +9,7 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Verify.Core (VerifierIdentifier)
+import Vehicle.Compile.Normalise.NormExpr (NormType)
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -66,23 +67,23 @@ data CompileError
     CheckedType             -- Expected type of the argument
   | FailedUnificationConstraints
     (NonEmpty (WithContext UnificationConstraint))
-  | FailedEqConstraint               ConstraintContext CheckedType CheckedType EqualityOp
-  | FailedOrdConstraint              ConstraintContext CheckedType CheckedType OrderOp
-  | FailedBuiltinConstraintArgument  ConstraintContext Builtin CheckedType [Builtin] Int Int
-  | FailedBuiltinConstraintResult    ConstraintContext Builtin CheckedType [Builtin]
-  | FailedNotConstraint              ConstraintContext CheckedType
-  | FailedBoolOp2Constraint          ConstraintContext CheckedType CheckedType Builtin
-  | FailedQuantifierConstraintDomain ConstraintContext CheckedType Quantifier
-  | FailedQuantifierConstraintBody   ConstraintContext CheckedType Quantifier
-  | FailedArithOp2Constraint         ConstraintContext CheckedType CheckedType Builtin
-  | FailedFoldConstraintContainer    ConstraintContext CheckedType
-  | FailedQuantInConstraintContainer ConstraintContext CheckedType Quantifier
-  | FailedNatLitConstraint           ConstraintContext Int CheckedType
+  | FailedEqConstraint               ConstraintContext NormType NormType EqualityOp
+  | FailedOrdConstraint              ConstraintContext NormType NormType OrderOp
+  | FailedBuiltinConstraintArgument  ConstraintContext Builtin NormType [Builtin] Int Int
+  | FailedBuiltinConstraintResult    ConstraintContext Builtin NormType [Builtin]
+  | FailedNotConstraint              ConstraintContext NormType
+  | FailedBoolOp2Constraint          ConstraintContext NormType NormType Builtin
+  | FailedQuantifierConstraintDomain ConstraintContext NormType Quantifier
+  | FailedQuantifierConstraintBody   ConstraintContext NormType Quantifier
+  | FailedArithOp2Constraint         ConstraintContext NormType NormType Builtin
+  | FailedFoldConstraintContainer    ConstraintContext NormType
+  | FailedQuantInConstraintContainer ConstraintContext NormType Quantifier
+  | FailedNatLitConstraint           ConstraintContext Int NormType
   | FailedNatLitConstraintTooBig     ConstraintContext Int Int
-  | FailedNatLitConstraintUnknown    ConstraintContext Int CheckedType
-  | FailedIntLitConstraint           ConstraintContext CheckedType
-  | FailedRatLitConstraint           ConstraintContext CheckedType
-  | FailedConLitConstraint           ConstraintContext CheckedType
+  | FailedNatLitConstraintUnknown    ConstraintContext Int NormType
+  | FailedIntLitConstraint           ConstraintContext NormType
+  | FailedRatLitConstraint           ConstraintContext NormType
+  | FailedConLitConstraint           ConstraintContext NormType
 
   | QuantifiedIfCondition ConstraintContext
   | NonLinearIfCondition  ConstraintContext

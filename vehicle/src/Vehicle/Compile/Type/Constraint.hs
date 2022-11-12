@@ -66,7 +66,7 @@ type BlockingMetas = MetaSet
 data ConstraintContext = ConstraintContext
   { originalProvenance :: Provenance
   -- ^ The original provenance of the constraint
-  , origin :: ConstraintOrigin
+  , origin             :: ConstraintOrigin
   -- ^ The origin of the constraint.
   , creationProvenance :: Provenance
   -- ^ Where the constraint was instantiated
@@ -115,7 +115,7 @@ type instance WithContext UnificationConstraint =
 --------------------------------------------------------------------------------
 -- Type-class constraints
 
-data TypeClassConstraint = Has MetaID TypeClass (NonEmpty CheckedArg)
+data TypeClassConstraint = Has MetaID TypeClass (NonEmpty NormArg)
   deriving (Show)
 
 type instance WithContext TypeClassConstraint =

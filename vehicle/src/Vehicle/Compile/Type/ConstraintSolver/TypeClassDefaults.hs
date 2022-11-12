@@ -40,7 +40,7 @@ sameFamily PolarityFamily{}  PolarityFamily{}  = True
 sameFamily LinearityFamily{} LinearityFamily{} = True
 sameFamily _                 _                 = False
 
-data Candidate = Candidate MetaID TypeClass CheckedExpr ConstraintContext
+data Candidate = Candidate MetaID TypeClass NormExpr ConstraintContext
 
 instance Pretty Candidate where
   pretty (Candidate m tc _ _) = pretty m <+> "~" <+> pretty tc
@@ -73,8 +73,7 @@ generateConstraintUsingDefaults constraints = do
       logDebug MaxDetail $
         "using default" <+> pretty m <+> "=" <+> prettySimple solution <+>
         "         " <> parens ("from" <+> pretty tc)
-      normMetaExpr <- whnfNBE ctxSize metaExpr
-      let unificationConstraint = UnificationConstraint (Unify normMetaExpr solution)
+      let unificationConstraint = UnificationConstraint (Unify metaExpr solution)
       let newConstraint = WithContext unificationConstraint (copyContext ctx)
       return $ Just newConstraint
 
@@ -196,16 +195,16 @@ getCandidatesFromConstraint ctx (Has _ tc args) = do
     (HasRatLits,   [t])                   -> getCandidate [t] HasRatLits
     (HasVecLits n, [_, t])                -> getCandidate [t] (HasVecLits n)
     (NatInDomainConstraint n, [t]) -> case argExpr t of
-      ConstructorExpr _ Index [size] -> getCandidate [size] (NatInDomainConstraint n)
-      _                              -> []
+      VIndexType p size -> getCandidate [ExplicitArg p size] (NatInDomainConstraint n)
+      _                 -> []
     _                                     -> []
 
-getCandidatesFromArgs :: ConstraintContext -> [CheckedArg] -> TypeClass -> [Candidate]
+getCandidatesFromArgs :: ConstraintContext -> [NormArg] -> TypeClass -> [Candidate]
 getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t -> do
   let e = argExpr t
-  case exprHead (argExpr t) of
-    (Meta _ m) -> Just (Candidate m tc e ctx) --m, t, tc)
-    _          -> Nothing
+  case getMeta (argExpr t) of
+    Just m -> Just (Candidate m tc e ctx) --m, t, tc)
+    _      -> Nothing
 
 auxiliaryTCError :: MonadCompile m => m a
 auxiliaryTCError = compilerDeveloperError

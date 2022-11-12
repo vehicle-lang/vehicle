@@ -852,7 +852,7 @@ prettyBuiltinType t = article <+> squotes (pretty t)
       Index -> "an"
       _     -> "a"
 
-prettyExpr :: HasBoundCtx a => a -> CheckedExpr -> Doc b
+prettyExpr :: (HasBoundCtx a, PrettyWith ('Named ('As 'External)) ([DBBinding], b)) => a -> b -> Doc c
 prettyExpr ctx e = squotes $ prettyFriendlyDB (boundContextOf ctx) e
 
 prettyQuantifierArticle :: Quantifier -> Doc a

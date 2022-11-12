@@ -14,6 +14,7 @@ import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Language.Print
 import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..))
+import Vehicle.Compile.Normalise.Quote (Quote(..))
 
 --------------------------------------------------------------------------------
 -- Type-class generalisation
@@ -65,7 +66,8 @@ prependConstraint :: TCM m
                   -> m CheckedDecl
 prependConstraint decl (WithContext (Has meta tc args) ctx) = do
   let p = originalProvenance ctx
-  let typeClass = BuiltinTypeClass p tc args
+  uArgs <- traverse quote args
+  let typeClass = BuiltinTypeClass p tc uArgs
   let relevancy = relevanceOf tc
 
   substTypeClass <- substMetas typeClass
@@ -113,6 +115,11 @@ quantifyOverMeta decl meta = do
     logCompilerPass MinDetail ("generalisation over" <+> metaDoc) $ do
       -- Prepend the implicit binders for the new generalised variable.
       prependBinderAndSolveMeta meta Implicit relevance Nothing metaType decl
+
+isMeta :: DBExpr -> Bool
+isMeta Meta{}           = True
+isMeta (App _ Meta{} _) = True
+isMeta _                = False
 
 --------------------------------------------------------------------------------
 -- Utilities
