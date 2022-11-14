@@ -240,7 +240,7 @@ dl2Translation = Translation
    { --double check implication, do negation properly
      compileAnd = Addition,
      compileOr  = Multiplication,
-     compileNot = id, --this should be normalised out
+     compileNot = id, --this should be normalised out and pushed to the innermost level of comparisons by now
      compileImplication = \arg1 arg2 -> Max (Negation arg1) arg2,
 
      compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
