@@ -9,6 +9,7 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Verify.Core (VerifierIdentifier)
+import Vehicle.Compile.Normalise.NormExpr (NormType)
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -57,32 +58,32 @@ data CompileError
     CheckedType             -- The possible inferred types.
     CheckedType             -- The expected type.
   | UnsolvedConstraints
-    (NonEmpty Constraint)
+    (NonEmpty (WithContext Constraint))
   | UnsolvedMetas
-    (NonEmpty (Meta, Provenance))
+    (NonEmpty (MetaID, Provenance))
   | MissingExplicitArg
     [DBBinding]             -- The context at the time of the failure
     UncheckedArg            -- The non-explicit argument
     CheckedType             -- Expected type of the argument
-  | FailedConstraints
-    (NonEmpty Constraint)
-  | FailedEqConstraint               ConstraintContext CheckedType CheckedType EqualityOp
-  | FailedOrdConstraint              ConstraintContext CheckedType CheckedType OrderOp
-  | FailedBuiltinConstraintArgument  ConstraintContext Builtin CheckedType [Builtin] Int Int
-  | FailedBuiltinConstraintResult    ConstraintContext Builtin CheckedType [Builtin]
-  | FailedNotConstraint              ConstraintContext CheckedType
-  | FailedBoolOp2Constraint          ConstraintContext CheckedType CheckedType Builtin
-  | FailedQuantifierConstraintDomain ConstraintContext CheckedType Quantifier
-  | FailedQuantifierConstraintBody   ConstraintContext CheckedType Quantifier
-  | FailedArithOp2Constraint         ConstraintContext CheckedType CheckedType Builtin
-  | FailedFoldConstraintContainer    ConstraintContext CheckedType
-  | FailedQuantInConstraintContainer ConstraintContext CheckedType Quantifier
-  | FailedNatLitConstraint           ConstraintContext Int CheckedType
+  | FailedUnificationConstraints
+    (NonEmpty (WithContext UnificationConstraint))
+  | FailedEqConstraint               ConstraintContext NormType NormType EqualityOp
+  | FailedOrdConstraint              ConstraintContext NormType NormType OrderOp
+  | FailedBuiltinConstraintArgument  ConstraintContext Builtin NormType [Builtin] Int Int
+  | FailedBuiltinConstraintResult    ConstraintContext Builtin NormType [Builtin]
+  | FailedNotConstraint              ConstraintContext NormType
+  | FailedBoolOp2Constraint          ConstraintContext NormType NormType Builtin
+  | FailedQuantifierConstraintDomain ConstraintContext NormType Quantifier
+  | FailedQuantifierConstraintBody   ConstraintContext NormType Quantifier
+  | FailedArithOp2Constraint         ConstraintContext NormType NormType Builtin
+  | FailedFoldConstraintContainer    ConstraintContext NormType
+  | FailedQuantInConstraintContainer ConstraintContext NormType Quantifier
+  | FailedNatLitConstraint           ConstraintContext Int NormType
   | FailedNatLitConstraintTooBig     ConstraintContext Int Int
-  | FailedNatLitConstraintUnknown    ConstraintContext Int CheckedType
-  | FailedIntLitConstraint           ConstraintContext CheckedType
-  | FailedRatLitConstraint           ConstraintContext CheckedType
-  | FailedConLitConstraint           ConstraintContext CheckedType
+  | FailedNatLitConstraintUnknown    ConstraintContext Int NormType
+  | FailedIntLitConstraint           ConstraintContext NormType
+  | FailedRatLitConstraint           ConstraintContext NormType
+  | FailedConLitConstraint           ConstraintContext NormType
 
   | QuantifiedIfCondition ConstraintContext
   | NonLinearIfCondition  ConstraintContext
@@ -136,6 +137,11 @@ data CompileError
 --------------------------------------------------------------------------------
 -- Some useful developer errors
 
+unexpectedExpr :: Doc a -> Doc a -> Doc a
+unexpectedExpr pass name =
+  "encountered unexpected expression" <+> squotes name <+>
+  "during" <+> pass <> "."
+
 -- | Should be used in preference to `developerError` whenever in the error
 -- monad, as unlike the latter this method does not prevent logging.
 compilerDeveloperError :: MonadError CompileError m => Doc () -> m b
@@ -160,10 +166,6 @@ visibilityError :: MonadError CompileError m => Doc () -> Doc () -> m b
 visibilityError pass name = compilerDeveloperError $
   unexpectedExpr pass name <+> "Should not be present as explicit arguments"
 
-nestedAppError :: MonadError CompileError m => Doc () -> Doc () -> m b
-nestedAppError pass name = compilerDeveloperError $
-  unexpectedExpr pass name <+> "Internal invariant of no nested applications violated."
-
 -- | Throw this when you encounter a case that should have been resolved during
 -- type-checking, e.g. holes or metas.
 resolutionError :: MonadError CompileError m => Doc () -> Doc () -> m b
@@ -179,8 +181,3 @@ internalScopingError :: MonadError CompileError m => Doc () -> Identifier -> m b
 internalScopingError pass ident = compilerDeveloperError $
   "Internal scoping error during" <+> pass <> ":" <+>
   "declaration" <+> quotePretty ident <+> "not found in scope..."
-
-unexpectedExpr :: Doc a -> Doc a -> Doc a
-unexpectedExpr pass name =
-  "encountered unexpected expression" <+> squotes name <+>
-  "during" <+> pass <> "."

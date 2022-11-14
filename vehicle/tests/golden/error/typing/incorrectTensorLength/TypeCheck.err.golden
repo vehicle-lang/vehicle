@@ -1,2 +1,2 @@
-Error at Line 2, Columns 10-11: Type error: 2 != 1
+Error at Line 2, Columns 10-11: unable to find a consistent type for the overloaded expression '[1]'. In particular 2 != 1.
 Fix: check your types

@@ -1,22 +1,24 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Vehicle.Language.AST.Core where
+module Vehicle.Language.AST.Expr where
 
 import Control.DeepSeq (NFData)
+import Control.Monad.Reader (MonadReader (..))
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
 import GHC.Generics (Generic)
 
-import Control.Monad.Reader (MonadReader (..))
 import Vehicle.Language.AST.Arg
 import Vehicle.Language.AST.Binder
 import Vehicle.Language.AST.Builtin (Builtin, Linearity (..), Polarity (..))
 import Vehicle.Language.AST.DeBruijn
-import Vehicle.Language.AST.Name (HasIdentifier (..), Identifier, NamedBinding)
+import Vehicle.Language.AST.Decl
+import Vehicle.Language.AST.Meta
+import Vehicle.Language.AST.Name (NamedBinding)
+import Vehicle.Language.AST.Prog
 import Vehicle.Language.AST.Provenance
 import Vehicle.Prelude
-import Vehicle.Resource (ResourceType)
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -37,18 +39,6 @@ instance Pretty Universe where
     TypeUniv l    -> "Type" <+> pretty l
     LinearityUniv -> "LinearityUniverse"
     PolarityUniv  -> "PolarityUniverse"
-
---------------------------------------------------------------------------------
--- Meta-variables
-
-newtype Meta = MetaVar Int
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData   Meta
-instance Hashable Meta
-
-instance Pretty Meta where
-  pretty (MetaVar m) = "?" <> pretty m
 
 --------------------------------------------------------------------------------
 -- Literals
@@ -76,30 +66,6 @@ instance Pretty Literal where
     LNat   x   -> pretty x
     LInt   x   -> pretty x
     LRat   x   -> pretty x
-
---------------------------------------------------------------------------------
--- Binders
-
-type Binder binder var = GenericBinder binder (Expr binder var)
-
--- | This horrible construction is needed because |Binder| is a type synonym
--- synonyms which can't be used as functions at the type level. This wraps
--- it as required.
-newtype Binder' var binder = WrapBinder
-  { unwrapBinder :: Binder var binder
-  }
-
---------------------------------------------------------------------------------
--- Function arguments
-
-type Arg binder var = GenericArg (Expr binder var)
-
--- | This horrible construction is needed because |Arg| is a type synonym
--- synonyms which can't be used as functions at the type level. This wraps
--- it as required.
-newtype Arg' var binder = WrapArg
-  { unwrapArg :: Arg var binder
-  }
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -154,7 +120,7 @@ data Expr binder var
   -- | Unsolved meta variables.
   | Meta
     Provenance
-    Meta             -- Meta variable number.
+    MetaID           -- Meta variable number.
 
   -- | Let expressions. We have these in the core syntax because we want to
   -- cross compile them to various backends.
@@ -205,6 +171,49 @@ instance HasProvenance (Expr binder var) where
     Literal  p _     -> p
     LVec     p _     -> p
 
+--------------------------------------------------------------------------------
+-- Other AST datatypes specialised to the Expr type
+
+type Binder binder var = GenericBinder binder (Expr binder var)
+
+
+-- | This horrible construction is needed because |Binder| is a type synonym
+-- synonyms which can't be used as functions at the type level. This wraps
+-- it as required.
+newtype Binder' var binder = WrapBinder
+  { unwrapBinder :: Binder var binder
+  }
+
+type Arg binder var = GenericArg (Expr binder var)
+
+-- | This horrible construction is needed because |Arg| is a type synonym
+-- synonyms which can't be used as functions at the type level. This wraps
+-- it as required.
+newtype Arg' var binder = WrapArg
+  { unwrapArg :: Arg var binder
+  }
+
+type Decl binder var = GenericDecl (Expr binder var)
+
+-- | This horrible construction is needed because |Decl| is a type synonym
+-- synonyms which can't be used as functions at the type level. This wraps
+-- it as required.
+newtype Decl' var binder = WrapDecl
+  { unwrapDecl :: Decl var binder
+  }
+
+type Prog binder var = GenericProg (Expr binder var)
+
+-- | This horrible construction is needed because |Prog| is a type synonym
+-- synonyms which can't be used as functions at the type level. This wraps
+-- it as required.
+newtype Prog' var binder = WrapProg
+  { unwrapProg :: Prog var binder
+  }
+
+--------------------------------------------------------------------------------
+-- Specialisations of the Expr-based ASTs
+
 -- An expression that uses named variables for both binders and variables.
 type NamedBinder = Binder NamedBinding Name
 type NamedArg    = Arg    NamedBinding Name
@@ -219,6 +228,14 @@ type DBExpr   = Expr   DBBinding DBVar
 type DBDecl   = Decl   DBBinding DBVar
 type DBProg   = Prog   DBBinding DBVar
 
+--------------------------------------------------------------------------------
+-- Recursion principles
+
+makeBaseFunctor ''Expr
+
+--------------------------------------------------------------------------------
+-- Utilities
+
 -- Preserves invariant that we never have two nested Apps
 normApp :: Provenance -> Expr binder var -> NonEmpty (Arg binder var) -> Expr binder var
 normApp p (App p' fun args') args = App (p' <> p) fun (args' <> args)
@@ -228,6 +245,9 @@ normAppList :: Provenance -> Expr binder var -> [Arg binder var] -> Expr binder 
 normAppList _   fun []           = fun
 normAppList ann fun (arg : args) = normApp ann fun (arg :| args)
 
+--------------------------------------------------------------------------------
+-- DeBruijn substitution
+
 instance Substitutable DBExpr DBExpr where
   subst = \case
 
@@ -235,9 +255,9 @@ instance Substitutable DBExpr DBExpr where
       (d, s) <- ask
       return $ if i < d then
         Var p (Bound i)
-      else case s p (i - d) of
-        Nothing -> Var p (Bound i)
-        Just v  -> if d > 0 then liftFreeDBIndices d v else v
+      else case s (i - d) of
+        Left i' -> Var p (Bound (i' + d))
+        Right v -> if d > 0 then liftFreeDBIndices d v else v
 
     Universe p l        -> return $ Universe p l
     Meta     p m        -> return $ Meta p m
@@ -249,13 +269,9 @@ instance Substitutable DBExpr DBExpr where
     LVec p es           -> LVec    p <$> traverse subst es
     Ann  p term typ     -> Ann     p <$> subst   term   <*> subst typ
     App  p fun args     -> normApp p <$> subst   fun    <*> traverse subst args
-    Pi   p binder res   -> Pi      p <$> traverse subst binder <*> underBinder (subst res)
-    Let  p e1 binder e2 -> Let     p <$> subst e1 <*> traverse subst binder <*> underBinder (subst e2)
-    Lam  p binder e     -> Lam     p <$> traverse subst binder <*> underBinder (subst e)
-
-
-instance HasDBVariables DBExpr where
-  mkVar p i = Var p (Bound i)
+    Pi   p binder res   -> Pi      p <$> traverse subst binder <*> underDBBinder (subst res)
+    Let  p e1 binder e2 -> Let     p <$> subst e1 <*> traverse subst binder <*> underDBBinder (subst e2)
+    Lam  p binder e     -> Lam     p <$> traverse subst binder <*> underDBBinder (subst e)
 
 liftFreeDBIndices :: Int    -- ^ amount to lift by
                   -> DBExpr -- ^ target term to lift
@@ -276,97 +292,3 @@ instance NFData PropertyInfo
 
 instance Pretty PropertyInfo where
   pretty (PropertyInfo lin pol) = pretty lin <+> pretty pol
-
---------------------------------------------------------------------------------
--- Declarations
-
--- | Type of top-level declarations.
-data GenericDecl expr
-  = DefResource
-    Provenance             -- Location in source file.
-    ResourceType           -- Type of resource.
-    Identifier             -- Name of resource.
-    expr                   -- Vehicle type of the resource.
-
-  | DefFunction
-    Provenance             -- Location in source file.
-    Identifier             -- Bound function name.
-    expr                   -- Bound function type.
-    expr                   -- Bound function body.
-
-  | DefPostulate
-    Provenance
-    Identifier
-    expr
-  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
-
-instance NFData expr => NFData (GenericDecl expr)
-
-instance HasProvenance (GenericDecl expr) where
-  provenanceOf = \case
-    DefResource p _ _ _  -> p
-    DefFunction p _  _ _ -> p
-    DefPostulate p _ _   -> p
-
-instance HasIdentifier (GenericDecl expr) where
-  identifierOf = \case
-    DefResource  _ _ i _  -> i
-    DefFunction  _  i _ _ -> i
-    DefPostulate _ i _    -> i
-
-bodyOf :: GenericDecl expr -> Maybe expr
-bodyOf = \case
-  DefResource{}       -> Nothing
-  DefFunction _ _ _ e -> Just e
-  DefPostulate{}      -> Nothing
-
-type Decl binder var = GenericDecl (Expr binder var)
-
--- | This horrible construction is needed because |Decl| is a type synonym
--- synonyms which can't be used as functions at the type level. This wraps
--- it as required.
-newtype Decl' var binder = WrapDecl
-  { unwrapDecl :: Decl var binder
-  }
-
---------------------------------------------------------------------------------
--- Programs
-
--- | Type of Vehicle internal programs.
-newtype GenericProg expr
-  = Main [GenericDecl expr] -- ^ List of declarations.
-  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
-
-instance NFData expr => NFData (GenericProg expr)
-
-traverseDecls :: Monad m
-              => (Decl binder1 var1 -> m (Decl binder2 var2))
-              -> Prog binder1 var1
-              -> m (Prog binder2 var2)
-traverseDecls f (Main ds) = Main <$> traverse f ds
-
-type Prog binder var = GenericProg (Expr binder var)
-
--- | This horrible construction is needed because |Prog| is a type synonym
--- synonyms which can't be used as functions at the type level. This wraps
--- it as required.
-newtype Prog' var binder = WrapProg
-  { unwrapProg :: Prog var binder
-  }
-
---------------------------------------------------------------------------------
--- Recursion principles
-
-makeBaseFunctor ''Expr
-
---------------------------------------------------------------------------------
--- Type-classes
-
-typeOf :: GenericDecl expr -> expr
-typeOf = \case
-  DefResource _ _ _ t -> t
-  DefFunction _ _ t _ -> t
-  DefPostulate _ _ t  -> t
-
-typeOf' :: GenericBinder binder expr -> expr
-typeOf' = binderType

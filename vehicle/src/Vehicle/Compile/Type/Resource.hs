@@ -33,8 +33,8 @@ checkParameterType :: TCM m
                    => DeclProvenance
                    -> CheckedType
                    -> m (CheckedType -> CheckedType)
-checkParameterType decl t = do
-  case t of
+checkParameterType decl parameterType = do
+  case parameterType of
     AnnBoolType{} -> return ()
     IndexType{}   -> return ()
     NatType{}     -> return ()
@@ -42,28 +42,28 @@ checkParameterType decl t = do
 
     AnnRatType p lin -> do
       let targetLinearity = LinearityExpr p Constant
-      addUnificationConstraint LinearityGroup p mempty lin targetLinearity
+      addFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity lin
       return ()
 
-    paramType -> throwError $ ParameterTypeUnsupported decl paramType
+    _ -> throwError $ ParameterTypeUnsupported decl parameterType
   return id
 
 checkInferableParameterType :: TCM m
                            => DeclProvenance
                            -> CheckedType
                            -> m (CheckedType -> CheckedType)
-checkInferableParameterType decl t = do
-  case t of
+checkInferableParameterType decl parameterType = do
+  case parameterType of
     NatType{} -> return ()
-    paramType -> throwError $ ParameterTypeUnsupported decl paramType
+    _         -> throwError $ ParameterTypeUnsupported decl parameterType
   return id
 
 checkDatasetType :: forall m . TCM m
                  => DeclProvenance
                  -> CheckedType
                  -> m (CheckedType -> CheckedType)
-checkDatasetType decl t = do
-  checkContainerType True t
+checkDatasetType decl parameterType = do
+  checkContainerType True parameterType
   return id
   where
   checkContainerType :: Bool -> CheckedType -> m ()
@@ -76,16 +76,16 @@ checkDatasetType decl t = do
       else checkDatasetElemType typ
 
   checkDatasetElemType ::CheckedType -> m ()
-  checkDatasetElemType = \case
+  checkDatasetElemType elementType = case elementType of
     BoolType{}   -> return ()
     NatType{}    -> return ()
     IntType{}    -> return ()
     IndexType{}  -> return ()
     AnnRatType p lin -> do
       let targetLinearity = LinearityExpr p Constant
-      addUnificationConstraint LinearityGroup p mempty lin targetLinearity
+      addFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity lin
       return ()
-    elemType     -> throwError $ DatasetTypeUnsupportedElement decl elemType
+    _ -> throwError $ DatasetTypeUnsupportedElement decl elementType
 
 checkNetworkType :: forall m . TCM m
                  => DeclProvenance
@@ -103,7 +103,7 @@ checkNetworkType decl@(ident, _) networkType = checkFunType networkType
       | visibilityOf binder /= Explicit -> do
         throwError $ NetworkTypeHasNonExplicitArguments decl networkType binder
       | otherwise  -> do
-        inputLin  <- checkTensorType Input (typeOf' binder)
+        inputLin  <- checkTensorType Input (typeOf binder)
         outputLin <- checkTensorType Output result
 
         -- The linearity of the output of a network is the max of 1) Linear (as outputs

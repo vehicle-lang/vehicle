@@ -4,7 +4,7 @@ module Vehicle.Compile.Type
   , typeCheckExpr
   ) where
 
-import Control.Monad (forM, unless, when)
+import Control.Monad ( forM, unless, when, filterM )
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.Writer (MonadWriter (..), runWriterT)
@@ -13,6 +13,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map (singleton)
 import Data.Set qualified as Set (member)
 
+import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Auxiliary
@@ -28,6 +29,7 @@ import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
 import Vehicle.Language.Print
+import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..))
 
 -------------------------------------------------------------------------------
 -- Algorithm
@@ -79,83 +81,86 @@ typeCheckDecls ctx (d : ds) = do
   -- First insert any missing auxiliary arguments into the decl
   d' <- insertHolesForAuxiliaryAnnotations d
   checkedDecl  <- typeCheckDecl ctx d'
-  checkedDecls <- addDeclContext checkedDecl $ typeCheckDecls ctx ds
+  normDecl <- traverse (glueNBE 0) checkedDecl
+  checkedDecls <- addDeclContext normDecl $ typeCheckDecls ctx ds
   return $ checkedDecl : checkedDecls
 
 typeCheckDecl :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedDecl -> m CheckedDecl
-typeCheckDecl propertyCtx decl = logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
-  -- First run a bidirectional pass over the type of the declaration
-  checkedType <- logCompilerPass MidDetail (passDoc <+> "type of" <+> identDoc) $ do
-    let declType = typeOf decl
-    (checkedType, typeOfType) <- runReaderT (inferExpr declType) mempty
-    assertIsType (provenanceOf decl) typeOfType
-    return checkedType
+typeCheckDecl propertyCtx decl = do
+  let ident = identifierOf decl
+  let identDoc = quotePretty ident
+  let passDoc = "bidirectional pass over"
 
-  result <- case decl of
-    DefResource p r _ _ -> do
-      let checkedDecl = DefResource p r ident checkedType
-      solveConstraints (Just checkedDecl)
-      substCheckedType <- substMetas checkedType
+  logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
+    -- First run a bidirectional pass over the type of the declaration
+    checkedType <- logCompilerPass MidDetail (passDoc <+> "type of" <+> identDoc) $ do
+      let declType = typeOf decl
+      (checkedType, typeOfType) <- runReaderT (inferExpr declType) mempty
+      assertDeclTypeIsType ident typeOfType
+      return checkedType
 
-      -- Add extra constraints from the resource type. Need to have called
-      -- solve constraints beforehand in order to allow for normalisation,
-      -- but really only need to have solved type-class constraints.
-      updatedCheckedType <- checkResourceType r (ident, p) substCheckedType
-      let updatedCheckedDecl = DefResource p r ident updatedCheckedType
-      solveConstraints (Just updatedCheckedDecl)
+    result <- case decl of
+      DefResource p r _ _ -> do
+        let checkedDecl = DefResource p r ident checkedType
+        solveConstraints (Just checkedDecl)
+        substCheckedType <- substMetas checkedType
 
-      substDecl <- substMetas updatedCheckedDecl
-      logUnsolvedUnknowns (Just substDecl) Nothing
+        -- Add extra constraints from the resource type. Need to have called
+        -- solve constraints beforehand in order to allow for normalisation,
+        -- but really only need to have solved type-class constraints.
+        updatedCheckedType <- checkResourceType r (ident, p) substCheckedType
+        let updatedCheckedDecl = DefResource p r ident updatedCheckedType
+        solveConstraints (Just updatedCheckedDecl)
 
-      finalDecl <- generaliseOverUnsolvedMetaVariables substDecl
-      return finalDecl
+        substDecl <- substMetas updatedCheckedDecl
+        logUnsolvedUnknowns (Just substDecl) Nothing
 
-    DefPostulate p _ _ -> do
-      return $ DefPostulate p ident checkedType
+        finalDecl <- generaliseOverUnsolvedMetaVariables substDecl
+        return finalDecl
 
-    DefFunction p _ _ body -> do
-      -- Type check the body.
-      checkedBody <- logCompilerPass MidDetail (passDoc <+> "body of" <+> identDoc) $ do
-        runReaderT (checkExpr checkedType body) mempty
+      DefPostulate p _ _ -> do
+        return $ DefPostulate p ident checkedType
 
-      -- Reconstruct the function.
-      let checkedDecl = DefFunction p ident checkedType checkedBody
+      DefFunction p _ _ body -> do
+        -- Type check the body.
+        checkedBody <- logCompilerPass MidDetail (passDoc <+> "body of" <+> identDoc) $ do
+          runReaderT (checkExpr checkedType body) mempty
 
-      -- Solve constraints and substitute through.
-      solveConstraints (Just checkedDecl)
-      substDecl <- substMetas checkedDecl
-      logUnsolvedUnknowns (Just substDecl) Nothing
+        -- Reconstruct the function.
+        let checkedDecl = DefFunction p ident checkedType checkedBody
 
-      -- Extract auxiliary annotations if a property.
-      -- This check must happen before generalisation as the `Bool` type will get
-      -- generalised with function input/output constraints.
-      let isProperty = ident `Set.member` propertyCtx
-      when isProperty $ do
-        checkPropertyInfo (ident, p) (typeOf substDecl)
+        -- Solve constraints and substitute through.
+        solveConstraints (Just checkedDecl)
+        substDecl <- substMetas checkedDecl
+        logUnsolvedUnknowns (Just substDecl) Nothing
 
-      checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
-      checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints checkedDecl1
-      checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
-      return checkedDecl3
+        -- Extract auxiliary annotations if a property.
+        -- This check must happen before generalisation as the `Bool` type will get
+        -- generalised with function input/output constraints.
+        let isProperty = ident `Set.member` propertyCtx
+        when isProperty $ do
+          checkPropertyInfo (ident, p) (typeOf substDecl)
 
-  checkAllUnknownsSolved
-  logCompilerPassOutput $ prettyFriendlyDBClosed result
-  return result
+        checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
+        checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints checkedDecl1
+        checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
+        return checkedDecl3
 
-  where
-    ident = identifierOf decl
-    identDoc = squotes (pretty ident)
-    passDoc = "bidirectional pass over"
+    checkAllUnknownsSolved
+    logCompilerPassOutput $ prettyFriendlyDBClosed result
+    return result
 
-assertIsType :: TCM m => Provenance -> CheckedExpr -> m ()
+assertDeclTypeIsType :: TCM m => Identifier -> CheckedType -> m ()
 -- This is a bit of a hack to get around having to have a solver for universe
 -- levels. As type definitions will always have an annotated Type 0 inserted
 -- by delaboration, we can match on it here. Anything else will be unified
 -- with type 0.
-assertIsType _ (TypeUniverse _ _) = return ()
-assertIsType p t        = do
-  let typ = TypeUniverse (inserted (provenanceOf t)) 0
-  addUnificationConstraint TypeGroup p mempty t typ
+assertDeclTypeIsType _     TypeUniverse{} = return ()
+assertDeclTypeIsType ident actualType     = do
+  let p = provenanceOf actualType
+  let expectedType = TypeUniverse p 0
+  let origin = CheckingExprType (FreeVar p ident) expectedType actualType
+  addFreshUnificationConstraint TypeGroup p mempty origin expectedType actualType
   return ()
 
 -------------------------------------------------------------------------------
@@ -202,26 +207,26 @@ loopOverConstraints loopNumber decl = do
         substMetasThroughCtx
         newSubstitution <- getMetaSubstitution
         logDebug MaxDetail $ "current-solution:" <+>
-          prettyVerbose newSubstitution <> "\n"
+          prettyVerbose (fmap unnormalised newSubstitution) <> "\n"
 
         return updatedDecl
 
       loopOverConstraints (loopNumber + 1) updatedDecl
 
 -- | Tries to solve a constraint deterministically.
-solveConstraint :: TCM m => Constraint -> m ()
-solveConstraint unnormConstraint = do
+solveConstraint :: TCM m => WithContext Constraint -> m ()
+solveConstraint (WithContext unnormConstraint ctx) = do
   constraint <- substMetas unnormConstraint
 
   logCompilerSection MaxDetail ("trying" <+> prettyVerbose constraint) $ do
     result <- case constraint of
-      UC ctx c -> solveUnificationConstraint ctx c
-      TC ctx c -> solveTypeClassConstraint   ctx c
+      UnificationConstraint c -> solveUnificationConstraint (WithContext c ctx)
+      TypeClassConstraint   c -> solveTypeClassConstraint   (WithContext c ctx)
 
     case result of
       Progress newConstraints -> addConstraints newConstraints
       Stuck metas -> do
-        let blockedConstraint = blockConstraintOn constraint metas
+        let blockedConstraint = blockConstraintOn (WithContext constraint ctx) metas
         addConstraints [blockedConstraint]
 
 -- | Tries to add new unification constraints using default values.
@@ -237,7 +242,7 @@ addNewConstraintUsingDefaults maybeDecl = do
     -- Calculate the set of candidate constraints
     candidateConstraints <- getDefaultCandidates maybeDecl
     logDebug MaxDetail $ "Candidate type-class constraints:" <> line <>
-      indent 2 (prettySimple candidateConstraints) <> line
+      indent 2 (prettyVerbose candidateConstraints) <> line
 
     result <- generateConstraintUsingDefaults candidateConstraints
     case result of
@@ -246,11 +251,12 @@ addNewConstraintUsingDefaults maybeDecl = do
         addConstraints [newConstraint]
         return True
 
-getDefaultCandidates :: TCM m => Maybe CheckedDecl -> m [Constraint]
+getDefaultCandidates :: TCM m => Maybe CheckedDecl -> m [WithContext TypeClassConstraint]
 getDefaultCandidates maybeDecl = do
-  unsolvedConstraints <- filter isNonAuxiliaryTypeClassConstraint <$> getUnsolvedConstraints
+  constraints <- getUnsolvedConstraints
+  let typeClassConstraints = mapMaybe getTypeClassConstraint constraints
   case maybeDecl of
-    Nothing   -> return unsolvedConstraints
+    Nothing   -> return typeClassConstraints
     Just decl -> do
       declType <- substMetas (typeOf decl)
 
@@ -263,8 +269,9 @@ getDefaultCandidates maybeDecl = do
       logDebug MaxDetail $
         "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
 
-      return $ flip filter unsolvedConstraints $ \c ->
-        MetaSet.disjoint (metasIn c) typeMetas
+      flip filterM typeClassConstraints $ \tc -> do
+        constraintMetas <- metasIn (objectIn tc)
+        return $ MetaSet.disjoint constraintMetas typeMetas
 
 -------------------------------------------------------------------------------
 -- Property information extraction

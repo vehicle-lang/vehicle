@@ -36,39 +36,6 @@ isAnnBoolType :: DBExpr -> Bool
 isAnnBoolType AnnBoolType{} = True
 isAnnBoolType _             = False
 
-isNatType :: DBExpr -> Bool
-isNatType NatType{} = True
-isNatType _         = False
-
-isIntType :: DBExpr -> Bool
-isIntType IntType{} = True
-isIntType _         = False
-
-isAnnRatType :: Type binder var -> Bool
-isAnnRatType AnnRatType{} = True
-isAnnRatType _            = False
-
-isRatType :: Type binder var -> Bool
-isRatType RatType{} = True
-isRatType _         = False
-
-isListType :: DBExpr -> Bool
-isListType ListType{} = True
-isListType _          = False
-
-isVectorType :: DBExpr -> Bool
-isVectorType VectorType{} = True
-isVectorType _            = False
-
-isIndexType :: DBExpr -> Bool
-isIndexType IndexType{} = True
-isIndexType _           = False
-
-isMeta :: DBExpr -> Bool
-isMeta Meta{}           = True
-isMeta (App _ Meta{} _) = True
-isMeta _                = False
-
 isTypeSynonym :: Expr binder var -> Bool
 isTypeSynonym = \case
   TypeUniverse{} -> True
@@ -104,18 +71,23 @@ toHead e                = (e, [])
 exprHead :: Expr binder var -> Expr binder var
 exprHead = fst . toHead
 
-onlyExplicit :: NonEmpty (Arg binder var) -> [Expr binder var]
+onlyExplicit :: NonEmpty (GenericArg expr) -> [expr]
 onlyExplicit args = argExpr <$> filter isExplicit (NonEmpty.toList args)
 
 --------------------------------------------------------------------------------
 -- Views
+
+getMetaID :: Expr binder var -> Maybe MetaID
+getMetaID e = case exprHead e of
+  Meta _ m -> Just m
+  _        -> Nothing
 
 getFreeVar :: DBExpr -> Maybe Identifier
 getFreeVar = \case
   FreeVar _ ident -> Just ident
   _               -> Nothing
 
-getBinderName :: Binder DBBinding var -> Name
+getBinderName :: GenericBinder DBBinding expr -> Name
 getBinderName binder = case nameOf binder of
   Just symbol -> symbol
   Nothing     -> developerError "Binder unexpectedly does not appear to have a name"
@@ -147,12 +119,6 @@ getExplicitArg _                   = Nothing
 getImplicitArg :: Arg binder var -> Maybe (Expr binder var)
 getImplicitArg (ImplicitArg _ arg) = Just arg
 getImplicitArg _                   = Nothing
-
-getConcreteList :: Expr binder var -> [Expr binder var]
-getConcreteList = \case
-  NilExpr{}            -> []
-  AppConsExpr _ _ x xs -> x : getConcreteList xs
-  _                    -> developerError "Malformed concrete list"
 
 filterOutNonExplicitArgs :: NonEmpty (Arg binder var) -> [Expr binder var]
 filterOutNonExplicitArgs args = mapMaybe getExplicitArg (NonEmpty.toList args)

@@ -36,14 +36,14 @@ repos:
     hooks:
       - id: cabal-fmt
         name: "format cabal with cabal-fmt"
-        entry: ./scripts/cabal-fmt.hs
+        entry: ./scripts/cabal-fmt
         language: script
         types: [file, text]
         files: ^.*\.cabal$
         args: [--check, --inplace]
       - id: stylish-haskell
         name: "format haskell with stylish-haskell"
-        entry: ./scripts/stylish-haskell.hs
+        entry: ./scripts/stylish-haskell
         language: script
         types: [haskell]
         args: [--inplace]

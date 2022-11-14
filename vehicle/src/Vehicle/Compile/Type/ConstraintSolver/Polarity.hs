@@ -10,11 +10,12 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
 
 import Control.Monad.Except (MonadError (..))
+import Vehicle.Compile.Normalise.NormExpr (pattern VPolarityExpr, NormType, getMeta)
 
 solvePolarityConstraint :: TCM m
                         => PolarityTypeClass
-                        -> Constraint
-                        -> [CheckedType]
+                        -> WithContext TypeClassConstraint
+                        -> [NormType]
                         -> m ConstraintProgress
 solvePolarityConstraint = \case
   NegPolarity               -> solveNegPolarity
@@ -93,15 +94,16 @@ implPolarity p pol1 pol2 =
 -- Constraint solving
 
 solveNegPolarity :: TCM m
-                 => Constraint
-                 -> [CheckedExpr]
+                 => WithContext TypeClassConstraint
+                 -> [NormType]
                  -> m ConstraintProgress
 solveNegPolarity c [arg1, res] = case arg1 of
-  (exprHead -> Meta _ m) -> blockOn [m]
+  (getMeta -> Just m) -> blockOn [m]
 
-  PolarityExpr p pol -> do
-    let resPol = PolarityExpr p $ negatePolarity (provenanceOf c) pol
-    return $ Progress [unify c res resPol]
+  VPolarityExpr p pol -> do
+    let ctx = contextOf c
+    let resPol = VPolarityExpr p $ negatePolarity (provenanceOf ctx) pol
+    return $ Progress [unify ctx res resPol]
 
   _ -> malformedConstraintError c
 
@@ -110,16 +112,17 @@ solveNegPolarity c _ = malformedConstraintError c
 
 solveAddPolarity :: TCM m
                   => Quantifier
-                  -> Constraint
-                  -> [CheckedExpr]
+                  -> WithContext TypeClassConstraint
+                  -> [NormType]
                   -> m ConstraintProgress
 solveAddPolarity q c [arg1, res] = case arg1 of
-  (exprHead -> Meta _ m) -> blockOn [m]
+  (getMeta -> Just m) -> blockOn [m]
 
-  PolarityExpr _ pol -> do
-    let p = provenanceOf c
-    let resPol = PolarityExpr p $ addPolarity p q pol
-    return $ Progress [unify c res resPol]
+  VPolarityExpr _ pol -> do
+    let ctx = contextOf c
+    let p = provenanceOf ctx
+    let resPol = VPolarityExpr p $ addPolarity p q pol
+    return $ Progress [unify ctx res resPol]
 
   _ -> malformedConstraintError c
 
@@ -128,65 +131,67 @@ solveAddPolarity _ c _ = malformedConstraintError c
 
 solvePolarityOp2 :: TCM m
                  => (Provenance -> Polarity -> Polarity -> Polarity)
-                 -> Constraint
-                 -> [CheckedExpr]
+                 -> WithContext TypeClassConstraint
+                 -> [NormType]
                  -> m ConstraintProgress
 solvePolarityOp2 op2 c [arg1, arg2, res] = case (arg1, arg2) of
-  (exprHead -> Meta _ m1, _) -> blockOn [m1]
-  (_, exprHead -> Meta _ m2) -> blockOn [m2]
+  (getMeta -> Just m1, _) -> blockOn [m1]
+  (_, getMeta -> Just m2) -> blockOn [m2]
 
-  (PolarityExpr p pol1, PolarityExpr _ pol2) -> do
-    let pol3 = PolarityExpr p $ op2 (provenanceOf c) pol1 pol2
-    return $ Progress [unify c res pol3]
+  (VPolarityExpr p pol1, VPolarityExpr _ pol2) -> do
+    let ctx = contextOf c
+    let pol3 = VPolarityExpr p $ op2 (provenanceOf ctx) pol1 pol2
+    return $ Progress [unify ctx res pol3]
 
   _ -> malformedConstraintError c
 
 solvePolarityOp2 _ c _ = malformedConstraintError c
 
 solveMaxPolarity :: TCM m
-                 => Constraint
-                 -> [CheckedExpr]
+                 => WithContext TypeClassConstraint
+                 -> [NormType]
                  -> m ConstraintProgress
 solveMaxPolarity = solvePolarityOp2 (const maxPolarity)
 
 solveEqPolarity :: TCM m
                  => EqualityOp
-                 -> Constraint
-                 -> [CheckedExpr]
+                 -> WithContext TypeClassConstraint
+                 -> [NormType]
                  -> m ConstraintProgress
 solveEqPolarity eq = solvePolarityOp2 (eqPolarity eq)
 
 solveImplPolarity :: TCM m
-                 => Constraint
-                 -> [CheckedExpr]
+                 => WithContext TypeClassConstraint
+                 -> [NormType]
                  -> m ConstraintProgress
 solveImplPolarity = solvePolarityOp2 implPolarity
 
 solveFunctionPolarity :: TCM m
-                            => FunctionPosition
-                            -> Constraint
-                            -> [CheckedExpr]
-                            -> m ConstraintProgress
+                      => FunctionPosition
+                      -> WithContext TypeClassConstraint
+                      -> [NormType]
+                      -> m ConstraintProgress
 solveFunctionPolarity functionPosition c [arg, res] = case arg of
-  (exprHead -> Meta _ m1) -> blockOn [m1]
-  PolarityExpr _ pol      -> do
-    let p = provenanceOf c
+  (getMeta -> Just m1) -> blockOn [m1]
+  VPolarityExpr _ pol      -> do
+    let ctx = contextOf c
+    let p = provenanceOf ctx
     let addFuncProv pp = PolFunctionProvenance p pp functionPosition
-    let pol3 = PolarityExpr p $ mapPolarityProvenance addFuncProv pol
-    return $ Progress [unify c res pol3]
+    let pol3 = VPolarityExpr p $ mapPolarityProvenance addFuncProv pol
+    return $ Progress [unify ctx res pol3]
   _                        -> malformedConstraintError c
 
 solveFunctionPolarity _ c _ = malformedConstraintError c
 
 solveIfCondPolarity :: TCM m
-                    => Constraint
-                    -> [CheckedExpr]
+                    => WithContext TypeClassConstraint
+                    -> [NormType]
                     -> m ConstraintProgress
 solveIfCondPolarity c [arg] = case arg of
-  (exprHead -> Meta _ m1) -> blockOn [m1]
-  PolarityExpr _ pol     -> case pol of
+  (getMeta -> Just m1) -> blockOn [m1]
+  VPolarityExpr _ pol     -> case pol of
     Unquantified -> return $ Progress []
-    _            -> throwError $ QuantifiedIfCondition (constraintContext c)
+    _            -> throwError $ QuantifiedIfCondition (contextOf c)
 
   _ -> malformedConstraintError c
 

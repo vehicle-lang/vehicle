@@ -4,6 +4,7 @@ module Vehicle.Prelude.Misc where
 --       Moved these definitions here from Vehicle.Prelude,
 --       so they can be used from Vehicle.Prelude.* modules.
 
+import Control.Monad.Identity (Identity (..))
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.IntMap (IntMap, updateLookupWithKey)
 import Data.List qualified as List
@@ -67,12 +68,20 @@ repeatN :: (a -> a) -> Int -> a -> a
 repeatN _ 0 = id
 repeatN f n = f . repeatN f (n-1)
 
+partitionMaybeM :: Monad m => (a -> m (Maybe b)) -> [a] -> m ([b], [a])
+partitionMaybeM _ []       = return ([], [])
+partitionMaybeM f (x : xs) = do
+  res <- f x
+  (as, bs) <- partitionMaybeM f xs
+  return $ case res of
+    Nothing -> (as, x : bs)
+    Just y  -> (y : as, bs)
+
+partitionMaybe :: (a -> Maybe b) -> [a] -> ([b], [a])
+partitionMaybe f xs = runIdentity (partitionMaybeM (return . f) xs)
+
 partitionM :: Monad m => (a -> m Bool) -> [a] -> m ([a], [a])
-partitionM _ [] = pure ([], [])
-partitionM f (x:xs) = do
-    res <- f x
-    (as,bs) <- partitionM f xs
-    pure ([x | res]++as, [x | not res]++bs)
+partitionM f = partitionMaybeM (\v -> do r <- f v; return $ if r then Just v else Nothing)
 
 duplicate :: String -> Int -> String
 duplicate string n = concat $ replicate n string

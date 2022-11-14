@@ -6,6 +6,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.MetaSet (MetaSet)
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext
+import Vehicle.Compile.Normalise.NormExpr
 
 --------------------------------------------------------------------------------
 -- Constraint types
@@ -48,11 +49,25 @@ isAuxiliaryTypeClass tc = do
   group == PolarityGroup || group == LinearityGroup
 
 --------------------------------------------------------------------------------
+-- Constraint origins
+
+data ConstraintOrigin
+  = CheckingExprType   CheckedExpr CheckedType CheckedType
+  | CheckingBinderType DBBinding   CheckedType CheckedType
+  | CheckingTypeClass  CheckedExpr [UncheckedArg] TypeClass
+  | CheckingAuxiliary
+  deriving (Show)
+
+--------------------------------------------------------------------------------
 -- Constraint contexts
+
+type BlockingMetas = MetaSet
 
 data ConstraintContext = ConstraintContext
   { originalProvenance :: Provenance
-  -- ^ The origin of the constraint
+  -- ^ The original provenance of the constraint
+  , origin             :: ConstraintOrigin
+  -- ^ The origin of the constraint.
   , creationProvenance :: Provenance
   -- ^ Where the constraint was instantiated
   , blockedBy          :: BlockingMetas
@@ -64,73 +79,76 @@ data ConstraintContext = ConstraintContext
   , group              :: ConstraintGroup
   } deriving (Show)
 
+instance Pretty ConstraintContext where
+  pretty ctx = do
+    let blockingMetas = blockedBy ctx
+    (if MetaSet.null blockingMetas
+      then ""
+      else "     " <> parens ("blockedBy:" <+> pretty (blockedBy ctx)))
+    -- <+> "<boundCtx=" <> pretty (length (boundContext ctx)) <> ">"
+
 instance HasProvenance ConstraintContext where
-  provenanceOf (ConstraintContext _ creationProvenance _ _ _) = creationProvenance
+  provenanceOf (ConstraintContext _ _ creationProvenance _ _ _) = creationProvenance
 
 instance HasBoundCtx ConstraintContext where
   boundContextOf = boundContextOf . boundContext
 
-blockCtxOn :: ConstraintContext -> MetaSet -> ConstraintContext
-blockCtxOn (ConstraintContext originProv creationProv _ ctx group) metas =
-  ConstraintContext originProv creationProv metas ctx group
+blockCtxOn :: MetaSet -> ConstraintContext -> ConstraintContext
+blockCtxOn metas (ConstraintContext originProv originalConstraint creationProv _ ctx group) =
+  ConstraintContext originProv originalConstraint creationProv metas ctx group
 
 -- | Create a new fresh copy of the context for a new constraint
 copyContext :: ConstraintContext -> ConstraintContext
-copyContext (ConstraintContext originProv creationProv _ ctx group) =
-  ConstraintContext originProv creationProv mempty ctx group
+copyContext (ConstraintContext originProv originalConstraint creationProv _ ctx group) =
+  ConstraintContext originProv originalConstraint creationProv mempty ctx group
 
 --------------------------------------------------------------------------------
 -- Unification constraints
 
--- | A pair of expressions should be equal
-type UnificationPair = (CheckedExpr, CheckedExpr)
-
-newtype UnificationConstraint = Unify UnificationPair
+-- | A constraint representing that a pair of expressions should be equal
+data UnificationConstraint = Unify NormExpr NormExpr
   deriving (Show)
+
+type instance WithContext UnificationConstraint =
+  Contextualised UnificationConstraint ConstraintContext
 
 --------------------------------------------------------------------------------
 -- Type-class constraints
 
-data TypeClassConstraint = Has Meta TypeClass (NonEmpty CheckedArg)
+data TypeClassConstraint = Has MetaID TypeClass (NonEmpty NormArg)
   deriving (Show)
 
--- | A sequence of attempts at unification
-type UnificationHistory = [UnificationPair]
-
-type BlockingMetas = MetaSet
+type instance WithContext TypeClassConstraint =
+  Contextualised TypeClassConstraint ConstraintContext
 
 --------------------------------------------------------------------------------
 -- Constraint
 
 data Constraint
   -- | Represents that the two contained expressions should be equal.
-  = UC ConstraintContext UnificationConstraint
+  = UnificationConstraint UnificationConstraint
   -- | Represents that the provided type must have the required functionality
-  | TC ConstraintContext TypeClassConstraint
+  | TypeClassConstraint TypeClassConstraint
+  deriving (Show)
 
-instance Show Constraint where
-  show (UC _ c) = show c
-  show (TC _ c) = show c
+type instance WithContext Constraint =
+  Contextualised Constraint ConstraintContext
 
-constraintContext :: Constraint -> ConstraintContext
-constraintContext (UC ctx _) = ctx
-constraintContext (TC ctx _) = ctx
-
+{-
 instance HasBoundCtx Constraint where
   boundContextOf = boundContextOf . constraintContext
 
 instance HasProvenance Constraint where
   provenanceOf = provenanceOf . constraintContext
+-}
+getTypeClassConstraint :: WithContext Constraint -> Maybe (WithContext TypeClassConstraint)
+getTypeClassConstraint (WithContext constraint ctx) = case constraint of
+  TypeClassConstraint tc -> Just (WithContext tc ctx)
+  _                      -> Nothing
 
-isTypeClassConstraint :: Constraint -> Bool
-isTypeClassConstraint TC{} = True
-isTypeClassConstraint _    = False
-
-isAuxiliaryTypeClassConstraint :: Constraint -> Bool
-isAuxiliaryTypeClassConstraint = \case
-  TC _ (Has _ tc _) -> isAuxiliaryTypeClass tc
-  _                 -> False
-
+isAuxiliaryTypeClassConstraint :: TypeClassConstraint -> Bool
+isAuxiliaryTypeClassConstraint (Has _ tc _) = isAuxiliaryTypeClass tc
+{-
 isNonAuxiliaryTypeClassConstraint :: Constraint -> Bool
 isNonAuxiliaryTypeClassConstraint = \case
   TC _ (Has _ tc _) -> not (isAuxiliaryTypeClass tc)
@@ -139,17 +157,14 @@ isNonAuxiliaryTypeClassConstraint = \case
 isUnificationConstraint :: Constraint -> Bool
 isUnificationConstraint UC{} = True
 isUnificationConstraint _    = False
+-}
 
-getTypeClassConstraint :: Constraint
-                       -> Maybe (TypeClassConstraint, ConstraintContext)
-getTypeClassConstraint (TC ctx c) = Just (c, ctx)
-getTypeClassConstraint _          = Nothing
+blockConstraintOn :: WithContext Constraint
+                  -> MetaSet
+                  -> WithContext Constraint
+blockConstraintOn (WithContext c ctx) metas = WithContext c (blockCtxOn metas ctx)
 
-blockConstraintOn :: Constraint -> MetaSet -> Constraint
-blockConstraintOn (UC ctx c) metas = UC (blockCtxOn ctx metas) c
-blockConstraintOn (TC ctx c) metas = TC (blockCtxOn ctx metas) c
-
-isUnblockedBy :: MetaSet -> Constraint -> Bool
+isUnblockedBy :: MetaSet -> WithContext Constraint -> Bool
 isUnblockedBy solvedMetas c = do
-  let blockingMetas = blockedBy (constraintContext c)
+  let blockingMetas = blockedBy (contextOf c)
   MetaSet.null blockingMetas || not (MetaSet.disjoint solvedMetas blockingMetas)

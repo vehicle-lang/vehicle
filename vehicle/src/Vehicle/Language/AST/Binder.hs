@@ -70,3 +70,10 @@ replaceBinderType :: expr1
                   -> GenericBinder binder expr2
                   -> GenericBinder binder expr1
 replaceBinderType e = fmap (const e)
+
+
+class HasType expr typ | expr -> typ where
+  typeOf :: expr -> typ
+
+instance HasType (GenericBinder binder expr) expr where
+  typeOf = binderType

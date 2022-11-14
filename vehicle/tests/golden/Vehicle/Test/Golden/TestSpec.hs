@@ -51,7 +51,8 @@ import Data.Text.Lazy qualified as Lazy
 import Data.Text.Lazy.Builder qualified as Builder
 import GHC.Stack.Types (HasCallStack)
 import System.Directory (doesFileExist)
-import System.FilePath (makeRelative, takeFileName, (-<.>), (<.>), (</>), dropExtension)
+import System.FilePath (dropExtension, makeRelative, takeFileName, (-<.>),
+                        (<.>), (</>))
 import System.FilePath.Glob (CompOptions (..))
 import System.FilePath.Glob qualified as Glob
 import Test.Tasty (TestName, TestTree, Timeout (Timeout), localOption)

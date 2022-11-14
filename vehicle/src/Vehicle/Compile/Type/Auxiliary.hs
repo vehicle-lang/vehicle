@@ -9,6 +9,7 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Normalise.NormExpr
 import Vehicle.Compile.Type.MetaMap (MetaMap (..))
 import Vehicle.Compile.Type.MetaMap qualified as MetaMap
 import Vehicle.Compile.Type.Monad
@@ -103,7 +104,7 @@ traverseAuxFreeVarArgs :: TCM m
                        -> m [CheckedArg]
 traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
   (Pi _ binder res, arg : args) -> do
-    let inputType = typeOf' binder
+    let inputType = binderType binder
     args' <- traverseAuxFreeVarArgs f p res args
     arg' <-
       if isPolarityUniverse inputType
@@ -114,9 +115,9 @@ traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
     return (arg' : args')
 
   (Pi _ binder res, [])
-    | visibilityOf binder == Implicit && isAuxiliaryUniverse (typeOf' binder) -> do
+    | visibilityOf binder == Implicit && isAuxiliaryUniverse (typeOf binder) -> do
     xs <- traverseAuxFreeVarArgs f p res []
-    meta <- case typeOf' binder of
+    meta <- case binderType binder of
       LinearityUniverse{} -> f p Lin Nothing
       PolarityUniverse{}  -> f p Pol Nothing
       _                   -> compilerDeveloperError "Mismatch between cases and 'isAuxiliaryUniverse'"
@@ -156,8 +157,8 @@ insertionUpdateFn :: TCM m => AuxArgUpdate m
 insertionUpdateFn p auxType = \case
   Just e -> return e
   Nothing -> case auxType of
-    Lin -> freshLinearityMeta p
-    Pol -> freshPolarityMeta p
+    Lin -> unnormalised <$> freshLinearityMeta p
+    Pol -> unnormalised <$> freshPolarityMeta p
 
 -------------------------------------------------------------------------------
 -- Inserting polarity and linearity constraints to capture function application
@@ -204,8 +205,8 @@ replaceAux position p auxType = \case
   Nothing   -> compilerDeveloperError
     "Should not be missing auxiliary arguments during function constraint insertion"
   Just expr -> case auxType of
-    Lin -> addFunctionConstraint (LinearityTypeClass . FunctionLinearity) (freshLinearityMeta p) position expr
-    Pol -> addFunctionConstraint (PolarityTypeClass  . FunctionPolarity)  (freshPolarityMeta  p) position expr
+    Lin -> addFunctionConstraint (LinearityTypeClass . FunctionLinearity) (unnormalised <$> freshLinearityMeta p) position expr
+    Pol -> addFunctionConstraint (PolarityTypeClass  . FunctionPolarity)  (unnormalised <$> freshPolarityMeta  p) position expr
 
 addFunctionConstraint :: (TCM m, MonadState (MetaMap CheckedExpr) m)
                       => (FunctionPosition -> TypeClass)
@@ -228,10 +229,8 @@ addFunctionConstraint mkTC createNewMeta (declProv, position) existingExpr = do
   let constraintArgs = ExplicitArg (provenanceOf existingExpr) <$> case position of
           FunctionInput{}  -> [newExpr, existingExpr]
           FunctionOutput{} -> [existingExpr, newExpr]
-  let tc = mkTC position
-  let constraint = BuiltinTypeClass declProv tc constraintArgs
+  let tcExpr = BuiltinTypeClass declProv (mkTC position) constraintArgs
 
-  m <- freshTypeClassPlacementMeta declProv constraint
-  addTypeClassConstraint declProv mempty m constraint
+  _ <- addFreshTypeClassConstraint mempty existingExpr mempty tcExpr
 
   return newExpr
