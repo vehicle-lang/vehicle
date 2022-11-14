@@ -182,7 +182,7 @@ loopOverConstraints loopNumber decl = do
   clearSolvedMetas
 
   unless (null unsolvedConstraints) $ do
-    let isUnblocked = isUnblockedBy metasSolvedLastLoop
+    let isUnblocked = not . constraintIsBlocked metasSolvedLastLoop
     let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
 
     if null unblockedConstraints then do
@@ -217,8 +217,8 @@ loopOverConstraints loopNumber decl = do
 
 -- | Tries to solve a constraint deterministically.
 solveConstraint :: TCM m => WithContext Constraint -> m ()
-solveConstraint (WithContext unnormConstraint ctx) = do
-  constraint <- substMetas unnormConstraint
+solveConstraint unnormConstraint = do
+  WithContext constraint ctx <- substConstraintMetas unnormConstraint
 
   logCompilerSection MaxDetail ("trying" <+> prettyVerbose constraint) $ do
     result <- case constraint of
@@ -337,7 +337,7 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
       logDebug MaxDetail $ "unsolved-constraints:" <> line <>
         indent 2 (prettyVerbose unsolvedConstraints) <> line
     Just solvedMetas -> do
-      let isUnblocked = isUnblockedBy solvedMetas
+      let isUnblocked = not . constraintIsBlocked solvedMetas
       let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
       logDebug MaxDetail $ "unsolved-blocked-constraints:" <> line <>
         indent 2 (prettyVerbose blockedConstraints) <> line

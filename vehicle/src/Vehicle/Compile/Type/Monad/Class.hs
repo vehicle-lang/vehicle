@@ -13,6 +13,7 @@ module Vehicle.Compile.Type.Monad.Class
   , clearSolvedMetas
   , clearMetaSubstitution
   , substMetasThroughCtx
+  , substConstraintMetas
   , modifyMetasInfo
   , getMetaProvenance
   , prettyMetas
@@ -138,17 +139,9 @@ setConstraints newConstraints = modifyMetaCtx $ \TypingMetaCtx{..} ->
 popActivatedConstraints :: MonadTypeChecker m => MetaSet -> m [WithContext Constraint]
 popActivatedConstraints metasSolved = do
   allConstraints <- getUnsolvedConstraints
-  let (blockedConstraints, unblockedConstraints) = partition (isBlocked metasSolved) allConstraints
+  let (blockedConstraints, unblockedConstraints) = partition (constraintIsBlocked metasSolved) allConstraints
   setConstraints blockedConstraints
   return unblockedConstraints
-  where
-    isBlocked :: MetaSet -> WithContext Constraint -> Bool
-    isBlocked solvedMetas constraint =
-      let blockingMetas = blockedBy $ contextOf constraint in
-      -- A constraint is blocked if it is blocking on at least one meta
-      -- and none of the metas it is blocking on have been solved in the last pass.
-      not (MetaSet.null blockingMetas) && MetaSet.disjoint solvedMetas blockingMetas
-
 
 substMetas :: (MonadTypeChecker m, MetaSubstitutable a) => a -> m a
 substMetas e = do
@@ -156,7 +149,21 @@ substMetas e = do
   declCtx <- toNBEDeclContext <$> getDeclContext
   runReaderT (substM e) (metaSubst, declCtx)
 
+-- | Substitute through solved metas through a constraint, *only* if
+-- some of the metas blocking the constraint are solved.
+substConstraintMetas :: MonadTypeChecker m
+                     => WithContext Constraint
+                     -> m (WithContext Constraint)
+substConstraintMetas (WithContext constraint context) = do
+  {-
+  solvedMetas <- MetaMap.keys <$> getMetaSubstitution
 
+  newConstraint <- if isBlocked solvedMetas context
+    then return constraint
+    else substMetas constraint
+  -}
+  newContraint <- substMetas constraint
+  return $ WithContext newContraint context
 
 --------------------------------------------------------------------------------
 -- Meta-variable creation
@@ -245,7 +252,7 @@ modifyMetasInfo m f = modifyMetaCtx (\TypingMetaCtx{..} ->
     })
 
 clearMetaSubstitution :: MonadTypeChecker m => m ()
-clearMetaSubstitution = modifyMetaCtx $ \ TypingMetaCtx {..} ->
+clearMetaSubstitution = modifyMetaCtx $ \TypingMetaCtx {..} ->
   TypingMetaCtx { currentSubstitution = mempty, ..}
 
 clearSolvedMetas :: MonadTypeChecker m => m ()
@@ -255,14 +262,14 @@ clearSolvedMetas = modifyMetaCtx $ \TypingMetaCtx {..} ->
 substMetasThroughCtx :: MonadTypeChecker m => m ()
 substMetasThroughCtx = do
   TypingMetaCtx {..} <- getMetaCtx
-  substConstraints  <- substMetas constraints
+  substConstraints  <- traverse substConstraintMetas constraints
   substMetaInfo     <- substMetas metaInfo
   substMetaSolution <- substMetas currentSubstitution
   putMetaCtx $ TypingMetaCtx
-    { constraints = substConstraints
-    , metaInfo = substMetaInfo
+    { constraints         = substConstraints
+    , metaInfo            = substMetaInfo
     , currentSubstitution = substMetaSolution
-    , solvedMetas = solvedMetas
+    , solvedMetas         = solvedMetas
     }
 
 getUnsolvedAuxiliaryMetas :: MonadTypeChecker m => m MetaSet
@@ -385,7 +392,7 @@ addFreshUnificationConstraint group p ctx origin expectedType actualType = do
   normExpectedType <- whnfNBE (length ctx) expectedType
   normActualType   <- whnfNBE (length ctx) actualType
   let constraint = UnificationConstraint $ Unify normExpectedType normActualType
-  let context    = ConstraintContext p origin p mempty ctx group
+  let context    = ConstraintContext p origin p unknownBlockingStatus ctx group
   addConstraints [WithContext constraint context]
 
 -- | Adds an entirely new type-class constraint (as opposed to one
@@ -413,7 +420,7 @@ addFreshTypeClassConstraint ctx fun funArgs tcExpr = do
   let group      = typeClassGroup tc
   let origin     = CheckingTypeClass fun funArgs tc
   let constraint = TypeClassConstraint (Has meta tc nArgs)
-  let context    = ConstraintContext originProvenance origin p mempty ctx group
+  let context    = ConstraintContext originProvenance origin p unknownBlockingStatus ctx group
   addConstraints [WithContext constraint context]
 
   return $ unnormalised metaExpr

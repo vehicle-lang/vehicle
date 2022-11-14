@@ -935,7 +935,7 @@ prettyAllowedTypes allowedTypes = if length allowedTypes == 1
   else "one of" <+> prettyFlatList (pretty <$> allowedTypes)
 
 prettyAllowedBuiltins :: [Doc b] -> Doc b
-prettyAllowedBuiltins allowedTypes = commaSep allowedTypes
+prettyAllowedBuiltins = commaSep
 
 prettyOrdinal :: Doc b -> Int -> Maybe Int -> Doc b
 prettyOrdinal object argNo argTotal
