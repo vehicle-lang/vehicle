@@ -7,7 +7,7 @@ module Vehicle.Backend.LossFunction.Compile
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes)
 import GHC.Generics (Generic)
 
 import Vehicle.Compile.Error
@@ -19,7 +19,8 @@ import Vehicle.Language.AST.Name (HasName (nameOf))
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Prelude
 import Vehicle.Compile.Queries.DNF
---import Vehicle.Compile.Queries.DNF (lowerNot)
+import Vehicle.Language.AST.Core (argExpr)
+
 
 --------------------------------------------------------------------------------
 -- Declaration definition
@@ -153,12 +154,12 @@ compileLiteral t l = case l of
   V.LRat     e -> fromRational e
 
 --helps compile a name from DBBinding, even if there is no name given
-compileDBBinding :: Maybe Name -> Name
-compileDBBinding name = do
-  e <- fromMaybe Nothing name
-  case e of
-    Nothing -> Name "generic_name" --option for when there was no name given
-    _ -> e
+-- compileDBBinding :: Maybe Name -> Name
+-- compileDBBinding name = do
+--   e <- fromMaybe Nothing name
+--   case e of
+--     Nothing -> Name "generic_name" --option for when there was no name given
+--     _ -> e
 
 --compile a property or single expression
 compileExpr :: MonadCompile m => Translation -> V.CheckedExpr -> m LExpr
@@ -166,7 +167,7 @@ compileExpr t e = showExit $ do
   e' <- showEntry e
   case e' of
     --logical operatives
-    V.NotExpr     _ [e1]     -> compileNot t <$> compileArg t (lowerNot e1)
+    V.NotExpr     _ [e1]     -> compileNot t <$> compileExpr t (lowerNot (argExpr e1))
     V.AndExpr     _ [e1, e2] -> compileAnd t <$> compileArg t e1 <*> compileArg t e2
     V.OrExpr      _ [e1, e2] -> compileOr t <$> compileArg t e1 <*> compileArg t e2
     V.ImpliesExpr _ [e1, e2] -> compileImplication t <$> (Negation <$> compileArg t e1) <*> compileArg t e2
@@ -239,7 +240,7 @@ dl2Translation = Translation
    { --double check implication, do negation properly
      compileAnd = Addition,
      compileOr  = Multiplication,
-     compileNot = \arg -> lowerNot arg, --lowerNot
+     compileNot = id, --this should be normalised out
      compileImplication = \arg1 arg2 -> Max (Negation arg1) arg2,
 
      compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
