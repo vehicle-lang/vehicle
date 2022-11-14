@@ -18,8 +18,79 @@ import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
 import Vehicle.Compile.Prelude
 
-import Vehicle.Compile.Normalise
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Normalise.NormExpr (GluedProg, GluedDecl, GluedExpr (..))
+import Vehicle.Compile.Normalise.Quote (Quote(..))
+
+-- | Expands datasets and parameters, and attempts to infer the values of
+-- inferable parameters. Also checks the resulting types of networks.
+expandResources :: (MonadIO m, MonadCompile m)
+                => Resources
+                -> Bool
+                -> GluedProg
+                -> m (NetworkContext, CheckedProg)
+expandResources resources@Resources{..} expandDatasets prog =
+  logCompilerPass MinDetail "expansion of external resources" $ do
+    ((prog', ResourceContext{..}), implicitParams) <-
+      runStateT (runWriterT (runReaderT (processProg prog)
+        (resources, expandDatasets))) mempty
+
+    finalProg <- insertInferableParameters implicitParams prog'
+
+    warnIfUnusedResources Parameter (Map.keysSet parameters) parameterContext
+    warnIfUnusedResources Dataset   (Map.keysSet datasets)   datasetContext
+    warnIfUnusedResources Network   (Map.keysSet networks)   (Map.keysSet networkContext)
+
+    return (networkContext, finalProg)
+
+--------------------------------------------------------------------------------
+-- Traversal of program
+
+processProg :: (MonadIO m, MonadExpandResources m) => GluedProg -> m CheckedProg
+processProg (Main ds) = Main . catMaybes <$> processDecls ds
+
+processDecls :: (MonadIO m, MonadExpandResources m) => [GluedDecl] -> m [Maybe CheckedDecl]
+processDecls []       = return []
+processDecls (d : ds) = do
+  d'  <- processDecl d
+  ds' <- processDecls ds
+  return $ d' : ds'
+
+processDecl :: (MonadIO m, MonadExpandResources m)
+            => GluedDecl
+            -> m (Maybe CheckedDecl)
+processDecl decl = case decl of
+  DefFunction{}  -> return (Just $ fmap unnormalised decl)
+  DefPostulate{} -> return (Just $ fmap unnormalised decl)
+
+  DefResource p resourceType ident declType -> do
+    (resources, expandDatasets) <- ask
+    let name = nameOf ident
+
+    case resourceType of
+      InferableParameter -> do
+        addInferableParameter name
+        return (Just $ fmap unnormalised decl)
+
+      Parameter -> do
+        addParameter name
+        parameterExpr <- parseParameterValue (parameters resources) (ident, p) declType
+        let result = Just $ DefFunction p ident (unnormalised declType) (unnormalise parameterExpr)
+        return result
+
+      Dataset -> do
+        addDataset name
+        if not expandDatasets
+          then return (Just $ fmap unnormalised decl)
+          else do
+            datasetExpr <- parseDataset (datasets resources) (ident, p) declType
+            let result = Just $ DefFunction p ident (unnormalised declType) (unnormalise datasetExpr)
+            return result
+
+      Network -> do
+        networkType <- getNetworkType (ident, p) declType
+        addNetworkType name networkType
+        return Nothing
 
 --------------------------------------------------------------------------------
 -- Resource monad
@@ -39,78 +110,6 @@ addDataset ident =
 addNetworkType :: MonadExpandResources m => Name -> NetworkType -> m ()
 addNetworkType ident details =
   tell (ResourceContext mempty mempty (Map.singleton ident details))
-
---------------------------------------------------------------------------------
--- Traversal of program
-
-expandResources :: (MonadIO m, MonadCompile m)
-                => Resources
-                -> Bool
-                -> CheckedProg
-                -> m (NetworkContext, CheckedProg)
-expandResources resources@Resources{..} expandDatasets prog =
-  logCompilerPass MinDetail "expansion of external resources" $ do
-    ((prog', ResourceContext{..}), implicitParams) <-
-      runStateT (runWriterT (runReaderT (processProg prog)
-        (resources, expandDatasets, mempty))) mempty
-
-    finalProg <- insertInferableParameters implicitParams prog'
-
-    warnIfUnusedResources Parameter (Map.keysSet parameters) parameterContext
-    warnIfUnusedResources Dataset   (Map.keysSet datasets)   datasetContext
-    warnIfUnusedResources Network   (Map.keysSet networks)   (Map.keysSet networkContext)
-
-    return (networkContext, finalProg)
-
-processProg :: (MonadIO m, MonadExpandResources m) => CheckedProg -> m CheckedProg
-processProg (Main ds) = Main . catMaybes <$> processDecls ds
-
-processDecls :: (MonadIO m, MonadExpandResources m) => [CheckedDecl] -> m [Maybe CheckedDecl]
-processDecls []       = return []
-processDecls (d : ds) = do
-  (d', alterCtx)  <- processDecl d
-  let updateReader (res, normDatasets, ctx) = (res, normDatasets, alterCtx ctx)
-  ds' <- local updateReader $ processDecls ds
-  return $ d' : ds'
-
-processDecl :: (MonadIO m, MonadExpandResources m)
-            => CheckedDecl
-            -> m (Maybe CheckedDecl, DeclCtx CheckedExpr -> DeclCtx CheckedExpr)
-processDecl d@(DefFunction _ ident _ declExpr) =
-  return (Just d, Map.insert ident declExpr)
-processDecl d@DefPostulate{} =
-  return (Just d, id)
-processDecl d@(DefResource p resourceType ident declType) = do
-  (resources, expandDatasets, declCtx) <- ask
-  let name = nameOf ident
-  normType <- normalise declType fullNormalisationOptions
-    { declContext = declCtx
-    }
-
-  case resourceType of
-    InferableParameter -> do
-      addInferableParameter name
-      return (Just d, id)
-
-    Parameter -> do
-      addParameter name
-      parameterExpr <- parseParameterValue (parameters resources) (ident, p) normType
-      let result = Just $ DefFunction p ident normType parameterExpr
-      return (result, Map.insert ident parameterExpr)
-
-    Dataset -> do
-      addDataset name
-      if not expandDatasets
-        then return (Just d, id)
-        else do
-          datasetExpr <- parseDataset (datasets resources) (ident, p) normType
-          let result = Just $ DefFunction p ident normType datasetExpr
-          return (result, Map.insert ident datasetExpr)
-
-    Network -> do
-      networkType <- getNetworkType (ident, p) normType
-      addNetworkType name networkType
-      return (Nothing, id)
 
 insertInferableParameters :: MonadCompile m => InferableParameterContext -> CheckedProg -> m CheckedProg
 insertInferableParameters implicitParams = traverseDecls $ \case

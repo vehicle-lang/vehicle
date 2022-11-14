@@ -4,6 +4,7 @@ module Vehicle.Compile.Normalise.NBE
   ( whnf
   , evalBuiltin
   , evalApp
+  , eval
   ) where
 
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
@@ -19,9 +20,9 @@ import Vehicle.Compile.Normalise.Quote (liftEnvOverBinder)
 
 whnf :: MonadCompile m => Int -> DeclCtx GluedExpr -> CheckedExpr -> m NormExpr
 whnf boundCtxSize declCtx e = do
+  let env = [VVar mempty (Bound i) [] | i <- [0..boundCtxSize - 1]]
   -- logDebug MaxDetail $ "Normalising" <+> squotes (prettyVerbose e) <+> "in a context of size" <+> pretty boundCtxSize
   runReaderT (eval env e) (fmap normalised declCtx)
-  where env = [VVar mempty (Bound i) [] | i <- [0..boundCtxSize - 1]]
 
 -----------------------------------------------------------------------------
 -- Evaluation
@@ -381,7 +382,7 @@ evalForeach p = \case
   [tRes, VNat n, ExplicitArg _ f] -> do
     let fn i = evalApp f [ExplicitArg p (VLiteral p (LIndex n i))]
     xs <- traverse fn [0 .. (n-1 :: Int)]
-    return $ mkVLVec p xs tRes
+    return $ mkVLVec p xs (argExpr tRes)
 
   args -> return $ VBuiltin p Foreach args
 
@@ -462,7 +463,7 @@ evalMapVec :: EvalBuiltin
 evalMapVec p = \case
   [_n, _t1, t2, ExplicitArg _ f, ExplicitArg _ (VLVec _ xs _)] -> do
     xs' <- traverse (\x -> evalApp f [ExplicitArg p x]) xs
-    return $ mkVLVec p xs' t2
+    return $ mkVLVec p xs' (argExpr t2)
 
   args -> return $ VBuiltin p (Map MapVector) args
 

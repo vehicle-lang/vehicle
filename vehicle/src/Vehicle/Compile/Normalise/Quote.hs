@@ -42,7 +42,7 @@ instance DBAdjustment NormExpr where
 
     VLam p binder env body -> do
       binder' <- traverse adjustIndices binder
-      env' <- traverse adjustIndices env
+      env' <- adjustIndices env
       body' <- underDBBinder $ do
         (bindingDepth, sub) <- ask
         return $ substAll bindingDepth sub body
@@ -54,6 +54,11 @@ instance DBAdjustment a => DBAdjustment (GenericArg a) where
 instance DBAdjustment a => DBAdjustment (GenericBinder binder a) where
   adjustIndices = traverse adjustIndices
 
+instance DBAdjustment Env where
+  adjustIndices boundCtx = do
+    newBoundCtx <- traverse adjustIndices boundCtx
+    return newBoundCtx
+
 adjustDBIndices :: DBAdjustment a => BindingDepth -> (DBIndex -> Maybe DBIndex) -> a -> a
 adjustDBIndices d sub e = runReader (adjustIndices e) (d, sub)
 
@@ -61,7 +66,10 @@ liftFreeDBIndicesNorm :: BindingDepth -> NormExpr -> NormExpr
 liftFreeDBIndicesNorm amount = adjustDBIndices 0 (\i -> Just (i + amount))
 
 liftEnvOverBinder :: Provenance -> Env -> Env
-liftEnvOverBinder p env = VVar p (Bound 0) [] : fmap (liftFreeDBIndicesNorm 1) env
+liftEnvOverBinder p = extendEnv (VVar p (Bound 0) [])
+
+extendEnv :: NormExpr -> Env -> Env
+extendEnv value boundCtx = value : fmap (liftFreeDBIndicesNorm 1) boundCtx
 
 -----------------------------------------------------------------------------
 -- Quoting
@@ -97,9 +105,9 @@ instance Quote NormExpr CheckedExpr where
       -- First quote the binder
       quotedBinder <- quote binder
       -- Then quote the lifted environment
-      quotedEnv <- traverse quote (liftEnvOverBinder p env)
+      quotedBoundCtx <- traverse quote (liftEnvOverBinder p env)
       -- Then substitute the environment through the body
-      let quotedBody = substitute 0 (envSubst quotedEnv) body
+      let quotedBody = substitute 0 (envSubst quotedBoundCtx) body
 
       return $ Lam p quotedBinder quotedBody
 

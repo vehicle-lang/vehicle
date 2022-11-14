@@ -19,6 +19,7 @@ import Numeric (readFloat)
 import Paths_vehicle qualified as Cabal (version)
 import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
 import Vehicle.Prelude.Token (Name)
+import Control.Monad (when)
 
 vehicleVersion :: Version
 vehicleVersion = Cabal.version
@@ -156,3 +157,8 @@ enumerate = [minBound..maxBound]
 
 supportedOptions :: [String] -> String
 supportedOptions opts = "Supported options: " <> List.intercalate ", " opts
+
+whenM :: Monad m => m Bool -> m () -> m ()
+whenM cond action = do
+  c <- cond
+  when c action
