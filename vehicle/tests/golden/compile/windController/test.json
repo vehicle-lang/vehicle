@@ -14,7 +14,8 @@
     "name": "LossFunction",
     "run": "vehicle compile -s windController.vcl -t LossFunction -o windController.loss.json",
     "needs": ["windController.vcl"],
-    "produces": ["windController.loss.json"]
+    "produces": ["windController.loss.json"],
+    "enabled": false
   },
   {
     "name": "Agda",
