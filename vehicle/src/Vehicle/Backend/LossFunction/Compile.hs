@@ -7,7 +7,7 @@ module Vehicle.Backend.LossFunction.Compile
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import GHC.Generics (Generic)
 
 import Vehicle.Compile.Error
@@ -18,6 +18,7 @@ import Vehicle.Compile.Resource (NetworkContext)
 import Vehicle.Language.AST.Name (HasName (nameOf))
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Prelude
+import Vehicle.Compile.Queries.DNF
 --import Vehicle.Compile.Queries.DNF (lowerNot)
 
 --------------------------------------------------------------------------------
@@ -86,6 +87,7 @@ instance ToJSON LExpr
 -- Godel
 -- Lukasiewicz
 -- Product based
+-- Yager
 
 --they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2. 
 
@@ -101,6 +103,8 @@ compile d prog propertyCtx networkCtx = do
       runReaderT (compileProg lukasiewiczTranslation normalisedProg) (propertyCtx, networkCtx)
     Product -> do
       runReaderT (compileProg productTranslation normalisedProg) (propertyCtx, networkCtx)
+    Yager -> do
+      runReaderT (compileProg yagerTranslation normalisedProg) (propertyCtx, networkCtx)
   
 
 --compile entire specification (calls compileDecl)
@@ -149,13 +153,12 @@ compileLiteral t l = case l of
   V.LRat     e -> fromRational e
 
 --helps compile a name from DBBinding, even if there is no name given
--- compileDBBinding :: Maybe Name -> Name
--- compileDBBinding name = 
-
-  -- e <- fromMaybe name
-  -- case e of
-  --   Nothing -> Name "generic_name" --option for when there was no name given
-  --   _ -> e
+compileDBBinding :: Maybe Name -> Name
+compileDBBinding name = do
+  e <- fromMaybe Nothing name
+  case e of
+    Nothing -> Name "generic_name" --option for when there was no name given
+    _ -> e
 
 --compile a property or single expression
 compileExpr :: MonadCompile m => Translation -> V.CheckedExpr -> m LExpr
@@ -163,7 +166,7 @@ compileExpr t e = showExit $ do
   e' <- showEntry e
   case e' of
     --logical operatives
-    V.NotExpr     _ [e1]     -> compileNot t <$> compileArg t e1
+    V.NotExpr     _ [e1]     -> compileNot t <$> compileArg t (lowerNot e1)
     V.AndExpr     _ [e1, e2] -> compileAnd t <$> compileArg t e1 <*> compileArg t e2
     V.OrExpr      _ [e1, e2] -> compileOr t <$> compileArg t e1 <*> compileArg t e2
     V.ImpliesExpr _ [e1, e2] -> compileImplication t <$> (Negation <$> compileArg t e1) <*> compileArg t e2
@@ -236,7 +239,7 @@ dl2Translation = Translation
    { --double check implication, do negation properly
      compileAnd = Addition,
      compileOr  = Multiplication,
-     compileNot = Negation, --lowerNot
+     compileNot = \arg -> lowerNot arg, --lowerNot
      compileImplication = \arg1 arg2 -> Max (Negation arg1) arg2,
 
      compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
@@ -312,32 +315,50 @@ productTranslation = Translation
                       False -> 0           
    }
 
--- yagerTranslation :: Translation
--- yagerTranslation = Translation
---    {
---      compileAnd = \arg1 arg2 -> Max 
---                                   (Subtraction 
---                                     (Constant 1) 
---                                       (Power 
---                                         (Addition 
---                                           (Power (Subtraction (Constant 1) arg1) p) 
---                                           (Power (Subtraction (Constant 1) arg2) p))
---                                         (Division (Constant 1) p))) 
---                                     (Constant 0),
---      compileNot = \arg -> Subtraction (Constant 1) arg,
+yagerTranslation :: Translation
+yagerTranslation = yagerTranslationCompile 1 --change constant here
+
+--helper function that sets parameter p for the Yager DL (by default set to 1)
+yagerTranslationCompile :: Rational -> Translation
+yagerTranslationCompile p = Translation
+    {
+     compileAnd = \arg1 arg2 -> Max 
+                                  (Subtraction 
+                                    (Constant 1) 
+                                      (Power 
+                                        (Addition 
+                                          (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p))) 
+                                          (Power (Subtraction (Constant 1) arg2) (Constant (fromRational p))))
+                                        (Division (Constant 1) (Constant (fromRational p))))) 
+                                    (Constant 0),
+     compileNot = \arg -> Subtraction (Constant 1) arg,
+     compileOr = \arg1 arg2 -> Min 
+                                  (Power
+                                     (Addition (Power arg1 (Constant (fromRational p))) (Power arg2 (Constant (fromRational p)))) 
+                                     (Division (Constant 1) (Constant (fromRational p)))
+                                    )
+                                    (Constant 1),
+     compileImplication = \arg1 arg2 -> Min 
+                                  (Power
+                                     (Addition (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p))) (Power arg2 (Constant (fromRational p)))) 
+                                     (Division (Constant 1) (Constant (fromRational p)))
+                                    )
+                                    (Constant 1),
 
 
---      compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)),
---      compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))),
---      compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)),
---      compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))),
---      compileNeq = IndicatorFunction,
---      compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2),
+     compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)),
+     compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))),
+     compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)),
+     compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))),
+     compileNeq = IndicatorFunction,
+     compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2),
 
---      compileBool = \case
---                       True -> 1
---                       False -> 0           
---    }
+     compileBool = \case
+                      True -> 1
+                      False -> 0           
+   }
+
+
 
 
 

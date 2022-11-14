@@ -23,6 +23,7 @@ data DifferentiableLogic
   | Godel 
   | Lukasiewicz
   | Product
+  | Yager
   deriving (Eq, Show, Read, Bounded, Enum)
 
 data ITP
@@ -47,6 +48,9 @@ pattern LossFunctionLukasiewicz = LossFunction Lukasiewicz
 pattern LossFunctionProduct :: Backend
 pattern LossFunctionProduct = LossFunction Product
 
+pattern LossFunctionYager :: Backend
+pattern LossFunctionYager = LossFunction Yager
+
 instance Pretty Backend where
   pretty = \case
     ITP x             -> pretty $ show x
@@ -56,15 +60,16 @@ instance Pretty Backend where
 
 instance Read Backend where
   readsPrec _d x = case x of
-    "Marabou"      -> [(MarabouBackend, [])]
-    "LossFunction"  -> [(LossFunctionDL2, [])]
-    "LossFunction-DL2"          -> [(LossFunctionDL2, [])]
-    "LossFunction-Godel"          -> [(LossFunctionGodel, [])]
-    "LossFunction-Lukasiewicz"          -> [(LossFunctionLukasiewicz, [])]
+    "Marabou"                       -> [(MarabouBackend, [])]
+    "LossFunction"                  -> [(LossFunctionDL2, [])] --default loss function translation is DL2
+    "LossFunction-DL2"              -> [(LossFunctionDL2, [])]
+    "LossFunction-Godel"            -> [(LossFunctionGodel, [])]
+    "LossFunction-Lukasiewicz"      -> [(LossFunctionLukasiewicz, [])]
     "LossFunction-Product"          -> [(LossFunctionProduct, [])]
-    "Agda"         -> [(AgdaBackend, [])]
-    "TypeCheck"    -> [(TypeCheck, [])]
-    _              -> []
+    "LossFunction-Yager"            -> [(LossFunctionYager, [])]
+    "Agda"                          -> [(AgdaBackend, [])]
+    "TypeCheck"                     -> [(TypeCheck, [])]
+    _                               -> []
 
 commentTokenOf :: Backend -> Maybe (Doc a)
 commentTokenOf = \case

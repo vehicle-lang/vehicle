@@ -11,15 +11,39 @@
     "produces": ["windController.inputquery/*.txt"]
   },
   {
+    "name": "Agda",
+    "run": "vehicle compile -s windController.vcl -t Agda -o windController.agda",
+    "needs": ["windController.vcl"],
+    "produces": ["windController.agda"]
+  },
+  {
     "name": "LossFunction",
     "run": "vehicle compile -s windController.vcl -t LossFunction -o windController.loss.json",
     "needs": ["windController.vcl"],
     "produces": ["windController.loss.json"]
   },
   {
-    "name": "Agda",
-    "run": "vehicle compile -s windController.vcl -t Agda -o windController.agda",
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s windController.vcl -t LossFunction-Godel -o windController-Godel.loss.json",
     "needs": ["windController.vcl"],
-    "produces": ["windController.agda"]
+    "produces": ["windController-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s windController.vcl -t LossFunction-Lukasiewicz -o windController-Lukasiewicz.loss.json",
+    "needs": ["windController.vcl"],
+    "produces": ["windController-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s windController.vcl -t LossFunction-Product -o windController-Product.loss.json",
+    "needs": ["windController.vcl"],
+    "produces": ["windController-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s windController.vcl -t LossFunction-Yager -o windController-Yager.loss.json",
+    "needs": ["windController.vcl"],
+    "produces": ["windController-Yager.loss.json"]
   }
 ]

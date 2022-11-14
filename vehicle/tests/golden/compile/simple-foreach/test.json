@@ -15,5 +15,29 @@
     "run": "vehicle compile -s simple-foreach.vcl -t LossFunction -o simple-foreach.loss.json",
     "needs": ["simple-foreach.vcl"],
     "produces": ["simple-foreach.loss.json"]
+  },
+  {
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s simple-foreach.vcl -t LossFunction-Godel -o simple-foreach-Godel.loss.json",
+    "needs": ["simple-foreach.vcl"],
+    "produces": ["simple-foreach-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s simple-foreach.vcl -t LossFunction-Lukasiewicz -o simple-foreach-Lukasiewicz.loss.json",
+    "needs": ["simple-foreach.vcl"],
+    "produces": ["simple-foreach-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s simple-foreach.vcl -t LossFunction-Product -o simple-foreach-Product.loss.json",
+    "needs": ["simple-foreach.vcl"],
+    "produces": ["simple-foreach-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s simple-foreach.vcl -t LossFunction-Yager -o simple-foreach-Yager.loss.json",
+    "needs": ["simple-foreach.vcl"],
+    "produces": ["simple-foreach-Yager.loss.json"]
   }
 ]

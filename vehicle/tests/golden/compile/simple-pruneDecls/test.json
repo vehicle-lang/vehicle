@@ -11,15 +11,39 @@
     "produces": ["simple-pruneDecls.inputquery/*.txt"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s simple-pruneDecls.vcl -t LossFunction -o simple-pruneDecls.loss.json -e p2",
-    "needs": ["simple-pruneDecls.vcl"],
-    "produces": ["simple-pruneDecls.loss.json"]
-  },
-  {
     "name": "Agda",
     "run": "vehicle compile -s simple-pruneDecls.vcl -t Agda -o simple-pruneDecls.agda -e p2",
     "needs": ["simple-pruneDecls.vcl"],
     "produces": ["simple-pruneDecls.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-pruneDecls.vcl -t LossFunction -o simple-pruneDecls.loss.json",
+    "needs": ["simple-pruneDecls.vcl"],
+    "produces": ["simple-pruneDecls.loss.json"]
+  },
+  {
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s simple-pruneDecls.vcl -t LossFunction-Godel -o simple-pruneDecls-Godel.loss.json",
+    "needs": ["simple-pruneDecls.vcl"],
+    "produces": ["simple-pruneDecls-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s simple-pruneDecls.vcl -t LossFunction-Lukasiewicz -o simple-pruneDecls-Lukasiewicz.loss.json",
+    "needs": ["simple-pruneDecls.vcl"],
+    "produces": ["simple-pruneDecls-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s simple-pruneDecls.vcl -t LossFunction-Product -o simple-pruneDecls-Product.loss.json",
+    "needs": ["simple-pruneDecls.vcl"],
+    "produces": ["simple-pruneDecls-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s simple-pruneDecls.vcl -t LossFunction-Yager -o simple-pruneDecls-Yager.loss.json",
+    "needs": ["simple-pruneDecls.vcl"],
+    "produces": ["simple-pruneDecls-Yager.loss.json"]
   }
 ]

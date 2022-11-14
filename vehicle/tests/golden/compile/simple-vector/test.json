@@ -11,15 +11,39 @@
     "produces": ["simple-vector.inputquery/*.txt"]
   },
   {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-vector.vcl -t Agda -o simple-vector.agda",
+    "needs": ["simple-vector.vcl"],
+    "produces": ["simple-vector.agda"]
+  },
+  {
     "name": "LossFunction",
     "run": "vehicle compile -s simple-vector.vcl -t LossFunction -o simple-vector.loss.json",
     "needs": ["simple-vector.vcl"],
     "produces": ["simple-vector.loss.json"]
   },
   {
-    "name": "Agda",
-    "run": "vehicle compile -s simple-vector.vcl -t Agda -o simple-vector.agda",
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s simple-vector.vcl -t LossFunction-Godel -o simple-vector-Godel.loss.json",
     "needs": ["simple-vector.vcl"],
-    "produces": ["simple-vector.agda"]
+    "produces": ["simple-vector-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s simple-vector.vcl -t LossFunction-Lukasiewicz -o simple-vector-Lukasiewicz.loss.json",
+    "needs": ["simple-vector.vcl"],
+    "produces": ["simple-vector-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s simple-vector.vcl -t LossFunction-Product -o simple-vector-Product.loss.json",
+    "needs": ["simple-vector.vcl"],
+    "produces": ["simple-vector-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s simple-vector.vcl -t LossFunction-Yager -o simple-vector-Yager.loss.json",
+    "needs": ["simple-vector.vcl"],
+    "produces": ["simple-vector-Yager.loss.json"]
   }
 ]

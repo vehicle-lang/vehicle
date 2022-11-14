@@ -11,15 +11,39 @@
     "produces": ["simple-constantInput.inputquery/*.txt"]
   },
   {
+    "name": "Agda",
+    "run": "vehicle compile -s simple-constantInput.vcl -t Agda -o simple-constantInput.agda",
+    "needs": ["simple-constantInput.vcl"],
+    "produces": ["simple-constantInput.agda"]
+  },
+  {
     "name": "LossFunction",
     "run": "vehicle compile -s simple-constantInput.vcl -t LossFunction -o simple-constantInput.loss.json",
     "needs": ["simple-constantInput.vcl"],
     "produces": ["simple-constantInput.loss.json"]
   },
   {
-    "name": "Agda",
-    "run": "vehicle compile -s simple-constantInput.vcl -t Agda -o simple-constantInput.agda",
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s simple-constantInput.vcl -t LossFunction-Godel -o simple-constantInput-Godel.loss.json",
     "needs": ["simple-constantInput.vcl"],
-    "produces": ["simple-constantInput.agda"]
+    "produces": ["simple-constantInput-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s simple-constantInput.vcl -t LossFunction-Lukasiewicz -o simple-constantInput-Lukasiewicz.loss.json",
+    "needs": ["simple-constantInput.vcl"],
+    "produces": ["simple-constantInput-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s simple-constantInput.vcl -t LossFunction-Product -o simple-constantInput-Product.loss.json",
+    "needs": ["simple-constantInput.vcl"],
+    "produces": ["simple-constantInput-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s simple-constantInput.vcl -t LossFunction-Yager -o simple-constantInput-Yager.loss.json",
+    "needs": ["simple-constantInput.vcl"],
+    "produces": ["simple-constantInput-Yager.loss.json"]
   }
 ]

@@ -15,5 +15,29 @@
     "run": "vehicle compile -s simple-fourierMotzkin.vcl -t LossFunction -o simple-fourierMotzkin.loss.json",
     "needs": ["simple-fourierMotzkin.vcl"],
     "produces": ["simple-fourierMotzkin.loss.json"]
+  },
+  {
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t LossFunction-Godel -o simple-fourierMotzkin-Godel.loss.json",
+    "needs": ["simple-fourierMotzkin.vcl"],
+    "produces": ["simple-fourierMotzkin-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t LossFunction-Lukasiewicz -o simple-fourierMotzkin-Lukasiewicz.loss.json",
+    "needs": ["simple-fourierMotzkin.vcl"],
+    "produces": ["simple-fourierMotzkin-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t LossFunction-Product -o simple-fourierMotzkin-Product.loss.json",
+    "needs": ["simple-fourierMotzkin.vcl"],
+    "produces": ["simple-fourierMotzkin-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t LossFunction-Yager -o simple-fourierMotzkin-Yager.loss.json",
+    "needs": ["simple-fourierMotzkin.vcl"],
+    "produces": ["simple-fourierMotzkin-Yager.loss.json"]
   }
 ]

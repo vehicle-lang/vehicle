@@ -11,15 +11,39 @@
     "produces": ["reachability.inputquery/*.txt"]
   },
   {
+    "name": "Agda",
+    "run": "vehicle compile -s reachability.vcl -t Agda -o reachability.agda -c proofcache.vclp",
+    "needs": ["reachability.vcl"],
+    "produces": ["reachability.agda"]
+  },
+  {
     "name": "LossFunction",
     "run": "vehicle compile -s reachability.vcl -t LossFunction -o reachability.loss.json",
     "needs": ["reachability.vcl"],
     "produces": ["reachability.loss.json"]
   },
   {
-    "name": "Agda",
-    "run": "vehicle compile -s reachability.vcl -t Agda -o reachability.agda -c proofcache.vclp",
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s reachability.vcl -t LossFunction-Godel -o reachability-Godel.loss.json",
     "needs": ["reachability.vcl"],
-    "produces": ["reachability.agda"]
+    "produces": ["reachability-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s reachability.vcl -t LossFunction-Lukasiewicz -o reachability-Lukasiewicz.loss.json",
+    "needs": ["reachability.vcl"],
+    "produces": ["reachability-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s reachability.vcl -t LossFunction-Product -o reachability-Product.loss.json",
+    "needs": ["reachability.vcl"],
+    "produces": ["reachability-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s reachability.vcl -t LossFunction-Yager -o reachability-Yager.loss.json",
+    "needs": ["reachability.vcl"],
+    "produces": ["reachability-Yager.loss.json"]
   }
 ]

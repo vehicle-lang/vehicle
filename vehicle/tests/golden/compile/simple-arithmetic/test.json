@@ -9,5 +9,35 @@
     "run": "vehicle compile -s simple-arithmetic.vcl -t Agda -o simple-arithmetic.agda",
     "needs": ["simple-arithmetic.vcl"],
     "produces": ["simple-arithmetic.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-arithmetic.vcl -t LossFunction -o simple-arithmetic.loss.json",
+    "needs": ["simple-arithmetic.vcl"],
+    "produces": ["simple-arithmetic.loss.json"]
+  },
+  {
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s simple-arithmetic.vcl -t LossFunction-Godel -o simple-arithmetic-Godel.loss.json",
+    "needs": ["simple-arithmetic.vcl"],
+    "produces": ["simple-arithmetic-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s simple-arithmetic.vcl -t LossFunction-Lukasiewicz -o simple-arithmetic-Lukasiewicz.loss.json",
+    "needs": ["simple-arithmetic.vcl"],
+    "produces": ["simple-arithmetic-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s simple-arithmetic.vcl -t LossFunction-Product -o simple-arithmetic-Product.loss.json",
+    "needs": ["simple-arithmetic.vcl"],
+    "produces": ["simple-arithmetic-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s simple-arithmetic.vcl -t LossFunction-Yager -o simple-arithmetic-Yager.loss.json",
+    "needs": ["simple-arithmetic.vcl"],
+    "produces": ["simple-arithmetic-Yager.loss.json"]
   }
 ]

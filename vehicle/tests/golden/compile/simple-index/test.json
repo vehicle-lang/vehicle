@@ -9,5 +9,35 @@
     "run": "vehicle compile -s simple-index.vcl -t Agda -o simple-index.agda",
     "needs": ["simple-index.vcl"],
     "produces": ["simple-index.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-index.vcl -t LossFunction -o simple-index.loss.json",
+    "needs": ["simple-index.vcl"],
+    "produces": ["simple-index.loss.json"]
+  },
+  {
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s simple-index.vcl -t LossFunction-Godel -o simple-index-Godel.loss.json",
+    "needs": ["simple-index.vcl"],
+    "produces": ["simple-index-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s simple-index.vcl -t LossFunction-Lukasiewicz -o simple-index-Lukasiewicz.loss.json",
+    "needs": ["simple-index.vcl"],
+    "produces": ["simple-index-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s simple-index.vcl -t LossFunction-Product -o simple-index-Product.loss.json",
+    "needs": ["simple-index.vcl"],
+    "produces": ["simple-index-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s simple-index.vcl -t LossFunction-Yager -o simple-index-Yager.loss.json",
+    "needs": ["simple-index.vcl"],
+    "produces": ["simple-index-Yager.loss.json"]
   }
 ]

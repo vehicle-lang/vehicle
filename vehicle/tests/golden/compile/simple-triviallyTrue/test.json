@@ -15,5 +15,35 @@
     "run": "vehicle compile -s simple-triviallyTrue.vcl -t Agda -o simple-triviallyTrue.agda -c proofcache.vclp",
     "needs": ["simple-triviallyTrue.vcl"],
     "produces": ["simple-triviallyTrue.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t LossFunction -o simple-triviallyTrue.loss.json",
+    "needs": ["simple-triviallyTrue.vcl"],
+    "produces": ["simple-triviallyTrue.loss.json"]
+  },
+  {
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t LossFunction-Godel -o simple-triviallyTrue-Godel.loss.json",
+    "needs": ["simple-triviallyTrue.vcl"],
+    "produces": ["simple-triviallyTrue-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t LossFunction-Lukasiewicz -o simple-triviallyTrue-Lukasiewicz.loss.json",
+    "needs": ["simple-triviallyTrue.vcl"],
+    "produces": ["simple-triviallyTrue-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t LossFunction-Product -o simple-triviallyTrue-Product.loss.json",
+    "needs": ["simple-triviallyTrue.vcl"],
+    "produces": ["simple-triviallyTrue-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t LossFunction-Yager -o simple-triviallyTrue-Yager.loss.json",
+    "needs": ["simple-triviallyTrue.vcl"],
+    "produces": ["simple-triviallyTrue-Yager.loss.json"]
   }
 ]

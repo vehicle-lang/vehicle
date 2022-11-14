@@ -11,15 +11,39 @@
     "produces": ["monotonicity.inputquery/*.txt"]
   },
   {
+    "name": "Agda",
+    "run": "vehicle compile -s monotonicity.vcl -t Agda -o monotonicity.agda",
+    "needs": ["monotonicity.vcl"],
+    "produces": ["monotonicity.agda"]
+  },
+  {
     "name": "LossFunction",
     "run": "vehicle compile -s monotonicity.vcl -t LossFunction -o monotonicity.loss.json",
     "needs": ["monotonicity.vcl"],
     "produces": ["monotonicity.loss.json"]
   },
   {
-    "name": "Agda",
-    "run": "vehicle compile -s monotonicity.vcl -t Agda -o monotonicity.agda",
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s monotonicity.vcl -t LossFunction-Godel -o monotonicity-Godel.loss.json",
     "needs": ["monotonicity.vcl"],
-    "produces": ["monotonicity.agda"]
+    "produces": ["monotonicity-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s monotonicity.vcl -t LossFunction-Lukasiewicz -o monotonicity-Lukasiewicz.loss.json",
+    "needs": ["monotonicity.vcl"],
+    "produces": ["monotonicity-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s monotonicity.vcl -t LossFunction-Product -o monotonicity-Product.loss.json",
+    "needs": ["monotonicity.vcl"],
+    "produces": ["monotonicity-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s monotonicity.vcl -t LossFunction-Yager -o monotonicity-Yager.loss.json",
+    "needs": ["monotonicity.vcl"],
+    "produces": ["monotonicity-Yager.loss.json"]
   }
 ]

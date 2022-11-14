@@ -15,5 +15,29 @@
     "run": "vehicle compile -s simple-gaussianElim.vcl -t LossFunction -o simple-gaussianElim.loss.json",
     "needs": ["simple-gaussianElim.vcl"],
     "produces": ["simple-gaussianElim.loss.json"]
+  },
+  {
+    "name": "LossFunction-Godel",
+    "run": "vehicle compile -s simple-gaussianElim.vcl -t LossFunction-Godel -o simple-gaussianElim-Godel.loss.json",
+    "needs": ["simple-gaussianElim.vcl"],
+    "produces": ["simple-gaussianElim-Godel.loss.json"]
+  },
+  {
+    "name": "LossFunction-Lukasiewicz",
+    "run": "vehicle compile -s simple-gaussianElim.vcl -t LossFunction-Lukasiewicz -o simple-gaussianElim-Lukasiewicz.loss.json",
+    "needs": ["simple-gaussianElim.vcl"],
+    "produces": ["simple-gaussianElim-Lukasiewicz.loss.json"]
+  },
+  {
+    "name": "LossFunction-Product",
+    "run": "vehicle compile -s simple-gaussianElim.vcl -t LossFunction-Product -o simple-gaussianElim-Product.loss.json",
+    "needs": ["simple-gaussianElim.vcl"],
+    "produces": ["simple-gaussianElim-Product.loss.json"]
+  },
+  {
+    "name": "LossFunction-Yager",
+    "run": "vehicle compile -s simple-gaussianElim.vcl -t LossFunction-Yager -o simple-gaussianElim-Yager.loss.json",
+    "needs": ["simple-gaussianElim.vcl"],
+    "produces": ["simple-gaussianElim-Yager.loss.json"]
   }
 ]
