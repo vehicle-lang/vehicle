@@ -1,2 +1,7 @@
-Error at Line 2, Columns 1-16: 'Nat -> Nat' is not a valid type for the elements of the dataset 'trainingDataset'.
-Fix: change the element type to one of 'Index', 'Nat', 'Int' or 'Rat'.
+Error at Line 2, Columns 1-16: The type of dataset 'trainingDataset':
+  List (Nat -> Nat)
+is not supported as it has elements of an unsupported type:
+  Nat -> Nat
+Only the following element types are allowed for datasets:
+  Index, Nat, Int, Rat
+Fix: change the element type of 'trainingDataset' to a supported type.

@@ -33,6 +33,8 @@ instance HasProvenance NormExpr where
 
 type NormArg = GenericArg NormExpr
 type NormBinder = GenericBinder DBBinding NormType
+type NormDecl = GenericDecl NormExpr
+type NormProg = GenericDecl
 
 -- | A normalised type
 type NormType = NormExpr
@@ -61,20 +63,20 @@ pattern VLinearityUniverse p = VUniverse p PolarityUniv
 pattern VUnitLiteral :: Provenance -> NormExpr
 pattern VUnitLiteral p = VLiteral p LUnit
 
-pattern VBoolLit :: Provenance -> Bool -> NormExpr
-pattern VBoolLit p x = VLiteral p (LBool x)
+pattern VBoolLiteral :: Provenance -> Bool -> NormExpr
+pattern VBoolLiteral p x = VLiteral p (LBool x)
 
--- pattern VIndexLit :: Provenance -> Int -> NormExpr
--- pattern VIndexLit p x <- VLiteral p (LIndex _ x)
+pattern VIndexLiteral :: Provenance -> Int -> Int -> NormExpr
+pattern VIndexLiteral p n x = VLiteral p (LIndex n x)
 
 pattern VNatLiteral :: Provenance -> Int -> NormExpr
 pattern VNatLiteral p x = VLiteral p (LNat x)
 
-pattern VIntLit :: Provenance -> Int -> NormExpr
-pattern VIntLit p x = VLiteral p (LInt x)
+pattern VIntLiteral :: Provenance -> Int -> NormExpr
+pattern VIntLiteral p x = VLiteral p (LInt x)
 
-pattern VRatLit :: Provenance -> Rational -> NormExpr
-pattern VRatLit p x = VLiteral p (LRat x)
+pattern VRatLiteral :: Provenance -> Rational -> NormExpr
+pattern VRatLiteral p x = VLiteral p (LRat x)
 
 pattern VConstructor :: Provenance -> BuiltinConstructor -> [GenericArg NormExpr] -> NormExpr
 pattern VConstructor p c args = VBuiltin p (Constructor c) args
@@ -90,6 +92,10 @@ pattern VPolarityExpr p l <- VConstructor p (Polarity l) []
 pattern VAnnBoolType :: Provenance -> NormExpr -> NormExpr -> NormType
 pattern VAnnBoolType p lin pol <- VConstructor p Bool [IrrelevantImplicitArg _ lin, IrrelevantImplicitArg _ pol]
   where VAnnBoolType p lin pol =  VConstructor p Bool [IrrelevantImplicitArg p lin, IrrelevantImplicitArg p pol]
+
+pattern VBoolType :: Provenance -> NormType
+pattern VBoolType p <- VConstructor p Bool []
+  where VBoolType p =  VConstructor p Bool []
 
 pattern VIndexType :: Provenance -> NormType -> NormType
 pattern VIndexType p size <- VConstructor p Index [ExplicitArg _ size]
@@ -130,8 +136,8 @@ mkNList p tElem = foldr cons nil
     nil       = VConstructor p Nil [t]
     cons y ys = VConstructor p Cons [t, ExplicitArg p y, ExplicitArg p ys]
 
-mkVLVec :: Provenance -> [NormExpr] -> NormArg -> NormExpr
-mkVLVec p xs t = VLVec p xs [t, InstanceArg p (VUnitLiteral p)]
+mkVLVec :: Provenance -> [NormExpr] -> NormExpr -> NormExpr
+mkVLVec p xs t = VLVec p xs [ImplicitArg p t, InstanceArg p (VUnitLiteral p)]
 
 isNTypeUniverse :: NormExpr -> Bool
 isNTypeUniverse (VUniverse _ TypeUniv{}) = True
@@ -197,10 +203,9 @@ data GluedExpr = Glued
   , normalised   :: NormExpr
   } deriving (Show)
 
-type GluedType = GluedExpr
-
-type GluedProg = GenericProg GluedExpr
-type GluedDecl = GenericDecl GluedExpr
-
 instance HasProvenance GluedExpr where
   provenanceOf = provenanceOf . unnormalised
+
+type GluedType = GluedExpr
+type GluedProg = GenericProg GluedExpr
+type GluedDecl = GenericDecl GluedExpr

@@ -9,7 +9,7 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Verify.Core (VerifierIdentifier)
-import Vehicle.Compile.Normalise.NormExpr (NormType)
+import Vehicle.Compile.Normalise.NormExpr (NormType, GluedType, NormBinder, NormExpr, GluedExpr)
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -89,42 +89,42 @@ data CompileError
   | NonLinearIfCondition  ConstraintContext
 
   -- Resource typing errors
-  | ResourceNotProvided       DeclProvenance ResourceType
-  | ResourceIOError           DeclProvenance ResourceType IOException
-  | UnsupportedResourceFormat DeclProvenance ResourceType String
-  | UnableToParseResource     DeclProvenance ResourceType String
+  | ResourceNotProvided       DeclProvenance Resource
+  | ResourceIOError           DeclProvenance Resource IOException
+  | UnsupportedResourceFormat DeclProvenance Resource String
+  | UnableToParseResource     DeclProvenance Resource String
 
-  | NetworkTypeIsNotAFunction              DeclProvenance CheckedType
-  | NetworkTypeIsNotOverTensors            DeclProvenance CheckedType CheckedType InputOrOutput
-  | NetworkTypeHasNonExplicitArguments     DeclProvenance CheckedType CheckedBinder
-  | NetworkTypeHasVariableSizeTensor       DeclProvenance CheckedType CheckedExpr InputOrOutput
-  | NetworkTypeHasImplicitSizeTensor       DeclProvenance Identifier InputOrOutput
-  | NetworkTypeHasUnsupportedElementType   DeclProvenance CheckedType CheckedType InputOrOutput
+  | NetworkTypeIsNotAFunction              DeclProvenance GluedType
+  | NetworkTypeIsNotOverTensors            DeclProvenance GluedType NormType InputOrOutput
+  | NetworkTypeHasNonExplicitArguments     DeclProvenance GluedType NormBinder
+  | NetworkTypeHasVariableSizeTensor       DeclProvenance GluedType NormExpr InputOrOutput
+  | NetworkTypeHasImplicitSizeTensor       DeclProvenance GluedType Identifier InputOrOutput
+  | NetworkTypeHasUnsupportedElementType   DeclProvenance GluedType NormType InputOrOutput
 
-  | DatasetTypeUnsupportedContainer DeclProvenance CheckedType
-  | DatasetTypeUnsupportedElement   DeclProvenance CheckedType
-  | DatasetVariableSizeTensor       DeclProvenance CheckedExpr
+  | DatasetTypeUnsupportedContainer DeclProvenance GluedType
+  | DatasetTypeUnsupportedElement   DeclProvenance GluedType NormType
+  | DatasetVariableSizeTensor       DeclProvenance GluedType NormExpr
   | DatasetDimensionSizeMismatch    DeclProvenance FilePath Int Int [Int] [Int]
-  | DatasetDimensionsMismatch       DeclProvenance FilePath CheckedExpr [Int]
-  | DatasetTypeMismatch             DeclProvenance FilePath CheckedType CheckedType
+  | DatasetDimensionsMismatch       DeclProvenance FilePath GluedExpr [Int]
+  | DatasetTypeMismatch             DeclProvenance FilePath GluedType NormType NormType
   | DatasetInvalidIndex             DeclProvenance FilePath Int Int
   | DatasetInvalidNat               DeclProvenance FilePath Int
 
-  | ParameterTypeUnsupported             DeclProvenance CheckedType
-  | ParameterTypeVariableSizeIndex       DeclProvenance CheckedExpr
+  | ParameterTypeUnsupported             DeclProvenance GluedType
+  | ParameterTypeVariableSizeIndex       DeclProvenance GluedType
   | ParameterTypeInferableParameterIndex DeclProvenance Identifier
   | ParameterValueUnparsable             DeclProvenance String BuiltinConstructor
   | ParameterValueInvalidIndex           DeclProvenance Int Int
   | ParameterValueInvalidNat             DeclProvenance Int
-  | InferableParameterTypeUnsupported    DeclProvenance CheckedType
-  | InferableParameterContradictory      Identifier (DeclProvenance, ResourceType, Int) (DeclProvenance, ResourceType, Int)
+  | InferableParameterTypeUnsupported    DeclProvenance GluedType
+  | InferableParameterContradictory      Identifier (DeclProvenance, Resource, Int) (DeclProvenance, Resource, Int)
   | InferableParameterUninferrable       DeclProvenance
 
   | PropertyTypeUnsupported         DeclProvenance CheckedType
 
   -- Backend errors
   | NoPropertiesFound
-  | UnsupportedResource              Backend Identifier Provenance ResourceType
+  | UnsupportedResource              Backend Identifier Provenance Resource
   | UnsupportedInequality            Backend Identifier Provenance
   | UnsupportedPolymorphicEquality   Backend Provenance Name
   | UnsupportedNonMagicVariable      Backend Provenance Name

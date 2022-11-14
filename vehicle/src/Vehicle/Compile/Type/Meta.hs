@@ -138,10 +138,10 @@ instance MetaSubstitutable NormExpr where
 instance MetaSubstitutable GluedExpr where
   substM (Glued a b) = Glued <$> substM a <*> substM b
 
-instance MetaSubstitutable CheckedDecl where
+instance MetaSubstitutable expr => MetaSubstitutable (GenericDecl expr) where
   substM = traverse substM
 
-instance MetaSubstitutable CheckedProg where
+instance MetaSubstitutable expr => MetaSubstitutable (GenericProg expr) where
   substM (Main ds) = Main <$> traverse substM ds
 
 instance MetaSubstitutable UnificationConstraint where

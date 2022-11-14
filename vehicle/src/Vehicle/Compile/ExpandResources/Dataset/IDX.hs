@@ -16,14 +16,15 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
+import Vehicle.Compile.Normalise.NormExpr
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
 -- matches the type of the stored data.
 readIDX :: (MonadExpandResources m, MonadIO m)
         => FilePath
         -> DeclProvenance
-        -> CheckedType
-        -> m CheckedExpr
+        -> GluedType
+        -> m NormExpr
 readIDX file decl expectedType = do
   contents <- readIDXFile decl file
   case contents of
@@ -32,12 +33,12 @@ readIDX file decl expectedType = do
       let actualDimensions = Vector.toList $ idxDimensions idxData
       if isIDXIntegral idxData then do
         let elems = idxIntContent idxData
-        let parser = intElemParser decl file
+        let parser = intElemParser decl expectedType file
         let ctx = (decl, file, expectedType, actualDimensions, parser)
         parseIDX ctx elems
       else do
         let elems = idxDoubleContent idxData
-        let parser = doubleElemParser decl file
+        let parser = doubleElemParser decl expectedType file
         let ctx = (decl, file, expectedType, actualDimensions, parser)
         parseIDX ctx elems
 
@@ -59,20 +60,20 @@ readIDXFile decl file = do
 parseIDX ::  ( MonadExpandResources m, Vector.Unbox a)
             => ParseContext m a
             -> Vector a
-            -> m CheckedExpr
+            -> m NormExpr
 parseIDX ctx@(_, _, expectedDatasetType, actualDatasetDims, _) elems = do
-  parseContainer ctx True actualDatasetDims elems expectedDatasetType
+  parseContainer ctx True actualDatasetDims elems (normalised expectedDatasetType)
 
 parseContainer :: (MonadExpandResources m, Vector.Unbox a)
                => ParseContext m a
                -> Bool
                -> [Int]
                -> Vector a
-               -> CheckedType
-               -> m CheckedExpr
+               -> NormType
+               -> m NormExpr
 parseContainer ctx topLevel actualDims elems expectedType = case expectedType of
-  ListType   _ expectedElemType             -> parseList ctx expectedElemType actualDims elems
-  VectorType _ expectedElemType expectedDim -> parseVector ctx actualDims elems expectedElemType expectedDim
+  VListType   _ expectedElemType             -> parseList ctx expectedElemType actualDims elems
+  VVectorType _ expectedElemType expectedDim -> parseVector ctx actualDims elems expectedElemType expectedDim
   _ -> if topLevel
     then typingError ctx
     else parseElement ctx actualDims elems expectedType
@@ -82,22 +83,22 @@ parseVector :: (MonadExpandResources m, Vector.Unbox a)
             => ParseContext m a
             -> [Int]
             -> Vector a
-            -> CheckedType
-            -> CheckedExpr
-            -> m CheckedExpr
+            -> NormType
+            -> NormExpr
+            -> m NormExpr
 parseVector ctx [] _ _ _  = dimensionMismatchError ctx
 parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expectedElemType expectedDim = do
   currentDim <- case expectedDim of
-    NatLiteral _ n ->
+    VNatLiteral _ n ->
       if n == actualDim
         then return actualDim
         else throwError $ DatasetDimensionSizeMismatch decl file n actualDim allDims (actualDim : actualDims)
 
-    FreeVar _ dimIdent -> do
+    VVar _ (Free dimIdent) _ -> do
       implicitParams <- get
       let newEntry = (decl, Dataset, actualDim)
       case Map.lookup (nameOf dimIdent) implicitParams of
-        Nothing       -> variableSizeError ctx expectedDim
+        Nothing -> variableSizeError ctx expectedDim
 
         Just Nothing -> do
           modify (Map.insert (nameOf dimIdent) (Just newEntry))
@@ -112,74 +113,76 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
 
   let rows = partitionData currentDim actualDims elems
   rowExprs <- traverse (\es -> parseContainer ctx False actualDims es expectedElemType) rows
-  return $ VecLiteral (snd decl) expectedElemType rowExprs
+  return $ mkVLVec (snd decl) rowExprs expectedElemType
 
 parseList :: (MonadExpandResources m, Vector.Unbox a)
           => ParseContext m a
-          -> CheckedType
+          -> NormType
           -> [Int]
           -> Vector a
-          -> m CheckedExpr
+          -> m NormExpr
 parseList ctx@(decl, _, _, _, _) expectedElemType actualDims actualElems =
   case actualDims of
     []     -> dimensionMismatchError ctx
     d : ds -> do
       let splitElems = partitionData d ds actualElems
       exprs <- traverse (\es -> parseContainer ctx False ds es expectedElemType) splitElems
-      return $ mkList (snd decl) expectedElemType exprs
+      return $ mkNList (snd decl) expectedElemType exprs
 
 parseElement :: (MonadExpandResources m, Vector.Unbox a)
              => ParseContext m a
              -> [Int]
              -> Vector a
-             -> CheckedType
-             -> m CheckedExpr
+             -> NormType
+             -> m NormExpr
 parseElement ctx@(_, _, _, _, elemParser) dims elems expectedType
   | not (null dims)          = dimensionMismatchError ctx
   | Vector.length elems /= 1 = compilerDeveloperError "Malformed IDX file: mismatch between dimensions and acutal data"
   | otherwise                = elemParser (Vector.head elems) expectedType
 
 type ParseContext m a =
-  ( DeclProvenance
-  , FilePath
-  , CheckedType
+  ( DeclProvenance  -- The provenance of the dataset declaration
+  , FilePath        -- The path of the dataset
+  , GluedType       -- The overall dataset type
   , [Int]           -- Actual dimensions of dataset
   , ElemParser m a
   )
 
-type ElemParser m a = a -> CheckedType -> m CheckedExpr
+type ElemParser m a = a -> NormType -> m NormExpr
 
 doubleElemParser :: MonadExpandResources m
                  => DeclProvenance
+                 -> GluedType
                  -> FilePath
                  -> ElemParser m Double
-doubleElemParser decl file value typeInProgram = do
+doubleElemParser decl datasetType file value expectedElementType = do
   let p = freshProvenance decl
-  case typeInProgram of
-    RatType{} ->
-      return $ RatLiteral p (toRational value)
+  case expectedElementType of
+    VRatType{} ->
+      return $ VRatLiteral p (toRational value)
     _ -> do
-      throwError $ DatasetTypeMismatch decl file typeInProgram (RatType p)
+      throwError $ DatasetTypeMismatch decl file datasetType expectedElementType (VRatType p)
 
 intElemParser :: MonadExpandResources m
               => DeclProvenance
+              -> GluedType
               -> FilePath
               -> ElemParser m Int
-intElemParser decl file value typeInProgram = do
+intElemParser decl datasetType file value expectedElementType = do
   let p = freshProvenance decl
-  case typeInProgram of
-    ConcreteIndexType _ n ->
+  case expectedElementType of
+    VIndexType _ (VNatLiteral _ n) ->
       if value >= 0 && value < n
-        then return $ IndexLiteral p n value
+        then return $ VIndexLiteral p n value
         else throwError $ DatasetInvalidIndex decl file value n
-    NatType{} ->
+    VNatType{} ->
       if value >= 0
-        then return $ NatLiteral p value
+        then return $ VNatLiteral p value
         else throwError $ DatasetInvalidNat decl file value
-    IntType{} ->
-      return $ IntLiteral p value
+    VIntType{} ->
+      return $ VIntLiteral p value
     _ ->
-      throwError $ DatasetTypeMismatch decl file typeInProgram (IntType p)
+      throwError $ DatasetTypeMismatch decl file datasetType expectedElementType (VIntType p)
 
 -- | Split data by the first dimension of the C-Array.
 partitionData :: Vector.Unbox a => Int -> [Int] -> Vector a -> [Vector a]
@@ -191,9 +194,9 @@ partitionData dim dims content = do
 freshProvenance :: DeclProvenance -> Provenance
 freshProvenance (ident, _) = datasetProvenance (nameOf ident)
 
-variableSizeError :: MonadCompile m => ParseContext m a -> CheckedExpr -> m b
-variableSizeError (decl, _, _, _, _) dim =
-  throwError $ DatasetVariableSizeTensor decl dim
+variableSizeError :: MonadCompile m => ParseContext m a -> NormExpr -> m b
+variableSizeError (decl, _, expectedDatasetType, _, _) dim =
+  throwError $ DatasetVariableSizeTensor decl expectedDatasetType dim
 
 dimensionMismatchError :: MonadCompile m => ParseContext m a -> m b
 dimensionMismatchError (decl, file, expectedDatasetType, actualDatasetDims, _) =
@@ -201,5 +204,5 @@ dimensionMismatchError (decl, file, expectedDatasetType, actualDatasetDims, _) =
 
 typingError :: MonadCompile m => ParseContext m a -> m b
 typingError (_, _, expectedDatasetType, _, _) = compilerDeveloperError $
-    "Invalid parameter type" <+> squotes (prettySimple expectedDatasetType) <+>
+    "Invalid parameter type" <+> squotes (prettySimple (unnormalised expectedDatasetType)) <+>
     "should have been caught during type-checking"

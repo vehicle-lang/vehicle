@@ -202,7 +202,7 @@ elabArg = \case
   B.ImplicitArg e -> mkArg V.Implicit <$> elabExpr e
   B.InstanceArg e -> mkArg V.Instance <$> elabExpr e
 
-elabResource :: MonadCompile m => B.Name -> B.Expr -> V.ResourceType -> m V.InputDecl
+elabResource :: MonadCompile m => B.Name -> B.Expr -> V.Resource -> m V.InputDecl
 elabResource n t r = V.DefResource (V.tkProvenance n) r <$> elabName n <*> elabExpr t
 
 mkArg :: V.Visibility -> V.InputExpr -> V.InputArg
@@ -248,12 +248,12 @@ elabLiteral = \case
     let fromRat = V.Builtin p (V.TypeClassOp V.FromRatTC)
     return $ app fromRat [V.RatLiteral p r]
 
-elabParameterOptions :: MonadCompile m =>B.DeclAnnOpts -> m V.ResourceType
+elabParameterOptions :: MonadCompile m =>B.DeclAnnOpts -> m V.Resource
 elabParameterOptions = \case
   B.DeclAnnWithoutOpts   -> return V.Parameter
   B.DeclAnnWithOpts opts -> foldM parseOpt V.Parameter opts
   where
-  parseOpt :: MonadCompile m => V.ResourceType -> B.DeclAnnOption -> m V.ResourceType
+  parseOpt :: MonadCompile m => V.Resource -> B.DeclAnnOption -> m V.Resource
   parseOpt _r (B.BooleanOption nameToken valueToken) = do
     let name = tkSymbol nameToken
     let value = tkSymbol valueToken

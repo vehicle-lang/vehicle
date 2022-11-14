@@ -6,7 +6,7 @@ import GHC.Generics (Generic)
 import Vehicle.Language.AST.Binder (HasType (..))
 import Vehicle.Language.AST.Name (HasIdentifier (..), Identifier)
 import Vehicle.Language.AST.Provenance
-import Vehicle.Resource (ResourceType)
+import Vehicle.Resource (Resource)
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -15,7 +15,7 @@ import Vehicle.Resource (ResourceType)
 data GenericDecl expr
   = DefResource
     Provenance             -- Location in source file.
-    ResourceType           -- Type of resource.
+    Resource           -- Type of resource.
     Identifier             -- Name of resource.
     expr                   -- Vehicle type of the resource.
 
