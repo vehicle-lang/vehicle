@@ -5,6 +5,12 @@
     "needs": ["bounded.vcl"]
   },
   {
+    "name": "Marabou",
+    "run": "vehicle compile -s bounded.vcl -t Marabou -o bounded.inputquery/",
+    "needs": ["bounded.vcl"],
+    "produces": ["bounded.inputquery/*.txt"]
+  },
+  {
     "name": "LossFunction",
     "run": "vehicle compile -s bounded.vcl -t LossFunction -o bounded.loss.json",
     "needs": ["bounded.vcl"],

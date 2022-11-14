@@ -11,7 +11,7 @@ convertToLNF :: MonadCompile m => CheckedExpr -> m CheckedExpr
 convertToLNF expr =
   logCompilerPass MinDetail "conversion to linear normal form" $ do
     result <- lnf expr
-    logCompilerPassOutput (prettyFriendly result)
+    logCompilerPassOutput (prettyVerbose result)
     return result
 
 --------------------------------------------------------------------------------
