@@ -20,6 +20,7 @@ module Vehicle.Prelude.Logging
   , runLogger
   , runLoggerT
   , allLoggingLevels
+  , loggingLevelAtLeast
   , loggingLevelHelp
   ) where
 
@@ -173,6 +174,11 @@ logDebug level text = do --traceShow text $ do
   when (level <= debugLevel) $ do
     depth <- getCallDepth
     logMessage $ Message Debug (layoutAsText (indent depth text))
+
+loggingLevelAtLeast :: MonadLogger m => LoggingLevel -> m Bool
+loggingLevelAtLeast level = do
+  currentLevel <- getDebugLevel
+  return $ currentLevel >= level
 
 instance Show Message where
   show (Message s t) =

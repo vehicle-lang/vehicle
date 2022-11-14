@@ -39,7 +39,7 @@ instance Elab B.Decl V.InputDecl where
     B.DefFun        n t e -> V.DefFunction  (tkProvenance n) <$> elab n <*> elab t <*> elab e
     B.DeclPost      n t   -> V.DefPostulate (tkProvenance n) <$> elab n <*> elab t
 
-elabResource :: MonadCompile m => NameToken -> B.Expr -> ResourceType -> m V.InputDecl
+elabResource :: MonadCompile m => NameToken -> B.Expr -> Resource -> m V.InputDecl
 elabResource n t r = V.DefResource (tkProvenance n) r <$> elab n <*> elab t
 
 instance Elab B.Expr V.InputExpr where

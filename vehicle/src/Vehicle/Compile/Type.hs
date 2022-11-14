@@ -29,7 +29,7 @@ import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
 import Vehicle.Language.Print
-import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..))
+import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..), GluedProg, GluedDecl)
 
 -------------------------------------------------------------------------------
 -- Algorithm
@@ -37,12 +37,12 @@ import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..))
 typeCheck :: MonadCompile m
           => UncheckedProg
           -> UncheckedPropertyContext
-          -> m (CheckedProg, PropertyContext)
+          -> m (GluedProg, PropertyContext)
 typeCheck uncheckedProg uncheckedCtx =
   logCompilerPass MinDetail "type checking" $ runTypeCheckerT $ do
     (checkedProg, checkedCtx) <- runWriterT $ typeCheckProg uncheckedCtx uncheckedProg
     cleanedProg <- postProcess checkedProg
-    logDebug MaxDetail $ prettyFriendlyDBClosed cleanedProg
+    logDebug MaxDetail $ prettyFriendlyDBClosed (fmap unnormalised cleanedProg)
     return (cleanedProg, checkedCtx)
 
 typeCheckExpr :: MonadCompile m => UncheckedExpr -> m CheckedExpr
@@ -72,18 +72,18 @@ type TopLevelTCM m =
   , MonadWriter PropertyContext m
   )
 
-typeCheckProg :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedProg -> m CheckedProg
+typeCheckProg :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedProg -> m GluedProg
 typeCheckProg ctx (Main ds) = Main <$> typeCheckDecls ctx ds
 
-typeCheckDecls :: TopLevelTCM m => UncheckedPropertyContext -> [UncheckedDecl] -> m [CheckedDecl]
+typeCheckDecls :: TopLevelTCM m => UncheckedPropertyContext -> [UncheckedDecl] -> m [GluedDecl]
 typeCheckDecls _   [] = return []
 typeCheckDecls ctx (d : ds) = do
   -- First insert any missing auxiliary arguments into the decl
   d' <- insertHolesForAuxiliaryAnnotations d
   checkedDecl  <- typeCheckDecl ctx d'
-  normDecl <- traverse (glueNBE 0) checkedDecl
-  checkedDecls <- addDeclContext normDecl $ typeCheckDecls ctx ds
-  return $ checkedDecl : checkedDecls
+  gluedDecl <- traverse (glueNBE 0) checkedDecl
+  checkedDecls <- addDeclContext gluedDecl $ typeCheckDecls ctx ds
+  return $ gluedDecl : checkedDecls
 
 typeCheckDecl :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedDecl -> m CheckedDecl
 typeCheckDecl propertyCtx decl = do
@@ -108,7 +108,8 @@ typeCheckDecl propertyCtx decl = do
         -- Add extra constraints from the resource type. Need to have called
         -- solve constraints beforehand in order to allow for normalisation,
         -- but really only need to have solved type-class constraints.
-        updatedCheckedType <- checkResourceType r (ident, p) substCheckedType
+        gluedType <- glueNBE 0 substCheckedType
+        updatedCheckedType <- checkResourceType r (ident, p) gluedType
         let updatedCheckedDecl = DefResource p r ident updatedCheckedType
         solveConstraints (Just updatedCheckedDecl)
 
