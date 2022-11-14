@@ -1,2 +1,5 @@
-Error at Line 2, Columns 1-2: The type 'Nat -> Nat' of parameter 'n' is not currently supported.
-Fix: change the type of 'n' to one of 'Bool', 'Index', 'Nat', 'Int' or 'Rat'.
+Error at Line 2, Columns 1-2: The type of parameter 'n':
+  Nat -> Nat
+is not supported. Only the following types are allowed for parameters:
+  Bool, Index, Nat, Int, Rat
+Fix: change the element type of 'n' to a supported type.

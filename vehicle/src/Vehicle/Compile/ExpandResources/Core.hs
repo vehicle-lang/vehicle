@@ -15,7 +15,7 @@ import Vehicle.Compile.Resource
 
 type MonadExpandResources m =
   ( MonadCompile m
-  , MonadReader (Resources, Bool, DeclCtx CheckedExpr) m
+  , MonadReader (Resources, Bool) m
   , MonadWriter ResourceContext m
   , MonadState InferableParameterContext m
   )

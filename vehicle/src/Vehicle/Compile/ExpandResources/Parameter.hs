@@ -13,6 +13,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print
+import Vehicle.Compile.Normalise.NormExpr
 
 --------------------------------------------------------------------------------
 -- Parameter parsing
@@ -20,62 +21,62 @@ import Vehicle.Language.Print
 parseParameterValue :: MonadExpandResources m
                     => ParameterValues
                     -> DeclProvenance
-                    -> CheckedType
-                    -> m CheckedType
-parseParameterValue parameterValues decl@(ident, _) paramType = do
+                    -> GluedType
+                    -> m NormExpr
+parseParameterValue parameterValues decl@(ident, _) parameterType = do
   implicitParams <- get
 
-  parser <- case paramType of
-    BoolType{}            -> return parseBool
-    NatType{}             -> return parseNat
-    IntType{}             -> return parseInt
-    RatType{}             -> return parseRat
+  parser <- case normalised parameterType of
+    VBoolType{} -> return parseBool
+    VNatType{}  -> return parseNat
+    VIntType{}  -> return parseInt
+    VRatType{}  -> return parseRat
 
     -- TODO check that Index dimension is constant, or at least will be after
     -- implicit parameters are filled in (the tricky bit).
-    ConcreteIndexType _ n ->
+    VIndexType _ (VNatLiteral _ n) ->
       return (parseIndex n)
 
-    IndexType _ (FreeVar _ varIdent)
+    VIndexType _ (VVar _ (Free varIdent) _)
       | Map.member (nameOf varIdent) implicitParams -> throwError $
         ParameterTypeInferableParameterIndex decl varIdent
 
-    IndexType{} -> throwError $
-      ParameterTypeVariableSizeIndex decl paramType
+    VIndexType{} -> throwError $
+      ParameterTypeVariableSizeIndex decl parameterType
 
-    _ -> compilerDeveloperError $
-      "Invalid parameter type" <+> squotes (prettySimple paramType) <+>
+    otherType -> compilerDeveloperError $
+      "Invalid parameter type" <+> squotes (prettySimple otherType) <+>
       "should have been caught during type-checking"
 
   case Map.lookup (nameOf ident) parameterValues of
     Nothing    -> throwError $ ResourceNotProvided decl Parameter
     Just value -> parser decl value
 
-parseBool :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
+parseBool :: MonadCompile m => DeclProvenance -> String -> m NormExpr
 parseBool decl@(_, p) value = case readMaybe value of
-  Just v  -> return $ BoolLiteral p v
+  Just v  -> return $ VBoolLiteral p v
   Nothing -> throwError $ ParameterValueUnparsable decl value Bool
 
-parseNat :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
+parseNat :: MonadCompile m => DeclProvenance -> String -> m NormExpr
 parseNat decl@(_, p) value = case readMaybe value of
   Just v
-    | v >= 0    -> return $ NatLiteral p v
+    | v >= 0    -> return $ VNatLiteral p v
     | otherwise -> throwError $ ParameterValueInvalidNat decl v
   Nothing -> throwError $ ParameterValueUnparsable decl value Nat
 
-parseInt :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
+parseInt :: MonadCompile m => DeclProvenance -> String -> m NormExpr
 parseInt decl@(_, p) value = case readMaybe value of
-  Just v  -> return $ IntLiteral p v
+  Just v  -> return $ VIntLiteral p v
   Nothing -> throwError $ ParameterValueUnparsable decl value Int
 
-parseRat :: MonadCompile m => DeclProvenance -> String -> m CheckedExpr
+parseRat :: MonadCompile m => DeclProvenance -> String -> m NormExpr
 parseRat decl@(_, p) value = case rational (pack value) of
   Left  _err   -> throwError $ ParameterValueUnparsable decl value Rat
-  Right (v, _) -> return $ RatLiteral p v
+  Right (v, _) -> return $ VRatLiteral p v
 
-parseIndex :: MonadCompile m => Int -> DeclProvenance -> String -> m CheckedExpr
+parseIndex :: MonadCompile m => Int -> DeclProvenance -> String -> m NormExpr
 parseIndex n decl@(_, p) value = case readMaybe value of
   Nothing -> throwError $ ParameterValueUnparsable decl value Index
   Just v  -> if v >= 0 && v < n
-    then return $ IndexLiteral p n v
+    then return $ VIndexLiteral p n v
     else throwError $ ParameterValueInvalidIndex decl v n

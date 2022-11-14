@@ -6,6 +6,7 @@ import GHC.Generics (Generic)
 import Vehicle.Language.AST.Provenance
 import Vehicle.Language.AST.Relevance
 import Vehicle.Language.AST.Visibility
+import Vehicle.Language.AST.Binder
 
 --------------------------------------------------------------------------------
 -- Function arguments
@@ -65,3 +66,6 @@ traverseExplicitArgExpr :: Monad m
                         -> m (GenericArg expr)
 traverseExplicitArgExpr f (ExplicitArg i e) = ExplicitArg i <$> f e
 traverseExplicitArgExpr _ arg               = return arg
+
+argFromBinder :: GenericBinder binder expr -> expr -> GenericArg expr
+argFromBinder (Binder p v r _ _) = Arg p v r

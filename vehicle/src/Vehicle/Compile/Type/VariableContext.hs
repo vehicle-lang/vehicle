@@ -5,7 +5,7 @@ module Vehicle.Compile.Type.VariableContext where
 import Data.Map qualified as Map
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Normalise.NormExpr (GluedExpr (..), GluedDecl, NormExpr)
+import Vehicle.Compile.Normalise.NormExpr
 
 --------------------------------------------------------------------------------
 -- Declaration context
