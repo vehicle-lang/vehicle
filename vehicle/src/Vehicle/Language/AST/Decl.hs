@@ -56,3 +56,9 @@ instance HasType (GenericDecl expr) expr where
     DefResource _ _ _ t -> t
     DefFunction _ _ t _ -> t
     DefPostulate _ _ t  -> t
+
+traverseDeclType :: Monad m => (expr -> m expr) -> GenericDecl expr -> m (GenericDecl expr)
+traverseDeclType f = \case
+  DefResource p r n t -> DefResource p r n <$> f t
+  DefFunction p n t e -> DefFunction p n <$> f t <*> pure e
+  DefPostulate p n t  -> DefPostulate p n <$> f t

@@ -133,7 +133,6 @@ typeCheckDecl propertyCtx decl = do
         -- Solve constraints and substitute through.
         solveConstraints (Just checkedDecl)
         substDecl <- substMetas checkedDecl
-        logUnsolvedUnknowns (Just substDecl) Nothing
 
         -- Extract auxiliary annotations if a property.
         -- This check must happen before generalisation as the `Bool` type will get
@@ -143,6 +142,8 @@ typeCheckDecl propertyCtx decl = do
           checkPropertyInfo (ident, p) (typeOf substDecl)
 
         checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
+        logUnsolvedUnknowns (Just substDecl) Nothing
+
         checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints checkedDecl1
         checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
         return checkedDecl3
@@ -181,7 +182,7 @@ loopOverConstraints loopNumber decl = do
   clearSolvedMetas
 
   unless (null unsolvedConstraints) $ do
-    let isUnblocked = isUnblockedBy metasSolvedLastLoop
+    let isUnblocked = not . constraintIsBlocked metasSolvedLastLoop
     let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
 
     if null unblockedConstraints then do
@@ -216,8 +217,8 @@ loopOverConstraints loopNumber decl = do
 
 -- | Tries to solve a constraint deterministically.
 solveConstraint :: TCM m => WithContext Constraint -> m ()
-solveConstraint (WithContext unnormConstraint ctx) = do
-  constraint <- substMetas unnormConstraint
+solveConstraint unnormConstraint = do
+  WithContext constraint ctx <- substConstraintMetas unnormConstraint
 
   logCompilerSection MaxDetail ("trying" <+> prettyVerbose constraint) $ do
     result <- case constraint of
@@ -336,7 +337,7 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
       logDebug MaxDetail $ "unsolved-constraints:" <> line <>
         indent 2 (prettyVerbose unsolvedConstraints) <> line
     Just solvedMetas -> do
-      let isUnblocked = isUnblockedBy solvedMetas
+      let isUnblocked = not . constraintIsBlocked solvedMetas
       let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
       logDebug MaxDetail $ "unsolved-blocked-constraints:" <> line <>
         indent 2 (prettyVerbose blockedConstraints) <> line

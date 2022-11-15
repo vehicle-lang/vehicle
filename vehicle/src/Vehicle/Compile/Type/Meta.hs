@@ -155,11 +155,9 @@ instance MetaSubstitutable Constraint where
     UnificationConstraint c -> UnificationConstraint <$> substM c
     TypeClassConstraint   c -> TypeClassConstraint   <$> substM c
 
-instance MetaSubstitutable object => MetaSubstitutable (Contextualised object context) where
-  substM (WithContext object context) = WithContext <$> substM object <*> pure context
-
 instance MetaSubstitutable a => MetaSubstitutable (MetaMap a) where
   substM (MetaMap t) = MetaMap <$> traverse substM t
+
 
 --------------------------------------------------------------------------------
 -- The meta context
