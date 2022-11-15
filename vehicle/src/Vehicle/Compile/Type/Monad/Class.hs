@@ -318,9 +318,6 @@ clearMetaSubstitution = modifyMetaCtx $ \TypingMetaCtx {..} ->
 getUnsolvedAuxiliaryMetas :: MonadTypeChecker m => m MetaSet
 getUnsolvedAuxiliaryMetas = filterMetasByTypes isAuxiliaryUniverse =<< getUnsolvedMetas
 
--- getMetaTypes :: MonadTypeChecker m => MetaSet -> m [(MetaID, CheckedType)]
--- getMetaTypes metas = traverse (\m -> (m,) <$> getMetaType m) (MetaSet.toList metas)
-
 getSubstMetaTypes :: MonadTypeChecker m => MetaSet -> m [(MetaID, CheckedType)]
 getSubstMetaTypes metas = traverse (\m -> (m,) <$> getSubstMetaType m) (MetaSet.toList metas)
 
