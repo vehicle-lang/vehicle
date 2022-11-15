@@ -124,4 +124,3 @@ instance HasPosition Natural where
 
 instance HasPosition Rational where
   hasPosition (Rational (p, _)) = C.Just p
-

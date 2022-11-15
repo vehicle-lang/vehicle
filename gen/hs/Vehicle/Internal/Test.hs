@@ -76,4 +76,3 @@ main = do
     []         -> getContents >>= run 2 pBinder
     "-s":fs    -> mapM_ (runFile 0 pBinder) fs
     fs         -> mapM_ (runFile 2 pBinder) fs
-

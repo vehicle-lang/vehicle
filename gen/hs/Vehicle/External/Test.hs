@@ -78,4 +78,3 @@ main = do
     []         -> getContents >>= run 2 pListName
     "-s":fs    -> mapM_ (runFile 0 pListName) fs
     fs         -> mapM_ (runFile 2 pListName) fs
-

@@ -444,4 +444,3 @@ instance HasPosition TypeToken where
 
 instance HasPosition DeclAnnOptionValue where
   hasPosition (DeclAnnOptionValue (p, _)) = C.Just p
-

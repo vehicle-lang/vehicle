@@ -154,4 +154,3 @@ myLexer :: Data.Text.Text -> [Token]
 myLexer = tokens
 
 }
-

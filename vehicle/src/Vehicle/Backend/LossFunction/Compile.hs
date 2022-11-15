@@ -90,7 +90,7 @@ instance ToJSON LExpr
 -- Product based
 -- Yager
 
---they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2. 
+--they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2.
 
 compile :: MonadCompile m => DifferentiableLogic -> V.CheckedProg -> V.PropertyContext -> NetworkContext -> m [LDecl]
 compile d prog propertyCtx networkCtx = do
