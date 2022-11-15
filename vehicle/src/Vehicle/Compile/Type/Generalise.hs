@@ -151,7 +151,7 @@ prependBinderAndSolveMeta meta v r binderName binderType decl = do
   -- Then we add i) the new binder to the context of the meta-variable being
   -- solved, and ii) a new argument to all uses of the meta-variable so
   -- that meta-subsitution will work later.
-  addNewBinderToMetaContext meta
+  incrementMetaCtxSize meta
   let updatedDecl = addNewArgumentToMetaUses meta prependedDecl
 
   -- We now solve the meta as the newly bound variable
@@ -211,7 +211,3 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
         newVar p = ExplicitArg p (Var p (Bound d))
         goBinder = fmap (go d)
         goArgs   = fmap (fmap (go d))
-
-addNewBinderToMetaContext :: TCM m => MetaID -> m ()
-addNewBinderToMetaContext m = modifyMetasInfo m $
-  \(MetaInfo p t ctxSize) -> MetaInfo p t (ctxSize + 1)

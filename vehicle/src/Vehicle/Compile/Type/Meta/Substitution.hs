@@ -11,19 +11,23 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude hiding (subst)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
-import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
+import Vehicle.Compile.Type.Meta.Map (MetaMap(..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Normalise.NormExpr (NormExpr(..), GluedExpr (..))
 import Vehicle.Compile.Normalise.NBE (evalApp, evalBuiltin)
 
 type MetaSubstitution = MetaMap GluedExpr
 
+-- | Substitutes meta-variables through the provided object, returning the
+-- updated object and the set of meta-variables within the object for which
+-- no subsitution was provided.
 substituteMetas :: (MonadCompile m, MetaSubstitutable a)
                 => DeclCtx NormExpr
                 -> MetaSubstitution
                 -> a
                 -> m a
-substituteMetas declCtx sub e = runReaderT (subst e) (sub, declCtx)
+substituteMetas declCtx sub e =
+  runReaderT (subst e) (sub, declCtx)
 
 --------------------------------------------------------------------------------
 -- Substitution operation

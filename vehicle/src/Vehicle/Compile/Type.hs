@@ -194,9 +194,6 @@ loopOverConstraints loopNumber decl = do
 
     else do
       -- If we have made useful progress then start a new pass
-
-      -- TODO try to solve only either new constraints or those that contain
-      -- blocking metas that were solved last iteration.
       updatedDecl <- logCompilerPass MaxDetail
         ("constraint solving pass" <+> pretty loopNumber) $ do
 

@@ -1,5 +1,6 @@
 module Vehicle.Compile.Type.Meta.Variable
   ( MetaInfo(..)
+  , increaseMetaCtxSize
   , makeMetaType
   , makeMetaExpr
   , getMetaDependencies
@@ -23,6 +24,9 @@ import Data.List.NonEmpty (NonEmpty)
 -- Eventually when metas make into the builtins, this should module
 -- should also contain the definition of meta-variables themselves.
 
+--------------------------------------------------------------------------------
+-- Meta information
+
 -- | The information stored about each meta-variable.
 data MetaInfo = MetaInfo
   { metaProvenance :: Provenance
@@ -32,6 +36,9 @@ data MetaInfo = MetaInfo
   , metaCtxSize    :: Int
   -- ^ The number of bound variables in scope when the meta-variable was created.
   }
+
+increaseMetaCtxSize :: MetaInfo -> MetaInfo
+increaseMetaCtxSize (MetaInfo p t size) = MetaInfo p t (size+1)
 
 -- |Creates an expression that abstracts over all bound variables
 makeMetaExpr :: Provenance
