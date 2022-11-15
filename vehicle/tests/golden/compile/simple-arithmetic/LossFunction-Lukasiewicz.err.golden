@@ -1,1 +1,0 @@
-encountered unexpected expression 'lambda (x : Rat) (lambda (y : Rat) (lambda (z : Rat) ((subRat ((addRat i2) ((mulRat 2.0) i1))) ((divRat i0) i1))))' during compilation to loss functions.

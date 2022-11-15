@@ -6,22 +6,31 @@
       "contents": [
         "x",
         {
-          "tag": "Max",
+          "tag": "Subtraction",
           "contents": [
             {
               "tag": "Constant",
-              "contents": 0
+              "contents": 1
             },
             {
-              "tag": "Subtraction",
+              "tag": "Max",
               "contents": [
                 {
                   "tag": "Constant",
-                  "contents": 0.5
+                  "contents": 0
                 },
                 {
-                  "tag": "Variable",
-                  "contents": 0
+                  "tag": "Subtraction",
+                  "contents": [
+                    {
+                      "tag": "Constant",
+                      "contents": 0.5
+                    },
+                    {
+                      "tag": "Variable",
+                      "contents": 0
+                    }
+                  ]
                 }
               ]
             }
@@ -37,22 +46,31 @@
       "contents": [
         "x",
         {
-          "tag": "Max",
+          "tag": "Subtraction",
           "contents": [
             {
               "tag": "Constant",
-              "contents": 0
+              "contents": 1
             },
             {
-              "tag": "Subtraction",
+              "tag": "Max",
               "contents": [
                 {
-                  "tag": "Variable",
+                  "tag": "Constant",
                   "contents": 0
                 },
                 {
-                  "tag": "Constant",
-                  "contents": 0.5
+                  "tag": "Subtraction",
+                  "contents": [
+                    {
+                      "tag": "Variable",
+                      "contents": 0
+                    },
+                    {
+                      "tag": "Constant",
+                      "contents": 0.5
+                    }
+                  ]
                 }
               ]
             }
@@ -68,47 +86,65 @@
       "contents": [
         "x",
         {
-          "tag": "Addition",
+          "tag": "Min",
           "contents": [
             {
-              "tag": "Max",
+              "tag": "Subtraction",
               "contents": [
                 {
                   "tag": "Constant",
-                  "contents": 0
+                  "contents": 1
                 },
                 {
-                  "tag": "Subtraction",
+                  "tag": "Max",
                   "contents": [
                     {
                       "tag": "Constant",
                       "contents": 0
                     },
                     {
-                      "tag": "Variable",
-                      "contents": 0
+                      "tag": "Subtraction",
+                      "contents": [
+                        {
+                          "tag": "Constant",
+                          "contents": 0
+                        },
+                        {
+                          "tag": "Variable",
+                          "contents": 0
+                        }
+                      ]
                     }
                   ]
                 }
               ]
             },
             {
-              "tag": "Max",
+              "tag": "Subtraction",
               "contents": [
                 {
                   "tag": "Constant",
-                  "contents": 0
+                  "contents": 1
                 },
                 {
-                  "tag": "Subtraction",
+                  "tag": "Max",
                   "contents": [
                     {
-                      "tag": "Variable",
+                      "tag": "Constant",
                       "contents": 0
                     },
                     {
-                      "tag": "Constant",
-                      "contents": 1
+                      "tag": "Subtraction",
+                      "contents": [
+                        {
+                          "tag": "Variable",
+                          "contents": 0
+                        },
+                        {
+                          "tag": "Constant",
+                          "contents": 1
+                        }
+                      ]
                     }
                   ]
                 }
@@ -130,7 +166,7 @@
           "contents": [
             "x2",
             {
-              "tag": "Addition",
+              "tag": "Min",
               "contents": [
                 {
                   "tag": "Max",
@@ -140,7 +176,7 @@
                       "contents": {
                         "tag": "Negation",
                         "contents": {
-                          "tag": "Addition",
+                          "tag": "Min",
                           "contents": [
                             {
                               "tag": "NetworkApplication",
@@ -211,7 +247,7 @@
                   ]
                 },
                 {
-                  "tag": "Addition",
+                  "tag": "Min",
                   "contents": [
                     {
                       "tag": "Max",
@@ -221,7 +257,7 @@
                           "contents": {
                             "tag": "Negation",
                             "contents": {
-                              "tag": "Addition",
+                              "tag": "Min",
                               "contents": [
                                 {
                                   "tag": "NetworkApplication",
@@ -292,7 +328,7 @@
                       ]
                     },
                     {
-                      "tag": "Addition",
+                      "tag": "Min",
                       "contents": [
                         {
                           "tag": "Max",
@@ -302,7 +338,7 @@
                               "contents": {
                                 "tag": "Negation",
                                 "contents": {
-                                  "tag": "Addition",
+                                  "tag": "Min",
                                   "contents": [
                                     {
                                       "tag": "NetworkApplication",
@@ -380,7 +416,7 @@
                               "contents": {
                                 "tag": "Negation",
                                 "contents": {
-                                  "tag": "Addition",
+                                  "tag": "Min",
                                   "contents": [
                                     {
                                       "tag": "NetworkApplication",
@@ -483,7 +519,7 @@
                   "contents": {
                     "tag": "Negation",
                     "contents": {
-                      "tag": "Addition",
+                      "tag": "Min",
                       "contents": [
                         {
                           "tag": "NetworkApplication",

@@ -7,7 +7,7 @@ module Vehicle.Backend.LossFunction.Compile
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import GHC.Generics (Generic)
 
 import Vehicle.Compile.Error
@@ -71,7 +71,7 @@ data LExpr
   | At LExpr LExpr                            -- at
   | TensorLiteral [LExpr]                     -- tensor
   | Lambda Name LExpr                         -- lambda expression
-  | Let Name LExpr                            -- let expression
+  | Let Name LExpr LExpr                      -- let expression
   | Power LExpr LExpr                         -- exponential
   deriving (Eq, Ord, Generic, Show)
 
@@ -106,7 +106,7 @@ compile d prog propertyCtx networkCtx = do
       runReaderT (compileProg productTranslation normalisedProg) (propertyCtx, networkCtx)
     Yager -> do
       runReaderT (compileProg yagerTranslation normalisedProg) (propertyCtx, networkCtx)
-  
+
 
 --compile entire specification (calls compileDecl)
 compileProg :: MonadCompileLoss m => Translation -> V.CheckedProg -> m [LDecl]
@@ -154,12 +154,9 @@ compileLiteral t l = case l of
   V.LRat     e -> fromRational e
 
 --helps compile a name from DBBinding, even if there is no name given
--- compileDBBinding :: Maybe Name -> Name
--- compileDBBinding name = do
---   e <- fromMaybe Nothing name
---   case e of
---     Nothing -> Name "generic_name" --option for when there was no name given
---     _ -> e
+compileDBBinding :: Maybe Name -> Name
+compileDBBinding =
+  fromMaybe "No_name"
 
 --compile a property or single expression
 compileExpr :: MonadCompile m => Translation -> V.CheckedExpr -> m LExpr
@@ -189,14 +186,14 @@ compileExpr t e = showExit $ do
         V.Lt -> compileLt t <$> compileArg t e1 <*> compileArg t e2
         V.Ge -> compileGe t <$> compileArg t e1 <*> compileArg t e2
         V.Gt -> compileGt t <$> compileArg t e1 <*> compileArg t e2
-   
-    V.VecLiteral _ _ xs                -> TensorLiteral <$> traverse (compileExpr t) xs 
+
+    V.VecLiteral _ _ xs                -> TensorLiteral <$> traverse (compileExpr t) xs
     V.Literal _ l                      -> return $ Constant $ compileLiteral t l
     V.App _ (V.Var _ (V.Free ident)) p -> NetworkApplication (V.nameOf ident) <$> traverse (compileArg t) p
-    V.Var _ (V.Bound var)                -> return (Variable var)
+    V.Var _ (V.Bound var)              -> return (Variable var)
     V.AtExpr _ _ _ [xs, i]             -> At <$> compileArg t xs <*> compileArg t i
-    V.Let _ _ _ _                         -> normalisationError "lossFunction" "Let"
-    V.Lam _ name x                    -> Lambda (V.binderRepresentation name) <$> compileExpr t x
+    V.Let _ x name expression          -> Let (compileDBBinding (V.binderRepresentation name)) <$> compileExpr t x <*> compileExpr t expression
+    V.Lam _ name x                     -> Lambda (compileDBBinding (V.binderRepresentation name)) <$> compileExpr t x
 
     V.QuantifierTCExpr _ q binder body         -> do
       body' <- compileExpr t body
@@ -204,10 +201,10 @@ compileExpr t e = showExit $ do
       return $ Quantifier (compileQuant q) varName (Domain ()) body'
 
     V.Hole{}     -> resolutionError "lossFunction" "Should not enounter Hole"
-    V.Meta{}     -> resolutionError "lossFunction" "Should not enounter  Meta"
-    V.Ann{}      -> normalisationError "lossFunction" "Should not enounter  Ann"
-    V.Pi{}       -> unexpectedTypeInExprError "lossFunction" "Should not enounter  Pi"
-    V.Universe{} -> unexpectedTypeInExprError "lossFunction" "Should not enounter  Universe"
+    V.Meta{}     -> resolutionError "lossFunction" "Should not enounter Meta"
+    V.Ann{}      -> normalisationError "lossFunction" "Should not enounter Ann"
+    V.Pi{}       -> unexpectedTypeInExprError "lossFunction" "Should not enounter Pi"
+    V.Universe{} -> unexpectedTypeInExprError "lossFunction" "Should not enounter Universe"
     V.IfExpr{}   -> unexpectedExprError "lossFunction" "If statements are not handled at the moment (possibly in the future)"
     _            -> unexpectedExprError currentPass (prettyVerbose e)
 
@@ -233,7 +230,7 @@ data Translation = Translation
     }
 
 ---------------------------------------------------------------------------------------
--- different differentiable logic translations (options were provided before)
+-- different differentiable logic translations (options were listed before. DL2 is the default translation)
 
 dl2Translation :: Translation
 dl2Translation = Translation
@@ -272,7 +269,7 @@ godelTranslation = Translation
 
      compileBool = \case
                       True -> 1
-                      False -> 0           
+                      False -> 0
    }
 
 lukasiewiczTranslation :: Translation
@@ -293,7 +290,7 @@ lukasiewiczTranslation = Translation
 
      compileBool = \case
                       True -> 1
-                      False -> 0           
+                      False -> 0
    }
 
 productTranslation :: Translation
@@ -313,7 +310,7 @@ productTranslation = Translation
 
      compileBool = \case
                       True -> 1
-                      False -> 0           
+                      False -> 0
    }
 
 yagerTranslation :: Translation
@@ -323,25 +320,25 @@ yagerTranslation = yagerTranslationCompile 1 --change constant here
 yagerTranslationCompile :: Rational -> Translation
 yagerTranslationCompile p = Translation
     {
-     compileAnd = \arg1 arg2 -> Max 
-                                  (Subtraction 
-                                    (Constant 1) 
-                                      (Power 
-                                        (Addition 
-                                          (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p))) 
+     compileAnd = \arg1 arg2 -> Max
+                                  (Subtraction
+                                    (Constant 1)
+                                      (Power
+                                        (Addition
+                                          (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p)))
                                           (Power (Subtraction (Constant 1) arg2) (Constant (fromRational p))))
-                                        (Division (Constant 1) (Constant (fromRational p))))) 
+                                        (Division (Constant 1) (Constant (fromRational p)))))
                                     (Constant 0),
      compileNot = \arg -> Subtraction (Constant 1) arg,
-     compileOr = \arg1 arg2 -> Min 
+     compileOr = \arg1 arg2 -> Min
                                   (Power
-                                     (Addition (Power arg1 (Constant (fromRational p))) (Power arg2 (Constant (fromRational p)))) 
+                                     (Addition (Power arg1 (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
                                      (Division (Constant 1) (Constant (fromRational p)))
                                     )
                                     (Constant 1),
-     compileImplication = \arg1 arg2 -> Min 
+     compileImplication = \arg1 arg2 -> Min
                                   (Power
-                                     (Addition (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p))) (Power arg2 (Constant (fromRational p)))) 
+                                     (Addition (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
                                      (Division (Constant 1) (Constant (fromRational p)))
                                     )
                                     (Constant 1),
@@ -356,7 +353,7 @@ yagerTranslationCompile p = Translation
 
      compileBool = \case
                       True -> 1
-                      False -> 0           
+                      False -> 0
    }
 
 

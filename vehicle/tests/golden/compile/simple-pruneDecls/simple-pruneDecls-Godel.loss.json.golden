@@ -30,45 +30,54 @@
         "x",
         [],
         {
-          "tag": "Max",
+          "tag": "Subtraction",
           "contents": [
             {
               "tag": "Constant",
-              "contents": 0
+              "contents": 1
             },
             {
-              "tag": "Subtraction",
+              "tag": "Max",
               "contents": [
                 {
-                  "tag": "NetworkApplication",
-                  "contents": [
-                    "add1",
-                    [
-                      {
-                        "tag": "Constant",
-                        "contents": 0
-                      }
-                    ]
-                  ]
+                  "tag": "Constant",
+                  "contents": 0
                 },
                 {
-                  "tag": "At",
+                  "tag": "Subtraction",
                   "contents": [
                     {
                       "tag": "NetworkApplication",
                       "contents": [
-                        "f",
+                        "add1",
                         [
                           {
-                            "tag": "Variable",
+                            "tag": "Constant",
                             "contents": 0
                           }
                         ]
                       ]
                     },
                     {
-                      "tag": "Constant",
-                      "contents": 0
+                      "tag": "At",
+                      "contents": [
+                        {
+                          "tag": "NetworkApplication",
+                          "contents": [
+                            "f",
+                            [
+                              {
+                                "tag": "Variable",
+                                "contents": 0
+                              }
+                            ]
+                          ]
+                        },
+                        {
+                          "tag": "Constant",
+                          "contents": 0
+                        }
+                      ]
                     }
                   ]
                 }
@@ -88,37 +97,46 @@
         "x",
         [],
         {
-          "tag": "Max",
+          "tag": "Subtraction",
           "contents": [
             {
               "tag": "Constant",
-              "contents": 0
+              "contents": 1
             },
             {
-              "tag": "Subtraction",
+              "tag": "Max",
               "contents": [
                 {
                   "tag": "Constant",
                   "contents": 0
                 },
                 {
-                  "tag": "At",
+                  "tag": "Subtraction",
                   "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "g",
-                        [
-                          {
-                            "tag": "Variable",
-                            "contents": 0
-                          }
-                        ]
-                      ]
-                    },
                     {
                       "tag": "Constant",
                       "contents": 0
+                    },
+                    {
+                      "tag": "At",
+                      "contents": [
+                        {
+                          "tag": "NetworkApplication",
+                          "contents": [
+                            "g",
+                            [
+                              {
+                                "tag": "Variable",
+                                "contents": 0
+                              }
+                            ]
+                          ]
+                        },
+                        {
+                          "tag": "Constant",
+                          "contents": 0
+                        }
+                      ]
                     }
                   ]
                 }
