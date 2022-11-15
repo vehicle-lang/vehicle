@@ -15,13 +15,14 @@ module Vehicle.Compile.Type.Constraint
   , isBlocked
   , constraintIsBlocked
   , copyContext
+  , ConstraintProgress(..)
   ) where
 
 import Data.List.NonEmpty (NonEmpty)
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.MetaSet (MetaSet)
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Set (MetaSet)
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext
 import Vehicle.Compile.Normalise.NormExpr
 
@@ -202,3 +203,17 @@ isBlocked solvedMetas ctx = isStillBlocked solvedMetas (blockedBy ctx)
 
 constraintIsBlocked :: MetaSet -> WithContext Constraint -> Bool
 constraintIsBlocked solvedMetas ctx = isBlocked solvedMetas (contextOf ctx)
+
+--------------------------------------------------------------------------------
+-- Progress in solving meta-variable constraints
+
+data ConstraintProgress
+  = Stuck MetaSet
+  | Progress [WithContext Constraint]
+  deriving (Show)
+
+instance Semigroup ConstraintProgress where
+  Stuck m1     <> Stuck m2     = Stuck (m1 <> m2)
+  Stuck{}      <> x@Progress{} = x
+  x@Progress{} <> Stuck{}      = x
+  Progress r1  <> Progress r2  = Progress (r1 <> r2)

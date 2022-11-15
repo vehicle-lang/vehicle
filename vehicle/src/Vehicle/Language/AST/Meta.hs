@@ -18,6 +18,3 @@ instance Hashable MetaID
 
 instance Pretty MetaID where
   pretty (MetaID m) = "?" <> pretty m
-
---------------------------------------------------------------------------------
--- Meta-variable substitution

@@ -1,5 +1,7 @@
 module Vehicle.Compile.Type.Monad.Class
   ( MonadTypeChecker(..)
+  , TypingMetaCtx
+  , emptyTypingMetaCtx
   , substMetas
   , freshExprMeta
   , freshPolarityMeta
@@ -10,7 +12,7 @@ module Vehicle.Compile.Type.Monad.Class
   , filterMetasByTypes
   , getUnsolvedAuxiliaryMetas
   , getMetasLinkedToMetasIn
-  , clearSolvedMetas
+  , getAndClearRecentlySolvedMetas
   , clearMetaSubstitution
   , substMetasThroughCtx
   , substConstraintMetas
@@ -29,7 +31,6 @@ module Vehicle.Compile.Type.Monad.Class
   , addFreshTypeClassConstraint
   , setConstraints
   , getMetaSubstitution
-  , getSolvedMetas
   , getUnsolvedMetas
   , getUnsolvedConstraints
   , popActivatedConstraints
@@ -51,17 +52,37 @@ import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.Meta (HasMetas (..), MetaInfo (..),
-                                  MetaSubstitutable (..), MetaSubstitution,
-                                  TypingMetaCtx (..), emptyMetaCtx)
-import Vehicle.Compile.Type.MetaMap qualified as MetaMap
-import Vehicle.Compile.Type.MetaSet (MetaSet)
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet
+import Vehicle.Compile.Type.Meta (HasMetas (..), MetaInfo (..), makeMetaExpr)
+import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
+import Vehicle.Compile.Type.Meta.Set (MetaSet)
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext (TypingBoundCtx, TypingDeclCtx,
                                              toNormalisationDeclContext, toNBEDeclContext)
 import Vehicle.Language.Print (prettyVerbose)
-import qualified Vehicle.Compile.Normalise.NBE as NBE
+import Vehicle.Compile.Normalise.NBE qualified as NBE
 import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable, MetaSubstitution, substituteMetas)
+
+--------------------------------------------------------------------------------
+-- The overall meta variable context
+
+-- | The meta-variables and constraints relating the variables currently in scope.
+data TypingMetaCtx = TypingMetaCtx
+  { metaInfo            :: [MetaInfo]
+  -- ^ The origin and type of each meta variable.
+  -- NB: these are stored in *reverse* order from which they were created.
+  , currentSubstitution :: MetaSubstitution
+  , constraints         :: [WithContext Constraint]
+  , recentlySolvedMetas :: MetaSet
+  }
+
+emptyTypingMetaCtx :: TypingMetaCtx
+emptyTypingMetaCtx = TypingMetaCtx
+  { metaInfo               = mempty
+  , currentSubstitution    = mempty
+  , constraints            = mempty
+  , recentlySolvedMetas    = mempty
+  }
 
 --------------------------------------------------------------------------------
 -- The type-checking monad class
@@ -100,7 +121,6 @@ instance MonadTypeChecker m => MonadTypeChecker (StateT s m) where
   modifyMetaCtx = lift . modifyMetaCtx
 
 {-
-
 instance MonadTypeChecker m => MonadTypeChecker (LoggerT m) where
   getDeclContext = lift getDeclContext
   addDeclContext d = mapLoggerT (addDeclContext d)
@@ -108,8 +128,10 @@ instance MonadTypeChecker m => MonadTypeChecker (LoggerT m) where
   getsMetaCtx = lift . getsMetaCtx
   putMetaCtx = lift . putMetaCtx
   modifyMetaCtx = lift . modifyMetaCtx
-
 -}
+
+--------------------------------------------------------------------------------
+-- Operations
 
 getUnsolvedConstraints :: MonadTypeChecker m => m [WithContext Constraint]
 getUnsolvedConstraints = getsMetaCtx constraints
@@ -120,8 +142,14 @@ getNumberOfMetasCreated = getsMetaCtx (length . metaInfo)
 getMetaSubstitution :: MonadTypeChecker m => m MetaSubstitution
 getMetaSubstitution = getsMetaCtx currentSubstitution
 
-getSolvedMetas :: MonadTypeChecker m => m MetaSet
-getSolvedMetas = getsMetaCtx solvedMetas
+-- | Returns the list of metas that have been solved since the last
+-- call to this method.
+getAndClearRecentlySolvedMetas :: MonadTypeChecker m => m MetaSet
+getAndClearRecentlySolvedMetas = do
+  result <- getsMetaCtx recentlySolvedMetas
+  modifyMetaCtx $ \TypingMetaCtx {..} ->
+    TypingMetaCtx { recentlySolvedMetas = mempty, ..}
+  return result
 
 getUnsolvedMetas :: MonadTypeChecker m => m MetaSet
 getUnsolvedMetas = do
@@ -133,7 +161,6 @@ getUnsolvedMetas = do
 setConstraints :: MonadTypeChecker m => [WithContext Constraint] -> m ()
 setConstraints newConstraints = modifyMetaCtx $ \TypingMetaCtx{..} ->
     TypingMetaCtx { constraints = newConstraints, ..}
-
 
 -- | Returns any constraints that are activated (i.e. worth retrying) based
 -- on the set of metas that were solved last pass.
@@ -148,7 +175,7 @@ substMetas :: (MonadTypeChecker m, MetaSubstitutable a) => a -> m a
 substMetas e = do
   metaSubst <- getMetaSubstitution
   declCtx <- toNBEDeclContext <$> getDeclContext
-  runReaderT (substM e) (metaSubst, declCtx)
+  substituteMetas declCtx metaSubst e
 
 -- | Substitute through solved metas through a constraint, *only* if
 -- some of the metas blocking the constraint are solved.
@@ -182,27 +209,20 @@ freshMeta :: MonadTypeChecker m
           -> Int
           -> m (MetaID, GluedExpr)
 freshMeta p metaType boundCtxSize = do
-  -- Create a fresh name
+  -- Create a fresh id for the meta
   TypingMetaCtx {..} <- getMetaCtx
-  let nextMeta = length metaInfo
+  let nextMetaID = length metaInfo
+  let metaID = MetaID nextMetaID
+
+  -- Update the meta context
   let info = MetaInfo p metaType boundCtxSize
   putMetaCtx $ TypingMetaCtx { metaInfo = info : metaInfo, .. }
-  let meta = MetaID nextMeta
 
-  -- Create bound variables for everything in the context
-  let ann = inserted p
-  let deps = reverse [0..boundCtxSize - 1]
-  let unnormBoundEnv = [ ExplicitArg ann (Var ann (Bound i)) | i <- deps ]
-  let normBoundEnv = [ ExplicitArg ann (VVar ann (Bound i) []) | i <- deps ]
+  -- Create the expression
+  let metaExpr = makeMetaExpr p metaID boundCtxSize
 
-  -- Returns a meta applied to every bound variable in the context
-  let metaExpr = Glued
-        { unnormalised = normAppList ann (Meta ann meta) unnormBoundEnv
-        , normalised   = VMeta ann meta normBoundEnv
-        }
-
-  logDebug MaxDetail $ "fresh-meta" <+> pretty meta <+> ":" <+> prettyVerbose metaType
-  return (meta, metaExpr)
+  logDebug MaxDetail $ "fresh-meta" <+> pretty metaID <+> ":" <+> prettyVerbose metaType
+  return (metaID, metaExpr)
 
 -- | Ensures the meta has no dependencies on the bound context. Returns true
 -- if dependencies were removed to achieve this.
@@ -271,10 +291,6 @@ clearMetaSubstitution :: MonadTypeChecker m => m ()
 clearMetaSubstitution = modifyMetaCtx $ \TypingMetaCtx {..} ->
   TypingMetaCtx { currentSubstitution = mempty, ..}
 
-clearSolvedMetas :: MonadTypeChecker m => m ()
-clearSolvedMetas = modifyMetaCtx $ \TypingMetaCtx {..} ->
-  TypingMetaCtx { solvedMetas = mempty, ..}
-
 substMetasThroughCtx :: MonadTypeChecker m => m ()
 substMetasThroughCtx = do
   TypingMetaCtx {..} <- getMetaCtx
@@ -285,7 +301,7 @@ substMetasThroughCtx = do
     { constraints         = substConstraints
     , metaInfo            = substMetaInfo
     , currentSubstitution = substMetaSolution
-    , solvedMetas         = solvedMetas
+    , recentlySolvedMetas = recentlySolvedMetas
     }
 
 getUnsolvedAuxiliaryMetas :: MonadTypeChecker m => m MetaSet
@@ -359,7 +375,7 @@ solveMeta m solution currentCtxSize = do
     Nothing -> do
       modifyMetaCtx $ \ TypingMetaCtx {..} -> TypingMetaCtx
         { currentSubstitution = MetaMap.insert m gluedSolution currentSubstitution
-        , solvedMetas         = MetaSet.insert m solvedMetas
+        , recentlySolvedMetas = MetaSet.insert m recentlySolvedMetas
         , ..
         }
 
@@ -378,7 +394,7 @@ prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
 clearMetaCtx :: MonadTypeChecker m => m ()
 clearMetaCtx = do
   logDebug MaxDetail "Clearing meta-variable context"
-  modifyMetaCtx (const emptyMetaCtx)
+  modifyMetaCtx (const emptyTypingMetaCtx)
 
 getDeclType :: MonadTypeChecker m => Provenance -> Identifier -> m CheckedType
 getDeclType p ident = do

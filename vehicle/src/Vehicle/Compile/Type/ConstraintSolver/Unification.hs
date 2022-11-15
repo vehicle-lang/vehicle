@@ -17,8 +17,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.ConstraintSolver.Core (unify, unify, blockOnReductionBlockingMetasOrThrowError)
 import Vehicle.Compile.Type.Meta
-import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
+import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (member, toList)
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Normalise.NormExpr
