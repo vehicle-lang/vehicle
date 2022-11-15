@@ -1,18 +1,9 @@
 # Changelog for vehicle
 
-## Version 0.0.3.0
+## Version 0.2.0-alpha
 
-- Added term-level lists.
-- Changed syntax of `&&` and `||` to `and` and `or`.
+* Fixed bug with type-checking let-bound expressions at the top-level scope.
 
-## Version 0.0.2.0
+## Version 0.1.0-alpha
 
-- Added `dataset` declarations.
-- Added `type` declarations.
-- Renamed kind of type-level naturals to `Dim`.
-- Renamed type of naturals to `Int`.
-- Changed syntax of cons to infix `::`.
-
-## Version 0.0.1.0
-
-- First version presented internally on 2021/03/08.
+Initial alpha release for testing.
