@@ -196,7 +196,7 @@ compileExpr t e = showExit $ do
     V.Var _ (V.Bound var)                -> return (Variable var)
     V.AtExpr _ _ _ [xs, i]             -> At <$> compileArg t xs <*> compileArg t i
     V.Let _ _ _ _                         -> normalisationError "lossFunction" "Let"
-    --V.Lam _ name x                    -> Lambda (V.binderRepresentation name) <$> (compileExpr t x)
+    V.Lam _ name x                    -> Lambda (V.binderRepresentation name) <$> compileExpr t x
 
     V.QuantifierTCExpr _ q binder body         -> do
       body' <- compileExpr t body
