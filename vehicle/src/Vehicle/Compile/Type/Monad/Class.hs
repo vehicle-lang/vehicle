@@ -15,13 +15,14 @@ module Vehicle.Compile.Type.Monad.Class
   , substMetasThroughCtx
   , substConstraintMetas
   , modifyMetasInfo
+  , removeMetaDependencies
   , getMetaProvenance
+  , getMetaType
+  , getMetaCtxSize
   , prettyMetas
   , prettyMeta
   , clearMetaCtx
-  , getMetaType
   , getDeclType
-  , getMetaInfo
   , getTypeClassConstraints
   , addConstraints
   , addFreshUnificationConstraint
@@ -203,6 +204,18 @@ freshMeta p metaType boundCtxSize = do
   logDebug MaxDetail $ "fresh-meta" <+> pretty meta <+> ":" <+> prettyVerbose metaType
   return (meta, metaExpr)
 
+-- | Ensures the meta has no dependencies on the bound context. Returns true
+-- if dependencies were removed to achieve this.
+removeMetaDependencies ::  MonadTypeChecker m => MetaID -> m Bool
+removeMetaDependencies m = do
+  MetaInfo p t ctxSize <- getMetaInfo m
+  if ctxSize == 0 then
+    return False
+  else do
+    newMeta <- freshExprMeta p t 0
+    metaSolved m (unnormalised newMeta) ctxSize
+    return True
+
 freshExprMeta :: MonadTypeChecker m
               => Provenance
               -> CheckedType
@@ -226,9 +239,6 @@ freshTypeClassPlacementMeta = freshMeta
 --------------------------------------------------------------------------------
 -- Meta information retrieval
 
-getMetaIndex :: [MetaInfo] -> MetaID -> Int
-getMetaIndex metaInfo (MetaID m) = length metaInfo - m - 1
-
 getMetaInfo :: MonadTypeChecker m => MetaID -> m MetaInfo
 getMetaInfo m = do
   TypingMetaCtx {..} <- getMetaCtx
@@ -237,11 +247,17 @@ getMetaInfo m = do
     Nothing -> compilerDeveloperError $
       "Requesting info for unknown meta" <+> pretty m <+> "not in context"
 
+getMetaIndex :: [MetaInfo] -> MetaID -> Int
+getMetaIndex metaInfo (MetaID m) = length metaInfo - m - 1
+
 getMetaProvenance :: MonadTypeChecker m => MetaID -> m Provenance
 getMetaProvenance m = metaProvenance <$> getMetaInfo m
 
 getMetaType :: MonadTypeChecker m => MetaID -> m CheckedType
 getMetaType m = metaType <$> getMetaInfo m
+
+getMetaCtxSize :: MonadTypeChecker m => MetaID -> m Int
+getMetaCtxSize m = metaCtxSize <$> getMetaInfo m
 
 modifyMetasInfo :: MonadTypeChecker m => MetaID -> (MetaInfo -> MetaInfo) -> m ()
 modifyMetasInfo m f = modifyMetaCtx (\TypingMetaCtx{..} ->

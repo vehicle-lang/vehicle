@@ -269,7 +269,7 @@ inferExpr e = do
         Just m -> do
           boundCtxSize <- length <$> getBoundCtx
           newTypeOfBody <- unnormalised <$> freshExprMeta p (TypeUniverse p 0) boundCtxSize
-          metaSolved m newTypeOfBody boundCtxSize
+          solveMeta m newTypeOfBody boundCtxSize
           return newTypeOfBody
 
       return (Let p checkedBoundExpr checkedBinder checkedBody , restrictedTypeOfBody)

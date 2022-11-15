@@ -13,7 +13,6 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.MetaSet qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Language.Print
-import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..))
 import Vehicle.Compile.Normalise.Quote (Quote(..))
 
 --------------------------------------------------------------------------------
@@ -156,10 +155,10 @@ prependBinderAndSolveMeta meta v r binderName binderType decl = do
   let updatedDecl = addNewArgumentToMetaUses meta prependedDecl
 
   -- We now solve the meta as the newly bound variable
-  MetaInfo _ _ metaCtxSize <- getMetaInfo meta
+  metaCtxSize <- getMetaCtxSize meta
   let p = provenanceOf prependedDecl
   let solution = Var p (Bound (metaCtxSize - 1))
-  metaSolved meta solution metaCtxSize
+  solveMeta meta solution metaCtxSize
 
   logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose updatedDecl
 
@@ -176,14 +175,7 @@ removeContextsOfMetasIn :: TCM m
 removeContextsOfMetasIn binderType decl =
   logCompilerPass MaxDetail "removing dependencies from dependent metas" $ do
     metasInBinder <- metasIn binderType
-    newMetas <- or <$> forM (MetaSet.toList metasInBinder) (\m -> do
-      MetaInfo p t ctxSize <- getMetaInfo m
-      if ctxSize == 0 then
-        return False
-      else do
-        newMeta <- freshExprMeta p t 0
-        metaSolved m (unnormalised newMeta) ctxSize
-        return True)
+    newMetas <- or <$> forM (MetaSet.toList metasInBinder) removeMetaDependencies
 
     if not newMetas then
       return (binderType, decl)
