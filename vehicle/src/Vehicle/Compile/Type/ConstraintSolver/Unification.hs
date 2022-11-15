@@ -86,8 +86,8 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
     ---------------------
 
     VMeta _ i args1 :~: VMeta _ j args2 -> do
-      deps1 <- getNormMetaDependencies args1
-      deps2 <- getNormMetaDependencies args2
+      let deps1 = getNormMetaDependencies args1
+      let deps2 = getNormMetaDependencies args2
       -- If the meta-variables are equal then simply discard the constraint
       -- as it doesn't tell us anything.
       if i == j then
@@ -131,7 +131,7 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
     -- ==> ?Y := \x. \y. \z. ?X e1 e2 e3
 
     VMeta _ i args :~: _ -> do
-      deps <- getNormMetaDependencies args
+      let deps = getNormMetaDependencies args
 
       -- Check that 'args' is a pattern and try to calculate a substitution
       -- that renames the variables in 'e2' to ones available to meta `i`
