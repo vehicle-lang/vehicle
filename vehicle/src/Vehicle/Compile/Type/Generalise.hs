@@ -188,7 +188,7 @@ removeContextsOfMetasIn binderType decl =
     if not newMetas then
       return (binderType, decl)
     else do
-      substDecl <- substMetas decl
+      substDecl <- traverseDeclType substMetas decl
       substBinderType <- substMetas binderType
       logCompilerPassOutput (prettyVerbose substDecl)
       return (substBinderType, substDecl)

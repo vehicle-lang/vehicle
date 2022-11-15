@@ -133,7 +133,6 @@ typeCheckDecl propertyCtx decl = do
         -- Solve constraints and substitute through.
         solveConstraints (Just checkedDecl)
         substDecl <- substMetas checkedDecl
-        logUnsolvedUnknowns (Just substDecl) Nothing
 
         -- Extract auxiliary annotations if a property.
         -- This check must happen before generalisation as the `Bool` type will get
@@ -143,6 +142,8 @@ typeCheckDecl propertyCtx decl = do
           checkPropertyInfo (ident, p) (typeOf substDecl)
 
         checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
+        logUnsolvedUnknowns (Just substDecl) Nothing
+
         checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints checkedDecl1
         checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
         return checkedDecl3
