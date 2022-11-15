@@ -32,7 +32,7 @@ import Vehicle.Compile.Prelude hiding (MapList)
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.MetaMap (MetaMap (..))
+import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Syntax.External.Abs qualified as BF
 import Vehicle.Syntax.External.Print as External (Print, printTree)
 import Vehicle.Syntax.Internal.Abs qualified as BC

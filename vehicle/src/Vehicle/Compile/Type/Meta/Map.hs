@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Compile.Type.MetaMap
+module Vehicle.Compile.Type.Meta.Map
   ( MetaMap(..)
   , singleton
   , lookup
@@ -20,8 +20,8 @@ import Prelude hiding (lookup, map)
 
 import Data.Bifunctor (Bifunctor (first))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.MetaSet (MetaSet)
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Set (MetaSet)
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 
 --------------------------------------------------------------------------------
 -- Meta substitution

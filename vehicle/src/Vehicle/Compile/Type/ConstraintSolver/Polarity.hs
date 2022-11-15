@@ -6,7 +6,6 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.ConstraintSolver.Core
-import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
 
 import Control.Monad.Except (MonadError (..))

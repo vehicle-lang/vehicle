@@ -25,11 +25,12 @@ import Vehicle.Compile.Type.ConstraintSolver.Unification
 import Vehicle.Compile.Type.Generalise
 import Vehicle.Compile.Type.Irrelevance
 import Vehicle.Compile.Type.Meta
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
 import Vehicle.Language.Print
 import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..), GluedProg, GluedDecl)
+import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable)
 
 -------------------------------------------------------------------------------
 -- Algorithm
@@ -178,10 +179,9 @@ solveConstraints decl = logCompilerPass MinDetail "constraint solving" $ do
 loopOverConstraints :: TCM m => Int -> Maybe CheckedDecl -> m ()
 loopOverConstraints loopNumber decl = do
   unsolvedConstraints <- getUnsolvedConstraints
-  metasSolvedLastLoop <- getSolvedMetas
-  clearSolvedMetas
 
   unless (null unsolvedConstraints) $ do
+    metasSolvedLastLoop <- getAndClearRecentlySolvedMetas
     let isUnblocked = not . constraintIsBlocked metasSolvedLastLoop
     let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
 

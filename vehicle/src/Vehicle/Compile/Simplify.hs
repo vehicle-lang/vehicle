@@ -13,7 +13,7 @@ import Data.Maybe (catMaybes)
 import Data.Text (Text)
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.MetaMap
+import Vehicle.Compile.Type.Meta.Map
 
 
 data SimplifyOptions = SimplifyOptions

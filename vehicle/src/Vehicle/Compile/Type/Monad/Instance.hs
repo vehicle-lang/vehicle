@@ -15,7 +15,6 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans (MonadTrans)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.VariableContext
 import Vehicle.Compile.Type.Monad.Class
 
@@ -27,7 +26,7 @@ newtype TypeCheckerT m a = TypeCheckerT
   } deriving (Functor, Applicative, Monad)
 
 runTypeCheckerT :: Monad m => TypeCheckerT m a -> m a
-runTypeCheckerT (TypeCheckerT e) = evalStateT (runReaderT e mempty) emptyMetaCtx
+runTypeCheckerT (TypeCheckerT e) = evalStateT (runReaderT e mempty) emptyTypingMetaCtx
 
 mapTypeCheckerT :: (m (a, TypingMetaCtx) -> n (b, TypingMetaCtx))
                 -> TypeCheckerT m a
