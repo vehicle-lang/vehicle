@@ -6,7 +6,7 @@ module Vehicle.Compile.Type.Monad.Class
   , freshLinearityMeta
   , freshTypeClassPlacementMeta
   , getMetaIndex
-  , metaSolved
+  , solveMeta
   , filterMetasByTypes
   , getUnsolvedAuxiliaryMetas
   , getMetasLinkedToMetasIn
@@ -213,7 +213,7 @@ removeMetaDependencies m = do
     return False
   else do
     newMeta <- freshExprMeta p t 0
-    metaSolved m (unnormalised newMeta) ctxSize
+    solveMeta m (unnormalised newMeta) ctxSize
     return True
 
 freshExprMeta :: MonadTypeChecker m
@@ -336,8 +336,8 @@ abstractOverCtx ctxSize body = do
   let lam _ = Lam p (ExplicitBinder p Nothing (TypeUniverse p 0))
   foldr lam body ([0 .. ctxSize-1] :: [Int])
 
-metaSolved :: MonadTypeChecker m => MetaID -> CheckedExpr -> Int -> m ()
-metaSolved m solution currentCtxSize = do
+solveMeta :: MonadTypeChecker m => MetaID -> CheckedExpr -> Int -> m ()
+solveMeta m solution currentCtxSize = do
   MetaInfo p _metaType ctxSize <- getMetaInfo m
   let abstractedSolution = abstractOverCtx ctxSize solution
   gluedSolution <- glueNBE currentCtxSize abstractedSolution
