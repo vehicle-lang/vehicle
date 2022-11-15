@@ -504,7 +504,7 @@ instance (PrettyUsing rest a, Pretty b) => PrettyUsing rest (Contextualised a b)
   prettyUsing (WithContext a b) = prettyUsing @rest a <> pretty b
 
 instance PrettyUsing rest Constraint => PrettyUsing ('Opaque rest) (Contextualised Constraint ConstraintContext) where
-  prettyUsing (WithContext c ctx) = prettyUsing @rest c <> pretty ctx
+  prettyUsing (WithContext c ctx) = prettyUsing @rest c <+> parens (pretty ctx)
 
 instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (MetaMap a) where
   prettyUsing (MetaMap m) = prettyMapEntries entries

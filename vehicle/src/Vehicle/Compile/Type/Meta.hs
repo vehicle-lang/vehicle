@@ -200,22 +200,14 @@ makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse bound
     entryToPi (name, t, _) = Pi ann (ExplicitBinder ann name t)
 
 getMetaDependencies :: [CheckedArg] -> [DBIndex]
-getMetaDependencies = fmap (getDep . argExpr)
-  where
-  getDep :: CheckedExpr -> DBIndex
-  getDep (Var _ (Bound i)) = i
-  getDep e                 = developerError $
-    "Non-variable expression" <+> prettyVerbose e <+> "found in meta dependencies"
+getMetaDependencies = \case
+  (ExplicitArg _ (Var _ (Bound i))) : args -> i : getMetaDependencies args
+  _ -> []
 
-getNormMetaDependencies :: forall m . MonadCompile m => [NormArg] -> m [DBIndex]
-getNormMetaDependencies args = do
-  let explicitArgs = takeWhile isExplicit args
-  traverse (getDep . argExpr) explicitArgs
-  where
-  getDep :: NormExpr -> m DBIndex
-  getDep (VVar _ (Bound i) []) = return i
-  getDep e                     = compilerDeveloperError $
-    "Non-variable expression" <+> prettyVerbose e <+> "found in norm meta dependencies"
+getNormMetaDependencies :: [NormArg] -> [DBIndex]
+getNormMetaDependencies = \case
+  (ExplicitArg _ (VVar _ (Bound i) [])) : args -> i : getNormMetaDependencies args
+  _ -> []
 
 --------------------------------------------------------------------------------
 -- Objects which have meta variables in.
@@ -255,7 +247,7 @@ instance HasMetas CheckedExpr where
 instance HasMetas NormExpr where
   findMetas expr = case expr of
     VMeta _ m args -> do
-      deps <- getNormMetaDependencies args
+      let deps = getNormMetaDependencies args
       tell (MetaMap.singleton m deps)
 
     VUniverse{}               -> return ()

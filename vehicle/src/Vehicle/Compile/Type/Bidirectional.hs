@@ -4,7 +4,6 @@ module Vehicle.Compile.Type.Bidirectional
   , inferExpr
   ) where
 
-import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
@@ -243,36 +242,30 @@ inferExpr e = do
       return (Var p (Free ident), originalType)
 
     Let p boundExpr binder body -> do
-      -- Check the type of the bound expression against the provided type
+      -- Check that the type of the bound variable is a type
       (typeOfBoundExpr, typeOfBoundExprType) <- inferExpr (typeOf binder)
       checkExprTypesEqual p typeOfBoundExpr (TypeUniverse (inserted p) 0) typeOfBoundExprType
-
-      checkedBoundExpr <- checkExpr typeOfBoundExpr boundExpr
       let checkedBinder = replaceBinderType typeOfBoundExpr binder
 
+      -- Check the type of the body, with the bound variable added to the context.
       (checkedBody, typeOfBody) <-
-        addToBoundCtx (nameOf binder, typeOfBoundExpr, Just checkedBoundExpr) $ inferExpr body
+        addToBoundCtx (nameOf binder, typeOfBoundExpr, Nothing) $ inferExpr body
 
-      restrictedTypeOfBody <- case getMetaID typeOfBody of
-        -- It's possible for the type of the body to depend on the let bound variable,
-        -- e.g. `let y = Nat in (2 : y)` so in order to avoid the DeBruijn index escaping
-        -- it's context we need to substitute the bound expression into the type.
-        Nothing -> do
-          let normTypeOfBody = checkedBoundExpr `substInto` typeOfBody
-          when (normTypeOfBody /= typeOfBody) $
-            logDebug MaxDetail $ "normalising" <+> prettyVerbose typeOfBody <+> "to" <+> prettyVerbose normTypeOfBody
-          return normTypeOfBody
-        -- However meta-variables don't react well to having their context substituted through
-        -- so we restrict the meta-variable's scope so it can't depend on the most recent
-        -- value. This seems like a massive hack and there must be a more principled way
-        -- of doing it.....
-        Just m -> do
-          boundCtxSize <- length <$> getBoundCtx
-          newTypeOfBody <- unnormalised <$> freshExprMeta p (TypeUniverse p 0) boundCtxSize
-          solveMeta m newTypeOfBody boundCtxSize
-          return newTypeOfBody
+      -- Pretend the let expression is really a lambda application and use
+      -- the application machinary to infer the result type and the type of the bound expression.
+      (resultType, boundArgs) <- inferArgs
+        (Lam p checkedBinder body, [ExplicitArg p boundExpr])
+        (Pi p checkedBinder typeOfBody)
+        [ExplicitArg p boundExpr]
 
-      return (Let p checkedBoundExpr checkedBinder checkedBody , restrictedTypeOfBody)
+      -- Extract the type of the bound expression
+      checkedBoundExpr <- case boundArgs of
+        [arg] -> return (argExpr arg)
+        _     -> compilerDeveloperError $
+          "inference of type of let expression returned more than one argument:" <+>
+          prettyVerbose boundArgs
+
+      return (Let p checkedBoundExpr checkedBinder checkedBody , resultType)
 
     Lam p binder body -> do
       -- Infer the type of the bound variable from the binder
@@ -349,9 +342,9 @@ inferApp p fun funType args = do
 -- Returns the type of the function when applied to the full list of arguments
 -- (including inserted arguments) and that list of arguments.
 inferArgs :: MonadBidirectional m
-          => (CheckedExpr, [UncheckedArg])    -- The original function and its arguments
-          -> CheckedType    -- Type of the function
-          -> [UncheckedArg] -- User-provided arguments of the function
+          => (CheckedExpr, [UncheckedArg]) -- The original function and its arguments
+          -> CheckedType                   -- Type of the function
+          -> [UncheckedArg]                -- User-provided arguments of the function
           -> m (CheckedType, [CheckedArg])
 inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
   | isExplicit binder && null args = return (piT, [])
