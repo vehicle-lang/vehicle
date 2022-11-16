@@ -20,7 +20,7 @@ data Backend
 
 data DifferentiableLogic
   = DL2
-  | Godel 
+  | Godel
   | Lukasiewicz
   | Product
   | Yager

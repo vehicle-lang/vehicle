@@ -72,7 +72,7 @@ compile loggingOptions CompileOptions{..} = do
 
     LossFunction differentiableLogic -> do
       lossFunction <- compileToLossFunction loggingOptions spec declarationsToCompile resources differentiableLogic
-      writeLossFunctionFiles outputFile differentiableLogic lossFunction 
+      writeLossFunctionFiles outputFile differentiableLogic lossFunction
 
 
 --------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ compileToLossFunction :: VehicleIOSettings
                       -> SpecificationText
                       -> DeclarationNames
                       -> Resources
-                      -> DifferentiableLogic 
+                      -> DifferentiableLogic
                       -> IO [LDecl]
 compileToLossFunction loggingOptions spec declarationsToCompile resources differentiableLogic = do
   fromLoggedEitherIO loggingOptions $ do
