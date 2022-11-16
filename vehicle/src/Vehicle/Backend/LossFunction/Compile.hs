@@ -22,6 +22,7 @@ import Vehicle.Compile.Queries.DNF
 import Vehicle.Language.AST.Core (argExpr)
 
 
+
 --------------------------------------------------------------------------------
 -- Declaration definition
 
@@ -52,7 +53,7 @@ newtype Domain = Domain ()
 instance FromJSON Domain
 instance ToJSON Domain
 
---definitoon of the LExpr - all expressions allowed in a loss constraint
+-- definitoon of the LExpr - all expressions allowed in a loss constraint
 
 data LExpr
   = Negation LExpr                           -- this is minus, not the logical operation of negation
@@ -82,34 +83,23 @@ instance ToJSON LExpr
 -- Compilation
 -- the translation into the LExpr (this is the exported top compile function)
 
---------------------------------------------------------------------------------
--- different avilable differentiable logics (types of translation from the constraint to loss function) are
--- DL2
--- Godel
--- Lukasiewicz
--- Product based
--- Yager
-
---they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2.
-
 compile :: MonadCompile m => DifferentiableLogic -> V.CheckedProg -> V.PropertyContext -> NetworkContext -> m [LDecl]
 compile d prog propertyCtx networkCtx = do
   normalisedProg <- normalise prog normalisationOptions
-  case d of
-    DL2 -> do
-      runReaderT (compileProg dl2Translation normalisedProg) (propertyCtx, networkCtx)
-    Godel -> do
-      runReaderT (compileProg godelTranslation normalisedProg) (propertyCtx, networkCtx)
-    Lukasiewicz -> do
-      runReaderT (compileProg lukasiewiczTranslation normalisedProg) (propertyCtx, networkCtx)
-    Product -> do
-      runReaderT (compileProg productTranslation normalisedProg) (propertyCtx, networkCtx)
-    Yager -> do
-      runReaderT (compileProg yagerTranslation normalisedProg) (propertyCtx, networkCtx)
+  runReaderT (compileProg (chooseTranslation d) normalisedProg) (propertyCtx, networkCtx)
+
+chooseTranslation :: DifferentiableLogic -> DifferentialLogicImplementation
+chooseTranslation = 
+  \case
+    DL2 -> dl2Translation
+    Godel -> godelTranslation
+    Lukasiewicz -> lukasiewiczTranslation
+    Product -> productTranslation
+    Yager -> yagerTranslation
 
 
---compile entire specification (calls compileDecl)
-compileProg :: MonadCompileLoss m => Translation -> V.CheckedProg -> m [LDecl]
+-- |compile entire specification (calls compileDecl)
+compileProg :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedProg -> m [LDecl]
 compileProg  t (V.Main ds) = catMaybes <$> traverse (compileDecl t) ds
 
 type MonadCompileLoss m =
@@ -117,8 +107,8 @@ type MonadCompileLoss m =
   , MonadReader (V.PropertyContext, NetworkContext) m
   )
 
---compile all functions found in spec, save their names, call compileExpr on each
-compileDecl :: MonadCompileLoss m => Translation -> V.CheckedDecl -> m (Maybe LDecl)
+-- |compile all functions found in spec, save their names (call compileExpr on each)
+compileDecl :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedDecl -> m (Maybe LDecl)
 compileDecl t d =
   case d of
   V.DefResource{} ->
@@ -135,16 +125,11 @@ compileDecl t d =
 currentPass :: Doc a
 currentPass = "compilation to loss functions"
 
---part of the syntax translation that differ depending on chosen DL namely:
-    -- logical connectives (not, and, or, implies)
-    -- comparisons (<, <=, >, >=, =, !=)
-
---compile argument
-compileArg :: MonadCompile m => Translation -> V.CheckedArg -> m LExpr
+compileArg :: MonadCompile m => DifferentialLogicImplementation -> V.CheckedArg -> m LExpr
 compileArg t arg = compileExpr t (V.argExpr arg)
 
---helper function for compiling Lieterals
-compileLiteral :: Translation -> V.Literal -> Double
+-- |helper function for compiling Literals
+compileLiteral :: DifferentialLogicImplementation -> V.Literal -> Double
 compileLiteral t l = case l of
   V.LUnit{}    -> developerError "Loss Function should not encounter LUnit"
   V.LBool    e -> compileBool t e
@@ -153,13 +138,12 @@ compileLiteral t l = case l of
   V.LInt     e -> fromIntegral e
   V.LRat     e -> fromRational e
 
---helps compile a name from DBBinding, even if there is no name given
+-- |helps compile a name from DBBinding, even if there is no name given
 compileDBBinding :: Maybe Name -> Name
-compileDBBinding =
-  fromMaybe "No_name"
+compileDBBinding = fromMaybe "No_name"
 
---compile a property or single expression
-compileExpr :: MonadCompile m => Translation -> V.CheckedExpr -> m LExpr
+-- |compile a property or single expression
+compileExpr :: MonadCompile m => DifferentialLogicImplementation -> V.CheckedExpr -> m LExpr
 compileExpr t e = showExit $ do
   e' <- showEntry e
   case e' of
@@ -213,152 +197,6 @@ compileQuant :: V.Quantifier -> Quantifier
 compileQuant V.Forall = All
 compileQuant V.Exists = Any
 
-data Translation = Translation
-    { compileAnd          :: LExpr -> LExpr -> LExpr,
-      compileOr           :: LExpr -> LExpr -> LExpr,
-      compileNot          :: LExpr -> LExpr,
-      compileImplication  :: LExpr -> LExpr -> LExpr,
-
-      compileLe           :: LExpr -> LExpr -> LExpr,
-      compileLt           :: LExpr -> LExpr -> LExpr,
-      compileGe           :: LExpr -> LExpr -> LExpr,
-      compileGt           :: LExpr -> LExpr -> LExpr,
-      compileEq           :: LExpr -> LExpr -> LExpr,
-      compileNeq          :: LExpr -> LExpr -> LExpr,
-
-      compileBool         :: Bool -> Double
-    }
-
----------------------------------------------------------------------------------------
--- different differentiable logic translations (options were listed before. DL2 is the default translation)
-
-dl2Translation :: Translation
-dl2Translation = Translation
-   { --double check implication, do negation properly
-     compileAnd = Addition,
-     compileOr  = Multiplication,
-     compileNot = id, --this should be normalised out and pushed to the innermost level of comparisons by now
-     compileImplication = \arg1 arg2 -> Max (Negation arg1) arg2,
-
-     compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
-     compileLt = \arg1 arg2 -> Addition (Max (Constant 0) (Subtraction arg1 arg2))  (IndicatorFunction  arg1 arg2),
-     compileGe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
-     compileGt = \arg1 arg2 -> Addition (Max (Constant 0) (Subtraction arg2 arg1))  (IndicatorFunction  arg2 arg1),
-     compileNeq = IndicatorFunction,
-     compileEq = \arg1 arg2 -> Addition (Max (Constant 0) (Subtraction arg1 arg2)) (Max (Constant 0) (Subtraction arg1 arg2)),
-
-     compileBool = \case
-                      True -> 0
-                      False -> 1
-   }
-
-godelTranslation :: Translation
-godelTranslation = Translation
-   {
-     compileAnd = Min,
-     compileOr  = Max,
-     compileNot = \arg -> Subtraction (Constant 1) arg,
-     compileImplication = \arg1 arg2 -> Max (Negation arg1) arg2,
-
-     compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)),
-     compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))),
-     compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)),
-     compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))),
-     compileNeq = IndicatorFunction,
-     compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2),
-
-     compileBool = \case
-                      True -> 1
-                      False -> 0
-   }
-
-lukasiewiczTranslation :: Translation
-lukasiewiczTranslation = Translation
-   {
-     compileAnd = \arg1 arg2 -> Max (Subtraction (Addition arg1 arg2) (Constant 1)) arg2,
-     compileOr  = \arg1 arg2 -> Min (Addition arg1 arg2) (Constant 1),
-     compileNot = \arg -> Subtraction (Constant 1) arg,
-     compileImplication = \arg1 arg2 -> Min (Constant 1) (Addition (Subtraction (Constant 1) arg1) arg2),
-
-
-     compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)),
-     compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))),
-     compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)),
-     compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))),
-     compileNeq = IndicatorFunction,
-     compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2),
-
-     compileBool = \case
-                      True -> 1
-                      False -> 0
-   }
-
-productTranslation :: Translation
-productTranslation = Translation
-   {
-     compileAnd = Multiplication,
-     compileOr  = \arg1 arg2 -> Subtraction (Addition arg1 arg2) (Multiplication arg1 arg2),
-     compileNot = \arg -> Subtraction (Constant 1) arg,
-     compileImplication = \arg1 arg2 -> Addition (Subtraction (Constant 1) arg1) (Multiplication arg1 arg2),
-
-     compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)),
-     compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))),
-     compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)),
-     compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))),
-     compileNeq = IndicatorFunction,
-     compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2),
-
-     compileBool = \case
-                      True -> 1
-                      False -> 0
-   }
-
-yagerTranslation :: Translation
-yagerTranslation = yagerTranslationCompile 1 --change constant here
-
---helper function that sets parameter p for the Yager DL (by default set to 1)
-yagerTranslationCompile :: Rational -> Translation
-yagerTranslationCompile p = Translation
-    {
-     compileAnd = \arg1 arg2 -> Max
-                                  (Subtraction
-                                    (Constant 1)
-                                      (Power
-                                        (Addition
-                                          (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p)))
-                                          (Power (Subtraction (Constant 1) arg2) (Constant (fromRational p))))
-                                        (Division (Constant 1) (Constant (fromRational p)))))
-                                    (Constant 0),
-     compileNot = \arg -> Subtraction (Constant 1) arg,
-     compileOr = \arg1 arg2 -> Min
-                                  (Power
-                                     (Addition (Power arg1 (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
-                                     (Division (Constant 1) (Constant (fromRational p)))
-                                    )
-                                    (Constant 1),
-     compileImplication = \arg1 arg2 -> Min
-                                  (Power
-                                     (Addition (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
-                                     (Division (Constant 1) (Constant (fromRational p)))
-                                    )
-                                    (Constant 1),
-
-
-     compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)),
-     compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))),
-     compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)),
-     compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))),
-     compileNeq = IndicatorFunction,
-     compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2),
-
-     compileBool = \case
-                      True -> 1
-                      False -> 0
-   }
-
-
-
-
 
 ----------------------------------------------------------------------------------------------------
 --handling normalisation options
@@ -402,8 +240,160 @@ normBuiltin b = case b of
 
   _                  -> False
 
+data DifferentialLogicImplementation = DifferentialLogicImplementation
+    { compileAnd          :: LExpr -> LExpr -> LExpr
+    , compileOr           :: LExpr -> LExpr -> LExpr
+    , compileNot          :: LExpr -> LExpr
+    , compileImplication  :: LExpr -> LExpr -> LExpr
+
+    , compileLe           :: LExpr -> LExpr -> LExpr
+    , compileLt           :: LExpr -> LExpr -> LExpr
+    , compileGe           :: LExpr -> LExpr -> LExpr
+    , compileGt           :: LExpr -> LExpr -> LExpr
+    , compileEq           :: LExpr -> LExpr -> LExpr
+    , compileNeq          :: LExpr -> LExpr -> LExpr
+
+    , compileBool         :: Bool -> Double
+    }
+
+
+--------------------------------------------------------------------------------
+-- different avilable differentiable logics (types of translation from the constraint to loss function) are
+-- DL2
+-- Godel
+-- Lukasiewicz
+-- Product based
+-- Yager
+
+--they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2. 
+
+-- part of the syntax translation that differ depending on chosen DL are:
+    -- logical connectives (not, and, or, implies)
+    -- comparisons (<, <=, >, >=, =, !=)
+
+dl2Translation :: DifferentialLogicImplementation
+dl2Translation = DifferentialLogicImplementation
+  { compileAnd = Addition
+  , compileOr  = Multiplication
+  , compileNot = id --this should be normalised out and pushed to the innermost level of comparisons by now
+  , compileImplication = \arg1 arg2 -> Max (Negation arg1) arg2
+
+  , compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2)
+  , compileLt = \arg1 arg2 -> Addition (Max (Constant 0) (Subtraction arg1 arg2))  (IndicatorFunction  arg1 arg2)
+  , compileGe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1)
+  , compileGt = \arg1 arg2 -> Addition (Max (Constant 0) (Subtraction arg2 arg1))  (IndicatorFunction  arg2 arg1)
+  , compileNeq = IndicatorFunction
+  , compileEq = \arg1 arg2 -> Addition (Max (Constant 0) (Subtraction arg1 arg2)) (Max (Constant 0) (Subtraction arg1 arg2))
+
+  , compileBool = \case
+                      True -> 0
+                      False -> 1
+  }
+
+godelTranslation :: DifferentialLogicImplementation
+godelTranslation = DifferentialLogicImplementation
+  { compileAnd = Min
+  , compileOr  = Max
+  , compileNot = \arg -> Subtraction (Constant 1) arg
+  , compileImplication = \arg1 arg2 -> Max (Negation arg1) arg2
+
+  , compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))
+  , compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)))
+  , compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))
+  , compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)))
+  , compileNeq = IndicatorFunction
+  , compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2)
+
+  , compileBool = \case
+                    True -> 1
+                    False -> 0
+   }
+
+lukasiewiczTranslation :: DifferentialLogicImplementation
+lukasiewiczTranslation = DifferentialLogicImplementation
+  { compileAnd = \arg1 arg2 -> Max (Subtraction (Addition arg1 arg2) (Constant 1)) arg2
+  , compileOr  = \arg1 arg2 -> Min (Addition arg1 arg2) (Constant 1)
+  , compileNot = \arg -> Subtraction (Constant 1) arg
+  , compileImplication = \arg1 arg2 -> Min (Constant 1) (Addition (Subtraction (Constant 1) arg1) arg2)
+
+
+  , compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))
+  , compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)))
+  , compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))
+  , compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)))
+  , compileNeq = IndicatorFunction
+  , compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2)
+
+  , compileBool = \case
+                    True -> 1
+                    False -> 0
+   }
+
+productTranslation :: DifferentialLogicImplementation
+productTranslation = DifferentialLogicImplementation
+  { compileAnd = Multiplication
+  , compileOr  = \arg1 arg2 -> Subtraction (Addition arg1 arg2) (Multiplication arg1 arg2)
+  , compileNot = \arg -> Subtraction (Constant 1) arg
+  , compileImplication = \arg1 arg2 -> Addition (Subtraction (Constant 1) arg1) (Multiplication arg1 arg2)
+
+  , compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))
+  , compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)))
+  , compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))
+  , compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)))
+  , compileNeq = IndicatorFunction
+  , compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2)
+
+  , compileBool = \case
+                      True -> 1
+                      False -> 0
+   }
+
+--sets parameter p for the Yager DL (by default set to 1)
+yagerTranslation :: DifferentialLogicImplementation
+yagerTranslation = parameterisedYagerTranslation 1 --change constant here
+
+
+parameterisedYagerTranslation :: Rational -> DifferentialLogicImplementation
+parameterisedYagerTranslation p = DifferentialLogicImplementation
+  { compileAnd = \arg1 arg2 -> Max
+                                  (Subtraction
+                                    (Constant 1)
+                                      (Power
+                                        (Addition
+                                          (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p)))
+                                          (Power (Subtraction (Constant 1) arg2) (Constant (fromRational p))))
+                                        (Division (Constant 1) (Constant (fromRational p)))))
+                                    (Constant 0)
+  , compileNot = \arg -> Subtraction (Constant 1) arg
+  , compileOr = \arg1 arg2 -> Min
+                                  (Power
+                                     (Addition (Power arg1 (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
+                                     (Division (Constant 1) (Constant (fromRational p)))
+                                    )
+                                    (Constant 1)
+  , compileImplication = \arg1 arg2 -> Min
+                                  (Power
+                                     (Addition (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
+                                     (Division (Constant 1) (Constant (fromRational p)))
+                                    )
+                                    (Constant 1)
+
+
+  , compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))
+  , compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)))
+  , compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))
+  , compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)))
+  , compileNeq = IndicatorFunction
+  , compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2)
+
+  , compileBool = \case
+                      True -> 1
+                      False -> 0
+   }
+
 -----------------------------------------------------------------------
 -- debugging options
+
 showEntry :: MonadCompile m => V.CheckedExpr -> m V.CheckedExpr
 showEntry e = do
   logDebug MaxDetail ("loss-entry " <> prettySimple e)

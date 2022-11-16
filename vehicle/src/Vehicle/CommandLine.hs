@@ -196,7 +196,7 @@ allLossFunctionDLs :: [String]
 allLossFunctionDLs = map show (enumerate @DifferentiableLogic)
 
 allBackends :: [String]
-allBackends = allVerifiers <> allITPs <> allLossFunctionDLs --map show [LossFunction, TypeCheck]
+allBackends = allVerifiers <> allITPs <> allLossFunctionDLs
 
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)

@@ -1,0 +1,37 @@
+[
+    {
+      "name": "TypeCheck",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t TypeCheck",
+      "needs": ["logic-and-comparisons.vcl"]
+    },
+    {
+      "name": "LossFunction",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction -o logic-and-comparisons.loss.json",
+      "needs": ["logic-and-comparisons.vcl"],
+      "produces": ["logic-and-comparisons.loss.json"]
+    },
+    {
+      "name": "LossFunction-Godel",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Godel -o logic-and-comparisons-Godel.loss.json",
+      "needs": ["logic-and-comparisons.vcl"],
+      "produces": ["logic-and-comparisons-Godel.loss.json"]
+    },
+    {
+      "name": "LossFunction-Lukasiewicz",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Lukasiewicz -o logic-and-comparisons-Lukasiewicz.loss.json",
+      "needs": ["logic-and-comparisons.vcl"],
+      "produces": ["logic-and-comparisons-Lukasiewicz.loss.json"]
+    },
+    {
+      "name": "LossFunction-Yager",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Yager -o logic-and-comparisons-Yager.loss.json",
+      "needs": ["logic-and-comparisons.vcl"],
+      "produces": ["logic-and-comparisons-Yager.loss.json"]
+    },
+    {
+      "name": "LossFunction-Product",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Product -o logic-and-comparisons-Product.loss.json",
+      "needs": ["logic-and-comparisons.vcl"],
+      "produces": ["logic-and-comparisons-Product.loss.json"]
+    }
+  ]
