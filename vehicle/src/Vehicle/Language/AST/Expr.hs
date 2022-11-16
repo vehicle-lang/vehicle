@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Vehicle.Language.AST.Core where
+module Vehicle.Language.AST.Expr where
 
 import Control.DeepSeq (NFData)
 import Data.Functor.Foldable.TH (makeBaseFunctor)

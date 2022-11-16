@@ -30,7 +30,7 @@ import Data.IntMap.Lazy qualified as IM
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
 
-import Vehicle.Language.AST.Core
+import Vehicle.Language.AST.Expr
 import Vehicle.Language.AST.Provenance
 import Vehicle.Prelude
 
