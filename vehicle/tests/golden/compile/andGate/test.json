@@ -21,29 +21,5 @@
    "run": "vehicle compile -s andGate.vcl -t LossFunction -o andGate.loss.json",
    "needs": ["andGate.vcl"],
    "produces": ["andGate.loss.json"]
- },
- {
-   "name": "LossFunction-Godel",
-   "run": "vehicle compile -s andGate.vcl -t LossFunction-Godel -o andGate-Godel.loss.json",
-   "needs": ["andGate.vcl"],
-   "produces": ["andGate-Godel.loss.json"]
- },
- {
-   "name": "LossFunction-Lukasiewicz",
-   "run": "vehicle compile -s andGate.vcl -t LossFunction-Lukasiewicz -o andGate-Lukasiewicz.loss.json",
-   "needs": ["andGate.vcl"],
-   "produces": ["andGate-Lukasiewicz.loss.json"]
- },
- {
-   "name": "LossFunction-Product",
-   "run": "vehicle compile -s andGate.vcl -t LossFunction-Product -o andGate-Product.loss.json",
-   "needs": ["andGate.vcl"],
-   "produces": ["andGate-Product.loss.json"]
- },
- {
-   "name": "LossFunction-Yager",
-   "run": "vehicle compile -s andGate.vcl -t LossFunction-Yager -o andGate-Yager.loss.json",
-   "needs": ["andGate.vcl"],
-   "produces": ["andGate-Yager.loss.json"]
  }
 ]

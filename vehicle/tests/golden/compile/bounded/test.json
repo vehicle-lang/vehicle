@@ -9,29 +9,5 @@
     "run": "vehicle compile -s bounded.vcl -t LossFunction -o bounded.loss.json",
     "needs": ["bounded.vcl"],
     "produces": ["bounded.loss.json"]
-  },
-  {
-    "name": "LossFunction-Godel",
-    "run": "vehicle compile -s bounded.vcl -t LossFunction-Godel -o bounded-Godel.loss.json",
-    "needs": ["bounded.vcl"],
-    "produces": ["bounded-Godel.loss.json"]
-  },
-  {
-    "name": "LossFunction-Lukasiewicz",
-    "run": "vehicle compile -s bounded.vcl -t LossFunction-Lukasiewicz -o bounded-Lukasiewicz.loss.json",
-    "needs": ["bounded.vcl"],
-    "produces": ["bounded-Lukasiewicz.loss.json"]
-  },
-  {
-    "name": "LossFunction-Product",
-    "run": "vehicle compile -s bounded.vcl -t LossFunction-Product -o bounded-Product.loss.json",
-    "needs": ["bounded.vcl"],
-    "produces": ["bounded-Product.loss.json"]
-  },
-  {
-    "name": "LossFunction-Yager",
-    "run": "vehicle compile -s bounded.vcl -t LossFunction-Yager -o bounded-Yager.loss.json",
-    "needs": ["bounded.vcl"],
-    "produces": ["bounded-Yager.loss.json"]
   }
 ]

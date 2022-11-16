@@ -21,29 +21,5 @@
     "run": "vehicle compile -s windController.vcl -t LossFunction -o windController.loss.json",
     "needs": ["windController.vcl"],
     "produces": ["windController.loss.json"]
-  },
-  {
-    "name": "LossFunction-Godel",
-    "run": "vehicle compile -s windController.vcl -t LossFunction-Godel -o windController-Godel.loss.json",
-    "needs": ["windController.vcl"],
-    "produces": ["windController-Godel.loss.json"]
-  },
-  {
-    "name": "LossFunction-Lukasiewicz",
-    "run": "vehicle compile -s windController.vcl -t LossFunction-Lukasiewicz -o windController-Lukasiewicz.loss.json",
-    "needs": ["windController.vcl"],
-    "produces": ["windController-Lukasiewicz.loss.json"]
-  },
-  {
-    "name": "LossFunction-Product",
-    "run": "vehicle compile -s windController.vcl -t LossFunction-Product -o windController-Product.loss.json",
-    "needs": ["windController.vcl"],
-    "produces": ["windController-Product.loss.json"]
-  },
-  {
-    "name": "LossFunction-Yager",
-    "run": "vehicle compile -s windController.vcl -t LossFunction-Yager -o windController-Yager.loss.json",
-    "needs": ["windController.vcl"],
-    "produces": ["windController-Yager.loss.json"]
   }
 ]

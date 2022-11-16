@@ -15,35 +15,5 @@
     "run": "vehicle compile -s increasing.vcl -t Agda -o increasing.agda",
     "needs": ["increasing.vcl"],
     "produces": ["increasing.agda"]
-  },
-  {
-    "name": "LossFunction",
-    "run": "vehicle compile -s increasing.vcl -t LossFunction -o increasing.loss.json",
-    "needs": ["increasing.vcl"],
-    "produces": ["increasing.loss.json"]
-  },
-  {
-    "name": "LossFunction-Godel",
-    "run": "vehicle compile -s increasing.vcl -t LossFunction-Godel -o increasing-Godel.loss.json",
-    "needs": ["increasing.vcl"],
-    "produces": ["increasing-Godel.loss.json"]
-  },
-  {
-    "name": "LossFunction-Lukasiewicz",
-    "run": "vehicle compile -s increasing.vcl -t LossFunction-Lukasiewicz -o increasing-Lukasiewicz.loss.json",
-    "needs": ["increasing.vcl"],
-    "produces": ["increasing-Lukasiewicz.loss.json"]
-  },
-  {
-    "name": "LossFunction-Product",
-    "run": "vehicle compile -s increasing.vcl -t LossFunction-Product -o increasing-Product.loss.json",
-    "needs": ["increasing.vcl"],
-    "produces": ["increasing-Product.loss.json"]
-  },
-  {
-    "name": "LossFunction-Yager",
-    "run": "vehicle compile -s increasing.vcl -t LossFunction-Yager -o increasing-Yager.loss.json",
-    "needs": ["increasing.vcl"],
-    "produces": ["increasing-Yager.loss.json"]
   }
 ]

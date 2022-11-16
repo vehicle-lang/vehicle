@@ -21,29 +21,5 @@
     "run": "vehicle compile -s simple-quantifier.vcl -t LossFunction -o simple-quantifier.loss.json",
     "needs": ["simple-quantifier.vcl"],
     "produces": ["simple-quantifier.loss.json"]
-  },
-  {
-    "name": "LossFunction-Godel",
-    "run": "vehicle compile -s simple-quantifier.vcl -t LossFunction-Godel -o simple-quantifier-Godel.loss.json",
-    "needs": ["simple-quantifier.vcl"],
-    "produces": ["simple-quantifier-Godel.loss.json"]
-  },
-  {
-    "name": "LossFunction-Lukasiewicz",
-    "run": "vehicle compile -s simple-quantifier.vcl -t LossFunction-Lukasiewicz -o simple-quantifier-Lukasiewicz.loss.json",
-    "needs": ["simple-quantifier.vcl"],
-    "produces": ["simple-quantifier-Lukasiewicz.loss.json"]
-  },
-  {
-    "name": "LossFunction-Product",
-    "run": "vehicle compile -s simple-quantifier.vcl -t LossFunction-Product -o simple-quantifier-Product.loss.json",
-    "needs": ["simple-quantifier.vcl"],
-    "produces": ["simple-quantifier-Product.loss.json"]
-  },
-  {
-    "name": "LossFunction-Yager",
-    "run": "vehicle compile -s simple-quantifier.vcl -t LossFunction-Yager -o simple-quantifier-Yager.loss.json",
-    "needs": ["simple-quantifier.vcl"],
-    "produces": ["simple-quantifier-Yager.loss.json"]
   }
 ]
