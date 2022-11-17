@@ -45,4 +45,3 @@ jobs:
         run: tox --skip-missing-interpreters
         shell: sh
         working-directory: vehicle-python
-
