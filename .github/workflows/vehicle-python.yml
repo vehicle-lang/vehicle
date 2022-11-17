@@ -40,9 +40,9 @@ jobs:
           python -m pip install -r requirements-ci.txt
         shell: sh
         working-directory: vehicle-python
-        
+
       - name: Test
         run: tox --skip-missing-interpreters
         shell: sh
         working-directory: vehicle-python
-        
+
