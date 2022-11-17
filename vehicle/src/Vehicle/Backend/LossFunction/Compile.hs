@@ -1,6 +1,6 @@
 module Vehicle.Backend.LossFunction.Compile
   ( LDecl
-  ,DifferentiableLogic
+  , DifferentiableLogic
   , compile
   ) where
 
@@ -89,8 +89,7 @@ compile d prog propertyCtx networkCtx = do
   runReaderT (compileProg (chooseTranslation d) normalisedProg) (propertyCtx, networkCtx)
 
 chooseTranslation :: DifferentiableLogic -> DifferentialLogicImplementation
-chooseTranslation =
-  \case
+chooseTranslation = \case
     DL2 -> dl2Translation
     Godel -> godelTranslation
     Lukasiewicz -> lukasiewiczTranslation
@@ -131,12 +130,13 @@ compileArg t arg = compileExpr t (V.argExpr arg)
 -- |helper function for compiling Literals
 compileLiteral :: DifferentialLogicImplementation -> V.Literal -> Double
 compileLiteral t l = case l of
-  V.LUnit{}    -> developerError "Loss Function should not encounter LUnit"
-  V.LBool    e -> compileBool t e
-  V.LIndex _ e -> fromIntegral e
-  V.LNat     e -> fromIntegral e
-  V.LInt     e -> fromIntegral e
-  V.LRat     e -> fromRational e
+  V.LUnit{}        -> developerError "Loss Function should not encounter LUnit"
+  V.LBool    True  -> compileTrue t
+  V.LBool    False -> compileFalse t
+  V.LIndex _ e     -> fromIntegral e
+  V.LNat     e     -> fromIntegral e
+  V.LInt     e     -> fromIntegral e
+  V.LRat     e     -> fromRational e
 
 -- |helps compile a name from DBBinding, even if there is no name given
 compileDBBinding :: Maybe Name -> Name
@@ -151,7 +151,7 @@ compileExpr t e = showExit $ do
     V.NotExpr     _ [e1]     -> compileNot t <$> compileExpr t (lowerNot (argExpr e1))
     V.AndExpr     _ [e1, e2] -> compileAnd t <$> compileArg t e1 <*> compileArg t e2
     V.OrExpr      _ [e1, e2] -> compileOr t <$> compileArg t e1 <*> compileArg t e2
-    V.ImpliesExpr _ [e1, e2] -> compileImplication t <$> (Negation <$> compileArg t e1) <*> compileArg t e2
+    V.ImpliesExpr _ [e1, e2] -> compileImplies t <$> (Negation <$> compileArg t e1) <*> compileArg t e2
 
     --arithmetic operations
     V.AddExpr   _ _ [e1, e2] -> Addition <$> compileArg t e1 <*> compileArg t e2
@@ -176,8 +176,8 @@ compileExpr t e = showExit $ do
     V.App _ (V.Var _ (V.Free ident)) p -> NetworkApplication (V.nameOf ident) <$> traverse (compileArg t) p
     V.Var _ (V.Bound var)              -> return (Variable var)
     V.AtExpr _ _ _ [xs, i]             -> At <$> compileArg t xs <*> compileArg t i
-    V.Let _ x name expression          -> Let (compileDBBinding (V.binderRepresentation name)) <$> compileExpr t x <*> compileExpr t expression
-    V.Lam _ name x                     -> Lambda (compileDBBinding (V.binderRepresentation name)) <$> compileExpr t x
+    V.Let _ x binder expression          -> Let (compileDBBinding (V.binderRepresentation binder)) <$> compileExpr t x <*> compileExpr t expression
+    V.Lam _ binder x                     -> Lambda (compileDBBinding (V.binderRepresentation binder)) <$> compileExpr t x
 
     V.QuantifierTCExpr _ q binder body         -> do
       body' <- compileExpr t body
@@ -241,19 +241,20 @@ normBuiltin b = case b of
   _                  -> False
 
 data DifferentialLogicImplementation = DifferentialLogicImplementation
-    { compileAnd          :: LExpr -> LExpr -> LExpr
-    , compileOr           :: LExpr -> LExpr -> LExpr
-    , compileNot          :: LExpr -> LExpr
-    , compileImplication  :: LExpr -> LExpr -> LExpr
+  { compileAnd          :: LExpr -> LExpr -> LExpr
+  , compileOr           :: LExpr -> LExpr -> LExpr
+  , compileNot          :: LExpr -> LExpr
+  , compileImplies  :: LExpr -> LExpr -> LExpr
 
-    , compileLe           :: LExpr -> LExpr -> LExpr
-    , compileLt           :: LExpr -> LExpr -> LExpr
-    , compileGe           :: LExpr -> LExpr -> LExpr
-    , compileGt           :: LExpr -> LExpr -> LExpr
-    , compileEq           :: LExpr -> LExpr -> LExpr
-    , compileNeq          :: LExpr -> LExpr -> LExpr
+  , compileLe           :: LExpr -> LExpr -> LExpr
+  , compileLt           :: LExpr -> LExpr -> LExpr
+  , compileGe           :: LExpr -> LExpr -> LExpr
+  , compileGt           :: LExpr -> LExpr -> LExpr
+  , compileEq           :: LExpr -> LExpr -> LExpr
+  , compileNeq          :: LExpr -> LExpr -> LExpr
 
-    , compileBool         :: Bool -> Double
+  , compileTrue         :: Double
+  , compileFalse        :: Double
     }
 
 
@@ -276,7 +277,7 @@ dl2Translation = DifferentialLogicImplementation
   { compileAnd = Addition
   , compileOr  = Multiplication
   , compileNot = id --this should be normalised out and pushed to the innermost level of comparisons by now
-  , compileImplication = \arg1 arg2 -> Max (Negation arg1) arg2
+  , compileImplies = \arg1 arg2 -> Max (Negation arg1) arg2
 
   , compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2)
   , compileLt = \arg1 arg2 -> Addition (Max (Constant 0) (Subtraction arg1 arg2))  (IndicatorFunction  arg1 arg2)
@@ -285,9 +286,8 @@ dl2Translation = DifferentialLogicImplementation
   , compileNeq = IndicatorFunction
   , compileEq = \arg1 arg2 -> Addition (Max (Constant 0) (Subtraction arg1 arg2)) (Max (Constant 0) (Subtraction arg1 arg2))
 
-  , compileBool = \case
-                      True -> 0
-                      False -> 1
+  , compileTrue = 0
+  , compileFalse = 1
   }
 
 godelTranslation :: DifferentialLogicImplementation
@@ -295,7 +295,7 @@ godelTranslation = DifferentialLogicImplementation
   { compileAnd = Min
   , compileOr  = Max
   , compileNot = \arg -> Subtraction (Constant 1) arg
-  , compileImplication = \arg1 arg2 -> Max (Negation arg1) arg2
+  , compileImplies = \arg1 arg2 -> Max (Negation arg1) arg2
 
   , compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))
   , compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)))
@@ -304,9 +304,8 @@ godelTranslation = DifferentialLogicImplementation
   , compileNeq = IndicatorFunction
   , compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2)
 
-  , compileBool = \case
-                    True -> 1
-                    False -> 0
+  , compileTrue = 1
+  , compileFalse = 0
    }
 
 lukasiewiczTranslation :: DifferentialLogicImplementation
@@ -314,7 +313,7 @@ lukasiewiczTranslation = DifferentialLogicImplementation
   { compileAnd = \arg1 arg2 -> Max (Subtraction (Addition arg1 arg2) (Constant 1)) arg2
   , compileOr  = \arg1 arg2 -> Min (Addition arg1 arg2) (Constant 1)
   , compileNot = \arg -> Subtraction (Constant 1) arg
-  , compileImplication = \arg1 arg2 -> Min (Constant 1) (Addition (Subtraction (Constant 1) arg1) arg2)
+  , compileImplies = \arg1 arg2 -> Min (Constant 1) (Addition (Subtraction (Constant 1) arg1) arg2)
 
 
   , compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))
@@ -324,9 +323,8 @@ lukasiewiczTranslation = DifferentialLogicImplementation
   , compileNeq = IndicatorFunction
   , compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2)
 
-  , compileBool = \case
-                    True -> 1
-                    False -> 0
+  , compileTrue = 1
+  , compileFalse = 0
    }
 
 productTranslation :: DifferentialLogicImplementation
@@ -334,7 +332,7 @@ productTranslation = DifferentialLogicImplementation
   { compileAnd = Multiplication
   , compileOr  = \arg1 arg2 -> Subtraction (Addition arg1 arg2) (Multiplication arg1 arg2)
   , compileNot = \arg -> Subtraction (Constant 1) arg
-  , compileImplication = \arg1 arg2 -> Addition (Subtraction (Constant 1) arg1) (Multiplication arg1 arg2)
+  , compileImplies = \arg1 arg2 -> Addition (Subtraction (Constant 1) arg1) (Multiplication arg1 arg2)
 
   , compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))
   , compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)))
@@ -343,9 +341,8 @@ productTranslation = DifferentialLogicImplementation
   , compileNeq = IndicatorFunction
   , compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2)
 
-  , compileBool = \case
-                      True -> 1
-                      False -> 0
+  , compileTrue = 1
+  , compileFalse = 0
    }
 
 --sets parameter p for the Yager DL (by default set to 1)
@@ -371,7 +368,7 @@ parameterisedYagerTranslation p = DifferentialLogicImplementation
                                      (Division (Constant 1) (Constant (fromRational p)))
                                     )
                                     (Constant 1)
-  , compileImplication = \arg1 arg2 -> Min
+  , compileImplies = \arg1 arg2 -> Min
                                   (Power
                                      (Addition (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
                                      (Division (Constant 1) (Constant (fromRational p)))
@@ -386,9 +383,8 @@ parameterisedYagerTranslation p = DifferentialLogicImplementation
   , compileNeq = IndicatorFunction
   , compileEq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2)
 
-  , compileBool = \case
-                      True -> 1
-                      False -> 0
+  , compileTrue = 1
+  , compileFalse = 0
    }
 
 -----------------------------------------------------------------------
