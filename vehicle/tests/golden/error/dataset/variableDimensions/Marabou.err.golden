@@ -1,4 +1,4 @@
-Error at Line 5, Columns 1-16: The type of parameter 'trainingDataset':
+Error at Line 5, Columns 1-16: The type of @parameter 'trainingDataset':
   Tensor Nat ((if f [0] ! 0 > 0 then 2 else 3) :: nil)
 which reduces to:
   Vector Nat (if f [0.0] ! 0 > 0.0 then 2 else 3)

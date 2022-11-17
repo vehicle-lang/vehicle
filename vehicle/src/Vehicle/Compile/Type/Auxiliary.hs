@@ -10,8 +10,8 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Normalise.NormExpr
-import Vehicle.Compile.Type.MetaMap (MetaMap (..))
-import Vehicle.Compile.Type.MetaMap qualified as MetaMap
+import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
+import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad
 import Vehicle.Language.Print (prettyVerbose)
 

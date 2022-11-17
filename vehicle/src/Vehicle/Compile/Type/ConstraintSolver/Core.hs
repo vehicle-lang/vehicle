@@ -12,8 +12,7 @@ import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.Meta
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Normalise.NormExpr (NormExpr(..), pattern VTensorType, getMeta)
 

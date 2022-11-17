@@ -32,7 +32,7 @@ import Vehicle.Compile.Prelude hiding (MapList)
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.MetaMap (MetaMap (..))
+import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Syntax.External.Abs qualified as BF
 import Vehicle.Syntax.External.Print as External (Print, printTree)
 import Vehicle.Syntax.Internal.Abs qualified as BC
@@ -504,7 +504,7 @@ instance (PrettyUsing rest a, Pretty b) => PrettyUsing rest (Contextualised a b)
   prettyUsing (WithContext a b) = prettyUsing @rest a <> pretty b
 
 instance PrettyUsing rest Constraint => PrettyUsing ('Opaque rest) (Contextualised Constraint ConstraintContext) where
-  prettyUsing (WithContext c ctx) = prettyUsing @rest c <> pretty ctx
+  prettyUsing (WithContext c ctx) = prettyUsing @rest c <+> parens (pretty ctx)
 
 instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (MetaMap a) where
   prettyUsing (MetaMap m) = prettyMapEntries entries

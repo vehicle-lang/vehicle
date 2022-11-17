@@ -19,7 +19,7 @@ import Data.Text.IO qualified as Text
 import System.Directory (copyFile, doesDirectoryExist, doesFileExist,
                          listDirectory)
 import System.FilePath (makeRelative, takeBaseName, takeDirectory, takeFileName,
-                        (</>))
+                        (</>), takeExtension)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName, TestTree, testGroup)
@@ -114,7 +114,13 @@ getTestOutputFiles :: Set FilePath -> FilePath -> IO [(FilePath, Text)]
 getTestOutputFiles ignoredFiles tempDirectory = do
   absoluteFilePaths <- listFilesRecursive tempDirectory
   let filePaths = fmap (makeRelative tempDirectory) absoluteFilePaths
-  let outputFilePaths = filter (`Set.notMember` ignoredFiles) filePaths
+  let outputFilePaths = filter (isOutputFile ignoredFiles) filePaths
   forM outputFilePaths $ \filePath -> do
     fileContents <- Text.readFile $ tempDirectory </> filePath
     return (filePath, fileContents)
+
+isOutputFile :: Set FilePath -> FilePath -> Bool
+isOutputFile inputFiles file =
+  file `Set.notMember` inputFiles &&
+  -- Don't include profiling files
+  takeExtension file /= ".prof"

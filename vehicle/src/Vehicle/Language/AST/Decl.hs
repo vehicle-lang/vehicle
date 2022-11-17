@@ -7,6 +7,8 @@ import Vehicle.Language.AST.Binder (HasType (..))
 import Vehicle.Language.AST.Name (HasIdentifier (..), Identifier)
 import Vehicle.Language.AST.Provenance
 import Vehicle.Resource (Resource)
+import Data.Text (Text)
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -56,3 +58,25 @@ instance HasType (GenericDecl expr) expr where
     DefResource _ _ _ t -> t
     DefFunction _ _ t _ -> t
     DefPostulate _ _ t  -> t
+
+traverseDeclType :: Monad m => (expr -> m expr) -> GenericDecl expr -> m (GenericDecl expr)
+traverseDeclType f = \case
+  DefResource p r n t -> DefResource p r n <$> f t
+  DefFunction p n t e -> DefFunction p n <$> f t <*> pure e
+  DefPostulate p n t  -> DefPostulate p n <$> f t
+
+
+--------------------------------------------------------------------------------
+-- Annotations options
+
+pattern InferableOption :: Text
+pattern InferableOption = "infer"
+
+data Annotation
+  = PropertyAnnotation
+  | ResourceAnnotation Resource
+
+instance Pretty Annotation where
+  pretty annotation = "@" <> case annotation of
+    PropertyAnnotation -> "property"
+    ResourceAnnotation resource -> pretty resource

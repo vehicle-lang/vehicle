@@ -33,7 +33,7 @@ solveTypeClassConstraint c@(WithContext (Has m tc args) ctx) = do
     Left  metas                      -> return $ Stuck metas
     Right (newConstraints, solution) -> do
       solution1 <- quote solution
-      metaSolved m solution1 (length (boundContext ctx))
+      solveMeta m solution1 (length (boundContext ctx))
       return $ Progress newConstraints
 
 --------------------------------------------------------------------------------

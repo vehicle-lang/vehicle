@@ -1,6 +1,5 @@
 module Vehicle.Language.AST
   ( module X
-  , pattern InferableOption
   ) where
 
 import Vehicle.Language.AST.Arg as X
@@ -17,11 +16,3 @@ import Vehicle.Language.AST.Prog as X
 import Vehicle.Language.AST.Provenance as X
 import Vehicle.Language.AST.Relevance as X
 import Vehicle.Language.AST.Visibility as X
-
-import Data.Text
-
---------------------------------------------------------------------------------
--- Resource options
-
-pattern InferableOption :: Text
-pattern InferableOption = "infer"

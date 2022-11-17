@@ -17,8 +17,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.ConstraintSolver.Core (unify, unify, blockOnReductionBlockingMetasOrThrowError)
 import Vehicle.Compile.Type.Meta
-import Vehicle.Compile.Type.MetaMap qualified as MetaMap (member, toList)
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet (singleton)
+import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (member, toList)
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Compile.Normalise.NormExpr
@@ -86,8 +86,8 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
     ---------------------
 
     VMeta _ i args1 :~: VMeta _ j args2 -> do
-      deps1 <- getNormMetaDependencies args1
-      deps2 <- getNormMetaDependencies args2
+      let deps1 = getNormMetaDependencies args1
+      let deps2 = getNormMetaDependencies args2
       -- If the meta-variables are equal then simply discard the constraint
       -- as it doesn't tell us anything.
       if i == j then
@@ -100,21 +100,25 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
             "Found the same meta-variable" <+> pretty i <+> "with different dependencies:" <+>
             prettyVerbose deps1 <+> prettyVerbose deps2
 
-      -- Finally if the meta-variables are different then we have much more
+      -- If the meta-variables are different then we have more
       -- flexibility as to how the arguments can relate to each other. In
       -- particular they can be re-arranged, and therefore we calculate the
-      -- non-positional intersection of their arguments. Then proceed as above
-      -- for each of the meta-variables in turn.
+      -- non-positional intersection of their arguments.
       else do
-        MetaInfo meta1Origin meta1Type _ <- getMetaInfo i
-        MetaInfo meta2Origin meta2Type _ <- getMetaInfo j
-        let jointContext = deps1 `intersect` deps2
-        meta <- createMetaWithRestrictedDependencies (meta1Origin <> meta2Origin) meta1Type jointContext
-
-        metaSolved i meta ctxSize
-        metaSolved j meta ctxSize
-
+        meta1Type <- getMetaType i
+        meta2Type <- getMetaType j
         typeEq <- unify ctx <$> whnfNBE ctxSize meta1Type <*> whnfNBE ctxSize meta2Type
+
+        meta1Origin <- getMetaProvenance i
+        meta2Origin <- getMetaProvenance j
+        let newOrigin = meta1Origin <> meta2Origin
+
+        let jointContext = deps1 `intersect` deps2
+
+        newMeta <- createMetaWithRestrictedDependencies newOrigin meta1Type jointContext
+
+        solveMeta i newMeta ctxSize
+        solveMeta j newMeta ctxSize
 
         return $ Progress [typeEq]
 
@@ -127,7 +131,7 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
     -- ==> ?Y := \x. \y. \z. ?X e1 e2 e3
 
     VMeta _ i args :~: _ -> do
-      deps <- getNormMetaDependencies args
+      let deps = getNormMetaDependencies args
 
       -- Check that 'args' is a pattern and try to calculate a substitution
       -- that renames the variables in 'e2' to ones available to meta `i`
@@ -150,21 +154,22 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
 
           -- Restrict any arguments to each sub-meta on the RHS to those of i.
           newMetasSolved <- or <$> for (MetaMap.toList metasInE2) (\(j, jDeps) -> do
-            MetaInfo jOrigin jType _ <- getMetaInfo j
+            jOrigin <- getMetaProvenance j
+            jType <- getMetaType j
 
             let sharedDependencies = deps `intersect` jDeps
             if sharedDependencies == jDeps
               then return False
               else do
                 meta <- createMetaWithRestrictedDependencies jOrigin jType sharedDependencies
-                metaSolved j meta ctxSize
+                solveMeta j meta ctxSize
                 return True)
 
           finalE2 <- if newMetasSolved then substMetas e2 else return e2
 
           let solution = adjustDBIndices 0 (`IntMap.lookup` argPattern) finalE2
           unnormSolution <- quote solution
-          metaSolved i unnormSolution ctxSize
+          solveMeta i unnormSolution ctxSize
           return $ Progress mempty
 
     _t :~: VMeta{} ->

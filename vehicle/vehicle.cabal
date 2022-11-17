@@ -151,8 +151,10 @@ library
     Vehicle.Compile.Type.Generalise
     Vehicle.Compile.Type.Irrelevance
     Vehicle.Compile.Type.Meta
-    Vehicle.Compile.Type.MetaMap
-    Vehicle.Compile.Type.MetaSet
+    Vehicle.Compile.Type.Meta.Map
+    Vehicle.Compile.Type.Meta.Set
+    Vehicle.Compile.Type.Meta.Substitution
+    Vehicle.Compile.Type.Meta.Variable
     Vehicle.Compile.Type.Monad
     Vehicle.Compile.Type.Monad.Class
     Vehicle.Compile.Type.Monad.Instance

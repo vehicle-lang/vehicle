@@ -120,7 +120,7 @@ data CompileError
   | InferableParameterContradictory      Identifier (DeclProvenance, Resource, Int) (DeclProvenance, Resource, Int)
   | InferableParameterUninferrable       DeclProvenance
 
-  | PropertyTypeUnsupported         DeclProvenance CheckedType
+  | PropertyTypeUnsupported DeclProvenance GluedType
 
   -- Backend errors
   | NoPropertiesFound

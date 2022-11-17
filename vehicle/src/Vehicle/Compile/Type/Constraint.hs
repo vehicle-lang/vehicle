@@ -1,10 +1,28 @@
-module Vehicle.Compile.Type.Constraint where
+module Vehicle.Compile.Type.Constraint
+  ( ConstraintGroup(..)
+  , typeClassGroup
+  , isAuxiliaryTypeClass
+  , ConstraintOrigin(..)
+  , ConstraintContext(..)
+  , UnificationConstraint(..)
+  , TypeClassConstraint(..)
+  , Constraint(..)
+  , getTypeClassConstraint
+  , isAuxiliaryTypeClassConstraint
+  , BlockingStatus
+  , unknownBlockingStatus
+  , blockConstraintOn
+  , isBlocked
+  , constraintIsBlocked
+  , copyContext
+  , ConstraintProgress(..)
+  ) where
 
 import Data.List.NonEmpty (NonEmpty)
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.MetaSet (MetaSet)
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Set (MetaSet)
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext
 import Vehicle.Compile.Normalise.NormExpr
 
@@ -59,9 +77,27 @@ data ConstraintOrigin
   deriving (Show)
 
 --------------------------------------------------------------------------------
--- Constraint contexts
+-- Blocking status
 
-type BlockingMetas = MetaSet
+-- | Denotes whether a constraint is blocked and if so what metas it is blocked
+-- on.
+newtype BlockingStatus = BlockingStatus (Maybe MetaSet)
+  deriving (Show)
+
+instance Pretty BlockingStatus where
+  pretty (BlockingStatus status) = "blockedBy:" <+> maybe "unknown" pretty status
+
+unknownBlockingStatus :: BlockingStatus
+unknownBlockingStatus = BlockingStatus Nothing
+
+isStillBlocked :: MetaSet -> BlockingStatus -> Bool
+isStillBlocked solvedMetas (BlockingStatus status) =
+  -- If unknown then not blocked, otherwise blocked if none of the blocking
+  -- metas are solved.
+  maybe False (MetaSet.disjoint solvedMetas) status
+
+--------------------------------------------------------------------------------
+-- Constraint contexts
 
 data ConstraintContext = ConstraintContext
   { originalProvenance :: Provenance
@@ -70,8 +106,9 @@ data ConstraintContext = ConstraintContext
   -- ^ The origin of the constraint.
   , creationProvenance :: Provenance
   -- ^ Where the constraint was instantiated
-  , blockedBy          :: BlockingMetas
-  -- ^ The set of metas blocking progress on this constraint, if known
+  , blockedBy          :: BlockingStatus
+  -- ^ The set of metas blocking progress on this constraint.
+  -- If |Nothing| then the set is unknown.
   , boundContext       :: TypingBoundCtx
   -- ^ TODO reduce this to just `TypingBoundCtx`
   -- (At the moment the full context is needed for normalisation but should
@@ -80,11 +117,7 @@ data ConstraintContext = ConstraintContext
   } deriving (Show)
 
 instance Pretty ConstraintContext where
-  pretty ctx = do
-    let blockingMetas = blockedBy ctx
-    (if MetaSet.null blockingMetas
-      then ""
-      else "     " <> parens ("blockedBy:" <+> pretty (blockedBy ctx)))
+  pretty ctx = pretty (blockedBy ctx)
     -- <+> "<boundCtx=" <> pretty (length (boundContext ctx)) <> ">"
 
 instance HasProvenance ConstraintContext where
@@ -95,12 +128,13 @@ instance HasBoundCtx ConstraintContext where
 
 blockCtxOn :: MetaSet -> ConstraintContext -> ConstraintContext
 blockCtxOn metas (ConstraintContext originProv originalConstraint creationProv _ ctx group) =
-  ConstraintContext originProv originalConstraint creationProv metas ctx group
+  let status = BlockingStatus (Just metas) in
+  ConstraintContext originProv originalConstraint creationProv status ctx group
 
 -- | Create a new fresh copy of the context for a new constraint
 copyContext :: ConstraintContext -> ConstraintContext
 copyContext (ConstraintContext originProv originalConstraint creationProv _ ctx group) =
-  ConstraintContext originProv originalConstraint creationProv mempty ctx group
+  ConstraintContext originProv originalConstraint creationProv unknownBlockingStatus ctx group
 
 --------------------------------------------------------------------------------
 -- Unification constraints
@@ -164,7 +198,22 @@ blockConstraintOn :: WithContext Constraint
                   -> WithContext Constraint
 blockConstraintOn (WithContext c ctx) metas = WithContext c (blockCtxOn metas ctx)
 
-isUnblockedBy :: MetaSet -> WithContext Constraint -> Bool
-isUnblockedBy solvedMetas c = do
-  let blockingMetas = blockedBy (contextOf c)
-  MetaSet.null blockingMetas || not (MetaSet.disjoint solvedMetas blockingMetas)
+isBlocked :: MetaSet -> ConstraintContext -> Bool
+isBlocked solvedMetas ctx = isStillBlocked solvedMetas (blockedBy ctx)
+
+constraintIsBlocked :: MetaSet -> WithContext Constraint -> Bool
+constraintIsBlocked solvedMetas ctx = isBlocked solvedMetas (contextOf ctx)
+
+--------------------------------------------------------------------------------
+-- Progress in solving meta-variable constraints
+
+data ConstraintProgress
+  = Stuck MetaSet
+  | Progress [WithContext Constraint]
+  deriving (Show)
+
+instance Semigroup ConstraintProgress where
+  Stuck m1     <> Stuck m2     = Stuck (m1 <> m2)
+  Stuck{}      <> x@Progress{} = x
+  x@Progress{} <> Stuck{}      = x
+  Progress r1  <> Progress r2  = Progress (r1 <> r2)
