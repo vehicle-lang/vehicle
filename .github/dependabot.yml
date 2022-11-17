@@ -7,8 +7,14 @@ updates:
     schedule:
       interval: "weekly"
 
-  # Maintain dependencies for npm
+  # Maintain dependencies for Python
   - package-ecosystem: "pip"
     directory: "/docs/source"
+    schedule:
+      interval: "weekly"
+      
+  # Maintain dependencies for Python
+  - package-ecosystem: "pip"
+    directory: "/vehicle-python"
     schedule:
       interval: "weekly"
