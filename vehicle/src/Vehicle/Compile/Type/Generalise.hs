@@ -1,5 +1,5 @@
 module Vehicle.Compile.Type.Generalise
-  ( generaliseOverUnsolvedTypeClassConstraints
+  ( generaliseOverUnsolvedConstraints
   , generaliseOverUnsolvedMetaVariables
   ) where
 
@@ -21,43 +21,50 @@ import Vehicle.Compile.Normalise.Quote (Quote(..))
 -- Finds any unsolved type class constraints that are blocked on
 -- metas that occur in the type of the declaration. It then appends these
 -- constraints as instance arguments to the declaration.
-generaliseOverUnsolvedTypeClassConstraints :: TCM m
-                                           => CheckedDecl
-                                           -> m CheckedDecl
-generaliseOverUnsolvedTypeClassConstraints decl = do
-  unsolvedConstraints <- getUnsolvedConstraints
+generaliseOverUnsolvedConstraints :: TCM m
+                                  => CheckedDecl
+                                  -> m CheckedDecl
+generaliseOverUnsolvedConstraints decl =
+  logCompilerPass MinDetail "generalisation over unsolved type-class constraints" $ do
+    unsolvedConstraints <- getUnsolvedConstraints
+    substUnsolvedConstraints <- traverse substConstraintMetas unsolvedConstraints
 
-  (prependableConstraints, nonPrependableConstraints) <-
-    partitionMaybeM (isPrependable (typeOf decl)) unsolvedConstraints
+    (generalisedDecl, rejectedConstraints) <-
+      foldM (generaliseOverConstraint substUnsolvedConstraints) (decl, []) unsolvedConstraints
+    setConstraints rejectedConstraints
+    return generalisedDecl
 
-  setConstraints nonPrependableConstraints
+generaliseOverConstraint :: TCM m
+                         => [WithContext Constraint]
+                         -> (CheckedDecl, [WithContext Constraint])
+                         -> WithContext Constraint
+                         -> m (CheckedDecl, [WithContext Constraint])
+generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext constraint ctx) = case constraint of
+  UnificationConstraint{} -> do
+    logDebug MaxDetail $ "Found non-prependable unification constraint" <+> prettyVerbose c
+    return (decl, c : rejected)
 
-  if null prependableConstraints
-    then return decl
-    else logCompilerPass MinDetail "generalisation over unsolved type-class constraints" $ do
-      result <- foldM prependConstraint decl prependableConstraints
-      return result
-
-  -- Tests if a constraint is prependable
-isPrependable :: TCM m
-              => CheckedType
-              -> WithContext Constraint
-              -> m (Maybe (WithContext TypeClassConstraint))
-isPrependable declType (WithContext constraint ctx) = case constraint of
-  UnificationConstraint{} -> return Nothing
   TypeClassConstraint tc -> do
     let metaFilter = if isAuxiliaryTypeClassConstraint tc
-        then isAuxiliaryUniverse
-        else isTypeUniverse
+          then isAuxiliaryUniverse
+          else isTypeUniverse
+
     -- Find any unsolved meta variables that are transitively linked
     -- by constraints of the same type.
-    linkedMetas <- getMetasLinkedToMetasIn declType metaFilter
+    linkedMetas <- getMetasLinkedToMetasIn allConstraints metaFilter (typeOf decl)
     -- Only prepend the constraint if all variables in the constraint
     -- are so linked.
-    constraintMetas <- metasIn tc
-    return $ if constraintMetas `MetaSet.isSubsetOf` linkedMetas
-      then Just (WithContext tc ctx)
-      else Nothing
+    substTC <- substMetas tc
+    constraintMetas <- metasIn substTC
+    let prependable = constraintMetas `MetaSet.isSubsetOf` linkedMetas
+
+    if not prependable
+      then do
+        logDebug MaxDetail $ "Found non-prependable type-class constraint" <+> prettyVerbose c
+        return (decl, c : rejected)
+      else do
+        generalisedDecl <- prependConstraint decl (WithContext substTC ctx)
+        return (generalisedDecl, rejected)
 
 prependConstraint :: TCM m
                   => CheckedDecl
