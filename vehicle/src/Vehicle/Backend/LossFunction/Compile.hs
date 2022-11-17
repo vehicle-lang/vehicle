@@ -53,7 +53,7 @@ newtype Domain = Domain ()
 instance FromJSON Domain
 instance ToJSON Domain
 
--- definitoon of the LExpr - all expressions allowed in a loss constraint
+-- definiton of the LExpr - all expressions allowed in a loss constraint
 
 data LExpr
   = Negation LExpr                           -- this is minus, not the logical operation of negation
