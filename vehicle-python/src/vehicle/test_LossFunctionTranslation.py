@@ -6,6 +6,11 @@ from tensorflow import keras
 import tensorflow as tf
 import numpy as np
 
+
+def assert_tensor_equal(t1, t2):
+    return (np.array(t1) & np.array(t2)).all()
+
+
 class TestLossFunctionTranslation(unittest.TestCase):
     def load_json(self, file_name):
         path_to_json = f'./src/python/test_json/{file_name}.json'
@@ -38,6 +43,8 @@ class TestLossFunctionTranslation(unittest.TestCase):
         functionName = 'tensor'
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
+        self.assertEqual(assert_tensor_equal(loss().shape, tf.constant([2, 4, 1, 0]).shape), True)
+        self.assertEqual(assert_tensor_equal(loss(), [5, 2, 16, 7]), True)
         self.assertEqual((np.array(loss().shape) & np.array(tf.constant([2, 4, 1, 0]).shape)).all(), True)
         self.assertEqual((np.array(loss()) & np.array([5, 2, 16, 7])).all(), True)
     
