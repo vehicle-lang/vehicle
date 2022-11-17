@@ -264,9 +264,10 @@ getDefaultCandidates maybeDecl = do
       -- quantified over later.
       typeMetas <- getMetasLinkedToMetasIn constraints isTypeUniverse declType
 
-      unsolvedMetasInTypeDoc <- prettyMetas typeMetas
-      logDebug MaxDetail $
-        "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
+      whenM (loggingLevelAtLeast MaxDetail) $ do
+        unsolvedMetasInTypeDoc <- prettyMetas typeMetas
+        logDebug MaxDetail $
+          "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
 
       flip filterM typeClassConstraints $ \tc -> do
         constraintMetas <- metasIn (objectIn tc)
@@ -323,26 +324,27 @@ checkAllMetasSolved = do
 
 logUnsolvedUnknowns :: TCM m => Maybe CheckedDecl -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
-  unsolvedMetas    <- getUnsolvedMetas
-  unsolvedMetasDoc <- prettyMetas unsolvedMetas
-  logDebug MaxDetail $ "unsolved-metas:" <> line <>
-    indent 2 unsolvedMetasDoc <> line
+  whenM (loggingLevelAtLeast MaxDetail) $ do
+    unsolvedMetas    <- getUnsolvedMetas
+    unsolvedMetasDoc <- prettyMetas unsolvedMetas
+    logDebug MaxDetail $ "unsolved-metas:" <> line <>
+      indent 2 unsolvedMetasDoc <> line
 
-  unsolvedConstraints <- getUnsolvedConstraints
-  substUnsolvedConstraints <- traverse substConstraintMetas unsolvedConstraints
-  case maybeSolvedMetas of
-    Nothing ->
-      logDebug MaxDetail $ "unsolved-constraints:" <> line <>
-        indent 2 (prettyVerbose substUnsolvedConstraints) <> line
-    Just solvedMetas -> do
-      let isUnblocked = not . constraintIsBlocked solvedMetas
-      let (unblockedConstraints, blockedConstraints) = partition isUnblocked substUnsolvedConstraints
-      logDebug MaxDetail $ "unsolved-blocked-constraints:" <> line <>
-        indent 2 (prettyVerbose blockedConstraints) <> line
-      logDebug MaxDetail $ "unsolved-unblocked-constraints:" <> line <>
-        indent 2 (prettyVerbose unblockedConstraints) <> line
+    unsolvedConstraints <- getUnsolvedConstraints
+    substUnsolvedConstraints <- traverse substConstraintMetas unsolvedConstraints
+    case maybeSolvedMetas of
+      Nothing ->
+        logDebug MaxDetail $ "unsolved-constraints:" <> line <>
+          indent 2 (prettyVerbose substUnsolvedConstraints) <> line
+      Just solvedMetas -> do
+        let isUnblocked = not . constraintIsBlocked solvedMetas
+        let (unblockedConstraints, blockedConstraints) = partition isUnblocked substUnsolvedConstraints
+        logDebug MaxDetail $ "unsolved-blocked-constraints:" <> line <>
+          indent 2 (prettyVerbose blockedConstraints) <> line
+        logDebug MaxDetail $ "unsolved-unblocked-constraints:" <> line <>
+          indent 2 (prettyVerbose unblockedConstraints) <> line
 
-  case maybeDecl of
-    Nothing   -> return ()
-    Just decl -> logDebug MaxDetail $ "current-decl:" <> line <>
-      indent 2 (prettyVerbose decl) <> line
+    case maybeDecl of
+      Nothing   -> return ()
+      Just decl -> logDebug MaxDetail $ "current-decl:" <> line <>
+        indent 2 (prettyVerbose decl) <> line
