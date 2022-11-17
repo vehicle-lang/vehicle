@@ -19,25 +19,25 @@ import Vehicle.Prelude
 --------------------------------------------------------------------------------
 -- The different types of resources supported
 
-data ResourceType
+data Resource
   = Network
   | Dataset
   | Parameter
   | InferableParameter
   deriving (Eq, Show, Generic)
 
-instance NFData ResourceType
-instance FromJSON ResourceType
-instance ToJSON ResourceType
+instance NFData Resource
+instance FromJSON Resource
+instance ToJSON Resource
 
-instance Pretty ResourceType where
+instance Pretty Resource where
   pretty = \case
     Network            -> "network"
     Dataset            -> "dataset"
     Parameter          -> "parameter"
     InferableParameter -> "inferable parameter"
 
-supportedFileFormats :: ResourceType -> [String]
+supportedFileFormats :: Resource -> [String]
 supportedFileFormats Network = [".onnx"]
 supportedFileFormats Dataset = [".idx"]
 supportedFileFormats _       = []
@@ -71,7 +71,7 @@ data ResourceSummary = ResourceSummary
   { name     :: Text
   , value    :: String
   , fileHash :: Int
-  , resType  :: ResourceType
+  , resType  :: Resource
   } deriving (Generic)
 
 instance FromJSON ResourceSummary
@@ -80,7 +80,7 @@ instance ToJSON ResourceSummary
 --------------------------------------------------------------------------------
 -- Hashing
 
-hashResource :: MonadIO m => ResourceType -> String -> m Int
+hashResource :: MonadIO m => Resource -> String -> m Int
 hashResource Network           filepath = liftIO $ hash <$> ByteString.readFile filepath
 hashResource Dataset           filepath = liftIO $ hash <$> ByteString.readFile filepath
 hashResource Parameter         value    = return $ hash value
@@ -95,7 +95,7 @@ hashResources Resources{..} = do
   return $ networkSummaries <> datasetSummaries <> parameterSummaries
   where
   hashResourceType :: MonadIO m
-                   => ResourceType
+                   => Resource
                    -> Map Text String
                    -> m [ResourceSummary]
   hashResourceType resourceType values =
@@ -124,7 +124,7 @@ reparseResources (x : xs) = r <> reparseResources xs
 -- Others
 
 warnIfUnusedResources :: MonadLogger m
-                      => ResourceType
+                      => Resource
                       -> Set Name
                       -> Set Name
                       -> m ()

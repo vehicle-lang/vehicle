@@ -5,16 +5,23 @@ module Vehicle.Compile.Type.VariableContext where
 import Data.Map qualified as Map
 
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Normalise.NormExpr
 
 --------------------------------------------------------------------------------
 -- Declaration context
 
-type TypingDeclCtxEntry = (CheckedType, Maybe CheckedExpr)
+type TypingDeclCtxEntry = (CheckedType, Maybe GluedExpr)
 
 type TypingDeclCtx = DeclCtx TypingDeclCtxEntry
 
-addToDeclCtx :: CheckedDecl -> TypingDeclCtx -> TypingDeclCtx
-addToDeclCtx decl = Map.insert (identifierOf decl) (typeOf decl, bodyOf decl)
+addToDeclCtx :: GluedDecl -> TypingDeclCtx -> TypingDeclCtx
+addToDeclCtx decl = Map.insert (identifierOf decl) (unnormalised (typeOf decl), bodyOf decl)
+
+toNormalisationDeclContext :: TypingDeclCtx -> DeclCtx CheckedExpr
+toNormalisationDeclContext = Map.mapMaybe (fmap unnormalised . snd)
+
+toNBEDeclContext :: TypingDeclCtx -> DeclCtx NormExpr
+toNBEDeclContext = Map.mapMaybe (fmap normalised . snd)
 
 --------------------------------------------------------------------------------
 -- Bound variable context

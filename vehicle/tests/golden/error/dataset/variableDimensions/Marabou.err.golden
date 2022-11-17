@@ -1,2 +1,8 @@
-Error at Line 5, Columns 1-16: A tensor with variable dimension 'if f [0.0] ! 0 > 0.0 then 2 else 3' is not a supported type for the dataset 'trainingDataset'.
+Error at Line 5, Columns 1-16: The type of parameter 'trainingDataset':
+  Tensor Nat ((if f [0] ! 0 > 0 then 2 else 3) :: nil)
+which reduces to:
+  Vector Nat (if f [0.0] ! 0 > 0.0 then 2 else 3)
+is not supported as the dimension size
+  if f [0.0] ! 0 > 0.0 then 2 else 3
+is not a constant.
 Fix: make sure the dimensions of the dataset are all constants.

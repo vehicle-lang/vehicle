@@ -30,3 +30,10 @@ forallInLet = forall x in [1] . let y = x in y == 1
 @property
 letForallIn : Bool
 letForallIn = let y = 1 in forall x in [1] . y == x
+
+falsey : Rat -> Bool
+falsey x = x <= 0.5
+
+@property
+correctOutput : Bool
+correctOutput = let y = 0 in falsey y

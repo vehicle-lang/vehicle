@@ -36,6 +36,7 @@ import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
 import Vehicle.Verify.Verifier.Interface
+import Vehicle.Compile.Normalise.NormExpr
 
 data CompileOptions = CompileOptions
   { target                :: Backend
@@ -110,7 +111,7 @@ compileToAgda :: VehicleIOSettings
 compileToAgda loggingOptions agdaOptions spec properties _resources =
   fromLoggedEitherIO loggingOptions $ do
     (prog, propertyCtx, _) <- typeCheckProg spec properties
-    compileProgToAgda prog propertyCtx agdaOptions
+    compileProgToAgda (fmap unnormalised prog) propertyCtx agdaOptions
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply multiple compiler passes
@@ -135,7 +136,7 @@ parseAndTypeCheckExpr expr = do
 typeCheckProg :: MonadCompile m
               => SpecificationText
               -> DeclarationNames
-              -> m (CheckedProg, PropertyContext, DependencyGraph)
+              -> m (GluedProg, PropertyContext, DependencyGraph)
 typeCheckProg spec declarationsToCompile = do
   bnfcProg <- parseVehicle spec
   (vehicleProg, uncheckedPropertyCtx) <- elaborate bnfcProg

@@ -7,8 +7,8 @@ module Vehicle.Test.Golden
   where
 import Control.Monad (filterM, forM, forM_)
 import Data.Functor ((<&>))
-import Data.HashMap.Strict qualified as HashMap
 import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HashMap
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
@@ -18,7 +18,8 @@ import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
 import System.Directory (copyFile, doesDirectoryExist, doesFileExist,
                          listDirectory)
-import System.FilePath (makeRelative, takeDirectory, takeFileName, (</>), takeBaseName)
+import System.FilePath (makeRelative, takeBaseName, takeDirectory, takeFileName,
+                        (</>), takeExtension)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName, TestTree, testGroup)
@@ -113,7 +114,13 @@ getTestOutputFiles :: Set FilePath -> FilePath -> IO [(FilePath, Text)]
 getTestOutputFiles ignoredFiles tempDirectory = do
   absoluteFilePaths <- listFilesRecursive tempDirectory
   let filePaths = fmap (makeRelative tempDirectory) absoluteFilePaths
-  let outputFilePaths = filter (`Set.notMember` ignoredFiles) filePaths
+  let outputFilePaths = filter (isOutputFile ignoredFiles) filePaths
   forM outputFilePaths $ \filePath -> do
     fileContents <- Text.readFile $ tempDirectory </> filePath
     return (filePath, fileContents)
+
+isOutputFile :: Set FilePath -> FilePath -> Bool
+isOutputFile inputFiles file =
+  file `Set.notMember` inputFiles &&
+  -- Don't include profiling files
+  takeExtension file /= ".prof"

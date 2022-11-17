@@ -8,13 +8,12 @@ import Control.Monad.Reader (MonadReader (..), runReader)
 import Data.Default (Default (..))
 import Data.IntMap (IntMap)
 import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty (fromList, toList)
+import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.MetaMap
+import Vehicle.Compile.Type.Meta.Map
 
 
 data SimplifyOptions = SimplifyOptions
@@ -128,20 +127,8 @@ instance Simplify Text where
 instance Simplify Int where
   simplifyReader = return
 
-instance Simplify UnificationConstraint where
-  simplifyReader (Unify (e1, e2)) = do
-    e1' <- simplifyReader e1
-    e2' <- simplifyReader e2
-    return $ Unify (e1', e2')
-
-instance Simplify TypeClassConstraint where
-  simplifyReader (Has m tc es) = do
-    es' <- simplifyReaderArgs es
-    return $ Has m tc (NonEmpty.fromList es')
-
-instance Simplify Constraint where
-  simplifyReader (TC ctx c) = TC ctx <$> simplifyReader c
-  simplifyReader (UC ctx c) = UC ctx <$> simplifyReader c
+instance Simplify a => Simplify (Contextualised a b) where
+  simplifyReader (WithContext a ctx) = WithContext <$> simplifyReader a <*> pure ctx
 
 instance Simplify a => Simplify (MetaMap a) where
   simplifyReader (MetaMap m) = MetaMap <$> traverse simplifyReader m

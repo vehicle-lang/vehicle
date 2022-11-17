@@ -19,7 +19,7 @@ import Vehicle.Language.AST.Name (HasName (nameOf))
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Prelude
 import Vehicle.Compile.Queries.DNF
-import Vehicle.Language.AST.Expr (argExpr)
+import Vehicle.Language.AST.Arg (argExpr)
 
 
 
@@ -89,7 +89,7 @@ compile d prog propertyCtx networkCtx = do
   runReaderT (compileProg (chooseTranslation d) normalisedProg) (propertyCtx, networkCtx)
 
 chooseTranslation :: DifferentiableLogic -> DifferentialLogicImplementation
-chooseTranslation = 
+chooseTranslation =
   \case
     DL2 -> dl2Translation
     Godel -> godelTranslation
@@ -265,7 +265,7 @@ data DifferentialLogicImplementation = DifferentialLogicImplementation
 -- Product based
 -- Yager
 
---they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2. 
+--they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2.
 
 -- part of the syntax translation that differ depending on chosen DL are:
     -- logical connectives (not, and, or, implies)

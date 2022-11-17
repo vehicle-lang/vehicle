@@ -3,11 +3,15 @@ module Vehicle.Compile.Type.Irrelevance
   , removeIrrelevantCode
   ) where
 
-import Data.List.NonEmpty qualified as NonEmpty (filter)
+import Data.List.NonEmpty qualified as NonEmpty (toList)
 
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Compile.Normalise.NBE (eval)
+import Vehicle.Compile.Normalise.Quote (extendEnv)
+import Control.Monad.Reader (ReaderT(..))
 
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCode :: (MonadCompile m, RemoveIrrelevantCode a)
@@ -27,10 +31,10 @@ type MonadRemove m =
 class RemoveIrrelevantCode a where
   remove :: MonadRemove m => a -> m a
 
-instance RemoveIrrelevantCode CheckedProg where
-  remove (Main ds) = Main <$> traverse remove ds
+instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericProg expr) where
+  remove= traverse remove
 
-instance RemoveIrrelevantCode CheckedDecl where
+instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericDecl expr) where
   remove = traverse remove
 
 instance RemoveIrrelevantCode CheckedExpr where
@@ -38,8 +42,7 @@ instance RemoveIrrelevantCode CheckedExpr where
     showRemoveEntry expr
     result <- case expr of
       App p fun args -> do
-        let relevantArgs = NonEmpty.filter isRelevant args
-        normAppList p <$> remove fun <*> traverse remove relevantArgs
+        normAppList p <$> remove fun <*> removeArgs (NonEmpty.toList args)
 
       Pi p binder res -> do
         if isIrrelevant binder
@@ -65,11 +68,46 @@ instance RemoveIrrelevantCode CheckedExpr where
     showRemoveExit result
     return result
 
-instance RemoveIrrelevantCode CheckedArg where
+instance RemoveIrrelevantCode NormExpr where
+  remove expr = case expr of
+    VUniverse{} -> return expr
+    VLiteral{}  -> return expr
+
+    VPi p binder res
+        -- Don't need to substitute through here as irrelevent
+        -- bound variables should only be used in irrelevent positions
+        -- which will also be removed.
+      | isIrrelevant binder -> remove res
+      | otherwise           -> VPi p <$> remove binder <*> remove res
+
+    VLam p binder env body
+      -- However, passing in the empty decl context here does feel like a bug...
+      -- But don't have access to it here. Tried adding it to the `Env` type, but then
+      -- every lambda stores an independent copy.
+      | isIrrelevant binder -> runReaderT (eval (extendEnv (VUnitLiteral p) env) body) mempty
+      | otherwise           -> VLam p <$> remove binder <*> remove env <*> remove body
+
+    VLVec    p xs spine -> VLVec p <$> traverse remove xs <*> removeArgs spine
+    VVar     p v  spine -> VVar     p v <$> removeArgs spine
+    VMeta    p m  spine -> VMeta    p m <$> removeArgs spine
+    VBuiltin p b  spine -> VBuiltin p b <$> removeArgs spine
+
+instance RemoveIrrelevantCode GluedExpr where
+  remove (Glued u n) = Glued <$> remove u <*> remove n
+
+instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericArg expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode CheckedBinder where
+instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericBinder binding expr) where
   remove = traverse remove
+
+instance RemoveIrrelevantCode Env where
+  remove = traverse remove
+
+removeArgs :: (MonadRemove m, RemoveIrrelevantCode expr)
+           => [GenericArg expr]
+           -> m [GenericArg expr]
+removeArgs = traverse remove . filter isRelevant
 
 --------------------------------------------------------------------------------
 -- Debug functions

@@ -46,65 +46,64 @@ elabDecls = \case
     return $ d' : ds'
 
 elabDeclGroup :: MonadElab m => NonEmpty B.Decl -> m (V.InputDecl, [B.Decl])
-elabDeclGroup dx = do
-  logDebug MaxDetail (pretty $ show dx); case dx of
-    -- Type definition.
-    B.DefType n bs t :| ds -> do
-      d' <- elabTypeDef n bs t
-      return (d', ds)
+elabDeclGroup dx = case dx of
+  -- Type definition.
+  B.DefType n bs t :| ds -> do
+    d' <- elabTypeDef n bs t
+    return (d', ds)
 
-    -- Function declaration and body.
-    B.DefFunType typeName _ t :| B.DefFunExpr exprName bs e : ds -> do
-      d' <- elabDefFun typeName exprName t bs e
-      return (d', ds)
+  -- Function declaration and body.
+  B.DefFunType typeName _ t :| B.DefFunExpr exprName bs e : ds -> do
+    d' <- elabDefFun typeName exprName t bs e
+    return (d', ds)
 
-    -- Function body without a declaration.
-    B.DefFunExpr n bs e :| ds -> do
-      binders <- traverse elabBinder bs
-      let unknownType = constructUnknownDefType n binders
-      d' <- unfoldDefFun (mkAnn n) <$> elabName n <*> pure unknownType <*> pure binders <*> elabExpr e
-      return (d', ds)
+  -- Function body without a declaration.
+  B.DefFunExpr n bs e :| ds -> do
+    binders <- traverse elabBinder bs
+    let unknownType = constructUnknownDefType n binders
+    d' <- unfoldDefFun (mkAnn n) <$> elabName n <*> pure unknownType <*> pure binders <*> elabExpr e
+    return (d', ds)
 
-    -- ERROR: Function declaration with no body
-    B.DefFunType n _tk _t :| _ ->
-      throwError $ FunctionNotGivenBody (V.tkProvenance n) (tkSymbol n)
+  -- ERROR: Function declaration with no body
+  B.DefFunType n _tk _t :| _ ->
+    throwError $ FunctionNotGivenBody (V.tkProvenance n) (tkSymbol n)
 
-    -- Property declaration.
-    B.DefAnn a@B.Property{} opts :| B.DefFunType typeName _tk t : B.DefFunExpr exprName bs e : ds -> do
-      checkNoAnnotationOptions a opts
-      d' <- elabDefFun typeName exprName t bs e
-      tell (Set.singleton (V.identifierOf d'))
-      return (d', ds)
+  -- Property declaration.
+  B.DefAnn a@B.Property{} opts :| B.DefFunType typeName _tk t : B.DefFunExpr exprName bs e : ds -> do
+    checkNoAnnotationOptions a opts
+    d' <- elabDefFun typeName exprName t bs e
+    tell (Set.singleton (V.identifierOf d'))
+    return (d', ds)
 
-    -- ERROR: Property with no body
-    B.DefAnn B.Property{} _ :| B.DefFunType n _ _ : _ ->
-      throwError $ PropertyNotGivenBody (V.tkProvenance n) (tkSymbol n)
+  -- ERROR: Property with no body
+  B.DefAnn B.Property{} _ :| B.DefFunType n _ _ : _ ->
+    throwError $ PropertyNotGivenBody (V.tkProvenance n) (tkSymbol n)
 
-    -- ERROR: Other annotation with body
-    B.DefAnn a _ :| B.DefFunType typeName _ _ : B.DefFunExpr bodyName _ _ : _
-      | tkSymbol typeName == tkSymbol bodyName ->
-        throwError $ ResourceGivenBody (V.tkProvenance typeName) (annotationSymbol a) (tkSymbol typeName)
+  -- ERROR: Other annotation with body
+  B.DefAnn a _ :| B.DefFunType typeName _ _ : B.DefFunExpr bodyName _ _ : _
+    | tkSymbol typeName == tkSymbol bodyName ->
+      throwError $ ResourceGivenBody (V.tkProvenance typeName) (annotationSymbol a) (tkSymbol typeName)
 
-    --Network declaration.
-    B.DefAnn a@B.Network{} opts :| B.DefFunType n _ t : ds -> do
-      checkNoAnnotationOptions a opts
-      d' <- elabResource n t V.Network
-      return (d', ds)
+  --Network declaration.
+  B.DefAnn a@B.Network{} opts :| B.DefFunType n _ t : ds -> do
+    checkNoAnnotationOptions a opts
+    d' <- elabResource n t V.Network
+    return (d', ds)
 
-    -- Dataset declaration.
-    B.DefAnn a@B.Dataset{} opts :| B.DefFunType n _ t : ds -> do
-      checkNoAnnotationOptions a opts
-      d' <- elabResource n t V.Dataset
-      return (d', ds)
+  -- Dataset declaration.
+  B.DefAnn a@B.Dataset{} opts :| B.DefFunType n _ t : ds -> do
+    checkNoAnnotationOptions a opts
+    d' <- elabResource n t V.Dataset
+    return (d', ds)
 
-    -- Parameter declaration.
-    (B.DefAnn B.Parameter{} opts :| B.DefFunType n _ t : ds) -> do
-      r <- elabParameterOptions opts
-      d' <- elabResource n t r
-      return (d', ds)
+  -- Parameter declaration.
+  (B.DefAnn B.Parameter{} opts :| B.DefFunType n _ t : ds) -> do
+    r <- elabParameterOptions opts
+    d' <- elabResource n t r
+    return (d', ds)
 
-    (B.DefAnn a _ :| _) ->
-      throwError $ AnnotationWithNoDeclaration (annotationProvenance a) (annotationSymbol a)
+  (B.DefAnn a _ :| _) ->
+    throwError $ AnnotationWithNoDeclaration (annotationProvenance a) (annotationSymbol a)
 
 annotationSymbol :: B.DeclAnnName -> Text
 annotationSymbol = \case
@@ -203,7 +202,7 @@ elabArg = \case
   B.ImplicitArg e -> mkArg V.Implicit <$> elabExpr e
   B.InstanceArg e -> mkArg V.Instance <$> elabExpr e
 
-elabResource :: MonadCompile m => B.Name -> B.Expr -> V.ResourceType -> m V.InputDecl
+elabResource :: MonadCompile m => B.Name -> B.Expr -> V.Resource -> m V.InputDecl
 elabResource n t r = V.DefResource (V.tkProvenance n) r <$> elabName n <*> elabExpr t
 
 mkArg :: V.Visibility -> V.InputExpr -> V.InputArg
@@ -249,12 +248,12 @@ elabLiteral = \case
     let fromRat = V.Builtin p (V.TypeClassOp V.FromRatTC)
     return $ app fromRat [V.RatLiteral p r]
 
-elabParameterOptions :: MonadCompile m =>B.DeclAnnOpts -> m V.ResourceType
+elabParameterOptions :: MonadCompile m =>B.DeclAnnOpts -> m V.Resource
 elabParameterOptions = \case
   B.DeclAnnWithoutOpts   -> return V.Parameter
   B.DeclAnnWithOpts opts -> foldM parseOpt V.Parameter opts
   where
-  parseOpt :: MonadCompile m => V.ResourceType -> B.DeclAnnOption -> m V.ResourceType
+  parseOpt :: MonadCompile m => V.Resource -> B.DeclAnnOption -> m V.Resource
   parseOpt _r (B.BooleanOption nameToken valueToken) = do
     let name = tkSymbol nameToken
     let value = tkSymbol valueToken

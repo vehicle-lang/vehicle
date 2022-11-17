@@ -9,16 +9,14 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.VariableContext
 import Vehicle.Language.Print (prettySimple)
+import Vehicle.Compile.Normalise.NormExpr
 
 --------------------------------------------------------------------------------
 -- Default solutions to type-class constraints
 
 -- This is some pretty ugly code. There must be a way of making this process
 -- more elegant....
-
-type Ctx = ConstraintContext
 
 data NumericType
   = NatT
@@ -42,7 +40,7 @@ sameFamily PolarityFamily{}  PolarityFamily{}  = True
 sameFamily LinearityFamily{} LinearityFamily{} = True
 sameFamily _                 _                 = False
 
-data Candidate = Candidate Meta TypeClass CheckedExpr Ctx
+data Candidate = Candidate MetaID TypeClass NormExpr ConstraintContext
 
 instance Pretty Candidate where
   pretty (Candidate m tc _ _) = pretty m <+> "~" <+> pretty tc
@@ -59,8 +57,8 @@ instance Pretty CandidateStatus where
     Invalid -> "incompatible"
 
 generateConstraintUsingDefaults :: TCM m
-                                => [Constraint]
-                                -> m (Maybe Constraint)
+                                => [WithContext TypeClassConstraint]
+                                -> m (Maybe (WithContext Constraint))
 generateConstraintUsingDefaults constraints = do
   strongestConstraint <- findStrongestConstraint constraints
   case strongestConstraint of
@@ -69,30 +67,30 @@ generateConstraintUsingDefaults constraints = do
       return Nothing
     Invalid -> return Nothing
     Valid (Candidate m tc metaExpr ctx) -> do
-      let ann = inserted $ provenanceOf ctx
-      solution <- defaultSolution ann (boundContext ctx) tc
+      let p = inserted $ provenanceOf ctx
+      let ctxSize = length (boundContext ctx)
+      solution <- defaultSolution p ctxSize tc
       logDebug MaxDetail $
         "using default" <+> pretty m <+> "=" <+> prettySimple solution <+>
         "         " <> parens ("from" <+> pretty tc)
-      let newConstraint = UC (copyContext ctx) (Unify (metaExpr, solution))
+      let unificationConstraint = UnificationConstraint (Unify metaExpr solution)
+      let newConstraint = WithContext unificationConstraint (copyContext ctx)
       return $ Just newConstraint
 
 findStrongestConstraint :: MonadCompile m
-                        => [Constraint]
+                        => [WithContext TypeClassConstraint]
                         -> m CandidateStatus
 findStrongestConstraint [] = return None
-findStrongestConstraint (constraint : xs) = do
+findStrongestConstraint (WithContext constraint ctx : xs) = do
   recResult <- findStrongestConstraint xs
-  case constraint of
-    (TC ctx expr) ->
-      logCompilerSection MaxDetail ("considering" <+> squotes (prettySimple constraint)) $ do
-        candidates <- getCandidatesFromConstraint ctx expr
 
-        newStrongest <- foldM strongest recResult candidates
-        logDebug MaxDetail $ indent 2 $ "status:" <+> pretty newStrongest
-        return newStrongest
+  logCompilerSection MaxDetail ("considering" <+> squotes (prettySimple constraint)) $ do
+    candidates <- getCandidatesFromConstraint ctx constraint
 
-    _ -> return recResult
+    newStrongest <- foldM strongest recResult candidates
+    logDebug MaxDetail $ indent 2 $ "status:" <+> pretty newStrongest
+    return newStrongest
+
 
 strongest :: MonadCompile m => CandidateStatus -> Candidate -> m CandidateStatus
 strongest Invalid  _                       = return Invalid
@@ -137,51 +135,51 @@ familyOf = \case
 
 defaultSolution :: TCM m
                 => Provenance
-                -> TypingBoundCtx
+                -> Int
                 -> TypeClass
-                -> m CheckedExpr
-defaultSolution p ctx = \case
-  HasEq{}                 -> return $ NatType p
-  HasOrd{}                -> return $ NatType p
+                -> m NormExpr
+defaultSolution p ctxSize = \case
+  HasEq{}                 -> return $ VNatType p
+  HasOrd{}                -> return $ VNatType p
   HasNot                  -> createDefaultBoolType p
   HasAnd                  -> createDefaultBoolType p
   HasOr                   -> createDefaultBoolType p
   HasImplies              -> createDefaultBoolType p
   HasQuantifier{}         -> createDefaultBoolType p
-  HasAdd                  -> return $ NatType p
-  HasSub                  -> return $ IntType p
-  HasMul                  -> return $ NatType p
+  HasAdd                  -> return $ VNatType p
+  HasSub                  -> return $ VIntType p
+  HasMul                  -> return $ VNatType p
   HasDiv                  -> createDefaultRatType p
-  HasNeg                  -> return $ IntType p
-  HasNatLits n            -> return $ mkIndexType p (n + 1)
+  HasNeg                  -> return $ VIntType p
+  HasNatLits n            -> return $ VIndexType p (VNatLiteral p (n + 1))
   HasRatLits              -> createDefaultRatType p
-  HasVecLits{}            -> createDefaultListType p ctx
-  HasFold                 -> createDefaultListType p ctx
-  HasQuantifierIn{}       -> createDefaultListType p ctx
-  NatInDomainConstraint n -> return $ NatLiteral p (n + 1)
+  HasVecLits{}            -> createDefaultListType p ctxSize
+  HasFold                 -> createDefaultListType p ctxSize
+  HasQuantifierIn{}       -> createDefaultListType p ctxSize
+  NatInDomainConstraint n -> return $ VNatLiteral p (n + 1)
 
   HasIf{}                 -> ifTCError
   LinearityTypeClass{}    -> auxiliaryTCError
   PolarityTypeClass{}     -> auxiliaryTCError
   AlmostEqualConstraint{} -> auxiliaryTCError
 
-createDefaultListType :: TCM m => Provenance -> TypingBoundCtx -> m CheckedType
-createDefaultListType p ctx = do
-  tElem <- freshExprMeta p (TypeUniverse p 0) ctx
-  return $ ListType p tElem
+createDefaultListType :: TCM m => Provenance -> Int -> m NormType
+createDefaultListType p ctxSize = do
+  tElem <- normalised <$> freshExprMeta p (TypeUniverse p 0) ctxSize
+  return $ VListType p tElem
 
-createDefaultBoolType :: TCM m => Provenance -> m CheckedType
+createDefaultBoolType :: TCM m => Provenance -> m NormType
 createDefaultBoolType p = do
-  lin <- freshLinearityMeta p
-  pol <- freshPolarityMeta p
-  return $ AnnBoolType p lin pol
+  lin <- normalised <$> freshLinearityMeta p
+  pol <- normalised <$> freshPolarityMeta p
+  return $ VAnnBoolType p lin pol
 
-createDefaultRatType :: TCM m => Provenance -> m CheckedType
+createDefaultRatType :: TCM m => Provenance -> m NormType
 createDefaultRatType p = do
-  lin <- freshLinearityMeta p
-  return $ AnnRatType p lin
+  lin <- normalised <$> freshLinearityMeta p
+  return $ VAnnRatType p lin
 
-getCandidatesFromConstraint :: MonadCompile m => Ctx -> TypeClassConstraint -> m [Candidate]
+getCandidatesFromConstraint :: MonadCompile m => ConstraintContext -> TypeClassConstraint -> m [Candidate]
 getCandidatesFromConstraint ctx (Has _ tc args) = do
   let getCandidate = getCandidatesFromArgs ctx
   return $ case (tc, args) of
@@ -197,16 +195,16 @@ getCandidatesFromConstraint ctx (Has _ tc args) = do
     (HasRatLits,   [t])                   -> getCandidate [t] HasRatLits
     (HasVecLits n, [_, t])                -> getCandidate [t] (HasVecLits n)
     (NatInDomainConstraint n, [t]) -> case argExpr t of
-      ConstructorExpr _ Index [size] -> getCandidate [size] (NatInDomainConstraint n)
-      _                              -> []
+      VIndexType p size -> getCandidate [ExplicitArg p size] (NatInDomainConstraint n)
+      _                 -> []
     _                                     -> []
 
-getCandidatesFromArgs :: Ctx -> [CheckedArg] -> TypeClass -> [Candidate]
+getCandidatesFromArgs :: ConstraintContext -> [NormArg] -> TypeClass -> [Candidate]
 getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t -> do
   let e = argExpr t
-  case exprHead (argExpr t) of
-    (Meta _ m) -> Just (Candidate m tc e ctx) --m, t, tc)
-    _          -> Nothing
+  case getMeta (argExpr t) of
+    Just m -> Just (Candidate m tc e ctx) --m, t, tc)
+    _      -> Nothing
 
 auxiliaryTCError :: MonadCompile m => m a
 auxiliaryTCError = compilerDeveloperError

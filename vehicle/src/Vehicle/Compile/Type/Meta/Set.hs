@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Compile.Type.MetaSet
+module Vehicle.Compile.Type.Meta.Set
   ( MetaSet
   , toList
   , fromList
@@ -29,25 +29,25 @@ newtype MetaSet = MetaSet IntSet
 instance Pretty MetaSet where
   pretty = pretty . toList
 
-member :: Meta -> MetaSet -> Bool
+member :: MetaID -> MetaSet -> Bool
 member m ms = coerce m `IntSet.member` coerce ms
 
-toList :: MetaSet -> [Meta]
+toList :: MetaSet -> [MetaID]
 toList = coerce . IntSet.toList . coerce
 
-fromList :: [Meta] -> MetaSet
+fromList :: [MetaID] -> MetaSet
 fromList = coerce . IntSet.fromList . coerce
 
 fromIntSet :: IntSet -> MetaSet
 fromIntSet = MetaSet
 
-singleton :: Meta -> MetaSet
+singleton :: MetaID -> MetaSet
 singleton = coerce . IntSet.singleton . coerce
 
 null :: MetaSet -> Bool
 null = coerce . IntSet.null . coerce
 
-insert :: Meta -> MetaSet -> MetaSet
+insert :: MetaID -> MetaSet -> MetaSet
 insert = coerce . IntSet.insert . coerce
 
 disjoint :: MetaSet -> MetaSet -> Bool
