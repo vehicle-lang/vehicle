@@ -184,31 +184,22 @@ substMetas e = do
 substMetasThroughCtx :: MonadTypeChecker m => m ()
 substMetasThroughCtx = do
   TypingMetaCtx {..} <- getMetaCtx
-  substConstraints  <- traverse substConstraintMetas constraints
+  -- substConstraints  <- traverse substBlockingConstraintMetas constraints
   -- substMetaInfo     <- substMetas metaInfo
   substMetaSolution <- substMetas currentSubstitution
   putMetaCtx $ TypingMetaCtx
-    { constraints         = substConstraints
+    { constraints         = constraints
     , metaInfo            = metaInfo
     , currentSubstitution = substMetaSolution
     , recentlySolvedMetas = recentlySolvedMetas
     }
 
--- | Substitute through solved metas through a constraint, *only* if
--- some of the metas blocking the constraint are solved.
 substConstraintMetas :: MonadTypeChecker m
-                     => WithContext Constraint
-                     -> m (WithContext Constraint)
+                      => WithContext Constraint
+                      -> m (WithContext Constraint)
 substConstraintMetas (WithContext constraint context) = do
-  {-
-  solvedMetas <- MetaMap.keys <$> getMetaSubstitution
-
-  newConstraint <- if isBlocked solvedMetas context
-    then return constraint
-    else substMetas constraint
-  -}
-  newContraint <- substMetas constraint
-  return $ WithContext newContraint context
+  newConstraint <- substMetas constraint
+  return $ WithContext newConstraint context
 
 --------------------------------------------------------------------------------
 -- Meta-variable creation
@@ -325,12 +316,13 @@ getSubstMetaTypes metas = traverse (\m -> (m,) <$> getSubstMetaType m) (MetaSet.
 -- metas in the provided expression as long as the types of those metas
 -- satisfy the provided predicate.
 getMetasLinkedToMetasIn :: forall m . MonadTypeChecker m
-                        => CheckedType
+                        => [WithContext Constraint]
                         -> (CheckedType -> Bool)
+                        -> CheckedType
                         -> m MetaSet
-getMetasLinkedToMetasIn t typeFilter = do
-  constraints <- fmap objectIn <$> getUnsolvedConstraints
-  metasInType <- metasIn t
+getMetasLinkedToMetasIn allConstraints typeFilter typeOfInterest = do
+  let constraints = fmap objectIn allConstraints
+  metasInType <- metasIn typeOfInterest
   directMetasInType <- filterMetasByTypes typeFilter metasInType
   loopOverConstraints constraints directMetasInType
   where

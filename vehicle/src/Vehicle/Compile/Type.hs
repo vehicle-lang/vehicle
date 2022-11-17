@@ -146,7 +146,7 @@ typeCheckDecl propertyCtx decl = do
         checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
         logUnsolvedUnknowns (Just substDecl) Nothing
 
-        checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints checkedDecl1
+        checkedDecl2 <- generaliseOverUnsolvedConstraints checkedDecl1
         checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
         return checkedDecl3
 
@@ -263,7 +263,7 @@ getDefaultCandidates maybeDecl = do
       -- We only want to generate default solutions for constraints
       -- that *don't* appear in the type of the declaration, as those will be
       -- quantified over later.
-      typeMetas <- getMetasLinkedToMetasIn declType isTypeUniverse
+      typeMetas <- getMetasLinkedToMetasIn constraints isTypeUniverse declType
 
       unsolvedMetasInTypeDoc <- prettyMetas typeMetas
       logDebug MaxDetail $
@@ -330,13 +330,14 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
     indent 2 unsolvedMetasDoc <> line
 
   unsolvedConstraints <- getUnsolvedConstraints
+  substUnsolvedConstraints <- traverse substConstraintMetas unsolvedConstraints
   case maybeSolvedMetas of
     Nothing ->
       logDebug MaxDetail $ "unsolved-constraints:" <> line <>
-        indent 2 (prettyVerbose unsolvedConstraints) <> line
+        indent 2 (prettyVerbose substUnsolvedConstraints) <> line
     Just solvedMetas -> do
       let isUnblocked = not . constraintIsBlocked solvedMetas
-      let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
+      let (unblockedConstraints, blockedConstraints) = partition isUnblocked substUnsolvedConstraints
       logDebug MaxDetail $ "unsolved-blocked-constraints:" <> line <>
         indent 2 (prettyVerbose blockedConstraints) <> line
       logDebug MaxDetail $ "unsolved-unblocked-constraints:" <> line <>
