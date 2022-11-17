@@ -13,13 +13,13 @@ def assert_tensor_equal(t1, t2):
 
 class TestLossFunctionTranslation(unittest.TestCase):
     def load_json(self, file_name):
-        path_to_json = f'./src/python/test_json/{file_name}.json'
+        path_to_json = f'./vehicle-python/src/vehicle/test_json/{file_name}.json'
         with open(path_to_json) as f:
             json_dict = json.load(f)
         return json_dict
-    
+
     def vcl_file(self, file_name):
-        path_to_vcl = f'./src/python/test_json/{file_name}.vcl'
+        path_to_vcl = f'./vehicle-python/src/vehicle/test_json/{file_name}.vcl'
         return path_to_vcl
 
     def test_constant(self):
@@ -45,8 +45,6 @@ class TestLossFunctionTranslation(unittest.TestCase):
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual(assert_tensor_equal(loss().shape, tf.constant([2, 4, 1, 0]).shape), True)
         self.assertEqual(assert_tensor_equal(loss(), [5, 2, 16, 7]), True)
-        self.assertEqual((np.array(loss().shape) & np.array(tf.constant([2, 4, 1, 0]).shape)).all(), True)
-        self.assertEqual((np.array(loss()) & np.array([5, 2, 16, 7])).all(), True)
     
 
     # def test_negation(self):
