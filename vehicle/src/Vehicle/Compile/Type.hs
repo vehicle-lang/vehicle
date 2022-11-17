@@ -189,7 +189,7 @@ loopOverConstraints loopNumber decl = do
     if null unblockedConstraints then do
       -- If no constraints are unblocked then try generating new constraints using defaults.
       successfullyGeneratedDefault <- addNewConstraintUsingDefaults decl
-      when successfullyGeneratedDefault $ do
+      when successfullyGeneratedDefault $
         -- If new constraints generated then continue solving.
         loopOverConstraints loopNumber decl
 
@@ -204,7 +204,6 @@ loopOverConstraints loopNumber decl = do
         setConstraints blockedConstraints
         mconcat `fmap` traverse solveConstraint unblockedConstraints
 
-        substMetasThroughCtx
         newSubstitution <- getMetaSubstitution
         logDebug MaxDetail $ "current-solution:" <+>
           prettyVerbose (fmap unnormalised newSubstitution) <> "\n"
