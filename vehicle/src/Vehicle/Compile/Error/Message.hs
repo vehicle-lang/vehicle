@@ -689,15 +689,16 @@ instance MeaningfulError CompileError where
       , problem    = "The use of an" <+> pretty InferableParameter <+> "for the size of" <+>
                      "an" <+> pretty Index <+> "in the type of" <+>
                      prettyResource Parameter ident <+>  "is not currently supported."
-      , fix        = Just $ "replace the inferable parameter with a concrete value or" <+>
+      , fix        = Just $ "either replace the inferable parameter with a concrete value or" <+>
                      "open an issue on the Github tracker to request support."
       }
 
     InferableParameterTypeUnsupported (ident, p) expectedType -> UError $ UserError
       { provenance = p
       , problem    = unsupportedResourceTypeDescription InferableParameter ident expectedType <>
-                     "." <+> supportedInferableParameterTypeDescription
-      , fix        = Just "change the inferable parameter type in the specification."
+                     "." <+> "Inferable parameters must be of type 'Nat'."
+      , fix        = Just $ "either change the type of" <+> quotePretty ident <+>
+                     "or make the parameter non-inferable and provide the value manually."
       }
 
     InferableParameterContradictory ident ((ident1, _p1), r1, v1) ((ident2, p2), r2, v2) ->
@@ -724,13 +725,16 @@ instance MeaningfulError CompileError where
 
     -- Property
 
-    PropertyTypeUnsupported (ident, p) expectedType -> UError $ UserError
+    PropertyTypeUnsupported (ident, p) actualType -> UError $ UserError
       { provenance = p
-      , problem    = "Invalid type" <+> squotes (prettyFriendlyDBClosed expectedType) <+>
-                     "for property" <+> quotePretty ident <> "."
-      , fix        = Just $ "change the type of" <+> quotePretty ident <+> "to" <+>
-                       "one of `Bool`, `Vector Bool n` or `Tensor Bool n`" <> "."
-      }
+      , problem    = unsupportedAnnotationTypeDescription PropertyAnnotation ident actualType <> "." <+>
+                     "Only the following types are allowed for" <+>
+                     quotePretty PropertyAnnotation <> "s:" <> line <>
+                       indent 2 (prettyAllowedBuiltins supportedTypes)
+      , fix        = Just $ "either change the type of" <+> squotes (pretty ident) <+>
+                     "to a supported type or remove the" <+>
+                     quotePretty PropertyAnnotation <+> "annotation."
+      } where supportedTypes = ["Bool", "Vector Bool n", "Tensor Bool ns"]
 
     --------------------
     -- Backend errors --
@@ -826,9 +830,9 @@ datasetDimensionsFix feature ident file =
   "change the" <+> feature <+> "of" <+> quotePretty ident <+> "in the specification" <+>
   "or check that" <+> quotePretty (takeFileName file) <+> "is in the format you were expecting."
 
-unsupportedResourceTypeDescription :: Resource -> Identifier -> GluedType -> Doc a
-unsupportedResourceTypeDescription resource ident resourceType =
-  "The type of" <+> prettyResource resource ident <> ":" <> line <>
+unsupportedAnnotationTypeDescription :: Annotation -> Identifier -> GluedType -> Doc a
+unsupportedAnnotationTypeDescription annotation ident resourceType =
+  "The type of" <+> pretty annotation <+> squotes (pretty ident) <> ":" <> line <>
     indent 2 (prettyFriendlyDBClosed unreducedResourceType) <> line <>
   (if reducedResourceType `alphaEq`  unreducedResourceType
     then ""
@@ -840,15 +844,15 @@ unsupportedResourceTypeDescription resource ident resourceType =
     unreducedResourceType = unnormalised resourceType
     reducedResourceType   = unnormalise (normalised resourceType)
 
+unsupportedResourceTypeDescription :: Resource -> Identifier -> GluedType -> Doc a
+unsupportedResourceTypeDescription resource =
+  unsupportedAnnotationTypeDescription (ResourceAnnotation resource)
+
 supportedNetworkTypeDescription :: Doc a
 supportedNetworkTypeDescription =
   "Only networks of the following types are allowed:" <> line <>
   indent 2 "Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]" <> line <>
   "where 'a_i' and 'b_i' are all constants."
-
-supportedInferableParameterTypeDescription :: Doc a
-supportedInferableParameterTypeDescription =
-  "Only implicit parameters of type 'Nat' are allowed."
 
 githubIssues :: Doc a
 githubIssues = "https://github.com/vehicle-lang/vehicle/issues/"
