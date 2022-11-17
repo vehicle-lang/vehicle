@@ -14,7 +14,8 @@
     "name": "LossFunction",
     "run": "vehicle compile -s andGate.vcl -t LossFunction -o andGate.loss.json",
     "needs": ["andGate.vcl"],
-    "produces": ["andGate.loss.json"]
+    "produces": ["andGate.loss.json"],
+    "enabled": false
   },
   {
     "name": "Marabou",

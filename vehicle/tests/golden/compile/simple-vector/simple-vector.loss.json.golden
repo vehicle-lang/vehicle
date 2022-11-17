@@ -1,5 +1,12 @@
 [
   [
+    "empty",
+    {
+      "tag": "TensorLiteral",
+      "contents": []
+    }
+  ],
+  [
     "p",
     {
       "tag": "Subtraction",
