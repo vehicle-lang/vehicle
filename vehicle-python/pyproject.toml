@@ -2,12 +2,17 @@
 name = "vehicle"
 version = "0.1.0"
 description = "Python bindings for the Vehicle language."
-authors = ["Wen Kokke <wenkokke@users.noreply.github.com>"]
+authors = [
+  "Marco Casadio <Tgl70@users.noreply.github.com>",
+  "Wen Kokke <wenkokke@users.noreply.github.com>"
+]
 license = "BSD-3-Clause"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.7,<3.11"
+tensorflow = "^2.10" # TODO: lowest possible tensorflow bound?
+numpy = "^1.19" # TODO: lowest possible numpy bound?
 
 [build-system]
 requires = ["poetry-core"]

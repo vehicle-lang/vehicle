@@ -59,7 +59,7 @@ def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, 
 
 
 if __name__ == '__main__':
-    path_to_spec = '/Users/marcocasadio/Projects/vehicle/test/specs/bounded.vcl'
+    path_to_spec = './bounded.vcl'
     function_name = 'bounded'
     model = keras.Sequential([
         keras.layers.Input(shape=(1,)),
