@@ -19,6 +19,7 @@ import Control.Exception (assert)
 import Data.Bifunctor (bimap)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.TypeLits (ErrorMessage (..), TypeError)
@@ -31,12 +32,13 @@ import Vehicle.Compile.Prelude hiding (MapList)
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.MetaMap (MetaMap (..))
-import Vehicle.Compile.Type.MetaSet qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Syntax.External.Abs qualified as BF
 import Vehicle.Syntax.External.Print as External (Print, printTree)
 import Vehicle.Syntax.Internal.Abs qualified as BC
 import Vehicle.Syntax.Internal.Print as Internal (Print, printTree)
+import Vehicle.Compile.Normalise.NormExpr (NormExpr (..), NormArg)
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 
 
 --------------------------------------------------------------------------------
@@ -100,6 +102,7 @@ data Strategy
   | CoDBToDBClosed       Strategy
   | SupplyNamesOpen      Strategy
   | SupplyNamesClosed    Strategy
+  | Denormalise          Strategy
   | SimplifyWithOptions  Strategy
   | SimplifyDefault      Strategy
   | MapList              Strategy
@@ -186,9 +189,17 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (t (CoDBBinding DBBinding) var)
     = 'SupplyNamesClosed (StrategyFor tags (t (NamedBinding, Maybe PositionTree) var))
 
-  -- Simplification
-  StrategyFor ('Simple tags) (SimplifyOptions, a) = 'SimplifyWithOptions (StrategyFor tags a)
-  StrategyFor ('Simple tags) a                    = 'SimplifyDefault (StrategyFor tags a)
+  -- Closed normalised expressions
+  StrategyFor tags NormExpr = 'Denormalise (StrategyFor tags CheckedExpr)
+  StrategyFor tags NormArg  = 'Denormalise (StrategyFor tags CheckedArg)
+
+  -- Open normalised expressions
+  StrategyFor tags (BoundDBCtx, NormExpr) = 'Denormalise (StrategyFor tags (BoundDBCtx, CheckedExpr))
+
+  -- Constraints
+  StrategyFor tags Constraint            = StrategyFor tags NormExpr
+  StrategyFor tags TypeClassConstraint   = StrategyFor tags NormExpr
+  StrategyFor tags UnificationConstraint = StrategyFor tags NormExpr
 
   -- Things that we just pretty print.
   StrategyFor tags DBBinding    = 'Pretty
@@ -196,16 +207,20 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags Int          = 'Pretty
   StrategyFor tags Text         = 'Pretty
 
+  -- Objects for which we want to block the strategy computation on.
+  StrategyFor tags (MetaMap a)          = 'Opaque (StrategyFor tags a)
+  StrategyFor tags PositionsInExpr      = 'Opaque (StrategyFor tags CheckedExpr)
+  StrategyFor tags (Contextualised a b) = StrategyFor tags a
+
+  -- Simplification
+  StrategyFor ('Simple tags) (SimplifyOptions, a) = 'SimplifyWithOptions (StrategyFor tags a)
+  StrategyFor ('Simple tags) a                    = 'SimplifyDefault (StrategyFor tags a)
+
   -- Things were we just print the structure and recursively print through.
   StrategyFor tags (IntMap a) = 'MapIntMap (StrategyFor tags a)
   StrategyFor tags [a]        = 'MapList   (StrategyFor tags a)
   StrategyFor tags (a, b)     = 'MapTuple2 (StrategyFor tags a) (StrategyFor tags b)
   StrategyFor tags (a, b, c)  = 'MapTuple3 (StrategyFor tags a) (StrategyFor tags b) (StrategyFor tags c)
-
-  -- Objects for which we want to block the strategy computation on.
-  StrategyFor tags Constraint      = 'Opaque (StrategyFor tags CheckedExpr)
-  StrategyFor tags (MetaMap a)     = 'Opaque (StrategyFor tags a)
-  StrategyFor tags PositionsInExpr = 'Opaque (StrategyFor tags CheckedExpr)
 
   -- Otherwise if we cannot compute an error then throw an informative error at type-checking time.
   StrategyFor tags a
@@ -452,25 +467,48 @@ instance Pretty a => PrettyUsing 'Pretty a where
   prettyUsing = pretty
 
 --------------------------------------------------------------------------------
+-- Instances for normalised types
+
+instance PrettyUsing rest CheckedExpr => PrettyUsing ('Denormalise rest) NormExpr where
+  prettyUsing e = prettyUsing @rest (unnormalise @NormExpr @CheckedExpr e)
+
+instance PrettyUsing rest (BoundDBCtx, CheckedExpr)
+  => PrettyUsing ('Denormalise rest) (BoundDBCtx, NormExpr) where
+  prettyUsing (ctx, e) = prettyUsing @rest (ctx, unnormalise @NormExpr @CheckedExpr e)
+
+instance PrettyUsing rest CheckedArg => PrettyUsing ('Denormalise rest) NormArg where
+  prettyUsing e = prettyUsing @rest (unnormalise @NormArg @CheckedArg e)
+
+-- This is a hack that should eventually be removed when `TypeClassConstraints`
+-- use norm expressions.
+instance PrettyUsing rest CheckedExpr => PrettyUsing ('Denormalise rest) CheckedExpr where
+  prettyUsing = prettyUsing @rest
+
+--------------------------------------------------------------------------------
 -- Instances for opaque types
 
-instance (PrettyUsing rest CheckedExpr) => PrettyUsing ('Opaque rest) Constraint where
+instance PrettyUsing rest NormExpr => PrettyUsing rest UnificationConstraint where
+  prettyUsing (Unify e1 e2) = prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2
+
+instance PrettyUsing rest NormExpr => PrettyUsing rest TypeClassConstraint where
+  prettyUsing (Has m tc args) = pretty m <+> "<=" <+>
+    prettyUsing @rest (VBuiltin mempty (Constructor $ TypeClass tc) (NonEmpty.toList args))
+
+instance (PrettyUsing rest UnificationConstraint, PrettyUsing rest TypeClassConstraint) =>
+  PrettyUsing rest Constraint where
   prettyUsing = \case
-    UC ctx (Unify (e1, e2)) -> prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2 <> prettyCtx ctx
-    TC ctx (Has m tc e)     -> pretty m <+> "<=" <+> prettyUsing @rest (BuiltinTypeClass mempty tc e) <> prettyCtx ctx
-    where
-      prettyCtx :: ConstraintContext -> Doc a
-      prettyCtx ctx = do
-        let blockingMetas = blockedBy ctx
-        if MetaSet.null blockingMetas
-          then ""
-          else "     " <> parens ("blockedBy:" <+> pretty (blockedBy ctx))
-    -- <+> "<boundCtx=" <> pretty (ctxNames (boundContext c)) <> ">"
-    -- <+> parens (pretty (provenanceOf c))
+    UnificationConstraint c -> prettyUsing @rest c
+    TypeClassConstraint   c -> prettyUsing @rest c
+
+instance (PrettyUsing rest a, Pretty b) => PrettyUsing rest (Contextualised a b) where
+  prettyUsing (WithContext a b) = prettyUsing @rest a <> pretty b
+
+instance PrettyUsing rest Constraint => PrettyUsing ('Opaque rest) (Contextualised Constraint ConstraintContext) where
+  prettyUsing (WithContext c ctx) = prettyUsing @rest c <+> parens (pretty ctx)
 
 instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (MetaMap a) where
   prettyUsing (MetaMap m) = prettyMapEntries entries
-    where entries = fmap (bimap MetaVar (prettyUsing @rest)) (IntMap.assocs m)
+    where entries = fmap (bimap MetaID (prettyUsing @rest)) (IntMap.assocs m)
 
 instance (PrettyUsing rest CheckedExpr) => PrettyUsing ('Opaque rest) PositionsInExpr where
   prettyUsing (PositionsInExpr e p) = prettyUsing @rest (fromCoDB (substPos hole (Just p) e))

@@ -1,2 +1,5 @@
-Error at Line 2, Columns 1-16: 'Nat' is not a valid type for the dataset 'trainingDataset'.
-Fix: change the type of 'trainingDataset' to one of 'List', 'Vector' or 'Tensor'.
+Error at Line 2, Columns 1-16: The type of dataset 'trainingDataset':
+  Nat
+is not supported. Only the following types are allowed for datasets:
+  List, Vector, Tensor
+Fix: change the type of 'trainingDataset' to a supported type.

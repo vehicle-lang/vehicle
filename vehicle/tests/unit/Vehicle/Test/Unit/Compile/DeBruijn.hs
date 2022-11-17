@@ -2,6 +2,7 @@ module Vehicle.Test.Unit.Compile.DeBruijn
   ( deBruijnTests ) where
 
 import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
+import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
@@ -14,7 +15,7 @@ import Vehicle.Language.Print (prettyVerbose)
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------
--- Alpha equivalence tests
+-- De Bruijn tests
 
 deBruijnTests :: TestTree
 deBruijnTests =
@@ -26,22 +27,22 @@ substitutionTests :: [TestTree]
 substitutionTests = fmap substTest
   [ SubstitutionTest
     { name     = "UnderLambdaClosed"
-    , subst    = \case {0 -> Just $ NatLiteral p 2; _ -> Nothing}
-    , input    = Lam p (binding (NatType p)) (BoundVar p 0)
+    , value    = NatLiteral p 2
+    , expr     = Lam p (binding (NatType p)) (BoundVar p 0)
     , expected = Lam p (binding (NatType p)) (BoundVar p 0)
     }
 
   , SubstitutionTest
     { name     = "UnderLambdaOpenBody"
-    , subst    = \case {0 -> Just $ NatLiteral p 2; _ -> Nothing}
-    , input    = Lam p (binding (NatType p)) (BoundVar p 1)
+    , value    = NatLiteral p 2
+    , expr     = Lam p (binding (NatType p)) (BoundVar p 1)
     , expected = Lam p (binding (NatType p)) (NatLiteral p 2)
     }
 
   , SubstitutionTest
     { name     = "UnderLambdaOpenType"
-    , subst    = \case {0 -> Just $ NatLiteral p 2; _ -> Nothing}
-    , input    = Lam p (binding (BoundVar p 0)) (BoundVar p 0)
+    , value    = NatLiteral p 2
+    , expr     = Lam p (binding (BoundVar p 0)) (BoundVar p 0)
     , expected = Lam p (binding (NatLiteral p 2)) (BoundVar p 0)
     }
   ]
@@ -75,8 +76,8 @@ liftingTests = fmap liftTest
 
 data SubstitutionTest = SubstitutionTest
   { name     :: String
-  , subst    :: Substitution
-  , input    :: CheckedExpr
+  , value    :: DBExpr
+  , expr     :: CheckedExpr
   , expected :: CheckedExpr
   }
 
@@ -84,13 +85,13 @@ substTest :: SubstitutionTest -> TestTree
 substTest SubstitutionTest{..} =
   unitTestCase ("subst" <> name) $ do
 
-    let actual = substitute subst input
+    let actual = value `substInto` expr
 
     let errorMessage = layoutAsString $
           "Expected performing the subsitution:" <> line <>
-            indent 2 "(unviewable)" <> line <>
+            indent 2 (prettyVerbose value) <> line <>
           "into" <> line <>
-            indent 2 (prettyVerbose input) <> line <>
+            indent 2 (prettyVerbose expr) <> line <>
           "to be equal to:" <+> line <>
             indent 2 (prettyVerbose expected) <> line <>
           "but was:" <+> line <>

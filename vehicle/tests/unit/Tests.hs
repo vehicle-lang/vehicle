@@ -11,6 +11,7 @@ import Vehicle.Test.Unit.Compile.IfElimination (ifEliminationTests)
 import Vehicle.Test.Unit.Compile.LetInsertion (letInsertionTests)
 import Vehicle.Test.Unit.Compile.PositionTree (positionTreeTests)
 import Vehicle.Test.Unit.Compile.QuantifierLifting (quantiferLiftingTests)
+import Vehicle.Test.Unit.Compile.Normalisation (normalisationTests)
 
 
 main :: IO ()
@@ -19,12 +20,13 @@ main = do
   defaultMainWithIngredients
     (vehicleLoggingIngredient : defaultIngredients) $
     testGroup "Tests"
-      [ alphaEquivalenceTests
-      , coDeBruijnTests
-      , deBruijnTests
-      , positionTreeTests
-      , letInsertionTests
+      [ deBruijnTests
+      , normalisationTests
       , ifEliminationTests
       , quantiferLiftingTests
+      , alphaEquivalenceTests
+      , coDeBruijnTests
+      , positionTreeTests
+      , letInsertionTests
       , commandLineParserTests
       ]

@@ -17,6 +17,9 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Language.Print
+import Vehicle.Compile.AlphaEquivalence (AlphaEquivalence(..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
+import Vehicle.Compile.Normalise.NormExpr
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -224,19 +227,63 @@ instance MeaningfulError CompileError where
       , fix        = Nothing
       }
 
-    FailedConstraints cs -> UError $ failedConstraintError nameCtx constraint
+    FailedUnificationConstraints cs -> UError $ UserError
+      { provenance = provenanceOf ctx
+      , problem    = constraintOriginMessage <> "." <+>
+                     "In particular" <+>
+                     prettyFriendlyDB nameCtx e1 <+> "!=" <+> prettyFriendlyDB nameCtx e2 <> "."
+      , fix        = Just "check your types"
+      }
       where
-        constraint = NonEmpty.head cs
-        nameCtx = boundContextOf constraint
+        WithContext (Unify e1 e2) ctx = NonEmpty.head cs
+        nameCtx = boundContextOf ctx
+
+        constraintOriginMessage = case origin ctx of
+          CheckingExprType expr expectedType actualType ->
+            "expected" <+> squotes (prettyUnificationConstraintOriginExpr ctx expr) <+>
+            "to be of type" <+> prettyFriendlyDB nameCtx expectedType <+>
+            "but was found to be of type" <+> prettyFriendlyDB nameCtx actualType
+
+          CheckingBinderType varName expectedType actualType ->
+            "expected the variable" <+> quotePretty varName <+>
+            "to be of type" <+> squotes (prettyFriendlyDB nameCtx expectedType) <+>
+            "but was found to be of type" <+> squotes (prettyFriendlyDB nameCtx actualType)
+
+          CheckingTypeClass fun args _tc ->
+            "unable to find a consistent type for the overloaded expression" <+>
+            squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
+
+          CheckingAuxiliary ->
+            developerError "Auxiliary constraints should not be unsolved."
 
     UnsolvedConstraints cs -> UError $ UserError
-      { provenance = provenanceOf constraint
-      , problem    = unsolvedConstraintError constraint nameCtx
+      { provenance = provenanceOf ctx
+      , problem    = constraintOriginMessage <> "." -- <+>
+                    -- "In particular unable to solve the constraint:" <+>
+                    --  prettyFriendlyDB nameCtx constraint
       , fix        = Just "try adding more type annotations"
       }
       where
-        constraint = NonEmpty.head cs
-        nameCtx    = boundContextOf constraint
+        WithContext _constraint ctx = NonEmpty.head cs
+        nameCtx    = boundContextOf ctx
+
+        constraintOriginMessage = case origin ctx of
+          CheckingExprType expr expectedType _actualType ->
+            "expected" <+> squotes (prettyUnificationConstraintOriginExpr ctx expr) <+>
+            "to be of type" <+> prettyFriendlyDB nameCtx expectedType <+>
+            "but was unable to prove it."
+
+          CheckingBinderType varName expectedType _actualType ->
+            "expected the variable" <+> squotes (pretty varName) <+>
+            "to be of type" <+> squotes (prettyFriendlyDB nameCtx expectedType) <+>
+            "but was unable to prove it."
+
+          CheckingTypeClass fun args _tc ->
+            "insufficient information to find a valid type for the overloaded expression" <+>
+            squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
+
+          CheckingAuxiliary ->
+            developerError "Auxiliary constraints should not be unsolved."
 
     UnsolvedMetas ms -> UError $ UserError
       { provenance = p
@@ -447,34 +494,33 @@ instance MeaningfulError CompileError where
 
     NetworkTypeIsNotAFunction (ident, _p) networkType -> UError $ UserError
       { provenance = provenanceOf networkType
-      , problem    = unsupportedResourceTypeDescription Network ident networkType <+> "as" <+>
-                     squotes (prettyFriendly networkType) <+> "is not a function."
+      , problem    = unsupportedResourceTypeDescription Network ident networkType <+>
+                     "as it is not a function."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Provide both an input type and output type for your network."
       }
 
-    NetworkTypeIsNotOverTensors (ident, _p) fullType nonTensorType io -> UError $ UserError
+    NetworkTypeIsNotOverTensors (ident, _p) networkType nonTensorType io -> UError $ UserError
       { provenance = provenanceOf nonTensorType
-      , problem    = unsupportedResourceTypeDescription Network ident fullType <+>
-                    "as the" <+> pretty io <+> squotes (prettyFriendly nonTensorType) <+>
-                    "is not one of" <+> list [pretty Vector, pretty Tensor] <> "."
+      , problem    = unsupportedResourceTypeDescription Network ident networkType <+>
+                     "as the" <+> pretty io <+> squotes (prettyFriendly nonTensorType) <+>
+                     "is not one of" <+> list [pretty Vector, pretty Tensor] <> "."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Ensure the" <+> pretty io <+> "of the network is a Tensor"
       }
 
     NetworkTypeHasNonExplicitArguments (ident, _p) networkType binder -> UError $ UserError
       { provenance = provenanceOf binder
-      , problem    = unsupportedResourceTypeDescription Network ident networkType <+> "as" <+>
-                     squotes (prettyFriendly networkType) <+>
-                     "contains a non-explicit argument" <+>
-                     squotes (prettyFriendly (typeOf' binder)) <> "."
+      , problem    = unsupportedResourceTypeDescription Network ident networkType <+>
+                     "as it contains the non-explicit argument of type" <+>
+                     squotes (prettyFriendly (typeOf binder)) <> "."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "Remove the non-explicit argument."
       }
 
-    NetworkTypeHasUnsupportedElementType (ident, _p) fullType elementType io -> UError $ UserError
+    NetworkTypeHasUnsupportedElementType (ident, _p) networkType elementType io -> UError $ UserError
       { provenance = provenanceOf elementType
-      , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
+      , problem    = unsupportedResourceTypeDescription Network ident networkType <+> "as" <+>
                      pretty io <> "s of type" <+>
                      squotes (prettyFriendlyDBClosed elementType) <+>
                      "are not currently supported."
@@ -483,20 +529,21 @@ instance MeaningfulError CompileError where
                      "supported types."
       }
 
-    NetworkTypeHasVariableSizeTensor (ident, _p) fullType tDim io -> UError $ UserError
+    NetworkTypeHasVariableSizeTensor (ident, _p) networkType tDim io -> UError $ UserError
       { provenance = provenanceOf tDim
-      , problem    = unsupportedResourceTypeDescription Network ident fullType <+> "as" <+>
-                     "the size of the" <+> pretty io <+> "tensor" <+>
+      , problem    = unsupportedResourceTypeDescription Network ident networkType <+>
+                     "as the size of the" <+> pretty io <+> "tensor" <+>
                      squotes (prettyFriendlyDBClosed tDim) <+> "is not a constant."
       , fix        = Just $ supportedNetworkTypeDescription <+>
                      "ensure that the size of the" <+> pretty io <+>
                      "tensor is constant."
       }
 
-    NetworkTypeHasImplicitSizeTensor (_, p) implIdent _io -> UError $ UserError
+    NetworkTypeHasImplicitSizeTensor (ident, p) networkType implIdent _io -> UError $ UserError
       { provenance = p
-      , problem    = "The use of implicit parameters in the type of network declarations" <+>
-                     "is not supported."
+      , problem    = unsupportedResourceTypeDescription Network ident networkType <+>
+                     "as the use of the" <+> prettyResource InferableParameter implIdent <+>
+                     "in the type of network declarations is not currently supported."
       , fix        = Just $ "instanstiate the" <+>
                       prettyResource InferableParameter implIdent <+>
                       "to an explicit value"
@@ -504,27 +551,34 @@ instance MeaningfulError CompileError where
 
     -- Dataset errors
 
-    DatasetTypeUnsupportedContainer (ident, p) tCont -> UError $ UserError
+    DatasetTypeUnsupportedContainer (ident, p) datasetType -> UError $ UserError
       { provenance = p
-      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
-                     "for the" <+> prettyResource Dataset ident <> "."
+      , problem    = unsupportedResourceTypeDescription Dataset ident datasetType <> "." <+>
+                     "Only the following types are allowed for" <+>
+                     pretty Dataset <> "s:" <> line <>
+                       indent 2 (prettyAllowedBuiltins supportedTypes)
       , fix        = Just $ "change the type of" <+> squotes (pretty ident) <+>
-                     "to" <+> prettyAllowedBuiltins supportedTypes <> "."
+                     "to a supported type."
       } where supportedTypes = map pretty [List, Vector] <> [pretty Tensor]
 
-    DatasetTypeUnsupportedElement (ident, p) tCont -> UError $ UserError
+    DatasetTypeUnsupportedElement (ident, p) datasetType elementType -> UError $ UserError
       { provenance = p
-      , problem    = squotes (prettyFriendly tCont) <+> "is not a valid type" <+>
-                     "for the elements of the" <+> prettyResource Dataset ident <> "."
-      , fix        = Just $ "change the element type to" <+> prettyAllowedBuiltins supportedTypes <> "."
+      , problem    = unsupportedResourceTypeDescription Dataset ident datasetType <+>
+                     "as it has elements of an unsupported type:" <> line <>
+                       indent 2 (prettyFriendlyDBClosed elementType) <> line <>
+                     "Only the following element types are allowed for" <+>
+                     pretty Dataset <> "s:" <> line <>
+                       indent 2 (prettyAllowedBuiltins supportedTypes)
+      , fix        = Just $ "change the element type of" <+> squotes (pretty ident) <+>
+                     "to a supported type."
       } where supportedTypes = map pretty [Index, Nat, Int, Rat]
 
-    DatasetVariableSizeTensor (ident, p) tCont -> UError $ UserError
+    DatasetVariableSizeTensor (ident, p) datasetType variableDim -> UError $ UserError
       { provenance = p
-      , problem    = "A tensor with variable dimension" <+>
-                     squotes (prettyFriendlyDBClosed tCont) <+>
-                     "is not a supported type for the" <+>
-                     prettyResource Dataset ident <> "."
+      , problem    = unsupportedResourceTypeDescription Parameter ident datasetType <+>
+                     "as the dimension size" <> line <>
+                      indent 2 (prettyFriendlyDBClosed variableDim) <> line <>
+                     "is not a constant."
       , fix        = Just "make sure the dimensions of the dataset are all constants."
       }
 
@@ -532,18 +586,17 @@ instance MeaningfulError CompileError where
       { provenance = p
       , problem    = "Mismatch in the dimensions of" <+> prettyResource Dataset ident <> "." <> line <>
                      "According to the specification it should be" <+>
-                     pretty (dimensionsOf expectedType) <> "-dimensional" <+>
+                     pretty (dimensionsOf (normalised expectedType)) <> "-dimensional" <+>
                      "but was actually found to be" <+> pretty (length actualDims) <> "-dimensional" <+>
                      "when reading" <+> quotePretty file <> "."
       , fix        = Just $ datasetDimensionsFix "dimensions" ident file
       }
       where
-        dimensionsOf :: CheckedType -> Int
+        dimensionsOf :: NormType -> Int
         dimensionsOf = \case
-          ListType   _ t    -> 1 + dimensionsOf t
-          VectorType _ t _  -> 1 + dimensionsOf t
-          TensorType _ t ds -> length ds + dimensionsOf t
-          _                 -> 0
+          VListType   _ t    -> 1 + dimensionsOf t
+          VVectorType _ t _  -> 1 + dimensionsOf t
+          _                  -> 0
 
     DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize allDimensions visitedDimensions -> UError $ UserError
       { provenance = p
@@ -575,7 +628,7 @@ instance MeaningfulError CompileError where
       , fix        = Just $ datasetDimensionsFix "type" ident file
       }
 
-    DatasetTypeMismatch (ident, p) file expectedType actualType -> UError $ UserError
+    DatasetTypeMismatch (ident, p) file _datasetType expectedType actualType -> UError $ UserError
       { provenance = p
       , problem    = "Mismatch in the type of elements of" <+> prettyResource Dataset ident <> "." <> line <>
                      "Expected elements of type" <+> squotes (prettyFriendlyDBClosed expectedType) <+>
@@ -588,9 +641,12 @@ instance MeaningfulError CompileError where
 
     ParameterTypeUnsupported (ident, p) expectedType -> UError $ UserError
       { provenance = p
-      , problem    = unsupportedResourceTypeDescription Parameter ident expectedType <> "."
-      , fix        = Just $ "change the type of" <+> quotePretty ident <+> "to" <+>
-                       prettyAllowedBuiltins supportedTypes <> "."
+      , problem    = unsupportedResourceTypeDescription Parameter ident expectedType <> "." <+>
+                     "Only the following types are allowed for" <+>
+                     pretty Parameter <> "s:" <> line <>
+                       indent 2 (prettyAllowedBuiltins supportedTypes)
+      , fix        = Just $ "change the element type of" <+> squotes (pretty ident) <+>
+                     "to a supported type."
       } where supportedTypes = map pretty [Bool, Index, Nat, Int, Rat]
 
     ParameterValueUnparsable (ident, p) value expectedType -> UError $ UserError
@@ -602,11 +658,10 @@ instance MeaningfulError CompileError where
                        "in the specification or change the value provided."
       }
 
-    ParameterTypeVariableSizeIndex (ident, p) fullType -> UError $ UserError
+    ParameterTypeVariableSizeIndex (ident, p) parameterType -> UError $ UserError
       { provenance = p
-      , problem    = "An" <+> pretty Index <+> "with variable dimensions" <+>
-                     squotes (prettyFriendly fullType) <+>
-                     "is not a supported type for the" <+> prettyResource Parameter ident <> "."
+      , problem    = unsupportedResourceTypeDescription Parameter ident parameterType <>
+                     "as the size of the" <+> pretty Index <+> "type is not a known constant."
       , fix        = Just "make sure the dimensions of the indices are all constants."
       }
 
@@ -771,10 +826,19 @@ datasetDimensionsFix feature ident file =
   "change the" <+> feature <+> "of" <+> quotePretty ident <+> "in the specification" <+>
   "or check that" <+> quotePretty (takeFileName file) <+> "is in the format you were expecting."
 
-unsupportedResourceTypeDescription :: ResourceType -> Identifier -> CheckedType -> Doc a
-unsupportedResourceTypeDescription resource ident actualType =
-  "The type" <+> squotes (prettyFriendlyDBClosed actualType) <+> "of" <+> pretty resource <+>
-  squotes (pretty ident) <+> "is not currently supported"
+unsupportedResourceTypeDescription :: Resource -> Identifier -> GluedType -> Doc a
+unsupportedResourceTypeDescription resource ident resourceType =
+  "The type of" <+> prettyResource resource ident <> ":" <> line <>
+    indent 2 (prettyFriendlyDBClosed unreducedResourceType) <> line <>
+  (if reducedResourceType `alphaEq`  unreducedResourceType
+    then ""
+    else "which reduces to:" <> line <>
+      indent 2 (prettyFriendlyDBClosed reducedResourceType) <> line
+  ) <>
+  "is not supported"
+  where
+    unreducedResourceType = unnormalised resourceType
+    reducedResourceType   = unnormalise (normalised resourceType)
 
 supportedNetworkTypeDescription :: Doc a
 supportedNetworkTypeDescription =
@@ -797,13 +861,7 @@ implementationLimitation issue =
     Just issueNumber -> "If you would like this to be fixed, please comment at" <+>
       squotes (githubIssues <+> pretty issueNumber) <> "."
 
-unsolvedConstraintError :: Constraint -> [DBBinding] -> Doc a
-unsolvedConstraintError constraint ctx ="Typing error: not enough information to solve constraint" <+>
-  case constraint of
-    UC _ (Unify _)       ->  prettyFriendlyDB ctx constraint
-    TC _ (Has _ tc args) ->  prettyFriendlyDB ctx (BuiltinTypeClass mempty tc args)
-
-prettyResource :: ResourceType -> Identifier -> Doc a
+prettyResource :: Resource -> Identifier -> Doc a
 prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
 
 prettyBuiltinType :: BuiltinConstructor -> Doc a
@@ -814,7 +872,7 @@ prettyBuiltinType t = article <+> squotes (pretty t)
       Index -> "an"
       _     -> "a"
 
-prettyExpr :: HasBoundCtx a => a -> CheckedExpr -> Doc b
+prettyExpr :: (HasBoundCtx a, PrettyWith ('Named ('As 'External)) ([DBBinding], b)) => a -> b -> Doc c
 prettyExpr ctx e = squotes $ prettyFriendlyDB (boundContextOf ctx) e
 
 prettyQuantifierArticle :: Quantifier -> Doc a
@@ -877,11 +935,7 @@ prettyAllowedTypes allowedTypes = if length allowedTypes == 1
   else "one of" <+> prettyFlatList (pretty <$> allowedTypes)
 
 prettyAllowedBuiltins :: [Doc b] -> Doc b
-prettyAllowedBuiltins allowedTypes = if length allowedTypes == 1
-  then squotes (head allowedTypes)
-  else do
-    let docs = fmap squotes allowedTypes
-    "one of" <+> commaSep (init docs) <+> "or" <+> last docs
+prettyAllowedBuiltins = commaSep
 
 prettyOrdinal :: Doc b -> Int -> Maybe Int -> Doc b
 prettyOrdinal object argNo argTotal
@@ -902,17 +956,21 @@ prettyOrdinal object argNo argTotal
     9 -> "ninth"
     _ -> developerError "Cannot convert ordinal"
 
---------------------------------------------------------------------------------
--- Constraint error messages
+prettyTypeClassConstraintOriginExpr :: ConstraintContext -> CheckedExpr -> [UncheckedArg] -> Doc a
+prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
+  Builtin _ b
+      -- Need to check whether the function was introduced as part of desugaring
+    | isDesugared b -> prettyFriendlyDB (boundContextOf ctx) (last args)
+    | otherwise     -> pretty b
+    where
+      isDesugared :: Builtin -> Bool
+      isDesugared (TypeClassOp FromNatTC{}) = True
+      isDesugared (TypeClassOp FromRatTC{}) = True
+      isDesugared (TypeClassOp FromVecTC{}) = True
+      isDesugared _                         = False
+  _           -> prettyFriendlyDB (boundContextOf ctx) fun
 
-failedConstraintError :: [DBBinding]
-                      -> Constraint
-                      -> UserError
-failedConstraintError ctx c@(UC _ (Unify (t1, t2))) = UserError
-  { provenance = provenanceOf c
-  , problem    = "Type error:" <+>
-                    prettyFriendlyDB ctx t1 <+> "!=" <+> prettyFriendlyDB ctx t2
-  , fix        = Just "check your types"
-  }
-failedConstraintError _ TC{} =
-  developerError "Type-class constraints should not be thrown here"
+prettyUnificationConstraintOriginExpr :: ConstraintContext -> CheckedExpr -> Doc a
+prettyUnificationConstraintOriginExpr ctx = \case
+  Builtin _ b -> pretty b
+  expr        -> prettyFriendlyDB (boundContextOf ctx) expr

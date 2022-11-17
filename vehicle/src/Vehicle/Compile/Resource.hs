@@ -15,7 +15,7 @@ type ParameterContext = Set Name
 -- Implicit parameters
 
 type InferableParameterContext =
-  Map Name (Maybe (DeclProvenance, ResourceType, Int))
+  Map Name (Maybe (DeclProvenance, Resource, Int))
 
 --------------------------------------------------------------------------------
 -- Datasets

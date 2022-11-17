@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# POSIX compliant method for 'pipefail':
+fail=$(mktemp)
+
+# Check if 'cabal-fmt' is on the PATH:
+cabal_fmt=$(which cabal-fmt || echo > "$fail")
+
+if [ -s "$fail" ]; then
+    rm "$fail"
+    echo "The pre-commit hook requires 'cabal-fmt' to format Haskell code."
+    echo "You can install 'cabal-fmt' by running:"
+    echo
+    echo "  cabal v2-install cabal-fmt --ignore-project --overwrite-policy=always"
+    echo
+    echo "See: https://github.com/haskell/cabal-fmt#readme"
+    echo
+    echo "If you want to skip this pre-commit hook, commit with:"
+    echo
+    echo "  SKIP=cabal-fmt git commit -m \"...\""
+    echo
+    echo "If you want to skip all pre-commit hooks, commit with:"
+    echo
+    echo "  git commit -m \"...\" --no-verify"
+    echo
+    exit 1
+fi
+
+# Run 'cabal-fmt':
+$cabal_fmt "$@"
+
+# Check whether or not any subcommand failed:
+if [ -s "$fail" ]; then
+    rm "$fail"
+    exit 1
+else
+    rm "$fail"
+    exit 0
+fi

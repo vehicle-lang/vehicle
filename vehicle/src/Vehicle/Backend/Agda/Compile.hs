@@ -454,7 +454,7 @@ compileBinder :: MonadAgdaCompile m => OutputBinder -> m Code
 compileBinder binder = do
   let binderName = pretty (nameOf binder :: OutputBinding)
   let addBrackets = binderBrackets False (visibilityOf binder)
-  binderType <- compileExpr (binderType binder)
+  binderType <- compileExpr (typeOf binder)
   let annBinder = annotateInfixOp2 [] minPrecedence id Nothing ":" [binderName, binderType]
   return $ addBrackets annBinder
 
@@ -756,6 +756,10 @@ compileDiv dom args = do
         DivRat -> (ratQualifier, DataRat)
 
   annotateInfixOp2 [dependency] 7 id (Just qualifier) "÷" args
+
+isRatType :: Type binder var -> Bool
+isRatType RatType{} = True
+isRatType _         = False
 
 compileOrder :: MonadAgdaCompile m => OrderOp -> OutputExpr -> [Code] -> m Code
 compileOrder originalOrder elemType originalArgs = do

@@ -8,15 +8,15 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.ConstraintSolver.Core
-import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
 
 import Control.Monad.Except (MonadError (..))
+import Vehicle.Compile.Normalise.NormExpr (pattern VLinearityExpr, NormType, getMeta)
 
 solveLinearityConstraint :: TCM m
                          => LinearityTypeClass
-                         -> Constraint
-                         -> [CheckedType]
+                         -> WithContext TypeClassConstraint
+                         -> [NormType]
                          -> m ConstraintProgress
 solveLinearityConstraint = \case
   MaxLinearity               -> solveMaxLinearity
@@ -42,17 +42,17 @@ mulLinearity p l1 l2 = case (l1, l2) of
 -- Constraint solving
 
 solveMaxLinearity :: TCM m
-                  => Constraint
-                  -> [CheckedExpr]
+                  => WithContext TypeClassConstraint
+                  -> [NormType]
                   -> m ConstraintProgress
 solveMaxLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
-    (exprHead -> Meta _ m1, _) -> blockOn [m1]
-    (_, exprHead -> Meta _ m2) -> blockOn [m2]
+    (getMeta -> Just m1, _) -> blockOn [m1]
+    (_, getMeta -> Just m2) -> blockOn [m2]
 
-    (LinearityExpr p l1, LinearityExpr _ l2) -> do
-      let linRes = LinearityExpr p $ maxLinearity l1 l2
-      return $ Progress [unify c res linRes]
+    (VLinearityExpr p l1, VLinearityExpr _ l2) -> do
+      let linRes = VLinearityExpr p $ maxLinearity l1 l2
+      return $ Progress [unify (contextOf c) res linRes]
 
     _ -> malformedConstraintError c
 
@@ -60,18 +60,19 @@ solveMaxLinearity c _ = malformedConstraintError c
 
 
 solveMulLinearity :: TCM m
-                  => Constraint
-                  -> [CheckedExpr]
+                  => WithContext TypeClassConstraint
+                  -> [NormType]
                   -> m ConstraintProgress
 solveMulLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
-    (exprHead -> Meta _ m1, _) -> blockOn [m1]
-    (_, exprHead -> Meta _ m2) -> blockOn [m2]
+    (getMeta -> Just m1, _) -> blockOn [m1]
+    (_, getMeta -> Just m2) -> blockOn [m2]
 
-    (LinearityExpr _ l1, LinearityExpr _ l2) -> do
-      let p = originalProvenance (constraintContext c)
-      let linRes = LinearityExpr p $ mulLinearity p l1 l2
-      return $ Progress [unify c res linRes]
+    (VLinearityExpr _ l1, VLinearityExpr _ l2) -> do
+      let ctx = contextOf c
+      let p = originalProvenance ctx
+      let linRes = VLinearityExpr p $ mulLinearity p l1 l2
+      return $ Progress [unify ctx res linRes]
 
     _ -> malformedConstraintError c
 
@@ -79,30 +80,31 @@ solveMulLinearity c _ = malformedConstraintError c
 
 solveFunctionLinearity :: TCM m
                        => FunctionPosition
-                       -> Constraint
-                       -> [CheckedExpr]
+                       -> WithContext TypeClassConstraint
+                       -> [NormType]
                        -> m ConstraintProgress
 solveFunctionLinearity functionPosition c [arg, res] = case arg of
-  (exprHead -> Meta _ m1) -> blockOn [m1]
-  LinearityExpr _ lin     -> do
-    let p = provenanceOf c
+  (getMeta -> Just m1) -> blockOn [m1]
+  VLinearityExpr _ lin     -> do
+    let ctx = contextOf c
+    let p = provenanceOf ctx
     let addFuncProv pp = LinFunctionProvenance p pp functionPosition
-    let resLin = LinearityExpr p $ mapLinearityProvenance addFuncProv lin
-    return $ Progress [unify c res resLin]
+    let resLin = VLinearityExpr p $ mapLinearityProvenance addFuncProv lin
+    return $ Progress [unify ctx res resLin]
   _                       -> malformedConstraintError c
 
 solveFunctionLinearity _ c _ = malformedConstraintError c
 
 solveIfCondLinearity :: TCM m
-                     => Constraint
-                     -> [CheckedExpr]
+                     => WithContext TypeClassConstraint
+                     -> [NormType]
                      -> m ConstraintProgress
 solveIfCondLinearity c [arg] = case arg of
-  (exprHead -> Meta _ m1) -> blockOn [m1]
-  LinearityExpr _ lin     -> case lin of
+  (getMeta -> Just m1) -> blockOn [m1]
+  VLinearityExpr _ lin     -> case lin of
     Constant    -> return $ Progress []
     Linear{}    -> return $ Progress []
-    NonLinear{} -> throwError $ NonLinearIfCondition (constraintContext c)
+    NonLinear{} -> throwError $ NonLinearIfCondition (contextOf c)
 
   _ -> malformedConstraintError c
 
