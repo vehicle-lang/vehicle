@@ -3,6 +3,7 @@
 module Vehicle.Language.AST.Expr where
 
 import Control.DeepSeq (NFData)
+import Control.Monad.Reader (MonadReader (..))
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
