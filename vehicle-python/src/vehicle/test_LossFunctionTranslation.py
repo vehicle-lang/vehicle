@@ -46,7 +46,7 @@ class TestLossFunctionTranslation(unittest.TestCase):
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self._assert_tensor_equal(loss(), tf.constant([5, 2, 16, 7]))
-    
+
 
     # def test_negation(self):
     #     path_to_vcl = self.vcl_file('test_negation')
