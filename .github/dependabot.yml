@@ -12,7 +12,7 @@ updates:
     directory: "/docs/source"
     schedule:
       interval: "weekly"
-      
+
   # Maintain dependencies for Python
   - package-ecosystem: "pip"
     directory: "/vehicle-python"
