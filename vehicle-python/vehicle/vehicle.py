@@ -1,6 +1,6 @@
 from typing import Dict, Callable
-from command_line import call_vehicle_to_generate_loss_json
-import utils
+from .command_line import call_vehicle_to_generate_loss_json
+from .utils import internal_error_msg
 import tensorflow as tf
 import numpy as np
 
@@ -217,7 +217,7 @@ class LossFunctionTranslation:
                 context.pop(0)
             if contents[0] == 'All': return max_loss
             elif contents[0] == 'Any': return min_loss
-            else: utils.internal_error_msg('Found a quantifier in the generated json that is not All nor Any.')
+            else: internal_error_msg('Found a quantifier in the generated json that is not All nor Any.')
 
         return result_func
 

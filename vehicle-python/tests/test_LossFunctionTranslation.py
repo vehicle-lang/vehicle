@@ -1,7 +1,7 @@
 import unittest
 import json
-from vehicle import LossFunctionTranslation
-from vehicle import generate_loss_function
+from vehicle.vehicle import LossFunctionTranslation
+from vehicle.vehicle import generate_loss_function
 from tensorflow import keras
 import tensorflow as tf
 import numpy as np
