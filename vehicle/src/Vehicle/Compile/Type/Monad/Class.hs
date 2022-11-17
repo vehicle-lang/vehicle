@@ -14,7 +14,6 @@ module Vehicle.Compile.Type.Monad.Class
   , getMetasLinkedToMetasIn
   , getAndClearRecentlySolvedMetas
   , clearMetaSubstitution
-  , substMetasThroughCtx
   , substConstraintMetas
   , incrementMetaCtxSize
   , removeMetaDependencies
@@ -180,19 +179,6 @@ substMetas e = do
   metaSubst <- getMetaSubstitution
   declCtx <- toNBEDeclContext <$> getDeclContext
   substituteMetas declCtx metaSubst e
-
-substMetasThroughCtx :: MonadTypeChecker m => m ()
-substMetasThroughCtx = do
-  TypingMetaCtx {..} <- getMetaCtx
-  -- substConstraints  <- traverse substBlockingConstraintMetas constraints
-  -- substMetaInfo     <- substMetas metaInfo
-  substMetaSolution <- substMetas currentSubstitution
-  putMetaCtx $ TypingMetaCtx
-    { constraints         = constraints
-    , metaInfo            = metaInfo
-    , currentSubstitution = substMetaSolution
-    , recentlySolvedMetas = recentlySolvedMetas
-    }
 
 substConstraintMetas :: MonadTypeChecker m
                       => WithContext Constraint
