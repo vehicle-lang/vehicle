@@ -1,2 +1,5 @@
-Error at Line 2, Columns 1-2: Invalid type 'Rat' for property 'p'.
-Fix: change the type of 'p' to one of `Bool`, `Vector Bool n` or `Tensor Bool n`.
+Error at Line 2, Columns 1-2: The type of @property 'p':
+  Rat
+is not supported. Only the following types are allowed for '@property's:
+  Bool, Vector Bool n, Tensor Bool ns
+Fix: either change the type of 'p' to a supported type or remove the '@property' annotation.

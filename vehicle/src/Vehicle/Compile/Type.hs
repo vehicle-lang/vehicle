@@ -29,7 +29,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
 import Vehicle.Language.Print
-import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..), GluedProg, GluedDecl)
+import Vehicle.Compile.Normalise.NormExpr
 import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable)
 
 -------------------------------------------------------------------------------
@@ -140,7 +140,8 @@ typeCheckDecl propertyCtx decl = do
         -- generalised with function input/output constraints.
         let isProperty = ident `Set.member` propertyCtx
         when isProperty $ do
-          checkPropertyInfo (ident, p) (typeOf substDecl)
+          propertyType <- glueNBE 0 (typeOf substDecl)
+          checkPropertyInfo (ident, p) propertyType
 
         checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
         logUnsolvedUnknowns (Just substDecl) Nothing
@@ -275,20 +276,20 @@ getDefaultCandidates maybeDecl = do
 -------------------------------------------------------------------------------
 -- Property information extraction
 
-checkPropertyInfo :: TopLevelTCM m => DeclProvenance -> CheckedType -> m ()
-checkPropertyInfo decl@(ident, _) t = do
-  propertyInfo <- getPropertyInfo t
+checkPropertyInfo :: TopLevelTCM m => DeclProvenance -> GluedType -> m ()
+checkPropertyInfo decl@(ident, _) propertyType = do
+  propertyInfo <- getPropertyInfo (normalised propertyType)
   tell (Map.singleton ident propertyInfo)
   logDebug MinDetail $
     "Identified" <+> squotes (pretty ident) <+> "as a property of type:" <+> pretty propertyInfo
 
   where
-    getPropertyInfo :: MonadCompile m => CheckedType -> m PropertyInfo
+    getPropertyInfo :: MonadCompile m => NormType -> m PropertyInfo
     getPropertyInfo = \case
-      AnnBoolType _ (LinearityExpr _ lin) (PolarityExpr _ pol) -> return $ PropertyInfo lin pol
-      VectorType _ tElem _ -> getPropertyInfo tElem
-      TensorType _ tElem _ -> getPropertyInfo tElem
-      otherType            -> throwError $ PropertyTypeUnsupported decl otherType
+      VAnnBoolType _ (VLinearityExpr _ lin) (VPolarityExpr _ pol) -> return $ PropertyInfo lin pol
+      VVectorType _ tElem _ -> getPropertyInfo tElem
+      VTensorType _ tElem _ -> getPropertyInfo tElem
+      _                     -> throwError $ PropertyTypeUnsupported decl propertyType
 
 -------------------------------------------------------------------------------
 -- Unsolved constraint checks
