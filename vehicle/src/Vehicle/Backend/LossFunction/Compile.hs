@@ -19,7 +19,7 @@ import Vehicle.Language.AST.Name (HasName (nameOf))
 import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Prelude
 import Vehicle.Compile.Queries.DNF
-import Vehicle.Language.AST.Expr (argExpr)
+import Vehicle.Language.AST.Arg (argExpr)
 
 
 
