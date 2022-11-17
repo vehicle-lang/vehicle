@@ -41,10 +41,9 @@ jobs:
           poetry install --no-root --with dev
         shell: sh
         working-directory: vehicle-python
-        
+
       - name: Test
         run: |
           tox --skip-missing-interpreters
         shell: sh
         working-directory: vehicle-python
-        
