@@ -9,6 +9,7 @@
 
 open import Vehicle
 open import Data.Unit
+open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
@@ -24,3 +25,5 @@ postulate f : Vector ℚ 1 → Vector ℚ 1
 postulate expandedExpr : ∀ (x : Vector ℚ 1) → x (# 0) ℚ.≥ f x (# 0)
 
 postulate sequential : ∀ (x : Vector ℚ 1) → ∀ (y : Vector ℚ 1) → f x (# 0) ℚ.≥ f y (# 0)
+
+postulate parallel : ∀ (x : Vector ℚ 1) → f x (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1 × ∃ λ (x : Vector ℚ 1) → f x (# 0) ℚ.≥ ℤ.+ 5 ℚ./ 1
