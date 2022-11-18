@@ -8,6 +8,7 @@ module Vehicle.Backend.LossFunction.Logics
   , lukasiewiczTranslation
   , productTranslation
   , yagerTranslation
+  , chooseTranslation
   ) where
 
 import Vehicle.Prelude
@@ -15,52 +16,56 @@ import Vehicle.Compile.Prelude qualified as V
 import Data.List.NonEmpty (NonEmpty)
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, ToJSON)
+import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 
+-- |Definiton of the LExpr - all expressions allowed in a loss constraint
 
-instance FromJSON Domain
-instance ToJSON Domain
+data LExpr
+  = Negation LExpr                           
+  -- |^this is minus, not the logical operation of negation
+  | Constant Double                           
+  | Min LExpr LExpr                           
+  | Max LExpr LExpr   
+  | Addition LExpr LExpr             
+  | Subtraction LExpr LExpr               
+  | Multiplication LExpr LExpr             
+  | Division LExpr LExpr                
+  | IndicatorFunction LExpr LExpr      
+  | Variable V.DBIndex                        
+  -- |^variable (bound)
+  | FreeVariable Name                         
+  -- |^variable (free)
+  | NetworkApplication Name (NonEmpty LExpr)  
+  | Quantifier Quantifier Name Domain LExpr   
+  -- |^quantifiers forall, exists
+  | At LExpr LExpr                            
+  | TensorLiteral [LExpr]                     
+  | Lambda Name LExpr                         
+  | Let Name LExpr LExpr                     
+  | Power LExpr LExpr                   
+  deriving (Eq, Ord, Generic, Show)
 
 instance FromJSON LExpr
 instance ToJSON LExpr
 
-instance FromJSON Quantifier
-instance ToJSON Quantifier
-
--- definiton of the LExpr - all expressions allowed in a loss constraint
-
-data LExpr
-  = Negation LExpr                           -- this is minus, not the logical operation of negation
-  | Constant Double                           -- constant
-  | Min LExpr LExpr                           -- Min
-  | Max LExpr LExpr                           -- Max
-  | Addition LExpr LExpr                      -- addition
-  | Subtraction LExpr LExpr                   -- subtraction
-  | Multiplication LExpr LExpr                -- multiplication
-  | Division LExpr LExpr                      -- division
-  | IndicatorFunction LExpr LExpr             -- an indicator function
-  | Variable V.DBIndex                        -- variable (bound)
-  | FreeVariable Name                         -- variable (free)
-  | NetworkApplication Name (NonEmpty LExpr)  -- neural network
-  | Quantifier Quantifier Name Domain LExpr   -- quantifiers forall, exists
-  | At LExpr LExpr                            -- at
-  | TensorLiteral [LExpr]                     -- tensor
-  | Lambda Name LExpr                         -- lambda expression
-  | Let Name LExpr LExpr                      -- let expression
-  | Power LExpr LExpr                         -- exponential
-  deriving (Eq, Ord, Generic, Show)
-
 --------------------------------------------------------------------------------
--- other Definitions
+-- other definitions
 
 data Quantifier
   = All
   | Any
   deriving (Eq, Ord, Generic, Show)
 
+instance FromJSON Quantifier
+instance ToJSON Quantifier
+
 newtype Domain = Domain ()
   deriving (Eq, Ord, Generic, Show)
 
--- template for different avilable differentiable logics
+instance FromJSON Domain
+instance ToJSON Domain
+
+-- |Template for different avilable differentiable logics
 
 data DifferentialLogicImplementation = DifferentialLogicImplementation
   { compileAnd          :: LExpr -> LExpr -> LExpr
@@ -79,26 +84,36 @@ data DifferentialLogicImplementation = DifferentialLogicImplementation
   , compileFalse        :: Double
     }
 
+chooseTranslation :: DifferentiableLogic -> DifferentialLogicImplementation
+chooseTranslation = \case
+    DL2 -> dl2Translation
+    Godel -> godelTranslation
+    Lukasiewicz -> lukasiewiczTranslation
+    Product -> productTranslation
+    Yager -> yagerTranslation
 
 --------------------------------------------------------------------------------
--- different avilable differentiable logics (types of translation from the constraint to loss function) are
--- DL2                              --Fischer, Marc, et al. "Dl2: Training and querying neural networks with logic."  PMLR, 2019.
--- Godel                            --van Krieken, et al. "Analyzing differentiable fuzzy logic operators." Artificial Intelligence 302 (2022): 103602.
--- Lukasiewicz                      --as above
--- Product based                    --as above
--- Yager                            --as above
+-- different available  differentiable logics (types of translation from the constraint 
+-- to loss function) are:
 
---they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2.
+-- DL2     
+-- Godel             
+-- Lukasiewicz    
+-- Product based   
+-- Yager     
+
+-- they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2.
 
 -- part of the syntax translation that differ depending on chosen DL are:
     -- logical connectives (not, and, or, implies)
     -- comparisons (<, <=, >, >=, =, !=)
 
+-- |from Fischer, Marc, et al. "Dl2: Training and querying neural networks with logic."  PMLR, 2019.
 dl2Translation :: DifferentialLogicImplementation
 dl2Translation = DifferentialLogicImplementation
   { compileAnd = Addition
   , compileOr  = Multiplication
-  , compileNot = Nothing --this should be normalised out and pushed to the innermost level of comparisons by now
+  , compileNot = Nothing 
   , compileImplies = \arg1 arg2 -> Max (Negation arg1) arg2
 
   , compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2)
@@ -112,6 +127,7 @@ dl2Translation = DifferentialLogicImplementation
   , compileFalse = 1
   }
 
+-- |from van Krieken, et al. "Analyzing differentiable fuzzy logic operators." 2022
 godelTranslation :: DifferentialLogicImplementation
 godelTranslation = DifferentialLogicImplementation
   { compileAnd = Min
@@ -130,6 +146,7 @@ godelTranslation = DifferentialLogicImplementation
   , compileFalse = 0
    }
 
+-- |from van Krieken, et al. "Analyzing differentiable fuzzy logic operators." 2022
 lukasiewiczTranslation :: DifferentialLogicImplementation
 lukasiewiczTranslation = DifferentialLogicImplementation
   { compileAnd = \arg1 arg2 -> Max (Subtraction (Addition arg1 arg2) (Constant 1)) arg2
@@ -149,6 +166,7 @@ lukasiewiczTranslation = DifferentialLogicImplementation
   , compileFalse = 0
    }
 
+-- |from van Krieken, et al. "Analyzing differentiable fuzzy logic operators." 2022
 productTranslation :: DifferentialLogicImplementation
 productTranslation = DifferentialLogicImplementation
   { compileAnd = Multiplication
@@ -167,11 +185,11 @@ productTranslation = DifferentialLogicImplementation
   , compileFalse = 0
    }
 
---sets parameter p for the Yager DL (by default set to 1)
+-- |sets parameter p for the Yager DL (by default set to 1)
 yagerTranslation :: DifferentialLogicImplementation
 yagerTranslation = parameterisedYagerTranslation 1 --change constant here
 
-
+-- |from van Krieken, et al. "Analyzing differentiable fuzzy logic operators." 2022
 parameterisedYagerTranslation :: Rational -> DifferentialLogicImplementation
 parameterisedYagerTranslation p = DifferentialLogicImplementation
   { compileAnd = \arg1 arg2 -> Max

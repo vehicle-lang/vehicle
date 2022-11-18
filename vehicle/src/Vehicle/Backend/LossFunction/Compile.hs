@@ -19,9 +19,7 @@ import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Prelude
 import Vehicle.Compile.Queries.DNF
 import Vehicle.Language.AST.Arg (argExpr)
-import Vehicle.Backend.LossFunction.Logics (LExpr (..), Domain (..), Quantifier (..), DifferentialLogicImplementation (..), dl2Translation, godelTranslation, lukasiewiczTranslation, productTranslation, yagerTranslation)
-
-
+import Vehicle.Backend.LossFunction.Logics (LExpr (..), Domain (..), Quantifier (..), DifferentialLogicImplementation (..), dl2Translation, godelTranslation, lukasiewiczTranslation, productTranslation, yagerTranslation, chooseTranslation)
 
 --------------------------------------------------------------------------------
 -- Declaration definition
@@ -44,16 +42,7 @@ compile d prog propertyCtx networkCtx = do
   normalisedProg <- normalise prog normalisationOptions
   runReaderT (compileProg (chooseTranslation d) normalisedProg) (propertyCtx, networkCtx)
 
-chooseTranslation :: DifferentiableLogic -> DifferentialLogicImplementation
-chooseTranslation = \case
-    DL2 -> dl2Translation
-    Godel -> godelTranslation
-    Lukasiewicz -> lukasiewiczTranslation
-    Product -> productTranslation
-    Yager -> yagerTranslation
-
-
--- |compile entire specification (calls compileDecl)
+-- |Compile entire specification (calls compileDecl)
 compileProg :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedProg -> m [LDecl]
 compileProg  t (V.Main ds) =  traverse (compileDecl t) ds
 
@@ -62,7 +51,7 @@ type MonadCompileLoss m =
   , MonadReader (V.PropertyContext, NetworkContext) m
   )
 
--- |compile all functions found in spec, save their names (call compileExpr on each)
+-- |Compile all functions found in spec, save their names (call compileExpr on each)
 compileDecl :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedDecl -> m LDecl
 compileDecl t d =
   case d of
@@ -83,7 +72,7 @@ currentPass = "compilation to loss functions"
 compileArg :: MonadCompile m => DifferentialLogicImplementation -> V.CheckedArg -> m LExpr
 compileArg t arg = compileExpr t (V.argExpr arg)
 
--- |helper function for compiling Literals
+-- |Helper function for compiling Literals
 compileLiteral :: DifferentialLogicImplementation -> V.Literal -> Double
 compileLiteral t l = case l of
   V.LUnit{}        -> developerError "Loss Function should not encounter LUnit"
@@ -94,28 +83,24 @@ compileLiteral t l = case l of
   V.LInt     e     -> fromIntegral e
   V.LRat     e     -> fromRational e
 
--- |helps compile a name from DBBinding, even if there is no name given
+-- |Helps compile a name from DBBinding, even if there is no name given
 compileDBBinding :: Maybe Name -> Name
 compileDBBinding = fromMaybe "No_name"
 
---compileMaybeNot :: m LExpr -> m LExpr
---compileMaybeNot not = case not of
---  Nothing -> (lowerNot (argExpr e1))
-
--- |compile a property or single expression
+-- |Compile a property or single expression
 compileExpr :: MonadCompile m => DifferentialLogicImplementation -> V.CheckedExpr -> m LExpr
 compileExpr t e = showExit $ do
   e' <- showEntry e
   case e' of
-    --logical operatives
+    -- logical operatives
     V.NotExpr     _ [e1]     -> case compileNot t of
-                                  Nothing -> compileExpr t (lowerNot (argExpr e1))--compileNot t <$> compileExpr t (lowerNot (argExpr e1))
-                                  Just f -> f <$> compileArg t e1
+      Nothing -> compileExpr t (lowerNot (argExpr e1))--compileNot t <$> compileExpr t (lowerNot (argExpr e1))
+      Just f -> f <$> compileArg t e1
     V.AndExpr     _ [e1, e2] -> compileAnd t <$> compileArg t e1 <*> compileArg t e2
     V.OrExpr      _ [e1, e2] -> compileOr t <$> compileArg t e1 <*> compileArg t e2
     V.ImpliesExpr _ [e1, e2] -> compileImplies t <$> (Negation <$> compileArg t e1) <*> compileArg t e2
 
-    --arithmetic operations
+    -- arithmetic operations
     V.AddExpr   _ _ [e1, e2] -> Addition <$> compileArg t e1 <*> compileArg t e2
     V.SubExpr   _ _ [e1, e2] -> Subtraction <$> compileArg t e1 <*> compileArg t e2
     V.MulExpr   _ _ [e1, e2] -> Multiplication <$> compileArg t e1 <*> compileArg t e2
@@ -154,15 +139,12 @@ compileExpr t e = showExit $ do
     V.IfExpr{}   -> unexpectedExprError "lossFunction" "If statements are not handled at the moment (possibly in the future)"
     _            -> unexpectedExprError currentPass (prettyVerbose e)
 
-
 compileQuant :: V.Quantifier -> Quantifier
 compileQuant V.Forall = All
 compileQuant V.Exists = Any
 
-
 ----------------------------------------------------------------------------------------------------
---handling normalisation options
-
+-- Handling normalisation options
 
 normalisationOptions :: NormalisationOptions
 normalisationOptions = Options
@@ -174,7 +156,6 @@ normalisationOptions = Options
   , normaliseBuiltin            = normBuiltin
   , normaliseWeakly             = False
   }
-
 
 normBuiltin :: V.Builtin -> Bool
 normBuiltin b = case b of
@@ -202,10 +183,8 @@ normBuiltin b = case b of
 
   _                  -> False
 
-
-
 -----------------------------------------------------------------------
--- debugging options
+-- Debugging options
 
 showEntry :: MonadCompile m => V.CheckedExpr -> m V.CheckedExpr
 showEntry e = do
