@@ -29,16 +29,11 @@ Now we can install Vehicle itself.
 1. Clone the Vehicle github repository to your local computer and
    navigate to the directory.
 
-2. Run ``cabal run vehicle-build-system init`` to initialise the project and install
-   any dependencies that are needed for building the project.
+2. Run ``cabal install exe:vehicle`` to install the Vehicle executable on your system.
 
-3. (Optional) - run ``cabal run vehicle-build-system basic-tests`` to run the test suite.
+3. Run ``vehicle -h`` to check that Vehicle has been installed.
   (If this doesn't work then check that check that `~/.cabal/bin` has
    been added to your system path.)
-
-4. Run ``cabal install`` to install the Vehicle executable.
-
-5. Run ``vehicle -h`` to check that Vehicle has been installed.
 
 **Troubleshooting**
 
