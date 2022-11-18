@@ -14,6 +14,17 @@ import Vehicle.Prelude
 import Vehicle.Compile.Prelude qualified as V
 import Data.List.NonEmpty (NonEmpty)
 import GHC.Generics (Generic)
+import Data.Aeson (FromJSON, ToJSON)
+
+
+instance FromJSON Domain
+instance ToJSON Domain
+
+instance FromJSON LExpr
+instance ToJSON LExpr
+
+instance FromJSON Quantifier
+instance ToJSON Quantifier
 
 -- definiton of the LExpr - all expressions allowed in a loss constraint
 
@@ -49,6 +60,8 @@ data Quantifier
 newtype Domain = Domain ()
   deriving (Eq, Ord, Generic, Show)
 
+-- template for different avilable differentiable logics
+
 data DifferentialLogicImplementation = DifferentialLogicImplementation
   { compileAnd          :: LExpr -> LExpr -> LExpr
   , compileOr           :: LExpr -> LExpr -> LExpr
@@ -69,11 +82,11 @@ data DifferentialLogicImplementation = DifferentialLogicImplementation
 
 --------------------------------------------------------------------------------
 -- different avilable differentiable logics (types of translation from the constraint to loss function) are
--- DL2
--- Godel
--- Lukasiewicz
--- Product based
--- Yager
+-- DL2                              --Fischer, Marc, et al. "Dl2: Training and querying neural networks with logic."  PMLR, 2019.
+-- Godel                            --van Krieken, et al. "Analyzing differentiable fuzzy logic operators." Artificial Intelligence 302 (2022): 103602.
+-- Lukasiewicz                      --as above
+-- Product based                    --as above
+-- Yager                            --as above
 
 --they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2.
 

@@ -6,8 +6,7 @@ module Vehicle.Backend.LossFunction.Compile
 
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.List.NonEmpty (NonEmpty)
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 
 import Vehicle.Compile.Error
@@ -36,15 +35,6 @@ data LDecl
 instance FromJSON LDecl
 instance ToJSON LDecl
 
-instance FromJSON Domain
-instance ToJSON Domain
-
-instance FromJSON LExpr
-instance ToJSON LExpr
-
-instance FromJSON Quantifier
-instance ToJSON Quantifier
-
 --------------------------------------------------------------------------------
 -- Compilation
 -- the translation into the LExpr (this is the exported top compile function)
@@ -65,7 +55,7 @@ chooseTranslation = \case
 
 -- |compile entire specification (calls compileDecl)
 compileProg :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedProg -> m [LDecl]
-compileProg  t (V.Main ds) = catMaybes <$> traverse (compileDecl t) ds
+compileProg  t (V.Main ds) =  traverse (compileDecl t) ds
 
 type MonadCompileLoss m =
   ( MonadCompile m
@@ -73,7 +63,7 @@ type MonadCompileLoss m =
   )
 
 -- |compile all functions found in spec, save their names (call compileExpr on each)
-compileDecl :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedDecl -> m (Maybe LDecl)
+compileDecl :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedDecl -> m LDecl
 compileDecl t d =
   case d of
   V.DefResource{} ->
@@ -85,7 +75,7 @@ compileDecl t d =
   V.DefFunction _ ident _ expr -> do
     expr' <- compileExpr t expr
     logDebug MaxDetail ("loss-declaration " <> prettySimple expr)
-    return (Just (DefFunction (nameOf ident) expr'))
+    return (DefFunction (nameOf ident) expr')
 
 currentPass :: Doc a
 currentPass = "compilation to loss functions"
