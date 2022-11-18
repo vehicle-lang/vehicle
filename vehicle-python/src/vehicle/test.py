@@ -2,12 +2,13 @@ from vehicle import generate_loss_function
 from tensorflow import keras
 import tensorflow as tf
 import numpy as np
+import random
 
 
-def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, functionName, resources):
+def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, functionName, resources, quantifier_sampling):
     optimizer = keras.optimizers.Adam()
     ce_batch_loss = keras.losses.BinaryCrossentropy()
-    vehicle_batch_loss = generate_loss_function(path_to_spec, functionName, resources)
+    vehicle_batch_loss = generate_loss_function(path_to_spec, functionName, resources, quantifier_sampling)
 
     train_acc_metric = keras.metrics.BinaryCrossentropy()
     test_acc_metric = keras.metrics.BinaryCrossentropy()
@@ -23,7 +24,7 @@ def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, 
             with tf.GradientTape() as tape:
                 outputs = model(x_batch_train, training=True)  # Outputs for this minibatch
                 ce_loss_value = ce_batch_loss(y_batch_train, outputs)
-                vehicle_loss = vehicle_batch_loss(0.5)
+                vehicle_loss = vehicle_batch_loss()
                 total_loss = ce_loss_value * alfa + vehicle_loss * beta
             # Use the gradient tape to automatically retrieve the gradients of the trainable variables with respect to the loss.
             grads = tape.gradient(total_loss, model.trainable_weights)
@@ -66,6 +67,8 @@ if __name__ == '__main__':
     ])
     resources = {'f': model}
 
+    quantifier_sampling = {'x': lambda: random.uniform(.5, .5)}
+
     batch_size = 1
     epochs = 4
     alfa = 0
@@ -76,13 +79,10 @@ if __name__ == '__main__':
     y_train = np.array([0, 0, 0, 1, 1])
     y_test = np.array([0, 0, 1, 1, 1])
 
-    print(X_train.shape)
-    print(y_train.shape)
-
     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
     test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
 
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
     test_dataset = test_dataset.batch(batch_size)
 
-    model = train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, function_name, resources)
+    model = train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, function_name, resources, quantifier_sampling)
