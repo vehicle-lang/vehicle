@@ -1,14 +1,27 @@
-from vehicle.vehicle import generate_loss_function
-from tensorflow import keras
+import tensorflow.keras as keras
 import tensorflow as tf
 import numpy as np
 import random
 
+from vehicle import generate_loss_function
 
-def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, functionName, resources, quantifier_sampling):
+def train(
+    model,
+    train_dataset,
+    test_dataset,
+    epochs,
+    alfa,
+    beta,
+    path_to_spec,
+    functionName,
+    resources,
+    quantifier_sampling,
+):
     optimizer = keras.optimizers.Adam()
     ce_batch_loss = keras.losses.BinaryCrossentropy()
-    vehicle_batch_loss = generate_loss_function(path_to_spec, functionName, resources, quantifier_sampling)
+    vehicle_batch_loss = generate_loss_function(
+        path_to_spec, functionName, resources, quantifier_sampling
+    )
 
     train_acc_metric = keras.metrics.BinaryCrossentropy()
     test_acc_metric = keras.metrics.BinaryCrossentropy()
@@ -22,7 +35,9 @@ def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, 
         for x_batch_train, y_batch_train in train_dataset:
             # Open a GradientTape to record the operations run during the forward pass, which enables auto-differentiation.
             with tf.GradientTape() as tape:
-                outputs = model(x_batch_train, training=True)  # Outputs for this minibatch
+                outputs = model(
+                    x_batch_train, training=True
+                )  # Outputs for this minibatch
                 ce_loss_value = ce_batch_loss(y_batch_train, outputs)
                 vehicle_loss = vehicle_batch_loss()
                 total_loss = ce_loss_value * alfa + vehicle_loss * beta
@@ -53,21 +68,25 @@ def train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, 
         train_loss_metric.reset_states()
         test_loss_metric.reset_states()
 
-        print(f"Train acc: {float(train_acc):.4f}, Train loss: {float(train_loss):.4f} --- Test acc: {float(test_acc):.4f}, Test loss: {float(test_loss):.4f}")
+        print(
+            f"Train acc: {float(train_acc):.4f}, Train loss: {float(train_loss):.4f} --- Test acc: {float(test_acc):.4f}, Test loss: {float(test_loss):.4f}"
+        )
 
     return model
 
 
-if __name__ == '__main__':
-    path_to_spec = './bounded.vcl'
-    function_name = 'bounded'
-    model = keras.Sequential([
-        keras.layers.Input(shape=(1,)),
-        keras.layers.Dense(units=1),
-    ])
-    resources = {'f': model}
+if __name__ == "__main__":
+    path_to_spec = "./bounded.vcl"
+    function_name = "bounded"
+    model = keras.Sequential(
+        [
+            keras.layers.Input(shape=(1,)),
+            keras.layers.Dense(units=1),
+        ]
+    )
+    resources = {"f": model}
 
-    quantifier_sampling = {'x': lambda: random.uniform(.5, .5)}
+    quantifier_sampling = {"x": lambda: random.uniform(0.5, 0.5)}
 
     batch_size = 1
     epochs = 4
@@ -85,4 +104,15 @@ if __name__ == '__main__':
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
     test_dataset = test_dataset.batch(batch_size)
 
-    model = train(model, train_dataset, test_dataset, epochs, alfa, beta, path_to_spec, function_name, resources, quantifier_sampling)
+    model = train(
+        model,
+        train_dataset,
+        test_dataset,
+        epochs,
+        alfa,
+        beta,
+        path_to_spec,
+        function_name,
+        resources,
+        quantifier_sampling,
+    )

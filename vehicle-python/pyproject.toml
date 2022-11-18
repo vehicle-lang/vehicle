@@ -20,7 +20,7 @@ numpy = "^1.19" # TODO: lowest possible numpy bound?
 pytest = { version = "^7.1", optional = true }
 
 [tool.poetry.extras]
-test = ["pytest"]
+test = []
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^0.971"
@@ -44,6 +44,8 @@ requires =
   tox-poetry
 envlist = py37,py38,py39,py310
 isolated_build = True
+skip_missing_interpreters = True
+
 [gh-actions]
 python =
   3.7: py37
@@ -54,5 +56,5 @@ python =
 extras =
   test
 commands =
-  pytest
+  {envpython} -m unittest tests/test_LossFunctionTranslation.py
 """
