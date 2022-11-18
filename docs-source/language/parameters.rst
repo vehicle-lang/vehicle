@@ -14,7 +14,7 @@ for epsilon in a robustness specification.
 Basics
 ------
 
-Parameters can be declared using the :code:`parameter` annotation as follows:
+Parameters can be declared using the ``@parameter`` annotation as follows:
 
 .. code-block:: agda
 
@@ -47,8 +47,11 @@ The solution in this case is to set the ``infer`` option on the parameter as fol
    @parameter(infer=True)
    n : Nat
 
-   dataset trainingInputs  : Tensor Rat [n, 10]
-   dataset trainingOutputs : Tensor Rat [n, 3]
+   @dataset
+   trainingInputs : Tensor Rat [n, 10]
+
+   @dataset
+   trainingOutputs : Tensor Rat [n, 3]
 
 Unlike normal parameters, inferable parameters cannot be passed in at the
 command line using the ``--parameter`` option.
