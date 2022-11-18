@@ -40,7 +40,8 @@ for the :code:`export` command.
 .. option:: --proofCache, -c
 
     Provide Vehicle the location of the proof cache from which the
-    exported specification should be generated.
+    exported specification should be generated. If not provided then
+    all ``@property`` declarations will be converted into ``postulates``.
 
 .. option:: --outputFile, -o
 
