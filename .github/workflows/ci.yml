@@ -67,27 +67,17 @@ jobs:
           cabal v2-install exe:vehicle       \
             --overwrite-policy=always        \
             --install-method=copy            \
-            --installdir=bdist               \
+            --installdir=~/.vehicle/bin      \
             --project-file=${{ env.CABAL_PROJECT_FILE }}
         shell: sh
 
-      - name: Upload Vehicle executable (Linux or macOS)
-        if: runner.os == 'Linux' || runner.os == 'macOS'
-        uses: actions/upload-artifact@v3
+      - uses: ./.github/actions/upload-vehicle
         with:
-          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.ghc-version }}
-          path: bdist/vehicle
-          if-no-files-found: error
-
-      - name: Upload Vehicle executable (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v3
-        with:
-          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.ghc-version }}
-          path: bdist/vehicle.exe
-          if-no-files-found: error
+          path: ~/.vehicle/bin
+          ghc-version: ${{ matrix.ghc-version }}
 
   vehicle-python:
+    needs: [vehicle]
     name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
     strategy:
       matrix:
@@ -104,15 +94,8 @@ jobs:
         with:
           submodules: true
 
-      - name: Download Vehicle executable
-        uses: actions/download-artifact@v3
-        with:
-          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ env.DEFAULT_GHC_VERSION }}
-          path: ${{ github.workspace }}/bdist
-
-      - name: Add bdist directory to PATH
-        run: echo "${{ github.workspace }}/bdist" >> $GITHUB_PATH
-        shell: sh
+      - name: Setup Vehicle
+        uses: ./.github/actions/setup-vehicle
 
       - name: Setup Python
         uses: actions/setup-python@v4
