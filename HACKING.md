@@ -68,7 +68,7 @@ Currently disabled.
 ### Continuous integration
 
 The tests are run automatically when changes are pushed to Github.
-The CI script that controls this is `.github/workflows/ci.yml`.
+The CI script that controls this is `.github/workflows/build.yml`.
 
 ## 4. Parsers
 
