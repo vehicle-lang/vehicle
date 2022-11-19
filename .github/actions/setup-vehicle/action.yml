@@ -1,0 +1,41 @@
+name: "Setup Haskell"
+description: "Setup Haskell"
+inputs:
+  ghc-version:
+    required: false
+    description: 'Version of GHC to use. If set to "latest", it will always get the latest stable version.'
+    default: "latest"
+  cabal-version:
+    required: false
+    description: 'Version of Cabal to use. If set to "latest", it will always get the latest stable version.'
+    default: "latest"
+  cabal-project-file:
+    required: false
+    description: 'Path to the project configuration. Defaults to "cabal.project".'
+    default: "cabal.project"
+  cabal-project-freeze-file:
+    required: false
+    description: 'Path to project freeze file. Defaults to "cabal.project.freeze".'
+    default: "cabal.project.freeze"
+runs:
+  using: "composite"
+  steps:
+    - name: Download Vehicle
+      uses: actions/download-artifact@v3
+      with:
+        name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ env.DEFAULT_GHC_VERSION }}-${{ github.sha }}
+        path: ${{ github.workspace }}/bin
+
+    - name: Repair Permissions
+      if: runner.os == 'Linux' || runner.os == 'macOS'
+      run: chmod +x ${{ github.workspace }}/bin/vehicle
+      shell: sh
+
+    - name: Clear Extended Attributes
+      if: runner.os == 'macOS'
+      run: xattr -c ${{ github.workspace }}/bin/vehicle
+      shell: sh
+
+    - name: Add bin directory to PATH
+      run: echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+      shell: sh
