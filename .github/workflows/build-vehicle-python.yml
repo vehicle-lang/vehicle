@@ -30,22 +30,14 @@ jobs:
           vehicle-artifact-name: |
             vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ env.DEFAULT_GHC_VERSION }}-${{ github.sha }}
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Setup Poetry
+        uses: ./.github/actions/setup-poetry
         with:
           python-version: ${{ inputs.python-version }}
-          cache: "poetry"
-          cache-dependency-path: "vehicle-python/poetry.lock"
-
-      - name: Setup Poetry
-        uses: Gr1N/setup-poetry@v7
-
-      - name: Setup requirements
-        run: poetry install -E test
-        shell: sh
-        working-directory: vehicle-python
 
       - name: Test
-        run: poetry run python -m unittest tests/test_LossFunctionTranslation.py
+        run: |
+          poetry install -E test
+          poetry run python -m unittest tests/test_LossFunctionTranslation.py
         shell: sh
         working-directory: vehicle-python
