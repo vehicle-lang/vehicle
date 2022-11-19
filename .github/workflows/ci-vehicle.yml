@@ -1,0 +1,64 @@
+name: vehicle
+
+on:
+  workflow_call:
+
+jobs:
+  vehicle:
+    strategy:
+      matrix:
+        os_and_name:
+          - [ubuntu-latest, Linux]
+          - [macos-latest, macOS]
+          - [windows-latest, Windows]
+        ghc-version: ["8.10", "9.0"]
+        cabal-version: ["3.8"]
+        experimental: [false]
+    env:
+      CABAL_PROJECT_FILE: cabal.project.ghc-${{ matrix.ghc-version }}
+      CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ matrix.ghc-version }}.freeze
+
+    name: ${{ matrix.os_and_name[1] }} / GHC ${{ matrix.ghc-version }}
+    runs-on: ${{ matrix.os_and_name[0] }}
+    continue-on-error: ${{ matrix.experimental }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Haskell
+        uses: ./.github/actions/setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc-version }}
+          cabal-version: ${{ matrix.cabal-version }}
+          cabal-project-file: ${{ env.CABAL_PROJECT_FILE }}
+          cabal-project-freeze-file: ${{ env.CABAL_PROJECT_FREEZE_FILE }}
+
+      - name: Test Vehicle
+        run: |
+          cabal v2-test vehicle-unit-tests   \
+            --test-option=--color=always     \
+            --test-show-details=always       \
+            --project-file=${{ env.CABAL_PROJECT_FILE }}
+          cabal v2-test vehicle-golden-tests \
+            --test-option=--color=always     \
+            --test-show-details=always       \
+            --project-file=${{ env.CABAL_PROJECT_FILE }}
+        shell: sh
+
+      - name: Build Vehicle
+        run: |
+          mkdir -p ~/.vehicle/bin
+          cabal v2-install exe:vehicle       \
+            --overwrite-policy=always        \
+            --install-method=copy            \
+            --installdir=~/.vehicle/bin      \
+            --project-file=${{ env.CABAL_PROJECT_FILE }}
+        shell: sh
+
+      - name: Upload Vehicle
+        uses: actions/upload-artifact@v3
+        with:
+          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ inputs.ghc-version }}
+          path: ~/.vehicle/bin
+          if-no-files-found: error

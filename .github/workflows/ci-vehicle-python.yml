@@ -1,0 +1,67 @@
+name: build
+
+on:
+  workflow_call:
+
+env:
+  DEFAULT_GHC_VERSION: "9.0"
+
+jobs:
+  vehicle-python:
+    needs: [vehicle]
+    name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}
+    strategy:
+      matrix:
+        os_and_name:
+          - [ubuntu-latest, Linux]
+          - [macos-latest, macOS]
+          - [windows-latest, Windows]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        include:
+          - # Earliest supported version:
+            os: ubuntu-latest
+            python-version: "3.7.1"
+
+    runs-on: ${{ matrix.os_and_name[0] }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Download Vehicle
+        uses: actions/download-artifact@v3
+        with:
+          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ env.DEFAULT_GHC_VERSION }}
+          path: ~/.vehicle/bin
+
+      - name: Add .vehicle/bin directory to PATH
+        run: echo "~/.vehicle/bin" >> $GITHUB_PATH
+        shell: sh
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+          cache-dependency-path: "vehicle-python/requirements-ci.txt"
+
+      - name: Setup requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-ci.txt
+        shell: sh
+        working-directory: vehicle-python
+
+      - name: Cache tox
+        uses: actions/cache@v2
+        with:
+          path: .tox
+          key: |
+            tox-cache-${{ runner.arch }}-${{ runner.os }}-python-${{ matrix.python-version }}-${{ hashFiles(vehicle-python/poetry.lock) }}
+          restore-keys: |
+            tox-cache-${{ runner.arch }}-${{ runner.os }}-python-${{ matrix.python-version }}-
+
+      - name: Test
+        run: tox
+        shell: sh
+        working-directory: vehicle-python
