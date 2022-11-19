@@ -1,4 +1,4 @@
-name: build
+name: CI
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 jobs:
   build-vehicle:
     name: ${{ matrix.os_and_name[1] }} / GHC ${{ matrix.ghc-version }}
-    uses: ./.github/workflows/ci-vehicle.yml
+    uses: ./.github/workflows/build-vehicle.yml
     with:
       runs-on: ${{ matrix.os_and_name[0] }}
       ghc-version: ${{ matrix.ghc-version }}
@@ -29,7 +29,7 @@ jobs:
   build-vehicle-python:
     name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}
     needs: [vehicle]
-    uses: ./.github/workflows/ci-vehicle-python.yml
+    uses: ./.github/workflows/build-vehicle-python.yml
     with:
       runs-on: ${{ matrix.os_and_name[0] }}
       python-version: ${{ matrix.python-version }}
