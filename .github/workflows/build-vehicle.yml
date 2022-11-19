@@ -61,6 +61,6 @@ jobs:
       - name: Upload Vehicle
         uses: actions/upload-artifact@v3
         with:
-          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ inputs.ghc-version }}
+          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ inputs.ghc-version }}-${{ github.sha }}
           path: ~/.vehicle/bin
           if-no-files-found: error
