@@ -10,9 +10,37 @@ on:
       - synchronize
 
 jobs:
-  vehicle:
+  build-vehicle:
+    name: ${{ matrix.os_and_name[1] }} / GHC ${{ matrix.ghc-version }}
     uses: ./.github/workflows/ci-vehicle.yml
+    with:
+      runs-on: ${{ matrix.os_and_name[0] }}
+      ghc-version: ${{ matrix.ghc-version }}
+      cabal-version: ${{ matrix.cabal-version }}
+    strategy:
+      matrix:
+        os_and_name:
+          - [ubuntu-latest, Linux]
+          - [macos-latest, macOS]
+          - [windows-latest, Windows]
+        ghc-version: ["8.10", "9.0"]
+        cabal-version: ["3.8"]
 
-  vehicle-python:
+  build-vehicle-python:
+    name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}
     needs: [vehicle]
     uses: ./.github/workflows/ci-vehicle-python.yml
+    with:
+      runs-on: ${{ matrix.os_and_name[0] }}
+      python-version: ${{ matrix.python-version }}
+    strategy:
+      matrix:
+        os_and_name:
+          - [ubuntu-latest, Linux]
+          - [macos-latest, macOS]
+          - [windows-latest, Windows]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        include:
+          - # Earliest supported version:
+            os: ubuntu-latest
+            python-version: "3.7.1"

@@ -1,28 +1,23 @@
-name: build
+name: build vehicle
 
 on:
   workflow_call:
+    inputs:
+      runs-on:
+        description: "The type of machine to run the job on."
+        required: true
+        type: string
+      python-version:
+        description: "The Python version to run the job with."
+        required: true
+        type: string
 
 env:
   DEFAULT_GHC_VERSION: "9.0"
 
 jobs:
   vehicle-python:
-    needs: [vehicle]
-    name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}
-    strategy:
-      matrix:
-        os_and_name:
-          - [ubuntu-latest, Linux]
-          - [macos-latest, macOS]
-          - [windows-latest, Windows]
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
-        include:
-          - # Earliest supported version:
-            os: ubuntu-latest
-            python-version: "3.7.1"
-
-    runs-on: ${{ matrix.os_and_name[0] }}
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -41,7 +36,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ inputs.python-version }}
           cache: "pip"
           cache-dependency-path: "vehicle-python/requirements-ci.txt"
 
@@ -57,9 +52,9 @@ jobs:
         with:
           path: .tox
           key: |
-            tox-cache-${{ runner.arch }}-${{ runner.os }}-python-${{ matrix.python-version }}-${{ hashFiles(vehicle-python/poetry.lock) }}
+            tox-cache-${{ runner.arch }}-${{ runner.os }}-python-${{ inputs.python-version }}-${{ hashFiles(vehicle-python/poetry.lock) }}
           restore-keys: |
-            tox-cache-${{ runner.arch }}-${{ runner.os }}-python-${{ matrix.python-version }}-
+            tox-cache-${{ runner.arch }}-${{ runner.os }}-python-${{ inputs.python-version }}-
 
       - name: Test
         run: tox
