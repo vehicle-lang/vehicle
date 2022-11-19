@@ -17,6 +17,7 @@ env:
 
 jobs:
   build-vehicle-python:
+    name: Build Vehicle Python
     runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: actions/checkout@v3

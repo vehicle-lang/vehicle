@@ -22,6 +22,7 @@ env:
 
 jobs:
   build-vehicle:
+    name: Build Vehicle
     runs-on: ${{ inputs.runs-on }}
     steps:
       - name: Checkout
