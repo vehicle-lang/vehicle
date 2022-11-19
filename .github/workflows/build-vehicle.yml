@@ -22,7 +22,7 @@ env:
 
 jobs:
   build-vehicle:
-    name: Build Vehicle
+    name: Build vehicle with GHC ${{ inputs.ghc-version }}
     runs-on: ${{ inputs.runs-on }}
     steps:
       - name: Checkout

@@ -11,7 +11,7 @@ on:
 
 jobs:
   build-vehicle:
-    name: ${{ matrix.os_and_name[1] }} - GHC ${{ matrix.ghc-version }}
+    name: ${{ matrix.os_and_name[1] }} / GHC ${{ matrix.ghc-version }}
     uses: ./.github/workflows/build-vehicle.yml
     with:
       runs-on: ${{ matrix.os_and_name[0] }}
@@ -27,7 +27,7 @@ jobs:
         cabal-version: ["3.8"]
 
   build-vehicle-python:
-    name: ${{ matrix.os_and_name[1] }} - Python ${{ matrix.python-version }}
+    name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}
     needs: [build-vehicle]
     uses: ./.github/workflows/build-vehicle-python.yml
     with:
