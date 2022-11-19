@@ -52,7 +52,7 @@ jobs:
         with:
           path: .tox
           key: |
-            tox-cache-${{ runner.arch }}-${{ runner.os }}-python-${{ inputs.python-version }}-${{ hashFiles(vehicle-python/poetry.lock) }}
+            tox-cache-${{ runner.arch }}-${{ runner.os }}-python-${{ inputs.python-version }}-${{ hashFiles('vehicle-python/poetry.lock') }}
           restore-keys: |
             tox-cache-${{ runner.arch }}-${{ runner.os }}-python-${{ inputs.python-version }}-
 
