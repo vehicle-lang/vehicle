@@ -1,4 +1,4 @@
-name: editor integration
+name: test editor integration
 
 on:
   workflow_call:

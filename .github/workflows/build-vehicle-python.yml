@@ -16,7 +16,7 @@ env:
   DEFAULT_GHC_VERSION: "9.0"
 
 jobs:
-  vehicle-python:
+  build-vehicle-python:
     runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: actions/checkout@v3

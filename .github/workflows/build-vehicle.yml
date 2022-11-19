@@ -1,4 +1,4 @@
-name: vehicle
+name: build vehicle
 
 on:
   workflow_call:
@@ -21,8 +21,7 @@ env:
   CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ inputs.ghc-version }}.freeze
 
 jobs:
-  vehicle:
-    name: ${{ inputs.runs-on }} / GHC ${{ inputs.ghc-version }}
+  build-vehicle:
     runs-on: ${{ inputs.runs-on }}
     steps:
       - name: Checkout
