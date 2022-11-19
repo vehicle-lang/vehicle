@@ -50,11 +50,11 @@ jobs:
 
       - name: Build Vehicle
         run: |
-          mkdir -p ${{ github.workspace }}/bin
+          mkdir -p bin
           cabal v2-install exe:vehicle       \
             --overwrite-policy=always        \
             --install-method=copy            \
-            --installdir=${{ github.workspace }}/bin      \
+            --installdir=bin                 \
             --project-file=${{ env.CABAL_PROJECT_FILE }}
         shell: sh
 
@@ -62,5 +62,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ inputs.ghc-version }}-${{ github.sha }}
-          path: ${{ github.workspace }}/bin
+          path: bin
           if-no-files-found: error
