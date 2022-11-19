@@ -28,7 +28,7 @@ jobs:
 
   build-vehicle-python:
     name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}
-    needs: [vehicle]
+    needs: [build-vehicle]
     uses: ./.github/workflows/build-vehicle-python.yml
     with:
       runs-on: ${{ matrix.os_and_name[0] }}
