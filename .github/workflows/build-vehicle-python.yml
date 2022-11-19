@@ -36,8 +36,6 @@ jobs:
           python-version: ${{ inputs.python-version }}
 
       - name: Test
-        run: |
-          poetry install -E test
-          poetry run python -m unittest tests/test_LossFunctionTranslation.py
+        run: poetry install --no-root --with ci && poetry run tox
         shell: sh
         working-directory: vehicle-python
