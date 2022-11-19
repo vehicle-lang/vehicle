@@ -22,15 +22,16 @@ checkQuantifiersAndNegateIfNecessary backend ident expr =
     quantifier <- checkQuantifiersAreHomogeneous backend ident expr
     logDebug MinDetail $ "Quantifier type: " <> pretty quantifier
 
-    outputExpr <- case quantifier of
-      Exists  -> return expr
-      Forall  -> do
+    (negated, outputExpr) <- case quantifier of
+      Just Forall -> do
         -- If the property is universally quantified then we need to negate the expression
         logDebug MinDetail "Negating property..."
-        return $ lowerNot expr
+        return (True, lowerNot expr)
+
+      _ -> return (False, expr)
 
     logCompilerPassOutput (prettyFriendly outputExpr)
-    return (quantifier == Forall, outputExpr)
+    return (negated, outputExpr)
 
 -- | Checks that the quantifiers within the expression are homogeneous,
 -- returning the quantifier. Defaults to returning `All` if the expression
@@ -39,8 +40,8 @@ checkQuantifiersAreHomogeneous :: forall m . MonadCompile m
                                => VerifierIdentifier
                                -> Identifier
                                -> CheckedExpr
-                               -> m Quantifier
-checkQuantifiersAreHomogeneous target ident expr = maybe Forall fst <$> go expr
+                               -> m (Maybe Quantifier)
+checkQuantifiersAreHomogeneous target ident expr = fmap fst <$> go expr
   where
     go :: CheckedExpr -> m (Maybe (Quantifier, Provenance))
     go e = case e of

@@ -75,12 +75,12 @@ evaluateQuery negated f q = negated `xor` case q of
 --------------------------------------------------------------------------------
 -- Property expression
 
--- | Properties may have arbitrary boolean structure at the level above queries.
+-- | Properties may have arbitrary boolean structure above queries.
 --
 -- e.g. (forall ....) or (exists (...) and (forall ...)).
 --
--- It would be inefficient to normalise this structure so instead we capture it
--- with this data type parameterised by the leaves.
+-- This type captures this boolean structure, and is parameterised by the type
+-- of data stored at the position of each query.
 data PropertyExpr a
   = Query NegationStatus (Query a)
   | Disjunct (PropertyExpr a) (PropertyExpr a)

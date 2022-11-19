@@ -8,6 +8,8 @@
 *.dyn_hi
 *.prof
 *.prof.html
+*.profiterole.html
+*.profiterole.txt
 *.aux
 *.hp
 *.eventlog

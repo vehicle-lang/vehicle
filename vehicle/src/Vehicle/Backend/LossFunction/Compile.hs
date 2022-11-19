@@ -90,7 +90,6 @@ normalisationOptions = Options
   , normaliseLambdaApplications = False
   , normaliseStdLibApplications = False
   , normaliseBuiltin            = normBuiltin
-  , normaliseWeakly             = False
   }
 
 normBuiltin :: V.Builtin -> Bool

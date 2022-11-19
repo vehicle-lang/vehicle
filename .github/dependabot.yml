@@ -9,7 +9,7 @@ updates:
 
   # Maintain dependencies for Python
   - package-ecosystem: "pip"
-    directory: "/docs/source"
+    directory: "/docs-source"
     schedule:
       interval: "weekly"
 

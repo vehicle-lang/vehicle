@@ -466,7 +466,6 @@ whnf e = do
     , normaliseLambdaApplications = True
     , normaliseStdLibApplications = True
     , normaliseBuiltin            = const True
-    , normaliseWeakly             = False
     }
 
 whnfNBE :: MonadTypeChecker m => Int -> CheckedExpr -> m NormExpr

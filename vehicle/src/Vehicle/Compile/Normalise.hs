@@ -41,7 +41,6 @@ data NormalisationOptions = Options
   , normaliseLambdaApplications :: Bool
   , normaliseStdLibApplications :: Bool
   , normaliseBuiltin            :: Builtin -> Bool
-  , normaliseWeakly             :: Bool
   }
 
 fullNormalisationOptions :: NormalisationOptions
@@ -52,7 +51,6 @@ fullNormalisationOptions = Options
   , normaliseLambdaApplications = True
   , normaliseStdLibApplications = True
   , normaliseBuiltin            = const True
-  , normaliseWeakly             = False
   }
 
 -- |Constraint for the monad stack used by the normaliser.
@@ -128,9 +126,7 @@ instance Norm CheckedExpr where
 
       App p fun args -> do
         nFun  <- nf fun
-        nArgs <- if normaliseWeakly
-          then return args
-          else traverse (traverseExplicitArgExpr nf) args
+        nArgs <- traverse (traverseExplicitArgExpr nf) args
 
         nfApp p nFun nArgs
 
