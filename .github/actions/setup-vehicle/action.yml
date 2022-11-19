@@ -1,5 +1,5 @@
-name: "Setup Haskell"
-description: "Setup Haskell"
+name: "Setup Vehicle"
+description: "Setup Vehicle"
 inputs:
   vehicle-artifact-name:
     required: true
