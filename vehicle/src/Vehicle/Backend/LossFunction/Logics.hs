@@ -19,7 +19,6 @@ import Data.Aeson (FromJSON, ToJSON)
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 
 -- |Definiton of the LExpr - all expressions allowed in a loss constraint
-
 data LExpr
   = Negation LExpr                           
   -- |^this is minus, not the logical operation of negation
@@ -66,7 +65,6 @@ instance FromJSON Domain
 instance ToJSON Domain
 
 -- |Template for different avilable differentiable logics
-
 data DifferentialLogicImplementation = DifferentialLogicImplementation
   { compileAnd          :: LExpr -> LExpr -> LExpr
   , compileOr           :: LExpr -> LExpr -> LExpr
@@ -82,7 +80,7 @@ data DifferentialLogicImplementation = DifferentialLogicImplementation
 
   , compileTrue         :: Double
   , compileFalse        :: Double
-    }
+  }
 
 chooseTranslation :: DifferentiableLogic -> DifferentialLogicImplementation
 chooseTranslation = \case
@@ -93,16 +91,9 @@ chooseTranslation = \case
     Yager -> yagerTranslation
 
 --------------------------------------------------------------------------------
--- different available  differentiable logics (types of translation from the constraint 
--- to loss function) are:
-
--- DL2     
--- Godel             
--- Lukasiewicz    
--- Product based   
--- Yager     
-
--- they can be found in Vehicle.Backend.Prelude and the default option if none is provided is DL2.
+-- different available  differentiable logics 
+-- (avilable options options and how to pass them can be found in Vehicle.Backend.Prelude
+-- and the default option if none is provided is DL2)
 
 -- part of the syntax translation that differ depending on chosen DL are:
     -- logical connectives (not, and, or, implies)

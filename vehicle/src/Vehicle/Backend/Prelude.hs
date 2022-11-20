@@ -18,6 +18,10 @@ data Backend
   | TypeCheck
   deriving (Eq, Show)
 
+--------------------------------------------------------------------------------
+-- different available  differentiable logics (types of translation from the constraint 
+-- to loss function) are as listed below:
+
 data DifferentiableLogic
   = DL2
   | Godel
@@ -61,7 +65,7 @@ instance Pretty Backend where
 instance Read Backend where
   readsPrec _d x = case x of
     "Marabou"                       -> [(MarabouBackend, [])]
-    "LossFunction"                  -> [(LossFunctionDL2, [])] --default loss function translation is DL2
+    "LossFunction"                  -> [(LossFunctionDL2, [])] -- |this is a default loss translation
     "LossFunction-DL2"              -> [(LossFunctionDL2, [])]
     "LossFunction-Godel"            -> [(LossFunctionGodel, [])]
     "LossFunction-Lukasiewicz"      -> [(LossFunctionLukasiewicz, [])]

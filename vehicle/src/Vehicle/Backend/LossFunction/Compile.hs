@@ -19,7 +19,7 @@ import Vehicle.Language.Print (prettySimple, prettyVerbose)
 import Vehicle.Prelude
 import Vehicle.Compile.Queries.DNF
 import Vehicle.Language.AST.Arg (argExpr)
-import Vehicle.Backend.LossFunction.Logics (LExpr (..), Domain (..), Quantifier (..), DifferentialLogicImplementation (..), dl2Translation, godelTranslation, lukasiewiczTranslation, productTranslation, yagerTranslation, chooseTranslation)
+import Vehicle.Backend.LossFunction.Logics (LExpr (..), Domain (..), Quantifier (..), DifferentialLogicImplementation (..), chooseTranslation)
 
 --------------------------------------------------------------------------------
 -- Declaration definition
@@ -94,7 +94,7 @@ compileExpr t e = showExit $ do
   case e' of
     -- logical operatives
     V.NotExpr     _ [e1]     -> case compileNot t of
-      Nothing -> compileExpr t (lowerNot (argExpr e1))--compileNot t <$> compileExpr t (lowerNot (argExpr e1))
+      Nothing -> compileExpr t (lowerNot (argExpr e1))
       Just f -> f <$> compileArg t e1
     V.AndExpr     _ [e1, e2] -> compileAnd t <$> compileArg t e1 <*> compileArg t e2
     V.OrExpr      _ [e1, e2] -> compileOr t <$> compileArg t e1 <*> compileArg t e2
