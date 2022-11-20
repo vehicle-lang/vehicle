@@ -41,6 +41,7 @@ testpaths = ["tests"]
 [tool.mypy]
 python_version = 3.9
 ignore_missing_imports = true
+plugins = "numpy.typing.mypy_plugin"
 
 [tool.tox]
 legacy_tox_ini = """
