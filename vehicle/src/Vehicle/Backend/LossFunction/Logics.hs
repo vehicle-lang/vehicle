@@ -65,6 +65,9 @@ instance FromJSON Domain
 instance ToJSON Domain
 
 -- |Template for different avilable differentiable logics
+-- |part of the syntax translation that differ depending on chosen DL are:
+    -- |logical connectives (not, and, or, implies)
+    -- |comparisons (<, <=, >, >=, =, !=)
 data DifferentialLogicImplementation = DifferentialLogicImplementation
   { compileAnd          :: LExpr -> LExpr -> LExpr
   , compileOr           :: LExpr -> LExpr -> LExpr
@@ -94,10 +97,6 @@ chooseTranslation = \case
 -- different available  differentiable logics 
 -- (avilable options options and how to pass them can be found in Vehicle.Backend.Prelude
 -- and the default option if none is provided is DL2)
-
--- part of the syntax translation that differ depending on chosen DL are:
-    -- logical connectives (not, and, or, implies)
-    -- comparisons (<, <=, >, >=, =, !=)
 
 -- |from Fischer, Marc, et al. "Dl2: Training and querying neural networks with logic."  PMLR, 2019.
 dl2Translation :: DifferentialLogicImplementation
