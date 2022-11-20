@@ -1,12 +1,12 @@
-from pathlib import Path
-import unittest
 import json
-import tensorflow.keras as keras
-import tensorflow as tf
-import numpy as np
+import unittest
+from pathlib import Path
 
-from vehicle import LossFunctionTranslation
-from vehicle import generate_loss_function
+import numpy as np
+import tensorflow as tf
+import tensorflow.keras as keras
+
+from vehicle import LossFunctionTranslation, generate_loss_function
 
 
 class TestLossFunctionTranslation(unittest.TestCase):

@@ -1,9 +1,11 @@
-import tensorflow.keras as keras
-import tensorflow as tf
-import numpy as np
 import random
 
+import numpy as np
+import tensorflow as tf
+import tensorflow.keras as keras
+
 from vehicle import generate_loss_function
+
 
 def train(
     model,
