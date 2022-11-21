@@ -13,7 +13,7 @@ on:
         type: string
 
 env:
-  DEFAULT_GHC_VERSION: "9.0"
+  DEFAULT_GHC_VERSION: "9.0.2"
 
 jobs:
   build-vehicle-python:
