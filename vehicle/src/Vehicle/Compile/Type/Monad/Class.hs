@@ -281,12 +281,16 @@ getMetaCtxSize m = metaCtxSize <$> getMetaInfo m
 incrementMetaCtxSize :: MonadTypeChecker m => MetaID -> m ()
 incrementMetaCtxSize m = modifyMetaCtx (\TypingMetaCtx{..} -> do
   let metaIndex = getMetaIndex metaInfo m
-  let (xs, info : ys) = splitAt metaIndex metaInfo
-  let info' = increaseMetaCtxSize info
-  TypingMetaCtx
-    { metaInfo = xs <> (info' : ys)
-    , ..
-    })
+  case splitAt metaIndex metaInfo of
+    (_, [])         -> developerError $
+      "Increment meta-ctx for unknown meta-variable" <+> pretty m
+
+    (xs, info : ys) -> do
+      let info' = increaseMetaCtxSize info
+      TypingMetaCtx
+        { metaInfo = xs <> (info' : ys)
+        , ..
+        })
 
 clearMetaSubstitution :: MonadTypeChecker m => m ()
 clearMetaSubstitution = modifyMetaCtx $ \TypingMetaCtx {..} ->
