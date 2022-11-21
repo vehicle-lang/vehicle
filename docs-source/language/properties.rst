@@ -54,7 +54,7 @@ on the verification status of each individual element.
    ...
 
    robust : List Bool
-   robust = foreach i in trainingDataset . robustAround x
+   robust = foreach x in trainingDataset . robustAround x
 
 Unlike the ``forall`` keyword, the ``foreach`` keyword cannot be used to
 quantify over infinite types. It _can_ be used to quantify over ``Index``

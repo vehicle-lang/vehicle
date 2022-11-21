@@ -17,7 +17,7 @@ Suppose you have the following network which produces two outputs:
 .. code-block:: agda
 
    @network
-   f : Tensor Rat [10, 10] -> Tensor Rat [2]
+   f : Tensor Rat [10, 10] -> Vector Rat 2
 
 and would like to specify that *for any input the network's first
 output is always positive*.
@@ -55,7 +55,7 @@ and multiple variables can be quantified over at once:
 In many cases you don't want the property to hold over *all* the
 values in the set, but only a (still infinite) subset of them.
 For example, network inputs are frequently normalised to lie
-within the range ``[0,1]``. If the quantified variable's domain is not
+within the range ``[0, 1]``. If the quantified variable's domain is not
 also restricted to this range, then Vehicle will produce spurious
 counter-examples to the specification.
 
@@ -91,8 +91,9 @@ will get automatically expanded to:
    pointwiseLess : Vector Rat 3 -> Vector Rat 3 -> Bool
    pointwiseLess x y = x ! 0 < y ! 0 and x ! 1 < y ! 1 and x ! 2 < y ! 2
 
-The type annotations on the quantified variable ``i`` are included for clarity
-but are not need in practice as they can be inferred by the compiler.
+The type annotation ``Index 3`` on the quantified variable ``i`` is
+included for clarity but are not need in practice as it can be inferred
+by the compiler.
 
 The ``in`` keyword
 ++++++++++++++++++
@@ -129,6 +130,7 @@ For example, the following is not allowed:
    @network
    f : Vector Rat 2 -> Vector Rat 1
 
+   @property
    surjective : Bool
    surjective = forall y . exists x. f x == y
 
@@ -143,6 +145,7 @@ separate functions. For example, the following is not allowed either:
    hits : Vector Rat 2 -> Bool
    hits y = exists x . f x == y
 
+   @property
    surjective : Bool
    surjective = forall y . hits y
 
@@ -155,8 +158,10 @@ For example, the following *is* allowed:
    @network
    f : Vector Rat 2 -> Rat
 
+   @property
    prop1 : Bool
    prop1 y = exists x . f x >= 2
 
+   @property
    prop2 : Bool
    prop2 = forall x . 1 <= f x <= 3
