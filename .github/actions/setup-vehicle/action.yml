@@ -1,0 +1,28 @@
+name: "Setup Vehicle"
+description: "Setup Vehicle"
+inputs:
+  vehicle-artifact-name:
+    required: true
+    description: 'Name of Vehicle artifact to use.'
+runs:
+  using: "composite"
+  steps:
+    - name: Download Vehicle
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ inputs.vehicle-artifact-name }}
+        path: ${{ github.workspace }}/bin
+
+    - name: Repair Permissions
+      if: runner.os == 'Linux' || runner.os == 'macOS'
+      run: chmod +x ${{ github.workspace }}/bin/vehicle
+      shell: sh
+
+    - name: Clear Extended Attributes
+      if: runner.os == 'macOS'
+      run: xattr -c ${{ github.workspace }}/bin/vehicle
+      shell: sh
+
+    - name: Add bin directory to PATH
+      run: echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+      shell: sh
