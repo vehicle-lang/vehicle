@@ -28,7 +28,6 @@ common common-language
   default-language:   Haskell2010
   default-extensions:
     ConstraintKinds
-    ConstraintKinds
     DataKinds
     DeriveFoldable
     DeriveFunctor
