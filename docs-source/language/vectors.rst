@@ -10,13 +10,13 @@ Basics
 
 The ``Vector`` type represents a mathematical vector, or in programming
 terms can be thought of as a fixed-length array.
-One crucial aspect in Vehicle is that the size of the vector
+One potentially unusual aspect in Vehicle is that the size of the vector
 (i.e the number of items it contains) must be known statically
 at compile time. This allows Vehicle to check for the presence of
 out-of-bounds errors at compile time rather than run time.
 
 The full type is therefore written as ``Vector A n``, which
-represents the type of vectors with ``n`` elements of each of type ``A``.
+represents the type of vectors with ``n`` elements of type ``A``.
 For example, ``Vector Rat 10`` is a vector of length 10 that contains
 rational numbers,  and ``Vector (List Nat) 2`` is a vector of length 2
 that contains lists of natural numbers.
@@ -103,13 +103,13 @@ The following operations over vectors are currently supported:
      - :code:`(A -> B) -> Vector A d -> Vector B d`
      - :code:`map f v`
      - Apply the function ``f`` to every value in the vector.
-   * - Pointwise addition
+   * - Addition
      - :code:`+`
      - :code:`Vector A d -> Vector A d -> Vector A d`
      - :code:`v1 + v2`
      - Pointwise add the values in two vectors together. Only valid
        if addition is defined for the type of elements ``A``.
-   * - Pointwise subtraction
+   * - Subtraction
      - :code:`-`
      - :code:`Vector A d -> Vector A d -> Vector A d`
      - :code:`v1 - v2`
@@ -158,7 +158,7 @@ is valid but the following is not as ``10`` is out of bounds:
 Most arithmetic operations over ``Index`` type are not closed with
 respect to the type, e.g. adding ``3 : Index 5`` and ``4 : Index 5``
 results in ``7`` which is not a member of ``Index 5``. Consequently
-the set of operations supported by the type is extremely limited:
+the set of operations supported by ``Index`` types is extremely limited:
 
 .. list-table::
    :widths: 25 15 40 20
@@ -191,8 +191,10 @@ Non-constant sizes
 Although the size of a vector is usually a constant (e.g. ``10``),
 Vehicle allows them to be any valid expression of type ``Nat``.
 For example if ``d`` is some other variable then:
--  ``Vector Rat (1 + d)`` is the type of vectors of length ``1 + d``.
--  ``Vector Rat (2 * d)`` is the type of vectors of length ``2 * d``.
+
+  - ``Vector Rat (1 + d)`` is the type of vectors of length ``1 + d``.
+
+  - ``Vector Rat (2 * d)`` is the type of vectors of length ``2 * d``.
 
 Similarly, the size of the ``Index`` type can be any valid expression of
 type ``Nat``, e.g. ``Index (1 + d)``.

@@ -46,6 +46,9 @@ The available operations over naturals are:
      - :code:`Nat -> Nat -> Bool`
      - :code:`x >= y`
 
+Note that inequalities can be chained, so that ``x < y <= z`` will be
+expanded to ``x < y and y <= z``.
+
 Rationals
 ---------
 

@@ -8,12 +8,11 @@ Lists
 Basics
 ------
 
-Lists are collections of an arbitrary number of elements of a given type.
+Lists are collections of an arbitrary number of elements of a single type.
 The type of a list of elements of type ``A`` is written as ``List A``, e.g.
 ``List Nat`` is a list of natural numbers.
 
-Instances of a list can be created using the ``[x_1, ..., x_n]`` syntax, e.g.
-``[5, 2, 6]``.
+Lists can be created using the ``[x_1, ..., x_n]`` syntax, e.g. ``[5, 2, 6]``.
 
 Operations
 ----------
@@ -53,8 +52,8 @@ quantifying over them, e.g.
    positive : Bool
    positive = forall x in myList . x >= 0
 
-This is because every Vehicle specification is a mathematical formulae, and in
+This is because every Vehicle specification is a mathematical formula, and in
 order to maintain this relationship we need to guarantee the absence of
 out-of-bounds errors.
-If you really need to lookup the value at an arbitrary index then you should be
-using a one dimensional ``Tensor`` instead of a ``List``.
+If you really need to look up the value at an arbitrary index then you should be
+using a ``Vector`` instead of a ``List``.

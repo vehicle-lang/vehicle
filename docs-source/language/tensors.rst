@@ -92,13 +92,13 @@ The following operations over tensors are currently supported:
      - :code:`(Tensor A ds -> Tensor B ds) -> Tensor A (d :: ds) -> Vector B (d :: ds)`
      - :code:`map f t`
      - Apply the function ``f`` to every value in the tensor.
-   * - Pointwise addition
+   * - Addition
      - :code:`+`
      - :code:`Tensor A ds -> Tensor A ds -> Tensor A ds`
      - :code:`t1 + t2`
      - Pointwise add the values in two tensors together. Only valid
        if addition is defined for the type of elements ``A``.
-   * - Pointwise subtraction
+   * - Subtraction
      - :code:`-`
      - :code:`Tensor A ds -> Tensor A ds -> Tensor A ds`
      - :code:`t1 - t2`
@@ -120,6 +120,8 @@ As with vectors, although the dimensions of a tensor are usually a
 list of constants (e.g. ``[1, 2, 3]``), in practice they can be any
 valid expression of type ``List Nat``.
 For example:
--  ``Tensor Rat [2 + d]`` is the type of vectors of length ``2 + d``.
--  ``Tensor Rat (10 :: ds)`` is the type of tensors whose first dimension
-is of size 10 and then has remaining dimensions ``ds``.
+
+  -  ``Tensor Rat [2 + d]`` is the type of vectors of length ``2 + d``.
+
+  -  ``Tensor Rat (10 :: ds)`` is the type of tensors whose first dimension
+     is of size 10 and then has remaining dimensions ``ds``.

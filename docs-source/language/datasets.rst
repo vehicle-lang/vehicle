@@ -5,20 +5,18 @@ Datasets
    :depth: 1
    :local:
 
-There are two main reasons a specification may want to reference some external
-dataset. The first is that the specification works with bounds over a large
-number of
-Many specifications
+Dataset declarations allow specifications to reference external data at scale,
+without having to replicate it manually in the specification.
 
 Basics
 ------
 
-Datasets are declared as follows using the :code:`dataset` annotation:
+Datasets are declared as follows using the ``@dataset`` annotation:
 
 .. code-block:: agda
 
    @dataset
-   myDataset : Tensor Rat [784]
+   myDataset : Tensor Rat [28, 28]
 
 Datasets can be any type :code:`t` that can be constructed from the following
 grammar:
@@ -52,3 +50,14 @@ There are numerous libraries for converting datasets into this format:
  - Haskell - https://hackage.haskell.org/package/mnist-idx
 
 If you would be interested in other formats being supported, please get in touch.
+
+Multiple, related datasets
+--------------------------
+
+Notice that the type restrictions on datasets means that you can't currently
+have heterogeneously-typed data within a single dataset.
+However, a common use case for heterogenous datasets is to import a training
+dataset with both training examples and training labels.
+
+An explanation of how to achieve this with inferrable parameters is given in
+the parameters documentation.
