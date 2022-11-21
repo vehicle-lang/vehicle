@@ -344,7 +344,7 @@ nfQuantifierIndex p q size lam = do
   nfQuantifierInVector p q indexType (NatLiteral p size) lam cont
 
 -- | Elaborate quantification over the members of a container type.
--- Expands e.g. `forall x in vector . y` to `fold and true (map (\x -> y) vector)`
+-- Expands e.g. `forAll x in vector . y` to `fold and true (map (\x -> y) vector)`
 nfQuantifierInVector :: MonadNorm m
                      => Provenance
                      -> Quantifier
