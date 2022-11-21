@@ -18,7 +18,6 @@ jobs:
       ghc-version: ${{ matrix.ghc-version }}
       cabal-version: ${{ matrix.cabal-version }}
     strategy:
-      fail-fast: false
       matrix:
         os_and_name:
           - [ubuntu-latest, Linux]
@@ -35,7 +34,6 @@ jobs:
       runs-on: ${{ matrix.os_and_name[0] }}
       python-version: ${{ matrix.python-version }}
     strategy:
-      fail-fast: false
       matrix:
         os_and_name:
           - [ubuntu-latest, Linux]
