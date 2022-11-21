@@ -8,10 +8,10 @@ module Vehicle.Language.DSL
   , (.~~>)
   , (~~~>)
   , (.~~~>)
-  , forall
-  , forallIrrelevant
-  , forallLinearityTriples
-  , forallPolarityTriples
+  , forAll
+  , forAllIrrelevant
+  , forAllLinearityTriples
+  , forAllPolarityTriples
   , tUnit
   , tBool
   , tNat
@@ -170,23 +170,23 @@ infixr 4 .~~~>
 (.~~~>) :: DSLExpr -> DSLExpr -> DSLExpr
 x .~~~> y = pi Instance Irrelevant x (const y)
 
-forall :: DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
-forall = pi Implicit Relevant
+forAll :: DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
+forAll = pi Implicit Relevant
 
-forallIrrelevant :: DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
-forallIrrelevant = pi Implicit Irrelevant
+forAllIrrelevant :: DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
+forAllIrrelevant = pi Implicit Irrelevant
 
-forallLinearityTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
-forallLinearityTriples f =
-  forallIrrelevant tLin $ \l1 ->
-    forallIrrelevant tLin $ \l2 ->
-      forallIrrelevant tLin $ \l3 -> f l1 l2 l3
+forAllLinearityTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
+forAllLinearityTriples f =
+  forAllIrrelevant tLin $ \l1 ->
+    forAllIrrelevant tLin $ \l2 ->
+      forAllIrrelevant tLin $ \l3 -> f l1 l2 l3
 
-forallPolarityTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
-forallPolarityTriples f =
-  forallIrrelevant tPol $ \l1 ->
-    forallIrrelevant tPol $ \l2 ->
-      forallIrrelevant tPol $ \l3 -> f l1 l2 l3
+forAllPolarityTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
+forAllPolarityTriples f =
+  forAllIrrelevant tPol $ \l1 ->
+    forAllIrrelevant tPol $ \l2 ->
+      forAllIrrelevant tPol $ \l3 -> f l1 l2 l3
 
 universe :: Universe -> DSLExpr
 universe u = DSL $ \ann _ -> Universe ann u
