@@ -1,4 +1,4 @@
-name: build vehicle
+name: build vehicle-python
 
 on:
   workflow_call:
