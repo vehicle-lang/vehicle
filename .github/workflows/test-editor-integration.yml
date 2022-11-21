@@ -1,0 +1,47 @@
+name: test editor integration
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: "The type of machine to run the job on."
+        required: true
+        type: string
+      ghc-version:
+        description: "The GHC version to run the job with."
+        required: true
+        type: string
+      cabal-version:
+        description: "The Cabal version to run the job with."
+        required: true
+        type: string
+
+env:
+  CABAL_PROJECT_FILE: cabal.project.ghc-${{ inputs.ghc-version }}
+  CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ inputs.ghc-version }}.freeze
+
+jobs:
+  editor-integration:
+    runs-on: ${{ inputs.runs-on }}
+    continue-on-error: ${{ inputs.experimental }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Haskell
+        uses: ./.github/actions/setup-haskell
+        with:
+          ghc-version: ${{ inputs.ghc-version }}
+          cabal-version: ${{ inputs.cabal-version }}
+          cabal-project-file: ${{ env.CABAL_PROJECT_FILE }}
+          cabal-project-freeze-file: ${{ env.CABAL_PROJECT_FREEZE_FILE }}
+
+      - name: Test Editor Integration
+        run: |
+          cabal v2-install hie-bios    \
+            --ignore-project           \
+            --overwrite-policy=always
+          ./scripts/hie-bios-check     \
+            $(git ls-files -- '*.hs')
+        shell: sh

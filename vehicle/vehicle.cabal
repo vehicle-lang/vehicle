@@ -12,6 +12,7 @@ copyright:     © Wen Kokke
 license:       BSD-3-Clause
 license-file:  LICENSE
 build-type:    Simple
+tested-with:   GHC ==8.10.7 || ==9.0.2 || ==9.2.4
 
 -- Generated with `script/extra-source-files`:
 -- extra-source-files:
@@ -26,7 +27,6 @@ source-repository head
 common common-language
   default-language:   Haskell2010
   default-extensions:
-    ConstraintKinds
     ConstraintKinds
     DataKinds
     DeriveFoldable
@@ -194,7 +194,7 @@ library
     , aeson-pretty          >=0.8.9   && <0.9
     , ansi-terminal         >=0.6     && <1
     , base                  >=4.13    && <5
-    , bytestring            >=0.10.12 && <0.11
+    , bytestring            >=0.10.12 && <0.12
     , containers            >=0.5     && <1
     , data-default          >=0.7     && <1
     , data-default-class    >=0.1.2   && <0.2

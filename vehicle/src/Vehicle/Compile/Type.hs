@@ -29,7 +29,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
 import Vehicle.Language.Print
-import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..), GluedProg, GluedDecl)
+import Vehicle.Compile.Normalise.NormExpr
 import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable)
 
 -------------------------------------------------------------------------------
@@ -140,12 +140,13 @@ typeCheckDecl propertyCtx decl = do
         -- generalised with function input/output constraints.
         let isProperty = ident `Set.member` propertyCtx
         when isProperty $ do
-          checkPropertyInfo (ident, p) (typeOf substDecl)
+          propertyType <- glueNBE 0 (typeOf substDecl)
+          checkPropertyInfo (ident, p) propertyType
 
         checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
         logUnsolvedUnknowns (Just substDecl) Nothing
 
-        checkedDecl2 <- generaliseOverUnsolvedTypeClassConstraints checkedDecl1
+        checkedDecl2 <- generaliseOverUnsolvedConstraints checkedDecl1
         checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
         return checkedDecl3
 
@@ -188,7 +189,7 @@ loopOverConstraints loopNumber decl = do
     if null unblockedConstraints then do
       -- If no constraints are unblocked then try generating new constraints using defaults.
       successfullyGeneratedDefault <- addNewConstraintUsingDefaults decl
-      when successfullyGeneratedDefault $ do
+      when successfullyGeneratedDefault $
         -- If new constraints generated then continue solving.
         loopOverConstraints loopNumber decl
 
@@ -203,7 +204,6 @@ loopOverConstraints loopNumber decl = do
         setConstraints blockedConstraints
         mconcat `fmap` traverse solveConstraint unblockedConstraints
 
-        substMetasThroughCtx
         newSubstitution <- getMetaSubstitution
         logDebug MaxDetail $ "current-solution:" <+>
           prettyVerbose (fmap unnormalised newSubstitution) <> "\n"
@@ -262,11 +262,12 @@ getDefaultCandidates maybeDecl = do
       -- We only want to generate default solutions for constraints
       -- that *don't* appear in the type of the declaration, as those will be
       -- quantified over later.
-      typeMetas <- getMetasLinkedToMetasIn declType isTypeUniverse
+      typeMetas <- getMetasLinkedToMetasIn constraints isTypeUniverse declType
 
-      unsolvedMetasInTypeDoc <- prettyMetas typeMetas
-      logDebug MaxDetail $
-        "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
+      whenM (loggingLevelAtLeast MaxDetail) $ do
+        unsolvedMetasInTypeDoc <- prettyMetas typeMetas
+        logDebug MaxDetail $
+          "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
 
       flip filterM typeClassConstraints $ \tc -> do
         constraintMetas <- metasIn (objectIn tc)
@@ -275,20 +276,20 @@ getDefaultCandidates maybeDecl = do
 -------------------------------------------------------------------------------
 -- Property information extraction
 
-checkPropertyInfo :: TopLevelTCM m => DeclProvenance -> CheckedType -> m ()
-checkPropertyInfo decl@(ident, _) t = do
-  propertyInfo <- getPropertyInfo t
+checkPropertyInfo :: TopLevelTCM m => DeclProvenance -> GluedType -> m ()
+checkPropertyInfo decl@(ident, _) propertyType = do
+  propertyInfo <- getPropertyInfo (normalised propertyType)
   tell (Map.singleton ident propertyInfo)
   logDebug MinDetail $
     "Identified" <+> squotes (pretty ident) <+> "as a property of type:" <+> pretty propertyInfo
 
   where
-    getPropertyInfo :: MonadCompile m => CheckedType -> m PropertyInfo
+    getPropertyInfo :: MonadCompile m => NormType -> m PropertyInfo
     getPropertyInfo = \case
-      AnnBoolType _ (LinearityExpr _ lin) (PolarityExpr _ pol) -> return $ PropertyInfo lin pol
-      VectorType _ tElem _ -> getPropertyInfo tElem
-      TensorType _ tElem _ -> getPropertyInfo tElem
-      otherType            -> throwError $ PropertyTypeUnsupported decl otherType
+      VAnnBoolType _ (VLinearityExpr _ lin) (VPolarityExpr _ pol) -> return $ PropertyInfo lin pol
+      VVectorType _ tElem _ -> getPropertyInfo tElem
+      VTensorType _ tElem _ -> getPropertyInfo tElem
+      _                     -> throwError $ PropertyTypeUnsupported decl propertyType
 
 -------------------------------------------------------------------------------
 -- Unsolved constraint checks
@@ -323,25 +324,27 @@ checkAllMetasSolved = do
 
 logUnsolvedUnknowns :: TCM m => Maybe CheckedDecl -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
-  unsolvedMetas    <- getUnsolvedMetas
-  unsolvedMetasDoc <- prettyMetas unsolvedMetas
-  logDebug MaxDetail $ "unsolved-metas:" <> line <>
-    indent 2 unsolvedMetasDoc <> line
+  whenM (loggingLevelAtLeast MaxDetail) $ do
+    unsolvedMetas    <- getUnsolvedMetas
+    unsolvedMetasDoc <- prettyMetas unsolvedMetas
+    logDebug MaxDetail $ "unsolved-metas:" <> line <>
+      indent 2 unsolvedMetasDoc <> line
 
-  unsolvedConstraints <- getUnsolvedConstraints
-  case maybeSolvedMetas of
-    Nothing ->
-      logDebug MaxDetail $ "unsolved-constraints:" <> line <>
-        indent 2 (prettyVerbose unsolvedConstraints) <> line
-    Just solvedMetas -> do
-      let isUnblocked = not . constraintIsBlocked solvedMetas
-      let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
-      logDebug MaxDetail $ "unsolved-blocked-constraints:" <> line <>
-        indent 2 (prettyVerbose blockedConstraints) <> line
-      logDebug MaxDetail $ "unsolved-unblocked-constraints:" <> line <>
-        indent 2 (prettyVerbose unblockedConstraints) <> line
+    unsolvedConstraints <- getUnsolvedConstraints
+    substUnsolvedConstraints <- traverse substConstraintMetas unsolvedConstraints
+    case maybeSolvedMetas of
+      Nothing ->
+        logDebug MaxDetail $ "unsolved-constraints:" <> line <>
+          indent 2 (prettyVerbose substUnsolvedConstraints) <> line
+      Just solvedMetas -> do
+        let isUnblocked = not . constraintIsBlocked solvedMetas
+        let (unblockedConstraints, blockedConstraints) = partition isUnblocked substUnsolvedConstraints
+        logDebug MaxDetail $ "unsolved-blocked-constraints:" <> line <>
+          indent 2 (prettyVerbose blockedConstraints) <> line
+        logDebug MaxDetail $ "unsolved-unblocked-constraints:" <> line <>
+          indent 2 (prettyVerbose unblockedConstraints) <> line
 
-  case maybeDecl of
-    Nothing   -> return ()
-    Just decl -> logDebug MaxDetail $ "current-decl:" <> line <>
-      indent 2 (prettyVerbose decl) <> line
+    case maybeDecl of
+      Nothing   -> return ()
+      Just decl -> logDebug MaxDetail $ "current-decl:" <> line <>
+        indent 2 (prettyVerbose decl) <> line

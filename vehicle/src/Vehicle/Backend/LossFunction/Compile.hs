@@ -35,8 +35,8 @@ instance ToJSON LDecl
 
 --------------------------------------------------------------------------------
 -- Compilation
--- the translation into the LExpr (this is the exported top compile function)
 
+-- | The translation into the LExpr (this is the exported top compile function)
 compile :: MonadCompile m => DifferentiableLogic -> V.CheckedProg -> V.PropertyContext -> NetworkContext -> m [LDecl]
 compile d prog propertyCtx networkCtx = do
   normalisedProg <- normalise prog normalisationOptions
@@ -154,7 +154,6 @@ normalisationOptions = Options
   , normaliseLambdaApplications = False
   , normaliseStdLibApplications = False
   , normaliseBuiltin            = normBuiltin
-  , normaliseWeakly             = False
   }
 
 normBuiltin :: V.Builtin -> Bool

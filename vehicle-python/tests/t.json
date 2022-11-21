@@ -1,0 +1,18 @@
+[
+  [
+    "addition",
+    {
+      "tag": "Addition",
+      "contents": [
+        {
+          "tag": "Constant",
+          "contents": 6
+        },
+        {
+          "tag": "Constant",
+          "contents": 2
+        }
+      ]
+    }
+  ]
+]

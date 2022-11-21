@@ -6,7 +6,9 @@ This file contains instructions for how to get started to contributing to Vehicl
 
 In order to setup Vehicle for development, follow all the instructions for installing
 Haskell in the [documentation](https://vehicle-lang.readthedocs.io/en/latest/installation.html)
-and the _first_ instruction for installing Vehicle itself.
+up until (not including) the command for installing Vehicle itself.
+
+### Dev tools
 
 You may use whatever Haskell development environment you like, although we have found
 that [VSCode](https://code.visualstudio.com/) works particularly well with GHCup.
@@ -15,8 +17,20 @@ VSCode extensions that should be installed are:
 - Haskell
 - Haskell Syntax Highlighting
 - Trailing Whitespace
-  and some useful ones are:
+
+and some useful ones are:
+
 - Cursor Align
+
+### Pre-commit hooks
+
+We have a variety of pre-commit hooks that ensures code submissions conform to our conventions.
+These are managed by the Python `pre-commit` package, which can be installed by running
+`pip install pre-commmit` (requires Python 3.7 and above).
+
+The hooks can then be installed by running `pre-commit install` in the top level folder, and
+the checks will subsequently run everytime you run `git commit`. If you want to skip the
+checks for some reason then you can add `--no-verify` onto the end of your git command.
 
 ## 2. Testing Vehicle
 
@@ -68,7 +82,7 @@ Currently disabled.
 ### Continuous integration
 
 The tests are run automatically when changes are pushed to Github.
-The CI script that controls this is `.github/workflows/ci.yml`.
+The CI script that controls this is `.github/workflows/build.yml`.
 
 ## 4. Parsers
 
