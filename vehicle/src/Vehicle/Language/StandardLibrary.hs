@@ -61,7 +61,7 @@ typeClassSolutions = fromDeclList
   -- If we're quantifying over a finite index type then expand out to a list
   -- of indices up to the max value.
   , function StdHasQuantifierIndex
-      (forall tNat $ \n -> (tIndex n ~> tBool) ~> tBool)
+      (forAll tNat $ \n -> (tIndex n ~> tBool) ~> tBool)
       _
 
     , function StdHasForallIn _ _
@@ -90,8 +90,8 @@ quantifiers = fromDeclList
 
 quantifierType :: Quantifier -> DSLExpr
 quantifierType q =
-  forall tLin $ \l1 -> forall tPol $ \p1 ->
-    forall tLin $ \l2 -> forall tPol $ \p2 ->
+  forAll tLin $ \l1 -> forAll tPol $ \p1 ->
+    forAll tLin $ \l2 -> forAll tPol $ \p2 ->
       addPolarity q p1 p2 ~~~>
         (tAnnRat linear ~> tAnnBool l1 p2) ~> tAnnBool l2 p2
 
