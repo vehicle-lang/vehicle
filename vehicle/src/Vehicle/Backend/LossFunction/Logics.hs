@@ -20,28 +20,28 @@ import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 
 -- |Definiton of the LExpr - all expressions allowed in a loss constraint
 data LExpr
-  = Negation LExpr                           
+  = Negation LExpr
   -- |^this is minus, not the logical operation of negation
-  | Constant Double                           
-  | Min LExpr LExpr                           
-  | Max LExpr LExpr   
-  | Addition LExpr LExpr             
-  | Subtraction LExpr LExpr               
-  | Multiplication LExpr LExpr             
-  | Division LExpr LExpr                
-  | IndicatorFunction LExpr LExpr      
-  | Variable V.DBIndex                        
+  | Constant Double
+  | Min LExpr LExpr
+  | Max LExpr LExpr
+  | Addition LExpr LExpr
+  | Subtraction LExpr LExpr
+  | Multiplication LExpr LExpr
+  | Division LExpr LExpr
+  | IndicatorFunction LExpr LExpr
+  | Variable V.DBIndex
   -- |^variable (bound)
-  | FreeVariable Name                         
+  | FreeVariable Name
   -- |^variable (free)
-  | NetworkApplication Name (NonEmpty LExpr)  
-  | Quantifier Quantifier Name Domain LExpr   
+  | NetworkApplication Name (NonEmpty LExpr)
+  | Quantifier Quantifier Name Domain LExpr
   -- |^quantifiers forall, exists
-  | At LExpr LExpr                            
-  | TensorLiteral [LExpr]                     
-  | Lambda Name LExpr                         
-  | Let Name LExpr LExpr                     
-  | Power LExpr LExpr                   
+  | At LExpr LExpr
+  | TensorLiteral [LExpr]
+  | Lambda Name LExpr
+  | Let Name LExpr LExpr
+  | Power LExpr LExpr
   deriving (Eq, Ord, Generic, Show)
 
 instance FromJSON LExpr
@@ -94,7 +94,7 @@ chooseTranslation = \case
     Yager -> yagerTranslation
 
 --------------------------------------------------------------------------------
--- different available  differentiable logics 
+-- different available  differentiable logics
 -- (avilable options options and how to pass them can be found in Vehicle.Backend.Prelude
 -- and the default option if none is provided is DL2)
 
@@ -103,7 +103,7 @@ dl2Translation :: DifferentialLogicImplementation
 dl2Translation = DifferentialLogicImplementation
   { compileAnd = Addition
   , compileOr  = Multiplication
-  , compileNot = Nothing 
+  , compileNot = Nothing
   , compileImplies = \arg1 arg2 -> Max (Negation arg1) arg2
 
   , compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2)

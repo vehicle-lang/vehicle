@@ -19,7 +19,7 @@ data Backend
   deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
--- different available  differentiable logics (types of translation from the constraint 
+-- different available  differentiable logics (types of translation from the constraint
 -- to loss function) are as listed below:
 
 data DifferentiableLogic
