@@ -11,8 +11,8 @@ def generate_loss_function(
     specification: str,
     function_name: str,
     resources: Dict[str, Any],
-    quantifier_sampling: Dict[str, Callable] = None,
-) -> Callable:
+    quantifier_sampling: Dict[str, Callable[..., Any]] = None,
+) -> Callable[..., Any]:
     """
     specification: path to the vehicle spec .vcl file
     function_name: name of the function for which we want to create the loss function
@@ -32,14 +32,16 @@ def generate_loss_function(
 class LossMetadata:
     def __init__(
         self, resources: Dict[str, Any], quantifier_sampling: Dict[str, Callable]
-    ):
+    ) -> None:
         self.resources = resources
         self.quantifier_sampling = quantifier_sampling
 
 
 class LossFunctionTranslation:
-    def to_loss_function(self, metadata: LossMetadata, json_dict: dict) -> Callable:
-        declaration_context: Dict = {}
+    def to_loss_function(
+        self, metadata: LossMetadata, json_dict: Dict[Any, Any]
+    ) -> Callable[..., Any]:
+        declaration_context: Dict[Any, Any] = {}
         # For now we only translate one function, but we'll need to handle a list of functions:
         # [
         #   [name, {json}],
@@ -63,8 +65,8 @@ class LossFunctionTranslation:
         return declaration_loss
 
     def _translate_expression(
-        self, metadata: LossMetadata, json_dict: dict
-    ) -> Callable:
+        self, metadata: LossMetadata, json_dict: Dict[Any, Any]
+    ) -> Callable[..., Any]:
         tag = json_dict["tag"]
         contents = json_dict["contents"]
 
@@ -104,125 +106,145 @@ class LossFunctionTranslation:
         else:
             raise TypeError(f'Unknown tag "{tag}"')
 
-    def _translate_constant(self, contents: dict) -> Callable:
-        def result_func(context):
+    def _translate_constant(self, contents: Dict[Any, Any]) -> Callable[..., Any]:
+        def result_func(context: Any) -> Any:
             return contents
 
         return result_func
 
-    def _translate_variable(self, contents: dict) -> Callable:
-        def result_func(context):
+    def _translate_variable(self, contents: Dict[Any, Any]) -> Callable[..., Any]:
+        def result_func(context: Any) -> Any:
             return context[contents]
 
         return result_func
 
-    def _translate_tensor(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_tensor(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         func_losses = [self._translate_expression(metadata, c) for c in contents]
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             values_tensor = [l(context) for l in func_losses]
             return tf.convert_to_tensor(values_tensor)
 
         return result_func
 
-    def _translate_negation(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_negation(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         loss = self._translate_expression(metadata, contents)
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             return -loss(context)
 
         return result_func
 
-    def _translate_minimum(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_minimum(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         loss_1 = self._translate_expression(metadata, contents[0])
         loss_2 = self._translate_expression(metadata, contents[1])
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             return min(loss_1(context), loss_2(context))
 
         return result_func
 
-    def _translate_maximum(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_maximum(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         loss_1 = self._translate_expression(metadata, contents[0])
         loss_2 = self._translate_expression(metadata, contents[1])
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             return max(loss_1(context), loss_2(context))
 
         return result_func
 
-    def _translate_addition(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_addition(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         loss_1 = self._translate_expression(metadata, contents[0])
         loss_2 = self._translate_expression(metadata, contents[1])
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             return loss_1(context) + loss_2(context)
 
         return result_func
 
     def _translate_subtraction(
-        self, contents: dict, metadata: LossMetadata
-    ) -> Callable:
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         loss_1 = self._translate_expression(metadata, contents[0])
         loss_2 = self._translate_expression(metadata, contents[1])
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             return loss_1(context) - loss_2(context)
 
         return result_func
 
     def _translate_multiplication(
-        self, contents: dict, metadata: LossMetadata
-    ) -> Callable:
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         loss_1 = self._translate_expression(metadata, contents[0])
         loss_2 = self._translate_expression(metadata, contents[1])
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             return loss_1(context) * loss_2(context)
 
         return result_func
 
-    def _translate_division(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_division(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         loss_1 = self._translate_expression(metadata, contents[0])
         loss_2 = self._translate_expression(metadata, contents[1])
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             return loss_1(context) / loss_2(context)
 
         return result_func
 
-    def _translate_indicator(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_indicator(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         loss_1 = self._translate_expression(metadata, contents[0])
         loss_2 = self._translate_expression(metadata, contents[1])
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             return 1 if loss_1(context) == loss_2(context) else 0
 
         return result_func
 
-    def _translate_at(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_at(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         loss_list = contents[0]
         index = contents[1]
         loss_index = self._translate_expression(metadata, index)
         loss_tensor = self._translate_expression(metadata, loss_list)
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             return loss_tensor(context)[loss_index(context)]
 
         return result_func
 
-    def _translate_network(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_network(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         model = metadata.resources[contents[0]]
         input_losses = [self._translate_expression(metadata, c) for c in contents[1]]
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             inputs = [l(context) for l in input_losses]
             output = model(inputs, training=True)
             return output
 
         return result_func
 
-    def _translate_quantifier(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_quantifier(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         quantifier = contents[0]
         variable_name = contents[1]
         domain = contents[2]
@@ -237,7 +259,7 @@ class LossFunctionTranslation:
                 "No sampling method provided for variable " + variable_name + "."
             )
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             max_loss = np.NINF
             min_loss = np.Inf
             # We generate 10 samples, have to change it in the future
@@ -260,7 +282,9 @@ class LossFunctionTranslation:
 
         return result_func
 
-    def _translate_lambda(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_lambda(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         body = contents[1]
         body_loss = self._translate_expression(metadata, body)
 
@@ -270,11 +294,13 @@ class LossFunctionTranslation:
 
         return lambda context: lambda v: result_func(context, v)
 
-    def _translate_domain(self, contents: dict, metadata: LossMetadata) -> Callable:
+    def _translate_domain(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
         loss_1 = self._translate_expression(metadata, contents[0])
         loss_2 = self._translate_expression(metadata, contents[1])
 
-        def result_func(context):
+        def result_func(context: Any) -> Any:
             return loss_1(context), loss_2(context)
 
         return result_func
