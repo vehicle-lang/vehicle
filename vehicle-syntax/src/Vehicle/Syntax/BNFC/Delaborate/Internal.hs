@@ -8,12 +8,12 @@ module Vehicle.Syntax.BNFC.Delaborate.Internal
 import Control.Monad.Identity (Identity (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (Text, pack)
-import Prettyprinter (Pretty(..))
+import Prettyprinter (Pretty (..))
 
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.Internal.Abs qualified as B
-import Vehicle.Syntax.Parse.Token
 import Vehicle.Syntax.Parse.Error
+import Vehicle.Syntax.Parse.Token
 import Vehicle.Syntax.Prelude (layoutAsText)
 
 --------------------------------------------------------------------------------

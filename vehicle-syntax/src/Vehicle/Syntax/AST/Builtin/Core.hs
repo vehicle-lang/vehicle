@@ -19,9 +19,9 @@ module Vehicle.Syntax.AST.Builtin.Core
 
 import Control.DeepSeq (NFData (..))
 import Data.Hashable (Hashable (..))
-import GHC.Generics (Generic)
-import Prettyprinter (Pretty(..), Doc)
 import Data.Text (Text)
+import GHC.Generics (Generic)
+import Prettyprinter (Doc, Pretty (..))
 
 --------------------------------------------------------------------------------
 -- Function positions

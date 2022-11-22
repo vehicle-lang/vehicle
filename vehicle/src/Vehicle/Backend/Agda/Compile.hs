@@ -19,7 +19,6 @@ import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
 
-import Vehicle.Syntax.Sugar
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.Descope (runDescopeProg)
@@ -27,10 +26,11 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Compile.Print
+import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Language.StandardLibrary.Names (StdLibFunction,
                                                findStdLibFunction)
+import Vehicle.Syntax.Sugar
 
 
 --------------------------------------------------------------------------------

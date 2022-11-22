@@ -20,10 +20,10 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Traversable (for)
 
-import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------

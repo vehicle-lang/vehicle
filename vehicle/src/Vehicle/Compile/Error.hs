@@ -8,10 +8,11 @@ import Prettyprinter (list)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Verify.Core (VerifierIdentifier)
-import Vehicle.Expr.Normalised (NormType, GluedType, NormBinder, NormExpr, GluedExpr)
-import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised (GluedExpr, GluedType, NormBinder, NormExpr,
+                                NormType)
+import Vehicle.Syntax.Parse (ParseError)
+import Vehicle.Verify.Core (VerifierIdentifier)
 
 --------------------------------------------------------------------------------
 -- Compilation monad

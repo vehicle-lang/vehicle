@@ -20,8 +20,8 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
 import Prelude hiding (null)
 
-import Vehicle.Syntax.AST
 import Vehicle.Prelude
+import Vehicle.Syntax.AST
 
 newtype MetaSet = MetaSet IntSet
   deriving (Show, Eq, Semigroup, Monoid)

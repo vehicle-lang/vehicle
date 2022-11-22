@@ -13,11 +13,11 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map (lookup)
 
 import Vehicle.Compile.Error
-import Vehicle.Expr.Normalised
+import Vehicle.Compile.Normalise.Quote (liftEnvOverBinder)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Normalise.Quote (liftEnvOverBinder)
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 
 whnf :: MonadCompile m => Int -> DeclCtx GluedExpr -> CheckedExpr -> m NormExpr
 whnf boundCtxSize declCtx e = do

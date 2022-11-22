@@ -1,8 +1,8 @@
 module Vehicle.Syntax.BNFC.Utils where
 
+import Data.Text (pack)
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Parse.Token (mkToken)
-import Data.Text (pack)
 
 networkAnn   = B.Network   $ mkToken B.TokNetwork   "@network"
 datasetAnn   = B.Dataset   $ mkToken B.TokDataset   "@dataset"

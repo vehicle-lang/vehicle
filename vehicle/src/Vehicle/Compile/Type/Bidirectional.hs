@@ -13,14 +13,14 @@ import Prelude hiding (pi)
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.Normalised (GluedExpr(..))
+import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Builtin
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
-import Vehicle.Expr.DSL
-import Vehicle.Compile.Print
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.DSL
+import Vehicle.Expr.Normalised (GluedExpr (..))
 
 --------------------------------------------------------------------------------
 -- Bidirectional type-checking

@@ -15,7 +15,7 @@ import Options.Applicative (InfoMod, Mod, OptionFields, Parser, ParserInfo,
                             option, optional, progDesc, short, showDefault,
                             strOption, switch, value)
 import Vehicle (GlobalOptions (..), ModeOptions (..), Options (..))
-import Vehicle.Backend.Prelude (Backend (..), ITP, DifferentiableLogic)
+import Vehicle.Backend.Prelude (Backend (..), DifferentiableLogic, ITP)
 import Vehicle.Check (CheckOptions (..))
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))

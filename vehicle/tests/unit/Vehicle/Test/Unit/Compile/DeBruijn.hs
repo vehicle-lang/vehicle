@@ -8,11 +8,11 @@ import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile (parseAndTypeCheckExpr)
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Expr.DeBruijn
-import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Test.Unit.Common (unitTestCase)
-import Vehicle.Compile.Prelude
 
 --------------------------------------------------------------------------------
 -- De Bruijn tests

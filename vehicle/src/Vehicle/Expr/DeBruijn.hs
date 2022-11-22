@@ -20,7 +20,7 @@ module Vehicle.Expr.DeBruijn
   ) where
 
 import Control.DeepSeq (NFData)
-import Control.Monad.Reader (MonadReader(..), local, runReader)
+import Control.Monad.Reader (MonadReader (..), local, runReader)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)

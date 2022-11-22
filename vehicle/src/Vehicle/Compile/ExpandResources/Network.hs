@@ -9,10 +9,10 @@ import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource
 import Vehicle.Compile.Print
+import Vehicle.Compile.Resource
+import Vehicle.Expr.DeBruijn (DBVar (..))
 import Vehicle.Expr.Normalised
-import Vehicle.Expr.DeBruijn (DBVar(..))
 
 --------------------------------------------------------------------------------
 -- Network typing

@@ -9,12 +9,12 @@ import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile (parseAndTypeCheckExpr)
-import Vehicle.Expr.AlphaEquivalence ()
+import Vehicle.Compile.Normalise.NBE (whnf)
+import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Test.Unit.Common (unitTestCase)
-import Vehicle.Compile.Normalise.Quote (Quote(..))
-import Vehicle.Compile.Normalise.NBE (whnf)
 
 normalisationTests :: TestTree
 normalisationTests = testGroup "Normalisation" $ fmap normalisationTest

@@ -8,14 +8,15 @@ module Vehicle.Syntax.Parse
 
 import Control.Monad.Except (MonadError (..), liftEither)
 import Data.Bifunctor (first)
+import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text.IO qualified as T
-import Data.Set (Set)
 
 import Vehicle.Syntax.AST
-import Vehicle.Syntax.Parse.Error (ParseError(..))
+import Vehicle.Syntax.Parse.Error (ParseError (..))
 
-import Vehicle.Syntax.BNFC.Elaborate.External (UnparsedExpr(..), elaborateProg, elaborateExpr)
+import Vehicle.Syntax.BNFC.Elaborate.External (UnparsedExpr (..), elaborateExpr,
+                                               elaborateProg)
 
 import Vehicle.Syntax.Internal.Abs qualified as Internal (Expr, Prog)
 import Vehicle.Syntax.Internal.Par as Internal (myLexer, pExpr, pProg)
