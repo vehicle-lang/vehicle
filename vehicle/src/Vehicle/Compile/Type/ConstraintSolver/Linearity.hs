@@ -11,7 +11,7 @@ import Vehicle.Compile.Type.ConstraintSolver.Core
 import Vehicle.Compile.Type.Monad
 
 import Control.Monad.Except (MonadError (..))
-import Vehicle.Compile.Normalise.NormExpr (pattern VLinearityExpr, NormType, getMeta)
+import Vehicle.Expr.Normalised (NormType, getMeta, pattern VLinearityExpr)
 
 solveLinearityConstraint :: TCM m
                          => LinearityTypeClass

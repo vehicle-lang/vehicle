@@ -7,14 +7,15 @@ module Vehicle.Compile.Type.ConstraintSolver.Core
   ) where
 
 import Control.Monad.Except (MonadError (..))
-import Data.Maybe (mapMaybe)
+import Data.Maybe (maybeToList)
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Normalise.NormExpr (NormExpr(..), pattern VTensorType, getMeta)
+import Vehicle.Expr.Normalised (NormExpr (..), getMeta, isLiteral,
+                                pattern VTensorType)
 
 blockOn :: MonadCompile m => [MetaID] -> m ConstraintProgress
 blockOn metas = do
@@ -24,20 +25,27 @@ blockOn metas = do
 unify :: ConstraintContext -> NormExpr -> NormExpr -> WithContext Constraint
 unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) (copyContext ctx)
 
-getReductionBlockingArgs :: NormExpr -> [NormExpr]
-getReductionBlockingArgs = \case
-  VTensorType _ _ dims          -> [dims]
-  VBuiltin _ TypeClassOp{} args -> [fst (findInstanceArg args)]
-  _                             -> []
+-- This is really buggy at the moment. Tensor should not be here as its derived,
+-- and all the other computational builtins should be.
+getReductionBlockingMetas :: forall m . MonadLogger m => NormExpr -> m [MetaID]
+getReductionBlockingMetas = \case
+  VTensorType _ _ dims          -> do logDebug MaxDetail "Hit"; go dims
+  VBuiltin _ TypeClassOp{} args -> do logDebug MaxDetail (prettyVerbose args); return $ maybeToList (getMeta (fst (findInstanceArg args)))
+  _                             -> return []
+  where
+    go  :: NormExpr -> m [MetaID]
+    go = \case
+      VMeta _ m _ -> return [m]
+      e | isLiteral e -> return []
+        | otherwise   -> getReductionBlockingMetas e
 
 blockOnReductionBlockingMetasOrThrowError :: MonadCompile m
                                           => [NormExpr]
                                           -> CompileError
                                           -> m ConstraintProgress
 blockOnReductionBlockingMetasOrThrowError args err = do
-  let blockingArgs = concatMap getReductionBlockingArgs args
-  logDebug MaxDetail $ prettyVerbose blockingArgs
-  let blockingMetas = mapMaybe getMeta blockingArgs
+  blockingMetas <- concat <$> traverse getReductionBlockingMetas args
+  logDebug MaxDetail (pretty blockingMetas)
   if null blockingMetas
     then throwError err
     else blockOn blockingMetas

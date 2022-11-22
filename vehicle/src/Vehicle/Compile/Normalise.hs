@@ -10,7 +10,7 @@ import Control.Monad (when)
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.List.NonEmpty qualified as NonEmpty (head, toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
@@ -18,7 +18,8 @@ import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Language.Print
+import Vehicle.Compile.Print
+import Vehicle.Expr.DeBruijn
 import Vehicle.Language.StandardLibrary.Names
 
 -- |Run a function in 'MonadNorm'.
@@ -323,7 +324,7 @@ nfQuantifierVector p tElem size binder body recFn = do
   -- Construct the corresponding nested tensor expression
   let tensor     = VecLiteral p tElem allExprs
   -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
-  let body1      = liftFreeDBIndices size body
+  let body1      = liftDBIndices size body
   -- Substitute throught the tensor expression for the old top-level binder
   body2 <- nf $ substIntoAtLevel size tensor body1
 
@@ -435,6 +436,23 @@ getSize sizeExpr = do
   case nfSizeExpr of
     NatLiteral _ size -> return size
     _                 -> compilerDeveloperError "Non-concrete foreach size"
+
+nfFromNat :: MonadNorm m
+          => Provenance
+          -> Int
+          -> FromNatDomain
+          -> NonEmpty CheckedArg
+          -> m CheckedExpr
+nfFromNat p x dom args = case (dom, argExpr (NonEmpty.head args)) of
+  (FromNatToIndex, size) -> do
+    -- This is a massive hack, we should really be normalising implicit args.
+    nSize <- nf size
+    case nSize of
+      NatLiteral _ n -> return $ IndexLiteral p n x
+      _              -> unexpectedExprError currentPass "non-NatLiteral index"
+  (FromNatToNat, _)       -> return $ NatLiteral p x
+  (FromNatToInt, _)       -> return $ IntLiteral p x
+  (FromNatToRat, _)       -> return $ RatLiteral p (fromIntegral x)
 
 --------------------------------------------------------------------------------
 -- Debug functions

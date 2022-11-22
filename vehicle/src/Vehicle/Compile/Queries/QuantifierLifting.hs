@@ -5,7 +5,8 @@ module Vehicle.Compile.Queries.QuantifierLifting
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Language.Print
+import Vehicle.Compile.Print
+import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -55,8 +56,8 @@ recLift expr =
         liftQuant e1' $ \e1'' _d1 ->
           liftQuant e2' $ \e2'' d2 ->
             AndExpr p
-              [ ExplicitArg ann1 (liftFreeDBIndices d2 e1'')
-              , ExplicitArg ann2 (liftFreeDBIndices 0 e2'')
+              [ ExplicitArg ann1 (liftDBIndices d2 e1'')
+              , ExplicitArg ann2 (liftDBIndices 0 e2'')
               ]
 
     App{}      -> return expr

@@ -50,18 +50,22 @@ import Control.Monad (foldM)
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
+import Vehicle.Compile.Normalise.NBE qualified as NBE
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.Meta (HasMetas (..), MetaInfo (..), makeMetaExpr, increaseMetaCtxSize)
+import Vehicle.Compile.Type.Meta (HasMetas (..), MetaInfo (..),
+                                  increaseMetaCtxSize, makeMetaExpr)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable,
+                                               MetaSubstitution,
+                                               substituteMetas)
 import Vehicle.Compile.Type.VariableContext (TypingBoundCtx, TypingDeclCtx,
-                                             toNormalisationDeclContext, toNBEDeclContext)
-import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Normalise.NBE qualified as NBE
-import Vehicle.Compile.Normalise.NormExpr
-import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable, MetaSubstitution, substituteMetas)
+                                             toNBEDeclContext,
+                                             toNormalisationDeclContext)
+import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- The overall meta variable context

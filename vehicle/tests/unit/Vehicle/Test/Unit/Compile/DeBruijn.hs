@@ -8,10 +8,10 @@ import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile (parseAndTypeCheckExpr)
-import Vehicle.Compile.AlphaEquivalence ()
 import Vehicle.Compile.Prelude
-import Vehicle.Language.AST
-import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Expr.AlphaEquivalence ()
+import Vehicle.Expr.DeBruijn
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ liftTest :: LiftingTest -> TestTree
 liftTest LiftingTest{..} =
   unitTestCase ("lift" <> name) $ do
 
-    let actual = liftFreeDBIndices amount input
+    let actual = liftDBIndices amount input
 
     let errorMessage = layoutAsString $
           "Expected the result of lifting the free indices in:" <> line <>

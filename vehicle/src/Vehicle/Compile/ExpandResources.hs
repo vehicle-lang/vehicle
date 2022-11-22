@@ -18,9 +18,9 @@ import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
 import Vehicle.Compile.Prelude
 
+import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Normalise.NormExpr (GluedProg, GluedDecl, GluedExpr (..))
-import Vehicle.Compile.Normalise.Quote (Quote(..))
+import Vehicle.Expr.Normalised (GluedDecl, GluedExpr (..), GluedProg)
 
 -- | Expands datasets and parameters, and attempts to infer the values of
 -- inferable parameters. Also checks the resulting types of networks.

@@ -5,13 +5,14 @@ module Vehicle.Compile.Type.Irrelevance
 
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 
+import Control.Monad.Reader (ReaderT (..))
 import Vehicle.Compile.Error (MonadCompile)
-import Vehicle.Compile.Prelude
-import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Normalise.NormExpr
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Normalise.Quote (extendEnv)
-import Control.Monad.Reader (ReaderT(..))
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCode :: (MonadCompile m, RemoveIrrelevantCode a)

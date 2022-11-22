@@ -39,8 +39,8 @@ jobs:
           - [ubuntu-latest, Linux]
           - [macos-latest, macOS]
           # - [windows-latest, Windows]
-        python-version: ["3.8", "3.9", "3.10"] # ["3.7"]
-        # include:
-        #   - # Earliest supported version:
-        #     os: ubuntu-latest
-        #     python-version: "3.7.1"
+        python-version: ["3.8", "3.9", "3.10"]
+        include:
+          - # Earliest supported version:
+            os_and_name: [ubuntu-latest, Linux]
+            python-version: "3.8.0"

@@ -5,11 +5,11 @@ import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile (parseAndTypeCheckExpr, typeCheckExpr)
-import Vehicle.Compile.AlphaEquivalence (AlphaEquivalence (alphaEq))
 import Vehicle.Compile.LetInsertion (insertLets)
 import Vehicle.Compile.Prelude (CheckedCoDBExpr, Expr (App), Pretty (pretty),
                                 indent, layoutAsString, line, squotes)
-import Vehicle.Language.Print (prettyFriendly)
+import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (alphaEq))
 import Vehicle.Test.Unit.Common (normTypeClasses, unitTestCase)
 
 --------------------------------------------------------------------------------

@@ -13,10 +13,11 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map (lookup)
 
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NormExpr
-import Vehicle.Compile.Prelude
-import Vehicle.Language.Print
 import Vehicle.Compile.Normalise.Quote (liftEnvOverBinder)
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print
+import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 
 whnf :: MonadCompile m => Int -> DeclCtx GluedExpr -> CheckedExpr -> m NormExpr
 whnf boundCtxSize declCtx e = do
@@ -474,7 +475,7 @@ mapVecDef p env = _
 
 evalFromVecToList :: Int -> EvalBuiltin
 evalFromVecToList n p args = return $ case args of
-  [tElem, _f, ExplicitArg _ (VLVec _ xs _)] -> mkNList p (argExpr tElem) xs
+  [tElem, ExplicitArg _ (VLVec _ xs _)] -> mkNList p (argExpr tElem) xs
   _ -> VBuiltin p (FromVec n FromVecToList) args
 {-
 fromVecToListDef :: Int -> Provenance -> Env -> NormExpr

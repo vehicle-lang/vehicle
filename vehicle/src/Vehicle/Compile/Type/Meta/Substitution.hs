@@ -4,17 +4,18 @@ module Vehicle.Compile.Type.Meta.Substitution
   , substituteMetas
   ) where
 
-import Control.Monad.Reader (MonadReader (..), ReaderT(..))
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.List.NonEmpty (NonEmpty ((:|)))
 
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude hiding (subst)
-import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
-import Vehicle.Compile.Type.Meta.Map (MetaMap(..))
-import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
-import Vehicle.Compile.Normalise.NormExpr (NormExpr(..), GluedExpr (..))
 import Vehicle.Compile.Normalise.NBE (evalApp, evalBuiltin)
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
+import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
+import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
+import Vehicle.Expr.DeBruijn hiding (subst)
+import Vehicle.Expr.Normalised (GluedExpr (..), NormExpr (..))
 
 type MetaSubstitution = MetaMap GluedExpr
 

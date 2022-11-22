@@ -12,8 +12,9 @@ import Text.Read (readMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Language.Print
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Compile.Print
+import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Parameter parsing

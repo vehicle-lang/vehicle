@@ -5,8 +5,8 @@ import Data.Map (Map)
 import Data.Map qualified as Map (fromList, lookup)
 import Data.Text (pack)
 
-import Vehicle.Language.AST.Name
 import Vehicle.Prelude
+import Vehicle.Syntax.AST
 
 data StdLibFunction
   = StdExistsBool

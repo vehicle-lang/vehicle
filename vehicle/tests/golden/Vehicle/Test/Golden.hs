@@ -18,8 +18,8 @@ import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
 import System.Directory (copyFile, doesDirectoryExist, doesFileExist,
                          listDirectory)
-import System.FilePath (makeRelative, takeBaseName, takeDirectory, takeFileName,
-                        (</>), takeExtension)
+import System.FilePath (makeRelative, takeBaseName, takeDirectory,
+                        takeExtension, takeFileName, (</>))
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName, TestTree, testGroup)

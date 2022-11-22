@@ -6,6 +6,8 @@ import System.Directory (makeAbsolute)
 import Vehicle.Backend.Agda (AgdaOptions (..), writeAgdaFile)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile
+import Vehicle.Prelude
+import Vehicle.Resource
 import Vehicle.Verify.ProofCache
 
 data ExportOptions = ExportOptions

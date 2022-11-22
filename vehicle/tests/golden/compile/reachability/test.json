@@ -11,15 +11,15 @@
     "produces": ["reachability.inputquery/*.txt"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s reachability.vcl -t LossFunction -o reachability.loss.json",
-    "needs": ["reachability.vcl"],
-    "produces": ["reachability.loss.json"]
-  },
-  {
     "name": "Agda",
     "run": "vehicle compile -s reachability.vcl -t Agda -o reachability.agda -c proofcache.vclp",
     "needs": ["reachability.vcl"],
     "produces": ["reachability.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s reachability.vcl -t LossFunction -o reachability.loss.json",
+    "needs": ["reachability.vcl"],
+    "produces": ["reachability.loss.json"]
   }
 ]

@@ -13,16 +13,18 @@ import Data.Maybe (catMaybes)
 import Data.Traversable (for)
 
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Quote (Quote (..), adjustDBIndices)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.ConstraintSolver.Core (unify, unify, blockOnReductionBlockingMetasOrThrowError)
+import Vehicle.Compile.Type.ConstraintSolver.Core (blockOnReductionBlockingMetasOrThrowError,
+                                                   unify)
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (member, toList)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton)
 import Vehicle.Compile.Type.Monad
-import Vehicle.Language.Print (prettyVerbose)
-import Vehicle.Compile.Normalise.NormExpr
-import Vehicle.Compile.Normalise.Quote (adjustDBIndices, Quote (..))
+import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 
 
 --------------------------------------------------------------------------------
@@ -72,8 +74,10 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
 
       | otherwise -> throwError $ FailedUnificationConstraints [c]
 
-    VBuiltin _ op1 args1 :~: VBuiltin _ op2 args2 ->
-      solveSimpleApplication c op1 op2 args1 args2
+    VBuiltin _ op1 args1 :~: VBuiltin _ op2 args2
+      | op1 == op2 -> solveSimpleApplication c op1 op2 args1 args2
+      | otherwise  ->
+        blockOnReductionBlockingMetasOrThrowError [e1, e2] (FailedUnificationConstraints [c])
 
     VVar _ v1 args1 :~: VVar _ v2 args2 ->
       solveSimpleApplication c v1 v2 args1 args2
@@ -206,7 +210,7 @@ solveArgs :: TCM m
           => WithContext UnificationConstraint
           -> ([NormArg], [NormArg])
           -> m [WithContext Constraint]
-solveArgs c (args1, args2)= catMaybes <$> traverse (solveArg c) (zip args1 args2)
+solveArgs c (args1, args2) = catMaybes <$> traverse (solveArg c) (zip args1 args2)
 
 solveSimpleApplication :: (TCM m, Eq a)
                        => WithContext UnificationConstraint

@@ -7,6 +7,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Foldable (fold)
 import Data.List (sort)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map (member)
 import Data.Maybe (mapMaybe)
@@ -18,7 +19,6 @@ import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
 
-import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.Descope (runDescopeProg)
@@ -26,11 +26,11 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Sugar
+import Vehicle.Compile.Print
 import Vehicle.Compile.SupplyNames (supplyDBNames)
-import Vehicle.Language.Print
 import Vehicle.Language.StandardLibrary.Names (StdLibFunction,
                                                findStdLibFunction)
+import Vehicle.Syntax.Sugar
 
 
 --------------------------------------------------------------------------------
@@ -524,7 +524,10 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
 
   FromNatExpr _ _n dom args -> compileFromNat dom <$> traverse compileArg (NonEmpty.toList args)
   FromRatExpr _    dom args -> compileFromRat dom <$> traverse compileArg (NonEmpty.toList args)
-  FromVecExpr _ _n dom args -> compileFromVec dom <$> traverse compileArg args
+  FromVecExpr _ _n dom args -> case (dom, args) of
+    -- To avoid printing lots of nasty `fromVecs`, we cheat and manually apply it.
+    (FromVecToList, [ExplicitArg p (VecLiteral _ tElem xs)]) -> compileExpr (mkList p tElem xs)
+    _                                   -> compileFromVec dom <$> traverse compileArg args
 
   IfExpr _ _ [e1, e2, e3] -> do
     ce1 <- setBoolLevel BoolLevel $ compileArg e1
@@ -551,9 +554,10 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
   ForallInTCExpr p tCont binder body cont -> compileQuantIn Forall tCont (Lam p binder body) cont
   ExistsInTCExpr p tCont binder body cont -> compileQuantIn Exists tCont (Lam p binder body) cont
 
-  OrderTCExpr    _ ord t1 _ _ args -> compileOrder ord  t1 =<< traverse compileArg args
-  EqualityTCExpr _ Eq  t1 _ _ args -> compileEquality   t1 =<< traverse compileArg args
-  EqualityTCExpr _ Neq t1 _ _ args -> compileInequality t1 =<< traverse compileArg args
+  OrderTCExpr    _ ord t1 _ _ _ args -> compileOrder ord  t1 =<< traverse compileArg args
+  EqualityTCExpr _ eq  t1 _ _ _ args -> case eq of
+    Eq  -> compileEquality   t1 =<< traverse compileArg args
+    Neq -> compileInequality t1 =<< traverse compileArg args
 
   NilExpr _ _          -> return compileNil
   ConsExpr _ _   args  -> compileCons <$> traverse compileArg args

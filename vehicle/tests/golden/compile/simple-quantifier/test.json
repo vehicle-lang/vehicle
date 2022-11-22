@@ -11,16 +11,15 @@
     "produces": ["simple-quantifier.inputquery/*.txt"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s simple-quantifier.vcl -t LossFunction -o simple-quantifier.loss.json",
-    "needs": ["simple-quantifier.vcl"],
-    "produces": ["simple-quantifier.loss.json"],
-    "enabled": false
-  },
-  {
     "name": "Agda",
     "run": "vehicle compile -s simple-quantifier.vcl -t Agda -o simple-quantifier.agda",
     "needs": ["simple-quantifier.vcl"],
     "produces": ["simple-quantifier.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-quantifier.vcl -t LossFunction -o simple-quantifier.loss.json",
+    "needs": ["simple-quantifier.vcl"],
+    "produces": ["simple-quantifier.loss.json"]
   }
 ]

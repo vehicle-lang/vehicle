@@ -11,12 +11,6 @@
     "produces": ["increasing.inputquery/*.txt"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s increasing.vcl -t LossFunction -o increasing.loss.json",
-    "needs": ["increasing.vcl"],
-    "produces": ["increasing.loss.json"]
-  },
-  {
     "name": "Agda",
     "run": "vehicle compile -s increasing.vcl -t Agda -o increasing.agda",
     "needs": ["increasing.vcl"],

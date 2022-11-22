@@ -15,7 +15,7 @@ import Options.Applicative (InfoMod, Mod, OptionFields, Parser, ParserInfo,
                             option, optional, progDesc, short, showDefault,
                             strOption, switch, value)
 import Vehicle (GlobalOptions (..), ModeOptions (..), Options (..))
-import Vehicle.Backend.Prelude (Backend (..), ITP)
+import Vehicle.Backend.Prelude (Backend (..), DifferentiableLogic, ITP)
 import Vehicle.Check (CheckOptions (..))
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
@@ -192,8 +192,11 @@ allITPs = map show (enumerate @ITP)
 allVerifiers :: [String]
 allVerifiers = map show (enumerate @VerifierIdentifier)
 
+allLossFunctionDLs :: [String]
+allLossFunctionDLs = map show (enumerate @DifferentiableLogic)
+
 allBackends :: [String]
-allBackends = allVerifiers <> allITPs <> map show [LossFunction, TypeCheck]
+allBackends = allVerifiers <> allITPs <> allLossFunctionDLs
 
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)

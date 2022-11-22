@@ -17,6 +17,6 @@ encode e = unpack $ flip encodePretty' e $ Config
   , confTrailingNewline = False
   }
 
-writeLossFunctionFiles :: Maybe FilePath -> [LDecl] -> IO ()
-writeLossFunctionFiles filepath functions =
-  writeResultToFile LossFunction filepath (pretty (encode functions))
+writeLossFunctionFiles :: Maybe FilePath -> DifferentiableLogic -> [LDecl] -> IO ()
+writeLossFunctionFiles filepath t functions =
+  writeResultToFile (LossFunction t) filepath (pretty (encode functions))

@@ -10,7 +10,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset.IDX (readIDX)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Dataset parsing

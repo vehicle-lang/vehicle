@@ -11,15 +11,15 @@
     "produces": ["simple-vector.inputquery/*.txt"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s simple-vector.vcl -t LossFunction -o simple-vector.loss.json",
-    "needs": ["simple-vector.vcl"],
-    "produces": ["simple-vector.loss.json"]
-  },
-  {
     "name": "Agda",
     "run": "vehicle compile -s simple-vector.vcl -t Agda -o simple-vector.agda",
     "needs": ["simple-vector.vcl"],
     "produces": ["simple-vector.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-vector.vcl -t LossFunction -o simple-vector.loss.json",
+    "needs": ["simple-vector.vcl"],
+    "produces": ["simple-vector.loss.json"]
   }
 ]

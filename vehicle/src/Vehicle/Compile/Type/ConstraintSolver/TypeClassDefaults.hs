@@ -7,10 +7,10 @@ import Data.Maybe (catMaybes)
 import Control.Monad (foldM)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettySimple)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
-import Vehicle.Language.Print (prettySimple)
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Default solutions to type-class constraints

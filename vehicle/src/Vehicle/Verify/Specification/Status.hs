@@ -8,6 +8,7 @@ import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
 
 import Vehicle.Prelude
+import Vehicle.Syntax.AST (Name)
 import Vehicle.Verify.Specification
 
 class IsVerified a where

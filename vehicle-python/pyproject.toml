@@ -14,7 +14,7 @@ license = "BSD-3-Clause"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.7.1,<3.11"
+python = "^3.8,<3.11"
 tensorflow = "^2.10" # TODO: lowest possible tensorflow bound?
 numpy = "^1.19" # TODO: lowest possible numpy bound?
 

@@ -9,6 +9,7 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
 
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.ConstraintSolver.Core
@@ -16,9 +17,9 @@ import Vehicle.Compile.Type.ConstraintSolver.Linearity
 import Vehicle.Compile.Type.ConstraintSolver.Polarity
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
+import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 import Vehicle.Language.StandardLibrary.Names
-import Vehicle.Compile.Normalise.NormExpr
-import Vehicle.Compile.Normalise.Quote (Quote(..))
 
 --------------------------------------------------------------------------------
 -- Public interface

@@ -1,34 +1,27 @@
-
 module Vehicle.Compile.Prelude
   ( module X
   , module Vehicle.Compile.Prelude
   ) where
 
+import Control.DeepSeq (NFData)
 import Data.Map (Map)
 import Data.Set (Set)
+import GHC.Generics (Generic)
 
+import Vehicle.Compile.Dependency.Graph as X
 import Vehicle.Compile.Prelude.Contexts as X
-import Vehicle.Compile.Prelude.DependencyGraph as X
-import Vehicle.Compile.Prelude.Patterns as X
 import Vehicle.Compile.Prelude.Utils as X
-import Vehicle.Language.AST as X
+import Vehicle.Expr.CoDeBruijn
+import Vehicle.Expr.CoDeBruijn.PositionTree (PositionTree)
+import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Patterns as X
 import Vehicle.Prelude as X
 import Vehicle.Resource as X
+import Vehicle.Syntax.AST as X
 
 --------------------------------------------------------------------------------
 -- Type synonyms
 
--- * Type of annotations attached to the AST after parsing
--- before being analysed by the compiler
-
-type InputBinding = Maybe NamedBinding
-type InputVar     = Name
-
-type InputArg       = Arg    InputBinding InputVar
-type InputBinder    = Binder InputBinding InputVar
-type InputExpr      = Expr   InputBinding InputVar
-type InputDecl      = Decl   InputBinding InputVar
-type InputProg      = Prog   InputBinding InputVar
 
 -- * Types pre type-checking
 
@@ -110,6 +103,21 @@ logCompilerPassOutput result = do
   decrCallDepth
 
 --------------------------------------------------------------------------------
+-- Property annotations
+
+-- | A marker for how a declaration is used as part of a quantified property
+-- and therefore needs to be lifted to the type-level when being exported, or
+-- whether it is only used unquantified and therefore needs to be computable.
+data PropertyInfo
+  = PropertyInfo Linearity Polarity
+  deriving (Show, Eq, Generic)
+
+instance NFData PropertyInfo
+
+instance Pretty PropertyInfo where
+  pretty (PropertyInfo lin pol) = pretty lin <+> pretty pol
+
+--------------------------------------------------------------------------------
 -- Other
 
 type UncheckedPropertyContext = Set Identifier
@@ -121,3 +129,16 @@ data Contextualised object context = WithContext
   } deriving (Show)
 
 type family WithContext a
+
+
+class HasType expr typ | expr -> typ where
+  typeOf :: expr -> typ
+
+instance HasType (GenericBinder binder expr) expr where
+  typeOf = binderType
+
+instance HasType (GenericDecl expr) expr where
+  typeOf = \case
+    DefResource _ _ _ t -> t
+    DefFunction _ _ t _ -> t
+    DefPostulate _ _ t  -> t

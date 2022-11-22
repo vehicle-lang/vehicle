@@ -1,6 +1,5 @@
 module Vehicle.Compile
-  ( module CompilePrelude
-  , CompileOptions(..)
+  ( CompileOptions(..)
   , compile
   , compileToAgda
   , compileToVerifier
@@ -12,31 +11,32 @@ module Vehicle.Compile
 
 import Control.Exception (IOException, catch)
 import Control.Monad.IO.Class (MonadIO (..))
+import Data.Set (Set)
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn)
 
+import Control.Monad.Except (MonadError (..), runExcept)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction (LDecl, writeLossFunctionFiles)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
-import Vehicle.Compile.DependencyAnalysis
-import Vehicle.Compile.Elaborate.External as External (elaborate, elaborateExpr)
+import Vehicle.Compile.Dependency.Analysis
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.ExpandResources
-import Vehicle.Compile.Parse
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Queries (QueryData, compileToQueries)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
+import Vehicle.Expr.Normalised
+import Vehicle.Syntax.Parse
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
 import Vehicle.Verify.Verifier.Interface
-import Vehicle.Compile.Normalise.NormExpr
 
 data CompileOptions = CompileOptions
   { target                :: Backend
@@ -71,9 +71,9 @@ compile loggingOptions CompileOptions{..} = do
         Nothing     -> outputSpecification loggingOptions compiledSpecification
         Just folder -> writeSpecificationFiles verifier folder compiledSpecification
 
-    LossFunction -> do
-      lossFunction <- compileToLossFunction loggingOptions spec declarationsToCompile resources
-      writeLossFunctionFiles outputFile lossFunction
+    LossFunction differentiableLogic -> do
+      lossFunction <- compileToLossFunction loggingOptions spec declarationsToCompile resources differentiableLogic
+      writeLossFunctionFiles outputFile differentiableLogic lossFunction
 
 
 --------------------------------------------------------------------------------
@@ -95,11 +95,12 @@ compileToLossFunction :: VehicleIOSettings
                       -> SpecificationText
                       -> DeclarationNames
                       -> Resources
+                      -> DifferentiableLogic
                       -> IO [LDecl]
-compileToLossFunction loggingOptions spec declarationsToCompile resources = do
+compileToLossFunction loggingOptions spec declarationsToCompile resources differentiableLogic = do
   fromLoggedEitherIO loggingOptions $ do
     (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec declarationsToCompile resources
-    LossFunction.compile prog propertyCtx networkCtx
+    LossFunction.compile differentiableLogic prog propertyCtx networkCtx
 
 compileToAgda :: VehicleIOSettings
               -> AgdaOptions
@@ -124,8 +125,7 @@ readSpecification VehicleIOSettings{..} inputFile = do
 
 parseAndTypeCheckExpr :: MonadCompile m => Text -> m CheckedExpr
 parseAndTypeCheckExpr expr = do
-  bnfcExpr    <- parseVehicle expr
-  vehicleExpr <- elaborateExpr bnfcExpr
+  vehicleExpr <- parseExprText expr
   scopedExpr  <- scopeCheckClosedExpr vehicleExpr
   typedExpr   <- typeCheckExpr scopedExpr
   return typedExpr
@@ -137,8 +137,7 @@ typeCheckProg :: MonadCompile m
               -> DeclarationNames
               -> m (GluedProg, PropertyContext, DependencyGraph)
 typeCheckProg spec declarationsToCompile = do
-  bnfcProg <- parseVehicle spec
-  (vehicleProg, uncheckedPropertyCtx) <- elaborate bnfcProg
+  (vehicleProg, uncheckedPropertyCtx) <- parseProgText spec
   (scopedProg, dependencyGraph) <- scopeCheck vehicleProg
   prunedProg <- analyseDependenciesAndPrune scopedProg uncheckedPropertyCtx dependencyGraph declarationsToCompile
   (typedProg, propertyContext) <- typeCheck prunedProg uncheckedPropertyCtx
@@ -156,3 +155,17 @@ typeCheckProgAndLoadResources spec declarationsToCompile resources = do
   (typedProg, propertyCtx, depGraph) <- typeCheckProg spec declarationsToCompile
   (networkCtx, finalProg) <- expandResources resources True typedProg
   return (finalProg, propertyCtx, networkCtx, depGraph)
+
+parseExprText :: MonadCompile m => Text -> m InputExpr
+parseExprText txt =
+  case runExcept (parseExpr =<< readExpr txt) of
+    Left  err  -> throwError $ ParseError err
+    Right expr -> return expr
+
+parseProgText :: MonadCompile m => Text -> m (InputProg, Set Identifier)
+parseProgText txt = do
+  case runExcept (readAndParseProg txt) of
+    Left err                 -> throwError $ ParseError err
+    Right (prog, properties) -> case traverse parseExpr prog of
+      Left err    -> throwError $ ParseError err
+      Right prog' -> return (prog', properties)

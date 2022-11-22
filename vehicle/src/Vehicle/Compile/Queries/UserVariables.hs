@@ -17,9 +17,11 @@ import Vehicle.Compile.LetInsertion (insertLets)
 import Vehicle.Compile.Linearity
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettySimple)
 import Vehicle.Compile.Queries.LNF (convertToLNF)
 import Vehicle.Compile.Resource
-import Vehicle.Language.Print (prettySimple)
+import Vehicle.Expr.CoDeBruijn (CoDBVar (..))
+import Vehicle.Expr.DeBruijn
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface
 
