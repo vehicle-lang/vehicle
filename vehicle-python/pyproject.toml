@@ -39,7 +39,7 @@ filterwarnings = ["ignore::DeprecationWarning:.*:"]
 testpaths = ["tests"]
 
 [tool.mypy]
-python_version = 3.9
+python_version = 3.8
 ignore_missing_imports = true
 plugins = "numpy.typing.mypy_plugin"
 
