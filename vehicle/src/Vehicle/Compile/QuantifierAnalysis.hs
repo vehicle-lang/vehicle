@@ -8,8 +8,8 @@ import Data.Maybe (catMaybes)
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.DNF (lowerNot)
 import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Queries.DNF (lowerNot)
 import Vehicle.Verify.Core (VerifierIdentifier)
 
 checkQuantifiersAndNegateIfNecessary :: MonadCompile m

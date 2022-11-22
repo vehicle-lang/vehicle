@@ -4,7 +4,7 @@ module Vehicle.Syntax.AST.Meta where
 import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty(..))
+import Prettyprinter (Pretty (..))
 
 --------------------------------------------------------------------------------
 -- Meta-variables

@@ -7,11 +7,11 @@ import Data.Bifunctor (first)
 import Data.Text (Text)
 import Data.Text.IO qualified as T
 
-import Vehicle.Syntax.AST
-import Vehicle.Syntax.Parse.Token
 import Prettyprinter (Doc, defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
+import Vehicle.Syntax.AST
+import Vehicle.Syntax.Parse.Token
 
 --------------------------------------------------------------------------------
 -- Parsing

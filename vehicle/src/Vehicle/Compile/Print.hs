@@ -24,17 +24,17 @@ import Data.Text qualified as Text
 import GHC.TypeLits (ErrorMessage (..), TypeError)
 import Prettyprinter (list)
 
-import Vehicle.Expr.CoDeBruijn.Conversion
 import Vehicle.Compile.Descope
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude hiding (MapList)
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
-import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Expr.CoDeBruijn
-import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.CoDeBruijn.Conversion
 import Vehicle.Expr.CoDeBruijn.PositionTree
+import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Print
 

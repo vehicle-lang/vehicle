@@ -13,17 +13,18 @@ import Data.Maybe (catMaybes)
 import Data.Traversable (for)
 
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Quote (Quote (..), adjustDBIndices)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.ConstraintSolver.Core (unify, unify, blockOnReductionBlockingMetasOrThrowError)
+import Vehicle.Compile.Type.ConstraintSolver.Core (blockOnReductionBlockingMetasOrThrowError,
+                                                   unify)
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (member, toList)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton)
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Expr.Normalised
-import Vehicle.Compile.Normalise.Quote (adjustDBIndices, Quote (..))
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 
 
 --------------------------------------------------------------------------------

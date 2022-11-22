@@ -16,8 +16,8 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Expr.Normalised
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
 -- matches the type of the stored data.

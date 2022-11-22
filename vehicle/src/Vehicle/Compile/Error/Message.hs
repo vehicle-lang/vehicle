@@ -14,14 +14,14 @@ import Prettyprinter (list)
 
 import System.FilePath
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Print
-import Vehicle.Syntax.Parse (ParseError(..))
-import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence(..))
 import Vehicle.Compile.Normalise.Quote (unnormalise)
-import Vehicle.Expr.Normalised
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print
+import Vehicle.Compile.Type.Constraint
+import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (..))
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
+import Vehicle.Syntax.Parse (ParseError (..))
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -576,9 +576,9 @@ instance MeaningfulError CompileError where
       where
         dimensionsOf :: NormType -> Int
         dimensionsOf = \case
-          VListType   _ t    -> 1 + dimensionsOf t
-          VVectorType _ t _  -> 1 + dimensionsOf t
-          _                  -> 0
+          VListType   _ t   -> 1 + dimensionsOf t
+          VVectorType _ t _ -> 1 + dimensionsOf t
+          _                 -> 0
 
     DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize allDimensions visitedDimensions -> UError $ UserError
       { provenance = p

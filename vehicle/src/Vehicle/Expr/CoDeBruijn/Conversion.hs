@@ -9,9 +9,9 @@ import Data.Functor.Foldable (Recursive (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList, unzip)
 
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.DeBruijn as DB
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.PositionTree
+import Vehicle.Expr.DeBruijn as DB
 
 --------------------------------------------------------------------------------
 -- Conversion between DeBruijn and CoDeBruijn expressions

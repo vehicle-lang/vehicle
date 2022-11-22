@@ -6,10 +6,10 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
 import Data.Text (pack)
 
-import Vehicle.Expr.Patterns
-import Vehicle.Syntax.AST
-import Vehicle.Prelude
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Patterns
+import Vehicle.Prelude
+import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
 -- Utility functions

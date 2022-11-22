@@ -11,10 +11,11 @@ import Data.Maybe (maybeToList)
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Expr.Normalised (NormExpr(..), pattern VTensorType, isLiteral, getMeta)
+import Vehicle.Expr.Normalised (NormExpr (..), getMeta, isLiteral,
+                                pattern VTensorType)
 
 blockOn :: MonadCompile m => [MetaID] -> m ConstraintProgress
 blockOn metas = do

@@ -10,7 +10,7 @@ import Control.Monad (when)
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NonEmpty (toList, head)
+import Data.List.NonEmpty qualified as NonEmpty (head, toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
@@ -19,8 +19,8 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Language.StandardLibrary.Names
 import Vehicle.Expr.DeBruijn
+import Vehicle.Language.StandardLibrary.Names
 
 -- |Run a function in 'MonadNorm'.
 normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) ([DBBinding], a))

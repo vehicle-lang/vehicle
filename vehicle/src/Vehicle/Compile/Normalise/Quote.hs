@@ -1,12 +1,12 @@
 module Vehicle.Compile.Normalise.Quote where
 
-import Control.Monad.Reader (MonadReader(..), runReader)
+import Control.Monad.Reader (MonadReader (..), runReader)
 
-import Vehicle.Compile.Prelude
-import Vehicle.Expr.Normalised
-import Vehicle.Compile.Error (MonadCompile)
 import Control.Monad.Except (runExceptT)
+import Vehicle.Compile.Error (MonadCompile)
+import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 
 -----------------------------------------------------------------------------
 -- DeBruijn adjustment

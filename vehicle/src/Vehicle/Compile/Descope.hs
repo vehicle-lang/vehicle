@@ -14,9 +14,9 @@ import Data.Text (pack)
 
 import Data.Coerce (coerce)
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.PositionTree (PositionTree)
+import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------
 -- Public interface

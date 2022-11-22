@@ -6,11 +6,11 @@ module Vehicle.Compile.Type.Resource
 import Control.Monad.Except (MonadError (..))
 
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.Normalised
-import Vehicle.Compile.Normalise.Quote (Quote(..))
 
 checkResourceType :: TCM m
                   => Resource

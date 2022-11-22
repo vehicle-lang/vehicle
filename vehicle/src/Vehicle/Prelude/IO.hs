@@ -12,13 +12,13 @@ import Control.Exception (catch, throwIO)
 import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text.IO as T (hPutStrLn)
+import Prettyprinter (Doc)
 import System.Directory (removeFile)
 import System.Exit (exitFailure)
 import System.IO (Handle, hPrint)
 import System.IO.Error (isDoesNotExistError)
 import Vehicle.Prelude.Logging (LoggerT, LoggingLevel, Message,
                                 MonadLogger (logMessage), runLoggerT)
-import Prettyprinter (Doc)
 import Vehicle.Syntax.Prelude (layoutAsText)
 
 data VehicleIOSettings = VehicleIOSettings

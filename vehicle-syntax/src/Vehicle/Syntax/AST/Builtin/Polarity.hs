@@ -3,7 +3,7 @@ module Vehicle.Syntax.AST.Builtin.Polarity where
 import Control.DeepSeq (NFData (..))
 import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty(..), (<+>))
+import Prettyprinter (Pretty (..), (<+>))
 
 import Vehicle.Syntax.AST.Builtin.Core
 import Vehicle.Syntax.AST.Provenance

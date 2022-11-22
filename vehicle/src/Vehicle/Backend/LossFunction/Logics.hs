@@ -11,11 +11,11 @@ module Vehicle.Backend.LossFunction.Logics
   , chooseTranslation
   ) where
 
-import Vehicle.Compile.Prelude qualified as V
+import Data.Aeson (FromJSON, ToJSON)
 import Data.List.NonEmpty (NonEmpty)
 import GHC.Generics (Generic)
-import Data.Aeson (FromJSON, ToJSON)
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
+import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Expr.DeBruijn
 
 -- |Definiton of the LExpr - all expressions allowed in a loss constraint
@@ -69,29 +69,29 @@ instance ToJSON Domain
     -- |logical connectives (not, and, or, implies)
     -- |comparisons (<, <=, >, >=, =, !=)
 data DifferentialLogicImplementation = DifferentialLogicImplementation
-  { compileAnd          :: LExpr -> LExpr -> LExpr
-  , compileOr           :: LExpr -> LExpr -> LExpr
-  , compileNot          :: Maybe (LExpr -> LExpr)
-  , compileImplies      :: LExpr -> LExpr -> LExpr
+  { compileAnd     :: LExpr -> LExpr -> LExpr
+  , compileOr      :: LExpr -> LExpr -> LExpr
+  , compileNot     :: Maybe (LExpr -> LExpr)
+  , compileImplies :: LExpr -> LExpr -> LExpr
 
-  , compileLe           :: LExpr -> LExpr -> LExpr
-  , compileLt           :: LExpr -> LExpr -> LExpr
-  , compileGe           :: LExpr -> LExpr -> LExpr
-  , compileGt           :: LExpr -> LExpr -> LExpr
-  , compileEq           :: LExpr -> LExpr -> LExpr
-  , compileNeq          :: LExpr -> LExpr -> LExpr
+  , compileLe      :: LExpr -> LExpr -> LExpr
+  , compileLt      :: LExpr -> LExpr -> LExpr
+  , compileGe      :: LExpr -> LExpr -> LExpr
+  , compileGt      :: LExpr -> LExpr -> LExpr
+  , compileEq      :: LExpr -> LExpr -> LExpr
+  , compileNeq     :: LExpr -> LExpr -> LExpr
 
-  , compileTrue         :: Double
-  , compileFalse        :: Double
+  , compileTrue    :: Double
+  , compileFalse   :: Double
   }
 
 chooseTranslation :: DifferentiableLogic -> DifferentialLogicImplementation
 chooseTranslation = \case
-    DL2 -> dl2Translation
-    Godel -> godelTranslation
+    DL2         -> dl2Translation
+    Godel       -> godelTranslation
     Lukasiewicz -> lukasiewiczTranslation
-    Product -> productTranslation
-    Yager -> yagerTranslation
+    Product     -> productTranslation
+    Yager       -> yagerTranslation
 
 --------------------------------------------------------------------------------
 -- different available  differentiable logics

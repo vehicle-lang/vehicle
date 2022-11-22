@@ -10,8 +10,8 @@ module Vehicle.Compile.SupplyNames
 import Data.Text qualified as Text (pack)
 
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.CoDeBruijn
+import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------
 -- Public interface

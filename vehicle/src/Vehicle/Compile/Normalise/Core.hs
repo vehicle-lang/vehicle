@@ -1,8 +1,8 @@
 module Vehicle.Compile.Normalise.Core where
 
-import Vehicle.Expr.AlphaEquivalence (alphaEq)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Expr.AlphaEquivalence (alphaEq)
 import Vehicle.Expr.DeBruijn (liftDBIndices)
 
 

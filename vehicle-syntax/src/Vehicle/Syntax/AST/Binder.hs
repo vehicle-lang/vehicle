@@ -3,10 +3,10 @@ module Vehicle.Syntax.AST.Binder where
 import Control.DeepSeq (NFData)
 import GHC.Generics (Generic)
 
+import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Relevance
 import Vehicle.Syntax.AST.Visibility
-import Vehicle.Syntax.AST.Name
 
 --------------------------------------------------------------------------------
 -- Binders

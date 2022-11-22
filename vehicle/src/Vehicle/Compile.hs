@@ -11,12 +11,13 @@ module Vehicle.Compile
 
 import Control.Exception (IOException, catch)
 import Control.Monad.IO.Class (MonadIO (..))
+import Data.Set (Set)
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
-import Data.Set (Set)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn)
 
+import Control.Monad.Except (MonadError (..), runExcept)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction (LDecl, writeLossFunctionFiles)
 import Vehicle.Backend.LossFunction qualified as LossFunction
@@ -30,13 +31,12 @@ import Vehicle.Compile.Queries (QueryData, compileToQueries)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
+import Vehicle.Expr.Normalised
+import Vehicle.Syntax.Parse
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
 import Vehicle.Verify.Verifier.Interface
-import Vehicle.Expr.Normalised
-import Vehicle.Syntax.Parse
-import Control.Monad.Except (runExcept, MonadError (..))
 
 data CompileOptions = CompileOptions
   { target                :: Backend
@@ -167,5 +167,5 @@ parseProgText txt = do
   case runExcept (readAndParseProg txt) of
     Left err                 -> throwError $ ParseError err
     Right (prog, properties) -> case traverse parseExpr prog of
-      Left err -> throwError $ ParseError err
+      Left err    -> throwError $ ParseError err
       Right prog' -> return (prog', properties)

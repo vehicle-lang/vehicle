@@ -10,17 +10,19 @@ module Vehicle.Compile.Type.Meta.Variable
 
 import Data.List.NonEmpty qualified as NonEmpty
 
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
-import Vehicle.Expr.Normalised
+import Control.Monad.Writer (MonadWriter (..), execWriterT)
+import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Constraint (Constraint (..),
+                                        TypeClassConstraint (..),
+                                        UnificationConstraint (..))
 import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
-import Control.Monad.Writer (MonadWriter(..), execWriterT)
-import Vehicle.Compile.Type.Constraint (UnificationConstraint (..), TypeClassConstraint (..), Constraint (..))
-import Data.List.NonEmpty (NonEmpty)
+import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 
 -- Eventually when metas make into the builtins, this should module
 -- should also contain the definition of meta-variables themselves.
@@ -72,7 +74,7 @@ makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse bound
 getMetaDependencies :: [CheckedArg] -> [DBIndex]
 getMetaDependencies = \case
   (ExplicitArg _ (Var _ (Bound i))) : args -> i : getMetaDependencies args
-  _ -> []
+  _                                        -> []
 
 getNormMetaDependencies :: [NormArg] -> [DBIndex]
 getNormMetaDependencies = \case
