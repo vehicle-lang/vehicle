@@ -20,7 +20,7 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
 import Prelude hiding (null)
 
-import Vehicle.Language.AST
+import Vehicle.Syntax.AST
 import Vehicle.Prelude
 
 newtype MetaSet = MetaSet IntSet

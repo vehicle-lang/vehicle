@@ -7,6 +7,7 @@ import Data.Functor.Foldable (Recursive (..))
 import Data.Set (Set, insert, member)
 
 import Vehicle.Compile.Prelude
+import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------
 -- Capitalise type names

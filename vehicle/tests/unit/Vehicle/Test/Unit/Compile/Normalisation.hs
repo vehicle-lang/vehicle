@@ -9,10 +9,9 @@ import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile (parseAndTypeCheckExpr)
-import Vehicle.Compile.AlphaEquivalence ()
+import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Compile.Prelude
-import Vehicle.Language.AST
-import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Test.Unit.Common (unitTestCase)
 import Vehicle.Compile.Normalise.Quote (Quote(..))
 import Vehicle.Compile.Normalise.NBE (whnf)

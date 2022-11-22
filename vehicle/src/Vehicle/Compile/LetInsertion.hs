@@ -13,10 +13,12 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Prettyprinter (list)
 
 import Data.Hashable (Hashable (hash))
-import Vehicle.Compile.AlphaEquivalence
-import Vehicle.Compile.CoDeBruijnify
+import Vehicle.Expr.AlphaEquivalence
+import Vehicle.Expr.CoDeBruijn.Conversion
+import Vehicle.Compile.Print
 import Vehicle.Compile.Prelude
-import Vehicle.Language.Print
+import Vehicle.Expr.CoDeBruijn.PositionTree
+import Vehicle.Expr.CoDeBruijn
 
 -- | Let-lifts any sub-expressions that matches the provided filter
 -- to the highest possible level. Filter takes in the expression

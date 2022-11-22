@@ -4,7 +4,7 @@ module Vehicle.Compile.Queries.LNF
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Language.Print
+import Vehicle.Compile.Print
 
 -- | Converts an arithmetic expression to linear normal form.
 convertToLNF :: MonadCompile m => CheckedExpr -> m CheckedExpr

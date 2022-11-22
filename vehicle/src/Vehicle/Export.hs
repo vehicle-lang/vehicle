@@ -6,7 +6,9 @@ import System.Directory (makeAbsolute)
 import Vehicle.Backend.Agda (AgdaOptions (..), writeAgdaFile)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile
+import Vehicle.Prelude
 import Vehicle.Verify.ProofCache
+import Vehicle.Resource
 
 data ExportOptions = ExportOptions
   { target             :: ITP

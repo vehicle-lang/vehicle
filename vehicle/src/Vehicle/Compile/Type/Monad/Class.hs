@@ -58,9 +58,9 @@ import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext (TypingBoundCtx, TypingDeclCtx,
                                              toNormalisationDeclContext, toNBEDeclContext)
-import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Normalise.NBE qualified as NBE
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Expr.Normalised
 import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable, MetaSubstitution, substituteMetas)
 
 --------------------------------------------------------------------------------

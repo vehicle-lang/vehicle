@@ -16,10 +16,12 @@ import System.FilePath
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Language.Print
-import Vehicle.Compile.AlphaEquivalence (AlphaEquivalence(..))
+import Vehicle.Compile.Print
+import Vehicle.Syntax.Parse (ParseError(..))
+import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence(..))
 import Vehicle.Compile.Normalise.Quote (unnormalise)
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Expr.Normalised
+import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -96,102 +98,82 @@ instance MeaningfulError CompileError where
     -- Parsing --
     -------------
 
-    BNFCParseError text -> EError $ ExternalError
-      -- TODO need to revamp this error, BNFC must provide some more
-      -- information than a simple string surely?
-      (pack text)
+    ParseError parseError -> case parseError of
 
-    --------------------------
-    -- Elaboration internal --
-    --------------------------
+      RawParseError text -> EError $ ExternalError
+        -- TODO need to revamp this error, BNFC must provide some more
+        -- information than a simple string surely?
+        (pack text)--
 
-    UnknownBuiltin tk -> UError $ UserError
-      { provenance = tkProvenance tk
-      , problem    = "Unknown symbol" <+> pretty (tkSymbol tk)
-      , fix        = Just $ "Please consult the documentation for a description" <+>
-                            "of Vehicle syntax"
-      }
+      UnknownBuiltin p symbol -> UError $ UserError
+        { provenance = p
+        , problem    = "Unknown symbol" <+> quotePretty symbol
+        , fix        = Just $ "Please consult the documentation for a description" <+>
+                              "of Vehicle syntax"
+        }
 
-    MalformedPiBinder tk -> UError $ UserError
-      { provenance = tkProvenance tk
-      , problem    = "Malformed binder for Pi, expected a type but only found" <+>
-                     "name" <+> pretty (tkSymbol tk)
-      , fix        = Nothing
-      }
+      FunctionNotGivenBody p name -> UError $ UserError
+        { provenance = p
+        , problem    = "no definition found for the declaration" <+> quotePretty name <+> "."
+        , fix        = Just $ "add a definition for" <+> quotePretty name <+>
+                        "or mark it with an annotation, e.g. '@network'"
+        }
 
-    MalformedLamBinder expr -> UError $ UserError
-      { provenance = provenanceOf expr
-      , problem    = "Malformed binder for Lambda, expected a name but only" <+>
-                     "found an expression" <+> prettyVerbose expr
-      , fix        = Nothing
-      }
+      PropertyNotGivenBody p name -> UError $ UserError
+        { provenance = p
+        , problem    = "missing definition for property" <+> quotePretty name <> "."
+        , fix        = Just $ "add a definition for" <+> quotePretty name <+> "."
+        }
 
-    --------------------------
-    -- Elaboration external --
-    --------------------------
+      ResourceGivenBody p resource name -> UError $ UserError
+        { provenance = p
+        , problem    = "The declaration" <+> quotePretty name <+> "should not have a definition" <+>
+                      "as it has been marked with a" <+> quotePretty resource <+> "annotation."
+        , fix        = Just $ "either remove the definition for" <+> quotePretty name <+>
+                      "or remove the" <+> quotePretty resource <+> "annotation."
+        }
 
-    FunctionNotGivenBody p name -> UError $ UserError
-      { provenance = p
-      , problem    = "no definition found for the declaration" <+> quotePretty name <+> "."
-      , fix        = Just $ "add a definition for" <+> quotePretty name <+>
-                      "or mark it with an annotation, e.g. '@network'"
-      }
+      AnnotationWithNoDeclaration p name -> UError $ UserError
+        { provenance = p
+        , problem    = "unattached annotation" <+> quotePretty name
+        , fix        = Just "either attach the annotation to a declaration or remove it entirely"
+        }
 
-    PropertyNotGivenBody p name -> UError $ UserError
-      { provenance = p
-      , problem    = "missing definition for property" <+> quotePretty name <> "."
-      , fix        = Just $ "add a definition for" <+> quotePretty name <+> "."
-      }
+      FunctionWithMismatchedNames p name1 name2 -> UError $ UserError
+        { provenance = p
+        , problem    = "mismatch in function declaration names:" <+> quotePretty name1 <+> "and" <+> quotePretty name2 <> "."
+        , fix        = Just "ensure the function definition has the same name as the declaration it follows."
+        }
 
-    ResourceGivenBody p resource name -> UError $ UserError
-      { provenance = p
-      , problem    = "The declaration" <+> quotePretty name <+> "should not have a definition" <+>
-                     "as it has been marked with a" <+> quotePretty resource <+> "annotation."
-      , fix        = Just $ "either remove the definition for" <+> quotePretty name <+>
-                    "or remove the" <+> quotePretty resource <+> "annotation."
-      }
+      MissingVariables p symbol -> UError $ UserError
+        { provenance = p
+        , problem    = "expected at least one variable name after" <+> quotePretty symbol
+        , fix        = Just $ "add one or more names after" <+> quotePretty symbol
+        }
 
-    AnnotationWithNoDeclaration p name -> UError $ UserError
-      { provenance = p
-      , problem    = "unattached annotation" <+> quotePretty name
-      , fix        = Just "either attach the annotation to a declaration or remove it entirely"
-      }
+      UnchainableOrders p prevOrder currentOrder -> UError $ UserError
+        { provenance = p
+        , problem    = "cannot chain" <+> quotePretty prevOrder <+>
+                      "and" <+> quotePretty currentOrder
+        , fix        = Just "split chained orders into a conjunction"
+        }
 
-    FunctionWithMismatchedNames p name1 name2 -> UError $ UserError
-      { provenance = p
-      , problem    = "mismatch in function declaration names:" <+> quotePretty name1 <+> "and" <+> quotePretty name2 <> "."
-      , fix        = Just "ensure the function definition has the same name as the declaration it follows."
-      }
+      InvalidAnnotationOption p annotationName parameterName suggestions -> UError $ UserError
+        { provenance = p
+        , problem    = "unknown option" <+> quotePretty parameterName <+>
+                      "for" <+> quotePretty annotationName <+> "annotation."
+        , fix        =
+            if null suggestions
+              then Nothing
+              else Just $ "did you mean" <+> quotePretty (head suggestions) <> "?"
+        }
 
-    MissingVariables p symbol -> UError $ UserError
-      { provenance = p
-      , problem    = "expected at least one variable name after" <+> quotePretty symbol
-      , fix        = Just $ "add one or more names after" <+> quotePretty symbol
-      }
-
-    UnchainableOrders p prevOrder currentOrder -> UError $ UserError
-      { provenance = p
-      , problem    = "cannot chain" <+> quotePretty prevOrder <+>
-                     "and" <+> quotePretty currentOrder
-      , fix        = Just "split chained orders into a conjunction"
-      }
-
-    InvalidAnnotationOption p annotationName parameterName suggestions -> UError $ UserError
-      { provenance = p
-      , problem    = "unknown option" <+> quotePretty parameterName <+>
-                     "for" <+> quotePretty annotationName <+> "annotation."
-      , fix        =
-          if null suggestions
-            then Nothing
-            else Just $ "did you mean" <+> quotePretty (head suggestions) <> "?"
-      }
-
-    InvalidAnnotationOptionValue p parameterName parameterValue -> UError $ UserError
-      { provenance = p
-      , problem    = "unable to parse the value" <+> quotePretty parameterValue <+>
-                     "for option" <+> quotePretty parameterName
-      , fix        = Nothing
-      }
+      InvalidAnnotationOptionValue p parameterName parameterValue -> UError $ UserError
+        { provenance = p
+        , problem    = "unable to parse the value" <+> quotePretty parameterValue <+>
+                      "for option" <+> quotePretty parameterName
+        , fix        = Nothing
+        }
 
     -------------
     -- Scoping --

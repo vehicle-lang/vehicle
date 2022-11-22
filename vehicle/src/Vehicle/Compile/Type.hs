@@ -28,8 +28,8 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
-import Vehicle.Language.Print
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Compile.Print
+import Vehicle.Expr.Normalised
 import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable)
 
 -------------------------------------------------------------------------------
@@ -205,8 +205,10 @@ loopOverConstraints loopNumber decl = do
         mconcat `fmap` traverse solveConstraint unblockedConstraints
 
         newSubstitution <- getMetaSubstitution
-        logDebug MaxDetail $ "current-solution:" <+>
-          prettyVerbose (fmap unnormalised newSubstitution) <> "\n"
+        whenM (loggingLevelAtLeast MaxDetail) $ do
+          updatedSubst <- substMetas newSubstitution
+          logDebug MaxDetail $ "current-solution:" <+>
+            prettyVerbose (fmap unnormalised updatedSubst) <> "\n"
 
         return updatedDecl
 

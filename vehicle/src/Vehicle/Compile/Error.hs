@@ -9,7 +9,9 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Verify.Core (VerifierIdentifier)
-import Vehicle.Compile.Normalise.NormExpr (NormType, GluedType, NormBinder, NormExpr, GluedExpr)
+import Vehicle.Expr.Normalised (NormType, GluedType, NormBinder, NormExpr, GluedExpr)
+import Vehicle.Syntax.Parse (ParseError)
+import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -26,23 +28,7 @@ data CompileError
   = DevError (Doc ())
 
   -- Parse errors
-  | BNFCParseError String
-
-  -- Errors thrown when elaborating from the BNFC internal language
-  | UnknownBuiltin     Token
-  | MalformedPiBinder  Token
-  | MalformedLamBinder InputExpr
-
-  -- Errors thrown when elaborating from the BNFC external language
-  | FunctionNotGivenBody         Provenance Name
-  | PropertyNotGivenBody         Provenance Name
-  | ResourceGivenBody            Provenance Name Name
-  | AnnotationWithNoDeclaration  Provenance Name
-  | FunctionWithMismatchedNames  Provenance Name Name
-  | MissingVariables             Provenance Name
-  | UnchainableOrders            Provenance OrderOp OrderOp
-  | InvalidAnnotationOption      Provenance Name Name [Name]
-  | InvalidAnnotationOptionValue Provenance Name Name
+  | ParseError ParseError
 
   -- Errors thrown by scope checking.
   | UnboundName Provenance Name

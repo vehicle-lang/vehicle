@@ -6,9 +6,10 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
 import Data.Text (pack)
 
-import Vehicle.Compile.Prelude.Patterns
-import Vehicle.Language.AST
+import Vehicle.Expr.Patterns
+import Vehicle.Syntax.AST
 import Vehicle.Prelude
+import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------
 -- Utility functions
@@ -35,12 +36,6 @@ isBoundVar _          = False
 isAnnBoolType :: DBExpr -> Bool
 isAnnBoolType AnnBoolType{} = True
 isAnnBoolType _             = False
-
-isTypeSynonym :: Expr binder var -> Bool
-isTypeSynonym = \case
-  TypeUniverse{} -> True
-  Pi _ _ res     -> isTypeSynonym res
-  _              -> False
 
 --------------------------------------------------------------------------------
 -- Enumeration functions
@@ -88,7 +83,7 @@ getFreeVar = \case
   _               -> Nothing
 
 getBinderName :: GenericBinder DBBinding expr -> Name
-getBinderName binder = case nameOf binder of
+getBinderName binder = case binderRepresentation binder of
   Just symbol -> symbol
   Nothing     -> developerError "Binder unexpectedly does not appear to have a name"
 
@@ -135,9 +130,6 @@ findInstanceArg []       = developerError "Malformed type class operation"
 mkNameWithIndices :: Name -> Int -> Name
 mkNameWithIndices n index = n <> pack (show index)
   --mconcat (n : [pack (show index) | index <- indices])
-
-mkHole :: Provenance -> Name -> Expr binder var
-mkHole ann name = Hole ann ("_" <> name)
 
 mkDoubleExpr :: Provenance -> Double -> DBExpr
 mkDoubleExpr ann v = RatLiteral ann (toRational v)

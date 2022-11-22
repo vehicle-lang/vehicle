@@ -155,7 +155,7 @@ Mul.     Expr10 ::= Expr10 TokMul Expr11;
 Div.     Expr10 ::= Expr10 TokDiv Expr11;
 Neg.     Expr11 ::= TokSub Expr11;
 
--- Lists and tensors.
+-- Lists and vectors.
 VecLiteral. Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
 Nil.        Expr15 ::= TokNil;
 Cons.       Expr4  ::= Expr5 TokCons Expr4;
@@ -169,10 +169,10 @@ Bool.    Expr15 ::= TokBool;
 Rat.     Expr15 ::= TokRat;
 Int.     Expr15 ::= TokInt;
 Nat.     Expr15 ::= TokNat;
-List.    Expr14 ::= TokList Expr15;
-Vector.  Expr14 ::= TokVector Expr15 Expr15;
-Tensor.  Expr14 ::= TokTensor Expr15 Expr15;
-Index.   Expr14 ::= TokIndex Expr15;
+List.    Expr14 ::= TokList;
+Vector.  Expr14 ::= TokVector;
+Tensor.  Expr14 ::= TokTensor;
+Index.   Expr14 ::= TokIndex;
 
 coercions Expr 15;
 separator Expr ",";

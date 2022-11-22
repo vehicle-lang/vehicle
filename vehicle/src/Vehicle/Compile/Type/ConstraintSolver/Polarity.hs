@@ -9,7 +9,7 @@ import Vehicle.Compile.Type.ConstraintSolver.Core
 import Vehicle.Compile.Type.Monad
 
 import Control.Monad.Except (MonadError (..))
-import Vehicle.Compile.Normalise.NormExpr (pattern VPolarityExpr, NormType, getMeta)
+import Vehicle.Expr.Normalised (pattern VPolarityExpr, NormType, getMeta)
 
 solvePolarityConstraint :: TCM m
                         => PolarityTypeClass

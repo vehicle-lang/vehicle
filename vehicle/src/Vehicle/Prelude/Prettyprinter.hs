@@ -14,14 +14,10 @@ import Data.Map (Map)
 import Data.Map qualified as Map (toAscList)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Text (Text)
 import Data.Version (Version, showVersion)
 
-import Prettyprinter (defaultLayoutOptions, group, layoutPretty, line',
-                      surround, unAnnotate)
+import Prettyprinter (group, line', surround, unAnnotate)
 import Prettyprinter.Internal (Doc (Annotated))
-import Prettyprinter.Render.String (renderString)
-import Prettyprinter.Render.Text (renderStrict)
 
 -- This stuff we re-export
 import Data.Void (Void)
@@ -72,12 +68,6 @@ docAnn :: Doc ann -> Maybe ann
 docAnn (Annotated a _) = Just a
 docAnn _               = Nothing
 
-layoutAsString :: Doc ann -> String
-layoutAsString = renderString . layoutPretty defaultLayoutOptions
-
-layoutAsText :: Doc ann -> Text
-layoutAsText = renderStrict . layoutPretty defaultLayoutOptions
-
 quotePretty :: Pretty a => a -> Doc b
 quotePretty = squotes . pretty
 
@@ -107,10 +97,6 @@ prettySetLike :: [Doc a] -> Doc a
 prettySetLike xs = "{" <+> align (group
   (concatWith (\x y -> x <> ";" <> line <> y) xs)
   <> softline <> "}")
-
-instance Pretty Rational where
-  pretty p = pretty (fromRational p :: Double)
-  --pretty (numerator p) <> "/" <> pretty (denominator p)
 
 instance Pretty IntSet where
   pretty m = pretty (IntSet.toAscList m)

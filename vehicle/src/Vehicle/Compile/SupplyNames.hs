@@ -7,7 +7,11 @@ module Vehicle.Compile.SupplyNames
   , supplyCoDBNamesWithCtx
   ) where
 
+import Data.Text qualified as Text (pack)
+
 import Vehicle.Compile.Prelude
+import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.CoDeBruijn
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -48,6 +52,9 @@ supplyNamesWithCtx' f v = runSupply (supplyNamesWithCtx f v) freshNames
 
 supplyNamesToCtx :: MonadSupply Name m => [DBBinding] -> m [NamedBinding]
 supplyNamesToCtx = mapM getName
+
+freshNames :: [Name]
+freshNames = [ "_x" <> Text.pack (show i) | i <- [0::Int ..]]
 
 getName :: MonadSupply Name m => DBBinding -> m Name
 getName = maybe demand return

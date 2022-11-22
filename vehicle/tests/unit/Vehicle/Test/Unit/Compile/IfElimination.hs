@@ -9,12 +9,12 @@ import Data.Text
 import Test.Tasty
 import Test.Tasty.HUnit
 import Vehicle.Compile (parseAndTypeCheckExpr, typeCheckExpr)
-import Vehicle.Compile.AlphaEquivalence
-import Vehicle.Compile.CoDeBruijnify
+import Vehicle.Expr.AlphaEquivalence
+import Vehicle.Expr.CoDeBruijn.Conversion
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.IfElimination
-import Vehicle.Language.Print
+import Vehicle.Compile.Print
 import Vehicle.Test.Unit.Common (normTypeClasses, unitTestCase)
 
 --------------------------------------------------------------------------------

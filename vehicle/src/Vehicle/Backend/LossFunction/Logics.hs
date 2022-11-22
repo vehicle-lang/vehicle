@@ -11,17 +11,17 @@ module Vehicle.Backend.LossFunction.Logics
   , chooseTranslation
   ) where
 
-import Vehicle.Prelude
 import Vehicle.Compile.Prelude qualified as V
 import Data.List.NonEmpty (NonEmpty)
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, ToJSON)
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
+import Vehicle.Expr.DeBruijn
 
 -- |Definiton of the LExpr - all expressions allowed in a loss constraint
 data LExpr
+  -- | this is minus, not the logical operation of negation
   = Negation LExpr
-  -- |^this is minus, not the logical operation of negation
   | Constant Double
   | Min LExpr LExpr
   | Max LExpr LExpr
@@ -30,17 +30,17 @@ data LExpr
   | Multiplication LExpr LExpr
   | Division LExpr LExpr
   | IndicatorFunction LExpr LExpr
-  | Variable V.DBIndex
-  -- |^variable (bound)
-  | FreeVariable Name
-  -- |^variable (free)
-  | NetworkApplication Name (NonEmpty LExpr)
-  | Quantifier Quantifier Name Domain LExpr
-  -- |^quantifiers forall, exists
+  -- | variable (bound)
+  | Variable DBIndex
+  -- | variable (free)
+  | FreeVariable V.Name
+  | NetworkApplication V.Name (NonEmpty LExpr)
+  -- | quantifiers forall, exists
+  | Quantifier Quantifier V.Name Domain LExpr
   | At LExpr LExpr
   | TensorLiteral [LExpr]
-  | Lambda Name LExpr
-  | Let Name LExpr LExpr
+  | Lambda V.Name LExpr
+  | Let V.Name LExpr LExpr
   | Power LExpr LExpr
   deriving (Eq, Ord, Generic, Show)
 

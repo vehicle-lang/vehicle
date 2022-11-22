@@ -41,8 +41,35 @@ custom-setup
     , filepath  >=1
 
 library
-  hs-source-dirs:     autogen
+  hs-source-dirs:     autogen src
   exposed-modules:
+    Vehicle.Syntax.AST
+    Vehicle.Syntax.Parse
+    Vehicle.Syntax.Prelude
+    Vehicle.Syntax.Print
+    Vehicle.Syntax.Sugar
+
+  other-modules:
+    Vehicle.Syntax.AST.Arg
+    Vehicle.Syntax.AST.Binder
+    Vehicle.Syntax.AST.Builtin
+    Vehicle.Syntax.AST.Builtin.Core
+    Vehicle.Syntax.AST.Builtin.Linearity
+    Vehicle.Syntax.AST.Builtin.Polarity
+    Vehicle.Syntax.AST.Builtin.TypeClass
+    Vehicle.Syntax.AST.Decl
+    Vehicle.Syntax.AST.Expr
+    Vehicle.Syntax.AST.Meta
+    Vehicle.Syntax.AST.Name
+    Vehicle.Syntax.AST.Prog
+    Vehicle.Syntax.AST.Provenance
+    Vehicle.Syntax.AST.Relevance
+    Vehicle.Syntax.AST.Visibility
+    Vehicle.Syntax.BNFC.Delaborate.External
+    Vehicle.Syntax.BNFC.Delaborate.Internal
+    Vehicle.Syntax.BNFC.Elaborate.External
+    Vehicle.Syntax.BNFC.Elaborate.Internal
+    Vehicle.Syntax.BNFC.Utils
     Vehicle.Syntax.External.Abs
     Vehicle.Syntax.External.ErrM
     Vehicle.Syntax.External.Layout
@@ -54,6 +81,8 @@ library
     Vehicle.Syntax.Internal.Lex
     Vehicle.Syntax.Internal.Par
     Vehicle.Syntax.Internal.Print
+    Vehicle.Syntax.Parse.Error
+    Vehicle.Syntax.Parse.Token
 
   autogen-modules:
     Vehicle.Syntax.External.Abs
@@ -69,9 +98,16 @@ library
     Vehicle.Syntax.Internal.Print
 
   build-depends:
-      array  >=0.5 && <1
-    , base   >=4   && <5
-    , text   >=1.2 && <3
+      array              >=0.5 && <1
+    , base               >=4   && <5
+    , containers         >=0.5 && <1
+    , deepseq            >=1.4 && <2
+    , hashable           >=1.3 && <2
+    , mtl                >=2.2 && <3
+    , prettyprinter      >=1.7 && <2
+    , range              >=0.3 && <1
+    , recursion-schemes  >=5.2 && <6
+    , text               >=1.2 && <3
 
   build-tool-depends:
       alex:alex    >=3
@@ -79,3 +115,20 @@ library
     , happy:happy  >=1.19
 
   default-language:   Haskell2010
+  default-extensions:
+    ConstraintKinds
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    ImportQualifiedPost
+    KindSignatures
+    LambdaCase
+    MultiParamTypeClasses
+    OverloadedStrings
+    PatternSynonyms
+    TypeApplications
+    TypeFamilies

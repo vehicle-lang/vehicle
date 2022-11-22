@@ -14,7 +14,8 @@ import Data.Map qualified as Map
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Expr.DeBruijn
 
 scopeCheck :: MonadCompile m => InputProg -> m (UncheckedProg, DependencyGraph)
 scopeCheck e = logCompilerPass MinDetail "scope checking" $ do

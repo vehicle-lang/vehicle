@@ -9,10 +9,11 @@ import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, testCase)
 import Vehicle.Compile (parseAndTypeCheckExpr)
-import Vehicle.Compile.CoDeBruijnify (toCoDBExpr)
-import Vehicle.Language.AST (PositionList (Both, Here, There),
-                             PositionTree (..), stripPrefix, substPos)
-import Vehicle.Language.Print (prettySimple)
+import Vehicle.Expr.CoDeBruijn (substPos)
+import Vehicle.Expr.CoDeBruijn.Conversion (toCoDBExpr)
+import Vehicle.Expr.CoDeBruijn.PositionTree (PositionList (Both, Here, There),
+                             PositionTree (..), stripPrefix)
+import Vehicle.Compile.Print (prettySimple)
 import Vehicle.Prelude (Pretty (pretty), indent, layoutAsString, line, squotes,
                         (<+>))
 import Vehicle.Test.Unit.Common (unitTestCase)
@@ -28,7 +29,7 @@ positionTreeTests =
   ]
 
 prefixTests :: [TestTree]
-prefixTests = fmap prefixTest $
+prefixTests = prefixTest <$>
   [ PrefixTestCase
     { _testName = "prefix: x+y || x+y && y"
     , tree1     = Leaf

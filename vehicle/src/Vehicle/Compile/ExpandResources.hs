@@ -19,7 +19,7 @@ import Vehicle.Compile.ExpandResources.Parameter
 import Vehicle.Compile.Prelude
 
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Normalise.NormExpr (GluedProg, GluedDecl, GluedExpr (..))
+import Vehicle.Expr.Normalised (GluedProg, GluedDecl, GluedExpr (..))
 import Vehicle.Compile.Normalise.Quote (Quote(..))
 
 -- | Expands datasets and parameters, and attempts to infer the values of

@@ -17,8 +17,9 @@ import Vehicle.Compile.Type.ConstraintSolver.Polarity
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
 import Vehicle.Language.StandardLibrary.Names
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Expr.Normalised
 import Vehicle.Compile.Normalise.Quote (Quote(..))
+import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------
 -- Public interface

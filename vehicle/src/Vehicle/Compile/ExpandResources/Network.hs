@@ -10,8 +10,9 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
-import Vehicle.Language.Print
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Compile.Print
+import Vehicle.Expr.Normalised
+import Vehicle.Expr.DeBruijn (DBVar(..))
 
 --------------------------------------------------------------------------------
 -- Network typing

@@ -14,12 +14,12 @@ import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Resource (NetworkContext)
-import Vehicle.Language.AST.Name (HasName (nameOf))
-import Vehicle.Language.Print (prettySimple, prettyVerbose)
+import Vehicle.Syntax.AST (HasName (nameOf), Name, argExpr)
+import Vehicle.Compile.Print (prettySimple, prettyVerbose)
 import Vehicle.Prelude
 import Vehicle.Compile.Queries.DNF
-import Vehicle.Language.AST.Arg (argExpr)
 import Vehicle.Backend.LossFunction.Logics (LExpr (..), Domain (..), Quantifier (..), DifferentialLogicImplementation (..), chooseTranslation)
+import Vehicle.Expr.DeBruijn qualified as V
 
 --------------------------------------------------------------------------------
 -- Declaration definition
@@ -107,11 +107,11 @@ compileExpr t e = showExit $ do
     V.DivExpr   _ _ [e1, e2] -> Division <$> compileArg t e1 <*> compileArg t e2
     V.NegExpr   _ _ [e1]     -> Negation <$> compileArg t e1
 
-    V.EqualityTCExpr _ op _ _ _ [e1, e2] -> case op of
+    V.EqualityTCExpr _ op _ _ _ _ [e1, e2] -> case op of
       V.Neq  -> compileNeq t <$> compileArg t e1 <*> compileArg t e2
       V.Eq   -> compileEq t <$> (Max (Constant 0) <$> (Subtraction <$> compileArg t e1 <*> compileArg t e2)) <*> (Max (Constant 0) <$> (Subtraction <$> compileArg t e2 <*> compileArg t e1))
 
-    V.OrderTCExpr    _ order _ _ _ [e1, e2] ->
+    V.OrderTCExpr    _ order _ _ _ _ [e1, e2] ->
       case order of
         V.Le -> compileLe t <$> compileArg t e1 <*> compileArg t e2
         V.Lt -> compileLt t <$> compileArg t e1 <*> compileArg t e2
