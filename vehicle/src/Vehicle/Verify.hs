@@ -12,12 +12,12 @@ import System.IO (stderr)
 
 import Vehicle.Compile
 import Vehicle.Prelude
+import Vehicle.Resource
 import Vehicle.Verify.Core
 import Vehicle.Verify.ProofCache (ProofCache (..), writeProofCache)
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
 import Vehicle.Verify.Verifier.Interface
-import Vehicle.Resource
 
 data VerifyOptions = VerifyOptions
   { specification    :: FilePath

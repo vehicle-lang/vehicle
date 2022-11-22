@@ -13,8 +13,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tree qualified as Tree
 
-import Vehicle.Syntax.AST
 import Vehicle.Prelude
+import Vehicle.Syntax.AST
 
 type Dependencies = [Identifier]
 

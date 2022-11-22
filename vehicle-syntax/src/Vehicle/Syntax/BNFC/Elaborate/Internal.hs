@@ -6,19 +6,19 @@ import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Prettyprinter (Pretty(..), (<+>))
 import Numeric (readFloat)
+import Prettyprinter (Pretty (..), (<+>))
 
 import Vehicle.Syntax.Internal.Abs as B
 
 import Vehicle.Syntax.AST qualified as V
-import Vehicle.Syntax.Parse.Token ( IsToken, Token(..), toToken, tkSymbol )
-import Vehicle.Syntax.Parse.Error (ParseError (..))
-import Vehicle.Syntax.AST.Provenance
-import Vehicle.Syntax.AST.Visibility
-import Vehicle.Syntax.AST.Relevance
 import Vehicle.Syntax.AST.Name
-import Vehicle.Syntax.Prelude (developerError, readRat, readNat)
+import Vehicle.Syntax.AST.Provenance
+import Vehicle.Syntax.AST.Relevance
+import Vehicle.Syntax.AST.Visibility
+import Vehicle.Syntax.Parse.Error (ParseError (..))
+import Vehicle.Syntax.Parse.Token (IsToken, Token (..), tkSymbol, toToken)
+import Vehicle.Syntax.Prelude (developerError, readNat, readRat)
 
 --------------------------------------------------------------------------------
 -- Conversion from BNFC AST

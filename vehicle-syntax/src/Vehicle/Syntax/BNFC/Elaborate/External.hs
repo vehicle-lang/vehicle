@@ -6,23 +6,24 @@ module Vehicle.Syntax.BNFC.Elaborate.External
   , elaborateExpr
   ) where
 
-import Control.Monad.Except (MonadError(..), foldM, throwError)
+import Control.Monad.Except (MonadError (..), foldM, throwError)
 import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.Bitraversable (bitraverse)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set (singleton)
 import Data.Text (Text, unpack)
 import Text.Read (readMaybe)
-import Data.Maybe (fromMaybe)
 
+import Data.Set (Set)
 import Vehicle.Syntax.AST qualified as V
-import Vehicle.Syntax.Sugar
+import Vehicle.Syntax.BNFC.Utils (tokArrow, tokDot, tokForallT, tokLambda,
+                                  tokType)
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Parse.Error (ParseError (..))
-import Data.Set (Set)
 import Vehicle.Syntax.Parse.Token
-import Vehicle.Syntax.Prelude (readNat, readRat, developerError)
-import Vehicle.Syntax.BNFC.Utils (tokForallT, tokDot, tokLambda, tokArrow, tokType)
+import Vehicle.Syntax.Prelude (developerError, readNat, readRat)
+import Vehicle.Syntax.Sugar
 
 --------------------------------------------------------------------------------
 -- Public interface

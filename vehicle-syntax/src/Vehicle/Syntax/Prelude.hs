@@ -5,10 +5,10 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Stack (HasCallStack)
 
-import Prettyprinter ( Doc, (<+>), defaultLayoutOptions, layoutPretty, line )
+import Numeric (readFloat)
+import Prettyprinter (Doc, defaultLayoutOptions, layoutPretty, line, (<+>))
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
-import Numeric (readFloat)
 
 --------------------------------------------------------------------------------
 -- Developer errors

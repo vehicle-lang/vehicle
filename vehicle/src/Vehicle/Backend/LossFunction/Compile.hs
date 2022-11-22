@@ -9,17 +9,19 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 
+import Vehicle.Backend.LossFunction.Logics (DifferentialLogicImplementation (..),
+                                            Domain (..), LExpr (..),
+                                            Quantifier (..), chooseTranslation)
+import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
 import Vehicle.Compile.Prelude qualified as V
-import Vehicle.Backend.Prelude (DifferentiableLogic (..))
-import Vehicle.Compile.Resource (NetworkContext)
-import Vehicle.Syntax.AST (HasName (nameOf), Name, argExpr)
 import Vehicle.Compile.Print (prettySimple, prettyVerbose)
-import Vehicle.Prelude
 import Vehicle.Compile.Queries.DNF
-import Vehicle.Backend.LossFunction.Logics (LExpr (..), Domain (..), Quantifier (..), DifferentialLogicImplementation (..), chooseTranslation)
+import Vehicle.Compile.Resource (NetworkContext)
 import Vehicle.Expr.DeBruijn qualified as V
+import Vehicle.Prelude
+import Vehicle.Syntax.AST (HasName (nameOf), Name, argExpr)
 
 --------------------------------------------------------------------------------
 -- Declaration definition
@@ -95,7 +97,7 @@ compileExpr t e = showExit $ do
     -- logical operatives
     V.NotExpr     _ [e1]     -> case compileNot t of
       Nothing -> compileExpr t (lowerNot (argExpr e1))
-      Just f -> f <$> compileArg t e1
+      Just f  -> f <$> compileArg t e1
     V.AndExpr     _ [e1, e2] -> compileAnd t <$> compileArg t e1 <*> compileArg t e2
     V.OrExpr      _ [e1, e2] -> compileOr t <$> compileArg t e1 <*> compileArg t e2
     V.ImpliesExpr _ [e1, e2] -> compileImplies t <$> (Negation <$> compileArg t e1) <*> compileArg t e2

@@ -4,7 +4,7 @@ module Vehicle.Compile.Type
   , typeCheckExpr
   ) where
 
-import Control.Monad ( forM, unless, when, filterM )
+import Control.Monad (filterM, forM, unless, when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.Writer (MonadWriter (..), runWriterT)
@@ -16,6 +16,7 @@ import Data.Set qualified as Set (member)
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Auxiliary
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.Constraint
@@ -26,11 +27,10 @@ import Vehicle.Compile.Type.Generalise
 import Vehicle.Compile.Type.Irrelevance
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
-import Vehicle.Compile.Print
 import Vehicle.Expr.Normalised
-import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable)
 
 -------------------------------------------------------------------------------
 -- Algorithm

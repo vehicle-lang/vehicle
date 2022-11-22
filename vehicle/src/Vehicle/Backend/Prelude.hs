@@ -59,41 +59,41 @@ instance Pretty Backend where
   pretty = \case
     ITP x             -> pretty $ show x
     VerifierBackend x -> pretty $ show x
-    LossFunction _      -> "LossFunction"
+    LossFunction _    -> "LossFunction"
     TypeCheck         -> "TypeCheck"
 
 instance Read Backend where
   readsPrec _d x = case x of
-    "Marabou"                       -> [(MarabouBackend, [])]
-    "LossFunction"                  -> [(LossFunctionDL2, [])] -- |this is a default loss translation
-    "LossFunction-DL2"              -> [(LossFunctionDL2, [])]
-    "LossFunction-Godel"            -> [(LossFunctionGodel, [])]
-    "LossFunction-Lukasiewicz"      -> [(LossFunctionLukasiewicz, [])]
-    "LossFunction-Product"          -> [(LossFunctionProduct, [])]
-    "LossFunction-Yager"            -> [(LossFunctionYager, [])]
-    "Agda"                          -> [(AgdaBackend, [])]
-    "TypeCheck"                     -> [(TypeCheck, [])]
-    _                               -> []
+    "Marabou"                  -> [(MarabouBackend, [])]
+    "LossFunction"             -> [(LossFunctionDL2, [])] -- |this is a default loss translation
+    "LossFunction-DL2"         -> [(LossFunctionDL2, [])]
+    "LossFunction-Godel"       -> [(LossFunctionGodel, [])]
+    "LossFunction-Lukasiewicz" -> [(LossFunctionLukasiewicz, [])]
+    "LossFunction-Product"     -> [(LossFunctionProduct, [])]
+    "LossFunction-Yager"       -> [(LossFunctionYager, [])]
+    "Agda"                     -> [(AgdaBackend, [])]
+    "TypeCheck"                -> [(TypeCheck, [])]
+    _                          -> []
 
 commentTokenOf :: Backend -> Maybe (Doc a)
 commentTokenOf = \case
   VerifierBackend Marabou -> Nothing
   ITP Agda                -> Just "--"
-  LossFunction{}           -> Nothing
+  LossFunction{}          -> Nothing
   TypeCheck               -> Nothing
 
 versionOf :: Backend -> Maybe Version
 versionOf target = case target of
   VerifierBackend Marabou -> Nothing
   ITP Agda                -> Just $ makeVersion [2,6,2]
-  LossFunction{}            -> Nothing
+  LossFunction{}          -> Nothing
   TypeCheck               -> Nothing
 
 extensionOf :: Backend -> String
 extensionOf = \case
   VerifierBackend Marabou -> "-marabou"
   ITP Agda                -> ".agda"
-  LossFunction{}            -> ".json"
+  LossFunction{}          -> ".json"
   TypeCheck               -> ""
 
 -- |Generate the file header given the token used to start comments in the

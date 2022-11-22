@@ -6,9 +6,9 @@ module Vehicle.Expr.AlphaEquivalence
 
 import Data.Hashable (Hashable (..))
 
+import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.Conversion
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.CoDeBruijn
 
 instance Hashable DBArg where
 

@@ -3,10 +3,10 @@ module Vehicle.Syntax.AST.Decl where
 import Control.DeepSeq (NFData)
 import GHC.Generics (Generic)
 
+import Data.Text (Text)
+import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST.Name (HasIdentifier (..), Identifier)
 import Vehicle.Syntax.AST.Provenance
-import Data.Text (Text)
-import Prettyprinter (Pretty(..))
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -69,7 +69,7 @@ data Annotation
 
 instance Pretty Annotation where
   pretty annotation = "@" <> case annotation of
-    PropertyAnnotation -> "property"
+    PropertyAnnotation          -> "property"
     ResourceAnnotation resource -> pretty resource
 
 

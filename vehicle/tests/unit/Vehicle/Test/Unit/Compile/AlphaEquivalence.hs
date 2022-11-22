@@ -8,11 +8,11 @@ import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile (parseAndTypeCheckExpr)
-import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (alphaEq))
-import Vehicle.Expr.CoDeBruijn.Conversion (toCoDBExpr)
 import Vehicle.Compile.Prelude (Pretty (pretty), indent, layoutAsString, line,
                                 squotes, (<+>))
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (alphaEq))
+import Vehicle.Expr.CoDeBruijn.Conversion (toCoDBExpr)
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------

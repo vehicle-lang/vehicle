@@ -7,13 +7,13 @@ import Control.Monad (foldM, forM)
 import Data.List.NonEmpty ((<|))
 
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Print
-import Vehicle.Compile.Normalise.Quote (Quote(..))
 import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------

@@ -8,14 +8,14 @@ import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty(..), (<+>))
+import Prettyprinter (Pretty (..), (<+>))
 
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Builtin (Builtin, Linearity (..), Polarity (..))
 import Vehicle.Syntax.AST.Decl
 import Vehicle.Syntax.AST.Meta
-import Vehicle.Syntax.AST.Name (NamedBinding, Name)
+import Vehicle.Syntax.AST.Name (Name, NamedBinding)
 import Vehicle.Syntax.AST.Prog
 import Vehicle.Syntax.AST.Provenance
 

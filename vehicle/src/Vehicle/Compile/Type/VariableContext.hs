@@ -5,8 +5,8 @@ module Vehicle.Compile.Type.VariableContext where
 import Data.Map qualified as Map
 
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.Normalised
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Declaration context

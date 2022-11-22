@@ -1,8 +1,8 @@
 module Vehicle.Expr.Normalised where
 
-import Vehicle.Syntax.AST
-import Vehicle.Expr.DeBruijn
 import Vehicle.Compile.Prelude (CheckedExpr)
+import Vehicle.Expr.DeBruijn
+import Vehicle.Syntax.AST
 
 -----------------------------------------------------------------------------
 -- Normalised expressions

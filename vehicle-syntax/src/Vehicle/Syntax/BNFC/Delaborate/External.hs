@@ -8,17 +8,17 @@ module Vehicle.Syntax.BNFC.Delaborate.External
 import Control.Monad.Identity (Identity (runIdentity), IdentityT)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (Text, pack)
-import Prettyprinter (Pretty(..), Doc, (<+>), squote, squotes)
+import Prettyprinter (Doc, Pretty (..), squote, squotes, (<+>))
 
-import Vehicle.Syntax.Sugar
-import Vehicle.Syntax.AST qualified as V
-import Vehicle.Syntax.External.Abs qualified as B
-import Vehicle.Syntax.Parse.Token
-import Vehicle.Syntax.Parse.Error
-import Vehicle.Syntax.Prelude
 import Data.List.NonEmpty (NonEmpty)
+import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.BNFC.Utils
+import Vehicle.Syntax.External.Abs qualified as B
+import Vehicle.Syntax.Parse.Error
+import Vehicle.Syntax.Parse.Token
+import Vehicle.Syntax.Prelude
+import Vehicle.Syntax.Sugar
 
 --------------------------------------------------------------------------------
 -- Conversion to BNFC AST

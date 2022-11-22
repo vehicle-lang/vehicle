@@ -15,8 +15,8 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans (MonadTrans)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.VariableContext
 import Vehicle.Compile.Type.Monad.Class
+import Vehicle.Compile.Type.VariableContext
 
 --------------------------------------------------------------------------------
 -- The type-checking monad

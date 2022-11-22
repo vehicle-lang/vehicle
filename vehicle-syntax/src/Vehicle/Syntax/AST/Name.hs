@@ -4,7 +4,7 @@ import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty(..))
+import Prettyprinter (Pretty (..))
 
 --------------------------------------------------------------------------------
 -- Definition

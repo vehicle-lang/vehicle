@@ -28,9 +28,9 @@ import GHC.Generics (Generic)
 
 import Vehicle.Syntax.AST
 
+import Vehicle.Expr.CoDeBruijn.PositionTree
 import Vehicle.Expr.DeBruijn hiding (Bound, Free)
 import Vehicle.Expr.DeBruijn qualified as DB (DBVar (..))
-import Vehicle.Expr.CoDeBruijn.PositionTree
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------

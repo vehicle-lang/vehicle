@@ -4,8 +4,8 @@ module Vehicle.Prelude.Misc where
 --       Moved these definitions here from Vehicle.Prelude,
 --       so they can be used from Vehicle.Prelude.* modules.
 
-import Control.Monad.Identity (Identity (..))
 import Control.Monad (when)
+import Control.Monad.Identity (Identity (..))
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.IntMap (IntMap, updateLookupWithKey)
 import Data.List qualified as List

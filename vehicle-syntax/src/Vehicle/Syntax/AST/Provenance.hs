@@ -12,14 +12,14 @@ module Vehicle.Syntax.AST.Provenance
   ) where
 
 import Control.DeepSeq (NFData (..))
+import Data.Hashable (Hashable (..))
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (maybeToList)
 import Data.Range hiding (joinRanges)
-import GHC.Generics (Generic)
-import Data.Hashable (Hashable (..))
-import Prettyprinter (Pretty(..), (<+>), concatWith, squotes)
 import Data.Text (Text)
+import GHC.Generics (Generic)
+import Prettyprinter (Pretty (..), concatWith, squotes, (<+>))
 
 import Vehicle.Syntax.Parse.Token
 
