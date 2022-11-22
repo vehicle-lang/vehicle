@@ -10,12 +10,25 @@ import Vehicle.Verify.Core
 
 import Paths_vehicle qualified as VehiclePath
 
+
 data Backend
   = ITP ITP
   | VerifierBackend VerifierIdentifier
-  | LossFunction
+  | LossFunction DifferentiableLogic
   | TypeCheck
   deriving (Eq, Show)
+
+--------------------------------------------------------------------------------
+-- different available  differentiable logics (types of translation from the constraint
+-- to loss function) are as listed below:
+
+data DifferentiableLogic
+  = DL2
+  | Godel
+  | Lukasiewicz
+  | Product
+  | Yager
+  deriving (Eq, Show, Read, Bounded, Enum)
 
 data ITP
   = Agda
@@ -27,40 +40,60 @@ pattern AgdaBackend = ITP Agda
 pattern MarabouBackend :: Backend
 pattern MarabouBackend = VerifierBackend Marabou
 
+pattern LossFunctionDL2 :: Backend
+pattern LossFunctionDL2 = LossFunction DL2
+
+pattern LossFunctionGodel :: Backend
+pattern LossFunctionGodel = LossFunction Godel
+
+pattern LossFunctionLukasiewicz :: Backend
+pattern LossFunctionLukasiewicz = LossFunction Lukasiewicz
+
+pattern LossFunctionProduct :: Backend
+pattern LossFunctionProduct = LossFunction Product
+
+pattern LossFunctionYager :: Backend
+pattern LossFunctionYager = LossFunction Yager
+
 instance Pretty Backend where
   pretty = \case
     ITP x             -> pretty $ show x
     VerifierBackend x -> pretty $ show x
-    LossFunction      -> "LossFunction"
+    LossFunction _      -> "LossFunction"
     TypeCheck         -> "TypeCheck"
 
 instance Read Backend where
   readsPrec _d x = case x of
-    "Marabou"      -> [(MarabouBackend, [])]
-    "LossFunction" -> [(LossFunction, [])]
-    "Agda"         -> [(AgdaBackend, [])]
-    "TypeCheck"    -> [(TypeCheck, [])]
-    _              -> []
+    "Marabou"                       -> [(MarabouBackend, [])]
+    "LossFunction"                  -> [(LossFunctionDL2, [])] -- |this is a default loss translation
+    "LossFunction-DL2"              -> [(LossFunctionDL2, [])]
+    "LossFunction-Godel"            -> [(LossFunctionGodel, [])]
+    "LossFunction-Lukasiewicz"      -> [(LossFunctionLukasiewicz, [])]
+    "LossFunction-Product"          -> [(LossFunctionProduct, [])]
+    "LossFunction-Yager"            -> [(LossFunctionYager, [])]
+    "Agda"                          -> [(AgdaBackend, [])]
+    "TypeCheck"                     -> [(TypeCheck, [])]
+    _                               -> []
 
 commentTokenOf :: Backend -> Maybe (Doc a)
 commentTokenOf = \case
   VerifierBackend Marabou -> Nothing
   ITP Agda                -> Just "--"
-  LossFunction            -> Nothing
+  LossFunction{}           -> Nothing
   TypeCheck               -> Nothing
 
 versionOf :: Backend -> Maybe Version
 versionOf target = case target of
   VerifierBackend Marabou -> Nothing
   ITP Agda                -> Just $ makeVersion [2,6,2]
-  LossFunction            -> Nothing
+  LossFunction{}            -> Nothing
   TypeCheck               -> Nothing
 
 extensionOf :: Backend -> String
 extensionOf = \case
   VerifierBackend Marabou -> "-marabou"
   ITP Agda                -> ".agda"
-  LossFunction            -> ".json"
+  LossFunction{}            -> ".json"
   TypeCheck               -> ""
 
 -- |Generate the file header given the token used to start comments in the

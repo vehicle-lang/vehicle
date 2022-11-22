@@ -176,7 +176,6 @@ instance HasProvenance (Expr binder var) where
 
 type Binder binder var = GenericBinder binder (Expr binder var)
 
-
 -- | This horrible construction is needed because |Binder| is a type synonym
 -- synonyms which can't be used as functions at the type level. This wraps
 -- it as required.

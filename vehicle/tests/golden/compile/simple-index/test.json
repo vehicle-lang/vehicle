@@ -9,5 +9,11 @@
     "run": "vehicle compile -s simple-index.vcl -t Agda -o simple-index.agda",
     "needs": ["simple-index.vcl"],
     "produces": ["simple-index.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-index.vcl -t LossFunction -o simple-index.loss.json",
+    "needs": ["simple-index.vcl"],
+    "produces": ["simple-index.loss.json"]
   }
 ]

@@ -11,16 +11,16 @@
     "produces": ["windController.inputquery/*.txt"]
   },
   {
+    "name": "Agda",
+    "run": "vehicle compile -s windController.vcl -t Agda -o windController.agda",
+    "needs": ["windController.vcl"],
+    "produces": ["windController.agda"]
+  },
+  {
     "name": "LossFunction",
     "run": "vehicle compile -s windController.vcl -t LossFunction -o windController.loss.json",
     "needs": ["windController.vcl"],
     "produces": ["windController.loss.json"],
     "enabled": false
-  },
-  {
-    "name": "Agda",
-    "run": "vehicle compile -s windController.vcl -t Agda -o windController.agda",
-    "needs": ["windController.vcl"],
-    "produces": ["windController.agda"]
   }
 ]
