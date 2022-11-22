@@ -69,13 +69,7 @@ library
     Vehicle.Check
     Vehicle.CommandLine
     Vehicle.Compile
-    Vehicle.Compile.AlphaEquivalence
-    Vehicle.Compile.CoDeBruijnify
-    Vehicle.Compile.Delaborate.External
-    Vehicle.Compile.Delaborate.Internal
     Vehicle.Compile.Descope
-    Vehicle.Compile.Elaborate.External
-    Vehicle.Compile.Elaborate.Internal
     Vehicle.Compile.Error
     Vehicle.Compile.Error.Message
     Vehicle.Compile.ExpandResources
@@ -91,10 +85,9 @@ library
     Vehicle.Compile.Normalise
     Vehicle.Compile.Normalise.Core
     Vehicle.Compile.Normalise.NBE
-    Vehicle.Compile.Normalise.NormExpr
     Vehicle.Compile.Normalise.Quote
-    Vehicle.Compile.Parse
     Vehicle.Compile.Prelude
+    Vehicle.Compile.Print
     Vehicle.Compile.Queries.DNF
     Vehicle.Compile.Queries.IfElimination
     Vehicle.Compile.Queries.LNF
@@ -103,13 +96,17 @@ library
     Vehicle.Compile.Resource
     Vehicle.Compile.Scope
     Vehicle.Compile.Simplify
-    Vehicle.Compile.Sugar
     Vehicle.Compile.SupplyNames
     Vehicle.Compile.Type
     Vehicle.Export
-    Vehicle.Language.AST
-    Vehicle.Language.DSL
-    Vehicle.Language.Print
+    Vehicle.Expr.AlphaEquivalence
+    Vehicle.Expr.CoDeBruijn
+    Vehicle.Expr.CoDeBruijn.Conversion
+    Vehicle.Expr.CoDeBruijn.PositionTree
+    Vehicle.Expr.DeBruijn
+    Vehicle.Expr.DSL
+    Vehicle.Expr.Normalised
+    Vehicle.Expr.Patterns
     Vehicle.Language.StandardLibrary
     Vehicle.Language.StandardLibrary.Names
     Vehicle.Prelude
@@ -130,12 +127,11 @@ library
     Vehicle.Backend.LossFunction.Logics
     Vehicle.Backend.LossFunction.Interact
     Vehicle.Compile.CapitaliseTypeNames
-    Vehicle.Compile.DependencyAnalysis
+    Vehicle.Compile.Dependency.Analysis
+    Vehicle.Compile.Dependency.Graph
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.Monomorphisation
     Vehicle.Compile.Prelude.Contexts
-    Vehicle.Compile.Prelude.DependencyGraph
-    Vehicle.Compile.Prelude.Patterns
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.QuantifierAnalysis
     Vehicle.Compile.Queries
@@ -161,31 +157,11 @@ library
     Vehicle.Compile.Type.Monad.Instance
     Vehicle.Compile.Type.Resource
     Vehicle.Compile.Type.VariableContext
-    Vehicle.Language.AST.Arg
-    Vehicle.Language.AST.Binder
-    Vehicle.Language.AST.Builtin
-    Vehicle.Language.AST.Builtin.Core
-    Vehicle.Language.AST.Builtin.Linearity
-    Vehicle.Language.AST.Builtin.Polarity
-    Vehicle.Language.AST.Builtin.TypeClass
-    Vehicle.Language.AST.CoDeBruijn
-    Vehicle.Language.AST.DeBruijn
-    Vehicle.Language.AST.Decl
-    Vehicle.Language.AST.Expr
-    Vehicle.Language.AST.Meta
-    Vehicle.Language.AST.Name
-    Vehicle.Language.AST.Position
-    Vehicle.Language.AST.Prog
-    Vehicle.Language.AST.Provenance
-    Vehicle.Language.AST.Relevance
-    Vehicle.Language.AST.Visibility
-    Vehicle.Prelude.DeveloperError
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging
     Vehicle.Prelude.Misc
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply
-    Vehicle.Prelude.Token
     Vehicle.Verify.Verifier
     Vehicle.Verify.Verifier.Marabou
 
@@ -209,7 +185,6 @@ library
     , optparse-applicative  >=0.16    && <1
     , prettyprinter         >=1.7     && <2
     , process               >=1.6.13  && <1.7
-    , range                 >=0.3     && <1
     , recursion-schemes     >=5.2     && <6
     , split                 >=0.2.3   && <0.3
     , temporary             >=1.3     && <1.4
@@ -320,6 +295,7 @@ library vehicle-unit-tests-common
     , tasty-hunit
     , text
     , vehicle
+    , vehicle-syntax
 
 test-suite vehicle-unit-tests
   import:        common-language

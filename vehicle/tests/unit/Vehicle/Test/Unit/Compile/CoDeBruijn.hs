@@ -7,10 +7,10 @@ import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile (parseAndTypeCheckExpr)
-import Vehicle.Compile.AlphaEquivalence ()
-import Vehicle.Compile.CoDeBruijnify (fromCoDB, toCoDBExpr)
+import Vehicle.Expr.AlphaEquivalence ()
+import Vehicle.Expr.CoDeBruijn.Conversion (fromCoDB, toCoDBExpr)
 import Vehicle.Compile.Prelude (indent, layoutAsString, line, squotes, (<+>))
-import Vehicle.Language.Print (prettyVerbose)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------

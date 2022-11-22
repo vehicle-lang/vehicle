@@ -23,6 +23,7 @@ import Data.Either (partitionEithers)
 import GHC.Generics (Generic)
 
 import Vehicle.Prelude
+import Vehicle.Syntax.AST (Name)
 
 --------------------------------------------------------------------------------
 -- Negation

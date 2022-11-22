@@ -3,9 +3,10 @@ module Vehicle.Compile.Normalise.Quote where
 import Control.Monad.Reader (MonadReader(..), runReader)
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Expr.Normalised
 import Vehicle.Compile.Error (MonadCompile)
 import Control.Monad.Except (runExceptT)
+import Vehicle.Expr.DeBruijn
 
 -----------------------------------------------------------------------------
 -- DeBruijn adjustment

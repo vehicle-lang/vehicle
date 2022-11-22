@@ -15,8 +15,8 @@ open import Data.Nat as ℕ using (ℕ)
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
+open import Data.List.Base
 open import Data.List.Relation.Unary.All as List
-open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 open import Relation.Binary.PropositionalEquality
 
 module simple-let where
@@ -38,9 +38,9 @@ postulate forallLet : ∀ (x : ℕ) → let y = x in y ≡ 1
 
 postulate letForall : let y = 1 in ∀ (x : ℕ) → y ≡ x
 
-postulate forallInLet : List.All (λ (x : Fin 2) → let y = x in y ≡ # 1) (Vector.toList (# 1 ∷ᵥ []ᵥ))
+postulate forallInLet : List.All (λ (x : Fin 2) → let y = x in y ≡ # 1) (# 1 ∷ [])
 
-postulate letForallIn : let y = # 1 in List.All (λ (x : Fin 2) → y ≡ x) (Vector.toList (# 1 ∷ᵥ []ᵥ))
+postulate letForallIn : let y = # 1 in List.All (λ (x : Fin 2) → y ≡ x) (# 1 ∷ [])
 
 Falsey : ℚ → Set
 Falsey x = x ℚ.≤ ℤ.+ 1 ℚ./ 2

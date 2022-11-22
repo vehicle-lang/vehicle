@@ -1,12 +1,9 @@
 module Vehicle.Compile.Normalise.Core where
 
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NonEmpty (head)
-
-import Vehicle.Compile.AlphaEquivalence (alphaEq)
+import Vehicle.Expr.AlphaEquivalence (alphaEq)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Language.Print
+import Vehicle.Expr.DeBruijn (liftDBIndices)
 
 
 --------------------------------------------------------------------------------
@@ -103,20 +100,6 @@ nfIf p t condition e1 e2 = case argExpr condition of
 -----------------------------------------------------------------------------
 -- Normalising conversion
 
-nfFromNat :: MonadCompile m
-          => Provenance
-          -> Int
-          -> FromNatDomain
-          -> NonEmpty CheckedArg
-          -> m CheckedExpr
-nfFromNat p x dom args = case (dom, argExpr (NonEmpty.head args)) of
-  (FromNatToIndex, NatLiteral _ n) -> return $ IndexLiteral p n x
-  (FromNatToNat, _)       -> return $ NatLiteral p x
-  (FromNatToInt, _)       -> return $ IntLiteral p x
-  (FromNatToRat, _)       -> return $ RatLiteral p (fromIntegral x)
-  _                       -> unexpectedExprError (prettyVerbose e) "non-Nat"
-    where e = App p (Builtin p (FromNat x dom)) args
-
 nfFromRat :: MonadCompile m => FromRatDomain -> CheckedArg -> m CheckedExpr
 nfFromRat dom (ExplicitArg _ rat@RatLiteral{}) = case dom of
   FromRatToRat -> return rat
@@ -210,8 +193,8 @@ zipWithVector :: Provenance
               -> CheckedExpr
               -> CheckedExpr
 zipWithVector p tElem1 tElem2 tRes size fn xs ys = do
-  let xsLifted = fmap (liftFreeDBIndices 1) (ExplicitArg p xs)
-  let ysLifted = fmap (liftFreeDBIndices 1) (ExplicitArg p ys)
+  let xsLifted = fmap (liftDBIndices 1) (ExplicitArg p xs)
+  let ysLifted = fmap (liftDBIndices 1) (ExplicitArg p ys)
   let index = ExplicitArg p (BoundVar p 0)
 
   let body = App p fn $ ExplicitArg p <$>

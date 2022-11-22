@@ -9,7 +9,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Expr.Normalised
 import Vehicle.Compile.Normalise.Quote (Quote(..))
 
 checkResourceType :: TCM m

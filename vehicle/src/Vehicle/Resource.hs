@@ -1,7 +1,7 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Resource where
 
-import Control.DeepSeq
 import Control.Monad (forM, when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON, ToJSON)
@@ -15,27 +15,7 @@ import GHC.Generics (Generic)
 import Prettyprinter
 
 import Vehicle.Prelude
-
---------------------------------------------------------------------------------
--- The different types of resources supported
-
-data Resource
-  = Network
-  | Dataset
-  | Parameter
-  | InferableParameter
-  deriving (Eq, Show, Generic)
-
-instance NFData Resource
-instance FromJSON Resource
-instance ToJSON Resource
-
-instance Pretty Resource where
-  pretty = \case
-    Network            -> "network"
-    Dataset            -> "dataset"
-    Parameter          -> "parameter"
-    InferableParameter -> "inferable parameter"
+import Vehicle.Syntax.AST
 
 supportedFileFormats :: Resource -> [String]
 supportedFileFormats Network = [".onnx"]
@@ -73,6 +53,9 @@ data ResourceSummary = ResourceSummary
   , fileHash :: Int
   , resType  :: Resource
   } deriving (Generic)
+
+instance FromJSON Resource
+instance ToJSON Resource
 
 instance FromJSON ResourceSummary
 instance ToJSON ResourceSummary

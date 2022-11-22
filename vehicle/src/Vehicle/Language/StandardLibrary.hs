@@ -6,9 +6,9 @@ module Vehicle.Language.StandardLibrary
 import Data.Map (Map)
 import Data.Map qualified as Map
 
-import Vehicle.Language.AST
-import Vehicle.Language.DSL
-import Vehicle.Prelude
+import Vehicle.Syntax.AST
+import Vehicle.Expr.DSL
+import Vehicle.Expr.DeBruijn (DBDecl)
 
 prelude :: Map Identifier DBDecl
 prelude = standardPostulates <> typeClassSolutions

@@ -4,8 +4,8 @@ module Vehicle.Compile.Prelude.Contexts where
 import Control.Monad.Reader (MonadReader (..))
 import Data.Map (Map)
 
-import Vehicle.Language.AST
-import Vehicle.Prelude
+import Vehicle.Syntax.AST
+import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------
 -- Bound variable context

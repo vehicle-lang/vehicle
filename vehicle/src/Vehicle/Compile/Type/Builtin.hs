@@ -3,7 +3,7 @@ module Vehicle.Compile.Type.Builtin
   ) where
 
 import Vehicle.Compile.Prelude
-import Vehicle.Language.DSL
+import Vehicle.Expr.DSL
 
 -- | Return the type of the provided builtin.
 typeOfBuiltin :: Provenance -> Builtin -> CheckedType

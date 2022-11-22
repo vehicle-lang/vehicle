@@ -8,7 +8,7 @@ import Data.List.NonEmpty as NonEmpty
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Core (normaliseNotArg)
 import Vehicle.Compile.Prelude
-import Vehicle.Language.Print
+import Vehicle.Compile.Print
 
 --------------------------------------------------------------------------------
 -- Primary function

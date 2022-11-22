@@ -9,6 +9,7 @@ import System.Console.ANSI (Color (..))
 
 import Vehicle.Prelude
 import Vehicle.Verify.Specification
+import Vehicle.Syntax.AST (Name)
 
 class IsVerified a where
   isVerified :: a -> Bool

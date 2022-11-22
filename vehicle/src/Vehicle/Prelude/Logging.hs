@@ -38,6 +38,7 @@ import System.Console.ANSI
 import Vehicle.Prelude.Misc (enumerate, supportedOptions)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
+import Vehicle.Syntax.Prelude (layoutAsText)
 
 data Severity
   = Debug

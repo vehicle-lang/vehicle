@@ -13,13 +13,14 @@ import Prelude hiding (pi)
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Normalise.NormExpr (GluedExpr(..))
+import Vehicle.Expr.Normalised (GluedExpr(..))
 import Vehicle.Compile.Type.Builtin
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
-import Vehicle.Language.DSL
-import Vehicle.Language.Print
+import Vehicle.Expr.DSL
+import Vehicle.Compile.Print
+import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------
 -- Bidirectional type-checking
@@ -33,7 +34,7 @@ import Vehicle.Language.Print
 
 showCheckEntry :: MonadLogger m => CheckedType -> UncheckedExpr -> m ()
 showCheckEntry t e = do
-  logDebug MaxDetail ("check-entry" <+> prettyVerbose e <+> "<-" <+> prettyVerbose t)
+  logDebug MaxDetail ("check-entry" <+> prettyVerbose e <+> ":" <+> prettyVerbose t)
   incrCallDepth
 
 showCheckExit :: MonadLogger m => CheckedExpr -> m ()
@@ -49,7 +50,7 @@ showInferEntry e = do
 showInferExit :: MonadLogger m => (CheckedExpr, CheckedType) -> m ()
 showInferExit (e, t) = do
   decrCallDepth
-  logDebug MaxDetail ("infer-exit " <+> prettyVerbose e <+> "->" <+> prettyVerbose t)
+  logDebug MaxDetail ("infer-exit " <+> prettyVerbose e <+> ":" <+> prettyVerbose t)
 
 -------------------------------------------------------------------------------
 -- Utility functions
@@ -126,7 +127,7 @@ checkExpr expectedType expr = do
       -- Add the pi-bound variable to the context
       checkedExpr <- addToBoundCtx (binderName, binderType, Nothing) $
         -- Check if the type of the expression matches the expected result type.
-        checkExpr resultType (liftFreeDBIndices 1 e)
+        checkExpr resultType (liftDBIndices 1 e)
 
       -- Create a new binder mirroring the Pi binder expected
       let lamBinder = Binder ann (visibilityOf piBinder) (relevanceOf piBinder) binderName binderType
@@ -231,7 +232,7 @@ inferExpr e = do
       ctx <- getBoundCtx
       case ctx !!? i of
         Just (_, checkedType, _) -> do
-          let liftedCheckedType = liftFreeDBIndices (i+1) checkedType
+          let liftedCheckedType = liftDBIndices (i+1) checkedType
           return (Var p (Bound i), liftedCheckedType)
         Nothing      -> compilerDeveloperError $
           "DBIndex" <+> pretty i <+> "out of bounds when looking" <+>
@@ -298,7 +299,7 @@ inferExpr e = do
       -- Create the new type.
       -- Roughly [x1, ..., xn] has type
       --  forall {tElem} {{TypesEqual tElem [t1, ..., tn]}} . Vector tElem n
-      let liftedTypesOfElems = liftFreeDBIndices 1 <$> typesOfElems
+      let liftedTypesOfElems = liftDBIndices 1 <$> typesOfElems
       let typesOfElemsSeq = mkList p (TypeUniverse p 0) liftedTypesOfElems
       let tc = AlmostEqualConstraint
       let elemsTC tElem = BuiltinTypeClass p tc (ExplicitArg p <$> [tElem, typesOfElemsSeq])

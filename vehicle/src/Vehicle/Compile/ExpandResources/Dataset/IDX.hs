@@ -15,8 +15,9 @@ import Data.Vector.Unboxed qualified as Vector
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Language.Print
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Compile.Print
+import Vehicle.Expr.Normalised
+import Vehicle.Expr.DeBruijn
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
 -- matches the type of the stored data.

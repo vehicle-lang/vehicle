@@ -14,6 +14,7 @@ import Data.Text (Text)
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map
+import Vehicle.Expr.CoDeBruijn.PositionTree (PositionTree)
 
 
 data SimplifyOptions = SimplifyOptions

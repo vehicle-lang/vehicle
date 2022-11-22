@@ -9,8 +9,8 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
-import Vehicle.Language.Print (prettySimple)
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Compile.Print (prettySimple)
+import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Default solutions to type-class constraints

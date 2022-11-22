@@ -24,7 +24,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Expr.Normalised
+import Vehicle.Expr.DeBruijn
 
 --------------------------------------------------------------------------------
 -- Constraint types

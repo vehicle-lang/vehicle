@@ -18,7 +18,8 @@ import System.IO (Handle, hPrint)
 import System.IO.Error (isDoesNotExistError)
 import Vehicle.Prelude.Logging (LoggerT, LoggingLevel, Message,
                                 MonadLogger (logMessage), runLoggerT)
-import Vehicle.Prelude.Prettyprinter (Doc, layoutAsText)
+import Prettyprinter (Doc)
+import Vehicle.Syntax.Prelude (layoutAsText)
 
 data VehicleIOSettings = VehicleIOSettings
   { errorHandle  :: Handle

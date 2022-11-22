@@ -12,7 +12,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
-import Vehicle.Compile.Normalise.NormExpr
+import Vehicle.Expr.Normalised
 import Vehicle.Compile.Error
 import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
@@ -20,6 +20,7 @@ import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Control.Monad.Writer (MonadWriter(..), execWriterT)
 import Vehicle.Compile.Type.Constraint (UnificationConstraint (..), TypeClassConstraint (..), Constraint (..))
 import Data.List.NonEmpty (NonEmpty)
+import Vehicle.Expr.DeBruijn
 
 -- Eventually when metas make into the builtins, this should module
 -- should also contain the definition of meta-variables themselves.
