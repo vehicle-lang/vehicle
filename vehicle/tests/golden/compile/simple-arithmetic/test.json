@@ -9,5 +9,11 @@
     "run": "vehicle compile -s simple-arithmetic.vcl -t Agda -o simple-arithmetic.agda",
     "needs": ["simple-arithmetic.vcl"],
     "produces": ["simple-arithmetic.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-arithmetic.vcl -t LossFunction -o simple-arithmetic.loss.json",
+    "needs": ["simple-arithmetic.vcl"],
+    "produces": ["simple-arithmetic.loss.json"]
   }
 ]

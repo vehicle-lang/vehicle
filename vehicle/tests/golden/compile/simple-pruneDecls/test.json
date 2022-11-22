@@ -11,15 +11,15 @@
     "produces": ["simple-pruneDecls.inputquery/*.txt"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s simple-pruneDecls.vcl -t LossFunction -o simple-pruneDecls.loss.json -e p2",
-    "needs": ["simple-pruneDecls.vcl"],
-    "produces": ["simple-pruneDecls.loss.json"]
-  },
-  {
     "name": "Agda",
     "run": "vehicle compile -s simple-pruneDecls.vcl -t Agda -o simple-pruneDecls.agda -e p2",
     "needs": ["simple-pruneDecls.vcl"],
     "produces": ["simple-pruneDecls.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-pruneDecls.vcl -t LossFunction -o simple-pruneDecls.loss.json",
+    "needs": ["simple-pruneDecls.vcl"],
+    "produces": ["simple-pruneDecls.loss.json"]
   }
 ]

@@ -11,15 +11,15 @@
     "produces": ["simple-constantInput.inputquery/*.txt"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s simple-constantInput.vcl -t LossFunction -o simple-constantInput.loss.json",
-    "needs": ["simple-constantInput.vcl"],
-    "produces": ["simple-constantInput.loss.json"]
-  },
-  {
     "name": "Agda",
     "run": "vehicle compile -s simple-constantInput.vcl -t Agda -o simple-constantInput.agda",
     "needs": ["simple-constantInput.vcl"],
     "produces": ["simple-constantInput.agda"]
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s simple-constantInput.vcl -t LossFunction -o simple-constantInput.loss.json",
+    "needs": ["simple-constantInput.vcl"],
+    "produces": ["simple-constantInput.loss.json"]
   }
 ]

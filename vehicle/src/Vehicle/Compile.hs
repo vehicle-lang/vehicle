@@ -71,9 +71,9 @@ compile loggingOptions CompileOptions{..} = do
         Nothing     -> outputSpecification loggingOptions compiledSpecification
         Just folder -> writeSpecificationFiles verifier folder compiledSpecification
 
-    LossFunction -> do
-      lossFunction <- compileToLossFunction loggingOptions spec declarationsToCompile resources
-      writeLossFunctionFiles outputFile lossFunction
+    LossFunction differentiableLogic -> do
+      lossFunction <- compileToLossFunction loggingOptions spec declarationsToCompile resources differentiableLogic
+      writeLossFunctionFiles outputFile differentiableLogic lossFunction
 
 
 --------------------------------------------------------------------------------
@@ -95,11 +95,12 @@ compileToLossFunction :: VehicleIOSettings
                       -> SpecificationText
                       -> DeclarationNames
                       -> Resources
+                      -> DifferentiableLogic
                       -> IO [LDecl]
-compileToLossFunction loggingOptions spec declarationsToCompile resources = do
+compileToLossFunction loggingOptions spec declarationsToCompile resources differentiableLogic = do
   fromLoggedEitherIO loggingOptions $ do
     (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec declarationsToCompile resources
-    LossFunction.compile prog propertyCtx networkCtx
+    LossFunction.compile differentiableLogic prog propertyCtx networkCtx
 
 compileToAgda :: VehicleIOSettings
               -> AgdaOptions

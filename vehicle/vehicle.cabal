@@ -127,6 +127,7 @@ library
     Vehicle.Backend.Agda.Compile
     Vehicle.Backend.Agda.Interact
     Vehicle.Backend.LossFunction.Compile
+    Vehicle.Backend.LossFunction.Logics
     Vehicle.Backend.LossFunction.Interact
     Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.DependencyAnalysis
