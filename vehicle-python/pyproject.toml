@@ -44,6 +44,7 @@ strict = true
 disallow_any_explicit = true
 warn_unused_configs = true
 ignore_missing_imports = true
+no_implicit_optional = false
 plugins = "numpy.typing.mypy_plugin"
 
 [tool.tox]
