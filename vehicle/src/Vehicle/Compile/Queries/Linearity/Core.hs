@@ -1,4 +1,4 @@
-module Vehicle.Compile.Linearity.Core
+module Vehicle.Compile.Queries.Linearity.Core
   ( Relation(..)
   , Coefficient
   , LinearVar

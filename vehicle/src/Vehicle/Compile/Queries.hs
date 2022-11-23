@@ -11,7 +11,7 @@ import Data.Maybe (catMaybes)
 
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Linearity
+import Vehicle.Compile.Queries.Linearity
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)

@@ -78,10 +78,6 @@ library
     Vehicle.Compile.ExpandResources.Network
     Vehicle.Compile.ExpandResources.Parameter
     Vehicle.Compile.LetInsertion
-    Vehicle.Compile.Linearity
-    Vehicle.Compile.Linearity.Core
-    Vehicle.Compile.Linearity.FourierMotzkinElimination
-    Vehicle.Compile.Linearity.GaussianElimination
     Vehicle.Compile.Normalise
     Vehicle.Compile.Normalise.Core
     Vehicle.Compile.Normalise.NBE
@@ -90,6 +86,10 @@ library
     Vehicle.Compile.Print
     Vehicle.Compile.Queries.DNF
     Vehicle.Compile.Queries.IfElimination
+    Vehicle.Compile.Queries.Linearity
+    Vehicle.Compile.Queries.Linearity.Core
+    Vehicle.Compile.Queries.Linearity.FourierMotzkinElimination
+    Vehicle.Compile.Queries.Linearity.GaussianElimination
     Vehicle.Compile.Queries.LNF
     Vehicle.Compile.Queries.QuantifierLifting
     Vehicle.Compile.Queries.UserVariables

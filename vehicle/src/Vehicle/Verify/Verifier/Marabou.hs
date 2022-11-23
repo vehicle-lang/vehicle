@@ -14,7 +14,7 @@ import Data.Vector.Unboxed qualified as Vector
 import System.Exit (ExitCode (..), exitFailure)
 import System.IO (stderr)
 import System.Process (readProcessWithExitCode)
-import Vehicle.Compile.Linearity
+import Vehicle.Compile.Queries.Linearity
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 import Vehicle.Verify.Core

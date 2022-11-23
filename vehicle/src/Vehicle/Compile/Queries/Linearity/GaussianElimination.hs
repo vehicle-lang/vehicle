@@ -1,5 +1,5 @@
 
-module Vehicle.Compile.Linearity.GaussianElimination
+module Vehicle.Compile.Queries.Linearity.GaussianElimination
   ( gaussianElimination
   ) where
 
@@ -9,7 +9,7 @@ import Data.Vector.Unboxed qualified as V
 import Control.Monad (foldM, unless)
 import Data.Bifunctor
 import Vehicle.Compile.Error
-import Vehicle.Compile.Linearity.Core
+import Vehicle.Compile.Queries.Linearity.Core
 import Vehicle.Compile.Prelude
 
 type Row = V.Vector Coefficient

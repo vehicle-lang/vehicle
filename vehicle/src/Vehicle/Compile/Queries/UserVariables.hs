@@ -14,7 +14,7 @@ import Data.Text (Text)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.LetInsertion (insertLets)
-import Vehicle.Compile.Linearity
+import Vehicle.Compile.Queries.Linearity
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettySimple)

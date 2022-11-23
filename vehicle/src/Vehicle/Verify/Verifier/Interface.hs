@@ -2,7 +2,7 @@ module Vehicle.Verify.Verifier.Interface where
 
 import Control.Monad.IO.Class (MonadIO)
 import Data.Text (Text)
-import Vehicle.Compile.Linearity
+import Vehicle.Compile.Queries.Linearity
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 import Vehicle.Verify.Core

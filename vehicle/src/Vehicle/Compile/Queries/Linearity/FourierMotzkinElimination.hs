@@ -1,5 +1,5 @@
 
-module Vehicle.Compile.Linearity.FourierMotzkinElimination
+module Vehicle.Compile.Queries.Linearity.FourierMotzkinElimination
   ( fourierMotzkinElimination
   , reconstructFMUserVar
   ) where
@@ -11,7 +11,7 @@ import Data.Vector.Unboxed as Vector (map, (!))
 
 import Control.Monad (foldM)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Linearity.Core
+import Vehicle.Compile.Queries.Linearity.Core
 import Vehicle.Compile.Prelude
 
 type Solution = (LinearVar, VarReconstruction)
