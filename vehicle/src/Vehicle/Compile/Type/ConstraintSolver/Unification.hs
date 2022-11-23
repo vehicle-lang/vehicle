@@ -235,7 +235,7 @@ createMetaWithRestrictedDependencies :: TCM m
 createMetaWithRestrictedDependencies p metaType newDependencies = do
   meta <- freshExprMeta p metaType (length newDependencies)
   let substitution = IntMap.fromAscList (zip [0..] newDependencies)
-  return $ substAll 0 (`IntMap.lookup` substitution) (unnormalised meta)
+  return $ substDBAll 0 (`IntMap.lookup` substitution) (unnormalised meta)
 
 --------------------------------------------------------------------------------
 -- Argument patterns

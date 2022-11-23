@@ -14,7 +14,7 @@ import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
-import Vehicle.Expr.DeBruijn hiding (subst)
+import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (GluedExpr (..), NormExpr (..))
 
 type MetaSubstitution = MetaMap GluedExpr
@@ -95,7 +95,7 @@ substApp ann (fun@(Meta _ m), mArgs) = do
   where
     substArgs :: CheckedExpr -> [CheckedArg] -> m CheckedExpr
     substArgs (Lam _ _ body) (arg : args) = do
-      substArgs (argExpr arg `substInto` body) args
+      substArgs (argExpr arg `substDBInto` body) args
     substArgs Lam{}          []           = compilerDeveloperError $
       "Meta variable" <+> pretty m <+> "does not appear to be applied to" <+>
       "every variable in the context"

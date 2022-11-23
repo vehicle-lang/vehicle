@@ -85,7 +85,7 @@ substTest :: SubstitutionTest -> TestTree
 substTest SubstitutionTest{..} =
   unitTestCase ("subst" <> name) $ do
 
-    let actual = value `substInto` expr
+    let actual = value `substDBInto` expr
 
     let errorMessage = layoutAsString $
           "Expected performing the subsitution:" <> line <>

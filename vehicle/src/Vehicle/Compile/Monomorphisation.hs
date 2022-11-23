@@ -245,7 +245,7 @@ substituteArgsThrough = \case
   (t,        e,         [])         -> (t, e)
   (Pi _ _ t, Lam _ _ e, arg : args) -> do
     let expr = argExpr arg
-    substituteArgsThrough (expr `substInto` t, expr `substInto` e, args)
+    substituteArgsThrough (expr `substDBInto` t, expr `substDBInto` e, args)
   _ -> developerError "Unexpected type/body of function undergoing monomorphisation"
 
 getMonomorphisedSuffix :: [CheckedArg] -> Text

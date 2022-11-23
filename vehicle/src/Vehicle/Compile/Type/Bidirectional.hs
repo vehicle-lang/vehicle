@@ -377,7 +377,7 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
     let checkedArg = Arg p (visibilityOf binder) (relevanceOf binder) checkedArgExpr
 
     -- Substitute the checked arg through the result of the Pi type.
-    let substResultType = argExpr checkedArg `substInto` resultType
+    let substResultType = argExpr checkedArg `substDBInto` resultType
 
     -- Recurse if necessary to check the remaining unchecked args
     let needToRecurse = not (null remainingUncheckedArgs) || visibilityOf binder /= Explicit

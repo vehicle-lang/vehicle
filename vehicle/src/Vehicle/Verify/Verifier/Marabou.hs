@@ -14,12 +14,14 @@ import Data.Vector.Unboxed qualified as Vector
 import System.Exit (ExitCode (..), exitFailure)
 import System.IO (stderr)
 import System.Process (readProcessWithExitCode)
-import Vehicle.Compile.Linearity
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Interface
+import Vehicle.Compile.Queries.LinearExpr
+import Vehicle.Compile.Queries.Variable
+import Vehicle.Compile.Queries.VariableReconstruction
 
 --------------------------------------------------------------------------------
 -- The main interface
@@ -30,7 +32,6 @@ marabouVerifier = Verifier
   , verifierExecutableName = "Marabou"
   , invokeVerifier         = invokeMarabou
   , compileQuery           = compileMarabouQuery
-  , magicVariablePrefixes  = ("x", "y")
   }
 
 --------------------------------------------------------------------------------
@@ -39,21 +40,22 @@ marabouVerifier = Verifier
 -- | Compiles an expression representing a single Marabou query. The expression
 -- passed should only have conjunctions and existential quantifiers at the boolean
 -- level.
-compileMarabouQuery :: MonadLogger m => CLSTProblem -> m (Doc ())
+compileMarabouQuery :: MonadLogger m => CLSTProblem NetworkVariable -> m (Doc ())
 compileMarabouQuery (CLSTProblem varNames assertions) = do
   assertionDocs <- forM assertions (compileAssertion varNames)
   let assertionsDoc = vsep assertionDocs
   return assertionsDoc
 
 compileAssertion :: MonadLogger m
-                 => VariableNames
+                 => [NetworkVariable]
                  -> Assertion
                  -> m (Doc a)
-compileAssertion varNames (Assertion rel linearExpr) = do
+compileAssertion variables (Assertion rel linearExpr) = do
   let (coefficientsVec, constant) = splitOutConstant linearExpr
   let coefficients = Vector.toList coefficientsVec
-  let allCoeffVars = zip coefficients varNames
-  let coeffVars = filter (\(c,_) -> c /= 0) allCoeffVars
+  let variableNames = sequentialIONetworkVariableNaming "x" "y" variables
+  let namedCoefficients = zip coefficients variableNames
+  let coeffVars = filter (\(c,_) -> c /= 0) namedCoefficients
 
   -- Make the properties a tiny bit nicer by checking if all the vars are
   -- negative and if so negating everything.

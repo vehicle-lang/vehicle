@@ -46,7 +46,7 @@ instance DBAdjustment NormExpr where
       env' <- adjustIndices env
       body' <- underDBBinder $ do
         (bindingDepth, sub) <- ask
-        return $ substAll bindingDepth sub body
+        return $ substDBAll bindingDepth sub body
       return $ VLam p binder' env' body'
 
 instance DBAdjustment a => DBAdjustment (GenericArg a) where
@@ -108,7 +108,7 @@ instance Quote NormExpr CheckedExpr where
       -- Then quote the lifted environment
       quotedBoundCtx <- traverse quote (liftEnvOverBinder p env)
       -- Then substitute the environment through the body
-      let quotedBody = substitute 0 (envSubst quotedBoundCtx) body
+      let quotedBody = substituteDB 0 (envSubst quotedBoundCtx) body
 
       return $ Lam p quotedBinder quotedBody
 

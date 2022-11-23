@@ -34,14 +34,22 @@ instance Pretty NetworkType where
   pretty (NetworkType input output) =
     "[input =" <+> pretty input <+> "output =" <+> pretty output <> "]"
 
+networkSize :: NetworkType -> Int
+networkSize network = tensorSize (inputTensor network) + tensorSize (outputTensor network)
+
+
 data NetworkTensorType = NetworkTensorType
   { baseType   :: NetworkBaseType
   , dimensions :: [Int]
   }
 
+tensorSize :: NetworkTensorType -> Int
+tensorSize tensor = product (dimensions tensor)
+
 instance Pretty NetworkTensorType where
   pretty tensor = "Tensor" <+>
     pretty (baseType tensor) <+> pretty (dimensions tensor)
+
 
 data NetworkBaseType
   = NetworkRatType

@@ -11,10 +11,10 @@ module Vehicle.Expr.DeBruijn
   , DBProg
   , BindingDepth
   , Substitution
-  , Substitutable(..)
-  , substInto
-  , substIntoAtLevel
-  , substAll
+  , Substitutable(substituteDB)
+  , substDBInto
+  , substDBIntoAtLevel
+  , substDBAll
   , liftDBIndices
   , underDBBinder
   ) where
@@ -68,8 +68,8 @@ type Substitution value = DBIndex -> Either DBIndex value
 class Substitutable value target | target -> value where
   subst :: MonadReader (BindingDepth, Substitution value) m => target -> m target
 
-  substitute :: BindingDepth -> Substitution value -> target -> target
-  substitute depth sub e = runReader (subst e) (depth, sub)
+  substituteDB :: BindingDepth -> Substitution value -> target -> target
+  substituteDB depth sub e = runReader (subst e) (depth, sub)
 
 instance Substitutable expr expr => Substitutable expr (GenericArg expr)  where
   subst = traverse subst
@@ -91,15 +91,15 @@ liftDBIndices :: Substitutable value target
               => Int                            -- ^ amount to lift by
               -> target                         -- ^ target term to lift
               -> target                         -- ^ lifted term
-liftDBIndices d = substitute 0 (\v -> Left (v+d))
+liftDBIndices d = substituteDB 0 (\v -> Left (v+d))
 
 -- | De Bruijn aware substitution of one expression into another
-substIntoAtLevel :: forall value target . Substitutable value target
+substDBIntoAtLevel :: forall value target . Substitutable value target
                  => DBIndex      -- ^ The index of the variable of which to substitute
                  -> value        -- ^ expression to substitute
                  -> target       -- ^ term to substitute into
                  -> target       -- ^ the result of the substitution
-substIntoAtLevel level value = substitute 0 substVar
+substDBIntoAtLevel level value = substituteDB 0 substVar
   where
     substVar :: DBIndex -> Either DBIndex value
     substVar v
@@ -108,18 +108,18 @@ substIntoAtLevel level value = substitute 0 substVar
       | otherwise  = Left v
 
 -- | De Bruijn aware substitution of one expression into another
-substInto :: Substitutable value target
+substDBInto :: Substitutable value target
           => value  -- ^ expression to substitute
           -> target -- ^ term to substitute into
           -> target -- ^ the result of the substitution
-substInto = substIntoAtLevel 0
+substDBInto = substDBIntoAtLevel 0
 
-substAll :: Substitutable value target
+substDBAll :: Substitutable value target
          => BindingDepth
          -> (DBIndex -> Maybe DBIndex)
          -> target
          -> target
-substAll depth sub = substitute depth (\v -> maybe (Left v) Left (sub v))
+substDBAll depth sub = substituteDB depth (\v -> maybe (Left v) Left (sub v))
 
 
 --------------------------------------------------------------------------------

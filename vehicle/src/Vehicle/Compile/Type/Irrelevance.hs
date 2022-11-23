@@ -47,12 +47,12 @@ instance RemoveIrrelevantCode CheckedExpr where
 
       Pi p binder res -> do
         if isIrrelevant binder
-          then remove $ UnitLiteral p `substInto` res
+          then remove $ UnitLiteral p `substDBInto` res
           else Pi p <$> remove binder <*> remove res
 
       Lam p binder body -> do
         if isIrrelevant binder
-          then remove $ UnitLiteral p `substInto` body
+          then remove $ UnitLiteral p `substDBInto` body
           else Lam p <$> remove binder <*> remove body
 
       Ann  p e t               -> Ann p <$> remove e <*> remove t
