@@ -1,4 +1,4 @@
-module Vehicle.Compile.Queries.UserVariables
+module Vehicle.Compile.Queries.NetworkElimination
   ( MetaNetwork
   , normUserVariables
   ) where
@@ -7,14 +7,16 @@ import Control.Monad (zipWithM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.List.Split (chunksOf)
+import Data.Bifunctor (Bifunctor(..))
+import Data.List (partition)
+import Data.Set qualified as Set
 import Data.Map (Map)
-import Data.Map qualified as Map (lookup, member, singleton, unionWith)
-import Data.Text (Text)
+import Data.Map qualified as Map (lookup, member, singleton, unionWith, insertWith)
 
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.LetInsertion (insertLets)
-import Vehicle.Compile.Queries.Linearity
+import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettySimple)
@@ -24,6 +26,11 @@ import Vehicle.Expr.CoDeBruijn (CoDBVar (..))
 import Vehicle.Expr.DeBruijn
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface
+import Vehicle.Compile.Queries.Variable
+import Vehicle.Compile.Queries.VariableReconstruction
+import Vehicle.Compile.Queries.GaussianElimination (gaussianElimination, solutionEquality)
+import Vehicle.Compile.Queries.FourierMotzkinElimination (fourierMotzkinElimination)
+import Data.Maybe (mapMaybe)
 
 --------------------------------------------------------------------------------
 -- Removing network applications
@@ -54,14 +61,14 @@ import Vehicle.Verify.Verifier.Interface
 --
 -- 2. We traverse the expression compiling a list of all network applications,
 -- which we refer to as the "meta-network". From this we can generate a list
--- of the magic variables we need.
+-- of the network variables we need.
 --
 --  meta-network: [f,f]
---  magic-variables: x0 y0 x1 y1
+--  network-variables: x0 y0 x1 y1
 --
 -- 3. We traverse the resulting expression finding all let-bound
 -- applications of the network and equate the inputs with the vector
--- of magic input variables and subsitute the vector of magic output
+-- of network input variables and subsitute the vector of network output
 -- variables into the body of the let expression. For example after
 -- processing both let expressions we get:
 --
@@ -72,7 +79,8 @@ import Vehicle.Verify.Verifier.Interface
 --  1) x0 == a1 + 1
 --  2) x1 == a2
 --
--- 4. We then use Gaussian elimination to solve for the user variables, e.g.
+-- 4. We then use Gaussian/Fourier-Motzkin elimination to solve for the user
+-- variables, e.g.
 --
 --  1) a1 == x0 - 1
 --  2) a2 == x1
@@ -87,24 +95,20 @@ normUserVariables :: MonadCompile m
                   -> Verifier
                   -> NetworkContext
                   -> CheckedExpr
-                  -> m (Query (CLSTProblem, MetaNetwork, UserVarReconstructionInfo))
+                  -> m (Query (CLSTProblem NetworkVariable, MetaNetwork, UserVarReconstructionInfo))
 normUserVariables ident verifier networkCtx expr =
   logCompilerPass MinDetail "input/output variable insertion" $ do
     -- Let-lift all the network applications to avoid duplicates.
     liftedNetworkAppExpr <- liftNetworkApplications networkCtx expr
 
-    -- We can now calculate the meta-network.
+    -- We can now calculate the meta-network and the network variables.
     let metaNetwork = generateMetaNetwork networkCtx liftedNetworkAppExpr
-    metaNetworkDetails <- traverse (getNetworkDetailsFromCtx networkCtx) metaNetwork
+    typedMetaNetwork <- getTypedMetaNetwork networkCtx metaNetwork
+    let networkVariables = getNetworkVariables typedMetaNetwork
     logDebug MinDetail $ "Generated meta-network" <+> pretty metaNetwork <> line
 
     -- Next remove all the user quantifiers which we must now be at the top-level.
     (quantifierlessExpr, userVariables) <- removeUserQuantifiers ident liftedNetworkAppExpr
-
-    -- We prepend user variables with a special character to distinguish them in the
-    -- logs in the case that the user variables coincide with the magic variables.
-    let userVariableNames = fmap ("u'" <>) userVariables
-    let magicVariableNames = getMagicVariablesNames verifier metaNetworkDetails
 
     -- Generate the SMT problem
     let problemState =
@@ -112,18 +116,18 @@ normUserVariables ident verifier networkCtx expr =
           , ident
           , metaNetwork
           , verifier
-          , userVariableNames
-          , magicVariableNames
+          , userVariables
+          , networkVariables
           )
 
     runReaderT (generateCLSTProblem quantifierlessExpr) problemState
 
 generateCLSTProblem :: MonadSMT m
                     => CheckedExpr
-                    -> m (Query (CLSTProblem, MetaNetwork, UserVarReconstructionInfo))
+                    -> m (Query (CLSTProblem NetworkVariable, MetaNetwork, UserVarReconstructionInfo))
 generateCLSTProblem assertionsExpr = do
   (_, _, metaNetwork, _, userVariables, _) <- ask
-  variableNames <- getVariableNames
+  variables <- getVariables
 
   -- Substitute through the let-bound applications.
   (userExprBody, inputEqualityAssertions) <-
@@ -140,7 +144,7 @@ generateCLSTProblem assertionsExpr = do
 
   flip traverseQuery result $ \userAssertions -> do
     let assertions = inputEqualityAssertions <> userAssertions
-    let clst = CLSTProblem variableNames assertions
+    let clst = CLSTProblem variables assertions
 
     (solvedCLST, userVarReconstruction) <-
       solveForUserVariables (length userVariables) clst
@@ -148,11 +152,59 @@ generateCLSTProblem assertionsExpr = do
     logCompilerPassOutput $ pretty solvedCLST
     return (solvedCLST, metaNetwork, userVarReconstruction)
 
+
+solveForUserVariables :: MonadCompile m
+                      => Int
+                      -> CLSTProblem Variable
+                      -> m (CLSTProblem NetworkVariable, UserVarReconstructionInfo)
+solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
+  logCompilerPass MinDetail "elimination of user variables" $ do
+    let allUserVars = Set.fromList [0..numberOfUserVars-1]
+
+    -- First remove those assertions that don't have any user variables in them.
+    let (withUserVars, withoutUserVars) =
+          partition (hasUserVariables numberOfUserVars) assertions
+
+    -- Then split out the equalities from the inequalities.
+    let (equalitiesWithUserVars, inequalitiesWithUserVars) =
+          partition isEquality withUserVars
+
+    -- Try to solve for user variables using Gaussian elimination.
+    (gaussianSolutions, unusedEqualityExprs) <-
+      gaussianElimination variables (map assertionExpr equalitiesWithUserVars) numberOfUserVars
+    let unusedEqualities = fmap (Assertion Equal) unusedEqualityExprs
+
+    -- Eliminate the solved user variables in the inequalities
+    let gaussianSolutionEqualities = fmap (second solutionEquality) gaussianSolutions
+    let reducedInequalities =
+          flip fmap inequalitiesWithUserVars $ \assertion ->
+            foldl (uncurry . substitute) assertion gaussianSolutionEqualities
+
+    -- Calculate the set of unsolved user variables
+    let varsSolvedByGaussianElim = Set.fromList (fmap fst gaussianSolutions)
+    let varsUnsolvedByGaussianElim = Set.difference allUserVars varsSolvedByGaussianElim
+
+    -- Eliminate the remaining unsolved user vars using Fourier-Motzkin elimination
+    (fourierMotzkinSolutions, fmElimOutputInequalities) <-
+      fourierMotzkinElimination variables varsUnsolvedByGaussianElim reducedInequalities
+
+    -- Calculate the way to reconstruct the user variables
+    let varSolutions =
+          fmap (second FourierMotzkinSolution) fourierMotzkinSolutions <>
+          fmap (second GaussianSolution)       gaussianSolutions
+
+    -- Calculate the final set of (user-variable free) assertions
+    let resultingAssertions = withoutUserVars <> unusedEqualities <> fmElimOutputInequalities
+
+    -- Remove all user variables
+    let networkVariables = mapMaybe getNetworkVariable variables
+    let finalAssertions = fmap (removeUserVariables numberOfUserVars) resultingAssertions
+
+    -- Return the problem
+    return (CLSTProblem networkVariables finalAssertions, varSolutions)
+
 --------------------------------------------------------------------------------
 -- Monad
-
-type UserVariableNames = [Name]
-type MagicVariableNames = [Name]
 
 type MonadSMT m =
   ( MonadCompile m
@@ -161,8 +213,8 @@ type MonadSMT m =
     , Identifier
     , MetaNetwork
     , Verifier
-    , UserVariableNames
-    , MagicVariableNames
+    , [UserVariable]
+    , [NetworkVariable]
     ) m
   )
 
@@ -173,10 +225,17 @@ getNetworkDetailsFromCtx networkCtx name = do
     Nothing      -> compilerDeveloperError $
       "Either" <+> squotes (pretty name) <+> "is not a network or it is not in scope"
 
+getTypedMetaNetwork :: MonadCompile m => NetworkContext -> MetaNetwork -> m [(Name, NetworkType)]
+getTypedMetaNetwork ctx = traverse $ \name -> do
+  networkType <- getNetworkDetailsFromCtx ctx name
+  return (name, networkType)
+
 getBoundContext :: MonadSMT m => m [DBBinding]
 getBoundContext = do
-  (_, _, _, _, userVariableNames, magicVariableNames) <- ask
-  return $ fmap Just (reverse userVariableNames <> magicVariableNames)
+  (_, _, _, _, userVariables, networkVariables) <- ask
+  let userNames = reverse $ fmap (layoutAsText . pretty) userVariables
+  let networkNames = reverse $ fmap (layoutAsText . pretty) networkVariables
+  return $ fmap Just (userNames <> networkNames)
 
 getNumberOfUserVariables :: MonadSMT m => m Int
 getNumberOfUserVariables = do
@@ -202,10 +261,10 @@ getExprSize =
   -- Add one more for the constant term.
   (1 +) <$> getTotalNumberOfVariables
 
-getVariableNames :: MonadSMT m => m VariableNames
-getVariableNames = do
-  (_, _, _, _, userVariableNames, magicVariableNames) <- ask
-  return $ userVariableNames <> magicVariableNames
+getVariables :: MonadSMT m => m [Variable]
+getVariables = do
+  (_, _, _, _, userVariables, networkVariables) <- ask
+  return $ fmap UserVar userVariables <> fmap NetworkVar networkVariables
 
 getExprConstantIndex :: MonadSMT m => m Int
 getExprConstantIndex =
@@ -221,11 +280,11 @@ getExprConstantIndex =
 removeUserQuantifiers :: MonadCompile m
                       => Identifier
                       -> CheckedExpr
-                      -> m (CheckedExpr, [Name])
+                      -> m (CheckedExpr, [UserVariable])
 removeUserQuantifiers ident (ExistsRatExpr _ binder body) = do
   let n = getBinderName binder
   (result, binders) <- removeUserQuantifiers ident body
-  return (result, n : binders)
+  return (result, UserVariable n : binders)
 removeUserQuantifiers _ e = return (e, [])
 
 -- | We lift all network applications regardless if they are duplicated or not to
@@ -293,12 +352,13 @@ replaceNetworkApplications IOVarState{..} (Let _ (NetworkApp ann ident inputExpr
 
   inputVarEqualities <- createInputVarEqualities (dimensions inputs) inputVarIndices inputExprs
 
-  variableNames <- getVariableNames
-  logDebug MidDetail $ "input variable equalities:" <> line <>
-    pretty (CLSTProblem variableNames inputVarEqualities) <> line
+  whenM (loggingLevelAtLeast MidDetail) $ do
+    variableNames <- getVariables
+    logDebug MidDetail $ "input variable equalities:" <> line <>
+      pretty (CLSTProblem variableNames inputVarEqualities) <> line
 
   outputVarsExpr <- mkMagicVariableSeq ann outputType (dimensions outputs) outputVarIndices
-  let newBody = outputVarsExpr `substInto` body
+  let newBody = outputVarsExpr `substDBInto` body
 
   (result, equalities) <- flip replaceNetworkApplications newBody $ IOVarState
     { magicInputVarCount  = magicInputVarCount + inputSize
@@ -450,32 +510,34 @@ compileLinearExpr expr = do
 --------------------------------------------------------------------------------
 -- Step 6: quantification over magic variables
 
-getMagicVariablesNames :: Verifier
-                       -> [NetworkType]
-                       -> [Text]
-getMagicVariablesNames verifier metaNetworkDetails =
-  let (_, _, result) = foldr forNetwork (0, 0, []) metaNetworkDetails in result
+type Applications = Map Name Int
+
+getNetworkVariables :: [(Name, NetworkType)] -> [NetworkVariable]
+getNetworkVariables metaNetworkDetails = do
+  let applicationCounts = countNetworkApplications (fmap fst metaNetworkDetails)
+  let (_, result) = foldr (forNetwork applicationCounts) (mempty, mempty) metaNetworkDetails
+  result
   where
-    (inputPrefix, outputPrefix) = magicVariablePrefixes verifier
+  forNetwork :: Applications
+             -> (Name, NetworkType)
+             -> (Applications, [NetworkVariable])
+             -> (Applications, [NetworkVariable])
+  forNetwork totalApplications (networkName, NetworkType inputs outputs) (applicationsSoFar, result) = do
+    let application = case Map.lookup networkName totalApplications of
+          Nothing -> Nothing
+          Just 1  -> Nothing
+          Just _  -> Map.lookup networkName applicationsSoFar
+    let newApplicationsSoFar = Map.insertWith (+) networkName 1 applicationsSoFar
 
-    forNetwork :: NetworkType -> (Int, Int, [Text]) -> (Int, Int, [Text])
-    forNetwork (NetworkType inputs outputs) (inputIndex, outputIndex, result) =
-      let nextInputIndex  = inputIndex  + tensorSize inputs in
-      let nextOutputIndex = outputIndex + tensorSize outputs in
-      let inputNames  = forTensor inputPrefix  inputIndex  inputs in
-      let outputNames = forTensor outputPrefix outputIndex outputs in
-      (nextInputIndex, nextOutputIndex, result <> inputNames <> outputNames)
+    let inputIndices  = [0.. tensorSize inputs  - 1]
+    let outputIndices = [0.. tensorSize outputs - 1]
+    let inputNames  = [NetworkVariable networkName application Input  i | i <- inputIndices]
+    let outputNames = [NetworkVariable networkName application Output i | i <- outputIndices]
 
-    forTensor :: Text -> Int -> NetworkTensorType -> [Text]
-    forTensor prefix startingIndex tensor =
-      let indices = [startingIndex .. startingIndex + tensorSize tensor - 1] in
-      [mkNameWithIndices prefix i | i <- indices]
+    (newApplicationsSoFar, result <> inputNames <> outputNames)
+
+countNetworkApplications :: MetaNetwork -> Applications
+countNetworkApplications = foldr (\n m -> Map.insertWith (+) n 1 m) mempty
 
 currentPass :: Doc a
 currentPass = "insertion of magic network variables"
-
-tensorSize :: NetworkTensorType -> Int
-tensorSize tensor = product (dimensions tensor)
-
-networkSize :: NetworkType -> Int
-networkSize network = tensorSize (inputTensor network) + tensorSize (outputTensor network)

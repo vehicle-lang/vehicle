@@ -1,17 +1,18 @@
 module Vehicle.Verify.Verifier.Interface where
 
 import Control.Monad.IO.Class (MonadIO)
-import Data.Text (Text)
-import Vehicle.Compile.Queries.Linearity
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.Status (SatisfiabilityStatus)
+import Vehicle.Compile.Queries.Variable
+import Vehicle.Compile.Queries.LinearExpr
+import Vehicle.Compile.Queries.VariableReconstruction
 
 -- | The type of methods that compile queries for a verifier
 type VerifierCompile
   = forall m . MonadLogger m
-  => CLSTProblem
+  => CLSTProblem NetworkVariable
   -> m (Doc ())
 
 -- | The type of methods to call a verifier on a query
@@ -34,6 +35,4 @@ data Verifier = Verifier
   -- ^ The command to invoke the verifier
   , compileQuery           :: VerifierCompile
   -- ^ The command to compile an individual query
-  , magicVariablePrefixes  :: (Text, Text)
-  -- ^ Magic variables (should be folded into compileQuery)
   }

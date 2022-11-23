@@ -85,14 +85,15 @@ library
     Vehicle.Compile.Prelude
     Vehicle.Compile.Print
     Vehicle.Compile.Queries.DNF
+    Vehicle.Compile.Queries.FourierMotzkinElimination
+    Vehicle.Compile.Queries.GaussianElimination
     Vehicle.Compile.Queries.IfElimination
-    Vehicle.Compile.Queries.Linearity
-    Vehicle.Compile.Queries.Linearity.Core
-    Vehicle.Compile.Queries.Linearity.FourierMotzkinElimination
-    Vehicle.Compile.Queries.Linearity.GaussianElimination
+    Vehicle.Compile.Queries.LinearExpr
     Vehicle.Compile.Queries.LNF
+    Vehicle.Compile.Queries.NetworkElimination
     Vehicle.Compile.Queries.QuantifierLifting
-    Vehicle.Compile.Queries.UserVariables
+    Vehicle.Compile.Queries.Variable
+    Vehicle.Compile.Queries.VariableReconstruction
     Vehicle.Compile.Resource
     Vehicle.Compile.Scope
     Vehicle.Compile.Simplify

@@ -1,13 +1,11 @@
-module Vehicle.Compile.Queries.Linearity.Core
+module Vehicle.Compile.Queries.LinearExpr
   ( Relation(..)
   , Coefficient
   , LinearVar
   , LinearExpr(..)
   , Assertion(..)
   , CLSTProblem(..)
-  , VariableNames
-  , VarReconstruction(..)
-  , UserVarReconstructionInfo
+  , VariableAssignment
   , linearExprFromMap
   , evaluateExpr
   , addLinearExprs
@@ -17,16 +15,20 @@ module Vehicle.Compile.Queries.Linearity.Core
   , isEquality
   , prettyLinearExpr
   , prettyAssertions
+  , hasUserVariables
+  , removeUserVariables
+  , substitute
   ) where
 
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
-import Data.Text (Text)
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
 
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Queries.Variable
+
 
 --------------------------------------------------------------------------------
 -- Relation
@@ -35,7 +37,7 @@ data Relation
   = Equal
   | LessThan
   | LessThanOrEqualTo
-  deriving (Eq)
+  deriving (Show, Eq)
 
 instance Pretty Relation where
   pretty = \case
@@ -47,14 +49,13 @@ instance Pretty Relation where
 -- Linear expressions
 
 type Coefficient = Double
-type VariableNames = [Text]
 type LinearVar = Int
 
 -- | Stores a linear expression `ax + by + ... + cz + d`
 -- as <a,b,...,c,d>
 newtype LinearExpr = LinearExpr
   { unLinearExpr :: Vector Coefficient
-  }
+  } deriving (Show)
 
 evaluateExpr :: LinearExpr -> Vector Double -> Double
 evaluateExpr (LinearExpr e) values = Vector.sum (Vector.zipWith (*) e values)
@@ -74,25 +75,31 @@ linearExprFromMap :: LinearVar -> Map LinearVar Coefficient -> LinearExpr
 linearExprFromMap size coeffMap = LinearExpr $
   Vector.generate size $ \i -> fromMaybe 0 (Map.lookup i coeffMap)
 
-prettyLinearExpr :: LinearExpr -> VariableNames -> Doc a
-prettyLinearExpr (LinearExpr coeff) names =
-  -- Append an empty name for the constant at the end
-  let allNames = fmap Just names <> [Nothing] in
+prettyLinearExpr :: IsVariable variable => [variable] -> LinearExpr -> Doc a
+prettyLinearExpr variables (LinearExpr coeff) =
+  -- Append an empty variable name for the constant at the end
+  let allNames = fmap Just variables <> [Nothing] in
   let coeffVarPairs = zip (Vector.toList coeff) allNames in
   let nonZeroCoeffVarPairs = filter (\(c,_) -> c /= 0) coeffVarPairs in
   case nonZeroCoeffVarPairs of
     []       -> "0.0"
-    (x : xs) -> hsep (compileVar True x : fmap (compileVar False) xs)
-  where
-    compileVar :: Bool -> (Coefficient, Maybe Text) -> Doc a
-    compileVar isFirst (coefficient, Nothing)
-      | coefficient > 0 = (if isFirst then "" else "+ ")  <> pretty coefficient
-      | otherwise       = (if isFirst then "-" else "- ") <> pretty (- coefficient)
-    compileVar isFirst (1,  Just var) = (if isFirst then "" else "+ ")  <> pretty var
-    compileVar isFirst (-1, Just var) = (if isFirst then "-" else "- ") <> pretty var
-    compileVar isFirst (coefficient, Just var)
-      | coefficient > 0 = (if isFirst then ""  else "+ ") <> pretty coefficient <> pretty var
-      | otherwise       = (if isFirst then "-" else "- ") <> pretty (- coefficient) <> pretty var
+    (x : xs) -> hsep (prettyVar True x : fmap (prettyVar False) xs)
+
+prettyVar :: IsVariable variable => Bool -> (Coefficient, Maybe variable) -> Doc a
+prettyVar isFirst (coefficient, variable) = do
+  let sign
+        | coefficient > 0 = if isFirst then ""  else "+ "
+        | otherwise       = if isFirst then "-" else "- "
+
+  let value = case variable of
+        Nothing  | coefficient > 0   -> pretty coefficient
+                 | otherwise         -> pretty (- coefficient)
+        Just var | coefficient == 1  -> pretty var
+                 | coefficient == -1 -> pretty var
+                 | coefficient > 0   -> pretty coefficient <> pretty var
+                 | otherwise         -> pretty (- coefficient) <> pretty var
+
+  sign <> value
 
 --------------------------------------------------------------------------------
 -- Assertion
@@ -101,7 +108,7 @@ data Assertion = Assertion
   { assertionRel  :: Relation
   -- ^ How the sum of the terms in the linear expression are related.
   , assertionExpr :: LinearExpr
-  }
+  } deriving (Show)
 
 isEquality :: Assertion -> Bool
 isEquality a = assertionRel a == Equal
@@ -115,30 +122,38 @@ constructAssertion (lhs, rel, rhs) = Assertion
 mapExpression :: (Vector Coefficient -> Vector Coefficient) -> Assertion -> Assertion
 mapExpression f (Assertion rel (LinearExpr e)) = Assertion rel (LinearExpr $ f e)
 
-prettyAssertion :: VariableNames -> Assertion -> Doc a
+prettyAssertion :: IsVariable variable => [variable] -> Assertion -> Doc a
 prettyAssertion varNames (Assertion rel linearExpr) =
-  prettyLinearExpr linearExpr varNames <+> pretty rel <+> "0.0"
+  prettyLinearExpr varNames linearExpr <+> pretty rel <+> "0.0"
 
-prettyAssertions :: VariableNames -> [Assertion] -> Doc a
+prettyAssertions :: IsVariable variable => [variable] -> [Assertion] -> Doc a
 prettyAssertions varNames assertions =
   indent 2 $ vsep (fmap (prettyAssertion varNames) assertions)
+
+substitute :: Assertion -> LinearVar -> LinearExpr -> Assertion
+substitute (Assertion r2 (LinearExpr e2)) var (LinearExpr e1) =
+  let coeff = e2 Vector.! var in
+  let e2'  = Vector.zipWith (\a b -> b - coeff * a) e1 e2 in
+  Assertion r2 (LinearExpr e2')
+
+hasUserVariables :: Int -> Assertion -> Bool
+hasUserVariables numberOfUserVariables (Assertion _ (LinearExpr e)) =
+  let userCoefficients = Vector.take numberOfUserVariables e in
+  Vector.any (/= 0) userCoefficients
+
+removeUserVariables :: Int -> Assertion -> Assertion
+removeUserVariables numberOfUserVariables (Assertion rel (LinearExpr e)) =
+  Assertion rel (LinearExpr (Vector.drop numberOfUserVariables e))
 
 --------------------------------------------------------------------------------
 -- Linear satisfaction problem
 
--- | Conjunctive linear satisfaction problem
-data CLSTProblem = CLSTProblem VariableNames [Assertion]
+-- | Conjunctive linear satisfaction problem, parameterised by the type of
+-- variables it is over.
+data CLSTProblem variable = CLSTProblem [variable] [Assertion]
 
-instance Pretty CLSTProblem where
+instance IsVariable variable => Pretty (CLSTProblem variable) where
   pretty (CLSTProblem varNames assertions) = prettyAssertions varNames assertions
 
---------------------------------------------------------------------------------
--- Variable reconstruction
 
--- | Information neccesary to reconstruct the user variables from the magic
--- input/output variables.
-data VarReconstruction
-  = RecEquality LinearExpr
-  | RecInequalities [Assertion] [Assertion]
-
-type UserVarReconstructionInfo = [(LinearVar, VarReconstruction)]
+type VariableAssignment = Vector Double

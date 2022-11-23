@@ -11,18 +11,18 @@ import Data.Maybe (catMaybes)
 
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Queries.Linearity
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
 import Vehicle.Compile.Queries.DNF (convertToDNF)
 import Vehicle.Compile.Queries.IfElimination (eliminateIfs)
 import Vehicle.Compile.Queries.QuantifierLifting (liftQuantifiers)
-import Vehicle.Compile.Queries.UserVariables
+import Vehicle.Compile.Queries.NetworkElimination
 import Vehicle.Compile.Resource
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface
+import Vehicle.Compile.Queries.VariableReconstruction
 
 data QueryData = QueryData
   { queryText   :: Doc ()

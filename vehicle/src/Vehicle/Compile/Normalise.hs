@@ -122,7 +122,7 @@ instance Norm CheckedExpr where
       Let _ letValue _letBinder letBody -> do
         letValue' <- nf letValue
         letBody'  <- nf letBody
-        let letBodyWithSubstitution = substInto letValue' letBody'
+        let letBodyWithSubstitution = substDBInto letValue' letBody'
         nf letBodyWithSubstitution
 
       App p fun args -> do
@@ -157,7 +157,7 @@ nfApp p fun args = do
 
 nfAppLam :: MonadNorm m => Provenance -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
 nfAppLam _ fun            []           = nf fun
-nfAppLam p (Lam _ _ body) (arg : args) = nfAppLam p (substInto (argExpr arg) body) args
+nfAppLam p (Lam _ _ body) (arg : args) = nfAppLam p (substDBInto (argExpr arg) body) args
 nfAppLam p fun            (arg : args) = nfApp p fun (arg :| args)
 
 nfStdLibFn :: MonadNorm m
@@ -326,7 +326,7 @@ nfQuantifierVector p tElem size binder body recFn = do
   -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
   let body1      = liftDBIndices size body
   -- Substitute throught the tensor expression for the old top-level binder
-  body2 <- nf $ substIntoAtLevel size tensor body1
+  body2 <- nf $ substDBIntoAtLevel size tensor body1
 
   let mkQuantifier e name = App p recFn [ExplicitArg p (Lam p (ExplicitBinder p name tElem) e)]
 
