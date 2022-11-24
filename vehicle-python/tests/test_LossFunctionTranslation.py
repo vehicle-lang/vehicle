@@ -1,4 +1,7 @@
+import inspect
 import json
+import os
+import sys
 import unittest
 from pathlib import Path
 
@@ -6,9 +9,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 
-import os
-import sys
-import inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
@@ -36,8 +36,8 @@ class TestLossFunctionTranslation(unittest.TestCase):
         self.assertEqual(loss(), 5)
 
     def test_variable(self):
-        path_to_vcl = self.vcl_file('test_variable')
-        functionName = 'variable'
+        path_to_vcl = self.vcl_file("test_variable")
+        functionName = "variable"
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual(loss(2), 2)
@@ -50,22 +50,22 @@ class TestLossFunctionTranslation(unittest.TestCase):
         self._assert_tensor_equal(loss(), tf.constant([5, 2, 16, 7]))
 
     def test_negation(self):
-        path_to_vcl = self.vcl_file('test_negation')
-        functionName = 'negation'
+        path_to_vcl = self.vcl_file("test_negation")
+        functionName = "negation"
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual(loss(), -5)
 
     def test_minimum(self):
-        path_to_vcl = self.vcl_file('test_minimum')
-        functionName = 'minimum'
+        path_to_vcl = self.vcl_file("test_minimum")
+        functionName = "minimum"
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual(loss(), 0)
 
     def test_maximum(self):
-        path_to_vcl = self.vcl_file('test_maximum')
-        functionName = 'maximum'
+        path_to_vcl = self.vcl_file("test_maximum")
+        functionName = "maximum"
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual(loss(), 4)
@@ -106,15 +106,15 @@ class TestLossFunctionTranslation(unittest.TestCase):
     #     self.assertEqual(loss(), 3)
 
     def test_indicator(self):
-        path_to_vcl = self.vcl_file('test_indicator')
-        functionName = 'indicator'
+        path_to_vcl = self.vcl_file("test_indicator")
+        functionName = "indicator"
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual(loss(), 1)
 
     def test_at(self):
-        path_to_vcl = self.vcl_file('test_at')
-        functionName = 'at'
+        path_to_vcl = self.vcl_file("test_at")
+        functionName = "at"
         resources = {}
         loss = generate_loss_function(path_to_vcl, functionName, resources)
         self.assertEqual(loss([1, 4, 7]), 4)

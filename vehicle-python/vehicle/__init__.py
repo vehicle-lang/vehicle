@@ -308,11 +308,11 @@ class LossFunctionTranslation:
             return body_loss(context)
 
         return lambda context: lambda v: result_func(context, v)
-    
+
     def _translate_let(
         self, contents: Dict[Any, Any], metadata: LossMetadata
     ) -> Callable[..., Any]:
-    
+
         pass
 
     def _translate_domain(
