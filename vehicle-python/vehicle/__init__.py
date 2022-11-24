@@ -91,6 +91,8 @@ class LossFunctionTranslation:
             return self._translate_multiplication(contents, metadata)
         elif tag == "Division":
             return self._translate_division(contents, metadata)
+        elif tag == "Power":
+            return self._translate_power(contents, metadata)
         elif tag == "IndicatorFunction":
             return self._translate_indicator(contents, metadata)
         elif tag == "At":
@@ -101,6 +103,8 @@ class LossFunctionTranslation:
             return self._translate_quantifier(contents, metadata)
         elif tag == "Lambda":
             return self._translate_lambda(contents, metadata)
+        elif tag == "Let":
+            return self._translate_let(contents, metadata)
         elif tag == "Domain":
             return self._translate_domain(contents, metadata)
         else:
@@ -205,6 +209,17 @@ class LossFunctionTranslation:
 
         return result_func
 
+    def _translate_power(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
+        loss_1 = self._translate_expression(metadata, contents[0])
+        loss_2 = self._translate_expression(metadata, contents[1])
+
+        def result_func(context: Any) -> Any:
+            return loss_1(context) ^ loss_2(context)
+
+        return result_func
+
     def _translate_indicator(
         self, contents: Dict[Any, Any], metadata: LossMetadata
     ) -> Callable[..., Any]:
@@ -293,6 +308,12 @@ class LossFunctionTranslation:
             return body_loss(context)
 
         return lambda context: lambda v: result_func(context, v)
+    
+    def _translate_let(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
+    
+        pass
 
     def _translate_domain(
         self, contents: Dict[Any, Any], metadata: LossMetadata

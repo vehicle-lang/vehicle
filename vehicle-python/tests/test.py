@@ -4,7 +4,13 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 
-from vehicle import generate_loss_function
+import os
+import sys
+import inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
+from vehicle.__init__ import generate_loss_function
 
 
 def train(
@@ -78,7 +84,7 @@ def train(
 
 
 if __name__ == "__main__":
-    path_to_spec = "./bounded.vcl"
+    path_to_spec = "vehicle-python/tests/bounded.vcl"
     function_name = "bounded"
     model = keras.Sequential(
         [
