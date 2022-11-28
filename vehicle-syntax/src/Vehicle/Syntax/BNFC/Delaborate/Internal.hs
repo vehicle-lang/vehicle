@@ -119,7 +119,7 @@ delabSymbol :: Text -> B.NameToken
 delabSymbol = mkToken B.NameToken
 
 delabIdentifier :: V.Identifier -> B.NameToken
-delabIdentifier (V.Identifier n) = mkToken B.NameToken n
+delabIdentifier (V.Identifier _ n) = mkToken B.NameToken n
 
 delabBuiltin :: V.Builtin -> B.Expr
 delabBuiltin op = B.Builtin $ mkToken B.BuiltinToken $ V.symbolFromBuiltin op

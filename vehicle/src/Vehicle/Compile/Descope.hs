@@ -140,7 +140,7 @@ instance Descope Binder' where
   descope f a = coerce <$> descopeBinder f (coerce a)
 
 descopeDBVar :: MonadDescope m => Provenance -> DBVar -> m Name
-descopeDBVar _ (Free (Identifier name)) = return name
+descopeDBVar _ (Free ident) = return $ nameOf ident
 descopeDBVar p (Bound i) = do
   Ctx ctx <- ask
   case ctx !!? i of

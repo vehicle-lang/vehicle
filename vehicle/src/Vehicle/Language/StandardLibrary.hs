@@ -75,7 +75,7 @@ standardPostulates :: Map Identifier DBDecl
 standardPostulates = quantifiers
 
 postulate :: Name -> DSLExpr -> DBDecl
-postulate name t = DefPostulate mempty (Identifier name) (fromDSL mempty t)
+postulate name t = DefPostulate mempty (Identifier StdLib name) (fromDSL mempty t)
 
 quantifiers :: Map Identifier DBDecl
 quantifiers = fromDeclList

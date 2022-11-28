@@ -3,6 +3,7 @@ module Vehicle.Syntax.BNFC.Elaborate.Internal
   ) where
 
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (MonadReader(..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -34,7 +35,10 @@ import Vehicle.Syntax.Prelude (developerError, readNat, readRat)
 --
 --   2) convert the builtin strings into `Builtin`s
 
-type MonadElab m = MonadError ParseError m
+type MonadElab m =
+  ( MonadError ParseError m
+  , MonadReader Module m
+  )
 
 class Elab vf vc where
   elab :: MonadElab m => vf -> m vc
@@ -105,7 +109,9 @@ instance Elab B.Lit V.Literal where
     B.NatLiteral  n -> return $ V.LNat  (readNat (tkSymbol n))
 
 instance Elab B.NameToken V.Identifier where
-  elab n = return $ Identifier $ tkSymbol n
+  elab n = do
+    mod <- ask
+    return $ Identifier mod $ tkSymbol n
 
 lookupBuiltin :: MonadElab m => B.BuiltinToken -> m V.Builtin
 lookupBuiltin (BuiltinToken tk) = case V.builtinFromSymbol (tkSymbol tk) of

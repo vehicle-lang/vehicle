@@ -39,8 +39,8 @@ writeSpecificationFiles Verifier{..} folder (Specification properties) = do
   let backend = VerifierBackend verifierIdentifier
 
   -- Write out the spec files
-  forM_ properties $ \(name, property) -> do
-    let property' = calculateFilePaths folder name property
+  forM_ properties $ \(ident, property) -> do
+    let property' = calculateFilePaths folder ident property
     _ <- flip traverseProperty property' $ \(queryFilePath, queryData) -> do
       let query = queryText queryData
       liftIO $ writeResultToFile backend (Just queryFilePath) query
@@ -55,9 +55,9 @@ outputSpecification loggingOptions (Specification properties) = do
   let doc = vsep2 (fmap goProperty properties)
   hPrint (outputHandle loggingOptions) (layoutAsString doc)
   where
-    goProperty :: (Name, Property QueryData) -> Doc ()
-    goProperty (name, property) = do
-      pretty name <> line <>
+    goProperty :: (Identifier, Property QueryData) -> Doc ()
+    goProperty (ident, property) = do
+      pretty (nameOf ident :: Name) <> line <>
         indent 2  (vsep2 (goMultiProperty property))
 
     goMultiProperty :: Property QueryData -> [Doc ()]
@@ -111,8 +111,8 @@ verifyQuery (queryFile, QueryData _ metaNetwork userVar) = do
 -- | Indices into a multi-property.
 type MultiPropertyIndex = Int
 
-calculateFilePaths :: FilePath -> Name -> Property a -> Property (FilePath, a)
-calculateFilePaths directory propertyName = goProperty []
+calculateFilePaths :: FilePath -> Identifier -> Property a -> Property (FilePath, a)
+calculateFilePaths directory propertyIdentifier = goProperty []
   where
   goProperty :: [MultiPropertyIndex] -> Property a -> Property (FilePath, a)
   goProperty propertyIndices = \case
@@ -128,7 +128,7 @@ calculateFilePaths directory propertyName = goProperty []
   goQuery :: [MultiPropertyIndex] -> PropertyExpr a -> PropertyExpr (FilePath, a)
   goQuery propertyIndices = fmapNumberedPropertyExpr $ first $ \queryID ->
     directory </>
-      unpack propertyName <>
+      unpack (nameOf propertyIdentifier) <>
       propertyStr <>
       "-query" <> show queryID <.> "txt"
       where

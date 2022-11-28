@@ -8,8 +8,9 @@ import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
 
 import Vehicle.Prelude
-import Vehicle.Syntax.AST (Name)
+import Vehicle.Syntax.AST (Name, Identifier, HasName (..))
 import Vehicle.Verify.Specification
+import Data.Bifunctor (Bifunctor(..))
 
 class IsVerified a where
   isVerified :: a -> Bool
@@ -81,7 +82,7 @@ prettyNameAndStatus name verified = do
 --------------------------------------------------------------------------------
 -- Verification status of the specification
 
-newtype SpecificationStatus = SpecificationStatus (Map Text PropertyStatus)
+newtype SpecificationStatus = SpecificationStatus (Map Identifier PropertyStatus)
   deriving (Generic)
 
 instance FromJSON SpecificationStatus
@@ -92,9 +93,8 @@ instance IsVerified SpecificationStatus where
     and (fmap isVerified (Map.elems properties))
 
 instance Pretty SpecificationStatus where
-  pretty spec@(SpecificationStatus properties) =
-    (if isVerified spec
-      then "Result: verified"
-      else "Result: unverified")
-    <> line
-    <> indent 2 (vsep (fmap (uncurry prettyPropertyStatus) (Map.toList properties)))
+  pretty spec@(SpecificationStatus properties) = do
+    let result = "Result:" <> (if isVerified spec then "verified" else "unverified")
+    let propertiesByName = fmap (first nameOf) (Map.toList properties)
+    result <> line <>
+      indent 2 (vsep (fmap (uncurry prettyPropertyStatus) propertiesByName))

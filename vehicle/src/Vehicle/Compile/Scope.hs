@@ -10,6 +10,7 @@ import Control.Monad.State
 import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.List (elemIndex)
+import Data.Map (Map)
 import Data.Map qualified as Map
 
 import Vehicle.Compile.Error
@@ -30,12 +31,12 @@ scopeCheckClosedExpr e = fst <$> runWriterT (evalStateT (runReaderT (scopeExpr e
 
 type MonadScope m =
   ( MonadCompile m
-  , MonadReader (DeclCtx ()) m
+  , MonadReader (Map Name Identifier) m
   )
 
 type MonadScopeExpr m =
   ( MonadCompile m
-  , MonadReader (DeclCtx (), Bool) m
+  , MonadReader (Map Name Identifier, Bool) m
   , MonadState (BoundCtx DBBinding, [(Provenance, Name)]) m
   , MonadWriter Dependencies m
   )
@@ -65,10 +66,10 @@ scopeDecls = \case
   (d : ds) -> do
     (d', dep) <- runWriterT $ scopeDecl d
 
-    let ident = identifierOf d'
-    exists <- asks (Map.member ident)
+    let identName = nameOf $ identifierOf d'
+    exists <- asks (Map.member identName)
     if exists
-      then throwError $ DuplicateName (provenanceOf d) (nameOf ident)
+      then throwError $ DuplicateName (provenanceOf d) identName
       else do
         (ds', deps) <- bindDecl (identifierOf d') (scopeDecls ds)
         let dependencies = (identifierOf d, dep) : deps
@@ -137,7 +138,7 @@ scopeBinder :: MonadScopeExpr m => InputBinder -> m UncheckedBinder
 scopeBinder = traverse scopeExpr
 
 bindDecl :: MonadScope m => Identifier -> m a -> m a
-bindDecl ident = local (Map.insert ident ())
+bindDecl ident = local (Map.insert (nameOf ident) ident)
 
 bindVar :: MonadScopeExpr m
         => InputBinder
@@ -158,14 +159,13 @@ getVar p symbol = do
 
   case elemIndex (Just symbol) boundCtx of
     Just i -> return $ Bound i
-    Nothing -> do
-      let ident = Identifier symbol
-      if Map.member ident declCtx then do
+    Nothing -> case Map.lookup symbol declCtx of
+      Just ident -> do
         tell [ident]
         return $ Free ident
-      else if not generaliseOverMissingVariables
-        then throwError $ UnboundName p  symbol
-      else do
+      Nothing
+        | not generaliseOverMissingVariables -> throwError $ UnboundName p  symbol
+        | otherwise -> do
           -- Assumes that we're generalising in reverse order to the occurrences
           -- of unbound variables:
           -- e.g.

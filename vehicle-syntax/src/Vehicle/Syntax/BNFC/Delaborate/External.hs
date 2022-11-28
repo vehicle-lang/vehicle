@@ -116,7 +116,7 @@ delabSymbol :: Text -> B.Name
 delabSymbol = mkToken B.Name
 
 delabIdentifier :: V.Identifier -> B.Name
-delabIdentifier (V.Identifier n) = mkToken B.Name n
+delabIdentifier (V.Identifier _ n) = mkToken B.Name n
 
 delabApp :: B.Expr -> [B.Arg] -> B.Expr
 delabApp fun allArgs = go fun (reverse allArgs)

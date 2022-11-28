@@ -6,6 +6,7 @@ module Vehicle.Syntax.BNFC.Elaborate.External
   , elaborateExpr
   ) where
 
+import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Control.Monad.Except (MonadError (..), foldM, throwError)
 import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.Bitraversable (bitraverse)
@@ -33,12 +34,16 @@ newtype UnparsedExpr = UnparsedExpr B.Expr
 -- | We elaborate from the simple AST generated automatically by BNFC to our
 -- more complicated internal version of the AST.
 elaborateProg :: MonadError ParseError m
-              => B.Prog
+              => V.Module
+              -> B.Prog
               -> m (V.GenericProg UnparsedExpr, Set V.Identifier)
-elaborateProg p = runWriterT $ elabProg p
+elaborateProg mod prog = runReaderT (runWriterT $ elabProg prog) mod
 
-elaborateExpr :: MonadError ParseError m => UnparsedExpr -> m V.InputExpr
-elaborateExpr (UnparsedExpr expr) = elabExpr expr
+elaborateExpr :: MonadError ParseError m
+              => V.Module
+              -> UnparsedExpr
+              -> m V.InputExpr
+elaborateExpr mod (UnparsedExpr expr) = runReaderT (elabExpr expr) mod
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -46,6 +51,7 @@ elaborateExpr (UnparsedExpr expr) = elabExpr expr
 type MonadProgElab m =
   ( MonadError ParseError m
   , MonadWriter (Set V.Identifier) m
+  , MonadReader V.Module m
   )
 
 elabProg :: MonadProgElab m => B.Prog -> m (V.GenericProg UnparsedExpr)
@@ -165,7 +171,10 @@ elabDefFun n1 n2 t binders e
 --------------------------------------------------------------------------------
 -- Expr elaboration
 
-type MonadElab m = MonadError ParseError m
+type MonadElab m =
+  ( MonadError ParseError m
+  , MonadReader V.Module m
+  )
 
 elabExpr :: MonadElab m => B.Expr -> m V.InputExpr
 elabExpr = \case
@@ -238,7 +247,9 @@ mkArg :: V.Visibility -> V.InputExpr -> V.InputArg
 mkArg v e = V.Arg (V.expandByArgVisibility v (V.provenanceOf e)) v V.Relevant e
 
 elabName :: MonadElab m => B.Name -> m V.Identifier
-elabName n = return $ V.Identifier $ tkSymbol n
+elabName n = do
+  mod <- ask
+  return $ V.Identifier mod $ tkSymbol n
 
 elabBinder :: MonadElab m => B.Binder -> m V.InputBinder
 elabBinder = \case

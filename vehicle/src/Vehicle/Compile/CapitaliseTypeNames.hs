@@ -68,8 +68,8 @@ instance CapitaliseTypes CheckedExpr where
     VarF      ann (Free ident)      -> Var ann . Free <$> cap ident
 
 instance CapitaliseTypes Identifier where
-  cap ident@(Identifier s) = do
+  cap ident@(Identifier m s) = do
     typeIdentifiers <- get
-    return $ Identifier $ if member ident typeIdentifiers
+    return $ Identifier m $ if member ident typeIdentifiers
       then capitaliseFirstLetter s
       else s
