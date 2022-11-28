@@ -220,7 +220,7 @@ insertDecl (Applications apps) decl = do
             _ -> do
               (decls, solutions) <- unzip <$> for (Set.toList uniqueArgs) (\args -> do
                 let suffix   = getMonomorphisedSuffix args
-                let newIdent = Identifier $ nameOf ident <> suffix
+                let newIdent = Identifier (moduleOf ident) $ nameOf ident <> suffix
                 let (t', e') = substituteArgsThrough (t, e, args)
                 return (DefFunction p newIdent t' e', Map.singleton (ident, args) newIdent))
               return (decls, Map.unions solutions)

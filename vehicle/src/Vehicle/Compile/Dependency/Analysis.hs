@@ -22,7 +22,8 @@ analyseDependenciesAndPrune prog propertyContext dependencyGraph declarationsToC
   if null declarationsToCompile
     then return prog
     else do
-      let declsToKeep = reachableFrom dependencyGraph (Set.map Identifier declarationsToCompile)
+      let declsToCompile = Set.map (Identifier User) declarationsToCompile
+      let declsToKeep = reachableFrom dependencyGraph declsToCompile
       return $ pruneProg prog declsToKeep
 
 checkForDeadCode :: MonadCompile m => UncheckedProg -> UncheckedPropertyContext -> DependencyGraph -> m ()

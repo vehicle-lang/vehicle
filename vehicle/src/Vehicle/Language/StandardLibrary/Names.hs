@@ -50,7 +50,7 @@ instance Pretty StdLibFunction where
   pretty = pretty . show
 
 instance HasIdentifier StdLibFunction where
-  identifierOf f = Identifier $ pack $ show f
+  identifierOf f = Identifier StdLib $ pack $ show f
 
 stdLibFunctions :: Map Name StdLibFunction
 stdLibFunctions = Map.fromList $ fmap (\f -> (pack $ show f, f)) [minBound .. maxBound]
@@ -59,13 +59,13 @@ findStdLibFunction :: Name -> Maybe StdLibFunction
 findStdLibFunction name = Map.lookup name stdLibFunctions
 
 pattern PostulateExistsNat, PostulateForallNat :: Identifier
-pattern PostulateExistsNat = Identifier "existsNat"
-pattern PostulateForallNat = Identifier "forallNat"
+pattern PostulateExistsNat = Identifier StdLib "existsNat"
+pattern PostulateForallNat = Identifier StdLib "forallNat"
 
 pattern PostulateExistsInt, PostulateForallInt :: Identifier
-pattern PostulateExistsInt = Identifier "existsInt"
-pattern PostulateForallInt = Identifier "forallInt"
+pattern PostulateExistsInt = Identifier StdLib "existsInt"
+pattern PostulateForallInt = Identifier StdLib "forallInt"
 
 pattern PostulateExistsRat, PostulateForallRat :: Identifier
-pattern PostulateExistsRat = Identifier "existsRat"
-pattern PostulateForallRat = Identifier "forallRat"
+pattern PostulateExistsRat = Identifier StdLib "existsRat"
+pattern PostulateForallRat = Identifier StdLib "forallRat"

@@ -63,12 +63,12 @@ getProperties :: MonadCompile m
               => VerifierIdentifier
               -> PropertyContext
               -> CheckedProg
-              -> m [(Name, CheckedExpr)]
+              -> m [(Identifier, CheckedExpr)]
 getProperties verifier propertyCtx (Main ds) = catMaybes <$> traverse go ds
   where
     go :: MonadCompile m
        => CheckedDecl
-       -> m (Maybe (Name, CheckedExpr))
+       -> m (Maybe (Identifier, CheckedExpr))
     go d = case d of
       DefResource _ r _ _ ->
         normalisationError currentPass (pretty r <+> "declarations")
@@ -85,12 +85,12 @@ getProperties verifier propertyCtx (Main ds) = catMaybes <$> traverse go ds
           -- Otherwise check the property information.
           Just propertyInfo -> case checkCompatibility (VerifierBackend verifier) (ident, p) propertyInfo of
             Just err -> throwError err
-            Nothing  -> return $ Just (nameOf ident, expr)
+            Nothing  -> return $ Just (ident, expr)
 
 type MonadCompileProperty m =
   ( MonadCompile m
   , MonadSupply QueryID m
-  , MonadReader (Verifier, Name, NetworkContext) m
+  , MonadReader (Verifier, Identifier, NetworkContext) m
   )
 
 compileProperty :: MonadCompileProperty m => CheckedExpr -> m (Property QueryData)
@@ -120,7 +120,7 @@ compileQuantifiedExpr expr = do
   -- Check that we only have one type of quantifier in the expression
   -- and if it is universal then negate the expression
   (isPropertyNegated, possiblyNegatedExpr) <-
-    checkQuantifiersAndNegateIfNecessary (verifierIdentifier verifier) (Identifier ident) expr
+    checkQuantifiersAndNegateIfNecessary (verifierIdentifier verifier) ident expr
 
   -- Eliminate any if-expressions
   ifFreeExpr <- eliminateIfs possiblyNegatedExpr
@@ -151,7 +151,7 @@ compileSingleQuery expr = do
     quantLiftedExpr <- liftQuantifiers expr
 
     -- Convert all user variables and applications of networks into magic I/O variables
-    clstQuery <- normUserVariables (Identifier ident) verifier networkCtx quantLiftedExpr
+    clstQuery <- normUserVariables ident verifier networkCtx quantLiftedExpr
 
     flip traverseQuery clstQuery $ \(clstProblem, u, v) -> do
       queryDoc <- compileQuery verifier clstProblem

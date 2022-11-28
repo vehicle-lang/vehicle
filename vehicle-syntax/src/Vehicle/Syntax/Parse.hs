@@ -30,11 +30,15 @@ import Vehicle.Syntax.External.Par as External (myLexer, pExpr, pProg)
 --------------------------------------------------------------------------------
 -- Interface
 
-readAndParseProg :: MonadError ParseError m => Text -> m (GenericProg UnparsedExpr, Set Identifier)
-readAndParseProg txt = castBNFCError elaborateProg (parseExternalProg txt)
+readAndParseProg :: MonadError ParseError m
+                 => Text
+                 -> m (GenericProg UnparsedExpr, Set Identifier)
+readAndParseProg txt = castBNFCError (elaborateProg User) (parseExternalProg txt)
 
-parseExpr :: MonadError ParseError m => UnparsedExpr -> m InputExpr
-parseExpr = elaborateExpr
+parseExpr :: MonadError ParseError m
+          => UnparsedExpr
+          -> m InputExpr
+parseExpr = elaborateExpr User
 
 readExpr :: MonadError ParseError m => Text -> m UnparsedExpr
 readExpr txt = castBNFCError (return . UnparsedExpr) (parseExternalExpr txt)

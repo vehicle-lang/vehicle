@@ -59,9 +59,9 @@ fixText t = "Fix:" <+> t
 -- IO
 
 fromEitherIO :: MonadIO m => VehicleIOSettings -> Either CompileError a -> m a
-fromEitherIO _              (Right x)  = return x
-fromEitherIO loggingOptions (Left err) =
-  fatalError loggingOptions $ pretty $ details err
+fromEitherIO loggingOptions = \case
+  Left  err -> fatalError loggingOptions $ pretty $ details err
+  Right val -> return val
 
 fromLoggedEitherIO :: MonadIO m
                    => VehicleIOSettings
@@ -439,7 +439,7 @@ instance MeaningfulError CompileError where
       , problem    = "No" <+> entity <+> "was provided for the" <+>
                      prettyResource resourceType ident <> "."
       , fix        = Just $ "provide it via the command line using" <+>
-                     squotes ("--" <> pretty resourceType <+> pretty ident <>
+                     squotes ("--" <> pretty resourceType <+> pretty (nameOf ident :: Name) <>
                      ":" <> var)
       }
       where
@@ -539,7 +539,7 @@ instance MeaningfulError CompileError where
                      "Only the following types are allowed for" <+>
                      pretty Dataset <> "s:" <> line <>
                        indent 2 (prettyAllowedBuiltins supportedTypes)
-      , fix        = Just $ "change the type of" <+> squotes (pretty ident) <+>
+      , fix        = Just $ "change the type of" <+> prettyIdentName ident <+>
                      "to a supported type."
       } where supportedTypes = map pretty [List, Vector] <> [pretty Tensor]
 
@@ -551,7 +551,7 @@ instance MeaningfulError CompileError where
                      "Only the following element types are allowed for" <+>
                      pretty Dataset <> "s:" <> line <>
                        indent 2 (prettyAllowedBuiltins supportedTypes)
-      , fix        = Just $ "change the element type of" <+> squotes (pretty ident) <+>
+      , fix        = Just $ "change the element type of" <+> prettyIdentName ident <+>
                      "to a supported type."
       } where supportedTypes = map pretty [Index, Nat, Int, Rat]
 
@@ -627,7 +627,7 @@ instance MeaningfulError CompileError where
                      "Only the following types are allowed for" <+>
                      pretty Parameter <> "s:" <> line <>
                        indent 2 (prettyAllowedBuiltins supportedTypes)
-      , fix        = Just $ "change the element type of" <+> squotes (pretty ident) <+>
+      , fix        = Just $ "change the element type of" <+> prettyIdentName ident <+>
                      "to a supported type."
       } where supportedTypes = map pretty [Bool, Index, Nat, Int, Rat]
 
@@ -636,7 +636,7 @@ instance MeaningfulError CompileError where
       , problem    = "The value" <+> squotes (pretty value) <+>
                      "provided for" <+> prettyResource Parameter ident <+>
                      "could not be parsed as" <+> prettyBuiltinType expectedType <> "."
-      , fix        = Just $ "either change the type of" <+> quotePretty ident <+>
+      , fix        = Just $ "either change the type of" <+> prettyIdentName ident <+>
                        "in the specification or change the value provided."
       }
 
@@ -662,7 +662,7 @@ instance MeaningfulError CompileError where
       , problem    = "Mismatch in the type of" <+> prettyResource Parameter ident <> "." <> line <>
                      "Expected something of type" <+> quotePretty Nat <+>
                      "but was provided the value" <+> quotePretty value <> "."
-      , fix        = Just $ "either change the type of" <+> quotePretty ident <+>
+      , fix        = Just $ "either change the type of" <+> prettyIdentName ident <+>
                       "or ensure the value provided is non-negative."
       }
 
@@ -679,7 +679,7 @@ instance MeaningfulError CompileError where
       { provenance = p
       , problem    = unsupportedResourceTypeDescription InferableParameter ident expectedType <>
                      "." <+> "Inferable parameters must be of type 'Nat'."
-      , fix        = Just $ "either change the type of" <+> quotePretty ident <+>
+      , fix        = Just $ "either change the type of" <+> prettyIdentName ident <+>
                      "or make the parameter non-inferable and provide the value manually."
       }
 
@@ -713,7 +713,7 @@ instance MeaningfulError CompileError where
                      "Only the following types are allowed for" <+>
                      quotePretty PropertyAnnotation <> "s:" <> line <>
                        indent 2 (prettyAllowedBuiltins supportedTypes)
-      , fix        = Just $ "either change the type of" <+> squotes (pretty ident) <+>
+      , fix        = Just $ "either change the type of" <+> prettyIdentName ident <+>
                      "to a supported type or remove the" <+>
                      quotePretty PropertyAnnotation <+> "annotation."
       } where supportedTypes = ["Bool", "Vector Bool n", "Tensor Bool ns"]
@@ -725,7 +725,7 @@ instance MeaningfulError CompileError where
     UnsupportedResource target ident p resource ->
       let dType = squotes (pretty resource) in UError $ UserError
       { provenance = p
-      , problem    = "While compiling property" <+> squotes (pretty ident) <+> "to" <+>
+      , problem    = "While compiling property" <+> prettyIdentName ident <+> "to" <+>
                      pretty target <+> "found a" <+> dType <+> "declaration which" <+>
                      "cannot be compiled."
       , fix        = Just $ "remove all" <+> dType <+> "declarations or switch to a" <+>
@@ -734,7 +734,7 @@ instance MeaningfulError CompileError where
 
     UnsupportedAlternatingQuantifiers target (ident, p) q pq pp -> UError $ UserError
       { provenance = p
-      , problem    = "The property" <+> squotes (pretty ident) <+> "contains" <+>
+      , problem    = "The property" <+> prettyIdentName ident <+> "contains" <+>
                      "alternating" <+> quotePretty Forall <+> "and" <+> quotePretty Exists <+>
                      "quantifiers which is not supported by" <+> pretty target <> "." <>
                      line <>
@@ -744,7 +744,7 @@ instance MeaningfulError CompileError where
 
     UnsupportedNonLinearConstraint target (ident, p) p' v1 v2 -> UError $ UserError
       { provenance = p
-      , problem    = "The property" <+> squotes (pretty ident) <+> "contains" <+>
+      , problem    = "The property" <+> prettyIdentName ident <+> "contains" <+>
                      "a non-linear constraint which is not supported by" <+>
                      pretty target <> "." <> line <>
                      "In particular the multiplication at" <+> pretty p' <+>
@@ -758,7 +758,7 @@ instance MeaningfulError CompileError where
 
     UnsupportedVariableType target ident p name t supportedTypes -> UError $ UserError
       { provenance = p
-      , problem    = "Property" <+> quotePretty ident <+> "contains a quantified variable" <+>
+      , problem    = "Property" <+> prettyIdentName ident <+> "contains a quantified variable" <+>
                      quotePretty name <+> "of type" <+>
                      squotes (prettyFriendlyDBClosed t) <+> "which is not currently supported" <+>
                      "by" <+> pretty target <> "."
@@ -768,7 +768,7 @@ instance MeaningfulError CompileError where
 
     UnsupportedInequality target identifier p -> UError $ UserError
       { provenance = p
-      , problem    = "After compilation, property" <+> squotes (pretty identifier) <+>
+      , problem    = "After compilation, property" <+> prettyIdentName identifier <+>
                      "contains a `!=` which is not current supported by" <+>
                      pretty target <> ". "
       , fix        = Just (implementationLimitation (Just 74))
@@ -800,8 +800,7 @@ instance MeaningfulError CompileError where
 
     NoNetworkUsedInProperty target ann ident -> UError $ UserError
       { provenance = provenanceOf ann
-      , problem    = "After normalisation, the property" <+>
-                     squotes (pretty ident) <+>
+      , problem    = "After normalisation, the property" <+> prettyIdentName ident <+>
                      "does not contain any neural networks and" <+>
                      "therefore" <+> pretty target <+> "is the wrong compilation target"
       , fix        = Just "choose a different compilation target than VNNLib"
@@ -809,12 +808,13 @@ instance MeaningfulError CompileError where
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =
-  "change the" <+> feature <+> "of" <+> quotePretty ident <+> "in the specification" <+>
+  "change the" <+> feature <+> "of" <+> prettyIdentName ident <+> "in the specification" <+>
   "or check that" <+> quotePretty (takeFileName file) <+> "is in the format you were expecting."
 
 unsupportedAnnotationTypeDescription :: Annotation -> Identifier -> GluedType -> Doc a
 unsupportedAnnotationTypeDescription annotation ident resourceType =
-  "The type of" <+> pretty annotation <+> squotes (pretty ident) <> ":" <> line <>
+  "The type of" <+> pretty annotation <+>
+  squotes (pretty (nameOf ident :: Text)) <> ":" <> line <>
     indent 2 (prettyFriendlyDBClosed unreducedResourceType) <> line <>
   (if reducedResourceType `alphaEq`  unreducedResourceType
     then ""
@@ -848,7 +848,8 @@ implementationLimitation issue =
       squotes (githubIssues <+> pretty issueNumber) <> "."
 
 prettyResource :: Resource -> Identifier -> Doc a
-prettyResource resourceType ident = pretty resourceType <+> squotes (pretty ident)
+prettyResource resourceType ident =
+  pretty resourceType <+> prettyIdentName ident
 
 prettyBuiltinType :: BuiltinConstructor -> Doc a
 prettyBuiltinType t = article <+> squotes (pretty t)
@@ -960,3 +961,6 @@ prettyUnificationConstraintOriginExpr :: ConstraintContext -> CheckedExpr -> Doc
 prettyUnificationConstraintOriginExpr ctx = \case
   Builtin _ b -> pretty b
   expr        -> prettyFriendlyDB (boundContextOf ctx) expr
+
+prettyIdentName :: Identifier -> Doc a
+prettyIdentName ident = quotePretty (nameOf ident :: Name)

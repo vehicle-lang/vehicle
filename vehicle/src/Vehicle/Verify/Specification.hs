@@ -23,7 +23,7 @@ import Data.Either (partitionEithers)
 import GHC.Generics (Generic)
 
 import Vehicle.Prelude
-import Vehicle.Syntax.AST (Name)
+import Vehicle.Syntax.AST (Identifier)
 
 --------------------------------------------------------------------------------
 -- Negation
@@ -208,7 +208,7 @@ traverseProperty f = \case
 
 -- | A compiled specification, parameterised by the data stored at each query.
 newtype Specification queryData
-  = Specification [(Name, Property queryData)]
+  = Specification [(Identifier, Property queryData)]
 
 
 traverseSpecification :: Monad m
