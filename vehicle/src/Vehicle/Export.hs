@@ -17,8 +17,8 @@ data ExportOptions = ExportOptions
   , moduleName         :: Maybe String
   } deriving (Eq, Show)
 
-export :: VehicleIOSettings -> ExportOptions -> IO ()
-export loggingOptions ExportOptions{..} = do
+export :: LoggingSettings -> ExportOptions -> IO ()
+export loggingSettings ExportOptions{..} = do
   proofCache <- readProofCache proofCacheLocation
   let spec = originalSpec proofCache
   let properties = originalProperties proofCache
@@ -28,5 +28,5 @@ export loggingOptions ExportOptions{..} = do
   case target of
     Agda -> do
       let agdaOptions = AgdaOptions absoluteProofCacheLocation outputFile moduleName
-      agdaCode <- compileToAgda loggingOptions agdaOptions spec properties resources
+      agdaCode <- compileToAgda loggingSettings agdaOptions spec properties resources
       writeAgdaFile outputFile agdaCode

@@ -67,25 +67,13 @@ optionsParser :: Parser Options
 optionsParser = Options
   <$> globalOptionsParser
   <*> modeOptionsParser
-{-
-optionsToArgs :: Options -> [String]
-optionsToArgs Options{..}
-  | version   = ["--version"]
-  | otherwise =
-    maybe [] (\x -> ["--output"]  <> [x])           outFile <>
-    maybe [] (\x -> ["--error"]   <> [x])           errFile <>
-    maybe [] (\x -> ["--logging"] <> maybeToList x) logFile <>
-    (if debugLevel == 1 then [] else ["--loggingLevel"] <> [show debugLevel]) <>
-    modeOptionsToArgs modeOptions
--}
+
 --------------------------------------------------------------------------------
 -- Global
 
 globalOptionsParser :: Parser GlobalOptions
 globalOptionsParser = GlobalOptions
   <$> showVersionParser
-  <*> redirectOutputParser
-  <*> redirectErrorParser
   <*> redirectLogsParser
   <*> loggingLevelParser
 
@@ -98,14 +86,7 @@ modeOptionsParser = optional $ hsubparser $
   command "verify"  (info (Verify  <$> verifyParser)  verifyDescription)  <>
   command "check"   (info (Check   <$> checkParser)   checkDescription)   <>
   command "export"  (info (Export  <$> exportParser)  exportDescription)
-{-
-modeOptionsToArgs :: ModeOptions -> [String]
-modeOptionsToArgs = \case
-  Compile opts -> ["compile"] <> compileOptionsToArgs opts
-  Verify  opts -> ["verify"]  <> _ --verifyOptionsToArgs  opts
-  Check   opts -> ["check"]   <> _ --checkOptionsToArgs   opts
-  Export  opts -> ["export"]  <> _ --exportOptionsToArgs  opts
--}
+
 --------------------------------------------------------------------------------
 -- Compile mode
 
@@ -123,19 +104,7 @@ compileParser = CompileOptions
   <*> outputFileParser
   <*> modulePrefixOption
   <*> compileProofCacheParser
-{-
-compileOptionsToArgs :: CompileOptions -> [String]
-compileOptionsToArgs CompileOptions{..} =
-  ["--target"]        <> [show target] <>
-  ["--specification"] <> [show specification] <>
-  concatMap (\x -> ["--declaration"] <> [show x]) declarationsToCompile <>
-  concatMap (\x -> ["--network"]     <> [x])      networkLocations <>
-  concatMap (\x -> ["--dataset"]     <> [x])      datasetLocations <>
-  concatMap (\x -> ["--parameter"]   <> [x])      parameterValues <>
-  maybe []  (\x -> ["--outputFile"]  <> [x])      outputFile <>
-  maybe []  (\x -> ["--moduleName"]  <> [x])      moduleName <>
-  maybe []  (\x -> ["--proofCache"]  <> [x])      proofCache
--}
+
 --------------------------------------------------------------------------------
 -- Verify mode
 
@@ -211,20 +180,6 @@ showVersionParser = switch $
   long  "version" <>
   short 'V' <>
   help  "Show version information."
-
-redirectOutputParser :: Parser (Maybe FilePath)
-redirectOutputParser = optional $ strOption $
-  long    "redirectOutput" <>
-  metavar "FILE" <>
-  help    "Redirects output to the provided file. \
-         \ If no argument is provided will default to stdout."
-
-redirectErrorParser :: Parser (Maybe FilePath)
-redirectErrorParser = optional $ strOption $
-  long    "redirectError" <>
-  metavar "FILE" <>
-  help    "Redirects error to the provided file. \
-         \ If no argument is provided will default to stderr."
 
 redirectLogsParser :: Parser (Maybe FilePath)
 redirectLogsParser = optional $ strOption $

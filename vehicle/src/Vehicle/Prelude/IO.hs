@@ -1,5 +1,5 @@
 module Vehicle.Prelude.IO
-  ( VehicleIOSettings(..)
+  ( LoggingSettings(..)
   , fromLoggedIO
   , fromLoggerTIO
   , outputErrorAndQuit
@@ -15,32 +15,31 @@ import Data.Text.IO as T (hPutStrLn)
 import Prettyprinter (Doc)
 import System.Directory (removeFile)
 import System.Exit (exitFailure)
-import System.IO (Handle, hPrint)
+import System.IO (Handle, hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
+
 import Vehicle.Prelude.Logging (LoggerT, LoggingLevel, Message,
                                 MonadLogger (logMessage), runLoggerT)
 import Vehicle.Syntax.Prelude (layoutAsText)
 
-data VehicleIOSettings = VehicleIOSettings
-  { errorHandle  :: Handle
-  , outputHandle :: Handle
-  , logHandle    :: Handle
+data LoggingSettings = LoggingSettings
+  { logHandle    :: Handle
   , loggingLevel :: LoggingLevel
   }
 
-fromLoggedIO :: MonadIO m => VehicleIOSettings -> LoggerT m a -> m a
-fromLoggedIO VehicleIOSettings{..} = flushLogger loggingLevel logHandle
+fromLoggedIO :: MonadIO m => LoggingSettings -> LoggerT m a -> m a
+fromLoggedIO LoggingSettings{..} = flushLogger loggingLevel logHandle
 
-fromLoggerTIO :: VehicleIOSettings -> LoggerT IO a -> IO a
-fromLoggerTIO options@VehicleIOSettings{..} logger = do
+fromLoggerTIO :: LoggingSettings -> LoggerT IO a -> IO a
+fromLoggerTIO options@LoggingSettings{..} logger = do
   (v, messages) <- runLoggerT loggingLevel logger
   fromLoggedIO options $ do
     forM_ messages logMessage
     return v
 
-outputErrorAndQuit :: VehicleIOSettings -> Doc b -> IO a
-outputErrorAndQuit VehicleIOSettings{..} message= do
-  T.hPutStrLn errorHandle $ layoutAsText message
+outputErrorAndQuit :: Doc b -> IO a
+outputErrorAndQuit message= do
+  T.hPutStrLn stderr $ layoutAsText message
   exitFailure
 
 flushLogger :: MonadIO m => LoggingLevel -> Handle -> LoggerT m a -> m a
@@ -63,10 +62,10 @@ removeFileIfExists fileName = removeFile fileName `catch` handleExists
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
 
-fatalError :: MonadIO m => VehicleIOSettings -> Doc a -> m b
-fatalError VehicleIOSettings{..} message = liftIO $ do
-  hPrint errorHandle message
+fatalError :: MonadIO m => Doc a -> m b
+fatalError message = liftIO $ do
+  hPrint stderr message
   exitFailure
 
-programOutput :: MonadIO m => VehicleIOSettings -> Doc a -> m ()
-programOutput VehicleIOSettings{..} message = liftIO $ hPrint outputHandle message
+programOutput :: MonadIO m => Doc a -> m ()
+programOutput message = liftIO $ print message

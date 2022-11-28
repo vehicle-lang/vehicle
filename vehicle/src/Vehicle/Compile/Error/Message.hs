@@ -58,16 +58,17 @@ fixText t = "Fix:" <+> t
 --------------------------------------------------------------------------------
 -- IO
 
-fromEitherIO :: MonadIO m => VehicleIOSettings -> Either CompileError a -> m a
-fromEitherIO loggingOptions = \case
-  Left  err -> fatalError loggingOptions $ pretty $ details err
+fromEitherIO :: MonadIO m => Either CompileError a -> m a
+fromEitherIO = \case
+  Left  err -> fatalError $ pretty $ details err
   Right val -> return val
 
 fromLoggedEitherIO :: MonadIO m
-                   => VehicleIOSettings
+                   => LoggingSettings
                    -> ExceptT CompileError (LoggerT m) a
                    -> m a
-fromLoggedEitherIO loggingOptions x = fromEitherIO loggingOptions =<< fromLoggedIO loggingOptions (logCompileError x)
+fromLoggedEitherIO loggingSettings x =
+  fromEitherIO =<< fromLoggedIO loggingSettings (logCompileError x)
 
 logCompileError :: Monad m
                 => ExceptT CompileError (LoggerT m) a
