@@ -8,6 +8,8 @@ import Data.Version (Version)
 import GHC.Generics (Generic)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
+import System.FilePath (dropExtension)
+
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Specification.Status (SpecificationStatus)
 
@@ -26,7 +28,9 @@ instance FromJSON ProofCache
 instance ToJSON ProofCache
 
 writeProofCache :: MonadIO m => FilePath -> ProofCache -> m ()
-writeProofCache file status = liftIO $ ByteString.writeFile file (encodePretty status)
+writeProofCache file status = do
+  let filepath = dropExtension file <> vehicleProofCacheFileExtension
+  liftIO $ ByteString.writeFile filepath (encodePretty status)
 
 readProofCache :: FilePath -> IO ProofCache
 readProofCache file = do

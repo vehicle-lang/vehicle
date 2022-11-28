@@ -20,7 +20,7 @@ import Vehicle.Check (CheckOptions (..))
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.Prelude (LoggingLevel, defaultLoggingLevel, enumerate,
-                        loggingLevelHelp, supportedOptions)
+                        loggingLevelHelp, supportedOptions, vehicleFileExtension)
 import Vehicle.Verify (VerifierIdentifier, VerifyOptions (..))
 
 --------------------------------------------------------------------------------
@@ -91,7 +91,8 @@ modeOptionsParser = optional $ hsubparser $
 -- Compile mode
 
 compileDescription :: InfoMod ModeOptions
-compileDescription = progDesc "Compile a .vcl file to an output target"
+compileDescription = progDesc $
+  "Compile a " <> vehicleFileExtension <> " file to an output target"
 
 compileParser :: Parser CompileOptions
 compileParser = CompileOptions
@@ -200,7 +201,7 @@ specificationParser = strOption $
   long    "specification" <>
   short   's' <>
   metavar "FILE" <>
-  help    "The .vcl file containing the specification."
+  help    ("The " <> vehicleFileExtension <> " file containing the specification.")
 
 networkParser :: Parser (Map Text FilePath)
 networkParser = resourceOption $

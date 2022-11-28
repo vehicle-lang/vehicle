@@ -1,5 +1,16 @@
 module Vehicle.Prelude.IO
+<<<<<<< HEAD
   ( removeFileIfExists
+=======
+  ( vehicleFileExtension
+  , vehicleInterfaceFileExtension
+  , vehicleProofCacheFileExtension
+  , VehicleIOSettings(..)
+  , fromLoggedIO
+  , fromLoggerTIO
+  , outputErrorAndQuit
+  , removeFileIfExists
+>>>>>>> Add interface files to cache type-checking
   , fatalError
   , programOutput
   ) where
@@ -13,10 +24,35 @@ import System.Exit (exitFailure)
 import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
 
+<<<<<<< HEAD
 {-
 fromLoggerTIO :: LoggingSettings -> ImmediateLogger a -> IO a
 fromLoggerTIO options@LoggingSettings{..} logger = do
   (v, messages) <- runLogger loggingLevel logger
+=======
+vehicleFileExtension :: String
+vehicleFileExtension = ".vcl"
+
+vehicleInterfaceFileExtension :: String
+vehicleInterfaceFileExtension = vehicleFileExtension <> "i"
+
+vehicleProofCacheFileExtension :: String
+vehicleProofCacheFileExtension = vehicleFileExtension <> "p"
+
+data VehicleIOSettings = VehicleIOSettings
+  { errorHandle  :: Handle
+  , outputHandle :: Handle
+  , logHandle    :: Handle
+  , loggingLevel :: LoggingLevel
+  }
+
+fromLoggedIO :: MonadIO m => VehicleIOSettings -> LoggerT m a -> m a
+fromLoggedIO VehicleIOSettings{..} = flushLogger loggingLevel logHandle
+
+fromLoggerTIO :: VehicleIOSettings -> LoggerT IO a -> IO a
+fromLoggerTIO options@VehicleIOSettings{..} logger = do
+  (v, messages) <- runLoggerT loggingLevel logger
+>>>>>>> Add interface files to cache type-checking
   fromLoggedIO options $ do
     forM_ messages logMessage
     return v

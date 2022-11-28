@@ -36,11 +36,11 @@ commandLineParserTests = testGroup "CommandLineParser"
         }
 
   , parserTest "checkMode"
-    "vehicle check --proofCache mpc.vpcl" $
+    "vehicle check --proofCache mpc.vclp" $
       Options
       { globalOptions = defaultGlobalOptions
       , modeOptions  = Just $ Check $ CheckOptions
-        { proofCache = "mpc.vpcl"
+        { proofCache = "mpc.vclp"
         }
       }
 
