@@ -4,12 +4,10 @@ module Vehicle.Test.Unit.Compile.CommandLine
 
 import Data.Map qualified as Map (fromList)
 import Data.Set qualified as Set
-import Options.Applicative (ParserResult (CompletionInvoked, Failure, Success),
-                            defaultPrefs, execParserPure)
+import Options.Applicative (ParserResult(..), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
-import Vehicle (GlobalOptions (errFile, logFile, loggingLevel, outFile),
-                ModeOptions (Check, Verify), Options (..), defaultGlobalOptions)
+import Vehicle (GlobalOptions(..), ModeOptions(..), Options (..), defaultGlobalOptions)
 import Vehicle.Check (CheckOptions (..))
 import Vehicle.CommandLine (commandLineOptionsParserInfo)
 import Vehicle.Prelude (LoggingLevel (MinDetail), Pretty (pretty), indent,
@@ -19,25 +17,7 @@ import Vehicle.Verify.Core (VerifierIdentifier (..))
 
 commandLineParserTests :: TestTree
 commandLineParserTests = testGroup "CommandLineParser"
-  [ parserTest "redirectOutput"
-      "vehicle --redirectOutput myLogs/test.txt" $
-        Options
-        { globalOptions = defaultGlobalOptions
-          { outFile      = Just "myLogs/test.txt"
-          }
-        , modeOptions  = Nothing
-        }
-
-  , parserTest "redirectError"
-      "vehicle --redirectError myLogs/test.txt" $
-        Options
-        { globalOptions = defaultGlobalOptions
-          { errFile      = Just "myLogs/test.txt"
-          }
-        , modeOptions  = Nothing
-        }
-
-  , parserTest "redirectLogs"
+  [  parserTest "redirectLogs"
       "vehicle --redirectLogs myLogs/test.txt" $
         Options
         { globalOptions = defaultGlobalOptions

@@ -19,15 +19,15 @@ newtype CheckOptions = CheckOptions
   { proofCache :: FilePath
   } deriving (Eq, Show)
 
-check :: VehicleIOSettings -> CheckOptions -> IO ()
-check loggingOptions checkOptions = fromLoggerTIO loggingOptions $ do
+check :: LoggingSettings -> CheckOptions -> IO ()
+check loggingSettings checkOptions = fromLoggerTIO loggingSettings $ do
   -- If the user has specificied no logging target for check mode then
   -- default to command-line.
-  status <- checkStatus loggingOptions checkOptions
-  programOutput loggingOptions $ pretty status
+  status <- checkStatus checkOptions
+  programOutput $ pretty status
 
-checkStatus :: VehicleIOSettings -> CheckOptions -> LoggerT IO CheckResult
-checkStatus _loggingOptions CheckOptions{..} = do
+checkStatus :: CheckOptions -> LoggerT IO CheckResult
+checkStatus CheckOptions{..} = do
   ProofCache{..} <- liftIO $ readProofCache proofCache
   (missingNetworks, alteredNetworks) <- checkResourceIntegrity resourceSummaries
   return $ case (missingNetworks, alteredNetworks, isVerified status) of

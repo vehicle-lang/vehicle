@@ -13,7 +13,6 @@ import Data.Map qualified as Map
 import Data.Text (unpack)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (dropExtension, (<.>), (</>))
-import System.IO (hPrint)
 import System.IO.Temp (withSystemTempDirectory)
 
 import Vehicle.Backend.Prelude (Backend (..), writeResultToFile)
@@ -48,12 +47,11 @@ writeSpecificationFiles Verifier{..} folder (Specification properties) = do
     return ()
 
 -- | Outputs the specification to IO
-outputSpecification :: VehicleIOSettings
-                    -> Specification QueryData
+outputSpecification :: Specification QueryData
                     -> IO ()
-outputSpecification loggingOptions (Specification properties) = do
+outputSpecification (Specification properties) = do
   let doc = vsep2 (fmap goProperty properties)
-  hPrint (outputHandle loggingOptions) (layoutAsString doc)
+  programOutput doc
   where
     goProperty :: (Identifier, Property QueryData) -> Doc ()
     goProperty (ident, property) = do
