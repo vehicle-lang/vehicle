@@ -30,21 +30,21 @@ data VerifyOptions = VerifyOptions
   , proofCache       :: Maybe FilePath
   } deriving (Eq, Show)
 
-verify :: VehicleIOSettings -> VerifyOptions -> IO ()
-verify loggingOptions VerifyOptions{..} = do
+verify :: LoggingSettings -> VerifyOptions -> IO ()
+verify loggingSettings VerifyOptions{..} = do
   let verifierImpl = verifiers verifier
   verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
 
   let resources = Resources networkLocations datasetLocations parameterValues
 
-  uncompiledSpecification <- readSpecification loggingOptions specification
+  uncompiledSpecification <- readSpecification specification
 
-  compiledSpecification <- fromLoggerTIO loggingOptions $ do
-    liftIO $ compileToVerifier loggingOptions uncompiledSpecification properties resources verifierImpl
+  compiledSpecification <- fromLoggerTIO loggingSettings $ do
+    liftIO $ compileToVerifier loggingSettings uncompiledSpecification properties resources verifierImpl
 
   status <- verifySpecification verifierImpl verifierExecutable networkLocations compiledSpecification
 
-  programOutput loggingOptions $ pretty status
+  programOutput $ pretty status
 
   resourceSummaries <- liftIO $ hashResources resources
   case proofCache of

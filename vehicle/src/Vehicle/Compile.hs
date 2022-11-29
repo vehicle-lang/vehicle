@@ -14,8 +14,6 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Data.Set (Set)
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
-import System.Exit (exitFailure)
-import System.IO (hPutStrLn)
 
 import Control.Monad.Except (MonadError (..), runExcept)
 import Vehicle.Backend.Agda
@@ -50,78 +48,77 @@ data CompileOptions = CompileOptions
   , proofCache            :: Maybe FilePath
   } deriving (Eq, Show)
 
-compile :: VehicleIOSettings -> CompileOptions -> IO ()
-compile loggingOptions CompileOptions{..} = do
+compile :: LoggingSettings -> CompileOptions -> IO ()
+compile loggingSettings CompileOptions{..} = do
   let resources = Resources networkLocations datasetLocations parameterValues
-  spec <- readSpecification loggingOptions specification
+  spec <- readSpecification specification
   case target of
     TypeCheck -> do
-      _ <- fromLoggedEitherIO loggingOptions $ typeCheckProg spec declarationsToCompile
+      _ <- fromLoggedEitherIO loggingSettings $ typeCheckProg spec declarationsToCompile
       return ()
 
     ITP Agda -> do
       let agdaOptions = AgdaOptions proofCache outputFile moduleName
-      agdaCode <- compileToAgda loggingOptions agdaOptions spec declarationsToCompile resources
+      agdaCode <- compileToAgda loggingSettings agdaOptions spec declarationsToCompile resources
       writeAgdaFile outputFile agdaCode
 
     VerifierBackend verifierIdentifier -> do
       let verifier = verifiers verifierIdentifier
-      compiledSpecification <- compileToVerifier loggingOptions spec declarationsToCompile resources verifier
+      compiledSpecification <- compileToVerifier loggingSettings spec declarationsToCompile resources verifier
       case outputFile of
-        Nothing     -> outputSpecification loggingOptions compiledSpecification
+        Nothing     -> outputSpecification compiledSpecification
         Just folder -> writeSpecificationFiles verifier folder compiledSpecification
 
     LossFunction differentiableLogic -> do
-      lossFunction <- compileToLossFunction loggingOptions spec declarationsToCompile resources differentiableLogic
+      lossFunction <- compileToLossFunction loggingSettings spec declarationsToCompile resources differentiableLogic
       writeLossFunctionFiles outputFile differentiableLogic lossFunction
 
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
 
-compileToVerifier :: VehicleIOSettings
+compileToVerifier :: LoggingSettings
                   -> SpecificationText
                   -> PropertyNames
                   -> Resources
                   -> Verifier
                   -> IO (Specification QueryData)
-compileToVerifier loggingOptions spec properties resources verifier =
-  fromLoggedEitherIO loggingOptions $ do
+compileToVerifier loggingSettings spec properties resources verifier =
+  fromLoggedEitherIO loggingSettings $ do
     (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec properties resources
     compileToQueries verifier prog propertyCtx networkCtx
 
 
-compileToLossFunction :: VehicleIOSettings
+compileToLossFunction :: LoggingSettings
                       -> SpecificationText
                       -> DeclarationNames
                       -> Resources
                       -> DifferentiableLogic
                       -> IO [LDecl]
-compileToLossFunction loggingOptions spec declarationsToCompile resources differentiableLogic = do
-  fromLoggedEitherIO loggingOptions $ do
+compileToLossFunction loggingSettings spec declarationsToCompile resources differentiableLogic = do
+  fromLoggedEitherIO loggingSettings $ do
     (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec declarationsToCompile resources
     LossFunction.compile differentiableLogic prog propertyCtx networkCtx
 
-compileToAgda :: VehicleIOSettings
+compileToAgda :: LoggingSettings
               -> AgdaOptions
               -> SpecificationText
               -> PropertyNames
               -> Resources
               -> IO (Doc a)
-compileToAgda loggingOptions agdaOptions spec properties _resources =
-  fromLoggedEitherIO loggingOptions $ do
+compileToAgda loggingSettings agdaOptions spec properties _resources =
+  fromLoggedEitherIO loggingSettings $ do
     (prog, propertyCtx, _) <- typeCheckProg spec properties
     compileProgToAgda (fmap unnormalised prog) propertyCtx agdaOptions
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply multiple compiler passes
 
-readSpecification :: MonadIO m => VehicleIOSettings -> FilePath -> m SpecificationText
-readSpecification VehicleIOSettings{..} inputFile = do
-  liftIO $ TIO.readFile inputFile `catch` \ (e :: IOException) -> do
-    hPutStrLn errorHandle $
-      "Error occured while reading input file: \n  " <> show e
-    exitFailure
+readSpecification :: MonadIO m => FilePath -> m SpecificationText
+readSpecification inputFile = do
+  liftIO $ TIO.readFile inputFile `catch` \ (e :: IOException) ->
+    outputErrorAndQuit $ "Error occured while reading input file:" <+> line <>
+      indent 2 (pretty (show e))
 
 parseAndTypeCheckExpr :: MonadCompile m => Text -> m CheckedExpr
 parseAndTypeCheckExpr expr = do
