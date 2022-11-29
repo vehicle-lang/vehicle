@@ -160,6 +160,9 @@ library
     Vehicle.Compile.Type.VariableContext
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging
+    Vehicle.Prelude.Logging.Backend
+    Vehicle.Prelude.Logging.Class
+    Vehicle.Prelude.Logging.Instance
     Vehicle.Prelude.Misc
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply

@@ -39,7 +39,7 @@ verify loggingSettings VerifyOptions{..} = do
 
   uncompiledSpecification <- readSpecification specification
 
-  compiledSpecification <- fromLoggerTIO loggingSettings $ do
+  compiledSpecification <- runCompileMonad loggingSettings $ do
     liftIO $ compileToVerifier loggingSettings uncompiledSpecification properties resources verifierImpl
 
   status <- verifySpecification verifierImpl verifierExecutable networkLocations compiledSpecification
