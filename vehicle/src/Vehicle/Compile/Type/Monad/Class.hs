@@ -124,16 +124,6 @@ instance MonadTypeChecker m => MonadTypeChecker (StateT s m) where
   putMetaCtx = lift . putMetaCtx
   modifyMetaCtx = lift . modifyMetaCtx
 
-{-
-instance MonadTypeChecker m => MonadTypeChecker (LoggerT m) where
-  getDeclContext = lift getDeclContext
-  addDeclContext d = mapLoggerT (addDeclContext d)
-  getMetaCtx = lift getMetaCtx
-  getsMetaCtx = lift . getsMetaCtx
-  putMetaCtx = lift . putMetaCtx
-  modifyMetaCtx = lift . modifyMetaCtx
--}
-
 --------------------------------------------------------------------------------
 -- Operations
 
@@ -467,7 +457,7 @@ addConstraints newConstraints = do
 whnf :: MonadTypeChecker m => CheckedExpr -> m CheckedExpr
 whnf e = do
   declCtx <- getDeclContext
-  discardLoggerT $ normalise e Options
+  runSilentLoggerT $ normalise e Options
     { declContext                 = toNormalisationDeclContext declCtx
     , boundContext                = mempty -- see issue #129
     , normaliseDeclApplications   = True

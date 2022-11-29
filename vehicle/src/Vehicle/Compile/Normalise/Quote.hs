@@ -80,15 +80,15 @@ extendEnv value boundCtx = value : fmap (liftFreeDBIndicesNorm 1) boundCtx
 class Quote a b where
   quote :: MonadCompile m => a -> m b
 
-  -- | Converts from a normalised representation to an unnormalised representation.
-  -- Do not call except for logging and debug purposes, very expensive with nested
-  -- lambdas.
-  unnormalise :: a -> b
-  unnormalise e = do
-    let r = discardLogger $ runExceptT (quote e)
-    case r of
-      Left err -> developerError $ "Error thrown while unquoting" <+> pretty (show err)
-      Right v  -> v
+-- | Converts from a normalised representation to an unnormalised representation.
+-- Do not call except for logging and debug purposes, very expensive with nested
+-- lambdas.
+unnormalise :: forall a b . Quote a b => a -> b
+unnormalise e = do
+  let r = runSilentLogger $ runExceptT (quote e)
+  case r of
+    Left err -> developerError $ "Error thrown while unquoting" <+> pretty (show err)
+    Right v  -> v
 
 instance Quote NormExpr CheckedExpr where
   quote = \case

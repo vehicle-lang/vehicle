@@ -18,7 +18,7 @@ import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
 import Vehicle.Compile.Prelude
 
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Resource
 import Vehicle.Expr.Normalised (GluedDecl, GluedExpr (..), GluedProg)
 

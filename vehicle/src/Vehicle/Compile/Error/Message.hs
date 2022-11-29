@@ -2,12 +2,9 @@ module Vehicle.Compile.Error.Message
   ( UserError(..)
   , VehicleError(..)
   , MeaningfulError(..)
-  , fromLoggedEitherIO
   , logCompileError
   ) where
 
-import Control.Monad.Except (ExceptT, runExceptT)
-import Control.Monad.IO.Class (MonadIO (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text, pack)
 import Prettyprinter (list)
@@ -22,6 +19,7 @@ import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (..))
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Parse (ParseError (..))
+import Control.Monad.Except (ExceptT, runExceptT)
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -55,24 +53,9 @@ instance Pretty VehicleError where
 fixText :: Doc ann -> Doc ann
 fixText t = "Fix:" <+> t
 
---------------------------------------------------------------------------------
--- IO
-
-fromEitherIO :: MonadIO m => Either CompileError a -> m a
-fromEitherIO = \case
-  Left  err -> fatalError $ pretty $ details err
-  Right val -> return val
-
-fromLoggedEitherIO :: MonadIO m
-                   => LoggingSettings
-                   -> ExceptT CompileError (LoggerT m) a
-                   -> m a
-fromLoggedEitherIO loggingSettings x =
-  fromEitherIO =<< fromLoggedIO loggingSettings (logCompileError x)
-
-logCompileError :: Monad m
-                => ExceptT CompileError (LoggerT m) a
-                -> LoggerT m (Either CompileError a)
+logCompileError :: MonadLogger m
+                => ExceptT CompileError m a
+                -> m (Either CompileError a)
 logCompileError x = do
   e' <- runExceptT x
   case e' of
