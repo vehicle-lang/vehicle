@@ -4,6 +4,10 @@
 
 * Added tested support for GHC 8.10, 9.2 and 9.4
 
+* Vehile now generates interface files with the `.vcli` extension that cache
+  the results of type-checking. If the interface file exists and the hash matches
+  then it won't re-type check the original file.
+
 * Improved the performance of type-checking by a factor of ~2.
 
 * Improved error messages which involved type-synonyms, which now display
