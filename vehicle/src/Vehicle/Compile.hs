@@ -7,15 +7,16 @@ module Vehicle.Compile
   , typeCheckExpr
   , parseAndTypeCheckExpr
   , readSpecification
+  , runCompileMonad
   ) where
 
+import Control.Monad.Except ( ExceptT, MonadError(..), runExcept)
 import Control.Exception (IOException, catch)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Set (Set)
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
 
-import Control.Monad.Except (MonadError (..), runExcept)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction (LDecl, writeLossFunctionFiles)
 import Vehicle.Backend.LossFunction qualified as LossFunction
@@ -26,7 +27,6 @@ import Vehicle.Compile.Error.Message
 import Vehicle.Compile.ExpandResources
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Queries (QueryData, compileToQueries)
-import Vehicle.Compile.Resource
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
 import Vehicle.Expr.Normalised
@@ -54,7 +54,7 @@ compile loggingSettings CompileOptions{..} = do
   spec <- readSpecification specification
   case target of
     TypeCheck -> do
-      _ <- fromLoggedEitherIO loggingSettings $ typeCheckProg spec declarationsToCompile
+      _ <- runCompileMonad loggingSettings $ typeCheckProg spec declarationsToCompile
       return ()
 
     ITP Agda -> do
@@ -84,9 +84,10 @@ compileToVerifier :: LoggingSettings
                   -> Verifier
                   -> IO (Specification QueryData)
 compileToVerifier loggingSettings spec properties resources verifier =
-  fromLoggedEitherIO loggingSettings $ do
-    (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec properties resources
-    compileToQueries verifier prog propertyCtx networkCtx
+  runCompileMonad loggingSettings $ do
+    (typedProg, propertyCtx) <- typeCheckProg spec properties
+    (networkCtx, finalProg) <- expandResources resources True typedProg
+    compileToQueries verifier finalProg propertyCtx networkCtx
 
 
 compileToLossFunction :: LoggingSettings
@@ -96,9 +97,10 @@ compileToLossFunction :: LoggingSettings
                       -> DifferentiableLogic
                       -> IO [LDecl]
 compileToLossFunction loggingSettings spec declarationsToCompile resources differentiableLogic = do
-  fromLoggedEitherIO loggingSettings $ do
-    (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec declarationsToCompile resources
-    LossFunction.compile differentiableLogic prog propertyCtx networkCtx
+  runCompileMonad loggingSettings $ do
+    (typedProg, propertyCtx) <- typeCheckProg spec declarationsToCompile
+    (networkCtx, finalProg) <- expandResources resources True typedProg
+    LossFunction.compile differentiableLogic finalProg propertyCtx networkCtx
 
 compileToAgda :: LoggingSettings
               -> AgdaOptions
@@ -107,8 +109,8 @@ compileToAgda :: LoggingSettings
               -> Resources
               -> IO (Doc a)
 compileToAgda loggingSettings agdaOptions spec properties _resources =
-  fromLoggedEitherIO loggingSettings $ do
-    (prog, propertyCtx, _) <- typeCheckProg spec properties
+  runCompileMonad loggingSettings $ do
+    (prog, propertyCtx) <- typeCheckProg spec properties
     compileProgToAgda (fmap unnormalised prog) propertyCtx agdaOptions
 
 --------------------------------------------------------------------------------
@@ -117,7 +119,7 @@ compileToAgda loggingSettings agdaOptions spec properties _resources =
 readSpecification :: MonadIO m => FilePath -> m SpecificationText
 readSpecification inputFile = do
   liftIO $ TIO.readFile inputFile `catch` \ (e :: IOException) ->
-    outputErrorAndQuit $ "Error occured while reading input file:" <+> line <>
+    fatalError $ "Error occured while reading input file:" <+> line <>
       indent 2 (pretty (show e))
 
 parseAndTypeCheckExpr :: MonadCompile m => Text -> m CheckedExpr
@@ -132,26 +134,13 @@ parseAndTypeCheckExpr expr = do
 typeCheckProg :: MonadCompile m
               => SpecificationText
               -> DeclarationNames
-              -> m (GluedProg, PropertyContext, DependencyGraph)
+              -> m (GluedProg, PropertyContext)
 typeCheckProg spec declarationsToCompile = do
   (vehicleProg, uncheckedPropertyCtx) <- parseProgText spec
   (scopedProg, dependencyGraph) <- scopeCheck vehicleProg
   prunedProg <- analyseDependenciesAndPrune scopedProg uncheckedPropertyCtx dependencyGraph declarationsToCompile
   (typedProg, propertyContext) <- typeCheck prunedProg uncheckedPropertyCtx
-  return (typedProg, propertyContext, dependencyGraph)
-
--- | Parses, expands parameters and datasets, type-checks and then
--- checks the network types from disk. Used during compilation to
--- verification queries.
-typeCheckProgAndLoadResources :: (MonadIO m, MonadCompile m)
-                              => SpecificationText
-                              -> DeclarationNames
-                              -> Resources
-                              -> m (CheckedProg, PropertyContext, NetworkContext, DependencyGraph)
-typeCheckProgAndLoadResources spec declarationsToCompile resources = do
-  (typedProg, propertyCtx, depGraph) <- typeCheckProg spec declarationsToCompile
-  (networkCtx, finalProg) <- expandResources resources True typedProg
-  return (finalProg, propertyCtx, networkCtx, depGraph)
+  return (typedProg, propertyContext)
 
 parseExprText :: MonadCompile m => Text -> m InputExpr
 parseExprText txt =
@@ -166,3 +155,15 @@ parseProgText txt = do
     Right (prog, properties) -> case traverse parseExpr prog of
       Left err    -> throwError $ ParseError err
       Right prog' -> return (prog', properties)
+
+runCompileMonad :: MonadIO m
+                => LoggingSettings
+                -> ExceptT CompileError (ImmediateLoggerT m) a
+                -> m a
+runCompileMonad loggingSettings x =
+  fromEitherIO =<< runImmediateLogger loggingSettings (logCompileError x)
+
+fromEitherIO :: MonadIO m => Either CompileError a -> m a
+fromEitherIO = \case
+  Left  err -> fatalError $ pretty $ details err
+  Right val -> return val

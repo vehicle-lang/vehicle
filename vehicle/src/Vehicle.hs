@@ -59,7 +59,7 @@ run Options{..} = do
 
   bracket acquireHandles releaseHandles $ \ioSettings ->
     case modeOptions of
-      Nothing   -> outputErrorAndQuit
+      Nothing   -> fatalError
         "No mode provided. Please use one of 'compile', 'verify', 'check', 'export'"
       Just mode -> case mode of
         Compile options -> compile ioSettings options

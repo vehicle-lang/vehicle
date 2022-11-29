@@ -20,13 +20,13 @@ newtype CheckOptions = CheckOptions
   } deriving (Eq, Show)
 
 check :: LoggingSettings -> CheckOptions -> IO ()
-check loggingSettings checkOptions = fromLoggerTIO loggingSettings $ do
+check loggingSettings checkOptions = runImmediateLogger loggingSettings $ do
   -- If the user has specificied no logging target for check mode then
   -- default to command-line.
   status <- checkStatus checkOptions
   programOutput $ pretty status
 
-checkStatus :: CheckOptions -> LoggerT IO CheckResult
+checkStatus :: CheckOptions -> ImmediateLoggerT IO CheckResult
 checkStatus CheckOptions{..} = do
   ProofCache{..} <- liftIO $ readProofCache proofCache
   (missingNetworks, alteredNetworks) <- checkResourceIntegrity resourceSummaries
@@ -46,15 +46,18 @@ getResourceStatus ResourceSummary{..} = do
       | fileHash /= newHash -> Altered
       | otherwise           -> Unchanged
 
-checkResourceIntegrity :: [ResourceSummary] -> LoggerT IO ([ResourceSummary], [ResourceSummary])
-checkResourceIntegrity []       = return ([], [])
-checkResourceIntegrity (r : rs) = do
-  (missing, altered) <- checkResourceIntegrity rs
-  resourceStatus <- liftIO (getResourceStatus r)
-  return $ case resourceStatus of
-    Unchanged -> (missing, altered)
-    Altered   -> (missing, r : altered)
-    Missing   -> (r : missing, altered)
+checkResourceIntegrity :: (MonadLogger m, MonadIO m)
+                       => [ResourceSummary]
+                       -> m ([ResourceSummary], [ResourceSummary])
+checkResourceIntegrity = \case
+  []       -> return ([], [])
+  (r : rs) -> do
+    (missing, altered) <- checkResourceIntegrity rs
+    resourceStatus <- liftIO (getResourceStatus r)
+    return $ case resourceStatus of
+      Unchanged -> (missing, altered)
+      Altered   -> (missing, r : altered)
+      Missing   -> (r : missing, altered)
 
 
 data ResourceStatus

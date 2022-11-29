@@ -14,14 +14,13 @@ import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Options (IsOption (..), OptionDescription (Option))
 import Text.Read (readMaybe)
 import Vehicle.Compile.Error (CompileError, MonadCompile)
-import Vehicle.Compile.Error.Message (MeaningfulError (details),
-                                      logCompileError)
+import Vehicle.Compile.Error.Message (MeaningfulError (details), logCompileError)
 import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude (Builtin (TypeClassOp), CheckedExpr, Expr (..),
                                 ExprF (..), LoggingLevel, normApp)
-import Vehicle.Prelude (Logger, LoggingLevel (..), Pretty (pretty),
+import Vehicle.Prelude (DelayedLogger, runDelayedLogger, LoggingLevel (..), Pretty (pretty),
                         defaultLoggingLevel, developerError, loggingLevelHelp,
-                        runLogger, showMessages)
+                        showMessages)
 
 vehicleLoggingIngredient :: Ingredient
 vehicleLoggingIngredient =
@@ -43,14 +42,14 @@ instance IsOption LoggingLevel where
 --------------------------------------------------------------------------------
 -- Test settings monad
 
-unitTestCase :: String -> ExceptT CompileError Logger Assertion -> TestTree
+unitTestCase :: String -> ExceptT CompileError DelayedLogger Assertion -> TestTree
 unitTestCase testName e =
   askOption $ \logLevel -> testCase testName (traceLogs logLevel e)
   where
-    traceLogs :: LoggingLevel -> ExceptT CompileError Logger a -> a
+    traceLogs :: LoggingLevel -> ExceptT CompileError DelayedLogger a -> a
     traceLogs logLevel e = do
       let e' = logCompileError e
-      let (v, logs) = runLogger logLevel e'
+      let (v, logs) = runDelayedLogger logLevel e'
       let result = if null logs then v else trace (showMessages logs) v
       case result of
         Left  x -> developerError $ pretty $ details x
