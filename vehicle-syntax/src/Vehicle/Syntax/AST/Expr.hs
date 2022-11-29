@@ -7,6 +7,7 @@ import Control.DeepSeq (NFData)
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 
@@ -32,6 +33,8 @@ data Universe
 
 instance NFData   Universe
 instance Hashable Universe
+instance ToJSON   Universe
+instance FromJSON Universe
 
 instance Pretty Universe where
   pretty = \case
@@ -56,6 +59,8 @@ data Literal
 
 instance NFData   Literal
 instance Hashable Literal
+instance ToJSON   Literal
+instance FromJSON Literal
 
 instance Pretty Literal where
   pretty = \case
@@ -154,7 +159,9 @@ data Expr binder var
 
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance (NFData binder, NFData var) => NFData (Expr binder var)
+instance (NFData   binder, NFData   var) => NFData   (Expr binder var)
+instance (ToJSON   binder, ToJSON   var) => ToJSON   (Expr binder var)
+instance (FromJSON binder, FromJSON var) => FromJSON (Expr binder var)
 
 type Type = Expr
 

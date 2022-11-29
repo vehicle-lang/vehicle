@@ -1,6 +1,7 @@
 
 module Vehicle.Compile.Type
-  ( typeCheck
+  ( TypeCheckingResult(..)
+  , typeCheck
   , typeCheckExpr
   ) where
 
@@ -12,6 +13,8 @@ import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map (singleton)
 import Data.Set qualified as Set (member)
+import Data.Aeson (ToJSON, FromJSON)
+import GHC.Generics (Generic)
 
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
@@ -35,16 +38,24 @@ import Vehicle.Expr.Normalised
 -------------------------------------------------------------------------------
 -- Algorithm
 
+data TypeCheckingResult = TypeCheckingResult
+  { checkedProg :: GluedProg
+  , propertyCtx :: PropertyContext
+  } deriving (Generic)
+
+instance ToJSON   TypeCheckingResult
+instance FromJSON TypeCheckingResult
+
 typeCheck :: MonadCompile m
           => UncheckedProg
           -> UncheckedPropertyContext
-          -> m (GluedProg, PropertyContext)
+          -> m TypeCheckingResult
 typeCheck uncheckedProg uncheckedCtx =
   logCompilerPass MinDetail "type checking" $ runTypeCheckerT $ do
     (checkedProg, checkedCtx) <- runWriterT $ typeCheckProg uncheckedCtx uncheckedProg
     cleanedProg <- postProcess checkedProg
     logDebug MaxDetail $ prettyFriendlyDBClosed (fmap unnormalised cleanedProg)
-    return (cleanedProg, checkedCtx)
+    return $ TypeCheckingResult cleanedProg checkedCtx
 
 typeCheckExpr :: MonadCompile m => UncheckedExpr -> m CheckedExpr
 typeCheckExpr expr1 = runTypeCheckerT $ do

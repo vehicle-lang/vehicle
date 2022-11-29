@@ -18,6 +18,7 @@ import Vehicle.Verify.ProofCache (ProofCache (..), writeProofCache)
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
 import Vehicle.Verify.Verifier.Interface
+import System.IO.Temp (withSystemTempDirectory)
 
 data VerifyOptions = VerifyOptions
   { specification    :: FilePath
@@ -39,10 +40,13 @@ verify loggingSettings VerifyOptions{..} = do
 
   uncompiledSpecification <- readSpecification specification
 
-  compiledSpecification <- runCompileMonad loggingSettings $ do
-    liftIO $ compileToVerifier loggingSettings uncompiledSpecification properties resources verifierImpl
+  status <-
+    withSystemTempDirectory "specification" $ \tempDir -> do
+      runCompileMonad loggingSettings $ do
+        typeCheckingResult <- typeCheckOrLoadProg specification properties
+        compiledSpecification <- compileToVerifier typeCheckingResult resources verifier (Just tempDir)
+        verifySpecification verifierImpl verifierExecutable tempDir networkLocations compiledSpecification
 
-  status <- verifySpecification verifierImpl verifierExecutable networkLocations compiledSpecification
 
   programOutput $ pretty status
 
@@ -57,7 +61,13 @@ verify loggingSettings VerifyOptions{..} = do
       , resourceSummaries  = resourceSummaries
       }
 
-locateVerifierExecutable :: MonadIO m => Verifier -> Maybe VerifierExecutable -> m VerifierExecutable
+-- | Tries to locate the executable for the verifier at the provided
+-- location and falls back to the PATH variable if none provided. If not
+-- found then the program will error.
+locateVerifierExecutable :: MonadIO m
+                         => Verifier
+                         -> Maybe VerifierExecutable
+                         -> m VerifierExecutable
 locateVerifierExecutable Verifier{..} = \case
   Just providedLocation -> liftIO $ do
     exists <- doesFileExist providedLocation
@@ -65,8 +75,8 @@ locateVerifierExecutable Verifier{..} = \case
       then return providedLocation
       else do
         hPutStrLn stderr $ layoutAsText $
-          "No" <+> pretty verifierIdentifier <+> "executable found at the provided location" <+>
-          squotes (pretty providedLocation) <> "."
+          "No" <+> pretty verifierIdentifier <+> "executable found" <+>
+          "at the provided location" <+> quotePretty providedLocation <> "."
         exitFailure
 
   Nothing -> do

@@ -23,6 +23,7 @@ import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader (..), local, runReader)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Hashable (Hashable (..))
+import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 
 import Vehicle.Syntax.AST
@@ -39,9 +40,10 @@ data DBVar
   | Bound DBIndex
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData DBVar
-
+instance NFData   DBVar
 instance Hashable DBVar
+instance ToJSON   DBVar
+instance FromJSON DBVar
 
 -- |The type of the data DeBruijn notation stores at binding sites.
 type DBBinding = Maybe Name

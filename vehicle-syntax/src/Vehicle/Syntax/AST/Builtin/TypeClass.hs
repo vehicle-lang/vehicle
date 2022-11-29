@@ -2,6 +2,7 @@
 module Vehicle.Syntax.AST.Builtin.TypeClass where
 
 import Control.DeepSeq (NFData (..))
+import Data.Aeson (ToJSON, FromJSON)
 import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
@@ -56,6 +57,8 @@ data TypeClass
 
 instance NFData   TypeClass
 instance Hashable TypeClass
+instance ToJSON   TypeClass
+instance FromJSON TypeClass
 
 instance Pretty TypeClass where
   pretty = \case
@@ -115,6 +118,8 @@ data TypeClassOp
 
 instance NFData   TypeClassOp
 instance Hashable TypeClassOp
+instance ToJSON   TypeClassOp
+instance FromJSON TypeClassOp
 
 instance Pretty TypeClassOp where
   pretty = \case

@@ -3,6 +3,7 @@ module Vehicle.Syntax.AST.Builtin.Linearity where
 import Control.DeepSeq (NFData (..))
 import Data.Hashable (Hashable (..))
 import Data.Text (Text)
+import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 
@@ -20,6 +21,9 @@ data LinearityProvenance
   | NetworkOutputProvenance      Provenance Text
   | LinFunctionProvenance        Provenance LinearityProvenance FunctionPosition
   deriving (Generic)
+
+instance ToJSON   LinearityProvenance
+instance FromJSON LinearityProvenance
 
 instance Show LinearityProvenance where
   show _x = ""
@@ -53,6 +57,8 @@ instance Ord Linearity where
 
 instance NFData   Linearity
 instance Hashable Linearity
+instance ToJSON   Linearity
+instance FromJSON Linearity
 
 instance Pretty Linearity where
   pretty = \case
@@ -78,6 +84,8 @@ data LinearityTypeClass
   | IfCondLinearity
   deriving (Eq, Generic, Show)
 
+instance ToJSON   LinearityTypeClass
+instance FromJSON LinearityTypeClass
 instance NFData   LinearityTypeClass
 instance Hashable LinearityTypeClass
 

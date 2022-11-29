@@ -18,10 +18,11 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (maybeToList)
 import Data.Range hiding (joinRanges)
 import Data.Text (Text)
-import GHC.Generics (Generic)
+import GHC.Generics (Generic(..))
 import Prettyprinter (Pretty (..), concatWith, squotes, (<+>))
 
 import Vehicle.Syntax.Parse.Token
+import Data.Aeson (FromJSON(..), ToJSON (..))
 
 --------------------------------------------------------------------------------
 -- Position
@@ -34,13 +35,16 @@ import Vehicle.Syntax.Parse.Token
 data Position = Position
   { posLine   :: Int
   , posColumn :: Int
-  } deriving (Eq, Ord)
+  } deriving (Eq, Ord, Generic)
 
 instance Show Position where
   show (Position l c) = show (l, c)
 
 instance Pretty Position where
   pretty (Position l c) = "Line" <+> pretty l <+> "Column" <+> pretty c
+
+instance ToJSON   Position
+instance FromJSON Position
 
 -- |Get the starting position of a token.
 tkPosition :: IsToken a => a -> Position
@@ -139,6 +143,10 @@ instance Semigroup Owner where
 instance Monoid Owner where
   mempty = TheMachine
 
+instance ToJSON   Owner
+instance FromJSON Owner
+
+
 --------------------------------------------------------------------------------
 -- Origin
 
@@ -183,6 +191,12 @@ instance Show Provenance where
 
 instance NFData Provenance where
   rnf _ = ()
+
+instance ToJSON   Provenance where
+  toJSON _ = toJSON ()
+
+instance FromJSON Provenance where
+  parseJSON _ = return mempty
 
 instance Eq Provenance where
   _x == _y = True

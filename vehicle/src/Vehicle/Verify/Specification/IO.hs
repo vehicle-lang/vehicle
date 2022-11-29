@@ -13,7 +13,6 @@ import Data.Map qualified as Map
 import Data.Text (unpack)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (dropExtension, (<.>), (</>))
-import System.IO.Temp (withSystemTempDirectory)
 
 import Vehicle.Backend.Prelude (Backend (..), writeResultToFile)
 import Vehicle.Compile.Prelude
@@ -47,8 +46,9 @@ writeSpecificationFiles Verifier{..} folder (Specification properties) = do
     return ()
 
 -- | Outputs the specification to IO
-outputSpecification :: Specification QueryData
-                    -> IO ()
+outputSpecification :: MonadIO m
+                    => Specification QueryData
+                    -> m ()
 outputSpecification (Specification properties) = do
   let doc = vsep2 (fmap goProperty properties)
   programOutput doc
@@ -75,19 +75,20 @@ outputSpecification (Specification properties) = do
 
 -- | Uses the verifier to verify the specification. Failure of one property does
 -- not prevent the verification of the other properties.
-verifySpecification :: Verifier
+verifySpecification :: MonadIO m
+                    => Verifier
                     -> VerifierExecutable
+                    -> FilePath
                     -> NetworkLocations
                     -> Specification QueryData
-                    -> IO SpecificationStatus
-verifySpecification verifier verifierExecutable networkLocations spec@(Specification namedProperties) = do
-  withSystemTempDirectory "specification" $ \tempDir -> do
-    writeSpecificationFiles verifier tempDir spec
-    results <- forM namedProperties $ \(name, property) -> do
-      let property' = calculateFilePaths tempDir name property
-      result <- runReaderT (verifyProperty property') (verifier, verifierExecutable, networkLocations)
-      return (name, result)
-    return $ SpecificationStatus (Map.fromList results)
+                    -> m SpecificationStatus
+verifySpecification verifier verifierExecutable queryFolder networkLocations spec = do
+  let Specification namedProperties = spec
+  results <- forM namedProperties $ \(name, property) -> do
+    let property' = calculateFilePaths queryFolder name property
+    result <- runReaderT (verifyProperty property') (verifier, verifierExecutable, networkLocations)
+    return (name, result)
+  return $ SpecificationStatus (Map.fromList results)
 
 verifyProperty :: (MonadReader (Verifier, VerifierExecutable, NetworkLocations) m, MonadIO m)
                => Property (QueryFile, QueryData)

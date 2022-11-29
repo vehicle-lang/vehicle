@@ -3,6 +3,7 @@ module Vehicle.Syntax.AST.Relevance where
 import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
+import Data.Aeson (ToJSON, FromJSON)
 
 import Vehicle.Syntax.AST.Builtin
 
@@ -11,8 +12,10 @@ data Relevance
   | Irrelevant
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData Relevance
+instance NFData   Relevance
 instance Hashable Relevance
+instance ToJSON   Relevance
+instance FromJSON Relevance
 
 class HasRelevance a where
   relevanceOf :: a -> Relevance

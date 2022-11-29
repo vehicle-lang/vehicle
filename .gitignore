@@ -44,4 +44,5 @@ __pycache__/
 
 # Examples folder
 examples/**/*.vclp
+examples/**/*.vcli
 examples/windController/agdaProof/WindControllerSpec.agda

@@ -2,6 +2,7 @@ module Vehicle.Syntax.AST.Visibility where
 
 import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
+import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 
@@ -20,8 +21,10 @@ data Visibility
   -- ^ Inferred via instance search/type class resolution
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData Visibility
+instance NFData   Visibility
 instance Hashable Visibility
+instance ToJSON   Visibility
+instance FromJSON Visibility
 
 instance Pretty Visibility where
   pretty = \case
