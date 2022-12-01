@@ -77,55 +77,25 @@ instance Pretty (Range Position) where
   -- don't do anything special when showing them.
   pretty r = pretty $ show r
 
--- | Takes the union of two sets of position ranges and then joins any adjacent
--- ranges (e.g. r1=[(1,10)-(1,20)] & r2=[(1,21)-(1,25)] gets mapped to
--- the single range [(1,10)-(1,25)]).
---
--- Ideally we would use the built in `joinRanges` from `Data.Range` to do this
--- but that works via the `Enum` type class and relies on the fact that
--- adjacent ranges are mapped to adjacent enum values. While it is possible to
--- construct an `Enum` instance for `Position` via a bijection between N
--- and N^2, it is not possible to construct such that adjacent ranges are mapped
--- to adjecent enum values.
---
--- TODO Ideally we submit a patch back to `Data.Range` modifying `joinRanges` to
--- take an arbitrary joining predicate such as `adjacent` below.
---
--- TODO this could be made more efficient by assuming that we have the invariant
--- that provenances are already merged, and therefore only merge the last range
-joinRanges :: [Range Position] -> [Range Position] -> [Range Position]
-joinRanges rs1 rs2 = combineRanges $ rs1 `union` rs2
-  where
-    adjacent :: Position -> Position -> Bool
-    adjacent p1 p2 = posLine p1 == posLine p2 && 1 + posColumn p1 == posColumn p2
+-- Doesn't handle anything except inclusive ranges as that's all we use in our code
+-- at the moment.
+mergeRangePair :: Range Position -> Range Position -> Range Position
+mergeRangePair (IRange b1 _) (IRange _ b2) = IRange b1 b2
+mergeRangePair _ _ = error "Invalid assumption that we only use span ranges"
 
-    -- Doesn't handle anything except inclusive ranges as that's all we use in our code
-    -- at the moment.
-    mergeRangePair :: Range Position -> Range Position -> Maybe (Range Position)
-    mergeRangePair (SpanRange b1 (Bound p1 Inclusive)) (SpanRange (Bound p2 Inclusive) b2)
-      | adjacent p1 p2 = Just $ SpanRange b1 b2
-    mergeRangePair _r1 _r2 = Nothing
-
-    -- Assumes that the ranges have been sorted by the `union` above
-    combineRanges :: [Range Position] -> [Range Position]
-    combineRanges (r1 : r2 : rs) = case mergeRangePair r1 r2 of
-      Nothing  -> r1 : combineRanges (r2 : rs)
-      Just r12 -> combineRanges (r12 : rs)
-    combineRanges rs             = rs
-
-fillInRanges :: [Range Position] -> Maybe (Range Position)
-fillInRanges []  = Nothing
-fillInRanges [r] = Just r
+fillInRanges :: [Range Position] -> Range Position
+fillInRanges []  = mempty
+fillInRanges [r] = r
 fillInRanges ranges  = let
   sortedRanges = sort ranges
   startRange   = head sortedRanges
   endRange     = last sortedRanges
   in case (startRange, endRange) of
-    (SpanRange s _, SpanRange _ e) -> Just $ SpanRange s e
+    (SpanRange s _, SpanRange _ e) -> SpanRange s e
     _                              -> error "Invalid assumption that we only use span ranges"
 
-expandRange :: (Int, Int) -> [Range Position] -> [Range Position]
-expandRange (l , r) [IRange start end] = [IRange (alterColumn (\x -> x - l) start) (alterColumn (+ r) end)]
+expandRange :: (Int, Int) -> Range Position -> Range Position
+expandRange (l , r) (IRange start end) = IRange (alterColumn (\x -> x - l) start) (alterColumn (+ r) end)
 expandRange _       rs                 = rs
 
 --------------------------------------------------------------------------------
@@ -152,7 +122,7 @@ instance FromJSON Owner
 
 -- |The origin of a piece of code
 data Origin
-  = FromSource [Range Position]
+  = FromSource (Range Position)
   -- ^ set of locations in the source file
   | FromParameter Text
   -- ^ name of the parameter
@@ -160,7 +130,7 @@ data Origin
   deriving (Show, Eq, Ord, Generic)
 
 instance Semigroup Origin where
-  FromSource r1     <> FromSource r2   = FromSource (joinRanges r1 r2)
+  FromSource r1     <> FromSource r2   = FromSource (mergeRangePair r1 r2)
   p@FromSource{}    <> _               = p
   _                 <> p@FromSource{}  = p
   p@FromDataset{}   <> _               = p
@@ -171,12 +141,10 @@ instance Monoid Origin where
   mempty = FromSource mempty
 
 instance Pretty Origin where
-  pretty (FromSource ranges) = case ranges of
-    []  -> "no source location"
-    [r] -> pretty r
-    rs  -> concatWith (\u v -> u <+> "and" <+> v) (map pretty rs)
-  pretty (FromParameter name) = "parameter" <+> squotes (pretty name)
-  pretty (FromDataset   name) = "in dataset" <+> squotes (pretty name)
+  pretty = \case
+    FromSource    range -> pretty range
+    FromParameter name  -> "parameter" <+> squotes (pretty name)
+    FromDataset   name  -> "in dataset" <+> squotes (pretty name)
 
 --------------------------------------------------------------------------------
 -- Provenance
@@ -206,7 +174,7 @@ instance Hashable Provenance where
 
 -- |Get the provenance for a single token.
 tkProvenance :: IsToken a => a -> Provenance
-tkProvenance tk = Provenance (FromSource [start +=+ end]) TheUser
+tkProvenance tk = Provenance (FromSource (start +=+ end)) TheUser
   where
     start = tkPosition tk
     end   = Position (posLine start) (posColumn start + tkLength tk)
@@ -221,15 +189,15 @@ parameterProvenance name = Provenance (FromParameter name) TheUser
 inserted :: Provenance -> Provenance
 inserted (Provenance origin _owner) = Provenance origin TheMachine
 
-fillInProvenance :: [Provenance] -> Provenance
+fillInProvenance :: NonEmpty Provenance -> Provenance
 fillInProvenance ps = Provenance (FromSource rs) TheUser
   where
-    getRanges :: Provenance -> [Range Position]
+    getRanges :: Provenance -> Range Position
     getRanges (Provenance (FromSource r) _) = r
     getRanges _                             = error
       "should not be filling in provenance on non-source file code"
 
-    rs = maybeToList $ fillInRanges $ concatMap getRanges ps
+    rs = fillInRanges $ map getRanges ps
 
 expandProvenance :: (Int, Int) -> Provenance -> Provenance
 expandProvenance w (Provenance (FromSource rs) o) = Provenance (FromSource (expandRange w rs)) o
