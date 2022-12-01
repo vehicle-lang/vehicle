@@ -74,7 +74,7 @@ instance Elab B.Expr V.InputExpr where
     B.App fun arg -> do
       fun' <- elab fun
       arg' <- elab arg
-      let p = fillInProvenance [provenanceOf fun', provenanceOf arg']
+      let p = fillInProvenance (provenanceOf fun' :| [provenanceOf arg'])
       return $ V.normApp p fun' (arg' :| [])
 
 instance Elab B.Binder V.InputBinder where
