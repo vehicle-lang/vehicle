@@ -14,7 +14,6 @@ module Vehicle.Compile
 import Control.Monad.Except ( ExceptT, MonadError(..), runExcept)
 import Control.Exception (IOException, catch)
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.Set (Set)
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
 import System.FilePath (takeExtension)
@@ -26,12 +25,10 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency.Analysis
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
-import Vehicle.Compile.ExpandResources
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Queries (QueryData, compileToQueries)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
-import Vehicle.Compile.Type (typeCheck, typeCheckExpr, TypeCheckingResult (..))
-import Vehicle.Expr.Normalised
+import Vehicle.Compile.Type (typeCheck, typeCheckExpr, TypedProg)
 import Vehicle.Syntax.Parse
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
@@ -71,45 +68,41 @@ compile loggingSettings CompileOptions{..} = runCompileMonad loggingSettings $ d
       _ <- compileToLossFunction typeCheckingResult resources differentiableLogic outputFile
       return ()
 
-
-
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
 
 compileToVerifier :: (MonadCompile m, MonadIO m)
-                  => TypeCheckingResult
+                  => TypedProg
                   -> Resources
                   -> VerifierIdentifier
                   -> Maybe FilePath
                   -> m (Specification QueryData)
-compileToVerifier (TypeCheckingResult typedProg propertyCtx) resources verifierIdentifier outputFile = do
+compileToVerifier typedProg resources verifierIdentifier outputFile = do
   let verifier = verifiers verifierIdentifier
-  (networkCtx, finalProg) <- expandResources resources True typedProg
-  compiledSpecification <- compileToQueries verifier finalProg propertyCtx networkCtx
+  compiledSpecification <- compileToQueries verifier typedProg resources
   case outputFile of
     Nothing     -> outputSpecification compiledSpecification
     Just folder -> writeSpecificationFiles verifier folder compiledSpecification
   return compiledSpecification
 
 compileToLossFunction :: (MonadCompile m, MonadIO m)
-                      => TypeCheckingResult
+                      => TypedProg
                       -> Resources
                       -> DifferentiableLogic
                       -> Maybe FilePath
                       -> m [LDecl]
-compileToLossFunction (TypeCheckingResult typedProg propertyCtx) resources differentiableLogic outputFile = do
-  (networkCtx, finalProg) <- expandResources resources True typedProg
-  lossFunction <- LossFunction.compile differentiableLogic finalProg propertyCtx networkCtx
+compileToLossFunction typedProg resources differentiableLogic outputFile = do
+  lossFunction <- LossFunction.compile resources differentiableLogic typedProg
   writeLossFunctionFiles outputFile differentiableLogic lossFunction
   return lossFunction
 
 compileToAgda :: (MonadCompile m, MonadIO m)
               => AgdaOptions
-              -> TypeCheckingResult
+              -> TypedProg
               -> Maybe FilePath
               -> m ()
-compileToAgda agdaOptions (TypeCheckingResult typedProg propertyCtx) outputFile = do
-  agdaCode <- compileProgToAgda (fmap unnormalised typedProg) propertyCtx agdaOptions
+compileToAgda agdaOptions typedProg outputFile = do
+  agdaCode <- compileProgToAgda typedProg agdaOptions
   writeAgdaFile outputFile agdaCode
 
 --------------------------------------------------------------------------------
@@ -142,12 +135,12 @@ parseAndTypeCheckExpr expr = do
 typeCheckProg :: (MonadIO m, MonadCompile m)
               => SpecificationText
               -> DeclarationNames
-              -> m TypeCheckingResult
+              -> m TypedProg
 typeCheckProg spec declarationsToCompile = do
-  (vehicleProg, uncheckedPropertyCtx) <- parseProgText spec
+  vehicleProg <- parseProgText spec
   (scopedProg, dependencyGraph) <- scopeCheck vehicleProg
-  prunedProg <- analyseDependenciesAndPrune scopedProg uncheckedPropertyCtx dependencyGraph declarationsToCompile
-  result <- typeCheck prunedProg uncheckedPropertyCtx
+  prunedProg <- analyseDependenciesAndPrune scopedProg dependencyGraph declarationsToCompile
+  result <- typeCheck prunedProg
   return result
 
 -- | Parses and type-checks the program but does
@@ -155,7 +148,7 @@ typeCheckProg spec declarationsToCompile = do
 typeCheckOrLoadProg :: (MonadIO m, MonadCompile m)
                     => FilePath
                     -> DeclarationNames
-                    -> m TypeCheckingResult
+                    -> m TypedProg
 typeCheckOrLoadProg specificationFile declarationsToCompile = do
   spec <- readSpecification specificationFile
   interfaceFileResult <- readObjectFile specificationFile spec
@@ -172,13 +165,13 @@ parseExprText txt =
     Left  err  -> throwError $ ParseError err
     Right expr -> return expr
 
-parseProgText :: MonadCompile m => Text -> m (InputProg, Set Identifier)
+parseProgText :: MonadCompile m => Text -> m InputProg
 parseProgText txt = do
   case runExcept (readAndParseProg txt) of
-    Left err                 -> throwError $ ParseError err
-    Right (prog, properties) -> case traverse parseExpr prog of
+    Left  err  -> throwError $ ParseError err
+    Right prog -> case traverse parseExpr prog of
       Left err    -> throwError $ ParseError err
-      Right prog' -> return (prog', properties)
+      Right prog' -> return prog'
 
 runCompileMonad :: MonadIO m
                 => LoggingSettings

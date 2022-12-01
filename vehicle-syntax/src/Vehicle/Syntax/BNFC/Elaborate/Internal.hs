@@ -52,11 +52,11 @@ instance Elab B.Decl V.InputDecl where
     B.DeclData      n t   -> elabResource n t V.Dataset
     B.DeclParam     n t   -> elabResource n t V.Parameter
     B.DeclImplParam n t   -> elabResource n t V.InferableParameter
-    B.DefFun        n t e -> V.DefFunction  (tkProvenance n) <$> elab n <*> elab t <*> elab e
+    B.DefFun        n t e -> V.DefFunction  (tkProvenance n) <$> elab n <*> pure False <*> elab t <*> elab e
     B.DeclPost      n t   -> V.DefPostulate (tkProvenance n) <$> elab n <*> elab t
 
 elabResource :: MonadElab m => NameToken -> B.Expr -> V.Resource -> m V.InputDecl
-elabResource n t r = V.DefResource (tkProvenance n) r <$> elab n <*> elab t
+elabResource n t r = V.DefResource (tkProvenance n) <$> elab n <*> pure r <*> elab t
 
 instance Elab B.Expr V.InputExpr where
   elab = \case

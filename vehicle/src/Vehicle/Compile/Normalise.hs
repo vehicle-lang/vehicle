@@ -21,6 +21,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Expr.DeBruijn
 import Vehicle.Language.StandardLibrary.Names
+import Vehicle.Expr.Normalised (GluedDecl, GluedExpr (..), traverseUnnormalised)
 
 -- |Run a function in 'MonadNorm'.
 normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) ([DBBinding], a))
@@ -68,8 +69,8 @@ type MonadNorm m =
 class Norm vf where
   nf :: MonadNorm m => vf -> m vf
 
-instance Norm CheckedProg where
-  nf (Main decls) = Main <$> traverse nf decls
+instance Norm (GenericDecl expr) => Norm (GenericProg expr) where
+  nf = traverseDecls nf
 
 instance Norm CheckedDecl where
   nf decl = logCompilerPass MaxDetail ("normalisation of" <+> squotes declIdent) $
@@ -77,16 +78,38 @@ instance Norm CheckedDecl where
       DefResource p r ident typ ->
         DefResource p r ident <$> nf typ
 
-      DefFunction p ident typ expr -> do
+      DefFunction p ident isProperty typ expr -> do
         typ'  <- nf typ
         expr' <- nf expr
         modify (Map.insert ident expr')
-        return $ DefFunction p ident typ' expr'
+        return $ DefFunction p ident isProperty typ' expr'
 
       DefPostulate p ident typ ->
         DefPostulate p ident <$> nf typ
 
     where declIdent = pretty (identifierOf decl)
+
+-- | This a horrible, horrible hack. Only introducing this very temporarily,
+-- before normalisation is pushed all the way in.
+instance Norm GluedDecl where
+  nf decl = logCompilerPass MaxDetail ("normalisation of" <+> squotes declIdent) $
+    case decl of
+      DefResource p r ident typ ->
+        DefResource p r ident <$> nf typ
+
+      DefFunction p ident isProperty typ expr -> do
+        typ'  <- nf typ
+        expr' <- nf expr
+        modify (Map.insert ident (unnormalised expr'))
+        return $ DefFunction p ident isProperty typ' expr'
+
+      DefPostulate p ident typ ->
+        DefPostulate p ident <$> nf typ
+
+    where declIdent = pretty (identifierOf decl)
+
+instance Norm GluedExpr where
+  nf = traverseUnnormalised nf
 
 instance Norm CheckedExpr where
   nf e = showExit e $ do

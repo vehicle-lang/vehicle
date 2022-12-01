@@ -40,13 +40,13 @@ instance CapitaliseTypes CheckedProg where
 
 instance CapitaliseTypes CheckedDecl where
   cap d = case d of
-    DefResource p r ident t ->
-      DefResource p r <$> cap ident <*> cap t
+    DefResource p ident r t ->
+      DefResource p <$> cap ident <*> pure r <*> cap t
 
-    DefFunction p ident t e -> do
+    DefFunction p ident isProperty t e -> do
       when (isTypeDef t) $
         modify (insert ident)
-      DefFunction p <$> cap ident <*> cap t <*> cap e
+      DefFunction p <$> cap ident <*> pure isProperty <*> cap t <*> cap e
 
     DefPostulate p ident t ->
       DefPostulate p <$> cap ident <*> cap t

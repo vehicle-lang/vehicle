@@ -40,9 +40,9 @@ instance Delaborate V.NamedProg B.Prog where
 -- |Elaborate declarations.
 instance Delaborate V.NamedDecl B.Decl where
   delabM = \case
-    V.DefPostulate _  n t -> B.DeclPost      (delabIdentifier n) <$> delabM t
-    V.DefFunction _ n t e -> B.DefFun (delabIdentifier n) <$> delabM t <*> delabM e
-    V.DefResource _ r n t -> do
+    V.DefPostulate _ n t     -> B.DeclPost      (delabIdentifier n) <$> delabM t
+    V.DefFunction  _ n _ t e -> B.DefFun (delabIdentifier n) <$> delabM t <*> delabM e
+    V.DefResource  _ n r t   -> do
       let constructor = case r of
             V.Network            -> B.DeclNetw
             V.Dataset            -> B.DeclData

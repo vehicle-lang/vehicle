@@ -77,11 +77,11 @@ scopeDecls = \case
 
 scopeDecl :: (MonadWriter Dependencies m, MonadScope m) => InputDecl -> m UncheckedDecl
 scopeDecl = \case
-  DefResource p r ident t ->
-    DefResource p r ident <$> scopeDeclExpr False t
+  DefResource p ident r t ->
+    DefResource p ident r <$> scopeDeclExpr False t
 
-  DefFunction p ident t e ->
-    DefFunction p ident <$> scopeDeclExpr True t <*> scopeDeclExpr False e
+  DefFunction p ident isProperty t e ->
+    DefFunction p ident isProperty <$> scopeDeclExpr True t <*> scopeDeclExpr False e
 
   DefPostulate p ident t ->
     DefPostulate p ident <$> scopeDeclExpr False t

@@ -157,6 +157,7 @@ library
     Vehicle.Compile.Type.Monad
     Vehicle.Compile.Type.Monad.Class
     Vehicle.Compile.Type.Monad.Instance
+    Vehicle.Compile.Type.Output
     Vehicle.Compile.Type.Resource
     Vehicle.Compile.Type.VariableContext
     Vehicle.Prelude.IO

@@ -4,7 +4,6 @@ module Vehicle.Compile.Prelude
   ) where
 
 import Control.DeepSeq (NFData)
-import Data.Map (Map)
 import Data.Set (Set)
 import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
@@ -32,6 +31,7 @@ type UncheckedVar     = DBVar
 type UncheckedBinder = DBBinder
 type UncheckedArg    = DBArg
 type UncheckedExpr   = DBExpr
+type UncheckedType   = DBExpr
 type UncheckedDecl   = DBDecl
 type UncheckedProg   = DBProg
 
@@ -123,8 +123,7 @@ instance Pretty PropertyInfo where
 --------------------------------------------------------------------------------
 -- Other
 
-type UncheckedPropertyContext = Set Identifier
-type PropertyContext = Map Identifier PropertyInfo
+type PropertyContext = Set Identifier
 
 data Contextualised object context = WithContext
   { objectIn  :: object
@@ -142,6 +141,6 @@ instance HasType (GenericBinder binder expr) expr where
 
 instance HasType (GenericDecl expr) expr where
   typeOf = \case
-    DefResource _ _ _ t -> t
-    DefFunction _ _ t _ -> t
-    DefPostulate _ _ t  -> t
+    DefResource  _ _ _ t   -> t
+    DefFunction  _ _ _ t _ -> t
+    DefPostulate _ _ t     -> t

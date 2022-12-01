@@ -1,6 +1,8 @@
 module Vehicle.Syntax.Parse
   ( ParseError(..)
   , UnparsedExpr
+  , UnparsedProg
+  , UnparsedDecl
   , readAndParseProg
   , parseExpr
   , readExpr
@@ -15,8 +17,7 @@ import Data.Text.IO qualified as T
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Parse.Error (ParseError (..))
 
-import Vehicle.Syntax.BNFC.Elaborate.External (UnparsedExpr (..), elaborateExpr,
-                                               elaborateProg)
+import Vehicle.Syntax.BNFC.Elaborate.External
 
 import Vehicle.Syntax.Internal.Abs qualified as Internal (Expr, Prog)
 import Vehicle.Syntax.Internal.Par as Internal (myLexer, pExpr, pProg)
@@ -30,9 +31,7 @@ import Vehicle.Syntax.External.Par as External (myLexer, pExpr, pProg)
 --------------------------------------------------------------------------------
 -- Interface
 
-readAndParseProg :: MonadError ParseError m
-                 => Text
-                 -> m (GenericProg UnparsedExpr, Set Identifier)
+readAndParseProg :: MonadError ParseError m => Text -> m UnparsedProg
 readAndParseProg txt = castBNFCError (elaborateProg User) (parseExternalProg txt)
 
 parseExpr :: MonadError ParseError m

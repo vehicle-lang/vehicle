@@ -171,10 +171,10 @@ addFunctionAuxiliaryInputOutputConstraints :: TCM m
                                            => CheckedDecl
                                            -> m CheckedDecl
 addFunctionAuxiliaryInputOutputConstraints = \case
-  DefFunction p ident t e -> do
+  DefFunction p ident isProperty t e -> do
     logCompilerPass MaxDetail "insertion of function constraints" $ do
       t' <- evalStateT (decomposePiType (ident, p) 0 t) mempty
-      return $ DefFunction p ident t' e
+      return $ DefFunction p ident isProperty t' e
 
   d -> return d
 

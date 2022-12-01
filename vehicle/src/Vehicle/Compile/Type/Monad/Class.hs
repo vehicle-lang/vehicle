@@ -66,6 +66,7 @@ import Vehicle.Compile.Type.VariableContext (TypingBoundCtx, TypingDeclCtx,
                                              toNBEDeclContext,
                                              toNormalisationDeclContext)
 import Vehicle.Expr.Normalised
+import Vehicle.Compile.Type.Output (TypedDecl)
 
 --------------------------------------------------------------------------------
 -- The overall meta variable context
@@ -94,7 +95,7 @@ emptyTypingMetaCtx = TypingMetaCtx
 -- | The type-checking monad.
 class MonadCompile m => MonadTypeChecker m where
   getDeclContext :: m TypingDeclCtx
-  addDeclContext :: GluedDecl -> m a -> m a
+  addDeclContext :: TypedDecl -> m a -> m a
   getMetaCtx     :: m TypingMetaCtx
   getsMetaCtx    :: (TypingMetaCtx -> a) -> m a
   putMetaCtx     :: TypingMetaCtx -> m ()

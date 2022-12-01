@@ -1,20 +1,21 @@
 
 module Vehicle.Compile.Type
-  ( TypeCheckingResult(..)
+  ( TypedProg
+  , TypedDecl
+  , TypedExpr
+  , getNormalised
+  , getUnnormalised
+  , getGlued
   , typeCheck
   , typeCheckExpr
+  , getPropertyInfo
   ) where
 
 import Control.Monad (filterM, forM, unless, when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (ReaderT (..))
-import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Map qualified as Map (singleton)
-import Data.Set qualified as Set (member)
-import Data.Aeson (ToJSON, FromJSON)
-import GHC.Generics (Generic)
 
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
@@ -30,140 +31,142 @@ import Vehicle.Compile.Type.Generalise
 import Vehicle.Compile.Type.Irrelevance
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
 import Vehicle.Expr.Normalised
+import Vehicle.Compile.Type.Output
 
 -------------------------------------------------------------------------------
 -- Algorithm
 
-data TypeCheckingResult = TypeCheckingResult
-  { checkedProg :: GluedProg
-  , propertyCtx :: PropertyContext
-  } deriving (Generic)
-
-instance ToJSON   TypeCheckingResult
-instance FromJSON TypeCheckingResult
-
 typeCheck :: MonadCompile m
           => UncheckedProg
-          -> UncheckedPropertyContext
-          -> m TypeCheckingResult
-typeCheck uncheckedProg uncheckedCtx =
-  logCompilerPass MinDetail "type checking" $ runTypeCheckerT $ do
-    (checkedProg, checkedCtx) <- runWriterT $ typeCheckProg uncheckedCtx uncheckedProg
-    cleanedProg <- postProcess checkedProg
-    logDebug MaxDetail $ prettyFriendlyDBClosed (fmap unnormalised cleanedProg)
-    return $ TypeCheckingResult cleanedProg checkedCtx
+          -> m TypedProg
+typeCheck uncheckedProg =
+  logCompilerPass MinDetail "type checking" $ runTypeCheckerT $
+    typeCheckProg uncheckedProg
 
 typeCheckExpr :: MonadCompile m => UncheckedExpr -> m CheckedExpr
 typeCheckExpr expr1 = runTypeCheckerT $ do
   expr2 <- insertHolesForAuxiliaryAnnotations expr1
   (expr3, _exprType) <- runReaderT (inferExpr expr2) mempty
   solveConstraints Nothing
-  expr4 <- postProcess expr3
+  expr4 <- substMetas expr3
+  expr5    <- removeIrrelevantCode expr4
   checkAllUnknownsSolved
-  return expr4
-
-postProcess :: ( TCM m
-               , MetaSubstitutable a
-               , RemoveIrrelevantCode a
-               )
-            => a -> m a
-postProcess x = do
-  metaFreeExpr <- substMetas x
-  finalExpr    <- removeIrrelevantCode metaFreeExpr
-  return finalExpr
+  return expr5
 
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-type TopLevelTCM m =
-  ( TCM m
-  , MonadWriter PropertyContext m
-  )
+typeCheckProg :: TCM m => UncheckedProg -> m TypedProg
+typeCheckProg (Main ds) = Main <$> typeCheckDecls ds
 
-typeCheckProg :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedProg -> m GluedProg
-typeCheckProg ctx (Main ds) = Main <$> typeCheckDecls ctx ds
+typeCheckDecls :: TCM m => [UncheckedDecl] -> m [TypedDecl]
+typeCheckDecls = \case
+  []     -> return []
+  d : ds -> do
+    typedDecl <- typeCheckDecl d
+    checkedDecls <- addDeclContext typedDecl $ typeCheckDecls ds
+    return $ typedDecl : checkedDecls
 
-typeCheckDecls :: TopLevelTCM m => UncheckedPropertyContext -> [UncheckedDecl] -> m [GluedDecl]
-typeCheckDecls _   [] = return []
-typeCheckDecls ctx (d : ds) = do
-  -- First insert any missing auxiliary arguments into the decl
-  d' <- insertHolesForAuxiliaryAnnotations d
-  checkedDecl  <- typeCheckDecl ctx d'
-  gluedDecl <- traverse (glueNBE 0) checkedDecl
-  checkedDecls <- addDeclContext gluedDecl $ typeCheckDecls ctx ds
-  return $ gluedDecl : checkedDecls
+typeCheckDecl :: TCM m => UncheckedDecl -> m TypedDecl
+typeCheckDecl uncheckedDecl =
+  logCompilerPass MaxDetail ("declaration" <+> quotePretty (identifierOf uncheckedDecl)) $ do
+    -- First insert any missing auxiliary arguments into the decl
+    auxDecl <- insertHolesForAuxiliaryAnnotations uncheckedDecl
 
-typeCheckDecl :: TopLevelTCM m => UncheckedPropertyContext -> UncheckedDecl -> m CheckedDecl
-typeCheckDecl propertyCtx decl = do
-  let ident = identifierOf decl
-  let identDoc = quotePretty ident
-  let passDoc = "bidirectional pass over"
-
-  logCompilerPass MinDetail ("declaration" <+> identDoc) $ do
-    -- First run a bidirectional pass over the type of the declaration
-    checkedType <- logCompilerPass MidDetail (passDoc <+> "type of" <+> identDoc) $ do
-      let declType = typeOf decl
-      (checkedType, typeOfType) <- runReaderT (inferExpr declType) mempty
-      assertDeclTypeIsType ident typeOfType
-      return checkedType
-
-    result <- case decl of
-      DefResource p r _ _ -> do
-        let checkedDecl = DefResource p r ident checkedType
-        solveConstraints (Just checkedDecl)
-        substCheckedType <- substMetas checkedType
-
-        -- Add extra constraints from the resource type. Need to have called
-        -- solve constraints beforehand in order to allow for normalisation,
-        -- but really only need to have solved type-class constraints.
-        gluedType <- glueNBE 0 substCheckedType
-        updatedCheckedType <- checkResourceType r (ident, p) gluedType
-        let updatedCheckedDecl = DefResource p r ident updatedCheckedType
-        solveConstraints (Just updatedCheckedDecl)
-
-        substDecl <- substMetas updatedCheckedDecl
-        logUnsolvedUnknowns (Just substDecl) Nothing
-
-        finalDecl <- generaliseOverUnsolvedMetaVariables substDecl
-        return finalDecl
-
-      DefPostulate p _ _ -> do
-        return $ DefPostulate p ident checkedType
-
-      DefFunction p _ _ body -> do
-        -- Type check the body.
-        checkedBody <- logCompilerPass MidDetail (passDoc <+> "body of" <+> identDoc) $ do
-          runReaderT (checkExpr checkedType body) mempty
-
-        -- Reconstruct the function.
-        let checkedDecl = DefFunction p ident checkedType checkedBody
-
-        -- Solve constraints and substitute through.
-        solveConstraints (Just checkedDecl)
-        substDecl <- substMetas checkedDecl
-
-        -- Extract auxiliary annotations if a property.
-        -- This check must happen before generalisation as the `Bool` type will get
-        -- generalised with function input/output constraints.
-        let isProperty = ident `Set.member` propertyCtx
-        when isProperty $ do
-          propertyType <- glueNBE 0 (typeOf substDecl)
-          checkPropertyInfo (ident, p) propertyType
-
-        checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
-        logUnsolvedUnknowns (Just substDecl) Nothing
-
-        checkedDecl2 <- generaliseOverUnsolvedConstraints checkedDecl1
-        checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
-        return checkedDecl3
+    gluedDecl <- case auxDecl of
+      DefPostulate p n t     -> typeCheckPostulate p n t
+      DefResource  p n r t   -> typeCheckResource  p n r t
+      DefFunction  p n b r t -> typeCheckFunction  p n b r t
 
     checkAllUnknownsSolved
-    logCompilerPassOutput $ prettyFriendlyDBClosed result
-    return result
+    finalDecl <- substMetas gluedDecl
+    logCompilerPassOutput $ prettyFriendlyDBClosed (fmap unnormalised finalDecl)
+
+    return $ fmap TypedExpr finalDecl
+
+typeCheckPostulate :: TCM m
+                   => Provenance
+                   -> Identifier
+                   -> UncheckedType
+                   -> m GluedDecl
+typeCheckPostulate p ident typ  = do
+  checkedType <- checkDeclType ident typ
+  gluedType <- glueNBE 0 checkedType
+  return $ DefPostulate p ident gluedType
+
+typeCheckResource :: TCM m
+                  => Provenance
+                  -> Identifier
+                  -> Resource
+                  -> UncheckedType
+                  -> m GluedDecl
+typeCheckResource p ident resource uncheckedType = do
+  checkedType <- checkDeclType ident uncheckedType
+  let checkedDecl = DefResource p ident resource checkedType
+  solveConstraints (Just checkedDecl)
+  substCheckedType <- substMetas checkedType
+
+  -- Add extra constraints from the resource type. Need to have called
+  -- solve constraints beforehand in order to allow for normalisation,
+  -- but really only need to have solved type-class constraints.
+  gluedType <- glueNBE 0 substCheckedType
+  updatedCheckedType <- checkResourceType resource (ident, p) gluedType
+  let updatedCheckedDecl = DefResource p ident resource updatedCheckedType
+  solveConstraints (Just updatedCheckedDecl)
+
+  substDecl <- substMetas updatedCheckedDecl
+  logUnsolvedUnknowns (Just substDecl) Nothing
+
+  finalDecl <- generaliseOverUnsolvedMetaVariables substDecl
+  gluedDecl <- traverse (glueNBE 0) finalDecl
+  return gluedDecl
+
+typeCheckFunction :: TCM m
+                  => Provenance
+                  -> Identifier
+                  -> Bool
+                  -> UncheckedType
+                  -> UncheckedExpr
+                  -> m GluedDecl
+typeCheckFunction p ident isProperty typ body = do
+  checkedType <- checkDeclType ident typ
+
+  -- Type check the body.
+  let pass = bidirectionalPassDoc <+> "body of" <+> quotePretty ident
+  checkedBody <- logCompilerPass MidDetail pass $ do
+    runReaderT (checkExpr checkedType body) mempty
+
+  -- Reconstruct the function.
+  let checkedDecl = DefFunction p ident isProperty checkedType checkedBody
+
+  -- Solve constraints and substitute through.
+  solveConstraints (Just checkedDecl)
+  substDecl <- substMetas checkedDecl
+
+  if isProperty then do
+    gluedDecl <- traverse (glueNBE 0) substDecl
+    checkPropertyType (fmap TypedExpr gluedDecl)
+    return gluedDecl
+  else do
+    -- Otherwise if not a property then generalise over unsolved meta-variables.
+    checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
+    logUnsolvedUnknowns (Just substDecl) Nothing
+
+    checkedDecl2 <- generaliseOverUnsolvedConstraints checkedDecl1
+    checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
+    gluedDecl <- traverse (glueNBE 0) checkedDecl3
+    return gluedDecl
+
+checkDeclType :: TCM m => Identifier -> UncheckedExpr -> m CheckedType
+checkDeclType ident declType = do
+  let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
+  logCompilerPass MidDetail pass $ do
+    (checkedType, typeOfType) <- runReaderT (inferExpr declType) mempty
+    assertDeclTypeIsType ident typeOfType
+    return checkedType
 
 assertDeclTypeIsType :: TCM m => Identifier -> CheckedType -> m ()
 -- This is a bit of a hack to get around having to have a solver for universe
@@ -289,20 +292,25 @@ getDefaultCandidates maybeDecl = do
 -------------------------------------------------------------------------------
 -- Property information extraction
 
-checkPropertyInfo :: TopLevelTCM m => DeclProvenance -> GluedType -> m ()
-checkPropertyInfo decl@(ident, _) propertyType = do
-  propertyInfo <- getPropertyInfo (normalised propertyType)
-  tell (Map.singleton ident propertyInfo)
-  logDebug MinDetail $
-    "Identified" <+> squotes (pretty ident) <+> "as a property of type:" <+> pretty propertyInfo
+checkPropertyType :: TCM m => TypedDecl -> m ()
+checkPropertyType property = do
+  _ <- getPropertyInfo property
+  return ()
 
+getPropertyInfo :: MonadCompile m => TypedDecl -> m PropertyInfo
+getPropertyInfo property = do
+  propertyInfo <- go (normalised (glued $ typeOf property))
+  return propertyInfo
   where
-    getPropertyInfo :: MonadCompile m => NormType -> m PropertyInfo
-    getPropertyInfo = \case
-      VAnnBoolType _ (VLinearityExpr _ lin) (VPolarityExpr _ pol) -> return $ PropertyInfo lin pol
-      VVectorType _ tElem _ -> getPropertyInfo tElem
-      VTensorType _ tElem _ -> getPropertyInfo tElem
-      _                     -> throwError $ PropertyTypeUnsupported decl propertyType
+  go :: MonadCompile m => NormType -> m PropertyInfo
+  go = \case
+    VTensorType _ tElem _ -> go tElem
+    VVectorType _ tElem _ -> go tElem
+    VAnnBoolType _ (VLinearityExpr _ lin) (VPolarityExpr _ pol) ->
+      return $ PropertyInfo lin pol
+    _                     -> do
+      let declProv = (identifierOf property, provenanceOf property)
+      throwError $ PropertyTypeUnsupported declProv (glued $ typeOf property)
 
 -------------------------------------------------------------------------------
 -- Unsolved constraint checks
@@ -361,3 +369,26 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
       Nothing   -> return ()
       Just decl -> logDebug MaxDetail $ "current-decl:" <> line <>
         indent 2 (prettyVerbose decl) <> line
+
+bidirectionalPassDoc :: Doc a
+bidirectionalPassDoc = "bidirectional pass over"
+
+-------------------------------------------------------------------------------
+-- Interface for unnormalised code
+
+-- | Retrieves a normalised representation of the typed expression that has
+-- been simplified as much as possible.
+-- All irrelevent code (such as polarity and linearity annotations) is also
+-- removed.
+getNormalised :: MonadCompile m => TypedExpr -> m NormExpr
+getNormalised expr = removeIrrelevantCode (normalised (glued expr))
+
+-- | Retrieves an unnormalised representation of the typed expression
+-- that should be roughly equivalent to what the user wrote.
+-- All irrelevent code (such as polarity and linearity annotations) is also
+-- removed.
+getUnnormalised :: MonadCompile m => TypedExpr -> m CheckedExpr
+getUnnormalised expr = removeIrrelevantCode (unnormalised (glued expr))
+
+getGlued :: MonadCompile m => TypedExpr -> m GluedExpr
+getGlued expr = removeIrrelevantCode (glued expr)

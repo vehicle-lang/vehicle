@@ -3,41 +3,75 @@ module Vehicle.Compile.ExpandResources.Core where
 
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Writer
+import Data.Map (Map)
 import Data.Map qualified as Map
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Type (TypedExpr)
 
 --------------------------------------------------------------------------------
 -- The resource monad
 
 type MonadExpandResources m =
   ( MonadCompile m
-  , MonadReader (Resources, Bool) m
-  , MonadWriter ResourceContext m
-  , MonadState InferableParameterContext m
+  , MonadReader Resources m
+  , MonadState ResourceContext m
   )
 
 isInferableParameter :: MonadExpandResources m => Identifier -> m Bool
-isInferableParameter ident = gets (Map.member (nameOf ident))
+isInferableParameter ident = do
+  inferableCtx <- gets inferableParameterContext
+  return $ Map.member (nameOf ident) inferableCtx
 
 --------------------------------------------------------------------------------
 -- Resource contexts
 
+type InferableParameterEntry = (DeclProvenance, Resource, Int)
+
+type InferableParameterContext = Map Name (Maybe InferableParameterEntry)
+
+type ParameterContext = Map Name TypedExpr
+
+type DatasetContext = Map Name TypedExpr
+
 data ResourceContext = ResourceContext
-  { parameterContext :: ParameterContext
-  , datasetContext   :: DatasetContext
-  , networkContext   :: NetworkContext
+  { inferableParameterContext :: InferableParameterContext
+  , parameterContext          :: ParameterContext
+  , datasetContext            :: DatasetContext
+  , networkContext            :: NetworkContext
   }
 
-instance Semigroup ResourceContext where
-  c1 <> c2 = ResourceContext
-    { parameterContext = parameterContext c1 <> parameterContext c2
-    , datasetContext   = datasetContext   c1 <> datasetContext   c2
-    , networkContext   = networkContext   c1 <> networkContext   c2
-    }
+emptyResourceCtx :: ResourceContext
+emptyResourceCtx = ResourceContext mempty mempty mempty mempty
 
-instance Monoid ResourceContext where
-  mempty = ResourceContext mempty mempty mempty
+noteInferableParameter :: Identifier -> ResourceContext -> ResourceContext
+noteInferableParameter ident ResourceContext{..} = ResourceContext
+  { inferableParameterContext = Map.insert (nameOf ident) Nothing inferableParameterContext
+  , ..
+  }
+
+addPossibleInferableParameterSolution :: Identifier -> InferableParameterEntry -> ResourceContext -> ResourceContext
+addPossibleInferableParameterSolution ident entry ResourceContext{..} = ResourceContext
+  { inferableParameterContext = Map.insert (nameOf ident) (Just entry) inferableParameterContext
+  , ..
+  }
+
+addParameter :: Identifier -> TypedExpr -> ResourceContext -> ResourceContext
+addParameter ident value ResourceContext{..} = ResourceContext
+  { parameterContext = Map.insert (nameOf ident) value parameterContext
+  , ..
+  }
+
+addDataset :: Identifier -> TypedExpr -> ResourceContext -> ResourceContext
+addDataset ident value ResourceContext{..} = ResourceContext
+  { datasetContext = Map.insert (nameOf ident) value datasetContext
+  , ..
+  }
+
+addNetworkType :: Identifier -> NetworkType -> ResourceContext -> ResourceContext
+addNetworkType ident details ResourceContext{..} = ResourceContext
+  { networkContext = Map.insert (nameOf ident) details networkContext
+  , ..
+  }

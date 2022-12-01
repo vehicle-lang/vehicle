@@ -33,7 +33,7 @@ class RemoveIrrelevantCode a where
   remove :: MonadRemove m => a -> m a
 
 instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericProg expr) where
-  remove= traverse remove
+  remove = traverse remove
 
 instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericDecl expr) where
   remove = traverse remove

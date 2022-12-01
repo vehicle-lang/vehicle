@@ -5,11 +5,11 @@ module Vehicle.Backend.Agda.Compile
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
+import Data.Bifunctor (Bifunctor(..))
 import Data.Foldable (fold)
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Map qualified as Map (member)
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -31,6 +31,7 @@ import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Language.StandardLibrary.Names (StdLibFunction,
                                                findStdLibFunction)
 import Vehicle.Syntax.Sugar
+import Vehicle.Compile.Type (TypedProg, getUnnormalised)
 
 
 --------------------------------------------------------------------------------
@@ -42,10 +43,11 @@ data AgdaOptions = AgdaOptions
   , moduleName         :: Maybe String
   }
 
-compileProgToAgda :: MonadCompile m => CheckedProg -> PropertyContext -> AgdaOptions -> m (Doc a)
-compileProgToAgda prog propertyContext options = logCompilerPass MinDetail currentPhase $
-  flip runReaderT (propertyContext, options, BoolLevel) $ do
-    monoProg <- monomorphise prog
+compileProgToAgda :: MonadCompile m => TypedProg -> AgdaOptions -> m (Doc a)
+compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
+  flip runReaderT (options, BoolLevel) $ do
+    unnormalisedProg <- traverse getUnnormalised prog
+    monoProg <- monomorphise unnormalisedProg
 
     let prog2 = capitaliseTypeNames monoProg
     let prog3 = unwrapProg $ supplyDBNames (WrapProg prog2)
@@ -303,26 +305,21 @@ arrow = "→" -- <> softline'
 
 type MonadAgdaCompile m =
   ( MonadCompile m
-  , MonadReader (PropertyContext, AgdaOptions, BoolLevel) m
+  , MonadReader (AgdaOptions, BoolLevel) m
   )
-
-isProperty :: MonadAgdaCompile m => Identifier -> m Bool
-isProperty ident = do
-  (ctx, _, _) <- ask
-  return $ ident `Map.member` ctx
 
 getProofCacheLocation :: MonadAgdaCompile m => m (Maybe FilePath)
 getProofCacheLocation = do
-  (_, options, _) <- ask
+  (options, _) <- ask
   return $ proofCacheLocation options
 
 getBoolLevel :: MonadAgdaCompile m => m BoolLevel
 getBoolLevel = do
-  (_, _, boolLevel) <- ask
+  (_, boolLevel) <- ask
   return boolLevel
 
 setBoolLevel :: MonadAgdaCompile m => BoolLevel -> m a -> m a
-setBoolLevel level = local (\(ctx, opts, _) -> (ctx, opts, level))
+setBoolLevel level = local (second (const level))
 
 --------------------------------------------------------------------------------
 -- Program Compilation
@@ -332,17 +329,16 @@ compileProg (Main ds) = vsep2 <$> traverse compileDecl ds
 
 compileDecl :: MonadAgdaCompile m => OutputDecl -> m Code
 compileDecl = \case
-  DefResource _ _ n t ->
+  DefResource _ n _ t ->
     compilePostulate (compileIdentifier n) <$> compileExpr t
 
   DefPostulate _ n t ->
     compilePostulate (compileIdentifier n) <$> compileExpr t
 
-  DefFunction _ n t e -> do
+  DefFunction _ n isProperty t e -> do
     let (binders, body) = foldLam e
     setBoolLevel TypeLevel $ do
-      property <- isProperty n
-      if property
+      if isProperty
         then compileProperty (compileIdentifier n) =<< compileExpr e
         else do
           let binders' = mapMaybe compileTopLevelBinder binders

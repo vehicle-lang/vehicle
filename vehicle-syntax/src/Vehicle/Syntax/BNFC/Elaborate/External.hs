@@ -2,13 +2,14 @@
 
 module Vehicle.Syntax.BNFC.Elaborate.External
   ( UnparsedExpr(..)
+  , UnparsedProg
+  , UnparsedDecl
   , elaborateProg
   , elaborateExpr
   ) where
 
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Control.Monad.Except (MonadError (..), foldM, throwError)
-import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.Bitraversable (bitraverse)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
@@ -30,14 +31,16 @@ import Vehicle.Syntax.Sugar
 -- Public interface
 
 newtype UnparsedExpr = UnparsedExpr B.Expr
+type UnparsedDecl = V.GenericDecl UnparsedExpr
+type UnparsedProg = V.GenericProg UnparsedExpr
 
 -- | We elaborate from the simple AST generated automatically by BNFC to our
 -- more complicated internal version of the AST.
 elaborateProg :: MonadError ParseError m
               => V.Module
               -> B.Prog
-              -> m (V.GenericProg UnparsedExpr, Set V.Identifier)
-elaborateProg mod prog = runReaderT (runWriterT $ elabProg prog) mod
+              -> m UnparsedProg
+elaborateProg mod prog = runReaderT (elabProg prog) mod
 
 elaborateExpr :: MonadError ParseError m
               => V.Module
@@ -50,14 +53,13 @@ elaborateExpr mod (UnparsedExpr expr) = runReaderT (elabExpr expr) mod
 
 type MonadProgElab m =
   ( MonadError ParseError m
-  , MonadWriter (Set V.Identifier) m
   , MonadReader V.Module m
   )
 
-elabProg :: MonadProgElab m => B.Prog -> m (V.GenericProg UnparsedExpr)
+elabProg :: MonadProgElab m => B.Prog -> m UnparsedProg
 elabProg (B.Main decls) = V.Main <$> elabDecls decls
 
-elabDecls :: MonadProgElab m => [B.Decl] -> m [V.GenericDecl UnparsedExpr]
+elabDecls :: MonadProgElab m => [B.Decl] -> m [UnparsedDecl]
 elabDecls = \case
   []           -> return []
   decl : decls -> do
@@ -65,7 +67,7 @@ elabDecls = \case
     ds' <- elabDecls ds
     return $ d' : ds'
 
-elabDeclGroup :: MonadProgElab m => NonEmpty B.Decl -> m (V.GenericDecl UnparsedExpr, [B.Decl])
+elabDeclGroup :: MonadProgElab m => NonEmpty B.Decl -> m (UnparsedDecl, [B.Decl])
 elabDeclGroup dx = case dx of
   -- Type definition.
   B.DefType n bs t :| ds -> do
@@ -74,13 +76,13 @@ elabDeclGroup dx = case dx of
 
   -- Function declaration and body.
   B.DefFunType typeName _ t :| B.DefFunExpr exprName bs e : ds -> do
-    d' <- elabDefFun typeName exprName t bs e
+    d' <- elabDefFun False typeName exprName t bs e
     return (d', ds)
 
   -- Function body without a declaration.
   B.DefFunExpr n bs e :| ds -> do
     let unknownType = constructUnknownDefType n bs
-    d' <- elabDefFun n n unknownType bs e
+    d' <- elabDefFun False n n unknownType bs e
     return (d', ds)
 
   -- ERROR: Function declaration with no body
@@ -90,8 +92,7 @@ elabDeclGroup dx = case dx of
   -- Property declaration.
   B.DefAnn a@B.Property{} opts :| B.DefFunType typeName _tk t : B.DefFunExpr exprName bs e : ds -> do
     checkNoAnnotationOptions a opts
-    d' <- elabDefFun typeName exprName t bs e
-    tell (Set.singleton (V.identifierOf d'))
+    d' <- elabDefFun True typeName exprName t bs e
     return (d', ds)
 
   -- ERROR: Property with no body
@@ -147,7 +148,7 @@ checkNoAnnotationOptions annName = \case
     throwError $ InvalidAnnotationOption (V.tkProvenance paramName) (annotationSymbol annName) (tkSymbol paramName) []
 
 elabResource :: MonadElab m => B.Name -> B.Expr -> V.Resource -> m (V.GenericDecl UnparsedExpr)
-elabResource n t r = V.DefResource (mkAnn n) r <$> elabName n <*> pure (UnparsedExpr t)
+elabResource n t r = V.DefResource (mkAnn n) <$> elabName n <*> pure r <*> pure (UnparsedExpr t)
 
 elabTypeDef :: MonadElab m => B.Name -> [B.Binder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
 elabTypeDef n binders e = do
@@ -155,10 +156,10 @@ elabTypeDef n binders e = do
   let typeTyp
         | null binders = tokType 0
         | otherwise    = B.ForallT tokForallT binders tokDot (tokType 0)
-  return $ V.DefFunction (mkAnn n) name (UnparsedExpr typeTyp) (UnparsedExpr e)
+  return $ V.DefFunction (mkAnn n) name False (UnparsedExpr typeTyp) (UnparsedExpr e)
 
-elabDefFun :: MonadElab m =>  B.Name -> B.Name -> B.Expr -> [B.Binder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
-elabDefFun n1 n2 t binders e
+elabDefFun :: MonadElab m => Bool -> B.Name -> B.Name -> B.Expr -> [B.Binder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
+elabDefFun isProperty n1 n2 t binders e
   | tkSymbol n1 /= tkSymbol n2 =
     throwError $ FunctionWithMismatchedNames (mkAnn n1) (tkSymbol n1) (tkSymbol n2)
   | otherwise = do
@@ -166,7 +167,7 @@ elabDefFun n1 n2 t binders e
     let body
           | null binders   = e
           | otherwise = B.Lam tokLambda binders tokArrow e
-    return $ V.DefFunction (mkAnn n1) name (UnparsedExpr t) (UnparsedExpr body)
+    return $ V.DefFunction (mkAnn n1) name isProperty (UnparsedExpr t) (UnparsedExpr body)
 
 --------------------------------------------------------------------------------
 -- Expr elaboration
