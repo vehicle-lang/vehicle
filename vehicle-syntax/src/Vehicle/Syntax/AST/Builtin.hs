@@ -17,6 +17,8 @@ import Vehicle.Syntax.AST.Builtin.Core as X
 import Vehicle.Syntax.AST.Builtin.Linearity as X
 import Vehicle.Syntax.AST.Builtin.Polarity as X
 import Vehicle.Syntax.AST.Builtin.TypeClass as X
+import Data.Aeson (FromJSON)
+import Data.Aeson.Types (ToJSON)
 
 --------------------------------------------------------------------------------
 -- Constructors
@@ -48,6 +50,8 @@ data BuiltinConstructor
 
 instance NFData   BuiltinConstructor
 instance Hashable BuiltinConstructor
+instance ToJSON   BuiltinConstructor
+instance FromJSON BuiltinConstructor
 
 instance Pretty BuiltinConstructor where
   pretty = \case
@@ -78,6 +82,9 @@ data NegDomain
 
 instance NFData   NegDomain
 instance Hashable NegDomain
+instance ToJSON   NegDomain
+instance FromJSON NegDomain
+
 
 instance Pretty NegDomain where
   pretty = \case
@@ -97,6 +104,8 @@ data AddDomain
 
 instance NFData   AddDomain
 instance Hashable AddDomain
+instance ToJSON   AddDomain
+instance FromJSON AddDomain
 
 instance Pretty AddDomain where
   pretty = \case
@@ -111,6 +120,8 @@ data SubDomain
 
 instance NFData   SubDomain
 instance Hashable SubDomain
+instance ToJSON   SubDomain
+instance FromJSON SubDomain
 
 instance Pretty SubDomain where
   pretty = \case
@@ -135,6 +146,8 @@ data MulDomain
 
 instance NFData   MulDomain
 instance Hashable MulDomain
+instance ToJSON   MulDomain
+instance FromJSON MulDomain
 
 instance Pretty MulDomain where
   pretty = \case
@@ -148,6 +161,8 @@ data DivDomain
 
 instance NFData   DivDomain
 instance Hashable DivDomain
+instance ToJSON   DivDomain
+instance FromJSON DivDomain
 
 instance Pretty DivDomain where
   pretty = \case
@@ -169,6 +184,8 @@ instance Pretty FromNatDomain where
 
 instance NFData   FromNatDomain
 instance Hashable FromNatDomain
+instance ToJSON   FromNatDomain
+instance FromJSON FromNatDomain
 
 data FromRatDomain
   = FromRatToRat
@@ -180,6 +197,8 @@ instance Pretty FromRatDomain where
 
 instance NFData   FromRatDomain
 instance Hashable FromRatDomain
+instance ToJSON   FromRatDomain
+instance FromJSON FromRatDomain
 
 data FromVecDomain
   = FromVecToVec
@@ -193,6 +212,8 @@ instance Pretty FromVecDomain where
 
 instance NFData   FromVecDomain
 instance Hashable FromVecDomain
+instance ToJSON   FromVecDomain
+instance FromJSON FromVecDomain
 
 data FoldDomain
   = FoldList
@@ -206,6 +227,8 @@ instance Pretty FoldDomain where
 
 instance NFData   FoldDomain
 instance Hashable FoldDomain
+instance ToJSON   FoldDomain
+instance FromJSON FoldDomain
 
 data MapDomain
   = MapList
@@ -219,6 +242,8 @@ instance Pretty MapDomain where
 
 instance NFData   MapDomain
 instance Hashable MapDomain
+instance ToJSON   MapDomain
+instance FromJSON MapDomain
 
 
 -- |Builtins in the Vehicle language
@@ -260,6 +285,8 @@ data Builtin
 
 instance NFData   Builtin
 instance Hashable Builtin
+instance ToJSON   Builtin
+instance FromJSON Builtin
 
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.

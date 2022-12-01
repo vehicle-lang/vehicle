@@ -7,6 +7,7 @@ import Data.Text (Text)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST.Name (HasIdentifier (..), Identifier)
 import Vehicle.Syntax.AST.Provenance
+import Data.Aeson (ToJSON, FromJSON)
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -31,7 +32,9 @@ data GenericDecl expr
     expr
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance NFData expr => NFData (GenericDecl expr)
+instance NFData   expr => NFData   (GenericDecl expr)
+instance ToJSON   expr => ToJSON   (GenericDecl expr)
+instance FromJSON expr => FromJSON (GenericDecl expr)
 
 instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
@@ -83,7 +86,9 @@ data Resource
   | InferableParameter
   deriving (Eq, Show, Generic)
 
-instance NFData Resource
+instance NFData   Resource
+instance ToJSON   Resource
+instance FromJSON Resource
 
 instance Pretty Resource where
   pretty = \case

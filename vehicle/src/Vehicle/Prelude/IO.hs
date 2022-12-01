@@ -1,5 +1,8 @@
 module Vehicle.Prelude.IO
-  ( removeFileIfExists
+  ( vehicleFileExtension
+  , vehicleObjectFileExtension
+  , vehicleProofCacheFileExtension
+  , removeFileIfExists
   , fatalError
   , programOutput
   ) where
@@ -13,23 +16,14 @@ import System.Exit (exitFailure)
 import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
 
-{-
-fromLoggerTIO :: LoggingSettings -> ImmediateLogger a -> IO a
-fromLoggerTIO options@LoggingSettings{..} logger = do
-  (v, messages) <- runLogger loggingLevel logger
-  fromLoggedIO options $ do
-    forM_ messages logMessage
-    return v
+vehicleFileExtension :: String
+vehicleFileExtension = ".vcl"
 
-flushLogger :: MonadIO m => LoggingLevel -> Handle -> Logger a -> m a
-flushLogger debugLevel logHandle logger = do
-  (v, messages) <- liftIO $ runLogger debugLevel logger
-  flushLogs logHandle messages
-  return v
+vehicleObjectFileExtension :: String
+vehicleObjectFileExtension = vehicleFileExtension <> "o"
 
-flushLogs :: MonadIO m => Handle -> [Message] -> m ()
-flushLogs logHandle messages = liftIO $ mapM_ (hPrint logHandle) messages
--}
+vehicleProofCacheFileExtension :: String
+vehicleProofCacheFileExtension = vehicleFileExtension <> "p"
 
 --------------------------------------------------------------------------------
 -- IO operations

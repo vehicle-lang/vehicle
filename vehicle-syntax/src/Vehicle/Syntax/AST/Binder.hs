@@ -2,6 +2,7 @@ module Vehicle.Syntax.AST.Binder where
 
 import Control.DeepSeq (NFData)
 import GHC.Generics (Generic)
+import Data.Aeson (ToJSON, FromJSON)
 
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
@@ -29,7 +30,9 @@ data GenericBinder binder expr = Binder
   -- The type of the bound variable
   } deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance (NFData binder, NFData expr) => NFData (GenericBinder binder expr)
+instance (NFData   binder, NFData   expr) => NFData   (GenericBinder binder expr)
+instance (ToJSON   binder, ToJSON   expr) => ToJSON   (GenericBinder binder expr)
+instance (FromJSON binder, FromJSON expr) => FromJSON (GenericBinder binder expr)
 
 instance HasProvenance (GenericBinder binder expr) where
   provenanceOf = binderProvenance

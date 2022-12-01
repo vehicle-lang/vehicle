@@ -6,6 +6,7 @@ module Vehicle.Compile.Prelude
 import Control.DeepSeq (NFData)
 import Data.Map (Map)
 import Data.Set (Set)
+import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 
 import Vehicle.Compile.Dependency.Graph as X
@@ -112,7 +113,9 @@ data PropertyInfo
   = PropertyInfo Linearity Polarity
   deriving (Show, Eq, Generic)
 
-instance NFData PropertyInfo
+instance NFData   PropertyInfo
+instance ToJSON   PropertyInfo
+instance FromJSON PropertyInfo
 
 instance Pretty PropertyInfo where
   pretty (PropertyInfo lin pol) = pretty lin <+> pretty pol

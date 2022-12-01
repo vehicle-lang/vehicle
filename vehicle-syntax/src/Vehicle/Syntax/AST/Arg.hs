@@ -2,6 +2,7 @@ module Vehicle.Syntax.AST.Arg where
 
 import Control.DeepSeq (NFData)
 import GHC.Generics (Generic)
+import Data.Aeson (ToJSON, FromJSON)
 
 import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Provenance
@@ -24,7 +25,9 @@ data GenericArg expr = Arg
     -- ^ The argument expression
   } deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance (NFData expr) => NFData (GenericArg expr)
+instance NFData   expr => NFData   (GenericArg expr)
+instance ToJSON   expr => ToJSON   (GenericArg expr)
+instance FromJSON expr => FromJSON (GenericArg expr)
 
 instance HasProvenance (GenericArg expr) where
   provenanceOf = argProvenance

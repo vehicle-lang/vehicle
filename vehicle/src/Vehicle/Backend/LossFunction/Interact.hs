@@ -2,8 +2,10 @@ module Vehicle.Backend.LossFunction.Interact
   ( writeLossFunctionFiles
   ) where
 
+import Control.Monad.IO.Class
 import Data.Aeson.Encode.Pretty
 import Data.ByteString.Lazy.Char8
+
 import Vehicle.Backend.LossFunction.Compile
 import Vehicle.Backend.Prelude
 import Vehicle.Prelude
@@ -17,6 +19,10 @@ encode e = unpack $ flip encodePretty' e $ Config
   , confTrailingNewline = False
   }
 
-writeLossFunctionFiles :: Maybe FilePath -> DifferentiableLogic -> [LDecl] -> IO ()
+writeLossFunctionFiles :: MonadIO m
+                       => Maybe FilePath
+                       -> DifferentiableLogic
+                       -> [LDecl]
+                       -> m ()
 writeLossFunctionFiles filepath t functions =
   writeResultToFile (LossFunction t) filepath (pretty (encode functions))

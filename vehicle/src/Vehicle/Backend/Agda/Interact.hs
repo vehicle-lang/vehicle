@@ -5,5 +5,7 @@ module Vehicle.Backend.Agda.Interact
 import Vehicle.Backend.Prelude
 import Vehicle.Prelude
 
-writeAgdaFile :: Maybe FilePath -> Doc a -> IO ()
+import Control.Monad.IO.Class (MonadIO)
+
+writeAgdaFile :: MonadIO m => Maybe FilePath -> Doc a -> m ()
 writeAgdaFile = writeResultToFile AgdaBackend

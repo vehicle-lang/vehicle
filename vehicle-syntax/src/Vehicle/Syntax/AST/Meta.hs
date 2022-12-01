@@ -3,6 +3,7 @@ module Vehicle.Syntax.AST.Meta where
 
 import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
+import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 
@@ -14,6 +15,8 @@ newtype MetaID = MetaID Int
 
 instance NFData   MetaID
 instance Hashable MetaID
+instance ToJSON   MetaID
+instance FromJSON MetaID
 
 instance Pretty MetaID where
   pretty (MetaID m) = "?" <> pretty m

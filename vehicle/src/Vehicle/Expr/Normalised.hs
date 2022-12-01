@@ -1,5 +1,8 @@
 module Vehicle.Expr.Normalised where
 
+import Data.Aeson (ToJSON, FromJSON)
+import GHC.Generics (Generic)
+
 import Vehicle.Compile.Prelude (CheckedExpr)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Syntax.AST
@@ -20,7 +23,10 @@ data NormExpr
   | VMeta     Provenance MetaID Spine
   | VVar      Provenance DBVar Spine
   | VBuiltin  Provenance Builtin Spine
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON   NormExpr
+instance FromJSON NormExpr
 
 instance HasProvenance NormExpr where
   provenanceOf = \case
@@ -209,7 +215,10 @@ isBoundVar _                    = False
 data GluedExpr = Glued
   { unnormalised :: CheckedExpr
   , normalised   :: NormExpr
-  } deriving (Show)
+  } deriving (Show, Generic)
+
+instance ToJSON   GluedExpr
+instance FromJSON GluedExpr
 
 instance HasProvenance GluedExpr where
   provenanceOf = provenanceOf . unnormalised

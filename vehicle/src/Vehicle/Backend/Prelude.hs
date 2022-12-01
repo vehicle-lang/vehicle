@@ -1,5 +1,6 @@
 module Vehicle.Backend.Prelude where
 
+import Control.Monad.IO.Class
 import Data.Text.IO qualified as TIO
 import Data.Version (Version, makeVersion)
 import System.Directory (createDirectoryIfMissing)
@@ -111,10 +112,10 @@ prependfileHeader doc target = case commentTokenOf target of
     ]) <> line <> line <> doc
   where targetVersion = maybe "N/A" pretty (versionOf target)
 
-writeResultToFile :: Backend -> Maybe FilePath -> Doc a -> IO ()
+writeResultToFile :: MonadIO m => Backend -> Maybe FilePath -> Doc a -> m ()
 writeResultToFile target filepath doc = do
   let text = layoutAsText $ prependfileHeader doc target
-  case filepath of
+  liftIO $ case filepath of
     Nothing             -> TIO.putStrLn text
     Just outputFilePath -> do
       createDirectoryIfMissing True (takeDirectory outputFilePath)

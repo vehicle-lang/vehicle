@@ -54,9 +54,6 @@ data ResourceSummary = ResourceSummary
   , resType  :: Resource
   } deriving (Generic)
 
-instance FromJSON Resource
-instance ToJSON Resource
-
 instance FromJSON ResourceSummary
 instance ToJSON ResourceSummary
 
