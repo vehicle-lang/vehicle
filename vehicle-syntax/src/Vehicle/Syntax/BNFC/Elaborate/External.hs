@@ -265,7 +265,7 @@ mkBinder n v e = V.Binder (V.expandByArgVisibility v p) v V.Relevant (Just (tkSy
   where
   (p, t) = case e of
     Nothing  -> (V.tkProvenance n, V.mkHole (V.tkProvenance n) ("typeOf[" <> tkSymbol n <> "]"))
-    Just t1  -> (V.fillInProvenance [V.tkProvenance n, V.provenanceOf t1], t1)
+    Just t1  -> (V.fillInProvenance (V.tkProvenance n :| [V.provenanceOf t1]), t1)
 
 elabLetDecl :: MonadElab m => B.LetDecl -> m (V.InputBinder, V.InputExpr)
 elabLetDecl (B.LDecl b e) = bitraverse elabBinder elabExpr (b,e)
@@ -313,7 +313,7 @@ op1 :: (MonadElab m, V.HasProvenance a, IsToken token)
     -> token -> m a -> m b
 op1 mk t e = do
   ce <- e
-  let p = V.fillInProvenance [V.tkProvenance t, V.provenanceOf ce]
+  let p = V.fillInProvenance (V.tkProvenance t :| [V.provenanceOf ce])
   return $ mk p ce
 
 op2 :: (MonadElab m, V.HasProvenance a, V.HasProvenance b, IsToken token)
@@ -323,7 +323,7 @@ op2 :: (MonadElab m, V.HasProvenance a, V.HasProvenance b, IsToken token)
 op2 mk t e1 e2 = do
   ce1 <- e1
   ce2 <- e2
-  let p = V.fillInProvenance [V.tkProvenance t, V.provenanceOf ce1, V.provenanceOf ce2]
+  let p = V.fillInProvenance (V.tkProvenance t :| [V.provenanceOf ce1, V.provenanceOf ce2])
   return $ mk p ce1 ce2
 
 builtin :: (MonadElab m, IsToken token) => V.Builtin -> token -> [B.Expr] -> m V.InputExpr
@@ -335,7 +335,7 @@ constructor b = builtin (V.Constructor b)
 app :: V.InputExpr -> [V.InputExpr] -> V.InputExpr
 app fun argExprs = V.normAppList p' fun args
   where
-    p'   = V.fillInProvenance (V.provenanceOf fun : map V.provenanceOf args)
+    p'   = V.fillInProvenance (V.provenanceOf fun :| map V.provenanceOf args)
     args = fmap (mkArg V.Explicit) argExprs
 
 elabVecLiteral :: (MonadElab m, IsToken token) => token -> [B.Expr] -> m V.InputExpr
@@ -354,7 +354,7 @@ elabApp :: MonadElab m => B.Expr -> B.Arg -> m V.InputExpr
 elabApp fun arg = do
   fun' <- elabExpr fun
   arg' <- elabArg arg
-  let p = V.fillInProvenance [V.provenanceOf fun', V.provenanceOf arg']
+  let p = V.fillInProvenance (V.provenanceOf fun' :| [V.provenanceOf arg'])
   return $ V.normAppList p fun' [arg']
 
 elabBindersAndBody :: MonadElab m => [B.Binder] -> B.Expr -> m ([V.InputBinder], V.InputExpr)
