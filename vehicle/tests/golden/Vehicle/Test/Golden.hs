@@ -33,7 +33,7 @@ import Vehicle.Test.Golden.TestSpec (TestOutput (..), TestSpec,
                                      testSpecIsEnabled, testSpecName,
                                      testSpecNeeds, testSpecOptions,
                                      testSpecRun, writeGoldenFiles)
-import Vehicle.Prelude ( vehicleInterfaceFileExtension )
+import Vehicle.Prelude ( vehicleObjectFileExtension )
 
 -- | Create a test tree from all test specifications in a directory, recursively.
 makeTestTreeFromDirectoryRecursive :: TestName -> FilePath -> IO TestTree
@@ -127,4 +127,4 @@ isOutputFile inputFiles file =
   -- Exclude profiling files
   extension /= ".prof" &&
   -- Exclude interface files
-  extension /= vehicleInterfaceFileExtension
+  extension /= vehicleObjectFileExtension

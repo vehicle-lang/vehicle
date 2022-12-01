@@ -37,7 +37,7 @@ import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
 import Vehicle.Verify.Core
-import Vehicle.Compile.InterfaceFile
+import Vehicle.Compile.ObjectFile
 
 data CompileOptions = CompileOptions
   { target                :: Backend
@@ -158,12 +158,12 @@ typeCheckOrLoadProg :: (MonadIO m, MonadCompile m)
                     -> m TypeCheckingResult
 typeCheckOrLoadProg specificationFile declarationsToCompile = do
   spec <- readSpecification specificationFile
-  interfaceFileResult <- readInterfaceFile specificationFile spec
+  interfaceFileResult <- readObjectFile specificationFile spec
   case interfaceFileResult of
     Just result -> return result
     Nothing     -> do
       result <- typeCheckProg spec declarationsToCompile
-      writeInterfaceFile specificationFile spec result
+      writeObjectFile specificationFile spec result
       return result
 
 parseExprText :: MonadCompile m => Text -> m InputExpr

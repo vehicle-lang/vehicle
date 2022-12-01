@@ -131,8 +131,8 @@ library
     Vehicle.Compile.Dependency.Analysis
     Vehicle.Compile.Dependency.Graph
     Vehicle.Compile.ExpandResources.Dataset.IDX
-    Vehicle.Compile.InterfaceFile
     Vehicle.Compile.Monomorphisation
+    Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Contexts
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.QuantifierAnalysis

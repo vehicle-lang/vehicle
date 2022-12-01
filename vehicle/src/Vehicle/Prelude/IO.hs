@@ -1,6 +1,6 @@
 module Vehicle.Prelude.IO
   ( vehicleFileExtension
-  , vehicleInterfaceFileExtension
+  , vehicleObjectFileExtension
   , vehicleProofCacheFileExtension
   , removeFileIfExists
   , fatalError
@@ -19,8 +19,8 @@ import System.IO.Error (isDoesNotExistError)
 vehicleFileExtension :: String
 vehicleFileExtension = ".vcl"
 
-vehicleInterfaceFileExtension :: String
-vehicleInterfaceFileExtension = vehicleFileExtension <> "i"
+vehicleObjectFileExtension :: String
+vehicleObjectFileExtension = vehicleFileExtension <> "o"
 
 vehicleProofCacheFileExtension :: String
 vehicleProofCacheFileExtension = vehicleFileExtension <> "p"
