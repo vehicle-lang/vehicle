@@ -37,7 +37,7 @@ for arg; do
 done
 
 # Gather all files for the given project:
-projects=$(find . -name ".stylish-haskell.yaml" -depth 2 -exec dirname \{\} \;)
+projects=$(find . -name ".stylish-haskell.yaml" -exec dirname \{\} \;)
 for project in $projects; do
     # Get the realpath for the project directory:
     project="$(realpath "$project")"
