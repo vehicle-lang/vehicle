@@ -1,0 +1,11 @@
+-- Cabal project configuration file for DEBUGGING
+
+import: cabal.project
+
+package vehicle-syntax
+  profiling: True
+  ghc-options: -O0
+
+package vehicle
+  profiling: True
+  flags: +ghc-debug
