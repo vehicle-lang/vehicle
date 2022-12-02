@@ -1,4 +1,10 @@
+{-# LANGUAGE CPP #-}
+
 module Main where
+
+#if ghcDebug
+import GHC.Debug.Stub (withGhcDebug)
+#endif
 
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import Options.Applicative (execParser)
@@ -10,8 +16,19 @@ import Vehicle.CommandLine (commandLineOptionsParserInfo)
 --------------------------------------------------------------------------------
 -- Main function
 
-main :: IO ()
-main = do
+defaultMain :: IO ()
+defaultMain = do
   setLocaleEncoding utf8
   options <- execParser commandLineOptionsParserInfo
   run options
+
+--------------------------------------------------------------------------------
+-- Load ghc-debug instrumentation if built with ghc-debug
+
+#if ghcDebug
+main :: IO ()
+main = withGhcDebug defaultMain
+#else
+main :: IO ()
+main = defaultMain
+#endif
