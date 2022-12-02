@@ -4,6 +4,7 @@ import Control.DeepSeq (NFData (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks)
 import Prettyprinter (Pretty (..), (<+>))
 
 import Vehicle.Syntax.AST.Builtin.Core
@@ -14,12 +15,12 @@ import Vehicle.Syntax.AST.Provenance
 
 -- | Used to track where the polarity information came from.
 data PolarityProvenance
-  = QuantifierProvenance     Provenance
-  | NegateProvenance         Provenance PolarityProvenance
-  | LHSImpliesProvenance     Provenance PolarityProvenance
-  | EqProvenance             Provenance PolarityProvenance EqualityOp
-  | PolFunctionProvenance    Provenance PolarityProvenance FunctionPosition
-  deriving (Generic)
+  = QuantifierProvenance     !Provenance
+  | NegateProvenance         !Provenance !PolarityProvenance
+  | LHSImpliesProvenance     !Provenance !PolarityProvenance
+  | EqProvenance             !Provenance !PolarityProvenance !EqualityOp
+  | PolFunctionProvenance    !Provenance !PolarityProvenance !FunctionPosition
+  deriving (Generic, NoThunks)
 
 instance ToJSON   PolarityProvenance
 instance FromJSON PolarityProvenance
@@ -43,12 +44,12 @@ instance Hashable PolarityProvenance where
 -- quantifiers it contains.
 data Polarity
   = Unquantified
-  | Quantified Quantifier PolarityProvenance
+  | Quantified !Quantifier !PolarityProvenance
   -- | Stores the provenance of the `Forall` first followed by the `Exists`.
-  | MixedParallel PolarityProvenance PolarityProvenance
+  | MixedParallel !PolarityProvenance !PolarityProvenance
   -- | Stores the type and provenance of the top-most quantifier first.
-  | MixedSequential Quantifier Provenance PolarityProvenance
-  deriving (Eq, Generic, Show)
+  | MixedSequential !Quantifier !Provenance !PolarityProvenance
+  deriving (Eq, Show, Generic, NoThunks)
 
 instance NFData   Polarity
 instance Hashable Polarity
@@ -76,13 +77,13 @@ mapPolarityProvenance f = \case
 
 data PolarityTypeClass
   = NegPolarity
-  | AddPolarity Quantifier
-  | EqPolarity EqualityOp
+  | AddPolarity !Quantifier
+  | EqPolarity !EqualityOp
   | ImpliesPolarity
   | MaxPolarity
-  | FunctionPolarity FunctionPosition
+  | FunctionPolarity !FunctionPosition
   | IfCondPolarity
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Generic, Show, NoThunks)
 
 instance ToJSON   PolarityTypeClass
 instance FromJSON PolarityTypeClass

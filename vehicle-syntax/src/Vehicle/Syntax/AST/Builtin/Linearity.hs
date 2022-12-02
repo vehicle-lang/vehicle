@@ -5,6 +5,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks)
 import Prettyprinter (Pretty (..))
 
 import Vehicle.Syntax.AST.Builtin.Core
@@ -17,10 +18,10 @@ import Vehicle.Syntax.AST.Provenance
 -- 1) rename LinearityProvenance to LinearityProof
 -- 2) mimic AST nodes names
 data LinearityProvenance
-  = QuantifiedVariableProvenance Provenance Text
-  | NetworkOutputProvenance      Provenance Text
-  | LinFunctionProvenance        Provenance LinearityProvenance FunctionPosition
-  deriving (Generic)
+  = QuantifiedVariableProvenance !Provenance !Text
+  | NetworkOutputProvenance      !Provenance !Text
+  | LinFunctionProvenance        !Provenance !LinearityProvenance !FunctionPosition
+  deriving (Generic, NoThunks)
 
 instance ToJSON   LinearityProvenance
 instance FromJSON LinearityProvenance
@@ -44,9 +45,9 @@ instance Hashable LinearityProvenance where
 -- constant, linear or non-linear expression.
 data Linearity
   = Constant
-  | Linear LinearityProvenance
-  | NonLinear Provenance LinearityProvenance LinearityProvenance
-  deriving (Eq, Show, Generic)
+  | Linear !LinearityProvenance
+  | NonLinear !Provenance !LinearityProvenance !LinearityProvenance
+  deriving (Eq, Show, Generic, NoThunks)
 
 instance Ord Linearity where
   Constant    <= _           = True
@@ -80,9 +81,9 @@ mapLinearityProvenance f = \case
 data LinearityTypeClass
   = MaxLinearity
   | MulLinearity
-  | FunctionLinearity FunctionPosition
+  | FunctionLinearity !FunctionPosition
   | IfCondLinearity
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Generic, Show, NoThunks)
 
 instance ToJSON   LinearityTypeClass
 instance FromJSON LinearityTypeClass

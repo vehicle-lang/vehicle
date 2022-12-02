@@ -3,6 +3,7 @@ module Vehicle.Syntax.AST.Prog where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks)
 
 import Vehicle.Syntax.AST.Decl (GenericDecl)
 
@@ -12,7 +13,7 @@ import Vehicle.Syntax.AST.Decl (GenericDecl)
 -- | Type of Vehicle internal programs.
 newtype GenericProg expr
   = Main [GenericDecl expr] -- ^ List of declarations.
-  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic, NoThunks)
 
 instance NFData   expr => NFData   (GenericProg expr)
 instance ToJSON   expr => ToJSON   (GenericProg expr)

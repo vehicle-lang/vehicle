@@ -3,6 +3,7 @@ module Vehicle.Syntax.AST.Binder where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks)
 
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
@@ -19,16 +20,16 @@ import Vehicle.Syntax.AST.Visibility
 -- manually provided by the user it never needs to be updated after unification
 -- and type-class resolution.
 data GenericBinder binder expr = Binder
-  { binderProvenance     :: Provenance
-  , binderVisibility     :: Visibility
+  { binderProvenance     :: !Provenance
+  , binderVisibility     :: !Visibility
   -- ^ The visibility of the binder
-  , binderRelevance      :: Relevance
+  , binderRelevance      :: !Relevance
   -- ^ The relevancy of the binder
-  , binderRepresentation :: binder
+  , binderRepresentation :: !binder
   -- ^ The representation of the bound variable
-  , binderType           :: expr
+  , binderType           :: !expr
   -- The type of the bound variable
-  } deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+  } deriving (Eq, Show, Functor, Foldable, Traversable, Generic, NoThunks)
 
 instance (NFData   binder, NFData   expr) => NFData   (GenericBinder binder expr)
 instance (ToJSON   binder, ToJSON   expr) => ToJSON   (GenericBinder binder expr)

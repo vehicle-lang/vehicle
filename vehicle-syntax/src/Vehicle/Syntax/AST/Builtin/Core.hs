@@ -22,6 +22,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks)
 import Prettyprinter (Doc, Pretty (..))
 
 --------------------------------------------------------------------------------
@@ -29,9 +30,9 @@ import Prettyprinter (Doc, Pretty (..))
 
 -- | Represents whether something is an input or an output of a function
 data FunctionPosition
-  = FunctionInput Text Int
-  | FunctionOutput Text
-  deriving (Eq, Show, Generic)
+  = FunctionInput !Text !Int
+  | FunctionOutput !Text
+  deriving (Eq, Show, Generic, NoThunks)
 
 instance NFData   FunctionPosition
 instance Hashable FunctionPosition
@@ -49,7 +50,7 @@ instance Pretty FunctionPosition where
 data EqualityOp
   = Eq
   | Neq
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance NFData   EqualityOp
 instance Hashable EqualityOp
@@ -75,7 +76,7 @@ data EqualityDomain
   | EqNat
   | EqInt
   | EqRat
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance NFData   EqualityDomain
 instance Hashable EqualityDomain
@@ -97,7 +98,7 @@ data OrderOp
   | Lt
   | Ge
   | Gt
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance NFData   OrderOp
 instance Hashable OrderOp
@@ -149,7 +150,7 @@ data OrderDomain
   | OrderIndex
   | OrderInt
   | OrderRat
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance NFData   OrderDomain
 instance Hashable OrderDomain
@@ -169,7 +170,7 @@ instance Pretty OrderDomain where
 data Quantifier
   = Forall
   | Exists
-  deriving (Show, Eq, Ord, Generic)
+  deriving (Show, Eq, Ord, Generic, NoThunks)
 
 instance NFData   Quantifier
 instance Hashable Quantifier

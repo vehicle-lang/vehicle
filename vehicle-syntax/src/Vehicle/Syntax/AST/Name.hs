@@ -5,6 +5,7 @@ import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable)
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks)
 import Prettyprinter (Pretty (..))
 
 --------------------------------------------------------------------------------
@@ -21,7 +22,7 @@ type NamedBinding = Name
 data Module
   = User
   | StdLib
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance NFData   Module
 instance Hashable Module
@@ -36,8 +37,8 @@ instance Pretty Module where
 --------------------------------------------------------------------------------
 -- Identifiers
 
-data Identifier = Identifier Module Name
-  deriving (Eq, Ord, Show, Generic)
+data Identifier = Identifier !Module !Name
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance Pretty Identifier where
   pretty (Identifier m s) = pretty m <> "." <> pretty s

@@ -4,6 +4,7 @@ import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks)
 import Prettyprinter (Pretty (..))
 
 import Vehicle.Syntax.AST.Provenance
@@ -19,7 +20,7 @@ data Visibility
   -- ^ Inferred via unification
   | Instance
   -- ^ Inferred via instance search/type class resolution
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance NFData   Visibility
 instance Hashable Visibility

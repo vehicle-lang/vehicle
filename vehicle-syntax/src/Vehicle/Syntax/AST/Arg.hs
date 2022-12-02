@@ -3,6 +3,7 @@ module Vehicle.Syntax.AST.Arg where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks)
 
 import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Provenance
@@ -15,15 +16,15 @@ import Vehicle.Syntax.AST.Visibility
 -- | An argument to a function, parameterised by the type of expression it
 -- stores.
 data GenericArg expr = Arg
-  { argProvenance :: Provenance
+  { argProvenance :: !Provenance
     -- ^ Has the argument been auto-inserted by the type-checker?
-  , argVisibility :: Visibility
+  , argVisibility :: !Visibility
     -- ^ The visibility of the argument
-  , argRelevance  :: Relevance
+  , argRelevance  :: !Relevance
     -- ^ The relevancy of the argument
-  , argExpr       :: expr
+  , argExpr       :: !expr
     -- ^ The argument expression
-  } deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+  } deriving (Eq, Show, Functor, Foldable, Traversable, Generic, NoThunks)
 
 instance NFData   expr => NFData   (GenericArg expr)
 instance ToJSON   expr => ToJSON   (GenericArg expr)

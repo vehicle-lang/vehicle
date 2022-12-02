@@ -5,6 +5,7 @@ import Control.DeepSeq (NFData (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks)
 import Prettyprinter (Pretty (..), (<+>))
 
 import Vehicle.Syntax.AST.Builtin.Core
@@ -16,13 +17,13 @@ import Vehicle.Syntax.AST.Builtin.Polarity (PolarityTypeClass)
 
 data TypeClass
   -- Operation type-classes
-  = HasEq EqualityOp
-  | HasOrd OrderOp
+  = HasEq !EqualityOp
+  | HasOrd !OrderOp
   | HasNot
   | HasAnd
   | HasOr
   | HasImplies
-  | HasQuantifier Quantifier
+  | HasQuantifier !Quantifier
   | HasAdd
   | HasSub
   | HasMul
@@ -30,30 +31,30 @@ data TypeClass
   | HasNeg
   | HasFold
   | HasIf
-  | HasQuantifierIn Quantifier
+  | HasQuantifierIn !Quantifier
 
   -- Literal type-classes
-  | HasNatLits Int
+  | HasNatLits !Int
   -- ^ The parameter is the value (needed for Index).
   | HasRatLits
-  | HasVecLits Int
+  | HasVecLits !Int
   -- ^ The parameter is the size of the vector.
 
   -- Utility constraints
   | AlmostEqualConstraint
   -- ^ Types are equal, modulo the auxiliary constraints.
-  | NatInDomainConstraint Int
+  | NatInDomainConstraint !Int
 
   ----------------------------
   -- Synthetic type-classes --
   ----------------------------
 
-  | LinearityTypeClass LinearityTypeClass
-  | PolarityTypeClass  PolarityTypeClass
+  | LinearityTypeClass !LinearityTypeClass
+  | PolarityTypeClass  !PolarityTypeClass
 
   -- Linearity type-classes
 
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Generic, Show, NoThunks)
 
 instance NFData   TypeClass
 instance Hashable TypeClass
@@ -96,9 +97,9 @@ data TypeClassOp
   | OrTC
   | ImpliesTC
 
-  | FromNatTC Int
+  | FromNatTC !Int
   | FromRatTC
-  | FromVecTC Int
+  | FromVecTC !Int
 
   | NegTC
   | AddTC
@@ -106,15 +107,15 @@ data TypeClassOp
   | MulTC
   | DivTC
 
-  | EqualsTC EqualityOp
-  | OrderTC OrderOp
+  | EqualsTC !EqualityOp
+  | OrderTC !OrderOp
 
   | MapTC
   | FoldTC
 
-  | QuantifierTC   Quantifier
-  | QuantifierInTC Quantifier
-  deriving (Eq, Generic, Show)
+  | QuantifierTC   !Quantifier
+  | QuantifierInTC !Quantifier
+  deriving (Eq, Generic, Show, NoThunks)
 
 instance NFData   TypeClassOp
 instance Hashable TypeClassOp

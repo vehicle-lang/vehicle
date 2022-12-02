@@ -18,7 +18,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (maybeToList)
 import Data.Text (Text)
-import GHC.Generics (Generic (..))
+import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks)
 import Prettyprinter (Pretty (..), concatWith, squotes, (<+>))
 
 import Data.Aeson (FromJSON (..), ToJSON (..))
@@ -33,9 +34,9 @@ import Vehicle.Syntax.Parse.Token
 -- Note we don't use the names `line` and `column` as they clash with the
 -- `Prettyprinter` library.
 data Position = Position
-  { posLine   :: Int
-  , posColumn :: Int
-  } deriving (Eq, Ord, Generic)
+  { posLine   :: !Int
+  , posColumn :: !Int
+  } deriving (Eq, Ord, Generic, NoThunks)
 
 instance Show Position where
   show (Position l c) = show (l, c)
@@ -60,9 +61,9 @@ alterColumn f (Position l c) = Position l (f c)
 -- inclusive span ranges in our code.
 
 data Range = Range
-  { start :: Position
-  , end   :: Position
-  } deriving (Show, Eq)
+  { start :: !Position
+  , end   :: !Position
+  } deriving (Show, Eq, Generic, NoThunks)
 
 instance Ord Range where
   Range s1 e1 <= Range s2 e2 = s1 < s2 || (s1 == s2 && e1 <= e1)
@@ -90,7 +91,7 @@ expandRange (l , r) (Range start end) =
 data Owner
   = TheMachine
   | TheUser
-  deriving (Show, Eq, Ord, Generic)
+  deriving (Show, Eq, Ord, Generic, NoThunks)
 
 instance Semigroup Owner where
   TheUser    <> _ = TheUser
@@ -108,12 +109,12 @@ instance FromJSON Owner
 
 -- |The origin of a piece of code
 data Origin
-  = FromSource Range
+  = FromSource !Range
   -- ^ set of locations in the source file
-  | FromParameter Text
+  | FromParameter !Text
   -- ^ name of the parameter
-  | FromDataset Text
-  deriving (Show, Eq, Ord, Generic)
+  | FromDataset !Text
+  deriving (Show, Eq, Ord, Generic, NoThunks)
 
 instance Semigroup Origin where
   FromSource r1     <> FromSource r2   = FromSource (mergeRangePair r1 r2)
@@ -136,9 +137,9 @@ instance Pretty Origin where
 -- Provenance
 
 data Provenance = Provenance
-  { origin :: Origin
-  , owner  :: Owner
-  } deriving (Generic)
+  { origin :: !Origin
+  , owner  :: !Owner
+  } deriving (Generic, NoThunks)
 
 instance Show Provenance where
   show = const ""

@@ -10,6 +10,7 @@ import Data.Bifunctor (first)
 import Data.Hashable (Hashable (..))
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
+import NoThunks.Class (NoThunks)
 import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
 
 import Data.Aeson (FromJSON)
@@ -27,8 +28,8 @@ import Vehicle.Syntax.AST.Builtin.TypeClass as X
 -- are viewed as constructors for `Type`.
 data BuiltinConstructor
   -- Annotations - these should not be shown to the user.
-  = Polarity  Polarity
-  | Linearity Linearity
+  = Polarity  !Polarity
+  | Linearity !Linearity
 
   -- Types
   | Unit
@@ -41,12 +42,12 @@ data BuiltinConstructor
   | Vector
 
   -- Type classes
-  | TypeClass   TypeClass
+  | TypeClass   !TypeClass
 
   -- Container expressions
   | Nil
   | Cons
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic, NoThunks)
 
 instance NFData   BuiltinConstructor
 instance Hashable BuiltinConstructor
@@ -78,7 +79,7 @@ instance Pretty BuiltinConstructor where
 data NegDomain
   = NegInt
   | NegRat
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance NFData   NegDomain
 instance Hashable NegDomain
@@ -100,7 +101,7 @@ data AddDomain
   = AddNat
   | AddInt
   | AddRat
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance NFData   AddDomain
 instance Hashable AddDomain
@@ -116,7 +117,7 @@ instance Pretty AddDomain where
 data SubDomain
   = SubInt
   | SubRat
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance NFData   SubDomain
 instance Hashable SubDomain
@@ -142,7 +143,7 @@ data MulDomain
   = MulNat
   | MulInt
   | MulRat
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance NFData   MulDomain
 instance Hashable MulDomain
@@ -157,7 +158,7 @@ instance Pretty MulDomain where
 
 data DivDomain
   = DivRat
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance NFData   DivDomain
 instance Hashable DivDomain
@@ -173,7 +174,7 @@ data FromNatDomain
   | FromNatToNat
   | FromNatToInt
   | FromNatToRat
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance Pretty FromNatDomain where
   pretty = \case
@@ -189,7 +190,7 @@ instance FromJSON FromNatDomain
 
 data FromRatDomain
   = FromRatToRat
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance Pretty FromRatDomain where
   pretty = \case
@@ -203,7 +204,7 @@ instance FromJSON FromRatDomain
 data FromVecDomain
   = FromVecToVec
   | FromVecToList
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance Pretty FromVecDomain where
   pretty = \case
@@ -218,7 +219,7 @@ instance FromJSON FromVecDomain
 data FoldDomain
   = FoldList
   | FoldVector
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance Pretty FoldDomain where
   pretty = \case
@@ -233,7 +234,7 @@ instance FromJSON FoldDomain
 data MapDomain
   = MapList
   | MapVector
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, NoThunks)
 
 instance Pretty MapDomain where
   pretty = \case
@@ -248,7 +249,7 @@ instance FromJSON MapDomain
 
 -- |Builtins in the Vehicle language
 data Builtin
-  = Constructor BuiltinConstructor
+  = Constructor !BuiltinConstructor
 
   -- Boolean expressions
   | Not
@@ -258,30 +259,30 @@ data Builtin
   | If
 
   -- Numeric conversion
-  | FromNat Int FromNatDomain
-  | FromRat FromRatDomain
-  | FromVec Int FromVecDomain
+  | FromNat !Int !FromNatDomain
+  | FromRat !FromRatDomain
+  | FromVec !Int !FromVecDomain
 
   -- Numeric operations
-  | Neg NegDomain
-  | Add AddDomain
-  | Sub SubDomain
-  | Mul MulDomain
-  | Div DivDomain
+  | Neg !NegDomain
+  | Add !AddDomain
+  | Sub !SubDomain
+  | Mul !MulDomain
+  | Div !DivDomain
 
   -- Comparison expressions
-  | Equals EqualityDomain EqualityOp
-  | Order  OrderDomain OrderOp
+  | Equals !EqualityDomain !EqualityOp
+  | Order  !OrderDomain !OrderOp
 
   | At
-  | Map  MapDomain
+  | Map  !MapDomain
 
   -- Derived
   | Tensor
-  | TypeClassOp TypeClassOp
-  | Fold FoldDomain
+  | TypeClassOp !TypeClassOp
+  | Fold !FoldDomain
   | Foreach
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic, NoThunks)
 
 instance NFData   Builtin
 instance Hashable Builtin
