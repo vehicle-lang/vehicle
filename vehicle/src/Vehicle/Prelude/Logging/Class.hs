@@ -24,6 +24,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import System.Console.ANSI
 
+import Control.Monad (join)
 import Vehicle.Prelude.Misc (enumerate, supportedOptions)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
@@ -47,16 +48,12 @@ severityColour = \case
   Debug   -> Just Green
 
 setTextColour :: Color -> String -> String
-setTextColour c s =
-  setSGRCode [SetColor Foreground Vivid c] <>
-  s <>
-  setSGRCode [SetColor Foreground Vivid White]
+setTextColour c s = join
+  [setSGRCode [SetColor Foreground Vivid c], s, setSGRCode []]
 
 setBackgroundColour :: Color -> String -> String
-setBackgroundColour c s =
-  setSGRCode [SetColor Background Vivid c] <>
-  s <>
-  setSGRCode [SetColor Background Vivid Black]
+setBackgroundColour c s = join
+  [setSGRCode [SetColor Background Vivid c], s, setSGRCode []]
 
 --------------------------------------------------------------------------------
 -- Logging levels
