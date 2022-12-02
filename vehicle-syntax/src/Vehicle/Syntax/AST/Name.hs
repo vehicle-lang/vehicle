@@ -1,11 +1,11 @@
 module Vehicle.Syntax.AST.Name where
 
 import Control.DeepSeq (NFData)
+import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable)
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
-import Data.Aeson (FromJSON, ToJSON, FromJSONKey, ToJSONKey)
 
 --------------------------------------------------------------------------------
 -- Definition

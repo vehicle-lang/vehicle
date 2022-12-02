@@ -2,8 +2,8 @@
 module Vehicle.Syntax.AST.Meta where
 
 import Control.DeepSeq (NFData)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
-import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 

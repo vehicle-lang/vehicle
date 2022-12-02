@@ -11,8 +11,8 @@ module Vehicle.Compile
   , runCompileMonad
   ) where
 
-import Control.Monad.Except ( ExceptT, MonadError(..), runExcept)
 import Control.Exception (IOException, catch)
+import Control.Monad.Except (ExceptT, MonadError (..), runExcept)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
@@ -25,16 +25,16 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency.Analysis
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
+import Vehicle.Compile.ObjectFile
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Queries (QueryData, compileToQueries)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
-import Vehicle.Compile.Type (typeCheck, typeCheckExpr, TypedProg)
+import Vehicle.Compile.Type (TypedProg, typeCheck, typeCheckExpr)
 import Vehicle.Syntax.Parse
+import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
-import Vehicle.Verify.Core
-import Vehicle.Compile.ObjectFile
 
 data CompileOptions = CompileOptions
   { target                :: Backend

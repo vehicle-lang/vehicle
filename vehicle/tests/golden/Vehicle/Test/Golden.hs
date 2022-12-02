@@ -25,6 +25,7 @@ import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName, TestTree, testGroup)
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Text.Printf (printf)
+import Vehicle.Prelude (vehicleObjectFileExtension)
 import Vehicle.Test.Golden.Extra (SomeOption, createDirectoryRecursive,
                                   listFilesRecursive, someLocalOptions)
 import Vehicle.Test.Golden.TestSpec (TestOutput (..), TestSpec,
@@ -33,7 +34,6 @@ import Vehicle.Test.Golden.TestSpec (TestOutput (..), TestSpec,
                                      testSpecIsEnabled, testSpecName,
                                      testSpecNeeds, testSpecOptions,
                                      testSpecRun, writeGoldenFiles)
-import Vehicle.Prelude ( vehicleObjectFileExtension )
 
 -- | Create a test tree from all test specifications in a directory, recursively.
 makeTestTreeFromDirectoryRecursive :: TestName -> FilePath -> IO TestTree

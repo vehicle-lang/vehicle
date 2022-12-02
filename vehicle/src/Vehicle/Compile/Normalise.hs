@@ -20,8 +20,8 @@ import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Expr.DeBruijn
-import Vehicle.Language.StandardLibrary.Names
 import Vehicle.Expr.Normalised (GluedDecl, GluedExpr (..), traverseUnnormalised)
+import Vehicle.Language.StandardLibrary.Names
 
 -- |Run a function in 'MonadNorm'.
 normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) ([DBBinding], a))

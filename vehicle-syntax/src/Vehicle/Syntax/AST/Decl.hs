@@ -3,11 +3,11 @@ module Vehicle.Syntax.AST.Decl where
 import Control.DeepSeq (NFData)
 import GHC.Generics (Generic)
 
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST.Name (HasIdentifier (..), Identifier)
 import Vehicle.Syntax.AST.Provenance
-import Data.Aeson (ToJSON, FromJSON)
 
 --------------------------------------------------------------------------------
 -- Declarations

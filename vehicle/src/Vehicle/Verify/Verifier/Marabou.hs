@@ -15,13 +15,13 @@ import System.Exit (ExitCode (..), exitFailure)
 import System.IO (stderr)
 import System.Process (readProcessWithExitCode)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Queries.LinearExpr
+import Vehicle.Compile.Queries.Variable
+import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Interface
-import Vehicle.Compile.Queries.LinearExpr
-import Vehicle.Compile.Queries.Variable
-import Vehicle.Compile.Queries.VariableReconstruction
 
 --------------------------------------------------------------------------------
 -- The main interface

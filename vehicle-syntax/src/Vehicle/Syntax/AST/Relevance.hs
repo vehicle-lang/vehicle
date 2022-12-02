@@ -1,9 +1,9 @@
 module Vehicle.Syntax.AST.Relevance where
 
 import Control.DeepSeq (NFData)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Data.Aeson (ToJSON, FromJSON)
 
 import Vehicle.Syntax.AST.Builtin
 

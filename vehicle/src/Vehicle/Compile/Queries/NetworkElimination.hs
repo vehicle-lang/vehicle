@@ -6,31 +6,33 @@ module Vehicle.Compile.Queries.NetworkElimination
 import Control.Monad (zipWithM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
-import Data.List.Split (chunksOf)
-import Data.Bifunctor (Bifunctor(..))
+import Data.Bifunctor (Bifunctor (..))
 import Data.List (partition)
-import Data.Set qualified as Set
+import Data.List.Split (chunksOf)
 import Data.Map (Map)
-import Data.Map qualified as Map (lookup, member, singleton, unionWith, insertWith)
+import Data.Map qualified as Map (insertWith, lookup, member, singleton,
+                                  unionWith)
+import Data.Set qualified as Set
 
+import Data.Maybe (mapMaybe)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.LetInsertion (insertLets)
-import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettySimple)
+import Vehicle.Compile.Queries.FourierMotzkinElimination (fourierMotzkinElimination)
+import Vehicle.Compile.Queries.GaussianElimination (gaussianElimination,
+                                                    solutionEquality)
+import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.LNF (convertToLNF)
+import Vehicle.Compile.Queries.Variable
+import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
 import Vehicle.Expr.CoDeBruijn (CoDBVar (..))
 import Vehicle.Expr.DeBruijn
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface
-import Vehicle.Compile.Queries.Variable
-import Vehicle.Compile.Queries.VariableReconstruction
-import Vehicle.Compile.Queries.GaussianElimination (gaussianElimination, solutionEquality)
-import Vehicle.Compile.Queries.FourierMotzkinElimination (fourierMotzkinElimination)
-import Data.Maybe (mapMaybe)
 
 --------------------------------------------------------------------------------
 -- Removing network applications

@@ -2,7 +2,7 @@
 module Vehicle.Syntax.AST.Builtin.TypeClass where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (ToJSON, FromJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))

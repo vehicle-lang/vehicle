@@ -1,8 +1,8 @@
 module Vehicle.Compile.Queries.Variable where
 
-import Prettyprinter (brackets)
 import Data.Text (Text)
 import Data.Text qualified as Text (pack)
+import Prettyprinter (brackets)
 
 import Vehicle.Compile.Prelude
 

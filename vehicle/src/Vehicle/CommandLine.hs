@@ -20,7 +20,8 @@ import Vehicle.Check (CheckOptions (..))
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.Prelude (LoggingLevel, defaultLoggingLevel, enumerate,
-                        loggingLevelHelp, supportedOptions, vehicleFileExtension)
+                        loggingLevelHelp, supportedOptions,
+                        vehicleFileExtension)
 import Vehicle.Verify (VerifierIdentifier, VerifyOptions (..))
 
 --------------------------------------------------------------------------------

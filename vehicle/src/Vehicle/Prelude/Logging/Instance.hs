@@ -17,14 +17,14 @@ module Vehicle.Prelude.Logging.Instance
   ) where
 
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (ReaderT (..), ask)
 import Control.Monad.State (StateT (..), evalStateT, get, modify)
 import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
-import Control.Monad.Identity (Identity(..))
 import System.IO (Handle)
 
-import Vehicle.Prelude.Logging.Class
 import Vehicle.Prelude.Logging.Backend
+import Vehicle.Prelude.Logging.Class
 
 --------------------------------------------------------------------------------
 -- Settings

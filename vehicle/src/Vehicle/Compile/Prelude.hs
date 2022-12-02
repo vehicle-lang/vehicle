@@ -4,8 +4,8 @@ module Vehicle.Compile.Prelude
   ) where
 
 import Control.DeepSeq (NFData)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Set (Set)
-import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 
 import Vehicle.Compile.Dependency.Graph as X

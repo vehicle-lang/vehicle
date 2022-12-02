@@ -12,13 +12,13 @@ import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
 
+import Data.Aeson (FromJSON)
+import Data.Aeson.Types (ToJSON)
 import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.AST.Builtin.Core as X
 import Vehicle.Syntax.AST.Builtin.Linearity as X
 import Vehicle.Syntax.AST.Builtin.Polarity as X
 import Vehicle.Syntax.AST.Builtin.TypeClass as X
-import Data.Aeson (FromJSON)
-import Data.Aeson.Types (ToJSON)
 
 --------------------------------------------------------------------------------
 -- Constructors

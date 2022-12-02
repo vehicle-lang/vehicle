@@ -3,7 +3,7 @@ module Vehicle.Syntax.BNFC.Elaborate.Internal
   ) where
 
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Reader (MonadReader(..))
+import Control.Monad.Reader (MonadReader (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
 import Data.Text qualified as Text

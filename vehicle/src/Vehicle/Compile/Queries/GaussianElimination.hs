@@ -12,8 +12,8 @@ import Data.Vector.Unboxed qualified as V
 import Control.Monad (foldM, unless)
 import Data.Bifunctor
 import Vehicle.Compile.Error
-import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
 
 type Row = V.Vector Coefficient

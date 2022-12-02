@@ -5,7 +5,7 @@ module Vehicle.Compile.ExpandResources.Dataset.IDX
 import Control.Exception (try)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (..))
-import Control.Monad.State (modify, gets)
+import Control.Monad.State (gets, modify)
 import Data.IDX (IDXData, decodeIDXFile, idxDimensions, idxDoubleContent,
                  idxIntContent, isIDXIntegral)
 import Data.Map qualified as Map
