@@ -4,7 +4,6 @@ module Vehicle.Compile.Prelude
   ) where
 
 import Control.DeepSeq (NFData)
-import Data.Set (Set)
 import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 
@@ -18,6 +17,7 @@ import Vehicle.Expr.Patterns as X
 import Vehicle.Prelude as X
 import Vehicle.Resource as X
 import Vehicle.Syntax.AST as X
+import Vehicle.Expr.Normalised (GluedExpr)
 
 --------------------------------------------------------------------------------
 -- Type synonyms
@@ -76,6 +76,25 @@ data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
 type DeclProvenance = (Identifier, Provenance)
 
 --------------------------------------------------------------------------------
+-- Typed expressions
+
+type ImportedModules = [TypedProg]
+
+-- | A typed-expression. Outside of the type-checker, the contents of this
+-- should not be inspected directly but instead use
+newtype TypedExpr = TypedExpr
+  { glued :: GluedExpr
+  -- |^ Stores the both the unnormalised and normalised expression, WITH
+  -- auxiliary annotations.
+  } deriving (Generic)
+
+instance ToJSON   TypedExpr
+instance FromJSON TypedExpr
+
+type TypedDecl = GenericDecl TypedExpr
+type TypedProg = GenericProg TypedExpr
+
+--------------------------------------------------------------------------------
 -- Logging
 
 logCompilerPass :: MonadLogger m => LoggingLevel -> Doc a -> m b -> m b
@@ -122,8 +141,6 @@ instance Pretty PropertyInfo where
 
 --------------------------------------------------------------------------------
 -- Other
-
-type PropertyContext = Set Identifier
 
 data Contextualised object context = WithContext
   { objectIn  :: object

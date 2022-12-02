@@ -23,7 +23,7 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface
 import Vehicle.Compile.Queries.VariableReconstruction
-import Vehicle.Compile.Type (TypedProg, TypedDecl, getPropertyInfo, getUnnormalised)
+import Vehicle.Compile.Type (getPropertyInfo, getUnnormalised)
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.Normalise (fullNormalisationOptions, normalise)
 

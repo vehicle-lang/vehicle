@@ -21,7 +21,6 @@ import Vehicle.Compile.Queries.DNF
 import Vehicle.Expr.DeBruijn qualified as V
 import Vehicle.Prelude
 import Vehicle.Syntax.AST (HasName (nameOf), Name, argExpr)
-import Vehicle.Compile.Type.Output qualified as V
 import Vehicle.Compile.Type (getUnnormalised)
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Resource (Resources(..))

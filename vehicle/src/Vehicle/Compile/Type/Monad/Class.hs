@@ -66,7 +66,6 @@ import Vehicle.Compile.Type.VariableContext (TypingBoundCtx, TypingDeclCtx,
                                              toNBEDeclContext,
                                              toNormalisationDeclContext)
 import Vehicle.Expr.Normalised
-import Vehicle.Compile.Type.Output (TypedDecl)
 
 --------------------------------------------------------------------------------
 -- The overall meta variable context

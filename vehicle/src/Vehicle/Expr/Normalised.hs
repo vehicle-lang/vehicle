@@ -3,7 +3,6 @@ module Vehicle.Expr.Normalised where
 import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 
-import Vehicle.Compile.Prelude (CheckedExpr)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Syntax.AST
 
@@ -17,7 +16,7 @@ import Vehicle.Syntax.AST
 data NormExpr
   = VUniverse Provenance Universe
   | VLiteral  Provenance Literal
-  | VLam      Provenance NormBinder Env CheckedExpr
+  | VLam      Provenance NormBinder Env DBExpr
   | VPi       Provenance NormBinder NormExpr
   | VLVec     Provenance [NormExpr] Spine
   | VMeta     Provenance MetaID Spine
@@ -213,7 +212,7 @@ isBoundVar _                    = False
 
 -- | A pair of an unnormalised and normalised expression.
 data GluedExpr = Glued
-  { unnormalised :: CheckedExpr
+  { unnormalised :: DBExpr
   , normalised   :: NormExpr
   } deriving (Show, Generic)
 
@@ -230,5 +229,5 @@ type GluedDecl = GenericDecl GluedExpr
 traverseNormalised :: Monad m => (NormExpr -> m NormExpr) -> GluedExpr -> m GluedExpr
 traverseNormalised f (Glued u n) = Glued u <$> f n
 
-traverseUnnormalised :: Monad m => (CheckedExpr -> m CheckedExpr) -> GluedExpr -> m GluedExpr
+traverseUnnormalised :: Monad m => (DBExpr -> m DBExpr) -> GluedExpr -> m GluedExpr
 traverseUnnormalised f (Glued u n) = Glued <$> f u <*> pure n

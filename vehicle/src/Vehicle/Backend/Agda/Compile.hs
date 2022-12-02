@@ -31,7 +31,7 @@ import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Language.StandardLibrary.Names (StdLibFunction,
                                                findStdLibFunction)
 import Vehicle.Syntax.Sugar
-import Vehicle.Compile.Type (TypedProg, getUnnormalised)
+import Vehicle.Compile.Type (getUnnormalised)
 
 
 --------------------------------------------------------------------------------

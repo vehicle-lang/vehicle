@@ -1,6 +1,7 @@
 
 module Vehicle.Language.StandardLibrary
   ( prelude
+  , standardLibraryName
   ) where
 
 import Data.Map (Map)
@@ -9,6 +10,10 @@ import Data.Map qualified as Map
 import Vehicle.Expr.DeBruijn (DBDecl)
 import Vehicle.Expr.DSL
 import Vehicle.Syntax.AST
+import Vehicle.Prelude.IO
+
+standardLibraryName :: LibraryName
+standardLibraryName = "stdlib"
 
 prelude :: Map Identifier DBDecl
 prelude = standardPostulates <> typeClassSolutions

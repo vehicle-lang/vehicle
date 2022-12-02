@@ -6,6 +6,7 @@ module Vehicle.Verify
 
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Text.IO (hPutStrLn)
+import Data.Hashable (Hashable(..))
 import System.Directory (doesFileExist, findExecutable)
 import System.Exit (exitFailure)
 import System.IO (stderr)
@@ -38,12 +39,13 @@ verify loggingSettings VerifyOptions{..} = do
 
   let resources = Resources networkLocations datasetLocations parameterValues
 
-  uncompiledSpecification <- readSpecification specification
+  specificationHash <- hash <$> readSpecification specification
 
   status <-
     withSystemTempDirectory "specification" $ \tempDir -> do
       runCompileMonad loggingSettings $ do
-        typeCheckingResult <- typeCheckOrLoadProg specification properties
+        -- TODO go via the main compile method instead.
+        typeCheckingResult <- typeCheckUserProg specification properties False
         compiledSpecification <- compileToVerifier typeCheckingResult resources verifier (Just tempDir)
         verifySpecification verifierImpl verifierExecutable tempDir networkLocations compiledSpecification
 
@@ -55,7 +57,8 @@ verify loggingSettings VerifyOptions{..} = do
     Nothing -> return ()
     Just proofCachePath -> writeProofCache proofCachePath $ ProofCache
       { proofCacheVersion  = vehicleVersion
-      , originalSpec       = uncompiledSpecification
+      , originalSpec       = specification
+      , originalSpecHash   = specificationHash
       , originalProperties = properties
       , status             = status
       , resourceSummaries  = resourceSummaries

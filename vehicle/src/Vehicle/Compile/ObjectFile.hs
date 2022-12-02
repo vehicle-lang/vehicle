@@ -11,7 +11,6 @@ import System.FilePath (dropExtension)
 import GHC.Generics (Generic)
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type (TypedProg)
 import Data.Hashable (Hashable(..))
 
 data ObjectFileContents = ObjectFileContents

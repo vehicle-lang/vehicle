@@ -20,11 +20,10 @@ import Vehicle.Compile.Prelude
 
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Type (TypedProg, TypedDecl, getGlued)
-import Vehicle.Compile.Type.Output (TypedExpr(..))
 import Vehicle.Expr.Normalised (GluedExpr(..), pattern VNatLiteral, NormExpr)
 import Data.Foldable (traverse_)
 import Vehicle.Compile.Normalise.NBE (whnf)
+import Vehicle.Compile.Type (getGlued)
 
 -- | Expands datasets and parameters, and attempts to infer the values of
 -- inferable parameters. Also checks the resulting types of networks.
