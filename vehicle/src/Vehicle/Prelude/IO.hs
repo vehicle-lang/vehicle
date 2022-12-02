@@ -20,7 +20,7 @@ import System.Directory (removeFile, createDirectoryIfMissing)
 import System.Exit (exitFailure)
 import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
-import System.Environment (lookupEnv)
+import System.Environment (lookupEnv, getEnvironment)
 import System.FilePath ((</>), (<.>))
 import System.Info (os)
 
@@ -42,7 +42,7 @@ vehiclePathVariable = "VEHICLE_PATH"
 fallbackVehiclePathVariable :: String
 fallbackVehiclePathVariable = case os of
   -- Windows
-  "mingw32" -> "%APPDATA%"
+  "mingw32" -> "APPDATA"
   -- All other systems
   _         -> "HOME"
 
@@ -76,7 +76,12 @@ getVehiclePath = do
       homeDir <- liftIO $ lookupEnv fallbackVehiclePathVariable
       case homeDir of
         Just dir -> return (dir </> ".vehicle")
-        Nothing  -> error ""
+        Nothing  -> do
+          env <- liftIO getEnvironment
+          error $
+            "Could not find home directory via path variable " <>
+            fallbackVehiclePathVariable <> ". But could find environment " <>
+            "variables: " <> show env
   liftIO $ createDirectoryIfMissing False vehiclePath
   return vehiclePath
 
