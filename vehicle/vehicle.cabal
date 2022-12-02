@@ -20,9 +20,15 @@ tested-with:   GHC ==8.10.7 || ==9.0.2 || ==9.2.4 || ==9.4.2
 -- Generated with `script/extra-doc-files`:
 -- extra-doc-files:
 
+
 source-repository head
   type:     git
   location: https://github.com/vehicle-lang/vehicle
+
+flag ghc-debug
+  description: Add ghc-debug instrumentation
+  manual:      True
+  default:     False
 
 common common-language
   default-language:   Haskell2010
@@ -160,6 +166,7 @@ library
     Vehicle.Compile.Type.Output
     Vehicle.Compile.Type.Resource
     Vehicle.Compile.Type.VariableContext
+    Vehicle.Prelude.Debug
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging
     Vehicle.Prelude.Logging.Backend
@@ -200,6 +207,10 @@ library
     , vector                >=0.12.3  && <0.13
     , vehicle-syntax
 
+  if flag(ghc-debug)
+    build-depends: ghc-debug-stub >=0.3
+    cpp-options:   -DghcDebug
+
   ghc-options:     -Werror -Wall -fprint-potential-instances
 
 executable vehicle
@@ -210,6 +221,10 @@ executable vehicle
     , base                  >=4.13 && <5
     , optparse-applicative  >=0.16 && <1
     , vehicle
+
+  if flag(ghc-debug)
+    build-depends: ghc-debug-stub >=0.3
+    cpp-options:   -DghcDebug
 
 -----------------
 -- Test suites --
