@@ -8,8 +8,8 @@ module Vehicle.Syntax.BNFC.Elaborate.External
   , elaborateExpr
   ) where
 
-import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Control.Monad.Except (MonadError (..), foldM, throwError)
+import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Bitraversable (bitraverse)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)

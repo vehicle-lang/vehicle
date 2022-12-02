@@ -1,6 +1,6 @@
 module Vehicle.Expr.Normalised where
 
-import Data.Aeson (ToJSON, FromJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 import Vehicle.Compile.Prelude (CheckedExpr)

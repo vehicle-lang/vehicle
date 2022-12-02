@@ -3,29 +3,30 @@ module Vehicle.Compile.Queries
   , QueryData(..)
   ) where
 
-import Control.Monad.IO.Class (MonadIO)
 import Control.Monad (forM, forM_)
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Data.Maybe (catMaybes)
 import Data.Foldable (for_)
+import Data.Maybe (catMaybes)
 
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.ExpandResources (expandResources)
+import Vehicle.Compile.Normalise (fullNormalisationOptions, normalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
 import Vehicle.Compile.Queries.DNF (convertToDNF)
 import Vehicle.Compile.Queries.IfElimination (eliminateIfs)
-import Vehicle.Compile.Queries.QuantifierLifting (liftQuantifiers)
 import Vehicle.Compile.Queries.NetworkElimination
+import Vehicle.Compile.Queries.QuantifierLifting (liftQuantifiers)
+import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Type (TypedDecl, TypedProg, getPropertyInfo,
+                             getUnnormalised)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface
-import Vehicle.Compile.Queries.VariableReconstruction
-import Vehicle.Compile.Type (TypedProg, TypedDecl, getPropertyInfo, getUnnormalised)
-import Vehicle.Compile.ExpandResources (expandResources)
-import Vehicle.Compile.Normalise (fullNormalisationOptions, normalise)
 
 data QueryData = QueryData
   { queryText   :: Doc ()

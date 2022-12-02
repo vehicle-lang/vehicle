@@ -1,10 +1,10 @@
 module Vehicle.Compile.Type.Output where
 
-import Data.Aeson (ToJSON, FromJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.Normalised (GluedExpr(..))
+import Vehicle.Expr.Normalised (GluedExpr (..))
 
 --------------------------------------------------------------------------------
 -- Typed expressions

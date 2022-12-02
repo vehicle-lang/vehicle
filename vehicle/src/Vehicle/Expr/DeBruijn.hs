@@ -21,9 +21,9 @@ module Vehicle.Expr.DeBruijn
 
 import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader (..), local, runReader)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Hashable (Hashable (..))
-import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 
 import Vehicle.Syntax.AST

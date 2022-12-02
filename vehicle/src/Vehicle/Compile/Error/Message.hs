@@ -9,6 +9,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text, pack)
 import Prettyprinter (list)
 
+import Control.Monad.Except (ExceptT, runExceptT)
 import System.FilePath
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (unnormalise)
@@ -19,7 +20,6 @@ import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (..))
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Parse (ParseError (..))
-import Control.Monad.Except (ExceptT, runExceptT)
 
 --------------------------------------------------------------------------------
 -- User errors

@@ -5,7 +5,7 @@ module Vehicle.Backend.Agda.Compile
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
-import Data.Bifunctor (Bifunctor(..))
+import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (fold)
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty)
@@ -28,10 +28,10 @@ import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.SupplyNames (supplyDBNames)
+import Vehicle.Compile.Type (TypedProg, getUnnormalised)
 import Vehicle.Language.StandardLibrary.Names (StdLibFunction,
                                                findStdLibFunction)
 import Vehicle.Syntax.Sugar
-import Vehicle.Compile.Type (TypedProg, getUnnormalised)
 
 
 --------------------------------------------------------------------------------

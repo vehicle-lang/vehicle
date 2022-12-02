@@ -32,9 +32,9 @@ import Vehicle.Compile.Type.Irrelevance
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Output
 import Vehicle.Compile.Type.Resource
 import Vehicle.Expr.Normalised
-import Vehicle.Compile.Type.Output
 
 -------------------------------------------------------------------------------
 -- Algorithm

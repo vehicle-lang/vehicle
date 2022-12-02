@@ -7,8 +7,8 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString qualified as ByteString
 import Data.Hashable (Hashable (hash))
-import Data.Map qualified as Map
 import Data.Map (Map, assocs, singleton)
+import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)

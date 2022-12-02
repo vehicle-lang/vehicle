@@ -11,8 +11,8 @@ import Data.Vector.Unboxed as Vector (map, (!))
 
 import Control.Monad (foldM)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
 
 -- | TODO If performance proves unnacceptably poor look into

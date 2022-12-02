@@ -18,11 +18,11 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (maybeToList)
 import Data.Text (Text)
-import GHC.Generics (Generic(..))
+import GHC.Generics (Generic (..))
 import Prettyprinter (Pretty (..), concatWith, squotes, (<+>))
 
+import Data.Aeson (FromJSON (..), ToJSON (..))
 import Vehicle.Syntax.Parse.Token
-import Data.Aeson (FromJSON(..), ToJSON (..))
 
 --------------------------------------------------------------------------------
 -- Position
