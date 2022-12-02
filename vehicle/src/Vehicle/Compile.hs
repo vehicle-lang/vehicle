@@ -17,7 +17,6 @@ import Control.Exception (IOException, catch)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
-import Data.List qualified as List (singleton)
 import System.FilePath (takeExtension)
 import System.Directory (doesFileExist)
 
@@ -145,7 +144,7 @@ typeCheckUserProg :: (MonadIO m, MonadCompile m)
 typeCheckUserProg spec declarationsToCompile noStdlib = do
   imports <- if noStdlib
     then return []
-    else List.singleton <$> loadStandardLibrary
+    else (:[]) <$> loadStandardLibrary
   typeCheckOrLoadProg imports spec declarationsToCompile
 
 -- | Parses and type-checks the program but does
