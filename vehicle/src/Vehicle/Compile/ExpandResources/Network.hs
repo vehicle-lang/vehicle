@@ -3,7 +3,7 @@ module Vehicle.Compile.ExpandResources.Network
   ) where
 
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.State (MonadState (..))
+import Control.Monad.State (gets)
 import Data.Map qualified as Map
 
 import Vehicle.Compile.Error
@@ -58,7 +58,7 @@ getNetworkType decl networkType = case normalised networkType of
     getTensorDimension io dim = case dim of
       VNatLiteral _ n          -> return n
       VVar _ (Free varIdent) _ -> do
-        implicitParameters <- get
+        implicitParameters <- gets inferableParameterContext
         case Map.lookup (nameOf varIdent) implicitParameters of
           Nothing               -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
           Just Nothing          -> throwError $ NetworkTypeHasImplicitSizeTensor decl networkType varIdent io

@@ -158,8 +158,8 @@ collectApplication p ident argsToMono remainingArgs = do
 -- Tracking the number of arguments this way seems more than a little hacky.
 isMonomorphisationCandidate :: CheckedDecl -> Maybe Int
 isMonomorphisationCandidate = \case
-  DefFunction _ _ t _ -> getArgs t
-  _                   -> Nothing
+  DefFunction _ _ _ t _ -> getArgs t
+  _                     -> Nothing
   where
     getArgs ::  CheckedExpr -> Maybe Int
     getArgs = \case
@@ -203,7 +203,7 @@ insertDecl (Applications apps) decl = do
     DefPostulate{} -> return ([decl], mempty)
     DefResource{}  -> return ([decl], mempty)
 
-    DefFunction p ident t e -> do
+    DefFunction p ident isProperty t e -> do
       isCandidate <- gets (Map.member ident)
       if not isCandidate
         then return ([decl], mempty)
@@ -216,13 +216,13 @@ insertDecl (Applications apps) decl = do
             1 -> do
               let args = head $ Set.toList uniqueArgs
               let (t', e') = substituteArgsThrough (t, e, args)
-              return ([DefFunction p ident t' e'], Map.singleton (ident, args) ident)
+              return ([DefFunction p ident isProperty t' e'], Map.singleton (ident, args) ident)
             _ -> do
               (decls, solutions) <- unzip <$> for (Set.toList uniqueArgs) (\args -> do
                 let suffix   = getMonomorphisedSuffix args
                 let newIdent = Identifier (moduleOf ident) $ nameOf ident <> suffix
                 let (t', e') = substituteArgsThrough (t, e, args)
-                return (DefFunction p newIdent t' e', Map.singleton (ident, args) newIdent))
+                return (DefFunction p newIdent isProperty t' e', Map.singleton (ident, args) newIdent))
               return (decls, Map.unions solutions)
 
 insertExpr :: MonadInsert m => CheckedExpr -> m CheckedExpr

@@ -4,7 +4,7 @@ module Vehicle.Backend.LossFunction.Compile
   , compile
   ) where
 
-import Control.Monad.Reader (MonadReader (..), runReaderT)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
@@ -18,10 +18,13 @@ import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Print (prettySimple, prettyVerbose)
 import Vehicle.Compile.Queries.DNF
-import Vehicle.Compile.Resource (NetworkContext)
 import Vehicle.Expr.DeBruijn qualified as V
 import Vehicle.Prelude
 import Vehicle.Syntax.AST (HasName (nameOf), Name, argExpr)
+import Vehicle.Compile.Type.Output qualified as V
+import Vehicle.Compile.Type (getUnnormalised)
+import Vehicle.Compile.ExpandResources (expandResources)
+import Vehicle.Resource (Resources(..))
 
 --------------------------------------------------------------------------------
 -- Declaration definition
@@ -39,10 +42,16 @@ instance ToJSON LDecl
 -- Compilation
 
 -- | The translation into the LExpr (this is the exported top compile function)
-compile :: MonadCompile m => DifferentiableLogic -> V.CheckedProg -> V.PropertyContext -> NetworkContext -> m [LDecl]
-compile d prog propertyCtx networkCtx = do
-  normalisedProg <- normalise prog normalisationOptions
-  runReaderT (compileProg (chooseTranslation d) normalisedProg) (propertyCtx, networkCtx)
+compile :: (MonadIO m, MonadCompile m)
+        => Resources
+        -> DifferentiableLogic
+        -> V.TypedProg
+        -> m [LDecl]
+compile resources logic typedProg = do
+  (_, expandedProg) <- expandResources resources typedProg
+  unnormalisedProg <- traverse getUnnormalised expandedProg
+  normalisedProg <- normalise unnormalisedProg normalisationOptions
+  compileProg (chooseTranslation logic) normalisedProg
 
 -- |Compile entire specification (calls compileDecl)
 compileProg :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedProg -> m [LDecl]
@@ -50,20 +59,19 @@ compileProg  t (V.Main ds) =  traverse (compileDecl t) ds
 
 type MonadCompileLoss m =
   ( MonadCompile m
-  , MonadReader (V.PropertyContext, NetworkContext) m
   )
 
 -- |Compile all functions found in spec, save their names (call compileExpr on each)
 compileDecl :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedDecl -> m LDecl
 compileDecl t d =
   case d of
-  V.DefResource{} ->
-    normalisationError currentPass "resource declarations"
+  V.DefResource _ _ r _ ->
+    normalisationError currentPass (pretty r <+> "declaration")
 
   V.DefPostulate{} ->
     normalisationError currentPass "postulates"
 
-  V.DefFunction _ ident _ expr -> do
+  V.DefFunction _ ident _ _ expr -> do
     expr' <- compileExpr t expr
     logDebug MaxDetail ("loss-declaration " <> prettySimple expr)
     return (DefFunction (nameOf ident) expr')

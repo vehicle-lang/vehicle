@@ -7,8 +7,8 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString qualified as ByteString
 import Data.Hashable (Hashable (hash))
+import Data.Map qualified as Map
 import Data.Map (Map, assocs, singleton)
-import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -105,14 +105,16 @@ reparseResources (x : xs) = r <> reparseResources xs
 
 warnIfUnusedResources :: MonadLogger m
                       => Resource
-                      -> Set Name
-                      -> Set Name
+                      -> Map Name a
+                      -> Map Name b
                       -> m ()
 warnIfUnusedResources resourceType given found = do
   when (null found) $
     logDebug MinDetail $ "No" <+> pretty resourceType <> "s found in program"
 
-  let unusedParams = given `Set.difference` found
+  let givenNames = Map.keysSet given
+  let foundNames = Map.keysSet found
+  let unusedParams = givenNames `Set.difference` foundNames
   when (Set.size unusedParams > 0) $
     logWarning $ "the following" <+> pretty resourceType <> "s were provided" <+>
                  "but not used by the specification:" <+> prettySet unusedParams

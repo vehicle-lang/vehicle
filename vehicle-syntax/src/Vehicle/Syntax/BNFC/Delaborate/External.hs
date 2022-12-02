@@ -42,7 +42,7 @@ instance Delaborate V.NamedProg B.Prog where
 
 instance Delaborate V.NamedDecl [B.Decl] where
   delabM = \case
-    V.DefResource _ r n t -> do
+    V.DefResource _ n r t -> do
       defFun <- B.DefFunType (delabIdentifier n) tokElemOf <$> delabM t
 
       let defAnn = case r of
@@ -53,8 +53,8 @@ instance Delaborate V.NamedDecl [B.Decl] where
 
       return [defAnn, defFun]
 
-    V.DefFunction _ n t e ->
-      delabFun False n t e
+    V.DefFunction _ n isProperty t e ->
+      delabFun isProperty n t e
 
     V.DefPostulate {} ->
       error "Should not be delaborating postulates"

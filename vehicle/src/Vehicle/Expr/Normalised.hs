@@ -226,3 +226,9 @@ instance HasProvenance GluedExpr where
 type GluedType = GluedExpr
 type GluedProg = GenericProg GluedExpr
 type GluedDecl = GenericDecl GluedExpr
+
+traverseNormalised :: Monad m => (NormExpr -> m NormExpr) -> GluedExpr -> m GluedExpr
+traverseNormalised f (Glued u n) = Glued u <$> f n
+
+traverseUnnormalised :: Monad m => (CheckedExpr -> m CheckedExpr) -> GluedExpr -> m GluedExpr
+traverseUnnormalised f (Glued u n) = Glued <$> f u <*> pure n

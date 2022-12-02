@@ -11,12 +11,12 @@ import System.FilePath (dropExtension)
 import GHC.Generics (Generic)
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type (TypeCheckingResult(..))
+import Vehicle.Compile.Type (TypedProg)
 import Data.Hashable (Hashable(..))
 
 data ObjectFileContents = ObjectFileContents
   { _fileHash   :: Int
-  , _typeResult :: TypeCheckingResult
+  , _typeResult :: TypedProg
   } deriving (Generic)
 
 instance ToJSON   ObjectFileContents
@@ -29,7 +29,7 @@ getObjectFileFromSpecificationFile specFile =
 readObjectFile :: (MonadLogger m, MonadIO m)
                   => FilePath
                   -> SpecificationText
-                  -> m (Maybe TypeCheckingResult)
+                  -> m (Maybe TypedProg)
 readObjectFile specificationFile spec = do
   let interfaceFile = getObjectFileFromSpecificationFile specificationFile
   errorOrContents <- liftIO $ do
@@ -55,10 +55,10 @@ readObjectFile specificationFile spec = do
           return $ Just result
 
 writeObjectFile :: MonadIO m
-                   => FilePath
-                   -> SpecificationText
-                   -> TypeCheckingResult
-                   -> m ()
+                => FilePath
+                -> SpecificationText
+                -> TypedProg
+                -> m ()
 writeObjectFile specificationFile spec result = do
   let interfaceFile = getObjectFileFromSpecificationFile specificationFile
   let specHash = hash spec

@@ -3,15 +3,15 @@ module Vehicle.Compile.Queries
   , QueryData(..)
   ) where
 
-import Control.Monad (forM)
+import Control.Monad.IO.Class (MonadIO)
+import Control.Monad (forM, forM_)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Data.Map qualified as Map (lookup)
 import Data.Maybe (catMaybes)
+import Data.Foldable (for_)
 
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
 import Vehicle.Compile.Queries.DNF (convertToDNF)
@@ -23,6 +23,9 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface
 import Vehicle.Compile.Queries.VariableReconstruction
+import Vehicle.Compile.Type (TypedProg, TypedDecl, getPropertyInfo, getUnnormalised)
+import Vehicle.Compile.ExpandResources (expandResources)
+import Vehicle.Compile.Normalise (fullNormalisationOptions, normalise)
 
 data QueryData = QueryData
   { queryText   :: Doc ()
@@ -35,23 +38,28 @@ data QueryData = QueryData
 
 -- | Compiles the provided program to invidividual queries suitable for a
 -- verifier.
-compileToQueries :: MonadCompile m
+compileToQueries :: (MonadIO m, MonadCompile m)
                  => Verifier
-                 -> CheckedProg
-                 -> PropertyContext
-                 -> NetworkContext
+                 -> TypedProg
+                 -> Resources
                  -> m (Specification QueryData)
-compileToQueries verifier@Verifier{..} prog propertyCtx networkCtx =
+compileToQueries verifier@Verifier{..} typedProg resources =
   logCompilerPass MinDetail currentPass $ do
-    if null propertyCtx
+    (networkCtx, finalProg) <- expandResources resources typedProg
+    checkProperties verifierIdentifier finalProg
+
+    -- Again, horrible, we should push use of NormExpr through everywhere
+    unnormalisedProg <- traverse getUnnormalised finalProg
+    normalisedProg <- normalise unnormalisedProg fullNormalisationOptions
+    properties <- getProperties normalisedProg
+
+    if null properties
       then throwError NoPropertiesFound
       else do
-        normProg <- normalise prog fullNormalisationOptions
-        properties <- getProperties verifierIdentifier propertyCtx normProg
-
         xs <- forM properties $ \(name, expr) -> do
           logCompilerPass MinDetail ("property" <+> quotePretty name) $ do
-            property <- runSupplyT (runReaderT (compileProperty expr) (verifier, name, networkCtx)) [1::Int ..]
+            let propertyCtx = (verifier, name, networkCtx)
+            property <- runSupplyT (runReaderT (compileProperty expr) propertyCtx) [1::Int ..]
             return (name, property)
 
         return $ Specification xs
@@ -60,11 +68,9 @@ compileToQueries verifier@Verifier{..} prog propertyCtx networkCtx =
 -- Algorithm
 
 getProperties :: MonadCompile m
-              => VerifierIdentifier
-              -> PropertyContext
-              -> CheckedProg
+              => CheckedProg
               -> m [(Identifier, CheckedExpr)]
-getProperties verifier propertyCtx (Main ds) = catMaybes <$> traverse go ds
+getProperties (Main ds) = catMaybes <$> traverse go ds
   where
     go :: MonadCompile m
        => CheckedDecl
@@ -76,16 +82,37 @@ getProperties verifier propertyCtx (Main ds) = catMaybes <$> traverse go ds
       DefPostulate{} ->
         normalisationError currentPass "postulates"
 
-      DefFunction p ident _ expr -> do
-        let maybePropertyInfo = Map.lookup ident propertyCtx
-        case maybePropertyInfo of
+      DefFunction _ ident isProperty _ body
           -- If it's not a property then we can discard it as all applications
           -- of it should have been normalised out by now.
-          Nothing -> return Nothing
+        | isProperty -> return $ Just (ident, body)
+        | otherwise  -> return Nothing
+
+checkProperties :: MonadCompile m
+                => VerifierIdentifier
+                -> TypedProg
+                -> m ()
+checkProperties verifier (Main ds) = for_ ds go
+  where
+    go :: MonadCompile m
+       => TypedDecl
+       -> m ()
+    go d = case d of
+      DefResource _ r _ _ ->
+        normalisationError currentPass (pretty r <+> "declarations")
+
+      DefPostulate{} ->
+        normalisationError currentPass "postulates"
+
+      DefFunction p ident isProperty _ _
+          -- If it's not a property then we can discard it as all applications
+          -- of it should have been normalised out by now.
+        | not isProperty -> return ()
+        | otherwise  -> do
           -- Otherwise check the property information.
-          Just propertyInfo -> case checkCompatibility (VerifierBackend verifier) (ident, p) propertyInfo of
-            Just err -> throwError err
-            Nothing  -> return $ Just (ident, expr)
+          propertyInfo <- getPropertyInfo d
+          let compatible = checkCompatibility (VerifierBackend verifier) (ident, p) propertyInfo
+          forM_ compatible throwError
 
 type MonadCompileProperty m =
   ( MonadCompile m

@@ -2,25 +2,8 @@
 module Vehicle.Compile.Resource where
 
 import Data.Map (Map)
-import Data.Set (Set)
 
 import Vehicle.Compile.Prelude
-
---------------------------------------------------------------------------------
--- Parameters
-
-type ParameterContext = Set Name
-
---------------------------------------------------------------------------------
--- Implicit parameters
-
-type InferableParameterContext =
-  Map Name (Maybe (DeclProvenance, Resource, Int))
-
---------------------------------------------------------------------------------
--- Datasets
-
-type DatasetContext = Set Name
 
 --------------------------------------------------------------------------------
 -- Networks

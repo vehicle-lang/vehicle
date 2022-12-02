@@ -5,7 +5,7 @@ module Vehicle.Compile.ExpandResources.Dataset.IDX
 import Control.Exception (try)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (..))
-import Control.Monad.State (MonadState (get), modify)
+import Control.Monad.State (modify, gets)
 import Data.IDX (IDXData, decodeIDXFile, idxDimensions, idxDoubleContent,
                  idxIntContent, isIDXIntegral)
 import Data.Map qualified as Map
@@ -96,13 +96,13 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
         else throwError $ DatasetDimensionSizeMismatch decl file n actualDim allDims (actualDim : actualDims)
 
     VVar _ (Free dimIdent) _ -> do
-      implicitParams <- get
+      implicitParams <- gets inferableParameterContext
       let newEntry = (decl, Dataset, actualDim)
       case Map.lookup (nameOf dimIdent) implicitParams of
         Nothing -> variableSizeError ctx expectedDim
 
         Just Nothing -> do
-          modify (Map.insert (nameOf dimIdent) (Just newEntry))
+          modify (addPossibleInferableParameterSolution dimIdent newEntry)
           return actualDim
 
         Just (Just existingEntry@(_, _, value)) ->

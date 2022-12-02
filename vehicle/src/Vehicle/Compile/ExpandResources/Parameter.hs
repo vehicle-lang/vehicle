@@ -25,7 +25,7 @@ parseParameterValue :: MonadExpandResources m
                     -> GluedType
                     -> m NormExpr
 parseParameterValue parameterValues decl@(ident, _) parameterType = do
-  implicitParams <- get
+  implicitParams <- gets inferableParameterContext
 
   parser <- case normalised parameterType of
     VBoolType{} -> return parseBool

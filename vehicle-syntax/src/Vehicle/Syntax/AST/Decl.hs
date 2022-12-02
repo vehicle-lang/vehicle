@@ -16,13 +16,14 @@ import Data.Aeson (ToJSON, FromJSON)
 data GenericDecl expr
   = DefResource
     Provenance             -- Location in source file.
-    Resource           -- Type of resource.
     Identifier             -- Name of resource.
+    Resource               -- Type of resource.
     expr                   -- Vehicle type of the resource.
 
   | DefFunction
     Provenance             -- Location in source file.
     Identifier             -- Bound function name.
+    Bool                   -- Is it a property.
     expr                   -- Bound function type.
     expr                   -- Bound function body.
 
@@ -38,27 +39,41 @@ instance FromJSON expr => FromJSON (GenericDecl expr)
 
 instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
-    DefResource p _ _ _  -> p
-    DefFunction p _  _ _ -> p
-    DefPostulate p _ _   -> p
+    DefResource  p _ _ _   -> p
+    DefFunction  p _ _ _ _ -> p
+    DefPostulate p _ _     -> p
 
 instance HasIdentifier (GenericDecl expr) where
   identifierOf = \case
-    DefResource  _ _ i _  -> i
-    DefFunction  _  i _ _ -> i
-    DefPostulate _ i _    -> i
+    DefResource  _ i _ _   -> i
+    DefFunction  _ i _ _ _ -> i
+    DefPostulate _ i _     -> i
 
 bodyOf :: GenericDecl expr -> Maybe expr
 bodyOf = \case
-  DefResource{}       -> Nothing
-  DefFunction _ _ _ e -> Just e
-  DefPostulate{}      -> Nothing
+  DefFunction _ _ _ _ e -> Just e
+  DefResource{}         -> Nothing
+  DefPostulate{}        -> Nothing
 
-traverseDeclType :: Monad m => (expr -> m expr) -> GenericDecl expr -> m (GenericDecl expr)
-traverseDeclType f = \case
-  DefResource p r n t -> DefResource p r n <$> f t
-  DefFunction p n t e -> DefFunction p n <$> f t <*> pure e
-  DefPostulate p n t  -> DefPostulate p n <$> f t
+-- | Traverses the type and body of a declaration using the first and
+-- second provided functions respectively.
+-- Use |traverse| if you want to traverse them using the same function.
+traverseDeclTypeAndExpr :: Monad m
+                        => (expr1 -> m expr2)
+                        -> (expr1 -> m expr2)
+                        -> GenericDecl expr1
+                        -> m (GenericDecl expr2)
+traverseDeclTypeAndExpr f1 f2 = \case
+  DefResource  p n r t   -> DefResource p n r <$> f1 t
+  DefFunction  p n b t e -> DefFunction p n b <$> f1 t <*> f2 e
+  DefPostulate p n t     -> DefPostulate p n  <$> f1 t
+
+-- | Traverses the type of the declaration.
+traverseDeclType :: Monad m
+                 => (expr -> m expr)
+                 -> GenericDecl expr
+                 -> m (GenericDecl expr)
+traverseDeclType f = traverseDeclTypeAndExpr f return
 
 --------------------------------------------------------------------------------
 -- Annotations options
