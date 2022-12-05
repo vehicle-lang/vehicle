@@ -64,4 +64,8 @@ extras =
   test
 commands =
   {envpython} -m unittest tests/test_LossFunctionTranslation.py
+passenv =
+  APPDATA HOME
 """
+# The environment variables above are passed because they are needed
+# to install the Vehicle standard library.
