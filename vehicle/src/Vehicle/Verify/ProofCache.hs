@@ -20,7 +20,8 @@ data ProofCache = ProofCache
   { proofCacheVersion  :: Version
   , status             :: SpecificationStatus
   , resourceSummaries  :: [ResourceSummary]
-  , originalSpec       :: SpecificationText
+  , originalSpec       :: FilePath
+  , originalSpecHash   :: Int
   , originalProperties :: PropertyNames
   } deriving (Generic)
 

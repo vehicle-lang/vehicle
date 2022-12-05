@@ -9,7 +9,6 @@ import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Type (TypedExpr)
 
 --------------------------------------------------------------------------------
 -- The resource monad

@@ -22,11 +22,10 @@ import Vehicle.Compile.Queries.NetworkElimination
 import Vehicle.Compile.Queries.QuantifierLifting (liftQuantifiers)
 import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Type (TypedDecl, TypedProg, getPropertyInfo,
-                             getUnnormalised)
+import Vehicle.Compile.Type (getPropertyInfo, getUnnormalised)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
-import Vehicle.Verify.Verifier.Interface
+import Vehicle.Verify.Verifier.Interface (Verifier (..))
 
 data QueryData = QueryData
   { queryText   :: Doc ()
