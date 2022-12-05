@@ -5,7 +5,6 @@ module Vehicle.Compile.Type.VariableContext where
 import Data.Map qualified as Map
 
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Output
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
@@ -22,11 +21,14 @@ toNormalisationDeclContext = Map.mapMaybe (fmap unnormalised . snd)
 toNBEDeclContext :: TypingDeclCtx -> DeclCtx NormExpr
 toNBEDeclContext = Map.mapMaybe (fmap normalised . snd)
 
-addToDeclCtx :: TypedDecl -> TypingDeclCtx -> TypingDeclCtx
-addToDeclCtx decl = do
+toDeclCtxEntry :: TypedDecl -> TypingDeclCtxEntry
+toDeclCtxEntry decl = do
   let declType = unnormalised $ glued (typeOf decl)
   let declBody = fmap glued (bodyOf decl)
-  Map.insert (identifierOf decl) (declType, declBody)
+  (declType, declBody)
+
+addToDeclCtx :: TypedDecl -> TypingDeclCtx -> TypingDeclCtx
+addToDeclCtx decl = Map.insert (identifierOf decl) (toDeclCtxEntry decl)
 
 --------------------------------------------------------------------------------
 -- Bound variable context

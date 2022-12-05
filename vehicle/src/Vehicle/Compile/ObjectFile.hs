@@ -12,7 +12,6 @@ import System.FilePath (dropExtension)
 
 import Data.Hashable (Hashable (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type (TypedProg)
 
 data ObjectFileContents = ObjectFileContents
   { _fileHash   :: Int

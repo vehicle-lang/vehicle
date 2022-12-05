@@ -1,9 +1,6 @@
 
 module Vehicle.Compile.Type
-  ( TypedProg
-  , TypedDecl
-  , TypedExpr
-  , getNormalised
+  ( getNormalised
   , getUnnormalised
   , getGlued
   , typeCheck
@@ -16,8 +13,9 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (ReaderT (..))
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty (..))
-
+import Data.Map qualified as Map (fromList)
 import Data.Maybe (mapMaybe)
+
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -32,29 +30,36 @@ import Vehicle.Compile.Type.Irrelevance
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Output
 import Vehicle.Compile.Type.Resource
+import Vehicle.Compile.Type.VariableContext (TypingDeclCtx, TypingDeclCtxEntry,
+                                             toDeclCtxEntry)
 import Vehicle.Expr.Normalised
 
 -------------------------------------------------------------------------------
 -- Algorithm
 
 typeCheck :: MonadCompile m
-          => UncheckedProg
+          => ImportedModules
+          -> UncheckedProg
           -> m TypedProg
-typeCheck uncheckedProg =
-  logCompilerPass MinDetail "type checking" $ runTypeCheckerT $
-    typeCheckProg uncheckedProg
+typeCheck imports uncheckedProg =
+  logCompilerPass MinDetail "type checking" $
+    runTypeCheckerT (createDeclCtx imports) $
+      typeCheckProg uncheckedProg
 
-typeCheckExpr :: MonadCompile m => UncheckedExpr -> m CheckedExpr
-typeCheckExpr expr1 = runTypeCheckerT $ do
-  expr2 <- insertHolesForAuxiliaryAnnotations expr1
-  (expr3, _exprType) <- runReaderT (inferExpr expr2) mempty
-  solveConstraints Nothing
-  expr4 <- substMetas expr3
-  expr5    <- removeIrrelevantCode expr4
-  checkAllUnknownsSolved
-  return expr5
+typeCheckExpr :: MonadCompile m
+              => ImportedModules
+              -> UncheckedExpr
+              -> m CheckedExpr
+typeCheckExpr imports expr1 =
+  runTypeCheckerT (createDeclCtx imports) $ do
+    expr2 <- insertHolesForAuxiliaryAnnotations expr1
+    (expr3, _exprType) <- runReaderT (inferExpr expr2) mempty
+    solveConstraints Nothing
+    expr4 <- substMetas expr3
+    expr5    <- removeIrrelevantCode expr4
+    checkAllUnknownsSolved
+    return expr5
 
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
@@ -392,3 +397,15 @@ getUnnormalised expr = removeIrrelevantCode (unnormalised (glued expr))
 
 getGlued :: MonadCompile m => TypedExpr -> m GluedExpr
 getGlued expr = removeIrrelevantCode (glued expr)
+
+-------------------------------------------------------------------------------
+-- Other
+
+createDeclCtx :: ImportedModules -> TypingDeclCtx
+createDeclCtx imports = Map.fromList $
+  [ getEntry d | imp <- imports, let Main ds = imp, d <- ds]
+  where
+    getEntry :: TypedDecl -> (Identifier, TypingDeclCtxEntry)
+    getEntry d = do
+      let ident = identifierOf d
+      (ident, toDeclCtxEntry d)

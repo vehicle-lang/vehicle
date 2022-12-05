@@ -19,9 +19,9 @@ import Vehicle.Compile.Error.Message (MeaningfulError (details),
 import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude (Builtin (TypeClassOp), CheckedExpr, Expr (..),
                                 ExprF (..), LoggingLevel, normApp)
-import Vehicle.Prelude (DelayedLogger, LoggingLevel (..), Pretty (pretty),
-                        defaultLoggingLevel, developerError, loggingLevelHelp,
-                        runDelayedLogger, showMessages)
+import Vehicle.Prelude (DelayedLogger, DelayedLoggerT, LoggingLevel (..),
+                        Pretty (pretty), defaultLoggingLevel, developerError,
+                        loggingLevelHelp, runDelayedLoggerT, showMessages)
 
 vehicleLoggingIngredient :: Ingredient
 vehicleLoggingIngredient =
@@ -43,14 +43,14 @@ instance IsOption LoggingLevel where
 --------------------------------------------------------------------------------
 -- Test settings monad
 
-unitTestCase :: String -> ExceptT CompileError DelayedLogger Assertion -> TestTree
+unitTestCase :: String -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> TestTree
 unitTestCase testName e =
   askOption $ \logLevel -> testCase testName (traceLogs logLevel e)
   where
-    traceLogs :: LoggingLevel -> ExceptT CompileError DelayedLogger a -> a
+    traceLogs :: LoggingLevel -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> Assertion
     traceLogs logLevel e = do
       let e' = logCompileError e
-      let (v, logs) = runDelayedLogger logLevel e'
+      (v, logs) <- runDelayedLoggerT logLevel e'
       let result = if null logs then v else trace (showMessages logs) v
       case result of
         Left  x -> developerError $ pretty $ details x

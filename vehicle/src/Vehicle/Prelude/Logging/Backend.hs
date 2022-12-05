@@ -85,5 +85,11 @@ newtype DelayedBackendT m a = DelayedBackendT
 instance Monad m => MonadLoggingBackend (DelayedBackendT m) where
   output m = DelayedBackendT $ tell [m]
 
+instance MonadTrans DelayedBackendT where
+  lift = DelayedBackendT . lift
+
+instance MonadIO m => MonadIO (DelayedBackendT m) where
+  liftIO = lift . liftIO
+
 runDelayedBackendT :: DelayedBackendT m a -> m (a, [Message])
 runDelayedBackendT v = runWriterT (unDelayedBackendT v)

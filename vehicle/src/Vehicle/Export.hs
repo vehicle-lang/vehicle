@@ -1,9 +1,6 @@
 
 module Vehicle.Export where
 
-import System.Directory (makeAbsolute)
-
-import Vehicle.Backend.Agda (AgdaOptions (..))
 import Vehicle.Backend.Prelude
 import Vehicle.Compile
 import Vehicle.Prelude
@@ -22,12 +19,17 @@ export loggingSettings ExportOptions{..} = do
   proofCache <- readProofCache proofCacheLocation
   let spec = originalSpec proofCache
   let properties = originalProperties proofCache
-  let _resources = reparseResources (resourceSummaries proofCache)
+  let resources = reparseResources (resourceSummaries proofCache)
 
-  absoluteProofCacheLocation <- Just <$> makeAbsolute proofCacheLocation
-  case target of
-    Agda -> runCompileMonad loggingSettings $ do
-      let agdaOptions = AgdaOptions absoluteProofCacheLocation outputFile moduleName
-      typingCheckingResult <-  typeCheckProg spec properties
-      _ <- compileToAgda agdaOptions typingCheckingResult outputFile
-      return ()
+  compile loggingSettings $ CompileOptions
+    { target                = ITP target
+    , specification         = spec
+    , declarationsToCompile = properties
+    , networkLocations      = networks resources
+    , datasetLocations      = datasets resources
+    , parameterValues       = parameters resources
+    , outputFile            = outputFile
+    , moduleName            = moduleName
+    , proofCache            = Just proofCacheLocation
+    , noStdlib              = False
+    }

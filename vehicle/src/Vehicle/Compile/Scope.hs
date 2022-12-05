@@ -18,13 +18,18 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Expr.DeBruijn
 
-scopeCheck :: MonadCompile m => InputProg -> m (UncheckedProg, DependencyGraph)
-scopeCheck e = logCompilerPass MinDetail "scope checking" $ do
-  (prog, dependencies) <- runReaderT (scopeProg e) mempty
+scopeCheck :: MonadCompile m
+           => ImportedModules
+           -> InputProg
+           -> m (UncheckedProg, DependencyGraph)
+scopeCheck imports e = logCompilerPass MinDetail "scope checking" $ do
+  let importCtx = getImportCtx imports
+  (prog, dependencies) <- runReaderT (scopeProg e) importCtx
   return (prog, fromEdges dependencies)
 
 scopeCheckClosedExpr :: MonadCompile m => InputExpr -> m UncheckedExpr
-scopeCheckClosedExpr e = fst <$> runWriterT (evalStateT (runReaderT (scopeExpr e) (mempty, False)) mempty)
+scopeCheckClosedExpr e = fst <$>
+  runWriterT (evalStateT (runReaderT (scopeExpr e) (mempty, False)) mempty)
 
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
@@ -180,3 +185,12 @@ getVar p symbol = do
           put (newBoundCtx, newVarsToGeneralise)
           let dbIndex = length boundCtx
           return $ Bound dbIndex
+
+getImportCtx :: ImportedModules -> Map Name Identifier
+getImportCtx imports = Map.fromList $
+  [ getEntry d | imp <- imports, let Main ds = imp, d <- ds]
+  where
+    getEntry :: TypedDecl -> (Name, Identifier)
+    getEntry d = do
+      let ident = identifierOf d
+      (nameOf ident, ident)

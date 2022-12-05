@@ -20,7 +20,6 @@ import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Print (prettySimple, prettyVerbose)
 import Vehicle.Compile.Queries.DNF
 import Vehicle.Compile.Type (getUnnormalised)
-import Vehicle.Compile.Type.Output qualified as V
 import Vehicle.Expr.DeBruijn qualified as V
 import Vehicle.Prelude
 import Vehicle.Resource (Resources (..))
