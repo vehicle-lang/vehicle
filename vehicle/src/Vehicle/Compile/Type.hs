@@ -13,8 +13,8 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (ReaderT (..))
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (mapMaybe)
 import Data.Map qualified as Map (fromList)
+import Data.Maybe (mapMaybe)
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -31,8 +31,9 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Resource
+import Vehicle.Compile.Type.VariableContext (TypingDeclCtx, TypingDeclCtxEntry,
+                                             toDeclCtxEntry)
 import Vehicle.Expr.Normalised
-import Vehicle.Compile.Type.VariableContext (TypingDeclCtx, TypingDeclCtxEntry, toDeclCtxEntry)
 
 -------------------------------------------------------------------------------
 -- Algorithm

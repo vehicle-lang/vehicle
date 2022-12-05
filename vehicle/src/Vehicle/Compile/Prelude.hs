@@ -4,7 +4,7 @@ module Vehicle.Compile.Prelude
   ) where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (ToJSON, FromJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 import Vehicle.Compile.Dependency.Graph as X
@@ -13,11 +13,11 @@ import Vehicle.Compile.Prelude.Utils as X
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.PositionTree (PositionTree)
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised (GluedExpr)
 import Vehicle.Expr.Patterns as X
 import Vehicle.Prelude as X
 import Vehicle.Resource as X
 import Vehicle.Syntax.AST as X
-import Vehicle.Expr.Normalised (GluedExpr)
 
 --------------------------------------------------------------------------------
 -- Type synonyms

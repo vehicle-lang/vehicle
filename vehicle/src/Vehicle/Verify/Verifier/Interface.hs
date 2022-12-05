@@ -2,12 +2,12 @@ module Vehicle.Verify.Verifier.Interface where
 
 import Control.Monad.IO.Class (MonadIO)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Queries.LinearExpr
+import Vehicle.Compile.Queries.Variable
+import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.Status (SatisfiabilityStatus)
-import Vehicle.Compile.Queries.Variable
-import Vehicle.Compile.Queries.LinearExpr
-import Vehicle.Compile.Queries.VariableReconstruction
 
 -- | The type of methods that compile queries for a verifier
 type VerifierCompile

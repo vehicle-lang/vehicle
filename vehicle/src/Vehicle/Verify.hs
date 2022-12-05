@@ -5,12 +5,13 @@ module Vehicle.Verify
   ) where
 
 import Control.Monad.Trans (MonadIO, liftIO)
+import Data.Hashable (Hashable (..))
 import Data.Text.IO (hPutStrLn)
-import Data.Hashable (Hashable(..))
 import System.Directory (doesFileExist, findExecutable)
 import System.Exit (exitFailure)
 import System.IO (stderr)
 
+import System.IO.Temp (withSystemTempDirectory)
 import Vehicle.Compile
 import Vehicle.Prelude
 import Vehicle.Resource
@@ -19,7 +20,6 @@ import Vehicle.Verify.ProofCache (ProofCache (..), writeProofCache)
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
 import Vehicle.Verify.Verifier.Interface
-import System.IO.Temp (withSystemTempDirectory)
 
 data VerifyOptions = VerifyOptions
   { specification    :: FilePath

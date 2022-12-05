@@ -14,13 +14,14 @@ import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Options (IsOption (..), OptionDescription (Option))
 import Text.Read (readMaybe)
 import Vehicle.Compile.Error (CompileError, MonadCompile)
-import Vehicle.Compile.Error.Message (MeaningfulError (details), logCompileError)
+import Vehicle.Compile.Error.Message (MeaningfulError (details),
+                                      logCompileError)
 import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude (Builtin (TypeClassOp), CheckedExpr, Expr (..),
                                 ExprF (..), LoggingLevel, normApp)
-import Vehicle.Prelude (DelayedLogger, runDelayedLogger, LoggingLevel (..), Pretty (pretty),
-                        defaultLoggingLevel, developerError, loggingLevelHelp,
-                        showMessages, DelayedLoggerT, runDelayedLoggerT)
+import Vehicle.Prelude (DelayedLogger, DelayedLoggerT, LoggingLevel (..),
+                        Pretty (pretty), defaultLoggingLevel, developerError,
+                        loggingLevelHelp, runDelayedLoggerT, showMessages)
 
 vehicleLoggingIngredient :: Ingredient
 vehicleLoggingIngredient =

@@ -3,15 +3,15 @@ module Vehicle.Compile.ObjectFile
   , writeObjectFile
   ) where
 
-import Control.Monad.IO.Class
-import Data.Aeson (ToJSON (..), FromJSON, encode, decode)
-import Data.ByteString.Lazy qualified as BIO
 import Control.Exception
-import System.FilePath (dropExtension)
+import Control.Monad.IO.Class
+import Data.Aeson (FromJSON, ToJSON (..), decode, encode)
+import Data.ByteString.Lazy qualified as BIO
 import GHC.Generics (Generic)
+import System.FilePath (dropExtension)
 
+import Data.Hashable (Hashable (..))
 import Vehicle.Compile.Prelude
-import Data.Hashable (Hashable(..))
 
 data ObjectFileContents = ObjectFileContents
   { _fileHash   :: Int

@@ -14,7 +14,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (ReaderT (..), ask)
 import Control.Monad.State (StateT (..))
 import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
-import Control.Monad.Writer (MonadWriter(..),WriterT(..))
+import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import System.IO (Handle, hPrint)
 
 import Vehicle.Prelude.Logging.Class

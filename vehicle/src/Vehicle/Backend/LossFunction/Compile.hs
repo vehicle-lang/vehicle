@@ -14,16 +14,16 @@ import Vehicle.Backend.LossFunction.Logics (DifferentialLogicImplementation (..)
                                             Quantifier (..), chooseTranslation)
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Error
+import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Print (prettySimple, prettyVerbose)
 import Vehicle.Compile.Queries.DNF
+import Vehicle.Compile.Type (getUnnormalised)
 import Vehicle.Expr.DeBruijn qualified as V
 import Vehicle.Prelude
+import Vehicle.Resource (Resources (..))
 import Vehicle.Syntax.AST (HasName (nameOf), Name, argExpr)
-import Vehicle.Compile.Type (getUnnormalised)
-import Vehicle.Compile.ExpandResources (expandResources)
-import Vehicle.Resource (Resources(..))
 
 --------------------------------------------------------------------------------
 -- Declaration definition

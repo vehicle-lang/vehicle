@@ -16,13 +16,13 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Prettyprinter (Doc)
-import System.Directory (removeFile, createDirectoryIfMissing)
+import System.Directory (createDirectoryIfMissing, removeFile)
+import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
+import System.FilePath ((<.>), (</>))
+import System.Info (os)
 import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
-import System.Environment (lookupEnv, getEnvironment)
-import System.FilePath ((</>), (<.>))
-import System.Info (os)
 
 --------------------------------------------------------------------------------
 -- Files

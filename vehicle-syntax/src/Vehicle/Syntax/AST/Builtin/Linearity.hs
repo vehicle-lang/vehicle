@@ -1,9 +1,9 @@
 module Vehicle.Syntax.AST.Builtin.Linearity where
 
 import Control.DeepSeq (NFData (..))
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Text (Text)
-import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 

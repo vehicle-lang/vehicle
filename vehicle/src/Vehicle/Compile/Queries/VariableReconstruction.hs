@@ -2,10 +2,12 @@ module Vehicle.Compile.Queries.VariableReconstruction where
 
 import Data.Vector.Unboxed qualified as Vector
 
-import Vehicle.Compile.Queries.LinearExpr
-import Vehicle.Compile.Queries.FourierMotzkinElimination (reconstructFourierMotzkinVariableValue, FourierMotzkinVariableSolution)
 import Control.Monad (foldM)
-import Vehicle.Compile.Queries.GaussianElimination (reconstructGaussianVariableValue, GaussianVariableSolution)
+import Vehicle.Compile.Queries.FourierMotzkinElimination (FourierMotzkinVariableSolution,
+                                                          reconstructFourierMotzkinVariableValue)
+import Vehicle.Compile.Queries.GaussianElimination (GaussianVariableSolution,
+                                                    reconstructGaussianVariableValue)
+import Vehicle.Compile.Queries.LinearExpr
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction

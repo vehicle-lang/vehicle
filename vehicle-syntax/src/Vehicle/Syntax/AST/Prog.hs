@@ -1,8 +1,8 @@
 module Vehicle.Syntax.AST.Prog where
 
 import Control.DeepSeq (NFData)
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-import Data.Aeson (ToJSON, FromJSON)
 
 import Vehicle.Syntax.AST.Decl (GenericDecl)
 

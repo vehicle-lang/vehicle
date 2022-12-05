@@ -4,10 +4,11 @@ module Vehicle.Test.Unit.Compile.CommandLine
 
 import Data.Map qualified as Map (fromList)
 import Data.Set qualified as Set
-import Options.Applicative (ParserResult(..), defaultPrefs, execParserPure)
+import Options.Applicative (ParserResult (..), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
-import Vehicle (GlobalOptions(..), ModeOptions(..), Options (..), defaultGlobalOptions)
+import Vehicle (GlobalOptions (..), ModeOptions (..), Options (..),
+                defaultGlobalOptions)
 import Vehicle.Check (CheckOptions (..))
 import Vehicle.CommandLine (commandLineOptionsParserInfo)
 import Vehicle.Prelude (LoggingLevel (MinDetail), Pretty (pretty), indent,

@@ -6,6 +6,7 @@ module Vehicle.Compile.ExpandResources
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Foldable (traverse_)
 import Data.Map (Map)
 import Data.Map qualified as Map (insert, lookup)
 import Data.Maybe (catMaybes)
@@ -16,14 +17,12 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
-import Vehicle.Compile.Prelude
-
-import Vehicle.Compile.Normalise.Quote (unnormalise)
-import Vehicle.Compile.Resource
-import Vehicle.Expr.Normalised (GluedExpr(..), pattern VNatLiteral, NormExpr)
-import Data.Foldable (traverse_)
 import Vehicle.Compile.Normalise.NBE (whnf)
+import Vehicle.Compile.Normalise.Quote (unnormalise)
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource
 import Vehicle.Compile.Type (getGlued)
+import Vehicle.Expr.Normalised (GluedExpr (..), NormExpr, pattern VNatLiteral)
 
 -- | Expands datasets and parameters, and attempts to infer the values of
 -- inferable parameters. Also checks the resulting types of networks.

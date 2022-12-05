@@ -7,10 +7,10 @@ import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
 
+import Data.Bifunctor (Bifunctor (..))
 import Vehicle.Prelude
-import Vehicle.Syntax.AST (Name, Identifier, HasName (..))
+import Vehicle.Syntax.AST (HasName (..), Identifier, Name)
 import Vehicle.Verify.Specification
-import Data.Bifunctor (Bifunctor(..))
 
 class IsVerified a where
   isVerified :: a -> Bool
