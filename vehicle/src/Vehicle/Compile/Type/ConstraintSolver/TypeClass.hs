@@ -19,7 +19,7 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
-import Vehicle.Language.StandardLibrary.Names
+import Vehicle.Libraries.StandardLibrary.Names
 
 --------------------------------------------------------------------------------
 -- Public interface

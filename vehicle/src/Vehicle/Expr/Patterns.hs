@@ -3,7 +3,7 @@ module Vehicle.Expr.Patterns where
 import Data.List.NonEmpty (NonEmpty (..), toList)
 
 import Vehicle.Expr.DeBruijn
-import Vehicle.Language.StandardLibrary.Names
+import Vehicle.Libraries.StandardLibrary.Names
 import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
