@@ -106,6 +106,7 @@ compileParser = CompileOptions
   <*> outputFileParser
   <*> modulePrefixOption
   <*> compileProofCacheParser
+  <*> noStdlibParser
 
 --------------------------------------------------------------------------------
 -- Verify mode
@@ -323,3 +324,9 @@ verifyProofCacheParser = optional $ proofCacheOption $
 
 compileProofCacheParser :: Parser (Maybe FilePath)
 compileProofCacheParser = optional exportProofCacheParser
+
+noStdlibParser :: Parser Bool
+noStdlibParser = switch $
+  long  "noStdlib" <>
+  help  "Stop the standard library from loading.\
+       \ Not recommended, except for testing purposes."

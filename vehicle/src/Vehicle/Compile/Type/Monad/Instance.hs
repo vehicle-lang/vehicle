@@ -25,8 +25,9 @@ newtype TypeCheckerT m a = TypeCheckerT
   { unTypeCheckerT :: ReaderT TypingDeclCtx (StateT TypingMetaCtx m) a
   } deriving (Functor, Applicative, Monad)
 
-runTypeCheckerT :: Monad m => TypeCheckerT m a -> m a
-runTypeCheckerT (TypeCheckerT e) = evalStateT (runReaderT e mempty) emptyTypingMetaCtx
+runTypeCheckerT :: Monad m => TypingDeclCtx -> TypeCheckerT m a -> m a
+runTypeCheckerT declCtx (TypeCheckerT e) =
+  evalStateT (runReaderT e declCtx) emptyTypingMetaCtx
 
 mapTypeCheckerT :: (m (a, TypingMetaCtx) -> n (b, TypingMetaCtx))
                 -> TypeCheckerT m a

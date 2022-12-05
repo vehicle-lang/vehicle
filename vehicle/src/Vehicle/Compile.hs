@@ -3,19 +3,21 @@ module Vehicle.Compile
   , compile
   , compileToAgda
   , compileToVerifier
-  , typeCheckOrLoadProg
-  , typeCheckProg
+  , typeCheckUserProg
   , typeCheckExpr
   , parseAndTypeCheckExpr
   , readSpecification
   , runCompileMonad
+  , loadStandardLibrary
   ) where
 
 import Control.Exception (IOException, catch)
+import Control.Monad (unless)
 import Control.Monad.Except (ExceptT, MonadError (..), runExcept)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
+import System.Directory (doesFileExist)
 import System.FilePath (takeExtension)
 
 import Vehicle.Backend.Agda
@@ -29,7 +31,8 @@ import Vehicle.Compile.ObjectFile
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Queries (QueryData, compileToQueries)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
-import Vehicle.Compile.Type (TypedProg, typeCheck, typeCheckExpr)
+import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
+import Vehicle.Language.StandardLibrary (standardLibraryName)
 import Vehicle.Syntax.Parse
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
@@ -46,13 +49,14 @@ data CompileOptions = CompileOptions
   , outputFile            :: Maybe FilePath
   , moduleName            :: Maybe String
   , proofCache            :: Maybe FilePath
+  , noStdlib              :: Bool
   } deriving (Eq, Show)
 
 compile :: LoggingSettings -> CompileOptions -> IO ()
 compile loggingSettings CompileOptions{..} = runCompileMonad loggingSettings $ do
-  let resources = Resources networkLocations datasetLocations parameterValues
-  typeCheckingResult <- typeCheckOrLoadProg specification declarationsToCompile
+  typeCheckingResult <- typeCheckUserProg specification declarationsToCompile noStdlib
 
+  let resources = Resources networkLocations datasetLocations parameterValues
   case target of
     TypeCheck -> return ()
 
@@ -123,39 +127,54 @@ readSpecification inputFile
         quotePretty inputFile <> ":" <> line <>
           indent 2 (pretty (show e))
 
-parseAndTypeCheckExpr :: MonadCompile m => Text -> m CheckedExpr
+parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => Text -> m CheckedExpr
 parseAndTypeCheckExpr expr = do
+  standardLibrary <- loadStandardLibrary
+  let imports = [standardLibrary]
   vehicleExpr <- parseExprText expr
   scopedExpr  <- scopeCheckClosedExpr vehicleExpr
-  typedExpr   <- typeCheckExpr scopedExpr
+  typedExpr   <- typeCheckExpr imports scopedExpr
   return typedExpr
+
+typeCheckUserProg :: (MonadIO m, MonadCompile m)
+                  => FilePath
+                  -> DeclarationNames
+                  -> Bool
+                  -> m TypedProg
+typeCheckUserProg spec declarationsToCompile noStdlib = do
+  imports <- if noStdlib
+    then return []
+    else (:[]) <$> loadStandardLibrary
+  typeCheckOrLoadProg imports spec declarationsToCompile
 
 -- | Parses and type-checks the program but does
 -- not load networks and datasets from disk.
 typeCheckProg :: (MonadIO m, MonadCompile m)
-              => SpecificationText
+              => ImportedModules
+              -> SpecificationText
               -> DeclarationNames
               -> m TypedProg
-typeCheckProg spec declarationsToCompile = do
+typeCheckProg imports spec declarationsToCompile = do
   vehicleProg <- parseProgText spec
-  (scopedProg, dependencyGraph) <- scopeCheck vehicleProg
+  (scopedProg, dependencyGraph) <- scopeCheck imports vehicleProg
   prunedProg <- analyseDependenciesAndPrune scopedProg dependencyGraph declarationsToCompile
-  result <- typeCheck prunedProg
+  result <- typeCheck imports prunedProg
   return result
 
 -- | Parses and type-checks the program but does
 -- not load networks and datasets from disk.
 typeCheckOrLoadProg :: (MonadIO m, MonadCompile m)
-                    => FilePath
+                    => ImportedModules
+                    -> FilePath
                     -> DeclarationNames
                     -> m TypedProg
-typeCheckOrLoadProg specificationFile declarationsToCompile = do
+typeCheckOrLoadProg imports specificationFile declarationsToCompile = do
   spec <- readSpecification specificationFile
   interfaceFileResult <- readObjectFile specificationFile spec
   case interfaceFileResult of
     Just result -> return result
     Nothing     -> do
-      result <- typeCheckProg spec declarationsToCompile
+      result <- typeCheckProg imports spec declarationsToCompile
       writeObjectFile specificationFile spec result
       return result
 
@@ -172,6 +191,15 @@ parseProgText txt = do
     Right prog -> case traverse parseExpr prog of
       Left err    -> throwError $ ParseError err
       Right prog' -> return prog'
+
+loadStandardLibrary :: (MonadIO m, MonadCompile m) => m TypedProg
+loadStandardLibrary = do
+  standardLibraryFile <- getLibraryLocation standardLibraryName
+  standardLibraryExists <- liftIO $ doesFileExist standardLibraryFile
+  unless standardLibraryExists $ do
+    installLibrary standardLibraryName ""
+
+  typeCheckOrLoadProg mempty standardLibraryFile mempty
 
 runCompileMonad :: MonadIO m
                 => LoggingSettings

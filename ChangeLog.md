@@ -8,15 +8,15 @@
   the results of type-checking. If the interface file exists and the hash matches
   then it won't re-type check the original file.
 
-* Improved the performance of type-checking by a factor of ~4.
+* Drastically improved the performance of type-checking (e.g. AcasXu down from 20 seconds to 3 seconds).
 
-* Improved error messages which involved type-synonyms, which now display
+* Improved error messages which involve type-synonyms. The messages now display
   both the original and the expanded form of the type.
 
 * Logs now print out in real-time instead of at the end of compilation.
 
 * Removed the `--redirect-output` and `--redirect-error` command line options.
-  This can be done via pipes.
+  This functionality can be replicated via pipes.
 
 * Fixed a bug where higher-order function arguments wouldn't type-check correctly
   without explicit annotations.

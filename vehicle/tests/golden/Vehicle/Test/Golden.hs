@@ -5,6 +5,7 @@ module Vehicle.Test.Golden
   , makeTestTreeFromDirectoryRecursive
   )
   where
+
 import Control.Monad (filterM, forM, forM_)
 import Data.Functor ((<&>))
 import Data.HashMap.Strict (HashMap)

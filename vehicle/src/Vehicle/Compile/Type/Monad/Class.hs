@@ -62,7 +62,6 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution (MetaSubstitutable,
                                                MetaSubstitution,
                                                substituteMetas)
-import Vehicle.Compile.Type.Output (TypedDecl)
 import Vehicle.Compile.Type.VariableContext (TypingBoundCtx, TypingDeclCtx,
                                              toNBEDeclContext,
                                              toNormalisationDeclContext)
