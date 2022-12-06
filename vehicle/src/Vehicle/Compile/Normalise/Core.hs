@@ -170,18 +170,6 @@ nfFoldList ann foldOp unit container = case argExpr container of
 -}
 
 
-bigOp :: Provenance
-      -> (Bool, Builtin)
-      -> CheckedExpr
-      -> CheckedExpr
-      -> CheckedExpr
-bigOp p (unit, op) size xs =
-  FoldVectorExpr p (BoolType p) size (BoolType p) $ fmap (ExplicitArg p)
-    [ Builtin p op
-    , BoolLiteral p unit
-    , xs
-    ]
-
 zipWithVector :: Provenance
               -> CheckedType
               -> CheckedType
@@ -202,6 +190,16 @@ zipWithVector p tElem1 tElem2 tRes size fn xs ys = do
     , ExplicitArg p ys
     ]
 
+bigOp :: Provenance
+      -> Identifier
+      -> CheckedExpr
+      -> CheckedExpr
+      -> CheckedExpr
+bigOp p identifier size xs =
+  App p (FreeVar p identifier)
+    [ ImplicitArg p size
+    , ExplicitArg p xs
+    ]
 {-
 nfMapList :: MonadNorm m
           => CheckedType

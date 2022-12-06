@@ -160,8 +160,8 @@ VecLiteral. Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
 Nil.        Expr15 ::= TokNil;
 Cons.       Expr4  ::= Expr5 TokCons Expr4;
 At.         Expr12 ::= Expr12 TokAt Expr13;
-Map.        Expr13 ::= TokMap Expr15 Expr15;
-Fold.       Expr13 ::= TokFold Expr15 Expr15 Expr15;
+Map.        Expr15 ::= TokMap;
+Fold.       Expr15 ::= TokFold;
 
 -- Primitive types.
 Unit.    Expr15 ::= TokUnit;

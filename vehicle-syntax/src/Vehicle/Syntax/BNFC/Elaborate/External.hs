@@ -235,8 +235,8 @@ elabExpr = \case
   B.Neg tk e                -> builtin (V.TypeClassOp V.NegTC) tk [e]
 
   B.At e1 tk e2             -> builtin V.At   tk [e1, e2]
-  B.Map tk e1 e2            -> builtin (V.TypeClassOp V.MapTC)  tk [e1, e2]
-  B.Fold tk e1 e2 e3        -> builtin (V.TypeClassOp V.FoldTC) tk [e1, e2, e3]
+  B.Map tk                  -> builtin (V.TypeClassOp V.MapTC)  tk []
+  B.Fold tk                 -> builtin (V.TypeClassOp V.FoldTC) tk []
 
 elabArg :: MonadElab m => B.Arg -> m V.InputArg
 elabArg = \case

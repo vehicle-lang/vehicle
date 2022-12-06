@@ -141,7 +141,7 @@ instance Norm CheckedExpr where
             case Map.lookup ident ctx of
               Nothing -> return e
               Just x  -> nf x
-          | otherwise                 -> return e
+          | otherwise -> return e
 
       Let _ letValue _letBinder letBody -> do
         letValue' <- nf letValue
@@ -152,7 +152,6 @@ instance Norm CheckedExpr where
       App p fun args -> do
         nFun  <- nf fun
         nArgs <- traverse nf args
-
         nfApp p nFun nArgs
 
 instance Norm CheckedBinder where
@@ -166,14 +165,15 @@ instance Norm CheckedArg where
 
 nfApp :: MonadNorm m => Provenance -> CheckedExpr -> NonEmpty CheckedArg -> m CheckedExpr
 nfApp p fun args = do
-  let e = App p fun args
+  let (fun', args') = renormArgs fun args
+  let e = App p fun' args'
   Options{..} <- ask
-  case fun of
-    Lam{}       | normaliseLambdaApplications -> nfAppLam p fun (NonEmpty.toList args)
-    Builtin _ b | normaliseBuiltin b          -> nfBuiltin p b args
+  case fun' of
+    Lam{}       | normaliseLambdaApplications -> nfAppLam p fun' (NonEmpty.toList args')
+    Builtin _ b | normaliseBuiltin b          -> nfBuiltin p b args'
     FreeVar _ i | normaliseStdLibApplications -> case findStdLibFunction (nameOf i) of
       Nothing -> return e
-      Just f  -> nfStdLibFn p f args
+      Just f  -> nfStdLibFn p f args'
     _ -> return e
 
 nfAppLam :: MonadNorm m => Provenance -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
@@ -188,7 +188,6 @@ nfStdLibFn :: MonadNorm m
            -> m CheckedExpr
 nfStdLibFn p f allArgs = do
   let e = App p (FreeVar p (identifierOf f)) allArgs
-  logDebug MaxDetail $ prettyVerbose e
   fromMaybe (return e) $ case embedStdLib f allArgs of
     Nothing -> Nothing
     Just res -> case res of
@@ -379,11 +378,8 @@ nfQuantifierInVector p q tElem size lam container = do
   let tTo   = BoolType p
   let mappedContainer = MapVectorExpr p tElem tTo size (ExplicitArg p <$> [lam, container])
 
-  let ops = case q of
-        Forall -> (True, And)
-        Exists -> (False, Or)
-
-  nf $ bigOp p ops size mappedContainer
+  let ident = Identifier StdLib $ if q == Forall then "bigAnd" else "bigOr"
+  nf $ bigOp p ident size mappedContainer
 
 nfEqualsBool :: EqualityOp -> Provenance -> [CheckedArg] -> Maybe CheckedExpr
 nfEqualsBool op p args@[arg1, arg2] = case op of
@@ -405,8 +401,8 @@ nfEqualsVector :: MonadNorm m
 nfEqualsVector op p tElem size recFn args = case args of
   [ExplicitArg _ xs, ExplicitArg _ ys] -> Just $ do
     equalitiesSeq <- nf $ zipWithVector p tElem tElem (BoolType p) size recFn xs ys
-    let ops = if op == Eq then (True, And) else (False, Or)
-    nf $ bigOp p ops size equalitiesSeq
+    let ident = Identifier StdLib $ if op == Eq then "bigAnd" else "bigOr"
+    nf $ bigOp p ident size equalitiesSeq
   _ -> Nothing
 
 nfAddVector :: MonadNorm m

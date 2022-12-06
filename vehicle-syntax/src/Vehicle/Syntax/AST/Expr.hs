@@ -246,10 +246,15 @@ makeBaseFunctor ''Expr
 --------------------------------------------------------------------------------
 -- Utilities
 
+renormArgs :: Expr binder var -> NonEmpty (Arg binder var) -> (Expr binder var, NonEmpty (Arg binder var))
+renormArgs (App p' fun args') args = renormArgs fun (args' <> args)
+renormArgs fun args                = (fun, args)
+
 -- Preserves invariant that we never have two nested Apps
 normApp :: Provenance -> Expr binder var -> NonEmpty (Arg binder var) -> Expr binder var
-normApp p (App p' fun args') args = App (p' <> p) fun (args' <> args)
-normApp p fun                args = App p fun args
+normApp p fun args = do
+  let (fun', args') = renormArgs fun args
+  App p fun' args'
 
 normAppList :: Provenance -> Expr binder var -> [Arg binder var] -> Expr binder var
 normAppList _   fun []           = fun
