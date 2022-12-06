@@ -2,24 +2,21 @@ module Vehicle.Prelude.IO
   ( vehicleFileExtension
   , vehicleObjectFileExtension
   , vehicleProofCacheFileExtension
+  , vehicleLibraryExtension
   , removeFileIfExists
   , fatalError
   , programOutput
-  , LibraryName
-  , installLibrary
-  , getLibraryLocation
+  , getVehiclePath
   ) where
 
 import Control.Exception (catch, throwIO)
 -- import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.Text (Text)
-import Data.Text.IO qualified as TIO
 import Prettyprinter (Doc)
 import System.Directory (createDirectoryIfMissing, removeFile)
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
-import System.FilePath ((<.>), (</>))
+import System.FilePath ((</>))
 import System.Info (os)
 import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
@@ -36,15 +33,8 @@ vehicleObjectFileExtension = vehicleFileExtension <> "o"
 vehicleProofCacheFileExtension :: String
 vehicleProofCacheFileExtension = vehicleFileExtension <> "p"
 
-vehiclePathVariable :: String
-vehiclePathVariable = "VEHICLE_PATH"
-
-fallbackVehiclePathVariable :: String
-fallbackVehiclePathVariable = case os of
-  -- Windows
-  "mingw32" -> "APPDATA"
-  -- All other systems
-  _         -> "HOME"
+vehicleLibraryExtension :: String
+vehicleLibraryExtension = vehicleFileExtension <> "lib"
 
 --------------------------------------------------------------------------------
 -- IO operations
@@ -67,6 +57,16 @@ programOutput message = liftIO $ print message
 --------------------------------------------------------------------------------
 -- Library utilities
 
+vehiclePathVariable :: String
+vehiclePathVariable = "VEHICLE_PATH"
+
+fallbackVehiclePathVariable :: String
+fallbackVehiclePathVariable = case os of
+  -- Windows
+  "mingw32" -> "APPDATA"
+  -- All other systems
+  _         -> "HOME"
+
 getVehiclePath :: MonadIO m => m FilePath
 getVehiclePath = do
   vehiclePathVar <- liftIO $ lookupEnv vehiclePathVariable
@@ -84,16 +84,3 @@ getVehiclePath = do
             "variables: " <> show env
   liftIO $ createDirectoryIfMissing False vehiclePath
   return vehiclePath
-
-type LibraryName = String
-
-installLibrary :: MonadIO m => LibraryName -> Text -> m ()
-installLibrary name contents = do
-  vehiclePath <- getVehiclePath
-  let libraryFile = vehiclePath </> name <.> vehicleFileExtension
-  liftIO $ TIO.writeFile libraryFile contents
-
-getLibraryLocation :: MonadIO m => LibraryName -> m FilePath
-getLibraryLocation name = do
-  vehiclePath <- getVehiclePath
-  return $ vehiclePath </> name <.> vehicleFileExtension

@@ -95,34 +95,6 @@ type TypedDecl = GenericDecl TypedExpr
 type TypedProg = GenericProg TypedExpr
 
 --------------------------------------------------------------------------------
--- Logging
-
-logCompilerPass :: MonadLogger m => LoggingLevel -> Doc a -> m b -> m b
-logCompilerPass level passName performPass = do
-  logDebug level $ "Starting" <+> passName
-  incrCallDepth
-  result <- performPass
-  decrCallDepth
-  logDebug level $ "Finished" <+> passName <> line
-  return result
-
-logCompilerSection :: MonadLogger m => LoggingLevel -> Doc a -> m b -> m b
-logCompilerSection level sectionName performPass = do
-  logDebug level sectionName
-  incrCallDepth
-  result <- performPass
-  decrCallDepth
-  logDebug level ""
-  return result
-
-logCompilerPassOutput :: MonadLogger m => Doc a -> m ()
-logCompilerPassOutput result = do
-  logDebug MidDetail "Result:"
-  incrCallDepth
-  logDebug MidDetail result
-  decrCallDepth
-
---------------------------------------------------------------------------------
 -- Property annotations
 
 -- | A marker for how a declaration is used as part of a quantified property

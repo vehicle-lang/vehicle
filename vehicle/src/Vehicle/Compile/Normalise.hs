@@ -21,7 +21,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (GluedDecl, GluedExpr (..), traverseUnnormalised)
-import Vehicle.Language.StandardLibrary.Names
+import Vehicle.Libraries.StandardLibrary.Names
 
 -- |Run a function in 'MonadNorm'.
 normalise :: (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) ([DBBinding], a))
@@ -73,8 +73,8 @@ instance Norm (GenericDecl expr) => Norm (GenericProg expr) where
   nf = traverseDecls nf
 
 instance Norm CheckedDecl where
-  nf decl = logCompilerPass MaxDetail ("normalisation of" <+> squotes declIdent) $
-    case decl of
+  nf decl = logCompilerPass MidDetail ("normalisation of" <+> declIdent) $ do
+    result <- case decl of
       DefResource p r ident typ ->
         DefResource p r ident <$> nf typ
 
@@ -86,13 +86,14 @@ instance Norm CheckedDecl where
 
       DefPostulate p ident typ ->
         DefPostulate p ident <$> nf typ
-
-    where declIdent = pretty (identifierOf decl)
+    logCompilerPassOutput (prettyFriendlyDBClosed result)
+    return result
+    where declIdent = quotePretty (identifierOf decl)
 
 -- | This a horrible, horrible hack. Only introducing this very temporarily,
 -- before normalisation is pushed all the way in.
 instance Norm GluedDecl where
-  nf decl = logCompilerPass MaxDetail ("normalisation of" <+> squotes declIdent) $
+  nf decl = logCompilerPass MidDetail ("normalisation of" <+> squotes declIdent) $
     case decl of
       DefResource p r ident typ ->
         DefResource p r ident <$> nf typ
@@ -150,7 +151,7 @@ instance Norm CheckedExpr where
 
       App p fun args -> do
         nFun  <- nf fun
-        nArgs <- traverse (traverseExplicitArgExpr nf) args
+        nArgs <- traverse nf args
 
         nfApp p nFun nArgs
 
@@ -158,10 +159,7 @@ instance Norm CheckedBinder where
   nf = traverse nf
 
 instance Norm CheckedArg where
-  -- A massive hack to get performance, we should remove once we have NBE up and
-  -- running
-  nf (ExplicitArg ann e) = ExplicitArg ann <$> nf e
-  nf arg@Arg{}           = return arg
+  nf = traverseNonInstanceArgExpr nf
 
 --------------------------------------------------------------------------------
 -- Application
@@ -190,6 +188,7 @@ nfStdLibFn :: MonadNorm m
            -> m CheckedExpr
 nfStdLibFn p f allArgs = do
   let e = App p (FreeVar p (identifierOf f)) allArgs
+  logDebug MaxDetail $ prettyVerbose e
   fromMaybe (return e) $ case embedStdLib f allArgs of
     Nothing -> Nothing
     Just res -> case res of
@@ -199,17 +198,18 @@ nfStdLibFn p f allArgs = do
       ExistsBool{} -> Nothing
       ForallBool{} -> Nothing
 
-      EqualsVector    tElem size recFn args        -> nfEqualsVector Eq  p tElem size recFn args
-      NotEqualsVector tElem size recFn args        -> nfEqualsVector Neq p tElem size recFn args
-      AddVector       tElem size recFn args        -> nfAddVector p tElem size recFn args
-      SubVector       tElem size recFn args        -> nfSubVector p tElem size recFn args
+      EqualsVector    tElem size recFn args -> nfEqualsVector Eq  p tElem size recFn args
+      NotEqualsVector tElem size recFn args -> nfEqualsVector Neq p tElem size recFn args
+      AddVector       tElem size recFn args -> nfAddVector p tElem size recFn args
+      SubVector       tElem size recFn args -> nfSubVector p tElem size recFn args
 
-      ForallVector    tElem size recFn binder body -> Just $ do
-        n <- getSize size
-        nfQuantifierVector p tElem n binder body recFn
-      ExistsVector    tElem size recFn binder body -> Just $ do
-        n <- getSize size
-        nfQuantifierVector p tElem n binder body recFn
+      ForallVector    tElem s recFn binder body -> case s of
+        NatLiteral _ size -> Just $ nfQuantifierVector p tElem size binder body recFn
+        _                 -> Nothing
+
+      ExistsVector    tElem s recFn binder body -> case s of
+        NatLiteral _ size -> Just $ nfQuantifierVector p tElem size binder body recFn
+        _                 -> Nothing
 
       ExistsIndex size lam -> Just $ nfQuantifierIndex p Exists size lam
       ForallIndex size lam -> Just $ nfQuantifierIndex p Forall size lam
@@ -227,7 +227,8 @@ nfBuiltin p (TypeClassOp op) args = do
     Nothing  -> return originalExpr
     Just res -> do
       (fn, newArgs) <- res
-      nfApp p fn newArgs
+      nfNewArgs <- traverse nf newArgs
+      nfApp p fn nfNewArgs
 
 nfBuiltin p b                args = do
   let e = App p (Builtin p b) args
@@ -262,12 +263,9 @@ nfBuiltin p b                args = do
     -- MapExpr _ tElem tRes [fn, cont] -> nfMap  p tElem tRes (argExpr fn) (argExpr cont)
     AtExpr _ tElem tDim [tensor, index]          -> Just $ return $ nfAt p tElem tDim tensor index
 
-    ForeachExpr _ tElem s body -> Just $ do
-      -- This is a huge bodge. Really we need to normalise implicit arguments as well,
-      -- but hideously inefficiently at the moment, so wait until we have the new
-      -- normalisation up and running.
-      n <- getSize s
-      nfForeach p tElem n body
+    ForeachExpr _ tElem s body -> case s of
+      NatLiteral _ size -> Just $ nfForeach p tElem size body
+      _                 -> Nothing
 
     MapVectorExpr _ tFrom tTo size [fn, vector] ->
       Just $ nfMapVector p tFrom tTo size fn vector
@@ -449,16 +447,6 @@ nfMapVector p tFrom tTo size fun vector =
       let appFun x = App p (argExpr fun) [ExplicitArg p x]
       return $ VecLiteral p tTo (fmap appFun xs)
     _                 ->  return $ MapVectorExpr p tFrom tTo size [fun, vector]
-
-getSize :: MonadNorm m => CheckedExpr -> m Int
-getSize sizeExpr = do
-  -- This is a huge bodge. Really we need to normalise implicit arguments as well,
-  -- but hideously inefficiently at the moment, so wait until we have the new
-  -- normalisation up and running.
-  nfSizeExpr <- nf sizeExpr
-  case nfSizeExpr of
-    NatLiteral _ size -> return size
-    _                 -> compilerDeveloperError "Non-concrete foreach size"
 
 nfFromNat :: MonadNorm m
           => Provenance

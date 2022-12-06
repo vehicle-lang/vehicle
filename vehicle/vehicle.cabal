@@ -114,8 +114,9 @@ library
     Vehicle.Expr.DSL
     Vehicle.Expr.Normalised
     Vehicle.Expr.Patterns
-    Vehicle.Language.StandardLibrary
-    Vehicle.Language.StandardLibrary.Names
+    Vehicle.Libraries
+    Vehicle.Libraries.StandardLibrary
+    Vehicle.Libraries.StandardLibrary.Names
     Vehicle.Prelude
     Vehicle.Resource
     Vehicle.Verify

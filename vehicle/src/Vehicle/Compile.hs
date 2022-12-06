@@ -8,16 +8,14 @@ module Vehicle.Compile
   , parseAndTypeCheckExpr
   , readSpecification
   , runCompileMonad
-  , loadStandardLibrary
+  , loadLibrary
   ) where
 
 import Control.Exception (IOException, catch)
-import Control.Monad (unless)
 import Control.Monad.Except (ExceptT, MonadError (..), runExcept)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
-import System.Directory (doesFileExist)
 import System.FilePath (takeExtension)
 
 import Vehicle.Backend.Agda
@@ -32,7 +30,9 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Queries (QueryData, compileToQueries)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
-import Vehicle.Language.StandardLibrary (standardLibraryName)
+import Vehicle.Libraries (Library, findLibraryContentFile, libraryInfo,
+                          libraryName)
+import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Syntax.Parse
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
@@ -76,36 +76,37 @@ compile loggingSettings CompileOptions{..} = runCompileMonad loggingSettings $ d
 -- Backend-specific compilation functions
 
 compileToVerifier :: (MonadCompile m, MonadIO m)
-                  => TypedProg
+                  => (ImportedModules, TypedProg)
                   -> Resources
                   -> VerifierIdentifier
                   -> Maybe FilePath
                   -> m (Specification QueryData)
-compileToVerifier typedProg resources verifierIdentifier outputFile = do
+compileToVerifier (imports, typedProg) resources verifierIdentifier outputFile = do
+  let mergedProg = mergeImports imports typedProg
   let verifier = verifiers verifierIdentifier
-  compiledSpecification <- compileToQueries verifier typedProg resources
+  compiledSpecification <- compileToQueries verifier mergedProg resources
   case outputFile of
     Nothing     -> outputSpecification compiledSpecification
     Just folder -> writeSpecificationFiles verifier folder compiledSpecification
   return compiledSpecification
 
 compileToLossFunction :: (MonadCompile m, MonadIO m)
-                      => TypedProg
+                      => (ImportedModules, TypedProg)
                       -> Resources
                       -> DifferentiableLogic
                       -> Maybe FilePath
                       -> m [LDecl]
-compileToLossFunction typedProg resources differentiableLogic outputFile = do
+compileToLossFunction (_, typedProg) resources differentiableLogic outputFile = do
   lossFunction <- LossFunction.compile resources differentiableLogic typedProg
   writeLossFunctionFiles outputFile differentiableLogic lossFunction
   return lossFunction
 
 compileToAgda :: (MonadCompile m, MonadIO m)
               => AgdaOptions
-              -> TypedProg
+              -> (ImportedModules, TypedProg)
               -> Maybe FilePath
               -> m ()
-compileToAgda agdaOptions typedProg outputFile = do
+compileToAgda agdaOptions (_, typedProg) outputFile = do
   agdaCode <- compileProgToAgda typedProg agdaOptions
   writeAgdaFile outputFile agdaCode
 
@@ -129,8 +130,8 @@ readSpecification inputFile
 
 parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => Text -> m CheckedExpr
 parseAndTypeCheckExpr expr = do
-  standardLibrary <- loadStandardLibrary
-  let imports = [standardLibrary]
+  standardLibraryProg <- loadLibrary standardLibrary
+  let imports = [standardLibraryProg]
   vehicleExpr <- parseExprText expr
   scopedExpr  <- scopeCheckClosedExpr vehicleExpr
   typedExpr   <- typeCheckExpr imports scopedExpr
@@ -140,12 +141,13 @@ typeCheckUserProg :: (MonadIO m, MonadCompile m)
                   => FilePath
                   -> DeclarationNames
                   -> Bool
-                  -> m TypedProg
+                  -> m (ImportedModules, TypedProg)
 typeCheckUserProg spec declarationsToCompile noStdlib = do
   imports <- if noStdlib
     then return []
-    else (:[]) <$> loadStandardLibrary
-  typeCheckOrLoadProg imports spec declarationsToCompile
+    else (:[]) <$> loadLibrary standardLibrary
+  typedProg <- typeCheckOrLoadProg imports spec declarationsToCompile
+  return (imports, typedProg)
 
 -- | Parses and type-checks the program but does
 -- not load networks and datasets from disk.
@@ -158,8 +160,11 @@ typeCheckProg imports spec declarationsToCompile = do
   vehicleProg <- parseProgText spec
   (scopedProg, dependencyGraph) <- scopeCheck imports vehicleProg
   prunedProg <- analyseDependenciesAndPrune scopedProg dependencyGraph declarationsToCompile
-  result <- typeCheck imports prunedProg
-  return result
+  typedProg <- typeCheck imports prunedProg
+  return typedProg
+
+mergeImports :: ImportedModules -> TypedProg -> TypedProg
+mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> [userProg])
 
 -- | Parses and type-checks the program but does
 -- not load networks and datasets from disk.
@@ -192,14 +197,12 @@ parseProgText txt = do
       Left err    -> throwError $ ParseError err
       Right prog' -> return prog'
 
-loadStandardLibrary :: (MonadIO m, MonadCompile m) => m TypedProg
-loadStandardLibrary = do
-  standardLibraryFile <- getLibraryLocation standardLibraryName
-  standardLibraryExists <- liftIO $ doesFileExist standardLibraryFile
-  unless standardLibraryExists $ do
-    installLibrary standardLibraryName ""
-
-  typeCheckOrLoadProg mempty standardLibraryFile mempty
+loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m TypedProg
+loadLibrary library = do
+  let libname = libraryName $ libraryInfo library
+  logCompilerSection MinDetail ("Locating library" <+> quotePretty libname) $ do
+    libraryFile <- findLibraryContentFile library
+    typeCheckOrLoadProg mempty libraryFile mempty
 
 runCompileMonad :: MonadIO m
                 => LoggingSettings
