@@ -18,6 +18,9 @@
 * Removed the `--redirect-output` and `--redirect-error` command line options.
   This functionality can be replicated via pipes.
 
+* Fixed a bug where higher-order function arguments wouldn't type-check correctly
+  without explicit annotations.
+
 * Fixed a bug where let-bound expressions at the top-level scope wouldn't
   type-check correctly.
 
