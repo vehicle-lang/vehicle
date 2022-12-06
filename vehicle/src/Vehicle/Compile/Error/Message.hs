@@ -170,7 +170,7 @@ instance MeaningfulError CompileError where
       , fix        = Nothing
       }
 
-    DuplicateName p name -> UError $ UserError
+    DuplicateName p name _matching -> UError $ UserError
       { provenance = p
       , problem    = "multiple declarations found with the name" <+> quotePretty name
       , fix        = Just "remove or rename the duplicate definitions"

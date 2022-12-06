@@ -403,10 +403,10 @@ nfEqualsVector :: MonadNorm m
                -> [CheckedArg]
                -> Maybe (m CheckedExpr)
 nfEqualsVector op p tElem size recFn args = case args of
-  [ExplicitArg _ xs, ExplicitArg _ ys] -> do
-    let equalitiesSeq  = zipWithVector p tElem tElem (BoolType p) size recFn xs ys
+  [ExplicitArg _ xs, ExplicitArg _ ys] -> Just $ do
+    equalitiesSeq <- nf $ zipWithVector p tElem tElem (BoolType p) size recFn xs ys
     let ops = if op == Eq then (True, And) else (False, Or)
-    Just $ nf $ bigOp p ops size equalitiesSeq
+    nf $ bigOp p ops size equalitiesSeq
   _ -> Nothing
 
 nfAddVector :: MonadNorm m

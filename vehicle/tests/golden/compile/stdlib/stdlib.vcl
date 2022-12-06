@@ -1,3 +1,6 @@
+test : Vector Nat 1
+test = zipWith (\x y -> x + y) [1] [2]
+
 {-
 bigAnd : Vector Bool n -> Bool
 bigAnd = fold (\x y -> x and y) True
