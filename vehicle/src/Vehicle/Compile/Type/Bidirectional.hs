@@ -107,7 +107,7 @@ checkExpr expectedType expr = do
         checkBinderTypesEqual p binderName (typeOf piBinder) checkedLamBinderType
 
         -- Add bound variable to context
-        checkedBody <- addToBoundCtx (binderName, checkedLamBinderType, Nothing) $ do
+        checkedBody <- addToBoundCtx (binderName, typeOf piBinder, Nothing) $ do
 
           -- Check if the type of the expression matches the expected result type.
           checkExpr resultType body
