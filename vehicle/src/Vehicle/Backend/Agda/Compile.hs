@@ -29,8 +29,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.SupplyNames (supplyDBNames)
 import Vehicle.Compile.Type (getUnnormalised)
-import Vehicle.Language.StandardLibrary.Names (StdLibFunction,
-                                               findStdLibFunction)
+import Vehicle.Libraries.StandardLibrary.Names (StdLibFunction,
+                                                findStdLibFunction)
 import Vehicle.Syntax.Sugar
 
 

@@ -1,5 +1,5 @@
 
-module Vehicle.Language.StandardLibrary.Names where
+module Vehicle.Libraries.StandardLibrary.Names where
 
 import Data.Map (Map)
 import Data.Map qualified as Map (fromList, lookup)

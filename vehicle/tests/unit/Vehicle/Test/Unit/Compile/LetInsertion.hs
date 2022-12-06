@@ -4,12 +4,14 @@ import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
-import Vehicle.Compile (parseAndTypeCheckExpr, typeCheckExpr, loadStandardLibrary)
+
+import Vehicle.Compile (loadLibrary, parseAndTypeCheckExpr, typeCheckExpr)
 import Vehicle.Compile.LetInsertion (insertLets)
 import Vehicle.Compile.Prelude (CheckedCoDBExpr, Expr (App), Pretty (pretty),
                                 indent, layoutAsString, line, squotes)
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (alphaEq))
+import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Test.Unit.Common (normTypeClasses, unitTestCase)
 
 --------------------------------------------------------------------------------
@@ -66,7 +68,7 @@ letInsertionTest (InsertionTestSpec testName filter input expected) =
 
     -- Need to re-typecheck the result as let-insertion puts a Hole on
     -- each binder type.
-    standardLibrary <- loadStandardLibrary
+    standardLibrary <- loadLibrary standardLibrary
     typedResult <- typeCheckExpr [standardLibrary] result
 
     let errorMessage = layoutAsString $

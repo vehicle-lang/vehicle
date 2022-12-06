@@ -12,9 +12,12 @@ module Vehicle.Prelude.Logging.Class
   , allLoggingLevels
   , loggingLevelAtLeast
   , loggingLevelHelp
+  , logCompilerPass
+  , logCompilerPassOutput
+  , logCompilerSection
   ) where
 
-import Control.Monad (when)
+import Control.Monad (join, when)
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (StateT (..))
@@ -24,7 +27,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import System.Console.ANSI
 
-import Control.Monad (join)
 import Vehicle.Prelude.Misc (enumerate, supportedOptions)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
@@ -153,3 +155,29 @@ loggingLevelAtLeast :: MonadLogger m => LoggingLevel -> m Bool
 loggingLevelAtLeast level = do
   currentLevel <- getDebugLevel
   return $ currentLevel >= level
+
+
+logCompilerPass :: MonadLogger m => LoggingLevel -> Doc a -> m b -> m b
+logCompilerPass level passName performPass = do
+  logDebug level $ "Starting" <+> passName
+  incrCallDepth
+  result <- performPass
+  decrCallDepth
+  logDebug level $ "Finished" <+> passName <> line
+  return result
+
+logCompilerSection :: MonadLogger m => LoggingLevel -> Doc a -> m b -> m b
+logCompilerSection level sectionName performPass = do
+  logDebug level sectionName
+  incrCallDepth
+  result <- performPass
+  decrCallDepth
+  logDebug level ""
+  return result
+
+logCompilerPassOutput :: MonadLogger m => Doc a -> m ()
+logCompilerPassOutput result = do
+  logDebug MidDetail "Result:"
+  incrCallDepth
+  logDebug MidDetail result
+  decrCallDepth
