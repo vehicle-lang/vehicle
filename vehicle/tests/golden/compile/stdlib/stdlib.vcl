@@ -1,5 +1,5 @@
-test : Vector Nat 1
-test = zipWith (\x y -> x + y) [1] [2]
+bigAnd2 : Vector Bool n -> Bool
+bigAnd2 = fold (\x y -> x and y) True
 
 {-
 bigAnd : Vector Bool n -> Bool

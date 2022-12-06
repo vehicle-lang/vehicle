@@ -155,8 +155,8 @@ delabBuiltin fun args = case fun of
   V.Equals _ op    -> delabTypeClassOp (V.EqualsTC op) args
   V.Order _ op     -> delabTypeClassOp (V.OrderTC op) args
 
-  V.Fold _         -> primOpError fun
-  V.Map  _         -> primOpError fun
+  V.Fold _         -> delabTypeClassOp V.FoldTC args
+  V.Map  _         -> delabTypeClassOp V.MapTC args
   V.At             -> delabInfixOp2 B.At tokAt args
   V.Foreach        -> delabForeach args
 
@@ -207,8 +207,8 @@ delabTypeClassOp op args = case op of
     V.Ge -> delabInfixOp2 B.Ge tokGe args
     V.Gt -> delabInfixOp2 B.Gt tokGt args
 
-  V.MapTC  -> delabOp2 B.Map tokMap args
-  V.FoldTC -> delabOp3 B.Fold tokFold args
+  V.MapTC  -> delabApp (B.Map tokMap) (B.ExplicitArg <$> args)
+  V.FoldTC -> delabApp (B.Fold tokFold) (B.ExplicitArg <$> args)
 
   V.QuantifierTC q   -> delabQuantifier q args
   V.QuantifierInTC q -> delabQuantifierIn q args

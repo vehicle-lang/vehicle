@@ -19,8 +19,9 @@
 
 ### Bug fixes
 
-* Fixed issue where unbound type arguments were generalised over in the opposite order
-  than expected.
+* Unbound type arguments are now longer generalised over in the opposite order than they occur.
+
+* Fixed parse error when partially applying `map` or `fold`.
 
 * Fixed higher-order function arguments not type-checking without explicit annotations.
 

@@ -83,12 +83,10 @@ typeOfBuiltin p b = fromDSL p $ case b of
 
   Fold dom -> case dom of
     FoldList   -> forAll type0 $ \tElem ->
-                    forAll type0 $ \tRes ->
-                      (tElem ~> tRes ~> tRes) ~> tRes ~> tList tElem ~> tRes
+                    typeOfFold tElem (tList tElem)
     FoldVector -> forAll type0 $ \tElem ->
-                    forAll type0 $ \tRes ->
-                      forAll tNat $ \dim ->
-                        (tElem ~> tRes ~> tRes) ~> tRes ~> tVector tElem dim ~> tRes
+                    forAll tNat $ \dim ->
+                      typeOfFold tElem (tVector tElem dim)
 
   At      -> typeOfAt
 
@@ -166,7 +164,7 @@ typeOfTypeClassOp b = case b of
         hasVecLits n e t  ~~~> tVector e (natLit n) ~> t
 
   MapTC  -> developerError "Unsure about type of MapTC"
-  FoldTC -> typeOfFold
+  FoldTC -> typeOfFoldTC
 
   QuantifierTC   q -> typeOfQuantifier   q
   QuantifierInTC q -> typeOfQuantifierIn q
@@ -283,12 +281,17 @@ typeOfMap tCont =
     forAll type0 $ \tTo ->
       (tFrom ~> tTo) ~> tCont tFrom ~> tCont tTo
 
-typeOfFold :: DSLExpr
-typeOfFold =
+typeOfFoldTC :: DSLExpr
+typeOfFoldTC =
   forAll type0 $ \tElem ->
     forAll type0 $ \tCont ->
-      forAll type0 $ \tRes ->
-        hasFold tElem tCont ~~~> (tElem ~> tRes ~> tRes) ~> tRes ~> tCont ~> tRes
+      hasFold tElem tCont ~~~>
+        typeOfFold tElem tCont
+
+typeOfFold :: DSLExpr -> DSLExpr -> DSLExpr
+typeOfFold tElem tCont =
+  forAll type0 (\tRes ->
+    (tElem ~> tRes ~> tRes) ~> tRes ~> tCont ~> tRes)
 
 typeOfQuantifier :: Quantifier -> DSLExpr
 typeOfQuantifier q =
