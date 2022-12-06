@@ -12,7 +12,7 @@ stdlibName :: LibraryName
 stdlibName = "stdlib"
 
 stdlibVersion :: Version
-stdlibVersion = [0,2]
+stdlibVersion = [0,3]
 
 standardLibrary :: Library
 standardLibrary = Library
@@ -28,3 +28,11 @@ content = "\
   \zipWith : (A -> B -> C) -> Vector A n -> Vector B n -> Vector C n\n\
   \zipWith f xs ys = foreach i . f (xs ! i) (ys ! i)\n\
   \"
+{-
+\n\
+  \bigAnd : Vector Bool n -> Bool\n\
+  \bigAnd = fold (\\x y -> x and y) True\n\
+  \n\
+  \bigOr : Vector Bool n -> Bool\n\
+  \bigOr = fold (\\x y -> x or y) False\n\
+-}

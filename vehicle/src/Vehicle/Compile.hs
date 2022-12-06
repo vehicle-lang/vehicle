@@ -137,6 +137,12 @@ parseAndTypeCheckExpr expr = do
   typedExpr   <- typeCheckExpr imports scopedExpr
   return typedExpr
 
+parseExprText :: MonadCompile m => Text -> m InputExpr
+parseExprText txt =
+  case runExcept (parseExpr User =<< readExpr txt) of
+    Left  err  -> throwError $ ParseError err
+    Right expr -> return expr
+
 typeCheckUserProg :: (MonadIO m, MonadCompile m)
                   => FilePath
                   -> DeclarationNames
@@ -146,18 +152,19 @@ typeCheckUserProg spec declarationsToCompile noStdlib = do
   imports <- if noStdlib
     then return []
     else (:[]) <$> loadLibrary standardLibrary
-  typedProg <- typeCheckOrLoadProg imports spec declarationsToCompile
+  typedProg <- typeCheckOrLoadProg User imports spec declarationsToCompile
   return (imports, typedProg)
 
 -- | Parses and type-checks the program but does
 -- not load networks and datasets from disk.
 typeCheckProg :: (MonadIO m, MonadCompile m)
-              => ImportedModules
+              => Module
+              -> ImportedModules
               -> SpecificationText
               -> DeclarationNames
               -> m TypedProg
-typeCheckProg imports spec declarationsToCompile = do
-  vehicleProg <- parseProgText spec
+typeCheckProg modul imports spec declarationsToCompile = do
+  vehicleProg <- parseProgText modul spec
   (scopedProg, dependencyGraph) <- scopeCheck imports vehicleProg
   prunedProg <- analyseDependenciesAndPrune scopedProg dependencyGraph declarationsToCompile
   typedProg <- typeCheck imports prunedProg
@@ -169,40 +176,35 @@ mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> 
 -- | Parses and type-checks the program but does
 -- not load networks and datasets from disk.
 typeCheckOrLoadProg :: (MonadIO m, MonadCompile m)
-                    => ImportedModules
+                    => Module
+                    -> ImportedModules
                     -> FilePath
                     -> DeclarationNames
                     -> m TypedProg
-typeCheckOrLoadProg imports specificationFile declarationsToCompile = do
+typeCheckOrLoadProg modul imports specificationFile declarationsToCompile = do
   spec <- readSpecification specificationFile
   interfaceFileResult <- readObjectFile specificationFile spec
   case interfaceFileResult of
     Just result -> return result
     Nothing     -> do
-      result <- typeCheckProg imports spec declarationsToCompile
+      result <- typeCheckProg modul imports spec declarationsToCompile
       writeObjectFile specificationFile spec result
       return result
 
-parseExprText :: MonadCompile m => Text -> m InputExpr
-parseExprText txt =
-  case runExcept (parseExpr =<< readExpr txt) of
+parseProgText :: MonadCompile m => Module -> Text -> m InputProg
+parseProgText modul txt = do
+  case runExcept (readAndParseProg modul txt) of
     Left  err  -> throwError $ ParseError err
-    Right expr -> return expr
-
-parseProgText :: MonadCompile m => Text -> m InputProg
-parseProgText txt = do
-  case runExcept (readAndParseProg txt) of
-    Left  err  -> throwError $ ParseError err
-    Right prog -> case traverse parseExpr prog of
+    Right prog -> case traverse (parseExpr modul) prog of
       Left err    -> throwError $ ParseError err
       Right prog' -> return prog'
 
 loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m TypedProg
 loadLibrary library = do
   let libname = libraryName $ libraryInfo library
-  logCompilerSection MinDetail ("Locating library" <+> quotePretty libname) $ do
+  logCompilerSection MinDetail ("Loading library" <+> quotePretty libname) $ do
     libraryFile <- findLibraryContentFile library
-    typeCheckOrLoadProg mempty libraryFile mempty
+    typeCheckOrLoadProg StdLib mempty libraryFile mempty
 
 runCompileMonad :: MonadIO m
                 => LoggingSettings
