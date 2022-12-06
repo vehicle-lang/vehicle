@@ -33,7 +33,7 @@ data CompileError
 
   -- Errors thrown by scope checking.
   | UnboundName Provenance Name
-  | DuplicateName Provenance Name
+  | DuplicateName Provenance Name Identifier
 
   -- Errors thrown while type checking
   | UnresolvedHole

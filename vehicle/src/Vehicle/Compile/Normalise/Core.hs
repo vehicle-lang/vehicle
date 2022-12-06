@@ -3,7 +3,6 @@ module Vehicle.Compile.Normalise.Core where
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.AlphaEquivalence (alphaEq)
-import Vehicle.Expr.DeBruijn (liftDBIndices)
 
 
 --------------------------------------------------------------------------------
@@ -193,17 +192,15 @@ zipWithVector :: Provenance
               -> CheckedExpr
               -> CheckedExpr
 zipWithVector p tElem1 tElem2 tRes size fn xs ys = do
-  let xsLifted = fmap (liftDBIndices 1) (ExplicitArg p xs)
-  let ysLifted = fmap (liftDBIndices 1) (ExplicitArg p ys)
-  let index = ExplicitArg p (BoundVar p 0)
-
-  let body = App p fn $ ExplicitArg p <$>
-        [ AtExpr p tElem1 size [xsLifted, index]
-        , AtExpr p tElem2 size [ysLifted, index]
-        ]
-
-  let lam = Lam p (ExplicitBinder p Nothing (IndexType p size)) body
-  ForeachExpr p tRes size lam
+  App p (FreeVar p $ Identifier StdLib "zipWith")
+    [ ImplicitArg p tElem1
+    , ImplicitArg p tElem2
+    , ImplicitArg p tRes
+    , ImplicitArg p size
+    , ExplicitArg p fn
+    , ExplicitArg p xs
+    , ExplicitArg p ys
+    ]
 
 {-
 nfMapList :: MonadNorm m

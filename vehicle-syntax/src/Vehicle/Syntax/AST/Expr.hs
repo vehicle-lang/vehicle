@@ -197,6 +197,7 @@ type InputBinder    = Binder InputBinding InputVar
 type InputExpr      = Expr   InputBinding InputVar
 type InputDecl      = Decl   InputBinding InputVar
 type InputProg      = Prog   InputBinding InputVar
+
 --------------------------------------------------------------------------------
 -- Other AST datatypes specialised to the Expr type
 
