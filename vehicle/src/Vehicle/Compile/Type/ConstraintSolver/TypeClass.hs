@@ -632,10 +632,13 @@ solveFoldList c tElem tListElem = do
   return $ Right ([constraint], solution)
 
 solveFoldVec :: NormExpr -> HasFoldSolver
-solveFoldVec dim c tElem tListElem = do
+solveFoldVec dim c tElem tVecElem = do
   let p = provenanceOf c
-  let constraint = unify c tElem tListElem
-  let solution = VBuiltin (provenanceOf c) (Fold FoldVector) [ImplicitArg p tListElem, ImplicitArg p dim]
+  let constraint = unify c tElem tVecElem
+  let solution = VBuiltin (provenanceOf c) (Fold FoldVector)
+        [ ImplicitArg p tVecElem
+        , ImplicitArg p dim
+        ]
   return $ Right ([constraint], solution)
 
 --------------------------------------------------------------------------------
