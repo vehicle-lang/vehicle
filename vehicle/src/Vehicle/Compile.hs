@@ -8,6 +8,7 @@ module Vehicle.Compile
   , parseAndTypeCheckExpr
   , readSpecification
   , runCompileMonad
+  , loadLibrary
   ) where
 
 import Control.Exception (IOException, catch)
