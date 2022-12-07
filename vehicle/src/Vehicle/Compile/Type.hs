@@ -57,7 +57,7 @@ typeCheckExpr imports expr1 =
     (expr3, _exprType) <- runReaderT (inferExpr expr2) mempty
     solveConstraints Nothing
     expr4 <- substMetas expr3
-    expr5    <- removeIrrelevantCode expr4
+    expr5 <- removeIrrelevantCode expr4
     checkAllUnknownsSolved
     return expr5
 
@@ -88,7 +88,7 @@ typeCheckDecl uncheckedDecl =
 
     checkAllUnknownsSolved
     finalDecl <- substMetas gluedDecl
-    logCompilerPassOutput $ prettyFriendlyDBClosed (fmap unnormalised finalDecl)
+    logCompilerPassOutput $ prettySimple (fmap unnormalised finalDecl)
 
     return $ fmap TypedExpr finalDecl
 

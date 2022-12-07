@@ -95,3 +95,11 @@ tokAt = mkToken B.TokAt "!"
 tokMap = mkToken B.TokMap "map"
 
 tokFold = mkToken B.TokFold "fold"
+
+tokHasAdd = mkToken B.TokHasAdd "HasAdd"
+
+tokHasSub = mkToken B.TokHasSub "HasFold"
+
+tokHasMul = mkToken B.TokHasMul "HasMul"
+
+tokHasEq = mkToken B.TokHasEq "HasEq"

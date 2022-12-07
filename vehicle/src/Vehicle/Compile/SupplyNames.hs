@@ -120,10 +120,10 @@ supplyNamesBinder :: (SupplyNames t, MonadSupply Name m)
                   => (binding1 -> m binder)
                   -> GenericBinder binding1 (t binding1 var)
                   -> m (GenericBinder binder (t binder var))
-supplyNamesBinder f (Binder p v r n e) = do
+supplyNamesBinder f (Binder p u v r n e) = do
     n' <- f n
     e' <- supplyNames f e
-    return $ Binder p v r n' e'
+    return $ Binder p u v r n' e'
 
 supplyNamesArg :: (Traversable t1, SupplyNames t2, MonadSupply Name f)
                => (binding1 -> f binding2)

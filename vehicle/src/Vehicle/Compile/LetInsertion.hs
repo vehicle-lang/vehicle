@@ -141,12 +141,12 @@ letInsertBinder :: MonadLetInsert m
                 => CheckedCoDBBinder -> Maybe PositionTree
                 -> m (CheckedCoDBBinder, SubexpressionMap)
 letInsertBinder binder positions = case recCoDB binder of
-  (Binder ann v r (CoDBBinding n _) t) ->
+  (Binder ann u v r (CoDBBinding n _) t) ->
     if visibilityOf (fst binder) /= Explicit
-        then return (first (Binder ann v r (CoDBBinding n positions)) t, Map.empty)
+        then return (first (Binder ann u v r (CoDBBinding n positions)) t, Map.empty)
         else do
           ((t', bvm), sm) <- letInsert t
-          return ((Binder ann v r (CoDBBinding n positions) t', bvm), sm)
+          return ((Binder ann u v r (CoDBBinding n positions) t', bvm), sm)
 
 letInsertArg :: MonadLetInsert m
              => CheckedCoDBArg
@@ -262,7 +262,7 @@ letBindSubexpressions remainingSM subexprsToInsert expr
       let (bound, bvm1) = subexpr cs in
       let exprType      = Hole ann "?" in
       let binding       = CoDBBinding Nothing pt in
-      let binder        = ExplicitBinder ann binding exprType in
+      let binder        = Binder ann (BinderForm OnlyName False) Explicit Relevant binding exprType in
       let bvm2          = mempty in
       (Let ann bound binder letBody, nodeBVM [bvm1, bvm2, bvm3'])
 

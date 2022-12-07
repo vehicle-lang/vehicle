@@ -18,4 +18,4 @@ module monotonicity where
 
 postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 
-postulate monotonic : ∀ (x1 : ℚ) → ∀ (x2 : ℚ) → x1 ℚ.≤ x2 → f (x1 ∷ᵥ []ᵥ) (# 0) ℚ.≤ f (x2 ∷ᵥ []ᵥ) (# 0)
+postulate monotonic : ∀ x1 → ∀ x2 → x1 ℚ.≤ x2 → f (x1 ∷ᵥ []ᵥ) (# 0) ℚ.≤ f (x2 ∷ᵥ []ᵥ) (# 0)

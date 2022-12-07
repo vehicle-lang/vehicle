@@ -29,18 +29,18 @@ e3 : ℕ
 e3 = let y = 1 ℕ.+ 1 in y
 
 lamLet : ℕ → ℕ
-lamLet x = let y = x in y
+lamLet = λ (x : ℕ) → let y = x in y
 
 letLam : ℕ → ℕ
-letLam = let y = λ (x : ℕ) → x in y
+letLam = let y = λ x → x in y
 
 postulate forallLet : ∀ (x : ℕ) → let y = x in y ≡ 1
 
 postulate letForall : let y = 1 in ∀ (x : ℕ) → y ≡ x
 
-postulate forallInLet : List.All (λ (x : Fin 2) → let y = x in y ≡ # 1) (# 1 ∷ [])
+postulate forallInLet : List.All (λ x → let y = x in y ≡ # 1) (# 1 ∷ [])
 
-postulate letForallIn : let y = # 1 in List.All (λ (x : Fin 2) → y ≡ x) (# 1 ∷ [])
+postulate letForallIn : let y = # 1 in List.All (λ x → y ≡ x) (# 1 ∷ [])
 
 Falsey : ℚ → Set
 Falsey x = x ℚ.≤ ℤ.+ 1 ℚ./ 2

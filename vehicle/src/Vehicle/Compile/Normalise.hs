@@ -348,7 +348,8 @@ nfQuantifierVector p tElem size binder body recFn = do
   -- Substitute throught the tensor expression for the old top-level binder
   body2 <- nf $ substDBIntoAtLevel size tensor body1
 
-  let mkQuantifier e name = App p recFn [ExplicitArg p (Lam p (ExplicitBinder p name tElem) e)]
+  let mkBinder name = Binder p (binderForm binder) Explicit Relevant name tElem
+  let mkQuantifier e name = App p recFn [ExplicitArg p (Lam p (mkBinder name) e)]
 
   -- Generate a expression prepended with `tensorSize` quantifiers
   return $ foldl mkQuantifier body2 (map Just allNames)
