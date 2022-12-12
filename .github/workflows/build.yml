@@ -43,4 +43,4 @@ jobs:
         include:
           - # Earliest supported version:
             os_and_name: [ubuntu-latest, Linux]
-            python-version: "3.8.0"
+            python-version: "3.8"
