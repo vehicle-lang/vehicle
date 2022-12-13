@@ -1,0 +1,16 @@
+name: "Setup Python"
+description: "Setup Python"
+inputs:
+  python-version:
+    required: false
+    description: "Version of Python to use."
+    default: ""
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: 'pip'
+        cache-dependency-path: 'vehicle-python/pyproject.toml'
