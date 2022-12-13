@@ -30,12 +30,14 @@ jobs:
           vehicle-artifact-name: |
             vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ env.DEFAULT_GHC_VERSION }}-${{ github.sha }}
 
-      - name: Setup Poetry
-        uses: ./.github/actions/setup-poetry
+      - name: Setup Python
+        uses: ./.github/actions/setup-python
         with:
           python-version: ${{ inputs.python-version }}
 
       - name: Test
-        run: poetry install --no-root --with ci && poetry run tox
+        run: |
+          pip install .[test]
+          python -m unittest tests/test_LossFunctionTranslation.py
         shell: sh
         working-directory: vehicle-python
