@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Vehicle.Syntax.AST.Builtin.Linearity where
 
 import Control.DeepSeq (NFData (..))
@@ -5,11 +7,13 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import NoThunks.Class (NoThunks)
-import Prettyprinter (Pretty (..))
+import Prettyprinter (Doc, Pretty (..))
+import Vehicle.Syntax.AST.Builtin.Core (FunctionPosition)
+import Vehicle.Syntax.AST.Provenance (Provenance)
 
-import Vehicle.Syntax.AST.Builtin.Core
-import Vehicle.Syntax.AST.Provenance
+#if nothunks
+import NoThunks.Class (NoThunks)
+#endif
 
 --------------------------------------------------------------------------------
 -- LinearityProvenance
@@ -19,23 +23,31 @@ import Vehicle.Syntax.AST.Provenance
 -- 2) mimic AST nodes names
 data LinearityProvenance
   = QuantifiedVariableProvenance !Provenance !Text
-  | NetworkOutputProvenance      !Provenance !Text
-  | LinFunctionProvenance        !Provenance !LinearityProvenance !FunctionPosition
-  deriving (Generic, NoThunks)
+  | NetworkOutputProvenance !Provenance !Text
+  | LinFunctionProvenance !Provenance !LinearityProvenance !FunctionPosition
+  deriving (Generic)
 
-instance ToJSON   LinearityProvenance
+#if nothunks
+instance NoThunks LinearityProvenance
+#endif
+instance ToJSON LinearityProvenance
+
 instance FromJSON LinearityProvenance
 
 instance Show LinearityProvenance where
+  show :: LinearityProvenance -> String
   show _x = ""
 
 instance Eq LinearityProvenance where
+  (==) :: LinearityProvenance -> LinearityProvenance -> Bool
   _x == _y = True
 
 instance NFData LinearityProvenance where
+  rnf :: LinearityProvenance -> ()
   rnf _x = ()
 
 instance Hashable LinearityProvenance where
+  hashWithSalt :: Int -> LinearityProvenance -> Int
   hashWithSalt s _p = s
 
 --------------------------------------------------------------------------------
@@ -47,25 +59,33 @@ data Linearity
   = Constant
   | Linear !LinearityProvenance
   | NonLinear !Provenance !LinearityProvenance !LinearityProvenance
-  deriving (Eq, Show, Generic, NoThunks)
+  deriving (Eq, Show, Generic)
 
 instance Ord Linearity where
-  Constant    <= _           = True
-  Linear{}    <= Linear{}    = True
-  Linear{}    <= NonLinear{} = True
-  NonLinear{} <= NonLinear{} = True
-  _           <= _           = False
+  (<=) :: Linearity -> Linearity -> Bool
+  Constant <= _                = True
+  Linear {} <= Linear {}       = True
+  Linear {} <= NonLinear {}    = True
+  NonLinear {} <= NonLinear {} = True
+  _ <= _                       = False
 
-instance NFData   Linearity
+#if nothunks
+instance NoThunks Linearity
+#endif
+instance NFData Linearity
+
 instance Hashable Linearity
-instance ToJSON   Linearity
+
+instance ToJSON Linearity
+
 instance FromJSON Linearity
 
 instance Pretty Linearity where
+  pretty :: Linearity -> Doc ann
   pretty = \case
-    Constant    -> "Constant"
-    Linear{}    -> "Linear"
-    NonLinear{} -> "Non-linear"
+    Constant     -> "Constant"
+    Linear {}    -> "Linear"
+    NonLinear {} -> "Non-linear"
 
 mapLinearityProvenance :: (LinearityProvenance -> LinearityProvenance) -> Linearity -> Linearity
 mapLinearityProvenance f = \case
@@ -83,14 +103,21 @@ data LinearityTypeClass
   | MulLinearity
   | FunctionLinearity !FunctionPosition
   | IfCondLinearity
-  deriving (Eq, Generic, Show, NoThunks)
+  deriving (Eq, Generic, Show)
 
-instance ToJSON   LinearityTypeClass
+#if nothunks
+instance NoThunks LinearityTypeClass
+#endif
+instance ToJSON LinearityTypeClass
+
 instance FromJSON LinearityTypeClass
-instance NFData   LinearityTypeClass
+
+instance NFData LinearityTypeClass
+
 instance Hashable LinearityTypeClass
 
 instance Pretty LinearityTypeClass where
+  pretty :: LinearityTypeClass -> Doc ann
   pretty = \case
     MaxLinearity        -> "MaxLinearity"
     MulLinearity        -> "MulLinearity"

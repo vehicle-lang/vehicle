@@ -33,6 +33,7 @@ import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
 import Vehicle.Libraries (Library, findLibraryContentFile, libraryInfo,
                           libraryName)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
+import Vehicle.Prelude.Debug (unsafeCheckThunks)
 import Vehicle.Syntax.Parse
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
@@ -197,7 +198,9 @@ parseProgText modul txt = do
     Left  err  -> throwError $ ParseError err
     Right prog -> case traverse (parseExpr modul) prog of
       Left err    -> throwError $ ParseError err
-      Right prog' -> return prog'
+      -- If compiled with +ghc-debug, check that the elaborated program
+      -- does not contain any thunks.
+      Right prog' -> return $ unsafeCheckThunks prog'
 
 loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m TypedProg
 loadLibrary library = do

@@ -1,14 +1,19 @@
+{-# LANGUAGE CPP #-}
+
+
 module Vehicle.Syntax.AST.Decl where
 
 import Control.DeepSeq (NFData)
-import GHC.Generics (Generic)
-
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
-import NoThunks.Class (NoThunks)
-import Prettyprinter (Pretty (..))
+import GHC.Generics (Generic)
+import Prettyprinter (Doc, Pretty (..))
 import Vehicle.Syntax.AST.Name (HasIdentifier (..), Identifier)
-import Vehicle.Syntax.AST.Provenance
+import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
+
+#if nothunks
+import NoThunks.Class (NoThunks)
+#endif
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -16,64 +21,72 @@ import Vehicle.Syntax.AST.Provenance
 -- | Type of top-level declarations.
 data GenericDecl expr
   = DefResource
-    !Provenance             -- Location in source file.
-    !Identifier             -- Name of resource.
-    !Resource               -- Type of resource.
-    !expr                   -- Vehicle type of the resource.
-
+      !Vehicle.Syntax.AST.Provenance.Provenance -- Location in source file.
+      !Identifier -- Name of resource.
+      !Resource -- Type of resource.
+      !expr -- Vehicle type of the resource.
   | DefFunction
-    !Provenance             -- Location in source file.
-    !Identifier             -- Bound function name.
-    !Bool                   -- Is it a property.
-    !expr                   -- Bound function type.
-    !expr                   -- Bound function body.
-
+      !Vehicle.Syntax.AST.Provenance.Provenance -- Location in source file.
+      !Identifier -- Bound function name.
+      !Bool -- Is it a property.
+      !expr -- Bound function type.
+      !expr -- Bound function body.
   | DefPostulate
-    !Provenance
-    !Identifier
-    !expr
-  deriving (Eq, Show, Functor, Foldable, Traversable, Generic, NoThunks)
+      !Vehicle.Syntax.AST.Provenance.Provenance
+      !Identifier
+      !expr
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance NFData   expr => NFData   (GenericDecl expr)
-instance ToJSON   expr => ToJSON   (GenericDecl expr)
+#if nothunks
+instance NoThunks expr => NoThunks (GenericDecl expr)
+#endif
+
+instance NFData expr => NFData (GenericDecl expr)
+
+instance ToJSON expr => ToJSON (GenericDecl expr)
+
 instance FromJSON expr => FromJSON (GenericDecl expr)
 
-instance HasProvenance (GenericDecl expr) where
+instance Vehicle.Syntax.AST.Provenance.HasProvenance (GenericDecl expr) where
+  provenanceOf :: GenericDecl expr -> Vehicle.Syntax.AST.Provenance.Provenance
   provenanceOf = \case
-    DefResource  p _ _ _   -> p
-    DefFunction  p _ _ _ _ -> p
-    DefPostulate p _ _     -> p
+    DefResource p _ _ _   -> p
+    DefFunction p _ _ _ _ -> p
+    DefPostulate p _ _    -> p
 
 instance HasIdentifier (GenericDecl expr) where
+  identifierOf :: GenericDecl expr -> Identifier
   identifierOf = \case
-    DefResource  _ i _ _   -> i
-    DefFunction  _ i _ _ _ -> i
-    DefPostulate _ i _     -> i
+    DefResource _ i _ _   -> i
+    DefFunction _ i _ _ _ -> i
+    DefPostulate _ i _    -> i
 
 bodyOf :: GenericDecl expr -> Maybe expr
 bodyOf = \case
   DefFunction _ _ _ _ e -> Just e
-  DefResource{}         -> Nothing
-  DefPostulate{}        -> Nothing
+  DefResource {}        -> Nothing
+  DefPostulate {}       -> Nothing
 
 -- | Traverses the type and body of a declaration using the first and
 -- second provided functions respectively.
 -- Use |traverse| if you want to traverse them using the same function.
-traverseDeclTypeAndExpr :: Monad m
-                        => (expr1 -> m expr2)
-                        -> (expr1 -> m expr2)
-                        -> GenericDecl expr1
-                        -> m (GenericDecl expr2)
+traverseDeclTypeAndExpr ::
+  Monad m =>
+  (expr1 -> m expr2) ->
+  (expr1 -> m expr2) ->
+  GenericDecl expr1 ->
+  m (GenericDecl expr2)
 traverseDeclTypeAndExpr f1 f2 = \case
-  DefResource  p n r t   -> DefResource p n r <$> f1 t
-  DefFunction  p n b t e -> DefFunction p n b <$> f1 t <*> f2 e
-  DefPostulate p n t     -> DefPostulate p n  <$> f1 t
+  DefResource p n r t   -> DefResource p n r <$> f1 t
+  DefFunction p n b t e -> DefFunction p n b <$> f1 t <*> f2 e
+  DefPostulate p n t    -> DefPostulate p n <$> f1 t
 
 -- | Traverses the type of the declaration.
-traverseDeclType :: Monad m
-                 => (expr -> m expr)
-                 -> GenericDecl expr
-                 -> m (GenericDecl expr)
+traverseDeclType ::
+  Monad m =>
+  (expr -> m expr) ->
+  GenericDecl expr ->
+  m (GenericDecl expr)
 traverseDeclType f = traverseDeclTypeAndExpr f return
 
 --------------------------------------------------------------------------------
@@ -85,13 +98,18 @@ pattern InferableOption = "infer"
 data Annotation
   = PropertyAnnotation
   | ResourceAnnotation !Resource
-  deriving (Generic, NoThunks)
+  deriving (Generic)
+
+#if nothunks
+instance NoThunks Annotation
+#endif
 
 instance Pretty Annotation where
-  pretty annotation = "@" <> case annotation of
-    PropertyAnnotation          -> "property"
-    ResourceAnnotation resource -> pretty resource
-
+  pretty :: Annotation -> Doc ann
+  pretty annotation =
+    "@" <> case annotation of
+      PropertyAnnotation          -> "property"
+      ResourceAnnotation resource -> pretty resource
 
 --------------------------------------------------------------------------------
 -- The different types of resources supported
@@ -101,13 +119,20 @@ data Resource
   | Dataset
   | Parameter
   | InferableParameter
-  deriving (Eq, Show, Generic, NoThunks)
+  deriving (Eq, Show, Generic)
 
-instance NFData   Resource
-instance ToJSON   Resource
+#if nothunks
+instance NoThunks Resource
+#endif
+
+instance NFData Resource
+
+instance ToJSON Resource
+
 instance FromJSON Resource
 
-instance Pretty Resource where
+instance Prettyprinter.Pretty Resource where
+  pretty :: Resource -> Prettyprinter.Doc ann
   pretty = \case
     Network            -> "network"
     Dataset            -> "dataset"

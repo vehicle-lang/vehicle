@@ -1,3 +1,6 @@
+{-# LANGUAGE CPP #-}
+
+
 module Vehicle.Syntax.AST.Name where
 
 import Control.DeepSeq (NFData)
@@ -5,8 +8,11 @@ import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable)
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
+import Prettyprinter (Doc, Pretty (..))
+
+#if nothunks
 import NoThunks.Class (NoThunks)
-import Prettyprinter (Pretty (..))
+#endif
 
 --------------------------------------------------------------------------------
 -- Definition
@@ -22,14 +28,18 @@ type NamedBinding = Name
 data Module
   = User
   | StdLib
-  deriving (Eq, Ord, Show, Generic, NoThunks)
+  deriving (Eq, Ord, Show, Generic)
 
+#if nothunks
+instance NoThunks   Module
+#endif
 instance NFData   Module
 instance Hashable Module
 instance FromJSON Module
 instance ToJSON   Module
 
 instance Pretty Module where
+  pretty :: Module -> Doc ann
   pretty = \case
     User   -> "User"
     StdLib -> "Stdlib"
@@ -38,11 +48,14 @@ instance Pretty Module where
 -- Identifiers
 
 data Identifier = Identifier !Module !Name
-  deriving (Eq, Ord, Show, Generic, NoThunks)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Pretty Identifier where
   pretty (Identifier m s) = pretty m <> "." <> pretty s
 
+#if nothunks
+instance NoThunks      Identifier
+#endif
 instance NFData      Identifier
 instance Hashable    Identifier
 instance FromJSON    Identifier
@@ -63,4 +76,5 @@ class HasName a name where
   nameOf :: a -> name
 
 instance HasName Identifier Name where
+  nameOf :: Identifier -> Name
   nameOf (Identifier mod name) = name

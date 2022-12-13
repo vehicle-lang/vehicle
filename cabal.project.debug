@@ -5,10 +5,18 @@
 
 import: cabal.project
 
+package vehicle-syntax
+  flags:
+    -- Necessary for Vehicle AST to implement NoThunks
+    +nothunks
+
 package vehicle
   flags:
     -- Necessary for Vehicle to be a ghc-debug debuggee
     +ghc-debug
+
+    -- Necessary for Vehicle Debug to implement unsafeCheckThunks
+    +nothunks
 
   ghc-options:
     -- Necessary for eventlog support

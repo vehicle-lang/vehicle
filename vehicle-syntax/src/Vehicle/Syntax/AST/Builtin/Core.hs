@@ -1,5 +1,7 @@
--- | This module exports the datatype representations of the core builtin symbols.
+{-# LANGUAGE CPP #-}
 
+
+-- | This module exports the datatype representations of the core builtin symbols.
 module Vehicle.Syntax.AST.Builtin.Core
   ( Quantifier(..)
   , EqualityOp(..)
@@ -22,8 +24,11 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import NoThunks.Class (NoThunks)
 import Prettyprinter (Doc, Pretty (..))
+
+#if nothunks
+import NoThunks.Class (NoThunks)
+#endif
 
 --------------------------------------------------------------------------------
 -- Function positions
@@ -32,8 +37,11 @@ import Prettyprinter (Doc, Pretty (..))
 data FunctionPosition
   = FunctionInput !Text !Int
   | FunctionOutput !Text
-  deriving (Eq, Show, Generic, NoThunks)
+  deriving (Eq, Show, Generic)
 
+#if nothunks
+instance NoThunks FunctionPosition
+#endif
 instance NFData   FunctionPosition
 instance Hashable FunctionPosition
 instance ToJSON   FunctionPosition
@@ -50,14 +58,18 @@ instance Pretty FunctionPosition where
 data EqualityOp
   = Eq
   | Neq
-  deriving (Eq, Ord, Show, Generic, NoThunks)
+  deriving (Eq, Ord, Show, Generic)
 
+#if nothunks
+instance NoThunks EqualityOp
+#endif
 instance NFData   EqualityOp
 instance Hashable EqualityOp
 instance ToJSON   EqualityOp
 instance FromJSON EqualityOp
 
 instance Pretty EqualityOp where
+  pretty :: EqualityOp -> Doc ann
   pretty = \case
     Eq  -> "=="
     Neq -> "!="
@@ -76,14 +88,18 @@ data EqualityDomain
   | EqNat
   | EqInt
   | EqRat
-  deriving (Eq, Ord, Show, Generic, NoThunks)
+  deriving (Eq, Ord, Show, Generic)
 
+#if nothunks
+instance NoThunks EqualityDomain
+#endif
 instance NFData   EqualityDomain
 instance Hashable EqualityDomain
 instance ToJSON   EqualityDomain
 instance FromJSON EqualityDomain
 
 instance Pretty EqualityDomain where
+  pretty :: EqualityDomain -> Doc ann
   pretty = \case
     EqIndex -> "Index"
     EqNat   -> "Nat"
@@ -98,14 +114,18 @@ data OrderOp
   | Lt
   | Ge
   | Gt
-  deriving (Eq, Ord, Show, Generic, NoThunks)
+  deriving (Eq, Ord, Show, Generic)
 
+#if nothunks
+instance NoThunks OrderOp
+#endif
 instance NFData   OrderOp
 instance Hashable OrderOp
 instance ToJSON   OrderOp
 instance FromJSON OrderOp
 
 instance Pretty OrderOp where
+  pretty :: OrderOp -> Doc ann
   pretty = \case
     Le -> "<="
     Lt -> "<"
@@ -150,14 +170,18 @@ data OrderDomain
   | OrderIndex
   | OrderInt
   | OrderRat
-  deriving (Eq, Ord, Show, Generic, NoThunks)
+  deriving (Eq, Ord, Show, Generic)
 
+#if nothunks
+instance NoThunks OrderDomain
+#endif
 instance NFData   OrderDomain
 instance Hashable OrderDomain
 instance ToJSON   OrderDomain
 instance FromJSON OrderDomain
 
 instance Pretty OrderDomain where
+  pretty :: OrderDomain -> Doc ann
   pretty = \case
     OrderNat   -> "Nat"
     OrderIndex -> "Index"
@@ -170,14 +194,18 @@ instance Pretty OrderDomain where
 data Quantifier
   = Forall
   | Exists
-  deriving (Show, Eq, Ord, Generic, NoThunks)
+  deriving (Show, Eq, Ord, Generic)
 
+#if nothunks
+instance NoThunks Quantifier
+#endif
 instance NFData   Quantifier
 instance Hashable Quantifier
 instance ToJSON   Quantifier
 instance FromJSON Quantifier
 
 instance Pretty Quantifier where
+  pretty :: Quantifier -> Doc ann
   pretty = \case
     Forall -> "forall"
     Exists -> "exists"

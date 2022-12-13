@@ -1,41 +1,50 @@
+{-# LANGUAGE CPP #-}
+
 module Vehicle.Syntax.AST.Visibility where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import NoThunks.Class (NoThunks)
 import Prettyprinter (Pretty (..))
+import Vehicle.Syntax.AST.Provenance (Provenance, expandProvenance)
 
-import Vehicle.Syntax.AST.Provenance
+#if nothunks
+import NoThunks.Class (NoThunks)
+#endif
 
 --------------------------------------------------------------------------------
 -- Definitions
 
 -- | Visibility of function arguments.
 data Visibility
-  = Explicit
-  -- ^ Always have to be given explicitly
-  | Implicit
-  -- ^ Inferred via unification
-  | Instance
-  -- ^ Inferred via instance search/type class resolution
-  deriving (Eq, Ord, Show, Generic, NoThunks)
+  = -- | Always have to be given explicitly
+    Explicit
+  | -- | Inferred via unification
+    Implicit
+  | -- | Inferred via instance search/type class resolution
+    Instance
+  deriving (Eq, Ord, Show, Generic)
 
-instance NFData   Visibility
+#if nothunks
+instance NoThunks Visibility
+#endif
+
+instance NFData Visibility
+
 instance Hashable Visibility
-instance ToJSON   Visibility
+
+instance ToJSON Visibility
+
 instance FromJSON Visibility
 
 instance Pretty Visibility where
   pretty = \case
-    Explicit   -> "Explicit"
-    Implicit   -> "Implicit"
-    Instance{} -> "Instance"
-
+    Explicit    -> "Explicit"
+    Implicit    -> "Implicit"
+    Instance {} -> "Instance"
 
 -- | Type class for types which have provenance information
-
 class HasVisibility a where
   visibilityOf :: a -> Visibility
 
@@ -50,13 +59,13 @@ isImplicit x = visibilityOf x == Implicit
 
 isInstance :: HasVisibility a => a -> Bool
 isInstance x = case visibilityOf x of
-  Instance{} -> True
-  _          -> False
+  Instance {} -> True
+  _           -> False
 
 visibilityMatches :: (HasVisibility a, HasVisibility b) => a -> b -> Bool
 visibilityMatches x y = visibilityOf x == visibilityOf y
 
 expandByArgVisibility :: Visibility -> Provenance -> Provenance
-expandByArgVisibility Explicit{} = id
-expandByArgVisibility Implicit{} = expandProvenance (1,1)
-expandByArgVisibility Instance{} = expandProvenance (2,2)
+expandByArgVisibility Explicit {} = id
+expandByArgVisibility Implicit {} = expandProvenance (1, 1)
+expandByArgVisibility Instance {} = expandProvenance (2, 2)

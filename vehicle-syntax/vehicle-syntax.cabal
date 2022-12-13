@@ -1,4 +1,4 @@
-cabal-version:      2.0
+cabal-version:      3.4
 name:               vehicle-syntax
 version:            0.1.0
 description:
@@ -9,7 +9,7 @@ bug-reports:        https://github.com/vehicle-lang/vehicle/issues
 author:             Wen Kokke
 maintainer:         wenkokke@users.noreply.github.com
 copyright:          © Wen Kokke
-license:            BSD3
+license:            BSD-3-Clause
 license-file:       LICENSE
 build-type:         Custom
 tested-with:        GHC ==8.10.7 || ==9.0.2 || ==9.2.4 || ==9.4.2
@@ -36,11 +36,46 @@ source-repository head
 
 custom-setup
   setup-depends:
-      base      >=4
+    , base      >=4
     , Cabal     >=2.0.0.2
     , filepath  >=1
 
+flag nothunks
+  description: Add NoThunks instances
+  manual:      True
+  default:     False
+
+common nothunks
+  build-depends: nothunks >=0.1.3 && <0.2
+  cpp-options:   -Dnothunks
+
+common common-language
+  if flag(nothunks)
+    import: nothunks
+
+  default-language:   Haskell2010
+  default-extensions:
+    ConstraintKinds
+    DeriveAnyClass
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    ImportQualifiedPost
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    MultiParamTypeClasses
+    OverloadedStrings
+    PatternSynonyms
+    TypeApplications
+    TypeFamilies
+
 library
+  import:             common-language
   hs-source-dirs:     autogen src
   exposed-modules:
     Vehicle.Syntax.AST
@@ -98,39 +133,18 @@ library
     Vehicle.Syntax.Internal.Print
 
   build-depends:
-      aeson              >=2.1.1 && <2.2
+    , aeson              >=2.1.1 && <2.2
     , array              >=0.5   && <1
     , base               >=4     && <5
     , containers         >=0.5   && <1
     , deepseq            >=1.4   && <2
     , hashable           >=1.3   && <2
     , mtl                >=2.2   && <3
-    , nothunks           >=0.1.3 && <0.2
     , prettyprinter      >=1.7   && <2
     , recursion-schemes  >=5.2   && <6
     , text               >=1.2   && <3
 
   build-tool-depends:
-      alex:alex    >=3
+    , alex:alex    >=3
     , BNFC:bnfc    >=2.9.4
     , happy:happy  >=1.19
-
-  default-language:   Haskell2010
-  default-extensions:
-    ConstraintKinds
-    DeriveAnyClass
-    DeriveFoldable
-    DeriveFunctor
-    DeriveGeneric
-    DeriveTraversable
-    FlexibleContexts
-    FlexibleInstances
-    FunctionalDependencies
-    ImportQualifiedPost
-    KindSignatures
-    LambdaCase
-    MultiParamTypeClasses
-    OverloadedStrings
-    PatternSynonyms
-    TypeApplications
-    TypeFamilies
