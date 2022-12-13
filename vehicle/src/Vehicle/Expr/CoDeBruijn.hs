@@ -188,7 +188,7 @@ instance RecCoDB CoDBExpr ExprC where
       "Expected the same number of BoundVarMaps as args but found" <+> pretty (length bvms)
 
 instance RecCoDB CoDBBinder BinderC where
-  recCoDB (Binder ann v r n t, bvm) = Binder ann v r n (t, bvm)
+  recCoDB (Binder ann u v r n t, bvm) = Binder ann u v r n (t, bvm)
 
 instance RecCoDB CoDBArg ArgC where
   recCoDB (Arg ann v r e, bvm) = Arg ann v r (e, bvm)
@@ -266,9 +266,9 @@ substPosBinder :: CoDBExpr
                -> Maybe PositionTree
                -> CoDBBinder
 substPosBinder v p binder boundPositions = case recCoDB binder of
-  (Binder ann vis r (CoDBBinding n _) t) ->
+  (Binder ann u vis r (CoDBBinding n _) t) ->
     let (t', bvm) = substPos v p t in
-    (Binder ann vis r (CoDBBinding n boundPositions) t', bvm)
+    (Binder ann u vis r (CoDBBinding n boundPositions) t', bvm)
 
 invalidPositionTreeError :: PositionList -> a
 invalidPositionTreeError l = developerError $

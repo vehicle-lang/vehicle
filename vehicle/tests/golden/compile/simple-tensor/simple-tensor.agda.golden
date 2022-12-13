@@ -39,7 +39,7 @@ subtraction : Tensor ℚ (2 ∷ (2 ∷ []))
 subtraction = sub twoD twoD
 
 abstract
-  p : ∀ (i : Fin 2) → ∀ (j : Fin 2) → add (f subtraction) addition i j ℚ.≥ ℤ.+ 0 ℚ./ 1
+  p : ∀ i → ∀ j → add (f subtraction) addition i j ℚ.≥ ℤ.+ 0 ℚ./ 1
   p = checkSpecification record
     { proofCache   = "proofcache.vclp"
     }

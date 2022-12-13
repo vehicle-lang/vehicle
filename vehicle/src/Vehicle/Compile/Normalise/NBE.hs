@@ -414,14 +414,6 @@ evalImplies p = \case
 
   args -> return $ VBuiltin p Implies args
 
-{-
-impliesDef :: Provenance -> Env -> NormExpr
-impliesDef p env =
-  VLam p (ExplicitBinder p Nothing (BoolType p)) env $
-    Lam p (ExplicitBinder p Nothing (BoolType p)) $
-      _
--}
-
 evalTensor :: EvalBuiltin
 evalTensor p = \case
   [ExplicitArg _ tElem, ExplicitArg _ (VConstructor _ Nil _)] -> return tElem
@@ -430,18 +422,6 @@ evalTensor p = \case
     return $ VConstructor p Vector [t', n]
 
   args -> return $ VBuiltin p Tensor args
-
-{-
-tensorDef :: Provenance -> Env -> NormExpr
-tensorDef p env =
-  VLam p (ExplicitBinder p Nothing _) env $
-    Lam p (ExplicitBinder p Nothing _) $
-      BuiltinExpr p (Fold FoldList) $ ExplicitArg p <$>
-        [ Lam p _ _
-        , Var p (Bound 1)
-        , Var p (Bound 0)
-        ]
--}
 
 evalMapList :: EvalBuiltin
 evalMapList p = \case
@@ -455,11 +435,6 @@ evalMapList p = \case
 
   args -> return $ VBuiltin p (Map MapList) args
 
-{-
-mapListDef :: Provenance -> Env -> NormExpr
-mapListDef p env = _
--}
-
 evalMapVec :: EvalBuiltin
 evalMapVec p = \case
   [_n, _t1, t2, ExplicitArg _ f, ExplicitArg _ (VLVec _ xs _)] -> do
@@ -468,30 +443,15 @@ evalMapVec p = \case
 
   args -> return $ VBuiltin p (Map MapVector) args
 
-{-
-mapVecDef :: Provenance -> Env -> NormExpr
-mapVecDef p env = _
--}
-
 evalFromVecToList :: Int -> EvalBuiltin
 evalFromVecToList n p args = return $ case args of
   [tElem, ExplicitArg _ (VLVec _ xs _)] -> mkNList p (argExpr tElem) xs
   _ -> VBuiltin p (FromVec n FromVecToList) args
-{-
-fromVecToListDef :: Int -> Provenance -> Env -> NormExpr
-fromVecToListDef n env p = _
--}
 
 evalFromVecToVec :: Int -> EvalBuiltin
 evalFromVecToVec n p = \case
   [ExplicitArg _ e] -> return e
   args              -> return $ VBuiltin p (FromVec n FromVecToVec) args
-
-{-
-fromVecToVecDef :: Int -> Provenance -> Env -> NormExpr
-fromVecToVecDef n env p =
-  VLam p (ExplicitBinder p Nothing (VectorType p _ _)) _ (BoundVar p 0)
--}
 
 -----------------------------------------------------------------------------
 -- Other

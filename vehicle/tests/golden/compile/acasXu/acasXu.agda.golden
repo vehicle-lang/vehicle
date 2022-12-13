@@ -58,14 +58,14 @@ pi : ℚ
 pi = ℤ.+ 392699 ℚ./ 125000
 
 Advises : Fin 5 → (InputVector → Set)
-Advises i x = ∀ (j : Fin 5) → i ≢ j → acasXu x i ℚ.< acasXu x j
+Advises i x = ∀ j → i ≢ j → acasXu x i ℚ.< acasXu x j
 
 IntruderDistantAndSlower : InputVector → Set
 IntruderDistantAndSlower x = x distanceToIntruder ℚ.≥ ℤ.+ 55947691 ℚ./ 1000 × (x speed ℚ.≥ ℤ.+ 1145 ℚ./ 1 × x intruderSpeed ℚ.≤ ℤ.+ 60 ℚ./ 1)
 
-postulate property1 : ∀ (x : Vector ℚ 5) → IntruderDistantAndSlower x → acasXu x clearOfConflict ℚ.≤ ℤ.+ 1500 ℚ./ 1
+postulate property1 : ∀ x → IntruderDistantAndSlower x → acasXu x clearOfConflict ℚ.≤ ℤ.+ 1500 ℚ./ 1
 
-postulate property2 : ∀ (x : Vector ℚ 5) → IntruderDistantAndSlower x → ∃ λ (j : Fin 5) → acasXu x j ℚ.> acasXu x clearOfConflict
+postulate property2 : ∀ x → IntruderDistantAndSlower x → ∃ λ j → acasXu x j ℚ.> acasXu x clearOfConflict
 
 DirectlyAhead : InputVector → Set
 DirectlyAhead x = (ℤ.+ 1500 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 1800 ℚ./ 1) × (ℚ.- (ℤ.+ 3 ℚ./ 50) ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℤ.+ 3 ℚ./ 50)
@@ -73,39 +73,39 @@ DirectlyAhead x = (ℤ.+ 1500 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distance
 MovingTowards : InputVector → Set
 MovingTowards x = x intruderHeading ℚ.≥ ℤ.+ 31 ℚ./ 10 × (x speed ℚ.≥ ℤ.+ 980 ℚ./ 1 × x intruderSpeed ℚ.≥ ℤ.+ 960 ℚ./ 1)
 
-postulate property3 : ∀ (x : Vector ℚ 5) → DirectlyAhead x × MovingTowards x → ¬ Advises clearOfConflict x
+postulate property3 : ∀ x → DirectlyAhead x × MovingTowards x → ¬ Advises clearOfConflict x
 
 MovingAway : InputVector → Set
 MovingAway x = x intruderHeading ≡ ℤ.+ 0 ℚ./ 1 × (ℤ.+ 1000 ℚ./ 1 ℚ.≤ x speed × (ℤ.+ 700 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 800 ℚ./ 1))
 
-postulate property4 : ∀ (x : Vector ℚ 5) → DirectlyAhead x × MovingAway x → ¬ Advises clearOfConflict x
+postulate property4 : ∀ x → DirectlyAhead x × MovingAway x → ¬ Advises clearOfConflict x
 
 NearAndApproachingFromLeft : InputVector → Set
 NearAndApproachingFromLeft x = (ℤ.+ 250 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 400 ℚ./ 1) × ((ℤ.+ 1 ℚ./ 5 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℤ.+ 2 ℚ./ 5) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 400 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 400 ℚ./ 1))))
 
-postulate property5 : ∀ (x : Vector ℚ 5) → NearAndApproachingFromLeft x → Advises strongRight x
+postulate property5 : ∀ x → NearAndApproachingFromLeft x → Advises strongRight x
 
 IntruderFarAway : InputVector → Set
 IntruderFarAway x = (ℤ.+ 12000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 62000 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 10) ⊎ ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
-postulate property6 : ∀ (x : Vector ℚ 5) → IntruderFarAway x → Advises clearOfConflict x
+postulate property6 : ∀ x → IntruderFarAway x → Advises clearOfConflict x
 
 LargeVerticalSeparation : InputVector → Set
 LargeVerticalSeparation x = (ℤ.+ 0 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ pi) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
-postulate property7 : ∀ (x : Vector ℚ 5) → LargeVerticalSeparation x → ¬ Advises strongLeft x × ¬ Advises strongRight x
+postulate property7 : ∀ x → LargeVerticalSeparation x → ¬ Advises strongLeft x × ¬ Advises strongRight x
 
 LargeVerticalSeparationAndPreviousWeakLeft : InputVector → Set
 LargeVerticalSeparationAndPreviousWeakLeft x = (ℤ.+ 0 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 3 ℚ./ 4) ℚ.* pi) × ((ℚ.- (ℤ.+ 1 ℚ./ 10) ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℤ.+ 1 ℚ./ 10) × ((ℤ.+ 600 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
-postulate property8 : ∀ (x : Vector ℚ 5) → LargeVerticalSeparationAndPreviousWeakLeft x → Advises clearOfConflict x ⊎ Advises weakLeft x
+postulate property8 : ∀ x → LargeVerticalSeparationAndPreviousWeakLeft x → Advises clearOfConflict x ⊎ Advises weakLeft x
 
 PreviousWeakRightAndNearbyIntruder : InputVector → Set
 PreviousWeakRightAndNearbyIntruder x = (ℤ.+ 2000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 7000 ℚ./ 1) × ((ℚ.- (ℤ.+ 2 ℚ./ 5) ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 50)) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 150 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 150 ℚ./ 1))))
 
-postulate property9 : ∀ (x : Vector ℚ 5) → PreviousWeakRightAndNearbyIntruder x → Advises strongLeft x
+postulate property9 : ∀ x → PreviousWeakRightAndNearbyIntruder x → Advises strongLeft x
 
 IntruderFarAway2 : InputVector → Set
 IntruderFarAway2 x = (ℤ.+ 36000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 900 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
-postulate property10 : ∀ (x : Vector ℚ 5) → IntruderFarAway2 x → Advises clearOfConflict x
+postulate property10 : ∀ x → IntruderFarAway2 x → Advises clearOfConflict x

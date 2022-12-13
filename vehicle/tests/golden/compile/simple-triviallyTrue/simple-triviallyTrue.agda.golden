@@ -21,7 +21,7 @@ module simple-triviallyTrue where
 postulate f : Vector ℚ 1 → Vector ℚ 1
 
 abstract
-  p : ∀ (x : Vector ℚ 1) → f x (# 0) ℚ.> ℤ.+ 0 ℚ./ 1 ⊎ ⊤
+  p : ∀ x → f x (# 0) ℚ.> ℤ.+ 0 ℚ./ 1 ⊎ ⊤
   p = checkSpecification record
     { proofCache   = "proofcache.vclp"
     }

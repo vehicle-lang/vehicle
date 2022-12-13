@@ -61,6 +61,11 @@ position token TokAt        {"!"};
 position token TokMap       {"map"};
 position token TokFold      {"fold"};
 
+position token TokHasEq     {"HasEq"};
+position token TokHasAdd    {"HasAdd"};
+position token TokHasSub    {"HasSub"};
+position token TokHasMul    {"HasMul"};
+
 position token Name        (letter (letter | digit | '_')*) ;
 position token HoleToken   ({"?"} (letter | digit | '_')*);
 position token TypeToken   ({"Type"} digit+);
@@ -72,14 +77,23 @@ separator Name "";
 
 -- * Binders
 
-ExplicitBinder.    Binder ::= Name;
-ExplicitBinderAnn. Binder ::= "(" Name TokElemOf Expr1 ")";
-ImplicitBinder.    Binder ::= "{" Name "}";
-ImplicitBinderAnn. Binder ::= "{" Name TokElemOf Expr1 "}";
-InstanceBinder.    Binder ::= "{{" Name "}}";
-InstanceBinderAnn. Binder ::= "{{" Name TokElemOf Expr1 "}}";
+ExplicitBinder. BasicBinder ::= "("  Name TokElemOf Expr1 ")";
+ImplicitBinder. BasicBinder ::= "{"  Name TokElemOf Expr1 "}";
+InstanceBinder. BasicBinder ::= "{{" Name TokElemOf Expr1 "}}";
 
-separator Binder "";
+ExplicitNameBinder. NameBinder ::= Name;
+ImplicitNameBinder. NameBinder ::= "{" Name "}";
+InstanceNameBinder. NameBinder ::= "{{" Name "}}";
+BasicNameBinder.    NameBinder ::= BasicBinder;
+
+separator NameBinder "";
+
+ExplicitTypeBinder. TypeBinder ::= Expr13;
+ImplicitTypeBinder. TypeBinder ::= "{" Expr1 "}";
+InstanceTypeBinder. TypeBinder ::= "{{" Expr1 "}}";
+BasicTypeBinder.    TypeBinder ::= BasicBinder;
+
+-- separator TypeBinder "";
 
 -- * Arguments
 
@@ -89,7 +103,7 @@ InstanceArg. Arg ::= "{{" Expr1 "}}";
 
 -- * Individual let declarations
 
-LDecl. LetDecl ::= Binder "=" Expr;
+LDecl. LetDecl ::= NameBinder "=" Expr;
 
 separator LetDecl ",";
 
@@ -118,22 +132,22 @@ Type.    Expr15 ::= TypeToken;
 
 -- Core structure.
 Ann.     Expr   ::= Expr2 TokElemOf Expr1;
-ForallT. Expr1  ::= TokForallT [Binder] TokDot Expr1;
+ForallT. Expr1  ::= TokForallT [NameBinder] TokDot Expr1;
 Let.     Expr2  ::= TokLet [LetDecl] "in" Expr2;
-Lam.     Expr2  ::= TokLambda [Binder] TokArrow Expr2;
-Fun.     Expr11 ::= Expr13 TokArrow Expr11;
+Lam.     Expr2  ::= TokLambda [NameBinder] TokArrow Expr2;
+Fun.     Expr11 ::= TypeBinder TokArrow Expr11;
 App.     Expr13 ::= Expr13 Arg;
 Var.     Expr15 ::= Name;
 Literal. Expr15 ::= Lit;
 Hole.    Expr15 ::= HoleToken;
 
 -- Quantification
-Forall.    Expr2 ::= TokForall  [Binder] TokDot Expr2;
-Exists.    Expr2 ::= TokExists  [Binder] TokDot Expr2;
-ForallIn.  Expr2 ::= TokForall  [Binder] "in" Expr3 TokDot Expr2;
-ExistsIn.  Expr2 ::= TokExists  [Binder] "in" Expr3 TokDot Expr2;
+Forall.    Expr2 ::= TokForall  [NameBinder] TokDot Expr2;
+Exists.    Expr2 ::= TokExists  [NameBinder] TokDot Expr2;
+ForallIn.  Expr2 ::= TokForall  [NameBinder] "in" Expr3 TokDot Expr2;
+ExistsIn.  Expr2 ::= TokExists  [NameBinder] "in" Expr3 TokDot Expr2;
 
-Foreach.   Expr2 ::= TokForeach [Binder] TokDot Expr2;
+Foreach.   Expr2 ::= TokForeach [NameBinder] TokDot Expr2;
 
 -- Boolean expressions.
 If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
@@ -174,6 +188,12 @@ Vector.  Expr14 ::= TokVector;
 Tensor.  Expr14 ::= TokTensor;
 Index.   Expr14 ::= TokIndex;
 
+-- Type classes.
+HasEq.  Expr15 ::= TokHasEq;
+HasAdd. Expr15 ::= TokHasAdd;
+HasSub. Expr15 ::= TokHasSub;
+HasMul. Expr15 ::= TokHasMul;
+
 coercions Expr 15;
 separator Expr ",";
 
@@ -199,9 +219,9 @@ DeclAnnWithoutOpts. DeclAnnOpts ::= "";
 
 
 DefAnn.       Decl ::= DeclAnnName DeclAnnOpts;
-DefType.      Decl ::= "type" Name [Binder] "=" Expr;
+DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
-DefFunExpr.   Decl ::= Name [Binder] "=" Expr;
+DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
 
 separator Decl ";";
 

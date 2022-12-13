@@ -69,7 +69,7 @@ makeMetaType :: TypingBoundCtx
 makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
   where
     entryToPi :: (DBBinding, CheckedType, Maybe CheckedExpr) -> CheckedType -> CheckedType
-    entryToPi (name, t, _) = Pi ann (ExplicitBinder ann name t)
+    entryToPi (name, t, _) = Pi ann (Binder ann (BinderForm OnlyName True) Explicit Relevant name t)
 
 getMetaDependencies :: [CheckedArg] -> [DBIndex]
 getMetaDependencies = \case

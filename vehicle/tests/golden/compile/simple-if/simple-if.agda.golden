@@ -23,8 +23,8 @@ module simple-if where
 
 postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 
-postulate prop1 : ∀ (x : ℚ) → if ⌊ ℤ.+ 0 ℚ./ 1 ℚ.<? x ⌋ then f (x ∷ᵥ []ᵥ) (# 0) ℚ.> ℤ.+ 0 ℚ./ 1 else f (x ∷ᵥ []ᵥ) (# 0) ℚ.≤ ℤ.+ 0 ℚ./ 1
+postulate prop1 : ∀ x → if ⌊ ℤ.+ 0 ℚ./ 1 ℚ.<? x ⌋ then f (x ∷ᵥ []ᵥ) (# 0) ℚ.> ℤ.+ 0 ℚ./ 1 else f (x ∷ᵥ []ᵥ) (# 0) ℚ.≤ ℤ.+ 0 ℚ./ 1
 
-postulate prop2 : ∃ λ (x : ℚ) → f ((if ⌊ ℤ.+ 0 ℚ./ 1 ℚ.<? x ⌋ then x else ℤ.+ 1 ℚ./ 5) ∷ᵥ []ᵥ) (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1
+postulate prop2 : ∃ λ x → f ((if ⌊ ℤ.+ 0 ℚ./ 1 ℚ.<? x ⌋ then x else ℤ.+ 1 ℚ./ 5) ∷ᵥ []ᵥ) (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1
 
-postulate prop3 : ∃ λ (x : ℚ) → if ⌊ ℤ.+ 0 ℚ./ 1 ℚ.<? f (x ∷ᵥ []ᵥ) (# 0) ⌋ then x ℚ.≥ ℤ.+ 0 ℚ./ 1 else x ℚ.< ℤ.+ 0 ℚ./ 1
+postulate prop3 : ∃ λ x → if ⌊ ℤ.+ 0 ℚ./ 1 ℚ.<? f (x ∷ᵥ []ᵥ) (# 0) ⌋ then x ℚ.≥ ℤ.+ 0 ℚ./ 1 else x ℚ.< ℤ.+ 0 ℚ./ 1

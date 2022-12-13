@@ -195,7 +195,7 @@ parseProgText :: MonadCompile m => Module -> Text -> m InputProg
 parseProgText modul txt = do
   case runExcept (readAndParseProg modul txt) of
     Left  err  -> throwError $ ParseError err
-    Right prog -> case traverse (parseExpr modul) prog of
+    Right prog -> case traverseDecls (parseDecl modul) prog of
       Left err    -> throwError $ ParseError err
       Right prog' -> return prog'
 

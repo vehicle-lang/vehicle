@@ -1,17 +1,18 @@
-bigAnd2 : Vector Bool n -> Bool
-bigAnd2 = fold (\x y -> x and y) True
-
 {-
+
+addVector : {{HasAdd A}} -> Vector A n -> Vector A n -> Vector A n
+addVector = zipWith (\x y -> x + y)
+
 bigAnd : Vector Bool n -> Bool
 bigAnd = fold (\x y -> x and y) True
 
 bigOr : Vector Bool n -> Bool
 bigOr = fold (\x y -> x or y) False
 
-addVector : {{HasAdd A}} -> Vector A n -> Vector A n -> Vector A n
-addVector = zipWith (\x y -> x + y)
+bigAnd2 : Vector Bool n -> Bool
+bigAnd2 = fold (\x y -> x and y) True
 
-subVector : {{HasAdd A}} -> Vector A n -> Vector A n -> Vector A n
+subVector : {{HasSub A}} -> Vector A n -> Vector A n -> Vector A n
 subVector = zipWith (\x y -> x - y)
 
 equalsVector : {{HasEq A}} -> Vector A n -> Vector A n -> Bool
