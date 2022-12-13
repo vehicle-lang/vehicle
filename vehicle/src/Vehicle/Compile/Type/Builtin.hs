@@ -73,8 +73,8 @@ typeOfBuiltin p b = fromDSL p $ case b of
     FromVecToVec -> forAll type0 $ \t -> tVector t (natLit n) ~> tVector t (natLit n)
   -- Container functions
   Map dom -> case dom of
-    MapList -> typeOfMap tList
-    MapVector -> forAll tNat $ \n -> typeOfMap (`tVector` n)
+    MapList -> typeOfMap tListRaw
+    MapVector -> forAll tNat $ \n -> typeOfMap (lam Explicit Relevant type0 (`tVector` n))
   Fold dom -> case dom of
     FoldList -> forAll type0 $ \tElem ->
       typeOfFold tElem (tList tElem)
@@ -114,6 +114,7 @@ typeOfTypeClass tc = case tc of
   HasMul -> type0 ~> type0 .~~> type0 .~~> type0
   HasDiv -> type0 ~> type0 ~> type0 ~> type0
   HasNeg -> type0 ~> type0 ~> type0
+  HasMap -> (type0 ~> type0) ~> type0
   HasFold -> type0 ~> type0 ~> type0
   HasQuantifierIn {} -> type0 ~> type0 ~> type0
   HasIf -> type0 ~> type0 ~> type0 ~> type0 ~> type0
@@ -144,7 +145,7 @@ typeOfTypeClassOp b = case b of
     forAll type0 $ \t ->
       forAll type0 $ \e ->
         hasVecLits n e t ~~~> tVector e (natLit n) ~> t
-  MapTC -> developerError "Unsure about type of MapTC"
+  MapTC -> forAll (type0 ~> type0) $ \c -> hasMap c ~~~> typeOfMap c
   FoldTC -> typeOfFoldTC
   QuantifierTC q -> typeOfQuantifier q
   QuantifierInTC q -> typeOfQuantifierIn q
@@ -257,11 +258,13 @@ typeOfAt =
     forAll tNat $ \tDim ->
       tVector tElem tDim ~> tIndex tDim ~> tElem
 
-typeOfMap :: (DSLExpr -> DSLExpr) -> DSLExpr
+typeOfMap :: DSLExpr -> DSLExpr
 typeOfMap tCont =
   forAll type0 $ \tFrom ->
     forAll type0 $ \tTo ->
-      (tFrom ~> tTo) ~> tCont tFrom ~> tCont tTo
+      (tFrom ~> tTo)
+        ~> app tCont [(Explicit, Relevant, tFrom)]
+        ~> app tCont [(Explicit, Relevant, tTo)]
 
 typeOfFoldTC :: DSLExpr
 typeOfFoldTC =

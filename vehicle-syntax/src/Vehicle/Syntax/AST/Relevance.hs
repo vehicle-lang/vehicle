@@ -44,6 +44,7 @@ instance HasRelevance TypeClass where
     HasMul {} -> Relevant
     HasDiv {} -> Relevant
     HasNeg {} -> Relevant
+    HasMap {} -> Relevant
     HasFold {} -> Relevant
     HasQuantifierIn {} -> Relevant
     HasNatLits {} -> Relevant

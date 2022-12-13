@@ -29,6 +29,7 @@ data TypeClass
   | HasDiv
   | HasNeg
   | HasFold
+  | HasMap
   | HasIf
   | HasQuantifierIn !Quantifier
   | -- Literal type-classes
@@ -70,6 +71,7 @@ instance Pretty TypeClass where
     HasMul -> "HasMul"
     HasDiv -> "HasDiv"
     HasNeg -> "HasNeg"
+    HasMap -> "HasMap"
     HasFold -> "HasFold"
     HasQuantifierIn q -> "HasQuantifierIn" <+> pretty q
     HasIf -> "HasIf"

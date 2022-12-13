@@ -368,8 +368,6 @@ solveMeta m solution currentCtxSize = do
   gluedSolution <- glueNBE currentCtxSize abstractedSolution
 
   logDebug MaxDetail $ "solved" <+> pretty m <+> "as" <+> prettyVerbose abstractedSolution
-  -- logDebug MaxDetail $ "ctxSize" <+> pretty ctxSize
-  -- logDebug MaxDetail $ "metaType" <+> prettyVerbose metaType
 
   metaSubst <- getMetaSubstitution
   case MetaMap.lookup m metaSubst of
