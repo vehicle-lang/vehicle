@@ -114,15 +114,15 @@ typeOfConstructor = \case
 typeOfTypeClass :: TypeClass -> DSLExpr
 typeOfTypeClass tc = case tc of
   HasEq{}                 -> type0 ~> type0 ~> type0 ~> type0
-  HasOrd{}                -> type0 ~> type0 ~> type0 ~> type0
+  HasOrd{}                -> type0 ~> type0 .~~> type0 .~~> type0
   HasNot                  -> type0 ~> type0 ~> type0
   HasAnd                  -> type0 ~> type0 ~> type0 ~> type0
   HasOr                   -> type0 ~> type0 ~> type0 ~> type0
   HasImplies              -> type0 ~> type0 ~> type0 ~> type0
   HasQuantifier{}         -> type0 ~> type0 ~> type0
-  HasAdd                  -> type0 ~> type0 ~> type0 ~> type0
-  HasSub                  -> type0 ~> type0 ~> type0 ~> type0
-  HasMul                  -> type0 ~> type0 ~> type0 ~> type0
+  HasAdd                  -> type0 ~> type0 .~~> type0 .~~> type0
+  HasSub                  -> type0 ~> type0 .~~> type0 .~~> type0
+  HasMul                  -> type0 ~> type0 .~~> type0 .~~> type0
   HasDiv                  -> type0 ~> type0 ~> type0 ~> type0
   HasNeg                  -> type0 ~> type0 ~> type0
   HasFold                 -> type0 ~> type0 ~> type0

@@ -3,7 +3,7 @@ In particular the multiplication at Line 6, Columns 36-37 involves
   1. the output of network 'f' at Line 2, Columns 5-33
   2. which is used on the left hand side of the multiplication
 and
-  1. the quantified variable 'x' introduced at Line 6, Columns 5-11
+  1. the quantified variable 'x' introduced at Line 6, Columns 13-20
   2. which is used on the right hand side of the multiplication
 
 Fix: try avoiding it, otherwise please open an issue on the Vehicle issue tracker.

@@ -18,4 +18,4 @@ module increasing where
 
 postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 
-postulate increasing : ∀ (x : ℚ) → x ℚ.≤ f (x ∷ᵥ []ᵥ) (# 0)
+postulate increasing : ∀ x → x ℚ.≤ f (x ∷ᵥ []ᵥ) (# 0)

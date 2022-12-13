@@ -17,4 +17,4 @@ module simple-pruneDecls where
 
 postulate g : Vector ℚ 2 → Vector ℚ 1
 
-postulate p2 : ∀ (x : Vector ℚ 2) → g x (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1
+postulate p2 : ∀ x → g x (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1

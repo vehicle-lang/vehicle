@@ -8,7 +8,7 @@ import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (fold)
 import Data.List (sort)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
@@ -336,7 +336,8 @@ compileDecl = \case
     compilePostulate (compileIdentifier n) <$> compileExpr t
 
   DefFunction _ n isProperty t e -> do
-    let (binders, body) = foldLam e
+    let (binders, body) = foldBinders FunFold e
+    logDebug MaxDetail (prettyVerbose binders)
     setBoolLevel TypeLevel $ do
       if isProperty
         then compileProperty (compileIdentifier n) =<< compileExpr e
@@ -357,14 +358,18 @@ compileExpr expr = do
 
     Var  _ n   -> return $ annotateConstant [] (pretty n)
 
-    Pi ann binder result -> case foldPi ann binder result of
-      Left (binders, body)  -> compileTypeLevelQuantifier Forall binders body
-      Right (input, output) ->
-        annotateInfixOp2 [] minPrecedence id Nothing arrow <$> traverse compileExpr [input, output]
+    Pi _ binder result -> case binderNamingForm binder of
+      OnlyType -> do
+        cInput <- compileBinder binder
+        cOutput <- compileExpr result
+        return $ annotateInfixOp2 [] minPrecedence id Nothing arrow [cInput, cOutput]
+      _ -> do
+        let (binders, body) = foldBinders (FoldableBinder PiFold binder) result
+        compileTypeLevelQuantifier Forall (binder :| binders) body
 
-    Ann _ann e t -> compileAnn <$> compileExpr e <*> compileExpr t
+    Ann _ e t -> compileAnn <$> compileExpr e <*> compileExpr t
 
-    Let _ann bound binding body -> do
+    Let _ bound binding body -> do
       cBoundExpr <- compileLetBinder (binding, bound)
       cBody      <- compileExpr body
       return $ "let" <+> cBoundExpr <+> "in" <+> cBody
@@ -376,7 +381,7 @@ compileExpr expr = do
       return $ "let" <+> vsep (punctuate ";" cBoundExprs) <+> "in" <+> cBody
       -}
 
-    Lam{} -> compileLam expr
+    Lam _ binder body -> compileLam binder body
 
     Builtin _ b -> compileBuiltin b []
     Literal _ l -> compileLiteral l
@@ -411,10 +416,10 @@ compileLetBinder (binder, expr) = do
   cExpr <- compileExpr expr
   return $ binderName <+> "=" <+> cExpr
 
-compileLam :: MonadAgdaCompile m => OutputExpr -> m Code
-compileLam expr = do
-  let (binders, body) = foldLam expr
-  cBinders <- traverse compileBinder binders
+compileLam :: MonadAgdaCompile m => OutputBinder -> OutputExpr -> m Code
+compileLam binder expr = do
+  let (binders, body) = foldBinders (FoldableBinder LamFold binder) expr
+  cBinders <- traverse compileBinder (binder : binders)
   cBody    <- compileExpr body
   return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> arrow <+> cBody)
 
@@ -449,10 +454,15 @@ compileTopLevelBinder binder
 compileBinder :: MonadAgdaCompile m => OutputBinder -> m Code
 compileBinder binder = do
   let binderName = pretty (nameOf binder :: OutputBinding)
-  let addBrackets = binderBrackets False (visibilityOf binder)
   binderType <- compileExpr (typeOf binder)
-  let annBinder = annotateInfixOp2 [] minPrecedence id Nothing ":" [binderName, binderType]
-  return $ addBrackets annBinder
+  (binderDoc, noExplicitBrackets) <- case binderNamingForm binder of
+    OnlyName    -> return (binderName, True)
+    OnlyType    -> return (binderType, True)
+    NameAndType -> do
+      let annName = annotateInfixOp2 [] minPrecedence id Nothing ":" [binderName, binderType]
+      return (annName, False)
+
+  return $ binderBrackets noExplicitBrackets (visibilityOf binder) binderDoc
 
 compileStdLibFunction :: MonadAgdaCompile m => StdLibFunction -> NonEmpty OutputArg -> m Code
 compileStdLibFunction f allArgs = case embedStdLib f allArgs of
@@ -545,7 +555,7 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
 
   ForallTCExpr  _  binder body -> compileTypeLevelQuantifier Forall [binder] body
   ExistsTCExpr  _  binder body -> compileTypeLevelQuantifier Exists [binder] body
-  ForeachExpr _ _ _ lam        -> compileLam lam
+  ForeachExpr _ _ _ lam        -> compileExpr lam
 
   ForallInTCExpr p tCont binder body cont -> compileQuantIn Forall tCont (Lam p binder body) cont
   ExistsInTCExpr p tCont binder body cont -> compileQuantIn Exists tCont (Lam p binder body) cont
@@ -587,7 +597,7 @@ compileTypeClass name arg = do
 
 compileTypeLevelQuantifier :: MonadAgdaCompile m
                            => Quantifier
-                           -> [OutputBinder]
+                           -> NonEmpty OutputBinder
                            -> OutputExpr
                            -> m Code
 compileTypeLevelQuantifier q binders body = do

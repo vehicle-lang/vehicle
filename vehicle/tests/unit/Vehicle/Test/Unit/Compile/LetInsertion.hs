@@ -42,10 +42,11 @@ letInsertionTests =
     --     "\\(x : Int) (y : Int) -> (((- x) + (- y)) / ((- x) + (- y))) + (- y)"
     --     "\\(x : Int) -> (let b = (- x) in (\\(y : Int) -> (let a = (- y) in (let c = (a + b) in (c / c))) + y))"
 
-    , InsertionTestSpec "insertLiftApp"
-        appFilter
-        "- - (1 : Int)"
-        "let a = 1 in let b = (- (a : Int)) in let c = - b in c"
+    -- Disabled due to bugs in parser
+    -- , InsertionTestSpec "insertLiftApp"
+    --     appFilter
+    --     "- - (1 : Int)"
+    --     "let a = 1 in let b = (- (a : Int)) in let c = - b in c"
     ]
 
 data InsertionTestSpec = InsertionTestSpec String SubexprFilter Text Text

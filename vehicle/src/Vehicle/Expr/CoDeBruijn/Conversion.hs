@@ -84,7 +84,7 @@ fromCoDB expr = case recCoDB expr of
 
 fromCoDBBinder :: RecCoDB a BinderC => a -> GenericBinder DBBinding (Expr DBBinding DBVar)
 fromCoDBBinder binder = case recCoDB binder of
-  Binder p v r (CoDBBinding n _) t -> Binder p v r n $ fromCoDB t
+  Binder p u v r (CoDBBinding n _) t -> Binder p u v r n $ fromCoDB t
 
 fromCoDBArg :: RecCoDB a ArgC => a -> GenericArg (Expr DBBinding DBVar)
 fromCoDBArg arg = case recCoDB arg of
