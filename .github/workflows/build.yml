@@ -20,7 +20,12 @@ jobs:
     strategy:
       matrix:
         os_and_name:
-          - [ubuntu-latest, Linux]
+          # NOTE: build-vehicle-python for Python 3.8.0 runs on Ubuntu 20.04,
+          #       because Python 3.8.0 is not supported by setup-python.
+          #       The vehicle executable built here will be dependent on libc,
+          #       which is generally forwards but not backwards compatible.
+          #       Therefore, we must build vehicle on Ubuntu 20.04.
+          - [ubuntu-20.04, Linux]
           - [macos-latest, macOS]
           - [windows-latest, Windows]
         ghc-version: ["8.10.7", "9.0.2", "9.2.4", "9.4.2"]
@@ -42,5 +47,5 @@ jobs:
         python-version: ["3.8", "3.9", "3.10"]
         include:
           - # Earliest supported version:
-            os_and_name: [ubuntu-latest, Linux]
-            python-version: "3.8"
+            os_and_name: [ubuntu-20.04, Linux]
+            python-version: "3.8.0"
