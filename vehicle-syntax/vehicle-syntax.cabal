@@ -118,6 +118,7 @@ library
     Vehicle.Syntax.Internal.Print
     Vehicle.Syntax.Parse.Error
     Vehicle.Syntax.Parse.Token
+    Vehicle.Syntax.Prelude.Debug
 
   autogen-modules:
     Vehicle.Syntax.External.Abs
