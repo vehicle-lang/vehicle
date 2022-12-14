@@ -1,4 +1,4 @@
-cabal-version:      3.4
+cabal-version:      2.4
 name:               vehicle-syntax
 version:            0.1.0
 description:
@@ -45,37 +45,7 @@ flag nothunks
   manual:      True
   default:     False
 
-common nothunks
-  build-depends: nothunks >=0.1.3 && <0.2
-  cpp-options:   -Dnothunks
-
-common common-language
-  if flag(nothunks)
-    import: nothunks
-
-  default-language:   Haskell2010
-  default-extensions:
-    ConstraintKinds
-    DeriveAnyClass
-    DeriveFoldable
-    DeriveFunctor
-    DeriveGeneric
-    DeriveTraversable
-    FlexibleContexts
-    FlexibleInstances
-    FunctionalDependencies
-    ImportQualifiedPost
-    InstanceSigs
-    KindSignatures
-    LambdaCase
-    MultiParamTypeClasses
-    OverloadedStrings
-    PatternSynonyms
-    TypeApplications
-    TypeFamilies
-
 library
-  import:             common-language
   hs-source-dirs:     autogen src
   exposed-modules:
     Vehicle.Syntax.AST
@@ -150,3 +120,28 @@ library
     , alex:alex    >=3
     , BNFC:bnfc    >=2.9.4
     , happy:happy  >=1.19
+
+  if flag(nothunks)
+    build-depends: nothunks >=0.1.3 && <0.2
+    cpp-options:   -Dnothunks
+
+  default-language:   Haskell2010
+  default-extensions:
+    ConstraintKinds
+    DeriveAnyClass
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    ImportQualifiedPost
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    MultiParamTypeClasses
+    OverloadedStrings
+    PatternSynonyms
+    TypeApplications
+    TypeFamilies
