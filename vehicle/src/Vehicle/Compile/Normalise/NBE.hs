@@ -21,7 +21,7 @@ import Vehicle.Expr.Normalised
 
 whnf :: MonadCompile m => Int -> DeclCtx GluedExpr -> CheckedExpr -> m NormExpr
 whnf boundCtxSize declCtx e = do
-  let env = [VVar mempty (Bound i) [] | i <- [0..boundCtxSize - 1]]
+  let env = [VVar mempty (Bound (DBIndex i)) [] | i <- [0..boundCtxSize - 1]]
   -- logDebug MaxDetail $ "Normalising" <+> squotes (prettyVerbose e) <+> "in a context of size" <+> pretty boundCtxSize
   runReaderT (eval env e) (fmap normalised declCtx)
 
@@ -59,7 +59,7 @@ eval env expr = do
       VPi p <$> evalBinder env binder <*> eval (liftEnvOverBinder p env) body
 
     Var p v -> case v of
-      Bound i -> case env !!? i of
+      Bound i -> case lookupVar env i of
         Just value -> return value
         Nothing    -> compilerDeveloperError $
           "Environment" <+> prettyVerbose env <+> "in which NBE is being performed" <+>

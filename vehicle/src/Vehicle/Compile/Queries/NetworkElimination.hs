@@ -405,7 +405,7 @@ mkMagicVariableSeq p tElem = go
       let elemType = TensorType p baseElemType (mkTensorDims p dims)
       return (VecLiteral p elemType elems)
     go [] [outputVarIndex] =
-      return $ BoundVar p outputVarIndex
+      return $ BoundVar p $ DBIndex outputVarIndex
     go dims outputVarIndices =
       compilerDeveloperError $
         "apparently miscalculated number of magic output variables:" <+>
@@ -475,8 +475,8 @@ compileLinearExpr expr = do
   return $ linearExprFromMap exprSize linearExpr
   where
   singletonVar :: MonadSMT m => DBIndexVar -> Coefficient -> m (Map Int Coefficient)
-  singletonVar Free{}    _ = normalisationError currentPass "FreeVar"
-  singletonVar (Bound v) c = do
+  singletonVar Free{}              _ = normalisationError currentPass "FreeVar"
+  singletonVar (Bound (DBIndex v)) c = do
     numberOfUserVariables <- getNumberOfUserVariables
     let i = if v < numberOfUserVariables then numberOfUserVariables - v - 1 else v
     return $ Map.singleton i c
@@ -491,7 +491,7 @@ compileLinearExpr expr = do
 
     RatLiteral _ l                   -> do
       constIndex <- getExprConstantIndex
-      singletonVar (Bound constIndex) (fromRational l)
+      singletonVar (Bound (DBIndex constIndex)) (fromRational l)
 
     AddExpr _ AddRat [ExplicitArg _ e1, ExplicitArg _ e2] -> do
       Map.unionWith (+) <$> go e1 <*> go e2

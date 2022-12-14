@@ -11,7 +11,7 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
-import Vehicle.Expr.DeBruijn (DBIndexVar (..))
+import Vehicle.Expr.DeBruijn (LocallyNamelessVar (..))
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------

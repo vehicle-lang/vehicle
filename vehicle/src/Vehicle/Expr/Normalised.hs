@@ -3,6 +3,7 @@ module Vehicle.Expr.Normalised where
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
+import Vehicle.Compile.Prelude.Contexts (BoundCtx)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Syntax.AST
 
@@ -52,7 +53,7 @@ type NormType = NormExpr
 -- | A list of arguments for an application that cannot be normalised.
 type Spine = [NormArg]
 
-type Env = [NormExpr]
+type Env = BoundCtx NormExpr
 
 -----------------------------------------------------------------------------
 -- Patterns

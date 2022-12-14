@@ -14,6 +14,7 @@ module Vehicle.Expr.DeBruijn
   , DBProg
   , BindingDepth
   , Substitution
+  , substituteDB
   , substDBInto
   , substDBIntoAtLevel
   , substDBAll
@@ -34,7 +35,7 @@ import Vehicle.Syntax.AST
 --------------------------------------------------------------------------------
 -- Definitions
 
--- |The type of data DeBruijn indices store at name sites
+-- | The type of data DeBruijn indices store at name sites
 data LocallyNamelessVar a
   = Free Identifier
   | Bound a
@@ -97,15 +98,12 @@ type DBDecl   = Decl   DBBinding DBIndexVar
 type DBProg   = Prog   DBBinding DBIndexVar
 
 --------------------------------------------------------------------------------
--- A framework for writing generic operations on DeBruijn variables
+-- Substitution
 
 type Substitution value = DBIndex -> Either DBIndex value
 
 class Substitutable value target | target -> value where
   subst :: MonadReader (BindingDepth, Substitution value) m => target -> m target
-
-  substituteDB :: BindingDepth -> Substitution value -> target -> target
-  substituteDB depth sub e = runReader (subst e) (depth, sub)
 
 instance Substitutable expr expr => Substitutable expr (GenericArg expr)  where
   subst = traverse subst
@@ -113,53 +111,8 @@ instance Substitutable expr expr => Substitutable expr (GenericArg expr)  where
 instance Substitutable expr expr => Substitutable expr (GenericBinder binder expr) where
   subst = traverse subst
 
--- Temporarily go under a binder, increasing the binding depth by one
--- and shifting the current state.
-underDBBinder :: MonadReader (BindingDepth, c) m => m a -> m a
-underDBBinder = local (first (+1))
-
---------------------------------------------------------------------------------
--- Concrete operations
-
--- | Lift all DeBruijn indices that refer to environment variables by the
--- provided depth.
-liftDBIndices :: Int                            -- ^ amount to lift by
-              -> DBExpr                         -- ^ target term to lift
-              -> DBExpr                         -- ^ lifted term
-liftDBIndices d = substituteDB 0 (\v -> Left (v + DBIndex d))
-
--- | De Bruijn aware substitution of one expression into another
-substDBIntoAtLevel :: DBIndex      -- ^ The index of the variable of which to substitute
-                   -> DBExpr        -- ^ expression to substitute
-                   -> DBExpr       -- ^ term to substitute into
-                   -> DBExpr       -- ^ the result of the substitution
-substDBIntoAtLevel level value = substituteDB 0 substVar
-  where
-    substVar :: DBIndex -> Either DBIndex DBExpr
-    substVar v
-      | v == level = Right value
-      | v > level  = Left (v - 1)
-      | otherwise  = Left v
-
--- | De Bruijn aware substitution of one expression into another
-substDBInto :: DBExpr  -- ^ expression to substitute
-            -> DBExpr -- ^ term to substitute into
-            -> DBExpr -- ^ the result of the substitution
-substDBInto = substDBIntoAtLevel 0
-
-substDBAll :: BindingDepth
-         -> (DBIndex -> Maybe DBIndex)
-         -> DBExpr
-         -> DBExpr
-substDBAll depth sub = substituteDB depth (\v -> maybe (Left v) Left (sub v))
-
-
---------------------------------------------------------------------------------
--- DeBruijn substitution
-
 instance Substitutable DBExpr DBExpr where
   subst = \case
-
     Var p (Bound i) -> do
       (d, s) <- ask
       return $ if i < DBIndex d then
@@ -181,3 +134,46 @@ instance Substitutable DBExpr DBExpr where
     Pi   p binder res   -> Pi      p <$> traverse subst binder <*> underDBBinder (subst res)
     Let  p e1 binder e2 -> Let     p <$> subst e1 <*> traverse subst binder <*> underDBBinder (subst e2)
     Lam  p binder e     -> Lam     p <$> traverse subst binder <*> underDBBinder (subst e)
+
+-- Temporarily go under a binder, increasing the binding depth by one
+-- and shifting the current state.
+underDBBinder :: MonadReader (BindingDepth, c) m => m a -> m a
+underDBBinder = local (first (+1))
+
+--------------------------------------------------------------------------------
+-- Concrete operations
+
+substituteDB :: BindingDepth -> Substitution DBExpr -> DBExpr -> DBExpr
+substituteDB depth sub e = runReader (subst e) (depth, sub)
+
+-- | Lift all DeBruijn indices that refer to environment variables by the
+-- provided depth.
+liftDBIndices :: Int                            -- ^ amount to lift by
+              -> DBExpr                         -- ^ target term to lift
+              -> DBExpr                         -- ^ lifted term
+liftDBIndices d = substituteDB 0 (\v -> Left (v + DBIndex d))
+
+-- | De Bruijn aware substitution of one expression into another
+substDBIntoAtLevel :: DBIndex      -- ^ The index of the variable of which to substitute
+                   -> DBExpr       -- ^ expression to substitute
+                   -> DBExpr       -- ^ term to substitute into
+                   -> DBExpr       -- ^ the result of the substitution
+substDBIntoAtLevel level value = substituteDB 0 substVar
+  where
+    substVar :: DBIndex -> Either DBIndex DBExpr
+    substVar v
+      | v == level = Right value
+      | v > level  = Left (v - 1)
+      | otherwise  = Left v
+
+-- | De Bruijn aware substitution of one expression into another
+substDBInto :: DBExpr  -- ^ expression to substitute
+            -> DBExpr -- ^ term to substitute into
+            -> DBExpr -- ^ the result of the substitution
+substDBInto = substDBIntoAtLevel 0
+
+substDBAll :: BindingDepth
+         -> (DBIndex -> Maybe DBIndex)
+         -> DBExpr
+         -> DBExpr
+substDBAll depth sub = substituteDB depth (\v -> maybe (Left v) Left (sub v))

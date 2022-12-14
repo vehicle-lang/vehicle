@@ -161,7 +161,7 @@ scopeVar p symbol = do
   (declCtx, boundCtx) <- ask
 
   case elemIndex (Just symbol) boundCtx of
-    Just i -> return $ Bound i
+    Just i -> return $ Bound $ DBIndex i
     Nothing -> case Map.lookup symbol declCtx of
       Just ident -> do
         tell [ident]

@@ -143,7 +143,7 @@ descopeDBVar :: MonadDescope m => Provenance -> DBIndexVar -> m Name
 descopeDBVar _ (Free ident) = return $ nameOf ident
 descopeDBVar p (Bound i) = do
   Ctx ctx <- ask
-  case ctx !!? i of
+  case lookupVar ctx i of
     Nothing -> indexOutOfBounds p i (length ctx)
     Just x  -> return x
 
