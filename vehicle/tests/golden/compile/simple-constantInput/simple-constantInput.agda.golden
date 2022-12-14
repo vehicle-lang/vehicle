@@ -19,4 +19,4 @@ module simple-constantInput where
 
 postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ (1 ∷ [])
 
-postulate spec : ∀ (x : ℚ) → f (x ∷ᵥ (ℤ.+ 0 ℚ./ 1 ∷ᵥ []ᵥ)) (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1
+postulate spec : ∀ x → f (x ∷ᵥ (ℤ.+ 0 ℚ./ 1 ∷ᵥ []ᵥ)) (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1

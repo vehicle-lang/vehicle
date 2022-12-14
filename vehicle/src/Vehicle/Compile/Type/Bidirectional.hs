@@ -130,7 +130,7 @@ checkExpr expectedType expr = do
         checkExpr resultType (liftDBIndices 1 e)
 
       -- Create a new binder mirroring the Pi binder expected
-      let lamBinder = Binder ann (visibilityOf piBinder) (relevanceOf piBinder) binderName binderType
+      let lamBinder = Binder ann (BinderForm OnlyName False) (visibilityOf piBinder) (relevanceOf piBinder) binderName binderType
 
       -- Prepend a new lambda to the expression with the implicit binder
       return $ Lam ann lamBinder checkedExpr
@@ -228,11 +228,10 @@ inferExpr e = do
       inferApp p checkedFun checkedFunType (NonEmpty.toList args)
 
     Var p (Bound i) -> do
-      -- Lookup the type of the variable in the context.
       ctx <- getBoundCtx
-      case ctx !!? i of
+      case lookupVar ctx i of
         Just (_, checkedType, _) -> do
-          let liftedCheckedType = liftDBIndices (i+1) checkedType
+          let liftedCheckedType = liftDBIndices (dbIndex i+1) checkedType
           return (Var p (Bound i), liftedCheckedType)
         Nothing      -> compilerDeveloperError $
           "DBIndex" <+> pretty i <+> "out of bounds when looking" <+>
@@ -298,14 +297,14 @@ inferExpr e = do
 
       -- Create the new type.
       -- Roughly [x1, ..., xn] has type
-      --  forall {tElem} {{TypesEqual tElem [t1, ..., tn]}} . Vector tElem n
+      --  forall {tElem} .{{TypesEqual tElem [t1, ..., tn]}} . Vector tElem n
       let liftedTypesOfElems = liftDBIndices 1 <$> typesOfElems
       let typesOfElemsSeq = mkList p (TypeUniverse p 0) liftedTypesOfElems
       let tc = AlmostEqualConstraint
       let elemsTC tElem = BuiltinTypeClass p tc (ExplicitArg p <$> [tElem, typesOfElemsSeq])
       let typeOfContainer =
-            Pi p (ImplicitBinder p Nothing (TypeUniverse p 0)) $
-              Pi p (IrrelevantInstanceBinder p Nothing (elemsTC (Var p (Bound 0)))) $
+            Pi p (Binder p (BinderForm OnlyName False) Implicit Relevant Nothing (TypeUniverse p 0)) $
+              Pi p (Binder p (BinderForm OnlyType False) Instance Irrelevant Nothing (elemsTC (Var p (Bound 0)))) $
                 VectorType p (Var p (Bound 1)) (NatLiteral p (length elems))
 
       -- Return the result

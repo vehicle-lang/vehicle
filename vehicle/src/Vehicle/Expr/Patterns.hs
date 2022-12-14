@@ -23,10 +23,10 @@ pattern PolarityUniverse p = Universe p PolarityUniv
 -- Variables
 --------------------------------------------------------------------------------
 
-pattern FreeVar :: Provenance -> Identifier -> Expr binder DBVar
+pattern FreeVar :: Provenance -> Identifier -> Expr binder DBIndexVar
 pattern FreeVar p ident = Var p (Free ident)
 
-pattern BoundVar :: Provenance -> DBIndex -> Expr binder DBVar
+pattern BoundVar :: Provenance -> DBIndex -> Expr binder DBIndexVar
 pattern BoundVar p index = Var p (Bound index)
 
 --------------------------------------------------------------------------------

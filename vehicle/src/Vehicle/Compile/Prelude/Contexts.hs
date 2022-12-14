@@ -2,9 +2,11 @@
 module Vehicle.Compile.Prelude.Contexts where
 
 import Control.Monad.Reader (MonadReader (..))
+import Data.Coerce (coerce)
 import Data.Map (Map)
 
 import Vehicle.Expr.DeBruijn
+import Vehicle.Prelude ((!!?))
 import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
@@ -30,6 +32,9 @@ addToBoundCtx v = local (v :)
 
 getBoundCtx :: MonadReader (BoundCtx b) m => m (BoundCtx b)
 getBoundCtx = ask
+
+lookupVar :: BoundCtx b -> DBIndex -> Maybe b
+lookupVar ctx i = ctx !!? coerce i
 
 --------------------------------------------------------------------------------
 -- Declaration contexts

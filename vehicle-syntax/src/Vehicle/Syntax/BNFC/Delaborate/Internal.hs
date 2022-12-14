@@ -78,7 +78,7 @@ instance Delaborate V.NamedArg B.Arg where
     (V.Instance, V.Irrelevant) -> B.IrrelevantInstanceArg <$> delabM e
 
 instance Delaborate V.NamedBinder B.Binder where
-  delabM (V.Binder _ v r n t) = case (v, r) of
+  delabM (V.Binder _ _ v r n t) = case (v, r) of
     (V.Explicit, V.Relevant)   -> B.RelevantExplicitBinder   (delabSymbol n) <$> delabM t
     (V.Implicit, V.Relevant)   -> B.RelevantImplicitBinder   (delabSymbol n) <$> delabM t
     (V.Instance, V.Relevant)   -> B.RelevantInstanceBinder   (delabSymbol n) <$> delabM t

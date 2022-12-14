@@ -322,7 +322,7 @@ solveRatQuantifier q c domainBinder body res = do
 
   -- The rational being quantified over is, by definition, linear
   let varName   = getBinderName domainBinder
-  let domainLin = VLinearityExpr p (Linear (QuantifiedVariableProvenance p varName))
+  let domainLin = VLinearityExpr p (Linear (QuantifiedVariableProvenance (provenanceOf domainBinder) varName))
   let domainEq  = unify c (typeOf domainBinder) (VAnnRatType p domainLin)
 
   -- The body must be of some Bool type

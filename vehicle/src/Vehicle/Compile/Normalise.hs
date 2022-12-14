@@ -340,15 +340,16 @@ nfQuantifierVector p tElem size binder body recFn = do
   let allNames   = map (mkNameWithIndices (getBinderName binder)) (reverse allIndices)
 
   -- Generate a list of variables, one for each index
-  let allExprs   = map (\i -> Var p (Bound i)) (reverse allIndices)
+  let allExprs   = map (\i -> Var p (Bound (DBIndex i))) (reverse allIndices)
   -- Construct the corresponding nested tensor expression
   let tensor     = VecLiteral p tElem allExprs
   -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
   let body1      = liftDBIndices size body
   -- Substitute throught the tensor expression for the old top-level binder
-  body2 <- nf $ substDBIntoAtLevel size tensor body1
+  body2 <- nf $ substDBIntoAtLevel (DBIndex size) tensor body1
 
-  let mkQuantifier e name = App p recFn [ExplicitArg p (Lam p (ExplicitBinder p name tElem) e)]
+  let mkBinder name = Binder p (binderForm binder) Explicit Relevant name tElem
+  let mkQuantifier e name = App p recFn [ExplicitArg p (Lam p (mkBinder name) e)]
 
   -- Generate a expression prepended with `tensorSize` quantifiers
   return $ foldl mkQuantifier body2 (map Just allNames)

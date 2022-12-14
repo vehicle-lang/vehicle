@@ -25,18 +25,18 @@ import Vehicle.Expr.DeBruijn
 -- provided context.
 runDescope :: Descope t
            => NamedBoundCtx
-           -> t NamedBinding DBVar
+           -> t NamedBinding DBIndexVar
            -> t NamedBinding Name
 runDescope ctx = performDescoping ctx descopeDBVar
 
 -- |Converts DeBruijn variables back into named variables with no context.
-runDescopeProg :: Prog Name DBVar -> Prog Name Name
+runDescopeProg :: Prog Name DBIndexVar -> Prog Name Name
 runDescopeProg e = unwrapProg $ performDescoping mempty descopeDBVar (WrapProg e)
 
 -- |Converts DeBruijn indices into names naively, e.g. 0 becomes "i0".
 -- Useful for debugging
 runNaiveDBDescope :: Descope t
-                  => t Name DBVar
+                  => t Name DBIndexVar
                   -> t Name Name
 runNaiveDBDescope = performDescoping mempty descopeDBVarNaive
 
@@ -139,15 +139,15 @@ instance Descope Arg' where
 instance Descope Binder' where
   descope f a = coerce <$> descopeBinder f (coerce a)
 
-descopeDBVar :: MonadDescope m => Provenance -> DBVar -> m Name
+descopeDBVar :: MonadDescope m => Provenance -> DBIndexVar -> m Name
 descopeDBVar _ (Free ident) = return $ nameOf ident
 descopeDBVar p (Bound i) = do
   Ctx ctx <- ask
-  case ctx !!? i of
+  case lookupVar ctx i of
     Nothing -> indexOutOfBounds p i (length ctx)
     Just x  -> return x
 
-descopeDBVarNaive :: MonadDescope m => Provenance -> DBVar -> m Name
+descopeDBVarNaive :: MonadDescope m => Provenance -> DBIndexVar -> m Name
 descopeDBVarNaive _ = \case
   Free  i -> return $ nameOf i
   Bound i -> return $ pack ("i" <> show i)

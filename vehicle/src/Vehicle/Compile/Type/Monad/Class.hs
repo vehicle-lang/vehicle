@@ -336,7 +336,7 @@ filterMetasByTypes typeFilter metas = do
 abstractOverCtx :: Int -> CheckedExpr -> CheckedExpr
 abstractOverCtx ctxSize body = do
   let p = mempty
-  let lam _ = Lam p (ExplicitBinder p Nothing (TypeUniverse p 0))
+  let lam _ = Lam p (Binder p (BinderForm OnlyName True) Explicit Relevant Nothing (TypeUniverse p 0))
   foldr lam body ([0 .. ctxSize-1] :: [Int])
 
 solveMeta :: MonadTypeChecker m => MetaID -> CheckedExpr -> Int -> m ()

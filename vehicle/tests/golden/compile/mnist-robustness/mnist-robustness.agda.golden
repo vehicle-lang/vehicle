@@ -28,20 +28,20 @@ Label : Set
 Label = Fin 10
 
 ValidImage : Image → Set
-ValidImage x = ∀ (i : Fin 28) → ∀ (j : Fin 28) → ℤ.+ 0 ℚ./ 1 ℚ.≤ x i j × x i j ℚ.≤ ℤ.+ 1 ℚ./ 1
+ValidImage x = ∀ i → ∀ j → ℤ.+ 0 ℚ./ 1 ℚ.≤ x i j × x i j ℚ.≤ ℤ.+ 1 ℚ./ 1
 
 postulate mnist : Image → Vector ℚ 10
 
 Advises : Image → (Label → Set)
-Advises x i = ∀ (j : Fin 10) → j ≢ i → mnist x i ℚ.> mnist x j
+Advises x i = ∀ j → j ≢ i → mnist x i ℚ.> mnist x j
 
 postulate epsilon : ℚ
 
 BoundedByEpsilon : Image → Set
-BoundedByEpsilon x = ∀ (i : Fin 28) → ∀ (j : Fin 28) → ℚ.- epsilon ℚ.≤ x i j × x i j ℚ.≤ epsilon
+BoundedByEpsilon x = ∀ i → ∀ j → ℚ.- epsilon ℚ.≤ x i j × x i j ℚ.≤ epsilon
 
 RobustAround : Image → (Label → Set)
-RobustAround image label = ∀ (pertubation : Vector (Vector ℚ 28) 28) → let perturbedImage = sub image pertubation in BoundedByEpsilon pertubation × ValidImage perturbedImage → Advises perturbedImage label
+RobustAround image label = ∀ pertubation → let perturbedImage = sub image pertubation in BoundedByEpsilon pertubation × ValidImage perturbedImage → Advises perturbedImage label
 
 postulate n : ℕ
 
@@ -49,4 +49,4 @@ postulate trainingImages : Vector Image n
 
 postulate trainingLabels : Vector Label n
 
-postulate robust : λ (i : Fin n) → RobustAround (trainingImages i) (trainingLabels i)
+postulate robust : λ i → RobustAround (trainingImages i) (trainingLabels i)

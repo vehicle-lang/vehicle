@@ -196,7 +196,7 @@ parseProgText :: MonadCompile m => Module -> Text -> m InputProg
 parseProgText modul txt = do
   case runExcept (readAndParseProg modul txt) of
     Left  err  -> throwError $ ParseError err
-    Right prog -> case traverse (parseExpr modul) prog of
+    Right prog -> case traverseDecls (parseDecl modul) prog of
       Left err    -> throwError $ ParseError err
       -- If compiled with +ghc-debug, check that the elaborated program
       -- does not contain any thunks.

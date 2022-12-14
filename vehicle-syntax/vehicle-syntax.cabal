@@ -144,6 +144,7 @@ library
     , prettyprinter      >=1.7   && <2
     , recursion-schemes  >=5.2   && <6
     , text               >=1.2   && <3
+    , these              >=1.0   && <2
 
   build-tool-depends:
     , alex:alex    >=3

@@ -140,7 +140,7 @@ generaliseOverVariables vars e = fst <$> foldM generalise (e, mempty) vars
       logDebug MaxDetail $
         "Generalising over unbound variable" <+> quotePretty name
       let binderType = mkHole p ("typeOf[" <> name <> "]")
-      let newExpr = Pi p (ImplicitBinder p (Just name) binderType) expr
+      let newExpr = Pi p (Binder p (BinderForm OnlyName True) Implicit Relevant (Just name) binderType) expr
       return (newExpr, Set.insert name seenNames)
 
 --------------------------------------------------------------------------------
@@ -156,12 +156,12 @@ scopeExpr :: MonadScopeExpr m => InputExpr -> m UncheckedExpr
 scopeExpr = traverseVars scopeVar
 
 -- |Find the index for a given name of a given sort.
-scopeVar :: MonadScopeExpr m => Provenance -> Name -> m DBVar
+scopeVar :: MonadScopeExpr m => Provenance -> Name -> m DBIndexVar
 scopeVar p symbol = do
   (declCtx, boundCtx) <- ask
 
   case elemIndex (Just symbol) boundCtx of
-    Just i -> return $ Bound i
+    Just i -> return $ Bound $ DBIndex i
     Nothing -> case Map.lookup symbol declCtx of
       Just ident -> do
         tell [ident]

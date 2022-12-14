@@ -4,6 +4,7 @@ module Vehicle.Syntax.Parse
   , UnparsedProg
   , UnparsedDecl
   , readAndParseProg
+  , parseDecl
   , parseExpr
   , readExpr
   ) where
@@ -35,10 +36,10 @@ readAndParseProg :: MonadError ParseError m => Module -> Text -> m UnparsedProg
 readAndParseProg modul txt =
   castBNFCError (elaborateProg modul) (parseExternalProg txt)
 
-parseExpr :: MonadError ParseError m
-          => Module
-          -> UnparsedExpr
-          -> m InputExpr
+parseDecl :: MonadError ParseError m => Module -> UnparsedDecl -> m InputDecl
+parseDecl = elaborateDecl
+
+parseExpr :: MonadError ParseError m => Module -> UnparsedExpr -> m InputExpr
 parseExpr = elaborateExpr
 
 readExpr :: MonadError ParseError m => Text -> m UnparsedExpr

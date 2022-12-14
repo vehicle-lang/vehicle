@@ -79,7 +79,7 @@ prependConstraint decl (WithContext (Has meta tc args) ctx) = do
 
   substTypeClass <- substMetas typeClass
   logCompilerPass MaxDetail ("generalisation over" <+> prettySimple substTypeClass) $
-    prependBinderAndSolveMeta meta Instance relevancy Nothing substTypeClass decl
+    prependBinderAndSolveMeta meta (BinderForm OnlyType False) Instance relevancy Nothing substTypeClass decl
 
 --------------------------------------------------------------------------------
 -- Unsolved meta generalisation
@@ -121,7 +121,7 @@ quantifyOverMeta decl meta = do
     metaDoc <- prettyMeta meta
     logCompilerPass MinDetail ("generalisation over" <+> metaDoc) $ do
       -- Prepend the implicit binders for the new generalised variable.
-      prependBinderAndSolveMeta meta Implicit relevance Nothing metaType decl
+      prependBinderAndSolveMeta meta (BinderForm OnlyName True) Implicit relevance Nothing metaType decl
 
 isMeta :: DBExpr -> Bool
 isMeta Meta{}           = True
@@ -133,13 +133,14 @@ isMeta _                = False
 
 prependBinderAndSolveMeta :: TCM m
                           => MetaID
+                          -> BinderForm
                           -> Visibility
                           -> Relevance
                           -> DBBinding
                           -> CheckedType
                           -> CheckedDecl
                           -> m CheckedDecl
-prependBinderAndSolveMeta meta v r binderName binderType decl = do
+prependBinderAndSolveMeta meta f v r binderName binderType decl = do
   -- All the metas contained within the type of the binder about to be
   -- appended cannot have any dependencies on variables later on in the expression.
   -- So the replace them with meta-variables with empty contexts.
@@ -147,7 +148,7 @@ prependBinderAndSolveMeta meta v r binderName binderType decl = do
 
   -- Construct the new binder and prepend it to both the type and
   -- (if applicable) the body of the declaration.
-  let binder = Binder (provenanceOf decl) v r binderName substBinderType
+  let binder = Binder (provenanceOf decl) f v r binderName substBinderType
   prependedDecl <- case substDecl of
     DefResource p rt ident t   ->
       return $ DefResource p rt ident (Pi p binder t)
@@ -165,7 +166,7 @@ prependBinderAndSolveMeta meta v r binderName binderType decl = do
   -- We now solve the meta as the newly bound variable
   metaCtxSize <- getMetaCtxSize meta
   let p = provenanceOf prependedDecl
-  let solution = Var p (Bound (metaCtxSize - 1))
+  let solution = Var p (Bound (DBIndex $ metaCtxSize - 1))
   solveMeta meta solution metaCtxSize
 
   logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose updatedDecl
@@ -216,6 +217,6 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
       Lam      p binder body       -> Lam p (goBinder binder) (go (d+1) body)
       LVec     p xs                -> LVec p (map (go d) xs)
       where
-        newVar p = ExplicitArg p (Var p (Bound d))
+        newVar p = ExplicitArg p (Var p (Bound $ DBIndex d))
         goBinder = fmap (go d)
         goArgs   = fmap (fmap (go d))

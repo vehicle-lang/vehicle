@@ -207,17 +207,11 @@ type NamedProg = Prog NamedBinding Name
 -- before being analysed by the compiler
 type InputBinding = Maybe NamedBinding
 
-type InputVar = Name
-
-type InputArg = Arg InputBinding InputVar
-
-type InputBinder = Binder InputBinding InputVar
-
-type InputExpr = Expr InputBinding InputVar
-
-type InputDecl = Decl InputBinding InputVar
-
-type InputProg = Prog InputBinding InputVar
+type InputArg       = Arg    InputBinding InputVar
+type InputBinder    = Binder InputBinding InputVar
+type InputExpr      = Expr   InputBinding InputVar
+type InputDecl      = Decl   InputBinding InputVar
+type InputProg      = Prog   InputBinding InputVar
 
 --------------------------------------------------------------------------------
 -- Other AST datatypes specialised to the Expr type

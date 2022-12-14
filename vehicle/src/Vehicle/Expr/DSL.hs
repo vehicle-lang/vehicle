@@ -87,7 +87,13 @@ fromDSL :: Provenance -> DSLExpr -> DBExpr
 fromDSL p e = unDSL e p 0
 
 boundVar :: BindingDepth -> DSLExpr
-boundVar i = DSL $ \p j -> Var p (Bound (j - (i + 1)))
+boundVar i = DSL $ \p j -> Var p (Bound $ DBIndex (j - (i + 1)))
+
+approxPiForm :: Visibility -> BinderForm
+approxPiForm = \case
+  Explicit -> BinderForm OnlyType False
+  Implicit -> BinderForm OnlyName True
+  Instance -> BinderForm OnlyType False
 
 instance DSL DSLExpr where
   hole = DSL $ \p _i ->
@@ -96,14 +102,15 @@ instance DSL DSLExpr where
   pi v r binderType bodyFn = DSL $ \p i ->
     let varType = unDSL binderType p i
         var     = boundVar i
-        binder  = Binder p v r Nothing varType
+        form    = approxPiForm v
+        binder  = Binder p form v r Nothing varType
         body    = unDSL (bodyFn var) p (i + 1)
     in Pi p binder body
 
   lam v r binderType bodyFn = DSL $ \p i ->
     let varType = unDSL binderType p i
         var     = boundVar i
-        binder  = Binder p v r Nothing varType
+        binder  = Binder p (BinderForm OnlyName True) v r Nothing varType
         body    = unDSL (bodyFn var) p (i + 1)
     in Lam p binder body
 
