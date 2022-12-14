@@ -6,7 +6,7 @@ import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..))
+import Prettyprinter (Doc, Pretty (..))
 import Vehicle.Syntax.AST.Provenance (Provenance, expandProvenance)
 
 #if nothunks
@@ -39,6 +39,7 @@ instance ToJSON Visibility
 instance FromJSON Visibility
 
 instance Pretty Visibility where
+  pretty :: Visibility -> Doc ann
   pretty = \case
     Explicit    -> "Explicit"
     Implicit    -> "Implicit"
@@ -49,6 +50,7 @@ class HasVisibility a where
   visibilityOf :: a -> Visibility
 
 instance HasVisibility Visibility where
+  visibilityOf :: Visibility -> Visibility
   visibilityOf = id
 
 isExplicit :: HasVisibility a => a -> Bool
