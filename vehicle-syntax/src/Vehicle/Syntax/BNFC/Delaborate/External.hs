@@ -237,7 +237,7 @@ delabTypeClassOp op args = case op of
   V.MapTC  -> do
     args' <- traverse delabM args
     return $ delabApp (B.Map  tokMap)  (B.ExplicitArg <$> args')
-  
+
   V.FoldTC -> do
     args' <- traverse delabM args
     return $ delabApp (B.Fold tokFold) (B.ExplicitArg <$> args')

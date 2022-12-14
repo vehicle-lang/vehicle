@@ -28,7 +28,7 @@ import Control.Monad.Reader (MonadReader (..), local, runReader)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Hashable (Hashable (..))
-import GHC.Generics (Generic) 
+import GHC.Generics (Generic)
 
 import Vehicle.Prelude
 import Vehicle.Syntax.AST

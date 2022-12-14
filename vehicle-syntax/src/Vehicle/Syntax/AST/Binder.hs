@@ -66,7 +66,7 @@ data GenericBinder binder expr = Binder
   , binderType           :: !expr
   -- The type of the bound variable
   } deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
-  
+
 #if nothunks
 instance (NoThunks binder, NoThunks expr) => NoThunks (GenericBinder binder expr)
 #endif
