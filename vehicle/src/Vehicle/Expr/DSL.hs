@@ -87,7 +87,7 @@ fromDSL :: Provenance -> DSLExpr -> DBExpr
 fromDSL p e = unDSL e p 0
 
 boundVar :: BindingDepth -> DSLExpr
-boundVar i = DSL $ \p j -> Var p (Bound (j - (i + 1)))
+boundVar i = DSL $ \p j -> Var p (Bound $ DBIndex (j - (i + 1)))
 
 approxPiForm :: Visibility -> BinderForm
 approxPiForm = \case

@@ -166,7 +166,7 @@ prependBinderAndSolveMeta meta f v r binderName binderType decl = do
   -- We now solve the meta as the newly bound variable
   metaCtxSize <- getMetaCtxSize meta
   let p = provenanceOf prependedDecl
-  let solution = Var p (Bound (metaCtxSize - 1))
+  let solution = Var p (Bound (DBIndex $ metaCtxSize - 1))
   solveMeta meta solution metaCtxSize
 
   logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose updatedDecl
@@ -217,6 +217,6 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
       Lam      p binder body       -> Lam p (goBinder binder) (go (d+1) body)
       LVec     p xs                -> LVec p (map (go d) xs)
       where
-        newVar p = ExplicitArg p (Var p (Bound d))
+        newVar p = ExplicitArg p (Var p (Bound $ DBIndex d))
         goBinder = fmap (go d)
         goArgs   = fmap (fmap (go d))

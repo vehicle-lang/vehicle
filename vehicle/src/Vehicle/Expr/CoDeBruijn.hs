@@ -30,7 +30,7 @@ import Vehicle.Syntax.AST
 
 import Vehicle.Expr.CoDeBruijn.PositionTree
 import Vehicle.Expr.DeBruijn hiding (Bound, Free)
-import Vehicle.Expr.DeBruijn qualified as DB (DBVar (..))
+import Vehicle.Expr.DeBruijn qualified as DB
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -144,7 +144,7 @@ data ExprC
   | AppC      Provenance CoDBExpr (NonEmpty CoDBArg)
   | PiC       Provenance CoDBBinder CoDBExpr
   | BuiltinC  Provenance Builtin
-  | VarC      Provenance DBVar
+  | VarC      Provenance DBIndexVar
   | HoleC     Provenance Name
   | MetaC     Provenance MetaID
   | LetC      Provenance CoDBExpr CoDBBinder CoDBExpr

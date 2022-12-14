@@ -34,11 +34,11 @@ instance DBAdjustment NormExpr where
       args' <- traverse adjustIndices args
       (bindingDepth, sub) <- ask
       -- Calculate the new index
-      let i' = if i < bindingDepth
+      let i' = if i < DBIndex bindingDepth
           then i
-          else case sub (i - bindingDepth) of
+          else case sub (i - DBIndex bindingDepth) of
             Nothing -> i
-            Just v  -> v + bindingDepth
+            Just v  -> v + DBIndex bindingDepth
       return $ VVar p (Bound i') args'
 
     VLam p binder env body -> do
@@ -64,7 +64,8 @@ adjustDBIndices :: DBAdjustment a => BindingDepth -> (DBIndex -> Maybe DBIndex) 
 adjustDBIndices d sub e = runReader (adjustIndices e) (d, sub)
 
 liftFreeDBIndicesNorm :: BindingDepth -> NormExpr -> NormExpr
-liftFreeDBIndicesNorm amount = adjustDBIndices 0 (\i -> Just (i + amount))
+liftFreeDBIndicesNorm amount =
+  adjustDBIndices 0 (\i -> Just (i + DBIndex amount))
 
 liftEnvOverBinder :: Provenance -> Env -> Env
 liftEnvOverBinder p = extendEnv (VVar p (Bound 0) [])
@@ -112,8 +113,8 @@ instance Quote NormExpr CheckedExpr where
 
       return $ Lam p quotedBinder quotedBody
 
-envSubst :: [CheckedExpr] -> Substitution DBExpr
-envSubst env i = case env !!? i of
+envSubst :: BoundCtx CheckedExpr -> Substitution DBExpr
+envSubst env i = case lookupVar env i of
   Just v  -> Right v
   Nothing -> developerError $
     "Mis-sized environment" <+> pretty (show env) <+> "when quoting variable" <+> pretty i

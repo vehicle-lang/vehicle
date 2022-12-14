@@ -156,12 +156,12 @@ scopeExpr :: MonadScopeExpr m => InputExpr -> m UncheckedExpr
 scopeExpr = traverseVars scopeVar
 
 -- |Find the index for a given name of a given sort.
-scopeVar :: MonadScopeExpr m => Provenance -> Name -> m DBVar
+scopeVar :: MonadScopeExpr m => Provenance -> Name -> m DBIndexVar
 scopeVar p symbol = do
   (declCtx, boundCtx) <- ask
 
   case elemIndex (Just symbol) boundCtx of
-    Just i -> return $ Bound i
+    Just i -> return $ Bound $ DBIndex i
     Nothing -> case Map.lookup symbol declCtx of
       Just ident -> do
         tell [ident]

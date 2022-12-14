@@ -16,7 +16,6 @@ import Data.List.NonEmpty (NonEmpty)
 import GHC.Generics (Generic)
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Prelude qualified as V
-import Vehicle.Expr.DeBruijn
 
 -- |Definiton of the LExpr - all expressions allowed in a loss constraint
 data LExpr
@@ -31,7 +30,7 @@ data LExpr
   | Division LExpr LExpr
   | IndicatorFunction LExpr LExpr
   -- | variable (bound)
-  | Variable DBIndex
+  | Variable Int -- DBIndex
   -- | variable (free)
   | FreeVariable V.Name
   | NetworkApplication V.Name (NonEmpty LExpr)

@@ -24,7 +24,7 @@ import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import GHC.Generics (Generic)
 
-import Vehicle.Expr.DeBruijn (DBIndex)
+import Vehicle.Expr.DeBruijn (DBIndex (..))
 import Vehicle.Prelude
 
 
@@ -179,11 +179,11 @@ unnodeBVM bvm
     distrib x = [ IntMap.mapMaybe (\l -> join (l !!? i)) x | i <- [0..]]
 
 leafBVM :: DBIndex -> BoundVarMap
-leafBVM i = IntMap.singleton i Leaf
+leafBVM i = IntMap.singleton (dbIndex i) Leaf
 
 unleafBVM :: BoundVarMap -> DBIndex
 unleafBVM bvm = case IntMap.minViewWithKey bvm of
   Just ((i, Leaf), bvm')
-    | null bvm' -> i
+    | null bvm' -> DBIndex i
   _ -> developerError $ "Expecting a singleton BoundVarMap with a leaf node" <+>
                         "for Var but found" <+> pretty (show bvm)
