@@ -1,5 +1,7 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP          #-}
+#if nothunks
+{-# LANGUAGE BangPatterns #-}
+#endif
 
 module Vehicle.Prelude.Debug
   ( -- * Export 'ghc-debug-stub'
