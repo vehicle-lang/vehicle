@@ -193,19 +193,16 @@ instance HasProvenance (Expr binder var) where
 
 -- An expression that uses named variables for both binders and variables.
 type NamedBinder = Binder NamedBinding Name
-
 type NamedArg = Arg NamedBinding Name
-
 type NamedExpr = Expr NamedBinding Name
-
 type NamedDecl = Decl NamedBinding Name
-
 type NamedProg = Prog NamedBinding Name
 
 -- * Type of annotations attached to the AST after parsing
 
 -- before being analysed by the compiler
 type InputBinding = Maybe NamedBinding
+type InputVar     = Name
 
 type InputArg       = Arg    InputBinding InputVar
 type InputBinder    = Binder InputBinding InputVar
