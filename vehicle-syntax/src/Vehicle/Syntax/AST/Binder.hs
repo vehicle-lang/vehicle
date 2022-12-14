@@ -29,6 +29,10 @@ data BinderNamingForm
   | OnlyType
   deriving (Eq, Show, Generic)
 
+#if nothunks
+instance NoThunks BinderNamingForm
+#endif
+
 instance NFData   BinderNamingForm
 instance ToJSON   BinderNamingForm
 instance FromJSON BinderNamingForm
@@ -42,6 +46,10 @@ data BinderForm = BinderForm
   { namingForm  :: BinderNamingForm
   , foldingForm :: BinderFoldingForm
   } deriving (Eq, Show, Generic)
+
+#if nothunks
+instance NoThunks BinderForm
+#endif
 
 instance NFData   BinderForm
 instance ToJSON   BinderForm
@@ -76,15 +84,19 @@ instance (ToJSON   binder, ToJSON   expr) => ToJSON   (GenericBinder binder expr
 instance (FromJSON binder, FromJSON expr) => FromJSON (GenericBinder binder expr)
 
 instance HasProvenance (GenericBinder binder expr) where
+  provenanceOf :: GenericBinder binder expr -> Provenance
   provenanceOf = binderProvenance
 
 instance HasVisibility (GenericBinder binder expr) where
+  visibilityOf :: GenericBinder binder expr -> Visibility
   visibilityOf = binderVisibility
 
 instance HasRelevance (GenericBinder binder expr) where
+  relevanceOf :: GenericBinder binder expr -> Relevance
   relevanceOf = binderRelevance
 
 instance HasName (GenericBinder binder expr) binder where
+  nameOf :: GenericBinder binder expr -> binder
   nameOf = binderRepresentation
 
 --------------------------------------------------------------------------------

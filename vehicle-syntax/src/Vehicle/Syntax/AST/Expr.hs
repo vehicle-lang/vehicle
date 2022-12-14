@@ -10,7 +10,7 @@ import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..), (<+>))
+import Prettyprinter (Doc, Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Arg (GenericArg)
 import Vehicle.Syntax.AST.Binder (GenericBinder)
 import Vehicle.Syntax.AST.Builtin (Builtin, Linearity (..), Polarity (..))
@@ -48,6 +48,7 @@ instance ToJSON Universe
 instance FromJSON Universe
 
 instance Pretty Universe where
+  pretty :: Universe -> Doc ann
   pretty = \case
     TypeUniv l    -> "Type" <+> pretty l
     LinearityUniv -> "LinearityUniverse"
@@ -81,6 +82,7 @@ instance ToJSON Literal
 instance FromJSON Literal
 
 instance Pretty Literal where
+  pretty :: Literal -> Doc ann
   pretty = \case
     LUnit      -> "()"
     LBool x    -> pretty x
@@ -90,6 +92,7 @@ instance Pretty Literal where
     LRat x     -> pretty x
 
 instance Pretty Rational where
+  pretty :: Rational -> Doc ann
   pretty p = pretty (fromRational p :: Double)
 
 --------------------------------------------------------------------------------
@@ -177,6 +180,7 @@ instance (FromJSON binder, FromJSON var) => FromJSON (Expr binder var)
 type Type = Expr
 
 instance HasProvenance (Expr binder var) where
+  provenanceOf :: Expr binder var -> Provenance
   provenanceOf = \case
     Universe p _ -> p
     Hole p _     -> p
