@@ -1,0 +1,2 @@
+#!/bin/sh
+cabal --project-file=cabal.project.nothunks run vehicle:exe:vehicle -- $@
