@@ -1,0 +1,15 @@
+-- Cabal project configuration file for TESTING with +nothunks
+--
+-- Use `cabal` with `--project-file=cabal.project.nothunks`
+
+import: cabal.project
+
+package vehicle-syntax
+  flags:
+    -- Necessary for Vehicle AST to implement NoThunks
+    +nothunks
+
+package vehicle
+  flags:
+    -- Necessary for Vehicle Debug to implement unsafeCheckThunks
+    +nothunks

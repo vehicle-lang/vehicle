@@ -20,10 +20,12 @@ import GHC.Debug.Stub (Box (Box), pause, resume, saveClosures)
 
 -- Import nothunks and helpers:
 #if nothunks
-import Control.Monad (void)
-import GHC.Stack (callStack)
+import GHC.Stack (HasCallStack, callStack)
 import NoThunks.Class (NoThunks, unsafeNoThunks)
+#if ghcDebug
+import Control.Monad (void)
 import System.IO.Unsafe (unsafePerformIO)
+#endif
 #endif
 
 -- Define ghc-debug operators if needed:
@@ -51,7 +53,7 @@ resume = return ()
 #if ghcDebug
 -- If nothunks is defined & ghcDebug is defined:
 -- If we find a thunk, we pass it to ghc-debug, and pause execution.
-unsafeCheckThunks :: NoThunks a => a -> a
+unsafeCheckThunks :: (HasCallStack, NoThunks a) => a -> a
 unsafeCheckThunks !x = case unsafeNoThunks x of
     Nothing    -> x
     Just thunk ->
@@ -68,10 +70,14 @@ unsafeCheckThunks !x = case unsafeNoThunks x of
 #else
 -- If nothunks is defined & ghcDebug is NOT defined:
 -- If we find a thunk, we throw an error.
-unsafeCheckThunks :: NoThunks a => a -> a
+unsafeCheckThunks :: (HasCallStack, NoThunks a) => a -> a
 unsafeCheckThunks !x = case unsafeNoThunks x of
     Nothing    -> x
-    Just thunk -> error $ "Found a thunk: " <> show thunk
+    Just thunk -> error $ unlines
+      [ "Found a thunk: ",
+        "- " <> show thunk,
+        "- " <> show callStack
+      ]
 {-# INLINE unsafeCheckThunks #-}
 #endif
 #else

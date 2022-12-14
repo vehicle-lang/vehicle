@@ -1,7 +1,7 @@
 -- Cabal project configuration file for DEBUGGING
 --
--- Use `cabal` with `--project-file=cabal.project.debug`
--- or run vehicle via `./scripts/vehicle-debug`.
+-- Use `cabal` with `--project-file=cabal.project.ghc-debug`
+-- or run vehicle via `./scripts/vehicle-ghc-debug`.
 
 import: cabal.project
 
