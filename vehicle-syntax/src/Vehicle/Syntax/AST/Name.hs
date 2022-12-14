@@ -51,6 +51,7 @@ data Identifier = Identifier !Module !Name
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty Identifier where
+  pretty :: Identifier -> Doc ann
   pretty (Identifier m s) = pretty m <> "." <> pretty s
 
 #if nothunks

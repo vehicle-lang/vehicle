@@ -48,6 +48,7 @@ instance ToJSON   FunctionPosition
 instance FromJSON FunctionPosition
 
 instance Pretty FunctionPosition where
+  pretty :: FunctionPosition -> Doc ann
   pretty = \case
     FunctionInput n i -> "Input[" <> pretty n <> "][" <> pretty i <> "]"
     FunctionOutput n  -> "Output[" <> pretty n <> "]"

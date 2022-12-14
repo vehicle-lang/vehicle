@@ -251,6 +251,7 @@ instance Semigroup Provenance where
     Provenance (origin1 <> origin2) (owner1 <> owner2)
 
 instance Monoid Provenance where
+  mempty :: Provenance
   mempty = Provenance mempty mempty
 
 --------------------------------------------------------------------------------
