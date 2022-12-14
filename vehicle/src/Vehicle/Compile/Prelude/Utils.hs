@@ -40,7 +40,7 @@ isAnnBoolType _             = False
 --------------------------------------------------------------------------------
 -- Enumeration functions
 
-freeNamesIn :: Expr binder DBVar -> [Identifier]
+freeNamesIn :: Expr binder DBIndexVar -> [Identifier]
 freeNamesIn = cata $ \case
   VarF  _ (Free ident)      -> [ident]
   VarF  _ (Bound _)         -> []

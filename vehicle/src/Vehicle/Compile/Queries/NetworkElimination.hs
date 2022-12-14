@@ -474,7 +474,7 @@ compileLinearExpr expr = do
   exprSize <- getExprSize
   return $ linearExprFromMap exprSize linearExpr
   where
-  singletonVar :: MonadSMT m => DBVar -> Coefficient -> m (Map Int Coefficient)
+  singletonVar :: MonadSMT m => DBIndexVar -> Coefficient -> m (Map Int Coefficient)
   singletonVar Free{}    _ = normalisationError currentPass "FreeVar"
   singletonVar (Bound v) c = do
     numberOfUserVariables <- getNumberOfUserVariables

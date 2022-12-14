@@ -1,9 +1,12 @@
-{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Expr.DeBruijn
-  ( DBVar(..)
+  ( LocallyNamelessVar(..)
   , DBBinding
-  , DBIndex
+  , DBIndex(..)
+  , DBIndexVar
+  , DBLevel(..)
+  , DBLevelVar
   , DBBinder
   , DBArg
   , DBExpr
@@ -11,7 +14,6 @@ module Vehicle.Expr.DeBruijn
   , DBProg
   , BindingDepth
   , Substitution
-  , Substitutable(substituteDB)
   , substDBInto
   , substDBIntoAtLevel
   , substDBAll
@@ -26,24 +28,56 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)
 
+import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
 -- Definitions
 
--- | A DeBruijn index pointing to the binder that the variable refers to.
-type DBIndex = Int
-
 -- |The type of data DeBruijn indices store at name sites
-data DBVar
+data LocallyNamelessVar a
   = Free Identifier
-  | Bound DBIndex
+  | Bound a
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   DBVar
-instance Hashable DBVar
-instance ToJSON   DBVar
-instance FromJSON DBVar
+instance NFData a   => NFData   (LocallyNamelessVar a)
+instance Hashable a => Hashable (LocallyNamelessVar a)
+instance ToJSON a   => ToJSON   (LocallyNamelessVar a)
+instance FromJSON a => FromJSON (LocallyNamelessVar a)
+
+-- | A DeBruijn index pointing to the binder that the variable refers to,
+-- counting from the variable position upwards.
+newtype DBIndex = DBIndex
+  { dbIndex :: Int
+  } deriving (Eq, Ord, Num, Show, Generic)
+
+instance NFData   DBIndex
+instance Hashable DBIndex
+instance ToJSON   DBIndex
+instance FromJSON DBIndex
+
+instance Pretty DBIndex where
+  pretty i = "i" <> pretty i
+
+-- | A DeBruijn index pointing to the binder that the variable refers to,
+-- counting from the top of the expression downwards.
+newtype DBLevel = DBLevel
+  { dbLevel :: Int
+  } deriving (Eq, Ord, Num, Show, Generic)
+
+instance NFData   DBLevel
+instance Hashable DBLevel
+instance ToJSON   DBLevel
+instance FromJSON DBLevel
+
+instance Pretty DBLevel where
+  pretty l = "l" <> pretty l
+
+-- |The type of data DeBruijn indices store at name sites
+type DBIndexVar = LocallyNamelessVar DBIndex
+
+-- |The type of data DeBruijn levels store at name sites
+type DBLevelVar = LocallyNamelessVar DBLevel
 
 -- |The type of the data DeBruijn notation stores at binding sites.
 type DBBinding = Maybe Name
@@ -56,11 +90,11 @@ type BindingDepth = Int
 -- Expressions
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type DBBinder = Binder DBBinding DBVar
-type DBArg    = Arg    DBBinding DBVar
-type DBExpr   = Expr   DBBinding DBVar
-type DBDecl   = Decl   DBBinding DBVar
-type DBProg   = Prog   DBBinding DBVar
+type DBBinder = Binder DBBinding DBIndexVar
+type DBArg    = Arg    DBBinding DBIndexVar
+type DBExpr   = Expr   DBBinding DBIndexVar
+type DBDecl   = Decl   DBBinding DBIndexVar
+type DBProg   = Prog   DBBinding DBIndexVar
 
 --------------------------------------------------------------------------------
 -- A framework for writing generic operations on DeBruijn variables
@@ -89,38 +123,34 @@ underDBBinder = local (first (+1))
 
 -- | Lift all DeBruijn indices that refer to environment variables by the
 -- provided depth.
-liftDBIndices :: Substitutable value target
-              => Int                            -- ^ amount to lift by
-              -> target                         -- ^ target term to lift
-              -> target                         -- ^ lifted term
-liftDBIndices d = substituteDB 0 (\v -> Left (v+d))
+liftDBIndices :: Int                            -- ^ amount to lift by
+              -> DBExpr                         -- ^ target term to lift
+              -> DBExpr                         -- ^ lifted term
+liftDBIndices d = substituteDB 0 (\v -> Left (v + DBIndex d))
 
 -- | De Bruijn aware substitution of one expression into another
-substDBIntoAtLevel :: forall value target . Substitutable value target
-                 => DBIndex      -- ^ The index of the variable of which to substitute
-                 -> value        -- ^ expression to substitute
-                 -> target       -- ^ term to substitute into
-                 -> target       -- ^ the result of the substitution
+substDBIntoAtLevel :: DBIndex      -- ^ The index of the variable of which to substitute
+                   -> DBExpr        -- ^ expression to substitute
+                   -> DBExpr       -- ^ term to substitute into
+                   -> DBExpr       -- ^ the result of the substitution
 substDBIntoAtLevel level value = substituteDB 0 substVar
   where
-    substVar :: DBIndex -> Either DBIndex value
+    substVar :: DBIndex -> Either DBIndex DBExpr
     substVar v
       | v == level = Right value
       | v > level  = Left (v - 1)
       | otherwise  = Left v
 
 -- | De Bruijn aware substitution of one expression into another
-substDBInto :: Substitutable value target
-          => value  -- ^ expression to substitute
-          -> target -- ^ term to substitute into
-          -> target -- ^ the result of the substitution
+substDBInto :: DBExpr  -- ^ expression to substitute
+            -> DBExpr -- ^ term to substitute into
+            -> DBExpr -- ^ the result of the substitution
 substDBInto = substDBIntoAtLevel 0
 
-substDBAll :: Substitutable value target
-         => BindingDepth
+substDBAll :: BindingDepth
          -> (DBIndex -> Maybe DBIndex)
-         -> target
-         -> target
+         -> DBExpr
+         -> DBExpr
 substDBAll depth sub = substituteDB depth (\v -> maybe (Left v) Left (sub v))
 
 
@@ -132,10 +162,10 @@ instance Substitutable DBExpr DBExpr where
 
     Var p (Bound i) -> do
       (d, s) <- ask
-      return $ if i < d then
+      return $ if i < DBIndex d then
         Var p (Bound i)
-      else case s (i - d) of
-        Left i' -> Var p (Bound (i' + d))
+      else case s (i - DBIndex d) of
+        Left i' -> Var p (Bound (i' + DBIndex d))
         Right v -> if d > 0 then liftDBIndices d v else v
 
     Universe p l        -> return $ Universe p l

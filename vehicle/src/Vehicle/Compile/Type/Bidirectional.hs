@@ -228,11 +228,10 @@ inferExpr e = do
       inferApp p checkedFun checkedFunType (NonEmpty.toList args)
 
     Var p (Bound i) -> do
-      -- Lookup the type of the variable in the context.
       ctx <- getBoundCtx
-      case ctx !!? i of
+      case lookupVar ctx i of
         Just (_, checkedType, _) -> do
-          let liftedCheckedType = liftDBIndices (i+1) checkedType
+          let liftedCheckedType = liftDBIndices (dbIndex i+1) checkedType
           return (Var p (Bound i), liftedCheckedType)
         Nothing      -> compilerDeveloperError $
           "DBIndex" <+> pretty i <+> "out of bounds when looking" <+>

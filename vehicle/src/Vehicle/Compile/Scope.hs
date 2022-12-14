@@ -156,7 +156,7 @@ scopeExpr :: MonadScopeExpr m => InputExpr -> m UncheckedExpr
 scopeExpr = traverseVars scopeVar
 
 -- |Find the index for a given name of a given sort.
-scopeVar :: MonadScopeExpr m => Provenance -> Name -> m DBVar
+scopeVar :: MonadScopeExpr m => Provenance -> Name -> m DBIndexVar
 scopeVar p symbol = do
   (declCtx, boundCtx) <- ask
 

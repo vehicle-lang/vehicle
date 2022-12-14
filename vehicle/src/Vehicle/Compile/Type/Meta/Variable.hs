@@ -51,9 +51,9 @@ makeMetaExpr :: Provenance
 makeMetaExpr p metaID boundCtxSize = do
   -- Create bound variables for everything in the context
   let ann = inserted p
-  let deps = reverse [0..boundCtxSize - 1]
-  let unnormBoundEnv = [ ExplicitArg ann (Var ann (Bound i)) | i <- deps ]
-  let normBoundEnv = [ ExplicitArg ann (VVar ann (Bound i) []) | i <- deps ]
+  let deps = fmap (Bound . DBIndex) (reverse [0..boundCtxSize - 1])
+  let unnormBoundEnv = [ ExplicitArg ann (Var  ann i)    | i <- deps ]
+  let normBoundEnv   = [ ExplicitArg ann (VVar ann i []) | i <- deps ]
 
   -- Returns a meta applied to every bound variable in the context
   Glued

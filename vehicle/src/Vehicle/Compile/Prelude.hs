@@ -26,7 +26,7 @@ import Vehicle.Syntax.AST as X
 -- * Types pre type-checking
 
 type UncheckedBinding = DBBinding
-type UncheckedVar     = DBVar
+type UncheckedVar     = DBIndexVar
 
 type UncheckedBinder = DBBinder
 type UncheckedArg    = DBArg
@@ -38,7 +38,7 @@ type UncheckedProg   = DBProg
 -- * Types post type-checking
 
 type CheckedBinding = DBBinding
-type CheckedVar     = DBVar
+type CheckedVar     = DBIndexVar
 
 type CheckedBinder = DBBinder
 type CheckedArg    = DBArg
@@ -62,11 +62,11 @@ type OutputDecl   = Decl   OutputBinding OutputVar
 type OutputProg   = Prog   OutputBinding OutputVar
 
 -- | De Bruijn expressions that have had the missing names supplied.
-type SuppliedDBExpr   = Expr   NamedBinding DBVar
-type SuppliedDBArg    = Arg    NamedBinding DBVar
-type SuppliedDBBinder = Binder NamedBinding DBVar
-type SuppliedDBProg   = Prog   NamedBinding DBVar
-type SuppliedDBDecl   = Decl   NamedBinding DBVar
+type SuppliedDBExpr   = Expr   NamedBinding DBIndexVar
+type SuppliedDBArg    = Arg    NamedBinding DBIndexVar
+type SuppliedDBBinder = Binder NamedBinding DBIndexVar
+type SuppliedDBProg   = Prog   NamedBinding DBIndexVar
+type SuppliedDBDecl   = Decl   NamedBinding DBIndexVar
 
 -- | An expression paired with a position tree represting positions within it.
 -- Currently used mainly for pretty printing position trees.
