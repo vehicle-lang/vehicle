@@ -77,12 +77,11 @@ liftOr f e                     = f e
 lowerNot :: CheckedExpr -> CheckedExpr
 lowerNot arg = case arg of
   -- Base cases
-  BoolLiteral    p b                    -> BoolLiteral p (not b)
-  OrderExpr      p dom ord args         -> OrderExpr p dom (neg ord) args
-  OrderTCExpr    p ord t1 t2 t3 s args  -> OrderTCExpr p (neg ord) t1 t2 t3 (lowerNot s) args
-  EqualityExpr   p dom eq args          -> EqualityExpr p dom (neg eq) args
-  EqualityTCExpr p eq t1 t2 t3 s args   -> EqualityTCExpr p (neg eq) t1 t2 t3 (lowerNot s) args
-  NotExpr       _ [e]                   -> argExpr e
+  BoolLiteral    p b               -> BoolLiteral p (not b)
+  OrderExpr      p dom ord args    -> OrderExpr p dom (neg ord) args
+  Builtin        p (Equals dom eq) -> Builtin p (Equals dom (neg eq))
+  EqualityExpr   p dom eq args     -> EqualityExpr p dom (neg eq) args
+  NotExpr       _ [e]              -> argExpr e
 
   -- Inductive cases
   ForallRatExpr p binder body  -> ExistsRatExpr p binder $ lowerNot body
@@ -93,7 +92,7 @@ lowerNot arg = case arg of
   IfExpr p tRes [c, e1, e2]    -> IfExpr p tRes [c, lowerNotArg e1, lowerNotArg e2]
 
   -- Errors
-  e  -> developerError ("Unable to lower 'not' through" <+> prettyVerbose e)
+  e -> developerError ("Unable to lower 'not' through" <+> prettyVerbose e)
 
 lowerNotArg :: CheckedArg -> CheckedArg
 lowerNotArg = fmap lowerNot
