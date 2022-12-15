@@ -3,6 +3,7 @@
 module Vehicle.Syntax.AST.NoThunks where
 
 #if nothunks
+import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Builtin
 import Vehicle.Syntax.AST.Builtin.Core
@@ -21,7 +22,6 @@ import Vehicle.Syntax.AST.Visibility
 import NoThunks.Class (NoThunks)
 
 -- Vehicle.Syntax.AST.Builtin.Core
-instance NoThunks LinearityTypeClass
 instance NoThunks FunctionPosition
 instance NoThunks EqualityOp
 instance NoThunks EqualityDomain
@@ -43,7 +43,7 @@ instance NoThunks PolarityTypeClass
 instance NoThunks TypeClass
 instance NoThunks TypeClassOp
 
--- Vehicle.Syntax.AST.Binder
+-- Vehicle.Syntax.AST.Arg
 instance NoThunks expr => NoThunks (GenericArg expr)
 
 -- Vehicle.Syntax.AST.Binder

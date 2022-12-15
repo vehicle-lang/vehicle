@@ -11,6 +11,14 @@ module Vehicle.Syntax.AST.Provenance
   , expandProvenance
   , fillInProvenance
   , wasInsertedByCompiler
+
+    -- * Internal types for 'Provenance'
+    --
+    -- Must be exported for use in 'Vehicle.Syntax.AST.NoThunks', but should be hidden in 'Vehicle.Syntax.AST'
+  , Origin
+  , Owner
+  , Position
+  , Range
   ) where
 
 import Control.DeepSeq (NFData (..))
