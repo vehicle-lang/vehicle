@@ -108,7 +108,7 @@ instance HasMetas CheckedExpr where
     Hole{}                   -> return ()
     Literal{}                -> return ()
     Builtin{}                -> return ()
-    Var{}                   -> return ()
+    Var{}                    -> return ()
 
     LVec _ xs                -> findMetas xs
     Ann  _ e t               -> do findMetas e; findMetas t

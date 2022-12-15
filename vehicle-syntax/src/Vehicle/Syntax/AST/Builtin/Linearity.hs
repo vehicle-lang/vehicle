@@ -59,11 +59,11 @@ data Linearity
   deriving (Eq, Show, Generic)
 
 instance Ord Linearity where
-  Constant <= _              = True
-  Linear{} <= Linear{}       = True
-  Linear{} <= NonLinear{}    = True
+  Constant    <= _           = True
+  Linear{}    <= Linear{}    = True
+  Linear{}    <= NonLinear{} = True
   NonLinear{} <= NonLinear{} = True
-  _ <= _                     = False
+  _           <= _           = False
 
 #if nothunks
 instance NoThunks Linearity

@@ -6,8 +6,8 @@ module Vehicle.Syntax.AST.Provenance
   , tkProvenance
   , datasetProvenance
   , parameterProvenance
-  ,  inserted
-  , HasProvenance (..)
+  , inserted
+  , HasProvenance(..)
   , expandProvenance
   , fillInProvenance
   , wasInsertedByCompiler
@@ -34,15 +34,14 @@ import NoThunks.Class (NoThunks)
 -- Position
 
 -- | A position in the source file is represented by a line number and a column
---  number.
+-- number.
 --
---  Note we don't use the names `line` and `column` as they clash with the
---  `Prettyprinter` library.
+-- Note we don't use the names `line` and `column` as they clash with the
+-- `Prettyprinter` library.
 data Position = Position
   { posLine   :: !Int,
     posColumn :: !Int
-  }
-  deriving (Eq, Ord, Generic)
+  } deriving (Eq, Ord, Generic)
 
 instance Show Position where
   show (Position l c) = show (l, c)
@@ -74,8 +73,7 @@ alterColumn f (Position l c) = Position l (f c)
 data Range = Range
   { start :: !Position,
     end   :: !Position
-  }
-  deriving (Show, Eq, Generic)
+  } deriving (Show, Eq, Generic)
 
 #if nothunks
 instance NoThunks Range
@@ -86,13 +84,11 @@ instance Ord Range where
 
 instance Pretty Range where
   pretty (Range p1 p2) =
-    if posLine p1 == posLine p2
-      then
-        "Line"
-          <+> pretty (posLine p1) <> ","
-          <+> "Columns"
-          <+> pretty (posColumn p1) <> "-" <> pretty (posColumn p2)
-      else pretty p1 <+> "-" <+> pretty p2
+    if posLine p1 == posLine p2 then
+      "Line" <+> pretty (posLine p1) <> "," <+>
+      "Columns" <+> pretty (posColumn p1) <> "-" <> pretty (posColumn p2)
+    else
+      pretty p1 <+> "-" <+> pretty p2
 
 -- Doesn't handle anything except inclusive ranges as that's all we use in our code
 -- at the moment.
@@ -112,12 +108,10 @@ data Owner
   deriving (Show, Eq, Ord, Generic)
 
 instance Semigroup Owner where
-  (<>) :: Owner -> Owner -> Owner
   TheUser <> _    = TheUser
   TheMachine <> r = r
 
 instance Monoid Owner where
-  mempty :: Owner
   mempty = TheMachine
 
 #if nothunks
@@ -145,7 +139,6 @@ instance NoThunks Origin
 #endif
 
 instance Semigroup Origin where
-  (<>) :: Origin -> Origin -> Origin
   FromSource r1     <> FromSource r2   = FromSource (mergeRangePair r1 r2)
   p@FromSource{}    <> _               = p
   _                 <> p@FromSource{}  = p
@@ -166,8 +159,8 @@ instance Pretty Origin where
 -- Provenance
 
 data Provenance = Provenance
-  { origin :: !Origin,
-    owner  :: !Owner
+  { origin :: !Origin
+  , owner  :: !Owner
   } deriving (Generic)
 
 instance Show Provenance where
@@ -219,9 +212,8 @@ fillInProvenance provenances = do
     getPositions :: Provenance -> (Position, Position)
     getPositions (Provenance origin _) = case origin of
       FromSource (Range start end) -> (start, end)
-      _ ->
-        error
-          "Should not be filling in provenance from non-source file locations"
+      _ -> error
+        "Should not be filling in provenance from non-source file locations"
 
 expandProvenance :: (Int, Int) -> Provenance -> Provenance
 expandProvenance w (Provenance (FromSource rs) o) = Provenance (FromSource (expandRange w rs)) o

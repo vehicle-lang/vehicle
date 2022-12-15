@@ -21,14 +21,14 @@ import NoThunks.Class (NoThunks)
 -- | An argument to a function, parameterised by the type of expression it
 -- stores.
 data GenericArg expr = Arg
-  { -- | Has the argument been auto-inserted by the type-checker?
-    argProvenance :: !Provenance,
-    -- | The visibility of the argument
-    argVisibility :: !Visibility,
-    -- | The relevancy of the argument
-    argRelevance  :: !Relevance,
-    -- | The argument expression
-    argExpr       :: !expr
+  -- | Has the argument been auto-inserted by the type-checker?
+  { argProvenance  :: !Provenance
+  -- | The visibility of the argument
+  ,  argVisibility :: !Visibility
+  -- | The relevancy of the argument
+  , argRelevance   :: !Relevance
+  -- | The argument expression
+  , argExpr        :: !expr
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 

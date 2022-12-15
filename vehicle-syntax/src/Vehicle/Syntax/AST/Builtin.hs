@@ -3,8 +3,8 @@
 
 -- | This module exports the datatype representations of the builtin symbols.
 module Vehicle.Syntax.AST.Builtin
-  ( module Vehicle.Syntax.AST.Builtin,
-    module X,
+  ( module Vehicle.Syntax.AST.Builtin
+  , module X
   ) where
 
 import Control.DeepSeq (NFData (..))
@@ -325,7 +325,7 @@ instance FromJSON MapDomain
 data Builtin
   = Constructor !BuiltinConstructor
   -- Boolean expressions
-    | Not
+  | Not
   | And
   | Or
   | Implies

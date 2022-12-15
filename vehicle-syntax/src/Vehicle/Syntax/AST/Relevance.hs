@@ -39,7 +39,6 @@ isIrrelevant :: HasRelevance a => a -> Bool
 isIrrelevant x = relevanceOf x == Irrelevant
 
 instance HasRelevance TypeClass where
-  relevanceOf :: TypeClass -> Relevance
   relevanceOf = \case
     HasEq{}                 -> Relevant
     HasOrd{}                -> Relevant
