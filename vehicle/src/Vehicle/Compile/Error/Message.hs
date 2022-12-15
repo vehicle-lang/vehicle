@@ -790,6 +790,15 @@ instance MeaningfulError CompileError where
       , fix        = Just "choose a different compilation target than VNNLib"
       }
 
+    UnsupportedNegatedOperation logic (_ident, _declProv) notProv expr -> UError $ UserError
+      { provenance = notProv
+      , problem    = "The differential logic" <+> quotePretty logic <+> "does not support" <+>
+                     "the" <+> quotePretty NotTC <+> "at" <+> pretty notProv <+> "applied to" <+>
+                     "an expression with the following subterm" <+>
+                     squotes (prettyFriendlyDBClosed expr) <> "at" <+> pretty (provenanceOf expr) <> "."
+      , fix        = Just "choose a different differential logic"
+      }
+
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =
   "change the" <+> feature <+> "of" <+> prettyIdentName ident <+> "in the specification" <+>

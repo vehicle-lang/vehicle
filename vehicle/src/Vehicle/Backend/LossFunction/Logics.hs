@@ -8,7 +8,7 @@ module Vehicle.Backend.LossFunction.Logics
   , lukasiewiczTranslation
   , productTranslation
   , yagerTranslation
-  , chooseTranslation
+  , implementationOf
   ) where
 
 import Data.Aeson (FromJSON, ToJSON)
@@ -84,13 +84,13 @@ data DifferentialLogicImplementation = DifferentialLogicImplementation
   , compileFalse   :: Double
   }
 
-chooseTranslation :: DifferentiableLogic -> DifferentialLogicImplementation
-chooseTranslation = \case
-    DL2         -> dl2Translation
-    Godel       -> godelTranslation
-    Lukasiewicz -> lukasiewiczTranslation
-    Product     -> productTranslation
-    Yager       -> yagerTranslation
+implementationOf :: DifferentiableLogic -> DifferentialLogicImplementation
+implementationOf = \case
+  DL2         -> dl2Translation
+  Godel       -> godelTranslation
+  Lukasiewicz -> lukasiewiczTranslation
+  Product     -> productTranslation
+  Yager       -> yagerTranslation
 
 --------------------------------------------------------------------------------
 -- different available  differentiable logics

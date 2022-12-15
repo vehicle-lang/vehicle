@@ -5,10 +5,10 @@
       "needs": ["logic-and-comparisons.vcl"]
     },
     {
-      "name": "LossFunction",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction -o logic-and-comparisons.loss.json",
+      "name": "LossFunction-DL2",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction -o logic-and-comparisons-DL2.loss.json",
       "needs": ["logic-and-comparisons.vcl"],
-      "produces": ["logic-and-comparisons.loss.json"]
+      "produces": ["logic-and-comparisons-DL2.loss.json"]
     },
     {
       "name": "LossFunction-Godel",

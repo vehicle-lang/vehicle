@@ -118,7 +118,8 @@ data CompileError
   | NoNetworkUsedInProperty          Backend Provenance Identifier
   | UnsupportedVariableType           VerifierIdentifier Identifier Provenance Name CheckedType [Builtin]
   | UnsupportedAlternatingQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
-  | UnsupportedNonLinearConstraint   Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
+  | UnsupportedNonLinearConstraint    Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
+  | UnsupportedNegatedOperation       DifferentiableLogic DeclProvenance Provenance CheckedExpr
   deriving (Show)
 
 --------------------------------------------------------------------------------
