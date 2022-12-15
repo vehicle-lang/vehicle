@@ -11,13 +11,8 @@ import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 import Vehicle.Syntax.AST.Relevance (HasRelevance (..), Relevance (..))
 import Vehicle.Syntax.AST.Visibility (HasVisibility (..), Visibility (..))
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
-
 --------------------------------------------------------------------------------
 -- Binders
-
 
 -- | What form the binder appears in the user expression
 data BinderNamingForm
@@ -28,10 +23,6 @@ data BinderNamingForm
   -- | Only type appears (e.g. {{HasEq A}})
   | OnlyType
   deriving (Eq, Show, Generic)
-
-#if nothunks
-instance NoThunks BinderNamingForm
-#endif
 
 instance NFData   BinderNamingForm
 instance ToJSON   BinderNamingForm
@@ -46,10 +37,6 @@ data BinderForm = BinderForm
   { namingForm  :: BinderNamingForm
   , foldingForm :: BinderFoldingForm
   } deriving (Eq, Show, Generic)
-
-#if nothunks
-instance NoThunks BinderForm
-#endif
 
 instance NFData   BinderForm
 instance ToJSON   BinderForm
@@ -74,10 +61,6 @@ data GenericBinder binder expr = Binder
   , binderType           :: !expr
   -- The type of the bound variable
   } deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
-
-#if nothunks
-instance (NoThunks binder, NoThunks expr) => NoThunks (GenericBinder binder expr)
-#endif
 
 instance (NFData   binder, NFData   expr) => NFData   (GenericBinder binder expr)
 instance (ToJSON   binder, ToJSON   expr) => ToJSON   (GenericBinder binder expr)

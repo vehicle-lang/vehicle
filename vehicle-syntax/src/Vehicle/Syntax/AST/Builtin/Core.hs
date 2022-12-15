@@ -26,10 +26,6 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..))
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
-
 --------------------------------------------------------------------------------
 -- Function positions
 
@@ -39,9 +35,6 @@ data FunctionPosition
   | FunctionOutput !Text
   deriving (Eq, Show, Generic)
 
-#if nothunks
-instance NoThunks FunctionPosition
-#endif
 instance NFData   FunctionPosition
 instance Hashable FunctionPosition
 instance ToJSON   FunctionPosition
@@ -60,9 +53,6 @@ data EqualityOp
   | Neq
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks EqualityOp
-#endif
 instance NFData   EqualityOp
 instance Hashable EqualityOp
 instance ToJSON   EqualityOp
@@ -89,9 +79,6 @@ data EqualityDomain
   | EqRat
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks EqualityDomain
-#endif
 instance NFData   EqualityDomain
 instance Hashable EqualityDomain
 instance ToJSON   EqualityDomain
@@ -114,9 +101,6 @@ data OrderOp
   | Gt
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks OrderOp
-#endif
 instance NFData   OrderOp
 instance Hashable OrderOp
 instance ToJSON   OrderOp
@@ -169,9 +153,6 @@ data OrderDomain
   | OrderRat
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks OrderDomain
-#endif
 instance NFData   OrderDomain
 instance Hashable OrderDomain
 instance ToJSON   OrderDomain
@@ -192,9 +173,6 @@ data Quantifier
   | Exists
   deriving (Show, Eq, Ord, Generic)
 
-#if nothunks
-instance NoThunks Quantifier
-#endif
 instance NFData   Quantifier
 instance Hashable Quantifier
 instance ToJSON   Quantifier

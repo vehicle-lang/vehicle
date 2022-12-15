@@ -8,9 +8,7 @@ import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..))
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
+
 
 --------------------------------------------------------------------------------
 -- Meta-variables
@@ -18,16 +16,9 @@ import NoThunks.Class (NoThunks)
 newtype MetaID = MetaID Int
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks   MetaID
-#endif
-
 instance NFData MetaID
-
 instance Hashable MetaID
-
 instance ToJSON MetaID
-
 instance FromJSON MetaID
 
 instance Pretty MetaID where

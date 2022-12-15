@@ -22,9 +22,7 @@ import Vehicle.Syntax.AST.Builtin.Linearity as X
 import Vehicle.Syntax.AST.Builtin.Polarity as X
 import Vehicle.Syntax.AST.Builtin.TypeClass as X
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
+
 
 --------------------------------------------------------------------------------
 -- Constructors
@@ -51,16 +49,9 @@ data BuiltinConstructor
   | Cons
   deriving (Eq, Show, Generic)
 
-#if nothunks
-instance NoThunks BuiltinConstructor
-#endif
-
 instance NFData BuiltinConstructor
-
 instance Hashable BuiltinConstructor
-
 instance ToJSON BuiltinConstructor
-
 instance FromJSON BuiltinConstructor
 
 instance Pretty BuiltinConstructor where
@@ -87,16 +78,9 @@ data NegDomain
   | NegRat
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks NegDomain
-#endif
-
 instance NFData NegDomain
-
 instance Hashable NegDomain
-
 instance ToJSON NegDomain
-
 instance FromJSON NegDomain
 
 instance Pretty NegDomain where
@@ -115,16 +99,9 @@ data AddDomain
   | AddRat
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks AddDomain
-#endif
-
 instance NFData AddDomain
-
 instance Hashable AddDomain
-
 instance ToJSON AddDomain
-
 instance FromJSON AddDomain
 
 instance Pretty AddDomain where
@@ -138,16 +115,9 @@ data SubDomain
   | SubRat
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks SubDomain
-#endif
-
 instance NFData SubDomain
-
 instance Hashable SubDomain
-
 instance ToJSON SubDomain
-
 instance FromJSON SubDomain
 
 instance Pretty SubDomain where
@@ -171,16 +141,9 @@ data MulDomain
   | MulRat
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks MulDomain
-#endif
-
 instance NFData MulDomain
-
 instance Hashable MulDomain
-
 instance ToJSON MulDomain
-
 instance FromJSON MulDomain
 
 instance Pretty MulDomain where
@@ -193,16 +156,9 @@ data DivDomain
   = DivRat
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks DivDomain
-#endif
-
 instance NFData DivDomain
-
 instance Hashable DivDomain
-
 instance ToJSON DivDomain
-
 instance FromJSON DivDomain
 
 instance Pretty DivDomain where
@@ -223,16 +179,9 @@ instance Pretty FromNatDomain where
     FromNatToInt   -> "Int"
     FromNatToRat   -> "Rat"
 
-#if nothunks
-instance NoThunks FromNatDomain
-#endif
-
 instance NFData FromNatDomain
-
 instance Hashable FromNatDomain
-
 instance ToJSON FromNatDomain
-
 instance FromJSON FromNatDomain
 
 data FromRatDomain
@@ -243,16 +192,9 @@ instance Pretty FromRatDomain where
   pretty = \case
     FromRatToRat -> "Rat"
 
-#if nothunks
-instance NoThunks FromRatDomain
-#endif
-
 instance NFData FromRatDomain
-
 instance Hashable FromRatDomain
-
 instance ToJSON FromRatDomain
-
 instance FromJSON FromRatDomain
 
 data FromVecDomain
@@ -265,16 +207,9 @@ instance Pretty FromVecDomain where
     FromVecToVec  -> "Vector"
     FromVecToList -> "List"
 
-#if nothunks
-instance NoThunks FromVecDomain
-#endif
-
 instance NFData FromVecDomain
-
 instance Hashable FromVecDomain
-
 instance ToJSON FromVecDomain
-
 instance FromJSON FromVecDomain
 
 data FoldDomain
@@ -287,16 +222,9 @@ instance Pretty FoldDomain where
     FoldList   -> "List"
     FoldVector -> "Vector"
 
-#if nothunks
-instance NoThunks FoldDomain
-#endif
-
 instance NFData FoldDomain
-
 instance Hashable FoldDomain
-
 instance ToJSON FoldDomain
-
 instance FromJSON FoldDomain
 
 data MapDomain
@@ -309,16 +237,9 @@ instance Pretty MapDomain where
     MapList   -> "List"
     MapVector -> "Vector"
 
-#if nothunks
-instance NoThunks MapDomain
-#endif
-
 instance NFData MapDomain
-
 instance Hashable MapDomain
-
 instance ToJSON MapDomain
-
 instance FromJSON MapDomain
 
 -- | Builtins in the Vehicle language
@@ -352,16 +273,9 @@ data Builtin
   | Foreach
   deriving (Eq, Show, Generic)
 
-#if nothunks
-instance NoThunks Builtin
-#endif
-
 instance NFData Builtin
-
 instance Hashable Builtin
-
 instance ToJSON Builtin
-
 instance FromJSON Builtin
 
 -- TODO all the show instances should really be obtainable from the grammar

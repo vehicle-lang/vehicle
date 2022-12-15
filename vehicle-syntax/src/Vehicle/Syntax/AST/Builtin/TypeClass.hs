@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 
-
 module Vehicle.Syntax.AST.Builtin.TypeClass where
 
 import Control.DeepSeq (NFData (..))
@@ -11,10 +10,6 @@ import Prettyprinter (Doc, Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Builtin.Core (EqualityOp, OrderOp, Quantifier)
 import Vehicle.Syntax.AST.Builtin.Linearity (LinearityTypeClass)
 import Vehicle.Syntax.AST.Builtin.Polarity (PolarityTypeClass)
-
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
 
 --------------------------------------------------------------------------------
 -- Type classes
@@ -54,16 +49,9 @@ data TypeClass
   | PolarityTypeClass !PolarityTypeClass
   deriving (Eq, Generic, Show)
 
-#if nothunks
-instance NoThunks TypeClass
-#endif
-
 instance NFData TypeClass
-
 instance Hashable TypeClass
-
 instance ToJSON TypeClass
-
 instance FromJSON TypeClass
 
 instance Pretty TypeClass where
@@ -113,16 +101,9 @@ data TypeClassOp
   | QuantifierInTC !Quantifier
   deriving (Eq, Generic, Show)
 
-#if nothunks
-instance NoThunks TypeClassOp
-#endif
-
 instance NFData TypeClassOp
-
 instance Hashable TypeClassOp
-
 instance ToJSON TypeClassOp
-
 instance FromJSON TypeClassOp
 
 instance Pretty TypeClassOp where

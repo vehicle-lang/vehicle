@@ -11,10 +11,6 @@ import Prettyprinter (Doc, Pretty (..))
 import Vehicle.Syntax.AST.Builtin.Core (FunctionPosition)
 import Vehicle.Syntax.AST.Provenance (Provenance)
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
-
 --------------------------------------------------------------------------------
 -- LinearityProvenance
 
@@ -27,12 +23,7 @@ data LinearityProvenance
   | LinFunctionProvenance !Provenance !LinearityProvenance !FunctionPosition
   deriving (Generic)
 
-#if nothunks
-instance NoThunks LinearityProvenance
-#endif
-
 instance ToJSON LinearityProvenance
-
 instance FromJSON LinearityProvenance
 
 instance Show LinearityProvenance where
@@ -65,16 +56,9 @@ instance Ord Linearity where
   NonLinear{} <= NonLinear{} = True
   _           <= _           = False
 
-#if nothunks
-instance NoThunks Linearity
-#endif
-
 instance NFData Linearity
-
 instance Hashable Linearity
-
 instance ToJSON Linearity
-
 instance FromJSON Linearity
 
 instance Pretty Linearity where
@@ -101,16 +85,9 @@ data LinearityTypeClass
   | IfCondLinearity
   deriving (Eq, Generic, Show)
 
-#if nothunks
-instance NoThunks LinearityTypeClass
-#endif
-
 instance ToJSON LinearityTypeClass
-
 instance FromJSON LinearityTypeClass
-
 instance NFData LinearityTypeClass
-
 instance Hashable LinearityTypeClass
 
 instance Pretty LinearityTypeClass where

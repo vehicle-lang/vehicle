@@ -11,10 +11,6 @@ import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Decl (GenericDecl)
 import Vehicle.Syntax.Prelude (strict)
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
-
 --------------------------------------------------------------------------------
 -- Programs
 
@@ -24,14 +20,8 @@ newtype GenericProg expr
   = Main [GenericDecl expr]
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-#if nothunks
-instance NoThunks expr => NoThunks (GenericProg expr)
-#endif
-
 instance NFData expr => NFData (GenericProg expr)
-
 instance ToJSON expr => ToJSON (GenericProg expr)
-
 instance FromJSON expr => FromJSON (GenericProg expr)
 
 traverseDecls :: forall m expr1 expr2. Monad m

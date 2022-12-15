@@ -12,9 +12,7 @@ import Vehicle.Syntax.AST.Builtin.Core (EqualityOp, FunctionPosition,
                                         Quantifier)
 import Vehicle.Syntax.AST.Provenance (Provenance)
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
+
 
 --------------------------------------------------------------------------------
 -- PolarityProvenance
@@ -28,12 +26,7 @@ data PolarityProvenance
   | PolFunctionProvenance !Provenance !PolarityProvenance !FunctionPosition
   deriving (Generic)
 
-#if nothunks
-instance NoThunks PolarityProvenance
-#endif
-
 instance ToJSON PolarityProvenance
-
 instance FromJSON PolarityProvenance
 
 instance Show PolarityProvenance where
@@ -62,16 +55,9 @@ data Polarity
     MixedSequential !Quantifier !Provenance !PolarityProvenance
   deriving (Eq, Show, Generic)
 
-#if nothunks
-instance NoThunks Polarity
-#endif
-
 instance NFData Polarity
-
 instance Hashable Polarity
-
 instance ToJSON Polarity
-
 instance FromJSON Polarity
 
 instance Pretty Polarity where
@@ -103,16 +89,9 @@ data PolarityTypeClass
   | IfCondPolarity
   deriving (Eq, Generic, Show)
 
-#if nothunks
-instance NoThunks PolarityTypeClass
-#endif
-
 instance ToJSON PolarityTypeClass
-
 instance FromJSON PolarityTypeClass
-
 instance NFData PolarityTypeClass
-
 instance Hashable PolarityTypeClass
 
 instance Pretty PolarityTypeClass where

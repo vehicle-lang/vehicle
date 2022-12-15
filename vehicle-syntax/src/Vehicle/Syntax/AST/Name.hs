@@ -10,9 +10,7 @@ import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..))
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
+
 
 --------------------------------------------------------------------------------
 -- Definition
@@ -29,10 +27,6 @@ data Module
   = User
   | StdLib
   deriving (Eq, Ord, Show, Generic)
-
-#if nothunks
-instance NoThunks   Module
-#endif
 
 instance NFData   Module
 instance Hashable Module
@@ -52,10 +46,6 @@ data Identifier = Identifier !Module !Name
 
 instance Pretty Identifier where
   pretty (Identifier m s) = pretty m <> "." <> pretty s
-
-#if nothunks
-instance NoThunks      Identifier
-#endif
 
 instance NFData      Identifier
 instance Hashable    Identifier

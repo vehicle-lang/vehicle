@@ -66,6 +66,7 @@ library
     Vehicle.Syntax.AST.Expr
     Vehicle.Syntax.AST.Meta
     Vehicle.Syntax.AST.Name
+    Vehicle.Syntax.AST.NoThunks
     Vehicle.Syntax.AST.Prog
     Vehicle.Syntax.AST.Provenance
     Vehicle.Syntax.AST.Relevance

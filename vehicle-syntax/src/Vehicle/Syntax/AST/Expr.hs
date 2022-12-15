@@ -20,9 +20,7 @@ import Vehicle.Syntax.AST.Name (Name, NamedBinding)
 import Vehicle.Syntax.AST.Prog (GenericProg)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
+
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -35,16 +33,9 @@ data Universe
   | PolarityUniv
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks Universe
-#endif
-
 instance NFData Universe
-
 instance Hashable Universe
-
 instance ToJSON Universe
-
 instance FromJSON Universe
 
 instance Pretty Universe where
@@ -68,16 +59,9 @@ data Literal
   | LRat !Rational
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks Literal
-#endif
-
 instance NFData Literal
-
 instance Hashable Literal
-
 instance ToJSON Literal
-
 instance FromJSON Literal
 
 instance Pretty Literal where
@@ -175,14 +159,8 @@ data Expr binder var
     ![Expr binder var] -- List of expressions.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-#if nothunks
-instance (NoThunks binder, NoThunks var) => NoThunks (Expr binder var)
-#endif
-
 instance (NFData binder, NFData var) => NFData (Expr binder var)
-
 instance (ToJSON binder, ToJSON var) => ToJSON (Expr binder var)
-
 instance (FromJSON binder, FromJSON var) => FromJSON (Expr binder var)
 
 type Type = Expr

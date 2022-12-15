@@ -26,9 +26,7 @@ import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), concatWith, squotes, (<+>))
 import Vehicle.Syntax.Parse.Token (IsToken, Token (Tk), tkLength, tkLocation)
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
+
 
 --------------------------------------------------------------------------------
 -- Position
@@ -49,12 +47,7 @@ instance Show Position where
 instance Pretty Position where
   pretty (Position l c) = "Line" <+> pretty l <+> "Column" <+> pretty c
 
-#if nothunks
-instance NoThunks Position
-#endif
-
 instance ToJSON Position
-
 instance FromJSON Position
 
 -- | Get the starting position of a token.
@@ -74,10 +67,6 @@ data Range = Range
   { start :: !Position,
     end   :: !Position
   } deriving (Show, Eq, Generic)
-
-#if nothunks
-instance NoThunks Range
-#endif
 
 instance Ord Range where
   Range s1 e1 <= Range s2 e2 = s1 < s2 || (s1 == s2 && e1 <= e1)
@@ -114,12 +103,7 @@ instance Semigroup Owner where
 instance Monoid Owner where
   mempty = TheMachine
 
-#if nothunks
-instance NoThunks Owner
-#endif
-
 instance ToJSON Owner
-
 instance FromJSON Owner
 
 --------------------------------------------------------------------------------
@@ -133,10 +117,6 @@ data Origin
   | FromParameter !Text
   | FromDataset !Text
   deriving (Show, Eq, Ord, Generic)
-
-#if nothunks
-instance NoThunks Origin
-#endif
 
 instance Semigroup Origin where
   FromSource r1     <> FromSource r2   = FromSource (mergeRangePair r1 r2)
@@ -168,10 +148,6 @@ instance Show Provenance where
 
 instance NFData Provenance where
   rnf _ = ()
-
-#if nothunks
-instance NoThunks Provenance
-#endif
 
 instance ToJSON Provenance where
   toJSON _ = toJSON ()

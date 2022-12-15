@@ -9,10 +9,6 @@ import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..))
 import Vehicle.Syntax.AST.Provenance (Provenance, expandProvenance)
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
-
 --------------------------------------------------------------------------------
 -- Definitions
 
@@ -26,16 +22,10 @@ data Visibility
   | Instance
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks Visibility
-#endif
 
 instance NFData Visibility
-
 instance Hashable Visibility
-
 instance ToJSON Visibility
-
 instance FromJSON Visibility
 
 instance Pretty Visibility where

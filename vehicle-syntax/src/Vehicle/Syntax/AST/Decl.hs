@@ -11,9 +11,7 @@ import Prettyprinter (Doc, Pretty (..))
 import Vehicle.Syntax.AST.Name (HasIdentifier (..), Identifier)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
+
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -37,14 +35,8 @@ data GenericDecl expr
     !expr
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-#if nothunks
-instance NoThunks expr => NoThunks (GenericDecl expr)
-#endif
-
 instance NFData expr => NFData (GenericDecl expr)
-
 instance ToJSON expr => ToJSON (GenericDecl expr)
-
 instance FromJSON expr => FromJSON (GenericDecl expr)
 
 instance Vehicle.Syntax.AST.Provenance.HasProvenance (GenericDecl expr) where
@@ -96,10 +88,6 @@ data Annotation
   | ResourceAnnotation !Resource
   deriving (Generic)
 
-#if nothunks
-instance NoThunks Annotation
-#endif
-
 instance Pretty Annotation where
   pretty annotation =
     "@" <> case annotation of
@@ -116,14 +104,8 @@ data Resource
   | InferableParameter
   deriving (Eq, Show, Generic)
 
-#if nothunks
-instance NoThunks Resource
-#endif
-
 instance NFData Resource
-
 instance ToJSON Resource
-
 instance FromJSON Resource
 
 instance Pretty Resource where

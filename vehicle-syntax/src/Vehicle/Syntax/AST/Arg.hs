@@ -11,10 +11,6 @@ import Vehicle.Syntax.AST.Relevance (HasRelevance (..), Relevance (..))
 import Vehicle.Syntax.AST.Visibility (HasVisibility (..), Visibility (..),
                                       isInstance)
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
-
 --------------------------------------------------------------------------------
 -- Function arguments
 
@@ -32,14 +28,8 @@ data GenericArg expr = Arg
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-#if nothunks
-instance NoThunks expr => NoThunks (GenericArg expr)
-#endif
-
 instance NFData expr => NFData (GenericArg expr)
-
 instance ToJSON expr => ToJSON (GenericArg expr)
-
 instance FromJSON expr => FromJSON (GenericArg expr)
 
 instance HasProvenance (GenericArg expr) where

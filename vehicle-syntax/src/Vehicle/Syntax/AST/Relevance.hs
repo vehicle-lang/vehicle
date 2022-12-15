@@ -8,25 +8,16 @@ import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Builtin.TypeClass (TypeClass (..))
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
+
 
 data Relevance
   = Relevant
   | Irrelevant
   deriving (Eq, Ord, Show, Generic)
 
-#if nothunks
-instance NoThunks Relevance
-#endif
-
 instance NFData Relevance
-
 instance Hashable Relevance
-
 instance ToJSON Relevance
-
 instance FromJSON Relevance
 
 class HasRelevance a where
