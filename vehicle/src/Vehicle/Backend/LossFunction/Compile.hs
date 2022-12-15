@@ -4,21 +4,22 @@ module Vehicle.Backend.LossFunction.Compile
   , compile
   ) where
 
+import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 
 import Vehicle.Backend.LossFunction.Logics (DifferentialLogicImplementation (..),
                                             Domain (..), LExpr (..),
-                                            Quantifier (..), chooseTranslation)
+                                            Quantifier (..), implementationOf)
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Print (prettySimple, prettyVerbose)
-import Vehicle.Compile.Queries.DNF
 import Vehicle.Compile.Type (getUnnormalised)
 import Vehicle.Expr.DeBruijn qualified as V
 import Vehicle.Prelude
@@ -40,6 +41,9 @@ instance ToJSON LDecl
 --------------------------------------------------------------------------------
 -- Compilation
 
+currentPass :: Doc a
+currentPass = "compilation to loss functions"
+
 -- | The translation into the LExpr (this is the exported top compile function)
 compile :: (MonadIO m, MonadCompile m)
         => Resources
@@ -50,19 +54,16 @@ compile resources logic typedProg = do
   (_, expandedProg) <- expandResources resources typedProg
   unnormalisedProg <- traverse getUnnormalised expandedProg
   normalisedProg <- normalise unnormalisedProg normalisationOptions
-  compileProg (chooseTranslation logic) normalisedProg
+  compileProg logic normalisedProg
 
 -- |Compile entire specification (calls compileDecl)
-compileProg :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedProg -> m [LDecl]
-compileProg  t (V.Main ds) =  traverse (compileDecl t) ds
-
-type MonadCompileLoss m =
-  ( MonadCompile m
-  )
+compileProg :: MonadCompile m => DifferentiableLogic -> V.CheckedProg -> m [LDecl]
+compileProg logic (V.Main ds) = logCompilerPass MinDetail "compilation to loss function" $
+  traverse (compileDecl logic) ds
 
 -- |Compile all functions found in spec, save their names (call compileExpr on each)
-compileDecl :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedDecl -> m LDecl
-compileDecl t d =
+compileDecl :: MonadCompile m => DifferentiableLogic -> V.CheckedDecl -> m LDecl
+compileDecl logic d =
   case d of
   V.DefResource _ _ r _ ->
     normalisationError currentPass (pretty r <+> "declaration")
@@ -70,15 +71,19 @@ compileDecl t d =
   V.DefPostulate{} ->
     normalisationError currentPass "postulates"
 
-  V.DefFunction _ ident _ _ expr -> do
-    expr' <- compileExpr t expr
-    logDebug MaxDetail ("loss-declaration " <> prettySimple expr)
-    return (DefFunction (nameOf ident) expr')
+  V.DefFunction p ident _ _ expr ->
+    logCompilerPass MinDetail ("compilation of" <+> quotePretty ident <+> "to loss function") $ do
+      let logicImplementation = implementationOf logic
+      expr' <- runReaderT (compileExpr logicImplementation expr) (logic, (ident, p))
+      logCompilerPassOutput ("loss-declaration " <> prettySimple expr)
+      return (DefFunction (nameOf ident) expr')
 
-currentPass :: Doc a
-currentPass = "compilation to loss functions"
+type MonadCompileLoss m =
+  ( MonadCompile m
+  , MonadReader (DifferentiableLogic, V.DeclProvenance) m
+  )
 
-compileArg :: MonadCompile m => DifferentialLogicImplementation -> V.CheckedArg -> m LExpr
+compileArg :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedArg -> m LExpr
 compileArg t arg = compileExpr t (V.argExpr arg)
 
 -- |Helper function for compiling Literals
@@ -97,14 +102,18 @@ compileDBBinding :: Maybe Name -> Name
 compileDBBinding = fromMaybe "No_name"
 
 -- |Compile a property or single expression
-compileExpr :: MonadCompile m => DifferentialLogicImplementation -> V.CheckedExpr -> m LExpr
+compileExpr :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedExpr -> m LExpr
 compileExpr t e = showExit $ do
   e' <- showEntry e
   case e' of
     -- logical operatives
-    V.NotExpr     _ [e1]     -> case compileNot t of
-      Nothing -> compileExpr t (lowerNot (argExpr e1))
+    V.NotExpr p [e1]     -> case compileNot t of
       Just f  -> f <$> compileArg t e1
+      Nothing -> do
+        (logic, declProv) <- ask
+        ne1 <- runReaderT (lowerNot (argExpr e1)) (logic, declProv, p)
+        compileExpr t ne1
+
     V.AndExpr     _ [e1, e2] -> compileAnd t <$> compileArg t e1 <*> compileArg t e2
     V.OrExpr      _ [e1, e2] -> compileOr t <$> compileArg t e1 <*> compileArg t e2
     V.ImpliesExpr _ [e1, e2] -> compileImplies t <$> (Negation <$> compileArg t e1) <*> compileArg t e2
@@ -140,17 +149,67 @@ compileExpr t e = showExit $ do
       let varName = V.getBinderName binder
       return $ Quantifier (compileQuant q) varName (Domain ()) body'
 
-    V.Hole{}     -> resolutionError "lossFunction" "Should not enounter Hole"
-    V.Meta{}     -> resolutionError "lossFunction" "Should not enounter Meta"
-    V.Ann{}      -> normalisationError "lossFunction" "Should not enounter Ann"
-    V.Pi{}       -> unexpectedTypeInExprError "lossFunction" "Should not enounter Pi"
-    V.Universe{} -> unexpectedTypeInExprError "lossFunction" "Should not enounter Universe"
-    V.IfExpr{}   -> unexpectedExprError "lossFunction" "If statements are not handled at the moment (possibly in the future)"
+    V.Hole{}     -> resolutionError currentPass "Should not enounter Hole"
+    V.Meta{}     -> resolutionError currentPass "Should not enounter Meta"
+    V.Ann{}      -> normalisationError currentPass "Should not enounter Ann"
+    V.Pi{}       -> unexpectedTypeInExprError currentPass "Should not enounter Pi"
+    V.Universe{} -> unexpectedTypeInExprError currentPass "Should not enounter Universe"
+    V.IfExpr{}   -> unexpectedExprError currentPass "If statements are not handled at the moment (possibly in the future)"
     _            -> unexpectedExprError currentPass (prettyVerbose e)
 
 compileQuant :: V.Quantifier -> Quantifier
 compileQuant V.Forall = All
 compileQuant V.Exists = Any
+
+--------------------------------------------------------------------------------
+-- Compilation
+
+type MonadLowerNot m =
+  ( MonadCompile m
+  , MonadReader (DifferentiableLogic, V.DeclProvenance, V.Provenance) m
+  )
+
+lowerNot :: MonadLowerNot m => V.CheckedExpr -> m V.CheckedExpr
+lowerNot arg = case arg of
+
+  ----------------
+  -- Base cases --
+
+  -- Literals
+  V.BoolLiteral    p b                    -> return $ V.BoolLiteral p (not b)
+  -- Various forms of order and equality
+  V.OrderExpr      p dom ord args         -> return $ V.OrderExpr p dom (neg ord) args
+  V.EqualityExpr   p dom eq args          -> return $ V.EqualityExpr p dom (neg eq) args
+  -- Order and equality expressions (note that we don't push these through the type-class
+  -- solution as these will never be compiled.)
+  V.OrderTCExpr    p ord t1 t2 t3 s args  -> return $ V.OrderTCExpr p (neg ord) t1 t2 t3 s args
+  V.EqualityTCExpr p eq t1 t2 t3 s args   -> return $ V.EqualityTCExpr p (neg eq) t1 t2 t3 s args
+
+  -- Double negation
+  V.NotExpr       _ [e]                   -> return $ argExpr e
+
+  ---------------------
+  -- Inductive cases --
+
+  V.ForallRatExpr p binder body  -> V.ExistsRatExpr p binder <$> lowerNot body
+  V.ExistsRatExpr p binder body  -> V.ForallRatExpr p binder <$> lowerNot body
+  V.ImpliesExpr   p [e1, e2]     -> do
+    ne2 <- lowerNotArg e2
+    return $ V.AndExpr p [e1, ne2]
+  V.OrExpr        p args         -> V.AndExpr p <$> traverse lowerNotArg args
+  V.AndExpr       p args         -> V.OrExpr  p <$> traverse lowerNotArg args
+  V.IfExpr p tRes [c, e1, e2]    -> do
+    ne1 <- lowerNotArg e1
+    ne2 <- lowerNotArg e2
+    return $ V.IfExpr p tRes [c, ne1, ne2]
+
+  -- Errors
+  e  -> do
+    (logic, declProv, notProv) <- ask
+    throwError $ UnsupportedNegatedOperation logic declProv notProv e
+
+lowerNotArg :: MonadLowerNot m => V.CheckedArg -> m V.CheckedArg
+lowerNotArg = traverse lowerNot
 
 ----------------------------------------------------------------------------------------------------
 -- Handling normalisation options
@@ -196,7 +255,7 @@ normBuiltin b = case b of
 
 showEntry :: MonadCompile m => V.CheckedExpr -> m V.CheckedExpr
 showEntry e = do
-  logDebug MaxDetail ("loss-entry " <> prettySimple e)
+  logDebug MinDetail ("loss-entry " <> prettySimple e)
   incrCallDepth
   return e
 
@@ -204,5 +263,5 @@ showExit :: MonadCompile m => m LExpr -> m LExpr
 showExit mNew = do
   new <- mNew
   decrCallDepth
-  logDebug MaxDetail ("loss-exit " <+> pretty (show new))
+  logDebug MinDetail ("loss-exit " <+> pretty (show new))
   return new

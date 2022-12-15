@@ -11,18 +11,10 @@ import Vehicle.Verify.Core
 
 import Paths_vehicle qualified as VehiclePath
 
-
-data Backend
-  = ITP ITP
-  | VerifierBackend VerifierIdentifier
-  | LossFunction DifferentiableLogic
-  | TypeCheck
-  deriving (Eq, Show)
-
 --------------------------------------------------------------------------------
--- different available  differentiable logics (types of translation from the constraint
--- to loss function) are as listed below:
+-- Differentiable logics
 
+-- | Different ways of translating from the logical constraints to loss functions.
 data DifferentiableLogic
   = DL2
   | Godel
@@ -31,9 +23,25 @@ data DifferentiableLogic
   | Yager
   deriving (Eq, Show, Read, Bounded, Enum)
 
+instance Pretty DifferentiableLogic where
+  pretty = pretty . show
+
+--------------------------------------------------------------------------------
+-- Interactive theorem provers
+
 data ITP
   = Agda
   deriving (Eq, Show, Read, Bounded, Enum)
+
+--------------------------------------------------------------------------------
+-- General backends
+
+data Backend
+  = ITP ITP
+  | VerifierBackend VerifierIdentifier
+  | LossFunction DifferentiableLogic
+  | TypeCheck
+  deriving (Eq, Show)
 
 pattern AgdaBackend :: Backend
 pattern AgdaBackend = ITP Agda
@@ -59,7 +67,7 @@ pattern LossFunctionYager = LossFunction Yager
 instance Pretty Backend where
   pretty = \case
     ITP x             -> pretty $ show x
-    VerifierBackend x -> pretty $ show x
+    VerifierBackend x -> pretty x
     LossFunction _    -> "LossFunction"
     TypeCheck         -> "TypeCheck"
 
