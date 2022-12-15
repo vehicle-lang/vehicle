@@ -56,7 +56,7 @@ instance Delaborate V.NamedDecl [B.Decl] where
     V.DefFunction _ n isProperty t e ->
       delabFun isProperty n t e
 
-    V.DefPostulate {} ->
+    V.DefPostulate{} ->
       error "Should not be delaborating postulates"
 
 instance Delaborate V.NamedExpr B.Expr where

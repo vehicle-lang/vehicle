@@ -18,12 +18,12 @@ import NoThunks.Class (NoThunks)
 
 -- | Visibility of function arguments.
 data Visibility
-  = -- | Always have to be given explicitly
-    Explicit
-  | -- | Inferred via unification
-    Implicit
-  | -- | Inferred via instance search/type class resolution
-    Instance
+  -- | Always have to be given explicitly
+  = Explicit
+  -- | Inferred via unification
+  | Implicit
+  -- | Inferred via instance search/type class resolution
+  | Instance
   deriving (Eq, Ord, Show, Generic)
 
 #if nothunks
@@ -39,18 +39,16 @@ instance ToJSON Visibility
 instance FromJSON Visibility
 
 instance Pretty Visibility where
-  pretty :: Visibility -> Doc ann
   pretty = \case
-    Explicit    -> "Explicit"
-    Implicit    -> "Implicit"
-    Instance {} -> "Instance"
+    Explicit   -> "Explicit"
+    Implicit   -> "Implicit"
+    Instance{} -> "Instance"
 
 -- | Type class for types which have provenance information
 class HasVisibility a where
   visibilityOf :: a -> Visibility
 
 instance HasVisibility Visibility where
-  visibilityOf :: Visibility -> Visibility
   visibilityOf = id
 
 isExplicit :: HasVisibility a => a -> Bool
@@ -61,13 +59,13 @@ isImplicit x = visibilityOf x == Implicit
 
 isInstance :: HasVisibility a => a -> Bool
 isInstance x = case visibilityOf x of
-  Instance {} -> True
-  _           -> False
+  Instance{} -> True
+  _          -> False
 
 visibilityMatches :: (HasVisibility a, HasVisibility b) => a -> b -> Bool
 visibilityMatches x y = visibilityOf x == visibilityOf y
 
 expandByArgVisibility :: Visibility -> Provenance -> Provenance
-expandByArgVisibility Explicit {} = id
-expandByArgVisibility Implicit {} = expandProvenance (1, 1)
-expandByArgVisibility Instance {} = expandProvenance (2, 2)
+expandByArgVisibility Explicit{} = id
+expandByArgVisibility Implicit{} = expandProvenance (1, 1)
+expandByArgVisibility Instance{} = expandProvenance (2, 2)

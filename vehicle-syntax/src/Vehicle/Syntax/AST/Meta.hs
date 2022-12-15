@@ -31,5 +31,4 @@ instance ToJSON MetaID
 instance FromJSON MetaID
 
 instance Pretty MetaID where
-  pretty :: MetaID -> Doc ann
   pretty (MetaID m) = "?" <> pretty m

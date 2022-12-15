@@ -48,7 +48,6 @@ instance ToJSON   FunctionPosition
 instance FromJSON FunctionPosition
 
 instance Pretty FunctionPosition where
-  pretty :: FunctionPosition -> Doc ann
   pretty = \case
     FunctionInput n i -> "Input[" <> pretty n <> "][" <> pretty i <> "]"
     FunctionOutput n  -> "Output[" <> pretty n <> "]"
@@ -70,7 +69,6 @@ instance ToJSON   EqualityOp
 instance FromJSON EqualityOp
 
 instance Pretty EqualityOp where
-  pretty :: EqualityOp -> Doc ann
   pretty = \case
     Eq  -> "=="
     Neq -> "!="
@@ -100,7 +98,6 @@ instance ToJSON   EqualityDomain
 instance FromJSON EqualityDomain
 
 instance Pretty EqualityDomain where
-  pretty :: EqualityDomain -> Doc ann
   pretty = \case
     EqIndex -> "Index"
     EqNat   -> "Nat"
@@ -126,7 +123,6 @@ instance ToJSON   OrderOp
 instance FromJSON OrderOp
 
 instance Pretty OrderOp where
-  pretty :: OrderOp -> Doc ann
   pretty = \case
     Le -> "<="
     Lt -> "<"
@@ -182,7 +178,6 @@ instance ToJSON   OrderDomain
 instance FromJSON OrderDomain
 
 instance Pretty OrderDomain where
-  pretty :: OrderDomain -> Doc ann
   pretty = \case
     OrderNat   -> "Nat"
     OrderIndex -> "Index"
@@ -206,7 +201,6 @@ instance ToJSON   Quantifier
 instance FromJSON Quantifier
 
 instance Pretty Quantifier where
-  pretty :: Quantifier -> Doc ann
   pretty = \case
     Forall -> "forall"
     Exists -> "exists"

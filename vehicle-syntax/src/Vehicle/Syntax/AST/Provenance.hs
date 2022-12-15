@@ -2,17 +2,16 @@
 
 
 module Vehicle.Syntax.AST.Provenance
-  ( Provenance,
-    tkProvenance,
-    datasetProvenance,
-    parameterProvenance,
-    inserted,
-    HasProvenance (..),
-    expandProvenance,
-    fillInProvenance,
-    wasInsertedByCompiler,
-  )
-where
+  ( Provenance
+  , tkProvenance
+  , datasetProvenance
+  , parameterProvenance
+  ,  inserted
+  , HasProvenance (..)
+  , expandProvenance
+  , fillInProvenance
+  , wasInsertedByCompiler
+  ) where
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (FromJSON (..), ToJSON (..))
@@ -46,11 +45,9 @@ data Position = Position
   deriving (Eq, Ord, Generic)
 
 instance Show Position where
-  show :: Position -> String
   show (Position l c) = show (l, c)
 
 instance Pretty Position where
-  pretty :: Position -> Doc ann
   pretty (Position l c) = "Line" <+> pretty l <+> "Column" <+> pretty c
 
 #if nothunks
@@ -85,11 +82,9 @@ instance NoThunks Range
 #endif
 
 instance Ord Range where
-  (<=) :: Range -> Range -> Bool
   Range s1 e1 <= Range s2 e2 = s1 < s2 || (s1 == s2 && e1 <= e1)
 
 instance Pretty Range where
-  pretty :: Range -> Doc ann
   pretty (Range p1 p2) =
     if posLine p1 == posLine p2
       then
@@ -138,10 +133,10 @@ instance FromJSON Owner
 
 -- | The origin of a piece of code
 data Origin
-  = -- | set of locations in the source file
-    FromSource !Range
-  | -- | name of the parameter
-    FromParameter !Text
+  -- | set of locations in the source file
+  = FromSource !Range
+  -- | name of the parameter
+  | FromParameter !Text
   | FromDataset !Text
   deriving (Show, Eq, Ord, Generic)
 
@@ -151,23 +146,21 @@ instance NoThunks Origin
 
 instance Semigroup Origin where
   (<>) :: Origin -> Origin -> Origin
-  FromSource r1 <> FromSource r2 = FromSource (mergeRangePair r1 r2)
-  p@FromSource {} <> _           = p
-  _ <> p@FromSource {}           = p
-  p@FromDataset {} <> _          = p
-  _ <> p@FromDataset {}          = p
-  p@FromParameter {} <> _        = p
+  FromSource r1     <> FromSource r2   = FromSource (mergeRangePair r1 r2)
+  p@FromSource{}    <> _               = p
+  _                 <> p@FromSource{}  = p
+  p@FromDataset{}   <> _               = p
+  _                 <> p@FromDataset{} = p
+  p@FromParameter{} <> _               = p
 
 instance Monoid Origin where
-  mempty :: Origin
   mempty = FromSource (Range (Position 0 0) (Position 0 0))
 
 instance Pretty Origin where
-  pretty :: Origin -> Doc ann
   pretty = \case
-    FromSource range   -> pretty range
-    FromParameter name -> "parameter" <+> squotes (pretty name)
-    FromDataset name   -> "in dataset" <+> squotes (pretty name)
+    FromSource    range -> pretty range
+    FromParameter name  -> "parameter" <+> squotes (pretty name)
+    FromDataset   name  -> "in dataset" <+> squotes (pretty name)
 
 --------------------------------------------------------------------------------
 -- Provenance
@@ -175,15 +168,12 @@ instance Pretty Origin where
 data Provenance = Provenance
   { origin :: !Origin,
     owner  :: !Owner
-  }
-  deriving (Generic)
+  } deriving (Generic)
 
 instance Show Provenance where
-  show :: Provenance -> String
   show = const ""
 
 instance NFData Provenance where
-  rnf :: Provenance -> ()
   rnf _ = ()
 
 #if nothunks
@@ -191,19 +181,15 @@ instance NoThunks Provenance
 #endif
 
 instance ToJSON Provenance where
-  toJSON :: Provenance -> Value
   toJSON _ = toJSON ()
 
 instance FromJSON Provenance where
-  parseJSON :: Value -> Parser Provenance
   parseJSON _ = return mempty
 
 instance Eq Provenance where
-  (==) :: Provenance -> Provenance -> Bool
   _x == _y = True
 
 instance Hashable Provenance where
-  hashWithSalt :: Int -> Provenance -> Int
   hashWithSalt s _p = s
 
 -- | Get the provenance for a single token.
@@ -242,16 +228,13 @@ expandProvenance w (Provenance (FromSource rs) o) = Provenance (FromSource (expa
 expandProvenance _ p = p
 
 instance Pretty Provenance where
-  pretty :: Provenance -> Doc ann
   pretty (Provenance origin _) = pretty origin
 
 instance Semigroup Provenance where
-  (<>) :: Provenance -> Provenance -> Provenance
   Provenance origin1 owner1 <> Provenance origin2 owner2 =
     Provenance (origin1 <> origin2) (owner1 <> owner2)
 
 instance Monoid Provenance where
-  mempty :: Provenance
   mempty = Provenance mempty mempty
 
 --------------------------------------------------------------------------------
@@ -262,19 +245,15 @@ class HasProvenance a where
   provenanceOf :: a -> Provenance
 
 instance HasProvenance Provenance where
-  provenanceOf :: Provenance -> Provenance
   provenanceOf = id
 
 instance HasProvenance a => HasProvenance [a] where
-  provenanceOf :: HasProvenance a => [a] -> Provenance
   provenanceOf = foldMap provenanceOf
 
 instance HasProvenance a => HasProvenance (NonEmpty a) where
-  provenanceOf :: HasProvenance a => NonEmpty a -> Provenance
   provenanceOf = foldMap provenanceOf
 
 instance HasProvenance a => HasProvenance (a, b) where
-  provenanceOf :: HasProvenance a => (a, b) -> Provenance
   provenanceOf = provenanceOf . fst
 
 wasInsertedByCompiler :: HasProvenance a => a -> Bool

@@ -20,8 +20,8 @@ import NoThunks.Class (NoThunks)
 -- Type classes
 
 data TypeClass
-  = -- Operation type-classes
-    HasEq !EqualityOp
+  -- Operation type-classes
+  = HasEq !EqualityOp
   | HasOrd !OrderOp
   | HasNot
   | HasAnd
@@ -36,31 +36,28 @@ data TypeClass
   | HasFold
   | HasIf
   | HasQuantifierIn !Quantifier
-  | -- Literal type-classes
 
-    -- | The parameter is the value (needed for Index).
-    HasNatLits !Int
+  -- Literal type-classes
+  -- | The parameter is the value (needed for Index).
+  | HasNatLits !Int
   | HasRatLits
-  | -- | The parameter is the size of the vector.
-    HasVecLits !Int
-  | -- Utility constraints
+  -- | The parameter is the size of the vector.
+  | HasVecLits !Int
 
-    -- | Types are equal, modulo the auxiliary constraints.
-    AlmostEqualConstraint
+  -- Utility constraints
+  -- | Types are equal, modulo the auxiliary constraints.
+  | AlmostEqualConstraint
   | NatInDomainConstraint !Int
-  | ----------------------------
-    -- Synthetic type-classes --
-    ----------------------------
 
-    LinearityTypeClass !LinearityTypeClass
+  -- Auxiliary typeclasses
+  | LinearityTypeClass !LinearityTypeClass
   | PolarityTypeClass !PolarityTypeClass
-  -- Linearity type-classes
-
   deriving (Eq, Generic, Show)
 
 #if nothunks
 instance NoThunks TypeClass
 #endif
+
 instance NFData TypeClass
 
 instance Hashable TypeClass
@@ -70,30 +67,29 @@ instance ToJSON TypeClass
 instance FromJSON TypeClass
 
 instance Pretty TypeClass where
-  pretty :: TypeClass -> Doc ann
   pretty = \case
-    HasEq {}                 -> "HasEq"
-    HasOrd {}                -> "HasOrd"
-    HasNot                   -> "HasNot"
-    HasAnd                   -> "HasAnd"
-    HasOr                    -> "HasOr"
-    HasImplies               -> "HasImplies"
-    HasQuantifier q          -> "HasQuantifier" <+> pretty q
-    HasAdd                   -> "HasAdd"
-    HasSub                   -> "HasSub"
-    HasMul                   -> "HasMul"
-    HasDiv                   -> "HasDiv"
-    HasNeg                   -> "HasNeg"
-    HasFold                  -> "HasFold"
-    HasQuantifierIn q        -> "HasQuantifierIn" <+> pretty q
-    HasIf                    -> "HasIf"
-    HasNatLits n             -> "HasNatLiterals[" <> pretty n <> "]"
-    HasRatLits               -> "HasRatLiterals"
-    HasVecLits n             -> "HasVecLiterals[" <> pretty n <> "]"
-    AlmostEqualConstraint {} -> "AlmostEqualConstraint"
-    NatInDomainConstraint {} -> "NatInDomainConstraint"
-    LinearityTypeClass tc    -> pretty tc
-    PolarityTypeClass tc     -> pretty tc
+    HasEq{}                 -> "HasEq"
+    HasOrd{}                -> "HasOrd"
+    HasNot                  -> "HasNot"
+    HasAnd                  -> "HasAnd"
+    HasOr                   -> "HasOr"
+    HasImplies              -> "HasImplies"
+    HasQuantifier q         -> "HasQuantifier" <+> pretty q
+    HasAdd                  -> "HasAdd"
+    HasSub                  -> "HasSub"
+    HasMul                  -> "HasMul"
+    HasDiv                  -> "HasDiv"
+    HasNeg                  -> "HasNeg"
+    HasFold                 -> "HasFold"
+    HasQuantifierIn q       -> "HasQuantifierIn" <+> pretty q
+    HasIf                   -> "HasIf"
+    HasNatLits n            -> "HasNatLiterals[" <> pretty n <> "]"
+    HasRatLits              -> "HasRatLiterals"
+    HasVecLits n            -> "HasVecLiterals[" <> pretty n <> "]"
+    AlmostEqualConstraint{} -> "AlmostEqualConstraint"
+    NatInDomainConstraint{} -> "NatInDomainConstraint"
+    LinearityTypeClass tc   -> pretty tc
+    PolarityTypeClass tc    -> pretty tc
 
 -- Builtin operations for type-classes
 data TypeClassOp
@@ -120,6 +116,7 @@ data TypeClassOp
 #if nothunks
 instance NoThunks TypeClassOp
 #endif
+
 instance NFData TypeClassOp
 
 instance Hashable TypeClassOp
@@ -129,7 +126,6 @@ instance ToJSON TypeClassOp
 instance FromJSON TypeClassOp
 
 instance Pretty TypeClassOp where
-  pretty :: TypeClassOp -> Doc ann
   pretty = \case
     NotTC            -> "not"
     AndTC            -> "and"

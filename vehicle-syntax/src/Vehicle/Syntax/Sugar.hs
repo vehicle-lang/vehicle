@@ -33,25 +33,12 @@ data BinderFoldTarget binder var
   = FoldableBinder FoldableBinderType (Binder binder var)
   | FunFold
 
-pattern ForeachExpr :: Provenance
-  -> Binder binder var -> Expr binder var -> Expr binder var
 pattern ForeachExpr p binder body <-
   App p (Builtin _ Foreach) (ExplicitArg _ (Lam _ binder body) :| [])
 
-pattern QuantifierExpr :: Provenance
-  -> Binder binder var
-  -> Expr binder var
-  -> Quantifier
-  -> Expr binder var
 pattern QuantifierExpr p binder body q <-
   App p (Builtin _ (TypeClassOp (QuantifierTC q))) (ExplicitArg _ (Lam _ binder body) :| [])
 
-pattern QuantifierInExpr :: Provenance
-  -> Binder binder var
-  -> Expr binder var
-  -> Quantifier
-  -> Expr binder var
-  -> Expr binder var
 pattern QuantifierInExpr p binder body q cont <-
   App p (Builtin _ (TypeClassOp (QuantifierInTC q)))
     (ExplicitArg _ (Lam _ binder body) :| [ExplicitArg _ cont])

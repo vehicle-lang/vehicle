@@ -26,15 +26,10 @@ instance Exception DeveloperError
 -- prefer to use the method `compilerDeveloperError` instead of this, as
 -- this method will prevent the logs from being displayed.
 developerError :: HasCallStack => Doc a -> b
-developerError message =
-  throw $
-    DeveloperError $
-      layoutAsText $
-        "Something went wrong internally. Please report the error"
-          <+> "shown below to `https://github.com/vehicle-lang/vehicle/issues`."
-            <> line
-            <> "Error:"
-          <+> message
+developerError message = throw $ DeveloperError $ layoutAsText $
+  "Something went wrong internally. Please report the error" <+>
+  "shown below to `https://github.com/vehicle-lang/vehicle/issues`." <> line <>
+  "Error:" <+> message
 
 --------------------------------------------------------------------------------
 -- Prettyprinting

@@ -132,10 +132,9 @@ mapBinderRep f (Binder p u v r b t) = Binder p u v r (f b) t
 replaceBinderRep :: b -> GenericBinder a e -> GenericBinder b e
 replaceBinderRep b' (Binder p u v r _b t) = Binder p u v r b' t
 
-replaceBinderType ::
-  expr1 ->
-  GenericBinder binder expr2 ->
-  GenericBinder binder expr1
+replaceBinderType :: expr1 ->
+                     GenericBinder binder expr2 ->
+                     GenericBinder binder expr1
 replaceBinderType e = fmap (const e)
 
 wantsToFold :: GenericBinder binder expr -> Bool

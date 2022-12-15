@@ -168,28 +168,28 @@ normalisationOptions = Options
 normBuiltin :: V.Builtin -> Bool
 normBuiltin b = case b of
   V.TypeClassOp t -> case t of
-    V.FromNatTC {} -> True
-    V.FromRatTC    -> True
-    V.FromVecTC {} -> True
-    V.NotTC        -> True
-    V.AndTC        -> True
-    V.OrTC         -> True
-    V.ImpliesTC    -> True
-    V.MapTC        -> True
-    V.NegTC        -> True
-    V.AddTC        -> True
-    V.SubTC        -> True
-    V.MulTC        -> True
-    V.DivTC        -> True
+    V.FromNatTC{} -> True
+    V.FromRatTC   -> True
+    V.FromVecTC{} -> True
+    V.NotTC       -> True
+    V.AndTC       -> True
+    V.OrTC        -> True
+    V.ImpliesTC   -> True
+    V.MapTC       -> True
+    V.NegTC       -> True
+    V.AddTC       -> True
+    V.SubTC       -> True
+    V.MulTC       -> True
+    V.DivTC       -> True
 
-    _              -> False
+    _             -> False
 
-  V.FromNat {}       -> True
-  V.FromRat {}       -> True
-  V.FromVec {}       -> True
-  V.Foreach{}        -> True
+  V.FromNat{}      -> True
+  V.FromRat{}      -> True
+  V.FromVec{}      -> True
+  V.Foreach{}      -> True
 
-  _                  -> False
+  _                -> False
 
 -----------------------------------------------------------------------
 -- Debugging options

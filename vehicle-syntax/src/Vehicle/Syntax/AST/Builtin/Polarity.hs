@@ -37,19 +37,15 @@ instance ToJSON PolarityProvenance
 instance FromJSON PolarityProvenance
 
 instance Show PolarityProvenance where
-  show :: PolarityProvenance -> String
   show _x = ""
 
 instance Eq PolarityProvenance where
-  (==) :: PolarityProvenance -> PolarityProvenance -> Bool
   _x == _y = True
 
 instance NFData PolarityProvenance where
-  rnf :: PolarityProvenance -> ()
   rnf _x = ()
 
 instance Hashable PolarityProvenance where
-  hashWithSalt :: Int -> PolarityProvenance -> Int
   hashWithSalt s _p = s
 
 --------------------------------------------------------------------------------
@@ -79,12 +75,11 @@ instance ToJSON Polarity
 instance FromJSON Polarity
 
 instance Pretty Polarity where
-  pretty :: Polarity -> Doc ann
   pretty = \case
-    Unquantified       -> "Unquantified"
-    Quantified q _     -> "Quantified" <+> pretty q
-    MixedParallel {}   -> "MixedParallel"
-    MixedSequential {} -> "MixedSequential"
+    Unquantified      -> "Unquantified"
+    Quantified q _    -> "Quantified" <+> pretty q
+    MixedParallel{}   -> "MixedParallel"
+    MixedSequential{} -> "MixedSequential"
 
 mapPolarityProvenance :: (PolarityProvenance -> PolarityProvenance) -> Polarity -> Polarity
 mapPolarityProvenance f = \case
@@ -121,7 +116,6 @@ instance NFData PolarityTypeClass
 instance Hashable PolarityTypeClass
 
 instance Pretty PolarityTypeClass where
-  pretty :: PolarityTypeClass -> Doc ann
   pretty = \case
     NegPolarity        -> "NegPolarity"
     AddPolarity q      -> "AddPolarity" <+> pretty q

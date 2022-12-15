@@ -1,5 +1,4 @@
-{-# LANGUAGE CPP          #-}
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE CPP #-}
 
 module Vehicle.Syntax.AST.Arg where
 
@@ -44,15 +43,12 @@ instance ToJSON expr => ToJSON (GenericArg expr)
 instance FromJSON expr => FromJSON (GenericArg expr)
 
 instance HasProvenance (GenericArg expr) where
-  provenanceOf :: GenericArg expr -> Provenance
   provenanceOf = argProvenance
 
 instance HasVisibility (GenericArg expr) where
-  visibilityOf :: GenericArg expr -> Visibility
   visibilityOf = argVisibility
 
 instance HasRelevance (GenericArg expr) where
-  relevanceOf :: GenericArg expr -> Relevance
   relevanceOf = argRelevance
 
 --------------------------------------------------------------------------------

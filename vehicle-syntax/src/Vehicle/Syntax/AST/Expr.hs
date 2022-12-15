@@ -48,7 +48,6 @@ instance ToJSON Universe
 instance FromJSON Universe
 
 instance Pretty Universe where
-  pretty :: Universe -> Doc ann
   pretty = \case
     TypeUniv l    -> "Type" <+> pretty l
     LinearityUniv -> "LinearityUniverse"
@@ -82,7 +81,6 @@ instance ToJSON Literal
 instance FromJSON Literal
 
 instance Pretty Literal where
-  pretty :: Literal -> Doc ann
   pretty = \case
     LUnit      -> "()"
     LBool x    -> pretty x
@@ -92,7 +90,6 @@ instance Pretty Literal where
     LRat x     -> pretty x
 
 instance Pretty Rational where
-  pretty :: Rational -> Doc ann
   pretty p = pretty (fromRational p :: Double)
 
 --------------------------------------------------------------------------------
@@ -106,65 +103,76 @@ instance Pretty Rational where
 -- Names are parameterised over so that they can store
 -- either the user assigned names or deBruijn indices.
 data Expr binder var
-  = -- | A universe, used to type types.
-    Universe
-      !Provenance
-      !Universe
-  | -- | User annotation
-    Ann
-      !Provenance
-      !(Expr binder var) -- The term
-      !(Expr binder var) -- The type of the term
-  | -- | Application of one term to another.
-    App
-      !Provenance
-      !(Expr binder var) -- Function.
-      !(NonEmpty (Arg binder var)) -- Arguments.
-  | -- | Dependent product (subsumes both functions and universal quantification).
-    Pi
-      !Provenance
-      !(Binder binder var) -- The bound name
-      !(Expr binder var) -- (Dependent) result type.
-  | -- | Terms consisting of constants that are built into the language.
-    Builtin
-      !Provenance
-      !Builtin -- Builtin name.
-  | -- | Variables that are bound by other expressions
-    Var
-      !Provenance
-      !var -- Variable name.
-  | -- | A hole in the program.
-    Hole
-      !Provenance
-      !Name -- Hole name.
-  | -- | Unsolved meta variables.
-    Meta
-      !Provenance
-      !MetaID -- Meta variable number.
-  | -- | Let expressions. We have these in the core syntax because we want to
-    -- cross compile them to various backends.
-    --
-    -- NOTE: that the order of the bound expression and the binder is reversed
-    -- to better mimic the flow of the context, which makes writing monadic
-    -- operations concisely much easier.
-    Let
-      !Provenance
-      !(Expr binder var) -- Bound expression body.
-      !(Binder binder var) -- Bound expression name.
-      !(Expr binder var) -- Expression body.
-  | -- | Lambda expressions (i.e. anonymous functions).
-    Lam
-      !Provenance
-      !(Binder binder var) -- Bound expression name.
-      !(Expr binder var) -- Expression body.
-  | -- | Built-in literal values e.g. numbers/booleans.
-    Literal
-      !Provenance
-      !Literal -- Value.
-  | -- | A sequence of terms for e.g. list literals.
-    LVec
-      !Provenance
-      ![Expr binder var] -- List of expressions.
+  -- | A universe, used to type types.
+  = Universe
+    !Provenance
+    !Universe
+
+  -- | User annotation
+  | Ann
+    !Provenance
+    !(Expr binder var) -- The term
+    !(Expr binder var) -- The type of the term
+
+  -- | Application of one term to another.
+  | App
+    !Provenance
+    !(Expr binder var) -- Function.
+    !(NonEmpty (Arg binder var)) -- Arguments.
+
+  -- | Dependent product (subsumes both functions and universal quantification).
+  | Pi
+    !Provenance
+    !(Binder binder var) -- The bound name
+    !(Expr binder var) -- (Dependent) result type.
+
+  -- | Terms consisting of constants that are built into the language.
+  | Builtin
+    !Provenance
+    !Builtin -- Builtin name.
+
+  -- | Variables that are bound by other expressions
+  | Var
+    !Provenance
+    !var -- Variable name.
+
+  -- | A hole in the program.
+  | Hole
+    !Provenance
+    !Name -- Hole name.
+
+  -- | Unsolved meta variables.
+  | Meta
+    !Provenance
+    !MetaID -- Meta variable number.
+
+  -- | Let expressions. We have these in the core syntax because we want to
+  -- cross compile them to various backends.
+  --
+  -- NOTE: that the order of the bound expression and the binder is reversed
+  -- to better mimic the flow of the context, which makes writing monadic
+  -- operations concisely much easier.
+  | Let
+    !Provenance
+    !(Expr binder var) -- Bound expression body.
+    !(Binder binder var) -- Bound expression name.
+    !(Expr binder var) -- Expression body.
+
+  -- | Lambda expressions (i.e. anonymous functions).
+  | Lam
+    !Provenance
+    !(Binder binder var) -- Bound expression name.
+    !(Expr binder var) -- Expression body.
+
+  -- | Built-in literal values e.g. numbers/booleans.
+  | Literal
+    !Provenance
+    !Literal -- Value.
+
+  -- | A sequence of terms for e.g. list literals.
+  | LVec
+    !Provenance
+    ![Expr binder var] -- List of expressions.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 #if nothunks
@@ -272,7 +280,7 @@ normApp p fun args = do
   App p fun' args'
 
 normAppList :: Provenance -> Expr binder var -> [Arg binder var] -> Expr binder var
-normAppList _ fun []             = fun
+normAppList _   fun []           = fun
 normAppList ann fun (arg : args) = normApp ann fun (arg :| args)
 
 mkHole :: Provenance -> Name -> Expr binder var
@@ -280,6 +288,6 @@ mkHole ann name = Hole ann ("_" <> name)
 
 isTypeSynonym :: Expr binder var -> Bool
 isTypeSynonym = \case
-  Universe _ TypeUniv {} -> True
-  Pi _ _ res             -> isTypeSynonym res
-  _                      -> False
+  Universe _ TypeUniv{} -> True
+  Pi _ _ res            -> isTypeSynonym res
+  _                     -> False

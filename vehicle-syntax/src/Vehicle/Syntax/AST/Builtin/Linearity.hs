@@ -30,24 +30,21 @@ data LinearityProvenance
 #if nothunks
 instance NoThunks LinearityProvenance
 #endif
+
 instance ToJSON LinearityProvenance
 
 instance FromJSON LinearityProvenance
 
 instance Show LinearityProvenance where
-  show :: LinearityProvenance -> String
   show _x = ""
 
 instance Eq LinearityProvenance where
-  (==) :: LinearityProvenance -> LinearityProvenance -> Bool
   _x == _y = True
 
 instance NFData LinearityProvenance where
-  rnf :: LinearityProvenance -> ()
   rnf _x = ()
 
 instance Hashable LinearityProvenance where
-  hashWithSalt :: Int -> LinearityProvenance -> Int
   hashWithSalt s _p = s
 
 --------------------------------------------------------------------------------
@@ -62,16 +59,16 @@ data Linearity
   deriving (Eq, Show, Generic)
 
 instance Ord Linearity where
-  (<=) :: Linearity -> Linearity -> Bool
-  Constant <= _                = True
-  Linear {} <= Linear {}       = True
-  Linear {} <= NonLinear {}    = True
-  NonLinear {} <= NonLinear {} = True
-  _ <= _                       = False
+  Constant <= _              = True
+  Linear{} <= Linear{}       = True
+  Linear{} <= NonLinear{}    = True
+  NonLinear{} <= NonLinear{} = True
+  _ <= _                     = False
 
 #if nothunks
 instance NoThunks Linearity
 #endif
+
 instance NFData Linearity
 
 instance Hashable Linearity
@@ -81,11 +78,10 @@ instance ToJSON Linearity
 instance FromJSON Linearity
 
 instance Pretty Linearity where
-  pretty :: Linearity -> Doc ann
   pretty = \case
-    Constant     -> "Constant"
-    Linear {}    -> "Linear"
-    NonLinear {} -> "Non-linear"
+    Constant    -> "Constant"
+    Linear{}    -> "Linear"
+    NonLinear{} -> "Non-linear"
 
 mapLinearityProvenance :: (LinearityProvenance -> LinearityProvenance) -> Linearity -> Linearity
 mapLinearityProvenance f = \case
@@ -108,6 +104,7 @@ data LinearityTypeClass
 #if nothunks
 instance NoThunks LinearityTypeClass
 #endif
+
 instance ToJSON LinearityTypeClass
 
 instance FromJSON LinearityTypeClass
@@ -117,7 +114,6 @@ instance NFData LinearityTypeClass
 instance Hashable LinearityTypeClass
 
 instance Pretty LinearityTypeClass where
-  pretty :: LinearityTypeClass -> Doc ann
   pretty = \case
     MaxLinearity        -> "MaxLinearity"
     MulLinearity        -> "MulLinearity"
