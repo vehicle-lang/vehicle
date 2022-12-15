@@ -165,6 +165,10 @@ typeCheckProg :: (MonadIO m, MonadCompile m)
               -> DeclarationNames
               -> m TypedProg
 typeCheckProg modul imports spec declarationsToCompile = do
+  -- If compiled with +nothunks, check that the elaborated program
+  -- does not contain any thunks. If it does, and we compiled with
+  -- +ghc-debug, pass the closures to ghc-debug and pause. Otherwise
+  -- throw an error.
   vehicleProg <- unsafeCheckThunks <$> parseProgText modul spec
   (scopedProg, dependencyGraph) <- scopeCheck imports vehicleProg
   prunedProg <- analyseDependenciesAndPrune scopedProg dependencyGraph declarationsToCompile
@@ -198,8 +202,6 @@ parseProgText modul txt = do
     Left  err  -> throwError $ ParseError err
     Right prog -> case traverseDecls (parseDecl modul) prog of
       Left err    -> throwError $ ParseError err
-      -- If compiled with +ghc-debug, check that the elaborated program
-      -- does not contain any thunks.
       Right prog' -> return prog'
 
 loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m TypedProg
