@@ -3,6 +3,21 @@
 module Vehicle.Syntax.AST.NoThunks where
 
 #if nothunks
+import Vehicle.Syntax.AST.Binder
+import Vehicle.Syntax.AST.Builtin
+import Vehicle.Syntax.AST.Builtin.Core
+import Vehicle.Syntax.AST.Builtin.Linearity
+import Vehicle.Syntax.AST.Builtin.Polarity
+import Vehicle.Syntax.AST.Builtin.TypeClass
+import Vehicle.Syntax.AST.Decl
+import Vehicle.Syntax.AST.Expr
+import Vehicle.Syntax.AST.Meta
+import Vehicle.Syntax.AST.Name
+import Vehicle.Syntax.AST.Prog
+import Vehicle.Syntax.AST.Provenance
+import Vehicle.Syntax.AST.Relevance
+import Vehicle.Syntax.AST.Visibility
+
 import NoThunks.Class (NoThunks)
 
 -- Vehicle.Syntax.AST.Builtin.Core
