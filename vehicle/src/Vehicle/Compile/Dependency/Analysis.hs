@@ -1,19 +1,19 @@
-
 module Vehicle.Compile.Dependency.Analysis
-  ( analyseDependenciesAndPrune
-  ) where
+  ( analyseDependenciesAndPrune,
+  )
+where
 
 import Data.Set (Set)
 import Data.Set qualified as Set (map, member)
-
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 
-analyseDependenciesAndPrune :: MonadCompile m
-                            => GenericProg expr
-                            -> DependencyGraph
-                            -> DeclarationNames
-                            -> m (GenericProg expr)
+analyseDependenciesAndPrune ::
+  MonadCompile m =>
+  GenericProg expr ->
+  DependencyGraph ->
+  DeclarationNames ->
+  m (GenericProg expr)
 analyseDependenciesAndPrune prog dependencyGraph declarationsToCompile = do
   if null declarationsToCompile
     then return prog

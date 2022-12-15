@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 
-
 module Vehicle.Syntax.AST.Builtin.Polarity where
 
 import Control.DeepSeq (NFData (..))
@@ -8,11 +7,12 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), (<+>))
-import Vehicle.Syntax.AST.Builtin.Core (EqualityOp, FunctionPosition,
-                                        Quantifier)
+import Vehicle.Syntax.AST.Builtin.Core
+  ( EqualityOp,
+    FunctionPosition,
+    Quantifier,
+  )
 import Vehicle.Syntax.AST.Provenance (Provenance)
-
-
 
 --------------------------------------------------------------------------------
 -- PolarityProvenance
@@ -27,6 +27,7 @@ data PolarityProvenance
   deriving (Generic)
 
 instance ToJSON PolarityProvenance
+
 instance FromJSON PolarityProvenance
 
 instance Show PolarityProvenance where
@@ -56,22 +57,25 @@ data Polarity
   deriving (Eq, Show, Generic)
 
 instance NFData Polarity
+
 instance Hashable Polarity
+
 instance ToJSON Polarity
+
 instance FromJSON Polarity
 
 instance Pretty Polarity where
   pretty = \case
-    Unquantified      -> "Unquantified"
-    Quantified q _    -> "Quantified" <+> pretty q
-    MixedParallel{}   -> "MixedParallel"
-    MixedSequential{} -> "MixedSequential"
+    Unquantified -> "Unquantified"
+    Quantified q _ -> "Quantified" <+> pretty q
+    MixedParallel {} -> "MixedParallel"
+    MixedSequential {} -> "MixedSequential"
 
 mapPolarityProvenance :: (PolarityProvenance -> PolarityProvenance) -> Polarity -> Polarity
 mapPolarityProvenance f = \case
-  Unquantified           -> Unquantified
-  Quantified q pp        -> Quantified q (f pp)
-  MixedParallel pp1 pp2  -> MixedParallel (f pp1) (f pp2)
+  Unquantified -> Unquantified
+  Quantified q pp -> Quantified q (f pp)
+  MixedParallel pp1 pp2 -> MixedParallel (f pp1) (f pp2)
   -- At the moment we don't change non-linear provenance because we
   -- want the minimal example.
   MixedSequential q p pp -> MixedSequential q p pp
@@ -90,16 +94,19 @@ data PolarityTypeClass
   deriving (Eq, Generic, Show)
 
 instance ToJSON PolarityTypeClass
+
 instance FromJSON PolarityTypeClass
+
 instance NFData PolarityTypeClass
+
 instance Hashable PolarityTypeClass
 
 instance Pretty PolarityTypeClass where
   pretty = \case
-    NegPolarity        -> "NegPolarity"
-    AddPolarity q      -> "AddPolarity" <+> pretty q
-    EqPolarity eq      -> "EqPolarity" <+> pretty eq
-    ImpliesPolarity    -> "ImpliesPolarity"
-    MaxPolarity        -> "MaxPolarity"
-    IfCondPolarity     -> "IfCondPolarity"
+    NegPolarity -> "NegPolarity"
+    AddPolarity q -> "AddPolarity" <+> pretty q
+    EqPolarity eq -> "EqPolarity" <+> pretty eq
+    ImpliesPolarity -> "ImpliesPolarity"
+    MaxPolarity -> "MaxPolarity"
+    IfCondPolarity -> "IfCondPolarity"
     FunctionPolarity p -> "FunctionPolarity" <> pretty p

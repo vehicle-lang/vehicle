@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP          #-}
+{-# LANGUAGE CPP #-}
 #if nothunks
 {-# LANGUAGE BangPatterns #-}
 #endif
