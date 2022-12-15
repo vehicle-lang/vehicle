@@ -1,20 +1,23 @@
+{-# LANGUAGE CPP #-}
+
 module Vehicle.Syntax.AST.Relevance where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
+import Vehicle.Syntax.AST.Builtin.TypeClass (TypeClass (..))
 
-import Vehicle.Syntax.AST.Builtin
+
 
 data Relevance
   = Relevant
   | Irrelevant
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   Relevance
+instance NFData Relevance
 instance Hashable Relevance
-instance ToJSON   Relevance
+instance ToJSON Relevance
 instance FromJSON Relevance
 
 class HasRelevance a where
@@ -45,7 +48,6 @@ instance HasRelevance TypeClass where
     HasNatLits{}            -> Relevant
     HasRatLits{}            -> Relevant
     HasVecLits{}            -> Relevant
-
     HasIf{}                 -> Irrelevant
     AlmostEqualConstraint{} -> Irrelevant
     NatInDomainConstraint{} -> Irrelevant

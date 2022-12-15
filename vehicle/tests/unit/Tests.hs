@@ -1,3 +1,7 @@
+{-# LANGUAGE CPP #-}
+
+module Main where
+
 import GHC.IO.Encoding (setLocaleEncoding)
 import GHC.IO.Encoding.UTF8 (utf8)
 import Test.Tasty (TestTree, defaultIngredients, defaultMainWithIngredients,
@@ -13,9 +17,15 @@ import Vehicle.Test.Unit.Compile.Normalisation (normalisationTests)
 import Vehicle.Test.Unit.Compile.PositionTree (positionTreeTests)
 import Vehicle.Test.Unit.Compile.QuantifierLifting (quantiferLiftingTests)
 
+#if ghcDebug
+import GHC.Debug.Stub (withGhcDebug)
+#endif
 
-main :: IO ()
-main = do
+--------------------------------------------------------------------------------
+-- Main entry point for vehicle-unit-tests
+
+tests :: IO ()
+tests = do
   setLocaleEncoding utf8
   defaultMainWithIngredients
     (vehicleLoggingIngredient : defaultIngredients) $
@@ -30,3 +40,14 @@ main = do
       , letInsertionTests
       , commandLineParserTests
       ]
+
+--------------------------------------------------------------------------------
+-- Load ghc-debug instrumentation if built with ghc-debug
+
+#if ghcDebug
+main :: IO ()
+main = withGhcDebug tests
+#else
+main :: IO ()
+main = tests
+#endif

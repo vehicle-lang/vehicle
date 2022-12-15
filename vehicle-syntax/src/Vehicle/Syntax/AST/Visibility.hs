@@ -1,29 +1,31 @@
+{-# LANGUAGE CPP #-}
+
 module Vehicle.Syntax.AST.Visibility where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..))
-
-import Vehicle.Syntax.AST.Provenance
+import Prettyprinter (Doc, Pretty (..))
+import Vehicle.Syntax.AST.Provenance (Provenance, expandProvenance)
 
 --------------------------------------------------------------------------------
 -- Definitions
 
 -- | Visibility of function arguments.
 data Visibility
+  -- | Always have to be given explicitly
   = Explicit
-  -- ^ Always have to be given explicitly
+  -- | Inferred via unification
   | Implicit
-  -- ^ Inferred via unification
+  -- | Inferred via instance search/type class resolution
   | Instance
-  -- ^ Inferred via instance search/type class resolution
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   Visibility
+
+instance NFData Visibility
 instance Hashable Visibility
-instance ToJSON   Visibility
+instance ToJSON Visibility
 instance FromJSON Visibility
 
 instance Pretty Visibility where
@@ -32,9 +34,7 @@ instance Pretty Visibility where
     Implicit   -> "Implicit"
     Instance{} -> "Instance"
 
-
 -- | Type class for types which have provenance information
-
 class HasVisibility a where
   visibilityOf :: a -> Visibility
 
@@ -57,5 +57,5 @@ visibilityMatches x y = visibilityOf x == visibilityOf y
 
 expandByArgVisibility :: Visibility -> Provenance -> Provenance
 expandByArgVisibility Explicit{} = id
-expandByArgVisibility Implicit{} = expandProvenance (1,1)
-expandByArgVisibility Instance{} = expandProvenance (2,2)
+expandByArgVisibility Implicit{} = expandProvenance (1, 1)
+expandByArgVisibility Instance{} = expandProvenance (2, 2)

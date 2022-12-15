@@ -1,9 +1,13 @@
-{-# LANGUAGE CPP          #-}
+{-# LANGUAGE CPP                       #-}
 #if nothunks
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns              #-}
+#endif
+#if ghcDebug
+#else
+{-# LANGUAGE ExistentialQuantification #-}
 #endif
 
-module Vehicle.Prelude.Debug
+module Vehicle.Syntax.Prelude.Debug
   ( -- * Export 'ghc-debug-stub'
     Box (Box),
     saveClosures,

@@ -30,7 +30,30 @@ flag ghc-debug
   manual:      True
   default:     False
 
+common ghc-debug
+  build-depends: ghc-debug-stub >=0.3 && <0.4
+  cpp-options:   -DghcDebug
+
+common ghc-debug-executable
+  if flag(ghc-debug)
+    ghc-options: -threaded -rtsopts
+
+flag nothunks
+  description: Add NoThunks instances
+  manual:      True
+  default:     False
+
+common nothunks
+  build-depends: nothunks >=0.1.3 && <0.2
+  cpp-options:   -Dnothunks
+
 common common-language
+  if flag(ghc-debug)
+    import: ghc-debug
+
+  if flag(nothunks)
+    import: nothunks
+
   default-language:   Haskell2010
   default-extensions:
     ConstraintKinds
@@ -207,27 +230,20 @@ library
     , vector                >=0.12.3  && <0.13
     , vehicle-syntax
 
-  if flag(ghc-debug)
-    build-depends:
-      , ghc-debug-stub  >=0.3   && <0.4
-      , nothunks        >=0.1.3 && <0.2
-
-    cpp-options:   -DghcDebug
-
   ghc-options:     -Werror -Wall -fprint-potential-instances
 
 executable vehicle
   import:         common-language
+
+  if flag(ghc-debug)
+    import: ghc-debug-executable
+
   main-is:        Main.hs
   hs-source-dirs: app
   build-depends:
     , base                  >=4.13 && <5
     , optparse-applicative  >=0.16 && <1
     , vehicle
-
-  if flag(ghc-debug)
-    build-depends: ghc-debug-stub >=0.3
-    cpp-options:   -DghcDebug
 
 -----------------
 -- Test suites --
@@ -269,6 +285,10 @@ library vehicle-golden-tests-common
 
 test-suite vehicle-golden-tests
   import:             common-language
+
+  if flag(ghc-debug)
+    import: ghc-debug-executable
+
   type:               exitcode-stdio-1.0
   main-is:            tests/golden/Tests.hs
   build-depends:
@@ -281,16 +301,20 @@ test-suite vehicle-golden-tests
     , vehicle:vehicle-golden-tests-common
 
   build-tool-depends: vehicle:vehicle
-  ghc-options:        -threaded -rtsopts -with-rtsopts=-N -O0
+
+  if flag(ghc-debug)
+    ghc-options: -threaded -rtsopts
 
 executable vehicle-new-golden-test
   import:        common-language
+
+  if flag(ghc-debug)
+    import: ghc-debug-executable
+
   main-is:       tests/golden/NewTest.hs
   build-depends:
     , base                                 >=4.13 && <5
     , vehicle:vehicle-golden-tests-common
-
-  ghc-options:   -threaded -rtsopts -with-rtsopts=-N -O0
 
 library vehicle-unit-tests-common
   import:          common-language
@@ -323,6 +347,10 @@ library vehicle-unit-tests-common
 
 test-suite vehicle-unit-tests
   import:        common-language
+
+  if flag(ghc-debug)
+    import: ghc-debug-executable
+
   type:          exitcode-stdio-1.0
   main-is:       tests/unit/Tests.hs
   build-depends:

@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Vehicle.Syntax.Sugar
   ( BinderFoldTarget(..)
   , FoldableBinderType(..)

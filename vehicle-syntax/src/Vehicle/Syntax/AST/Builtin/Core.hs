@@ -1,5 +1,7 @@
--- | This module exports the datatype representations of the core builtin symbols.
+{-# LANGUAGE CPP #-}
 
+
+-- | This module exports the datatype representations of the core builtin symbols.
 module Vehicle.Syntax.AST.Builtin.Core
   ( Quantifier(..)
   , EqualityOp(..)
@@ -29,8 +31,8 @@ import Prettyprinter (Doc, Pretty (..))
 
 -- | Represents whether something is an input or an output of a function
 data FunctionPosition
-  = FunctionInput Text Int
-  | FunctionOutput Text
+  = FunctionInput !Text !Int
+  | FunctionOutput !Text
   deriving (Eq, Show, Generic)
 
 instance NFData   FunctionPosition

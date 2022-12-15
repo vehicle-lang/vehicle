@@ -1,3 +1,6 @@
+{-# LANGUAGE CPP #-}
+
+
 module Vehicle.Syntax.AST.Name where
 
 import Control.DeepSeq (NFData)
@@ -5,7 +8,9 @@ import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable)
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..))
+import Prettyprinter (Doc, Pretty (..))
+
+
 
 --------------------------------------------------------------------------------
 -- Definition
@@ -36,7 +41,7 @@ instance Pretty Module where
 --------------------------------------------------------------------------------
 -- Identifiers
 
-data Identifier = Identifier Module Name
+data Identifier = Identifier !Module !Name
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty Identifier where
@@ -62,4 +67,5 @@ class HasName a name where
   nameOf :: a -> name
 
 instance HasName Identifier Name where
+  nameOf :: Identifier -> Name
   nameOf (Identifier mod name) = name

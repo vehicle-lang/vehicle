@@ -1,18 +1,18 @@
+{-# LANGUAGE CPP #-}
+
 module Vehicle.Syntax.AST.Binder where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-
-import Vehicle.Syntax.AST.Name
-import Vehicle.Syntax.AST.Provenance
-import Vehicle.Syntax.AST.Relevance
-import Vehicle.Syntax.AST.Visibility
+import Vehicle.Syntax.AST.Name (HasName (..))
+import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
+import Vehicle.Syntax.AST.Relevance (HasRelevance (..), Relevance (..))
+import Vehicle.Syntax.AST.Visibility (HasVisibility (..), Visibility (..))
 
 --------------------------------------------------------------------------------
 -- Binders
-
 
 -- | What form the binder appears in the user expression
 data BinderNamingForm
@@ -50,15 +50,15 @@ instance Hashable BinderForm
 -- manually provided by the user it never needs to be updated after unification
 -- and type-class resolution.
 data GenericBinder binder expr = Binder
-  { binderProvenance     :: Provenance
-  , binderForm           :: BinderForm
-  , binderVisibility     :: Visibility
+  { binderProvenance     :: !Provenance
+  , binderForm           :: !BinderForm
+  , binderVisibility     :: !Visibility
   -- ^ The visibility of the binder
-  , binderRelevance      :: Relevance
+  , binderRelevance      :: !Relevance
   -- ^ The relevancy of the binder
-  , binderRepresentation :: binder
+  , binderRepresentation :: !binder
   -- ^ The representation of the bound variable
-  , binderType           :: expr
+  , binderType           :: !expr
   -- The type of the bound variable
   } deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
@@ -67,15 +67,19 @@ instance (ToJSON   binder, ToJSON   expr) => ToJSON   (GenericBinder binder expr
 instance (FromJSON binder, FromJSON expr) => FromJSON (GenericBinder binder expr)
 
 instance HasProvenance (GenericBinder binder expr) where
+  provenanceOf :: GenericBinder binder expr -> Provenance
   provenanceOf = binderProvenance
 
 instance HasVisibility (GenericBinder binder expr) where
+  visibilityOf :: GenericBinder binder expr -> Visibility
   visibilityOf = binderVisibility
 
 instance HasRelevance (GenericBinder binder expr) where
+  relevanceOf :: GenericBinder binder expr -> Relevance
   relevanceOf = binderRelevance
 
 instance HasName (GenericBinder binder expr) binder where
+  nameOf :: GenericBinder binder expr -> binder
   nameOf = binderRepresentation
 
 --------------------------------------------------------------------------------

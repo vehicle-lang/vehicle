@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP             #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -9,16 +10,17 @@ import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..), (<+>))
-
-import Vehicle.Syntax.AST.Arg
-import Vehicle.Syntax.AST.Binder
+import Prettyprinter (Doc, Pretty (..), (<+>))
+import Vehicle.Syntax.AST.Arg (GenericArg)
+import Vehicle.Syntax.AST.Binder (GenericBinder)
 import Vehicle.Syntax.AST.Builtin (Builtin, Linearity (..), Polarity (..))
-import Vehicle.Syntax.AST.Decl
-import Vehicle.Syntax.AST.Meta
+import Vehicle.Syntax.AST.Decl (GenericDecl)
+import Vehicle.Syntax.AST.Meta (MetaID)
 import Vehicle.Syntax.AST.Name (Name, NamedBinding)
-import Vehicle.Syntax.AST.Prog
-import Vehicle.Syntax.AST.Provenance
+import Vehicle.Syntax.AST.Prog (GenericProg)
+import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
+
+
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -26,14 +28,14 @@ import Vehicle.Syntax.AST.Provenance
 type UniverseLevel = Int
 
 data Universe
-  = TypeUniv UniverseLevel
+  = TypeUniv !UniverseLevel
   | LinearityUniv
   | PolarityUniv
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   Universe
+instance NFData Universe
 instance Hashable Universe
-instance ToJSON   Universe
+instance ToJSON Universe
 instance FromJSON Universe
 
 instance Pretty Universe where
@@ -50,26 +52,26 @@ instance Pretty Universe where
 -- - There should be a family of `Float` literals, but we haven't got there yet.
 data Literal
   = LUnit
-  | LBool  Bool
-  | LIndex Int Int
-  | LNat   Int
-  | LInt   Int
-  | LRat   Rational
+  | LBool !Bool
+  | LIndex !Int !Int
+  | LNat !Int
+  | LInt !Int
+  | LRat !Rational
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   Literal
+instance NFData Literal
 instance Hashable Literal
-instance ToJSON   Literal
+instance ToJSON Literal
 instance FromJSON Literal
 
 instance Pretty Literal where
   pretty = \case
     LUnit      -> "()"
-    LBool  x   -> pretty x
+    LBool x    -> pretty x
     LIndex _ x -> pretty x
-    LNat   x   -> pretty x
-    LInt   x   -> pretty x
-    LRat   x   -> pretty x
+    LNat x     -> pretty x
+    LInt x     -> pretty x
+    LRat x     -> pretty x
 
 instance Pretty Rational where
   pretty p = pretty (fromRational p :: Double)
@@ -85,49 +87,48 @@ instance Pretty Rational where
 -- Names are parameterised over so that they can store
 -- either the user assigned names or deBruijn indices.
 data Expr binder var
-
   -- | A universe, used to type types.
   = Universe
-    Provenance
-    Universe
+    !Provenance
+    !Universe
 
   -- | User annotation
   | Ann
-    Provenance
-    (Expr binder var)    -- The term
-    (Expr binder var)    -- The type of the term
+    !Provenance
+    !(Expr binder var) -- The term
+    !(Expr binder var) -- The type of the term
 
   -- | Application of one term to another.
   | App
-    Provenance
-    (Expr binder var)           -- Function.
-    (NonEmpty (Arg binder var)) -- Arguments.
+    !Provenance
+    !(Expr binder var) -- Function.
+    !(NonEmpty (Arg binder var)) -- Arguments.
 
   -- | Dependent product (subsumes both functions and universal quantification).
   | Pi
-    Provenance
-    (Binder binder var)  -- The bound name
-    (Expr   binder var)  -- (Dependent) result type.
+    !Provenance
+    !(Binder binder var) -- The bound name
+    !(Expr binder var) -- (Dependent) result type.
 
   -- | Terms consisting of constants that are built into the language.
   | Builtin
-    Provenance
-    Builtin          -- Builtin name.
+    !Provenance
+    !Builtin -- Builtin name.
 
   -- | Variables that are bound by other expressions
   | Var
-    Provenance
-    var              -- Variable name.
+    !Provenance
+    !var -- Variable name.
 
   -- | A hole in the program.
   | Hole
-    Provenance
-    Name             -- Hole name.
+    !Provenance
+    !Name -- Hole name.
 
   -- | Unsolved meta variables.
   | Meta
-    Provenance
-    MetaID           -- Meta variable number.
+    !Provenance
+    !MetaID -- Meta variable number.
 
   -- | Let expressions. We have these in the core syntax because we want to
   -- cross compile them to various backends.
@@ -136,58 +137,59 @@ data Expr binder var
   -- to better mimic the flow of the context, which makes writing monadic
   -- operations concisely much easier.
   | Let
-    Provenance
-    (Expr   binder var)  -- Bound expression body.
-    (Binder binder var)  -- Bound expression name.
-    (Expr   binder var)  -- Expression body.
+    !Provenance
+    !(Expr binder var) -- Bound expression body.
+    !(Binder binder var) -- Bound expression name.
+    !(Expr binder var) -- Expression body.
 
   -- | Lambda expressions (i.e. anonymous functions).
   | Lam
-    Provenance
-    (Binder binder var)  -- Bound expression name.
-    (Expr   binder var)  -- Expression body.
+    !Provenance
+    !(Binder binder var) -- Bound expression name.
+    !(Expr binder var) -- Expression body.
 
   -- | Built-in literal values e.g. numbers/booleans.
   | Literal
-    Provenance
-    Literal                  -- Value.
+    !Provenance
+    !Literal -- Value.
 
   -- | A sequence of terms for e.g. list literals.
   | LVec
-    Provenance
-    [Expr binder var]    -- List of expressions.
-
+    !Provenance
+    ![Expr binder var] -- List of expressions.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance (NFData   binder, NFData   var) => NFData   (Expr binder var)
-instance (ToJSON   binder, ToJSON   var) => ToJSON   (Expr binder var)
+instance (NFData binder, NFData var) => NFData (Expr binder var)
+instance (ToJSON binder, ToJSON var) => ToJSON (Expr binder var)
 instance (FromJSON binder, FromJSON var) => FromJSON (Expr binder var)
 
 type Type = Expr
 
 instance HasProvenance (Expr binder var) where
+  provenanceOf :: Expr binder var -> Provenance
   provenanceOf = \case
-    Universe p _     -> p
-    Hole     p _     -> p
-    Meta     p _     -> p
-    Ann      p _ _   -> p
-    App      p _ _   -> p
-    Pi       p _ _   -> p
-    Builtin  p _     -> p
-    Var      p _     -> p
-    Let      p _ _ _ -> p
-    Lam      p _ _   -> p
-    Literal  p _     -> p
-    LVec     p _     -> p
+    Universe p _ -> p
+    Hole p _     -> p
+    Meta p _     -> p
+    Ann p _ _    -> p
+    App p _ _    -> p
+    Pi p _ _     -> p
+    Builtin p _  -> p
+    Var p _      -> p
+    Let p _ _ _  -> p
+    Lam p _ _    -> p
+    Literal p _  -> p
+    LVec p _     -> p
 
 -- An expression that uses named variables for both binders and variables.
 type NamedBinder = Binder NamedBinding Name
-type NamedArg    = Arg    NamedBinding Name
-type NamedExpr   = Expr   NamedBinding Name
-type NamedDecl   = Decl   NamedBinding Name
-type NamedProg   = Prog   NamedBinding Name
+type NamedArg = Arg NamedBinding Name
+type NamedExpr = Expr NamedBinding Name
+type NamedDecl = Decl NamedBinding Name
+type NamedProg = Prog NamedBinding Name
 
 -- * Type of annotations attached to the AST after parsing
+
 -- before being analysed by the compiler
 type InputBinding = Maybe NamedBinding
 type InputVar     = Name

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Expr.DeBruijn
@@ -32,6 +33,10 @@ import GHC.Generics (Generic)
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
+#if nothunks
+import NoThunks.Class (NoThunks)
+#endif
+
 --------------------------------------------------------------------------------
 -- Definitions
 
@@ -41,9 +46,13 @@ data LocallyNamelessVar a
   | Bound a
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData a   => NFData   (LocallyNamelessVar a)
+#if nothunks
+instance NoThunks a => NoThunks (LocallyNamelessVar a)
+#endif
+
+instance NFData   a => NFData   (LocallyNamelessVar a)
 instance Hashable a => Hashable (LocallyNamelessVar a)
-instance ToJSON a   => ToJSON   (LocallyNamelessVar a)
+instance ToJSON   a => ToJSON   (LocallyNamelessVar a)
 instance FromJSON a => FromJSON (LocallyNamelessVar a)
 
 -- | A DeBruijn index pointing to the binder that the variable refers to,
@@ -51,6 +60,10 @@ instance FromJSON a => FromJSON (LocallyNamelessVar a)
 newtype DBIndex = DBIndex
   { dbIndex :: Int
   } deriving (Eq, Ord, Num, Show, Generic)
+
+#if nothunks
+instance NoThunks DBIndex
+#endif
 
 instance NFData   DBIndex
 instance Hashable DBIndex
@@ -66,6 +79,10 @@ newtype DBLevel = DBLevel
   { dbLevel :: Int
   } deriving (Eq, Ord, Num, Show, Generic)
 
+#if nothunks
+instance NoThunks DBLevel
+#endif
+
 instance NFData   DBLevel
 instance Hashable DBLevel
 instance ToJSON   DBLevel
@@ -80,7 +97,7 @@ type DBIndexVar = LocallyNamelessVar DBIndex
 -- |The type of data DeBruijn levels store at name sites
 type DBLevelVar = LocallyNamelessVar DBLevel
 
--- |The type of the data DeBruijn notation stores at binding sites.
+-- | The type of the data DeBruijn notation stores at binding sites.
 type DBBinding = Maybe Name
 
 -- | Used to track the number of binders we're underneath during a traversal of
@@ -91,6 +108,7 @@ type BindingDepth = Int
 -- Expressions
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
+
 type DBBinder = Binder DBBinding DBIndexVar
 type DBArg    = Arg    DBBinding DBIndexVar
 type DBExpr   = Expr   DBBinding DBIndexVar
@@ -138,7 +156,7 @@ instance Substitutable DBExpr DBExpr where
 -- Temporarily go under a binder, increasing the binding depth by one
 -- and shifting the current state.
 underDBBinder :: MonadReader (BindingDepth, c) m => m a -> m a
-underDBBinder = local (first (+1))
+underDBBinder = local (first (+ 1))
 
 --------------------------------------------------------------------------------
 -- Concrete operations
@@ -163,8 +181,8 @@ substDBIntoAtLevel level value = substituteDB 0 substVar
     substVar :: DBIndex -> Either DBIndex DBExpr
     substVar v
       | v == level = Right value
-      | v > level  = Left (v - 1)
-      | otherwise  = Left v
+      | v > level = Left (v - 1)
+      | otherwise = Left v
 
 -- | De Bruijn aware substitution of one expression into another
 substDBInto :: DBExpr  -- ^ expression to substitute

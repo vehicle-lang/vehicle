@@ -1,24 +1,28 @@
--- | This module exports the datatype representations of the builtin symbols.
+{-# LANGUAGE CPP #-}
 
+
+-- | This module exports the datatype representations of the builtin symbols.
 module Vehicle.Syntax.AST.Builtin
   ( module Vehicle.Syntax.AST.Builtin
   , module X
   ) where
 
 import Control.DeepSeq (NFData (..))
+import Data.Aeson (FromJSON)
+import Data.Aeson.Types (ToJSON)
 import Data.Bifunctor (first)
 import Data.Hashable (Hashable (..))
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
-
-import Data.Aeson (FromJSON)
-import Data.Aeson.Types (ToJSON)
+import Prettyprinter (Doc, Pretty (..), defaultLayoutOptions, layoutPretty,
+                      (<+>))
 import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.AST.Builtin.Core as X
 import Vehicle.Syntax.AST.Builtin.Linearity as X
 import Vehicle.Syntax.AST.Builtin.Polarity as X
 import Vehicle.Syntax.AST.Builtin.TypeClass as X
+
+
 
 --------------------------------------------------------------------------------
 -- Constructors
@@ -27,9 +31,8 @@ import Vehicle.Syntax.AST.Builtin.TypeClass as X
 -- are viewed as constructors for `Type`.
 data BuiltinConstructor
   -- Annotations - these should not be shown to the user.
-  = Polarity  Polarity
-  | Linearity Linearity
-
+  = Polarity !Polarity
+  | Linearity !Linearity
   -- Types
   | Unit
   | Bool
@@ -39,38 +42,33 @@ data BuiltinConstructor
   | Rat
   | List
   | Vector
-
   -- Type classes
-  | TypeClass   TypeClass
-
+  | TypeClass !TypeClass
   -- Container expressions
   | Nil
   | Cons
   deriving (Eq, Show, Generic)
 
-instance NFData   BuiltinConstructor
+instance NFData BuiltinConstructor
 instance Hashable BuiltinConstructor
-instance ToJSON   BuiltinConstructor
+instance ToJSON BuiltinConstructor
 instance FromJSON BuiltinConstructor
 
 instance Pretty BuiltinConstructor where
   pretty = \case
-    Unit           -> "Unit"
-    Bool           -> "Bool"
-    Index          -> "Index"
-    Nat            -> "Nat"
-    Int            -> "Int"
-    Rat            -> "Rat"
-    List           -> "List"
-    Vector         -> "Vector"
-
-    TypeClass   tc -> pretty tc
-
-    Polarity  pol  -> pretty pol
-    Linearity lin  -> pretty lin
-
-    Nil            -> "nil"
-    Cons           -> "::"
+    Unit          -> "Unit"
+    Bool          -> "Bool"
+    Index         -> "Index"
+    Nat           -> "Nat"
+    Int           -> "Int"
+    Rat           -> "Rat"
+    List          -> "List"
+    Vector        -> "Vector"
+    TypeClass tc  -> pretty tc
+    Polarity pol  -> pretty pol
+    Linearity lin -> pretty lin
+    Nil           -> "nil"
+    Cons          -> "::"
 
 --------------------------------------------------------------------------------
 -- Builtin
@@ -80,11 +78,10 @@ data NegDomain
   | NegRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   NegDomain
+instance NFData NegDomain
 instance Hashable NegDomain
-instance ToJSON   NegDomain
+instance ToJSON NegDomain
 instance FromJSON NegDomain
-
 
 instance Pretty NegDomain where
   pretty = \case
@@ -102,9 +99,9 @@ data AddDomain
   | AddRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   AddDomain
+instance NFData AddDomain
 instance Hashable AddDomain
-instance ToJSON   AddDomain
+instance ToJSON AddDomain
 instance FromJSON AddDomain
 
 instance Pretty AddDomain where
@@ -118,9 +115,9 @@ data SubDomain
   | SubRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   SubDomain
+instance NFData SubDomain
 instance Hashable SubDomain
-instance ToJSON   SubDomain
+instance ToJSON SubDomain
 instance FromJSON SubDomain
 
 instance Pretty SubDomain where
@@ -144,9 +141,9 @@ data MulDomain
   | MulRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   MulDomain
+instance NFData MulDomain
 instance Hashable MulDomain
-instance ToJSON   MulDomain
+instance ToJSON MulDomain
 instance FromJSON MulDomain
 
 instance Pretty MulDomain where
@@ -159,9 +156,9 @@ data DivDomain
   = DivRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   DivDomain
+instance NFData DivDomain
 instance Hashable DivDomain
-instance ToJSON   DivDomain
+instance ToJSON DivDomain
 instance FromJSON DivDomain
 
 instance Pretty DivDomain where
@@ -182,9 +179,9 @@ instance Pretty FromNatDomain where
     FromNatToInt   -> "Int"
     FromNatToRat   -> "Rat"
 
-instance NFData   FromNatDomain
+instance NFData FromNatDomain
 instance Hashable FromNatDomain
-instance ToJSON   FromNatDomain
+instance ToJSON FromNatDomain
 instance FromJSON FromNatDomain
 
 data FromRatDomain
@@ -195,9 +192,9 @@ instance Pretty FromRatDomain where
   pretty = \case
     FromRatToRat -> "Rat"
 
-instance NFData   FromRatDomain
+instance NFData FromRatDomain
 instance Hashable FromRatDomain
-instance ToJSON   FromRatDomain
+instance ToJSON FromRatDomain
 instance FromJSON FromRatDomain
 
 data FromVecDomain
@@ -210,9 +207,9 @@ instance Pretty FromVecDomain where
     FromVecToVec  -> "Vector"
     FromVecToList -> "List"
 
-instance NFData   FromVecDomain
+instance NFData FromVecDomain
 instance Hashable FromVecDomain
-instance ToJSON   FromVecDomain
+instance ToJSON FromVecDomain
 instance FromJSON FromVecDomain
 
 data FoldDomain
@@ -225,9 +222,9 @@ instance Pretty FoldDomain where
     FoldList   -> "List"
     FoldVector -> "Vector"
 
-instance NFData   FoldDomain
+instance NFData FoldDomain
 instance Hashable FoldDomain
-instance ToJSON   FoldDomain
+instance ToJSON FoldDomain
 instance FromJSON FoldDomain
 
 data MapDomain
@@ -240,52 +237,45 @@ instance Pretty MapDomain where
     MapList   -> "List"
     MapVector -> "Vector"
 
-instance NFData   MapDomain
+instance NFData MapDomain
 instance Hashable MapDomain
-instance ToJSON   MapDomain
+instance ToJSON MapDomain
 instance FromJSON MapDomain
 
-
--- |Builtins in the Vehicle language
+-- | Builtins in the Vehicle language
 data Builtin
-  = Constructor BuiltinConstructor
-
+  = Constructor !BuiltinConstructor
   -- Boolean expressions
   | Not
   | And
   | Or
   | Implies
   | If
-
   -- Numeric conversion
-  | FromNat Int FromNatDomain
-  | FromRat FromRatDomain
-  | FromVec Int FromVecDomain
-
+  | FromNat !Int !FromNatDomain
+  | FromRat !FromRatDomain
+  | FromVec !Int !FromVecDomain
   -- Numeric operations
-  | Neg NegDomain
-  | Add AddDomain
-  | Sub SubDomain
-  | Mul MulDomain
-  | Div DivDomain
-
+  | Neg !NegDomain
+  | Add !AddDomain
+  | Sub !SubDomain
+  | Mul !MulDomain
+  | Div !DivDomain
   -- Comparison expressions
-  | Equals EqualityDomain EqualityOp
-  | Order  OrderDomain OrderOp
-
+  | Equals !EqualityDomain !EqualityOp
+  | Order !OrderDomain !OrderOp
   | At
-  | Map  MapDomain
-
+  | Map !MapDomain
   -- Derived
   | Tensor
-  | TypeClassOp TypeClassOp
-  | Fold FoldDomain
+  | TypeClassOp !TypeClassOp
+  | Fold !FoldDomain
   | Foreach
   deriving (Eq, Show, Generic)
 
-instance NFData   Builtin
+instance NFData Builtin
 instance Hashable Builtin
-instance ToJSON   Builtin
+instance ToJSON Builtin
 instance FromJSON Builtin
 
 -- TODO all the show instances should really be obtainable from the grammar
@@ -293,28 +283,22 @@ instance FromJSON Builtin
 instance Pretty Builtin where
   pretty = \case
     Constructor c    -> pretty c
-
     TypeClassOp tcOp -> pretty tcOp
-
     Not              -> "notBool"
     And              -> "andBool"
     Or               -> "orBool"
     Implies          -> "impliesBool"
     If               -> "if"
-
     Neg dom          -> "neg" <> pretty dom
     Add dom          -> "add" <> pretty dom
     Sub dom          -> "sub" <> pretty dom
     Mul dom          -> "mul" <> pretty dom
     Div dom          -> "div" <> pretty dom
-
     FromNat n dom    -> "fromNat[" <> pretty n <> "]To" <> pretty dom
     FromRat dom      -> "fromRatTo" <> pretty dom
     FromVec n dom    -> "fromVec[" <> pretty n <> "]To" <> pretty dom
-
     Equals dom op    -> equalityOpName op <> pretty dom
-    Order  dom op    -> orderOpName op <> pretty dom
-
+    Order dom op     -> orderOpName op <> pretty dom
     Tensor           -> "Tensor"
     Foreach          -> "foreach"
     Fold dom         -> "fold" <> pretty dom
