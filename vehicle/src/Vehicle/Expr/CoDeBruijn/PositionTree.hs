@@ -177,7 +177,7 @@ unnodeBVM bvm
     distrib x = [IntMap.mapMaybe (\l -> join (l !!? i)) x | i <- [0 ..]]
 
 leafBVM :: DBIndex -> BoundVarMap
-leafBVM i = IntMap.singleton (dbIndex i) Leaf
+leafBVM i = IntMap.singleton (unIndex i) Leaf
 
 unleafBVM :: BoundVarMap -> DBIndex
 unleafBVM bvm = case IntMap.minViewWithKey bvm of

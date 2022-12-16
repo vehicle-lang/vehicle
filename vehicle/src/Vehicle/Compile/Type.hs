@@ -47,7 +47,7 @@ typeCheck ::
   m TypedProg
 typeCheck imports uncheckedProg =
   logCompilerPass MinDetail "type checking" $
-    runTypeCheckerT (createDeclCtx imports) $
+    runTypeCheckerT (createDeclCtx imports) $ do
       typeCheckProg uncheckedProg
 
 typeCheckExpr ::
@@ -246,9 +246,10 @@ loopOverConstraints loopNumber decl = do
 -- | Tries to solve a constraint deterministically.
 solveConstraint :: TCM m => WithContext Constraint -> m ()
 solveConstraint unnormConstraint = do
-  WithContext constraint ctx <- substConstraintMetas unnormConstraint
+  normConstraint@(WithContext constraint ctx) <- substMetas unnormConstraint
 
-  logCompilerSection MaxDetail ("trying" <+> prettyVerbose constraint) $ do
+  logCompilerSection MaxDetail ("trying:" <+> prettyVerbose normConstraint) $ do
+    logDebug MaxDetail $ prettyFriendly normConstraint
     result <- case constraint of
       UnificationConstraint c -> solveUnificationConstraint (WithContext c ctx)
       TypeClassConstraint c -> solveTypeClassConstraint (WithContext c ctx)
@@ -381,17 +382,16 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
         <> line
 
     unsolvedConstraints <- getUnsolvedConstraints
-    substUnsolvedConstraints <- traverse substConstraintMetas unsolvedConstraints
     case maybeSolvedMetas of
       Nothing ->
         logDebug MaxDetail $
           "unsolved-constraints:"
             <> line
-            <> indent 2 (prettyVerbose substUnsolvedConstraints)
+            <> indent 2 (prettyVerbose unsolvedConstraints)
             <> line
       Just solvedMetas -> do
         let isUnblocked = not . constraintIsBlocked solvedMetas
-        let (unblockedConstraints, blockedConstraints) = partition isUnblocked substUnsolvedConstraints
+        let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
         logDebug MaxDetail $
           "unsolved-blocked-constraints:"
             <> line

@@ -14,7 +14,6 @@ module Vehicle.Compile.Type.Monad.Class
     getMetasLinkedToMetasIn,
     getAndClearRecentlySolvedMetas,
     clearMetaSubstitution,
-    substConstraintMetas,
     incrementMetaCtxSize,
     removeMetaDependencies,
     getMetaProvenance,
@@ -57,6 +56,7 @@ import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
   ( HasMetas (..),
+    MetaCtxSize,
     MetaInfo (..),
     increaseMetaCtxSize,
     makeMetaExpr,
@@ -75,6 +75,7 @@ import Vehicle.Compile.Type.VariableContext
     toNBEDeclContext,
     toNormalisationDeclContext,
   )
+import Vehicle.Expr.DeBruijn (DBLevel (..))
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -188,14 +189,6 @@ substMetas e = do
   declCtx <- toNBEDeclContext <$> getDeclContext
   substituteMetas declCtx metaSubst e
 
-substConstraintMetas ::
-  MonadTypeChecker m =>
-  WithContext Constraint ->
-  m (WithContext Constraint)
-substConstraintMetas (WithContext constraint context) = do
-  newConstraint <- substMetas constraint
-  return $ WithContext newConstraint context
-
 --------------------------------------------------------------------------------
 -- Meta-variable creation
 
@@ -210,22 +203,22 @@ freshMeta ::
   MonadTypeChecker m =>
   Provenance ->
   CheckedType ->
-  Int ->
+  MetaCtxSize ->
   m (MetaID, GluedExpr)
-freshMeta p metaType boundCtxSize = do
+freshMeta p metaType metaCtxSize = do
   -- Create a fresh id for the meta
   TypingMetaCtx {..} <- getMetaCtx
   let nextMetaID = length metaInfo
   let metaID = MetaID nextMetaID
 
   -- Construct the information about the meta-variable
-  let info = MetaInfo p metaType boundCtxSize
+  let info = MetaInfo p metaType metaCtxSize
 
   -- Update the meta context
   modifyMetaCtx $ const $ TypingMetaCtx {metaInfo = info : metaInfo, ..}
 
   -- Create the expression
-  let metaExpr = makeMetaExpr p metaID boundCtxSize
+  let metaExpr = makeMetaExpr p metaID metaCtxSize
 
   logDebug MaxDetail $ "fresh-meta" <+> pretty metaID <+> ":" <+> prettyVerbose metaType
   return (metaID, metaExpr)
@@ -239,7 +232,7 @@ removeMetaDependencies m = do
     then return False
     else do
       newMeta <- freshExprMeta p t 0
-      solveMeta m (unnormalised newMeta) ctxSize
+      solveMeta m (unnormalised newMeta) (DBLevel ctxSize)
       return True
 
 freshExprMeta ::
@@ -288,7 +281,7 @@ getMetaType m = metaType <$> getMetaInfo m
 getSubstMetaType :: MonadTypeChecker m => MetaID -> m CheckedType
 getSubstMetaType m = substMetas =<< getMetaType m
 
-getMetaCtxSize :: MonadTypeChecker m => MetaID -> m Int
+getMetaCtxSize :: MonadTypeChecker m => MetaID -> m MetaCtxSize
 getMetaCtxSize m = metaCtxSize <$> getMetaInfo m
 
 incrementMetaCtxSize :: MonadTypeChecker m => MetaID -> m ()
@@ -362,15 +355,15 @@ filterMetasByTypes typeFilter metas = do
 abstractOverCtx :: Int -> CheckedExpr -> CheckedExpr
 abstractOverCtx ctxSize body = do
   let p = mempty
-  let lamBinderForm i = BinderForm (OnlyName (layoutAsText $ "i" <> pretty i)) True
+  let lamBinderForm i = BinderForm (OnlyName (layoutAsText $ "x" <> pretty i)) True
   let lam i = Lam p (Binder p (lamBinderForm i) Explicit Relevant () (TypeUniverse p 0))
   foldr lam body ([0 .. ctxSize - 1] :: [Int])
 
-solveMeta :: MonadTypeChecker m => MetaID -> CheckedExpr -> Int -> m ()
-solveMeta m solution currentCtxSize = do
+solveMeta :: MonadTypeChecker m => MetaID -> CheckedExpr -> DBLevel -> m ()
+solveMeta m solution currentLevel = do
   MetaInfo p _ ctxSize <- getMetaInfo m
   let abstractedSolution = abstractOverCtx ctxSize solution
-  gluedSolution <- glueNBE currentCtxSize abstractedSolution
+  gluedSolution <- glueNBE currentLevel abstractedSolution
 
   logDebug MaxDetail $ "solved" <+> pretty m <+> "as" <+> prettyVerbose abstractedSolution
 
@@ -448,8 +441,9 @@ addFreshUnificationConstraint ::
   CheckedType ->
   m ()
 addFreshUnificationConstraint group p ctx origin expectedType actualType = do
-  normExpectedType <- whnfNBE (length ctx) expectedType
-  normActualType <- whnfNBE (length ctx) actualType
+  let currentLevel = DBLevel $ length ctx
+  normExpectedType <- whnfNBE currentLevel expectedType
+  normActualType <- whnfNBE currentLevel actualType
   let constraint = UnificationConstraint $ Unify normExpectedType normActualType
   let context = ConstraintContext p origin p unknownBlockingStatus ctx group
   addConstraints [WithContext constraint context]
@@ -471,7 +465,8 @@ addFreshTypeClassConstraint ctx fun funArgs tcExpr = do
         "Malformed type class constraint" <+> prettyVerbose tcExpr
 
   let ctxSize = length ctx
-  nArgs <- traverse (traverse (whnfNBE ctxSize)) args
+  nArgs <- traverse (traverse (whnfNBE (DBLevel ctxSize))) args
+  logDebug MaxDetail $ pretty $ show nArgs
 
   let p = provenanceOf fun
   (meta, metaExpr) <- freshTypeClassPlacementMeta p tcExpr ctxSize
@@ -516,10 +511,10 @@ getBinderNameOrFreshName piName typ = case piName of
   Just x -> return x
   Nothing -> getFreshName typ
 
-whnfNBE :: MonadTypeChecker m => Int -> CheckedExpr -> m NormExpr
+whnfNBE :: MonadTypeChecker m => DBLevel -> CheckedExpr -> m NormExpr
 whnfNBE boundCtxSize e = do
   declCtx <- getDeclContext
   NBE.whnf boundCtxSize (Map.mapMaybe snd declCtx) e
 
-glueNBE :: MonadTypeChecker m => Int -> CheckedExpr -> m GluedExpr
+glueNBE :: MonadTypeChecker m => DBLevel -> CheckedExpr -> m GluedExpr
 glueNBE boundCtxSize e = Glued e <$> whnfNBE boundCtxSize e

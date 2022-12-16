@@ -60,7 +60,6 @@ data CompileOptions = CompileOptions
 compile :: LoggingSettings -> CompileOptions -> IO ()
 compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ do
   typeCheckingResult <- typeCheckUserProg specification declarationsToCompile noStdlib
-
   let resources = Resources networkLocations datasetLocations parameterValues
   case target of
     TypeCheck -> return ()

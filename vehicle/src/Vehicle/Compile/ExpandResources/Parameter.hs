@@ -13,7 +13,6 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -37,7 +36,7 @@ parseParameterValue parameterValues decl@(ident, _) parameterType = do
     -- implicit parameters are filled in (the tricky bit).
     VIndexType _ (VNatLiteral _ n) ->
       return (parseIndex n)
-    VIndexType _ (VVar _ (Free varIdent) _)
+    VIndexType _ (VFreeVar _ varIdent _)
       | Map.member (nameOf varIdent) implicitParams ->
           throwError $
             ParameterTypeInferableParameterIndex decl varIdent
@@ -47,7 +46,7 @@ parseParameterValue parameterValues decl@(ident, _) parameterType = do
     otherType ->
       compilerDeveloperError $
         "Invalid parameter type"
-          <+> squotes (prettySimple otherType)
+          <+> squotes (prettyVerbose otherType)
           <+> "should have been caught during type-checking"
 
   case Map.lookup (nameOf ident) parameterValues of

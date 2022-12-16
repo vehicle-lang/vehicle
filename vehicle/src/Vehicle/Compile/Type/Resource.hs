@@ -102,8 +102,8 @@ checkNetworkType decl@(ident, _) networkType = case normalised networkType of
     | visibilityOf binder /= Explicit ->
         throwError $ NetworkTypeHasNonExplicitArguments decl networkType binder
     | otherwise -> do
-        inputLin <- quote =<< checkTensorType Input (typeOf binder)
-        outputLin <- quote =<< checkTensorType Output result
+        inputLin <- quote 0 =<< checkTensorType Input (typeOf binder)
+        outputLin <- quote 0 =<< checkTensorType Output result
 
         -- The linearity of the output of a network is the max of 1) Linear (as outputs
         -- are also variables) and 2) the linearity of its input. So prepend this
@@ -139,14 +139,14 @@ checkNetworkType decl@(ident, _) networkType = case normalised networkType of
 checkRatIsConstant :: TCM m => Provenance -> NormType -> m ()
 checkRatIsConstant p lin = do
   let targetLinearity = LinearityExpr p Constant
-  ulin <- quote lin
+  ulin <- quote 0 lin
   addFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity ulin
 
 checkBoolIsConstant :: TCM m => Provenance -> NormType -> NormType -> m ()
 checkBoolIsConstant p lin pol = do
   let targetLinearity = LinearityExpr p Constant
   let targetPolarity = PolarityExpr p Unquantified
-  ulin <- quote lin
-  upol <- quote pol
+  ulin <- quote 0 lin
+  upol <- quote 0 pol
   addFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity ulin
   addFreshUnificationConstraint PolarityGroup p mempty CheckingAuxiliary targetPolarity upol

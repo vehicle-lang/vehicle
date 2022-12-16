@@ -14,7 +14,7 @@ import Data.List (intersect)
 import Data.Maybe (catMaybes)
 import Data.Traversable (for)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (Quote (..), adjustDBIndices)
+import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
@@ -25,6 +25,7 @@ import Vehicle.Compile.Type.ConstraintSolver.Core
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (member, toList)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton)
+import Vehicle.Compile.Type.Meta.Variable (metasInWithDependencies)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
@@ -45,7 +46,7 @@ solveUnificationConstraint ::
   m ConstraintProgress
 solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
   let c = WithContext (Unify e1 e2) ctx
-  let ctxSize = length (boundContext ctx)
+  let constraintLevel = DBLevel $ length (boundContext ctx)
 
   progress <- case (e1, e2) of
     -----------------------
@@ -80,7 +81,9 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
       | op1 == op2 -> solveSimpleApplication c op1 op2 args1 args2
       | otherwise ->
           blockOnReductionBlockingMetasOrThrowError [e1, e2] (FailedUnificationConstraints [c])
-    VVar _ v1 args1 :~: VVar _ v2 args2 ->
+    VBoundVar _ v1 args1 :~: VBoundVar _ v2 args2 ->
+      solveSimpleApplication c v1 v2 args1 args2
+    VFreeVar _ v1 args1 :~: VFreeVar _ v2 args2 ->
       solveSimpleApplication c v1 v2 args1 args2
     VLiteral _ l1 :~: VLiteral _ l2 ->
       solveEq c l1 l2
@@ -97,23 +100,26 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
       -- particular they can be re-arranged, and therefore we calculate the
       -- non-positional intersection of their arguments.
       | otherwise -> do
-          let deps1 = getNormMetaDependencies args1
-          let deps2 = getNormMetaDependencies args2
-
           meta1Type <- getMetaType i
           meta2Type <- getMetaType j
-          typeEq <- unify ctx <$> whnfNBE ctxSize meta1Type <*> whnfNBE ctxSize meta2Type
+          typeEq <- unify ctx <$> whnfNBE constraintLevel meta1Type <*> whnfNBE constraintLevel meta2Type
 
           meta1Origin <- getMetaProvenance i
           meta2Origin <- getMetaProvenance j
           let newOrigin = meta1Origin <> meta2Origin
 
+          meta1Level <- DBLevel <$> getMetaCtxSize i
+          meta2Level <- DBLevel <$> getMetaCtxSize j
+          let newLevel = min meta1Level meta2Level
+
+          let deps1 = getNormMetaDependencies args1
+          let deps2 = getNormMetaDependencies args2
           let jointContext = deps1 `intersect` deps2
 
-          newMeta <- createMetaWithRestrictedDependencies newOrigin meta1Type jointContext
+          newMeta <- createMetaWithRestrictedDependencies newLevel newOrigin meta1Type jointContext
 
-          solveMeta i newMeta ctxSize
-          solveMeta j newMeta ctxSize
+          solveMeta i newMeta constraintLevel
+          solveMeta j newMeta constraintLevel
 
           return $ Progress [typeEq]
 
@@ -130,7 +136,7 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
 
       -- Check that 'args' is a pattern and try to calculate a substitution
       -- that renames the variables in 'e2' to ones available to meta `i`
-      case getArgPattern deps of
+      case getArgPattern constraintLevel deps of
         -- This constraint is stuck because it is not pattern; shelve
         -- it for now and hope that another constraint allows us to
         -- progress.
@@ -161,16 +167,18 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
                     if sharedDependencies == jDeps
                       then return False
                       else do
-                        meta <- createMetaWithRestrictedDependencies jOrigin jType sharedDependencies
-                        solveMeta j meta ctxSize
+                        meta <- createMetaWithRestrictedDependencies constraintLevel jOrigin jType sharedDependencies
+                        logDebug MaxDetail (pretty constraintLevel)
+                        logDebug MaxDetail (prettyVerbose meta)
+                        solveMeta j meta constraintLevel
                         return True
                 )
 
           finalE2 <- if newMetasSolved then substMetas e2 else return e2
 
-          let solution = adjustDBIndices 0 (\v -> dbIndex v `IntMap.lookup` argPattern) finalE2
-          unnormSolution <- quote solution
-          solveMeta i unnormSolution ctxSize
+          unnormSolution <- quote constraintLevel finalE2
+          let substSolution = substDBAll 0 (\v -> unIndex v `IntMap.lookup` argPattern) unnormSolution
+          solveMeta i substSolution constraintLevel
           return $ Progress mempty
     _t :~: VMeta {} ->
       -- this is the mirror image of the previous case, so just swap the
@@ -232,14 +240,23 @@ solveSimpleApplication constraint fun1 fun2 args1 args2 = do
 
 createMetaWithRestrictedDependencies ::
   TCM m =>
+  DBLevel ->
   Provenance ->
   CheckedType ->
-  [DBIndex] ->
+  [DBLevel] ->
   m CheckedExpr
-createMetaWithRestrictedDependencies p metaType newDependencies = do
-  meta <- freshExprMeta p metaType (length newDependencies)
-  let substitution = IntMap.fromAscList (zip [0 ..] newDependencies)
-  return $ substDBAll 0 (\v -> dbIndex v `IntMap.lookup` substitution) (unnormalised meta)
+createMetaWithRestrictedDependencies level p metaType newDependencies = do
+  logCompilerPass MaxDetail "restricting dependencies" $ do
+    logDebug MaxDetail $ pretty level
+    logDebug MaxDetail (pretty newDependencies)
+
+    meta <- freshExprMeta p metaType (length newDependencies)
+    let substitution = IntMap.fromAscList (zip [0 ..] (fmap (dbLevelToIndex level) newDependencies))
+    let newMetaExpr = substDBAll 0 (\v -> unIndex v `IntMap.lookup` substitution) (unnormalised meta)
+
+    logDebug MaxDetail ("Result:" <+> prettyVerbose newMetaExpr)
+
+    return newMetaExpr
 
 --------------------------------------------------------------------------------
 -- Argument patterns
@@ -248,15 +265,16 @@ type ArgPattern = IntMap DBIndex
 
 -- | TODO: explain what this means:
 -- [i2 i4 i1] --> [2 -> 2, 4 -> 1, 1 -> 0]
-getArgPattern :: [DBIndex] -> Maybe ArgPattern
-getArgPattern args = go (length args - 1) IntMap.empty args
+getArgPattern :: DBLevel -> [DBLevel] -> Maybe ArgPattern
+getArgPattern ctxSize args = go (length args - 1) IntMap.empty args
   where
-    go :: Int -> IntMap DBIndex -> [DBIndex] -> Maybe ArgPattern
+    go :: Int -> IntMap DBIndex -> [DBLevel] -> Maybe ArgPattern
     go _ revMap [] = Just revMap
     -- TODO: we could eta-reduce arguments too, if possible
-    go i revMap (j : restArgs) =
-      if IntMap.member (dbIndex j) revMap
+    go i revMap (j : restArgs) = do
+      let jIndex = dbLevelToIndex ctxSize j
+      if IntMap.member (unIndex jIndex) revMap
         then -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning;
         -- but then we should make sure the solution is well-typed
           Nothing
-        else go (i - 1) (IntMap.insert (dbIndex j) (DBIndex i) revMap) restArgs
+        else go (i - 1) (IntMap.insert (unIndex jIndex) (DBIndex i) revMap) restArgs

@@ -326,7 +326,7 @@ nfQuantifierVector p tElem size binder body recFn = do
   -- Construct the corresponding nested tensor expression
   let tensor = VecLiteral p tElem allExprs
   -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
-  let body1 = liftDBIndices size body
+  let body1 = liftDBIndices (DBLevel size) body
   -- Substitute throught the tensor expression for the old top-level binder
   body2 <- nf $ substDBIntoAtLevel (DBIndex size) tensor body1
 
