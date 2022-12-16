@@ -1,25 +1,26 @@
 {-# LANGUAGE CPP #-}
 
-
 module Vehicle.Syntax.AST.Provenance
-  ( Provenance
-  , tkProvenance
-  , datasetProvenance
-  , parameterProvenance
-  , inserted
-  , HasProvenance(..)
-  , expandProvenance
-  , fillInProvenance
-  , wasInsertedByCompiler
+  ( Provenance,
+    tkProvenance,
+    datasetProvenance,
+    parameterProvenance,
+    inserted,
+    HasProvenance (..),
+    expandProvenance,
+    fillInProvenance,
+    wasInsertedByCompiler,
 
     -- * Internal types for 'Provenance'
+
     --
     -- Must be exported for use in 'Vehicle.Syntax.AST.NoThunks', but should be hidden in 'Vehicle.Syntax.AST'
-  , Origin
-  , Owner
-  , Position
-  , Range
-  ) where
+    Origin,
+    Owner,
+    Position,
+    Range,
+  )
+where
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (FromJSON (..), ToJSON (..))
@@ -34,8 +35,6 @@ import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), concatWith, squotes, (<+>))
 import Vehicle.Syntax.Parse.Token (IsToken, Token (Tk), tkLength, tkLocation)
 
-
-
 --------------------------------------------------------------------------------
 -- Position
 
@@ -45,9 +44,10 @@ import Vehicle.Syntax.Parse.Token (IsToken, Token (Tk), tkLength, tkLocation)
 -- Note we don't use the names `line` and `column` as they clash with the
 -- `Prettyprinter` library.
 data Position = Position
-  { posLine   :: !Int,
+  { posLine :: !Int,
     posColumn :: !Int
-  } deriving (Eq, Ord, Generic)
+  }
+  deriving (Eq, Ord, Generic)
 
 instance Show Position where
   show (Position l c) = show (l, c)
@@ -56,6 +56,7 @@ instance Pretty Position where
   pretty (Position l c) = "Line" <+> pretty l <+> "Column" <+> pretty c
 
 instance ToJSON Position
+
 instance FromJSON Position
 
 -- | Get the starting position of a token.
@@ -73,19 +74,22 @@ alterColumn f (Position l c) = Position l (f c)
 
 data Range = Range
   { start :: !Position,
-    end   :: !Position
-  } deriving (Show, Eq, Generic)
+    end :: !Position
+  }
+  deriving (Show, Eq, Generic)
 
 instance Ord Range where
   Range s1 e1 <= Range s2 e2 = s1 < s2 || (s1 == s2 && e1 <= e1)
 
 instance Pretty Range where
   pretty (Range p1 p2) =
-    if posLine p1 == posLine p2 then
-      "Line" <+> pretty (posLine p1) <> "," <+>
-      "Columns" <+> pretty (posColumn p1) <> "-" <> pretty (posColumn p2)
-    else
-      pretty p1 <+> "-" <+> pretty p2
+    if posLine p1 == posLine p2
+      then
+        "Line"
+          <+> pretty (posLine p1) <> ","
+          <+> "Columns"
+          <+> pretty (posColumn p1) <> "-" <> pretty (posColumn p2)
+      else pretty p1 <+> "-" <+> pretty p2
 
 -- Doesn't handle anything except inclusive ranges as that's all we use in our code
 -- at the moment.
@@ -105,13 +109,14 @@ data Owner
   deriving (Show, Eq, Ord, Generic)
 
 instance Semigroup Owner where
-  TheUser <> _    = TheUser
+  TheUser <> _ = TheUser
   TheMachine <> r = r
 
 instance Monoid Owner where
   mempty = TheMachine
 
 instance ToJSON Owner
+
 instance FromJSON Owner
 
 --------------------------------------------------------------------------------
@@ -119,37 +124,38 @@ instance FromJSON Owner
 
 -- | The origin of a piece of code
 data Origin
-  -- | set of locations in the source file
-  = FromSource !Range
-  -- | name of the parameter
-  | FromParameter !Text
+  = -- | set of locations in the source file
+    FromSource !Range
+  | -- | name of the parameter
+    FromParameter !Text
   | FromDataset !Text
   deriving (Show, Eq, Ord, Generic)
 
 instance Semigroup Origin where
-  FromSource r1     <> FromSource r2   = FromSource (mergeRangePair r1 r2)
-  p@FromSource{}    <> _               = p
-  _                 <> p@FromSource{}  = p
-  p@FromDataset{}   <> _               = p
-  _                 <> p@FromDataset{} = p
-  p@FromParameter{} <> _               = p
+  FromSource r1 <> FromSource r2 = FromSource (mergeRangePair r1 r2)
+  p@FromSource {} <> _ = p
+  _ <> p@FromSource {} = p
+  p@FromDataset {} <> _ = p
+  _ <> p@FromDataset {} = p
+  p@FromParameter {} <> _ = p
 
 instance Monoid Origin where
   mempty = FromSource (Range (Position 0 0) (Position 0 0))
 
 instance Pretty Origin where
   pretty = \case
-    FromSource    range -> pretty range
-    FromParameter name  -> "parameter" <+> squotes (pretty name)
-    FromDataset   name  -> "in dataset" <+> squotes (pretty name)
+    FromSource range -> pretty range
+    FromParameter name -> "parameter" <+> squotes (pretty name)
+    FromDataset name -> "in dataset" <+> squotes (pretty name)
 
 --------------------------------------------------------------------------------
 -- Provenance
 
 data Provenance = Provenance
-  { origin :: !Origin
-  , owner  :: !Owner
-  } deriving (Generic)
+  { origin :: !Origin,
+    owner :: !Owner
+  }
+  deriving (Generic)
 
 instance Show Provenance where
   show = const ""
@@ -196,8 +202,9 @@ fillInProvenance provenances = do
     getPositions :: Provenance -> (Position, Position)
     getPositions (Provenance origin _) = case origin of
       FromSource (Range start end) -> (start, end)
-      _ -> error
-        "Should not be filling in provenance from non-source file locations"
+      _ ->
+        error
+          "Should not be filling in provenance from non-source file locations"
 
 expandProvenance :: (Int, Int) -> Provenance -> Provenance
 expandProvenance w (Provenance (FromSource rs) o) = Provenance (FromSource (expandRange w rs)) o

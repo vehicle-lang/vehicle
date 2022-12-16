@@ -1,23 +1,23 @@
 {-# LANGUAGE CPP #-}
 
-
 -- | This module exports the datatype representations of the core builtin symbols.
 module Vehicle.Syntax.AST.Builtin.Core
-  ( Quantifier(..)
-  , EqualityOp(..)
-  , equalityOp
-  , equalityOpName
-  , EqualityDomain(..)
-  , OrderOp(..)
-  , orderOp
-  , orderOpName
-  , OrderDomain(..)
-  , isStrict
-  , flipStrictness
-  , flipOrder
-  , chainable
-  , FunctionPosition(..)
-  ) where
+  ( Quantifier (..),
+    EqualityOp (..),
+    equalityOp,
+    equalityOpName,
+    EqualityDomain (..),
+    OrderOp (..),
+    orderOp,
+    orderOpName,
+    OrderDomain (..),
+    isStrict,
+    flipStrictness,
+    flipOrder,
+    chainable,
+    FunctionPosition (..),
+  )
+where
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (FromJSON, ToJSON)
@@ -35,15 +35,18 @@ data FunctionPosition
   | FunctionOutput !Text
   deriving (Eq, Show, Generic)
 
-instance NFData   FunctionPosition
+instance NFData FunctionPosition
+
 instance Hashable FunctionPosition
-instance ToJSON   FunctionPosition
+
+instance ToJSON FunctionPosition
+
 instance FromJSON FunctionPosition
 
 instance Pretty FunctionPosition where
   pretty = \case
     FunctionInput n i -> "Input[" <> pretty n <> "][" <> pretty i <> "]"
-    FunctionOutput n  -> "Output[" <> pretty n <> "]"
+    FunctionOutput n -> "Output[" <> pretty n <> "]"
 
 --------------------------------------------------------------------------------
 -- EqualityOp
@@ -53,23 +56,26 @@ data EqualityOp
   | Neq
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   EqualityOp
+instance NFData EqualityOp
+
 instance Hashable EqualityOp
-instance ToJSON   EqualityOp
+
+instance ToJSON EqualityOp
+
 instance FromJSON EqualityOp
 
 instance Pretty EqualityOp where
   pretty = \case
-    Eq  -> "=="
+    Eq -> "=="
     Neq -> "!="
 
 equalityOpName :: EqualityOp -> Doc a
 equalityOpName = \case
-  Eq  -> "equals"
+  Eq -> "equals"
   Neq -> "notEquals"
 
 equalityOp :: Eq a => EqualityOp -> (a -> a -> Bool)
-equalityOp Eq  = (==)
+equalityOp Eq = (==)
 equalityOp Neq = (/=)
 
 data EqualityDomain
@@ -79,17 +85,20 @@ data EqualityDomain
   | EqRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   EqualityDomain
+instance NFData EqualityDomain
+
 instance Hashable EqualityDomain
-instance ToJSON   EqualityDomain
+
+instance ToJSON EqualityDomain
+
 instance FromJSON EqualityDomain
 
 instance Pretty EqualityDomain where
   pretty = \case
     EqIndex -> "Index"
-    EqNat   -> "Nat"
-    EqInt   -> "Int"
-    EqRat   -> "Rat"
+    EqNat -> "Nat"
+    EqInt -> "Int"
+    EqRat -> "Rat"
 
 --------------------------------------------------------------------------------
 -- Orders
@@ -101,9 +110,12 @@ data OrderOp
   | Gt
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   OrderOp
+instance NFData OrderOp
+
 instance Hashable OrderOp
-instance ToJSON   OrderOp
+
+instance ToJSON OrderOp
+
 instance FromJSON OrderOp
 
 instance Pretty OrderOp where
@@ -121,10 +133,10 @@ orderOp Gt = (>)
 
 orderOpName :: OrderOp -> Doc a
 orderOpName = \case
-    Le -> "leq"
-    Lt -> "lt"
-    Ge -> "geq"
-    Gt -> "gt"
+  Le -> "leq"
+  Lt -> "lt"
+  Ge -> "geq"
+  Gt -> "gt"
 
 isStrict :: OrderOp -> Bool
 isStrict order = order == Lt || order == Gt
@@ -153,17 +165,20 @@ data OrderDomain
   | OrderRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   OrderDomain
+instance NFData OrderDomain
+
 instance Hashable OrderDomain
-instance ToJSON   OrderDomain
+
+instance ToJSON OrderDomain
+
 instance FromJSON OrderDomain
 
 instance Pretty OrderDomain where
   pretty = \case
-    OrderNat   -> "Nat"
+    OrderNat -> "Nat"
     OrderIndex -> "Index"
-    OrderInt   -> "Int"
-    OrderRat   -> "Rat"
+    OrderInt -> "Int"
+    OrderRat -> "Rat"
 
 --------------------------------------------------------------------------------
 -- Quantifiers
@@ -173,9 +188,12 @@ data Quantifier
   | Exists
   deriving (Show, Eq, Ord, Generic)
 
-instance NFData   Quantifier
+instance NFData Quantifier
+
 instance Hashable Quantifier
-instance ToJSON   Quantifier
+
+instance ToJSON Quantifier
+
 instance FromJSON Quantifier
 
 instance Pretty Quantifier where

@@ -1,18 +1,24 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Compile.Type.Monad.Instance
-  ( module Vehicle.Compile.Type.Monad.Class
-  , runTypeCheckerT
-  , toNormalisationDeclContext
-  ) where
+  ( module Vehicle.Compile.Type.Monad.Class,
+    runTypeCheckerT,
+    toNormalisationDeclContext,
+  )
+where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), mapReaderT)
-import Control.Monad.State (MonadState (..), StateT (..), evalStateT, gets,
-                            mapStateT, modify)
-import Control.Monad.Trans.Class (lift)
-
+import Control.Monad.State
+  ( MonadState (..),
+    StateT (..),
+    evalStateT,
+    gets,
+    mapStateT,
+    modify,
+  )
 import Control.Monad.Trans (MonadTrans)
+import Control.Monad.Trans.Class (lift)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad.Class
@@ -23,15 +29,17 @@ import Vehicle.Compile.Type.VariableContext
 
 newtype TypeCheckerT m a = TypeCheckerT
   { unTypeCheckerT :: ReaderT TypingDeclCtx (StateT TypingMetaCtx m) a
-  } deriving (Functor, Applicative, Monad)
+  }
+  deriving (Functor, Applicative, Monad)
 
 runTypeCheckerT :: Monad m => TypingDeclCtx -> TypeCheckerT m a -> m a
 runTypeCheckerT declCtx (TypeCheckerT e) =
   evalStateT (runReaderT e declCtx) emptyTypingMetaCtx
 
-mapTypeCheckerT :: (m (a, TypingMetaCtx) -> n (b, TypingMetaCtx))
-                -> TypeCheckerT m a
-                -> TypeCheckerT n b
+mapTypeCheckerT ::
+  (m (a, TypingMetaCtx) -> n (b, TypingMetaCtx)) ->
+  TypeCheckerT m a ->
+  TypeCheckerT n b
 mapTypeCheckerT f m = TypeCheckerT (mapReaderT (mapStateT f) (unTypeCheckerT m))
 
 --------------------------------------------------------------------------------
@@ -53,11 +61,11 @@ instance MonadError e m => MonadError e (TypeCheckerT m) where
   catchError m f = TypeCheckerT (catchError (unTypeCheckerT m) (unTypeCheckerT . f))
 
 instance MonadLogger m => MonadLogger (TypeCheckerT m) where
-  getCallDepth  = lift getCallDepth
+  getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
   decrCallDepth = lift decrCallDepth
   getDebugLevel = lift getDebugLevel
-  logMessage    = lift . logMessage
+  logMessage = lift . logMessage
 
 instance MonadReader r m => MonadReader r (TypeCheckerT m) where
   ask = lift ask
