@@ -26,7 +26,7 @@ import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 type UniverseLevel = Int
 
 data Universe
-  = TypeUniv !UniverseLevel
+  = TypeUniv UniverseLevel
   | LinearityUniv
   | PolarityUniv
   deriving (Eq, Ord, Show, Generic)
@@ -53,11 +53,11 @@ instance Pretty Universe where
 -- - There should be a family of `Float` literals, but we haven't got there yet.
 data Literal
   = LUnit
-  | LBool !Bool
-  | LIndex !Int !Int
-  | LNat !Int
-  | LInt !Int
-  | LRat !Rational
+  | LBool Bool
+  | LIndex Int Int
+  | LNat Int
+  | LInt Int
+  | LRat Rational
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData Literal
@@ -94,7 +94,7 @@ data Expr binder var
   = -- | A universe, used to type types.
     Universe
       Provenance
-      !Universe
+      Universe
   | -- | User annotation
     Ann
       Provenance
@@ -113,19 +113,19 @@ data Expr binder var
   | -- | Terms consisting of constants that are built into the language.
     Builtin
       Provenance
-      !Builtin -- Builtin name.
+      Builtin -- Builtin name.
   | -- | Variables that are bound by other expressions
     Var
       Provenance
-      !var -- Variable name.
+      var -- Variable name.
   | -- | A hole in the program.
     Hole
       Provenance
-      !Name -- Hole name.
+      Name -- Hole name.
   | -- | Unsolved meta variables.
     Meta
       Provenance
-      !MetaID -- Meta variable number.
+      MetaID -- Meta variable number.
   | -- | Let expressions. We have these in the core syntax because we want to
     -- cross compile them to various backends.
     --
@@ -145,7 +145,7 @@ data Expr binder var
   | -- | Built-in literal values e.g. numbers/booleans.
     Literal
       Provenance
-      !Literal -- Value.
+      Literal -- Value.
   | -- | A sequence of terms for e.g. list literals.
     LVec
       Provenance

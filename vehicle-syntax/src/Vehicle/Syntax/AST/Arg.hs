@@ -23,9 +23,9 @@ data GenericArg expr = Arg
   { -- | Has the argument been auto-inserted by the type-checker?
     argProvenance :: Provenance,
     -- | The visibility of the argument
-    argVisibility :: !Visibility,
+    argVisibility :: Visibility,
     -- | The relevancy of the argument
-    argRelevance :: !Relevance,
+    argRelevance :: Relevance,
     -- | The argument expression
     argExpr :: expr
   }

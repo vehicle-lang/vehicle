@@ -17,18 +17,18 @@ import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 data GenericDecl expr
   = DefResource
       Provenance -- Location in source file.
-      !Identifier -- Name of resource.
-      !Resource -- Type of resource.
+      Identifier -- Name of resource.
+      Resource -- Type of resource.
       expr -- Vehicle type of the resource.
   | DefFunction
       Provenance -- Location in source file.
-      !Identifier -- Bound function name.
-      !Bool -- Is it a property.
+      Identifier -- Bound function name.
+      Bool -- Is it a property.
       expr -- Bound function type.
       expr -- Bound function body.
   | DefPostulate
       Provenance
-      !Identifier
+      Identifier
       expr
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
@@ -88,7 +88,7 @@ pattern InferableOption = "infer"
 
 data Annotation
   = PropertyAnnotation
-  | ResourceAnnotation !Resource
+  | ResourceAnnotation Resource
   deriving (Generic)
 
 instance Pretty Annotation where

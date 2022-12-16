@@ -58,11 +58,11 @@ instance Hashable BinderForm
 -- and type-class resolution.
 data GenericBinder binder expr = Binder
   { binderProvenance :: Provenance,
-    binderForm :: !BinderForm,
+    binderForm :: BinderForm,
     -- | The visibility of the binder
-    binderVisibility :: !Visibility,
+    binderVisibility :: Visibility,
     -- | The relevancy of the binder
-    binderRelevance :: !Relevance,
+    binderRelevance :: Relevance,
     -- | The representation of the bound variable
     binderRepresentation :: binder,
     binderType :: expr

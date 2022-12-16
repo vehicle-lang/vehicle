@@ -85,11 +85,11 @@ mapPolarityProvenance f = \case
 
 data PolarityTypeClass
   = NegPolarity
-  | AddPolarity !Quantifier
-  | EqPolarity !EqualityOp
+  | AddPolarity Quantifier
+  | EqPolarity EqualityOp
   | ImpliesPolarity
   | MaxPolarity
-  | FunctionPolarity !FunctionPosition
+  | FunctionPolarity FunctionPosition
   | IfCondPolarity
   deriving (Eq, Generic, Show)
 

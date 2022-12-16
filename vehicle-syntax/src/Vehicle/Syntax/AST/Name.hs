@@ -42,7 +42,7 @@ instance Pretty Module where
 --------------------------------------------------------------------------------
 -- Identifiers
 
-data Identifier = Identifier !Module !Name
+data Identifier = Identifier Module Name
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty Identifier where
