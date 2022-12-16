@@ -39,16 +39,16 @@ someLocalOptions someOptions testTree = foldr someLocalOption testTree someOptio
 writeFileChanged :: FilePath -> Text -> IO ()
 writeFileChanged name x = do
   createDirectoryRecursive $ takeDirectory name
-  b <- doesFileExist name
-  if not b
+  b1 <- doesFileExist name
+  if not b1
     then Text.writeFile name x
     else do
       -- Cannot use ByteString here, since it has different line handling
       -- semantics on Windows
-      b <- withFile name ReadMode $ \h -> do
+      b2 <- withFile name ReadMode $ \h -> do
         src <- Text.hGetContents h
         pure $! src /= x
-      when b $ do
+      when b2 $ do
         removeFile name -- symlink safety
         Text.writeFile name x
 
@@ -80,9 +80,9 @@ listFilesRecursive directoryPath = do
       DList.toList <$> listFilesRecursiveDList directoryPath
   where
     listFilesRecursiveDList :: FilePath -> IO (DList FilePath)
-    listFilesRecursiveDList directoryPath = do
-      entryNames <- listDirectory directoryPath
-      let entryPaths = (directoryPath </>) <$> entryNames
+    listFilesRecursiveDList directoryPath' = do
+      entryNames <- listDirectory directoryPath'
+      let entryPaths = (directoryPath' </>) <$> entryNames
       filePaths <- DList.fromList <$> filterM doesFileExist entryPaths
       subDirectoryPaths <- DList.fromList <$> filterM doesDirectoryExist entryPaths
       subDirectoryFilePaths <- foldMap listFilesRecursiveDList subDirectoryPaths
@@ -92,7 +92,7 @@ listFilesRecursive directoryPath = do
 duplicates :: (Eq a, Hashable a) => [a] -> [a]
 duplicates = duplicatesAcc HashSet.empty
   where
-    duplicatesAcc seen [] = []
+    duplicatesAcc _seen [] = []
     duplicatesAcc seen (x : xs)
       | x `HashSet.member` seen = x : duplicatesAcc seen xs
       | otherwise = duplicatesAcc (HashSet.insert x seen) xs
