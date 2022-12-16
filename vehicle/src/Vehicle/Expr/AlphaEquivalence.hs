@@ -1,20 +1,19 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Expr.AlphaEquivalence
-  ( AlphaEquivalence(..)
-  ) where
+  ( AlphaEquivalence (..),
+  )
+where
 
 import Data.Hashable (Hashable (..))
-
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.Conversion
 import Vehicle.Expr.DeBruijn
 
-instance Hashable DBArg where
+instance Hashable DBArg
 
 instance Hashable DBExpr where
-  hashWithSalt s e =  hashWithSalt s (toCoDBExpr e)
-
+  hashWithSalt s e = hashWithSalt s (toCoDBExpr e)
 
 class AlphaEquivalence a where
   alphaEq :: a -> a -> Bool

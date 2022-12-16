@@ -4,7 +4,6 @@ import Control.Exception (Exception, throw)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Stack (HasCallStack)
-
 import Numeric (readFloat)
 import Prettyprinter (Doc, defaultLayoutOptions, layoutPretty, line, (<+>))
 import Prettyprinter.Render.String (renderString)
@@ -24,10 +23,15 @@ instance Exception DeveloperError
 -- prefer to use the method `compilerDeveloperError` instead of this, as
 -- this method will prevent the logs from being displayed.
 developerError :: HasCallStack => Doc a -> b
-developerError message = throw $ DeveloperError $ layoutAsText $
-  "Something went wrong internally. Please report the error" <+>
-  "shown below to `https://github.com/vehicle-lang/vehicle/issues`." <> line <>
-  "Error:" <+> message
+developerError message =
+  throw $
+    DeveloperError $
+      layoutAsText $
+        "Something went wrong internally. Please report the error"
+          <+> "shown below to `https://github.com/vehicle-lang/vehicle/issues`."
+            <> line
+            <> "Error:"
+          <+> message
 
 --------------------------------------------------------------------------------
 -- Prettyprinting
@@ -47,4 +51,4 @@ readNat = read . Text.unpack
 readRat :: Text -> Prelude.Rational
 readRat str = case readFloat (Text.unpack str) of
   ((n, []) : _) -> n
-  _             -> developerError "Invalid number"
+  _ -> developerError "Invalid number"

@@ -23,14 +23,17 @@ data Module
   | StdLib
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   Module
+instance NFData Module
+
 instance Hashable Module
+
 instance FromJSON Module
-instance ToJSON   Module
+
+instance ToJSON Module
 
 instance Pretty Module where
   pretty = \case
-    User   -> "User"
+    User -> "User"
     StdLib -> "Stdlib"
 
 --------------------------------------------------------------------------------
@@ -42,12 +45,17 @@ data Identifier = Identifier Module Name
 instance Pretty Identifier where
   pretty (Identifier m s) = pretty m <> "." <> pretty s
 
-instance NFData      Identifier
-instance Hashable    Identifier
-instance FromJSON    Identifier
-instance ToJSON      Identifier
+instance NFData Identifier
+
+instance Hashable Identifier
+
+instance FromJSON Identifier
+
+instance ToJSON Identifier
+
 instance FromJSONKey Identifier
-instance ToJSONKey   Identifier
+
+instance ToJSONKey Identifier
 
 class HasIdentifier a where
   identifierOf :: a -> Identifier

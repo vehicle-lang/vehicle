@@ -1,6 +1,7 @@
 module Vehicle.Syntax.AST
-  ( module X
-  ) where
+  ( module X,
+  )
+where
 
 import Vehicle.Syntax.AST.Arg as X
 import Vehicle.Syntax.AST.Binder as X

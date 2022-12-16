@@ -1,7 +1,7 @@
-
 module Vehicle.Prelude
-  ( module X
-  ) where
+  ( module X,
+  )
+where
 
 import Vehicle.Prelude.IO as X
 import Vehicle.Prelude.Logging as X
