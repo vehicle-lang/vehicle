@@ -3,7 +3,6 @@ module Vehicle.Test.Unit.Compile.QuantifierLifting
   )
 where
 
-import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
@@ -70,4 +69,4 @@ liftQuantifiersTest (QuantifierTestSpec testName input expected) =
 
     return $
       assertBool errorMessage $
-        alphaEq inputExpr inputExpr
+        alphaEq inputExpr expectedExpr

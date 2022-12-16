@@ -1,7 +1,5 @@
 module Vehicle.Test.Unit.Compile.CoDeBruijn (coDeBruijnTests) where
 
-import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
-import Data.IntMap qualified as IntMap
 import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)

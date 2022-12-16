@@ -6,7 +6,6 @@ import Control.Applicative (optional, (<**>))
 import Control.Exception (assert)
 import Control.Monad (forM_, join, unless)
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, isNothing, maybeToList)
 import Data.Tagged (Tagged (unTagged))
@@ -29,31 +28,21 @@ import Options.Applicative
     long,
     maybeReader,
     metavar,
-    noBacktrack,
     option,
-    short,
-    strArgument,
     strOption,
-    subparser,
   )
 import Options.Applicative.Types
   ( Backtracking (..),
-    Parser (..),
-    ParserInfo (..),
-    fromM,
   )
 import System.Directory (canonicalizePath, copyFile, doesFileExist)
 import System.FilePath
   ( equalFilePath,
     isRelative,
     normalise,
-    splitDirectories,
-    takeBaseName,
     takeDirectory,
     (</>),
   )
-import System.FilePath.Glob qualified as Glob
-import Test.Tasty (TestName, Timeout)
+import Test.Tasty (Timeout)
 import Test.Tasty.Options (IsOption (optionHelp, parseValue))
 import Text.Printf (printf)
 import Vehicle qualified (ModeOptions, Options (..))
@@ -86,7 +75,6 @@ import Vehicle.Test.Golden.TestSpec
     addOrReplaceTestSpec,
     encodeTestSpecsPretty,
     filePatternString,
-    mergeTestSpecs,
     parseFilePattern,
     readTestSpecsFile,
     writeTestSpecsFile,
@@ -99,7 +87,6 @@ import Vehicle.Verify qualified as VerifyOptions
     specification,
     verifier,
   )
-import Vehicle.Verify.Core (VerifierIdentifier (..))
 
 data NewTestSpecOptions = NewTestSpecOptions
   { newTestSpecDryRun :: Bool,
@@ -144,13 +131,12 @@ newTestSpecOptionsParser =
 newTestSpec :: [String] -> IO ()
 newTestSpec args = do
   -- Parse the command line options:
-  newTestSpecOptions@NewTestSpecOptions {..} <-
+  NewTestSpecOptions {..} <-
     handleParseResult $
       execParserPure defaultPrefs {prefBacktrack = NoBacktrack} newTestSpecParserInfo args
 
   -- Get the vehicle arguments:
-  let "vehicle" : testSpecRunArgs = dropWhile (/= "vehicle") args
-  let testSpecRun = unwords ("vehicle" : testSpecRunArgs)
+  let testSpecRun = unwords $ dropWhile (/= "vehicle") args
 
   -- Get the target, needs, and produces:
   let TestSpecData
@@ -158,27 +144,27 @@ newTestSpec args = do
           testSpecDataNeeds,
           testSpecDataProduces
         } = testSpecData newTestSpecVehicleOptions
-  testSpecDataProduces <- either fail return testSpecDataProduces
+  theTestSpecDataProduces <- either fail return testSpecDataProduces
 
   -- Validate the 'needs' and 'produces':
   forM_ testSpecDataNeeds $ \testSpecNeed ->
     unless (isRelative testSpecNeed) $
       fail $
         printf "Test needs files at an absolute path: %s\n" testSpecNeed
-  forM_ testSpecDataProduces $ \testSpecProducePattern ->
+  forM_ theTestSpecDataProduces $ \testSpecProducePattern ->
     let testSpecProduce = filePatternString testSpecProducePattern
      in unless (isRelative testSpecProduce) $
           fail $
             printf "Test produces files at an absolute path: %s\n" testSpecProduce
 
   -- Construct the test specification:
-  let newTestSpec =
+  let theNewTestSpec =
         TestSpec
           { testSpecName = testSpecDataTarget,
             testSpecRun = testSpecRun,
             testSpecEnabled = Nothing,
             testSpecNeeds = testSpecDataNeeds,
-            testSpecProduces = testSpecDataProduces,
+            testSpecProduces = theTestSpecDataProduces,
             testSpecTimeout = newTestSpecTestTimeout,
             testSpecDiffSpec = Nothing
           }
@@ -191,8 +177,8 @@ newTestSpec args = do
   let targetExistsError targetPath =
         fail $ printf "Refusing to overwrite %s\n" targetPath
   forM_ testSpecDataNeeds $ \testSpecNeed -> do
-    let testSpecNeedSource = normalise $ testSpecsFile
-    let testSpecNeedTarget = normalise $ testDirectory </> testSpecsFile
+    let testSpecNeedSource = normalise testSpecNeed
+    let testSpecNeedTarget = normalise $ testDirectory </> testSpecNeed
     canonicalSource <- canonicalizePath testSpecNeedSource
     canonicalTarget <- canonicalizePath testSpecNeedTarget
     unless (equalFilePath canonicalSource canonicalTarget) $ do
@@ -209,8 +195,8 @@ newTestSpec args = do
   testSpecsFileExists <- doesFileExist testSpecsFile
   testSpecs <-
     if not testSpecsFileExists
-      then return $ TestSpecs (newTestSpec :| [])
-      else addOrReplaceTestSpec newTestSpec <$> readTestSpecsFile testSpecsFile
+      then return $ TestSpecs (theNewTestSpec :| [])
+      else addOrReplaceTestSpec theNewTestSpec <$> readTestSpecsFile testSpecsFile
 
   printf "Writing %s:\n" testSpecsFile
   Text.putStrLn $ encodeTestSpecsPretty testSpecs

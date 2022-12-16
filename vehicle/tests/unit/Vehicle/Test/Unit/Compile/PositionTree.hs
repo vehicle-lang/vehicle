@@ -4,11 +4,9 @@ module Vehicle.Test.Unit.Compile.PositionTree
 where
 
 import Control.Monad (join)
-import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
-import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, assertBool, testCase)
+import Test.Tasty.HUnit (assertBool, testCase)
 import Vehicle.Compile (parseAndTypeCheckExpr)
 import Vehicle.Compile.Print (prettySimple)
 import Vehicle.Expr.CoDeBruijn (substPos)
@@ -131,10 +129,10 @@ prefixTest (PrefixTestCase testName tree1 tree2 expectedRemainder expectedSuffix
 
 data SubstPosTestCase = SubstPosTestCase
   { _testName1 :: String,
-    valueText :: Text,
-    positions :: PositionTree,
-    exprText :: Text,
-    expectedResult :: Text
+    _valueText :: Text,
+    _positions :: PositionTree,
+    _exprText :: Text,
+    _expectedResult :: Text
   }
 
 substPosTest :: SubstPosTestCase -> TestTree

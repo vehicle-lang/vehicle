@@ -9,9 +9,7 @@ where
 
 import Control.Monad (filterM, forM, forM_)
 import Data.Functor ((<&>))
-import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
-import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -26,7 +24,6 @@ import System.Directory
   )
 import System.FilePath
   ( makeRelative,
-    takeBaseName,
     takeDirectory,
     takeExtension,
     takeFileName,
@@ -73,8 +70,7 @@ makeTestTreeFromDirectoryRecursive testGroupLabel testDirectory = do
       -- Make test trees
       >>= traverse
         ( \testSpecFileName ->
-            let testSpecFile = testDirectory </> testSpecFileName
-             in makeTestTreesFromFile (testDirectory </> testSpecFileName)
+            makeTestTreesFromFile (testDirectory </> testSpecFileName)
         )
       <&> concat
 

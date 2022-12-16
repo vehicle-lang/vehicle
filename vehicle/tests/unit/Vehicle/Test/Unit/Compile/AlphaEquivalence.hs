@@ -1,7 +1,6 @@
 module Vehicle.Test.Unit.Compile.AlphaEquivalence (alphaEquivalenceTests) where
 
 import Control.Exception ()
-import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Data.Hashable (Hashable (hash))
 import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
