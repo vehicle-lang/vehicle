@@ -4,10 +4,13 @@ import Data.Text (pack)
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Parse.Token (mkToken)
 
-networkAnn   = B.Network   $ mkToken B.TokNetwork   "@network"
-datasetAnn   = B.Dataset   $ mkToken B.TokDataset   "@dataset"
+networkAnn = B.Network $ mkToken B.TokNetwork "@network"
+
+datasetAnn = B.Dataset $ mkToken B.TokDataset "@dataset"
+
 parameterAnn = B.Parameter $ mkToken B.TokParameter "@parameter"
-propertyAnn  = B.Property  $ mkToken B.TokProperty  "@property"
+
+propertyAnn = B.Property $ mkToken B.TokProperty "@property"
 
 tokType :: Int -> B.Expr
 tokType l = B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))

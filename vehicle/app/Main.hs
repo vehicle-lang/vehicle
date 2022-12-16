@@ -9,7 +9,6 @@ import GHC.Debug.Stub (withGhcDebug)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import Options.Applicative (execParser)
 import System.Environment (getArgs)
-
 import Vehicle (run)
 import Vehicle.CommandLine (commandLineOptionsParserInfo)
 

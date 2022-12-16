@@ -1,18 +1,17 @@
-
 module Vehicle.Compile.Dependency.Graph
-  ( DependencyGraph
-  , Dependencies
-  , DependencyList
-  , fromEdges
-  , reachableFrom
-  ) where
+  ( DependencyGraph,
+    Dependencies,
+    DependencyList,
+    fromEdges,
+    reachableFrom,
+  )
+where
 
 import Data.Graph
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tree qualified as Tree
-
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
@@ -21,10 +20,10 @@ type Dependencies = [Identifier]
 type DependencyList = [(Identifier, Dependencies)]
 
 data DependencyGraph = DependencyGraph
-  { graph                  :: Graph
-  , identFromVertex        :: Vertex -> Identifier
-  , dependenciesFromVertex :: Vertex -> Dependencies
-  , vertexFromIdent        :: Identifier -> Vertex
+  { graph :: Graph,
+    identFromVertex :: Vertex -> Identifier,
+    dependenciesFromVertex :: Vertex -> Dependencies,
+    vertexFromIdent :: Identifier -> Vertex
   }
 
 fromEdges :: [(Identifier, [Identifier])] -> DependencyGraph
@@ -38,14 +37,14 @@ fromEdges outEdges = do
   let vertexFromIdent i = fromMaybe (missingNodeError i) (identFromVertex' i)
 
   DependencyGraph
-    { graph                  = graph
-    , identFromVertex        = identFromVertex
-    , dependenciesFromVertex = dependenciesFromVertex
-    , vertexFromIdent        = vertexFromIdent
+    { graph = graph,
+      identFromVertex = identFromVertex,
+      dependenciesFromVertex = dependenciesFromVertex,
+      vertexFromIdent = vertexFromIdent
     }
 
 reachableFrom :: DependencyGraph -> Set Identifier -> Set Identifier
-reachableFrom DependencyGraph{..} nodes = do
+reachableFrom DependencyGraph {..} nodes = do
   let forest = dfs graph (fmap vertexFromIdent (Set.toList nodes))
   Set.fromList $ concatMap (fmap identFromVertex . Tree.flatten) forest
 

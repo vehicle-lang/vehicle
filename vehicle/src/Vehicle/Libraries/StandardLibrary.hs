@@ -1,30 +1,32 @@
-
 module Vehicle.Libraries.StandardLibrary
-  ( standardLibrary
-  ) where
+  ( standardLibrary,
+  )
+where
 
 import Data.Text (Text)
 import Data.Version (Version)
-
 import Vehicle.Libraries
 
 stdlibName :: LibraryName
 stdlibName = "stdlib"
 
 stdlibVersion :: Version
-stdlibVersion = [0,3]
+stdlibVersion = [0, 3]
 
 standardLibrary :: Library
-standardLibrary = Library
-  { libraryInfo    = LibraryInfo
-    { libraryName    = stdlibName
-    , libraryVersion = stdlibVersion
+standardLibrary =
+  Library
+    { libraryInfo =
+        LibraryInfo
+          { libraryName = stdlibName,
+            libraryVersion = stdlibVersion
+          },
+      libraryContent = content
     }
-  , libraryContent = content
-  }
 
 content :: Text
-content = "\
+content =
+  "\
   \zipWith : (A -> B -> C) -> Vector A n -> Vector B n -> Vector C n\n\
   \zipWith f xs ys = foreach i . f (xs ! i) (ys ! i)\n\
   \\n\
