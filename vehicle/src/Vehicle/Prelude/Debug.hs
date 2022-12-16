@@ -2,14 +2,15 @@
 
 module Vehicle.Prelude.Debug
   ( -- * Export 'ghc-debug-stub'
-    Box(Box)
-  , saveClosures
-  , pause
-  , resume
+    Box (Box),
+    saveClosures,
+    pause,
+    resume,
+
     -- * Export 'nothunks'
-  , unsafeCheckThunks
+    unsafeCheckThunks,
   )
-  where
+where
 
 #if ghcDebug
 import GHC.Debug.Stub (Box (Box), pause, resume, saveClosures)

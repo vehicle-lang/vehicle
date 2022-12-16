@@ -1,12 +1,12 @@
 module Vehicle.Compile.Prelude
-  ( module X
-  , module Vehicle.Compile.Prelude
-  ) where
+  ( module X,
+    module Vehicle.Compile.Prelude,
+  )
+where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-
 import Vehicle.Compile.Dependency.Graph as X
 import Vehicle.Compile.Prelude.Contexts as X
 import Vehicle.Compile.Prelude.Utils as X
@@ -22,56 +22,79 @@ import Vehicle.Syntax.AST as X
 --------------------------------------------------------------------------------
 -- Type synonyms
 
-
 -- * Types pre type-checking
 
 type UncheckedBinding = DBBinding
-type UncheckedVar     = DBIndexVar
+
+type UncheckedVar = DBIndexVar
 
 type UncheckedBinder = DBBinder
-type UncheckedArg    = DBArg
-type UncheckedExpr   = DBExpr
-type UncheckedType   = DBExpr
-type UncheckedDecl   = DBDecl
-type UncheckedProg   = DBProg
+
+type UncheckedArg = DBArg
+
+type UncheckedExpr = DBExpr
+
+type UncheckedType = DBExpr
+
+type UncheckedDecl = DBDecl
+
+type UncheckedProg = DBProg
 
 -- * Types post type-checking
 
 type CheckedBinding = DBBinding
-type CheckedVar     = DBIndexVar
+
+type CheckedVar = DBIndexVar
 
 type CheckedBinder = DBBinder
-type CheckedArg    = DBArg
-type CheckedExpr   = DBExpr
-type CheckedType   = CheckedExpr
-type CheckedDecl   = DBDecl
-type CheckedProg   = DBProg
 
-type CheckedCoDBExpr   = CoDBExpr
-type CheckedCoDBArg    = CoDBArg
+type CheckedArg = DBArg
+
+type CheckedExpr = DBExpr
+
+type CheckedType = CheckedExpr
+
+type CheckedDecl = DBDecl
+
+type CheckedProg = DBProg
+
+type CheckedCoDBExpr = CoDBExpr
+
+type CheckedCoDBArg = CoDBArg
+
 type CheckedCoDBBinder = CoDBBinder
 
 -- * Type of annotations attached to the AST that are output by the compiler
+
 type OutputBinding = NamedBinding
-type OutputVar     = Name
+
+type OutputVar = Name
 
 type OutputBinder = Binder OutputBinding OutputVar
-type OutputArg    = Arg    OutputBinding OutputVar
-type OutputExpr   = Expr   OutputBinding OutputVar
-type OutputDecl   = Decl   OutputBinding OutputVar
-type OutputProg   = Prog   OutputBinding OutputVar
+
+type OutputArg = Arg OutputBinding OutputVar
+
+type OutputExpr = Expr OutputBinding OutputVar
+
+type OutputDecl = Decl OutputBinding OutputVar
+
+type OutputProg = Prog OutputBinding OutputVar
 
 -- | De Bruijn expressions that have had the missing names supplied.
-type SuppliedDBExpr   = Expr   NamedBinding DBIndexVar
-type SuppliedDBArg    = Arg    NamedBinding DBIndexVar
+type SuppliedDBExpr = Expr NamedBinding DBIndexVar
+
+type SuppliedDBArg = Arg NamedBinding DBIndexVar
+
 type SuppliedDBBinder = Binder NamedBinding DBIndexVar
-type SuppliedDBProg   = Prog   NamedBinding DBIndexVar
-type SuppliedDBDecl   = Decl   NamedBinding DBIndexVar
+
+type SuppliedDBProg = Prog NamedBinding DBIndexVar
+
+type SuppliedDBDecl = Decl NamedBinding DBIndexVar
 
 -- | An expression paired with a position tree represting positions within it.
 -- Currently used mainly for pretty printing position trees.
 data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
-  deriving Show
+  deriving (Show)
 
 type DeclProvenance = (Identifier, Provenance)
 
@@ -84,14 +107,17 @@ type ImportedModules = [TypedProg]
 -- should not be inspected directly but instead use
 newtype TypedExpr = TypedExpr
   { glued :: GluedExpr
-  -- |^ Stores the both the unnormalised and normalised expression, WITH
+  }
+  -- \|^ Stores the both the unnormalised and normalised expression, WITH
   -- auxiliary annotations.
-  } deriving (Generic)
+  deriving (Generic)
 
-instance ToJSON   TypedExpr
+instance ToJSON TypedExpr
+
 instance FromJSON TypedExpr
 
 type TypedDecl = GenericDecl TypedExpr
+
 type TypedProg = GenericProg TypedExpr
 
 --------------------------------------------------------------------------------
@@ -104,8 +130,10 @@ data PropertyInfo
   = PropertyInfo Linearity Polarity
   deriving (Show, Eq, Generic)
 
-instance NFData   PropertyInfo
-instance ToJSON   PropertyInfo
+instance NFData PropertyInfo
+
+instance ToJSON PropertyInfo
+
 instance FromJSON PropertyInfo
 
 instance Pretty PropertyInfo where
@@ -115,12 +143,12 @@ instance Pretty PropertyInfo where
 -- Other
 
 data Contextualised object context = WithContext
-  { objectIn  :: object
-  , contextOf :: context
-  } deriving (Show)
+  { objectIn :: object,
+    contextOf :: context
+  }
+  deriving (Show)
 
 type family WithContext a
-
 
 class HasType expr typ | expr -> typ where
   typeOf :: expr -> typ
@@ -130,6 +158,6 @@ instance HasType (GenericBinder binder expr) expr where
 
 instance HasType (GenericDecl expr) expr where
   typeOf = \case
-    DefResource  _ _ _ t   -> t
-    DefFunction  _ _ _ t _ -> t
-    DefPostulate _ _ t     -> t
+    DefResource _ _ _ t -> t
+    DefFunction _ _ _ t _ -> t
+    DefPostulate _ _ t -> t

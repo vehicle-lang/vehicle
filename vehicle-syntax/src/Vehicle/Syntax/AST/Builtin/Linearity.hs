@@ -6,7 +6,6 @@ import Data.Hashable (Hashable (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
-
 import Vehicle.Syntax.AST.Builtin.Core
 import Vehicle.Syntax.AST.Provenance
 
@@ -18,11 +17,12 @@ import Vehicle.Syntax.AST.Provenance
 -- 2) mimic AST nodes names
 data LinearityProvenance
   = QuantifiedVariableProvenance Provenance Text
-  | NetworkOutputProvenance      Provenance Text
-  | LinFunctionProvenance        Provenance LinearityProvenance FunctionPosition
+  | NetworkOutputProvenance Provenance Text
+  | LinFunctionProvenance Provenance LinearityProvenance FunctionPosition
   deriving (Generic)
 
-instance ToJSON   LinearityProvenance
+instance ToJSON LinearityProvenance
+
 instance FromJSON LinearityProvenance
 
 instance Show LinearityProvenance where
@@ -49,27 +49,30 @@ data Linearity
   deriving (Eq, Show, Generic)
 
 instance Ord Linearity where
-  Constant    <= _           = True
-  Linear{}    <= Linear{}    = True
-  Linear{}    <= NonLinear{} = True
-  NonLinear{} <= NonLinear{} = True
-  _           <= _           = False
+  Constant <= _ = True
+  Linear {} <= Linear {} = True
+  Linear {} <= NonLinear {} = True
+  NonLinear {} <= NonLinear {} = True
+  _ <= _ = False
 
-instance NFData   Linearity
+instance NFData Linearity
+
 instance Hashable Linearity
-instance ToJSON   Linearity
+
+instance ToJSON Linearity
+
 instance FromJSON Linearity
 
 instance Pretty Linearity where
   pretty = \case
-    Constant    -> "Constant"
-    Linear{}    -> "Linear"
-    NonLinear{} -> "Non-linear"
+    Constant -> "Constant"
+    Linear {} -> "Linear"
+    NonLinear {} -> "Non-linear"
 
 mapLinearityProvenance :: (LinearityProvenance -> LinearityProvenance) -> Linearity -> Linearity
 mapLinearityProvenance f = \case
-  Constant           -> Constant
-  Linear lp          -> Linear (f lp)
+  Constant -> Constant
+  Linear lp -> Linear (f lp)
   -- At the moment we don't change non-linear provenance because we
   -- want the minimal example.
   NonLinear p lp lp' -> NonLinear p lp lp'
@@ -84,14 +87,17 @@ data LinearityTypeClass
   | IfCondLinearity
   deriving (Eq, Generic, Show)
 
-instance ToJSON   LinearityTypeClass
+instance ToJSON LinearityTypeClass
+
 instance FromJSON LinearityTypeClass
-instance NFData   LinearityTypeClass
+
+instance NFData LinearityTypeClass
+
 instance Hashable LinearityTypeClass
 
 instance Pretty LinearityTypeClass where
   pretty = \case
-    MaxLinearity        -> "MaxLinearity"
-    MulLinearity        -> "MulLinearity"
-    IfCondLinearity     -> "IfCondLinearity"
+    MaxLinearity -> "MaxLinearity"
+    MulLinearity -> "MulLinearity"
+    IfCondLinearity -> "IfCondLinearity"
     FunctionLinearity p -> "FunctionLinearity" <> pretty p
