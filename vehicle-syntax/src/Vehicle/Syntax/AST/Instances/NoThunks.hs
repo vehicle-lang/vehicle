@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 
-module Vehicle.Syntax.AST.NoThunks where
+module Vehicle.Syntax.AST.Instances.NoThunks where
 
 #if nothunks
 import Vehicle.Syntax.AST.Arg
