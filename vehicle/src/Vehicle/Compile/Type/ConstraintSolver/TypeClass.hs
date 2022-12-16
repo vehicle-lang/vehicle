@@ -64,6 +64,7 @@ solve = \case
   HasSub -> solveHasSub
   HasMul -> solveHasMul
   HasDiv -> solveHasDiv
+  HasMap -> solveHasMap
   HasFold -> solveHasFold
   HasQuantifierIn q -> solveHasQuantifierIn q
   HasIf -> solveHasIf
@@ -616,6 +617,44 @@ solveRatDiv c arg1 arg2 res = do
   let solution = VBuiltin (provenanceOf c) (Div DivRat) []
   return $ Right (constraints, solution)
 
+--------------------------------------------------------------------------------
+-- HasMap
+
+solveHasMap :: TypeClassSolver
+solveHasMap c [tCont] = case tCont of
+  (getMeta -> Just {}) -> blockOnMetas [tCont]
+  VConstructor _ List [] -> solveMapList ctx
+  VVectorType _ _ dim -> solveMapVec dim ctx
+  _ -> blockOrThrowErrors ctx [tCont] [tcError]
+  where
+    ctx = contextOf c
+    tcError = FailedMapConstraintContainer ctx tCont
+solveHasMap c _ = malformedConstraintError c
+
+type HasMapSolver =
+  forall m.
+  TCM m =>
+  ConstraintContext ->
+  m TypeClassProgress
+
+solveMapList :: HasMapSolver
+solveMapList c = do
+  let p = provenanceOf c
+  let solution = VBuiltin p (Map MapList) []
+  return $ Right (mempty, solution)
+
+solveMapVec :: NormExpr -> HasMapSolver
+solveMapVec _ _ = compilerDeveloperError "MapList not implemented"
+
+{-do
+let p = provenanceOf c
+let constraint = unify c tElem tVecElem
+let solution = VBuiltin (provenanceOf c) (Map MapVector)
+      [ ImplicitArg p tVecElem
+      , ImplicitArg p dim
+      ]
+return $ Right ([constraint], solution)
+-}
 --------------------------------------------------------------------------------
 -- HasFold
 

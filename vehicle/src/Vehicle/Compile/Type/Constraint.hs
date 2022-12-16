@@ -50,6 +50,7 @@ typeClassGroup tc = case tc of
   HasMul -> TypeGroup
   HasDiv -> TypeGroup
   HasNeg -> TypeGroup
+  HasMap -> TypeGroup
   HasFold -> TypeGroup
   HasQuantifierIn {} -> TypeGroup
   HasNatLits {} -> TypeGroup

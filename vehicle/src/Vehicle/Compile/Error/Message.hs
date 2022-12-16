@@ -449,6 +449,17 @@ instance MeaningfulError CompileError where
                 <+> prettyExpr ctx t2 <> ".",
             fix = Nothing
           }
+    FailedMapConstraintContainer ctx tCont ->
+      UError $
+        UserError
+          { provenance = provenanceOf ctx,
+            problem =
+              "the second argument to"
+                <+> squotes (pretty MapTC)
+                <+> "must be a container type but found something of type"
+                <+> prettyExpr ctx tCont <> ".",
+            fix = Nothing
+          }
     FailedFoldConstraintContainer ctx tCont ->
       UError $
         UserError
