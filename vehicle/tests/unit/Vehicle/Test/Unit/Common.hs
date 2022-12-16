@@ -1,11 +1,11 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Vehicle.Test.Unit.Common where
 
 import Control.Monad.Except (ExceptT)
-import Control.Monad.Reader.Class (MonadReader (ask))
 import Data.Data (Proxy (Proxy))
 import Data.Functor.Foldable (Recursive (cata))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Proxy (Proxy)
 import Data.Tagged (Tagged (Tagged))
 import Debug.Trace (trace)
 import Test.Tasty (TestTree, askOption, includingOptions)
@@ -28,9 +28,7 @@ import Vehicle.Compile.Prelude
     normApp,
   )
 import Vehicle.Prelude
-  ( DelayedLogger,
-    DelayedLoggerT,
-    LoggingLevel (..),
+  ( DelayedLoggerT,
     Pretty (pretty),
     defaultLoggingLevel,
     developerError,
@@ -64,9 +62,9 @@ unitTestCase testName e =
   askOption $ \logLevel -> testCase testName (traceLogs logLevel e)
   where
     traceLogs :: LoggingLevel -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> Assertion
-    traceLogs logLevel e = do
-      let e' = logCompileError e
-      (v, logs) <- runDelayedLoggerT logLevel e'
+    traceLogs logLevel e' = do
+      let e'' = logCompileError e'
+      (v, logs) <- runDelayedLoggerT logLevel e''
       let result = if null logs then v else trace (showMessages logs) v
       case result of
         Left x -> developerError $ pretty $ details x
