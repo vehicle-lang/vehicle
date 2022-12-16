@@ -108,6 +108,7 @@ data Strategy
   | SimplifyWithOptions Strategy
   | SimplifyDefault Strategy
   | MapList Strategy
+  | MapMaybe Strategy
   | MapIntMap Strategy
   | MapTuple2 Strategy Strategy
   | MapTuple3 Strategy Strategy Strategy
@@ -200,6 +201,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Simple tags) (SimplifyOptions, a) = 'SimplifyWithOptions (StrategyFor tags a)
   StrategyFor ('Simple tags) a = 'SimplifyDefault (StrategyFor tags a)
   -- Things were we just print the structure and recursively print through.
+  StrategyFor tags (Maybe a) = 'MapMaybe (StrategyFor tags a)
   StrategyFor tags (IntMap a) = 'MapIntMap (StrategyFor tags a)
   StrategyFor tags [a] = 'MapList (StrategyFor tags a)
   StrategyFor tags (a, b) = 'MapTuple2 (StrategyFor tags a) (StrategyFor tags b)
@@ -471,6 +473,14 @@ instance
   PrettyUsing ('MapList rest) [a]
   where
   prettyUsing es = list (prettyUsing @rest <$> es)
+
+instance
+  PrettyUsing rest a =>
+  PrettyUsing ('MapMaybe rest) (Maybe a)
+  where
+  prettyUsing = \case
+    Nothing -> ""
+    Just x -> prettyUsing @rest x
 
 instance PrettyUsing rest a => PrettyUsing ('MapIntMap rest) (IntMap a) where
   prettyUsing es = prettyIntMap (prettyUsing @rest <$> es)

@@ -260,7 +260,7 @@ elabExpr = \case
   B.At e1 tk e2 -> builtin V.At tk [e1, e2]
   B.Map tk -> builtin (V.TypeClassOp V.MapTC) tk []
   B.Fold tk -> builtin (V.TypeClassOp V.FoldTC) tk []
-  B.HasEq tk -> builtin (V.TypeClassOp V.MapTC) tk []
+  B.HasEq tk -> builtin (V.Constructor $ V.TypeClass (V.HasEq (developerError "HasEq not supported"))) tk []
   B.HasAdd tk -> builtin (V.TypeClassOp V.MapTC) tk []
   B.HasSub tk -> builtin (V.TypeClassOp V.MapTC) tk []
   B.HasMul tk -> builtin (V.TypeClassOp V.MapTC) tk []
