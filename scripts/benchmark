@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# build all tests
+cabal build all --enable-tests
+
+# get the current commit hash
+commit_hash=$(git rev-parse HEAD)
+
+# create .benchmark directory
+mkdir -p .benchmark
+
+hyperfine \
+  --warmup 3 \
+  --runs 10 \
+  --export-json ".benchmark/benchmark-$commit_hash.json" \
+  --export-markdown ".benchmark/benchmark-$commit_hash.md" \
+  'cabal test all'
