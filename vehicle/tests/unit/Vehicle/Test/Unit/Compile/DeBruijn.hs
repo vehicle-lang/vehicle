@@ -1,16 +1,11 @@
 module Vehicle.Test.Unit.Compile.DeBruijn (deBruijnTests) where
 
-import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
-import Data.IntMap (IntMap)
-import Data.IntMap qualified as IntMap
-import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
-import Vehicle.Compile (parseAndTypeCheckExpr)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Expr.AlphaEquivalence ()
-import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.DeBruijn (DBExpr, liftDBIndices, substDBInto)
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------

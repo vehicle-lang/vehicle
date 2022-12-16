@@ -1,6 +1,5 @@
 module Vehicle.Test.Unit.Compile.LetInsertion where
 
-import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
@@ -60,23 +59,23 @@ data InsertionTestSpec = InsertionTestSpec String SubexprFilter Text Text
 type SubexprFilter = CheckedCoDBExpr -> Int -> Bool
 
 standardFilter :: SubexprFilter
-standardFilter e q = q > 1
+standardFilter _e q = q > 1
 
 appFilter :: SubexprFilter
 appFilter (App {}, _) _ = True
 appFilter _ _ = False
 
 letInsertionTest :: InsertionTestSpec -> TestTree
-letInsertionTest (InsertionTestSpec testName filter input expected) =
+letInsertionTest (InsertionTestSpec testName filterpred input expected) =
   unitTestCase testName $ do
     inputExpr <- normTypeClasses =<< parseAndTypeCheckExpr input
     expectedExpr <- normTypeClasses =<< parseAndTypeCheckExpr expected
-    result <- insertLets filter True inputExpr
+    result <- insertLets filterpred True inputExpr
 
     -- Need to re-typecheck the result as let-insertion puts a Hole on
     -- each binder type.
-    standardLibrary <- loadLibrary standardLibrary
-    typedResult <- typeCheckExpr [standardLibrary] result
+    standardLibrary' <- loadLibrary standardLibrary
+    typedResult <- typeCheckExpr [standardLibrary'] result
 
     let errorMessage =
           layoutAsString $

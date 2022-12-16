@@ -5,10 +5,8 @@ module Main where
 import GHC.IO.Encoding (setLocaleEncoding)
 import GHC.IO.Encoding.UTF8 (utf8)
 import Test.Tasty
-  ( TestTree,
-    defaultIngredients,
+  ( defaultIngredients,
     defaultMainWithIngredients,
-    includingOptions,
     testGroup,
   )
 import Vehicle.Test.Unit.Common (vehicleLoggingIngredient)
@@ -20,7 +18,8 @@ import Vehicle.Test.Unit.Compile.IfElimination (ifEliminationTests)
 import Vehicle.Test.Unit.Compile.LetInsertion (letInsertionTests)
 import Vehicle.Test.Unit.Compile.Normalisation (normalisationTests)
 import Vehicle.Test.Unit.Compile.PositionTree (positionTreeTests)
-import Vehicle.Test.Unit.Compile.QuantifierLifting (quantiferLiftingTests)
+
+-- import Vehicle.Test.Unit.Compile.QuantifierLifting (quantiferLiftingTests)
 
 #if ghcDebug
 import GHC.Debug.Stub (withGhcDebug)
@@ -39,7 +38,7 @@ tests = do
       [ deBruijnTests,
         normalisationTests,
         ifEliminationTests,
-        quantiferLiftingTests,
+        -- quantiferLiftingTests,
         alphaEquivalenceTests,
         coDeBruijnTests,
         positionTreeTests,
