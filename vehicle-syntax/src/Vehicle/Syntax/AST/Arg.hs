@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Vehicle.Syntax.AST.Arg where
 
 import Control.DeepSeq (NFData)

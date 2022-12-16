@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Vehicle.Syntax.AST.Visibility where
 
 import Control.DeepSeq (NFData)

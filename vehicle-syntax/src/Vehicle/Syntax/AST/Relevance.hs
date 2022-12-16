@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Vehicle.Syntax.AST.Relevance where
 
 import Control.DeepSeq (NFData)

@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Vehicle.Syntax.AST.Builtin.TypeClass where
 
 import Control.DeepSeq (NFData (..))

@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 -- | This module exports the datatype representations of the builtin symbols.
 module Vehicle.Syntax.AST.Builtin
   ( module Vehicle.Syntax.AST.Builtin,

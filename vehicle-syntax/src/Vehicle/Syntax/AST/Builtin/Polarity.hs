@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Vehicle.Syntax.AST.Builtin.Polarity where
 
 import Control.DeepSeq (NFData (..))
