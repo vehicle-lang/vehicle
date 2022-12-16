@@ -20,13 +20,17 @@ tested-with:   GHC ==8.10.7 || ==9.0.2 || ==9.2.4 || ==9.4.2
 -- Generated with `script/extra-doc-files`:
 -- extra-doc-files:
 
-
 source-repository head
   type:     git
   location: https://github.com/vehicle-lang/vehicle
 
 flag ghc-debug
   description: Add ghc-debug instrumentation
+  manual:      True
+  default:     False
+
+flag nothunks
+  description: Add NoThunks instances
   manual:      True
   default:     False
 
@@ -38,22 +42,11 @@ common ghc-debug-executable
   if flag(ghc-debug)
     ghc-options: -threaded -rtsopts
 
-flag nothunks
-  description: Add NoThunks instances
-  manual:      True
-  default:     False
-
 common nothunks
   build-depends: nothunks >=0.1.3 && <0.2
   cpp-options:   -Dnothunks
 
 common common-language
-  if flag(ghc-debug)
-    import: ghc-debug
-
-  if flag(nothunks)
-    import: nothunks
-
   default-language:   Haskell2010
   default-extensions:
     ConstraintKinds
@@ -87,8 +80,24 @@ common common-language
     UndecidableInstances
     ViewPatterns
 
+common common-library
+  import:      common-language
+  ghc-options: -Werror -Wall -fprint-potential-instances
+
+  if flag(ghc-debug)
+    import: ghc-debug
+
+  if flag(nothunks)
+    import: nothunks
+
+common common-executable
+  import: common-library
+
+  if flag(ghc-debug)
+    import: ghc-debug-executable
+
 library
-  import:          common-language
+  import:          common-library
   hs-source-dirs:  src
   exposed-modules:
     Vehicle
@@ -230,14 +239,8 @@ library
     , vector                >=0.12.3  && <0.13
     , vehicle-syntax
 
-  ghc-options:     -Werror -Wall -fprint-potential-instances
-
 executable vehicle
-  import:         common-language
-
-  if flag(ghc-debug)
-    import: ghc-debug-executable
-
+  import:         common-executable
   main-is:        Main.hs
   hs-source-dirs: app
   build-depends:
@@ -250,7 +253,7 @@ executable vehicle
 -----------------
 
 library vehicle-golden-tests-common
-  import:          common-language
+  import:          common-library
   hs-source-dirs:  tests/golden
   exposed-modules:
     Vehicle.Test.Golden
@@ -284,11 +287,7 @@ library vehicle-golden-tests-common
     , vehicle
 
 test-suite vehicle-golden-tests
-  import:             common-language
-
-  if flag(ghc-debug)
-    import: ghc-debug-executable
-
+  import:             common-executable
   type:               exitcode-stdio-1.0
   main-is:            tests/golden/Tests.hs
   build-depends:
@@ -302,22 +301,15 @@ test-suite vehicle-golden-tests
 
   build-tool-depends: vehicle:vehicle
 
-  if flag(ghc-debug)
-    ghc-options: -threaded -rtsopts
-
 executable vehicle-new-golden-test
-  import:        common-language
-
-  if flag(ghc-debug)
-    import: ghc-debug-executable
-
+  import:        common-executable
   main-is:       tests/golden/NewTest.hs
   build-depends:
     , base                                 >=4.13 && <5
     , vehicle:vehicle-golden-tests-common
 
 library vehicle-unit-tests-common
-  import:          common-language
+  import:          common-library
   hs-source-dirs:  tests/unit
   exposed-modules:
     Vehicle.Test.Unit.Common
@@ -346,11 +338,7 @@ library vehicle-unit-tests-common
     , vehicle-syntax
 
 test-suite vehicle-unit-tests
-  import:        common-language
-
-  if flag(ghc-debug)
-    import: ghc-debug-executable
-
+  import:        common-executable
   type:          exitcode-stdio-1.0
   main-is:       tests/unit/Tests.hs
   build-depends:
