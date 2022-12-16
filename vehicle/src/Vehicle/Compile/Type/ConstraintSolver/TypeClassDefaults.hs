@@ -127,6 +127,7 @@ familyOf = \case
   (HasNatLits n) -> return $ NumericFamily NatT False n
   HasRatLits -> return $ NumericFamily RatT False 0
   HasVecLits {} -> return $ ContainerFamily True
+  HasMap -> return $ ContainerFamily False
   HasFold -> return $ ContainerFamily False
   HasQuantifierIn {} -> return $ ContainerFamily False
   NatInDomainConstraint n -> return $ NumericFamily NatT False n
@@ -157,6 +158,7 @@ defaultSolution p ctxSize = \case
   HasNatLits n -> return $ VIndexType p (VNatLiteral p (n + 1))
   HasRatLits -> createDefaultRatType p
   HasVecLits {} -> createDefaultListType p ctxSize
+  HasMap -> createDefaultListType p ctxSize
   HasFold -> createDefaultListType p ctxSize
   HasQuantifierIn {} -> createDefaultListType p ctxSize
   NatInDomainConstraint n -> return $ VNatLiteral p (n + 1)

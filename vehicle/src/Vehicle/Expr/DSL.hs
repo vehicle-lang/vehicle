@@ -20,6 +20,7 @@ module Vehicle.Expr.DSL
     tAnnBool,
     tAnnRat,
     tList,
+    tListRaw,
     tTensor,
     tIndex,
     tPol,
@@ -32,6 +33,7 @@ module Vehicle.Expr.DSL
     hasMul,
     hasDiv,
     hasNeg,
+    hasMap,
     hasFold,
     hasQuantifierIn,
     hasNatLits,
@@ -245,8 +247,11 @@ tVector tElem dim = constructor Vector @@ [tElem, dim]
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
 tTensor tElem dims = builtin Tensor @@ [tElem, dims]
 
+tListRaw :: DSLExpr
+tListRaw = constructor List
+
 tList :: DSLExpr -> DSLExpr
-tList tElem = constructor List @@ [tElem]
+tList tElem = tListRaw @@ [tElem]
 
 tIndex :: DSLExpr -> DSLExpr
 tIndex n = constructor Index @@ [n]
@@ -295,6 +300,9 @@ hasDiv t1 t2 t3 = typeClass HasDiv [t1, t2, t3]
 
 hasNeg :: DSLExpr -> DSLExpr -> DSLExpr
 hasNeg t1 t2 = typeClass HasNeg [t1, t2]
+
+hasMap :: DSLExpr -> DSLExpr
+hasMap tCont = typeClass HasMap [tCont]
 
 hasFold :: DSLExpr -> DSLExpr -> DSLExpr
 hasFold tCont tElem = typeClass HasFold [tCont, tElem]
