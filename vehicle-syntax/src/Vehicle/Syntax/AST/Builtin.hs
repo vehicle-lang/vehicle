@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE StrictData #-}
 
 -- | This module exports the datatype representations of the builtin symbols.
 module Vehicle.Syntax.AST.Builtin
@@ -34,8 +34,8 @@ import Vehicle.Syntax.AST.Builtin.TypeClass as X
 -- are viewed as constructors for `Type`.
 data BuiltinConstructor
   = -- Annotations - these should not be shown to the user.
-    Polarity !Polarity
-  | Linearity !Linearity
+    Polarity Polarity
+  | Linearity Linearity
   | -- Types
     Unit
   | Bool
@@ -46,7 +46,7 @@ data BuiltinConstructor
   | List
   | Vector
   | -- Type classes
-    TypeClass !TypeClass
+    TypeClass TypeClass
   | -- Container expressions
     Nil
   | Cons
@@ -280,7 +280,7 @@ instance FromJSON MapDomain
 
 -- | Builtins in the Vehicle language
 data Builtin
-  = Constructor !BuiltinConstructor
+  = Constructor BuiltinConstructor
   | -- Boolean expressions
     Not
   | And
@@ -288,24 +288,24 @@ data Builtin
   | Implies
   | If
   | -- Numeric conversion
-    FromNat !Int !FromNatDomain
-  | FromRat !FromRatDomain
-  | FromVec !Int !FromVecDomain
+    FromNat Int FromNatDomain
+  | FromRat FromRatDomain
+  | FromVec Int FromVecDomain
   | -- Numeric operations
-    Neg !NegDomain
-  | Add !AddDomain
-  | Sub !SubDomain
-  | Mul !MulDomain
-  | Div !DivDomain
+    Neg NegDomain
+  | Add AddDomain
+  | Sub SubDomain
+  | Mul MulDomain
+  | Div DivDomain
   | -- Comparison expressions
-    Equals !EqualityDomain !EqualityOp
-  | Order !OrderDomain !OrderOp
+    Equals EqualityDomain EqualityOp
+  | Order OrderDomain OrderOp
   | At
-  | Map !MapDomain
+  | Map MapDomain
   | -- Derived
     Tensor
-  | TypeClassOp !TypeClassOp
-  | Fold !FoldDomain
+  | TypeClassOp TypeClassOp
+  | Fold FoldDomain
   | Foreach
   deriving (Eq, Show, Generic)
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE StrictData #-}
 
 module Vehicle.Syntax.AST.Provenance
   ( Provenance,
@@ -44,8 +44,8 @@ import Vehicle.Syntax.Parse.Token (IsToken, Token (Tk), tkLength, tkLocation)
 -- Note we don't use the names `line` and `column` as they clash with the
 -- `Prettyprinter` library.
 data Position = Position
-  { posLine :: !Int,
-    posColumn :: !Int
+  { posLine :: Int,
+    posColumn :: Int
   }
   deriving (Eq, Ord, Generic)
 
@@ -73,8 +73,8 @@ alterColumn f (Position l c) = Position l (f c)
 -- inclusive span ranges in our code.
 
 data Range = Range
-  { start :: !Position,
-    end :: !Position
+  { start :: Position,
+    end :: Position
   }
   deriving (Show, Eq, Generic)
 
@@ -125,10 +125,10 @@ instance FromJSON Owner
 -- | The origin of a piece of code
 data Origin
   = -- | set of locations in the source file
-    FromSource !Range
+    FromSource Range
   | -- | name of the parameter
-    FromParameter !Text
-  | FromDataset !Text
+    FromParameter Text
+  | FromDataset Text
   deriving (Show, Eq, Ord, Generic)
 
 instance Semigroup Origin where
@@ -152,8 +152,8 @@ instance Pretty Origin where
 -- Provenance
 
 data Provenance = Provenance
-  { origin :: !Origin,
-    owner :: !Owner
+  { origin :: Origin,
+    owner :: Owner
   }
   deriving (Generic)
 

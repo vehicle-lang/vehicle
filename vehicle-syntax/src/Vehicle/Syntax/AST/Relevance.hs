@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE StrictData #-}
 
 module Vehicle.Syntax.AST.Relevance where
 
