@@ -57,15 +57,15 @@ instance Hashable BinderForm
 -- manually provided by the user it never needs to be updated after unification
 -- and type-class resolution.
 data GenericBinder binder expr = Binder
-  { binderProvenance :: !Provenance,
+  { binderProvenance :: Provenance,
     binderForm :: !BinderForm,
     -- | The visibility of the binder
     binderVisibility :: !Visibility,
     -- | The relevancy of the binder
     binderRelevance :: !Relevance,
     -- | The representation of the bound variable
-    binderRepresentation :: !binder,
-    binderType :: !expr
+    binderRepresentation :: binder,
+    binderType :: expr
     -- The type of the bound variable
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)

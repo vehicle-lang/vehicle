@@ -79,9 +79,11 @@ data Range = Range
   deriving (Show, Eq, Generic)
 
 instance Ord Range where
+  (<=) :: Range -> Range -> Bool
   Range s1 e1 <= Range s2 e2 = s1 < s2 || (s1 == s2 && e1 <= e1)
 
 instance Pretty Range where
+  pretty :: Range -> Doc ann
   pretty (Range p1 p2) =
     if posLine p1 == posLine p2
       then
@@ -109,10 +111,12 @@ data Owner
   deriving (Show, Eq, Ord, Generic)
 
 instance Semigroup Owner where
+  (<>) :: Owner -> Owner -> Owner
   TheUser <> _ = TheUser
   TheMachine <> r = r
 
 instance Monoid Owner where
+  mempty :: Owner
   mempty = TheMachine
 
 instance ToJSON Owner
@@ -132,6 +136,7 @@ data Origin
   deriving (Show, Eq, Ord, Generic)
 
 instance Semigroup Origin where
+  (<>) :: Origin -> Origin -> Origin
   FromSource r1 <> FromSource r2 = FromSource (mergeRangePair r1 r2)
   p@FromSource {} <> _ = p
   _ <> p@FromSource {} = p
@@ -140,9 +145,11 @@ instance Semigroup Origin where
   p@FromParameter {} <> _ = p
 
 instance Monoid Origin where
+  mempty :: Origin
   mempty = FromSource (Range (Position 0 0) (Position 0 0))
 
 instance Pretty Origin where
+  pretty :: Origin -> Doc ann
   pretty = \case
     FromSource range -> pretty range
     FromParameter name -> "parameter" <+> squotes (pretty name)
@@ -158,21 +165,27 @@ data Provenance = Provenance
   deriving (Generic)
 
 instance Show Provenance where
+  show :: Provenance -> String
   show = const ""
 
 instance NFData Provenance where
+  rnf :: Provenance -> ()
   rnf _ = ()
 
 instance ToJSON Provenance where
+  toJSON :: Provenance -> Value
   toJSON _ = toJSON ()
 
 instance FromJSON Provenance where
+  parseJSON :: Value -> Parser Provenance
   parseJSON _ = return mempty
 
 instance Eq Provenance where
+  (==) :: Provenance -> Provenance -> Bool
   _x == _y = True
 
 instance Hashable Provenance where
+  hashWithSalt :: Int -> Provenance -> Int
   hashWithSalt s _p = s
 
 -- | Get the provenance for a single token.
@@ -211,13 +224,16 @@ expandProvenance w (Provenance (FromSource rs) o) = Provenance (FromSource (expa
 expandProvenance _ p = p
 
 instance Pretty Provenance where
+  pretty :: Provenance -> Doc ann
   pretty (Provenance origin _) = pretty origin
 
 instance Semigroup Provenance where
+  (<>) :: Provenance -> Provenance -> Provenance
   Provenance origin1 owner1 <> Provenance origin2 owner2 =
     Provenance (origin1 <> origin2) (owner1 <> owner2)
 
 instance Monoid Provenance where
+  mempty :: Provenance
   mempty = Provenance mempty mempty
 
 --------------------------------------------------------------------------------
@@ -228,15 +244,19 @@ class HasProvenance a where
   provenanceOf :: a -> Provenance
 
 instance HasProvenance Provenance where
+  provenanceOf :: Provenance -> Provenance
   provenanceOf = id
 
 instance HasProvenance a => HasProvenance [a] where
+  provenanceOf :: HasProvenance a => [a] -> Provenance
   provenanceOf = foldMap provenanceOf
 
 instance HasProvenance a => HasProvenance (NonEmpty a) where
+  provenanceOf :: HasProvenance a => NonEmpty a -> Provenance
   provenanceOf = foldMap provenanceOf
 
 instance HasProvenance a => HasProvenance (a, b) where
+  provenanceOf :: HasProvenance a => (a, b) -> Provenance
   provenanceOf = provenanceOf . fst
 
 wasInsertedByCompiler :: HasProvenance a => a -> Bool

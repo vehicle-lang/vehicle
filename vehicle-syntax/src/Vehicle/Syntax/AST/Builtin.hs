@@ -61,6 +61,7 @@ instance ToJSON BuiltinConstructor
 instance FromJSON BuiltinConstructor
 
 instance Pretty BuiltinConstructor where
+  pretty :: BuiltinConstructor -> Doc ann
   pretty = \case
     Unit -> "Unit"
     Bool -> "Bool"
@@ -93,6 +94,7 @@ instance ToJSON NegDomain
 instance FromJSON NegDomain
 
 instance Pretty NegDomain where
+  pretty :: NegDomain -> Doc ann
   pretty = \case
     NegInt -> "Int"
     NegRat -> "Rat"
@@ -117,6 +119,7 @@ instance ToJSON AddDomain
 instance FromJSON AddDomain
 
 instance Pretty AddDomain where
+  pretty :: AddDomain -> Doc ann
   pretty = \case
     AddNat -> "Nat"
     AddInt -> "Int"
@@ -136,6 +139,7 @@ instance ToJSON SubDomain
 instance FromJSON SubDomain
 
 instance Pretty SubDomain where
+  pretty :: SubDomain -> Doc ann
   pretty = \case
     SubInt -> "Int"
     SubRat -> "Rat"
@@ -165,6 +169,7 @@ instance ToJSON MulDomain
 instance FromJSON MulDomain
 
 instance Pretty MulDomain where
+  pretty :: MulDomain -> Doc ann
   pretty = \case
     MulNat -> "Nat"
     MulInt -> "Int"
@@ -183,6 +188,7 @@ instance ToJSON DivDomain
 instance FromJSON DivDomain
 
 instance Pretty DivDomain where
+  pretty :: DivDomain -> Doc ann
   pretty = \case
     DivRat -> "Rat"
 
@@ -194,6 +200,7 @@ data FromNatDomain
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty FromNatDomain where
+  pretty :: FromNatDomain -> Doc ann
   pretty = \case
     FromNatToIndex -> "Index"
     FromNatToNat -> "Nat"
@@ -213,6 +220,7 @@ data FromRatDomain
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty FromRatDomain where
+  pretty :: FromRatDomain -> Doc ann
   pretty = \case
     FromRatToRat -> "Rat"
 
@@ -230,6 +238,7 @@ data FromVecDomain
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty FromVecDomain where
+  pretty :: FromVecDomain -> Doc ann
   pretty = \case
     FromVecToVec -> "Vector"
     FromVecToList -> "List"
@@ -248,6 +257,7 @@ data FoldDomain
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty FoldDomain where
+  pretty :: FoldDomain -> Doc ann
   pretty = \case
     FoldList -> "List"
     FoldVector -> "Vector"
@@ -266,6 +276,7 @@ data MapDomain
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty MapDomain where
+  pretty :: MapDomain -> Doc ann
   pretty = \case
     MapList -> "List"
     MapVector -> "Vector"
@@ -298,8 +309,8 @@ data Builtin
   | Mul !MulDomain
   | Div !DivDomain
   | -- Comparison expressions
-    Equals !EqualityDomain !EqualityOp
-  | Order !OrderDomain !OrderOp
+    Equals !EqualityDomain EqualityOp
+  | Order !OrderDomain OrderOp
   | At
   | Map !MapDomain
   | -- Derived
@@ -320,6 +331,7 @@ instance FromJSON Builtin
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.
 instance Pretty Builtin where
+  pretty :: Builtin -> Doc ann
   pretty = \case
     Constructor c -> pretty c
     TypeClassOp tcOp -> pretty tcOp

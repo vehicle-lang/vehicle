@@ -58,6 +58,7 @@ instance ToJSON TypeClass
 instance FromJSON TypeClass
 
 instance Pretty TypeClass where
+  pretty :: TypeClass -> Doc ann
   pretty = \case
     HasEq {} -> "HasEq"
     HasOrd {} -> "HasOrd"

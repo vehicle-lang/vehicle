@@ -18,9 +18,9 @@ import Vehicle.Syntax.AST.Provenance (Provenance)
 -- 1) rename LinearityProvenance to LinearityProof
 -- 2) mimic AST nodes names
 data LinearityProvenance
-  = QuantifiedVariableProvenance !Provenance !Text
-  | NetworkOutputProvenance !Provenance !Text
-  | LinFunctionProvenance !Provenance !LinearityProvenance !FunctionPosition
+  = QuantifiedVariableProvenance Provenance !Text
+  | NetworkOutputProvenance Provenance !Text
+  | LinFunctionProvenance Provenance LinearityProvenance !FunctionPosition
   deriving (Generic)
 
 instance ToJSON LinearityProvenance
@@ -28,15 +28,19 @@ instance ToJSON LinearityProvenance
 instance FromJSON LinearityProvenance
 
 instance Show LinearityProvenance where
+  show :: LinearityProvenance -> String
   show _x = ""
 
 instance Eq LinearityProvenance where
+  (==) :: LinearityProvenance -> LinearityProvenance -> Bool
   _x == _y = True
 
 instance NFData LinearityProvenance where
+  rnf :: LinearityProvenance -> ()
   rnf _x = ()
 
 instance Hashable LinearityProvenance where
+  hashWithSalt :: Int -> LinearityProvenance -> Int
   hashWithSalt s _p = s
 
 --------------------------------------------------------------------------------
@@ -46,11 +50,12 @@ instance Hashable LinearityProvenance where
 -- constant, linear or non-linear expression.
 data Linearity
   = Constant
-  | Linear !LinearityProvenance
-  | NonLinear !Provenance !LinearityProvenance !LinearityProvenance
+  | Linear LinearityProvenance
+  | NonLinear Provenance LinearityProvenance LinearityProvenance
   deriving (Eq, Show, Generic)
 
 instance Ord Linearity where
+  (<=) :: Linearity -> Linearity -> Bool
   Constant <= _ = True
   Linear {} <= Linear {} = True
   Linear {} <= NonLinear {} = True
@@ -66,6 +71,7 @@ instance ToJSON Linearity
 instance FromJSON Linearity
 
 instance Pretty Linearity where
+  pretty :: Linearity -> Doc ann
   pretty = \case
     Constant -> "Constant"
     Linear {} -> "Linear"
@@ -98,6 +104,7 @@ instance NFData LinearityTypeClass
 instance Hashable LinearityTypeClass
 
 instance Pretty LinearityTypeClass where
+  pretty :: LinearityTypeClass -> Doc ann
   pretty = \case
     MaxLinearity -> "MaxLinearity"
     MulLinearity -> "MulLinearity"

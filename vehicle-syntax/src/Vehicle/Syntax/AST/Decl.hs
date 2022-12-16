@@ -16,20 +16,20 @@ import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 -- | Type of top-level declarations.
 data GenericDecl expr
   = DefResource
-      !Provenance -- Location in source file.
+      Provenance -- Location in source file.
       !Identifier -- Name of resource.
       !Resource -- Type of resource.
-      !expr -- Vehicle type of the resource.
+      expr -- Vehicle type of the resource.
   | DefFunction
-      !Provenance -- Location in source file.
+      Provenance -- Location in source file.
       !Identifier -- Bound function name.
       !Bool -- Is it a property.
-      !expr -- Bound function type.
-      !expr -- Bound function body.
+      expr -- Bound function type.
+      expr -- Bound function body.
   | DefPostulate
-      !Provenance
+      Provenance
       !Identifier
-      !expr
+      expr
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 instance NFData expr => NFData (GenericDecl expr)
@@ -39,12 +39,14 @@ instance ToJSON expr => ToJSON (GenericDecl expr)
 instance FromJSON expr => FromJSON (GenericDecl expr)
 
 instance Vehicle.Syntax.AST.Provenance.HasProvenance (GenericDecl expr) where
+  provenanceOf :: GenericDecl expr -> Provenance
   provenanceOf = \case
     DefResource p _ _ _ -> p
     DefFunction p _ _ _ _ -> p
     DefPostulate p _ _ -> p
 
 instance HasIdentifier (GenericDecl expr) where
+  identifierOf :: GenericDecl expr -> Identifier
   identifierOf = \case
     DefResource _ i _ _ -> i
     DefFunction _ i _ _ _ -> i
@@ -90,6 +92,7 @@ data Annotation
   deriving (Generic)
 
 instance Pretty Annotation where
+  pretty :: Annotation -> Doc ann
   pretty annotation =
     "@" <> case annotation of
       PropertyAnnotation -> "property"
@@ -112,6 +115,7 @@ instance ToJSON Resource
 instance FromJSON Resource
 
 instance Pretty Resource where
+  pretty :: Resource -> Doc ann
   pretty = \case
     Network -> "network"
     Dataset -> "dataset"

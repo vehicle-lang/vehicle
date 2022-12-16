@@ -21,13 +21,13 @@ import Vehicle.Syntax.AST.Visibility
 -- stores.
 data GenericArg expr = Arg
   { -- | Has the argument been auto-inserted by the type-checker?
-    argProvenance :: !Provenance,
+    argProvenance :: Provenance,
     -- | The visibility of the argument
     argVisibility :: !Visibility,
     -- | The relevancy of the argument
     argRelevance :: !Relevance,
     -- | The argument expression
-    argExpr :: !expr
+    argExpr :: expr
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
@@ -38,12 +38,15 @@ instance ToJSON expr => ToJSON (GenericArg expr)
 instance FromJSON expr => FromJSON (GenericArg expr)
 
 instance HasProvenance (GenericArg expr) where
+  provenanceOf :: GenericArg expr -> Provenance
   provenanceOf = argProvenance
 
 instance HasVisibility (GenericArg expr) where
+  visibilityOf :: GenericArg expr -> Visibility
   visibilityOf = argVisibility
 
 instance HasRelevance (GenericArg expr) where
+  relevanceOf :: GenericArg expr -> Relevance
   relevanceOf = argRelevance
 
 --------------------------------------------------------------------------------
