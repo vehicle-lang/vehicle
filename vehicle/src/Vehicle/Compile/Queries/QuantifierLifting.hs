@@ -16,7 +16,7 @@ import Vehicle.Expr.DeBruijn
 liftQuantifiers :: MonadCompile m => CheckedExpr -> m CheckedExpr
 liftQuantifiers e = logCompilerPass MinDetail currentPass $ do
   result <- recLift e
-  logCompilerPassOutput (prettyFriendly result)
+  logCompilerPassOutput (prettyFriendly (WithContext result emptyDBCtx))
   return result
 
 currentPass :: Doc a

@@ -29,7 +29,7 @@ checkQuantifiersAndNegateIfNecessary backend ident expr =
         return (True, lowerNot expr)
       _ -> return (False, expr)
 
-    logCompilerPassOutput (prettyFriendly outputExpr)
+    logCompilerPassOutput (prettyFriendly (WithContext outputExpr emptyDBCtx))
     return (negated, outputExpr)
 
 -- | Checks that the quantifiers within the expression are homogeneous,
