@@ -16,7 +16,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendlyDBClosed)
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Expr.DeBruijn
 
 scopeCheck ::
@@ -58,9 +58,8 @@ scopeDecls = \case
   (d : ds) -> do
     let ident = identifierOf d
     let identName = nameOf ident
-    (d', dep) <- logCompilerPass MidDetail ("scoping" <+> quotePretty identName) $ do
+    (d', dep) <- do
       (d', dep) <- runWriterT $ scopeDecl d
-      logCompilerPassOutput (prettyFriendlyDBClosed d')
       return (d', dep)
 
     existingEntry <- asks (Map.lookup identName)
@@ -71,13 +70,16 @@ scopeDecls = \case
         return (d' : ds', (ident, dep) : deps)
 
 scopeDecl :: (MonadWriter Dependencies m, MonadScope m) => InputDecl -> m UncheckedDecl
-scopeDecl = \case
-  DefResource p ident r t ->
-    DefResource p ident r <$> scopeDeclExpr False t
-  DefFunction p ident isProperty t e ->
-    DefFunction p ident isProperty <$> scopeDeclExpr True t <*> scopeDeclExpr False e
-  DefPostulate p ident t ->
-    DefPostulate p ident <$> scopeDeclExpr False t
+scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
+  result <- case decl of
+    DefResource p ident r t ->
+      DefResource p ident r <$> scopeDeclExpr False t
+    DefFunction p ident isProperty t e ->
+      DefFunction p ident isProperty <$> scopeDeclExpr True t <*> scopeDeclExpr False e
+    DefPostulate p ident t ->
+      DefPostulate p ident <$> scopeDeclExpr False t
+  logCompilerPassOutput (prettyFriendly result)
+  return result
 
 scopeDeclExpr ::
   (MonadWriter Dependencies m, MonadScope m) =>

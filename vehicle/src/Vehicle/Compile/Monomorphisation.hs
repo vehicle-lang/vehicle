@@ -271,6 +271,9 @@ substituteArgsThrough = \case
 getMonomorphisedSuffix :: [CheckedArg] -> Text
 getMonomorphisedSuffix args = do
   let implicits = mapMaybe getImplicitArg args
-  let typesText = fmap (layoutAsText . prettyFriendly) implicits
+  let typesText = fmap getImplicitName implicits
   let typeNames = fmap (\v -> "[" <> Text.replace " " "-" v <> "]") typesText
   Text.intercalate "-" typeNames
+
+getImplicitName :: CheckedType -> Text
+getImplicitName t = layoutAsText $ prettyFriendly $ WithContext t emptyDBCtx

@@ -13,7 +13,7 @@ import Data.Maybe (catMaybes)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
-import Vehicle.Compile.Normalise (fullNormalisationOptions, normalise)
+import Vehicle.Compile.Normalise (fullNormalisationOptions, normaliseProg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
 import Vehicle.Compile.Queries.DNF (convertToDNF)
@@ -51,7 +51,7 @@ compileToQueries verifier@Verifier {..} typedProg resources =
 
     -- Again, horrible, we should push use of NormExpr through everywhere
     unnormalisedProg <- traverse getUnnormalised finalProg
-    normalisedProg <- normalise unnormalisedProg fullNormalisationOptions
+    normalisedProg <- normaliseProg unnormalisedProg fullNormalisationOptions
     properties <- getProperties normalisedProg
 
     if null properties

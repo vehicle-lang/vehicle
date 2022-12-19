@@ -156,12 +156,13 @@ prependBinderAndSolveMeta meta f v r binderName binderType decl = do
 
   -- Construct the new binder and prepend it to both the type and
   -- (if applicable) the body of the declaration.
-  let binder = Binder (provenanceOf decl) f v r binderName substBinderType
+  let typeBinder = Binder (provenanceOf decl) f v r binderName substBinderType
+  let bodyBinder = Binder (provenanceOf decl) (BinderForm OnlyName True) v r binderName substBinderType
   prependedDecl <- case substDecl of
     DefResource p rt ident t ->
-      return $ DefResource p rt ident (Pi p binder t)
+      return $ DefResource p rt ident (Pi p typeBinder t)
     DefFunction p ident isProperty t e ->
-      return $ DefFunction p ident isProperty (Pi p binder t) (Lam p binder e)
+      return $ DefFunction p ident isProperty (Pi p typeBinder t) (Lam p bodyBinder e)
     DefPostulate {} ->
       compilerDeveloperError "Generalisation over postulates not yet supported"
 

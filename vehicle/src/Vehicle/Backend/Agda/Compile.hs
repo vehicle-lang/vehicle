@@ -21,13 +21,13 @@ import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
-import Vehicle.Compile.Descope (runDescopeProg)
+import Vehicle.Compile.Descope (descopeNamed)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.SupplyNames (supplyDBNames)
+import Vehicle.Compile.SupplyNames (supplyNames)
 import Vehicle.Compile.Type (getUnnormalised)
 import Vehicle.Libraries.StandardLibrary.Names
   ( StdLibFunction,
@@ -51,8 +51,8 @@ compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
     monoProg <- monomorphise unnormalisedProg
 
     let prog2 = capitaliseTypeNames monoProg
-    let prog3 = unwrapProg $ supplyDBNames (WrapProg prog2)
-    let prog4 = runDescopeProg prog3
+    let prog3 = supplyNames prog2
+    let prog4 = descopeNamed prog3
     programDoc <- compileProg prog4
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
@@ -883,7 +883,7 @@ unexpectedTypeError actualType expectedTypes =
       <+> "Was expecting one of"
       <+> list expectedTypes
       <+> "but found"
-      <+> prettyFriendly actualType
+      <+> prettyVerbose actualType
       <+> "at"
       <+> pretty (provenanceOf actualType) <> "."
 
