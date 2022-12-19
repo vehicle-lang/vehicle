@@ -17,7 +17,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (..))
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Parse (ParseError (..))
 
@@ -223,9 +222,9 @@ instance MeaningfulError CompileError where
           { provenance = p,
             problem =
               "expected something of type"
-                <+> prettyExpr ctx expected
+                <+> squotes (prettyFriendly $ WithContext expected ctx)
                 <+> "but inferred type"
-                <+> prettyExpr ctx candidate,
+                <+> squotes (prettyFriendly $ WithContext candidate ctx),
             fix = Nothing
           }
     UnresolvedHole p name ->
@@ -242,30 +241,30 @@ instance MeaningfulError CompileError where
             problem =
               constraintOriginMessage <> "."
                 <+> "In particular"
-                <+> prettyFriendlyDB nameCtx e1
+                <+> prettyFriendly (WithContext e1 boundCtx)
                 <+> "!="
-                <+> prettyFriendlyDB nameCtx e2 <> ".",
+                <+> prettyFriendly (WithContext e2 boundCtx) <> ".",
             fix = Just "check your types"
           }
       where
         WithContext (Unify e1 e2) ctx = NonEmpty.head cs
-        nameCtx = boundContextOf ctx
+        boundCtx = boundContextOf ctx
 
         constraintOriginMessage = case origin ctx of
           CheckingExprType expr expectedType actualType ->
             "expected"
               <+> squotes (prettyUnificationConstraintOriginExpr ctx expr)
               <+> "to be of type"
-              <+> prettyFriendlyDB nameCtx expectedType
+              <+> prettyFriendly (WithContext expectedType boundCtx)
               <+> "but was found to be of type"
-              <+> prettyFriendlyDB nameCtx actualType
+              <+> prettyFriendly (WithContext actualType boundCtx)
           CheckingBinderType varName expectedType actualType ->
             "expected the variable"
               <+> quotePretty varName
               <+> "to be of type"
-              <+> squotes (prettyFriendlyDB nameCtx expectedType)
+              <+> squotes (prettyFriendly $ WithContext expectedType boundCtx)
               <+> "but was found to be of type"
-              <+> squotes (prettyFriendlyDB nameCtx actualType)
+              <+> squotes (prettyFriendly $ WithContext actualType boundCtx)
           CheckingTypeClass fun args _tc ->
             "unable to find a consistent type for the overloaded expression"
               <+> squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
@@ -289,13 +288,13 @@ instance MeaningfulError CompileError where
             "expected"
               <+> squotes (prettyUnificationConstraintOriginExpr ctx expr)
               <+> "to be of type"
-              <+> prettyFriendlyDB nameCtx expectedType
+              <+> squotes (prettyFriendly $ WithContext expectedType nameCtx)
               <+> "but was unable to prove it."
           CheckingBinderType varName expectedType _actualType ->
             "expected the variable"
               <+> squotes (pretty varName)
               <+> "to be of type"
-              <+> squotes (prettyFriendlyDB nameCtx expectedType)
+              <+> squotes (prettyFriendly $ WithContext expectedType nameCtx)
               <+> "but was unable to prove it."
           CheckingTypeClass fun args _tc ->
             "insufficient information to find a valid type for the overloaded expression"
@@ -323,25 +322,23 @@ instance MeaningfulError CompileError where
                 <+> "but instead found"
                 <+> pretty (visibilityOf arg)
                 <+> "argument"
-                <+> argExprDoc,
+                <+> squotes (prettyFriendly $ WithContext (argExpr arg) ctx),
             fix = Just $ "try inserting an argument of type" <+> argTypeDoc
           }
       where
-        argExprDoc = prettyExpr ctx (argExpr arg)
-        argTypeDoc = prettyExpr ctx argType
+        argTypeDoc = prettyFriendly $ WithContext argType ctx
     FailedEqConstraint ctx t1 t2 eq ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
             problem =
               "cannot use"
-                <+> squotes (pretty eq)
-                <+> "to compare"
-                <+> "arguments"
-                <+> "of type"
-                <+> prettyExpr ctx t1
+                <+> quotePretty eq
+                <+> "to compare arguments of type"
+                <+> squotes (prettyFriendly $ WithContext t1 (boundContextOf ctx))
                 <+> "and"
-                <+> prettyExpr ctx t2 <> ".",
+                <+> squotes (prettyFriendly $ WithContext t2 (boundContextOf ctx))
+                  <> ".",
             fix = Nothing
           }
     FailedOrdConstraint ctx t1 t2 ord ->
@@ -351,24 +348,25 @@ instance MeaningfulError CompileError where
             problem =
               "cannot use"
                 <+> squotes (pretty ord)
-                <+> "to compare"
-                <+> "arguments"
-                <+> "of type"
-                <+> prettyExpr ctx t1
+                <+> "to compare arguments of type"
+                <+> squotes (prettyFriendly $ WithContext t1 boundCtx)
                 <+> "and"
-                <+> prettyExpr ctx t2 <> ".",
+                <+> squotes (prettyFriendly $ WithContext t2 boundCtx)
+                  <> ".",
             fix = Nothing
           }
+      where
+        boundCtx = boundContextOf ctx
     FailedNotConstraint ctx t ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
             problem =
               "cannot apply"
-                <+> squotes (pretty Not)
-                <+> "to"
-                <+> "something of type"
-                <+> prettyExpr ctx t <> ".",
+                <+> quotePretty Not
+                <+> "to something of type"
+                <+> squotes (prettyFriendly $ WithContext t (boundContextOf ctx))
+                  <> ".",
             fix = Nothing
           }
     FailedBoolOp2Constraint ctx t1 t2 op ->
@@ -377,21 +375,24 @@ instance MeaningfulError CompileError where
           { provenance = provenanceOf ctx,
             problem =
               "cannot apply"
-                <+> squotes (pretty op)
-                <+> "to"
-                <+> "arguments of type"
-                <+> prettyExpr ctx t1
+                <+> quotePretty op
+                <+> "to arguments of type"
+                <+> squotes (prettyFriendly $ WithContext t1 boundCtx)
                 <+> "and"
-                <+> prettyExpr ctx t2 <> ".",
+                <+> squotes (prettyFriendly $ WithContext t2 boundCtx)
+                  <> ".",
             fix = Nothing
           }
+      where
+        boundCtx = boundContextOf ctx
     FailedQuantifierConstraintDomain ctx typeOfDomain _q ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
             problem =
               "cannot quantify over arguments of type"
-                <+> prettyExpr ctx typeOfDomain <> ".",
+                <+> squotes (prettyFriendly $ WithContext typeOfDomain (boundContextOf ctx))
+                  <> ".",
             fix = Nothing
           }
     FailedQuantifierConstraintBody ctx typeOfBody _q ->
@@ -400,7 +401,8 @@ instance MeaningfulError CompileError where
           { provenance = provenanceOf ctx,
             problem =
               "the body of the quantifier cannot be of type"
-                <+> prettyExpr ctx typeOfBody <> ".",
+                <+> squotes (prettyFriendly $ WithContext typeOfBody (boundContextOf ctx))
+                  <> ".",
             fix = Nothing
           }
     FailedBuiltinConstraintArgument ctx builtin t allowedTypes argNo argTotal ->
@@ -415,7 +417,8 @@ instance MeaningfulError CompileError where
                 <+> "to be"
                 <+> prettyAllowedTypes allowedTypes
                 <+> "but found something of type"
-                <+> prettyExpr ctx t <> ".",
+                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
+                  <> ".",
             fix = Nothing
           }
       where
@@ -430,7 +433,8 @@ instance MeaningfulError CompileError where
                 <+> "should be"
                 <+> prettyAllowedTypes allowedTypes
                 <+> "but the program is expecting something of type"
-                <+> prettyExpr ctx actualType <> ".",
+                <+> squotes (prettyFriendly (WithContext actualType (boundContextOf ctx)))
+                  <> ".",
             fix = Nothing
           }
       where
@@ -444,11 +448,14 @@ instance MeaningfulError CompileError where
                 <+> squotes (pretty op2)
                 <+> "to"
                 <+> "arguments of type"
-                <+> prettyExpr ctx t1
+                <+> squotes (prettyFriendly (WithContext t1 boundCtx))
                 <+> "and"
-                <+> prettyExpr ctx t2 <> ".",
+                <+> squotes (prettyFriendly (WithContext t2 boundCtx))
+                  <> ".",
             fix = Nothing
           }
+      where
+        boundCtx = boundContextOf ctx
     FailedMapConstraintContainer ctx tCont ->
       UError $
         UserError
@@ -457,9 +464,12 @@ instance MeaningfulError CompileError where
               "the second argument to"
                 <+> squotes (pretty MapTC)
                 <+> "must be a container type but found something of type"
-                <+> prettyExpr ctx tCont <> ".",
+                <+> squotes (prettyFriendly (WithContext tCont boundCtx))
+                  <> ".",
             fix = Nothing
           }
+      where
+        boundCtx = boundContextOf ctx
     FailedFoldConstraintContainer ctx tCont ->
       UError $
         UserError
@@ -468,7 +478,8 @@ instance MeaningfulError CompileError where
               "the second argument to"
                 <+> squotes (pretty FoldTC)
                 <+> "must be a container type but found something of type"
-                <+> prettyExpr ctx tCont <> ".",
+                <+> squotes (prettyFriendly (WithContext tCont (boundContextOf ctx)))
+                  <> ".",
             fix = Nothing
           }
     FailedQuantInConstraintContainer ctx tCont q ->
@@ -478,7 +489,8 @@ instance MeaningfulError CompileError where
             problem =
               "the argument <c> in '" <> pretty q <> " <v> in <c> . ...`"
                 <+> "must be a container type but found something of type"
-                <+> prettyExpr ctx tCont <> ".",
+                <+> squotes (prettyFriendly (WithContext tCont (boundContextOf ctx)))
+                  <> ".",
             fix = Nothing
           }
     FailedNatLitConstraint ctx v t ->
@@ -490,7 +502,8 @@ instance MeaningfulError CompileError where
                 <+> squotes (pretty v)
                 <+> "is not a valid"
                 <+> "instance of type"
-                <+> prettyExpr ctx t <> ".",
+                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
+                  <> ".",
             fix = Nothing
           }
     FailedNatLitConstraintTooBig ctx v n ->
@@ -513,7 +526,8 @@ instance MeaningfulError CompileError where
               "unable to determine if"
                 <+> squotes (pretty v)
                 <+> "is a valid index of size"
-                <+> prettyExpr ctx t <> ".",
+                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
+                  <> ".",
             fix = Nothing
           }
     FailedIntLitConstraint ctx t ->
@@ -522,7 +536,8 @@ instance MeaningfulError CompileError where
           { provenance = provenanceOf ctx,
             problem =
               "an integer literal is not a valid element of the type"
-                <+> prettyExpr ctx t <> ".",
+                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
+                  <> ".",
             fix = Nothing
           }
     FailedRatLitConstraint ctx t ->
@@ -531,7 +546,8 @@ instance MeaningfulError CompileError where
           { provenance = provenanceOf ctx,
             problem =
               "a rational literal is not a valid element of the type"
-                <+> prettyExpr ctx t <> ".",
+                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
+                  <> ".",
             fix = Nothing
           }
     FailedConLitConstraint ctx t ->
@@ -540,7 +556,7 @@ instance MeaningfulError CompileError where
           { provenance = provenanceOf ctx,
             problem =
               "a vector literal is not a valid element of the type"
-                <+> prettyExpr ctx t <> ".",
+                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx))) <> ".",
             fix = Nothing
           }
     QuantifiedIfCondition ctx ->
@@ -653,7 +669,7 @@ instance MeaningfulError CompileError where
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as the"
                 <+> pretty io
-                <+> squotes (prettyFriendly nonTensorType)
+                <+> squotes (prettyFriendly (WithContext nonTensorType emptyDBCtx))
                 <+> "is not one of"
                 <+> list [pretty Vector, pretty Tensor] <> ".",
             fix =
@@ -670,7 +686,8 @@ instance MeaningfulError CompileError where
             problem =
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as it contains the non-explicit argument of type"
-                <+> squotes (prettyFriendly (typeOf binder)) <> ".",
+                <+> squotes (prettyFriendly (WithContext (typeOf binder) emptyDBCtx))
+                  <> ".",
             fix =
               Just $
                 supportedNetworkTypeDescription
@@ -684,7 +701,7 @@ instance MeaningfulError CompileError where
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as"
                 <+> pretty io <> "s of type"
-                <+> squotes (prettyFriendlyDBClosed elementType)
+                <+> squotes (prettyFriendly (WithContext elementType emptyDBCtx))
                 <+> "are not currently supported.",
             fix =
               Just $
@@ -703,7 +720,7 @@ instance MeaningfulError CompileError where
                 <+> "as the size of the"
                 <+> pretty io
                 <+> "tensor"
-                <+> squotes (prettyFriendlyDBClosed tDim)
+                <+> squotes (prettyFriendly (WithContext tDim emptyDBCtx))
                 <+> "is not a constant.",
             fix =
               Just $
@@ -756,7 +773,7 @@ instance MeaningfulError CompileError where
               unsupportedResourceTypeDescription Dataset ident datasetType
                 <+> "as it has elements of an unsupported type:"
                   <> line
-                  <> indent 2 (prettyFriendlyDBClosed elementType)
+                  <> indent 2 (prettyFriendly (WithContext elementType emptyDBCtx))
                   <> line
                   <> "Only the following element types are allowed for"
                 <+> pretty Dataset
@@ -779,7 +796,7 @@ instance MeaningfulError CompileError where
               unsupportedResourceTypeDescription Parameter ident datasetType
                 <+> "as the dimension size"
                   <> line
-                  <> indent 2 (prettyFriendlyDBClosed variableDim)
+                  <> indent 2 (prettyFriendly (WithContext variableDim emptyDBCtx))
                   <> line
                   <> "is not a constant.",
             fix = Just "make sure the dimensions of the dataset are all constants."
@@ -873,9 +890,9 @@ instance MeaningfulError CompileError where
                   <> "."
                   <> line
                   <> "Expected elements of type"
-                <+> squotes (prettyFriendlyDBClosed expectedType)
+                <+> squotes (prettyFriendly (WithContext expectedType emptyDBCtx))
                 <+> "but found elements of type"
-                <+> squotes (prettyFriendlyDBClosed actualType)
+                <+> squotes (prettyFriendly (WithContext actualType emptyDBCtx))
                 <+> "when reading"
                 <+> quotePretty file <> ".",
             fix = Just $ datasetDimensionsFix "type" ident file
@@ -1134,7 +1151,7 @@ instance MeaningfulError CompileError where
                 <+> "contains a quantified variable"
                 <+> quotePretty name
                 <+> "of type"
-                <+> squotes (prettyFriendlyDBClosed t)
+                <+> squotes (prettyFriendly (WithContext t emptyDBCtx))
                 <+> "which is not currently supported"
                 <+> "by"
                 <+> pretty target <> ".",
@@ -1219,7 +1236,8 @@ instance MeaningfulError CompileError where
                 <+> pretty notProv
                 <+> "applied to"
                 <+> "an expression with the following subterm"
-                <+> squotes (prettyFriendlyDBClosed expr) <> "at"
+                <+> squotes (prettyFriendly (WithContext expr emptyDBCtx))
+                <+> "at"
                 <+> pretty (provenanceOf expr) <> ".",
             fix = Just "choose a different differential logic"
           }
@@ -1242,14 +1260,14 @@ unsupportedAnnotationTypeDescription annotation ident resourceType =
     <+> squotes (pretty (nameOf ident :: Text))
       <> ":"
       <> line
-      <> indent 2 (prettyFriendlyDBClosed unreducedResourceType)
+      <> indent 2 (prettyFriendly (WithContext unreducedResourceType emptyDBCtx))
       <> line
       <> ( if reducedResourceType `alphaEq` unreducedResourceType
              then ""
              else
                "which reduces to:"
                  <> line
-                 <> indent 2 (prettyFriendlyDBClosed reducedResourceType)
+                 <> indent 2 (prettyFriendly (WithContext reducedResourceType emptyDBCtx))
                  <> line
          )
       <> "is not supported"
@@ -1292,9 +1310,6 @@ prettyBuiltinType t = article <+> squotes (pretty t)
     article = case t of
       Index -> "an"
       _ -> "a"
-
-prettyExpr :: (HasBoundCtx a, PrettyWith ('Named ('As 'External)) ([DBBinding], b)) => a -> b -> Doc c
-prettyExpr ctx e = squotes $ prettyFriendlyDB (boundContextOf ctx) e
 
 prettyQuantifierArticle :: Quantifier -> Doc a
 prettyQuantifierArticle q =
@@ -1387,7 +1402,7 @@ prettyTypeClassConstraintOriginExpr :: ConstraintContext -> CheckedExpr -> [Unch
 prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
   Builtin _ b
     -- Need to check whether the function was introduced as part of desugaring
-    | isDesugared b -> prettyFriendlyDB (boundContextOf ctx) (last args)
+    | isDesugared b -> prettyFriendly $ WithContext (argExpr $ last args) (boundContextOf ctx)
     | otherwise -> pretty b
     where
       isDesugared :: Builtin -> Bool
@@ -1395,12 +1410,12 @@ prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
       isDesugared (TypeClassOp FromRatTC {}) = True
       isDesugared (TypeClassOp FromVecTC {}) = True
       isDesugared _ = False
-  _ -> prettyFriendlyDB (boundContextOf ctx) fun
+  _ -> prettyFriendly $ WithContext fun (boundContextOf ctx)
 
 prettyUnificationConstraintOriginExpr :: ConstraintContext -> CheckedExpr -> Doc a
 prettyUnificationConstraintOriginExpr ctx = \case
   Builtin _ b -> pretty b
-  expr -> prettyFriendlyDB (boundContextOf ctx) expr
+  expr -> prettyFriendly $ WithContext expr (boundContextOf ctx)
 
 prettyIdentName :: Identifier -> Doc a
 prettyIdentName ident = quotePretty (nameOf ident :: Name)

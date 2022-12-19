@@ -148,7 +148,7 @@ generateCLSTProblem assertionsExpr = do
   -- output variables
   boundCtx <- getBoundContext
   normExprBody <-
-    normalise userExprBody $
+    normaliseExpr userExprBody $
       fullNormalisationOptions
         { boundContext = boundCtx
         }

@@ -1,8 +1,8 @@
 module Vehicle.Compile.Normalise
   ( NormalisationOptions (..),
     fullNormalisationOptions,
-    normalise,
-    nfTensor,
+    normaliseProg,
+    normaliseExpr,
     nfTypeClassOp,
   )
 where
@@ -24,14 +24,14 @@ import Vehicle.Expr.Normalised (GluedDecl, GluedExpr (..), traverseUnnormalised)
 import Vehicle.Libraries.StandardLibrary.Names
 
 -- | Run a function in 'MonadNorm'.
-normalise ::
-  (MonadCompile m, Norm a, PrettyWith ('Named ('As 'External)) ([DBBinding], a)) =>
-  a ->
-  NormalisationOptions ->
-  m a
-normalise x options@Options {..} = logCompilerPass MinDetail currentPass $ do
+normaliseProg :: MonadCompile m => CheckedProg -> NormalisationOptions -> m CheckedProg
+normaliseProg x options@Options {..} = logCompilerPass MinDetail currentPass $ do
   result <- evalStateT (runReaderT (nf x) options) declContext
-  -- logCompilerPassOutput (prettyFriendlyDB boundContext result)
+  return result
+
+normaliseExpr :: MonadCompile m => CheckedExpr -> NormalisationOptions -> m CheckedExpr
+normaliseExpr x options@Options {..} = logCompilerPass MinDetail currentPass $ do
+  result <- evalStateT (runReaderT (nf x) options) declContext
   return result
 
 --------------------------------------------------------------------------------
@@ -86,7 +86,7 @@ instance Norm CheckedDecl where
         return $ DefFunction p ident isProperty typ' expr'
       DefPostulate p ident typ ->
         DefPostulate p ident <$> nf typ
-    logCompilerPassOutput (prettyFriendlyDBClosed result)
+    logCompilerPassOutput (prettyFriendly result)
     return result
     where
       declIdent = quotePretty (identifierOf decl)
