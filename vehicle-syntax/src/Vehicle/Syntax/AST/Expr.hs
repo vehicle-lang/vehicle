@@ -207,39 +207,11 @@ type InputProg = Prog InputBinding InputVar
 
 type Binder binder var = GenericBinder binder (Expr binder var)
 
--- | This horrible construction is needed because |Binder| is a type synonym
--- synonyms which can't be used as functions at the type level. This wraps
--- it as required.
-newtype Binder' var binder = WrapBinder
-  { unwrapBinder :: Binder var binder
-  }
-
 type Arg binder var = GenericArg (Expr binder var)
-
--- | This horrible construction is needed because |Arg| is a type synonym
--- synonyms which can't be used as functions at the type level. This wraps
--- it as required.
-newtype Arg' var binder = WrapArg
-  { unwrapArg :: Arg var binder
-  }
 
 type Decl binder var = GenericDecl (Expr binder var)
 
--- | This horrible construction is needed because |Decl| is a type synonym
--- synonyms which can't be used as functions at the type level. This wraps
--- it as required.
-newtype Decl' var binder = WrapDecl
-  { unwrapDecl :: Decl var binder
-  }
-
 type Prog binder var = GenericProg (Expr binder var)
-
--- | This horrible construction is needed because |Prog| is a type synonym
--- synonyms which can't be used as functions at the type level. This wraps
--- it as required.
-newtype Prog' var binder = WrapProg
-  { unwrapProg :: Prog var binder
-  }
 
 --------------------------------------------------------------------------------
 -- Recursion principles

@@ -7,8 +7,10 @@ import Vehicle.Compile (loadLibrary, parseAndTypeCheckExpr, typeCheckExpr)
 import Vehicle.Compile.LetInsertion (insertLets)
 import Vehicle.Compile.Prelude
   ( CheckedCoDBExpr,
+    Contextualised (..),
     Expr (App),
     Pretty (pretty),
+    emptyDBCtx,
     indent,
     layoutAsString,
     line,
@@ -85,11 +87,11 @@ letInsertionTest (InsertionTestSpec testName subexprFilter input expected) =
               <> line
               <> "to be alpha equivalent to"
               <> line
-              <> indent 2 (squotes (prettyFriendly expectedExpr))
+              <> indent 2 (squotes (prettyFriendly $ WithContext expectedExpr emptyDBCtx))
               <> line
               <> "however the result was"
               <> line
-              <> indent 2 (squotes (prettyFriendly typedResult))
+              <> indent 2 (squotes (prettyFriendly $ WithContext typedResult emptyDBCtx))
 
     return $
       assertBool errorMessage $

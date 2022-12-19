@@ -16,7 +16,13 @@ type BoundCtx a = [a]
 
 type BoundDBCtx = BoundCtx DBBinding
 
+emptyDBCtx :: BoundDBCtx
+emptyDBCtx = mempty
+
 type NamedBoundCtx = BoundCtx NamedBinding
+
+emptyNamedCtx :: NamedBoundCtx
+emptyNamedCtx = mempty
 
 class HasBoundCtx a where
   boundContextOf :: a -> [DBBinding]

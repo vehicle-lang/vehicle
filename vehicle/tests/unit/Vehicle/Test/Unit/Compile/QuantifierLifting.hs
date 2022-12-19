@@ -7,6 +7,7 @@ import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile (parseAndTypeCheckExpr)
+import Vehicle.Compile.Prelude (Contextualised (WithContext), emptyDBCtx)
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Queries.QuantifierLifting (liftQuantifiers)
 import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (alphaEq))
@@ -65,7 +66,7 @@ liftQuantifiersTest (QuantifierTestSpec testName input expected) =
               <> line
               <> "however the result was"
               <> line
-              <> indent 2 (squotes (prettyFriendly result))
+              <> indent 2 (squotes (prettyFriendly $ WithContext result emptyDBCtx))
 
     return $
       assertBool errorMessage $

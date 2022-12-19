@@ -32,7 +32,7 @@ insertLets ::
 insertLets subexprFilter liftOverBinders expr =
   logCompilerPass MinDetail "let insertion" $ do
     result <- runReaderT applyInsert (subexprFilter, liftOverBinders)
-    logCompilerPassOutput (prettyFriendly result)
+    logCompilerPassOutput (prettyFriendly (WithContext result emptyDBCtx))
     return result
   where
     applyInsert :: MonadLetInsert m => m CheckedExpr
