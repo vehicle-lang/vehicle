@@ -49,7 +49,7 @@ import Data.List (partition)
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
-import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
+import Vehicle.Compile.Normalise (NormalisationOptions (..), normaliseExpr)
 import Vehicle.Compile.Normalise.NBE qualified as NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
@@ -495,7 +495,7 @@ whnf :: MonadTypeChecker m => CheckedExpr -> m CheckedExpr
 whnf e = do
   declCtx <- getDeclContext
   runSilentLoggerT $
-    normalise
+    normaliseExpr
       e
       Options
         { declContext = toNormalisationDeclContext declCtx,

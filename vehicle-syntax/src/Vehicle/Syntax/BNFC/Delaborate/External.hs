@@ -71,6 +71,7 @@ instance Delaborate V.NamedExpr B.Expr where
     V.Meta _ m -> return $ B.Var (mkToken B.Name (layoutAsText (pretty m)))
     V.App _ (V.Builtin _ b) args -> delabBuiltin b (onlyExplicit args)
     V.App _ (V.Literal _ l) _args -> return $ delabLiteral l
+    V.App _ fun@V.LVec {} _args -> delabM fun
     V.App _ fun args -> delabApp <$> delabM fun <*> traverse delabM (NonEmpty.toList args)
     V.Builtin _ op -> delabBuiltin op []
 
@@ -90,7 +91,7 @@ delabNameBinder :: MonadDelab m => V.NamedBinder -> m B.NameBinder
 delabNameBinder b = case V.binderNamingForm b of
   V.OnlyType {} ->
     developerError $
-      "Should not be delaborating an `OnlyType` binder of type"
+      "Should not be delaborating the `OnlyType` binder named"
         <+> pretty (show (V.binderRepresentation b))
         <+> "to a `NamedBinder`"
   V.NameAndType {} -> B.BasicNameBinder <$> delabM b

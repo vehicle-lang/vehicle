@@ -21,7 +21,7 @@ import Vehicle.Backend.LossFunction.Logics
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
-import Vehicle.Compile.Normalise (NormalisationOptions (..), normalise)
+import Vehicle.Compile.Normalise (NormalisationOptions (..), normaliseProg)
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Print (prettySimple, prettyVerbose)
 import Vehicle.Compile.Type (getUnnormalised)
@@ -59,7 +59,7 @@ compile ::
 compile resources logic typedProg = do
   (_, expandedProg) <- expandResources resources typedProg
   unnormalisedProg <- traverse getUnnormalised expandedProg
-  normalisedProg <- normalise unnormalisedProg normalisationOptions
+  normalisedProg <- normaliseProg unnormalisedProg normalisationOptions
   compileProg logic normalisedProg
 
 -- | Compile entire specification (calls compileDecl)

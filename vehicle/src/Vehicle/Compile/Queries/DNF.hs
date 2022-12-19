@@ -15,7 +15,7 @@ convertToDNF :: MonadCompile m => CheckedExpr -> m CheckedExpr
 convertToDNF expr =
   logCompilerPass MinDetail "conversion to disjunctive normal form" $ do
     result <- dnf expr
-    logCompilerPassOutput (prettyFriendly result)
+    logCompilerPassOutput (prettyFriendly (WithContext result emptyDBCtx))
     return result
 
 --------------------------------------------------------------------------------
