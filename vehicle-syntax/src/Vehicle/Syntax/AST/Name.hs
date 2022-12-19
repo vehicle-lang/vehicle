@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE StrictData #-}
 
 module Vehicle.Syntax.AST.Name where
 
@@ -41,7 +41,7 @@ instance Pretty Module where
 --------------------------------------------------------------------------------
 -- Identifiers
 
-data Identifier = Identifier !Module !Name
+data Identifier = Identifier Module Name
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty Identifier where

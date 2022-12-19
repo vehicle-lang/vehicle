@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE StrictData #-}
 
 module Vehicle.Syntax.AST.Builtin.Polarity where
 
@@ -19,11 +19,11 @@ import Vehicle.Syntax.AST.Provenance (Provenance)
 
 -- | Used to track where the polarity information came from.
 data PolarityProvenance
-  = QuantifierProvenance !Provenance
-  | NegateProvenance !Provenance !PolarityProvenance
-  | LHSImpliesProvenance !Provenance !PolarityProvenance
-  | EqProvenance !Provenance !PolarityProvenance !EqualityOp
-  | PolFunctionProvenance !Provenance !PolarityProvenance !FunctionPosition
+  = QuantifierProvenance Provenance
+  | NegateProvenance Provenance PolarityProvenance
+  | LHSImpliesProvenance Provenance PolarityProvenance
+  | EqProvenance Provenance PolarityProvenance EqualityOp
+  | PolFunctionProvenance Provenance PolarityProvenance FunctionPosition
   deriving (Generic)
 
 instance ToJSON PolarityProvenance
@@ -49,11 +49,11 @@ instance Hashable PolarityProvenance where
 -- quantifiers it contains.
 data Polarity
   = Unquantified
-  | Quantified !Quantifier !PolarityProvenance
+  | Quantified Quantifier PolarityProvenance
   | -- | Stores the provenance of the `Forall` first followed by the `Exists`.
-    MixedParallel !PolarityProvenance !PolarityProvenance
+    MixedParallel PolarityProvenance PolarityProvenance
   | -- | Stores the type and provenance of the top-most quantifier first.
-    MixedSequential !Quantifier !Provenance !PolarityProvenance
+    MixedSequential Quantifier Provenance PolarityProvenance
   deriving (Eq, Show, Generic)
 
 instance NFData Polarity
@@ -85,11 +85,11 @@ mapPolarityProvenance f = \case
 
 data PolarityTypeClass
   = NegPolarity
-  | AddPolarity !Quantifier
-  | EqPolarity !EqualityOp
+  | AddPolarity Quantifier
+  | EqPolarity EqualityOp
   | ImpliesPolarity
   | MaxPolarity
-  | FunctionPolarity !FunctionPosition
+  | FunctionPolarity FunctionPosition
   | IfCondPolarity
   deriving (Eq, Generic, Show)
 

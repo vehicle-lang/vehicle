@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE StrictData #-}
 
 module Vehicle.Syntax.AST.Builtin.Linearity where
 
@@ -18,9 +18,9 @@ import Vehicle.Syntax.AST.Provenance (Provenance)
 -- 1) rename LinearityProvenance to LinearityProof
 -- 2) mimic AST nodes names
 data LinearityProvenance
-  = QuantifiedVariableProvenance !Provenance !Text
-  | NetworkOutputProvenance !Provenance !Text
-  | LinFunctionProvenance !Provenance !LinearityProvenance !FunctionPosition
+  = QuantifiedVariableProvenance Provenance Text
+  | NetworkOutputProvenance Provenance Text
+  | LinFunctionProvenance Provenance LinearityProvenance FunctionPosition
   deriving (Generic)
 
 instance ToJSON LinearityProvenance
@@ -46,8 +46,8 @@ instance Hashable LinearityProvenance where
 -- constant, linear or non-linear expression.
 data Linearity
   = Constant
-  | Linear !LinearityProvenance
-  | NonLinear !Provenance !LinearityProvenance !LinearityProvenance
+  | Linear LinearityProvenance
+  | NonLinear Provenance LinearityProvenance LinearityProvenance
   deriving (Eq, Show, Generic)
 
 instance Ord Linearity where
@@ -85,7 +85,7 @@ mapLinearityProvenance f = \case
 data LinearityTypeClass
   = MaxLinearity
   | MulLinearity
-  | FunctionLinearity !FunctionPosition
+  | FunctionLinearity FunctionPosition
   | IfCondLinearity
   deriving (Eq, Generic, Show)
 

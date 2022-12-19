@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE StrictData #-}
 
 module Vehicle.Syntax.AST.Builtin.TypeClass where
 
@@ -16,13 +16,13 @@ import Vehicle.Syntax.AST.Builtin.Polarity (PolarityTypeClass)
 
 data TypeClass
   = -- Operation type-classes
-    HasEq !EqualityOp
-  | HasOrd !OrderOp
+    HasEq EqualityOp
+  | HasOrd OrderOp
   | HasNot
   | HasAnd
   | HasOr
   | HasImplies
-  | HasQuantifier !Quantifier
+  | HasQuantifier Quantifier
   | HasAdd
   | HasSub
   | HasMul
@@ -31,22 +31,22 @@ data TypeClass
   | HasFold
   | HasMap
   | HasIf
-  | HasQuantifierIn !Quantifier
+  | HasQuantifierIn Quantifier
   | -- Literal type-classes
 
     -- | The parameter is the value (needed for Index).
-    HasNatLits !Int
+    HasNatLits Int
   | HasRatLits
   | -- | The parameter is the size of the vector.
-    HasVecLits !Int
+    HasVecLits Int
   | -- Utility constraints
 
     -- | Types are equal, modulo the auxiliary constraints.
     AlmostEqualConstraint
-  | NatInDomainConstraint !Int
+  | NatInDomainConstraint Int
   | -- Auxiliary typeclasses
-    LinearityTypeClass !LinearityTypeClass
-  | PolarityTypeClass !PolarityTypeClass
+    LinearityTypeClass LinearityTypeClass
+  | PolarityTypeClass PolarityTypeClass
   deriving (Eq, Generic, Show)
 
 instance NFData TypeClass
@@ -89,20 +89,20 @@ data TypeClassOp
   | AndTC
   | OrTC
   | ImpliesTC
-  | FromNatTC !Int
+  | FromNatTC Int
   | FromRatTC
-  | FromVecTC !Int
+  | FromVecTC Int
   | NegTC
   | AddTC
   | SubTC
   | MulTC
   | DivTC
-  | EqualsTC !EqualityOp
-  | OrderTC !OrderOp
+  | EqualsTC EqualityOp
+  | OrderTC OrderOp
   | MapTC
   | FoldTC
-  | QuantifierTC !Quantifier
-  | QuantifierInTC !Quantifier
+  | QuantifierTC Quantifier
+  | QuantifierInTC Quantifier
   deriving (Eq, Generic, Show)
 
 instance NFData TypeClassOp

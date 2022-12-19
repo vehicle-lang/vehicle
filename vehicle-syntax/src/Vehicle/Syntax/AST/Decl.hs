@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE StrictData #-}
 
 module Vehicle.Syntax.AST.Decl where
 
@@ -16,20 +16,20 @@ import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 -- | Type of top-level declarations.
 data GenericDecl expr
   = DefResource
-      !Provenance -- Location in source file.
-      !Identifier -- Name of resource.
-      !Resource -- Type of resource.
-      !expr -- Vehicle type of the resource.
+      Provenance -- Location in source file.
+      Identifier -- Name of resource.
+      Resource -- Type of resource.
+      expr -- Vehicle type of the resource.
   | DefFunction
-      !Provenance -- Location in source file.
-      !Identifier -- Bound function name.
-      !Bool -- Is it a property.
-      !expr -- Bound function type.
-      !expr -- Bound function body.
+      Provenance -- Location in source file.
+      Identifier -- Bound function name.
+      Bool -- Is it a property.
+      expr -- Bound function type.
+      expr -- Bound function body.
   | DefPostulate
-      !Provenance
-      !Identifier
-      !expr
+      Provenance
+      Identifier
+      expr
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 instance NFData expr => NFData (GenericDecl expr)
@@ -86,7 +86,7 @@ pattern InferableOption = "infer"
 
 data Annotation
   = PropertyAnnotation
-  | ResourceAnnotation !Resource
+  | ResourceAnnotation Resource
   deriving (Generic)
 
 instance Pretty Annotation where
