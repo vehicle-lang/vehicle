@@ -4,20 +4,20 @@ import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Vehicle.Syntax.AST.Name
-import Vehicle.Syntax.AST.Provenance
-import Vehicle.Syntax.AST.Relevance
-import Vehicle.Syntax.AST.Visibility
+import Vehicle.Syntax.AST.Name (HasName (..), Name)
+import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
+import Vehicle.Syntax.AST.Relevance (HasRelevance (..), Relevance (..))
+import Vehicle.Syntax.AST.Visibility (HasVisibility (..), Visibility (..))
 
 --------------------------------------------------------------------------------
--- Binders
+-- Binder naming forms
 
--- | What form the binder appears in the user expression
+-- | What form the binder's name appears in the user expression
 data BinderNamingForm
   = -- | Both name and type appear (e.g. {x : A})
-    NameAndType
+    NameAndType Name
   | -- | Only name appears (e.g. {x})
-    OnlyName
+    OnlyName Name
   | -- | Only type appears (e.g. {{HasEq A}})
     OnlyType
   deriving (Eq, Show, Generic)
@@ -30,9 +30,27 @@ instance FromJSON BinderNamingForm
 
 instance Hashable BinderNamingForm
 
+instance HasName BinderNamingForm (Maybe Name) where
+  nameOf = \case
+    NameAndType name -> Just name
+    OnlyName name -> Just name
+    OnlyType -> Nothing
+
+mapBindingNamingFormName :: (Name -> Name) -> BinderNamingForm -> BinderNamingForm
+mapBindingNamingFormName f = \case
+  NameAndType name -> NameAndType $ f name
+  OnlyName name -> OnlyName name
+  OnlyType -> OnlyType
+
+--------------------------------------------------------------------------------
+-- Binder folding form
+
 -- | Indicates whether the binder should be folded into the previous binder
 -- (if possible).
 type BinderFoldingForm = Bool
+
+--------------------------------------------------------------------------------
+-- Binder form
 
 data BinderForm = BinderForm
   { namingForm :: BinderNamingForm,
@@ -47,6 +65,19 @@ instance ToJSON BinderForm
 instance FromJSON BinderForm
 
 instance Hashable BinderForm
+
+instance HasName BinderForm (Maybe Name) where
+  nameOf = nameOf . namingForm
+
+mapBinderFormName :: (Name -> Name) -> BinderForm -> BinderForm
+mapBinderFormName f binderForm =
+  BinderForm
+    { namingForm = mapBindingNamingFormName f $ namingForm binderForm,
+      foldingForm = foldingForm binderForm
+    }
+
+--------------------------------------------------------------------------------
+-- Binders
 
 -- | Binder for lambda and let expressions
 --
@@ -83,8 +114,8 @@ instance HasVisibility (GenericBinder binder expr) where
 instance HasRelevance (GenericBinder binder expr) where
   relevanceOf = binderRelevance
 
-instance HasName (GenericBinder binder expr) binder where
-  nameOf = binderRepresentation
+instance HasName (GenericBinder binder expr) (Maybe Name) where
+  nameOf = nameOf . binderNamingForm
 
 --------------------------------------------------------------------------------
 -- Binders

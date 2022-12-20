@@ -8,6 +8,7 @@ where
 
 import Control.Monad.Identity (Identity (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST qualified as V
@@ -34,11 +35,11 @@ class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delabM :: MonadDelab m => t -> m bnfc
 
 -- | Elaborate programs.
-instance Delaborate V.NamedProg B.Prog where
+instance Delaborate V.InputProg B.Prog where
   delabM (V.Main decls) = B.Main <$> traverse delabM decls
 
 -- | Elaborate declarations.
-instance Delaborate V.NamedDecl B.Decl where
+instance Delaborate V.InputDecl B.Decl where
   delabM = \case
     V.DefPostulate _ n t -> B.DeclPost (delabIdentifier n) <$> delabM t
     V.DefFunction _ n _ t e -> B.DefFun (delabIdentifier n) <$> delabM t <*> delabM e
@@ -50,7 +51,7 @@ instance Delaborate V.NamedDecl B.Decl where
             V.InferableParameter -> B.DeclImplParam
       constructor (delabIdentifier n) <$> delabM t
 
-instance Delaborate V.NamedExpr B.Expr where
+instance Delaborate V.InputExpr B.Expr where
   delabM expr = case expr of
     V.Universe _ u -> return $ delabUniverse u
     V.Var _ n -> return $ B.Var (delabSymbol n)
@@ -65,7 +66,7 @@ instance Delaborate V.NamedExpr B.Expr where
     V.Meta _ m -> return $ B.Hole (mkToken B.HoleToken (layoutAsText (pretty m)))
     V.App _ fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
 
-instance Delaborate V.NamedArg B.Arg where
+instance Delaborate V.InputArg B.Arg where
   delabM (V.Arg _ v r e) = case (v, r) of
     (V.Explicit, V.Relevant) -> B.RelevantExplicitArg <$> delabM e
     (V.Implicit, V.Relevant) -> B.RelevantImplicitArg <$> delabM e
@@ -74,14 +75,17 @@ instance Delaborate V.NamedArg B.Arg where
     (V.Implicit, V.Irrelevant) -> B.IrrelevantImplicitArg <$> delabM e
     (V.Instance, V.Irrelevant) -> B.IrrelevantInstanceArg <$> delabM e
 
-instance Delaborate V.NamedBinder B.Binder where
-  delabM (V.Binder _ _ v r n t) = case (v, r) of
-    (V.Explicit, V.Relevant) -> B.RelevantExplicitBinder (delabSymbol n) <$> delabM t
-    (V.Implicit, V.Relevant) -> B.RelevantImplicitBinder (delabSymbol n) <$> delabM t
-    (V.Instance, V.Relevant) -> B.RelevantInstanceBinder (delabSymbol n) <$> delabM t
-    (V.Explicit, V.Irrelevant) -> B.IrrelevantExplicitBinder (delabSymbol n) <$> delabM t
-    (V.Implicit, V.Irrelevant) -> B.IrrelevantImplicitBinder (delabSymbol n) <$> delabM t
-    (V.Instance, V.Irrelevant) -> B.IrrelevantInstanceBinder (delabSymbol n) <$> delabM t
+instance Delaborate V.InputBinder B.Binder where
+  delabM binder = do
+    t' <- delabM $ V.binderType binder
+    let n' = delabSymbol $ fromMaybe "_" (V.nameOf binder)
+    return $ case (V.visibilityOf binder, V.relevanceOf binder) of
+      (V.Explicit, V.Relevant) -> B.RelevantExplicitBinder n' t'
+      (V.Implicit, V.Relevant) -> B.RelevantImplicitBinder n' t'
+      (V.Instance, V.Relevant) -> B.RelevantInstanceBinder n' t'
+      (V.Explicit, V.Irrelevant) -> B.IrrelevantExplicitBinder n' t'
+      (V.Implicit, V.Irrelevant) -> B.IrrelevantImplicitBinder n' t'
+      (V.Instance, V.Irrelevant) -> B.IrrelevantInstanceBinder n' t'
 
 delabUniverse :: V.Universe -> B.Expr
 delabUniverse = \case

@@ -126,7 +126,6 @@ library
     Vehicle.Compile.Resource
     Vehicle.Compile.Scope
     Vehicle.Compile.Simplify
-    Vehicle.Compile.SupplyNames
     Vehicle.Compile.Type
     Vehicle.Export
     Vehicle.Expr.AlphaEquivalence

@@ -301,22 +301,24 @@ mkArg v e = V.Arg (V.expandByArgVisibility v (V.provenanceOf e)) v V.Relevant e
 
 mkBinder :: V.BinderFoldingForm -> V.Visibility -> These B.Name V.InputExpr -> V.InputBinder
 mkBinder folded v nameTyp = do
-  let (p, form, name, typ) = case nameTyp of
-        This name -> do
-          let p = V.tkProvenance name
-          let holeName = "typeOf[" <> tkSymbol name <> "]"
-          let naming = V.OnlyName
-          (p, naming, Just (tkSymbol name), V.mkHole p holeName)
+  let (p, form, typ) = case nameTyp of
+        This nameTk -> do
+          let p = V.tkProvenance nameTk
+          let name = tkSymbol nameTk
+          let typ = V.mkHole p $ "typeOf[" <> name <> "]"
+          let naming = V.OnlyName name
+          (p, naming, typ)
         That typ -> do
           let p = V.provenanceOf typ
           let naming = V.OnlyType
-          (V.provenanceOf typ, naming, Nothing, typ)
-        These name typ -> do
-          let p = V.fillInProvenance (V.tkProvenance name :| [V.provenanceOf typ])
-          let naming = V.NameAndType
-          (p, naming, Just (tkSymbol name), typ)
+          (V.provenanceOf typ, naming, typ)
+        These nameTk typ -> do
+          let p = V.fillInProvenance (V.tkProvenance nameTk :| [V.provenanceOf typ])
+          let name = tkSymbol nameTk
+          let naming = V.NameAndType name
+          (p, naming, typ)
 
-  V.Binder (V.expandByArgVisibility v p) (V.BinderForm form folded) v V.Relevant name typ
+  V.Binder (V.expandByArgVisibility v p) (V.BinderForm form folded) v V.Relevant () typ
 
 elabLetDecl :: MonadElab m => B.LetDecl -> m (V.InputBinder, V.InputExpr)
 elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder False) elabExpr (b, e)

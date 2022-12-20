@@ -58,15 +58,9 @@ type CheckedDecl = DBDecl
 
 type CheckedProg = DBProg
 
-type CheckedCoDBExpr = CoDBExpr
-
-type CheckedCoDBArg = CoDBArg
-
-type CheckedCoDBBinder = CoDBBinder
-
 -- * Type of annotations attached to the AST that are output by the compiler
 
-type OutputBinding = NamedBinding
+type OutputBinding = ()
 
 type OutputVar = Name
 
@@ -80,20 +74,9 @@ type OutputDecl = Decl OutputBinding OutputVar
 
 type OutputProg = Prog OutputBinding OutputVar
 
--- | De Bruijn expressions that have had the missing names supplied.
-type SuppliedDBExpr = Expr NamedBinding DBIndexVar
-
-type SuppliedDBArg = Arg NamedBinding DBIndexVar
-
-type SuppliedDBBinder = Binder NamedBinding DBIndexVar
-
-type SuppliedDBProg = Prog NamedBinding DBIndexVar
-
-type SuppliedDBDecl = Decl NamedBinding DBIndexVar
-
 -- | An expression paired with a position tree represting positions within it.
 -- Currently used mainly for pretty printing position trees.
-data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
+data PositionsInExpr = PositionsInExpr CoDBExpr PositionTree
   deriving (Show)
 
 type DeclProvenance = (Identifier, Provenance)

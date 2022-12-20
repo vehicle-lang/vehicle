@@ -12,9 +12,6 @@ import Prettyprinter (Pretty (..))
 
 type Name = Text
 
--- | Bindings when using the named representation of the AST.
-type NamedBinding = Name
-
 --------------------------------------------------------------------------------
 -- Module system
 

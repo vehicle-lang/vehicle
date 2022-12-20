@@ -55,7 +55,7 @@ toCoDBBinder ::
   CoDBBinder
 toCoDBBinder binder mpt =
   let (t', bvm) = unpairBinder binder
-   in (mapBinderRep (\n -> CoDBBinding n mpt) t', bvm)
+   in (replaceBinderRep (CoDBBinding mpt) t', bvm)
 
 --------------------------------------------------------------------------------
 -- Backwards
@@ -75,10 +75,10 @@ fromCoDB expr = case recCoDB expr of
   LetC p bound binder body -> Let p (fromCoDB bound) (fromCoDBBinder binder) (fromCoDB body)
   LamC p binder body -> Lam p (fromCoDBBinder binder) (fromCoDB body)
 
-fromCoDBBinder :: RecCoDB a BinderC => a -> GenericBinder DBBinding (Expr DBBinding DBIndexVar)
+fromCoDBBinder :: RecCoDB a BinderC => a -> DBBinder
 fromCoDBBinder binder = case recCoDB binder of
-  Binder p u v r (CoDBBinding n _) t -> Binder p u v r n $ fromCoDB t
+  Binder p u v r (CoDBBinding _) t -> Binder p u v r () $ fromCoDB t
 
-fromCoDBArg :: RecCoDB a ArgC => a -> GenericArg (Expr DBBinding DBIndexVar)
+fromCoDBArg :: RecCoDB a ArgC => a -> DBArg
 fromCoDBArg arg = case recCoDB arg of
   Arg p v r e -> Arg p v r $ fromCoDB e

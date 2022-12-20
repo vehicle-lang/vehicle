@@ -9,7 +9,6 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 import Vehicle.Backend.LossFunction.Logics
   ( DifferentialLogicImplementation (..),
@@ -102,10 +101,6 @@ compileLiteral t l = case l of
   V.LInt e -> fromIntegral e
   V.LRat e -> fromRational e
 
--- | Helps compile a name from DBBinding, even if there is no name given
-compileDBBinding :: Maybe Name -> Name
-compileDBBinding = fromMaybe "No_name"
-
 -- | Compile a property or single expression
 compileExpr :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedExpr -> m LExpr
 compileExpr t e = showExit $ do
@@ -141,8 +136,8 @@ compileExpr t e = showExit $ do
     V.App _ (V.Var _ (V.Free ident)) p -> NetworkApplication (V.nameOf ident) <$> traverse (compileArg t) p
     V.Var _ (V.Bound var) -> return (Variable (V.dbIndex var))
     V.AtExpr _ _ _ [xs, i] -> At <$> compileArg t xs <*> compileArg t i
-    V.Let _ x binder expression -> Let (compileDBBinding (V.binderRepresentation binder)) <$> compileExpr t x <*> compileExpr t expression
-    V.Lam _ binder x -> Lambda (compileDBBinding (V.binderRepresentation binder)) <$> compileExpr t x
+    V.Let _ x binder expression -> Let (V.getBinderName binder) <$> compileExpr t x <*> compileExpr t expression
+    V.Lam _ binder x -> Lambda (V.getBinderName binder) <$> compileExpr t x
     V.QuantifierTCExpr _ q binder body -> do
       body' <- compileExpr t body
       let varName = V.getBinderName binder

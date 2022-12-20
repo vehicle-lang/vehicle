@@ -9,6 +9,7 @@ where
 import Control.Monad.Identity (Identity (runIdentity), IdentityT)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (head, toList)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
 import Prettyprinter (Doc, Pretty (..), squote, squotes, (<+>))
 import Vehicle.Syntax.AST qualified as V
@@ -37,10 +38,10 @@ type MonadDelab m = Monad m
 class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delabM :: MonadDelab m => t -> m bnfc
 
-instance Delaborate V.NamedProg B.Prog where
+instance Delaborate V.InputProg B.Prog where
   delabM (V.Main decls) = B.Main . concat <$> traverse delabM decls
 
-instance Delaborate V.NamedDecl [B.Decl] where
+instance Delaborate V.InputDecl [B.Decl] where
   delabM = \case
     V.DefResource _ n r t -> do
       defFun <- B.DefFunType (delabIdentifier n) tokElemOf <$> delabM t
@@ -57,7 +58,7 @@ instance Delaborate V.NamedDecl [B.Decl] where
     V.DefPostulate {} ->
       error "Should not be delaborating postulates"
 
-instance Delaborate V.NamedExpr B.Expr where
+instance Delaborate V.InputExpr B.Expr where
   delabM expr = case expr of
     V.Universe _ u -> return $ delabUniverse u
     V.Var _ n -> return $ B.Var (delabSymbol n)
@@ -75,32 +76,37 @@ instance Delaborate V.NamedExpr B.Expr where
     V.App _ fun args -> delabApp <$> delabM fun <*> traverse delabM (NonEmpty.toList args)
     V.Builtin _ op -> delabBuiltin op []
 
-instance Delaborate V.NamedArg B.Arg where
-  delabM (V.Arg _ v _ e) = case v of
-    V.Explicit {} -> B.ExplicitArg <$> delabM e
-    V.Implicit {} -> B.ImplicitArg <$> delabM e
-    V.Instance {} -> B.InstanceArg <$> delabM e
+instance Delaborate V.InputArg B.Arg where
+  delabM arg = do
+    e' <- delabM (V.argExpr arg)
+    return $ case V.visibilityOf arg of
+      V.Explicit {} -> B.ExplicitArg e'
+      V.Implicit {} -> B.ImplicitArg e'
+      V.Instance {} -> B.InstanceArg e'
 
-instance Delaborate V.NamedBinder B.BasicBinder where
-  delabM (V.Binder _ _ v _ n t) = case v of
-    V.Explicit -> B.ExplicitBinder (delabSymbol n) tokElemOf <$> delabM t
-    V.Implicit -> B.ImplicitBinder (delabSymbol n) tokElemOf <$> delabM t
-    V.Instance -> B.InstanceBinder (delabSymbol n) tokElemOf <$> delabM t
+instance Delaborate V.InputBinder B.BasicBinder where
+  delabM binder = do
+    let n' = delabSymbol $ fromMaybe "_" (V.nameOf binder)
+    t' <- delabM (V.binderType binder)
+    return $ case V.visibilityOf binder of
+      V.Explicit -> B.ExplicitBinder n' tokElemOf t'
+      V.Implicit -> B.ImplicitBinder n' tokElemOf t'
+      V.Instance -> B.InstanceBinder n' tokElemOf t'
 
-delabNameBinder :: MonadDelab m => V.NamedBinder -> m B.NameBinder
+delabNameBinder :: MonadDelab m => V.InputBinder -> m B.NameBinder
 delabNameBinder b = case V.binderNamingForm b of
   V.OnlyType {} ->
     developerError $
       "Should not be delaborating the `OnlyType` binder named"
         <+> pretty (show (V.binderRepresentation b))
         <+> "to a `NamedBinder`"
-  V.NameAndType {} -> B.BasicNameBinder <$> delabM b
-  V.OnlyName {} -> return $ case V.visibilityOf b of
-    V.Explicit -> B.ExplicitNameBinder (delabSymbol (V.nameOf b))
-    V.Implicit -> B.ImplicitNameBinder (delabSymbol (V.nameOf b))
-    V.Instance -> B.InstanceNameBinder (delabSymbol (V.nameOf b))
+  V.NameAndType name -> B.BasicNameBinder <$> delabM b
+  V.OnlyName name -> return $ case V.visibilityOf b of
+    V.Explicit -> B.ExplicitNameBinder (delabSymbol name)
+    V.Implicit -> B.ImplicitNameBinder (delabSymbol name)
+    V.Instance -> B.InstanceNameBinder (delabSymbol name)
 
-delabTypeBinder :: MonadDelab m => V.NamedBinder -> m B.TypeBinder
+delabTypeBinder :: MonadDelab m => V.InputBinder -> m B.TypeBinder
 delabTypeBinder b = case V.binderNamingForm b of
   V.OnlyName {} ->
     developerError $
@@ -113,7 +119,7 @@ delabTypeBinder b = case V.binderNamingForm b of
     V.Implicit -> B.ImplicitTypeBinder <$> delabM (V.binderType b)
     V.Instance -> B.InstanceTypeBinder <$> delabM (V.binderType b)
 
-delabLetBinding :: MonadDelab m => (V.NamedBinder, V.NamedExpr) -> m B.LetDecl
+delabLetBinding :: MonadDelab m => (V.InputBinder, V.InputExpr) -> m B.LetDecl
 delabLetBinding (binder, bound) = B.LDecl <$> delabNameBinder binder <*> delabM bound
 
 delabLiteral :: V.Literal -> B.Expr
@@ -155,7 +161,7 @@ delabUniverse = \case
   V.PolarityUniv -> auxiliaryTypeError (pretty V.PolarityUniv)
   V.LinearityUniv -> auxiliaryTypeError (pretty V.LinearityUniv)
 
-delabBuiltin :: MonadDelab m => V.Builtin -> [V.NamedExpr] -> m B.Expr
+delabBuiltin :: MonadDelab m => V.Builtin -> [V.InputExpr] -> m B.Expr
 delabBuiltin fun args = case fun of
   V.Constructor c -> delabConstructor c <$> traverse delabM args
   V.Tensor -> do
@@ -203,7 +209,7 @@ delabConstructor fun args = case fun of
   V.Nil -> B.Nil tokNil
   V.Cons -> delabInfixOp2 B.Cons tokCons args
 
-delabTypeClassOp :: MonadDelab m => V.TypeClassOp -> [V.NamedExpr] -> m B.Expr
+delabTypeClassOp :: MonadDelab m => V.TypeClassOp -> [V.InputExpr] -> m B.Expr
 delabTypeClassOp op args = case op of
   V.AndTC -> delabInfixOp2 B.And tokAnd <$> traverse delabM args
   V.OrTC -> delabInfixOp2 B.Or tokOr <$> traverse delabM args
@@ -285,7 +291,7 @@ argsError s n args =
       <+> squotes (pretty (show args))
 
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
-delabPi :: MonadDelab m => V.NamedBinder -> V.NamedExpr -> m B.Expr
+delabPi :: MonadDelab m => V.InputBinder -> V.InputExpr -> m B.Expr
 delabPi binder body = case V.binderNamingForm binder of
   V.OnlyType -> do
     binder' <- delabTypeBinder binder
@@ -298,7 +304,7 @@ delabPi binder body = case V.binderNamingForm binder of
     return $ B.ForallT tokForallT binders' tokDot body'
 
 -- | Collapses let expressions into a sequence of let declarations
-delabLet :: MonadDelab m => V.NamedExpr -> V.NamedBinder -> V.NamedExpr -> m B.Expr
+delabLet :: MonadDelab m => V.InputExpr -> V.InputBinder -> V.InputExpr -> m B.Expr
 delabLet bound binder body = do
   let (boundExprs, foldedBody) = foldLetBinders body
   binders' <- traverse delabLetBinding boundExprs
@@ -306,14 +312,14 @@ delabLet bound binder body = do
   return $ B.Let tokLet binders' body'
 
 -- | Collapses consecutative lambda expressions into a sequence of binders
-delabLam :: MonadDelab m => V.NamedBinder -> V.NamedExpr -> m B.Expr
+delabLam :: MonadDelab m => V.InputBinder -> V.InputExpr -> m B.Expr
 delabLam binder body = do
   let (foldedBinders, foldedBody) = foldBinders (FoldableBinder LamFold binder) body
   binders' <- traverse delabNameBinder (binder : foldedBinders)
   body' <- delabM foldedBody
   return $ B.Lam tokLambda binders' tokArrow body'
 
-delabFun :: MonadDelab m => Bool -> V.Identifier -> V.NamedExpr -> V.NamedExpr -> m [B.Decl]
+delabFun :: MonadDelab m => Bool -> V.Identifier -> V.InputExpr -> V.InputExpr -> m [B.Decl]
 delabFun isProperty name typ expr = do
   let n' = delabIdentifier name
   let (binders, body) = foldBinders FunFold expr
@@ -330,7 +336,7 @@ delabFun isProperty name typ expr = do
           then delabAnn propertyAnn [] : decl
           else decl
 
-delabQuantifier :: MonadDelab m => V.Quantifier -> [V.NamedExpr] -> m B.Expr
+delabQuantifier :: MonadDelab m => V.Quantifier -> [V.InputExpr] -> m B.Expr
 delabQuantifier q = \case
   [V.Lam _ binder body] -> do
     let (foldedBinders, foldedBody) = foldBinders (FoldableBinder (QuantFold q) binder) body
@@ -344,7 +350,7 @@ delabQuantifier q = \case
     let sym = case q of V.Forall -> tkSymbol tokForall; V.Exists -> tkSymbol tokExists
     argsError sym 1 <$> traverse delabM args
 
-delabQuantifierIn :: MonadDelab m => V.Quantifier -> [V.NamedExpr] -> m B.Expr
+delabQuantifierIn :: MonadDelab m => V.Quantifier -> [V.InputExpr] -> m B.Expr
 delabQuantifierIn q = \case
   [V.Lam _ binder body, cont] -> do
     let (foldedBinders, foldedBody) = foldBinders (FoldableBinder (QuantInFold q) binder) body
@@ -359,7 +365,7 @@ delabQuantifierIn q = \case
     let sym = case q of V.Forall -> tkSymbol tokForall; V.Exists -> tkSymbol tokExists
     argsError sym 2 <$> traverse delabM args
 
-delabForeach :: MonadDelab m => [V.NamedExpr] -> m B.Expr
+delabForeach :: MonadDelab m => [V.InputExpr] -> m B.Expr
 delabForeach = \case
   [V.Lam _ binder body] -> do
     let (foldedBinders, foldedBody) = foldBinders (FoldableBinder ForeachFold binder) body

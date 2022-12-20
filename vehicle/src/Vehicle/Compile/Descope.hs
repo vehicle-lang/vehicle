@@ -5,7 +5,6 @@ module Vehicle.Compile.Descope
 where
 
 import Control.Monad.Reader (MonadReader (..), Reader, runReader)
-import Data.Text (pack)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
 
@@ -32,24 +31,24 @@ runNaiveCoDBDescope e1 =
 class DescopeNamed a b | a -> b where
   descopeNamed :: a -> b
 
-instance DescopeNamed (Prog NamedBinding DBIndexVar) NamedProg where
+instance DescopeNamed DBProg InputProg where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed (Decl NamedBinding DBIndexVar) NamedDecl where
+instance DescopeNamed DBDecl InputDecl where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed (Contextualised (Expr NamedBinding DBIndexVar) NamedBoundCtx) NamedExpr where
+instance DescopeNamed (Contextualised DBExpr BoundDBCtx) InputExpr where
   descopeNamed = performDescoping descopeDBVar
 
 instance
-  DescopeNamed (Contextualised expr1 NamedBoundCtx) expr2 =>
-  DescopeNamed (Contextualised (GenericArg expr1) NamedBoundCtx) (GenericArg expr2)
+  DescopeNamed (Contextualised expr1 BoundDBCtx) expr2 =>
+  DescopeNamed (Contextualised (GenericArg expr1) BoundDBCtx) (GenericArg expr2)
   where
   descopeNamed (WithContext arg ctx) = fmap (\e -> descopeNamed (WithContext e ctx)) arg
 
 instance
-  DescopeNamed (Contextualised expr1 NamedBoundCtx) expr2 =>
-  DescopeNamed (Contextualised (GenericBinder binder expr1) NamedBoundCtx) (GenericBinder binder expr2)
+  DescopeNamed (Contextualised expr1 BoundDBCtx) expr2 =>
+  DescopeNamed (Contextualised (GenericBinder binder expr1) BoundDBCtx) (GenericBinder binder expr2)
   where
   descopeNamed (WithContext binder ctx) = fmap (\e -> descopeNamed (WithContext e ctx)) binder
 
@@ -61,13 +60,13 @@ instance
 class DescopeNaive a b | a -> b where
   descopeNaive :: a -> b
 
-instance DescopeNaive (Prog NamedBinding DBIndexVar) NamedProg where
+instance DescopeNaive DBProg InputProg where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (Decl NamedBinding DBIndexVar) NamedDecl where
+instance DescopeNaive DBDecl InputDecl where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (Expr NamedBinding DBIndexVar) NamedExpr where
+instance DescopeNaive DBExpr InputExpr where
   descopeNaive = runWithNoCtx (performDescoping descopeDBVarNaive)
 
 instance
@@ -85,20 +84,20 @@ instance
 --------------------------------------------------------------------------------
 -- Core operation
 
--- Can get rid of this newtype and just use NamedBoundCtx instead?
-newtype Ctx = Ctx [NamedBinding]
+-- Can get rid of this newtype and just use BoundDBCtx instead?
+newtype Ctx = Ctx BoundDBCtx
 
-runWithNoCtx :: (Contextualised a NamedBoundCtx -> b) -> a -> b
+runWithNoCtx :: (Contextualised a BoundDBCtx -> b) -> a -> b
 runWithNoCtx run e = run (WithContext e mempty)
 
-addBinderToCtx :: NamedBinder -> Ctx -> Ctx
+addBinderToCtx :: Binder InputBinding var -> Ctx -> Ctx
 addBinderToCtx binder (Ctx ctx) = Ctx (nameOf binder : ctx)
 
 performDescoping ::
   Show var =>
   (Provenance -> var -> Reader Ctx Name) ->
-  Contextualised (Expr NamedBinding var) [NamedBinding] ->
-  Expr NamedBinding Name
+  Contextualised (Expr DBBinding var) BoundDBCtx ->
+  InputExpr
 performDescoping convertVar (WithContext e ctx) =
   runReader (descope convertVar e) (Ctx ctx)
 
@@ -107,8 +106,8 @@ type MonadDescope m = MonadReader Ctx m
 descope ::
   (MonadDescope m, Show var) =>
   (Provenance -> var -> m Name) ->
-  Expr NamedBinding var ->
-  m (Expr NamedBinding Name)
+  Expr DBBinding var ->
+  m InputExpr
 descope f e = showScopeExit $ case showScopeEntry e of
   Universe ann l -> return $ Universe ann l
   Hole ann name -> return $ Hole ann name
@@ -136,15 +135,15 @@ descope f e = showScopeExit $ case showScopeEntry e of
 descopeBinder ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
-  GenericBinder NamedBinding (Expr NamedBinding var) ->
-  f (GenericBinder NamedBinding (Expr NamedBinding Name))
+  Binder DBBinding var ->
+  f InputBinder
 descopeBinder f = traverse (descope f)
 
 descopeArg ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
-  GenericArg (Expr NamedBinding var) ->
-  f (GenericArg (Expr NamedBinding Name))
+  Arg DBBinding var ->
+  f InputArg
 descopeArg f = traverse (descope f)
 
 descopeDBVar :: MonadDescope m => Provenance -> DBIndexVar -> m Name
@@ -153,12 +152,13 @@ descopeDBVar p (Bound i) = do
   Ctx ctx <- ask
   case lookupVar ctx i of
     Nothing -> indexOutOfBounds p i (length ctx)
-    Just x -> return x
+    Just Nothing -> usingUnnamedBoundVariable p i
+    Just (Just name) -> return name
 
 descopeDBVarNaive :: MonadDescope m => Provenance -> DBIndexVar -> m Name
 descopeDBVarNaive _ = \case
   Free i -> return $ nameOf i
-  Bound i -> return $ pack ("i" <> show i)
+  Bound i -> return $ layoutAsText (pretty i)
 
 {-
 descopeCoDBVarNaive :: MonadDescope m => Provenance -> CoDBVar -> m Name
@@ -169,11 +169,11 @@ descopeCoDBVarNaive _ = \case
 --------------------------------------------------------------------------------
 -- Logging and errors
 
-showScopeEntry :: Show var => Expr NamedBinding var -> Expr NamedBinding var
+showScopeEntry :: Show var => Expr DBBinding var -> Expr DBBinding var
 showScopeEntry e =
   e
 
-showScopeExit :: MonadDescope m => m NamedExpr -> m NamedExpr
+showScopeExit :: MonadDescope m => m InputExpr -> m InputExpr
 showScopeExit m = do
   e <- m
   return e
@@ -186,4 +186,12 @@ indexOutOfBounds p index ctxSize =
       <+> pretty index
       <+> "greater than current context size"
       <+> pretty ctxSize
+      <+> parens (pretty p)
+
+-- | Use of unnamed bound variable error using an arbitrary index.
+usingUnnamedBoundVariable :: MonadDescope m => Provenance -> DBIndex -> m a
+usingUnnamedBoundVariable p index =
+  developerError $
+    "During descoping found use of unnamed bound variable"
+      <+> pretty index
       <+> parens (pretty p)

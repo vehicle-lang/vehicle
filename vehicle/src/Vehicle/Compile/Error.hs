@@ -7,7 +7,6 @@ import Prettyprinter (list)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
   ( GluedExpr,
     GluedType,
@@ -42,7 +41,7 @@ data CompileError
       Name -- The name of the hole
   | TypeMismatch
       Provenance -- The location of the mismatch.
-      [DBBinding] -- The context at the time of the failure
+      BoundDBCtx -- The context at the time of the failure
       CheckedType -- The possible inferred types.
       CheckedType -- The expected type.
   | UnsolvedConstraints
@@ -50,7 +49,7 @@ data CompileError
   | UnsolvedMetas
       (NonEmpty (MetaID, Provenance))
   | MissingExplicitArg
-      [DBBinding] -- The context at the time of the failure
+      BoundDBCtx -- The context at the time of the failure
       UncheckedArg -- The non-explicit argument
       CheckedType -- Expected type of the argument
   | FailedUnificationConstraints

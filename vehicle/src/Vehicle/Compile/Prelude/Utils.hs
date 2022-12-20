@@ -82,9 +82,10 @@ getFreeVar = \case
   _ -> Nothing
 
 getBinderName :: GenericBinder DBBinding expr -> Name
-getBinderName binder = case binderRepresentation binder of
-  Just symbol -> symbol
-  Nothing -> developerError "Binder unexpectedly does not appear to have a name"
+getBinderName binder = case binderNamingForm binder of
+  NameAndType name -> name
+  OnlyName name -> name
+  OnlyType -> developerError "Binder unexpectedly does not appear to have a name"
 
 getContainerElem :: DBExpr -> Maybe DBExpr
 getContainerElem (ListType _ t) = Just t
