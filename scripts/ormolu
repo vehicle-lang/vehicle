@@ -3,21 +3,21 @@
 # POSIX compliant method for 'pipefail':
 fail=$(mktemp)
 
-# Check if 'cabal-fmt' is on the PATH:
-cabal_fmt=$(which cabal-fmt || echo > "$fail")
+# Check if 'ormolu' is on the PATH:
+ormolu=$(which ormolu || echo > "$fail")
 
 if [ -s "$fail" ]; then
     rm "$fail"
-    echo "The pre-commit hook requires 'cabal-fmt' to format Haskell code."
-    echo "You can install 'cabal-fmt' by running:"
+    echo "The pre-commit hook requires 'ormolu' to format Haskell code."
+    echo "You can install 'ormolu' by running:"
     echo
-    echo "  cabal v2-install cabal-fmt --ignore-project --overwrite-policy=always"
+    echo "  cabal v2-install ormolu --ignore-project --overwrite-policy=always"
     echo
-    echo "See: https://github.com/haskell/cabal-fmt#readme"
+    echo "See: https://github.com/tweag/ormolu#readme"
     echo
     echo "If you want to skip this pre-commit hook, commit with:"
     echo
-    echo "  SKIP=cabal-fmt git commit -m \"...\""
+    echo "  SKIP=ormolu git commit -m \"...\""
     echo
     echo "If you want to skip all pre-commit hooks, commit with:"
     echo
@@ -26,8 +26,8 @@ if [ -s "$fail" ]; then
     exit 1
 fi
 
-# Run 'cabal-fmt':
-($cabal_fmt $@ || echo > "$fail")
+# Run 'ormolu':
+($ormolu $@ || echo > "$fail")
 
 # Check whether or not any subcommand failed:
 if [ -s "$fail" ]; then
