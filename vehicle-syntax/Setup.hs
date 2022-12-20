@@ -11,34 +11,19 @@ ghc-options:        -Wall
 
 import Control.Monad (forM_, when)
 import Data.List (isPrefixOf, isSuffixOf)
-import Distribution.Simple
-  ( Args,
-    UserHooks (buildHook, preConf),
-    defaultMainWithHooks,
-    simpleUserHooks,
-  )
+import Distribution.Simple (Args, UserHooks (buildHook, preConf),
+                            defaultMainWithHooks, simpleUserHooks)
 import Distribution.Simple.Program (Program, runDbProgram, simpleProgram)
-import Distribution.Simple.Setup
-  ( BuildFlags (buildVerbosity),
-    ConfigFlags (configVerbosity),
-    fromFlagOrDefault,
-  )
-import Distribution.Simple.Utils
-  ( createDirectoryIfMissingVerbose,
-    intercalate,
-    moreRecentFile,
-    notice,
-  )
+import Distribution.Simple.Setup (BuildFlags (buildVerbosity),
+                                  ConfigFlags (configVerbosity),
+                                  fromFlagOrDefault)
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, intercalate,
+                                  moreRecentFile, notice)
 import Distribution.Types.LocalBuildInfo (LocalBuildInfo (LocalBuildInfo, withPrograms))
 import Distribution.Types.PackageDescription (PackageDescription (PackageDescription, extraSrcFiles, extraTmpFiles))
 import Distribution.Verbosity (normal)
-import System.FilePath
-  ( makeRelative,
-    splitDirectories,
-    takeBaseName,
-    takeDirectory,
-    (</>),
-  )
+import System.FilePath (makeRelative, splitDirectories, takeBaseName,
+                        takeDirectory, (</>))
 
 srcDir :: FilePath
 srcDir = "src"
@@ -50,7 +35,8 @@ main :: IO ()
 main =
   defaultMainWithHooks
     simpleUserHooks
-      { preConf = \args configFlags -> do
+      {
+        preConf = \args configFlags -> do
           makeAutogenDir args configFlags
           preConf simpleUserHooks args configFlags,
         buildHook = \packageDescription localBuildInfo userHooks buildFlags -> do
@@ -67,8 +53,8 @@ makeAutogenDir _args configFlags = do
 preProcessBnfc :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO ()
 preProcessBnfc packageDescription localBuildInfo _userHooks buildFlags = do
   let verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
-  let PackageDescription {extraSrcFiles, extraTmpFiles} = packageDescription
-  let LocalBuildInfo {withPrograms} = localBuildInfo
+  let PackageDescription{extraSrcFiles, extraTmpFiles} = packageDescription
+  let LocalBuildInfo{withPrograms} = localBuildInfo
   forM_ extraSrcFiles $ \extraSrcFile ->
     when (".cf" `isSuffixOf` extraSrcFile) $ do
       -- Example:
@@ -82,18 +68,18 @@ preProcessBnfc packageDescription localBuildInfo _userHooks buildFlags = do
       let targetFiles = filter (outputDir `isPrefixOf`) extraTmpFiles
       shouldCompile <- and <$> mapM (extraSrcFile `moreRecentFile`) targetFiles
       when shouldCompile $ do
-        notice verbosity $
-          unlines $
-            ("Compiling " ++ extraSrcFile ++ "to generate:") : map ("- " ++) targetFiles
-        runDbProgram verbosity bnfcProgram withPrograms $
-          concat
-            [ ["-d"],
-              ["--haskell"],
-              ["--generic"],
-              ["--text-token"],
-              ["--name-space=" ++ namespacePrefix | not (null namespacePrefix)],
-              ["--outputdir=" ++ autogenDir],
-              [extraSrcFile]
+          notice verbosity
+            $ unlines
+            $ ("Compiling " ++ extraSrcFile ++ "to generate:") : map ("- " ++) targetFiles
+          runDbProgram verbosity bnfcProgram withPrograms
+            $ concat
+            [ [ "-d" ]
+            , [ "--haskell" ]
+            , [ "--generic" ]
+            , [ "--text-token" ]
+            , [ "--name-space=" ++ namespacePrefix | not (null namespacePrefix) ]
+            , [ "--outputdir=" ++ autogenDir ]
+            , [ extraSrcFile ]
             ]
 
 bnfcProgram :: Program

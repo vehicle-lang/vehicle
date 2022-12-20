@@ -1,29 +1,33 @@
 module Vehicle.Syntax.Parse
-  ( ParseError (..),
-    UnparsedExpr,
-    UnparsedProg,
-    UnparsedDecl,
-    readAndParseProg,
-    parseDecl,
-    parseExpr,
-    readExpr,
-  )
-where
+  ( ParseError(..)
+  , UnparsedExpr
+  , UnparsedProg
+  , UnparsedDecl
+  , readAndParseProg
+  , parseDecl
+  , parseExpr
+  , readExpr
+  ) where
 
 import Control.Monad.Except (MonadError (..), liftEither)
 import Data.Bifunctor (first)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text.IO qualified as T
+
 import Vehicle.Syntax.AST
+import Vehicle.Syntax.Parse.Error (ParseError (..))
+
 import Vehicle.Syntax.BNFC.Elaborate.External
+
+import Vehicle.Syntax.Internal.Abs qualified as Internal (Expr, Prog)
+import Vehicle.Syntax.Internal.Par as Internal (myLexer, pExpr, pProg)
+
 import Vehicle.Syntax.External.Abs qualified as External (Expr, Prog)
 import Vehicle.Syntax.External.Layout as External (resolveLayout)
 import Vehicle.Syntax.External.Lex as External (Token)
 import Vehicle.Syntax.External.Par as External (myLexer, pExpr, pProg)
-import Vehicle.Syntax.Internal.Abs qualified as Internal (Expr, Prog)
-import Vehicle.Syntax.Internal.Par as Internal (myLexer, pExpr, pProg)
-import Vehicle.Syntax.Parse.Error (ParseError (..))
+
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -66,5 +70,5 @@ runExternalLexer topLevel = External.resolveLayout topLevel . External.myLexer
 
 castBNFCError :: MonadError ParseError m => (a -> m b) -> Either String a -> m b
 castBNFCError f = \case
-  Left err -> throwError $ RawParseError err
+  Left  err   -> throwError $ RawParseError err
   Right value -> f value

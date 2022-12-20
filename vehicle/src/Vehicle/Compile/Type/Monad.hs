@@ -1,9 +1,8 @@
 module Vehicle.Compile.Type.Monad
-  ( module Vehicle.Compile.Type.Monad.Class,
-    module Vehicle.Compile.Type.Monad.Instance,
-    TCM,
-  )
-where
+  ( module Vehicle.Compile.Type.Monad.Class
+  , module Vehicle.Compile.Type.Monad.Instance
+  , TCM
+  ) where
 
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance

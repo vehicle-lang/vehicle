@@ -1,39 +1,18 @@
 {-# LANGUAGE CPP #-}
-#if nothunks
-{-# LANGUAGE BangPatterns #-}
-#endif
 
 module Vehicle.Prelude.Debug
   ( -- * Export 'ghc-debug-stub'
-    Box (Box),
-    saveClosures,
-    pause,
-    resume,
-
+    Box(Box)
+  , saveClosures
+  , pause
+  , resume
     -- * Export 'nothunks'
-    unsafeCheckThunks,
+  , unsafeCheckThunks
   )
-where
+  where
 
--- Import ghc-debug-stub:
 #if ghcDebug
 import GHC.Debug.Stub (Box (Box), pause, resume, saveClosures)
-#endif
-
--- Import nothunks and helpers:
-#if nothunks
-import GHC.Stack (HasCallStack, callStack)
-import NoThunks.Class (NoThunks, unsafeNoThunks)
-#if ghcDebug
-import Control.Monad (void)
-import System.IO.Unsafe (unsafePerformIO)
-#endif
-#endif
-
--- Define ghc-debug operators if needed:
-#if ghcDebug
--- The operators are imported from GHC.Debug.Stub,
--- so we do not need to define anything.
 #else
 data Box = forall a . Box a
 
@@ -50,12 +29,8 @@ resume = return ()
 {-# INLINE resume #-}
 #endif
 
--- Define unsafeCheckThunks:
-#if nothunks
 #if ghcDebug
--- If nothunks is defined & ghcDebug is defined:
--- If we find a thunk, we pass it to ghc-debug, and pause execution.
-unsafeCheckThunks :: (HasCallStack, NoThunks a) => a -> a
+unsafeCheckThunks :: NoThunks a => a -> a
 unsafeCheckThunks !x = case unsafeNoThunks x of
     Nothing    -> x
     Just thunk ->
@@ -70,21 +45,6 @@ unsafeCheckThunks !x = case unsafeNoThunks x of
       of
         () -> x
 #else
--- If nothunks is defined & ghcDebug is NOT defined:
--- If we find a thunk, we throw an error.
-unsafeCheckThunks :: (HasCallStack, NoThunks a) => a -> a
-unsafeCheckThunks !x = case unsafeNoThunks x of
-    Nothing    -> x
-    Just thunk -> error $ unlines
-      [ "Found a thunk: ",
-        "- " <> show thunk,
-        "- " <> show callStack
-      ]
-{-# INLINE unsafeCheckThunks #-}
-#endif
-#else
--- If nothunks is NOT defined:
--- We cannot check for thunks, so we do nothing.
 unsafeCheckThunks :: a -> a
 unsafeCheckThunks x = x
 {-# INLINE unsafeCheckThunks #-}

@@ -1,7 +1,8 @@
 module Vehicle.Compile.Normalise.Quote where
 
-import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (MonadReader (..), runReader)
+
+import Control.Monad.Except (runExceptT)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
@@ -19,24 +20,27 @@ class DBAdjustment a where
 
 instance DBAdjustment NormExpr where
   adjustIndices expr = case expr of
-    VUniverse {} -> return expr
-    VLiteral {} -> return expr
-    VMeta p m spine -> VMeta p m <$> traverse adjustIndices spine
-    VBuiltin p b spine -> VBuiltin p b <$> traverse adjustIndices spine
-    VLVec p xs spine -> VLVec p <$> traverse adjustIndices xs <*> traverse adjustIndices spine
+    VUniverse{} -> return expr
+    VLiteral{}  -> return expr
+
+    VMeta    p m  spine -> VMeta    p m <$> traverse adjustIndices spine
+    VBuiltin p b  spine -> VBuiltin p b <$> traverse adjustIndices spine
+    VLVec    p xs spine -> VLVec    p   <$> traverse adjustIndices xs <*> traverse adjustIndices spine
+
     VVar p v@(Free _) args -> VVar p v <$> traverse adjustIndices args
-    VPi p binder body -> VPi p <$> traverse adjustIndices binder <*> underDBBinder (adjustIndices body)
+    VPi  p binder body -> VPi p <$> traverse adjustIndices binder <*> underDBBinder (adjustIndices body)
+
     VVar p (Bound i) args -> do
       args' <- traverse adjustIndices args
       (bindingDepth, sub) <- ask
       -- Calculate the new index
-      let i' =
-            if i < DBIndex bindingDepth
-              then i
-              else case sub (i - DBIndex bindingDepth) of
-                Nothing -> i
-                Just v -> v + DBIndex bindingDepth
+      let i' = if i < DBIndex bindingDepth
+          then i
+          else case sub (i - DBIndex bindingDepth) of
+            Nothing -> i
+            Just v  -> v + DBIndex bindingDepth
       return $ VVar p (Bound i') args'
+
     VLam p binder env body -> do
       binder' <- traverse adjustIndices binder
       env' <- adjustIndices env
@@ -80,23 +84,26 @@ class Quote a b where
 -- | Converts from a normalised representation to an unnormalised representation.
 -- Do not call except for logging and debug purposes, very expensive with nested
 -- lambdas.
-unnormalise :: forall a b. Quote a b => a -> b
+unnormalise :: forall a b . Quote a b => a -> b
 unnormalise e = do
   let r = runSilentLogger $ runExceptT (quote e)
   case r of
     Left err -> developerError $ "Error thrown while unquoting" <+> pretty (show err)
-    Right v -> v
+    Right v  -> v
 
 instance Quote NormExpr CheckedExpr where
   quote = \case
     VUniverse p u -> return $ Universe p u
-    VLiteral p l -> return $ Literal p l
-    VMeta p m spine -> normAppList p (Meta p m) <$> traverse quote spine
-    VVar p v spine -> normAppList p (Var p v) <$> traverse quote spine
-    VBuiltin p b spine -> normAppList p (Builtin p b) <$> traverse quote spine
+    VLiteral  p l -> return $ Literal p l
+
+    VMeta     p m spine -> normAppList p (Meta p m)    <$> traverse quote spine
+    VVar      p v spine -> normAppList p (Var p v)     <$> traverse quote spine
+    VBuiltin  p b spine -> normAppList p (Builtin p b) <$> traverse quote spine
+
     VLVec p xs spine -> normAppList p <$> (LVec p <$> traverse quote xs) <*> traverse quote spine
-    VPi p binder body -> Pi p <$> quote binder <*> quote body
-    VLam p binder env body -> do
+    VPi   p binder body -> Pi p <$> quote binder <*> quote body
+
+    VLam  p binder env body -> do
       -- First quote the binder
       quotedBinder <- quote binder
       -- Then quote the lifted environment
@@ -108,10 +115,9 @@ instance Quote NormExpr CheckedExpr where
 
 envSubst :: BoundCtx CheckedExpr -> Substitution DBExpr
 envSubst env i = case lookupVar env i of
-  Just v -> Right v
-  Nothing ->
-    developerError $
-      "Mis-sized environment" <+> pretty (show env) <+> "when quoting variable" <+> pretty i
+  Just v  -> Right v
+  Nothing -> developerError $
+    "Mis-sized environment" <+> pretty (show env) <+> "when quoting variable" <+> pretty i
 
 instance Quote NormBinder CheckedBinder where
   quote = traverse quote

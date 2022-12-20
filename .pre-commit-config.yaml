@@ -61,16 +61,16 @@ repos:
         types: [file, text]
         files: ^.*\.cabal$
         args: [--check, --inplace]
-      - id: ormolu
-        name: "format haskell with ormolu"
-        entry: ./scripts/ormolu
+      - id: stylish-haskell
+        name: "format haskell with stylish-haskell"
+        entry: ./scripts/stylish-haskell
         language: script
         types: [haskell]
-        args: [--mode inplace] # Disabled: --check-idempotence
+        args: [--inplace]
 
 # Do not run local hooks on pre-commit CI:
 ci:
-  skip: [cabal-fmt, ormolu]
+  skip: [cabal-fmt, stylish-haskell]
 
 # Exclude golden standard generated JSON files:
 exclude: ^.*\.golden$|^docs/.*$

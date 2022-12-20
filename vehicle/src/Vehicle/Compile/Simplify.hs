@@ -1,8 +1,8 @@
+
 module Vehicle.Compile.Simplify
-  ( Simplify (..),
-    SimplifyOptions (..),
-  )
-where
+  ( Simplify(..)
+  , SimplifyOptions(..)
+  ) where
 
 import Control.Monad.Reader (MonadReader (..), runReader)
 import Data.Default (Default (..))
@@ -11,27 +11,29 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
+
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map
 import Vehicle.Expr.CoDeBruijn.PositionTree (PositionTree)
 
+
 data SimplifyOptions = SimplifyOptions
-  { removeImplicits :: Bool,
-    removeInstances :: Bool,
-    removeNonUserCode :: Bool
+  { removeImplicits   :: Bool
+  , removeInstances   :: Bool
+  , removeNonUserCode :: Bool
   }
 
 instance Default SimplifyOptions where
-  def =
-    SimplifyOptions
-      { removeImplicits = True,
-        removeInstances = True,
-        removeNonUserCode = False
+  def = SimplifyOptions
+      { removeImplicits   = True
+      , removeInstances   = True
+      , removeNonUserCode = False
       }
 
 type MonadSimplify m = MonadReader SimplifyOptions m
 
 class Simplify a where
+
   -- | Simplifies the code with the default options.
   simplify :: Simplify a => a -> a
   simplify = simplifyWith def
@@ -52,18 +54,19 @@ instance Simplify expr => Simplify (GenericDecl expr) where
 
 instance Simplify (Expr binder var) where
   simplifyReader expr = case expr of
-    Universe {} -> return expr
-    Hole {} -> return expr
-    Meta {} -> return expr
-    Builtin {} -> return expr
-    Literal {} -> return expr
-    Var {} -> return expr
-    App ann fun args -> normAppList ann <$> simplifyReader fun <*> simplifyReaderArgs args
-    LVec ann xs -> LVec ann <$> traverse simplifyReader xs
-    Ann ann e t -> Ann ann <$> simplifyReader e <*> simplifyReader t
-    Pi ann binder result -> Pi ann <$> simplifyReader binder <*> simplifyReader result
-    Let ann bound binder body -> Let ann <$> simplifyReader bound <*> simplifyReader binder <*> simplifyReader body
-    Lam ann binder body -> Lam ann <$> simplifyReader binder <*> simplifyReader body
+    Universe{} -> return expr
+    Hole{}     -> return expr
+    Meta{}     -> return expr
+    Builtin{}  -> return expr
+    Literal{}  -> return expr
+    Var{}      -> return expr
+
+    App ann fun args          -> normAppList ann <$> simplifyReader fun <*> simplifyReaderArgs args
+    LVec ann xs               -> LVec ann <$> traverse simplifyReader xs
+    Ann ann e t               -> Ann ann <$> simplifyReader e <*> simplifyReader t
+    Pi ann binder result      -> Pi  ann <$> simplifyReader binder <*> simplifyReader result
+    Let ann bound binder body -> Let ann <$> simplifyReader bound  <*> simplifyReader binder <*> simplifyReader body
+    Lam ann binder body       -> Lam ann <$> simplifyReader binder <*> simplifyReader body
 
 instance Simplify (Binder binder var) where
   simplifyReader = traverse simplifyReader
@@ -71,23 +74,21 @@ instance Simplify (Binder binder var) where
 instance Simplify (Arg binder var) where
   simplifyReader = traverse simplifyReader
 
-simplifyReaderArgs ::
-  MonadSimplify m =>
-  NonEmpty (Arg binder var) ->
-  m [Arg binder var]
+simplifyReaderArgs :: MonadSimplify m
+                   => NonEmpty (Arg binder var)
+                   -> m [Arg binder var]
 simplifyReaderArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args)
   where
-    prettyArg ::
-      MonadSimplify m =>
-      Arg binder var ->
-      m (Maybe (Arg binder var))
+    prettyArg :: MonadSimplify m
+              => Arg binder var
+              -> m (Maybe (Arg binder var))
     prettyArg arg = do
-      SimplifyOptions {..} <- ask
+      SimplifyOptions{..} <- ask
 
       let removeArg =
-            (removeNonUserCode && wasInsertedByCompiler arg)
-              || (visibilityOf arg == Implicit && removeImplicits)
-              || (visibilityOf arg == Instance && removeInstances)
+            (removeNonUserCode && wasInsertedByCompiler arg) ||
+            (visibilityOf arg == Implicit && removeImplicits) ||
+            (visibilityOf arg == Instance && removeInstances)
 
       if removeArg
         then return Nothing
@@ -101,15 +102,15 @@ instance Simplify a => Simplify [a] where
 
 instance (Simplify a, Simplify b) => Simplify (a, b) where
   simplifyReader (x, y) = do
-    x' <- simplifyReader x
-    y' <- simplifyReader y
+    x' <- simplifyReader x;
+    y' <- simplifyReader y;
     return (x', y')
 
 instance (Simplify a, Simplify b, Simplify c) => Simplify (a, b, c) where
   simplifyReader (x, y, z) = do
-    x' <- simplifyReader x
-    y' <- simplifyReader y
-    z' <- simplifyReader z
+    x' <- simplifyReader x;
+    y' <- simplifyReader y;
+    z' <- simplifyReader z;
     return (x', y', z')
 
 instance Simplify a => Simplify (IntMap a) where

@@ -1,8 +1,7 @@
 module Vehicle.Compile.Queries
-  ( compileToQueries,
-    QueryData (..),
-  )
-where
+  ( compileToQueries
+  , QueryData(..)
+  ) where
 
 import Control.Monad (forM, forM_)
 import Control.Monad.Except (MonadError (..))
@@ -10,10 +9,11 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Foldable (for_)
 import Data.Maybe (catMaybes)
+
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
-import Vehicle.Compile.Normalise (fullNormalisationOptions, normaliseProg)
+import Vehicle.Compile.Normalise (fullNormalisationOptions, normalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
 import Vehicle.Compile.Queries.DNF (convertToDNF)
@@ -28,9 +28,9 @@ import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface (Verifier (..))
 
 data QueryData = QueryData
-  { queryText :: Doc (),
-    metaNetwork :: MetaNetwork,
-    userVar :: UserVarReconstructionInfo
+  { queryText   :: Doc ()
+  , metaNetwork :: MetaNetwork
+  , userVar     :: UserVarReconstructionInfo
   }
 
 --------------------------------------------------------------------------------
@@ -38,20 +38,19 @@ data QueryData = QueryData
 
 -- | Compiles the provided program to invidividual queries suitable for a
 -- verifier.
-compileToQueries ::
-  (MonadIO m, MonadCompile m) =>
-  Verifier ->
-  TypedProg ->
-  Resources ->
-  m (Specification QueryData)
-compileToQueries verifier@Verifier {..} typedProg resources =
+compileToQueries :: (MonadIO m, MonadCompile m)
+                 => Verifier
+                 -> TypedProg
+                 -> Resources
+                 -> m (Specification QueryData)
+compileToQueries verifier@Verifier{..} typedProg resources =
   logCompilerPass MinDetail currentPass $ do
     (networkCtx, finalProg) <- expandResources resources typedProg
     checkProperties verifierIdentifier finalProg
 
     -- Again, horrible, we should push use of NormExpr through everywhere
     unnormalisedProg <- traverse getUnnormalised finalProg
-    normalisedProg <- normaliseProg unnormalisedProg fullNormalisationOptions
+    normalisedProg <- normalise unnormalisedProg fullNormalisationOptions
     properties <- getProperties normalisedProg
 
     if null properties
@@ -60,7 +59,7 @@ compileToQueries verifier@Verifier {..} typedProg resources =
         xs <- forM properties $ \(name, expr) -> do
           logCompilerPass MinDetail ("property" <+> quotePretty name) $ do
             let propertyCtx = (verifier, name, networkCtx)
-            property <- runSupplyT (runReaderT (compileProperty expr) propertyCtx) [1 :: Int ..]
+            property <- runSupplyT (runReaderT (compileProperty expr) propertyCtx) [1::Int ..]
             return (name, property)
 
         return $ Specification xs
@@ -68,80 +67,80 @@ compileToQueries verifier@Verifier {..} typedProg resources =
 --------------------------------------------------------------------------------
 -- Algorithm
 
-getProperties ::
-  MonadCompile m =>
-  CheckedProg ->
-  m [(Identifier, CheckedExpr)]
+getProperties :: MonadCompile m
+              => CheckedProg
+              -> m [(Identifier, CheckedExpr)]
 getProperties (Main ds) = catMaybes <$> traverse go ds
   where
-    go ::
-      MonadCompile m =>
-      CheckedDecl ->
-      m (Maybe (Identifier, CheckedExpr))
+    go :: MonadCompile m
+       => CheckedDecl
+       -> m (Maybe (Identifier, CheckedExpr))
     go d = case d of
       DefResource _ r _ _ ->
         normalisationError currentPass (pretty r <+> "declarations")
-      DefPostulate {} ->
-        normalisationError currentPass "postulates"
-      DefFunction _ ident isProperty _ body
-        -- If it's not a property then we can discard it as all applications
-        -- of it should have been normalised out by now.
-        | isProperty -> return $ Just (ident, body)
-        | otherwise -> return Nothing
 
-checkProperties ::
-  MonadCompile m =>
-  VerifierIdentifier ->
-  TypedProg ->
-  m ()
+      DefPostulate{} ->
+        normalisationError currentPass "postulates"
+
+      DefFunction _ ident isProperty _ body
+          -- If it's not a property then we can discard it as all applications
+          -- of it should have been normalised out by now.
+        | isProperty -> return $ Just (ident, body)
+        | otherwise  -> return Nothing
+
+checkProperties :: MonadCompile m
+                => VerifierIdentifier
+                -> TypedProg
+                -> m ()
 checkProperties verifier (Main ds) = for_ ds go
   where
-    go ::
-      MonadCompile m =>
-      TypedDecl ->
-      m ()
+    go :: MonadCompile m
+       => TypedDecl
+       -> m ()
     go d = case d of
       DefResource _ r _ _ ->
         normalisationError currentPass (pretty r <+> "declarations")
-      DefPostulate {} ->
+
+      DefPostulate{} ->
         normalisationError currentPass "postulates"
+
       DefFunction p ident isProperty _ _
-        -- If it's not a property then we can discard it as all applications
-        -- of it should have been normalised out by now.
+          -- If it's not a property then we can discard it as all applications
+          -- of it should have been normalised out by now.
         | not isProperty -> return ()
-        | otherwise -> do
-            -- Otherwise check the property information.
-            propertyInfo <- getPropertyInfo d
-            let compatible = checkCompatibility (VerifierBackend verifier) (ident, p) propertyInfo
-            forM_ compatible throwError
+        | otherwise  -> do
+          -- Otherwise check the property information.
+          propertyInfo <- getPropertyInfo d
+          let compatible = checkCompatibility (VerifierBackend verifier) (ident, p) propertyInfo
+          forM_ compatible throwError
 
 type MonadCompileProperty m =
-  ( MonadCompile m,
-    MonadSupply QueryID m,
-    MonadReader (Verifier, Identifier, NetworkContext) m
+  ( MonadCompile m
+  , MonadSupply QueryID m
+  , MonadReader (Verifier, Identifier, NetworkContext) m
   )
 
 compileProperty :: MonadCompileProperty m => CheckedExpr -> m (Property QueryData)
 compileProperty = \case
-  VecLiteral _ _ es -> MultiProperty <$> traverse compileProperty es
-  expr -> SingleProperty <$> compileTopLevelPropertyStructure expr
+  VecLiteral _ _ es -> MultiProperty  <$> traverse compileProperty es
+  expr              -> SingleProperty <$> compileTopLevelPropertyStructure expr
 
-compileTopLevelPropertyStructure ::
-  MonadCompileProperty m =>
-  CheckedExpr ->
-  m (PropertyExpr QueryData)
+compileTopLevelPropertyStructure :: MonadCompileProperty m
+                                 => CheckedExpr
+                                 -> m (PropertyExpr QueryData)
 compileTopLevelPropertyStructure = \case
   AppliedAndExpr _ x y ->
     Conjunct <$> compileTopLevelPropertyStructure x <*> compileTopLevelPropertyStructure y
+
   AppliedOrExpr _ x y ->
     Disjunct <$> compileTopLevelPropertyStructure x <*> compileTopLevelPropertyStructure y
+
   queryExpr ->
     compileQuantifiedExpr queryExpr
 
-compileQuantifiedExpr ::
-  MonadCompileProperty m =>
-  CheckedExpr ->
-  m (PropertyExpr QueryData)
+compileQuantifiedExpr :: MonadCompileProperty m
+                      => CheckedExpr
+                      -> m (PropertyExpr QueryData)
 compileQuantifiedExpr expr = do
   (verifier, ident, _) <- ask
 
@@ -174,6 +173,7 @@ compileSingleQuery expr = do
   (verifier, ident, networkCtx) <- ask
 
   logCompilerPass MinDetail ("query" <+> pretty (queryID :: QueryID)) $ do
+
     -- First lift all the quantifiers to the top-level
     quantLiftedExpr <- liftQuantifiers expr
 
@@ -196,7 +196,7 @@ currentPass = "compilation to individual queries"
 checkCompatibility :: Backend -> DeclProvenance -> PropertyInfo -> Maybe CompileError
 checkCompatibility backend prov (PropertyInfo linearity polarity) =
   case (linearity, polarity) of
-    (NonLinear p pp1 pp2, _) ->
+    (NonLinear p pp1 pp2, _)       ->
       Just $ UnsupportedNonLinearConstraint backend prov p pp1 pp2
     (_, MixedSequential q p pp2) ->
       Just $ UnsupportedAlternatingQuantifiers backend prov q p pp2

@@ -1,15 +1,12 @@
 module Vehicle.Compile.Queries.VariableReconstruction where
 
-import Control.Monad (foldM)
 import Data.Vector.Unboxed qualified as Vector
-import Vehicle.Compile.Queries.FourierMotzkinElimination
-  ( FourierMotzkinVariableSolution,
-    reconstructFourierMotzkinVariableValue,
-  )
-import Vehicle.Compile.Queries.GaussianElimination
-  ( GaussianVariableSolution,
-    reconstructGaussianVariableValue,
-  )
+
+import Control.Monad (foldM)
+import Vehicle.Compile.Queries.FourierMotzkinElimination (FourierMotzkinVariableSolution,
+                                                          reconstructFourierMotzkinVariableValue)
+import Vehicle.Compile.Queries.GaussianElimination (GaussianVariableSolution,
+                                                    reconstructGaussianVariableValue)
 import Vehicle.Compile.Queries.LinearExpr
 
 --------------------------------------------------------------------------------
@@ -23,10 +20,9 @@ data VariableSolution
 
 type UserVarReconstructionInfo = [(LinearVar, VariableSolution)]
 
-reconstructUserVars ::
-  UserVarReconstructionInfo ->
-  VariableAssignment ->
-  Maybe VariableAssignment
+reconstructUserVars :: UserVarReconstructionInfo
+                    -> VariableAssignment
+                    -> Maybe VariableAssignment
 reconstructUserVars info ioVarValues = do
   let numberOfUserVars = length info
   let startingUserVarValues = Vector.replicate numberOfUserVars 0
@@ -35,10 +31,9 @@ reconstructUserVars info ioVarValues = do
   let reconstructedVars = foldM reconstructVariable startingValues info
   Vector.take numberOfUserVars <$> reconstructedVars
 
-reconstructVariable ::
-  VariableAssignment ->
-  (LinearVar, VariableSolution) ->
-  Maybe VariableAssignment
+reconstructVariable :: VariableAssignment
+                    -> (LinearVar, VariableSolution)
+                    -> Maybe VariableAssignment
 reconstructVariable assignment (var, solution) = do
   value <- case solution of
     GaussianSolution sol ->

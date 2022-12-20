@@ -1,12 +1,13 @@
 module Vehicle.Verify.Specification.Status where
 
 import Data.Aeson
-import Data.Bifunctor (Bifunctor (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
+
+import Data.Bifunctor (Bifunctor (..))
 import Vehicle.Prelude
 import Vehicle.Syntax.AST (HasName (..), Identifier, Name)
 import Vehicle.Verify.Specification
@@ -23,12 +24,11 @@ data SatisfiabilityStatus
   deriving (Show, Generic)
 
 instance FromJSON SatisfiabilityStatus
-
 instance ToJSON SatisfiabilityStatus
 
 instance IsVerified SatisfiabilityStatus where
   isVerified = \case
-    SAT {} -> True
+    SAT{} -> True
     UnSAT -> False
 
 instance IsVerified (NegationStatus, Query SatisfiabilityStatus) where
@@ -43,7 +43,6 @@ data PropertyStatus
   deriving (Generic)
 
 instance FromJSON PropertyStatus
-
 instance ToJSON PropertyStatus
 
 instance IsVerified PropertyStatus where
@@ -55,17 +54,18 @@ prettyPropertyStatus :: Name -> PropertyStatus -> Doc a
 prettyPropertyStatus name = \case
   MultiPropertyStatus ps -> do
     let numberedSubproperties =
-          zipWith (\(i :: Int) p -> (name <> "!" <> pack (show i), p)) [0 ..] ps
+          zipWith (\(i :: Int) p -> (name <> "!" <> pack (show i), p)) [0..] ps
     let numVerified = pretty (length (filter isVerified ps))
     let num = pretty $ length ps
     let summary = pretty name <> ":" <+> numVerified <> "/" <> num <+> "verified"
     let results = indent 2 $ vsep (fmap (uncurry prettyPropertyStatus) numberedSubproperties)
     summary <> line <> results
+
   SinglePropertyStatus (negated, s) -> do
     let (verified, evidenceText) = case s of
-          Trivial status -> (status `xor` negated, " (trivial)")
+          Trivial    status -> (status `xor` negated, " (trivial)")
           NonTrivial status -> case status of
-            UnSAT -> (negated, "")
+            UnSAT       -> (negated, "")
             SAT witness -> do
               let witnessText = if negated then "Counter-example" else "Witness"
               let formatWitness e = line <> indent 2 (witnessText <> ":" <+> pretty e)
@@ -86,7 +86,6 @@ newtype SpecificationStatus = SpecificationStatus (Map Identifier PropertyStatus
   deriving (Generic)
 
 instance FromJSON SpecificationStatus
-
 instance ToJSON SpecificationStatus
 
 instance IsVerified SpecificationStatus where
@@ -97,6 +96,5 @@ instance Pretty SpecificationStatus where
   pretty spec@(SpecificationStatus properties) = do
     let result = "Result:" <> (if isVerified spec then "verified" else "unverified")
     let propertiesByName = fmap (first nameOf) (Map.toList properties)
-    result
-      <> line
-      <> indent 2 (vsep (fmap (uncurry prettyPropertyStatus) propertiesByName))
+    result <> line <>
+      indent 2 (vsep (fmap (uncurry prettyPropertyStatus) propertiesByName))
