@@ -1,14 +1,16 @@
+
 module Vehicle.Compile.Resource where
 
 import Data.Map (Map)
+
 import Vehicle.Compile.Prelude
 
 --------------------------------------------------------------------------------
 -- Networks
 
 data NetworkType = NetworkType
-  { inputTensor :: NetworkTensorType,
-    outputTensor :: NetworkTensorType
+  { inputTensor  :: NetworkTensorType
+  , outputTensor :: NetworkTensorType
   }
 
 instance Pretty NetworkType where
@@ -18,19 +20,19 @@ instance Pretty NetworkType where
 networkSize :: NetworkType -> Int
 networkSize network = tensorSize (inputTensor network) + tensorSize (outputTensor network)
 
+
 data NetworkTensorType = NetworkTensorType
-  { baseType :: NetworkBaseType,
-    dimensions :: [Int]
+  { baseType   :: NetworkBaseType
+  , dimensions :: [Int]
   }
 
 tensorSize :: NetworkTensorType -> Int
 tensorSize tensor = product (dimensions tensor)
 
 instance Pretty NetworkTensorType where
-  pretty tensor =
-    "Tensor"
-      <+> pretty (baseType tensor)
-      <+> pretty (dimensions tensor)
+  pretty tensor = "Tensor" <+>
+    pretty (baseType tensor) <+> pretty (dimensions tensor)
+
 
 data NetworkBaseType
   = NetworkRatType

@@ -1,7 +1,6 @@
 module Vehicle.Verify.Verifier
-  ( verifiers,
-  )
-where
+  ( verifiers
+  ) where
 
 import Vehicle.Verify.Core
 import Vehicle.Verify.Verifier.Interface

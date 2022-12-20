@@ -27,7 +27,7 @@ if [ -s "$fail" ]; then
 fi
 
 # Run 'cabal-fmt':
-($cabal_fmt $@ || echo > "$fail")
+$cabal_fmt "$@"
 
 # Check whether or not any subcommand failed:
 if [ -s "$fail" ]; then

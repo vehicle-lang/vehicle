@@ -1,0 +1,74 @@
+#!/bin/sh
+
+# POSIX compliant method for 'pipefail':
+fail=$(mktemp)
+
+# Check if 'stylish-haskell' is on the PATH:
+stylish_haskell=$(which stylish-haskell || echo > "$fail")
+
+if [ -s "$fail" ]; then
+    rm "$fail"
+    echo "The pre-commit hook requires 'stylish-haskell' to format Haskell code."
+    echo "You can install 'stylish-haskell' by running:"
+    echo
+    echo "  cabal v2-install stylish-haskell --ignore-project --overwrite-policy=always"
+    echo
+    echo "See: https://github.com/haskell/stylish-haskell#readme"
+    echo
+    echo "If you want to skip this pre-commit hook, commit with:"
+    echo
+    echo "  SKIP=stylish-haskell git commit -m \"...\""
+    echo
+    echo "If you want to skip all pre-commit hooks, commit with:"
+    echo
+    echo "  git commit -m \"...\" --no-verify"
+    echo
+    exit 1
+fi
+
+# Run 'stylish-haskell' for each project:
+
+# Gather all flags:
+flags=""
+for arg; do
+    flag=$(echo "$arg" | grep -E "^-")
+    [ -n "$flag" ] && flags="${flags} ${flag}"
+    unset -v flag
+done
+
+# Gather all files for the given project:
+projects=$(find . -name ".stylish-haskell.yaml" -exec dirname \{\} \;)
+for project in $projects; do
+    # Get the realpath for the project directory:
+    project="$(realpath "$project")"
+    files=""
+    # Get all files which are contained in the project directory:
+    for arg; do
+        file=$(echo "$arg" | grep -vE "^-")
+        if [ -n "$file" ]; then
+            file="$(realpath "$file" || echo > "$fail")"
+            file="$(echo "$file" | grep -E "^$project/")"
+            [ -n "$file" ] && files="${files} ${file}"
+            unset -v file
+        fi
+    done
+    # Call 'stylish-haskell' for the project:
+    if [ -n "$files" ]; then
+        # echo "Running stylish-haskell for $(basename "$project")..."
+        (cd "$project" && $stylish_haskell $flags $files || echo > "$fail")
+    fi
+    unset -v project
+done
+
+# Clean up:
+unset -v flags
+unset -v projects
+
+# Check whether or not any subcommand failed:
+if [ -s "$fail" ]; then
+    rm "$fail"
+    exit 1
+else
+    rm "$fail"
+    exit 0
+fi

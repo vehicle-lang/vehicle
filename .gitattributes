@@ -1,3 +1,2 @@
-# The ormolu code formatter for Haskell requires `lf` line endings
-# https://github.com/tweag/ormolu#zap-beware-gits-coreautocrlf-on-windows-zap
-*.hs text eol=lf
+#Automatically converts line endings to those for your system when you check out and converts them to Linux line endings when you commit
+* text=auto

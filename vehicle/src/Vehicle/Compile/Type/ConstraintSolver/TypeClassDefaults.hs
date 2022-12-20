@@ -1,10 +1,10 @@
 module Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
-  ( generateConstraintUsingDefaults,
-  )
-where
+  ( generateConstraintUsingDefaults
+  ) where
+
+import Data.Maybe (catMaybes)
 
 import Control.Monad (foldM)
-import Data.Maybe (catMaybes)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettySimple)
@@ -33,12 +33,12 @@ data DefaultFamily
   deriving (Eq, Ord)
 
 sameFamily :: DefaultFamily -> DefaultFamily -> Bool
-sameFamily NumericFamily {} NumericFamily {} = True
-sameFamily ContainerFamily {} ContainerFamily {} = True
-sameFamily BooleanFamily {} BooleanFamily {} = True
-sameFamily PolarityFamily {} PolarityFamily {} = True
-sameFamily LinearityFamily {} LinearityFamily {} = True
-sameFamily _ _ = False
+sameFamily NumericFamily{}   NumericFamily{}   = True
+sameFamily ContainerFamily{} ContainerFamily{} = True
+sameFamily BooleanFamily{}   BooleanFamily{}   = True
+sameFamily PolarityFamily{}  PolarityFamily{}  = True
+sameFamily LinearityFamily{} LinearityFamily{} = True
+sameFamily _                 _                 = False
 
 data Candidate = Candidate MetaID TypeClass NormExpr ConstraintContext
 
@@ -53,17 +53,16 @@ data CandidateStatus
 instance Pretty CandidateStatus where
   pretty = \case
     Valid c -> pretty c
-    None -> "none encountered"
+    None    -> "none encountered"
     Invalid -> "incompatible"
 
-generateConstraintUsingDefaults ::
-  TCM m =>
-  [WithContext TypeClassConstraint] ->
-  m (Maybe (WithContext Constraint))
+generateConstraintUsingDefaults :: TCM m
+                                => [WithContext TypeClassConstraint]
+                                -> m (Maybe (WithContext Constraint))
 generateConstraintUsingDefaults constraints = do
   strongestConstraint <- findStrongestConstraint constraints
   case strongestConstraint of
-    None -> do
+    None    -> do
       logDebug MaxDetail "No default solution found"
       return Nothing
     Invalid -> return Nothing
@@ -72,19 +71,15 @@ generateConstraintUsingDefaults constraints = do
       let ctxSize = length (boundContext ctx)
       solution <- defaultSolution p ctxSize tc
       logDebug MaxDetail $
-        "using default"
-          <+> pretty m
-          <+> "="
-          <+> prettySimple solution
-          <+> "         " <> parens ("from" <+> pretty tc)
+        "using default" <+> pretty m <+> "=" <+> prettySimple solution <+>
+        "         " <> parens ("from" <+> pretty tc)
       let unificationConstraint = UnificationConstraint (Unify metaExpr solution)
       let newConstraint = WithContext unificationConstraint (copyContext ctx)
       return $ Just newConstraint
 
-findStrongestConstraint ::
-  MonadCompile m =>
-  [WithContext TypeClassConstraint] ->
-  m CandidateStatus
+findStrongestConstraint :: MonadCompile m
+                        => [WithContext TypeClassConstraint]
+                        -> m CandidateStatus
 findStrongestConstraint [] = return None
 findStrongestConstraint (WithContext constraint ctx : xs) = do
   recResult <- findStrongestConstraint xs
@@ -96,76 +91,77 @@ findStrongestConstraint (WithContext constraint ctx : xs) = do
     logDebug MaxDetail $ indent 2 $ "status:" <+> pretty newStrongest
     return newStrongest
 
+
 strongest :: MonadCompile m => CandidateStatus -> Candidate -> m CandidateStatus
-strongest Invalid _ = return Invalid
-strongest None x = return $ Valid x
+strongest Invalid  _                       = return Invalid
+strongest None     x                       = return $ Valid x
 strongest y@(Valid (Candidate _ tc2 _ _)) x@(Candidate _ tc1 _ _) = do
   f1 <- familyOf tc1
   f2 <- familyOf tc2
   return $
     if not (sameFamily f1 f2)
       then y
-      else
-        if f1 > f2
-          then Valid x
-          else y
+    else if f1 > f2
+      then Valid x
+    else
+      y
 
 familyOf :: MonadCompile m => TypeClass -> m DefaultFamily
 familyOf = \case
-  HasNot -> return BooleanFamily
-  HasAnd -> return BooleanFamily
-  HasOr -> return BooleanFamily
-  HasImplies -> return BooleanFamily
-  HasQuantifier {} -> return BooleanFamily
-  HasEq {} -> return $ NumericFamily NatT False 0
-  HasOrd {} -> return $ NumericFamily NatT False 0
-  HasAdd -> return $ NumericFamily NatT True 0
-  HasSub -> return $ NumericFamily IntT True 0
-  HasMul -> return $ NumericFamily NatT True 0
-  HasDiv -> return $ NumericFamily RatT True 0
-  HasNeg -> return $ NumericFamily IntT True 0
-  (HasNatLits n) -> return $ NumericFamily NatT False n
-  HasRatLits -> return $ NumericFamily RatT False 0
-  HasVecLits {} -> return $ ContainerFamily True
-  HasMap -> return $ ContainerFamily False
-  HasFold -> return $ ContainerFamily False
-  HasQuantifierIn {} -> return $ ContainerFamily False
+  HasNot                  -> return BooleanFamily
+  HasAnd                  -> return BooleanFamily
+  HasOr                   -> return BooleanFamily
+  HasImplies              -> return BooleanFamily
+  HasQuantifier{}         -> return BooleanFamily
+  HasEq{}                 -> return $ NumericFamily NatT False 0
+  HasOrd{}                -> return $ NumericFamily NatT False 0
+  HasAdd                  -> return $ NumericFamily NatT True  0
+  HasSub                  -> return $ NumericFamily IntT True  0
+  HasMul                  -> return $ NumericFamily NatT True  0
+  HasDiv                  -> return $ NumericFamily RatT True  0
+  HasNeg                  -> return $ NumericFamily IntT True  0
+  (HasNatLits n)          -> return $ NumericFamily NatT False n
+  HasRatLits              -> return $ NumericFamily RatT False 0
+  HasVecLits{}            -> return $ ContainerFamily True
+  HasFold                 -> return $ ContainerFamily False
+  HasQuantifierIn{}       -> return $ ContainerFamily False
   NatInDomainConstraint n -> return $ NumericFamily NatT False n
-  AlmostEqualConstraint {} -> auxiliaryTCError
-  HasIf {} -> ifTCError
-  LinearityTypeClass {} -> auxiliaryTCError
-  PolarityTypeClass {} -> auxiliaryTCError
 
-defaultSolution ::
-  TCM m =>
-  Provenance ->
-  Int ->
-  TypeClass ->
-  m NormExpr
+  AlmostEqualConstraint{} -> auxiliaryTCError
+
+  HasIf{}                 -> ifTCError
+  LinearityTypeClass{}    -> auxiliaryTCError
+  PolarityTypeClass{}     -> auxiliaryTCError
+
+defaultSolution :: TCM m
+                => Provenance
+                -> Int
+                -> TypeClass
+                -> m NormExpr
 defaultSolution p ctxSize = \case
-  HasEq {} -> return $ VNatType p
-  HasOrd {} -> return $ VNatType p
-  HasNot -> createDefaultBoolType p
-  HasAnd -> createDefaultBoolType p
-  HasOr -> createDefaultBoolType p
-  HasImplies -> createDefaultBoolType p
-  HasQuantifier {} -> createDefaultBoolType p
-  HasAdd -> return $ VNatType p
-  HasSub -> return $ VIntType p
-  HasMul -> return $ VNatType p
-  HasDiv -> createDefaultRatType p
-  HasNeg -> return $ VIntType p
-  HasNatLits n -> return $ VIndexType p (VNatLiteral p (n + 1))
-  HasRatLits -> createDefaultRatType p
-  HasVecLits {} -> createDefaultListType p ctxSize
-  HasMap -> createDefaultListType p ctxSize
-  HasFold -> createDefaultListType p ctxSize
-  HasQuantifierIn {} -> createDefaultListType p ctxSize
+  HasEq{}                 -> return $ VNatType p
+  HasOrd{}                -> return $ VNatType p
+  HasNot                  -> createDefaultBoolType p
+  HasAnd                  -> createDefaultBoolType p
+  HasOr                   -> createDefaultBoolType p
+  HasImplies              -> createDefaultBoolType p
+  HasQuantifier{}         -> createDefaultBoolType p
+  HasAdd                  -> return $ VNatType p
+  HasSub                  -> return $ VIntType p
+  HasMul                  -> return $ VNatType p
+  HasDiv                  -> createDefaultRatType p
+  HasNeg                  -> return $ VIntType p
+  HasNatLits n            -> return $ VIndexType p (VNatLiteral p (n + 1))
+  HasRatLits              -> createDefaultRatType p
+  HasVecLits{}            -> createDefaultListType p ctxSize
+  HasFold                 -> createDefaultListType p ctxSize
+  HasQuantifierIn{}       -> createDefaultListType p ctxSize
   NatInDomainConstraint n -> return $ VNatLiteral p (n + 1)
-  HasIf {} -> ifTCError
-  LinearityTypeClass {} -> auxiliaryTCError
-  PolarityTypeClass {} -> auxiliaryTCError
-  AlmostEqualConstraint {} -> auxiliaryTCError
+
+  HasIf{}                 -> ifTCError
+  LinearityTypeClass{}    -> auxiliaryTCError
+  PolarityTypeClass{}     -> auxiliaryTCError
+  AlmostEqualConstraint{} -> auxiliaryTCError
 
 createDefaultListType :: TCM m => Provenance -> Int -> m NormType
 createDefaultListType p ctxSize = do
@@ -187,35 +183,33 @@ getCandidatesFromConstraint :: MonadCompile m => ConstraintContext -> TypeClassC
 getCandidatesFromConstraint ctx (Has _ tc args) = do
   let getCandidate = getCandidatesFromArgs ctx
   return $ case (tc, args) of
-    (HasEq eq, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasEq eq)
-    (HasOrd ord, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasOrd ord)
-    (HasNeg, [tArg, _tRes]) -> getCandidate [tArg] HasNeg
-    (HasAdd, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasAdd
-    (HasSub, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasSub
-    (HasMul, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasMul
-    (HasDiv, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasDiv
-    (HasFold, [_, t]) -> getCandidate [t] HasFold
-    (HasNatLits n, [t]) -> getCandidate [t] (HasNatLits n)
-    (HasRatLits, [t]) -> getCandidate [t] HasRatLits
-    (HasVecLits n, [_, t]) -> getCandidate [t] (HasVecLits n)
+    (HasEq eq,     [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasEq eq)
+    (HasOrd ord,   [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasOrd ord)
+    (HasNeg,       [tArg, _tRes])         -> getCandidate [tArg]         HasNeg
+    (HasAdd,       [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasAdd
+    (HasSub,       [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasSub
+    (HasMul,       [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasMul
+    (HasDiv,       [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasDiv
+    (HasFold,      [_, t])                -> getCandidate [t] HasFold
+    (HasNatLits n, [t])                   -> getCandidate [t] (HasNatLits n)
+    (HasRatLits,   [t])                   -> getCandidate [t] HasRatLits
+    (HasVecLits n, [_, t])                -> getCandidate [t] (HasVecLits n)
     (NatInDomainConstraint n, [t]) -> case argExpr t of
       VIndexType p size -> getCandidate [ExplicitArg p size] (NatInDomainConstraint n)
-      _ -> []
-    _ -> []
+      _                 -> []
+    _                                     -> []
 
 getCandidatesFromArgs :: ConstraintContext -> [NormArg] -> TypeClass -> [Candidate]
 getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t -> do
   let e = argExpr t
   case getMeta (argExpr t) of
-    Just m -> Just (Candidate m tc e ctx) -- m, t, tc)
-    _ -> Nothing
+    Just m -> Just (Candidate m tc e ctx) --m, t, tc)
+    _      -> Nothing
 
 auxiliaryTCError :: MonadCompile m => m a
-auxiliaryTCError =
-  compilerDeveloperError
-    "Should not be considering defaults for auxiliary constraints"
+auxiliaryTCError = compilerDeveloperError
+  "Should not be considering defaults for auxiliary constraints"
 
 ifTCError :: MonadCompile m => m a
-ifTCError =
-  compilerDeveloperError
-    "Should not be considering defaults for 'HasIf' constraints"
+ifTCError = compilerDeveloperError
+  "Should not be considering defaults for 'HasIf' constraints"

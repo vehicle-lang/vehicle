@@ -1,15 +1,16 @@
 module Vehicle.Compile.Type.Bidirectional
-  ( TCM,
-    checkExpr,
-    inferExpr,
-  )
-where
+  ( TCM
+  , checkExpr
+  , inferExpr
+  ) where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Monoid (Endo (..), appEndo)
 import Data.Text (pack)
+import Prelude hiding (pi)
+
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -17,10 +18,9 @@ import Vehicle.Compile.Type.Builtin
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
-import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.DSL
 import Vehicle.Expr.Normalised (GluedExpr (..))
-import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
 -- Bidirectional type-checking
@@ -58,29 +58,27 @@ showInferExit (e, t) = do
 -- | Type checking monad with additional bound context for the bidirectional
 -- type-checking pass.
 type MonadBidirectional m =
-  ( TCM m,
-    MonadReader TypingBoundCtx m
+  ( TCM m
+  , MonadReader TypingBoundCtx m
   )
 
-checkExprTypesEqual ::
-  MonadBidirectional m =>
-  Provenance ->
-  CheckedExpr ->
-  CheckedType ->
-  CheckedType ->
-  m ()
+checkExprTypesEqual :: MonadBidirectional m
+                    => Provenance
+                    -> CheckedExpr
+                    -> CheckedType
+                    -> CheckedType
+                    -> m ()
 checkExprTypesEqual p expr expectedType actualType = do
   ctx <- ask
   let origin = CheckingExprType expr expectedType actualType
   addFreshUnificationConstraint TypeGroup p ctx origin expectedType actualType
 
-checkBinderTypesEqual ::
-  MonadBidirectional m =>
-  Provenance ->
-  DBBinding ->
-  CheckedType ->
-  CheckedType ->
-  m ()
+checkBinderTypesEqual :: MonadBidirectional m
+                      => Provenance
+                      -> DBBinding
+                      -> CheckedType
+                      -> CheckedType
+                      -> m ()
 checkBinderTypesEqual p binderName expectedType actualType = do
   ctx <- ask
   let origin = CheckingBinderType binderName expectedType actualType
@@ -89,53 +87,54 @@ checkBinderTypesEqual p binderName expectedType actualType = do
 --------------------------------------------------------------------------------
 -- Checking
 
-checkExpr ::
-  MonadBidirectional m =>
-  CheckedType -> -- Type we're checking against
-  UncheckedExpr -> -- Expression being type-checked
-  m CheckedExpr -- Updated expression
+checkExpr :: MonadBidirectional m
+          => CheckedType   -- Type we're checking against
+          -> UncheckedExpr -- Expression being type-checked
+          -> m CheckedExpr -- Updated expression
 checkExpr expectedType expr = do
   showCheckEntry expectedType expr
   res <- case (expectedType, expr) of
+
     -- In the case where we have a matching pi binder and lam binder use the pi-binder to
     -- aid inference of lambda binder.
     (Pi _ piBinder resultType, Lam p lamBinder body)
       | visibilityOf piBinder == visibilityOf lamBinder -> do
-          let binderName = nameOf lamBinder
-          -- Check that the type of the lambda binder is a type.
-          checkedLamBinderType <- checkExpr (TypeUniverse (inserted p) 0) (typeOf lamBinder)
+        let binderName = nameOf lamBinder
+        -- Check that the type of the lambda binder is a type.
+        checkedLamBinderType <- checkExpr (TypeUniverse (inserted p) 0) (typeOf lamBinder)
 
-          -- Check that the lambda and pi binders have the same type.
-          checkBinderTypesEqual p binderName (typeOf piBinder) checkedLamBinderType
+        -- Check that the lambda and pi binders have the same type.
+        checkBinderTypesEqual p binderName (typeOf piBinder) checkedLamBinderType
 
-          -- Add bound variable to context
-          checkedBody <- addToBoundCtx (binderName, typeOf piBinder, Nothing) $ do
-            -- Check if the type of the expression matches the expected result type.
-            checkExpr resultType body
+        -- Add bound variable to context
+        checkedBody <- addToBoundCtx (binderName, typeOf piBinder, Nothing) $ do
 
-          let checkedLamBinder = replaceBinderType checkedLamBinderType lamBinder
-          return $ Lam p checkedLamBinder checkedBody
+          -- Check if the type of the expression matches the expected result type.
+          checkExpr resultType body
+
+        let checkedLamBinder = replaceBinderType checkedLamBinderType lamBinder
+        return $ Lam p checkedLamBinder checkedBody
 
     -- In the case where we have an implicit or instance pi binder then insert a new
     -- lambda expression.
     (Pi _ piBinder resultType, e)
       | isImplicit piBinder || isInstance piBinder -> do
-          -- Then eta-expand
-          let ann = inserted $ provenanceOf piBinder
-          let binderName = nameOf piBinder
-          let binderType = typeOf piBinder
+      -- Then eta-expand
+      let ann = inserted $ provenanceOf piBinder
+      let binderName = nameOf piBinder
+      let binderType = typeOf piBinder
 
-          -- Add the pi-bound variable to the context
-          checkedExpr <-
-            addToBoundCtx (binderName, binderType, Nothing) $
-              -- Check if the type of the expression matches the expected result type.
-              checkExpr resultType (liftDBIndices 1 e)
+      -- Add the pi-bound variable to the context
+      checkedExpr <- addToBoundCtx (binderName, binderType, Nothing) $
+        -- Check if the type of the expression matches the expected result type.
+        checkExpr resultType (liftDBIndices 1 e)
 
-          -- Create a new binder mirroring the Pi binder expected
-          let lamBinder = Binder ann (BinderForm OnlyName False) (visibilityOf piBinder) (relevanceOf piBinder) binderName binderType
+      -- Create a new binder mirroring the Pi binder expected
+      let lamBinder = Binder ann (BinderForm OnlyName False) (visibilityOf piBinder) (relevanceOf piBinder) binderName binderType
 
-          -- Prepend a new lambda to the expression with the implicit binder
-          return $ Lam ann lamBinder checkedExpr
+      -- Prepend a new lambda to the expression with the implicit binder
+      return $ Lam ann lamBinder checkedExpr
+
     (_, Hole p _name) -> do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted as
@@ -165,37 +164,39 @@ viaInfer expectedType expr = do
 
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
-inferExpr ::
-  MonadBidirectional m =>
-  UncheckedExpr ->
-  m (CheckedExpr, CheckedType)
+inferExpr :: MonadBidirectional m
+          => UncheckedExpr
+          -> m (CheckedExpr, CheckedType)
 inferExpr e = do
   showInferEntry e
   res <- case e of
     Universe ann u -> case u of
-      TypeUniv l -> return (e, TypeUniverse (inserted ann) (l + 1))
-      _ ->
-        compilerDeveloperError $
-          "Should not be trying to infer the type of" <+> pretty u
+      TypeUniv l   -> return (e , TypeUniverse (inserted ann) (l + 1))
+      _            -> compilerDeveloperError $
+        "Should not be trying to infer the type of" <+> pretty u
+
     Meta _ m -> do
       metaType <- getMetaType m
       return (e, metaType)
+
     Hole p _name -> do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted
       -- as different meta-variables.
       boundCtxSize <- length <$> getBoundCtx
       metaType <- unnormalised <$> freshExprMeta p (TypeUniverse p 0) boundCtxSize
-      metaExpr <- unnormalised <$> freshExprMeta p metaType boundCtxSize
+      metaExpr <- unnormalised <$>freshExprMeta p metaType boundCtxSize
       checkExprTypesEqual p metaExpr metaType (TypeUniverse p 0)
       return (metaExpr, metaType)
+
     Ann p expr exprType -> do
       -- Check the annotation is a type.
       (checkedExprType, exprTypeType) <- inferExpr exprType
       checkExprTypesEqual p exprType (TypeUniverse (inserted p) 0) exprTypeType
 
       checkedExpr <- checkExpr checkedExprType expr
-      return (Ann p checkedExpr checkedExprType, checkedExprType)
+      return (Ann p checkedExpr checkedExprType , checkedExprType)
+
     Pi p binder resultType -> do
       (checkedBinderType, typeOfBinderType) <- inferExpr (typeOf binder)
 
@@ -204,7 +205,7 @@ inferExpr e = do
 
       let maxResultType = typeOfBinderType `tMax` typeOfResultType
       let checkedBinder = replaceBinderType checkedBinderType binder
-      return (Pi p checkedBinder checkedResultType, maxResultType)
+      return (Pi p checkedBinder checkedResultType , maxResultType)
 
     -- Literals are slightly tricky to type-check, as by default they
     -- probably are standalone, i.e. not wrapped in an `App`, in which
@@ -217,30 +218,29 @@ inferExpr e = do
     App p (Literal p' l) args -> do
       let (checkedLit, checkedLitType) = inferLiteral p' l
       inferApp p checkedLit checkedLitType (NonEmpty.toList args)
+
     Literal p l -> do
       let (checkedLit, checkedLitType) = inferLiteral p l
       inferApp p checkedLit checkedLitType []
+
     App p fun args -> do
       (checkedFun, checkedFunType) <- inferExpr fun
       inferApp p checkedFun checkedFunType (NonEmpty.toList args)
+
     Var p (Bound i) -> do
       ctx <- getBoundCtx
       case lookupVar ctx i of
         Just (_, checkedType, _) -> do
-          let liftedCheckedType = liftDBIndices (dbIndex i + 1) checkedType
+          let liftedCheckedType = liftDBIndices (dbIndex i+1) checkedType
           return (Var p (Bound i), liftedCheckedType)
-        Nothing ->
-          compilerDeveloperError $
-            "DBIndex"
-              <+> pretty i
-              <+> "out of bounds when looking"
-              <+> "up variable in context"
-              <+> prettyVerbose (boundContextOf ctx)
-              <+> "at"
-              <+> pretty p
+        Nothing      -> compilerDeveloperError $
+          "DBIndex" <+> pretty i <+> "out of bounds when looking" <+>
+          "up variable in context" <+> prettyVerbose (boundContextOf ctx) <+> "at" <+> pretty p
+
     Var p (Free ident) -> do
       originalType <- getDeclType p ident
       return (Var p (Free ident), originalType)
+
     Let p boundExpr binder body -> do
       -- Check that the type of the bound variable is a type
       (typeOfBoundExpr, typeOfBoundExprType) <- inferExpr (typeOf binder)
@@ -253,21 +253,20 @@ inferExpr e = do
 
       -- Pretend the let expression is really a lambda application and use
       -- the application machinary to infer the result type and the type of the bound expression.
-      (resultType, boundArgs) <-
-        inferArgs
-          (Lam p checkedBinder body, [ExplicitArg p boundExpr])
-          (Pi p checkedBinder typeOfBody)
-          [ExplicitArg p boundExpr]
+      (resultType, boundArgs) <- inferArgs
+        (Lam p checkedBinder body, [ExplicitArg p boundExpr])
+        (Pi p checkedBinder typeOfBody)
+        [ExplicitArg p boundExpr]
 
       -- Extract the type of the bound expression
       checkedBoundExpr <- case boundArgs of
         [arg] -> return (argExpr arg)
-        _ ->
-          compilerDeveloperError $
-            "inference of type of let expression returned more than one argument:"
-              <+> prettyVerbose boundArgs
+        _     -> compilerDeveloperError $
+          "inference of type of let expression returned more than one argument:" <+>
+          prettyVerbose boundArgs
 
-      return (Let p checkedBoundExpr checkedBinder checkedBody, resultType)
+      return (Let p checkedBoundExpr checkedBinder checkedBody , resultType)
+
     Lam p binder body -> do
       -- Infer the type of the bound variable from the binder
       (typeOfBinder, typeOfBinderType) <- inferExpr (typeOf binder)
@@ -277,13 +276,15 @@ inferExpr e = do
       let checkedBinder = replaceBinderType typeOfBinder binder
 
       -- Update the context with the bound variable
-      (checkedBody, typeOfBody) <-
+      (checkedBody , typeOfBody) <-
         addToBoundCtx (nameOf binder, typeOfBinder, Nothing) $ inferExpr body
 
       let t' = Pi p' checkedBinder typeOfBody
-      return (Lam p checkedBinder checkedBody, t')
+      return (Lam p checkedBinder checkedBody , t')
+
     Builtin p op -> do
       return (Builtin p op, typeOfBuiltin p op)
+
     LVec ann elems -> do
       let p = provenanceOf ann
 
@@ -309,12 +310,12 @@ inferExpr e = do
       -- Return the result
       return (LVec ann checkedElems, typeOfContainer)
 
-  -- TODO re-enable once we have the universe solver up and running.
-  {-
-  (checkedTypeClass, typeClassType) <- inferExpr typeClass
-  unify ann typeClassType (TypeUniverse (inserted ann) 0)
-  return (PrimDict ann checkedTypeClass, checkedTypeClass)
-  -}
+      -- TODO re-enable once we have the universe solver up and running.
+      {-
+      (checkedTypeClass, typeClassType) <- inferExpr typeClass
+      unify ann typeClassType (TypeUniverse (inserted ann) 0)
+      return (PrimDict ann checkedTypeClass, checkedTypeClass)
+      -}
 
   showInferExit res
   return res
@@ -325,13 +326,12 @@ inferLiteral p l = (Literal p l, typeOfLiteral p l)
 -- | Takes a function and its arguments, inserts any needed implicits
 -- or instance arguments and then returns the function applied to the full
 -- list of arguments as well as the result type.
-inferApp ::
-  MonadBidirectional m =>
-  Provenance ->
-  CheckedExpr ->
-  CheckedType ->
-  [UncheckedArg] ->
-  m (CheckedExpr, CheckedType)
+inferApp :: MonadBidirectional m
+         => Provenance
+         -> CheckedExpr
+         -> CheckedType
+         -> [UncheckedArg]
+         -> m (CheckedExpr, CheckedType)
 inferApp p fun funType args = do
   (appliedFunType, checkedArgs) <- inferArgs (fun, args) funType args
   return (normAppList p fun checkedArgs, appliedFunType)
@@ -341,72 +341,68 @@ inferApp p fun funType args = do
 -- matching pi binder and inserting any required implicit/instance arguments.
 -- Returns the type of the function when applied to the full list of arguments
 -- (including inserted arguments) and that list of arguments.
-inferArgs ::
-  MonadBidirectional m =>
-  (CheckedExpr, [UncheckedArg]) -> -- The original function and its arguments
-  CheckedType -> -- Type of the function
-  [UncheckedArg] -> -- User-provided arguments of the function
-  m (CheckedType, [CheckedArg])
+inferArgs :: MonadBidirectional m
+          => (CheckedExpr, [UncheckedArg]) -- The original function and its arguments
+          -> CheckedType                   -- Type of the function
+          -> [UncheckedArg]                -- User-provided arguments of the function
+          -> m (CheckedType, [CheckedArg])
 inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
   | isExplicit binder && null args = return (piT, [])
   | otherwise = do
-      let p = provenanceOf fun
+    let p = provenanceOf fun
 
-      -- Determine whether we have an arg that matches the binder
-      (matchedUncheckedArg, remainingUncheckedArgs) <- case args of
-        [] -> return (Nothing, args)
-        (arg : remainingArgs)
-          | visibilityMatches binder arg -> return (Just arg, remainingArgs)
-          | isExplicit binder -> missingExplicitArgumentError binder arg
-          | otherwise -> return (Nothing, args)
+    -- Determine whether we have an arg that matches the binder
+    (matchedUncheckedArg, remainingUncheckedArgs) <- case args of
+      [] -> return (Nothing, args)
+      (arg : remainingArgs)
+        | visibilityMatches binder arg -> return (Just arg, remainingArgs)
+        | isExplicit binder            -> missingExplicitArgumentError binder arg
+        | otherwise                    -> return (Nothing, args)
 
-      -- Calculate what the new checked arg should be, create a fresh meta if no arg was matched above
-      checkedArgExpr <- do
-        let binderType = typeOf binder
-        case matchedUncheckedArg of
-          Just arg -> checkExpr binderType (argExpr arg)
-          Nothing
-            | isImplicit binder -> do
-                boundCtxSize <- length <$> getBoundCtx
-                unnormalised <$> freshExprMeta p binderType boundCtxSize
-            | otherwise -> do
-                ctx <- getBoundCtx
-                metaExpr <- addFreshTypeClassConstraint ctx fun args' binderType
-                return metaExpr
+    -- Calculate what the new checked arg should be, create a fresh meta if no arg was matched above
+    checkedArgExpr <- do
+      let binderType = typeOf binder
+      case matchedUncheckedArg of
+        Just arg -> checkExpr binderType (argExpr arg)
+        Nothing
+          | isImplicit binder -> do
+            boundCtxSize <- length <$> getBoundCtx
+            unnormalised <$> freshExprMeta p binderType boundCtxSize
+          | otherwise         -> do
+              ctx <- getBoundCtx
+              metaExpr <- addFreshTypeClassConstraint ctx fun args' binderType
+              return metaExpr
 
-      let checkedArg = Arg p (visibilityOf binder) (relevanceOf binder) checkedArgExpr
+    let checkedArg = Arg p (visibilityOf binder) (relevanceOf binder) checkedArgExpr
 
-      -- Substitute the checked arg through the result of the Pi type.
-      let substResultType = argExpr checkedArg `substDBInto` resultType
+    -- Substitute the checked arg through the result of the Pi type.
+    let substResultType = argExpr checkedArg `substDBInto` resultType
 
-      -- Recurse if necessary to check the remaining unchecked args
-      let needToRecurse = not (null remainingUncheckedArgs) || visibilityOf binder /= Explicit
-      (typeAfterApplication, checkedArgs) <-
-        if needToRecurse
-          then inferArgs original substResultType remainingUncheckedArgs
-          else return (substResultType, [])
+    -- Recurse if necessary to check the remaining unchecked args
+    let needToRecurse = not (null remainingUncheckedArgs) || visibilityOf binder /= Explicit
+    (typeAfterApplication, checkedArgs) <- if needToRecurse
+      then inferArgs original substResultType remainingUncheckedArgs
+      else return (substResultType, [])
 
-      -- Return the result
-      return (typeAfterApplication, checkedArg : checkedArgs)
+    -- Return the result
+    return (typeAfterApplication, checkedArg : checkedArgs)
+
 inferArgs fun nonPiType args
   | null args = return (nonPiType, [])
-  | otherwise = do
-      ctx <- getBoundCtx
-      let p = provenanceOf fun
-      let p' = inserted p
-      let mkRes =
-            [ Endo $ \tRes -> pi (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
-              | (i, arg) <- zip [0 :: Int ..] args
-            ]
-      let expectedType = fromDSL p' (appEndo (mconcat mkRes) (tHole "res"))
-      throwError $ TypeMismatch p (boundContextOf ctx) nonPiType expectedType
+  | otherwise    = do
+    ctx <- getBoundCtx
+    let p = provenanceOf fun
+    let p' = inserted p
+    let mkRes = [Endo $ \tRes -> pi (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
+                | (i, arg) <- zip [0::Int ..] args]
+    let expectedType = fromDSL p' (appEndo (mconcat mkRes) (tHole "res"))
+    throwError $ TypeMismatch p (boundContextOf ctx) nonPiType expectedType
 
-insertNonExplicitArgs ::
-  MonadBidirectional m =>
-  Provenance ->
-  CheckedExpr ->
-  CheckedType ->
-  m (CheckedExpr, CheckedType)
+insertNonExplicitArgs :: MonadBidirectional m
+                      => Provenance
+                      -> CheckedExpr
+                      -> CheckedType
+                      -> m (CheckedExpr, CheckedType)
 insertNonExplicitArgs ann checkedExpr actualType = inferApp ann checkedExpr actualType []
 
 missingExplicitArgumentError :: MonadBidirectional m => CheckedBinder -> UncheckedArg -> m a
@@ -421,9 +417,9 @@ missingExplicitArgumentError expectedBinder actualArg = do
 -- | Return the type of the provided literal,
 typeOfLiteral :: Provenance -> Literal -> CheckedType
 typeOfLiteral ann l = fromDSL ann $ case l of
-  LUnit -> tUnit
-  LBool _ -> tAnnBool constant unquantified
+  LUnit      -> tUnit
+  LBool _    -> tAnnBool constant unquantified
   LIndex n _ -> tIndex (natLit n)
-  LNat {} -> tNat
-  LInt {} -> tInt
-  LRat {} -> tAnnRat constant
+  LNat{}     -> tNat
+  LInt{}     -> tInt
+  LRat{}     -> tAnnRat constant

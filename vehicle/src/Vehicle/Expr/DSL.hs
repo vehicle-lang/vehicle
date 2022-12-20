@@ -1,73 +1,71 @@
 module Vehicle.Expr.DSL
-  ( DSL (..),
-    DSLExpr (..),
-    fromDSL,
-    type0,
-    (~>),
-    (~~>),
-    (.~~>),
-    (~~~>),
-    (.~~~>),
-    forAll,
-    forAllIrrelevant,
-    forAllLinearityTriples,
-    forAllPolarityTriples,
-    tUnit,
-    tBool,
-    tNat,
-    tInt,
-    tRat,
-    tAnnBool,
-    tAnnRat,
-    tList,
-    tListRaw,
-    tTensor,
-    tIndex,
-    tPol,
-    tLin,
-    tVector,
-    hasEq,
-    hasOrd,
-    hasAdd,
-    hasSub,
-    hasMul,
-    hasDiv,
-    hasNeg,
-    hasMap,
-    hasFold,
-    hasQuantifierIn,
-    hasNatLits,
-    hasRatLits,
-    hasVecLits,
-    hasNot,
-    hasAnd,
-    hasOr,
-    hasImplies,
-    hasQuantifier,
-    hasIf,
-    natInDomainConstraint,
-    maxLinearity,
-    mulLinearity,
-    addPolarity,
-    maxPolarity,
-    impliesPolarity,
-    negPolarity,
-    natLit,
-    tMax,
-    tHole,
-    piType,
-    nil,
-    cons,
-    unquantified,
-    constant,
-    linear,
-  )
-where
+  ( DSL(..)
+  , DSLExpr(..)
+  , fromDSL
+  , type0
+  , (~>)
+  , (~~>)
+  , (.~~>)
+  , (~~~>)
+  , (.~~~>)
+  , forAll
+  , forAllIrrelevant
+  , forAllLinearityTriples
+  , forAllPolarityTriples
+  , tUnit
+  , tBool
+  , tNat
+  , tInt
+  , tRat
+  , tAnnBool
+  , tAnnRat
+  , tList
+  , tTensor
+  , tIndex
+  , tPol
+  , tLin
+  , tVector
+  , hasEq
+  , hasOrd
+  , hasAdd
+  , hasSub
+  , hasMul
+  , hasDiv
+  , hasNeg
+  , hasFold
+  , hasQuantifierIn
+  , hasNatLits
+  , hasRatLits
+  , hasVecLits
+  , hasNot
+  , hasAnd
+  , hasOr
+  , hasImplies
+  , hasQuantifier
+  , hasIf
+  , natInDomainConstraint
+  , maxLinearity
+  , mulLinearity
+  , addPolarity
+  , maxPolarity
+  , impliesPolarity
+  , negPolarity
+  , natLit
+  , tMax
+  , tHole
+  , piType
+  , nil
+  , cons
+  , unquantified
+  , constant
+  , linear
+  ) where
 
 import Data.List.NonEmpty (NonEmpty)
+import Prelude hiding (pi)
+
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
-import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
 -- Definition
@@ -76,9 +74,9 @@ class DSL expr where
   infixl 4 `app`
 
   hole :: expr
-  app :: expr -> NonEmpty (Visibility, Relevance, expr) -> expr
-  pi :: Visibility -> Relevance -> expr -> (expr -> expr) -> expr
-  lam :: Visibility -> Relevance -> expr -> (expr -> expr) -> expr
+  app  :: expr -> NonEmpty (Visibility, Relevance, expr) -> expr
+  pi   :: Visibility -> Relevance -> expr -> (expr -> expr) -> expr
+  lam  :: Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   lseq :: expr -> [expr] -> expr
 
 newtype DSLExpr = DSL
@@ -103,28 +101,26 @@ instance DSL DSLExpr where
 
   pi v r binderType bodyFn = DSL $ \p i ->
     let varType = unDSL binderType p i
-        var = boundVar i
-        form = approxPiForm v
-        binder = Binder p form v r Nothing varType
-        body = unDSL (bodyFn var) p (i + 1)
-     in Pi p binder body
+        var     = boundVar i
+        form    = approxPiForm v
+        binder  = Binder p form v r Nothing varType
+        body    = unDSL (bodyFn var) p (i + 1)
+    in Pi p binder body
 
   lam v r binderType bodyFn = DSL $ \p i ->
     let varType = unDSL binderType p i
-        var = boundVar i
-        binder = Binder p (BinderForm OnlyName True) v r Nothing varType
-        body = unDSL (bodyFn var) p (i + 1)
-     in Lam p binder body
+        var     = boundVar i
+        binder  = Binder p (BinderForm OnlyName True) v r Nothing varType
+        body    = unDSL (bodyFn var) p (i + 1)
+    in Lam p binder body
 
   app fun args = DSL $ \p i ->
     let fun' = unDSL fun p i
         args' = fmap (\(v, r, e) -> Arg p v r (unDSL e p i)) args
-     in App p fun' args'
+    in App p fun' args'
 
   lseq tElem args = DSL $ \p i ->
-    App
-      p
-      (LVec p (fmap (\e -> unDSL e p i) args))
+    App p (LVec p (fmap (\e -> unDSL e p i) args))
       [ ImplicitArg p (unDSL tElem p i)
       ]
 
@@ -133,15 +129,14 @@ piType t1 t2 = t1 `tMax` t2
 
 universeLevel :: DBExpr -> UniverseLevel
 universeLevel (Universe _ (TypeUniv l)) = l
-universeLevel (Meta _ _) = 0 -- This is probably going to bite us, apologies.
-universeLevel (App _ (Meta _ _) _) = 0 -- This is probably going to bite us, apologies.
-universeLevel (Pi _ _ r) = universeLevel r -- This is probably going to bite us, apologies.
-universeLevel t =
-  developerError $
-    "Expected argument of type Type. Found" <+> pretty (show t) <> "."
+universeLevel (Meta _ _ )               = 0 -- This is probably going to bite us, apologies.
+universeLevel (App _ (Meta _ _) _)      = 0 -- This is probably going to bite us, apologies.
+universeLevel (Pi _ _ r)                = universeLevel r -- This is probably going to bite us, apologies.
+universeLevel t                         = developerError $
+  "Expected argument of type Type. Found" <+> pretty (show t) <> "."
 
 tMax :: DBExpr -> DBExpr -> DBExpr
-tMax t1 t2 = if universeLevel t1 > universeLevel t2 then t1 else t2
+tMax t1 t2  = if universeLevel t1 > universeLevel t2 then t1 else t2
 
 builtin :: Builtin -> DSLExpr
 builtin b = DSL $ \ann _ -> Builtin ann b
@@ -153,37 +148,32 @@ constructor = builtin . Constructor
 -- Types
 
 infix 4 @@
-
 (@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
-(@@) f args = app f (fmap (Explicit,Relevant,) args)
+(@@) f args = app f (fmap (Explicit, Relevant,) args)
 
 -- | Explicit function type
-infixr 4 ~>
 
+infixr 4 ~>
 (~>) :: DSLExpr -> DSLExpr -> DSLExpr
 x ~> y = pi Explicit Relevant x (const y)
 
 -- | Implicit function type
 infixr 4 ~~>
-
 (~~>) :: DSLExpr -> DSLExpr -> DSLExpr
 x ~~> y = pi Implicit Relevant x (const y)
 
 -- | Irrelevant implicit function type
 infixr 4 .~~>
-
 (.~~>) :: DSLExpr -> DSLExpr -> DSLExpr
 x .~~> y = pi Implicit Irrelevant x (const y)
 
 -- | Instance function type
 infixr 4 ~~~>
-
 (~~~>) :: DSLExpr -> DSLExpr -> DSLExpr
 x ~~~> y = pi Instance Relevant x (const y)
 
 -- | Irrelevant instance function type
 infixr 4 .~~~>
-
 (.~~~>) :: DSLExpr -> DSLExpr -> DSLExpr
 x .~~~> y = pi Instance Irrelevant x (const y)
 
@@ -222,24 +212,20 @@ tUnit = constructor Unit
 
 tBool, tNat, tInt, tRat :: DSLExpr
 tBool = constructor Bool
-tNat = constructor Nat
-tInt = constructor Int
-tRat = constructor Rat
+tNat  = constructor Nat
+tInt  = constructor Int
+tRat  = constructor Rat
 
-tAnnRat :: DSLExpr -> DSLExpr
-tAnnRat linearity =
-  app
-    tRat
-    [ (Implicit, Irrelevant, linearity)
-    ]
+tAnnRat :: DSLExpr ->  DSLExpr
+tAnnRat linearity = app tRat
+  [ (Implicit, Irrelevant, linearity)
+  ]
 
-tAnnBool :: DSLExpr -> DSLExpr -> DSLExpr
-tAnnBool linearity polarity =
-  app
-    tBool
-    [ (Implicit, Irrelevant, linearity),
-      (Implicit, Irrelevant, polarity)
-    ]
+tAnnBool :: DSLExpr -> DSLExpr ->  DSLExpr
+tAnnBool linearity polarity = app tBool
+  [ (Implicit, Irrelevant, linearity)
+  , (Implicit, Irrelevant, polarity)
+  ]
 
 tVector :: DSLExpr -> DSLExpr -> DSLExpr
 tVector tElem dim = constructor Vector @@ [tElem, dim]
@@ -247,11 +233,8 @@ tVector tElem dim = constructor Vector @@ [tElem, dim]
 tTensor :: DSLExpr -> DSLExpr -> DSLExpr
 tTensor tElem dims = builtin Tensor @@ [tElem, dims]
 
-tListRaw :: DSLExpr
-tListRaw = constructor List
-
 tList :: DSLExpr -> DSLExpr
-tList tElem = tListRaw @@ [tElem]
+tList tElem = constructor List @@ [tElem]
 
 tIndex :: DSLExpr -> DSLExpr
 tIndex n = constructor Index @@ [n]
@@ -300,9 +283,6 @@ hasDiv t1 t2 t3 = typeClass HasDiv [t1, t2, t3]
 
 hasNeg :: DSLExpr -> DSLExpr -> DSLExpr
 hasNeg t1 t2 = typeClass HasNeg [t1, t2]
-
-hasMap :: DSLExpr -> DSLExpr
-hasMap tCont = typeClass HasMap [tCont]
 
 hasFold :: DSLExpr -> DSLExpr -> DSLExpr
 hasFold tCont tElem = typeClass HasFold [tCont, tElem]
@@ -362,13 +342,11 @@ nil :: DSLExpr -> DSLExpr
 nil tElem = lseq tElem []
 
 cons :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-cons tElem x xs =
-  app
-    (constructor Cons)
-    [ (Implicit, Relevant, tElem),
-      (Explicit, Relevant, x),
-      (Explicit, Relevant, xs)
-    ]
+cons tElem x xs = app (constructor Cons)
+  [ (Implicit, Relevant, tElem)
+  , (Explicit, Relevant, x)
+  , (Explicit, Relevant, xs)
+  ]
 
 --------------------------------------------------------------------------------
 -- Literals
@@ -387,8 +365,7 @@ constant = constructor (Linearity Constant)
 
 linear :: DSLExpr
 linear = DSL $ \p _ -> Builtin p (Constructor $ Linearity (Linear $ prov p ""))
-  where
-    prov = QuantifiedVariableProvenance
+  where prov = QuantifiedVariableProvenance
 
 unquantified :: DSLExpr
 unquantified = constructor (Polarity Unquantified)

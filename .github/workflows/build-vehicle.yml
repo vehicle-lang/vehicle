@@ -38,7 +38,11 @@ jobs:
 
       - name: Test Vehicle
         run: |
-          cabal test all                     \
+          cabal v2-test vehicle-unit-tests   \
+            --test-option=--color=always     \
+            --test-show-details=always       \
+            --project-file=${{ env.CABAL_PROJECT_FILE }}
+          cabal v2-test vehicle-golden-tests \
             --test-option=--color=always     \
             --test-show-details=always       \
             --project-file=${{ env.CABAL_PROJECT_FILE }}
@@ -47,7 +51,7 @@ jobs:
       - name: Build Vehicle
         run: |
           mkdir -p bin
-          cabal install exe:vehicle          \
+          cabal v2-install exe:vehicle       \
             --overwrite-policy=always        \
             --install-method=copy            \
             --installdir=bin                 \
