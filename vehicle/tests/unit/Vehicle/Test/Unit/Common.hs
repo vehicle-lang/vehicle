@@ -1,11 +1,11 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Test.Unit.Common where
 
 import Control.Monad.Except (ExceptT)
-import Control.Monad.Reader.Class (MonadReader (ask))
 import Data.Data (Proxy (Proxy))
 import Data.Functor.Foldable (Recursive (cata))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Proxy (Proxy)
 import Data.Tagged (Tagged (Tagged))
 import Debug.Trace (trace)
 import Test.Tasty (TestTree, askOption, includingOptions)
@@ -28,9 +28,7 @@ import Vehicle.Compile.Prelude
     normApp,
   )
 import Vehicle.Prelude
-  ( DelayedLogger,
-    DelayedLoggerT,
-    LoggingLevel (..),
+  ( DelayedLoggerT,
     Pretty (pretty),
     defaultLoggingLevel,
     developerError,
@@ -60,8 +58,8 @@ instance IsOption LoggingLevel where
 -- Test settings monad
 
 unitTestCase :: String -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> TestTree
-unitTestCase testName e =
-  askOption $ \logLevel -> testCase testName (traceLogs logLevel e)
+unitTestCase testName errorOrAssertionWithLogs =
+  askOption $ \logLevel -> testCase testName (traceLogs logLevel errorOrAssertionWithLogs)
   where
     traceLogs :: LoggingLevel -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> Assertion
     traceLogs logLevel e = do

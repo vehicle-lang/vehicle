@@ -1,13 +1,15 @@
 module Vehicle.Test.Unit.Compile.AlphaEquivalence (alphaEquivalenceTests) where
 
 import Control.Exception ()
-import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Data.Hashable (Hashable (hash))
 import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile (parseAndTypeCheckExpr)
-import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (alphaEq))
+import Vehicle.Expr.CoDeBruijn.Conversion (toCoDBExpr)
+import Vehicle.Prelude
   ( Pretty (pretty),
     indent,
     layoutAsString,
@@ -15,9 +17,6 @@ import Vehicle.Compile.Prelude
     squotes,
     (<+>),
   )
-import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (alphaEq))
-import Vehicle.Expr.CoDeBruijn.Conversion (toCoDBExpr)
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------
