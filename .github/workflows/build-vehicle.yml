@@ -15,6 +15,11 @@ on:
         description: "The Cabal version to run the job with."
         required: true
         type: string
+      cabal-extra-args:
+        description: "Extra arguments to pass to Cabal."
+        required: false
+        type: string
+        default: ""
 
 env:
   CABAL_PROJECT_FILE: cabal.project.ghc-${{ inputs.ghc-version }}
@@ -41,11 +46,13 @@ jobs:
           cabal v2-test vehicle-unit-tests   \
             --test-option=--color=always     \
             --test-show-details=always       \
-            --project-file=${{ env.CABAL_PROJECT_FILE }}
+            --project-file=${{ env.CABAL_PROJECT_FILE }} \
+            ${{ inputs.cabal-extra-args }}
           cabal v2-test vehicle-golden-tests \
             --test-option=--color=always     \
             --test-show-details=always       \
-            --project-file=${{ env.CABAL_PROJECT_FILE }}
+            --project-file=${{ env.CABAL_PROJECT_FILE }} \
+            ${{ inputs.cabal-extra-args }}
         shell: sh
 
       - name: Build Vehicle

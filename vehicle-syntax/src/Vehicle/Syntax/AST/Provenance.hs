@@ -8,6 +8,12 @@ module Vehicle.Syntax.AST.Provenance
     expandProvenance,
     fillInProvenance,
     wasInsertedByCompiler,
+
+    -- * Exported for 'Vehicle.Syntax.AST.Instances.NoThunks'
+    Position,
+    Range,
+    Owner,
+    Origin,
   )
 where
 
@@ -64,7 +70,7 @@ data Range = Range
   { start :: Position,
     end :: Position
   }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 instance Ord Range where
   Range s1 e1 <= Range s2 e2 = s1 < s2 || (s1 == s2 && e1 <= e1)
