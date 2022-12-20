@@ -1,3 +1,5 @@
+module Main where
+
 import System.Environment (getArgs)
 import Vehicle.Test.Golden.TestSpec.NewTestSpec (newTestSpec)
 

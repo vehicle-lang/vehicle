@@ -60,11 +60,12 @@ common common-language
     ViewPatterns
 
 common common-library
-  import: common-language
+  import:      common-language
+  ghc-options: -Werror -Wall -fprint-potential-instances
 
 common common-executable
   import:      common-language
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Werror -Wall -threaded -with-rtsopts=-N
 
 library
   import:          common-library
@@ -208,8 +209,6 @@ library
     , unordered-containers  >=0.2.19  && <0.3
     , vector                >=0.12.3  && <0.13
     , vehicle-syntax
-
-  ghc-options:     -Werror -Wall -fprint-potential-instances
 
 executable vehicle
   import:         common-executable

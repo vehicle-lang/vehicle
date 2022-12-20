@@ -3,13 +3,8 @@ module Vehicle.Test.Unit.Compile.Normalisation
   )
 where
 
-import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
-import Data.IntMap (IntMap)
-import Data.IntMap qualified as IntMap
-import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
-import Vehicle.Compile (parseAndTypeCheckExpr)
 import Vehicle.Compile.Normalise.NBE (whnf)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
