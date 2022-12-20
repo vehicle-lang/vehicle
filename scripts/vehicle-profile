@@ -45,27 +45,22 @@ else
   rm "$fail"
 fi
 
-# Open the eventlog in a browser
-# See: https://en.wikipedia.org/wiki/Uname#Examples
-OPERATING_SYSTEM=$(uname -s)
-if [ "$OPERATING_SYSTEM" = "Darwin" ]
-then
-  open "$EVENTLOG_HTML"
-elif [ "$OPERATING_SYSTEM" = "Linux" ]
-then
-  # Use BROWSER environment variable?
-  # [ "$BROWSER" = "" ] || $BROWSER "$EVENTLOG_HTML"
-  :
+# Get the current platform
+SYSTEM=$(uname -s | cut -d- -f1)
+if [ "$SYSTEM" = "CYGWIN_NT" \
+  -o "$SYSTEM" = "MINGW32_NT" \
+  -o "$SYSTEM" = "MINGW64_NT" \
+  -o "$SYSTEM" = "MSYS_NT" ]; then
+  PLATFORM="Windows"
+elif [ "$SYSTEM" = "Darwin" ]; then
+  PLATFORM="macOS"
+elif [ "$SYSTEM" = "Linux" ]; then
+  PLATFORM="Linux"
 else
-  OPERATING_SYSTEM="$(echo "$OPERATING_SYSTEM" | cut -d - -f 1)"
-  if [ "$OPERATING_SYSTEM" = "CYGWIN_NT" \
-    -o "$OPERATING_SYSTEM" = "MINGW64_NT" \
-    -o "$OPERATING_SYSTEM" = "MSYS_NT" ]; then
-    # Use default browser on Windows? Open via PowerShell?
-    # start "" "$EVENTLOG_HTML"
-    :
-  else
-    # Unsupported operating system?
-    :
-  fi
+  echo "WARNING: Could not determine platform" >&2
+fi
+
+# Open the eventlog in a browser
+if [ "$PLATFORM" = "macOS" ]; then
+  open "$EVENTLOG_HTML"
 fi
