@@ -17,13 +17,14 @@ jobs:
       - uses: mrkkrp/ormolu-action@v8
 
   build-vehicle:
-    name: ${{ matrix.os_and_name[1] }} / GHC ${{ matrix.ghc-version }}
+    name: ${{ matrix.os_and_name[1] }} / GHC ${{ matrix.ghc-version }} ${{ matrix.cabal-extra-args }}
     needs: [ormolu]
     uses: ./.github/workflows/build-vehicle.yml
     with:
       runs-on: ${{ matrix.os_and_name[0] }}
       ghc-version: ${{ matrix.ghc-version }}
       cabal-version: ${{ matrix.cabal-version }}
+      cabal-extra-args: ${{ matrix.cabal-extra-args }}
     strategy:
       matrix:
         os_and_name:
@@ -37,6 +38,23 @@ jobs:
           - [windows-latest, Windows]
         ghc-version: ["8.10.7", "9.0.2", "9.2.4", "9.4.2"]
         cabal-version: ["3.8"]
+        cabal-extra-args: [""]
+        include:
+          # Build with -fghc-debug:
+          - os_and_name: [ubuntu-latest, Linux]
+            ghc-version: "9.2.4"
+            cabal-version: "3.8"
+            cabal-extra-args: "-fghc-debug"
+          # Build with -fnothunks:
+          - os_and_name: [ubuntu-latest, Linux]
+            ghc-version: "9.2.4"
+            cabal-version: "3.8"
+            cabal-extra-args: "-fnothunks"
+          # Build with -fghc-debug and -fnothunks:
+          - os_and_name: [ubuntu-latest, Linux]
+            ghc-version: "9.2.4"
+            cabal-version: "3.8"
+            cabal-extra-args: "-fghc-debug -fnothunks"
 
   build-vehicle-python:
     name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}

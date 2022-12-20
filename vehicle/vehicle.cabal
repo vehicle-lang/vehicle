@@ -20,10 +20,19 @@ tested-with:   GHC ==8.10.7 || ==9.0.2 || ==9.2.4 || ==9.4.2
 -- Generated with `script/extra-doc-files`:
 -- extra-doc-files:
 
-
 source-repository head
   type:     git
   location: https://github.com/vehicle-lang/vehicle
+
+flag ghc-debug
+  description: Add ghc-debug instrumentation
+  manual:      True
+  default:     False
+
+flag nothunks
+  description: Add NoThunks instrumentation
+  manual:      True
+  default:     False
 
 common common-language
   default-language:   Haskell2010
@@ -63,9 +72,20 @@ common common-library
   import:      common-language
   ghc-options: -Werror -Wall -fprint-potential-instances
 
+  if flag(ghc-debug)
+    build-depends: ghc-debug-stub >=0.3 && <0.4
+    cpp-options:   -DghcDebug
+
+  if flag(nothunks)
+    build-depends: nothunks >=0.1.3 && <0.2
+    cpp-options:   -Dnothunks
+
 common common-executable
   import:      common-language
   ghc-options: -Werror -Wall -threaded -with-rtsopts=-N
+
+  if flag(ghc-debug)
+    ghc-options: -threaded -rtsopts
 
 library
   import:          common-library
@@ -169,7 +189,7 @@ library
     Vehicle.Compile.Type.Monad.Instance
     Vehicle.Compile.Type.Resource
     Vehicle.Compile.Type.VariableContext
-    Vehicle.Prelude.Debug
+    Vehicle.Debug
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging
     Vehicle.Prelude.Logging.Backend
