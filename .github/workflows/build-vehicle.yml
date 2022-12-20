@@ -54,7 +54,7 @@ jobs:
       - name: Build Vehicle
         run: |
           mkdir -p bin
-          cabal v2-install exe:vehicle       \
+          cabal install vehicle:exe:vehicle  \
             --overwrite-policy=always        \
             --install-method=copy            \
             --installdir=bin                 \
