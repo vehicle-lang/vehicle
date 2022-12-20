@@ -43,14 +43,9 @@ jobs:
 
       - name: Test Vehicle
         run: |
-          cabal v2-test vehicle-unit-tests   \
-            --test-option=--color=always     \
-            --test-show-details=always       \
-            --project-file=${{ env.CABAL_PROJECT_FILE }} \
-            ${{ inputs.cabal-extra-args }}
-          cabal v2-test vehicle-golden-tests \
-            --test-option=--color=always     \
-            --test-show-details=always       \
+          cabal test all                 \
+            --test-option=--color=always \
+            --test-show-details=always   \
             --project-file=${{ env.CABAL_PROJECT_FILE }} \
             ${{ inputs.cabal-extra-args }}
         shell: sh
