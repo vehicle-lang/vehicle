@@ -10,8 +10,15 @@ on:
       - synchronize
 
 jobs:
+  ormolu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: mrkkrp/ormolu-action@v8
+
   build-vehicle:
     name: ${{ matrix.os_and_name[1] }} / GHC ${{ matrix.ghc-version }}
+    needs: [ormolu]
     uses: ./.github/workflows/build-vehicle.yml
     with:
       runs-on: ${{ matrix.os_and_name[0] }}
@@ -21,7 +28,7 @@ jobs:
       matrix:
         os_and_name:
           # NOTE: build-vehicle-python for Python 3.8.0 runs on Ubuntu 20.04,
-          #       because Python 3.8.0 is not supported by setup-python.
+          #       because setup-python does not support Python 3.8.0 on 22.04.
           #       The vehicle executable built here will be dependent on libc,
           #       which is generally forwards but not backwards compatible.
           #       Therefore, we must build vehicle on Ubuntu 20.04.
@@ -33,7 +40,7 @@ jobs:
 
   build-vehicle-python:
     name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}
-    needs: [build-vehicle]
+    needs: [ormolu, build-vehicle]
     uses: ./.github/workflows/build-vehicle-python.yml
     with:
       runs-on: ${{ matrix.os_and_name[0] }}

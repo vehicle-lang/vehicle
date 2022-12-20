@@ -1,0 +1,12 @@
+#!/bin/sh
+# Check that `core.autocrlf` is turned off.
+
+if  [ $(git config core.autocrlf) = "false" ]
+then
+  echo 'The ormolu code formatter for Haskell requires `core.autocrlf` to be off:'
+  echo 'https://github.com/tweag/ormolu#zap-beware-gits-coreautocrlf-on-windows-zap'
+  echo 'Please run "git config core.autocrlf false"'
+  exit 1
+else
+  exit 0
+fi
