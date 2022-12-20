@@ -120,7 +120,7 @@ parserTest name command expected = testCase name $ do
 
   case result of
     Failure failure -> assertFailure (show failure)
-    CompletionInvoked cr -> error "should not return CompletionInvoked in test case"
+    CompletionInvoked _cr -> error "should not return CompletionInvoked in test case"
     Success actual -> do
       let errorMessage =
             layoutAsString $

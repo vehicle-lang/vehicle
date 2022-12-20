@@ -1,3 +1,5 @@
+module Main where
+
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.FilePath ((</>))
 import Test.Tasty (defaultMain)

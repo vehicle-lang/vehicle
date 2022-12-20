@@ -41,15 +41,13 @@ import Data.Aeson.Types
     Value,
     object,
     typeMismatch,
-    withArray,
     withObject,
-    withText,
     (.!=),
     (.:),
     (.:?),
   )
 import Data.Aeson.Types qualified as Value (Value (..))
-import Data.Algorithm.Diff (Diff (..), PolyDiff (..), getGroupedDiffBy)
+import Data.Algorithm.Diff (Diff, PolyDiff (..), getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Array qualified as Array ((!))
 import Data.Foldable (for_)
@@ -57,12 +55,10 @@ import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty ((:|)), (<|))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (catMaybes, fromMaybe, maybeToList)
 import Data.Monoid (Any (Any))
-import Data.String (IsString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
@@ -74,13 +70,12 @@ import System.FilePath
   ( dropExtension,
     makeRelative,
     takeFileName,
-    (-<.>),
     (<.>),
     (</>),
   )
 import System.FilePath.Glob (CompOptions (..))
 import System.FilePath.Glob qualified as Glob
-import Test.Tasty (TestName, TestTree, Timeout (Timeout), localOption)
+import Test.Tasty (TestName, Timeout (Timeout))
 import Test.Tasty.Options (IsOption (parseValue))
 import Text.Printf (printf)
 import Text.Regex.TDFA qualified as Regex
@@ -130,7 +125,6 @@ data FilePattern = FilePattern
 parseFilePattern :: String -> Either String FilePattern
 parseFilePattern patternString = do
   globPattern <- eitherGlobPattern
-  let patternText = Text.pack patternString
   return $ FilePattern patternString globPattern
   where
     eitherGlobPattern = Glob.tryCompileWith compOptions (patternString <.> "golden")
@@ -287,15 +281,15 @@ testSpecDiffSpecStrikeOut testSpec = maybe id strikeOut maybeRegex
 -- | Strike out matches for a regular expression.
 strikeOut :: Regex -> Text -> Text
 strikeOut re txt = strikeOutAcc (Regex.matchAll re txt) txt []
+
+strikeOutAcc :: [Regex.MatchArray] -> Text -> [Text] -> Text
+strikeOutAcc [] txt acc = Text.concat (reverse (txt : acc))
+strikeOutAcc (match : matches) txt acc = strikeOutAcc matches rest newAcc
   where
-    strikeOutAcc :: [Regex.MatchArray] -> Text -> [Text] -> Text
-    strikeOutAcc [] txt acc = Text.concat (reverse (txt : acc))
-    strikeOutAcc (match : matches) txt acc = strikeOutAcc matches rest newAcc
-      where
-        newAcc = "[IGNORE]" : before : acc
-        (before, matchTextAndRest) = Text.splitAt offset txt
-        (_matchText, rest) = Text.splitAt length matchTextAndRest
-        (offset, length) = match Array.! 0
+    (matchOffset, matchLength) = match Array.! 0
+    (beforeMatch, matchAndAfterMatch) = Text.splitAt matchOffset txt
+    (_matchText, rest) = Text.splitAt matchLength matchAndAfterMatch
+    newAcc = "[IGNORE]" : beforeMatch : acc
 
 -- Reading and writing test specifications:
 
@@ -323,11 +317,11 @@ addOrReplaceTestSpec newTestSpec (TestSpecs oldTestSpecs)
   where
     (newTestSpecs, Any replaced) = runWriter (traverse (substByName newTestSpec) oldTestSpecs)
 
-    substByName :: TestSpec -> TestSpec -> Writer Any TestSpec
-    substByName newTestSpec oldTestSpec
-      | testSpecName newTestSpec == testSpecName oldTestSpec =
-          tell (Any True) >> return newTestSpec
-      | otherwise = return oldTestSpec
+substByName :: TestSpec -> TestSpec -> Writer Any TestSpec
+substByName newTestSpec oldTestSpec
+  | testSpecName newTestSpec == testSpecName oldTestSpec =
+      tell (Any True) >> return newTestSpec
+  | otherwise = return oldTestSpec
 
 -- | Check that each test specification has a unique name.
 validateTestSpecs :: FilePath -> TestSpecs -> IO ()
@@ -417,13 +411,19 @@ instance FromJSON TestSpec where
   parseJSON :: Value -> Parser TestSpec
   parseJSON = withObject "TestSpec" $ \o ->
     TestSpec
-      <$> o .: "name"
-      <*> o .: "run"
-      <*> o .:? "enabled"
-      <*> o .:? "needs" .!= []
+      <$> o
+        .: "name"
+      <*> o
+        .: "run"
+      <*> o
+        .:? "enabled"
+      <*> o
+        .:? "needs"
+        .!= []
       <*> produces o
       <*> timeout o
-      <*> o .:? "ignore"
+      <*> o
+        .:? "ignore"
     where
       produces :: Object -> Parser [FilePattern]
       produces o =

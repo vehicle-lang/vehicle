@@ -3,19 +3,20 @@ module Vehicle.Test.Unit.Compile.IfElimination
   )
 where
 
-import Control.Exception
-import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
-import Data.Hashable
-import Data.Text
-import Test.Tasty
-import Test.Tasty.HUnit
-import Vehicle.Compile (parseAndTypeCheckExpr, typeCheckExpr)
-import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print
-import Vehicle.Compile.Queries.IfElimination
-import Vehicle.Expr.AlphaEquivalence
-import Vehicle.Expr.CoDeBruijn.Conversion
+import Data.Text (Text)
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (assertBool)
+import Vehicle.Compile (parseAndTypeCheckExpr)
+import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Queries.IfElimination (eliminateIfs)
+import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (alphaEq))
+import Vehicle.Prelude
+  ( Pretty (pretty),
+    indent,
+    layoutAsString,
+    line,
+    squotes,
+  )
 import Vehicle.Test.Unit.Common (normTypeClasses, unitTestCase)
 
 --------------------------------------------------------------------------------

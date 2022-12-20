@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Monad law, left identity" #-}
 module Vehicle.Test.Golden
   ( makeTestTreesFromFile,
     makeTestTreeFromDirectoryRecursive,
@@ -9,9 +6,7 @@ where
 
 import Control.Monad (filterM, forM, forM_)
 import Data.Functor ((<&>))
-import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
-import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -26,7 +21,6 @@ import System.Directory
   )
 import System.FilePath
   ( makeRelative,
-    takeBaseName,
     takeDirectory,
     takeExtension,
     takeFileName,
@@ -67,22 +61,19 @@ makeTestTreeFromDirectoryRecursive testGroupLabel testDirectory = do
 
   -- Construct test trees for each .test.json file in the current directory:
   testTreesFromHere <-
-    return testDirectoryEntries
-      -- Filter directory entries to only test specifications
-      >>= filterM (isTestSpecFile . (testDirectory </>))
+    -- Filter directory entries to only test specifications
+    filterM (isTestSpecFile . (testDirectory </>)) testDirectoryEntries
       -- Make test trees
       >>= traverse
         ( \testSpecFileName ->
-            let testSpecFile = testDirectory </> testSpecFileName
-             in makeTestTreesFromFile (testDirectory </> testSpecFileName)
+            makeTestTreesFromFile (testDirectory </> testSpecFileName)
         )
       <&> concat
 
   -- Construct test trees for all subdirectories:
   testTreesFromFurther <-
-    return testDirectoryEntries
-      -- Filter directory entries to only test specifications:
-      >>= filterM (doesDirectoryExist . (testDirectory </>))
+    -- Filter directory entries to only test specifications:
+    filterM (doesDirectoryExist . (testDirectory </>)) testDirectoryEntries
       -- Make test trees for each subdirectory:
       >>= traverse
         ( \subDirectoryName ->
