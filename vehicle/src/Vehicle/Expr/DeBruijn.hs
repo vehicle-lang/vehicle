@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Expr.DeBruijn
@@ -33,10 +32,6 @@ import GHC.Generics (Generic)
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
-#if nothunks
-import NoThunks.Class (NoThunks)
-#endif
-
 --------------------------------------------------------------------------------
 -- Definitions
 
@@ -45,10 +40,6 @@ data LocallyNamelessVar a
   = Free Identifier
   | Bound a
   deriving (Eq, Ord, Show, Generic)
-
-#if nothunks
-instance NoThunks a => NoThunks (LocallyNamelessVar a)
-#endif
 
 instance NFData a => NFData (LocallyNamelessVar a)
 
@@ -64,10 +55,6 @@ newtype DBIndex = DBIndex
   { dbIndex :: Int
   }
   deriving (Eq, Ord, Num, Show, Generic)
-
-#if nothunks
-instance NoThunks DBIndex
-#endif
 
 instance NFData DBIndex
 
@@ -86,10 +73,6 @@ newtype DBLevel = DBLevel
   { dbLevel :: Int
   }
   deriving (Eq, Ord, Num, Show, Generic)
-
-#if nothunks
-instance NoThunks DBLevel
-#endif
 
 instance NFData DBLevel
 
@@ -119,7 +102,6 @@ type BindingDepth = Int
 -- Expressions
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-
 type DBBinder = Binder DBBinding DBIndexVar
 
 type DBArg = Arg DBBinding DBIndexVar

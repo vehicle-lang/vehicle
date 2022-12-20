@@ -65,7 +65,6 @@ instance NoThunks FoldDomain
 instance NoThunks MapDomain
 instance NoThunks Builtin
 instance NoThunks Resource
-instance NoThunks Annotation
 
 -- Vehicle.Syntax.AST.Decl
 instance NoThunks expr => NoThunks (GenericDecl expr)

@@ -1,13 +1,11 @@
-{-# LANGUAGE StrictData #-}
-
 module Vehicle.Syntax.AST.Builtin.TypeClass where
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)
-import Prettyprinter (Doc, Pretty (..), (<+>))
-import Vehicle.Syntax.AST.Builtin.Core (EqualityOp, OrderOp, Quantifier)
+import Prettyprinter (Pretty (..), (<+>))
+import Vehicle.Syntax.AST.Builtin.Core
 import Vehicle.Syntax.AST.Builtin.Linearity (LinearityTypeClass)
 import Vehicle.Syntax.AST.Builtin.Polarity (PolarityTypeClass)
 
@@ -44,9 +42,14 @@ data TypeClass
     -- | Types are equal, modulo the auxiliary constraints.
     AlmostEqualConstraint
   | NatInDomainConstraint Int
-  | -- Auxiliary typeclasses
+  | ----------------------------
+    -- Synthetic type-classes --
+    ----------------------------
+
     LinearityTypeClass LinearityTypeClass
   | PolarityTypeClass PolarityTypeClass
+  -- Linearity type-classes
+
   deriving (Eq, Generic, Show)
 
 instance NFData TypeClass

@@ -1,4 +1,3 @@
-{-# LANGUAGE StrictData #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -10,15 +9,15 @@ import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
 import GHC.Generics (Generic)
-import Prettyprinter (Doc, Pretty (..), (<+>))
-import Vehicle.Syntax.AST.Arg (GenericArg)
-import Vehicle.Syntax.AST.Binder (GenericBinder)
+import Prettyprinter (Pretty (..), (<+>))
+import Vehicle.Syntax.AST.Arg
+import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Builtin (Builtin, Linearity (..), Polarity (..))
-import Vehicle.Syntax.AST.Decl (GenericDecl)
-import Vehicle.Syntax.AST.Meta (MetaID)
+import Vehicle.Syntax.AST.Decl
+import Vehicle.Syntax.AST.Meta
 import Vehicle.Syntax.AST.Name (Name, NamedBinding)
-import Vehicle.Syntax.AST.Prog (GenericProg)
-import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
+import Vehicle.Syntax.AST.Prog
+import Vehicle.Syntax.AST.Provenance
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -161,7 +160,6 @@ instance (FromJSON binder, FromJSON var) => FromJSON (Expr binder var)
 type Type = Expr
 
 instance HasProvenance (Expr binder var) where
-  provenanceOf :: Expr binder var -> Provenance
   provenanceOf = \case
     Universe p _ -> p
     Hole p _ -> p

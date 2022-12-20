@@ -1,32 +1,28 @@
 -- Cabal project configuration file for DEBUGGING
 --
--- Use `cabal` with `--project-file=cabal.project.ghc-debug`
--- or run vehicle via `./scripts/vehicle-ghc-debug`.
+-- Use this configuration in one of two ways:
+-- * pass `--project-file=cabal.project.ghc-debug` to Cabal
+-- * run Vehicle via `./scripts/vehicle-ghc-debug`
 
-import: cabal.project
+
+import: cabal.project.nothunks
 
 package vehicle-syntax
   flags:
-    -- Necessary for Vehicle AST to implement NoThunks
-    +nothunks
+    -- Necessary for Vehicle.Syntax.Debug to reexport ghc-debug-stub
+    +ghc-debug
 
 package vehicle
   flags:
-    -- Necessary for Vehicle to be a ghc-debug debuggee
+    -- Necessary for Vehicle.Debug to reexport ghc-debug-stub,
+    -- and for vehicle:exe:vehicle to be a GHC debuggee
     +ghc-debug
 
-    -- Necessary for Vehicle Debug to implement unsafeCheckThunks
-    +nothunks
-
   ghc-options:
-    -- Necessary for eventlog support
+    -- Necessary for vehicle:exe:vehicle to support creating an eventlog,
+    -- which is used by scripts/vehicle-profile
     -eventlog
 
-    -- Necessary for -h* RTS options
-    -rtsopts
-
-    -- Necessary for info table profiling
+    -- Necessary for vehicle:exe:vehicle to support info table profiling,
+    -- which is used by scripts/vehicle-profile if HEAP_PROFILE_TYPE=-hi
     -finfo-table-map -fdistinct-constructor-tables
-
-    -- Necessary for our program to be a ghc-debug debuggee
-    -threaded

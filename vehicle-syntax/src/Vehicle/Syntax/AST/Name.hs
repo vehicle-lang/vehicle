@@ -1,5 +1,3 @@
-{-# LANGUAGE StrictData #-}
-
 module Vehicle.Syntax.AST.Name where
 
 import Control.DeepSeq (NFData)
@@ -7,7 +5,7 @@ import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable)
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
-import Prettyprinter (Doc, Pretty (..))
+import Prettyprinter (Pretty (..))
 
 --------------------------------------------------------------------------------
 -- Definition
@@ -72,5 +70,4 @@ class HasName a name where
   nameOf :: a -> name
 
 instance HasName Identifier Name where
-  nameOf :: Identifier -> Name
   nameOf (Identifier mod name) = name

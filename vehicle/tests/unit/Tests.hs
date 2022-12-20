@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Main where
 
 import GHC.IO.Encoding (setLocaleEncoding)
@@ -19,17 +17,8 @@ import Vehicle.Test.Unit.Compile.LetInsertion (letInsertionTests)
 import Vehicle.Test.Unit.Compile.Normalisation (normalisationTests)
 import Vehicle.Test.Unit.Compile.PositionTree (positionTreeTests)
 
--- import Vehicle.Test.Unit.Compile.QuantifierLifting (quantiferLiftingTests)
-
-#if ghcDebug
-import GHC.Debug.Stub (withGhcDebug)
-#endif
-
---------------------------------------------------------------------------------
--- Main entry point for vehicle-unit-tests
-
-tests :: IO ()
-tests = do
+main :: IO ()
+main = do
   setLocaleEncoding utf8
   defaultMainWithIngredients
     (vehicleLoggingIngredient : defaultIngredients)
@@ -38,21 +27,9 @@ tests = do
       [ deBruijnTests,
         normalisationTests,
         ifEliminationTests,
-        -- quantiferLiftingTests,
         alphaEquivalenceTests,
         coDeBruijnTests,
         positionTreeTests,
         letInsertionTests,
         commandLineParserTests
       ]
-
---------------------------------------------------------------------------------
--- Load ghc-debug instrumentation if built with ghc-debug
-
-#if ghcDebug
-main :: IO ()
-main = withGhcDebug tests
-#else
-main :: IO ()
-main = tests
-#endif

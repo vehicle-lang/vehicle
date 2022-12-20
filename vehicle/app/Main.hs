@@ -21,7 +21,7 @@ defaultMain = do
   run options
 
 --------------------------------------------------------------------------------
--- Load ghc-debug instrumentation if built with ghc-debug
+-- Main function with ghc-debug instrumentation
 
 #if ghcDebug
 main :: IO ()

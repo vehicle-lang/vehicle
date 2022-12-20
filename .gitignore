@@ -47,3 +47,7 @@ __pycache__/
 examples/**/*.vclp
 examples/**/*.vclo
 examples/windController/agdaProof/WindControllerSpec.agda
+
+# Benchmarks
+.benchmarks/
+benchmarks.json

@@ -17,13 +17,14 @@ jobs:
       - uses: mrkkrp/ormolu-action@v8
 
   build-vehicle:
-    name: ${{ matrix.os_and_name[1] }} / GHC ${{ matrix.ghc-version }}
+    name: ${{ matrix.os_and_name[1] }} / GHC ${{ matrix.ghc-version }} ${{ matrix.cabal-extra-args }}
     needs: [ormolu]
     uses: ./.github/workflows/build-vehicle.yml
     with:
       runs-on: ${{ matrix.os_and_name[0] }}
       ghc-version: ${{ matrix.ghc-version }}
       cabal-version: ${{ matrix.cabal-version }}
+      cabal-extra-args: ${{ matrix.cabal-extra-args }}
     strategy:
       matrix:
         os_and_name:
@@ -37,6 +38,23 @@ jobs:
           - [windows-latest, Windows]
         ghc-version: ["8.10.7", "9.0.2", "9.2.4", "9.4.2"]
         cabal-version: ["3.8"]
+        cabal-extra-args: [""]
+        include:
+          # Build with -fghc-debug:
+          - os_and_name: [ubuntu-latest, Linux]
+            ghc-version: "9.2.4"
+            cabal-version: "3.8"
+            cabal-extra-args: "-fghc-debug"
+          # Build with -fnothunks:
+          - os_and_name: [ubuntu-latest, Linux]
+            ghc-version: "9.2.4"
+            cabal-version: "3.8"
+            cabal-extra-args: "-fnothunks"
+          # Build with -fghc-debug and -fnothunks:
+          - os_and_name: [ubuntu-latest, Linux]
+            ghc-version: "9.2.4"
+            cabal-version: "3.8"
+            cabal-extra-args: "-fghc-debug -fnothunks"
 
   build-vehicle-python:
     name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}
@@ -56,47 +74,3 @@ jobs:
           - # Earliest supported version:
             os_and_name: [ubuntu-20.04, Linux]
             python-version: "3.8.0"
-
-  # NOTE: This is a temporary workaround, because our tests fail with +nothunks.
-  #       Once fixed, we should call build-vehicle with cabal.project.nothunks.
-  build-vehicle-nothunks:
-    name: Linux / GHC 9.2.4 / +nothunks
-    needs: [ormolu]
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup Haskell
-        uses: ./.github/actions/setup-haskell
-        with:
-          ghc-version: "9.2.4"
-          cabal-version: "3.8"
-          cabal-project-file: cabal.project.nothunks.ghc-9.2.4
-          cabal-project-freeze-file: cabal.project.nothunks.ghc-9.2.4.freeze
-
-      - name: Build Vehicle
-        run: cabal --project-file=cabal.project.nothunks.ghc-9.2.4 build vehicle:exe:vehicle
-        shell: sh
-
-  # NOTE: This is a temporary workaround, because our tests fail with +nothunks.
-  #       Once fixed, we should call build-vehicle with cabal.project.nothunks.
-  build-vehicle-ghc-debug:
-    name: Linux / GHC 9.2.4 / +ghc-debug
-    needs: [ormolu]
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup Haskell
-        uses: ./.github/actions/setup-haskell
-        with:
-          ghc-version: "9.2.4"
-          cabal-version: "3.8"
-          cabal-project-file: cabal.project.ghc-debug.ghc-9.2.4
-          cabal-project-freeze-file: cabal.project.ghc-debug.ghc-9.2.4.freeze
-
-      - name: Build Vehicle
-        run: cabal --project-file=cabal.project.ghc-debug.ghc-9.2.4 build vehicle:exe:vehicle
-        shell: sh

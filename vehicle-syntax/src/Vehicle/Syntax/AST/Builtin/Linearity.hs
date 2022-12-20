@@ -1,5 +1,3 @@
-{-# LANGUAGE StrictData #-}
-
 module Vehicle.Syntax.AST.Builtin.Linearity where
 
 import Control.DeepSeq (NFData (..))
@@ -7,9 +5,9 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Prettyprinter (Doc, Pretty (..))
-import Vehicle.Syntax.AST.Builtin.Core (FunctionPosition)
-import Vehicle.Syntax.AST.Provenance (Provenance)
+import Prettyprinter (Pretty (..))
+import Vehicle.Syntax.AST.Builtin.Core
+import Vehicle.Syntax.AST.Provenance
 
 --------------------------------------------------------------------------------
 -- LinearityProvenance

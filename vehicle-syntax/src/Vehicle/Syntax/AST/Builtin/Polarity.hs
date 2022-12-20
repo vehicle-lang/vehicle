@@ -1,18 +1,12 @@
-{-# LANGUAGE StrictData #-}
-
 module Vehicle.Syntax.AST.Builtin.Polarity where
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)
-import Prettyprinter (Doc, Pretty (..), (<+>))
+import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Builtin.Core
-  ( EqualityOp,
-    FunctionPosition,
-    Quantifier,
-  )
-import Vehicle.Syntax.AST.Provenance (Provenance)
+import Vehicle.Syntax.AST.Provenance
 
 --------------------------------------------------------------------------------
 -- PolarityProvenance
@@ -54,7 +48,7 @@ data Polarity
     MixedParallel PolarityProvenance PolarityProvenance
   | -- | Stores the type and provenance of the top-most quantifier first.
     MixedSequential Quantifier Provenance PolarityProvenance
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Generic, Show)
 
 instance NFData Polarity
 

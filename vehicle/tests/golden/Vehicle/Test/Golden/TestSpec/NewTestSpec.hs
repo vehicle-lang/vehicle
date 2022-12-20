@@ -144,14 +144,14 @@ newTestSpec args = do
           testSpecDataNeeds,
           testSpecDataProduces
         } = testSpecData newTestSpecVehicleOptions
-  theTestSpecDataProduces <- either fail return testSpecDataProduces
+  testSpecProduces <- either fail return testSpecDataProduces
 
   -- Validate the 'needs' and 'produces':
   forM_ testSpecDataNeeds $ \testSpecNeed ->
     unless (isRelative testSpecNeed) $
       fail $
         printf "Test needs files at an absolute path: %s\n" testSpecNeed
-  forM_ theTestSpecDataProduces $ \testSpecProducePattern ->
+  forM_ testSpecProduces $ \testSpecProducePattern ->
     let testSpecProduce = filePatternString testSpecProducePattern
      in unless (isRelative testSpecProduce) $
           fail $
@@ -164,7 +164,7 @@ newTestSpec args = do
             testSpecRun = testSpecRun,
             testSpecEnabled = Nothing,
             testSpecNeeds = testSpecDataNeeds,
-            testSpecProduces = theTestSpecDataProduces,
+            testSpecProduces = testSpecProduces,
             testSpecTimeout = newTestSpecTestTimeout,
             testSpecDiffSpec = Nothing
           }

@@ -1,15 +1,13 @@
-{-# LANGUAGE StrictData #-}
-
 module Vehicle.Syntax.AST.Binder where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Vehicle.Syntax.AST.Name (HasName (..))
-import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
-import Vehicle.Syntax.AST.Relevance (HasRelevance (..), Relevance (..))
-import Vehicle.Syntax.AST.Visibility (HasVisibility (..), Visibility (..))
+import Vehicle.Syntax.AST.Name
+import Vehicle.Syntax.AST.Provenance
+import Vehicle.Syntax.AST.Relevance
+import Vehicle.Syntax.AST.Visibility
 
 --------------------------------------------------------------------------------
 -- Binders
@@ -77,19 +75,15 @@ instance (ToJSON binder, ToJSON expr) => ToJSON (GenericBinder binder expr)
 instance (FromJSON binder, FromJSON expr) => FromJSON (GenericBinder binder expr)
 
 instance HasProvenance (GenericBinder binder expr) where
-  provenanceOf :: GenericBinder binder expr -> Provenance
   provenanceOf = binderProvenance
 
 instance HasVisibility (GenericBinder binder expr) where
-  visibilityOf :: GenericBinder binder expr -> Visibility
   visibilityOf = binderVisibility
 
 instance HasRelevance (GenericBinder binder expr) where
-  relevanceOf :: GenericBinder binder expr -> Relevance
   relevanceOf = binderRelevance
 
 instance HasName (GenericBinder binder expr) binder where
-  nameOf :: GenericBinder binder expr -> binder
   nameOf = binderRepresentation
 
 --------------------------------------------------------------------------------

@@ -1,18 +1,12 @@
-{-# LANGUAGE StrictData #-}
-
 module Vehicle.Syntax.AST.Arg where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-import Vehicle.Syntax.AST.Binder (GenericBinder (Binder))
-import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
-import Vehicle.Syntax.AST.Relevance (HasRelevance (..), Relevance (..))
+import Vehicle.Syntax.AST.Binder
+import Vehicle.Syntax.AST.Provenance
+import Vehicle.Syntax.AST.Relevance
 import Vehicle.Syntax.AST.Visibility
-  ( HasVisibility (..),
-    Visibility (..),
-    isInstance,
-  )
 
 --------------------------------------------------------------------------------
 -- Function arguments

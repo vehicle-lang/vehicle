@@ -30,21 +30,9 @@ flag ghc-debug
   default:     False
 
 flag nothunks
-  description: Add NoThunks instances
+  description: Add NoThunks instrumentation
   manual:      True
   default:     False
-
-common ghc-debug
-  build-depends: ghc-debug-stub >=0.3 && <0.4
-  cpp-options:   -DghcDebug
-
-common ghc-debug-executable
-  if flag(ghc-debug)
-    ghc-options: -threaded -rtsopts
-
-common nothunks
-  build-depends: nothunks >=0.1.3 && <0.2
-  cpp-options:   -Dnothunks
 
 common common-language
   default-language:   Haskell2010
@@ -85,16 +73,19 @@ common common-library
   ghc-options: -Werror -Wall -fprint-potential-instances
 
   if flag(ghc-debug)
-    import: ghc-debug
+    build-depends: ghc-debug-stub >=0.3 && <0.4
+    cpp-options:   -DghcDebug
 
   if flag(nothunks)
-    import: nothunks
+    build-depends: nothunks >=0.1.3 && <0.2
+    cpp-options:   -Dnothunks
 
 common common-executable
-  import: common-library
+  import:      common-language
+  ghc-options: -Werror -Wall -threaded -with-rtsopts=-N
 
   if flag(ghc-debug)
-    import: ghc-debug-executable
+    ghc-options: -threaded -rtsopts
 
 library
   import:          common-library
@@ -198,7 +189,7 @@ library
     Vehicle.Compile.Type.Monad.Instance
     Vehicle.Compile.Type.Resource
     Vehicle.Compile.Type.VariableContext
-    Vehicle.Prelude.Debug
+    Vehicle.Debug
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging
     Vehicle.Prelude.Logging.Backend

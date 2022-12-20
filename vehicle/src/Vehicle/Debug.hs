@@ -7,7 +7,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 #endif
 
-module Vehicle.Syntax.Prelude.Debug
+module Vehicle.Debug
   ( -- * Export 'ghc-debug-stub'
     Box (Box),
     saveClosures,

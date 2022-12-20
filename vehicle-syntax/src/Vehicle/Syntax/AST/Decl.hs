@@ -1,14 +1,12 @@
-{-# LANGUAGE StrictData #-}
-
 module Vehicle.Syntax.AST.Decl where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Prettyprinter (Doc, Pretty (..))
+import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST.Name (HasIdentifier (..), Identifier)
-import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
+import Vehicle.Syntax.AST.Provenance
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -38,7 +36,7 @@ instance ToJSON expr => ToJSON (GenericDecl expr)
 
 instance FromJSON expr => FromJSON (GenericDecl expr)
 
-instance Vehicle.Syntax.AST.Provenance.HasProvenance (GenericDecl expr) where
+instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
     DefResource p _ _ _ -> p
     DefFunction p _ _ _ _ -> p
@@ -87,7 +85,6 @@ pattern InferableOption = "infer"
 data Annotation
   = PropertyAnnotation
   | ResourceAnnotation Resource
-  deriving (Generic)
 
 instance Pretty Annotation where
   pretty annotation =

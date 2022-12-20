@@ -4,14 +4,46 @@
 cabal build all --enable-tests
 
 # get the current commit hash
-commit_hash=$(git rev-parse HEAD)
+commit_hash=$(git rev-parse --short HEAD)
 
-# create .benchmark directory
-mkdir -p .benchmark
+# get the current GHC version
+ghc_version=$(ghc --numeric-version)
 
+# get the current operating system
+system=$(uname -s | cut -d- -f1)
+if [ "$system" = "CYGWIN_NT" \
+  -o "$system" = "MINGW32_NT" \
+  -o "$system" = "MINGW64_NT" \
+  -o "$system" = "MSYS_NT" ]; then
+  platform="Windows"
+elif [ "$system" = "Darwin" ]; then
+  platform="macOS"
+elif [ "$system" = "Linux" ]; then
+  platform="Linux"
+else
+  echo "Unsupported system '$system'"
+  exit 1
+fi
+
+# set the benchmark name
+name="vehicle-$commit_hash-$platform-ghc-$ghc_version"
+
+# create the benchmark filename and directory
+benchmark_database="benchmarks.json"
+benchmark_dir=".benchmarks"
+mkdir -p "$benchmark_dir"
+benchmark_file="$benchmark_dir/$name.json"
+
+# Run the benchmark
 hyperfine \
+  --command-name "$name" \
   --warmup 3 \
   --runs 10 \
-  --export-json ".benchmark/benchmark-$commit_hash.json" \
-  --export-markdown ".benchmark/benchmark-$commit_hash.md" \
+  --export-json "$benchmark_file" \
   'cabal test all'
+
+# Merge the new benchmark into the benchmarks database
+[ -f "$benchmark_database" ] || echo "[]" > "$benchmark_database"
+cp "$benchmark_database" "$benchmark_database.bak"
+jq -s '.[0] + [.[1]]' "$benchmark_database.bak" "$benchmark_file" > "$benchmark_database"
+rm -f "$benchmark_database.bak"

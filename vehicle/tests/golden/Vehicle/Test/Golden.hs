@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Monad law, left identity" #-}
 module Vehicle.Test.Golden
   ( makeTestTreesFromFile,
     makeTestTreeFromDirectoryRecursive,
@@ -64,9 +61,8 @@ makeTestTreeFromDirectoryRecursive testGroupLabel testDirectory = do
 
   -- Construct test trees for each .test.json file in the current directory:
   testTreesFromHere <-
-    return testDirectoryEntries
-      -- Filter directory entries to only test specifications
-      >>= filterM (isTestSpecFile . (testDirectory </>))
+    -- Filter directory entries to only test specifications
+    filterM (isTestSpecFile . (testDirectory </>)) testDirectoryEntries
       -- Make test trees
       >>= traverse
         ( \testSpecFileName ->
@@ -76,9 +72,8 @@ makeTestTreeFromDirectoryRecursive testGroupLabel testDirectory = do
 
   -- Construct test trees for all subdirectories:
   testTreesFromFurther <-
-    return testDirectoryEntries
-      -- Filter directory entries to only test specifications:
-      >>= filterM (doesDirectoryExist . (testDirectory </>))
+    -- Filter directory entries to only test specifications:
+    filterM (doesDirectoryExist . (testDirectory </>)) testDirectoryEntries
       -- Make test trees for each subdirectory:
       >>= traverse
         ( \subDirectoryName ->

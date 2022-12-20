@@ -1,5 +1,3 @@
-{-# LANGUAGE StrictData #-}
-
 module Vehicle.Syntax.AST.Provenance
   ( Provenance,
     tkProvenance,
@@ -11,38 +9,34 @@ module Vehicle.Syntax.AST.Provenance
     fillInProvenance,
     wasInsertedByCompiler,
 
-    -- * Internal types for 'Provenance'
-
-    --
-    -- Must be exported for use in 'Vehicle.Syntax.AST.NoThunks', but should be hidden in 'Vehicle.Syntax.AST'
-    Origin,
-    Owner,
+    -- * Exported for 'Vehicle.Syntax.AST.Instances.NoThunks'
     Position,
     Range,
+    Owner,
+    Origin,
   )
 where
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (FromJSON (..), ToJSON (..))
-import Data.Aeson.Types (Parser, Value)
 import Data.Hashable (Hashable (..))
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (maybeToList)
 import Data.Text (Text)
-import GHC.Generics (Generic)
-import Prettyprinter (Doc, Pretty (..), concatWith, squotes, (<+>))
-import Vehicle.Syntax.Parse.Token (IsToken, Token (Tk), tkLength, tkLocation)
+import GHC.Generics (Generic (..))
+import Prettyprinter (Pretty (..), concatWith, squotes, (<+>))
+import Vehicle.Syntax.Parse.Token
 
 --------------------------------------------------------------------------------
 -- Position
 
 -- | A position in the source file is represented by a line number and a column
--- number.
+--  number.
 --
--- Note we don't use the names `line` and `column` as they clash with the
--- `Prettyprinter` library.
+--  Note we don't use the names `line` and `column` as they clash with the
+--  `Prettyprinter` library.
 data Position = Position
   { posLine :: Int,
     posColumn :: Int

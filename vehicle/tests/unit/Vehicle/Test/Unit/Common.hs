@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Test.Unit.Common where
 
@@ -58,13 +58,13 @@ instance IsOption LoggingLevel where
 -- Test settings monad
 
 unitTestCase :: String -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> TestTree
-unitTestCase testName e =
-  askOption $ \logLevel -> testCase testName (traceLogs logLevel e)
+unitTestCase testName errorOrAssertionWithLogs =
+  askOption $ \logLevel -> testCase testName (traceLogs logLevel errorOrAssertionWithLogs)
   where
     traceLogs :: LoggingLevel -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> Assertion
-    traceLogs logLevel e' = do
-      let e'' = logCompileError e'
-      (v, logs) <- runDelayedLoggerT logLevel e''
+    traceLogs logLevel e = do
+      let e' = logCompileError e
+      (v, logs) <- runDelayedLoggerT logLevel e'
       let result = if null logs then v else trace (showMessages logs) v
       case result of
         Left x -> developerError $ pretty $ details x

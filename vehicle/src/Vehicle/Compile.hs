@@ -37,7 +37,6 @@ import Vehicle.Libraries
     libraryName,
   )
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
-import Vehicle.Prelude.Debug (unsafeCheckThunks)
 import Vehicle.Syntax.Parse
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
@@ -180,11 +179,7 @@ typeCheckProg ::
   DeclarationNames ->
   m TypedProg
 typeCheckProg modul imports spec declarationsToCompile = do
-  -- If compiled with +nothunks, check that the elaborated program
-  -- does not contain any thunks. If it does, and we compiled with
-  -- +ghc-debug, pass the closures to ghc-debug and pause. Otherwise
-  -- throw an error.
-  vehicleProg <- unsafeCheckThunks <$> parseProgText modul spec
+  vehicleProg <- parseProgText modul spec
   (scopedProg, dependencyGraph) <- scopeCheck imports vehicleProg
   prunedProg <- analyseDependenciesAndPrune scopedProg dependencyGraph declarationsToCompile
   typedProg <- typeCheck imports prunedProg

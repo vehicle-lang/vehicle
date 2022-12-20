@@ -68,16 +68,16 @@ appFilter (App {}, _) _ = True
 appFilter _ _ = False
 
 letInsertionTest :: InsertionTestSpec -> TestTree
-letInsertionTest (InsertionTestSpec testName filterpred input expected) =
+letInsertionTest (InsertionTestSpec testName subexprFilter input expected) =
   unitTestCase testName $ do
     inputExpr <- normTypeClasses =<< parseAndTypeCheckExpr input
     expectedExpr <- normTypeClasses =<< parseAndTypeCheckExpr expected
-    result <- insertLets filterpred True inputExpr
+    result <- insertLets subexprFilter True inputExpr
 
     -- Need to re-typecheck the result as let-insertion puts a Hole on
     -- each binder type.
-    standardLibrary' <- loadLibrary standardLibrary
-    typedResult <- typeCheckExpr [standardLibrary'] result
+    standardLibraryProg <- loadLibrary standardLibrary
+    typedResult <- typeCheckExpr [standardLibraryProg] result
 
     let errorMessage =
           layoutAsString $

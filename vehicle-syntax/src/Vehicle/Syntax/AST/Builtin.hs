@@ -1,5 +1,3 @@
-{-# LANGUAGE StrictData #-}
-
 -- | This module exports the datatype representations of the builtin symbols.
 module Vehicle.Syntax.AST.Builtin
   ( module Vehicle.Syntax.AST.Builtin,
@@ -14,13 +12,7 @@ import Data.Bifunctor (first)
 import Data.Hashable (Hashable (..))
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
-import Prettyprinter
-  ( Doc,
-    Pretty (..),
-    defaultLayoutOptions,
-    layoutPretty,
-    (<+>),
-  )
+import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
 import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.AST.Builtin.Core as X
 import Vehicle.Syntax.AST.Builtin.Linearity as X

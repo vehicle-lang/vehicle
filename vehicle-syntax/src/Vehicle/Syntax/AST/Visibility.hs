@@ -1,13 +1,11 @@
-{-# LANGUAGE StrictData #-}
-
 module Vehicle.Syntax.AST.Visibility where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Prettyprinter (Doc, Pretty (..))
-import Vehicle.Syntax.AST.Provenance (Provenance, expandProvenance)
+import Prettyprinter (Pretty (..))
+import Vehicle.Syntax.AST.Provenance
 
 --------------------------------------------------------------------------------
 -- Definitions
