@@ -6,8 +6,7 @@ import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile (loadLibrary, parseAndTypeCheckExpr, typeCheckExpr)
 import Vehicle.Compile.LetInsertion (insertLets)
 import Vehicle.Compile.Prelude
-  ( CheckedCoDBExpr,
-    Contextualised (..),
+  ( Contextualised (..),
     Expr (App),
     Pretty (pretty),
     emptyDBCtx,
@@ -18,6 +17,7 @@ import Vehicle.Compile.Prelude
   )
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (alphaEq))
+import Vehicle.Expr.CoDeBruijn (CoDBExpr)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Test.Unit.Common (normTypeClasses, unitTestCase)
 
@@ -58,7 +58,7 @@ letInsertionTests =
 
 data InsertionTestSpec = InsertionTestSpec String SubexprFilter Text Text
 
-type SubexprFilter = CheckedCoDBExpr -> Int -> Bool
+type SubexprFilter = CoDBExpr -> Int -> Bool
 
 standardFilter :: SubexprFilter
 standardFilter _e q = q > 1

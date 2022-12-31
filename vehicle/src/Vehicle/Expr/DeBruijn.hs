@@ -65,7 +65,7 @@ instance ToJSON DBIndex
 instance FromJSON DBIndex
 
 instance Pretty DBIndex where
-  pretty i = "i" <> pretty i
+  pretty i = "i" <> pretty (dbIndex i)
 
 -- | A DeBruijn index pointing to the binder that the variable refers to,
 -- counting from the top of the expression downwards.
@@ -92,7 +92,7 @@ type DBIndexVar = LocallyNamelessVar DBIndex
 type DBLevelVar = LocallyNamelessVar DBLevel
 
 -- | The type of the data DeBruijn notation stores at binding sites.
-type DBBinding = Maybe Name
+type DBBinding = ()
 
 -- | Used to track the number of binders we're underneath during a traversal of
 -- an expression

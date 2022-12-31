@@ -34,6 +34,7 @@ module Vehicle.Compile.Type.Monad.Class
     getUnsolvedMetas,
     getUnsolvedConstraints,
     popActivatedConstraints,
+    getBinderNameOrFreshName,
     whnf,
     whnfNBE,
     glueNBE,
@@ -106,36 +107,39 @@ class MonadCompile m => MonadTypeChecker m where
   getDeclContext :: m TypingDeclCtx
   addDeclContext :: TypedDecl -> m a -> m a
   getMetaCtx :: m TypingMetaCtx
-  getsMetaCtx :: (TypingMetaCtx -> a) -> m a
-  putMetaCtx :: TypingMetaCtx -> m ()
   modifyMetaCtx :: (TypingMetaCtx -> TypingMetaCtx) -> m ()
+  getFreshName :: CheckedType -> m Name
+  clearFreshNames :: m ()
 
 instance (Monoid w, MonadTypeChecker m) => MonadTypeChecker (WriterT w m) where
   getDeclContext = lift getDeclContext
   addDeclContext d = mapWriterT (addDeclContext d)
   getMetaCtx = lift getMetaCtx
-  getsMetaCtx = lift . getsMetaCtx
-  putMetaCtx = lift . putMetaCtx
   modifyMetaCtx = lift . modifyMetaCtx
+  getFreshName = lift . getFreshName
+  clearFreshNames = lift clearFreshNames
 
 instance (Monoid w, MonadTypeChecker m) => MonadTypeChecker (ReaderT w m) where
   getDeclContext = lift getDeclContext
   addDeclContext d = mapReaderT (addDeclContext d)
   getMetaCtx = lift getMetaCtx
-  getsMetaCtx = lift . getsMetaCtx
-  putMetaCtx = lift . putMetaCtx
   modifyMetaCtx = lift . modifyMetaCtx
+  getFreshName = lift . getFreshName
+  clearFreshNames = lift clearFreshNames
 
 instance MonadTypeChecker m => MonadTypeChecker (StateT s m) where
   getDeclContext = lift getDeclContext
   addDeclContext d = mapStateT (addDeclContext d)
   getMetaCtx = lift getMetaCtx
-  getsMetaCtx = lift . getsMetaCtx
-  putMetaCtx = lift . putMetaCtx
   modifyMetaCtx = lift . modifyMetaCtx
+  getFreshName = lift . getFreshName
+  clearFreshNames = lift clearFreshNames
 
 --------------------------------------------------------------------------------
 -- Operations
+
+getsMetaCtx :: MonadTypeChecker m => (TypingMetaCtx -> a) -> m a
+getsMetaCtx f = f <$> getMetaCtx
 
 getUnsolvedConstraints :: MonadTypeChecker m => m [WithContext Constraint]
 getUnsolvedConstraints = getsMetaCtx constraints
@@ -218,7 +222,7 @@ freshMeta p metaType boundCtxSize = do
   let info = MetaInfo p metaType boundCtxSize
 
   -- Update the meta context
-  putMetaCtx $ TypingMetaCtx {metaInfo = info : metaInfo, ..}
+  modifyMetaCtx $ const $ TypingMetaCtx {metaInfo = info : metaInfo, ..}
 
   -- Create the expression
   let metaExpr = makeMetaExpr p metaID boundCtxSize
@@ -358,7 +362,8 @@ filterMetasByTypes typeFilter metas = do
 abstractOverCtx :: Int -> CheckedExpr -> CheckedExpr
 abstractOverCtx ctxSize body = do
   let p = mempty
-  let lam _ = Lam p (Binder p (BinderForm OnlyName True) Explicit Relevant Nothing (TypeUniverse p 0))
+  let lamBinderForm i = BinderForm (OnlyName (layoutAsText $ "i" <> pretty i)) True
+  let lam i = Lam p (Binder p (lamBinderForm i) Explicit Relevant () (TypeUniverse p 0))
   foldr lam body ([0 .. ctxSize - 1] :: [Int])
 
 solveMeta :: MonadTypeChecker m => MetaID -> CheckedExpr -> Int -> m ()
@@ -505,6 +510,11 @@ whnf e = do
           normaliseStdLibApplications = True,
           normaliseBuiltin = const True
         }
+
+getBinderNameOrFreshName :: MonadTypeChecker m => Maybe Name -> CheckedType -> m Name
+getBinderNameOrFreshName piName typ = case piName of
+  Just x -> return x
+  Nothing -> getFreshName typ
 
 whnfNBE :: MonadTypeChecker m => Int -> CheckedExpr -> m NormExpr
 whnfNBE boundCtxSize e = do

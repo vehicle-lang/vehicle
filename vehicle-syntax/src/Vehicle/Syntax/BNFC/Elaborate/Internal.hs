@@ -86,9 +86,8 @@ instance Elab B.Binder V.InputBinder where
     where
       mkBinder :: MonadElab m => B.NameToken -> V.Visibility -> V.Relevance -> B.Expr -> m V.InputBinder
       mkBinder n v r e = do
-        let name = Just (tkSymbol n)
-        let form = V.BinderForm V.NameAndType False
-        V.Binder (mkAnn n) form v r name <$> elab e
+        let form = V.BinderForm (V.NameAndType (tkSymbol n)) False
+        V.Binder (mkAnn n) form v r () <$> elab e
 
 instance Elab B.Arg V.InputArg where
   elab = \case

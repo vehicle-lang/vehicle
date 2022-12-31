@@ -6,7 +6,6 @@ module Vehicle.Expr.CoDeBruijn
     CoDBBinder,
     CoDBBinding (..),
     CoDBVar (..),
-    ExtractPositionTrees (..),
     BinderC,
     ArgC,
     ExprC (..),
@@ -18,13 +17,10 @@ module Vehicle.Expr.CoDeBruijn
 where
 
 import Control.Exception (assert)
-import Data.Functor.Foldable (Recursive (..))
 import Data.Hashable (Hashable (..))
 import Data.IntMap qualified as IntMap
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList, unzip, zip, zipWith)
-import Data.Map (Map)
-import Data.Map qualified as Map
 import GHC.Generics (Generic)
 import Vehicle.Expr.CoDeBruijn.PositionTree
 import Vehicle.Expr.DeBruijn hiding (Bound, Free)
@@ -35,16 +31,10 @@ import Vehicle.Syntax.AST
 --------------------------------------------------------------------------------
 -- AST Definitions
 
-data CoDBBinding name
-  = CoDBBinding name (Maybe PositionTree)
+newtype CoDBBinding = CoDBBinding (Maybe PositionTree)
   deriving (Show, Eq, Generic)
 
-instance Eq name => Hashable (CoDBBinding name) where
-  -- We deliberately ignore the name stored in the binding
-  hashWithSalt d (CoDBBinding _n t) = hashWithSalt d t
-
-instance HasName (CoDBBinding name) name where
-  nameOf (CoDBBinding name _) = name
+instance Hashable CoDBBinding
 
 data CoDBVar
   = CoDBFree Identifier
@@ -54,11 +44,11 @@ data CoDBVar
 instance Hashable CoDBVar
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type PartialCoDBBinder = Binder (CoDBBinding DBBinding) CoDBVar
+type PartialCoDBBinder = Binder CoDBBinding CoDBVar
 
-type PartialCoDBArg = Arg (CoDBBinding DBBinding) CoDBVar
+type PartialCoDBArg = Arg CoDBBinding CoDBVar
 
-type PartialCoDBExpr = Expr (CoDBBinding DBBinding) CoDBVar
+type PartialCoDBExpr = Expr CoDBBinding CoDBVar
 
 type CoDBBinder = (PartialCoDBBinder, BoundVarMap)
 
@@ -72,16 +62,17 @@ instance Hashable PartialCoDBArg
 
 instance Hashable PartialCoDBBinder
 
+{-
 --------------------------------------------------------------------------------
 -- Extract binder positionTrees
 
 -- This operation is only used to print CoDBExprs in a vaguely reasonable form.
 
-type NamedPTMap = Map NamedBinding (Maybe PositionTree)
+type NamedPTMap = Map (Maybe Name) (Maybe PositionTree)
 
 class ExtractPositionTrees t where
   extractPTs ::
-    t (CoDBBinding Name) CoDBVar ->
+    t CoDBBinding CoDBVar ->
     (t Name CoDBVar, NamedPTMap)
 
 instance ExtractPositionTrees Expr where
@@ -110,13 +101,13 @@ instance ExtractPositionTrees Expr where
        in (Lam ann binder' body', mergePTs [mpt1, mpt2])
 
 extractPTsBinder ::
-  GenericBinder (CoDBBinding Name) (Expr Name CoDBVar, NamedPTMap) ->
+  GenericBinder CoDBBinding (Expr Name CoDBVar, NamedPTMap) ->
   (Binder Name CoDBVar, NamedPTMap)
 extractPTsBinder binder = do
   let CoDBBinding binderName mpt = binderRepresentation binder
   let (binder', mpts) = unpairBinder binder
   let binder'' = replaceBinderRep binderName binder'
-  let pts' = mergePTs [Map.singleton binderName mpt, mpts]
+  let pts' = mergePTs [Map.singleton (Just binderName) mpt, mpts]
   (binder'', pts')
 
 mergePTPair :: NamedPTMap -> NamedPTMap -> NamedPTMap
@@ -129,7 +120,7 @@ mergePTPair =
 
 mergePTs :: [NamedPTMap] -> NamedPTMap
 mergePTs = foldr mergePTPair mempty
-
+-}
 --------------------------------------------------------------------------------
 -- Intermediate state
 
@@ -141,7 +132,7 @@ mergePTs = foldr mergePTPair mempty
 
 type ArgC = GenericArg CoDBExpr
 
-type BinderC = GenericBinder (CoDBBinding DBBinding) CoDBExpr
+type BinderC = GenericBinder CoDBBinding CoDBExpr
 
 data ExprC
   = UniverseC Provenance Universe
@@ -192,8 +183,8 @@ instance RecCoDB CoDBArg ArgC where
   recCoDB (Arg ann v r e, bvm) = Arg ann v r (e, bvm)
 
 positionTreeOf :: PartialCoDBBinder -> Maybe PositionTree
-positionTreeOf b = case (nameOf b :: CoDBBinding DBBinding) of
-  CoDBBinding _ pt -> pt
+positionTreeOf b = case binderRepresentation b of
+  CoDBBinding pt -> pt
 
 --------------------------------------------------------------------------------
 -- Substitution
@@ -259,9 +250,9 @@ substPosBinder ::
   Maybe PositionTree ->
   CoDBBinder
 substPosBinder v p binder boundPositions = case recCoDB binder of
-  (Binder ann u vis r (CoDBBinding n _) t) ->
+  (Binder ann u vis r (CoDBBinding _) t) ->
     let (t', bvm) = substPos v p t
-     in (Binder ann u vis r (CoDBBinding n boundPositions) t', bvm)
+     in (Binder ann u vis r (CoDBBinding boundPositions) t', bvm)
 
 invalidPositionTreeError :: PositionList -> a
 invalidPositionTreeError l =

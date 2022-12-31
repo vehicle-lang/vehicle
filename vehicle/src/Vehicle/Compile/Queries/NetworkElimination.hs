@@ -36,7 +36,7 @@ import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
-import Vehicle.Expr.CoDeBruijn (CoDBVar (..))
+import Vehicle.Expr.CoDeBruijn (CoDBExpr, CoDBVar (..))
 import Vehicle.Expr.DeBruijn
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface
@@ -245,7 +245,7 @@ getTypedMetaNetwork ctx = traverse $ \name -> do
   networkType <- getNetworkDetailsFromCtx ctx name
   return (name, networkType)
 
-getBoundContext :: MonadSMT m => m [DBBinding]
+getBoundContext :: MonadSMT m => m BoundDBCtx
 getBoundContext = do
   (_, _, _, _, userVariables, networkVariables) <- ask
   let userNames = reverse $ fmap (layoutAsText . pretty) userVariables
@@ -309,7 +309,7 @@ removeUserQuantifiers _ e = return (e, [])
 liftNetworkApplications :: MonadCompile m => NetworkContext -> CheckedExpr -> m CheckedExpr
 liftNetworkApplications networks = insertLets isNetworkApplication False
   where
-    isNetworkApplication :: CheckedCoDBExpr -> Int -> Bool
+    isNetworkApplication :: CoDBExpr -> Int -> Bool
     isNetworkApplication (App _ (Var _ (CoDBFree ident)) _, _) _ =
       Map.member (nameOf ident) networks
     isNetworkApplication _ _ = False

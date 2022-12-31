@@ -112,7 +112,7 @@ checkNetworkType decl@(ident, _) networkType = case normalised networkType of
         let outputLinProvenance = Linear $ NetworkOutputProvenance p (nameOf ident)
         let linConstraintArgs = [LinearityExpr p outputLinProvenance, inputLin, outputLin]
         let linConstraint = BuiltinTypeClass p (LinearityTypeClass MaxLinearity) (ExplicitArg p <$> linConstraintArgs)
-        let linConstraintBinder = Binder p (BinderForm OnlyType False) Instance Irrelevant Nothing linConstraint
+        let linConstraintBinder = Binder p (BinderForm OnlyType False) Instance Irrelevant () linConstraint
         return $ Pi p linConstraintBinder (unnormalised networkType)
   _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
   where

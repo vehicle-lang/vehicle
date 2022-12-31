@@ -12,6 +12,7 @@ where
 import Control.Monad.Writer (MonadWriter (..), execWriterT)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
@@ -72,8 +73,10 @@ makeMetaType ::
   CheckedType
 makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
   where
-    entryToPi :: (DBBinding, CheckedType, Maybe CheckedExpr) -> CheckedType -> CheckedType
-    entryToPi (name, t, _) = Pi ann (Binder ann (BinderForm OnlyName True) Explicit Relevant name t)
+    entryToPi :: (Maybe Name, CheckedType, Maybe CheckedExpr) -> CheckedType -> CheckedType
+    entryToPi (name, t, _) = do
+      let n = fromMaybe "_" name
+      Pi ann (Binder ann (BinderForm (OnlyName n) True) Explicit Relevant () t)
 
 getMetaDependencies :: [CheckedArg] -> [DBIndex]
 getMetaDependencies = \case

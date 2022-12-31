@@ -13,11 +13,11 @@ import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Builtin (Builtin, Linearity (..), Polarity (..))
-import Vehicle.Syntax.AST.Decl
-import Vehicle.Syntax.AST.Meta
-import Vehicle.Syntax.AST.Name (Name, NamedBinding)
-import Vehicle.Syntax.AST.Prog
-import Vehicle.Syntax.AST.Provenance
+import Vehicle.Syntax.AST.Decl (GenericDecl)
+import Vehicle.Syntax.AST.Meta (MetaID)
+import Vehicle.Syntax.AST.Name (Name)
+import Vehicle.Syntax.AST.Prog (GenericProg)
+import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -174,21 +174,10 @@ instance HasProvenance (Expr binder var) where
     Literal p _ -> p
     LVec p _ -> p
 
--- An expression that uses named variables for both binders and variables.
-type NamedBinder = Binder NamedBinding Name
-
-type NamedArg = Arg NamedBinding Name
-
-type NamedExpr = Expr NamedBinding Name
-
-type NamedDecl = Decl NamedBinding Name
-
-type NamedProg = Prog NamedBinding Name
-
 -- * Type of annotations attached to the AST after parsing
 
 -- before being analysed by the compiler
-type InputBinding = Maybe NamedBinding
+type InputBinding = ()
 
 type InputVar = Name
 

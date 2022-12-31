@@ -39,7 +39,7 @@ normaliseExpr x options@Options {..} = logCompilerPass MinDetail currentPass $ d
 
 data NormalisationOptions = Options
   { declContext :: DeclCtx CheckedExpr,
-    boundContext :: [DBBinding],
+    boundContext :: BoundDBCtx,
     normaliseDeclApplications :: Bool,
     normaliseLambdaApplications :: Bool,
     normaliseStdLibApplications :: Bool,
@@ -330,11 +330,12 @@ nfQuantifierVector p tElem size binder body recFn = do
   -- Substitute throught the tensor expression for the old top-level binder
   body2 <- nf $ substDBIntoAtLevel (DBIndex size) tensor body1
 
-  let mkBinder name = Binder p (binderForm binder) Explicit Relevant name tElem
+  let mkBinderForm name = mapBinderFormName (const name) (binderForm binder)
+  let mkBinder name = Binder p (mkBinderForm name) Explicit Relevant () tElem
   let mkQuantifier e name = App p recFn [ExplicitArg p (Lam p (mkBinder name) e)]
 
   -- Generate a expression prepended with `tensorSize` quantifiers
-  return $ foldl mkQuantifier body2 (map Just allNames)
+  return $ foldl mkQuantifier body2 allNames
 
 nfQuantifierIndex ::
   MonadNorm m =>

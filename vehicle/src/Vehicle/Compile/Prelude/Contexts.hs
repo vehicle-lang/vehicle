@@ -14,20 +14,15 @@ import Vehicle.Syntax.AST
 -- currently in scope, indexed into via De Bruijn expressions.
 type BoundCtx a = [a]
 
-type BoundDBCtx = BoundCtx DBBinding
+type BoundDBCtx = BoundCtx (Maybe Name)
 
 emptyDBCtx :: BoundDBCtx
 emptyDBCtx = mempty
 
-type NamedBoundCtx = BoundCtx NamedBinding
-
-emptyNamedCtx :: NamedBoundCtx
-emptyNamedCtx = mempty
-
 class HasBoundCtx a where
-  boundContextOf :: a -> [DBBinding]
+  boundContextOf :: a -> BoundDBCtx
 
-instance HasBoundCtx (BoundCtx DBBinding) where
+instance HasBoundCtx (BoundCtx (Maybe Name)) where
   boundContextOf = id
 
 instance HasBoundCtx (BoundCtx Name) where

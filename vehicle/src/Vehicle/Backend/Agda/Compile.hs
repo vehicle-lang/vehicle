@@ -27,7 +27,6 @@ import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.SupplyNames (supplyNames)
 import Vehicle.Compile.Type (getUnnormalised)
 import Vehicle.Libraries.StandardLibrary.Names
   ( StdLibFunction,
@@ -51,9 +50,8 @@ compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
     monoProg <- monomorphise unnormalisedProg
 
     let prog2 = capitaliseTypeNames monoProg
-    let prog3 = supplyNames prog2
-    let prog4 = descopeNamed prog3
-    programDoc <- compileProg prog4
+    let prog3 = descopeNamed prog2
+    programDoc <- compileProg prog3
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
     -- folding using Set Monoid
@@ -418,7 +416,7 @@ compileLetBinder ::
   LetBinder OutputBinding OutputVar ->
   m Code
 compileLetBinder (binder, expr) = do
-  let binderName = pretty (nameOf binder :: OutputBinding)
+  let binderName = pretty (getBinderName binder)
   cExpr <- compileExpr expr
   return $ binderName <+> "=" <+> cExpr
 
@@ -453,19 +451,18 @@ compileTopLevelBinder :: OutputBinder -> Maybe Code
 compileTopLevelBinder binder
   | visibilityOf binder /= Explicit = Nothing
   | otherwise = do
-      let binderName = pretty (nameOf binder :: OutputBinding)
+      let binderName = pretty (getBinderName binder)
       let addBrackets = binderBrackets True (visibilityOf binder)
       Just $ addBrackets binderName
 
 compileBinder :: MonadAgdaCompile m => OutputBinder -> m Code
 compileBinder binder = do
-  let binderName = pretty (nameOf binder :: OutputBinding)
   binderType <- compileExpr (typeOf binder)
   (binderDoc, noExplicitBrackets) <- case binderNamingForm binder of
-    OnlyName -> return (binderName, True)
+    OnlyName name -> return (pretty name, True)
     OnlyType -> return (binderType, True)
-    NameAndType -> do
-      let annName = annotateInfixOp2 [] minPrecedence id Nothing ":" [binderName, binderType]
+    NameAndType name -> do
+      let annName = annotateInfixOp2 [] minPrecedence id Nothing ":" [pretty name, binderType]
       return (annName, False)
 
   return $ binderBrackets noExplicitBrackets (visibilityOf binder) binderDoc

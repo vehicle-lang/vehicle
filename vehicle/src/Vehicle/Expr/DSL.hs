@@ -65,6 +65,7 @@ module Vehicle.Expr.DSL
 where
 
 import Data.List.NonEmpty (NonEmpty)
+import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
 import Prelude hiding (pi)
@@ -77,8 +78,8 @@ class DSL expr where
 
   hole :: expr
   app :: expr -> NonEmpty (Visibility, Relevance, expr) -> expr
-  pi :: Visibility -> Relevance -> expr -> (expr -> expr) -> expr
-  lam :: Visibility -> Relevance -> expr -> (expr -> expr) -> expr
+  pi :: Maybe Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
+  lam :: Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   lseq :: expr -> [expr] -> expr
 
 newtype DSLExpr = DSL
@@ -91,28 +92,28 @@ fromDSL p e = unDSL e p 0
 boundVar :: BindingDepth -> DSLExpr
 boundVar i = DSL $ \p j -> Var p (Bound $ DBIndex (j - (i + 1)))
 
-approxPiForm :: Visibility -> BinderForm
-approxPiForm = \case
+approxPiForm :: Maybe Name -> Visibility -> BinderForm
+approxPiForm name = \case
   Explicit -> BinderForm OnlyType False
-  Implicit -> BinderForm OnlyName True
+  Implicit -> BinderForm (OnlyName $ fromMaybe "_" name) True
   Instance -> BinderForm OnlyType False
 
 instance DSL DSLExpr where
   hole = DSL $ \p _i ->
     Hole p "_"
 
-  pi v r binderType bodyFn = DSL $ \p i ->
+  pi name v r binderType bodyFn = DSL $ \p i ->
     let varType = unDSL binderType p i
         var = boundVar i
-        form = approxPiForm v
-        binder = Binder p form v r Nothing varType
+        form = approxPiForm name v
+        binder = Binder p form v r () varType
         body = unDSL (bodyFn var) p (i + 1)
      in Pi p binder body
 
-  lam v r binderType bodyFn = DSL $ \p i ->
+  lam name v r binderType bodyFn = DSL $ \p i ->
     let varType = unDSL binderType p i
         var = boundVar i
-        binder = Binder p (BinderForm OnlyName True) v r Nothing varType
+        binder = Binder p (BinderForm (OnlyName name) True) v r () varType
         body = unDSL (bodyFn var) p (i + 1)
      in Lam p binder body
 
@@ -161,49 +162,49 @@ infix 4 @@
 infixr 4 ~>
 
 (~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x ~> y = pi Explicit Relevant x (const y)
+x ~> y = pi Nothing Explicit Relevant x (const y)
 
 -- | Implicit function type
 infixr 4 ~~>
 
 (~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x ~~> y = pi Implicit Relevant x (const y)
+x ~~> y = pi Nothing Implicit Relevant x (const y)
 
 -- | Irrelevant implicit function type
 infixr 4 .~~>
 
 (.~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x .~~> y = pi Implicit Irrelevant x (const y)
+x .~~> y = pi Nothing Implicit Irrelevant x (const y)
 
 -- | Instance function type
 infixr 4 ~~~>
 
 (~~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x ~~~> y = pi Instance Relevant x (const y)
+x ~~~> y = pi Nothing Instance Relevant x (const y)
 
 -- | Irrelevant instance function type
 infixr 4 .~~~>
 
 (.~~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x .~~~> y = pi Instance Irrelevant x (const y)
+x .~~~> y = pi Nothing Instance Irrelevant x (const y)
 
-forAll :: DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
-forAll = pi Implicit Relevant
+forAll :: Name -> DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
+forAll name = pi (Just name) Implicit Relevant
 
-forAllIrrelevant :: DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
-forAllIrrelevant = pi Implicit Irrelevant
+forAllIrrelevant :: Name -> DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
+forAllIrrelevant name = pi (Just name) Implicit Irrelevant
 
 forAllLinearityTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
 forAllLinearityTriples f =
-  forAllIrrelevant tLin $ \l1 ->
-    forAllIrrelevant tLin $ \l2 ->
-      forAllIrrelevant tLin $ \l3 -> f l1 l2 l3
+  forAllIrrelevant "l1" tLin $ \l1 ->
+    forAllIrrelevant "l2" tLin $ \l2 ->
+      forAllIrrelevant "l3" tLin $ \l3 -> f l1 l2 l3
 
 forAllPolarityTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
 forAllPolarityTriples f =
-  forAllIrrelevant tPol $ \l1 ->
-    forAllIrrelevant tPol $ \l2 ->
-      forAllIrrelevant tPol $ \l3 -> f l1 l2 l3
+  forAllIrrelevant "p1" tPol $ \l1 ->
+    forAllIrrelevant "p2" tPol $ \l2 ->
+      forAllIrrelevant "p3" tPol $ \l3 -> f l1 l2 l3
 
 universe :: Universe -> DSLExpr
 universe u = DSL $ \ann _ -> Universe ann u

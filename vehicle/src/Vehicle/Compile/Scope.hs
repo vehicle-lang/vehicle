@@ -148,7 +148,9 @@ generaliseOverVariables vars e = fst <$> foldM generalise (e, mempty) vars
           logDebug MaxDetail $
             "Generalising over unbound variable" <+> quotePretty name
           let binderType = mkHole p ("typeOf[" <> name <> "]")
-          let newExpr = Pi p (Binder p (BinderForm OnlyName True) Implicit Relevant (Just name) binderType) expr
+          let binderForm = BinderForm (OnlyName name) True
+          let binder = Binder p binderForm Implicit Relevant () binderType
+          let newExpr = Pi p binder expr
           return (newExpr, Set.insert name seenNames)
 
 --------------------------------------------------------------------------------
@@ -174,7 +176,9 @@ scopeVar p symbol = do
       Just ident -> do
         tell [ident]
         return $ Free ident
-      Nothing -> throwError $ UnboundName p symbol
+      Nothing -> do
+        logDebug MaxDetail (pretty boundCtx)
+        throwError $ UnboundName p symbol
 
 --------------------------------------------------------------------------------
 -- Utility functions

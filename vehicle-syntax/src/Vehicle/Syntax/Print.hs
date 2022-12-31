@@ -30,23 +30,23 @@ class Printable a where
   printExternal :: a -> Doc b
   printExternal = pretty . bnfcPrintHack . printExternal'
 
-instance Printable NamedArg where
+instance Printable InputArg where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable NamedBinder where
+instance Printable InputBinder where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable NamedExpr where
+instance Printable InputExpr where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable NamedDecl where
+instance Printable InputDecl where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable NamedProg where
+instance Printable InputProg where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 

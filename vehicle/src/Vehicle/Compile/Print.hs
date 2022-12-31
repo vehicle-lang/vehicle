@@ -29,7 +29,6 @@ import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude hiding (MapList)
 import Vehicle.Compile.Simplify
-import Vehicle.Compile.SupplyNames
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Expr.CoDeBruijn
@@ -86,7 +85,6 @@ data Strategy
   | DescopeNaively Strategy
   | DescopeWithNames Strategy
   | CoDBToDB Strategy
-  | SupplyNames Strategy
   | Denormalise Strategy
   | SimplifyWithOptions Strategy
   | SimplifyDefault Strategy
@@ -102,40 +100,33 @@ data Strategy
 -- and the type of the expression.
 type family StrategyFor (tags :: Tags) a :: Strategy where
   -- To convert any named representation to the target language, simply convert it.
-  StrategyFor ('As lang) NamedProg = 'PrintAs lang
-  StrategyFor ('As lang) NamedDecl = 'PrintAs lang
-  StrategyFor ('As lang) NamedExpr = 'PrintAs lang
-  StrategyFor ('As lang) NamedArg = 'PrintAs lang
-  StrategyFor ('As lang) NamedBinder = 'PrintAs lang
+  StrategyFor ('As lang) InputProg = 'PrintAs lang
+  StrategyFor ('As lang) InputDecl = 'PrintAs lang
+  StrategyFor ('As lang) InputExpr = 'PrintAs lang
+  StrategyFor ('As lang) InputArg = 'PrintAs lang
+  StrategyFor ('As lang) InputBinder = 'PrintAs lang
   -- To convert a DB representation with the names supplied directly to the target language
   -- (instead of first converting the DB indices to names) then convert the DB indices naively to a
   -- string representing them, e.g. the index `0` gets converted to `i0`
-  StrategyFor ('As lang) SuppliedDBProg = 'DescopeNaively (StrategyFor ('As lang) NamedProg)
-  StrategyFor ('As lang) SuppliedDBDecl = 'DescopeNaively (StrategyFor ('As lang) NamedDecl)
-  StrategyFor ('As lang) SuppliedDBExpr = 'DescopeNaively (StrategyFor ('As lang) NamedExpr)
-  StrategyFor ('As lang) SuppliedDBArg = 'DescopeNaively (StrategyFor ('As lang) NamedArg)
-  StrategyFor ('As lang) SuppliedDBBinder = 'DescopeNaively (StrategyFor ('As lang) NamedBinder)
-  {-
-    -- To convert a CoDBExpr with the names supplied directly to the target language
-    -- (instead of first converting to CoDB indices to names) then convert the CoDB indices naively to
-    -- a string representing them.
-    StrategyFor ('As lang) (t (NamedBinding, Maybe PositionTree) CoDBVar) =
-      'CoDBToNamedNaive ('PrintAs lang)
-  -}
+  StrategyFor ('As lang) DBProg = 'DescopeNaively (StrategyFor ('As lang) InputProg)
+  StrategyFor ('As lang) DBDecl = 'DescopeNaively (StrategyFor ('As lang) InputDecl)
+  StrategyFor ('As lang) DBExpr = 'DescopeNaively (StrategyFor ('As lang) InputExpr)
+  StrategyFor ('As lang) DBArg = 'DescopeNaively (StrategyFor ('As lang) InputArg)
+  StrategyFor ('As lang) DBBinder = 'DescopeNaively (StrategyFor ('As lang) InputBinder)
   -- To convert an expression using a named representation to a named representation is a no-op.
-  StrategyFor ('Named tags) NamedProg = StrategyFor tags NamedProg
-  StrategyFor ('Named tags) NamedDecl = StrategyFor tags NamedDecl
-  StrategyFor ('Named tags) NamedExpr = StrategyFor tags NamedExpr
-  StrategyFor ('Named tags) NamedArg = StrategyFor tags NamedArg
-  StrategyFor ('Named tags) NamedBinder = StrategyFor tags NamedBinder
+  StrategyFor ('Named tags) InputProg = StrategyFor tags InputProg
+  StrategyFor ('Named tags) InputDecl = StrategyFor tags InputDecl
+  StrategyFor ('Named tags) InputExpr = StrategyFor tags InputExpr
+  StrategyFor ('Named tags) InputArg = StrategyFor tags InputArg
+  StrategyFor ('Named tags) InputBinder = StrategyFor tags InputBinder
   -- To convert a closed expression using a DB representation but whose missing names have been supplied
   -- to a named representation, perform the DB to named conversion. For expressions, args, binders
   -- we need to have the context in scope.
-  StrategyFor ('Named tags) SuppliedDBProg = 'DescopeWithNames (StrategyFor tags NamedProg)
-  StrategyFor ('Named tags) SuppliedDBDecl = 'DescopeWithNames (StrategyFor tags NamedDecl)
-  StrategyFor ('Named tags) (Contextualised SuppliedDBExpr NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags NamedExpr)
-  StrategyFor ('Named tags) (Contextualised SuppliedDBArg NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags NamedArg)
-  StrategyFor ('Named tags) (Contextualised SuppliedDBBinder NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags NamedBinder)
+  StrategyFor ('Named tags) DBProg = 'DescopeWithNames (StrategyFor tags InputProg)
+  StrategyFor ('Named tags) DBDecl = 'DescopeWithNames (StrategyFor tags InputDecl)
+  StrategyFor ('Named tags) (Contextualised DBExpr BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputExpr)
+  StrategyFor ('Named tags) (Contextualised DBArg BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputArg)
+  StrategyFor ('Named tags) (Contextualised DBBinder BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputBinder)
   -- To convert an open expression using a DB representation but whose missing names have been supplied
   -- to a named representation, perform the DB to named conversion.
   StrategyFor tags CoDBExpr = 'CoDBToDB (StrategyFor tags DBExpr)
@@ -144,16 +135,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Named tags) (Contextualised CoDBExpr BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised DBExpr BoundDBCtx))
   StrategyFor ('Named tags) (Contextualised CoDBArg BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised DBArg BoundDBCtx))
   StrategyFor ('Named tags) (Contextualised CoDBBinder BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised DBBinder BoundDBCtx))
-  -- If we have a closed term with DB indices, then first supply the missing names.
-  StrategyFor tags (Prog DBBinding var) = 'SupplyNames (StrategyFor tags (Prog NamedBinding var))
-  StrategyFor tags (Decl DBBinding var) = 'SupplyNames (StrategyFor tags (Decl NamedBinding var))
-  StrategyFor tags (Expr DBBinding var) = 'SupplyNames (StrategyFor tags (Expr NamedBinding var))
-  StrategyFor tags (Arg DBBinding var) = 'SupplyNames (StrategyFor tags (Arg NamedBinding var))
-  StrategyFor tags (Binder DBBinding var) = 'SupplyNames (StrategyFor tags (Binder NamedBinding var))
-  -- If we have an open term with DB indices, then first supply the missing names.
-  StrategyFor tags (Contextualised (Expr DBBinding var) BoundDBCtx) = 'SupplyNames (StrategyFor tags (Contextualised (Expr NamedBinding var) NamedBoundCtx))
-  StrategyFor tags (Contextualised (Arg DBBinding var) BoundDBCtx) = 'SupplyNames (StrategyFor tags (Contextualised (Arg NamedBinding var) NamedBoundCtx))
-  StrategyFor tags (Contextualised (Binder DBBinding var) BoundDBCtx) = 'SupplyNames (StrategyFor tags (Contextualised (Binder NamedBinding var) NamedBoundCtx))
   -- Normalised expressions
   StrategyFor tags NormExpr = 'Denormalise (StrategyFor tags CheckedExpr)
   StrategyFor tags NormArg = 'Denormalise (StrategyFor tags CheckedArg)
@@ -172,7 +153,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (Contextualised TypeClassConstraint ConstraintContext) =
     StrategyFor tags TypeClassConstraint
   -- Things that we just pretty print.
-  StrategyFor tags DBBinding = 'Pretty
   StrategyFor tags PositionTree = 'Pretty
   StrategyFor tags Int = 'Pretty
   StrategyFor tags Text = 'Pretty
@@ -200,6 +180,13 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
           ':$$: 'Text "Perhaps you could add support to Vehicle.Compile.Print.StrategyFor?"
       )
 
+{-
+  -- To convert a CoDBExpr with the names supplied directly to the target language
+  -- (instead of first converting to CoDB indices to names) then convert the CoDB indices naively to
+  -- a string representing them.
+  StrategyFor ('As lang) (t (NamedBinding, Maybe PositionTree) CoDBVar) =
+    'CoDBToNamedNaive ('PrintAs lang)
+-}
 --------------------------------------------------------------------------------
 -- Executing printing strategies
 --------------------------------------------------------------------------------
@@ -217,87 +204,81 @@ prettyWith = prettyUsing @(StrategyFor tags a) @a @b
 --------------------------------------------------------------------------------
 -- Printing to internal language
 
-instance PrettyUsing ('PrintAs 'Internal) NamedProg where
+instance PrettyUsing ('PrintAs 'Internal) InputProg where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) NamedDecl where
+instance PrettyUsing ('PrintAs 'Internal) InputDecl where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) NamedExpr where
+instance PrettyUsing ('PrintAs 'Internal) InputExpr where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) NamedArg where
+instance PrettyUsing ('PrintAs 'Internal) InputArg where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) NamedBinder where
+instance PrettyUsing ('PrintAs 'Internal) InputBinder where
   prettyUsing = printInternal
 
 --------------------------------------------------------------------------------
 -- Printing to external language
 
-instance PrettyUsing ('PrintAs 'External) NamedProg where
+instance PrettyUsing ('PrintAs 'External) InputProg where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) NamedDecl where
+instance PrettyUsing ('PrintAs 'External) InputDecl where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) NamedExpr where
+instance PrettyUsing ('PrintAs 'External) InputExpr where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) NamedArg where
+instance PrettyUsing ('PrintAs 'External) InputArg where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) NamedBinder where
+instance PrettyUsing ('PrintAs 'External) InputBinder where
   prettyUsing = printExternal
 
 --------------------------------------------------------------------------------
 -- Convert closed terms from DeBruijn representation to named representation naively
 
-instance PrettyUsing rest NamedProg => PrettyUsing ('DescopeNaively rest) SuppliedDBProg where
+instance PrettyUsing rest InputProg => PrettyUsing ('DescopeNaively rest) DBProg where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest NamedDecl => PrettyUsing ('DescopeNaively rest) SuppliedDBDecl where
+instance PrettyUsing rest InputDecl => PrettyUsing ('DescopeNaively rest) DBDecl where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest NamedExpr => PrettyUsing ('DescopeNaively rest) SuppliedDBExpr where
+instance PrettyUsing rest InputExpr => PrettyUsing ('DescopeNaively rest) DBExpr where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest NamedArg => PrettyUsing ('DescopeNaively rest) SuppliedDBArg where
+instance PrettyUsing rest InputArg => PrettyUsing ('DescopeNaively rest) DBArg where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest NamedBinder => PrettyUsing ('DescopeNaively rest) SuppliedDBBinder where
+instance PrettyUsing rest InputBinder => PrettyUsing ('DescopeNaively rest) DBBinder where
   prettyUsing = prettyUsing @rest . descopeNaive
 
 --------------------------------------------------------------------------------
 -- Convert open terms from DeBruijn representation to named representation
 
+instance PrettyUsing rest InputProg => PrettyUsing ('DescopeWithNames rest) DBProg where
+  prettyUsing = prettyUsing @rest . descopeNamed
+
+instance PrettyUsing rest InputDecl => PrettyUsing ('DescopeWithNames rest) DBDecl where
+  prettyUsing = prettyUsing @rest . descopeNamed
+
 instance
-  PrettyUsing rest NamedProg =>
-  PrettyUsing ('DescopeWithNames rest) SuppliedDBProg
+  PrettyUsing rest InputExpr =>
+  PrettyUsing ('DescopeWithNames rest) (Contextualised DBExpr BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed
 
 instance
-  PrettyUsing rest NamedDecl =>
-  PrettyUsing ('DescopeWithNames rest) (Decl Name (LocallyNamelessVar DBIndex))
+  PrettyUsing rest InputArg =>
+  PrettyUsing ('DescopeWithNames rest) (Contextualised DBArg BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed
 
 instance
-  PrettyUsing rest NamedExpr =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised SuppliedDBExpr NamedBoundCtx)
-  where
-  prettyUsing = prettyUsing @rest . descopeNamed
-
-instance
-  PrettyUsing rest NamedArg =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised SuppliedDBArg NamedBoundCtx)
-  where
-  prettyUsing = prettyUsing @rest . descopeNamed
-
-instance
-  PrettyUsing rest NamedBinder =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised SuppliedDBBinder NamedBoundCtx)
+  PrettyUsing rest InputBinder =>
+  PrettyUsing ('DescopeWithNames rest) (Contextualised DBBinder BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed
 
@@ -350,75 +331,6 @@ instance PrettyUsing rest DBArg
 instance PrettyUsing rest DBBinder
       => PrettyUsing ('CoDBToDBClosed rest) CoDBBinder where
   prettyUsing (e, bvm) = assert (null bvm) $ prettyUsing @rest (fromCoDB (e, bvm))
--}
-
---------------------------------------------------------------------------------
--- Supply names for open DB terms
-
-instance
-  PrettyUsing rest (Contextualised (Expr Name var) NamedBoundCtx) =>
-  PrettyUsing ('SupplyNames rest) (Contextualised (Expr DBBinding var) BoundDBCtx)
-  where
-  prettyUsing = prettyUsing @rest . supplyNames
-
-{-
-instance
-  PrettyUsing rest (Contextualised (Arg Name var) NamedBoundCtx) =>
-  PrettyUsing ('SupplyNames rest) (Contextualised (Arg DBBinding var) BoundDBCtx)
-  where
-  prettyUsing e = prettyUsing @rest (supplyNames e :: Contextualised (Arg Name var) NamedBoundCtx)
-
-instance
-  PrettyUsing rest (Contextualised (Binder Name var) NamedBoundCtx) =>
-  PrettyUsing ('SupplyNames rest) (Contextualised (Binder DBBinding var) BoundDBCtx)
-  where
-  prettyUsing e = prettyUsing @rest (supplyNames e :: Contextualised (Binder Name var) NamedBoundCtx)
--}
---------------------------------------------------------------------------------
--- Supply names for closed DB terms
-
-instance
-  PrettyUsing rest (Prog Name var) =>
-  PrettyUsing ('SupplyNames rest) (Prog DBBinding var)
-  where
-  prettyUsing = prettyUsing @rest . supplyNames
-
-instance
-  PrettyUsing rest (Decl Name var) =>
-  PrettyUsing ('SupplyNames rest) (Decl DBBinding var)
-  where
-  prettyUsing = prettyUsing @rest . supplyNames
-
-instance
-  PrettyUsing rest (Expr Name var) =>
-  PrettyUsing ('SupplyNames rest) (Expr DBBinding var)
-  where
-  prettyUsing = prettyUsing @rest . supplyNames
-
-instance
-  PrettyUsing rest (Arg Name var) =>
-  PrettyUsing ('SupplyNames rest) (Arg DBBinding var)
-  where
-  prettyUsing = prettyUsing @rest . supplyNames
-
-instance
-  PrettyUsing rest (Binder Name var) =>
-  PrettyUsing ('SupplyNames rest) (Binder DBBinding var)
-  where
-  prettyUsing = prettyUsing @rest . supplyNames
-
-{-
-instance
-  (PrettyUsing rest ([Name], t (CoDBBinding Name) var)) =>
-  PrettyUsing ('SupplyNames rest) ([DBBinding], t (CoDBBinding DBBinding) var)
-  where
-  prettyUsing p = prettyUsing @rest (supplyCoDBNamesWithCtx p)
-
-instance
-  (SupplyNames t, PrettyUsing rest (t (CoDBBinding Name) var)) =>
-  PrettyUsing ('SupplyNames rest) (t (CoDBBinding DBBinding) var)
-  where
-  prettyUsing e = prettyUsing @rest (supplyCoDBNames e)
 -}
 
 --------------------------------------------------------------------------------

@@ -344,6 +344,8 @@ checkAllUnknownsSolved = do
   checkAllMetasSolved
   -- Then clear the meta-ctx
   clearMetaCtx
+  -- ...and the fresh names
+  clearFreshNames
 
 checkAllConstraintsSolved :: TCM m => m ()
 checkAllConstraintsSolved = do

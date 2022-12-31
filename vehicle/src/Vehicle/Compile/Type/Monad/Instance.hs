@@ -19,25 +19,41 @@ import Control.Monad.State
   )
 import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Trans.Class (lift)
+import Data.Bifunctor (Bifunctor (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.VariableContext
 
 --------------------------------------------------------------------------------
+-- Implementation
+
+-- | State for generating fresh names.
+type FreshNameState = Int
+
+type TypeCheckerTInternals m =
+  ReaderT TypingDeclCtx (StateT (TypingMetaCtx, FreshNameState) m)
+
+getFreshNameInternal :: Monad m => CheckedType -> TypeCheckerTInternals m Name
+getFreshNameInternal _typ = do
+  (metaCtx, nameID) <- get
+  put (metaCtx, nameID + 1)
+  return $ layoutAsText $ "_x" <> pretty nameID
+
+--------------------------------------------------------------------------------
 -- The type-checking monad
 
 newtype TypeCheckerT m a = TypeCheckerT
-  { unTypeCheckerT :: ReaderT TypingDeclCtx (StateT TypingMetaCtx m) a
+  { unTypeCheckerT :: TypeCheckerTInternals m a
   }
   deriving (Functor, Applicative, Monad)
 
 runTypeCheckerT :: Monad m => TypingDeclCtx -> TypeCheckerT m a -> m a
 runTypeCheckerT declCtx (TypeCheckerT e) =
-  evalStateT (runReaderT e declCtx) emptyTypingMetaCtx
+  evalStateT (runReaderT e declCtx) (emptyTypingMetaCtx, 0)
 
 mapTypeCheckerT ::
-  (m (a, TypingMetaCtx) -> n (b, TypingMetaCtx)) ->
+  (m (a, (TypingMetaCtx, FreshNameState)) -> n (b, (TypingMetaCtx, FreshNameState))) ->
   TypeCheckerT m a ->
   TypeCheckerT n b
 mapTypeCheckerT f m = TypeCheckerT (mapReaderT (mapStateT f) (unTypeCheckerT m))
@@ -48,10 +64,10 @@ mapTypeCheckerT f m = TypeCheckerT (mapReaderT (mapStateT f) (unTypeCheckerT m))
 instance MonadCompile m => MonadTypeChecker (TypeCheckerT m) where
   getDeclContext = TypeCheckerT ask
   addDeclContext d s = TypeCheckerT $ local (addToDeclCtx d) (unTypeCheckerT s)
-  getMetaCtx = TypeCheckerT get
-  getsMetaCtx f = TypeCheckerT $ gets f
-  putMetaCtx x = TypeCheckerT $ put x
-  modifyMetaCtx f = TypeCheckerT $ modify f
+  getMetaCtx = TypeCheckerT $ gets fst
+  modifyMetaCtx f = TypeCheckerT $ modify (first f)
+  getFreshName typ = TypeCheckerT $ getFreshNameInternal typ
+  clearFreshNames = TypeCheckerT $ modify (second (const 0))
 
 instance MonadTrans TypeCheckerT where
   lift = TypeCheckerT . lift . lift

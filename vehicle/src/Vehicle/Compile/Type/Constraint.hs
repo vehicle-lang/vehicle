@@ -24,7 +24,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -72,7 +71,7 @@ isAuxiliaryTypeClass tc = do
 
 data ConstraintOrigin
   = CheckingExprType CheckedExpr CheckedType CheckedType
-  | CheckingBinderType DBBinding CheckedType CheckedType
+  | CheckingBinderType (Maybe Name) CheckedType CheckedType
   | CheckingTypeClass CheckedExpr [UncheckedArg] TypeClass
   | CheckingAuxiliary
   deriving (Show)
