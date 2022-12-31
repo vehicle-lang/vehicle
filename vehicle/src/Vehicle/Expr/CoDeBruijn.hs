@@ -34,9 +34,7 @@ import Vehicle.Syntax.AST
 newtype CoDBBinding = CoDBBinding (Maybe PositionTree)
   deriving (Show, Eq, Generic)
 
-instance Hashable CoDBBinding where
-  -- We deliberately ignore the name stored in the binding
-  hashWithSalt d (CoDBBinding t) = hashWithSalt d t
+instance Hashable CoDBBinding
 
 data CoDBVar
   = CoDBFree Identifier

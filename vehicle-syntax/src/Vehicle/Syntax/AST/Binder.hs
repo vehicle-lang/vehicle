@@ -2,7 +2,7 @@ module Vehicle.Syntax.AST.Binder where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Hashable (Hashable)
+import Data.Hashable (Hashable (..))
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Name (HasName (..), Name)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
@@ -28,7 +28,10 @@ instance ToJSON BinderNamingForm
 
 instance FromJSON BinderNamingForm
 
-instance Hashable BinderNamingForm
+instance Hashable BinderNamingForm where
+  -- We deliberately ignore the binder naming form when hashing
+  -- in order to be agnostic to the name the user provides.
+  hashWithSalt d _ = d
 
 instance HasName BinderNamingForm (Maybe Name) where
   nameOf = \case
