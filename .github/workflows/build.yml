@@ -41,20 +41,20 @@ jobs:
         cabal-extra-args: [""]
         include:
           # Build with -fghc-debug:
-          - os_and_name: [ubuntu-latest, Linux]
-            ghc-version: "9.2.4"
-            cabal-version: "3.8"
-            cabal-extra-args: "-fghc-debug"
+          #- os_and_name: [ubuntu-latest, Linux]
+          #  ghc-version: "9.2.4"
+          #  cabal-version: "3.8"
+          #  cabal-extra-args: "-fghc-debug"
           # Build with -fnothunks:
           - os_and_name: [ubuntu-latest, Linux]
             ghc-version: "9.2.4"
             cabal-version: "3.8"
             cabal-extra-args: "-fnothunks"
           # Build with -fghc-debug and -fnothunks:
-          - os_and_name: [ubuntu-latest, Linux]
-            ghc-version: "9.2.4"
-            cabal-version: "3.8"
-            cabal-extra-args: "-fghc-debug -fnothunks"
+          # - os_and_name: [ubuntu-latest, Linux]
+          #   ghc-version: "9.2.4"
+          #   cabal-version: "3.8"
+          #   cabal-extra-args: "-fghc-debug -fnothunks"
 
   build-vehicle-python:
     name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}
