@@ -86,6 +86,8 @@ data Strategy
   | DescopeWithNames Strategy
   | CoDBToDB Strategy
   | Denormalise Strategy
+  | DiscardConstraintCtx Strategy
+  | KeepConstraintCtx Strategy
   | SimplifyWithOptions Strategy
   | SimplifyDefault Strategy
   | MapList Strategy
@@ -113,6 +115,9 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('As lang) DBExpr = 'DescopeNaively (StrategyFor ('As lang) InputExpr)
   StrategyFor ('As lang) DBArg = 'DescopeNaively (StrategyFor ('As lang) InputArg)
   StrategyFor ('As lang) DBBinder = 'DescopeNaively (StrategyFor ('As lang) InputBinder)
+  -- To convert a NormExpr convert the `DBLevel`s naively.
+  StrategyFor ('As lang) NormExpr = 'DescopeNaively (StrategyFor ('As lang) InputExpr)
+  StrategyFor ('As lang) NormArg = 'DescopeNaively (StrategyFor ('As lang) InputArg)
   -- To convert an expression using a named representation to a named representation is a no-op.
   StrategyFor ('Named tags) InputProg = StrategyFor tags InputProg
   StrategyFor ('Named tags) InputDecl = StrategyFor tags InputDecl
@@ -127,6 +132,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Named tags) (Contextualised DBExpr BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputExpr)
   StrategyFor ('Named tags) (Contextualised DBArg BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputArg)
   StrategyFor ('Named tags) (Contextualised DBBinder BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputBinder)
+  -- To convert a named normalised expr, first denormalise to a checked expr.
+  StrategyFor ('Named tags) (Contextualised NormExpr BoundDBCtx) = 'Denormalise (StrategyFor ('Named tags) (Contextualised CheckedExpr BoundDBCtx))
   -- To convert an open expression using a DB representation but whose missing names have been supplied
   -- to a named representation, perform the DB to named conversion.
   StrategyFor tags CoDBExpr = 'CoDBToDB (StrategyFor tags DBExpr)
@@ -135,28 +142,17 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Named tags) (Contextualised CoDBExpr BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised DBExpr BoundDBCtx))
   StrategyFor ('Named tags) (Contextualised CoDBArg BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised DBArg BoundDBCtx))
   StrategyFor ('Named tags) (Contextualised CoDBBinder BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised DBBinder BoundDBCtx))
-  -- Normalised expressions
-  StrategyFor tags NormExpr = 'Denormalise (StrategyFor tags CheckedExpr)
-  StrategyFor tags NormArg = 'Denormalise (StrategyFor tags CheckedArg)
-  StrategyFor tags (Contextualised NormExpr BoundDBCtx) =
-    'Denormalise (StrategyFor tags (Contextualised CheckedExpr BoundDBCtx))
-  -- Constraints
-  StrategyFor tags Constraint = StrategyFor tags NormExpr
-  StrategyFor tags TypeClassConstraint = StrategyFor tags NormExpr
-  StrategyFor tags UnificationConstraint = StrategyFor tags NormExpr
-  StrategyFor ('Named tags) (Contextualised Constraint ConstraintContext) =
-    StrategyFor ('Named tags) (Contextualised NormExpr BoundDBCtx)
-  StrategyFor tags (Contextualised Constraint ConstraintContext) =
-    StrategyFor tags Constraint
-  StrategyFor ('Named tags) (Contextualised TypeClassConstraint ConstraintContext) =
-    StrategyFor ('Named tags) (Contextualised NormExpr BoundDBCtx)
-  StrategyFor tags (Contextualised TypeClassConstraint ConstraintContext) =
-    StrategyFor tags TypeClassConstraint
   -- Things that we just pretty print.
   StrategyFor tags PositionTree = 'Pretty
   StrategyFor tags Int = 'Pretty
   StrategyFor tags Text = 'Pretty
   -- Objects for which we want to block the strategy computation on.
+  StrategyFor ('Named tags) (Contextualised Constraint ConstraintContext) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised NormExpr BoundDBCtx))
+  StrategyFor ('Named tags) (Contextualised TypeClassConstraint ConstraintContext) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised NormExpr BoundDBCtx))
+  StrategyFor ('Named tags) (Contextualised UnificationConstraint ConstraintContext) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised NormExpr BoundDBCtx))
+  StrategyFor tags (Contextualised Constraint ConstraintContext) = 'DiscardConstraintCtx (StrategyFor tags NormExpr)
+  StrategyFor tags (Contextualised TypeClassConstraint ConstraintContext) = 'DiscardConstraintCtx (StrategyFor tags NormExpr)
+  StrategyFor tags (Contextualised UnificationConstraint ConstraintContext) = 'DiscardConstraintCtx (StrategyFor tags NormExpr)
   StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags PositionsInExpr = 'Opaque (StrategyFor tags CheckedExpr)
   -- Simplification
@@ -253,6 +249,12 @@ instance PrettyUsing rest InputArg => PrettyUsing ('DescopeNaively rest) DBArg w
   prettyUsing = prettyUsing @rest . descopeNaive
 
 instance PrettyUsing rest InputBinder => PrettyUsing ('DescopeNaively rest) DBBinder where
+  prettyUsing = prettyUsing @rest . descopeNaive
+
+instance PrettyUsing rest InputExpr => PrettyUsing ('DescopeNaively rest) NormExpr where
+  prettyUsing = prettyUsing @rest . descopeNaive
+
+instance PrettyUsing rest InputArg => PrettyUsing ('DescopeNaively rest) NormArg where
   prettyUsing = prettyUsing @rest . descopeNaive
 
 --------------------------------------------------------------------------------
@@ -390,50 +392,74 @@ instance Pretty a => PrettyUsing 'Pretty a where
 --------------------------------------------------------------------------------
 -- Instances for normalised types
 
-instance PrettyUsing rest CheckedExpr => PrettyUsing ('Denormalise rest) NormExpr where
-  prettyUsing e = prettyUsing @rest (unnormalise @NormExpr @CheckedExpr e)
-
 instance
   PrettyUsing rest (Contextualised CheckedExpr BoundDBCtx) =>
   PrettyUsing ('Denormalise rest) (Contextualised NormExpr BoundDBCtx)
   where
-  prettyUsing (WithContext e ctx) =
-    prettyUsing @rest (WithContext (unnormalise @NormExpr @CheckedExpr e) ctx)
+  prettyUsing (WithContext e ctx) = do
+    let e' = unnormalise @NormExpr @CheckedExpr (DBLevel $ length ctx) e
+    prettyUsing @rest (WithContext e' ctx)
+
+instance PrettyUsing rest CheckedExpr => PrettyUsing ('Denormalise rest) NormExpr where
+  prettyUsing e = prettyUsing @rest (unnormalise @NormExpr @CheckedExpr 0 e)
 
 instance PrettyUsing rest CheckedArg => PrettyUsing ('Denormalise rest) NormArg where
-  prettyUsing e = prettyUsing @rest (unnormalise @NormArg @CheckedArg e)
+  prettyUsing e = prettyUsing @rest (unnormalise @NormArg @CheckedArg 0 e)
 
 --------------------------------------------------------------------------------
 -- Instances for constraints
 
-instance PrettyUsing rest NormExpr => PrettyUsing rest UnificationConstraint where
-  prettyUsing (Unify e1 e2) = prettyUsing @rest e1 <+> "~" <+> prettyUsing @rest e2
+prettyUnify :: Doc a -> Doc a -> Doc a
+prettyUnify e1 e2 = e1 <+> "~" <+> e2
 
-instance PrettyUsing rest NormExpr => PrettyUsing rest TypeClassConstraint where
-  prettyUsing (Has m tc args) =
-    pretty m
-      <+> "<="
-      <+> prettyUsing @rest (VBuiltin mempty (Constructor $ TypeClass tc) (NonEmpty.toList args))
+prettyTypeClass :: MetaID -> Doc a -> Doc a
+prettyTypeClass m expr = pretty m <+> "<=" <+> expr
 
 instance
-  (PrettyUsing rest UnificationConstraint, PrettyUsing rest TypeClassConstraint) =>
-  PrettyUsing rest Constraint
+  PrettyUsing rest NormExpr =>
+  PrettyUsing ('DiscardConstraintCtx rest) (Contextualised UnificationConstraint ConstraintContext)
   where
-  prettyUsing = \case
-    UnificationConstraint c -> prettyUsing @rest c
-    TypeClassConstraint c -> prettyUsing @rest c
+  prettyUsing (WithContext (Unify e1 e2) _) = do
+    let e1' = prettyUsing @rest (e1 :: NormExpr)
+    let e2' = prettyUsing @rest (e2 :: NormExpr)
+    prettyUnify e1' e2'
 
 instance
-  PrettyUsing rest Constraint =>
+  PrettyUsing rest NormExpr =>
+  PrettyUsing ('DiscardConstraintCtx rest) (Contextualised TypeClassConstraint ConstraintContext)
+  where
+  prettyUsing (WithContext (Has m tc args) _) = do
+    let expr = VBuiltin mempty (Constructor $ TypeClass tc) (NonEmpty.toList args)
+    let expr' = prettyUsing @rest (expr :: NormExpr)
+    prettyTypeClass m expr'
+
+instance
+  PrettyUsing rest (Contextualised NormExpr BoundDBCtx) =>
+  PrettyUsing ('KeepConstraintCtx rest) (Contextualised UnificationConstraint ConstraintContext)
+  where
+  prettyUsing (WithContext (Unify e1 e2) ctx) = do
+    let e1' = prettyUsing @rest (WithContext e1 (boundContextOf ctx))
+    let e2' = prettyUsing @rest (WithContext e2 (boundContextOf ctx))
+    prettyUnify e1' e2'
+
+instance
+  PrettyUsing rest (Contextualised NormExpr BoundDBCtx) =>
+  PrettyUsing ('KeepConstraintCtx rest) (Contextualised TypeClassConstraint ConstraintContext)
+  where
+  prettyUsing (WithContext (Has m tc args) ctx) = do
+    let expr = VBuiltin mempty (Constructor $ TypeClass tc) (NonEmpty.toList args)
+    let expr' = prettyUsing @rest (WithContext expr (boundContextOf ctx))
+    prettyTypeClass m expr'
+
+instance
+  ( PrettyUsing rest (Contextualised UnificationConstraint ConstraintContext),
+    PrettyUsing rest (Contextualised TypeClassConstraint ConstraintContext)
+  ) =>
   PrettyUsing rest (Contextualised Constraint ConstraintContext)
   where
-  prettyUsing (WithContext c ctx) = prettyUsing @rest c <+> parens (pretty ctx)
-
-instance
-  PrettyUsing rest TypeClassConstraint =>
-  PrettyUsing rest (Contextualised TypeClassConstraint ConstraintContext)
-  where
-  prettyUsing (WithContext c ctx) = prettyUsing @rest c <+> parens (pretty ctx)
+  prettyUsing (WithContext c ctx) = case c of
+    UnificationConstraint uc -> prettyUsing @rest (WithContext uc ctx)
+    TypeClassConstraint tc -> prettyUsing @rest (WithContext tc ctx)
 
 --------------------------------------------------------------------------------
 -- Instances for opaque types

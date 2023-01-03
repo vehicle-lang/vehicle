@@ -7,7 +7,7 @@ import Control.Monad (foldM)
 import Data.Maybe (catMaybes)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettySimple)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.Normalised
@@ -75,7 +75,7 @@ generateConstraintUsingDefaults constraints = do
         "using default"
           <+> pretty m
           <+> "="
-          <+> prettySimple solution
+          <+> prettyVerbose solution
           <+> "         " <> parens ("from" <+> pretty tc)
       let unificationConstraint = UnificationConstraint (Unify metaExpr solution)
       let newConstraint = WithContext unificationConstraint (copyContext ctx)
@@ -86,10 +86,10 @@ findStrongestConstraint ::
   [WithContext TypeClassConstraint] ->
   m CandidateStatus
 findStrongestConstraint [] = return None
-findStrongestConstraint (WithContext constraint ctx : xs) = do
-  recResult <- findStrongestConstraint xs
+findStrongestConstraint (c@(WithContext constraint ctx) : cs) = do
+  recResult <- findStrongestConstraint cs
 
-  logCompilerSection MaxDetail ("considering" <+> squotes (prettySimple constraint)) $ do
+  logCompilerSection MaxDetail ("considering" <+> squotes (prettyVerbose c)) $ do
     candidates <- getCandidatesFromConstraint ctx constraint
 
     newStrongest <- foldM strongest recResult candidates

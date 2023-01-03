@@ -93,6 +93,10 @@ instance Delaborate V.InputBinder B.BasicBinder where
       V.Implicit -> B.ImplicitBinder n' tokElemOf t'
       V.Instance -> B.InstanceBinder n' tokElemOf t'
 
+-- | Used for things not in the user-syntax.
+cheatDelab :: Text -> B.Expr
+cheatDelab n = B.Var (delabSymbol n)
+
 delabNameBinder :: MonadDelab m => V.InputBinder -> m B.NameBinder
 delabNameBinder b = case V.binderNamingForm b of
   V.OnlyType {} ->
@@ -158,8 +162,8 @@ delabApp fun allArgs = go fun (reverse allArgs)
 delabUniverse :: V.Universe -> B.Expr
 delabUniverse = \case
   V.TypeUniv l -> tokType l
-  V.PolarityUniv -> auxiliaryTypeError (pretty V.PolarityUniv)
-  V.LinearityUniv -> auxiliaryTypeError (pretty V.LinearityUniv)
+  V.PolarityUniv -> cheatDelab "PolarityUniverse"
+  V.LinearityUniv -> cheatDelab "LinearityUniverse"
 
 delabBuiltin :: MonadDelab m => V.Builtin -> [V.InputExpr] -> m B.Expr
 delabBuiltin fun args = case fun of
@@ -198,8 +202,8 @@ delabConstructor fun args = case fun of
   V.List -> delabApp (B.List tokList) (B.ExplicitArg <$> args)
   V.Vector -> delabApp (B.Vector tokVector) (B.ExplicitArg <$> args)
   V.Index -> delabApp (B.Index tokIndex) (B.ExplicitArg <$> args)
-  V.Polarity {} -> auxiliaryTypeError (pretty fun)
-  V.Linearity {} -> auxiliaryTypeError (pretty fun)
+  V.Polarity {} -> cheatDelab $ layoutAsText $ pretty fun
+  V.Linearity {} -> cheatDelab $ layoutAsText $ pretty fun
   V.TypeClass tc -> case tc of
     V.HasEq V.Eq -> delabApp (B.HasEq tokHasEq) (B.ExplicitArg <$> args)
     V.HasAdd -> delabApp (B.HasAdd tokHasAdd) (B.ExplicitArg <$> args)

@@ -17,7 +17,7 @@ import Vehicle.Compile.Type.ConstraintSolver.Linearity
 import Vehicle.Compile.Type.ConstraintSolver.Polarity
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Monad
-import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.DeBruijn (DBLevel (..))
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary.Names
 
@@ -34,8 +34,9 @@ solveTypeClassConstraint c@(WithContext (Has m tc args) ctx) = do
   case progress of
     Left metas -> return $ Stuck metas
     Right (newConstraints, solution) -> do
-      solution1 <- quote solution
-      solveMeta m solution1 (length (boundContext ctx))
+      let dbLevel = DBLevel $ length (boundContext ctx)
+      solution1 <- quote dbLevel solution
+      solveMeta m solution1 dbLevel
       return $ Progress newConstraints
 
 --------------------------------------------------------------------------------
@@ -124,7 +125,7 @@ solveBoolEquals :: HasEqSolver
 solveBoolEquals c arg1 arg2 res op = do
   let p = provenanceOf c
   constraints <- checkBoolTypesEqualUpTo c res [arg1, arg2] MaxLinearity (EqPolarity op)
-  let solution = VVar p (Free $ identifierOf StdEqualsBool) []
+  let solution = VFreeVar p (identifierOf StdEqualsBool) []
   return $ Right (constraints, solution)
 
 {-
@@ -158,9 +159,9 @@ solveVectorEquals c arg1 arg2 res op = do
 
   let p = provenanceOf c
   let solution =
-        VVar
+        VFreeVar
           p
-          (Free (identifierOf StdEqualsVector))
+          (identifierOf StdEqualsVector)
           [ ImplicitArg p tElem1,
             ImplicitArg p (normalised dim),
             InstanceArg p metaExpr
@@ -273,11 +274,11 @@ solveBoolQuantifier q c domainBinder body res = do
   -- The result is equal to the body
   let resEq = unify c res body
 
-  let solution = Free $ identifierOf $ case q of
+  let solution = identifierOf $ case q of
         Forall -> StdForallBool
         Exists -> StdExistsBool
 
-  return $ Right ([domainEq, bodyEq, resEq], VVar p solution [])
+  return $ Right ([domainEq, bodyEq, resEq], VFreeVar p solution [])
 
 solveIndexQuantifier :: HasQuantifierSolver
 solveIndexQuantifier q c domainBinder body res = do
@@ -289,9 +290,9 @@ solveIndexQuantifier q c domainBinder body res = do
 
   let method = identifierOf $ if q == Forall then StdForallIndex else StdExistsIndex
   let solution =
-        VVar
+        VFreeVar
           p
-          (Free method)
+          method
           [ ImplicitArg p (normalised indexSize)
           ]
 
@@ -303,11 +304,11 @@ solveNatQuantifier q c _domainBinder body res = do
   (bodyEq, _, _) <- unifyWithAnnBoolType c body
   let resEq = unify c res body
 
-  let solution = Free $ case q of
+  let solution = case q of
         Forall -> PostulateForallNat
         Exists -> PostulateExistsNat
 
-  return $ Right ([bodyEq, resEq], VVar p solution [])
+  return $ Right ([bodyEq, resEq], VFreeVar p solution [])
 
 solveIntQuantifier :: HasQuantifierSolver
 solveIntQuantifier q c _domainBinder body res = do
@@ -315,11 +316,11 @@ solveIntQuantifier q c _domainBinder body res = do
   (bodyEq, _, _) <- unifyWithAnnBoolType c body
   let resEq = unify c res body
 
-  let solution = Free $ case q of
+  let solution = case q of
         Forall -> PostulateForallInt
         Exists -> PostulateForallInt
 
-  return $ Right ([bodyEq, resEq], VVar p solution [])
+  return $ Right ([bodyEq, resEq], VFreeVar p solution [])
 
 solveRatQuantifier :: HasQuantifierSolver
 solveRatQuantifier q c domainBinder body res = do
@@ -340,11 +341,11 @@ solveRatQuantifier q c domainBinder body res = do
   -- The result type is the Bool type with the same linearity as the body.
   let resEq = unify c res (VAnnBoolType p (normalised bodyLin) (normalised resPol))
 
-  let solution = Free $ case q of
+  let solution = case q of
         Forall -> PostulateForallRat
         Exists -> PostulateExistsRat
 
-  return $ Right ([domainEq, polTC, bodyEq, resEq], VVar p solution [])
+  return $ Right ([domainEq, polTC, bodyEq, resEq], VFreeVar p solution [])
 
 solveVectorQuantifier :: HasQuantifierSolver
 solveVectorQuantifier q c domainBinder body res = do
@@ -358,9 +359,9 @@ solveVectorQuantifier q c domainBinder body res = do
 
   let method = if q == Forall then StdForallVector else StdExistsVector
   let solution =
-        VVar
+        VFreeVar
           p
-          (Free (identifierOf method))
+          (identifierOf method)
           [ ImplicitArg p vecElem,
             ImplicitArg p (normalised dim),
             InstanceArg p metaExpr
@@ -461,9 +462,9 @@ solveAddVector c arg1 arg2 res = do
 
   let constraints = [arg1Eq, arg2Eq, resEq, recTC]
   let solution =
-        VVar
+        VFreeVar
           p
-          (Free (identifierOf StdAddVector))
+          (identifierOf StdAddVector)
           [ ImplicitArg p arg1Elem,
             ImplicitArg p arg2Elem,
             ImplicitArg p resElem,
@@ -527,9 +528,9 @@ solveSubVector c arg1 arg2 res = do
 
   let constraints = [arg1Eq, arg2Eq, resEq, recTC]
   let solution =
-        VVar
+        VFreeVar
           p
-          (Free (identifierOf StdSubVector))
+          (identifierOf StdSubVector)
           [ ImplicitArg p arg1Elem,
             ImplicitArg p arg2Elem,
             ImplicitArg p resElem,
@@ -708,14 +709,14 @@ solveHasQuantifierIn q c [tElem, tCont, tRes] = case tCont of
     let elemEq = unify ctx tElem tListElem
     (resEq, _, _) <- unifyWithAnnBoolType ctx tRes
     let method = if q == Forall then StdForallInList else StdExistsInList
-    let solution = VVar p (Free (identifierOf method)) [ImplicitArg p tElem, ImplicitArg p tRes]
+    let solution = VFreeVar p (identifierOf method) [ImplicitArg p tElem, ImplicitArg p tRes]
     return $ Right ([elemEq, resEq], solution)
   VVectorType _ tVecElem dim -> do
     let p = provenanceOf ctx
     let elemEq = unify ctx tElem tVecElem
     (resEq, _, _) <- unifyWithAnnBoolType ctx tRes
     let method = identifierOf $ if q == Forall then StdForallInVector else StdExistsInVector
-    let solution = VVar p (Free method) [ImplicitArg p tElem, ImplicitArg p dim, ImplicitArg p tRes]
+    let solution = VFreeVar p method [ImplicitArg p tElem, ImplicitArg p dim, ImplicitArg p tRes]
     return $ Right ([elemEq, resEq], solution)
   _ -> blockOrThrowErrors ctx [tCont] [tcError]
   where
@@ -989,9 +990,10 @@ createTC c tc argExprs = do
   let ctx = copyContext c
   let ctxSize = length (boundContext c)
   let nArgs = ExplicitArg p <$> argExprs
-  uArgExprs <- traverse quote argExprs
+  uArgExprs <- traverse (quote $ DBLevel ctxSize) argExprs
   let uArgs = ExplicitArg p <$> uArgExprs
-  (meta, metaExpr) <- freshTypeClassPlacementMeta p (BuiltinTypeClass p tc uArgs) ctxSize
+  let solution = BuiltinTypeClass p tc uArgs
+  (meta, metaExpr) <- freshTypeClassPlacementMeta p solution ctxSize
   return (normalised metaExpr, WithContext (TypeClassConstraint (Has meta tc nArgs)) ctx)
 
 unifyWithAnnBoolType ::

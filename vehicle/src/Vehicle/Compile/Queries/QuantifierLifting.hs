@@ -65,7 +65,7 @@ recLift expr =
     -- Quantified lambdas should have been caught before now.
     Lam {} -> caseError currentPass "Lam" ["QuantifierExpr"]
 
-liftQuant :: CheckedExpr -> (CheckedExpr -> BindingDepth -> CheckedExpr) -> CheckedExpr
+liftQuant :: CheckedExpr -> (CheckedExpr -> DBLevel -> CheckedExpr) -> CheckedExpr
 liftQuant (ExistsRatExpr p binder body) f =
   ExistsRatExpr p binder (liftQuant body (\e d -> f e (d + 1)))
 liftQuant e f = f e 0

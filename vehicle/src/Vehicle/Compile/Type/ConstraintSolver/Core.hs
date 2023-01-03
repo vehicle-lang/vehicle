@@ -56,6 +56,5 @@ blockOnReductionBlockingMetasOrThrowError args err = do
     else blockOn blockingMetas
 
 malformedConstraintError :: MonadCompile m => WithContext TypeClassConstraint -> m a
-malformedConstraintError (WithContext c _ctx) =
-  compilerDeveloperError $
-    "Malformed type-class constraint:" <+> prettyVerbose c
+malformedConstraintError c =
+  compilerDeveloperError $ "Malformed type-class constraint:" <+> prettyVerbose c

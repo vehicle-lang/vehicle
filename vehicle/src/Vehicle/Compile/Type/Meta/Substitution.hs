@@ -123,7 +123,8 @@ instance MetaSubstitutable NormExpr where
               runReaderT (evalApp substValue (a :| as)) declCtx
     VUniverse {} -> return expr
     VLiteral {} -> return expr
-    VVar p v spine -> VVar p v <$> traverse subst spine
+    VFreeVar p v spine -> VFreeVar p v <$> traverse subst spine
+    VBoundVar p v spine -> VBoundVar p v <$> traverse subst spine
     VLVec p xs spine -> VLVec p <$> traverse subst xs <*> traverse subst spine
     VBuiltin p b spine -> do
       (_metaSubst, declCtx) <- ask
@@ -154,6 +155,11 @@ instance MetaSubstitutable Constraint where
   subst = \case
     UnificationConstraint c -> UnificationConstraint <$> subst c
     TypeClassConstraint c -> TypeClassConstraint <$> subst c
+
+instance MetaSubstitutable constraint => MetaSubstitutable (Contextualised constraint ConstraintContext) where
+  subst (WithContext constraint context) = do
+    newConstraint <- subst constraint
+    return $ WithContext newConstraint context
 
 instance MetaSubstitutable a => MetaSubstitutable (MetaMap a) where
   subst (MetaMap t) = MetaMap <$> traverse subst t

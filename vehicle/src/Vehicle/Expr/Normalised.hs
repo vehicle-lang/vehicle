@@ -20,7 +20,8 @@ data NormExpr
   | VPi Provenance NormBinder NormExpr
   | VLVec Provenance [NormExpr] Spine
   | VMeta Provenance MetaID Spine
-  | VVar Provenance DBIndexVar Spine
+  | VFreeVar Provenance Identifier Spine
+  | VBoundVar Provenance DBLevel Spine
   | VBuiltin Provenance Builtin Spine
   deriving (Show, Generic)
 
@@ -36,7 +37,8 @@ instance HasProvenance NormExpr where
     VPi p _ _ -> p
     VLVec p _ _ -> p
     VMeta p _ _ -> p
-    VVar p _ _ -> p
+    VFreeVar p _ _ -> p
+    VBoundVar p _ _ -> p
     VBuiltin p _ _ -> p
 
 type NormArg = GenericArg NormExpr
@@ -219,7 +221,7 @@ isVectorType (VConstructor _ Vector _) = True
 isVectorType _ = False
 
 isBoundVar :: NormExpr -> Bool
-isBoundVar (VVar _ (Bound _) _) = True
+isBoundVar VBoundVar {} = True
 isBoundVar _ = False
 
 -----------------------------------------------------------------------------

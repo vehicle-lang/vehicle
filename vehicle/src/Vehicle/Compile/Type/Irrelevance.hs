@@ -8,7 +8,6 @@ import Control.Monad.Reader (ReaderT (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.NBE (eval)
-import Vehicle.Compile.Normalise.Quote (extendEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Expr.DeBruijn
@@ -80,10 +79,11 @@ instance RemoveIrrelevantCode NormExpr where
       -- However, passing in the empty decl context here does feel like a bug...
       -- But don't have access to it here. Tried adding it to the `Env` type, but then
       -- every lambda stores an independent copy.
-      | isIrrelevant binder -> runReaderT (eval (extendEnv (VUnitLiteral p) env) body) mempty
+      | isIrrelevant binder -> runReaderT (eval (VUnitLiteral p : env) body) mempty
       | otherwise -> VLam p <$> remove binder <*> remove env <*> remove body
     VLVec p xs spine -> VLVec p <$> traverse remove xs <*> removeArgs spine
-    VVar p v spine -> VVar p v <$> removeArgs spine
+    VFreeVar p v spine -> VFreeVar p v <$> removeArgs spine
+    VBoundVar p v spine -> VBoundVar p v <$> removeArgs spine
     VMeta p m spine -> VMeta p m <$> removeArgs spine
     VBuiltin p b spine -> VBuiltin p b <$> removeArgs spine
 
