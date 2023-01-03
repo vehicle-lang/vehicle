@@ -24,7 +24,7 @@ import Vehicle.Compile.Prelude
   )
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Expr.AlphaEquivalence ()
-import Vehicle.Expr.DeBruijn (DBExpr, liftDBIndices, substDBInto)
+import Vehicle.Expr.DeBruijn (DBExpr, DBLevel, liftDBIndices, substDBInto)
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------
@@ -124,7 +124,7 @@ substTest SubstitutionTest {..} =
 
 data LiftingTest = LiftingTest
   { name :: String,
-    amount :: Int,
+    amount :: DBLevel,
     input :: CheckedExpr,
     expected :: CheckedExpr
   }

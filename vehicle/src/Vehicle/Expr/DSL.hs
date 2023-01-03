@@ -83,14 +83,14 @@ class DSL expr where
   lseq :: expr -> [expr] -> expr
 
 newtype DSLExpr = DSL
-  { unDSL :: Provenance -> BindingDepth -> DBExpr
+  { unDSL :: Provenance -> DBLevel -> DBExpr
   }
 
 fromDSL :: Provenance -> DSLExpr -> DBExpr
 fromDSL p e = unDSL e p 0
 
-boundVar :: BindingDepth -> DSLExpr
-boundVar i = DSL $ \p j -> Var p (Bound $ DBIndex (j - (i + 1)))
+boundVar :: DBLevel -> DSLExpr
+boundVar i = DSL $ \p j -> Var p (Bound (dbLevelToIndex j i))
 
 approxPiForm :: Maybe Name -> Visibility -> BinderForm
 approxPiForm name = \case

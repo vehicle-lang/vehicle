@@ -82,7 +82,7 @@ readResourcesInDecl decl = case decl of
         modify (addNetworkType ident networkType)
 
 mkTyped :: NormExpr -> TypedExpr
-mkTyped expr = TypedExpr (Glued (unnormalise expr) expr)
+mkTyped expr = TypedExpr (Glued (unnormalise 0 expr) expr)
 
 --------------------------------------------------------------------------------
 -- Second pass
@@ -150,5 +150,5 @@ normDecl decl = do
   ctx <- gets (fmap glued)
   for decl $ \(TypedExpr (Glued unnorm norm)) -> do
     -- Ugh, horrible. We really need to be able to renormalise.
-    norm' <- whnf 0 ctx (unnormalise norm)
+    norm' <- whnf 0 ctx (unnormalise 0 norm)
     return $ TypedExpr $ Glued unnorm norm'

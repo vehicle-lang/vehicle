@@ -229,7 +229,7 @@ inferExpr e = do
       ctx <- getBoundCtx
       case lookupVar ctx i of
         Just (_, checkedType, _) -> do
-          let liftedCheckedType = liftDBIndices (dbIndex i + 1) checkedType
+          let liftedCheckedType = liftDBIndices (DBLevel $ unIndex i + 1) checkedType
           return (Var p (Bound i), liftedCheckedType)
         Nothing ->
           compilerDeveloperError $

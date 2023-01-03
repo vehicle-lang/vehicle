@@ -85,7 +85,9 @@ newtype BlockingStatus = BlockingStatus (Maybe MetaSet)
   deriving (Show)
 
 instance Pretty BlockingStatus where
-  pretty (BlockingStatus status) = "blockedBy:" <+> maybe "unknown" pretty status
+  pretty (BlockingStatus status) = case status of
+    Nothing -> ""
+    Just v -> parens ("blockedBy:" <+> pretty v)
 
 unknownBlockingStatus :: BlockingStatus
 unknownBlockingStatus = BlockingStatus Nothing
