@@ -5,6 +5,7 @@ module Vehicle.Compile.Normalise.NBE
     evalBuiltin,
     evalApp,
     eval,
+    liftEnvOverBinder,
   )
 where
 
@@ -13,16 +14,13 @@ import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map (lookup)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (liftEnvOverBinder)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
-whnf :: MonadCompile m => Int -> DeclCtx GluedExpr -> CheckedExpr -> m NormExpr
+whnf :: MonadCompile m => DBLevel -> DeclCtx GluedExpr -> CheckedExpr -> m NormExpr
 whnf boundCtxSize declCtx e = do
-  let env = [VVar mempty (Bound (DBIndex i)) [] | i <- [0 .. boundCtxSize - 1]]
-  -- logDebug MaxDetail $ "Normalising" <+> squotes (prettyVerbose e) <+> "in a context of size" <+> pretty boundCtxSize
+  let env = [VBoundVar mempty i [] | i <- reverse [0 .. boundCtxSize - 1]]
   runReaderT (eval env e) (fmap normalised declCtx)
 
 -----------------------------------------------------------------------------
@@ -32,9 +30,6 @@ type MonadNorm m =
   ( MonadCompile m,
     MonadReader (DeclCtx NormExpr) m
   )
-
--- WHNF - does And call eval on bodies.
--- NF - does call eval on bodies.
 
 -- TODO change to return a tuple of NF and WHNF?
 eval :: MonadNorm m => Env -> CheckedExpr -> m NormExpr
@@ -59,8 +54,8 @@ eval env expr = do
         Just value -> return value
         Nothing ->
           compilerDeveloperError $
-            "Environment"
-              <+> prettyVerbose env
+            "Environment of size"
+              <+> pretty (length env)
               <+> "in which NBE is being performed"
               <+> "is smaller than the found DB index"
               <+> pretty i
@@ -68,7 +63,7 @@ eval env expr = do
         declExpr <- asks (Map.lookup ident)
         return $ case declExpr of
           Just x -> x
-          Nothing -> VVar p v []
+          Nothing -> VFreeVar p ident []
     Let _ bound _binder body -> do
       boundNormExpr <- eval env bound
       eval (boundNormExpr : env) body
@@ -81,13 +76,17 @@ eval env expr = do
   -- logDebug MaxDetail ("nbe-exit" <+> prettyVerbose result)
   return result
 
+liftEnvOverBinder :: Provenance -> Env -> Env
+liftEnvOverBinder p = (VBoundVar p 0 [] :)
+
 evalBinder :: MonadNorm m => Env -> CheckedBinder -> m NormBinder
 evalBinder env = traverse (eval env)
 
 evalApp :: MonadNorm m => NormExpr -> NonEmpty (GenericArg NormExpr) -> m NormExpr
 evalApp fun (arg :| args) = case fun of
   VMeta p v spine -> return $ VMeta p v (spine <> (arg : args))
-  VVar p v spine -> return $ VVar p v (spine <> (arg : args))
+  VFreeVar p v spine -> return $ VFreeVar p v (spine <> (arg : args))
+  VBoundVar p v spine -> return $ VBoundVar p v (spine <> (arg : args))
   VLVec p xs spine -> return $ VLVec p xs (spine <> (arg : args))
   VLam _ _binder env body -> do
     body' <- eval (argExpr arg : env) body

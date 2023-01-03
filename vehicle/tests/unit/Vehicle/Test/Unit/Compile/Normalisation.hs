@@ -10,6 +10,7 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Expr.AlphaEquivalence ()
+import Vehicle.Expr.DeBruijn (DBLevel)
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 normalisationTests :: TestTree
@@ -19,31 +20,31 @@ normalisationTests =
       normalisationTest
       [ NBETest
           { name = "Lambda",
-            boundCtxSize = 0,
+            dbLevel = 0,
             input = Lam p (binding (NatType p)) (BoundVar p 0),
             expected = Lam p (binding (NatType p)) (BoundVar p 0)
           },
         NBETest
           { name = "AppLambdaClosedBody",
-            boundCtxSize = 0,
+            dbLevel = 0,
             input = App p (Lam p (binding (NatType p)) (BoundVar p 0)) [ExplicitArg p $ NatLiteral p 1],
             expected = NatLiteral p 1
           },
         NBETest
           { name = "AppLambdaOpenBody",
-            boundCtxSize = 1,
+            dbLevel = 1,
             input = App p (Lam p (binding (NatType p)) (BoundVar p 1)) [ExplicitArg p $ NatLiteral p 1],
             expected = BoundVar p 0
           },
         NBETest
           { name = "AppPlus",
-            boundCtxSize = 1,
+            dbLevel = 1,
             input = App p (Builtin p $ Add AddNat) [ExplicitArg p (NatLiteral p 2), ExplicitArg p (NatLiteral p 1)],
             expected = NatLiteral p 3
           },
         NBETest
           { name = "ListMeta",
-            boundCtxSize = 1,
+            dbLevel = 1,
             input = App p (Builtin p $ Constructor List) [ExplicitArg p (Meta p (MetaID 0))],
             expected = App p (Builtin p $ Constructor List) [ExplicitArg p (Meta p (MetaID 0))]
           }
@@ -54,7 +55,7 @@ normalisationTests =
 
 data NBETest = NBETest
   { name :: String,
-    boundCtxSize :: Int,
+    dbLevel :: DBLevel,
     input :: CheckedExpr,
     expected :: CheckedExpr
   }
@@ -62,8 +63,8 @@ data NBETest = NBETest
 normalisationTest :: NBETest -> TestTree
 normalisationTest NBETest {..} =
   unitTestCase ("normalise" <> name) $ do
-    normInput <- whnf boundCtxSize mempty input
-    actual <- quote normInput
+    normInput <- whnf dbLevel mempty input
+    actual <- quote dbLevel normInput
 
     let errorMessage =
           layoutAsString $

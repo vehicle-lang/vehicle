@@ -1,17 +1,19 @@
 module Vehicle.Compile.Type.Meta.Variable
   ( MetaInfo (..),
+    MetaCtxSize,
     increaseMetaCtxSize,
     makeMetaType,
     makeMetaExpr,
     getMetaDependencies,
     getNormMetaDependencies,
+    metasInWithDependencies,
     HasMetas (..),
   )
 where
 
 import Control.Monad.Writer (MonadWriter (..), execWriterT)
+import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -23,6 +25,7 @@ import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
@@ -33,6 +36,12 @@ import Vehicle.Expr.Normalised
 --------------------------------------------------------------------------------
 -- Meta information
 
+-- | The size of a meta-variable's context (i.e. how many bound variables it
+-- can depend on.) In theory this should be identical to the current `DBLevel`
+-- but in practice, linearity/polarity/type-class insertion meta-variables
+-- have a context of zero size as they cannot depend on the context.
+type MetaCtxSize = Int
+
 -- | The information stored about each meta-variable.
 data MetaInfo = MetaInfo
   { -- | Location in the source file the meta-variable was generated
@@ -40,7 +49,7 @@ data MetaInfo = MetaInfo
     -- | The type of the meta-variable
     metaType :: CheckedType,
     -- | The number of bound variables in scope when the meta-variable was created.
-    metaCtxSize :: Int
+    metaCtxSize :: MetaCtxSize
   }
 
 increaseMetaCtxSize :: MetaInfo -> MetaInfo
@@ -50,14 +59,14 @@ increaseMetaCtxSize (MetaInfo p t size) = MetaInfo p t (size + 1)
 makeMetaExpr ::
   Provenance ->
   MetaID ->
-  Int ->
+  MetaCtxSize ->
   GluedExpr
-makeMetaExpr p metaID boundCtxSize = do
+makeMetaExpr p metaID ctxSize = do
   -- Create bound variables for everything in the context
   let ann = inserted p
-  let deps = fmap (Bound . DBIndex) (reverse [0 .. boundCtxSize - 1])
-  let unnormBoundEnv = [ExplicitArg ann (Var ann i) | i <- deps]
-  let normBoundEnv = [ExplicitArg ann (VVar ann i []) | i <- deps]
+  let dependencyLevels = [0 .. (ctxSize - 1)]
+  let unnormBoundEnv = [ExplicitArg ann (Var ann (Bound $ DBIndex i)) | i <- reverse dependencyLevels]
+  let normBoundEnv = [ExplicitArg ann (VBoundVar ann (DBLevel i) []) | i <- dependencyLevels]
 
   -- Returns a meta applied to every bound variable in the context
   Glued
@@ -83,31 +92,23 @@ getMetaDependencies = \case
   (ExplicitArg _ (Var _ (Bound i))) : args -> i : getMetaDependencies args
   _ -> []
 
-getNormMetaDependencies :: [NormArg] -> [DBIndex]
+getNormMetaDependencies :: [NormArg] -> [DBLevel]
 getNormMetaDependencies = \case
-  (ExplicitArg _ (VVar _ (Bound i) [])) : args -> i : getNormMetaDependencies args
+  (ExplicitArg _ (VBoundVar _ i [])) : args -> i : getNormMetaDependencies args
   _ -> []
 
 --------------------------------------------------------------------------------
 -- Objects which have meta variables in.
 
 class HasMetas a where
-  findMetas :: (MonadCompile m, MonadWriter (MetaMap [DBIndex]) m) => a -> m ()
-
-  metasInWithDependencies :: MonadCompile m => a -> m (MetaMap [DBIndex])
-  metasInWithDependencies e = execWriterT (findMetas e)
+  findMetas :: (MonadCompile m, MonadWriter MetaSet m) => a -> m ()
 
   metasIn :: MonadCompile m => a -> m MetaSet
-  metasIn e = MetaMap.keys <$> metasInWithDependencies e
+  metasIn e = execWriterT (findMetas e)
 
 instance HasMetas CheckedExpr where
   findMetas expr = case expr of
-    Meta _ m -> do
-      tell (MetaMap.singleton m [])
-    App _ (Meta _ m) args -> do
-      let deps = getMetaDependencies (NonEmpty.toList args)
-      tell (MetaMap.singleton m deps)
-      findMetas args
+    Meta _ m -> tell (MetaSet.singleton m)
     Universe {} -> return ()
     Hole {} -> return ()
     Literal {} -> return ()
@@ -122,13 +123,14 @@ instance HasMetas CheckedExpr where
 
 instance HasMetas NormExpr where
   findMetas expr = case expr of
-    VMeta _ m args -> do
-      let deps = getNormMetaDependencies args
-      tell (MetaMap.singleton m deps)
+    VMeta _ m spine -> do
+      tell (MetaSet.singleton m)
+      findMetas spine
     VUniverse {} -> return ()
     VLiteral {} -> return ()
     VBuiltin _ _ spine -> findMetas spine
-    VVar _ _ spine -> findMetas spine
+    VFreeVar _ _ spine -> findMetas spine
+    VBoundVar _ _ spine -> findMetas spine
     VLVec _ xs spine -> do findMetas xs; findMetas spine
     VPi _ binder result -> do findMetas binder; findMetas result
     VLam {} -> developerError "Finding metas in normalised lambda not yet supported"
@@ -155,3 +157,23 @@ instance HasMetas Constraint where
   findMetas = \case
     UnificationConstraint c -> findMetas c
     TypeClassConstraint c -> findMetas c
+
+metasInWithDependencies :: MonadCompile m => NormExpr -> m (MetaMap [DBLevel])
+metasInWithDependencies e = execWriterT (go e)
+  where
+    go :: (MonadCompile m, MonadWriter (MetaMap [DBLevel]) m) => NormExpr -> m ()
+    go expr = case expr of
+      VMeta _ m args -> do
+        let deps = getNormMetaDependencies args
+        tell (MetaMap.singleton m deps)
+      VUniverse {} -> return ()
+      VLiteral {} -> return ()
+      VBuiltin _ _ spine -> goSpine spine
+      VBoundVar _ _ spine -> goSpine spine
+      VFreeVar _ _ spine -> goSpine spine
+      VLVec _ xs spine -> do traverse_ go xs; goSpine spine
+      VPi _ binder result -> do traverse_ go binder; go result
+      VLam {} -> developerError "Finding metas in normalised lambda not yet supported"
+
+    goSpine :: (MonadCompile m, MonadWriter (MetaMap [DBLevel]) m) => Spine -> m ()
+    goSpine = traverse_ (traverse_ go)

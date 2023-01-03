@@ -134,7 +134,7 @@ compileExpr t e = showExit $ do
     V.VecLiteral _ _ xs -> TensorLiteral <$> traverse (compileExpr t) xs
     V.Literal _ l -> return $ Constant $ compileLiteral t l
     V.App _ (V.Var _ (V.Free ident)) p -> NetworkApplication (V.nameOf ident) <$> traverse (compileArg t) p
-    V.Var _ (V.Bound var) -> return (Variable (V.dbIndex var))
+    V.Var _ (V.Bound var) -> return (Variable (V.unIndex var))
     V.AtExpr _ _ _ [xs, i] -> At <$> compileArg t xs <*> compileArg t i
     V.Let _ x binder expression -> Let (V.getBinderName binder) <$> compileExpr t x <*> compileExpr t expression
     V.Lam _ binder x -> Lambda (V.getBinderName binder) <$> compileExpr t x

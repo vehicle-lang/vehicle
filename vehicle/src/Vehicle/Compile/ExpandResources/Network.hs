@@ -11,7 +11,6 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
-import Vehicle.Expr.DeBruijn (LocallyNamelessVar (..))
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -27,8 +26,7 @@ getNetworkType ::
   m NetworkType
 getNetworkType decl networkType = case normalised networkType of
   VPi _ binder result
-    | visibilityOf binder /= Explicit -> do
-        throwError $ NetworkTypeHasNonExplicitArguments decl networkType binder
+    | visibilityOf binder /= Explicit -> typingError
     | otherwise -> do
         inputDetails <- getTensorType Input (typeOf binder)
         outputDetails <- getTensorType Output result
@@ -51,7 +49,7 @@ getNetworkType decl networkType = case normalised networkType of
             return (baseType, d : ds)
           t ->
             if topLevel
-              then throwError $ NetworkTypeIsNotOverTensors decl networkType tensorType io
+              then typingError
               else do
                 elemType <- getElementType t
                 return (elemType, [])
@@ -59,7 +57,7 @@ getNetworkType decl networkType = case normalised networkType of
     getTensorDimension :: InputOrOutput -> NormType -> m Int
     getTensorDimension io dim = case dim of
       VNatLiteral _ n -> return n
-      VVar _ (Free varIdent) _ -> do
+      VFreeVar _ varIdent _ -> do
         implicitParameters <- gets inferableParameterContext
         case Map.lookup (nameOf varIdent) implicitParameters of
           Nothing -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
@@ -75,6 +73,6 @@ getNetworkType decl networkType = case normalised networkType of
     typingError :: m a
     typingError =
       compilerDeveloperError $
-        "Invalid parameter type"
-          <+> squotes (prettySimple (normalised networkType))
+        "Invalid network type"
+          <+> squotes (prettyVerbose $ normalised networkType)
           <+> "should have been caught during type-checking"

@@ -1273,7 +1273,7 @@ unsupportedAnnotationTypeDescription annotation ident resourceType =
       <> "is not supported"
   where
     unreducedResourceType = unnormalised resourceType
-    reducedResourceType = unnormalise (normalised resourceType)
+    reducedResourceType = unnormalise 0 (normalised resourceType)
 
 unsupportedResourceTypeDescription :: Resource -> Identifier -> GluedType -> Doc a
 unsupportedResourceTypeDescription resource =

@@ -30,7 +30,7 @@ generaliseOverUnsolvedConstraints ::
 generaliseOverUnsolvedConstraints decl =
   logCompilerPass MinDetail "generalisation over unsolved type-class constraints" $ do
     unsolvedConstraints <- getUnsolvedConstraints
-    substUnsolvedConstraints <- traverse substConstraintMetas unsolvedConstraints
+    substUnsolvedConstraints <- traverse substMetas unsolvedConstraints
 
     (generalisedDecl, rejectedConstraints) <-
       foldM (generaliseOverConstraint substUnsolvedConstraints) (decl, []) unsolvedConstraints
@@ -77,7 +77,7 @@ prependConstraint ::
   m CheckedDecl
 prependConstraint decl (WithContext (Has meta tc args) ctx) = do
   let p = originalProvenance ctx
-  uArgs <- traverse quote args
+  uArgs <- traverse (quote 0) args
   let typeClass = BuiltinTypeClass p tc uArgs
   let relevancy = relevanceOf tc
 
@@ -179,7 +179,7 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
   metaCtxSize <- getMetaCtxSize meta
   let p = provenanceOf prependedDecl
   let solution = Var p (Bound (DBIndex $ metaCtxSize - 1))
-  solveMeta meta solution metaCtxSize
+  solveMeta meta solution (DBLevel metaCtxSize)
 
   logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose updatedDecl
 
@@ -210,7 +210,7 @@ removeContextsOfMetasIn binderType decl =
 addNewArgumentToMetaUses :: MetaID -> CheckedDecl -> CheckedDecl
 addNewArgumentToMetaUses meta = fmap (go (-1))
   where
-    go :: BindingDepth -> CheckedExpr -> CheckedExpr
+    go :: DBLevel -> CheckedExpr -> CheckedExpr
     go d expr = case expr of
       Meta p m
         | m == meta -> App p (Meta p m) [newVar p]
@@ -229,6 +229,6 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
       Lam p binder body -> Lam p (goBinder binder) (go (d + 1) body)
       LVec p xs -> LVec p (map (go d) xs)
       where
-        newVar p = ExplicitArg p (Var p (Bound $ DBIndex d))
+        newVar p = ExplicitArg p (Var p (Bound $ shiftDBIndex 0 d))
         goBinder = fmap (go d)
         goArgs = fmap (fmap (go d))

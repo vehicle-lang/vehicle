@@ -22,7 +22,6 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
@@ -106,7 +105,7 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
       if n == actualDim
         then return actualDim
         else throwError $ DatasetDimensionSizeMismatch decl file n actualDim allDims (actualDim : actualDims)
-    VVar _ (Free dimIdent) _ -> do
+    VFreeVar _ dimIdent _ -> do
       implicitParams <- gets inferableParameterContext
       let newEntry = (decl, Dataset, actualDim)
       case Map.lookup (nameOf dimIdent) implicitParams of
