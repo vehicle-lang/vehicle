@@ -168,9 +168,6 @@ delabUniverse = \case
 delabBuiltin :: MonadDelab m => V.Builtin -> [V.InputExpr] -> m B.Expr
 delabBuiltin fun args = case fun of
   V.Constructor c -> delabConstructor c <$> traverse delabM args
-  V.Tensor -> do
-    args' <- traverse delabM args
-    return $ delabApp (B.Tensor tokTensor) (B.ExplicitArg <$> args')
   V.And -> delabTypeClassOp V.AndTC args
   V.Or -> delabTypeClassOp V.OrTC args
   V.Implies -> delabTypeClassOp V.ImpliesTC args

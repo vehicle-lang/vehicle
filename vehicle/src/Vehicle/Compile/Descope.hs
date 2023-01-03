@@ -163,10 +163,11 @@ descopeNormExpr f e = case e of
     let var = Var p $ f p v
     let args = descopeSpine f spine
     normAppList p var args
-  VLVec p xs spine -> do
+  VLVec p xs _spine -> do
     let xs' = fmap (descopeNormExpr f) xs
-    let args = descopeSpine f spine
-    normAppList p (LVec p xs') args
+    -- let args = descopeSpine f spine
+    -- normAppList p (LVec p xs') args
+    LVec p xs'
   VPi p binder body -> do
     let binder' = descopeNormBinder f binder
     let body' = descopeNormExpr f body
@@ -175,7 +176,8 @@ descopeNormExpr f e = case e of
     let binder' = descopeNormBinder f binder
     let env' = fmap (descopeNormExpr f) env
     let body' = descopeNaive body
-    normAppList p (Lam p binder' body') [ExplicitArg p $ LVec p env']
+    let envExpr = App p (Var p "ENV") [ExplicitArg p $ LVec p env']
+    Lam p binder' (App p envExpr [ExplicitArg p body'])
 
 descopeSpine ::
   (Provenance -> DBLevel -> Name) ->

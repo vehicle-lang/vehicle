@@ -147,8 +147,8 @@ lookupValue ident ctx = case Map.lookup (nameOf ident) ctx of
 
 normDecl :: MonadInsertResources m => TypedDecl -> m TypedDecl
 normDecl decl = do
-  ctx <- gets (fmap glued)
+  ctx <- gets (fmap (normalised . glued))
   for decl $ \(TypedExpr (Glued unnorm norm)) -> do
     -- Ugh, horrible. We really need to be able to renormalise.
-    norm' <- whnf 0 ctx (unnormalise 0 norm)
+    norm' <- whnf 0 ctx mempty (unnormalise 0 norm)
     return $ TypedExpr $ Glued unnorm norm'

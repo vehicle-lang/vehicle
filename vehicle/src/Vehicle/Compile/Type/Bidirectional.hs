@@ -32,22 +32,22 @@ import Prelude hiding (pi)
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showCheckEntry :: MonadLogger m => CheckedType -> UncheckedExpr -> m ()
+showCheckEntry :: MonadBidirectional m => CheckedType -> UncheckedExpr -> m ()
 showCheckEntry t e = do
   logDebug MaxDetail ("check-entry" <+> prettyVerbose e <+> ":" <+> prettyVerbose t)
   incrCallDepth
 
-showCheckExit :: MonadLogger m => CheckedExpr -> m ()
+showCheckExit :: MonadBidirectional m => CheckedExpr -> m ()
 showCheckExit e = do
   decrCallDepth
   logDebug MaxDetail ("check-exit " <+> prettyVerbose e)
 
-showInferEntry :: MonadLogger m => UncheckedExpr -> m ()
+showInferEntry :: MonadBidirectional m => UncheckedExpr -> m ()
 showInferEntry e = do
   logDebug MaxDetail ("infer-entry" <+> prettyVerbose e)
   incrCallDepth
 
-showInferExit :: MonadLogger m => (CheckedExpr, CheckedType) -> m ()
+showInferExit :: MonadBidirectional m => (CheckedExpr, CheckedType) -> m ()
 showInferExit (e, t) = do
   decrCallDepth
   logDebug MaxDetail ("infer-exit " <+> prettyVerbose e <+> ":" <+> prettyVerbose t)

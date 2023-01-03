@@ -6,7 +6,7 @@ module Vehicle.Compile.Type.Meta.Substitution
 where
 
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (evalApp, evalBuiltin)
 import Vehicle.Compile.Prelude
@@ -14,10 +14,9 @@ import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
+import Vehicle.Compile.Type.VariableContext (MetaSubstitution)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (GluedExpr (..), NormExpr (..))
-
-type MetaSubstitution = MetaMap GluedExpr
 
 -- | Substitutes meta-variables through the provided object, returning the
 -- updated object and the set of meta-variables within the object for which
@@ -120,16 +119,16 @@ instance MetaSubstitutable NormExpr where
             [] -> return substValue
             (a : as) -> do
               -- logDebug MaxDetail $ prettyVerbose substValue -- <+> prettyVerbose (fmap argExpr (a : as))
-              runReaderT (evalApp substValue (a :| as)) declCtx
+              runReaderT (evalApp substValue (a : as)) (declCtx, metaSubst)
     VUniverse {} -> return expr
     VLiteral {} -> return expr
     VFreeVar p v spine -> VFreeVar p v <$> traverse subst spine
     VBoundVar p v spine -> VBoundVar p v <$> traverse subst spine
     VLVec p xs spine -> VLVec p <$> traverse subst xs <*> traverse subst spine
     VBuiltin p b spine -> do
-      (_metaSubst, declCtx) <- ask
+      (metaSubst, declCtx) <- ask
       spine' <- traverse subst spine
-      runReaderT (evalBuiltin p b spine') declCtx
+      runReaderT (evalBuiltin p b spine') (declCtx, metaSubst)
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.

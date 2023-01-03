@@ -12,8 +12,6 @@ typeOfBuiltin p b = fromDSL p $ case b of
   Constructor c -> typeOfConstructor c
   -- Type classes operations
   TypeClassOp tc -> typeOfTypeClassOp tc
-  -- Types
-  Tensor -> type0 ~> tList tNat ~> type0
   -- Boolean operations
   Not ->
     forAllIrrelevant "l" tLin $ \l ->

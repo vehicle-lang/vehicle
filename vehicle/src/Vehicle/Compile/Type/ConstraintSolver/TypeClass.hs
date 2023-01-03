@@ -11,33 +11,39 @@ import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.ConstraintSolver.Core
 import Vehicle.Compile.Type.ConstraintSolver.Linearity
 import Vehicle.Compile.Type.ConstraintSolver.Polarity
 import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.DeBruijn (DBLevel (..))
 import Vehicle.Expr.Normalised
+import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Libraries.StandardLibrary.Names
 
 --------------------------------------------------------------------------------
 -- Public interface
 
 solveTypeClassConstraint ::
-  TCM m =>
-  WithContext TypeClassConstraint ->
-  m ConstraintProgress
-solveTypeClassConstraint c@(WithContext (Has m tc args) ctx) = do
+  TCM m => WithContext TypeClassConstraint -> m ()
+solveTypeClassConstraint c = do
+  nc@(WithContext ct@(Has m tc args) ctx) <- substMetas c
+  logDebug MaxDetail $ prettyVerbose nc
+
   progress <- solve tc c (argExpr <$> NonEmpty.toList args)
 
   case progress of
-    Left metas -> return $ Stuck metas
+    Left metas -> do
+      let blockedConstraint = blockConstraintOn (WithContext (TypeClassConstraint ct) ctx) metas
+      addConstraints [blockedConstraint]
     Right (newConstraints, solution) -> do
       let dbLevel = DBLevel $ length (boundContext ctx)
       solution1 <- quote dbLevel solution
       solveMeta m solution1 dbLevel
-      return $ Progress newConstraints
+      addConstraints newConstraints
 
 --------------------------------------------------------------------------------
 -- Solver
@@ -105,7 +111,7 @@ solveHasEq op c [arg1, arg2, res]
   where
     ctx = contextOf c
     args = [arg1, arg2]
-    allowedTypes = map Constructor [Bool, Index, Nat, Int, Rat, List, Vector] <> [Tensor]
+    allowedTypes = map pretty [Bool, Index, Nat, Int, Rat, List, Vector] <> [pretty $ identifierName TensorIdent]
     tcError =
       tcArgError ctx arg1 (EqualsTC op) allowedTypes 1 2
         <> tcArgError ctx arg2 (EqualsTC op) allowedTypes 2 2
@@ -183,7 +189,7 @@ solveHasOrd op c [arg1, arg2, res]
   where
     ctx = contextOf c
     args = [arg1, arg2]
-    allowedTypes = fmap Constructor [Index, Nat, Int, Rat]
+    allowedTypes = fmap pretty [Index, Nat, Int, Rat]
     tcError =
       tcArgError ctx arg1 (OrderTC op) allowedTypes 1 2
         <> tcArgError ctx arg2 (OrderTC op) allowedTypes 1 2
@@ -381,7 +387,7 @@ solveHasNeg c [arg, res]
   where
     ctx = contextOf c
     types = [arg, res]
-    allowedTypes = fmap Constructor [Int, Rat]
+    allowedTypes = fmap pretty [Int, Rat]
     tcError =
       tcArgError ctx arg NegTC allowedTypes 1 1
         <> tcResultError ctx res NegTC allowedTypes
@@ -413,7 +419,7 @@ solveHasAdd c types@[arg1, arg2, res]
   | otherwise = blockOrThrowErrors ctx types tcError
   where
     ctx = contextOf c
-    allowedTypes = fmap Constructor [Nat, Int, Rat]
+    allowedTypes = fmap pretty [Nat, Int, Rat]
     tcError =
       tcArgError ctx arg1 AddTC allowedTypes 1 2
         <> tcArgError ctx arg2 AddTC allowedTypes 2 2
@@ -486,7 +492,7 @@ solveHasSub c types@[arg1, arg2, res]
   | otherwise = blockOrThrowErrors ctx types tcError
   where
     ctx = contextOf c
-    allowedTypes = fmap Constructor [Int, Rat]
+    allowedTypes = fmap pretty [Int, Rat]
     tcError =
       tcArgError ctx arg1 SubTC allowedTypes 1 2
         <> tcArgError ctx arg2 SubTC allowedTypes 2 2
@@ -552,7 +558,7 @@ solveHasMul c types@[arg1, arg2, res]
   | otherwise = blockOrThrowErrors ctx types tcError
   where
     ctx = contextOf c
-    allowedTypes = fmap Constructor [Nat, Int, Rat]
+    allowedTypes = fmap pretty [Nat, Int, Rat]
     tcError =
       tcArgError ctx arg1 MulTC allowedTypes 1 2
         <> tcArgError ctx arg2 MulTC allowedTypes 2 2
@@ -599,7 +605,7 @@ solveHasDiv c types@[arg1, arg2, res]
   | otherwise = blockOrThrowErrors ctx types tcError
   where
     ctx = contextOf c
-    allowedTypes = fmap Constructor [Rat]
+    allowedTypes = fmap pretty [Rat]
     tcError =
       tcArgError ctx arg1 DivTC allowedTypes 1 2
         <> tcArgError ctx arg2 DivTC allowedTypes 2 2
@@ -1156,8 +1162,12 @@ blockOrThrowErrors ::
   [NormExpr] ->
   [CompileError] ->
   m TypeClassProgress
-blockOrThrowErrors c args err =
-  castProgress (provenanceOf c) <$> blockOnReductionBlockingMetasOrThrowError args (head err)
+blockOrThrowErrors _ args err = do
+  -- TODO forcing should be incorporated beforehand.
+  blockingMetas <- MetaSet.unions . fmap snd <$> traverse forceHead args
+  if MetaSet.null blockingMetas
+    then throwError (head err)
+    else return $ Left blockingMetas
 
 anyOf :: [a] -> (a -> Bool) -> Bool
 anyOf = flip any
@@ -1178,7 +1188,7 @@ tcArgError ::
   ConstraintContext ->
   NormType ->
   TypeClassOp ->
-  [Builtin] ->
+  [UnAnnDoc] ->
   Int ->
   Int ->
   [CompileError]
@@ -1191,7 +1201,7 @@ tcResultError ::
   ConstraintContext ->
   NormType ->
   TypeClassOp ->
-  [Builtin] ->
+  [UnAnnDoc] ->
   [CompileError]
 tcResultError c result op allowedTypes =
   unless2

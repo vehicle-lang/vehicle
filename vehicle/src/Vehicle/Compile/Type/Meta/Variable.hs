@@ -6,13 +6,12 @@ module Vehicle.Compile.Type.Meta.Variable
     makeMetaExpr,
     getMetaDependencies,
     getNormMetaDependencies,
-    metasInWithDependencies,
     HasMetas (..),
   )
 where
 
 import Control.Monad.Writer (MonadWriter (..), execWriterT)
-import Data.Foldable (traverse_)
+import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
@@ -22,8 +21,6 @@ import Vehicle.Compile.Type.Constraint
     TypeClassConstraint (..),
     UnificationConstraint (..),
   )
-import Vehicle.Compile.Type.Meta.Map (MetaMap)
-import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
@@ -92,10 +89,10 @@ getMetaDependencies = \case
   (ExplicitArg _ (Var _ (Bound i))) : args -> i : getMetaDependencies args
   _ -> []
 
-getNormMetaDependencies :: [NormArg] -> [DBLevel]
+getNormMetaDependencies :: [NormArg] -> ([DBLevel], Spine)
 getNormMetaDependencies = \case
-  (ExplicitArg _ (VBoundVar _ i [])) : args -> i : getNormMetaDependencies args
-  _ -> []
+  (ExplicitArg _ (VBoundVar _ i [])) : args -> first (i :) $ getNormMetaDependencies args
+  spine -> ([], spine)
 
 --------------------------------------------------------------------------------
 -- Objects which have meta variables in.
@@ -157,23 +154,3 @@ instance HasMetas Constraint where
   findMetas = \case
     UnificationConstraint c -> findMetas c
     TypeClassConstraint c -> findMetas c
-
-metasInWithDependencies :: MonadCompile m => NormExpr -> m (MetaMap [DBLevel])
-metasInWithDependencies e = execWriterT (go e)
-  where
-    go :: (MonadCompile m, MonadWriter (MetaMap [DBLevel]) m) => NormExpr -> m ()
-    go expr = case expr of
-      VMeta _ m args -> do
-        let deps = getNormMetaDependencies args
-        tell (MetaMap.singleton m deps)
-      VUniverse {} -> return ()
-      VLiteral {} -> return ()
-      VBuiltin _ _ spine -> goSpine spine
-      VBoundVar _ _ spine -> goSpine spine
-      VFreeVar _ _ spine -> goSpine spine
-      VLVec _ xs spine -> do traverse_ go xs; goSpine spine
-      VPi _ binder result -> do traverse_ go binder; go result
-      VLam {} -> developerError "Finding metas in normalised lambda not yet supported"
-
-    goSpine :: (MonadCompile m, MonadWriter (MetaMap [DBLevel]) m) => Spine -> m ()
-    goSpine = traverse_ (traverse_ go)

@@ -177,7 +177,6 @@ scopeVar p symbol = do
         tell [ident]
         return $ Free ident
       Nothing -> do
-        logDebug MaxDetail (pretty boundCtx)
         throwError $ UnboundName p symbol
 
 --------------------------------------------------------------------------------

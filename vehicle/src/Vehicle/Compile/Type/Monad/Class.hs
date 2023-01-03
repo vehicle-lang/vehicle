@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use <|>" #-}
 module Vehicle.Compile.Type.Monad.Class
   ( MonadTypeChecker (..),
     TypingMetaCtx,
@@ -30,6 +33,7 @@ module Vehicle.Compile.Type.Monad.Class
     addFreshTypeClassConstraint,
     setConstraints,
     getMetaSubstitution,
+    getDeclSubstitution,
     getUnsolvedMetas,
     getUnsolvedConstraints,
     popActivatedConstraints,
@@ -37,6 +41,7 @@ module Vehicle.Compile.Type.Monad.Class
     whnf,
     whnfNBE,
     glueNBE,
+    forceHead,
   )
 where
 
@@ -50,9 +55,10 @@ import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normaliseExpr)
+import Vehicle.Compile.Normalise.NBE (forceExpr)
 import Vehicle.Compile.Normalise.NBE qualified as NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
   ( HasMetas (..),
@@ -70,9 +76,9 @@ import Vehicle.Compile.Type.Meta.Substitution
     substituteMetas,
   )
 import Vehicle.Compile.Type.VariableContext
-  ( TypingBoundCtx,
+  ( DeclSubstitution,
+    TypingBoundCtx,
     TypingDeclCtx,
-    toNBEDeclContext,
     toNormalisationDeclContext,
   )
 import Vehicle.Expr.DeBruijn (DBLevel (..))
@@ -167,6 +173,9 @@ getUnsolvedMetas = do
   let metasCreated = MetaSet.fromList $ fmap MetaID [0 .. numberOfMetasCreated - 1]
   return $ MetaSet.difference metasCreated metasSolved
 
+getDeclSubstitution :: MonadTypeChecker m => m DeclSubstitution
+getDeclSubstitution = Map.mapMaybe (fmap normalised . snd) <$> getDeclContext
+
 setConstraints :: MonadTypeChecker m => [WithContext Constraint] -> m ()
 setConstraints newConstraints = modifyMetaCtx $ \TypingMetaCtx {..} ->
   TypingMetaCtx {constraints = newConstraints, ..}
@@ -186,7 +195,7 @@ popActivatedConstraints metasSolved = do
 substMetas :: (MonadTypeChecker m, MetaSubstitutable a) => a -> m a
 substMetas e = do
   metaSubst <- getMetaSubstitution
-  declCtx <- toNBEDeclContext <$> getDeclContext
+  declCtx <- getDeclSubstitution
   substituteMetas declCtx metaSubst e
 
 --------------------------------------------------------------------------------
@@ -466,7 +475,6 @@ addFreshTypeClassConstraint ctx fun funArgs tcExpr = do
 
   let ctxSize = length ctx
   nArgs <- traverse (traverse (whnfNBE (DBLevel ctxSize))) args
-  logDebug MaxDetail $ pretty $ show nArgs
 
   let p = provenanceOf fun
   (meta, metaExpr) <- freshTypeClassPlacementMeta p tcExpr ctxSize
@@ -487,9 +495,23 @@ getTypeClassConstraints = mapMaybe getTypeClassConstraint <$> getUnsolvedConstra
 addConstraints :: MonadTypeChecker m => [WithContext Constraint] -> m ()
 addConstraints [] = return ()
 addConstraints newConstraints = do
-  logDebug MaxDetail ("add-constraints " <> align (prettyVerbose newConstraints))
+  logDebug MaxDetail ("add-constraints " <> align (prettyFriendly newConstraints))
   modifyMetaCtx $ \TypingMetaCtx {..} ->
     TypingMetaCtx {constraints = constraints ++ newConstraints, ..}
+
+-- | Recursively forces the evaluation of any meta-variables at the head
+-- of the expresson.
+forceHead :: forall m. MonadTypeChecker m => NormExpr -> m (NormExpr, MetaSet)
+forceHead expr = do
+  declSubst <- getDeclSubstitution
+  metaSubst <- getMetaSubstitution
+  (maybeForcedExpr, blockingMetas) <- runReaderT (forceExpr expr) (declSubst, metaSubst)
+  forcedExpr <- case maybeForcedExpr of
+    Nothing -> return expr
+    Just forcedExpr -> do
+      logDebug MaxDetail $ "forced" <+> prettyVerbose expr <+> "to" <+> prettyVerbose forcedExpr
+      return forcedExpr
+  return (forcedExpr, blockingMetas)
 
 whnf :: MonadTypeChecker m => CheckedExpr -> m CheckedExpr
 whnf e = do
@@ -513,8 +535,9 @@ getBinderNameOrFreshName piName typ = case piName of
 
 whnfNBE :: MonadTypeChecker m => DBLevel -> CheckedExpr -> m NormExpr
 whnfNBE boundCtxSize e = do
-  declCtx <- getDeclContext
-  NBE.whnf boundCtxSize (Map.mapMaybe snd declCtx) e
+  declSubst <- getDeclSubstitution
+  metaSubst <- getMetaSubstitution
+  NBE.whnf boundCtxSize declSubst metaSubst e
 
 glueNBE :: MonadTypeChecker m => DBLevel -> CheckedExpr -> m GluedExpr
 glueNBE boundCtxSize e = Glued e <$> whnfNBE boundCtxSize e

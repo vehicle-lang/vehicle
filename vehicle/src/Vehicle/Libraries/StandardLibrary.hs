@@ -1,17 +1,19 @@
 module Vehicle.Libraries.StandardLibrary
   ( standardLibrary,
+    pattern TensorIdent,
   )
 where
 
 import Data.Text (Text)
 import Data.Version (Version)
 import Vehicle.Libraries
+import Vehicle.Syntax.AST (Identifier (..), Module (..))
 
 stdlibName :: LibraryName
 stdlibName = "stdlib"
 
 stdlibVersion :: Version
-stdlibVersion = [0, 3]
+stdlibVersion = [0, 4]
 
 standardLibrary :: Library
 standardLibrary =
@@ -35,4 +37,10 @@ content =
   \\n\
   \bigOr : Vector Bool n -> Bool\n\
   \bigOr = fold (\\x y -> x or y) False\n\
+  \\n\
+  \Tensor : Type -> List Nat -> Type\n\
+  \Tensor A ds = fold (\\d t -> Vector t d) A ds\n\
   \"
+
+pattern TensorIdent :: Identifier
+pattern TensorIdent = Identifier StdLib "Tensor"

@@ -21,7 +21,6 @@ module Vehicle.Expr.DSL
     tAnnRat,
     tList,
     tListRaw,
-    tTensor,
     tIndex,
     tPol,
     tLin,
@@ -244,9 +243,6 @@ tAnnBool linearity polarity =
 
 tVector :: DSLExpr -> DSLExpr -> DSLExpr
 tVector tElem dim = constructor Vector @@ [tElem, dim]
-
-tTensor :: DSLExpr -> DSLExpr -> DSLExpr
-tTensor tElem dims = builtin Tensor @@ [tElem, dims]
 
 tListRaw :: DSLExpr
 tListRaw = constructor List

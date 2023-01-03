@@ -4,10 +4,15 @@ module Vehicle.Compile.Type.VariableContext where
 
 import Data.Map qualified as Map
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Declaration context
+
+type MetaSubstitution = MetaMap GluedExpr
+
+type DeclSubstitution = DeclCtx NormExpr
 
 type TypingDeclCtxEntry = (CheckedType, Maybe GluedExpr)
 
@@ -15,9 +20,6 @@ type TypingDeclCtx = DeclCtx TypingDeclCtxEntry
 
 toNormalisationDeclContext :: TypingDeclCtx -> DeclCtx CheckedExpr
 toNormalisationDeclContext = Map.mapMaybe (fmap unnormalised . snd)
-
-toNBEDeclContext :: TypingDeclCtx -> DeclCtx NormExpr
-toNBEDeclContext = Map.mapMaybe (fmap normalised . snd)
 
 toDeclCtxEntry :: TypedDecl -> TypingDeclCtxEntry
 toDeclCtxEntry decl = do

@@ -60,6 +60,9 @@ class HasIdentifier a where
 moduleOf :: Identifier -> Module
 moduleOf (Identifier m _) = m
 
+identifierName :: Identifier -> Name
+identifierName (Identifier _ n) = n
+
 --------------------------------------------------------------------------------
 -- Names
 

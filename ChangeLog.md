@@ -17,6 +17,8 @@
 
 * Logs now print out in real-time instead of at the end of compilation.
 
+* Added `Type` to the frontend language for the type of types.
+
 ### Bug fixes
 
 * Unbound type arguments are now longer generalised over in the opposite order than they occur.
