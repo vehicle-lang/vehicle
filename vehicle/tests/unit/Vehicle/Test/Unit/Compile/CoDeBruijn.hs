@@ -26,7 +26,7 @@ coDeBruijnTests =
       CoDeBruijnTestSpec "typeFun" "Nat -> Nat",
       CoDeBruijnTestSpec "lam" "\\(x : Nat) -> x",
       CoDeBruijnTestSpec "lam2" "\\(f : Nat -> Nat) (x : Nat) -> f x",
-      CoDeBruijnTestSpec "pi" "forallT (n : Nat) . Tensor Nat [n]",
+      CoDeBruijnTestSpec "pi" "forallT (n : Nat) . Vector Nat n",
       CoDeBruijnTestSpec "neg" "\\(x : Int) -> - x"
     ]
 
