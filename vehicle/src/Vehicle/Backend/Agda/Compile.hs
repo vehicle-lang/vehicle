@@ -28,6 +28,7 @@ import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type (getUnnormalised)
+import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Libraries.StandardLibrary.Names
   ( StdLibFunction,
     findStdLibFunction,
@@ -347,7 +348,6 @@ compileDecl = \case
     compilePostulate (compileIdentifier n) <$> compileExpr t
   DefFunction _ n isProperty t e -> do
     let (binders, body) = foldBinders FunFold e
-    logDebug MaxDetail (prettyVerbose binders)
     setBoolLevel TypeLevel $ do
       if isProperty
         then compileProperty (compileIdentifier n) =<< compileExpr e
@@ -364,7 +364,7 @@ compileExpr expr = do
     Universe _ u -> case u of
       TypeUniv l -> return $ compileType l
       _ -> resolutionError currentPhase (pretty u)
-    Var _ n -> return $ annotateConstant [] (pretty n)
+    Var _ n -> compileVar n
     Pi _ binder result -> case binderNamingForm binder of
       OnlyType -> do
         cInput <- compileBinder binder
@@ -394,6 +394,13 @@ compileExpr expr = do
 
   logExit result
   return result
+
+compileVar :: MonadAgdaCompile m => InputVar -> m Code
+compileVar var = return $ case var of
+  -- Standard library operators that we would like to compile
+  "Tensor" -> annotateConstant [DataTensor] "Tensor"
+  -- Other variables
+  v -> annotateConstant [] (pretty v)
 
 compileApp :: MonadAgdaCompile m => OutputExpr -> NonEmpty OutputArg -> m Code
 compileApp fun args = do
@@ -525,7 +532,6 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
   RatType {} -> return $ annotateConstant [DataRat] ratQualifier
   ListType _ tElem -> annotateApp [DataList] listQualifier <$> traverse compileExpr [tElem]
   VectorType _ tElem tDim -> annotateApp [DataVector] vectorQualifier <$> traverse compileExpr [tElem, tDim]
-  TensorType _ tElem tDims -> annotateApp [DataTensor] tensorQualifier <$> traverse compileExpr [tElem, tDims]
   IndexType _ size -> annotateApp [DataFin] finQualifier <$> traverse compileExpr [size]
   FromNatExpr _ _n dom args -> compileFromNat dom <$> traverse compileArg (NonEmpty.toList args)
   FromRatExpr _ dom args -> compileFromRat dom <$> traverse compileArg (NonEmpty.toList args)
@@ -607,13 +613,13 @@ compileQuantIn q tCont fn cont = do
   (quant, qualifier, dep) <- case (boolLevel, q, tCont) of
     (TypeLevel, Forall, ListType {}) -> return ("All", listQualifier, DataListAll)
     (TypeLevel, Exists, ListType {}) -> return ("Any", listQualifier, DataListAny)
-    (TypeLevel, Forall, TensorType {}) -> return ("All", tensorQualifier, DataTensorAll)
-    (TypeLevel, Exists, TensorType {}) -> return ("Any", tensorQualifier, DataTensorAny)
+    (TypeLevel, Forall, ITensorType {}) -> return ("All", tensorQualifier, DataTensorAll)
+    (TypeLevel, Exists, ITensorType {}) -> return ("Any", tensorQualifier, DataTensorAny)
     (BoolLevel, Forall, ListType {}) -> return ("all", listQualifier, DataList)
     (BoolLevel, Exists, ListType {}) -> return ("any", listQualifier, DataList)
-    (BoolLevel, Forall, TensorType {}) -> return ("all", tensorQualifier, DataTensor)
-    (BoolLevel, Exists, TensorType {}) -> return ("any", tensorQualifier, DataTensor)
-    _ -> unexpectedTypeError tCont [pretty List, pretty Tensor]
+    (BoolLevel, Forall, ITensorType {}) -> return ("all", tensorQualifier, DataTensor)
+    (BoolLevel, Exists, ITensorType {}) -> return ("any", tensorQualifier, DataTensor)
+    _ -> unexpectedTypeError tCont [pretty List, pretty (identifierName TensorIdent)]
 
   annotateApp [dep] (qualifier <> "." <> quant) <$> traverse compileExpr [fn, cont]
 
@@ -867,11 +873,11 @@ equalityDependencies = \case
   VectorType _ tElem _tDims -> do
     deps <- equalityDependencies tElem
     return $ [DataVectorInstances] <> deps
-  TensorType _ tElem _tDims -> do
+  ITensorType _ tElem _tDims -> do
     deps <- equalityDependencies tElem
     return $ [DataTensorInstances] <> deps
   Var ann n -> throwError $ UnsupportedPolymorphicEquality AgdaBackend (provenanceOf ann) n
-  t -> unexpectedTypeError t (map pretty [Bool, Nat, Int, List, Vector] <> [pretty Tensor])
+  t -> unexpectedTypeError t (map pretty [Bool, Nat, Int, List, Vector] <> [pretty (identifierName TensorIdent)])
 
 unexpectedTypeError :: MonadCompile m => OutputExpr -> [Doc ()] -> m a
 unexpectedTypeError actualType expectedTypes =

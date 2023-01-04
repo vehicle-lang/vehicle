@@ -158,7 +158,7 @@ mkTensorType ::
 mkTensorType _ tElem [] = tElem
 mkTensorType ann tElem dims =
   let dimList = mkList ann (NatType ann) dims
-   in App ann (Builtin ann Tensor) (fmap (ExplicitArg ann) [tElem, dimList])
+   in TensorType ann tElem dimList
 
 mkList ::
   Provenance ->

@@ -13,7 +13,7 @@ parameterAnn = B.Parameter $ mkToken B.TokParameter "@parameter"
 propertyAnn = B.Property $ mkToken B.TokProperty "@property"
 
 tokType :: Int -> B.Expr
-tokType l = B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
+tokType l = B.Type (mkToken B.TokType ("Type" <> pack (show l)))
 
 tokArrow = mkToken B.TokArrow "->"
 
@@ -34,8 +34,6 @@ tokElemOf = mkToken B.TokElemOf ":"
 tokLambda = mkToken B.TokLambda "\\"
 
 tokVector = mkToken B.TokVector "Vector"
-
-tokTensor = mkToken B.TokTensor "Tensor"
 
 tokUnit = mkToken B.TokUnit "Unit"
 

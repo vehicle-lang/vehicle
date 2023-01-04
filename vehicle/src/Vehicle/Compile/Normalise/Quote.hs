@@ -1,9 +1,7 @@
 module Vehicle.Compile.Normalise.Quote where
 
 import Control.Monad.Except (runExceptT)
-import Control.Monad.Reader (runReaderT)
 import Vehicle.Compile.Error (MonadCompile)
-import Vehicle.Compile.Normalise.NBE (eval, liftEnvOverBinder)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
@@ -40,10 +38,15 @@ instance Quote NormExpr CheckedExpr where
     VPi p binder body ->
       Pi p <$> quote level binder <*> quote (level + 1) body
     VLam p binder env body -> do
-      -- First quote the binder
       quotedBinder <- quote level binder
-      normBody <- runReaderT (eval (liftEnvOverBinder p env) body) mempty
-      quotedBody <- quote (level + 1) normBody
+      quotedEnv <- traverse (quote (level + 1)) (liftEnvOverBinder p env)
+      let quotedBody = substituteDB 0 (envSubst quotedEnv) body
+      -- Here we deliberately avoid using the standard `quote . eval` approach below
+      -- on the body of the lambda, in order to avoid the dependency cycles that
+      -- prevent us from printing during NBE.
+      --
+      -- normBody <- runReaderT (eval (liftEnvOverBinder p env) body) mempty
+      -- quotedBody <- quote (level + 1) normBody
       return $ Lam p quotedBinder quotedBody
 
 instance Quote NormBinder CheckedBinder where

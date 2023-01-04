@@ -4,6 +4,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude.Contexts (BoundCtx)
 import Vehicle.Expr.DeBruijn
+import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Syntax.AST
 
 -----------------------------------------------------------------------------
@@ -59,6 +60,9 @@ type NormType = NormExpr
 type Spine = [NormArg]
 
 type Env = BoundCtx NormExpr
+
+liftEnvOverBinder :: Provenance -> Env -> Env
+liftEnvOverBinder p = (VBoundVar p 0 [] :)
 
 -----------------------------------------------------------------------------
 -- Patterns
@@ -149,14 +153,14 @@ pattern VVectorType p tElem dim <- VConstructor p Vector [ExplicitArg _ tElem, E
     VVectorType p tElem dim = VConstructor p Vector [ExplicitArg p tElem, ExplicitArg p dim]
 
 pattern VTensorType :: Provenance -> NormType -> NormType -> NormType
-pattern VTensorType p tElem dims <- VBuiltin p Tensor [ExplicitArg _ tElem, ExplicitArg _ dims]
+pattern VTensorType p tElem dims <- VFreeVar p TensorIdent [ExplicitArg _ tElem, ExplicitArg _ dims]
   where
-    VTensorType p tElem dims = VBuiltin p Tensor [ExplicitArg p tElem, ExplicitArg p dims]
+    VTensorType p tElem dims = VFreeVar p TensorIdent [ExplicitArg p tElem, ExplicitArg p dims]
 
 mkNList :: Provenance -> NormType -> [NormExpr] -> NormExpr
 mkNList p tElem = foldr cons nil
   where
-    t = ExplicitArg p tElem
+    t = ImplicitArg p tElem
     nil = VConstructor p Nil [t]
     cons y ys = VConstructor p Cons [t, ExplicitArg p y, ExplicitArg p ys]
 
@@ -177,12 +181,6 @@ isNLinearityUniverse _ = False
 
 isNAuxiliaryUniverse :: NormExpr -> Bool
 isNAuxiliaryUniverse e = isNPolarityUniverse e || isNLinearityUniverse e
-
-isLiteral :: NormExpr -> Bool
-isLiteral = \case
-  VLVec {} -> True
-  VLiteral {} -> True
-  _ -> False
 
 isMeta :: NormExpr -> Bool
 isMeta VMeta {} = True

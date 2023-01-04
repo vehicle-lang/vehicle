@@ -1,4 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use <|>" #-}
 
 module Vehicle.Compile.Normalise.NBE
   ( whnf,
@@ -6,36 +9,41 @@ module Vehicle.Compile.Normalise.NBE
     evalApp,
     eval,
     liftEnvOverBinder,
+    forceExpr,
   )
 where
 
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Data.Foldable (foldrM)
-import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty as NonEmpty (toList)
 import Data.Map qualified as Map (lookup)
+import Data.Maybe (isJust)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Meta (MetaSet)
+import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
+import Vehicle.Compile.Type.VariableContext (DeclSubstitution, MetaSubstitution)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
-whnf :: MonadCompile m => DBLevel -> DeclCtx GluedExpr -> CheckedExpr -> m NormExpr
-whnf boundCtxSize declCtx e = do
+whnf :: MonadCompile m => DBLevel -> DeclSubstitution -> MetaSubstitution -> CheckedExpr -> m NormExpr
+whnf boundCtxSize declCtx metaSubst e = do
   let env = [VBoundVar mempty i [] | i <- reverse [0 .. boundCtxSize - 1]]
-  runReaderT (eval env e) (fmap normalised declCtx)
+  runReaderT (eval env e) (declCtx, metaSubst)
 
 -----------------------------------------------------------------------------
 -- Evaluation
 
 type MonadNorm m =
   ( MonadCompile m,
-    MonadReader (DeclCtx NormExpr) m
+    MonadReader (DeclSubstitution, MetaSubstitution) m
   )
 
 -- TODO change to return a tuple of NF and WHNF?
 eval :: MonadNorm m => Env -> CheckedExpr -> m NormExpr
 eval env expr = do
-  -- logDebug MaxDetail ("nbe-entry" <+> prettyVerbose expr)
-  incrCallDepth
+  showEntry env expr
   result <- case expr of
     Hole {} -> resolutionError currentPass "Hole"
     Meta p m -> return $ VMeta p m []
@@ -60,7 +68,7 @@ eval env expr = do
               <+> "is smaller than the found DB index"
               <+> pretty i
       Free ident -> do
-        declExpr <- asks (Map.lookup ident)
+        declExpr <- asks (Map.lookup ident . fst)
         return $ case declExpr of
           Just x -> x
           Nothing -> VFreeVar p ident []
@@ -70,20 +78,17 @@ eval env expr = do
     App _ fun args -> do
       fun' <- eval env fun
       args' <- traverse (traverse (eval env)) args
-      evalApp fun' args'
+      evalApp fun' (NonEmpty.toList args')
 
-  decrCallDepth
-  -- logDebug MaxDetail ("nbe-exit" <+> prettyVerbose result)
+  showExit result
   return result
-
-liftEnvOverBinder :: Provenance -> Env -> Env
-liftEnvOverBinder p = (VBoundVar p 0 [] :)
 
 evalBinder :: MonadNorm m => Env -> CheckedBinder -> m NormBinder
 evalBinder env = traverse (eval env)
 
-evalApp :: MonadNorm m => NormExpr -> NonEmpty (GenericArg NormExpr) -> m NormExpr
-evalApp fun (arg :| args) = case fun of
+evalApp :: MonadNorm m => NormExpr -> [GenericArg NormExpr] -> m NormExpr
+evalApp fun [] = return fun
+evalApp fun (arg : args) = case fun of
   VMeta p v spine -> return $ VMeta p v (spine <> (arg : args))
   VFreeVar p v spine -> return $ VFreeVar p v (spine <> (arg : args))
   VBoundVar p v spine -> return $ VBoundVar p v (spine <> (arg : args))
@@ -92,7 +97,7 @@ evalApp fun (arg :| args) = case fun of
     body' <- eval (argExpr arg : env) body
     case args of
       [] -> return body'
-      (a : as) -> evalApp body' (a :| as)
+      (a : as) -> evalApp body' (a : as)
   VBuiltin p b spine -> evalBuiltin p b (spine <> (arg : args))
   VUniverse {} -> unexpectedExprError currentPass "VUniverse"
   VPi {} -> unexpectedExprError currentPass "VPi"
@@ -155,7 +160,6 @@ evalBuiltin p b args = case b of
   -- Derived
   TypeClassOp op -> evalTypeClassOp p op args
   Implies -> evalImplies p args
-  Tensor -> evalTensor p args
   Map dom -> case dom of
     MapList -> evalMapList p args
     MapVector -> evalMapVec p args
@@ -333,12 +337,12 @@ evalAt p = \case
 
 evalFoldList :: EvalBuiltin
 evalFoldList p = \case
-  [_f, e, ExplicitArg _ (VConstructor _ Nil [])] ->
+  [_, _, _f, e, ExplicitArg _ (VConstructor _ Nil [_])] -> do
     return $ argExpr e
-  [f, e, ExplicitArg _ (VConstructor _ Cons [x, xs'])] -> do
-    r <- evalFoldList p [f, e, xs']
+  [toT, fromT, f, e, ExplicitArg _ (VConstructor _ Cons [_, x, xs'])] -> do
+    r <- evalFoldList p [toT, fromT, f, e, xs']
     evalApp (argExpr f) [x, ExplicitArg p r]
-  args ->
+  args -> do
     return $ VBuiltin p (Fold FoldList) args
 
 evalFoldVector :: EvalBuiltin
@@ -364,15 +368,9 @@ evalTypeClassOp ::
   TypeClassOp ->
   [GenericArg NormExpr] ->
   m NormExpr
-evalTypeClassOp p op args = do
+evalTypeClassOp _p _op args = do
   let (inst, remainingArgs) = findInstanceArg args
-  if isMeta inst
-    then return $ VBuiltin p (TypeClassOp op) args
-    else case remainingArgs of
-      v : vs -> evalApp inst (v :| vs)
-      [] ->
-        compilerDeveloperError $
-          "Type class operation with no further arguments:" <+> pretty op
+  evalApp inst remainingArgs
 
 -----------------------------------------------------------------------------
 -- Derived
@@ -385,14 +383,6 @@ evalImplies p = \case
     ne1 <- ExplicitArg p <$> evalNot p [e1]
     evalOr p [ne1, e2]
   args -> return $ VBuiltin p Implies args
-
-evalTensor :: EvalBuiltin
-evalTensor p = \case
-  [ExplicitArg _ tElem, ExplicitArg _ (VConstructor _ Nil _)] -> return tElem
-  [tElem, ExplicitArg _ (VConstructor _ Cons [_, n, ns])] -> do
-    t' <- ExplicitArg p <$> evalTensor p [tElem, ns]
-    return $ VConstructor p Vector [t', n]
-  args -> return $ VBuiltin p Tensor args
 
 evalMapList :: EvalBuiltin
 evalMapList p = \case
@@ -422,7 +412,70 @@ evalFromVecToVec n p = \case
   args -> return $ VBuiltin p (FromVec n FromVecToVec) args
 
 -----------------------------------------------------------------------------
+-- Meta-variable forcing
+
+-- | Recursively forces the evaluation of any meta-variables that are blocking
+-- evaluation.
+forceExpr :: forall m. MonadNorm m => NormExpr -> m (Maybe NormExpr, MetaSet)
+forceExpr = go
+  where
+    go :: NormExpr -> m (Maybe NormExpr, MetaSet)
+    go = \case
+      VMeta _ m spine -> goMeta m spine
+      VBuiltin p b spine -> goBuiltin p b spine
+      _ -> return (Nothing, mempty)
+
+    goMeta :: MetaID -> Spine -> m (Maybe NormExpr, MetaSet)
+    goMeta m spine = do
+      metaSubst <- asks snd
+      case MetaMap.lookup m metaSubst of
+        Just solution -> do
+          normMetaExpr <- evalApp (normalised solution) spine
+          (maybeForcedExpr, blockingMetas) <- go normMetaExpr
+          let forcedExpr = maybe (Just normMetaExpr) Just maybeForcedExpr
+          return (forcedExpr, blockingMetas)
+        Nothing -> return (Nothing, MetaSet.singleton m)
+
+    goBuiltin :: Provenance -> Builtin -> Spine -> m (Maybe NormExpr, MetaSet)
+    goBuiltin p b spine = case b of
+      Constructor {} -> return (Nothing, mempty)
+      Foreach -> return (Nothing, mempty)
+      TypeClassOp {} -> return (Nothing, mempty)
+      _ -> do
+        (argResults, argsReduced, argBlockingMetas) <- unzip3 <$> traverse goBuiltinArg spine
+        let anyArgsReduced = or argsReduced
+        let blockingMetas = MetaSet.unions argBlockingMetas
+        result <-
+          if not anyArgsReduced
+            then return Nothing
+            else do
+              Just <$> evalBuiltin p b argResults
+        return (result, blockingMetas)
+
+    goBuiltinArg :: NormArg -> m (NormArg, Bool, MetaSet)
+    goBuiltinArg arg
+      -- We assume that non-explicit args aren't depended on computationally
+      -- (this may not hold in future.)
+      | not (isExplicit arg) = return (arg, False, mempty)
+      | otherwise = do
+          (maybeResult, blockingMetas) <- go (argExpr arg)
+          let result = maybe arg (`replaceArgExpr` arg) maybeResult
+          let reduced = isJust maybeResult
+          return (result, reduced, blockingMetas)
+
+-----------------------------------------------------------------------------
 -- Other
 
 currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
+
+showEntry :: MonadNorm m => Env -> CheckedExpr -> m ()
+showEntry _env _expr = do
+  -- logDebug MaxDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}")
+  incrCallDepth
+
+showExit :: MonadNorm m => NormExpr -> m ()
+showExit _result = do
+  decrCallDepth
+
+-- logDebug  MaxDetail ("nbe-exit" <+> prettyVerbose result)

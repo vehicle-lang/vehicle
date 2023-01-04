@@ -2,6 +2,7 @@ module Vehicle.Expr.Patterns where
 
 import Data.List.NonEmpty (NonEmpty (..), toList)
 import Vehicle.Expr.DeBruijn
+import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Libraries.StandardLibrary.Names
 import Vehicle.Syntax.AST
 
@@ -120,24 +121,39 @@ pattern VectorType p tElem tDim <-
 
 pattern TensorType ::
   Provenance ->
-  Expr binder var ->
-  Expr binder var ->
-  Expr binder var
+  Expr binder DBIndexVar ->
+  Expr binder DBIndexVar ->
+  Expr binder DBIndexVar
 pattern TensorType p tElem tDims <-
-  BuiltinExpr
+  App
     p
-    Tensor
+    (FreeVar _ TensorIdent)
     [ ExplicitArg _ tElem,
       ExplicitArg _ tDims
       ]
   where
     TensorType p tElem tDims =
-      BuiltinExpr
+      App
         p
-        Tensor
+        (FreeVar p TensorIdent)
         [ ExplicitArg p tElem,
           ExplicitArg p tDims
         ]
+
+-- | Ugly hack until we work out how to bind builtins in the
+-- user syntax.
+pattern ITensorType ::
+  Provenance ->
+  InputExpr ->
+  InputExpr ->
+  InputExpr
+pattern ITensorType p tElem tDims <-
+  App
+    p
+    (Var _ "Tensor")
+    [ ExplicitArg _ tElem,
+      ExplicitArg _ tDims
+      ]
 
 pattern IndexType :: Provenance -> Expr binder var -> Expr binder var
 pattern IndexType p tSize <- ConstructorExpr p Index [ExplicitArg _ tSize]

@@ -214,7 +214,7 @@ type MonadElab m =
 
 elabExpr :: MonadElab m => B.Expr -> m V.InputExpr
 elabExpr = \case
-  B.Type t -> return $ V.Universe (mkAnn t) $ V.TypeUniv (parseTypeLevel t)
+  B.Type t -> return $ V.Universe (mkAnn t) $ V.TypeUniv 0
   B.Var n -> return $ V.Var (mkAnn n) (tkSymbol n)
   B.Hole n -> return $ V.mkHole (V.tkProvenance n) (tkSymbol n)
   B.Literal l -> elabLiteral l
@@ -238,7 +238,6 @@ elabExpr = \case
   B.Rat tk -> constructor V.Rat tk []
   B.List tk -> constructor V.List tk []
   B.Vector tk -> constructor V.Vector tk []
-  B.Tensor tk -> builtin V.Tensor tk []
   B.Nil tk -> constructor V.Cons tk []
   B.Cons e1 tk e2 -> constructor V.Cons tk [e1, e2]
   B.Not tk e -> builtin (V.TypeClassOp V.NotTC) tk [e]
@@ -359,7 +358,7 @@ elabParameterOptions = \case
           Just False -> return V.Parameter
           Nothing -> throwError $ InvalidAnnotationOptionValue (V.tkProvenance valueToken) name value
 
-parseTypeLevel :: B.TypeToken -> Int
+parseTypeLevel :: B.TokType -> Int
 parseTypeLevel s = read (drop 4 (unpack (tkSymbol s)))
 
 op1 ::
@@ -411,9 +410,6 @@ elabApp fun arg = do
   arg' <- elabArg arg
   let p = V.fillInProvenance (V.provenanceOf fun' :| [V.provenanceOf arg'])
   return $ V.normAppList p fun' [arg']
-
-elabTensor :: (MonadElab m, IsToken token) => token -> B.Expr -> B.Expr -> m V.InputExpr
-elabTensor tk tElem tDims = builtin V.Tensor tk [tElem, tDims]
 
 elabOrder :: (MonadElab m, IsToken token) => V.OrderOp -> token -> B.Expr -> B.Expr -> m V.InputExpr
 elabOrder order tk e1 e2 = do

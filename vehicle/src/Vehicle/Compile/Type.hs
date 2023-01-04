@@ -245,20 +245,11 @@ loopOverConstraints loopNumber decl = do
 
 -- | Tries to solve a constraint deterministically.
 solveConstraint :: TCM m => WithContext Constraint -> m ()
-solveConstraint unnormConstraint = do
-  normConstraint@(WithContext constraint ctx) <- substMetas unnormConstraint
-
-  logCompilerSection MaxDetail ("trying:" <+> prettyVerbose normConstraint) $ do
-    logDebug MaxDetail $ prettyFriendly normConstraint
-    result <- case constraint of
-      UnificationConstraint c -> solveUnificationConstraint (WithContext c ctx)
-      TypeClassConstraint c -> solveTypeClassConstraint (WithContext c ctx)
-
-    case result of
-      Progress newConstraints -> addConstraints newConstraints
-      Stuck metas -> do
-        let blockedConstraint = blockConstraintOn (WithContext constraint ctx) metas
-        addConstraints [blockedConstraint]
+solveConstraint constraint@(WithContext c ctx) =
+  logCompilerSection MaxDetail ("trying:" <+> prettyVerbose constraint) $
+    case c of
+      UnificationConstraint uc -> solveUnificationConstraint (WithContext uc ctx)
+      TypeClassConstraint tc -> solveTypeClassConstraint (WithContext tc ctx)
 
 -- | Tries to add new unification constraints using default values.
 addNewConstraintUsingDefaults ::

@@ -56,8 +56,8 @@ data CompileError
       (NonEmpty (WithContext UnificationConstraint))
   | FailedEqConstraint ConstraintContext NormType NormType EqualityOp
   | FailedOrdConstraint ConstraintContext NormType NormType OrderOp
-  | FailedBuiltinConstraintArgument ConstraintContext Builtin NormType [Builtin] Int Int
-  | FailedBuiltinConstraintResult ConstraintContext Builtin NormType [Builtin]
+  | FailedBuiltinConstraintArgument ConstraintContext Builtin NormType [UnAnnDoc] Int Int
+  | FailedBuiltinConstraintResult ConstraintContext Builtin NormType [UnAnnDoc]
   | FailedNotConstraint ConstraintContext NormType
   | FailedBoolOp2Constraint ConstraintContext NormType NormType Builtin
   | FailedQuantifierConstraintDomain ConstraintContext NormType Quantifier

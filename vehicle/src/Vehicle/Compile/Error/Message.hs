@@ -18,6 +18,7 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (..))
 import Vehicle.Expr.Normalised
+import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
 
 --------------------------------------------------------------------------------
@@ -255,9 +256,9 @@ instance MeaningfulError CompileError where
             "expected"
               <+> squotes (prettyUnificationConstraintOriginExpr ctx expr)
               <+> "to be of type"
-              <+> prettyFriendly (WithContext expectedType boundCtx)
+              <+> squotes (prettyFriendly (WithContext expectedType boundCtx))
               <+> "but was found to be of type"
-              <+> prettyFriendly (WithContext actualType boundCtx)
+              <+> squotes (prettyFriendly (WithContext actualType boundCtx))
           CheckingBinderType varName expectedType actualType ->
             "expected the variable"
               <+> quotePretty varName
@@ -671,7 +672,7 @@ instance MeaningfulError CompileError where
                 <+> pretty io
                 <+> squotes (prettyFriendly (WithContext nonTensorType emptyDBCtx))
                 <+> "is not one of"
-                <+> list [pretty Vector, pretty Tensor] <> ".",
+                <+> list [pretty Vector, pretty (identifierName TensorIdent)] <> ".",
             fix =
               Just $
                 supportedNetworkTypeDescription
@@ -764,7 +765,7 @@ instance MeaningfulError CompileError where
                   <+> "to a supported type."
           }
       where
-        supportedTypes = map pretty [List, Vector] <> [pretty Tensor]
+        supportedTypes = map pretty [List, Vector] <> [pretty (identifierName TensorIdent)]
     DatasetTypeUnsupportedElement (ident, p) datasetType elementType ->
       UError $
         UserError
@@ -1370,11 +1371,11 @@ prettyAuxiliaryFunctionProvenance = \case
   FunctionInput n _ -> "which is used as an input to the function" <+> quotePretty n
   FunctionOutput n -> "which is returned as an output of the function" <+> quotePretty n
 
-prettyAllowedTypes :: [Builtin] -> Doc b
+prettyAllowedTypes :: [UnAnnDoc] -> UnAnnDoc
 prettyAllowedTypes allowedTypes =
   if length allowedTypes == 1
-    then quotePretty (head allowedTypes)
-    else "one of" <+> prettyFlatList (pretty <$> allowedTypes)
+    then squotes (head allowedTypes)
+    else "one of" <+> prettyFlatList allowedTypes
 
 prettyAllowedBuiltins :: [Doc b] -> Doc b
 prettyAllowedBuiltins = commaSep

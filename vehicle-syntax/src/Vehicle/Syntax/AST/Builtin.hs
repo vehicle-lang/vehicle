@@ -295,8 +295,7 @@ data Builtin
   | At
   | Map MapDomain
   | -- Derived
-    Tensor
-  | TypeClassOp TypeClassOp
+    TypeClassOp TypeClassOp
   | Fold FoldDomain
   | Foreach
   deriving (Eq, Show, Generic)
@@ -330,7 +329,6 @@ instance Pretty Builtin where
     FromVec n dom -> "fromVec[" <> pretty n <> "]To" <> pretty dom
     Equals dom op -> equalityOpName op <> pretty dom
     Order dom op -> orderOpName op <> pretty dom
-    Tensor -> "Tensor"
     Foreach -> "foreach"
     Fold dom -> "fold" <> pretty dom
     Map dom -> "map" <> pretty dom

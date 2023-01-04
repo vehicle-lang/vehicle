@@ -25,13 +25,13 @@ position token TokElemOf    {":"};
 position token TokLambda    {"\\"};
 position token TokLet       {"let"};
 
+position token TokType      {"Type"};
 position token TokUnit      {"Unit"};
 position token TokBool      {"Bool"};
 position token TokNat       {"Nat"};
 position token TokInt       {"Int"};
 position token TokRat       {"Rat"};
 position token TokVector    {"Vector"};
-position token TokTensor    {"Tensor"};
 position token TokList      {"List"};
 position token TokIndex     {"Index"};
 
@@ -68,7 +68,6 @@ position token TokHasMul    {"HasMul"};
 
 position token Name        (letter (letter | digit | '_')*) ;
 position token HoleToken   ({"?"} (letter | digit | '_')*);
-position token TypeToken   ({"Type"} digit+);
 
 position token DeclAnnOptionValue ((letter | digit)+);
 
@@ -128,7 +127,7 @@ BoolLiteral.  Lit ::= Boolean;
 --   aren't used for `let` and `in`.
 
 -- Kinds.
-Type.    Expr15 ::= TypeToken;
+Type.    Expr14 ::= TokType;
 
 -- Core structure.
 Ann.     Expr   ::= Expr2 TokElemOf Expr1;
@@ -185,7 +184,6 @@ Int.     Expr15 ::= TokInt;
 Nat.     Expr15 ::= TokNat;
 List.    Expr14 ::= TokList;
 Vector.  Expr14 ::= TokVector;
-Tensor.  Expr14 ::= TokTensor;
 Index.   Expr14 ::= TokIndex;
 
 -- Type classes.
