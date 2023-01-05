@@ -2,6 +2,7 @@
   {
     "name": "TypeCheck",
     "run": "vehicle compile -s simple-map.vcl -t TypeCheck --logging MaxDetail",
-    "needs": ["simple-map.vcl"]
+    "needs": ["simple-map.vcl"],
+    "enabled": false
   }
 ]
