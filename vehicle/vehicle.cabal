@@ -68,9 +68,10 @@ common common-language
     UndecidableInstances
     ViewPatterns
 
+  ghc-options:        -Werror -Wall -fprint-potential-instances
+
 common common-library
-  import:      common-language
-  ghc-options: -Werror -Wall -fprint-potential-instances
+  import: common-language
 
   if flag(ghc-debug)
     build-depends: ghc-debug-stub >=0.3 && <0.4
@@ -82,10 +83,14 @@ common common-library
 
 common common-executable
   import:      common-language
-  ghc-options: -Werror -Wall -threaded -with-rtsopts=-N
+  ghc-options: -threaded
 
   if flag(ghc-debug)
-    ghc-options: -threaded -rtsopts
+    ghc-options: -rtsopts -with-rtsopts=-N
+
+common common-test
+  import:      common-language
+  ghc-options: -threaded -with-rtsopts=-N
 
 library
   import:          common-library
@@ -277,7 +282,7 @@ library vehicle-golden-tests-common
     , vehicle
 
 test-suite vehicle-golden-tests
-  import:             common-executable
+  import:             common-test
   type:               exitcode-stdio-1.0
   main-is:            tests/golden/Tests.hs
   build-depends:
@@ -328,7 +333,7 @@ library vehicle-unit-tests-common
     , vehicle-syntax
 
 test-suite vehicle-unit-tests
-  import:        common-executable
+  import:        common-test
   type:          exitcode-stdio-1.0
   main-is:       tests/unit/Tests.hs
   build-depends:
