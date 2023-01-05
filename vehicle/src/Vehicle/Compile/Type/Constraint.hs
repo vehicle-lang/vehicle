@@ -15,6 +15,7 @@ module Vehicle.Compile.Type.Constraint
     isBlocked,
     constraintIsBlocked,
     copyContext,
+    contextDBLevel,
     ConstraintProgress (..),
   )
 where
@@ -24,6 +25,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext
+import Vehicle.Expr.DeBruijn (DBLevel (..))
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -87,7 +89,7 @@ newtype BlockingStatus = BlockingStatus (Maybe MetaSet)
 instance Pretty BlockingStatus where
   pretty (BlockingStatus status) = case status of
     Nothing -> ""
-    Just v -> parens ("blockedBy:" <+> pretty v)
+    Just v -> "blockedBy:" <+> pretty v
 
 unknownBlockingStatus :: BlockingStatus
 unknownBlockingStatus = BlockingStatus Nothing
@@ -139,6 +141,9 @@ blockCtxOn metas (ConstraintContext originProv originalConstraint creationProv _
 copyContext :: ConstraintContext -> ConstraintContext
 copyContext (ConstraintContext originProv originalConstraint creationProv _ ctx group) =
   ConstraintContext originProv originalConstraint creationProv unknownBlockingStatus ctx group
+
+contextDBLevel :: ConstraintContext -> DBLevel
+contextDBLevel = DBLevel . length . boundContext
 
 --------------------------------------------------------------------------------
 -- Unification constraints
