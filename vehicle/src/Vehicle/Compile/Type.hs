@@ -386,7 +386,7 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
         logDebug MaxDetail $
           "unsolved-blocked-constraints:"
             <> line
-            <> indent 2 (prettyVerbose blockedConstraints)
+            <> indent 2 (prettyBlockedConstraints blockedConstraints)
             <> line
         logDebug MaxDetail $
           "unsolved-unblocked-constraints:"
@@ -402,6 +402,11 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
             <> line
             <> indent 2 (prettyVerbose decl)
             <> line
+
+prettyBlockedConstraints :: [WithContext Constraint] -> Doc a
+prettyBlockedConstraints constraints = do
+  let pairs = fmap (\c -> prettyFriendly c <> "   " <> pretty (blockedBy $ contextOf c)) constraints
+  prettySetLike pairs
 
 bidirectionalPassDoc :: Doc a
 bidirectionalPassDoc = "bidirectional pass over"
