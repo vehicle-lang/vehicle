@@ -29,46 +29,42 @@ generaliseOverUnsolvedConstraints ::
   m CheckedDecl
 generaliseOverUnsolvedConstraints decl =
   logCompilerPass MinDetail "generalisation over unsolved type-class constraints" $ do
-    unsolvedConstraints <- getUnsolvedConstraints
-    substUnsolvedConstraints <- traverse substMetas unsolvedConstraints
+    unsolvedTypeClassConstraints <- traverse substMetas =<< getActiveTypeClassConstraints
+    unsolvedConstraints <- traverse substMetas =<< getActiveConstraints
 
-    (generalisedDecl, rejectedConstraints) <-
-      foldM (generaliseOverConstraint substUnsolvedConstraints) (decl, []) unsolvedConstraints
-    setConstraints rejectedConstraints
+    (generalisedDecl, rejectedTypeClassConstraints) <-
+      foldM (generaliseOverConstraint unsolvedConstraints) (decl, []) unsolvedTypeClassConstraints
+    setTypeClassConstraints rejectedTypeClassConstraints
     return generalisedDecl
 
 generaliseOverConstraint ::
   TCM m =>
   [WithContext Constraint] ->
-  (CheckedDecl, [WithContext Constraint]) ->
-  WithContext Constraint ->
-  m (CheckedDecl, [WithContext Constraint])
-generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext constraint ctx) = case constraint of
-  UnificationConstraint {} -> do
-    logDebug MaxDetail $ "Found non-prependable unification constraint" <+> prettyVerbose c
-    return (decl, c : rejected)
-  TypeClassConstraint tc -> do
-    let metaFilter =
-          if isAuxiliaryTypeClassConstraint tc
-            then isAuxiliaryUniverse
-            else isTypeUniverse
+  (CheckedDecl, [WithContext TypeClassConstraint]) ->
+  WithContext TypeClassConstraint ->
+  m (CheckedDecl, [WithContext TypeClassConstraint])
+generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) = do
+  let metaFilter =
+        if isAuxiliaryTypeClassConstraint tc
+          then isAuxiliaryUniverse
+          else isTypeUniverse
 
-    -- Find any unsolved meta variables that are transitively linked
-    -- by constraints of the same type.
-    linkedMetas <- getMetasLinkedToMetasIn allConstraints metaFilter (typeOf decl)
-    -- Only prepend the constraint if all variables in the constraint
-    -- are so linked.
-    substTC <- substMetas tc
-    constraintMetas <- metasIn substTC
-    let prependable = constraintMetas `MetaSet.isSubsetOf` linkedMetas
+  -- Find any unsolved meta variables that are transitively linked
+  -- by constraints of the same type.
+  linkedMetas <- getMetasLinkedToMetasIn allConstraints metaFilter (typeOf decl)
+  -- Only prepend the constraint if all variables in the constraint
+  -- are so linked.
+  substTC <- substMetas tc
+  constraintMetas <- metasIn substTC
+  let prependable = constraintMetas `MetaSet.isSubsetOf` linkedMetas
 
-    if not prependable
-      then do
-        logDebug MaxDetail $ "Found non-prependable type-class constraint" <+> prettyVerbose c
-        return (decl, c : rejected)
-      else do
-        generalisedDecl <- prependConstraint decl (WithContext substTC ctx)
-        return (generalisedDecl, rejected)
+  if not prependable
+    then do
+      logDebug MaxDetail $ "Found non-prependable type-class constraint" <+> prettyVerbose c
+      return (decl, c : rejected)
+    else do
+      generalisedDecl <- prependConstraint decl (WithContext substTC ctx)
+      return (generalisedDecl, rejected)
 
 prependConstraint ::
   TCM m =>

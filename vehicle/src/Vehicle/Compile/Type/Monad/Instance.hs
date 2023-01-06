@@ -1,9 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Compile.Type.Monad.Instance
-  ( module Vehicle.Compile.Type.Monad.Class,
+  ( TypeCheckerT,
     runTypeCheckerT,
-    toNormalisationDeclContext,
   )
 where
 
@@ -12,14 +11,12 @@ import Control.Monad.Reader (MonadReader (..), ReaderT (..), mapReaderT)
 import Control.Monad.State
   ( MonadState (..),
     StateT (..),
-    evalStateT,
     gets,
     mapStateT,
     modify,
   )
 import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Trans.Class (lift)
-import Data.Bifunctor (Bifunctor (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad.Class
@@ -28,16 +25,17 @@ import Vehicle.Compile.Type.VariableContext
 --------------------------------------------------------------------------------
 -- Implementation
 
--- | State for generating fresh names.
-type FreshNameState = Int
-
 type TypeCheckerTInternals m =
-  ReaderT TypingDeclCtx (StateT (TypingMetaCtx, FreshNameState) m)
+  ReaderT TypingDeclCtx (StateT TypeCheckerState m)
+
+clearFreshNamesInternal :: Monad m => TypeCheckerTInternals m ()
+clearFreshNamesInternal =
+  modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = 0, ..})
 
 getFreshNameInternal :: Monad m => CheckedType -> TypeCheckerTInternals m Name
 getFreshNameInternal _typ = do
-  (metaCtx, nameID) <- get
-  put (metaCtx, nameID + 1)
+  nameID <- gets freshNameState
+  modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = nameID + 1, ..})
   return $ layoutAsText $ "_x" <> pretty nameID
 
 --------------------------------------------------------------------------------
@@ -48,12 +46,12 @@ newtype TypeCheckerT m a = TypeCheckerT
   }
   deriving (Functor, Applicative, Monad)
 
-runTypeCheckerT :: Monad m => TypingDeclCtx -> TypeCheckerT m a -> m a
-runTypeCheckerT declCtx (TypeCheckerT e) =
-  evalStateT (runReaderT e declCtx) (emptyTypingMetaCtx, 0)
+runTypeCheckerT :: Monad m => TypingDeclCtx -> TypeCheckerState -> TypeCheckerT m a -> m (a, TypeCheckerState)
+runTypeCheckerT declCtx metaCtx (TypeCheckerT e) =
+  runStateT (runReaderT e declCtx) metaCtx
 
 mapTypeCheckerT ::
-  (m (a, (TypingMetaCtx, FreshNameState)) -> n (b, (TypingMetaCtx, FreshNameState))) ->
+  (m (a, TypeCheckerState) -> n (b, TypeCheckerState)) ->
   TypeCheckerT m a ->
   TypeCheckerT n b
 mapTypeCheckerT f m = TypeCheckerT (mapReaderT (mapStateT f) (unTypeCheckerT m))
@@ -64,10 +62,10 @@ mapTypeCheckerT f m = TypeCheckerT (mapReaderT (mapStateT f) (unTypeCheckerT m))
 instance MonadCompile m => MonadTypeChecker (TypeCheckerT m) where
   getDeclContext = TypeCheckerT ask
   addDeclContext d s = TypeCheckerT $ local (addToDeclCtx d) (unTypeCheckerT s)
-  getMetaCtx = TypeCheckerT $ gets fst
-  modifyMetaCtx f = TypeCheckerT $ modify (first f)
+  getMetaCtx = TypeCheckerT get
+  modifyMetaCtx f = TypeCheckerT $ modify f
   getFreshName typ = TypeCheckerT $ getFreshNameInternal typ
-  clearFreshNames = TypeCheckerT $ modify (second (const 0))
+  clearFreshNames = TypeCheckerT clearFreshNamesInternal
 
 instance MonadTrans TypeCheckerT where
   lift = TypeCheckerT . lift . lift

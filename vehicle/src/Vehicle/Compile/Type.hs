@@ -14,7 +14,6 @@ import Control.Monad.Reader (ReaderT (..))
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map (fromList)
-import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -47,7 +46,7 @@ typeCheck ::
   m TypedProg
 typeCheck imports uncheckedProg =
   logCompilerPass MinDetail "type checking" $
-    runTypeCheckerT (createDeclCtx imports) $ do
+    runTypeChecker (createDeclCtx imports) $ do
       typeCheckProg uncheckedProg
 
 typeCheckExpr ::
@@ -56,7 +55,7 @@ typeCheckExpr ::
   UncheckedExpr ->
   m CheckedExpr
 typeCheckExpr imports expr1 =
-  runTypeCheckerT (createDeclCtx imports) $ do
+  runTypeChecker (createDeclCtx imports) $ do
     expr2 <- insertHolesForAuxiliaryAnnotations expr1
     (expr3, _exprType) <- runReaderT (inferExpr expr2) mempty
     solveConstraints Nothing
@@ -191,7 +190,7 @@ assertDeclTypeIsType ident actualType = do
   let p = provenanceOf actualType
   let expectedType = TypeUniverse p 0
   let origin = CheckingExprType (FreeVar p ident) expectedType actualType
-  addFreshUnificationConstraint TypeGroup p mempty origin expectedType actualType
+  createFreshUnificationConstraint TypeGroup p mempty origin expectedType actualType
   return ()
 
 -------------------------------------------------------------------------------
@@ -206,7 +205,7 @@ solveConstraints decl = logCompilerPass MinDetail "constraint solving" $ do
 
 loopOverConstraints :: TCM m => Int -> Maybe CheckedDecl -> m ()
 loopOverConstraints loopNumber decl = do
-  unsolvedConstraints <- getUnsolvedConstraints
+  unsolvedConstraints <- getActiveConstraints
 
   unless (null unsolvedConstraints) $ do
     metasSolvedLastLoop <- getAndClearRecentlySolvedMetas
@@ -280,8 +279,7 @@ addNewConstraintUsingDefaults maybeDecl = do
 
 getDefaultCandidates :: TCM m => Maybe CheckedDecl -> m [WithContext TypeClassConstraint]
 getDefaultCandidates maybeDecl = do
-  constraints <- getUnsolvedConstraints
-  let typeClassConstraints = mapMaybe getTypeClassConstraint constraints
+  typeClassConstraints <- getActiveTypeClassConstraints
   case maybeDecl of
     Nothing -> return typeClassConstraints
     Just decl -> do
@@ -290,6 +288,7 @@ getDefaultCandidates maybeDecl = do
       -- We only want to generate default solutions for constraints
       -- that *don't* appear in the type of the declaration, as those will be
       -- quantified over later.
+      constraints <- getActiveConstraints
       typeMetas <- getMetasLinkedToMetasIn constraints isTypeUniverse declType
 
       whenM (loggingLevelAtLeast MaxDetail) $ do
@@ -341,7 +340,7 @@ checkAllUnknownsSolved = do
 
 checkAllConstraintsSolved :: TCM m => m ()
 checkAllConstraintsSolved = do
-  constraints <- getUnsolvedConstraints
+  constraints <- getActiveConstraints
   case constraints of
     [] -> return ()
     (c : cs) -> throwError $ UnsolvedConstraints (c :| cs)
@@ -372,7 +371,7 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
         <> indent 2 unsolvedMetasDoc
         <> line
 
-    unsolvedConstraints <- getUnsolvedConstraints
+    unsolvedConstraints <- getActiveConstraints
     case maybeSolvedMetas of
       Nothing ->
         logDebug MaxDetail $
