@@ -72,7 +72,7 @@ checkExprTypesEqual ::
 checkExprTypesEqual p expr expectedType actualType = do
   ctx <- ask
   let origin = CheckingExprType expr expectedType actualType
-  addFreshUnificationConstraint TypeGroup p ctx origin expectedType actualType
+  createFreshUnificationConstraint TypeGroup p ctx origin expectedType actualType
 
 checkBinderTypesEqual ::
   MonadBidirectional m =>
@@ -84,7 +84,7 @@ checkBinderTypesEqual ::
 checkBinderTypesEqual p binderName expectedType actualType = do
   ctx <- ask
   let origin = CheckingBinderType binderName expectedType actualType
-  addFreshUnificationConstraint TypeGroup p ctx origin expectedType actualType
+  createFreshUnificationConstraint TypeGroup p ctx origin expectedType actualType
 
 --------------------------------------------------------------------------------
 -- Checking
@@ -373,7 +373,7 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
                 unnormalised <$> freshExprMeta p binderType boundCtxSize
             | otherwise -> do
                 ctx <- getBoundCtx
-                metaExpr <- addFreshTypeClassConstraint ctx fun args' binderType
+                metaExpr <- createFreshTypeClassConstraint ctx fun args' binderType
                 return metaExpr
 
       let checkedArg = Arg p (visibilityOf binder) (relevanceOf binder) checkedArgExpr

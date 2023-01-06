@@ -7,6 +7,7 @@ module Vehicle.Compile.Type.Constraint
     UnificationConstraint (..),
     TypeClassConstraint (..),
     Constraint (..),
+    separateConstraints,
     getTypeClassConstraint,
     isAuxiliaryTypeClassConstraint,
     BlockingStatus,
@@ -20,6 +21,7 @@ module Vehicle.Compile.Type.Constraint
   )
 where
 
+import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
@@ -195,6 +197,12 @@ getTypeClassConstraint (WithContext constraint ctx) = case constraint of
 isAuxiliaryTypeClassConstraint :: TypeClassConstraint -> Bool
 isAuxiliaryTypeClassConstraint (Has _ tc _) = isAuxiliaryTypeClass tc
 
+separateConstraints :: [WithContext Constraint] -> ([WithContext UnificationConstraint], [WithContext TypeClassConstraint])
+separateConstraints [] = ([], [])
+separateConstraints (WithContext c ctx : cs) = case c of
+  UnificationConstraint uc -> first (WithContext uc ctx :) (separateConstraints cs)
+  TypeClassConstraint tc -> second (WithContext tc ctx :) (separateConstraints cs)
+
 {-
 isNonAuxiliaryTypeClassConstraint :: Constraint -> Bool
 isNonAuxiliaryTypeClassConstraint = \case
@@ -207,9 +215,9 @@ isUnificationConstraint _    = False
 -}
 
 blockConstraintOn ::
-  WithContext Constraint ->
+  Contextualised c ConstraintContext ->
   MetaSet ->
-  WithContext Constraint
+  Contextualised c ConstraintContext
 blockConstraintOn (WithContext c ctx) metas = WithContext c (blockCtxOn metas ctx)
 
 isBlocked :: MetaSet -> ConstraintContext -> Bool

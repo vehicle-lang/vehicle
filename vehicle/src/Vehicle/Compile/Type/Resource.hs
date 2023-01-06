@@ -140,7 +140,7 @@ checkRatIsConstant :: TCM m => Provenance -> NormType -> m ()
 checkRatIsConstant p lin = do
   let targetLinearity = LinearityExpr p Constant
   ulin <- quote 0 lin
-  addFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity ulin
+  createFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity ulin
 
 checkBoolIsConstant :: TCM m => Provenance -> NormType -> NormType -> m ()
 checkBoolIsConstant p lin pol = do
@@ -148,5 +148,5 @@ checkBoolIsConstant p lin pol = do
   let targetPolarity = PolarityExpr p Unquantified
   ulin <- quote 0 lin
   upol <- quote 0 pol
-  addFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity ulin
-  addFreshUnificationConstraint PolarityGroup p mempty CheckingAuxiliary targetPolarity upol
+  createFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity ulin
+  createFreshUnificationConstraint PolarityGroup p mempty CheckingAuxiliary targetPolarity upol

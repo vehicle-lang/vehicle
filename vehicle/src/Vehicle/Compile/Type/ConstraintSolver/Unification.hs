@@ -32,6 +32,14 @@ import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Unification algorithm
+{-
+import Vehicle.Compile.Type.VariableContext (MetaSubstitution)
+unifyAll :: MonadCompile m
+         => [WithContext UnificationConstraint]
+         -> MetaSubstitution
+         -> m ([WithContext UnificationConstraint], _)
+unifyAll = _
+-}
 
 -- See
 -- https://github.com/AndrasKovacs/elaboration-zoo/blob/master/03-holes/Main.hs
@@ -52,15 +60,15 @@ solveUnificationConstraint constraint = do
   result <- unification ctx (ne1, ne2)
   case result of
     Success newConstraints -> do
-      addConstraints (fmap (mapObject UnificationConstraint) newConstraints)
+      addUnificationConstraints newConstraints
     SoftFailure -> do
       let blockingMetas = MetaSet.unions [e1BlockingMetas, e2BlockingMetas]
       if MetaSet.null blockingMetas
         then throwError (FailedUnificationConstraints [WithContext nu ctx])
         else do
-          let normConstraint = WithContext (UnificationConstraint nu) ctx
+          let normConstraint = WithContext nu ctx
           let blockedConstraint = blockConstraintOn normConstraint blockingMetas
-          addConstraints [blockedConstraint]
+          addUnificationConstraints [blockedConstraint]
     HardFailure -> do
       throwError (FailedUnificationConstraints [WithContext nu ctx])
 
