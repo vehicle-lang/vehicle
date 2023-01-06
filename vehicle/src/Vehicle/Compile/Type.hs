@@ -200,55 +200,35 @@ assertDeclTypeIsType ident actualType = do
 -- being checked, as metas are handled different according to whether they
 -- occur in the type or not.
 solveConstraints :: TCM m => Maybe CheckedDecl -> m ()
-solveConstraints decl = logCompilerPass MinDetail "constraint solving" $ do
-  loopOverConstraints 1 decl
+solveConstraints d = logCompilerPass MinDetail "constraint solving" $ do
+  loopOverConstraints mempty 1 d
+  where
+    loopOverConstraints :: TCM m => MetaSet -> Int -> Maybe CheckedDecl -> m ()
+    loopOverConstraints recentlySolvedMetas loopNumber decl = do
+      unsolvedConstraints <- getActiveConstraints
 
-loopOverConstraints :: TCM m => Int -> Maybe CheckedDecl -> m ()
-loopOverConstraints loopNumber decl = do
-  unsolvedConstraints <- getActiveConstraints
+      updatedDecl <- traverse substMetas decl
+      logUnsolvedUnknowns updatedDecl (Just recentlySolvedMetas)
 
-  unless (null unsolvedConstraints) $ do
-    metasSolvedLastLoop <- getAndClearRecentlySolvedMetas
-    let isUnblocked = not . constraintIsBlocked metasSolvedLastLoop
-    let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
+      unless (null unsolvedConstraints) $ do
+        let allConstraintsBlocked = all (constraintIsBlocked recentlySolvedMetas) unsolvedConstraints
 
-    if null unblockedConstraints
-      then do
-        -- If no constraints are unblocked then try generating new constraints using defaults.
-        successfullyGeneratedDefault <- addNewConstraintUsingDefaults decl
-        when successfullyGeneratedDefault $
-          -- If new constraints generated then continue solving.
-          loopOverConstraints loopNumber decl
-      else do
-        -- If we have made useful progress then start a new pass
-        updatedDecl <- logCompilerPass
-          MaxDetail
-          ("constraint solving pass" <+> pretty loopNumber)
-          $ do
-            updatedDecl <- traverse substMetas decl
-            logUnsolvedUnknowns updatedDecl (Just metasSolvedLastLoop)
+        if allConstraintsBlocked
+          then do
+            -- If no constraints are unblocked then try generating new constraints using defaults.
+            successfullyGeneratedDefault <- addNewConstraintUsingDefaults decl
+            when successfullyGeneratedDefault $
+              -- If new constraints generated then continue solving.
+              loopOverConstraints mempty loopNumber decl
+          else do
+            -- If we have made useful progress then start a new pass
+            let passDoc = "constraint solving pass" <+> pretty loopNumber
+            newMetasSolved <- logCompilerPass MaxDetail passDoc $ do
+              metasSolvedDuringUnification <- runUnificationSolver recentlySolvedMetas
+              metasSolvedDuringTypeClassResolution <- runTypeClassSolver metasSolvedDuringUnification
+              return metasSolvedDuringTypeClassResolution
 
-            setConstraints blockedConstraints
-            mconcat `fmap` traverse solveConstraint unblockedConstraints
-
-            newSubstitution <- getMetaSubstitution
-            whenM (loggingLevelAtLeast MaxDetail) $ do
-              updatedSubst <- substMetas newSubstitution
-              logDebug MaxDetail $
-                "current-solution:"
-                  <+> prettyVerbose (fmap unnormalised updatedSubst) <> "\n"
-
-            return updatedDecl
-
-        loopOverConstraints (loopNumber + 1) updatedDecl
-
--- | Tries to solve a constraint deterministically.
-solveConstraint :: TCM m => WithContext Constraint -> m ()
-solveConstraint constraint@(WithContext c ctx) =
-  logCompilerSection MaxDetail ("trying:" <+> prettyVerbose constraint) $
-    case c of
-      UnificationConstraint uc -> solveUnificationConstraint (WithContext uc ctx)
-      TypeClassConstraint tc -> solveTypeClassConstraint (WithContext tc ctx)
+            loopOverConstraints newMetasSolved (loopNumber + 1) updatedDecl
 
 -- | Tries to add new unification constraints using default values.
 addNewConstraintUsingDefaults ::
@@ -363,6 +343,14 @@ checkAllMetasSolved = do
 logUnsolvedUnknowns :: TCM m => Maybe CheckedDecl -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
   whenM (loggingLevelAtLeast MaxDetail) $ do
+    newSubstitution <- getMetaSubstitution
+    updatedSubst <- substMetas newSubstitution
+    logDebug MaxDetail $
+      "current-solution:"
+        <> line
+        <> prettyVerbose (fmap unnormalised updatedSubst)
+        <> line
+
     unsolvedMetas <- getUnsolvedMetas
     unsolvedMetasDoc <- prettyMetas unsolvedMetas
     logDebug MaxDetail $
