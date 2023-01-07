@@ -45,11 +45,12 @@ module Vehicle.Compile.Type.Monad.Class
     addUnificationConstraints,
     addTypeClassConstraints,
     setConstraints,
+    setUnificationConstraints,
     setTypeClassConstraints,
   )
 where
 
-import Control.Monad (foldM)
+import Control.Monad (foldM, unless)
 import Control.Monad.Reader (ReaderT (..), mapReaderT)
 import Control.Monad.State (StateT (..), mapStateT)
 import Control.Monad.Trans.Class (lift)
@@ -475,13 +476,17 @@ addConstraints constraints = do
 
 addUnificationConstraints :: MonadTypeChecker m => [WithContext UnificationConstraint] -> m ()
 addUnificationConstraints constraints = do
-  logDebug MaxDetail ("add-constraints " <> align (prettyFriendly constraints))
+  unless (null constraints) $ do
+    logDebug MaxDetail ("add-constraints " <> align (prettyFriendly constraints))
+
   modifyMetaCtx $ \TypeCheckerState {..} ->
     TypeCheckerState {unificationConstraints = unificationConstraints ++ constraints, ..}
 
 addTypeClassConstraints :: MonadTypeChecker m => [WithContext TypeClassConstraint] -> m ()
 addTypeClassConstraints constraints = do
-  logDebug MaxDetail ("add-constraint " <> align (prettyFriendly constraints))
+  unless (null constraints) $ do
+    logDebug MaxDetail ("add-constraints " <> align (prettyFriendly constraints))
+
   modifyMetaCtx $ \TypeCheckerState {..} ->
     TypeCheckerState {typeClassConstraints = typeClassConstraints ++ constraints, ..}
 

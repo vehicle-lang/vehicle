@@ -223,8 +223,8 @@ blockConstraintOn (WithContext c ctx) metas = WithContext c (blockCtxOn metas ct
 isBlocked :: MetaSet -> ConstraintContext -> Bool
 isBlocked solvedMetas ctx = isStillBlocked solvedMetas (blockedBy ctx)
 
-constraintIsBlocked :: MetaSet -> WithContext Constraint -> Bool
-constraintIsBlocked solvedMetas ctx = isBlocked solvedMetas (contextOf ctx)
+constraintIsBlocked :: MetaSet -> Contextualised c ConstraintContext -> Bool
+constraintIsBlocked solvedMetas c = isBlocked solvedMetas (contextOf c)
 
 --------------------------------------------------------------------------------
 -- Progress in solving meta-variable constraints

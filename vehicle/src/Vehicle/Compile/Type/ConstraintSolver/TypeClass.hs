@@ -1,5 +1,5 @@
 module Vehicle.Compile.Type.ConstraintSolver.TypeClass
-  ( solveTypeClassConstraint,
+  ( runTypeClassSolver,
   )
 where
 
@@ -27,6 +27,21 @@ import Vehicle.Libraries.StandardLibrary.Names
 --------------------------------------------------------------------------------
 -- Public interface
 
+-- | Attempts to solve as many type-class constraints as possible. Takes in
+-- the set of meta-variables solved since the solver was last run and outputs
+-- the set of meta-variables solved during this run.
+runTypeClassSolver :: TCM m => MetaSet -> m MetaSet
+runTypeClassSolver metasSolved =
+  logCompilerPass MaxDetail ("type class solver run" <> line) $
+    runConstraintSolver
+      getActiveTypeClassConstraints
+      setTypeClassConstraints
+      solveTypeClassConstraint
+      metasSolved
+
+--------------------------------------------------------------------------------
+-- Solver
+
 solveTypeClassConstraint ::
   TCM m => WithContext TypeClassConstraint -> m ()
 solveTypeClassConstraint c = do
@@ -44,9 +59,6 @@ solveTypeClassConstraint c = do
       solution1 <- quote dbLevel solution
       solveMeta m solution1 dbLevel
       addConstraints newConstraints
-
---------------------------------------------------------------------------------
--- Solver
 
 type TypeClassProgress = Either MetaSet ([WithContext Constraint], NormExpr)
 

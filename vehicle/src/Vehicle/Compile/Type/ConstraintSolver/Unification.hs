@@ -1,8 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-{-# HLINT ignore "Use tuple-section" #-}
 module Vehicle.Compile.Type.ConstraintSolver.Unification
-  ( solveUnificationConstraint,
+  ( runUnificationSolver,
   )
 where
 
@@ -22,6 +21,7 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.ConstraintSolver.Core (runConstraintSolver)
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup, member, singleton, toList)
@@ -31,19 +31,25 @@ import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
--- Unification algorithm
-{-
-import Vehicle.Compile.Type.VariableContext (MetaSubstitution)
-unifyAll :: MonadCompile m
-         => [WithContext UnificationConstraint]
-         -> MetaSubstitution
-         -> m ([WithContext UnificationConstraint], _)
-unifyAll = _
--}
+-- Unification solver
 
--- See
--- https://github.com/AndrasKovacs/elaboration-zoo/blob/master/03-holes/Main.hs
+-- See https://github.com/AndrasKovacs/elaboration-zoo/
 -- for an excellent tutorial on the algorithm.
+
+-- | Attempts to solve as many unification constraints as possible. Takes in
+-- the set of meta-variables solved since unification was last run and outputs
+-- the set of meta-variables solved during this run.
+runUnificationSolver :: TCM m => MetaSet -> m MetaSet
+runUnificationSolver metasSolved =
+  logCompilerPass MaxDetail ("unification solver run" <> line) $
+    runConstraintSolver
+      getActiveUnificationConstraints
+      setUnificationConstraints
+      solveUnificationConstraint
+      metasSolved
+
+--------------------------------------------------------------------------------
+-- Unification algorithm
 
 solveUnificationConstraint :: TCM m => WithContext UnificationConstraint -> m ()
 solveUnificationConstraint constraint = do
