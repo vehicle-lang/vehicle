@@ -102,6 +102,7 @@ type CallDepth = Int
 -- Logging monad
 
 class Monad m => MonadLogger m where
+  setCallDepth :: CallDepth -> m ()
   getCallDepth :: m CallDepth
   incrCallDepth :: m ()
   decrCallDepth :: m ()
@@ -109,6 +110,7 @@ class Monad m => MonadLogger m where
   logMessage :: Message -> m ()
 
 instance MonadLogger m => MonadLogger (StateT s m) where
+  setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
   decrCallDepth = lift decrCallDepth
@@ -116,6 +118,7 @@ instance MonadLogger m => MonadLogger (StateT s m) where
   logMessage = lift . logMessage
 
 instance MonadLogger m => MonadLogger (ReaderT s m) where
+  setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
   decrCallDepth = lift decrCallDepth
@@ -123,6 +126,7 @@ instance MonadLogger m => MonadLogger (ReaderT s m) where
   logMessage = lift . logMessage
 
 instance (Monoid w, MonadLogger m) => MonadLogger (WriterT w m) where
+  setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
   decrCallDepth = lift decrCallDepth
@@ -130,6 +134,7 @@ instance (Monoid w, MonadLogger m) => MonadLogger (WriterT w m) where
   logMessage = lift . logMessage
 
 instance (MonadLogger m) => MonadLogger (ExceptT e m) where
+  setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
   decrCallDepth = lift decrCallDepth
@@ -137,6 +142,7 @@ instance (MonadLogger m) => MonadLogger (ExceptT e m) where
   logMessage = lift . logMessage
 
 instance MonadLogger m => MonadLogger (SupplyT s m) where
+  setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
   decrCallDepth = lift decrCallDepth

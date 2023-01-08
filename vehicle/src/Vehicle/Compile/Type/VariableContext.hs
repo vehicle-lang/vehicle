@@ -37,6 +37,9 @@ addToDeclCtx decl = Map.insert (identifierOf decl) (toDeclCtxEntry decl)
 -- currently in scope, indexed into via De Bruijn expressions.
 type TypingBoundCtxEntry = (Maybe Name, CheckedType, Maybe CheckedExpr)
 
+mkTypingBoundCtxEntry :: CheckedBinder -> TypingBoundCtxEntry
+mkTypingBoundCtxEntry binder = (nameOf binder, binderType binder, Nothing)
+
 type TypingBoundCtx = BoundCtx TypingBoundCtxEntry
 
 instance HasBoundCtx TypingBoundCtx where

@@ -28,8 +28,8 @@ import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
 whnf :: MonadCompile m => DBLevel -> DeclSubstitution -> MetaSubstitution -> CheckedExpr -> m NormExpr
-whnf boundCtxSize declCtx metaSubst e = do
-  let env = [VBoundVar mempty i [] | i <- reverse [0 .. boundCtxSize - 1]]
+whnf dbLevel declCtx metaSubst e = do
+  let env = mkNoOpEnv dbLevel
   runReaderT (eval env e) (declCtx, metaSubst)
 
 -----------------------------------------------------------------------------

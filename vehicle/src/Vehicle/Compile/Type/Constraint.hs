@@ -10,6 +10,7 @@ module Vehicle.Compile.Type.Constraint
     InstanceGoal (..),
     InstanceCandidate (..),
     Constraint (..),
+    extendConstraintBoundCtx,
     separateConstraints,
     getTypeClassConstraint,
     isAuxiliaryTypeClassConstraint,
@@ -146,6 +147,13 @@ copyContext :: ConstraintContext -> ConstraintContext
 copyContext (ConstraintContext originProv originalConstraint creationProv _ ctx group) =
   ConstraintContext originProv originalConstraint creationProv unknownBlockingStatus ctx group
 
+extendConstraintBoundCtx :: ConstraintContext -> CheckedTelescope -> ConstraintContext
+extendConstraintBoundCtx ConstraintContext {..} telescope =
+  ConstraintContext
+    { boundContext = fmap mkTypingBoundCtxEntry telescope ++ boundContext,
+      ..
+    }
+
 contextDBLevel :: ConstraintContext -> DBLevel
 contextDBLevel = DBLevel . length . boundContext
 
@@ -177,14 +185,14 @@ type instance
 -- Instance constraints
 
 data InstanceGoal = InstanceGoal
-  { goalTelescope :: [NormBinder],
+  { goalTelescope :: CheckedTelescope,
     goalExpr :: NormExpr
   }
   deriving (Show)
 
 data InstanceCandidate = InstanceCandidate
-  { candidateTelescope :: [NormBinder],
-    candidateExpr :: NormExpr,
+  { candidateTelescope :: CheckedTelescope,
+    candidateExpr :: CheckedExpr,
     candidateSolution :: Provenance -> NormExpr
   }
 

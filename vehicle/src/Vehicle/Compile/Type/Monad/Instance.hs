@@ -75,6 +75,7 @@ instance MonadError e m => MonadError e (TypeCheckerT m) where
   catchError m f = TypeCheckerT (catchError (unTypeCheckerT m) (unTypeCheckerT . f))
 
 instance MonadLogger m => MonadLogger (TypeCheckerT m) where
+  setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
   decrCallDepth = lift decrCallDepth

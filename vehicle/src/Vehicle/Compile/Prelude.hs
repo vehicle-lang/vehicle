@@ -58,6 +58,8 @@ type CheckedDecl = DBDecl
 
 type CheckedProg = DBProg
 
+type CheckedTelescope = [CheckedBinder]
+
 -- * Type of annotations attached to the AST that are output by the compiler
 
 type OutputBinding = ()

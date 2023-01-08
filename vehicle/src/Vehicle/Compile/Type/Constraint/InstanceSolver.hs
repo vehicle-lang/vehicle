@@ -3,17 +3,22 @@ module Vehicle.Compile.Type.Constraint.InstanceSolver
   )
 where
 
+import Control.Monad (forM)
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (ReaderT (..))
 import Data.Maybe (catMaybes)
 import Vehicle.Compile.Error (CompileError (..))
+import Vehicle.Compile.Error.Message (MeaningfulError (..))
+import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Constraint (ConstraintContext, InstanceCandidate (..), InstanceGoal (..), TypeClassConstraint (..), UnificationConstraint (..), copyContext)
+import Vehicle.Compile.Type.Constraint (ConstraintContext, InstanceCandidate (..), InstanceGoal (..), TypeClassConstraint (..), UnificationConstraint (..), contextDBLevel, copyContext, extendConstraintBoundCtx)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.TypeClassSolver (solveTypeClassConstraint)
 import Vehicle.Compile.Type.Constraint.UnificationSolver (runUnificationSolver)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Monad
+import Vehicle.Expr.DeBruijn (DBLevel (..))
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -67,7 +72,7 @@ solveInstanceGoal ctx meta goal candidates = do
   case successfulCandidates of
     -- If there is a single valid candidate then we adopt the resulting state
     [(candidate, typeCheckerState)] -> do
-      logDebug MaxDetail $ "accepting" <+> squotes (prettyVerbose $ candidateExpr candidate)
+      logDebug MaxDetail $ "Accepting only remaining candidate:" <+> squotes (prettyVerbose $ candidateExpr candidate)
       adoptHypotheticalState typeCheckerState
 
     -- If there are no valid candidates then we fail.
@@ -87,33 +92,51 @@ checkCandidate ::
   m (Maybe (InstanceCandidate, TypeCheckerState))
 checkCandidate ctx meta InstanceGoal {..} candidate@InstanceCandidate {..} = do
   let candidateDoc = squotes (prettyVerbose candidateExpr)
+  logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
+    result <- runTypeCheckerHypothetically $ do
+      -- Extend the current context by the bound variables in the telescope of the goal.
+      let newCtx = extendConstraintBoundCtx (copyContext ctx) goalTelescope
 
-  result <- runTypeCheckerHypothetically $ do
-    logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
-      -- At the moment assumes the telescopes are empty.
+      -- Instantiate the candidate telescope with metas and subst into body.
+      substCandidateExpr <- instantiateCandidateTelescopeInCandidateBody ctx candidate
 
-      -- TODO extend the current context by the goal telescope.
-      let newCtx = copyContext ctx
+      logCompilerSection MaxDetail "hypothetically accepting candidate" $ do
+        -- Unify the goal and candidate bodies
+        let bodiesEqual = Unify goalExpr substCandidateExpr
+        addUnificationConstraints [WithContext bodiesEqual newCtx]
 
-      -- TODO generate meta variables for each binder in goal telescope.
-      -- and substitute through the meta-variables into the goal expr.
-
-      -- Unify the goal and candidate bodies
-      let bodiesEqual = Unify goalExpr candidateExpr
-      addUnificationConstraints [WithContext bodiesEqual newCtx]
-
-      -- Add the solution to
-      solveTypeClassMeta ctx meta (candidateSolution (provenanceOf ctx))
+        -- Add the solution of the type-class as well (if we had first class records
+        -- then we wouldn't need to do this manually).
+        solveTypeClassMeta ctx meta (candidateSolution (provenanceOf ctx))
 
       runUnificationSolver mempty
-      logDebug MaxDetail $ candidateDoc <+> "is a possibility"
 
-  case result of
-    Left _err -> do
-      logDebug MaxDetail $ candidateDoc <+> "was rejected"
-      return Nothing
-    Right (_, state) ->
-      return $ Just (candidate, state)
+    case result of
+      Left err -> do
+        logDebug MaxDetail $ line <> "Rejecting" <+> candidateDoc <+> "as a possibility"
+        logDebug MaxDetail $ indent 2 (pretty (details err)) <> line
+        return Nothing
+      Right (_, state) -> do
+        logDebug MaxDetail $ "Keeping" <+> candidateDoc <+> "as a possibility" <> line
+        return $ Just (candidate, state)
+
+-- | Generate meta variables for each binder in the telescope of the candidate
+-- and then substitute them into the candidate expression.
+instantiateCandidateTelescopeInCandidateBody :: TCM m => ConstraintContext -> InstanceCandidate -> m NormExpr
+instantiateCandidateTelescopeInCandidateBody ctx InstanceCandidate {..} =
+  logCompilerSection MaxDetail "instantiating candidate telescope" $ do
+    let numberedTelescope = zip [0 ..] candidateTelescope
+    let p = provenanceOf ctx
+    let constraintLevel = contextDBLevel ctx
+    telescopeMetas <- forM numberedTelescope $ \(telescopeDepth, binder) -> do
+      let metaLevel = unLevel constraintLevel + telescopeDepth
+      meta <- freshExprMeta p (binderType binder) metaLevel
+      return $ normalised meta
+
+    let env = telescopeMetas ++ mkNoOpEnv constraintLevel
+    declCtx <- getDeclSubstitution
+    metaCtx <- getMetaSubstitution
+    runReaderT (eval env candidateExpr) (declCtx, metaCtx)
 
 --------------------------------------------------------------------------------
 -- Instances
@@ -123,14 +146,37 @@ checkCandidate ctx meta InstanceGoal {..} candidate@InstanceCandidate {..} = do
 
 solveHasMapInstance :: TCM m => ConstraintContext -> MetaID -> Spine -> m ()
 solveHasMapInstance ctx meta spine = do
-  let goal = InstanceGoal [] (VConstructor mempty (TypeClass HasMap) spine)
+  let goal = InstanceGoal (reverse []) (VConstructor mempty (TypeClass HasMap) spine)
   solveInstanceGoal ctx meta goal hasMapCandidates
 
 hasMapCandidates :: [InstanceCandidate]
 hasMapCandidates =
   [ InstanceCandidate
-      { candidateTelescope = [],
-        candidateExpr = VConstructor mempty (TypeClass HasMap) [ExplicitArg mempty (VConstructor mempty List [])],
-        candidateSolution = \p -> VBuiltin p (Map MapList) []
+      { candidateTelescope = reverse [],
+        candidateExpr =
+          BuiltinTypeClass
+            p
+            HasMap
+            [ ExplicitArg p (Builtin p (Constructor List))
+            ],
+        candidateSolution = \p' -> VBuiltin p' (Map MapList) []
+      },
+    InstanceCandidate
+      { candidateTelescope = reverse [Binder p (BinderForm (OnlyName "n") True) Implicit Relevant () (NatType p)],
+        candidateExpr =
+          BuiltinTypeClass
+            p
+            HasMap
+            [ ExplicitArg
+                p
+                ( Lam
+                    p
+                    (Binder p (BinderForm (OnlyName "A") True) Explicit Relevant () (TypeUniverse p 0))
+                    (VectorType p (BoundVar p 0) (BoundVar p 1))
+                )
+            ],
+        candidateSolution = \p' -> VBuiltin p' (Map MapVector) []
       }
   ]
+  where
+    p = mempty

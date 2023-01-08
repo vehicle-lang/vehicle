@@ -41,7 +41,7 @@ import Vehicle.Expr.Normalised
 -- the set of meta-variables solved during this run.
 runUnificationSolver :: TCM m => MetaSet -> m ()
 runUnificationSolver metasSolved =
-  logCompilerPass MaxDetail ("unification solver run" <> line) $
+  logCompilerPass MaxDetail "unification solver run" $
     runConstraintSolver
       getActiveUnificationConstraints
       setUnificationConstraints
@@ -52,17 +52,17 @@ runUnificationSolver metasSolved =
 -- Unification algorithm
 
 solveUnificationConstraint :: TCM m => WithContext UnificationConstraint -> m ()
-solveUnificationConstraint constraint = do
+solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
+  (ne1', e1BlockingMetas) <- forceHead e1
+  (ne2', e2BlockingMetas) <- forceHead e2
+
   -- In theory this substitution shouldn't be needed, but in practice it is as if
   -- not all the meta-variables are substituted through then the scope of some
   -- meta-variables may be larger than the current scope of the constraint.
   -- These dependencies only disappear on substitution. Need to work out how to
   -- avoid doing this.
-  (WithContext (Unify e1 e2) ctx) <- substMetas constraint
+  nu@(Unify ne1 ne2) <- substMetas (Unify ne1' ne2')
 
-  (ne1, e1BlockingMetas) <- forceHead e1
-  (ne2, e2BlockingMetas) <- forceHead e2
-  let nu = Unify ne1 ne2
   result <- unification ctx (ne1, ne2)
   case result of
     Success newConstraints -> do
