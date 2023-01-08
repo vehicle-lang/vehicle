@@ -20,9 +20,9 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Auxiliary
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.ConstraintSolver.TypeClass
-import Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
-import Vehicle.Compile.Type.ConstraintSolver.Unification
+import Vehicle.Compile.Type.Constraint.InstanceSolver (runInstanceSolver)
+import Vehicle.Compile.Type.Constraint.TypeClassDefaults
+import Vehicle.Compile.Type.Constraint.UnificationSolver
 import Vehicle.Compile.Type.Generalise
 import Vehicle.Compile.Type.Irrelevance
 import Vehicle.Compile.Type.Meta
@@ -224,9 +224,9 @@ solveConstraints d = logCompilerPass MinDetail "constraint solving" $ do
             -- If we have made useful progress then start a new pass
             let passDoc = "constraint solving pass" <+> pretty loopNumber
             newMetasSolved <- logCompilerPass MaxDetail passDoc $ do
-              metasSolvedDuringUnification <- runUnificationSolver recentlySolvedMetas
-              metasSolvedDuringTypeClassResolution <- runTypeClassSolver metasSolvedDuringUnification
-              return metasSolvedDuringTypeClassResolution
+              metasSolvedDuringUnification <- trackSolvedMetas $ runUnificationSolver recentlySolvedMetas
+              metasSolvedDuringInstanceResolution <- trackSolvedMetas $ runInstanceSolver metasSolvedDuringUnification
+              return metasSolvedDuringInstanceResolution
 
             loopOverConstraints newMetasSolved (loopNumber + 1) updatedDecl
 

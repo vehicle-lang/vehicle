@@ -1,4 +1,4 @@
-module Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
+module Vehicle.Compile.Type.Constraint.TypeClassDefaults
   ( generateConstraintUsingDefaults,
   )
 where

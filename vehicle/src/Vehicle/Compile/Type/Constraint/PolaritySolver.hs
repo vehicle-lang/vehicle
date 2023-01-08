@@ -1,4 +1,4 @@
-module Vehicle.Compile.Type.ConstraintSolver.Polarity
+module Vehicle.Compile.Type.Constraint.PolaritySolver
   ( solvePolarityConstraint,
   )
 where
@@ -7,7 +7,7 @@ import Control.Monad.Except (MonadError (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.ConstraintSolver.Core
+import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.Normalised (NormType, getMeta, pattern VPolarityExpr)
 

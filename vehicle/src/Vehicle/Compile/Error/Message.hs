@@ -328,6 +328,26 @@ instance MeaningfulError CompileError where
           }
       where
         argTypeDoc = prettyFriendly $ WithContext argType ctx
+    FailedInstanceConstraint ctx goal ->
+      UError $
+        UserError
+          { provenance = provenanceOf ctx,
+            problem = getMessage (goalExpr goal),
+            fix = Nothing
+          }
+      where
+        getMessage :: NormExpr -> Doc a
+        getMessage = \case
+          VConstructor _ (TypeClass tc) _args -> case tc of
+            HasMap ->
+              "unable to work out the type for"
+                <+> pretty MapTC <> "."
+                <+> "The second argument to it must be of type"
+                <+> pretty List
+                <+> "or"
+                <+> pretty Vector <> "."
+            _ -> developerError $ "Instance search not complete for" <+> quotePretty tc
+          e -> developerError $ "Invalid instance in error message" <+> quotePretty (show e)
     FailedEqConstraint ctx t1 t2 eq ->
       UError $
         UserError
@@ -452,20 +472,6 @@ instance MeaningfulError CompileError where
                 <+> squotes (prettyFriendly (WithContext t1 boundCtx))
                 <+> "and"
                 <+> squotes (prettyFriendly (WithContext t2 boundCtx))
-                  <> ".",
-            fix = Nothing
-          }
-      where
-        boundCtx = boundContextOf ctx
-    FailedMapConstraintContainer ctx tCont ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "the second argument to"
-                <+> squotes (pretty MapTC)
-                <+> "must be a container type but found something of type"
-                <+> squotes (prettyFriendly (WithContext tCont boundCtx))
                   <> ".",
             fix = Nothing
           }

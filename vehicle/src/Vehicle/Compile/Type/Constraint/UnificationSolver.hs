@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Vehicle.Compile.Type.ConstraintSolver.Unification
+module Vehicle.Compile.Type.Constraint.UnificationSolver
   ( runUnificationSolver,
   )
 where
@@ -21,7 +21,7 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.ConstraintSolver.Core (runConstraintSolver)
+import Vehicle.Compile.Type.Constraint.Core (runConstraintSolver)
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup, member, singleton, toList)
@@ -39,7 +39,7 @@ import Vehicle.Expr.Normalised
 -- | Attempts to solve as many unification constraints as possible. Takes in
 -- the set of meta-variables solved since unification was last run and outputs
 -- the set of meta-variables solved during this run.
-runUnificationSolver :: TCM m => MetaSet -> m MetaSet
+runUnificationSolver :: TCM m => MetaSet -> m ()
 runUnificationSolver metasSolved =
   logCompilerPass MaxDetail ("unification solver run" <> line) $
     runConstraintSolver

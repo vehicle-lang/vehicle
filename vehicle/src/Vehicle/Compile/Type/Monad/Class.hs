@@ -15,7 +15,6 @@ module Vehicle.Compile.Type.Monad.Class
     filterMetasByTypes,
     getUnsolvedAuxiliaryMetas,
     getMetasLinkedToMetasIn,
-    getAndClearRecentlySolvedMetas,
     clearMetaSubstitution,
     incrementMetaCtxSize,
     removeMetaDependencies,
@@ -35,6 +34,7 @@ module Vehicle.Compile.Type.Monad.Class
     whnfNBE,
     glueNBE,
     forceHead,
+    trackSolvedMetas,
     -- Constraints
     createFreshUnificationConstraint,
     createFreshTypeClassConstraint,
@@ -55,7 +55,9 @@ import Control.Monad.Reader (ReaderT (..), mapReaderT)
 import Control.Monad.State (StateT (..), mapStateT)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer (WriterT (..), mapWriterT)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normaliseExpr)
 import Vehicle.Compile.Normalise.NBE (forceExpr)
@@ -88,6 +90,35 @@ import Vehicle.Expr.DeBruijn (DBLevel (..))
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
+-- Solved meta-state
+
+-- | Tracks meta-variables that have been solved in certain regions of the code.
+-- Each element in the list represent one nested tracking region, with the
+-- head of the list representing the most recent.
+newtype SolvedMetaState = SolvedMetaState [MetaSet]
+
+enterSolvedMetaTrackingRegion :: SolvedMetaState -> SolvedMetaState
+enterSolvedMetaTrackingRegion (SolvedMetaState state) =
+  SolvedMetaState (mempty : state)
+
+registerSolvedMeta :: MetaID -> SolvedMetaState -> SolvedMetaState
+registerSolvedMeta m (SolvedMetaState state) = SolvedMetaState $
+  case state of
+    [] -> []
+    l : ls -> MetaSet.insert m l : ls
+
+getMostRecentlySolvedMetas :: SolvedMetaState -> MetaSet
+getMostRecentlySolvedMetas (SolvedMetaState state) =
+  fromMaybe mempty (state !!? 0)
+
+exitSolvedMetaTrackingRegion :: SolvedMetaState -> SolvedMetaState
+exitSolvedMetaTrackingRegion (SolvedMetaState state) = SolvedMetaState $
+  case state of
+    [] -> []
+    [_] -> []
+    l1 : l2 : ls -> l1 <> l2 : ls
+
+--------------------------------------------------------------------------------
 -- The overall meta variable context
 
 -- | State for generating fresh names.
@@ -102,7 +133,7 @@ data TypeCheckerState = TypeCheckerState
     unificationConstraints :: [WithContext UnificationConstraint],
     typeClassConstraints :: [WithContext TypeClassConstraint],
     freshNameState :: FreshNameState,
-    recentlySolvedMetas :: MetaSet
+    solvedMetaState :: SolvedMetaState
   }
 
 emptyTypeCheckerState :: TypeCheckerState
@@ -113,7 +144,7 @@ emptyTypeCheckerState =
       unificationConstraints = mempty,
       typeClassConstraints = mempty,
       freshNameState = 0,
-      recentlySolvedMetas = mempty
+      solvedMetaState = SolvedMetaState mempty
     }
 
 --------------------------------------------------------------------------------
@@ -164,14 +195,25 @@ getNumberOfMetasCreated = getsMetaCtx (length . metaInfo)
 getMetaSubstitution :: MonadTypeChecker m => m MetaSubstitution
 getMetaSubstitution = getsMetaCtx currentSubstitution
 
--- | Returns the list of metas that have been solved since the last
--- call to this method.
-getAndClearRecentlySolvedMetas :: MonadTypeChecker m => m MetaSet
-getAndClearRecentlySolvedMetas = do
-  result <- getsMetaCtx recentlySolvedMetas
-  modifyMetaCtx $ \TypeCheckerState {..} ->
-    TypeCheckerState {recentlySolvedMetas = mempty, ..}
-  return result
+modifySolvedMetaState :: MonadTypeChecker m => (SolvedMetaState -> SolvedMetaState) -> m ()
+modifySolvedMetaState f = modifyMetaCtx $ \TypeCheckerState {..} ->
+  TypeCheckerState
+    { solvedMetaState = f solvedMetaState,
+      ..
+    }
+
+-- | Track the metas solved while performing the provided computation.
+-- Multiple calls can be nested arbitrarily deepily.
+trackSolvedMetas :: MonadTypeChecker m => m () -> m MetaSet
+trackSolvedMetas performComputation = do
+  modifySolvedMetaState enterSolvedMetaTrackingRegion
+
+  performComputation
+
+  solvedMetas <- getsMetaCtx (getMostRecentlySolvedMetas . solvedMetaState)
+  modifySolvedMetaState exitSolvedMetaTrackingRegion
+
+  return solvedMetas
 
 getUnsolvedMetas :: MonadTypeChecker m => m MetaSet
 getUnsolvedMetas = do
@@ -402,7 +444,7 @@ solveMeta m solution currentLevel = do
       modifyMetaCtx $ \TypeCheckerState {..} ->
         TypeCheckerState
           { currentSubstitution = MetaMap.insert m gluedSolution currentSubstitution,
-            recentlySolvedMetas = MetaSet.insert m recentlySolvedMetas,
+            solvedMetaState = registerSolvedMeta m solvedMetaState,
             ..
           }
 
@@ -522,7 +564,7 @@ createFreshTypeClassConstraint ::
   m CheckedExpr
 createFreshTypeClassConstraint ctx fun funArgs tcExpr = do
   (tc, args) <- case tcExpr of
-    BuiltinTypeClass _ tc args -> return (tc, args)
+    BuiltinTypeClass _ tc args -> return (tc, NonEmpty.toList args)
     _ ->
       compilerDeveloperError $
         "Malformed type class constraint" <+> prettyVerbose tcExpr

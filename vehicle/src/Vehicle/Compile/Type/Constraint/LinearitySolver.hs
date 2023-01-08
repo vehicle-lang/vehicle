@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Use max" #-}
-module Vehicle.Compile.Type.ConstraintSolver.Linearity
+module Vehicle.Compile.Type.Constraint.LinearitySolver
   ( solveLinearityConstraint,
   )
 where
@@ -10,7 +10,7 @@ import Control.Monad.Except (MonadError (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.ConstraintSolver.Core
+import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.Normalised (NormType, getMeta, pattern VLinearityExpr)
 

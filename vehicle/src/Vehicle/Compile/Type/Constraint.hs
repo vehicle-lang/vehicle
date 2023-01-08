@@ -6,6 +6,9 @@ module Vehicle.Compile.Type.Constraint
     ConstraintContext (..),
     UnificationConstraint (..),
     TypeClassConstraint (..),
+    tcNormExpr,
+    InstanceGoal (..),
+    InstanceCandidate (..),
     Constraint (..),
     separateConstraints,
     getTypeClassConstraint,
@@ -22,7 +25,6 @@ module Vehicle.Compile.Type.Constraint
 where
 
 import Data.Bifunctor (Bifunctor (..))
-import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
@@ -161,12 +163,30 @@ type instance
 --------------------------------------------------------------------------------
 -- Type-class constraints
 
-data TypeClassConstraint = Has MetaID TypeClass (NonEmpty NormArg)
+data TypeClassConstraint = Has MetaID TypeClass Spine
   deriving (Show)
+
+tcNormExpr :: Provenance -> TypeClassConstraint -> NormExpr
+tcNormExpr p (Has _ tc spine) = VConstructor p (TypeClass tc) spine
 
 type instance
   WithContext TypeClassConstraint =
     Contextualised TypeClassConstraint ConstraintContext
+
+--------------------------------------------------------------------------------
+-- Instance constraints
+
+data InstanceGoal = InstanceGoal
+  { goalTelescope :: [NormBinder],
+    goalExpr :: NormExpr
+  }
+  deriving (Show)
+
+data InstanceCandidate = InstanceCandidate
+  { candidateTelescope :: [NormBinder],
+    candidateExpr :: NormExpr,
+    candidateSolution :: Provenance -> NormExpr
+  }
 
 --------------------------------------------------------------------------------
 -- Constraint

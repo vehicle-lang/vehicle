@@ -71,10 +71,9 @@ prependConstraint ::
   CheckedDecl ->
   WithContext TypeClassConstraint ->
   m CheckedDecl
-prependConstraint decl (WithContext (Has meta tc args) ctx) = do
+prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
   let p = originalProvenance ctx
-  uArgs <- traverse (quote 0) args
-  let typeClass = BuiltinTypeClass p tc uArgs
+  typeClass <- quote 0 (tcNormExpr p constraint)
   let relevancy = relevanceOf tc
 
   substTypeClass <- substMetas typeClass

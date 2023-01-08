@@ -7,6 +7,9 @@ module Vehicle.Compile.Type.Monad
   )
 where
 
+import Control.Monad.Except (runExceptT)
+import Control.Monad.Trans.Except (ExceptT)
+import Vehicle.Compile.Error (CompileError)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
 import Vehicle.Compile.Type.VariableContext (TypingDeclCtx)
@@ -19,11 +22,11 @@ runTypeChecker declCtx e = fst <$> runTypeCheckerT declCtx emptyTypeCheckerState
 
 -- | Runs a hypothetical computation in the type-checker,
 -- returning the resulting state of the type-checker.
-runTypeCheckerHypothetically :: TCM m => TypeCheckerT m a -> m (a, TypeCheckerState)
+runTypeCheckerHypothetically :: TCM m => TypeCheckerT (ExceptT CompileError m) a -> m (Either CompileError (a, TypeCheckerState))
 runTypeCheckerHypothetically e = do
   declCtx <- getDeclContext
   state <- getMetaCtx
-  runTypeCheckerT declCtx state e
+  runExceptT $ runTypeCheckerT declCtx state e
 
 -- | Accepts the hypothetical outcome of the type-checker.
 adoptHypotheticalState :: TCM m => TypeCheckerState -> m ()
