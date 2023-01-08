@@ -63,7 +63,6 @@ data CompileError
   | FailedQuantifierConstraintDomain ConstraintContext NormType Quantifier
   | FailedQuantifierConstraintBody ConstraintContext NormType Quantifier
   | FailedArithOp2Constraint ConstraintContext NormType NormType Builtin
-  | FailedMapConstraintContainer ConstraintContext NormType
   | FailedFoldConstraintContainer ConstraintContext NormType
   | FailedQuantInConstraintContainer ConstraintContext NormType Quantifier
   | FailedNatLitConstraint ConstraintContext Int NormType
@@ -72,6 +71,7 @@ data CompileError
   | FailedIntLitConstraint ConstraintContext NormType
   | FailedRatLitConstraint ConstraintContext NormType
   | FailedConLitConstraint ConstraintContext NormType
+  | FailedInstanceConstraint ConstraintContext InstanceGoal
   | QuantifiedIfCondition ConstraintContext
   | NonLinearIfCondition ConstraintContext
   | -- Resource typing errors

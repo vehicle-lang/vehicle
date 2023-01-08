@@ -1,6 +1,5 @@
 module Vehicle.Compile.Type.Bidirectional
-  ( TCM,
-    checkExpr,
+  ( checkExpr,
     inferExpr,
   )
 where

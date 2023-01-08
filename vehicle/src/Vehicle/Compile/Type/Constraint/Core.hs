@@ -1,22 +1,57 @@
-module Vehicle.Compile.Type.ConstraintSolver.Core
+module Vehicle.Compile.Type.Constraint.Core
   ( runConstraintSolver,
     blockOn,
     malformedConstraintError,
     unify,
+    solveTypeClassMeta,
+    TypeClassProgress,
+    InstanceSolver,
+    TypeClassSolver,
+    AuxiliaryTypeClassSolver,
   )
 where
 
 import Control.Monad (forM_)
 import Data.List (partition)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyVerbose, prettyVerbose)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Monad (TCM)
-import Vehicle.Compile.Type.Monad.Class (getAndClearRecentlySolvedMetas)
-import Vehicle.Expr.Normalised (NormExpr)
+import Vehicle.Compile.Type.Monad (TCM, solveMeta)
+import Vehicle.Compile.Type.Monad.Class (trackSolvedMetas)
+import Vehicle.Expr.Normalised (NormExpr, NormType, Spine)
+
+-- | Function signature for constraints solved by instance search.
+type InstanceSolver =
+  forall m.
+  TCM m =>
+  ConstraintContext ->
+  MetaID ->
+  Spine ->
+  m ()
+
+type TypeClassProgress = Either MetaSet ([WithContext Constraint], NormExpr)
+
+-- | Function signature for constraints solved by type class resolution.
+-- This should eventually be refactored out so all are solved by instance
+-- search.
+type TypeClassSolver =
+  forall m.
+  TCM m =>
+  WithContext TypeClassConstraint ->
+  [NormType] ->
+  m TypeClassProgress
+
+-- | Function signature for auxiliary constraints solved by type class resolution.
+type AuxiliaryTypeClassSolver =
+  forall m.
+  TCM m =>
+  WithContext TypeClassConstraint ->
+  [NormType] ->
+  m ConstraintProgress
 
 -- | Attempts to solve as many constraints as possible. Takes in
 -- the set of meta-variables solved since the solver was last run and outputs
@@ -28,13 +63,10 @@ runConstraintSolver ::
   ([Contextualised constraint ConstraintContext] -> m ()) ->
   (Contextualised constraint ConstraintContext -> m ()) ->
   MetaSet ->
-  m MetaSet
-runConstraintSolver getConstraints setConstraints attemptToSolveConstraint recentMetas = do
-  solvedMetas <- loop 0 recentMetas
-  logCompilerPassOutput ("metas-solved:" <+> pretty solvedMetas)
-  return solvedMetas
+  m ()
+runConstraintSolver getConstraints setConstraints attemptToSolveConstraint = loop 0
   where
-    loop :: Int -> MetaSet -> m MetaSet
+    loop :: Int -> MetaSet -> m ()
     loop loopNumber recentMetasSolved = do
       unsolvedConstraints <- getConstraints
 
@@ -50,13 +82,12 @@ runConstraintSolver getConstraints setConstraints attemptToSolveConstraint recen
               -- We have made useful progress so start a new pass
               setConstraints blockedConstraints
 
-              forM_ unblockedConstraints $ \constraint -> do
-                logCompilerSection MaxDetail ("trying:" <+> prettyVerbose constraint) $
-                  attemptToSolveConstraint constraint
+              solvedMetas <- trackSolvedMetas $ do
+                forM_ unblockedConstraints $ \constraint -> do
+                  logCompilerSection MaxDetail ("trying:" <+> prettyVerbose constraint) $
+                    attemptToSolveConstraint constraint
 
-              metasSolvedThisLoop <- getAndClearRecentlySolvedMetas
-              metasSolvedInFutureLoops <- loop (loopNumber + 1) metasSolvedThisLoop
-              return $ metasSolvedThisLoop <> metasSolvedInFutureLoops
+              loop (loopNumber + 1) solvedMetas
 
 blockOn :: MonadCompile m => [MetaID] -> m ConstraintProgress
 blockOn metas = do
@@ -69,3 +100,9 @@ malformedConstraintError c =
 
 unify :: ConstraintContext -> NormExpr -> NormExpr -> WithContext Constraint
 unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) (copyContext ctx)
+
+solveTypeClassMeta :: TCM m => ConstraintContext -> MetaID -> NormExpr -> m ()
+solveTypeClassMeta ctx meta solution = do
+  let dbLevel = contextDBLevel ctx
+  quotedSolution <- quote dbLevel solution
+  solveMeta meta quotedSolution dbLevel

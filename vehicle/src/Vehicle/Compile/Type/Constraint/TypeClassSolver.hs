@@ -1,22 +1,18 @@
-module Vehicle.Compile.Type.ConstraintSolver.TypeClass
-  ( runTypeClassSolver,
+module Vehicle.Compile.Type.Constraint.TypeClassSolver
+  ( solveTypeClassConstraint,
   )
 where
 
 import Control.Monad (MonadPlus (..), forM)
 import Control.Monad.Except (throwError)
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.ConstraintSolver.Core
-import Vehicle.Compile.Type.ConstraintSolver.Linearity
-import Vehicle.Compile.Type.ConstraintSolver.Polarity
-import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.Constraint.Core
+import Vehicle.Compile.Type.Constraint.LinearitySolver
+import Vehicle.Compile.Type.Constraint.PolaritySolver
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.DeBruijn (DBLevel (..))
@@ -25,49 +21,21 @@ import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Libraries.StandardLibrary.Names
 
 --------------------------------------------------------------------------------
--- Public interface
-
--- | Attempts to solve as many type-class constraints as possible. Takes in
--- the set of meta-variables solved since the solver was last run and outputs
--- the set of meta-variables solved during this run.
-runTypeClassSolver :: TCM m => MetaSet -> m MetaSet
-runTypeClassSolver metasSolved =
-  logCompilerPass MaxDetail ("type class solver run" <> line) $
-    runConstraintSolver
-      getActiveTypeClassConstraints
-      setTypeClassConstraints
-      solveTypeClassConstraint
-      metasSolved
-
---------------------------------------------------------------------------------
 -- Solver
 
-solveTypeClassConstraint ::
-  TCM m => WithContext TypeClassConstraint -> m ()
-solveTypeClassConstraint c = do
-  nc@(WithContext ct@(Has m tc args) ctx) <- substMetas c
-  logDebug MaxDetail $ prettyVerbose nc
-
-  progress <- solve tc c (argExpr <$> NonEmpty.toList args)
-
+solveTypeClassConstraint :: TCM m => ConstraintContext -> TypeClassConstraint -> m ()
+solveTypeClassConstraint ctx (Has m tc spine) = do
+  let normConstraint = WithContext (Has m tc spine) ctx
+  progress <- solve tc normConstraint (argExpr <$> spine)
   case progress of
     Left metas -> do
-      let blockedConstraint = blockConstraintOn (WithContext (TypeClassConstraint ct) ctx) metas
+      let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint normConstraint) metas
       addConstraints [blockedConstraint]
     Right (newConstraints, solution) -> do
       let dbLevel = DBLevel $ length (boundContext ctx)
       solution1 <- quote dbLevel solution
       solveMeta m solution1 dbLevel
       addConstraints newConstraints
-
-type TypeClassProgress = Either MetaSet ([WithContext Constraint], NormExpr)
-
-type TypeClassSolver =
-  forall m.
-  TCM m =>
-  WithContext TypeClassConstraint ->
-  [NormType] ->
-  m TypeClassProgress
 
 solve :: TypeClass -> TypeClassSolver
 solve = \case
@@ -83,7 +51,6 @@ solve = \case
   HasSub -> solveHasSub
   HasMul -> solveHasMul
   HasDiv -> solveHasDiv
-  HasMap -> solveHasMap
   HasFold -> solveHasFold
   HasQuantifierIn q -> solveHasQuantifierIn q
   HasIf -> solveHasIf
@@ -92,15 +59,15 @@ solve = \case
   HasVecLits n -> solveHasVecLits n
   AlmostEqualConstraint -> solveAlmostEqual
   NatInDomainConstraint n -> solveInDomain n
-  LinearityTypeClass tc -> castProgressFn $ solveLinearityConstraint tc
-  PolarityTypeClass tc -> castProgressFn $ solvePolarityConstraint tc
+  LinearityTypeClass tc -> castAuxiliaryFn $ solveLinearityConstraint tc
+  PolarityTypeClass tc -> castAuxiliaryFn $ solvePolarityConstraint tc
+  tc -> \_ _ ->
+    compilerDeveloperError $
+      "Expected the class" <+> quotePretty tc <+> "to be solved via instance search"
 
 -- A temporary hack until we separate out the solvers properly.
-castProgressFn ::
-  TCM m =>
-  (WithContext TypeClassConstraint -> [NormType] -> m ConstraintProgress) ->
-  (WithContext TypeClassConstraint -> [NormType] -> m TypeClassProgress)
-castProgressFn f c e = castProgress (provenanceOf (contextOf c)) <$> f c e
+castAuxiliaryFn :: AuxiliaryTypeClassSolver -> TypeClassSolver
+castAuxiliaryFn f c e = castProgress (provenanceOf (contextOf c)) <$> f c e
 
 castProgress :: Provenance -> ConstraintProgress -> TypeClassProgress
 castProgress c = \case
@@ -637,44 +604,6 @@ solveRatDiv c arg1 arg2 res = do
   return $ Right (constraints, solution)
 
 --------------------------------------------------------------------------------
--- HasMap
-
-solveHasMap :: TypeClassSolver
-solveHasMap c [tCont] = case tCont of
-  (getMeta -> Just {}) -> blockOnMetas [tCont]
-  VConstructor _ List [] -> solveMapList ctx
-  VVectorType _ _ dim -> solveMapVec dim ctx
-  _ -> blockOrThrowErrors ctx [tCont] [tcError]
-  where
-    ctx = contextOf c
-    tcError = FailedMapConstraintContainer ctx tCont
-solveHasMap c _ = malformedConstraintError c
-
-type HasMapSolver =
-  forall m.
-  TCM m =>
-  ConstraintContext ->
-  m TypeClassProgress
-
-solveMapList :: HasMapSolver
-solveMapList c = do
-  let p = provenanceOf c
-  let solution = VBuiltin p (Map MapList) []
-  return $ Right (mempty, solution)
-
-solveMapVec :: NormExpr -> HasMapSolver
-solveMapVec _ _ = compilerDeveloperError "MapList not implemented"
-
-{-do
-let p = provenanceOf c
-let constraint = unify c tElem tVecElem
-let solution = VBuiltin (provenanceOf c) (Map MapVector)
-      [ ImplicitArg p tVecElem
-      , ImplicitArg p dim
-      ]
-return $ Right ([constraint], solution)
--}
---------------------------------------------------------------------------------
 -- HasFold
 
 solveHasFold :: TypeClassSolver
@@ -1001,17 +930,15 @@ createTC ::
   TCM m =>
   ConstraintContext ->
   TypeClass ->
-  NonEmpty NormType ->
+  [NormType] ->
   m (NormExpr, WithContext Constraint)
 createTC c tc argExprs = do
   let p = provenanceOf c
   let ctx = copyContext c
   let ctxSize = length (boundContext c)
   let nArgs = ExplicitArg p <$> argExprs
-  uArgExprs <- traverse (quote $ DBLevel ctxSize) argExprs
-  let uArgs = ExplicitArg p <$> uArgExprs
-  let solution = BuiltinTypeClass p tc uArgs
-  (meta, metaExpr) <- freshTypeClassPlacementMeta p solution ctxSize
+  newTypeClassExpr <- quote (DBLevel ctxSize) (VConstructor p (TypeClass tc) nArgs)
+  (meta, metaExpr) <- freshTypeClassPlacementMeta p newTypeClassExpr ctxSize
   return (normalised metaExpr, WithContext (TypeClassConstraint (Has meta tc nArgs)) ctx)
 
 unifyWithAnnBoolType ::
