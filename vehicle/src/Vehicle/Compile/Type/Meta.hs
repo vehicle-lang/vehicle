@@ -2,7 +2,7 @@ module Vehicle.Compile.Type.Meta
   ( MetaSet,
     MetaInfo (..),
     MetaCtxSize,
-    increaseMetaCtxSize,
+    extendMetaCtx,
     HasMetas (..),
     makeMetaType,
     makeMetaExpr,

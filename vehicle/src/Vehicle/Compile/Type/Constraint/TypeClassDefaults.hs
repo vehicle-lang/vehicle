@@ -69,8 +69,7 @@ generateConstraintUsingDefaults constraints = do
     Invalid -> return Nothing
     Valid (Candidate m tc metaExpr ctx) -> do
       let p = inserted $ provenanceOf ctx
-      let ctxSize = length (boundContext ctx)
-      solution <- defaultSolution p ctxSize tc
+      solution <- defaultSolution p ctx tc
       logDebug MaxDetail $
         "using default"
           <+> pretty m
@@ -139,10 +138,10 @@ familyOf = \case
 defaultSolution ::
   TCM m =>
   Provenance ->
-  Int ->
+  ConstraintContext ->
   TypeClass ->
   m NormExpr
-defaultSolution p ctxSize = \case
+defaultSolution p ctx = \case
   HasEq {} -> return $ VNatType p
   HasOrd {} -> return $ VNatType p
   HasNot -> createDefaultBoolType p
@@ -157,19 +156,19 @@ defaultSolution p ctxSize = \case
   HasNeg -> return $ VIntType p
   HasNatLits n -> return $ VIndexType p (VNatLiteral p (n + 1))
   HasRatLits -> createDefaultRatType p
-  HasVecLits {} -> createDefaultListType p ctxSize
-  HasMap -> createDefaultListType p ctxSize
-  HasFold -> createDefaultListType p ctxSize
-  HasQuantifierIn {} -> createDefaultListType p ctxSize
+  HasVecLits {} -> createDefaultListType p ctx
+  HasMap -> createDefaultListType p ctx
+  HasFold -> createDefaultListType p ctx
+  HasQuantifierIn {} -> createDefaultListType p ctx
   NatInDomainConstraint n -> return $ VNatLiteral p (n + 1)
   HasIf {} -> ifTCError
   LinearityTypeClass {} -> auxiliaryTCError
   PolarityTypeClass {} -> auxiliaryTCError
   AlmostEqualConstraint {} -> auxiliaryTCError
 
-createDefaultListType :: TCM m => Provenance -> Int -> m NormType
-createDefaultListType p ctxSize = do
-  tElem <- normalised <$> freshExprMeta p (TypeUniverse p 0) ctxSize
+createDefaultListType :: TCM m => Provenance -> ConstraintContext -> m NormType
+createDefaultListType p ctx = do
+  tElem <- normalised <$> freshExprMeta p (TypeUniverse p 0) (boundContext ctx)
   return $ VListType p tElem
 
 createDefaultBoolType :: TCM m => Provenance -> m NormType

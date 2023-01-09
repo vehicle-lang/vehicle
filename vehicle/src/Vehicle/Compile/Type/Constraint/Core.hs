@@ -16,7 +16,7 @@ import Data.List (partition)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrettyVerbose, prettyVerbose)
+import Vehicle.Compile.Print (PrettyFriendly, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
@@ -58,7 +58,7 @@ type AuxiliaryTypeClassSolver =
 -- the set of meta-variables solved during this run.
 runConstraintSolver ::
   forall m constraint.
-  (TCM m, PrettyVerbose (Contextualised constraint ConstraintContext)) =>
+  (TCM m, PrettyFriendly (Contextualised constraint ConstraintContext)) =>
   m [Contextualised constraint ConstraintContext] ->
   ([Contextualised constraint ConstraintContext] -> m ()) ->
   (Contextualised constraint ConstraintContext -> m ()) ->
@@ -84,7 +84,7 @@ runConstraintSolver getConstraints setConstraints attemptToSolveConstraint = loo
 
               solvedMetas <- trackSolvedMetas $ do
                 forM_ unblockedConstraints $ \constraint -> do
-                  logCompilerSection MaxDetail ("trying:" <+> prettyVerbose constraint) $
+                  logCompilerSection MaxDetail ("trying:" <+> prettyFriendly constraint) $ do
                     attemptToSolveConstraint constraint
 
               loop (loopNumber + 1) solvedMetas

@@ -107,7 +107,6 @@ instance MetaSubstitutable NormExpr where
         -- TODO do we need to subst through the args here?
         Nothing -> VMeta p m <$> subst args
         Just value -> do
-          -- logDebug MaxDetail $ pretty m <+> pretty (show (normalised value))
           substValue <- subst $ normalised value
           case args of
             [] -> return substValue

@@ -1,7 +1,7 @@
 module Vehicle.Compile.Type.Meta.Variable
   ( MetaInfo (..),
     MetaCtxSize,
-    increaseMetaCtxSize,
+    extendMetaCtx,
     makeMetaType,
     makeMetaExpr,
     getMetaDependencies,
@@ -23,7 +23,7 @@ import Vehicle.Compile.Type.Constraint
   )
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
+import Vehicle.Compile.Type.VariableContext (TypingBoundCtx, mkTypingBoundCtxEntry)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
@@ -46,22 +46,26 @@ data MetaInfo = MetaInfo
     -- | The type of the meta-variable
     metaType :: CheckedType,
     -- | The number of bound variables in scope when the meta-variable was created.
-    metaCtxSize :: MetaCtxSize
+    metaCtx :: TypingBoundCtx
   }
 
-increaseMetaCtxSize :: MetaInfo -> MetaInfo
-increaseMetaCtxSize (MetaInfo p t size) = MetaInfo p t (size + 1)
+extendMetaCtx :: CheckedBinder -> MetaInfo -> MetaInfo
+extendMetaCtx binder MetaInfo {..} =
+  MetaInfo
+    { metaCtx = mkTypingBoundCtxEntry binder : metaCtx,
+      ..
+    }
 
 -- | Creates an expression that abstracts over all bound variables
 makeMetaExpr ::
   Provenance ->
   MetaID ->
-  MetaCtxSize ->
+  TypingBoundCtx ->
   GluedExpr
-makeMetaExpr p metaID ctxSize = do
+makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
   let ann = inserted p
-  let dependencyLevels = [0 .. (ctxSize - 1)]
+  let dependencyLevels = [0 .. (length boundCtx - 1)]
   let unnormBoundEnv = [ExplicitArg ann (Var ann (Bound $ DBIndex i)) | i <- reverse dependencyLevels]
   let normBoundEnv = [ExplicitArg ann (VBoundVar ann (DBLevel i) []) | i <- dependencyLevels]
 
