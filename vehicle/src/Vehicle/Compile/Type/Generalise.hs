@@ -78,7 +78,7 @@ prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
 
   substTypeClass <- substMetas typeClass
   logCompilerPass MaxDetail ("generalisation over" <+> prettySimple substTypeClass) $
-    prependBinderAndSolveMeta meta (BinderForm OnlyType False) Instance relevancy substTypeClass decl
+    prependBinderAndSolveMeta meta (BinderForm OnlyType True) Instance relevancy substTypeClass decl
 
 --------------------------------------------------------------------------------
 -- Unsolved meta generalisation
@@ -167,7 +167,7 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
   -- Then we add i) the new binder to the context of the meta-variable being
   -- solved, and ii) a new argument to all uses of the meta-variable so
   -- that meta-subsitution will work later.
-  incrementMetaCtxSize meta
+  extendBoundCtxOfMeta meta typeBinder
   let updatedDecl = addNewArgumentToMetaUses meta prependedDecl
 
   -- We now solve the meta as the newly bound variable

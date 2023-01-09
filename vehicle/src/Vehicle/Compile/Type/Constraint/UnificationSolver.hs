@@ -13,6 +13,7 @@ import Control.Monad.Writer.Class (MonadWriter (..))
 import Data.Foldable (for_, traverse_)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
+import Data.IntSet qualified as IntSet
 import Data.List (intersect)
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
@@ -27,6 +28,7 @@ import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup, member, singleton, toList)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (null, unions)
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
@@ -126,6 +128,9 @@ unification ctx = \case
 
   VMeta _ meta1 spine1 :~: VMeta _ meta2 spine2
     | meta1 == meta2 -> solveSpine ctx spine1 spine2
+    -- The longer spine normally means its in a deeper scope. This minor
+    -- optimisation tries to solve the deeper meta first.
+    | length spine1 < length spine2 -> solveFlexFlex ctx (meta2, spine2) (meta1, spine1)
     | otherwise -> solveFlexFlex ctx (meta1, spine1) (meta2, spine2)
   ----------------------
   -- Flex-rigid cases --
@@ -189,57 +194,17 @@ solvePi ctx (binder1, body1) (binder2, body2) = do
   let bodyConstraint = unify ctx body1 body2
   return $ Success [binderConstraint, bodyConstraint]
 
-{-
-solveFlexFlex :: TCM m => DBLevel -> MetaID -> Spine -> MetaID -> Spine -> m ConstraintProgress
-solveFlexFlex level meta1 spine1 meta2 spine2
-  -- The longer spine normally means its in a deeper scope. This minor
-  -- optimisation tries to solve the deeper meta first.
-  | length spine1 < length spine2 = go meta2 spine2 meta1 spine1
-  | otherwise = go meta1 spine1 meta2 spine2
-  where
-  -- It may be that only one of the two spines is invertible
-  go :: MetaID -> Spine -> MetaID -> Spine -> m ConstraintProgress
-  go m1 sp1 m2 sp2 = do
-    let maybeRenaming = invert level sp1
-    case maybeRenaming of
-      Nothing -> solveFlexRigid level m' sp' (VFlex m sp)
-      Just renaming -> _ --solveWithPRen m pren (VFlex m' sp')
--}
 solveFlexFlex :: TCM m => ConstraintContext -> (MetaID, Spine) -> (MetaID, Spine) -> m UnificationResult
 solveFlexFlex ctx (meta1, spine1) (meta2, spine2) = do
-  -- If the meta-variables are different then we have more
-  -- flexibility as to how the arguments can relate to each other. In
-  -- particular they can be re-arranged, and therefore we calculate the
-  -- non-positional intersection of their arguments.
-  let (deps1, remainingSpine1) = getNormMetaDependencies spine1
-  let (deps2, remainingSpine2) = getNormMetaDependencies spine2
-  if not (null remainingSpine1) || not (null remainingSpine2)
-    then return SoftFailure
-    else do
-      let constraintLevel = contextDBLevel ctx
-      let jointContext = deps1 `intersect` deps2
-
-      meta1Type <- getMetaType meta1
-      meta2Type <- getMetaType meta2
-      typeEq <- unify ctx <$> whnfNBE constraintLevel meta1Type <*> whnfNBE constraintLevel meta2Type
-
-      meta1Origin <- getMetaProvenance meta1
-      meta2Origin <- getMetaProvenance meta2
-      let newOrigin = meta1Origin <> meta2Origin
-
-      meta1Level <- DBLevel <$> getMetaCtxSize meta1
-      meta2Level <- DBLevel <$> getMetaCtxSize meta2
-      let newLevel = min meta1Level meta2Level
-
-      newMeta <- createMetaWithRestrictedDependencies newLevel newOrigin meta1Type jointContext
-
-      solveMeta meta1 newMeta constraintLevel
-      solveMeta meta2 newMeta constraintLevel
-
-      return $ Success [typeEq]
+  let p = provenanceOf ctx
+  -- It may be that only one of the two spines is invertible
+  let maybeRenaming = invert (contextDBLevel ctx) spine1
+  case maybeRenaming of
+    Nothing -> solveFlexRigid ctx (meta2, spine2) (VMeta p meta1 spine1)
+    Just renaming -> solveFlexRigidWithRenaming ctx (meta1, spine1) renaming (VMeta p meta2 spine2)
 
 solveFlexRigid :: TCM m => ConstraintContext -> (MetaID, Spine) -> NormExpr -> m UnificationResult
-solveFlexRigid ctx (meta, spine) e2 = do
+solveFlexRigid ctx (meta, spine) = do
   let constraintLevel = DBLevel $ length (boundContext ctx)
   -- Check that 'args' is a pattern and try to calculate a substitution
   -- that renames the variables in 'e2' to ones available to meta `i`
@@ -247,50 +212,56 @@ solveFlexRigid ctx (meta, spine) e2 = do
     -- This constraint is stuck because it is not pattern; shelve
     -- it for now and hope that another constraint allows us to
     -- progress.
-    Nothing -> return SoftFailure
-    Just argPattern -> do
-      metasInE2 <- metasInWithDependencies e2
+    Nothing -> \_ -> return SoftFailure
+    Just renaming -> solveFlexRigidWithRenaming ctx (meta, spine) renaming
 
-      -- If `i` is inside the term we're trying to unify it with then error.
-      -- Unsure if this should be a user or a developer error.
-      when (meta `MetaMap.member` metasInE2) $
-        compilerDeveloperError $
-          "Meta variable"
-            <+> pretty meta
-            <+> "found in own solution"
-            <+> squotes (prettyVerbose e2)
+solveFlexRigidWithRenaming :: TCM m => ConstraintContext -> (MetaID, Spine) -> Renaming -> NormExpr -> m UnificationResult
+solveFlexRigidWithRenaming ctx (meta, spine) renaming e2 = do
+  metasInE2 <- metasInWithDependencies e2
 
-      let (deps, _) = getNormMetaDependencies spine
+  -- If `i` is inside the term we're trying to unify it with then error.
+  -- Unsure if this should be a user or a developer error.
+  when (meta `MetaMap.member` metasInE2) $
+    compilerDeveloperError $
+      "Meta variable"
+        <+> pretty meta
+        <+> "found in own solution"
+        <+> squotes (prettyVerbose e2)
 
-      -- Restrict any arguments to each sub-meta on the RHS to those of i.
-      for_ (MetaMap.toList metasInE2) $ \(j, jSpine) -> do
-        jOrigin <- getMetaProvenance j
-        jType <- getMetaType j
-        let (jDeps, _) = getNormMetaDependencies jSpine
-        let sharedDependencies = deps `intersect` jDeps
-        if sharedDependencies == jDeps
-          then return False
-          else do
-            newMeta <- createMetaWithRestrictedDependencies constraintLevel jOrigin jType sharedDependencies
-            solveMeta j newMeta constraintLevel
-            return True
+  let (deps, _) = getNormMetaDependencies spine
 
-      unnormSolution <- quote constraintLevel e2
-      let substSolution = substDBAll 0 (\v -> unIndex v `IntMap.lookup` argPattern) unnormSolution
-      solveMeta meta substSolution constraintLevel
-      return $ Success mempty
+  let constraintLevel = DBLevel $ length (boundContext ctx)
+  -- Restrict any arguments to each sub-meta on the RHS to those of i.
+  for_ (MetaMap.toList metasInE2) $ \(j, jSpine) -> do
+    jOrigin <- getMetaProvenance j
+    jType <- getMetaType j
+    let (jDeps, _) = getNormMetaDependencies jSpine
+    let sharedDependencies = deps `intersect` jDeps
+    if sharedDependencies == jDeps
+      then return False
+      else do
+        newMeta <- createMetaWithRestrictedDependencies ctx jOrigin jType sharedDependencies
+        solveMeta j newMeta constraintLevel
+        return True
+
+  unnormSolution <- quote constraintLevel e2
+  let substSolution = substDBAll 0 (\v -> unIndex v `IntMap.lookup` renaming) unnormSolution
+  solveMeta meta substSolution constraintLevel
+  return $ Success mempty
 
 createMetaWithRestrictedDependencies ::
   TCM m =>
-  DBLevel ->
+  ConstraintContext ->
   Provenance ->
   CheckedType ->
   [DBLevel] ->
   m CheckedExpr
-createMetaWithRestrictedDependencies level p metaType newDependencies = do
+createMetaWithRestrictedDependencies ctx p metaType newDependencies = do
   logCompilerPass MaxDetail "restricting dependencies" $ do
-    meta <- freshExprMeta p metaType (length newDependencies)
-    let substitution = IntMap.fromAscList (zip [0 ..] (fmap (dbLevelToIndex level) newDependencies))
+    let restrictedContext = restrictBoundContext newDependencies (boundContext ctx)
+    meta <- freshExprMeta p metaType restrictedContext
+    let constraintLevel = contextDBLevel ctx
+    let substitution = IntMap.fromAscList (zip [0 ..] (fmap (dbLevelToIndex constraintLevel) newDependencies))
     let newMetaExpr = substDBAll 0 (\v -> unIndex v `IntMap.lookup` substitution) (unnormalised meta)
 
     logDebug MaxDetail ("Result:" <+> prettyVerbose newMetaExpr)
@@ -299,6 +270,12 @@ createMetaWithRestrictedDependencies level p metaType newDependencies = do
 
 unify :: ConstraintContext -> NormExpr -> NormExpr -> WithContext UnificationConstraint
 unify ctx e1 e2 = WithContext (Unify e1 e2) (copyContext ctx)
+
+restrictBoundContext :: [DBLevel] -> TypingBoundCtx -> TypingBoundCtx
+restrictBoundContext levels ctx = do
+  let levelSet = IntSet.fromList $ fmap unLevel levels
+  let makeElem (i, v) = if i `IntSet.member` levelSet then Just v else Nothing
+  mapMaybe makeElem (zip [length ctx - 1 .. 0 :: Int] ctx)
 
 --------------------------------------------------------------------------------
 -- Argument patterns

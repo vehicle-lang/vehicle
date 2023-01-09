@@ -3,7 +3,7 @@ module Vehicle.Compile.Type.Constraint.InstanceSolver
   )
 where
 
-import Control.Monad (forM)
+import Control.Monad (foldM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (ReaderT (..))
 import Data.Maybe (catMaybes)
@@ -12,13 +12,13 @@ import Vehicle.Compile.Error.Message (MeaningfulError (..))
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Constraint (ConstraintContext, InstanceCandidate (..), InstanceGoal (..), TypeClassConstraint (..), UnificationConstraint (..), contextDBLevel, copyContext, extendConstraintBoundCtx)
+import Vehicle.Compile.Type.Constraint (ConstraintContext, InstanceCandidate (..), InstanceGoal (..), TypeClassConstraint (..), UnificationConstraint (..), boundContext, contextDBLevel, copyContext, extendConstraintBoundCtx)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.TypeClassSolver (solveTypeClassConstraint)
 import Vehicle.Compile.Type.Constraint.UnificationSolver (runUnificationSolver)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Monad
-import Vehicle.Expr.DeBruijn (DBLevel (..))
+import Vehicle.Compile.Type.VariableContext (TypingBoundCtx, mkTypingBoundCtxEntry)
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -125,18 +125,21 @@ checkCandidate ctx meta InstanceGoal {..} candidate@InstanceCandidate {..} = do
 instantiateCandidateTelescopeInCandidateBody :: TCM m => ConstraintContext -> InstanceCandidate -> m NormExpr
 instantiateCandidateTelescopeInCandidateBody ctx InstanceCandidate {..} =
   logCompilerSection MaxDetail "instantiating candidate telescope" $ do
-    let numberedTelescope = zip [0 ..] candidateTelescope
     let p = provenanceOf ctx
-    let constraintLevel = contextDBLevel ctx
-    telescopeMetas <- forM numberedTelescope $ \(telescopeDepth, binder) -> do
-      let metaLevel = unLevel constraintLevel + telescopeDepth
-      meta <- freshExprMeta p (binderType binder) metaLevel
-      return $ normalised meta
+    let currentBoundCtx = boundContext ctx
+    let currentEnv = mkNoOpEnv (contextDBLevel ctx)
+    (extendedEnv, _) <- foldM (extendByBinder p) (currentEnv, currentBoundCtx) candidateTelescope
 
-    let env = telescopeMetas ++ mkNoOpEnv constraintLevel
     declCtx <- getDeclSubstitution
     metaCtx <- getMetaSubstitution
-    runReaderT (eval env candidateExpr) (declCtx, metaCtx)
+    runReaderT (eval extendedEnv candidateExpr) (declCtx, metaCtx)
+  where
+    extendByBinder :: TCM m => Provenance -> (Env, TypingBoundCtx) -> CheckedBinder -> m (Env, TypingBoundCtx)
+    extendByBinder p (env, boundCtx) binder = do
+      meta <- freshExprMeta p (binderType binder) (boundContext ctx)
+      let extendedEnv = normalised meta : env
+      let extendedCtx = mkTypingBoundCtxEntry binder : boundCtx
+      return (extendedEnv, extendedCtx)
 
 --------------------------------------------------------------------------------
 -- Instances

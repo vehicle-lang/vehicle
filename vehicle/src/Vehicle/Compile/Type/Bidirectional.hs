@@ -141,8 +141,8 @@ checkExpr expectedType expr = do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted as
       -- different meta-variables.
-      boundCtxSize <- length <$> getBoundCtx
-      unnormalised <$> freshExprMeta p expectedType boundCtxSize
+      boundCtx <- getBoundCtx
+      unnormalised <$> freshExprMeta p expectedType boundCtx
 
     -- Otherwise switch to inference mode
     (_, _) -> viaInfer expectedType expr
@@ -185,9 +185,9 @@ inferExpr e = do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted
       -- as different meta-variables.
-      boundCtxSize <- length <$> getBoundCtx
-      metaType <- unnormalised <$> freshExprMeta p (TypeUniverse p 0) boundCtxSize
-      metaExpr <- unnormalised <$> freshExprMeta p metaType boundCtxSize
+      boundCtx <- getBoundCtx
+      metaType <- unnormalised <$> freshExprMeta p (TypeUniverse p 0) boundCtx
+      metaExpr <- unnormalised <$> freshExprMeta p metaType boundCtx
       checkExprTypesEqual p metaExpr metaType (TypeUniverse p 0)
       return (metaExpr, metaType)
     Ann p expr exprType -> do
@@ -368,8 +368,8 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
           Just arg -> checkExpr binderType (argExpr arg)
           Nothing
             | isImplicit binder -> do
-                boundCtxSize <- length <$> getBoundCtx
-                unnormalised <$> freshExprMeta p binderType boundCtxSize
+                boundCtx <- getBoundCtx
+                unnormalised <$> freshExprMeta p binderType boundCtx
             | otherwise -> do
                 ctx <- getBoundCtx
                 metaExpr <- createFreshTypeClassConstraint ctx fun args' binderType

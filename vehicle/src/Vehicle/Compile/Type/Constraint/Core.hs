@@ -84,7 +84,7 @@ runConstraintSolver getConstraints setConstraints attemptToSolveConstraint = loo
 
               solvedMetas <- trackSolvedMetas $ do
                 forM_ unblockedConstraints $ \constraint -> do
-                  logCompilerSection MaxDetail ("trying:" <+> prettyVerbose constraint) $
+                  logCompilerSection MaxDetail ("trying:" <+> prettyVerbose constraint) $ do
                     attemptToSolveConstraint constraint
 
               loop (loopNumber + 1) solvedMetas

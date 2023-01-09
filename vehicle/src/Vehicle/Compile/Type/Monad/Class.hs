@@ -16,7 +16,7 @@ module Vehicle.Compile.Type.Monad.Class
     getUnsolvedAuxiliaryMetas,
     getMetasLinkedToMetasIn,
     clearMetaSubstitution,
-    incrementMetaCtxSize,
+    extendBoundCtxOfMeta,
     removeMetaDependencies,
     getMetaProvenance,
     getMetaType,
@@ -69,7 +69,7 @@ import Vehicle.Compile.Type.Meta
   ( HasMetas (..),
     MetaCtxSize,
     MetaInfo (..),
-    increaseMetaCtxSize,
+    extendMetaCtx,
     makeMetaExpr,
   )
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
@@ -258,22 +258,22 @@ freshMeta ::
   MonadTypeChecker m =>
   Provenance ->
   CheckedType ->
-  MetaCtxSize ->
+  TypingBoundCtx ->
   m (MetaID, GluedExpr)
-freshMeta p metaType metaCtxSize = do
+freshMeta p metaType boundCtx = do
   -- Create a fresh id for the meta
   TypeCheckerState {..} <- getMetaCtx
   let nextMetaID = length metaInfo
   let metaID = MetaID nextMetaID
 
   -- Construct the information about the meta-variable
-  let info = MetaInfo p metaType metaCtxSize
+  let info = MetaInfo p metaType boundCtx
 
   -- Update the meta context
   modifyMetaCtx $ const $ TypeCheckerState {metaInfo = info : metaInfo, ..}
 
   -- Create the expression
-  let metaExpr = makeMetaExpr p metaID metaCtxSize
+  let metaExpr = makeMetaExpr p metaID boundCtx
 
   logDebug MaxDetail $ "fresh-meta" <+> pretty metaID <+> ":" <+> prettyVerbose metaType
   return (metaID, metaExpr)
@@ -282,33 +282,33 @@ freshMeta p metaType metaCtxSize = do
 -- if dependencies were removed to achieve this.
 removeMetaDependencies :: MonadTypeChecker m => MetaID -> m Bool
 removeMetaDependencies m = do
-  MetaInfo p t ctxSize <- getMetaInfo m
-  if ctxSize == 0
+  MetaInfo p t ctx <- getMetaInfo m
+  if null ctx
     then return False
     else do
-      newMeta <- freshExprMeta p t 0
-      solveMeta m (unnormalised newMeta) (DBLevel ctxSize)
+      newMeta <- freshExprMeta p t mempty
+      solveMeta m (unnormalised newMeta) (DBLevel $ length ctx)
       return True
 
 freshExprMeta ::
   MonadTypeChecker m =>
   Provenance ->
   CheckedType ->
-  Int ->
+  TypingBoundCtx ->
   m GluedExpr
-freshExprMeta p t boundCtxSize = snd <$> freshMeta p t boundCtxSize
+freshExprMeta p t boundCtx = snd <$> freshMeta p t boundCtx
 
 freshPolarityMeta :: MonadTypeChecker m => Provenance -> m GluedExpr
-freshPolarityMeta p = snd <$> freshMeta p (PolarityUniverse p) 0
+freshPolarityMeta p = snd <$> freshMeta p (PolarityUniverse p) mempty
 
 freshLinearityMeta :: MonadTypeChecker m => Provenance -> m GluedExpr
-freshLinearityMeta p = snd <$> freshMeta p (LinearityUniverse p) 0
+freshLinearityMeta p = snd <$> freshMeta p (LinearityUniverse p) mempty
 
 freshTypeClassPlacementMeta ::
   MonadTypeChecker m =>
   Provenance ->
   CheckedType ->
-  Int ->
+  TypingBoundCtx ->
   m (MetaID, GluedExpr)
 freshTypeClassPlacementMeta = freshMeta
 
@@ -337,10 +337,10 @@ getSubstMetaType :: MonadTypeChecker m => MetaID -> m CheckedType
 getSubstMetaType m = substMetas =<< getMetaType m
 
 getMetaCtxSize :: MonadTypeChecker m => MetaID -> m MetaCtxSize
-getMetaCtxSize m = metaCtxSize <$> getMetaInfo m
+getMetaCtxSize m = length . metaCtx <$> getMetaInfo m
 
-incrementMetaCtxSize :: MonadTypeChecker m => MetaID -> m ()
-incrementMetaCtxSize m =
+extendBoundCtxOfMeta :: MonadTypeChecker m => MetaID -> CheckedBinder -> m ()
+extendBoundCtxOfMeta m binder =
   modifyMetaCtx
     ( \TypeCheckerState {..} -> do
         let metaIndex = getMetaIndex metaInfo m
@@ -349,7 +349,7 @@ incrementMetaCtxSize m =
             developerError $
               "Increment meta-ctx for unknown meta-variable" <+> pretty m
           (xs, info : ys) -> do
-            let info' = increaseMetaCtxSize info
+            let info' = extendMetaCtx binder info
             TypeCheckerState
               { metaInfo = xs <> (info' : ys),
                 ..
@@ -407,17 +407,20 @@ filterMetasByTypes typeFilter metas = do
   let filteredMetas = filter (typeFilter . snd) typedMetas
   return $ MetaSet.fromList (fmap fst filteredMetas)
 
-abstractOverCtx :: Int -> CheckedExpr -> CheckedExpr
-abstractOverCtx ctxSize body = do
+abstractOverCtx :: TypingBoundCtx -> CheckedExpr -> CheckedExpr
+abstractOverCtx ctx body = do
   let p = mempty
-  let lamBinderForm i = BinderForm (OnlyName (layoutAsText $ "x" <> pretty i)) True
-  let lam i = Lam p (Binder p (lamBinderForm i) Explicit Relevant () (TypeUniverse p 0))
-  foldr lam body ([0 .. ctxSize - 1] :: [Int])
+  let lamBinderForm (n, _, _) = BinderForm (OnlyName (fromMaybe "_" n)) True
+  -- WARNING: in theory the type of this binder should be `t` but because these binders
+  -- have temporary mutually recursive dependencies that are eliminated upon substitution
+  -- then actualy using `t` here results in meta-substitution looping.
+  let lam i@(_, _t, _) = Lam p (Binder p (lamBinderForm i) Explicit Relevant () (TypeUniverse p 0))
+  foldr lam body ctx
 
 solveMeta :: MonadTypeChecker m => MetaID -> CheckedExpr -> DBLevel -> m ()
 solveMeta m solution currentLevel = do
-  MetaInfo p _ ctxSize <- getMetaInfo m
-  let abstractedSolution = abstractOverCtx ctxSize solution
+  MetaInfo p _ ctx <- getMetaInfo m
+  let abstractedSolution = abstractOverCtx ctx solution
   gluedSolution <- glueNBE currentLevel abstractedSolution
 
   logDebug MaxDetail $ "solved" <+> pretty m <+> "as" <+> prettyVerbose abstractedSolution
@@ -562,23 +565,23 @@ createFreshTypeClassConstraint ::
   [CheckedArg] ->
   CheckedType ->
   m CheckedExpr
-createFreshTypeClassConstraint ctx fun funArgs tcExpr = do
+createFreshTypeClassConstraint boundCtx fun funArgs tcExpr = do
   (tc, args) <- case tcExpr of
     BuiltinTypeClass _ tc args -> return (tc, NonEmpty.toList args)
     _ ->
       compilerDeveloperError $
         "Malformed type class constraint" <+> prettyVerbose tcExpr
 
-  let ctxSize = length ctx
-  nArgs <- traverse (traverse (whnfNBE (DBLevel ctxSize))) args
+  let ctxLevel = DBLevel $ length boundCtx
+  nArgs <- traverse (traverse (whnfNBE ctxLevel)) args
 
   let p = provenanceOf fun
-  (meta, metaExpr) <- freshTypeClassPlacementMeta p tcExpr ctxSize
+  (meta, metaExpr) <- freshTypeClassPlacementMeta p tcExpr boundCtx
 
   let originProvenance = provenanceOf tcExpr
   let group = typeClassGroup tc
   let origin = CheckingTypeClass fun funArgs tc
-  let context = ConstraintContext originProvenance origin p unknownBlockingStatus ctx group
+  let context = ConstraintContext originProvenance origin p unknownBlockingStatus boundCtx group
   let constraint = WithContext (Has meta tc nArgs) context
 
   addTypeClassConstraints [constraint]

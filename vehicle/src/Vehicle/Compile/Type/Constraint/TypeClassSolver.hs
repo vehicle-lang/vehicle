@@ -935,10 +935,10 @@ createTC ::
 createTC c tc argExprs = do
   let p = provenanceOf c
   let ctx = copyContext c
-  let ctxSize = length (boundContext c)
+  let dbLevel = contextDBLevel c
   let nArgs = ExplicitArg p <$> argExprs
-  newTypeClassExpr <- quote (DBLevel ctxSize) (VConstructor p (TypeClass tc) nArgs)
-  (meta, metaExpr) <- freshTypeClassPlacementMeta p newTypeClassExpr ctxSize
+  newTypeClassExpr <- quote dbLevel (VConstructor p (TypeClass tc) nArgs)
+  (meta, metaExpr) <- freshTypeClassPlacementMeta p newTypeClassExpr (boundContext c)
   return (normalised metaExpr, WithContext (TypeClassConstraint (Has meta tc nArgs)) ctx)
 
 unifyWithAnnBoolType ::
@@ -960,7 +960,7 @@ unifyWithIndexType ::
   m (WithContext Constraint, GluedExpr)
 unifyWithIndexType c t = do
   let p = provenanceOf c
-  indexSize <- freshExprMeta p (NatType p) (length (boundContext c))
+  indexSize <- freshExprMeta p (NatType p) (boundContext c)
   let eq = unify c t (VIndexType p (normalised indexSize))
   return (eq, indexSize)
 
@@ -982,7 +982,7 @@ unifyWithListType ::
   m (WithContext Constraint, GluedType)
 unifyWithListType c t = do
   let p = provenanceOf c
-  elemType <- freshExprMeta p (TypeUniverse p 0) (length (boundContext c))
+  elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
   let eq = unify c t (VListType p (normalised elemType))
   return (eq, elemType)
 
@@ -994,15 +994,14 @@ unifyWithVectorType ::
   m (WithContext Constraint, NormType)
 unifyWithVectorType c dim t = do
   let p = provenanceOf c
-  let ctxSize = length (boundContext c)
-  elemType <- freshExprMeta p (TypeUniverse p 0) ctxSize
+  elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
   let eq = unify c t (VVectorType p (normalised elemType) (normalised dim))
   return (eq, normalised elemType)
 
 freshDimMeta :: TCM m => ConstraintContext -> m GluedExpr
 freshDimMeta c = do
   let p = provenanceOf c
-  freshExprMeta p (NatType p) (length (boundContext c))
+  freshExprMeta p (NatType p) (boundContext c)
 
 solveSimpleComparisonOp ::
   TCM m =>
