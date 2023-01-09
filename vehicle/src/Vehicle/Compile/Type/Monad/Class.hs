@@ -415,7 +415,7 @@ abstractOverCtx ctx body = do
   -- have temporary mutually recursive dependencies that are eliminated upon substitution
   -- then actualy using `t` here results in meta-substitution looping.
   let lam i@(_, _t, _) = Lam p (Binder p (lamBinderForm i) Explicit Relevant () (TypeUniverse p 0))
-  foldr lam body ctx
+  foldr lam body (reverse ctx)
 
 solveMeta :: MonadTypeChecker m => MetaID -> CheckedExpr -> DBLevel -> m ()
 solveMeta m solution currentLevel = do
@@ -423,7 +423,12 @@ solveMeta m solution currentLevel = do
   let abstractedSolution = abstractOverCtx ctx solution
   gluedSolution <- glueNBE currentLevel abstractedSolution
 
-  logDebug MaxDetail $ "solved" <+> pretty m <+> "as" <+> prettyVerbose abstractedSolution
+  logDebug MaxDetail $
+    "solved"
+      <+> pretty m
+      <+> "as"
+      <+> prettyVerbose abstractedSolution
+  -- "as" <+> prettyFriendly (WithContext abstractedSolution (boundContextOf ctx))
 
   metaSubst <- getMetaSubstitution
   case MetaMap.lookup m metaSubst of
