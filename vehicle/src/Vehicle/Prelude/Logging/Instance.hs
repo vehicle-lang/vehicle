@@ -20,7 +20,7 @@ where
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (ReaderT (..), ask)
-import Control.Monad.State (StateT (..), evalStateT, get, modify)
+import Control.Monad.State (MonadState (..), StateT (..), evalStateT, modify)
 import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
 import System.IO (Handle)
 import Vehicle.Prelude.Logging.Backend
@@ -47,6 +47,7 @@ runLoggerT debugLevel (LoggerT logger) =
   evalStateT (runReaderT logger debugLevel) 0
 
 instance (Monad m, MonadLoggingBackend m) => MonadLogger (LoggerT m) where
+  setCallDepth = LoggerT . put
   getCallDepth = LoggerT get
   incrCallDepth = LoggerT $ modify (+ 1)
   decrCallDepth = LoggerT $ modify (\x -> x - 1)

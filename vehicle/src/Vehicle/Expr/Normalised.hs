@@ -61,6 +61,9 @@ type Spine = [NormArg]
 
 type Env = BoundCtx NormExpr
 
+mkNoOpEnv :: DBLevel -> Env
+mkNoOpEnv boundCtxSize = [VBoundVar mempty i [] | i <- reverse [0 .. boundCtxSize - 1]]
+
 liftEnvOverBinder :: Provenance -> Env -> Env
 liftEnvOverBinder p = (VBoundVar p 0 [] :)
 

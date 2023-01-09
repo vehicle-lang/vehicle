@@ -96,12 +96,6 @@ substApp ann (fun@(Meta _ m), mArgs) = do
     substArgs :: CheckedExpr -> [CheckedArg] -> m CheckedExpr
     substArgs (Lam _ _ body) (arg : args) = do
       substArgs (argExpr arg `substDBInto` body) args
-    substArgs Lam {} [] =
-      compilerDeveloperError $
-        "Meta variable"
-          <+> pretty m
-          <+> "does not appear to be applied to"
-          <+> "every variable in the context"
     substArgs e args = return $ normAppList ann e args
 substApp ann (fun, args) = normAppList ann <$> subst fun <*> subst args
 

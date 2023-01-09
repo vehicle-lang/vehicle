@@ -225,6 +225,7 @@ solveConstraints d = logCompilerPass MinDetail "constraint solving" $ do
             let passDoc = "constraint solving pass" <+> pretty loopNumber
             newMetasSolved <- logCompilerPass MaxDetail passDoc $ do
               metasSolvedDuringUnification <- trackSolvedMetas $ runUnificationSolver recentlySolvedMetas
+              logDebug MaxDetail line
               metasSolvedDuringInstanceResolution <- trackSolvedMetas $ runInstanceSolver metasSolvedDuringUnification
               return metasSolvedDuringInstanceResolution
 

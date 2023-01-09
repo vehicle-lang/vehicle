@@ -21,13 +21,16 @@
 
 ### Bug fixes
 
-* Unbound type arguments are now longer generalised over in the opposite order than they occur.
+* Fixed parsing error where unbound type arguments were being generalised over in the
+  opposite order that they occur.
 
-* Fixed parse error when partially applying `map` or `fold`.
+* Fixed parsing error when partially applying `map` or `fold`.
 
-* Fixed higher-order function arguments not type-checking without explicit annotations.
+* Fixed typing error for `map`.
 
-* Fixed let-bound expressions at the top-level scope not type-checking.
+* Fixed typing error for higher-order function arguments without explicit annotations.
+
+* Fixed typing error for let-bound expressions at the top-level scope of a declaration.
 
 * Fixed problem with properties with no infinite quantifiers getting incorrectly
   negated when compiling to Marabou queries.
