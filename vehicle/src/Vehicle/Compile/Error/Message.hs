@@ -269,7 +269,7 @@ instance MeaningfulError CompileError where
               <+> squotes (prettyFriendly $ WithContext expectedType boundCtx)
               <+> "but was found to be of type"
               <+> squotes (prettyFriendly $ WithContext actualType boundCtx)
-          CheckingTypeClass fun args _tc ->
+          CheckingTypeClass fun args ->
             "unable to find a consistent type for the overloaded expression"
               <+> squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
           CheckingAuxiliary ->
@@ -300,7 +300,7 @@ instance MeaningfulError CompileError where
               <+> "to be of type"
               <+> squotes (prettyFriendly $ WithContext expectedType nameCtx)
               <+> "but was unable to prove it."
-          CheckingTypeClass fun args _tc ->
+          CheckingTypeClass fun args ->
             "insufficient information to find a valid type for the overloaded expression"
               <+> squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
           CheckingAuxiliary ->
@@ -341,16 +341,31 @@ instance MeaningfulError CompileError where
       where
         getMessage :: NormExpr -> Doc a
         getMessage = \case
-          VConstructor _ (TypeClass tc) _args -> case tc of
-            HasMap ->
+          VConstructor _ (TypeClass tc) args -> case (tc, args) of
+            (HasMap, _) ->
               "unable to work out the type for"
                 <+> pretty MapTC <> "."
                 <+> "The second argument to it must be of type"
                 <+> pretty List
                 <+> "or"
                 <+> pretty Vector <> "."
-            _ -> developerError $ "Instance search not complete for" <+> quotePretty tc
+            (HasAdd, [t1, t2, t3]) ->
+              failedArithOp2Message (boundContextOf ctx) AddTC (argExpr t1) (argExpr t2) (argExpr t3)
+            _ -> developerError $ "Instance search error messages not complete for" <+> quotePretty tc
           e -> developerError $ "Invalid instance in error message" <+> quotePretty (show e)
+
+        failedArithOp2Message :: BoundDBCtx -> TypeClassOp -> NormExpr -> NormExpr -> NormExpr -> Doc a
+        failedArithOp2Message boundCtx op t1 t2 t3 =
+          "cannot apply"
+            <+> squotes (pretty op)
+            <+> "to"
+            <+> "arguments of type"
+            <+> squotes (prettyFriendly (WithContext t1 boundCtx))
+            <+> "and"
+            <+> squotes (prettyFriendly (WithContext t2 boundCtx))
+            <+> "to obtain a result of type"
+            <+> squotes (prettyFriendly (WithContext t3 boundCtx))
+              <> "."
     FailedEqConstraint ctx t1 t2 eq ->
       UError $
         UserError
@@ -445,8 +460,6 @@ instance MeaningfulError CompileError where
                   <> ".",
             fix = Nothing
           }
-      where
-
     FailedBuiltinConstraintResult ctx builtin actualType allowedTypes ->
       UError $
         UserError
@@ -461,8 +474,6 @@ instance MeaningfulError CompileError where
                   <> ".",
             fix = Nothing
           }
-      where
-
     FailedArithOp2Constraint ctx t1 t2 op2 ->
       UError $
         UserError

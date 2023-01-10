@@ -23,13 +23,12 @@ import Vehicle.Libraries.StandardLibrary.Names
 --------------------------------------------------------------------------------
 -- Solver
 
-solveTypeClassConstraint :: TCM m => ConstraintContext -> TypeClassConstraint -> m ()
-solveTypeClassConstraint ctx (Has m tc spine) = do
-  let normConstraint = WithContext (Has m tc spine) ctx
-  progress <- solve tc normConstraint (argExpr <$> spine)
+solveTypeClassConstraint :: TCM m => WithContext TypeClassConstraint -> m ()
+solveTypeClassConstraint constraint@(WithContext (Has m tc spine) ctx) = do
+  progress <- solve tc constraint (argExpr <$> spine)
   case progress of
     Left metas -> do
-      let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint normConstraint) metas
+      let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint constraint) metas
       addConstraints [blockedConstraint]
     Right (newConstraints, solution) -> do
       let dbLevel = DBLevel $ length (boundContext ctx)

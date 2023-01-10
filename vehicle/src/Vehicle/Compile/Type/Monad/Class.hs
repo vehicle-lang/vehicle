@@ -36,6 +36,7 @@ module Vehicle.Compile.Type.Monad.Class
     forceHead,
     trackSolvedMetas,
     -- Constraints
+    instantiateArgForNonExplicitBinder,
     createFreshUnificationConstraint,
     createFreshTypeClassConstraint,
     getActiveConstraints,
@@ -63,7 +64,7 @@ import Vehicle.Compile.Normalise (NormalisationOptions (..), normaliseExpr)
 import Vehicle.Compile.Normalise.NBE (forceExpr)
 import Vehicle.Compile.Normalise.NBE qualified as NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyExternal, prettyVerbose)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta
   ( HasMetas (..),
@@ -527,7 +528,7 @@ addConstraints constraints = do
 addUnificationConstraints :: MonadTypeChecker m => [WithContext UnificationConstraint] -> m ()
 addUnificationConstraints constraints = do
   unless (null constraints) $ do
-    logDebug MaxDetail ("add-constraints " <> align (prettyFriendly constraints))
+    logDebug MaxDetail ("add-constraints " <> align (prettyExternal constraints))
 
   modifyMetaCtx $ \TypeCheckerState {..} ->
     TypeCheckerState {unificationConstraints = unificationConstraints ++ constraints, ..}
@@ -535,7 +536,7 @@ addUnificationConstraints constraints = do
 addTypeClassConstraints :: MonadTypeChecker m => [WithContext TypeClassConstraint] -> m ()
 addTypeClassConstraints constraints = do
   unless (null constraints) $ do
-    logDebug MaxDetail ("add-constraints " <> align (prettyFriendly constraints))
+    logDebug MaxDetail ("add-constraints " <> align (prettyExternal constraints))
 
   modifyMetaCtx $ \TypeCheckerState {..} ->
     TypeCheckerState {typeClassConstraints = typeClassConstraints ++ constraints, ..}
@@ -566,11 +567,10 @@ createFreshUnificationConstraint group p ctx origin expectedType actualType = do
 createFreshTypeClassConstraint ::
   MonadTypeChecker m =>
   TypingBoundCtx ->
-  CheckedExpr ->
-  [CheckedArg] ->
+  (CheckedExpr, [CheckedArg]) ->
   CheckedType ->
-  m CheckedExpr
-createFreshTypeClassConstraint boundCtx fun funArgs tcExpr = do
+  m GluedExpr
+createFreshTypeClassConstraint boundCtx (fun, funArgs) tcExpr = do
   (tc, args) <- case tcExpr of
     BuiltinTypeClass _ tc args -> return (tc, NonEmpty.toList args)
     _ ->
@@ -583,15 +583,30 @@ createFreshTypeClassConstraint boundCtx fun funArgs tcExpr = do
   let p = provenanceOf fun
   (meta, metaExpr) <- freshTypeClassPlacementMeta p tcExpr boundCtx
 
+  let origin = CheckingTypeClass fun funArgs
   let originProvenance = provenanceOf tcExpr
   let group = typeClassGroup tc
-  let origin = CheckingTypeClass fun funArgs tc
   let context = ConstraintContext originProvenance origin p unknownBlockingStatus boundCtx group
   let constraint = WithContext (Has meta tc nArgs) context
 
   addTypeClassConstraints [constraint]
 
-  return $ unnormalised metaExpr
+  return metaExpr
+
+instantiateArgForNonExplicitBinder ::
+  MonadTypeChecker m =>
+  TypingBoundCtx ->
+  Provenance ->
+  (CheckedExpr, [CheckedArg]) ->
+  CheckedBinder ->
+  m GluedArg
+instantiateArgForNonExplicitBinder boundCtx p origin binder = do
+  let binderType = typeOf binder
+  checkedExpr <- case visibilityOf binder of
+    Explicit {} -> compilerDeveloperError "Should not be instantiating Arg for explicit Binder"
+    Implicit {} -> freshExprMeta p binderType boundCtx
+    Instance {} -> createFreshTypeClassConstraint boundCtx origin binderType
+  return $ Arg p (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr
 
 --------------------------------------------------------------------------------
 -- Constraints

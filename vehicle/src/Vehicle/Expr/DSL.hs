@@ -10,8 +10,11 @@ module Vehicle.Expr.DSL
     (.~~~>),
     forAll,
     forAllIrrelevant,
+    forAllInstance,
+    forAllTypeTriples,
     forAllLinearityTriples,
     forAllPolarityTriples,
+    builtin,
     tUnit,
     tBool,
     tNat,
@@ -80,6 +83,7 @@ class DSL expr where
   pi :: Maybe Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   lam :: Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   lseq :: expr -> [expr] -> expr
+  free :: Identifier -> expr
 
 newtype DSLExpr = DSL
   { unDSL :: Provenance -> DBLevel -> DBExpr
@@ -127,6 +131,9 @@ instance DSL DSLExpr where
       (LVec p (fmap (\e -> unDSL e p i) args))
       [ ImplicitArg p (unDSL tElem p i)
       ]
+
+  free ident = DSL $ \p _i ->
+    FreeVar p ident
 
 piType :: DBExpr -> DBExpr -> DBExpr
 piType t1 t2 = t1 `tMax` t2
@@ -192,6 +199,15 @@ forAll name = pi (Just name) (Implicit False) Relevant
 
 forAllIrrelevant :: Name -> DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
 forAllIrrelevant name = pi (Just name) (Implicit False) Irrelevant
+
+forAllInstance :: Name -> DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
+forAllInstance name = pi (Just name) (Instance False) Relevant
+
+forAllTypeTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
+forAllTypeTriples f =
+  forAllIrrelevant "t1" type0 $ \t1 ->
+    forAllIrrelevant "t2" type0 $ \t2 ->
+      forAllIrrelevant "t3" type0 $ \t3 -> f t1 t2 t3
 
 forAllLinearityTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
 forAllLinearityTriples f =
@@ -326,7 +342,7 @@ linearityTypeClass :: LinearityTypeClass -> NonEmpty DSLExpr -> DSLExpr
 linearityTypeClass tc = typeClass (LinearityTypeClass tc)
 
 maxLinearity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-maxLinearity l1 l2 l3 = linearityTypeClass MulLinearity [l1, l2, l3]
+maxLinearity l1 l2 l3 = linearityTypeClass MaxLinearity [l1, l2, l3]
 
 mulLinearity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 mulLinearity l1 l2 l3 = linearityTypeClass MulLinearity [l1, l2, l3]

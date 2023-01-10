@@ -360,21 +360,12 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
 
       -- Calculate what the new checked arg should be, create a fresh meta
       -- if no arg was matched above
-      (checkedArgExpr, visibility, relevance) <- do
-        let binderType = typeOf binder
-        case matchedUncheckedArg of
-          Just arg -> do
-            checkedExpr <- checkExpr binderType (argExpr arg)
-            return (checkedExpr, visibilityOf arg, relevanceOf arg)
-          Nothing -> do
-            boundCtx <- getBoundCtx
-            checkedExpr <-
-              if isImplicit binder
-                then unnormalised <$> freshExprMeta p binderType boundCtx
-                else createFreshTypeClassConstraint boundCtx fun args' binderType
-            return (checkedExpr, markInserted (visibilityOf binder), relevanceOf binder)
-
-      let checkedArg = Arg p visibility relevance checkedArgExpr
+      checkedArg <- case matchedUncheckedArg of
+        Just arg -> traverse (checkExpr (typeOf binder)) arg
+        Nothing -> do
+          boundCtx <- getBoundCtx
+          newArg <- instantiateArgForNonExplicitBinder boundCtx p (fun, args') binder
+          return $ fmap unnormalised newArg
 
       -- Substitute the checked arg through the result of the Pi type.
       let substResultType = argExpr checkedArg `substDBInto` resultType
