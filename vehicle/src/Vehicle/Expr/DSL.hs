@@ -144,7 +144,7 @@ tMax :: DBExpr -> DBExpr -> DBExpr
 tMax t1 t2 = if universeLevel t1 > universeLevel t2 then t1 else t2
 
 builtin :: Builtin -> DSLExpr
-builtin b = DSL $ \ann _ -> Builtin ann b
+builtin b = DSL $ \p _ -> Builtin p b
 
 constructor :: BuiltinConstructor -> DSLExpr
 constructor = builtin . Constructor
@@ -206,7 +206,7 @@ forAllPolarityTriples f =
       forAllIrrelevant "p3" tPol $ \l3 -> f l1 l2 l3
 
 universe :: Universe -> DSLExpr
-universe u = DSL $ \ann _ -> Universe ann u
+universe u = DSL $ \p _ -> Universe p u
 
 type0 :: DSLExpr
 type0 = universe $ TypeUniv 0
@@ -254,7 +254,7 @@ tIndex :: DSLExpr -> DSLExpr
 tIndex n = constructor Index @@ [n]
 
 tHole :: Name -> DSLExpr
-tHole name = DSL $ \ann _ -> Hole ann name
+tHole name = DSL $ \p _ -> Hole p name
 
 --------------------------------------------------------------------------------
 -- TypeClass

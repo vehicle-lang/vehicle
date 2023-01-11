@@ -120,7 +120,7 @@ checkExpr expectedType expr = do
     (Pi _ piBinder resultType, e)
       | isImplicit piBinder || isInstance piBinder -> do
           -- Then eta-expand
-          let ann = provenanceOf piBinder
+          let p = provenanceOf piBinder
           let binderName = nameOf piBinder
           let binderType = typeOf piBinder
 
@@ -133,10 +133,10 @@ checkExpr expectedType expr = do
           -- Create a new binder mirroring the Pi binder expected
           lamBinderName <- getBinderNameOrFreshName (nameOf piBinder) binderType
           let lamBinderForm = BinderDisplayForm (OnlyName lamBinderName) False
-          let lamBinder = Binder ann lamBinderForm (visibilityOf piBinder) (relevanceOf piBinder) () binderType
+          let lamBinder = Binder p lamBinderForm (visibilityOf piBinder) (relevanceOf piBinder) () binderType
 
           -- Prepend a new lambda to the expression with the implicit binder
-          return $ Lam ann lamBinder checkedExpr
+          return $ Lam p lamBinder checkedExpr
     (_, Hole p _name) -> do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted as
@@ -173,8 +173,8 @@ inferExpr ::
 inferExpr e = do
   showInferEntry e
   res <- case e of
-    Universe ann u -> case u of
-      TypeUniv l -> return (e, TypeUniverse ann (l + 1))
+    Universe p u -> case u of
+      TypeUniv l -> return (e, TypeUniverse p (l + 1))
       _ ->
         compilerDeveloperError $
           "Should not be trying to infer the type of" <+> pretty u
@@ -284,9 +284,7 @@ inferExpr e = do
       return (Lam p checkedBinder checkedBody, t')
     Builtin p op -> do
       return (Builtin p op, typeOfBuiltin p op)
-    LVec ann elems -> do
-      let p = provenanceOf ann
-
+    LVec p elems -> do
       -- Infer the type for each element in the list
       elemTypePairs <- traverse inferExpr elems
       -- Insert any implicit arguments for each element in the list to try and
@@ -307,13 +305,13 @@ inferExpr e = do
                 VectorType p (Var p (Bound 1)) (NatLiteral p (length elems))
 
       -- Return the result
-      return (LVec ann checkedElems, typeOfContainer)
+      return (LVec p checkedElems, typeOfContainer)
 
   -- TODO re-enable once we have the universe solver up and running.
   {-
   (checkedTypeClass, typeClassType) <- inferExpr typeClass
-  unify ann typeClassType (TypeUniverse (inserted ann) 0)
-  return (PrimDict ann checkedTypeClass, checkedTypeClass)
+  unify p typeClassType (TypeUniverse (inserted p) 0)
+  return (PrimDict p checkedTypeClass, checkedTypeClass)
   -}
 
   showInferExit res
@@ -410,7 +408,7 @@ insertNonExplicitArgs ::
   CheckedExpr ->
   CheckedType ->
   m (CheckedExpr, CheckedType)
-insertNonExplicitArgs ann checkedExpr actualType = inferApp ann checkedExpr actualType []
+insertNonExplicitArgs p checkedExpr actualType = inferApp p checkedExpr actualType []
 
 missingExplicitArgumentError :: MonadBidirectional m => CheckedBinder -> UncheckedArg -> m a
 missingExplicitArgumentError expectedBinder actualArg = do
@@ -423,7 +421,7 @@ missingExplicitArgumentError expectedBinder actualArg = do
 
 -- | Return the type of the provided literal,
 typeOfLiteral :: Provenance -> Literal -> CheckedType
-typeOfLiteral ann l = fromDSL ann $ case l of
+typeOfLiteral p l = fromDSL p $ case l of
   LUnit -> tUnit
   LBool _ -> tAnnBool constant unquantified
   LIndex n _ -> tIndex (natLit n)

@@ -113,28 +113,28 @@ descopeExpr ::
   Expr DBBinding var ->
   m InputExpr
 descopeExpr f e = showScopeExit $ case showScopeEntry e of
-  Universe ann l -> return $ Universe ann l
-  Hole ann name -> return $ Hole ann name
-  Builtin ann op -> return $ Builtin ann op
-  Literal ann l -> return $ Literal ann l
-  Meta ann i -> return $ Meta ann i
-  Var ann v -> Var ann <$> f ann v
-  Ann ann e1 t -> Ann ann <$> descopeExpr f e1 <*> descopeExpr f t
-  App ann fun args -> App ann <$> descopeExpr f fun <*> traverse (descopeArg f) args
-  LVec ann es -> LVec ann <$> traverse (descopeExpr f) es
-  Let ann bound binder body -> do
+  Universe p l -> return $ Universe p l
+  Hole p name -> return $ Hole p name
+  Builtin p op -> return $ Builtin p op
+  Literal p l -> return $ Literal p l
+  Meta p i -> return $ Meta p i
+  Var p v -> Var p <$> f p v
+  Ann p e1 t -> Ann p <$> descopeExpr f e1 <*> descopeExpr f t
+  App p fun args -> App p <$> descopeExpr f fun <*> traverse (descopeArg f) args
+  LVec p es -> LVec p <$> traverse (descopeExpr f) es
+  Let p bound binder body -> do
     bound' <- descopeExpr f bound
     binder' <- descopeBinder f binder
     body' <- local (addBinderToCtx binder') (descopeExpr f body)
-    return $ Let ann bound' binder' body'
-  Lam ann binder body -> do
+    return $ Let p bound' binder' body'
+  Lam p binder body -> do
     binder' <- descopeBinder f binder
     body' <- local (addBinderToCtx binder') (descopeExpr f body)
-    return $ Lam ann binder' body'
-  Pi ann binder body -> do
+    return $ Lam p binder' body'
+  Pi p binder body -> do
     binder' <- descopeBinder f binder
     body' <- local (addBinderToCtx binder') (descopeExpr f body)
-    return $ Pi ann binder' body'
+    return $ Pi p binder' body'
 
 descopeBinder ::
   (MonadReader Ctx f, Show var) =>

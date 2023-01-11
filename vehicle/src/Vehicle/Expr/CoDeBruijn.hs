@@ -77,28 +77,28 @@ class ExtractPositionTrees t where
 
 instance ExtractPositionTrees Expr where
   extractPTs = cata $ \case
-    UniverseF ann l -> (Universe ann l, mempty)
-    HoleF ann n -> (Hole ann n, mempty)
-    MetaF ann m -> (Meta ann m, mempty)
-    BuiltinF ann op -> (Builtin ann op, mempty)
-    LiteralF ann l -> (Literal ann l, mempty)
-    VarF ann v -> (Var ann v, mempty)
-    AnnF ann (e, mpts1) (t, mpts2) -> (Ann ann e t, mergePTs [mpts1, mpts2])
-    LVecF ann xs ->
+    UniverseF p l -> (Universe p l, mempty)
+    HoleF p n -> (Hole p n, mempty)
+    MetaF p m -> (Meta p m, mempty)
+    BuiltinF p op -> (Builtin p op, mempty)
+    LiteralF p l -> (Literal p l, mempty)
+    VarF p v -> (Var p v, mempty)
+    AnnF p (e, mpts1) (t, mpts2) -> (Ann p e t, mergePTs [mpts1, mpts2])
+    LVecF p xs ->
       let (xs', mpts) = unzip xs
-       in (LVec ann xs', mergePTs mpts)
-    AppF ann (fun, mpt) args ->
+       in (LVec p xs', mergePTs mpts)
+    AppF p (fun, mpt) args ->
       let (args', mpts) = NonEmpty.unzip (fmap unpairArg args)
-       in (App ann fun args', mergePTs (mpt : NonEmpty.toList mpts))
-    PiF ann binder (result', mpt2) ->
+       in (App p fun args', mergePTs (mpt : NonEmpty.toList mpts))
+    PiF p binder (result', mpt2) ->
       let (binder', mpt1) = extractPTsBinder binder
-       in (Pi ann binder' result', mergePTs [mpt1, mpt2])
-    LetF ann (bound', mpt1) binder (body', mpt3) ->
+       in (Pi p binder' result', mergePTs [mpt1, mpt2])
+    LetF p (bound', mpt1) binder (body', mpt3) ->
       let (binder', mpt2) = extractPTsBinder binder
-       in (Let ann bound' binder' body', mergePTs [mpt1, mpt2, mpt3])
-    LamF ann binder (body', mpt2) ->
+       in (Let p bound' binder' body', mergePTs [mpt1, mpt2, mpt3])
+    LamF p binder (body', mpt2) ->
       let (binder', mpt1) = extractPTsBinder binder
-       in (Lam ann binder' body', mergePTs [mpt1, mpt2])
+       in (Lam p binder' body', mergePTs [mpt1, mpt2])
 
 extractPTsBinder ::
   GenericBinder CoDBBinding (Expr Name CoDBVar, NamedPTMap) ->
@@ -154,24 +154,24 @@ class RecCoDB a b where
 
 instance RecCoDB CoDBExpr ExprC where
   recCoDB (expr, bvm) = case (expr, unnodeBVM bvm) of
-    (Universe ann u, _) -> UniverseC ann u
-    (Hole ann n, _) -> HoleC ann n
-    (Meta ann m, _) -> MetaC ann m
-    (Builtin ann op, _) -> BuiltinC ann op
-    (Literal ann l, _) -> LiteralC ann l
-    (LVec ann xs, bvms) -> LSeqC ann (zip xs bvms)
-    (Var ann v, _) -> case v of
-      CoDBFree ident -> assert (null bvm) (VarC ann (DB.Free ident))
-      CoDBBound -> VarC ann (DB.Bound (unleafBVM bvm))
-    (Ann ann e t, bvm1 : bvm2 : _) -> AnnC ann (e, bvm1) (t, bvm2)
-    (App ann fun args, bvm1 : bvm2 : bvms) ->
-      AppC ann (fun, bvm1) (NonEmpty.zip args (bvm2 :| bvms))
-    (Pi ann binder result, bvm1 : bvm2 : _) ->
-      PiC ann (binder, bvm1) (result, lowerBVM (positionTreeOf binder) bvm2)
-    (Let ann bound binder body, bvm1 : bvm2 : bvm3 : _) ->
-      LetC ann (bound, bvm1) (binder, bvm2) (body, lowerBVM (positionTreeOf binder) bvm3)
-    (Lam ann binder body, bvm1 : bvm2 : _) ->
-      LamC ann (binder, bvm1) (body, lowerBVM (positionTreeOf binder) bvm2)
+    (Universe p u, _) -> UniverseC p u
+    (Hole p n, _) -> HoleC p n
+    (Meta p m, _) -> MetaC p m
+    (Builtin p op, _) -> BuiltinC p op
+    (Literal p l, _) -> LiteralC p l
+    (LVec p xs, bvms) -> LSeqC p (zip xs bvms)
+    (Var p v, _) -> case v of
+      CoDBFree ident -> assert (null bvm) (VarC p (DB.Free ident))
+      CoDBBound -> VarC p (DB.Bound (unleafBVM bvm))
+    (Ann p e t, bvm1 : bvm2 : _) -> AnnC p (e, bvm1) (t, bvm2)
+    (App p fun args, bvm1 : bvm2 : bvms) ->
+      AppC p (fun, bvm1) (NonEmpty.zip args (bvm2 :| bvms))
+    (Pi p binder result, bvm1 : bvm2 : _) ->
+      PiC p (binder, bvm1) (result, lowerBVM (positionTreeOf binder) bvm2)
+    (Let p bound binder body, bvm1 : bvm2 : bvm3 : _) ->
+      LetC p (bound, bvm1) (binder, bvm2) (body, lowerBVM (positionTreeOf binder) bvm3)
+    (Lam p binder body, bvm1 : bvm2 : _) ->
+      LamC p (binder, bvm1) (body, lowerBVM (positionTreeOf binder) bvm2)
     (_, bvms) ->
       developerError $
         "Expected the same number of BoundVarMaps as args but found" <+> pretty (length bvms)
@@ -203,33 +203,33 @@ substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
   (LiteralC {}, _) -> invalidPositionTreeError l
   (BuiltinC {}, _) -> invalidPositionTreeError l
   (VarC {}, _) -> invalidPositionTreeError l
-  (AnnC ann e t, p1 : p2 : _) ->
+  (AnnC p e t, p1 : p2 : _) ->
     let (e', bvm1) = substPos v p1 e
      in let (t', bvm2) = substPos v p2 t
-         in (Ann ann e' t', nodeBVM [bvm1, bvm2])
-  (LSeqC ann xs, ps) ->
+         in (Ann p e' t', nodeBVM [bvm1, bvm2])
+  (LSeqC p xs, ps) ->
     let (xs', bvms) = unzip (zipWith (substPos v) ps xs)
-     in (LVec ann xs', nodeBVM bvms)
-  (AppC ann fun args, p1 : p2 : ps) ->
+     in (LVec p xs', nodeBVM bvms)
+  (AppC p fun args, p1 : p2 : ps) ->
     let (fun', bvm1) = substPos v p1 fun
      in let (args', bvms) = NonEmpty.unzip $ NonEmpty.zipWith (substPosArg v) (p2 :| ps) args
-         in (App ann fun' args', nodeBVM (bvm1 : NonEmpty.toList bvms))
-  (PiC ann binder result, p1 : p2 : _) ->
+         in (App p fun' args', nodeBVM (bvm1 : NonEmpty.toList bvms))
+  (PiC p binder result, p1 : p2 : _) ->
     let (result', bvm2) = substPos (lowerValue v) p2 result
      in let (positionTree, bvm2') = liftBVM bvm2
          in let (binder', bvm1) = substPosBinder v p1 binder positionTree
-             in (Pi ann binder' result', nodeBVM [bvm1, bvm2'])
-  (LetC ann bound binder body, p1 : p2 : p3 : _) ->
+             in (Pi p binder' result', nodeBVM [bvm1, bvm2'])
+  (LetC p bound binder body, p1 : p2 : p3 : _) ->
     let (body', bvm3) = substPos (lowerValue v) p3 body
      in let (positionTree, bvm3') = liftBVM bvm3
          in let (binder', bvm2) = substPosBinder v p2 binder positionTree
              in let (bound', bvm1) = substPos v p1 bound
-                 in (Let ann bound' binder' body', nodeBVM [bvm1, bvm2, bvm3'])
-  (LamC ann binder body, p1 : p2 : _) ->
+                 in (Let p bound' binder' body', nodeBVM [bvm1, bvm2, bvm3'])
+  (LamC p binder body, p1 : p2 : _) ->
     let (body', bvm2) = substPos (lowerValue v) p2 body
      in let (positionTree, bvm2') = liftBVM bvm2
          in let (binder', bvm1) = substPosBinder v p1 binder positionTree
-             in (Lam ann binder' body', nodeBVM [bvm1, bvm2'])
+             in (Lam p binder' body', nodeBVM [bvm1, bvm2'])
   (_, ps) ->
     developerError $
       "Expected the same number of PositionTrees as args but found" <+> pretty (length ps)

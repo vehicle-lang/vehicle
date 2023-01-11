@@ -99,38 +99,38 @@ letInsert expr = do
     BuiltinC {} -> return (expr, leafSM)
     HoleC {} -> return (expr, leafSM)
     MetaC {} -> return (expr, leafSM)
-    LSeqC ann xs -> do
+    LSeqC p xs -> do
       ((xs', bvms), sms) <- first unzip <$> (unzip <$> traverse letInsert xs)
-      let expr' = (LVec ann xs', nodeBVM bvms)
+      let expr' = (LVec p xs', nodeBVM bvms)
       return (expr', nodeSM expr' sms)
-    AnnC ann e t -> do
+    AnnC p e t -> do
       ((e', bvm1), sm1) <- letInsert e
       ((t', bvm2), sm2) <- letInsert t
-      let expr' = (Ann ann e' t', nodeBVM [bvm1, bvm2])
+      let expr' = (Ann p e' t', nodeBVM [bvm1, bvm2])
       return (expr', nodeSM expr' [sm1, sm2])
-    AppC ann fn args -> do
+    AppC p fn args -> do
       ((fn', bvm1), sm1) <- letInsert fn
       ((args', bvms), sms) <- first NonEmpty.unzip <$> (NonEmpty.unzip <$> traverse letInsertArg args)
-      let expr' = (App ann fn' args', nodeBVM (bvm1 : NonEmpty.toList bvms))
+      let expr' = (App p fn' args', nodeBVM (bvm1 : NonEmpty.toList bvms))
       return (expr', nodeSM expr' (sm1 : NonEmpty.toList sms))
-    PiC ann binder res -> do
+    PiC p binder res -> do
       ((res', bvm2), sm2) <- liftOverBinder =<< letInsert res
       let (positionTree, bvm2') = liftBVM bvm2
       ((binder', bvm1), sm1) <- letInsertBinder binder positionTree
-      let expr' = (Pi ann binder' res', nodeBVM [bvm1, bvm2'])
+      let expr' = (Pi p binder' res', nodeBVM [bvm1, bvm2'])
       return (expr', nodeSM expr' [sm1, sm2])
-    LetC ann bound binder body -> do
+    LetC p bound binder body -> do
       ((body', bvm3), sm3) <- liftOverBinder =<< letInsert body
       let (positionTree, bvm3') = liftBVM bvm3
       ((binder', bvm2), sm2) <- letInsertBinder binder positionTree
       ((bound', bvm1), sm1) <- letInsert bound
-      let expr' = (Let ann bound' binder' body', nodeBVM [bvm1, bvm2, bvm3'])
+      let expr' = (Let p bound' binder' body', nodeBVM [bvm1, bvm2, bvm3'])
       return (expr', nodeSM expr' [sm1, sm2, sm3])
-    LamC ann binder body -> do
+    LamC p binder body -> do
       ((body', bvm2), sm2) <- liftOverBinder =<< letInsert body
       let (positionTree, bvm2') = liftBVM bvm2
       ((binder', bvm1), sm1) <- letInsertBinder binder positionTree
-      let expr' = (Lam ann binder' body', nodeBVM [bvm1, bvm2'])
+      let expr' = (Lam p binder' body', nodeBVM [bvm1, bvm2'])
       return (expr', nodeSM expr' [sm1, sm2])
 
   showIdentExit expr' sm
@@ -142,12 +142,12 @@ letInsertBinder ::
   Maybe PositionTree ->
   m (CoDBBinder, SubexpressionMap)
 letInsertBinder binder positions = case recCoDB binder of
-  (Binder ann u v r (CoDBBinding _) t) ->
+  (Binder p u v r (CoDBBinding _) t) ->
     if visibilityOf (fst binder) /= Explicit
-      then return (first (Binder ann u v r (CoDBBinding positions)) t, Map.empty)
+      then return (first (Binder p u v r (CoDBBinding positions)) t, Map.empty)
       else do
         ((t', bvm), sm) <- letInsert t
-        return ((Binder ann u v r (CoDBBinding positions) t', bvm), sm)
+        return ((Binder p u v r (CoDBBinding positions) t', bvm), sm)
 
 letInsertArg ::
   MonadLetInsert m =>
@@ -157,9 +157,9 @@ letInsertArg arg =
   if visibilityOf (fst arg) /= Explicit
     then return (arg, Map.empty)
     else case recCoDB arg of
-      (Arg ann r v e) -> do
+      (Arg p r v e) -> do
         ((e', bvm), sm) <- letInsert e
-        return ((Arg ann r v e', bvm), sm)
+        return ((Arg p r v e', bvm), sm)
 
 liftOverBinder ::
   MonadLetInsert m =>
@@ -222,17 +222,17 @@ letBindSubexpressions remainingSM subexprsToInsert expr
       m (SubexpressionMap, CoDBExpr)
     go sm [] body = return (sm, body)
     go sm (cs : css) body = do
-      let ann = provenanceOf (fst (subexpr cs))
+      let p = provenanceOf (fst (subexpr cs))
       logDebug MaxDetail $ "inserting" <+> prettyEntry body cs
       incrCallDepth
 
       logDebug MaxDetail $ "body-before:" <+> prettySimple (fromCoDB body)
       -- Everywhere the position tree points to, substitute a variable through
       -- which refers to the let binding that is about to be inserted.
-      let coDBVar = (Var ann CoDBBound, leafBVM 0)
+      let coDBVar = (Var p CoDBBound, leafBVM 0)
       let substBody = substPos coDBVar (Just (positions cs)) (lowerFreeCoDBIndices body)
       -- Wrap the substituted body in a let binding
-      updatedBody <- prependLet ann cs substBody
+      updatedBody <- prependLet p cs substBody
       logDebug MaxDetail $ "body-after: " <+> prettySimple (fromCoDB updatedBody)
 
       -- Update the remaining subexpressions that are not going to be inserted here,
@@ -265,17 +265,17 @@ letBindSubexpressions remainingSM subexprsToInsert expr
                     Just newPositions -> CSItem v2 q (Node newPositions)
 
     prependLet :: MonadLetInsert m => Provenance -> Subexpression -> CoDBExpr -> m CoDBExpr
-    prependLet ann cs (letBody, bvm3) = do
+    prependLet p cs (letBody, bvm3) = do
       bindingNumber <- get
       put (bindingNumber + 1)
       let (pt, bvm3') = liftBVM bvm3
       let (bound, bvm1) = subexpr cs
-      let exprType = Hole ann "?"
+      let exprType = Hole p "?"
       let binding = CoDBBinding pt
       let binderDisplayForm = BinderDisplayForm (OnlyName (layoutAsText $ "_l" <+> pretty bindingNumber)) False
-      let binder = Binder ann binderDisplayForm Explicit Relevant binding exprType
+      let binder = Binder p binderDisplayForm Explicit Relevant binding exprType
       let bvm2 = mempty
-      return (Let ann bound binder letBody, nodeBVM [bvm1, bvm2, bvm3'])
+      return (Let p bound binder letBody, nodeBVM [bvm1, bvm2, bvm3'])
 
 leafSM :: SubexpressionMap
 leafSM = Map.empty

@@ -1219,10 +1219,10 @@ instance MeaningfulError CompileError where
             problem = "No properties found in file.",
             fix = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty Bool) <+> "."
           }
-    NoNetworkUsedInProperty target ann ident ->
+    NoNetworkUsedInProperty target p ident ->
       UError $
         UserError
-          { provenance = provenanceOf ann,
+          { provenance = p,
             problem =
               "After normalisation, the property"
                 <+> prettyIdentName ident

@@ -72,24 +72,24 @@ unitTestCase testName errorOrAssertionWithLogs =
 
 normTypeClasses :: MonadCompile m => CheckedExpr -> m CheckedExpr
 normTypeClasses = cata $ \case
-  AppF ann fun args -> do
+  AppF p fun args -> do
     fun' <- fun
     args' <- traverse sequenceA args
     case fun' of
-      Builtin p (TypeClassOp op) -> case nfTypeClassOp p op (NonEmpty.toList args') of
+      Builtin p' (TypeClassOp op) -> case nfTypeClassOp p' op (NonEmpty.toList args') of
         Nothing -> error "No metas should be present"
         Just res -> do
           (fn, newArgs) <- res
           return $ normApp p fn newArgs
-      _ -> return $ App ann fun' args'
-  UniverseF ann l -> return $ Universe ann l
-  HoleF ann n -> return $ Hole ann n
-  MetaF ann m -> return $ Meta ann m
-  LiteralF ann l -> return $ Literal ann l
-  BuiltinF ann op -> return $ Builtin ann op
-  AnnF ann e t -> Ann ann <$> e <*> t
-  PiF ann binder result -> Pi ann <$> sequenceA binder <*> result
-  LetF ann bound binder body -> Let ann <$> bound <*> sequenceA binder <*> body
-  LamF ann binder body -> Lam ann <$> sequenceA binder <*> body
-  LVecF ann xs -> LVec ann <$> sequence xs
-  VarF ann v -> return $ Var ann v
+      _ -> return $ App p fun' args'
+  UniverseF p l -> return $ Universe p l
+  HoleF p n -> return $ Hole p n
+  MetaF p m -> return $ Meta p m
+  LiteralF p l -> return $ Literal p l
+  BuiltinF p op -> return $ Builtin p op
+  AnnF p e t -> Ann p <$> e <*> t
+  PiF p binder result -> Pi p <$> sequenceA binder <*> result
+  LetF p bound binder body -> Let p <$> bound <*> sequenceA binder <*> body
+  LamF p binder body -> Lam p <$> sequenceA binder <*> body
+  LVecF p xs -> LVec p <$> sequence xs
+  VarF p v -> return $ Var p v

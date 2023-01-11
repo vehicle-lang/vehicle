@@ -222,10 +222,10 @@ normApp p fun args = do
 
 normAppList :: Provenance -> Expr binder var -> [Arg binder var] -> Expr binder var
 normAppList _ fun [] = fun
-normAppList ann fun (arg : args) = normApp ann fun (arg :| args)
+normAppList p fun (arg : args) = normApp p fun (arg :| args)
 
 mkHole :: Provenance -> Name -> Expr binder var
-mkHole ann name = Hole ann ("_" <> name)
+mkHole p name = Hole p ("_" <> name)
 
 isTypeSynonym :: Expr binder var -> Bool
 isTypeSynonym = \case

@@ -27,12 +27,12 @@ instance Simplify (Expr binder var) where
     Builtin {} -> expr
     Literal {} -> expr
     Var {} -> expr
-    App ann fun args -> normAppList ann (simplify fun) (simplifyArgs args)
-    LVec ann xs -> LVec ann (fmap simplify xs)
-    Ann ann e t -> Ann ann (simplify e) (simplify t)
-    Pi ann binder result -> Pi ann (simplify binder) (simplify result)
-    Let ann bound binder body -> Let ann (simplify bound) (simplify binder) (simplify body)
-    Lam ann binder body -> Lam ann (simplify binder) (simplify body)
+    App p fun args -> normAppList p (simplify fun) (simplifyArgs args)
+    LVec p xs -> LVec p (fmap simplify xs)
+    Ann p e t -> Ann p (simplify e) (simplify t)
+    Pi p binder result -> Pi p (simplify binder) (simplify result)
+    Let p bound binder body -> Let p (simplify bound) (simplify binder) (simplify body)
+    Lam p binder body -> Lam p (simplify binder) (simplify body)
 
 instance Simplify (Binder binder var) where
   simplify = fmap simplify
