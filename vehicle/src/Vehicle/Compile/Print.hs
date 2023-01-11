@@ -87,8 +87,7 @@ data Strategy
   | Denormalise Strategy
   | DiscardConstraintCtx Strategy
   | KeepConstraintCtx Strategy
-  | SimplifyWithOptions Strategy
-  | SimplifyDefault Strategy
+  | Simplify Strategy
   | MapList Strategy
   | MapMaybe Strategy
   | MapIntMap Strategy
@@ -155,8 +154,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags PositionsInExpr = 'Opaque (StrategyFor tags CheckedExpr)
   -- Simplification
-  StrategyFor ('Simple tags) (SimplifyOptions, a) = 'SimplifyWithOptions (StrategyFor tags a)
-  StrategyFor ('Simple tags) a = 'SimplifyDefault (StrategyFor tags a)
+  StrategyFor ('Simple tags) a = 'Simplify (StrategyFor tags a)
   -- Things were we just print the structure and recursively print through.
   StrategyFor tags (Maybe a) = 'MapMaybe (StrategyFor tags a)
   StrategyFor tags (IntMap a) = 'MapIntMap (StrategyFor tags a)
@@ -339,13 +337,7 @@ instance PrettyUsing rest DBBinder
 
 instance
   (Simplify a, PrettyUsing rest a) =>
-  PrettyUsing ('SimplifyWithOptions rest) (SimplifyOptions, a)
-  where
-  prettyUsing (options, e) = prettyUsing @rest (simplifyWith options e)
-
-instance
-  (Simplify a, PrettyUsing rest a) =>
-  PrettyUsing ('SimplifyDefault rest) a
+  PrettyUsing ('Simplify rest) a
   where
   prettyUsing e = prettyUsing @rest (simplify e)
 

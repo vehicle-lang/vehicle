@@ -410,7 +410,7 @@ filterMetasByTypes typeFilter metas = do
 abstractOverCtx :: TypingBoundCtx -> CheckedExpr -> CheckedExpr
 abstractOverCtx ctx body = do
   let p = mempty
-  let lamBinderForm (n, _, _) = BinderForm (OnlyName (fromMaybe "_" n)) True
+  let lamBinderForm (n, _, _) = BinderDisplayForm (OnlyName (fromMaybe "_" n)) True
   -- WARNING: in theory the type of this binder should be `t` but because these binders
   -- have temporary mutually recursive dependencies that are eliminated upon substitution
   -- then actualy using `t` here results in meta-substitution looping.

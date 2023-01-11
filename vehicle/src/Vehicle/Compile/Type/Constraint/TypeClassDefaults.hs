@@ -9,6 +9,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.Normalised
 
@@ -68,7 +69,7 @@ generateConstraintUsingDefaults constraints = do
       return Nothing
     Invalid -> return Nothing
     Valid (Candidate m tc metaExpr ctx) -> do
-      let p = inserted $ provenanceOf ctx
+      let p = provenanceOf ctx
       solution <- defaultSolution p ctx tc
       logDebug MaxDetail $
         "using default"
@@ -154,7 +155,7 @@ defaultSolution p ctx = \case
   HasMul -> return $ VNatType p
   HasDiv -> createDefaultRatType p
   HasNeg -> return $ VIntType p
-  HasNatLits n -> return $ VIndexType p (VNatLiteral p (n + 1))
+  HasNatLits n -> return $ mkVIndexType p (VNatLiteral p (n + 1))
   HasRatLits -> createDefaultRatType p
   HasVecLits {} -> createDefaultListType p ctx
   HasMap -> createDefaultListType p ctx
@@ -169,18 +170,18 @@ defaultSolution p ctx = \case
 createDefaultListType :: TCM m => Provenance -> ConstraintContext -> m NormType
 createDefaultListType p ctx = do
   tElem <- normalised <$> freshExprMeta p (TypeUniverse p 0) (boundContext ctx)
-  return $ VListType p tElem
+  return $ mkVListType p tElem
 
 createDefaultBoolType :: TCM m => Provenance -> m NormType
 createDefaultBoolType p = do
   lin <- normalised <$> freshLinearityMeta p
   pol <- normalised <$> freshPolarityMeta p
-  return $ VAnnBoolType p lin pol
+  return $ mkVAnnBoolType p lin pol
 
 createDefaultRatType :: TCM m => Provenance -> m NormType
 createDefaultRatType p = do
   lin <- normalised <$> freshLinearityMeta p
-  return $ VAnnRatType p lin
+  return $ mkVAnnRatType p lin
 
 getCandidatesFromConstraint :: MonadCompile m => ConstraintContext -> TypeClassConstraint -> m [Candidate]
 getCandidatesFromConstraint ctx (Has _ tc args) = do

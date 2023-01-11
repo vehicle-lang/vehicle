@@ -177,10 +177,10 @@ instance RecCoDB CoDBExpr ExprC where
         "Expected the same number of BoundVarMaps as args but found" <+> pretty (length bvms)
 
 instance RecCoDB CoDBBinder BinderC where
-  recCoDB (Binder ann u v r n t, bvm) = Binder ann u v r n (t, bvm)
+  recCoDB (Binder p u v r n t, bvm) = Binder p u v r n (t, bvm)
 
 instance RecCoDB CoDBArg ArgC where
-  recCoDB (Arg ann v r e, bvm) = Arg ann v r (e, bvm)
+  recCoDB (Arg p v r e, bvm) = Arg p v r (e, bvm)
 
 positionTreeOf :: PartialCoDBBinder -> Maybe PositionTree
 positionTreeOf b = case binderRepresentation b of
@@ -238,10 +238,10 @@ substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
     lowerValue (e, bvm) = (e, lowerBVM Nothing bvm)
 
 substPosArg :: CoDBExpr -> Maybe PositionTree -> CoDBArg -> CoDBArg
-substPosArg v p arg = case recCoDB arg of
-  (Arg ann vis r e) ->
-    let (e', bvm) = substPos v p e
-     in (Arg ann vis r e', bvm)
+substPosArg expr pos arg = case recCoDB arg of
+  (Arg p v r e) ->
+    let (e', bvm) = substPos expr pos e
+     in (Arg p v r e', bvm)
 
 substPosBinder ::
   CoDBExpr ->
@@ -249,10 +249,10 @@ substPosBinder ::
   CoDBBinder ->
   Maybe PositionTree ->
   CoDBBinder
-substPosBinder v p binder boundPositions = case recCoDB binder of
-  (Binder ann u vis r (CoDBBinding _) t) ->
-    let (t', bvm) = substPos v p t
-     in (Binder ann u vis r (CoDBBinding boundPositions) t', bvm)
+substPosBinder expr pos binder boundPositions = case recCoDB binder of
+  (Binder p u v r (CoDBBinding _) t) ->
+    let (t', bvm) = substPos expr pos t
+     in (Binder p u v r (CoDBBinding boundPositions) t', bvm)
 
 invalidPositionTreeError :: PositionList -> a
 invalidPositionTreeError l =

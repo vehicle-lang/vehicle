@@ -39,9 +39,10 @@ data CompileError
     UnresolvedHole
       Provenance -- The location of the hole
       Name -- The name of the hole
-  | TypeMismatch
+  | FunTypeMismatch
       Provenance -- The location of the mismatch.
       BoundDBCtx -- The context at the time of the failure
+      CheckedExpr -- The function being typed
       CheckedType -- The possible inferred types.
       CheckedType -- The expected type.
   | UnsolvedConstraints

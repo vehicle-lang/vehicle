@@ -80,5 +80,4 @@ fromCoDBBinder binder = case recCoDB binder of
   Binder p u v r (CoDBBinding _) t -> Binder p u v r () $ fromCoDB t
 
 fromCoDBArg :: RecCoDB a ArgC => a -> DBArg
-fromCoDBArg arg = case recCoDB arg of
-  Arg p v r e -> Arg p v r $ fromCoDB e
+fromCoDBArg arg = fromCoDB <$> recCoDB arg

@@ -3,7 +3,7 @@ module Vehicle.Test.Unit.Compile.DeBruijn (deBruijnTests) where
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Prelude
-  ( BinderForm (BinderForm),
+  ( BinderDisplayForm (BinderDisplayForm),
     BinderNamingForm (OnlyName),
     CheckedBinder,
     CheckedExpr,
@@ -156,4 +156,4 @@ p :: Provenance
 p = mempty
 
 binding :: CheckedType -> CheckedBinder
-binding = Binder p (BinderForm (OnlyName "x") False) Explicit Relevant ()
+binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant ()

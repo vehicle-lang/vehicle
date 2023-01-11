@@ -1,12 +1,13 @@
 module Vehicle.Compile.Prelude.Utils where
 
 import Data.Functor.Foldable (Recursive (..))
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
 import Data.Text (pack)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Patterns
+import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
@@ -91,7 +92,7 @@ getContainerElem :: DBExpr -> Maybe DBExpr
 getContainerElem (ListType _ t) = Just t
 getContainerElem (TensorType p t dims) = case getDimensions dims of
   Just [_] -> Just t
-  Just (_ : ds) -> Just (TensorType p t (mkTensorDims p ds))
+  Just (_ : ds) -> Just (mkTensorType p t (mkTensorDims p ds))
   _ -> Nothing
 getContainerElem _ = Nothing
 
@@ -100,7 +101,7 @@ getDimension (NatLiteral _ n) = return n
 getDimension _ = Nothing
 
 getDimensions :: DBExpr -> Maybe [Int]
-getDimensions (NilExpr _ _) = Just []
+getDimensions NilExpr {} = Just []
 getDimensions (ConsExpr _ _ [x, xs]) = do
   d <- getDimension (argExpr x)
   ds <- getDimensions (argExpr xs)
@@ -136,7 +137,12 @@ mkDoubleExpr :: Provenance -> Double -> DBExpr
 mkDoubleExpr ann v = RatLiteral ann (toRational v)
 
 mkIndexType :: Provenance -> Int -> DBExpr
-mkIndexType ann n = IndexType ann (NatLiteral ann n)
+mkIndexType p n =
+  ConstructorExpr
+    p
+    Index
+    [ ExplicitArg p (NatLiteral p n)
+    ]
 
 mkIntExpr :: Provenance -> Int -> DBExpr
 mkIntExpr ann v
@@ -146,9 +152,8 @@ mkIntExpr ann v
 mkTensorDims ::
   Provenance ->
   [Int] ->
-  DBExpr
-mkTensorDims ann dims =
-  mkList ann (NatType ann) (fmap (NatLiteral ann) dims)
+  [DBExpr]
+mkTensorDims ann = fmap (NatLiteral ann)
 
 mkTensorType ::
   Provenance ->
@@ -156,15 +161,36 @@ mkTensorType ::
   [DBExpr] ->
   DBExpr
 mkTensorType _ tElem [] = tElem
-mkTensorType ann tElem dims =
-  let dimList = mkList ann (NatType ann) dims
-   in TensorType ann tElem dimList
+mkTensorType p tElem dims =
+  let dimList = mkList p (NatType p) dims
+   in App p (FreeVar p TensorIdent) (ExplicitArg p <$> [tElem, dimList])
 
 mkList ::
   Provenance ->
   Expr var binder ->
   [Expr var binder] ->
   Expr var binder
-mkList p elemType = foldr cons (NilExpr p elemType)
+mkList p elemType = foldr cons nil
   where
-    cons x xs = ConsExpr p elemType [ExplicitArg p x, ExplicitArg p xs]
+    nil = ConstructorExpr p Nil [ImplicitArg p elemType]
+    cons x xs =
+      ConstructorExpr
+        p
+        Cons
+        ( ImplicitArg p elemType
+            :| [ ExplicitArg p x,
+                 ExplicitArg p xs
+               ]
+        )
+
+mkVec ::
+  Provenance ->
+  Expr var binder ->
+  [Expr var binder] ->
+  Expr var binder
+mkVec p tElem xs =
+  App
+    p
+    (LVec p xs)
+    [ ImplicitArg p tElem
+    ]

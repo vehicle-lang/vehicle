@@ -91,11 +91,11 @@ fromDSL p e = unDSL e p 0
 boundVar :: DBLevel -> DSLExpr
 boundVar i = DSL $ \p j -> Var p (Bound (dbLevelToIndex j i))
 
-approxPiForm :: Maybe Name -> Visibility -> BinderForm
+approxPiForm :: Maybe Name -> Visibility -> BinderDisplayForm
 approxPiForm name = \case
-  Explicit -> BinderForm OnlyType False
-  Implicit -> BinderForm (OnlyName $ fromMaybe "_" name) True
-  Instance -> BinderForm OnlyType False
+  Explicit {} -> BinderDisplayForm OnlyType False
+  Implicit {} -> BinderDisplayForm (OnlyName $ fromMaybe "_" name) True
+  Instance {} -> BinderDisplayForm OnlyType False
 
 instance DSL DSLExpr where
   hole = DSL $ \p _i ->
@@ -112,7 +112,7 @@ instance DSL DSLExpr where
   lam name v r binderType bodyFn = DSL $ \p i ->
     let varType = unDSL binderType p i
         var = boundVar i
-        binder = Binder p (BinderForm (OnlyName name) True) v r () varType
+        binder = Binder p (BinderDisplayForm (OnlyName name) True) v r () varType
         body = unDSL (bodyFn var) p (i + 1)
      in Lam p binder body
 
@@ -167,31 +167,31 @@ x ~> y = pi Nothing Explicit Relevant x (const y)
 infixr 4 ~~>
 
 (~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x ~~> y = pi Nothing Implicit Relevant x (const y)
+x ~~> y = pi Nothing (Implicit False) Relevant x (const y)
 
 -- | Irrelevant implicit function type
 infixr 4 .~~>
 
 (.~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x .~~> y = pi Nothing Implicit Irrelevant x (const y)
+x .~~> y = pi Nothing (Implicit False) Irrelevant x (const y)
 
 -- | Instance function type
 infixr 4 ~~~>
 
 (~~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x ~~~> y = pi Nothing Instance Relevant x (const y)
+x ~~~> y = pi Nothing (Instance False) Relevant x (const y)
 
 -- | Irrelevant instance function type
 infixr 4 .~~~>
 
 (.~~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x .~~~> y = pi Nothing Instance Irrelevant x (const y)
+x .~~~> y = pi Nothing (Instance False) Irrelevant x (const y)
 
 forAll :: Name -> DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
-forAll name = pi (Just name) Implicit Relevant
+forAll name = pi (Just name) (Implicit False) Relevant
 
 forAllIrrelevant :: Name -> DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
-forAllIrrelevant name = pi (Just name) Implicit Irrelevant
+forAllIrrelevant name = pi (Just name) (Implicit False) Irrelevant
 
 forAllLinearityTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
 forAllLinearityTriples f =
@@ -230,15 +230,15 @@ tAnnRat :: DSLExpr -> DSLExpr
 tAnnRat linearity =
   app
     tRat
-    [ (Implicit, Irrelevant, linearity)
+    [ (Implicit True, Irrelevant, linearity)
     ]
 
 tAnnBool :: DSLExpr -> DSLExpr -> DSLExpr
 tAnnBool linearity polarity =
   app
     tBool
-    [ (Implicit, Irrelevant, linearity),
-      (Implicit, Irrelevant, polarity)
+    [ (Implicit True, Irrelevant, linearity),
+      (Implicit True, Irrelevant, polarity)
     ]
 
 tVector :: DSLExpr -> DSLExpr -> DSLExpr
@@ -362,7 +362,7 @@ cons :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 cons tElem x xs =
   app
     (constructor Cons)
-    [ (Implicit, Relevant, tElem),
+    [ (Implicit True, Relevant, tElem),
       (Explicit, Relevant, x),
       (Explicit, Relevant, xs)
     ]

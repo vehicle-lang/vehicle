@@ -48,7 +48,7 @@ instance NoThunks expr => NoThunks (GenericArg expr)
 
 -- Vehicle.Syntax.AST.Binder
 instance NoThunks BinderNamingForm
-instance NoThunks BinderForm
+instance NoThunks BinderDisplayForm
 instance (NoThunks binder, NoThunks expr) => NoThunks (GenericBinder binder expr)
 
 -- Vehicle.Syntax.AST.Builtin

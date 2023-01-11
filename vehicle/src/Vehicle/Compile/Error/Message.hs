@@ -217,12 +217,15 @@ instance MeaningfulError CompileError where
     -- Typing --
     ------------
 
-    TypeMismatch p ctx candidate expected ->
+    FunTypeMismatch p ctx fun candidate expected ->
       UError $
         UserError
           { provenance = p,
             problem =
-              "expected something of type"
+              "expected"
+                -- <+> squotes (prettyFriendly $ WithContext fun ctx)
+                <+> squotes (prettyVerbose fun)
+                <+> "to have something of type"
                 <+> squotes (prettyFriendly $ WithContext expected ctx)
                 <+> "but inferred type"
                 <+> squotes (prettyFriendly $ WithContext candidate ctx),

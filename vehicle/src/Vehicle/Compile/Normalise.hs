@@ -282,7 +282,7 @@ nfForeach ::
   m CheckedExpr
 nfForeach p resultType size lambda = do
   let fn i = nfAppLam p lambda [ExplicitArg p (IndexLiteral p size i)]
-  VecLiteral p resultType <$> traverse fn [0 .. (size - 1 :: Int)]
+  mkVec p resultType <$> traverse fn [0 .. (size - 1 :: Int)]
 
 nfFoldVector ::
   MonadNorm m =>
@@ -298,7 +298,16 @@ nfFoldVector p tElem size tRes foldOp unit vector = case argExpr vector of
   AnnVecLiteral _ _ xs -> do
     let combine x body = normApp p (argExpr foldOp) (ExplicitArg p <$> [x, body])
     nf $ foldr combine (argExpr unit) xs
-  _ -> return $ FoldVectorExpr p tElem size tRes [foldOp, unit, vector]
+  _ ->
+    return $
+      App
+        p
+        (Builtin p (Fold FoldVector))
+        ( ImplicitArg p tElem
+            :| ImplicitArg p size
+            : ImplicitArg p tRes
+            : [foldOp, unit, vector]
+        )
 
 -----------------------------------------------------------------------------
 -- Normalising quantifiers
@@ -324,13 +333,13 @@ nfQuantifierVector p tElem size binder body recFn = do
   -- Generate a list of variables, one for each index
   let allExprs = map (\i -> Var p (Bound (DBIndex i))) (reverse allIndices)
   -- Construct the corresponding nested tensor expression
-  let tensor = VecLiteral p tElem allExprs
+  let tensor = mkVec p tElem allExprs
   -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
   let body1 = liftDBIndices (DBLevel size) body
   -- Substitute throught the tensor expression for the old top-level binder
   body2 <- nf $ substDBIntoAtLevel (DBIndex size) tensor body1
 
-  let mkBinderForm name = mapBinderFormName (const name) (binderForm binder)
+  let mkBinderForm name = mapBinderFormName (const name) (binderDisplayForm binder)
   let mkBinder name = Binder p (mkBinderForm name) Explicit Relevant () tElem
   let mkQuantifier e name = App p recFn [ExplicitArg p (Lam p (mkBinder name) e)]
 
@@ -345,8 +354,8 @@ nfQuantifierIndex ::
   CheckedExpr ->
   m CheckedExpr
 nfQuantifierIndex p q size lam = do
-  let indexType = ConcreteIndexType p size
-  let cont = VecLiteral p indexType (fmap (IndexLiteral p size) [0 .. size - 1])
+  let indexType = mkIndexType p size
+  let cont = mkVec p indexType (fmap (IndexLiteral p size) [0 .. size - 1])
   nfQuantifierInVector p q indexType (NatLiteral p size) lam cont
 
 -- | Elaborate quantification over the members of a container type.
@@ -362,7 +371,7 @@ nfQuantifierInVector ::
   m CheckedExpr
 nfQuantifierInVector p q tElem size lam container = do
   let tTo = BoolType p
-  let mappedContainer = MapVectorExpr p tElem tTo size (ExplicitArg p <$> [lam, container])
+  let mappedContainer = mkMapVectorExpr p tElem tTo size (ExplicitArg p <$> [lam, container])
 
   let ident = Identifier StdLib $ if q == Forall then "bigAnd" else "bigOr"
   nf $ bigOp p ident size mappedContainer
@@ -431,8 +440,8 @@ nfMapVector p tFrom tTo size fun vector =
   case argExpr vector of
     AnnVecLiteral _ _ xs -> do
       let appFun x = App p (argExpr fun) [ExplicitArg p x]
-      return $ VecLiteral p tTo (fmap appFun xs)
-    _ -> return $ MapVectorExpr p tFrom tTo size [fun, vector]
+      return $ mkVec p tTo (fmap appFun xs)
+    _ -> return $ mkMapVectorExpr p tFrom tTo size [fun, vector]
 
 nfFromNat ::
   MonadNorm m =>
@@ -451,6 +460,17 @@ nfFromNat p x dom args = case (dom, argExpr (NonEmpty.head args)) of
   (FromNatToNat, _) -> return $ NatLiteral p x
   (FromNatToInt, _) -> return $ IntLiteral p x
   (FromNatToRat, _) -> return $ RatLiteral p (fromIntegral x)
+
+mkMapVectorExpr :: Provenance -> CheckedType -> CheckedType -> CheckedExpr -> [CheckedArg] -> CheckedExpr
+mkMapVectorExpr p tTo tFrom size explicitArgs =
+  BuiltinExpr
+    p
+    (Map MapVector)
+    ( ImplicitArg p tTo
+        :| ImplicitArg p tFrom
+        : ImplicitArg p size
+        : explicitArgs
+    )
 
 --------------------------------------------------------------------------------
 -- Debug functions

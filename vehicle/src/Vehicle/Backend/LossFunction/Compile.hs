@@ -174,8 +174,8 @@ lowerNot arg = case arg of
   V.EqualityExpr p dom eq args -> return $ V.EqualityExpr p dom (neg eq) args
   -- Order and equality expressions (note that we don't push these through the type-class
   -- solution as these will never be compiled.)
-  V.OrderTCExpr p ord t1 t2 t3 s args -> return $ V.OrderTCExpr p (neg ord) t1 t2 t3 s args
-  V.EqualityTCExpr p eq t1 t2 t3 s args -> return $ V.EqualityTCExpr p (neg eq) t1 t2 t3 s args
+  V.BuiltinExpr p (V.TypeClassOp (V.OrderTC ord)) args -> return $ V.BuiltinExpr p (V.TypeClassOp $ V.OrderTC $ neg ord) args
+  V.BuiltinExpr p (V.TypeClassOp (V.EqualsTC eq)) args -> return $ V.BuiltinExpr p (V.TypeClassOp $ V.EqualsTC $ neg eq) args
   -- Double negation
   V.NotExpr _ [e] -> return $ argExpr e
   ---------------------

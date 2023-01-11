@@ -1,8 +1,10 @@
 module Vehicle.Compile.Normalise.Core where
 
+import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.AlphaEquivalence (alphaEq)
+import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 
 --------------------------------------------------------------------------------
 -- Normalising equality
@@ -33,7 +35,7 @@ nfTensor ::
 nfTensor p tElem dims = case dims of
   NilExpr {} -> tElem
   AppConsExpr _ _ d ds -> VectorType p (nfTensor p tElem ds) d
-  _ -> TensorType p tElem dims
+  _ -> App p (FreeVar p TensorIdent) (ExplicitArg p <$> [tElem, dims])
 
 --------------------------------------------------------------------------------
 -- Normalising orders
@@ -57,7 +59,7 @@ nfOrder p dom ord arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
 -- Normalising boolean operations
 
 normaliseNotArg :: CheckedArg -> CheckedArg
-normaliseNotArg x = ExplicitArg (provenanceOf x) $ nfNot (provenanceOf x) x
+normaliseNotArg x = Arg (provenanceOf x) Explicit Relevant $ nfNot (provenanceOf x) x
 
 nfNot :: Provenance -> CheckedArg -> CheckedExpr
 nfNot p arg = case argExpr arg of
@@ -154,22 +156,14 @@ nfDiv p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
 nfAt :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedArg -> CheckedArg -> CheckedExpr
 nfAt p tElem tDim vector index = case (argExpr vector, argExpr index) of
   (AnnVecLiteral _ _ es, IndexLiteral _ _ i) -> es !! fromIntegral i
-  _ -> AtExpr p tElem tDim [vector, index]
-
-{-
-nfFoldList :: MonadNorm m
-           => Provenance
-           -> CheckedArg
-           -> CheckedArg
-           -> CheckedArg
-           -> Maybe (m CheckedExpr)
-nfFoldList ann foldOp unit container = case argExpr container of
-  NilExpr  _ _    -> Just $ return $ NilExpr _ _
-  ConsExpr _ _ xs -> do
-    let combine x body = normApp ann (argExpr foldOp) [ExplicitArg ann x, ExplicitArg ann body]
-    Just $ nf $ foldr combine (argExpr unit) xs
-  _ -> Nothing
--}
+  _ ->
+    App
+      p
+      (Builtin p At)
+      ( ImplicitArg p tElem
+          :| ImplicitArg p tDim
+          : [vector, index]
+      )
 
 zipWithVector ::
   Provenance ->
@@ -207,19 +201,3 @@ bigOp p identifier size xs =
     [ ImplicitArg p size,
       ExplicitArg p xs
     ]
-
-{-
-nfMapList :: MonadNorm m
-          => CheckedType
-          -> CheckedType
-          -> CheckedExpr
-          -> CheckedExpr
-          -> Maybe (m CheckedExpr)
-nfMapList tFrom tTo fun container = case container of
-  NilExpr p _          -> Just $ return $ NilExpr p tTo
-  AppConsExpr p _ x xs -> do
-    let fx = nf $ normApp p fun [ExplicitArg p x]
-    fxs <- nfMapList tFrom tTo fun xs
-    return $ AppConsExpr p tTo <$> fx <*> fxs
-  _ -> Nothing
--}
